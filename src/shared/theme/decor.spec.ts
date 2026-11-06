@@ -279,7 +279,7 @@ describe("decor contract", () => {
 			"decor.delve.b1.gems",
 			"decor.delve.b3.gems.2",
 			"decor.delve.b1.pillar.0",
-			"decor.delve.b1.pillar.5",
+			"decor.delve.b1.pillar.17",
 			"decor.delve.b1.pillar.01",
 			"decor.delve.b1.pillar.x",
 			"decor.delve.b1.pillar.1.2",
@@ -390,8 +390,8 @@ describe("validateManifest: decor pieces and effects", () => {
 
 	it("rejects IDs outside the decor grammars (and skips their shape checks)", () => {
 		const forms =
-			"decor.delve.b<1..5>.<kind>[.<1..4>], " +
-			"decor.void.b<1..5>.<spire|drift|vent|crag|grave|deadtree|root|bush|statue|cage|chains>[.<1..4>], " +
+			"decor.delve.b<1..5>.<kind>[.<1..16>], " +
+			"decor.void.b<1..5>.<spire|drift|vent|crag|grave|deadtree|root|bush|statue|cage|chains>[.<1..16>], " +
 			"decor.fx.<torch|flame|glow|glint|zone|loot>, decor.fx.ambient.b<1..5>; " +
 			"kinds: contract.ts DECOR_KINDS, lowercase; VOID_DECOR.kinds";
 		expect(withAssets({ "decor.delve.b1.chest": torchImage(), "decor.fx.fire": { kind: "silent" } })).toEqual([

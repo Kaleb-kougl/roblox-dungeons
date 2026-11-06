@@ -1453,6 +1453,91 @@
 				"outline": true,
 				"own": "kit-bookcase-z"
 			},
+			"$comment-kenney-bookcase": "Kenney bookcases (Isometric Library, Kenney, CC0; docs/KENNEY_DECOR.md): alternative art for the 1 x 1 bookcase, reprojected from Kenney's 30 degree camera to the game's 55 by scripts/art/kenney/reproject.py (scripts/art/kenney/kenney.json) into art/vendor/kenney/. Same cell, pivot and facings as kit-bookcase-x / -z. Own PNGs.",
+			"kenney-bookcase-books-x": {
+				"file": "kenney/bookcase/books_x.png",
+				"pivot": [22.57, 42.09],
+				"outline": true,
+				"own": "kenney-bookcase-books-x"
+			},
+			"kenney-bookcase-books-z": {
+				"file": "kenney/bookcase/books_z.png",
+				"pivot": [11.82, 41.82],
+				"outline": true,
+				"own": "kenney-bookcase-books-z"
+			},
+			"kenney-bookcase-ladder-x": {
+				"file": "kenney/bookcaseLadder/ladder_x.png",
+				"pivot": [22.57, 41.41],
+				"outline": true,
+				"own": "kenney-bookcase-ladder-x"
+			},
+			"kenney-bookcase-ladder-z": {
+				"file": "kenney/bookcaseLadder/ladder_z.png",
+				"pivot": [15.24, 41.84],
+				"outline": true,
+				"own": "kenney-bookcase-ladder-z"
+			},
+			"kenney-bookcase-glass-x": {
+				"file": "kenney/bookcaseGlass/glass_x.png",
+				"pivot": [22.57, 42.09],
+				"outline": true,
+				"own": "kenney-bookcase-glass-x"
+			},
+			"kenney-bookcase-glass-z": {
+				"file": "kenney/bookcaseGlass/glass_z.png",
+				"pivot": [11.82, 41.82],
+				"outline": true,
+				"own": "kenney-bookcase-glass-z"
+			},
+			"kenney-bookcase-half-x": {
+				"file": "kenney/bookcaseHalf/half_x.png",
+				"pivot": [22.44, 31.24],
+				"outline": true,
+				"own": "kenney-bookcase-half-x"
+			},
+			"kenney-bookcase-half-z": {
+				"file": "kenney/bookcaseHalf/half_z.png",
+				"pivot": [11.82, 31.82],
+				"outline": true,
+				"own": "kenney-bookcase-half-z"
+			},
+			"kenney-bookcase-destroyed-x": {
+				"file": "kenney/bookcaseDestroyed/destroyed_x.png",
+				"pivot": [22.69, 42.09],
+				"outline": true,
+				"own": "kenney-bookcase-destroyed-x"
+			},
+			"kenney-bookcase-destroyed-z": {
+				"file": "kenney/bookcaseDestroyed/destroyed_z.png",
+				"pivot": [12.3, 41.84],
+				"outline": true,
+				"own": "kenney-bookcase-destroyed-z"
+			},
+			"kenney-bookcase-empty-x": {
+				"file": "kenney/bookcaseEmpty/empty_x.png",
+				"pivot": [22.57, 42.09],
+				"outline": true,
+				"own": "kenney-bookcase-empty-x"
+			},
+			"kenney-bookcase-empty-z": {
+				"file": "kenney/bookcaseEmpty/empty_z.png",
+				"pivot": [11.82, 41.82],
+				"outline": true,
+				"own": "kenney-bookcase-empty-z"
+			},
+			"kenney-bookcase-halfempty-x": {
+				"file": "kenney/bookcaseHalfEmpty/halfempty_x.png",
+				"pivot": [22.44, 31.24],
+				"outline": true,
+				"own": "kenney-bookcase-halfempty-x"
+			},
+			"kenney-bookcase-halfempty-z": {
+				"file": "kenney/bookcaseHalfEmpty/halfempty_z.png",
+				"pivot": [11.82, 31.82],
+				"outline": true,
+				"own": "kenney-bookcase-halfempty-z"
+			},
 			"$comment-reading": "Reading area (library rooms): the Dungeon Assets Pack by zver.3d (credit \"zver.3d\"; scripts/art/kit/zver-dungeon-assets.json) at world scale, 2.2 FBX units a tile. The table with its pages and candlestick on a 2 x 1 footprint, along X (_x) and Z (_z), pivot = the footprint's centre on the floor; the chair on one cell facing +X / +Z / -X / -Z (_px / _pz / _nx / _nz: the way a seated person looks), pivot = the cell's centre under the seat (render_kit.py pivotOut).",
 			"kit-table-x": {
 				"file": "zver-dungeon-assets/table/table_x.png",
@@ -2103,6 +2188,73 @@
 				},
 				"recolorNote": "Source levels (luminance x pixels, land + hold): 0 x120 (the black outline: stays black, left out of the mean), 82 x9 (#376633, the darkest shade) -> #700070, 110 x56 (#418e3b) -> #b000b0, 150 x213 (#56c44d, the body) -> enemyGoo #f000f0, 197 x107 (#a1e09c, the lit top) -> #ff80ff; no source pixel lies between the stops, so each colour maps to exactly its stop and the shading keeps its order. Lit mean #e824e8, 7.1 CIE76 from #f000f0 (hold alone #e725e7, 7.7; land #ea20ea, 5.6), worst contrast 3.12:1 on #3a3a46."
 			}
+		}
+	},
+	"boostAuras": {
+		"$comment": [
+			"docs/BOOST_ART.md BAD3: the boost auras under a boosted player (fx.boost.aura.<kind>), ORIGINAL art drawn by",
+			"scripts/art/gen-boost-auras.js (art:build and art:lock run it first) into art/vendor/kaleb-vale/boost-auras/:",
+			"Fury a ring of fire with embers, Quickstep three comets, Frenzy six whirling blades, Aegis six shield plates with a",
+			"sweeping glint. Greyscale (the renderer tints each with its boost.<kind> role), 8-frame seamless loops, every stack",
+			"rank drawn natively: ringPx is each rank's ring radius, round((auraRadiusTiles 0.55 + rank x auraRingStepTiles",
+			"0.14) x 29.6) px (the generator's RING_PX; gen-boost-auras.test.js pins the two, boostAuras.spec.ts pins the",
+			"generated layout against BOOST_VIEW). Its OWN sheet art/build/<atlas>.png with",
+			"src/shared/theme/packs/vale/boostAuraLayout.ts, so no other atlas repacks. fps 10: the owner's approved preview",
+			"(100 ms a frame). pixelsPerTile: the density it was drawn at (the swarmer's 29.6); the view maps each rank's ring",
+			"exactly onto its disc's radius. Build just this group: node scripts/art/build-atlases.js --only boostAuras (and",
+			"--lock --only boostAuras)."
+		],
+		"atlas": "boost-auras",
+		"pad": 1,
+		"pixelsPerTile": 29.6,
+		"pixelsPerTileFrom": "enemy.swarmer",
+		"fps": 10,
+		"frames": 8,
+		"ringPx": [16, 20, 25, 29],
+		"sets": {
+			"fx.boost.aura.fury": { "file": "kaleb-vale/boost-auras/aura_fury_r{r}_{f}.png" },
+			"fx.boost.aura.quickstep": { "file": "kaleb-vale/boost-auras/aura_quickstep_r{r}_{f}.png" },
+			"fx.boost.aura.frenzy": { "file": "kaleb-vale/boost-auras/aura_frenzy_r{r}_{f}.png" },
+			"fx.boost.aura.aegis": { "file": "kaleb-vale/boost-auras/aura_aegis_r{r}_{f}.png" }
+		}
+	},
+	"treasure": {
+		"$comment": [
+			"The vault's cage and light column (docs/TREASURE.md TR9): original pixel art drawn by scripts/art/gen-treasure-art.js",
+			"(art:build and art:lock run it first) into art/vendor/kaleb-vale/, each in a sheet of its own (vault-cage.png,",
+			"treasure-column.png; generated src/shared/theme/packs/vale/treasureLayout.ts), so neither repacks the decor or",
+			"effects atlas. cage: a domed iron birdcage in the game camera's projection round the chest's box, four facings like",
+			"the chest (output d = NE, NW, SW, SE: the chest's front toward -Z, -X, +Z, +X; the bars the chest hides are cut per",
+			"facing), each facing's pivot the footprint centre on the floor (the generator's CAGE_PIVOT), so it stands on the",
+			"chest's; Pixelated (1 px bars). column: a looping greyscale strip, tinted by the opened tier's floor role and",
+			"stretched upright to TREASURE_VIEW.open.column's size at draw time. Build just this group: node",
+			"scripts/art/build-atlases.js --only treasure (and --lock --only treasure)."
+		],
+		"pixelsPerTile": 29.6,
+		"pixelsPerTileFrom": "enemy.swarmer",
+		"cage": {
+			"facings": { "count": 4, "zeroDeg": 45 },
+			"animations": {
+				"idle": {
+					"file": "kaleb-vale/vault-cage/{dir}/cage_{dir}_{angle}_{f}.png",
+					"frames": [0],
+					"fps": 1,
+					"loop": true
+				}
+			},
+			"pivot": [[22, 31], [22, 31], [22, 31], [22, 31]],
+			"own": "vault-cage",
+			"resample": "Pixelated"
+		},
+		"column": {
+			"atlas": "treasure-column",
+			"pad": 1,
+			"file": "kaleb-vale/treasure-column/column.png",
+			"frameW": 27,
+			"frames": 8,
+			"fps": 12,
+			"loop": true,
+			"grey": true
 		}
 	}
 }

@@ -83,13 +83,15 @@ import type {
 } from "../../types";
 import { deepClone, sortedKeys } from "../../util";
 import { PELLET_KINDS, pelletId, type PelletKind } from "../../pellets";
-import { TREASURE_IDS } from "../../treasure";
+import { TREASURE_CAGE_ID, TREASURE_IDS } from "../../treasure";
 import { PLACEHOLDER_MANIFEST } from "../placeholder";
 import { VALE_ASSET_IDS } from "./assetIds";
 import { VALE_SOUND_LAYOUTS, type ValeSoundLayout } from "./audioLayout";
 import { valeBulletAssets, type ValeBulletSource } from "./bullets";
+import { valeBoostAuraAssets, type ValeBoostAuraSource } from "./boostAuras";
 import { valeGooAsset, type ValeGooSource } from "./goo";
 import { valeAmbientAssets, valeFxAssets, valeFxSources } from "./fx";
+import { VALE_TREASURE_CAGE_LAYOUT } from "./treasureLayout";
 import {
 	VALE_FLOOR_HEX,
 	VALE_IMAGE_LAYOUTS,
@@ -253,9 +255,25 @@ export const VALE_DECOR_PIECES: ReadonlyArray<ValeDecorPiece> = [
 	{ kind: "carpet", variant: 2, art: "kit-carpet-z", layer: "flat" },
 	{ kind: "carpet", variant: 3, art: "kit-carpet-end-x", layer: "flat" },
 	{ kind: "carpet", variant: 4, art: "kit-carpet-end-z", layer: "flat" },
-	// bookshelves (docs/BOOKSHELVES.md): the bookcase facing +X / +Z
+	// bookshelves (docs/BOOKSHELVES.md): the bookcase facing +X / +Z; then the alternative set (docs/KENNEY_DECOR.md:
+	// Kenney's Isometric Library, CC0, reprojected to the game camera), in the same facing pairs: the full case first
+	// (the set's common one), then the ladder, glass, half-height, destroyed, empty and half empty cases
 	{ kind: "bookcase", variant: 1, art: "kit-bookcase-x", layer: "low" },
 	{ kind: "bookcase", variant: 2, art: "kit-bookcase-z", layer: "low" },
+	{ kind: "bookcase", variant: 3, art: "kenney-bookcase-books-x", layer: "low" },
+	{ kind: "bookcase", variant: 4, art: "kenney-bookcase-books-z", layer: "low" },
+	{ kind: "bookcase", variant: 5, art: "kenney-bookcase-ladder-x", layer: "low" },
+	{ kind: "bookcase", variant: 6, art: "kenney-bookcase-ladder-z", layer: "low" },
+	{ kind: "bookcase", variant: 7, art: "kenney-bookcase-glass-x", layer: "low" },
+	{ kind: "bookcase", variant: 8, art: "kenney-bookcase-glass-z", layer: "low" },
+	{ kind: "bookcase", variant: 9, art: "kenney-bookcase-half-x", layer: "low" },
+	{ kind: "bookcase", variant: 10, art: "kenney-bookcase-half-z", layer: "low" },
+	{ kind: "bookcase", variant: 11, art: "kenney-bookcase-destroyed-x", layer: "low" },
+	{ kind: "bookcase", variant: 12, art: "kenney-bookcase-destroyed-z", layer: "low" },
+	{ kind: "bookcase", variant: 13, art: "kenney-bookcase-empty-x", layer: "low" },
+	{ kind: "bookcase", variant: 14, art: "kenney-bookcase-empty-z", layer: "low" },
+	{ kind: "bookcase", variant: 15, art: "kenney-bookcase-halfempty-x", layer: "low" },
+	{ kind: "bookcase", variant: 16, art: "kenney-bookcase-halfempty-z", layer: "low" },
 	// a library's reading area (docs/BOOKSHELVES.md): the table along X / along Z, the chair facing +X / +Z / -X / -Z
 	{ kind: "table", variant: 1, art: "kit-table-x", layer: "low" },
 	{ kind: "table", variant: 2, art: "kit-table-z", layer: "low" },
@@ -355,8 +373,9 @@ export const VALE_PELLET_ART: Readonly<Record<PelletKind, string>> = { normal: "
 /**
  * The vault chest (docs/TREASURE.md TR9): "Old Chest" (SebastianSosnowski, CC-BY 4.0) rendered by
  * scripts/art/kit/render_kit.py (scripts/art/kit/old-chest.json), closed and open, four facings each (the chest faces
- * into its room: TreasureRenderController passes the vault's facing). The cage has no art yet: it keeps the placeholder
- * bars. A look keeps its placeholder until its file has an ID.
+ * into its room: TreasureRenderController passes the vault's facing). The cage is not here: it is original pixel art
+ * (scripts/art/gen-treasure-art.js) in its own sheet, treasureLayout.ts VALE_TREASURE_CAGE_LAYOUT (a domed birdcage,
+ * four facings like the chest). A look keeps its placeholder until its file has an ID.
  */
 export const VALE_TREASURE_ART: Readonly<Record<string, string>> = {
 	"treasure.chest": "kit-chest",
@@ -488,6 +507,9 @@ function addWorldArt(manifest: ThemeManifest, ids: AssetIds): void {
 		const asset = worldAsset(worldLayout(art), ids, {});
 		if (asset !== undefined) manifest.assets[id] = asset;
 	}
+	// the vault cage (docs/TREASURE.md TR9): its own sheet vault-cage.png; the placeholder bars until it has an ID
+	const cage = worldAsset(VALE_TREASURE_CAGE_LAYOUT, ids, {});
+	if (cage !== undefined) manifest.assets[TREASURE_CAGE_ID] = cage;
 }
 
 /** A sound from its layout, or undefined (the placeholder's SILENT stays) while any of its files has no ID. */
@@ -591,6 +613,8 @@ export interface ValeLayoutSources {
 	readonly bullets?: ValeBulletSource;
 	/** VALE_GOO_SOURCE (goo.ts: the goo sheet and gooLayout.ts). */
 	readonly goo?: ValeGooSource;
+	/** VALE_BOOST_AURA_SOURCE (boostAuras.ts: the aura sheet and boostAuraLayout.ts). */
+	readonly boostAuras?: ValeBoostAuraSource;
 }
 
 /**
@@ -692,6 +716,12 @@ export function buildValeManifest(ids: AssetIds = VALE_ASSET_IDS, sources: ValeL
 	const goo = valeGooAsset(ids, sources.goo);
 	for (const id of sortedKeys(goo)) {
 		manifest.assets[id] = goo[id];
+	}
+	// The boost auras (docs/BOOST_ART.md BAD3; boostAuras.ts): fx entries once boost-auras.png has an ID; until then
+	// none, and the aura is the Neon disc.
+	const auras = valeBoostAuraAssets(ids, sources.boostAuras);
+	for (const id of sortedKeys(auras)) {
+		manifest.assets[id] = auras[id];
 	}
 	// An ambient ID the R5 world art already filled (addWorldArt: the Lords of Pain mote, once decor-mote.png has an
 	// ID) keeps it; the Ninja Adventure flipbook (F6) is the fallback for a biome the mote does not cover yet.

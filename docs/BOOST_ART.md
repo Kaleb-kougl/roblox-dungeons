@@ -17,6 +17,11 @@ glint and pickup flash in `BoostDropRenderController`, pure half in `shared/view
 BA4 done (the five PNGs uploaded 2026-10-26, IDs in `assetIds.ts`: the vale pack now draws the drops' art). Open: BA5 (Studio), BA6. Owner decisions are under "Decisions"; the
 rest are recommended defaults (BA-P1..P6). See "As built (BA1, BA2)" for what differs from the plan text.
 
+**Auras (2026-11-06, branch `boost-auras`):** BA6's aura half is built with ORIGINAL art instead of BA-P5's tinted
+Lords of Pain ring (decision 3, BAD3; "As built: the boost auras (BAD3)"). `boost-auras.png` was uploaded 2026-11-06
+(`rbxassetid://102860615301253`, `assetIds.ts`), so the bundled vale pack draws the auras. Open: the Studio check (BA5's list plus the
+aura items there), BA-P6 (HUD icons).
+
 ## As built (BA1, BA2)
 
 - **No new atlas, no re-upload of the decor atlas.** The five pieces are standalone `images` entries in
@@ -114,7 +119,7 @@ only, BA-P4); the particle burst stays as the fallback.
 |---|---|
 | `BoostDropRenderController` | For an image body: add the halo (a flat floor `SurfaceGui` / decal on the anchor, tinted by the kind's role, `BOOST_VIEW.haloTiles`) and the beam (a second BillboardGui above the anchor, tinted, `beamHeightTiles`) when the pack has them, and the glint SpriteView looping over the prop. Pooled with the body, parked with it, blinked with it |
 | `BOOST_VIEW` | `haloTiles`, `haloTransparency`, `haloPulse`, `beamHeightTiles`, `beamTransparency`, `glintScale`, `glintFps` (or the set's) |
-| `BoostAuraController` (optional, BA-P5) | `fx.boost.aura.<kind>` as a tinted `highlight_white` ring when the pack has it; Neon discs otherwise |
+| `BoostAuraController` (optional, BA-P5; **superseded by BAD3**: original art, see "As built: the boost auras") | `fx.boost.aura.<kind>` as a tinted `highlight_white` ring when the pack has it; Neon discs otherwise |
 | `BoostRow` (optional, BA-P6) | the kind's prop image as the HUD icon instead of the FRY / QST / FRZ / AEG label, when the pack has art |
 
 **As built (BA3, 2026-10-26; code-complete, Studio pending).** Owner call for BA3: the halo reuses the existing
@@ -168,7 +173,8 @@ so nothing was swapped; the kind left the contract too.
 - [ ] **BA5. Studio check.** `KV_Debug`, M four times on each biome floor (1-5): each drop reads at a glance next to
   bullets, decor and the pedestal; the stack blinks and fades together; pickup glint; reduced motion still; phone
   emulator size; 4-player co-op with four drops at once (fps, no overlap mess).
-- [ ] **BA6. Optional extras.** BA-P5 aura rings, BA-P6 HUD icons.
+- [ ] **BA6. Optional extras.** BA-P5 aura rings, BA-P6 HUD icons. **Auras built** (2026-11-06) as BAD3's original
+  art, not BA-P5's ring; uploaded 2026-11-06; open: its Studio check; BA-P6 not started.
 - [ ] **BA7. Docs.** docs/BOOSTS.md (B8 art part done, pointer here), docs/ART.md (slice table row, `gems` no longer
   decor), docs/DECOR.md (gems removed), docs/CLIENT.md (the drop's layers), CLAUDE.md docs-table row.
 
@@ -179,6 +185,11 @@ Critical path: BA0 -> BA1 -> BA2 -> BA3 -> BA4 -> BA5. BA6 any time after BA3.
 1. **Fury is the gold coin scatter** (`gold_drop`), not red gems: it matches Fury's gold role and is used nowhere
    else; red gems sit near the enemy-bullet magenta (Delta E 48).
 2. **Gems leave the floor decor.** A gem cluster on the floor always means a pickup.
+3. **BAD3 (2026-11-06, owner): the boost auras are original pixel art, not a tinted Lords of Pain ring** (supersedes
+   BA-P5's source). One design per kind, drawn by code (`scripts/art/gen-boost-auras.js`, the owner's approved draft):
+   Fury a ring of fire with embers, Quickstep three comets, Frenzy six whirling blades, Aegis six shield plates with a
+   sweeping glint. Greyscale, tinted by the kind's `boost.<kind>` role, so the role still carries the colour. No third
+   party: no THIRD_PARTY_NOTICES.md or Credits entry.
 
 ## Recommended defaults (confirm or change before the task in brackets)
 
@@ -190,8 +201,59 @@ Critical path: BA0 -> BA1 -> BA2 -> BA3 -> BA4 -> BA5. BA6 any time after BA3.
 - **BA-P4. Pickup FX: the glint once at 2x plus a halo flash**; the particle burst stays the fallback [BA3]. The glint
   and the halo are `decor.fx.glint` / `decor.fx.glow` (BOOST_GLINT_FX / BOOST_HALO_FX), played by the renderer; no new
   `fx.boost.collect` art is needed for it.
-- **BA-P5. Aura rings from `highlight_white`**: optional, after the drops are done [BA6].
+- **BA-P5. Aura rings from `highlight_white`**: optional, after the drops are done [BA6]. **Superseded by decision 3
+  (BAD3)**: the auras are original art, one design per kind.
 - **BA-P6. HUD icons from the prop images**: optional; the three-letter labels stay the fallback [BA6].
+
+## As built: the boost auras (BAD3, 2026-11-06)
+
+Presentation only: no sim, dungeon, lockstep, hash, replay, fixture or score change.
+
+- **Art.** `scripts/art/gen-boost-auras.js` (run by `art:build` / `art:lock` before packing, like the loot glint)
+  writes `art/vendor/kaleb-vale/boost-auras/aura_<kind>_r<rank>_<f>.png`: 4 kinds x 4 stack ranks x 8 frames, a
+  seamless loop (frame 8 = frame 0, pinned by `gen-boost-auras.test.js`), greyscale, each a true circle seen from
+  straight above (the camera foreshortens it like the disc). **Every rank is drawn natively**, never scaled: its ring
+  radius is round((auraRadiusTiles 0.55 + rank x auraRingStepTiles 0.14) x 29.6) = **16 / 20 / 25 / 29 px** (the
+  formula gives 25 / 29, not 24 / 28, for ranks 2 / 3: 24.57 and 28.71 round up; both within 0.5 px), on a canvas of
+  2 x (ring + 12) + 1 px (57 / 65 / 75 / 83: the flame tips and embers fit, nothing clipped). Motif counts are the same
+  at every rank; pixel-sized details (Aegis's plate gaps and glint, a comet head's leading edge, a blade's second
+  stroke) keep their px size, so wider rings get longer arcs, not fatter pixels. Two changes from the draft: Frenzy's
+  bright pair now steps floor(7f / 8) blades a frame instead of f, so the loop is seamless (the draft's jumped at the
+  wrap); Fury's outermost embers (beyond the draft's 45 px canvas) are no longer clipped. Rank 0 is otherwise the
+  draft pixel for pixel.
+- **Atlas.** Group `boostAuras` in `art/atlases.json` (`--only boostAuras`, `--lock --only boostAuras`): its OWN sheet
+  **`art/build/boost-auras.png`, 803 x 1008, 409,372 bytes** (also in `art/upload/`), contact sheet
+  `art/build/contact/boost-auras.png`, generated `packs/vale/boostAuraLayout.ts` (`VALE_BOOST_AURA_SHEET`,
+  `VALE_BOOST_AURA_LAYOUTS`: fxLayout.ts's `ValeFxLayout` plus `ringPx` and `pixelsPerTile`). Per kind ONE odd square
+  cell holds every rank centred (Fury 83, Frenzy 73, Quickstep 67, Aegis 63 px with pad 1), pivot the cell centre =
+  the ring centre; cells rank-major (rank r = cells `start + r x 8 ..`), packed by the fx packer, 10 fps (the approved
+  preview's 100 ms). The build refuses a non-greyscale or non-odd-square frame. Every other output (`art/build`,
+  `art/upload`, every `packs/vale/*ayout.ts`) hashed byte-identical before and after; the lock gained the 128 frames
+  only (`boost-auras.test.js`).
+- **Theme (the contract extension).** `boostAuraArt.ts` (own module; contract.luau 186 and validate.luau 197
+  top-level locals, counted on out/): an `fx.boost.aura.<kind>` sprite set may carry `ringPx` (one ring radius per
+  rank, art px from the pivot: 1..4 positive, increasing, inside the cell) with rank 0's loop in `play` and rank r's in
+  `rank.<r>` (one per further ring, each looping; their cells inside the sheet by the existing sprite-set rule), tinted
+  by its own `boost.<kind>` (so the fx tint colour rule checks the colour drawn). `ringPx` / `rank.*` on any other fx
+  ID is an error. `ThemeCore.fx(...).ranks` / `ThemePack.fx(...).ranks` (`FxRankArt`, `FxSpriteRank`); a malformed
+  aura warns once and has no ranks (its disc is drawn). Vale: `packs/vale/boostAuras.ts` `valeBoostAuraAssets`
+  (nothing until `boost-auras.png` has an ID; `VALE_FX_PENDING` keeps only `fx.boost.collect`). Placeholder unchanged.
+- **View (pure, `shared/view/boosts`, `boostAuras.spec.ts`).** Frame `auraArtFrame` = floor(simSec x 10) mod 8 on the
+  pulse's clock (`simSec`: every co-op client shows the same frame), `auraArtStillFrame` 0 under reduced motion. Size
+  `auraArtStudsPerPixel` = disc radius / `ringPx[rank]`: each rank's ring lies exactly on `auraDisc(rank, count)
+  .radiusTiles` (the stack's spacing kept, the art never scaled to fit), flat and unstretched (`auraArtPlacement`).
+  Lifts unchanged: the sprite's top face is the disc's top, so the `auraMaxHeightTiles` cap holds and the first running
+  kind stays innermost and on top. Transparency `auraArtTransparency` = 0.2 (a thin ring with its own alpha, so more
+  opaque than the disc's filled 0.55) plus the discs' pulse (0.15 at 1.2 Hz, none under reduced motion).
+- **Client.** `BoostAuraController`: per (player, kind) a pooled sprite anchor (`createSpriteAnchor`, turned by
+  `FLOOR_CANVAS_YAW`, ImageColor3 the role, Pixelated) for a kind / rank with art, a Neon disc otherwise; Size on a
+  rank change, ImageRectOffset on a frame change, transparency on change; one BulkMoveTo a frame; parked pieces
+  disable their surface.
+- **Preview.** `art/build/contact/boost-auras-preview.png` (gitignored): every kind at ranks 0-3, tinted, on `#3a3a46`,
+  6x, plus the four-kind stack.
+- **Upload: done 2026-11-06** (`assetIds.ts`). **Open:** the Studio
+  check (spike PA0's Top-face technique; draw order of stacked sprite rings and discs; readability on each biome; four
+  boosts in 4-player co-op; reduced motion).
 
 ## Risks
 

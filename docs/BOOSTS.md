@@ -160,7 +160,9 @@ Rules:
 - Required in every pack (a gameplay object must always be drawn, like `breakable.*`): `boost.<kind>` asset and colour
   role for the four kinds; strings `boost.<kind>.name` / `.desc` / `.icon`; the four `sfx.boost.*` IDs appended to
   `PORT_AUDIO_EVENTS` (SILENT in the placeholder); `hud.toast.boost`.
-- Optional: `fx.boost.collect`, `fx.boost.aura.<kind>` (one-facing sprites under the `fx.*` rules).
+- Optional: `fx.boost.collect`, `fx.boost.aura.<kind>` (one-facing sprites under the `fx.*` rules). Since
+  docs/BOOST_ART.md BAD3 an aura may carry its art per stack rank (`ringPx`, `play` + `rank.<r>`, tinted by its own
+  `boost.<kind>`; `boostAuraArt.ts`); the vale auras are original art, not the Ninja Adventure FX below.
 - Validator: every `boost.*` role >= 40 CIE76 from the enemy-bullet roles (a pickup never reads as a bullet) and
   >= 3:1 on every biome floor (as `enemyOutline`).
 - Vale art / audio: icons from the Ninja Adventure pack's **Items** folder (CC0, same licence; vendor it into
@@ -297,7 +299,8 @@ read helpers, hash), `boostMods.ts` (the effect reads, a leaf), specs `drops.spe
   biome floor and wall). Placeholder shape `"Diamond"` (a cube on its corner). Not checked in the darkest decor band
   (`decorBandContrastReport`), unlike `enemyOutline`.
 - **Client (B6 / B7).** `BoostDropRenderController` (pooled views keyed by ground slot in a Map: freed slots leave no
-  array holes), `BoostAuraController` (Neon discs, one per active boost), `ui/hud/BoostRow.tsx` inside `StatusPanel`
+  array holes), `BoostAuraController` (Neon discs, one per active boost; since docs/BOOST_ART.md BAD3 a flat sprite ring per
+  rank for a kind whose `fx.boost.aura.<kind>` has art, its ring on the disc's radius, same lifts and order), `ui/hud/BoostRow.tsx` inside `StatusPanel`
   (with the tutorial's `boosts` highlight ring), the Aegis pip after the armor pips, the `boost` toast, four cue-mapper
   sounds, `fx.boost.collect` or a particle burst. Pure logic in `shared/view/boosts` (headless specs). Per-tick drop
   events are collected after every tick into `RunView.boostEvents` (`LiveRun`, `LockstepClient`). Debug key **M**, since docs/MINIMAP.md MD11

@@ -692,6 +692,646 @@
 			"bytes": 6541
 		},
 		{
+			"path": "kaleb-vale/boost-auras/aura_aegis_r0_0.png",
+			"sha256": "e71f7396fa45443786e5f9c0d0b8bd9b631ffdb94f07af065fb4730b10b83d6d",
+			"bytes": 795
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_aegis_r0_1.png",
+			"sha256": "0c7c73903459d43f49835757eb8367ba608c40c94c4d17e93647030efd758578",
+			"bytes": 754
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_aegis_r0_2.png",
+			"sha256": "43eed98686846932946f2b9f2d6e4f379aaac55f696daba2860c78b841a234bc",
+			"bytes": 756
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_aegis_r0_3.png",
+			"sha256": "a202916d7003fe7b722cbd90c04af69ad03efe572aadb9e76d470bbe43609cdb",
+			"bytes": 763
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_aegis_r0_4.png",
+			"sha256": "2a9fe0595564309f605757637a8efa755ca460e36fc79dd80cb66f7009075899",
+			"bytes": 791
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_aegis_r0_5.png",
+			"sha256": "8e53754b7e3cc2fd9298c71c8fee67cf4e9b4a924468b324aea54ecd238f3d71",
+			"bytes": 754
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_aegis_r0_6.png",
+			"sha256": "3e81c16c9799983e3af229f25a198af72c3ac324fb5575228b210371e5c81a84",
+			"bytes": 774
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_aegis_r0_7.png",
+			"sha256": "fa6c4eccdde7201e9d2e083b13eaa5533015408b5d2a2c22e66617e84c7237e5",
+			"bytes": 744
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_aegis_r1_0.png",
+			"sha256": "a6440c08526f50fa7cb779cd5ee8ff2963e0fd0e6bdec4b955cc4e650140b535",
+			"bytes": 983
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_aegis_r1_1.png",
+			"sha256": "649a9acc49a5e8f1e8c2a03de310f5161bf0bbfd3a169ea1fa74bf8076178522",
+			"bytes": 930
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_aegis_r1_2.png",
+			"sha256": "304d59075c01b69e68f9a729b3272784511477de7839edc3c52f1ff41e32f121",
+			"bytes": 945
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_aegis_r1_3.png",
+			"sha256": "379ed77ba9b75e3833813a5c091dcea9f3a899084ae0fa474484281c1d9f532d",
+			"bytes": 964
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_aegis_r1_4.png",
+			"sha256": "1a762fe1c924e2db4b2c2acc6c3a9d319919fbc723d290cd910c1136b05ceffa",
+			"bytes": 985
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_aegis_r1_5.png",
+			"sha256": "4aa546cd50c91b779371dc8f56f6ab474105b2e6dec94595394da9254f48e72e",
+			"bytes": 951
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_aegis_r1_6.png",
+			"sha256": "da2c37220f93b1c4dc59b836856e35f8a6a6d0152a0684e199510d6c0f3527b6",
+			"bytes": 977
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_aegis_r1_7.png",
+			"sha256": "f63cde0cf9d648462fac6bb78dfbee0114cb6baf9cf95039a899904194d56d90",
+			"bytes": 965
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_aegis_r2_0.png",
+			"sha256": "88a1787afa2d44bd57f1b08f645d123c33185bec8b57a6242d40072ac91d802d",
+			"bytes": 1145
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_aegis_r2_1.png",
+			"sha256": "d26a8f245816fa02feff1cf2a6e6dbfbf5aafa03a2d8343cc0a19583861e9a4e",
+			"bytes": 1096
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_aegis_r2_2.png",
+			"sha256": "59a52bf529a20c3bb3d2a0a81976829ddc568fba4157730bc4f2cd9c9eeba308",
+			"bytes": 1140
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_aegis_r2_3.png",
+			"sha256": "03dd5b6234f6d9511177cd8d7a93cc76449bd3f2081a530ad17e83b76313d24e",
+			"bytes": 1121
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_aegis_r2_4.png",
+			"sha256": "37e07eeb2d38f7e634768695817f5d20bcd95d6a1bb89581bf2184a327ca8b8f",
+			"bytes": 1143
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_aegis_r2_5.png",
+			"sha256": "78af0b50f1698cd0fff02b946b2ea171990b26cf49fd8e40198ee1211e10da4f",
+			"bytes": 1095
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_aegis_r2_6.png",
+			"sha256": "3107a3ef664f9592fe75967e42aad17926d0514d779c05788cbf8ad8975db1d9",
+			"bytes": 1144
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_aegis_r2_7.png",
+			"sha256": "60ae218895e07fedc105104b5c6bd738e3be06aa9d7eb0e294211a4e6ee7fe85",
+			"bytes": 1121
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_aegis_r3_0.png",
+			"sha256": "8db7ec688a88be1c0aa96a1efad67c0918bf4e28fe100162b7a2759262e672c7",
+			"bytes": 1398
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_aegis_r3_1.png",
+			"sha256": "d64f77924a4a5fd5522a9b02a2382eb89efc6afa4541d51c902bf9a5c36d1c17",
+			"bytes": 1324
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_aegis_r3_2.png",
+			"sha256": "3e170a4238db3fc85128dd00be77a9876b7b40cbae9633856948ed4d592bf4b9",
+			"bytes": 1400
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_aegis_r3_3.png",
+			"sha256": "282335e852b197da3584e7c106a0f94b5b84b07bab528c2afebd143472603e66",
+			"bytes": 1383
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_aegis_r3_4.png",
+			"sha256": "73df731773d6d1be2b3980211da017f3cd519a4837d67a212034c168ebb377dc",
+			"bytes": 1400
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_aegis_r3_5.png",
+			"sha256": "0070835fc9e4104f9de928136010fc9a8452395e37abc8072f438c2392ffb3b0",
+			"bytes": 1326
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_aegis_r3_6.png",
+			"sha256": "384535fb8147c97c856edf94c09f9f598d9f1ba73375ee98347c16f77339af96",
+			"bytes": 1396
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_aegis_r3_7.png",
+			"sha256": "7d193f12719c4d65a92b755f229fd111997413513fd86a740b4849f733a8faae",
+			"bytes": 1392
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_frenzy_r0_0.png",
+			"sha256": "655d2f86f018d76b3d9b9dea8278afedad5c763ca55920c288dcea9b433b9c1f",
+			"bytes": 749
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_frenzy_r0_1.png",
+			"sha256": "f1fc34cf9c5e54fe50ec0ce60a8e8686c252dbf4e235f2eb2cb4e708e9cc5a5f",
+			"bytes": 692
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_frenzy_r0_2.png",
+			"sha256": "25fd49016c7ea6dea8fa358308b1af2adfeeefe68fec11bb00f7a14771c95f74",
+			"bytes": 746
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_frenzy_r0_3.png",
+			"sha256": "5861c7bdba2ac85be7a6efdf55e4ffe83de89f3768f25a6f26624973cf9aff89",
+			"bytes": 753
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_frenzy_r0_4.png",
+			"sha256": "c43cb55db3cbae1caf8482ca20500c2482d87d0107725d1c70e2bf04a0c160bc",
+			"bytes": 745
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_frenzy_r0_5.png",
+			"sha256": "3439a581a92b4f2c4dc33c5513feb43e6ae8a41fcf0b620f41f2844636a66921",
+			"bytes": 698
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_frenzy_r0_6.png",
+			"sha256": "9db8bf49baa4a5c0df674c0005cca44ae05976b86b584a0db19d58a91e61301c",
+			"bytes": 740
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_frenzy_r0_7.png",
+			"sha256": "bd4465807692b031a7e73c46e1ceb6851b57c544a1c8e37a19e906a54d81f0b9",
+			"bytes": 733
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_frenzy_r1_0.png",
+			"sha256": "b4d4a9a6a5a77c531083f1ac7ba20cb14c4c99b347da208a35cec6448dbb01c0",
+			"bytes": 761
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_frenzy_r1_1.png",
+			"sha256": "0976eadcafd8d64bf7f88a73b18b98a700d70b50ce8067e346705a5d1eb9e4ae",
+			"bytes": 741
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_frenzy_r1_2.png",
+			"sha256": "a9a7d907103264590037ad74cbedd0bec07ca2a1f608f36c93b8a5fa567bcc64",
+			"bytes": 814
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_frenzy_r1_3.png",
+			"sha256": "5839d214a50ab08c1ece0db247c096fe7f7889a33bff257bf0ff8a09b505130b",
+			"bytes": 799
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_frenzy_r1_4.png",
+			"sha256": "0f68911911c1f68152a825ed5c114e6687ecc40cd6bdddcd2e0a99f17dfe2d29",
+			"bytes": 780
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_frenzy_r1_5.png",
+			"sha256": "aaefefc76d9a0d1a6e047feeb745b636af8ea8f554675fe7e3c910cf86828ad0",
+			"bytes": 750
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_frenzy_r1_6.png",
+			"sha256": "bbcbd65bd154b3e665ecd19bec82db0cdd5f02636478534207d51a7ba1ffe514",
+			"bytes": 815
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_frenzy_r1_7.png",
+			"sha256": "a198194ea6d0a4271982dbf37af00eb4db817335b3c87749bb886271f18c112c",
+			"bytes": 802
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_frenzy_r2_0.png",
+			"sha256": "a4367fe0a0e6bfd141f1229ad3963494a7337bf8e4d6467d411ecebeda892465",
+			"bytes": 908
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_frenzy_r2_1.png",
+			"sha256": "473fdee5eb911acdba3f1a71591d230959c27039175c2e020bf5e0d33a936f9f",
+			"bytes": 891
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_frenzy_r2_2.png",
+			"sha256": "0a97936d8522447908c27a824fd709cb272ebd9eea4f0c44c34589ad7e905217",
+			"bytes": 932
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_frenzy_r2_3.png",
+			"sha256": "fd0796d763b4fd83127745526a742a28ba1d8175cdb71ef7863003c2de974b1d",
+			"bytes": 937
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_frenzy_r2_4.png",
+			"sha256": "2f439ebd95fcfb6bba1f7ad350dcd9fcf13f2a3bf25ed765599e0a380033f0da",
+			"bytes": 908
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_frenzy_r2_5.png",
+			"sha256": "9285bc3076ffcfcf0a3f14858299ddb1d2af1d919d82bbb833e05f58f615e0f2",
+			"bytes": 889
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_frenzy_r2_6.png",
+			"sha256": "ac0474f4e8abe5dc258f74781b4e2df5dd2c57447585c741ebb6230a09f883db",
+			"bytes": 929
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_frenzy_r2_7.png",
+			"sha256": "fbd5142697c0879c0d80a1d1b4881cae1bb98d1a285bef5c497dd2cc2ee99fa0",
+			"bytes": 965
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_frenzy_r3_0.png",
+			"sha256": "f0e7fb874081dbf88e8c6920c7d116956fe48cf57e8a292071ab83692140c7da",
+			"bytes": 982
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_frenzy_r3_1.png",
+			"sha256": "a643edcf955b3e74cb54dc90412bcbce7d7ac5883ce8cefca13d33d2994478a5",
+			"bytes": 1007
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_frenzy_r3_2.png",
+			"sha256": "bd75c83340106a3253e454f4bc61a0b99ac4ed89837b82708e76d47474911c9e",
+			"bytes": 995
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_frenzy_r3_3.png",
+			"sha256": "d5775f26daa376afcc2609c7505dbfcae44185a45dd830ae457ca13a8f7da096",
+			"bytes": 983
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_frenzy_r3_4.png",
+			"sha256": "df8102f97a79de5db729f48c82339c81fadc8f9355e91a43ff088fb79bc77ebd",
+			"bytes": 963
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_frenzy_r3_5.png",
+			"sha256": "69c1c168d740e2980dae88d5af6ea3af4c2137240938fd4c2576834303d21562",
+			"bytes": 1012
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_frenzy_r3_6.png",
+			"sha256": "38cb2eba095bcbac827df7bf5c828ccaa0f89066fd3563caad1d75475ea6e7cf",
+			"bytes": 982
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_frenzy_r3_7.png",
+			"sha256": "4f51751ec0dce31895dfbfb2275524abb3c2770ce0a3a79811af98eb3d2d6d98",
+			"bytes": 977
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_fury_r0_0.png",
+			"sha256": "7bbd7338280d4d749ac92872c42ed263de9916ed6aca29bb87176b901d427450",
+			"bytes": 1211
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_fury_r0_1.png",
+			"sha256": "863aba966eff0e4991c48b1da35c86cdb27b5ea561e5b1e28370168cc35ca607",
+			"bytes": 1185
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_fury_r0_2.png",
+			"sha256": "e0a2f796a39c242e96a6e9581935582b0c0d93f035f7b82122db848cc55fce87",
+			"bytes": 1272
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_fury_r0_3.png",
+			"sha256": "fdc628e7c36cd2d6a373f2696f626431d47534ead0e68eaab935e0e87c9f406e",
+			"bytes": 1167
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_fury_r0_4.png",
+			"sha256": "e8d1de9894f6864ef77be7c150e0a3f6a0b14271b2ed76ff16ede329d682ec7f",
+			"bytes": 1164
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_fury_r0_5.png",
+			"sha256": "c354f00574a6f44e0b72c6f7950b004d4025539126f625bb4ea89fcabe4a4a33",
+			"bytes": 1208
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_fury_r0_6.png",
+			"sha256": "3fb841a48a9841772992681f300d21e4832f1d609e448a81cac95764b3d1bf1d",
+			"bytes": 1039
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_fury_r0_7.png",
+			"sha256": "2ea37c26164b293a56570f8ca525d3df204bd516c2ad9a0fd5367543db3ebd66",
+			"bytes": 1189
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_fury_r1_0.png",
+			"sha256": "8ff435d62a38e585d9a3d8992f37c061d36b64a7cf1777bcb256b390fe0ef3d1",
+			"bytes": 1357
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_fury_r1_1.png",
+			"sha256": "55d23149115760684806351d106dce29b3d5ed154d68ea7a6201cb3737bbc3ac",
+			"bytes": 1360
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_fury_r1_2.png",
+			"sha256": "94c337f7d94d39b6f01f61f7406f64de0ae1f2bb86cc50ba822d63070818bf43",
+			"bytes": 1396
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_fury_r1_3.png",
+			"sha256": "5a724826743ab942c4915a5d939a85df69861d0eca38493671c3db3ca159c4c6",
+			"bytes": 1309
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_fury_r1_4.png",
+			"sha256": "df371cfd98dcdb6c0faa2a41010e25eaa3af94d88d66a9840ee4087e0ddaf6a1",
+			"bytes": 1360
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_fury_r1_5.png",
+			"sha256": "bf624078df3c938e30018e00628019c4d117545a130beba793f47abb86735ce0",
+			"bytes": 1353
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_fury_r1_6.png",
+			"sha256": "1f5782c8eab1578d1061dc189d348375499e2bedbe60ada8e268398984fac1b0",
+			"bytes": 1294
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_fury_r1_7.png",
+			"sha256": "7b3f2346728af996f779cfcf944010af042ba3393a8726fea8a330a3eb506d8e",
+			"bytes": 1336
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_fury_r2_0.png",
+			"sha256": "da9536b1b08420eba497447f6a95a1f637b121ad04b4b8eaf256bd667d470cf6",
+			"bytes": 1574
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_fury_r2_1.png",
+			"sha256": "a9dfddd25e1f5e0dcca49ca69fc6bb5581c41149e38949e11c111c50ed9f8fa6",
+			"bytes": 1591
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_fury_r2_2.png",
+			"sha256": "4308ea41ca90779206e6efaacd3acfed7ec7a02536992eac71908b2a862edad9",
+			"bytes": 1641
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_fury_r2_3.png",
+			"sha256": "c38d0a02a2dc00ba9fc5da679d419365100b863591f6f16ef367002e1be8d30a",
+			"bytes": 1548
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_fury_r2_4.png",
+			"sha256": "261a7d5ab6fafb66378f91d01cb4b085b716e859ef4ad5f3b920adf8230ace41",
+			"bytes": 1562
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_fury_r2_5.png",
+			"sha256": "ed006be72989112ce97d384f65af9ccada31353cb0179f1fa06f0fa02f260643",
+			"bytes": 1593
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_fury_r2_6.png",
+			"sha256": "e057144db486555268317a0890b2c01c3112bb1660fd7ed1d41f8e6ea101039c",
+			"bytes": 1597
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_fury_r2_7.png",
+			"sha256": "aff9aa6f71957fb75ac8480a694f49108e8e9b1012e4cb39b201f52a77b17db0",
+			"bytes": 1631
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_fury_r3_0.png",
+			"sha256": "f651d9feaf59100b9326d2312ed2cd6e4b1acfb0e0681820597d7be82f079fc0",
+			"bytes": 1777
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_fury_r3_1.png",
+			"sha256": "6b220a824c073a3013b0de91db2bb603ed7697b9f34e68a06262a2ff6fad97ef",
+			"bytes": 1773
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_fury_r3_2.png",
+			"sha256": "64aa6deee73c60176794b0bfe438d3cbb7720c81ca6fb125c4c304723b9be59d",
+			"bytes": 1818
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_fury_r3_3.png",
+			"sha256": "f5a2c4398158c768027f8a6550cda4d79985c06bd3d17753ab518bb8cbb2f495",
+			"bytes": 1855
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_fury_r3_4.png",
+			"sha256": "5fc16e8c932f012bcbe9695097f8db6c7f67979d77747d1a85f412b6eb3b16ec",
+			"bytes": 1748
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_fury_r3_5.png",
+			"sha256": "b1cb96c1d10f4dbd5764ab94befccc16daadb8c4e3a130b80fe169ef84659413",
+			"bytes": 1897
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_fury_r3_6.png",
+			"sha256": "f1b3a233da8a547f492d41ecd80a17842708bbb535551e52b80c485412320ced",
+			"bytes": 1804
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_fury_r3_7.png",
+			"sha256": "f82990d02ed8fcb73eb1b1d8c196a9c4ee0bb178e8d12d78d652a8976d356690",
+			"bytes": 1960
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_quickstep_r0_0.png",
+			"sha256": "c517adf9b9370efdd1cdb0e00b7e8ac71c9a3a4cf94a3ec98f070eea9c71c05c",
+			"bytes": 550
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_quickstep_r0_1.png",
+			"sha256": "128460011efb500ab450f9c0d31526c12c9ca8b855cfdad0a5a668039b11c5c5",
+			"bytes": 542
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_quickstep_r0_2.png",
+			"sha256": "9e0c4b39b5da38cca643879059fa92fa987237cd592c3b72011c78d1cce0ed7b",
+			"bytes": 570
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_quickstep_r0_3.png",
+			"sha256": "4cee9e2d93142d38c72248a6e3a5619482988060bb35716b194420fca948ed17",
+			"bytes": 554
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_quickstep_r0_4.png",
+			"sha256": "44ad1e98aa72fa230f949eceae85c65213fb90c91d2b64b44bd091677381fe44",
+			"bytes": 575
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_quickstep_r0_5.png",
+			"sha256": "0f2dd22c7e77ac832eea060c477585a682488a306d94ed90f0c16ed1602a9e26",
+			"bytes": 497
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_quickstep_r0_6.png",
+			"sha256": "5bb1b6ad25b3bd83ccdec969677abeb7ebe92a4ec82075124adacfe1a3f06223",
+			"bytes": 554
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_quickstep_r0_7.png",
+			"sha256": "dcc8625a2921e5822430cc113c9d7982f96195bd7a215a151f6f8b08037f5c2b",
+			"bytes": 559
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_quickstep_r1_0.png",
+			"sha256": "986936bc0d6ccdab317a7c5f42fc46e0c8b0d6a832d8c4d2cf7fb3d9999d4237",
+			"bytes": 616
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_quickstep_r1_1.png",
+			"sha256": "2b5e2bdc6b22bd8209becbdbb90519ebd2e21c307d35bd4b93ef630b2e3fef6b",
+			"bytes": 599
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_quickstep_r1_2.png",
+			"sha256": "efbf309d92ca87bffefdeb39f718a6e9484c8f3606dc36418950355aa9bcf8fb",
+			"bytes": 646
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_quickstep_r1_3.png",
+			"sha256": "6914cac1ad63c28d5437ce8bc1777c6233c7b44cffeac384ccb55313cfe95ece",
+			"bytes": 605
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_quickstep_r1_4.png",
+			"sha256": "6382b50b25bf800023bb72d586b26e32cc4c947bd7247cb7df3a4d2806889fc6",
+			"bytes": 601
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_quickstep_r1_5.png",
+			"sha256": "14d0259d3013b7ca4f227fabeccfced38dc5683ca2d4234e48ebdc77d0c9f484",
+			"bytes": 620
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_quickstep_r1_6.png",
+			"sha256": "2b1c03172ce54f529352a393c13d18dac1e6757427b451096f62bf010e2391a3",
+			"bytes": 675
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_quickstep_r1_7.png",
+			"sha256": "a9db0bf914ba4439386824416c38bb51e30340cdcb407f70e2bae1fdf1c9e2da",
+			"bytes": 622
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_quickstep_r2_0.png",
+			"sha256": "6d978597399e277a40b36cdeaa7dfaab943a0cfcaa6b42a0e335628c0419033d",
+			"bytes": 777
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_quickstep_r2_1.png",
+			"sha256": "58d7c55619a77a472d86cec1c1aa5f5c5a5dd5410a8df67c8f57375371468dee",
+			"bytes": 763
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_quickstep_r2_2.png",
+			"sha256": "c90f1c211117e401bad910b4e575f1955bbdd78a306c4f25a7fe2d1d71f5d1ff",
+			"bytes": 830
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_quickstep_r2_3.png",
+			"sha256": "ca0ab927524acbfc688b95e0a6ed8ca544ec2b0d202dc77a96b94c94b7a9341c",
+			"bytes": 792
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_quickstep_r2_4.png",
+			"sha256": "643526277bd5b2c677922ec34fd5f785a58c1f6588f4b33979fa22477a26e93b",
+			"bytes": 756
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_quickstep_r2_5.png",
+			"sha256": "03478443351c615850b6d2f326f22db1e2b785f84f5a9425b82ec4fcd86372ae",
+			"bytes": 777
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_quickstep_r2_6.png",
+			"sha256": "0b1178fbae4d741d5ce6911b681d0514a1990ce6b8736c303582dea70f2e2a0b",
+			"bytes": 790
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_quickstep_r2_7.png",
+			"sha256": "2064dae28e931868330c5100e63094234385bbd288f7b933ad2dcf2c458f5748",
+			"bytes": 768
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_quickstep_r3_0.png",
+			"sha256": "cc31d0e6be03d10c17724066572f1fc3f5ad6e61b9988f129d7350455d393b63",
+			"bytes": 844
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_quickstep_r3_1.png",
+			"sha256": "8c6f19223919052526b9bb7d05c627e92f9921fbd071914e8b3d88937bbd74c4",
+			"bytes": 792
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_quickstep_r3_2.png",
+			"sha256": "96277a7941375acd0cbff554bdd564ac78554b3af420507556cad1aaf8d4015d",
+			"bytes": 859
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_quickstep_r3_3.png",
+			"sha256": "b26668892f0d1e376a675fe72eacae69a0ef7d3bb48b4e1cd6686c52c9fde54f",
+			"bytes": 843
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_quickstep_r3_4.png",
+			"sha256": "4f586dca7be170d20653dbe90e91f9f9b481928e9f2ba24cb55a4e9ee58db9be",
+			"bytes": 837
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_quickstep_r3_5.png",
+			"sha256": "47ea69f021807acea4b803ea7723d24b2fe17604d8eb144db07df98beeb8c3d4",
+			"bytes": 788
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_quickstep_r3_6.png",
+			"sha256": "408e5a67e38801dcc26098c56fe1564c28ed9e6063a80174ed1b6487655d9923",
+			"bytes": 852
+		},
+		{
+			"path": "kaleb-vale/boost-auras/aura_quickstep_r3_7.png",
+			"sha256": "b165035413537459f8bf38e4dd59d08f414acb5fbb576591adb834226eb62ce2",
+			"bytes": 833
+		},
+		{
 			"path": "kaleb-vale/loot-glint/loot_glint_0.png",
 			"sha256": "14b3a0328651b9b4c19ff9808431b2365e073a5dd565d9d6c0c6d1ec23716a13",
 			"bytes": 145
@@ -740,6 +1380,101 @@
 			"path": "kaleb-vale/pellets/pellet_power.png",
 			"sha256": "5c14a0ffd1d2e3a1684cef77b714e70b7dcf863a264a2844bc64c3d997abda2d",
 			"bytes": 146
+		},
+		{
+			"path": "kaleb-vale/treasure-column/column.png",
+			"sha256": "504e863028aa906e432c4e153d07d1f91c90d29a2c7d87263ca2acdd82d7e768",
+			"bytes": 24067
+		},
+		{
+			"path": "kaleb-vale/vault-cage/NE/cage_NE_45.0_0.png",
+			"sha256": "e988accc514a9bb6a7df6d05fa42ea69398f44e0cc2d18ffeeb5dd21a875af48",
+			"bytes": 1375
+		},
+		{
+			"path": "kaleb-vale/vault-cage/NW/cage_NW_135.0_0.png",
+			"sha256": "ba057614d5401d7c241417984087abdfa1f8e46aba766f7628023257fb28a7c1",
+			"bytes": 1402
+		},
+		{
+			"path": "kaleb-vale/vault-cage/SE/cage_SE_315.0_0.png",
+			"sha256": "a8bc690524bed0b8784373333e55f5c2fc645ab0a8cd7f205cc9b6fb4db8012f",
+			"bytes": 1504
+		},
+		{
+			"path": "kaleb-vale/vault-cage/SW/cage_SW_225.0_0.png",
+			"sha256": "7e241deeef61669be044f4699e54043f8374cc926cf3ec5e7635f42b4b2980a7",
+			"bytes": 1444
+		},
+		{
+			"path": "kenney/bookcase/books_x.png",
+			"sha256": "be8e261023d60de358dd9919e378b09d0372994cb5bcb9aa0ac1e0c2f303499d",
+			"bytes": 3639
+		},
+		{
+			"path": "kenney/bookcase/books_z.png",
+			"sha256": "c5dd0e809c2a128422e38a708489cfceeabc7cbe5e5b61aeaf106f1a75649e2e",
+			"bytes": 3567
+		},
+		{
+			"path": "kenney/bookcaseDestroyed/destroyed_x.png",
+			"sha256": "c8204f3f492c2bac4dc4702ee3446d5395fefba0b67e42efbd0fabcf26b8bf06",
+			"bytes": 3694
+		},
+		{
+			"path": "kenney/bookcaseDestroyed/destroyed_z.png",
+			"sha256": "484f5d416629629328a8a01f577e965bb7c8c804009d5534f84213ba9a0f3093",
+			"bytes": 3648
+		},
+		{
+			"path": "kenney/bookcaseEmpty/empty_x.png",
+			"sha256": "774c1e77439d1ec0ba0a28c9da12f2ba3b943f92d2fa5e938fd0909e17b3b9f3",
+			"bytes": 3705
+		},
+		{
+			"path": "kenney/bookcaseEmpty/empty_z.png",
+			"sha256": "7e283fcef74f47c926389e48474a42bdfb988f6a53eac20184283cba63e7f610",
+			"bytes": 3667
+		},
+		{
+			"path": "kenney/bookcaseGlass/glass_x.png",
+			"sha256": "a3d97066cab00208add844ff639afa7c41ae53b9d2d42507ea79647971481f01",
+			"bytes": 3655
+		},
+		{
+			"path": "kenney/bookcaseGlass/glass_z.png",
+			"sha256": "30327b6191a66e7fedb107f5fb8a439ea6d96bc8a981e2cf181eaa4baedbd93d",
+			"bytes": 3549
+		},
+		{
+			"path": "kenney/bookcaseHalf/half_x.png",
+			"sha256": "893447a7b34fd3e5bb5d1e927c363db3a18c4fc7f574ae0e936fe668ed48636c",
+			"bytes": 2892
+		},
+		{
+			"path": "kenney/bookcaseHalf/half_z.png",
+			"sha256": "48f757792d17559447b5b0499cb55f941debf59337af0fb18387a3b60831a49b",
+			"bytes": 2876
+		},
+		{
+			"path": "kenney/bookcaseHalfEmpty/halfempty_x.png",
+			"sha256": "83cb17c15b6007aefa8f8ba746d380da19246996a0e5cff7df1d398bba4c112f",
+			"bytes": 2879
+		},
+		{
+			"path": "kenney/bookcaseHalfEmpty/halfempty_z.png",
+			"sha256": "b575803757859fbbabe4346df84bb5428cb640136177f629700f6822932fe344",
+			"bytes": 2877
+		},
+		{
+			"path": "kenney/bookcaseLadder/ladder_x.png",
+			"sha256": "5cea4af4f1f8cbc803362ccea21d4a7a63808186eb38071d635b397c53325fe8",
+			"bytes": 3950
+		},
+		{
+			"path": "kenney/bookcaseLadder/ladder_z.png",
+			"sha256": "44d1afeeb42a8471bd14b92e2fb6e79345650b426c84c753b3a42b45c0c79e2d",
+			"bytes": 3958
 		},
 		{
 			"path": "lords-of-pain-demo/enemy/skeleton/skeleton_default_walk/E/skeleton_default_walk_E_0.0_0.png",

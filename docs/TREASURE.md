@@ -754,7 +754,7 @@ Theme only (no sim, dungeon, hash, replay or fixture change). Files: `src/shared
 `REQUIRED_ASSET_IDS`, `PORT_AUDIO_EVENTS`, `FX_IDS`, `REQUIRED_STRING_KEYS`), `validate.ts` (`treasure.` prefix, inline
 unknown-ID check, the pivot message), `variantColors.ts` (folds `treasureReport` into `variantColorProblems`, with "map"
 and "bullet" message forms), `types.ts` (5 roles), `placeholders.ts`, the placeholder manifest (vale clones it),
-`packs/vale/fx.ts` (`fx.treasure.column` pending), `index.ts`; `shared/view/hud/strings.ts` (`SCORE_SOURCE_KEYS`),
+`packs/vale/fx.ts` (`fx.treasure.column`: TR9), `index.ts`; `shared/view/hud/strings.ts` (`SCORE_SOURCE_KEYS`),
 `shared/view/audio/cues.ts`; `l10n/context.json` (17 entries). Spec: `theme/treasure.spec.ts` (16 tests).
 
 ### C2: the validator's numbers
@@ -797,7 +797,7 @@ chest's "bullet" (`enemyBullet` on it, >= 3:1). Every check passes in every bund
   chest a Block 3.5 x 2.25 x 2.5 studs, the open chest a Wedge with the same footprint (2.75 studs tall, slope = the lid),
   both `faces` (turn to the vault's facing); the cage ONE bar (0.25 x 3 x 0.25 studs) with `dash` (`length` = the bar,
   `gap` = `CAGE_BAR_GAP_PX` 3 px): the treasure renderer repeats it along the cage's sides (a generic placeholder
-  renderer would draw one bar). Optional effect `fx.treasure.column` (last in `FX_IDS`; vale pending until TR9), to tint
+  renderer would draw one bar). Optional effect `fx.treasure.column` (last in `FX_IDS`; vale: TR9's own sheet), to tint
   with the tier's floor role.
 - **Colours**: floor `treasureFloorRole(tier)` (`treasure.common` / `.rare` / `.legendary`); UI `treasureUiRole(tier)`
   (`boon.*`); tier names `treasureTierNameKey(tier)` (`boon.rarity.*`); lock names `treasureLockNameKey(lock)`.
@@ -1305,7 +1305,30 @@ Each step is a commit. Specs next to the code; `npm run verify` before each.
   the closed chest at `maxHeightTiles` 0.9 (it stands 0.84 tiles above its pivot) and the open one at
   `openMaxHeightTiles` 1.35 (1.22), so neither is shrunk. The wobble rotates image and placeholder chests only (a
   sprite view has no rotation). `kit-chest.png` / `kit-chest-open.png` uploaded 2026-11-04 7:43 AM (IDs in
-  `packs/vale/assetIds.ts`), so the bundled vale pack draws the chest. **Pending:** the cage keeps its placeholder bars; the four sounds; the Studio check of the chest's facings on every wall.
+  `packs/vale/assetIds.ts`), so the bundled vale pack draws the chest.
+  **Cage and light column drawn (2026-11-06).** Original pixel art, no third-party pack:
+  `scripts/art/gen-treasure-art.js` (run by `art:build` / `art:lock` into `art/vendor/kaleb-vale/vault-cage/` and
+  `treasure-column/`; `gen-treasure-art.test.js`). The cage (`treasure.cage`) is a domed iron birdcage modelled in the
+  chest's frame (a rounded-rectangle tray 1.06 x 0.74 tiles round the chest's 0.94 x 0.58 box, 22 bars, every other one
+  rising into an 11-rib dome to 0.98 tiles, shoulder and top rings, finial and hoop, a brass padlock on the front bar)
+  and projected exactly as render_kit.py renders the chest (orthographic, 55 degrees, azimuth -45, 29.6 px a tile), four
+  facings like the chest (the chest's rotZ 180 / 270 / 0 / 90), each pixel shaded from a 7-step iron ramp round
+  `treasure.cage` by its normal against the kit sun; the bars the chest's box hides (a ray toward the camera) are cut per
+  facing, and the padlock shows only where the chest's front faces the camera (SW, SE). The column
+  (`fx.treasure.column`) is a looping greyscale flipbook (8 frames of 27 x 148 px at 12 fps: a white core, stepped glow
+  bands with dithered edges, a flared foot, pulses and motes rising one period a loop, a dissolving top), tinted by the
+  tier's floor role. Pipeline: a new atlas group `treasure` (art/atlases.json; `--only treasure`, `--lock --only
+  treasure`; `scripts/art/treasure.test.js`) writes each into a sheet of its own, `vault-cage.png` (4 cells of 38 x 44,
+  Pixelated) and `treasure-column.png`, and generates `packs/vale/treasureLayout.ts`, so neither repacks the decor or
+  effects atlas. Vale maps the cage in `addWorldArt` (VALE_TREASURE_CAGE_LAYOUT) and the column as a third fx source
+  (`valeFxSources`, `VALE_FX["fx.treasure.column"]`: sizeTiles 3, tint role `treasure.legendary` for the fx colour
+  rule); `VALE_FX_PENDING` lost it. The renderer turns art cages like the chest (`placeBody(..., look.fx, look.fz)`),
+  caps them at `TREASURE_VIEW.cageMaxHeightTiles` 1.2 (the cage stands 0.95 tiles above its pivot) and draws them
+  `cageDepthStuds` 0.3 nearer the camera (SpriteView `extraDepthStuds`), so the cage is always over the chest. Each
+  switches on once its PNG has an ID in `packs/vale/assetIds.ts` (`treasureArt.spec.ts`); both were uploaded 2026-11-06
+  11:29 AM (IDs in `assetIds.ts`), so the bundled vale pack draws the cage and the column. A full `art:build` does not fit the laptop VM's memory (killed at ~2 GB); `--only
+  treasure` builds both sheets alone. **Pending:** the four sounds; the Studio check of the chest's and cage's facings on every wall (the cage's billboard over the
+  chest, the sink hidden by the floor slab).
 - [x] **TR10. Docs.** This file as built, the `CLAUDE.md` decision log, `src/shared/sim/README.md` (module, tick order,
   hash group), docs/CLIENT.md (controller, debug attributes), docs/DECOR.md (the chest piece kind), docs/DAILY.md (the
   ruleset). → Verify: `npm run verify`. → Done 2026-11-04: the Documents row and decision-log entry in `CLAUDE.md`;

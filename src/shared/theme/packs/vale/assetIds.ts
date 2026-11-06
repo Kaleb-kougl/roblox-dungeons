@@ -105,6 +105,12 @@ import type { RobloxAssetId } from "../../types";
  * goo.png (the Ooze's goo puddles, docs/GOO_ART.md GA6; the Free Slimes Asset Pack by heimlich3, built by
  * `node scripts/art/build-atlases.js --only goo`) uploaded 2026-11-06 9:10 AM by k9kbdev, transcribed from an Asset
  * Manager screenshot.
+ * vault-cage.png / treasure-column.png (the vault's cage and light column, docs/TREASURE.md TR9; original art,
+ * scripts/art/gen-treasure-art.js, built by `node scripts/art/build-atlases.js --only treasure`) uploaded 2026-11-06
+ * 11:29 AM by k9kbdev, transcribed from an Asset Manager screenshot.
+ * boost-auras.png (the four boost auras at every stack rank, docs/BOOST_ART.md BAD3; original art,
+ * scripts/art/gen-boost-auras.js, built by `node scripts/art/build-atlases.js --only boostAuras`) uploaded 2026-11-06
+ * 11:29 AM by k9kbdev, transcribed from an Asset Manager screenshot.
  */
 export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"amb-b1.ogg": "rbxassetid://91158343621799",
@@ -118,6 +124,7 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"bomber-death-outline.png": "rbxassetid://76498890264159",
 	"bomber-death.png": "rbxassetid://135000310498445",
 	"boost-aegis.png": "rbxassetid://140457804095686",
+	"boost-auras.png": "rbxassetid://102860615301253",
 	"boost-frenzy.png": "rbxassetid://123942115924560",
 	"boost-fury.png": "rbxassetid://81008876085390",
 	"boost-quickstep.png": "rbxassetid://94521729890331",
@@ -310,6 +317,7 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"swarmer-move-outline.png": "rbxassetid://71928565662655",
 	"swarmer-move.png": "rbxassetid://123202950556458",
 	"tile-biome1-floor.png": "rbxassetid://98164459682194",
+	"treasure-column.png": "rbxassetid://90798930010648",
 	"ui-bar-fill.png": "rbxassetid://77055366404694",
 	"ui-bar-track.png": "rbxassetid://102111490052610",
 	"ui-button-disabled.png": "rbxassetid://127150562683800",
@@ -348,6 +356,7 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"vanguard-roll.png": "rbxassetid://113453153969851",
 	"vanguard-run-outline.png": "rbxassetid://135965842289036",
 	"vanguard-run.png": "rbxassetid://98583531315344",
+	"vault-cage.png": "rbxassetid://92880331034626",
 	"demonlord-attack-outline.png": "rbxassetid://102763949876820",
 	"demonlord-attack.png": "rbxassetid://71694718471521",
 	"demonlord-attack2-outline.png": "rbxassetid://82560650525332",

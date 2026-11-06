@@ -460,6 +460,12 @@ export interface SpriteSetAsset {
 	 * covers the hit on screen (shared/view gooSpriteSize); the pivot is its centre.
 	 */
 	lit?: { w: number; h: number };
+	/**
+	 * Boost auras only (docs/BOOST_ART.md BAD3, boostAuraArt.ts: `fx.boost.aura.<kind>`), required on them: the ring's
+	 * radius per stack rank, art px from the pivot (rank 0's loop is `play`, rank r's `rank.<r>`). The renderer maps
+	 * rank r's ring exactly onto its disc's radius (shared/view auraArtSize), so a wider stack never scales the art.
+	 */
+	ringPx?: Array<number>;
 }
 
 export interface SpriteFacings {
