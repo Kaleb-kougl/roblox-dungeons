@@ -15,3 +15,4 @@ export * from "./layout";
 export * from "./toasts";
 export * from "./minimap";
 export * from "./cues";
+export * from "./pedestal";

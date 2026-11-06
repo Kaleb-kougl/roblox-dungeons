@@ -104,6 +104,21 @@ export const TREASURE_VIEW = {
 		wobbleCycles: 2,
 	},
 
+	// --- relic pedestals (RunMarkerController; shared/view/treasure pedestal.ts) -------------------------------------
+	/**
+	 * A TREASURE room's relic pedestal is drawn as the vault's chest (`treasure.chest`, capped at maxHeightTiles), and
+	 * taking its relic plays the vault's opening (`open` below: the lid's jolt, the pop to `treasure.chestopen`, the solo
+	 * freeze, the shake, the ring burst and the light column); the open chest stays. The column and the burst take
+	 * `tier`'s floor colour: VaultTier.RARE (1), the tier whose reward is a relic. The chest faces (faceX, faceZ) in sim
+	 * world axes (the vale chest's four facings): (0, -1) turns it toward the camera's side, as a vault chest against a
+	 * far wall faces.
+	 */
+	pedestal: {
+		tier: 1,
+		faceX: 0,
+		faceZ: -1,
+	},
+
 	// --- the opening (Player experience "The opening") -----------------------------------------------------------------
 	open: {
 		/** The lid jolts `jolts` times over joltSec (a hop of joltStuds each); none under reduced motion. */

@@ -202,8 +202,9 @@ export const DECOR_BOX: Readonly<Record<StandingKind, DecorBoxPx>> = {
 	// bookcases (docs/BOOKSHELVES.md): one cell each, the case against the cell's back edge; measured on the BK5 renders
 	// (art 29 x 50 px at 125 kit units a tile, pivot the cell centre): the outline reaches 21.1 art px (11.4 render px) to
 	// the left of the pivot facing +X and 20.9 to the right facing +Z (w covers both facings, x 0), 43.1 above it (23.3)
-	// and 5.9 below (3.2)
-	bookcase: { w: 23, h: 24, below: 4 },
+	// and 5.9 below (3.2); `below` 6 since docs/KENNEY_DECOR.md: Kenney's deeper cases reach 8.2 art px below the pivot
+	// (10.0 with the ladder, 5.4 render px), so their art draws whole too (a solid piece: no footprint rule, the fade box only)
+	bookcase: { w: 23, h: 24, below: 6 },
 	// a library's reading area (docs/BOOKSHELVES.md), measured on the built outlines (render px = art px / 1.85), the
 	// worst case over the facings: the table's box at both ends of its 2 x 1 footprint, hulled (as the tomb's), the
 	// chair's at its cell
