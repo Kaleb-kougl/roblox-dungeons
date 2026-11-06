@@ -1,7 +1,7 @@
 # Kenney decor: dungeon rooms and libraries (plan)
 
 Status (2026-11-06): **every piece redrawn** (KN1, KN2's renders) and **Kenney's bookcases wired as alternative art
-for the existing bookcase** (presentation only, "As built" below); upload pending. The Forge half (KN5-KN8) is not
+for the existing bookcase** (presentation only, "As built" below), uploaded 2026-11-06 11:46 AM; Studio check open. The Forge half (KN5-KN8) is not
 started. Owner answers (2026-11-06): **gameplay too, at once** (new solid set
 pieces with the art, KND1); **kit art vs Kenney art is decided after a spike** (KND2); **props + floor patches**, walls
 and biome floors unchanged (KND3); **both** a new `mess` (mess hall) theme and richer storerooms (KND4). Everything else
@@ -181,8 +181,8 @@ Owner (2026-11-06): "Proceed with redrawing all of them. Bookcases as alternativ
 - **Not done here: a full `art:build` / `art:lock`.** This checkout's ten `player-bullets/*.png` differ from the lock
   (about 6 KB on disk vs 0.4-0.8 KB locked), so a full build would rebuild `bullets.png` from them. The Kenney entries
   were locked and built on their own; resolve the bullets mismatch before the next full art:build.
-- **Owner: upload** the 14 `art/upload/kenney-bookcase-*.png` and paste their IDs into `packs/vale/assetIds.ts`; then a
-  Studio look at a library of each set.
+- **Uploaded** (2026-11-06 11:46 AM, k9kbdev): the 14 `kenney-bookcase-*.png`, IDs in `packs/vale/assetIds.ts`. Open:
+  a Studio look at a library of each set (the per-room split, the X / Z lighting, the ~3 % box shrink).
 
 ## Pipeline
 

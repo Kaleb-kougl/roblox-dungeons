@@ -783,7 +783,8 @@ Decision log (deviations from `PLAN.md`):
   bookcases are wired as the bookcase's alternative art: 14 own PNGs `kenney-bookcase-<look>-x / -z`, vale variants
   3-16 after the kit pair, `DECOR_MAX_VARIANTS` 4 -> 16, and decorPlan's `bookcaseVariant` (one set per room,
   `DECOR_BOOKCASES`, salts `bookcaseSet` / `bookcaseCell`; with only the kit pair the plan is unchanged). Credits:
-  Isometric Library, Kenney, CC0. Upload, the Lune specs and a Studio check pending.
+  Isometric Library, Kenney, CC0. The 14 PNGs uploaded 2026-11-06 (IDs in `packs/vale/assetIds.ts`); the Lune specs
+  and a Studio check pending.
 
 - **Training dummy art (docs/DUMMY_ART.md).** Presentation only (no sim, dungeon, lockstep, hash, replay, fixture or
   score change; the dummy keeps its 8 hp, body and corpse time). `enemy.dummy` gets a one-facing pixel-art sprite set

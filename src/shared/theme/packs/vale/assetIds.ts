@@ -111,6 +111,9 @@ import type { RobloxAssetId } from "../../types";
  * boost-auras.png (the four boost auras at every stack rank, docs/BOOST_ART.md BAD3; original art,
  * scripts/art/gen-boost-auras.js, built by `node scripts/art/build-atlases.js --only boostAuras`) uploaded 2026-11-06
  * 11:29 AM by k9kbdev, transcribed from an Asset Manager screenshot.
+ * kenney-bookcase-<look>-x / -z (the bookcase's alternative set: Kenney's Isometric Library, CC0, reprojected by
+ * scripts/art/kenney/reproject.py; docs/KENNEY_DECOR.md) uploaded 2026-11-06 11:46 AM by k9kbdev, transcribed from an
+ * Asset Manager screenshot.
  */
 export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"amb-b1.ogg": "rbxassetid://91158343621799",
@@ -172,6 +175,20 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"imp-body.png": "rbxassetid://130645679779456",
 	"imp-death-outline.png": "rbxassetid://134104614361499",
 	"imp-death.png": "rbxassetid://84336726009588",
+	"kenney-bookcase-books-x.png": "rbxassetid://112414765339087",
+	"kenney-bookcase-books-z.png": "rbxassetid://127677993573030",
+	"kenney-bookcase-destroyed-x.png": "rbxassetid://90622744050525",
+	"kenney-bookcase-destroyed-z.png": "rbxassetid://94762364313121",
+	"kenney-bookcase-empty-x.png": "rbxassetid://107272320382488",
+	"kenney-bookcase-empty-z.png": "rbxassetid://71512564076260",
+	"kenney-bookcase-glass-x.png": "rbxassetid://80368932112331",
+	"kenney-bookcase-glass-z.png": "rbxassetid://99803127612931",
+	"kenney-bookcase-half-x.png": "rbxassetid://116468486814527",
+	"kenney-bookcase-half-z.png": "rbxassetid://103656262277776",
+	"kenney-bookcase-halfempty-x.png": "rbxassetid://78793568985165",
+	"kenney-bookcase-halfempty-z.png": "rbxassetid://78252980421940",
+	"kenney-bookcase-ladder-x.png": "rbxassetid://121772944601941",
+	"kenney-bookcase-ladder-z.png": "rbxassetid://115785769946654",
 	"kit-banner.png": "rbxassetid://116783891005736",
 	"kit-bookcase-x.png": "rbxassetid://84780192220821",
 	"kit-bookcase-z.png": "rbxassetid://106394405354637",
