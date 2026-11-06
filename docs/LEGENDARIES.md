@@ -286,7 +286,10 @@ the Studio checklist below holds what to look at.
   spark beam is 0.12), so a heavy arrow's carry 3 reads thicker than a stream's 1. An impact flash at the target: a flat
   disc 0.8 tiles in `build.overkill`, popping 0.5 -> 1 over 0.06 s and fading over 0.18 s, at most 8. Reduced
   `buildFx`: every streak 0.1 studs, no core, no impact flash; reduced motion: no pop. Skewer: a streak whose corpse,
-  tick and owner match a `SKEWER` duoProc is 1.3x thicker (Full and Reduced) and has the duo's flare at the corpse.
+  tick and owner match a `SKEWER` duoProc is 1.3x thicker (Full and Reduced), has the duo's flare at the corpse and,
+  since the owner's tuning, is drawn along the whole line it struck: from the corpse through the target to
+  `OVERKILL_RANGE` from the corpse (`buildFxRules.ts` `skewerLineEnd`, the sim's segment; a target on the corpse: the
+  target), with the impact flash still at the target (no new event field).
   Tunables `BUILD_FX_VIEW.overkill` (`shared/view/fx/buildFxConfig.ts`). New parts pools `OverkillStreak` /
   `OverkillImpact` (`getPoolSizes` now returns five sizes).
 - **Supernova.** Nothing new: the larger ring is the bolts themselves (real effect bullets, `BulletRenderController`'s
@@ -305,7 +308,8 @@ the Studio checklist below holds what to look at.
 - **Brace ring** (director, `brace` ring look). A ring on the bracing player (following them): 0.3 s, 0.75 -> 1 tile,
   10 segments (Reduced 5) in `uiMana` (the armor pips' colour; no new role), its chords shrinking from 30 % of its life
   to 45 % of their length at the end (`braceChordShare`: the crack). PIP and HEAL full strength; SPENT a faint one
-  (opacity x 0.35, `braceRingStrength`; no text, toast, pulse or sound, so the once-per-room limit reads). HEAL also
+  (opacity x 0.35, `braceRingStrength`; no text, toast, pulse or sound, so the once-per-room limit reads; unreachable
+  since the owner's tuning, which never pushes SPENT: kept, harmless, commented in the code). HEAL also
   starts BU8 follow-up's Lionheart heal pulse (`fx.heal`, following). A newer brace replaces the player's ring. Tunables
   `BUILD_FX_VIEW.brace`.
 - **Brace feedback** (`shared/view/fx/braceFx.ts` / `braceFxConfig.ts` `BRACE_VIEW`; client
@@ -330,7 +334,8 @@ the Studio checklist below holds what to look at.
   pips get no pulse (the status panel's only). The guard's `fx.guard.shield` sprite stays the half-moon art ahead of
   the knight with Bastion (the full ring is the marking).
 - **Specs.** `view/fx/buildFxEvents.spec.ts` (the two lists, per tick, reset; legendary duos into duoProcs),
-  `view/fx/buildFxRules.spec.ts` (streak timeline, thickness by carry / Reduced / Skewer, core, impacts and pop,
+  `view/fx/buildFxRules.spec.ts` (streak timeline, thickness by carry / Reduced / Skewer, Skewer's line end (row,
+  diagonal, zero length) and the drawn segment to it, core, impacts and pop,
   outsiders ignored, cap, quiet / new run; the crack, strength, PIP / SPENT / HEAL rings and the heal pulse, following,
   the braces list, Reduced, reduced motion, replacement), `view/fx/braceFx.spec.ts` (feedback per kind, strings in the
   pack, the shout's priority, the pulse timeline), `view/audio/buildCues.spec.ts` (the streak cue's gen pitch,
@@ -594,7 +599,7 @@ flies into the armor row; 8. Stone Heart's heal pulse; 9. Reduced build effects 
 
 1. ~~After LG7: the guard's final size, the brace threshold and its once-per-room limit (LGD5 / LGD6).~~ Settled
    2026-11-06 ("Owner tuning (as built, 2026-11-06)"). Open: an `OVERKILL_CARRY_PERCENT` for the sword (LG7
-   recommendation 5, not taken), and whether the view draws a Skewer streak to the line's end (it ends at the target).
+   recommendation 5, not taken).
 
 ## LG5 (as built)
 
@@ -1006,8 +1011,8 @@ without them are untouched, except that every builds run's hash grows by one sca
 2. **Skewer's line.** `onKill.ts` `overkill`: the target is still `nearestEnemy`; with Skewer the line's far end is
    `corpse + OVERKILL_RANGE x unit(target - corpse)` (one `math.sqrt`; a target on the corpse: the segment ends at the
    target), and `onSkewerLine` (multiplies only) tests every other enemy against that segment. Strike order, carries
-   and the `duoProc` entry as in LG4. The `overkillX2` / `overkillZ2` event still ends at the target (open for the
-   view: drawing a Skewer streak to the line's end).
+   and the `duoProc` entry as in LG4. The `overkillX2` / `overkillZ2` event still ends at the target; the view draws a
+   Skewer streak on to the line's end (LG6 as built, `skewerLineEnd`).
 3. **The brace (LGD6 revised).** `hooks.ts` `brace`: no pip missing and no Stone Heart heal (none owned, or hearts
    full): return, `braceReady` kept, nothing pushed. `BraceKind.SPENT` stays in the enum (append only), documented as
    never pushed; the view's SPENT handling (faint ring, no feedback) is now dead but harmless.

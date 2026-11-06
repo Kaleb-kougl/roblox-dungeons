@@ -7,7 +7,9 @@
  *         `hud.toast.brace` toast and sfx.build.brace.
  *   HEAL  (Stone Heart, no pip missing: half a heart): the stone ring and the heal pulse (the director), BRACED,
  *         `hud.toast.braceHeal` and sfx.build.brace; no armor pulse (no pip changed).
- *   SPENT (nothing to restore): only a faint ring (the director); no text, toast, pulse or sound.
+ *   SPENT (nothing to restore): only a faint ring (the director); no text, toast, pulse or sound. Unreachable since
+ *         the owner's tuning (the sim no longer pushes SPENT: a brace with nothing to restore is not spent); kept,
+ *         harmless, as BraceKind is append only.
  *
  * The floor shout and the armor pulse are the view player's (what the screen follows), the toast the local player's
  * (a personal line, like the progression toasts); the client's BraceFxController applies that. Presentation only.

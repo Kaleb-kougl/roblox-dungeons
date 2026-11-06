@@ -27,8 +27,10 @@
  *     trails).
  *   - Overkill streaks (docs/LEGENDARIES.md LG6): one straight streak per strike (no jag), alive overkill.sec, opaque
  *     for its hold, then fading; thickness by the carry (streakThickness), a white core (Full only), thicker for a
- *     Skewer line (a SKEWER duoProc of the same tick, owner and corpse); at most overkill.maxAlive. An impact flash at
- *     each target (Full only; no pop under reduced motion), at most overkill.impact.maxAlive.
+ *     Skewer line (a SKEWER duoProc of the same tick, owner and corpse), which is also drawn on to the line's end
+ *     (skewerLineEnd: through the target to OVERKILL_RANGE from the corpse, the sim's line since the owner's tuning);
+ *     at most overkill.maxAlive. An impact flash at each target (Full only; no pop under reduced motion), at most
+ *     overkill.impact.maxAlive.
  *   - Bastion braces (LG6): a `brace` ring following the bracing player (PIP / HEAL full, SPENT faint), its segments
  *     shrinking after brace.crackAt (braceChordShare: the crack); HEAL also starts the `heal` pulse. `braces` lists the
  *     frame's braces (player, kind) for the client's BraceFxController (floor shout, armor row pulse, toast).
@@ -45,6 +47,7 @@ import {
 	BraceKind,
 	Duo,
 	MOMENTUM_TIER_FIRST,
+	OVERKILL_RANGE,
 	SIM_DT,
 	SPARK_BEAM_TICKS,
 	partySize,
@@ -297,7 +300,25 @@ export function braceChordShare(ageSec: number): number {
 	return 1 - ((1 - b.minChordShare) * (ageSec - crackSec)) / (b.sec - crackSec);
 }
 
-/** A brace's ring strength (opacity factor): SPENT faint (brace.spentStrength), PIP / HEAL full. */
+/**
+ * Skewer's line end (docs/LEGENDARIES.md "Owner tuning"): from the corpse (x1, z1) through the target (x2, z2) out to
+ * OVERKILL_RANGE from the corpse, written into `out`; a target on the corpse (zero length): the target itself. The
+ * sim's onKill.ts `overkill` builds the same segment (the event still ends at the target).
+ */
+export function skewerLineEnd(x1: number, z1: number, x2: number, z2: number, out: BeamPoint): BeamPoint {
+	const dx = x2 - x1;
+	const dz = z2 - z1;
+	const d = math.sqrt(dx * dx + dz * dz);
+	out.x = d > 0 ? x1 + (dx / d) * OVERKILL_RANGE : x2;
+	out.z = d > 0 ? z1 + (dz / d) * OVERKILL_RANGE : z2;
+	return out;
+}
+
+/**
+ * A brace's ring strength (opacity factor): SPENT faint (brace.spentStrength), PIP / HEAL full. Since the owner's
+ * tuning the sim never pushes SPENT (a brace with nothing to restore is not spent), so its branch is unreachable but
+ * kept harmless (BraceKind is append only).
+ */
 export function braceRingStrength(kind: number): number {
 	return kind === BraceKind.SPENT ? BUILD_FX_VIEW.brace.spentStrength : 1;
 }
@@ -516,6 +537,7 @@ export class BuildFxDirector {
 	private readonly freeFlashes: FlashSlot[] = [];
 	private readonly freeStreaks: StreakSlot[] = [];
 	private readonly bracePool: BraceSlot[] = [];
+	private readonly lineEnd: BeamPoint = { x: 0, z: 0 };
 	private readonly rng = new RenderRng();
 	private lastState: Readonly<SimState> | undefined;
 	private lastTick = 0;
@@ -633,13 +655,20 @@ export class BuildFxDirector {
 				fade: 1,
 				startSec: 0,
 			}));
+			const skewer = isSkewer(r, source.duoProcs);
 			t.x1 = r.x1;
 			t.z1 = r.z1;
 			t.x2 = r.x2;
 			t.z2 = r.z2;
+			if (skewer) {
+				// Skewer's streak runs the whole line it struck along: through the target to OVERKILL_RANGE.
+				const far = skewerLineEnd(r.x1, r.z1, r.x2, r.z2, this.lineEnd);
+				t.x2 = far.x;
+				t.z2 = far.z;
+			}
 			t.owner = r.owner;
 			t.gen = r.gen;
-			t.thicknessStuds = streakThickness(r.carry, level, isSkewer(r, source.duoProcs));
+			t.thicknessStuds = streakThickness(r.carry, level, skewer);
 			t.core = full;
 			t.fade = 1;
 			t.startSec = clockSec;

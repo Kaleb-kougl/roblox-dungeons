@@ -13,6 +13,7 @@ import {
 	FlurryKind,
 	NovaKind,
 	OVERFLOWING_NOVA_RADIUS,
+	OVERKILL_RANGE,
 	SIM_DT,
 	SPARK_BEAM_TICKS,
 	clearBuildEvents,
@@ -45,6 +46,7 @@ import {
 	phantomBurstShape,
 	ringRadius,
 	sparkBurstShape,
+	skewerLineEnd,
 	streakFade,
 	streakThickness,
 	type BeamPoint,
@@ -732,7 +734,25 @@ describe("buildFx rules: Overkill streaks (LG6)", () => {
 		]).toEqual([BUILD_FX_VIEW.overkill.impact.popScale, 1, 1]);
 	});
 
-	it("a Skewer line (a SKEWER duoProc at the streak's corpse, same tick and owner) draws thicker, plus its duo flare", () => {
+	it("Skewer's line end: through the target to OVERKILL_RANGE from the corpse (row, diagonal, zero length)", () => {
+		const p = { x: 0, z: 0 };
+		// A row: corpse (1, 1), target 2 along +x -> the end OVERKILL_RANGE along +x.
+		skewerLineEnd(1, 1, 3, 1, p);
+		expect([p.x, p.z]).toEqual([1 + OVERKILL_RANGE, 1]);
+		// A row toward -z.
+		skewerLineEnd(0, 0, 0, -1, p);
+		expect([p.x, p.z]).toEqual([0, -OVERKILL_RANGE]);
+		// A diagonal (3, 4) from the corpse: the end at OVERKILL_RANGE along the same direction.
+		skewerLineEnd(2, -1, 5, 3, p);
+		expect(p.x).toBeCloseTo(2 + OVERKILL_RANGE * 0.6, 9);
+		expect(p.z).toBeCloseTo(-1 + OVERKILL_RANGE * 0.8, 9);
+		expect(math.sqrt((p.x - 2) ** 2 + (p.z + 1) ** 2)).toBeCloseTo(OVERKILL_RANGE, 9);
+		// The target on the corpse: the segment ends at the target (no NaN).
+		skewerLineEnd(4, 4, 4, 4, p);
+		expect([p.x, p.z]).toEqual([4, 4]);
+	});
+
+	it("a Skewer line (a SKEWER duoProc at the streak's corpse, same tick and owner) draws thicker to the line's end, plus its duo flare", () => {
 		const s = state(2);
 		const ev = bu5(s, (e) => {
 			streak(e, 0, 1, 1, 3, 1, 2);
@@ -744,6 +764,15 @@ describe("buildFx rules: Overkill streaks (LG6)", () => {
 		expect(d.out.streaks.map((t) => t.thicknessStuds)).toEqual([
 			streakThickness(2, "full", true),
 			streakThickness(2, "full", false),
+		]);
+		// The Skewer streak runs on to the line's end; the plain one ends at its target; impacts stay at the targets.
+		expect(d.out.streaks.map((t) => [t.x1, t.z1, t.x2, t.z2])).toEqual([
+			[1, 1, 1 + OVERKILL_RANGE, 1],
+			[5, 5, 6, 5],
+		]);
+		expect(d.out.impacts.map((f) => [f.x, f.z])).toEqual([
+			[3, 1],
+			[6, 5],
 		]);
 		expect(d.out.rings.map((r) => [r.look, r.role, r.x, r.z])).toEqual([["pop", BUILD_FX_VIEW.pop.duoRole, 1, 1]]);
 	});
