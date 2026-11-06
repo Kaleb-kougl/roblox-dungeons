@@ -1,5 +1,5 @@
 import { CAMERA_PITCH_DEG, CAMERA_YAW_DEG } from "shared/config";
-import { SIM_DT } from "shared/sim";
+import { SIM_DT, type PayloadField } from "shared/sim";
 import { BULLET_VIEW } from "../config";
 
 /**
@@ -61,4 +61,16 @@ export const BULLET_IMPACT_VIEW = {
 	stepDt: SIM_DT,
 	/** At most this many impacts per frame (the rest are counted in `dropped`, not reported). */
 	maxPerFrame: 8,
+	/**
+	 * A slot whose bullet shows more life than its projected life (last seen life minus the steps since) plus this
+	 * many ticks holds a NEW bullet (the free list is LIFO: a freed slot is often reused at once by the same emitter):
+	 * the old one vanished in between. Covers float rounding between the sim's per-step subtraction and the projection.
+	 */
+	sameLifeToleranceTicks: 0.5,
+	/**
+	 * Payload fields the sim rewrites while a bullet flies (combat.ts: each pierce spends `pierce` and records
+	 * `lastHit`), left out of a bullet's identity so a pierce is not read as a vanish. Every other field (damage, kind,
+	 * source) is fixed at spawn (shared/sim combat/payload.ts).
+	 */
+	flightFields: ["pierce", "lastHit"] as ReadonlyArray<PayloadField>,
 } as const;

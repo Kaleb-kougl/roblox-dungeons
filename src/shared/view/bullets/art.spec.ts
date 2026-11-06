@@ -1,10 +1,21 @@
 // Sprite bullets (docs/PROJECTILE_ART.md PA4, PAD8): flicker frame phase / wrap / reduced-motion freeze, the anchor's
-// yaw along the velocity, the screen heading through the camera basis, part size axes and the size key.
+// yaw along the velocity, the screen heading through the camera basis, part size axes and the size key (with the
+// art's reference scale), the one-canvas mapping (spike PA0's option C) in the same canvas convention.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { CAMERA_PITCH_DEG, CAMERA_YAW_DEG } from "shared/config";
 import { FX_SPRITE_VIEW } from "shared/view/fx";
 import { BULLET_VIEW } from "../config";
-import { bulletFrame, bulletPartSize, bulletSizeKey, bulletYaw, bulletYawAxes, screenHeading } from "./art";
+import {
+	bulletArtSizeKey,
+	bulletFrame,
+	bulletPartSize,
+	bulletSizeKey,
+	bulletYaw,
+	bulletYawAxes,
+	floorCanvasOffset,
+	floorCanvasRotation,
+	screenHeading,
+} from "./art";
 import { BULLET_ART_VIEW } from "./config";
 
 const V = BULLET_ART_VIEW;
@@ -129,6 +140,56 @@ describe("sprite bullets: yaw along the velocity", () => {
 	});
 });
 
+describe("sprite bullets: one floor canvas (spike PA0 option C), the anchors' convention", () => {
+	const t = math.rad(V.canvasTurnDeg);
+	/** Canvas right / down on the ground (x, z): the canvas's up (-sin t, -cos t) turned a quarter clockwise. */
+	const right = [math.cos(t), -math.sin(t)];
+	const down = [math.sin(t), math.cos(t)];
+
+	it("maps a ground offset to canvas pixels: at a quarter turn world -X is canvas up and -Z canvas right", () => {
+		const p = { x: 0, y: 0 };
+		expect(V.canvasTurnDeg).toBe(90);
+		floorCanvasOffset(-1, 0, 8, p);
+		expect([near(p.x, 0), near(p.y, -8)]).toEqual([true, true]);
+		floorCanvasOffset(0, -1, 8, p);
+		expect([near(p.x, 8), near(p.y, 0)]).toEqual([true, true]);
+		// and back: x right + y down lands on the offset, for any offset
+		floorCanvasOffset(2.5, -1.25, 4, p);
+		const wx = (p.x * right[0] + p.y * down[0]) / 4;
+		const wz = (p.x * right[1] + p.y * down[1]) / 4;
+		expect([near(wx, 2.5), near(wz, -1.25)]).toEqual([true, true]);
+	});
+
+	it("rotates a label's art-up onto the velocity for the 8 compass directions, as bulletYawAxes turns an anchor", () => {
+		const out = { c: 0, s: 0 };
+		const ux = -math.sin(t);
+		const uz = -math.cos(t);
+		for (const [name, vx, vz] of COMPASS) {
+			const len = math.sqrt(vx * vx + vz * vz);
+			const r = floorCanvasRotation(vx * 5, vz * 5);
+			expect([name, r > -180 && r <= 180]).toEqual([name, true]);
+			// canvas up (0, -1) turned r clockwise on the canvas (y down): (sin r, -cos r), then onto the ground
+			const cx = math.sin(math.rad(r));
+			const cy = -math.cos(math.rad(r));
+			const gx = cx * right[0] + cy * down[0];
+			const gz = cx * right[1] + cy * down[1];
+			expect([name, near(gx, vx / len), near(gz, vz / len)]).toEqual([name, true, true]);
+			// option B's anchor at bulletYawAxes points its canvas up the same way
+			const a = bulletYawAxes(vx, vz, out);
+			expect([name, near(a.c * ux + a.s * uz, gx), near(-a.s * ux + a.c * uz, gz)]).toEqual([name, true, true]);
+		}
+	});
+
+	it("no ground velocity points screen-up, as bulletYawAxes", () => {
+		const r = floorCanvasRotation(0, 0);
+		const gx = math.sin(math.rad(r)) * right[0] - math.cos(math.rad(r)) * down[0];
+		const gz = math.sin(math.rad(r)) * right[1] - math.cos(math.rad(r)) * down[1];
+		const yaw = math.rad(CAMERA_YAW_DEG);
+		expect(gx).toBeCloseTo(-math.sin(yaw), 12);
+		expect(gz).toBeCloseTo(-math.cos(yaw), 12);
+	});
+});
+
 describe("sprite bullets: screen heading", () => {
 	it("gives the 8 compass velocities' angles on screen through the yaw 45 / pitch 55 basis", () => {
 		expect([CAMERA_YAW_DEG, CAMERA_PITCH_DEG]).toEqual([V.cameraYawDeg, V.cameraPitchDeg]);
@@ -156,5 +217,15 @@ describe("sprite bullets: size key", () => {
 		expect(bulletSizeKey(1, 0.55)).toBe(4 * q);
 		expect(bulletSizeKey(1, 0.01)).toBe(q);
 		expect(bulletSizeKey(1, 0)).toBe(q);
+	});
+
+	it("draws art at its own size at its reference scale (bulletArtSizeKey = size key of scale / reference)", () => {
+		const q = V.sizeQuantum;
+		expect(bulletArtSizeKey(1.8, 1.8, 1)).toBe(1);
+		expect(bulletArtSizeKey(1, 1, 1)).toBe(1);
+		expect(bulletArtSizeKey(1.8, 1, 1)).toBe(bulletSizeKey(1.8, 1));
+		expect(bulletArtSizeKey(3.6, 1.8, 0.5)).toBe(1);
+		expect(bulletArtSizeKey(1.8, 1.8, 0.01)).toBe(q);
+		expect(bulletArtSizeKey(2, 0, 1)).toBe(2); // no reference: the plain size key
 	});
 });

@@ -4,10 +4,13 @@
  *
  *   config.ts   BULLET_ART_VIEW (flicker rate, reduced-motion frame, size quantum, the Top-face canvas turn, anchor
  *               thickness, layers and pool lifts, the flicker write budget) and BULLET_IMPACT_VIEW
- *   looks.ts    ENEMY_BULLET_LOOK_IDS and enemyBulletLookOf (BulletKind -> small / medium / large / needle)
+ *   looks.ts    ENEMY_BULLET_LOOK_IDS and enemyBulletLookOf (BulletKind -> small / medium / large / needle),
+ *               bulletArtReferenceScale (the draw scale a look's art stands for: the heavy's BOW_DATA.heavyScale, else 1)
  *   art.ts      bulletFrame (flicker with a per-slot phase), bulletYawAxes / bulletYaw (a floor-flat sprite turned
- *               along the velocity), bulletPartSize, bulletSizeKey, screenHeading (for billboards)
- *   impacts.ts  BulletImpacts: player bullets that vanished with life left (hits), as a fixed-size feed for PA7
+ *               along the velocity), bulletPartSize, bulletSizeKey / bulletArtSizeKey, floorCanvasOffset /
+ *               floorCanvasRotation (many sprites on one floor canvas, spike PA0's option C), screenHeading
+ *   impacts.ts  BulletImpacts: player bullets that vanished with life left (hits; identity without the in-flight
+ *               pierce fields, projected life and position), as a fixed-size feed for PA7
  */
 export * from "./config";
 export * from "./looks";

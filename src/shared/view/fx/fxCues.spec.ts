@@ -828,6 +828,9 @@ describe("FxCueMapper sources (synthetic)", () => {
 // ---------------------------------------------------------------------------------------------
 // Player bullet impacts (docs/PROJECTILE_ART.md PA7): BulletImpacts over a scripted player pool -> bulletHit
 
+/** The scripted bullets stand still (BulletImpacts projects impacts along the velocity: here onto the last position). */
+const STILL: Readonly<Vec3> = { x: 0, y: 0, z: 0 };
+
 /** A scripted player bullet pool: slots by index, life falls by SIM_DT a step, a bullet out of life is released. */
 class ScriptedBullets implements BulletImpactSource {
 	stepCount = 0;
@@ -859,6 +862,9 @@ class ScriptedBullets implements BulletImpactSource {
 	}
 	positionAt(i: number): Readonly<Vec3> {
 		return this.live.get(i)!.pos;
+	}
+	velocityAt(): Readonly<Vec3> {
+		return STILL;
 	}
 	lifeAt(i: number): number {
 		return this.live.get(i)!.life;

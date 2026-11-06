@@ -86,8 +86,8 @@ player in a real room. Bullets fly 2 studs above that floor (`BULLET_SPIKE.heigh
 |---|---|---|---|---|
 | **N** neon | 5 | spike A's neon sphere (the baseline, unchanged) | one `BulkMoveTo` per pool | none |
 | **A** decal | 6 | a flat invisible Part (0.81 x 2.57 studs, a 6x19 px bolt at 29.6 px/tile) with a Top-face `Decal` | `BulkMoveTo`, the CFrame turned along the velocity | `Decal.Texture` swapped between 3 textures |
-| **B** surface | 7 | the same flat Part as an anchor carrying a Top-face `SurfaceGui` (FixedSize 12x38, `LightInfluence` 0) + `ImageLabel` (`Pixelated`): FxSpriteController's construction | `BulkMoveTo`, turned along the velocity | `ImageRectOffset` |
-| **C** canvas | 8 | ONE flat Part per pool over the whole area (128 x 128 studs, a 1024 px Top-face `SurfaceGui`), one `ImageLabel` per bullet | `Position` + `Rotation` writes (no Part moves) | `ImageRectOffset` |
+| **B** surface | 7 | production's `SpriteBulletPool` anchor exactly (`createSpriteAnchor`: an invisible Part with a Top-face `SurfaceGui`, FixedSize, `LightInfluence` 0, + a `Pixelated` `ImageLabel`), at production's canvas density (`BULLET_ART_VIEW.canvasPixelsPerArtPixel` 4: 24x76 for the 6x19 bolt), size (`spriteAnchorSize`: the length along the Part's local X) and lift / layer step | `BulkMoveTo`, turned along the velocity by production's `bulletYawAxes` + `spriteAnchorCFrame` | `ImageRectOffset` |
+| **C** canvas | 8 | ONE flat Part per pool over the whole area (128 x 128 studs, a 1024 px Top-face `SurfaceGui`), one `ImageLabel` per bullet, placed and turned in production's canvas convention (`floorCanvasOffset` / `floorCanvasRotation`) | `Position` + `Rotation` writes (no Part moves) | `ImageRectOffset` |
 
 A frame is written only when a slot's frame changes. With PAD8's phase (slot index mod 3) every bullet changes on
 the same frames (every 0.1 s), so the flipbook cost comes in bursts: watch `worst`, not only the average.
@@ -116,9 +116,16 @@ HUD readout (averaged over 0.5 s; the window restarts on any change of count, mo
   read it in the MicroProfiler's render section and in the frame rate.
 
 All tunables: `BULLET_SPIKE` in `src/shared/config/spikes.ts` (`modes`, `players`, `sprite`, `canvas`); the texture
-paths (asset URLs may only live in shared/theme): `src/shared/theme/spikeTextures.ts`. If a sprite mode's bullets do
-not point along their travel (the Top face's up direction is assumed to be the Part's -Z), set
-`BULLET_SPIKE.sprite.artYawOffsetDeg` to 90 / 180 / 270 and note it.
+paths (asset URLs may only live in shared/theme): `src/shared/theme/spikeTextures.ts`.
+
+**Orientation.** Modes B and C use production's canvas convention: a Top-face `SurfaceGui`'s canvas up is the Part's
+-Z turned `BULLET_ART_VIEW.canvasTurnDeg` anticlockwise seen from above (90, from the FX floor finding
+`FX_SPRITE_VIEW.floorCanvasTurnDeg`: up = the Part's local -X). Mode B is built by the same helpers as
+`SpriteBulletPool`, so what B shows is what production draws. If B's or C's bolts do not point along their travel,
+change **`BULLET_ART_VIEW.canvasTurnDeg`** (`src/shared/view/bullets/config.ts`, 0 / 90 / 180 / 270) and note it:
+that one knob turns the spike and production alike (the yaw, the Part's long axis and C's mapping all read it).
+Mode A's Decal keeps the Decal convention (up = the Part's -Z, which SurfaceGuis do not follow); its own knob is
+`BULLET_SPIKE.sprite.decalYawOffsetDeg` (mode A only).
 
 ### Turning it on
 
@@ -152,7 +159,9 @@ Lighting as in Setup. Note the Studio frame-rate cap, CPU / GPU and `Lighting.Te
      line, room edges), never z-fighting with the floor? Do A / B sprites flicker against each other where they
      overlap? Does C's canvas hide anything (it is one big surface: check the floor and pellets under it, and the
      player / enemy sprites standing on it);
-   - **turning**: do the bolts point along their travel in rings and in the spiral (else `artYawOffsetDeg`)?
+   - **turning**: do the bolts point along their travel in rings and in the spiral, nose first (B / C: else
+     `BULLET_ART_VIEW.canvasTurnDeg`; A: else `decalYawOffsetDeg`)? A bolt squashed short and wide means the turn is
+     off by a quarter (the Part's long axis follows the same knob).
    - **flicker**: does the 3-frame flicker read, and is it in step across a ring (PAD8's phase)?
 5. Turn the spike off: the `KV_SpikeBullets` folder is gone from Workspace and the HUD panel disappears. Switch modes
    back and forth a few times first: the folder holds only the current mode's folder each time.

@@ -127,13 +127,21 @@ export const BULLET_SPIKE = {
 		offsetRad: math.pi / 20,
 		color: [255, 235, 140],
 	},
-	/** The sprite modes (A / B / C): a 6x19 px bolt at 29.6 px/tile (PAD5), 4 studs/tile -> 0.81 x 2.57 studs. */
+	/**
+	 * The sprite modes (A / B / C): a 6x19 px bolt at 29.6 px/tile (PAD5), 4 studs/tile -> 0.81 x 2.57 studs. With pack
+	 * art, option B takes the art's own size and canvas (production's spriteBulletLook) instead.
+	 */
 	sprite: {
 		/** Across the travel direction, studs. */
 		widthStuds: 0.81,
 		/** Along the travel direction, studs. */
 		lengthStuds: 2.57,
-		/** The anchor / Decal part's thickness, studs (its Top face sits at the bullet height). */
+		/**
+		 * The bolt's art size, pixels (across, along): option B's canvas with the engine stand-in, at production's
+		 * BULLET_ART_VIEW.canvasPixelsPerArtPixel (4: 24 x 76).
+		 */
+		artPx: [6, 19],
+		/** Option (A)'s Decal part's thickness, studs (its Top face sits at the bullet height; B uses production's). */
 		thicknessStuds: 0.05,
 		/** Flipbook frames and rate (PAD8: 10 fps, phase = slot index mod frames). */
 		frames: 3,
@@ -145,10 +153,12 @@ export const BULLET_SPIKE = {
 		 * (an assumption: if the sprites look empty or cut off, set the texture's real size here).
 		 */
 		fallbackStripPx: [128, 128],
-		/** Option (B)'s SurfaceGui CanvasSize, pixels (2x the 6x19 art). */
-		surfaceCanvasPx: [12, 38],
-		/** Turn added to every sprite's heading, degrees: 90 / 180 / 270 if the art does not point along its travel. */
-		artYawOffsetDeg: 0,
+		/**
+		 * Option (A) only: turn added to the Decal bolts' heading, degrees (90 / 180 / 270 if A's bolts do not point
+		 * along their travel; a Decal keeps the -Z-up convention a Top-face SurfaceGui does not). Options B and C follow
+		 * production's canvas convention: their knob is BULLET_ART_VIEW.canvasTurnDeg (shared/view bullets config.ts).
+		 */
+		decalYawOffsetDeg: 0,
 	},
 	/** Option (C): the canvas Part per pool. */
 	canvas: {

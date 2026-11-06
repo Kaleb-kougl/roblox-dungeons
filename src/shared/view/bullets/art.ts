@@ -113,6 +113,50 @@ export function bulletSizeKey(scale: number, fade: number): number {
 }
 
 /**
+ * The drawn size key of a sprite bullet whose art stands for draw scale `referenceScale` (bulletArtReferenceScale):
+ * bulletSizeKey of scale / referenceScale, so the art draws at its own size at its reference scale.
+ */
+export function bulletArtSizeKey(scale: number, referenceScale: number, fade: number): number {
+	return bulletSizeKey(referenceScale > 0 ? scale / referenceScale : scale, fade);
+}
+
+/** A pixel offset on a floor canvas (x right, y down), written by floorCanvasOffset. */
+export interface FloorCanvasPoint {
+	x: number;
+	y: number;
+}
+
+/**
+ * A ground offset (dx, dz) studs from the centre of a flat, UNTURNED Part (identity rotation) to the pixel offset from
+ * its Top-face canvas's centre, at `pxPerStud` canvas pixels a stud (x right, y down): the same canvas convention as
+ * bulletYawAxes (the canvas's up is the part's -Z turned BULLET_ART_VIEW.canvasTurnDeg anticlockwise seen from above;
+ * 90: up = world -X, right = world -Z). For one canvas carrying many sprites (spike PA0's option C). Writes `out`.
+ */
+export function floorCanvasOffset(dx: number, dz: number, pxPerStud: number, out: FloorCanvasPoint): FloorCanvasPoint {
+	// Canvas right = (cos t, -sin t) and down = (sin t, cos t) on the ground (x, z).
+	out.x = (dx * TURN_COS - dz * TURN_SIN) * pxPerStud;
+	out.y = (dx * TURN_SIN + dz * TURN_COS) * pxPerStud;
+	return out;
+}
+
+/**
+ * ImageLabel.Rotation (degrees clockwise on the canvas, in (-180, 180]) that turns a sprite's art-up onto the ground
+ * velocity (vx, vz) on an unturned Part's Top-face canvas (floorCanvasOffset's convention), the canvas counterpart of
+ * bulletYawAxes. No ground velocity: screen-up, as bulletYawAxes.
+ */
+export function floorCanvasRotation(vx: number, vz: number): number {
+	let dx = vx;
+	let dz = vz;
+	if (dx === 0 && dz === 0) {
+		dx = -IDLE_SIN;
+		dz = -IDLE_COS;
+	}
+	const hx = dx * TURN_COS - dz * TURN_SIN;
+	const hy = dx * TURN_SIN + dz * TURN_COS;
+	return math.deg(math.atan2(hx, -hy));
+}
+
+/**
  * The screen-space heading of a ground velocity (vx, vz) through the iso camera basis (yaw / pitch from
  * BULLET_ART_VIEW): degrees CLOCKWISE from screen-up in [0, 360) (ImageLabel.Rotation's sense), for a camera-facing
  * billboard whose art points up. The projection drops perspective (the direction at the screen centre). No ground

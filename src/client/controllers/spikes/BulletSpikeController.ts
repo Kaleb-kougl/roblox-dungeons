@@ -3,9 +3,25 @@ import { Janitor } from "@rbxts/janitor";
 import { Players, RunService, UserInputService, Workspace } from "@rbxts/services";
 import { BulletPattern, clientStore, selectBulletSpike } from "client/store";
 import { createKvSurfaceGui } from "client/ui";
-import { BULLET_SPIKE } from "shared/config";
-import { SPIKE_ENGINE_TEXTURES, type ThemePack } from "shared/theme";
+import { BULLET_SPIKE, STUDS_PER_TILE } from "shared/config";
+import { SPIKE_ENGINE_TEXTURES, type SpriteFrame, type ThemePack } from "shared/theme";
+import {
+	BULLET_ART_VIEW,
+	bulletYawAxes,
+	floorCanvasOffset,
+	floorCanvasRotation,
+	type BulletYawAxes,
+	type FloorCanvasPoint,
+} from "shared/view";
 import { ThemeController } from "../game/ThemeController";
+import {
+	createSpriteAnchor,
+	spriteAnchorCFrame,
+	spriteAnchorSize,
+	spriteBulletLook,
+	spriteBulletLookFrom,
+	type SpriteBulletLook,
+} from "../render/SpriteBulletPool";
 import { watchSpikeFlag } from "./spikeFlags";
 
 const COUNT_KEYS: ReadonlyArray<Enum.KeyCode> = [
@@ -30,7 +46,10 @@ const HIDDEN = 1;
 const SELF_LIT = 0;
 const CENTRE = new Vector2(0.5, 0.5);
 const S = BULLET_SPIKE.sprite;
-const ART_YAW_RAD = S.artYawOffsetDeg / DEG_PER_RAD;
+/** Option (A) only: the Decal's turn (Decals keep the -Z-up convention SurfaceGuis do not; FX_SPRITE_VIEW). */
+const DECAL_YAW_RAD = S.decalYawOffsetDeg / DEG_PER_RAD;
+const DECAL_COS = math.cos(DECAL_YAW_RAD);
+const DECAL_SIN = math.sin(DECAL_YAW_RAD);
 
 type ModeId = (typeof BULLET_SPIKE.modes)[number]["id"];
 
@@ -46,6 +65,11 @@ interface SpikeArt {
 	readonly sizes: ReadonlyArray<Vector2>;
 	/** Every frame is in the same image (an atlas or the strip): a frame change writes only ImageRectOffset / Size. */
 	readonly oneImage: boolean;
+	/**
+	 * Option (B)'s look, built as production builds it (SpriteBulletPool spriteBulletLook: the art's size, canvas at
+	 * BULLET_ART_VIEW.canvasPixelsPerArtPixel); with the engine stand-in, the bolt's S.artPx / S.lengthStuds / S.widthStuds.
+	 */
+	readonly look: SpriteBulletLook;
 }
 
 function spikeArt(pack: ThemePack): SpikeArt {
@@ -71,7 +95,19 @@ function spikeArt(pack: ThemePack): SpikeArt {
 	}
 	let oneImage = true;
 	for (const image of images) if (image !== images[0]) oneImage = false;
-	return { source: sprite !== undefined ? "pack" : "engine", decalTextures, images, offsets, sizes, oneImage };
+	let look: SpriteBulletLook;
+	if (sprite !== undefined) {
+		look = spriteBulletLook(sprite, STUDS_PER_TILE);
+	} else {
+		const frames = new Array<SpriteFrame>();
+		for (let f = 0; f < S.frames; f++) {
+			const size = sizes[f];
+			frames.push({ image: images[f], offset: offsets[f], size, pivot: { x: size.X / 2, y: size.Y / 2 } });
+		}
+		const artPx = new Vector2(S.artPx[0], S.artPx[1]);
+		look = spriteBulletLookFrom(frames, S.fps, S.lengthStuds, S.widthStuds, artPx, Enum.ResamplerMode.Pixelated, 1);
+	}
+	return { source: sprite !== undefined ? "pack" : "engine", decalTextures, images, offsets, sizes, oneImage, look };
 }
 
 function colorOf(rgb: ReadonlyArray<number>): Color3 {
@@ -119,7 +155,7 @@ function spriteLabel(art: SpikeArt, tint: Color3): ImageLabel {
 
 /**
  * One pool of spike bullets in one render mode. Every frame: RingLayout.fill writes positions (studs) and, for the
- * sprite modes, unit headings (the velocity's direction, plus S.artYawOffsetDeg) into xs / zs / hxs / hzs; `build`
+ * sprite modes, unit headings (the velocity's direction) into xs / zs / hxs / hzs; `build`
  * turns them into CFrames or GUI values (timed as compute with the layout), `move` hands them to the engine
  * (BulkMoveTo, or property writes for the canvas), `flip` writes the flipbook frame where it changed.
  */
@@ -150,7 +186,7 @@ abstract class SpikePool {
 abstract class PartPool extends SpikePool {
 	private readonly pool = new Array<BasePart>();
 	private parts = new Array<BasePart>();
-	private cframes = new Array<CFrame>();
+	protected cframes = new Array<CFrame>();
 
 	constructor(headings: boolean, tintOf: (index: number) => Color3, private readonly folder: Folder) {
 		super(headings, tintOf);
@@ -185,13 +221,14 @@ abstract class PartPool extends SpikePool {
 			}
 			return;
 		}
-		// Flat on the floor, top face at y, LookVector (-Z) along the heading: the Top face's canvas up is -Z.
+		// (A) Flat on the floor, top face at y, LookVector (-Z) along the heading turned by S.decalYawOffsetDeg: a
+		// Decal's Top-face up is assumed to be -Z (the Decal convention; SurfaceGuis differ, see SurfacePool).
 		const hxs = this.hxs;
 		const hzs = this.hzs;
 		const cy = y - S.thicknessStuds / 2;
 		for (let i = 0; i < this.count; i++) {
-			const hx = hxs[i];
-			const hz = hzs[i];
+			const hx = hxs[i] * DECAL_COS - hzs[i] * DECAL_SIN;
+			const hz = hzs[i] * DECAL_COS + hxs[i] * DECAL_SIN;
 			cframes[i] = new CFrame(xs[i], cy, zs[i], -hz, 0, -hx, 0, 1, 0, hx, 0, -hz);
 		}
 	}
@@ -287,25 +324,53 @@ function flipLabels(
 	}
 }
 
-/** (B) A flat anchor Part per slot carrying a Top-face SurfaceGui + Pixelated ImageLabel (FxSpriteController's). */
+/**
+ * (B) Production's SpriteBulletPool construction exactly: its anchor (createSpriteAnchor), canvas (the look's art
+ * size x BULLET_ART_VIEW.canvasPixelsPerArtPixel), Part size (spriteAnchorSize: the length along local X under
+ * BULLET_ART_VIEW.canvasTurnDeg 90) and CFrame (bulletYawAxes of the velocity + spriteAnchorCFrame, with the pool's
+ * lift and per-slot layer step). Turning BULLET_ART_VIEW.canvasTurnDeg turns these bolts and production's alike.
+ */
 class SurfacePool extends PartPool {
 	private readonly labels = new Array<ImageLabel>();
+	private readonly axes: BulletYawAxes = { c: 1, s: 0 };
 
-	constructor(tintOf: (index: number) => Color3, folder: Folder, private readonly art: SpikeArt) {
+	constructor(
+		tintOf: (index: number) => Color3,
+		folder: Folder,
+		private readonly art: SpikeArt,
+		private readonly liftStuds: number,
+	) {
 		super(true, tintOf, folder);
 	}
 
 	protected create(index: number): BasePart {
-		const part = spikePart("Bullet");
-		part.Size = new Vector3(S.widthStuds, S.thicknessStuds, S.lengthStuds);
-		part.Transparency = HIDDEN;
-		const surface = floorSurface(new Vector2(S.surfaceCanvasPx[0], S.surfaceCanvasPx[1]));
-		const label = spriteLabel(this.art, this.tintOf(index));
-		label.Size = UDim2.fromScale(1, 1);
-		label.Parent = surface;
-		surface.Parent = part;
+		const look = this.art.look;
+		const { part, surface, label } = createSpriteAnchor("Bullet", CFrame.identity);
+		part.Size = spriteAnchorSize(look, 1);
+		surface.CanvasSize = look.canvas;
+		surface.Enabled = true;
+		label.ResampleMode = look.resample;
+		label.Image = this.art.images[0];
+		label.ImageRectOffset = this.art.offsets[0];
+		label.ImageRectSize = this.art.sizes[0];
+		label.ImageColor3 = this.tintOf(index);
 		this.labels.push(label);
 		return part;
+	}
+
+	build(y: number): void {
+		const cframes = this.cframes;
+		const xs = this.xs;
+		const zs = this.zs;
+		const hxs = this.hxs;
+		const hzs = this.hzs;
+		const axes = this.axes;
+		const V = BULLET_ART_VIEW;
+		const base = y + this.liftStuds;
+		for (let i = 0; i < this.count; i++) {
+			const a = bulletYawAxes(hxs[i], hzs[i], axes);
+			cframes[i] = spriteAnchorCFrame(xs[i], base + (i % V.layers) * V.layerStepStuds, zs[i], a);
+		}
 	}
 
 	flip(frameBase: number): void {
@@ -314,8 +379,12 @@ class SurfacePool extends PartPool {
 }
 
 /**
- * (C) ONE flat Part over the spike area with a Top-face SurfaceGui; an ImageLabel per slot, moved by Position and
- * Rotation writes (no Part moves). Canvas x = world +X, canvas y (down) = world +Z (the Top face's up is -Z).
+ * (C) ONE flat, unturned Part over the spike area with a Top-face SurfaceGui; an ImageLabel per slot, moved by
+ * Position and Rotation writes (no Part moves). Positions and rotations follow production's canvas convention
+ * (shared/view floorCanvasOffset / floorCanvasRotation: the canvas's up is -Z turned BULLET_ART_VIEW.canvasTurnDeg
+ * anticlockwise seen from above; 90: up = world -X, right = world -Z), so the same knob turns B and C. The canvas
+ * density stays BULLET_SPIKE.canvas.pxPerStud (one canvas over the whole area; production's 4 px per art pixel would
+ * need a canvas of several thousand pixels).
  */
 class CanvasPool extends SpikePool {
 	private readonly part: Part;
@@ -323,8 +392,10 @@ class CanvasPool extends SpikePool {
 	private readonly labels = new Array<ImageLabel>();
 	private readonly positions = new Array<UDim2>();
 	private readonly rotations = new Array<number>();
-	private readonly x0: number;
-	private readonly z0: number;
+	private readonly point: FloorCanvasPoint = { x: 0, y: 0 };
+	private readonly cx: number;
+	private readonly cz: number;
+	private readonly halfPx: number;
 
 	constructor(
 		tintOf: (index: number) => Color3,
@@ -338,8 +409,9 @@ class CanvasPool extends SpikePool {
 		super(true, tintOf);
 		const C = BULLET_SPIKE.canvas;
 		const half = BULLET_SPIKE.maxRadiusStuds + C.marginStuds;
-		this.x0 = cx - half;
-		this.z0 = cz - half;
+		this.cx = cx;
+		this.cz = cz;
+		this.halfPx = half * C.pxPerStud;
 		const part = spikePart("Canvas");
 		part.Size = new Vector3(2 * half, C.thicknessStuds, 2 * half);
 		part.Transparency = HIDDEN;
@@ -375,10 +447,12 @@ class CanvasPool extends SpikePool {
 		const hzs = this.hzs;
 		const positions = this.positions;
 		const rotations = this.rotations;
+		const point = this.point;
+		const h = this.halfPx;
 		for (let i = 0; i < this.count; i++) {
-			positions[i] = UDim2.fromOffset((xs[i] - this.x0) * pps, (zs[i] - this.z0) * pps);
-			// Rotation is clockwise on the canvas (y down): up (0, -1) turns onto the heading (hx, hz).
-			rotations[i] = math.atan2(hxs[i], -hzs[i]) * DEG_PER_RAD;
+			floorCanvasOffset(xs[i] - this.cx, zs[i] - this.cz, pps, point);
+			positions[i] = UDim2.fromOffset(h + point.x, h + point.y);
+			rotations[i] = floorCanvasRotation(hxs[i], hzs[i]);
 		}
 	}
 
@@ -454,7 +528,7 @@ class RingLayout {
 				}
 				continue;
 			}
-			const lean = (spiral ? math.atan2(radius * BULLET_SPIKE.spiralSpinRadPerSec, this.speed) : 0) + ART_YAW_RAD;
+			const lean = spiral ? math.atan2(radius * BULLET_SPIKE.spiralSpinRadPerSec, this.speed) : 0;
 			const cd = math.cos(lean);
 			const sd = math.sin(lean);
 			for (let k = 0; k < last; k++) {
@@ -558,14 +632,21 @@ export class BulletSpikeController implements OnStart {
 
 		// A mode's pools live in their own folder and Janitor: a mode change tears them down and builds the next.
 		const modeJanitor = janitor.Add(new Janitor());
-		const makePool = (mode: ModeId, modeFolder: Folder, tintOf: (i: number) => Color3, lift: number) => {
+		const makePool = (mode: ModeId, modeFolder: Folder, tintOf: (i: number) => Color3, player: boolean) => {
 			switch (mode) {
 				case "decal":
 					return new DecalPool(tintOf, modeFolder, art);
 				case "surface":
-					return new SurfacePool(tintOf, modeFolder, art);
-				case "canvas":
+					return new SurfacePool(
+						tintOf,
+						modeFolder,
+						art,
+						player ? BULLET_ART_VIEW.liftStuds.player : BULLET_ART_VIEW.liftStuds.enemy,
+					);
+				case "canvas": {
+					const lift = player ? BULLET_SPIKE.canvas.playerLiftStuds : 0;
 					return new CanvasPool(tintOf, modeFolder, art, cx, y, cz, lift);
+				}
 				default:
 					return new NeonPool(tintOf, modeFolder);
 			}
@@ -576,8 +657,8 @@ export class BulletSpikeController implements OnStart {
 			const modeFolder = new Instance("Folder");
 			modeFolder.Name = mode;
 			modeFolder.Parent = folder;
-			const enemy = makePool(mode, modeFolder, enemyTint, 0);
-			const player = makePool(mode, modeFolder, playerTint, BULLET_SPIKE.canvas.playerLiftStuds);
+			const enemy = makePool(mode, modeFolder, enemyTint, false);
+			const player = makePool(mode, modeFolder, playerTint, true);
 			modeJanitor.Add(() => {
 				enemy.destroy();
 				player.destroy();

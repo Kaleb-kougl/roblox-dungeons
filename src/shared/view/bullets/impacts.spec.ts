@@ -1,5 +1,6 @@
-// Player bullet impacts (docs/PROJECTILE_ART.md PA4): a scripted slot timeline (a hit vs natural expiry vs slot reuse
-// vs a run restart vs the per-frame cap), then the real BulletSimulation.
+// Player bullet impacts (docs/PROJECTILE_ART.md PA4): a scripted slot timeline (a hit vs natural expiry vs slot reuse,
+// at once by the same emitter too, vs a pierce vs a run restart vs the per-frame cap, the projected position), then
+// the real BulletSimulation.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import {
 	BULLET_Y,
@@ -11,13 +12,23 @@ import {
 	type Vec3,
 } from "shared/sim";
 import { BULLET_IMPACT_VIEW } from "./config";
-import { BulletImpacts, type BulletImpactSource } from "./impacts";
+import { BulletImpacts, bulletIdentity, type BulletImpactSource } from "./impacts";
 
 interface FakeBullet {
 	life: number;
 	payload: number;
 	emitter: number;
 	pos: Vec3;
+	vel: Vec3;
+}
+
+/** A bow arrow's payload (kind PLAYER, the bow's source), optionally piercing. */
+function arrow(pierce = 0, lastHit = 0, damage = 1): number {
+	let p = BulletPayload.with(0, "damage", damage);
+	p = BulletPayload.with(p, "kind", BulletKind.PLAYER);
+	p = BulletPayload.with(p, "source", 1);
+	p = BulletPayload.with(p, "pierce", pierce);
+	return BulletPayload.with(p, "lastHit", lastHit);
 }
 
 /** A scripted bullet pool: slots by index, life falls by SIM_DT per step, `step` releases expired bullets. */
@@ -27,8 +38,23 @@ class FakeBullets implements BulletImpactSource {
 	private top = 0;
 
 	put(slot: number, life: number, x: number, z: number, emitter = 1, payload = 0): void {
-		this.slots.set(slot, { life, payload, emitter, pos: { x, y: BULLET_Y, z } });
+		this.slots.set(slot, { life, payload, emitter, pos: { x, y: BULLET_Y, z }, vel: { x: 0, y: 0, z: 0 } });
 		this.top = math.max(this.top, slot + 1);
+	}
+
+	/** Velocity, units per second (the scripted pool never moves bullets by it: `move` does). */
+	setVelocity(slot: number, x: number, z: number): void {
+		const b = this.slots.get(slot);
+		if (b !== undefined) {
+			b.vel.x = x;
+			b.vel.z = z;
+		}
+	}
+
+	/** The sim's in-flight payload rewrite (combat.ts: a pierce spends `pierce` and records `lastHit`). */
+	setPayload(slot: number, payload: number): void {
+		const b = this.slots.get(slot);
+		if (b !== undefined) b.payload = payload;
 	}
 
 	/** A hit: the sim releases the bullet with life left. */
@@ -65,6 +91,9 @@ class FakeBullets implements BulletImpactSource {
 	}
 	positionAt(i: number): Readonly<Vec3> {
 		return (this.slots.get(i) as FakeBullet).pos;
+	}
+	velocityAt(i: number): Readonly<Vec3> {
+		return (this.slots.get(i) as FakeBullet).vel;
 	}
 	lifeAt(i: number): number {
 		return (this.slots.get(i) as FakeBullet).life;
@@ -147,6 +176,101 @@ describe("sprite bullets: impacts", () => {
 		sim.remove(3);
 		expect(impacts.frame(sim)).toBe(2);
 		expect([f.x[0], f.x[1]]).toEqual([0, 0]);
+	});
+
+	it("a slot reused at once by the same emitter and payload (LIFO free list) still reports the old bullet's hit", () => {
+		const sim = new FakeBullets();
+		const impacts = new BulletImpacts();
+		// Arrow A is fired and stepped once: seen with 1 - dt of life.
+		sim.put(0, 1, 2, 0, 1, arrow());
+		sim.step();
+		impacts.frame(sim);
+		// Next tick: A hits point-blank and is freed; the bow's next arrow B takes slot 0 at once and is stepped in the
+		// same tick, so it also shows 1 - dt: as much life as A had when last seen, more than A's projected 1 - 2 dt.
+		sim.remove(0);
+		sim.put(0, 1, 9, 0, 1, arrow());
+		sim.step();
+		expect(sim.lifeAt(0)).toBe(1 - SIM_DT);
+		expect(impacts.frame(sim)).toBe(1);
+		expect([impacts.feed.slot[0], impacts.feed.x[0]]).toEqual([0, 2]);
+		// B is tracked now: its own hit reports its own position
+		sim.step();
+		sim.remove(0);
+		expect(impacts.frame(sim)).toBe(1);
+		expect(impacts.feed.x[0]).toBe(9);
+	});
+
+	it("the same bullet over multi-step frames is never a reuse (projected life within sameLifeToleranceTicks)", () => {
+		const sim = new FakeBullets();
+		const impacts = new BulletImpacts();
+		expect(BULLET_IMPACT_VIEW.sameLifeToleranceTicks > 0 && BULLET_IMPACT_VIEW.sameLifeToleranceTicks < 1).toBe(
+			true,
+		);
+		sim.put(0, 0.7, 0, 0, 1, arrow());
+		impacts.frame(sim);
+		for (const steps of [1, 3, 2, 5, 1, 4]) {
+			sim.step(steps);
+			expect(impacts.frame(sim)).toBe(0);
+		}
+		// it was tracked all along: its hit is reported once, at its last seen position
+		sim.step();
+		sim.remove(0);
+		expect(impacts.frame(sim)).toBe(1);
+		expect(impacts.feed.count).toBe(1);
+	});
+
+	it("a pierce (pierce / lastHit rewritten in flight) is not an impact; the arrow's last hit is", () => {
+		const sim = new FakeBullets();
+		const impacts = new BulletImpacts();
+		const heavy = arrow(2, 0, 4);
+		sim.put(0, 0.7, 0, 0, 1, heavy);
+		impacts.frame(sim);
+		// pierces the first enemy (actor slot 4), then the second (slot 6)
+		sim.step();
+		sim.setPayload(0, arrow(1, 5, 4));
+		expect(bulletIdentity(arrow(1, 5, 4))).toBe(bulletIdentity(heavy));
+		expect(impacts.frame(sim)).toBe(0);
+		sim.step(2);
+		sim.setPayload(0, arrow(0, 7, 4));
+		sim.move(0, 3, 0);
+		expect(impacts.frame(sim)).toBe(0);
+		// the third enemy stops it: one impact, at its last position, with its current payload
+		sim.step();
+		sim.remove(0);
+		expect(impacts.frame(sim)).toBe(1);
+		expect([impacts.feed.x[0], impacts.feed.payload[0]]).toEqual([3, arrow(0, 7, 4)]);
+		// a fixed field that differs (damage: a stream arrow, not the heavy) still marks a new bullet in the slot
+		sim.put(0, 0.7, 5, 0, 1, heavy);
+		impacts.frame(sim);
+		sim.step();
+		sim.remove(0);
+		sim.put(0, 0.1, 0, 0, 1, arrow());
+		expect(impacts.frame(sim)).toBe(1);
+		expect(impacts.feed.x[0]).toBe(5);
+	});
+
+	it("places an impact at the projected position: last position + velocity x the steps since", () => {
+		const sim = new FakeBullets();
+		const impacts = new BulletImpacts();
+		sim.put(0, 1, 2, 3);
+		sim.setVelocity(0, 6, -3);
+		impacts.frame(sim);
+		// a frame of three steps, the arrow hit in it
+		sim.step(3);
+		sim.remove(0);
+		expect(impacts.frame(sim)).toBe(1);
+		const f = impacts.feed;
+		expect(f.x[0]).toBeCloseTo(2 + 6 * 3 * SIM_DT, 12);
+		expect(f.z[0]).toBeCloseTo(3 - 3 * 3 * SIM_DT, 12);
+		expect(f.y[0]).toBe(BULLET_Y);
+		// clamped to the steps its life allowed (only a count that lets expiries through can show it)
+		const all = new BulletImpacts({ minLifeTicks: -10 });
+		sim.put(1, 1.5 * SIM_DT, 0, 0);
+		sim.setVelocity(1, 60, 0);
+		all.frame(sim);
+		sim.step(4);
+		expect(all.frame(sim)).toBe(1);
+		expect(all.feed.x[0]).toBeCloseTo(60 * SIM_DT, 12);
 	});
 
 	it("a new simulation (run restart), a step count that went back or reset() reports nothing", () => {
@@ -239,8 +363,11 @@ describe("sprite bullets: impacts", () => {
 		sim.step(SIM_DT);
 		impacts.frame(sim);
 		const x = sim.positionAt(0).x;
+		sim.step(SIM_DT);
 		sim.clear();
+		// projected one step on along the velocity (1 unit / s): where it was on the step it vanished in
 		expect(impacts.frame(sim)).toBe(1);
-		expect([impacts.feed.slot[0], impacts.feed.x[0], impacts.feed.z[0]]).toEqual([0, x, 2]);
+		expect([impacts.feed.slot[0], impacts.feed.z[0]]).toEqual([0, 2]);
+		expect(impacts.feed.x[0]).toBeCloseTo(x + SIM_DT, 12);
 	});
 });

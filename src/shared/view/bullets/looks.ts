@@ -1,4 +1,5 @@
-import { BulletKind, BulletPayload } from "shared/sim";
+import { BOW_DATA, BulletKind, BulletPayload } from "shared/sim";
+import { PlayerBulletLook } from "../buildBullets";
 
 /** An enemy bullet's look (index into ENEMY_BULLET_LOOK_IDS). */
 export const EnemyBulletLook = {
@@ -31,4 +32,15 @@ export function enemyBulletLookOf(payload: number): EnemyBulletLookId {
 	if (kind === BulletKind.CASTER) return EnemyBulletLook.MEDIUM;
 	if (kind === BulletKind.BOSS) return EnemyBulletLook.LARGE;
 	return EnemyBulletLook.SMALL;
+}
+
+/**
+ * The draw scale a look's sprite art stands for (docs/PROJECTILE_ART.md "The mapping"): the art already carries its
+ * size, so a sprite draws at its own size x (the bullet's draw scale / this). The player heavy (the Hyper flame,
+ * already larger than the bolt) stands for the bow's charged arrow, BOW_DATA.heavyScale: a heavy arrow draws the flame
+ * at its own size, not scaled by the arrow's sim scale again. Every other look (each enemy look, every other player
+ * look): 1.
+ */
+export function bulletArtReferenceScale(pool: "player" | "enemy", look: number): number {
+	return pool === "player" && look === PlayerBulletLook.HEAVY ? BOW_DATA.heavyScale : 1;
 }

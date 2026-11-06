@@ -4,9 +4,9 @@ import { SIM_DT, type BulletSimulation, type Vec3 as SimVec3 } from "shared/sim"
 import type { BulletSprite, SpriteFrame } from "shared/theme";
 import {
 	BULLET_ART_VIEW,
+	bulletArtSizeKey,
 	bulletFrame,
 	bulletPartSize,
-	bulletSizeKey,
 	bulletYawAxes,
 	lerp,
 	studsX,
@@ -22,32 +22,122 @@ const HIDDEN = 1;
 const SELF_LIT = 0;
 const FULL = UDim2.fromScale(1, 1);
 
-/** One look's art, resolved once: the sprite, its cached loop frames and its drawn size at draw scale 1, studs. */
+/** One look's art, resolved once: its cached loop frames and its drawn size at its reference scale, studs. */
 export interface SpriteBulletLook {
-	readonly sprite: BulletSprite;
 	/** frame(0) .. frame(frames - 1), so a flicker write never calls into the theme (no allocation per frame). */
 	readonly frames: ReadonlyArray<SpriteFrame>;
+	/** Loop rate (0: BULLET_ART_VIEW.fps). */
+	readonly fps: number;
 	/** Along the travel direction (the art's height) and across it (its width), studs. */
 	readonly alongStuds: number;
 	readonly acrossStuds: number;
-	/** The SurfaceGui canvas: frame 0's rect (x across, y along) x BULLET_ART_VIEW.canvasPixelsPerArtPixel. */
+	/** The SurfaceGui canvas: the art's frame size (x across, y along) x BULLET_ART_VIEW.canvasPixelsPerArtPixel. */
 	readonly canvas: Vector2;
 	readonly resample: Enum.ResamplerMode;
+	/** Every frame has frame 0's ImageRectSize, so a flicker writes only the offset (and the image across sheets). */
+	readonly uniformSize: boolean;
+	/** The draw scale the art's own size stands for (shared/view bulletArtReferenceScale; the heavy's bow scale). */
+	readonly referenceScale: number;
 }
 
-/** A look's art for the sprite pool (`studsPerTile` studs a tile). */
-export function spriteBulletLook(sprite: BulletSprite, studsPerTile: number): SpriteBulletLook {
+/**
+ * A look from raw frames: `artPx` is the art's frame size in pixels (x across, y along), which sets the canvas at
+ * BULLET_ART_VIEW.canvasPixelsPerArtPixel. Spike PA0's option B builds its stand-in look with it.
+ */
+export function spriteBulletLookFrom(
+	frames: ReadonlyArray<SpriteFrame>,
+	fps: number,
+	alongStuds: number,
+	acrossStuds: number,
+	artPx: Vector2,
+	resample: Enum.ResamplerMode,
+	referenceScale: number,
+): SpriteBulletLook {
+	let uniformSize = true;
+	for (const f of frames) if (f.size !== frames[0].size) uniformSize = false;
+	return {
+		frames,
+		fps,
+		alongStuds,
+		acrossStuds,
+		canvas: artPx.mul(V.canvasPixelsPerArtPixel),
+		resample,
+		uniformSize,
+		referenceScale,
+	};
+}
+
+/**
+ * A look's art for the sprite pool (`studsPerTile` studs a tile), drawn at its own size at draw scale
+ * `referenceScale` (shared/view bulletArtReferenceScale).
+ */
+export function spriteBulletLook(sprite: BulletSprite, studsPerTile: number, referenceScale = 1): SpriteBulletLook {
 	const frames = new Array<SpriteFrame>();
 	const n = math.max(1, sprite.frames);
 	for (let f = 0; f < n; f++) frames.push(sprite.frame(f));
-	return {
-		sprite,
+	return spriteBulletLookFrom(
 		frames,
-		alongStuds: sprite.heightTiles * studsPerTile,
-		acrossStuds: sprite.widthTiles * studsPerTile,
-		canvas: frames[0].size.mul(V.canvasPixelsPerArtPixel),
-		resample: Enum.ResamplerMode[sprite.set.resample],
-	};
+		sprite.fps,
+		sprite.heightTiles * studsPerTile,
+		sprite.widthTiles * studsPerTile,
+		frames[0].size,
+		Enum.ResamplerMode[sprite.set.resample],
+		referenceScale,
+	);
+}
+
+/** One sprite anchor: the invisible Part, its Top-face SurfaceGui and the ImageLabel filling it. */
+export interface SpriteAnchor {
+	readonly part: Part;
+	readonly surface: SurfaceGui;
+	readonly label: ImageLabel;
+}
+
+/**
+ * Builds one anchor (unparented, at `cframe`, its SurfaceGui disabled): an invisible render-only Part with a Top-face
+ * SurfaceGui (FixedSize, AlwaysOnTop false, LightInfluence 0) and a Pixelated ImageLabel filling it. The production
+ * construction, shared with spike PA0's option B so the spike measures exactly this.
+ */
+export function createSpriteAnchor(name: string, cframe: CFrame): SpriteAnchor {
+	const part = renderPart("Part", false);
+	part.Name = name;
+	part.Transparency = HIDDEN;
+	part.CFrame = cframe;
+	const [sx, sy, sz] = bulletPartSize(V.thicknessStuds, V.thicknessStuds);
+	part.Size = new Vector3(sx, sy, sz);
+	const label = new Instance("ImageLabel");
+	label.Name = "Frame";
+	label.BackgroundTransparency = HIDDEN;
+	label.BorderSizePixel = 0;
+	label.Size = FULL;
+	label.ResampleMode = Enum.ResamplerMode.Pixelated;
+	const surface = createKvSurfaceGui("Surface");
+	surface.Face = Enum.NormalId.Top;
+	surface.SizingMode = Enum.SurfaceGuiSizingMode.FixedSize;
+	surface.AlwaysOnTop = false;
+	surface.LightInfluence = SELF_LIT;
+	surface.ResetOnSpawn = false;
+	surface.Enabled = false;
+	label.Parent = surface;
+	surface.Parent = part;
+	return { part, surface, label };
+}
+
+/** An anchor's Size for `look` at size key `key` (bulletArtSizeKey): bulletPartSize of its drawn length and width. */
+export function spriteAnchorSize(look: SpriteBulletLook, key: number): Vector3 {
+	const [sx, sy, sz] = bulletPartSize(look.alongStuds * key, look.acrossStuds * key);
+	return new Vector3(sx, sy, sz);
+}
+
+/**
+ * An anchor's CFrame: turned about +Y by `axes` (bulletYawAxes of the velocity: the canvas's up, the art's nose, along
+ * it), its top face at `top`, centred on (x, z).
+ */
+export function spriteAnchorCFrame(x: number, top: number, z: number, axes: BulletYawAxes): CFrame {
+	const c = axes.c;
+	const s = axes.s;
+	// CFrame.Angles(0, yaw, 0) = [[c, 0, s], [0, 1, 0], [-s, 0, c]].
+	return new CFrame(x, top - V.thicknessStuds / 2, z, c, 0, s, 0, 1, 0, -s, 0, c);
 }
 
 /**
@@ -61,15 +151,18 @@ export function spriteBulletLook(sprite: BulletSprite, studsPerTile: number): Sp
  *
  * Per frame every drawn anchor moves in ONE workspace:BulkMoveTo, its CFrame turned about +Y by the velocity's yaw
  * (shared/view bulletYawAxes: the art's up, its nose, along the velocity), so there is no per-frame Rotation write.
- * Writes happen only on change: Image / CanvasSize / ResampleMode on a look change, ImageRectOffset / ImageRectSize
- * on a look or flicker-frame change (bulletFrame: `fps` loop with a per-slot phase, frame 0 under reduced motion;
+ * Writes happen only on change: CanvasSize / ResampleMode / ImageRectSize on a look change (a set's frames share one
+ * rect size; a look whose frames do not, `uniformSize` false, writes it per frame), Image / ImageRectOffset on a
+ * look or flicker-frame change (bulletFrame: `fps` loop with a per-slot phase, frame 0 under reduced motion;
  * BULLET_ART_VIEW.maxFlickerWritesPerFrame budget), the anchor's Size (widthTiles / heightTiles x STUDS_PER_TILE x
- * draw scale x end-of-life fade, in bulletSizeKey steps) on a quantized change, ImageTransparency (co-op teammates'
- * fade) on change, SurfaceGui.Enabled when a slot shows or parks. Unused slots park (BULLET_VIEW.parkedStuds).
- * Trails stay neon parts (BulletTrails). Anchors grow lazily to the highest slot drawn.
+ * draw scale / the look's reference scale x end-of-life fade, in bulletArtSizeKey steps) on a quantized change,
+ * ImageTransparency (co-op teammates' fade) on change, SurfaceGui.Enabled when a slot shows or parks. Unused slots
+ * park (BULLET_VIEW.parkedStuds). Trails stay neon parts (BulletTrails), placed behind the sprite's drawn length.
+ * Anchors grow lazily to the highest slot drawn.
  *
- * Which bullets: `draws(payload, scale)` = not `skip`ped and `looks` has art for `lookOf(payload, scale)`; the neon
- * BulletPool on the same simulation skips exactly those.
+ * Which bullets: not `skip`ped and `looks` has art for `lookOf(payload, scale)`. The pool runs BEFORE the neon
+ * BulletPool on the same simulation each frame, which then skips the slots `drew(slot)` reports (no second look
+ * lookup per bullet).
  */
 export class SpriteBulletPool {
 	private readonly parts = new Array<Part>();
@@ -112,10 +205,9 @@ export class SpriteBulletPool {
 		this.trailParts = new BulletTrails(folder, name, parked);
 	}
 
-	/** True when this pool draws a bullet with `payload` at draw `scale` (the neon pool skips it). */
-	draws(payload: number, scale: number): boolean {
-		if (this.skip !== undefined && this.skip(payload)) return false;
-		return this.looks.has(this.lookOf(payload, scale));
+	/** True when this frame's `frame` call drew slot `slot` (the neon pool, which runs after it, skips that slot). */
+	drew(slot: number): boolean {
+		return slot < this.shown.size() && this.shown[slot];
 	}
 
 	/** `fade`: per-bullet transparency from its emitter id (co-op teammates' bullets), or undefined (always opaque). */
@@ -135,16 +227,16 @@ export class SpriteBulletPool {
 		const slots = math.max(this.parts.size(), n);
 		for (let i = 0; i < slots; i++) {
 			let lookIndex = -1;
+			let look: SpriteBulletLook | undefined;
 			let scale = 1;
 			if (i < n && sim.isVisible(i)) {
 				const payload = sim.payloadAt(i);
 				if (this.skip === undefined || !this.skip(payload)) {
 					scale = sim.scaleAt(i);
-					const k = this.lookOf(payload, scale);
-					if (this.looks.has(k)) lookIndex = k;
+					lookIndex = this.lookOf(payload, scale);
+					look = this.looks.get(lookIndex);
 				}
 			}
-			const look = lookIndex >= 0 ? this.looks.get(lookIndex) : undefined;
 			if (look === undefined) {
 				if (i < this.parts.size()) {
 					this.park(i);
@@ -154,8 +246,9 @@ export class SpriteBulletPool {
 			}
 			while (this.parts.size() <= i) this.grow();
 			const lookChanged = this.applyLook(i, lookIndex, look);
-			this.resize(i, look, bulletSizeKey(scale, sim.fadeAt(i)), lookChanged);
-			const f = bulletFrame(seconds, i, look.frames.size(), look.sprite.fps, this.reducedMotion);
+			const key = bulletArtSizeKey(scale, look.referenceScale, sim.fadeAt(i));
+			this.resize(i, look, key, lookChanged);
+			const f = bulletFrame(seconds, i, look.frames.size(), look.fps, this.reducedMotion);
 			if (f !== this.frameKey[i] && (lookChanged || budget <= 0 || flickerWrites < budget)) {
 				if (!lookChanged) flickerWrites += 1;
 				this.setFrame(i, look, f);
@@ -173,21 +266,26 @@ export class SpriteBulletPool {
 			const v = sim.velocityAt(i);
 			const a = bulletYawAxes(v.x, v.z, this.axes);
 			const top = y + this.liftStuds + (i % V.layers) * V.layerStepStuds;
-			// CFrame.Angles(0, yaw, 0) at the anchor's centre, its top face at `top`.
-			const c = a.c;
-			const s = a.s;
 			this.moveParts.push(this.parts[i]);
-			this.moveCFrames.push(new CFrame(x, top - V.thicknessStuds / 2, z, c, 0, s, 0, 1, 0, -s, 0, c));
+			this.moveCFrames.push(spriteAnchorCFrame(x, top, z, a));
 			if (!this.shown[i]) {
 				this.shown[i] = true;
 				this.surfaces[i].Enabled = true;
 			}
 			const trail = this.trailsOn ? this.trails?.get(lookIndex) : undefined;
 			if (trail !== undefined) {
+				// Behind the sprite's drawn length (not the neon bolt's): half of it plus half the trail, back along v.
+				const back = (look.alongStuds * key) / 2 + trail.size.Z / 2;
 				const len = math.sqrt(v.x * v.x + v.z * v.z);
-				const at = new Vector3(x, y, z);
-				const cf = len > 0 ? CFrame.lookAlong(at, new Vector3(v.x, 0, v.z)) : new CFrame(at);
-				this.trailParts.place(i, trail, cf.mul(trail.offset), this.moveParts, this.moveCFrames);
+				let cf: CFrame;
+				if (len > 0) {
+					const dx = v.x / len;
+					const dz = v.z / len;
+					cf = CFrame.lookAlong(new Vector3(x - dx * back, y, z - dz * back), new Vector3(dx, 0, dz));
+				} else {
+					cf = new CFrame(x, y, z + back); // unturned: -Z is the nose, +Z behind it
+				}
+				this.trailParts.place(i, trail, cf, this.moveParts, this.moveCFrames);
 			} else {
 				this.trailParts.park(i, this.moveParts, this.moveCFrames);
 			}
@@ -205,12 +303,13 @@ export class SpriteBulletPool {
 		return this.trailParts.size();
 	}
 
-	/** Writes the look's image, canvas and filtering when slot `i` changes look; true when it did. */
+	/** Writes the look's canvas, filtering and rect size when slot `i` changes look; true when it did. */
 	private applyLook(i: number, lookIndex: number, look: SpriteBulletLook): boolean {
 		if (lookIndex === this.lookKey[i]) return false;
 		this.lookKey[i] = lookIndex;
 		const label = this.labels[i];
 		label.ResampleMode = look.resample;
+		label.ImageRectSize = look.frames[0].size;
 		this.surfaces[i].CanvasSize = look.canvas;
 		this.frameKey[i] = -1;
 		this.sizeKey[i] = -1;
@@ -221,10 +320,10 @@ export class SpriteBulletPool {
 	private resize(i: number, look: SpriteBulletLook, key: number, lookChanged: boolean): void {
 		if (key === this.sizeKey[i] && !lookChanged) return;
 		this.sizeKey[i] = key;
-		const [sx, sy, sz] = bulletPartSize(look.alongStuds * key, look.acrossStuds * key);
-		this.parts[i].Size = new Vector3(sx, sy, sz);
+		this.parts[i].Size = spriteAnchorSize(look, key);
 	}
 
+	/** Writes frame `f`: its image when it changed, its offset, and its rect size only for a look of mixed sizes. */
 	private setFrame(i: number, look: SpriteBulletLook, f: number): void {
 		this.frameKey[i] = f;
 		const r = look.frames[f] ?? look.frames[0];
@@ -234,7 +333,7 @@ export class SpriteBulletPool {
 			label.Image = r.image;
 		}
 		label.ImageRectOffset = r.offset;
-		label.ImageRectSize = r.size;
+		if (!look.uniformSize) label.ImageRectSize = r.size;
 	}
 
 	private park(i: number): void {
@@ -262,27 +361,7 @@ export class SpriteBulletPool {
 	}
 
 	private grow(): void {
-		const part = renderPart("Part", false);
-		part.Name = this.name;
-		part.Transparency = HIDDEN;
-		part.CFrame = this.parked;
-		const [sx, sy, sz] = bulletPartSize(V.thicknessStuds, V.thicknessStuds);
-		part.Size = new Vector3(sx, sy, sz);
-		const label = new Instance("ImageLabel");
-		label.Name = "Frame";
-		label.BackgroundTransparency = HIDDEN;
-		label.BorderSizePixel = 0;
-		label.Size = FULL;
-		label.ResampleMode = Enum.ResamplerMode.Pixelated;
-		const surface = createKvSurfaceGui("Surface");
-		surface.Face = Enum.NormalId.Top;
-		surface.SizingMode = Enum.SurfaceGuiSizingMode.FixedSize;
-		surface.AlwaysOnTop = false;
-		surface.LightInfluence = SELF_LIT;
-		surface.ResetOnSpawn = false;
-		surface.Enabled = false;
-		label.Parent = surface;
-		surface.Parent = part;
+		const { part, surface, label } = createSpriteAnchor(this.name, this.parked);
 		part.Parent = this.folder;
 		this.parts.push(part);
 		this.surfaces.push(surface);

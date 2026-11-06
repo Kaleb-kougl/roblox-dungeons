@@ -22,6 +22,7 @@ import {
 	PLAYER_BULLET_LOOK_IDS,
 	STRIKE_VIEW,
 	PlayerBulletLook,
+	bulletArtReferenceScale,
 	emberDecalLook,
 	enemyBulletLookOf,
 	lookHasTrail,
@@ -97,10 +98,10 @@ class BulletPool {
 		/** Turn the part along the velocity (player bolts); enemy balls are round. */
 		private readonly orient: boolean,
 		/**
-		 * Bullets this pool leaves to another one, by payload and draw scale (the enemy pool skips goo while the goo pool
-		 * draws it; both pools skip what their sprite pool draws).
+		 * Bullets this pool leaves to another one, by payload and slot (the enemy pool skips goo while the goo pool
+		 * draws it; both pools skip the slots their sprite pool drew this frame).
 		 */
-		private readonly skip?: (payload: number, scale: number) => boolean,
+		private readonly skip?: (payload: number, slot: number) => boolean,
 		/** The look of a bullet by payload and draw scale (absent: look 0). */
 		private readonly lookOf?: (payload: number, scale: number) => number,
 		/** Trails by look index (absent / undefined entry: no trail). */
@@ -128,8 +129,8 @@ class BulletPool {
 		const slots = math.max(this.parts.size(), n);
 		for (let i = 0; i < slots; i++) {
 			const payload = i < n && sim.isVisible(i) ? sim.payloadAt(i) : -1;
-			const scale = payload >= 0 ? sim.scaleAt(i) : 1;
-			if (payload >= 0 && (this.skip === undefined || !this.skip(payload, scale))) {
+			if (payload >= 0 && (this.skip === undefined || !this.skip(payload, i))) {
+				const scale = sim.scaleAt(i);
 				while (this.parts.size() <= i) this.grow();
 				const part = this.parts[i];
 				const cur = sim.positionAt(i);
@@ -472,7 +473,7 @@ export class BulletRenderController implements OnStart {
 		// Every enemy look's placeholder is today's small ball (the needle's sliver would change snipers' bullets):
 		// one shared look object, so a part never rewrites its props when its bullet's look index changes.
 		const small = bulletLook(pack, BULLET_VIEW.enemyVisualId, enemyDiameter, 0);
-		const enemyArt = artLooks(pack, ENEMY_BULLET_LOOK_IDS);
+		const enemyArt = artLooks(pack, ENEMY_BULLET_LOOK_IDS, "enemy");
 		const enemySprites =
 			enemyArt.size() > 0
 				? new SpriteBulletPool(
@@ -538,7 +539,7 @@ export class BulletRenderController implements OnStart {
 		const looks = PLAYER_BULLET_LOOK_IDS.map((id) => bulletLook(pack, id, playerLength, 2));
 		const trails = looks.map((look, i) => (lookHasTrail(i as PlayerBulletLookId) ? trailLook(look) : undefined));
 		const playerSkip = emberDecal ? isEmberPayload : undefined;
-		const playerArt = artLooks(pack, PLAYER_BULLET_LOOK_IDS);
+		const playerArt = artLooks(pack, PLAYER_BULLET_LOOK_IDS, "player");
 		let playerSprites: SpriteBulletPool | undefined;
 		if (playerArt.size() > 0) {
 			const spriteTrails = new Map<number, TrailLook>();
@@ -580,11 +581,12 @@ export class BulletRenderController implements OnStart {
 				const alpha = this.sim.getAlpha();
 				const store = clientStore.getState();
 				const reducedMotion = selectJuice(store).reducedMotion;
-				enemy.frame(state.combat.enemyBullets, alpha);
+				// Sprite pools first: each neon pool then skips the slots its sprite pool drew (withSprites).
 				if (enemySprites !== undefined) {
 					enemySprites.reducedMotion = reducedMotion;
 					enemySprites.frame(state.combat.enemyBullets, alpha);
 				}
+				enemy.frame(state.combat.enemyBullets, alpha);
 				goo?.frame(state.combat.enemyBullets);
 				strike?.frame(state.combat.enemyBullets);
 				ember?.frame(state.combat.playerBullets);
@@ -592,13 +594,13 @@ export class BulletRenderController implements OnStart {
 				const me = this.sim.getViewPlayerIndex(); // spectating: the watched teammate's bullets stay opaque
 				const trailsOn = buildTrailsOn(selectDisplay(store).buildFx, reducedMotion);
 				const fade = n > 1 ? (emitter: number) => playerBulletTransparency(n, emitter, me) : undefined;
-				player.trailsOn = trailsOn;
-				player.frame(state.combat.playerBullets, alpha, fade);
 				if (playerSprites !== undefined) {
 					playerSprites.trailsOn = trailsOn;
 					playerSprites.reducedMotion = reducedMotion;
 					playerSprites.frame(state.combat.playerBullets, alpha, fade);
 				}
+				player.trailsOn = trailsOn;
+				player.frame(state.combat.playerBullets, alpha, fade);
 				debug.profileend();
 			},
 		);
@@ -633,26 +635,35 @@ export class BulletRenderController implements OnStart {
 	}
 }
 
-/** The sprite art of each look that has any (pack.bullet), by look index; empty: every look is its placeholder. */
-function artLooks(pack: ThemePack, ids: ReadonlyArray<string>): ReadonlyMap<number, SpriteBulletLook> {
+/**
+ * The sprite art of each look that has any (pack.bullet), by look index, each drawn at its own size at its reference
+ * scale (shared/view bulletArtReferenceScale); empty: every look is its placeholder.
+ */
+function artLooks(
+	pack: ThemePack,
+	ids: ReadonlyArray<string>,
+	pool: "player" | "enemy",
+): ReadonlyMap<number, SpriteBulletLook> {
 	const out = new Map<number, SpriteBulletLook>();
 	for (let i = 0; i < ids.size(); i++) {
 		const sprite = pack.bullet(ids[i]);
-		if (sprite !== undefined) out.set(i, spriteBulletLook(sprite, STUDS_PER_TILE));
+		if (sprite !== undefined) {
+			out.set(i, spriteBulletLook(sprite, STUDS_PER_TILE, bulletArtReferenceScale(pool, i)));
+		}
 	}
 	return out;
 }
 
 /**
- * A neon pool's skip: its own (`skip`, the decal pools' kinds) plus whatever `sprites` draws. No sprite pool: `skip`
- * itself, so a pack without bullet art runs exactly today's code.
+ * A neon pool's skip: its own (`skip`, the decal pools' kinds) plus the slots `sprites` drew this frame (it runs
+ * first). No sprite pool: `skip` itself, so a pack without bullet art runs exactly today's code.
  */
 function withSprites(
 	skip: ((payload: number) => boolean) | undefined,
 	sprites: SpriteBulletPool | undefined,
-): ((payload: number, scale: number) => boolean) | undefined {
+): ((payload: number, slot: number) => boolean) | undefined {
 	if (sprites === undefined) return skip;
-	return (payload, scale) => (skip !== undefined && skip(payload)) || sprites.draws(payload, scale);
+	return (payload, slot) => sprites.drew(slot) || (skip !== undefined && skip(payload));
 }
 
 function subFolder(parent: Folder, name: string): Folder {
