@@ -2073,5 +2073,33 @@
 				"recolorNote": "Source levels (luminance x pixels, land + hold): 0 x120 (the black outline: stays black, left out of the mean), 82 x9 (#376633, the darkest shade) -> #700070, 110 x56 (#418e3b) -> #b000b0, 150 x213 (#56c44d, the body) -> enemyGoo #f000f0, 197 x107 (#a1e09c, the lit top) -> #ff80ff; no source pixel lies between the stops, so each colour maps to exactly its stop and the shading keeps its order. Lit mean #e824e8, 7.1 CIE76 from #f000f0 (hold alone #e725e7, 7.7; land #ea20ea, 5.6), worst contrast 3.12:1 on #3a3a46."
 			}
 		}
+	},
+	"boostAuras": {
+		"$comment": [
+			"docs/BOOST_ART.md BAD3: the boost auras under a boosted player (fx.boost.aura.<kind>), ORIGINAL art drawn by",
+			"scripts/art/gen-boost-auras.js (art:build and art:lock run it first) into art/vendor/kaleb-vale/boost-auras/:",
+			"Fury a ring of fire with embers, Quickstep three comets, Frenzy six whirling blades, Aegis six shield plates with a",
+			"sweeping glint. Greyscale (the renderer tints each with its boost.<kind> role), 8-frame seamless loops, every stack",
+			"rank drawn natively: ringPx is each rank's ring radius, round((auraRadiusTiles 0.55 + rank x auraRingStepTiles",
+			"0.14) x 29.6) px (the generator's RING_PX; gen-boost-auras.test.js pins the two, boostAuras.spec.ts pins the",
+			"generated layout against BOOST_VIEW). Its OWN sheet art/build/<atlas>.png with",
+			"src/shared/theme/packs/vale/boostAuraLayout.ts, so no other atlas repacks. fps 10: the owner's approved preview",
+			"(100 ms a frame). pixelsPerTile: the density it was drawn at (the swarmer's 29.6); the view maps each rank's ring",
+			"exactly onto its disc's radius. Build just this group: node scripts/art/build-atlases.js --only boostAuras (and",
+			"--lock --only boostAuras)."
+		],
+		"atlas": "boost-auras",
+		"pad": 1,
+		"pixelsPerTile": 29.6,
+		"pixelsPerTileFrom": "enemy.swarmer",
+		"fps": 10,
+		"frames": 8,
+		"ringPx": [16, 20, 25, 29],
+		"sets": {
+			"fx.boost.aura.fury": { "file": "kaleb-vale/boost-auras/aura_fury_r{r}_{f}.png" },
+			"fx.boost.aura.quickstep": { "file": "kaleb-vale/boost-auras/aura_quickstep_r{r}_{f}.png" },
+			"fx.boost.aura.frenzy": { "file": "kaleb-vale/boost-auras/aura_frenzy_r{r}_{f}.png" },
+			"fx.boost.aura.aegis": { "file": "kaleb-vale/boost-auras/aura_aegis_r{r}_{f}.png" }
+		}
 	}
 }
