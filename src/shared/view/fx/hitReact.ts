@@ -138,6 +138,11 @@ export class HitReactSlots {
 	readonly id: number[];
 	/** Start of the last rim flash (-math.huge: never). */
 	readonly flashAt: number[];
+	/**
+	 * Time of the last hit (or capped hit), every one, not limited by FEEL_HIT.minSec like the flash (-math.huge:
+	 * never). hitAge reads it: a sprite whose hit animation outlasts the 0.1 s sim flash (docs/DUMMY_ART.md DD1).
+	 */
+	readonly hitAt: number[];
 	/** The sprite holds until this time. */
 	readonly holdUntil: number[];
 	/** Start of the current push (-math.huge: none). */
@@ -151,6 +156,7 @@ export class HitReactSlots {
 		this.capacity = capacity;
 		this.id = filled(capacity, 0);
 		this.flashAt = filled(capacity, -math.huge);
+		this.hitAt = filled(capacity, -math.huge);
 		this.holdUntil = filled(capacity, -math.huge);
 		this.pushAt = filled(capacity, -math.huge);
 		this.pushX = filled(capacity, 0);
@@ -166,6 +172,7 @@ export class HitReactSlots {
 	private adopt(i: number, id: number): void {
 		this.id[i] = id;
 		this.flashAt[i] = -math.huge;
+		this.hitAt[i] = -math.huge;
 		this.holdUntil[i] = -math.huge;
 		this.pushAt[i] = -math.huge;
 		this.pushX[i] = 0;
@@ -196,6 +203,7 @@ export class HitReactSlots {
 		if (this.id[i] !== e.actorId) this.adopt(i, e.actorId);
 
 		if (isHit || isCapped) {
+			this.hitAt[i] = now;
 			if (now - this.flashAt[i] >= FEEL_HIT.minSec - EPS) this.flashAt[i] = now;
 		}
 		if (holdMs > 0 && killHolds) this.extendHold(i, now + holdMs / MS);
@@ -228,6 +236,16 @@ export class HitReactSlots {
 		this.pushAt[i] = now;
 		this.pushX[i] = (sx / len) * texels;
 		this.pushY[i] = (sy / len) * texels;
+	}
+
+	/**
+	 * Seconds since slot i's last hit (or capped hit) at `now`, for actor `actorId`: math.huge when it was never hit or
+	 * the slot tracks another actor. Not motion-scaled (it times an animation, not a screen shake).
+	 */
+	hitAge(i: number, actorId: number, now: number): number {
+		if (i < 0 || i >= this.capacity || this.id[i] === 0 || this.id[i] !== actorId) return math.huge;
+		const at = this.hitAt[i];
+		return at === -math.huge ? math.huge : now - at;
 	}
 
 	/**

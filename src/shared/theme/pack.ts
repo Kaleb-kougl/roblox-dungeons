@@ -32,6 +32,7 @@ import {
 	type PactAltarTheme,
 	type BreakableTheme,
 	type BulletArt,
+	type FloorSpriteArt,
 	type DecorArt,
 	type FxArt,
 	type LocaleReport,
@@ -275,6 +276,28 @@ export interface BulletSprite {
 }
 
 /**
+ * A floor sprite (docs/GOO_ART.md GA2, ThemeCore.floorSprite: the goo puddle): a one-facing set lying flat on the
+ * floor, its art's up screen-up (never turned). `land` while the puddle lands, then `hold(variant)` (one of
+ * `holdFrames`, picked per puddle). Undefined from ThemePack.floorSprite: draw the placeholder disc.
+ */
+export interface FloorSprite {
+	readonly id: string;
+	readonly set: SpriteSet;
+	/** Hold variants (>= 1). */
+	readonly holdFrames: number;
+	/** The hold frame's lit box, art px (sizes the drawn puddle: shared/view gooSpriteSize). */
+	readonly litW: number;
+	readonly litH: number;
+	/** The art's mean colour (non-outline opaque pixels, after recolour), for checks; never a tint. */
+	readonly meanColor: Color3;
+	/** The land cell. */
+	readonly land: SpriteFrame;
+	/** Hold variant `variant` (wraps). */
+	readonly hold: (variant: number) => SpriteFrame;
+	readonly core: FloorSpriteArt;
+}
+
+/**
  * A sprite effect (ThemeCore.fx) with Roblox types: a one-facing SpriteSet, its flipbook and how to draw it. Drawn
  * widthTiles x heightTiles; `ImageColor3 = color`; `additive`: LightInfluence 0.
  */
@@ -294,6 +317,18 @@ export interface FxSprite {
 	/** Frame `index` of the flipbook (wraps when looping, holds the last frame otherwise). */
 	readonly frame: (index: number) => SpriteFrame;
 	readonly core: FxArt;
+	/** A boost aura's loop per stack rank (FxArt.ranks; docs/BOOST_ART.md BAD3), or undefined: draw the disc. */
+	readonly ranks?: ReadonlyArray<FxSpriteRank>;
+}
+
+/** One stack rank of a boost aura (FxSprite.ranks). */
+export interface FxSpriteRank {
+	readonly frames: number;
+	readonly fps: number;
+	/** The ring's radius, art px from the set's pivot. */
+	readonly ringPx: number;
+	/** Frame `index` of this rank's loop (wraps). */
+	readonly frame: (index: number) => SpriteFrame;
 }
 
 const UNTINTED = new Color3(1, 1, 1);
@@ -343,6 +378,7 @@ export class ThemePack {
 	private pactAltarCache: PactAltar | undefined;
 	private readonly fxSprites = new Map<string, FxSprite | false>();
 	private readonly bulletSprites = new Map<string, BulletSprite | false>();
+	private readonly floorSprites = new Map<string, FloorSprite | false>();
 
 	/** Defensive: a manifest that failed validation still loads; bad entries fall back individually. */
 	constructor(manifest: unknown, opts: ThemePackOptions = {}) {
@@ -638,6 +674,37 @@ export class ThemePack {
 		return out;
 	}
 
+	/**
+	 * A floor sprite (docs/GOO_ART.md GA2: a BULLET_ART.floorSpriteIds id, the goo puddle), cached. Undefined, without
+	 * a warning, when the pack has none: draw the placeholder disc. Art the renderer cannot draw warns once and is
+	 * undefined too (ThemeCore.floorSprite).
+	 */
+	floorSprite(id: string): FloorSprite | undefined {
+		const cached = this.floorSprites.get(id);
+		if (cached !== undefined) {
+			return cached === false ? undefined : cached;
+		}
+		const core = this.core.floorSprite(id);
+		const set = core !== undefined ? this.sprites(id) : undefined;
+		let out: FloorSprite | undefined;
+		if (core !== undefined && set !== undefined) {
+			const n = core.holdFrames;
+			out = {
+				id,
+				set,
+				holdFrames: n,
+				litW: core.litW,
+				litH: core.litH,
+				meanColor: this.cachedColor(core.meanColor),
+				land: set.frame(BULLET_ART.land, 0, 0),
+				hold: (variant) => set.frame(BULLET_ART.hold, 0, ((variant % n) + n) % n),
+				core,
+			};
+		}
+		this.floorSprites.set(id, out ?? false);
+		return out;
+	}
+
 	// --- sprite effects (docs/FX_AUDIO.md F1) -----------------------------------------------------
 
 	/** A sprite effect, cached. Undefined, without a warning, when the pack has no art for it: draw nothing. */
@@ -664,6 +731,12 @@ export class ThemePack {
 				additive: core.additive,
 				frame: (index) => set.frame(FX_ANIMATION, 0, index),
 				core,
+				ranks: core.ranks?.map((r) => ({
+					frames: r.frames,
+					fps: r.fps,
+					ringPx: r.ringPx,
+					frame: (index: number) => set.frame(r.animation, 0, index),
+				})),
 			};
 		}
 		this.fxSprites.set(id, out ?? false);

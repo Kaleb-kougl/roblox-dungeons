@@ -28,7 +28,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/FX_AUDIO.md` | Sprite effects and audio (Ninja Adventure FX / Audio): slots, pipelines, cue mappers, tasks X0 / F0-F6 / A0-A5 |
 | `docs/SPECTATE.md` | Co-op spectating (watch and switch between living teammates after a death): plan, tasks S0-S6, decisions |
 | `docs/BOOSTS.md` | Temporary boosts dropped by killed enemies (Fury / Quickstep / Frenzy / Aegis): plan, tasks B0-B11, decisions |
-| `docs/BOOST_ART.md` | Boost drop art (Lords of Pain gold coins and gemstones, tinted halo and beam, gems out of decor): plan, tasks BA0-BA7, decisions |
+| `docs/BOOST_ART.md` | Boost drop art (Lords of Pain gold coins and gemstones, tinted halo and beam, gems out of decor) and the boost auras (original pixel-art rings per kind and stack rank, BAD3): plan, tasks BA0-BA7, decisions |
 | `docs/BREAKABLE_DROPS.md` | Boosts from breakables (some barrels / crates hold a boost, picked per floor from the floor seed, released on any break, a soft glint on loaded pieces): plan, tasks BL0-BL9, decisions BLD1-BLD9 |
 | `docs/SNIPER_ART.md` | Sniper art (`enemy.sniper` as the Lords of Pain subservient): mapping, budget, tasks SN1-SN8, decisions D1-D6 |
 | `docs/BOSS_DEMONLORD.md` | Demon Lord boss variant (`boss.demonlord`, seeded pick per endless boss floor, Lords of Pain Demonlord art): plan, tasks D0-D8, decisions |
@@ -63,6 +63,9 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/TREASURE.md` | Treasure rooms (vaults: about one endless floor in two from floor 2 has a caged chest in a combat / elite room, seen through the doorway; clearing the room unlocks it, its lock (UNTOUCHED / SWIFT) kept or cracked one tier down; walk up to open it: a relic, boosts or a bonus draft; gameplay, opt-in `SimConfig.treasure`): plan, TR0 findings, as built TR1-TR8, tasks TR0-TR11, decisions TRD1-TRD14 |
 | `docs/FORTUNE.md` | Fortune (risk shrines: two pact altars in the shrine room, Greed = a shown curse + a Legendary deal now, Horde = the next room fights a second wave for x2 score; the Goldling: a rare harmless gold enemy that flees within its room, coins per hit, a jackpot if caught within 10 s; gameplay, opt-in `SimConfig.pacts` / `SimConfig.golden` on endless only): plan, as built, open owner calls, Studio check, tasks FO0-FO13 / PS1-PS5 / GE1-GE4, decisions FD1-FD16 |
 | `docs/PROJECTILE_ART.md` | Projectile art (every flying bullet drawn with the Player Bullets pack: yellow / green bolts and the Hyper flame for the player, chevron / needle / teardrop recoloured into the danger pink for enemies, optional `fx.bullet.hit`; goo / strike / ember unchanged; presentation only): plan, measured pack, mapping, tasks PA0-PA10, decisions PAD1-PAD11 |
+| `docs/DUMMY_ART.md` | Training dummy art (`enemy.dummy` drawn with the Training Dummy 2D Pixel Art pack: one facing, idle / 7-frame hit wobble / 9-frame break, the wobble on a view-side 0.7 s hit clip; presentation only): plan, tasks DA1-DA7, decisions DD1-DD5 |
+| `docs/GOO_ART.md` | Goo art (the Ooze's goo puddles drawn with the heimlich3 Slime pack's last two frames: land then splat, recoloured into `enemyGoo`, flat on the floor sized to cover the hit; presentation only): plan, tasks GA0-GA7, decisions GAD1-GAD5 |
+| `docs/KENNEY_DECOR.md` | Kenney decor (Kenney's CC0 Isometric Dungeon / Library reprojected from their 30 degree camera to the game's 55 by `scripts/art/kenney/reproject.py`: flat / box / uniform warps; library v2, a `mess` theme, richer storerooms, floor patches planned; the bookcase's alternative art set wired): plan, as built, tasks KN0-KN13, decisions KND1-KND12 |
 | `docs/LEGENDARIES.md` | Legendaries (two legendary boons, Overkill: a kill's leftover damage streaks to the nearest enemy and chains; Bastion: a full-ring 27-tick guard, +1 pip and a brace that restores a pip when a guard or roll stops 3 bullets; four duos Supernova / Skewer / Citadel / Stone Heart; gameplay, opt-in `SimConfig.builds`): plan, LG0 findings, as built LG1-LG6, LG7 tuning, owner tuning, tasks LG0-LG9, decisions LGD1-LGD14 |
 
 Decision log (deviations from `PLAN.md`):
@@ -676,7 +679,13 @@ Decision log (deviations from `PLAN.md`):
   layouts) UNTOUCHED only 2 / 28 (was 8 / 25). A chest never stands on, against or beside a bookcase (the cell filter's
   solid-decor rules). Vale chest art rendered from the owner's "Old Chest" model (SebastianSosnowski, CC-BY 4.0, Credits screen;
   `kit-chest` / `kit-chest-open`, four facings, render_kit.py `importScale` / `lid`, per-facing sprite pivots), uploaded
-  2026-11-04; cage art, sounds (TR9), Studio check and playtest (TR11) pending.
+  2026-11-04. Cage and light column (TR9, 2026-11-06, presentation only): original pixel art from
+  `scripts/art/gen-treasure-art.js` (a domed iron birdcage in the chest's projection, four facings with the bars the chest
+  hides cut; a looping greyscale column), each in a sheet of its own (`vault-cage.png`, `treasure-column.png`) from a new
+  atlas group `treasure` (`--only treasure`, generated `packs/vale/treasureLayout.ts`), so no shared atlas repacks; the
+  column is vale's third fx source; art cages turn with the chest, cap at `cageMaxHeightTiles` 1.2 and draw
+  `cageDepthStuds` nearer the camera. Both sheets uploaded 2026-11-06 (`assetIds.ts`); sounds (TR9), Studio check and
+  playtest (TR11) pending.
 
 - **Fortune (docs/FORTUNE.md).** Gameplay. Two opt-in configs, endless only: `SimConfig.pacts` (`ENDLESS_PACTS_CONFIG`)
   and `SimConfig.golden` (`ENDLESS_GOLDEN_CONFIG`), each with its own hash group appended LAST (`pellets`, `treasure`,
@@ -743,6 +752,57 @@ Decision log (deviations from `PLAN.md`):
   `bullets.png` uploaded 2026-11-05 (PA8, `assetIds.ts`), so the bundled vale pack draws the art. Spike PA0, the
   Studio check (PA9) and a full laptop `art:build` pending.
 
+- **Goo art (docs/GOO_ART.md).** Presentation only (no sim, dungeon, lockstep, hash, replay, fixture or score change).
+  The Ooze's goo puddles can draw the last two frames of the Free Slimes Asset Pack's green slime death (heimlich3;
+  commercial use, modification allowed, no redistribution or AI training; raw files in gitignored
+  `art/vendor/Free Slimes Asset Pack/`, Credits screen): frame 3 for the first `landSec` 0.1 s, frame 4 for the rest, the
+  same fade as the disc, a mirror from the slot index. Recoloured into `enemyGoo` (mean 7.1 CIE76). Its own sheet
+  `goo.png` (`--only goo`, generated `packs/vale/gooLayout.ts`). Supersedes PAD3 for goo only: `BULLET_ART.floorSpriteIds`
+  (strike / ember keep `decalIds`, no art), per-id animations `land` / `hold` (`SlotContract.idBaseAnimations`), a
+  `lit` box on the set, `gooArtReport` (own module; contract.luau / validate.luau stay 186 / 196). Flat on the floor,
+  depth stretched by 1 / sin(pitch), sized so it covers the hit on screen (`gooSpriteSize`: 1.05 x 0.70 tiles);
+  `FloorSpritePool` behind the goo `DecalPool`. Without a `goo.png` id the disc is drawn as before; uploaded 2026-11-06
+  (`assetIds.ts`), so the bundled vale pack draws them. Studio check (GA7, after PA0) pending.
+
+- **Boost auras (docs/BOOST_ART.md BAD3).** Presentation only (no sim, dungeon, lockstep, hash, replay, fixture or
+  score change). The Neon discs under a boosted player can draw ORIGINAL pixel art (supersedes BA-P5's tinted Lords of
+  Pain ring): `scripts/art/gen-boost-auras.js` (run by `art:build` / `art:lock` before packing, into
+  `art/vendor/kaleb-vale/boost-auras/`, like the loot glint) draws Fury a flame ring with embers, Quickstep three
+  comets, Frenzy six whirling blades, Aegis six shield plates with a sweeping glint: greyscale (tinted by
+  `boost.<kind>`), 8-frame seamless loops, every stack rank drawn natively (ring round((0.55 + 0.14 rank) x 29.6) =
+  16 / 20 / 25 / 29 px; never scaled for the stack). Its own sheet `boost-auras.png` (group `boostAuras`,
+  `--only boostAuras`, generated `packs/vale/boostAuraLayout.ts`; every other output byte-identical). Theme:
+  `boostAuraArt.ts` (own module; contract.luau / validate.luau 186 / 197): on `fx.boost.aura.<kind>` only, `ringPx`
+  (per rank, art px) with rank 0 in `play` and rank r in `rank.<r>`, looping, tinted by its own role; `ThemePack.fx(...)
+  .ranks`. View: `auraArtFrame` on the pulse's `simSec` (reduced motion holds frame 0), `auraArtStudsPerPixel` (the
+  rank's ring exactly on `auraDisc`'s radius, same lifts and cap), `auraArtTransparency` 0.2 + the discs' pulse.
+  `BoostAuraController` draws a flat sprite anchor (`createSpriteAnchor`, `FLOOR_CANVAS_YAW`) per kind / rank with art,
+  the disc otherwise. Original art: no notices or Credits entry. `boost-auras.png` uploaded 2026-11-06 (`assetIds.ts`),
+  so the bundled vale pack draws the auras; Studio check pending.
+- **Relic pedestals as chests (docs/TREASURE.md "Relic pedestals as chests").** Presentation only (no sim, dungeon,
+  lockstep, hash, replay, fixture or score change). RunMarkerController draws each relic pedestal as the vault chest
+  (`treasure.chest`, facing `TREASURE_VIEW.pedestal`) and, once taken, plays the vault's opening (jolt, pop to
+  `treasure.chestopen`, solo freeze, `stamp` nudge, ring burst, light column in the Rare floor colour; pure
+  `shared/view/treasure` `PedestalChestTracker`); the open chest stays. The chest bodies and column moved to
+  `client/controllers/render/treasureBody.ts`, shared with TreasureRenderController. The shrine keeps its cylinder;
+  `PROGRESSION_VIEW.pedestalRadiusTiles` and `PEDESTAL_COLOR_ROLE` are gone; `DECOR_FX.glintLiftTiles` 0.7 -> 1.5;
+  `tutorial.prompt.relic.*` reworded. Studio check pending.
+- **Kenney bookcases (docs/KENNEY_DECOR.md).** Presentation only. Every Kenney piece the plan names is reprojected to
+  the game camera (`scripts/art/kenney/reproject.py`, `kenney.json`; 87 PNGs in gitignored `art/vendor/kenney/`); the
+  bookcases are wired as the bookcase's alternative art: 14 own PNGs `kenney-bookcase-<look>-x / -z`, vale variants
+  3-16 after the kit pair, `DECOR_MAX_VARIANTS` 4 -> 16, and decorPlan's `bookcaseVariant` (one set per room,
+  `DECOR_BOOKCASES`, salts `bookcaseSet` / `bookcaseCell`; with only the kit pair the plan is unchanged). Credits:
+  Isometric Library, Kenney, CC0. The 14 PNGs uploaded 2026-11-06 (IDs in `packs/vale/assetIds.ts`); the Lune specs
+  and a Studio check pending.
+
+- **Training dummy art (docs/DUMMY_ART.md).** Presentation only (no sim, dungeon, lockstep, hash, replay, fixture or
+  score change; the dummy keeps its 8 hp, body and corpse time). `enemy.dummy` gets a one-facing pixel-art sprite set
+  from the Training Dummy 2D Pixel Art pack (any game use, no resale / redistribution as an asset, no NFTs, credit
+  appreciated; author to confirm; raw files in gitignored `art/vendor/training-dummy/`): `dummy.png` (17 cells of
+  62x50, `Pixelated`, bodyTiles 1.4) + its rim. Its 7-frame hit wobble outlasts the sim's 0.1 s hit flash, so the view
+  times it: `HitReactSlots.hitAge` (seconds since every hit), `ActorSpriteInput.hitClip`, `shared/view/dummy`
+  `VIEW_HIT_CLIP_SEC` (only `dummy`, 0.7 s); with a clip `chooseActorAnim` plays `hit` over it and never over the flash.
+  Every other set chooses exactly as before. Upload (DA5) and the Studio check (DA7) pending.
 - **Legendaries (docs/LEGENDARIES.md).** Gameplay. Two legendary boons appended to `BOONS` (`Boon.OVERKILL` 15,
   `Boon.BASTION` 16; `BOON_COUNT` 17, `CLASSIC_BOON_COUNT` stays 12, so the tutorial's draft is unchanged) and four duos
   appended to `DUOS` (Supernova / Skewer / Citadel / Stone Heart, indices 9-12, card ids 73-76), opt-in through

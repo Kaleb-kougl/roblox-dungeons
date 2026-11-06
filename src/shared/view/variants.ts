@@ -10,7 +10,8 @@
  *               shield values: a frame can step several ticks, so the per-tick events would miss hits)
  *   Vengeful    the per-actor corpse length (EVD16: held while armed, then a short fade) and its telegraph pulse
  *   goo         which bullet pool draws a bullet (BulletKind.GOO -> the decal pool, unless GOO_VIEW.decal is off) and a
- *               puddle's pop-in / fade (gooDecalLook)
+ *               puddle's pop-in / fade (gooDecalLook); the floor sprite's cell / variant / mirror / fade (gooSpriteLook) and
+ *               size by the cover-the-hit rule (gooSpriteSize, gooSpritePlacement; docs/GOO_ART.md GA3)
  *   imp blink   BlinkWatch: the frame an imp lands (blink wind-up -> landing aim), where it left and where it landed
  *   fx hints    viewFxHints: the summoner's casting ring drawn only during its summon (its sim hint keys on the state)
  *
@@ -34,7 +35,7 @@ import { AFFIX_IDS, affixNameKey, affixRole, type AffixId, type ColorRole } from
 import { ACTOR_VIEW } from "./config";
 import type { ActorFxHintsView, SegmentSink } from "./markings";
 import type { ActorLook } from "./sprites";
-import { AFFIX_VIEW, GOO_VIEW } from "./variantsConfig";
+import { AFFIX_VIEW, GOO_ART_VIEW, GOO_VIEW } from "./variantsConfig";
 import { STRIKE_VIEW } from "./newEnemiesConfig";
 
 const TAU = 2 * math.pi;
@@ -344,6 +345,111 @@ export function gooDecalLook(lifeLeft: number, totalLife: number, out: GooLook):
 	const age = totalLife - lifeLeft;
 	out.scale = GOO_VIEW.popSec > 0 ? math.clamp(age / GOO_VIEW.popSec, 0, 1) : 1;
 	out.transparency = GOO_VIEW.fadeSec > 0 ? 1 - math.clamp(lifeLeft / GOO_VIEW.fadeSec, 0, 1) : 0;
+	return out;
+}
+
+/** Which cell a goo floor sprite shows (docs/GOO_ART.md GA3): the land cell, then a hold variant. */
+export type GooSpriteFrame = "land" | "hold";
+
+/** A goo floor sprite's look this frame (gooSpriteLook). */
+export interface GooSpriteLook {
+	frame: GooSpriteFrame;
+	/** The hold variant (0 .. holdFrames - 1), from the slot. */
+	variant: number;
+	/** Mirrored along screen X, from the slot. */
+	mirror: boolean;
+	/** 0 opaque .. 1 gone (gooDecalLook's fade). */
+	transparency: number;
+}
+
+/**
+ * A goo floor sprite with `lifeLeft` of its `totalLife` seconds in bullet slot `slot` (docs/GOO_ART.md GA3): the land
+ * cell while its age (bullet time, so the Hourglass stretches it like the disc's pop) is under GOO_ART_VIEW.landSec,
+ * then the hold cell; transparency fades over the last GOO_VIEW.fadeSec exactly as gooDecalLook; no scale pop. The
+ * hold variant (of `holdFrames`) and the mirror come from the slot's bits (GOO_ART_VIEW.mirrorMask / variantShift):
+ * deterministic, no rng, constant for a puddle's life. Writes `out` and returns it.
+ */
+export function gooSpriteLook(
+	lifeLeft: number,
+	totalLife: number,
+	slot: number,
+	out: GooSpriteLook,
+	holdFrames = 1,
+): GooSpriteLook {
+	const age = totalLife - lifeLeft;
+	out.frame = age < GOO_ART_VIEW.landSec ? "land" : "hold";
+	const n = math.max(1, holdFrames);
+	out.variant = bit32.rshift(slot, GOO_ART_VIEW.variantShift) % n;
+	out.mirror = bit32.band(slot, GOO_ART_VIEW.mirrorMask) !== 0;
+	out.transparency = GOO_VIEW.fadeSec > 0 ? 1 - math.clamp(lifeLeft / GOO_VIEW.fadeSec, 0, 1) : 0;
+	return out;
+}
+
+/** The goo puddle's lit box on the floor (gooSpriteSize), tiles: across the screen and up it (the floor depth). */
+export interface GooSpriteSize {
+	widthTiles: number;
+	depthTiles: number;
+}
+
+/**
+ * The floor size of a goo floor sprite's lit box (`litW` x `litH` art px), tiles, by the "cover the hit" rule (docs/
+ * GOO_ART.md GAD3 / GAD4): drawn flat on the floor and seen at `pitchDeg`, a floor length L reads L * sin(pitch) tall
+ * on screen, so the depth is stretched by 1 / sin(pitch) and the screen shows the art's own aspect (litH / litW); the
+ * lit ellipse on screen is the smallest of that aspect that covers the hit circle's on-screen ellipse (2 * radius
+ * wide, 2 * radius * sin(pitch) tall). Concentric and axis-aligned, so covering means both axes at least the hit's.
+ * 31 x 17 at radius 0.35, pitch 55: about 1.05 wide, 0.70 deep. Writes `out` (a new table when absent) and returns it.
+ */
+export function gooSpriteSize(
+	litW: number,
+	litH: number,
+	radius: number = GOO_ART_VIEW.hitRadius,
+	pitchDeg: number = GOO_ART_VIEW.cameraPitchDeg,
+	out: GooSpriteSize = { widthTiles: 0, depthTiles: 0 },
+): GooSpriteSize {
+	const sinPitch = math.sin(math.rad(pitchDeg));
+	const aspect = litH / litW; // screen height / width of the art
+	const hitWide = 2 * radius;
+	const hitTall = hitWide * sinPitch;
+	const width = math.max(hitWide, hitTall / aspect);
+	out.widthTiles = width;
+	out.depthTiles = (width * aspect) / sinPitch;
+	return out;
+}
+
+/** Where a goo floor sprite's whole cell lies (gooSpritePlacement), tiles. */
+export interface GooSpritePlacement {
+	/** The cell across the screen and up it (the floor depth). */
+	widthTiles: number;
+	depthTiles: number;
+	/** The cell centre from the puddle's centre: to the screen's right, and down the screen along the floor. */
+	rightTiles: number;
+	downTiles: number;
+}
+
+/**
+ * The drawn cell of a goo floor sprite (`frameW` x `frameH` art px, pivot (`pivotX`, `pivotY`) = the lit box's centre,
+ * from the cell's top-left) whose lit box (`litW` x `litH`) is drawn `size` (gooSpriteSize): the cell's floor size at
+ * the same px-to-tile scales, and its centre's offset from the puddle centre (the pivot lies on the bullet), mirrored
+ * across with `mirror` (the art flips about the pivot). Writes `out` (a new table when absent) and returns it.
+ */
+export function gooSpritePlacement(
+	frameW: number,
+	frameH: number,
+	pivotX: number,
+	pivotY: number,
+	litW: number,
+	litH: number,
+	size: GooSpriteSize,
+	mirror: boolean,
+	out: GooSpritePlacement = { widthTiles: 0, depthTiles: 0, rightTiles: 0, downTiles: 0 },
+): GooSpritePlacement {
+	const across = size.widthTiles / litW;
+	const along = size.depthTiles / litH;
+	out.widthTiles = frameW * across;
+	out.depthTiles = frameH * along;
+	const right = (frameW / 2 - pivotX) * across;
+	out.rightTiles = mirror ? -right : right;
+	out.downTiles = (frameH / 2 - pivotY) * along;
 	return out;
 }
 

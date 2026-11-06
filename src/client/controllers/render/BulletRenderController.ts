@@ -18,6 +18,7 @@ import {
 	BUILD_BULLET_VIEW,
 	BULLET_VIEW,
 	ENEMY_BULLET_LOOK_IDS,
+	GOO_ART_VIEW,
 	GOO_VIEW,
 	PLAYER_BULLET_LOOK_IDS,
 	STRIKE_VIEW,
@@ -48,6 +49,7 @@ import { ThemeController } from "../game/ThemeController";
 import { BulletTrails, type TrailLook } from "./bulletTrails";
 import { renderPart } from "./placeholders";
 import { SpriteBulletPool, spriteBulletLook, type SpriteBulletLook } from "./SpriteBulletPool";
+import { FloorSpritePool, floorSpriteLook, type FloorSpriteLook } from "./FloorSpritePool";
 
 const RENDER_STEP = "KV_Bullets";
 const PARKED = new CFrame(BULLET_VIEW.parkedStuds[0], BULLET_VIEW.parkedStuds[1], BULLET_VIEW.parkedStuds[2]);
@@ -292,6 +294,9 @@ const EMBER_DECAL: DecalSpec = {
  * the affix rings, every marking and every moving bullet. It pops in and fades out over its life (spec.look;
  * Size / Transparency written only on a quantized change). Decals never move, so no interpolation. ONE BulkMoveTo per
  * frame.
+ * Sprite mode (docs/GOO_ART.md GA4): given a floor sprite look (the goo's, when the pack's `bullet.enemy.goo` has
+ * floor sprite art), the pool draws its bullets as FloorSpritePool anchors instead (flat, screen-up, placed once per
+ * puddle, sized to cover the hit) and builds no disc; without one, exactly the discs.
  */
 class DecalPool {
 	private readonly parts = new Array<BasePart>();
@@ -302,6 +307,7 @@ class DecalPool {
 	private readonly moveCFrames = new Array<CFrame>();
 	private readonly look: GooLook = { scale: 0, transparency: 0 };
 	private readonly y: number;
+	private readonly sprites: FloorSpritePool | undefined;
 	private sim: BulletSimulation | undefined;
 
 	constructor(
@@ -313,11 +319,30 @@ class DecalPool {
 		private readonly diameter: number,
 		/** A decal's whole life, seconds (the pop-in reads its age from it). */
 		private readonly totalLife: number,
+		/** Sprite mode: the floor sprite drawn instead of the disc (docs/GOO_ART.md GA4); absent: the disc. */
+		sprite?: FloorSpriteLook,
 	) {
 		this.y = floorStudsY() + spec.liftStuds + spec.thicknessStuds / 2;
+		this.sprites =
+			sprite !== undefined
+				? new FloorSpritePool(
+						folder,
+						`${spec.name}Sprite`,
+						PARKED,
+						sprite,
+						spec.accepts,
+						totalLife,
+						spec.liftStuds + spec.thicknessStuds,
+						spec.quantum,
+				  )
+				: undefined;
 	}
 
 	frame(sim: BulletSimulation): void {
+		if (this.sprites !== undefined) {
+			this.sprites.frame(sim);
+			return;
+		}
 		if (sim !== this.sim) {
 			this.sim = sim;
 			this.parkAll();
@@ -361,8 +386,9 @@ class DecalPool {
 		}
 	}
 
+	/** Pooled discs, or sprite anchors in sprite mode. */
 	poolSize(): number {
-		return this.parts.size();
+		return this.sprites !== undefined ? this.sprites.poolSize() : this.parts.size();
 	}
 
 	private park(i: number): void {
@@ -441,7 +467,10 @@ function trailLook(look: BulletLook): TrailLook {
  * A look whose `pack.bullet(id)` has art draws in a SpriteBulletPool on the same simulation (floor-flat sprites turned
  * along the velocity, flicker, unlit), and the neon pool skips those bullets; a look without art stays a neon part.
  * No look with art (the placeholder pack, vale before its bullet atlas has an id): no sprite pool is built and every
- * pool runs exactly as before. Trails stay neon parts; goo / strike / ember decals are unchanged (PAD3).
+ * pool runs exactly as before. Trails stay neon parts; strike / ember decals are unchanged (PAD3).
+ * Goo art (docs/GOO_ART.md GA4): when the pack's `bullet.enemy.goo` has floor sprite art (pack.floorSprite), the goo
+ * DecalPool runs in sprite mode (FloorSpritePool: flat slime puddles, screen-up, sized to cover the hit); without it
+ * the disc exactly as before, and with GOO_VIEW.decal off the normal enemy bullet look.
  */
 @Controller({})
 export class BulletRenderController implements OnStart {
@@ -512,13 +541,16 @@ export class BulletRenderController implements OnStart {
 		let goo: DecalPool | undefined;
 		if (decal) {
 			const visual = pack.placeholder(GOO_BULLET_ID);
+			// docs/GOO_ART.md GA4: the pack's goo floor sprite, when it has one, instead of the disc
+			const gooArt = pack.floorSprite(GOO_BULLET_ID);
 			goo = new DecalPool(
-				subFolder(folder, GOO_VIEW.folderName),
+				subFolder(folder, gooArt !== undefined ? GOO_ART_VIEW.folderName : GOO_VIEW.folderName),
 				GOO_DECAL,
 				pack.visualColor(visual.color),
 				Enum.Material[visual.material],
 				2 * GOO_BULLET_RADIUS * S,
 				SLIME.data.goo.life,
+				gooArt !== undefined ? floorSpriteLook(gooArt, S, GOO_VIEW.thicknessStuds) : undefined,
 			);
 		}
 		this.goo = goo;
@@ -616,7 +648,7 @@ export class BulletRenderController implements OnStart {
 		return [this.enemySprites?.poolSize() ?? 0, this.playerSprites?.poolSize() ?? 0];
 	}
 
-	/** Pooled goo decal parts (0 with the decal look off). */
+	/** Pooled goo decal parts, or goo sprite anchors with goo art (0 with the decal look off). */
 	getGooPoolSize(): number {
 		return this.goo?.poolSize() ?? 0;
 	}

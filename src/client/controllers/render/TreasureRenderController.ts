@@ -11,35 +11,25 @@ import {
 	TREASURE_CAGE_ID,
 	TREASURE_CHEST_ID,
 	TREASURE_CHEST_OPEN_ID,
-	TREASURE_COLUMN_FX_ID,
 	decorFxId,
-	isFxId,
 	treasureFloorRole,
 	treasureUiRole,
 	type DecorPiece,
-	type FxSprite,
 	type ThemePack,
 	type TreasurePiece,
-	type WorldImage,
 } from "shared/theme";
 import {
 	BREAKABLE_LOOT_VIEW,
-	BULLET_VIEW,
 	RENDER_ORDER,
 	SPRITE_VIEW,
 	animDtSec,
-	artPieceTop,
-	boxPieceTop,
-	breakableArtLayout,
 	degToRad,
 	floorStudsY,
 	isoBasis,
 	lootGlintBillboard,
 	lootGlintDucked,
-	spriteBillboard,
 	studsX,
 	studsZ,
-	type PieceTop,
 	type SpriteAnimChoice,
 	type SpriteBillboard,
 	type SpriteLayout,
@@ -97,13 +87,25 @@ import {
 	setModelTransparency,
 	type PlaceholderModel,
 } from "./placeholders";
-import { SPRITE_TINT_NONE, SpriteView } from "./SpriteView";
 import { visualLayout } from "./decorParts";
 import { buildGlint, setGlintBoard, setGlintFrame, setGlintTransparency, type Glint } from "./glintParts";
+import {
+	TREASURE_PARKED,
+	buildPieceBody,
+	buildTreasureColumn,
+	destroyPieceBody,
+	drawTreasureColumn,
+	hidePieceBody,
+	parkTreasureModel,
+	placePieceBody,
+	setPieceBodyTransparency,
+	type PieceBody,
+	type TreasureColumn,
+} from "./treasureBody";
 
 const V = TREASURE_VIEW;
 const HIDDEN = 1;
-const PARKED = new CFrame(BULLET_VIEW.parkedStuds[0], BULLET_VIEW.parkedStuds[1], BULLET_VIEW.parkedStuds[2]);
+const PARKED = TREASURE_PARKED;
 const AXES = floorAxes();
 const CENTRE = new Vector2(0.5, 0.5);
 const WHITE = new Color3(1, 1, 1);
@@ -119,25 +121,6 @@ const MAX_CARDS = 4;
 const PLATE_LABEL_SHARE = 0.42;
 /** A shard is this share of the plate's height. */
 const SHARD_HEIGHT_SHARE = 0.35;
-
-/** A drawn piece (the closed / open chest, an art cage): exactly one of model / sprite / image. */
-interface PieceBody {
-	readonly model: PlaceholderModel | undefined;
-	readonly sprite: SpriteView | undefined;
-	readonly image: ImageBody | undefined;
-	/** Its drawn top (the sparkle's place). */
-	readonly top: PieceTop;
-	/** Its drawn height, studs (the cage's sink). */
-	readonly heightStuds: number;
-	shown: boolean;
-	transparency: number;
-}
-
-interface ImageBody {
-	readonly anchor: Part;
-	readonly gui: BillboardGui;
-	readonly label: ImageLabel;
-}
 
 /** A floor text (the plate, a line): a thin invisible Part with a Top-face SurfaceGui, on the combo shout's layer. */
 interface FloorText {
@@ -171,13 +154,6 @@ interface CardView {
 	text: string;
 }
 
-interface Column {
-	readonly part: Part;
-	readonly anchor: Part;
-	readonly gui: BillboardGui | undefined;
-	readonly label: ImageLabel | undefined;
-}
-
 /**
  * A vault on screen (docs/TREASURE.md TR7, Design §4; the pure half is shared/view/treasure). Once per rendered frame
  * (after the camera) the pure TreasureViewTracker turns `state.treasure` and the run view's vault events
@@ -188,8 +164,9 @@ interface Column {
  *             The lid jolts before the pop and the unlocked chest wobbles (placeholder: a roll about its base; image
  *             art: the label's rotation; sprites: no wobble).
  *   cage      over the closed chest until the unlock: the placeholder's one bar repeated round the chest's footprint
- *             (cageBarOffsets, its `dash` spacing), or the art as a billboard. It sinks into the floor (reduced motion:
- *             fades) unlock.delaySec after the clear.
+ *             (cageBarOffsets, its `dash` spacing), or the art as a billboard turned like the chest, capped at
+ *             cageMaxHeightTiles and cageDepthStuds nearer the camera so it draws over the chest. It sinks into the
+ *             floor (reduced motion: fades) unlock.delaySec after the clear.
  *   sparkle   the BL glint art (`decor.fx.loot`, else `decor.fx.glint`) on the chest's top, tinted by the tier's floor
  *             role (white on the crack's flash), Legendary bigger and faster, faster again once unlocked; a still star
  *             under reduced motion or Particles off; a self-lit diamond without art. Hidden near an enemy bullet
@@ -228,7 +205,6 @@ export class TreasureRenderController implements OnStart {
 	private cageLook: TreasurePiece | undefined;
 	private glintArt: DecorPiece | undefined;
 	private glintLayout: SpriteLayout | undefined;
-	private columnFx: FxSprite | undefined;
 	private readonly floorColors = new Array<Color3>();
 	private readonly uiColors = new Array<Color3>();
 	// --- bodies
@@ -249,7 +225,7 @@ export class TreasureRenderController implements OnStart {
 	private star: Part | undefined;
 	private plate: Plate | undefined;
 	private line: Line | undefined;
-	private column: Column | undefined;
+	private column: TreasureColumn | undefined;
 	private readonly cards = new Array<CardView>();
 	private openLine: CardView | undefined;
 	private debugLabel: { anchor: Part; label: TextLabel } | undefined;
@@ -372,7 +348,8 @@ export class TreasureRenderController implements OnStart {
 		const down = cage.sink * (art !== undefined ? art.heightStuds : this.barHeight);
 		if (art !== undefined) {
 			this.setBodyTransparency(art, cage.transparency);
-			this.placeBody(art, rest.add(new Vector3(0, -down, 0)), 0);
+			// turned like the chest (the vale cage has the chest's four facings: its bars are cut round that facing)
+			this.placeBody(art, rest.add(new Vector3(0, -down, 0)), 0, look.fx, look.fz);
 			return;
 		}
 		// Static bars are placed once; they move only while sinking or fading (or the vault moved).
@@ -599,36 +576,7 @@ export class TreasureRenderController implements OnStart {
 	private drawColumn(look: TreasureLook, rest: CFrame): void {
 		const col = this.column;
 		if (col === undefined) return;
-		const c = look.column;
-		if (!c.shown) {
-			col.part.Transparency = HIDDEN;
-			col.part.CFrame = PARKED;
-			if (col.gui !== undefined) col.gui.Enabled = false;
-			return;
-		}
-		const C = V.open.column;
-		const color = this.floorColors[look.tier];
-		const h = C.heightTiles * STUDS_PER_TILE * c.height;
-		const w = C.widthTiles * STUDS_PER_TILE;
-		const fxArt = this.columnFx;
-		if (fxArt !== undefined && col.gui !== undefined && col.label !== undefined) {
-			col.anchor.CFrame = new CFrame(rest.Position);
-			col.gui.Size = new UDim2(w, 0, h, 0);
-			col.gui.StudsOffset = new Vector3(0, h / 2, 0);
-			col.gui.Enabled = true;
-			const frameIndex = fxArt.fps > 0 ? math.floor((look.openAge - V.open.popSec) * fxArt.fps) : 0;
-			const f = fxArt.frame(math.max(0, frameIndex));
-			col.label.Image = f.image;
-			col.label.ImageRectOffset = f.offset;
-			col.label.ImageRectSize = f.size;
-			col.label.ImageColor3 = color;
-			col.label.ImageTransparency = HIDDEN - c.opacity;
-			return;
-		}
-		col.part.Size = new Vector3(w, math.max(h, FX_SPRITE_VIEW.thicknessStuds), w);
-		col.part.Color = color.Lerp(WHITE, V.columnCoreMix);
-		col.part.CFrame = new CFrame(rest.Position.add(new Vector3(0, h / 2, 0)));
-		col.part.Transparency = HIDDEN - c.opacity;
+		drawTreasureColumn(col, look.column, rest.Position, this.floorColors[look.tier], look.openAge);
 	}
 
 	private drawCards(look: TreasureLook, reduced: boolean): void {
@@ -786,42 +734,15 @@ export class TreasureRenderController implements OnStart {
 
 	/** `faceX` / `faceZ`: the way a sprite chest faces (into its room: the vale art's four facings); 0, 0 keeps its row. */
 	private placeBody(body: PieceBody, origin: CFrame, dtSec: number, faceX = 0, faceZ = 0): void {
-		if (!body.shown) {
-			body.shown = true;
-			if (body.sprite !== undefined) {
-				body.sprite.reset();
-				body.sprite.setTransparency(body.transparency);
-			}
-			if (body.image !== undefined) body.image.gui.Enabled = true;
-			if (body.model !== undefined) setModelTransparency(body.model, body.transparency);
-		}
-		if (body.model !== undefined) {
-			for (const piece of body.model.pieces) piece.part.CFrame = origin.mul(piece.offset);
-		}
-		if (body.sprite !== undefined) {
-			body.sprite.anchor.CFrame = new CFrame(origin.Position);
-			body.sprite.update(IDLE, faceX, faceZ, this.basis, dtSec);
-		}
-		if (body.image !== undefined) body.image.anchor.CFrame = new CFrame(origin.Position);
+		placePieceBody(body, origin, this.basis, dtSec, faceX, faceZ);
 	}
 
 	private hideBody(body: PieceBody): void {
-		if (!body.shown) return;
-		body.shown = false;
-		if (body.model !== undefined) this.parkModel(body.model);
-		if (body.sprite !== undefined) body.sprite.park();
-		if (body.image !== undefined) {
-			body.image.gui.Enabled = false;
-			body.image.anchor.CFrame = PARKED;
-		}
+		hidePieceBody(body);
 	}
 
 	private setBodyTransparency(body: PieceBody, t: number): void {
-		if (body.transparency === t) return;
-		body.transparency = t;
-		if (body.model !== undefined) setModelTransparency(body.model, t);
-		if (body.sprite !== undefined) body.sprite.setTransparency(t);
-		if (body.image !== undefined) body.image.label.ImageTransparency = t;
+		setPieceBodyTransparency(body, t);
 	}
 
 	private parkBars(): void {
@@ -831,7 +752,7 @@ export class TreasureRenderController implements OnStart {
 	}
 
 	private parkModel(model: PlaceholderModel): void {
-		for (const piece of model.pieces) if (piece.part.CFrame !== PARKED) piece.part.CFrame = PARKED;
+		parkTreasureModel(model);
 	}
 
 	/** Builds every body once (on the first floor with a vault). */
@@ -855,58 +776,19 @@ export class TreasureRenderController implements OnStart {
 		this.buildSparkle(pack, folder);
 		this.plate = this.buildPlate(pack, folder);
 		this.line = this.buildLine(pack, folder);
-		this.column = this.buildColumn(pack, folder);
+		this.column = buildTreasureColumn(pack, folder);
 		for (let i = 0; i < MAX_CARDS; i++) this.cards.push(this.buildCard(pack, `Card${i}`));
 		this.openLine = this.buildCard(pack, "Line");
 	}
 
-	private buildBody(look: TreasurePiece, folder: Folder, maxHeightTiles: number): PieceBody {
-		const art = look.art;
-		if (art !== undefined && art.kind === "sprites") {
-			const layout = breakableArtLayout(art.set, maxHeightTiles);
-			const sprite = new SpriteView(art.set, folder, layout);
-			return {
-				model: undefined,
-				sprite,
-				image: undefined,
-				top: artPieceTop(layout),
-				heightStuds: artHeightStuds(layout),
-				shown: true,
-				transparency: 0,
-			};
-		}
-		if (art !== undefined && art.kind === "image") {
-			const layout = breakableArtLayout(
-				{ frameW: art.size.X, frameH: art.size.Y, pivot: art.pivot, pixelsPerTile: art.pixelsPerTile },
-				maxHeightTiles,
-			);
-			return {
-				model: undefined,
-				sprite: undefined,
-				image: buildImage(art, layout, folder),
-				top: artPieceTop(layout),
-				heightStuds: artHeightStuds(layout),
-				shown: true,
-				transparency: 0,
-			};
-		}
-		const visual = look.placeholder;
-		const model = buildPlaceholder(this.pack!, look.id, visual, 1, folder, true);
-		return {
-			model,
-			sprite: undefined,
-			image: undefined,
-			top: boxPieceTop(visual.size),
-			heightStuds: visual.size[1],
-			shown: true,
-			transparency: 0,
-		};
+	private buildBody(look: TreasurePiece, folder: Folder, maxHeightTiles: number, extraDepthStuds = 0): PieceBody {
+		return buildPieceBody(this.pack!, look, folder, maxHeightTiles, extraDepthStuds);
 	}
 
 	private buildCage(pack: ThemePack, folder: Folder): void {
 		const look = this.cageLook!;
 		if (look.art !== undefined) {
-			this.cageArt = this.buildBody(look, folder, V.maxHeightTiles);
+			this.cageArt = this.buildBody(look, folder, V.cageMaxHeightTiles, V.cageDepthStuds);
 			this.hideBody(this.cageArt);
 			return;
 		}
@@ -1038,38 +920,6 @@ export class TreasureRenderController implements OnStart {
 		return { ...f, label, text: "" };
 	}
 
-	private buildColumn(pack: ThemePack, folder: Folder): Column {
-		const part = renderPart("Part", false);
-		part.Name = "TreasureColumn";
-		part.Material = Enum.Material.Neon;
-		part.Transparency = HIDDEN;
-		part.CFrame = PARKED;
-		part.Parent = folder;
-		const anchor = renderPart("Part", false);
-		anchor.Name = "TreasureColumnAnchor";
-		anchor.Transparency = HIDDEN;
-		anchor.Size = new Vector3(SPRITE_VIEW.anchorStuds, SPRITE_VIEW.anchorStuds, SPRITE_VIEW.anchorStuds);
-		anchor.CFrame = PARKED;
-		anchor.Parent = folder;
-		this.columnFx = isFxId(TREASURE_COLUMN_FX_ID) ? pack.fx(TREASURE_COLUMN_FX_ID) : undefined;
-		if (this.columnFx === undefined) return { part, anchor, gui: undefined, label: undefined };
-		const gui = createKvBillboardGui("TreasureColumn");
-		gui.LightInfluence = 0;
-		gui.AlwaysOnTop = false;
-		gui.ResetOnSpawn = false;
-		gui.Enabled = false;
-		gui.Adornee = anchor;
-		const label = new Instance("ImageLabel");
-		label.BackgroundTransparency = HIDDEN;
-		label.BorderSizePixel = 0;
-		label.Size = UDim2.fromScale(1, 1);
-		label.ImageTransparency = HIDDEN;
-		label.ResampleMode = Enum.ResamplerMode[this.columnFx.set.resample];
-		label.Parent = gui;
-		gui.Parent = anchor;
-		return { part, anchor, gui, label };
-	}
-
 	private buildCard(pack: ThemePack, name: string): CardView {
 		const att = new Instance("Attachment");
 		att.Name = name;
@@ -1094,10 +944,7 @@ export class TreasureRenderController implements OnStart {
 
 	private destroyBodies(): void {
 		for (const body of [this.closed, this.opened, this.cageArt]) {
-			if (body === undefined) continue;
-			if (body.model !== undefined) destroyModel(body.model);
-			body.sprite?.destroy();
-			body.image?.anchor.Destroy();
+			if (body !== undefined) destroyPieceBody(body);
 		}
 		for (const bar of this.bars) destroyModel(bar);
 		this.bars.clear();
@@ -1168,39 +1015,4 @@ function hideCard(view: CardView): void {
 	if (!view.shown) return;
 	view.shown = false;
 	view.gui.Enabled = false;
-}
-
-/** The drawn height of art laid out as `layout` above its pivot, studs. */
-function artHeightStuds(layout: SpriteLayout): number {
-	return (math.min(layout.frameH, math.max(0, layout.pivot.y)) * STUDS_PER_TILE) / layout.pixelsPerTile;
-}
-
-/** An upright image billboard (image art) on an invisible anchor, its pivot on the anchor. */
-function buildImage(art: WorldImage, layout: SpriteLayout, parent: Instance): ImageBody {
-	const anchor = renderPart("Part", false);
-	anchor.Name = "TreasureImage";
-	anchor.Transparency = HIDDEN;
-	anchor.Size = new Vector3(SPRITE_VIEW.anchorStuds, SPRITE_VIEW.anchorStuds, SPRITE_VIEW.anchorStuds);
-	anchor.CFrame = PARKED;
-	const b = spriteBillboard(layout);
-	const gui = createKvBillboardGui("Treasure");
-	gui.Size = new UDim2(b.w, 0, b.h, 0);
-	gui.StudsOffset = new Vector3(b.offsetX, b.offsetY, b.offsetZ);
-	gui.LightInfluence = 0;
-	gui.AlwaysOnTop = false;
-	gui.ResetOnSpawn = false;
-	gui.Adornee = anchor;
-	const label = new Instance("ImageLabel");
-	label.Name = "Frame";
-	label.BackgroundTransparency = HIDDEN;
-	label.BorderSizePixel = 0;
-	label.Size = UDim2.fromScale(1, 1);
-	label.Image = art.image;
-	label.ImageRectOffset = art.offset;
-	label.ImageRectSize = art.size;
-	label.ImageColor3 = SPRITE_TINT_NONE;
-	label.Parent = gui;
-	gui.Parent = anchor;
-	anchor.Parent = parent;
-	return { anchor, gui, label };
 }

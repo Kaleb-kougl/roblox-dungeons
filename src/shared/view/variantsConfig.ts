@@ -1,4 +1,5 @@
-import { IMP, SLIME, SLIME_SMALL, SUMMONER } from "shared/sim";
+import { CAMERA_PITCH_DEG } from "shared/config";
+import { GOO_BULLET_RADIUS, IMP, SLIME, SLIME_SMALL, SUMMONER } from "shared/sim";
 import type { ColorRole } from "shared/theme";
 
 /**
@@ -96,6 +97,31 @@ export const GOO_VIEW = {
 	/** Quantum of the drawn scale and transparency writes (Size / Transparency written only on a change). */
 	quantum: 0.1,
 	folderName: "KV_Goo",
+} as const;
+
+/**
+ * The goo puddle drawn as a floor sprite (docs/GOO_ART.md GA3, GAD3 / GAD4), when the pack's `bullet.enemy.goo` has
+ * floor sprite art (ThemePack.floorSprite); GOO_VIEW's lift, thickness, fade and quantum still apply, its pop does not
+ * (pixel art scaled mid-pop smears: the land cell shows instead). Look in variants.ts gooSpriteLook / gooSpriteSize /
+ * gooSpritePlacement.
+ */
+export const GOO_ART_VIEW = {
+	/** The land cell shows while the puddle is younger than this, seconds of bullet time (the disc's pop window). */
+	landSec: GOO_VIEW.popSec,
+	/**
+	 * Variety without rng: the bullet slot's bit `mirrorMask` mirrors the art along screen X; the slot shifted right by
+	 * `variantShift` (mod the hold variants) picks the hold variant. Slots are deterministic (the same on every co-op
+	 * client) and a puddle keeps its slot for life, so a puddle never changes look; slots 0..3 give all four looks of
+	 * two variants.
+	 */
+	mirrorMask: 1,
+	variantShift: 1,
+	/** The hit circle the drawn puddle covers on screen (GAD4), world units (tiles): the sim's goo radius. */
+	hitRadius: GOO_BULLET_RADIUS,
+	/** The camera pitch the cover rule and the depth stretch (GAD3: 1 / sin(pitch)) use, degrees. */
+	cameraPitchDeg: CAMERA_PITCH_DEG,
+	/** The anchors' folder (under the bullets folder). */
+	folderName: "KV_GooSprites",
 } as const;
 
 /** The imp's blink (EV9): a puff at the spot it leaves and the spot it lands on (a chip burst in its colour). */

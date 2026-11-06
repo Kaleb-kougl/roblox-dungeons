@@ -166,6 +166,7 @@ import {
 	type Obj,
 } from "./util";
 import { newBestColorProblems } from "./newBestColors";
+import { boostAuraArtProblems } from "./boostAuraArt";
 import { variantColorProblems } from "./variantColors";
 import { voidColorProblems } from "./voidColors";
 
@@ -1659,6 +1660,11 @@ export function validateManifest(manifest: unknown, opts: ValidateOptions = {}):
 		err(message.path, message.msg);
 	}
 
+	// --- a boost aura's per-rank rings (docs/BOOST_ART.md BAD3; boostAuraArt.ts) -----------------
+	for (const problem of boostAuraArtProblems(manifest)) {
+		err(problem.path, problem.msg);
+	}
+
 	// --- contrast: juice (health bars on their back plate, damage numbers on every biome floor) ---
 	for (const c of juiceContrastReport(manifest)) {
 		if (c.ok) {
@@ -2369,8 +2375,11 @@ function validateSheetCell(
 	}
 	return cell;
 }
-/** Keys an fx.* sprite set adds (types.ts SpriteSetAsset, fx fields). */
-const FX_ART_KEYS = ["sizeTiles", "tint", "additive", "meanColor"];
+/**
+ * Keys an fx.* sprite set adds (types.ts SpriteSetAsset, fx fields); `ringPx` is the boost auras' per-rank rings
+ * (docs/BOOST_ART.md BAD3), which boostAuraArt.ts refuses on every other fx ID.
+ */
+const FX_ART_KEYS = ["sizeTiles", "tint", "additive", "meanColor", "ringPx"];
 const FACING_COUNT_LIST = (SPRITE_FACING_COUNTS as ReadonlyArray<number>).map((n) => tostring(n)).join(" | ");
 const RESAMPLE_LIST = SPRITE_RESAMPLE_MODES.map((m) => q(m)).join(" | ");
 
@@ -2385,14 +2394,15 @@ function validateSpriteSet(def: Obj, path: Array<string>, slot: SlotContract, er
 		return;
 	}
 	const fx = slot === FX;
-	// docs/PROJECTILE_ART.md PA3: a bullet set adds its meanColor (bulletArt.ts checks it; by slot name: no new local)
+	// docs/PROJECTILE_ART.md PA3: a bullet set adds its meanColor (bulletArt.ts checks it; by slot name: no new local);
+	// docs/GOO_ART.md GA2: a floor sprite (the goo) also its hold frame's lit box `lit` (gooArt.ts checks it)
 	const extraKeys =
 		decor !== undefined
 			? decorArtKeys(decor, "sprites")
 			: fx
 			? FX_ART_KEYS
 			: slot.slot === "bullet"
-			? ["meanColor"]
+			? ["meanColor", "lit"]
 			: [];
 	unknownKeys(def, path, [...SPRITE_SET_KEYS, ...extraKeys]);
 
@@ -2532,7 +2542,7 @@ function validateSpriteSet(def: Obj, path: Array<string>, slot: SlotContract, er
 		err(ap0, "must be an object of name -> { sheet, start, frames, stride?, fps, loop }");
 		return;
 	}
-	for (const name of requiredBaseAnimations(slot)) {
+	for (const name of requiredBaseAnimations(slot, path[1])) {
 		if (!isObj(anims[name])) {
 			err(ap0, `sprite contract: missing animation ${q(name)} (>= 1 frame)`);
 		}

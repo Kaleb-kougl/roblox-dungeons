@@ -768,6 +768,37 @@
 				{ "name": "bramble-attack4", "animations": ["attack.4"] },
 				{ "name": "bramble-death", "animations": ["death"] }
 			]
+		},
+		"enemy.dummy": {
+			"$comment": [
+				"Training Dummy 2D Pixel Art (docs/DUMMY_ART.md DA2): the tutorial's training dummy (combat A), a wooden post with a target on its chest.",
+				"Three strips in Sprites/, one row each (one facing: the dummy never turns, and the art is a single front view), 80x48 cells, hard alpha (0 / 255), no baked shadow:",
+				"IDLE.png 1 frame, HIT.png 7 (frame 0 a white silhouette, 1-3 it rocks with yellow sparks, 4-6 it settles), BREAKING.png 9 (0 white, 1-5 the top half bursts off,",
+				"6-8 the pieces lie on the floor beside the standing base). Every frame is kept. hit plays over the view-side wobble (DUMMY_SPRITE_VIEW.hitSec, DD1), not the 0.1 s flash;",
+				"death is stretched over the corpse time as every actor's. Stand-ins: move and attack = idle's one cell (the dummy never moves or attacks; the slot requires the names).",
+				"Union box (every opaque pixel) 55x45 + 3 px pad: one sheet dummy.png of 17 cells + its outline sheet."
+			],
+			"source": { "type": "grid", "dir": "training-dummy/Sprites", "frameW": 80, "frameH": 48 },
+			"facingCount": 1,
+			"rowForFacing": [0],
+			"rowOrderEvidence": ["One row per strip, one facing (front view, symmetric post): nothing to order."],
+			"noiseAlpha": 0,
+			"pad": 3,
+			"pivot": { "measure": { "animation": "idle", "facing": 0, "frame": 0 }, "bodyAlpha": 0, "bodyMinRgb": 0, "footBand": 2 },
+			"pivotNote": "Hard alpha and no baked shadow, so every opaque pixel is body (bodyAlpha 0, bodyMinRgb 0). Measured on idle frame 0: the pivot is the middle of the plank base's two bottom rows (source y 42-43, x 28-49).",
+			"outline": { "widthPx": 2 },
+			"outlineNote": "Enemy contrast rim (docs/OUTLINE.md, decision E4: 2 art px), like every enemy set. pad 3 = widthPx + 1.",
+			"bodyTiles": 1.4,
+			"bodyTilesNote": "The idle body is 39 px tall (y 5-43): 1.4 tiles -> 27.9 px/tile, a little under the knight's 1.5. The plank base (21 px) is then 0.75 tiles wide, about the dummy's r 0.35 hitbox (0.7 across); the arm span (32 px) 1.15 tiles.",
+			"resample": "Pixelated",
+			"animations": {
+				"idle": { "file": "IDLE.png", "frames": [0], "fps": 1, "loop": true },
+				"hit": { "file": "HIT.png", "frames": [0, 1, 2, 3, 4, 5, 6], "fps": 10, "loop": false },
+				"death": { "file": "BREAKING.png", "frames": [0, 1, 2, 3, 4, 5, 6, 7, 8], "fps": 18, "loop": false },
+				"move": { "cellsOf": "idle", "fps": 1, "loop": true },
+				"attack": { "cellsOf": "idle", "fps": 1, "loop": true }
+			},
+			"sheets": [{ "name": "dummy", "animations": ["idle", "hit", "death"] }]
 		}
 	},
 	"images": {
@@ -1422,6 +1453,91 @@
 				"outline": true,
 				"own": "kit-bookcase-z"
 			},
+			"$comment-kenney-bookcase": "Kenney bookcases (Isometric Library, Kenney, CC0; docs/KENNEY_DECOR.md): alternative art for the 1 x 1 bookcase, reprojected from Kenney's 30 degree camera to the game's 55 by scripts/art/kenney/reproject.py (scripts/art/kenney/kenney.json) into art/vendor/kenney/. Same cell, pivot and facings as kit-bookcase-x / -z. Own PNGs.",
+			"kenney-bookcase-books-x": {
+				"file": "kenney/bookcase/books_x.png",
+				"pivot": [22.57, 42.09],
+				"outline": true,
+				"own": "kenney-bookcase-books-x"
+			},
+			"kenney-bookcase-books-z": {
+				"file": "kenney/bookcase/books_z.png",
+				"pivot": [11.82, 41.82],
+				"outline": true,
+				"own": "kenney-bookcase-books-z"
+			},
+			"kenney-bookcase-ladder-x": {
+				"file": "kenney/bookcaseLadder/ladder_x.png",
+				"pivot": [22.57, 41.41],
+				"outline": true,
+				"own": "kenney-bookcase-ladder-x"
+			},
+			"kenney-bookcase-ladder-z": {
+				"file": "kenney/bookcaseLadder/ladder_z.png",
+				"pivot": [15.24, 41.84],
+				"outline": true,
+				"own": "kenney-bookcase-ladder-z"
+			},
+			"kenney-bookcase-glass-x": {
+				"file": "kenney/bookcaseGlass/glass_x.png",
+				"pivot": [22.57, 42.09],
+				"outline": true,
+				"own": "kenney-bookcase-glass-x"
+			},
+			"kenney-bookcase-glass-z": {
+				"file": "kenney/bookcaseGlass/glass_z.png",
+				"pivot": [11.82, 41.82],
+				"outline": true,
+				"own": "kenney-bookcase-glass-z"
+			},
+			"kenney-bookcase-half-x": {
+				"file": "kenney/bookcaseHalf/half_x.png",
+				"pivot": [22.44, 31.24],
+				"outline": true,
+				"own": "kenney-bookcase-half-x"
+			},
+			"kenney-bookcase-half-z": {
+				"file": "kenney/bookcaseHalf/half_z.png",
+				"pivot": [11.82, 31.82],
+				"outline": true,
+				"own": "kenney-bookcase-half-z"
+			},
+			"kenney-bookcase-destroyed-x": {
+				"file": "kenney/bookcaseDestroyed/destroyed_x.png",
+				"pivot": [22.69, 42.09],
+				"outline": true,
+				"own": "kenney-bookcase-destroyed-x"
+			},
+			"kenney-bookcase-destroyed-z": {
+				"file": "kenney/bookcaseDestroyed/destroyed_z.png",
+				"pivot": [12.3, 41.84],
+				"outline": true,
+				"own": "kenney-bookcase-destroyed-z"
+			},
+			"kenney-bookcase-empty-x": {
+				"file": "kenney/bookcaseEmpty/empty_x.png",
+				"pivot": [22.57, 42.09],
+				"outline": true,
+				"own": "kenney-bookcase-empty-x"
+			},
+			"kenney-bookcase-empty-z": {
+				"file": "kenney/bookcaseEmpty/empty_z.png",
+				"pivot": [11.82, 41.82],
+				"outline": true,
+				"own": "kenney-bookcase-empty-z"
+			},
+			"kenney-bookcase-halfempty-x": {
+				"file": "kenney/bookcaseHalfEmpty/halfempty_x.png",
+				"pivot": [22.44, 31.24],
+				"outline": true,
+				"own": "kenney-bookcase-halfempty-x"
+			},
+			"kenney-bookcase-halfempty-z": {
+				"file": "kenney/bookcaseHalfEmpty/halfempty_z.png",
+				"pivot": [11.82, 31.82],
+				"outline": true,
+				"own": "kenney-bookcase-halfempty-z"
+			},
 			"$comment-reading": "Reading area (library rooms): the Dungeon Assets Pack by zver.3d (credit \"zver.3d\"; scripts/art/kit/zver-dungeon-assets.json) at world scale, 2.2 FBX units a tile. The table with its pages and candlestick on a 2 x 1 footprint, along X (_x) and Z (_z), pivot = the footprint's centre on the floor; the chair on one cell facing +X / +Z / -X / -Z (_px / _pz / _nx / _nz: the way a seated person looks), pivot = the cell's centre under the seat (render_kit.py pivotOut).",
 			"kit-table-x": {
 				"file": "zver-dungeon-assets/table/table_x.png",
@@ -2024,6 +2140,121 @@
 				"fps": 20,
 				"loop": false
 			}
+		}
+	},
+	"goo": {
+		"$comment": [
+			"docs/GOO_ART.md GA1: the Ooze's goo puddle (bullet.enemy.goo) as two frames of heimlich3's Free Slimes Asset Pack",
+			"(https://heimlich3.itch.io/slime; THIRD_PARTY_NOTICES.md; raw files in gitignored art/vendor/, never committed or",
+			"shared, never AI training data), in its OWN sheet art/build/<atlas>.png with src/shared/theme/packs/vale/gooLayout.ts",
+			"(VALE_GOO_SHEET, VALE_GOO_LAYOUT), so bullets.png and every other output never repack. Source: the green slime's",
+			"Death Down strip, 5 cells of 64x64, hard alpha. `land` frame 3 (lit box 20,40 24x11, the drop flattening) and",
+			"`hold` frame 4 (17,36 31x17, the splat); Death Up's frame 4 differs by 2 px, so there is one hold cell and the",
+			"view's X mirror gives the variety. Both cells are cut with ONE crop (the union lit box + pad), so the land frame",
+			"sits where the source draws it; nearest-neighbour, no resample. Pivot: the hold lit box's centre. `recolor`: the",
+			"sprite sets' gradient map (docs/ART.md \"Recolour\") onto the enemyGoo ramp (GAD2). `gates`: the build fails unless",
+			"the lit mean (max RGB > 32: the black outline left out) is <= maxDifference CIE76 from role (enemyGoo, every pack's",
+			"#f000f0; MAX_ENEMY_BULLET_ART_DIFFERENCE) and >= minContrast WCAG on every surfaces colour (the bullets' 12 biome",
+			"floor and wall colours). pixelsPerTile: the bullets' nominal 29.6 (the swarmer's; GAD4 sizes the puddle in the",
+			"view). Build just this group: node scripts/art/build-atlases.js --only goo (and --lock --only goo)."
+		],
+		"atlas": "goo",
+		"pad": 1,
+		"pixelsPerTile": 29.6,
+		"pixelsPerTileFrom": "enemy.swarmer",
+		"gates": {
+			"role": "#f000f0",
+			"maxDifference": 12,
+			"minContrast": 3.0,
+			"surfaces": ["#24242c", "#3a3a46", "#2b2722", "#36302a", "#2a1a16", "#4a2a20", "#1e2a33", "#2a3842", "#1c1a20", "#34303a", "#1d2a1d", "#283626"]
+		},
+		"sets": {
+			"bullet.enemy.goo": {
+				"$comment": "GAD1: frame 3 lands (0.1 s), frame 4 holds. The pack's other colours (blue, purple, yellow, the King slimes) are not used.",
+				"file": "Free Slimes Asset Pack/Green Slime/green slime-Death Down.png",
+				"frameW": 64,
+				"frames": 5,
+				"land": 3,
+				"hold": [4],
+				"recolor": {
+					"ramp": [
+						[0, "#000000"],
+						[82, "#700070"],
+						[110, "#b000b0"],
+						[150, "#f000f0"],
+						[197, "#ff80ff"],
+						[255, "#ffffff"]
+					]
+				},
+				"recolorNote": "Source levels (luminance x pixels, land + hold): 0 x120 (the black outline: stays black, left out of the mean), 82 x9 (#376633, the darkest shade) -> #700070, 110 x56 (#418e3b) -> #b000b0, 150 x213 (#56c44d, the body) -> enemyGoo #f000f0, 197 x107 (#a1e09c, the lit top) -> #ff80ff; no source pixel lies between the stops, so each colour maps to exactly its stop and the shading keeps its order. Lit mean #e824e8, 7.1 CIE76 from #f000f0 (hold alone #e725e7, 7.7; land #ea20ea, 5.6), worst contrast 3.12:1 on #3a3a46."
+			}
+		}
+	},
+	"boostAuras": {
+		"$comment": [
+			"docs/BOOST_ART.md BAD3: the boost auras under a boosted player (fx.boost.aura.<kind>), ORIGINAL art drawn by",
+			"scripts/art/gen-boost-auras.js (art:build and art:lock run it first) into art/vendor/kaleb-vale/boost-auras/:",
+			"Fury a ring of fire with embers, Quickstep three comets, Frenzy six whirling blades, Aegis six shield plates with a",
+			"sweeping glint. Greyscale (the renderer tints each with its boost.<kind> role), 8-frame seamless loops, every stack",
+			"rank drawn natively: ringPx is each rank's ring radius, round((auraRadiusTiles 0.55 + rank x auraRingStepTiles",
+			"0.14) x 29.6) px (the generator's RING_PX; gen-boost-auras.test.js pins the two, boostAuras.spec.ts pins the",
+			"generated layout against BOOST_VIEW). Its OWN sheet art/build/<atlas>.png with",
+			"src/shared/theme/packs/vale/boostAuraLayout.ts, so no other atlas repacks. fps 10: the owner's approved preview",
+			"(100 ms a frame). pixelsPerTile: the density it was drawn at (the swarmer's 29.6); the view maps each rank's ring",
+			"exactly onto its disc's radius. Build just this group: node scripts/art/build-atlases.js --only boostAuras (and",
+			"--lock --only boostAuras)."
+		],
+		"atlas": "boost-auras",
+		"pad": 1,
+		"pixelsPerTile": 29.6,
+		"pixelsPerTileFrom": "enemy.swarmer",
+		"fps": 10,
+		"frames": 8,
+		"ringPx": [16, 20, 25, 29],
+		"sets": {
+			"fx.boost.aura.fury": { "file": "kaleb-vale/boost-auras/aura_fury_r{r}_{f}.png" },
+			"fx.boost.aura.quickstep": { "file": "kaleb-vale/boost-auras/aura_quickstep_r{r}_{f}.png" },
+			"fx.boost.aura.frenzy": { "file": "kaleb-vale/boost-auras/aura_frenzy_r{r}_{f}.png" },
+			"fx.boost.aura.aegis": { "file": "kaleb-vale/boost-auras/aura_aegis_r{r}_{f}.png" }
+		}
+	},
+	"treasure": {
+		"$comment": [
+			"The vault's cage and light column (docs/TREASURE.md TR9): original pixel art drawn by scripts/art/gen-treasure-art.js",
+			"(art:build and art:lock run it first) into art/vendor/kaleb-vale/, each in a sheet of its own (vault-cage.png,",
+			"treasure-column.png; generated src/shared/theme/packs/vale/treasureLayout.ts), so neither repacks the decor or",
+			"effects atlas. cage: a domed iron birdcage in the game camera's projection round the chest's box, four facings like",
+			"the chest (output d = NE, NW, SW, SE: the chest's front toward -Z, -X, +Z, +X; the bars the chest hides are cut per",
+			"facing), each facing's pivot the footprint centre on the floor (the generator's CAGE_PIVOT), so it stands on the",
+			"chest's; Pixelated (1 px bars). column: a looping greyscale strip, tinted by the opened tier's floor role and",
+			"stretched upright to TREASURE_VIEW.open.column's size at draw time. Build just this group: node",
+			"scripts/art/build-atlases.js --only treasure (and --lock --only treasure)."
+		],
+		"pixelsPerTile": 29.6,
+		"pixelsPerTileFrom": "enemy.swarmer",
+		"cage": {
+			"facings": { "count": 4, "zeroDeg": 45 },
+			"animations": {
+				"idle": {
+					"file": "kaleb-vale/vault-cage/{dir}/cage_{dir}_{angle}_{f}.png",
+					"frames": [0],
+					"fps": 1,
+					"loop": true
+				}
+			},
+			"pivot": [[22, 31], [22, 31], [22, 31], [22, 31]],
+			"own": "vault-cage",
+			"resample": "Pixelated"
+		},
+		"column": {
+			"atlas": "treasure-column",
+			"pad": 1,
+			"file": "kaleb-vale/treasure-column/column.png",
+			"frameW": 27,
+			"frames": 8,
+			"fps": 12,
+			"loop": true,
+			"grey": true
 		}
 	}
 }

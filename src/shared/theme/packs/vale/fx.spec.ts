@@ -11,6 +11,8 @@ import { VALE_BULLET_FX_LAYOUTS, VALE_BULLET_SHEET } from "./bulletLayout";
 import { VALE_AMBIENT_EMISSIVE, VALE_FX, VALE_FX_IDS, VALE_FX_PENDING, VALE_FX_SOURCES, valeFxSourceOf } from "./fx";
 import { VALE_AMBIENT_LAYOUTS, VALE_FX_LAYOUTS, VALE_FX_SHEET } from "./fxLayout";
 import { VALE_ASSET_IDS } from "./assetIds";
+import { VALE_BOOST_AURA_SHEET } from "./boostAuraLayout";
+import { VALE_BOOST_AURA_IDS } from "./boostAuras";
 import { VALE_WORLD_LAYOUTS } from "./layout";
 import { VALE_MANIFEST, buildValeManifest } from "./manifest";
 
@@ -36,10 +38,13 @@ function isFxOrAmbient(id: string): boolean {
 
 describe("vale effects (fx.*)", () => {
 	it("maps every fx ID it draws to a generated sheet and a look within the size cap", () => {
-		// every fx ID is either drawn or pending (no art yet: the boost drops' effects, docs/BOOSTS.md B8)
+		// every fx ID is exactly one of: drawn from these sheets, pending (no art yet: the boost pickup burst, docs/BOOSTS.md
+		// B8), or a boost aura (its own sheet, boostAuras.ts, docs/BOOST_ART.md BAD3)
 		for (const id of FX_IDS) {
 			const drawn = (VALE_FX_IDS as ReadonlyArray<FxId>).includes(id);
-			expect([id, drawn !== VALE_FX_PENDING.includes(id)]).toEqual([id, true]);
+			const aura = (VALE_BOOST_AURA_IDS as ReadonlyArray<FxId>).includes(id);
+			const homes = (drawn ? 1 : 0) + (VALE_FX_PENDING.includes(id) ? 1 : 0) + (aura ? 1 : 0);
+			expect([id, homes]).toEqual([id, 1]);
 		}
 		for (const id of VALE_FX_IDS) {
 			const l = valeFxSourceOf(id)?.layouts[id];
@@ -71,17 +76,23 @@ describe("vale effects (fx.*)", () => {
 		expect(VALE_ASSET_IDS[VALE_FX_SHEET.file]).never.toBe(undefined);
 		// the manifest's fx entries are exactly the effects vale draws whose sheet is uploaded (the boost drops' effects
 		// have no art yet; the bullet impact waits for bullets.png, PA8)
+		// (the auras, docs/BOOST_ART.md BAD3, once boost-auras.png has an ID)
+		const auraUp = VALE_ASSET_IDS[VALE_BOOST_AURA_SHEET.file] !== undefined;
 		const uploaded = (id: string) => {
+			if ((VALE_BOOST_AURA_IDS as ReadonlyArray<string>).includes(id)) return auraUp;
 			const source = valeFxSourceOf(id);
 			return source !== undefined && VALE_ASSET_IDS[source.sheet.file] !== undefined;
 		};
+		const vale = (id: string) =>
+			(VALE_FX_IDS as ReadonlyArray<string>).includes(id) ||
+			(VALE_BOOST_AURA_IDS as ReadonlyArray<string>).includes(id);
 		for (const id of sortedKeys(VALE_MANIFEST.assets)) {
-			const drawn = (VALE_FX_IDS as ReadonlyArray<string>).includes(id) && uploaded(id);
+			const drawn = vale(id) && uploaded(id);
 			expect([id, isFxOrAmbient(id) && id.sub(1, 3) === "fx."]).toEqual([id, drawn]);
 		}
 		const pack = new ThemePack(VALE_MANIFEST, { warn: quiet });
 		for (const id of FX_IDS) {
-			const drawn = (VALE_FX_IDS as ReadonlyArray<string>).includes(id) && uploaded(id);
+			const drawn = vale(id) && uploaded(id);
 			expect([id, pack.fx(id) !== undefined]).toEqual([id, drawn]);
 		}
 		// a biome's ambient texture, if any, is the R5 mote (decor-mote.png, uploaded), never an fx-ambient flipbook
@@ -169,24 +180,25 @@ describe("vale effects (fx.*)", () => {
 	});
 
 	it("without the atlas no effect switches on; the ambient textures still do", () => {
-		const m = buildValeManifest(fxIds(VALE_FX_SHEET.file, VALE_BULLET_SHEET.file));
+		const m = buildValeManifest(fxIds(...VALE_FX_SOURCES.map((s) => s.sheet.file)));
 		expect(validateManifest(m, { packId: "vale" })).toEqual([]);
 		const pack = new ThemePack(m, { warn: quiet });
 		for (const id of FX_IDS) expect([id, pack.fx(id as FxId)]).toEqual([id, undefined]);
 		expect(pack.ambient("biome.3")).never.toBe(undefined);
 	});
 
-	it("each sheet switches on its own effects only: bullets.png alone draws the bullet impact, the atlas alone the rest", () => {
-		const onlyBullets = new ThemePack(buildValeManifest(fxIds(VALE_FX_SHEET.file)), { warn: quiet });
-		const onlyAtlas = new ThemePack(buildValeManifest(fxIds(VALE_BULLET_SHEET.file)), { warn: quiet });
-		for (const id of VALE_FX_IDS) {
-			const inBullets = valeFxSourceOf(id)!.sheet === VALE_BULLET_SHEET;
-			expect([id, onlyBullets.fx(id) !== undefined, onlyAtlas.fx(id) !== undefined]).toEqual([
-				id,
-				inBullets,
-				!inBullets,
-			]);
+	it("each sheet switches on its own effects only: bullets.png the bullet impact, treasure-column.png the vault's column, the atlas the rest", () => {
+		const files = VALE_FX_SOURCES.map((s) => s.sheet.file);
+		for (const source of VALE_FX_SOURCES) {
+			const only = new ThemePack(buildValeManifest(fxIds(...files.filter((f) => f !== source.sheet.file))), {
+				warn: quiet,
+			});
+			for (const id of VALE_FX_IDS) {
+				const mine = valeFxSourceOf(id)!.sheet === source.sheet;
+				expect([source.sheet.file, id, only.fx(id) !== undefined]).toEqual([source.sheet.file, id, mine]);
+			}
 		}
+		expect(valeFxSourceOf("fx.treasure.column")?.sheet.file).toBe("treasure-column.png");
 	});
 });
 

@@ -27,8 +27,11 @@ import { contrastReport, juiceContrastReport, validateManifest } from "../../val
 import { PLACEHOLDER_MANIFEST } from "../placeholder";
 import { VALE_ASSET_IDS } from "./assetIds";
 import { VALE_AUDIO_FILES } from "./audioLayout";
+import { VALE_BOOST_AURA_SHEET } from "./boostAuraLayout";
 import { VALE_BULLET_SHEET } from "./bulletLayout";
 import { VALE_AMBIENT_LAYOUTS, VALE_FX_SHEET } from "./fxLayout";
+import { VALE_GOO_SHEET } from "./gooLayout";
+import { VALE_TREASURE_CAGE_LAYOUT, VALE_TREASURE_FX_SHEET } from "./treasureLayout";
 import { VALE_UI_ICON_FILE } from "./uiIconLayout";
 import {
 	VALE_FLOOR_HEX,
@@ -116,10 +119,16 @@ describe("vale pack", () => {
 
 	it("every uploaded ID names a real art/build file", () => {
 		// the effects atlas, the Ninja Adventure ambient flipbooks (fxLayout.ts) and the bullet atlas (bulletLayout.ts,
-		// docs/PROJECTILE_ART.md) are art/build files too
+		// docs/PROJECTILE_ART.md), the goo sheet (gooLayout.ts, docs/GOO_ART.md) and the vault's cage and column sheets
+		// (treasureLayout.ts, docs/TREASURE.md TR9) and the boost aura sheet (boostAuraLayout.ts, docs/BOOST_ART.md BAD3)
+		// are art/build files too
 		const files = allFiles();
 		files.push(VALE_FX_SHEET.file);
 		files.push(VALE_BULLET_SHEET.file);
+		files.push(VALE_GOO_SHEET.file);
+		files.push(VALE_TREASURE_CAGE_LAYOUT.sheets[0].file);
+		files.push(VALE_TREASURE_FX_SHEET.file);
+		files.push(VALE_BOOST_AURA_SHEET.file);
 		for (const id of sortedKeys(VALE_AMBIENT_LAYOUTS)) files.push(VALE_AMBIENT_LAYOUTS[id].file);
 		for (const file of sortedKeys(VALE_ASSET_IDS)) {
 			expect([file, files.includes(file)]).toEqual([file, true]);
@@ -774,6 +783,80 @@ describe("vale enemy.slime (docs/ENEMY_VARIANTS.md EV10: the Lords of Pain slime
 		for (let f = 0; f < 8; f++) {
 			expect(sprites.frame("attack", 7, f)).toEqual(sprites.frame("move", 7, f));
 		}
+	});
+});
+
+describe("vale enemy.dummy (docs/DUMMY_ART.md: the tutorial's training dummy, one facing, pixel art)", () => {
+	const SHEET = "dummy.png";
+	const OUTLINE = "dummy-outline.png";
+	const layout = VALE_SPRITE_LAYOUTS["enemy.dummy"];
+
+	it("the layout: one 62x850 sheet of 62x50 cells (idle 1, hit 7, death 9; 1 facing), 27.9 px/tile, a rim", () => {
+		expect(layout).never.toBe(undefined);
+		expect([layout.frameW, layout.frameH]).toEqual([62, 50]);
+		expect(layout.sheets).toEqual([{ file: SHEET, w: 62, h: 850, outlineFile: OUTLINE }]);
+		expect(layout.facings).toEqual({ count: 1, zeroDeg: 0, ccw: true });
+		// the 39 px idle body drawn 1.4 tiles tall (art/atlases.json bodyTilesNote); pixel art, never smoothed
+		expect(layout.pixelsPerTile).toBe(27.9);
+		expect(layout.resample).toBe("Pixelated");
+		expect(layout.pivot).toEqual({ x: 39, y: 47 });
+		expect(layout.animations.idle).toEqual({ sheet: 0, start: 0, frames: 1, fps: 1, loop: true });
+		expect(layout.animations.hit).toEqual({ sheet: 0, start: 1, frames: 7, fps: 10, loop: false });
+		expect(layout.animations.death).toEqual({ sheet: 0, start: 8, frames: 9, fps: 18, loop: false });
+		// stand-ins: move and attack = idle's cell (it never moves or attacks)
+		expect(layout.animations.move).toEqual({ sheet: 0, start: 0, frames: 1, fps: 1, loop: true });
+		expect(layout.animations.attack).toEqual({ sheet: 0, start: 0, frames: 1, fps: 1, loop: true });
+	});
+
+	it("with no IDs it is the placeholder post; the outline alone never switches it on", () => {
+		expect(buildValeManifest({}).assets["enemy.dummy"]).toEqual(PLACEHOLDER_MANIFEST.assets["enemy.dummy"]);
+		const noAtlas = buildValeManifest(fakeIds(SHEET));
+		expect(validateManifest(noAtlas, { packId: "vale" })).toEqual([]);
+		expect(noAtlas.assets["enemy.dummy"]).toEqual(PLACEHOLDER_MANIFEST.assets["enemy.dummy"]);
+		expect(new ThemePack(noAtlas, { warn: quiet }).sprites("enemy.dummy")).toBe(undefined);
+	});
+
+	it("as bundled, it is the sprite set once dummy.png has an ID (DA5), else the placeholder", () => {
+		const uploaded = VALE_ASSET_IDS[SHEET] !== undefined;
+		expect(VALE_MANIFEST.assets["enemy.dummy"].kind).toBe(
+			uploaded ? "sprites" : PLACEHOLDER_MANIFEST.assets["enemy.dummy"].kind,
+		);
+	});
+
+	it("with dummy.png it switches to sprites with every required animation; the rim joins with its outline", () => {
+		const ids = fakeIds();
+		const m = buildValeManifest(ids);
+		expect(validateManifest(m, { packId: "vale" })).toEqual([]);
+		const set = m.assets["enemy.dummy"] as SpriteSetAsset;
+		expect(set.kind).toBe("sprites");
+		expect(set.sheets).toEqual([{ assetId: ids[SHEET], w: 62, h: 850, outlineAssetId: ids[OUTLINE] }]);
+		const sprites = new ThemeCore(m, { warn: quiet }).sprites("enemy.dummy")!;
+		expect(sprites).never.toBe(undefined);
+		for (const name of requiredBaseAnimations(ENEMY)) {
+			expect([name, sprites.has(name)]).toEqual([name, true]);
+		}
+		const rimless = new ThemePack(buildValeManifest(fakeIds(OUTLINE)), { warn: quiet }).sprites("enemy.dummy")!;
+		expect(rimless).never.toBe(undefined);
+		expect(rimless.frame("hit", 0, 2).outlineImage).toBe(undefined);
+	});
+
+	it("cells (hand-computed): one column; hit frame 2 is cell 3, the last break frame the bottom cell", () => {
+		const ids = fakeIds();
+		const sprites = new ThemeCore(buildValeManifest(ids), { warn: quiet }).sprites("enemy.dummy")!;
+		expect(sprites.frame("hit", 0, 2)).toEqual({
+			sheet: 0,
+			assetId: ids[SHEET],
+			outlineAssetId: ids[OUTLINE],
+			x: 0,
+			y: 150,
+			w: 62,
+			h: 50,
+		});
+		const last = sprites.frame("death", 0, 8);
+		expect([last.x, last.y, last.x + last.w, last.y + last.h]).toEqual([0, 800, 62, 850]);
+		// the stand-ins address idle's cell
+		expect(sprites.frame("move", 0, 0).y).toBe(0);
+		expect(sprites.frame("attack", 0, 0).y).toBe(0);
 	});
 });
 

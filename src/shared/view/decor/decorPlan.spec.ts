@@ -25,11 +25,13 @@ import {
 	DECOR_CAMERA,
 	DECOR_CLEAR,
 	DECOR_BANNERS,
+	DECOR_BOOKCASES,
 	DECOR_DROP_REASONS,
 	DECOR_SCATTER,
 	MAX_DECOR_SHARE,
 	MAX_TALL_PER_ROOM,
 	TALL_MIN_SPACING,
+	bookcaseVariant,
 	decorInputOfLayout,
 	footprintClear,
 	footprintStencil,
@@ -696,6 +698,46 @@ describe('solid decor (docs/DECOR.md "Solid decor", "Room themes": set pieces on
 			}
 		}
 		expect(n).toBeGreaterThan(0);
+	});
+
+	it("draws a room's bookcases from one art set, in facing pairs (docs/KENNEY_DECOR.md)", () => {
+		// the pure pick: one pair keeps the facing alone; with the alternative set, a room takes pair 0 or pairs 1..
+		expect(bookcaseVariant(2, 0, 0.1, 0.9)).toBe(0);
+		expect(bookcaseVariant(2, 1, 0.1, 0.9)).toBe(1);
+		expect(bookcaseVariant(0, 1, 0.1, 0.9)).toBe(-1);
+		expect(bookcaseVariant(16, 1, DECOR_BOOKCASES.altRoomShare, 0.1)).toBe(1);
+		expect(bookcaseVariant(16, 0, 0, 0)).toBe(2);
+		expect(bookcaseVariant(16, 1, 0, DECOR_BOOKCASES.altCommonShare - 1e-9)).toBe(3);
+		expect(bookcaseVariant(16, 0, 0, DECOR_BOOKCASES.altCommonShare)).toBe(4);
+		expect(bookcaseVariant(16, 1, 0, 1 - 1e-12)).toBe(15);
+		expect(bookcaseVariant(4, 0, 0, 0.99)).toBe(2);
+		for (let i = 0; i < 200; i++) {
+			const v = bookcaseVariant(16, i % 2, 0.2, i / 200);
+			expect(v >= 2 && v < 16 && v % 2 === i % 2).toBe(true);
+		}
+		// on real floors: the facing is the variant's parity and every room keeps to one set; both sets appear
+		const sets = new Map<number, boolean>();
+		let n = 0;
+		for (const f of CENSUS) {
+			const plan = planDecor({
+				...decorInputOfLayout(f.layout),
+				variants: (k) => (k === "bookcase" ? 16 : 0),
+			});
+			const room = new Map<number, boolean>();
+			for (const e of plan.entries)
+				if (e.source === "solid" && e.kind === "bookcase") {
+					expect(e.variant % 2).toBe(e.faceX !== 0 ? 0 : 1);
+					expect(e.variant >= 0 && e.variant < 16).toBe(true);
+					const alt = e.variant >= 2;
+					const seen = room.get(e.roomId);
+					if (seen !== undefined) expect(seen).toBe(alt);
+					room.set(e.roomId, alt);
+					sets.set(alt ? 1 : 0, true);
+					n++;
+				}
+		}
+		expect(n).toBeGreaterThan(0);
+		expect(sets.get(0) === true && sets.get(1) === true).toBe(true);
 	});
 
 	it("takes a reading area's table axis and chair facing as their variants, low, with a fade box, and draws no pillar it cleared (docs/BOOKSHELVES.md)", () => {

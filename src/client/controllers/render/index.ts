@@ -28,6 +28,7 @@ export * from "./PelletRenderController";
 export * from "./TreasureRenderController";
 export * from "./PactRenderController";
 export * from "./GoldenRenderController";
+export * from "./treasureBody";
 export * from "./decorParts";
 export * from "./glintParts";
 export * from "./DecorController";

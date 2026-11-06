@@ -111,7 +111,15 @@ import type { IsoBasis } from "../iso";
 import { VOID_PIECES } from "../voidDecor/config";
 import { VoidLayer } from "../voidDecor/layer";
 import type { VoidPlan } from "../voidDecor/plan";
-import { DECOR_BANNERS, DECOR_CLEAR, DECOR_DRESSING, DECOR_PLACE, DECOR_SALT, DECOR_SCATTER } from "./config";
+import {
+	DECOR_BANNERS,
+	DECOR_BOOKCASES,
+	DECOR_CLEAR,
+	DECOR_DRESSING,
+	DECOR_PLACE,
+	DECOR_SALT,
+	DECOR_SCATTER,
+} from "./config";
 import { decorHash, decorHash01 } from "./hash";
 import { decorProfile, flatKindWeight, type DecorProfile } from "./profile";
 import {
@@ -194,8 +202,9 @@ export const DECOR_BOX: Readonly<Record<StandingKind, DecorBoxPx>> = {
 	// bookcases (docs/BOOKSHELVES.md): one cell each, the case against the cell's back edge; measured on the BK5 renders
 	// (art 29 x 50 px at 125 kit units a tile, pivot the cell centre): the outline reaches 21.1 art px (11.4 render px) to
 	// the left of the pivot facing +X and 20.9 to the right facing +Z (w covers both facings, x 0), 43.1 above it (23.3)
-	// and 5.9 below (3.2)
-	bookcase: { w: 23, h: 24, below: 4 },
+	// and 5.9 below (3.2); `below` 6 since docs/KENNEY_DECOR.md: Kenney's deeper cases reach 8.2 art px below the pivot
+	// (10.0 with the ladder, 5.4 render px), so their art draws whole too (a solid piece: no footprint rule, the fade box only)
+	bookcase: { w: 23, h: 24, below: 6 },
 	// a library's reading area (docs/BOOKSHELVES.md), measured on the built outlines (render px = art px / 1.85), the
 	// worst case over the facings: the table's box at both ends of its 2 x 1 footprint, hulled (as the tomb's), the
 	// chair's at its cell
@@ -1280,6 +1289,17 @@ export function planDecor(input: DecorPlanInput): DecorPlan {
 			axisVariants = 4;
 			axisVariant = piece.fx > 0 ? 0 : piece.fz > 0 ? 1 : piece.fx < 0 ? 2 : 3;
 		}
+		let variant = axisVariant >= 0 && count >= axisVariants ? axisVariant : variantOf(input, kind, hash);
+		if (kind === "bookcase") {
+			// facing pairs, one art set per room (docs/KENNEY_DECOR.md)
+			const v = bookcaseVariant(
+				count,
+				axisVariant,
+				decorHash01(seed, piece.room, DECOR_SALT.bookcaseSet),
+				decorHash01(seed, cellKey(piece.x, piece.y), DECOR_SALT.bookcaseCell),
+			);
+			if (v >= 0) variant = v;
+		}
 		const light = LIGHTS.has(kind);
 		entries.push({
 			kind,
@@ -1297,7 +1317,7 @@ export function planDecor(input: DecorPlanInput): DecorPlan {
 			faceZ: piece.fz,
 			roomId: piece.room,
 			hash,
-			variant: axisVariant >= 0 && count >= axisVariants ? axisVariant : variantOf(input, kind, hash),
+			variant,
 			fade: fadeBoxes.size() - 1,
 			light,
 			lit: light,
@@ -1447,6 +1467,25 @@ export function planDecor(input: DecorPlanInput): DecorPlan {
 
 // ---------------------------------------------------------------------------------------------
 // Helpers
+
+/**
+ * A bookcase's variant (0-based) among the pack's `count` (docs/KENNEY_DECOR.md, DECOR_BOOKCASES): facing pairs, `axis`
+ * 0 facing +X, 1 facing +Z. With two pairs or more, a room whose hash `room01` (0..1) falls under `altRoomShare` draws
+ * from the alternative set (pairs 1..): pair 1 when the cell's hash `cell01` falls under `altCommonShare`, else one of the
+ * others, evenly; every other room the primary pair 0. One pair: the facing alone, as before the alternative set; no
+ * pair: -1 (the caller's hash pick).
+ */
+export function bookcaseVariant(count: number, axis: number, room01: number, cell01: number): number {
+	const pairCount = math.floor(count / 2);
+	if (pairCount < 1 || axis < 0) return -1;
+	if (pairCount < 2 || room01 >= DECOR_BOOKCASES.altRoomShare) return axis;
+	const others = pairCount - 2;
+	const common = DECOR_BOOKCASES.altCommonShare;
+	let pair = 1;
+	if (others > 0 && cell01 >= common)
+		pair = 2 + math.min(others - 1, math.floor(((cell01 - common) / (1 - common)) * others));
+	return pair * 2 + axis;
+}
 
 function variantOf(input: DecorPlanInput, kind: DecorKind, hash: number): number {
 	const count = input.variants !== undefined ? input.variants(kind) : 0;

@@ -10,4 +10,8 @@ export * from "./bulletLayout";
 export * from "./uiIconLayout";
 export * from "./fx";
 export * from "./bullets";
+export * from "./gooLayout";
+export * from "./goo";
+export * from "./boostAuraLayout";
+export * from "./boostAuras";
 export * from "./manifest";

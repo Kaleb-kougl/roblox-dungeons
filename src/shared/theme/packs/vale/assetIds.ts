@@ -102,6 +102,20 @@ import type { RobloxAssetId } from "../../types";
  * uploaded 2026-11-04 7:43 AM, transcribed from an Asset Manager screenshot.
  * bullets.png (every flying projectile and the impact burst fx.bullet.hit, docs/PROJECTILE_ART.md PA8; the 16Bit Bullets
  * Asset Pack by J i m, built by `node scripts/art/build-atlases.js --only bullets`) uploaded 2026-11-05.
+ * goo.png (the Ooze's goo puddles, docs/GOO_ART.md GA6; the Free Slimes Asset Pack by heimlich3, built by
+ * `node scripts/art/build-atlases.js --only goo`) uploaded 2026-11-06 9:10 AM by k9kbdev, transcribed from an Asset
+ * Manager screenshot.
+ * vault-cage.png / treasure-column.png (the vault's cage and light column, docs/TREASURE.md TR9; original art,
+ * scripts/art/gen-treasure-art.js, built by `node scripts/art/build-atlases.js --only treasure`) uploaded 2026-11-06
+ * 11:29 AM by k9kbdev, transcribed from an Asset Manager screenshot.
+ * boost-auras.png (the four boost auras at every stack rank, docs/BOOST_ART.md BAD3; original art,
+ * scripts/art/gen-boost-auras.js, built by `node scripts/art/build-atlases.js --only boostAuras`) uploaded 2026-11-06
+ * 11:29 AM by k9kbdev, transcribed from an Asset Manager screenshot.
+ * kenney-bookcase-<look>-x / -z (the bookcase's alternative set: Kenney's Isometric Library, CC0, reprojected by
+ * scripts/art/kenney/reproject.py; docs/KENNEY_DECOR.md) uploaded 2026-11-06 11:46 AM by k9kbdev, transcribed from an
+ * Asset Manager screenshot.
+ * dummy.png / dummy-outline.png (the tutorial's training dummy, docs/DUMMY_ART.md DA5; Training Dummy 2D Pixel Art)
+ * uploaded 2026-11-06 12:09 PM by k9kbdev, transcribed from an Asset Manager screenshot.
  */
 export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"amb-b1.ogg": "rbxassetid://91158343621799",
@@ -115,6 +129,7 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"bomber-death-outline.png": "rbxassetid://76498890264159",
 	"bomber-death.png": "rbxassetid://135000310498445",
 	"boost-aegis.png": "rbxassetid://140457804095686",
+	"boost-auras.png": "rbxassetid://102860615301253",
 	"boost-frenzy.png": "rbxassetid://123942115924560",
 	"boost-fury.png": "rbxassetid://81008876085390",
 	"boost-quickstep.png": "rbxassetid://94521729890331",
@@ -150,17 +165,34 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"charger-death-outline.png": "rbxassetid://94883878686509",
 	"charger-death.png": "rbxassetid://83176562450531",
 	"decor-atlas.png": "rbxassetid://115064942223814",
+	"dummy-outline.png": "rbxassetid://114899302767067",
+	"dummy.png": "rbxassetid://76011095585692",
 	"decor-mote.png": "rbxassetid://108281638823690",
 	"golden-death-outline.png": "rbxassetid://129944301136987",
 	"golden-death.png": "rbxassetid://92086087611208",
 	"golden-move-outline.png": "rbxassetid://85083036932400",
 	"golden-move.png": "rbxassetid://88829506171960",
+	"goo.png": "rbxassetid://82002931490706",
 	"imp-attack-outline.png": "rbxassetid://87826495349638",
 	"imp-attack.png": "rbxassetid://106802821695726",
 	"imp-body-outline.png": "rbxassetid://80038327609999",
 	"imp-body.png": "rbxassetid://130645679779456",
 	"imp-death-outline.png": "rbxassetid://134104614361499",
 	"imp-death.png": "rbxassetid://84336726009588",
+	"kenney-bookcase-books-x.png": "rbxassetid://112414765339087",
+	"kenney-bookcase-books-z.png": "rbxassetid://127677993573030",
+	"kenney-bookcase-destroyed-x.png": "rbxassetid://90622744050525",
+	"kenney-bookcase-destroyed-z.png": "rbxassetid://94762364313121",
+	"kenney-bookcase-empty-x.png": "rbxassetid://107272320382488",
+	"kenney-bookcase-empty-z.png": "rbxassetid://71512564076260",
+	"kenney-bookcase-glass-x.png": "rbxassetid://80368932112331",
+	"kenney-bookcase-glass-z.png": "rbxassetid://99803127612931",
+	"kenney-bookcase-half-x.png": "rbxassetid://116468486814527",
+	"kenney-bookcase-half-z.png": "rbxassetid://103656262277776",
+	"kenney-bookcase-halfempty-x.png": "rbxassetid://78793568985165",
+	"kenney-bookcase-halfempty-z.png": "rbxassetid://78252980421940",
+	"kenney-bookcase-ladder-x.png": "rbxassetid://121772944601941",
+	"kenney-bookcase-ladder-z.png": "rbxassetid://115785769946654",
 	"kit-banner.png": "rbxassetid://116783891005736",
 	"kit-bookcase-x.png": "rbxassetid://84780192220821",
 	"kit-bookcase-z.png": "rbxassetid://106394405354637",
@@ -306,6 +338,7 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"swarmer-move-outline.png": "rbxassetid://71928565662655",
 	"swarmer-move.png": "rbxassetid://123202950556458",
 	"tile-biome1-floor.png": "rbxassetid://98164459682194",
+	"treasure-column.png": "rbxassetid://90798930010648",
 	"ui-bar-fill.png": "rbxassetid://77055366404694",
 	"ui-bar-track.png": "rbxassetid://102111490052610",
 	"ui-button-disabled.png": "rbxassetid://127150562683800",
@@ -344,6 +377,7 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"vanguard-roll.png": "rbxassetid://113453153969851",
 	"vanguard-run-outline.png": "rbxassetid://135965842289036",
 	"vanguard-run.png": "rbxassetid://98583531315344",
+	"vault-cage.png": "rbxassetid://92880331034626",
 	"demonlord-attack-outline.png": "rbxassetid://102763949876820",
 	"demonlord-attack.png": "rbxassetid://71694718471521",
 	"demonlord-attack2-outline.png": "rbxassetid://82560650525332",

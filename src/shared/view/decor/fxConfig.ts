@@ -131,9 +131,14 @@ export const DECOR_FX = {
 	flareGrow: 0.35,
 	/** The glow under a flame: its transparency when fully lit. */
 	glowTransparency: 0.35,
-	/** Pedestal glint and stairwell zone sizes, tiles (their art keeps its aspect), and the glint's height. */
+	/**
+	 * Pedestal glint and stairwell zone sizes, tiles (their art keeps its aspect), and the glint's height above the
+	 * floor. The pedestal is drawn as the vault chest (TREASURE_VIEW.pedestal): the vale chest's lid stands 0.85 tiles
+	 * up the screen from its base and a world lift shows cos(CAMERA_PITCH_DEG) = 0.57 of itself, so 1.5 sets the glint
+	 * on the lid, in front of the chest's billboard (it was 0.7 over the old 0.5-tile cylinder). Studio check pending.
+	 */
 	glintHeightTiles: 0.6,
-	glintLiftTiles: 0.7,
+	glintLiftTiles: 1.5,
 	zoneSizeTiles: 2.6,
 	/** A flat boss-ring fire pit's glow, tiles across. */
 	ringGlowTiles: 1.4,

@@ -120,6 +120,19 @@ export const DECOR_SALT = {
 	scatterRoom: 0x5bd1e995,
 	scatterCell: 0x68e31da4,
 	banner: 0x1b56c4e9,
+	bookcaseSet: 0x7f4a7c15,
+	bookcaseCell: 0x4cf5ad43,
+} as const;
+
+/**
+ * Bookcase art sets (docs/KENNEY_DECOR.md): a pack's bookcase variants come in facing pairs (+X, +Z). Pair 0 is the
+ * primary art (vale: the kit bookcase), pairs 1.. an alternative set (vale: Kenney's cases, pair 1 the full shelf). A
+ * room draws all its bookcases from one set, by room hash: `altRoomShare` of the rooms take the alternative set. In
+ * it, a case takes pair 1 at `altCommonShare`, else one of the others, evenly, by cell hash. Presentation only.
+ */
+export const DECOR_BOOKCASES = {
+	altRoomShare: 0.5,
+	altCommonShare: 0.45,
 } as const;
 
 /**

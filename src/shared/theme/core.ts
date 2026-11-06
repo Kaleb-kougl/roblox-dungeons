@@ -102,6 +102,7 @@ import {
 	type SpriteSheetImage,
 } from "./types";
 import { describeValue, isArrayLike, isInteger, isObj, sortedEntries, sortedKeys, startsWith, type Obj } from "./util";
+import { boostAuraRanksOf } from "./boostAuraArt";
 import { voidLedgeColor } from "./voidColors";
 import type { PelletKind } from "./pellets";
 import { TREASURE_CHEST_ID, TREASURE_CHEST_OPEN_ID } from "./treasure";
@@ -615,6 +616,19 @@ export interface FxArt {
 	readonly tint: ColorRole | undefined;
 	/** A brighter, self-lit blend (LightInfluence 0). */
 	readonly additive: boolean;
+	/**
+	 * A boost aura's art per stack rank (docs/BOOST_ART.md BAD3, boostAuraArt.ts), rank order: undefined for every
+	 * other effect, and for an aura whose per-rank fields are malformed (warned once; the renderer draws its disc).
+	 */
+	readonly ranks?: ReadonlyArray<FxRankArt>;
+}
+
+/** One stack rank of a boost aura (FxArt.ranks): its loop in the set and its ring's radius, art px from the pivot. */
+export interface FxRankArt {
+	readonly animation: string;
+	readonly frames: number;
+	readonly fps: number;
+	readonly ringPx: number;
 }
 
 /**
@@ -632,6 +646,24 @@ export interface BulletArt {
 	readonly widthTiles: number;
 	readonly heightTiles: number;
 	/** The art's mean colour (opaque pixels, after recolour): held to the bullet colour rules, never a tint. */
+	readonly meanColor: HexColor;
+}
+
+/**
+ * A floor sprite (docs/GOO_ART.md GA2, BULLET_ART.floorSpriteIds: the goo puddle): a one-facing set lying flat on the
+ * floor, never turned (the art's up is screen-up). `land` (BULLET_ART.land, one cell) shows while the puddle lands,
+ * then `hold` (BULLET_ART.hold) for the rest of its life, one of `holdFrames` variants per puddle (not a flipbook).
+ * The renderer sizes it from the hold frame's lit box (`litW` x `litH`, art px; shared/view gooSpriteSize).
+ */
+export interface FloorSpriteArt {
+	readonly id: string;
+	/** The set (one facing); its `land` and `hold` animations are the cells. */
+	readonly set: SpriteSetLayout;
+	/** Hold variants (>= 1, <= BULLET_ART.maxFrames). */
+	readonly holdFrames: number;
+	readonly litW: number;
+	readonly litH: number;
+	/** The art's mean colour (non-outline opaque pixels, after recolour): held to the goo colour rules, never a tint. */
 	readonly meanColor: HexColor;
 }
 
@@ -715,6 +747,7 @@ export class ThemeCore {
 	private readonly fxArt = new Map<string, FxArt | false>();
 	/** Bullet sprite lookups, misses included (`false`). */
 	private readonly bulletArt = new Map<string, BulletArt | false>();
+	private readonly floorSpriteArt = new Map<string, FloorSpriteArt | false>();
 	private readonly soundRefs = new Map<string, SoundRef>();
 	/** contentIds / biomeContentIds lookups (docs/PRELOAD.md P1), empty lists included. */
 	private readonly contentRefs = new Map<string, ReadonlyArray<ContentRef>>();
@@ -941,7 +974,7 @@ export class ThemeCore {
 			}
 		});
 		const animations: Record<string, SpriteAnimationDef> = {};
-		const required = slot !== undefined ? requiredBaseAnimations(slot) : [];
+		const required = slot !== undefined ? requiredBaseAnimations(slot, id) : [];
 		if (isObj(def.animations)) {
 			for (const [name, a] of sortedEntries(def.animations)) {
 				const bad = spriteAnimationProblem(a, sheets, setCell, facings.count);
@@ -1416,6 +1449,17 @@ export class ThemeCore {
 				this.warnOnce(`fx:${id}:tint`, `effect "${id}" has tint ${describeValue(d.tint)}, drawing it untinted`);
 			}
 		}
+		// docs/BOOST_ART.md BAD3: a boost aura's rings per stack rank (boostAuraArt.ts)
+		const auraRanks = boostAuraRanksOf(id, d);
+		let ranks: Array<FxRankArt> | undefined;
+		if (typeIs(auraRanks, "string")) {
+			this.warnOnce(`fx:${id}:ranks`, `boost aura "${id}": ${auraRanks}; drawing its disc`);
+		} else if (auraRanks !== undefined) {
+			ranks = auraRanks.map((r) => {
+				const a = set.animation(r.animation) as SpriteAnimationDef; // present: boostAuraRanksOf checked it
+				return { animation: r.animation, frames: a.frames, fps: a.fps, ringPx: r.ringPx };
+			});
+		}
 		return {
 			id,
 			set,
@@ -1427,6 +1471,7 @@ export class ThemeCore {
 			heightTiles: (sizeTiles * set.frameH) / longSide,
 			tint,
 			additive: d.additive === true,
+			ranks,
 		};
 	}
 
@@ -1437,7 +1482,8 @@ export class ThemeCore {
 	 * entry): draw `placeholder(id)`. Cached, misses too. A sprites set the renderer cannot draw as a bullet warns once
 	 * and is undefined (the placeholder is drawn): malformed (`sprites(id)` rejects it), more than one facing, a `fly`
 	 * loop longer than BULLET_ART.maxFrames, no valid `meanColor` (the readability rules could not be checked), or an
-	 * ID drawn as a floor decal (BULLET_ART.decalIds).
+	 * ID drawn as a floor decal (BULLET_ART.decalIds). A floor sprite ID (BULLET_ART.floorSpriteIds, the goo) is never
+	 * a flying bullet: undefined without a warning (read it with `floorSprite`).
 	 */
 	bullet(id: string): BulletArt | undefined {
 		const cached = this.bulletArt.get(id);
@@ -1451,7 +1497,7 @@ export class ThemeCore {
 
 	private createBullet(id: string): BulletArt | undefined {
 		const def = this.asset(id);
-		if (def === undefined || def.kind !== "sprites") {
+		if (def === undefined || def.kind !== "sprites" || BULLET_ART.floorSpriteIds.includes(id)) {
 			return undefined;
 		}
 		const skip = (why: string) => {
@@ -1483,6 +1529,67 @@ export class ThemeCore {
 			fps: fly.fps,
 			widthTiles: set.frameW / set.pixelsPerTile,
 			heightTiles: set.frameH / set.pixelsPerTile,
+			meanColor,
+		};
+	}
+
+	/**
+	 * A floor sprite's art (docs/GOO_ART.md GA2: an ID in BULLET_ART.floorSpriteIds, the goo puddle), or undefined
+	 * WITHOUT a warning when the pack has none (any kind but `sprites`, no entry, or not a floor sprite ID): draw the
+	 * placeholder disc. Cached, misses too. A sprites set the renderer cannot draw warns once and is undefined:
+	 * malformed (`sprites(id)` rejects it, e.g. without `land` / `hold`), more than one facing, a `land` of other than
+	 * BULLET_ART.landFrames cells, more than BULLET_ART.maxFrames hold variants, a bad lit box or no valid `meanColor`.
+	 */
+	floorSprite(id: string): FloorSpriteArt | undefined {
+		const cached = this.floorSpriteArt.get(id);
+		if (cached !== undefined) {
+			return cached === false ? undefined : cached;
+		}
+		const art = this.createFloorSprite(id);
+		this.floorSpriteArt.set(id, art ?? false);
+		return art;
+	}
+
+	private createFloorSprite(id: string): FloorSpriteArt | undefined {
+		const def = this.asset(id);
+		if (def === undefined || def.kind !== "sprites" || !BULLET_ART.floorSpriteIds.includes(id)) {
+			return undefined;
+		}
+		const skip = (why: string) => {
+			this.warnOnce(`floorSprite:${id}`, `floor sprite "${id}" ${why}; drawing its placeholder`);
+			return undefined;
+		};
+		const set = this.sprites(id); // warns once when malformed (land / hold are required for this ID)
+		if (set === undefined) {
+			return undefined;
+		}
+		if (set.facings.count !== 1) {
+			return skip(`has ${set.facings.count} facings, floor sprites have 1`);
+		}
+		const land = set.animation(BULLET_ART.land) as SpriteAnimationDef; // required: sprites() rejects a set without it
+		const hold = set.animation(BULLET_ART.hold) as SpriteAnimationDef;
+		if (land.frames !== BULLET_ART.landFrames) {
+			return skip(`has ${land.frames} "${BULLET_ART.land}" frames, not ${BULLET_ART.landFrames}`);
+		}
+		if (hold.frames > BULLET_ART.maxFrames) {
+			return skip(`has ${hold.frames} "${BULLET_ART.hold}" frames, more than ${BULLET_ART.maxFrames}`);
+		}
+		const d = def as unknown as Obj;
+		const lit = d.lit;
+		const side = (v: unknown, max: number) => typeIs(v, "number") && v >= 1 && v % 1 === 0 && v <= max;
+		if (!isObj(lit) || !side(lit.w, set.frameW) || !side(lit.h, set.frameH)) {
+			return skip(`has lit box ${describeValue(lit)}, not { w, h } inside its ${set.frameW}x${set.frameH} cell`);
+		}
+		const meanColor = d.meanColor;
+		if (!isHexColor(meanColor)) {
+			return skip(`has meanColor ${describeValue(meanColor)}, not "#rrggbb"`);
+		}
+		return {
+			id,
+			set,
+			holdFrames: hold.frames,
+			litW: lit.w as number,
+			litH: lit.h as number,
 			meanColor,
 		};
 	}

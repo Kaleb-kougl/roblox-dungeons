@@ -101,10 +101,9 @@ export function progressionStringKeys(): string[] {
  * common, rare, legendary. The loot `rarity.*` roles are not used here.
  */
 export const RARITY_COLOR_ROLES: ReadonlyArray<ColorRole> = BOON_RARITY_ROLES;
-/** Relic and curse icons, the pedestal and the shrine markers (live / used). */
+/** Relic and curse icons and the shrine marker (live / used); a relic pedestal is drawn as the vault chest. */
 export const RELIC_COLOR_ROLE: ColorRole = "uiAccent";
 export const CURSE_COLOR_ROLE: ColorRole = "uiHealth";
-export const PEDESTAL_COLOR_ROLE: ColorRole = "uiAccent";
 export const SHRINE_COLOR_ROLE: ColorRole = "uiMana";
 export const MARKER_USED_COLOR_ROLE: ColorRole = "uiTextDim";
 
@@ -133,8 +132,10 @@ export const PROGRESSION_VIEW = {
 	toastWidth: 380,
 	toastSeconds: 3,
 	maxToasts: 4,
-	/** World markers (studs per tile scale applied by the controller): radius and height in tiles. */
-	pedestalRadiusTiles: 0.35,
+	/**
+	 * World markers (studs per tile scale applied by the controller), tiles: the pedestal beam's base above the floor
+	 * (inside the chest, so the chest's billboard draws over its foot), the shrine zone's radius and height.
+	 */
 	pedestalHeightTiles: 0.5,
 	shrineRadiusTiles: 1,
 	shrineHeightTiles: 0.08,
@@ -142,7 +143,7 @@ export const PROGRESSION_VIEW = {
 	usedTransparency: 0.6,
 	/** Logical image ID of the beam over a live relic pedestal (drawn only when the pack has it as an image). */
 	pedestalBeamVisualId: "ui.marker.pedestal",
-	/** The `ui.marker.pedestal` beam (when the pack has it): drawn this many tiles tall, its bottom on the pedestal. */
+	/** The `ui.marker.pedestal` beam (when the pack has it): drawn this many tiles tall, its bottom at pedestalHeightTiles. */
 	pedestalBeamHeightTiles: 3,
 } as const;
 

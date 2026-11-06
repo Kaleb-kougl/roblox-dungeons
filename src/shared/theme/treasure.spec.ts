@@ -27,6 +27,7 @@ import { THEME_PACKS } from "./packs";
 import { PLACEHOLDER_MANIFEST } from "./packs/placeholder";
 import { VALE_FLOOR_HEX, buildValeManifest } from "./packs/vale";
 import { VALE_FX_PENDING } from "./packs/vale/fx";
+import { VALE_TREASURE_FX_SHEET } from "./packs/vale/treasureLayout";
 import { CAGE_BAR_GAP_PX, PLACEHOLDER_PROPORTIONS, PLACEHOLDER_VISUALS, pxToStuds } from "./placeholders";
 import { placeholders } from "./strings";
 import {
@@ -123,14 +124,15 @@ describe("treasure: contract", () => {
 		expect([TREASURE_COLUMN_FX_ID, slotFor(TREASURE_COLUMN_FX_ID)?.slot]).toEqual(["fx.treasure.column", "fx"]);
 	});
 
-	it("the light column is FX_IDS' last entry, optional: no bundled pack draws it yet (vale: pending, TR9)", () => {
+	it("the light column is FX_IDS' last entry, optional: vale draws it (TR9) once its own sheet has an ID", () => {
 		expect(tail(FX_IDS, 1)).toEqual([TREASURE_COLUMN_FX_ID]);
 		expect(isFxId(TREASURE_COLUMN_FX_ID)).toBe(true);
 		expect(has(REQUIRED_ASSET_IDS, TREASURE_COLUMN_FX_ID)).toBe(false);
-		expect(VALE_FX_PENDING.includes(TREASURE_COLUMN_FX_ID)).toBe(true);
-		for (const p of sortedKeys(THEME_PACKS)) {
-			expect([p, THEME_PACKS[p].assets[TREASURE_COLUMN_FX_ID]]).toEqual([p, undefined]);
-		}
+		expect(VALE_FX_PENDING.includes(TREASURE_COLUMN_FX_ID)).toBe(false);
+		expect(PLACEHOLDER_MANIFEST.assets[TREASURE_COLUMN_FX_ID]).toBe(undefined);
+		const sheet = VALE_TREASURE_FX_SHEET.file;
+		expect(buildValeManifest({}).assets[TREASURE_COLUMN_FX_ID]).toBe(undefined);
+		expect(buildValeManifest({ [sheet]: "rbxassetid://7300" }).assets[TREASURE_COLUMN_FX_ID]?.kind).toBe("sprites");
 	});
 
 	it("the colour roles are COLOR_ROLES' last five before Fortune's; the UI tiers are the draft's boon.* roles", () => {
@@ -254,10 +256,10 @@ describe("treasure: placeholder", () => {
 		expect(cage.size[1] > PLACEHOLDER_VISUALS[TREASURE_CHEST_ID].size[1]).toBe(true);
 	});
 
-	it("the placeholder pack draws the three looks as placeholders; vale draws the chest's art, the cage's bars (TR9)", () => {
+	it("the placeholder pack draws the three looks as placeholders; vale draws art for all three (TR9)", () => {
 		for (const id of sortedKeys(THEME_PACKS)) {
 			for (const tid of TREASURE_IDS) {
-				const art = id === "vale" && tid !== "treasure.cage";
+				const art = id === "vale";
 				expect([id, tid, THEME_PACKS[id].assets[tid].kind]).toEqual([id, tid, art ? "sprites" : "placeholder"]);
 			}
 		}

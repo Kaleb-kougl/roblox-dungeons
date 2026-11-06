@@ -101,6 +101,11 @@ export interface SlotContract {
 	 * travel the renderer turns along the velocity. Bullets only ("up"); absent for slots whose art is not turned.
 	 */
 	readonly heading?: "up";
+	/**
+	 * v2 `sprites` kind (docs/GOO_ART.md GA2): per asset ID, the base animations a set with that ID defines INSTEAD of
+	 * `baseAnimations` / `animationOrder` (the goo puddle's floor sprite: land, hold). Absent: every ID the slot's.
+	 */
+	readonly idBaseAnimations?: Readonly<Record<string, ReadonlyArray<string>>>;
 }
 
 /** Actor slots also take the v2 `sprites` kind (SpriteSetAsset: free cells, facings and frame counts). */
@@ -169,11 +174,36 @@ export const BOSS: SlotContract = {
 };
 
 /**
+ * Roblox port (docs/PROJECTILE_ART.md PA3): the BULLET slot's `sprites` rules, one table (contract.luau sits near Luau's
+ * 200-locals limit). `animation`: the one loop a flying bullet's set defines (the slot's base animation); `maxFrames`:
+ * its largest frame count; `decalIds`: bullets drawn as flat floor decals (lightning strikes, ember flames, PAD3), which
+ * keep their placeholders and may not take art; `hitFx`: the optional player bullet impact effect (an FX_IDS entry,
+ * PA7, PAD11: never for enemy bullets).
+ * docs/GOO_ART.md GA2: `floorSpriteIds` (the goo puddle) may take a FLOOR sprite set instead: one facing, never turned
+ * (the art is a 3/4 view, drawn screen-up), the animations `land` (`landFrames` cell: the drop hitting the floor) and
+ * `hold` (1..`maxFrames` cells: variants picked per puddle, not a flipbook), a `meanColor` and the hold frame's lit
+ * box `lit` ({ w, h }, art px), held to gooArt.ts `gooArtReport`. Declared before BULLET, whose per-ID animations
+ * read it.
+ */
+export const BULLET_ART = {
+	animation: "fly",
+	maxFrames: 4,
+	decalIds: ["bullet.enemy.strike", "bullet.player.ember"] as ReadonlyArray<string>,
+	floorSpriteIds: ["bullet.enemy.goo"] as ReadonlyArray<string>,
+	land: "land",
+	hold: "hold",
+	landFrames: 1,
+	hitFx: "fx.bullet.hit",
+} as const;
+
+/**
  * Bullets. The 16 px `spritesheet` kind (the web build's) is drawn at one cell size, scaled to the gameplay radius.
  * Roblox port (docs/PROJECTILE_ART.md PA3): a bullet may also be a v2 `sprites` set like an effect (FX): its own cell,
  * ONE facing, the `fly` loop (BULLET_ART.animation, 1..BULLET_ART.maxFrames frames from the art), art pointing
  * screen-up (`heading`), plus a required `meanColor` held to the bullet colour rules (bulletArt.ts `bulletArtReport`).
  * BULLET_ART.decalIds never take art. The cell / pivot / `fly: 2` below are the spritesheet kind's, unchanged.
+ * docs/GOO_ART.md GA2: a BULLET_ART.floorSpriteIds set (the goo puddle) defines `land` / `hold` instead of `fly`
+ * (`idBaseAnimations`; the ID is written out: BULLET_ART.floorSpriteIds[0], pinned by gooArt.spec).
  */
 export const BULLET: SlotContract = {
 	slot: "bullet",
@@ -185,6 +215,7 @@ export const BULLET: SlotContract = {
 	animationOrder: ["fly"],
 	facings: [],
 	heading: "up",
+	idBaseAnimations: { "bullet.enemy.goo": [BULLET_ART.land, BULLET_ART.hold] },
 };
 
 /** One tile = PIXELS_PER_TILE (16) pixels square. */
@@ -388,11 +419,13 @@ export function requiredAnimations(slot: SlotContract): Record<string, number> {
  * class: idle, run, roll, hit, death; enemy and boss: idle, move, attack, hit, death; decor and breakable: idle; fx:
  * play (`baseAnimations`). Each needs >= 1 frame; the
  * contract's exact frame counts, cells, pivots and facings apply to the 16 px `spritesheet` kind only. Empty for a
- * slot without animations.
+ * slot without animations. `id`: the asset's ID, for a slot with per-ID animations (`idBaseAnimations`: the goo
+ * puddle's land / hold, docs/GOO_ART.md GA2).
  */
-export function requiredBaseAnimations(slot: SlotContract): Array<string> {
+export function requiredBaseAnimations(slot: SlotContract, id?: string): Array<string> {
 	const out = new Array<string>();
-	for (const anim of slot.baseAnimations ?? slot.animationOrder ?? []) {
+	const perId = id !== undefined && slot.idBaseAnimations !== undefined ? slot.idBaseAnimations[id] : undefined;
+	for (const anim of perId ?? slot.baseAnimations ?? slot.animationOrder ?? []) {
 		out.push(anim);
 	}
 	return out;
@@ -1256,8 +1289,9 @@ export const DECOR_KIND_LAYERS = {
 	throne: ["low"] as const,
 	statue: ["low"] as const,
 	carpet: FLAT_SPOT,
-	// bookcases (docs/BOOKSHELVES.md): solid, 1 x 1, against far walls (library and hall rooms), low; variant 1 faces
-	// +X, 2 faces +Z
+	// bookcases (docs/BOOKSHELVES.md): solid, 1 x 1, against far walls (library and hall rooms), low; variants in facing
+	// pairs, the odd one facing +X, the even one +Z: 1 / 2 the primary art, 3 / 4 .. an alternative set picked per room
+	// (docs/KENNEY_DECOR.md, decorPlan's bookcaseVariant)
 	bookcase: ["low"] as const,
 	// a library's reading area (docs/BOOKSHELVES.md): solid, free-standing on open floor, low; a table (2 x 1, variant 1
 	// along X, 2 along Z) with a chair (1 x 1) at each end, variant 1 facing +X, 2 +Z, 3 -X, 4 -Z (toward the table)
@@ -1336,8 +1370,11 @@ export const VOID_DECOR = {
 };
 export type VoidDecorKind = (typeof VOID_DECOR.kinds)[number];
 
-/** A piece may have numbered variants `decor.delve.b<n>.<kind>.<v>`, v in 1..DECOR_MAX_VARIANTS (bones1..3, ...). */
-export const DECOR_MAX_VARIANTS = 4;
+/**
+ * A piece may have numbered variants `decor.delve.b<n>.<kind>.<v>`, v in 1..DECOR_MAX_VARIANTS (bones1..3, ...). 16 since
+ * docs/KENNEY_DECOR.md: the bookcase's eight facing pairs (the kit case and seven Kenney cases).
+ */
+export const DECOR_MAX_VARIANTS = 16;
 
 /** A piece's outline (ImageAsset.outline, SpriteSetAsset.outlines) is a polygon: at least this many points. */
 export const DECOR_MIN_OUTLINE_POINTS = 3;
@@ -2008,20 +2045,6 @@ export const MIN_FX_BULLET_DIFFERENCE = MIN_DECOR_FX_BULLET_DIFFERENCE;
  * `telegraph`; enemy art also to MIN_ENEMY_BULLET_CONTRAST on every biome floor and wall (`bulletArtReport`).
  */
 export const MAX_ENEMY_BULLET_ART_DIFFERENCE = 12;
-
-/**
- * Roblox port (docs/PROJECTILE_ART.md PA3): the BULLET slot's `sprites` rules, one table (contract.luau sits near Luau's
- * 200-locals limit). `animation`: the one loop a bullet set defines (the slot's base animation); `maxFrames`: its
- * largest frame count; `decalIds`: bullets drawn as flat floor decals (goo puddles, lightning strikes, ember flames,
- * PAD3), which keep their placeholders and may not take art; `hitFx`: the optional player bullet impact effect (an
- * FX_IDS entry, PA7, PAD11: never for enemy bullets).
- */
-export const BULLET_ART = {
-	animation: "fly",
-	maxFrames: 4,
-	decalIds: ["bullet.enemy.goo", "bullet.enemy.strike", "bullet.player.ember"] as ReadonlyArray<string>,
-	hitFx: "fx.bullet.hit",
-} as const;
 
 /** Manifest keys that smell like gameplay data. Packs carry art, never numbers that change difficulty. */
 export const GAMEPLAY_KEY_WORDS = [

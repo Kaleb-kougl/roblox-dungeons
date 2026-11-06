@@ -15,7 +15,7 @@ export const TREASURE_VIEW = {
 	/** The chest and cage bases stand this far above the floor, studs (BREAKABLE_VIEW.liftStuds' value). */
 	liftStuds: 0.02,
 	/**
-	 * Art (image / sprites) for the closed chest and the cage is capped at this height above its pivot (a taller frame is
+	 * Art (image / sprites) for the closed chest is capped at this height above its pivot (a taller frame is
 	 * drawn smaller; breakableArtLayout). 0.9: the vale chest (docs/TREASURE.md TR9) stands 0.83 tiles above its
 	 * footprint centre at the game's pitch (BREAKABLE_VIEW's 0.75 would shrink it by a tenth).
 	 */
@@ -24,6 +24,17 @@ export const TREASURE_VIEW = {
 	openMaxHeightTiles: 1.35,
 	/** The placeholder cage's bars stand this far outside the chest's footprint, studs (cageBarOffsets). */
 	cageMarginStuds: 0.25,
+	/**
+	 * The same cap for cage art (docs/TREASURE.md TR9): the vale cage, a domed birdcage round the chest's footprint, stands
+	 * 0.95 tiles above its pivot (the far shoulder of its dome), so 1.2 never shrinks it off the chest it fits.
+	 */
+	cageMaxHeightTiles: 1.2,
+	/**
+	 * Cage art's billboard sits this much nearer the camera than its pivot alone puts it, studs (SpriteView's
+	 * extraDepthStuds), so it always draws over the chest it stands round: its pixels are only the bars in front of the
+	 * chest and those above it (the generator cuts the ones the chest hides), and between them the chest shows.
+	 */
+	cageDepthStuds: 0.3,
 
 	// --- the sparkle (Player experience "Through the doorway") ---------------------------------------------------------
 	/**
@@ -91,6 +102,21 @@ export const TREASURE_VIEW = {
 		wobbleSec: 0.3,
 		wobbleDeg: 6,
 		wobbleCycles: 2,
+	},
+
+	// --- relic pedestals (RunMarkerController; shared/view/treasure pedestal.ts) -------------------------------------
+	/**
+	 * A TREASURE room's relic pedestal is drawn as the vault's chest (`treasure.chest`, capped at maxHeightTiles), and
+	 * taking its relic plays the vault's opening (`open` below: the lid's jolt, the pop to `treasure.chestopen`, the solo
+	 * freeze, the shake, the ring burst and the light column); the open chest stays. The column and the burst take
+	 * `tier`'s floor colour: VaultTier.RARE (1), the tier whose reward is a relic. The chest faces (faceX, faceZ) in sim
+	 * world axes (the vale chest's four facings): (0, -1) turns it toward the camera's side, as a vault chest against a
+	 * far wall faces.
+	 */
+	pedestal: {
+		tier: 1,
+		faceX: 0,
+		faceZ: -1,
 	},
 
 	// --- the opening (Player experience "The opening") -----------------------------------------------------------------

@@ -12,7 +12,9 @@
  *     every ENEMY_BULLET_ROLES colour and `telegraph`;
  *   - enemy art (`bullet.enemy.*`) still reads as THE danger colour: its meanColor <= MAX_ENEMY_BULLET_ART_DIFFERENCE
  *     (CIE76) from `enemyBullet`, and >= MIN_ENEMY_BULLET_CONTRAST (WCAG) on every biome floor and wall;
- *   - the floor decals (BULLET_ART.decalIds: goo, strike, ember; PAD3) take no art at all.
+ *   - the floor decals (BULLET_ART.decalIds: strike, ember; PAD3) take no art at all;
+ *   - the floor sprites (BULLET_ART.floorSpriteIds: the goo puddle, docs/GOO_ART.md GA2) are not flying bullets: no
+ *     entry here, gooArt.ts `gooArtReport` holds them to their own rules.
  * The set's own fields (cells in range, fps, sheets) are validate.ts validateSpriteSet's, as for every sprites set.
  */
 
@@ -32,7 +34,8 @@ import { describeValue, isObj, sortedEntries, startsWith } from "./util";
 const PLAYER_ART_AGAINST: ReadonlyArray<ColorRole> = [...ENEMY_BULLET_ROLES, "telegraph"];
 
 /**
- * One check of `bulletArtReport`, per `bullet.*` ID with sprite art (BULLET_IDS order), in this order:
+ * One check of `bulletArtReport`, per `bullet.*` ID with sprite art (BULLET_IDS order; floor sprites, BULLET_ART.
+ * floorSpriteIds, have none: gooArtReport), in this order:
  *   - "decal": the ID is a floor decal (BULLET_ART.decalIds): always failed, no other check;
  *   - "facings": `value` the facing count, `limit` 1 (ok when equal); only when the count is a number;
  *   - "frames": `value` the `fly` loop's frame count, `limit` BULLET_ART.maxFrames; only when it is a number;
@@ -64,7 +67,7 @@ export function bulletArtReport(manifest: unknown): Array<BulletArtEntry> {
 	const biomes = isObj(manifest.biomes) ? sortedEntries(manifest.biomes) : [];
 	for (const id of BULLET_IDS) {
 		const def = manifest.assets[id];
-		if (!isObj(def) || def.kind !== "sprites") {
+		if (!isObj(def) || def.kind !== "sprites" || BULLET_ART.floorSpriteIds.includes(id)) {
 			continue;
 		}
 		const entry = (

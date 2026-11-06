@@ -87,6 +87,7 @@ import {
 	type FxEventBuffer,
 } from "shared/view/fx";
 import type { JuiceSettings } from "shared/settings";
+import { VIEW_HIT_CLIP_SEC } from "shared/view/dummy";
 import { goldenFlickerTransparency, goldenTicksLeft, isGoldenKind } from "shared/view/golden";
 import { FxTrackerController } from "../fx/FxTrackerController";
 import { SimController } from "../game/SimController";
@@ -144,6 +145,11 @@ interface ActorView {
 	sprite: SpriteView | undefined;
 	/** The archetype's sprite input builder (sprite views only). */
 	spriteInput: ((a: Readonly<ActorState>, alpha: number) => ActorSpriteInput) | undefined;
+	/**
+	 * Seconds of the view-side hit clip (docs/DUMMY_ART.md DD1: shared/view/dummy VIEW_HIT_CLIP_SEC; the training
+	 * dummy's wobble), timed by HitReactSlots.hitAge. Sprite views of those archetypes only; undefined otherwise.
+	 */
+	hitClipSec: number | undefined;
 	/** The free-list key the view goes back to (sprites: set id and draw scale; placeholders: the model's visualId). */
 	poolKey: string;
 	look: VariantLook;
@@ -444,6 +450,7 @@ export class ActorRenderController implements OnStart {
 				model: undefined,
 				sprite,
 				spriteInput,
+				hitClipSec: VIEW_HIT_CLIP_SEC.get(def.id),
 				poolKey: key,
 				look: "normal",
 				transparency: 0,
@@ -478,6 +485,7 @@ export class ActorRenderController implements OnStart {
 				model,
 				sprite: undefined,
 				spriteInput: undefined,
+				hitClipSec: undefined,
 				poolKey: key,
 				look: "normal",
 				transparency: 0,
@@ -557,6 +565,12 @@ export class ActorRenderController implements OnStart {
 			this.moveParts.push(sprite.anchor);
 			this.moveCFrames.push(new CFrame(at));
 			let input = view.spriteInput!(a, alpha);
+			const hitClipSec = view.hitClipSec;
+			if (hitClipSec !== undefined) {
+				// DD1: the hit plays over the seconds since the last hit (hitReact's clock), not the 0.1 s sim flash.
+				const elapsed = this.hitReact.hitAge(slot, a.id, this.hitNow);
+				input = { ...input, hitClip: { elapsed, total: hitClipSec } };
+			}
 			if (corpse !== undefined) {
 				// The death keeps its own span; only the fade follows the held corpse.
 				const deathTicks = input.deathTicks ?? input.corpseTicks * SPRITE_VIEW.deathCorpseFraction;

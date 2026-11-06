@@ -149,6 +149,17 @@ export {
 } from "./fortuneColors";
 // Roblox port (docs/PROJECTILE_ART.md PA3): the bullet sprite rules.
 export { bulletArtProblems, bulletArtReport, type BulletArtEntry, type BulletArtProblem } from "./bulletArt";
+export { GOO_ART_RULES, gooArtProblems, gooArtReport, type GooArtEntry, type GooArtProblem } from "./gooArt";
+export {
+	BOOST_AURA_ART,
+	boostAuraArtProblems,
+	boostAuraKindOf,
+	boostAuraRankAnimation,
+	boostAuraRanksOf,
+	boostAuraShapeProblems,
+	type BoostAuraArtProblem,
+	type BoostAuraRank,
+} from "./boostAuraArt";
 export * from "./placeholders";
 export {
 	DEFAULT_PACK_ID,
@@ -165,12 +176,14 @@ export {
 	type BoostTheme,
 	type BreakableTheme,
 	type BulletArt,
+	type FloorSpriteArt,
 	type PelletTheme,
 	type TreasurePieceTheme,
 	type PactAltarTheme,
 	type DecorArt,
 	type FrameUV,
 	type FxArt,
+	type FxRankArt,
 	type ImageRef,
 	type LocaleReport,
 	type PixelRect,
@@ -196,12 +209,14 @@ export {
 	type Boost,
 	type Breakable,
 	type BulletSprite,
+	type FloorSprite,
 	type Pellet,
 	type TreasurePiece,
 	type PactAltar,
 	type DecorPiece,
 	type FrameRect,
 	type FxSprite,
+	type FxSpriteRank,
 	type LoadOptions,
 	type SpriteFrame,
 	type SpriteSet,

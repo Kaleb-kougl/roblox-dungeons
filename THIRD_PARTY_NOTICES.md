@@ -187,6 +187,52 @@ SOFTWARE.
   (the main menu's Credits screen, shared/view/menu `CREDITS`). A screenshot of the comment kept beside the vendor
   files, or a written licence from the author (the contact address on the page), would be stronger evidence.
 
+## Free Slimes Asset Pack ("Slime")
+
+- "Free Slimes Asset Pack" by **heimlich3** (itch.io). Source: https://heimlich3.itch.io/slime.
+- Used for: the Ooze's goo puddles (`bullet.enemy.goo`, docs/GOO_ART.md): two frames of the slime's strip, the
+  flattened blob as the puddle landing and the spread splat as the puddle, cut and packed into `goo.png` by
+  `scripts/art/build-atlases.js` and uploaded to Roblox. **Modified:** cropped and recoloured (a gradient map into the
+  goo colour `enemyGoo`, the black outline kept).
+- Raw files: `art/vendor/Free Slimes Asset Pack/` (gitignored, never committed or shared: redistribution is
+  prohibited).
+- Terms (the pack page, as written):
+  "You can use this asset in any game project, personal and commercial. / Modification is allowed. / Redistribution,
+  resell, NFTs and AI use are PROHIBITED. / Credits is not required but appreciated."
+- The owner confirmed with the author that "AI use" means training AI on the art: the port's normal workflow (the
+  atlas pipeline, the recolour, an assistant helping build it) is not AI use. Never put the pack's files into any AI
+  training set. Credit is not required; the pack is credited anyway (the main menu's Credits screen, shared/view/menu
+  `CREDITS`).
+
+## Kenney Isometric Library and Isometric Dungeon (2D art, CC0)
+
+- Author: Kenney (https://www.kenney.nl). Packs: "Isometric Library" and "Dungeon Pack" 2.3 ("Isometric Dungeon"),
+  each with its `License.txt` (Creative Commons Zero, CC0 1.0: http://creativecommons.org/publicdomain/zero/1.0/).
+- Used for: docs/KENNEY_DECOR.md. Shipping now: the bookcase's alternative art set (`decor.delve.b<n>.bookcase.3` ..
+  `.16`, seven cases in two facings, from the Isometric Library). The other reprojected pieces (study tables, display
+  cases, dining tables, stock, carpets, floor patches) are rendered into `art/vendor/kenney/` but not yet wired.
+  **Changes made:** reprojected from Kenney's 30 degree camera to the game's 55 degree camera by
+  `scripts/art/kenney/reproject.py` (per-face affine warps), baked shadows removed, scaled down, colour graded; packed
+  by `scripts/art/build-atlases.js` and uploaded to Roblox.
+- Raw files: `art/vendor/kenney-library/`, `art/vendor/kenney-dungeon/` (the packs' `Isometric/` folders and licences)
+  and the renders in `art/vendor/kenney/` (all gitignored, like every pack, though CC0 would allow committing them).
+- License: CC0, public domain: no restriction and no credit required. Credited anyway (the main menu's Credits screen,
+  shared/view/menu `CREDITS`: "Isometric Library", "by Kenney (kenney.nl)", "CC0").
+
+## Training Dummy 2D Pixel Art
+
+- "Training Dummy 2D Pixel Art" (the download's folder name). **Author and store page: not in the download; to be
+  confirmed by the owner** (an itch.io search on 2026-11-06 did not find this pack).
+- Used for: the tutorial's training dummy (`enemy.dummy`, docs/DUMMY_ART.md): the idle frame, the 7-frame hit wobble
+  and the 9-frame break, packed into `dummy.png` (+ its outline rim) by `scripts/art/build-atlases.js` and uploaded to
+  Roblox. **Modified:** cropped, repacked into one column, and a generated 2 px outline rim added.
+- Raw files: `art/vendor/training-dummy/` (gitignored, never committed or shared: redistribution as a game asset is
+  prohibited).
+- Terms (`License.txt`, as written): "You can use this asset in any game project, personal or commercial. / DO NOT
+  resell or redistribute AS A GAME ASSET, it has to be part of a project. / Credit is not required but it is
+  appreciated. / Modify to suit your needs. / You are NOT allowed to turn any of my assets to an NFT."
+- Credit is not required; add it to the Credits screen (shared/view/menu `CREDITS`) once the author is known.
+
 ## Dungeon Essential Kit (3D models, CC-BY 4.0) - ATTRIBUTION REQUIRED
 
 - Author: Rakshaan (https://sketchfab.com/rakshaan). Source:

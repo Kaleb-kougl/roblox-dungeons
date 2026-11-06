@@ -1170,9 +1170,9 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"tutorial.prompt.pelletsHold.keyboard": "Grab the last pellets to finish the fight.",
 		"tutorial.prompt.pelletsHold.gamepad": "Grab the last pellets to finish the fight.",
 		"tutorial.prompt.pelletsHold.touch": "Grab the last pellets to finish the fight.",
-		"tutorial.prompt.relic.keyboard": "Relics are permanent for the run. Walk onto the pedestal.",
-		"tutorial.prompt.relic.gamepad": "Relics are permanent for the run. Walk onto the pedestal.",
-		"tutorial.prompt.relic.touch": "Relics are permanent for the run. Walk onto the pedestal.",
+		"tutorial.prompt.relic.keyboard": "Relics are permanent for the run. Walk up to the chest to open it.",
+		"tutorial.prompt.relic.gamepad": "Relics are permanent for the run. Walk up to the chest to open it.",
+		"tutorial.prompt.relic.touch": "Relics are permanent for the run. Walk up to the chest to open it.",
 		"tutorial.prompt.curse.keyboard":
 			"Curses make the run harder and your score multiplier bigger. {skill1} to accept, or walk away.",
 		"tutorial.prompt.curse.gamepad":

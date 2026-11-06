@@ -2903,7 +2903,7 @@
 		"max": 3
 	},
 	"relic.hourglass.name": {
-		"note": "Name of a relic (a permanent item for the rest of the run, picked up from a pedestal); its effect: \"Bullets slow for 1 s after you are hit\". Shown in a toast and the owned-items list. Title case; glossary term."
+		"note": "Name of a relic (a permanent item for the rest of the run, found in a treasure chest); its effect: \"Bullets slow for 1 s after you are hit\". Shown in a toast and the owned-items list. Title case; glossary term."
 	},
 	"relic.mirrorCloak.desc": {
 		"note": "Effect line of the relic \"Mirror Cloak\" (owned-items tooltip / list). Terse game-rules style; keep numbers exactly. A \"heart\" is one unit of health; \"guarded\" bullets are ones blocked with the sword."
@@ -2913,7 +2913,7 @@
 		"max": 3
 	},
 	"relic.mirrorCloak.name": {
-		"note": "Name of a relic (a permanent item for the rest of the run, picked up from a pedestal); its effect: \"Guarded bullets fly back at your foes\". Shown in a toast and the owned-items list. Title case; glossary term."
+		"note": "Name of a relic (a permanent item for the rest of the run, found in a treasure chest); its effect: \"Guarded bullets fly back at your foes\". Shown in a toast and the owned-items list. Title case; glossary term."
 	},
 	"relic.secondWind.desc": {
 		"note": "Effect line of the relic \"Second Wind\" (owned-items tooltip / list). Terse game-rules style; keep numbers exactly. A \"heart\" is one unit of health; \"guarded\" bullets are ones blocked with the sword."
@@ -2923,7 +2923,7 @@
 		"max": 3
 	},
 	"relic.secondWind.name": {
-		"note": "Name of a relic (a permanent item for the rest of the run, picked up from a pedestal); its effect: \"Once per floor, survive a lethal hit\". Shown in a toast and the owned-items list. Title case; glossary term."
+		"note": "Name of a relic (a permanent item for the rest of the run, found in a treasure chest); its effect: \"Once per floor, survive a lethal hit\". Shown in a toast and the owned-items list. Title case; glossary term."
 	},
 	"relic.vampireFang.desc": {
 		"note": "Effect line of the relic \"Vampire Fang\" (owned-items tooltip / list). Terse game-rules style; keep numbers exactly. A \"heart\" is one unit of health; \"guarded\" bullets are ones blocked with the sword."
@@ -2933,7 +2933,7 @@
 		"max": 3
 	},
 	"relic.vampireFang.name": {
-		"note": "Name of a relic (a permanent item for the rest of the run, picked up from a pedestal); its effect: \"Every 25 kills heal half a heart\". Shown in a toast and the owned-items list. Title case; glossary term."
+		"note": "Name of a relic (a permanent item for the rest of the run, found in a treasure chest); its effect: \"Every 25 kills heal half a heart\". Shown in a toast and the owned-items list. Title case; glossary term."
 	},
 	"room.clear.chip": {
 		"note": "Small chip under the score panel (top right) when a teammate far away clears a room in co-op. {stamp} is CLEAR or PERFECT (already translated); {points} a number. Usually unchanged.",
@@ -3789,13 +3789,13 @@
 		"note": "First-run tutorial prompt for phone / tablet players; on-screen button names (Attack, Alt, Roll, Flask, Swap, Ember, Accept) must use exactly the words of the touch.* button labels, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: shown while the enemy refuses to go down: it only falls once the player has collected the room's last pellets (small green cubes on the floor). Friendly, short instructional sentences in second person."
 	},
 	"tutorial.prompt.relic.gamepad": {
-		"note": "First-run tutorial prompt for gamepad players, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: a relic (a permanent item for the run) waits on a pedestal. Friendly, short instructional sentences in second person."
+		"note": "First-run tutorial prompt for gamepad players, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: a relic (a permanent item for the run) waits in a treasure chest; walking up to the chest opens it. Friendly, short instructional sentences in second person."
 	},
 	"tutorial.prompt.relic.keyboard": {
-		"note": "First-run tutorial prompt for keyboard and mouse players, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: a relic (a permanent item for the run) waits on a pedestal. Friendly, short instructional sentences in second person."
+		"note": "First-run tutorial prompt for keyboard and mouse players, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: a relic (a permanent item for the run) waits in a treasure chest; walking up to the chest opens it. Friendly, short instructional sentences in second person."
 	},
 	"tutorial.prompt.relic.touch": {
-		"note": "First-run tutorial prompt for phone / tablet players; on-screen button names (Attack, Alt, Roll, Flask, Swap, Ember, Accept) must use exactly the words of the touch.* button labels, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: a relic (a permanent item for the run) waits on a pedestal. Friendly, short instructional sentences in second person."
+		"note": "First-run tutorial prompt for phone / tablet players; on-screen button names (Attack, Alt, Roll, Flask, Swap, Ember, Accept) must use exactly the words of the touch.* button labels, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: a relic (a permanent item for the run) waits in a treasure chest; walking up to the chest opens it. Friendly, short instructional sentences in second person."
 	},
 	"tutorial.prompt.roll.gamepad": {
 		"note": "First-run tutorial prompt for gamepad players, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: a sniper enemy shows its aim as an orange line; dodge-rolling through the shot (the player can't be hit mid-roll). Friendly, short instructional sentences in second person. Placeholders {roll} are the player's bound key or button names (e.g. \"LB\"; currently English).",
