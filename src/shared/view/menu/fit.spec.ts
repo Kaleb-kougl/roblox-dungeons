@@ -26,12 +26,17 @@ import {
 	menuArea,
 	menuCompact,
 	menuFitDevice,
+	menuFitChanged,
+	menuFitTrail,
 	menuNarrow,
 	pausePanelArea,
 	ornamentOverhang,
+	stepMenuFit,
 	type MenuFitInput,
 	type MenuFitResult,
+	type MenuFitTrail,
 	type MenuInsets,
+	type MenuSize,
 } from "shared/view/menu";
 
 /** The Roblox top bar under CoreUISafeInsets (pt): 58 on the owner's phone and on desktop (footprint HUD_TEST_TOP_INSET). */
@@ -786,5 +791,197 @@ describe("run-over recap fit (docs/RUN_RECAP.md RR5)", () => {
 			const room = menuArea(s.x, s.y, s.insets, u).h - 2 * MENU_FIT.margin;
 			expect([s.name, column(rows, HUD_VIEW.pad, u) <= room]).toEqual([s.name, true]);
 		}
+	});
+});
+
+describe("stepMenuFit: a fitted panel never cycles between sizes", () => {
+	const AREA: MenuSize = { w: 1000, h: 415 };
+	const SIZE: MenuSize = { w: 700, h: 400 };
+	const fitAt = (factor: number): MenuFitResult => ({
+		factor,
+		ornament: false,
+		offsetY: 0,
+		flex: undefined,
+		overflow: false,
+	});
+	const big = fitAt(1);
+	const small = fitAt(0.85);
+	const soon = MENU_FIT.flipSeconds / 2;
+	/** One step measured at the factor shown (the panel's size depends on nothing else). */
+	const at = (t: MenuFitTrail, fitted: MenuFitResult, now: number, size: MenuSize = SIZE, area: MenuSize = AREA) =>
+		stepMenuFit(t, fitted, area, size, t.shown.factor, now);
+	/** Big, shrunk to small at 1, then grown back soon after: held at small. */
+	const heldTrail = () => at(at(menuFitTrail(big, AREA, 0), small, 1), big, 1 + soon);
+
+	it("a fit like the one shown: nothing to redraw", () => {
+		const t = menuFitTrail(big, AREA, 0);
+		expect(at(t, fitAt(1 + MENU_FIT.factorEpsilon / 2), 1).shown).toBe(big);
+	});
+
+	it("a new fit is taken, the one before it and the direction remembered", () => {
+		const t = at(menuFitTrail(big, AREA, 0), small, 1);
+		expect([t.shown, t.previous, t.direction, t.changedAt, t.held]).toEqual([small, big, -1, 1, false]);
+	});
+
+	it("growing soon after a shrink (to any size): held at the smaller one", () => {
+		const shrunk = at(menuFitTrail(big, AREA, 0), small, 1);
+		const back = at(shrunk, fitAt(0.97), 1 + soon);
+		expect(back.shown).toBe(small);
+		expect(back.held).toBe(true);
+	});
+
+	it("shrinking soon after a grow: the smaller one taken, and held", () => {
+		const grown = at(menuFitTrail(small, AREA, 0), big, 1);
+		const back = at(grown, fitAt(0.9), 1 + soon);
+		expect(back.shown.factor).toBe(0.9);
+		expect(back.held).toBe(true);
+	});
+
+	it("two shrinks in a row are no flip", () => {
+		const t = at(at(menuFitTrail(big, AREA, 0), fitAt(0.95), 1), small, 1 + soon);
+		expect([t.shown, t.held]).toEqual([small, false]);
+	});
+
+	it("a change with no factor move that returns to the fit before, soon: held", () => {
+		const a = fitAt(0.8);
+		const b = { ...a, overflow: true };
+		const t = at(at(menuFitTrail(a, AREA, 0), b, 1), a, 1 + soon);
+		expect([t.shown, t.held]).toEqual([b, true]);
+	});
+
+	it("held: shrinks still go through, grows do not", () => {
+		const held = heldTrail();
+		expect(at(held, fitAt(0.95), 10).shown).toBe(small);
+		const smaller = fitAt(0.8);
+		const shrunk = at(held, smaller, 10);
+		expect([shrunk.shown, shrunk.held]).toEqual([smaller, true]);
+	});
+
+	it("a new area (the phone turned, a new HUD scale) clears the hold", () => {
+		const turned = at(heldTrail(), big, 2, SIZE, { w: AREA.w, h: AREA.h + 2 * MENU_FIT.epsilon });
+		expect([turned.shown, turned.held]).toEqual([big, false]);
+	});
+
+	it("new content at the same drawn factor (Details shut) clears the hold", () => {
+		const held = heldTrail();
+		const same = at(held, big, 2);
+		expect(same.shown).toBe(small);
+		const shorter = at(same, big, 3, { w: SIZE.w, h: SIZE.h - 2 * MENU_FIT.epsilon });
+		expect([shorter.shown, shorter.held]).toEqual([big, false]);
+	});
+
+	it("a size change at a new factor is no content change (the hold stays)", () => {
+		const held = heldTrail();
+		const t = stepMenuFit(held, big, AREA, { w: SIZE.w, h: SIZE.h + 20 }, held.shown.factor + 0.1, 2);
+		expect([t.shown, t.held]).toEqual([small, true]);
+	});
+
+	it("turning back after MENU_FIT.flipSeconds is no flip (a real content change)", () => {
+		const shrunk = at(menuFitTrail(big, AREA, 0), small, 1);
+		const later = at(shrunk, big, 1 + MENU_FIT.flipSeconds * 2);
+		expect([later.shown, later.held]).toEqual([big, false]);
+	});
+
+	/** A compact run over on the 844 x 390 phone (touch HUD scale) driven measurement by measurement. */
+	const phone = PHONES[0];
+	const u = touchScale(phone);
+	const area = menuArea(phone.x, phone.y, phone.insets, u);
+	const room = area.h - 2 * MENU_FIT.margin;
+	const fitOf = (size: MenuSize, uiScale: number, a: MenuSize): MenuFitResult =>
+		fitMenu({
+			w: size.w,
+			h: size.h,
+			areaW: a.w,
+			areaH: a.h,
+			uiScale,
+			touch: true,
+			ornament: false,
+			ornamentArtH: ORNAMENT_ART_H,
+		});
+	/** Steps a panel (its size at a factor: `sizeAt`) `steps` times at 30 measurements a second; the factor after each. */
+	function run(
+		sizeAt: (factor: number) => MenuSize,
+		steps: number,
+		uiScale = u,
+		a: MenuSize = area,
+	): ReadonlyArray<number> {
+		let trail: MenuFitTrail = menuFitTrail(fitAt(1), a, 0);
+		const factors = new Array<number>();
+		for (let i = 1; i <= steps; i++) {
+			const f = trail.shown.factor;
+			const size = sizeAt(f);
+			trail = stepMenuFit(trail, fitOf(size, uiScale, a), a, size, f, i / 30);
+			factors.push(trail.shown.factor);
+		}
+		return factors;
+	}
+	/** How many times the factor changed in the second half of a run (0: it settled). */
+	function lateChanges(factors: ReadonlyArray<number>): number {
+		let n = 0;
+		for (let i = factors.size() / 2 + 1; i < factors.size(); i++) if (factors[i] !== factors[i - 1]) n += 1;
+		return n;
+	}
+
+	it("a line that wraps only at the larger factor: without the trail it flips forever; with it, it settles and fits", () => {
+		const short = 400;
+		const tall = 420;
+		const threshold = (room / tall + room / short) / 2;
+		const sizeAt = (factor: number): MenuSize => ({ w: 700, h: factor > threshold ? tall : short });
+		// The old rule (redraw on every menuFitChanged) alternates between the two fits.
+		let shown = fitAt(1);
+		let flips = 0;
+		for (let i = 0; i < 20; i++) {
+			const fresh = fitOf(sizeAt(shown.factor), u, area);
+			if (menuFitChanged(fresh, shown)) flips += 1;
+			shown = fresh;
+		}
+		expect(flips).toBeGreaterThan(10);
+		const factors = run(sizeAt, 60);
+		const last = factors[factors.size() - 1];
+		for (let i = 5; i < factors.size(); i++) expect(factors[i]).toBe(last);
+		expect(sizeAt(last).h * last).toBeLessThanOrEqual(room + 1e-6);
+	});
+
+	it("a panel whose size does not depend on its scale: one shrink, then still", () => {
+		const factors = run(() => ({ w: 700, h: 480 }), 30);
+		expect(factors[0]).toBeCloseTo(room / 480, 9);
+		for (const f of factors) expect(f).toBe(factors[0]);
+	});
+
+	it("a skinned panel (frame art snapped to whole screen px): settles for every content size, HUD scale and area", () => {
+		// The menu frame's border pads the content (skinPadding at snappedSliceScale): its art px land on 1 or 2 screen
+		// px, so the panel is taller at an effective scale just over 0.75 than just under it. Its fits cycled through
+		// three sizes that never repeat exactly (the record run's run over on a landscape phone, 2026-11-05).
+		const insets = UI_ART.contentInsets[UI_ART.panels.menu];
+		expect(insets).toBeDefined();
+		const base = uniformPadding(HUD_VIEW.pad);
+		let cases = 0;
+		let unsettled = 0;
+		let overflowing = 0;
+		for (const scale of [0.7, 0.75, 0.8, 0.85, 0.9, 1]) {
+			for (const areaH of [380, 400, 415, 440]) {
+				const a: MenuSize = { w: 1000, h: areaH };
+				for (let contentH = 300; contentH <= 560; contentH += 2) {
+					const sizeAt = (factor: number): MenuSize => {
+						const pad = skinPadding(base, insets, snappedSliceScale(scale * factor));
+						return { w: 700 + pad.left + pad.right, h: contentH + pad.top + pad.bottom };
+					};
+					const factors = run(sizeAt, 120, scale, a);
+					cases += 1;
+					if (lateChanges(factors) > 0) unsettled += 1;
+					const last = factors[factors.size() - 1];
+					const floor = math.min(1, MENU_FIT.minScale / scale);
+					if (
+						last > floor + MENU_FIT.factorEpsilon &&
+						sizeAt(last).h * last > areaH - 2 * MENU_FIT.margin + 1
+					) {
+						overflowing += 1;
+					}
+				}
+			}
+		}
+		expect(cases).toBeGreaterThan(3000);
+		expect(unsettled).toBe(0);
+		expect(overflowing).toBe(0);
 	});
 });

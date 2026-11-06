@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState } from "@rbxts/react";
+import React, { useEffect, useMemo, useRef, useState } from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
-import { GuiService, UserInputService, Workspace } from "@rbxts/services";
+import { GuiService, RunService, UserInputService, Workspace } from "@rbxts/services";
 import { selectInputDevice } from "client/store";
 import { role, themePack } from "client/ui/theme";
 import { UI_ART, ornamentShown, skinHasOf } from "shared/view/hud";
@@ -11,9 +11,12 @@ import {
 	menuCompact,
 	menuFitChanged,
 	menuFitDevice,
+	menuFitTrail,
 	menuNarrow,
 	MENU_VIEW,
+	stepMenuFit,
 	type MenuFitResult,
+	type MenuFitTrail,
 	type MenuSize,
 } from "shared/view/menu";
 import { ArtScaleContext, useArtScale, useHudScale } from "./useHudScale";
@@ -69,12 +72,22 @@ function guessArea(uiScale: number): MenuSize {
  * the art under it snaps at the scale it is drawn at (ArtScaleContext). "Touch" is menuFitDevice: the last-used device
  * is touch or the device has a touchscreen (a phone stays fitted after a key press). Without it the factor is 1,
  * nothing moves and the flexible list keeps its max: exactly the unfitted layout.
+ *
+ * Measuring waits for a drawn frame (a RenderStepped, then the Heartbeat after it): the box's AutomaticSize and a new
+ * UIScale resolve in the next layout pass, and a size read before it, divided by the new factor, is wrong. Reading it
+ * at once made a shrinking panel (the compact run over on a landscape phone) jump between the factor floor and a
+ * larger fit. The size is divided by the UIScale it is drawn at (the instance's Scale), and stepMenuFit keeps a
+ * panel whose size depends on its own scale (the frame art's snapped padding, a line that wraps at one factor only)
+ * from cycling between fits: a record run's run over on a landscape phone jittered every other frame.
  */
 export function MenuFit(props: MenuFitProps) {
 	const hud = useHudScale();
 	const touch = menuFitDevice(useSelector(selectInputDevice) === "touch", UserInputService.TouchEnabled);
 	const areaRef = useRef<Frame>();
 	const boxRef = useRef<Frame>();
+	const scaleRef = useRef<UIScale>();
+	const trailRef = useRef<MenuFitTrail>();
+	const pendingRef = useRef<RBXScriptConnection>();
 	const [area, setArea] = useState<MenuSize>(() => guessArea(hud));
 	const [content, setContent] = useState<number | undefined>(undefined);
 	const pack = themePack();
@@ -109,10 +122,12 @@ export function MenuFit(props: MenuFitProps) {
 			setArea({ w: areaW, h: areaH });
 		}
 		const applied = fitRef.current;
-		const drawn = hud * applied.factor;
+		const drawnAt = scaleRef.current?.Scale ?? applied.factor;
+		const drawn = hud * drawnAt;
+		const size = { w: b.AbsoluteSize.X / drawn, h: b.AbsoluteSize.Y / drawn };
 		const fitted = fitMenu({
-			w: b.AbsoluteSize.X / drawn,
-			h: b.AbsoluteSize.Y / drawn,
+			w: size.w,
+			h: size.h,
 			areaW,
 			areaH,
 			uiScale: hud,
@@ -129,24 +144,51 @@ export function MenuFit(props: MenuFitProps) {
 					  }
 					: undefined,
 		});
-		if (touch && menuFitChanged(fitted, applied)) {
-			fitRef.current = fitted;
-			setFit(fitted);
+		if (!touch) {
+			trailRef.current = undefined;
+			return;
+		}
+		const now = os.clock();
+		const measuredArea = { w: areaW, h: areaH };
+		const trail = trailRef.current ?? menuFitTrail(applied, measuredArea, now);
+		const stepped = stepMenuFit(trail, fitted, measuredArea, size, drawnAt, now);
+		trailRef.current = stepped;
+		if (stepped.shown !== trail.shown && menuFitChanged(stepped.shown, applied)) {
+			fitRef.current = stepped.shown;
+			setFit(stepped.shown);
 		}
 	};
+	const measureRef = useRef(measure);
+	measureRef.current = measure;
+	// One measurement per drawn frame at most, after the frame is drawn (see the component comment).
+	const requestMeasure = useMemo(
+		() => () => {
+			if (pendingRef.current !== undefined) return;
+			pendingRef.current = RunService.RenderStepped.Once(() => {
+				pendingRef.current = RunService.Heartbeat.Once(() => {
+					pendingRef.current = undefined;
+					measureRef.current();
+				});
+			});
+		},
+		[],
+	);
 
 	useEffect(() => {
 		const a = areaRef.current;
 		const b = boxRef.current;
 		if (a === undefined || b === undefined) return;
-		const ca = a.GetPropertyChangedSignal("AbsoluteSize").Connect(measure);
-		const cb = b.GetPropertyChangedSignal("AbsoluteSize").Connect(measure);
-		measure();
+		const ca = a.GetPropertyChangedSignal("AbsoluteSize").Connect(requestMeasure);
+		const cb = b.GetPropertyChangedSignal("AbsoluteSize").Connect(requestMeasure);
 		return () => {
 			ca.Disconnect();
 			cb.Disconnect();
+			pendingRef.current?.Disconnect();
+			pendingRef.current = undefined;
 		};
-	});
+	}, [requestMeasure]);
+	// Every render: what the fit reads (the area guess, the HUD scale, the device, the flexible list) may have changed.
+	useEffect(() => requestMeasure());
 
 	const layout: MenuLayout = {
 		compact,
@@ -168,7 +210,7 @@ export function MenuFit(props: MenuFitProps) {
 				AutomaticSize={Enum.AutomaticSize.XY}
 				BackgroundTransparency={HIDDEN}
 			>
-				<uiscale Scale={shown.factor} />
+				<uiscale ref={scaleRef} Scale={shown.factor} />
 				<ArtScaleContext.Provider value={hud * shown.factor}>{props.render(layout)}</ArtScaleContext.Provider>
 			</frame>
 		</frame>

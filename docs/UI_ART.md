@@ -286,6 +286,13 @@ score panel. All three predate the skin in part; fixed on `ua-mob-menus` / `ua-m
   body scrolls), then one flexible list per screen shrinks (>= 96 px), then the whole panel scales (never under 0.6
   effective, so a button stays >= 24 pt). Mouse, keyboard and gamepad: factor 1, nothing changes. The ornament shows
   only when the fitted panel leaves room above it (the panel may move down up to half its overhang), else it is skipped.
+  `MenuFit` measures only after a drawn frame (RenderStepped, then Heartbeat: AutomaticSize and a new UIScale resolve in
+  the next layout pass) and divides by the UIScale as drawn; `stepMenuFit` keeps the smaller fit when the factor turns
+  back (grows after a shrink or the reverse) within `MENU_FIT.flipSeconds`, and lets it grow again on a new area or new
+  content (a new size at the same drawn factor). A panel's size depends on its own scale: the frame art's padding steps
+  where artPixelScale does (1 or 2 screen px per art px) and a line can wrap at one factor only, so its fits can cycle
+  through two, three or more sizes that never repeat exactly. Before this, the compact run over of a record run on a
+  landscape phone jittered every other frame (2026-11-04, 2026-11-05; fit.spec.ts sweeps the skinned case).
 - **Full-screen dims:** MenuLayer's backdrop and the pause / Options / leaderboard / tutorial-outro dims draw in their
   own full-screen ScreenGuis (`KV_MenuBackdrop`, `KV_GameMenuDim`), so they reach under the top bar and the notch. The
   one desktop-visible change: the top-bar strip is dimmed too.

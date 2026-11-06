@@ -71,6 +71,12 @@ export const MENU_FIT = {
 	narrowMinScale: 0.45,
 	/** Narrow run over: one column this wide (the breakdown, 316, and two runOverButton exits side by side fit). */
 	runOverNarrowWidth: 480,
+	/**
+	 * A fit that turns back (grows after a shrink, shrinks after a grow) within this many seconds of the last change is
+	 * a flip (stepMenuFit): the panel's size depends on its own scale (snapped frame art, a line that wraps at one factor
+	 * only), so the smaller fit is kept.
+	 */
+	flipSeconds: 1,
 } as const;
 
 /** A size, reference px. */
@@ -238,6 +244,93 @@ export function menuFitChanged(a: MenuFitResult, b: MenuFitResult): boolean {
 	if (math.abs(a.offsetY - b.offsetY) > MENU_FIT.epsilon) return true;
 	if ((a.flex === undefined) !== (b.flex === undefined)) return true;
 	return a.flex !== undefined && b.flex !== undefined && math.abs(a.flex - b.flex) > MENU_FIT.epsilon;
+}
+
+/**
+ * What MenuFit remembers between measurements: the fit drawn now and the one drawn before it, which way the factor last
+ * moved (`direction`: +1 grew, -1 shrank, 0 not yet) and when (`changedAt`, seconds, any clock), the area it was fitted
+ * into, the panel's size at the last measurement and the factor it was drawn at then (`size` / `sizeAt`), and whether a
+ * flip was caught (`held`: the fit may shrink but not grow).
+ */
+export interface MenuFitTrail {
+	readonly shown: MenuFitResult;
+	readonly previous: MenuFitResult | undefined;
+	readonly direction: number;
+	readonly changedAt: number;
+	readonly area: MenuSize;
+	readonly size: MenuSize | undefined;
+	readonly sizeAt: number;
+	readonly held: boolean;
+}
+
+/** A fresh trail: `shown` drawn in `area` since `now`, nothing measured yet. */
+export function menuFitTrail(shown: MenuFitResult, area: MenuSize, now: number): MenuFitTrail {
+	return { shown, previous: undefined, direction: 0, changedAt: now, area, size: undefined, sizeAt: 0, held: false };
+}
+
+/** Whether two sizes differ by more than measuring noise (MENU_FIT.epsilon on either side). */
+function sizeChanged(a: MenuSize, b: MenuSize): boolean {
+	return math.abs(a.w - b.w) > MENU_FIT.epsilon || math.abs(a.h - b.h) > MENU_FIT.epsilon;
+}
+
+/** Which way `to`'s factor moves from `from`'s: +1, -1, or 0 (within MENU_FIT.factorEpsilon). */
+function fitDirection(from: MenuFitResult, to: MenuFitResult): number {
+	if (to.factor > from.factor + MENU_FIT.factorEpsilon) return 1;
+	if (to.factor < from.factor - MENU_FIT.factorEpsilon) return -1;
+	return 0;
+}
+
+/**
+ * Takes a new fit (fitMenu for the latest measurement) into the trail, so a fitted panel never cycles between sizes.
+ * A panel's size depends on its own scale: its frame art snaps to whole screen px per art px (artPixelScale steps at
+ * every half step of the effective scale, so the skinned padding jumps), and a wrapped line can wrap at one factor and
+ * not at another. Shrinking to fit can then make it fit at a larger factor, where it no longer fits, and so on: a
+ * cycle of two, three or more fits that never repeats exactly (the run over of a record run on a landscape phone
+ * jittered every other frame). `size` is the panel as measured (reference px at the factor it is drawn at), `drawnAt`
+ * that factor (the UIScale's Scale). The rules:
+ *   - the same factor drawn as at the last measurement and a new size (more than MENU_FIT.epsilon on either side) is a
+ *     content change: the trail starts afresh (no direction, no hold), so new content always gets its fit;
+ *   - a new area (rotating the phone, a new HUD scale: more than MENU_FIT.epsilon on either side) does the same;
+ *   - a fit that does not differ from the one shown (menuFitChanged) changes nothing;
+ *   - a reversal within MENU_FIT.flipSeconds of the last change (a grow after a shrink, a shrink after a grow; a change
+ *     with no factor move that returns to the fit before) is a flip: the smaller fit is kept (it fits: it was fitted to
+ *     the larger arrangement, or measured with room to spare) and the trail is `held`;
+ *   - while held, a fit may shrink (it no longer fits) but not grow or change without shrinking.
+ * Returns a trail whose `shown` is a new object exactly when the panel must be redrawn.
+ */
+export function stepMenuFit(
+	trail: MenuFitTrail,
+	fitted: MenuFitResult,
+	area: MenuSize,
+	size: MenuSize,
+	drawnAt: number,
+	now: number,
+): MenuFitTrail {
+	let t = trail;
+	const contentChanged =
+		t.size !== undefined && math.abs(drawnAt - t.sizeAt) <= MENU_FIT.factorEpsilon && sizeChanged(size, t.size);
+	if (contentChanged || sizeChanged(area, t.area)) {
+		t = menuFitTrail(t.shown, area, t.changedAt);
+	}
+	t = { ...t, size, sizeAt: drawnAt };
+	if (!menuFitChanged(fitted, t.shown)) return t;
+	const direction = fitDirection(t.shown, fitted);
+	if (t.held && direction >= 0) return t;
+	const soon = now - t.changedAt <= MENU_FIT.flipSeconds;
+	const flip =
+		soon &&
+		(direction !== 0
+			? t.direction === -direction
+			: t.previous !== undefined && !menuFitChanged(fitted, t.previous));
+	if (flip && direction >= 0) return { ...t, held: true };
+	return {
+		...t,
+		shown: fitted,
+		previous: t.shown,
+		direction: direction !== 0 ? direction : t.direction,
+		changedAt: now,
+		held: t.held || flip,
+	};
 }
 
 /**
