@@ -18,6 +18,7 @@ six bullet IDs, the biome tiles, `ui.cursor` (the facing pip) and the pedestal /
 | co-op player marker / under-player ring | **`highlight_yellow`**, tinted per player | Lords of Pain demo |
 | relic pedestal marker (`RunMarkerController`) | **`loot_indicator_yellow`** beam (+ `glint`, stretch) | Lords of Pain demo |
 | `enemy.golden` (the Goldling, docs/FORTUNE.md FO10 / FD14) | **Skeleton recoloured gold** (`recolor`, below; bodyTiles 0.95): `golden-move.png`, `golden-death.png` + rims, built 2026-11-04, not uploaded | Lords of Pain demo |
+| `enemy.dummy` (the tutorial's training dummy, docs/DUMMY_ART.md) | **Training Dummy** (idle 1, hit 7, break 9; one facing, pixel art, `Pixelated`, bodyTiles 1.4; the hit wobble on a view-side 0.7 s clip): `dummy.png` + rim, built 2026-11-06, not uploaded | Training Dummy 2D Pixel Art |
 | `enemy.sniper` (+ the tutorial's `turret.sniper`) | **Subservient** (worship; every other animation a stand-in, docs/SNIPER_ART.md) | Lords of Pain (full pack) |
 | `enemy.bruiser` | **Demon Beast 3** (idle, walk, Attack 4 leap and slam, TakeDamage 1, Die 1; docs/DEMON_ART.md): 3 sheets + rims, uploaded 2026-10-26 | 2D Demons - TopDown asset pack v1.1 |
 | `boss.act1` (Mother Bramble) | **Demon Elite 3** (idle, walk, taunt, Attack 1-4, Die 1; docs/BRAMBLE_ART.md): 7 sheets + rims, uploaded 2026-10-26 | 2D Demons - TopDown asset pack v1.1 |
