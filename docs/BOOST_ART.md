@@ -18,8 +18,8 @@ BA4 done (the five PNGs uploaded 2026-10-26, IDs in `assetIds.ts`: the vale pack
 rest are recommended defaults (BA-P1..P6). See "As built (BA1, BA2)" for what differs from the plan text.
 
 **Auras (2026-11-06, branch `boost-auras`):** BA6's aura half is built with ORIGINAL art instead of BA-P5's tinted
-Lords of Pain ring (decision 3, BAD3; "As built: the boost auras (BAD3)"). `boost-auras.png` is built, not uploaded:
-until it has an ID in `assetIds.ts` vale keeps the Neon discs. Open: the upload, the Studio check (BA5's list plus the
+Lords of Pain ring (decision 3, BAD3; "As built: the boost auras (BAD3)"). `boost-auras.png` was uploaded 2026-11-06
+(`rbxassetid://102860615301253`, `assetIds.ts`), so the bundled vale pack draws the auras. Open: the Studio check (BA5's list plus the
 aura items there), BA-P6 (HUD icons).
 
 ## As built (BA1, BA2)
@@ -174,7 +174,7 @@ so nothing was swapped; the kind left the contract too.
   bullets, decor and the pedestal; the stack blinks and fades together; pickup glint; reduced motion still; phone
   emulator size; 4-player co-op with four drops at once (fps, no overlap mess).
 - [ ] **BA6. Optional extras.** BA-P5 aura rings, BA-P6 HUD icons. **Auras built** (2026-11-06) as BAD3's original
-  art, not BA-P5's ring; open: the `boost-auras.png` upload and its Studio check; BA-P6 not started.
+  art, not BA-P5's ring; uploaded 2026-11-06; open: its Studio check; BA-P6 not started.
 - [ ] **BA7. Docs.** docs/BOOSTS.md (B8 art part done, pointer here), docs/ART.md (slice table row, `gems` no longer
   decor), docs/DECOR.md (gems removed), docs/CLIENT.md (the drop's layers), CLAUDE.md docs-table row.
 
@@ -251,7 +251,7 @@ Presentation only: no sim, dungeon, lockstep, hash, replay, fixture or score cha
   disable their surface.
 - **Preview.** `art/build/contact/boost-auras-preview.png` (gitignored): every kind at ranks 0-3, tinted, on `#3a3a46`,
   6x, plus the four-kind stack.
-- **Open.** Upload `boost-auras.png` and paste its ID into `assetIds.ts` (the vale pack then draws the auras); Studio
+- **Upload: done 2026-11-06** (`assetIds.ts`). **Open:** the Studio
   check (spike PA0's Top-face technique; draw order of stacked sprite rings and discs; readability on each biome; four
   boosts in 4-player co-op; reduced motion).
 

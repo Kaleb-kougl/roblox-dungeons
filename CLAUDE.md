@@ -775,8 +775,8 @@ Decision log (deviations from `PLAN.md`):
   .ranks`. View: `auraArtFrame` on the pulse's `simSec` (reduced motion holds frame 0), `auraArtStudsPerPixel` (the
   rank's ring exactly on `auraDisc`'s radius, same lifts and cap), `auraArtTransparency` 0.2 + the discs' pulse.
   `BoostAuraController` draws a flat sprite anchor (`createSpriteAnchor`, `FLOOR_CANVAS_YAW`) per kind / rank with art,
-  the disc otherwise. Original art: no notices or Credits entry. Without a `boost-auras.png` id (none yet) vale keeps
-  the discs; upload and Studio check pending.
+  the disc otherwise. Original art: no notices or Credits entry. `boost-auras.png` uploaded 2026-11-06 (`assetIds.ts`),
+  so the bundled vale pack draws the auras; Studio check pending.
 - **Kenney bookcases (docs/KENNEY_DECOR.md).** Presentation only. Every Kenney piece the plan names is reprojected to
   the game camera (`scripts/art/kenney/reproject.py`, `kenney.json`; 87 PNGs in gitignored `art/vendor/kenney/`); the
   bookcases are wired as the bookcase's alternative art: 14 own PNGs `kenney-bookcase-<look>-x / -z`, vale variants

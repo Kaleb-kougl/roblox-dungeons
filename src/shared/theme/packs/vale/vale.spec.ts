@@ -27,6 +27,7 @@ import { contrastReport, juiceContrastReport, validateManifest } from "../../val
 import { PLACEHOLDER_MANIFEST } from "../placeholder";
 import { VALE_ASSET_IDS } from "./assetIds";
 import { VALE_AUDIO_FILES } from "./audioLayout";
+import { VALE_BOOST_AURA_SHEET } from "./boostAuraLayout";
 import { VALE_BULLET_SHEET } from "./bulletLayout";
 import { VALE_AMBIENT_LAYOUTS, VALE_FX_SHEET } from "./fxLayout";
 import { VALE_GOO_SHEET } from "./gooLayout";
@@ -119,13 +120,15 @@ describe("vale pack", () => {
 	it("every uploaded ID names a real art/build file", () => {
 		// the effects atlas, the Ninja Adventure ambient flipbooks (fxLayout.ts) and the bullet atlas (bulletLayout.ts,
 		// docs/PROJECTILE_ART.md), the goo sheet (gooLayout.ts, docs/GOO_ART.md) and the vault's cage and column sheets
-		// (treasureLayout.ts, docs/TREASURE.md TR9) are art/build files too
+		// (treasureLayout.ts, docs/TREASURE.md TR9) and the boost aura sheet (boostAuraLayout.ts, docs/BOOST_ART.md BAD3)
+		// are art/build files too
 		const files = allFiles();
 		files.push(VALE_FX_SHEET.file);
 		files.push(VALE_BULLET_SHEET.file);
 		files.push(VALE_GOO_SHEET.file);
 		files.push(VALE_TREASURE_CAGE_LAYOUT.sheets[0].file);
 		files.push(VALE_TREASURE_FX_SHEET.file);
+		files.push(VALE_BOOST_AURA_SHEET.file);
 		for (const id of sortedKeys(VALE_AMBIENT_LAYOUTS)) files.push(VALE_AMBIENT_LAYOUTS[id].file);
 		for (const file of sortedKeys(VALE_ASSET_IDS)) {
 			expect([file, files.includes(file)]).toEqual([file, true]);

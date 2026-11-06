@@ -23,6 +23,8 @@ import { ThemeCore } from "./core";
 import { ThemePack, hexToColor3 } from "./pack";
 import { THEME_PACKS } from "./packs";
 import { VALE_ASSET_IDS } from "./packs/vale/assetIds";
+import { VALE_BOOST_AURA_SHEET } from "./packs/vale/boostAuraLayout";
+import { VALE_BOOST_AURA_IDS } from "./packs/vale/boostAuras";
 import { VALE_FX_IDS, valeFxSourceOf } from "./packs/vale/fx";
 import { PLACEHOLDER_MANIFEST } from "./packs/placeholder";
 import { COLOR_ROLES } from "./types";
@@ -152,10 +154,13 @@ describe("fx contract", () => {
 describe("validateManifest: fx entries", () => {
 	it("every bundled pack ships only the effects its art covers, keeps the fx roles far from enemy bullets and validates clean", () => {
 		// vale draws the fx.* sets (VALE_FX_IDS) whose sheet is uploaded (fx.bullet.hit rides in bullets.png: PA8)
-		const valeShipped = VALE_FX_IDS.filter((fx) => {
+		const valeShipped: Array<string> = VALE_FX_IDS.filter((fx) => {
 			const source = valeFxSourceOf(fx);
 			return source !== undefined && VALE_ASSET_IDS[source.sheet.file] !== undefined;
 		});
+		// ... and the boost auras (docs/BOOST_ART.md BAD3) once their own sheet, boost-auras.png, is uploaded
+		if (VALE_ASSET_IDS[VALE_BOOST_AURA_SHEET.file] !== undefined)
+			for (const fx of VALE_BOOST_AURA_IDS) valeShipped.push(fx);
 		for (const id of sortedKeys(THEME_PACKS)) {
 			// the placeholder pack ships none
 			const shipped = sortedKeys(THEME_PACKS[id].assets).filter((asset) => slotFor(asset) === FX);

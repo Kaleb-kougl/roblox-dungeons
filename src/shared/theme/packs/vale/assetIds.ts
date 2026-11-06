@@ -108,6 +108,9 @@ import type { RobloxAssetId } from "../../types";
  * vault-cage.png / treasure-column.png (the vault's cage and light column, docs/TREASURE.md TR9; original art,
  * scripts/art/gen-treasure-art.js, built by `node scripts/art/build-atlases.js --only treasure`) uploaded 2026-11-06
  * 11:29 AM by k9kbdev, transcribed from an Asset Manager screenshot.
+ * boost-auras.png (the four boost auras at every stack rank, docs/BOOST_ART.md BAD3; original art,
+ * scripts/art/gen-boost-auras.js, built by `node scripts/art/build-atlases.js --only boostAuras`) uploaded 2026-11-06
+ * 11:29 AM by k9kbdev, transcribed from an Asset Manager screenshot.
  */
 export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"amb-b1.ogg": "rbxassetid://91158343621799",
@@ -121,6 +124,7 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"bomber-death-outline.png": "rbxassetid://76498890264159",
 	"bomber-death.png": "rbxassetid://135000310498445",
 	"boost-aegis.png": "rbxassetid://140457804095686",
+	"boost-auras.png": "rbxassetid://102860615301253",
 	"boost-frenzy.png": "rbxassetid://123942115924560",
 	"boost-fury.png": "rbxassetid://81008876085390",
 	"boost-quickstep.png": "rbxassetid://94521729890331",
