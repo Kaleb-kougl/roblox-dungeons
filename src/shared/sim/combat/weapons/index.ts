@@ -32,6 +32,10 @@ export {
 	WEB_SWORD_TIMINGS,
 	setSwordTimings,
 	swordGuard,
+	swordGuardHalfAngleCos,
+	swordGuardRing,
+	swordGuardSweepCos,
+	swordGuardTicks,
 } from "./defs/sword";
 export type { SwordData, SwordTimings } from "./defs/sword";
 export {

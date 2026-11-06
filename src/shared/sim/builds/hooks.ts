@@ -26,14 +26,29 @@
  *   buildsGoldRush(state, killer) / buildsGoldRushPop(state, killer, x, z, points)   score.ts scoreKill: Gold Rush
  *                                      (Bounty + Lingering) applies to the killer; its duoProc entry.
  *   buildsUnshakenKept(state)          score.ts stepScore: this tick's Unshaken hits.
+ *
+ * Bastion (docs/LEGENDARIES.md "Bastion", LG3; legendary, level I; nothing for a player without it, who left or is
+ * dead). Brace: one guard or one roll that stops BASTION_BRACE_BULLETS enemy bullets restores one armor pip up to
+ * armorMax. `braceCount` counts the current guard's or roll's bullets (reset when either starts, and by a swap that is
+ * not mid-roll: a swap ends a guard); the brace fires once, on the bullet that reaches the threshold, and only while
+ * `braceReady` is 1 (re-armed when a room's enemies spawn and at a floor's start, set by the pick; cleared by a
+ * brace). A brace with no pip missing is spent anyway (BraceKind.SPENT). BuildEvents bracePlayer / braceKind.
+ *   buildsOnGuardCancels(state, i, cancels, starting)   sword.ts, every guard tick: `cancels` bullets erased this tick
+ *                                      (goo outside it; strikes are never erased), `starting` on the guard's first tick.
+ *   bastionRollOn(state, i)            combat.ts, once a tick per player (the bastionRolling mask): player i owns
+ *                                      Bastion and rolls with i-frames running (rollTicks > 0 and iframeTicks > 0).
+ *   buildsOnRollThrough(state, i)      combat.ts enemy bullet walk: an enemy bullet (not goo, not a strike) not counted
+ *                                      before (payload lastHit 0; the walk marks it 1) overlaps rolling player i.
+ *   buildsOnRollStart(state, i) / buildsOnSwap(state, i)   weapons.ts: a roll started (Ember Wake's moment) / a swap.
+ *   buildsBraceRearm(state)            progression.ts stepRun: a floor's start and a room's enemies spawning.
  */
 import { jsMin } from "shared/jsmath";
 import type { PlayerState, SimState } from "../state";
 import type { SimCtx } from "../combat/ctx";
-import { BOON_MAX_LEVEL, Boon } from "../progression/progressionData";
+import { BASTION_BRACE_BULLETS, BOON_MAX_LEVEL, Boon } from "../progression/progressionData";
 import type { BuildPlayerState, BuildsState } from "./builds";
 import { Duo } from "./buildsData";
-import { FLURRY_ARROW_EVERY, FlurryKind, LIONHEART_HEAL_HALF_HEARTS } from "./effectsData";
+import { BraceKind, FLURRY_ARROW_EVERY, FlurryKind, LIONHEART_HEAL_HALF_HEARTS } from "./effectsData";
 
 /** True when `p` owns `boon` evolved (level III). */
 export function isEvolved(p: Readonly<BuildPlayerState> | undefined, boon: number): boolean {
@@ -145,4 +160,92 @@ export function buildsFlurryArrowsFired(ctx: SimCtx, x: number, z: number, n: nu
 	const s = ctx.state.builds;
 	if (s === undefined || n <= 0) return;
 	pushFlurry(s, x, z, ctx.playerIndex, FlurryKind.ARROWS, n);
+}
+
+// ---------------------------------------------------------------------------------------------
+// Bastion's brace (see the file comment)
+
+/** True when `p` owns Bastion. */
+function hasBastion(p: Readonly<BuildPlayerState> | undefined): boolean {
+	return p !== undefined && (p.levels[Boon.BASTION] ?? 0) > 0;
+}
+
+/** One BuildEvents brace entry. */
+function pushBrace(s: BuildsState, i: number, kind: number): void {
+	s.events.bracePlayer.push(i);
+	s.events.braceKind.push(kind);
+}
+
+/** Player i braces (the count just reached the threshold): see the file comment. */
+function brace(state: SimState, s: BuildsState, p: BuildPlayerState, i: number): void {
+	if (p.braceReady === 0) return;
+	p.braceReady = 0;
+	const pl = buildPlayerStateAt(state, i);
+	if (pl.armor < pl.armorMax) {
+		pl.armor += 1;
+		pushBrace(s, i, BraceKind.PIP);
+		return;
+	}
+	pushBrace(s, i, BraceKind.SPENT);
+}
+
+/** Adds `n` stopped bullets to player i's brace count; braces on the one that reaches BASTION_BRACE_BULLETS. */
+function addBraceCount(state: SimState, s: BuildsState, p: BuildPlayerState, i: number, n: number): void {
+	if (n <= 0) return;
+	const before = p.braceCount;
+	p.braceCount = before + n;
+	if (before < BASTION_BRACE_BULLETS && p.braceCount >= BASTION_BRACE_BULLETS) brace(state, s, p, i);
+}
+
+/** The Bastion owner i who can count a bullet now (present and alive), else undefined. */
+function bastionPlayer(state: Readonly<SimState>, i: number): BuildPlayerState | undefined {
+	const p = state.builds?.players[i];
+	if (!hasBastion(p) || buildPlayerLeft(state, i) || buildPlayerStateAt(state, i).dead !== 0) return undefined;
+	return p;
+}
+
+/** A guard tick of player i erased `cancels` enemy bullets (`starting`: the guard's first tick). */
+export function buildsOnGuardCancels(state: SimState, i: number, cancels: number, starting: boolean): void {
+	const s = state.builds;
+	const p = bastionPlayer(state, i);
+	if (s === undefined || p === undefined) return;
+	if (starting) p.braceCount = 0;
+	addBraceCount(state, s, p, i, cancels);
+}
+
+/** True when player i's roll counts enemy bullets for the brace this tick (see the file comment). */
+export function bastionRollOn(state: Readonly<SimState>, i: number): boolean {
+	if (bastionPlayer(state, i) === undefined) return false;
+	const pl = buildPlayerStateAt(state, i);
+	return pl.rollTicks > 0 && pl.iframeTicks > 0;
+}
+
+/** A not-yet-counted enemy bullet overlaps rolling player i (the walk has marked it). */
+export function buildsOnRollThrough(state: SimState, i: number): void {
+	const s = state.builds;
+	const p = bastionPlayer(state, i);
+	if (s === undefined || p === undefined) return;
+	addBraceCount(state, s, p, i, 1);
+}
+
+/** Player i started a roll: a new count (a guard it cut short is over). */
+export function buildsOnRollStart(state: SimState, i: number): void {
+	const p = state.builds?.players[i];
+	if (hasBastion(p)) p!.braceCount = 0;
+}
+
+/** Player i swapped weapon sets: a guard in progress ended, so its count is gone (a roll's count is kept). */
+export function buildsOnSwap(state: SimState, i: number): void {
+	const p = state.builds?.players[i];
+	if (hasBastion(p) && buildPlayerStateAt(state, i).rollTicks === 0) p!.braceCount = 0;
+}
+
+/** A floor started or a room's enemies spawned: every present Bastion owner's brace is ready again. */
+export function buildsBraceRearm(state: SimState): void {
+	const s = state.builds;
+	if (s === undefined) return;
+	for (let i = 0; i < s.players.size(); i++) {
+		const p = s.players[i];
+		if (hasBastion(p) && !buildPlayerLeft(state, i)) p.braceReady = 1;
+	}
 }

@@ -59,6 +59,7 @@ import { endlessFloorWorld } from "../endless";
 import { addCurse } from "../score/score";
 import { hasLeft, partySize, playerAt, weaponsAt } from "../party";
 import { buildPlayer } from "../builds/builds";
+import { buildsBraceRearm } from "../builds/hooks";
 import { drawPlayerCardOffers, grantCard } from "../builds/cards";
 import { takeTreasureBonusDeals } from "../treasure/bonus";
 import { rarityForRoll } from "./rarity";
@@ -480,6 +481,8 @@ export function stepRun(
 	if (ev.floorChanged !== 0) {
 		placeFloor(r, encounter);
 		for (const p of r.players) p.secondWindUsed = 0;
+		// Builds (docs/LEGENDARIES.md LG3): Bastion's brace is ready on the new floor.
+		if (state.builds !== undefined) buildsBraceRearm(state);
 		const floorCleared = ev.floorChanged - 1;
 		const builds = state.builds;
 		// Builds: a boss floor's draft is dealt twice (docs/BUILDS.md BUD4); without builds, one draft as always.
@@ -509,6 +512,8 @@ export function stepRun(
 				const me = r.players[i];
 				if (pl.dead === 0 && me !== undefined && me.mods.armorOnRoomSpawn) pl.armor = pl.armorMax;
 			}
+			// Builds (LG3): Bastion's brace re-arms at the same moment.
+			if (state.builds !== undefined) buildsBraceRearm(state);
 		}
 	}
 	if (encounter === undefined) return;

@@ -29,6 +29,7 @@ import { rarityForRoll } from "../progression/rarity";
 import { refreshRunMods, runPlayer } from "../progression/runMods";
 import {
 	ARMOR_BOON_PIPS_TOTAL,
+	BASTION_ARMOR_PIPS,
 	BOONS,
 	BOON_COUNT,
 	BOON_MAX_LEVEL,
@@ -235,6 +236,10 @@ function applyLevelGained(state: SimState, playerIndex: number, boon: number, le
 		const step = levelStep(ARMOR_BOON_PIPS_TOTAL, level);
 		pl.armorMax += step;
 		pl.armor += step;
+	} else if (boon === Boon.BASTION) {
+		// docs/LEGENDARIES.md LG3: Bastion's pip (level I, its only level), like Warding I.
+		pl.armorMax += BASTION_ARMOR_PIPS;
+		pl.armor += BASTION_ARMOR_PIPS;
 	}
 }
 
@@ -264,6 +269,8 @@ export function grantCard(state: SimState, playerIndex: number, card: number): C
 	bp.levels[b] = reached;
 	if (level === 0) p.boons.push(b);
 	applyLevelGained(state, playerIndex, b, reached);
+	// Bastion picked mid-room: its brace is ready at once (LG3).
+	if (b === Boon.BASTION) bp.braceReady = 1;
 	refreshRunMods(p, bp);
 	if (reached === BOON_MAX_LEVEL) {
 		s.events.evolvedPlayer.push(playerIndex);

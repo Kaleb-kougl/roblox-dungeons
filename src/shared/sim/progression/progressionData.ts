@@ -204,8 +204,13 @@ export const COMBO_CUT_BOON_DIVISOR_MULTIPLIER = 2;
 
 /** Bastion: +1 armor pip on pick (max and current), like Warding I; not refilled per room by itself. */
 export const BASTION_ARMOR_PIPS = 1;
-/** Bastion: the sword's guard covers the full ring (melee.ts sweepArc's half-angle cosine; SWORD_DATA's is -0.2). */
+/**
+ * Bastion: the sword's guard covers the full ring (its half-angle cosine, the number a view draws; SWORD_DATA's is
+ * -0.2). The sweep itself passes BASTION_GUARD_SWEEP_HALF_ANGLE_COS (below -1, like the novas' NOVA_HALF_ANGLE_COS):
+ * melee.ts inCone tests dot >= halfCos x dist, so at exactly -1 a bullet straight behind could miss by one rounding step.
+ */
 export const BASTION_GUARD_HALF_ANGLE_COS = -1;
+export const BASTION_GUARD_SWEEP_HALF_ANGLE_COS = -2;
 /** Bastion: the guard lasts this many ticks (1.5 x SWORD_DATA.guardTicks 18; reach and cooldown unchanged). */
 export const BASTION_GUARD_TICKS = 27;
 /** Brace: one guard or one roll that stops at least this many enemy bullets restores one armor pip (once per room). */

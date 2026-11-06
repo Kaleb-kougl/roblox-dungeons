@@ -6,7 +6,8 @@
  *   1. every set's cooldown counts down (swapping never pauses or resets a cooldown)
  *   2. dead -> nothing else (prevButtons still updated)
  *      M2 Ember Wake (endless runs): a roll the acting player started this tick (rollTicks === ROLL_TICKS: only on
- *      the start tick, after stepPlayer's countdown) fires a ring of player bullets
+ *      the start tick, after stepPlayer's countdown) fires a ring of player bullets; builds (docs/LEGENDARIES.md LG3):
+ *      that moment restarts Bastion's brace count, and a swap (3.) ends a guard's
  *   3. SWAP press edge -> activeSet = next set, events.weaponSwapped = 1 (instant; allowed while rolling)
  *   4. the active set's weapon: def.step?(ctx, slot)
  *   5. trigger ('hold': FIRE held / 'press': FIRE edge / 'custom': never), not rolling, cooldown 0
@@ -22,6 +23,7 @@ import { BulletKind, FULL_RING, type BurstSpec } from "../patterns";
 import { attackTicks, runMods } from "../../progression/runMods";
 import { ROLL_TICKS } from "../../playerData";
 import { ROLL_RING_COUNT, ROLL_RING_DAMAGE, ROLL_RING_LIFE, ROLL_RING_SPEED } from "../../progression/progressionData";
+import { buildsOnRollStart, buildsOnSwap } from "../../builds/hooks";
 
 /** M2 Ember Wake's ring (16 / FULL_RING: an arc-table shape). */
 const ROLL_RING: BurstSpec = {
@@ -100,9 +102,13 @@ export function stepWeapons(ctx: SimCtx): void {
 		if (p.rollTicks === ROLL_TICKS && runMods(ctx.state, ctx.playerIndex).rollRing) {
 			ctx.firePlayer(sets[w.activeSet], p.x, p.z, p.rollDirX, p.rollDirZ, ROLL_RING);
 		}
+		// Builds (docs/LEGENDARIES.md LG3, opt-in): Bastion's brace count restarts with a roll.
+		if (p.rollTicks === ROLL_TICKS && ctx.state.builds !== undefined) buildsOnRollStart(ctx.state, ctx.playerIndex);
 		if (bit32.band(buttons, Button.SWAP) !== 0 && bit32.band(w.prevButtons, Button.SWAP) === 0 && sets.size() > 1) {
 			w.activeSet = (w.activeSet + 1) % sets.size();
 			ctx.events.weaponSwapped = 1;
+			// Builds (LG3): a swap ends a guard, and its brace count with it.
+			if (ctx.state.builds !== undefined) buildsOnSwap(ctx.state, ctx.playerIndex);
 		}
 		const slot = sets[w.activeSet];
 		if (slot.weapon !== NO_WEAPON) {

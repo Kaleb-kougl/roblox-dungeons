@@ -135,6 +135,18 @@ export const OVERKILL_MIN_CARRY = 1;
 /** A one-shot by the player's own hit (gen 0, the enemy at full hp) carries at least this (LGD2). */
 export const OVERKILL_ONE_SHOT_MIN = 1;
 
+// --- Bastion's brace (docs/LEGENDARIES.md "Bastion", LG3; its tunables are in progressionData.ts) -----------
+
+/** BuildEvents.braceKind values: what a brace did. */
+export const BraceKind = {
+	/** An armor pip restored. */
+	PIP: 0,
+	/** Stone Heart (LG4): no pip missing, half a heart healed. */
+	HEAL: 1,
+	/** Nothing missing to restore: the brace is spent anyway (the once per room stays readable). */
+	SPENT: 2,
+} as const;
+
 // --- Legendary duos (docs/LEGENDARIES.md "Duos", LG4) --------------------------------------------------------
 
 /** Supernova (Overkill + Volatile): a kill whose carry is at least this bursts one Volatile ring larger (LGD8). */

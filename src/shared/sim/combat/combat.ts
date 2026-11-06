@@ -79,6 +79,7 @@ import { BuildEffect, killGenOfSource, sourceEffect } from "../builds/buildsData
 import { KillCause } from "../builds/effectsData";
 import { buildsOnPierceHit, phantomStepErased, phantomStepOn } from "../builds/evolutions";
 import { buildsOnArrowHit } from "../builds/duos";
+import { bastionRollOn, buildsOnRollThrough } from "../builds/hooks";
 import { damageBreakable, enemyBulletHitsBreakable, type BreakablesState } from "../breakables/breakables";
 import { breakableSlotAt } from "../breakables/cells";
 import { BreakableSource } from "../breakables/breakablesData";
@@ -337,6 +338,38 @@ function computePhantom(state: SimState): void {
 	}
 }
 
+/**
+ * Builds (docs/LEGENDARIES.md LG3, Bastion's roll brace): per player, a roll that counts enemy bullets this tick
+ * (sim/builds hooks.ts bastionRollOn: Bastion, rolling with i-frames running). bastionAny: any of them (one boolean in
+ * runs where nobody has Bastion).
+ */
+const bastionRolling: boolean[] = [];
+let bastionAny = false;
+
+function computeBastion(state: SimState): void {
+	bastionAny = false;
+	bastionRolling.clear();
+	if (state.builds === undefined) return;
+	for (let k = 0; k < partySize(state); k++) {
+		const on = bastionRollOn(state, k);
+		bastionRolling.push(on);
+		if (on) bastionAny = true;
+	}
+}
+
+/**
+ * Bastion's roll brace: enemy bullet `i` (payload `payload`, neither goo nor a strike) overlaps rolling player `k`. A
+ * bullet no roller counted yet (payload lastHit 0: unused on enemy bullets) is marked (lastHit 1, graze bits kept) and
+ * counts once for k; a marked one never counts again, for anyone. Returns the payload as it is now.
+ */
+function bastionRollThrough(state: SimState, i: number, payload: number, k: number): number {
+	if (BulletPayload.get(payload, "lastHit") !== 0) return payload;
+	const marked = BulletPayload.with(payload, "lastHit", 1);
+	state.combat.enemyBullets.setPayload(i, marked);
+	buildsOnRollThrough(state, k);
+	return marked;
+}
+
 function enemyBulletHit(i: number, pos: Readonly<Vec3>, payload: number): boolean {
 	if (hitBlocked !== undefined && hitBlocked(pos.x, pos.z)) return true;
 	const kind = BulletPayload.get(payload, "kind");
@@ -352,6 +385,8 @@ function enemyBulletHit(i: number, pos: Readonly<Vec3>, payload: number): boolea
 	const inHit = d2 < ENEMY_HIT_R2_BY_KIND[kind];
 	if (grazeOn && !quiet) scoreBulletVisit(ctx.state, ctx.state.combat.enemyBullets, i, payload, d2, inHit, grazeR2);
 	if (!inHit) return strike && strikeHoldSpent(i, payload);
+	// Builds (LG3): Bastion's roll brace counts it (before Phantom Step's erase: an erased bullet counts too).
+	if (bastionAny && bastionRolling[SOLO_PLAYER] && !quiet) bastionRollThrough(ctx.state, i, payload, SOLO_PLAYER);
 	// Builds (BU5): Phantom Step erases it (no hit, no score, no parry feed; goo quietly; never a strike: the roll's
 	// i-frames already avoid it).
 	if (phantomAny && phantom[SOLO_PLAYER] && !strike) {
@@ -402,6 +437,8 @@ function enemyBulletHitParty(i: number, pos: Readonly<Vec3>, payload: number): b
 		const dx = pos.x - p.x;
 		const dz = pos.z - p.z;
 		if (dx * dx + dz * dz >= hitR2) continue;
+		// Builds (LG3): Bastion's roll brace counts it for the first rolling owner it overlaps (marked: never again).
+		if (bastionAny && bastionRolling[k] && !quiet) payload = bastionRollThrough(state, i, payload, k);
 		// Builds (BU5): Phantom Step erases it over the first rolling owner it overlaps (index order); never a strike.
 		if (phantomAny && phantom[k] && !strike) {
 			phantomStepErased(state, k, goo, pos.x, pos.z);
@@ -571,7 +608,10 @@ export function stepCombat(
 	grazeOn = state.score !== undefined;
 	grazeR2 = runMods(state, SOLO_PLAYER).grazeR2;
 	buildsOn = state.builds !== undefined;
-	if (buildsOn) computePhantom(state);
+	if (buildsOn) {
+		computePhantom(state);
+		computeBastion(state);
+	}
 	if (party) {
 		c.enemyBullets.forEachActive(enemyBulletHitParty);
 		c.playerBullets.forEachActive(playerBulletHitParty);
@@ -588,6 +628,7 @@ export function stepCombat(
 		ctx.procCause = KillCause.NONE;
 		buildsOn = false;
 		phantomAny = false;
+		bastionAny = false;
 		// 6b. Builds (opt-in): the proc queue (on-kill effects of this tick's kills and the carry-over).
 		stepBuilds(ctx);
 	}

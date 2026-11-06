@@ -17,8 +17,9 @@
  *   bulwarkPending   (BU5, appended) armor pips broken whose Bulwark nova has not been released yet
  *   closeGrazes      (BU6, appended) Close Call: grazes toward the next shard, counts only while the duo is owned
  *   braceCount       (docs/LEGENDARIES.md LG1, appended) Bastion: enemy bullets stopped by the current guard or roll
- *                    (0 until LG3's rule)
- *   braceReady       (LG1, appended) Bastion: 1 while this room's brace is still to come, else 0 (0 until LG3's rule)
+ *                    (LG3's rule: ./hooks.ts; reset when a guard or roll starts)
+ *   braceReady       (LG1, appended) Bastion: 1 while this room's brace is still to come, else 0 (LG3: set by the
+ *                    pick, a floor's start and a room's spawn; cleared by a brace)
  *   draftsLeft       deals left in the open draft, the one on screen included: 1 after a floor, 2 after a boss floor
  *                    (BUD4); a confirm with draftsLeft > 1 re-deals (./cards.ts) instead of closing. 0 while closed
  * and for the world: `procs`, the kill queue (BU3, ./procs.ts: { x, z, owner, gen, slot, id, excess } per kill, oldest
@@ -199,6 +200,10 @@ export interface BuildEvents {
 	overkillOwner: number[];
 	overkillGen: number[];
 	overkillCarry: number[];
+	// --- LG3 (Bastion). Parallel lists, one entry per brace, in the order they happened. ---
+	/** Braces: the player (party index) and what it did (BraceKind: PIP a pip restored, HEAL Stone Heart, SPENT). */
+	bracePlayer: number[];
+	braceKind: number[];
 	/**
 	 * Unshaken: hits taken on armor this tick by its owners, which stepScore leaves out of the combo cuts. The one
 	 * BuildEvents field the sim reads (same tick only: written in stepCombat, read in stepScore, cleared next tick).
@@ -281,6 +286,8 @@ const BUILD_EVENT_LISTS = [
 	"overkillOwner",
 	"overkillGen",
 	"overkillCarry",
+	"bracePlayer",
+	"braceKind",
 ] as const;
 
 /** SimState.builds. */
@@ -389,6 +396,8 @@ function emptyEvents(): BuildEvents {
 		overkillOwner: [],
 		overkillGen: [],
 		overkillCarry: [],
+		bracePlayer: [],
+		braceKind: [],
 		unshakenKept: 0,
 	};
 }

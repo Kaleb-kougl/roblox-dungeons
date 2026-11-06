@@ -7,6 +7,7 @@
 import { describe, expect, it } from "@rbxts/jest-globals";
 import {
 	AFFIXES_SUBSYSTEM,
+	BASTION_ARMOR_PIPS,
 	BOONS,
 	BOON_COUNT,
 	BOON_MAX_LEVEL,
@@ -583,7 +584,7 @@ describe("legendaries Overkill and Bastion (docs/LEGENDARIES.md LG1)", () => {
 		}
 	});
 
-	it("granting: New, then nothing (never an Upgrade or Evolution); Bastion adds no pip yet (LG3)", () => {
+	it("granting: New, then nothing (never an Upgrade or Evolution); Bastion adds its pip once (LG3)", () => {
 		const s = createSimState(SEED, 0, 0, ARENA);
 		const pl = playerAt(s, 0);
 		const armor = [pl.armor, pl.armorMax];
@@ -595,7 +596,7 @@ describe("legendaries Overkill and Bastion (docs/LEGENDARIES.md LG1)", () => {
 			expect(bp(s).levels[b]).toBe(1);
 		}
 		expect(rp(s).boons).toEqual([Boon.OVERKILL, Boon.BASTION]);
-		expect([pl.armor, pl.armorMax]).toEqual(armor);
+		expect([pl.armor, pl.armorMax]).toEqual([armor[0] + BASTION_ARMOR_PIPS, armor[1] + BASTION_ARMOR_PIPS]);
 		expect(s.builds!.events.evolvedBoon).toEqual([]);
 		// grantBoon in a builds run goes through grantCard: level I too.
 		const t = createSimState(SEED, 0, 0, ARENA);

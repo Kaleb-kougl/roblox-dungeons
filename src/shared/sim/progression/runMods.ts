@@ -93,6 +93,11 @@ export interface RunMods {
 	readonly hourglass: boolean;
 	readonly fang: boolean;
 	readonly secondWind: boolean;
+	/**
+	 * Bastion (docs/LEGENDARIES.md LG3): the sword's guard is the full ring for BASTION_GUARD_TICKS (sword.ts
+	 * swordGuardTicks / swordGuardSweepCos); false: SWORD_DATA's numbers exactly.
+	 */
+	readonly bastion: boolean;
 }
 
 /** One player's run progression. Every field but `mods` is hashed (progression.ts writeRunHash). */
@@ -186,6 +191,7 @@ export const NEUTRAL_RUN_MODS: RunMods = table.freeze({
 	hourglass: false,
 	fang: false,
 	secondWind: false,
+	bastion: false,
 });
 
 /**
@@ -254,6 +260,7 @@ export function computeRunMods(
 		hourglass: owns(p.relics, Relic.HOURGLASS),
 		fang: owns(p.relics, Relic.VAMPIRE_FANG),
 		secondWind: owns(p.relics, Relic.SECOND_WIND),
+		bastion: owns(b, Boon.BASTION),
 	};
 }
 

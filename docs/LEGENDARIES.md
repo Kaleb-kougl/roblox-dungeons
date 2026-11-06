@@ -25,8 +25,8 @@ see it happen, it is not in this plan.**
 
 ## Status (2026-11-06)
 
-**LG0-LG2 built** (the audit, the data and scaffolding, Overkill's rule: "LG0 findings", "LG1 (as built)", "LG2 (as
-built)"); LG3-LG9 open. Follows docs/BUILDS.md (BU0-BU10 built; BU11-BU14 open). Overkill was proposed in docs/BUILDS_V2.md as
+**LG0-LG3 built** (the audit, the data and scaffolding, Overkill's and Bastion's rules: "LG0 findings", "LG1 (as
+built)", "LG2 (as built)", "LG3 (as built)"); LG4-LG9 open. Follows docs/BUILDS.md (BU0-BU10 built; BU11-BU14 open). Overkill was proposed in docs/BUILDS_V2.md as
 a common boon with levels and an evolution (Annihilator); the owner moved it here as a legendary
 (2026-11-06), so V2's Overkill row is withdrawn and its Supernova duo is redefined below. Decisions LGD1-LGD12 are
 proposed defaults until the owner settles them; LGD2, LGD3, LGD5-LGD7 and LGD12 are settled (owner, 2026-11-06).
@@ -178,6 +178,57 @@ Overkill's rule. Paths under `src/shared/sim/` unless noted. Endless builds runs
   and a boss kill carries 0; a streak's genMax kill never cross-triggers Chain Reaction; without builds nothing
   changes; Overkill + Chain Spark + Volatile on an 8-swarmer pack (bow stream) streaks, clears the pack, and two runs
   hash the same every tick. No pinned value changed.
+
+## LG3 (as built)
+
+Bastion's rule. Paths under `src/shared/sim/` unless noted. Builds runs with Bastion change; without it the sword's
+step, the roll and the bullet walk are exactly as before (the guard reads `SWORD_DATA`'s numbers, the roll mask is one
+`false`).
+
+- **Mods** (`progression/runMods.ts`): `RunMods.bastion` (owns Bastion; `NEUTRAL_RUN_MODS` false). New tunable
+  `BASTION_GUARD_SWEEP_HALF_ANGLE_COS` -2 (`progression/progressionData.ts`, LG0 trap 4): what the sweep passes;
+  `BASTION_GUARD_HALF_ANGLE_COS` -1 stays the number a view draws.
+- **The guard** (`combat/weapons/defs/sword.ts`, exported through `combat/weapons/index.ts`): the guard's start sets
+  `SWORD_V_GUARD` to `swordGuardTicks(state, i)` (27 with Bastion, else `SWORD_DATA.guardTicks`) and sweeps with
+  `swordGuardSweepCos(state, i)` (-2 with Bastion, else `SWORD_DATA.guardHalfAngleCos`); reach and cooldown unchanged.
+  After the tutorial hook, every guard tick calls `buildsOnGuardCancels(state, i, cancels, starting)` (builds runs;
+  `starting` on the press tick). For the view (LG6): `swordGuardTicks(state, i)` (the guard's length),
+  `swordGuardHalfAngleCos(state, i)` (-1 with Bastion: draw the full ring), `swordGuardRing(state, i)` (true with
+  Bastion), and `swordGuard(slot, guardTicks = SWORD_DATA.guardTicks)`, which now takes the length and clamps to 1
+  (LG0 trap 3). The client still calls `swordGuard(slot)` and draws `SWORD_DATA.guardHalfAngleCos`
+  (`WeaponViewController`, `fxCues` `guardOf`, `watch.ts` `guardUp`): unchanged without Bastion; with it the default
+  length reads 1 for the guard's first 9 ticks (a longer flash) until LG6 passes `swordGuardTicks`. No snapshot field:
+  the weapon view reads the live state, like `swordGuard`.
+- **The brace** (`builds/hooks.ts`, a leaf): `buildsOnGuardCancels` (resets `braceCount` on `starting`, adds the
+  cancels), `bastionRollOn(state, i)` (Bastion, present, alive, `rollTicks > 0 && iframeTicks > 0`),
+  `buildsOnRollThrough(state, i)` (+1), `buildsOnRollStart(state, i)` (`braceCount` 0), `buildsOnSwap(state, i)`
+  (`braceCount` 0 unless mid-roll: a swap ends a guard), `buildsBraceRearm(state)` (`braceReady` 1 for every present
+  Bastion owner). The brace fires on the bullet that takes `braceCount` from below `BASTION_BRACE_BULLETS` to it or
+  above (so one per guard or roll), only while `braceReady` is 1, and clears it: a missing pip comes back
+  (`armor + 1`, never past `armorMax`, `BraceKind.PIP`), else it is spent (`BraceKind.SPENT`, an addition to the
+  plan's pip / heal so the view can show the once per room). Goo is erased outside `bulletsDeleted` and strikes are
+  never erased, so neither is in `cancels`.
+- **The roll brace** (`combat/combat.ts`): a per-tick mask `bastionRolling` / `bastionAny` (built beside Phantom
+  Step's with `bastionRollOn`, only with builds). In `enemyBulletHit` and `enemyBulletHitParty`, a bullet (not goo, not
+  a strike) inside a rolling Bastion owner's hit circle goes through `bastionRollThrough`: if its payload `lastHit` is
+  0 it is set to 1 (`BulletPayload.with`, the graze bits above the layout kept) and counts once for that player; a
+  marked bullet never counts again, for anyone (co-op: the first rolling owner it overlaps, index order). It runs
+  before Phantom Step's erase, so erased bullets count.
+- **Resets and re-arm.** `combat/weapons/weapons.ts` `stepWeapons`: the roll's start tick (`rollTicks ===
+  ROLL_TICKS`, Ember Wake's moment) calls `buildsOnRollStart`, a swap calls `buildsOnSwap`.
+  `progression/progression.ts` `stepRun`: step 1 (a floor change, LG0 trap 5) and step 3 (a room's enemies spawned,
+  beside Warding's refill) call `buildsBraceRearm`. `builds/cards.ts`: `applyLevelGained` adds `BASTION_ARMOR_PIPS` to
+  `armorMax` and `armor`, `grantCard` sets `braceReady` 1.
+- **Feed** (`BuildEvents`, cleared every tick, not hashed): `bracePlayer` (party index) and `braceKind` (`BraceKind`
+  in `builds/effectsData.ts`: PIP 0, HEAL 1 (LG4's Stone Heart), SPENT 2), one entry per brace.
+- **Specs** (`builds/bastion.spec.ts`): the pick's pip and arming; 27 ticks with, 18 without, the view helpers and
+  `swordGuard`'s clamp; a bullet straight behind is erased only with Bastion; 3 cancels brace once, a second guard in
+  the room does nothing; the count builds over a guard's ticks and restarts with the next; SPENT at full armor; a swap
+  or roll mid-guard resets the count; re-arm on a room's spawn and a floor change; a roll through 3 bullets braces
+  with the bow; a bullet overlapping for 5 ticks counts once; a roll start restarts the count; post-hit invulnerability
+  never counts; goo never counts; Phantom Step's erasures count; no Bastion, no count or mark; co-op: own armor only,
+  a marked bullet never counts for a second roller; two co-op runs rolling through fans hash the same every tick.
+  `builds.spec.ts`' LG1 grant spec now expects the pip (the only pinned change).
 
 ## Player experience
 

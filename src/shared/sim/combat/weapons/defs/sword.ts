@@ -14,6 +14,9 @@
  *   M2 (endless runs): Sharpened scales the damage when it hits, Swift Strikes the swing / finisher recovery; with
  *   the Mirror Cloak relic every bullet the guard erases comes back as a player bullet (sweepArc reflectSource).
  *   Co-op: always the swinging player's own modifiers (ctx.playerIndex, bound for the weapons phase).
+ *   Bastion (docs/LEGENDARIES.md LG3, builds runs): the guard lasts BASTION_GUARD_TICKS and sweeps the full ring
+ *   (swordGuardTicks / swordGuardSweepCos read runMods' `bastion`; without it SWORD_DATA's numbers exactly), and every
+ *   guard tick tells sim/builds hooks.ts buildsOnGuardCancels what it erased (the brace count).
  */
 
 import { secondsToTicks } from "../../../playerData";
@@ -28,6 +31,13 @@ import { tutorialOnGuardCancels } from "../../../tutorial/tutorial";
 import type { SimCtx } from "../../ctx";
 import type { ActorState } from "../../actors/types";
 import { attackTicks, playerHitDamage, runMods } from "../../../progression/runMods";
+import {
+	BASTION_GUARD_HALF_ANGLE_COS,
+	BASTION_GUARD_SWEEP_HALF_ANGLE_COS,
+	BASTION_GUARD_TICKS,
+} from "../../../progression/progressionData";
+import { buildsOnGuardCancels } from "../../../builds/hooks";
+import type { SimState } from "../../../state";
 
 export interface SwordData extends WeaponData {
 	/** Swings 1 and 2: reach (world units from the player's center) and half-angle cosine (0.5 = 120-degree arc). */
@@ -227,11 +237,13 @@ export const SWORD = registerWeapon<SwordData>({
 			return;
 		}
 
-		// Guard (ALT press, off cooldown): cancels the combo.
+		// Guard (ALT press, off cooldown): cancels the combo. Bastion (LG3): its own length and the full ring.
+		let starting = false;
 		if (altPressed(ctx) && slot.cooldown === 0) {
 			resetCombo(v);
-			v[SWORD_V_GUARD] = SWORD_DATA.guardTicks;
+			v[SWORD_V_GUARD] = swordGuardTicks(ctx.state, ctx.playerIndex);
 			slot.cooldown = SWORD_DATA.guardCooldownTicks;
+			starting = true;
 		}
 		if (v[SWORD_V_GUARD] > 0) {
 			v[SWORD_V_GUARD]--;
@@ -252,7 +264,7 @@ export const SWORD = registerWeapon<SwordData>({
 				p.faceX,
 				p.faceZ,
 				SWORD_DATA.guardReach,
-				SWORD_DATA.guardHalfAngleCos,
+				swordGuardSweepCos(ctx.state, ctx.playerIndex),
 				undefined,
 				true,
 				false,
@@ -272,6 +284,8 @@ export const SWORD = registerWeapon<SwordData>({
 				scoreGuardCancels(ctx.state, cancels);
 			}
 			if (ctx.state.tutorial !== undefined) tutorialOnGuardCancels(ctx.state, cancels);
+			// Builds (docs/LEGENDARIES.md LG3, opt-in): Bastion's brace count (reset on the guard's start tick).
+			if (ctx.state.builds !== undefined) buildsOnGuardCancels(ctx.state, ctx.playerIndex, cancels, starting);
 			return;
 		}
 
@@ -311,7 +325,41 @@ export const SWORD = registerWeapon<SwordData>({
 	},
 });
 
-/** Guard progress of a sword slot: 1 at the guard's start, 0 when down (render). */
-export function swordGuard(slot: Readonly<WeaponSlotState>): number {
-	return slot.v[SWORD_V_GUARD] / SWORD_DATA.guardTicks;
+/**
+ * Guard progress of a sword slot: 1 at the guard's start, 0 when down (render). `guardTicks`: the guard's length for
+ * its player (swordGuardTicks; SWORD_DATA.guardTicks by default). Kept within 0..1 (a Bastion guard read with the
+ * default length would start above 1).
+ */
+export function swordGuard(slot: Readonly<WeaponSlotState>, guardTicks: number = SWORD_DATA.guardTicks): number {
+	const g = slot.v[SWORD_V_GUARD] / guardTicks;
+	return g > 1 ? 1 : g;
+}
+
+/**
+ * The length of player `playerIndex`'s sword guard in ticks: BASTION_GUARD_TICKS with Bastion (docs/LEGENDARIES.md
+ * LG3), else SWORD_DATA.guardTicks. The sim's and the view's (swordGuard's `guardTicks`).
+ */
+export function swordGuardTicks(state: Readonly<SimState>, playerIndex: number): number {
+	return runMods(state, playerIndex).bastion ? BASTION_GUARD_TICKS : SWORD_DATA.guardTicks;
+}
+
+/**
+ * The half-angle cosine of player `playerIndex`'s guard as drawn: BASTION_GUARD_HALF_ANGLE_COS (-1, the full ring)
+ * with Bastion, else SWORD_DATA.guardHalfAngleCos. A view draws a full ring for -1 (swordGuardRing).
+ */
+export function swordGuardHalfAngleCos(state: Readonly<SimState>, playerIndex: number): number {
+	return runMods(state, playerIndex).bastion ? BASTION_GUARD_HALF_ANGLE_COS : SWORD_DATA.guardHalfAngleCos;
+}
+
+/** True when player `playerIndex`'s guard is the full ring (Bastion). */
+export function swordGuardRing(state: Readonly<SimState>, playerIndex: number): boolean {
+	return runMods(state, playerIndex).bastion;
+}
+
+/**
+ * The half-angle cosine the guard's sweep passes to sweepArc: BASTION_GUARD_SWEEP_HALF_ANGLE_COS (below -1, so the
+ * cone test always holds) with Bastion, else SWORD_DATA.guardHalfAngleCos.
+ */
+export function swordGuardSweepCos(state: Readonly<SimState>, playerIndex: number): number {
+	return runMods(state, playerIndex).bastion ? BASTION_GUARD_SWEEP_HALF_ANGLE_COS : SWORD_DATA.guardHalfAngleCos;
 }
