@@ -9,19 +9,21 @@ draws one. Supersedes docs/PROJECTILE_ART.md PAD3 for goo only (strike and ember
 
 ## Status (2026-11-06)
 
-Plan only. Licence cleared (below); GA0 needs the raw files. Nothing is built.
+GA0-GA5 built on branch `goo-art` (2026-11-06); see "As built". **Open:** GA6 (upload `art/build/goo.png`, its id in
+`assetIds.ts`: until then vale draws today's disc) and GA7 (Studio check, after PA0).
 
-## The art (measured 2026-11-06 from the owner's two screenshots)
+## The art (measured 2026-11-06)
 
 Two strips, 320 x 64 px each: 5 cells of 64 x 64, hard alpha (0 / 255), five colours (green `#56c44d`, light
-`#a1e09c`, mid `#418e3b`, dark `#376633`, a black outline). The two strips are two variants of the same slime
-(frames 0, 1 and 4 differ; 2 and 3 are identical).
+`#a1e09c`, mid `#418e3b`, dark `#376633`, a black outline). The two strips are the pack's `Green Slime/green slime-Death Down.png` and
+`-Death Up.png` (frames 0 and 1 differ; frame 4 by only 2 px; 2 and 3 are identical). The pack also ships Blue,
+Purple and Yellow slimes and King variants with the same frames; none is close enough to `enemyGoo` to skip the recolour.
 
 | Frame | Lit box (x, y, w x h) | Use |
 |---|---|---|
 | 0-2 | the slime sitting, then slumping | not used |
 | **3** | (20, 40) 24 x 11 | **land**: the drop hitting the floor (one cell, both variants identical) |
-| **4** | (17, 36) 31 x 17 | **hold**: the splat, two variants (A / B) |
+| **4** | (17, 36) 31 x 17 | **hold**: the splat (Death Down's; one cell, Death Up's adds nothing) |
 
 Not measured yet (GA0): the pack's real file layout and any other colours or variants it ships.
 
@@ -32,7 +34,7 @@ Not measured yet (GA0): the pack's real file layout and any other colours or var
 - Redistribution, resale, NFTs and **AI use: prohibited.**
 - Credit: not required, appreciated. We credit it anyway (Credits screen, `THIRD_PARTY_NOTICES.md`), like every pack.
 
-What this means here: the raw files stay in gitignored `art/vendor/heimlich3-slime/` and are never committed or
+What this means here: the raw files stay in gitignored `art/vendor/Free Slimes Asset Pack/` and are never committed or
 shared (as with Lords of Pain); the built `goo.png` goes to Roblox only as an in-game asset, which is normal game use.
 "AI use" means training AI on the art (owner, 2026-11-06): the port's normal workflow (the atlas pipeline,
 the recolour, an assistant helping build it) is not AI use. Never put the pack's files into any AI training set.
@@ -57,12 +59,12 @@ the recolour, an assistant helping build it) is not AI use. Never put the pack's
   `popSec`): frame 3; then frame 4 until it expires; transparency 0 -> 1 over the last `fadeSec` (0.5 s, unchanged).
   No scale pop (pixel art scaled mid-pop smears) and no shrink while it still hurts (frame 3 is 77 % of frame 4's
   width, so it is used only in the land window, where today's pop already under-draws).
-- **Variety without rng:** variant A / B and an X mirror from two bits of the bullet's slot index (stable for a
-  stationary bullet's whole life, the same on every co-op client because slots are deterministic). Four looks, so a
-  six-puddle trail does not read as a stamp. Never rotated: the art is a 3/4 view.
+- **Variety without rng:** an X mirror (and a hold variant, when a pack has more than one) from bits of the
+  bullet's slot index (stable for a stationary bullet's whole life, the same on every co-op client because slots are
+  deterministic). Two looks with today's one hold cell. Never rotated: the art is a 3/4 view.
 - **Facing:** the anchor's "up" is screen-up (turned by `CAMERA_YAW_DEG`).
-- **Size (GAD4, "cover the hit"):** the splat's lit ellipse on screen covers the hit circle's: 1.04 tiles wide (31 px
-  at 29.8 px a tile, about the pack scale of the swarmer's skeleton, 29.6), 0.70 tiles deep on the floor. It looks
+- **Size (GAD4, "cover the hit"):** the splat's lit ellipse on screen covers the hit circle's: 1.05 tiles wide (31 px
+  at 29.6 px a tile, the swarmer skeleton's pack scale), 0.70 tiles deep on the floor. It looks
   wider than it hurts (forgiving, as bullet visuals are), never narrower.
 - **Layer:** unchanged: `GOO_VIEW.liftStuds` 0.08, over sprite effects, under markings, affix rings and every
   moving bullet.
@@ -72,7 +74,7 @@ the recolour, an assistant helping build it) is not AI use. Never put the pack's
 
 1. **Atlas.** New set `bullet.enemy.goo` in `art/atlases.json`, its own group `goo` and `own` sheet `goo.png` (3
    cells: land, hold A, hold B; nearest resample, `recolor` ramp on `enemyGoo`), raw files in gitignored
-   `art/vendor/heimlich3-slime/`, pinned in `art/vendor.lock.json`. `node scripts/art/build-atlases.js --only goo`
+   `art/vendor/Free Slimes Asset Pack/`, pinned in `art/vendor.lock.json`. `node scripts/art/build-atlases.js --only goo`
    needs only that folder. Generated `packs/vale/gooLayout.ts`. `bullets.png` and every other output stay
    byte-identical (`build-atlases.test.js` pins it): nothing already uploaded is re-uploaded.
 2. **Theme.** `BULLET_ART.decalIds` splits into `floorSpriteIds` (`bullet.enemy.goo`) and the rest (strike, ember:
@@ -88,9 +90,34 @@ the recolour, an assistant helping build it) is not AI use. Never put the pack's
    from `SpriteBulletPool`'s builder, placed when the slot appears, its ImageRectOffset written on a frame change and
    Transparency on the quantum (`GOO_VIEW.quantum`). No art id, or `GOO_VIEW.decal` false: exactly today.
 
+## As built (GA0-GA5, 2026-11-06)
+
+- **Atlas (GA1).** Group `goo` in `art/atlases.json` (one set `bullet.enemy.goo`, frames 3 / 4 of Death Down, one crop
+  for both: the union lit box x 17..47, y 36..52 + pad 1 = 33 x 19 cells), `node scripts/art/build-atlases.js --only
+  goo` / `--lock --only goo` (`ONLY_GROUPS` bullets, goo). `art/build/goo.png` 66 x 19 (land cell 0, hold cell 1),
+  generated `packs/vale/gooLayout.ts`. Recolour ramp (source luminance -> colour): 0 black, 82 `#700070`, 110 `#b000b0`,
+  150 `#f000f0`, 197 `#ff80ff`, 255 white: every source colour sits on a stop. The build gates it like the enemy
+  bullets: mean `#e824e8` (outline excluded), 7.1 CIE76 from `enemyGoo`, worst contrast 3.12 (on `#3a3a46`).
+  `scripts/art/goo.test.js`; every other output byte-identical (hashed before and after).
+- **Theme (GA2).** `BULLET_ART.floorSpriteIds` (`bullet.enemy.goo`) apart from `decalIds` (strike, ember: still no
+  art); per-id animations through `SlotContract.idBaseAnimations` (goo needs `land` / `hold`, not `fly`); a goo set
+  carries `lit: { w, h }` (art px) for the size rule. `gooArt.ts` (`GOO_ART_RULES`, `gooArtReport`,
+  `gooArtProblems`, after `bulletArtProblems` in variantColors.ts); `ThemePack.floorSprite(id)`. Vale:
+  `packs/vale/goo.ts` `valeGooAsset` (nothing until `goo.png` has an id). contract.luau / validate.luau unchanged at
+  186 / 196 top-level locals (counted on out/).
+- **View (GA3).** `GOO_ART_VIEW`; `gooSpriteLook` (mirror = slot bit 0, variant = (slot >> 1) % holdFrames),
+  `gooSpriteSize` (31 x 17 -> 1.046 x 0.700 tiles), `gooSpritePlacement`. `gooSprite.spec.ts`.
+- **Client (GA4).** `FloorSpritePool.ts`: the goo `DecalPool` delegates to it when `pack.floorSprite(GOO_BULLET_ID)` is
+  defined. Anchors as SpriteBulletPool's, turned by `FLOOR_CANVAS_YAW` (the canvas-turn fix), the canvas at the disc's
+  top face, the pivot on the bullet; moved only when a slot appears or moves. The mirror is a negative
+  `ImageRectSize` (unchecked in Studio: GA7).
+- **GA5.** THIRD_PARTY_NOTICES.md entry and a Credits line (art, modified).
+- **Not run here:** `npm run verify` in one go (the device shell's call limit); typecheck, lint, `test:art` and every
+  headless spec ran in groups, all passing.
+
 ## Tasks
 
-- **GA0. Pack (owner).** Licence cleared (above). Download, put the raw files in `art/vendor/heimlich3-slime/`, `art:lock`. Check whether the pack
+- **GA0. Pack (owner).** Licence cleared (above). Download, put the raw files in `art/vendor/Free Slimes Asset Pack/`, `art:lock`. Check whether the pack
   ships a red / pink / purple slime that clears the family rule without a recolour (then GA1 skips `recolor`).
   **Verify:** frame size and lit boxes match the table above, or the table is corrected.
 - **GA1. Atlas set.** As Architecture 1. **Verify:** `npm run test:art`; `goo.png` <= 3 cells; every other output
@@ -117,7 +144,7 @@ the recolour, an assistant helping build it) is not AI use. Never put the pack's
   a green `enemyGoo`, and risks reading as moss on the green biomes.
 - **GAD3. Flat on the floor, depth stretched by 1 / sin(pitch)**, not a camera-facing billboard (a billboard at the
   floor would cut through markings and bullets).
-- **GAD4. Cover the hit:** drawn at least as large as the hit circle on screen (1.04 x 0.70 tiles).
+- **GAD4. Cover the hit:** drawn at least as large as the hit circle on screen (1.05 x 0.70 tiles).
 - **GAD5. No new colour role, string, sound, setting or debug flag.**
 
 ## Risks

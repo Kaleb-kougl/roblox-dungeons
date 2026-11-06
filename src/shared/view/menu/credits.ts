@@ -31,6 +31,7 @@ export const CREDITS: ReadonlyArray<CreditEntry> = [
 	{ section: "art", work: "UI User Interface Pack - Horror", author: "ToffeeCraft" },
 	{ section: "art", work: "Ninja Adventure (effects)", author: "Pixel-boy", license: "CC0" },
 	{ section: "art", work: "16Bit Bullets Asset Pack", author: "J i m", modified: true },
+	{ section: "art", work: "Free Slimes Asset Pack", author: "heimlich3", modified: true },
 	{
 		section: "models",
 		work: "Dungeon Essential Kit",

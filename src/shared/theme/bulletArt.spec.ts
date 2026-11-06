@@ -58,7 +58,9 @@ describe("BULLET slot: sprites (docs/PROJECTILE_ART.md PA3)", () => {
 		expect([BULLET.heading, BULLET.perSheetCells]).toEqual(["up", undefined]);
 		expect(BULLET_ART.animation).toBe("fly");
 		expect(BULLET_ART.maxFrames).toBe(4);
-		expect([...BULLET_ART.decalIds]).toEqual(["bullet.enemy.goo", "bullet.enemy.strike", "bullet.player.ember"]);
+		// docs/GOO_ART.md GA2: the goo left the decals for a floor sprite (gooArt.spec)
+		expect([...BULLET_ART.decalIds]).toEqual(["bullet.enemy.strike", "bullet.player.ember"]);
+		expect([...BULLET_ART.floorSpriteIds]).toEqual(["bullet.enemy.goo"]);
 		expect(MAX_ENEMY_BULLET_ART_DIFFERENCE).toBe(12);
 		for (const id of BULLET_ART.decalIds) expect(BULLET_IDS.includes(id as never)).toBe(true);
 	});
@@ -138,7 +140,7 @@ describe("BULLET slot: sprites (docs/PROJECTILE_ART.md PA3)", () => {
 		expect(bad.map((e) => e.check)).toEqual(["enemy"]);
 	});
 
-	it("rejects art on the floor decals (goo, strike, ember)", () => {
+	it("rejects art on the floor decals (strike, ember)", () => {
 		for (const id of BULLET_ART.decalIds) {
 			const m = withBullet(id, id === "bullet.player.ember" ? "#edc134" : "#f6449f");
 			expect([id, errorsAt(m, id)]).toEqual([
@@ -207,7 +209,7 @@ describe("BULLET slot: sprites (docs/PROJECTILE_ART.md PA3)", () => {
 				id,
 			),
 		).toEqual([
-			`assets["${id}"].sizeTiles: unknown key (allowed: kind, frameW, frameH, pivot, pixelsPerTile, resample, facings, sheets, animations, meanColor)`,
+			`assets["${id}"].sizeTiles: unknown key (allowed: kind, frameW, frameH, pivot, pixelsPerTile, resample, facings, sheets, animations, meanColor, lit)`,
 			`assets["${id}"].animations: sprite contract: missing animation "fly" (>= 1 frame)`,
 		]);
 	});

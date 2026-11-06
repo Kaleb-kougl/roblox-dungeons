@@ -454,6 +454,12 @@ export interface SpriteSetAsset {
 	 * PROJECTILE_ART.md PA3), where it is required: held to the bullet colour rules (bulletArt.ts bulletArtReport).
 	 */
 	meanColor?: HexColor;
+	/**
+	 * Floor sprites only (docs/GOO_ART.md GA2, contract.ts BULLET_ART.floorSpriteIds: the goo puddle), required: the
+	 * hold frame's lit box, art px (integers inside the cell). The renderer sizes the puddle from it so its lit ellipse
+	 * covers the hit on screen (shared/view gooSpriteSize); the pivot is its centre.
+	 */
+	lit?: { w: number; h: number };
 }
 
 export interface SpriteFacings {

@@ -187,6 +187,23 @@ SOFTWARE.
   (the main menu's Credits screen, shared/view/menu `CREDITS`). A screenshot of the comment kept beside the vendor
   files, or a written licence from the author (the contact address on the page), would be stronger evidence.
 
+## Free Slimes Asset Pack ("Slime")
+
+- "Free Slimes Asset Pack" by **heimlich3** (itch.io). Source: https://heimlich3.itch.io/slime.
+- Used for: the Ooze's goo puddles (`bullet.enemy.goo`, docs/GOO_ART.md): two frames of the slime's strip, the
+  flattened blob as the puddle landing and the spread splat as the puddle, cut and packed into `goo.png` by
+  `scripts/art/build-atlases.js` and uploaded to Roblox. **Modified:** cropped and recoloured (a gradient map into the
+  goo colour `enemyGoo`, the black outline kept).
+- Raw files: `art/vendor/Free Slimes Asset Pack/` (gitignored, never committed or shared: redistribution is
+  prohibited).
+- Terms (the pack page, as written):
+  "You can use this asset in any game project, personal and commercial. / Modification is allowed. / Redistribution,
+  resell, NFTs and AI use are PROHIBITED. / Credits is not required but appreciated."
+- The owner confirmed with the author that "AI use" means training AI on the art: the port's normal workflow (the
+  atlas pipeline, the recolour, an assistant helping build it) is not AI use. Never put the pack's files into any AI
+  training set. Credit is not required; the pack is credited anyway (the main menu's Credits screen, shared/view/menu
+  `CREDITS`).
+
 ## Dungeon Essential Kit (3D models, CC-BY 4.0) - ATTRIBUTION REQUIRED
 
 - Author: Rakshaan (https://sketchfab.com/rakshaan). Source:

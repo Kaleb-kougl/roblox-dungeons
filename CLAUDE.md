@@ -743,6 +743,18 @@ Decision log (deviations from `PLAN.md`):
   `bullets.png` uploaded 2026-11-05 (PA8, `assetIds.ts`), so the bundled vale pack draws the art. Spike PA0, the
   Studio check (PA9) and a full laptop `art:build` pending.
 
+- **Goo art (docs/GOO_ART.md).** Presentation only (no sim, dungeon, lockstep, hash, replay, fixture or score change).
+  The Ooze's goo puddles can draw the last two frames of the Free Slimes Asset Pack's green slime death (heimlich3;
+  commercial use, modification allowed, no redistribution or AI training; raw files in gitignored
+  `art/vendor/Free Slimes Asset Pack/`, Credits screen): frame 3 for the first `landSec` 0.1 s, frame 4 for the rest, the
+  same fade as the disc, a mirror from the slot index. Recoloured into `enemyGoo` (mean 7.1 CIE76). Its own sheet
+  `goo.png` (`--only goo`, generated `packs/vale/gooLayout.ts`). Supersedes PAD3 for goo only: `BULLET_ART.floorSpriteIds`
+  (strike / ember keep `decalIds`, no art), per-id animations `land` / `hold` (`SlotContract.idBaseAnimations`), a
+  `lit` box on the set, `gooArtReport` (own module; contract.luau / validate.luau stay 186 / 196). Flat on the floor,
+  depth stretched by 1 / sin(pitch), sized so it covers the hit on screen (`gooSpriteSize`: 1.05 x 0.70 tiles);
+  `FloorSpritePool` behind the goo `DecalPool`. Without a `goo.png` id the disc is drawn as before. Upload (GA6) and
+  Studio check (GA7, after PA0) pending.
+
 ## Commands
 
 ```

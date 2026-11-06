@@ -19,7 +19,9 @@
  *     never as a threat cue;
  *   - likewise (docs/PROJECTILE_ART.md PA3), bulletArt.ts `bulletArtProblems`: bullet sprite art (one facing, a short
  *     `fly` loop, a meanColor) whose player shots never read as danger and whose enemy bullets read as the danger
- *     colour on every floor and wall; the floor decals take no art.
+ *     colour on every floor and wall; the floor decals take no art;
+ *   - likewise (docs/GOO_ART.md GA2), gooArt.ts `gooArtProblems`: the goo puddle's floor sprite (one facing, a one-cell
+ *     land, a few hold variants, its lit box, a meanColor read as goo on every floor, never as decor or a boost).
  */
 
 import { colorDifference, contrastRatio, isHexColor } from "./color";
@@ -32,6 +34,7 @@ import { pelletReport } from "./pelletColors";
 import { treasureReport } from "./treasureColors";
 import { fortuneReport } from "./fortuneColors";
 import { bulletArtProblems } from "./bulletArt";
+import { gooArtProblems } from "./gooArt";
 
 /** What a variant colour report checks against what, and the bars (AFFIX_COLOR_RULES, GOO_COLOR_RULES). */
 export interface VariantColorRules {
@@ -280,6 +283,9 @@ export function variantColorProblems(manifest: unknown, suffix: (biome: string) 
 		}
 	}
 	for (const problem of bulletArtProblems(manifest, suffix)) {
+		out.push(problem);
+	}
+	for (const problem of gooArtProblems(manifest, suffix)) {
 		out.push(problem);
 	}
 	return out;

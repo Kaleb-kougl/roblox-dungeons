@@ -47,8 +47,9 @@
  * decor-mote.png has an ID; until then a biome whose Ninja Adventure flipbook (fx-ambient-b<n>.png) has an ID uses it.
  *
  * Projectile sprites (bullets.ts, docs/PROJECTILE_ART.md PA6): every `bullet.*` entry of bulletLayout.ts becomes a
- * one-facing `sprites` set once the bullet atlas (bullets.png) has an ID; until then (and always for the goo / strike /
- * ember floor decals) the placeholder's neon part.
+ * one-facing `sprites` set once the bullet atlas (bullets.png) has an ID; until then (and always for the strike /
+ * ember floor decals) the placeholder's neon part. The goo puddle (goo.ts, docs/GOO_ART.md GA2) becomes a floor
+ * sprite set once goo.png has an ID; until then the placeholder's neon disc.
  */
 import {
 	BIOMES,
@@ -87,6 +88,7 @@ import { PLACEHOLDER_MANIFEST } from "../placeholder";
 import { VALE_ASSET_IDS } from "./assetIds";
 import { VALE_SOUND_LAYOUTS, type ValeSoundLayout } from "./audioLayout";
 import { valeBulletAssets, type ValeBulletSource } from "./bullets";
+import { valeGooAsset, type ValeGooSource } from "./goo";
 import { valeAmbientAssets, valeFxAssets, valeFxSources } from "./fx";
 import {
 	VALE_FLOOR_HEX,
@@ -587,6 +589,8 @@ export interface ValeLayoutSources {
 	readonly uiIcons?: ValeUiIconSource;
 	/** VALE_BULLET_SOURCE (bullets.ts: the bullet atlas and bulletLayout.ts). */
 	readonly bullets?: ValeBulletSource;
+	/** VALE_GOO_SOURCE (goo.ts: the goo sheet and gooLayout.ts). */
+	readonly goo?: ValeGooSource;
 }
 
 /**
@@ -683,6 +687,11 @@ export function buildValeManifest(ids: AssetIds = VALE_ASSET_IDS, sources: ValeL
 	const bullets = valeBulletAssets(ids, sources.bullets);
 	for (const id of sortedKeys(bullets)) {
 		manifest.assets[id] = bullets[id];
+	}
+	// The goo puddle's floor sprite (docs/GOO_ART.md GA2; goo.ts): replaces the placeholder disc once goo.png has an ID.
+	const goo = valeGooAsset(ids, sources.goo);
+	for (const id of sortedKeys(goo)) {
+		manifest.assets[id] = goo[id];
 	}
 	// An ambient ID the R5 world art already filled (addWorldArt: the Lords of Pain mote, once decor-mote.png has an
 	// ID) keeps it; the Ninja Adventure flipbook (F6) is the fallback for a biome the mote does not cover yet.

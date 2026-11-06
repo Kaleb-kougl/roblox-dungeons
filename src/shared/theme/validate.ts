@@ -2385,14 +2385,15 @@ function validateSpriteSet(def: Obj, path: Array<string>, slot: SlotContract, er
 		return;
 	}
 	const fx = slot === FX;
-	// docs/PROJECTILE_ART.md PA3: a bullet set adds its meanColor (bulletArt.ts checks it; by slot name: no new local)
+	// docs/PROJECTILE_ART.md PA3: a bullet set adds its meanColor (bulletArt.ts checks it; by slot name: no new local);
+	// docs/GOO_ART.md GA2: a floor sprite (the goo) also its hold frame's lit box `lit` (gooArt.ts checks it)
 	const extraKeys =
 		decor !== undefined
 			? decorArtKeys(decor, "sprites")
 			: fx
 			? FX_ART_KEYS
 			: slot.slot === "bullet"
-			? ["meanColor"]
+			? ["meanColor", "lit"]
 			: [];
 	unknownKeys(def, path, [...SPRITE_SET_KEYS, ...extraKeys]);
 
@@ -2532,7 +2533,7 @@ function validateSpriteSet(def: Obj, path: Array<string>, slot: SlotContract, er
 		err(ap0, "must be an object of name -> { sheet, start, frames, stride?, fps, loop }");
 		return;
 	}
-	for (const name of requiredBaseAnimations(slot)) {
+	for (const name of requiredBaseAnimations(slot, path[1])) {
 		if (!isObj(anims[name])) {
 			err(ap0, `sprite contract: missing animation ${q(name)} (>= 1 frame)`);
 		}
