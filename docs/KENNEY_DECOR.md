@@ -3,7 +3,7 @@
 Status (2026-11-06): **every piece redrawn** (KN1, KN2's renders) and **Kenney's bookcases wired as alternative art
 for the existing bookcase** (presentation only, "As built" below), uploaded 2026-11-06 11:46 AM; **wide pairs wired**
 (KN3, "Wide cases" below) and **floor patches wired** (KN4, "Floor patches" below: planks and dirt, baked per biome);
-their 12 + 25 PNGs not uploaded yet; Studio check open. The Forge half (KN5-KN8) is not started. Owner answers (2026-11-06): **gameplay too, at once** (new solid set
+their 12 + 25 PNGs uploaded 2026-11-06 1:19 PM; Studio check open. The Forge half (KN5-KN8) is not started. Owner answers (2026-11-06): **gameplay too, at once** (new solid set
 pieces with the art, KND1); **kit art vs Kenney art is decided after a spike** (KND2); **props + floor patches**, walls
 and biome floors unchanged (KND3); **both** a new `mess` (mess hall) theme and richer storerooms (KND4). Everything else
 is proposed.
@@ -215,8 +215,8 @@ Presentation only (no Forge, dungeon, sim, hash, replay or fixture change): the 
   within one run, facing parity, never without wide art or an alternative set), valeArt.spec (now also: wide and narrow
   cases are planned on its six real floors and drawn whole inside their boxes), valeWorld, decor, void, decorFx,
   requested-ids and the rest of view/decor and theme/packs/vale (19 files, 0 failures).
-- **Upload pending**: the 12 `kenney-bookcase-{wide,wideladder,wideempty,halfwide,halfwideempty,wideemptyladder}-{x,z}.png`
-  (`art/upload/`), then their IDs in `packs/vale/assetIds.ts`.
+- **Uploaded** (2026-11-06 1:19 PM, k9kbdev): the 12 `kenney-bookcase-<wide look>-x / -z.png`, IDs in
+  `packs/vale/assetIds.ts`, so libraries of the alternative set now draw wide pairs. Open: a Studio look.
 
 ### Floor patches (KN4, 2026-11-06)
 
@@ -249,7 +249,8 @@ replay or fixture change; walkable, flat).
   block and ring FLOOR of the room, no other flat or carpet under them, spacing, caps, some in boss rooms), valeWorld
   (five looks per biome, each its own bake), and all of view/decor, shared/theme (50 files), fxCues, run/tutorial:
   0 failures.
-- **Upload pending**: the 25 `kenney-patch-*-b<n>.png` (`art/upload/`), then their IDs in `packs/vale/assetIds.ts`.
+- **Uploaded** (2026-11-06 1:19 PM, k9kbdev): the 25 `kenney-patch-<look>-b<n>.png`, IDs in `packs/vale/assetIds.ts`,
+  so every room now lays its patches.
 - Open (Studio): whether 35 % / x0.55 reads as worn floor under the game's lighting and the depth-band dimming; tune
   `biomeGrade` in kenney.json and rerun `reproject.py --only patch`, `art:lock`, `art:build`.
 
@@ -284,10 +285,10 @@ replay or fixture change; walkable, flat).
 - [~] **KN2. Art set** (2026-11-06: every piece rendered; atlases / credits for the bookcases only). Render every piece in the tables above (both facings for wall and 2 x 1 pieces), the `kenney`
   atlas group, `art:build` / `art:lock`, valeWorld.spec's file list, THIRD_PARTY_NOTICES.md and `CREDITS`.
 - [~] **KN3. Variants (presentation)** (2026-11-06: narrow bookcase variants wired as a per-room alternative set; wide
-  pairs wired, upload pending; the run-end / ladder rules and other kit -> Kenney swaps open). Bookcase variants, wide-pair drawing (KND11) and any kit -> Kenney swaps from
+  pairs wired and uploaded; the run-end / ladder rules and other kit -> Kenney swaps open). Bookcase variants, wide-pair drawing (KND11) and any kit -> Kenney swaps from
   KN0 in the decor plan and vale manifest. Specs: a pair never spans two runs or a run's corner; variant picks are
   stable per cell.
-- [x] **KN4. Floor patches (presentation)** (2026-11-06; upload and Studio look pending). Kind `patch`, the dressing
+- [x] **KN4. Floor patches (presentation)** (2026-11-06; uploaded; Studio look pending). Kind `patch`, the dressing
   rule, the biome grade, census in decorPlan.spec.
 - [ ] **KN5. Forge pieces.** `SolidDecorKind` gains `studyTable`, `display`, `lectern`, `fallenShelf`, `diningTable`,
   `barrelStack`, `crateStack`, `lumber`, `barrelHeap` and `stockpile`, with footprints and flush or free-standing spots.

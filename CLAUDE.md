@@ -805,8 +805,8 @@ Decision log (deviations from `PLAN.md`):
   room, at most 1 in half the boss rooms; salts `patchRoom` / `patchBlock`) only when the pack has patch art. Kenney's
   planks and dirt (no stone: raised blocks read as obstacles), baked per biome by reproject.py (`biomes` /
   `biomeGrade`: mean 35 % of the way from the floor colour, detail x0.55, feathered): 25 own PNGs
-  `kenney-patch-<look>-b<n>`; `ValeDecorPiece.biome` maps a piece in one biome only (`VALE_PATCH_LOOKS`). Upload of
-  the 12 + 25 PNGs and a Studio check pending.
+  `kenney-patch-<look>-b<n>`; `ValeDecorPiece.biome` maps a piece in one biome only (`VALE_PATCH_LOOKS`). The 12 + 25
+  PNGs uploaded 2026-11-06 (IDs in `packs/vale/assetIds.ts`), so the bundled vale pack draws both; Studio check pending.
 
 - **Training dummy art (docs/DUMMY_ART.md).** Presentation only (no sim, dungeon, lockstep, hash, replay, fixture or
   score change; the dummy keeps its 8 hp, body and corpse time). `enemy.dummy` gets a one-facing pixel-art sprite set
