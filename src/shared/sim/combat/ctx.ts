@@ -74,6 +74,12 @@ export class SimCtx {
 	 */
 	procCause = 0;
 	/**
+	 * Builds (docs/LEGENDARIES.md LG2, sim/builds execute.ts buildsKillCarry): the Overkill carry of the kill being
+	 * made now. Set by actors.ts damageActor on its kill line just before buildsOnKill and back to 0 right after (so 0
+	 * everywhere else); buildsOnKill copies it into the proc's `excess`. Transient, never hashed.
+	 */
+	killCarry = 0;
+	/**
 	 * The Warbanner aura mask (docs/NEW_ENEMIES.md NE6, NED8): buffed actor -> its actor id when the mask was built.
 	 * Transient, never hashed: rebuildAura fills it at the START of stepActors from the tick-start actor pool
 	 * (`warbannerAuraMask`, a pure function of hashed state), it holds for the rest of that tick, and bind() empties it,
@@ -96,6 +102,7 @@ export class SimCtx {
 		this.actors = state.combat.actors;
 		this.procGen = 0;
 		this.procCause = 0;
+		this.killCarry = 0;
 		this.auraMask.clear();
 		return this;
 	}

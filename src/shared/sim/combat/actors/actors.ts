@@ -30,7 +30,7 @@ import { runOnKill } from "../../progression/runMods";
 import { dropsOnKill } from "../../drops/drops";
 import { affixAbsorb, affixHoldsCorpse, affixesOnFree, affixesOnKill, affixesOnSpawn } from "../../affixes/affixes";
 import { buildsOnKill } from "../../builds/procs";
-import { buildsExecute } from "../../builds/execute";
+import { buildsExecute, buildsKillCarry } from "../../builds/execute";
 import { ACTOR_HASH_FIELDS, ACTOR_SCRATCH_SLOTS, AiState, NO_KIND, type ActorState } from "./types";
 
 function zeros(n: number): number[] {
@@ -206,8 +206,13 @@ export function damageActor(ctx: SimCtx, a: ActorState, amount: number): number 
 	if (dmg > 0 && ctx.state.affixes !== undefined) dmg = affixAbsorb(ctx.state, a, dmg);
 	const cap = def.data.damageCapPerSecond;
 	if (cap !== undefined && dmg > 0) dmg = applyDamageCap(a, ctx.tick, dmg, cap);
+	// Builds (docs/LEGENDARIES.md LG2): Overkill's carry reads the hit as it is here (after the cap, before Executioner,
+	// LGD3) and the hp it met.
+	const hit = dmg;
+	const hpBefore = a.hp;
 	// Builds (docs/BUILDS.md BU5, opt-in): Executioner turns a hit that leaves a non-boss enemy at <= 20 % into a kill.
 	if (ctx.state.builds !== undefined && dmg > 0) dmg = buildsExecute(ctx, a, def, dmg);
+	const executed = dmg !== hit;
 	if (dmg > a.hp) dmg = a.hp; // overkill does not count
 	if (dmg > 0) {
 		// The tutorial's block lesson (tutorial.ts guard lock): a held actor keeps TUTORIAL_GUARD_HOLD_HP until a block.
@@ -220,7 +225,12 @@ export function damageActor(ctx: SimCtx, a: ActorState, amount: number): number 
 	if (def.onHit !== undefined) def.onHit(ctx, a, dmg);
 	if (a.alive !== 0 && a.hp <= 0) {
 		// Builds (docs/BUILDS.md BU3, opt-in): a kill by player damage queues its proc (never a revive or the dummy).
-		if (ctx.state.builds !== undefined) buildsOnKill(ctx, a, def);
+		// Its Overkill carry (LG2) rides along in the transient ctx.killCarry, 0 again right after.
+		if (ctx.state.builds !== undefined) {
+			ctx.killCarry = buildsKillCarry(ctx, a, def, hit, hpBefore, executed);
+			buildsOnKill(ctx, a, def);
+			ctx.killCarry = 0;
+		}
 		killActor(ctx, a);
 	}
 	return dmg;

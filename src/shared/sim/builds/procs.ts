@@ -4,7 +4,8 @@
  *
  * Kills (buildsOnKill, from actors.ts damageActor's kill line, before killActor): a kill by player damage pushes a proc
  * { x, z, owner, gen, slot, id, excess } (the corpse, ctx.playerIndex = the bullet's owner / the swinging player / the
- * spark's owner, ctx.procGen, the victim's slot and actor id; excess 0 until docs/LEGENDARIES.md LG2's Overkill carry)
+ * spark's owner, ctx.procGen, the victim's slot and actor id; excess: docs/LEGENDARIES.md LG2's Overkill carry,
+ * ctx.killCarry when the owner has Overkill, else 0)
  * onto state.builds.procs, unless
  *   - the victim revives (def.stepDead: turrets) or is in PROC_INELIGIBLE_ARCHETYPES (the training dummy),
  *   - gen >= genMax (BUD5: a generation-3 proc would do nothing, so none is queued; a kill of generation exactly
@@ -25,7 +26,7 @@
  * queue waits.
  *
  * One proc: ctx.actingPlayer(owner) (its kills are scored for, and read the mods of, the owner), then each on-kill boon
- * the owner has, in boon index order (ON_KILL_BOONS: Chain Spark, Volatile, Soul Shards; ./onKill.ts). Afterwards
+ * the owner has, in boon index order (ON_KILL_BOONS: Chain Spark, Volatile, Soul Shards, Overkill; ./onKill.ts). Afterwards
  * player 0 is bound again and ctx.procGen is 0.
  */
 import { jsMin } from "shared/jsmath";
@@ -41,11 +42,11 @@ import { JACKPOT_KILLS, KillCause } from "./effectsData";
 import { resetEvolutionScratch, stepEvolutions, stepMomentum } from "./evolutions";
 import { chainReactionKill, resetDuoScratch, stepDuosAfterDrain, stepDuosBeforeDrain } from "./duos";
 import { isEvolved } from "./hooks";
-import { chainSpark, soulShards, volatileBurst } from "./onKill";
+import { chainSpark, overkill, soulShards, volatileBurst } from "./onKill";
 import { scoreJackpot } from "../score/score";
 
 /** The boons a proc fires, in the order it fires them (boon index order). */
-export const ON_KILL_BOONS: ReadonlyArray<number> = [Boon.CHAIN_SPARK, Boon.VOLATILE, Boon.SOUL_SHARDS];
+export const ON_KILL_BOONS: ReadonlyArray<number> = [Boon.CHAIN_SPARK, Boon.VOLATILE, Boon.SOUL_SHARDS, Boon.OVERKILL];
 
 /** True when a kill credited to `p` has anything to fire (an on-kill boon owned). */
 export function hasOnKillEffect(p: Readonly<BuildPlayerState>): boolean {
@@ -90,7 +91,9 @@ export function buildsOnKill(ctx: SimCtx, a: Readonly<ActorState>, def: Readonly
 		return;
 	}
 	if (!hasOnKillEffect(p)) return;
-	s.procs.push({ x: a.x, z: a.z, owner, gen, slot: ctx.actors.indexOf(a), id: a.id, excess: 0 });
+	// Overkill (docs/LEGENDARIES.md LG2): the kill's carry (damageActor's ctx.killCarry), kept only for an owner of it.
+	const excess = buildLevel(p, Boon.OVERKILL) > 0 ? ctx.killCarry : 0;
+	s.procs.push({ x: a.x, z: a.z, owner, gen, slot: ctx.actors.indexOf(a), id: a.id, excess });
 }
 
 function resolveProc(ctx: SimCtx, s: BuildsState, q: Readonly<BuildProc>): void {
@@ -102,6 +105,7 @@ function resolveProc(ctx: SimCtx, s: BuildsState, q: Readonly<BuildProc>): void 
 		if (level <= 0) continue;
 		if (b === Boon.CHAIN_SPARK) chainSpark(ctx, s, q, level);
 		else if (b === Boon.VOLATILE) volatileBurst(ctx, s, q, level);
+		else if (b === Boon.OVERKILL) overkill(ctx, s, q);
 		else soulShards(ctx, s, q, level);
 	}
 }

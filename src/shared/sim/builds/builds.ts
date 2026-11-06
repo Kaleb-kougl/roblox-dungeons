@@ -22,7 +22,8 @@
  *   draftsLeft       deals left in the open draft, the one on screen included: 1 after a floor, 2 after a boss floor
  *                    (BUD4); a confirm with draftsLeft > 1 re-deals (./cards.ts) instead of closing. 0 while closed
  * and for the world: `procs`, the kill queue (BU3, ./procs.ts: { x, z, owner, gen, slot, id, excess } per kill, oldest
- * first; `excess`, appended by docs/LEGENDARIES.md LG1, is the kill's Overkill carry: 0 until LG2's rule).
+ * first; `excess`, appended by docs/LEGENDARIES.md LG1, is the kill's Overkill carry (LG2: execute.ts buildsKillCarry,
+ * set only when the owner has Overkill; 0 for a proc that carries nothing).
  *
  * Events (BuildEvents) are presentation only: cleared every tick, NOT hashed.
  */
@@ -77,7 +78,7 @@ export interface BuildProc {
 	/** The victim's actor slot and id (skipped as a target). */
 	slot: number;
 	id: number;
-	/** Overkill's carry (docs/LEGENDARIES.md LG1, appended; 0 for a proc that carries nothing, every proc until LG2). */
+	/** Overkill's carry (docs/LEGENDARIES.md LG1, appended; LG2: 0 for a proc that carries nothing or no Overkill). */
 	excess: number;
 }
 
@@ -185,6 +186,19 @@ export interface BuildEvents {
 	duoProcX: number[];
 	duoProcZ: number[];
 	duoProcValue: number[];
+	// --- docs/LEGENDARIES.md LG2 (Overkill). Parallel lists, one entry per streak, pushed in resolution order. ---
+	/**
+	 * Overkill streaks that struck: from the corpse (overkillX1, overkillZ1) to the target's position when struck
+	 * (overkillX2, overkillZ2), the credited player, the proc's generation (0: the player's own kill; climbs along a
+	 * chain) and the carry dealt (world damage, the kill's excess).
+	 */
+	overkillX1: number[];
+	overkillZ1: number[];
+	overkillX2: number[];
+	overkillZ2: number[];
+	overkillOwner: number[];
+	overkillGen: number[];
+	overkillCarry: number[];
 	/**
 	 * Unshaken: hits taken on armor this tick by its owners, which stepScore leaves out of the combo cuts. The one
 	 * BuildEvents field the sim reads (same tick only: written in stepCombat, read in stepScore, cleared next tick).
@@ -260,6 +274,13 @@ const BUILD_EVENT_LISTS = [
 	"duoProcX",
 	"duoProcZ",
 	"duoProcValue",
+	"overkillX1",
+	"overkillZ1",
+	"overkillX2",
+	"overkillZ2",
+	"overkillOwner",
+	"overkillGen",
+	"overkillCarry",
 ] as const;
 
 /** SimState.builds. */
@@ -361,6 +382,13 @@ function emptyEvents(): BuildEvents {
 		duoProcX: [],
 		duoProcZ: [],
 		duoProcValue: [],
+		overkillX1: [],
+		overkillZ1: [],
+		overkillX2: [],
+		overkillZ2: [],
+		overkillOwner: [],
+		overkillGen: [],
+		overkillCarry: [],
 		unshakenKept: 0,
 	};
 }

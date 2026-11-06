@@ -25,6 +25,14 @@
  *                shards beyond the targets found at the nearest one; each is aimed at spawn (a unit vector by sqrt,
  *                no trig; EFFECT_DIR when the target stands on the corpse; ./effects.ts fireAimedVolley) and flies
  *                straight (BUD11), except Soul Swarm's (III), which steer. No target: no shard.
+ *   Overkill     (docs/LEGENDARIES.md LG2; legendary, level I only) instant, Chain Spark's shape: a proc whose `excess`
+ *                (the kill's carry, ./execute.ts buildsKillCarry) is at least OVERKILL_MIN_CARRY streaks from the
+ *                corpse to the nearest living enemy within OVERKILL_RANGE (nearestEnemy, the spark's skips) and deals
+ *                it the carry as is (no playerHitDamage: the carry already is the owner's damage, LGD4) through
+ *                ctx.damageActor with ctx.procGen = the proc's gen + 1 and ctx.procCause = KillCause.OVERKILL; that
+ *                strike's kill queues its own proc with its own carry, so a chain ripples one generation per tick
+ *                and stops at genMax. Bosses can be struck (their cap applies) and never carry; the Goldling can be
+ *                struck (LGD12). No target: the carry is lost (no event). One BuildEvents overkill segment per streak.
  */
 import type { SimCtx } from "../combat/ctx";
 import { playerHitDamage } from "../progression/runMods";
@@ -40,6 +48,8 @@ import {
 	EFFECT_DIR_X,
 	EFFECT_DIR_Z,
 	KillCause,
+	OVERKILL_MIN_CARRY,
+	OVERKILL_RANGE,
 	SHRAPNEL_BURSTS,
 	SOUL_SHARDS_COUNTS,
 	SOUL_SHARDS_RANGE,
@@ -51,6 +61,9 @@ import { hasDuo } from "./hooks";
 
 const CHAIN_SPARK_RANGE2 = CHAIN_SPARK_RANGE * CHAIN_SPARK_RANGE;
 const SOUL_SHARDS_RANGE2 = SOUL_SHARDS_RANGE * SOUL_SHARDS_RANGE;
+const OVERKILL_RANGE2 = OVERKILL_RANGE * OVERKILL_RANGE;
+/** nearestEnemy's exclude list when nothing but the victim is skipped. */
+const NO_EXCLUDE: ReadonlyArray<number> = [];
 
 /** The entry of a per-level table for `level` (1-based, clamped to the table: levelValue for any entry type). */
 export function levelEntry<T>(list: ReadonlyArray<T>, level: number): T {
@@ -161,4 +174,26 @@ export function soulShards(ctx: SimCtx, s: BuildsState, q: Readonly<BuildProc>, 
 	e.shardOwner.push(q.owner);
 	e.shardGen.push(q.gen);
 	e.shardFired.push(fired);
+}
+
+/** Overkill for proc `q` (see the file comment): the streak of its carry. */
+export function overkill(ctx: SimCtx, s: BuildsState, q: Readonly<BuildProc>): void {
+	const carry = q.excess;
+	if (!(carry >= OVERKILL_MIN_CARRY)) return;
+	const k = nearestEnemy(ctx, q.x, q.z, OVERKILL_RANGE2, q.id, NO_EXCLUDE);
+	if (k < 0) return;
+	const a = ctx.actors[k];
+	const e = s.events;
+	e.overkillX1.push(q.x);
+	e.overkillZ1.push(q.z);
+	e.overkillX2.push(a.x);
+	e.overkillZ2.push(a.z);
+	e.overkillOwner.push(q.owner);
+	e.overkillGen.push(q.gen);
+	e.overkillCarry.push(carry);
+	ctx.procGen = q.gen + 1;
+	ctx.procCause = KillCause.OVERKILL;
+	ctx.damageActor(a, carry);
+	ctx.procGen = 0;
+	ctx.procCause = KillCause.NONE;
 }

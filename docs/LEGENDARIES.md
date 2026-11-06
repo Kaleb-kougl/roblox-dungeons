@@ -25,8 +25,8 @@ see it happen, it is not in this plan.**
 
 ## Status (2026-11-06)
 
-**LG0 and LG1 built** (the audit, and the data and scaffolding with no rule yet: "LG0 findings", "LG1 (as built)");
-LG2-LG9 open. Follows docs/BUILDS.md (BU0-BU10 built; BU11-BU14 open). Overkill was proposed in docs/BUILDS_V2.md as
+**LG0-LG2 built** (the audit, the data and scaffolding, Overkill's rule: "LG0 findings", "LG1 (as built)", "LG2 (as
+built)"); LG3-LG9 open. Follows docs/BUILDS.md (BU0-BU10 built; BU11-BU14 open). Overkill was proposed in docs/BUILDS_V2.md as
 a common boon with levels and an evolution (Annihilator); the owner moved it here as a legendary
 (2026-11-06), so V2's Overkill row is withdrawn and its Supernova duo is redefined below. Decisions LGD1-LGD12 are
 proposed defaults until the owner settles them; LGD2, LGD3, LGD5-LGD7 and LGD12 are settled (owner, 2026-11-06).
@@ -142,6 +142,42 @@ the two new boons and four duos (endless drafts change). Paths under `src/shared
   `roomPool`, `run/`, `theme`, `view/hud`, `view/fx`, `shared/play` and `daily`, plus every fixture parity spec (golden
   runs `sim/run*`, `constants`, `hash`, the dungeon parity) and the four determinism specs: all pass (the tutorial lock,
   `roomPool.lock.spec` and the golden runs match exactly).
+
+## LG2 (as built)
+
+Overkill's rule. Paths under `src/shared/sim/` unless noted. Endless builds runs with Overkill change; every other run
+(M1, the fixtures, the tutorial, builds runs without Overkill) plays as before.
+
+- **The carry** (`builds/execute.ts` `buildsKillCarry`, called from `combat/actors/actors.ts` `damageActor`'s kill
+  line with `state.builds` only). `damageActor` keeps `hit` (the damage after `filterDamage`, the Shielded absorb and
+  the boss cap, before `buildsExecute`), `hpBefore` (the hp the hit met) and `executed` (`buildsExecute` changed the
+  damage). Carry = `hit` for an execute (LGD3), else `hit - hpBefore`; a kill with `ctx.procGen === 0` of an enemy at
+  full hp (`hpBefore === hpMax`) carries at least `OVERKILL_ONE_SHOT_MIN` (LGD2; streak and effect kills are gen >= 1,
+  no floor); below `OVERKILL_MIN_CARRY` it is 0; a boss (`data.boss`) never carries. The carry rides in the transient
+  `SimCtx.killCarry` (new, `combat/ctx.ts`: set just before `buildsOnKill`, 0 again right after and in `bind`; never
+  hashed).
+- **The proc** (`builds/procs.ts`): `Boon.OVERKILL` appended to `ON_KILL_BOONS` (so an Overkill-only player queues
+  procs); `buildsOnKill` stores `excess = ctx.killCarry` only when the owner has Overkill (every other proc keeps 0, so
+  builds runs without Overkill hash as after LG1); `resolveProc` has its own `Boon.OVERKILL` branch (after Soul Shards,
+  boon index order). Turrets, the dummy, quiet deaths, withers and leavers never queue (existing rules).
+- **The streak** (`builds/onKill.ts` `overkill(ctx, s, q)`, exported): a proc with `excess >= OVERKILL_MIN_CARRY`
+  strikes `nearestEnemy(q.x, q.z, OVERKILL_RANGE^2, q.id, [])` (the spark's skips: dead, the victim, spawned this tick)
+  for `excess` exactly (no `playerHitDamage`, LGD4) with `ctx.procGen = q.gen + 1`, `ctx.procCause =
+  KillCause.OVERKILL`, both reset after. The Goldling and bosses can be struck (the cap applies). No target: nothing.
+- **Chain Reaction** (`builds/duos.ts` `chainReactionKill`): it used to cross-trigger on any `procCause` but NONE; it
+  now tests SPARK or BURST explicitly, so a streak's genMax kill never cross-triggers (no behaviour change before
+  Overkill: those were the only two causes).
+- **Feed** (`builds/builds.ts` `BuildEvents`, cleared every tick, not hashed; parallel lists, one entry per streak
+  that struck, in resolution order): `overkillX1` / `overkillZ1` (the corpse), `overkillX2` / `overkillZ2` (the
+  target's position when struck), `overkillOwner` (party index), `overkillGen` (the proc's generation: 0 for the
+  player's own kill, +1 per link of a chain), `overkillCarry` (the damage the streak dealt).
+- **Specs** (`builds/overkill.spec.ts`): a finisher (6) on a 1-hp swarmer carries 5 to the nearest; a stream one-shot
+  carries 1; no floor for a wounded enemy or a gen-1 kill; an execute carries the full 8; a 0.5 carry does nothing; no
+  `playerHitDamage` (Sharpened); only an Overkill owner's procs carry; range 4 reaches, 4.01 does not; a chain gives
+  9 / 8 / 7 at gens 0 / 1 / 2 and stops at GEN_MAX; a turret kill never carries; a boss strike takes exactly its cap
+  and a boss kill carries 0; a streak's genMax kill never cross-triggers Chain Reaction; without builds nothing
+  changes; Overkill + Chain Spark + Volatile on an 8-swarmer pack (bow stream) streaks, clears the pack, and two runs
+  hash the same every tick. No pinned value changed.
 
 ## Player experience
 

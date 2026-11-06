@@ -276,7 +276,8 @@ export function chainReactionKill(
 	a: Readonly<ActorState>,
 ): void {
 	const cause = ctx.procCause;
-	if (cause === KillCause.NONE || !hasDuo(p, Duo.CHAIN_REACTION)) return;
+	// Only a spark's or a Volatile bolt's kill (an Overkill streak's, KillCause.OVERKILL, never cross-triggers).
+	if ((cause !== KillCause.SPARK && cause !== KillCause.BURST) || !hasDuo(p, Duo.CHAIN_REACTION)) return;
 	crossOwner.push(owner);
 	crossX.push(a.x);
 	crossZ.push(a.z);
