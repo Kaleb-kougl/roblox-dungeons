@@ -25,8 +25,8 @@ see it happen, it is not in this plan.**
 
 ## Status (2026-11-06)
 
-**LG0-LG3 built** (the audit, the data and scaffolding, Overkill's and Bastion's rules: "LG0 findings", "LG1 (as
-built)", "LG2 (as built)", "LG3 (as built)"); LG4-LG9 open. Follows docs/BUILDS.md (BU0-BU10 built; BU11-BU14 open). Overkill was proposed in docs/BUILDS_V2.md as
+**LG0-LG4 built** (the audit, the data and scaffolding, Overkill's and Bastion's rules, the four duos: "LG0 findings",
+"LG1 (as built)" .. "LG4 (as built)"); LG5-LG9 open. Follows docs/BUILDS.md (BU0-BU10 built; BU11-BU14 open). Overkill was proposed in docs/BUILDS_V2.md as
 a common boon with levels and an evolution (Annihilator); the owner moved it here as a legendary
 (2026-11-06), so V2's Overkill row is withdrawn and its Supernova duo is redefined below. Decisions LGD1-LGD12 are
 proposed defaults until the owner settles them; LGD2, LGD3, LGD5-LGD7 and LGD12 are settled (owner, 2026-11-06).
@@ -229,6 +229,42 @@ step, the roll and the bullet walk are exactly as before (the guard reads `SWORD
   never counts; goo never counts; Phantom Step's erasures count; no Bastion, no count or mark; co-op: own armor only,
   a marked bullet never counts for a second roller; two co-op runs rolling through fans hash the same every tick.
   `builds.spec.ts`' LG1 grant spec now expects the pip (the only pinned change).
+
+## LG4 (as built)
+
+The four duos' rules. Paths under `src/shared/sim/builds/`. Only players owning a duo play differently.
+
+- **Supernova** (`onKill.ts` `volatileBurst`): a proc whose `excess >= SUPERNOVA_CARRY` (3) with the duo bursts from
+  `SUPERNOVA_BURSTS` (new in `effectsData.ts`: I = `VOLATILE_BURSTS[1]` 12, II = a 16-bolt ring without pierce, III =
+  16 piercing `SUPERNOVA_CATACLYSM_PIERCE` 2) or, with Shrapnel too, `SUPERNOVA_SHRAPNEL_BURSTS` (I =
+  `SHRAPNEL_BURSTS[1]` 12 piercing 1, II = 16 piercing `SHRAPNEL_PIERCE` 1, III = 16 piercing the larger of Shrapnel's
+  Cataclysm pierce and Supernova's: 2); damage as the level's own ring. Two new BurstSpec entries, both on the existing
+  12 / 16 @ FULL_RING arc rows (no arc table row added). A `duoProc` entry (`Duo.SUPERNOVA`, the corpse, bolts spawned)
+  marks the larger ring. Chain Reaction's cross triggers use a scratch proc with `excess` 0, so they never Supernova.
+- **Skewer** (`onKill.ts` `overkill`): with the duo, before the target, every other enemy (nearestEnemy's skips: free,
+  dead, the victim, spawned this tick) whose position is within `SKEWER_RADIUS` (0.5) of the corpse -> target segment
+  (`onSkewerLine`: point-to-segment squared distance with multiplies and comparisons only, end caps included) takes
+  the full carry, in slot order, the list fixed before the first strike; then the target. Each strike is one
+  generation on with `KillCause.OVERKILL` (`streakStrike`), so each kill carries on. One overkill segment per streak as
+  before, plus a `duoProc` entry (`Duo.SKEWER`, the corpse, enemies struck including the target) when the line struck
+  anyone else.
+- **Citadel** (`hooks.ts` `brace`): with the duo, `braceReady` is neither needed nor cleared; one brace per guard or
+  roll still holds (the brace fires only on the bullet that crosses the threshold).
+- **Stone Heart** (`hooks.ts` `brace`): a brace with no pip missing heals `STONE_HEART_HEAL_HALF_HEARTS` (1, new in
+  `effectsData.ts`) half hearts up to `heartsMax` (`BraceKind.HEAL`); nothing to heal either: SPENT. Once per room
+  through `braceReady` like any brace, unlimited with Citadel.
+- **Feed**: no new list; `braceKind` HEAL (1) and the two `duoProc` duos above.
+- **Specs** (`legendaryDuos.spec.ts`): Supernova I / II / III -> 12 / 16 / 16 (II no pierce, III pierce 2) on a
+  carry of 3+, the ordinary 8 / 12 / 16 (pierce 1) below it or without the duo, Shrapnel's damage and pierce kept, and
+  no arc table miss at any level; Skewer strikes a line of three in slot order with the target last (strike order read
+  from the queued procs), skips an enemy just off the line and one behind the corpse beyond the radius, and only the
+  target without the duo; Citadel braces twice in one room, one brace for a 6-bullet guard; Stone Heart heals only at
+  full armor, once per room, SPENT at full hearts, unlimited with Citadel.
+- **Open (owner call).** Skewer as specified rarely strikes more than the target: the target is the NEAREST enemy, so
+  any enemy within 0.5 of the inside of the segment is (nearly always) nearer than the target and would have been the
+  target itself. The line therefore catches only enemies clustered within 0.5 of the target's end (or of the corpse);
+  a row of swarmers spaced 1 apart is struck one per tick, like plain Overkill. Fixing it needs a design change (e.g.
+  extend the line past the target to `OVERKILL_RANGE`, or aim at the farthest enemy in range); not done.
 
 ## Player experience
 

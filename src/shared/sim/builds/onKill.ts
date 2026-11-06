@@ -33,8 +33,15 @@
  *                strike's kill queues its own proc with its own carry, so a chain ripples one generation per tick
  *                and stops at genMax. Bosses can be struck (their cap applies) and never carry; the Goldling can be
  *                struck (LGD12). No target: the carry is lost (no event). One BuildEvents overkill segment per streak.
+ *                Skewer (Overkill + Piercing Arrows, LG4): the streak also strikes every other enemy within
+ *                SKEWER_RADIUS of the corpse -> target segment, each for the full carry, in slot order, the target
+ *                last (see overkill).
+ *   Supernova    (Overkill + Volatile, LG4): a proc whose carry is at least SUPERNOVA_CARRY bursts one Volatile ring
+ *                larger (SUPERNOVA_BURSTS, or SUPERNOVA_SHRAPNEL_BURSTS with Shrapnel: I -> 12, II -> 16, III -> 16
+ *                that pierce 2; the existing 12 / 16 @ FULL_RING arc rows only).
  */
 import type { SimCtx } from "../combat/ctx";
+import { NO_KIND } from "../combat/actors/types";
 import { playerHitDamage } from "../progression/runMods";
 import { BOON_MAX_LEVEL, levelValue } from "../progression/progressionData";
 import type { BuildProc, BuildsState } from "./builds";
@@ -51,17 +58,22 @@ import {
 	OVERKILL_MIN_CARRY,
 	OVERKILL_RANGE,
 	SHRAPNEL_BURSTS,
+	SKEWER_RADIUS,
 	SOUL_SHARDS_COUNTS,
 	SOUL_SHARDS_RANGE,
 	SOUL_SHARD_SPECS,
+	SUPERNOVA_BURSTS,
+	SUPERNOVA_CARRY,
+	SUPERNOVA_SHRAPNEL_BURSTS,
 	VOLATILE_BURSTS,
 } from "./effectsData";
 import { fireAimedVolley, fireEffect, nearestEnemy } from "./effects";
-import { hasDuo } from "./hooks";
+import { hasDuo, pushDuoProc } from "./hooks";
 
 const CHAIN_SPARK_RANGE2 = CHAIN_SPARK_RANGE * CHAIN_SPARK_RANGE;
 const SOUL_SHARDS_RANGE2 = SOUL_SHARDS_RANGE * SOUL_SHARDS_RANGE;
 const OVERKILL_RANGE2 = OVERKILL_RANGE * OVERKILL_RANGE;
+const SKEWER_RADIUS2 = SKEWER_RADIUS * SKEWER_RADIUS;
 /** nearestEnemy's exclude list when nothing but the victim is skipped. */
 const NO_EXCLUDE: ReadonlyArray<number> = [];
 
@@ -136,9 +148,21 @@ export function chainSpark(ctx: SimCtx, s: BuildsState, q: Readonly<BuildProc>, 
 	hit.clear();
 }
 
-/** Volatile for proc `q` at `level` (Shrapnel's ring when the owner has the duo). Returns the bolts spawned. */
+/**
+ * Volatile for proc `q` at `level` (Shrapnel's ring when the owner has the duo; Supernova's one ring larger for a carry
+ * of SUPERNOVA_CARRY or more). Returns the bolts spawned.
+ */
 export function volatileBurst(ctx: SimCtx, s: BuildsState, q: Readonly<BuildProc>, level: number): number {
-	const bursts = hasDuo(s.players[q.owner], Duo.SHRAPNEL) ? SHRAPNEL_BURSTS : VOLATILE_BURSTS;
+	const p = s.players[q.owner];
+	const shrapnel = hasDuo(p, Duo.SHRAPNEL);
+	const supernova = q.excess >= SUPERNOVA_CARRY && hasDuo(p, Duo.SUPERNOVA);
+	const bursts = supernova
+		? shrapnel
+			? SUPERNOVA_SHRAPNEL_BURSTS
+			: SUPERNOVA_BURSTS
+		: shrapnel
+		? SHRAPNEL_BURSTS
+		: VOLATILE_BURSTS;
 	const n = fireEffect(
 		ctx,
 		q.owner,
@@ -157,6 +181,7 @@ export function volatileBurst(ctx: SimCtx, s: BuildsState, q: Readonly<BuildProc
 	e.burstOwner.push(q.owner);
 	e.burstGen.push(q.gen);
 	e.burstFired.push(n);
+	if (supernova) pushDuoProc(s, Duo.SUPERNOVA, q.owner, q.x, q.z, n);
 	return n;
 }
 
@@ -176,24 +201,73 @@ export function soulShards(ctx: SimCtx, s: BuildsState, q: Readonly<BuildProc>, 
 	e.shardFired.push(fired);
 }
 
-/** Overkill for proc `q` (see the file comment): the streak of its carry. */
+/** Scratch: Skewer's line (slots in slot order, the target not among them; never re-entered). */
+const skewered: number[] = [];
+
+/**
+ * True when (x, z) lies within SKEWER_RADIUS of the segment (x1, z1) -> (x2, z2): the squared distance to the nearest
+ * point of the segment, with multiplies and comparisons only (no sqrt, no division): inside the segment's span the
+ * squared perpendicular distance times the squared length is |p|^2 |d|^2 - (p . d)^2.
+ */
+function onSkewerLine(x: number, z: number, x1: number, z1: number, x2: number, z2: number): boolean {
+	const dx = x2 - x1;
+	const dz = z2 - z1;
+	const px = x - x1;
+	const pz = z - z1;
+	const t = px * dx + pz * dz;
+	if (t <= 0) return px * px + pz * pz <= SKEWER_RADIUS2;
+	const len2 = dx * dx + dz * dz;
+	if (t >= len2) {
+		const ex = x - x2;
+		const ez = z - z2;
+		return ex * ex + ez * ez <= SKEWER_RADIUS2;
+	}
+	return (px * px + pz * pz) * len2 - t * t <= SKEWER_RADIUS2 * len2;
+}
+
+/** One streak strike of `carry` on `a` for proc `q` (one generation on, KillCause.OVERKILL). */
+function streakStrike(ctx: SimCtx, q: Readonly<BuildProc>, slot: number, carry: number): void {
+	ctx.procGen = q.gen + 1;
+	ctx.procCause = KillCause.OVERKILL;
+	ctx.damageActor(ctx.actors[slot], carry);
+	ctx.procGen = 0;
+	ctx.procCause = KillCause.NONE;
+}
+
+/**
+ * Overkill for proc `q` (see the file comment): the streak of its carry. Skewer (Overkill + Piercing Arrows, LG4):
+ * first every other living enemy within SKEWER_RADIUS of the corpse -> target segment (nearestEnemy's skips, slot order,
+ * chosen before any strike) takes the full carry, then the target; a duoProc entry (enemies struck) when the line
+ * struck anyone besides the target.
+ */
 export function overkill(ctx: SimCtx, s: BuildsState, q: Readonly<BuildProc>): void {
 	const carry = q.excess;
 	if (!(carry >= OVERKILL_MIN_CARRY)) return;
 	const k = nearestEnemy(ctx, q.x, q.z, OVERKILL_RANGE2, q.id, NO_EXCLUDE);
 	if (k < 0) return;
 	const a = ctx.actors[k];
+	const tx = a.x;
+	const tz = a.z;
 	const e = s.events;
 	e.overkillX1.push(q.x);
 	e.overkillZ1.push(q.z);
-	e.overkillX2.push(a.x);
-	e.overkillZ2.push(a.z);
+	e.overkillX2.push(tx);
+	e.overkillZ2.push(tz);
 	e.overkillOwner.push(q.owner);
 	e.overkillGen.push(q.gen);
 	e.overkillCarry.push(carry);
-	ctx.procGen = q.gen + 1;
-	ctx.procCause = KillCause.OVERKILL;
-	ctx.damageActor(a, carry);
-	ctx.procGen = 0;
-	ctx.procCause = KillCause.NONE;
+	if (hasDuo(s.players[q.owner], Duo.SKEWER)) {
+		skewered.clear();
+		const actors = ctx.actors;
+		for (let j = 0; j < actors.size(); j++) {
+			const b = actors[j];
+			if (j === k || b.kind === NO_KIND || b.alive === 0 || b.id === q.id || b.spawnTick === ctx.tick) continue;
+			if (onSkewerLine(b.x, b.z, q.x, q.z, tx, tz)) skewered.push(j);
+		}
+		const n = skewered.size();
+		for (let j = 0; j < n; j++) streakStrike(ctx, q, skewered[j], carry);
+		skewered.clear();
+		if (n > 0) pushDuoProc(s, Duo.SKEWER, q.owner, q.x, q.z, n + 1);
+	}
+	streakStrike(ctx, q, k, carry);
 }

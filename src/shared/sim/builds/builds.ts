@@ -180,7 +180,9 @@ export interface BuildEvents {
 	 * Duo rules that fired (one entry each; embers and Shrapnel's bolts have none): the Duo, the owner, where (Storm
 	 * Blade / Conductor: the enemy the spark started from; Chain Reaction: the corpse; Close Call / Unshaken: the
 	 * player; Gold Rush: the corpse) and a value (Storm Blade / Conductor / Chain Reaction's spark: enemies struck;
-	 * Chain Reaction's burst / Close Call: bullets spawned; Gold Rush: the kill's points; Unshaken: 1).
+	 * Chain Reaction's burst / Close Call: bullets spawned; Gold Rush: the kill's points; Unshaken: 1). Legendary duos
+	 * (docs/LEGENDARIES.md LG4): Supernova at the corpse, bolts spawned by its larger ring; Skewer at the corpse,
+	 * enemies its streak struck (the target included; only when the line struck anyone besides it).
 	 */
 	duoProcDuo: number[];
 	duoProcOwner: number[];

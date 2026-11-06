@@ -151,8 +151,43 @@ export const BraceKind = {
 
 /** Supernova (Overkill + Volatile): a kill whose carry is at least this bursts one Volatile ring larger (LGD8). */
 export const SUPERNOVA_CARRY = 3;
+/** Supernova at Cataclysm (Volatile III): the 16-bolt ring pierces this many (Cataclysm's own pierces 1). */
+export const SUPERNOVA_CATACLYSM_PIERCE = 2;
+/**
+ * Per level: Supernova's ring (I -> 12, II -> 16, III -> 16 that pierce SUPERNOVA_CATACLYSM_PIERCE). Only the existing
+ * 12 / 16 @ FULL_RING arc rows: no new shape.
+ */
+export const SUPERNOVA_BURSTS: ReadonlyArray<BurstSpec> = [
+	VOLATILE_BURSTS[1],
+	{
+		count: VOLATILE_BURSTS[2].count,
+		spread: FULL_RING,
+		speed: VOLATILE_SPEED,
+		life: VOLATILE_LIFE,
+		damage: VOLATILE_DAMAGE,
+		kind: BulletKind.BURST,
+	},
+	{ ...VOLATILE_BURSTS[2], pierce: SUPERNOVA_CATACLYSM_PIERCE },
+];
+/**
+ * Per level: Supernova's ring with Shrapnel too (the next level's count with this level's Shrapnel damage and pierce;
+ * III: 16 at the larger of Shrapnel's Cataclysm pierce and Supernova's, 2).
+ */
+export const SUPERNOVA_SHRAPNEL_BURSTS: ReadonlyArray<BurstSpec> = [
+	SHRAPNEL_BURSTS[1],
+	{ ...SHRAPNEL_BURSTS[2], pierce: SHRAPNEL_PIERCE },
+	{
+		...SHRAPNEL_BURSTS[2],
+		pierce:
+			SHRAPNEL_CATACLYSM_PIERCE > SUPERNOVA_CATACLYSM_PIERCE
+				? SHRAPNEL_CATACLYSM_PIERCE
+				: SUPERNOVA_CATACLYSM_PIERCE,
+	},
+];
 /** Skewer (Overkill + Piercing Arrows): the streak strikes every enemy its line passes within this distance of. */
 export const SKEWER_RADIUS = 0.5 * TILE_SIZE;
+/** Stone Heart (Bastion + Hearty): a brace with no pip missing heals this many half hearts (up to the maximum). */
+export const STONE_HEART_HEAL_HALF_HEARTS = 1;
 
 /**
  * What dealt the damage being dealt now (SimCtx.procCause, set beside ctx.procGen): Chain Reaction (Volatile + Chain

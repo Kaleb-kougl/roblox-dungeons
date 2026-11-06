@@ -33,6 +33,8 @@
  * not mid-roll: a swap ends a guard); the brace fires once, on the bullet that reaches the threshold, and only while
  * `braceReady` is 1 (re-armed when a room's enemies spawn and at a floor's start, set by the pick; cleared by a
  * brace). A brace with no pip missing is spent anyway (BraceKind.SPENT). BuildEvents bracePlayer / braceKind.
+ * Duos (LG4): Citadel (Bastion + Warding) lifts the once per room; Stone Heart (Bastion + Hearty) heals half a heart
+ * when no pip is missing (BraceKind.HEAL).
  *   buildsOnGuardCancels(state, i, cancels, starting)   sword.ts, every guard tick: `cancels` bullets erased this tick
  *                                      (goo outside it; strikes are never erased), `starting` on the guard's first tick.
  *   bastionRollOn(state, i)            combat.ts, once a tick per player (the bastionRolling mask): player i owns
@@ -48,7 +50,13 @@ import type { SimCtx } from "../combat/ctx";
 import { BASTION_BRACE_BULLETS, BOON_MAX_LEVEL, Boon } from "../progression/progressionData";
 import type { BuildPlayerState, BuildsState } from "./builds";
 import { Duo } from "./buildsData";
-import { BraceKind, FLURRY_ARROW_EVERY, FlurryKind, LIONHEART_HEAL_HALF_HEARTS } from "./effectsData";
+import {
+	BraceKind,
+	FLURRY_ARROW_EVERY,
+	FlurryKind,
+	LIONHEART_HEAL_HALF_HEARTS,
+	STONE_HEART_HEAL_HALF_HEARTS,
+} from "./effectsData";
 
 /** True when `p` owns `boon` evolved (level III). */
 export function isEvolved(p: Readonly<BuildPlayerState> | undefined, boon: number): boolean {
@@ -176,15 +184,29 @@ function pushBrace(s: BuildsState, i: number, kind: number): void {
 	s.events.braceKind.push(kind);
 }
 
-/** Player i braces (the count just reached the threshold): see the file comment. */
+/**
+ * Player i braces (the count just reached the threshold): see the file comment. Citadel (Bastion + Warding, LG4): no
+ * once-per-room limit (braceReady neither needed nor cleared). Stone Heart (Bastion + Hearty, LG4): with no pip
+ * missing, STONE_HEART_HEAL_HALF_HEARTS half hearts healed instead (up to the maximum; BraceKind.HEAL), once per room
+ * like any brace unless Citadel; with nothing to heal either, spent.
+ */
 function brace(state: SimState, s: BuildsState, p: BuildPlayerState, i: number): void {
-	if (p.braceReady === 0) return;
-	p.braceReady = 0;
+	const citadel = hasDuo(p, Duo.CITADEL);
+	if (p.braceReady === 0 && !citadel) return;
+	if (!citadel) p.braceReady = 0;
 	const pl = buildPlayerStateAt(state, i);
 	if (pl.armor < pl.armorMax) {
 		pl.armor += 1;
 		pushBrace(s, i, BraceKind.PIP);
 		return;
+	}
+	if (hasDuo(p, Duo.STONE_HEART)) {
+		const healed = jsMin(pl.heartsMax, pl.hearts + STONE_HEART_HEAL_HALF_HEARTS) - pl.hearts;
+		if (healed > 0) {
+			pl.hearts += healed;
+			pushBrace(s, i, BraceKind.HEAL);
+			return;
+		}
 	}
 	pushBrace(s, i, BraceKind.SPENT);
 }
