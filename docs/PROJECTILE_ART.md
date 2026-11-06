@@ -16,10 +16,87 @@ and spec is unchanged.
 once it passes the same readability bar (contrast and colour distance, enforced by the validator, PA3), plus a Studio
 sign-off (PA9). If PA0's performance or PA9's readability check fails, the fallback is player bullets only (PAD9).
 
-## Status (2026-11-05)
+## Status (2026-11-05, branch `projectile-art`)
 
-Plan only, nothing built. Owner answers PAD1-PAD3 are in, and PAD2's source is now known (below). Open: the
-recommended defaults PAD4-PAD11.
+PA0-PA7 are built headlessly. PA0 is a Studio spike harness whose measurements are still to be made. PA10 docs are
+done. **Open:**
+
+- **PA8, upload.** Upload `bullets.png` and paste its id into `assetIds.ts`. Until then the bundled vale pack draws
+  every bullet as its neon placeholder, so the game looks exactly as before.
+- **PA0 / PA9, Studio.** Run the spike, then the Studio check.
+- **The full `art:build` on the laptop.** It must leave every other output byte-identical, and it is the only build
+  that checks the `pixelsPerTileFrom` swarmer density.
+
+The defaults PAD4-PAD11 were followed. See "As built" for what differs from the plan text.
+
+## As built (PA1-PA7)
+
+- **Atlas (PA2, PA7).** The `bullets` group in `art/atlases.json` packs one atlas, `bullets.png` (18x405): the nine
+  bullet sets of the mapping table and `fx.bullet.hit` (5 frames, 15x15, 20 fps, one-shot). Every cell carries 1 px
+  of pad; the player heavy is the Hyper's 16x32 content box.
+  - The build writes `packs/vale/bulletLayout.ts`: `VALE_BULLET_SHEET`, `VALE_BULLET_LAYOUTS`, and
+    `VALE_BULLET_FX_LAYOUTS` (the hit, in the fx layout's shape).
+  - `node scripts/art/build-atlases.js --only bullets` builds just this group, needing only
+    `art/vendor/player-bullets/`. `--lock --only bullets` re-hashes just those files into the lock.
+  - A full `art:build` builds the group after `fx`. No other builder reads it, and `packFx` only gained an optional
+    label. `fx-effects.png` is untouched: the hit rides in `bullets.png` and the vale fx assets now come from a list
+    of sheets (`VALE_FX_SOURCES`).
+- **Ramps (PAD1).** One ramp per enemy set: the pack's luminance levels differ too much for a shared one. All four
+  use the plan's six colours (`#1a0610` .. `#ffe0f0`) at their own stops (`recolorNote` per set).
+  - Measured means: small `#f24ca2`, medium `#f24ba1`, large `#f24aa2`, needle `#f24ca1`.
+  - They are 7.1-7.9 CIE76 from `enemyBullet`, and the worst contrast is 3.35-3.38:1, on `#3a3a46`.
+  - The build fails on any gate miss (`gates.enemy` / `.player` / `.fx`).
+- **Player colours (deviation).** The plan never measured against `telegraph` (`#ff8a3d`), and the validator rule
+  does. As drawn, the Hyper flame (heavy) and the plain yellow bolt (shard) measured 38.3 / 36.6 from it, under the
+  40 bar. A mild gold-lift `recolor` takes them to 44.6 / 44.8. The thin yellow (basic) passes as drawn at 40.6:
+  close, and worth a look in PA9.
+  - The hit burst is 104.6 from the enemy pink but 30.1 from the telegraph. The fx rule does not include the
+    telegraph, so the build gates it against the enemy-bullet roles only (`gates.fx`).
+- **Contract and theme (PA3).**
+  - Contract: BULLET takes `spritesheet` / `sprites` / `placeholder`, with `heading: "up"`. `BULLET_ART` holds
+    `animation` `fly`, `maxFrames` 4, `decalIds` and `hitFx`, and `MAX_ENEMY_BULLET_ART_DIFFERENCE` is 12.
+  - Runtime: `ThemeCore.bullet(id)` / `ThemePack.bullet(id)`, cached. Art it cannot draw warns once and falls back to
+    the placeholder.
+  - Validator: `bulletArtReport` in `shared/theme/bulletArt.ts`, folded into `variantColorProblems`. **Ember is a
+    decal id too:** goo, strike and ember may not take art (PAD3).
+  - Top-level locals: `contract.luau` 185 -> 186, `validate.luau` unchanged (counted on out/).
+- **Vale (PA6).** `packs/vale/bullets.ts` `valeBulletAssets` builds one-facing Pixelated sprite sets over the sheet
+  once `bullets.png` has an id.
+  - Test seam: `ValeLayoutSources.bullets`.
+  - `valeBullets.spec` proves that the real generated layouts pass `validateManifest`, `bulletArtReport` and the fx
+    colour rule.
+- **View (PA4).** `shared/view/bullets`:
+  - `enemyBulletLookOf` maps SNIPER to the needle, CASTER to medium, BOSS to large, and every other kind to small.
+  - `bulletFrame` gives the phase by slot, and holds frame 0 under reduced motion.
+  - Orientation: `bulletYaw` / `bulletYawAxes` with no trig, the art's up on the canvas up with `canvasTurnDeg` 90
+    (the FX floor finding), plus `screenHeading`.
+  - `BulletImpacts`: projected life over multi-tick frames, slot reuse, restarts.
+  - `BULLET_ART_VIEW`: canvas 4 px per art px, enemy sprites lifted 0.02 studs over player sprites.
+- **Renderer (PA5).** `SpriteBulletPool` (one anchor Part per slot with a Top-face SurfaceGui and a Pixelated
+  ImageLabel, LightInfluence 0) is option B of PA0, provisional until PA0's numbers are in.
+  - It does one BulkMoveTo a frame, with the yaw in the CFrame. Writes happen only on change.
+  - The flicker runs on the sim clock, so it freezes with hitstop.
+  - The neon pool skips the payloads whose look has art (`skip(payload, scale)`). It is built only when some look has
+    art. Trails moved unchanged to `bulletTrails.ts`.
+  - **Deviation:** every enemy look keeps the small ball as its neon placeholder, so a sniper's bullet does not
+    become an unturned `needle` sliver while art is missing.
+- **Impact effect (PA7).**
+  - Cue: `FxCueMapper.bulletHit(x, z)` is the lowest-ranked source. It shows at most `FX_SPRITE_VIEW.bulletHitQueue`
+    (3) a frame, starts only while live effects are under `bulletHitBudgetShare` (0.5) of the budget, and shows none
+    under reduced motion.
+  - Feed: `FxSpriteController` owns a `BulletImpacts` over the player bullets only, with embers skipped, built only
+    when the pack has the hit art.
+- **Preload.** `bullet.` joined `PRELOAD.core`.
+- **Spike (PA0).**
+  - Spike A gained render modes N / A / B / C (keys 5-8) and `+200` player bullets (key 0).
+  - With no bullet art, the engine's particle textures stand in: `shared/theme` `SPIKE_ENGINE_TEXTURES`, which
+    `check:assets` requires there.
+  - The script and the result tables are in docs/SPIKES.md "Spike PA0".
+- **Notes for PA9.**
+  - The needle's dark frame alone is 2.92:1. The set mean passes, but the dark frame is under 3:1 on its own.
+  - The medium teardrop has no dark rim: 72 % of its pixels share one level. PAD6's baked rim is the fix if it reads
+    soft.
+  - Studio must confirm the canvas orientation (`canvasTurnDeg`), the face mapping and the Pixelated look.
 
 ## The pack (measured 2026-11-05)
 
@@ -162,7 +239,7 @@ the dark rim that makes today's bullets read, and its lit core lands on the role
 
 ## Tasks
 
-- [ ] **PA0. Spike: sprite bullets at bullet-hell counts.** Extend `BulletSpikeController` (`KV_SpikeBullets`) with
+- [ ] **PA0. Spike: sprite bullets at bullet-hell counts.** (Harness built: docs/SPIKES.md "Spike PA0"; measurements pending.) Extend `BulletSpikeController` (`KV_SpikeBullets`) with
   a mode switch. Measure at 100 / 500 / 1,000 / 2,000 bullets, rings and spiral, a 6x19 3-frame sprite turned along
   the velocity:
   - **(N)** today's neon Parts (fills spike A's empty table: the baseline);
@@ -177,7 +254,7 @@ the dark rim that makes today's bullets read, and its lit core lands on the role
   → Verify: go if the best option holds 60 fps on PC with 1,000 enemy + 200 player bullets and its update is
   <= 1.5x the neon baseline's. That option is PAD9's pick. No go: PAD9's fallback.
 
-- [ ] **PA1. Lock the pack and its credit.** Unpack `Player Bullets.rar` into `art/vendor/player-bullets/` and run
+- [x] **PA1. Lock the pack and its credit.** Unpack `Player Bullets.rar` into `art/vendor/player-bullets/` and run
   `npm run art:lock`. Add a `THIRD_PARTY_NOTICES.md` section: the pack's title, J i m (itch.io
   `jinvorionstg`), the page URL, the author's quoted terms with their date and where they were found (the page's
   comments), the files used (`Player Bullets.rar`), the recolouring ("modified": enemy sets), "Used for: every flying
@@ -187,7 +264,7 @@ the dark rim that makes today's bullets read, and its lit core lands on the role
   → Verify: `art:build` checks the files against the lock; `git status` shows no PNGs; `fit.spec` still passes with
   the extra Credits row.
 
-- [ ] **PA2. The bullet atlas.** Add the `bullets` entries in `art/atlases.json` from the mapping table: strips, rects,
+- [x] **PA2. The bullet atlas.** Add the `bullets` entries in `art/atlases.json` from the mapping table: strips, rects,
   the danger ramp on the four enemy sets, `pixelsPerTileFrom`, `meanColor`, and `upscale` if PA0 chose (A). The
   generated `bulletLayout.ts` follows. Any pipeline option it needs (strip `rect`, `upscale`) is opt-in, with a
   `test:art` spec.
@@ -195,12 +272,12 @@ the dark rim that makes today's bullets read, and its lit core lands on the role
   pointing up, the enemy four in pink with a dark rim; the printed enemy means are <= 12 ΔE from `#ff3fa4` and the
   worst contrast is >= 3:1 (tune the ramp until they are).
 
-- [ ] **PA3. Contract, theme API, validator.** `BULLET` accepts `sprites` (Architecture §2), adds `ThemePack.bullet(id)`
+- [x] **PA3. Contract, theme API, validator.** `BULLET` accepts `sprites` (Architecture §2), adds `ThemePack.bullet(id)`
   and `bulletArtReport`. Specs: an art-less pack is unchanged; a pink player bullet fails; a dim enemy bullet fails;
   bad frame rects fail. Count top-level locals on `out/` (`contract.luau` 185, `validate.luau` 196 before this task).
   → Verify: `npm run verify`; both counts stay <= 199 and compile under Lune.
 
-- [ ] **PA4. Pure view core.** `shared/view/bullets/` (§3) with specs:
+- [x] **PA4. Pure view core.** `shared/view/bullets/` (§3) with specs:
   - `enemyBulletLookOf` covers every `BulletKind`, and goo / strike never reach it;
   - frame phase and reduced-motion freeze;
   - `screenHeading` for the 8 compass velocities against the camera basis;
@@ -208,16 +285,16 @@ the dark rim that makes today's bullets read, and its lit core lands on the role
 
   → Verify: `npm test`; every fixture hash unchanged.
 
-- [ ] **PA5. Renderer.** `SpriteBulletPool` (§4) for the player pool (five looks) and the enemy pool (four looks, its
+- [x] **PA5. Renderer.** `SpriteBulletPool` (§4) for the player pool (five looks) and the enemy pool (four looks, its
   new `lookOf`). It is chosen per look: a look with art draws sprites, a look without draws the part. The goo, strike
   and ember decal pools are unchanged. MicroProfiler label `KV Bullets` kept.
   → Verify: placeholder pack in Studio looks exactly as before; with fake vale IDs (KV_Debug), every look draws.
 
-- [ ] **PA6. The vale pack.** Wire `bulletLayout.ts` into `manifest.ts`. Extend `vale.spec`: with no IDs every
+- [x] **PA6. The vale pack.** Wire `bulletLayout.ts` into `manifest.ts`. Extend `vale.spec`: with no IDs every
   `bullet.*` is the placeholder; with the `bullets.png` ID each mapped ID is `sprites` and passes `bulletArtReport`.
   → Verify: `npm run verify`.
 
-- [ ] **PA7. Impact effect (optional, PAD11).** `fx.bullet.hit` (5 frames, `sizeTiles` 0.5, untinted, additive) as a
+- [x] **PA7. Impact effect (optional, PAD11).** `fx.bullet.hit` (5 frames, `sizeTiles` 0.5, untinted, additive) as a
   new low-rank source in the fx cue mapper, fed by `bulletImpacts`, under `FX_SPRITE_VIEW.maxSprites` with a
   per-frame cap, and off under reduced motion. Never for enemy bullets.
   → Verify: an `fxCues.spec` case (a scripted bow stream into a wall gives capped cues; a stream that expires gives
@@ -238,7 +315,7 @@ the dark rim that makes today's bullets read, and its lit core lands on the role
   Record in docs/SPIKES.md. → Verify: the owner signs off PAD4-PAD10; a failed readability check takes PAD9's
   fallback.
 
-- [ ] **PA10. Docs.** docs/ART.md (the slice table's `bullet.*` row, the packs table, and the "neon placeholders"
+- [x] **PA10. Docs.** docs/ART.md (the slice table's `bullet.*` row, the packs table, and the "neon placeholders"
   line), CLAUDE.md (decision log entry and document table), docs/FX_AUDIO.md (`fx.bullet.hit`), docs/CLIENT.md
   (sprite smoke steps), `art/atlases.json` comments, this file's Status.
 

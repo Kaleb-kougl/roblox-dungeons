@@ -252,6 +252,7 @@ Leave out the bright village / sunny / boat tracks; they don't fit a dungeon.
 | `fx.relic.take` / `fx.shrine.use` | pedestal / shrine | `Magic/Spark` / `Magic/Spirit` | `uiAccent` / a curse role |
 | `fx.stairwell` | stairwell opens | `Magic/Circle` spark loop | `decor.fx.zone` |
 | `fx.breakable.splinter` | piece broken (with the chips) | `Particle/Wood` frames as a burst | `breakable.<kind>` |
+| `fx.bullet.hit` (docs/PROJECTILE_ART.md PA7) | a player bullet that ended with life left (`BulletImpacts`; lowest rank, 3 a frame, half the budget) | 16Bit Bullets `P1_Bullet_Hit.png`, 5 frames, packed in `bullets.png` (not `fx-effects.png`) | untinted, additive |
 
 Ambient textures for the existing `decor.fx.ambient.b<n>` emitters: frost `Particle/Snow`, molten `Particle/Spark` /
 `Fire`, verdant `Particle/Leaf`, ancient `Particle/Clouds` (dust), grim no match (keep the current wisp). Skip the

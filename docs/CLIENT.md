@@ -1323,6 +1323,25 @@ uploaded (`assetIds.ts`), a run with drops and `KV_Debug` = true.
 - **Co-op (4 players), four drops at once:** fps unchanged (16 small instances), no overlap mess where drops lie close;
   each client sees the same drops and pickup flashes.
 
+### Projectile art (docs/PROJECTILE_ART.md PA9; not run in Studio yet)
+
+Needs the vale pack with `bullets.png` uploaded (its id in `assetIds.ts`). Without it every bullet is its neon
+placeholder and nothing below applies.
+
+- **Each biome:** player arrows are thin yellow bolts, the charged arrow the Hyper flame, build bolts green / yellow;
+  enemy bullets are pink chevrons (sprayers and most enemies), small teardrops (casters), large teardrops (bosses) and
+  needles (snipers). Every sprite points along its flight in all 8 directions and is not mirrored (else
+  `BULLET_ART_VIEW.canvasTurnDeg`), keeps the art's aspect ratio, reads crisp (Pixelated) and unlit on the darkest
+  floor, and sits over floor decals and markings, under walls and bodies in front. Enemy sprites draw over player
+  sprites.
+- **Flicker:** bolts flicker out of step (phase by slot), freeze in hitstop, hold one frame under reduced motion.
+- **Hits:** a bow stream into a wall shows small bursts (`fx.bullet.hit`), at most 3 new ones a frame; none for
+  arrows that fly out of range; none for enemy bullets; none under reduced motion.
+- **Unchanged:** goo, strikes and embers are the neon floor decals; trails behind burst / shard bolts are neon parts;
+  co-op teammates' bullets fade as before; the end-of-life shrink still plays.
+- **Hitboxes** (hitbox debug view): the bright core covers each enemy hitbox; the chevron's tips do not make grazes
+  feel unfair. Record fps against spike PA0's numbers (docs/SPIKES.md).
+
 ### Tutorial (docs/TUTORIAL.md "Studio smoke test")
 
 Run the tutorial checklist in docs/TUTORIAL.md ("Studio smoke test", steps 1-8) with `KV_ResetOnboarding` on the

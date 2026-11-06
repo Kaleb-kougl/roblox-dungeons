@@ -722,6 +722,25 @@ Decision log (deviations from `PLAN.md`):
   swarmer's skeleton in gold (bodyTiles 0.95), `golden-move` / `golden-death` + rims; every older output byte-identical;
   uploaded 2026-11-04 (ids in `assetIds.ts`).
 
+- **Projectile art (docs/PROJECTILE_ART.md).** Presentation only (no sim, dungeon, lockstep, hash, replay, fixture or
+  score change). Every flying bullet can draw a sprite from J i m's 16Bit Bullets pack (free `Player Bullets.rar`;
+  terms only the author's page comment "use them however you want, even for commercial use", credited anyway; raw
+  files in gitignored `art/vendor/player-bullets/`). One atlas `bullets.png` (`art/atlases.json` group `bullets`;
+  `node scripts/art/build-atlases.js --only bullets` and `--lock --only bullets` need only that folder) and generated
+  `packs/vale/bulletLayout.ts` (`VALE_BULLET_LAYOUTS`, `VALE_BULLET_FX_LAYOUTS`). Player: yellow / green bolts and the
+  Hyper flame (heavy and shard gold-lifted by `recolor` to clear `telegraph` by 40 CIE76). Enemy: chevron / teardrops
+  / needle recoloured into the danger pink (one ramp per set, means <= 12 CIE76 from `enemyBullet`, >= 3:1 on every
+  floor and wall; the build gates both). Theme: BULLET takes `sprites` (`heading: "up"`, `BULLET_ART`,
+  `MAX_ENEMY_BULLET_ART_DIFFERENCE`), `ThemePack.bullet(id)`, validator `bulletArtReport` (goo / strike / ember are
+  decal ids and take no art), optional fx id `fx.bullet.hit` (the impact burst, packed in `bullets.png`; vale fx now
+  read a list of sheets, `VALE_FX_SOURCES`). View: `shared/view/bullets` (`enemyBulletLookOf` sniper needle / caster
+  medium / boss large / else small, `bulletFrame`, `bulletYaw`, `BulletImpacts`); `SpriteBulletPool` (anchor Part +
+  Top-face SurfaceGui per slot, one BulkMoveTo, provisional until spike PA0); the neon pools skip what it draws; every
+  enemy look keeps the small ball as its placeholder; `FxCueMapper.bulletHit` (lowest rank, 3 a frame, half the
+  budget); `bullet.` in `PRELOAD.core`. Spike PA0 in spike A (`KV_SpikeBullets`, modes N / A / B / C on keys 5-8).
+  Until `bullets.png` has an id the vale pack draws the neon placeholders exactly as before. Upload (PA8), spike PA0,
+  the Studio check (PA9) and a full laptop `art:build` pending.
+
 ## Commands
 
 ```
