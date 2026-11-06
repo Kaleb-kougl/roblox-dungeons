@@ -96,7 +96,7 @@
 		"max": 3
 	},
 	"boon.bastion.name": {
-		"note": "Name of a boon (a power-up kept for the rest of the run, picked from a draft of cards); its effect: \"+1 armor pip; a full-ring guard; stopping 3 bullets restores a pip\". Shown as a draft card's one-line title (24 px text on a 240 px card, no wrapping), in toasts, and in the build list. Short and flavourful, title case; glossary term.",
+		"note": "Name of a boon (a power-up kept for the rest of the run, picked from a draft of cards); its effect: \"+1 armor pip; a full-ring guard; stop 3 bullets: +1 pip\". Shown as a draft card's one-line title (24 px text on a 240 px card, no wrapping), in toasts, and in the build list. Short and flavourful, title case; glossary term.",
 		"max": 20
 	},
 	"boon.bounty.desc": {
@@ -1085,6 +1085,10 @@
 	"enemy.warbanner.name": {
 		"note": "Enemy type name: an imp carrying a war banner that stays behind other enemies and makes those near it faster. Shown in the stage card's roster line (the enemy kinds of a floor, joined with \" · \") and the main menu's Daily card. Singular noun, title case, used as a proper name; keep it short. Glossary term."
 	},
+	"fx.brace.text": {
+		"note": "Text written on the floor beside the player when the Bastion boon \"braces\": a guard (the sword's block) or a roll stopped 3 bullets and restored an armor pip (or, with the Stone Heart duo, healed). ALL CAPS, one word, like the parry flash (fx.parry.text); keep capitals if the script has them.",
+		"max": 10
+	},
 	"fx.golden.escaped": {
 		"note": "Short line written where the Goldling vanished when it escapes before being caught. {points} is a number: the coins (points) already won from hitting it, which the player keeps. The two spaces before the plus are a visual gap; keep them or use the language's equivalent.",
 		"max": 36,
@@ -1718,6 +1722,12 @@
 			"name": "Fury",
 			"desc": "+50% damage for 30 s"
 		}
+	},
+	"hud.toast.brace": {
+		"note": "Toast (top centre) when the Bastion boon \"braces\": a guard (the sword's block) or a roll stopped 3 bullets and restored one armor pip. An armor \"pip\" is one unit of armor that absorbs a whole hit. Keep \"+1\" as is."
+	},
+	"hud.toast.braceHeal": {
+		"note": "Toast (top centre) when the Bastion boon \"braces\" (a guard or a roll stopped 3 bullets) while the player's armor is already full and the Stone Heart duo heals half a heart instead of restoring a pip. Same opening as hud.toast.brace (\"Braced: +1 armor\")."
 	},
 	"hud.toast.curse": {
 		"note": "Toast (top centre) after accepting a curse at a shrine. {name} is the curse's name.",

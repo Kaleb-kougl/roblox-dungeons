@@ -193,7 +193,7 @@ function frame(m: AudioCueMapper, now: number, builds: BuildFxFrameSource, me = 
 const ids = (out: AudioCueList) => out.toIds();
 
 describe("build cues: the IDs", () => {
-	it("the nine IDs are the theme's build sounds (port audio events), ranked, timed, never a jingle / duck / fallback", () => {
+	it("the eleven IDs are the theme's build sounds, ranked, timed, never a jingle / duck (BU8's nine: no fallback)", () => {
 		const build = [
 			SFX.buildSpark,
 			SFX.buildBurst,
@@ -205,7 +205,9 @@ describe("build cues: the IDs", () => {
 			SFX.buildDuo,
 			SFX.buildJackpot,
 		];
-		expect([...build]).toEqual([...BUILD_AUDIO_IDS]);
+		// docs/LEGENDARIES.md LG5: the legendaries' two close the list; they have a fallback (checked below)
+		const legendary = [SFX.buildOverkill, SFX.buildBrace];
+		expect([...build, ...legendary]).toEqual([...BUILD_AUDIO_IDS]);
 		for (const id of build) {
 			expect([
 				id,
@@ -219,6 +221,27 @@ describe("build cues: the IDs", () => {
 				SFX_FALLBACK[id],
 			]).toEqual([id, true, true, true, true, true, false, false, undefined]);
 		}
+		for (const id of legendary) {
+			expect([
+				id,
+				PORT_AUDIO_EVENTS.includes(id),
+				ALL_SFX.includes(id),
+				PORT_SFX.includes(id),
+				SFX_PRIORITY[id] > 0,
+				(SFX_MIN_INTERVAL[id] ?? 0) > 0,
+				JINGLE_SFX.includes(id),
+				DUCKING_SFX.includes(id),
+			]).toEqual([id, true, true, true, true, true, false, false]);
+		}
+		// While silent: the streak plays the spark, the brace the Aegis pip's break (one step each).
+		expect([SFX_FALLBACK[SFX.buildOverkill], SFX_FALLBACK[SFX.buildBrace]]).toEqual([
+			SFX.buildSpark,
+			SFX.boostAegisBreak,
+		]);
+		// The streak is a cascade sound (over the spark, under the swing); the brace under the hurt and the Aegis break.
+		expect(SFX_PRIORITY[SFX.buildOverkill] > SFX_PRIORITY[SFX.buildSpark]).toBe(true);
+		expect(SFX_PRIORITY[SFX.buildOverkill] < SFX_PRIORITY[SFX.playerSwing]).toBe(true);
+		expect(SFX_PRIORITY[SFX.buildBrace] < SFX_PRIORITY[SFX.boostAegisBreak]).toBe(true);
 		// Under the player's hurt, the telegraph and the kill ladder's rank; the cascade sounds under the swing.
 		for (const id of BUILD_VOICE_SFX) expect(SFX_PRIORITY[id] < SFX_PRIORITY[SFX.playerHurt]).toBe(true);
 		for (const id of [SFX.buildSpark, SFX.buildBurst, SFX.buildShard, SFX.buildEmber])

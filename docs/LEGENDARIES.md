@@ -376,3 +376,59 @@ flies into the armor row; 8. Stone Heart's heal pulse; 9. Reduced build effects 
 ## Owner calls
 
 1. After LG7: the guard's final size, the brace threshold and its once-per-room limit (LGD5 / LGD6).
+
+## LG5 (as built)
+
+Theme, l10n and audio registration only: no sim, hash, replay or fixture change, and nothing draws or plays any of it
+yet (LG6). Paths under `src/shared/` unless noted.
+
+- **Colour role `build.overkill` `#ffe0b0`** (a hot white-orange; `theme/types.ts` `COLOR_ROLES` after `build.ember`,
+  so it is required; appended to `theme/builds.ts` `BUILD_EFFECT_ROLES`, so `buildReport` holds it to BUD12's bars and
+  `pelletReport` keeps the pellets away from it). Placeholder pack only: vale clones the placeholder's colours and
+  overrides no build role, so it is the same hex there. Measured by `buildReport` (printed by `theme/builds.spec.ts`,
+  identical in placeholder, vale and vale's textured floor):
+
+  | Against | CIE76 |
+  |---|---|
+  | `boost.fury` (nearest) | 45.5 |
+  | `telegraph` | 51.7 |
+  | `boost.quickstep` | 60.2 |
+  | `boost.frenzy` | 69.4 |
+  | `boost.aegis` | 74.1 |
+  | `enemyOutline` | 79.8 |
+  | `enemyBullet` | 88.7 |
+  | `enemyBulletOutline` | 92.0 |
+  | `enemyGoo` | 128.7 |
+
+  Floor contrast 11.53:1 at the lowest (biome.3; vale's textured floor 14.10:1). The first candidate tried; whiter
+  ones (`#ffe8c8` 54.8) drift into the player outline, oranger ones (`#ffd0a0` 42.4, `#ffc890` 37.3) into Fury and the
+  telegraph. Not checked but measured: 72.0 from the pellets, 57.7 from `build.spark`, 34.0 from `build.shard`, 15.7
+  from `build.ember`, 10.4 from `build.burst` (the apricot Volatile bolts: the streak reads by its shape, a straight
+  line, not by hue; the view's white core helps). No bullet visual: the streak is drawn like Chain Spark's beam, which
+  is a colour role only (pooled Neon segments in `build.spark`), so the streak needs nothing more from the theme.
+- **Strings** (`theme/builds.ts` `BUILD_STRING_KEYS`, written out inline in `contract.ts` `REQUIRED_STRING_KEYS`;
+  placeholder pack): `hud.toast.brace` "Braced: +1 armor", `hud.toast.braceHeal` "Braced: healed" (Stone Heart),
+  `fx.brace.text` "BRACED" (floor text, capitals in the string itself; never upper-cased in code). Each has an
+  `l10n/context.json` entry (`fx.brace.text` `max` 10, like `fx.parry.text`). No overkill toast.
+- **Card text.** `boon.bastion.desc` was 66 characters, 6 over the longest card line (Slippery's evolution, 60) and
+  21 over the longest level-I line (45): now "+1 armor pip; a full-ring guard; stop 3 bullets: +1 pip" (54, like
+  Sharpened's evolution); the `boon.bastion.name` context note quotes it. The others stay: Overkill 52, Skewer 49,
+  Citadel 47, Stone Heart 40, Supernova 35 (no translations exist yet, so nothing goes stale).
+- **Audio** (port audio IDs, `theme/builds.ts` `BUILD_AUDIO_IDS`' last two and `contract.ts` `PORT_AUDIO_EVENTS` right
+  after `sfx.build.jackpot`, so the build block stays one run): `sfx.build.overkill`, `sfx.build.brace`, SILENT in the
+  placeholder; vale has no layout for them, so they stay SILENT there too (LG8). `view/audio/cues.ts`: `SFX.buildOverkill`
+  / `SFX.buildBrace` in `ALL_SFX` and `PORT_SFX`; `SFX_MIN_INTERVAL` 0.06 s / 0.3 s; `SFX_PRIORITY` 53 (over the
+  spark's 51, under the swing's 54) / 60 (over the parry's 57, under the Aegis break's 66); `SFX_FALLBACK`
+  `sfx.build.overkill` -> `sfx.build.spark`, `sfx.build.brace` -> `sfx.boost.aegisbreak` (one step each: in the
+  placeholder the spark is silent too, so a streak has no sound). Registered only: no cue mapping and not in
+  `BUILD_VOICE_SFX` (LG6 decides; the streak is a cascade sound, so the voice cap is the likely home).
+- **Specs.** `theme/builds.spec.ts` (the ten string keys, eleven sounds), `theme/audio.spec.ts` (the port list),
+  `theme/contract.spec.ts` (required assets + 2, strings + 3), `view/audio/buildCues.spec.ts` (the eleven IDs; the two
+  new ones ranked, timed, never a jingle / duck, their fallbacks and ranks), `view/hud/dailyRankStrings.spec.ts` (the
+  rank layer's two now follow `sfx.build.brace`).
+- **Luau locals.** No top-level constant added (list entries only): `contract.luau` / `validate.luau` at 186 / 196 of
+  Luau's 200 top-level locals (counted on out/: `local function` = 1, `local a, b = ...` = one per name).
+- **Verify.** typecheck, lint, check:assets, build, test:l10n (36), test:checks, check:autolocalize and `l10n:check`
+  (0 errors, 0 warnings) green. Headless (Lune): every spec under `theme`, `view/hud`, `view/audio` and `view/fx` (112,
+  the theme validator's placeholder and vale specs among them), plus `tutorial`, `play/bindings` and `shared/l10n`:
+  all pass.

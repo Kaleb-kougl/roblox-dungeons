@@ -201,6 +201,11 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"build.burst": "#f8c8a0",
 		"build.shard": "#f4e8f8",
 		"build.ember": "#f4f4b0",
+		// docs/LEGENDARIES.md LG5: Overkill's streak, a hot white-orange (a white core in the view). Nearest danger / boost
+		// role Fury 45.5 CIE76 (telegraph 51.7, quickstep 60.2, enemy bullet 88.7), >= 11.5:1 on every biome floor and
+		// vale's textured floor (buildReport, printed by theme/builds.spec.ts). It sits near the apricot burst (10.4): the
+		// streak is a straight line, the burst a ring of bolts.
+		"build.overkill": "#ffe0b0",
 		// Roblox port (docs/PELLETS.md PL6, PD3; yellow by the owner, 2026-11-03): the pellets are Pac-Man yellow, the power
 		// pellet the same yellow (it reads by its size, pulse and glow). >= 40 CIE76 from the enemy bullet (82), its
 		// outline, the telegraph (76), every build effect colour (nearest build.ember 63) and the player outline; >= 30 from
@@ -454,6 +459,10 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"sfx.build.evolve": SILENT,
 		"sfx.build.duo": SILENT,
 		"sfx.build.jackpot": SILENT,
+		// docs/LEGENDARIES.md LG5: an Overkill streak and a Bastion brace (LG8 picks them; while silent they fall back to the
+		// spark and the Aegis pip's break: shared/view/audio SFX_FALLBACK)
+		"sfx.build.overkill": SILENT,
+		"sfx.build.brace": SILENT,
 		// Roblox port (docs/DAILY.md DS10): a daily run's rank threshold sting and a friend passed; silent until the vale
 		// pack's clips are auditioned, built and uploaded (DS12)
 		"sfx.rank.up": SILENT,
@@ -902,6 +911,9 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"hud.toast.evolved": "{boon} evolved: {evo}",
 		"hud.toast.duo": "Duo: {name}",
 		"hud.build.title": "Build",
+		// docs/LEGENDARIES.md LG5 (BUILD_STRING_KEYS): Bastion's brace restored a pip / (Stone Heart) healed instead
+		"hud.toast.brace": "Braced: +1 armor",
+		"hud.toast.braceHeal": "Braced: healed",
 		"hud.toast.relic": "Relic found: {name}",
 		"hud.toast.curse": "Cursed: {name}",
 		"hud.toast.secondWind": "Second Wind!",
@@ -980,7 +992,7 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"boon.overkill.desc": "Damage left over from a kill jumps to the next enemy",
 		"boon.overkill.icon": "OVK",
 		"boon.bastion.name": "Bastion",
-		"boon.bastion.desc": "+1 armor pip; a full-ring guard; stopping 3 bullets restores a pip",
+		"boon.bastion.desc": "+1 armor pip; a full-ring guard; stop 3 bullets: +1 pip",
 		"boon.bastion.icon": "BST",
 		"boon.sharpened.desc.2": "+50% weapon damage",
 		"boon.sharpened.evo.name": "Executioner",
@@ -1264,6 +1276,8 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		// docs/RUN_RECAP.md CM3: two (or three) players' parries landing together in co-op
 		"fx.parry.sync": "SYNC!",
 		"fx.parry.syncCount": "SYNC x{n}",
+		// docs/LEGENDARIES.md LG5: Bastion's brace, written on the floor (the combo shout's construction)
+		"fx.brace.text": "BRACED",
 		// --- affix.* / bestiary.* (docs/ENEMY_VARIANTS.md EV1: the affix name chips and the first-sighting toasts) -----
 		"affix.hulking.name": "Hulking",
 		"affix.swift.name": "Swift",

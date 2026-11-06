@@ -131,6 +131,8 @@
  *   - sfx.build.evolve / .duo on an evolution / duo taken (BuildEvents' takes): the local (view) player's at full
  *     volume, a teammate's at teammateVolume; outside the voice cap, the pack's jitter.
  *   None is a jingle, ducks the music or has a fallback: a silent ID plays nothing and takes no cap slot.
+ *   - sfx.build.overkill / .brace (docs/LEGENDARIES.md LG5): registered (ranked, timed, with a fallback to the spark /
+ *     the Aegis break while silent), not mapped yet (LG6).
  *
  * The Daily's rank layer (docs/DAILY.md DS10) comes from the frame's DailyRankCueSource (the client's
  * DailyRankController, stepped BEFORE the mapper in the same frame; NO_DAILY_RANK_CUES by default, so every other cue is
@@ -344,6 +346,13 @@ export const SFX = {
 	buildDuo: "sfx.build.duo",
 	buildJackpot: "sfx.build.jackpot",
 	/**
+	 * The legendaries (docs/LEGENDARIES.md LG5; BUILD_AUDIO_IDS' last two): an Overkill streak strikes, a Bastion brace
+	 * restores a pip (or heals, Stone Heart). Registered only: LG6 maps them. While silent they fall back to the spark
+	 * and the Aegis pip's break (SFX_FALLBACK).
+	 */
+	buildOverkill: "sfx.build.overkill",
+	buildBrace: "sfx.build.brace",
+	/**
 	 * The Daily's rank layer (docs/DAILY.md DS10; the theme's PORT_AUDIO_EVENTS): a predicted rank threshold (top 100 /
 	 * 10 / 3 / #1, with the floor shout) and a friend passed (with their toast). Short stings, not jingles.
 	 */
@@ -468,6 +477,8 @@ export const ALL_SFX: ReadonlyArray<SfxId> = [
 	SFX.buildEvolve,
 	SFX.buildDuo,
 	SFX.buildJackpot,
+	SFX.buildOverkill,
+	SFX.buildBrace,
 	SFX.rankUp,
 	SFX.friendPassed,
 	SFX.breakableLoot,
@@ -549,6 +560,8 @@ export const PORT_SFX: ReadonlyArray<SfxId> = [
 	SFX.buildEvolve,
 	SFX.buildDuo,
 	SFX.buildJackpot,
+	SFX.buildOverkill,
+	SFX.buildBrace,
 	SFX.rankUp,
 	SFX.friendPassed,
 	SFX.breakableLoot,
@@ -701,6 +714,9 @@ export const SFX_MIN_INTERVAL: Readonly<Partial<Record<SfxId, number>>> = {
 	[SFX.buildJackpot]: 0.2,
 	[SFX.buildEvolve]: 0.5,
 	[SFX.buildDuo]: 0.5,
+	/** docs/LEGENDARIES.md LG5: a chain's streaks climb like the sparks; one brace sound per brace (once per room). */
+	[SFX.buildOverkill]: 0.06,
+	[SFX.buildBrace]: 0.3,
 	/** The rank layer (DS10): two thresholds a moment apart (or a friend toast each queue step) never stutter. */
 	[SFX.rankUp]: 0.5,
 	[SFX.friendPassed]: 0.3,
@@ -882,6 +898,12 @@ export const SFX_PRIORITY: Readonly<Record<SfxId, number>> = {
 	[SFX.buildBurst]: 48,
 	[SFX.buildShard]: 47,
 	[SFX.buildEmber]: 44,
+	/**
+	 * docs/LEGENDARIES.md LG5: an Overkill streak over the spark (the big hit paying off) and under the swing; a brace
+	 * (a pip back) over the parry it often rides with, under the Aegis break, the hurt and the telegraph.
+	 */
+	[SFX.buildOverkill]: 53,
+	[SFX.buildBrace]: 60,
 	[SFX.uiConfirm]: 45,
 	[SFX.uiBack]: 45,
 	[SFX.uiClick]: 44,
@@ -1029,6 +1051,13 @@ export const SFX_FALLBACK: Readonly<Partial<Record<SfxId, SfxId>>> = {
 	[SFX.goldenHit]: SFX.scoreTick,
 	[SFX.goldenJackpot]: SFX.roomPerfect,
 	[SFX.goldenEscape]: SFX.comboBreak,
+	/**
+	 * docs/LEGENDARIES.md LG5: until the legendaries' clips are picked (LG8), an Overkill streak plays the spark's zap
+	 * and a Bastion brace the Aegis pip's break (the player's armor sound). One step each: while the spark is silent too
+	 * (the placeholder pack) a streak has no sound.
+	 */
+	[SFX.buildOverkill]: SFX.buildSpark,
+	[SFX.buildBrace]: SFX.boostAegisBreak,
 };
 
 /**

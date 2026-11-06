@@ -188,7 +188,7 @@ export const COLOR_ROLES = [
 	"newBest",
 	// Roblox port (docs/BUILDS.md BU1): the evolution and duo cards' frames (builds.ts BOON_BUILD_ROLES; with the rarity
 	// ladder in boonRarityReport), then one colour per build effect (BUILD_EFFECT_ROLES: spark beams, Volatile's bolts,
-	// Soul Shards, embers), held to BUILD_COLOR_RULES by buildReport (buildColors.ts): >= 3:1 on every biome floor and
+	// Soul Shards, embers, Overkill's streak: docs/LEGENDARIES.md LG5), held to BUILD_COLOR_RULES by buildReport (buildColors.ts): >= 3:1 on every biome floor and
 	// (CIE76) away from the enemy-bullet roles, telegraph, enemyGoo, enemyOutline and every boost colour.
 	"boon.evolved",
 	"boon.duo",
@@ -196,6 +196,7 @@ export const COLOR_ROLES = [
 	"build.burst",
 	"build.shard",
 	"build.ember",
+	"build.overkill",
 	// Roblox port (docs/PELLETS.md PL6, PD3): one colour per pellet kind (pellets.ts PELLET_ROLES: the room's pellets,
 	// the rare power pellet), the placeholder cube's colour and the vale art's tint. Held to PELLET_COLOR_RULES by
 	// pelletReport (pelletColors.ts): >= 3:1 on every biome floor and (CIE76) away from the enemy-bullet roles,

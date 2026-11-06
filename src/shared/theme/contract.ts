@@ -829,6 +829,9 @@ export const PORT_AUDIO_EVENTS = [
 	"sfx.build.evolve",
 	"sfx.build.duo",
 	"sfx.build.jackpot",
+	// docs/LEGENDARIES.md LG5 (the same list): an Overkill streak, a Bastion brace
+	"sfx.build.overkill",
+	"sfx.build.brace",
 	// docs/DAILY.md DS10 / DS12: a daily run's predicted rank enters the top 100 / 10 / 3 / #1 (with the floor shout);
 	// the shown score passes a friend's best today (with their toast)
 	"sfx.rank.up",
@@ -1047,6 +1050,10 @@ export const REQUIRED_STRING_KEYS: ReadonlyArray<string> = ((): string[] => [
 	"hud.toast.evolved",
 	"hud.toast.duo",
 	"hud.build.title",
+	// docs/LEGENDARIES.md LG5: Bastion's brace toasts and floor text (BUILD_STRING_KEYS)
+	"hud.toast.brace",
+	"hud.toast.braceHeal",
+	"fx.brace.text",
 	// docs/DAILY.md DS9 / DS11: the main menu's Daily card and podium, the leaderboard tabs, the run-over daily block
 	...DAILY_STRING_KEYS,
 	// docs/DAILY.md DS2: the stage card's roster line (floor 1's kinds, a floor's new kinds)

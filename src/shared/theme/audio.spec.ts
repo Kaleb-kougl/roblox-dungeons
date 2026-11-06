@@ -122,6 +122,9 @@ describe("audio contract: port IDs and ambience", () => {
 			"sfx.build.evolve",
 			"sfx.build.duo",
 			"sfx.build.jackpot",
+			// docs/LEGENDARIES.md LG5
+			"sfx.build.overkill",
+			"sfx.build.brace",
 			// docs/DAILY.md DS10
 			"sfx.rank.up",
 			"sfx.friend.passed",
