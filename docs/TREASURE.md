@@ -1447,3 +1447,33 @@ jingle) until TR9 uploads the clips.
 - Chests in the tutorial, M1, boss rooms or the pedestal room.
 - More than one vault per floor, chest rerolls, chests that scale with combo.
 - A codex entry for vaults (a later follow-up in `claude/codex-plan.md`).
+
+## Relic pedestals as chests (2026-11-06)
+
+Presentation only (no sim, dungeon, lockstep, hash, replay, fixture or score change). A TREASURE room's relic pedestal
+(M2, `RunState.pedestalTaken`) is drawn as the vault's chest instead of the placeholder Neon cylinder, and taking its
+relic plays the vault's opening. The pedestal's rules are unchanged: the first living player within `PEDESTAL_RADIUS`
+of the room's centre takes a relic, one nobody can take is not drawn.
+
+- **Look.** `treasure.chest` (the pack's art, else its placeholder model) at the room's centre, capped at
+  `TREASURE_VIEW.maxHeightTiles`, facing `TREASURE_VIEW.pedestal` `faceX` / `faceZ` (0, -1: toward the camera's side,
+  as a vault chest against a far wall). No cage, plate or sparkle (the decor glint and the `ui.marker.pedestal` beam
+  keep marking a live pedestal; the beam's foot stays `PROGRESSION_VIEW.pedestalHeightTiles` up, inside the chest).
+- **The take.** From the frame the view first sees the pedestal taken: the lid's jolt, the pop to `treasure.chestopen`
+  at `open.popSec` with the solo freeze, the `stamp` nudge and the ring burst, then the light column, all in
+  `TREASURE_VIEW.pedestal.tier`'s floor colour (VaultTier.RARE: the tier whose reward is a relic). The open chest stays
+  for the rest of the floor. No reward cards (the relic toast already names it); `fx.relic.take`, `sfx.relic.take` and
+  the toast are unchanged, and `sfx.treasure.open` does not play (the vault cue mapper reads vault events only).
+  Reduced motion drops the jolt, Particles off the column and burst, exactly as on a vault.
+- **Code.** Pure: `shared/view/treasure` `pedestal.ts` (`PedestalChestTracker`, `PedestalChestLook`, on
+  timeline.ts' `lidJoltStuds` / `chestPopped` / `popCrossed` / `columnAt`; `pedestal.spec.ts`). Client: the chest
+  bodies and light column moved out of TreasureRenderController into `render/treasureBody.ts` (`buildPieceBody`,
+  `placePieceBody`, `hidePieceBody`, `buildTreasureColumn`, `drawTreasureColumn`, ...; a pure move for the vault),
+  used by both TreasureRenderController and RunMarkerController (which keeps the shrine's cylinder). Removed:
+  `PROGRESSION_VIEW.pedestalRadiusTiles`, `PEDESTAL_COLOR_ROLE`.
+- **Also.** `DECOR_FX.glintLiftTiles` 0.7 -> 1.5, so the pedestal glint sits on the chest's lid rather than inside it;
+  the tutorial's `tutorial.prompt.relic.*` now read "Relics are permanent for the run. Walk up to the chest to open
+  it." (no translations existed; context notes updated).
+- **Studio check pending:** the chest's facing (try (-1, 0) if (0, -1) reads worse), the glint's height over the lid,
+  the beam's foot behind the chest's billboard, and the 40 ms solo freeze on a relic take (drop it in RunMarkerController
+  if it feels heavy for a pickup that also has its own toast and effect).

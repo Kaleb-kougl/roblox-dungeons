@@ -777,6 +777,14 @@ Decision log (deviations from `PLAN.md`):
   `BoostAuraController` draws a flat sprite anchor (`createSpriteAnchor`, `FLOOR_CANVAS_YAW`) per kind / rank with art,
   the disc otherwise. Original art: no notices or Credits entry. `boost-auras.png` uploaded 2026-11-06 (`assetIds.ts`),
   so the bundled vale pack draws the auras; Studio check pending.
+- **Relic pedestals as chests (docs/TREASURE.md "Relic pedestals as chests").** Presentation only (no sim, dungeon,
+  lockstep, hash, replay, fixture or score change). RunMarkerController draws each relic pedestal as the vault chest
+  (`treasure.chest`, facing `TREASURE_VIEW.pedestal`) and, once taken, plays the vault's opening (jolt, pop to
+  `treasure.chestopen`, solo freeze, `stamp` nudge, ring burst, light column in the Rare floor colour; pure
+  `shared/view/treasure` `PedestalChestTracker`); the open chest stays. The chest bodies and column moved to
+  `client/controllers/render/treasureBody.ts`, shared with TreasureRenderController. The shrine keeps its cylinder;
+  `PROGRESSION_VIEW.pedestalRadiusTiles` and `PEDESTAL_COLOR_ROLE` are gone; `DECOR_FX.glintLiftTiles` 0.7 -> 1.5;
+  `tutorial.prompt.relic.*` reworded. Studio check pending.
 - **Kenney bookcases (docs/KENNEY_DECOR.md).** Presentation only. Every Kenney piece the plan names is reprojected to
   the game camera (`scripts/art/kenney/reproject.py`, `kenney.json`; 87 PNGs in gitignored `art/vendor/kenney/`); the
   bookcases are wired as the bookcase's alternative art: 14 own PNGs `kenney-bookcase-<look>-x / -z`, vale variants
