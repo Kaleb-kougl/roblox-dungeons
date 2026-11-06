@@ -2025,5 +2025,53 @@
 				"loop": false
 			}
 		}
+	},
+	"goo": {
+		"$comment": [
+			"docs/GOO_ART.md GA1: the Ooze's goo puddle (bullet.enemy.goo) as two frames of heimlich3's Free Slimes Asset Pack",
+			"(https://heimlich3.itch.io/slime; THIRD_PARTY_NOTICES.md; raw files in gitignored art/vendor/, never committed or",
+			"shared, never AI training data), in its OWN sheet art/build/<atlas>.png with src/shared/theme/packs/vale/gooLayout.ts",
+			"(VALE_GOO_SHEET, VALE_GOO_LAYOUT), so bullets.png and every other output never repack. Source: the green slime's",
+			"Death Down strip, 5 cells of 64x64, hard alpha. `land` frame 3 (lit box 20,40 24x11, the drop flattening) and",
+			"`hold` frame 4 (17,36 31x17, the splat); Death Up's frame 4 differs by 2 px, so there is one hold cell and the",
+			"view's X mirror gives the variety. Both cells are cut with ONE crop (the union lit box + pad), so the land frame",
+			"sits where the source draws it; nearest-neighbour, no resample. Pivot: the hold lit box's centre. `recolor`: the",
+			"sprite sets' gradient map (docs/ART.md \"Recolour\") onto the enemyGoo ramp (GAD2). `gates`: the build fails unless",
+			"the lit mean (max RGB > 32: the black outline left out) is <= maxDifference CIE76 from role (enemyGoo, every pack's",
+			"#f000f0; MAX_ENEMY_BULLET_ART_DIFFERENCE) and >= minContrast WCAG on every surfaces colour (the bullets' 12 biome",
+			"floor and wall colours). pixelsPerTile: the bullets' nominal 29.6 (the swarmer's; GAD4 sizes the puddle in the",
+			"view). Build just this group: node scripts/art/build-atlases.js --only goo (and --lock --only goo)."
+		],
+		"atlas": "goo",
+		"pad": 1,
+		"pixelsPerTile": 29.6,
+		"pixelsPerTileFrom": "enemy.swarmer",
+		"gates": {
+			"role": "#f000f0",
+			"maxDifference": 12,
+			"minContrast": 3.0,
+			"surfaces": ["#24242c", "#3a3a46", "#2b2722", "#36302a", "#2a1a16", "#4a2a20", "#1e2a33", "#2a3842", "#1c1a20", "#34303a", "#1d2a1d", "#283626"]
+		},
+		"sets": {
+			"bullet.enemy.goo": {
+				"$comment": "GAD1: frame 3 lands (0.1 s), frame 4 holds. The pack's other colours (blue, purple, yellow, the King slimes) are not used.",
+				"file": "Free Slimes Asset Pack/Green Slime/green slime-Death Down.png",
+				"frameW": 64,
+				"frames": 5,
+				"land": 3,
+				"hold": [4],
+				"recolor": {
+					"ramp": [
+						[0, "#000000"],
+						[82, "#700070"],
+						[110, "#b000b0"],
+						[150, "#f000f0"],
+						[197, "#ff80ff"],
+						[255, "#ffffff"]
+					]
+				},
+				"recolorNote": "Source levels (luminance x pixels, land + hold): 0 x120 (the black outline: stays black, left out of the mean), 82 x9 (#376633, the darkest shade) -> #700070, 110 x56 (#418e3b) -> #b000b0, 150 x213 (#56c44d, the body) -> enemyGoo #f000f0, 197 x107 (#a1e09c, the lit top) -> #ff80ff; no source pixel lies between the stops, so each colour maps to exactly its stop and the shading keeps its order. Lit mean #e824e8, 7.1 CIE76 from #f000f0 (hold alone #e725e7, 7.7; land #ea20ea, 5.6), worst contrast 3.12:1 on #3a3a46."
+			}
+		}
 	}
 }

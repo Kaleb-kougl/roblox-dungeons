@@ -24,6 +24,9 @@
  *                                        PA2; config key `bullets`; section "Bullet atlas" below), with its sheet
  *                                        art/build/bullets.png and contact sheet art/build/contact/bullets.png; the
  *                                        group's `fx` sets (PA7: fx.bullet.hit) ride in the same sheet
+ *   -> src/shared/theme/packs/vale/gooLayout.ts generated (committed): the goo puddle sheet (docs/GOO_ART.md GA1;
+ *                                        config key `goo`; section "Goo atlas" below), with its sheet
+ *                                        art/build/goo.png and contact sheet art/build/contact/goo.png
  *
  * World art (decor props, effects, breakables; docs/DECOR.md R5) has its own section below ("World art").
  *
@@ -92,6 +95,8 @@
  *        node scripts/art/build-atlases.js --only bullets          build just the bullet atlas (its packs alone suffice;
  *                                                                  every other output untouched)
  *        node scripts/art/build-atlases.js --lock --only bullets   re-hash just its files into the existing lock
+ *        node scripts/art/build-atlases.js --only goo              the same for the goo sheet (docs/GOO_ART.md GA1;
+ *        node scripts/art/build-atlases.js --lock --only goo       needs only the Slime pack)
  * Plain Node plus pngjs. The pure helpers are exported for scripts/art/build-atlases.test.js (npm run test:art).
  */
 "use strict";
@@ -114,6 +119,7 @@ const LAYOUT_FILE = path.join(LAYOUT_DIR, "layout.ts");
 const FX_LAYOUT_FILE = path.join(LAYOUT_DIR, "fxLayout.ts");
 const UI_ICON_LAYOUT_FILE = path.join(LAYOUT_DIR, "uiIconLayout.ts");
 const BULLET_LAYOUT_FILE = path.join(LAYOUT_DIR, "bulletLayout.ts");
+const GOO_LAYOUT_FILE = path.join(LAYOUT_DIR, "gooLayout.ts");
 
 /** Roblox stores images at most this many pixels on a side. */
 const MAX_ATLAS = 1024;
@@ -527,6 +533,7 @@ function sourceFiles(config) {
 	for (const id of ambientIds(config)) files.add(config.ambient[id].file);
 	if (config.uiIcons) for (const id of uiIconIds(config.uiIcons)) files.add(uiIconFile(config.uiIcons, id));
 	for (const f of bulletSourceFiles(config.bullets)) files.add(f);
+	for (const f of gooSourceFiles(config.goo)) files.add(f);
 	return [...files].sort();
 }
 
@@ -3076,16 +3083,7 @@ function buildBullets(group, spriteSets) {
 	if (typeof group.atlas !== "string" || !/^[a-z0-9-]+$/.test(group.atlas)) throw new Error(`bullets.atlas must be a file name without .png, got ${JSON.stringify(group.atlas)}`);
 	const ppt = group.pixelsPerTile;
 	if (typeof ppt !== "number" || !(ppt > 0)) throw new Error("bullets.pixelsPerTile must be a positive number");
-	let pixelsPerTileFrom;
-	if (group.pixelsPerTileFrom !== undefined) {
-		if (!spriteSets) pixelsPerTileFrom = { id: group.pixelsPerTileFrom, checked: false };
-		else {
-			const from = spriteSets.find((s) => s.id === group.pixelsPerTileFrom);
-			if (!from) throw new Error(`bullets.pixelsPerTileFrom names no sprite set ${group.pixelsPerTileFrom}`);
-			if (from.layout.pixelsPerTile !== ppt) throw new Error(`bullets.pixelsPerTile ${ppt} differs from ${group.pixelsPerTileFrom}'s ${from.layout.pixelsPerTile}`);
-			pixelsPerTileFrom = { id: group.pixelsPerTileFrom, checked: true };
-		}
-	}
+	const pixelsPerTileFrom = groupPixelsPerTileFrom("bullets", group, ppt, spriteSets);
 	const ids = bulletIds(group);
 	if (ids.length === 0) throw new Error("bullets: no sets");
 	if (group.fx !== undefined && (group.fx === null || typeof group.fx !== "object" || Array.isArray(group.fx))) throw new Error("bullets.fx must be an object");
@@ -3221,6 +3219,246 @@ function printBullets(b, group) {
 }
 
 // ---------------------------------------------------------------------------------------------
+// Goo atlas (docs/GOO_ART.md GA1)
+//
+// Config key `goo` (optional; absent: no goo sheet, every other output exactly as without it): { atlas (file name
+// without .png), pad, pixelsPerTile (the nominal texel density, a positive number), pixelsPerTileFrom (optional: a
+// sprite set id whose pixelsPerTile must equal it, checked by a full build as for `bullets`; `--only goo` cannot build
+// it and says so), gates (below), sets: { "bullet.enemy.goo": def } (exactly that one set) }. A def is a horizontal
+// strip (`file`, `frameW`, `frames`: the build fails unless the strip is exactly frames x frameW wide) with `land` (the
+// strip frame drawn while the puddle lands) and `hold` (a non-empty list of strip frames, the puddle for the rest of its
+// life: one per variant), an optional `recolor` (the sprite sets' gradient map, recolorLut, applied to every kept frame
+// before the crop) and `recolorNote`. The kept frames are cut with ONE crop rectangle (the union alpha box of land and
+// every hold frame, + pad), so each frame keeps its place in the source cell; nearest-neighbour, never resampled. The
+// sheet is one row of cells, land first (cell 0), then the hold frames (cells 1 ..), alpha-bled like every atlas.
+// Measured into the layout: the hold frames' union lit box (alpha > 0: litW x litH), the pivot (that box's centre in
+// cell pixels) and meanColor (the alpha-weighted mean, over every cell, of the pixels with alpha > 0 and
+// max(R, G, B) > GOO_LIT_MIN_RGB: the black outline left out; after the recolour, before the bleed).
+// Gates (gooGate; the build fails on either, the log line is a bullet.enemy.* gate's): meanColor <=
+// gates.maxDifference CIE76 from gates.role (enemyGoo) and >= gates.minContrast WCAG contrast on every gates.surfaces
+// colour. Outputs: art/build/<atlas>.png (also copied to art/upload/), the contact sheet art/build/contact/<atlas>.png
+// (scaledContact: every cell read back through the layout's formula, a red cross on the pivot) and
+// src/shared/theme/packs/vale/gooLayout.ts (VALE_GOO_SHEET, VALE_GOO_LAYOUT). Build just this group:
+// node scripts/art/build-atlases.js --only goo (and --lock --only goo).
+
+const GOO_ID = "bullet.enemy.goo";
+const GOO_GROUP_KEYS = new Set(["$comment", "atlas", "pad", "pixelsPerTile", "pixelsPerTileFrom", "gates", "sets"]);
+const GOO_SET_KEYS = new Set(["$comment", "file", "frameW", "frames", "land", "hold", "recolor", "recolorNote"]);
+const GOO_GATE_KEYS = new Set(["$comment", "role", "maxDifference", "minContrast", "surfaces"]);
+/** meanColor counts only pixels whose max(R, G, B) is above this (the black outline is left out). */
+const GOO_LIT_MIN_RGB = 32;
+
+/** Every vendor file the goo group reads, sorted ([] without a group). */
+function gooSourceFiles(group) {
+	if (!group) return [];
+	const def = group.sets && group.sets[GOO_ID];
+	if (!def || typeof def.file !== "string" || def.file === "") throw new Error(`goo.sets.${GOO_ID} needs a file`);
+	return [def.file];
+}
+
+/**
+ * A group's `pixelsPerTileFrom` (see the bullet and goo sections): undefined when absent, { id, checked: false } without
+ * built sprite sets (`--only`), else { id, checked: true } once the named set's pixelsPerTile equals `ppt` (throws if not).
+ */
+function groupPixelsPerTileFrom(what, group, ppt, spriteSets) {
+	if (group.pixelsPerTileFrom === undefined) return undefined;
+	if (!spriteSets) return { id: group.pixelsPerTileFrom, checked: false };
+	const from = spriteSets.find((s) => s.id === group.pixelsPerTileFrom);
+	if (!from) throw new Error(`${what}.pixelsPerTileFrom names no sprite set ${group.pixelsPerTileFrom}`);
+	if (from.layout.pixelsPerTile !== ppt) throw new Error(`${what}.pixelsPerTile ${ppt} differs from ${group.pixelsPerTileFrom}'s ${from.layout.pixelsPerTile}`);
+	return { id: group.pixelsPerTileFrom, checked: true };
+}
+
+/** Alpha-weighted mean "#rrggbb" of the pixels of `imgs` with alpha > 0 and max(R, G, B) > minRgb. */
+function litMeanColor(imgs, minRgb) {
+	const sum = [0, 0, 0];
+	let weight = 0;
+	for (const img of imgs) {
+		for (let i = 0; i < img.w * img.h; i++) {
+			const p = i * 4;
+			const a = img.data[p + 3];
+			if (a === 0 || Math.max(img.data[p], img.data[p + 1], img.data[p + 2]) <= minRgb) continue;
+			weight += a;
+			for (let k = 0; k < 3; k++) sum[k] += img.data[p + k] * a;
+		}
+	}
+	if (weight === 0) throw new Error("litMeanColor: no lit pixels");
+	return "#" + sum.map((s) => Math.floor((2 * s + weight) / (2 * weight)).toString(16).padStart(2, "0")).join("");
+}
+
+/** The goo gate row (bulletGates' enemy row shape, so bulletGateLine prints it): `mean` against `gates`. */
+function gooGate(mean, gates) {
+	if (gates === null || typeof gates !== "object" || Array.isArray(gates)) throw new Error("goo.gates must be an object { role, maxDifference, minContrast, surfaces }");
+	for (const k of Object.keys(gates)) if (!GOO_GATE_KEYS.has(k)) throw new Error(`goo.gates: unknown key ${k}`);
+	if (typeof gates.role !== "string" || !HEX_RGB.test(gates.role)) throw new Error(`goo.gates.role must be "#rrggbb", got ${JSON.stringify(gates.role)}`);
+	for (const k of ["maxDifference", "minContrast"]) {
+		if (typeof gates[k] !== "number" || !(gates[k] > 0)) throw new Error(`goo.gates.${k} must be a positive number`);
+	}
+	if (!Array.isArray(gates.surfaces) || gates.surfaces.length === 0) throw new Error("goo.gates.surfaces must list the floor / wall colours");
+	gates.surfaces.forEach((s, i) => {
+		if (typeof s !== "string" || !HEX_RGB.test(s)) throw new Error(`goo.gates.surfaces[${i}] must be "#rrggbb", got ${JSON.stringify(s)}`);
+	});
+	const difference = cie76(mean, gates.role);
+	let worst = Infinity;
+	let worstOn = "";
+	for (const surface of gates.surfaces) {
+		const c = wcagContrast(mean, surface);
+		if (c < worst) {
+			worst = c;
+			worstOn = surface;
+		}
+	}
+	return { id: GOO_ID, side: "enemy", mean, difference, worst, worstOn, ok: difference <= gates.maxDifference && worst >= gates.minContrast };
+}
+
+/** A strip frame index of a goo def: an integer in 0 .. frames - 1. */
+function gooFrame(what, f, frames) {
+	if (!Number.isInteger(f) || f < 0 || f >= frames) throw new Error(`${GOO_ID}: ${what} frame ${JSON.stringify(f)} outside 0..${frames - 1}`);
+	return f;
+}
+
+/**
+ * Builds the goo sheet from the `goo` group: { file, def, cells, img, sheet, layout, box, holdBox, gate,
+ * pixelsPerTileFrom, sourceH, recolorStops }. `spriteSets` as for buildBullets (undefined: pixelsPerTileFrom
+ * unchecked). Throws on a bad config or a failed gate.
+ */
+function buildGoo(group, spriteSets) {
+	if (group === null || typeof group !== "object" || Array.isArray(group)) throw new Error("goo must be an object");
+	for (const k of Object.keys(group)) if (!GOO_GROUP_KEYS.has(k)) throw new Error(`goo: unknown key ${k}`);
+	if (typeof group.atlas !== "string" || !/^[a-z0-9-]+$/.test(group.atlas)) throw new Error(`goo.atlas must be a file name without .png, got ${JSON.stringify(group.atlas)}`);
+	const pad = group.pad === undefined ? 0 : group.pad;
+	if (!Number.isInteger(pad) || pad < 0) throw new Error(`goo.pad must be a non-negative integer, got ${JSON.stringify(group.pad)}`);
+	const ppt = group.pixelsPerTile;
+	if (typeof ppt !== "number" || !(ppt > 0)) throw new Error("goo.pixelsPerTile must be a positive number");
+	const pixelsPerTileFrom = groupPixelsPerTileFrom("goo", group, ppt, spriteSets);
+	const ids = group.sets && typeof group.sets === "object" ? Object.keys(group.sets).filter((k) => !k.startsWith("$")) : [];
+	if (ids.length !== 1 || ids[0] !== GOO_ID) throw new Error(`goo.sets must hold exactly one set, ${GOO_ID}; got ${JSON.stringify(ids)}`);
+	const def = group.sets[GOO_ID];
+	if (def === null || typeof def !== "object" || Array.isArray(def)) throw new Error(`${GOO_ID}: the goo set must be an object`);
+	for (const k of Object.keys(def)) if (!GOO_SET_KEYS.has(k)) throw new Error(`${GOO_ID}: unknown goo set key ${k}`);
+	if (typeof def.file !== "string" || def.file === "") throw new Error(`${GOO_ID}: the goo set needs a file`);
+	if (!Number.isInteger(def.frameW) || def.frameW < 1 || !Number.isInteger(def.frames) || def.frames < 1) throw new Error(`${GOO_ID}: frameW and frames must be positive integers`);
+	const land = gooFrame("land", def.land, def.frames);
+	if (!Array.isArray(def.hold) || def.hold.length === 0) throw new Error(`${GOO_ID}: hold must list at least one strip frame`);
+	const hold = def.hold.map((f) => gooFrame("hold", f, def.frames));
+	const keep = [land, ...hold];
+	if (new Set(keep).size !== keep.length) throw new Error(`${GOO_ID}: land and hold must name different strip frames, got land ${land}, hold ${JSON.stringify(hold)}`);
+	const lut = recolorLut(GOO_ID, def.recolor);
+	let raw = stripFrames(GOO_ID, { file: def.file, frameW: def.frameW, frames: def.frames, keep });
+	if (lut) raw = raw.map((img) => recolorRegion({ img, x: 0, y: 0, w: img.w, h: img.h }, lut).img);
+	let box = null;
+	for (const img of raw) box = unionBox(box, alphaBounds(img, 0, 0, img.w, img.h, 0));
+	let holdBox = null;
+	for (const img of raw.slice(1)) holdBox = unionBox(holdBox, alphaBounds(img, 0, 0, img.w, img.h, 0));
+	if (!box || !holdBox) throw new Error(`${GOO_ID}: the hold frame(s) have no visible pixels`);
+	const frameW = box[2] - box[0] + 1 + 2 * pad;
+	const frameH = box[3] - box[1] + 1 + 2 * pad;
+	const cells = raw.map((img) => {
+		const cell = raster(frameW, frameH);
+		blit(img, box[0] - pad, box[1] - pad, frameW, frameH, cell, 0, 0, 0);
+		return cell;
+	});
+	if (cells.length * frameW > MAX_ATLAS || frameH > MAX_ATLAS) throw new Error(`${GOO_ID}: ${cells.length} cells of ${frameW}x${frameH} do not fit one row of a ${MAX_ATLAS} px sheet`);
+	const img = raster(cells.length * frameW, frameH);
+	cells.forEach((cell, c) => blit(cell, 0, 0, frameW, frameH, img, c * frameW, 0, -1));
+	alphaBleed(img);
+	const litW = holdBox[2] - holdBox[0] + 1;
+	const litH = holdBox[3] - holdBox[1] + 1;
+	const meanColor = litMeanColor(cells, GOO_LIT_MIN_RGB);
+	const gate = gooGate(meanColor, group.gates);
+	if (!gate.ok) throw new Error(`goo: colour gate failed:\n  ${bulletGateLine(gate, { enemy: group.gates })}`);
+	const file = `${group.atlas}.png`;
+	const layout = {
+		frameW,
+		frameH,
+		pivot: { x: holdBox[0] - (box[0] - pad) + litW / 2, y: holdBox[1] - (box[1] - pad) + litH / 2 },
+		land: 0,
+		hold: 1,
+		holdFrames: hold.length,
+		litW,
+		litH,
+		meanColor,
+		pixelsPerTile: ppt,
+	};
+	return { file, def, cells, img, sheet: { file, w: img.w, h: img.h }, layout, box, holdBox, gate, pixelsPerTileFrom, sourceH: raw[0].h, recolorStops: lut ? def.recolor.ramp.length : 0 };
+}
+
+/** packs/vale/gooLayout.ts: ValeGooLayout, VALE_GOO_SHEET and VALE_GOO_LAYOUT (docs/GOO_ART.md GA1). */
+function gooLayoutModule(sheet, layout) {
+	const text = [
+		"// GENERATED by `npm run art:build` (scripts/art/build-atlases.js) from art/atlases.json. Do not edit.",
+		"",
+		"/**",
+		comment([
+			"Layout of the `vale` pack's goo puddle (docs/GOO_ART.md GA1): the Ooze's goo drawn flat on the floor from two",
+			"frames of the Slime pack's death strip, in its own sheet VALE_GOO_SHEET, one row of cells of one size (cell c at",
+			"x = (c % perRow) * frameW, y = floor(c / perRow) * frameH, perRow = floor(sheet w / frameW): the SpriteSetAsset",
+			"formula). `land` is drawn while the puddle lands, then one of the `holdFrames` cells from `hold` for the rest of its",
+			"life. Every cell is cut with the same crop, so the frames keep their place in the source cell. The art is drawn at",
+			"a 3/4 angle (screen-up is up). `litW` x `litH` is the hold frames' lit box (alpha > 0) and `pivot` its centre.",
+			"`meanColor` is the alpha-weighted mean, over every cell, of the opaque pixels with max RGB > 32 (the black outline",
+			"left out), after `recolor` into the enemyGoo ramp, held to the goo colour gate by the build. No asset IDs: `file`",
+			"names the PNG in art/build/ to upload.",
+		]),
+		" */",
+		"",
+		'import type { HexColor, Pivot } from "../../types";',
+		'import type { ValeSheetFile } from "./layout";',
+		"",
+		"/** The goo puddle's cells in VALE_GOO_SHEET (docs/GOO_ART.md GA1). */",
+		"export interface ValeGooLayout {",
+		"\t/** Cell size, art px (every cell the same). */",
+		"\tframeW: number;",
+		"\tframeH: number;",
+		"\t/** Centre of the hold frame's lit box, cell px. */",
+		"\tpivot: Pivot;",
+		"\t/** Cell index of the land frame (SpriteSetAsset cell formula, perRow = floor(sheet w / frameW)). */",
+		"\tland: number;",
+		"\t/** First cell of the hold frames. */",
+		"\thold: number;",
+		"\t/** Hold variants: cells hold .. hold + holdFrames - 1. */",
+		"\tholdFrames: number;",
+		"\t/** Lit box (alpha > 0) of the hold frame(s), art px (union over variants). */",
+		"\tlitW: number;",
+		"\tlitH: number;",
+		"\t/** Alpha-weighted mean of opaque pixels whose max RGB channel > 32 (the outline excluded), after recolor. */",
+		"\tmeanColor: HexColor;",
+		"\t/** Nominal texel density from atlases.json. */",
+		"\tpixelsPerTile: number;",
+		"}",
+		"",
+		`export const VALE_GOO_SHEET: ValeSheetFile = ${tsValue(sheet, 0, PRINT_WIDTH)};`,
+		"",
+		`export const VALE_GOO_LAYOUT: ValeGooLayout = ${tsValue(layout, 0, PRINT_WIDTH)};`,
+		"",
+	].join("\n");
+	for (const line of text.split("\n")) {
+		if (line.replace(/\t/g, "    ").length > PRINT_WIDTH) throw new Error(`gooLayout.ts line over ${PRINT_WIDTH} columns: ${line}`);
+	}
+	return text;
+}
+
+/** Contact sheet of the goo sheet: every cell read back through the layout's formula (land, then hold), a red cross on the pivot. */
+function gooContact(result) {
+	const l = result.layout;
+	const perRow = Math.floor(result.img.w / l.frameW);
+	const cells = [];
+	for (let c = 0; c < 1 + l.holdFrames; c++) cells.push([result.img, (c % perRow) * l.frameW, Math.floor(c / perRow) * l.frameH]);
+	return scaledContact(cells, l.frameW, l.frameH, l.pivot);
+}
+
+/** Log lines for a built goo sheet. */
+function printGoo(g, group) {
+	const l = g.layout;
+	const from = g.pixelsPerTileFrom ? ` (pixelsPerTileFrom ${g.pixelsPerTileFrom.id}: ${g.pixelsPerTileFrom.checked ? "equal" : "unchecked, its set is not built by --only"})` : "";
+	console.log(`goo: ${g.file} ${g.img.w}x${g.img.h}, ${1 + l.holdFrames} cells, ${group.pixelsPerTile} px/tile${from}`);
+	console.log(
+		`  ${GOO_ID}: ${g.def.file.split("/").slice(-1)[0]} ${g.def.frames} x ${g.def.frameW}x${g.sourceH}, land frame ${g.def.land} -> cell ${l.land}, hold frame(s) ${g.def.hold.join(",")} -> cells ${l.hold}..${l.hold + l.holdFrames - 1} (box ${g.box.join(",")}) -> cell ${l.frameW}x${l.frameH}, hold lit ${l.litW}x${l.litH}, pivot (${l.pivot.x}, ${l.pivot.y})${g.recolorStops ? `, recoloured (${g.recolorStops}-stop ramp)` : ""}`,
+	);
+	console.log(`  gate ${bulletGateLine(g.gate, { enemy: group.gates })}`);
+}
+
+// ---------------------------------------------------------------------------------------------
 // Main
 
 function writeIfChanged(file, content) {
@@ -3272,7 +3510,17 @@ function onlyGroup(argv) {
 }
 
 /** Groups `--only` can build on their own (their sources need no other pack). */
-const ONLY_GROUPS = ["bullets"];
+const ONLY_GROUPS = ["bullets", "goo"];
+
+/** The vendor files `--lock --only <group>` re-hashes. */
+function onlyGroupSourceFiles(config, group) {
+	if (group === "bullets") return bulletSourceFiles(config.bullets);
+	if (group === "goo") {
+		if (!config.goo) fail("art/atlases.json has no `goo` group");
+		return gooSourceFiles(config.goo);
+	}
+	throw new Error(`no --only group ${group}`);
+}
 
 /**
  * `--only bullets`: checks the bullet group's files against the lock, then writes ONLY art/build/<atlas>.png (and its
@@ -3293,15 +3541,38 @@ function mainOnlyBullets(config) {
 	console.log(`art:build --only bullets: ${changed} file(s) updated`);
 }
 
+/**
+ * `--only goo` (docs/GOO_ART.md GA1): checks the goo group's file against the lock, then writes ONLY
+ * art/build/<atlas>.png (and its art/upload copy), art/build/contact/<atlas>.png and packs/vale/gooLayout.ts, byte for
+ * byte what a full build writes for them (pixelsPerTileFrom unchecked). Nothing else is read, written or removed.
+ */
+function mainOnlyGoo(config) {
+	if (!config.goo) fail("art/atlases.json has no `goo` group");
+	checkLock(config, gooSourceFiles(config.goo));
+	const goo = buildGoo(config.goo, undefined);
+	let changed = 0;
+	const png = encodePng(goo.img);
+	if (writeIfChanged(path.join(BUILD, goo.file), png)) changed++;
+	if (writeIfChanged(path.join(CONTACT, goo.file), encodePng(gooContact(goo)))) changed++;
+	if (writeIfChanged(path.join(UPLOAD, goo.file), png)) changed++;
+	if (writeIfChanged(GOO_LAYOUT_FILE, gooLayoutModule(goo.sheet, goo.layout))) changed++;
+	printGoo(goo, config.goo);
+	console.log(`art:build --only goo: ${changed} file(s) updated`);
+}
+
 function main() {
 	const config = JSON.parse(fs.readFileSync(CONFIG_FILE, "utf8"));
 	const only = onlyGroup(process.argv);
 	if (process.argv.includes("--lock")) {
-		writeLock(config, only === "bullets" ? bulletSourceFiles(config.bullets) : undefined);
+		writeLock(config, only ? onlyGroupSourceFiles(config, only) : undefined);
 		return;
 	}
 	if (only === "bullets") {
 		mainOnlyBullets(config);
+		return;
+	}
+	if (only === "goo") {
+		mainOnlyGoo(config);
 		return;
 	}
 	checkLock(config);
@@ -3345,6 +3616,12 @@ function main() {
 		emit(BUILD, bullets.file, bullets.packed.img, builtFiles);
 		emit(CONTACT, bullets.file, bulletContact(bullets), contactFiles);
 	}
+	let goo;
+	if (config.goo) {
+		goo = buildGoo(config.goo, sets);
+		emit(BUILD, goo.file, goo.img, builtFiles);
+		emit(CONTACT, goo.file, gooContact(goo), contactFiles);
+	}
 	removeStale(BUILD, builtFiles);
 	removeStale(CONTACT, contactFiles);
 
@@ -3358,6 +3635,7 @@ function main() {
 	if (fx && writeIfChanged(FX_LAYOUT_FILE, fxLayoutModule(fx.atlas, fx.fxLayouts, fx.ambientLayouts))) changed++;
 	if (icons && writeIfChanged(UI_ICON_LAYOUT_FILE, uiIconLayoutModule(icons))) changed++;
 	if (bullets && writeIfChanged(BULLET_LAYOUT_FILE, bulletLayoutModule(bullets.sheet, bullets.layouts, bullets.fxLayouts))) changed++;
+	if (goo && writeIfChanged(GOO_LAYOUT_FILE, gooLayoutModule(goo.sheet, goo.layout))) changed++;
 
 	for (const s of sets) {
 		const l = s.layout;
@@ -3386,6 +3664,7 @@ function main() {
 	}
 	printEffects(fx);
 	if (bullets) printBullets(bullets, config.bullets);
+	if (goo) printGoo(goo, config.goo);
 	if (icons) {
 		console.log(`ui icons: ${icons.file} ${icons.w}x${icons.h}, ${icons.pieces.length} icons, ${icons.gutter} px extruded gutter (contact numbers in id order)`);
 		Object.keys(icons.layouts)
@@ -3427,6 +3706,7 @@ module.exports = {
 	buildBullets,
 	buildBulletFxSet,
 	buildBulletSet,
+	buildGoo,
 	bulletContact,
 	bulletGates,
 	bulletLayoutModule,
@@ -3441,6 +3721,11 @@ module.exports = {
 	discOffsets,
 	encodePng,
 	extrudeGutter,
+	gooContact,
+	gooGate,
+	gooLayoutModule,
+	gooSourceFiles,
+	litMeanColor,
 	flatFill,
 	isBodyAt,
 	layoutModule,
@@ -3449,6 +3734,7 @@ module.exports = {
 	mergeLockEntries,
 	nineSlice,
 	onlyGroup,
+	onlyGroupSourceFiles,
 	packFx,
 	outlineConfig,
 	packUiIcons,
