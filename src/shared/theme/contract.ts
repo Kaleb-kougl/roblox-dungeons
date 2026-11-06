@@ -1937,7 +1937,8 @@ export const SOUND_PITCH_LIMITS = { min: 0.5, max: 2 } as const;
  * .. `swing.3`, the 3rd is the finisher), the kill puff, roll dust, the guard shield, the Ember ring, the flask, the
  * boss's phase change / slam / death, relic and shrine, the open-stairwell loop and a breakable's splinters; then the
  * Goldling's coin burst on every hit (docs/FORTUNE.md FO6, fortune.ts GOLDEN_COIN_FX_ID; tinted by `golden.coin` under
- * the fx tint rule); then the boost drops' pickup burst and per-kind aura (BOOST_FX_IDS, docs/BOOSTS.md B5); then a
+ * the fx tint rule); then a player bullet's impact burst (docs/PROJECTILE_ART.md PA7, BULLET_ART.hitFx; untinted, its
+ * meanColor under the fx rule); then the boost drops' pickup burst and per-kind aura (BOOST_FX_IDS, docs/BOOSTS.md B5); then a
  * vault chest's light column (docs/TREASURE.md TR6, treasure.ts TREASURE_COLUMN_FX_ID; tinted by the opened tier's
  * floor role). Built inside a function like REQUIRED_ASSET_IDS: an entry after the spread costs a top-level length
  * local in contract.luau.
@@ -1963,6 +1964,8 @@ export const FX_IDS = (() =>
 		"fx.breakable.splinter",
 		// docs/FORTUNE.md FO6: the Goldling's coin burst
 		"fx.golden.coin",
+		// docs/PROJECTILE_ART.md PA7: a player bullet's impact
+		"fx.bullet.hit",
 		...BOOST_FX_IDS,
 		"fx.treasure.column",
 	] as const)();
@@ -2003,12 +2006,14 @@ export const MAX_ENEMY_BULLET_ART_DIFFERENCE = 12;
  * Roblox port (docs/PROJECTILE_ART.md PA3): the BULLET slot's `sprites` rules, one table (contract.luau sits near Luau's
  * 200-locals limit). `animation`: the one loop a bullet set defines (the slot's base animation); `maxFrames`: its
  * largest frame count; `decalIds`: bullets drawn as flat floor decals (goo puddles, lightning strikes, ember flames,
- * PAD3), which keep their placeholders and may not take art.
+ * PAD3), which keep their placeholders and may not take art; `hitFx`: the optional player bullet impact effect (an
+ * FX_IDS entry, PA7, PAD11: never for enemy bullets).
  */
 export const BULLET_ART = {
 	animation: "fly",
 	maxFrames: 4,
 	decalIds: ["bullet.enemy.goo", "bullet.enemy.strike", "bullet.player.ember"] as ReadonlyArray<string>,
+	hitFx: "fx.bullet.hit",
 } as const;
 
 /** Manifest keys that smell like gameplay data. Packs carry art, never numbers that change difficulty. */

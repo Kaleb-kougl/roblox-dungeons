@@ -54,6 +54,9 @@ export const PRELOAD: PreloadConfig = {
 		"boost.",
 		"pellet.",
 		"pact.",
+		// docs/PROJECTILE_ART.md: the bullet atlas (bullets.png, every flying bullet's sprite and fx.bullet.hit) shows
+		// from the first shot
+		"bullet.",
 		"fx.",
 		"decor.",
 		`${PRELOAD_BIOME_PREFIX}biome.1`,

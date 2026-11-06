@@ -41,7 +41,8 @@
  * which art each ID draws; the same piece serves all five biomes (the pack has no per-biome art). An ID appears only
  * once its file has an ID (decor is optional: absent = not drawn); a breakable stays its placeholder box until then.
  *
- * Sprite effects (fx.ts, docs/FX_AUDIO.md F2, F6): `fx.*` once the effects atlas has an ID. The ambient particle
+ * Sprite effects (fx.ts, docs/FX_AUDIO.md F2, F6): `fx.*` once the effects atlas has an ID (fx.bullet.hit, which rides
+ * in the bullet atlas, once bullets.png has one: docs/PROJECTILE_ART.md PA7). The ambient particle
  * textures (decor.fx.ambient.b<n>) have two sources: the R5 mote (VALE_AMBIENT_ART, every biome) wins once
  * decor-mote.png has an ID; until then a biome whose Ninja Adventure flipbook (fx-ambient-b<n>.png) has an ID uses it.
  *
@@ -86,7 +87,7 @@ import { PLACEHOLDER_MANIFEST } from "../placeholder";
 import { VALE_ASSET_IDS } from "./assetIds";
 import { VALE_SOUND_LAYOUTS, type ValeSoundLayout } from "./audioLayout";
 import { valeBulletAssets, type ValeBulletSource } from "./bullets";
-import { valeAmbientAssets, valeFxAssets } from "./fx";
+import { valeAmbientAssets, valeFxAssets, valeFxSources } from "./fx";
 import {
 	VALE_FLOOR_HEX,
 	VALE_IMAGE_LAYOUTS,
@@ -673,7 +674,8 @@ export function buildValeManifest(ids: AssetIds = VALE_ASSET_IDS, sources: ValeL
 
 	// Sprite effects and ambient particle textures (docs/FX_AUDIO.md F2, F6; fx.ts): optional slots, so an entry
 	// without its uploaded PNG is simply absent (nothing drawn).
-	const fx = valeFxAssets(ids);
+	// The bullet impact (fx.bullet.hit) rides in the bullet atlas: it follows `sources.bullets` like the bullets do.
+	const fx = valeFxAssets(ids, valeFxSources(sources.bullets));
 	for (const id of sortedKeys(fx)) {
 		manifest.assets[id] = fx[id];
 	}

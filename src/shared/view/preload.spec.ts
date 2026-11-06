@@ -154,6 +154,23 @@ describe("preloadPlan (docs/PRELOAD.md P2)", () => {
 		expect(plan.later.map((r) => r.media)).toEqual(["image", "sound", "sound", "image", "image", "image"]);
 	});
 
+	it("the bullet atlas is core (docs/PROJECTILE_ART.md): bullet sprites and the impact effect share it, planned once", () => {
+		const plan = preloadPlan(
+			fakeSource(
+				{
+					"bullet.enemy.small": [image(21)],
+					"bullet.player.basic": [image(21)],
+					"fx.bullet.hit": [image(21)],
+					"boss.act1": [image(22)],
+				},
+				{},
+			),
+		);
+		expect(PRELOAD.core.includes("bullet.")).toBe(true);
+		expect(numbers(plan.core)).toEqual([fakeId(21)]);
+		expect(numbers(plan.later)).toEqual([fakeId(22)]);
+	});
+
 	it("every UI skin id (docs/UI_ART.md UA4) is core: one shared icon atlas is planned once", () => {
 		const assets: Record<string, Array<ContentRef>> = {};
 		uiSkinIds().forEach((id, i) => (assets[id] = [image(100 + i)]));

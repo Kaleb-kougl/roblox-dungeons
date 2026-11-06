@@ -22,7 +22,8 @@
  *                                        config key `uiIcons`; section "UI icon atlas" below)
  *   -> src/shared/theme/packs/vale/bulletLayout.ts generated (committed): the bullet atlas (docs/PROJECTILE_ART.md
  *                                        PA2; config key `bullets`; section "Bullet atlas" below), with its sheet
- *                                        art/build/bullets.png and contact sheet art/build/contact/bullets.png
+ *                                        art/build/bullets.png and contact sheet art/build/contact/bullets.png; the
+ *                                        group's `fx` sets (PA7: fx.bullet.hit) ride in the same sheet
  *
  * World art (decor props, effects, breakables; docs/DECOR.md R5) has its own section below ("World art").
  *
@@ -2852,23 +2853,33 @@ function uiIconContact(icons) {
 // name without .png), pad, fps (default for every set), pixelsPerTile (every set's texel density, a positive number),
 // pixelsPerTileFrom (optional: a sprite set id whose pixelsPerTile must equal it; checked by a full build, which builds
 // that set first; `--only bullets` cannot build it and says so), gates (below), lockAlso (optional: vendor files the
-// lock covers and the build checks but no set reads, art kept for a later task), sets: { <bullet id>: def } }. A def is
+// lock covers and the build checks but no set reads, art kept for a later task), sets: { <bullet id>: def }, fx
+// (optional, docs/PROJECTILE_ART.md PA7: { <fx id>: fxDef }, effects packed into the SAME atlas so the effects atlas
+// fx-effects.png never repacks) }. A def is
 // an `fx`-style strip (`file`, `frameW`, `frames`, optional `keep`, `fps`) with an optional `recolor` (the sprite sets'
 // gradient map, recolorLut, applied to every strip frame before the crop). Each set is cropped to the union alpha box
 // of its kept frames (+ pad), so a strip half (keep [0]) or a frame's content box needs no extra rect; its pivot is
 // the cell centre, its meanColor the alpha-weighted mean of its cells after the recolour. Packed exactly like the
 // effects atlas (packFx: bands by frame height, cells `start + f` of the SpriteSetAsset formula, alpha-bled).
 // Outputs: art/build/<atlas>.png (also copied to art/upload/), the contact sheet art/build/contact/<atlas>.png (every
-// frame x BULLET_CONTACT_SCALE on a dark ground, one row per set numbered in id order; the build log maps number -> id)
-// and src/shared/theme/packs/vale/bulletLayout.ts.
+// frame x BULLET_CONTACT_SCALE on a dark ground, one row per set numbered in id order, bullets then effects; the build
+// log maps number -> id) and src/shared/theme/packs/vale/bulletLayout.ts (VALE_BULLET_LAYOUTS, and the effects in
+// VALE_BULLET_FX_LAYOUTS in fxLayout.ts's ValeFxLayout shape).
+//
+// An fxDef is an untinted `fx`-group strip: `file`, `frameW`, `frames`, optional `keep`, `fps` (default bullets.fps)
+// and `loop` (default false); no grey, burst or recolour. Cropped and packed like a bullet set (pivot = cell centre,
+// meanColor after the crop); its layout carries `loop` and `grey: false`.
 //
 // Gates (bulletGates; the build fails on any): `bullet.enemy.*` means <= gates.enemy.maxDifference CIE76 from
 // gates.enemy.role and >= gates.enemy.minContrast WCAG contrast on every gates.enemy.surfaces colour;
-// `bullet.player.*` means >= gates.player.minDifference CIE76 from every gates.player.from colour; any other id fails.
-// The colour maths mirror shared/theme color.ts (colorDifference, contrastRatio).
+// `bullet.player.*` means >= gates.player.minDifference CIE76 from every gates.player.from colour; `fx.*` means (the
+// group's `fx` sets) >= gates.fx.minDifference from every gates.fx.from colour (the theme's fx rule, fxColorReport:
+// the enemy-bullet roles; gates.fx is required only when there are fx sets); any other id fails. The colour maths
+// mirror shared/theme color.ts (colorDifference, contrastRatio).
 
 const BULLET_SET_KEYS = new Set(["$comment", "file", "frameW", "frames", "keep", "fps", "recolor", "recolorNote"]);
-const BULLET_GROUP_KEYS = new Set(["$comment", "atlas", "pad", "fps", "pixelsPerTile", "pixelsPerTileFrom", "gates", "lockAlso", "sets"]);
+const BULLET_GROUP_KEYS = new Set(["$comment", "atlas", "pad", "fps", "pixelsPerTile", "pixelsPerTileFrom", "gates", "lockAlso", "sets", "fx"]);
+const BULLET_FX_KEYS = new Set(["$comment", "file", "frameW", "frames", "keep", "fps", "loop"]);
 const BULLET_CONTACT_SCALE = 8;
 const BULLET_CONTACT_BG = [24, 22, 28];
 const BULLET_CONTACT_CELL = [52, 50, 60];
@@ -2877,10 +2888,16 @@ function bulletIds(group) {
 	return group ? Object.keys(group.sets || {}).filter((k) => !k.startsWith("$")).sort() : [];
 }
 
-/** Every vendor file the bullet group reads or locks (`lockAlso`), sorted. */
+/** The bullet group's effect ids (its `fx` sets), sorted. */
+function bulletFxIds(group) {
+	return group && group.fx ? Object.keys(group.fx).filter((k) => !k.startsWith("$")).sort() : [];
+}
+
+/** Every vendor file the bullet group reads (its sets and effects) or locks (`lockAlso`), sorted. */
 function bulletSourceFiles(group) {
 	if (!group) return [];
 	const files = new Set(bulletIds(group).map((id) => group.sets[id].file));
+	for (const id of bulletFxIds(group)) files.add(group.fx[id].file);
 	const also = group.lockAlso === undefined ? [] : group.lockAlso;
 	if (!Array.isArray(also) || !also.every((f) => typeof f === "string" && f !== "")) throw new Error("bullets.lockAlso must be a list of art/vendor-relative file paths");
 	for (const f of also) files.add(f);
@@ -2953,6 +2970,21 @@ function buildBulletSet(id, def, group) {
 	return { id, def, frames, frameW, frameH, fps, meanColor: meanColor(frames), box, sourceH: raw[0].h, recolorStops: lut ? def.recolor.ramp.length : 0 };
 }
 
+/** One effect of the bullet group (`fx`): an untinted strip, cropped like an effects-atlas set (buildFxSet). */
+function buildBulletFxSet(id, def, group) {
+	if (def === null || typeof def !== "object" || Array.isArray(def)) throw new Error(`${id}: a bullet fx set must be an object`);
+	for (const k of Object.keys(def)) if (!BULLET_FX_KEYS.has(k)) throw new Error(`${id}: unknown bullet fx set key ${k}`);
+	if (!/^fx\.[a-z0-9.]+$/.test(id)) throw new Error(`${id}: a bullet fx set's id must be an fx.* id`);
+	if (typeof def.file !== "string" || def.file === "") throw new Error(`${id}: a bullet fx set needs a file`);
+	if (!Number.isInteger(def.frameW) || def.frameW < 1 || !Number.isInteger(def.frames) || def.frames < 1) throw new Error(`${id}: frameW and frames must be positive integers`);
+	if (def.loop !== undefined && typeof def.loop !== "boolean") throw new Error(`${id}: loop must be true or false`);
+	const pad = group.pad === undefined ? 0 : group.pad;
+	if (!Number.isInteger(pad) || pad < 0) throw new Error(`bullets.pad must be a non-negative integer, got ${JSON.stringify(group.pad)}`);
+	const fps = def.fps !== undefined ? def.fps : group.fps;
+	if (typeof fps !== "number" || !(fps > 0)) throw new Error(`${id}: fps (its own or bullets.fps) must be a positive number`);
+	return buildFxSet(id, { file: def.file, frameW: def.frameW, frames: def.frames, keep: def.keep, fps, loop: def.loop === true }, pad);
+}
+
 /**
  * The colour gates (see the section comment) on built sets: one row per set { id, side, mean, ok, ... } (enemy:
  * difference from the role, worst contrast and the surface it is on; player: the smallest difference and its colour).
@@ -2974,6 +3006,28 @@ function bulletGates(sets, gates) {
 	for (const [k, v] of [["enemy.maxDifference", e.maxDifference], ["enemy.minContrast", e.minContrast], ["player.minDifference", p.minDifference]]) {
 		if (typeof v !== "number" || !(v > 0)) throw new Error(`bullets.gates.${k} must be a positive number`);
 	}
+	const fx = gates.fx;
+	let fxFrom = [];
+	if (sets.some((s) => s.id.startsWith("fx."))) {
+		if (!fx || typeof fx !== "object") throw new Error("bullets.gates.fx is required with fx sets");
+		fxFrom = fx.from && typeof fx.from === "object" ? Object.keys(fx.from).filter((k) => !k.startsWith("$")).sort() : [];
+		if (fxFrom.length === 0) throw new Error("bullets.gates.fx.from must name { role: \"#rrggbb\" }");
+		for (const k of fxFrom) hex(fx.from[k], `fx.from.${k}`);
+		if (typeof fx.minDifference !== "number" || !(fx.minDifference > 0)) throw new Error("bullets.gates.fx.minDifference must be a positive number");
+	}
+	/** The nearest of `from`'s colours to `mean`: [difference, its name]. */
+	const nearestOf = (mean, colours, names) => {
+		let nearest = Infinity;
+		let nearestTo = "";
+		for (const k of names) {
+			const d = cie76(mean, colours[k]);
+			if (d < nearest) {
+				nearest = d;
+				nearestTo = k;
+			}
+		}
+		return [nearest, nearestTo];
+	};
 	return sets.map((s) => {
 		if (s.id.startsWith("bullet.enemy.")) {
 			const difference = cie76(s.meanColor, role);
@@ -2989,16 +3043,12 @@ function bulletGates(sets, gates) {
 			return { id: s.id, side: "enemy", mean: s.meanColor, difference, worst, worstOn, ok: difference <= e.maxDifference && worst >= e.minContrast };
 		}
 		if (s.id.startsWith("bullet.player.")) {
-			let nearest = Infinity;
-			let nearestTo = "";
-			for (const k of from) {
-				const d = cie76(s.meanColor, p.from[k]);
-				if (d < nearest) {
-					nearest = d;
-					nearestTo = k;
-				}
-			}
+			const [nearest, nearestTo] = nearestOf(s.meanColor, p.from, from);
 			return { id: s.id, side: "player", mean: s.meanColor, nearest, nearestTo, ok: nearest >= p.minDifference };
+		}
+		if (s.id.startsWith("fx.")) {
+			const [nearest, nearestTo] = nearestOf(s.meanColor, fx.from, fxFrom);
+			return { id: s.id, side: "fx", mean: s.meanColor, nearest, nearestTo, ok: nearest >= fx.minDifference };
 		}
 		return { id: s.id, side: "unknown", mean: s.meanColor, ok: false };
 	});
@@ -3010,11 +3060,13 @@ function bulletGateLine(r, gates) {
 		return `${r.id}: mean ${r.mean}, ${r.difference.toFixed(1)} CIE76 from ${gates.enemy.role} (<= ${gates.enemy.maxDifference}), worst contrast ${r.worst.toFixed(2)} on ${r.worstOn} (>= ${gates.enemy.minContrast})${r.ok ? "" : "  FAIL"}`;
 	}
 	if (r.side === "player") return `${r.id}: mean ${r.mean}, nearest ${r.nearest.toFixed(1)} CIE76 from ${r.nearestTo} (>= ${gates.player.minDifference})${r.ok ? "" : "  FAIL"}`;
-	return `${r.id}: neither bullet.enemy.* nor bullet.player.*  FAIL`;
+	if (r.side === "fx") return `${r.id}: mean ${r.mean}, nearest ${r.nearest.toFixed(1)} CIE76 from ${r.nearestTo} (>= ${gates.fx.minDifference})${r.ok ? "" : "  FAIL"}`;
+	return `${r.id}: neither bullet.enemy.* nor bullet.player.* nor an fx set  FAIL`;
 }
 
 /**
- * Builds the bullet atlas from the `bullets` group: { file, sets, packed, sheet, layouts, gates, pixelsPerTileFrom }.
+ * Builds the bullet atlas from the `bullets` group: { file, sets, fxSets, packed, sheet, layouts, fxLayouts, gates,
+ * pixelsPerTileFrom } (fxLayouts: the `fx` sets in fxLayoutOf's shape).
  * `spriteSets` (the built sprite sets, a full build) checks pixelsPerTileFrom; undefined skips that check
  * (pixelsPerTileFrom then reports "unchecked"). Throws on a bad config or a failed gate.
  */
@@ -3036,15 +3088,22 @@ function buildBullets(group, spriteSets) {
 	}
 	const ids = bulletIds(group);
 	if (ids.length === 0) throw new Error("bullets: no sets");
+	if (group.fx !== undefined && (group.fx === null || typeof group.fx !== "object" || Array.isArray(group.fx))) throw new Error("bullets.fx must be an object");
 	const sets = ids.map((id) => buildBulletSet(id, group.sets[id], group));
-	const gates = bulletGates(sets, group.gates);
+	const fxSets = bulletFxIds(group).map((id) => buildBulletFxSet(id, group.fx[id], group));
+	const gates = bulletGates([...sets, ...fxSets], group.gates);
 	const failed = gates.filter((r) => !r.ok);
 	if (failed.length > 0) throw new Error(`bullets: colour gates failed:\n  ${failed.map((r) => bulletGateLine(r, group.gates)).join("\n  ")}`);
-	const packed = packFx(sets, "bullets");
+	const packed = packFx([...sets, ...fxSets], "bullets");
 	const file = `${group.atlas}.png`;
 	const layouts = {};
+	const fxLayouts = {};
 	for (const p of [...packed.placed].sort((a, b) => (a.s.id < b.s.id ? -1 : 1))) {
 		const s = p.s;
+		if (fxSets.includes(s)) {
+			fxLayouts[s.id] = fxLayoutOf(p);
+			continue;
+		}
 		layouts[s.id] = {
 			frameW: s.frameW,
 			frameH: s.frameH,
@@ -3056,11 +3115,14 @@ function buildBullets(group, spriteSets) {
 			pixelsPerTile: ppt,
 		};
 	}
-	return { file, sets, packed, sheet: { file, w: packed.w, h: packed.h }, layouts, gates, pixelsPerTileFrom };
+	return { file, sets, fxSets, packed, sheet: { file, w: packed.w, h: packed.h }, layouts, fxLayouts, gates, pixelsPerTileFrom };
 }
 
-/** packs/vale/bulletLayout.ts: the shape of the PA stub (ValeBulletLayout, VALE_BULLET_SHEET, VALE_BULLET_LAYOUTS). */
-function bulletLayoutModule(sheet, layouts) {
+/**
+ * packs/vale/bulletLayout.ts: the shape of the PA stub (ValeBulletLayout, VALE_BULLET_SHEET, VALE_BULLET_LAYOUTS),
+ * then the effects in the same sheet (VALE_BULLET_FX_LAYOUTS, fxLayout.ts's ValeFxLayout; `{}` without any).
+ */
+function bulletLayoutModule(sheet, layouts, fxLayouts = {}) {
 	const text = [
 		"// GENERATED by `npm run art:build` (scripts/art/build-atlases.js) from art/atlases.json. Do not edit.",
 		"",
@@ -3069,12 +3131,14 @@ function bulletLayoutModule(sheet, layouts) {
 			"Layout of the `vale` pack's projectile sprites (docs/PROJECTILE_ART.md PA2): every flying bullet's flipbook in the",
 			"ONE bullet atlas VALE_BULLET_SHEET, cells `start + f` of the SpriteSetAsset formula (perRow = floor(sheet w /",
 			"frameW)). Each frame's art points screen-up (the direction of travel). `meanColor` is the alpha-weighted mean of the",
-			"set's opaque pixels (after `recolor`), held to the bullet colour rules (bulletArtReport). No asset IDs: `file`",
-			"names the PNG in art/build/ to upload.",
+			"set's opaque pixels (after `recolor`), held to the bullet colour rules (bulletArtReport). Effects that ride in the",
+			"same sheet (VALE_BULLET_FX_LAYOUTS, PA7) have the effects atlas's layout shape. No asset IDs: `file` names the PNG",
+			"in art/build/ to upload.",
 		]),
 		" */",
 		"",
 		'import type { HexColor, Pivot } from "../../types";',
+		'import type { ValeFxLayout } from "./fxLayout";',
 		'import type { ValeSheetFile } from "./layout";',
 		"",
 		"/** One bullet's flipbook in VALE_BULLET_SHEET. */",
@@ -3093,6 +3157,9 @@ function bulletLayoutModule(sheet, layouts) {
 		"",
 		`export const VALE_BULLET_LAYOUTS: Record<string, ValeBulletLayout> = ${Object.keys(layouts).length === 0 ? "{}" : tsValue(layouts, 0, PRINT_WIDTH)};`,
 		"",
+		"/** Effects in VALE_BULLET_SHEET (fx.* ids; cells by the same formula). */",
+		`export const VALE_BULLET_FX_LAYOUTS: Record<string, ValeFxLayout> = ${Object.keys(fxLayouts).length === 0 ? "{}" : tsValue(fxLayouts, 0, PRINT_WIDTH)};`,
+		"",
 	].join("\n");
 	for (const line of text.split("\n")) {
 		if (line.replace(/\t/g, "    ").length > PRINT_WIDTH) throw new Error(`bulletLayout.ts line over ${PRINT_WIDTH} columns: ${line}`);
@@ -3109,11 +3176,12 @@ function bulletContact(result) {
 	const S = BULLET_CONTACT_SCALE;
 	const gap = FX_CONTACT_GAP;
 	const labelW = 4 * 2 * 2 + gap;
-	const ids = Object.keys(result.layouts).sort();
+	const all = { ...result.layouts, ...(result.fxLayouts || {}) };
+	const ids = [...Object.keys(result.layouts).sort(), ...Object.keys(result.fxLayouts || {}).sort()];
 	let w = 0;
 	let h = gap;
 	for (const id of ids) {
-		const l = result.layouts[id];
+		const l = all[id];
 		w = Math.max(w, labelW + gap + l.frames * (l.frameW * S + gap));
 		h += l.frameH * S + gap;
 	}
@@ -3121,7 +3189,7 @@ function bulletContact(result) {
 	fillRect(out, 0, 0, out.w, out.h, BULLET_CONTACT_BG);
 	let y = gap;
 	ids.forEach((id, n) => {
-		const l = result.layouts[id];
+		const l = all[id];
 		drawNumber(out, gap, y, n, 2, [240, 240, 240]);
 		for (let f = 0; f < l.frames; f++) {
 			const x = gap + labelW + f * (l.frameW * S + gap);
@@ -3144,6 +3212,10 @@ function printBullets(b, group) {
 	b.sets.forEach((s, n) => {
 		const l = b.layouts[s.id];
 		console.log(`  #${n} ${s.id}: ${s.def.file.split("/").slice(-1)[0]} ${s.def.frames} x ${s.def.frameW}x${s.sourceH}${s.def.keep ? ` keep ${s.def.keep.join(",")}` : ""} (box ${s.box.join(",")}) -> cell ${l.frameW}x${l.frameH}, start ${l.start}, ${l.frames} frame(s) @ ${l.fps} fps${s.recolorStops ? `, recoloured (${s.recolorStops}-stop ramp)` : ""}`);
+	});
+	(b.fxSets || []).forEach((s, k) => {
+		const l = b.fxLayouts[s.id];
+		console.log(`  #${b.sets.length + k} ${s.id} (effect): ${s.def.file.split("/").slice(-1)[0]} ${s.def.frames} x ${s.def.frameW}x${s.sourceH} (box ${s.box.join(",")}) -> cell ${l.frameW}x${l.frameH}, start ${l.start}, ${l.frames} frame(s) @ ${l.fps} fps, ${l.loop ? "loop" : "one-shot"}, mean ${l.meanColor}`);
 	});
 	for (const r of b.gates) console.log(`  gate ${bulletGateLine(r, group.gates)}`);
 }
@@ -3216,7 +3288,7 @@ function mainOnlyBullets(config) {
 	if (writeIfChanged(path.join(BUILD, bullets.file), png)) changed++;
 	if (writeIfChanged(path.join(CONTACT, bullets.file), encodePng(bulletContact(bullets)))) changed++;
 	if (writeIfChanged(path.join(UPLOAD, bullets.file), png)) changed++;
-	if (writeIfChanged(BULLET_LAYOUT_FILE, bulletLayoutModule(bullets.sheet, bullets.layouts))) changed++;
+	if (writeIfChanged(BULLET_LAYOUT_FILE, bulletLayoutModule(bullets.sheet, bullets.layouts, bullets.fxLayouts))) changed++;
 	printBullets(bullets, config.bullets);
 	console.log(`art:build --only bullets: ${changed} file(s) updated`);
 }
@@ -3285,7 +3357,7 @@ function main() {
 	if (writeIfChanged(LAYOUT_FILE, layoutModule(sets, images, floor.meanHex, world))) changed++;
 	if (fx && writeIfChanged(FX_LAYOUT_FILE, fxLayoutModule(fx.atlas, fx.fxLayouts, fx.ambientLayouts))) changed++;
 	if (icons && writeIfChanged(UI_ICON_LAYOUT_FILE, uiIconLayoutModule(icons))) changed++;
-	if (bullets && writeIfChanged(BULLET_LAYOUT_FILE, bulletLayoutModule(bullets.sheet, bullets.layouts))) changed++;
+	if (bullets && writeIfChanged(BULLET_LAYOUT_FILE, bulletLayoutModule(bullets.sheet, bullets.layouts, bullets.fxLayouts))) changed++;
 
 	for (const s of sets) {
 		const l = s.layout;
@@ -3353,6 +3425,7 @@ module.exports = {
 	buildSpriteSet,
 	buildSpriteSets,
 	buildBullets,
+	buildBulletFxSet,
 	buildBulletSet,
 	bulletContact,
 	bulletGates,

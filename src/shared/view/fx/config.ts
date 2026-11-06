@@ -75,6 +75,16 @@ export const FX_SPRITE_VIEW = {
 	 */
 	goldenCoinQueue: 6,
 	/**
+	 * Player bullet impacts (fx.bullet.hit, docs/PROJECTILE_ART.md PA7, PAD11) queued by the client between two frames
+	 * (FxSpriteController's BulletImpacts feed over the player bullets): at most this many a frame, the rest dropped.
+	 */
+	bulletHitQueue: 3,
+	/**
+	 * Bullet impacts are the lowest-ranked cue, after the hit marks: one starts only while fewer than this share of the
+	 * live budget (maxSprites) is in use, so a bow stream never fills the budget that every other effect draws from.
+	 */
+	bulletHitBudgetShare: 0.5,
+	/**
 	 * Where effects are drawn. "floor": flat on the floor (a SurfaceGui on a thin Part at liftStuds, under every floor
 	 * marking at MARKING_VIEW.liftTiles and every bullet at BULLET_Y), so an effect loses every overlap with a bullet,
 	 * a telegraph or the aim line; bodies stand over it. "billboard": a camera-facing BillboardGui with SpriteView's

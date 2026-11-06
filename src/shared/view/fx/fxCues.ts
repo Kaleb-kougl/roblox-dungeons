@@ -34,6 +34,10 @@
  *   fx.golden.coin   `goldenCoin(x, z, scale)` (called by the Goldling's renderer on each hit and, bigger, on its catch,
  *                    docs/FORTUNE.md FO8)
  *   fx.hit.light / fx.hit.heavy  FxEvent hit (heavy: the tracker's `heavy`), at most every hitMarkMinSec per actor
+ *   fx.bullet.hit    `bulletHit(x, z)` (called by FxSpriteController from its BulletImpacts feed over the PLAYER bullets,
+ *                    embers left out; never enemy bullets, docs/PROJECTILE_ART.md PA7, PAD11): at most bulletHitQueue a
+ *                    frame, only while the live count is under bulletHitBudgetShare of the budget, none under reduced
+ *                    motion
  *   fx.stairwell     loop (`loop`): while state.endless.stairsOpen and the spots' floor is the state's floor
  * Sources are taken in that order (most important first) against the budget: at most FX_SPRITE_VIEW.maxSprites live
  * effects for the effective particle level (24 / 48 / 64; one level lower under reduced motion; none when off). A cue
@@ -315,6 +319,9 @@ export class FxCueMapper {
 	private readonly coinX: number[] = [];
 	private readonly coinZ: number[] = [];
 	private readonly coinScale: number[] = [];
+	// player bullet impacts queued by the client: x, z
+	private readonly bulletX: number[] = [];
+	private readonly bulletZ: number[] = [];
 	// this frame's telegraph spots: x, z, radius
 	private readonly tgX: number[] = [];
 	private readonly tgZ: number[] = [];
@@ -361,6 +368,16 @@ export class FxCueMapper {
 		this.coinScale.push(scale);
 	}
 
+	/**
+	 * A player bullet hit something at sim (x, z) (BulletImpacts, via FxSpriteController; never an enemy bullet): its
+	 * impact burst in the next `frame()`, the lowest-ranked cue (dropped past bulletHitQueue a frame).
+	 */
+	bulletHit(x: number, z: number): void {
+		if (this.bulletX.size() >= FX_SPRITE_VIEW.bulletHitQueue) return;
+		this.bulletX.push(x);
+		this.bulletZ.push(z);
+	}
+
 	/** Forget everything (live effects, pending bursts, snapshots): the next frame adopts the state silently. */
 	reset(): void {
 		this.liveEnds.clear();
@@ -373,6 +390,7 @@ export class FxCueMapper {
 		this.boostX.clear();
 		this.boostZ.clear();
 		this.clearCoins();
+		this.clearBulletHits();
 		this.lastState = undefined;
 		this.lastTick = -1;
 		this.lastFloor = -1;
@@ -423,12 +441,14 @@ export class FxCueMapper {
 			for (let i = 0; i < this.coinX.size(); i++)
 				this.emit("fx.golden.coin", this.coinX[i], this.coinZ[i], 0, this.coinScale[i]);
 			this.hitCues(f);
+			this.bulletHitCues(f);
 		}
 		this.splX.clear();
 		this.splZ.clear();
 		this.boostX.clear();
 		this.boostZ.clear();
 		this.clearCoins();
+		this.clearBulletHits();
 		this.snapshot(f);
 		this.updateLoop(f);
 		return out.count();
@@ -442,6 +462,11 @@ export class FxCueMapper {
 		this.coinScale.clear();
 	}
 
+	private clearBulletHits(): void {
+		this.bulletX.clear();
+		this.bulletZ.clear();
+	}
+
 	private forgetLive(): void {
 		this.liveEnds.clear();
 		this.pendAt.clear();
@@ -453,6 +478,7 @@ export class FxCueMapper {
 		this.boostX.clear();
 		this.boostZ.clear();
 		this.clearCoins();
+		this.clearBulletHits();
 	}
 
 	private expire(): void {
@@ -711,6 +737,19 @@ export class FxCueMapper {
 			this.aHitAt[e.slot] = this.now;
 			const rot = rotations.size() > 0 ? rotations[(e.actorId + e.tick) % rotations.size()] : 0;
 			this.emit(e.heavy ? "fx.hit.heavy" : "fx.hit.light", e.x, e.z, rot, 1);
+		}
+	}
+
+	/** The queued player bullet impacts, last: only under bulletHitBudgetShare of the budget, none under reduced motion. */
+	private bulletHitCues(f: FxCueFrame): void {
+		if (f.settings.reducedMotion) return;
+		const cap = math.floor(this.budget * FX_SPRITE_VIEW.bulletHitBudgetShare);
+		for (let i = 0; i < this.bulletX.size(); i++) {
+			if (this.liveEnds.size() >= cap) {
+				this.stats.overBudget++;
+				continue;
+			}
+			this.emit("fx.bullet.hit", this.bulletX[i], this.bulletZ[i], 0, 1);
 		}
 	}
 

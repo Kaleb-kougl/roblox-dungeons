@@ -7,7 +7,8 @@ import { ThemePack } from "../../pack";
 import type { SpriteSetAsset } from "../../types";
 import { sortedKeys } from "../../util";
 import { fxColorReport, validateManifest } from "../../validate";
-import { VALE_AMBIENT_EMISSIVE, VALE_FX, VALE_FX_IDS, VALE_FX_PENDING } from "./fx";
+import { VALE_BULLET_FX_LAYOUTS, VALE_BULLET_SHEET } from "./bulletLayout";
+import { VALE_AMBIENT_EMISSIVE, VALE_FX, VALE_FX_IDS, VALE_FX_PENDING, VALE_FX_SOURCES, valeFxSourceOf } from "./fx";
 import { VALE_AMBIENT_LAYOUTS, VALE_FX_LAYOUTS, VALE_FX_SHEET } from "./fxLayout";
 import { VALE_ASSET_IDS } from "./assetIds";
 import { VALE_WORLD_LAYOUTS } from "./layout";
@@ -15,9 +16,12 @@ import { VALE_MANIFEST, buildValeManifest } from "./manifest";
 
 const quiet = () => undefined;
 
-/** Fake uploaded IDs (test vectors; src/shared/theme is exempt from check-asset-ids) for the effect files. */
+/**
+ * Fake uploaded IDs (test vectors; src/shared/theme is exempt from check-asset-ids) for the effect files: every fx
+ * source's sheet (the effects atlas and the bullet atlas) and the ambient textures.
+ */
 function fxIds(...skip: Array<string>): Record<string, string> {
-	const files = [VALE_FX_SHEET.file];
+	const files = VALE_FX_SOURCES.map((s) => s.sheet.file);
 	for (const id of sortedKeys(VALE_AMBIENT_LAYOUTS)) files.push(VALE_AMBIENT_LAYOUTS[id].file);
 	const ids: Record<string, string> = {};
 	files.forEach((file, i) => {
@@ -38,27 +42,46 @@ describe("vale effects (fx.*)", () => {
 			expect([id, drawn !== VALE_FX_PENDING.includes(id)]).toEqual([id, true]);
 		}
 		for (const id of VALE_FX_IDS) {
-			const l = VALE_FX_LAYOUTS[id];
+			const l = valeFxSourceOf(id)?.layouts[id];
 			const look = VALE_FX[id];
 			expect([id, l !== undefined, look !== undefined]).toEqual([id, true, true]);
+			if (l === undefined) continue;
 			expect([id, look.sizeTiles > 0 && look.sizeTiles <= FX_SPRITE_MAX_TILES]).toEqual([id, true]);
 			// a greyed sheet is tinted; an untinted one keeps its colours and carries its mean colour
 			expect([id, l.grey, look.tint !== undefined]).toEqual([id, look.tint !== undefined, l.grey]);
 			expect([id, l.grey || l.meanColor !== undefined]).toEqual([id, true]);
 		}
-		expect(sortedKeys(VALE_FX_LAYOUTS)).toEqual([...VALE_FX_IDS].sort());
+		// every drawn ID in exactly one source; the bullet impact rides in the bullet atlas (PA7), nothing else does
+		const all = new Array<string>();
+		for (const source of VALE_FX_SOURCES) for (const id of sortedKeys(source.layouts)) all.push(id);
+		expect([...all].sort()).toEqual([...VALE_FX_IDS].sort());
+		expect(sortedKeys(VALE_BULLET_FX_LAYOUTS)).toEqual(["fx.bullet.hit"]);
+		expect(valeFxSourceOf("fx.bullet.hit")?.sheet).toBe(VALE_BULLET_SHEET);
+		expect(VALE_FX_LAYOUTS["fx.bullet.hit"]).toBe(undefined);
+	});
+
+	it("the bullet impact: 5 one-shot frames at 20 fps, half a tile, untinted and additive (PAD11)", () => {
+		const l = VALE_BULLET_FX_LAYOUTS["fx.bullet.hit"];
+		expect([l.frames, l.fps, l.loop, l.grey]).toEqual([5, 20, false, false]);
+		expect(l.meanColor).never.toBe(undefined);
+		expect(VALE_FX["fx.bullet.hit"]).toEqual({ sizeTiles: 0.5, additive: true });
 	});
 
 	it("as bundled (effect PNG uploaded) draws the uploaded effects, and the R5 mote fills every biome's ambient slot", () => {
 		expect(VALE_ASSET_IDS[VALE_FX_SHEET.file]).never.toBe(undefined);
-		// the manifest's fx entries are exactly the effects vale draws (the boost drops' effects have no art yet)
+		// the manifest's fx entries are exactly the effects vale draws whose sheet is uploaded (the boost drops' effects
+		// have no art yet; the bullet impact waits for bullets.png, PA8)
+		const uploaded = (id: string) => {
+			const source = valeFxSourceOf(id);
+			return source !== undefined && VALE_ASSET_IDS[source.sheet.file] !== undefined;
+		};
 		for (const id of sortedKeys(VALE_MANIFEST.assets)) {
-			const drawn = (VALE_FX_IDS as ReadonlyArray<string>).includes(id);
+			const drawn = (VALE_FX_IDS as ReadonlyArray<string>).includes(id) && uploaded(id);
 			expect([id, isFxOrAmbient(id) && id.sub(1, 3) === "fx."]).toEqual([id, drawn]);
 		}
 		const pack = new ThemePack(VALE_MANIFEST, { warn: quiet });
 		for (const id of FX_IDS) {
-			const drawn = (VALE_FX_IDS as ReadonlyArray<string>).includes(id);
+			const drawn = (VALE_FX_IDS as ReadonlyArray<string>).includes(id) && uploaded(id);
 			expect([id, pack.fx(id) !== undefined]).toEqual([id, drawn]);
 		}
 		// a biome's ambient texture, if any, is the R5 mote (decor-mote.png, uploaded), never an fx-ambient flipbook
@@ -85,28 +108,30 @@ describe("vale effects (fx.*)", () => {
 		for (const id of VALE_FX_PENDING) expect([id, pack.fx(id)]).toEqual([id, undefined]);
 		for (const id of VALE_FX_IDS) {
 			const fx = pack.fx(id);
-			const l = VALE_FX_LAYOUTS[id];
+			const source = valeFxSourceOf(id)!;
+			const sheet = source.sheet;
+			const l = source.layouts[id];
 			const look = VALE_FX[id];
 			expect([id, fx !== undefined]).toEqual([id, true]);
 			expect([id, fx!.frames, fx!.fps, fx!.loop]).toEqual([id, l.frames, l.fps, l.loop]);
 			expect([id, fx!.sizeTiles, fx!.tint, fx!.additive]).toEqual([id, look.sizeTiles, look.tint, look.additive]);
 			expect([id, fx!.set.resample]).toEqual([id, "Pixelated"]);
 			if (look.tint !== undefined) expect([id, fx!.color]).toEqual([id, pack.color(look.tint)]);
-			// every frame is the pipeline's cell: start + f in rows of floor(sheet w / frameW)
-			const perRow = math.floor(VALE_FX_SHEET.w / l.frameW);
+			// every frame is the pipeline's cell of its own sheet: start + f in rows of floor(sheet w / frameW)
+			const perRow = math.floor(sheet.w / l.frameW);
 			for (let f = 0; f < l.frames; f++) {
 				const r = fx!.frame(f);
 				const c = l.start + f;
 				expect([id, f, r.image, r.offset.X, r.offset.Y, r.size.X, r.size.Y]).toEqual([
 					id,
 					f,
-					ids[VALE_FX_SHEET.file],
+					ids[sheet.file],
 					(c % perRow) * l.frameW,
 					math.floor(c / perRow) * l.frameH,
 					l.frameW,
 					l.frameH,
 				]);
-				expect([id, f, r.offset.Y + l.frameH <= VALE_FX_SHEET.h]).toEqual([id, f, true]);
+				expect([id, f, r.offset.Y + l.frameH <= sheet.h]).toEqual([id, f, true]);
 			}
 			// one-shots hold their last frame, loops wrap
 			const last = fx!.frame(l.frames - 1);
@@ -144,11 +169,24 @@ describe("vale effects (fx.*)", () => {
 	});
 
 	it("without the atlas no effect switches on; the ambient textures still do", () => {
-		const m = buildValeManifest(fxIds(VALE_FX_SHEET.file));
+		const m = buildValeManifest(fxIds(VALE_FX_SHEET.file, VALE_BULLET_SHEET.file));
 		expect(validateManifest(m, { packId: "vale" })).toEqual([]);
 		const pack = new ThemePack(m, { warn: quiet });
 		for (const id of FX_IDS) expect([id, pack.fx(id as FxId)]).toEqual([id, undefined]);
 		expect(pack.ambient("biome.3")).never.toBe(undefined);
+	});
+
+	it("each sheet switches on its own effects only: bullets.png alone draws the bullet impact, the atlas alone the rest", () => {
+		const onlyBullets = new ThemePack(buildValeManifest(fxIds(VALE_FX_SHEET.file)), { warn: quiet });
+		const onlyAtlas = new ThemePack(buildValeManifest(fxIds(VALE_BULLET_SHEET.file)), { warn: quiet });
+		for (const id of VALE_FX_IDS) {
+			const inBullets = valeFxSourceOf(id)!.sheet === VALE_BULLET_SHEET;
+			expect([id, onlyBullets.fx(id) !== undefined, onlyAtlas.fx(id) !== undefined]).toEqual([
+				id,
+				inBullets,
+				!inBullets,
+			]);
+		}
 	});
 });
 

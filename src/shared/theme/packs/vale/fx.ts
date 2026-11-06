@@ -1,8 +1,9 @@
 /**
  * The `vale` pack's sprite effects (`fx.*`, docs/FX_AUDIO.md F2 / F5) and ambient particle textures
  * (`decor.fx.ambient.b<n>`, F6), built from the generated fxLayout.ts. Like every vale entry, an ID switches on only
- * once the PNG it needs has an ID in assetIds.ts: every effect needs the one effects atlas (VALE_FX_SHEET), each
- * ambient texture its own file. With no ID the pack has no fx / ambient entry at all (both slots are optional), so
+ * once the PNG it needs has an ID in assetIds.ts: every effect needs its sheet (VALE_FX_SOURCES: the effects atlas
+ * VALE_FX_SHEET, or the bullet atlas for the bullet impact, docs/PROJECTILE_ART.md PA7, which rides there so the
+ * effects atlas never repacks), each ambient texture its own file. With no ID the pack has no fx / ambient entry at all (both slots are optional), so
  * nothing is drawn: exactly the placeholder pack.
  *
  * Presentation choices (decision X2: selective and tinted; the sheet per ID is art/atlases.json's): drawn size of the
@@ -13,7 +14,9 @@
 import { BOOST_FX_IDS, FX_IDS, type BoostFxId, type FxId } from "../../contract";
 import type { ColorRole, ImageAsset, SpriteSetAsset } from "../../types";
 import { sortedKeys } from "../../util";
-import { VALE_AMBIENT_LAYOUTS, VALE_FX_LAYOUTS, VALE_FX_SHEET } from "./fxLayout";
+import { VALE_BULLET_SOURCE, type ValeBulletSource } from "./bullets";
+import { VALE_AMBIENT_LAYOUTS, VALE_FX_LAYOUTS, VALE_FX_SHEET, type ValeFxLayout } from "./fxLayout";
+import type { ValeSheetFile } from "./layout";
 
 type AssetIds = Readonly<Record<string, string>>;
 
@@ -41,6 +44,36 @@ export type ValeFxId = Exclude<FxId, BoostFxId | "fx.golden.coin" | "fx.treasure
  */
 export const VALE_FX_PENDING: ReadonlyArray<FxId> = ["fx.golden.coin", ...BOOST_FX_IDS, "fx.treasure.column"];
 
+/** One sheet of effects: the PNG and the effects packed into it (cells `start + f`, floor(sheet w / frameW) per row). */
+export interface ValeFxSource {
+	readonly sheet: Readonly<ValeSheetFile>;
+	readonly layouts: Readonly<Record<string, Readonly<ValeFxLayout>>>;
+}
+
+/**
+ * Every sheet vale's effects live in: the effects atlas (fxLayout.ts) and the bullet atlas (`bullets`, default the
+ * generated VALE_BULLET_SOURCE: its `fx`, bulletLayout.ts's VALE_BULLET_FX_LAYOUTS, i.e. fx.bullet.hit). An fx ID is in
+ * exactly one of them (fx.spec).
+ */
+export function valeFxSources(bullets: ValeBulletSource = VALE_BULLET_SOURCE): ReadonlyArray<ValeFxSource> {
+	return [
+		{ sheet: VALE_FX_SHEET, layouts: VALE_FX_LAYOUTS },
+		{ sheet: bullets.sheet, layouts: bullets.fx ?? {} },
+	];
+}
+
+/** The generated sources (valeFxSources()). */
+export const VALE_FX_SOURCES: ReadonlyArray<ValeFxSource> = valeFxSources();
+
+/** The source holding effect `id`'s layout, or undefined (no art). */
+export function valeFxSourceOf(
+	id: string,
+	sources: ReadonlyArray<ValeFxSource> = VALE_FX_SOURCES,
+): ValeFxSource | undefined {
+	for (const s of sources) if (s.layouts[id] !== undefined) return s;
+	return undefined;
+}
+
 /** VALE_FX's IDs in FX_IDS order (FX_IDS without VALE_FX_PENDING). */
 export const VALE_FX_IDS: ReadonlyArray<ValeFxId> = FX_IDS.filter(
 	(id) => !VALE_FX_PENDING.includes(id),
@@ -65,6 +98,8 @@ export const VALE_FX: Readonly<Record<ValeFxId, ValeFxLook>> = {
 	"fx.shrine.use": { sizeTiles: 1, tint: "fx.curse", additive: true },
 	"fx.stairwell": { sizeTiles: 1.5, tint: "decor.fx.zone", additive: true },
 	"fx.breakable.splinter": { sizeTiles: 1, tint: DUST, additive: false },
+	// docs/PROJECTILE_ART.md PA7: the pack's own yellow / orange burst, untinted (its meanColor under the fx rule)
+	"fx.bullet.hit": { sizeTiles: 0.5, additive: true },
 };
 
 /** Ambient textures that glow (LightEmission 1): molten embers. */
@@ -73,15 +108,25 @@ export const VALE_AMBIENT_EMISSIVE: ReadonlyArray<string> = ["decor.fx.ambient.b
 /** The animation an effect plays (contract FX_ANIMATION). */
 const PLAY = "play";
 
-/** The fx.* sprite sets for `ids`: every effect in VALE_FX_LAYOUTS once the effects atlas has an ID, else none. */
-export function valeFxAssets(ids: AssetIds): Record<string, SpriteSetAsset> {
+/**
+ * The fx.* sprite sets for `ids`: every effect of each source (VALE_FX_SOURCES) once that source's sheet has an ID,
+ * else none of its effects.
+ */
+export function valeFxAssets(
+	ids: AssetIds,
+	sources: ReadonlyArray<ValeFxSource> = VALE_FX_SOURCES,
+): Record<string, SpriteSetAsset> {
 	const out: Record<string, SpriteSetAsset> = {};
-	const assetId = ids[VALE_FX_SHEET.file];
-	if (assetId === undefined) {
-		return out;
+	for (const source of sources) {
+		const assetId = ids[source.sheet.file];
+		if (assetId !== undefined) addFxSets(out, source, assetId);
 	}
-	for (const id of sortedKeys(VALE_FX_LAYOUTS)) {
-		const l = VALE_FX_LAYOUTS[id];
+	return out;
+}
+
+function addFxSets(out: Record<string, SpriteSetAsset>, source: ValeFxSource, assetId: string): void {
+	for (const id of sortedKeys(source.layouts)) {
+		const l = source.layouts[id];
 		const look = VALE_FX[id as ValeFxId];
 		if (look === undefined) {
 			continue;
@@ -97,8 +142,8 @@ export function valeFxAssets(ids: AssetIds): Record<string, SpriteSetAsset> {
 			sheets: [
 				{
 					assetId: assetId as SpriteSetAsset["sheets"][number]["assetId"],
-					w: VALE_FX_SHEET.w,
-					h: VALE_FX_SHEET.h,
+					w: source.sheet.w,
+					h: source.sheet.h,
 				},
 			],
 			animations: { [PLAY]: { sheet: 0, start: l.start, frames: l.frames, fps: l.fps, loop: l.loop } },
@@ -112,7 +157,6 @@ export function valeFxAssets(ids: AssetIds): Record<string, SpriteSetAsset> {
 		}
 		out[id] = set;
 	}
-	return out;
 }
 
 /** The decor.fx.ambient.b<n> textures for `ids`: each once its own PNG has an ID. */

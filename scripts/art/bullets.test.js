@@ -272,8 +272,122 @@ describe("bulletLayoutModule", () => {
 		assert.ok(text.endsWith("};\n"));
 		// the empty stub (the PA stub commit's file exactly, from its head down)
 		const empty = A.bulletLayoutModule({ file: "bullets.png", w: 0, h: 0 }, {});
-		assert.ok(empty.endsWith('export const VALE_BULLET_SHEET: ValeSheetFile = {\n\tfile: "bullets.png",\n\tw: 0,\n\th: 0,\n};\n\nexport const VALE_BULLET_LAYOUTS: Record<string, ValeBulletLayout> = {};\n'));
+		assert.ok(
+			empty.endsWith(
+				'export const VALE_BULLET_SHEET: ValeSheetFile = {\n\tfile: "bullets.png",\n\tw: 0,\n\th: 0,\n};\n\nexport const VALE_BULLET_LAYOUTS: Record<string, ValeBulletLayout> = {};\n\n' +
+					"/** Effects in VALE_BULLET_SHEET (fx.* ids; cells by the same formula). */\nexport const VALE_BULLET_FX_LAYOUTS: Record<string, ValeFxLayout> = {};\n",
+			),
+		);
 		assert.equal(head(empty), head(committed));
+	});
+});
+
+/** A 3-frame 8 px strip, 8 high: frame f an orange 2 x 2 block at x 3..4, y 2 + f (so the union box is 3,2 .. 4,5). */
+function hitStrip(rel) {
+	syntheticPng(rel, 24, 8, (x, y) => {
+		const f = Math.floor(x / 8);
+		const lx = x % 8;
+		return lx >= 3 && lx <= 4 && y >= 2 + f && y <= 3 + f ? [232, 173, 44, 255] : null;
+	});
+}
+
+const FX_GATE = { minDifference: 40, from: { enemyBullet: "#ff3fa4", enemyBulletOutline: "#1a0610" } };
+
+function fxGroup(overrides = {}) {
+	const g = group(overrides);
+	g.gates = { ...g.gates, fx: FX_GATE };
+	g.fx = { $comment: "ignored", "fx.bullet.hit": { file: "t/hit.png", frameW: 8, frames: 3, fps: 20, loop: false } };
+	return g;
+}
+
+describe("bullet group effects (`fx`, docs/PROJECTILE_ART.md PA7)", () => {
+	beforeEach(() => hitStrip("t/hit.png"));
+
+	it("an fx set is cropped like an effects-atlas set, untinted, with its mean, fps and loop", () => {
+		const s = A.buildBulletFxSet("fx.bullet.hit", { file: "t/hit.png", frameW: 8, frames: 3, fps: 20 }, fxGroup());
+		assert.deepEqual(s.box, [3, 2, 4, 5]);
+		assert.deepEqual([s.frameW, s.frameH, s.frames.length, s.fps, s.loop, s.grey], [4, 6, 3, 20, false, false]);
+		assert.equal(s.meanColor, "#e8ad2c");
+		assert.deepEqual(rgbaAt(s.frames[1], 1, 2), [232, 173, 44, 255]);
+		assert.equal(rgbaAt(s.frames[1], 1, 1)[3], 0);
+		// fps from the group, loop as given
+		const g = A.buildBulletFxSet("fx.x", { file: "t/hit.png", frameW: 8, frames: 3, loop: true }, fxGroup());
+		assert.deepEqual([g.fps, g.loop], [10, true]);
+	});
+
+	it("packs the effects into the bullet atlas: their own layouts in fxLayout.ts's shape, the bullets' unchanged", () => {
+		const plain = A.buildBullets(group(), undefined);
+		const b = A.buildBullets(fxGroup(), undefined);
+		assert.deepEqual(Object.keys(b.layouts), Object.keys(plain.layouts));
+		assert.deepEqual(Object.keys(b.fxLayouts), ["fx.bullet.hit"]);
+		const l = b.fxLayouts["fx.bullet.hit"];
+		assert.deepEqual(Object.keys(l), ["frameW", "frameH", "pivot", "start", "frames", "fps", "loop", "grey", "meanColor"]);
+		assert.deepEqual([l.frameW, l.frameH, l.pivot, l.frames, l.fps, l.loop, l.grey, l.meanColor], [4, 6, { x: 2, y: 3 }, 3, 20, false, false, "#e8ad2c"]);
+		assert.equal(plain.fxLayouts && Object.keys(plain.fxLayouts).length, 0);
+		// every effect frame reads back through the cell formula
+		const s = b.fxSets[0];
+		const perRow = Math.floor(b.packed.w / l.frameW);
+		for (let f = 0; f < l.frames; f++) {
+			const c = l.start + f;
+			const x0 = (c % perRow) * l.frameW;
+			const y0 = Math.floor(c / perRow) * l.frameH;
+			for (let y = 0; y < l.frameH; y++) {
+				for (let x = 0; x < l.frameW; x++) {
+					const want = rgbaAt(s.frames[f], x, y);
+					const got = rgbaAt(b.packed.img, x0 + x, y0 + y);
+					assert.equal(got[3], want[3]);
+					if (want[3] > 0) assert.deepEqual(got, want);
+				}
+			}
+		}
+		// the gate row and the module's second export
+		const row = b.gates.find((r) => r.id === "fx.bullet.hit");
+		assert.equal(row.side, "fx");
+		assert.equal(row.ok, true);
+		const text = A.bulletLayoutModule(b.sheet, b.layouts, b.fxLayouts);
+		assert.match(text, /import type \{ ValeFxLayout \} from "\.\/fxLayout";/);
+		assert.match(text, /export const VALE_BULLET_FX_LAYOUTS: Record<string, ValeFxLayout> = \{\n\t"fx\.bullet\.hit": \{\n\t\tframeW: 4,\n\t\tframeH: 6,\n\t\tpivot: \{ x: 2, y: 3 \},\n\t\tstart: \d+,\n\t\tframes: 3,\n\t\tfps: 20,\n\t\tloop: false,\n\t\tgrey: false,\n\t\tmeanColor: "#e8ad2c",\n\t\},\n\};\n$/);
+		// the contact sheet has a row for the effect too (taller than without it)
+		assert.ok(A.bulletContact(b).h > A.bulletContact(plain).h);
+		// sources: the effect's file is read (locked) once
+		assert.ok(A.bulletSourceFiles(fxGroup()).includes("t/hit.png"));
+	});
+
+	it("an effect too near an enemy-bullet role fails its gate; gates.fx is required with fx sets", () => {
+		const g = fxGroup();
+		g.fx["fx.bullet.hit"].file = "t/pink.png"; // a strip in the enemyBullet role itself
+		g.fx["fx.bullet.hit"].frameW = 8;
+		g.fx["fx.bullet.hit"].frames = 2;
+		syntheticPng("t/pink.png", 16, 8, (x, y) => (y >= 2 && y <= 5 && x % 8 >= 1 && x % 8 <= 4 ? [255, 63, 164, 255] : null));
+		assert.throws(() => A.buildBullets(g, undefined), /fx\.bullet\.hit: mean #ff3fa4, nearest 0\.0 CIE76 from enemyBullet \(>= 40\) {2}FAIL/);
+		const missing = fxGroup();
+		delete missing.gates.fx;
+		assert.throws(() => A.buildBullets(missing, undefined), /bullets\.gates\.fx is required with fx sets/);
+		assert.throws(() => A.bulletGates([{ id: "fx.a", meanColor: "#e8ad2c" }], { ...fxGroup().gates, fx: { minDifference: 40, from: {} } }), /gates\.fx\.from/);
+		assert.throws(() => A.bulletGates([{ id: "fx.a", meanColor: "#e8ad2c" }], { ...fxGroup().gates, fx: { ...FX_GATE, minDifference: 0 } }), /gates\.fx\.minDifference/);
+		// no fx sets: gates.fx is not needed (the PA2 group as it was)
+		assert.doesNotThrow(() => A.buildBullets(group(), undefined));
+	});
+
+	it("refuses a malformed fx set", () => {
+		const bad = (def, re, id = "fx.bullet.hit") => assert.throws(() => A.buildBulletFxSet(id, def, fxGroup()), re);
+		const ok = { file: "t/hit.png", frameW: 8, frames: 3 };
+		bad({ ...ok, grey: true }, /unknown bullet fx set key grey/);
+		bad({ ...ok, recolor: { ramp: RAMP } }, /unknown bullet fx set key recolor/);
+		bad(ok, /must be an fx\.\* id/, "bullet.player.hit");
+		bad({ ...ok, file: "" }, /needs a file/);
+		bad({ ...ok, frames: 0 }, /positive integers/);
+		bad({ ...ok, loop: "no" }, /loop must be true or false/);
+		bad({ ...ok, frameW: 7 }, /24 px wide, not 3 frames x 7 px/);
+		assert.throws(() => A.buildBullets({ ...fxGroup(), fx: [] }, undefined), /bullets\.fx must be an object/);
+	});
+
+	it("is deterministic with effects: two builds give byte-identical PNGs and layout text", () => {
+		const one = A.buildBullets(fxGroup(), undefined);
+		const two = A.buildBullets(fxGroup(), undefined);
+		assert.ok(Buffer.compare(A.encodePng(one.packed.img), A.encodePng(two.packed.img)) === 0);
+		assert.ok(Buffer.compare(A.encodePng(A.bulletContact(one)), A.encodePng(A.bulletContact(two))) === 0);
+		assert.equal(A.bulletLayoutModule(one.sheet, one.layouts, one.fxLayouts), A.bulletLayoutModule(two.sheet, two.layouts, two.fxLayouts));
 	});
 });
 

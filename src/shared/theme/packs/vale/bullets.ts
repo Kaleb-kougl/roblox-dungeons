@@ -12,19 +12,29 @@
 import { BULLET_ART } from "../../contract";
 import type { SpriteSetAsset } from "../../types";
 import { sortedKeys } from "../../util";
-import { VALE_BULLET_LAYOUTS, VALE_BULLET_SHEET, type ValeBulletLayout } from "./bulletLayout";
+import { VALE_BULLET_FX_LAYOUTS, VALE_BULLET_LAYOUTS, VALE_BULLET_SHEET, type ValeBulletLayout } from "./bulletLayout";
+import type { ValeFxLayout } from "./fxLayout";
 import type { ValeSheetFile } from "./layout";
 
 type AssetIds = Readonly<Record<string, string>>;
 
-/** The bullet atlas and its layouts (VALE_BULLET_SHEET / VALE_BULLET_LAYOUTS; specs pass synthetic ones). */
+/**
+ * The bullet atlas and its layouts (VALE_BULLET_SHEET / VALE_BULLET_LAYOUTS; specs pass synthetic ones). `fx`: the
+ * effects packed into the same sheet (VALE_BULLET_FX_LAYOUTS, docs/PROJECTILE_ART.md PA7; fx.ts draws them, absent:
+ * none).
+ */
 export interface ValeBulletSource {
 	readonly sheet: Readonly<ValeSheetFile>;
 	readonly layouts: Readonly<Record<string, Readonly<ValeBulletLayout>>>;
+	readonly fx?: Readonly<Record<string, Readonly<ValeFxLayout>>>;
 }
 
 /** The generated source. */
-export const VALE_BULLET_SOURCE: ValeBulletSource = { sheet: VALE_BULLET_SHEET, layouts: VALE_BULLET_LAYOUTS };
+export const VALE_BULLET_SOURCE: ValeBulletSource = {
+	sheet: VALE_BULLET_SHEET,
+	layouts: VALE_BULLET_LAYOUTS,
+	fx: VALE_BULLET_FX_LAYOUTS,
+};
 
 /**
  * The bullet.* sprite sets for `ids`: one per entry of `source.layouts` (keyed by bullet ID) once `source.sheet` has

@@ -1858,7 +1858,11 @@
 			"bullet.player.* mean is >= player.minDifference CIE76 from each player.from role (placeholder manifest:",
 			"enemyBullet, enemyBulletOutline, telegraph; contract MIN_FX_BULLET_DIFFERENCE 40). The pipeline's own numbers",
 			"print with every build; PA3's bulletArtReport checks the same rules in the theme. `lockAlso`: locked and checked,",
-			"read by no set (kept for later tasks). Build just this group: node scripts/art/build-atlases.js --only bullets."
+			"read by no set (kept for later tasks). `fx` (PA7): effects packed into THIS atlas (not fx-effects.png, which would",
+			"repack and move every uploaded effect's cells), written to bulletLayout.ts's VALE_BULLET_FX_LAYOUTS in fxLayout.ts's",
+			"shape: untinted strips (file, frameW, frames, keep, fps, loop), cropped and packed like the bullet sets; each mean",
+			"must be >= gates.fx.minDifference CIE76 from every gates.fx.from colour (the theme's fx rule, fxColorReport: the",
+			"enemy-bullet roles of packs/placeholder/manifest.ts). Build just this group: node scripts/art/build-atlases.js --only bullets."
 		],
 		"atlas": "bullets",
 		"pad": 1,
@@ -1875,11 +1879,15 @@
 			"player": {
 				"minDifference": 40,
 				"from": { "enemyBullet": "#ff3fa4", "enemyBulletOutline": "#1a0610", "telegraph": "#ff8a3d" }
+			},
+			"fx": {
+				"minDifference": 40,
+				"from": { "enemyBullet": "#ff3fa4", "enemyBulletOutline": "#1a0610" }
 			}
 		},
-		"lockAlso": ["player-bullets/P1_Bullet_Hit.png", "player-bullets/P1_Bullet_Pink.png"],
+		"lockAlso": ["player-bullets/P1_Bullet_Pink.png"],
 		"sets": {
-			"$comment": "PAD4's shape split: bolts and the flame are the player's (yellow / green; the flame and the plain yellow bolt lifted towards gold to clear the telegraph orange); chevron, needle and teardrops the enemy's, always in the danger ramp. Not used: P1_Bullet_Pink.png (one grey needle, the spare) and P1_Bullet_Hit.png (5 x 14x14 impact burst: fx.bullet.hit is PA7's call; both are in lockAlso).",
+			"$comment": "PAD4's shape split: bolts and the flame are the player's (yellow / green; the flame and the plain yellow bolt lifted towards gold to clear the telegraph orange); chevron, needle and teardrops the enemy's, always in the danger ramp. Not used: P1_Bullet_Pink.png (one grey needle, the spare; in lockAlso). P1_Bullet_Hit.png is the `fx` group's fx.bullet.hit (PA7).",
 			"bullet.player.basic": {
 				"$comment": "The bow stream's arrow (PlayerBulletLook.BASIC), the shot seen most: the thin yellow bolt, 3-frame flicker.",
 				"file": "player-bullets/P1 Bullet_Yellow_Thinier.png",
@@ -2004,6 +2012,17 @@
 					]
 				},
 				"recolorNote": "Source levels 48 x27, 79 x20, 114 x27, 147 x24, 181 x6 (mean 102; frame 1 is the dark one): 48 (the needle's edge) -> #cc2679, 79 on the role, 114-181 rising to #ff7fc1."
+			}
+		},
+		"fx": {
+			"$comment": "Effects in the bullet atlas (PA7, PAD11): the player bullet impact the fx cue mapper's bulletHit source plays.",
+			"fx.bullet.hit": {
+				"$comment": "P1_Bullet_Hit.png: 5 frames of 14x14, a yellow / orange impact burst (#cc5312, #d68915, #f4c322, #ffee5c), untinted. 20 fps one-shot = 0.25 s. Mean #e9ad2d (cropped 13x13 + pad 1): 104.6 / 99.9 CIE76 from enemyBullet / enemyBulletOutline (the fx rule, >= 40), 30.1 from the telegraph orange (not an fx rule; a one-shot never sits on a telegraph's first frame, fxCues).",
+				"file": "player-bullets/P1_Bullet_Hit.png",
+				"frameW": 14,
+				"frames": 5,
+				"fps": 20,
+				"loop": false
 			}
 		}
 	}

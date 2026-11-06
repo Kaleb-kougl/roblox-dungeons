@@ -4,11 +4,13 @@
  * Layout of the `vale` pack's projectile sprites (docs/PROJECTILE_ART.md PA2): every flying bullet's flipbook in the
  * ONE bullet atlas VALE_BULLET_SHEET, cells `start + f` of the SpriteSetAsset formula (perRow = floor(sheet w /
  * frameW)). Each frame's art points screen-up (the direction of travel). `meanColor` is the alpha-weighted mean of the
- * set's opaque pixels (after `recolor`), held to the bullet colour rules (bulletArtReport). No asset IDs: `file`
- * names the PNG in art/build/ to upload.
+ * set's opaque pixels (after `recolor`), held to the bullet colour rules (bulletArtReport). Effects that ride in the
+ * same sheet (VALE_BULLET_FX_LAYOUTS, PA7) have the effects atlas's layout shape. No asset IDs: `file` names the PNG
+ * in art/build/ to upload.
  */
 
 import type { HexColor, Pivot } from "../../types";
+import type { ValeFxLayout } from "./fxLayout";
 import type { ValeSheetFile } from "./layout";
 
 /** One bullet's flipbook in VALE_BULLET_SHEET. */
@@ -26,7 +28,7 @@ export interface ValeBulletLayout {
 export const VALE_BULLET_SHEET: ValeSheetFile = {
 	file: "bullets.png",
 	w: 18,
-	h: 323,
+	h: 405,
 };
 
 export const VALE_BULLET_LAYOUTS: Record<string, ValeBulletLayout> = {
@@ -119,5 +121,20 @@ export const VALE_BULLET_LAYOUTS: Record<string, ValeBulletLayout> = {
 		fps: 10,
 		meanColor: "#f4ce3b",
 		pixelsPerTile: 29.6,
+	},
+};
+
+/** Effects in VALE_BULLET_SHEET (fx.* ids; cells by the same formula). */
+export const VALE_BULLET_FX_LAYOUTS: Record<string, ValeFxLayout> = {
+	"fx.bullet.hit": {
+		frameW: 15,
+		frameH: 15,
+		pivot: { x: 7.5, y: 7.5 },
+		start: 22,
+		frames: 5,
+		fps: 20,
+		loop: false,
+		grey: false,
+		meanColor: "#e9ad2d",
 	},
 };

@@ -3,14 +3,24 @@ import { Janitor } from "@rbxts/janitor";
 import { RunService, Workspace } from "@rbxts/services";
 import { createKvBillboardGui, createKvSurfaceGui } from "client/ui";
 import { CAMERA_YAW_DEG, STUDS_PER_TILE } from "shared/config";
-import { FX_IDS, type FxId, type FxSprite, type ThemePack } from "shared/theme";
-import { RENDER_ORDER, degToRad, floorImageSize, floorStudsY, spriteBillboard, studsX, studsZ } from "shared/view";
+import { BULLET_ART, FX_IDS, type FxId, type FxSprite, type ThemePack } from "shared/theme";
+import {
+	BulletImpacts,
+	RENDER_ORDER,
+	degToRad,
+	floorImageSize,
+	floorStudsY,
+	spriteBillboard,
+	studsX,
+	studsZ,
+} from "shared/view";
 import {
 	FX_SPRITE_MAX_TILES,
 	FX_SPRITE_VIEW,
 	FX_VIEW,
 	FxCueMapper,
 	fxLabelRotationDeg,
+	isEmberPayload,
 	type FxCueFrame,
 } from "shared/view/fx";
 import { SimController } from "../game/SimController";
@@ -71,6 +81,10 @@ interface FxSlot {
  * are parked (BulkMoveTo with the frame's starts). A new run, a new floor or no run parks everything. A pack without
  * any fx art (the bundled packs until the atlas is uploaded) makes this controller build nothing at all. Presentation
  * only; read-only on the sim.
+ *
+ * Player bullet impacts (docs/PROJECTILE_ART.md PA7, PAD11): with the pack's `fx.bullet.hit` art, a BulletImpacts diff
+ * over the PLAYER bullet simulation only (embers left out; enemy bullets never) feeds the mapper's `bulletHit` each
+ * frame, before its cues are taken; the mapper caps and ranks them (lowest) and drops them under reduced motion.
  */
 @Controller({})
 export class FxSpriteController implements OnStart {
@@ -87,6 +101,8 @@ export class FxSpriteController implements OnStart {
 	private clock = 0;
 	/** The mapper's frame input, refilled every frame (no allocation per frame). */
 	private cueFrame: Mutable<FxCueFrame> | undefined;
+	/** Player bullet impacts (PA7); undefined without the pack's fx.bullet.hit art. */
+	private impacts: BulletImpacts | undefined;
 
 	constructor(
 		private readonly sim: SimController,
@@ -105,6 +121,7 @@ export class FxSpriteController implements OnStart {
 			const s = pack.fx(id);
 			return s !== undefined && s.fps > 0 ? s.frames / s.fps : undefined;
 		});
+		if (pack.fx(BULLET_ART.hitFx) !== undefined) this.impacts = new BulletImpacts({ skip: isEmberPayload });
 		this.folder = this.janitor.Add(fxFolder(V.folderName));
 		RunService.BindToRenderStep(
 			V.renderStep,
@@ -141,6 +158,7 @@ export class FxSpriteController implements OnStart {
 		if (ctx === undefined) {
 			this.parkAll();
 			mapper.reset();
+			this.impacts?.reset();
 			this.flush();
 			return;
 		}
@@ -170,6 +188,12 @@ export class FxSpriteController implements OnStart {
 			f.fx = this.fx.tracker.events;
 			f.settings = this.fx.settings();
 			f.spots = this.decor.getScene();
+		}
+		const impacts = this.impacts;
+		if (impacts !== undefined) {
+			const hits = impacts.frame(ctx.run.state.combat.playerBullets);
+			const feed = impacts.feed;
+			for (let i = 0; i < hits; i++) mapper.bulletHit(feed.x[i], feed.z[i]);
 		}
 		const n = mapper.frame(f);
 		if (mapper.dropAll) this.parkAll();

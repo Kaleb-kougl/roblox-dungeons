@@ -3,6 +3,7 @@
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { colorDifference } from "./color";
 import {
+	BULLET_ART,
 	ENEMY_BULLET_ROLES,
 	FX,
 	FX_ANIMATION,
@@ -21,7 +22,8 @@ import {
 import { ThemeCore } from "./core";
 import { ThemePack, hexToColor3 } from "./pack";
 import { THEME_PACKS } from "./packs";
-import { VALE_FX_IDS } from "./packs/vale/fx";
+import { VALE_ASSET_IDS } from "./packs/vale/assetIds";
+import { VALE_FX_IDS, valeFxSourceOf } from "./packs/vale/fx";
 import { PLACEHOLDER_MANIFEST } from "./packs/placeholder";
 import { COLOR_ROLES } from "./types";
 import { deepClone, sortedKeys, type Obj } from "./util";
@@ -110,6 +112,8 @@ describe("fx contract", () => {
 			"fx.breakable.splinter",
 			// docs/FORTUNE.md FO6: the Goldling's coin burst (before the boost drops' spread)
 			"fx.golden.coin",
+			// docs/PROJECTILE_ART.md PA7: a player bullet's impact (BULLET_ART.hitFx)
+			"fx.bullet.hit",
 			"fx.boost.collect",
 			"fx.boost.aura.fury",
 			"fx.boost.aura.quickstep",
@@ -123,6 +127,9 @@ describe("fx contract", () => {
 			expect([id, slotFor(id), isFxId(id)]).toEqual([id, FX, true]);
 		}
 		expect([isFxId("fx.swing.4"), isFxId("fx.hit"), isFxId("fx.settings.title")]).toEqual([false, false, false]);
+		// the bullet impact is optional: no required id, no placeholder
+		expect([isFxId(BULLET_ART.hitFx), REQUIRED_ASSET_IDS.includes(BULLET_ART.hitFx)]).toEqual([true, false]);
+		expect(PLACEHOLDER_MANIFEST.assets[BULLET_ART.hitFx]).toBe(undefined);
 	});
 
 	it("adds the heal and curse roles, held to the decor fx colour rule", () => {
@@ -144,14 +151,19 @@ describe("fx contract", () => {
 
 describe("validateManifest: fx entries", () => {
 	it("every bundled pack ships only the effects its art covers, keeps the fx roles far from enemy bullets and validates clean", () => {
+		// vale draws the fx.* sets (VALE_FX_IDS) whose sheet is uploaded (fx.bullet.hit rides in bullets.png: PA8)
+		const valeShipped = VALE_FX_IDS.filter((fx) => {
+			const source = valeFxSourceOf(fx);
+			return source !== undefined && VALE_ASSET_IDS[source.sheet.file] !== undefined;
+		});
 		for (const id of sortedKeys(THEME_PACKS)) {
-			// vale draws the fx.* sets whose art is uploaded (VALE_FX_IDS); the placeholder pack ships none
+			// the placeholder pack ships none
 			const shipped = sortedKeys(THEME_PACKS[id].assets).filter((asset) => slotFor(asset) === FX);
-			const expected: Array<string> = id === "vale" ? [...VALE_FX_IDS].sort() : [];
+			const expected: Array<string> = id === "vale" ? [...valeShipped].sort() : [];
 			expect([id, shipped]).toEqual([id, expected]);
 			const report = fxColorReport(THEME_PACKS[id]);
 			// the fx roles, then every drawn effect's colour (vale: its tint role or meanColor), each against the bullet roles
-			const effectColours = id === "vale" ? VALE_FX_IDS.size() : 0;
+			const effectColours = id === "vale" ? valeShipped.size() : 0;
 			expect([id, report.size()]).toEqual([id, (FX_ROLES.size() + effectColours) * ENEMY_BULLET_ROLES.size()]);
 			for (const e of report) {
 				const isRole = (FX_ROLES as ReadonlyArray<string>).includes(e.subject);

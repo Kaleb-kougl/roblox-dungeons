@@ -2,16 +2,17 @@
 // `sprites` bullet once bullets.png has an ID (absent: the placeholder exactly as today), the runtime addresses the cells
 // the pipeline wrote, and the art passes the bullet colour rules (bulletArtReport).
 import { describe, expect, it } from "@rbxts/jest-globals";
-import { BULLET_ART, BULLET_IDS } from "../../contract";
+import { BULLET_ART, BULLET_IDS, ENEMY_BULLET_ROLES, MIN_FX_BULLET_DIFFERENCE } from "../../contract";
 import { bulletArtReport } from "../../bulletArt";
 import { ThemePack, hexToColor3 } from "../../pack";
 import { PLACEHOLDER_MANIFEST } from "../placeholder";
 import type { SpriteSetAsset } from "../../types";
 import { sortedKeys } from "../../util";
-import { validateManifest } from "../../validate";
+import { fxColorReport, validateManifest } from "../../validate";
 import { VALE_ASSET_IDS } from "./assetIds";
 import { VALE_BULLET_SOURCE, valeBulletAssets, type ValeBulletSource } from "./bullets";
-import { VALE_BULLET_LAYOUTS, VALE_BULLET_SHEET, type ValeBulletLayout } from "./bulletLayout";
+import { VALE_BULLET_FX_LAYOUTS, VALE_BULLET_LAYOUTS, VALE_BULLET_SHEET, type ValeBulletLayout } from "./bulletLayout";
+import { VALE_FX } from "./fx";
 import { VALE_MANIFEST, buildValeManifest } from "./manifest";
 
 const quiet = () => undefined;
@@ -110,6 +111,8 @@ describe("vale bullets (docs/PROJECTILE_ART.md PA6)", () => {
 			expect([id, sortedKeys(set.animations)]).toEqual([id, [BULLET_ART.animation]]);
 		}
 		for (const id of BULLET_ART.decalIds) expect([id, m.assets[id]]).toEqual([id, PLACEHOLDER_MANIFEST.assets[id]]);
+		// a source without `fx` carries no bullet impact (it follows the bullet source, not the generated one)
+		expect(m.assets[BULLET_ART.hitFx]).toBe(undefined);
 	});
 
 	it("validates with zero problems, every mapped ID passing bulletArtReport", () => {
@@ -177,6 +180,13 @@ describe("vale bullets (docs/PROJECTILE_ART.md PA6)", () => {
 	it("the generated layouts, once uploaded, pass the validator and draw (empty until PA2 generates them)", () => {
 		const m = buildValeManifest({ ...VALE_ASSET_IDS, [VALE_BULLET_SHEET.file]: SHEET_ID });
 		expect(validateManifest(m, { packId: "vale" })).toEqual([]);
+		// the real art's colours: every mapped bullet passes bulletArtReport
+		const seen = new Set<string>();
+		for (const e of bulletArtReport(m)) {
+			seen.add(e.id);
+			expect([e.id, e.check, e.against, e.surface, e.ok]).toEqual([e.id, e.check, e.against, e.surface, true]);
+		}
+		expect(sortedKeys(VALE_BULLET_LAYOUTS).filter((id) => !seen.has(id))).toEqual([]);
 		const pack = new ThemePack(m, { warn: quiet });
 		for (const id of sortedKeys(VALE_BULLET_LAYOUTS))
 			expect([id, pack.bullet(id) !== undefined]).toEqual([id, true]);
@@ -184,6 +194,49 @@ describe("vale bullets (docs/PROJECTILE_ART.md PA6)", () => {
 			if (!isBullet(id)) continue;
 			const drawn = VALE_BULLET_LAYOUTS[id] !== undefined;
 			expect([id, m.assets[id].kind === "sprites"]).toEqual([id, drawn]);
+		}
+	});
+
+	it("the generated bullet impact (fx.bullet.hit, PA7) rides in bullets.png: it draws once that has an ID, untinted, under the fx rule", () => {
+		const hit = BULLET_ART.hitFx;
+		const l = VALE_BULLET_FX_LAYOUTS[hit];
+		expect(l).never.toBe(undefined);
+		// absent until bullets.png has an ID (the bundled pack, before PA8)
+		const without: Record<string, string> = {};
+		for (const file of sortedKeys(VALE_ASSET_IDS)) {
+			if (file !== VALE_BULLET_SHEET.file) without[file] = VALE_ASSET_IDS[file];
+		}
+		expect(buildValeManifest(without).assets[hit]).toBe(undefined);
+		const m = buildValeManifest({ ...VALE_ASSET_IDS, [VALE_BULLET_SHEET.file]: SHEET_ID });
+		expect(validateManifest(m, { packId: "vale" })).toEqual([]);
+		const set = m.assets[hit] as SpriteSetAsset;
+		expect([set.kind, set.facings.count, set.tint, set.meanColor, set.additive, set.sizeTiles]).toEqual([
+			"sprites",
+			1,
+			undefined,
+			l.meanColor,
+			true,
+			VALE_FX[hit].sizeTiles,
+		]);
+		expect(set.sheets).toEqual([{ assetId: SHEET_ID, w: VALE_BULLET_SHEET.w, h: VALE_BULLET_SHEET.h }]);
+		// its mean colour, against each enemy-bullet role, >= MIN_FX_BULLET_DIFFERENCE (the fx rule)
+		const rows = fxColorReport(m).filter((e) => e.subject === hit);
+		expect(rows.map((e) => [e.source, e.against])).toEqual(ENEMY_BULLET_ROLES.map((r) => ["meanColor", r]));
+		for (const e of rows)
+			expect([e.against, e.difference >= MIN_FX_BULLET_DIFFERENCE, e.ok]).toEqual([e.against, true, true]);
+		// the runtime: a one-shot over the sheet's cells (start + f, floor(w / frameW) per row)
+		const fx = new ThemePack(m, { warn: quiet }).fx(hit)!;
+		expect([fx.frames, fx.fps, fx.loop, fx.sizeTiles, fx.additive]).toEqual([l.frames, l.fps, false, 0.5, true]);
+		const perRow = math.floor(VALE_BULLET_SHEET.w / l.frameW);
+		for (let f = 0; f < l.frames; f++) {
+			const r = fx.frame(f);
+			const c = l.start + f;
+			expect([f, r.image, r.offset.X, r.offset.Y]).toEqual([
+				f,
+				SHEET_ID,
+				(c % perRow) * l.frameW,
+				math.floor(c / perRow) * l.frameH,
+			]);
 		}
 	});
 });

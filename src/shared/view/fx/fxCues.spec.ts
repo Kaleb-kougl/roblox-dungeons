@@ -40,9 +40,12 @@ import {
 	weaponIndex,
 	weaponsAt,
 	type SimState,
+	type Vec3,
 } from "shared/sim";
 import { defaultJuiceSettings, type JuiceSettings } from "shared/settings";
 import { FX_IDS, type FxId } from "shared/theme";
+// By file, not the barrel (as fxCues.ts imports pellets/events).
+import { BulletImpacts, type BulletImpactSource } from "../bullets/impacts";
 import { BULLET_VIEW, MARKING_VIEW } from "../config";
 import { DECOR_VIEW, decorInputOfLayout, decorScene, planDecor, type DecorScene } from "../decor";
 import { PelletFrameEvents } from "../pellets";
@@ -819,6 +822,178 @@ describe("FxCueMapper sources (synthetic)", () => {
 		});
 		state.tick += 1;
 		expect(mapper.frame({ now: 1.5, state, alpha: 1, events: NO_EVENTS, fx: ev2, settings })).toBe(1);
+	});
+});
+
+// ---------------------------------------------------------------------------------------------
+// Player bullet impacts (docs/PROJECTILE_ART.md PA7): BulletImpacts over a scripted player pool -> bulletHit
+
+/** A scripted player bullet pool: slots by index, life falls by SIM_DT a step, a bullet out of life is released. */
+class ScriptedBullets implements BulletImpactSource {
+	stepCount = 0;
+	private readonly live = new Map<number, { life: number; pos: Vec3 }>();
+	private top = 0;
+
+	fire(slot: number, life: number, x: number, z: number): void {
+		this.live.set(slot, { life, pos: { x, y: BULLET_Y, z } });
+		this.top = math.max(this.top, slot + 1);
+	}
+	/** The bullet hits a wall: the sim releases it with life left. */
+	hitWall(slot: number): void {
+		this.live.delete(slot);
+	}
+	step(): void {
+		this.stepCount += 1;
+		const gone: number[] = [];
+		for (const [slot, b] of this.live) {
+			b.life -= SIM_DT;
+			if (b.life <= 0) gone.push(slot);
+		}
+		for (const slot of gone) this.live.delete(slot);
+	}
+	highWater(): number {
+		return this.top;
+	}
+	isLive(i: number): boolean {
+		return this.live.has(i);
+	}
+	positionAt(i: number): Readonly<Vec3> {
+		return this.live.get(i)!.pos;
+	}
+	lifeAt(i: number): number {
+		return this.live.get(i)!.life;
+	}
+	payloadAt(): number {
+		return 0;
+	}
+	emitterIdAt(): number {
+		return 1;
+	}
+}
+
+describe("FxCueMapper bullet impacts (fx.bullet.hit, docs/PROJECTILE_ART.md PA7)", () => {
+	const PER_FRAME = 6;
+	const FRAMES = 30;
+
+	/**
+	 * A bow stream: each frame PER_FRAME arrows are fired, and (`wall`) the previous frame's arrows hit a wall with most
+	 * of their life left, or (no wall) every arrow runs out of life in flight. The feed goes through bulletHit as
+	 * FxSpriteController does; `extra` adds hit marks to every frame. Returns the per-frame fx.bullet.hit counts, the
+	 * most live effects seen and the mapper.
+	 */
+	function stream(wall: boolean, settings: Readonly<JuiceSettings>, extra = 0) {
+		const { state, mapper } = fresh();
+		const sim = new ScriptedBullets();
+		const impacts = new BulletImpacts();
+		const hits: number[] = [];
+		let maxLive = 0;
+		let marks = 0;
+		for (let f = 1; f <= FRAMES; f++) {
+			for (let k = 0; k < PER_FRAME; k++) {
+				if (wall) sim.hitWall(((f + 1) % 2) * PER_FRAME + k); // last frame's arrows
+				sim.fire((f % 2) * PER_FRAME + k, wall ? 1 : 1.5 * SIM_DT, f + k * 0.25, -k);
+			}
+			sim.step();
+			const n = impacts.frame(sim);
+			for (let i = 0; i < n; i++) mapper.bulletHit(impacts.feed.x[i], impacts.feed.z[i]);
+			const ev = new Events();
+			for (let k = 0; k < extra; k++) ev.hit(k, f * 100 + k, f);
+			state.tick += 1;
+			const count = mapper.frame({ now: f * 0.01, state, alpha: 1, events: NO_EVENTS, fx: ev, settings });
+			let h = 0;
+			for (let i = 0; i < count; i++) {
+				const c = mapper.cues.at(i);
+				if (c.id === "fx.bullet.hit") {
+					h++;
+					expect(c.rotationDeg).toBe(0);
+				} else marks++;
+			}
+			hits.push(h);
+			maxLive = math.max(maxLive, mapper.liveCount());
+		}
+		return { hits, maxLive, marks, mapper };
+	}
+
+	it("a stream into a wall gives capped cues: bulletHitQueue a frame, under bulletHitBudgetShare of the budget", () => {
+		const settings = juice("high");
+		const { hits, maxLive, mapper } = stream(true, settings);
+		const cap = math.floor(FX_SPRITE_VIEW.maxSprites.high * FX_SPRITE_VIEW.bulletHitBudgetShare);
+		expect(FX_SPRITE_VIEW.bulletHitQueue < PER_FRAME).toBe(true);
+		// frame 1 has no impact yet (the arrows were just fired); then the queue's cap every frame until the share fills
+		expect(hits[0]).toBe(0);
+		for (let f = 1; f * FX_SPRITE_VIEW.bulletHitQueue <= cap; f++) {
+			expect([f, hits[f]]).toEqual([f, FX_SPRITE_VIEW.bulletHitQueue]);
+		}
+		let total = 0;
+		for (const h of hits) total += h;
+		expect(total).toBe(cap);
+		expect(maxLive).toBe(cap);
+		expect(mapper.stats.overBudget > 0).toBe(true);
+	});
+
+	it("ranks below every other cue: hit marks still start while the impacts hold their share", () => {
+		const { hits, marks, maxLive } = stream(true, juice("high"), 1);
+		// a mark every frame, all of them: the impacts stop at their share and never take the budget's other half
+		expect(marks).toBe(FRAMES);
+		expect(hits[FRAMES - 1]).toBe(0);
+		expect(maxLive <= FX_SPRITE_VIEW.maxSprites.high).toBe(true);
+	});
+
+	it("a stream that expires in flight gives none", () => {
+		const { hits } = stream(false, juice("high"));
+		for (const h of hits) expect(h).toBe(0);
+	});
+
+	it("none under reduced motion (hit marks still show)", () => {
+		const { hits, marks } = stream(true, juice("high", true), 1);
+		for (const h of hits) expect(h).toBe(0);
+		expect(marks).toBe(FRAMES);
+	});
+
+	it("a pack without the impact art cues none; a reset drops the queue", () => {
+		const { state, mapper } = fresh((id) => (id === "fx.bullet.hit" ? undefined : LIFE));
+		mapper.bulletHit(1, 2);
+		state.tick += 1;
+		expect(
+			mapper.frame({ now: 1, state, alpha: 1, events: NO_EVENTS, fx: new Events(), settings: juice("high") }),
+		).toBe(0);
+		const other = fresh();
+		other.mapper.bulletHit(1, 2);
+		other.mapper.reset();
+		other.mapper.frame({
+			now: 1,
+			state: other.state,
+			alpha: 1,
+			events: NO_EVENTS,
+			fx: new Events(),
+			settings: juice("high"),
+		});
+		other.state.tick += 1;
+		expect(
+			other.mapper.frame({
+				now: 1.1,
+				state: other.state,
+				alpha: 1,
+				events: NO_EVENTS,
+				fx: new Events(),
+				settings: juice("high"),
+			}),
+		).toBe(0);
+		// one queued impact, the next frame: at the spot, unturned, scale 1
+		other.mapper.bulletHit(3, 4);
+		other.state.tick += 1;
+		expect(
+			other.mapper.frame({
+				now: 1.2,
+				state: other.state,
+				alpha: 1,
+				events: NO_EVENTS,
+				fx: new Events(),
+				settings: juice("high"),
+			}),
+		).toBe(1);
+		const c = other.mapper.cues.at(0);
+		expect([c.id, c.x, c.z, c.rotationDeg, c.scale]).toEqual(["fx.bullet.hit", 3, 4, 0, 1]);
 	});
 });
 
