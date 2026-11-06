@@ -10,6 +10,7 @@
 
 import { parseHex } from "./color";
 import {
+	BULLET_ART,
 	FX_ANIMATION,
 	type BiomeId,
 	type BoostKind,
@@ -30,6 +31,7 @@ import {
 	type TreasurePieceTheme,
 	type PactAltarTheme,
 	type BreakableTheme,
+	type BulletArt,
 	type DecorArt,
 	type FxArt,
 	type LocaleReport,
@@ -253,12 +255,9 @@ export interface PactAltar {
 }
 
 /**
- * A sprite effect (ThemeCore.fx) with Roblox types: a one-facing SpriteSet, its flipbook and how to draw it. Drawn
- * widthTiles x heightTiles; `ImageColor3 = color`; `additive`: LightInfluence 0.
- */
-/**
- * A projectile's sprite (docs/PROJECTILE_ART.md PA3): a one-facing flipbook whose art points screen-up (the direction
- * of travel); the renderer turns it along the velocity. Undefined from ThemePack.bullet: draw the placeholder part.
+ * A projectile's sprite (docs/PROJECTILE_ART.md PA3, ThemeCore.bullet): a one-facing flipbook whose art points
+ * screen-up (the direction of travel); the renderer turns it along the velocity. Undefined from ThemePack.bullet: draw
+ * the placeholder part.
  */
 export interface BulletSprite {
 	readonly id: string;
@@ -275,6 +274,10 @@ export interface BulletSprite {
 	readonly frame: (index: number) => SpriteFrame;
 }
 
+/**
+ * A sprite effect (ThemeCore.fx) with Roblox types: a one-facing SpriteSet, its flipbook and how to draw it. Drawn
+ * widthTiles x heightTiles; `ImageColor3 = color`; `additive`: LightInfluence 0.
+ */
 export interface FxSprite {
 	readonly id: FxId;
 	readonly set: SpriteSet;
@@ -339,6 +342,7 @@ export class ThemePack {
 	private readonly treasurePieces = new Map<string, TreasurePiece>();
 	private pactAltarCache: PactAltar | undefined;
 	private readonly fxSprites = new Map<string, FxSprite | false>();
+	private readonly bulletSprites = new Map<string, BulletSprite | false>();
 
 	/** Defensive: a manifest that failed validation still loads; bad entries fall back individually. */
 	constructor(manifest: unknown, opts: ThemePackOptions = {}) {
@@ -605,10 +609,33 @@ export class ThemePack {
 
 	/**
 	 * A bullet's sprite (a `bullet.*` id), cached. Undefined, without a warning, when the pack has no art for it: draw
-	 * the placeholder (ThemePack.placeholder). PA3 implements it; until then every bullet is its placeholder.
+	 * the placeholder (ThemePack.placeholder). Art the renderer cannot draw as a bullet warns once and is undefined
+	 * too (ThemeCore.bullet).
 	 */
-	bullet(_id: string): BulletSprite | undefined {
-		return undefined;
+	bullet(id: string): BulletSprite | undefined {
+		const cached = this.bulletSprites.get(id);
+		if (cached !== undefined) {
+			return cached === false ? undefined : cached;
+		}
+		const core: BulletArt | undefined = this.core.bullet(id);
+		const set = core !== undefined ? this.sprites(id) : undefined;
+		let out: BulletSprite | undefined;
+		if (core !== undefined && set !== undefined) {
+			const frames = core.frames;
+			out = {
+				id,
+				set,
+				frames,
+				fps: core.fps,
+				widthTiles: core.widthTiles,
+				heightTiles: core.heightTiles,
+				meanColor: this.cachedColor(core.meanColor),
+				// wrapped here: the loop flag of the set's animation never holds a bullet on its last frame
+				frame: (index) => set.frame(BULLET_ART.animation, 0, index % frames),
+			};
+		}
+		this.bulletSprites.set(id, out ?? false);
+		return out;
 	}
 
 	// --- sprite effects (docs/FX_AUDIO.md F1) -----------------------------------------------------

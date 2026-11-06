@@ -16,7 +16,10 @@
  *     and the minimap and never as a bullet or a telegraph, its cage reads on every floor, a bullet reads on its chest;
  *   - likewise (docs/FORTUNE.md FO6), fortuneColors.ts `fortuneReport`: the Horde edge, the pacts and the Goldling's
  *     coins read on every floor and never as a bullet or a telegraph (the coins never as a pellet), and the Goldling
- *     never as a threat cue.
+ *     never as a threat cue;
+ *   - likewise (docs/PROJECTILE_ART.md PA3), bulletArt.ts `bulletArtProblems`: bullet sprite art (one facing, a short
+ *     `fly` loop, a meanColor) whose player shots never read as danger and whose enemy bullets read as the danger
+ *     colour on every floor and wall; the floor decals take no art.
  */
 
 import { colorDifference, contrastRatio, isHexColor } from "./color";
@@ -28,6 +31,7 @@ import { buildReport } from "./buildColors";
 import { pelletReport } from "./pelletColors";
 import { treasureReport } from "./treasureColors";
 import { fortuneReport } from "./fortuneColors";
+import { bulletArtProblems } from "./bulletArt";
 
 /** What a variant colour report checks against what, and the bars (AFFIX_COLOR_RULES, GOO_COLOR_RULES). */
 export interface VariantColorRules {
@@ -274,6 +278,9 @@ export function variantColorProblems(manifest: unknown, suffix: (biome: string) 
 			}
 			out.push({ path: ["colors", c.role], msg });
 		}
+	}
+	for (const problem of bulletArtProblems(manifest, suffix)) {
+		out.push(problem);
 	}
 	return out;
 }

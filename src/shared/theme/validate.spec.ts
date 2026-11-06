@@ -271,7 +271,7 @@ describe("validateManifest: rejects bad manifests", () => {
 		assets["weapon.sword"] = { kind: "silent" };
 		const errors = validateManifest(m);
 		expect(errors).toContain(
-			'assets["bullet.enemy.small"].kind: slot "bullet" accepts kind "spritesheet" | "placeholder", got "sound"',
+			'assets["bullet.enemy.small"].kind: slot "bullet" accepts kind "spritesheet" | "sprites" | "placeholder", got "sound"',
 		);
 		expect(errors).toContain(
 			'assets["enemy.swarmer"].kind: slot "enemy" accepts kind "spritesheet" | "sprites" | "placeholder", got "generated"',
@@ -525,11 +525,12 @@ describe("validateManifest: sprite sets (contract v2)", () => {
 		]);
 	});
 
-	it("is not accepted outside the actor slots", () => {
+	it("is not accepted in a still-image slot", () => {
+		// (bullets take sprite sets since docs/PROJECTILE_ART.md PA3: bulletArt.spec.ts)
 		const m = clone();
-		at(m, "assets")["bullet.enemy.small"] = spriteSet();
+		at(m, "assets")["item.weapon"] = spriteSet();
 		expect(validateManifest(m)).toEqual([
-			'assets["bullet.enemy.small"].kind: slot "bullet" accepts kind "spritesheet" | "placeholder", got "sprites"',
+			'assets["item.weapon"].kind: slot "item" accepts kind "image" | "placeholder", got "sprites"',
 		]);
 	});
 

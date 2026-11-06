@@ -147,6 +147,8 @@ export {
 	type FortuneColorEntry,
 	type FortuneColorRules,
 } from "./fortuneColors";
+// Roblox port (docs/PROJECTILE_ART.md PA3): the bullet sprite rules.
+export { bulletArtProblems, bulletArtReport, type BulletArtEntry, type BulletArtProblem } from "./bulletArt";
 export * from "./placeholders";
 export {
 	DEFAULT_PACK_ID,
@@ -162,6 +164,7 @@ export {
 	type BiomeTheme,
 	type BoostTheme,
 	type BreakableTheme,
+	type BulletArt,
 	type PelletTheme,
 	type TreasurePieceTheme,
 	type PactAltarTheme,

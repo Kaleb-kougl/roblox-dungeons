@@ -9,4 +9,5 @@ export * from "./fxLayout";
 export * from "./bulletLayout";
 export * from "./uiIconLayout";
 export * from "./fx";
+export * from "./bullets";
 export * from "./manifest";

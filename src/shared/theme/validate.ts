@@ -61,6 +61,9 @@
  * Roblox port (docs/VOID_DECOR.md VD1, VD7): every biome's required `shoulder` / `abyss` colours (voidColors.ts
  * `voidReport`, through `voidColorProblems`; offset by inlining the boost ID list and reading a decor piece's layers
  * from `parseDecorId` instead of importing DECOR_KIND_LAYERS) and the optional `decor.void.b<n>.<kind>[.<v>]` pieces.
+ *
+ * Roblox port (docs/PROJECTILE_ART.md PA3): bullets may be one-facing `sprites` sets with a `meanColor`; their rules
+ * (bulletArt.ts `bulletArtReport`) run through `variantColorProblems`, so this module takes no new name.
  */
 
 import { colorDifference, contrastRatio, isHexColor, labChroma, mixRgb, parseHex, toHex } from "./color";
@@ -2382,7 +2385,15 @@ function validateSpriteSet(def: Obj, path: Array<string>, slot: SlotContract, er
 		return;
 	}
 	const fx = slot === FX;
-	const extraKeys = decor !== undefined ? decorArtKeys(decor, "sprites") : fx ? FX_ART_KEYS : [];
+	// docs/PROJECTILE_ART.md PA3: a bullet set adds its meanColor (bulletArt.ts checks it; by slot name: no new local)
+	const extraKeys =
+		decor !== undefined
+			? decorArtKeys(decor, "sprites")
+			: fx
+			? FX_ART_KEYS
+			: slot.slot === "bullet"
+			? ["meanColor"]
+			: [];
 	unknownKeys(def, path, [...SPRITE_SET_KEYS, ...extraKeys]);
 
 	// --- cell, pivot, density, resample -----------------------------------------------------------

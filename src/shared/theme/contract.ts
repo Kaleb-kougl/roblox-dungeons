@@ -96,9 +96,13 @@ export interface SlotContract {
 	 * Validated like every animation when present; never required; listing them documents what the renderers ask for.
 	 */
 	readonly optionalAnimations?: ReadonlyArray<string>;
+	/**
+	 * v2 `sprites` kind (docs/PROJECTILE_ART.md PA3): the screen direction the art's frames point in, the direction of
+	 * travel the renderer turns along the velocity. Bullets only ("up"); absent for slots whose art is not turned.
+	 */
+	readonly heading?: "up";
 }
 
-const SPRITE: ReadonlyArray<AssetKind> = ["spritesheet", "placeholder"];
 /** Actor slots also take the v2 `sprites` kind (SpriteSetAsset: free cells, facings and frame counts). */
 const ACTOR: ReadonlyArray<AssetKind> = ["spritesheet", "sprites", "placeholder"];
 const STILL: ReadonlyArray<AssetKind> = ["image", "placeholder"];
@@ -164,16 +168,23 @@ export const BOSS: SlotContract = {
 	optionalAnimations: BOSS_OPTIONAL_ANIMATIONS,
 };
 
-/** Bullets are drawn at one cell size; the renderer scales them to the gameplay radius. */
+/**
+ * Bullets. The 16 px `spritesheet` kind (the web build's) is drawn at one cell size, scaled to the gameplay radius.
+ * Roblox port (docs/PROJECTILE_ART.md PA3): a bullet may also be a v2 `sprites` set like an effect (FX): its own cell,
+ * ONE facing, the `fly` loop (BULLET_ART.animation, 1..BULLET_ART.maxFrames frames from the art), art pointing
+ * screen-up (`heading`), plus a required `meanColor` held to the bullet colour rules (bulletArt.ts `bulletArtReport`).
+ * BULLET_ART.decalIds never take art. The cell / pivot / `fly: 2` below are the spritesheet kind's, unchanged.
+ */
 export const BULLET: SlotContract = {
 	slot: "bullet",
 	prefix: "bullet.",
-	kinds: SPRITE,
+	kinds: ["spritesheet", "sprites", "placeholder"],
 	cell: { w: 8, h: 8 },
 	pivot: { x: 4, y: 4 },
 	animations: { fly: 2 },
 	animationOrder: ["fly"],
 	facings: [],
+	heading: "up",
 };
 
 /** One tile = PIXELS_PER_TILE (16) pixels square. */
@@ -1979,6 +1990,26 @@ export const FX_ROLES: ReadonlyArray<ColorRole> = ["fx.heal", "fx.curse"];
  * role, and an untinted entry's `meanColor`. The decor fx rule (MIN_DECOR_FX_BULLET_DIFFERENCE), applied to effects.
  */
 export const MIN_FX_BULLET_DIFFERENCE = MIN_DECOR_FX_BULLET_DIFFERENCE;
+
+/**
+ * Roblox port (docs/PROJECTILE_ART.md PA3): the largest CIE76 difference between an enemy bullet's art `meanColor`
+ * (a `bullet.enemy.*` sprites set, recoloured into the danger ramp) and `enemyBullet`: the art must still read as THE
+ * danger colour. Player bullet art is held the other way, to MIN_FX_BULLET_DIFFERENCE from ENEMY_BULLET_ROLES and
+ * `telegraph`; enemy art also to MIN_ENEMY_BULLET_CONTRAST on every biome floor and wall (`bulletArtReport`).
+ */
+export const MAX_ENEMY_BULLET_ART_DIFFERENCE = 12;
+
+/**
+ * Roblox port (docs/PROJECTILE_ART.md PA3): the BULLET slot's `sprites` rules, one table (contract.luau sits near Luau's
+ * 200-locals limit). `animation`: the one loop a bullet set defines (the slot's base animation); `maxFrames`: its
+ * largest frame count; `decalIds`: bullets drawn as flat floor decals (goo puddles, lightning strikes, ember flames,
+ * PAD3), which keep their placeholders and may not take art.
+ */
+export const BULLET_ART = {
+	animation: "fly",
+	maxFrames: 4,
+	decalIds: ["bullet.enemy.goo", "bullet.enemy.strike", "bullet.player.ember"] as ReadonlyArray<string>,
+} as const;
 
 /** Manifest keys that smell like gameplay data. Packs carry art, never numbers that change difficulty. */
 export const GAMEPLAY_KEY_WORDS = [

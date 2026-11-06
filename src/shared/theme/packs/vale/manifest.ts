@@ -44,6 +44,10 @@
  * Sprite effects (fx.ts, docs/FX_AUDIO.md F2, F6): `fx.*` once the effects atlas has an ID. The ambient particle
  * textures (decor.fx.ambient.b<n>) have two sources: the R5 mote (VALE_AMBIENT_ART, every biome) wins once
  * decor-mote.png has an ID; until then a biome whose Ninja Adventure flipbook (fx-ambient-b<n>.png) has an ID uses it.
+ *
+ * Projectile sprites (bullets.ts, docs/PROJECTILE_ART.md PA6): every `bullet.*` entry of bulletLayout.ts becomes a
+ * one-facing `sprites` set once the bullet atlas (bullets.png) has an ID; until then (and always for the goo / strike /
+ * ember floor decals) the placeholder's neon part.
  */
 import {
 	BIOMES,
@@ -81,6 +85,7 @@ import { TREASURE_IDS } from "../../treasure";
 import { PLACEHOLDER_MANIFEST } from "../placeholder";
 import { VALE_ASSET_IDS } from "./assetIds";
 import { VALE_SOUND_LAYOUTS, type ValeSoundLayout } from "./audioLayout";
+import { valeBulletAssets, type ValeBulletSource } from "./bullets";
 import { valeAmbientAssets, valeFxAssets } from "./fx";
 import {
 	VALE_FLOOR_HEX,
@@ -579,6 +584,8 @@ export interface ValeLayoutSources {
 	readonly images?: Readonly<Record<string, ValeImageLayout>>;
 	/** VALE_UI_ICON_SOURCE. */
 	readonly uiIcons?: ValeUiIconSource;
+	/** VALE_BULLET_SOURCE (bullets.ts: the bullet atlas and bulletLayout.ts). */
+	readonly bullets?: ValeBulletSource;
 }
 
 /**
@@ -669,6 +676,11 @@ export function buildValeManifest(ids: AssetIds = VALE_ASSET_IDS, sources: ValeL
 	const fx = valeFxAssets(ids);
 	for (const id of sortedKeys(fx)) {
 		manifest.assets[id] = fx[id];
+	}
+	// Projectile sprites (docs/PROJECTILE_ART.md PA6; bullets.ts): replace the placeholder once bullets.png has an ID.
+	const bullets = valeBulletAssets(ids, sources.bullets);
+	for (const id of sortedKeys(bullets)) {
+		manifest.assets[id] = bullets[id];
 	}
 	// An ambient ID the R5 world art already filled (addWorldArt: the Lords of Pain mote, once decor-mote.png has an
 	// ID) keeps it; the Ninja Adventure flipbook (F6) is the fallback for a biome the mote does not cover yet.

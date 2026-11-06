@@ -18,7 +18,8 @@
  * Roblox port (docs/BOOSTS.md B5): `boost` is required art too (art, or its placeholder gem), with its strings.
  *
  * Roblox port (docs/FX_AUDIO.md A2, F1): `sound` resolves variants, pitch jitter and minimum intervals (cached);
- * `fx` resolves an optional sprite effect (never warns for an ID the pack leaves out).
+ * `fx` resolves an optional sprite effect (never warns for an ID the pack leaves out). docs/PROJECTILE_ART.md PA3:
+ * `bullet` resolves a bullet's optional sprite art the same way (undefined: draw its placeholder).
  *
  * Roblox port (docs/LOCALIZATION.md L3): `str` reads the active locale through `setLocale`: the manifest's own
  * `locales[code]` (a pack override), then the generated table (shared/theme/locales LOCALE_TABLES) when its entry's
@@ -32,6 +33,7 @@ import {
 	BIOMES,
 	BIOME_MATERIALS,
 	BIOME_MATERIAL_SURFACES,
+	BULLET_ART,
 	DECOR_MAX_VARIANTS,
 	DECOR_MIN_OUTLINE_POINTS,
 	DECOR_PARTICLE,
@@ -615,6 +617,24 @@ export interface FxArt {
 	readonly additive: boolean;
 }
 
+/**
+ * A projectile's sprite art (bullet.*, docs/PROJECTILE_ART.md PA3): a one-facing sprite set whose `fly` loop
+ * (BULLET_ART.animation) points screen-up (BULLET.heading). Drawn widthTiles x heightTiles at draw scale 1, the cell
+ * at its own pixelsPerTile (frameW / pixelsPerTile across the travel direction, frameH / pixelsPerTile along it).
+ */
+export interface BulletArt {
+	readonly id: string;
+	/** The set (one facing); its `fly` animation is the loop. */
+	readonly set: SpriteSetLayout;
+	/** The loop's frame count (1..BULLET_ART.maxFrames) and presentation frame rate. */
+	readonly frames: number;
+	readonly fps: number;
+	readonly widthTiles: number;
+	readonly heightTiles: number;
+	/** The art's mean colour (opaque pixels, after recolour): held to the bullet colour rules, never a tint. */
+	readonly meanColor: HexColor;
+}
+
 const NO_VARIANTS: ReadonlyArray<string> = [];
 const NO_CONTENT: ReadonlyArray<ContentRef> = [];
 /** The scheme every uploaded content id starts with (types.ts RobloxAssetId). */
@@ -693,6 +713,8 @@ export class ThemeCore {
 	private readonly decorArt = new Map<string, DecorArt | false>();
 	/** Sprite-effect lookups, misses included (`false`). */
 	private readonly fxArt = new Map<string, FxArt | false>();
+	/** Bullet sprite lookups, misses included (`false`). */
+	private readonly bulletArt = new Map<string, BulletArt | false>();
 	private readonly soundRefs = new Map<string, SoundRef>();
 	/** contentIds / biomeContentIds lookups (docs/PRELOAD.md P1), empty lists included. */
 	private readonly contentRefs = new Map<string, ReadonlyArray<ContentRef>>();
@@ -1405,6 +1427,63 @@ export class ThemeCore {
 			heightTiles: (sizeTiles * set.frameH) / longSide,
 			tint,
 			additive: d.additive === true,
+		};
+	}
+
+	// --- projectile sprites (Roblox port, docs/PROJECTILE_ART.md PA3) -------------------------------
+
+	/**
+	 * A bullet's sprite art, or undefined WITHOUT a warning when the pack has none (any kind but `sprites`, or no
+	 * entry): draw `placeholder(id)`. Cached, misses too. A sprites set the renderer cannot draw as a bullet warns once
+	 * and is undefined (the placeholder is drawn): malformed (`sprites(id)` rejects it), more than one facing, a `fly`
+	 * loop longer than BULLET_ART.maxFrames, no valid `meanColor` (the readability rules could not be checked), or an
+	 * ID drawn as a floor decal (BULLET_ART.decalIds).
+	 */
+	bullet(id: string): BulletArt | undefined {
+		const cached = this.bulletArt.get(id);
+		if (cached !== undefined) {
+			return cached === false ? undefined : cached;
+		}
+		const art = this.createBullet(id);
+		this.bulletArt.set(id, art ?? false);
+		return art;
+	}
+
+	private createBullet(id: string): BulletArt | undefined {
+		const def = this.asset(id);
+		if (def === undefined || def.kind !== "sprites") {
+			return undefined;
+		}
+		const skip = (why: string) => {
+			this.warnOnce(`bullet:${id}`, `bullet "${id}" ${why}; drawing its placeholder`);
+			return undefined;
+		};
+		if (BULLET_ART.decalIds.includes(id)) {
+			return skip("is a floor decal and takes no sprite art");
+		}
+		const set = this.sprites(id); // warns once when malformed
+		if (set === undefined) {
+			return undefined;
+		}
+		if (set.facings.count !== 1) {
+			return skip(`has ${set.facings.count} facings, bullets have 1`);
+		}
+		const fly = set.animation(BULLET_ART.animation) as SpriteAnimationDef; // required: sprites() rejects a set without it
+		if (fly.frames > BULLET_ART.maxFrames) {
+			return skip(`has ${fly.frames} "${BULLET_ART.animation}" frames, more than ${BULLET_ART.maxFrames}`);
+		}
+		const meanColor = (def as unknown as Obj).meanColor;
+		if (!isHexColor(meanColor)) {
+			return skip(`has meanColor ${describeValue(meanColor)}, not "#rrggbb"`);
+		}
+		return {
+			id,
+			set,
+			frames: fly.frames,
+			fps: fly.fps,
+			widthTiles: set.frameW / set.pixelsPerTile,
+			heightTiles: set.frameH / set.pixelsPerTile,
+			meanColor,
 		};
 	}
 

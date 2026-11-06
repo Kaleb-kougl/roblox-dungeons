@@ -102,7 +102,8 @@ describe("sprite contract", () => {
 
 	it("accepts placeholders for visuals and silence for audio", () => {
 		expect(CHARACTER.kinds).toEqual(["spritesheet", "sprites", "placeholder"]);
-		expect(BULLET.kinds).toEqual(["spritesheet", "placeholder"]);
+		// docs/PROJECTILE_ART.md PA3: bullets also take one-facing sprite sets (bulletArt.spec.ts)
+		expect(BULLET.kinds).toEqual(["spritesheet", "sprites", "placeholder"]);
 		expect(TILE.kinds).toEqual(["image", "placeholder"]);
 		expect(SFX.kinds).toEqual(["sound", "silent"]);
 	});
@@ -113,7 +114,7 @@ describe("sprite contract", () => {
 			["spritesheet", "sprites", "placeholder"],
 			["spritesheet", "sprites", "placeholder"],
 		]);
-		for (const slot of [BULLET, TILE, ITEM, UI, SFX, MUSIC]) {
+		for (const slot of [TILE, ITEM, UI, SFX, MUSIC]) {
 			expect([slot.slot, slot.kinds.includes("sprites")]).toEqual([slot.slot, false]);
 		}
 		expect(requiredBaseAnimations(CHARACTER)).toEqual(["idle", "run", "roll", "hit", "death"]);

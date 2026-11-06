@@ -450,7 +450,8 @@ export interface SpriteSetAsset {
 	additive?: boolean;
 	/**
 	 * The untinted sheet's mean colour (written by the FX pipeline): an untinted effect is held to the enemy-bullet
-	 * rule by it. Ignored (not checked) when `tint` is set: the tint is checked instead.
+	 * rule by it. Ignored (not checked) when `tint` is set: the tint is checked instead. bullet.* sets too (docs/
+	 * PROJECTILE_ART.md PA3), where it is required: held to the bullet colour rules (bulletArt.ts bulletArtReport).
 	 */
 	meanColor?: HexColor;
 }
