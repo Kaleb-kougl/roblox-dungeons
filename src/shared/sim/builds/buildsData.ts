@@ -22,6 +22,11 @@ export const Duo = {
 	CLOSE_CALL: 6,
 	GOLD_RUSH: 7,
 	UNSHAKEN: 8,
+	// Legendary duos (docs/LEGENDARIES.md "Duos", LG1 data; rules LG4).
+	SUPERNOVA: 9,
+	SKEWER: 10,
+	CITADEL: 11,
+	STONE_HEART: 12,
 } as const;
 export type DuoId = (typeof Duo)[keyof typeof Duo];
 
@@ -33,7 +38,7 @@ export interface DuoDef {
 	readonly b: number;
 }
 
-/** Every duo, by Duo index (docs/BUILDS.md "Duo boons"). */
+/** Every duo, by Duo index (docs/BUILDS.md "Duo boons"; 9-12 docs/LEGENDARIES.md "Duos"). */
 export const DUOS: ReadonlyArray<DuoDef> = [
 	{ id: "duo.fireArrows", a: Boon.EMBER_WAKE, b: Boon.PIERCING_ARROWS },
 	{ id: "duo.blazingTrail", a: Boon.EMBER_WAKE, b: Boon.SLIPPERY },
@@ -44,6 +49,10 @@ export const DUOS: ReadonlyArray<DuoDef> = [
 	{ id: "duo.closeCall", a: Boon.SOUL_SHARDS, b: Boon.DAREDEVIL },
 	{ id: "duo.goldRush", a: Boon.BOUNTY, b: Boon.LINGERING },
 	{ id: "duo.unshaken", a: Boon.COMPOSURE, b: Boon.WARDING },
+	{ id: "duo.supernova", a: Boon.OVERKILL, b: Boon.VOLATILE },
+	{ id: "duo.skewer", a: Boon.OVERKILL, b: Boon.PIERCING_ARROWS },
+	{ id: "duo.citadel", a: Boon.BASTION, b: Boon.WARDING },
+	{ id: "duo.stoneHeart", a: Boon.BASTION, b: Boon.HEARTY },
 ];
 export const DUO_COUNT = DUOS.size();
 

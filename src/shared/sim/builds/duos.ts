@@ -197,7 +197,7 @@ export function buildsOnArrowHit(
 }
 
 /** Scratch proc for Storm Blade and Chain Reaction (never re-entered: chainSpark / volatileBurst only queue procs). */
-const pseudo: BuildProc = { x: 0, z: 0, owner: 0, gen: 0, slot: 0, id: 0 };
+const pseudo: BuildProc = { x: 0, z: 0, owner: 0, gen: 0, slot: 0, id: 0, excess: 0 };
 
 function setPseudo(x: number, z: number, owner: number, gen: number, slot: number, id: number): BuildProc {
 	pseudo.x = x;

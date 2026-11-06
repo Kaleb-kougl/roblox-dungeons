@@ -149,8 +149,8 @@ describe("Pact of Greed (PS3)", () => {
 		expect(pk.events.greedCurse).toEqual([shown]);
 		expect(pk.events.greedCards).toEqual([me.draftOffers.size()]);
 		expect(s.run!.events.draftOpened).toBe(me.draftOffers.size());
-		// A fresh build: the two legendary boons (nothing upgradable to fill with).
-		expect(me.draftOffers.size()).toBe(2);
+		// A fresh build: three of the four legendary boons (docs/LEGENDARIES.md added Overkill and Bastion).
+		expect(me.draftOffers.size()).toBe(3);
 		for (const c of me.draftOffers) expect(BOONS[cardBoon(c)].rarity).toBe(Rarity.LEGENDARY);
 	});
 
@@ -251,12 +251,15 @@ describe("Pact of Greed (PS3)", () => {
 			expect(s.pacts!.players[0].greedTaken).toBe(0);
 			expect(s.rngState).toBe(rng);
 		}
-		// no legendary: both legendaries owned, every duo taken, no level-II boon
+		// no legendary: every legendary owned (docs/LEGENDARIES.md added Overkill and Bastion), every duo taken, no
+		// level-II boon
 		{
 			const { setup, s } = onAltarFloor();
 			const bp = s.builds!.players[0];
 			bp.levels[Boon.EMBER_WAKE] = 1;
 			bp.levels[Boon.COMPOSURE] = 1;
+			bp.levels[Boon.OVERKILL] = 1;
+			bp.levels[Boon.BASTION] = 1;
 			for (let d = 0; d < DUO_COUNT; d++) bp.duos.push(d);
 			expect(legendaryPool(bp.levels, bp.duos)).toEqual([]);
 			expect(pactAvailability(s, setup.config, 0, PactKind.GREED)).toBe(PactDim.NO_LEGENDARY);
@@ -351,14 +354,12 @@ describe("drawLegendaryOffers (PS3, FD4)", () => {
 		levels[Boon.HEARTY] = 2;
 		levels[Boon.SHARPENED] = 1;
 		levels[Boon.EMBER_WAKE] = 1;
-		expect(legendaryPool(levels, [])).toEqual([
-			boonCard(Boon.COMPOSURE),
-			duoCard(Duo.GOLD_RUSH),
-			boonCard(Boon.HEARTY),
-		]);
-		expect(legendaryPool(levels, [Duo.GOLD_RUSH])).toEqual([boonCard(Boon.COMPOSURE), boonCard(Boon.HEARTY)]);
+		// docs/LEGENDARIES.md: Overkill and Bastion are unowned legendaries too, after Composure in Boon order.
+		const legendaries = [boonCard(Boon.COMPOSURE), boonCard(Boon.OVERKILL), boonCard(Boon.BASTION)];
+		expect(legendaryPool(levels, [])).toEqual([...legendaries, duoCard(Duo.GOLD_RUSH), boonCard(Boon.HEARTY)]);
+		expect(legendaryPool(levels, [Duo.GOLD_RUSH])).toEqual([...legendaries, boonCard(Boon.HEARTY)]);
 		levels[Boon.HEARTY] = BOON_MAX_LEVEL;
-		expect(legendaryPool(levels, [Duo.GOLD_RUSH])).toEqual([boonCard(Boon.COMPOSURE)]);
+		expect(legendaryPool(levels, [Duo.GOLD_RUSH])).toEqual(legendaries);
 	});
 
 	it("deals the pool first (no repeats, one rngInt each), then fills with ordinary upgrades", () => {

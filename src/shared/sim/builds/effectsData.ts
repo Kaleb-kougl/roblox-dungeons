@@ -126,15 +126,33 @@ export const CLOSE_CALL_GRAZES = 3;
 export const CLOSE_CALL_SHARD = SOUL_SHARD;
 export const CLOSE_CALL_RANGE = SOUL_SHARDS_RANGE;
 
+// --- Overkill (legendary, docs/LEGENDARIES.md "Overkill"; LG1 declares these, the rule is LG2) ------------------
+
+/** The streak reaches the nearest living enemy within this range of the corpse (each carry from its own corpse). */
+export const OVERKILL_RANGE = 4 * TILE_SIZE;
+/** A carry below this does nothing (no streak, no event). */
+export const OVERKILL_MIN_CARRY = 1;
+/** A one-shot by the player's own hit (gen 0, the enemy at full hp) carries at least this (LGD2). */
+export const OVERKILL_ONE_SHOT_MIN = 1;
+
+// --- Legendary duos (docs/LEGENDARIES.md "Duos", LG4) --------------------------------------------------------
+
+/** Supernova (Overkill + Volatile): a kill whose carry is at least this bursts one Volatile ring larger (LGD8). */
+export const SUPERNOVA_CARRY = 3;
+/** Skewer (Overkill + Piercing Arrows): the streak strikes every enemy its line passes within this distance of. */
+export const SKEWER_RADIUS = 0.5 * TILE_SIZE;
+
 /**
  * What dealt the damage being dealt now (SimCtx.procCause, set beside ctx.procGen): Chain Reaction (Volatile + Chain
  * Spark) cross-triggers on a kill by a spark (a Chain Spark hop or fork, a Storm Blade or Conductor spark) or by a
- * Volatile bolt.
+ * Volatile bolt. OVERKILL marks a streak's strike (docs/LEGENDARIES.md LG2).
  */
 export const KillCause = {
 	NONE: 0,
 	SPARK: 1,
 	BURST: 2,
+	/** An Overkill streak (docs/LEGENDARIES.md LG2; Skewer's line strikes too). */
+	OVERKILL: 3,
 } as const;
 
 // --- Other effect bullets (evolutions) ------------------------------------------------------------------------

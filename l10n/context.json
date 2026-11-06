@@ -88,6 +88,17 @@
 	"biome.5.name": {
 		"note": "Dungeon area (biome) name: overgrown, plant-covered ruins. Shown on the stage card under the floor number when a floor loads, and in the run info line of the pause menu. Evocative place name, title case."
 	},
+	"boon.bastion.desc": {
+		"note": "Effect line of the boon \"Bastion\" on its draft card (wraps over two or three lines of a 240 px card) and in the build list. Terse game-rules style: keep numbers, % and units (\"s\" = seconds) exactly. A \"heart\" is one unit of health; \"combo\" the kill-streak multiplier; \"graze\" a bullet skimming past without hitting. An armor \"pip\" is one unit of armor that absorbs a whole hit; the \"guard\" is the sword's block; a \"brace\" is Bastion restoring a pip after a guard or roll stops 3 bullets."
+	},
+	"boon.bastion.icon": {
+		"note": "Icon label of the boon \"Bastion\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
+		"max": 3
+	},
+	"boon.bastion.name": {
+		"note": "Name of a boon (a power-up kept for the rest of the run, picked from a draft of cards); its effect: \"+1 armor pip; a full-ring guard; stopping 3 bullets restores a pip\". Shown as a draft card's one-line title (24 px text on a 240 px card, no wrapping), in toasts, and in the build list. Short and flavourful, title case; glossary term.",
+		"max": 20
+	},
 	"boon.bounty.desc": {
 		"note": "Effect line of the boon \"Bounty\" on its draft card (wraps over two or three lines of a 240 px card) and in the build list. Terse game-rules style: keep numbers, % and units (\"s\" = seconds) exactly. A \"heart\" is one unit of health; \"combo\" the kill-streak multiplier; \"graze\" a bullet skimming past without hitting."
 	},
@@ -234,6 +245,17 @@
 	},
 	"boon.lingering.name": {
 		"note": "Name of a boon (a power-up kept for the rest of the run, picked from a draft of cards); its effect: \"Combo lasts 9 s instead of 6 s\". Shown as a draft card's one-line title (24 px text on a 240 px card, no wrapping), in toasts, and in the build list. Short and flavourful, title case; glossary term.",
+		"max": 20
+	},
+	"boon.overkill.desc": {
+		"note": "Effect line of the boon \"Overkill\" on its draft card (wraps over two or three lines of a 240 px card) and in the build list. Terse game-rules style: keep numbers, % and units (\"s\" = seconds) exactly. A \"heart\" is one unit of health; \"combo\" the kill-streak multiplier; \"graze\" a bullet skimming past without hitting. \"Overkill\" is the damage left over from a kill, which jumps on to the next enemy as a \"streak\"."
+	},
+	"boon.overkill.icon": {
+		"note": "Icon label of the boon \"Overkill\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
+		"max": 3
+	},
+	"boon.overkill.name": {
+		"note": "Name of a boon (a power-up kept for the rest of the run, picked from a draft of cards); its effect: \"Damage left over from a kill jumps to the next enemy\". Shown as a draft card's one-line title (24 px text on a 240 px card, no wrapping), in toasts, and in the build list. Short and flavourful, title case; glossary term.",
 		"max": 20
 	},
 	"boon.piercingArrows.desc": {
@@ -893,6 +915,17 @@
 		"note": "Name of a Duo boon (a special boon offered when the player owns two boons that combine); its effect: \"Spark kills burst; burst kills spark\". Shown as a draft card's one-line title (24 px text on a 240 px card, no wrapping), in toasts and the build list. Title case; glossary term.",
 		"max": 20
 	},
+	"duo.citadel.desc": {
+		"note": "Effect line of the Duo boon \"Citadel\" on its draft card (wraps) and in the build list. Terse game-rules style; keep numbers exactly. \"Embers\" here are burning patches on the floor; a \"spark\" jumps between enemies; a \"burst\" is a ring of bolts. An armor \"pip\" is one unit of armor that absorbs a whole hit; the \"guard\" is the sword's block; a \"brace\" is Bastion restoring a pip after a guard or roll stops 3 bullets."
+	},
+	"duo.citadel.icon": {
+		"note": "Icon label of the Duo boon \"Citadel\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
+		"max": 3
+	},
+	"duo.citadel.name": {
+		"note": "Name of a Duo boon (a special boon offered when the player owns two boons that combine); its effect: \"Every guard that stops 3 bullets restores a pip\". Shown as a draft card's one-line title (24 px text on a 240 px card, no wrapping), in toasts and the build list. Title case; glossary term.",
+		"max": 20
+	},
 	"duo.closeCall.desc": {
 		"note": "Effect line of the Duo boon \"Close Call\" on its draft card (wraps) and in the build list. Terse game-rules style; keep numbers exactly. \"Embers\" here are burning patches on the floor; a \"spark\" jumps between enemies; a \"burst\" is a ring of bolts."
 	},
@@ -948,6 +981,28 @@
 		"note": "Name of a Duo boon (a special boon offered when the player owns two boons that combine); its effect: \"Burst bolts hit harder and pierce\". Shown as a draft card's one-line title (24 px text on a 240 px card, no wrapping), in toasts and the build list. Title case; glossary term.",
 		"max": 20
 	},
+	"duo.skewer.desc": {
+		"note": "Effect line of the Duo boon \"Skewer\" on its draft card (wraps) and in the build list. Terse game-rules style; keep numbers exactly. \"Embers\" here are burning patches on the floor; a \"spark\" jumps between enemies; a \"burst\" is a ring of bolts. \"Overkill\" is the damage left over from a kill, which jumps on to the next enemy as a \"streak\"."
+	},
+	"duo.skewer.icon": {
+		"note": "Icon label of the Duo boon \"Skewer\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
+		"max": 3
+	},
+	"duo.skewer.name": {
+		"note": "Name of a Duo boon (a special boon offered when the player owns two boons that combine); its effect: \"Overkill streaks strike every enemy in their line\". Shown as a draft card's one-line title (24 px text on a 240 px card, no wrapping), in toasts and the build list. Title case; glossary term.",
+		"max": 20
+	},
+	"duo.stoneHeart.desc": {
+		"note": "Effect line of the Duo boon \"Stone Heart\" on its draft card (wraps) and in the build list. Terse game-rules style; keep numbers exactly. \"Embers\" here are burning patches on the floor; a \"spark\" jumps between enemies; a \"burst\" is a ring of bolts. An armor \"pip\" is one unit of armor that absorbs a whole hit; the \"guard\" is the sword's block; a \"brace\" is Bastion restoring a pip after a guard or roll stops 3 bullets."
+	},
+	"duo.stoneHeart.icon": {
+		"note": "Icon label of the Duo boon \"Stone Heart\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
+		"max": 3
+	},
+	"duo.stoneHeart.name": {
+		"note": "Name of a Duo boon (a special boon offered when the player owns two boons that combine); its effect: \"A brace at full armor heals half a heart\". Shown as a draft card's one-line title (24 px text on a 240 px card, no wrapping), in toasts and the build list. Title case; glossary term.",
+		"max": 20
+	},
 	"duo.stormBlade.desc": {
 		"note": "Effect line of the Duo boon \"Storm Blade\" on its draft card (wraps) and in the build list. Terse game-rules style; keep numbers exactly. \"Embers\" here are burning patches on the floor; a \"spark\" jumps between enemies; a \"burst\" is a ring of bolts."
 	},
@@ -957,6 +1012,17 @@
 	},
 	"duo.stormBlade.name": {
 		"note": "Name of a Duo boon (a special boon offered when the player owns two boons that combine); its effect: \"Finishers and every 5th arrow hit spark\". Shown as a draft card's one-line title (24 px text on a 240 px card, no wrapping), in toasts and the build list. Title case; glossary term.",
+		"max": 20
+	},
+	"duo.supernova.desc": {
+		"note": "Effect line of the Duo boon \"Supernova\" on its draft card (wraps) and in the build list. Terse game-rules style; keep numbers exactly. \"Embers\" here are burning patches on the floor; a \"spark\" jumps between enemies; a \"burst\" is a ring of bolts. \"Overkill\" is the damage left over from a kill, which jumps on to the next enemy as a \"streak\"."
+	},
+	"duo.supernova.icon": {
+		"note": "Icon label of the Duo boon \"Supernova\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
+		"max": 3
+	},
+	"duo.supernova.name": {
+		"note": "Name of a Duo boon (a special boon offered when the player owns two boons that combine); its effect: \"Big overkills burst one ring bigger\". Shown as a draft card's one-line title (24 px text on a 240 px card, no wrapping), in toasts and the build list. Title case; glossary term.",
 		"max": 20
 	},
 	"duo.unshaken.desc": {

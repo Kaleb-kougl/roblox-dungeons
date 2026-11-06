@@ -171,14 +171,15 @@ function stepUntilDead(s: SimState, a: ActorState, config: SimConfig = ARENA, ma
 // ---------------------------------------------------------------------------------------------
 
 describe("the kill hook (BU3)", () => {
-	it("a kill by player damage queues { x, z, owner, gen, slot, id }; stepCombat resolves it the same tick", () => {
+	it("a kill by player damage queues { x, z, owner, gen, slot, id, excess }; stepCombat resolves it the same tick", () => {
 		const s = fresh();
 		setLevel(s, Boon.CHAIN_SPARK, 1);
 		const ctx = ctxOf(s);
 		const victim = dummy(ctx, 2, 0, 1);
 		const target = dummy(ctx, 5, 0);
 		kill(ctx, victim);
-		expect(s.builds!.procs).toEqual([{ x: 2, z: 0, owner: 0, gen: 0, slot: 0, id: victim.id }]);
+		// excess (docs/LEGENDARIES.md LG1): Overkill's carry, 0 until LG2's rule.
+		expect(s.builds!.procs).toEqual([{ x: 2, z: 0, owner: 0, gen: 0, slot: 0, id: victim.id, excess: 0 }]);
 		step(s, IDLE, ARENA);
 		expect(s.builds!.procs.size()).toBe(0);
 		expect(target.hp).toBe(8);

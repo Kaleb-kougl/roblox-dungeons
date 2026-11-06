@@ -25,8 +25,9 @@ see it happen, it is not in this plan.**
 
 ## Status (2026-11-06)
 
-**Plan only, nothing built.** Follows docs/BUILDS.md (BU0-BU10 built; BU11-BU14 open). Overkill was proposed in
-docs/BUILDS_V2.md as a common boon with levels and an evolution (Annihilator); the owner moved it here as a legendary
+**LG0 and LG1 built** (the audit, and the data and scaffolding with no rule yet: "LG0 findings", "LG1 (as built)");
+LG2-LG9 open. Follows docs/BUILDS.md (BU0-BU10 built; BU11-BU14 open). Overkill was proposed in docs/BUILDS_V2.md as
+a common boon with levels and an evolution (Annihilator); the owner moved it here as a legendary
 (2026-11-06), so V2's Overkill row is withdrawn and its Supernova duo is redefined below. Decisions LGD1-LGD12 are
 proposed defaults until the owner settles them; LGD2, LGD3, LGD5-LGD7 and LGD12 are settled (owner, 2026-11-06).
 
@@ -45,6 +46,102 @@ several ticks; Phantom Step (`phantomStepOn`: Slippery III, `rollTicks > 0` and 
 | Armor: `armor` / `armorMax` per player, one pip absorbs a whole hit; Warding refills to `armorMax` when a room's enemies spawn (`armorOnRoomSpawn`); `buildsOnArmorBreak` hook exists | `player.ts`, `progression/progression.ts` 503-511, `builds/hooks.ts` | Bastion's pip and its once-per-room recharge hang off the same moment |
 | Legendaries: `boonMaxLevel` is 1 for every legendary, upgrade pools take common / rare only, Greed's `drawLegendaryOffers` draws unowned legendaries first | `progressionData.ts`, `builds/cards.ts` | Two new legendaries need no card-kind change; Greed's deal gets twice the pool |
 | `DAILY.ruleset` is 8 | `shared/daily/config.ts` | Bumps to 9 (LGD11) |
+
+## LG0 findings (2026-11-06)
+
+Read on `legendaries` @ `aa2cb55` (= `main` @ `749f788` + this plan). Paths under `src/shared/sim/` unless noted. Every
+row of the table above holds; the points below add to it or say where the next tasks must take care.
+
+- **Indices.** Boon 15 / 16, Duo 9-12 and `KillCause` 3 were free; no BUILDS_V2 boon or duo has landed (no code names
+  one). The proc's `BuildProc` fields, the per-player scalars and the payload layout had no other pending append.
+- **`damageActor`** (`combat/actors/actors.ts` 198-227): the order is `filterDamage`, the Shielded absorb, the boss cap,
+  `buildsExecute`, then the clamp at line 211. `buildsExecute` replaces `dmg` by `a.hp` before the clamp, so "an
+  execute carries the full hit" (LGD3) needs the hit as it was BEFORE `buildsExecute` (after the cap), not the value
+  at the clamp: LG2 should keep that value and tell an execute by `buildsExecute` having changed it. The tutorial's
+  held damage comes after the clamp (no builds there, so it never meets a carry).
+- **Procs** (`builds/procs.ts`): `hasOnKillEffect` gates the queue on `ON_KILL_BOONS`, and `resolveProc` sends every
+  boon in that list that is not Chain Spark or Volatile to `soulShards` (an `else`). LG2 must add `Boon.OVERKILL` to
+  `ON_KILL_BOONS` AND give it its own branch; until then an Overkill-only player queues no proc at all. A kill of
+  generation `genMax` queues nothing, so the streak chain gives exactly 3 carries, as the plan says. The proc literal
+  in `buildsOnKill` and the scratch proc in `builds/duos.ts` (`pseudo`, Storm Blade / Chain Reaction) both carry the
+  new `excess` field (0).
+- **Chain Spark** (`builds/onKill.ts` `chainSpark`) matches the plan's shape; `nearestEnemy` (`builds/effects.ts`) skips
+  the victim by id, dead slots, actors spawned this tick and an exclude list. Sparks apply `playerHitDamage`; the
+  streak must not (LGD4).
+- **Weapons**: sword 3 / finisher 6, bow 1 / heavy 4, `SWARMER_HP` 1, as listed.
+- **The guard** (`combat/weapons/defs/sword.ts` 78-82 data, 229-275 rule) as listed, plus three things LG3 / LG6 need:
+  `swordGuard()` (the render progress) divides by `SWORD_DATA.guardTicks`, so with 27 ticks it would read 1.5 at a
+  guard's start; a roll (`rollTicks > 0`) and a swap zero the guard; and `melee.ts` `inCone` tests
+  `dot >= halfCos x dist`, so at exactly -1 a bullet straight behind the knight can miss by one rounding step when the
+  facing is not exactly unit (the novas pass `NOVA_HALF_ANGLE_COS` = -2 for this reason). LG1 keeps the plan's
+  `BASTION_GUARD_HALF_ANGLE_COS` = -1 (the number a view draws); LG3 should pass a value below -1 to `sweepArc` for
+  the full ring.
+- **Enemy bullet `lastHit`** is unused, as the plan says: enemy patterns pack it 0, the only enemy payload writes are a
+  strike's `pierce` hold (`combat/combat.ts` `strikeHoldSpent`) and the graze bits `GRAZE_NEAR_BIT` / `GRAZE_DONE_BIT`
+  ABOVE the 28 layout bits (`score/score.ts` 988-1028). `BulletPayload.with` keeps bits above the layout (it masks with
+  0x7fffffff), so LG3's mark keeps a bullet's graze state. Payloads are hashed with the pool (`combat/bullets.ts`).
+- **Armor / Warding** (`progression/progression.ts`): the refill is step 3 of `stepProgression` (503-512), only for
+  living players, only for a room with spawns, and only when someone is alive; step 1 (a floor change) returns early,
+  so the floor-start re-arm of `braceReady` belongs in step 1's branch, not beside the refill. Warding's pip is added by
+  `cards.ts` `applyLevelGained` in builds runs and by `grantBoon`'s own branch without builds.
+- **Cards** (`builds/cards.ts`): `drawCardOffers`, `legendaryPool` and `drawLegendaryOffers` loop `BOON_COUNT`, so both
+  new legendaries are dealt with no code change; `boonMaxLevel` 1 keeps them out of the upgrade pool and the Greed
+  fills. `cardKind` would call an owned legendary's card UPGRADE (level 1), but no draw deals one. Without builds
+  nothing reaches them: `drawBoonOffers` and Greed's classic pool (`pacts/stepPacts.ts` `classicLegendaryPool`) loop
+  `CLASSIC_BOON_COUNT`.
+- **Nothing outside specs hardcodes 15 boons or 9 duos.** Specs did: `builds.spec.ts` (counts, the builds hash group's
+  size, "Hearty in no duo"), `progression.spec.ts` (`BOON_COUNT` 15), `procs.spec.ts` (the proc literal),
+  `duos.spec.ts` (every duo granted), `pacts/greed.spec.ts` (two legendaries in the pool) and `daily.spec.ts`
+  (`DAILY.ruleset` 8); LG1 updated each (see below). `play/snapshot.ts` copies the owned boons' levels and the duos
+  only; no counter is in the snapshot (as for `closeGrazes` / `bulwarkPending`), so the new counters need no snapshot
+  field until a view reads them (LG6).
+- **`DAILY.ruleset`** was 8 (`shared/daily/config.ts`).
+
+## LG1 (as built)
+
+Data and hashed state only: no rule reads any of it yet, so a builds run plays as before, except that the draft can deal
+the two new boons and four duos (endless drafts change). Paths under `src/shared/` unless noted.
+
+- **Boons** (`sim/progression/progressionData.ts`): `Boon.OVERKILL` 15 (`boon.overkill`, legendary, offense) and
+  `Boon.BASTION` 16 (`boon.bastion`, legendary, defense) appended to `Boon` / `BOONS`; `BOON_COUNT` 17,
+  `CLASSIC_BOON_COUNT` stays 12. Granting either is level I through `grantCard` (its only level); Bastion adds no pip
+  yet (LG3).
+- **Duos** (`sim/builds/buildsData.ts`): `Duo.SUPERNOVA` 9 (`duo.supernova`, Overkill + Volatile), `Duo.SKEWER` 10
+  (`duo.skewer`, Overkill + Piercing Arrows), `Duo.CITADEL` 11 (`duo.citadel`, Bastion + Warding),
+  `Duo.STONE_HEART` 12 (`duo.stoneHeart`, Bastion + Hearty); `DUO_COUNT` 13. Card ids 73-76.
+- **Tunables.** Overkill and the duos in `sim/builds/effectsData.ts`: `OVERKILL_RANGE` (4 x `TILE_SIZE`),
+  `OVERKILL_MIN_CARRY` 1, `OVERKILL_ONE_SHOT_MIN` 1, `SUPERNOVA_CARRY` 3, `SKEWER_RADIUS` (0.5 x `TILE_SIZE`), and
+  `KillCause.OVERKILL` 3. Bastion beside Warding's numbers in `progressionData.ts` (a boon's one-off pip and the mods
+  `runMods` reads live there): `BASTION_ARMOR_PIPS` 1, `BASTION_GUARD_HALF_ANGLE_COS` -1, `BASTION_GUARD_TICKS` 27,
+  `BASTION_BRACE_BULLETS` 3.
+- **Hashed state** (`sim/builds/builds.ts`, appended, 0 everywhere for now): `BuildProc.excess` (last of
+  `BUILD_PROC_FIELDS`, set 0 by `buildsOnKill` and in `duos.ts`' scratch proc); per player `braceCount` and
+  `braceReady` (last of `BUILD_PLAYER_SCALARS`, created 0 by `newPlayer`). Clone copies them with the spread, the hash
+  and the dump names come from the two lists; no snapshot field (LG0). Every builds run's `builds` group grows by 2
+  levels and 2 scalars per player and 1 value per queued proc, so endless state hashes differ from tick 0; no spec pins
+  an endless builds hash, and no pinned value changed.
+- **Theme** (placeholder pack, `theme/packs/placeholder/manifest.ts`): `boon.overkill.*` ("Overkill", "Damage left over
+  from a kill jumps to the next enemy", `OVK`), `boon.bastion.*` ("Bastion", "+1 armor pip; a full-ring guard;
+  stopping 3 bullets restores a pip", `BST`), `duo.supernova.*` (`SNV`), `duo.skewer.*` (`SKW`), `duo.citadel.*`
+  (`CTD`), `duo.stoneHeart.*` (`STH`), name / desc / icon each (18 strings; listed by `progressionStringKeys` through
+  `BOONS` / `DUOS`, no `.desc.2` / `.evo.*`: legendaries have one level). Each has an `l10n/context.json` entry (the
+  Chain Spark / Unshaken notes, with a line on pips, the guard, braces or overkill); `l10n:check` 0 errors. No colour
+  role, audio ID, toast or floor text yet (LG5). No top-level constant in `contract.ts`, so the Luau locals are
+  unchanged.
+- **`DAILY.ruleset`** 8 -> 9 (`shared/daily/config.ts`, LGD11).
+- **Specs.** `sim/builds/builds.spec.ts`: the two boons' rows and the four legendaries; the tutorial's draft
+  (`drawBoonOffers`) never deals 12 or above over 2000 draws; thirteen duos and their pairs (Deep Flask is now the only
+  boon in no duo); the hash group's size and the appended names; a new block "legendaries Overkill and Bastion": the
+  appended fields, both dealt as New to a fresh build and never again once owned, granting (New, then refused, no pip,
+  no evolution event), the four duos available exactly when both boons are owned (a boss deal's guaranteed duo, granted
+  once), and Greed's pool with all four legendaries. Pinned counts updated in `progression.spec.ts`, `procs.spec.ts`,
+  `duos.spec.ts`, `pacts/greed.spec.ts` (a fresh build's Greed deal is now 3 legendary cards, was 2) and
+  `daily/daily.spec.ts`.
+- **Verify.** typecheck, lint, check:assets, build, test:l10n, test:checks, check:autolocalize and `l10n:check` green.
+  Headless (Lune): every spec under `sim/builds`, `sim/progression`, `sim/pacts`, `golden`, `fixture`, `tutorial`,
+  `roomPool`, `run/`, `theme`, `view/hud`, `view/fx`, `shared/play` and `daily`, plus every fixture parity spec (golden
+  runs `sim/run*`, `constants`, `hash`, the dungeon parity) and the four determinism specs: all pass (the tutorial lock,
+  `roomPool.lock.spec` and the golden runs match exactly).
 
 ## Player experience
 

@@ -641,7 +641,9 @@ describe("duos together: determinism", () => {
 			grantCard(s, 0, boon);
 		}
 		for (let d = 0; d < DUO_COUNT; d++) grantCard(s, 0, duoCard(d));
-		expect(s.builds!.players[0].duos.size()).toBe(DUO_COUNT);
+		// Every BU6 duo (Fire Arrows .. Unshaken); the legendary duos (docs/LEGENDARIES.md, 9-12) need Overkill /
+		// Bastion, which this build does not own, so grantCard refuses them.
+		expect(s.builds!.players[0].duos.size()).toBe(Duo.UNSHAKEN + 1);
 		const hashes: string[] = [];
 		let emberCount = 0;
 		let procs = 0;

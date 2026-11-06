@@ -3,8 +3,9 @@
  * state.builds; without it nothing here is reached.
  *
  * Kills (buildsOnKill, from actors.ts damageActor's kill line, before killActor): a kill by player damage pushes a proc
- * { x, z, owner, gen, slot, id } (the corpse, ctx.playerIndex = the bullet's owner / the swinging player / the spark's
- * owner, ctx.procGen, the victim's slot and actor id) onto state.builds.procs, unless
+ * { x, z, owner, gen, slot, id, excess } (the corpse, ctx.playerIndex = the bullet's owner / the swinging player / the
+ * spark's owner, ctx.procGen, the victim's slot and actor id; excess 0 until docs/LEGENDARIES.md LG2's Overkill carry)
+ * onto state.builds.procs, unless
  *   - the victim revives (def.stepDead: turrets) or is in PROC_INELIGIBLE_ARCHETYPES (the training dummy),
  *   - gen >= genMax (BUD5: a generation-3 proc would do nothing, so none is queued; a kill of generation exactly
  *     genMax goes to Chain Reaction's cross trigger instead, ./duos.ts chainReactionKill),
@@ -89,7 +90,7 @@ export function buildsOnKill(ctx: SimCtx, a: Readonly<ActorState>, def: Readonly
 		return;
 	}
 	if (!hasOnKillEffect(p)) return;
-	s.procs.push({ x: a.x, z: a.z, owner, gen, slot: ctx.actors.indexOf(a), id: a.id });
+	s.procs.push({ x: a.x, z: a.z, owner, gen, slot: ctx.actors.indexOf(a), id: a.id, excess: 0 });
 }
 
 function resolveProc(ctx: SimCtx, s: BuildsState, q: Readonly<BuildProc>): void {

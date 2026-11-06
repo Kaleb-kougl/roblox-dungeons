@@ -82,6 +82,9 @@ export const Boon = {
 	CHAIN_SPARK: 12,
 	VOLATILE: 13,
 	SOUL_SHARDS: 14,
+	// Legendaries (docs/LEGENDARIES.md LG1): two more anchors, builds-only like the on-kill boons (CLASSIC_BOON_COUNT).
+	OVERKILL: 15,
+	BASTION: 16,
 } as const;
 export type BoonId = (typeof Boon)[keyof typeof Boon];
 
@@ -111,12 +114,15 @@ export const BOONS: ReadonlyArray<BoonDef> = [
 	{ id: "boon.chainSpark", rarity: Rarity.RARE, category: "offense" },
 	{ id: "boon.volatile", rarity: Rarity.COMMON, category: "offense" },
 	{ id: "boon.soulShards", rarity: Rarity.RARE, category: "offense" },
+	{ id: "boon.overkill", rarity: Rarity.LEGENDARY, category: "offense" },
+	{ id: "boon.bastion", rarity: Rarity.LEGENDARY, category: "defense" },
 ];
 export const BOON_COUNT = BOONS.size();
 /**
  * The boons a draft without builds offers (drawBoonOffers: the tutorial, hand-built endless configs): the first 12,
- * Boon.SHARPENED .. Boon.COMPOSURE. The on-kill boons appended after them (docs/BUILDS.md) are builds-only, so a run
- * without SimConfig.builds draws exactly as before they existed.
+ * Boon.SHARPENED .. Boon.COMPOSURE. The on-kill boons (docs/BUILDS.md) and the legendaries Overkill / Bastion
+ * (docs/LEGENDARIES.md) appended after them are builds-only, so a run without SimConfig.builds draws exactly as before
+ * they existed.
  */
 export const CLASSIC_BOON_COUNT = 12;
 
@@ -192,6 +198,18 @@ export const KILL_POINTS_BOON_PERCENT = 110;
 export const KILL_POINTS_BOON_PERCENTS: ReadonlyArray<number> = [KILL_POINTS_BOON_PERCENT, 120, 130];
 /** Composure: a landed hit cuts the combo by half as much (the cut's divisor x 2). */
 export const COMBO_CUT_BOON_DIVISOR_MULTIPLIER = 2;
+
+// --- Bastion (docs/LEGENDARIES.md "Bastion"; LG1 declares these, the rules are LG3) -------------------------
+// Overkill's tunables are in builds/effectsData.ts (an on-kill effect, like Chain Spark's).
+
+/** Bastion: +1 armor pip on pick (max and current), like Warding I; not refilled per room by itself. */
+export const BASTION_ARMOR_PIPS = 1;
+/** Bastion: the sword's guard covers the full ring (melee.ts sweepArc's half-angle cosine; SWORD_DATA's is -0.2). */
+export const BASTION_GUARD_HALF_ANGLE_COS = -1;
+/** Bastion: the guard lasts this many ticks (1.5 x SWORD_DATA.guardTicks 18; reach and cooldown unchanged). */
+export const BASTION_GUARD_TICKS = 27;
+/** Brace: one guard or one roll that stops at least this many enemy bullets restores one armor pip (once per room). */
+export const BASTION_BRACE_BULLETS = 3;
 
 // --- Relics ------------------------------------------------------------------------------------------
 

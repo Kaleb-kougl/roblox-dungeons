@@ -41,7 +41,8 @@ export const DAILY: DailyConfig = table.freeze({
 	// second merge, which brought the reading area: main stayed at 6).
 	// 8: pacts and the Goldling merged onto main's 7 (docs/FORTUNE.md, FD15: endless shrines, rooms and scores change;
 	// one bump for both; branch fortune's own 6 never shipped).
-	ruleset: 8,
+	// 9: two legendaries, Overkill and Bastion, and their four duos (docs/LEGENDARIES.md LGD11) change endless drafts.
+	ruleset: 9,
 	labelOffset: 1,
 	yesterdayCacheSeconds: 600,
 	minEntrantsForPercentile: 20,

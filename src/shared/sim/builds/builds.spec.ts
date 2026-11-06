@@ -15,6 +15,8 @@ import {
 	GOLDEN_SUBSYSTEM,
 	PELLETS_SUBSYSTEM,
 	PACTS_SUBSYSTEM,
+	BUILD_PLAYER_SCALARS,
+	BUILD_PROC_FIELDS,
 	BUILD_RULES,
 	BUILD_SOURCE_BASE,
 	BULLET_KIND_COUNT,
@@ -58,6 +60,7 @@ import {
 	createSimState,
 	drawBoonOffers,
 	drawCardOffers,
+	drawLegendaryOffers,
 	duoAvailable,
 	duoCard,
 	duoPercent,
@@ -69,6 +72,7 @@ import {
 	hashState,
 	isBuildSource,
 	isDraftOpen,
+	legendaryPool,
 	playerAt,
 	runMods,
 	scalePercent,
@@ -148,7 +152,7 @@ function confirmSolo(s: SimState, config: SimConfig, stick: InputFrame = frame(0
 describe("builds data (BU1)", () => {
 	it("appends Chain Spark (rare), Volatile (common) and Soul Shards (rare) at 12 / 13 / 14; the classic draft keeps 12", () => {
 		expect([Boon.CHAIN_SPARK, Boon.VOLATILE, Boon.SOUL_SHARDS]).toEqual([12, 13, 14]);
-		expect([BOON_COUNT, CLASSIC_BOON_COUNT]).toEqual([15, 12]);
+		expect([BOON_COUNT, CLASSIC_BOON_COUNT]).toEqual([17, 12]);
 		const rows = [12, 13, 14].map((b) => [BOONS[b].id, BOONS[b].rarity, BOONS[b].category]);
 		expect(rows).toEqual([
 			["boon.chainSpark", Rarity.RARE, "offense"],
@@ -166,9 +170,38 @@ describe("builds data (BU1)", () => {
 		for (let i = 0; i < 400; i++) for (const b of drawBoonOffers(rng, [], 1 + (i % 12))) expect(b < 12).toBe(true);
 	});
 
-	it("nine duos (append only): two distinct boons each, no pair twice; Hearty and Deep Flask in none, the rest in 1-3", () => {
-		expect(DUO_COUNT).toBe(9);
+	it("appends the legendaries Overkill (offense) and Bastion (defense) at 15 / 16 (docs/LEGENDARIES.md LG1), level I only", () => {
+		expect([Boon.OVERKILL, Boon.BASTION]).toEqual([15, 16]);
+		const rows = [15, 16].map((b) => [BOONS[b].id, BOONS[b].rarity, BOONS[b].category, boonMaxLevel(b)]);
+		expect(rows).toEqual([
+			["boon.overkill", Rarity.LEGENDARY, "offense", LEGENDARY_MAX_LEVEL],
+			["boon.bastion", Rarity.LEGENDARY, "defense", LEGENDARY_MAX_LEVEL],
+		]);
+		// Four legendaries in all: Ember Wake, Composure, Overkill, Bastion.
+		const legendaries: number[] = [];
+		for (let b = 0; b < BOON_COUNT; b++) if (BOONS[b].rarity === Rarity.LEGENDARY) legendaries.push(b);
+		expect(legendaries).toEqual([Boon.EMBER_WAKE, Boon.COMPOSURE, Boon.OVERKILL, Boon.BASTION]);
+		// The tutorial's draft (drawBoonOffers, no builds) draws from the classic 12 only, at every floor's rarity.
+		const rng = new Rng(17);
+		for (let i = 0; i < 2000; i++) {
+			for (const b of drawBoonOffers(rng, [], 1 + (i % 20))) {
+				expect(b < CLASSIC_BOON_COUNT).toBe(true);
+				expect(b !== Boon.OVERKILL && b !== Boon.BASTION).toBe(true);
+			}
+		}
+	});
+
+	it("thirteen duos (append only): two distinct boons each, no pair twice; Deep Flask in none, the rest in 1-3", () => {
+		expect(DUO_COUNT).toBe(13);
 		expect([Duo.FIRE_ARROWS, Duo.UNSHAKEN]).toEqual([0, 8]);
+		// docs/LEGENDARIES.md LG1: each new legendary anchors two duos; Stone Heart is Hearty's first.
+		expect([Duo.SUPERNOVA, Duo.SKEWER, Duo.CITADEL, Duo.STONE_HEART]).toEqual([9, 10, 11, 12]);
+		expect([9, 10, 11, 12].map((d) => [DUOS[d].id, DUOS[d].a, DUOS[d].b])).toEqual([
+			["duo.supernova", Boon.OVERKILL, Boon.VOLATILE],
+			["duo.skewer", Boon.OVERKILL, Boon.PIERCING_ARROWS],
+			["duo.citadel", Boon.BASTION, Boon.WARDING],
+			["duo.stoneHeart", Boon.BASTION, Boon.HEARTY],
+		]);
 		const seen = new Set<string>();
 		const uses = zeros();
 		for (const d of DUOS) {
@@ -185,9 +218,10 @@ describe("builds data (BU1)", () => {
 			uses[d.b] += 1;
 			expect(d.id.sub(1, 4)).toBe("duo.");
 		}
-		expect([uses[Boon.HEARTY], uses[Boon.DEEP_FLASK]]).toEqual([0, 0]);
+		expect([uses[Boon.HEARTY], uses[Boon.DEEP_FLASK]]).toEqual([1, 0]);
+		expect([uses[Boon.OVERKILL], uses[Boon.BASTION]]).toEqual([2, 2]);
 		for (let b = 0; b < BOON_COUNT; b++) {
-			if (b === Boon.HEARTY || b === Boon.DEEP_FLASK) continue;
+			if (b === Boon.DEEP_FLASK) continue;
 			expect([b, uses[b] >= 1 && uses[b] <= 3]).toEqual([b, true]);
 		}
 		// Chain Spark is the hub (Storm Blade, Conductor, Chain Reaction); the plan's "one or two" holds for the rest.
@@ -291,9 +325,16 @@ describe("opt-in state and the builds hash group (BU1)", () => {
 			expect(layout.names.size()).toBe(layout.values.size());
 			expect(layout.names[g.finish - 1]).toBe("builds.procs.length");
 			expect(layout.values).toEqual(writeHashFields(s, []));
-			// 1 + per player (1 + 15 levels + 1 duos length + 7 scalars: BU5 appended bulwarkPending, BU6 closeGrazes)
-			// + 1 procs length.
-			expect(g.finish - g.start).toBe(1 + n * (1 + BOON_COUNT + 1 + 7) + 1);
+			// 1 + per player (1 + 17 levels + 1 duos length + 9 scalars: BU5 appended bulwarkPending, BU6 closeGrazes,
+			// docs/LEGENDARIES.md LG1 braceCount and braceReady) + 1 procs length.
+			expect(g.finish - g.start).toBe(1 + n * (1 + BOON_COUNT + 1 + 9) + 1);
+			const scalars = layout.names.filter((name) => name.sub(1, 19) === "builds.players[0].b");
+			expect(scalars).toEqual([
+				"builds.players[0].bigHits",
+				"builds.players[0].bulwarkPending",
+				"builds.players[0].braceCount",
+				"builds.players[0].braceReady",
+			]);
 		}
 	});
 
@@ -497,6 +538,117 @@ describe("card offers (BU2 drawCardOffers)", () => {
 			);
 			expect(a.getState()).toBe(b.getState());
 		}
+	});
+});
+
+// ---------------------------------------------------------------------------------------------
+
+describe("legendaries Overkill and Bastion (docs/LEGENDARIES.md LG1)", () => {
+	it("the appended hashed fields: per player braceCount / braceReady after closeGrazes, per proc excess after id", () => {
+		expect(BUILD_PLAYER_SCALARS).toEqual([
+			"grazes",
+			"kills",
+			"arrows",
+			"bigHits",
+			"draftsLeft",
+			"bulwarkPending",
+			"closeGrazes",
+			"braceCount",
+			"braceReady",
+		]);
+		expect(BUILD_PROC_FIELDS).toEqual(["x", "z", "owner", "gen", "slot", "id", "excess"]);
+		const s = createSimState(SEED, 0, 0, ARENA);
+		expect([bp(s).braceCount, bp(s).braceReady, bp(s).levels.size()]).toEqual([0, 0, BOON_COUNT]);
+		const c = cloneSimState(s);
+		c.builds!.players[0].braceReady = 1;
+		expect([bp(s).braceReady, hashState(c) !== hashState(s)]).toEqual([0, true]);
+	});
+
+	it("a fresh build is dealt both as New cards; once owned (level I is their only level) neither comes back", () => {
+		const seen = new Set<number>();
+		for (let k = 0; k < 1500; k++) {
+			// Floor 11+: the legendary band is at its 15 % cap.
+			for (const c of drawCardOffers(new Rng(k), BUILD_RULES, zeros(), [], 11 + (k % 5))) seen.add(c);
+		}
+		expect([seen.has(Boon.OVERKILL), seen.has(Boon.BASTION)]).toEqual([true, true]);
+		const owned = levelsOf([
+			[Boon.OVERKILL, 1],
+			[Boon.BASTION, 1],
+			[Boon.SHARPENED, 1],
+			[Boon.WARDING, 2],
+		]);
+		for (let k = 0; k < 600; k++) {
+			const offers = drawCardOffers(new Rng(k), BUILD_RULES, owned, [], 1 + (k % 15), k % 3 === 0);
+			expect([k, offers.includes(Boon.OVERKILL), offers.includes(Boon.BASTION)]).toEqual([k, false, false]);
+		}
+	});
+
+	it("granting: New, then nothing (never an Upgrade or Evolution); Bastion adds no pip yet (LG3)", () => {
+		const s = createSimState(SEED, 0, 0, ARENA);
+		const pl = playerAt(s, 0);
+		const armor = [pl.armor, pl.armorMax];
+		for (const b of [Boon.OVERKILL, Boon.BASTION]) {
+			expect(cardKind(s, 0, b)).toBe(CardKind.NEW);
+			expect(grantCard(s, 0, b)).toBe(CardKind.NEW);
+			// Owned at its only level: grantCard refuses it (and no draw deals it, above).
+			expect(grantCard(s, 0, b)).toBe(-1);
+			expect(bp(s).levels[b]).toBe(1);
+		}
+		expect(rp(s).boons).toEqual([Boon.OVERKILL, Boon.BASTION]);
+		expect([pl.armor, pl.armorMax]).toEqual(armor);
+		expect(s.builds!.events.evolvedBoon).toEqual([]);
+		// grantBoon in a builds run goes through grantCard: level I too.
+		const t = createSimState(SEED, 0, 0, ARENA);
+		grantBoon(t, 0, Boon.BASTION);
+		expect([bp(t).levels[Boon.BASTION], rp(t).boons]).toEqual([1, [Boon.BASTION]]);
+	});
+
+	it("the four duos become available once both of their boons are owned, and are dealt then", () => {
+		for (const d of [Duo.SUPERNOVA, Duo.SKEWER, Duo.CITADEL, Duo.STONE_HEART]) {
+			const def = DUOS[d];
+			const one = levelsOf([[def.a, 1]]);
+			const other = levelsOf([[def.b, 1]]);
+			const both = levelsOf([
+				[def.a, 1],
+				[def.b, 2],
+			]);
+			expect([d, duoAvailable(one, [], d), duoAvailable(other, [], d), duoAvailable(both, [], d)]).toEqual([
+				d,
+				false,
+				false,
+				true,
+			]);
+			expect(duoAvailable(both, [d], d)).toBe(false);
+			// A boss deal's guaranteed duo: the only available one is card 0.
+			for (let k = 1; k <= 20; k++) {
+				const boss = drawCardOffers(new Rng(k), BUILD_RULES, both, [], 5, true);
+				expect([d, k, boss[0]]).toEqual([d, k, duoCard(d)]);
+			}
+			// Granted once, through grantCard.
+			const s = createSimState(SEED, 0, 0, ARENA);
+			expect(grantCard(s, 0, duoCard(d))).toBe(-1);
+			grantCard(s, 0, def.a);
+			grantCard(s, 0, def.b);
+			expect([grantCard(s, 0, duoCard(d)), grantCard(s, 0, duoCard(d)), bp(s).duos]).toEqual([
+				CardKind.DUO,
+				-1,
+				[d],
+			]);
+		}
+	});
+
+	it("Greed's deal (drawLegendaryOffers) picks both up: unowned legendaries first, then the duos", () => {
+		expect(legendaryPool(zeros(), [])).toEqual([Boon.EMBER_WAKE, Boon.COMPOSURE, Boon.OVERKILL, Boon.BASTION]);
+		const levels = levelsOf([
+			[Boon.EMBER_WAKE, 1],
+			[Boon.COMPOSURE, 1],
+			[Boon.OVERKILL, 1],
+			[Boon.VOLATILE, 1],
+		]);
+		expect(legendaryPool(levels, [])).toEqual([Boon.BASTION, duoCard(Duo.SUPERNOVA)]);
+		const seen = new Set<number>();
+		for (let k = 0; k < 200; k++) for (const c of drawLegendaryOffers(new Rng(k), zeros(), [], 1)) seen.add(c);
+		expect([seen.has(Boon.OVERKILL), seen.has(Boon.BASTION), seen.size()]).toEqual([true, true, 4]);
 	});
 });
 

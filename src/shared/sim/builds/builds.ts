@@ -16,9 +16,13 @@
  *                    Storm Blade): arrow hits toward the next spark, counts only while the duo is owned
  *   bulwarkPending   (BU5, appended) armor pips broken whose Bulwark nova has not been released yet
  *   closeGrazes      (BU6, appended) Close Call: grazes toward the next shard, counts only while the duo is owned
+ *   braceCount       (docs/LEGENDARIES.md LG1, appended) Bastion: enemy bullets stopped by the current guard or roll
+ *                    (0 until LG3's rule)
+ *   braceReady       (LG1, appended) Bastion: 1 while this room's brace is still to come, else 0 (0 until LG3's rule)
  *   draftsLeft       deals left in the open draft, the one on screen included: 1 after a floor, 2 after a boss floor
  *                    (BUD4); a confirm with draftsLeft > 1 re-deals (./cards.ts) instead of closing. 0 while closed
- * and for the world: `procs`, the kill queue (BU3, ./procs.ts: { x, z, owner, gen, slot, id } per kill, oldest first).
+ * and for the world: `procs`, the kill queue (BU3, ./procs.ts: { x, z, owner, gen, slot, id, excess } per kill, oldest
+ * first; `excess`, appended by docs/LEGENDARIES.md LG1, is the kill's Overkill carry: 0 until LG2's rule).
  *
  * Events (BuildEvents) are presentation only: cleared every tick, NOT hashed.
  */
@@ -55,6 +59,10 @@ export interface BuildPlayerState {
 	bulwarkPending: number;
 	/** Close Call (BU6): grazes toward the next shard (./hooks.ts buildsOnGraze; released by stepBuilds, ./duos.ts). */
 	closeGrazes: number;
+	/** Bastion (docs/LEGENDARIES.md LG1; the rule is LG3): enemy bullets stopped by the current guard or roll. */
+	braceCount: number;
+	/** Bastion (LG1; LG3): 1 while this room's brace is still to come (re-armed when a room's enemies spawn), else 0. */
+	braceReady: number;
 }
 
 /** One queued kill (BU3). Every field hashed. */
@@ -69,6 +77,8 @@ export interface BuildProc {
 	/** The victim's actor slot and id (skipped as a target). */
 	slot: number;
 	id: number;
+	/** Overkill's carry (docs/LEGENDARIES.md LG1, appended; 0 for a proc that carries nothing, every proc until LG2). */
+	excess: number;
 }
 
 /**
@@ -277,6 +287,8 @@ function newPlayer(): BuildPlayerState {
 		draftsLeft: 0,
 		bulwarkPending: 0,
 		closeGrazes: 0,
+		braceCount: 0,
+		braceReady: 0,
 	};
 }
 
@@ -432,10 +444,12 @@ export const BUILD_PLAYER_SCALARS = [
 	"draftsLeft",
 	"bulwarkPending",
 	"closeGrazes",
+	"braceCount",
+	"braceReady",
 ] as const;
 
 /** Per proc, in hash order. Append only. */
-export const BUILD_PROC_FIELDS = ["x", "z", "owner", "gen", "slot", "id"] as const;
+export const BUILD_PROC_FIELDS = ["x", "z", "owner", "gen", "slot", "id", "excess"] as const;
 
 function pushList(out: number[], list: ReadonlyArray<number>): void {
 	out.push(list.size());
