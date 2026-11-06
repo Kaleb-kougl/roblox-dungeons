@@ -117,10 +117,25 @@ describe("vale world art (docs/DECOR.md R5)", () => {
 		}
 		// one shared atlas, the particle texture, the loot twinkle's own sheet (docs/BREAKABLE_DROPS.md) and the trial
 		// 3D kit's own PNGs (docs/DECOR.md "3D kits") and the
-		// two pellet cubes (docs/PELLETS.md PL8) and the vault chest's two sheets (docs/TREASURE.md TR9)
+		// two pellet cubes (docs/PELLETS.md PL8) and the vault chest's two sheets (docs/TREASURE.md TR9) and Kenney's
+		// bookcases, the bookcase's alternative set (docs/KENNEY_DECOR.md)
 		expect(worldFiles()).toEqual([
 			"decor-atlas.png",
 			"decor-mote.png",
+			"kenney-bookcase-books-x.png",
+			"kenney-bookcase-books-z.png",
+			"kenney-bookcase-destroyed-x.png",
+			"kenney-bookcase-destroyed-z.png",
+			"kenney-bookcase-empty-x.png",
+			"kenney-bookcase-empty-z.png",
+			"kenney-bookcase-glass-x.png",
+			"kenney-bookcase-glass-z.png",
+			"kenney-bookcase-half-x.png",
+			"kenney-bookcase-half-z.png",
+			"kenney-bookcase-halfempty-x.png",
+			"kenney-bookcase-halfempty-z.png",
+			"kenney-bookcase-ladder-x.png",
+			"kenney-bookcase-ladder-z.png",
 			"kit-banner.png",
 			"kit-bookcase-x.png",
 			"kit-bookcase-z.png",

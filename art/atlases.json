@@ -1422,6 +1422,91 @@
 				"outline": true,
 				"own": "kit-bookcase-z"
 			},
+			"$comment-kenney-bookcase": "Kenney bookcases (Isometric Library, Kenney, CC0; docs/KENNEY_DECOR.md): alternative art for the 1 x 1 bookcase, reprojected from Kenney's 30 degree camera to the game's 55 by scripts/art/kenney/reproject.py (scripts/art/kenney/kenney.json) into art/vendor/kenney/. Same cell, pivot and facings as kit-bookcase-x / -z. Own PNGs.",
+			"kenney-bookcase-books-x": {
+				"file": "kenney/bookcase/books_x.png",
+				"pivot": [22.57, 42.09],
+				"outline": true,
+				"own": "kenney-bookcase-books-x"
+			},
+			"kenney-bookcase-books-z": {
+				"file": "kenney/bookcase/books_z.png",
+				"pivot": [11.82, 41.82],
+				"outline": true,
+				"own": "kenney-bookcase-books-z"
+			},
+			"kenney-bookcase-ladder-x": {
+				"file": "kenney/bookcaseLadder/ladder_x.png",
+				"pivot": [22.57, 41.41],
+				"outline": true,
+				"own": "kenney-bookcase-ladder-x"
+			},
+			"kenney-bookcase-ladder-z": {
+				"file": "kenney/bookcaseLadder/ladder_z.png",
+				"pivot": [15.24, 41.84],
+				"outline": true,
+				"own": "kenney-bookcase-ladder-z"
+			},
+			"kenney-bookcase-glass-x": {
+				"file": "kenney/bookcaseGlass/glass_x.png",
+				"pivot": [22.57, 42.09],
+				"outline": true,
+				"own": "kenney-bookcase-glass-x"
+			},
+			"kenney-bookcase-glass-z": {
+				"file": "kenney/bookcaseGlass/glass_z.png",
+				"pivot": [11.82, 41.82],
+				"outline": true,
+				"own": "kenney-bookcase-glass-z"
+			},
+			"kenney-bookcase-half-x": {
+				"file": "kenney/bookcaseHalf/half_x.png",
+				"pivot": [22.44, 31.24],
+				"outline": true,
+				"own": "kenney-bookcase-half-x"
+			},
+			"kenney-bookcase-half-z": {
+				"file": "kenney/bookcaseHalf/half_z.png",
+				"pivot": [11.82, 31.82],
+				"outline": true,
+				"own": "kenney-bookcase-half-z"
+			},
+			"kenney-bookcase-destroyed-x": {
+				"file": "kenney/bookcaseDestroyed/destroyed_x.png",
+				"pivot": [22.69, 42.09],
+				"outline": true,
+				"own": "kenney-bookcase-destroyed-x"
+			},
+			"kenney-bookcase-destroyed-z": {
+				"file": "kenney/bookcaseDestroyed/destroyed_z.png",
+				"pivot": [12.3, 41.84],
+				"outline": true,
+				"own": "kenney-bookcase-destroyed-z"
+			},
+			"kenney-bookcase-empty-x": {
+				"file": "kenney/bookcaseEmpty/empty_x.png",
+				"pivot": [22.57, 42.09],
+				"outline": true,
+				"own": "kenney-bookcase-empty-x"
+			},
+			"kenney-bookcase-empty-z": {
+				"file": "kenney/bookcaseEmpty/empty_z.png",
+				"pivot": [11.82, 41.82],
+				"outline": true,
+				"own": "kenney-bookcase-empty-z"
+			},
+			"kenney-bookcase-halfempty-x": {
+				"file": "kenney/bookcaseHalfEmpty/halfempty_x.png",
+				"pivot": [22.44, 31.24],
+				"outline": true,
+				"own": "kenney-bookcase-halfempty-x"
+			},
+			"kenney-bookcase-halfempty-z": {
+				"file": "kenney/bookcaseHalfEmpty/halfempty_z.png",
+				"pivot": [11.82, 31.82],
+				"outline": true,
+				"own": "kenney-bookcase-halfempty-z"
+			},
 			"$comment-reading": "Reading area (library rooms): the Dungeon Assets Pack by zver.3d (credit \"zver.3d\"; scripts/art/kit/zver-dungeon-assets.json) at world scale, 2.2 FBX units a tile. The table with its pages and candlestick on a 2 x 1 footprint, along X (_x) and Z (_z), pivot = the footprint's centre on the floor; the chair on one cell facing +X / +Z / -X / -Z (_px / _pz / _nx / _nz: the way a seated person looks), pivot = the cell's centre under the seat (render_kit.py pivotOut).",
 			"kit-table-x": {
 				"file": "zver-dungeon-assets/table/table_x.png",

@@ -64,6 +64,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/FORTUNE.md` | Fortune (risk shrines: two pact altars in the shrine room, Greed = a shown curse + a Legendary deal now, Horde = the next room fights a second wave for x2 score; the Goldling: a rare harmless gold enemy that flees within its room, coins per hit, a jackpot if caught within 10 s; gameplay, opt-in `SimConfig.pacts` / `SimConfig.golden` on endless only): plan, as built, open owner calls, Studio check, tasks FO0-FO13 / PS1-PS5 / GE1-GE4, decisions FD1-FD16 |
 | `docs/PROJECTILE_ART.md` | Projectile art (every flying bullet drawn with the Player Bullets pack: yellow / green bolts and the Hyper flame for the player, chevron / needle / teardrop recoloured into the danger pink for enemies, optional `fx.bullet.hit`; goo / strike / ember unchanged; presentation only): plan, measured pack, mapping, tasks PA0-PA10, decisions PAD1-PAD11 |
 | `docs/GOO_ART.md` | Goo art (the Ooze's goo puddles drawn with the heimlich3 Slime pack's last two frames: land then splat, recoloured into `enemyGoo`, flat on the floor sized to cover the hit; presentation only): plan, tasks GA0-GA7, decisions GAD1-GAD5 |
+| `docs/KENNEY_DECOR.md` | Kenney decor (Kenney's CC0 Isometric Dungeon / Library reprojected from their 30 degree camera to the game's 55 by `scripts/art/kenney/reproject.py`: flat / box / uniform warps; library v2, a `mess` theme, richer storerooms, floor patches planned; the bookcase's alternative art set wired): plan, as built, tasks KN0-KN13, decisions KND1-KND12 |
 
 Decision log (deviations from `PLAN.md`):
 - **Art (docs/ART.md).** The theme contract gained a `"sprites"` kind (large pre-rendered cells, 1/4/8/16 screen-space
@@ -775,6 +776,12 @@ Decision log (deviations from `PLAN.md`):
   `BoostAuraController` draws a flat sprite anchor (`createSpriteAnchor`, `FLOOR_CANVAS_YAW`) per kind / rank with art,
   the disc otherwise. Original art: no notices or Credits entry. Without a `boost-auras.png` id (none yet) vale keeps
   the discs; upload and Studio check pending.
+- **Kenney bookcases (docs/KENNEY_DECOR.md).** Presentation only. Every Kenney piece the plan names is reprojected to
+  the game camera (`scripts/art/kenney/reproject.py`, `kenney.json`; 87 PNGs in gitignored `art/vendor/kenney/`); the
+  bookcases are wired as the bookcase's alternative art: 14 own PNGs `kenney-bookcase-<look>-x / -z`, vale variants
+  3-16 after the kit pair, `DECOR_MAX_VARIANTS` 4 -> 16, and decorPlan's `bookcaseVariant` (one set per room,
+  `DECOR_BOOKCASES`, salts `bookcaseSet` / `bookcaseCell`; with only the kit pair the plan is unchanged). Credits:
+  Isometric Library, Kenney, CC0. Upload, the Lune specs and a Studio check pending.
 
 ## Commands
 

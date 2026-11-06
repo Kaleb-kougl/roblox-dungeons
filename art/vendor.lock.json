@@ -1407,6 +1407,76 @@
 			"bytes": 1444
 		},
 		{
+			"path": "kenney/bookcase/books_x.png",
+			"sha256": "be8e261023d60de358dd9919e378b09d0372994cb5bcb9aa0ac1e0c2f303499d",
+			"bytes": 3639
+		},
+		{
+			"path": "kenney/bookcase/books_z.png",
+			"sha256": "c5dd0e809c2a128422e38a708489cfceeabc7cbe5e5b61aeaf106f1a75649e2e",
+			"bytes": 3567
+		},
+		{
+			"path": "kenney/bookcaseDestroyed/destroyed_x.png",
+			"sha256": "c8204f3f492c2bac4dc4702ee3446d5395fefba0b67e42efbd0fabcf26b8bf06",
+			"bytes": 3694
+		},
+		{
+			"path": "kenney/bookcaseDestroyed/destroyed_z.png",
+			"sha256": "484f5d416629629328a8a01f577e965bb7c8c804009d5534f84213ba9a0f3093",
+			"bytes": 3648
+		},
+		{
+			"path": "kenney/bookcaseEmpty/empty_x.png",
+			"sha256": "774c1e77439d1ec0ba0a28c9da12f2ba3b943f92d2fa5e938fd0909e17b3b9f3",
+			"bytes": 3705
+		},
+		{
+			"path": "kenney/bookcaseEmpty/empty_z.png",
+			"sha256": "7e283fcef74f47c926389e48474a42bdfb988f6a53eac20184283cba63e7f610",
+			"bytes": 3667
+		},
+		{
+			"path": "kenney/bookcaseGlass/glass_x.png",
+			"sha256": "a3d97066cab00208add844ff639afa7c41ae53b9d2d42507ea79647971481f01",
+			"bytes": 3655
+		},
+		{
+			"path": "kenney/bookcaseGlass/glass_z.png",
+			"sha256": "30327b6191a66e7fedb107f5fb8a439ea6d96bc8a981e2cf181eaa4baedbd93d",
+			"bytes": 3549
+		},
+		{
+			"path": "kenney/bookcaseHalf/half_x.png",
+			"sha256": "893447a7b34fd3e5bb5d1e927c363db3a18c4fc7f574ae0e936fe668ed48636c",
+			"bytes": 2892
+		},
+		{
+			"path": "kenney/bookcaseHalf/half_z.png",
+			"sha256": "48f757792d17559447b5b0499cb55f941debf59337af0fb18387a3b60831a49b",
+			"bytes": 2876
+		},
+		{
+			"path": "kenney/bookcaseHalfEmpty/halfempty_x.png",
+			"sha256": "83cb17c15b6007aefa8f8ba746d380da19246996a0e5cff7df1d398bba4c112f",
+			"bytes": 2879
+		},
+		{
+			"path": "kenney/bookcaseHalfEmpty/halfempty_z.png",
+			"sha256": "b575803757859fbbabe4346df84bb5428cb640136177f629700f6822932fe344",
+			"bytes": 2877
+		},
+		{
+			"path": "kenney/bookcaseLadder/ladder_x.png",
+			"sha256": "5cea4af4f1f8cbc803362ccea21d4a7a63808186eb38071d635b397c53325fe8",
+			"bytes": 3950
+		},
+		{
+			"path": "kenney/bookcaseLadder/ladder_z.png",
+			"sha256": "44d1afeeb42a8471bd14b92e2fb6e79345650b426c84c753b3a42b45c0c79e2d",
+			"bytes": 3958
+		},
+		{
 			"path": "lords-of-pain-demo/enemy/skeleton/skeleton_default_walk/E/skeleton_default_walk_E_0.0_0.png",
 			"sha256": "eaaf1ea383e0d5b159d1cc787610413cbb00258d64a2fd5a1fd91364e6d578f6",
 			"bytes": 17145

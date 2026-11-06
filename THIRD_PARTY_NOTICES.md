@@ -204,6 +204,21 @@ SOFTWARE.
   training set. Credit is not required; the pack is credited anyway (the main menu's Credits screen, shared/view/menu
   `CREDITS`).
 
+## Kenney Isometric Library and Isometric Dungeon (2D art, CC0)
+
+- Author: Kenney (https://www.kenney.nl). Packs: "Isometric Library" and "Dungeon Pack" 2.3 ("Isometric Dungeon"),
+  each with its `License.txt` (Creative Commons Zero, CC0 1.0: http://creativecommons.org/publicdomain/zero/1.0/).
+- Used for: docs/KENNEY_DECOR.md. Shipping now: the bookcase's alternative art set (`decor.delve.b<n>.bookcase.3` ..
+  `.16`, seven cases in two facings, from the Isometric Library). The other reprojected pieces (study tables, display
+  cases, dining tables, stock, carpets, floor patches) are rendered into `art/vendor/kenney/` but not yet wired.
+  **Changes made:** reprojected from Kenney's 30 degree camera to the game's 55 degree camera by
+  `scripts/art/kenney/reproject.py` (per-face affine warps), baked shadows removed, scaled down, colour graded; packed
+  by `scripts/art/build-atlases.js` and uploaded to Roblox.
+- Raw files: `art/vendor/kenney-library/`, `art/vendor/kenney-dungeon/` (the packs' `Isometric/` folders and licences)
+  and the renders in `art/vendor/kenney/` (all gitignored, like every pack, though CC0 would allow committing them).
+- License: CC0, public domain: no restriction and no credit required. Credited anyway (the main menu's Credits screen,
+  shared/view/menu `CREDITS`: "Isometric Library", "by Kenney (kenney.nl)", "CC0").
+
 ## Dungeon Essential Kit (3D models, CC-BY 4.0) - ATTRIBUTION REQUIRED
 
 - Author: Rakshaan (https://sketchfab.com/rakshaan). Source:
