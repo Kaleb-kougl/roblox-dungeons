@@ -83,7 +83,7 @@ import type {
 } from "../../types";
 import { deepClone, sortedKeys } from "../../util";
 import { PELLET_KINDS, pelletId, type PelletKind } from "../../pellets";
-import { TREASURE_IDS } from "../../treasure";
+import { TREASURE_CAGE_ID, TREASURE_IDS } from "../../treasure";
 import { PLACEHOLDER_MANIFEST } from "../placeholder";
 import { VALE_ASSET_IDS } from "./assetIds";
 import { VALE_SOUND_LAYOUTS, type ValeSoundLayout } from "./audioLayout";
@@ -91,6 +91,7 @@ import { valeBulletAssets, type ValeBulletSource } from "./bullets";
 import { valeBoostAuraAssets, type ValeBoostAuraSource } from "./boostAuras";
 import { valeGooAsset, type ValeGooSource } from "./goo";
 import { valeAmbientAssets, valeFxAssets, valeFxSources } from "./fx";
+import { VALE_TREASURE_CAGE_LAYOUT } from "./treasureLayout";
 import {
 	VALE_FLOOR_HEX,
 	VALE_IMAGE_LAYOUTS,
@@ -356,8 +357,9 @@ export const VALE_PELLET_ART: Readonly<Record<PelletKind, string>> = { normal: "
 /**
  * The vault chest (docs/TREASURE.md TR9): "Old Chest" (SebastianSosnowski, CC-BY 4.0) rendered by
  * scripts/art/kit/render_kit.py (scripts/art/kit/old-chest.json), closed and open, four facings each (the chest faces
- * into its room: TreasureRenderController passes the vault's facing). The cage has no art yet: it keeps the placeholder
- * bars. A look keeps its placeholder until its file has an ID.
+ * into its room: TreasureRenderController passes the vault's facing). The cage is not here: it is original pixel art
+ * (scripts/art/gen-treasure-art.js) in its own sheet, treasureLayout.ts VALE_TREASURE_CAGE_LAYOUT (a domed birdcage,
+ * four facings like the chest). A look keeps its placeholder until its file has an ID.
  */
 export const VALE_TREASURE_ART: Readonly<Record<string, string>> = {
 	"treasure.chest": "kit-chest",
@@ -489,6 +491,9 @@ function addWorldArt(manifest: ThemeManifest, ids: AssetIds): void {
 		const asset = worldAsset(worldLayout(art), ids, {});
 		if (asset !== undefined) manifest.assets[id] = asset;
 	}
+	// the vault cage (docs/TREASURE.md TR9): its own sheet vault-cage.png; the placeholder bars until it has an ID
+	const cage = worldAsset(VALE_TREASURE_CAGE_LAYOUT, ids, {});
+	if (cage !== undefined) manifest.assets[TREASURE_CAGE_ID] = cage;
 }
 
 /** A sound from its layout, or undefined (the placeholder's SILENT stays) while any of its files has no ID. */

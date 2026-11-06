@@ -180,24 +180,25 @@ describe("vale effects (fx.*)", () => {
 	});
 
 	it("without the atlas no effect switches on; the ambient textures still do", () => {
-		const m = buildValeManifest(fxIds(VALE_FX_SHEET.file, VALE_BULLET_SHEET.file));
+		const m = buildValeManifest(fxIds(...VALE_FX_SOURCES.map((s) => s.sheet.file)));
 		expect(validateManifest(m, { packId: "vale" })).toEqual([]);
 		const pack = new ThemePack(m, { warn: quiet });
 		for (const id of FX_IDS) expect([id, pack.fx(id as FxId)]).toEqual([id, undefined]);
 		expect(pack.ambient("biome.3")).never.toBe(undefined);
 	});
 
-	it("each sheet switches on its own effects only: bullets.png alone draws the bullet impact, the atlas alone the rest", () => {
-		const onlyBullets = new ThemePack(buildValeManifest(fxIds(VALE_FX_SHEET.file)), { warn: quiet });
-		const onlyAtlas = new ThemePack(buildValeManifest(fxIds(VALE_BULLET_SHEET.file)), { warn: quiet });
-		for (const id of VALE_FX_IDS) {
-			const inBullets = valeFxSourceOf(id)!.sheet === VALE_BULLET_SHEET;
-			expect([id, onlyBullets.fx(id) !== undefined, onlyAtlas.fx(id) !== undefined]).toEqual([
-				id,
-				inBullets,
-				!inBullets,
-			]);
+	it("each sheet switches on its own effects only: bullets.png the bullet impact, treasure-column.png the vault's column, the atlas the rest", () => {
+		const files = VALE_FX_SOURCES.map((s) => s.sheet.file);
+		for (const source of VALE_FX_SOURCES) {
+			const only = new ThemePack(buildValeManifest(fxIds(...files.filter((f) => f !== source.sheet.file))), {
+				warn: quiet,
+			});
+			for (const id of VALE_FX_IDS) {
+				const mine = valeFxSourceOf(id)!.sheet === source.sheet;
+				expect([source.sheet.file, id, only.fx(id) !== undefined]).toEqual([source.sheet.file, id, mine]);
+			}
 		}
+		expect(valeFxSourceOf("fx.treasure.column")?.sheet.file).toBe("treasure-column.png");
 	});
 });
 

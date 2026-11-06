@@ -676,7 +676,12 @@ Decision log (deviations from `PLAN.md`):
   layouts) UNTOUCHED only 2 / 28 (was 8 / 25). A chest never stands on, against or beside a bookcase (the cell filter's
   solid-decor rules). Vale chest art rendered from the owner's "Old Chest" model (SebastianSosnowski, CC-BY 4.0, Credits screen;
   `kit-chest` / `kit-chest-open`, four facings, render_kit.py `importScale` / `lid`, per-facing sprite pivots), uploaded
-  2026-11-04; cage art, sounds (TR9), Studio check and playtest (TR11) pending.
+  2026-11-04. Cage and light column (TR9, 2026-11-06, presentation only): original pixel art from
+  `scripts/art/gen-treasure-art.js` (a domed iron birdcage in the chest's projection, four facings with the bars the chest
+  hides cut; a looping greyscale column), each in a sheet of its own (`vault-cage.png`, `treasure-column.png`) from a new
+  atlas group `treasure` (`--only treasure`, generated `packs/vale/treasureLayout.ts`), so no shared atlas repacks; the
+  column is vale's third fx source; art cages turn with the chest, cap at `cageMaxHeightTiles` 1.2 and draw
+  `cageDepthStuds` nearer the camera. Upload of both sheets, sounds (TR9), Studio check and playtest (TR11) pending.
 
 - **Fortune (docs/FORTUNE.md).** Gameplay. Two opt-in configs, endless only: `SimConfig.pacts` (`ENDLESS_PACTS_CONFIG`)
   and `SimConfig.golden` (`ENDLESS_GOLDEN_CONFIG`), each with its own hash group appended LAST (`pellets`, `treasure`,

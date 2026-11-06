@@ -1382,6 +1382,31 @@
 			"bytes": 146
 		},
 		{
+			"path": "kaleb-vale/treasure-column/column.png",
+			"sha256": "504e863028aa906e432c4e153d07d1f91c90d29a2c7d87263ca2acdd82d7e768",
+			"bytes": 24067
+		},
+		{
+			"path": "kaleb-vale/vault-cage/NE/cage_NE_45.0_0.png",
+			"sha256": "e988accc514a9bb6a7df6d05fa42ea69398f44e0cc2d18ffeeb5dd21a875af48",
+			"bytes": 1375
+		},
+		{
+			"path": "kaleb-vale/vault-cage/NW/cage_NW_135.0_0.png",
+			"sha256": "ba057614d5401d7c241417984087abdfa1f8e46aba766f7628023257fb28a7c1",
+			"bytes": 1402
+		},
+		{
+			"path": "kaleb-vale/vault-cage/SE/cage_SE_315.0_0.png",
+			"sha256": "a8bc690524bed0b8784373333e55f5c2fc645ab0a8cd7f205cc9b6fb4db8012f",
+			"bytes": 1504
+		},
+		{
+			"path": "kaleb-vale/vault-cage/SW/cage_SW_225.0_0.png",
+			"sha256": "7e241deeef61669be044f4699e54043f8374cc926cf3ec5e7635f42b4b2980a7",
+			"bytes": 1444
+		},
+		{
 			"path": "lords-of-pain-demo/enemy/skeleton/skeleton_default_walk/E/skeleton_default_walk_E_0.0_0.png",
 			"sha256": "eaaf1ea383e0d5b159d1cc787610413cbb00258d64a2fd5a1fd91364e6d578f6",
 			"bytes": 17145

@@ -188,8 +188,9 @@ interface Column {
  *             The lid jolts before the pop and the unlocked chest wobbles (placeholder: a roll about its base; image
  *             art: the label's rotation; sprites: no wobble).
  *   cage      over the closed chest until the unlock: the placeholder's one bar repeated round the chest's footprint
- *             (cageBarOffsets, its `dash` spacing), or the art as a billboard. It sinks into the floor (reduced motion:
- *             fades) unlock.delaySec after the clear.
+ *             (cageBarOffsets, its `dash` spacing), or the art as a billboard turned like the chest, capped at
+ *             cageMaxHeightTiles and cageDepthStuds nearer the camera so it draws over the chest. It sinks into the
+ *             floor (reduced motion: fades) unlock.delaySec after the clear.
  *   sparkle   the BL glint art (`decor.fx.loot`, else `decor.fx.glint`) on the chest's top, tinted by the tier's floor
  *             role (white on the crack's flash), Legendary bigger and faster, faster again once unlocked; a still star
  *             under reduced motion or Particles off; a self-lit diamond without art. Hidden near an enemy bullet
@@ -372,7 +373,8 @@ export class TreasureRenderController implements OnStart {
 		const down = cage.sink * (art !== undefined ? art.heightStuds : this.barHeight);
 		if (art !== undefined) {
 			this.setBodyTransparency(art, cage.transparency);
-			this.placeBody(art, rest.add(new Vector3(0, -down, 0)), 0);
+			// turned like the chest (the vale cage has the chest's four facings: its bars are cut round that facing)
+			this.placeBody(art, rest.add(new Vector3(0, -down, 0)), 0, look.fx, look.fz);
 			return;
 		}
 		// Static bars are placed once; they move only while sinking or fading (or the vault moved).
@@ -860,11 +862,11 @@ export class TreasureRenderController implements OnStart {
 		this.openLine = this.buildCard(pack, "Line");
 	}
 
-	private buildBody(look: TreasurePiece, folder: Folder, maxHeightTiles: number): PieceBody {
+	private buildBody(look: TreasurePiece, folder: Folder, maxHeightTiles: number, extraDepthStuds = 0): PieceBody {
 		const art = look.art;
 		if (art !== undefined && art.kind === "sprites") {
 			const layout = breakableArtLayout(art.set, maxHeightTiles);
-			const sprite = new SpriteView(art.set, folder, layout);
+			const sprite = new SpriteView(art.set, folder, layout, extraDepthStuds);
 			return {
 				model: undefined,
 				sprite,
@@ -883,7 +885,7 @@ export class TreasureRenderController implements OnStart {
 			return {
 				model: undefined,
 				sprite: undefined,
-				image: buildImage(art, layout, folder),
+				image: buildImage(art, layout, folder, extraDepthStuds),
 				top: artPieceTop(layout),
 				heightStuds: artHeightStuds(layout),
 				shown: true,
@@ -906,7 +908,7 @@ export class TreasureRenderController implements OnStart {
 	private buildCage(pack: ThemePack, folder: Folder): void {
 		const look = this.cageLook!;
 		if (look.art !== undefined) {
-			this.cageArt = this.buildBody(look, folder, V.maxHeightTiles);
+			this.cageArt = this.buildBody(look, folder, V.cageMaxHeightTiles, V.cageDepthStuds);
 			this.hideBody(this.cageArt);
 			return;
 		}
@@ -1175,8 +1177,11 @@ function artHeightStuds(layout: SpriteLayout): number {
 	return (math.min(layout.frameH, math.max(0, layout.pivot.y)) * STUDS_PER_TILE) / layout.pixelsPerTile;
 }
 
-/** An upright image billboard (image art) on an invisible anchor, its pivot on the anchor. */
-function buildImage(art: WorldImage, layout: SpriteLayout, parent: Instance): ImageBody {
+/**
+ * An upright image billboard (image art) on an invisible anchor, its pivot on the anchor, `extraDepthStuds` nearer the
+ * camera (the cage over the chest).
+ */
+function buildImage(art: WorldImage, layout: SpriteLayout, parent: Instance, extraDepthStuds = 0): ImageBody {
 	const anchor = renderPart("Part", false);
 	anchor.Name = "TreasureImage";
 	anchor.Transparency = HIDDEN;
@@ -1185,7 +1190,7 @@ function buildImage(art: WorldImage, layout: SpriteLayout, parent: Instance): Im
 	const b = spriteBillboard(layout);
 	const gui = createKvBillboardGui("Treasure");
 	gui.Size = new UDim2(b.w, 0, b.h, 0);
-	gui.StudsOffset = new Vector3(b.offsetX, b.offsetY, b.offsetZ);
+	gui.StudsOffset = new Vector3(b.offsetX, b.offsetY, b.offsetZ + extraDepthStuds);
 	gui.LightInfluence = 0;
 	gui.AlwaysOnTop = false;
 	gui.ResetOnSpawn = false;
