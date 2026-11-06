@@ -10497,6 +10497,21 @@
 			"bytes": 146876
 		},
 		{
+			"path": "training-dummy/Sprites/BREAKING.png",
+			"sha256": "c83e8c9d5bf549a8ffb89680c8e53acecb027c4cd27153d628011651e0aaf93e",
+			"bytes": 4511
+		},
+		{
+			"path": "training-dummy/Sprites/HIT.png",
+			"sha256": "af0d081c09d25f4cb880546529c412344e75d4e0741947a0f9670fe4a8fe7e2b",
+			"bytes": 2338
+		},
+		{
+			"path": "training-dummy/Sprites/IDLE.png",
+			"sha256": "9df25633cfbf03921577bc836edfb55b0f190710222ee5ff91c463a67bd15001",
+			"bytes": 810
+		},
+		{
 			"path": "zver-dungeon-assets/chair/chair_nx.png",
 			"sha256": "4e17602aef0e1f13667065e381f329f0ef9f450eb4f88a887379e1b3ee018f1a",
 			"bytes": 6673

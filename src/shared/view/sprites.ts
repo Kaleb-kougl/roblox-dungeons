@@ -17,7 +17,8 @@
  * Animation. Choices follow a fixed priority, each rule skipped when the set lacks its animation (ending at idle):
  *   player: death > roll > attack (sword swings attack.1/2/3, else attack) > hit > run > idle
  *   actor:  death > special (a boss's intro / taunt roar, the Demon Lord's summon) > attack (a named one, else
- *           `attack`) > hit (multi-frame only; a 1-frame stand-in leaves it to the tint) > move > idle
+ *           `attack`) > hit (multi-frame only; a 1-frame stand-in leaves it to the tint; over the view-side hit clip
+ *           when the renderer gives one, docs/DUMMY_ART.md DD1) > move > idle
  * An actor's attack comes from its archetype's own states (ACTOR_SPRITE_INPUTS): the swarmer's wind-up + lunge, the
  * sniper's line telegraph, the bruiser's leap + slam, Mother Bramble's phased attacks, the Demon Lord's swings
  * (demonlordSpriteInput); a turret (turret.sniper, and the M1 turrets turret.sprayer / turret.caster of
@@ -115,6 +116,7 @@ import {
 	stormcallerSpriteInput,
 	warbannerSpriteInput,
 } from "./newEnemySprites";
+import { dummySpriteInput } from "./dummy/sprite";
 import { goldenSpriteInput } from "./golden/sprite";
 import { degToRad, isoBasis, type IsoBasis } from "./iso";
 
@@ -477,6 +479,19 @@ export interface ActorSpriteInput {
 	readonly moveAnim?: string;
 	/** Roblox port (NE8): the idle loop's rate (the Reaper's dizzy plays it slowed). Unset: 1. */
 	readonly idleRate?: number;
+	/**
+	 * Roblox port (docs/DUMMY_ART.md DD1): a view-side hit timeline, for a set whose `hit` outlasts the sim's 0.1 s
+	 * flash (the training dummy's wobble). The renderer fills it from HitReactSlots.hitAge for the archetypes in
+	 * VIEW_HIT_CLIP_SEC. Set: `hit` plays stretched over it while 0 <= elapsed < total, and the flash rule is skipped
+	 * (no hit outside the clip). Unset: `hit` plays over the flash.
+	 */
+	readonly hitClip?: ActorHitClip;
+}
+
+/** A view-side hit timeline (ActorSpriteInput.hitClip): seconds since the last hit, and the seconds it plays over. */
+export interface ActorHitClip {
+	readonly elapsed: number;
+	readonly total: number;
 }
 
 /**
@@ -1076,9 +1091,15 @@ export function chooseActorAnim(input: ActorSpriteInput, anims: SpriteAnimSource
 	}
 	// A 1-frame `hit` is a stand-in (S5's skeleton: "hit = blink"): it would freeze the walk, so the tint shows the hit
 	// and move / idle keep playing. A real (multi-frame) hit animation plays over the flash. Bosses never flinch.
+	// A view-side hit clip (DD1) replaces the flash as the hit's timer.
 	const hit = anims.animation("hit");
-	if (input.flinch !== false && input.flashTicks > 0 && hit !== undefined && hit.frames > 1) {
-		return stretched("hit", elapsedOf(HIT_FLASH_TICKS, input.flashTicks, input.alpha), HIT_FLASH_TICKS);
+	const clip = input.hitClip;
+	if (input.flinch !== false && hit !== undefined && hit.frames > 1) {
+		if (clip !== undefined) {
+			if (clip.elapsed >= 0 && clip.elapsed < clip.total) return stretched("hit", clip.elapsed, clip.total);
+		} else if (input.flashTicks > 0) {
+			return stretched("hit", elapsedOf(HIT_FLASH_TICKS, input.flashTicks, input.alpha), HIT_FLASH_TICKS);
+		}
 	}
 	const namedMove = input.moveAnim;
 	const moveName = namedMove !== undefined && anims.animation(namedMove) !== undefined ? namedMove : "move";
@@ -1339,10 +1360,10 @@ export function bossSpriteLayout(layout: SpriteLayout, minDrawPx: number): Sprit
  * Bramble (boss.act1), the Demon Lord (boss.demonlord), the enemy variants (docs/ENEMY_VARIANTS.md EV9: imp, slime,
  * slime.small, summoner) and the second endless set (docs/NEW_ENEMIES.md NE8: bomber, charger, stormcaller,
  * warbanner, reaper; their sets land in NE9) and the Goldling (docs/FORTUNE.md FO8: `enemy.golden`, the owner's FO10
- * recolour); every other archetype stays a placeholder. A builder alone
- * draws nothing: ActorRenderController takes the sprite path only when the pack's `sprites(spriteId)` is a set too, so
- * each stays a placeholder until its set lands (docs/DEMON_ART.md DA5 and Phase 2, docs/BRAMBLE_ART.md BR6,
- * docs/BOSS_DEMONLORD.md D7).
+ * recolour) and the tutorial's training dummy (docs/DUMMY_ART.md: `enemy.dummy`); every other archetype stays a
+ * placeholder. A builder alone draws nothing: ActorRenderController takes the sprite path only when the pack's
+ * `sprites(spriteId)` is a set too, so each stays a placeholder until its set lands (docs/DEMON_ART.md DA5 and Phase 2,
+ * docs/BRAMBLE_ART.md BR6, docs/BOSS_DEMONLORD.md D7).
  */
 export const ACTOR_SPRITE_INPUTS: ReadonlyMap<string, (a: Readonly<ActorState>, alpha: number) => ActorSpriteInput> =
 	new Map([
@@ -1366,4 +1387,6 @@ export const ACTOR_SPRITE_INPUTS: ReadonlyMap<string, (a: Readonly<ActorState>, 
 		["reaper", reaperSpriteInput],
 		// docs/FORTUNE.md FO8: the Goldling (golden/sprite.ts, by file: sprites.luau sits near Luau's 200 top-level locals)
 		["golden", goldenSpriteInput],
+		// docs/DUMMY_ART.md DA3: the tutorial's training dummy (dummy/sprite.ts, by file, as the Goldling)
+		["dummy", dummySpriteInput],
 	]);

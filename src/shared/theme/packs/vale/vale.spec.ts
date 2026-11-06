@@ -786,6 +786,80 @@ describe("vale enemy.slime (docs/ENEMY_VARIANTS.md EV10: the Lords of Pain slime
 	});
 });
 
+describe("vale enemy.dummy (docs/DUMMY_ART.md: the tutorial's training dummy, one facing, pixel art)", () => {
+	const SHEET = "dummy.png";
+	const OUTLINE = "dummy-outline.png";
+	const layout = VALE_SPRITE_LAYOUTS["enemy.dummy"];
+
+	it("the layout: one 62x850 sheet of 62x50 cells (idle 1, hit 7, death 9; 1 facing), 27.9 px/tile, a rim", () => {
+		expect(layout).never.toBe(undefined);
+		expect([layout.frameW, layout.frameH]).toEqual([62, 50]);
+		expect(layout.sheets).toEqual([{ file: SHEET, w: 62, h: 850, outlineFile: OUTLINE }]);
+		expect(layout.facings).toEqual({ count: 1, zeroDeg: 0, ccw: true });
+		// the 39 px idle body drawn 1.4 tiles tall (art/atlases.json bodyTilesNote); pixel art, never smoothed
+		expect(layout.pixelsPerTile).toBe(27.9);
+		expect(layout.resample).toBe("Pixelated");
+		expect(layout.pivot).toEqual({ x: 39, y: 47 });
+		expect(layout.animations.idle).toEqual({ sheet: 0, start: 0, frames: 1, fps: 1, loop: true });
+		expect(layout.animations.hit).toEqual({ sheet: 0, start: 1, frames: 7, fps: 10, loop: false });
+		expect(layout.animations.death).toEqual({ sheet: 0, start: 8, frames: 9, fps: 18, loop: false });
+		// stand-ins: move and attack = idle's cell (it never moves or attacks)
+		expect(layout.animations.move).toEqual({ sheet: 0, start: 0, frames: 1, fps: 1, loop: true });
+		expect(layout.animations.attack).toEqual({ sheet: 0, start: 0, frames: 1, fps: 1, loop: true });
+	});
+
+	it("with no IDs it is the placeholder post; the outline alone never switches it on", () => {
+		expect(buildValeManifest({}).assets["enemy.dummy"]).toEqual(PLACEHOLDER_MANIFEST.assets["enemy.dummy"]);
+		const noAtlas = buildValeManifest(fakeIds(SHEET));
+		expect(validateManifest(noAtlas, { packId: "vale" })).toEqual([]);
+		expect(noAtlas.assets["enemy.dummy"]).toEqual(PLACEHOLDER_MANIFEST.assets["enemy.dummy"]);
+		expect(new ThemePack(noAtlas, { warn: quiet }).sprites("enemy.dummy")).toBe(undefined);
+	});
+
+	it("as bundled, it is the sprite set once dummy.png has an ID (DA5), else the placeholder", () => {
+		const uploaded = VALE_ASSET_IDS[SHEET] !== undefined;
+		expect(VALE_MANIFEST.assets["enemy.dummy"].kind).toBe(
+			uploaded ? "sprites" : PLACEHOLDER_MANIFEST.assets["enemy.dummy"].kind,
+		);
+	});
+
+	it("with dummy.png it switches to sprites with every required animation; the rim joins with its outline", () => {
+		const ids = fakeIds();
+		const m = buildValeManifest(ids);
+		expect(validateManifest(m, { packId: "vale" })).toEqual([]);
+		const set = m.assets["enemy.dummy"] as SpriteSetAsset;
+		expect(set.kind).toBe("sprites");
+		expect(set.sheets).toEqual([{ assetId: ids[SHEET], w: 62, h: 850, outlineAssetId: ids[OUTLINE] }]);
+		const sprites = new ThemeCore(m, { warn: quiet }).sprites("enemy.dummy")!;
+		expect(sprites).never.toBe(undefined);
+		for (const name of requiredBaseAnimations(ENEMY)) {
+			expect([name, sprites.has(name)]).toEqual([name, true]);
+		}
+		const rimless = new ThemePack(buildValeManifest(fakeIds(OUTLINE)), { warn: quiet }).sprites("enemy.dummy")!;
+		expect(rimless).never.toBe(undefined);
+		expect(rimless.frame("hit", 0, 2).outlineImage).toBe(undefined);
+	});
+
+	it("cells (hand-computed): one column; hit frame 2 is cell 3, the last break frame the bottom cell", () => {
+		const ids = fakeIds();
+		const sprites = new ThemeCore(buildValeManifest(ids), { warn: quiet }).sprites("enemy.dummy")!;
+		expect(sprites.frame("hit", 0, 2)).toEqual({
+			sheet: 0,
+			assetId: ids[SHEET],
+			outlineAssetId: ids[OUTLINE],
+			x: 0,
+			y: 150,
+			w: 62,
+			h: 50,
+		});
+		const last = sprites.frame("death", 0, 8);
+		expect([last.x, last.y, last.x + last.w, last.y + last.h]).toEqual([0, 800, 62, 850]);
+		// the stand-ins address idle's cell
+		expect(sprites.frame("move", 0, 0).y).toBe(0);
+		expect(sprites.frame("attack", 0, 0).y).toBe(0);
+	});
+});
+
 describe("vale per-sheet cells (docs/DEMON_ART.md DA2 / DD4)", () => {
 	/**
 	 * A layout as art:build writes it for a `cells: "perSheet"` set: idle trimmed to 44x78 (pivot 24, 67), move and

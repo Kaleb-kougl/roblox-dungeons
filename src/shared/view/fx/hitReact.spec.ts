@@ -248,6 +248,30 @@ describe("hit reaction", () => {
 		expect(s.look(0, 5, D, 1).rimFlash).toBe(true);
 	});
 
+	it("hitAge (docs/DUMMY_ART.md DD1): seconds since every hit, not limited by minSec; huge when never hit or another id", () => {
+		const s = new HitReactSlots(BASIS);
+		expect(s.hitAge(0, 1, 5)).toBe(math.huge);
+		s.onEvent(ev(), 1, undefined);
+		expect(s.hitAge(0, 1, 1.25)).toBeCloseTo(0.25, 9);
+		// A second hit inside minSec does not restart the rim flash, but it does restart the age.
+		const t = 1 + FEEL_HIT.minSec / 2;
+		s.onEvent(ev(), t, undefined);
+		expect(s.look(0, 1, t + FEEL_HIT.flashSec - D, 1).rimFlash).toBe(false);
+		expect(s.hitAge(0, 1, t + 0.1)).toBeCloseTo(0.1, 9);
+		// A capped hit counts; a kill alone does not.
+		s.onEvent(ev({ type: "capped" }), 3, undefined);
+		expect(s.hitAge(0, 1, 3)).toBe(0);
+		s.onEvent(ev({ type: "killed" }), 4, undefined);
+		expect(s.hitAge(0, 1, 4)).toBe(1);
+		// Another id, a bad slot, a new actor in the slot: never hit.
+		expect(s.hitAge(0, 2, 4)).toBe(math.huge);
+		expect(s.hitAge(-1, 1, 4)).toBe(math.huge);
+		expect(s.hitAge(s.capacity, 1, 4)).toBe(math.huge);
+		s.onEvent(ev({ type: "spawned", actorId: 2 }), 5, undefined);
+		expect(s.hitAge(0, 2, 5)).toBe(math.huge);
+		expect(s.hitAge(0, 1, 5)).toBe(math.huge);
+	});
+
 	it("hold(i, id, until) extends only the matching actor's hold (docs/ROOM_CLEAR.md RC5)", () => {
 		const s = new HitReactSlots(BASIS);
 		s.onEvent(ev({ type: "spawned", actorId: 1 }), 0, undefined);

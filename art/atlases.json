@@ -768,6 +768,37 @@
 				{ "name": "bramble-attack4", "animations": ["attack.4"] },
 				{ "name": "bramble-death", "animations": ["death"] }
 			]
+		},
+		"enemy.dummy": {
+			"$comment": [
+				"Training Dummy 2D Pixel Art (docs/DUMMY_ART.md DA2): the tutorial's training dummy (combat A), a wooden post with a target on its chest.",
+				"Three strips in Sprites/, one row each (one facing: the dummy never turns, and the art is a single front view), 80x48 cells, hard alpha (0 / 255), no baked shadow:",
+				"IDLE.png 1 frame, HIT.png 7 (frame 0 a white silhouette, 1-3 it rocks with yellow sparks, 4-6 it settles), BREAKING.png 9 (0 white, 1-5 the top half bursts off,",
+				"6-8 the pieces lie on the floor beside the standing base). Every frame is kept. hit plays over the view-side wobble (DUMMY_SPRITE_VIEW.hitSec, DD1), not the 0.1 s flash;",
+				"death is stretched over the corpse time as every actor's. Stand-ins: move and attack = idle's one cell (the dummy never moves or attacks; the slot requires the names).",
+				"Union box (every opaque pixel) 55x45 + 3 px pad: one sheet dummy.png of 17 cells + its outline sheet."
+			],
+			"source": { "type": "grid", "dir": "training-dummy/Sprites", "frameW": 80, "frameH": 48 },
+			"facingCount": 1,
+			"rowForFacing": [0],
+			"rowOrderEvidence": ["One row per strip, one facing (front view, symmetric post): nothing to order."],
+			"noiseAlpha": 0,
+			"pad": 3,
+			"pivot": { "measure": { "animation": "idle", "facing": 0, "frame": 0 }, "bodyAlpha": 0, "bodyMinRgb": 0, "footBand": 2 },
+			"pivotNote": "Hard alpha and no baked shadow, so every opaque pixel is body (bodyAlpha 0, bodyMinRgb 0). Measured on idle frame 0: the pivot is the middle of the plank base's two bottom rows (source y 42-43, x 28-49).",
+			"outline": { "widthPx": 2 },
+			"outlineNote": "Enemy contrast rim (docs/OUTLINE.md, decision E4: 2 art px), like every enemy set. pad 3 = widthPx + 1.",
+			"bodyTiles": 1.4,
+			"bodyTilesNote": "The idle body is 39 px tall (y 5-43): 1.4 tiles -> 27.9 px/tile, a little under the knight's 1.5. The plank base (21 px) is then 0.75 tiles wide, about the dummy's r 0.35 hitbox (0.7 across); the arm span (32 px) 1.15 tiles.",
+			"resample": "Pixelated",
+			"animations": {
+				"idle": { "file": "IDLE.png", "frames": [0], "fps": 1, "loop": true },
+				"hit": { "file": "HIT.png", "frames": [0, 1, 2, 3, 4, 5, 6], "fps": 10, "loop": false },
+				"death": { "file": "BREAKING.png", "frames": [0, 1, 2, 3, 4, 5, 6, 7, 8], "fps": 18, "loop": false },
+				"move": { "cellsOf": "idle", "fps": 1, "loop": true },
+				"attack": { "cellsOf": "idle", "fps": 1, "loop": true }
+			},
+			"sheets": [{ "name": "dummy", "animations": ["idle", "hit", "death"] }]
 		}
 	},
 	"images": {

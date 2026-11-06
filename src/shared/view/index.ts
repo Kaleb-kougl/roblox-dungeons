@@ -58,7 +58,7 @@
  *
  * Sub-barrels (import from the folder): `shared/view/fx` (the juice layer: hit tracker, hitstop, bars, numbers,
  * particles), `shared/view/audio` (sim events -> theme sound IDs, music), `shared/view/hud` (HUD font token, layout,
- * string keys).
+ * string keys), `shared/view/dummy` (the training dummy's sprite input and view-side hit clip, docs/DUMMY_ART.md).
  */
 export * from "./iso";
 export * from "./config";

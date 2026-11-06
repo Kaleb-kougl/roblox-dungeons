@@ -63,6 +63,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/TREASURE.md` | Treasure rooms (vaults: about one endless floor in two from floor 2 has a caged chest in a combat / elite room, seen through the doorway; clearing the room unlocks it, its lock (UNTOUCHED / SWIFT) kept or cracked one tier down; walk up to open it: a relic, boosts or a bonus draft; gameplay, opt-in `SimConfig.treasure`): plan, TR0 findings, as built TR1-TR8, tasks TR0-TR11, decisions TRD1-TRD14 |
 | `docs/FORTUNE.md` | Fortune (risk shrines: two pact altars in the shrine room, Greed = a shown curse + a Legendary deal now, Horde = the next room fights a second wave for x2 score; the Goldling: a rare harmless gold enemy that flees within its room, coins per hit, a jackpot if caught within 10 s; gameplay, opt-in `SimConfig.pacts` / `SimConfig.golden` on endless only): plan, as built, open owner calls, Studio check, tasks FO0-FO13 / PS1-PS5 / GE1-GE4, decisions FD1-FD16 |
 | `docs/PROJECTILE_ART.md` | Projectile art (every flying bullet drawn with the Player Bullets pack: yellow / green bolts and the Hyper flame for the player, chevron / needle / teardrop recoloured into the danger pink for enemies, optional `fx.bullet.hit`; goo / strike / ember unchanged; presentation only): plan, measured pack, mapping, tasks PA0-PA10, decisions PAD1-PAD11 |
+| `docs/DUMMY_ART.md` | Training dummy art (`enemy.dummy` drawn with the Training Dummy 2D Pixel Art pack: one facing, idle / 7-frame hit wobble / 9-frame break, the wobble on a view-side 0.7 s hit clip; presentation only): plan, tasks DA1-DA7, decisions DD1-DD5 |
 | `docs/GOO_ART.md` | Goo art (the Ooze's goo puddles drawn with the heimlich3 Slime pack's last two frames: land then splat, recoloured into `enemyGoo`, flat on the floor sized to cover the hit; presentation only): plan, tasks GA0-GA7, decisions GAD1-GAD5 |
 | `docs/KENNEY_DECOR.md` | Kenney decor (Kenney's CC0 Isometric Dungeon / Library reprojected from their 30 degree camera to the game's 55 by `scripts/art/kenney/reproject.py`: flat / box / uniform warps; library v2, a `mess` theme, richer storerooms, floor patches planned; the bookcase's alternative art set wired): plan, as built, tasks KN0-KN13, decisions KND1-KND12 |
 
@@ -792,6 +793,15 @@ Decision log (deviations from `PLAN.md`):
   `DECOR_BOOKCASES`, salts `bookcaseSet` / `bookcaseCell`; with only the kit pair the plan is unchanged). Credits:
   Isometric Library, Kenney, CC0. The 14 PNGs uploaded 2026-11-06 (IDs in `packs/vale/assetIds.ts`); the Lune specs
   and a Studio check pending.
+
+- **Training dummy art (docs/DUMMY_ART.md).** Presentation only (no sim, dungeon, lockstep, hash, replay, fixture or
+  score change; the dummy keeps its 8 hp, body and corpse time). `enemy.dummy` gets a one-facing pixel-art sprite set
+  from the Training Dummy 2D Pixel Art pack (any game use, no resale / redistribution as an asset, no NFTs, credit
+  appreciated; author to confirm; raw files in gitignored `art/vendor/training-dummy/`): `dummy.png` (17 cells of
+  62x50, `Pixelated`, bodyTiles 1.4) + its rim. Its 7-frame hit wobble outlasts the sim's 0.1 s hit flash, so the view
+  times it: `HitReactSlots.hitAge` (seconds since every hit), `ActorSpriteInput.hitClip`, `shared/view/dummy`
+  `VIEW_HIT_CLIP_SEC` (only `dummy`, 0.7 s); with a clip `chooseActorAnim` plays `hit` over it and never over the flash.
+  Every other set chooses exactly as before. Upload (DA5) and the Studio check (DA7) pending.
 
 ## Commands
 
