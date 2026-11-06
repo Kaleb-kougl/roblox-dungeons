@@ -3,7 +3,7 @@ import { Janitor } from "@rbxts/janitor";
 import { RunService, Workspace } from "@rbxts/services";
 import { createKvBillboardGui } from "client/ui";
 import { STUDS_PER_TILE } from "shared/config";
-import { pactAltarsPlaced, type RunState, type SimState } from "shared/sim";
+import { pactAltarsPlaced, pedestalOffered, type RunState, type SimState } from "shared/sim";
 import type { ImageRef } from "shared/theme";
 import { RENDER_ORDER, SPRITE_VIEW, floorStudsY, studsX, studsZ, uprightImageBillboard } from "shared/view";
 import { MARKER_USED_COLOR_ROLE, PEDESTAL_COLOR_ROLE, PROGRESSION_VIEW, SHRINE_COLOR_ROLE } from "shared/view/hud";
@@ -25,7 +25,14 @@ interface Marker {
 	readonly pedestal: number;
 	/** The `ui.marker.pedestal` beam over a live pedestal (when the pack has the image). */
 	readonly beam: BillboardGui | undefined;
-	used: boolean;
+	look: MarkerLook;
+}
+
+/** How a marker is drawn: live (its role, beam on), used (dimmed, beam off), hidden (a pedestal nobody can take). */
+const enum MarkerLook {
+	LIVE,
+	USED,
+	HIDDEN,
 }
 
 /**
@@ -34,7 +41,8 @@ interface Marker {
  * (shared/view/hud PEDESTAL_COLOR_ROLE / SHRINE_COLOR_ROLE; a taken pedestal or used shrine dims to
  * MARKER_USED_COLOR_ROLE). When the pack has the `ui.marker.pedestal` image, a camera-facing beam (BillboardGui, its
  * pivot (the image's own, else its bottom centre) on the pedestal's top, PROGRESSION_VIEW.pedestalBeamHeightTiles tall) stands on each live pedestal and
- * is hidden once it is taken. Rebuilt on run start and every floor change from the floor's encounter rooms; their state
+ * is hidden once it is taken. A pedestal nobody can take (every living player already owns every relic: shared/sim
+ * pedestalOffered) is not drawn at all, beam included. Rebuilt on run start and every floor change from the floor's encounter rooms; their state
  * read from the sim's RunState every frame. Read-only on the sim.
  */
 @Controller({})
@@ -99,7 +107,7 @@ export class RunMarkerController implements OnStart {
 			beamImage !== undefined
 				? buildBeam(folder, beamImage, new Vector3(studsX(x), floorStudsY() + height * S, studsZ(z)))
 				: undefined;
-		this.markers.push({ part, pedestal, beam, used: false });
+		this.markers.push({ part, pedestal, beam, look: MarkerLook.LIVE });
 	}
 
 	private frame(): void {
@@ -111,21 +119,29 @@ export class RunMarkerController implements OnStart {
 	/**
 	 * Colours each marker for its state (only when it changed, unless `force`). The shrine's reads as used on a floor
 	 * whose pact altars stand (docs/FORTUNE.md FO7: the classic zone at the crystal is off there; the altars' flames and
-	 * cards carry the offer).
+	 * cards carry the offer). An untaken pedestal nobody can take is hidden.
 	 */
 	private refresh(state: Readonly<SimState>, run: Readonly<RunState>, force: boolean): void {
 		const pack = this.theme.getPack();
 		const altars = pactAltarsPlaced(state);
 		for (const m of this.markers) {
-			const used = m.pedestal >= 0 ? run.pedestalTaken[m.pedestal] === 1 : run.shrineUsed === 1 || altars;
-			if (used === m.used && !force) continue;
-			m.used = used;
+			const look = markerLook(state, run, m.pedestal, altars);
+			if (look === m.look && !force) continue;
+			m.look = look;
 			const live = m.pedestal >= 0 ? PEDESTAL_COLOR_ROLE : SHRINE_COLOR_ROLE;
-			m.part.Color = pack.color(used ? MARKER_USED_COLOR_ROLE : live);
-			m.part.Transparency = used ? PROGRESSION_VIEW.usedTransparency : 0;
-			if (m.beam !== undefined) m.beam.Enabled = !used;
+			m.part.Color = pack.color(look === MarkerLook.USED ? MARKER_USED_COLOR_ROLE : live);
+			m.part.Transparency =
+				look === MarkerLook.HIDDEN ? HIDDEN : look === MarkerLook.USED ? PROGRESSION_VIEW.usedTransparency : 0;
+			if (m.beam !== undefined) m.beam.Enabled = look === MarkerLook.LIVE;
 		}
 	}
+}
+
+/** The look of a pedestal (`pedestal` >= 0) or the shrine (-1) this frame. */
+function markerLook(state: Readonly<SimState>, run: Readonly<RunState>, pedestal: number, altars: boolean): MarkerLook {
+	if (pedestal < 0) return run.shrineUsed === 1 || altars ? MarkerLook.USED : MarkerLook.LIVE;
+	if (run.pedestalTaken[pedestal] === 1) return MarkerLook.USED;
+	return pedestalOffered(state, pedestal) ? MarkerLook.LIVE : MarkerLook.HIDDEN;
 }
 
 /** A camera-facing beam standing on `top` (an invisible anchor Part there; the billboard's bottom centre on it). */

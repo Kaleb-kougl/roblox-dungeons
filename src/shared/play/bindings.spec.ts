@@ -578,12 +578,15 @@ describe("mapping a rebound layout", () => {
 	});
 
 	it("driver keys, bound names and the pad tracker follow the layout", () => {
-		expect(driverKeyAction("Backspace", false, false, custom)).toBe("reset");
-		expect(driverKeyAction("R", false, false, custom)).toBe(undefined);
-		expect(driverKeyAction("ButtonL3", false, false, custom)).toBe(undefined);
-		expect(driverKeyAction("ButtonL3", false, true, custom)).toBe("reset");
-		expect(driverKeyAction("DPadDown", false, true, custom)).toBe(undefined);
-		expect(driverKeyAction("L", true, false, custom)).toBe("replayCheck");
+		const playing = { over: false, paused: false, devRun: false };
+		const over = { over: true, paused: false, devRun: false };
+		expect(driverKeyAction("Backspace", false, playing, custom)).toBe(undefined);
+		expect(driverKeyAction("Backspace", false, over, custom)).toBe("reset");
+		expect(driverKeyAction("R", false, over, custom)).toBe(undefined);
+		expect(driverKeyAction("ButtonL3", false, playing, custom)).toBe(undefined);
+		expect(driverKeyAction("ButtonL3", false, over, custom)).toBe("reset");
+		expect(driverKeyAction("DPadDown", false, over, custom)).toBe(undefined);
+		expect(driverKeyAction("L", true, playing, custom)).toBe("replayCheck");
 
 		const keys = boundKeyNames(custom);
 		for (const k of [
@@ -660,8 +663,9 @@ describe("the map action (docs/MINIMAP.md M9)", () => {
 		expect([keys.buttons, keys.moveX, keys.moveZ]).toEqual([0, 0, 0]);
 		expect(mapDevicesToInput(snap([], [], pad(["DPadLeft"]))).buttons).toBe(0);
 		// Not a driver key either (no restart, no replay check), with or without debug keys or a paused run.
-		expect(driverKeyAction("M", true, true)).toBe(undefined);
-		expect(driverKeyAction("DPadLeft", true, true)).toBe(undefined);
+		const open = { over: true, paused: true, devRun: true };
+		expect(driverKeyAction("M", true, open)).toBe(undefined);
+		expect(driverKeyAction("DPadLeft", true, open)).toBe(undefined);
 	});
 
 	it("isMapInput follows the layout; the map keys are polled and sunk like the other game keys", () => {

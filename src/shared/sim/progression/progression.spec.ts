@@ -63,6 +63,7 @@ import {
 	cloneSimState,
 	takeTreasureBonusDeals,
 	unownedRelics,
+	pedestalOffered,
 	createSimState,
 	curseMultiplier,
 	draftCardFor,
@@ -614,6 +615,20 @@ describe("relics", () => {
 		s.player.z = TREASURE.cz;
 		tick(r);
 		expect([s.run!.events.relicCollected, s.run!.pedestalTaken[0]]).toEqual([0, 0]);
+	});
+
+	it("pedestalOffered (the view's query): untaken and a relic left to get; never with every relic owned or taken", () => {
+		const r = arena([], [Relic.HOURGLASS]);
+		const s = r.s;
+		expect(pedestalOffered(s, 0)).toBe(true);
+		s.player.x = TREASURE.cx;
+		s.player.z = TREASURE.cz;
+		tick(r);
+		expect([s.run!.pedestalTaken[0], pedestalOffered(s, 0)]).toEqual([1, false]);
+		const r2 = arena([], []);
+		for (let k = 0; k < RELICS.size(); k++) grantRelic(r2.s, SOLO_PLAYER, k);
+		expect(pedestalOffered(r2.s, 0)).toBe(false);
+		expect(pedestalOffered(createSimState(SEED, 0, 0, {}), 0)).toBe(false);
 	});
 
 	it("unownedRelics (the pedestal's pool, a Rare chest's too): relic index order; empty without run state", () => {

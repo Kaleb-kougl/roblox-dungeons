@@ -432,6 +432,23 @@ export function unownedRelics(state: Readonly<SimState>, playerIndex: number): n
 	return unowned(me.relics, RELIC_COUNT);
 }
 
+/**
+ * True when pedestal `k` (an index into RunState.pedestalRooms) is untaken and someone could still take it: a living
+ * player who has not left the run with a relic left to get. A view query (the world marker, its beam and glint are
+ * drawn only then): a pedestal nobody can take stays inert in the sim (stepRun step 4) and is simply not shown. No
+ * player can gain a relic slot back, so once false it stays false for the rest of the floor.
+ */
+export function pedestalOffered(state: Readonly<SimState>, k: number): boolean {
+	const r = state.run;
+	if (r === undefined || k < 0 || k >= r.pedestalTaken.size() || r.pedestalTaken[k] !== 0) return false;
+	const n = partySize(state);
+	for (let i = 0; i < n; i++) {
+		if (hasLeft(state, i) || playerAt(state, i).dead !== 0) continue;
+		if (unownedRelics(state, i).size() > 0) return true;
+	}
+	return false;
+}
+
 // ---------------------------------------------------------------------------------------------
 // The run phase of a tick
 

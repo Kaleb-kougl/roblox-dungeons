@@ -27,7 +27,8 @@
  *   shrine used            shrineDim -> 1 (its crystal dims; the shrine's fixed lights dim); pacts (docs/FORTUNE.md):
  *                          once nothing is left at the floor's altars (shared/sim pactsSpent: the Horde taken or out of
  *                          rooms, Greed taken or out of reach for everyone)
- *   pedestal taken         that pedestal's glint -> 0
+ *   pedestal taken         that pedestal's glint -> 0; one nobody can take (shared/sim pedestalOffered: every living
+ *                          player owns every relic) never glints
  *   Ember                  gutter: 1 -> 0 over emberGutterSeconds (x motionScale), every flame on screen
  *   run over (all down)    cold: 0 -> 1 over coldFadeSeconds (lights fade to the cold palette)
  *
@@ -46,6 +47,7 @@ import {
 	nearestLivingPlayer,
 	pactsSpent,
 	partySize,
+	pedestalOffered,
 	playerAt,
 	type ActorState,
 	type SimConfig,
@@ -111,7 +113,10 @@ export interface DecorView {
 	stairGlow: number;
 	/** The used shrine's dim 0..1. */
 	shrineDim: number;
-	/** Per DecorScene.pedestals: glint level 0..1 (1 until taken; 0 without progression state). */
+	/**
+	 * Per DecorScene.pedestals: glint level 0..1 (1 while shared/sim pedestalOffered; 0 once taken, with nobody able to
+	 * take it, or without progression state).
+	 */
 	readonly glint: number[];
 	/** The Ember gutter, 1 -> 0 (x motionScale). */
 	gutter: number;
@@ -353,7 +358,7 @@ export class DecorDirector {
 			let target = 0;
 			if (run !== undefined) {
 				const k = run.pedestalRooms.indexOf(scene.pedestals[j].room);
-				target = k >= 0 && run.pedestalTaken[k] !== 1 ? 1 : 0;
+				target = pedestalOffered(state, k) ? 1 : 0;
 			}
 			v.glint[j] = snap ? target : approach(v.glint[j], target, dt, R.glintFadeSeconds);
 		}

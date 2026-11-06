@@ -28,6 +28,7 @@ import {
 	applyRadialDeadzone,
 	boundKeyNames,
 	boundPadButtonNames,
+	CLOSED_RESTART_WINDOW,
 	driverKeyAction,
 	keyboardMoveVector,
 	keyDevice,
@@ -36,6 +37,7 @@ import {
 	screenToWorld,
 	type DeviceSnapshot,
 	type GamepadSnapshot,
+	type RestartWindow,
 	type TouchSnapshot,
 } from "shared/play";
 
@@ -274,15 +276,25 @@ describe("debug gating and driver keys", () => {
 		expect(bit32.band(ALL_DEBUG_BUTTONS, DEBUG_DROP_BUTTON)).toBe(DEBUG_DROP_BUTTON);
 	});
 
-	it("R restarts any time; the pad restart only when the run is over or paused; F8 only with debug keys", () => {
-		expect(driverKeyAction("R", false, false)).toBe("reset");
-		expect(driverKeyAction("DPadDown", false, false)).toBe(undefined);
-		expect(driverKeyAction("DPadDown", false, true)).toBe("reset");
-		expect(driverKeyAction("F8", false, false)).toBe(undefined);
-		expect(driverKeyAction("F8", true, false)).toBe("replayCheck");
-		expect(driverKeyAction("L", true, false)).toBe("replayCheck");
-		expect(driverKeyAction("L", false, false)).toBe(undefined);
-		expect(driverKeyAction("W", true, true)).toBe(undefined);
+	it("R restarts once the run is over or in a dev run; the pad restart when over or paused; F8 only with debug keys", () => {
+		const playing: RestartWindow = { over: false, paused: false, devRun: false };
+		const paused: RestartWindow = { over: false, paused: true, devRun: false };
+		const over: RestartWindow = { over: true, paused: false, devRun: false };
+		const dev: RestartWindow = { over: false, paused: false, devRun: true };
+		expect(driverKeyAction("R", false, playing)).toBe(undefined);
+		expect(driverKeyAction("R", false, paused)).toBe(undefined);
+		expect(driverKeyAction("R", false, over)).toBe("reset");
+		expect(driverKeyAction("R", false, dev)).toBe("reset");
+		expect(driverKeyAction("R", false, CLOSED_RESTART_WINDOW)).toBe(undefined);
+		expect(driverKeyAction("DPadDown", false, playing)).toBe(undefined);
+		expect(driverKeyAction("DPadDown", false, dev)).toBe(undefined);
+		expect(driverKeyAction("DPadDown", false, paused)).toBe("reset");
+		expect(driverKeyAction("DPadDown", false, over)).toBe("reset");
+		expect(driverKeyAction("F8", false, playing)).toBe(undefined);
+		expect(driverKeyAction("F8", true, playing)).toBe("replayCheck");
+		expect(driverKeyAction("L", true, playing)).toBe("replayCheck");
+		expect(driverKeyAction("L", false, playing)).toBe(undefined);
+		expect(driverKeyAction("W", true, over)).toBe(undefined);
 	});
 
 	it("lists every key and pad button it reads (for polling and sinking)", () => {

@@ -390,7 +390,8 @@ Decision log (deviations from `PLAN.md`):
   114687). Access is decided by the server (`DevModeService`, `shared/devmode` `devModeAllowed`, `shared/config`
   `DEV_MODE`: master switch `enabled`, Studio, `allowedUserIds`, the user-owned place's creator) and published as the
   player attribute `KV_DevAllowed`; `DevModeController` mounts the DEV chip / panel (F2) and the god key (F3) only then.
-  In a dev run R restarts at once on the same seed and floor (no forfeit). M1, every fixture, the tutorial, endless and
+  In a dev run R restarts at once on the same seed and floor (no forfeit); outside one R acts only once the run is over
+  (`driverKeyAction`'s `RestartWindow`; the pause overlay's Restart is the mid-run way out). M1, every fixture, the tutorial, endless and
   co-op replay exactly as before (none sets `startFloor` or `dev`).
 - **Builds (docs/BUILDS.md).** Gameplay. Opt-in `SimConfig.builds` (`BUILDS_CONFIG` = `BUILD_RULES`, endless only, BUD8)
   creates `state.builds` (per player boon levels, duos, counters, deals left; the proc queue) with its own hash group

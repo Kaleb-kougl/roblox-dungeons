@@ -125,7 +125,7 @@ export const MOUSE_BINDINGS: ReadonlyMap<string, number> = DEFAULT_COMPILED.mous
 /** Gamepad Enum.KeyCode name -> button bit, default layout (web PAD_BINDINGS, standard mapping). */
 export const PAD_BINDINGS: ReadonlyMap<string, number> = DEFAULT_COMPILED.padBits;
 
-/** Driver keys (not sim input; web driverKeys.ts): the default restart key (any time). */
+/** Driver keys (not sim input; web driverKeys.ts): the default restart key (run over, or any time in a dev run). */
 export const RESTART_KEY = DEFAULT_BINDINGS.kbm.restart[0];
 /** F8 as in the web build; L as well, because Roblox Studio can take F8 for itself while playing. Fixed. */
 export const REPLAY_CHECK_KEYS: ReadonlyArray<string> = DEBUG_REPLAY_CHECK_KEYS;
@@ -395,19 +395,33 @@ export function maskDebugButtons(buttons: number, debugAllowed: boolean): number
 
 export type DriverKeyAction = "replayCheck" | "reset" | undefined;
 
+/** The run facts the restart input reads (SimController; no run counts as over). */
+export interface RestartWindow {
+	/** The run is over (dead / victory), or there is no run. */
+	readonly over: boolean;
+	/** A solo run is paused. */
+	readonly paused: boolean;
+	/** A developer mode run (docs/DEV_MODE.md): the restart key acts any time. */
+	readonly devRun: boolean;
+}
+
+/** No run state known yet: the restart input acts nowhere but the menu's "ask again" (InputController's default). */
+export const CLOSED_RESTART_WINDOW: RestartWindow = { over: false, paused: false, devRun: false };
+
 /**
- * A pressed key / button name -> driver action (web driverKeyAction). The restart key (default R) restarts any time,
- * the pad's restart (default D-pad down) only while the run is over or paused; F8 / L only with debug keys on.
+ * A pressed key / button name -> driver action (web driverKeyAction, port rule). The restart key (default R) restarts
+ * only once the run is over, or any time in a dev run, so a stray press never ends a run being played or paused; the
+ * pad's restart (default D-pad down) only while the run is over or paused; F8 / L only with debug keys on.
  */
 export function driverKeyAction(
 	name: string,
 	debugKeys: boolean,
-	runOverOrPaused: boolean,
+	restart: RestartWindow,
 	bindings: Bindings = DEFAULT_BINDINGS,
 ): DriverKeyAction {
 	const c = compiled(bindings);
-	if (c.restartKbm.includes(name)) return "reset";
-	if (name === c.restartPad && runOverOrPaused) return "reset";
+	if (c.restartKbm.includes(name)) return restart.over || restart.devRun ? "reset" : undefined;
+	if (name === c.restartPad && (restart.over || restart.paused)) return "reset";
 	if (debugKeys && REPLAY_CHECK_KEYS.includes(name)) return "replayCheck";
 	return undefined;
 }

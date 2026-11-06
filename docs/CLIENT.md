@@ -1146,9 +1146,10 @@ With the actors merged the default `game` world has enemies; without them see "f
     `Run over` (red), `You died — press R to retry`, `or A`, the time survived, hits taken, kills; the verdict
     line `Run 2 (death): ... verified`. Press R: a fresh run from the entrance (`[Sim] run 3 started`), the panel
     disappears, the floor is not rebuilt (no new `[World] built` line).
-12. **Abandon.** Play at least 10 s, press R: the old run is submitted as `abandoned` (Output: `[Sim] submitted run N
+12. **Abandon.** Play at least 10 s, then pause and press Restart (R does nothing mid-run outside developer mode,
+    nor while paused): the old run is submitted as `abandoned` (Output: `[Sim] submitted run N
     (abandoned): T ticks, B bytes, hash H`; the recording goes as a binary `buffer`, docs/SERVER.md "The wire
-    format"). Press R again within 10 s: not submitted (`not submitted (short)` on the verdict line), unless that run
+    format"). Restart again within 10 s: not submitted (`not submitted (short)` on the verdict line), unless that run
     was the first after a death. More than 6 submissions a minute answer `rate_limited` (expected). A recording over
     the server's byte cap (`MAX_RECORDING_BYTES`, ~20 min of play) is never sent: the verdict line shows
     `rejected (too_large) not sent: recording over cap` (rules: `shared/play/submitPolicy.ts`, docs/SERVER.md
@@ -1156,15 +1157,15 @@ With the actors merged the default `game` world has enemies; without them see "f
 13. **Replay check (KV_Debug).** Play 20 s, press F8 (or L): Output `[Sim] replay check @ tick N: MATCH`, the HUD's
     debug line (monospace, bottom right) `replay match @ N`. Repeat right after a boss phase change or a kill (a
     freeze frame was just applied): still MATCH.
-14. **Seed change.** Set `KV_Seed` = 42, press R: a different floor (`[World] built ...` again).
+14. **Seed change.** Set `KV_Seed` = 42, pause and Restart: a different floor (`[World] built ...` again).
 15. **Gamepad.** Connect a controller and repeat 2-11 with the pad: left stick moves, right stick aims (the diamond
     follows it and keeps the last direction when released), RT attack, LT guard / charge, Y swap (the hint now
     reads `Y swap`), LB roll, D-pad up flask, RB Ember, Start pause. After a death or victory the run-over panel
     has `Again` selected: **A** restarts (D-pad right moves to Main menu); mid-run D-pad down does nothing. Moving the mouse switches aim back to the mouse. Start opens the pause
     overlay with `Resume` selected; D-pad / stick move the selection, A presses, Start resumes; `Options`
     opens the Options screen with the `Juice` tab button selected, A picks, B closes it (back to the overlay).
-16. **Stress (optional).** `KV_Stress` = 1000, R: rings of pink bullets from the entrance; check fps (Shift+F5 /
-    MicroProfiler label `KV Bullets`). Verdict line: `not submitted (stress)`. Clear the attribute and press R.
+16. **Stress (optional).** `KV_Stress` = 1000, pause and Restart: rings of pink bullets from the entrance; check fps (Shift+F5 /
+    MicroProfiler label `KV Bullets`). Verdict line: `not submitted (stress)`. Clear the attribute and Restart.
 17. **Fallback (no actors merged).** HUD info line in orange: `enemies unavailable (Unknown archetype ...); playing
     the floor without enemies`. Steps 2-6, 8, 11 (with K), 13-16 still apply. Set the server's
     `KV_RunValidationWorld` = `dungeonNoEncounter` so submissions verify.

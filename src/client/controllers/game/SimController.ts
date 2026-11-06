@@ -432,15 +432,18 @@ export class SimController implements OnStart {
 
 	onStart(): void {
 		this.inputController.onDriverAction((action) => {
-			// R / pad restart: handleReset (nothing in a tutorial run: its pause overlay has Restart tutorial).
+			// R / pad restart: handleReset (nothing in a tutorial run: its pause overlay has Restart tutorial). R only acts
+			// once the run is over or in a dev run, the pad's once it is over or paused (driverKeyAction).
 			if (action === "reset") this.pendingReset = true;
 			else this.pendingReplayCheck = true;
 		});
-		this.inputController.setRunOverOrPaused(() => {
+		this.inputController.setRestartWindow(() => {
 			const ctx = this.ctx;
-			if (ctx?.coop !== undefined) return ctx.coop.isOver();
+			const devRun = ctx?.dev === true;
+			if (ctx?.coop !== undefined) return { over: ctx.coop.isOver(), paused: false, devRun };
 			const run = ctx?.live;
-			return run === undefined || run.isPaused() || run.outcome() !== "playing";
+			if (run === undefined) return { over: true, paused: false, devRun };
+			return { over: run.outcome() !== "playing", paused: run.isPaused(), devRun };
 		});
 		Events.partyRunStarted.connect((start) => this.startCoop(start));
 		Events.lockstepFrames.connect((runId, firstTick, data, hashAck) => {

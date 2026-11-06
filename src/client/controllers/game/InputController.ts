@@ -12,6 +12,7 @@ import {
 	boundKeyNames,
 	boundMouseButtonNames,
 	boundPadButtonNames,
+	CLOSED_RESTART_WINDOW,
 	driverKeyAction,
 	isMapInput,
 	isMouseButtonName,
@@ -22,6 +23,7 @@ import {
 	type Bindings,
 	type DriverKeyAction,
 	type GamepadSnapshot,
+	type RestartWindow,
 	draftStatus,
 	dropDraftGuiMouse,
 	pickAutoTarget,
@@ -132,7 +134,7 @@ export class InputController implements OnStart {
 	 * pause button), until released (mousePressOnGui).
 	 */
 	private readonly guiMouse = new Set<Enum.UserInputType>();
-	private runOverOrPaused: () => boolean = () => false;
+	private restartWindow: () => RestartWindow = () => CLOSED_RESTART_WINDOW;
 	private pointerAimX = 0;
 	private pointerAimZ = 0;
 	/** Connected gamepads, kept by GamepadConnected / GamepadDisconnected (no per-frame GetConnectedGamepads). */
@@ -235,9 +237,9 @@ export class InputController implements OnStart {
 		this.mouseSuppressed = true;
 	}
 
-	/** Lets the pad restart (D-pad down) know when it is allowed. */
-	setRunOverOrPaused(query: () => boolean): void {
-		this.runOverOrPaused = query;
+	/** Lets the restart key (R) and the pad restart (D-pad down) know when they are allowed (driverKeyAction). */
+	setRestartWindow(query: () => RestartWindow): void {
+		this.restartWindow = query;
 	}
 
 	/** Driver key presses (restart, replay check). */
@@ -440,7 +442,7 @@ export class InputController implements OnStart {
 	}
 
 	private reportDriver(name: string): void {
-		const action = driverKeyAction(name, this.debugButtons, this.runOverOrPaused(), this.bindings);
+		const action = driverKeyAction(name, this.debugButtons, this.restartWindow(), this.bindings);
 		if (action !== undefined) for (const listener of this.driverListeners) listener(action);
 		if (isMapInput(name, this.bindings)) for (const listener of this.mapListeners) listener();
 	}

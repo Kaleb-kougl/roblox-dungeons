@@ -134,7 +134,7 @@ interface FixedLight extends DecorLight {
  *               stairwell) and the shrine room's (shrineLights, nearest the shrine; dimmed once it is used).
  *   flat fx     the boss ring's fire pits (decor.fx.glow laid flat, DECOR_FX.ringGlowTiles across) and the open
  *               stairwell's ring (decor.fx.zone, zoneSizeTiles) as floor-level SurfaceGuis: nothing standing.
- *   glint       decor.fx.glint over each live relic pedestal until it is taken.
+ *   glint       decor.fx.glint over each live relic pedestal until it is taken (none over one nobody can take).
  *   ambient     one ParticleEmitter volume around the camera focus with the biome's texture (pack.ambient(biome); none
  *               without it), rate from ambientEmitterSpec (Forge count x band light x juice particle level, zero under
  *               reduced motion, capped at DECOR_FX.maxParticles); TimeScale 0 while the decoration is frozen. A

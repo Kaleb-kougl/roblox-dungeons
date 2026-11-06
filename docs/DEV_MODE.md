@@ -10,6 +10,8 @@ the server, shown only to players the server allows.
 3. Pick a floor (-5 / - / type / + / +5, floors 1-50; boss floors are marked), optionally a seed (New rolls one), and
    god mode, then **Go to floor N**.
 4. In the dev run: **R** (or Restart / Again) restarts the same seed and floor at once, keeping god mode as it is now.
+   Outside a dev run R only acts once the run is over (the run-over panel's Again); mid-run, playing or paused, it does
+   nothing (`shared/play` `driverKeyAction`, `RestartWindow`), so a stray press never forfeits a ranked run.
    **F3** (or the panel's button) flips god mode mid-run. Leave run returns to the menu (no forfeit).
 
 The chip shows `DEV · F<n> · GOD` during a dev run. The run is not paused while the panel is open. Studio shortcuts:
