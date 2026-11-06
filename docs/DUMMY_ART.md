@@ -8,9 +8,8 @@ fixture or the tutorial's timings. The dummy keeps its 8 hp, r 0.35 body and def
 
 ## Status (2026-11-06, branch `dummy-art`)
 
-DA1-DA4 and DA6 are code-complete and verified headlessly (see "Verify as run"). **Open:** DA5 (upload `dummy.png`
-and `dummy-outline.png`, paste both ids into `assetIds.ts`) and DA7 (the Studio check). Until DA5 the bundled vale pack
-draws the placeholder post, exactly as before.
+DA1-DA6 done: both sheets uploaded 2026-11-06 12:09 PM (`assetIds.ts`), so the bundled vale pack draws the dummy.
+**Open:** DA7 (the Studio check) and the Credits row (author to confirm).
 
 ## The art (measured 2026-11-06)
 
@@ -89,7 +88,7 @@ to Roblox only as part of the game. **The author and store page are not in the d
   idle at the end and outside the clip with the flash on, death first, no flinch / 1-frame hit skip it, the flash rule
   unchanged without a clip) and `hitReact.spec.ts` (`hitAge`: every hit, capped counts, kills don't, other ids and new
   actors never hit).
-- [ ] **DA5. Upload.** `dummy.png` and `dummy-outline.png` (`art/upload/`); paste both ids into `assetIds.ts` with the
+- [x] **DA5. Upload.** (uploaded 2026-11-06 12:09 PM, ids in `assetIds.ts`.) `dummy.png` and `dummy-outline.png` (`art/upload/`); paste both ids into `assetIds.ts` with the
   upload note. → Verify: `npm run verify` (the `vale enemy.dummy` "as bundled" case then expects `sprites`).
 - [x] **DA6. Docs.** This file, `docs/ART.md` (slice table), `CLAUDE.md` document table, `THIRD_PARTY_NOTICES.md`.
   **Open:** the Credits row (`shared/view/menu/credits.ts`) once the author is known.

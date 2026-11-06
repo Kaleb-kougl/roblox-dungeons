@@ -114,6 +114,8 @@ import type { RobloxAssetId } from "../../types";
  * kenney-bookcase-<look>-x / -z (the bookcase's alternative set: Kenney's Isometric Library, CC0, reprojected by
  * scripts/art/kenney/reproject.py; docs/KENNEY_DECOR.md) uploaded 2026-11-06 11:46 AM by k9kbdev, transcribed from an
  * Asset Manager screenshot.
+ * dummy.png / dummy-outline.png (the tutorial's training dummy, docs/DUMMY_ART.md DA5; Training Dummy 2D Pixel Art)
+ * uploaded 2026-11-06 12:09 PM by k9kbdev, transcribed from an Asset Manager screenshot.
  */
 export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"amb-b1.ogg": "rbxassetid://91158343621799",
@@ -163,6 +165,8 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"charger-death-outline.png": "rbxassetid://94883878686509",
 	"charger-death.png": "rbxassetid://83176562450531",
 	"decor-atlas.png": "rbxassetid://115064942223814",
+	"dummy-outline.png": "rbxassetid://114899302767067",
+	"dummy.png": "rbxassetid://76011095585692",
 	"decor-mote.png": "rbxassetid://108281638823690",
 	"golden-death-outline.png": "rbxassetid://129944301136987",
 	"golden-death.png": "rbxassetid://92086087611208",
