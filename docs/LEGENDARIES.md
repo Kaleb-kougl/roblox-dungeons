@@ -555,3 +555,285 @@ yet (LG6). Paths under `src/shared/` unless noted.
   (0 errors, 0 warnings) green. Headless (Lune): every spec under `theme`, `view/hud`, `view/audio` and `view/fx` (112,
   the theme validator's placeholder and vale specs among them), plus `tutorial`, `play/bindings` and `shared/l10n`:
   all pass.
+
+## LG7 tuning (as built, 2026-11-06)
+
+Branch `legendaries-tune`. Measurements only: test support and spec files, **no gameplay number or rule changed**; the
+recommendations at the end are owner calls. Harnesses: BU13's `run/testing/buildTune.ts` (extended: `arenaConfig` /
+`anyLiving` exported, an optional per-step `observe` on `buildFight`, `KillCounts.streakKills` (kills whose
+`ctx.procCause` is `KillCause.OVERKILL`) and `setProbeHitObserver`, a hook the kill probe calls on every hit before the
+archetype's own `onHit`), `run/testing/buildOffers.ts` (extended: legendary tallies and Greed's deal per checkpoint) and
+the new `run/testing/legendaryTune.ts` (Overkill rows and the Skewer counterfactuals, Bastion's defence fights). Specs
+(each prints its tables with a `[legendaries tune]` prefix and asserts only loose bounds; headless runtimes in
+brackets): `sim/legendaries.ttk.pack.spec.ts` (2.4 s), `sim/legendaries.ttk.room.spec.ts` (15 s),
+`sim/legendaries.bastion.guard.spec.ts` (35 s), `sim/legendaries.bastion.roll.spec.ts` (44 s),
+`run/legendariesOffers.spec.ts` (3 s). BU13's own specs (`sim/builds.ttk.*`, `run/buildsOffers`, `run/buildsPool`)
+still pass unchanged.
+
+**Method.** Overkill: BU13's arena exactly (solo, open endless arena, god mode, the build granted through `grantCard`
+before tick 0, floors 1 / 6 / 11 at Depth 1 / 2 / 3, run seeds 1-3, BU13's sword and leading bow bots), on BU13's
+8-swarmer pack, the census rooms (picked again by `tuneCensusRoom` from solo runs 1-10: the rosters changed since BU13,
+so the rooms did too: f1 run 2 room 0 (4 swarmer, 1 sniper); f6 run 2 room 7 (3 imp, 1 bomber, 2 swarmer, 1 sniper);
+f11 run 10 room 3 (bruiser, stormcaller, warbanner, summoner, sniper, charger\*, 2 swarmer)), and a new **line**: 6
+swarmers in a row straight ahead, 1 unit apart (Skewer's best case). Streaks come from the unhashed `BuildEvents`
+(`overkill*` lists: one entry per streak that struck; the longest chain = the highest proc generation + 1 links) and
+Skewer's line strikes from its `duoProc` entries. **Skewer counterfactuals** (no sim change): at each streak's first
+strike the probe's hit observer sees every actor where the streak found it (the corpse and target are the streak's
+event, pushed before the strike) and counts the other living enemies (the spark's skips) within `SKEWER_RADIUS` of three
+lines: as built (corpse -> target), **extended** (corpse -> the point `OVERKILL_RANGE` from the corpse through the
+target) and **farthest** (corpse -> the farthest enemy within `OVERKILL_RANGE`). Geometry at the first link only: no
+chain is replayed under the alternative rule.
+
+Bastion: one room = one fight (the pick arms the brace once; nothing re-arms it in an arena), floor 6 hp (Depth 2), 20 s
+at most, run seeds 1-5 (the player's start moves 0.5 x ((seed mod 5) - 2) along X, so the turret rooms, which draw no
+rng, give five fights too), god mode (hits that landed and half hearts lost counted before the refill). Rooms: 2
+`turret.caster` (3-arm spiral) and 2 `turret.sprayer` (16-rings) 3 units either side, 5 ahead (the M1 sandbox turrets:
+no endless roster has them, so they are the dense-pattern stress tests; they revive, so these rooms never clear), 4
+snipers (two ahead, two flanking behind), 2 reapers, and the f6 census room above. Bots: **guard** = the sword bot plus
+the guard (ALT) whenever it is off cooldown, the knight is not rolling and an enemy bullet is within guard reach + 0.6;
+**roll** = the bow bot (stream) plus a roll toward the nearest enemy bullet whenever 2+ are within 1.6 units; each also
+as a **hold** bot that never attacks (the bow bot's kiting at 5 units with FIRE cleared, nothing dies, the full 20 s of
+pressure: the defence alone). Guard erasures come from the scored `ScoreEvents.guardPlayer` (every row counts them);
+roll counts are Bastion's own `braceCount` (only a Bastion roller marks bullets). The guard's shape without Bastion is
+varied by setting `SWORD_DATA.guardTicks` / `guardHalfAngleCos` for the fight (restored after; the sword reads both
+live); Bastion's `BASTION_GUARD_TICKS` / `BASTION_GUARD_SWEEP_HALF_ANGLE_COS` are constants, so Bastion rows run the
+shipped numbers only, and other sizes WITH the brace and pip need a setter in sim code (not added). The shape rows
+stand for Bastion's guard: the "ring, 27 ticks" row takes exactly Bastion's hits in every room.
+
+Offers: BU13's 1000 simulated runs per policy unchanged, now with four legendaries and thirteen duos; Greed's deal is
+drawn (`drawLegendaryOffers`, `PACT_LEGENDARY_CARDS` 3, on its own rng stream per run) for the build at each checkpoint.
+
+### 1. Overkill: time to clear (mean seconds, x no build)
+
+Pack (8 swarmers):
+
+| build | sword s f1 / f6 / f11 (x no build) | bow s f1 / f6 / f11 (x no build) |
+|---|---|---|
+| no build | 1.4 / 1.4 / 1.8 | 1.6 / 4.7 / 9.5 |
+| Overkill | 0.4 / 0.7 / 1.0 (0.30 / 0.50 / 0.55) | 0.8 / 4.7 / 9.5 (0.52 / 1.00 / 1.00) |
+| Sharpened I | 1.4 / 1.4 / 1.8 (1.00 / 1.00 / 1.00) | 1.6 / 3.2 / 6.4 (1.00 / 0.67 / 0.67) |
+| Overkill + Sharpened I | 0.4 / 0.7 / 1.0 (0.30 / 0.50 / 0.55) | 0.8 / 3.2 / 6.4 (0.52 / 0.67 / 0.67) |
+| Executioner (Sharpened III) | 1.4 / 1.4 / 1.4 (1.00 / 1.00 / 0.79) | 1.6 / 1.6 / 3.2 (1.00 / 0.34 / 0.33) |
+| Overkill + Executioner | 0.3 / 0.6 / 0.7 (0.25 / 0.40 / 0.40) | 0.8 / 0.5 / 1.8 (0.52 / 0.10 / 0.19) |
+| Volatile I | 0.4 / 0.6 / 1.1 (0.29 / 0.41 / 0.60) | 0.3 / 1.5 / 3.4 (0.20 / 0.32 / 0.36) |
+| Supernova (Overkill + Volatile I) | 0.4 / 0.5 / 0.9 (0.25 / 0.34 / 0.49) | 0.3 / 1.5 / 3.4 (0.20 / 0.32 / 0.36) |
+| Piercing Arrows I | 1.4 / 1.4 / 1.8 (1.00 / 1.00 / 1.00) | 1.2 / 3.4 / 5.5 (0.77 / 0.72 / 0.58) |
+| Skewer (Overkill + Piercing Arrows I) | 0.4 / 0.7 / 1.0 (0.30 / 0.50 / 0.55) | 0.6 / 3.4 / 5.5 (0.36 / 0.72 / 0.58) |
+
+Mixed census room:
+
+| build | sword s f1 / f6 / f11 (x no build) | bow s f1 / f6 / f11 (x no build) |
+|---|---|---|
+| no build | 1.9 / 7.0 / 25.6 | 1.9 / 10.1 / 56.4 |
+| Overkill | 1.7 / 6.4 / 24.7 (0.87 / 0.92 / 0.96) | 1.4 / 10.1 / 56.4 (0.72 / 1.00 / 1.00) |
+| Sharpened I | 1.9 / 4.0 / 21.9 (1.00 / 0.57 / 0.85) | 1.9 / 8.2 / 44.3 (1.00 / 0.81 / 0.79) |
+| Overkill + Sharpened I | 1.7 / 3.2 / 21.6 (0.87 / 0.46 / 0.84) | 1.4 / 7.9 / 44.2 (0.72 / 0.79 / 0.78) |
+| Executioner (Sharpened III) | 1.7 / 3.2 / 15.6 (0.88 / 0.46 / 0.61) | 1.4 / 4.8 / 25.4 (0.71 / 0.48 / 0.45) |
+| Overkill + Executioner | 1.4 / 3.8 / 15.6 (0.71 / 0.55 / 0.61) | 1.0 / 4.3 / 25.6 (0.50 / 0.42 / 0.45) |
+| Volatile I | 1.7 / 6.2 / 25.6 (0.90 / 0.89 / 1.00) | 1.4 / 9.3 / 53.6 (0.72 / 0.93 / 0.95) |
+| Supernova (Overkill + Volatile I) | 1.6 / 6.0 / 24.5 (0.84 / 0.87 / 0.96) | 1.4 / 9.3 / 53.6 (0.72 / 0.93 / 0.95) |
+| Piercing Arrows I | 1.9 / 7.0 / 25.6 (1.00 / 1.00 / 1.00) | 1.9 / 9.4 / 50.1 (1.00 / 0.93 / 0.89) |
+| Skewer (Overkill + Piercing Arrows I) | 1.7 / 6.4 / 24.7 (0.87 / 0.92 / 0.96) | 1.4 / 9.4 / 50.1 (0.72 / 0.93 / 0.89) |
+
+Every fight cleared; no weapon shot dropped; the proc queue never held more than 3 after a drain.
+
+### 2. Overkill: streaks and chains
+
+Per fight, f1 / f6 / f11 (the pack has 8 kills, the rooms 5 / 7 / 8-14 with summons and slimelets). "Carry max" and
+"longest chain" over every fight of the row. Skewer's rows equal Overkill's everywhere (its line never struck anyone).
+
+| fight, build | streaks per kill | kills by a streak | carry mean | carry max | longest chain (links) |
+|---|---|---|---|---|---|
+| pack, sword, Overkill | 0.58 / 0.71 / 0.58 | 58% / 21% / 33% | 1.57 / 1.60 / 2.66 | 5.80 | 2 |
+| pack, sword, Overkill + Sharpened I | 0.58 / 0.79 / 0.67 | 58% / 29% / 33% | 2.32 / 2.38 / 3.69 | 7.20 | 3 |
+| pack, sword, Overkill + Executioner | 0.67 / 0.71 / 0.71 | 67% / 50% / 21% | 3.62 / 2.16 / 2.07 | 8.85 | 3 |
+| pack, sword, Supernova | 0.58 / 0.33 / 0.42 | 58% / 0% / 25% | 1.57 / 1.00 / 2.55 | 5.95 | 2 |
+| pack, bow, Overkill | 0.50 / 0.00 / 0.00 | 50% / 0% / 0% | 1.00 / - / - | 1.00 | 1 |
+| pack, bow, Overkill + Sharpened I | 0.50 / 0.00 / 0.00 | 50% / 0% / 0% | 1.00 / - / - | 1.00 | 1 |
+| pack, bow, Overkill + Executioner | 0.50 / 0.75 / 0.88 | 50% / 75% / 25% | 1.00 / 1.75 / 1.75 | 1.75 | 3 |
+| pack, bow, Supernova | 0.12 / 0.00 / 0.00 | 13% / 0% / 0% | 1.00 / - / - | 1.00 | 1 |
+| room, sword, Overkill | 0.40 / 0.33 / 0.21 | 40% / 0% / 8% | 1.83 / 1.24 / 1.83 | 2.70 | 2 |
+| room, sword, Overkill + Sharpened I | 0.40 / 0.52 / 0.17 | 40% / 10% / 8% | 2.58 / 2.30 / 3.71 | 6.60 | 2 |
+| room, sword, Overkill + Executioner | 0.47 / 0.33 / 0.12 | 47% / 29% / 0% | 3.82 / 4.35 / 1.20 | 5.25 | 3 |
+| room, sword, Supernova | 0.40 / 0.38 / 0.21 | 40% / 0% / 8% | 1.83 / 1.29 / 1.83 | 2.50 | 2 |
+| room, bow, Overkill | 0.40 / 0.00 / 0.00 | 40% / 0% / 0% | 1.00 / - / - | 1.00 | 1 |
+| room, bow, Overkill + Sharpened I | 0.40 / 0.14 / 0.02 | 40% / 0% / 0% | 1.00 / 1.20 / 1.00 | 1.20 | 1 |
+| room, bow, Overkill + Executioner | 0.40 / 0.24 / 0.52 | 40% / 19% / 0% | 1.00 / 1.75 / 1.75 | 1.75 | 1 |
+| line, sword, Overkill | 0.67 / 0.50 / 0.17 | 67% / 17% / 17% | 1.50 / 1.30 / 1.95 | 2.00 | 2 |
+| line, bow, Overkill | 0.50 / 0.00 / 0.00 | 50% / 0% / 0% | 1.00 / - / - | 1.00 | 1 |
+
+**The bow's stream stops carrying after floor 1.** LGD2's floor applies only to a one-shot of an enemy at full hp, and
+from floor 2 a stream arrow (1 damage) one-shots nothing: a swarmer has 1.08 hp at f2, 2.1 at f6 (Depth 2), 4.05 at f11
+(Depth 3) (`endlessActorHp`). The killing arrow's excess is then the fraction left over, always below 1 =
+`OVERKILL_MIN_CARRY`, so it carries nothing: 0 streaks with the bow at f6 and f11 in every fight without Executioner
+(Executioner's execute carries the full hit, LGD3, which is why Overkill + Executioner is the best bow row in the
+tables: pack x 0.10 / 0.19). The sword carries mostly from its finisher (6) and is comparable to Chain Spark I in the
+pack (x 0.30 / 0.50 / 0.55 here; BU13's Chain Spark I x 0.25 / 0.50 / 0.56) and weaker than it in rooms
+(x 0.87 / 0.92 / 0.96). Chains are short: 2 links alone, 3 only with Sharpened or Executioner. Supernova rarely reaches
+its 3+ carry (carry means 1.0-2.7), so it adds little to Volatile I (sword pack f6 / f11 x 0.34 / 0.49 against
+0.41 / 0.60; the bow identical).
+
+### 3. Skewer's line
+
+| fight, weapon (streaks seen) | as built: streaks with another enemy on the line / others per streak | extended to OVERKILL_RANGE | to the farthest enemy in range |
+|---|---|---|---|
+| pack, sword (45) | 0% / 0.00 | 18% / 0.18 | 18% / 0.18 |
+| pack, bow (12) | 0% / 0.00 | 75% / 0.75 | 50% / 0.50 |
+| room, sword (18) | 0% / 0.00 | 6% / 0.06 | 17% / 0.17 |
+| room, bow (6) | 0% / 0.00 | 50% / 0.50 | 50% / 1.00 |
+| line, sword (24) | 0% / 0.00 | 88% / 2.25 | 88% / 2.12 |
+| line, bow (9) | 0% / 0.00 | 67% / 1.67 | 67% / 1.67 |
+
+As built, Skewer's line struck **nobody** besides the target in every fight, the row of swarmers included (the sim's own
+`duoProc` feed agrees: 0 Skewer entries). The target is the nearest enemy, so anything inside the corpse -> target
+segment would have been the target. Extending the line through the target to `OVERKILL_RANGE` catches 2.25 more per
+streak on a row (sword) and some extra in packs and rooms; aiming at the farthest enemy does about the same on a row and
+a little more in rooms (17 % of sword streaks) but sends the streak past the nearest enemies. The bow numbers are floor
+1 only (the bow carries nothing later, section 2), so today Skewer's bow TTK from f6 is Piercing Arrows I's
+(x 0.72 / 0.58 pack, 0.93 / 0.89 room).
+
+### 4. Bastion, the guard (sword)
+
+Hold bot (never attacks: the defence alone), 20 s per room, hits taken per minute / half hearts lost per room:
+
+| room | today (203 deg, 18) | ring, 18 | 203 deg, 27 | ring, 27 | Bastion (ring 27 + pip + brace) | Warding I | Bastion + Warding I + Citadel |
+|---|---|---|---|---|---|---|---|
+| 2 turret.caster | 28.8 / 9.6 | 28.2 / 9.4 | 18.6 / 6.2 | 18.6 / 6.2 | 18.6 / 5.0 | 28.8 / 8.6 | 18.6 / 0.0 |
+| 2 turret.sprayer | 16.8 / 5.6 | 16.8 / 5.6 | 8.4 / 2.8 | 8.4 / 2.8 | 8.4 / 1.8 | 16.8 / 4.6 | 8.4 / 0.2 |
+| 4 sniper | 13.8 / 4.6 | 12.0 / 4.0 | 12.6 / 4.2 | 9.6 / 3.2 | 9.6 / 2.0 | 13.8 / 3.6 | 9.6 / 0.0 |
+| 2 reaper | 3.0 / 1.0 | 3.0 / 1.0 | 1.8 / 0.6 | 1.8 / 0.6 | 1.8 / 0.0 | 3.0 / 0.4 | 1.8 / 0.0 |
+| mixed f6 census | 10.2 / 3.4 | 7.8 / 2.6 | 10.8 / 3.6 | 9.0 / 3.0 | 9.0 / 2.0 | 10.2 / 2.4 | 9.0 / 0.2 |
+
+Braces and guards per room (hold bot; "3+ / 5+" = guards that erased at least 3 / 5 bullets: Citadel's braces at the
+shipped threshold and at 5):
+
+| room | guards | erased per guard today / Bastion | 3+ / 5+ guards today | 3+ / 5+ guards Bastion | Bastion braces (pips restored) | Citadel braces (pips restored) |
+|---|---|---|---|---|---|---|
+| 2 turret.caster | 19.0 | 3.9 / 5.7 | 17.4 / 4.8 | 18.0 / 14.8 | 1.00 (0.20) | 18.0 (5.8) |
+| 2 turret.sprayer | 19.0 | 1.8 / 2.5 | 5.2 / 0.2 | 9.0 / 0.6 | 1.00 (0.00) | 9.0 (2.4) |
+| 4 sniper | 14.0 | 2.7 / 4.0 | 8.6 / 2.2 | 10.4 / 5.0 | 1.00 (0.20) | 10.4 (3.2) |
+| 2 reaper | 7.8-8.6 | 1.2 / 1.5 | 0.6 / 0.0 | 1.0 / 0.2 | 0.60 (0.60) | 1.0 (0.6) |
+| mixed f6 census | 9.8-10.0 | 2.3 / 2.8 | 4.6 / 1.6 | 5.4 / 1.8 | 1.00 (0.00) | 5.4 (2.2) |
+
+Fighting bot (attacks and guards greedily), s per room / hits per minute / half hearts lost per room (turret rooms: 20 s,
+never cleared):
+
+| room | today (203 deg, 18) | ring, 18 | 203 deg, 27 | ring, 27 | Bastion | Warding I | Citadel |
+|---|---|---|---|---|---|---|---|
+| 2 turret.caster | 20 / 28.2 / 9.4 | 20 / 27.0 / 9.0 | 20 / 41.4 / 13.8 | 20 / 38.4 / 12.8 | 20 / 38.4 / 11.8 | 20 / 28.2 / 8.4 | 20 / 38.4 / 0.0 |
+| 2 turret.sprayer | 20 / 0.0 / 0.0 | 20 / 0.0 / 0.0 | 20 / 14.4 / 4.8 | 20 / 1.2 / 0.4 | 20 / 1.2 / 0.0 | 20 / 0.0 / 0.0 | 20 / 1.2 / 0.0 |
+| 4 sniper | 7.1 / 5.1 / 0.6 | 7.1 / 5.1 / 0.6 | 7.6 / 3.1 / 0.4 | 7.6 / 3.1 / 0.4 | 7.6 / 3.1 / 0.0 | 7.1 / 5.1 / 0.0 | 7.6 / 3.1 / 0.0 |
+| 2 reaper | 3.4 / 17.8 / 1.0 | 3.4 / 17.8 / 1.0 | 4.2 / 28.7 / 2.0 | 4.2 / 28.7 / 2.0 | 4.2 / 28.7 / 1.0 | 3.4 / 17.8 / 0.0 | 4.2 / 28.7 / 0.0 |
+| mixed f6 census | 8.7 / 5.5 / 0.8 | 8.7 / 5.5 / 0.8 | 9.1 / 6.6 / 1.0 | 9.1 / 6.6 / 1.0 | 9.1 / 6.6 / 0.2 | 8.7 / 5.5 / 0.0 | 9.1 / 6.6 / 0.0 |
+
+Readings: for a player who defends, the guard's **length** does most of the work against spirals and rings (27 ticks:
+caster and sprayer hits -35 % / -50 %, the ring alone ~0) and the **ring** against flanks (snipers: ring 18 -13 %, 27
+ticks alone -9 %, both -30 %; the mixed room: ring 18 -24 %, 27 ticks alone +6 %). Bastion's full guard cuts hits 30-50 %
+in the turret, sniper and reaper rooms and ~12 % in the mixed room, and halves the hearts lost; it does not make a room
+free (1.8-5.0 half hearts per 20 s room but the reapers'). A player who keeps attacking pays for the longer guard: the
+greedy bot guards 43 % of the time instead of 21 % next to the casters, clears 0.4-0.8 s slower and takes more hits next to casters and
+reapers (the guard cancels the combo and halves the walk). **Citadel is what trivialises the guard:** one brace per 3+
+guard is 5-18 braces per 20 s room with a defending player (1 against the reapers), and the hearts lost drop to 0.0-0.2
+in every room; a threshold of 5 for those braces still leaves 5.0-14.8 in the caster and sniper rooms. **Bastion's own brace is mostly spent:** it fires in nearly every
+room (the threshold of 3 never binds: 1.0-18 qualifying guards per room) but restores a pip in 0-0.6 of them, because
+the first 3+ guard comes before the first hit.
+
+### 5. Bastion, the roll (bow)
+
+Per room; hold bot (never attacks) and fighting bot (the stream), hits per minute / half hearts lost, rolls, bullets
+counted per roll (Bastion), rolls that stopped 3+ / 5+, braces (pips restored):
+
+| room, bot | no build | Bastion | Bastion + Slippery I | counted per roll: Bastion / + Slippery | 3+ / 5+ rolls: Bastion / + Slippery | braces: Bastion / + Slippery | Citadel braces (pips), half hearts lost |
+|---|---|---|---|---|---|---|---|
+| caster, hold | 51.6 / 17.2 | 51.6 / 15.2 | 49.8 / 14.8 | 2.0 / 1.8 | 13.8 / 5.4; 12.8 / 4.8 | 1.0 (1.0) / 1.0 (0.8) | 13.8 (11.8), 4.4 |
+| caster, fight | 48.6 / 16.2 | 48.6 / 14.2 | 46.8 / 13.8 | 1.7 / 1.6 | 9.8 / 4.0; 8.0 / 3.4 | 1.0 (1.0) / 1.0 (0.8) | 9.8 (8.8), 5.8 |
+| sprayer, hold | 18.0 / 6.0 | 18.0 / 4.8 | 12.0 / 2.6 | 1.1 / 1.1 | 0.2 / 0.0; 0.8 / 0.4 | 0.2 (0.2) / 0.4 (0.4) | 0.2 (0.2), 3.8 |
+| sniper, hold | 7.2 / 2.4 | 7.2 / 1.2 | 5.4 / 0.6 | 2.2 / 2.3 | 4.8 / 0.6; 4.8 / 0.4 | 1.0 (0.2) / 1.0 (0.2) | 4.8 (1.6), 0.2 |
+| sniper, fight | 3.6 / 0.6 | 3.6 / 0.0 | 3.7 / 0.0 | 2.0 / 2.3 | 1.2 / 0.2; 1.4 / 0.2 | 0.8 (0.0) / 0.8 (0.0) | 1.2 (0.0), 0.0 |
+| reaper, hold | 9.0 / 3.0 | 9.0 / 1.6 | 7.2 / 0.8 | 1.3 / 1.4 | 0.8 / 0.2; 0.8 / 0.2 | 0.6 (0.4) / 0.8 (0.6) | 0.8 (0.6), 0.6 |
+| mixed, hold | 8.4 / 2.8 | 8.4 / 1.8 | 8.4 / 1.8 | 1.5 / 1.6 | 1.8 / 0.0; 1.8 / 0.0 | 1.0 (0.2) / 1.0 (0.2) | 1.8 (0.6), 0.8 |
+| mixed, fight | 6.2 / 1.2 | 6.2 / 0.2 | 3.9 / 0.0 | 1.7 / 1.7 | 1.8 / 0.0; 1.8 / 0.0 | 1.0 (0.4) / 1.0 (0.4) | 1.8 (0.8), 0.0 |
+
+Rolls per room: 45-48 (caster), 17-24 (sprayer), 4-12 (sniper), 2-7 (reaper), 5-8 (mixed). Slippery I does **not**
+make the roll brace cheaper: bullets counted per roll stay 1.1-2.3 with or without it, rolls reaching 3 are as many or
+fewer, and the once-per-room limit caps the braces at 1 either way (its hits saved are its own i-frames). The roll
+brace fires in most dense rooms (caster, sniper, mixed) and rarely against sprayer rings or reapers. Rolling into a
+caster spiral is costly (48-52 hits per minute: the roll's vulnerable tail lands in the spiral), so Citadel's 10-14
+braces per room there buy back hits the roll itself took.
+
+### 6. Offers with four legendaries
+
+BU13's table rerun (1000 runs per policy); BU13's recorded numbers (two legendaries, nine duos) -> now:
+
+| policy | by floor | runs with >= 1 duo | mean duos | mean evolutions | drafts offering a duo | boss deal: a duo to guarantee (floor 5 / 10) |
+|---|---|---|---|---|---|---|
+| greedy | 6 | 8.8% -> 9.4% | 0.09 -> 0.09 | 1.80 -> 1.80 | 1.5% -> 1.6% | 7.7% -> 7.7% |
+| greedy | 11 | 45.9% -> 47.2% | 0.52 -> 0.53 | 3.42 -> 3.42 | 4.7% -> 4.9% | 17.9% -> 18.0% |
+| random | 6 | 10.4% -> 10.7% | 0.10 -> 0.11 | 0.71 -> 0.71 | 5.4% -> 5.4% | 14.9% -> 14.4% |
+| random | 11 | 45.3% -> 45.6% | 0.53 -> 0.54 | 2.28 -> 2.29 | 13.4% -> 13.7% | 32.9% -> 33.8% |
+| duo-seeking | 6 | 42.1% -> 42.5% | 0.44 -> 0.45 | 1.45 -> 1.45 | 8.2% -> 8.3% | 24.3% -> 24.7% |
+| duo-seeking | 11 | 93.9% -> 93.2% | 1.50 -> 1.56 | 2.82 -> 2.77 | 14.3% -> 14.7% | 31.2% -> 30.7% |
+
+Evolutions everywhere 100 % / 65 % / 97 % of runs by floor 6 as before; picks by kind unchanged within a point (greedy
+new 36 % / upgrade 31 % / evolution 28.5 % / duo 4.4 %). Legendaries (now):
+
+| policy | by floor | mean legendaries owned | runs owning Ember Wake / Composure / Overkill / Bastion | drafts offering each (New) | runs offered each | Greed deal: new legendary / duo / evolution / fill (mean cards) | Greed deals holding each |
+|---|---|---|---|---|---|---|---|
+| greedy | 6 | 0.15 | 3.2 / 3.1 / 4.0 / 4.3 % | 4.6 / 4.0 / 4.1 / 4.4 % | 26 / 22 / 22 / 24 % | 2.87 / 0.01 / 0.10 / 0.01 | 71 / 74 / 71 / 71 % |
+| greedy | 11 | 0.41 | 9.2 / 10.3 / 10.8 / 10.7 % | 5.9 / 5.6 / 5.5 / 5.5 % | 54 / 52 / 50 / 51 % | 2.68 / 0.07 / 0.19 / 0.01 | 69 / 67 / 65 / 67 % |
+| random | 6 | 0.24 | 6.7 / 5.2 / 5.5 / 6.3 % | 3.0 / 2.9 / 3.1 / 3.1 % | 17 / 16 / 18 / 18 % | 2.32 / 0.13 / 0.55 / 0.01 | 57 / 61 / 57 / 57 % |
+| random | 11 | 0.50 | 13.3 / 11.6 / 10.5 / 15.0 % | 3.1 / 3.1 / 3.1 / 3.5 % | 33 / 32 / 33 / 37 % | 2.07 / 0.28 / 0.64 / 0.01 | 53 / 53 / 52 / 49 % |
+| duo-seeking | 6 | 0.18 | 5.2 / 2.9 / 5.6 / 4.8 % | 4.3 / 3.8 / 3.9 / 4.2 % | 24 / 21 / 21 / 24 % | 2.74 / 0.09 / 0.16 / 0.00 | 68 / 70 / 68 / 68 % |
+| duo-seeking | 11 | 0.54 | 14.9 / 8.0 / 17.4 / 13.4 % | 4.9 / 4.9 / 4.9 / 5.1 % | 46 / 47 / 46 / 48 % | 2.49 / 0.25 / 0.21 / 0.03 | 63 / 67 / 59 / 60 % |
+
+Readings: the two new legendaries and four duos leave BU13's numbers where they were (duos +0.0-0.06 per run, within
+the noise of 1000 runs): the legendary duos need a legendary, which a run owns 0.4-0.5 of by floor 11. Legendary cards
+are offered at about 22 % per greedy draft by floor 11 (the four columns' sum; the rarity roll is unchanged), each
+legendary a quarter of that, so each one is offered about half as often as with two (an arithmetic estimate: BU13 recorded
+no per-legendary rates) and a run sees a given one by floor 11 in 33-54 % of runs. Greed's deal is almost always three
+cards with 2.1-2.9 new legendaries (98-100 % of deals hold at least one): the doubled pool keeps Greed a legendary deal
+deep into a run, where with two a player who owned both got only duos, evolutions and fills.
+
+### Recommendations (owner calls; nothing changed here)
+
+1. **LGD5, the guard: keep the full ring at 27 ticks.** It is the size that helps in every room type (the length
+   against spirals and rings, the ring against flanks; either alone leaves one of them as today) and it does not make a
+   room free on its own (section 4). If playtests say the sword feels sluggish while guarding (the fighting bot's
+   slower clears), the fallback is the ring at 22-23 ticks; measuring it with the brace needs a test setter for
+   `BASTION_GUARD_TICKS` in sim code (the shape rows here measure only the guard).
+2. **LGD6, the brace: keep 3 bullets and once per room, but do not spend the brace while nothing is missing.** The
+   threshold never binds (section 4: 1-18 qualifying guards per room), and once per room is right for Bastion alone,
+   but today the brace is spent on the first 3+ guard, before the player has lost a pip, so it restores 0-0.6 pips per
+   room. Proposed: a brace with no pip missing and no Stone Heart neither fires nor clears `braceReady` (no SPENT),
+   so the pip comes back after the first hit that took one (Citadel's "pips restored" column, 0.6-5.8 per room, is the
+   ceiling; once per room makes it at most 1). The view's BRACED then always means a pip.
+3. **Citadel: limit it.** Unlimited braces are 5-18 per 20 s room for a defending player and zero hearts lost in every
+   room (sections 4-5): this, not Bastion, trivialises caster / sprayer / sniper rooms. Options: a brace cooldown
+   (`CITADEL_BRACE_COOLDOWN` ~5 s: at most 4 per 20 s room), or at most 2-3 per room; raising its threshold to 5 is not
+   enough (still 5.0-14.8 per room against casters and snipers).
+4. **Slippery: no change.** The roll brace is not cheaper with Slippery I (section 5); the risk did not show.
+5. **Overkill: give every kill by the player's own hit the carry floor.** Today `OVERKILL_ONE_SHOT_MIN` applies only to
+   a one-shot of a full-hp enemy, so the bow's stream carries nothing from floor 2 (section 2) and Overkill, Supernova
+   and Skewer do nothing for a bow player past floor 1. Proposed: a gen-0 kill (any player hit that kills) carries at
+   least 1 (LGD2 reworded; streak and effect kills still get no floor). Floor 1, where every stream kill is such a
+   one-shot, shows the size: bow pack x 0.52, room x 0.72, row x 0.64. Lowering `OVERKILL_MIN_CARRY` instead would
+   send fractional chips (0.05-0.95) that rarely kill. For the sword Overkill is about a Chain Spark I (pack x 0.30-0.55,
+   rooms x 0.87-0.96, chains of 2): modest for a legendary; if it should stand out, a carry multiplier (e.g. x 1.5,
+   a new `OVERKILL_CARRY_PERCENT`) is the lever, re-measured with these specs. Keep `OVERKILL_RANGE` 4. Supernova:
+   `SUPERNOVA_CARRY` 3 -> 2 if it should show more often (carries average 1.0-2.7).
+6. **Skewer: extend the line through the target to `OVERKILL_RANGE`.** As built it never strikes anyone besides the
+   target (section 3, 0 in every fight). Keep the nearest enemy as the target (readable: the streak still goes where
+   plain Overkill's does) and strike every enemy within `SKEWER_RADIUS` of the segment from the corpse to the point
+   `OVERKILL_RANGE` from it through the target, each for the full carry, in slot order, the target last; the view draws
+   the streak to that point. On a row of swarmers that is 2.25 extra enemies per streak (88 % of streaks) with the
+   sword's carries, 1.67 (67 %) with the bow's at floor 1; aiming at the farthest enemy gives about the same on a row
+   but flies past nearer enemies. It needs recommendation 5 too: Skewer is the bow's Overkill duo, and the bow has no
+   carries to skewer with after floor 1.
+7. **The legendary pool: no change.** Four legendaries move duos and evolutions per run by less than the noise; each
+   legendary is seen about half as often (by floor 11 in 33-54 % of runs), and Greed's deal stays a legendary deal.
+
+**Not measured.** Real floor geometry (walls end bullets and break lines: the arenas are open), party play, bosses
+(capped by `damageCapPerSecond`, as BU13), Mirror Cloak with the full ring, Stone Heart's heals, human play (dodging,
+timing the guard to volleys; the bots are greedy and god mode), Stormcaller strikes (never erased or counted), and the
+alternative Overkill / Skewer / brace rules themselves (the counterfactuals are first-link geometry only; each proposal
+needs its rule change and a rerun of these specs).

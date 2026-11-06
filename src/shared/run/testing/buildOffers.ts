@@ -18,20 +18,29 @@
  * pity off (upgradePityCards = huge); both draw the same cards up to the pity step, so the pity fired exactly when the
  * player had an upgradable boon, the pity-off draft has at least upgradePityCards cards and none of them is an upgrade
  * (the real draft then differs in its last card only, which is checked).
+ *
+ * docs/LEGENDARIES.md LG7 adds legendary tallies per checkpoint: legendaries owned, runs owning each boon, drafts and
+ * runs that offered each boon as a New card, and Greed's deal (drawLegendaryOffers, PACT_LEGENDARY_CARDS cards, on a
+ * third rng stream per run so neither the offers nor the policy draw differently) for the build at the checkpoint, by
+ * card kind: new legendary, duo, evolution (a level-II boon), fill (an ordinary upgrade).
  */
 import { isBossFloor } from "shared/dungeon";
 import {
+	BOONS,
 	BOON_COUNT,
 	BOON_MAX_LEVEL,
 	BUILD_RULES,
 	CardKind,
 	DUOS,
 	DUO_COUNT,
+	PACT_LEGENDARY_CARDS,
+	Rarity,
 	Rng,
 	boonMaxLevel,
 	cardBoon,
 	cardDuo,
 	drawCardOffers,
+	drawLegendaryOffers,
 	duoAvailable,
 	rngInt,
 	type BuildRules,
@@ -96,6 +105,24 @@ export interface OfferCheckpoint {
 	/** Drafts that offered at least one evolution / at least one duo card. */
 	draftsOfferingEvolution: number;
 	draftsOfferingDuo: number;
+	// docs/LEGENDARIES.md LG7 (file comment).
+	/** Legendary boons owned (summed over runs). */
+	legendaries: number;
+	/** Per boon: runs owning it. */
+	ownedBoon: number[];
+	/** Per boon: drafts so far that offered it as a New card, and runs where some draft did. */
+	draftsOfferingBoon: number[];
+	runsOfferedBoon: number[];
+	/** Greed's deal for the build at the checkpoint: deals, cards, cards by kind, deals with a new legendary. */
+	greedDeals: number;
+	greedCards: number;
+	greedNew: number;
+	greedDuo: number;
+	greedEvolution: number;
+	greedFill: number;
+	greedWithNew: number;
+	/** Per boon: Greed deals that held it as a new legendary. */
+	greedBoon: number[];
 }
 
 /** Per boss floor (5, 10, ...): how often the double draft's first deal had a duo to guarantee. */
@@ -116,6 +143,19 @@ export interface OfferStats {
 /** The run index's offer seed and policy seed (two streams). */
 const OFFER_SEED_MUL = 0x9e3779b1;
 const POLICY_SEED_SALT = 0x5bd1e995;
+/** Greed's deal stream (LG7): its own per run, so the offers and the policy draw as before. */
+const GREED_SEED_SALT = 0x2c1b3c6d;
+
+function zeros(): number[] {
+	const out: number[] = [];
+	for (let b = 0; b < BOON_COUNT; b++) out.push(0);
+	return out;
+}
+
+/** True for a legendary boon (Rarity.LEGENDARY). */
+export function isLegendaryBoon(b: number): boolean {
+	return BOONS[b] !== undefined && BOONS[b].rarity === Rarity.LEGENDARY;
+}
 
 function countEvolved(levels: ReadonlyArray<number>): number {
 	let n = 0;
@@ -148,6 +188,18 @@ export function simulateOffers(
 		runsWithPity: 0,
 		draftsOfferingEvolution: 0,
 		draftsOfferingDuo: 0,
+		legendaries: 0,
+		ownedBoon: zeros(),
+		draftsOfferingBoon: zeros(),
+		runsOfferedBoon: zeros(),
+		greedDeals: 0,
+		greedCards: 0,
+		greedNew: 0,
+		greedDuo: 0,
+		greedEvolution: 0,
+		greedFill: 0,
+		greedWithNew: 0,
+		greedBoon: zeros(),
 	}));
 	const bossDuo: BossDuoTally[] = [];
 	const lastFloor = checkpoints[checkpoints.size() - 1] - 1;
@@ -156,6 +208,8 @@ export function simulateOffers(
 	for (let run = 1; run <= runs; run++) {
 		const rng = new Rng(run * OFFER_SEED_MUL);
 		const policyRng = new Rng(bit32.bxor(run, POLICY_SEED_SALT));
+		const greedRng = new Rng(bit32.bxor(run, GREED_SEED_SALT));
+		const offeredBoon = zeros();
 		const levels: number[] = [];
 		for (let b = 0; b < BOON_COUNT; b++) levels.push(0);
 		const duos: number[] = [];
@@ -197,6 +251,7 @@ export function simulateOffers(
 				if (pity) pityDrafts++;
 				if (offers.some((c) => offerKind(levels, c) === CardKind.EVOLUTION)) offeredEvo++;
 				if (offers.some((c) => offerKind(levels, c) === CardKind.DUO)) offeredDuo++;
+				for (const c of offers) if (offerKind(levels, c) === CardKind.NEW) offeredBoon[cardBoon(c)]++;
 				const card = offers[pickOffer(policy, levels, offers, policyRng)];
 				const kind = offerKind(levels, card);
 				picks[kind]++;
@@ -222,6 +277,29 @@ export function simulateOffers(
 				if (pityDrafts > 0) t.runsWithPity++;
 				t.draftsOfferingEvolution += offeredEvo;
 				t.draftsOfferingDuo += offeredDuo;
+				for (let b = 0; b < BOON_COUNT; b++) {
+					if (levels[b] > 0) {
+						t.ownedBoon[b]++;
+						if (isLegendaryBoon(b)) t.legendaries++;
+					}
+					t.draftsOfferingBoon[b] += offeredBoon[b];
+					if (offeredBoon[b] > 0) t.runsOfferedBoon[b]++;
+				}
+				const deal = drawLegendaryOffers(greedRng, levels, duos, PACT_LEGENDARY_CARDS);
+				t.greedDeals++;
+				t.greedCards += deal.size();
+				let anyNew = false;
+				for (const c of deal) {
+					const k = offerKind(levels, c);
+					if (k === CardKind.DUO) t.greedDuo++;
+					else if (k === CardKind.NEW) {
+						t.greedNew++;
+						t.greedBoon[cardBoon(c)]++;
+						anyNew = true;
+					} else if (k === CardKind.EVOLUTION) t.greedEvolution++;
+					else t.greedFill++;
+				}
+				if (anyNew) t.greedWithNew++;
 				checkpoint++;
 			}
 		}
@@ -264,5 +342,46 @@ export function formatPicks(policy: PickPolicy, stats: OfferStats): string {
 			stats.picks[CardKind.UPGRADE],
 			total,
 		)}, ` + `evolution ${pct(stats.picks[CardKind.EVOLUTION], total)}, duo ${pct(stats.picks[CardKind.DUO], total)}`
+	);
+}
+
+// docs/LEGENDARIES.md LG7: the legendary tallies (file comment).
+
+/** The legendary boons, in Boon order. */
+export function legendaryBoons(): number[] {
+	const out: number[] = [];
+	for (let b = 0; b < BOON_COUNT; b++) if (isLegendaryBoon(b)) out.push(b);
+	return out;
+}
+
+function shortName(b: number): string {
+	const id = BOONS[b].id;
+	return id.sub(1, 5) === "boon." ? id.sub(6) : id;
+}
+
+export function legendaryHeader(): string {
+	const names = legendaryBoons()
+		.map((b) => shortName(b))
+		.join(" / ");
+	return (
+		`| policy | by floor | mean legendaries owned | runs owning ${names} | drafts offering ${names} (New) | ` +
+		`runs offered ${names} | Greed deal: new legendary / duo / evolution / fill cards (mean) | ` +
+		`Greed deals with a new legendary | Greed deals holding ${names} |`
+	);
+}
+
+export function formatLegendaryRow(policy: PickPolicy, t: OfferCheckpoint): string {
+	const ls = legendaryBoons();
+	const of = (xs: ReadonlyArray<number>, total: number) => ls.map((b) => pct(xs[b], total)).join(" / ");
+	return (
+		`| ${policy} | ${t.floor} | ${mean(t.legendaries, t.runs)} | ${of(t.ownedBoon, t.runs)} | ` +
+		`${of(t.draftsOfferingBoon, t.drafts)} | ${of(t.runsOfferedBoon, t.runs)} | ` +
+		`${mean(t.greedNew, t.greedDeals)} / ${mean(t.greedDuo, t.greedDeals)} / ${mean(
+			t.greedEvolution,
+			t.greedDeals,
+		)} / ${mean(t.greedFill, t.greedDeals)} | ${pct(t.greedWithNew, t.greedDeals)} | ${of(
+			t.greedBoon,
+			t.greedDeals,
+		)} |`
 	);
 }
