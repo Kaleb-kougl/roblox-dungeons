@@ -11,7 +11,8 @@ import type { SpriteSetAsset } from "../../types";
 import { validateManifest } from "../../validate";
 import { VALE_FX, valeFxSourceOf } from "./fx";
 import { VALE_WORLD_LAYOUTS } from "./layout";
-import { buildValeManifest } from "./manifest";
+import { VALE_ASSET_IDS } from "./assetIds";
+import { VALE_MANIFEST, buildValeManifest } from "./manifest";
 import { VALE_TREASURE_CAGE_LAYOUT, VALE_TREASURE_FX_LAYOUTS, VALE_TREASURE_FX_SHEET } from "./treasureLayout";
 
 const quiet = () => undefined;
@@ -47,6 +48,16 @@ describe("vale vault art (treasure.cage, fx.treasure.column)", () => {
 		// a tall, narrow beam (drawn upright at TREASURE_VIEW.open.column's size)
 		expect(l.frameH > 4 * l.frameW).toBe(true);
 		expect(VALE_FX[TREASURE_COLUMN_FX_ID].tint).toBe("treasure.legendary");
+	});
+
+	it("as bundled (both sheets uploaded 2026-11-06) draws the cage and the column", () => {
+		expect([VALE_ASSET_IDS[CAGE_FILE] !== undefined, VALE_ASSET_IDS[COLUMN_FILE] !== undefined]).toEqual([
+			true,
+			true,
+		]);
+		const pack = new ThemePack(VALE_MANIFEST, { warn: quiet });
+		expect(pack.treasurePiece(TREASURE_CAGE_ID).art?.kind).toBe("sprites");
+		expect(pack.fx(TREASURE_COLUMN_FX_ID) !== undefined).toBe(true);
 	});
 
 	it("without IDs the cage keeps its placeholder bars and there is no column", () => {

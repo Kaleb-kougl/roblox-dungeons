@@ -681,7 +681,8 @@ Decision log (deviations from `PLAN.md`):
   hides cut; a looping greyscale column), each in a sheet of its own (`vault-cage.png`, `treasure-column.png`) from a new
   atlas group `treasure` (`--only treasure`, generated `packs/vale/treasureLayout.ts`), so no shared atlas repacks; the
   column is vale's third fx source; art cages turn with the chest, cap at `cageMaxHeightTiles` 1.2 and draw
-  `cageDepthStuds` nearer the camera. Upload of both sheets, sounds (TR9), Studio check and playtest (TR11) pending.
+  `cageDepthStuds` nearer the camera. Both sheets uploaded 2026-11-06 (`assetIds.ts`); sounds (TR9), Studio check and
+  playtest (TR11) pending.
 
 - **Fortune (docs/FORTUNE.md).** Gameplay. Two opt-in configs, endless only: `SimConfig.pacts` (`ENDLESS_PACTS_CONFIG`)
   and `SimConfig.golden` (`ENDLESS_GOLDEN_CONFIG`), each with its own hash group appended LAST (`pellets`, `treasure`,

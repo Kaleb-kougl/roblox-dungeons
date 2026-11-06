@@ -30,6 +30,7 @@ import { VALE_AUDIO_FILES } from "./audioLayout";
 import { VALE_BULLET_SHEET } from "./bulletLayout";
 import { VALE_AMBIENT_LAYOUTS, VALE_FX_SHEET } from "./fxLayout";
 import { VALE_GOO_SHEET } from "./gooLayout";
+import { VALE_TREASURE_CAGE_LAYOUT, VALE_TREASURE_FX_SHEET } from "./treasureLayout";
 import { VALE_UI_ICON_FILE } from "./uiIconLayout";
 import {
 	VALE_FLOOR_HEX,
@@ -117,11 +118,14 @@ describe("vale pack", () => {
 
 	it("every uploaded ID names a real art/build file", () => {
 		// the effects atlas, the Ninja Adventure ambient flipbooks (fxLayout.ts) and the bullet atlas (bulletLayout.ts,
-		// docs/PROJECTILE_ART.md) and the goo sheet (gooLayout.ts, docs/GOO_ART.md) are art/build files too
+		// docs/PROJECTILE_ART.md), the goo sheet (gooLayout.ts, docs/GOO_ART.md) and the vault's cage and column sheets
+		// (treasureLayout.ts, docs/TREASURE.md TR9) are art/build files too
 		const files = allFiles();
 		files.push(VALE_FX_SHEET.file);
 		files.push(VALE_BULLET_SHEET.file);
 		files.push(VALE_GOO_SHEET.file);
+		files.push(VALE_TREASURE_CAGE_LAYOUT.sheets[0].file);
+		files.push(VALE_TREASURE_FX_SHEET.file);
 		for (const id of sortedKeys(VALE_AMBIENT_LAYOUTS)) files.push(VALE_AMBIENT_LAYOUTS[id].file);
 		for (const file of sortedKeys(VALE_ASSET_IDS)) {
 			expect([file, files.includes(file)]).toEqual([file, true]);

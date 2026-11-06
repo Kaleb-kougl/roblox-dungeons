@@ -1325,10 +1325,9 @@ Each step is a commit. Specs next to the code; `npm run verify` before each.
   rule); `VALE_FX_PENDING` lost it. The renderer turns art cages like the chest (`placeBody(..., look.fx, look.fz)`),
   caps them at `TREASURE_VIEW.cageMaxHeightTiles` 1.2 (the cage stands 0.95 tiles above its pivot) and draws them
   `cageDepthStuds` 0.3 nearer the camera (SpriteView `extraDepthStuds`), so the cage is always over the chest. Each
-  switches on once its PNG has an ID in `packs/vale/assetIds.ts` (`treasureArt.spec.ts`); until then the placeholder
-  bars and the Neon column stay. A full `art:build` does not fit the laptop VM's memory (killed at ~2 GB); `--only
-  treasure` builds both sheets alone. **Pending:** upload `vault-cage.png` / `treasure-column.png` and paste their IDs;
-  the four sounds; the Studio check of the chest's and cage's facings on every wall (the cage's billboard over the
+  switches on once its PNG has an ID in `packs/vale/assetIds.ts` (`treasureArt.spec.ts`); both were uploaded 2026-11-06
+  11:29 AM (IDs in `assetIds.ts`), so the bundled vale pack draws the cage and the column. A full `art:build` does not fit the laptop VM's memory (killed at ~2 GB); `--only
+  treasure` builds both sheets alone. **Pending:** the four sounds; the Studio check of the chest's and cage's facings on every wall (the cage's billboard over the
   chest, the sink hidden by the floor slab).
 - [x] **TR10. Docs.** This file as built, the `CLAUDE.md` decision log, `src/shared/sim/README.md` (module, tick order,
   hash group), docs/CLIENT.md (controller, debug attributes), docs/DECOR.md (the chest piece kind), docs/DAILY.md (the
