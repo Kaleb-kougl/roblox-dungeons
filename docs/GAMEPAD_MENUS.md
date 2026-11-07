@@ -1,0 +1,322 @@
+# Gamepad menus: every menu usable with a controller
+
+Status: plan (2026-11-06), owner calls answered the same day. Tasks GM0-GM12, decisions GMD1-GMD16.
+
+**Goal.** A player with only a controller can reach and use every menu, panel, prompt and overlay in the game,
+starting on a sensible button, with B always going back, never stuck with nothing selected, and every scrolling
+list scrollable. The navigation also has to look right: one focus ring, never Roblox's default selection box on top
+of ours.
+
+**Scope.** Client input and presentation only. No sim, dungeon, lockstep, hash, replay, fixture or score change. Co-op
+already sends neutral input while a menu owns the pad (`InputController.menuOwnsInput`, `CoopMenuInputGate`); this
+plan does not change that.
+
+## What already works (census, 2026-11-06)
+
+A lot is already in place. The groundwork:
+
+- `MenuButton` (client/ui/hud `primitives.tsx`) is the single interactive primitive. It is `Selectable`, and it draws
+  focus from `SelectionGained` / `SelectionLost` (a uiAccent stroke, or the art's `FocusCorners`). Disabled buttons
+  stay selectable on purpose.
+- `useGamepadFocus(ref, key)` (client/ui/menu `hooks.ts`) selects a screen's default button whenever the device is a
+  gamepad. It skips this while a panel is open or the stage cover is up, and clears what it set on cleanup.
+- HudController turns gamepad UI navigation on through `selectMenuOpen`. InputController then passes A / B / D-pad /
+  left stick (`UI_NAV_KEYS`) through to the GUI instead of sinking them, and turns off the D-pad-down restart.
+- B closes the Options and leaderboard panels (`FIXED_INPUTS.padMenuClose`). It also goes back a screen, closes the
+  Leave confirm and closes the party overlay (MenuController, `MENU_BACK_KEYS`).
+- A rebind capture turns `GuiNavigationEnabled` off. Options returns focus to the slot that opened a prompt.
+  LocaleRoot puts the selection back after a locale remount. A focus move plays `sfx.ui.move`.
+- The boon draft (including Greed's deal and bonus deals) uses sim input: the stick picks and RT takes. The shrine
+  takes A. Spectating cycles with Attack / Alt.
+
+| # | Surface | Default focus | B | Scroll | Gap |
+|---|---|---|---|---|---|
+| 1 | Join loading screen (Skip) | Skip (hand-rolled) | - | - | none |
+| 2 | Stage cover | cleared (`StageController.begin`) | - | - | none |
+| 3 | Main menu (+ Daily card) | Play solo (`useGamepadFocus`) | nothing at root | - | Back from a sub-screen lands on Play, not the button you left from. Daily card buttons are reached only by geometry. Invite toasts can be reached by accident |
+| 4 | Lobby browser | first button | back | rows in `ScrollList` | A list refresh that removes the selected row leaves **nothing selected** |
+| 5 | Lobby room | first button (keyed on inviting) | back | members, friends list | Same refresh problem (kick, leave, invite list). Ready / Invite take many presses |
+| 6 | Credits | Back | back | list `selectable` | The selected list shows no focus ring (to check) |
+| 7 | Invite toasts (top right) | not reachable on purpose | - | - | **Cannot be answered on a pad** except by stumbling onto them |
+| 8 | Options (all tabs, prompts) | first tab; prompt focus, return focus | closes | bindings list | Tabs only by D-pad (no bumpers). Long Display / Juice tabs to check on a small screen |
+| 9 | Leaderboard panel | first scope tab (hand-rolled) | closes | rows `Selectable={false}` | **The top-100 list cannot be scrolled on a pad**. Tabs only by D-pad |
+| 10 | Pause overlay (solo) | Resume (hand-rolled) | **nothing** | - | B should resume |
+| 11 | Leave run confirm | its first button | No | - | none |
+| 12 | Tutorial skip confirm | its first button | **nothing** (`tutorial.skipConfirm` is not in MenuController's back path) | - | B should cancel |
+| 13 | Party overlay (co-op) | first item | closes | - | none |
+| 14 | Run-over panel + recap | Again, armed at 0.6 s (`RunOverRetryGate`) | nothing | breakdown / Build list behind Details | Details takes D-pad presses. Whether a long Build list fits or scrolls is untested |
+| 15 | Tutorial outro | Start my first run (hand-rolled) | nothing | - | none |
+| 16 | Boon draft / Greed deal | sim input | nothing (by design) | - | none |
+| 17 | Full map overlay | D-pad left toggles | B is skill 2 in play | - | none (not a menu: the run goes on) |
+| 18 | Roblox menu, invite prompt | CoreGui | CoreGui | CoreGui | none (engine) |
+| 19 | Dev panel (F2) | none | none | - | Keyboard-only, with a TextBox (GMD10) |
+
+Problems that cut across surfaces:
+
+- **No focus scope.** No surface uses `SelectionGroup` or `SelectionBehavior*` (zero hits in `src/`). A D-pad press
+  at a screen's edge can jump to any Selectable in any ScreenGui: invite toasts, a screen under a panel, the HUD.
+- **No recovery.** When the selected button is destroyed or hidden (a list refresh, a disabled to hidden swap, a
+  tab change, a prompt closing badly), `SelectedObject` ends up nil, and a D-pad press does not select anything again.
+- **Double focus visual.** `SelectionImageObject` is never set, so Roblox draws its default selection box over
+  MenuButton's own ring or corners (to confirm in GM0).
+- **Six hand-rolled focus effects** (LoadingScreen, Options, RunOver, Leaderboard, TutorialOutro, PauseOverlay) next
+  to `useGamepadFocus`, each with its own rules about panels and the cover.
+- **No focus memory.** Closing a panel or going back re-selects the default (for example Resume after Leaderboards).
+  Only Options remembers.
+- **Text glyphs.** Hints say "A" / "B" (`MENU_BACK_HINT`, bindings `inputLabel`), which is wrong on a PlayStation pad.
+- **Mouse after pad.** When the device switches to mouse, the pad's selection can stay lit under the cursor.
+
+## Design
+
+### 1. Focus scopes (one owner at a time)
+
+Each surface that takes the pad is a **focus scope**:
+
+- The surface's root frame gets `SelectionGroup = true` and `SelectionBehaviorUp/Down/Left/Right = Stop`, so the
+  selection never leaves it by direction.
+- Its default button gets a negative `SelectionOrder` (the scope's default), so `GuiService:Select(root)` lands on it.
+
+Scopes register with `useFocusScope(rootRef, { id, layer, defaultRef?, memoryKey? })`. This replaces `useGamepadFocus`
+and the six hand-rolled effects. Several scopes can be mounted at once (a panel over the pause overlay over the run).
+**The pad belongs to the topmost layer only.** The order is data, `FOCUS_LAYERS`, in shared/view/menu `focus.ts`:
+
+```
+loading (30) > stage cover (no focus) > rebind prompt > confirm (leave / skip / swap / reset)
+  > panel (Options, Leaderboards) > invites (only when jumped to, 4.3) > overlay (pause, party, run over, outro)
+  > screen (main, lobbies, lobby, credits)
+```
+
+The rule is pure and tested: `pickFocusScope(mounted) -> id | undefined`. While the stage cover is up, no scope gets
+focus. A rebind capture keeps navigation off, exactly as today.
+
+### 2. FocusController: recovery, memory, device changes
+
+A new client controller, `client/controllers/ui/FocusController.ts`. On every `SelectionChanged`, on scope
+mount / unmount, and once a frame while the device is a gamepad, it checks one pure decision,
+`focusAction(state) -> keep | select(default) | restore(memory) | clear`:
+
+- **Recovery.** If the device is a gamepad and a scope owns the pad, and the selection is nil, outside that scope,
+  not visible (the GuiObject or any ancestor is hidden), or not Selectable, the controller selects the remembered
+  button if it still exists. Otherwise it calls `GuiService:Select(scopeRoot)`, which lands on the default. This fixes
+  lobby list refreshes, tab changes and remounts in one place.
+- **Memory.** On losing the pad (going back, or a panel opening over it), each scope records the selected button's
+  path under the scope (by `Name`, like LocaleRoot's `pathFromPlayerGui`). When it owns the pad again, that button
+  comes back. Main menu > Lobbies > Back lands on Lobbies. Pause > Leaderboards > close lands on Leaderboards. Memory
+  lives for the session and is never stored (GMD9). A screen can opt out (run over: always Again).
+- **Device changes.** Moving to mouse or touch clears the selection (`clear`). Picking up the pad again restores the
+  owner's memory or default (today's `useGamepadFocus` behaviour, kept).
+- **One selection look.** On start, `PlayerGui.SelectionImageObject` is set to an empty, fully transparent frame, so
+  only MenuButton's own focus shows. Selectable non-buttons (lists) draw their own ring (section 5).
+- Debug: `KV_FocusDebug` (Workspace attribute, off by default) prints owner changes and selection paths.
+
+LocaleRoot's remember / restore stays. With recovery in place it becomes a fast path, not the only safety net.
+
+### 3. Menu buttons (fixed, menus only)
+
+While a menu owns the pad, these mean the same thing on every surface. A pure table, `menuPadAction(surface, key)`,
+in shared/view/menu `padActions.ts` holds them:
+
+| Pad | Meaning |
+|---|---|
+| A | press the selected button (engine) |
+| B | back / close / cancel / resume: never destructive on a tap (GMD5). Run over: **hold** B to exit (GMD13) |
+| D-pad, left stick | move the selection (engine) |
+| LB / RB | previous / next tab on surfaces with tabs (Options top tabs, Leaderboard scope) |
+| LT / RT | previous / next sub-tab (Options > Controls device, Leaderboard board) |
+| Right stick | scroll the scope's main list (section 5) |
+| X / Y | one contextual shortcut each, shown in the hint bar (section 4) |
+| Start | pause overlay: resume (today). Elsewhere nothing |
+
+B handling moves into one path, ordered by layer: confirm prompt, panel, invites, overlay, screen. It also covers
+the two gaps found above: **solo pause B = Resume** (through the same action as the Resume button) and **tutorial skip
+confirm B = cancel**. A tap of B on the run-over panel, the tutorial outro and the draft does nothing.
+
+**Hold B to exit (run over, GMD13).** On the run-over panel, holding B for `GAMEPAD_MENU.holdExitSec` (0.6 s) does
+exactly what the Exit button does: Main menu, or Back to lobby in a party run. While B is held, the Exit button fills
+(a uiAccent fill under its label, from 0 to the full width, from a pure `holdProgress(heldSec, holdSec)`). Letting go
+early empties it with no effect. A B press that began before the panel opened never counts (the same edge rule as
+`RunOverRetryGate`). Completing the hold plays `sfx.ui.back` and a haptic tick. Again stays the default and keeps its
+0.6 s arm. The hint bar shows `[B] Hold: Exit`.
+
+Input plumbing. LB / RB / LT / RT / X / Y / right stick are game bindings, sunk at High priority while a menu is open
+(they are not in `UI_NAV_KEYS`). InputController gains `onMenuPadInput(listener)`, fired for those keys only while
+`menuOwnsInput()`, like `onMapAction`. FocusController subscribes to it. They still never reach the sim.
+
+On menu close, every pad button still held is blocked until it is released (`padGate.block`, as on a bindings
+change). That way an A held through Resume never fires skill 1 / the shrine, and an LB held through a tab change never
+rolls. GM0 checks whether today's code already does this.
+
+### 4. Shortcuts and the hint bar
+
+**4.1 Hint bar.** `PadHintBar`, a row at the bottom of each scope's panel, shown only on a gamepad. Example:
+`[A] Select  [B] Back  [LB][RB] Tabs  [Y] Invite`. It comes from a pure `padHints(surface, ctx)` in shared/view/menu
+`padHints.ts`, built from the same table as `menuPadAction`, so a hint can never name a button that does nothing.
+On a pad it replaces each screen's text back hint (`MENU_BACK_HINT` stays for keyboard).
+
+**4.2 Glyphs.** The bar draws `UserInputService:GetImageForKeyCode(key)` (the platform's own Xbox / PlayStation art).
+If that returns empty, it falls back to a text label from `GetStringForKeyCode`, then to our `inputLabel`. Glyphs
+inside localized sentences (tutorial prompts, `{key}` templates) stay text, but the gamepad label set becomes
+platform-aware (`padLabelSet`: `xbox` / `playstation`, picked from the connected pad; GM0 finds out what the engine
+reports).
+
+**4.3 Shortcuts (first set):**
+
+| Surface | X | Y |
+|---|---|---|
+| Main menu | - | jump to the newest invite toast (shown only while one is pending) |
+| Lobby browser | Refresh | Create |
+| Lobby room | Ready | Invite (Roblox prompt) |
+| Run over | Details / Highlights | - |
+| Options | Reset this tab (asks first, as today) | - |
+
+The invite toasts become their own scope, entered **only** through Y, never by direction. B returns to the screen
+with its memory.
+
+### 5. Scrolling
+
+- Text-only lists become Selectable, and when selected they show a uiAccent stroke (a `focused` look in `ScrollList`,
+  client/ui/menu `widgets.tsx`). This covers the leaderboard rows (today `Selectable={false}`), Credits (already
+  selectable, ring missing) and the run-over breakdown / Build list if GM0 shows they can overflow.
+- The right stick scrolls the scope's main list wherever the selection is, by `GAMEPAD_MENU.scrollStepPx` per
+  `scrollRepeatSec` past a dead zone. A scope names its list with `scrollRef`.
+- Lists of buttons (lobbies, friends, bindings) rely on the engine scrolling to the selected descendant. If GM0 shows
+  it does not, `followSelection` sets `CanvasPosition` so the selection stays inside the frame with a margin (pure
+  `scrollToShow(canvas, item, view, margin)`).
+
+### 6. Per-surface fixes
+
+| Surface | Change |
+|---|---|
+| Main menu | Scope + memory. Explicit `NextSelectionRight/Left` between the menu column and the Daily card if GM0 shows geometry picks wrong. Y to invites |
+| Lobby browser / room | Scope + recovery (refresh), memory. X / Y shortcuts. Rows already keep stable keys (`r.lobbyId`, `m<userId>`, `c<userId>`), so a refresh only loses the selection when its own row goes |
+| Credits | Scope, list ring |
+| Invite toasts | Own scope (layer `invites`), entered only by Y |
+| Options | Scope (layer panel). LB/RB tabs, LT/RT device sub-tab. X reset. Prompts as confirm layer (the hand-rolled return focus moves into memory) |
+| Leaderboard | Scope. LB/RB scope, LT/RT board. Selectable list + right stick |
+| Pause / party overlay | Scope + memory. B resumes (solo) |
+| Leave / skip / swap / reset confirms | Confirm layer. B = the No / Cancel button |
+| Run over | Scope, default Again (no memory). X Details. Hold B: Exit, with the fill on the Exit button. `RunOverRetryGate` unchanged |
+| Tutorial outro, loading Skip | Scope only (behaviour unchanged) |
+| Draft, shrine, spectate, full map | No change (sim input / gameplay keys) |
+
+## Tasks
+
+- [ ] **GM0. Spike `KV_PadSpike`** (docs/SPIKES.md, off by default, Janitor). Record, with an Xbox pad and (if
+  available) a PlayStation pad on PC, and on console if the owner targets it:
+  - Is the default selection image drawn over a MenuButton? Does an empty `SelectionImageObject` hide it?
+  - Does a ScrollingFrame scroll to a selected descendant? Does a selectable ScrollingFrame scroll with the left stick?
+  - What does `SelectedObject` become when the selected button is destroyed, or hidden?
+  - Does `SelectionBehavior = Stop` hold across ScreenGuis with different DisplayOrder?
+  - Does `GuiService:Select(root)` honour `SelectionOrder`? (A 2022 thread reports a bug.)
+  - What do `GetImageForKeyCode` / `GetStringForKeyCode` return per pad? Does Start reach the game? What does
+    ButtonSelect do (virtual cursor)?
+  - Does a held A / LB leak into the sim after a menu closes?
+  - Haptics: does `HapticEffect` work in this engine version, and on which pads? Otherwise, does `HapticService`
+    (`IsVibrationSupported`, `IsMotorSupported`, `SetMotor`) work? What do the small and large motors feel like on
+    Xbox and PlayStation pads?
+  - Console signals: `GuiService:IsTenFootInterface()`, `GuiService.ViewportDisplaySize`, and the TV-safe inset
+    (`GuiService:GetGuiInset()` / the ScreenGui safe-area modes) on a console, or in the Studio console emulator.
+
+  → Verify: the results table is filled in docs/SPIKES.md, and every "if GM0 shows" branch below is decided.
+- [ ] **GM1. Pure core.** shared/view/menu `focus.ts` (`FOCUS_LAYERS`, `pickFocusScope`, `focusAction`,
+  `FocusMemory`, `scrollToShow`), `padActions.ts` (`menuPadAction`), `padHints.ts` (`padHints`); tunables
+  `GAMEPAD_MENU` in shared/view/menu `config.ts`; specs next to each. One spec walks a `PAD_SURFACES` census (the
+  table above) and checks that every surface has a layer, a B meaning and a hint for each action it maps.
+  → Verify: `npm run test:only -- view/menu`.
+- [ ] **GM2. FocusController + `useFocusScope`.** Scopes (SelectionGroup, Stop, SelectionOrder), recovery, memory,
+  device-switch clear, empty `SelectionImageObject`, `KV_FocusDebug`. Migrate the four `useGamepadFocus` users and
+  the six hand-rolled effects, then delete `useGamepadFocus`. → Verify: `npm run verify`. In Studio, every surface
+  still opens on its default button.
+- [ ] **GM3. One back path.** Order B by layer through FocusController. Add solo pause B = Resume and skip confirm
+  B = cancel. Panels' own B handlers fold in (`panelOpenLastFrame` stays the guard against double handling).
+  → Verify: specs for the order. In Studio, B on each surface in the table does what the B column says.
+- [ ] **GM4. Bumpers, triggers and the pad input path.** `InputController.onMenuPadInput`, held-button block on menu
+  close (if GM0 says it is missing). LB/RB and LT/RT on Options and Leaderboard. → Verify: tab specs. In Studio,
+  holding LB through closing a menu does not roll.
+- [ ] **GM5. Scrolling.** `ScrollList` focus look, Leaderboard list selectable, right-stick scroll, `followSelection`
+  if needed. → Verify: in Studio, the top 100, Credits and a 12-boon Build list scroll on a pad only.
+- [ ] **GM6. Shortcuts and the invites scope.** The X / Y table. Invite toasts as a scope reached by Y.
+  → Verify: specs. In Studio with `KV_FakeFriends`, receive an invite on the main menu, Y, Join.
+- [ ] **GM7. Hint bar and glyphs.** `PadHintBar`, `padLabelSet`, engine glyph images with a text fallback. Strings
+  `PAD_HINT_STRING_KEYS` (`pad.hint.*`) in their own shared/theme module, inside `REQUIRED_STRING_KEYS` (contract.luau
+  is near Luau's 200 top-level locals: count on out/), with `l10n/context.json` entries. → Verify: `npm run verify`
+  (`l10n:check`, `check:autolocalize`). In Studio, Xbox and PlayStation glyphs show.
+- [ ] **GM8. Directional pass.** Walk every surface pad-only at HUD scale 70 % and 125 %, and in a portrait phone
+  layout with a pad. Add `NextSelection*` only where geometry picks wrong (main menu and Daily card, lobby member
+  rows' Kick / Make host, Options' `-` / `+` rows, run-over exits row). Each override is listed in this doc.
+- [ ] **GM9. Sounds, haptics and hold-to-exit.** The tab switch plays `sfx.ui.click`. Haptics are on (GMD14),
+  through a client `PadHaptics` (`HapticEffect` or `HapticService`, whichever GM0 shows works; silent where the pad
+  has no motor). Menus only, from a pure `MENU_HAPTICS` table (motor, strength, seconds) in shared/view/menu
+  `config.ts`:
+  - a light tick on confirm,
+  - a short double buzz on pressing a disabled button,
+  - a tick at a list's end when scrolling into it,
+  - a tick when hold-B completes.
+
+  No haptic on focus moves (the console guidelines warn against overuse). Add a setting
+  `DisplaySettings.padVibration` (default On, only Off stored, settings doc stays v2), shown on Options > Controls >
+  Gamepad, with string `options.controls.vibration`. Build hold-B to exit on the run-over panel (section 3, GMD13).
+  → Verify: specs for `MENU_HAPTICS`, `holdProgress` and the hold edge rule. In Studio, the hold fills and exits, an
+  early release does nothing, and vibration Off is silent.
+- [ ] **GM12. Console readiness (Xbox, PlayStation; GMD15).** The game ships wherever Roblox runs.
+  - Menus inside the TV-safe area on a ten-foot interface: `MenuFit` takes a console inset from `GAMEPAD_MENU.tvSafe`
+    (GM0 measures it), the same way it takes the phone safe area.
+  - Text at least the console guidelines' readable size at `DisplaySize.Large`: check `computeHudScale` on a TV.
+  - Chat window off on console, as the guidelines recommend (`TextChatService` `ChatWindowConfiguration.Enabled`
+    false when `IsTenFootInterface`).
+  - No TextBox on any player-facing path (already true: only the dev panel has one, GMD10).
+  - Go through the console guidelines' checklist line by line, and turn on Console in the experience's device
+    settings (an owner step in the Creator Hub).
+  - A pass on a real Xbox and PlayStation if one is available, else the Studio console emulator.
+
+  → Verify: in Studio's console emulator at 1080p and 4K, every menu is inside the safe area and readable, with no
+  chat window.
+- [ ] **GM10. Docs.** CLIENT.md Controls table (a "Menus (gamepad)" block), the CLAUDE.md docs row and a decision
+  log entry, this doc's "As built".
+- [ ] **GM11. Studio check, pad only.** Mouse unplugged: join, then the tutorial (outro), main menu, every Options
+  tab including a rebind and a reset, leaderboards (all tabs, scroll to 100), credits, lobby create / invite / ready /
+  kick / start (2 clients), a run (pause, leave confirm, party overlay, draft, death, Details, Again). Also: a locale
+  switch while a button is selected, mouse ⇄ pad switching, an invite arriving mid-menu.
+
+## Decisions
+
+- **GMD1.** Roblox's engine selection (GuiService) stays the navigator. Our code only scopes, recovers, remembers
+  and adds shortcuts. A custom grid navigator was rejected: the engine already moves by direction, scrolls, works
+  with MenuButton's events and matches what console players expect.
+- **GMD2.** Every surface that takes the pad is a SelectionGroup that stops on all four sides. Nothing is reached by
+  wandering off an edge. Invite toasts are reached only by Y.
+- **GMD3.** One owner: the topmost layer in `FOCUS_LAYERS`. Under the stage cover nobody owns the pad.
+- **GMD4.** Menu meanings of LB / RB / LT / RT / X / Y / right stick are fixed and apply only while a menu owns the
+  pad. In play the same buttons keep their (rebindable) game actions. Nothing is added to `RESERVED_PAD_INPUTS`.
+- **GMD5.** A tap of B is never destructive: back, close, cancel or resume. It does nothing on the run-over panel,
+  the outro and the draft.
+- **GMD6.** The selection is shown only on a gamepad. Switching to mouse or touch clears it, and switching back
+  restores it.
+- **GMD7.** Roblox's default selection image is hidden. MenuButton's ring and corners are the only focus look, and
+  lists draw their own.
+- **GMD8.** Engine glyph images in the hint bar. Text labels (platform-aware) in localized sentences. The glyph images
+  are platform content from the engine, not theme assets, so the "no rbxassetid outside shared/theme" rule is
+  unaffected.
+- **GMD9.** Focus memory is per session, in memory only, never stored.
+- **GMD10.** The dev panel (F2) stays keyboard-only: it is server-gated, developer-only and needs a TextBox.
+- **GMD11.** No sim, lockstep, hash, replay or fixture change. Co-op neutral input under menus is unchanged.
+- **GMD12.** The draft, shrine, pacts, chests, spectating and the full map keep their gameplay inputs. They are not
+  menus.
+
+## Open owner calls
+
+1. **Console.** Is the game going to Xbox / PlayStation? If so, add a GM12: TV-safe margins on menus, chat window
+   off, the console guidelines' checklist, and a real-console pass. If not, GM0 and GM11 use pads on PC only.
+2. **Shortcuts.** Is the X / Y table above right? Should B on the run-over panel mean Exit (today: nothing)?
+3. **Haptics** (the console guidelines suggest them, for example for a list's end or a disabled press): on, off, or
+   later?
+4. **Glyph style.** Engine glyph images, or our own pixel-art glyphs in the UI sheet's style (a UI_ART follow-up)?
+
+## Sources
+
+- Roblox console guidelines (navigation by four directions plus select and back, shortcuts, glyph APIs, TV-safe
+  areas): https://create.roblox.com/docs/production/publishing/console-guidelines
+- Gamepad UI selection APIs (`SelectionGroup`, `SelectionBehavior*`, `GuiService:Select`, `SelectionOrder`,
+  `SelectionChanged`): https://devforum.roblox.com/t/new-gamepad-ui-selection-apis/1791278
+- `UserInputService:GetImageForKeyCode`:
+  https://create.roblox.com/docs/reference/engine/classes/UserInputService/GetImageForKeyCode
