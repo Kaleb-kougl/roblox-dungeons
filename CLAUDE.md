@@ -850,8 +850,8 @@ Decision log (deviations from `PLAN.md`):
   scorch (view-only `ScorchTracker`, sim seconds, dropped on a floor change); the ember is 3/4 art sized by the goo's
   cover rule, tinted `build.ember`, its loop phased per slot. Client `HazardSpritePool.ts`; `DecalPool` takes any
   `FloorSpriteDrawer` and a per-frame `HazardClock`. Without a `hazards.png` id every pack draws the discs exactly as
-  before. No new colour role, string, sound or setting; no Luau-locals change. Upload (HA7) and Studio check (HA8)
-  pending.
+  before. No new colour role, string, sound or setting; no Luau-locals change. `hazards.png` uploaded 2026-11-06
+  (HA7, `assetIds.ts`), so the bundled vale pack draws them; Studio check (HA8) pending.
 
 ## Commands
 

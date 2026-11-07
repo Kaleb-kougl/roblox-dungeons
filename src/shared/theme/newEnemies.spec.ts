@@ -17,6 +17,7 @@ import {
 import { THEME_PACKS } from "./packs";
 import { PLACEHOLDER_MANIFEST } from "./packs/placeholder";
 import { VALE_FLOOR_HEX, buildValeManifest } from "./packs/vale";
+import { VALE_ASSET_IDS } from "./packs/vale/assetIds";
 import { PLACEHOLDER_VISUALS } from "./placeholders";
 import { COLOR_ROLES } from "./types";
 import { deepClone, sortedKeys, type Obj } from "./util";
@@ -151,7 +152,9 @@ describe("new enemies: bundled packs", () => {
 				// "Name: tip" (l10n/context.json): the toast's name is the name string
 				expect([id, a, (line as string).sub(1, (name as string).size() + 1)]).toEqual([id, a, `${name}:`]);
 			}
-			expect([id, pack.assets[STRIKE_BULLET_ID]]).toEqual([id, { kind: "placeholder" }]);
+			// docs/HAZARD_ART.md HA7: vale draws the strike as a hazard sprite once hazards.png has an ID
+			const strikeKind = id === "vale" && VALE_ASSET_IDS["hazards.png"] !== undefined ? "sprites" : "placeholder";
+			expect([id, pack.assets[STRIKE_BULLET_ID].kind]).toEqual([id, strikeKind]);
 			for (const sfx of AUDIO) {
 				const kind = id === "vale" && VALE_UPLOADED_AUDIO.includes(sfx) ? "sound" : "silent";
 				expect([id, sfx, pack.assets[sfx].kind]).toEqual([id, sfx, kind]);

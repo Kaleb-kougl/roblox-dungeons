@@ -9,9 +9,9 @@ both (goo was lifted by docs/GOO_ART.md); after this no bullet is a neon floor d
 
 ## Status (2026-11-06)
 
-HA0-HA6 built on branch `hazard-art` (2026-11-06); see "As built". **Open:** HA7 (upload `art/upload/hazards.png`, then
-its id into `packs/vale/assetIds.ts`: until then the bundled vale pack still draws the discs), HA8 (Studio check, after
-PA0).
+HA0-HA6 built on branch `hazard-art` (2026-11-06, merged into main); see "As built". HA7 done: `hazards.png` uploaded
+2026-11-06 (`rbxassetid://121912104813388`, `assetIds.ts`), so the bundled vale pack draws the strike and the embers.
+**Open:** HA8 (Studio check, after PA0).
 
 ## The art (original, HAD1)
 

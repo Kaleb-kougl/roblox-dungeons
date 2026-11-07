@@ -118,6 +118,9 @@ import type { RobloxAssetId } from "../../types";
  * uploaded 2026-11-06 12:09 PM by k9kbdev, transcribed from an Asset Manager screenshot.
  * kenney-bookcase-<wide look>-x / -z (the wide cases, docs/KENNEY_DECOR.md KN3) and kenney-patch-<look>-b<n> (the floor
  * patches baked per biome, KN4) uploaded 2026-11-06 1:19 PM by k9kbdev, transcribed from Asset Manager screenshots.
+ * hazards.png (the Stormcaller's strike flash / scorch and the build embers, docs/HAZARD_ART.md HA7; original art,
+ * scripts/art/gen-hazard-art.js, built by `node scripts/art/build-atlases.js --only hazards`) uploaded 2026-11-06, the ID
+ * given by the owner in chat.
  */
 export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"amb-b1.ogg": "rbxassetid://91158343621799",
@@ -175,6 +178,7 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"golden-move-outline.png": "rbxassetid://85083036932400",
 	"golden-move.png": "rbxassetid://88829506171960",
 	"goo.png": "rbxassetid://82002931490706",
+	"hazards.png": "rbxassetid://121912104813388",
 	"imp-attack-outline.png": "rbxassetid://87826495349638",
 	"imp-attack.png": "rbxassetid://106802821695726",
 	"imp-body-outline.png": "rbxassetid://80038327609999",
