@@ -16,7 +16,7 @@
  *   damage   player bullets: their payload damage; a plain bullet is consumed, a piercing one (heavy arrow, Piercing
  *            Arrows) flies on only when it broke the piece (no pierce spent), else it stops there. Enemy bullets:
  *            consumed, BREAKABLE_ENEMY_BULLET_DAMAGE each. The sword: sweepArc's breakables pass after the actors
- *            (the swing's base damage; no enemyHits, no combo). Mother Bramble's slam: breaks every piece within
+ *            (the swing's base damage; no enemyHits, no combo). Mother Mayhem's slam: breaks every piece within
  *            BREAKABLE_SLAM_RADIUS. Not the Ember, not bodies.
  *   score    a piece a PLAYER breaks (sword, player bullet) scores ScoreSource.BREAKABLES (score.ts scoreBreakable):
  *            BREAKABLE_POINTS[kind] x floor; it never feeds the combo and no room record sees it.

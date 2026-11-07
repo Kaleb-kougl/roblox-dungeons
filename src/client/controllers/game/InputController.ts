@@ -21,6 +21,7 @@ import {
 	LEFT_TRIGGER,
 	RIGHT_TRIGGER,
 	STICK_DEADZONE,
+	type AimDevice,
 	type Bindings,
 	type DriverKeyAction,
 	type GamepadSnapshot,
@@ -32,7 +33,7 @@ import {
 	type TouchMode,
 	type TouchSnapshot,
 } from "shared/play";
-import { EMPTY_INPUT, playerAt, type InputFrame, type SimState } from "shared/sim";
+import { Button, EMPTY_INPUT, playerAt, type InputFrame, type SimState } from "shared/sim";
 import type { BulletBlocker } from "shared/dungeon";
 import { pointerAimFromRay } from "shared/view";
 import {
@@ -53,6 +54,8 @@ const SUNK_STICKS = ["Thumbstick1", "Thumbstick2"];
  * the menu has its own Restart button.
  */
 const UI_NAV_KEYS = new Set(["ButtonA", "ButtonB", "DPadUp", "DPadDown", "DPadLeft", "DPadRight", "Thumbstick1"]);
+/** The weapon buttons (Attack, Alt) in a sampled frame: what the item tooltips' shy HUD rule reads (weaponHeld). */
+const WEAPON_BUTTONS = bit32.bor(Button.FIRE, Button.ALT);
 
 type DriverListener = (action: Exclude<DriverKeyAction, undefined>) => void;
 type MapListener = () => void;
@@ -175,6 +178,8 @@ export class InputController implements OnStart {
 	private targetZ = 0;
 	/** os.clock() at the previous sample: the touch frame's dt. */
 	private lastSampleClock = os.clock();
+	/** The last sampled frame's buttons (weaponHeld). */
+	private lastButtons = 0;
 
 	onStart(): void {
 		// A touch-only device (no keyboard, no gamepad): the touch controls are the input from the first frame.
@@ -280,6 +285,20 @@ export class InputController implements OnStart {
 		return this.guiMouse.size() > 0;
 	}
 
+	/**
+	 * Attack or Alt is held in the last sampled frame, through the player's bindings (keyboard, mouse, pad or touch;
+	 * a press that began over a GUI counts too: the frame carries it). The item tooltips' live HUD rule reads it
+	 * (docs/ITEM_TOOLTIPS.md IT6, ITD3: no tooltip while a weapon is held or just pressed). No sample yet: false.
+	 */
+	weaponHeld(): boolean {
+		return bit32.band(this.lastButtons, WEAPON_BUTTONS) !== 0;
+	}
+
+	/** The aim device used last (mouse / stick / touch / none): the item tooltips hover only for the mouse. */
+	getAimDevice(): AimDevice {
+		return this.tracker.aimDevice;
+	}
+
 	/** Called when a menu button is activated: mouse buttons read as released until they actually are. */
 	suppressMouseUntilRelease(): void {
 		this.mouseSuppressed = true;
@@ -368,6 +387,7 @@ export class InputController implements OnStart {
 			this.bindings,
 		);
 		frame.buttons = maskDebugButtons(frame.buttons, this.debugButtons);
+		this.lastButtons = frame.buttons;
 		return frame;
 	}
 

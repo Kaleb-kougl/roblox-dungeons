@@ -67,7 +67,7 @@ function arenaOf(enc: EncounterConfig, a: Readonly<ActorState>): EncounterRoom |
  *     never clipped by breakables: its charge breaks them, viewFxHints), the Stormcaller's three strike circles
  *     (`strikeRow`, filling, centred where the strikes land); the Warbanner's panic gets the generic ring
  *   - any other actor winding up (aiState TELEGRAPH) without a preview: a ring around it
- *   - Mother Bramble (boss.act1) while winding up: exactly where the attack's bullets will go (fan lanes, ring arcs
+ *   - Mother Mayhem (boss.act1) while winding up: exactly where the attack's bullets will go (fan lanes, ring arcs
  *     with gaps, spiral arms, the slam lane + impact + shockwave), dim early, bright late, blinking at the end; the
  *     slam lane while charging
  *   - the Demon Lord (boss.demonlord; docs/BOSS_DEMONLORD.md D6) the same way: the cleave lanes to their reach (and

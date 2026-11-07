@@ -52,6 +52,8 @@ export const HUD_STRINGS = {
 	combo: "hud.score.combo",
 	scorePop: "hud.score.pop",
 	maxCombo: "hud.score.maxCombo",
+	/** A points value on the run-over panel's score breakdown, "{points} pts" (the score and every source row). */
+	points: "hud.score.points",
 	/** The full map overlay's title and its toggle hint, "{key} map" (docs/MINIMAP.md M9; key: shared/play mapHint). */
 	mapTitle: "hud.map.title",
 	mapHint: "hud.map.hint",

@@ -8,7 +8,7 @@
  *
  * Presentation choices (decision X2: selective and tinted; the sheet per ID is art/atlases.json's): drawn size of the
  * longer cell side (tiles, at most FX_SPRITE_MAX_TILES), the theme role multiplied into the greyed sheet, and the
- * brighter self-lit blend. Two sheets keep their own colours (Mother Bramble's rock spikes and the explosion): they
+ * brighter self-lit blend. Two sheets keep their own colours (Mother Mayhem's rock spikes and the explosion): they
  * carry the pipeline's meanColor, which the validator holds to the enemy-bullet rule like every tint.
  */
 import { BOOST_COLLECT_FX_ID, BOOST_FX_IDS, FX_IDS, type BoostFxId, type FxId } from "../../contract";

@@ -51,7 +51,7 @@ wherever the player stands; the beam stays as the destination.
   | Objective card up, draft open (step `draft` has no marker), outro / ended, no tutorial run | hidden |
   | Target on screen **and** in clear sight of the player | hidden: the beam is in view and the way is straight |
   | Target closer than `arrowHideTiles` (3) along the path | hidden |
-  | Boss step: Mother Bramble off screen (rare in her arena) / on screen | shown / hidden |
+  | Boss step: Mother Mayhem off screen (rare in her arena) / on screen | shown / hidden |
 
 - It turns smoothly (heading damped, `arrowTurnTau` 0.1 s) and fades in and out (`arrowFadeSeconds` 0.2 s) with a
   short hold (`arrowHoldSeconds` 0.3 s) so it never flickers at an on-screen edge or a path corner.
@@ -196,7 +196,7 @@ Critical path: A1 -> A2 -> A3 -> A5. A4 can go alongside A2.
 3. With the beam on screen and nothing in the way, no arrow; step behind a solid pillar (combat E) so the beam is in
    view but blocked: the arrow returns.
 4. Reduced motion (Options): no slide; turning and fades unchanged. Floor 2: points from the entrance to the arena,
-   hides when Mother Bramble is in view, points at the stairwell after the kill.
+   hides when Mother Mayhem is in view, points at the stairwell after the kill.
 5. Telegraphs, aim lines and bullets draw over the chevron; no Output warnings (`unreachable`).
 
 ## Decisions

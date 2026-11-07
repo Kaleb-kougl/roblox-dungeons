@@ -1,7 +1,7 @@
 /**
  * Display settings (Options screen, task L4): the HUD scale, a percent of the automatic scale (shared/view/hud
  * computeHudScale; the client's useHudScale multiplies it in), and the room-edge lines on the floor
- * (docs/ROOM_EDGES.md RE6), the corner panels' occlusion fade (docs/HUD_LAYOUT.md H7), the corner minimap
+ * (docs/ROOM_EDGES.md RE6), the corner panels' occlusion fade (docs/HUD_LAYOUT.md H7), the live HUD's item tooltips (docs/ITEM_TOOLTIPS.md ITD8), the corner minimap
  * (docs/MINIMAP.md M10), the player outline (docs/PLAYER_OUTLINE.md P4), the build effects (docs/BUILDS.md BUD13), the touch controls (docs/MOBILE.md MB7: size,
  * opacity, auto-target, left-handed), the language (docs/LOCALIZATION.md L6) and the gamepad menus' vibration
  * (docs/GAMEPAD_MENUS.md GM9). Presentation only; stored overrides-only (a new optional field needs no migration).
@@ -12,6 +12,7 @@ import {
 	DEFAULT_BUILD_FX,
 	DEFAULT_HUD_FADE,
 	DEFAULT_HUD_SCALE_PERCENT,
+	DEFAULT_HUD_TOOLTIPS,
 	DEFAULT_LANGUAGE,
 	DEFAULT_MINIMAP,
 	DEFAULT_PAD_VIBRATION,
@@ -35,6 +36,8 @@ export interface DisplaySettings {
 	roomEdges: boolean;
 	/** Fade a corner HUD panel while the player, enemies or bullets are under it (docs/HUD_LAYOUT.md H7). Default true. */
 	hudFade: boolean;
+	/** Item tooltips on the live HUD (docs/ITEM_TOOLTIPS.md ITD8; menus always have them). Default true: only Off is stored. */
+	hudTooltips: boolean;
 	/** Show the corner minimap (docs/MINIMAP.md M10; the full map key works either way). Default true: only Off is stored. */
 	minimap: boolean;
 	/** Draw the rim around the watched player's character (docs/PLAYER_OUTLINE.md P4). Default true: only Off is stored. */
@@ -67,6 +70,7 @@ export const DISPLAY_SETTING_KEYS: ReadonlyArray<keyof DisplaySettings> = [
 	"hudScale",
 	"roomEdges",
 	"hudFade",
+	"hudTooltips",
 	"minimap",
 	"playerOutline",
 	"buildFx",
@@ -83,6 +87,7 @@ export function defaultDisplaySettings(): DisplaySettings {
 		hudScale: DEFAULT_HUD_SCALE_PERCENT,
 		roomEdges: DEFAULT_ROOM_EDGES,
 		hudFade: DEFAULT_HUD_FADE,
+		hudTooltips: DEFAULT_HUD_TOOLTIPS,
 		minimap: DEFAULT_MINIMAP,
 		playerOutline: DEFAULT_PLAYER_OUTLINE,
 		buildFx: DEFAULT_BUILD_FX,
@@ -97,7 +102,7 @@ export function defaultDisplaySettings(): DisplaySettings {
 
 /**
  * Keeps only a hudScale that is one of HUD_SCALE_PERCENTS (and not the default) and a roomEdges that is a boolean other
- * than the default (so only `false`), and the same for hudFade, minimap and playerOutline; a buildFx from
+ * than the default (so only `false`), and the same for hudFade, hudTooltips, minimap and playerOutline; a buildFx from
  * BUILD_FX_LEVELS other than the default (so only "reduced"); a touchSize / touchOpacity
  * from its list and not the default; a touchAutoTarget / touchLeftHanded that is a boolean other than the default; a
  * language that is a known locale code (stored as LOCALES spells it; "auto" and unknown codes are dropped); a
@@ -113,6 +118,8 @@ export function sanitizeDisplayOverrides(raw: unknown): DisplayOverrides {
 	if (typeIs(edges, "boolean") && edges !== DEFAULT_ROOM_EDGES) out.roomEdges = edges;
 	const fade = t.hudFade;
 	if (typeIs(fade, "boolean") && fade !== DEFAULT_HUD_FADE) out.hudFade = fade;
+	const tips = t.hudTooltips;
+	if (typeIs(tips, "boolean") && tips !== DEFAULT_HUD_TOOLTIPS) out.hudTooltips = tips;
 	const minimap = t.minimap;
 	if (typeIs(minimap, "boolean") && minimap !== DEFAULT_MINIMAP) out.minimap = minimap;
 	const rim = t.playerOutline;

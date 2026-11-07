@@ -1,5 +1,5 @@
 // docs/LEGENDARIES.md LG3 (Bastion): the pip on the pick, the guard through runMods (full ring, 27 ticks; SWORD_DATA's
-// numbers without it), the brace (3 bullets in one guard or roll restore a pip, once per room, not spent at full armor),
+// numbers without it), the brace (BASTION_BRACE_BULLETS (8) bullets in one guard or roll restore a pip, once per room, not spent at full armor),
 // the count's resets (guard start, roll start, a swap mid-guard), the roll brace (any weapon, each bullet once by the
 // payload's lastHit mark, never through post-hit invulnerability, Phantom Step's erasures count, goo and strikes never),
 // the re-arm (a room's spawn, a floor's start), co-op (own armor only, a marked bullet never counts for a second
@@ -130,11 +130,19 @@ function marks(s: SimState): number[] {
 	return out;
 }
 
-/** Three stationary bullets in front of a knight at the origin facing +Z (inside the guard's reach). */
-function volleyInFront(s: SimState): void {
-	enemyBullet(s, 0, 1.2);
-	enemyBullet(s, 0.4, 1.2);
-	enemyBullet(s, -0.4, 1.2);
+/**
+ * `n` stationary bullets (BASTION_BRACE_BULLETS by default) in front of a knight at the origin facing +Z, on a grid of
+ * 4 per row (x -0.6..0.6, z from 0.9 by 0.2: inside the guard's reach for up to 16), starting at grid cell `from`.
+ */
+function volleyInFront(s: SimState, n = BASTION_BRACE_BULLETS, from = 0): void {
+	for (let k = from; k < from + n; k++) enemyBullet(s, -0.6 + 0.4 * (k % 4), 0.9 + 0.2 * math.floor(k / 4));
+}
+
+/** `n` copies of `v`. */
+function filled(n: number, v: number): number[] {
+	const out: number[] = [];
+	for (let k = 0; k < n; k++) out.push(v);
+	return out;
 }
 
 function bp(s: SimState, i = 0) {
@@ -207,14 +215,14 @@ describe("Bastion: the pick and the guard (LG3)", () => {
 });
 
 describe("Bastion's brace (LG3)", () => {
-	it("3 cancels in one guard restore a pip once per room; a second guard in the room does nothing", () => {
+	it("BASTION_BRACE_BULLETS (8) cancels in one guard restore a pip once per room; a second guard does nothing", () => {
 		const s = fresh();
 		const p = s.player;
 		p.armor = 0;
 		volleyInFront(s);
 		step(s, GUARD, ARENA);
-		expect(BASTION_BRACE_BULLETS).toBe(3);
-		expect([p.armor, bp(s).braceReady, bp(s).braceCount]).toEqual([1, 0, 3]);
+		expect(BASTION_BRACE_BULLETS).toBe(8);
+		expect([p.armor, bp(s).braceReady, bp(s).braceCount]).toEqual([1, 0, BASTION_BRACE_BULLETS]);
 		expect([s.builds!.events.bracePlayer, s.builds!.events.braceKind]).toEqual([[0], [BraceKind.PIP]]);
 		idle(s, SWORD_DATA.guardCooldownTicks);
 		p.armor = 0;
@@ -223,17 +231,17 @@ describe("Bastion's brace (LG3)", () => {
 		expect([enemyBulletCount(s), p.armor, s.builds!.events.bracePlayer.size()]).toEqual([0, 0, 0]);
 	});
 
-	it("2 cancels do nothing; the count builds over a guard's ticks and restarts with the next guard", () => {
+	it("one short does nothing; the count builds over a guard's ticks and restarts with the next guard", () => {
 		const s = fresh();
 		const p = s.player;
 		p.armor = 0;
-		enemyBullet(s, 0, 1.2);
-		enemyBullet(s, 0.4, 1.2);
+		const short = BASTION_BRACE_BULLETS - 1;
+		volleyInFront(s, short);
 		step(s, GUARD, ARENA);
-		expect([bp(s).braceCount, p.armor]).toEqual([2, 0]);
-		enemyBullet(s, -0.4, 1.2);
-		step(s, IDLE, ARENA); // still guarding: the third bullet of the same guard braces
-		expect([bp(s).braceCount, p.armor]).toEqual([3, 1]);
+		expect([bp(s).braceCount, p.armor]).toEqual([short, 0]);
+		volleyInFront(s, 1, short);
+		step(s, IDLE, ARENA); // still guarding: the last bullet of the same guard braces
+		expect([bp(s).braceCount, p.armor]).toEqual([BASTION_BRACE_BULLETS, 1]);
 		const t = SWORD_DATA.guardCooldownTicks - 1;
 		idle(s, t);
 		enemyBullet(s, 0, 1.2);
@@ -247,7 +255,12 @@ describe("Bastion's brace (LG3)", () => {
 		volleyInFront(s);
 		step(s, GUARD, ARENA);
 		// Nothing to restore: braceReady stays set, nothing pushed (BraceKind.SPENT never fires).
-		expect([p.armor, p.armorMax, bp(s).braceReady, bp(s).braceCount]).toEqual([p.armorMax, p.armorMax, 1, 3]);
+		expect([p.armor, p.armorMax, bp(s).braceReady, bp(s).braceCount]).toEqual([
+			p.armorMax,
+			p.armorMax,
+			1,
+			BASTION_BRACE_BULLETS,
+		]);
 		expect(s.builds!.events.bracePlayer.size()).toBe(0);
 		idle(s, SWORD_DATA.guardCooldownTicks);
 		// A hit takes a pip (an enemy bullet on the knight, no i-frames).
@@ -298,18 +311,18 @@ describe("Bastion's brace (LG3)", () => {
 });
 
 describe("Bastion's roll brace (LG3)", () => {
-	it("a roll through 3 bullets braces with the bow in hand", () => {
+	it("a roll through BASTION_BRACE_BULLETS bullets braces with the bow in hand", () => {
 		const s = fresh(BOW_ARENA);
 		const p = s.player;
 		p.armor = 0;
 		rollInPlace(s, BOW_ARENA);
 		expect(p.rollTicks > 0 && p.iframeTicks > 0).toBe(true);
-		for (let k = 0; k < 3; k++) enemyBullet(s, p.x, p.z);
+		for (let k = 0; k < BASTION_BRACE_BULLETS; k++) enemyBullet(s, p.x, p.z);
 		const hearts = p.hearts;
 		step(s, IDLE, BOW_ARENA);
-		expect([bp(s).braceCount, p.armor, p.hearts]).toEqual([3, 1, hearts]);
+		expect([bp(s).braceCount, p.armor, p.hearts]).toEqual([BASTION_BRACE_BULLETS, 1, hearts]);
 		expect(s.builds!.events.braceKind).toEqual([BraceKind.PIP]);
-		expect(marks(s)).toEqual([1, 1, 1]);
+		expect(marks(s)).toEqual(filled(BASTION_BRACE_BULLETS, 1));
 	});
 
 	it("a bullet overlapping the roller for 5 ticks counts once", () => {
@@ -356,11 +369,11 @@ describe("Bastion's roll brace (LG3)", () => {
 		const p = s.player;
 		p.armor = 0;
 		rollInPlace(s, BOW_ARENA);
-		for (let k = 0; k < 3; k++) enemyBullet(s, p.x, p.z);
+		for (let k = 0; k < BASTION_BRACE_BULLETS; k++) enemyBullet(s, p.x, p.z);
 		step(s, IDLE, BOW_ARENA);
 		expect(enemyBulletCount(s)).toBe(0);
-		expect(s.builds!.events.phantomOwner).toEqual([0, 0, 0]);
-		expect([bp(s).braceCount, p.armor]).toEqual([3, 1]);
+		expect(s.builds!.events.phantomOwner).toEqual(filled(BASTION_BRACE_BULLETS, 0));
+		expect([bp(s).braceCount, p.armor]).toEqual([BASTION_BRACE_BULLETS, 1]);
 	});
 
 	it("without Bastion a roll counts nothing and marks nothing", () => {
@@ -391,10 +404,10 @@ describe("Bastion in co-op (LG3)", () => {
 		partyRoll(s);
 		b.x = a.x + 5; // apart: only player 0 overlaps the volley
 		b.z = a.z;
-		for (let k = 0; k < 3; k++) enemyBullet(s, a.x, a.z);
+		for (let k = 0; k < BASTION_BRACE_BULLETS; k++) enemyBullet(s, a.x, a.z);
 		stepParty(s, [IDLE, IDLE], PARTY2);
 		expect([a.armor, b.armor]).toEqual([1, 0]);
-		expect([bp(s, 0).braceCount, bp(s, 1).braceCount]).toEqual([3, 0]);
+		expect([bp(s, 0).braceCount, bp(s, 1).braceCount]).toEqual([BASTION_BRACE_BULLETS, 0]);
 		expect(s.builds!.events.bracePlayer).toEqual([0]);
 	});
 
@@ -421,9 +434,10 @@ describe("Bastion in co-op (LG3)", () => {
 				const phase = t % 40;
 				const inputs: InputFrame[] = phase === 0 ? [ROLL, ROLL] : [IDLE, IDLE];
 				if (phase === 1) {
-					// A fan of 5 (5 @ 0.7, the imp's port row) bursts over each player, heading -Z.
-					for (let i = 0; i < 2; i++) {
-						const p = playerAt(s, i);
+					// Two fans of 5 (5 @ 0.7, the imp's port row: 10 >= BASTION_BRACE_BULLETS) burst over each player,
+					// heading -Z.
+					for (let i = 0; i < 2 * 2; i++) {
+						const p = playerAt(s, i % 2);
 						const c = s.combat;
 						c.enemySpawned += fireBurstRaw(
 							c.enemyBullets,

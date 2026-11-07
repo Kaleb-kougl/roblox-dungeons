@@ -9,7 +9,7 @@
  *   fx.boss.death    FxEvent bossDefeated (any data.boss): FX_SPRITE_VIEW.bossDeathBursts, staggered on the effect
  *                    clock
  *   fx.boss.phase    FxEvent bossPhase (any data.boss) with phase >= 2 (not the fight's start)
- *   fx.boss.slam     a boss's charge LANDS (BOSS_IMPACTS): Mother Bramble's SLAM and the Demon Lord's CHARGE, each
+ *   fx.boss.slam     a boss's charge LANDS (BOSS_IMPACTS): Mother Mayhem's SLAM and the Demon Lord's CHARGE, each
  *                    ACTIVE with its impact mark v[MARK] 0 -> > 0 (the impact tick, after its telegraph; never during
  *                    it), at the boss
  *   fx.ember.ring    a player's Ember count dropped, at the player
@@ -211,7 +211,7 @@ function hordeTakes(state: Readonly<SimState>): number {
 	return n;
 }
 
-/** The charge impacts that cue fx.boss.slam: Mother Bramble's slam and the Demon Lord's brimstone charge. */
+/** The charge impacts that cue fx.boss.slam: Mother Mayhem's slam and the Demon Lord's brimstone charge. */
 export const BOSS_IMPACTS: ReadonlyArray<BossImpactRule> = [
 	{
 		bossId: BOSS_ACT1_ID,

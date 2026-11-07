@@ -123,8 +123,8 @@ export const CLASS_OPTIONAL_ANIMATIONS = ["attack.1", "attack.2", "attack.3"] as
  * Roblox port (docs/BOSS_DEMONLORD.md D2, docs/BRAMBLE_ART.md BR2, one list for both bosses): optional `sprites`
  * animations of the boss slot. `attack.2` / `attack.3` / `attack.4` are named attacks (each falls back to `attack`);
  * `intro` (the engage roar) and `taunt` (a phase transition) are one-shot specials the renderer stretches over the
- * gameplay timer (absent: the builder's fallback, Mother Bramble's intro -> taunt, else what plays without them). The
- * Demon Lord uses attack.2 / intro / taunt; Mother Bramble FAN `attack`, RINGs `attack.2`, SPIRAL `attack.3`, SLAM
+ * gameplay timer (absent: the builder's fallback, Mother Mayhem's intro -> taunt, else what plays without them). The
+ * Demon Lord uses attack.2 / intro / taunt; Mother Mayhem FAN `attack`, RINGs `attack.2`, SPIRAL `attack.3`, SLAM
  * `attack.4`, intro / taunt. The required five (idle, move, attack, hit, death) are unchanged.
  */
 export const BOSS_OPTIONAL_ANIMATIONS = ["attack.2", "attack.3", "attack.4", "intro", "taunt"] as const;
@@ -570,7 +570,7 @@ export const DEFAULT_BIOME_MATERIAL: BiomeMaterial = "SmoothPlastic";
 export const BOSS_IDS = ["boss.1", "boss.2", "boss.3", "boss.4", "boss.5"] as const;
 
 /**
- * Roblox port: the endless bosses' sprite IDs (the sim archetype ids). `boss.act1` is Mother Bramble (the web build's
+ * Roblox port: the endless bosses' sprite IDs (the sim archetype ids). `boss.act1` is Mother Mayhem (the web build's
  * M1 boss); `boss.demonlord` the Demon Lord (docs/BOSS_DEMONLORD.md). Not in REQUIRED_ASSET_IDS (the web contract's
  * list stays as ported, and BOSS_IDS stays the GDD's five): every bundled pack fills both, with `<id>.name`, and
  * placeholder visuals exist for both (theme specs check it).
@@ -1102,6 +1102,26 @@ export const REQUIRED_STRING_KEYS: ReadonlyArray<string> = ((): string[] => [
 	"hud.toast.brace",
 	"hud.toast.braceHeal",
 	"fx.brace.text",
+	// docs/ITEM_TOOLTIPS.md IT3: shared/view/hud TOOLTIP_STRINGS, written out (tooltip.spec.ts checks they agree): the
+	// kind lines, Next / evolves / duo recipe / time left, the "+N" count, the Build list's sections, Build / Map
+	"hud.tip.kind.boon",
+	"hud.tip.kind.evolved",
+	"hud.tip.kind.duo",
+	"hud.tip.kind.relic",
+	"hud.tip.kind.curse",
+	"hud.tip.kind.boost",
+	"hud.tip.next",
+	"hud.tip.evolves",
+	"hud.tip.duoFrom",
+	"hud.tip.secondsLeft",
+	"hud.tip.more",
+	"hud.build.boons",
+	"hud.build.duos",
+	"hud.build.relics",
+	"hud.build.curses",
+	"hud.build.boosts",
+	"pause.build",
+	"pause.map",
 	// docs/DAILY.md DS9 / DS11: the main menu's Daily card and podium, the leaderboard tabs, the run-over daily block
 	...DAILY_STRING_KEYS,
 	// docs/DAILY.md DS2: the stage card's roster line (floor 1's kinds, a floor's new kinds)
@@ -1144,6 +1164,7 @@ export const REQUIRED_STRING_KEYS: ReadonlyArray<string> = ((): string[] => [
 	"run.recap.hl.perfect",
 	"run.recap.hl.teamPerfect",
 	"run.recap.hl.ofTotal",
+	"run.recap.hl.points",
 	"run.recap.hl.teamStreak",
 	"run.recap.hl.duos",
 	"run.recap.hl.evolved",

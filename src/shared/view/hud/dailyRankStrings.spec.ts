@@ -62,9 +62,9 @@ describe("the daily rank layer's strings and sounds", () => {
 		expect(pack.str(K.rungShort, { to: 40, points: 310 })).toBe("#40 -310");
 		expect(pack.str(K.friend, { name: "Alex", points: 12 })).toBe("Alex · 12");
 		expect(pack.str(K.cutoff, { n: 100, points: 900 })).toBe("TOP 100 · 900");
-		expect(pack.str(K.passed, { name: "Alex", score: 21900 })).toBe("Passed Alex (21900)");
-		expect(pack.str(K.scoreRow, { old: 1, new: 5, delta: 4 })).toBe("Best today 1 -> 5 (+4)");
-		expect(pack.str(K.target, { score: 23410 })).toBe("Best today 23410");
+		expect(pack.str(K.passed, { name: "Alex", score: 21900 })).toBe("Beat Alex's high score (21900)");
+		expect(pack.str(K.scoreRow, { old: 1, new: 5, delta: 4 })).toBe("Best today 1 -> 5 pts (+4)");
+		expect(pack.str(K.target, { score: 23410 })).toBe("Best today 23410 pts");
 		expect(pack.str(K.passedMore, { n: 2 })).toBe("+2 more");
 		expect([pack.str(K.shout100), pack.str(K.shout10), pack.str(K.shout3), pack.str(K.shout1)]).toEqual([
 			"TOP 100!",

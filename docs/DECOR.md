@@ -539,7 +539,7 @@ build's Delve floor handles breakable walls at `35307022` (D3) and reuse what fi
 - **B2. What they block**: players' and enemies' movement, and every bullet. **Not** line of sight: they are low cover,
   so a sniper still sees you and shoots the crate.
 - **B3. What breaks them**: player melee, player bullets (a heavy arrow that breaks one keeps piercing; one that
-  doesn't, stops), enemy bullets (cover erodes under fire), Mother Bramble's slam (breaks everything in its radius).
+  doesn't, stops), enemy bullets (cover erodes under fire), Mother Mayhem's slam (breaks everything in its radius).
   Not the Ember, not bodies.
 - **B4. Toughness** (in hits, tunables in the data module): barrel 1 sword hit / 2 arrows / 4 enemy bullets; crate 2
   sword hits / 4 arrows / 8 enemy bullets.

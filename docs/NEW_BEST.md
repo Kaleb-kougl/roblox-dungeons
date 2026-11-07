@@ -93,11 +93,11 @@ No slow motion, no freeze, no camera kick: this usually happens mid-fight.
 | t (s) | What happens |
 |---|---|
 | 0 | `sfx.jingle.record` replaces `sfx.jingle.gameover` (a death on a record run sounds like a win). A gold ribbon `NEW BEST!` across the panel's header |
-| 0.3 | Record rows roll: `Score 48,210 -> 61,930 (+13,720)` and/or `Deepest floor 9 -> 11 (+2)`, with `sfx.score.tick`, landing with `sfx.score.land` |
+| 0.3 | Record rows roll: `Score 48,210 -> 61,930 pts (+13,720)` and/or `Deepest floor 9 -> 11 (+2)`, with `sfx.score.tick`, landing with `sfx.score.land` |
 | 0.3-2.5 | Full-screen confetti (the run is over: nothing to hide) |
 | verdict | `Saved` chip when the server's verdict reports the record (below); `Not saved: run not verified` when it is rejected; nothing while waiting |
 
-A run with no record keeps today's panel plus one dim line: `Best 48,210 · floor 9` (the target for next time).
+A run with no record keeps today's panel plus one dim line: `Best 48,210 pts · floor 9` (the target for next time).
 
 **First record on a board** (no baseline): no mid-run beats; run over shows `FIRST RECORD` with the record fanfare.
 
@@ -142,7 +142,7 @@ abandoned runs. So a small **records doc** joins the per-player docs.
 | Score panel row 1 split (`BestTargetRow`, per-frame bindings `NEW_BEST_UI`), gold number + shine; `footprint.spec` (desktop + touch) unchanged | client/ui/hud, shared/view/hud layout | NB6 |
 | `NewBestController`: baseline at run start (records from the store; KV debug override), steps the tracker each frame after RoomClearController's roller, writes bindings, the floor shout (asks ComboController's shout slot, priority newBest > tier), edge confetti (ScreenGui, outside the clear zone) | client/controllers/fx | NB7 |
 | Stage card second line + NEW DEEPEST / Deepest yet; deferred crossing at reveal | client StageController / StageCard | NB8 |
-| Run-over: ribbon, record rows roll, confetti, Saved / Not saved from the verdict, the dim "Best" line; pause overlay `Best 48,210 · floor 9`; main menu Play button subtitle `Best 48,210 · floor 9` | client/ui/hud RunOverPanel, PauseOverlay, menu | NB9 |
+| Run-over: ribbon, record rows roll, confetti, Saved / Not saved from the verdict, the dim "Best" line; pause overlay `Best 48,210 pts · floor 9`; main menu Play button subtitle `Best 48,210 · floor 9` | client/ui/hud RunOverPanel, PauseOverlay, menu | NB9 |
 
 ### Not changed
 

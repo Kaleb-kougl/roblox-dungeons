@@ -1,13 +1,13 @@
 /**
  * 'boss.demonlord': the Demon Lord, the second endless boss (Roblox port, docs/BOSS_DEMONLORD.md D4; no web source).
- * A seeded pick puts him or Mother Bramble ('boss.act1') on each endless boss floor (shared/dungeon bossKindFor); M1,
- * the fixtures and the tutorial keep Mother Bramble. The display name is the theme string `boss.demonlord.name`, the
+ * A seeded pick puts him or Mother Mayhem ('boss.act1') on each endless boss floor (shared/dungeon bossKindFor); M1,
+ * the fixtures and the tutorial keep Mother Mayhem. The display name is the theme string `boss.demonlord.name`, the
  * sprite the logical ID `boss.demonlord`. Band PORT_BAND_BOSSES (registry.ts): index 8, after every web and tutorial
  * archetype.
  *
- * The HUNTER to Mother Bramble's turret: she holds the room's centre and fills it with patterns, he walks at the player
- * and punishes standing next to him, with a gapped ring at range. Same budget as Bramble (540 hp, damage cap 6/s: TTK
- * >= 120 s; phases at 66 % / 33 %), on the same fight skeleton (./shared.ts: wake / seal, phase floor, immune roars
+ * The HUNTER to Mother Mayhem's turret: she holds the room's centre and fills it with patterns, he walks at the player
+ * and punishes standing next to him, with a gapped ring at range. Same budget as Mayhem (BOSS_HP 270 hp, damage cap
+ * 6/s: TTK >= 45 s; phases at 66 % / 33 %), on the same fight skeleton (./shared.ts: wake / seal, phase floor, immune roars
  * that clear his bullets, recover, reposition, DEBUG_BOSS, adds wither on his death).
  *
  * Fight flow (ActorState.aiState, DemonlordState; the skeleton's states plus CHASE):
@@ -37,8 +37,8 @@
  *                  CHARGE_MAX_TICKS); on IMPACT v[MARK] = (ACTIVE tick of impact) + 1 and a CHARGE_SHOCKWAVE ring
  *                  fires, arc centred on v[DIR] (its gap points back the way he came), and breakables in the slam
  *                  radius break. v[MARK] is 0 until the impact tick: the impact tick is the tick it turns non-zero
- *                  (the fx cue keys on it, like Mother Bramble's slam). Ends CHARGE_IMPACT_HOLD_TICKS after impact.
- *   SUMMON         phase 3 (first of phase 3). On ACTIVE tick 0: up to SUMMON_COUNT swarmers (Bramble's cap
+ *                  (the fx cue keys on it, like Mother Mayhem's slam). Ends CHARGE_IMPACT_HOLD_TICKS after impact.
+ *   SUMMON         phase 3 (first of phase 3). On ACTIVE tick 0: up to SUMMON_COUNT swarmers (Mayhem's cap
  *                  DEMONLORD_SUMMON: at most SUMMON_MAX_ALIVE alive in the arena, never past MAX_ACTORS) when v[SIGN]
  *                  = 1; v[SIGN] = 0 (no 'swarmer' archetype, or the cap was already reached at the telegraph), or no
  *                  add spawned (the pool filled up meanwhile): a HELLFIRE ring along v[DIR] instead. Ends
@@ -56,7 +56,7 @@
  *
  * Deterministic: all state in ActorState, randomness via ctx.random*, unit vectors turned by exact (cos, sin) pairs (no
  * trig; the cleave's half-lane turn is the half-angle of the cleave shape's own lane, from the arc table). Burst shapes
- * CLEAVE and HELLFIRE_ARC are port shapes (../../../arcTablePort.ts); CHARGE_SHOCKWAVE reuses Mother Bramble's
+ * CLEAVE and HELLFIRE_ARC are port shapes (../../../arcTablePort.ts); CHARGE_SHOCKWAVE reuses Mother Mayhem's
  * shockwave shape (26 bullets, FULL_RING - 1).
  */
 
@@ -73,6 +73,7 @@ import type { ActorState } from "../../types";
 import { slamBreakables } from "../../../../breakables/breakables";
 import {
 	BOSS_CUSTOM_STATE,
+	BOSS_HP,
 	BOSS_NO_ATTACK,
 	BOSS_PLAYER_DEAD_WAIT_TICKS,
 	BOSS_V_LAST,
@@ -216,7 +217,7 @@ export const HELLFIRE_ARC: BurstSpec = {
 export const HELLFIRE_MAX_TURNS = 1;
 export const HELLFIRE_HOLD_TICKS = 20;
 
-/** Charge shockwave gap, radians (~57 degrees), pointing back the way he charged from. Mother Bramble's shape. */
+/** Charge shockwave gap, radians (~57 degrees), pointing back the way he charged from. Mother Mayhem's shape. */
 export const CHARGE_SHOCK_GAP = 1.0;
 export const CHARGE_SHOCKWAVE: BurstSpec = {
 	count: 26,
@@ -233,7 +234,7 @@ export const CHARGE_MAX_TICKS = 45;
 export const CHARGE_IMPACT_HOLD_TICKS = 18;
 
 /**
- * Adds: Mother Bramble's swarmers and cap. He summons wherever the hunt took him, so the cap counts the arena grown by
+ * Adds: Mother Mayhem's swarmers and cap. He summons wherever the hunt took him, so the cap counts the arena grown by
  * the push radius (an add pushed out through a doorway still counts).
  */
 export const DEMONLORD_SUMMON: BossSummonSpec = {
@@ -272,8 +273,9 @@ export interface DemonlordData extends BossFightData {
 }
 
 export const DEMONLORD_DATA: DemonlordData = {
-	// Mother Bramble's budget (her README "Time to kill"): hp / cap = 90 s plus the immune roars is the flawless floor.
-	hp: 540,
+	// Mother Mayhem's budget (her README "Time to kill"; BOSS_HP, half the web build's 540): hp / cap = 45 s plus the
+	// immune roars is the flawless floor.
+	hp: BOSS_HP,
 	radius: 1.2,
 	speed: 3,
 	contactDamage: HIT_HEAVY,

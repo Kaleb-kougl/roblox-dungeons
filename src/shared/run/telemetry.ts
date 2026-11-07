@@ -53,7 +53,7 @@ export interface RunTelemetryRecord {
 	bossEngagedTick: number | undefined;
 	/**
 	 * Archetype id of the boss engaged at bossEngagedTick (the run's first boss fight; endless floors pick Mother
-	 * Bramble or the Demon Lord), or undefined (never engaged, or a view without actors: fixture event streams).
+	 * Mayhem or the Demon Lord), or undefined (never engaged, or a view without actors: fixture event streams).
 	 */
 	bossId: string | undefined;
 	/** Highest boss phase seen (0 = never engaged). */

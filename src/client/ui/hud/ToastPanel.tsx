@@ -61,7 +61,9 @@ function shrineHintText(pact: number, touch: boolean, key: string): string {
  * Wind, Vampire Fang, a boost picked up (`{name}: {desc}`), with builds an evolution or a duo taken; the tutorial's
  * callouts; a Daily friend passed, led by their headshot: docs/DAILY.md DS10) and, while the player stands in an
  * unused curse shrine's zone, the accept hint (on a pact altar the pact's own line, shrineHintText). Item names are
- * theme strings themselves (`<id>.name`); a player's name comes in the toast's literal `args`.
+ * theme strings themselves (`<id>.name`); a player's name comes in the toast's literal `args`. It fades under the
+ * action on its own occlusion slot (`toasts`, HudOcclusionController, docs/HUD_LAYOUT.md H7). First sightings are not
+ * toasts: they show on the SightingCard at the left edge.
  */
 export function ToastPanel() {
 	const toasts = useSelector(selectToasts);
@@ -89,6 +91,7 @@ export function ToastPanel() {
 			anchor={new Vector2(HALF, 0)}
 			width={PROGRESSION_VIEW.toastWidth}
 			align={Enum.HorizontalAlignment.Center}
+			fade="toasts"
 			skin={screenSkin("toast")}
 			name="Toasts"
 		>

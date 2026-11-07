@@ -1,5 +1,5 @@
 // The decor director (docs/DECOR.md Phase 2 part 3, R10) over the recorded seed-1337 endless descent
-// (shared/run/testing recordEndlessRun: floors 1-4 skipped with a relic and a curse on the way, floor 5's Mother Bramble
+// (shared/run/testing recordEndlessRun: floors 1-4 skipped with a relic and a curse on the way, floor 5's Mother Mayhem
 // fought and killed, floor 6 walked to its stairwell): rooms dark until entered, the ignition sweep from the entering
 // player, braziers on the clear, the flat boss ring by phase, the stairwell glow, the pedestal glint and the shrine dim;
 // the same room facts with 1-5 ticks per frame; drafts freeze it; restarts, scene mismatches, the Ember gutter, reduced

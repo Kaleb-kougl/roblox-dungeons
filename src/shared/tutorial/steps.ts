@@ -133,7 +133,7 @@ export interface TutorialStep {
 	readonly id: string;
 	/** Funnel step number, 1-based (= index + 1). */
 	readonly number: number;
-	/** The floor the step belongs to (1: the Training Halls; 2: Mother Bramble). Left unfinished past it: skipped. */
+	/** The floor the step belongs to (1: the Training Halls; 2: Mother Mayhem). Left unfinished past it: skipped. */
 	readonly floor: number;
 	/** The floor-1 room it is taught in (its prompt shows inside it, whatever step is current). */
 	readonly lesson?: TutorialLessonId;
@@ -277,7 +277,7 @@ const STEP_DEFS: ReadonlyArray<StepDef> = [
 	},
 	// --- Between floors 1 and 2: the real boon draft
 	{ id: "draft", floor: 2, prompt: "draft", marker: NO_MARKER, rule: { kind: "boon" } },
-	// --- Floor 2, Mother Bramble
+	// --- Floor 2, Mother Mayhem
 	{ id: "boss", floor: 2, prompt: "boss", highlight: "bossBar", marker: { kind: "boss" }, rule: { kind: "boss" } },
 	{ id: "finish", floor: 2, prompt: "finish", marker: { kind: "stairwell" }, rule: { kind: "floor", floor: 3 } },
 ];

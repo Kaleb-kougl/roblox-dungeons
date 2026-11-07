@@ -59,6 +59,8 @@ export const OPTIONS_STRINGS = {
 	roomEdges: "options.display.roomEdges",
 	/** Corner HUD panels fade under the action, On / Off (docs/HUD_LAYOUT.md H7; labels as roomEdges). */
 	hudFade: "options.display.hudFade",
+	/** Item tooltips on the live HUD's items / boost rows, On / Off (docs/ITEM_TOOLTIPS.md ITD8; labels as roomEdges). */
+	hudTooltips: "options.display.hudTooltips",
 	/** The corner minimap On / Off (docs/MINIMAP.md M10; labels as roomEdges). */
 	minimap: "options.display.minimap",
 	/** The watched player's rim On / Off (docs/PLAYER_OUTLINE.md P4; labels as roomEdges). */

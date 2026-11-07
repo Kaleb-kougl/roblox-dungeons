@@ -12,6 +12,11 @@
  * Firing goes through ctx.firePlayer -> fireBurst.
  * M2 Piercing Arrows (endless runs): every arrow pierces runMods bowPierce more actors (BOW_PIERCE_BOON; builds: per
  * level, the *_BY_PIERCE specs: same count / spread, so the same arc-table shape).
+ *
+ * Port retune (CLAUDE.md decision log, 2026-11-06): the heavy arrow hits for BOW_HEAVY_DAMAGE (the web build's
+ * WEB_BOW_TUNING 4 + 1) and is aim-assisted: released, it flies straight at the living enemy nearest the facing within
+ * heavyAssistConeCos (10 degrees) and its reach, in line of sight (bowAssistAim; none: the facing as before). Every golden
+ * fixture was recorded with the web bow, so the parity specs replay under setBowTuning(WEB_BOW_TUNING).
  */
 
 import { PLAYER_MUZZLE_OFFSET, TURN_COS } from "../../combatData";
@@ -20,6 +25,9 @@ import { BulletKind, halfRotation, rotateDir, type BurstSpec, type Dir } from ".
 import { registerWeapon } from "../registry";
 import type { WeaponData, WeaponSlotState } from "../types";
 import { altHeld } from "./altButton";
+import { NO_KIND, type ActorState } from "../../actors/types";
+import { lineOfSight } from "../../actors/helpers";
+import type { BulletBlocker } from "shared/dungeon";
 import { BOW_PIERCE_BOONS } from "../../../progression/progressionData";
 import { buildsFlurryArrow, buildsFlurryArrowsFired } from "../../../builds/hooks";
 import { FLURRY_ARROW_COUNT, FLURRY_ARROW_SPREAD } from "../../../builds/effectsData";
@@ -46,7 +54,14 @@ export interface BowData extends WeaponData {
 	heavyScale: number;
 	/** Ticks before the stream can fire again after a heavy arrow. */
 	heavyRecoverTicks: number;
+	/** Port retune: the heavy arrow's aim assist is on (WEB_BOW_TUNING: off). */
+	heavyAssist: boolean;
+	/** Aim assist cone: cos of the largest angle between the facing and a target (cos 10 degrees). */
+	heavyAssistConeCos: number;
 }
+
+/** The port's heavy arrow damage (the web build's 4 + 1). */
+export const BOW_HEAVY_DAMAGE = 5;
 
 export const BOW_DATA: BowData = {
 	cooldownTicks: secondsToTicks(0.2), // 12: 5 arrows / s
@@ -58,13 +73,27 @@ export const BOW_DATA: BowData = {
 	life: 0.75, // 12 tiles
 	chargeTicks: secondsToTicks(0.6), // 36
 	chargeMoveMultiplier: 0.5,
-	heavyDamage: 4,
+	heavyDamage: BOW_HEAVY_DAMAGE,
 	heavySpeed: 22,
 	heavyLife: 0.7, // 15.4 tiles
 	heavyPierce: 2,
 	heavyScale: 1.8,
 	heavyRecoverTicks: secondsToTicks(0.3), // 18
+	heavyAssist: true,
+	heavyAssistConeCos: 0.984807753012208, // cos(10 degrees), a literal: no trig on the sim path
 };
+
+/** The bow values the port retuned (CLAUDE.md decision log): the heavy arrow's damage and its aim assist. */
+export interface BowTuning {
+	readonly heavyDamage: number;
+	readonly heavyAssist: boolean;
+}
+
+/**
+ * The web build's bow (fixtures/constants.json: heavy damage 4, no aim assist). Every golden fixture was recorded with
+ * it, so the parity specs replay under it (setBowTuning).
+ */
+export const WEB_BOW_TUNING: BowTuning = { heavyDamage: 4, heavyAssist: false };
 
 /** Scratch slots (slot.v). */
 export const BOW_V_CHARGE = 0;
@@ -79,16 +108,18 @@ const ARROW: BurstSpec = {
 	damage: BOW_DATA.damage,
 	kind: BulletKind.PLAYER,
 };
-const HEAVY_ARROW: BurstSpec = {
-	count: 1,
-	spread: 0,
-	speed: BOW_DATA.heavySpeed,
-	life: BOW_DATA.heavyLife,
-	damage: BOW_DATA.heavyDamage,
-	kind: BulletKind.PLAYER,
-	pierce: BOW_DATA.heavyPierce,
-	scale: BOW_DATA.heavyScale,
-};
+function heavyArrow(): BurstSpec {
+	return {
+		count: 1,
+		spread: 0,
+		speed: BOW_DATA.heavySpeed,
+		life: BOW_DATA.heavyLife,
+		damage: BOW_DATA.heavyDamage,
+		kind: BulletKind.PLAYER,
+		pierce: BOW_DATA.heavyPierce,
+		scale: BOW_DATA.heavyScale,
+	};
+}
 
 /** The most extra pierce any Piercing Arrows level gives. */
 const BOW_PIERCE_BOONS_MAX = BOW_PIERCE_BOONS.reduce((m, v) => (v > m ? v : m), 0);
@@ -105,10 +136,30 @@ const FLURRY_ARROWS_BY_PIERCE: BurstSpec[] = [];
 for (let extra = 0; extra <= BOW_PIERCE_BOONS_MAX; extra++) {
 	const arrow: BurstSpec = extra === 0 ? ARROW : { ...ARROW, pierce: (ARROW.pierce ?? 0) + extra };
 	ARROWS_BY_PIERCE.push(arrow);
-	HEAVY_ARROWS_BY_PIERCE.push(
-		extra === 0 ? HEAVY_ARROW : { ...HEAVY_ARROW, pierce: (HEAVY_ARROW.pierce ?? 0) + extra },
-	);
 	FLURRY_ARROWS_BY_PIERCE.push({ ...arrow, count: FLURRY_ARROW_COUNT, spread: FLURRY_ARROW_SPREAD });
+}
+
+/** (Re)builds HEAVY_ARROWS_BY_PIERCE from BOW_DATA (at load and in setBowTuning). */
+function buildHeavyArrows(): void {
+	HEAVY_ARROWS_BY_PIERCE.clear();
+	const heavy = heavyArrow();
+	for (let extra = 0; extra <= BOW_PIERCE_BOONS_MAX; extra++) {
+		HEAVY_ARROWS_BY_PIERCE.push(extra === 0 ? heavy : { ...heavy, pierce: (heavy.pierce ?? 0) + extra });
+	}
+}
+buildHeavyArrows();
+
+/**
+ * Specs only: sets the bow's retuned values (e.g. to WEB_BOW_TUNING for a golden replay) and returns the previous ones
+ * to restore. The heavy specs are rebuilt here and the assist is read per shot, so it applies to every run stepped
+ * afterwards.
+ */
+export function setBowTuning(t: BowTuning): BowTuning {
+	const previous: BowTuning = { heavyDamage: BOW_DATA.heavyDamage, heavyAssist: BOW_DATA.heavyAssist };
+	BOW_DATA.heavyDamage = t.heavyDamage;
+	BOW_DATA.heavyAssist = t.heavyAssist;
+	buildHeavyArrows();
+	return previous;
 }
 
 function arrowSpec(ctx: SimCtx, heavy: boolean, flurry = false): BurstSpec {
@@ -133,6 +184,54 @@ const WOBBLE_MASK = 3;
 
 const dir: Dir = { x: 0, z: 1 };
 
+/**
+ * The heavy arrow's aim assist (BOW_DATA.heavyAssist; pure, also read by the view's aim line): writes into `out` the unit
+ * vector (sqrt, no trig) from (px, pz) to the living actor whose bearing is nearest the facing (fx, fz), within
+ * heavyAssistConeCos, the arrow's reach (heavySpeed x heavyLife) and line of sight under `blocked`, and returns true; no
+ * target (or the assist off): `out` is the facing, exactly as before, and it returns false. Skipped: free slots, corpses
+ * and actors spawned on `tick` (like builds' nearestEnemy). Ties: the lower slot.
+ */
+export function bowAssistAim(
+	actors: ReadonlyArray<Readonly<ActorState>>,
+	tick: number,
+	blocked: BulletBlocker | undefined,
+	px: number,
+	pz: number,
+	fx: number,
+	fz: number,
+	out: Dir,
+): boolean {
+	out.x = fx;
+	out.z = fz;
+	if (!BOW_DATA.heavyAssist) return false;
+	const reach = BOW_DATA.heavySpeed * BOW_DATA.heavyLife;
+	const reach2 = reach * reach;
+	let bestCos = BOW_DATA.heavyAssistConeCos;
+	let found = false;
+	let bestX = 0;
+	let bestZ = 0;
+	for (let k = 0; k < actors.size(); k++) {
+		const a = actors[k];
+		if (a.kind === NO_KIND || a.alive === 0 || a.spawnTick === tick) continue;
+		const dx = a.x - px;
+		const dz = a.z - pz;
+		const d2 = dx * dx + dz * dz;
+		if (d2 === 0 || d2 > reach2) continue;
+		const d = math.sqrt(d2);
+		const c = (fx * dx + fz * dz) / d;
+		if (c < bestCos || (c === bestCos && found)) continue;
+		if (!lineOfSight(blocked, px, pz, a.x, a.z)) continue;
+		found = true;
+		bestCos = c;
+		bestX = dx / d;
+		bestZ = dz / d;
+	}
+	if (!found) return false;
+	out.x = bestX;
+	out.z = bestZ;
+	return true;
+}
+
 function muzzleFire(ctx: SimCtx, slot: WeaponSlotState, dirX: number, dirZ: number, spec: BurstSpec): number {
 	const p = ctx.player;
 	return ctx.firePlayer(slot, p.x + dirX * PLAYER_MUZZLE_OFFSET, p.z + dirZ * PLAYER_MUZZLE_OFFSET, dirX, dirZ, spec);
@@ -156,7 +255,8 @@ export const BOW = registerWeapon<BowData>({
 		// ALT released this tick.
 		if (v[BOW_V_CHARGE] >= BOW_DATA.chargeTicks) {
 			const p = ctx.player;
-			muzzleFire(ctx, slot, p.faceX, p.faceZ, arrowSpec(ctx, true));
+			bowAssistAim(ctx.actors, ctx.tick, ctx.config.isBulletBlocked, p.x, p.z, p.faceX, p.faceZ, dir);
+			muzzleFire(ctx, slot, dir.x, dir.z, arrowSpec(ctx, true));
 			v[BOW_V_HEAVY_TICK] = ctx.tick + 1;
 			if (slot.cooldown < BOW_DATA.heavyRecoverTicks) slot.cooldown = BOW_DATA.heavyRecoverTicks;
 		}

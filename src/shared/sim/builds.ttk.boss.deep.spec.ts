@@ -1,4 +1,4 @@
-// Builds time to kill Mother Bramble on floor 15 (Depth 3) with the sword and the bow (docs/BUILDS.md BU13 "Build
+// Builds time to kill Mother Mayhem on floor 15 (Depth 3) with the sword and the bow (docs/BUILDS.md BU13 "Build
 // TTK"): builds.ttk.boss.sword / .bow.spec.ts's fight (shared/run/testing buildTune.ts) at her third floor, one seed
 // (her longest fights: one seed keeps the file under a minute). Printed: the table in the doc and her damage cap's floor.
 // Loose sanity bounds only: she always dies, never faster than the cap allows, and no weapon shot is ever dropped.
@@ -19,7 +19,7 @@ const SEEDS = [1];
 const FLOORS: ReadonlyArray<TuneFloor> = [TUNE_BOSS_FLOORS[2]];
 const WEAPONS: ReadonlyArray<TuneWeapon> = ["weapon.sword", "weapon.bow"];
 
-describe("builds TTK: Mother Bramble, floor 15", () => {
+describe("builds TTK: Mother Mayhem, floor 15", () => {
 	for (const weapon of WEAPONS) {
 		it(`${weapon}: she dies, never faster than her damage cap, no weapon shot dropped (printed)`, () => {
 			const rows = buildTtkRows(() => TUNE_BOSS, BUILD_TTK_CASES, weapon, FLOORS, SEEDS);

@@ -209,15 +209,16 @@ describe("required IDs and strings", () => {
 		// + docs/LOCALIZATION.md L1: INPUT_KEY_STRING_KEYS (51 key labels + input.separator)
 		// + docs/NEW_ENEMIES.md NE1: 5 enemy.<id>.name, 5 bestiary.<id> (BESTIARY_STRING_KEYS)
 		// + docs/PELLETS.md PL6: 2 room clear tally segments (ROOM_CLEAR_STRING_KEYS), bestiary.pellet.power
-		// + docs/RUN_RECAP.md RR3 / CM3: RECAP_STRING_KEYS (28, + the Chests highlight from docs/TREASURE.md),
+		// + docs/RUN_RECAP.md RR3 / CM3: RECAP_STRING_KEYS (28, + the Chests highlight from docs/TREASURE.md, + the `{n} pts` value),
 		// TEAM_MOMENT_STRING_KEYS (4) + docs/TREASURE.md TR6: TREASURE_STRING_KEYS (16)
 		// + docs/FORTUNE.md FD9: enemy.golden.name. + FO6: FORTUNE_STRING_KEYS (18), the Horde's tally segment
 		// (ROOM_CLEAR_STRING_KEYS), bestiary.golden (BESTIARY_STRING_KEYS); FO7: hud.score.pop.horde (in FORTUNE_STRING_KEYS)
 		// + docs/LEGENDARIES.md LG5: 3 BUILD_STRING_KEYS (hud.toast.brace / .braceHeal, fx.brace.text)
+		// + docs/ITEM_TOOLTIPS.md IT3: 18 shared/view/hud TOOLTIP_STRINGS
 		const before =
 			41 + 1 + 2 + 4 * 3 + 1 + 3 + 5 + 13 + 10 + 8 + 2 + 2 + 4 + 7 + 17 + 7 + 3 + 64 + 22 + 52 + 5 + 5 + 2 + 1;
 		// + docs/GAMEPAD_MENUS.md GM7 / GM9: GAMEPAD_MENU_STRING_KEYS (16 pad.hint.*, options.controls.vibration)
-		expect(REQUIRED_STRING_KEYS.size()).toBe(before + 28 + 1 + 4 + 16 + 1 + 19 + 1 + 1 + 3 + 17);
+		expect(REQUIRED_STRING_KEYS.size()).toBe(before + 28 + 1 + 1 + 4 + 16 + 1 + 19 + 1 + 1 + 3 + 18 + 17);
 		expect(new Set(REQUIRED_STRING_KEYS).size()).toBe(REQUIRED_STRING_KEYS.size());
 		expect(BIOMES.map((b) => b.forgeTheme)).toEqual(["ancient", "molten", "frost", "grim", "verdant"]);
 	});

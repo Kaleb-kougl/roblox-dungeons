@@ -133,7 +133,7 @@ describe("decor renderer helpers", () => {
 		expect(out.size()).toBe(1);
 		expect(out[0]).toBe(first);
 		expect(out[0].x).toBe(playerAt(state, 1).x);
-		// floor 5 starts with Mother Bramble in her arena
+		// floor 5 starts with Mother Mayhem in her arena
 		const boss = buildEndlessRunConfig(1337).endlessFloor(5);
 		const bs = createSimState(1337, boss.spawnX, boss.spawnZ, { ...boss.config });
 		decorFadeBodies(bs, out);

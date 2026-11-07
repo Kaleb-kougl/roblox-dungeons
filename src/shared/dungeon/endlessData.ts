@@ -52,7 +52,7 @@ export interface EndlessBossKind {
 /**
  * The endless bosses, in draw order (docs/BOSS_DEMONLORD.md D5): each boss floor draws one by weight (./endless.ts
  * bossKindFor). Owner defaults: 50 / 50, any boss floor (floor 5 included) can be either, every floor an independent
- * draw (no no-repeat rule). M1 and the tutorial place Mother Bramble themselves and never read this.
+ * draw (no no-repeat rule). M1 and the tutorial place Mother Mayhem themselves and never read this.
  */
 export const ENDLESS_BOSSES: ReadonlyArray<EndlessBossKind> = [
 	{ kind: "boss.act1", weight: 1 },

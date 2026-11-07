@@ -1,6 +1,6 @@
 /**
  * Barrel for the game's renderers (task 8): pooled, interpolated placeholder views of the sim (bullets, actors and the
- * player, weapon arcs, telegraphs (Mother Bramble's and the Demon Lord's previews) and the arena seal, run markers,
+ * player, weapon arcs, telegraphs (Mother Mayhem's and the Demon Lord's previews) and the arena seal, run markers,
  * the tutorial's world marker and guidance arrow, the room edges, breakable barrels and crates, boost drops and the
  * boosted players' auras, the pellets, a vault's chest / cage / sparkle / lock plate / reward cards, the pact altars
  * (their cards, take pulse and wave rings), the Goldling's ring and beats, room decoration and its ambient life, the void's shoulder / ledge columns, the elite affix

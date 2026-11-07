@@ -593,7 +593,7 @@ export const PORT_SFX: ReadonlyArray<SfxId> = [
 
 /**
  * Bosses whose phase changes (FxEvent bossPhase, phase >= 2) play sfx.boss.taunt instead of the roar: the Demon Lord
- * (his phase change is a laugh, the `taunt` animation). Mother Bramble keeps the roar.
+ * (his phase change is a laugh, the `taunt` animation). Mother Mayhem keeps the roar.
  */
 export const BOSS_TAUNT_IDS: ReadonlyArray<string> = [BOSS_DEMONLORD_ID];
 

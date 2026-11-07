@@ -80,7 +80,7 @@ export const TUTORIAL_VIEW = {
 	arrowHideTiles: 3,
 	/** It aims at the farthest tile with a clear walk among this many tiles of the path ahead (string pulling). */
 	arrowLookaheadTiles: 8,
-	/** A moving target (Mother Bramble) rebuilds the path field at most this often (seconds), and only on a new tile. */
+	/** A moving target (Mother Mayhem) rebuilds the path field at most this often (seconds), and only on a new tile. */
 	arrowFieldSeconds: 0.25,
 	/** Heading damping time constant (seconds; turns the shortest way). */
 	arrowTurnTau: 0.1,

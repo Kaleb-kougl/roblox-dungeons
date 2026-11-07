@@ -50,6 +50,8 @@ export * from "./draftReveal";
 export * from "./draftRevealView";
 export * from "./draftCards";
 export * from "./buildHud";
+export * from "./tooltip";
+export * from "./tooltipConfig";
 export * from "./skinConfig";
 export * from "./skin";
 export * from "./hudSkin";

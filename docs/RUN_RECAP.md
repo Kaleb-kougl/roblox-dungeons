@@ -121,7 +121,7 @@ the next target, never as failure.
 | # | Candidate | Applies when | Text |
 |---|---|---|---|
 | 1 | Boss nearly down | boss floor, boss engaged and alive at <= `bossHpFraction` 25 % | `{boss} had {pct}% left` |
-| 2 | Score just short | baseline `known`, gap to best <= `nearScoreFraction` 15 % of best | `{gap} short of your best` |
+| 2 | Score just short | baseline `known`, gap to best <= `nearScoreFraction` 15 % of best | `{gap} pts short of your best` |
 | 3 | One floor from a record | died on your deepest floor (the open stairs were a new deepest) | `One more floor for a new deepest` |
 | 4 | Stairs were close | non-boss floor, the open stairwell within `stairsNearTiles` 10 tiles **by walking path** (one BFS over the floor grid at run over) | `{tiles} tiles from floor {next}` |
 | 5 | Nearly a full clear | non-boss floor, 1-`roomsLeftMax` 2 rooms uncleared, at least one cleared | `{rooms} rooms from a full clear` (`1 room`) |
@@ -403,7 +403,7 @@ Each step is a commit; `npm run verify` before each.
 ## Studio check
 
 1. Die with the stairs ~8 tiles away on floor 4: `8 tiles from floor 5`; highlights count up; settled by ~1.4 s.
-2. `KV_NewBestDebug = "score:5000"`, die near 4,500: `500 short of your best` replaces the dim Best line.
+2. `KV_NewBestDebug = "score:5000"`, die near 4,500: `500 pts short of your best` replaces the dim Best line.
 3. Die to the Demon Lord at low hp: `The Demon Lord had 9% left` beats everything.
 4. Record run: NB's ribbon and rows first, at most one dim sub-line, highlights after.
 5. Mash attack through the death: skips to settled, no new run; press after 0.6 s: new run; R: new run at once. Time

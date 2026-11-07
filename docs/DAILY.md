@@ -73,7 +73,7 @@ Paths are under `src/` unless they start with `docs/`.
 3. **In the run.** The score panel's target row (new best's) aims at the next rung: first your **best today**, then the
    **next rank** (`#41 → #40 · 310 to go`). Each pass is a beat:
    - passing your best today: new best's fanfare and shout (`NEW BEST TODAY!`);
-   - passing a **friend**: a toast with their headshot, `Passed Alex (21,900)`, and a short sting;
+   - passing a **friend**: a toast with their headshot, `Beat Alex's high score (21,900)`, a short sting and new best's gold edge confetti (not while a burst is still falling, none under reduced motion);
    - **rank thresholds** (entering the top 100, top 10, top 3, #1): a floor shout (`TOP 10!`) and the rank-up sound.
    Ranks during the run are a prediction from the board as it was at run start; only the server's verdict saves them.
 4. **Run over.** The result card: score and floor, `#38 today` (exact in the top 100) or `Top 14%` (estimate beyond),

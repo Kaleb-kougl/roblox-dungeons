@@ -173,11 +173,11 @@ interface ActorView {
  *
  * Sprites (docs/ART.md S4): when the pack has a `sprites` set for the ID (`pack.sprites(id)`) and, for actors, the
  * archetype has a sprite input builder (shared/view ACTOR_SPRITE_INPUTS: the swarmer, the sniper, the tutorial's
- * turret.sniper, M1's turret.sprayer / turret.caster, the bruiser, Mother Bramble and the Demon Lord), a pooled
+ * turret.sniper, M1's turret.sprayer / turret.caster, the bruiser, Mother Mayhem and the Demon Lord), a pooled
  * SpriteView (BillboardGui on a feet anchor) shows the animation chosen from sim state (shared/view sprites.ts) in the
  * facing nearest the sim's facing on screen;
  * juice through the label: hit flash / telegraph pulse / i-frame tints (ImageColor3), corpse fade (ImageTransparency),
- * the post-hit blink (Visible). A boss sprite (data.boss: Mother Bramble, the Demon Lord) is drawn at least
+ * the post-hit blink (Visible). A boss sprite (data.boss: Mother Mayhem, the Demon Lord) is drawn at least
  * ACTOR_VIEW.bossMinDrawPx wide (shared/view bossSpriteLayout, the placeholder bosses' rule; both sets already are, so
  * neither changes), and a sprite's corpse fade starts at its input's `corpseFadeFrom` (the Demon Lord's
  * SPRITE_VIEW.bossCorpseFadeFrom: his death plays first; everyone else fades over the whole corpse time); its baked

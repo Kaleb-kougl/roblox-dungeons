@@ -467,7 +467,7 @@ describe("tutorial world: the lock", () => {
 		expect(s.run!.shrineRoom).toBe(TUTORIAL_SHRINE_ROOM);
 	});
 
-	it("floor 2 is a boss floor with Mother Bramble as its only spawn; floor 3+ is the same layout, empty and open", () => {
+	it("floor 2 is a boss floor with Mother Mayhem as its only spawn; floor 3+ is the same layout, empty and open", () => {
 		const setup = buildTutorialRunConfig();
 		const f2 = setup.endlessFloor!(2);
 		expect(f2.bossFloor).toBe(true);
@@ -772,7 +772,7 @@ describe("tutorial world: determinism and runs", () => {
 		expect(s.endless!.stairsOpen).toBe(0);
 		const bosses = s.combat.actors.filter((x) => x.kind === boss);
 		expect(bosses.size()).toBe(1);
-		// Depth 1 / floor 1 scaling leaves her base hp; the tutorial takes bossHpPercent of it (540 x 20 % = 108).
+		// Depth 1 / floor 1 scaling leaves her base hp; the tutorial takes bossHpPercent of it (270 x 20 % = 54).
 		expect(bosses[0].hp).toBe((archetypeAt(boss).data.hp * TUTORIAL.bossHpPercent) / 100);
 		expect(bosses[0].hpMax).toBe(bosses[0].hp);
 		expect(TUTORIAL.bossHpPercent < 100).toBe(true);

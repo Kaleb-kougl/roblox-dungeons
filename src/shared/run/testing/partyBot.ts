@@ -3,7 +3,7 @@
  * state with stepParty and records every merged frame (Recorder.recordParty); `recordPartyRun(seed, n)` plays:
  *   floor 1   every player walks the floor to the stairwell (BFS field), each with its own start delay, roll phase and
  *             sword swings at the nearest enemy; the floor ends once every living player stands in the stairwell
- *   floors 2+ player 0's debug skip to floor `bossFloor` (5), the party fights the floor's boss (Mother Bramble or the
+ *   floors 2+ player 0's debug skip to floor `bossFloor` (5), the party fights the floor's boss (Mother Mayhem or the
  *            Demon Lord, the seeded pick; player 0 presses J),
  *             then walks to the stairwell; one more skip
  * Players who die on the way stay dead until the next floor (and come back with 1 heart there).
@@ -261,7 +261,7 @@ export class PartyDriver {
 	fightBoss(maxTicks: number): void {
 		let t = 0;
 		while (t < maxTicks && !isPartyWiped(this.state)) {
-			// Any live boss (data.boss): Mother Bramble or the Demon Lord.
+			// Any live boss (data.boss): Mother Mayhem or the Demon Lord.
 			const boss = this.state.combat.actors.find(
 				(a) => a.kind !== NO_KIND && a.alive !== 0 && archetypeAt(a.kind).data.boss === true,
 			);

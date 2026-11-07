@@ -241,7 +241,7 @@ describe("run-over daily block", () => {
 			title: "Daily #304",
 			standing: "#38 today",
 			entrants: "Players: 1,240",
-			best: "Best today 23,410 -> 26,870",
+			best: "Best today 23,410 -> 26,870 pts",
 			improved: true,
 			saved: "saved",
 		});
@@ -258,11 +258,11 @@ describe("run-over daily block", () => {
 	});
 
 	it("best-today lines: first entry of the day, not improved, left to new best's rows", () => {
-		expect(blockText(input({ result: { ...RESULT, previous: undefined } }))?.best).toBe("Best today 26,870");
+		expect(blockText(input({ result: { ...RESULT, previous: undefined } }))?.best).toBe("Best today 26,870 pts");
 		const kept = blockText(
 			input({ result: { ...RESULT, improved: false, previous: { score: 30000, floor: 12 } } }),
 		);
-		expect([kept?.best, kept?.improved]).toEqual(["Best today 30,000", false]);
+		expect([kept?.best, kept?.improved]).toEqual(["Best today 30,000 pts", false]);
 		expect(blockText(input({ bestLineShown: true }))?.best).toBe(undefined);
 	});
 
@@ -336,7 +336,7 @@ describe("run over on a daily run: one owner per piece (new best's block, then t
 		const p = dailyPanel(known, "accepted", { ...RESULT, rank: 38, total: 1240 }, 26870);
 		expect(p).toEqual({
 			ribbon: "NEW BEST TODAY!",
-			best: ["Best today 23,410 -> 26,870 (+3,460)"],
+			best: ["Best today 23,410 -> 26,870 pts (+3,460)"],
 			daily: ["Daily #304", "#38 today", "Players: 1,240", "Saved"],
 		});
 		expect([count(p, "Saved"), count(p, "Best today")]).toEqual([1, 1]);
@@ -347,7 +347,7 @@ describe("run over on a daily run: one owner per piece (new best's block, then t
 		expect(p).toEqual({
 			ribbon: "FIRST RUN TODAY",
 			best: [],
-			daily: ["Daily #304", "#1 of 1 today", "Best today 26,870", "Saved"],
+			daily: ["Daily #304", "#1 of 1 today", "Best today 26,870 pts", "Saved"],
 		});
 	});
 
@@ -356,7 +356,7 @@ describe("run over on a daily run: one owner per piece (new best's block, then t
 		const p = dailyPanel(known, "accepted", kept, 26870);
 		expect(p).toEqual({
 			ribbon: undefined,
-			best: ["Best today 30,000"],
+			best: ["Best today 30,000 pts"],
 			daily: ["Daily #304", "#12 today", "Players: 1,240", "Saved"],
 		});
 		expect([count(p, "Saved"), count(p, "Best today")]).toEqual([1, 1]);
@@ -366,7 +366,7 @@ describe("run over on a daily run: one owner per piece (new best's block, then t
 		const rejected = dailyPanel(known, "rejected", undefined, 26870);
 		expect(rejected).toEqual({
 			ribbon: "NEW BEST TODAY!",
-			best: ["Best today 23,410 -> 26,870 (+3,460)"],
+			best: ["Best today 23,410 -> 26,870 pts (+3,460)"],
 			daily: ["Daily #304", "Not saved"],
 		});
 		const late = dailyPanel(
@@ -382,12 +382,12 @@ describe("run over on a daily run: one owner per piece (new best's block, then t
 	it("waiting: new best's guess (rows or target) and the daily title only, no chip anywhere", () => {
 		expect(dailyPanel(known, "pending", undefined, 26870)).toEqual({
 			ribbon: "NEW BEST TODAY!",
-			best: ["Best today 23,410 -> 26,870 (+3,460)"],
+			best: ["Best today 23,410 -> 26,870 pts (+3,460)"],
 			daily: ["Daily #304"],
 		});
 		expect(dailyPanel(known, "pending", undefined, 100)).toEqual({
 			ribbon: undefined,
-			best: ["Best today 23,410"],
+			best: ["Best today 23,410 pts"],
 			daily: ["Daily #304"],
 		});
 	});

@@ -81,7 +81,7 @@ SOFTWARE.
 - Author: SmallScaleInt. Source: https://smallscaleint.itch.io/top-down-demons (paid pack; download
   `2D Demons - TopDown assetpack v1.1.zip`). 34 characters (13 Demon Spawns, 10 Imps, 6 Demon Elites, 5 Demon
   Beasts), 8 directions, 128x128 cells, separate shadow and effect sheets.
-- Used for: `enemy.bruiser` (Demon Beast 3, docs/DEMON_ART.md) and `boss.act1` (Mother Bramble as Demon Elite 3,
+- Used for: `enemy.bruiser` (Demon Beast 3, docs/DEMON_ART.md) and `boss.act1` (Mother Mayhem as Demon Elite 3,
   docs/BRAMBLE_ART.md): the body sheets over their `Shadows/` sheets (`Effects/` not used), cropped and repacked into
   atlases with a baked outline by `scripts/art/build-atlases.js`, and uploaded to Roblox (2026-10-26, ids in
   `src/shared/theme/packs/vale/assetIds.ts`). Also `enemy.sprayer` (Demon Spawn 8) and `enemy.caster` (Demon Spawn 11,

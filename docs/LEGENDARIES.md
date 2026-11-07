@@ -12,7 +12,8 @@ This plan adds two:
 
 Four duos come with them, so each new legendary anchors two: **Supernova**, **Skewer**, **Citadel**, **Stone Heart**
 (Stone Heart is Hearty's first duo).
-Bastion's brace also works for a bow player: rolling through 3 bullets counts like guarding them (LGD7).
+Bastion's brace also works for a bow player: rolling through 8 bullets counts like guarding them (LGD7; 3 until the
+owner's retune, LGD6).
 
 Work it task by task, like `PLAN.md`; each task ends with a **Verify**.
 
@@ -115,7 +116,7 @@ the two new boons and four duos (endless drafts change). Paths under `src/shared
   `OVERKILL_MIN_CARRY` 1, `OVERKILL_ONE_SHOT_MIN` 1, `SUPERNOVA_CARRY` 3, `SKEWER_RADIUS` (0.5 x `TILE_SIZE`), and
   `KillCause.OVERKILL` 3. Bastion beside Warding's numbers in `progressionData.ts` (a boon's one-off pip and the mods
   `runMods` reads live there): `BASTION_ARMOR_PIPS` 1, `BASTION_GUARD_HALF_ANGLE_COS` -1, `BASTION_GUARD_TICKS` 27,
-  `BASTION_BRACE_BULLETS` 3.
+  `BASTION_BRACE_BULLETS` 3 (8 since the owner's retune, LGD6).
 - **Hashed state** (`sim/builds/builds.ts`, appended, 0 everywhere for now): `BuildProc.excess` (last of
   `BUILD_PROC_FIELDS`, set 0 by `buildsOnKill` and in `duos.ts`' scratch proc); per player `braceCount` and
   `braceReady` (last of `BUILD_PLAYER_SCALARS`, created 0 by `newPlayer`). Clone copies them with the spread, the hash
@@ -403,13 +404,13 @@ Level I only. Three parts:
 2. **A bigger guard**: `guardHalfAngleCos` -1 (the full ring, `BASTION_GUARD_HALF_ANGLE_COS`) and `BASTION_GUARD_TICKS`
    27 (1.5x the 18; whole ticks). Reach and the 60-tick cooldown are unchanged (LGD5, settled by the owner after
    LG7: the full ring at 27 ticks).
-3. **Brace**: one guard **or one roll** that stops at least `BASTION_BRACE_BULLETS` (3) enemy bullets restores one
+3. **Brace**: one guard **or one roll** that stops at least `BASTION_BRACE_BULLETS` (8) enemy bullets restores one
    armor pip, up to `armorMax`. A guard counts the `cancels` it already counts; a roll counts each enemy bullet that
    overlaps the player while rolling with i-frames (`rollTicks > 0` and `iframeTicks > 0`, Phantom Step's test), once
    per bullet: the first time a Bastion roller counts a bullet, its payload's `lastHit` is set to 1 (unused on enemy
    bullets), and a marked bullet never counts again for anyone. Phantom Step's erased bullets count too. Goo and
    strikes never count (as for the parry feed). The count (`braceCount`) resets when a guard or a roll starts. Once
-   per room (LGD6, settled by the owner after LG7: 3 bullets, once per room): `braceReady` is set when a room's
+   per room (LGD6, settled by the owner after LG7: 3 bullets, once per room; retuned to 8 bullets): `braceReady` is set when a room's
    enemies spawn (Warding's moment) and at a floor's start, cleared by a brace that restored something. A brace with
    no missing pip is NOT spent (LGD6 revised): `braceReady` stays set and nothing shows, so a later guard or roll
    restores the pip a hit took; with Stone Heart it heals half a heart instead and is spent. BRACED always means
@@ -425,7 +426,7 @@ knight; a full pool still drops reflections, as today.
 |---|---|---|---|
 | **Supernova** | Overkill + Volatile | a kill whose carry is `SUPERNOVA_CARRY` (2, LGD13) or more bursts one Volatile ring larger: level I -> 12 bolts, II -> 16, III (Cataclysm) -> 16 that pierce 2 (LGD8) | Big hits make visibly bigger rings |
 | **Skewer** | Overkill + Piercing Arrows | the target stays the nearest enemy; the streak's line runs from the corpse through the target to `OVERKILL_RANGE` from the corpse, and every enemy within `SKEWER_RADIUS` (0.5 tiles) of it is struck for the full carry, others in slot order, the target last; each kill carries on | One arrow skewers a line of swarmers; the bow's Overkill duo |
-| **Citadel** | Bastion + Warding | Brace is no longer once per room: every guard or roll that stops 3+ bullets restores a pip, at most one brace per `CITADEL_BRACE_COOLDOWN_TICKS` (5 s, LGD14) | Warding's pips become something you earn back mid-fight |
+| **Citadel** | Bastion + Warding | Brace is no longer once per room: every guard or roll that stops 8+ bullets restores a pip, at most one brace per `CITADEL_BRACE_COOLDOWN_TICKS` (5 s, LGD14) | Warding's pips become something you earn back mid-fight |
 | **Stone Heart** | Bastion + Hearty | a Brace with no missing pip heals half a heart instead (a heal pulse); still once per room unless Citadel | Hearty's first duo: perfect guarding heals |
 
 Supernova keeps V2's name but not V2's rule ("+1 bolt per point of excess, cap +8" needs a ring row in
@@ -561,8 +562,13 @@ flies into the armor row; 8. Stone Heart's heal pulse; 9. Reduced build effects 
 - **LGD6** (settled and revised, owner 2026-11-06, after LG7) Brace: `BASTION_BRACE_BULLETS` 3 in one guard or roll,
   once per room (Citadel: LGD14). A brace with no missing pip is NOT spent: `braceReady` stays set and nothing is
   pushed (`BraceKind.SPENT` is never pushed any more; the value stays, append only, and the view's handling of it is
-  harmless), unless Stone Heart heals half a heart, which spends it.
-- **LGD7** (settled, owner 2026-11-06) A roll through 3+ bullets braces too, with any weapon, each bullet counted once.
+  harmless), unless Stone Heart heals half a heart, which spends it. **Retuned (owner, 2026-11-06, later):**
+  `BASTION_BRACE_BULLETS` 3 -> 8 (guard and roll alike, Citadel too); card text "stop 8 bullets: +1 pip" / Citadel's
+  "stops 8 bullets"; `DAILY.ruleset` 9 -> 10. Endless replays and scores with Bastion changed (boards stay `_v1`); M1,
+  every fixture and the tutorial are unchanged. The LG7 tables above were measured at 3; the tune bots' "stopping"
+  columns now read `BASTION_BRACE_BULLETS`+ / `DEFENSE_HIGH_STOPS` (5 -> 12)+.
+- **LGD7** (settled, owner 2026-11-06) A roll through `BASTION_BRACE_BULLETS` (8; 3 at the time) bullets braces too,
+  with any weapon, each bullet counted once.
 - **LGD8** Supernova = one ring size larger on a big carry (no new arc rows); the threshold is LGD13.
 - **LGD9** Boon indices 15 / 16 and duo indices 9-12, before any V2 boon; V2's boons renumber after them.
 - **LGD10** Legendary rarity percents unchanged.
@@ -635,7 +641,7 @@ yet (LG6). Paths under `src/shared/` unless noted.
   `fx.brace.text` "BRACED" (floor text, capitals in the string itself; never upper-cased in code). Each has an
   `l10n/context.json` entry (`fx.brace.text` `max` 10, like `fx.parry.text`). No overkill toast.
 - **Card text.** `boon.bastion.desc` was 66 characters, 6 over the longest card line (Slippery's evolution, 60) and
-  21 over the longest level-I line (45): now "+1 armor pip; a full-ring guard; stop 3 bullets: +1 pip" (54, like
+  21 over the longest level-I line (45): now "+1 armor pip; a full-ring guard; stop 8 bullets: +1 pip" (54, like
   Sharpened's evolution); the `boon.bastion.name` context note quotes it. The others stay: Overkill 52, Skewer 49,
   Citadel 47, Stone Heart 40, Supernova 35 (no translations exist yet, so nothing goes stale).
 - **Audio** (port audio IDs, `theme/builds.ts` `BUILD_AUDIO_IDS`' last two and `contract.ts` `PORT_AUDIO_EVENTS` right

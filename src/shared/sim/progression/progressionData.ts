@@ -213,8 +213,11 @@ export const BASTION_GUARD_HALF_ANGLE_COS = -1;
 export const BASTION_GUARD_SWEEP_HALF_ANGLE_COS = -2;
 /** Bastion: the guard lasts this many ticks (1.5 x SWORD_DATA.guardTicks 18; reach and cooldown unchanged). */
 export const BASTION_GUARD_TICKS = 27;
-/** Brace: one guard or one roll that stops at least this many enemy bullets restores one armor pip (once per room). */
-export const BASTION_BRACE_BULLETS = 3;
+/**
+ * Brace: one guard or one roll that stops at least this many enemy bullets restores one armor pip (once per room).
+ * 8 since the owner's retune (2026-11-06; was 3, docs/LEGENDARIES.md LGD6).
+ */
+export const BASTION_BRACE_BULLETS = 8;
 
 // --- Relics ------------------------------------------------------------------------------------------
 

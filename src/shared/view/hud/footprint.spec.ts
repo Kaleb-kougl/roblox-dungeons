@@ -6,7 +6,9 @@ import { MINIMAP_VIEW } from "shared/view/minimap";
 import {
 	ALWAYS_ON_PANELS,
 	FOOTPRINT_ESTIMATE,
+	SIGHTING_CARD,
 	TOUCH_ALWAYS_ON_PANELS,
+	TOUCH_SIGHTING_BOX,
 	TOUCH_TEST_VIEWPORTS,
 	TOUCH_TUTORIAL_BOX,
 	touchFootprintRects,
@@ -155,6 +157,37 @@ describe("HUD footprint budget", () => {
 		const stamp = HUD_TRANSIENT.roomClear;
 		expect(stamp.edge + stamp.height).toBeLessThanOrEqual(HUD_TRANSIENT.toasts.edge);
 		expect(stamp.edge + stamp.height).toBeLessThanOrEqual(TOUCH_TUTORIAL_BOX.edge);
+	});
+
+	// docs/ENEMY_VARIANTS.md EV12: a first sighting shows while the new enemy is on screen, so its card is held out of
+	// the playfield like an always-on panel (it used to be a top-centre toast over the far side of the room).
+	it("the first-sighting card sits under the status box and never enters the clear zone at HUD scale <= 100 %", () => {
+		const card = HUD_TRANSIENT.sighting;
+		expect(card.anchor).toBe("topLeft");
+		expect(card.width).toBe(SIGHTING_CARD.width);
+		expect(card.edge).toBeGreaterThanOrEqual(HUD_VIEW.margin + HUD_FOOTPRINT.status.maxH);
+		const bad: string[] = [];
+		const over: string[] = [];
+		for (const v of HUD_TEST_VIEWPORTS) {
+			for (const inset of INSETS) {
+				const zone = clearZoneRect(v.x, v.y, inset);
+				for (const tenFoot of TEN_FOOT) {
+					for (const percent of HUD_SCALE_PERCENTS) {
+						const r = transientRects(v.x, v.y, tenFoot, percent, inset).find(
+							(p) => p.panel === "sighting",
+						)!;
+						if (!rectsOverlap(r.rect, zone)) continue;
+						const what = label(v.x, v.y, tenFoot, percent, inset);
+						if (percent <= PERCENT) bad.push(what);
+						else over.push(what);
+					}
+				}
+			}
+		}
+		print(
+			`[footprint] sighting card in the clear zone above 100 %: ${over.size() === 0 ? "none" : over.join(", ")}`,
+		);
+		expect(bad.join(", ")).toBe("");
 	});
 
 	it("the room clear chip starts below the score box (docs/ROOM_CLEAR.md RC6)", () => {
@@ -344,6 +377,26 @@ describe("touch footprint (docs/MOBILE.md MB10)", () => {
 		expect(TOUCH_TUTORIAL_BOX.width).toBe(TUTORIAL_VIEW.touchPanelWidth);
 		expect(TOUCH_TUTORIAL_BOX.edge).toBeGreaterThanOrEqual(
 			HUD_TRANSIENT.bossBar.edge + HUD_TRANSIENT.bossBar.height,
+		);
+	});
+
+	it("prints (does not fail) where the touch first-sighting card enters HUD_CLEAR_ZONE (top left, landscape)", () => {
+		expect(TOUCH_SIGHTING_BOX.anchor).toBe("topLeft");
+		expect(TOUCH_SIGHTING_BOX.edge).toBe(HUD_VIEW.margin);
+		const info: string[] = [];
+		for (const v of TOUCH_TEST_VIEWPORTS) {
+			for (const inset of INSETS) {
+				const zone = clearZoneRect(v.x, v.y, inset);
+				for (const percent of TOUCH_PERCENTS) {
+					if (rectsOverlap(touchTransientRect(TOUCH_SIGHTING_BOX, v.x, v.y, percent, inset), zone))
+						info.push(label(v.x, v.y, false, percent, inset));
+				}
+			}
+		}
+		print(
+			`[footprint] touch sighting card in HUD_CLEAR_ZONE (<= 100 %): ${
+				info.size() === 0 ? "none" : info.join(", ")
+			}`,
 		);
 	});
 

@@ -1,6 +1,6 @@
 /**
  * 'boss.act1': the Act I boss (E1.8, M1 "First fight"; source: `src/sim/actors/archetypes/boss/act1.ts`). GDD
- * placeholder: "Mother Bramble", a burned-forest bramble mother; the display name is the theme string
+ * placeholder: "Mother Mayhem", a burned-forest bramble mother; the display name is the theme string
  * `boss.act1.name`, the sprite the logical ID `boss.act1`. Design, attack table, telegraph lengths and the time-to-kill
  * math: the source's README.md in that folder.
  *
@@ -20,7 +20,7 @@
  *
  * Roblox port (docs/BOSS_DEMONLORD.md D3): the fight skeleton (wake / seal, phase floor, transitions, recover,
  * reposition, summons, DEBUG_BOSS, the damage filter, the adds withering) lives in ./shared.ts, shared with
- * 'boss.demonlord'; this file keeps Mother Bramble's attacks and every export it had. Same code, same order: the
+ * 'boss.demonlord'; this file keeps Mother Mayhem's attacks and every export it had. Same code, same order: the
  * golden boss runs match bit for bit.
  */
 
@@ -35,6 +35,7 @@ import { hasArchetype, registerArchetype } from "../../registry";
 import type { ActorState } from "../../types";
 import { slamBreakables } from "../../../../breakables/breakables";
 import {
+	BOSS_HP,
 	BOSS_ENGAGE_RANGE_NO_ROOM,
 	BOSS_MAX_REPEAT,
 	BOSS_V_LAST,
@@ -258,8 +259,9 @@ export interface BossAct1Data extends BossFightData {
 }
 
 export const BOSS_ACT1_DATA: BossAct1Data = {
-	// Tuned in the E1.8 integration against the real weapons (README "Time to kill"): hp / cap = 120 s exactly.
-	hp: 540,
+	// Tuned in the E1.8 integration against the real weapons (README "Time to kill"): hp / cap = 120 s exactly at the web
+	// build's WEB_BOSS_HP; the port halves it (BOSS_HP).
+	hp: BOSS_HP,
 	radius: 1.2,
 	speed: 3,
 	contactDamage: HIT_HEAVY,

@@ -369,7 +369,11 @@ function evaluate(def: RecapHighlightDef, input: RunRecapInput, coop: boolean): 
 		case "jackpots":
 			return hasSource(s, ScoreSource.JACKPOT) ? plain(countOf(s, ScoreSource.JACKPOT), def.min) : undefined;
 		case "speed":
-			return { value: pointsOf(s, ScoreSource.FAST), notable: countOf(s, ScoreSource.FAST) >= def.min };
+			return {
+				value: pointsOf(s, ScoreSource.FAST),
+				notable: countOf(s, ScoreSource.FAST) >= def.min,
+				valueKey: RECAP_STRINGS.hlPoints,
+			};
 		case "kills":
 			return plain(input.kills, def.min);
 		case "rooms":

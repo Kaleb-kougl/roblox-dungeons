@@ -84,8 +84,10 @@
 			"meaning": "A power-up kept for the rest of the run, chosen from a draft of three cards after each floor (\"Choose a boon\", \"Pick again\"). Not an item and not a skill; one word for the whole system.",
 			"translate": true,
 			"keys": [
+				"hud.build.boons",
 				"hud.draft.evolve",
 				"hud.draft.title",
+				"hud.tip.kind.boon",
 				"hud.toast.boon",
 				"hud.toast.evolved",
 				"touch.hint.draft",
@@ -96,7 +98,7 @@
 		},
 		{
 			"term": "boss",
-			"meaning": "The big enemy that ends every 5th floor (Mother Bramble or The Demon Lord), with a health bar and phases.",
+			"meaning": "The big enemy that ends every 5th floor (Mother Mayhem or The Demon Lord), with a health bar and phases.",
 			"translate": true,
 			"keys": [
 				"boss.1.name",
@@ -119,7 +121,8 @@
 			"translate": true,
 			"keys": [
 				"hud.build.title",
-				"options.display.buildFx"
+				"options.display.buildFx",
+				"pause.build"
 			]
 		},
 		{
@@ -151,6 +154,8 @@
 			"meaning": "A permanent item for the rest of the run, found on a pedestal.",
 			"translate": true,
 			"keys": [
+				"hud.build.relics",
+				"hud.tip.kind.relic",
 				"hud.toast.relic",
 				"tutorial.prompt.relic.gamepad",
 				"tutorial.prompt.relic.keyboard",
@@ -162,7 +167,9 @@
 			"meaning": "A handicap the player may accept at a shrine; it makes the run harder and raises the score multiplier.",
 			"translate": true,
 			"keys": [
+				"hud.build.curses",
 				"hud.shrine.hint",
+				"hud.tip.kind.curse",
 				"hud.toast.curse",
 				"touch.hint.shrine",
 				"tutorial.prompt.curse.gamepad",
@@ -183,7 +190,10 @@
 			"meaning": "A special boon offered when the player owns two boons that combine. The DUO banner is all caps.",
 			"translate": true,
 			"keys": [
+				"hud.build.duos",
 				"hud.draft.duo",
+				"hud.tip.duoFrom",
+				"hud.tip.kind.duo",
 				"hud.toast.duo"
 			]
 		},
@@ -193,6 +203,8 @@
 			"translate": true,
 			"keys": [
 				"hud.draft.evolve",
+				"hud.tip.evolves",
+				"hud.tip.kind.evolved",
 				"hud.toast.evolved"
 			]
 		},
@@ -211,6 +223,9 @@
 			"meaning": "A temporary power-up dropped by a killed enemy, picked up by walking over it (Fury, Quickstep, Frenzy, Aegis).",
 			"translate": true,
 			"keys": [
+				"hud.build.boosts",
+				"hud.tip.kind.boost",
+				"hud.tip.secondsLeft",
 				"tutorial.prompt.boost.gamepad",
 				"tutorial.prompt.boost.keyboard",
 				"tutorial.prompt.boost.touch"
@@ -722,8 +737,8 @@
 			]
 		},
 		{
-			"term": "Mother Bramble",
-			"meaning": "First boss: a huge thorny plant-demon mother (\"her\"). Translate the meaning consistently.",
+			"term": "Mother Mayhem",
+			"meaning": "First boss: a huge chaotic demon mother (\"her\"). Translate the meaning consistently.",
 			"translate": true,
 			"keys": [
 				"boss.act1.name"

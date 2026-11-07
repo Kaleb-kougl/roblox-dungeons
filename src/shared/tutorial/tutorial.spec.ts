@@ -104,7 +104,7 @@ function harness() {
 }
 
 /**
- * The debug boss damage (J) every this many ticks of the Mother Bramble fight; 0 = never. Not needed: the whole
+ * The debug boss damage (J) every this many ticks of the Mother Mayhem fight; 0 = never. Not needed: the whole
  * bot run (a ~20 s melee boss fight at TUTORIAL.bossHpPercent included) takes about 1 s of spec time.
  */
 const BOSS_DEBUG_EVERY = 0;
@@ -604,7 +604,7 @@ describe("tutorial bot", () => {
 		expect(r.callouts.includes(OLD_BOOST_CALLOUT_KEY)).toBe(false);
 		// The funnel names (the server's tutorialStepName): unchanged before the boost step, then continuous.
 		expect(r.funnelSteps.map((n) => tutorialStepName(n))).toEqual(TUTORIAL_STEPS.map((s) => s.id));
-		// Every step's own prompt was shown at some point, but `finish`: the bot melees Mother Bramble on the arena
+		// Every step's own prompt was shown at some point, but `finish`: the bot melees Mother Mayhem on the arena
 		// centre, so the stairwell that opens there under it on her death takes it down on that same tick.
 		for (const s of TUTORIAL_STEPS) {
 			if (s.id === "finish") continue;
@@ -613,7 +613,7 @@ describe("tutorial bot", () => {
 		expect(r.prompts.includes("follow")).toBe(true);
 	});
 
-	it("Mother Bramble falls fast (TUTORIAL.bossHpPercent): <= 30 s of melee, phases II and III still play", () => {
+	it("Mother Mayhem falls fast (TUTORIAL.bossHpPercent): <= 30 s of melee, phases II and III still play", () => {
 		const r = inOrderRun();
 		const boss = archetypeAt(archetypeIndex(BOSS_ACT1_ID)).data as BossAct1Data;
 		expect(r.bossHpMax).toBe((boss.hp * TUTORIAL.bossHpPercent) / 100);
@@ -1047,7 +1047,7 @@ describe("tutorial metrics (docs/TUTORIAL_FUNNEL.md TF4)", () => {
 
 	it("in order: one report per lesson, in step order, at the bot's fixed dt (pinned)", () => {
 		const r = inOrderRun();
-		// [funnel step, seconds, harmless hits]: the boss fight takes the hits (the player tanks Mother Bramble).
+		// [funnel step, seconds, harmless hits]: the boss fight takes the hits (the player tanks Mother Mayhem).
 		expect(rows(r)).toEqual([
 			[1, 0.8, 0], // objective: the card up 47 frames
 			[2, 0.5, 0], // move
@@ -1057,7 +1057,7 @@ describe("tutorial metrics (docs/TUTORIAL_FUNNEL.md TF4)", () => {
 			[6, 0.1, 0], // boost: the bot stands next to combat B's last swarmer
 			[7, 5.2, 0], // roll
 			[8, 5.6, 1], // guard
-			[9, 5.5, 2], // bow
+			[9, 5.3, 2], // bow: the port's heavier arrow (BOW_HEAVY_DAMAGE)
 			[10, 9.3, 1], // ember
 			[11, 0, 0], // map: opened on the first frame it is current (docs/TUTORIAL_MAP.md)
 			[12, 15.1, 1], // pellets: the walk F -> G, the ring, then the sniper (docs/PELLETS.md PL13)
@@ -1065,7 +1065,7 @@ describe("tutorial metrics (docs/TUTORIAL_FUNNEL.md TF4)", () => {
 			[14, 2.8, 0], // curse
 			[15, 3.3, 0], // stairwell
 			[16, 0.5, 0], // draft
-			[17, 24.1, 26], // boss
+			[17, 15.6, 14], // boss (54 hp since the half-hp boss retune; was 24.1 s, 26 hits at 108)
 			[18, 0, 0], // finish: done on the boss kill's tick (the stairwell opens under the bot)
 		]);
 		expect(r.sharedClockFrames).toBe(0);
@@ -1084,7 +1084,7 @@ describe("tutorial metrics (docs/TUTORIAL_FUNNEL.md TF4)", () => {
 			[5, 13.2, 1], // hits: current from the flask on, so it runs through the walk to and the fight in combat C
 			[6, 0.1, 0],
 			[8, 8.4, 1],
-			[9, 5.5, 2],
+			[9, 5.3, 2],
 			[10, 9.3, 1],
 			[11, 0, 0],
 			[12, 15.1, 0],
@@ -1092,7 +1092,7 @@ describe("tutorial metrics (docs/TUTORIAL_FUNNEL.md TF4)", () => {
 			[14, 2.8, 0],
 			[15, 3.3, 0],
 			[16, 0.5, 0],
-			[17, 24.1, 26],
+			[17, 15.6, 14],
 			[18, 0, 0],
 		]);
 		const steps = r.lessonReports.map((l) => l.step);

@@ -10,6 +10,7 @@ import { FullMapOverlay } from "./FullMapOverlay";
 import { MinimapPanel } from "./MinimapPanel";
 import { Players } from "@rbxts/services";
 import { InfoPanel } from "./InfoPanel";
+import { ItemTooltipLayer } from "./ItemTooltip";
 import { LeaderboardPanel } from "./LeaderboardPanel";
 import { PauseButton } from "./PauseButton";
 import { PauseOverlay } from "./PauseOverlay";
@@ -18,6 +19,7 @@ import { DimLayerContext } from "./ScreenDim";
 import { RoomClearChips } from "./RoomClearChips";
 import { RoomClearStamp } from "./RoomClearStamp";
 import { ScorePanel } from "./ScorePanel";
+import { SightingCard } from "./SightingCard";
 import { SpectateBar } from "./SpectateBar";
 import { OptionsScreen } from "./OptionsScreen";
 import { StatusPanel } from "./StatusPanel";
@@ -40,7 +42,8 @@ import { WeaponPanel } from "./WeaponPanel";
  *                 RunOverPanel (centre: death / victory + stats, the score breakdown in scored runs), MinimapPanel
  *                 (bottom right: the corner map, docs/MINIMAP.md M8), FullMapOverlay (centre: the full map toggle, M9),
  *                 InfoPanel (bottom right, above the minimap: notice, verdict, debug line), ToastPanel (top centre: M2 progression toasts and the
- *                 curse shrine hint), DraftOverlay (centre: the M2 boon draft's cards), SpectateBar (bottom centre,
+ *                 curse shrine hint), SightingCard (left edge under the status panel: a new enemy's first-sighting
+ *                 line, docs/ENEMY_VARIANTS.md EV12), DraftOverlay (centre: the M2 boon draft's cards), SpectateBar (bottom centre,
  *                 co-op: who a dead player watches, the switch hint); the first-run tutorial's
  *                 TutorialPanel (lower centre: prompt, progress, pause hint) and ObjectiveCard (centre), and its
  *                 highlight ring on the taught element (tutorial slice `highlight`) and the ghost half heart
@@ -50,6 +53,8 @@ import { WeaponPanel } from "./WeaponPanel";
  *                 menu shell (client/ui/menu MenuLayer, mounted next to this by HudController)
  *   KV_GameMenuDim  the full-screen layer under KV_GameMenu the overlays' dims draw into (ScreenDim; ScreenInsets None:
  *                 under the top bar and into a phone's notch insets, docs/UI_ART.md "Phones")
+ *   KV_ItemTooltip  the item tooltip (ItemTooltipLayer, docs/ITEM_TOOLTIPS.md IT4): its own ScreenGui over the menu layer
+ *                 (ITEM_TOOLTIP.displayOrder), placed beside the hovered / focused / tapped target; never takes input.
  *   KV_PauseButton  PauseButton (mouse / touch; in the Roblox top bar, right of its buttons): pauses a solo run,
  *                 opens a co-op run's party overlay. Screen pixels and no safe-area insets: the top bar is outside
  *                 the safe area.
@@ -106,6 +111,7 @@ export function GameHud() {
 						<FullMapOverlay key="FullMap" />
 						<InfoPanel key="Info" />
 						<ToastPanel key="Toasts" />
+						<SightingCard key="Sighting" />
 						<DraftOverlay key="Draft" />
 						<SpectateBar key="Spectate" />
 						<TutorialPanel key="TutorialPanel" />
@@ -138,6 +144,7 @@ export function GameHud() {
 					<LeaderboardPanel key="Leaderboards" localUserId={Players.LocalPlayer.UserId} />
 				</DimLayerContext.Provider>
 			</screengui>
+			<ItemTooltipLayer key="KV_ItemTooltip" />
 			<screengui
 				key="KV_PauseButton"
 				ResetOnSpawn={false}

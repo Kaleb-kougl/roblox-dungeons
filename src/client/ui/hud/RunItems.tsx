@@ -14,14 +14,18 @@ import {
 	runItemCells,
 	statusRowMaxWidth,
 	type ItemCellModel,
+	type ItemRef,
 } from "shared/view/hud";
 import { ArtImage, panelIcon } from "./primitives";
+import { MORE_CELL_REF, useTooltipTarget } from "./tooltipTargets";
 
 const HIDDEN = 1;
 /** Inside a cell: the curse skull under the label, the level pips over both. */
 const CELL_Z = { art: 1, label: 2, pips: 3 } as const;
 /** The status panel (RunItems' host) is a corner panel: the run's dark frame. */
 const HOST_SKIN = "hud";
+/** The status panel's corner: a live tooltip goes under it, and its occlusion fade blocks the tooltip. */
+const HOST_CORNER = "topLeft";
 
 /** An item cell's size and text (reference px): PROGRESSION_VIEW's in the status panel, the touch chips' smaller. */
 export interface ItemLook {
@@ -52,6 +56,8 @@ function ItemCell(props: {
 	/** No outline (a duo chip's halves: the chip draws one around both). */
 	bare?: boolean;
 	position?: UDim2;
+	/** The tooltip target's ref callback (docs/ITEM_TOOLTIPS.md IT6), on the cell's root frame. */
+	frameRef?: (frame: GuiObject | undefined) => void;
 }) {
 	const hudFont = useHudFont();
 	const size = props.look.size;
@@ -72,6 +78,7 @@ function ItemCell(props: {
 	}
 	return (
 		<frame
+			ref={props.frameRef}
 			LayoutOrder={props.order}
 			Position={props.position}
 			Size={new UDim2(0, props.width ?? size, 0, size)}
@@ -127,12 +134,21 @@ function ItemCell(props: {
 }
 
 /** One cell of the row from its model (shared/view/hud runItemCells): a boon / relic / curse square or a duo chip. */
-function ModelCell(props: { order: number; cell: ItemCellModel; look: ItemLook; gap: number; curseArt?: string }) {
+function ModelCell(props: {
+	order: number;
+	cell: ItemCellModel;
+	look: ItemLook;
+	gap: number;
+	curseArt?: string;
+	tooltips: boolean;
+}) {
 	const c = props.cell;
 	const look = props.look;
+	const tipRef = useTooltipTarget(c.ref, "hud", { panel: HOST_CORNER, enabled: props.tooltips });
 	if (c.span <= 1) {
 		return (
 			<ItemCell
+				frameRef={tipRef}
 				order={props.order}
 				color={c.fills[0]}
 				text={str(c.icons[0])}
@@ -164,6 +180,7 @@ function ModelCell(props: { order: number; cell: ItemCellModel; look: ItemLook; 
 	}
 	return (
 		<frame
+			ref={tipRef}
 			LayoutOrder={props.order}
 			Size={UDim2.fromOffset(itemCellWidth(c.span, look.size, props.gap), look.size)}
 			BackgroundColor3={role(c.fills[0])}
@@ -172,6 +189,25 @@ function ModelCell(props: { order: number; cell: ItemCellModel; look: ItemLook; 
 			<uistroke Thickness={BUILD_HUD_VIEW.cellStroke} Color={role("background")} />
 			{halves}
 		</frame>
+	);
+}
+
+/** The leading "+N" cell; a tooltip target listing the hidden items' names (moreTooltip, docs/ITEM_TOOLTIPS.md IT6). */
+function MoreCell(props: { count: number; hidden: ReadonlyArray<ItemRef>; look: ItemLook; tooltips: boolean }) {
+	const tipRef = useTooltipTarget(MORE_CELL_REF, "hud", {
+		panel: HOST_CORNER,
+		more: props.hidden,
+		enabled: props.tooltips,
+	});
+	return (
+		<ItemCell
+			frameRef={tipRef}
+			order={0}
+			color="uiPanel"
+			textColor="uiText"
+			text={str(HUD_STRINGS.itemsMore, { count: props.count })}
+			look={props.look}
+		/>
 	);
 }
 
@@ -194,8 +230,14 @@ export function RunItems(props: {
 	look?: ItemLook;
 	maxWidth?: number;
 	gap?: number;
+	/**
+	 * The status panel's row (docs/ITEM_TOOLTIPS.md IT6): every cell and the "+N" cell register as live `hud` tooltip
+	 * targets in the status panel. Off (default) on the touch strip (ITD9).
+	 */
+	tooltips?: boolean;
 }) {
 	const look = props.look ?? STATUS_LOOK;
+	const tooltips = props.tooltips === true;
 	const maxWidth = props.maxWidth ?? statusRowMaxWidth();
 	const gap = props.gap ?? HUD_VIEW.gap;
 	const cells = runItemCells(props.boons, props.levels ?? [], props.duos ?? [], props.relics, props.curses);
@@ -210,21 +252,24 @@ export function RunItems(props: {
 	const curseArt = panelIcon(HOST_SKIN, UI_ART.ids.iconSkullCurse);
 	const out = new Array<React.Element>();
 	if (cap.more > 0) {
-		out.push(
-			<ItemCell
-				key="more"
-				order={0}
-				color="uiPanel"
-				textColor="uiText"
-				text={str(HUD_STRINGS.itemsMore, { count: cap.more })}
-				look={look}
-			/>,
-		);
+		const hidden = new Array<ItemRef>();
+		for (let i = 0; i < cap.first; i++) hidden.push(cells[i].ref);
+		out.push(<MoreCell key="more" count={cap.more} hidden={hidden} look={look} tooltips={tooltips} />);
 	}
 	// The newest cells that fit (the list is in the order shown); their LayoutOrder keeps them after the "+N" cell.
 	for (let i = cap.first; i < cells.size(); i++) {
 		const c = cells[i];
-		out.push(<ModelCell key={c.key} order={i + 1} cell={c} look={look} gap={gap} curseArt={curseArt} />);
+		out.push(
+			<ModelCell
+				key={c.key}
+				order={i + 1}
+				cell={c}
+				look={look}
+				gap={gap}
+				curseArt={curseArt}
+				tooltips={tooltips}
+			/>,
+		);
 	}
 	return (
 		<frame LayoutOrder={props.order} Size={UDim2.fromOffset(cap.width, size)} BackgroundTransparency={HIDDEN}>

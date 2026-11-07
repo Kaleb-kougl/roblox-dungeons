@@ -5,7 +5,6 @@ import { clientStore } from "client/store";
 import { sightingStringKey } from "shared/onboarding";
 import { isDraftOpen } from "shared/sim";
 import { RENDER_ORDER } from "shared/view";
-import { PROGRESSION_VIEW } from "shared/view/hud";
 import { SIGHTING_VIEW, SightingQueue, sightingsInView } from "shared/view/sighting";
 import { SimController } from "./SimController";
 
@@ -18,7 +17,9 @@ const RENDER_STEP = "KV_Sightings";
  * listener only) and the queue. Once per rendered frame, after the FX tracker, it scans the watched view
  * (sightingsInView: living Imps, Oozes / slimelets, Summoners and affixed enemies near the view player, the spectated
  * teammate after a co-op death) and queues the unseen ones; then, one at a time (SIGHTING_VIEW toastSeconds +
- * gapSeconds), it pushes one toast line (ToastPanel's styling, theme string `bestiary.<id>`) and reports the id
+ * gapSeconds), it shows the line on the SightingCard (the left edge under the status panel, not the top-centre toasts:
+ * those hang over the far side of the room where the new enemy walks in; theme string `bestiary.<id>`), hides it again
+ * after toastSeconds and reports the id
  * (`bestiarySeen`; the server validates and stores it). Never in the tutorial, under the stage cover or after the run
  * is over (no scan at all); a toast waits while a boon draft is open or the solo run is paused. A run exit drops the
  * queued ids that were never shown. Nothing at all until a LOADED status arrived (a failed join load: the stored set is
@@ -35,31 +36,33 @@ export class SightingController implements OnStart {
 	onStart(): void {
 		Events.onboardingStatus.connect((status) => this.queue.receive(status));
 		Events.requestOnboarding.fire();
-		this.sim.onRunExited(() => this.queue.clear());
+		this.sim.onRunExited(() => {
+			this.queue.clear();
+			clientStore.setSighting(undefined);
+		});
 		RunService.BindToRenderStep(RENDER_STEP, Enum.RenderPriority.Input.Value + RENDER_ORDER.tutorialAfterFx, () =>
 			this.frame(),
 		);
 	}
 
 	private frame(): void {
+		const now = os.clock();
+		const shown = clientStore.getState().game.sighting;
+		if (shown !== undefined && (shown.until <= now || this.sim.isRunOver())) clientStore.setSighting(undefined);
 		const ctx = this.sim.getContext();
 		if (ctx === undefined || ctx.tutorial || !this.queue.isLoaded()) return;
 		if (this.sim.isInputCovered() || this.sim.isRunOver()) return;
 		const state = ctx.run.state;
 		this.queue.observe(sightingsInView(state, this.sim.getViewPlayerIndex(), this.found));
-		const now = os.clock();
 		const canShow = !isDraftOpen(state) && ctx.live?.isPaused() !== true;
 		const id = this.queue.next(now, canShow);
 		if (id === undefined) return;
 		this.serial++;
-		clientStore.pushToast(
-			{
-				id: SIGHTING_VIEW.toastIdBase - this.serial,
-				key: sightingStringKey(id),
-				until: now + SIGHTING_VIEW.toastSeconds,
-			},
-			PROGRESSION_VIEW.maxToasts,
-		);
+		clientStore.setSighting({
+			id: SIGHTING_VIEW.toastIdBase - this.serial,
+			key: sightingStringKey(id),
+			until: now + SIGHTING_VIEW.toastSeconds,
+		});
 		Events.bestiarySeen.fire(id);
 	}
 }

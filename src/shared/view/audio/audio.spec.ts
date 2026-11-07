@@ -175,7 +175,7 @@ describe("audio: sim events -> sound IDs", () => {
 		]);
 	});
 
-	it("a taunting boss's phase change plays the taunt (the Demon Lord), Mother Bramble's the roar", () => {
+	it("a taunting boss's phase change plays the taunt (the Demon Lord), Mother Mayhem's the roar", () => {
 		expect([...BOSS_TAUNT_IDS]).toEqual([BOSS_DEMONLORD_ID]);
 		const phase = (bossId: string, p: number) => {
 			const buf = new FxEventBuffer(4);

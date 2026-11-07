@@ -659,6 +659,34 @@ describe("the upright pause (docs/PORTRAIT.md PT6)", () => {
 		}
 	});
 
+	it("with the upright Build / Map toggle (docs/ITEM_TOOLTIPS.md IT8: one more button) it still fits", () => {
+		for (const s of PORTRAITS) {
+			for (const percent of [70, 100, 125]) {
+				const u = computeHudScale(s.x, s.y, false, percent, true);
+				const e = narrowEstimates(u).get("pause")!;
+				const area = pausePanelArea(menuArea(s.x, s.y, s.insets, u), HUD_VIEW.gap);
+				const fit = fitMenu({
+					w: e.w,
+					h: e.h + BUTTON + HUD_VIEW.gap,
+					areaW: area.w,
+					areaH: area.h,
+					uiScale: u,
+					touch: true,
+					narrow: true,
+					ornament: e.ornament,
+					ornamentArtH: ORNAMENT_ART_H,
+					flex: undefined,
+				});
+				expect([s.name, percent, fit.overflow]).toEqual([s.name, percent, false]);
+				expect([s.name, percent, u * fit.factor >= MENU_FIT.narrowMinScale - 1e-9]).toEqual([
+					s.name,
+					percent,
+					true,
+				]);
+			}
+		}
+	});
+
 	it("leaves the panel the area under the map", () => {
 		const area = { w: 500, h: 1000 };
 		const under = pausePanelArea(area, 10);

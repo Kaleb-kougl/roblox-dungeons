@@ -10,7 +10,7 @@
  * only once the sim holds it at 1 hp), swap to the bow
  * and release a heavy arrow at the turret sniper, burn an Ember in the sprayer storm, sweep combat G's pellets (option
  * `pellets`) and cut down its sniper, take the relic, accept the curse
- * (SHRINE_BUTTON), take the stairwell, confirm the centre draft card, then melee Mother Bramble on floor 2 (the player
+ * (SHRINE_BUTTON), take the stairwell, confirm the centre draft card, then melee Mother Mayhem on floor 2 (the player
  * is harmless, so it tanks; optionally with the debug boss damage, J) and take the stairwell she opens. It records the
  * boss fight's milestones (engaged, phases with the HUD bar's fill, dead) for the fast-boss spec.
  *
@@ -145,7 +145,7 @@ export interface TutorialBotResult {
 	readonly ticks: number;
 	/** Milestones (tick, floor, hearts) for the spec log. */
 	readonly log: ReadonlyArray<string>;
-	/** The Mother Bramble fight: engaged (events.bossEngaged) to dead (events.bossDefeated), ticks; -1 when unfinished. */
+	/** The Mother Mayhem fight: engaged (events.bossEngaged) to dead (events.bossDefeated), ticks; -1 when unfinished. */
 	readonly bossEngagedTick: number;
 	readonly bossDefeatedTick: number;
 	/** Her hpMax at the engage (the tutorial's bossHpPercent of her Depth 1 hp). */

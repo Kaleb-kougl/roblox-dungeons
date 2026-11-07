@@ -7,7 +7,8 @@
  * docs/LOCALIZATION.md L9 the fit audit (LocaleAuditController, KV_LocaleAudit); docs/TREASURE.md TR8 the vault's
  * toasts (TreasureToastController); docs/GAMEPAD_MENUS.md GM2-GM4 the menus' focus scopes, recovery, memory and pad
  * actions (FocusController); GM9 the menu haptics (PadHapticsController); GM12 the console chat rule
- * (ConsoleController).
+ * (ConsoleController);
+ * docs/ITEM_TOOLTIPS.md IT4 the item tooltips' hover / focus / tap (TooltipController).
  */
 export * from "./SettingsController";
 export * from "./RebindController";
@@ -25,3 +26,4 @@ export * from "./TreasureToastController";
 export * from "./FocusController";
 export * from "./PadHapticsController";
 export * from "./ConsoleController";
+export * from "./TooltipController";

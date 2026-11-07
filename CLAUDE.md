@@ -34,7 +34,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/BOSS_DEMONLORD.md` | Demon Lord boss variant (`boss.demonlord`, seeded pick per endless boss floor, Lords of Pain Demonlord art): plan, tasks D0-D8, decisions |
 | `docs/CURSOR.md` | Gauntlet mouse cursor (Lords of Pain `cursor_gauntlet_*`, software cursor, hover / target colours): plan, tasks C0-C8, decisions D1-D5 |
 | `docs/DEMON_ART.md` | Placeholder enemies as 2D Demons (bruiser = Demon Beast 3; turrets sprayer / caster = Demon Spawn 8 / 11; Lords of Pain art unchanged): plan, tasks DA0-DA15, decisions DD1-DD7 |
-| `docs/BRAMBLE_ART.md` | Mother Bramble (`boss.act1`) as a 2D Demons Elite: state-to-animation mapping, size and budget, tasks BR0-BR7, decisions BD1-BD7 |
+| `docs/BRAMBLE_ART.md` | Mother Mayhem (`boss.act1`) as a 2D Demons Elite: state-to-animation mapping, size and budget, tasks BR0-BR7, decisions BD1-BD7 |
 | `docs/ROOM_EDGES.md` | Room edges (dashed floor line where every corridor meets a room, tinted safe / waiting / live): plan, tasks RE1-RE8, decisions RD1-RD9 |
 | `docs/VOID_DECOR.md` | Void decoration (rock shoulder along every wall and corridor, ledges, a dark biome-tinted abyss, set pieces framing rooms from behind their far walls; presentation only): census, plan, tasks VD0-VD11, decisions VDD1-VDD9 |
 | `docs/HUD_LAYOUT.md` | In-run HUD footprint (corner panels, full-width band fix, info line to the pause menu, occlusion fade): plan, tasks H1-H9, decisions HD1-HD8 |
@@ -66,7 +66,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/DUMMY_ART.md` | Training dummy art (`enemy.dummy` drawn with the Training Dummy 2D Pixel Art pack: one facing, idle / 7-frame hit wobble / 9-frame break, the wobble on a view-side 0.7 s hit clip; presentation only): plan, tasks DA1-DA7, decisions DD1-DD5 |
 | `docs/GOO_ART.md` | Goo art (the Ooze's goo puddles drawn with the heimlich3 Slime pack's last two frames: land then splat, recoloured into `enemyGoo`, flat on the floor sized to cover the hit; presentation only): plan, tasks GA0-GA7, decisions GAD1-GAD5 |
 | `docs/KENNEY_DECOR.md` | Kenney decor (Kenney's CC0 Isometric Dungeon / Library reprojected from their 30 degree camera to the game's 55 by `scripts/art/kenney/reproject.py`: flat / box / uniform warps; library v2, a `mess` theme, richer storerooms planned; the bookcase's alternative art set, its wide pairs and the floor patches wired): plan, as built, tasks KN0-KN13, decisions KND1-KND12 |
-| `docs/LEGENDARIES.md` | Legendaries (two legendary boons, Overkill: a kill's leftover damage streaks to the nearest enemy and chains; Bastion: a full-ring 27-tick guard, +1 pip and a brace that restores a pip when a guard or roll stops 3 bullets; four duos Supernova / Skewer / Citadel / Stone Heart; gameplay, opt-in `SimConfig.builds`): plan, LG0 findings, as built LG1-LG6, LG7 tuning, owner tuning, tasks LG0-LG9, decisions LGD1-LGD14 |
+| `docs/LEGENDARIES.md` | Legendaries (two legendary boons, Overkill: a kill's leftover damage streaks to the nearest enemy and chains; Bastion: a full-ring 27-tick guard, +1 pip and a brace that restores a pip when a guard or roll stops 8 bullets; four duos Supernova / Skewer / Citadel / Stone Heart; gameplay, opt-in `SimConfig.builds`): plan, LG0 findings, as built LG1-LG6, LG7 tuning, owner tuning, tasks LG0-LG9, decisions LGD1-LGD14 |
 | `docs/HAZARD_ART.md` | Hazard art (the Stormcaller's strike and the build embers as original greyscale pixel art tinted by their roles: a flash over the strike's 0.1 s life and a short scorch after it, the ember's burn loop; supersedes PAD3; presentation only): plan, as built, tasks HA0-HA8, decisions HAD1-HAD5 |
 | `docs/GAMEPAD_MENUS.md` | Gamepad menus (every menu usable with a controller: focus scopes with one owner, recovery and memory, one B path (hold B to exit on run over), LB/RB / LT/RT tabs, right-stick scroll, X / Y shortcuts, a hint bar with Roblox button icons, menu haptics, console TV-safe fit; client input and presentation only): census, plan, as built, tasks GM0-GM12, decisions GMD1-GMD16 |
 
@@ -114,6 +114,21 @@ Decision log (deviations from `PLAN.md`):
   `bossAct1.spec`, docs/M1.md's tuning table) replay under `setSwarmerHp(WEB_SWARMER_HP)` next to
   `setSwordTimings(WEB_SWORD_TIMINGS)` and still match bit for bit; `enemies.determinism.spec` pins the port's current
   outcomes separately.
+- **Half-hp bosses (port retune, 2026-11-06).** Every boss's base hp is `BOSS_HP` = 270, `BOSS_HP_PERCENT` 50 % of the
+  web build's `WEB_BOSS_HP` 540 (`archetypes/boss/shared.ts`; Mother Bramble and the Demon Lord; endless Depth and
+  party scaling start from it), so a fight's flawless floor at the 6/s damage cap is 45 s (was 90 s). The tutorial's
+  practice boss (`TUTORIAL.bossHpPercent` 20) halves with it, 108 -> 54 hp. A sim change: M1, endless and tutorial boss
+  fights play and score differently from older builds. Every golden fixture and the web-tuned specs
+  replay under `setBossHp(WEB_BOSS_HP)` (`boss/hp.ts`) next to `setSwarmerHp(WEB_SWARMER_HP)` and still match bit for
+  bit; the Demon Lord's own specs scale their bands by `BOSS_HP / WEB_BOSS_HP` (TTK 1..2 minutes, measured 61-100 s).
+- **Stronger, aim-assisted charged arrow (port retune, 2026-11-06).** The bow's heavy arrow hits for
+  `BOW_HEAVY_DAMAGE` = 5, the web build's 4 + 1, and is aim-assisted: on release it flies straight at the living enemy
+  whose bearing is nearest the facing within `BOW_DATA.heavyAssistConeCos` (cos 10 degrees, a literal), the arrow's
+  reach (`heavySpeed` x `heavyLife`) and line of sight (`bowAssistAim`, sqrt only; no target: the facing as before). The
+  stream is unchanged. Fully charged, the aim line (WeaponViewController) points where the arrow will fly. A sim change:
+  every run with a heavy arrow (M1, endless, the tutorial's bow lesson, 5.5 -> 5.3 s in the pinned funnel rows) plays
+  differently from older builds. The bow parity specs (`constants`, `runBullets`) replay under
+  `setBowTuning(WEB_BOW_TUNING)` (heavy damage 4, no assist) and still match bit for bit.
 - **Archetype bands.** Kinds number by (`ArchetypeDef.band`, then id order), not id order alone. The web build's
   archetypes are band 0 (indices 0..6, pinned by hashed golden runs); a port-only archetype takes a NEW band so it
   numbers after the web table and no web index ever moves. The training dummy is band 1 (`PORT_BAND_TUTORIAL`),
@@ -150,7 +165,7 @@ Decision log (deviations from `PLAN.md`):
   tutorial (no `breakables`, B7) play exactly as before, but the appended source widens every scored run's `score`
   hash group by `score.points.breakables` / `score.counts.breakables` (always 0 there), so the tutorial's and a
   `KV_Scoring` M1 run's state hashes differ from older builds (no fixture is scored); endless replays and scores
-  changed. Mother Bramble's slam rule is nearly dormant: boss rooms get no pieces, so it only reaches one in a room
+  changed. Mother Mayhem's slam rule is nearly dormant: boss rooms get no pieces, so it only reaches one in a room
   that touches the boss room (1 of 240 boss floors, run seeds 1-60 x floors 5-20).
 - **Enemy outlines (docs/OUTLINE.md).** Presentation only (no sim, hash or replay change). A new colour role
   `enemyOutline` (validated >= 3:1 on every biome floor and wall, CIE76 >= 40 from the enemy-bullet roles). Placeholder
@@ -178,8 +193,8 @@ Decision log (deviations from `PLAN.md`):
   `arcTable.ts` stay the web build's). Each endless boss floor picks its boss with `bossKindFor(floorSeed)`: one draw
   from its own stream `mulberry32(floorSeed ^ BOSS_PICK.salt)` (salt `0x27d4eb2f`), weighted by `ENDLESS_BOSSES` (50 /
   50; `shared/dungeon` endlessData.ts), stored as `EndlessFloorLayout.bossKind`; layouts, digests, props, room spawns
-  and breakables are unchanged. Score tables give him Mother Bramble's 5000 points and final phase 3. M1
-  (`KALEB_VALE_MVP_PARAMS`), every fixture and the tutorial keep Mother Bramble and replay exactly as before; endless
+  and breakables are unchanged. Score tables give him Mother Mayhem's 5000 points and final phase 3. M1
+  (`KALEB_VALE_MVP_PARAMS`), every fixture and the tutorial keep Mother Mayhem and replay exactly as before; endless
   replays and scores changed on every floor that picks the Demon Lord (run 1337's floor 5 among them).
   `node scripts/find-boss-seed.js` lists run seeds per boss. D6 added one port audio ID, `sfx.boss.taunt` (required in
   every pack via `PORT_AUDIO_EVENTS`, SILENT in the placeholder): a taunting boss's phase change (the Demon Lord's,
@@ -230,7 +245,9 @@ Decision log (deviations from `PLAN.md`):
   in the pause overlay and run-over panel only; the swap hint and verdict lines are timed (`HUD_HINTS`); corner panels
   fade under the action (`HudOcclusionController`, CanvasGroup + bindings). Settings: `DisplaySettings.hudFade`
   (default On, only Off stored, document stays v2) and a 70 % step in `HUD_SCALE_PERCENTS`; one new theme string
-  `hud.items.more` and `options.display.hudFade`.
+  `hud.items.more` and `options.display.hudFade`. The fade also covers the top-centre toasts and the first-sighting card (fade slots
+  `HUD_FADE_SLOTS`, `Panel` `fade`; HD9); first sightings show on that card at the left edge under the status panel,
+  held out of `HUD_CLEAR_ZONE` (docs/ENEMY_VARIANTS.md EV12).
 - **Game feel pass (docs/FEEL.md).** Presentation only (no sim, dungeon, hash, replay or fixture change; lockstep
   behaviour unchanged). Hurt feedback on the view player (`StateWatch.hurtKind`, moved from the audio watch to
   `shared/view/watch.ts`): red screen edges in `uiHealth` (`HurtFlashController`, <= 1.33 Hz by `HURT_INVULN_TICKS`), a
@@ -844,7 +861,8 @@ Decision log (deviations from `PLAN.md`):
   Luau-locals change. View: Overkill streaks and impact flashes, the guard drawn as a full ring, the brace ring, BRACED
   shout (`FLOOR_SHOUT_PRIORITY.brace`), armor pulse and toasts. `DAILY.ruleset` 8 -> 9. M1, every fixture and the
   tutorial replay exactly as before; endless replays and scores changed (boards stay `_v1`). Tuning measured (LG7) and
-  the owner's changes applied (2026-11-06); Studio check, art (LG8) and audio pending.
+  the owner's changes applied (2026-11-06; later the brace threshold `BASTION_BRACE_BULLETS` 3 -> 8, `DAILY.ruleset`
+  9 -> 10); Studio check, art (LG8) and audio pending.
 
 - **Hazard art (docs/HAZARD_ART.md).** Presentation only (no sim, dungeon, lockstep, hash, replay, fixture or score
   change). Supersedes docs/PROJECTILE_ART.md PAD3 for the strike and the embers: `BULLET_ART.decalIds` is gone,

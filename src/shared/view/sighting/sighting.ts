@@ -1,8 +1,9 @@
 /**
  * First sightings (docs/ENEMY_VARIANTS.md EV12, EVD10): which new enemies and affixes the watched view shows this frame,
  * and the queue that turns the ones this account has not seen yet into one toast at a time. Pure (no Roblox API):
- * the client's SightingController feeds it the run state, the onboarding status and the clock, shows the toast
- * (ToastPanel, theme string `bestiary.<id>`, shared/onboarding sightingStringKey) and reports the id (`bestiarySeen`).
+ * the client's SightingController feeds it the run state, the onboarding status and the clock, shows the line on the
+ * SightingCard (left edge under the status panel, not the top-centre toasts; theme string `bestiary.<id>`,
+ * shared/onboarding sightingStringKey) and reports the id (`bestiarySeen`).
  *
  *   - sightingsInView: every living actor within SIGHTING_VIEW.radius of the watched player (the view index: the
  *     spectated teammate after a co-op death) whose archetype has a sighting (ARCHETYPE_SIGHTINGS: `imp`, `slime` and

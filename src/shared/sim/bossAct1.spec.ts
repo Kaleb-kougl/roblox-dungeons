@@ -78,7 +78,9 @@ import {
 	type InputFrame,
 	type SimConfig,
 	type SimState,
+	WEB_BOSS_HP,
 	WEB_SWARMER_HP,
+	setBossHp,
 	setSwarmerHp,
 } from "shared/sim";
 
@@ -86,8 +88,10 @@ import {
 // (the port's are 1 hp, CLAUDE.md decision log), so this file runs under WEB_SWARMER_HP. Set at load, not in a
 // beforeAll: describe bodies may run fights while the specs are collected.
 const portSwarmerHp = setSwarmerHp(WEB_SWARMER_HP);
+const portBossHp = setBossHp(WEB_BOSS_HP); // the web boss's 540 hp (port: 270)
 afterAll(() => {
 	setSwarmerHp(portSwarmerHp);
+	setBossHp(portBossHp);
 });
 
 const D = BOSS_ACT1_DATA;

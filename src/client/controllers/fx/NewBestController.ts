@@ -93,6 +93,8 @@ export interface NewBestRankLayer {
 	newRun(ctx: RunContext, baseline: RunBaseline): void;
 	endRun(): void;
 	frame(look: Readonly<NewBestFrame>, input: Readonly<NewBestInput>): NewBestRowOverride | undefined;
+	/** After `frame`: this frame celebrates (a friend toast showed), so the in-run gold confetti bursts. */
+	wantsConfetti(): boolean;
 }
 
 /**
@@ -304,6 +306,7 @@ export class NewBestController implements OnStart {
 		this.cues = look;
 		// The Daily's rank layer steps right after the tracker (DS10) and may own the row past best today.
 		this.drawRow(look, this.daily ? this.rankLayer?.frame(look, input) : undefined);
+		if (this.daily && this.rankLayer?.wantsConfetti() === true) tracker.burstConfetti(input);
 		if (look.fanfare) this.roomClear.dropClearJingle();
 		if (look.scoreCrossed) this.shout();
 		if (input.runOver) this.runOverFrame(look, settings.reducedMotion);

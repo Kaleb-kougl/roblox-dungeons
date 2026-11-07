@@ -63,7 +63,7 @@ function PassedFriend(props: { readonly order: number; readonly friend: DailyRan
 }
 
 /**
- * The run-over panel's row of friends a daily run passed (docs/DAILY.md DS10 / DS11): `You passed`, up to
+ * The run-over panel's row of friends a daily run passed (docs/DAILY.md DS10 / DS11): `You beat`, up to
  * DAILY_RANK.passedShown headshots with names (dailyPassedView), then `+{n} more`. Only for the daily run on screen
  * (RunInfo.world daily and the dailyRank slice's run is this one) that passed at least one friend; nothing otherwise.
  * DailyRankController fills the slice as the run passes friends (the in-run prediction from the board at run start;

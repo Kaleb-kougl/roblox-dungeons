@@ -43,6 +43,12 @@ export const DEFAULT_ROOM_EDGES = true;
 /** Corner HUD panels fade while the action is under them (docs/HUD_LAYOUT.md H7, Options > Display > HUD fade): On. */
 export const DEFAULT_HUD_FADE = true;
 
+/**
+ * Item tooltips on the live HUD's items and boost rows (docs/ITEM_TOOLTIPS.md ITD8, Options > Display > Item tooltips
+ * in combat): On. Off only stops the live HUD's; the pause and run-over lists always have them.
+ */
+export const DEFAULT_HUD_TOOLTIPS = true;
+
 /** The corner minimap (docs/MINIMAP.md M10, Options > Display > Minimap): On by default (the full map key always works). */
 export const DEFAULT_MINIMAP = true;
 

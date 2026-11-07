@@ -720,7 +720,7 @@ export function demonlordTelegraphMarkings(
 
 /**
  * While a Demon Lord attack runs (aiState === ACTIVE): the charge's lane, impact circle and shockwave until the impact
- * (v[MARK] 0), on `dim` (as Mother Bramble's slam); the double cleave's second arc from its first arc to the lunge's
+ * (v[MARK] 0), on `dim` (as Mother Mayhem's slam); the double cleave's second arc from its first arc to the lunge's
  * end (ACTIVE ticks 0..doubleCleaveDelayTicks - 1), from where the lunge will stop, on `bright`. Returns true when it
  * drew anything.
  */

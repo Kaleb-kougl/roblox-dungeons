@@ -381,7 +381,7 @@ export function dailyRankShoutKey(threshold: number): string | undefined {
 	return undefined;
 }
 
-/** The friend toast's line: `hud.dailyRank.passed` ("Passed {name} ({score})"). */
+/** The friend toast's line: `hud.dailyRank.passed` ("Beat {name}'s high score ({score})"). */
 export function dailyPassedToastText(f: DailyRankEntry, s: NewBestStr, fmt: NewBestFormat = plainNumber): string {
 	return s(DAILY_RANK_STRINGS.passed, { name: f.name, score: fmt(f.score) });
 }

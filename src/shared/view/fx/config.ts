@@ -57,7 +57,7 @@ export const FX_SPRITE_VIEW = {
 	guardArtHeadingDeg: 90,
 	/** A deflect re-shows the shield at most this often per player, seconds of the effect clock. */
 	guardMinSec: 0.15,
-	/** Mother Bramble's death: explosions after these delays (effect-clock seconds), offset (sim tiles) and scaled. */
+	/** Mother Mayhem's death: explosions after these delays (effect-clock seconds), offset (sim tiles) and scaled. */
 	bossDeathBursts: [
 		{ delaySec: 0, dx: 0, dz: 0, scale: 1 },
 		{ delaySec: 0.2, dx: 0.8, dz: -0.5, scale: 0.8 },

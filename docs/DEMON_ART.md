@@ -2,7 +2,7 @@
 
 The enemies that are still placeholder primitives are drawn from the **2D Demons - TopDown asset pack v1.1**
 (dropped into `art/` on 2026-10-26): first `enemy.bruiser`, then the turrets `enemy.sprayer` / `enemy.caster` (Phase 2;
-Mother Bramble as a Demon Elite: docs/BRAMBLE_ART.md).
+Mother Mayhem as a Demon Elite: docs/BRAMBLE_ART.md).
 The Lords of Pain art stays exactly as it is (owner, 2026-10-26): `enemy.swarmer` (skeleton), `enemy.sniper` / `turret.sniper`
 (subservient, docs/SNIPER_ART.md) and `boss.demonlord` (Demonlord, docs/BOSS_DEMONLORD.md) are out of scope.
 
@@ -29,7 +29,7 @@ chunks on the aarch64 VM. The pack is SmallScaleInt's "Top-down Demons" (licence
 DD6); its 6 bruiser sheets were uploaded 2026-10-26 (`assetIds.ts`), so the bundled vale pack draws the brute.
 **Nothing has run in Studio.** Open: DA1 (the owner's look at `art/build/contact/enemy.bruiser.png`), DA7, DA8
 (`docs/CLIENT.md`).
-Mother Bramble (docs/BRAMBLE_ART.md) is at the same point. The open decisions are under "Decisions".
+Mother Mayhem (docs/BRAMBLE_ART.md) is at the same point. The open decisions are under "Decisions".
 
 The pack is in `art/vendor/demons-topdown/` (gitignored with the rest of `art/vendor/`; DA0's move is done).
 
@@ -39,7 +39,7 @@ The pack is in `art/vendor/demons-topdown/` (gitignored with the rest of `art/ve
 |---|---|---|---|
 | `enemy.bruiser` | Demon Beast 3 (uploaded 2026-10-26) | 1 in 6 endless room picks (`ENDLESS_ROOM_KINDS` weight 1 of 6) | **Phase 1** (done but DA1 / DA7) |
 | `enemy.sprayer` (`turret.sprayer`), `enemy.caster` (`turret.caster`) | Demon Spawn 8 / 11 (uploaded 2026-10-30, DA13) | M1's sandbox turrets, the tutorial's two sprayers (combat F) | **Phase 2** |
-| `boss.act1` (Mother Bramble) | Demon Elite 3 (uploaded 2026-10-26) | every endless boss floor it is picked for, the tutorial boss, M1 | **docs/BRAMBLE_ART.md** (a Demon Elite) |
+| `boss.act1` (Mother Mayhem) | Demon Elite 3 (uploaded 2026-10-26) | every endless boss floor it is picked for, the tutorial boss, M1 | **docs/BRAMBLE_ART.md** (a Demon Elite) |
 | `enemy.imp`, `enemy.summoner` | Imp 9 / Demon Spawn 10 (built and uploaded 2026-10-31) | endless rooms from their unlock floors (docs/ENEMY_VARIANTS.md) | **docs/ENEMY_VARIANTS.md** "EV10 imp / summoner (as built)" (this pipeline, per-sheet cells, rims) |
 | `enemy.dummy` | placeholder post | the tutorial | not planned (a post, not a creature) |
 | `enemy.swarmer`, `enemy.sniper`, `turret.sniper`, `boss.demonlord` | Lords of Pain | | **unchanged** |
@@ -323,13 +323,13 @@ Each has a `-outline` sheet of the same size (the 2 px enemy rim, `pad` 3).
   Record in `docs/SPIKES.md`. → Verify: the owner signs off DD2 (Spawn 8 / 11) and DD7.
 
 - [x] **DA15. Docs.** This section (status, the placeholder table, DD2 / DD7), `CLAUDE.md` (the Demon art bullet
-  and the docs table), `docs/ART.md` (slice table row for the turrets; the bruiser / Mother Bramble rows and the packs
+  and the docs table), `docs/ART.md` (slice table row for the turrets; the bruiser / Mother Mayhem rows and the packs
   row brought up to date with the 2026-10-26 upload and licence; the per-layer cut in the status notes),
   `THIRD_PARTY_NOTICES.md` ("Used for" names the creatures, so it gained Spawn 8 / 11). `art/README.md` lists the
   pack, not its sets: unchanged. After DA13 / DA14: the upload note here and in `docs/ART.md`, the Studio results in
   `docs/SPIKES.md`.
 
-## Phase 3: Mother Bramble
+## Phase 3: Mother Mayhem
 
 `boss.act1` as a **Demon Elite** (owner, 2026-10-26) has its own plan: **docs/BRAMBLE_ART.md** (tasks BR0-BR7,
 decisions BD1-BD7). It depends on DA0 and DA2 here.

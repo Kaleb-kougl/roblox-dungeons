@@ -27,6 +27,7 @@ import {
 	snappedSliceScale,
 	uniformPadding,
 	type HudCorner,
+	type HudFadeSlot,
 	type PanelSkin,
 	type SkinButtonVariant,
 	type SkinPadding,
@@ -140,6 +141,12 @@ export interface PanelProps {
 	anchor?: Vector2;
 	/** An always-on corner panel (docs/HUD_LAYOUT.md H3): placed in that corner, HUD_VIEW.margin from both edges. */
 	corner?: HudCorner;
+	/**
+	 * The occlusion fade slot (docs/HUD_LAYOUT.md H7) of a panel that is not a corner panel (the toasts, the
+	 * first-sighting card): drawn in a CanvasGroup on that slot's fade binding, registered for HudOcclusionController,
+	 * placed by `position` / `anchor`. A corner panel always fades on its corner's slot (this is ignored).
+	 */
+	fade?: HudFadeSlot;
 	width?: number;
 	order?: number;
 	padding?: number;
@@ -155,8 +162,8 @@ export interface PanelProps {
 	visible?: boolean | React.Binding<boolean>;
 	children?: React.ReactNode;
 	/**
-	 * Corner panels only: drawn on the outer frame, outside the CanvasGroup (a UIStroke such as the tutorial's
-	 * HighlightRing, which the group would clip at its edge).
+	 * Fading (corner or `fade`) panels only: drawn on the outer frame, outside the CanvasGroup (a UIStroke such as the
+	 * tutorial's HighlightRing, which the group would clip at its edge).
 	 */
 	overlay?: React.ReactNode;
 	/**
@@ -174,6 +181,11 @@ export interface PanelProps {
 	 * Children drawn only in the flat look (an accent UIStroke round a flat panel: the frame art replaces it).
 	 */
 	flatOnly?: React.ReactNode;
+}
+
+/** The fade slot of a Panel: its corner's, else its `fade` (undefined: a plain frame, no occlusion fade). */
+function fadeSlotOf(props: PanelProps): HudFadeSlot | undefined {
+	return props.corner ?? props.fade;
 }
 
 /** A corner's position and anchor, HUD_VIEW.margin in from both edges. */
@@ -231,7 +243,7 @@ export function Panel(props: PanelProps) {
 	const skin = panelSkinId(props);
 	if (skin !== undefined) return <SkinnedPanel panel={props} skinId={skin[0]} context={skin[1]} />;
 	const pad = props.padding ?? HUD_VIEW.pad;
-	const corner = props.corner;
+	const corner = fadeSlotOf(props);
 	const [position, anchor, size, autoSize] = panelBox(props);
 	const layout = panelLayout(props, uniformPadding(pad));
 	if (corner !== undefined) {
@@ -329,7 +341,7 @@ function SkinnedPanel(props: { panel: PanelProps; skinId: string; context: SkinP
 		sliceScale,
 	);
 	const ornament = pack !== undefined && ornamentShown(skinHasOf(pack), props.context, p.ornament === true);
-	const corner = p.corner;
+	const corner = fadeSlotOf(p);
 	const [position, anchor, size, autoSize] = panelBox(p);
 	const transparency = p.transparency ?? HUD_VIEW.panelTransparency;
 	if (corner !== undefined) {

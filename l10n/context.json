@@ -89,14 +89,14 @@
 		"note": "Dungeon area (biome) name: overgrown, plant-covered ruins. Shown on the stage card under the floor number when a floor loads, and in the run info line of the pause menu. Evocative place name, title case."
 	},
 	"boon.bastion.desc": {
-		"note": "Effect line of the boon \"Bastion\" on its draft card (wraps over two or three lines of a 240 px card) and in the build list. Terse game-rules style: keep numbers, % and units (\"s\" = seconds) exactly. A \"heart\" is one unit of health; \"combo\" the kill-streak multiplier; \"graze\" a bullet skimming past without hitting. An armor \"pip\" is one unit of armor that absorbs a whole hit; the \"guard\" is the sword's block; a \"brace\" is Bastion restoring a pip after a guard or roll stops 3 bullets."
+		"note": "Effect line of the boon \"Bastion\" on its draft card (wraps over two or three lines of a 240 px card) and in the build list. Terse game-rules style: keep numbers, % and units (\"s\" = seconds) exactly. A \"heart\" is one unit of health; \"combo\" the kill-streak multiplier; \"graze\" a bullet skimming past without hitting. An armor \"pip\" is one unit of armor that absorbs a whole hit; the \"guard\" is the sword's block; a \"brace\" is Bastion restoring a pip after a guard or roll stops 8 bullets."
 	},
 	"boon.bastion.icon": {
 		"note": "Icon label of the boon \"Bastion\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
 		"max": 3
 	},
 	"boon.bastion.name": {
-		"note": "Name of a boon (a power-up kept for the rest of the run, picked from a draft of cards); its effect: \"+1 armor pip; a full-ring guard; stop 3 bullets: +1 pip\". Shown as a draft card's one-line title (24 px text on a 240 px card, no wrapping), in toasts, and in the build list. Short and flavourful, title case; glossary term.",
+		"note": "Name of a boon (a power-up kept for the rest of the run, picked from a draft of cards); its effect: \"+1 armor pip; a full-ring guard; stop 8 bullets: +1 pip\". Shown as a draft card's one-line title (24 px text on a 240 px card, no wrapping), in toasts, and in the build list. Short and flavourful, title case; glossary term.",
 		"max": 20
 	},
 	"boon.bounty.desc": {
@@ -473,7 +473,7 @@
 		"note": "Generic name for the boss of the endgame act. Reserved: required by the theme contract inherited from the original web build, but not shown in the current Roblox build; translate it as a plain name anyway."
 	},
 	"boss.act1.name": {
-		"note": "Proper name of the first boss: a huge, thorny plant demon, a mother figure (the tutorial calls the boss \"her\"). Shown in title-size text in the boss health bar at the top centre of the screen and in the run-over line \"{name} defeated\". Translate the meaning (a creature name), not phonetically; keep it consistent with the glossary."
+		"note": "Proper name of the first boss: a huge, chaotic demon, a mother figure (the tutorial calls the boss \"her\"). Shown in title-size text in the boss health bar at the top centre of the screen and in the run-over line \"{name} defeated\". Translate the meaning (a creature name), not phonetically; keep it consistent with the glossary."
 	},
 	"boss.demonlord.name": {
 		"note": "Proper name of the alternate boss of endless boss floors: a towering demon king. Shown in the boss health bar at the top centre and in the run-over line \"{name} defeated\". Keep the definite article if the language has one; keep it consistent with the glossary."
@@ -792,7 +792,7 @@
 		}
 	},
 	"daily.result.best": {
-		"note": "Run-over Daily block: today's best (unchanged by this run). {score} is a formatted score.",
+		"note": "Run-over Daily block: today's best (unchanged by this run). {score} is a formatted score followed by \"pts\" (points, as in hud.score.points).",
 		"example": {
 			"score": "12,040"
 		}
@@ -804,13 +804,13 @@
 		}
 	},
 	"daily.result.firstBest": {
-		"note": "Run-over Daily block: the player's first score of the day. {new} is a formatted score.",
+		"note": "Run-over Daily block: the player's first score of the day. {new} is a formatted score followed by \"pts\" (points, as in hud.score.points).",
 		"example": {
 			"new": "12,040"
 		}
 	},
 	"daily.result.improved": {
-		"note": "Run-over Daily block: today's best went from old to new. {old} and {new} are formatted scores. \"->\" means \"changed to\".",
+		"note": "Run-over Daily block: today's best went from old to new. {old} and {new} are formatted scores; \"pts\" = points (as in hud.score.points). \"->\" means \"changed to\".",
 		"example": {
 			"old": "9,800",
 			"new": "12,040"
@@ -916,14 +916,14 @@
 		"max": 20
 	},
 	"duo.citadel.desc": {
-		"note": "Effect line of the Duo boon \"Citadel\" on its draft card (wraps) and in the build list. Terse game-rules style; keep numbers exactly. \"Embers\" here are burning patches on the floor; a \"spark\" jumps between enemies; a \"burst\" is a ring of bolts. An armor \"pip\" is one unit of armor that absorbs a whole hit; the \"guard\" is the sword's block; a \"brace\" is Bastion restoring a pip after a guard or roll stops 3 bullets."
+		"note": "Effect line of the Duo boon \"Citadel\" on its draft card (wraps) and in the build list. Terse game-rules style; keep numbers exactly. \"Embers\" here are burning patches on the floor; a \"spark\" jumps between enemies; a \"burst\" is a ring of bolts. An armor \"pip\" is one unit of armor that absorbs a whole hit; the \"guard\" is the sword's block; a \"brace\" is Bastion restoring a pip after a guard or roll stops 8 bullets."
 	},
 	"duo.citadel.icon": {
 		"note": "Icon label of the Duo boon \"Citadel\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
 		"max": 3
 	},
 	"duo.citadel.name": {
-		"note": "Name of a Duo boon (a special boon offered when the player owns two boons that combine); its effect: \"Every guard that stops 3 bullets restores a pip\". Shown as a draft card's one-line title (24 px text on a 240 px card, no wrapping), in toasts and the build list. Title case; glossary term.",
+		"note": "Name of a Duo boon (a special boon offered when the player owns two boons that combine); its effect: \"Every guard that stops 8 bullets restores a pip\". Shown as a draft card's one-line title (24 px text on a 240 px card, no wrapping), in toasts and the build list. Title case; glossary term.",
 		"max": 20
 	},
 	"duo.closeCall.desc": {
@@ -993,7 +993,7 @@
 		"max": 20
 	},
 	"duo.stoneHeart.desc": {
-		"note": "Effect line of the Duo boon \"Stone Heart\" on its draft card (wraps) and in the build list. Terse game-rules style; keep numbers exactly. \"Embers\" here are burning patches on the floor; a \"spark\" jumps between enemies; a \"burst\" is a ring of bolts. An armor \"pip\" is one unit of armor that absorbs a whole hit; the \"guard\" is the sword's block; a \"brace\" is Bastion restoring a pip after a guard or roll stops 3 bullets."
+		"note": "Effect line of the Duo boon \"Stone Heart\" on its draft card (wraps) and in the build list. Terse game-rules style; keep numbers exactly. \"Embers\" here are burning patches on the floor; a \"spark\" jumps between enemies; a \"burst\" is a ring of bolts. An armor \"pip\" is one unit of armor that absorbs a whole hit; the \"guard\" is the sword's block; a \"brace\" is Bastion restoring a pip after a guard or roll stops 8 bullets."
 	},
 	"duo.stoneHeart.icon": {
 		"note": "Icon label of the Duo boon \"Stone Heart\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
@@ -1086,7 +1086,7 @@
 		"note": "Enemy type name: an imp carrying a war banner that stays behind other enemies and makes those near it faster. Shown in the stage card's roster line (the enemy kinds of a floor, joined with \" · \") and the main menu's Daily card. Singular noun, title case, used as a proper name; keep it short. Glossary term."
 	},
 	"fx.brace.text": {
-		"note": "Text written on the floor beside the player when the Bastion boon \"braces\": a guard (the sword's block) or a roll stopped 3 bullets and restored an armor pip (or, with the Stone Heart duo, healed). ALL CAPS, one word, like the parry flash (fx.parry.text); keep capitals if the script has them.",
+		"note": "Text written on the floor beside the player when the Bastion boon \"braces\": a guard (the sword's block) or a roll stopped 8 bullets and restored an armor pip (or, with the Stone Heart duo, healed). ALL CAPS, one word, like the parry flash (fx.parry.text); keep capitals if the script has them.",
 		"max": 10
 	},
 	"fx.golden.escaped": {
@@ -1257,6 +1257,26 @@
 			"points": "12,340"
 		}
 	},
+	"hud.build.boons": {
+		"note": "Section heading in the Build list (pause menu and run-over screen: everything the player owns this run): the boons (run power-ups picked from drafts).",
+		"max": 14
+	},
+	"hud.build.boosts": {
+		"note": "Section heading in the Build list (pause menu only): the running boosts (temporary power-ups), each with its time left.",
+		"max": 14
+	},
+	"hud.build.curses": {
+		"note": "Section heading in the Build list (pause menu and run-over screen): the curses (drawbacks accepted at shrines for more score).",
+		"max": 14
+	},
+	"hud.build.duos": {
+		"note": "Section heading in the Build list (pause menu and run-over screen): the Duo boons (special boons unlocked by owning two specific boons). Plural of hud.tip.kind.duo.",
+		"max": 14
+	},
+	"hud.build.relics": {
+		"note": "Section heading in the Build list (pause menu and run-over screen): the relics (permanent items found during the run).",
+		"max": 14
+	},
 	"hud.build.title": {
 		"note": "Title of the list of boons the player owns (pause menu and run-over panel): their \"build\" for this run.",
 		"max": 12
@@ -1340,7 +1360,7 @@
 		}
 	},
 	"hud.dailyRank.passed": {
-		"note": "Toast during a Daily run when the player's score passes a friend's best today. {name} is the friend's display name (never translated); {score} their formatted score.",
+		"note": "Toast during a Daily run when the player's score beats a friend's best score today (\"high score\" = that friend's best today). {name} is the friend's display name (never translated; reorder freely, the possessive is part of the sentence); {score} their formatted score.",
 		"example": {
 			"name": "Alex",
 			"score": "18,250"
@@ -1660,6 +1680,13 @@
 		"note": "Run-over panel row label: the highest combo multiplier reached in the run. Label column 200 px.",
 		"max": 18
 	},
+	"hud.score.points": {
+		"note": "Run-over panel (after death), the score breakdown's value column (right-aligned, about 110 px, text shrinks to fit): a number of points with a short unit (\"pts\" = points). {points} is the number. Keep the unit an abbreviation.",
+		"max": 12,
+		"example": {
+			"points": 61930
+		}
+	},
 	"hud.score.pop": {
 		"note": "Points popping up in the game world over a killed enemy: a plus sign and a number. Usually unchanged (no letters).",
 		"max": 9,
@@ -1710,6 +1737,73 @@
 			"name": "Alex"
 		}
 	},
+	"hud.tip.duoFrom": {
+		"note": "Item tooltip (a small box shown when the player hovers, focuses or taps an item they own in the pause menu's Build list, the run-over screen or the in-run HUD's item icons). Line under a Duo boon's effect: the two boons it was made from. {a} and {b} are the two boon names (shown in their colours).",
+		"max": 40,
+		"example": {
+			"a": "Chain Spark",
+			"b": "Volatile"
+		}
+	},
+	"hud.tip.evolves": {
+		"note": "Item tooltip (a small box shown when the player hovers, focuses or taps an item they own in the pause menu's Build list, the run-over screen or the in-run HUD's item icons). Line under a boon's effect at the level before its evolution: the next pick turns it into a stronger, renamed form. {evo} is the evolved form's name, {desc} its effect (a short change).",
+		"max": 48,
+		"example": {
+			"evo": "Cataclysm",
+			"desc": "16 piercing bolts"
+		}
+	},
+	"hud.tip.kind.boon": {
+		"note": "Item tooltip (a small box shown when the player hovers, focuses or taps an item they own in the pause menu's Build list, the run-over screen or the in-run HUD's item icons). Kind line under the item's name for a boon (a run power-up picked from a draft). {rarity} is the rarity's name (boon.rarity.*: Common / Rare / Legendary). Reorder or inflect as the language needs; if the rarity must agree with the word for boon, use the form that fits all three.",
+		"max": 24,
+		"example": {
+			"rarity": "Rare"
+		}
+	},
+	"hud.tip.kind.boost": {
+		"note": "Item tooltip (a small box shown when the player hovers, focuses or taps an item they own in the pause menu's Build list, the run-over screen or the in-run HUD's item icons). Kind line for a boost (a temporary power-up dropped by a killed enemy, lasting some seconds). One word, the glossary's boost.",
+		"max": 14
+	},
+	"hud.tip.kind.curse": {
+		"note": "Item tooltip (a small box shown when the player hovers, focuses or taps an item they own in the pause menu's Build list, the run-over screen or the in-run HUD's item icons). Kind line for a curse (a drawback the player accepted at a shrine for more score). One word.",
+		"max": 14
+	},
+	"hud.tip.kind.duo": {
+		"note": "Item tooltip (a small box shown when the player hovers, focuses or taps an item they own in the pause menu's Build list, the run-over screen or the in-run HUD's item icons). Kind line for a Duo boon (a special boon unlocked by owning two specific boons). One word, same term as the DUO draft banner (hud.draft.duo) in normal case.",
+		"max": 14
+	},
+	"hud.tip.kind.evolved": {
+		"note": "Item tooltip (a small box shown when the player hovers, focuses or taps an item they own in the pause menu's Build list, the run-over screen or the in-run HUD's item icons). Kind line for an evolved boon (a boon at its top level turned into a stronger, renamed form). {boon} is the original boon's name.",
+		"max": 32,
+		"example": {
+			"boon": "Volatile"
+		}
+	},
+	"hud.tip.kind.relic": {
+		"note": "Item tooltip (a small box shown when the player hovers, focuses or taps an item they own in the pause menu's Build list, the run-over screen or the in-run HUD's item icons). Kind line for a relic (a permanent item found on a pedestal or in a chest during the run). One word.",
+		"max": 14
+	},
+	"hud.tip.more": {
+		"note": "Item tooltip (a small box shown when the player hovers, focuses or taps an item they own in the pause menu's Build list, the run-over screen or the in-run HUD's item icons). On the HUD's \"+N\" icon that stands for the items that did not fit in the row: how many are hidden (the tooltip then lists their names). {count} is a number (2 or more).",
+		"max": 16,
+		"example": {
+			"count": 3
+		}
+	},
+	"hud.tip.next": {
+		"note": "Item tooltip (a small box shown when the player hovers, focuses or taps an item they own in the pause menu's Build list, the run-over screen or the in-run HUD's item icons). Line under a levelled boon's effect: what its next level gives. {desc} is the next level's effect, written as a short change (e.g. \"12 bolts\").",
+		"max": 40,
+		"example": {
+			"desc": "12 bolts"
+		}
+	},
+	"hud.tip.secondsLeft": {
+		"note": "Item tooltip (a small box shown when the player hovers, focuses or taps an item they own in the pause menu's Build list, the run-over screen or the in-run HUD's item icons). Time left on a running boost, also its row in the Build list. {seconds} is a whole number of seconds; \"s\" is the abbreviation for seconds.",
+		"max": 16,
+		"example": {
+			"seconds": 12
+		}
+	},
 	"hud.toast.boon": {
 		"note": "Toast (top centre) after taking a boon. {name} is the boon's name (e.g. \"Chain Spark\").",
 		"example": {
@@ -1724,10 +1818,10 @@
 		}
 	},
 	"hud.toast.brace": {
-		"note": "Toast (top centre) when the Bastion boon \"braces\": a guard (the sword's block) or a roll stopped 3 bullets and restored one armor pip. An armor \"pip\" is one unit of armor that absorbs a whole hit. Keep \"+1\" as is."
+		"note": "Toast (top centre) when the Bastion boon \"braces\": a guard (the sword's block) or a roll stopped 8 bullets and restored one armor pip. An armor \"pip\" is one unit of armor that absorbs a whole hit. Keep \"+1\" as is."
 	},
 	"hud.toast.braceHeal": {
-		"note": "Toast (top centre) when the Bastion boon \"braces\" (a guard or a roll stopped 3 bullets) while the player's armor is already full and the Stone Heart duo heals half a heart instead of restoring a pip. Same opening as hud.toast.brace (\"Braced: +1 armor\")."
+		"note": "Toast (top centre) when the Bastion boon \"braces\" (a guard or a roll stopped 8 bullets) while the player's armor is already full and the Stone Heart duo heals half a heart instead of restoring a pip. Same opening as hud.toast.brace (\"Braced: +1 armor\")."
 	},
 	"hud.toast.curse": {
 		"note": "Toast (top centre) after accepting a curse at a shrine. {name} is the curse's name.",
@@ -1825,9 +1919,9 @@
 		}
 	},
 	"hud.victory": {
-		"note": "Main line of the run-over panel after beating a boss to win a run. {name} is the boss's name (e.g. \"Mother Bramble\"); {key} is a key or button name such as \"R\", \"E\", \"Space\" or \"D-pad down\" (from the player's bindings; currently always English).",
+		"note": "Main line of the run-over panel after beating a boss to win a run. {name} is the boss's name (e.g. \"Mother Mayhem\"); {key} is a key or button name such as \"R\", \"E\", \"Space\" or \"D-pad down\" (from the player's bindings; currently always English).",
 		"example": {
-			"name": "Mother Bramble",
+			"name": "Mother Mayhem",
 			"key": "R"
 		}
 	},
@@ -2675,6 +2769,10 @@
 		"note": "Options screen, Display tab: row label for the size of the in-game HUD (percent steps). Label column 210 px.",
 		"max": 24
 	},
+	"options.display.hudTooltips": {
+		"note": "Options screen, Display tab: row label (On / Off) for item tooltips during combat: hovering an item icon in the in-run HUD with the mouse shows what it does. Menus always show them. Label column 210 px.",
+		"max": 24
+	},
 	"options.display.language": {
 		"note": "Options screen, Display tab: row label for the game's language (the choice shows between < and > buttons). Label column 210 px.",
 		"max": 24
@@ -2921,6 +3019,14 @@
 		"note": "Gamepad hint bar at the bottom of a menu, shown beside a controller button glyph: the shoulder buttons switch to the previous / next tab.",
 		"max": 12
 	},
+	"pause.build": {
+		"note": "Button in the pause menu on a phone held upright: swaps the map for the Build list (everything the player owns this run). Same word as the list's title hud.build.title.",
+		"max": 12
+	},
+	"pause.map": {
+		"note": "Button in the pause menu on a phone held upright: swaps the Build list back for the dungeon map.",
+		"max": 12
+	},
 	"playtest.run.hits": {
 		"note": "Stat label on the run-over panel (a 150 px stat column, the value written below it): how many hits the player took.",
 		"max": 18
@@ -3138,7 +3244,7 @@
 		"max": 10
 	},
 	"run.best.score": {
-		"note": "Run-over record row: the old and new best score. {old} and {new} are formatted scores, {delta} the formatted gain. \"->\" means \"changed to\".",
+		"note": "Run-over record row: the old and new best score. {old} and {new} are formatted scores, {delta} the formatted gain; \"pts\" = points (the short unit of hud.score.points). \"->\" means \"changed to\".",
 		"example": {
 			"old": "18,250",
 			"new": "23,410",
@@ -3146,7 +3252,7 @@
 		}
 	},
 	"run.best.target": {
-		"note": "Dim line on the run-over panel and the pause menu: the best to beat. {score} is a formatted score; {floor} a floor number.",
+		"note": "Dim line on the run-over panel and the pause menu: the best to beat. {score} is a formatted score followed by \"pts\" (points, as in hud.score.points); {floor} a floor number.",
 		"example": {
 			"score": "23,410",
 			"floor": 14
@@ -3166,14 +3272,14 @@
 		}
 	},
 	"run.dailyRank.passed": {
-		"note": "Run-over row label on a Daily run, followed by the friends' names whose scores the player passed. Short label like \"You passed:\"."
+		"note": "Run-over row label on a Daily run, followed by the headshots of the friends whose best score today the player beat. Short label like \"You beat:\"."
 	},
 	"run.dailyRank.ribbon": {
 		"note": "Run-over ribbon on a Daily run that beat today's personal best. ALL CAPS exclamation.",
 		"max": 20
 	},
 	"run.dailyRank.score": {
-		"note": "Run-over record row on a Daily run. {old} and {new} are formatted scores, {delta} the gain. \"->\" means \"changed to\".",
+		"note": "Run-over record row on a Daily run. {old} and {new} are formatted scores, {delta} the gain; \"pts\" = points (as in hud.score.points). \"->\" means \"changed to\".",
 		"example": {
 			"old": "9,800",
 			"new": "12,040",
@@ -3181,7 +3287,7 @@
 		}
 	},
 	"run.dailyRank.target": {
-		"note": "Dim line on the run-over panel / pause menu of a Daily run: today's best to beat. {score} is a formatted score.",
+		"note": "Dim line on the run-over panel / pause menu of a Daily run: today's best to beat. {score} is a formatted score followed by \"pts\" (points, as in hud.score.points).",
 		"example": {
 			"score": "12,040"
 		}
@@ -3246,6 +3352,13 @@
 		"note": "Run-over panel (after death), a highlight cell label (2 x 2 grid of cells about 200 px wide; the value is drawn beside or under it, text shrinks): rooms cleared without taking a hit (PERFECT is the room-clear stamp, room.clear.stamp.perfect: keep the same word, in capitals if the script has them). The value is run.recap.hl.ofTotal (\"7 of 11\").",
 		"max": 20
 	},
+	"run.recap.hl.points": {
+		"note": "Run-over panel (after death), a highlight cell's value: a number of points with a short unit (\"pts\" = points; the same as hud.score.points), e.g. the Speed bonus. {n} is the formatted number. Usually short.",
+		"max": 12,
+		"example": {
+			"n": "1,240"
+		}
+	},
 	"run.recap.hl.rooms": {
 		"note": "Run-over panel (after death), a highlight cell label (2 x 2 grid of cells about 200 px wide; the value is drawn beside or under it, text shrinks): rooms cleared of enemies this run.",
 		"max": 20
@@ -3271,7 +3384,7 @@
 		"max": 20
 	},
 	"run.recap.near.boss": {
-		"note": "Run-over panel (after death), the one \"so close\" line under the main line (one line, ember colour, text shrinks to fit about 420 px): the boss was nearly dead when the run ended. {boss} is the boss's name (already translated, e.g. \"Mother Bramble\"), {pct} a whole number of percent of its health left. Encouraging, a next target, never a reproach.",
+		"note": "Run-over panel (after death), the one \"so close\" line under the main line (one line, ember colour, text shrinks to fit about 420 px): the boss was nearly dead when the run ended. {boss} is the boss's name (already translated, e.g. \"Mother Mayhem\"), {pct} a whole number of percent of its health left. Encouraging, a next target, never a reproach.",
 		"max": 40,
 		"example": {
 			"boss": "The Demon Lord",
@@ -3290,10 +3403,10 @@
 		"max": 34
 	},
 	"run.recap.near.nextBoss": {
-		"note": "Run-over panel (after death), the one \"so close\" line under the main line (one line, ember colour, text shrinks to fit about 420 px): the next floor is a boss floor. {boss} is that boss's name (already translated, e.g. \"Mother Bramble\").",
+		"note": "Run-over panel (after death), the one \"so close\" line under the main line (one line, ember colour, text shrinks to fit about 420 px): the next floor is a boss floor. {boss} is that boss's name (already translated, e.g. \"Mother Mayhem\").",
 		"max": 34,
 		"example": {
-			"boss": "Mother Bramble"
+			"boss": "Mother Mayhem"
 		}
 	},
 	"run.recap.near.recordFloor": {
@@ -3301,7 +3414,7 @@
 		"max": 40
 	},
 	"run.recap.near.score": {
-		"note": "Run-over panel (after death), the one \"so close\" line under the main line (one line, ember colour, text shrinks to fit about 420 px): the score was just short of the player's best. {gap} is a formatted number of points. Encouraging, a next target, never a reproach.",
+		"note": "Run-over panel (after death), the one \"so close\" line under the main line (one line, ember colour, text shrinks to fit about 420 px): the score was just short of the player's best. {gap} is a formatted number of points, followed by the short unit (\"pts\", as in hud.score.points). Encouraging, a next target, never a reproach.",
 		"max": 34,
 		"example": {
 			"gap": "500"
@@ -3648,13 +3761,13 @@
 		"note": "First-run tutorial prompt for phone / tablet players; on-screen button names (Attack, Alt, Roll, Flask, Swap, Ember, Accept) must use exactly the words of the touch.* button labels, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: a boost (a temporary power-up dropped by an enemy) lies on the floor and must be walked over before it fades. Friendly, short instructional sentences in second person."
 	},
 	"tutorial.prompt.boss.gamepad": {
-		"note": "First-run tutorial prompt for gamepad players, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: the practice boss (Mother Bramble, referred to as \"her\"); orange previews show where her bullets will go. Friendly, short instructional sentences in second person."
+		"note": "First-run tutorial prompt for gamepad players, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: the practice boss (Mother Mayhem, referred to as \"her\"); orange previews show where her bullets will go. Friendly, short instructional sentences in second person."
 	},
 	"tutorial.prompt.boss.keyboard": {
-		"note": "First-run tutorial prompt for keyboard and mouse players, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: the practice boss (Mother Bramble, referred to as \"her\"); orange previews show where her bullets will go. Friendly, short instructional sentences in second person."
+		"note": "First-run tutorial prompt for keyboard and mouse players, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: the practice boss (Mother Mayhem, referred to as \"her\"); orange previews show where her bullets will go. Friendly, short instructional sentences in second person."
 	},
 	"tutorial.prompt.boss.touch": {
-		"note": "First-run tutorial prompt for phone / tablet players; on-screen button names (Attack, Alt, Roll, Flask, Swap, Ember, Accept) must use exactly the words of the touch.* button labels, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: the practice boss (Mother Bramble, referred to as \"her\"); orange previews show where her bullets will go. Friendly, short instructional sentences in second person."
+		"note": "First-run tutorial prompt for phone / tablet players; on-screen button names (Attack, Alt, Roll, Flask, Swap, Ember, Accept) must use exactly the words of the touch.* button labels, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: the practice boss (Mother Mayhem, referred to as \"her\"); orange previews show where her bullets will go. Friendly, short instructional sentences in second person."
 	},
 	"tutorial.prompt.bow.gamepad": {
 		"note": "First-run tutorial prompt for gamepad players, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: swapping to the bow and holding the secondary action to charge a heavy arrow. Friendly, short instructional sentences in second person. Placeholders {swap}, {alt} are the player's bound key or button names (e.g. \"Y\", \"LT\"; currently English).",

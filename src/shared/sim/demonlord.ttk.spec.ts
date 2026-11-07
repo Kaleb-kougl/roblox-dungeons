@@ -1,7 +1,8 @@
 // 'boss.demonlord' time to kill with the real weapons (Roblox port, docs/BOSS_DEMONLORD.md D4): the harness and the bots
 // of bossAct1.ttk.spec.ts (copied: specs cannot import each other), the same scripted players (sword only or bow only,
 // 60 % and 75 % uptime, seeds 1337 / 42 / 7, god mode) against the Demon Lord in the same M1 dungeons. Target: Mother
-// Bramble's band, 2..4 minutes. The measured times are printed next to hers (MOTHER_BRAMBLE_TTK, her README table).
+// Mayhem's band, 2..4 minutes at the web build's 540 hp, halved with the port's BOSS_HP (270): 1..2 minutes. The
+// measured times are printed next to hers (MOTHER_BRAMBLE_TTK, her README table).
 import { describe, expect, it } from "@rbxts/jest-globals";
 import {
 	KALEB_VALE_MVP_PARAMS,
@@ -32,6 +33,8 @@ import {
 	type InputFrame,
 	type SimConfig,
 	type SimState,
+	BOSS_HP,
+	WEB_BOSS_HP,
 } from "shared/sim";
 
 const SECONDS = (ticks: number) => ticks / SIM_HZ;
@@ -293,8 +296,11 @@ function makeWeaponBot(seed: number, o: WeaponBotOptions): Bot {
 
 /**
  * Measured TTK targets (README "Time to kill"): 2..4 minutes for both real weapons across a decent player's uptime
- * band (60 % and 75 % of the fight attacking), aiming for ~3 minutes.
+ * band (60 % and 75 % of the fight attacking), aiming for ~3 minutes, at the web build's 540 hp; the port's halved
+ * BOSS_HP (CLAUDE.md decision log, 2026-11-06) scales the band to 1..2 minutes (measured 61-100 s).
  */
+const TTK_MIN_SECONDS = (120 * BOSS_HP) / WEB_BOSS_HP;
+const TTK_MAX_SECONDS = (240 * BOSS_HP) / WEB_BOSS_HP;
 const BOW_BOT = { cycle: 180, attackDist: 6, dodgeDist: 6.5, rollChance: 1 / 45 };
 const SWORD_BOT = { cycle: 180, attackDist: 2.3, dodgeDist: 4.5, rollChance: 1 / 45 };
 const REAL_WEAPON_TTK = [
@@ -312,7 +318,7 @@ const REAL_WEAPON_TTK = [
 	},
 ] as const;
 
-/** Mother Bramble's measured TTKs (bossAct1.ttk.spec.ts, her README table), seconds per seed 1337 / 42 / 7. */
+/** Mother Mayhem's measured TTKs (bossAct1.ttk.spec.ts, her README table), seconds per seed 1337 / 42 / 7. */
 const MOTHER_BRAMBLE_TTK: ReadonlyArray<ReadonlyArray<number>> = [
 	[203, 193, 192],
 	[148, 151, 148],
@@ -326,7 +332,7 @@ for (let w = 0; w < REAL_WEAPON_TTK.size(); w++) {
 	describe(`boss.demonlord TTK with the real weapons: ${label}`, () => {
 		for (let k = 0; k < TTK_SEEDS.size(); k++) {
 			const seed = TTK_SEEDS[k];
-			it(`seed ${seed}: 2..4 minutes (Mother Bramble: ~${MOTHER_BRAMBLE_TTK[w][k]} s)`, () => {
+			it(`seed ${seed}: 1..2 minutes (Mother Mayhem: ~${MOTHER_BRAMBLE_TTK[w][k]} s)`, () => {
 				const log = runFight(seed, 6 * 60 * SIM_HZ, makeWeaponBot(seed + 11, opts), true, [weapon, undefined]);
 				const ttk = SECONDS(log.deathTick - log.engageTick);
 				let dealt = 0;
@@ -334,23 +340,23 @@ for (let w = 0; w < REAL_WEAPON_TTK.size(); w++) {
 				print(
 					`[boss.demonlord] seed ${seed}: ${weapon} (${string.format("%.0f", opts.duty * 100)}% uptime) TTK ${
 						log.deathTick > 0 ? string.format("%.1f", ttk) : "> 360"
-					} s (Mother Bramble ${MOTHER_BRAMBLE_TTK[w][k]} s), hp dealt ${string.format("%.0f", dealt)}`,
+					} s (Mother Mayhem ${MOTHER_BRAMBLE_TTK[w][k]} s), hp dealt ${string.format("%.0f", dealt)}`,
 				);
 				expect(log.deathTick).toBeGreaterThan(0);
-				expect(ttk).toBeGreaterThanOrEqual(120);
-				expect(ttk).toBeLessThanOrEqual(240);
+				expect(ttk).toBeGreaterThanOrEqual(TTK_MIN_SECONDS);
+				expect(ttk).toBeLessThanOrEqual(TTK_MAX_SECONDS);
 			});
 		}
 	});
 }
 
 /**
- * Fairness next to Mother Bramble (the plan's risk "a melee cleave against sword players"): the same bots, the same
+ * Fairness next to Mother Mayhem (the plan's risk "a melee cleave against sword players"): the same bots, the same
  * seeds, the hits that land on the player per minute of fight against each boss. The Demon Lord may hit harder than
  * she does (he hunts), but not more than HITS_RATIO_MAX times as often.
  */
 const HITS_RATIO_MAX = 2;
-describe("boss.demonlord hits taken next to Mother Bramble's (same bots, god mode)", () => {
+describe("boss.demonlord hits taken next to Mother Mayhem's (same bots, god mode)", () => {
 	for (let w = 0; w < REAL_WEAPON_TTK.size(); w++) {
 		const { weapon, label, opts } = REAL_WEAPON_TTK[w];
 		it(`${label}: at most ${HITS_RATIO_MAX}x her hits per minute`, () => {
@@ -380,7 +386,7 @@ describe("boss.demonlord hits taken next to Mother Bramble's (same bots, god mod
 				`[boss.demonlord] ${weapon} (${string.format("%.0f", opts.duty * 100)}% uptime): ${string.format(
 					"%.1f",
 					demon,
-				)} hits / min (Mother Bramble ${string.format("%.1f", bramble)})`,
+				)} hits / min (Mother Mayhem ${string.format("%.1f", bramble)})`,
 			);
 			expect(demon).toBeLessThanOrEqual(HITS_RATIO_MAX * bramble);
 		});

@@ -834,7 +834,7 @@ sniper\*, 2 swarmer\*); f11: run 8 room 11 (slime\*, bruiser\*, imp, summoner, s
 | Fire Arrows (Ember Wake + Piercing Arrows I) | 3.9 / 14.6 / 19.2 (1.00 / 1.00 / 1.00) | 3.2 / 13.1 / 20.0 (0.70 / 0.46 / 0.39) | 0% / 0%; 40% / 37% | 0.0 / 0.0 | 1 |
 | Storm Blade (Chain Spark I + Swift Strikes I) | 3.4 / 8.9 / 15.5 (0.86 / 0.61 / 0.81) | 3.8 / 16.3 / 31.0 (0.83 / 0.58 / 0.61) | 11% / 15%; 29% / 33% | 16.0 / 17.7 | 3 |
 
-**3. Mother Bramble** (her own floors 5 / 10 / 15 = Depth 1 / 2 / 3: 540 / 810 / 1215 hp; a 26 x 26 boss room, the player
+**3. Mother Mayhem** (her own floors 5 / 10 / 15 = Depth 1 / 2 / 3: 540 / 810 / 1215 hp; a 26 x 26 boss room, the player
 3 units inside its edge; seeds 1-2 at f5 / f10, seed 1 at f15). Her `damageCapPerSecond` 6 puts a floor under every fight:
 hp / 6 = **90 / 135 / 202.5 s**.
 
@@ -921,11 +921,11 @@ at a time (by floor 11, greedy and random):
   pick: x 0.46 / 0.39 with 37-40 % of the kills by embers; it does nothing for the sword. Storm Blade x 0.58-0.86 with
   either weapon (part of it Swift Strikes I). Effects make 10-63 % (sword) and 2-78 % (bow) of a room's kills at f6 /
   f11.
-- **Bosses are capped, not built.** Mother Bramble's 6 damage / s cap (her own data, older than builds; the Demon Lord's
+- **Bosses are capped, not built.** Mother Mayhem's 6 damage / s cap (her own data, older than builds; the Demon Lord's
   is the same 6) binds the sword already: 98 / 147 / 219 s with every build (only Storm Blade, through Swift Strikes,
   shaves 1-2 %). The bow (5 dps flat out) gains 3-11 % from on-kill boons (only her adds proc: 11-25 procs a fight) and
   19-26 % from Fire Arrows and Storm Blade (Swift Strikes I lifts the stream to 6.25 dps, over the cap), ending 4-7 %
-  above the cap's floor. No build can shorten her below hp / 6, so at Depth 3 every Mother Bramble fight lasts over 3.4
+  above the cap's floor. No build can shorten her below hp / 6, so at Depth 3 every Mother Mayhem fight lasts over 3.4
   minutes.
 - **Pool: the BU3 budgets hold with room to spare.** No weapon shot dropped in any run. One player's effects hit
   `EFFECT_BULLETS_MAX` 160 only with the sword's full on-kill build in the 15-enemy floor-19 room (221 effect bullets
@@ -959,7 +959,7 @@ at a time (by floor 11, greedy and random):
 5. **Budgets: keep** `EFFECT_BULLETS_MAX` 160, `effectWeaponReserve` 32, `PROCS_PER_TICK` 24, `GEN_MAX` 3 (no weapon shot
    dropped, own fire peaks at 24, the queue never carries more than 7).
 6. **Boss cap (not a builds number, flagged).** Builds cannot speed up a boss beyond `damageCapPerSecond` 6, and Depth
-   scales boss hp but not the cap, so Mother Bramble takes >= 90 / 135 / 202.5 s at Depth 1 / 2 / 3. If deep boss fights
+   scales boss hp but not the cap, so Mother Mayhem takes >= 90 / 135 / 202.5 s at Depth 1 / 2 / 3. If deep boss fights
    should stay near today's floor-5 length and reward builds, scale the cap with `depthHpMultiplier` (both bosses; an
    endless replay change). Otherwise accept: the boss is the build-proof test.
 

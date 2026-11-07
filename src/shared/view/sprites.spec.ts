@@ -1160,7 +1160,7 @@ describe("chooseActorAnim (bruiser)", () => {
 });
 
 // ---------------------------------------------------------------------------------------------
-// Mother Bramble (boss.act1, docs/BRAMBLE_ART.md BR4)
+// Mother Mayhem (boss.act1, docs/BRAMBLE_ART.md BR4)
 
 /** A Demon Elite set per the BRAMBLE_ART mapping (hit = idle's cell, BD3; no `intro`: the roars play taunt). */
 const ELITE_ANIMS: Record<string, SpriteAnimationDef> = {
@@ -1766,7 +1766,7 @@ describe("chooseActorAnim (Demon Lord)", () => {
 		const special = { anim: "intro", elapsed: 1, total: 2 };
 		expect(chooseActorAnim(actorInput({ special }), DEMON_REQUIRED)).toEqual({ anim: "idle", rate: 1 });
 		expect(chooseActorAnim(actorInput({ special, attack }), DEMON_REQUIRED).anim).toBe("attack");
-		// His specials name no fallback (Mother Bramble's intro falls back to taunt): with taunt but no intro, his
+		// His specials name no fallback (Mother Mayhem's intro falls back to taunt): with taunt but no intro, his
 		// intro roar and his summon stand idle, while his phase taunt plays.
 		const tauntOnly = source({
 			idle: DEMON_ANIMS.idle,
@@ -1910,7 +1910,7 @@ describe("chooseActorAnim (Demon Lord)", () => {
 		const grown = bossSpriteLayout(small, ACTOR_VIEW.bossMinDrawPx);
 		expect((grown.frameW / grown.pixelsPerTile) * PIXELS_PER_TILE).toBeCloseTo(ACTOR_VIEW.bossMinDrawPx, 12);
 		expect([grown.frameW, grown.frameH, grown.pivot]).toEqual([small.frameW, small.frameH, small.pivot]);
-		// Both bosses' built sets already are (the Demon Lord at 10.5 px / tile, Mother Bramble at bodyTiles 2.5): the
+		// Both bosses' built sets already are (the Demon Lord at 10.5 px / tile, Mother Mayhem at bodyTiles 2.5): the
 		// rule leaves them at their own density, so per-sheet cells (sheetSpriteLayout) start from the set itself.
 		for (const id of ["boss.demonlord", "boss.act1"]) {
 			const built = VALE_SPRITE_LAYOUTS[id];
@@ -1918,7 +1918,7 @@ describe("chooseActorAnim (Demon Lord)", () => {
 		}
 	});
 
-	it("corpse: the Demon Lord holds until bossCorpseFadeFrom, then fades; Mother Bramble fades over the whole corpse", () => {
+	it("corpse: the Demon Lord holds until bossCorpseFadeFrom, then fades; Mother Mayhem fades over the whole corpse", () => {
 		const a = demon(DS.RECOVER, DA.NONE, 0, 3);
 		a.alive = 0;
 		const corpse = DEMONLORD_DATA.corpseTicks ?? CORPSE_TICKS;
@@ -1971,7 +1971,7 @@ describe("SPRITE_ANIM_MARKS on the built enemy.bruiser and boss.act1 sets (art/a
 		expect(pick(BRUISER_RECOVER, 1, 0.99)).toBe(7);
 	});
 
-	it("Mother Bramble: sweep / strike release 3 of 6, spin telegraph 0-1 and loop 2-5, leap 0-2 / 3-5 / landing 6-7", () => {
+	it("Mother Mayhem: sweep / strike release 3 of 6, spin telegraph 0-1 and loop 2-5, leap 0-2 / 3-5 / landing 6-7", () => {
 		const M = SPRITE_ANIM_MARKS.bossAct1;
 		const a = elite.animations;
 		expect([a.attack.frames, a["attack.2"].frames, a["attack.3"].frames, a["attack.4"].frames]).toEqual([
@@ -1996,7 +1996,7 @@ describe("SPRITE_ANIM_MARKS on the built enemy.bruiser and boss.act1 sets (art/a
 		expect(seen).toEqual([2, 3, 4, 5, 2]);
 	});
 
-	it("Mother Bramble's set has every animation the renderer asks for: the roars play taunt, hit is idle's cell", () => {
+	it("Mother Mayhem's set has every animation the renderer asks for: the roars play taunt, hit is idle's cell", () => {
 		const a = elite.animations;
 		for (const name of ["idle", "move", "attack", "attack.2", "attack.3", "attack.4", "taunt", "hit", "death"]) {
 			expect([name, a[name] !== undefined]).toEqual([name, true]);

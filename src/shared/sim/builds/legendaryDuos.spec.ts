@@ -8,6 +8,7 @@
 import "shared/sim/testing";
 import { describe, expect, it } from "@rbxts/jest-globals";
 import {
+	BASTION_BRACE_BULLETS,
 	BUILDS_CONFIG,
 	Boon,
 	BraceKind,
@@ -228,11 +229,12 @@ describe("Skewer (Overkill + Piercing Arrows, LG4)", () => {
 });
 
 describe("Citadel and Stone Heart (Bastion duos, LG4)", () => {
-	function volley(s: SimState, n = 3): void {
+	/** `n` stationary bullets in front of the knight, 4 per row (inside the guard's reach for up to 16). */
+	function volley(s: SimState, n = BASTION_BRACE_BULLETS): void {
 		const c = s.combat;
 		for (let k = 0; k < n; k++) {
-			const x = -0.4 + 0.4 * (k % 3);
-			const z = 1.2 + 0.2 * math.floor(k / 3);
+			const x = -0.6 + 0.4 * (k % 4);
+			const z = 0.9 + 0.2 * math.floor(k / 4);
 			c.enemySpawned += fireBurstRaw(
 				c.enemyBullets,
 				1,
@@ -257,7 +259,7 @@ describe("Citadel and Stone Heart (Bastion duos, LG4)", () => {
 		return s;
 	}
 
-	function guardOnce(s: SimState, n = 3): void {
+	function guardOnce(s: SimState, n = BASTION_BRACE_BULLETS): void {
 		volley(s, n);
 		step(s, GUARD, ARENA);
 		for (let t = 0; t < SWORD_DATA.guardCooldownTicks; t++) step(s, IDLE, ARENA);
@@ -269,8 +271,8 @@ describe("Citadel and Stone Heart (Bastion duos, LG4)", () => {
 		const p = s.player;
 		const b = s.builds!.players[0];
 		p.armor = 0;
-		guardOnce(s, 6);
-		expect(p.armor).toBe(1); // 6 bullets, one brace
+		guardOnce(s, 2 * BASTION_BRACE_BULLETS);
+		expect(p.armor).toBe(1); // twice the threshold, one brace
 		// 61 ticks after the brace: the cooldown blocks a second one.
 		p.armor = 0;
 		guardOnce(s);
@@ -292,12 +294,13 @@ describe("Citadel and Stone Heart (Bastion duos, LG4)", () => {
 			step(s, GUARD, ARENA); // the brace, tick T
 			p.armor = 0;
 			for (let t = 1; t < after; t++) step(s, IDLE, ARENA);
-			// A roll through 3 bullets (no guard cooldown in the way): started on T + after, counted on T + after + 1.
+			// A roll through BASTION_BRACE_BULLETS bullets (no guard cooldown in the way): started on T + after,
+			// counted on T + after + 1.
 			step(s, frame(0, 0, Button.ROLL, 0, 1), ARENA);
 			p.rollDirX = 0;
 			p.rollDirZ = 0;
 			const c = s.combat;
-			for (let k = 0; k < 3; k++) {
+			for (let k = 0; k < BASTION_BRACE_BULLETS; k++) {
 				c.enemySpawned += fireBurstRaw(
 					c.enemyBullets,
 					1,

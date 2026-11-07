@@ -19,8 +19,12 @@ import {
 	type SimConfig,
 	type SimEvents,
 	WEB_SWORD_TIMINGS,
+	WEB_BOSS_HP,
+	WEB_BOW_TUNING,
 	WEB_SWARMER_HP,
+	setBowTuning,
 	setSwordTimings,
+	setBossHp,
 	setSwarmerHp,
 	type SwordTimings,
 } from "shared/sim";
@@ -30,9 +34,13 @@ import {
 // describe bodies may replay while the specs are collected.
 const portSword: SwordTimings = setSwordTimings(WEB_SWORD_TIMINGS);
 const portSwarmerHp = setSwarmerHp(WEB_SWARMER_HP); // the web swarmer's 2 hp (port: 1)
+const portBossHp = setBossHp(WEB_BOSS_HP); // the web boss's 540 hp (port: 270)
+const portBow = setBowTuning(WEB_BOW_TUNING); // the web heavy arrow: 4 damage, no aim assist (port: 5, assisted)
 afterAll(() => {
+	setBowTuning(portBow);
 	setSwordTimings(portSword);
 	setSwarmerHp(portSwarmerHp);
+	setBossHp(portBossHp);
 });
 
 const run = runBullets as unknown as RunFixture;

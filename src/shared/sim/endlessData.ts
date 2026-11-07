@@ -7,7 +7,7 @@
  */
 import { TILE_SIZE } from "./units";
 
-/** Depth at the start of a run; +1 per Mother Bramble kill. */
+/** Depth at the start of a run; +1 per Mother Mayhem kill. */
 export const ENDLESS_FIRST_DEPTH = 1;
 
 /** Enemy hp at spawn x (1 + ENEMY_HP_PER_FLOOR x (floor - 1)). */

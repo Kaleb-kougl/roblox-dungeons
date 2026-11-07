@@ -9,14 +9,18 @@ export { DEFAULT_LOADOUT } from "./loadout";
 export {
 	BOW,
 	BOW_DATA,
+	BOW_HEAVY_DAMAGE,
 	BOW_V_CHARGE,
 	BOW_V_HEAVY_TICK,
 	BOW_V_SHOT,
 	BOW_WOBBLE_COS,
 	BOW_WOBBLE_SIN,
+	WEB_BOW_TUNING,
+	bowAssistAim,
 	bowCharge,
+	setBowTuning,
 } from "./defs/bow";
-export type { BowData } from "./defs/bow";
+export type { BowData, BowTuning } from "./defs/bow";
 export {
 	SWORD,
 	SWORD_DATA,
