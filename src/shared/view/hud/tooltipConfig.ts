@@ -16,6 +16,14 @@ export const ITEM_TOOLTIP = {
 	offset: 8,
 	/** Its panel's transparency (flat look). */
 	panelTransparency: 0.08,
+	/** Its title row's level pips: the gap between the title and the pips, reference px. */
+	levelGap: 6,
+	/**
+	 * Touch: a tap on a menu target pins its tooltip (another tap, or one elsewhere, closes it). A tap is a touch that
+	 * ends within `tapMaxSec` of its start, moved less than `tapMaxMovePx` (screen px; a drag scrolls the list).
+	 */
+	tapMaxSec: 0.4,
+	tapMaxMovePx: 12,
 	/** Its ScreenGui: over the pause / menu layer (20), under the loading / stage cover (30). */
 	displayOrder: 25,
 } as const;

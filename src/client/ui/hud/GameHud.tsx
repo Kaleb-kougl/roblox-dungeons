@@ -10,6 +10,7 @@ import { FullMapOverlay } from "./FullMapOverlay";
 import { MinimapPanel } from "./MinimapPanel";
 import { Players } from "@rbxts/services";
 import { InfoPanel } from "./InfoPanel";
+import { ItemTooltipLayer } from "./ItemTooltip";
 import { LeaderboardPanel } from "./LeaderboardPanel";
 import { PauseButton } from "./PauseButton";
 import { PauseOverlay } from "./PauseOverlay";
@@ -50,6 +51,8 @@ import { WeaponPanel } from "./WeaponPanel";
  *                 menu shell (client/ui/menu MenuLayer, mounted next to this by HudController)
  *   KV_GameMenuDim  the full-screen layer under KV_GameMenu the overlays' dims draw into (ScreenDim; ScreenInsets None:
  *                 under the top bar and into a phone's notch insets, docs/UI_ART.md "Phones")
+ *   KV_ItemTooltip  the item tooltip (ItemTooltipLayer, docs/ITEM_TOOLTIPS.md IT4): its own ScreenGui over the menu layer
+ *                 (ITEM_TOOLTIP.displayOrder), placed beside the hovered / focused / tapped target; never takes input.
  *   KV_PauseButton  PauseButton (mouse / touch; in the Roblox top bar, right of its buttons): pauses a solo run,
  *                 opens a co-op run's party overlay. Screen pixels and no safe-area insets: the top bar is outside
  *                 the safe area.
@@ -138,6 +141,7 @@ export function GameHud() {
 					<LeaderboardPanel key="Leaderboards" localUserId={Players.LocalPlayer.UserId} />
 				</DimLayerContext.Provider>
 			</screengui>
+			<ItemTooltipLayer key="KV_ItemTooltip" />
 			<screengui
 				key="KV_PauseButton"
 				ResetOnSpawn={false}

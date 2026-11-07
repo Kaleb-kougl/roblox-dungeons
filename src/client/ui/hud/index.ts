@@ -10,7 +10,8 @@
  * Daily card and podium (docs/DAILY.md DS9), the run-over daily block (DailyResultBlock, DS11) and the headshot
  * cache (headshots) for DailyRankController (DS10); the run-over recap's bindings (recapBindings RECAP_BINDINGS) for
  * RecapController (docs/RUN_RECAP.md RR5 / RR6); the armor row pulse (braceUi BRACE_UI) for BraceFxController
- * (docs/LEGENDARIES.md LG6).
+ * (docs/LEGENDARIES.md LG6); the item tooltips' target registry (tooltipTargets) for TooltipController
+ * (docs/ITEM_TOOLTIPS.md IT4).
  */
 export * from "./actions";
 export * from "./braceUi";
@@ -30,5 +31,6 @@ export * from "./primitives";
 export * from "./recapBindings";
 export * from "./roomClearBindings";
 export * from "./ScreenDim";
+export * from "./tooltipTargets";
 export * from "./useHudScale";
 export * from "./usePortrait";

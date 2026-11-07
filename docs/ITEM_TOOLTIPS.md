@@ -1,6 +1,6 @@
 # Item tooltips: plan
 
-Status (2026-11-06): **in progress** on branch `item-tooltips`. The owner said proceed (2026-11-06): ITD1..ITD10 are accepted as recommended. IT0 (Studio spike) is deferred to the owner's Studio check. Code facts checked against the repo at `3b0c56df` (branch with
+Status (2026-11-06): **built, Studio check pending** (shared core on `it-core`, client on `it-client`; IT0 / IT11 are the owner's). The owner said proceed (2026-11-06): ITD1..ITD10 are accepted as recommended. IT0 (Studio spike) is deferred to the owner's Studio check. Code facts checked against the repo at `3b0c56df` (branch with
 fortune art); anything not yet confirmed is marked **(IT0 verifies)**. Owner answers (2026-11-06): scope = **this run's
 items** (not the full catalog: that is `claude/codex-plan.md`); hover in the **pause menu**, on the **live HUD icons**
 and on the **run-over screen** (not the boon draft). Decisions ITD1..ITD10 are proposed (recommendation first).
@@ -190,15 +190,69 @@ Each step is a commit. Specs next to the code; `npm run verify` before each.
   `options.display.hudTooltips` ("Item tooltips in combat", `OPTIONS_STRINGS.hudTooltips`, checked like the other
   Options keys), `l10n/context.json` notes and glossary links. `{rarity} boon` takes the rarity name as a varKey, as
   `treasure.kept` does with `{tier}`.
-- [ ] **IT4. Widget and controller.** → Verify: `npm run build:place`; the tooltip renders in its ScreenGui over the
+- [x] **IT4. Widget and controller.** → Verify: `npm run build:place`; the tooltip renders in its ScreenGui over the
   pause layer; Reduced motion: no fade; nothing per frame allocates (the slice changes only on a new ref / rect).
-- [ ] **IT5. Pause list.** → Verify: `fit.spec.ts` still fits on the smallest phone landscape; scroll with 30+ rows;
+  *As built (branch `it-client`; build:place and the render checks wait for Studio):* `client/ui/hud/tooltipTargets.ts`
+  (`useTooltipTarget(ref, source, { panel, more, enabled })`: one registry entry per mounted component, its stable ref
+  callback registers the GuiObject, a changed ref / hidden refs / clip bumps the entry's `version`; `TooltipClipContext`
+  for a scrolling list; `MORE_CELL_REF` is the `+N` cell's identity, index -1, never an owned item).
+  `client/controllers/ui/TooltipController.ts` (render step `KV_ItemTooltips`, after the camera): pointer =
+  `GetMouseLocation()` minus `GuiService:GetGuiInset()` (GUI space, where every AbsolutePosition lives) only while
+  `InputController.getAimDevice()` is the mouse; the registered rects hit-tested (a `menu` target wins, `hud` targets
+  skipped while `!hudAllowed`, a list row only inside its ScrollingFrame); focus = `GuiService.SelectedObject` when it
+  is a registered `menu` target; a touch tap (InputBegan / InputEnded of a Touch, within the new
+  `ITEM_TOOLTIP.tapMaxSec` 0.4 and `tapMaxMovePx` 12) on a `menu` target, else `"elsewhere"`; `weaponHeld` = Attack or
+  Alt in the last sampled InputFrame (`InputController.weaponHeld`, so rebinding, the pad and a press that began over a
+  GUI all count) and `weaponPressed` its rising edge; `panelFaded` = the hit's corner panel transparency above 0
+  (`cornerFadeValue`, written by HudOcclusionController); `hudAllowed` = a run is active, `selectMenuOpen` false (pause,
+  party overlay, Options, leaderboards, outro, stage cover, loading), outcome playing, not paused, no open draft, and
+  `hudTooltips` on. One mutable HoverFrame, one cached `TooltipTargetHit` per target rebuilt only when its rect, panel
+  rect or version changes; the store's `tooltip` slice is written only when the tracker returns another object. The
+  tracker is reset when `selectMenuOpen` turns false (the pause resumed, the run-over panel left) and when the shown
+  target unmounted. `client/ui/hud/ItemTooltip.tsx`: `KV_ItemTooltip` (GameHud; `ITEM_TOOLTIP.displayOrder`,
+  CoreUISafeInsets, UIScale = the HUD scale, AutoLocalize off), a non-Active CanvasGroup holding a `Panel` on the `hud`
+  skin (flat `uiPanel` at `panelTransparency` without the art): title in `titleRole` with the level pips (the draft
+  card's pip look, `ITEM_TOOLTIP.levelGap` new), the kind line, the body lines wrapped, never truncated. Width: the
+  widest line's TextService width (+ the stroke slack), at most `maxWidth`. `varRoles` lines draw as RichText (template
+  and vars escaped, each coloured var in a `font color` tag); the rest in the line's role. Placement: every frame its
+  measured AbsoluteSize, the target's rect or the safe area (the ScreenGui's own rect) changed, `tooltipPlacement`;
+  shown once its size held for a frame, faded in over `fadeSec` (none under Reduced motion), unmounted at once on hide.
+- [x] **IT5. Pause list.** → Verify: `fit.spec.ts` still fits on the smallest phone landscape; scroll with 30+ rows;
   mouse, gamepad and touch each show the right tooltip.
-- [ ] **IT6. Live HUD.** → Verify: the IT0 swing check in a real run; the tooltip never shows while firing or with the
+  *As built:* `BuildList({ withBoosts })`: "Build", then `buildListSections` (section titles in `uiAccent` small text),
+  at most `maxRows` lines (rows and titles, so the panel is never taller than the old list) and the rest in a
+  ScrollingFrame (`OPTIONS_VIEW.scrollBar`, wheel / drag; scrolling only when needed); the `+N` line is gone. Rows are
+  plain Frames, `Selectable` (the default selection look), registered `menu` targets clipped to the scroll frame.
+  `PauseBuild` shows whenever anything is owned (relics, curses or a running boost count now). No explicit
+  `NextSelection*`: Roblox's automatic navigation takes D-pad right from the centred buttons into the list and left
+  back (IT0 (d) confirms or we set them). Scroll-with-30-rows and the three devices wait for Studio.
+- [x] **IT6. Live HUD.** → Verify: the IT0 swing check in a real run; the tooltip never shows while firing or with the
   panel faded; the `+N` cell lists the hidden names.
-- [ ] **IT7. Run-over list.** → Verify: Again keeps its focus and RR's 0.6 s arming (recap specs unchanged).
-- [ ] **IT8. Upright pause toggle** (if ITD7 holds). → Verify: `pausePanelArea` spec; fits 360 pt wide.
-- [ ] **IT9. Setting** (if ITD8 holds). *Shared part built:* `DisplaySettings.hudTooltips` (`DEFAULT_HUD_TOOLTIPS` true, only Off stored, doc v2), codec specs; the Options row is the client's. → Verify: settings codec spec (overrides only, doc v2).
+  *As built:* `RunItems({ tooltips })` / `BoostRow({ tooltips })`: the StatusPanel passes `tooltips` (the TouchStrip
+  does not, ITD9); every item cell (a duo chip as one target), the `+N` cell (its hidden cells' refs as `more`) and every
+  boost cell (the shown player's) register as `hud` targets with panel `topLeft`. The checks wait for Studio.
+- [x] **IT7. Run-over list.** → Verify: Again keeps its focus and RR's 0.6 s arming (recap specs unchanged).
+  *As built:* the same `BuildList` with `withBoosts` false in all three run-over layouts; `hasBuild` counts relics and
+  curses too (`hasBuildItems`). Nothing sets the selection: Again keeps its initial focus and the recap's arming is
+  untouched; rows are reachable by D-pad (auto navigation) and mouse.
+- [x] **IT8. Upright pause toggle** (if ITD7 holds). → Verify: `pausePanelArea` spec; fits 360 pt wide.
+  *As built:* upright with anything owned, the pause panel gets one more button after its items (`pause.build`; while
+  the list is shown `pause.map` where the solo map stands, else `pause.build` again in the party overlay). On, the map
+  (solo) is replaced by `PauseBuild top` (compact width and rows, centred in the map's area) and the panel moves under
+  it as with the map (`split`), co-op included. Off again at every open. fit.spec.ts: "with the upright Build / Map
+  toggle" checks the pause estimate plus one button under the map on every portrait phone at 70 / 100 / 125 %.
+- [x] **IT9. Setting** (if ITD8 holds). *Shared part built:* `DisplaySettings.hudTooltips` (`DEFAULT_HUD_TOOLTIPS` true, only Off stored, doc v2), codec specs; the Options row is the client's. → Verify: settings codec spec (overrides only, doc v2).
+  *As built:* Options > Display row `hudTooltips` (On / Off) after HUD fade, shown when `UserInputService.MouseEnabled`
+  (live tooltips are mouse-only; a touch-only phone's Display tab keeps its rows and fit).
+  *Client checks (2026-11-06):* typecheck (tsc over the changed files' import closure) and ESLint (`--max-warnings=0`)
+  on every changed file clean, `check:autolocalize` and `check:assets` clean, all in a container mirror of the
+  worktree because the device shell was unavailable; `rbxtsc` (build), `build:place` and the Lune specs (fit.spec's new
+  case, tooltip.spec) were **not run** and must be run before merging. Shared change: `ITEM_TOOLTIP` gained `levelGap`,
+  `tapMaxSec`, `tapMaxMovePx` (tunables only). Unverified until the Studio check: that a non-Active Frame keeps
+  `gameProcessedEvent` false (IT0 a), that InputObject.Position of a touch and a ScreenGui's AbsolutePosition under
+  CoreUISafeInsets are in the same GUI space as `GetMouseLocation() - GetGuiInset()`, gamepad auto-navigation between
+  the pause buttons and the list and the ScrollingFrame scrolling a selected row into view (IT0 d), the measured
+  placement holding the tooltip hidden for its first laid-out frame, and the upright Build area fitting 8 rows.
 - [ ] **IT10. Docs.** docs/ITEM_TOOLTIPS.md from this plan with as-built notes, docs/CLIENT.md, the CLAUDE.md docs table
   and decision log.
 - [ ] **IT11. [owner] Studio check** (below).

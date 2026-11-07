@@ -12,6 +12,7 @@ import {
 import { motionScale } from "shared/view/fx";
 import { statusRowMaxWidth } from "shared/view/hud";
 import { GridRow } from "./GridRow";
+import { useTooltipTarget } from "./tooltipTargets";
 import { HighlightRing } from "./TutorialFx";
 
 const STROKE = 1;
@@ -27,6 +28,8 @@ export interface BoostLook {
 }
 
 const STATUS_LOOK: BoostLook = BOOST_VIEW;
+/** The status panel's corner: a live tooltip goes under it, and its occlusion fade blocks the tooltip. */
+const HOST_CORNER = "topLeft";
 
 /** A boost cell's width: icon, gap, bar. */
 export function boostCellWidth(look: BoostLook): number {
@@ -39,15 +42,26 @@ export function boostCellWidth(look: BoostLook): number {
  * quantised secondsLeft, so the blink follows sim time and needs no frame connection; a steady dim under reduced
  * motion).
  */
-function BoostEntry(props: { order: number; entry: BoostHudEntry; motion: number; look: BoostLook }) {
+function BoostEntry(props: {
+	order: number;
+	entry: BoostHudEntry;
+	motion: number;
+	look: BoostLook;
+	tooltips: boolean;
+}) {
 	const hudFont = useHudFont();
 	const e = props.entry;
+	const tipRef = useTooltipTarget({ kind: "boost", index: e.kind }, "hud", {
+		panel: HOST_CORNER,
+		enabled: props.tooltips,
+	});
 	const v = props.look;
 	const tint = BOOST_VIEW;
 	const color = boostColorRole(e.kind);
 	const fade = boostBlinkTransparency(e.secondsLeft, props.motion);
 	return (
 		<frame
+			ref={tipRef}
 			LayoutOrder={props.order}
 			Size={new UDim2(0, v.iconSize + v.iconBarGap + v.barWidth, 0, v.iconSize)}
 			BackgroundTransparency={HIDDEN}
@@ -108,12 +122,24 @@ export function BoostRow(props: {
 	look?: BoostLook;
 	maxWidth?: number;
 	gap?: number;
+	/**
+	 * The status panel's row (docs/ITEM_TOOLTIPS.md IT6): each cell registers as a live `hud` tooltip target (the shown
+	 * player's boosts: a spectated teammate's). Off (default) on the touch strip (ITD9).
+	 */
+	tooltips?: boolean;
 }) {
 	const motion = motionScale(useSelector(selectJuice));
 	if (props.boosts.size() === 0) return undefined;
 	const look = props.look ?? STATUS_LOOK;
 	const entries = props.boosts.map((e, i) => (
-		<BoostEntry key={`boost${e.kind}`} order={i + 1} entry={e} motion={motion} look={look} />
+		<BoostEntry
+			key={`boost${e.kind}`}
+			order={i + 1}
+			entry={e}
+			motion={motion}
+			look={look}
+			tooltips={props.tooltips === true}
+		/>
 	));
 	return (
 		<GridRow

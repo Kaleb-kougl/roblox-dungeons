@@ -41,6 +41,14 @@ export function setCornerFade(corner: HudCorner, transparency: number): void {
 	s.setFade(transparency);
 }
 
+/**
+ * `corner`'s panel transparency as last written (0: opaque). The item tooltips' TooltipController reads it as
+ * `panelFaded` (docs/ITEM_TOOLTIPS.md IT6: no live tooltip over a panel the action is under).
+ */
+export function cornerFadeValue(corner: HudCorner): number {
+	return slot(corner).last;
+}
+
 /** A corner Panel's ref callback: its root frame while mounted, undefined after. */
 export function registerCornerFrame(corner: HudCorner, frame: GuiObject | undefined): void {
 	slot(corner).frame = frame;

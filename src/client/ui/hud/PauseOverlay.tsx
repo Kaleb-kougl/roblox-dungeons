@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "@rbxts/react";
+import React, { useEffect, useRef, useState } from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
 import { GuiService } from "@rbxts/services";
 import {
@@ -24,6 +24,7 @@ import {
 	HUD_STRINGS,
 	HUD_VIEW,
 	LEADERBOARD_STRINGS,
+	TOOLTIP_STRINGS,
 	pauseHint,
 	baselineRecord,
 	bestTargetKey,
@@ -41,7 +42,7 @@ import {
 	type PauseItem,
 } from "shared/view/menu";
 import { useHudActions, type HudActions } from "./actions";
-import { PauseBuild } from "./BuildList";
+import { PauseBuild, hasBuildItems } from "./BuildList";
 import { PauseMap } from "./FullMapOverlay";
 import { MenuFit } from "./MenuFit";
 import { Divider, MenuButton, Panel, Row, Text } from "./primitives";
@@ -133,6 +134,8 @@ export function PauseOverlay() {
 	const coop = info.coop;
 	const portrait = usePortrait();
 	const mapAvailable = useSelector(selectMapView).available;
+	/** Upright (docs/ITEM_TOOLTIPS.md IT8, ITD7): the Build list shown in the map's area instead of the map. */
+	const [buildShown, setBuildShown] = useState(false);
 	const view = {
 		active: true,
 		coop,
@@ -161,12 +164,21 @@ export function PauseOverlay() {
 		};
 	}, [open, device, confirm, skipConfirm, inTutorial]);
 
+	// The upright Build / Map toggle starts on the map at every open.
+	useEffect(() => {
+		if (!open) setBuildShown(false);
+	}, [open]);
+
 	// The skip question does not outlive the overlay (resumed with P / Resume).
 	useEffect(() => {
 		if (!pending && tutorial.skipConfirmOpen) actions.setTutorialSkipConfirm(false);
 	}, [pending, tutorial.skipConfirmOpen]);
 
 	if (!open) return undefined;
+	// Upright: the Build / Map toggle when anything is owned; the map's area holds the list while it is on.
+	const mapArea = !coop && mapAvailable;
+	const buildToggle = portrait && hasBuildItems(s, true);
+	const buildOn = buildToggle && buildShown;
 	const hintKey = coop ? MENU_STRINGS.coopHint : HUD_STRINGS.pauseHint;
 	// A daily run's baseline is best today (docs/DAILY.md DS10): "Best today {score}".
 	const best =
@@ -222,9 +234,31 @@ export function PauseOverlay() {
 				/>
 			);
 		});
+		// docs/ITEM_TOOLTIPS.md IT8 (ITD7): upright, a Build item swaps the map's area for the Build list and back (its
+		// label names what it shows next: Map where the solo map stands, else Build again in the party overlay).
+		if (buildToggle) {
+			buttons.push(
+				<MenuButton
+					key="buildToggle"
+					order={buttons.size() + 2}
+					name="buildToggle"
+					text={str(buildOn && mapArea ? TOOLTIP_STRINGS.pauseMap : TOOLTIP_STRINGS.pauseBuild)}
+					onActivated={() => {
+						actions.playUi(SFX.uiClick);
+						setBuildShown(!buildShown);
+					}}
+				/>,
+			);
+		}
 		body = <>{buttons}</>;
 	}
-	const split = portrait && !coop && mapAvailable;
+	const split = portrait && (mapArea || buildOn);
+	// Landscape: beside the menu; upright: in the map's area while the toggle is on.
+	const buildPanel = !portrait ? (
+		<PauseBuild key="Build" />
+	) : buildOn ? (
+		<PauseBuild key="Build" top={true} />
+	) : undefined;
 	const menuFit = (
 		<MenuFit
 			ornament={screenOrnament("pause")}
@@ -297,8 +331,8 @@ export function PauseOverlay() {
 	return (
 		<frame key="PauseOverlay" Size={UDim2.fromScale(1, 1)} BackgroundTransparency={1} BorderSizePixel={0}>
 			{coop ? undefined : <ScreenDim key="Dim" name="PauseDim" transparency={HUD_VIEW.overlayTransparency} />}
-			{coop ? undefined : <PauseMap key="Map" portrait={portrait} />}
-			{portrait ? undefined : <PauseBuild key="Build" />}
+			{coop || buildOn ? undefined : <PauseMap key="Map" portrait={portrait} />}
+			{buildPanel}
 			{split ? (
 				// Upright with the map (docs/PORTRAIT.md PT6): the panel fits into the frame under it (MenuFit measures its
 				// parent; shared/view/menu pausePanelArea is the formula).
