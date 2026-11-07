@@ -158,16 +158,38 @@ Each step is a commit. Specs next to the code; `npm run verify` before each.
   adopt it for the menus if it does not. (d) Gamepad: D-pad right from the pause buttons reaches the Build list rows,
   selection scrolls the ScrollingFrame. → Verify: results recorded in docs/SPIKES.md; this plan edited where a fact
   differs.
-- [ ] **IT1. Models.** `ItemRef` on cells and rows, `buildListSections`, `itemTooltip`. → Verify: specs for every boon
+- [x] **IT1. Models.** `ItemRef` on cells and rows, `buildListSections`, `itemTooltip`. → Verify: specs for every boon
   at every level (incl. levelless legendaries and a run without builds), every evolution, duo, relic, curse and boost;
   the `+N` cell's refs; every key a model can emit exists in the placeholder and vale packs; the existing
   `buildHud.spec` rows unchanged for boons / duos.
-- [ ] **IT2. Placement and HoverTracker.** → Verify: pure specs: flip and clamp on every edge; a `hud` tooltip never
+  *As built (branch `it-core`):* `itemTooltip` / `moreTooltip` / `buildListSections` in shared/view/hud tooltip.ts.
+  The `+N` tooltip's title is `Build` (`hud.build.title`) with `{count} more` as its kind line (the rules table).
+  Additions: `TooltipLine.varRoles?` (colours of some vars: a duo's `{a}` / `{b}` in their boons' rarity roles, the
+  evolves line's `{evo}` and the evolved kind line's `{boon}`; the client may draw them with RichText, else the line's
+  role) and `itemNameLine(ref, facts)`. Boost rows in the Build list: name in the kind's colour, empty level, the row's
+  line is `{seconds} s left` (the full description, whose "for 30 s" would read like the time left, is the tooltip's);
+  seconds are the snapshot's tenths rounded up to whole seconds, in rows and tooltips alike.
+- [x] **IT2. Placement and HoverTracker.** → Verify: pure specs: flip and clamp on every edge; a `hud` tooltip never
   enters `HUD_CLEAR_ZONE` at every `HUD_SCALE_PERCENTS` step on the smallest landscape screen; dwell, stillness, weapon
   held, after-press, faded panel, gates (draft, stage cover, pause, run over); focus beats hover; a tap pins and a
   second tap closes.
-- [ ] **IT3. Strings.** → Verify: contract / placeholder / vale specs; `l10n:check`; `contract.luau` /
+  *As built:* `tooltipPlacement` (menu: right / left / below / above, a side taken when it fits along its axis, the
+  other axis clamped; none fits: the least move, clamped). `hud`: candidates under the panel, right of it, under the
+  clear zone, over it; the first that fits the safe area (clamped) without touching `clearZoneIn(safe)` wins, else the
+  clamped one covering the least of the zone. The clear-zone spec runs every HUD scale step on 844 x 390 (top bar on
+  and off) and every test screen up to 100 %; ten-foot is left out (live HUD tooltips are mouse-only, and a 4-line
+  tooltip fits no strip at 1280 x 720 ten-foot). `HoverTracker`: priority focus > tap pin > hover; a blocked `hud`
+  hover (`!hudAllowed`, weapon held / pressed, within `hudAfterPressSec`, panel faded) hides at once and restarts its
+  dwell once unblocked; once shown, moving inside the target keeps it; a pinned `hud` target unpins while
+  `!hudAllowed`; the same `HoverShown` object while the target and its rect / panel are unchanged (a new rect: new
+  object, same `shownAtSec`). The client calls `reset()` when its list closes. Addition: `sameTooltipTarget`.
+- [x] **IT3. Strings.** → Verify: contract / placeholder / vale specs; `l10n:check`; `contract.luau` /
   `validate.luau` compile under Lune at or under 200 top-level locals.
+  *As built:* the 18 `TOOLTIP_STRINGS` keys written out in contract.ts `REQUIRED_STRING_KEYS` after the builds keys
+  (contract.luau stays 186 top-level locals), English in the placeholder pack (vale inherits it),
+  `options.display.hudTooltips` ("Item tooltips in combat", `OPTIONS_STRINGS.hudTooltips`, checked like the other
+  Options keys), `l10n/context.json` notes and glossary links. `{rarity} boon` takes the rarity name as a varKey, as
+  `treasure.kept` does with `{tier}`.
 - [ ] **IT4. Widget and controller.** → Verify: `npm run build:place`; the tooltip renders in its ScreenGui over the
   pause layer; Reduced motion: no fade; nothing per frame allocates (the slice changes only on a new ref / rect).
 - [ ] **IT5. Pause list.** → Verify: `fit.spec.ts` still fits on the smallest phone landscape; scroll with 30+ rows;
@@ -176,7 +198,7 @@ Each step is a commit. Specs next to the code; `npm run verify` before each.
   panel faded; the `+N` cell lists the hidden names.
 - [ ] **IT7. Run-over list.** → Verify: Again keeps its focus and RR's 0.6 s arming (recap specs unchanged).
 - [ ] **IT8. Upright pause toggle** (if ITD7 holds). → Verify: `pausePanelArea` spec; fits 360 pt wide.
-- [ ] **IT9. Setting** (if ITD8 holds). → Verify: settings codec spec (overrides only, doc v2).
+- [ ] **IT9. Setting** (if ITD8 holds). *Shared part built:* `DisplaySettings.hudTooltips` (`DEFAULT_HUD_TOOLTIPS` true, only Off stored, doc v2), codec specs; the Options row is the client's. → Verify: settings codec spec (overrides only, doc v2).
 - [ ] **IT10. Docs.** docs/ITEM_TOOLTIPS.md from this plan with as-built notes, docs/CLIENT.md, the CLAUDE.md docs table
   and decision log.
 - [ ] **IT11. [owner] Studio check** (below).
