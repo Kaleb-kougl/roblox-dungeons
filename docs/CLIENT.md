@@ -429,6 +429,24 @@ SKILL1 (key 1 / pad A), which does nothing else anywhere in the sim (FIRE would 
 (a lobby's party run): every player drafts from their own offers with their own stick / FIRE (through the lockstep input like
 any other frame), and the world stays frozen until all of them confirmed.
 
+Menus on a gamepad (docs/GAMEPAD_MENUS.md): every menu, panel and prompt is a focus scope (FocusController,
+`useFocusScope`; a SelectionGroup that stops on all four sides) and the topmost one owns the pad. It opens on its
+default button, gets its selection back when the selected button goes, and remembers the last button per screen.
+The same buttons everywhere while a menu owns the pad (fixed, not rebindable; in play they keep their game actions):
+
+| Pad | In a menu |
+|---|---|
+| A | press the selected button |
+| B | back / close / cancel; solo pause: Resume; run over: **hold** 0.6 s to exit (a tap does nothing) |
+| LB / RB, LT / RT | tabs / sub-tabs (Options, leaderboards) |
+| Right stick | scroll the screen's list |
+| X / Y | the screen's shortcut, shown in the hint bar (lobby Refresh / Create, Ready / Invite, run-over Details, Options Reset, main menu Y: the invite toasts) |
+
+A pad Restart binding wins over a shortcut on the same button. A hint bar at the bottom of each menu shows Roblox's
+own button icons. Menus vibrate the pad lightly (confirm, disabled press, list end, hold complete; Options >
+Controls > Gamepad > Vibration). Held pad buttons are blocked when a menu hands control back, so Resume never fires
+a skill.
+
 Menus (pause overlay, settings panel): while one is open the gamepad's A / B / D-pad / left stick go to Roblox's GUI
 selection (InputController passes them through instead of sinking them; the D-pad-down restart is off then, the
 overlay has a Restart button) and the selection starts on the first button. The settings panel pauses the run while

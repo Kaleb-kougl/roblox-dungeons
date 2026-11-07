@@ -68,6 +68,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/KENNEY_DECOR.md` | Kenney decor (Kenney's CC0 Isometric Dungeon / Library reprojected from their 30 degree camera to the game's 55 by `scripts/art/kenney/reproject.py`: flat / box / uniform warps; library v2, a `mess` theme, richer storerooms planned; the bookcase's alternative art set, its wide pairs and the floor patches wired): plan, as built, tasks KN0-KN13, decisions KND1-KND12 |
 | `docs/LEGENDARIES.md` | Legendaries (two legendary boons, Overkill: a kill's leftover damage streaks to the nearest enemy and chains; Bastion: a full-ring 27-tick guard, +1 pip and a brace that restores a pip when a guard or roll stops 3 bullets; four duos Supernova / Skewer / Citadel / Stone Heart; gameplay, opt-in `SimConfig.builds`): plan, LG0 findings, as built LG1-LG6, LG7 tuning, owner tuning, tasks LG0-LG9, decisions LGD1-LGD14 |
 | `docs/HAZARD_ART.md` | Hazard art (the Stormcaller's strike and the build embers as original greyscale pixel art tinted by their roles: a flash over the strike's 0.1 s life and a short scorch after it, the ember's burn loop; supersedes PAD3; presentation only): plan, as built, tasks HA0-HA8, decisions HAD1-HAD5 |
+| `docs/GAMEPAD_MENUS.md` | Gamepad menus (every menu usable with a controller: focus scopes with one owner, recovery and memory, one B path (hold B to exit on run over), LB/RB / LT/RT tabs, right-stick scroll, X / Y shortcuts, a hint bar with Roblox button icons, menu haptics, console TV-safe fit; client input and presentation only): census, plan, as built, tasks GM0-GM12, decisions GMD1-GMD16 |
 
 Decision log (deviations from `PLAN.md`):
 - **Art (docs/ART.md).** The theme contract gained a `"sprites"` kind (large pre-rendered cells, 1/4/8/16 screen-space
@@ -859,6 +860,21 @@ Decision log (deviations from `PLAN.md`):
   `FloorSpriteDrawer` and a per-frame `HazardClock`. Without a `hazards.png` id every pack draws the discs exactly as
   before. No new colour role, string, sound or setting; no Luau-locals change. `hazards.png` uploaded 2026-11-06
   (HA7, `assetIds.ts`), so the bundled vale pack draws them; Studio check (HA8) pending.
+
+- **Gamepad menus (docs/GAMEPAD_MENUS.md).** Client input and presentation only (no sim, dungeon, lockstep, hash,
+  replay, fixture or score change). Pure core in shared/view/menu (`focus.ts` `FOCUS_LAYERS` / `pickFocusScope` /
+  `focusAction` / `FocusMemory` / `CorePromptGuard`, `padActions.ts` `PAD_SURFACES` / `menuPadAction` / `PadHoldGate`,
+  `padHints.ts`, `padNav.ts`, `padScroll.ts`, `padFeedback.ts`; tunables `GAMEPAD_MENU` / `MENU_HAPTICS`).
+  `FocusController` owns the pad for the topmost scope (`useFocusScope` / `<FocusScope>` in client/ui/focus;
+  `useGamepadFocus` and the hand-rolled selection effects are gone), hides Roblox's selection image, routes pad B
+  (MenuController keeps Backspace; Settings / Leaderboard controllers no longer handle B), and skips while a CoreGui
+  prompt holds the selection. `InputController.onMenuPadInput` (LB/RB/LT/RT/X/Y/right stick, sunk, driver keys still
+  reported) and `blockHeldPadInputs` (on resume and when a shown menu closes: `selectMenuShown`, the menu without the
+  stage cover / loading screen). `PadHintBar` (Roblox `GetImageForKeyCode` glyphs), `PadHapticsController`
+  (HapticService motors), `ConsoleController` (chat off on a ten-foot interface), MenuFit's TV-safe inset. Setting
+  `DisplaySettings.padVibration` (default On, only Off stored, doc stays v2; the Display reset keeps it); strings
+  `PAD_HINT_STRING_KEYS` (`pad.hint.*`) and `options.controls.vibration`. Spike `KV_PadSpike` (GM0), debug
+  `KV_FocusDebug`. Studio check (GM0 results, GM8, GM11) pending.
 
 ## Commands
 

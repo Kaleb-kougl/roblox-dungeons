@@ -1,6 +1,8 @@
 # Gamepad menus: every menu usable with a controller
 
-Status: plan (2026-11-06), owner calls answered the same day. Tasks GM0-GM12, decisions GMD1-GMD16.
+Status: built on branch `gamepad-menus` (2026-11-06) without a Studio run: GM1-GM7, GM9, GM10, GM12 done; the GM0 spike is
+built but its Studio results, the directional pass (GM8) and the pad-only Studio check (GM11) are pending. Tasks
+GM0-GM12, decisions GMD1-GMD16.
 
 **Goal.** A player with only a controller can reach and use every menu, panel, prompt and overlay in the game,
 starting on a sensible button, with B always going back, never stuck with nothing selected, and every scrolling
@@ -380,7 +382,7 @@ does (only Controls asks first): intended, kept.
     (`GuiService:GetGuiInset()` / the ScreenGui safe-area modes) on a console, or in the Studio console emulator.
 
   → Verify: the results table is filled in docs/SPIKES.md, and every "if GM0 shows" branch below is decided.
-- [ ] **GM1. Pure core.** shared/view/menu `focus.ts` (`FOCUS_LAYERS`, `pickFocusScope`, `focusAction`,
+- [x] **GM1. Pure core.** shared/view/menu `focus.ts` (`FOCUS_LAYERS`, `pickFocusScope`, `focusAction`,
   `FocusMemory`, `scrollToShow`), `padActions.ts` (`menuPadAction`), `padHints.ts` (`padHints`); tunables
   `GAMEPAD_MENU` in shared/view/menu `config.ts`; specs next to each. One spec walks a `PAD_SURFACES` census (the
   table above) and checks that every surface has a layer, a B meaning and a hint for each action it maps.
@@ -433,7 +435,7 @@ does (only Controls asks first): intended, kept.
 
   → Verify: in Studio's console emulator at 1080p and 4K, every menu is inside the safe area and readable, with no
   chat window.
-- [ ] **GM10. Docs.** CLIENT.md Controls table (a "Menus (gamepad)" block), the CLAUDE.md docs row and a decision
+- [x] **GM10. Docs.** CLIENT.md Controls table (a "Menus (gamepad)" block), the CLAUDE.md docs row and a decision
   log entry, this doc's "As built".
 - [ ] **GM11. Studio check, pad only.** Mouse unplugged: join, then the tutorial (outro), main menu, every Options
   tab including a rebind and a reset, leaderboards (all tabs, scroll to 100), credits, lobby create / invite / ready /
@@ -465,14 +467,24 @@ does (only Controls asks first): intended, kept.
 - **GMD12.** The draft, shrine, pacts, chests, spectating and the full map keep their gameplay inputs. They are not
   menus.
 
-## Open owner calls
+- **GMD13 (owner, 2026-11-06).** On the run-over panel, holding B for 0.6 s exits; a tap does nothing. A visible
+  fill on Exit, and a press from before the panel opened never counts.
+- **GMD14 (owner, 2026-11-06).** Controller vibration is on, for menus only (confirm, disabled press, list end, hold
+  complete), never on focus moves. There is a player setting to turn it off. In-run haptics (hits, parries) are a
+  separate follow-up, not this plan.
+- **GMD15 (owner, 2026-11-06).** The game ships wherever Roblox is, consoles included, so GM12 is in scope and the
+  console guidelines are a requirement, not advice.
+- **GMD16 (owner, 2026-11-06).** Button glyphs are Roblox's own icons (`GetImageForKeyCode`), with a text fallback. No
+  custom glyph art.
 
-1. **Console.** Is the game going to Xbox / PlayStation? If so, add a GM12: TV-safe margins on menus, chat window
-   off, the console guidelines' checklist, and a real-console pass. If not, GM0 and GM11 use pads on PC only.
-2. **Shortcuts.** Is the X / Y table above right? Should B on the run-over panel mean Exit (today: nothing)?
-3. **Haptics** (the console guidelines suggest them, for example for a list's end or a disabled press): on, off, or
-   later?
-4. **Glyph style.** Engine glyph images, or our own pixel-art glyphs in the UI sheet's style (a UI_ART follow-up)?
+## Owner answers (2026-11-06)
+
+1. Console: available wherever Roblox is -> GMD15, GM12.
+2. Run over: hold B to exit -> GMD13. The X / Y shortcut table stands as written.
+3. Haptics: on -> GMD14, GM9.
+4. Glyphs: Roblox icons -> GMD16.
+5. Options X resets exactly as the tab's Reset button (Controls asks first, the others at once); the Display reset
+   keeps `padVibration` (review fixes).
 
 ## Sources
 
