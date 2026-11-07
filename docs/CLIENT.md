@@ -61,6 +61,7 @@ rebinding, audio, display). Everything presentation-side reads the sim and never
 | `StageController` | `.../game/StageController.tsx` | docs/STAGE_LOADER.md (loadOrder 2, `sim.setStageDriver`): the stage loader. Covers run starts and floor changes (`StageCard`, bindings so the cover draws in the event frame), drives SimController's deferred work one item per frame (forge, listeners, floor pre-gen), holds a solo run start, waits for the floor's assets (`PreloadController.whenLoaded`, 3 s cap), pre-generates floor n + 1 during floor n's draft. See "Stage loader". |
 | `MinimapController` | `.../ui/MinimapController.ts` | docs/MINIMAP.md M8 / M9, every dungeon floor (not the greybox): per floor `minimapTiles` (endless stairwell), a fresh `FogOfWar` (`seedFromState` at tick > 0), `RoomEdgeStates`, a painted RGBA8 buffer and ONE `EditableImage` (`AssetService:CreateEditableImage`, pcall; failure warns once, no map), destroyed with the floor. Render step `KV_Minimap` after the camera: fog from the living players' interpolated positions, room tints (`roomEdge.*`), dirty cells repainted and uploaded (`WritePixelsBuffer`, at most `MINIMAP_VIEW.writeHz`). Draws a map layer (ImageLabel on the shared image, `Pixelated`, turned by the camera yaw, plus pooled upright Frame markers: self arrow, teammates by index in `class.*`, enemies / bosses / boost drops in sight, the stairwell once seen, treasure / shrine marks, the vault's chest once revealed: docs/TREASURE.md TR8 `vaultMarkStyle`, the tier's floor colour, a ring once opened) into each mounted host of `client/ui/hud/minimapHosts` (the corner `MinimapPanel`, whose CanvasGroup clips it; `FullMapOverlay`; the solo `PauseMap`). `InputController.onMapAction` toggles Reflex `game.map.open`; closes on floor change and run over. Prints `[Minimap] W x H map` per floor. |
 | `TreasureToastController` | `.../ui/TreasureToastController.ts` | Treasure rooms (docs/TREASURE.md TR8): render step `KV_TreasureToasts` after the FX tracker; the pure `VaultToastTracker` (shared/view/treasure) pushes ToastPanel lines: the floor reveal's `hud.toast.vault` (2 s, once per floor, once the stage cover is gone, no draft open and not paused; only while the vault is sealed) and one arm toast per lock as its room engages (`hud.toast.vaultLock.*`, 2.5 s: solo UNTOUCHED, the party's allowance, the SWIFT countdown). Ids from `TREASURE_VIEW.toast.idBase` down. Never in the tutorial or after run over. |
+| `TooltipController` | `.../ui/TooltipController.ts` | docs/ITEM_TOOLTIPS.md IT4: render step `KV_ItemTooltips` after the camera; builds ONE `HoverFrame` a frame (pointer = `GetMouseLocation` minus `GetGuiInset` while the aim device is the mouse; the registered tooltip targets hit-tested by rect, `menu` before `hud`; `GuiService.SelectedObject` as focus; touch taps on `menu` targets; Attack / Alt from `InputController.weaponHeld`; the status panel's corner fade; `hudAllowed`), steps the pure `HoverTracker` and writes the store's `tooltip` slice only when it shows a different object. Resets the tracker when a menu closes or a shown target unmounts. |
 | `MenuController` | `.../ui/MenuController.ts` | L3 / L6: the main menu on join, once the first-run gate decided against the tutorial (a first-time player goes straight into it instead; no run starts on its own; `KV_SkipMenu` starts one at once), the screen + back stack (Reflex `menu`; pad B / Backspace go back), Play solo / Lobbies / Tutorial / Options / Leaderboard, the menu after a run (the lobby room while in a lobby, else the main menu), the co-op party overlay (the pause key in a party run) and Leave run. See "Main menu, lobbies and Leave run". |
 | `LobbyController` | `.../ui/LobbyController.ts` | L5: the lobby remotes into the Reflex `lobby` slice (list, my lobby, invites, notice toasts, the players in this server), the lobby requests, and `lobbyRunStart` (a one-player lobby's ranked solo run). I5 (docs/INVITES.md): `invitePrompt`, `inviteEligibility` (start + menu open when stale) -> `inviteEligible`, `joinIntent` into the slice, `invitePromptOnClient` (the client prompt path; the options kept until the local prompt closes or `INVITE.promptOptionsSeconds`) and the local `GameInvitePromptClosed` relayed as `inviteRecipients`. |
 
@@ -503,6 +504,29 @@ are the local player's, `draftWaiting` counts teammates still choosing, and `com
 drops (docs/BOOSTS.md B7) added `boosts` (`{ kind, secondsLeft, fraction }` per running boost, seconds rounded up to
 tenths and the fraction in the same steps, so the row changes at most 10 times a second) and `aegisPips`, read for
 `playerIndex` (they move to the vitals index once docs/SPECTATE.md S2 adds `SnapshotExtras.vitalsIndex`).
+
+### Item tooltips (docs/ITEM_TOOLTIPS.md IT4-IT9; not run in Studio yet)
+
+Point at an owned item and read what it does now, what its next level does and where it came from. Pieces:
+
+- `client/ui/hud/tooltipTargets.ts`: the target registry. `useTooltipTarget(ref, source, { panel, more, enabled })`
+  registers the component's GuiObject (by its stable ref callback) with its `ItemRef`, source `menu` (the pause /
+  run-over Build list rows) or `hud` (the status panel's item cells, its `+N` cell with the hidden refs, the boost
+  cells; panel `topLeft`); one entry per mounted component, kept across snapshot re-renders (a changed ref bumps its
+  `version`). `TooltipClipContext` clips a scrolling list's rows to their ScrollingFrame. Targets are plain,
+  non-Active Frames: no button, no `MouseEnter` (ITD2), so a swing that starts over the status panel still swings.
+- `TooltipController` (controller map above) feeds `shared/view/hud` `HoverTracker`; the `tooltip` store slice holds
+  what it shows.
+- `ItemTooltip.tsx`: `KV_ItemTooltip`, its own ScreenGui (`ITEM_TOOLTIP.displayOrder` 25, CoreUISafeInsets, the HUD
+  scale, AutoLocalize off), mounted by GameHud. The model (`itemTooltip` / `moreTooltip` over the snapshot) drawn on
+  the `hud` frame art (flat `uiPanel` without it): the title in its role with level pips, the kind line, the body
+  lines wrapped (width: the widest line's TextService width, at most `maxWidth`; a line's `varRoles` vars coloured with
+  RichText, every text escaped). Measured once laid out, placed with `tooltipPlacement` inside its ScreenGui's rect
+  (the safe area), faded in over `fadeSec` (none under Reduced motion). Never Active.
+- `BuildList` (pause, run over): `buildListSections` with section titles (boosts in the pause list only), at most
+  `maxRows` lines visible, the rest in a ScrollingFrame (ITD5, no `+N` line); rows Selectable for the gamepad.
+  The upright pause panel gets a Build / Map item (`pause.build` / `pause.map`) that swaps the map area for the list.
+- Options > Display > Item tooltips in combat (`hudTooltips`), shown when a mouse is attached.
 
 ## Juice (`src/shared/view/fx/` logic, `src/client/controllers/fx/` drawing)
 

@@ -1102,6 +1102,26 @@ export const REQUIRED_STRING_KEYS: ReadonlyArray<string> = ((): string[] => [
 	"hud.toast.brace",
 	"hud.toast.braceHeal",
 	"fx.brace.text",
+	// docs/ITEM_TOOLTIPS.md IT3: shared/view/hud TOOLTIP_STRINGS, written out (tooltip.spec.ts checks they agree): the
+	// kind lines, Next / evolves / duo recipe / time left, the "+N" count, the Build list's sections, Build / Map
+	"hud.tip.kind.boon",
+	"hud.tip.kind.evolved",
+	"hud.tip.kind.duo",
+	"hud.tip.kind.relic",
+	"hud.tip.kind.curse",
+	"hud.tip.kind.boost",
+	"hud.tip.next",
+	"hud.tip.evolves",
+	"hud.tip.duoFrom",
+	"hud.tip.secondsLeft",
+	"hud.tip.more",
+	"hud.build.boons",
+	"hud.build.duos",
+	"hud.build.relics",
+	"hud.build.curses",
+	"hud.build.boosts",
+	"pause.build",
+	"pause.map",
 	// docs/DAILY.md DS9 / DS11: the main menu's Daily card and podium, the leaderboard tabs, the run-over daily block
 	...DAILY_STRING_KEYS,
 	// docs/DAILY.md DS2: the stage card's roster line (floor 1's kinds, a floor's new kinds)

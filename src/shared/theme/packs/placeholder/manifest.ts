@@ -679,6 +679,7 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"options.display.hudScale": "HUD scale",
 		"options.display.roomEdges": "Room edges",
 		"options.display.hudFade": "HUD fade",
+		"options.display.hudTooltips": "Item tooltips in combat",
 		"options.display.minimap": "Minimap",
 		"options.display.playerOutline": "Player outline",
 		// Roblox port (docs/BUILDS.md BU8, BUD13): the build effects setting.
@@ -915,6 +916,27 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		// docs/LEGENDARIES.md LG5 (BUILD_STRING_KEYS): Bastion's brace restored a pip / (Stone Heart) healed instead
 		"hud.toast.brace": "Braced: +1 armor",
 		"hud.toast.braceHeal": "Braced: healed",
+		// Item tooltips (docs/ITEM_TOOLTIPS.md IT3; shared/view/hud TOOLTIP_STRINGS): the tooltip's kind lines, its Next /
+		// evolution / duo recipe / time-left lines, the "+N" cell's count, the Build list's sections, the upright pause
+		// panel's Build / Map toggle.
+		"hud.tip.kind.boon": "{rarity} boon",
+		"hud.tip.kind.evolved": "Evolution of {boon}",
+		"hud.tip.kind.duo": "Duo",
+		"hud.tip.kind.relic": "Relic",
+		"hud.tip.kind.curse": "Curse",
+		"hud.tip.kind.boost": "Boost",
+		"hud.tip.next": "Next: {desc}",
+		"hud.tip.evolves": "Evolves into {evo}: {desc}",
+		"hud.tip.duoFrom": "From {a} + {b}",
+		"hud.tip.secondsLeft": "{seconds} s left",
+		"hud.tip.more": "{count} more",
+		"hud.build.boons": "Boons",
+		"hud.build.duos": "Duos",
+		"hud.build.relics": "Relics",
+		"hud.build.curses": "Curses",
+		"hud.build.boosts": "Boosts",
+		"pause.build": "Build",
+		"pause.map": "Map",
 		"hud.toast.relic": "Relic found: {name}",
 		"hud.toast.curse": "Cursed: {name}",
 		"hud.toast.secondWind": "Second Wind!",

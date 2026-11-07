@@ -1,20 +1,22 @@
-import React from "@rbxts/react";
+import React, { useState } from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
 import { Workspace } from "@rbxts/services";
 import { selectInputDevice, selectSnapshot } from "client/store";
 import { useHudFont, hudText, role, str } from "client/ui/theme";
+import type { GameSnapshot } from "shared/play";
+import { PORTRAIT } from "shared/view";
 import {
 	BUILD_HUD_VIEW,
-	HUD_STRINGS,
 	HUD_VIEW,
+	OPTIONS_VIEW,
 	PROGRESSION_STRINGS,
-	buildListRows,
-	capBuildList,
+	buildListSections,
 	pauseBuildWidth,
 	type BuildListRow,
 } from "shared/view/hud";
 import { screenSkin } from "shared/view/menu";
 import { Panel, Text } from "./primitives";
+import { TooltipClipContext, useTooltipTarget } from "./tooltipTargets";
 import { useHudScale } from "./useHudScale";
 
 const HIDDEN = 1;
@@ -22,11 +24,21 @@ const HALF = 0.5;
 /** A text row's box over its text size (primitives Text's line slack). */
 const LINE_SLACK = 4;
 
-/** One row: the name in its colour, the level, the line it has now (dim, truncated to the row). */
+/** One line of the list (a row or a section title), reference px. */
+function lineHeight(): number {
+	return HUD_VIEW.smallText + LINE_SLACK;
+}
+
+/**
+ * One row: the name in its colour, the level, the line it has now (dim, truncated to the row; the tooltip has it
+ * whole). A plain Frame registered as a `menu` tooltip target (hover, gamepad focus, tap; docs/ITEM_TOOLTIPS.md IT5)
+ * and Selectable for the gamepad (never Active, never a button).
+ */
 function Row(props: { order: number; row: BuildListRow; width: number }) {
 	const hudFont = useHudFont();
+	const tipRef = useTooltipTarget(props.row.ref, "menu");
 	const V = BUILD_HUD_VIEW;
-	const h = HUD_VIEW.smallText + LINE_SLACK;
+	const h = lineHeight();
 	const descW = math.max(0, props.width - V.listNameWidth - V.listLevelWidth - 2 * HUD_VIEW.gap);
 	const label = (
 		order: number,
@@ -50,7 +62,14 @@ function Row(props: { order: number; row: BuildListRow; width: number }) {
 		/>
 	);
 	return (
-		<frame LayoutOrder={props.order} Size={UDim2.fromOffset(props.width, h)} BackgroundTransparency={HIDDEN}>
+		<frame
+			ref={tipRef}
+			LayoutOrder={props.order}
+			Size={UDim2.fromOffset(props.width, h)}
+			BackgroundTransparency={HIDDEN}
+			Selectable={true}
+			Active={false}
+		>
 			<uilistlayout
 				FillDirection={Enum.FillDirection.Horizontal}
 				SortOrder={Enum.SortOrder.LayoutOrder}
@@ -63,20 +82,56 @@ function Row(props: { order: number; row: BuildListRow; width: number }) {
 	);
 }
 
+/** Whether the local player owns anything the Build list shows (with `withBoosts`: a running boost counts too). */
+export function hasBuildItems(s: GameSnapshot, withBoosts: boolean): boolean {
+	return (
+		s.boons.size() > 0 ||
+		s.duos.size() > 0 ||
+		s.relics.size() > 0 ||
+		s.curses.size() > 0 ||
+		(withBoosts && s.boosts.size() > 0)
+	);
+}
+
 /**
- * The Build list (docs/BUILDS.md BU10): "Build", then one row per boon (name, level, its line now; an evolved boon by
- * its evolution's name in boon.evolved) and per duo (boon.duo), the local player's, from the snapshot
- * (shared/view/hud buildListRows); at most `maxRows` rows, the last a "+N" line. Nothing without boons. A column of
- * fixed `width` (reference px), no panel of its own.
+ * The Build list (docs/BUILDS.md BU10; docs/ITEM_TOOLTIPS.md IT5 / IT7): "Build", then the run's whole inventory in
+ * sections (shared/view/hud buildListSections: Boons, Duos, Relics, Curses and, with `withBoosts`, the running Boosts
+ * with their seconds left; empty sections left out), the local player's, from the snapshot. At most `maxRows` lines
+ * (rows and section titles) show; more scroll (ITD5: a ScrollingFrame, mouse wheel / touch drag, gamepad selection
+ * scrolls a row into view) instead of the old "+N" line. Every row is a tooltip target (hover, focus, tap), clipped to
+ * the scroll frame. Nothing when nothing is owned. A column of fixed `width` (reference px), no panel of its own.
  */
-export function BuildList(props: { order: number; width: number; maxRows: number }) {
+export function BuildList(props: { order: number; width: number; maxRows: number; withBoosts: boolean }) {
 	const s = useSelector(selectSnapshot);
-	const rows = buildListRows(s.boons, s.boonLevels, s.duos);
-	if (rows.size() === 0) return undefined;
-	const cap = capBuildList(rows.size(), props.maxRows);
+	const [scroll, setScroll] = useState<ScrollingFrame | undefined>(undefined);
+	const sections = buildListSections(s, props.withBoosts);
+	if (sections.size() === 0) return undefined;
+	let lines = 0;
+	for (const sec of sections) lines += 1 + sec.rows.size();
+	const visible = math.max(1, math.min(lines, props.maxRows));
+	const scrolls = lines > props.maxRows;
+	const gap = HUD_VIEW.gap / 2;
+	const h = lineHeight();
+	const listH = visible * h + (visible - 1) * gap;
+	const rowW = props.width - (scrolls ? OPTIONS_VIEW.scrollBar + gap : 0);
 	const children = new Array<React.Element>();
-	for (let i = 0; i < cap.shown; i++) {
-		children.push(<Row key={rows[i].key} order={i + 2} row={rows[i]} width={props.width} />);
+	let order = 0;
+	for (const sec of sections) {
+		order += 1;
+		children.push(
+			<Text
+				key={`t:${sec.kind}`}
+				order={order}
+				width={rowW}
+				size={HUD_VIEW.smallText}
+				color="uiAccent"
+				text={hudText(sec.title)}
+			/>,
+		);
+		for (const row of sec.rows) {
+			order += 1;
+			children.push(<Row key={row.key} order={order} row={row} width={rowW} />);
+		}
 	}
 	return (
 		<frame
@@ -88,7 +143,7 @@ export function BuildList(props: { order: number; width: number; maxRows: number
 			<uilistlayout
 				FillDirection={Enum.FillDirection.Vertical}
 				SortOrder={Enum.SortOrder.LayoutOrder}
-				Padding={new UDim(0, HUD_VIEW.gap / 2)}
+				Padding={new UDim(0, gap)}
 			/>
 			<Text
 				order={1}
@@ -97,32 +152,66 @@ export function BuildList(props: { order: number; width: number; maxRows: number
 				color="uiAccent"
 				text={str(PROGRESSION_STRINGS.buildTitle)}
 			/>
-			{children}
-			{cap.more > 0 ? (
-				<Text
-					order={cap.shown + 2}
-					width={props.width}
-					size={HUD_VIEW.smallText}
-					color="uiTextDim"
-					text={str(HUD_STRINGS.itemsMore, { count: cap.more })}
+			<scrollingframe
+				key="Rows"
+				ref={setScroll}
+				LayoutOrder={2}
+				Size={UDim2.fromOffset(props.width, listH)}
+				CanvasSize={new UDim2()}
+				AutomaticCanvasSize={Enum.AutomaticSize.Y}
+				ScrollingDirection={Enum.ScrollingDirection.Y}
+				ScrollingEnabled={scrolls}
+				ScrollBarThickness={scrolls ? OPTIONS_VIEW.scrollBar : 0}
+				ScrollBarImageColor3={role("uiTextDim")}
+				BackgroundTransparency={HIDDEN}
+				BorderSizePixel={0}
+				Selectable={false}
+			>
+				<uilistlayout
+					FillDirection={Enum.FillDirection.Vertical}
+					SortOrder={Enum.SortOrder.LayoutOrder}
+					Padding={new UDim(0, gap)}
 				/>
-			) : undefined}
+				<TooltipClipContext.Provider value={scroll}>{children}</TooltipClipContext.Provider>
+			</scrollingframe>
 		</frame>
 	);
 }
 
 /**
- * The pause / party overlay's Build panel (docs/BUILDS.md BU10): the Build list right of the pause menu (its panel is
- * HUD_VIEW.panelWidth wide and centred; the solo map is on the left, PauseMap), vertically centred, in the pause
- * screen's frame. Nothing without boons.
+ * The pause / party overlay's Build panel (docs/BUILDS.md BU10, docs/ITEM_TOOLTIPS.md IT5): the Build list (with the
+ * running boosts) right of the pause menu (its panel is HUD_VIEW.panelWidth wide and centred; the solo map is on the
+ * left, PauseMap), vertically centred, in the pause screen's frame. `top` (an upright phone's Build / Map toggle,
+ * IT8): centred in the area the map takes otherwise (PORTRAIT.pauseMapShare of the safe area, the panel under it),
+ * at the compact width and rows. Nothing when nothing is owned.
  */
-export function PauseBuild() {
+export function PauseBuild(props: { top?: boolean }) {
 	const s = useSelector(selectSnapshot);
 	const touch = useSelector(selectInputDevice) === "touch";
 	const uiScale = useHudScale();
-	if (s.boons.size() === 0 && s.duos.size() === 0) return undefined;
-	const side = HUD_VIEW.panelWidth / 2 + HUD_VIEW.gap;
+	if (!hasBuildItems(s, true)) return undefined;
 	const V = BUILD_HUD_VIEW;
+	if (props.top === true) {
+		const m = HUD_VIEW.margin;
+		return (
+			<frame
+				key="PauseBuildArea"
+				Position={new UDim2(0, m, 0, m)}
+				Size={new UDim2(1, -2 * m, PORTRAIT.pauseMapShare, -m)}
+				BackgroundTransparency={HIDDEN}
+			>
+				<Panel
+					name="PauseBuild"
+					position={UDim2.fromScale(HALF, HALF)}
+					anchor={new Vector2(HALF, HALF)}
+					skin={screenSkin("pause")}
+				>
+					<BuildList order={1} width={V.listCompactWidth} maxRows={V.listCompactRows} withBoosts={true} />
+				</Panel>
+			</frame>
+		);
+	}
+	const side = HUD_VIEW.panelWidth / 2 + HUD_VIEW.gap;
 	const viewW = Workspace.CurrentCamera?.ViewportSize.X ?? 0;
 	const width = pauseBuildWidth(viewW, uiScale, HUD_VIEW.pad * 2);
 	return (
@@ -132,7 +221,7 @@ export function PauseBuild() {
 			anchor={new Vector2(0, HALF)}
 			skin={screenSkin("pause")}
 		>
-			<BuildList order={1} width={width} maxRows={touch ? V.listCompactRows : V.listMaxRows} />
+			<BuildList order={1} width={width} maxRows={touch ? V.listCompactRows : V.listMaxRows} withBoosts={true} />
 		</Panel>
 	);
 }

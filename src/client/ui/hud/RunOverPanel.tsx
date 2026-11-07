@@ -61,7 +61,7 @@ import { MenuFit } from "./MenuFit";
 import { runOverBest, type RunOverBest } from "./newBestRunOver";
 import { NEW_BEST_UI } from "./newBestUi";
 import { ArtImage, MenuButton, Panel, Row, Text, panelIcon } from "./primitives";
-import { BuildList } from "./BuildList";
+import { BuildList, hasBuildItems } from "./BuildList";
 import { DailyPassedRow } from "./DailyPassedRow";
 import { RunInfoLine, verdictColor, verdictLine } from "./RunInfoLine";
 import { DetailsToggle, HighlightGrid, NearMissLine } from "./RecapBlocks";
@@ -629,7 +629,8 @@ export function RunOverPanel() {
 	};
 	const breakdown = { order: ROW.breakdown, score: s.score, points: s.scorePoints, maxCombo: s.maxCombo };
 	const breakdownWidth = HUD_VIEW.breakdownLabelWidth + HUD_VIEW.gap + HUD_VIEW.breakdownValueWidth;
-	const hasBuild = (s.boons.size() > 0 || s.duos.size() > 0) && details;
+	// docs/ITEM_TOOLTIPS.md IT7: relics and curses count too (the list's sections; boosts ended with the run).
+	const hasBuild = hasBuildItems(s, false) && details;
 	const legacyButton = new Vector2(MENU_FIT.runOverButton.x, MENU_FIT.runOverButton.y);
 	return (
 		<MenuFit
@@ -689,7 +690,12 @@ export function RunOverPanel() {
 								) : undefined}
 								{hasBuild ? (
 									<Column order={3} width={build} gap={MENU_FIT.runOverLineGap}>
-										<BuildList order={1} width={build} maxRows={BUILD_HUD_VIEW.listCompactRows} />
+										<BuildList
+											order={1}
+											width={build}
+											maxRows={BUILD_HUD_VIEW.listCompactRows}
+											withBoosts={false}
+										/>
 									</Column>
 								) : undefined}
 							</Row>
@@ -737,6 +743,7 @@ export function RunOverPanel() {
 										order={2}
 										width={BUILD_HUD_VIEW.listWidth}
 										maxRows={BUILD_HUD_VIEW.listMaxRows}
+										withBoosts={false}
 									/>
 								) : undefined}
 							</Row>
@@ -746,6 +753,7 @@ export function RunOverPanel() {
 								order={ROW.build}
 								width={BUILD_HUD_VIEW.listWidth}
 								maxRows={BUILD_HUD_VIEW.listCompactRows}
+								withBoosts={false}
 							/>
 						) : undefined}
 						{verdictRow}

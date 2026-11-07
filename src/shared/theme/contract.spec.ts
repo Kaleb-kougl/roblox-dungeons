@@ -214,9 +214,10 @@ describe("required IDs and strings", () => {
 		// + docs/FORTUNE.md FD9: enemy.golden.name. + FO6: FORTUNE_STRING_KEYS (18), the Horde's tally segment
 		// (ROOM_CLEAR_STRING_KEYS), bestiary.golden (BESTIARY_STRING_KEYS); FO7: hud.score.pop.horde (in FORTUNE_STRING_KEYS)
 		// + docs/LEGENDARIES.md LG5: 3 BUILD_STRING_KEYS (hud.toast.brace / .braceHeal, fx.brace.text)
+		// + docs/ITEM_TOOLTIPS.md IT3: 18 shared/view/hud TOOLTIP_STRINGS
 		const before =
 			41 + 1 + 2 + 4 * 3 + 1 + 3 + 5 + 13 + 10 + 8 + 2 + 2 + 4 + 7 + 17 + 7 + 3 + 64 + 22 + 52 + 5 + 5 + 2 + 1;
-		expect(REQUIRED_STRING_KEYS.size()).toBe(before + 28 + 1 + 1 + 4 + 16 + 1 + 19 + 1 + 1 + 3);
+		expect(REQUIRED_STRING_KEYS.size()).toBe(before + 28 + 1 + 1 + 4 + 16 + 1 + 19 + 1 + 1 + 3 + 18);
 		expect(new Set(REQUIRED_STRING_KEYS).size()).toBe(REQUIRED_STRING_KEYS.size());
 		expect(BIOMES.map((b) => b.forgeTheme)).toEqual(["ancient", "molten", "frost", "grim", "verdant"]);
 	});

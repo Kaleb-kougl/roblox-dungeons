@@ -588,6 +588,11 @@ function DisplayTab(props: { order: number; actions: HudActions; selectable: boo
 	const display = useSelector(selectDisplay);
 	/** Touch devices only: the touch rows (docs/MOBILE.md MB11). Read once, when the tab opens. */
 	const touch = UserInputService.TouchEnabled;
+	/**
+	 * A mouse is attached: the live HUD's item tooltips (docs/ITEM_TOOLTIPS.md IT9, ITD8) are mouse-only, so their row
+	 * shows only then (a touch-only phone's Display tab keeps its rows). Read once, when the tab opens.
+	 */
+	const mouse = UserInputService.MouseEnabled;
 	return (
 		<Panel position={new UDim2()} anchor={new Vector2()} order={props.order} transparency={HIDDEN} padding={0}>
 			<LanguageRow order={0} actions={props.actions} selectable={props.selectable} />
@@ -637,8 +642,25 @@ function DisplayTab(props: { order: number; actions: HudActions; selectable: boo
 					props.actions.updateDisplay({ hudFade: v });
 				}}
 			/>
+			{mouse && (
+				<SettingRow
+					order={4}
+					name="hudTooltips"
+					selectable={props.selectable}
+					label={str(OPTIONS_STRINGS.hudTooltips)}
+					value={display.hudTooltips}
+					options={[
+						{ value: true, label: str(SETTINGS_STRINGS.on) },
+						{ value: false, label: str(SETTINGS_STRINGS.off) },
+					]}
+					onPick={(v) => {
+						props.actions.playUi(SFX.uiClick);
+						props.actions.updateDisplay({ hudTooltips: v });
+					}}
+				/>
+			)}
 			<SettingRow
-				order={4}
+				order={5}
 				name="minimap"
 				selectable={props.selectable}
 				label={str(OPTIONS_STRINGS.minimap)}
@@ -653,7 +675,7 @@ function DisplayTab(props: { order: number; actions: HudActions; selectable: boo
 				}}
 			/>
 			<SettingRow
-				order={5}
+				order={6}
 				name="playerOutline"
 				selectable={props.selectable}
 				label={str(OPTIONS_STRINGS.playerOutline)}
@@ -668,7 +690,7 @@ function DisplayTab(props: { order: number; actions: HudActions; selectable: boo
 				}}
 			/>
 			<SettingRow
-				order={6}
+				order={7}
 				name="buildFx"
 				selectable={props.selectable}
 				label={str(OPTIONS_STRINGS.buildFx)}
@@ -684,7 +706,7 @@ function DisplayTab(props: { order: number; actions: HudActions; selectable: boo
 			/>
 			{touch && (
 				<SettingRow
-					order={7}
+					order={8}
 					name="touchSize"
 					selectable={props.selectable}
 					label={str(OPTIONS_STRINGS.touchSize)}
@@ -702,7 +724,7 @@ function DisplayTab(props: { order: number; actions: HudActions; selectable: boo
 			)}
 			{touch && (
 				<SettingRow
-					order={8}
+					order={9}
 					name="touchOpacity"
 					selectable={props.selectable}
 					label={str(OPTIONS_STRINGS.touchOpacity)}
@@ -720,7 +742,7 @@ function DisplayTab(props: { order: number; actions: HudActions; selectable: boo
 			)}
 			{touch && (
 				<SettingRow
-					order={9}
+					order={10}
 					name="touchAutoTarget"
 					selectable={props.selectable}
 					label={str(OPTIONS_STRINGS.touchAutoTarget)}
@@ -737,7 +759,7 @@ function DisplayTab(props: { order: number; actions: HudActions; selectable: boo
 			)}
 			{touch && (
 				<SettingRow
-					order={10}
+					order={11}
 					name="touchLeftHanded"
 					selectable={props.selectable}
 					label={str(OPTIONS_STRINGS.touchLeftHanded)}

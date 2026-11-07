@@ -13,6 +13,7 @@ import { recordsSlice } from "./records";
 import { settingsSlice } from "./settings";
 import { spikesSlice } from "./spikes";
 import { stageSlice } from "./stage";
+import { tooltipSlice } from "./tooltip";
 import { tutorialSlice } from "./tutorial";
 
 /**
@@ -29,7 +30,8 @@ import { tutorialSlice } from "./tutorial";
  * personal records the server sent and the run's frozen new-best baseline (docs/NEW_BEST.md NB7); the `daily` slice the
  * Daily's status (today's day, label, seed, ruleset, reset time: docs/DAILY.md DS4); the `dailyRank` slice the friends a
  * daily run passed (docs/DAILY.md DS10); the `l10n` slice the locale shown (docs/LOCALIZATION.md L6); the `recap` slice the
- * run-over recap's near-miss line, highlights, Details toggle and arm (docs/RUN_RECAP.md RR5).
+ * run-over recap's near-miss line, highlights, Details toggle and arm (docs/RUN_RECAP.md RR5); the `tooltip` slice the item
+ * tooltip shown (docs/ITEM_TOOLTIPS.md IT4).
  *
  * Import through the directory (`client/store`), never the file.
  */
@@ -48,6 +50,7 @@ export * from "./selectors";
 export * from "./settings";
 export * from "./spikes";
 export * from "./stage";
+export * from "./tooltip";
 export * from "./tutorial";
 
 export const clientStore = combineProducers({
@@ -66,6 +69,7 @@ export const clientStore = combineProducers({
 	daily: dailySlice,
 	dailyRank: dailyRankSlice,
 	l10n: l10nSlice,
+	tooltip: tooltipSlice,
 });
 
 export type ClientStore = typeof clientStore;

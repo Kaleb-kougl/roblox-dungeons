@@ -1257,6 +1257,26 @@
 			"points": "12,340"
 		}
 	},
+	"hud.build.boons": {
+		"note": "Section heading in the Build list (pause menu and run-over screen: everything the player owns this run): the boons (run power-ups picked from drafts).",
+		"max": 14
+	},
+	"hud.build.boosts": {
+		"note": "Section heading in the Build list (pause menu only): the running boosts (temporary power-ups), each with its time left.",
+		"max": 14
+	},
+	"hud.build.curses": {
+		"note": "Section heading in the Build list (pause menu and run-over screen): the curses (drawbacks accepted at shrines for more score).",
+		"max": 14
+	},
+	"hud.build.duos": {
+		"note": "Section heading in the Build list (pause menu and run-over screen): the Duo boons (special boons unlocked by owning two specific boons). Plural of hud.tip.kind.duo.",
+		"max": 14
+	},
+	"hud.build.relics": {
+		"note": "Section heading in the Build list (pause menu and run-over screen): the relics (permanent items found during the run).",
+		"max": 14
+	},
 	"hud.build.title": {
 		"note": "Title of the list of boons the player owns (pause menu and run-over panel): their \"build\" for this run.",
 		"max": 12
@@ -1715,6 +1735,73 @@
 		"note": "Co-op spectate bar (bottom centre): which teammate the player is watching. {name} is a player's display name (never translated).",
 		"example": {
 			"name": "Alex"
+		}
+	},
+	"hud.tip.duoFrom": {
+		"note": "Item tooltip (a small box shown when the player hovers, focuses or taps an item they own in the pause menu's Build list, the run-over screen or the in-run HUD's item icons). Line under a Duo boon's effect: the two boons it was made from. {a} and {b} are the two boon names (shown in their colours).",
+		"max": 40,
+		"example": {
+			"a": "Chain Spark",
+			"b": "Volatile"
+		}
+	},
+	"hud.tip.evolves": {
+		"note": "Item tooltip (a small box shown when the player hovers, focuses or taps an item they own in the pause menu's Build list, the run-over screen or the in-run HUD's item icons). Line under a boon's effect at the level before its evolution: the next pick turns it into a stronger, renamed form. {evo} is the evolved form's name, {desc} its effect (a short change).",
+		"max": 48,
+		"example": {
+			"evo": "Cataclysm",
+			"desc": "16 piercing bolts"
+		}
+	},
+	"hud.tip.kind.boon": {
+		"note": "Item tooltip (a small box shown when the player hovers, focuses or taps an item they own in the pause menu's Build list, the run-over screen or the in-run HUD's item icons). Kind line under the item's name for a boon (a run power-up picked from a draft). {rarity} is the rarity's name (boon.rarity.*: Common / Rare / Legendary). Reorder or inflect as the language needs; if the rarity must agree with the word for boon, use the form that fits all three.",
+		"max": 24,
+		"example": {
+			"rarity": "Rare"
+		}
+	},
+	"hud.tip.kind.boost": {
+		"note": "Item tooltip (a small box shown when the player hovers, focuses or taps an item they own in the pause menu's Build list, the run-over screen or the in-run HUD's item icons). Kind line for a boost (a temporary power-up dropped by a killed enemy, lasting some seconds). One word, the glossary's boost.",
+		"max": 14
+	},
+	"hud.tip.kind.curse": {
+		"note": "Item tooltip (a small box shown when the player hovers, focuses or taps an item they own in the pause menu's Build list, the run-over screen or the in-run HUD's item icons). Kind line for a curse (a drawback the player accepted at a shrine for more score). One word.",
+		"max": 14
+	},
+	"hud.tip.kind.duo": {
+		"note": "Item tooltip (a small box shown when the player hovers, focuses or taps an item they own in the pause menu's Build list, the run-over screen or the in-run HUD's item icons). Kind line for a Duo boon (a special boon unlocked by owning two specific boons). One word, same term as the DUO draft banner (hud.draft.duo) in normal case.",
+		"max": 14
+	},
+	"hud.tip.kind.evolved": {
+		"note": "Item tooltip (a small box shown when the player hovers, focuses or taps an item they own in the pause menu's Build list, the run-over screen or the in-run HUD's item icons). Kind line for an evolved boon (a boon at its top level turned into a stronger, renamed form). {boon} is the original boon's name.",
+		"max": 32,
+		"example": {
+			"boon": "Volatile"
+		}
+	},
+	"hud.tip.kind.relic": {
+		"note": "Item tooltip (a small box shown when the player hovers, focuses or taps an item they own in the pause menu's Build list, the run-over screen or the in-run HUD's item icons). Kind line for a relic (a permanent item found on a pedestal or in a chest during the run). One word.",
+		"max": 14
+	},
+	"hud.tip.more": {
+		"note": "Item tooltip (a small box shown when the player hovers, focuses or taps an item they own in the pause menu's Build list, the run-over screen or the in-run HUD's item icons). On the HUD's \"+N\" icon that stands for the items that did not fit in the row: how many are hidden (the tooltip then lists their names). {count} is a number (2 or more).",
+		"max": 16,
+		"example": {
+			"count": 3
+		}
+	},
+	"hud.tip.next": {
+		"note": "Item tooltip (a small box shown when the player hovers, focuses or taps an item they own in the pause menu's Build list, the run-over screen or the in-run HUD's item icons). Line under a levelled boon's effect: what its next level gives. {desc} is the next level's effect, written as a short change (e.g. \"12 bolts\").",
+		"max": 40,
+		"example": {
+			"desc": "12 bolts"
+		}
+	},
+	"hud.tip.secondsLeft": {
+		"note": "Item tooltip (a small box shown when the player hovers, focuses or taps an item they own in the pause menu's Build list, the run-over screen or the in-run HUD's item icons). Time left on a running boost, also its row in the Build list. {seconds} is a whole number of seconds; \"s\" is the abbreviation for seconds.",
+		"max": 16,
+		"example": {
+			"seconds": 12
 		}
 	},
 	"hud.toast.boon": {
@@ -2678,6 +2765,10 @@
 		"note": "Options screen, Display tab: row label for the size of the in-game HUD (percent steps). Label column 210 px.",
 		"max": 24
 	},
+	"options.display.hudTooltips": {
+		"note": "Options screen, Display tab: row label (On / Off) for item tooltips during combat: hovering an item icon in the in-run HUD with the mouse shows what it does. Menus always show them. Label column 210 px.",
+		"max": 24
+	},
 	"options.display.language": {
 		"note": "Options screen, Display tab: row label for the game's language (the choice shows between < and > buttons). Label column 210 px.",
 		"max": 24
@@ -2859,6 +2950,14 @@
 	"pact.horde.title": {
 		"note": "Title of the Pact of the Horde card, drawn on the floor in front of one of two altars in the shrine room (risk shrines: a pact gives a reward for a cost the card states up front; the player walks onto the altar and presses the shrine key to accept). Horde: the next room the party enters fights a second wave of enemies and pays double score. ALL CAPS; keep capitals if the script has them.",
 		"max": 24
+	},
+	"pause.build": {
+		"note": "Button in the pause menu on a phone held upright: swaps the map for the Build list (everything the player owns this run). Same word as the list's title hud.build.title.",
+		"max": 12
+	},
+	"pause.map": {
+		"note": "Button in the pause menu on a phone held upright: swaps the Build list back for the dungeon map.",
+		"max": 12
 	},
 	"playtest.run.hits": {
 		"note": "Stat label on the run-over panel (a 150 px stat column, the value written below it): how many hits the player took.",

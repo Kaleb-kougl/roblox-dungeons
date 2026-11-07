@@ -167,6 +167,7 @@ function HordeBoostRow(props: { order: number; boosts: ReadonlyArray<BoostHudEnt
 				order={2}
 				boosts={props.boosts}
 				highlight={props.highlight}
+				tooltips={true}
 				maxWidth={math.max(cell, statusRowMaxWidth() - chipW - HUD_VIEW.gap)}
 			/>
 		</Row>
@@ -230,7 +231,7 @@ export function StatusPanel(props: StatusPanelProps) {
 			{s.hordeArmed ? (
 				<HordeBoostRow order={4} boosts={s.boosts} highlight={props.boostsHighlight} />
 			) : (
-				<BoostRow order={4} boosts={s.boosts} highlight={props.boostsHighlight} />
+				<BoostRow order={4} boosts={s.boosts} highlight={props.boostsHighlight} tooltips={true} />
 			)}
 			{s.floor > 0 && !s.scoring ? (
 				<Text order={5} color="uiText" text={str(HUD_STRINGS.floor, { floor: s.floor, depth: s.depth })} />
@@ -242,6 +243,7 @@ export function StatusPanel(props: StatusPanelProps) {
 				curses={s.curses}
 				levels={s.boonLevels}
 				duos={s.duos}
+				tooltips={true}
 			/>
 		</Panel>
 	);

@@ -6,6 +6,8 @@ import {
 	DEFAULT_HUD_SCALE_PERCENT,
 	DEFAULT_ROOM_EDGES,
 	DEFAULT_HUD_FADE,
+	DEFAULT_HUD_TOOLTIPS,
+	DISPLAY_SETTING_KEYS,
 	DEFAULT_MINIMAP,
 	DEFAULT_PLAYER_OUTLINE,
 	DEFAULT_BUILD_FX,
@@ -284,6 +286,7 @@ describe("display: room edges (docs/ROOM_EDGES.md RE6)", () => {
 			hudScale: DEFAULT_HUD_SCALE_PERCENT,
 			roomEdges: false,
 			hudFade: DEFAULT_HUD_FADE,
+			hudTooltips: DEFAULT_HUD_TOOLTIPS,
 			minimap: DEFAULT_MINIMAP,
 			playerOutline: DEFAULT_PLAYER_OUTLINE,
 			buildFx: DEFAULT_BUILD_FX,
@@ -326,6 +329,7 @@ describe("display: room edges (docs/ROOM_EDGES.md RE6)", () => {
 			hudScale: 125,
 			roomEdges: true,
 			hudFade: true,
+			hudTooltips: true,
 			minimap: true,
 			playerOutline: true,
 			buildFx: DEFAULT_BUILD_FX,
@@ -337,6 +341,41 @@ describe("display: room edges (docs/ROOM_EDGES.md RE6)", () => {
 		});
 		expect(resolveDisplaySettings(decodeSettingsDoc({ v: 2 }).display).roomEdges).toBe(true);
 		expect(resolveDisplaySettings(decodeSettingsDoc({ v: SETTINGS_DOC_V1, juice: {} }).display).roomEdges).toBe(
+			true,
+		);
+	});
+});
+
+describe("display: item tooltips in combat (docs/ITEM_TOOLTIPS.md ITD8, IT9)", () => {
+	it("defaults to On; only Off is stored", () => {
+		expect(DEFAULT_HUD_TOOLTIPS).toBe(true);
+		expect(defaultDisplaySettings().hudTooltips).toBe(true);
+		expect(resolveDisplaySettings(undefined).hudTooltips).toBe(true);
+		expect(sanitizeDisplayOverrides({ hudTooltips: false })).toEqual({ hudTooltips: false });
+		expect(sanitizeDisplayOverrides({ hudTooltips: true })).toEqual({});
+		expect(DISPLAY_SETTING_KEYS.includes("hudTooltips")).toBe(true);
+	});
+
+	it("round-trips Off through the stored document (still v2)", () => {
+		const overrides: SettingsOverrides = { display: { hudTooltips: false } };
+		const doc = encodeSettingsDoc(overrides);
+		expect(doc).toEqual({ ...EMPTY_DOC, display: { hudTooltips: false } });
+		expect(doc.v).toBe(2);
+		expect(decodeSettingsDoc(doc)).toEqual(overrides);
+		const all = decodeSettingsDoc(encodeSettingsDoc({ display: { hudFade: false, hudTooltips: false } }));
+		expect(all).toEqual({ display: { hudFade: false, hudTooltips: false } });
+		expect(applySettingsPatch(overrides, { display: { hudTooltips: true } })).toEqual({});
+		expect(sameSettingsOverrides(overrides, { display: { hudTooltips: false } })).toBe(true);
+		expect(sameSettingsOverrides(overrides, { display: { hudFade: false } })).toBe(false);
+	});
+
+	it("ignores junk; an older v2 document without the field reads On", () => {
+		for (const junk of [0, 1, "false", "off", {}, [false]] as ReadonlyArray<unknown>) {
+			expect(sanitizeDisplayOverrides({ hudTooltips: junk })).toEqual({});
+		}
+		const old = { v: 2, juice: {}, controls: {}, audio: {}, display: { hudFade: false } };
+		expect(resolveDisplaySettings(decodeSettingsDoc(old).display).hudTooltips).toBe(true);
+		expect(resolveDisplaySettings(decodeSettingsDoc({ v: SETTINGS_DOC_V1, juice: {} }).display).hudTooltips).toBe(
 			true,
 		);
 	});
@@ -396,6 +435,7 @@ describe("display: minimap (docs/MINIMAP.md M10)", () => {
 			hudScale: DEFAULT_HUD_SCALE_PERCENT,
 			roomEdges: DEFAULT_ROOM_EDGES,
 			hudFade: DEFAULT_HUD_FADE,
+			hudTooltips: DEFAULT_HUD_TOOLTIPS,
 			minimap: false,
 			playerOutline: DEFAULT_PLAYER_OUTLINE,
 			buildFx: DEFAULT_BUILD_FX,
@@ -439,6 +479,7 @@ describe("display: minimap (docs/MINIMAP.md M10)", () => {
 			hudScale: DEFAULT_HUD_SCALE_PERCENT,
 			roomEdges: false,
 			hudFade: false,
+			hudTooltips: true,
 			minimap: true,
 			playerOutline: true,
 			buildFx: DEFAULT_BUILD_FX,
@@ -672,6 +713,7 @@ describe("display: player outline (docs/PLAYER_OUTLINE.md P4)", () => {
 			hudScale: DEFAULT_HUD_SCALE_PERCENT,
 			roomEdges: DEFAULT_ROOM_EDGES,
 			hudFade: DEFAULT_HUD_FADE,
+			hudTooltips: DEFAULT_HUD_TOOLTIPS,
 			minimap: DEFAULT_MINIMAP,
 			playerOutline: false,
 			buildFx: DEFAULT_BUILD_FX,
@@ -751,6 +793,7 @@ describe("display: touch controls (docs/MOBILE.md MB7)", () => {
 			hudScale: DEFAULT_HUD_SCALE_PERCENT,
 			roomEdges: DEFAULT_ROOM_EDGES,
 			hudFade: DEFAULT_HUD_FADE,
+			hudTooltips: DEFAULT_HUD_TOOLTIPS,
 			minimap: DEFAULT_MINIMAP,
 			playerOutline: DEFAULT_PLAYER_OUTLINE,
 			buildFx: DEFAULT_BUILD_FX,
