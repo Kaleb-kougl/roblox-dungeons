@@ -11,8 +11,9 @@ Bullets, sight, enemies, the dungeon, the hash layout and the lockstep wire are 
 
 ## Status (2026-11-06)
 
-Plan only. Nothing built. The numbers below come from a Python port of `moveCircle`, plus a prototype of the new mover
-(not kept in the repo). WS0 re-measures them in Lune before any code changes.
+**WS0-WS2 built** (`shared/dungeon/slide.ts`, `slideData.ts`; specs `collision.snag.spec.ts`, `slide.spec.ts`; scenes in
+`dungeon/testing/slideScenes.ts`). Not wired yet (WS4): the sim still moves the player with `circleMover`. The table
+below was first measured on a Python port; WS0 re-measured it in Lune (see "As built" under WS0).
 
 **Owner (2026-11-06): it is mostly pillars.** So pillars come first:
 
@@ -197,10 +198,20 @@ Unchanged: the server validator (same config builder), the lockstep wire and the
 
 ## Tasks
 
-- [ ] **WS0. Measure in Lune.** `shared/dungeon/collision.snag.spec.ts` turns cases A-F into scenario specs. Today's
+- [x] **WS0. Measure in Lune.** `shared/dungeon/collision.snag.spec.ts` turns cases A-F into scenario specs. Today's
   mover is printed for the record. → Verify: the printed numbers match the table above (within the prototype's
   differences); `npm test -- dungeon/collision`.
-- [ ] **WS1. `slideCircle` core** (Design 1). Specs:
+  - As built (Lune, 2026-11-06), today -> slide (PLAYER_SLIDE):
+    - A (offsets 0.0-0.9, open floor 80 ticks): today stuck below 0.9; slide passes every offset, 89 88 87 86 85 84 83
+      81 80 80 ticks (at most 9 slower).
+    - B (offsets -0.9..0.9, open floor 87): today stuck at 5 of 19; slide passes all, 88-97, the exact tie 100.
+    - C (0 / 5 / 15 / 25 degrees): today 1.00 / 0.91 / 0.72 / 0.52; slide 1.00 / 0.96 / 0.78 / 0.57.
+    - D: identical to moveCircle (1e-9) on the prototype's row. **New finding (D')**: moveCircle stops dead on a flat
+      wall's cell seams in 12 of 76 walls (rows 3-40, both sides): its rest `edge - r` rounds a hair inside r of the
+      face on some rows, so its next sweep meets every seam with a ~1e-8 reach. The slide does not (worst 0.985).
+    - E (16 starts): today 0 / 9 / 9 of 16 through (1 / 2 / 3 wide); slide 16 / 16 each.
+    - F: both rest still at (6.15, 6.15).
+- [x] **WS1. `slideCircle` core** (Design 1). Specs:
   - never tunnels (steps up to 0.5, every angle, against 1-tile walls);
   - never farther than the step;
   - rests still in a square corner;
@@ -210,7 +221,12 @@ Unchanged: the server validator (same config builder), the lockstep wire and the
   - corner contacts deflect (B passes);
   - deterministic: two runs give identical bits.
   → Verify: `npm run test:only -- dungeon/collision`.
-- [ ] **WS2. Tie-break, face assist and pillar slip** (Design 2-3), with `PLAYER_SLIDE` tunables. Specs:
+  - As built: a push that would leave the circle farther than the step (radially off a rounded corner, or onto a
+    face's line from a start resting on the face's rounded corner) stops on the contact at the step's length
+    (circle-circle / circle-line intersection) instead of falling back to moveCircle, which stopped the slide dead at
+    a pillar's corner. The step bound is absolute (`len + 1e-12`), so a tiny step far from the origin is not refused.
+    No tunnelling holds for radius >= 0.18 at steps up to 0.5 (free regions farther apart than the step).
+- [x] **WS2. Tie-break, face assist and pillar slip** (Design 2-3), with `PLAYER_SLIDE` tunables. Specs:
   - every 1x1 pillar is passed head-on at every offset, within 10 ticks of open floor. Directions: the 8 keyboard
     directions, and 64 stick directions quantized like real input (`quantizeAxis`, so gamepad and touch values are
     exact);
@@ -221,6 +237,15 @@ Unchanged: the server validator (same config builder), the lockstep wire and the
   - no slip on a long wall's middle, in a concave corner, or on a staircase face;
   - no back-and-forth over 300 ticks of pressing (the property `moveCircleAroundCorners` pins).
   → Verify: the same suite.
+  - As built: the assists sweep a forward leg on the move's primary axis (it stops on the obstacle), then a lateral
+    leg of min(sqrt(step^2 - forward^2), distance to clear + 1e-6), so the result stays within the step. The pillar
+    slip also applies to a face hit at any angle (the centre within the face) when the slide got less far toward the
+    ray's side, and to a graze when the slide went the other way; the corner tie-break judges an isolated blocker by
+    its centre. Without this, a stick a few degrees off an axis slid along the face at 0.3 of walk speed (33 ticks
+    slower), or flipped between the slip and the slide on the face's end. `assistTiles` counts the distance to clear
+    (0.35 = r: only a graze, centre off the face, slips on a wall). Measured: worst pillar hit (8 keys, 64 quantized
+    sticks, offsets -0.9..0.9) 10 ticks slower than open floor (W at the exact tie); `pillarSlip` off: case A passes
+    from 0.5 (assist 0.35) / 0.6 (assist 0).
 - [ ] **WS3. Stepped-wall smoothing** (Design 4). Notches are computed per dungeon. Specs:
   - case C at 1.00 / 1.00 / 0.97 / 0.91;
   - a room's square corner is not a notch;
