@@ -10,35 +10,26 @@
  *
  * Presentation only: it reads a Dungeon and SolidCells the sim already uses and never writes anything back.
  */
-import { cellKey, isWalkableTile, tileAt, worldToGrid, type Dungeon, type SolidCells } from "shared/dungeon";
+import {
+	blocksMove,
+	isIsolatedBlocker,
+	isWalkableTile,
+	tileAt,
+	worldToGrid,
+	type Dungeon,
+	type SolidCells,
+} from "shared/dungeon";
 import { AXIS_MAX, PLAYER_SPEED, SIM_HZ } from "shared/sim";
 import { COLLISION_DEBUG } from "./collisionDebugConfig";
 
 /**
  * True when grid cell (gx, gy) stops a body: a tile other than FLOOR (WALL, VOID, POOL, anything outside the grid), or
- * a FLOOR cell listed in `solid` (an intact breakable). The movers' own rule (shared/dungeon collision.ts `blocks`).
+ * a FLOOR cell listed in `solid` (an intact breakable). The movers' own rule: shared/dungeon `blocksMove`.
  */
-export function collisionBlocks(d: Dungeon, gx: number, gy: number, solid?: SolidCells): boolean {
-	if (!isWalkableTile(tileAt(d, gx, gy))) return true;
-	return solid !== undefined && solid.has(cellKey(gx, gy));
-}
+export const collisionBlocks = blocksMove;
 
-/**
- * An isolated 1x1 blocker (a pillar, a lone crate): the cell blocks and all 8 of its neighbours are open.
- *
- * Mirrors shared/dungeon `isIsolatedBlocker` (wall slide WS2, built on another branch): a local pure copy so the
- * overlay does not wait for it; replace this with the dungeon's export once both are merged.
- */
-export function isIsolatedBlocker(d: Dungeon, gx: number, gy: number, solid?: SolidCells): boolean {
-	if (!collisionBlocks(d, gx, gy, solid)) return false;
-	for (let dy = -1; dy <= 1; dy++) {
-		for (let dx = -1; dx <= 1; dx++) {
-			if (dx === 0 && dy === 0) continue;
-			if (collisionBlocks(d, gx + dx, gy + dy, solid)) return false;
-		}
-	}
-	return true;
-}
+/** An isolated 1x1 blocker (a pillar, a lone crate; the wall slide's pillar slip): shared/dungeon `isIsolatedBlocker`. */
+export { isIsolatedBlocker };
 
 /** One blocking cell the overlay draws. */
 export interface CollisionDebugCell {
