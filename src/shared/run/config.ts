@@ -7,6 +7,9 @@
  *   config   = { moveResolver: circleMover(dungeon, PLAYER_RADIUS), isBulletBlocked: bulletBlocker(dungeon),
  *                actorMover: actorMover(dungeon), encounter: placeEncounter(dungeon, DEFAULT_ENCOUNTER) }
  *
+ * except the player's mover, a port retune (docs/WALL_SLIDE.md WSD1): `playerMover(dungeon)` is the slide unless a
+ * spec set `setPlayerMover(PlayerMover.WEB)` (the web build's circleMover, for the golden fixtures).
+ *
  * `loadout` stays absent (= DEFAULT_LOADOUT) and `stress` is never set: a stress run (`?stress=N`) is a debug mode and
  * is not a run the server accepts. Pure and Roblox-API-free, so the client builds its live run with the same function
  * and the server's replay gets the identical world.
@@ -16,17 +19,17 @@ import {
 	KALEB_VALE_MVP_PARAMS,
 	actorMover,
 	bulletBlocker,
-	circleMover,
 	generateDungeon,
 	placeEncounter,
 	runSpawn,
 	type Dungeon,
 	type WorldXZ,
 } from "shared/dungeon";
-import { DEFAULT_SIM_CONFIG, PLAYER_RADIUS, isValidPartySize, type ScoringConfig, type SimConfig } from "shared/sim";
+import { DEFAULT_SIM_CONFIG, isValidPartySize, type ScoringConfig, type SimConfig } from "shared/sim";
 import { DUNGEON_CACHE_SIZE, type RunWorld } from "./limits";
 import { isValidRunSeed } from "./seed";
 import { buildEndlessRunConfig, type EndlessRunFloor } from "./endless";
+import { playerMover } from "./playerMover";
 
 export { isValidRunSeed };
 
@@ -108,7 +111,7 @@ export function buildRunConfig(seed: number, options: RunConfigOptions = {}): Ru
 	const dungeon = dungeonForSeed(seed);
 	const spawn = runSpawn(dungeon, options.atBossDoor === true);
 	const config: SimConfig = {
-		moveResolver: circleMover(dungeon, PLAYER_RADIUS),
+		moveResolver: playerMover(dungeon),
 		isBulletBlocked: bulletBlocker(dungeon),
 		actorMover: actorMover(dungeon),
 		encounter: world === "game" ? placeEncounter(dungeon, DEFAULT_ENCOUNTER) : undefined,

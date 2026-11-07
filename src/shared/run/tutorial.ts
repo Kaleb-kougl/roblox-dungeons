@@ -78,6 +78,7 @@ import {
 	type SimConfig,
 } from "shared/sim";
 import { ENDLESS_SCORING, endlessFloorWorld, type EndlessRunFloor, type EndlessRunSetup } from "./endless";
+import { playerMoverKind, type PlayerMoverKind } from "./playerMover";
 import { coverTiles, tutorialRoomTools, tutorialTour } from "./tutorialLayout";
 
 /** The tutorial's world kind in the run world registry (worlds.ts). Never leaderboard-eligible. */
@@ -559,8 +560,8 @@ function emptyPerRoom<T>(n: number): T[][] {
 	return out;
 }
 
-/** Builds tutorial floor `floor` (uncached). */
-function buildTutorialFloor(floor: number): EndlessRunFloor {
+/** Builds tutorial floor `floor` (uncached) with the player's mover `mover`. */
+function buildTutorialFloor(floor: number, mover: PlayerMoverKind): EndlessRunFloor {
 	const d = tutorialDungeon(floor);
 	const bossFloor = floor === TUTORIAL.lastFloor;
 	// Mother Mayhem, always (the endless boss pick, bossKindFor, is not used here).
@@ -590,18 +591,22 @@ function buildTutorialFloor(floor: number): EndlessRunFloor {
 		pellets: plan !== undefined ? plan.pellets : undefined,
 	};
 	// The endless floor's world (movers, bullet blocker, the enemies' steering mover, ...) on the tutorial layout.
-	return endlessFloorWorld(layout);
+	return endlessFloorWorld(layout, mover);
 }
 
-/** Floors 1 and 2 are kept; past the last floor only the floor asked for last (a debug skip may keep going). */
+/**
+ * Floors 1 and 2 are kept; past the last floor only the floor asked for last (a debug skip may keep going). The
+ * player's mover is read when the config is built (setPlayerMover), like an endless run's.
+ */
 function tutorialFloorCache(): (floor: number) => EndlessRunFloor {
+	const mover = playerMoverKind();
 	const kept = new Map<number, EndlessRunFloor>();
 	let last: EndlessRunFloor | undefined;
 	return (floor) => {
 		if (last !== undefined && last.floor === floor) return last;
 		let w = kept.get(floor);
 		if (w === undefined) {
-			w = buildTutorialFloor(floor);
+			w = buildTutorialFloor(floor, mover);
 			if (floor <= TUTORIAL.lastFloor) kept.set(floor, w);
 		}
 		last = w;

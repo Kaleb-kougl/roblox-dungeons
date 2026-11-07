@@ -1,5 +1,5 @@
 import { createBinding, type Binding } from "@rbxts/react";
-import { HUD_FADE_SLOTS, type HudFadeSlot } from "shared/view/hud";
+import { HUD_FADE_SLOTS, type HudCorner, type HudFadeSlot } from "shared/view/hud";
 
 /**
  * The fading panels' registry (docs/HUD_LAYOUT.md H7), one slot per HUD_FADE_SLOTS entry: each corner `Panel` (and

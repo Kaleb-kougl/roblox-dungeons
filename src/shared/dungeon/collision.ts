@@ -68,8 +68,11 @@ export function isWalkable(d: Dungeon, x: number, z: number): boolean {
 	return isWalkableTile(tileAt(d, worldToGrid(x), worldToGrid(z)));
 }
 
-/** A non-walkable tile, or (only when `solid` is given) a walkable one listed in it. */
-function blocks(d: Dungeon, gx: number, gy: number, solid?: SolidCells): boolean {
+/**
+ * A non-walkable tile, or (only when `solid` is given) a walkable one listed in it: what stops a moving circle (exported
+ * for the player's slide mover, slide.ts).
+ */
+export function blocksMove(d: Dungeon, gx: number, gy: number, solid?: SolidCells): boolean {
 	if (!isWalkableTile(tileAt(d, gx, gy))) return true;
 	return solid !== undefined && solid.has(cellKey(gx, gy));
 }
@@ -82,9 +85,9 @@ const EPS = 1e-9;
  * says which world axis `u` is. Returns the furthest reachable u.
  * Exact swept circle-vs-box per axis: for each blocking tile in the swept band, the circle
  * stops where it first touches the tile (u = edge -/+ sqrt(r^2 - gap^2)), so it cannot skip
- * over a tile regardless of step length.
+ * over a tile regardless of step length. Exported for the player's slide mover (slide.ts).
  */
-function sweepAxis(
+export function sweepAxis(
 	d: Dungeon,
 	u: number,
 	v: number,
@@ -109,7 +112,7 @@ function sweepAxis(
 		if (rem <= 0) continue; // this row/column is out of the circle's reach
 		const reach = math.sqrt(rem);
 		for (let gu = gu0; gu <= gu1; gu++) {
-			if (!(alongX ? blocks(d, gu, gv, solid) : blocks(d, gv, gu, solid))) continue;
+			if (!(alongX ? blocksMove(d, gu, gv, solid) : blocksMove(d, gv, gu, solid))) continue;
 			if (du > 0) {
 				const stop = gu * TILE_SIZE - half - reach;
 				// stop < u - EPS means we already overlap this tile (spawned inside it): let it go.
@@ -147,9 +150,9 @@ export function moveCircle(
 	return { x: nx, z: nz };
 }
 
-/** blocks() at primary-axis cell `gu` and lateral cell `gv`. */
+/** blocksMove() at primary-axis cell `gu` and lateral cell `gv`. */
 function blocksAcross(d: Dungeon, gu: number, gv: number, alongX: boolean, solid?: SolidCells): boolean {
-	return alongX ? blocks(d, gu, gv, solid) : blocks(d, gv, gu, solid);
+	return alongX ? blocksMove(d, gu, gv, solid) : blocksMove(d, gv, gu, solid);
 }
 
 /** A blocked remainder below this is no block (float noise of a slide). */
@@ -372,6 +375,14 @@ export function isBulletBlocked(d: Dungeon, x: number, z: number, solid?: SolidC
 }
 
 /**
+ * `SimConfig.isBodyBlocked`: true when the cell under (x, z) stops a body (blocksMove: anything but FLOOR, so a pool
+ * tile too, which bullets cross; or a `solid` cell).
+ */
+export function bodyBlocker(d: Dungeon): BulletBlocker {
+	return (x, z, solid) => blocksMove(d, worldToGrid(x), worldToGrid(z), solid);
+}
+
+/**
  * `SimConfig.isBulletBlocked`: `(x, z, solid) => isBulletBlocked(d, x, z, solid)`. Line of sight calls it with
  * (x, z) only, so sight never sees `solid` cells (docs/DECOR.md B2: breakables are low cover).
  */
@@ -395,7 +406,7 @@ export function circleOverlapsWall(
 	const r2 = (radius - tolerance) * (radius - tolerance);
 	for (let gy = worldToGrid(z - radius); gy <= worldToGrid(z + radius); gy++)
 		for (let gx = worldToGrid(x - radius); gx <= worldToGrid(x + radius); gx++) {
-			if (!blocks(d, gx, gy, solid)) continue;
+			if (!blocksMove(d, gx, gy, solid)) continue;
 			const cx = math.min(math.max(x, gx * TILE_SIZE - half), gx * TILE_SIZE + half);
 			const cz = math.min(math.max(z, gy * TILE_SIZE - half), gy * TILE_SIZE + half);
 			if ((x - cx) * (x - cx) + (z - cz) * (z - cz) < r2) return true;

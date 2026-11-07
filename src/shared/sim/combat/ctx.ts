@@ -298,6 +298,11 @@ export class SimCtx {
 		const b = this.config.isBulletBlocked;
 		return b !== undefined && b(x, z);
 	}
+	/** True when a body cannot stand in the cell under (x, z) (config.isBodyBlocked, else isBlocked). */
+	isBodyBlocked(x: number, z: number): boolean {
+		const b = this.config.isBodyBlocked;
+		return b !== undefined ? b(x, z) : this.isBlocked(x, z);
+	}
 	/** True when nothing bullet-blocking lies on the segment between the two points (tile DDA; true without a blocker). */
 	lineOfSight(x0: number, z0: number, x1: number, z1: number): boolean {
 		return lineOfSight(this.config.isBulletBlocked, x0, z0, x1, z1);

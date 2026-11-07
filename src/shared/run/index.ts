@@ -13,6 +13,7 @@
 export * from "./limits";
 export * from "./config";
 export * from "./endless";
+export * from "./playerMover";
 export * from "./replay";
 export * from "./telemetry";
 export * from "./session";

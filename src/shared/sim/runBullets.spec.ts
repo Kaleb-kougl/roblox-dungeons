@@ -2,6 +2,7 @@
 // stress rings, bow stream, heavy piercing arrow, half charge, Ember clear of 240 bullets, sword combo / finisher /
 // guard deleting 14 bullets, roll, SWAP back, then bullets ageing out.
 import { afterAll, describe, expect, it } from "@rbxts/jest-globals";
+import { PlayerMover, setPlayerMover } from "shared/run";
 import runBullets from "shared/fixtures-generated/run-bullets";
 import {
 	DEFAULT_BOUNDS,
@@ -34,12 +35,14 @@ import {
 // describe bodies may replay while the specs are collected.
 const portSword: SwordTimings = setSwordTimings(WEB_SWORD_TIMINGS);
 const portSwarmerHp = setSwarmerHp(WEB_SWARMER_HP); // the web swarmer's 2 hp (port: 1)
+const portMover = setPlayerMover(PlayerMover.WEB); // the web build's mover (port: the slide, docs/WALL_SLIDE.md)
 const portBossHp = setBossHp(WEB_BOSS_HP); // the web boss's 540 hp (port: 270)
 const portBow = setBowTuning(WEB_BOW_TUNING); // the web heavy arrow: 4 damage, no aim assist (port: 5, assisted)
 afterAll(() => {
 	setBowTuning(portBow);
 	setSwordTimings(portSword);
 	setSwarmerHp(portSwarmerHp);
+	setPlayerMover(portMover);
 	setBossHp(portBossHp);
 });
 

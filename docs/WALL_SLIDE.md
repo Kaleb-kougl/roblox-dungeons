@@ -4,14 +4,18 @@ The player gets stuck on pillars, wall corners, door frames and the stepped wall
 the player's mover with one that **slides around corners** instead of stopping on them, adds two small assists, and
 measures the result with a census. Work it task by task, like `docs/ART.md`; each task ends with a **Verify**.
 
-**Gameplay (sim).** The player's body moves differently, so endless, daily, dev, co-op and tutorial replays and scores
-change. M1 and every golden fixture replay exactly as before (WSD1). Bullets, sight, enemies, the dungeon, hashes'
-layout and the lockstep wire are untouched.
+**Gameplay (sim).** The player's body moves differently in every world, M1 included (WSD1, owner 2026-11-06), so live
+replays and scores change. Every golden fixture and the web-tuned specs still match bit for bit: they replay under
+`setPlayerMover(PlayerMover.WEB)`, next to `setSwordTimings(WEB_SWORD_TIMINGS)` / `setSwarmerHp` / `setBossHp`.
+Bullets, sight, enemies, the dungeon, the hash layout and the lockstep wire are untouched.
 
-## Status (2026-11-06)
+## Status (2026-11-07)
 
-Plan only. Nothing built. The numbers below come from a Python port of `moveCircle`, plus a prototype of the new mover
-(not kept in the repo). WS0 re-measures them in Lune before any code changes.
+**WS0-WS2, WS4, WS5 and WS7 built; WS6 built (Studio check pending).** The slide (`shared/dungeon/slide.ts`,
+`slideData.ts`; specs `collision.snag.spec.ts`, `slide.spec.ts`; scenes in `dungeon/testing/slideScenes.ts`) is the
+player's mover in every world (`shared/run/playerMover.ts`, WS4); the snag census (WS5) finds no unexcused stall with
+it; the tutorial still finishes every lesson (WS7). Open: WS3 (stepped-wall smoothing), WS8 (the playtest). The table
+below was first measured on a Python port; WS0 re-measured it in Lune (see "As built" under WS0).
 
 **Owner (2026-11-06): it is mostly pillars.** So pillars come first:
 
@@ -129,17 +133,30 @@ over runs of 2 (WSD4).
 
 ### 5. Wiring
 
-`playerSlideMover(d, radius, PLAYER_SLIDE)` becomes `SimConfig.moveResolver` in `endlessFloorWorld`. That covers
-endless, daily, dev, co-op and the tutorial (its floors are endless floors).
+`playerSlideMover(d, radius, PLAYER_SLIDE)` becomes `SimConfig.moveResolver` in two places:
 
-`buildRunConfig`'s M1 path keeps `circleMover` (WSD1). The tunables go in `PLAYER_SLIDE` in a data module of
-shared/dungeon (no magic numbers in logic).
+- `endlessFloorWorld`, which covers endless, daily, dev, co-op and the tutorial (its floors are endless floors);
+- `buildRunConfig`'s M1 path (`game` / `dungeon` worlds, scored or not).
+
+Both get the player's mover from one helper, `playerMover(d)` in shared/run. That helper reads a specs-only switch,
+`setPlayerMover(kind)`, which returns the previous kind so a spec can restore it. It is read when the config is built,
+like the sword's timers, so a spec sets it before calling `buildRunConfig`:
+
+- `PlayerMover.SLIDE` (the default): `playerSlideMover`;
+- `PlayerMover.WEB`: the web build's `circleMover`.
+
+Specs that build `circleMover(d, PLAYER_RADIUS)` themselves (19 of them) are untouched. The tunables go in
+`PLAYER_SLIDE` in a data module of shared/dungeon (no magic numbers in logic).
 
 Replays:
 
-- endless, daily, dev, co-op and tutorial replays and scores change;
+- endless, daily, dev, co-op, tutorial and live M1 (`KV_Scoring` included) replays and scores change;
+- M1 runs recorded by older builds no longer replay, as after the sword / swarmer / boss retunes;
+- the 11 spec files that replay fixtures under `setSwordTimings(WEB_SWORD_TIMINGS)` also set
+  `setPlayerMover(PlayerMover.WEB)` (validate, segments, runFull, runBoss, runBullets, score.replay, constants,
+  recordingCodec, bossAct1.ttk, liveRun.forfeit, roomEdgeState) and still match bit for bit;
 - the all-time boards stay `_v1`, as for every earlier sim retune;
-- `DAILY.ruleset` goes up by one (10 -> 11);
+- `DAILY.ruleset` 9 -> 11 (main's brace threshold, docs/LEGENDARIES.md LGD6, took 10);
 - the pins that record player paths are re-recorded (`enemies.determinism`, charger / stormcaller run 4, the
   recorded endless run, the tutorial bot's specs).
 
@@ -147,9 +164,9 @@ Unchanged: the server validator (same config builder), the lockstep wire and the
 
 ## Decisions (proposed: the owner to confirm)
 
-- **WSD1. Endless family only.** M1 is the web-parity world. Keeping `circleMover` there means every golden fixture,
-  validate / segments spec and boss TTK table replays unchanged, with no `setPlayerMover(WEB)` switch needed. Moving
-  M1 later is one line plus that switch.
+- **WSD1. Every world, M1 included (owner, 2026-11-06).** Live play everywhere uses the slide. The web build's mover
+  survives only as `PlayerMover.WEB` for the parity specs, the same pattern as the sword, swarmer and boss retunes.
+  A CLAUDE.md decision-log row records it as a port retune.
 - **WSD2. Frictionless, no speed boost.** Pushing into a flat wall still costs cos(angle), as today (case D). The slide
   only removes the stops.
 - **WSD3. Pillars slip on any hit; walls get 0.35 tiles** (revised after the owner's answer, "mostly pillars"). An
@@ -161,6 +178,9 @@ Unchanged: the server validator (same config builder), the lockstep wire and the
   cells. Enemy walkers could take the slide later (WS10), after their own measurement.
 - **WSD6. No input magnetism.** Steering the stick toward a doorway or corridor was rejected: it overrides the
   player's aim and intent. To revisit only if the playtest still shows door misses.
+- **WSD7 (2026-11-07): never against the input beats the 10-tick target.** A slanted full stick on a pillar's far half
+  goes the long way round, <= 13 ticks (<= 1.7 tiles allowed); keys <= 9 ticks. (WS2's review fixes: a slip toward the
+  near side would be a step backward against the move's lean, which the contract forbids.)
 
 ## Open questions for the owner
 
@@ -170,7 +190,7 @@ Unchanged: the server validator (same config builder), the lockstep wire and the
    - gamepad and touch sticks hit at any angle, faces included (case A).
    The pillar slip covers both, so no platform-specific rule is needed. The census and the specs sweep stick angles
    finely (WS2, WS5).
-2. Should M1 get the slide too (WSD1)?
+2. ~~Should M1 get the slide too?~~ **Answered 2026-11-06: yes** (WSD1).
 3. ~~A full assist or a partial one?~~ Proposed in WSD3: full for pillars, partial for everything else. To confirm
    in the pillar playtest.
 
@@ -183,10 +203,21 @@ Unchanged: the server validator (same config builder), the lockstep wire and the
 
 ## Tasks
 
-- [ ] **WS0. Measure in Lune.** `shared/dungeon/collision.snag.spec.ts` turns cases A-F into scenario specs. Today's
+- [x] **WS0. Measure in Lune.** `shared/dungeon/collision.snag.spec.ts` turns cases A-F into scenario specs. Today's
   mover is printed for the record. → Verify: the printed numbers match the table above (within the prototype's
   differences); `npm test -- dungeon/collision`.
-- [ ] **WS1. `slideCircle` core** (Design 1). Specs:
+  - As built (Lune, 2026-11-06), today -> slide (PLAYER_SLIDE):
+    - A (offsets 0.0-0.9, open floor 80 ticks): today stuck below 0.9; slide passes every offset, 89 88 87 86 85 84 83
+      81 80 80 ticks (at most 9 slower).
+    - B (offsets -0.9..0.9, open floor 87): today stuck at 5 of 19; slide passes all, 88-97, the exact tie 97 (100
+      before the review fixes).
+    - C (0 / 5 / 15 / 25 degrees): today 1.00 / 0.91 / 0.72 / 0.52; slide 1.00 / 0.96 / 0.78 / 0.57.
+    - D: identical to moveCircle (1e-9) on the prototype's row. **New finding (D')**: moveCircle stops dead on a flat
+      wall's cell seams in 12 of 76 walls (rows 3-40, both sides): its rest `edge - r` rounds a hair inside r of the
+      face on some rows, so its next sweep meets every seam with a ~1e-8 reach. The slide does not (worst 0.985).
+    - E (16 starts): today 0 / 9 / 9 of 16 through (1 / 2 / 3 wide); slide 16 / 16 each.
+    - F: both rest still at (6.15, 6.15).
+- [x] **WS1. `slideCircle` core** (Design 1). Specs:
   - never tunnels (steps up to 0.5, every angle, against 1-tile walls);
   - never farther than the step;
   - rests still in a square corner;
@@ -196,7 +227,21 @@ Unchanged: the server validator (same config builder), the lockstep wire and the
   - corner contacts deflect (B passes);
   - deterministic: two runs give identical bits.
   → Verify: `npm run test:only -- dungeon/collision`.
-- [ ] **WS2. Tie-break, face assist and pillar slip** (Design 2-3), with `PLAYER_SLIDE` tunables. Specs:
+  - As built: a push that would leave the circle farther than the step (radially off a rounded corner, or onto a
+    face's line from a start resting on the face's rounded corner) stops on the contact at the step's length
+    (circle-circle / circle-line intersection) instead of falling back to moveCircle, which stopped the slide dead at
+    a pillar's corner. The step bound is absolute (`len + 1e-12`), so a tiny step far from the origin is not refused.
+    No tunnelling holds for radius >= 0.18 at steps up to 0.5 (free regions farther apart than the step).
+  - Review fixes (2026-11-06):
+    - **Never against the input.** A result with a negative component along the step falls back (below), and a slip
+      that would is refused. Before: 813 of 461,760 fuzzed moves and 29 of 180,000 held real-floor ticks went
+      backward (worst 0.71 / 0.63 of the step, e.g. a pillar's corner popped 0.076 back against the input); after: 0.
+    - **A start overlap never grows.** A cell overlapped at the start blocks past that overlap (walk out or along,
+      never further in); only a start whose centre is inside a cell ignores it (walks out). The fallback is
+      moveCircle's result unless that sinks into a start overlap (moveCircle lets overlapped tiles go), then no move.
+      Before: a 0.001 start overlap sank 0.16 into a wall end, and 224 of 5,276 overlapping starts ended with the
+      centre in a blocking cell where moveCircle did not; after: 0.00106 stays 0.00106, and 0 of 5,276 end inside.
+- [x] **WS2. Tie-break, face assist and pillar slip** (Design 2-3), with `PLAYER_SLIDE` tunables. Specs:
   - every 1x1 pillar is passed head-on at every offset, within 10 ticks of open floor. Directions: the 8 keyboard
     directions, and 64 stick directions quantized like real input (`quantizeAxis`, so gamepad and touch values are
     exact);
@@ -207,16 +252,96 @@ Unchanged: the server validator (same config builder), the lockstep wire and the
   - no slip on a long wall's middle, in a concave corner, or on a staircase face;
   - no back-and-forth over 300 ticks of pressing (the property `moveCircleAroundCorners` pins).
   → Verify: the same suite.
+  - Review fixes (2026-11-06; the as-built note below is the first version):
+    - **Run assist: only toward an end the move leans to, never against the slide** (cornerNudge's wall-end rule).
+      It used to slip toward the nearest clearable end whatever the input, fighting the tie-break: a slow diagonal
+      stick (0.0071-0.014 a tick) on a 2x1 block's corner cycled for 20,000 ticks at (11.24, 12.74), and slow sticks
+      flipped sideways 47,560 / 56,306 / 75,516 / 32,543 / 11,844 times at a 2x1, a 2x2 crate cluster, diagonal
+      crates, a wall end and a bookcase run (up to 22 flips in a row). After: the repro rests, 0 flips at all five.
+    - **The tie-break takes the side of the move's own tangential part** (the push never opposes the input); only an
+      exact zero uses a fixed side (an isolated blocker: the pillar side below; any other corner: the ray's right).
+    - **Pillar side** (`pillarSide`): the ray's side of the centre unless that is against the move's lean (its
+      secondary component), then the lean's side. A slip against the lean is a step backward (the face blocks the
+      forward part), so a slanted stick hit on the far side of the centre goes the long way round. On a graze the
+      pillar slips only when stalled and the slide is not rounding the corner the other way. Measured (offsets
+      -0.9..0.9, every 8 keys / 64 full sticks / 32 sticks at 0.3, 0.14, 0.1, 0.05 through the deadzone rescale and
+      `quantizeAxis`): keys at most 9 ticks past open floor; full sticks 13 ticks (1.3 tiles; was 10 ticks before
+      the fix, which went backward instead); slow sticks 1.27 tiles. The spec bounds keys at 10 ticks and sticks at
+      1.7 tiles (2r + 1, the long way). Before the fix slow sticks also stuck for good at a pillar's corner (mag 0.05,
+      e.g. (0.0028, -0.0042) from offset -0.15).
+    - Specs: slow-stick magnitudes in the pillar, wide-obstacle and jitter specs; the endless-floor walk and the
+      overlap starts on `buildEndlessFloor` floors with their breakables and vault chest as SolidCells; every move's
+      contract includes (result - start) . step >= -1e-9; a pinned FNV-1a digest of a 6,000-tick trace replaces the
+      same-VM determinism check.
+  - As built: the assists sweep a forward leg on the move's primary axis (it stops on the obstacle), then a lateral
+    leg of min(sqrt(step^2 - forward^2), distance to clear + 1e-6), so the result stays within the step. The pillar
+    slip also applies to a face hit at any angle (the centre within the face) when the slide got less far toward the
+    ray's side, and to a graze when the slide went the other way; the corner tie-break judges an isolated blocker by
+    its centre. Without this, a stick a few degrees off an axis slid along the face at 0.3 of walk speed (33 ticks
+    slower), or flipped between the slip and the slide on the face's end. `assistTiles` counts the distance to clear
+    (0.35 = r: only a graze, centre off the face, slips on a wall). Measured: worst pillar hit (8 keys, 64 quantized
+    sticks, offsets -0.9..0.9) 10 ticks slower than open floor (W at the exact tie); `pillarSlip` off: case A passes
+    from 0.5 (assist 0.35) / 0.6 (assist 0).
 - [ ] **WS3. Stepped-wall smoothing** (Design 4). Notches are computed per dungeon. Specs:
   - case C at 1.00 / 1.00 / 0.97 / 0.91;
   - a room's square corner is not a notch;
   - over seeds 1-40 x floors 1-10: every pellet, spawn, chest front, altar, drop landing and stairwell stays reachable
     under the new body.
   → Verify: `npm run test:only -- dungeon`.
-- [ ] **WS4. Wire it** (Design 5). `endlessFloorWorld` uses `playerSlideMover`; M1 is unchanged. Re-record the pins;
-  `DAILY.ruleset` 11; CLAUDE.md decision log row and document table row. → Verify: `npm run verify`; the golden /
-  validate / segments specs unchanged.
-- [ ] **WS5. Snag census** (`run/snagCensus.spec.ts`). Over seeds 1-40 x floors 1-10, start from every FLOOR cell that
+- [x] **WS4. Wire it** (Design 5). `playerMover(d)` with `setPlayerMover` / `PlayerMover`; used by `endlessFloorWorld`
+  and `buildRunConfig`'s M1 path. The 11 fixture specs set `PlayerMover.WEB` next to `WEB_SWORD_TIMINGS`. Then:
+  - re-record the pins;
+  - `DAILY.ruleset` 11;
+  - add a CLAUDE.md decision log row and a document table row.
+  → Verify:
+  - `npm run verify`;
+  - every golden / validate / segments / constants / boss TTK spec matches bit for bit under the switch;
+  - a spec that M1's default config uses the slide mover (one scenario B walk ends past the pillar);
+  - a spec that `PlayerMover.WEB` gives exactly `circleMover`'s positions.
+  - As built (2026-11-07):
+    - `shared/run/playerMover.ts`: `PlayerMover = { SLIDE: 0, WEB: 1 } as const` (`PlayerMoverKind`),
+      `setPlayerMover(kind)` (specs only; returns the previous kind), `playerMoverKind()`, `playerMover(d, kind?)`
+      (`playerSlideMover(d, PLAYER_RADIUS)` / `circleMover(d, PLAYER_RADIUS)`). The only live `circleMover` uses were
+      `buildRunConfig` (M1 `game` / `dungeon`, scored or not; the server validator and party / lockstep runs build
+      through it) and `endlessFloorWorld` (endless, daily, dev, co-op, the tutorial); both now call `playerMover`.
+    - **Read when the config is built**: endless floors are built lazily, so `buildEndlessRunConfig`'s floor cache
+      and the tutorial's capture the kind once (`endlessRunFloor` / `endlessFloorWorld` take an optional trailing
+      `mover`, default the current kind). A spec that restores the switch after building a config still steps every
+      later floor with the kind it built with.
+    - Parity: the 11 files (validate, segments, runFull, runBoss, runBullets, score.replay, constants, recordingCodec,
+      bossAct1.ttk, liveRun.forfeit, roomEdgeState) set `setPlayerMover(PlayerMover.WEB)` at load (constants in its
+      `beforeAll`, roomEdgeState before its `buildRunConfig`) and restore it in `afterAll` / `finally`; all match bit
+      for bit (full run 2026-11-07).
+    - `run/playerMover.spec.ts`: the default is SLIDE; M1 1337's `buildRunConfig` resolver equals `slideCircle` bit for
+      bit on 18,480 moves from every wall-touching cell (3,554 differ from moveCircle) and 14 wall-corner walks that
+      moveCircle stalls on (< 25 % of 60 ticks) go past (> 75 %); under WEB, M1 (scored too), endless (breakables as
+      SolidCells) and the tutorial equal `moveCircle` exactly and nothing is unstuck; the kind is kept by floors built
+      after the switch is restored.
+    - `DAILY.ruleset` 9 -> 11 (`daily.spec` pins 11; main's brace threshold took 10, merged 2026-11-07).
+    - **Imp blinks never land on a pool cell** (a latent bug the new player paths exposed, `imp.spec` co-op run 22
+      floor 3: a landing box over the POOL tile (69, 30)). `impBlinkValid` tested cells with the bullet blocker, which
+      pools pass. New optional `SimConfig.isBodyBlocked` (`bodyBlocker(d)` in shared/dungeon: `blocksMove`), set on
+      every endless floor; `SimCtx.isBodyBlocked` falls back to `isBlocked` without it (M1, fixtures: unchanged).
+      Endless imp landings change only where one would have stood in a pool.
+  - **Re-recorded pins** (old -> new; no layout, digest or parity pin moved):
+    - `sim/charger.spec` run 4 floor 3 solo: counts [lanes, stuns, recovers, draws, broken] [4, 2, 2, 4, 3] ->
+      [5, 4, 1, 5, 3], hash e54ef63f -> 3422aa24 (the scene's wandering player moves with the slide, so the charger
+      meets it elsewhere).
+    - `sim/stormcaller.spec` runs 4 / 23: 2/1/f21b6834 -> 2/1/6b48e632, 6/0/07335c64 -> 6/0/4293fa96 (strike and skip
+      counts unchanged).
+    - `tutorial/tutorial.spec` "out of order" lesson rows (scripted bot): guard 8.4 s -> 8.3 s, pellets hits 0 -> 1
+      (harmless; 15.1 s unchanged), relic 2.8 s -> 2.9 s; every lesson still reports once, in order, no stuck report.
+    - `run/slice.spec` (the recorded seed-1337 endless run, re-recorded live by its bot): the edited floor-6 segment
+      now starts at tick 2953 and its first walking frame comes after the tick-3000 checkpoint, so the mismatch is
+      located from that checkpoint (`matchedThroughTick` 3000, was the segment start). The spec now derives the last
+      good checkpoint from the edit's tick and pins [2953, 3000].
+    - `sim/breakables/breakables.spec`: a lone crate and the lone vault chest are isolated blockers, so a head-on walk
+      slips round them (the pillar slip) instead of stopping at the face. "Stops at the face" is now pinned on a row
+      of three crates; the lone crate and the chest pin that the circle never overlaps their cell and goes past.
+    - `sim/drops/boosts.spec` Quickstep no tunnelling: the crate is a column of three (the lone one is slipped round).
+    - Unchanged: `enemies.determinism` (builds its own world), the charger arena pin (its own config), every census
+      band, every lock spec on layouts.
+- [x] **WS5. Snag census** (`run/snagCensus.spec.ts`). Over seeds 1-40 x floors 1-10, start from every FLOOR cell that
   touches an obstacle and walk 40 ticks in each of the 8 keyboard screen directions and 32 stick directions (quantized
   through `quantizeAxis`). Counts are reported per input kind.
   - A **stall** is moving less than 25 % of the open-floor distance.
@@ -225,11 +350,69 @@ Unchanged: the server validator (same config builder), the lockstep wire and the
     kind, chest, altar.
   - The doc records the counts before and after.
   → Verify: **zero unexcused pillar stalls** (the gate), and zero elsewhere or an owner-accepted class.
+  - As built (2026-11-07):
+    - **Cut down**: seeds 1-30, one floor each, cycling floors 1-10 (3 floors per depth), 196 s headless. The full
+      40 x 10 grid would take some 40 minutes (about 6 s a floor); 40 floors took 257 s with the same result (0
+      unexcused with the slide).
+    - Floors: `buildEndlessFloor(seed, floor, ..., 1, { vaults: true })`, breakables and the vault chest as SolidCells.
+      Starts: the centre of every FLOOR cell with a blocking 8-neighbour. Input: keys through `screenToWorld` +
+      `quantizeAxis`; 32 full sticks through `applyRadialDeadzone` too. Movers: `moveCircle` (web) and `slideCircle`
+      (PLAYER_SLIDE). A walk stops early once it has gone 25 % along the input (neither mover moves against it) or
+      once it stands still for a tick (both are pure).
+    - Excuses: a face within 20 degrees (the plan's), and a **dead end** (added): no direction the end contacts leave
+      open has a positive part along the input (pressed into a concave corner; the same count for both movers).
+    - Classes, first match: chest; breakable; pillar (an isolated 1x1 grid blocker: a Forge pillar or a lone solid
+      decor piece); a solid decor kind; stepped wall (a 1:1 notch cell, Design 4, within one cell); corner / door
+      frame (a box-corner contact); other (a face contact further than 20 degrees off the input, e.g. moveCircle's
+      seam stops, finding D'). No altar class: pact altars are not solid.
+    - Gate (asserted): zero unexcused pillar stalls with the slide, and slide <= web in every class, per input kind.
+    - Measured (55,383 start cells; walks / stalls / excused face / dead end / unexcused by class):
+
+      | Input, mover | Walks | Stalls | Face | Dead end | Pillar | Breakable | Chest | Decor | Stepped | Corner | Other |
+      |---|---|---|---|---|---|---|---|---|---|---|---|
+      | keys, web | 443,064 | 81,138 | 45,282 | 6,087 | 8,836 | 1,936 | 20 | 2,550 | 2,228 | 14,199 | 0 |
+      | keys, slide | 443,064 | 42,301 | 36,214 | 6,087 | **0** | 0 | 0 | 0 | 0 | 0 | 0 |
+      | sticks, web | 1,772,256 | 315,126 | 102,320 | 30,435 | 53,016 | 11,086 | 120 | 14,542 | 15,466 | 73,708 | 14,433 |
+      | sticks, slide | 1,772,256 | 123,687 | 93,252 | 30,435 | **0** | 0 | 0 | 0 | 0 | 0 | 0 |
+
+      Web decor stalls by kind, keys / sticks: candelabrum 1,306 / 7,510, tomb 514 / 2,826, brazier 298 / 1,732, chair
+      154 / 894, bookcase 80 / 480, statue 78 / 440, table 60 / 300, throne 60 / 360. The slide has none.
+    - So with the slide every stall left is a real wall pressed within 20 degrees or a concave corner. Stepped walls
+      do not stall either; whether they still drag (case C's 0.78 / 0.57 at 15 / 25 degrees) is WS3's question, not a
+      stall.
 - [ ] **WS6. `KV_CollisionDebug`** (client, off by default, Janitor; presentation only). It draws the blocking cells
   near the watched player, the notch edges, the body circle and its contact normal, and flashes red on a stall (move
   held for 0.3 s or more, less than 25 % moved). → Verify: Studio, a pillar and an oct room.
-- [ ] **WS7. Tutorial.** Its lock specs and scripted bot still finish every lesson (the guard and sweep locks, room G's
+
+  **As built (WS6, branch `wall-slide-overlay`; Studio check pending).**
+  - **Turn it on:** set the Workspace boolean attribute `KV_CollisionDebug` to true (Studio, or a session with
+    `KV_Debug`, like `KV_PelletDebug` / `KV_LootDebug`). It toggles live; false removes every piece. Off by default.
+  - **What it shows**, around the watched player (`SimController.getViewPlayerIndex`, so the spectated teammate in
+    co-op), on floors with a Dungeon (not the greybox world):
+    - every blocking cell whose centre is within 3 tiles of the player's cell: a thin translucent square, `uiAccent`
+      for a wall / void / pool tile or an intact breakable (shared/sim `solidCells`), `uiMana` for an isolated 1x1
+      blocker (a pillar or a lone crate: the cell blocks and all 8 neighbours are open);
+    - the body circle (`PLAYER_RADIUS`) as a `uiText` ring at the interpolated position;
+    - the stall flash: the ring turns `uiHealth` while the move input is held (magnitude 0.5 or more) and the body
+      moved less than 25 % of a free walk (`PLAYER_SPEED` x magnitude x time) over the last 0.3 s of sim time, and one
+      `[collision] stall at x,z (gx,gy) input ix,iz` line is printed per episode. Only the local player's input is
+      known, so a spectated teammate's ring never flashes.
+  - Everything is drawn always-on-top (a wall cell's square would be inside its wall otherwise).
+  - **Not yet:** the notch edges (they come with WS3) and the contact normal.
+  - **Code:** logic `shared/view/collisionDebug.ts` (`blockingCellsNear`, `StallDetector`, `stallLine`, a local copy of
+    `isIsolatedBlocker` that mirrors the shared/dungeon helper of WS2: swap it for that export once both are merged),
+    tunables `COLLISION_DEBUG` in `shared/view/collisionDebugConfig.ts`, spec `collisionDebug.spec.ts`
+    (`npm run test:only -- view/collisionDebug`); drawing `client/controllers/render/CollisionDebugController.ts`
+    (HandleAdornments under one anchor Part, Janitor-owned, rebuilt per floor, the render step bound only while on);
+    `SimController.getFrameInput()` gives it the local player's frame input. Presentation only: no sim, dungeon or
+    hash change.
+- [x] **WS7. Tutorial.** Its lock specs and scripted bot still finish every lesson (the guard and sweep locks, room G's
   ring). → Verify: `npm run test:only -- tutorial`.
+  - As built (2026-11-07): with the slide, `run/tutorial.spec` (the lock: layouts unchanged), `sim/tutorial`,
+    `tutorial/flow`, `guide`, `tutorial.spec` and `view/hud/tutorialHud` pass (137 tests; the full run too, where
+    `roomEdgeState`'s `playTutorial` walk also finishes). The scripted bot (`tutorial/tutorial.spec`) completes all 18
+    lessons, the guard lock (released by a guard) and the sweep lock (combat G: every pellet, one Sweep) included, with
+    no stuck report; only the "out of order" lesson-time pin moved (WS4's list).
 - [ ] **WS8. Studio / playtest.**
   - Every platform, each signed off on its own: keyboard (W at diamonds, W+D at faces), gamepad, touch (the floating
     stick, with auto-target on and off).

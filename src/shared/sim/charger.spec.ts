@@ -664,7 +664,7 @@ describe("charger: determinism", () => {
 	});
 });
 
-const PIN_COUNTS = [4, 2, 2, 4, 3];
+const PIN_COUNTS = [5, 4, 1, 5, 3];
 // Re-recorded for docs/NEW_ENEMIES.md NE7: the reshuffled roster moves floor 3's room spawns and so its breakables
 // (they keep clear of planned spawns); the counts did not move. Before: f77607dc.
 // Re-recorded for the merge of solid decor and docs/NEW_ENEMIES.md: floor 3's tombs / candle stands (WALL cells) move
@@ -678,6 +678,9 @@ const PIN_COUNTS = [4, 2, 2, 4, 3];
 // Re-recorded for the merge of main (bookcases) into docs/TREASURE.md: run 4's floor 3 holds a vault (room 1, a crypt,
 // Legendary SWIFT; its chest one more breakables slot) on the bookcase layout; the counts (main's) did not move.
 // Before: acd2ce64 (main, no vaults), c5df44a4 (treasure rooms, no bookcases).
-const PIN_HASH = "e54ef63f"; // check-asset-ids: allow (state hash)
+// Re-recorded for the wall slide (docs/WALL_SLIDE.md WS4): the scene's player moves with the slide, so the pinned
+// charger meets it in other places: 5 lanes (5 draws) with 4 stuns and 1 clean recover, still 3 pieces broken; the
+// layout is unchanged. Before: e54ef63f, counts [4, 2, 2, 4, 3].
+const PIN_HASH = "3422aa24"; // check-asset-ids: allow (state hash)
 const PIN_ARENA = [12, STATE_RETURN, 11.062568325627446, 8, 3663131635];
 const PIN_ARENA_HASH = "80069968"; // check-asset-ids: allow (state hash)

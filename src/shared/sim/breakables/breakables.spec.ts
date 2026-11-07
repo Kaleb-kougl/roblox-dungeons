@@ -118,6 +118,15 @@ const IDLE = frame();
 const FIRE = frame({ buttons: Button.FIRE });
 const ALT = frame({ buttons: Button.ALT });
 
+/** True when the player's circle at (x, z) does not overlap cell (gx, gy) (to within 1e-9). */
+function outsideCell(x: number, z: number, gx: number, gy: number): boolean {
+	const cx = gridToWorld(gx),
+		cz = gridToWorld(gy);
+	const nx = math.clamp(x, cx - 0.5, cx + 0.5),
+		nz = math.clamp(z, cz - 0.5, cz + 0.5);
+	return math.sqrt((x - nx) * (x - nx) + (z - nz) * (z - nz)) >= PLAYER_RADIUS - 1e-9;
+}
+
 function run(s: SimState, config: SimConfig, input: InputFrame, ticks: number): void {
 	for (let t = 0; t < ticks; t++) step(s, input, config);
 }
@@ -189,17 +198,29 @@ describe("breakables: B4 toughness from the real damage numbers", () => {
 });
 
 describe("breakables: they block", () => {
-	it("the player stops at a crate's face (and walks through that cell without breakables)", () => {
+	it("the player stops at a crate row's face, slips round a lone crate, and walks through without breakables", () => {
 		const walk = frame({ moveZ: AXIS_MAX });
-		const config = world([piece(0, 2)]);
-		const s = createSimState(1, CX, CZ, config);
-		run(s, config, walk, 90);
 		const face = CZ + 2 - 0.5 - PLAYER_RADIUS;
+		// A row of three: a wide piece, so the slide only slips within assistTiles of its ends (docs/WALL_SLIDE.md
+		// WSD3); straight at the middle the player stops at the face.
+		const row = world([piece(-1, 2), piece(0, 2), piece(1, 2)]);
+		const s = createSimState(1, CX, CZ, row);
+		run(s, row, walk, 90);
 		expect(s.player.z).toBeLessThanOrEqual(face + 1e-9);
 		expect(s.player.z).toBeGreaterThan(face - 0.05);
+		// A lone crate is an isolated blocker: the pillar slip takes the player round it (wall slide, WS4; it used to
+		// stop at the face), never into its cell.
+		const lone = world([piece(0, 2)]);
+		const l = createSimState(1, CX, CZ, lone);
+		for (let t = 0; t < 90; t++) {
+			step(l, walk, lone);
+			expect(outsideCell(l.player.x, l.player.z, PATCH.gx, PATCH.gy + 2)).toBe(true);
+		}
+		expect(l.player.z).toBeGreaterThan(CZ + 3);
 		const free = createSimState(1, CX, CZ, world(undefined));
 		run(free, world(undefined), walk, 90);
 		expect(free.player.z).toBeGreaterThan(CZ + 3);
+		expect(free.player.x).toBe(CX); // straight through the crate's cell
 	});
 
 	it("a plain-moving enemy presses on it (it still sees the player: no line of sight change)", () => {
@@ -422,8 +443,13 @@ describe("breakables: a vault's chest (docs/TREASURE.md TR2, correction 3)", () 
 			{ kind: BreakableKind.CHEST, x: PATCH.gx, y: PATCH.gy + 2, hp: CHEST_HP, brokenTick: NOT_BROKEN },
 		]);
 		expect([b.intact, solidCells(s)!.size()]).toEqual([1, 1]);
-		run(s, config, frame({ moveZ: AXIS_MAX }), 90);
-		expect(s.player.z).toBeLessThanOrEqual(CZ + 2 - 0.5 - PLAYER_RADIUS + 1e-9);
+		// A lone chest is an isolated blocker: the player slips round it (wall slide, docs/WALL_SLIDE.md WS4; it used to
+		// stop at the face), never into its cell.
+		for (let t = 0; t < 90; t++) {
+			step(s, frame({ moveZ: AXIS_MAX }), config);
+			expect(outsideCell(s.player.x, s.player.z, PATCH.gx, PATCH.gy + 2)).toBe(true);
+		}
+		expect(s.player.x).never.toBe(CX);
 	});
 
 	it("damageBreakable: false before any bookkeeping, for every source (no hit event, hit slot, score or break)", () => {

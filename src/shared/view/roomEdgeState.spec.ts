@@ -13,7 +13,15 @@ import { describe, expect, it } from "@rbxts/jest-globals";
 import { TUTORIAL } from "shared/config";
 import type { EncounterConfig } from "shared/dungeon";
 import runFull from "shared/fixtures-generated/run-full-1337";
-import { TUTORIAL_ROOMS, buildEndlessRunConfig, buildRunConfig, tutorialRoom, type EndlessRunSetup } from "shared/run";
+import {
+	TUTORIAL_ROOMS,
+	buildEndlessRunConfig,
+	buildRunConfig,
+	tutorialRoom,
+	type EndlessRunSetup,
+	PlayerMover,
+	setPlayerMover,
+} from "shared/run";
 import { Driver, distanceField, frame, playTutorial, recordEndlessRun, walkDir, type Field } from "shared/run/testing";
 import {
 	Button,
@@ -383,6 +391,8 @@ describe("RoomEdgeStates: fallback parity (run-full-1337's inputs, unscored vs K
 		return obs;
 	}
 
+	// The web build's mover (port: the slide), read when the config is built: set before buildRunConfig, restored below.
+	const portMover = setPlayerMover(PlayerMover.WEB);
 	const plain = buildRunConfig(run.seed).config;
 	const scored = buildRunConfig(run.seed, { scoring: {} }).config;
 	let unscoredTrace: FloorTrace | undefined;
@@ -421,6 +431,7 @@ describe("RoomEdgeStates: fallback parity (run-full-1337's inputs, unscored vs K
 	} finally {
 		setSwordTimings(portSword);
 		setSwarmerHp(portSwarmerHp);
+		setPlayerMover(portMover);
 		setBossHp(portBossHp);
 	}
 	print(

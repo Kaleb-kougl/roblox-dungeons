@@ -211,9 +211,12 @@ export const IMP = registerArchetype<ImpData>({
 	},
 });
 
-/** True when the cell under world (x, z) blocks a body: a wall (ctx.isBlocked) or an intact breakable. */
+/**
+ * True when the cell under world (x, z) blocks a body: a wall, void or pool tile (ctx.isBodyBlocked; a pool lets
+ * bullets through, so ctx.isBlocked let a blink land in one) or an intact breakable.
+ */
 function cellBlocked(ctx: SimCtx, gx: number, gz: number): boolean {
-	if (ctx.isBlocked(gridToWorld(gx), gridToWorld(gz))) return true;
+	if (ctx.isBodyBlocked(gridToWorld(gx), gridToWorld(gz))) return true;
 	const solid = solidCells(ctx.state);
 	return solid !== undefined && solid.has(cellKey(gx, gz));
 }

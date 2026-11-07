@@ -4,7 +4,7 @@
  * the tutorial's world marker and guidance arrow, the room edges, breakable barrels and crates, boost drops and the
  * boosted players' auras, the pellets, a vault's chest / cage / sparkle / lock plate / reward cards, the pact altars
  * (their cards, take pulse and wave rings), the Goldling's ring and beats, room decoration and its ambient life, the void's shoulder / ledge columns, the elite affix
- * floor rings), plus their Part helpers.
+ * floor rings), the KV_CollisionDebug overlay (docs/WALL_SLIDE.md WS6), plus their Part helpers.
  */
 export * from "./placeholders";
 export * from "./SpriteView";
@@ -35,3 +35,4 @@ export * from "./DecorController";
 export * from "./DecorFxController";
 export * from "./VoidController";
 export * from "./motionFx";
+export * from "./CollisionDebugController";
