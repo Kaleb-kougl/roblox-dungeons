@@ -3,7 +3,8 @@
  * computeHudScale; the client's useHudScale multiplies it in), and the room-edge lines on the floor
  * (docs/ROOM_EDGES.md RE6), the corner panels' occlusion fade (docs/HUD_LAYOUT.md H7), the corner minimap
  * (docs/MINIMAP.md M10), the player outline (docs/PLAYER_OUTLINE.md P4), the build effects (docs/BUILDS.md BUD13), the touch controls (docs/MOBILE.md MB7: size,
- * opacity, auto-target, left-handed) and the language (docs/LOCALIZATION.md L6). Presentation only; stored overrides-only (a new optional field needs no migration).
+ * opacity, auto-target, left-handed), the language (docs/LOCALIZATION.md L6) and the gamepad menus' vibration
+ * (docs/GAMEPAD_MENUS.md GM9). Presentation only; stored overrides-only (a new optional field needs no migration).
  */
 import { localeDef } from "shared/l10n";
 import {
@@ -13,6 +14,7 @@ import {
 	DEFAULT_HUD_SCALE_PERCENT,
 	DEFAULT_LANGUAGE,
 	DEFAULT_MINIMAP,
+	DEFAULT_PAD_VIBRATION,
 	DEFAULT_PLAYER_OUTLINE,
 	DEFAULT_ROOM_EDGES,
 	DEFAULT_TOUCH_AUTO_TARGET,
@@ -52,6 +54,11 @@ export interface DisplaySettings {
 	 * (hidden ones too: whether a hidden pick is honoured is decided when it is read, languageOverride).
 	 */
 	language: string;
+	/**
+	 * Vibrate the gamepad on menu cues (docs/GAMEPAD_MENUS.md GM9: confirm, a disabled press, a list's end, hold-B).
+	 * Default true: only Off (false) is ever stored.
+	 */
+	padVibration: boolean;
 }
 
 export type DisplayOverrides = Partial<DisplaySettings>;
@@ -68,6 +75,7 @@ export const DISPLAY_SETTING_KEYS: ReadonlyArray<keyof DisplaySettings> = [
 	"touchAutoTarget",
 	"touchLeftHanded",
 	"language",
+	"padVibration",
 ];
 
 export function defaultDisplaySettings(): DisplaySettings {
@@ -83,6 +91,7 @@ export function defaultDisplaySettings(): DisplaySettings {
 		touchAutoTarget: DEFAULT_TOUCH_AUTO_TARGET,
 		touchLeftHanded: DEFAULT_TOUCH_LEFT_HANDED,
 		language: DEFAULT_LANGUAGE,
+		padVibration: DEFAULT_PAD_VIBRATION,
 	};
 }
 
@@ -91,7 +100,8 @@ export function defaultDisplaySettings(): DisplaySettings {
  * than the default (so only `false`), and the same for hudFade, minimap and playerOutline; a buildFx from
  * BUILD_FX_LEVELS other than the default (so only "reduced"); a touchSize / touchOpacity
  * from its list and not the default; a touchAutoTarget / touchLeftHanded that is a boolean other than the default; a
- * language that is a known locale code (stored as LOCALES spells it; "auto" and unknown codes are dropped). Never throws.
+ * language that is a known locale code (stored as LOCALES spells it; "auto" and unknown codes are dropped); a
+ * padVibration that is a boolean other than the default (so only `false`). Never throws.
  */
 export function sanitizeDisplayOverrides(raw: unknown): DisplayOverrides {
 	const out: DisplayOverrides = {};
@@ -140,6 +150,8 @@ export function sanitizeDisplayOverrides(raw: unknown): DisplayOverrides {
 		const def = localeDef(language);
 		if (def !== undefined) out.language = def.code;
 	}
+	const vibration = t.padVibration;
+	if (typeIs(vibration, "boolean") && vibration !== DEFAULT_PAD_VIBRATION) out.padVibration = vibration;
 	return out;
 }
 

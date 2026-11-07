@@ -8,6 +8,7 @@ import {
 	DEFAULT_HUD_FADE,
 	DEFAULT_MINIMAP,
 	DEFAULT_PLAYER_OUTLINE,
+	DEFAULT_PAD_VIBRATION,
 	DEFAULT_BUILD_FX,
 	BUILD_FX_LEVELS,
 	DEFAULT_TOUCH_AUTO_TARGET,
@@ -292,6 +293,7 @@ describe("display: room edges (docs/ROOM_EDGES.md RE6)", () => {
 			touchAutoTarget: DEFAULT_TOUCH_AUTO_TARGET,
 			touchLeftHanded: DEFAULT_TOUCH_LEFT_HANDED,
 			language: DEFAULT_LANGUAGE,
+			padVibration: DEFAULT_PAD_VIBRATION,
 		});
 	});
 
@@ -334,6 +336,7 @@ describe("display: room edges (docs/ROOM_EDGES.md RE6)", () => {
 			touchAutoTarget: DEFAULT_TOUCH_AUTO_TARGET,
 			touchLeftHanded: DEFAULT_TOUCH_LEFT_HANDED,
 			language: DEFAULT_LANGUAGE,
+			padVibration: DEFAULT_PAD_VIBRATION,
 		});
 		expect(resolveDisplaySettings(decodeSettingsDoc({ v: 2 }).display).roomEdges).toBe(true);
 		expect(resolveDisplaySettings(decodeSettingsDoc({ v: SETTINGS_DOC_V1, juice: {} }).display).roomEdges).toBe(
@@ -404,6 +407,7 @@ describe("display: minimap (docs/MINIMAP.md M10)", () => {
 			touchAutoTarget: DEFAULT_TOUCH_AUTO_TARGET,
 			touchLeftHanded: DEFAULT_TOUCH_LEFT_HANDED,
 			language: DEFAULT_LANGUAGE,
+			padVibration: DEFAULT_PAD_VIBRATION,
 		});
 	});
 
@@ -447,6 +451,7 @@ describe("display: minimap (docs/MINIMAP.md M10)", () => {
 			touchAutoTarget: DEFAULT_TOUCH_AUTO_TARGET,
 			touchLeftHanded: DEFAULT_TOUCH_LEFT_HANDED,
 			language: DEFAULT_LANGUAGE,
+			padVibration: DEFAULT_PAD_VIBRATION,
 		});
 		expect(resolveDisplaySettings(decodeSettingsDoc({ v: 2 }).display).minimap).toBe(true);
 		expect(resolveDisplaySettings(decodeSettingsDoc({ v: SETTINGS_DOC_V1, juice: {} }).display).minimap).toBe(true);
@@ -680,6 +685,7 @@ describe("display: player outline (docs/PLAYER_OUTLINE.md P4)", () => {
 			touchAutoTarget: DEFAULT_TOUCH_AUTO_TARGET,
 			touchLeftHanded: DEFAULT_TOUCH_LEFT_HANDED,
 			language: DEFAULT_LANGUAGE,
+			padVibration: DEFAULT_PAD_VIBRATION,
 		});
 	});
 
@@ -759,6 +765,7 @@ describe("display: touch controls (docs/MOBILE.md MB7)", () => {
 			touchAutoTarget: DEFAULT_TOUCH_AUTO_TARGET,
 			touchLeftHanded: DEFAULT_TOUCH_LEFT_HANDED,
 			language: DEFAULT_LANGUAGE,
+			padVibration: DEFAULT_PAD_VIBRATION,
 		});
 	});
 
@@ -853,5 +860,55 @@ describe("display: language (docs/LOCALIZATION.md L6)", () => {
 		expect(languageOverride("en-XA", false)).toBe(undefined);
 		expect(languageOverride("en-XA", true)).toBe("en-XA");
 		expect(languageOverride("xx", true)).toBe(undefined);
+	});
+});
+
+describe("display: gamepad menu vibration (docs/GAMEPAD_MENUS.md GM9)", () => {
+	it("defaults to On; only Off is stored", () => {
+		expect(DEFAULT_PAD_VIBRATION).toBe(true);
+		expect(defaultDisplaySettings().padVibration).toBe(true);
+		expect(resolveDisplaySettings(undefined).padVibration).toBe(true);
+		expect(sanitizeDisplayOverrides({ padVibration: false })).toEqual({ padVibration: false });
+		expect(sanitizeDisplayOverrides({ padVibration: true })).toEqual({});
+		expect(resolveDisplaySettings({ padVibration: false })).toEqual({
+			hudScale: DEFAULT_HUD_SCALE_PERCENT,
+			roomEdges: DEFAULT_ROOM_EDGES,
+			hudFade: DEFAULT_HUD_FADE,
+			minimap: DEFAULT_MINIMAP,
+			playerOutline: DEFAULT_PLAYER_OUTLINE,
+			buildFx: DEFAULT_BUILD_FX,
+			touchSize: DEFAULT_TOUCH_SIZE_PERCENT,
+			touchOpacity: DEFAULT_TOUCH_OPACITY_PERCENT,
+			touchAutoTarget: DEFAULT_TOUCH_AUTO_TARGET,
+			touchLeftHanded: DEFAULT_TOUCH_LEFT_HANDED,
+			language: DEFAULT_LANGUAGE,
+			padVibration: false,
+		});
+	});
+
+	it("round-trips Off through the stored document (still v2)", () => {
+		const overrides: SettingsOverrides = { display: { padVibration: false } };
+		const doc = encodeSettingsDoc(overrides);
+		expect(doc).toEqual({ ...EMPTY_DOC, display: { padVibration: false } });
+		expect(doc.v).toBe(2);
+		expect(decodeSettingsDoc(doc)).toEqual(overrides);
+		expect(resolveDisplaySettings(decodeSettingsDoc(doc).display).padVibration).toBe(false);
+		expect(applySettingsPatch(overrides, { display: { padVibration: true } })).toEqual({});
+		expect(sameSettingsOverrides(overrides, { display: { padVibration: false } })).toBe(true);
+		expect(sameSettingsOverrides(overrides, { display: { playerOutline: false } })).toBe(false);
+	});
+
+	it("ignores junk", () => {
+		for (const junk of [0, 1, "false", "off", {}, [false]] as ReadonlyArray<unknown>) {
+			expect(sanitizeDisplayOverrides({ padVibration: junk })).toEqual({});
+		}
+	});
+
+	it("an older v2 document without the field reads On", () => {
+		const old = { v: 2, juice: {}, controls: {}, audio: {}, display: { minimap: false } };
+		expect(resolveDisplaySettings(decodeSettingsDoc(old).display).padVibration).toBe(true);
+		expect(resolveDisplaySettings(decodeSettingsDoc({ v: SETTINGS_DOC_V1, juice: {} }).display).padVibration).toBe(
+			true,
+		);
 	});
 });

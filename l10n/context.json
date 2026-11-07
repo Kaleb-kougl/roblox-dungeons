@@ -2643,6 +2643,10 @@
 	"options.controls.test": {
 		"note": "Label of the input test strip in the Controls tab: press any control and its action lights up."
 	},
+	"options.controls.vibration": {
+		"note": "Options screen, Controls tab, controller bindings: row label for controller vibration in menus (On / Off).",
+		"max": 24
+	},
 	"options.device.kbm": {
 		"note": "Sub-tab of the Controls tab: bindings for keyboard and mouse. Also inserted as {device} in other lines.",
 		"max": 18
@@ -2852,6 +2856,70 @@
 	"pact.horde.title": {
 		"note": "Title of the Pact of the Horde card, drawn on the floor in front of one of two altars in the shrine room (risk shrines: a pact gives a reward for a cost the card states up front; the player walks onto the altar and presses the shrine key to accept). Horde: the next room the party enters fights a second wave of enemies and pays double score. ALL CAPS; keep capitals if the script has them.",
 		"max": 24
+	},
+	"pad.hint.back": {
+		"note": "Gamepad hint bar at the bottom of a menu, shown beside a controller button glyph: go back one menu screen.",
+		"max": 12
+	},
+	"pad.hint.cancel": {
+		"note": "Gamepad hint bar at the bottom of a menu, shown beside a controller button glyph: cancel this confirmation (answers No).",
+		"max": 12
+	},
+	"pad.hint.close": {
+		"note": "Gamepad hint bar at the bottom of a menu, shown beside a controller button glyph: close this panel (Options, leaderboards).",
+		"max": 12
+	},
+	"pad.hint.create": {
+		"note": "Gamepad hint bar at the bottom of a menu, shown beside a controller button glyph: create a new lobby.",
+		"max": 12
+	},
+	"pad.hint.details": {
+		"note": "Gamepad hint bar at the bottom of a menu, shown beside a controller button glyph: show the run's score breakdown instead of its highlights.",
+		"max": 12
+	},
+	"pad.hint.holdExit": {
+		"note": "Gamepad hint bar at the bottom of a menu, shown beside a controller button glyph: hold the button to leave the run-over screen (to the main menu or the lobby).",
+		"max": 16
+	},
+	"pad.hint.invite": {
+		"note": "Gamepad hint bar at the bottom of a menu, shown beside a controller button glyph: invite Roblox friends to this lobby.",
+		"max": 12
+	},
+	"pad.hint.invites": {
+		"note": "Gamepad hint bar at the bottom of a menu, shown beside a controller button glyph: jump to the pending lobby invitations in the top right corner.",
+		"max": 12
+	},
+	"pad.hint.ready": {
+		"note": "Gamepad hint bar at the bottom of a menu, shown beside a controller button glyph: mark yourself ready (or not ready) in the lobby.",
+		"max": 12
+	},
+	"pad.hint.refresh": {
+		"note": "Gamepad hint bar at the bottom of a menu, shown beside a controller button glyph: refresh the list of open lobbies.",
+		"max": 12
+	},
+	"pad.hint.reset": {
+		"note": "Gamepad hint bar at the bottom of a menu, shown beside a controller button glyph: reset this Options tab to its defaults (asks first).",
+		"max": 12
+	},
+	"pad.hint.resume": {
+		"note": "Gamepad hint bar at the bottom of a menu, shown beside a controller button glyph: close the pause menu and resume the run.",
+		"max": 12
+	},
+	"pad.hint.scroll": {
+		"note": "Gamepad hint bar at the bottom of a menu, shown beside a controller button glyph: the right stick scrolls the list.",
+		"max": 12
+	},
+	"pad.hint.select": {
+		"note": "Gamepad hint bar at the bottom of a menu, shown beside a controller button glyph: press the selected button.",
+		"max": 12
+	},
+	"pad.hint.subTabs": {
+		"note": "Gamepad hint bar at the bottom of a menu, shown beside a controller button glyph: the triggers switch the smaller tabs inside a tab (keyboard / controller bindings, leaderboard boards).",
+		"max": 12
+	},
+	"pad.hint.tabs": {
+		"note": "Gamepad hint bar at the bottom of a menu, shown beside a controller button glyph: the shoulder buttons switch to the previous / next tab.",
+		"max": 12
 	},
 	"playtest.run.hits": {
 		"note": "Stat label on the run-over panel (a 150 px stat column, the value written below it): how many hits the player took.",

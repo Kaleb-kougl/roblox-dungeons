@@ -37,6 +37,8 @@ export const OPTIONS_STRINGS = {
 	resetYes: "options.controls.resetYes",
 	cancel: "options.controls.cancel",
 	test: "options.controls.test",
+	/** Controls > Gamepad: menu vibration On / Off (docs/GAMEPAD_MENUS.md GM9; labels as roomEdges). */
+	vibration: "options.controls.vibration",
 	/** The capture overlay ("Press a key... (5)") and its cancel line. */
 	captureKey: "options.capture.key",
 	captureButton: "options.capture.button",

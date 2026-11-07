@@ -126,6 +126,8 @@ export {
 	type PelletColorEntry,
 	type PelletColorRules,
 } from "./pelletColors";
+// Roblox port (docs/GAMEPAD_MENUS.md GM7 / GM9): the gamepad menus' hint bar and vibration row strings.
+export * from "./padHints";
 // Roblox port (docs/RUN_RECAP.md RR3 / CM3 / CM4): the run-over recap's and the co-op moments' strings and sounds.
 export * from "./runRecap";
 // Roblox port (docs/TREASURE.md TR6): the vault's chest IDs, tier roles, sounds and strings, and their colour rules.

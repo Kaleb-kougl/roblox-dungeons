@@ -50,6 +50,12 @@ export const DEFAULT_MINIMAP = true;
 export const DEFAULT_PLAYER_OUTLINE = true;
 
 /**
+ * Menu vibration on the gamepad (docs/GAMEPAD_MENUS.md GM9, Options > Controls > Gamepad > Vibration): On by default.
+ * Menus only (shared/view/menu MENU_HAPTICS); silent where the pad has no motor.
+ */
+export const DEFAULT_PAD_VIBRATION = true;
+
+/**
  * Build effects (docs/BUILDS.md BUD13, Options > Display > Build effects): Full, or Reduced (half the spark / nova
  * particles and ring segments, no bullet trails). Presentation only: effect bullets are always drawn.
  */

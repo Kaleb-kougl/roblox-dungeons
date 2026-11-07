@@ -216,7 +216,8 @@ describe("required IDs and strings", () => {
 		// + docs/LEGENDARIES.md LG5: 3 BUILD_STRING_KEYS (hud.toast.brace / .braceHeal, fx.brace.text)
 		const before =
 			41 + 1 + 2 + 4 * 3 + 1 + 3 + 5 + 13 + 10 + 8 + 2 + 2 + 4 + 7 + 17 + 7 + 3 + 64 + 22 + 52 + 5 + 5 + 2 + 1;
-		expect(REQUIRED_STRING_KEYS.size()).toBe(before + 28 + 1 + 4 + 16 + 1 + 19 + 1 + 1 + 3);
+		// + docs/GAMEPAD_MENUS.md GM7 / GM9: GAMEPAD_MENU_STRING_KEYS (16 pad.hint.*, options.controls.vibration)
+		expect(REQUIRED_STRING_KEYS.size()).toBe(before + 28 + 1 + 4 + 16 + 1 + 19 + 1 + 1 + 3 + 17);
 		expect(new Set(REQUIRED_STRING_KEYS).size()).toBe(REQUIRED_STRING_KEYS.size());
 		expect(BIOMES.map((b) => b.forgeTheme)).toEqual(["ancient", "molten", "frost", "grim", "verdant"]);
 	});

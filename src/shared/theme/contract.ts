@@ -1110,6 +1110,25 @@ export const REQUIRED_STRING_KEYS: ReadonlyArray<string> = ((): string[] => [
 	...DAILY_RANK_STRING_KEYS,
 	// docs/LOCALIZATION.md L1: named keys' labels (`input.key.<name>`) and the key list joiner
 	...INPUT_KEY_STRING_KEYS,
+	// docs/GAMEPAD_MENUS.md GM7 / GM9: padHints.ts GAMEPAD_MENU_STRING_KEYS, written out (an import would be one more
+	// top-level local): the hint bar's labels and the Options vibration row
+	"pad.hint.select",
+	"pad.hint.back",
+	"pad.hint.close",
+	"pad.hint.resume",
+	"pad.hint.cancel",
+	"pad.hint.tabs",
+	"pad.hint.subTabs",
+	"pad.hint.scroll",
+	"pad.hint.holdExit",
+	"pad.hint.details",
+	"pad.hint.refresh",
+	"pad.hint.create",
+	"pad.hint.ready",
+	"pad.hint.invite",
+	"pad.hint.invites",
+	"pad.hint.reset",
+	"options.controls.vibration",
 	// docs/RUN_RECAP.md RR3: runRecap.ts RECAP_STRING_KEYS, written out (an import would be one more top-level local):
 	// the near-miss line, the highlight labels, the co-op tags and the Details toggle
 	"run.recap.near.boss",

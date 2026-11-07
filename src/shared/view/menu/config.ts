@@ -94,3 +94,58 @@ export const PAUSE_BUTTON_VIEW = {
 	/** Above the HUD, under the menu shell (MENU_VIEW.displayOrder) and the pause / settings layer. */
 	displayOrder: 12,
 } as const;
+
+/**
+ * Gamepad menus (docs/GAMEPAD_MENUS.md GM1): the focus controller's and the pad shortcuts' tunables (client
+ * FocusController / useFocusScope / PadHintBar; pure rules in focus.ts, padActions.ts, padHints.ts).
+ */
+export const GAMEPAD_MENU = {
+	/** Run over: holding B this long does what the Exit button does (section 3, GMD13). */
+	holdExitSec: 0.6,
+	/** Right stick: pixels a scope's main list scrolls per step (reference pixels, under the HUD's UIScale). */
+	scrollStepPx: 36,
+	/** Right stick: seconds between scroll steps while the stick is held past the dead zone. */
+	scrollRepeatSec: 0.06,
+	/** Right stick: an axis inside this magnitude does not scroll (0..1). */
+	stickDeadZone: 0.35,
+	/** A list that follows the selection keeps the selected row this far inside its frame (reference pixels). */
+	followMarginPx: 12,
+	/**
+	 * TV-safe inset on a ten-foot interface (GM12), as a fraction of the screen on each side. Provisional: GM0 measures
+	 * what the engine already leaves (GuiService:GetGuiInset, the ScreenGui safe-area modes) on a console.
+	 */
+	tvSafe: { x: 0.05, y: 0.05 },
+} as const;
+
+/** The pad's vibration motors the menu uses (Enum.VibrationMotor names). */
+export type MenuHapticMotor = "Small" | "Large";
+
+/** One vibration pulse: a motor at `strength` (0..1) for `seconds`, starting `delaySec` after the cue. */
+export interface MenuHapticPulse {
+	readonly motor: MenuHapticMotor;
+	readonly strength: number;
+	readonly seconds: number;
+	readonly delaySec: number;
+}
+
+/** The menu's haptic cues (GM9). No haptic on focus moves (the console guidelines warn against overuse). */
+export type MenuHaptic = "confirm" | "disabled" | "listEnd" | "holdComplete";
+export const MENU_HAPTIC_KINDS: ReadonlyArray<MenuHaptic> = ["confirm", "disabled", "listEnd", "holdComplete"];
+
+/** Longest single pulse a menu cue may play: a tick, never a rumble. */
+export const MENU_HAPTIC_MAX_PULSE_SEC = 0.2;
+
+/**
+ * Every menu cue's pulses (client PadHaptics plays them; silent where the pad has no such motor, and with
+ * DisplaySettings.padVibration Off): a light tick on confirm, a short double buzz on pressing a disabled button, a
+ * tick at a list's end when scrolling into it, a firmer tick when hold-B completes.
+ */
+export const MENU_HAPTICS: { readonly [K in MenuHaptic]: ReadonlyArray<MenuHapticPulse> } = {
+	confirm: [{ motor: "Small", strength: 0.35, seconds: 0.05, delaySec: 0 }],
+	disabled: [
+		{ motor: "Small", strength: 0.5, seconds: 0.06, delaySec: 0 },
+		{ motor: "Small", strength: 0.5, seconds: 0.06, delaySec: 0.12 },
+	],
+	listEnd: [{ motor: "Small", strength: 0.25, seconds: 0.04, delaySec: 0 }],
+	holdComplete: [{ motor: "Large", strength: 0.5, seconds: 0.1, delaySec: 0 }],
+};

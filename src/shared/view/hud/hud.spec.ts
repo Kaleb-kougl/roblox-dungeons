@@ -247,7 +247,7 @@ describe("HUD helpers", () => {
 		const pack = quietPack(warnings);
 		const keys = optionsStringKeys(KBM_ACTIONS);
 		expect(keys.size()).toBe(
-			BINDING_REFUSALS.size() + KBM_ACTIONS.size() + OPTIONS_TABS.size() + OPTIONS_DEVICES.size() + 41,
+			BINDING_REFUSALS.size() + KBM_ACTIONS.size() + OPTIONS_TABS.size() + OPTIONS_DEVICES.size() + 42,
 		);
 		for (const key of keys) expect([key, pack.hasString(key)]).toEqual([key, true]);
 		// Every pad action is a keyboard action too (one name table).
@@ -270,6 +270,7 @@ describe("HUD helpers", () => {
 		expect(pack.str(OPTIONS_STRINGS.playerOutline)).toBe("Player outline"); // docs/PLAYER_OUTLINE.md P4
 		expect(pack.str(OPTIONS_STRINGS.buildFx)).toBe("Build effects"); // docs/BUILDS.md BUD13
 		expect(pack.str(OPTIONS_STRINGS.buildFxReduced)).toBe("Reduced");
+		expect(pack.str(OPTIONS_STRINGS.vibration)).toBe("Vibration"); // docs/GAMEPAD_MENUS.md GM9
 		expect(pack.str(actionNameKey("map"))).toBe("Map"); // docs/MINIMAP.md M9
 		expect(pack.str(HUD_STRINGS.mapTitle)).toBe("Map");
 		expect(pack.str(HUD_STRINGS.mapHint, { key: mapHint().keyboard })).toBe("M map");
