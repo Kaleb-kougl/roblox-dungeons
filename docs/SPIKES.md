@@ -14,6 +14,7 @@ turned off.
 | UA1: UI art | Do snapped 9-slice borders land on whole screen px, does the icon atlas bleed, does a CanvasGroup keep pixels crisp, does a stretched panel centre need `flat`? (docs/UI_ART.md UA1) | `src/client/controllers/spikes/UiArtSpikeController.tsx`, `src/client/ui/spikes/UiArtSpike.tsx` |
 | PA0: sprite bullets | Can the bullets be drawn as pixel-art sprites (Decal, per-bullet SurfaceGui, or one canvas SurfaceGui) at bullet-hell counts, within 1.5x the neon parts' update? (docs/PROJECTILE_ART.md PA0) | `src/client/controllers/spikes/BulletSpikeController.ts` (spike A's controller, render modes) |
 | L0: localization | Which fonts draw each script we may ship (tofu, fallback or correct), do Arabic shaping / right-to-left and CJK / Thai wrapping work, which locale id is the player's language, does `AutoLocalize = false` stop translated content, and what does the cloud table's CSV look like? (docs/LOCALIZATION.md L0) | `src/client/controllers/spikes/L10nSpikeController.ts`, `src/shared/spikes/l10nSpike.ts` |
+| GM0: gamepad menus | Does the default selection image draw over our buttons, do ScrollingFrames follow the selection and scroll with the stick, what happens to a destroyed / hidden selection, does a Stop SelectionGroup hold across ScreenGuis, does `GuiService:Select` honour `SelectionOrder`, what glyphs and haptics does the engine give, what do the console signals read, does Start reach the game? (docs/GAMEPAD_MENUS.md GM0) | `src/client/controllers/spikes/PadSpikeController.tsx` |
 
 Tunables for all of them: `src/shared/config/spikes.ts`. HUD: `src/client/ui/spikes/SpikeHud.tsx` (top left, with buttons
 for touch devices).
@@ -571,6 +572,113 @@ Downloaded CSV header (verbatim):
 Roblox locale codes seen (language: code):
 
 Notes (Studio version, Player Emulator behaviour, anything odd):
+
+## Spike GM0: gamepad menus (docs/GAMEPAD_MENUS.md)
+
+Not a task 1 gate: it answers the engine questions the gamepad menus (docs/GAMEPAD_MENUS.md GM1-GM12) are built on.
+Client code only (`PadSpikeController`, flag `KV_PadSpike`, tunables `PAD_SPIKE` in `src/shared/config/spikes.ts`). It
+is **off by default**; its two ScreenGuis (`KV_PadSpike`, display order 55, and `KV_PadSpikeTrap`, display order 57,
+both through `createKvScreenGui`, so AutoLocalize is off) are one Janitor: turning the flag off unmounts and removes
+them, puts `PlayerGui.SelectionImageObject` back, clears a selection left inside them and sets every motor to 0. No
+gameplay change. Every finding is printed to the Output with the prefix `[PadSpike]`, and the last 12 lines show in
+the log column. Run it with an Xbox pad and, if available, a PlayStation pad on PC; in the Studio console emulator
+(Test > Device: Xbox One / a TV) for the ten-foot signals; on a console if the owner targets it.
+
+### Turning it on
+
+- **Command bar, while playing:** `workspace:SetAttribute("KV_PadSpike", true)`; `false` removes it. Plug the pad in
+  first: on start the spike puts the selection on its first button when a gamepad is enabled.
+- **Code default:** set `SPIKE_DEFAULTS.pad` to `true` in `src/shared/config/spikes.ts` (not for a published build).
+
+Run it **at the main menu**: with a menu open InputController passes A / B / D-pad / left stick to the GUI
+(`setUiNavigation`); in a run with no menu open it sinks them and the GUI never sees them. The main menu's own focus
+code may take the selection back on a device switch: press **F7** (`PAD_SPIKE.reselectKey`) to put it on the spike
+again. While **Isolate spike** is on (default) the spike's columns are one SelectionGroup with Stop, so the D-pad
+stays inside the spike; turn it off to look at the game's own MenuButtons behind it.
+
+### What it shows (left to right)
+
+1. **Column 1.** (1) `SelectionImageObject: default / empty` toggles `PlayerGui.SelectionImageObject` between the
+   original (the engine's default image) and an empty transparent Frame; below it a plain TextButton and a **real
+   MenuButton** (React, the game's primitive, with its own focus ring). `Isolate spike` toggles the group. (3) Three
+   buttons that, when pressed, destroy themselves / set `Visible = false` / set `Selectable = false`; the log prints
+   `GuiService.SelectedObject` before, right after and on the next frame. `Rebuild` brings them back.
+2. **Column 2.** (2a) A ScrollingFrame of 30 buttons (not itself selectable). (2b) A selectable ScrollingFrame with
+   only text inside. Both log `CanvasPosition` once it settles (0.25 s), with the selection at that moment, and the
+   text list logs SelectionGained / Lost. (5) A row A / B / C where C (the third) has `SelectionOrder` -1; `C order`
+   toggles -1 / 0; `GuiService:Select(row)` logs what got selected right after and on the next frame. (4) `Enter the
+   trap` selects the trap's first button.
+3. **Column 3.** (6) Every pad KeyCode in `PAD_SPIKE.glyphKeys` (A, B, X, Y, L1, R1, L2, R2, Start, Select, D-pad) with
+   the image from `UserInputService:GetImageForKeyCode` in an ImageLabel and the string from `GetStringForKeyCode`
+   (both formats logged), plus `UserInputService.PreferredInput` (pcall), the connected gamepads and `LastInputType`.
+   Re-read on every GamepadConnected and on `Re-read glyphs`. (7) `Log support` (`IsVibrationSupported`,
+   `IsMotorSupported` per motor), `SetMotor` on the Small and Large motors at 0.3 and 1 for 0.2 s, a `HapticEffect`
+   (pcall) per type (UIClick, UIHover, UINotification, GameplayExplosion, GameplayCollision) played once, and a button
+   with `PressHapticEffect` = a UIClick effect. (8) `Log console signals`: `GuiService:IsTenFootInterface()`,
+   `GuiService.ViewportDisplaySize` (pcall), `GetGuiInset()` and the viewport, then one probe ScreenGui per
+   `ScreenInsets` mode logging where a full-size frame lands (the safe area per mode).
+4. **Column 4.** Status lines (the selected object, PreferredInput, LastInputType, `GuiNavigationEnabled`,
+   `AutoSelectGuiEnabled`, GamepadEnabled) and the log tail.
+5. **The trap (bottom right, its own ScreenGui at display order 57).** A SelectionGroup with all four
+   SelectionBehavior* = Stop; `Behavior` toggles Stop / Escape; `Leave` selects the spike again. A selection change
+   from inside the trap to outside logs `(4. trap ESCAPED)` (or `cleared`, or `left by the Leave button`).
+
+Always on: every selection change (`selected <old> -> <new>`), every pad button press (`pad ButtonX began,
+gameProcessed ...`), and (9) InputBegan and InputEnded of ButtonStart and ButtonSelect with `gameProcessed`, the
+selection, and on the next frame the selection and the navigation flags again (does Select turn on the virtual cursor
+or drop the selection?).
+
+### Test script
+
+1. **Selection image:** select the plain button and the real MenuButton with the D-pad. Is Roblox's default selection
+   image drawn over them (on top of the MenuButton's own ring)? Toggle to `empty`: is it gone, and does the MenuButton
+   ring still show? Turn Isolate off and check the game's main menu buttons the same way.
+2. **Scrolling:** D-pad down through 2a: does the list scroll to keep the selected row in view (CanvasPosition lines)?
+   Select 2b and push the left stick up / down (and the right stick): does it scroll?
+3. **Destroyed / hidden:** press A on each of the three; read the before / right after / next frame lines (nil, the
+   destroyed object, a neighbour?). Rebuild between tries.
+4. **Trap:** `Enter the trap`, then D-pad in every direction, and toward the spike's columns. With Stop, does it ever
+   escape? With Escape (toggle), where does it go?
+5. **Select(row):** press `GuiService:Select(row)` with C at -1: is C selected (or A, the first)? Toggle C to 0 and try
+   again.
+6. **Glyphs:** read the images and strings for an Xbox pad and a PlayStation pad (re-read after switching pads).
+   Note PreferredInput.
+7. **Haptics:** `Log support`, then each motor button (does it buzz, how do Small / Large feel), each HapticEffect, and
+   the PressHapticEffect button.
+8. **Console:** `Log console signals` on PC, in the Studio console emulator, and on a console.
+9. **Start / Select:** press Start (does InputBegan arrive, gameProcessed? does the Roblox menu open?) and Select
+   (does a virtual cursor appear, does the selection drop?).
+10. **Held buttons after a menu (no spike code):** turn the spike off, start a run, open the pause overlay, hold A on
+   Resume (and LB through a tab change in Options): does the held button act in the run once the menu closes (skill 1,
+   the shrine, a roll)?
+
+### Results: gamepad menus (GM0)
+
+| Question | Xbox pad (PC) | PlayStation pad (PC) | Console emulator | Console |
+|---|---|---|---|---|
+| 1a. Default selection image drawn over a MenuButton (yes / no; over its ring?) | | | | |
+| 1b. An empty `SelectionImageObject` hides it | | | | |
+| 2a. A ScrollingFrame scrolls to a selected descendant | | | | |
+| 2b. A selectable text-only ScrollingFrame scrolls with the left stick / right stick | | | | |
+| 3a. `SelectedObject` after the selected button is destroyed (right after / next frame) | | | | |
+| 3b. ... after it is hidden (`Visible = false`) | | | | |
+| 3c. ... after `Selectable = false` | | | | |
+| 4a. `SelectionBehavior = Stop` holds across ScreenGuis with different DisplayOrder | | | | |
+| 4b. With Escape, where the selection goes | | | | |
+| 5. `GuiService:Select(root)` honours `SelectionOrder` (C at -1 / at 0) | | | | |
+| 6a. `GetImageForKeyCode` per key (an image / empty) | | | | |
+| 6b. `GetStringForKeyCode` per key (Default / Abbreviated) | | | | |
+| 6c. `UserInputService.PreferredInput` | | | | |
+| 7a. `IsVibrationSupported` / `IsMotorSupported` (per motor) | | | | |
+| 7b. `SetMotor` Small / Large: felt, and how | | | | |
+| 7c. `HapticEffect` (per type) and `PressHapticEffect`: created, played, felt | | | | |
+| 8a. `IsTenFootInterface()` / `ViewportDisplaySize` | | | | |
+| 8b. `GetGuiInset()` and the safe area per `ScreenInsets` mode | | | | |
+| 9a. Start reaches the game (InputBegan, gameProcessed; Roblox menu?) | | | | |
+| 9b. ButtonSelect: virtual cursor? selection dropped? | | | | |
+| 10. A held A / LB leaks into the sim after a menu closes | | | | |
+
+Results pending. Notes (Studio version, pad models, the glyph strings verbatim, anything odd):
 
 ## Results
 

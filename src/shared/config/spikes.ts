@@ -10,6 +10,7 @@
  *   workspace:SetAttribute("KV_InviteSpike", true)    (client + server; only a published place has the APIs)
  *   workspace:SetAttribute("KV_UiArtSpike", true)     (client; docs/UI_ART.md UA1)
  *   workspace:SetAttribute("KV_L10nSpike", true)      (client; docs/LOCALIZATION.md L0)
+ *   workspace:SetAttribute("KV_PadSpike", true)       (client; docs/GAMEPAD_MENUS.md GM0)
  * An attribute, when present, overrides the default below; setting it to false stops the spike
  * and cleans up everything it made.
  */
@@ -23,6 +24,7 @@ export const SPIKE_DEFAULTS = {
 	touch: false,
 	uiArt: false,
 	l10n: false,
+	pad: false,
 } as const;
 
 /** Workspace attribute names that override SPIKE_DEFAULTS. */
@@ -34,6 +36,7 @@ export const SPIKE_ATTRIBUTES = {
 	touch: "KV_TouchSpike",
 	uiArt: "KV_UiArtSpike",
 	l10n: "KV_L10nSpike",
+	pad: "KV_PadSpike",
 } as const;
 
 export type SpikeName = keyof typeof SPIKE_DEFAULTS;
@@ -377,4 +380,82 @@ export const L10N_SPIKE = {
 	logDelaySec: 1,
 	/** Format of a cell's metrics line: TextFits, then TextBounds width x height. */
 	metricsFormat: "fits %s  %dx%d",
+} as const;
+
+/**
+ * Spike GM0 (docs/GAMEPAD_MENUS.md GM0, docs/SPIKES.md "Spike GM0"): gamepad GUI navigation. A test ScreenGui with
+ * one column per question (selection image, scrolling, destroyed / hidden selection, a Stop group in a second ScreenGui,
+ * `GuiService:Select` and SelectionOrder, glyphs, haptics, console signals, Start / Select) and a log tail; every
+ * finding is also printed with the `[PadSpike]` prefix. Pixels are screen px (no UIScale).
+ */
+export const PAD_SPIKE = {
+	/** DisplayOrder of the spike's ScreenGui (above the menus and the HUD, under the spike HUD 100). */
+	displayOrder: 55,
+	/** DisplayOrder of the trap ScreenGui (question 4): a different order from the spike's own. */
+	trapDisplayOrder: 57,
+	/** Prefix of every printed line. */
+	logPrefix: "[PadSpike]",
+	/** Lines of the on-screen log tail (newest last). */
+	logLines: 12,
+	/** Monospace text size of the labels, the buttons and the log. */
+	textSize: 13,
+	/** Outer margin and the gap between pieces. */
+	margin: 8,
+	gap: 4,
+	/** Width of one column, of the status / log column, and the height of a button. */
+	columnWidth: 230,
+	logWidth: 330,
+	buttonHeight: 26,
+	/** Thickness of the scrolling frames' scroll bars, px. */
+	scrollBarPx: 6,
+	/** Seconds between refreshes of the status lines (selected object, PreferredInput, navigation flags). */
+	statusRefreshSec: 0.25,
+	/** Backdrop transparency of the panels (0 = opaque). */
+	backdropTransparency: 0.2,
+	/** RGB of the text, the panels' backdrop and the buttons (developer UI: no theme roles). */
+	textColor: [255, 255, 255],
+	panelColor: [20, 20, 28],
+	buttonColor: [60, 60, 84],
+	/** Question 2: buttons in the button list, the list's height, and the text-only list's lines and height. */
+	listButtons: 30,
+	listHeight: 180,
+	textLines: 40,
+	textListHeight: 120,
+	/** Seconds a scrolling frame's CanvasPosition must stay still before its new value is logged (no spam). */
+	canvasSettleSec: 0.25,
+	/** Question 5: the SelectionOrder given to the third button of the Select(root) row (the other two keep 0). */
+	selectRootOrder: -1,
+	/** Question 6: the pad KeyCodes whose platform image and string are read (Enum.KeyCode names). */
+	glyphKeys: [
+		"ButtonA",
+		"ButtonB",
+		"ButtonX",
+		"ButtonY",
+		"ButtonL1",
+		"ButtonR1",
+		"ButtonL2",
+		"ButtonR2",
+		"ButtonStart",
+		"ButtonSelect",
+		"DPadUp",
+		"DPadDown",
+		"DPadLeft",
+		"DPadRight",
+	],
+	/** Side of one glyph image, px; glyph cells per row. */
+	glyphSize: 28,
+	glyphColumns: 2,
+	/** Question 7: the motors tried with SetMotor (Enum.VibrationMotor names), each at every strength (0..1). */
+	motors: ["Small", "Large"],
+	motorStrengths: [0.3, 1],
+	/** Question 7: how long one SetMotor try runs before the motor is set back to 0, seconds. */
+	motorSec: 0.2,
+	/** Question 7: seconds a played HapticEffect instance is kept before it is destroyed. */
+	effectLifeSec: 2,
+	/** Question 7: the HapticEffectType names tried with a HapticEffect (each through pcall). */
+	hapticTypes: ["UIClick", "UIHover", "UINotification", "GameplayExplosion", "GameplayCollision"],
+	/** Question 9: the pad buttons whose InputBegan / InputEnded is always logged (every other pad press: Began only). */
+	watchKeys: ["ButtonStart", "ButtonSelect"],
+	/** Keyboard key that puts the selection back on the spike's first button (the menus may take it on a device switch). */
+	reselectKey: "F7",
 } as const;
