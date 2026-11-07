@@ -380,7 +380,7 @@ describe("boosts: Quickstep", () => {
 		return s;
 	}
 
-	it("no tunnelling: walking into a wall and into a crate stops at the face, as without it", () => {
+	it("no tunnelling: walking into a wall and into a crate column stops at the face, as without it", () => {
 		const fl = endlessRunFloor(1, 1);
 		const w = wallEast(fl);
 		const wallConfig: SimConfig = {
@@ -398,12 +398,15 @@ describe("boosts: Quickstep", () => {
 		expect(quick.player.x > x0 + 1).toBe(true);
 
 		const patch = openPatch();
+		// A column of three crates: a lone one is an isolated blocker the wall slide's pillar slip walks round
+		// (docs/WALL_SLIDE.md WSD3); straight at a wider piece's middle the player stops at the face.
 		const crate: BreakablePlacement = { x: patch.gx + 2, y: patch.gy, kind: "crate" };
+		const crates: BreakablePlacement[] = [{ ...crate, y: patch.gy - 1 }, crate, { ...crate, y: patch.gy + 1 }];
 		const pc = patch.fl.config;
 		const crateConfig: SimConfig = {
 			...pc,
 			encounter: { ...pc.encounter!, spawns: [] },
-			breakables: { ...BREAKABLES_CONFIG, pieces: [crate] },
+			breakables: { ...BREAKABLES_CONFIG, pieces: crates },
 			drops: DROPS_CONFIG,
 		};
 		const face = gridToWorld(crate.x) - 0.5;

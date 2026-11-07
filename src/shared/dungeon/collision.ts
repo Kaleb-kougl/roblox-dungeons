@@ -375,6 +375,14 @@ export function isBulletBlocked(d: Dungeon, x: number, z: number, solid?: SolidC
 }
 
 /**
+ * `SimConfig.isBodyBlocked`: true when the cell under (x, z) stops a body (blocksMove: anything but FLOOR, so a pool
+ * tile too, which bullets cross; or a `solid` cell).
+ */
+export function bodyBlocker(d: Dungeon): BulletBlocker {
+	return (x, z, solid) => blocksMove(d, worldToGrid(x), worldToGrid(z), solid);
+}
+
+/**
  * `SimConfig.isBulletBlocked`: `(x, z, solid) => isBulletBlocked(d, x, z, solid)`. Line of sight calls it with
  * (x, z) only, so sight never sees `solid` cells (docs/DECOR.md B2: breakables are low cover).
  */

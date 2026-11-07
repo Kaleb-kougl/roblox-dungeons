@@ -1083,12 +1083,12 @@ describe("tutorial metrics (docs/TUTORIAL_FUNNEL.md TF4)", () => {
 			[7, 3.1, 1], // roll (combat C) before hits (combat B)
 			[5, 13.2, 1], // hits: current from the flask on, so it runs through the walk to and the fight in combat C
 			[6, 0.1, 0],
-			[8, 8.4, 1],
+			[8, 8.3, 1], // guard; wall slide (docs/WALL_SLIDE.md WS4): 8.4 before
 			[9, 5.3, 2],
 			[10, 9.3, 1],
 			[11, 0, 0],
-			[12, 15.1, 0],
-			[13, 2.8, 0],
+			[12, 15.1, 1], // pellets: the sweep's path takes one (harmless) hit now; 0 before
+			[13, 2.9, 0], // relic: 2.8 before
 			[14, 2.8, 0],
 			[15, 3.3, 0],
 			[16, 0.5, 0],

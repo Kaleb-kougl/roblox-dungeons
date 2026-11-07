@@ -37,6 +37,8 @@ import {
 	validateRun,
 	type RunLimits,
 	type RunSubmission,
+	PlayerMover,
+	setPlayerMover,
 } from "shared/run";
 
 // The golden runs (and the source's measured tables) were recorded with the web build's sword; the port's is 20%
@@ -44,10 +46,12 @@ import {
 // describe bodies may replay while the specs are collected.
 const portSword: SwordTimings = setSwordTimings(WEB_SWORD_TIMINGS);
 const portSwarmerHp = setSwarmerHp(WEB_SWARMER_HP); // the web swarmer's 2 hp (port: 1)
+const portMover = setPlayerMover(PlayerMover.WEB); // the web build's mover (port: the slide, docs/WALL_SLIDE.md)
 const portBossHp = setBossHp(WEB_BOSS_HP); // the web boss's 540 hp (port: 270)
 afterAll(() => {
 	setSwordTimings(portSword);
 	setSwarmerHp(portSwarmerHp);
+	setPlayerMover(portMover);
 	setBossHp(portBossHp);
 });
 

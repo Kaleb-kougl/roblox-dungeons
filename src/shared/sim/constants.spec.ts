@@ -1,6 +1,7 @@
 // Every sim constant this port owns equals the web build's value bit for bit (fixtures/constants.json), including the
 // module-load computations (secondsToTicks, ROLL_DISTANCE, TURN_COS / SIN, BOW_WOBBLE_COS / SIN, derived steps).
 import { afterAll, beforeAll, describe, expect, it } from "@rbxts/jest-globals";
+import { PlayerMover, setPlayerMover, type PlayerMoverKind } from "shared/run";
 import constants from "shared/fixtures-generated/constants";
 import { jsRound } from "shared/jsmath";
 import * as units from "./units";
@@ -103,17 +104,20 @@ describe("constants.json parity", () => {
 	// The port's sword is 20% slower (CLAUDE.md decision log); its web timers are compared here, the retune below.
 	let portSword: SwordTimings;
 	let portSwarmerHp = 0;
+	let portMover: PlayerMoverKind = PlayerMover.SLIDE;
 	let portBossHp = 0;
 	let portBow: BowTuning;
 	beforeAll(() => {
 		portBow = setBowTuning(WEB_BOW_TUNING);
 		portSword = setSwordTimings(WEB_SWORD_TIMINGS);
 		portSwarmerHp = setSwarmerHp(WEB_SWARMER_HP);
+		portMover = setPlayerMover(PlayerMover.WEB); // the web build's mover (port: the slide)
 		portBossHp = setBossHp(WEB_BOSS_HP);
 	});
 	afterAll(() => {
 		setSwordTimings(portSword);
 		setSwarmerHp(portSwarmerHp);
+		setPlayerMover(portMover);
 		setBossHp(portBossHp);
 		setBowTuning(portBow);
 	});

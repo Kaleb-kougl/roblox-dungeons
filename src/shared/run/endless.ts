@@ -16,7 +16,7 @@
  *            EndlessFloorWorld.golden))
  *   floor f  buildEndlessFloor(runSeed, f, ..., { vaults: true }) (shared/dungeon endless.ts: solid pillars, breakables,
  *            the vault, the pact altars, the Goldling's room; the dev world's KV_TreasureDebug adds a VaultOverride,
- *            run/dev.ts) + circleMover / bulletBlocker /
+ *            run/dev.ts) + playerMover (the slide; ./playerMover.ts, docs/WALL_SLIDE.md) / bulletBlocker /
  *            actorMover / actorSteerMover (enemies walk around pillars) on its dungeon; built on first use, kept in a
  *            per-config LRU (ENDLESS_FLOOR_CACHE_SIZE), the dungeons in a server-wide LRU (ENDLESS_DUNGEON_CACHE_SIZE)
  *            keyed by seed and room count
@@ -32,9 +32,9 @@ import {
 	ENDLESS_FIRST_FLOOR,
 	actorMover,
 	actorSteerMover,
+	bodyBlocker,
 	bulletBlocker,
 	buildEndlessFloor,
-	circleMover,
 	generateDungeon,
 	roomIdAt,
 	type Dungeon,
@@ -53,7 +53,6 @@ import {
 	MAX_PARTY_SIZE,
 	PELLETS_CONFIG,
 	ENDLESS_TREASURE_CONFIG,
-	PLAYER_RADIUS,
 	isValidPartySize,
 	type EndlessFloorWorld,
 	type ScoringConfig,
@@ -62,6 +61,7 @@ import {
 import { ENDLESS_DUNGEON_CACHE_SIZE, ENDLESS_FLOOR_CACHE_SIZE } from "./limits";
 import { isValidRunSeed } from "./seed";
 import type { RunSetup } from "./config";
+import { playerMover, playerMoverKind, type PlayerMoverKind } from "./playerMover";
 
 // ---------------------------------------------------------------------------------------------
 // Dungeon cache (least recently used out first). Dungeons are never mutated.
@@ -112,30 +112,37 @@ export interface EndlessRunFloor extends EndlessFloorWorld {
 
 /**
  * Builds floor `floor` of the run `runSeed` for a party of `partySize` (uncached; the dungeon comes from
- * endlessDungeon's cache), vaults on (docs/TREASURE.md TR5); `vaultOverride`: the dev world's KV_TreasureDebug only.
- * Pure.
+ * endlessDungeon's cache), vaults on (docs/TREASURE.md TR5); `vaultOverride`: the dev world's KV_TreasureDebug only;
+ * `mover`: the player's mover (default: the current `playerMoverKind()`). Pure.
  */
 export function endlessRunFloor(
 	runSeed: number,
 	floor: number,
 	partySize: number = DEFAULT_PARTY_SIZE,
 	vaultOverride?: VaultOverride,
+	mover: PlayerMoverKind = playerMoverKind(),
 ): EndlessRunFloor {
 	return endlessFloorWorld(
 		buildEndlessFloor(runSeed, floor, endlessDungeon, partySize, { vaults: true, vaultOverride }),
+		mover,
 	);
 }
 
 /**
- * The sim's world for a built floor layout: circleMover / bulletBlocker / actorMover / actorSteerMover on its dungeon
- * and its encounter, its spawns and stairwell. What every endless floor steps with; the tutorial (tutorial.ts) builds
- * its hand-scripted floors through it too, so they move, block and steer exactly like an endless floor. Pure.
+ * The sim's world for a built floor layout: playerMover (the slide, docs/WALL_SLIDE.md; `mover` defaults to the
+ * current `playerMoverKind()`) / bulletBlocker / actorMover / actorSteerMover on its dungeon and its encounter, its
+ * spawns and stairwell. What every endless floor steps with; the tutorial (tutorial.ts) builds its hand-scripted floors
+ * through it too, so they move, block and steer exactly like an endless floor. Pure.
  */
-export function endlessFloorWorld(layout: EndlessFloorLayout): EndlessRunFloor {
+export function endlessFloorWorld(
+	layout: EndlessFloorLayout,
+	mover: PlayerMoverKind = playerMoverKind(),
+): EndlessRunFloor {
 	const d = layout.dungeon;
 	const config: SimConfig = {
-		moveResolver: circleMover(d, PLAYER_RADIUS),
+		moveResolver: playerMover(d, mover),
 		isBulletBlocked: bulletBlocker(d),
+		isBodyBlocked: bodyBlocker(d),
 		actorMover: actorMover(d),
 		actorSteerMover: actorSteerMover(d),
 		encounter: layout.encounter,
@@ -169,12 +176,16 @@ export interface EndlessRunSetup extends RunSetup {
 	readonly endlessFloor: (floor: number) => EndlessRunFloor;
 }
 
-/** A per-run floor cache: the last floor asked for is returned at once (step() asks every tick). */
+/**
+ * A per-run floor cache: the last floor asked for is returned at once (step() asks every tick). The player's mover is
+ * read here, when the config is built, so every floor of the run moves the same way (setPlayerMover).
+ */
 function floorCache(
 	runSeed: number,
 	partySize: number,
 	vaultOverride: VaultOverride | undefined,
 ): (floor: number) => EndlessRunFloor {
+	const mover = playerMoverKind();
 	const floors: number[] = [];
 	const worlds = new Map<number, EndlessRunFloor>();
 	let lastFloor = -1;
@@ -183,7 +194,7 @@ function floorCache(
 		if (floor === lastFloor && last !== undefined) return last;
 		let w = worlds.get(floor);
 		if (w === undefined) {
-			w = endlessRunFloor(runSeed, floor, partySize, vaultOverride);
+			w = endlessRunFloor(runSeed, floor, partySize, vaultOverride, mover);
 			worlds.set(floor, w);
 			floors.push(floor);
 			while (floors.size() > ENDLESS_FLOOR_CACHE_SIZE) {

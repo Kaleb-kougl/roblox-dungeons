@@ -69,6 +69,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/LEGENDARIES.md` | Legendaries (two legendary boons, Overkill: a kill's leftover damage streaks to the nearest enemy and chains; Bastion: a full-ring 27-tick guard, +1 pip and a brace that restores a pip when a guard or roll stops 8 bullets; four duos Supernova / Skewer / Citadel / Stone Heart; gameplay, opt-in `SimConfig.builds`): plan, LG0 findings, as built LG1-LG6, LG7 tuning, owner tuning, tasks LG0-LG9, decisions LGD1-LGD14 |
 | `docs/HAZARD_ART.md` | Hazard art (the Stormcaller's strike and the build embers as original greyscale pixel art tinted by their roles: a flash over the strike's 0.1 s life and a short scorch after it, the ember's burn loop; supersedes PAD3; presentation only): plan, as built, tasks HA0-HA8, decisions HAD1-HAD5 |
 | `docs/GAMEPAD_MENUS.md` | Gamepad menus (every menu usable with a controller: focus scopes with one owner, recovery and memory, one B path (hold B to exit on run over), LB/RB / LT/RT tabs, right-stick scroll, X / Y shortcuts, a hint bar with Roblox button icons, menu haptics, console TV-safe fit; client input and presentation only): census, plan, as built, tasks GM0-GM12, decisions GMD1-GMD16 |
+| `docs/WALL_SLIDE.md` | Wall slide (the player's body slides round corners instead of stopping: `slideCircle` collide and slide, a corner tie-break, a face assist within 0.35 tiles of a wall's end, a full pillar slip on isolated 1 x 1 blockers; every world, M1 included; snag census; gameplay): findings, plan, as built, tasks WS0-WS10, decisions WSD1-WSD7 |
 
 Decision log (deviations from `PLAN.md`):
 - **Art (docs/ART.md).** The theme contract gained a `"sprites"` kind (large pre-rendered cells, 1/4/8/16 screen-space
@@ -893,6 +894,29 @@ Decision log (deviations from `PLAN.md`):
   `DisplaySettings.padVibration` (default On, only Off stored, doc stays v2; the Display reset keeps it); strings
   `PAD_HINT_STRING_KEYS` (`pad.hint.*`) and `options.controls.vibration`. Spike `KV_PadSpike` (GM0), debug
   `KV_FocusDebug`. Studio check (GM0 results, GM8, GM11) pending.
+- **Wall slide (port retune, 2026-11-07, docs/WALL_SLIDE.md).** Gameplay (sim, every world). The player's
+  `SimConfig.moveResolver` is `playerMover(d)` (shared/run `playerMover.ts`): `playerSlideMover(d, PLAYER_RADIUS)` =
+  shared/dungeon `slideCircle` (collide and slide: the deepest overlap pushed out along the closest point's normal, so
+  corners are rounded by the body's radius; a corner tie-break; a face assist within `assistTiles` 0.35 of a wall's end,
+  only toward the end the move leans to; never farther than the step or against the input, else `moveCircle`'s result)
+  instead of the web build's `circleMover` (per-axis sweeps that stop dead on corners). Tunables `PLAYER_SLIDE`
+  (`slideData.ts`: iterations 4, `tieShare` 0.05, `tiePush` 0.3, `assistTiles` 0.35, `assistStallShare` 0.2,
+  `pillarSlip` true). The pillar slip: an isolated 1 x 1 blocker (all 8 neighbours open: every solid pillar, a lone
+  crate or candle stand) is slipped round across its whole face, to the side the move's ray passes its centre unless
+  that is against the move's lean (WSD3, WSD7). M1 included (WSD1): `buildRunConfig`'s dungeon worlds, endless, daily,
+  dev, co-op and the tutorial all build it (the kind is read when the config is built and kept for every floor of the
+  run). The web mover survives only as `PlayerMover.WEB`: every golden fixture and web-tuned spec (validate, segments,
+  runFull, runBoss, runBullets, score.replay, constants, recordingCodec, bossAct1.ttk, liveRun.forfeit, roomEdgeState)
+  replays under `setPlayerMover(PlayerMover.WEB)` next to `setSwordTimings(WEB_SWORD_TIMINGS)` / `setSwarmerHp` /
+  `setBossHp(WEB_BOSS_HP)` and still matches bit for bit. Bullets, sight, enemy movers, the dungeon, the hash layout and the lockstep wire are
+  unchanged; the server validator builds the same config. Live replays and scores changed in every world (M1 runs
+  recorded by older builds no longer replay; the pins that record player paths were re-recorded, docs/WALL_SLIDE.md
+  WS4); the all-time boards stay `_v1`; `DAILY.ruleset` 9 -> 11 (main's brace threshold took 10). Snag census
+  (`run/snagCensus.spec.ts`, WS5): zero unexcused stalls with the slide in every class. The new paths exposed a latent
+  imp bug (a blink could land on a POOL tile, which bullets cross): `impBlinkValid` now reads the new optional
+  `SimConfig.isBodyBlocked` (`bodyBlocker(d)`, endless floors; `isBulletBlocked` without it). Debug `KV_CollisionDebug`
+  (presentation only: blocking cells, isolated blockers, the body ring, a stall flash). Stepped-wall smoothing (WS3)
+  and the playtest (WS8) pending.
 
 ## Commands
 

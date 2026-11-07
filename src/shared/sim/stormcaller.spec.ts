@@ -678,6 +678,9 @@ describe("stormcaller: strikes on real endless floors", () => {
 		// Re-derived on the second merge of main (reading area) into docs/TREASURE.md: both compose: run 4 keeps the
 		// vault pin (the reading area left it untouched on main too), run 23 takes main's reading-area pin (no vault on
 		// its floor 3).
-		expect(pins).toEqual(["2/1/f21b6834", "6/0/07335c64"]); // check-asset-ids: allow (state hashes)
+		// Re-recorded for the wall slide (docs/WALL_SLIDE.md WS4): the scenes' players move with the slide, so the
+		// state hashes moved; strike and skip counts are unchanged and no layout changed. Before: 2/1/f21b6834,
+		// 6/0/07335c64.
+		expect(pins).toEqual(["2/1/6b48e632", "6/0/4293fa96"]); // check-asset-ids: allow (state hashes)
 	});
 });

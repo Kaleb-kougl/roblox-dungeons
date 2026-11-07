@@ -43,7 +43,9 @@ export const DAILY: DailyConfig = table.freeze({
 	// one bump for both; branch fortune's own 6 never shipped).
 	// 9: two legendaries, Overkill and Bastion, and their four duos (docs/LEGENDARIES.md LGD11) change endless drafts.
 	// 10: Bastion's brace needs 8 bullets, not 3 (docs/LEGENDARIES.md LGD6, owner 2026-11-06).
-	ruleset: 10,
+	// 11: the player's wall slide (docs/WALL_SLIDE.md WSD1: the player moves differently in every world); main's brace
+	// threshold took 10.
+	ruleset: 11,
 	labelOffset: 1,
 	yesterdayCacheSeconds: 600,
 	minEntrantsForPercentile: 20,

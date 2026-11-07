@@ -106,6 +106,11 @@ export interface SimConfig {
 	 * simulations' bounds culling is off; when absent, a +/-FALLBACK_BULLET_BOUNDS cube around the origin culls them.
 	 */
 	isBulletBlocked?: BulletBlocker;
+	/**
+	 * Body vs world, one cell (Roblox port): true where a body cannot stand (a wall, void or pool tile; `bodyBlocker`).
+	 * Read by the imp's blink rule. Endless floors set it; absent (M1, every fixture): isBulletBlocked stands in.
+	 */
+	isBodyBlocked?: BulletBlocker;
 	/** Actor movement through the world (E1.8). Without it actors use the `bounds` clamp, else move freely. */
 	actorMover?: ActorMover;
 	/**

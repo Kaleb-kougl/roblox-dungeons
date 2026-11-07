@@ -2,6 +2,7 @@
 // ticks, the real game config): engage at tick 36, DEBUG_BOSS presses so every phase happens (phase 2 at 636, phase 3
 // at 1356), slams with swarmer summons, 67 bullets deleted by the sword; the player survives with 5 half hearts.
 import { afterAll, describe, expect, it } from "@rbxts/jest-globals";
+import { PlayerMover, setPlayerMover } from "shared/run";
 import {
 	DEFAULT_ENCOUNTER,
 	KALEB_VALE_MVP_PARAMS,
@@ -40,10 +41,12 @@ import {
 // describe bodies may replay while the specs are collected.
 const portSword: SwordTimings = setSwordTimings(WEB_SWORD_TIMINGS);
 const portSwarmerHp = setSwarmerHp(WEB_SWARMER_HP); // the web swarmer's 2 hp (port: 1)
+const portMover = setPlayerMover(PlayerMover.WEB); // the web build's mover (port: the slide, docs/WALL_SLIDE.md)
 const portBossHp = setBossHp(WEB_BOSS_HP); // the web boss's 540 hp (port: 270)
 afterAll(() => {
 	setSwordTimings(portSword);
 	setSwarmerHp(portSwarmerHp);
+	setPlayerMover(portMover);
 	setBossHp(portBossHp);
 });
 

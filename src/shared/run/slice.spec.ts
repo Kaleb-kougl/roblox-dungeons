@@ -41,6 +41,7 @@ import {
 	ENDLESS_SCORING,
 	MAX_SEGMENT_BYTES,
 	MAX_SEGMENT_TICKS,
+	SEGMENT_CHECKPOINT_TICKS,
 	SegmentedValidator,
 	buildEndlessRunConfig,
 	buildWorldSetup,
@@ -408,7 +409,16 @@ describe("the endless run, segmented per floor, validates on the server", () => 
 		expect(got.filter((x) => x.ok).size()).toBe(k);
 		const bad = got[got.size() - 1];
 		expect([bad.index, bad.ok]).toEqual([k, false]);
-		expect(bad.matchedThroughTick).toBe(seg.startTick);
+		// Located to the checkpoint window of the first edited tick: the last checkpoint at or before it, or the segment
+		// start. (Wall slide, docs/WALL_SLIDE.md WS4: the re-recorded run's floor-6 segment starts at tick 2953 and its
+		// first walking frame comes after the tick-3000 checkpoint, so that checkpoint still matches; before, the
+		// edit fell in the segment's first window and this pinned seg.startTick.)
+		const lastGood = math.max(
+			seg.startTick,
+			math.floor((seg.startTick + at) / SEGMENT_CHECKPOINT_TICKS) * SEGMENT_CHECKPOINT_TICKS,
+		);
+		expect([seg.startTick, lastGood]).toEqual([2953, 3000]);
+		expect(bad.matchedThroughTick).toBe(lastGood);
 		// Further segments are refused.
 		expect(w.offer(sent[k + 1], LATE).ok).toBe(false);
 	});
