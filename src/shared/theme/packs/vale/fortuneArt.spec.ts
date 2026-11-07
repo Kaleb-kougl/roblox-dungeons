@@ -55,10 +55,14 @@ describe("vale Fortune art (pact.altar, fx.golden.coin)", () => {
 		expect(m.assets[GOLDEN_COIN_FX_ID]).toBe(undefined);
 	});
 
-	it("as bundled, each switches on exactly when its sheet has an ID", () => {
+	it("as bundled (both sheets uploaded 2026-11-06) draws the altar art and the coin burst", () => {
+		expect([VALE_ASSET_IDS[ALTAR_FILE] !== undefined, VALE_ASSET_IDS[COIN_FILE] !== undefined]).toEqual([
+			true,
+			true,
+		]);
 		const pack = new ThemePack(VALE_MANIFEST, { warn: quiet });
-		expect(pack.pactAltar().art?.kind).toBe(VALE_ASSET_IDS[ALTAR_FILE] !== undefined ? "sprites" : undefined);
-		expect(pack.fx(GOLDEN_COIN_FX_ID) !== undefined).toBe(VALE_ASSET_IDS[COIN_FILE] !== undefined);
+		expect(pack.pactAltar().art?.kind).toBe("sprites");
+		expect(pack.fx(GOLDEN_COIN_FX_ID) !== undefined).toBe(true);
 	});
 
 	it("with both sheets uploaded validates with zero problems and draws the altar and the coin burst", () => {

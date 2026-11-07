@@ -211,7 +211,8 @@ It never attacks and does no contact damage.
   swarmer's skeleton on a gold luminance ramp, bodyTiles 0.95, `golden-move.png` / `golden-death.png` + their two
   outline sheets, uploaded 2026-11-04 5:03 PM (ids in `assetIds.ts`, so the bundled vale pack draws it). The altar
   and the coin burst are built (2026-11-06, presentation only; "Altar and coin art" below): original pixel art,
-  `pact-altar.png` / `golden-coin.png`, upload pending; the sounds pending.
+  `pact-altar.png` / `golden-coin.png`, uploaded 2026-11-06 6:04 PM (ids in `assetIds.ts`, so the bundled vale pack
+  draws both); the sounds pending.
 - [ ] **FO11. Telemetry (optional).** Pending.
 - [x] **FO12. Docs** (this doc as built, CLAUDE.md log, sim README, CLIENT.md, DAILY.md).
 - [ ] **FO13. [owner] Playtest.** Pending.
@@ -478,7 +479,8 @@ Presentation only (no sim, dungeon, lockstep, hash, replay, fixture or score cha
   sprite set's `idle` frame 0 in its resample mode, and stands the flame on `PACTS_VIEW.artTopTiles` 0.64 (the coal
   bed, the generator's `ALTAR.coals`, scaled with any cap), so it rises out of the bowl. The plinth is unchanged.
 - Tests: `scripts/art/gen-fortune-art.test.js`, `scripts/art/fortune.test.js`, vale `fortuneArt.spec.ts`,
-  `pacts.spec.ts` (altarArtFit). Open: upload both PNGs, then the Studio check (the flame in the bowl, the burst's size).
+  `pacts.spec.ts` (altarArtFit). Both PNGs uploaded 2026-11-06 6:04 PM. Open: the Studio check (the flame in the bowl,
+  the burst's size).
 
 ### View (FO7-FO9)
 

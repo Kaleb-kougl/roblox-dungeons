@@ -121,6 +121,9 @@ import type { RobloxAssetId } from "../../types";
  * hazards.png (the Stormcaller's strike flash / scorch and the build embers, docs/HAZARD_ART.md HA7; original art,
  * scripts/art/gen-hazard-art.js, built by `node scripts/art/build-atlases.js --only hazards`) uploaded 2026-11-06, the ID
  * given by the owner in chat.
+ * pact-altar.png / golden-coin.png (the pact altar and the Goldling's coin burst, docs/FORTUNE.md FO10; original art,
+ * scripts/art/gen-fortune-art.js, built by `node scripts/art/build-atlases.js --only fortune`) uploaded 2026-11-06
+ * 6:04 PM, transcribed from an Asset Manager screenshot.
  */
 export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"amb-b1.ogg": "rbxassetid://91158343621799",
@@ -173,6 +176,7 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"dummy-outline.png": "rbxassetid://114899302767067",
 	"dummy.png": "rbxassetid://76011095585692",
 	"decor-mote.png": "rbxassetid://108281638823690",
+	"golden-coin.png": "rbxassetid://102072224489625",
 	"golden-death-outline.png": "rbxassetid://129944301136987",
 	"golden-death.png": "rbxassetid://92086087611208",
 	"golden-move-outline.png": "rbxassetid://85083036932400",
@@ -273,6 +277,7 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"music-boss.ogg": "rbxassetid://82229819920090",
 	"music-menu.ogg": "rbxassetid://75564975309420",
 	"music-tutorial.ogg": "rbxassetid://87339075756554",
+	"pact-altar.png": "rbxassetid://117430889650812",
 	"pellet-power.png": "rbxassetid://135982735087293",
 	"pellet.png": "rbxassetid://104506728931703",
 	"reaper-attack-outline.png": "rbxassetid://95992799302634",

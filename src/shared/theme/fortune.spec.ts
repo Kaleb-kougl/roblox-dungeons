@@ -135,7 +135,7 @@ describe("fortune: contract", () => {
 		}
 	});
 
-	it("the coin burst is an optional fx ID (no pack has it yet), tinted by golden.coin under the fx rule", () => {
+	it("the coin burst is an optional fx ID (only vale has it, FO10), tinted by golden.coin under the fx rule", () => {
 		expect(GOLDEN_COIN_FX_ID).toBe("fx.golden.coin");
 		expect([isFxId(GOLDEN_COIN_FX_ID), slotFor(GOLDEN_COIN_FX_ID), has(FX_IDS, GOLDEN_COIN_FX_ID)]).toEqual([
 			true,
@@ -143,8 +143,11 @@ describe("fortune: contract", () => {
 			true,
 		]);
 		expect(has(REQUIRED_ASSET_IDS, GOLDEN_COIN_FX_ID)).toBe(false);
-		for (const p of sortedKeys(THEME_PACKS))
-			expect([p, THEME_PACKS[p].assets[GOLDEN_COIN_FX_ID]]).toEqual([p, undefined]);
+		// vale's art (docs/FORTUNE.md FO10, uploaded 2026-11-06): a one-facing sprite set; every other pack has none
+		for (const p of sortedKeys(THEME_PACKS)) {
+			const kind = (THEME_PACKS[p].assets[GOLDEN_COIN_FX_ID] as { kind: string } | undefined)?.kind;
+			expect([p, kind]).toEqual([p, p === "vale" ? "sprites" : undefined]);
+		}
 		const m = clone();
 		(m.assets as Obj)[GOLDEN_COIN_FX_ID] = {
 			kind: "sprites",
@@ -246,8 +249,11 @@ describe("fortune: placeholder", () => {
 		expect(v.size[0]).toBe(pxToStuds(16 * PLACEHOLDER_PROPORTIONS.pactAltar[0]));
 		expect(v.size[1]).toBe(pxToStuds(16 * PLACEHOLDER_PROPORTIONS.pactAltar[1]));
 		expect(v.size[1] < PLACEHOLDER_VISUALS["breakable.barrel"].size[1]).toBe(true);
-		for (const id of sortedKeys(THEME_PACKS))
-			expect([id, THEME_PACKS[id].assets[PACT_ALTAR_ID]]).toEqual([id, { kind: "placeholder" }]);
+		// every pack but vale draws the plinth; vale has its art (docs/FORTUNE.md FO10, uploaded 2026-11-06)
+		for (const id of sortedKeys(THEME_PACKS)) {
+			const kind = (THEME_PACKS[id].assets[PACT_ALTAR_ID] as { kind: string }).kind;
+			expect([id, kind]).toEqual([id, id === "vale" ? "sprites" : "placeholder"]);
+		}
 		// the stone reads on every floor
 		for (const [id, manifest] of packsToCheck()) {
 			const stone = (manifest.colors as Obj).uiTextDim as string;
