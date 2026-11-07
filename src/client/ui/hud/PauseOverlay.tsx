@@ -1,6 +1,5 @@
 import React, { useEffect, useRef } from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
-import { GuiService } from "@rbxts/services";
 import {
 	selectAnyPanelOpen,
 	selectBaselineRun,
@@ -15,6 +14,7 @@ import {
 	selectSnapshot,
 	selectTutorial,
 } from "client/store";
+import { useFocusScope, useOpeningId } from "client/ui/focus";
 import { str } from "client/ui/theme";
 import { swapHint, keyDevice } from "shared/play";
 import { TUTORIAL_STRINGS } from "shared/tutorial";
@@ -107,8 +107,11 @@ const SKIP_CONFIRM: ConfirmSpec = {
  * Leaderboards. A first-run tutorial run (paused like solo): Resume / Restart tutorial / Skip tutorial / Options.
  * Leave run first shows the confirm ("Leaving ends your run..."; Leave / Cancel), Skip tutorial its own ("Skip the
  * tutorial?"; Skip / Keep playing). With a gamepad the selection starts on the first button (Cancel / Keep playing
- * in a confirm). Under the buttons, the weapon-swap key (the HUD's swap hint hides after a few seconds,
- * docs/HUD_LAYOUT.md H5), the run's info line and any fallback notice (RunInfoLine: docs/HUD_LAYOUT.md H6,
+ * in a confirm): an `overlay` focus scope (surface pause / party) with memory for the time it is open (back from
+ * Options, Leaderboards or a confirm lands on the button that opened it; a new pause starts on Resume), the confirm a
+ * `confirm` scope over it (docs/GAMEPAD_MENUS.md GM2). Pad B (GM3): solo resumes (as Resume), the party overlay
+ * closes, a confirm cancels (as Cancel / Keep playing). Under the buttons, the weapon-swap key (the HUD's swap hint
+ * hides after a few seconds, docs/HUD_LAYOUT.md H5), the run's info line and any fallback notice (RunInfoLine: docs/HUD_LAYOUT.md H6,
  * the only place they show while a run is on). Solo: the full map left of the menu (PauseMap, docs/MINIMAP.md MD5);
  * solo and co-op: the local player's Build list right of it (PauseBuild, docs/BUILDS.md BU10).
  * Hidden while a panel is open and once the run is over (the run-over panel has the exits). The solo dim covers the
@@ -130,6 +133,8 @@ export function PauseOverlay() {
 	const baselineRun = useSelector(selectBaselineRun);
 	const actions = useHudActions();
 	const firstRef = useRef<TextButton>();
+	const noRef = useRef<TextButton>();
+	const rootRef = useRef<Frame>();
 	const coop = info.coop;
 	const portrait = usePortrait();
 	const mapAvailable = useSelector(selectMapView).available;
@@ -151,15 +156,39 @@ export function PauseOverlay() {
 	// Touch (MB10): no key names; the Map item (co-op) and the weapons' Swap button stand in for them.
 	const touch = device === "touch";
 	const skipConfirm = inTutorial && tutorial.skipConfirmOpen;
-
-	useEffect(() => {
-		if (!open || device !== "gamepad") return;
-		const button = firstRef.current;
-		if (button !== undefined) GuiService.SelectedObject = button;
-		return () => {
-			if (GuiService.SelectedObject === button) GuiService.SelectedObject = undefined;
-		};
-	}, [open, device, confirm, skipConfirm, inTutorial]);
+	const confirmShown = (confirm && !inTutorial) || skipConfirm;
+	const confirmSpec = skipConfirm ? SKIP_CONFIRM : coop ? LEAVE_CONFIRM_COOP : LEAVE_CONFIRM;
+	// One memory per opening (a panel over the overlay keeps it; the next pause starts on Resume).
+	const opened = useOpeningId(coop ? coopOverlay : s.paused);
+	useFocusScope(rootRef, {
+		id: "pause",
+		layer: "overlay",
+		surface: coop ? "party" : "pause",
+		defaultRef: firstRef,
+		memoryKey: `pause${opened}`,
+		active: open && !confirmShown,
+		onPadAction: (action) => {
+			if (action.kind === "resume") {
+				actions.playUi(ITEMS.resume.sound);
+				ITEMS.resume.run(actions);
+			} else if (action.kind === "close") {
+				actions.playUi(SFX.uiBack);
+				actions.closeCoopOverlay();
+			}
+		},
+	});
+	useFocusScope(rootRef, {
+		id: "pauseConfirm",
+		layer: "confirm",
+		surface: "confirm",
+		defaultRef: noRef,
+		active: open && confirmShown,
+		onPadAction: (action) => {
+			if (action.kind !== "cancel") return;
+			actions.playUi(SFX.uiBack);
+			confirmSpec.onNo(actions);
+		},
+	});
 
 	// The skip question does not outlive the overlay (resumed with P / Resume).
 	useEffect(() => {
@@ -174,8 +203,8 @@ export function PauseOverlay() {
 			? bestText(baselineRecord(baseline), bestTargetKey(isDailyBaseline(baseline)), str)
 			: "";
 	let body: React.Element;
-	if ((confirm && !inTutorial) || skipConfirm) {
-		const spec = skipConfirm ? SKIP_CONFIRM : coop ? LEAVE_CONFIRM_COOP : LEAVE_CONFIRM;
+	if (confirmShown) {
+		const spec = confirmSpec;
 		body = (
 			<>
 				<Text order={2} align={Enum.TextXAlignment.Center} wrap={true} text={str(spec.message)} />
@@ -191,7 +220,7 @@ export function PauseOverlay() {
 						}}
 					/>
 					<MenuButton
-						ref={firstRef}
+						ref={noRef}
 						order={2}
 						name={spec.noName}
 						size={CONFIRM_BUTTON}
@@ -295,7 +324,13 @@ export function PauseOverlay() {
 		/>
 	);
 	return (
-		<frame key="PauseOverlay" Size={UDim2.fromScale(1, 1)} BackgroundTransparency={1} BorderSizePixel={0}>
+		<frame
+			key="PauseOverlay"
+			ref={rootRef}
+			Size={UDim2.fromScale(1, 1)}
+			BackgroundTransparency={1}
+			BorderSizePixel={0}
+		>
 			{coop ? undefined : <ScreenDim key="Dim" name="PauseDim" transparency={HUD_VIEW.overlayTransparency} />}
 			{coop ? undefined : <PauseMap key="Map" portrait={portrait} />}
 			{portrait ? undefined : <PauseBuild key="Build" />}

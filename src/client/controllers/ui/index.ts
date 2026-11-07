@@ -5,7 +5,8 @@
  * (HudOcclusionController); docs/PRELOAD.md P4 the join loading screen's mount (LoadingController); docs/MINIMAP.md
  * M8 / M9 the minimap and the full map (MinimapController); docs/DAILY.md DS4 the Daily's status (DailyController);
  * docs/LOCALIZATION.md L9 the fit audit (LocaleAuditController, KV_LocaleAudit); docs/TREASURE.md TR8 the vault's
- * toasts (TreasureToastController).
+ * toasts (TreasureToastController); docs/GAMEPAD_MENUS.md GM2-GM4 the menus' focus scopes, recovery, memory and pad
+ * actions (FocusController).
  */
 export * from "./SettingsController";
 export * from "./RebindController";
@@ -20,3 +21,4 @@ export * from "./DevModeController";
 export * from "./DailyController";
 export * from "./LocaleAuditController";
 export * from "./TreasureToastController";
+export * from "./FocusController";

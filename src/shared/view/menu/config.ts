@@ -115,6 +115,20 @@ export const GAMEPAD_MENU = {
 	 * what the engine already leaves (GuiService:GetGuiInset, the ScreenGui safe-area modes) on a console.
 	 */
 	tvSafe: { x: 0.05, y: 0.05 },
+	/**
+	 * A scope's default button's SelectionOrder (FocusController): below every other button's 0, so
+	 * `GuiService:Select(scopeRoot)` lands on it.
+	 */
+	defaultSelectionOrder: -1,
+} as const;
+
+/**
+ * Workspace attributes of the gamepad menus (client FocusController). Off by default:
+ * `workspace:SetAttribute("KV_FocusDebug", true)` prints every change of the scope that owns the pad and every
+ * selection the controller makes (with its path under PlayerGui).
+ */
+export const GAMEPAD_MENU_ATTRIBUTES = {
+	focusDebug: "KV_FocusDebug",
 } as const;
 
 /** The pad's vibration motors the menu uses (Enum.VibrationMotor names). */

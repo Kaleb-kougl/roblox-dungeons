@@ -2,6 +2,7 @@ import { keyDevice } from "shared/play";
 import React, { useRef, useState } from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
 import { selectInputDevice, selectLobbyList, selectMyLobbyId } from "client/store";
+import { FocusScope } from "client/ui/focus";
 import { MenuButton, MenuFit, Panel, Row, Text } from "client/ui/hud";
 import { str } from "client/ui/theme";
 import { LOBBY, LOBBY_VISIBILITIES, type LobbyVisibility } from "shared/lobby";
@@ -18,7 +19,7 @@ import {
 	screenSkin,
 } from "shared/view/menu";
 import { useMenuActions } from "./actions";
-import { spec, useGamepadFocus, useNameOf } from "./hooks";
+import { spec, useNameOf } from "./hooks";
 import { Cell, ListRow, ScrollList } from "./widgets";
 
 const SMALL = new Vector2(MENU_VIEW.smallButton.x, MENU_VIEW.smallButton.y);
@@ -29,7 +30,8 @@ const WIDE = new Vector2(MENU_VIEW.wideButton.x, MENU_VIEW.wideButton.y);
  * row with its preset name ("{host}'s descent"), count / max, Open / Friends, a friend marker, Starting / In run
  * (greyed, no Join) and Join. The top bar creates a lobby with the picked visibility (Open / Friends / Closed); while
  * in a lobby it offers "Your lobby" instead (Join is off: leave yours first). Refresh asks the server again. Fitted
- * into the safe area on touch (MenuFit: the lobby list is the flexible list).
+ * into the safe area on touch (MenuFit: the lobby list is the flexible list). A `screen` focus scope with memory
+ * (docs/GAMEPAD_MENUS.md GM2): a refresh that removes the selected row falls back to the first button; B goes back.
  */
 export function LobbyBrowser() {
 	const actions = useMenuActions();
@@ -39,7 +41,6 @@ export function LobbyBrowser() {
 	const nameOf = useNameOf();
 	const [visibility, setVisibility] = useState<LobbyVisibility>(LOBBY.defaultVisibility);
 	const firstRef = useRef<TextButton>();
-	useGamepadFocus(firstRef, "lobbies");
 	const rows = browserRows(list, myLobby, nameOf);
 
 	const visButtons = LOBBY_VISIBILITIES.map((v, i) => (
@@ -120,73 +121,85 @@ export function LobbyBrowser() {
 	});
 
 	return (
-		<MenuFit
-			flex={{ min: MENU_FIT.listMin, max: MENU_VIEW.listHeight }}
-			render={(layout) => (
-				<Panel
-					width={MENU_VIEW.screenWidth}
-					padding={HUD_VIEW.pad * 2}
-					skin={screenSkin("lobbyBrowser")}
-					name="LobbyBrowser"
-				>
-					<Text
-						fill={true}
-						order={1}
-						size={HUD_VIEW.titleText}
-						color="uiAccent"
-						text={str(LOBBY_STRINGS.browserTitle)}
-					/>
-					{top}
-					<ScrollList order={3} height={layout.flex}>
-						{items.size() > 0 ? (
-							items
-						) : (
-							<Text
-								fill={true}
-								key="Empty"
-								order={1}
-								color="uiTextDim"
-								align={Enum.TextXAlignment.Center}
-								text={str(LOBBY_STRINGS.empty)}
-							/>
-						)}
-					</ScrollList>
-					<Row order={4} align={Enum.HorizontalAlignment.Center}>
-						<MenuButton
-							order={1}
-							name="Refresh"
-							size={SMALL}
-							textSize={HUD_VIEW.smallText}
-							text={str(LOBBY_STRINGS.refresh)}
-							onActivated={() => {
-								actions.playUi(SFX.uiClick);
-								actions.refreshLobbies();
-							}}
-						/>
-						<MenuButton
-							order={2}
-							name="Back"
-							size={SMALL}
-							textSize={HUD_VIEW.smallText}
-							text={str(MENU_STRINGS.back)}
-							onActivated={() => {
-								actions.playUi(SFX.uiBack);
-								actions.back();
-							}}
-						/>
-					</Row>
-					{device === "touch" ? undefined : (
+		<FocusScope
+			name="LobbyBrowserScope"
+			id="lobbies"
+			layer="screen"
+			surface="lobbies"
+			defaultRef={firstRef}
+			memoryKey="lobbies"
+			onPadAction={(action) => {
+				if (action.kind === "back") actions.screenBack();
+			}}
+		>
+			<MenuFit
+				flex={{ min: MENU_FIT.listMin, max: MENU_VIEW.listHeight }}
+				render={(layout) => (
+					<Panel
+						width={MENU_VIEW.screenWidth}
+						padding={HUD_VIEW.pad * 2}
+						skin={screenSkin("lobbyBrowser")}
+						name="LobbyBrowser"
+					>
 						<Text
 							fill={true}
-							order={5}
-							size={HUD_VIEW.smallText}
-							color="uiTextDim"
-							align={Enum.TextXAlignment.Center}
-							text={str(MENU_STRINGS.backHint, { key: MENU_BACK_HINT[keyDevice(device)] })}
+							order={1}
+							size={HUD_VIEW.titleText}
+							color="uiAccent"
+							text={str(LOBBY_STRINGS.browserTitle)}
 						/>
-					)}
-				</Panel>
-			)}
-		/>
+						{top}
+						<ScrollList order={3} height={layout.flex}>
+							{items.size() > 0 ? (
+								items
+							) : (
+								<Text
+									fill={true}
+									key="Empty"
+									order={1}
+									color="uiTextDim"
+									align={Enum.TextXAlignment.Center}
+									text={str(LOBBY_STRINGS.empty)}
+								/>
+							)}
+						</ScrollList>
+						<Row order={4} align={Enum.HorizontalAlignment.Center}>
+							<MenuButton
+								order={1}
+								name="Refresh"
+								size={SMALL}
+								textSize={HUD_VIEW.smallText}
+								text={str(LOBBY_STRINGS.refresh)}
+								onActivated={() => {
+									actions.playUi(SFX.uiClick);
+									actions.refreshLobbies();
+								}}
+							/>
+							<MenuButton
+								order={2}
+								name="Back"
+								size={SMALL}
+								textSize={HUD_VIEW.smallText}
+								text={str(MENU_STRINGS.back)}
+								onActivated={() => {
+									actions.playUi(SFX.uiBack);
+									actions.back();
+								}}
+							/>
+						</Row>
+						{device === "touch" ? undefined : (
+							<Text
+								fill={true}
+								order={5}
+								size={HUD_VIEW.smallText}
+								color="uiTextDim"
+								align={Enum.TextXAlignment.Center}
+								text={str(MENU_STRINGS.backHint, { key: MENU_BACK_HINT[keyDevice(device)] })}
+							/>
+						)}
+					</Panel>
+				)}
+			/>
+		</FocusScope>
 	);
 }

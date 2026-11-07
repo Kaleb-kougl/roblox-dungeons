@@ -1,6 +1,6 @@
-import React, { useEffect, useRef } from "@rbxts/react";
+import React, { useRef } from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
-import { GuiService, UserInputService } from "@rbxts/services";
+import { UserInputService } from "@rbxts/services";
 import {
 	selectAudio,
 	selectBindings,
@@ -14,6 +14,7 @@ import {
 	selectSystemReducedMotion,
 	type OptionsState,
 } from "client/store";
+import { useFocusScope, useOpeningId } from "client/ui/focus";
 import { role, str, useHudFont, useLocale } from "client/ui/theme";
 import {
 	KBM_ACTIONS,
@@ -58,7 +59,7 @@ import {
 	stepLanguageChoice,
 	volumeIcon,
 } from "shared/view/hud";
-import { MENU_FIT, screenDividers, screenSkin } from "shared/view/menu";
+import { MENU_FIT, screenDividers, screenSkin, stepTab, subTabStep, tabStep } from "shared/view/menu";
 import { useHudActions, type HudActions } from "./actions";
 import { FitScroll, MenuFit } from "./MenuFit";
 import { ArtImage, Divider, MenuButton, Panel, Row, Text, panelIcon } from "./primitives";
@@ -74,11 +75,6 @@ const BODY_ORDER = 4;
 interface Option<T> {
 	readonly value: T;
 	readonly label: string;
-}
-
-/** Selects `button` for the gamepad (no-op without one). */
-function selectButton(button: GuiObject | undefined): void {
-	if (button !== undefined && button.Parent !== undefined) GuiService.SelectedObject = button;
 }
 
 /** One setting: its label and a row of option buttons, the current one highlighted (web JuiceSettingsPanel Row). */
@@ -325,7 +321,6 @@ function ControlsTab(props: {
 	actions: HudActions;
 	options: OptionsState;
 	selectable: boolean;
-	rememberFocus: () => void;
 	/** A phone (MenuFit compact): the whole tab scrolls (FitScroll), so the action rows are a plain list. */
 	compact: boolean;
 	/** The action rows' scroll list height otherwise (OPTIONS_VIEW.listHeight; less on a short touch screen). */
@@ -362,7 +357,6 @@ function ControlsTab(props: {
 			selectable={sel}
 			onCapture={(slot) => {
 				actions.playUi(SFX.uiClick);
-				props.rememberFocus();
 				actions.startRebind({ device, action, slot });
 			}}
 			onClear={() => {
@@ -448,7 +442,6 @@ function ControlsTab(props: {
 				selectable={sel}
 				onActivated={() => {
 					actions.playUi(SFX.uiClick);
-					props.rememberFocus();
 					actions.askResetBindings(device);
 				}}
 			/>
@@ -759,17 +752,28 @@ function DisplayTab(props: { order: number; actions: HudActions; selectable: boo
 // ---------------------------------------------------------------------------------------------
 // Prompts over the screen (capture, swap, reset confirmation)
 
-/** A centred prompt over a click-sinking backdrop; with a gamepad its first button is selected. */
+/**
+ * A centred prompt over a click-sinking backdrop. With buttons it is a `confirm` focus scope (docs/GAMEPAD_MENUS.md
+ * GM2 / GM3): a gamepad's selection starts on its first button and B cancels (`onCancel`, the Cancel button's own
+ * action). The capture prompt has none: the capture owns the input while it shows.
+ */
 function Modal(props: {
 	lines: ReadonlyArray<string>;
 	buttons: ReadonlyArray<{ readonly name: string; readonly text: string; readonly onActivated: () => void }>;
-	device: string;
+	onCancel?: () => void;
 }) {
 	const firstRef = useRef<TextButton>();
-	useEffect(() => {
-		if (props.device !== "gamepad") return;
-		selectButton(firstRef.current);
-	}, [props.device]);
+	const rootRef = useRef<TextButton>();
+	useFocusScope(rootRef, {
+		id: "optionsPrompt",
+		layer: "confirm",
+		surface: "confirm",
+		defaultRef: firstRef,
+		active: props.buttons.size() > 0,
+		onPadAction: (action) => {
+			if (action.kind === "cancel") props.onCancel?.();
+		},
+	});
 	const lines = props.lines.map((line, i) => (
 		<Text key={`l${i}`} order={i + 1} align={Enum.TextXAlignment.Center} wrap={true} text={line} />
 	));
@@ -787,6 +791,7 @@ function Modal(props: {
 	return (
 		<textbutton
 			key="OptionsModal"
+			ref={rootRef}
 			Size={UDim2.fromScale(1, 1)}
 			ZIndex={MODAL_Z}
 			AutoButtonColor={false}
@@ -819,13 +824,12 @@ function Modal(props: {
 	);
 }
 
-function OptionsModal(props: { options: OptionsState; actions: HudActions; device: string }) {
+function OptionsModal(props: { options: OptionsState; actions: HudActions }) {
 	const { options, actions } = props;
 	if (options.capture !== undefined) {
 		const c = options.capture;
 		return (
 			<Modal
-				device={props.device}
 				lines={[
 					str(actionNameKey(c.action)),
 					str(c.device === "kbm" ? OPTIONS_STRINGS.captureKey : OPTIONS_STRINGS.captureButton, {
@@ -839,9 +843,12 @@ function OptionsModal(props: { options: OptionsState; actions: HudActions; devic
 	}
 	if (options.conflict !== undefined) {
 		const c = options.conflict;
+		const cancelConflict = () => {
+			actions.playUi(SFX.uiBack);
+			actions.answerConflict(false);
+		};
 		return (
 			<Modal
-				device={props.device}
 				lines={[
 					str(OPTIONS_STRINGS.conflict, {
 						input: inputLabel(c.input, str),
@@ -860,20 +867,21 @@ function OptionsModal(props: { options: OptionsState; actions: HudActions; devic
 					{
 						name: "Cancel",
 						text: str(OPTIONS_STRINGS.cancel),
-						onActivated: () => {
-							actions.playUi(SFX.uiBack);
-							actions.answerConflict(false);
-						},
+						onActivated: cancelConflict,
 					},
 				]}
+				onCancel={cancelConflict}
 			/>
 		);
 	}
 	if (options.confirmReset !== undefined) {
 		const device = options.confirmReset;
+		const cancelReset = () => {
+			actions.playUi(SFX.uiBack);
+			actions.askResetBindings(undefined);
+		};
 		return (
 			<Modal
-				device={props.device}
 				lines={[str(OPTIONS_STRINGS.resetConfirm, { device: str(optionsDeviceKey(device)) })]}
 				buttons={[
 					{
@@ -887,12 +895,10 @@ function OptionsModal(props: { options: OptionsState; actions: HudActions; devic
 					{
 						name: "Cancel",
 						text: str(OPTIONS_STRINGS.cancel),
-						onActivated: () => {
-							actions.playUi(SFX.uiBack);
-							actions.askResetBindings(undefined);
-						},
+						onActivated: cancelReset,
 					},
 				]}
+				onCancel={cancelReset}
 			/>
 		);
 	}
@@ -908,9 +914,11 @@ function OptionsModal(props: { options: OptionsState; actions: HudActions; devic
  * countdown, the swap prompt, refusal notes, Clear, Reset device with a confirmation, and the input test strip), Audio
  * (master / music / sfx volume) and Display (HUD scale). O toggles it, the pause overlay's Options button (and any
  * menu's `setSettingsOpen(true)`) opens it, B or Close closes it. Every pick applies at once and is sent to the
- * server. Fully usable with a gamepad: every control is a Selectable MenuButton, the first tab is selected when it
- * opens, a prompt selects its first button and the rows behind it stop being selectable; when a prompt closes the
- * selection goes back to the button that opened it. The run is paused while it is open. Text from theme strings
+ * server. Fully usable with a gamepad (a `panel` focus scope, docs/GAMEPAD_MENUS.md GM2-GM4): every control is a
+ * Selectable MenuButton, the current tab is selected when it opens, LB / RB step the tabs and LT / RT the Controls
+ * device (clamped at the ends), B closes it; a prompt is a `confirm` scope that selects its first button (B cancels)
+ * and the rows behind it stop being selectable; when a prompt closes the selection goes back to the button that
+ * opened it (the scope's memory). The run is paused while it is open. Text from theme strings
  * (options.*, fx.settings.*), colours from theme roles. The dim covers the whole screen (ScreenDim); fitted into the
  * safe area on touch (MenuFit: the Controls list is the flexible list); compact (a phone): the tab's body scrolls
  * (FitScroll, MENU_FIT.optionsWidth wide), the Controls rows a plain list inside it.
@@ -922,36 +930,47 @@ export function OptionsScreen() {
 	const synced = useSelector(selectSettingsSynced);
 	const device = useSelector(selectInputDevice);
 	const actions = useHudActions();
-	const firstRef = useRef<TextButton>();
-	const returnFocus = useRef<GuiObject>();
-
-	useEffect(() => {
-		if (!open || device !== "gamepad") return;
-		const button = firstRef.current;
-		selectButton(button);
-		return () => {
-			if (GuiService.SelectedObject === button) GuiService.SelectedObject = undefined;
-		};
-	}, [open, device]);
-
-	// A prompt closed: back to the button that opened it (gamepad).
-	useEffect(() => {
-		if (modal || !open) return;
-		const target = returnFocus.current;
-		returnFocus.current = undefined;
-		if (device === "gamepad") selectButton(target);
-	}, [modal]);
+	const tabRef = useRef<TextButton>();
+	const rootRef = useRef<Frame>();
+	const tab = options.tab;
+	// One memory per opening: a prompt that closes hands the selection back to the button that opened it (a slot,
+	// Reset); the next opening starts on the current tab.
+	const opened = useOpeningId(open);
+	useFocusScope(rootRef, {
+		id: "options",
+		layer: "panel",
+		surface: "options",
+		defaultRef: tabRef,
+		memoryKey: `options${opened}`,
+		active: open,
+		padContext: { subTabs: tab === "controls" },
+		onPadAction: (action) => {
+			if (action.kind === "close") {
+				actions.playUi(SFX.uiBack);
+				actions.setSettingsOpen(false);
+				return;
+			}
+			// LB / RB the tabs, LT / RT the Controls device; clamped at the ends, silent there (padNav stepTab).
+			const nextTab = stepTab(OPTIONS_TABS, tab, tabStep(action));
+			if (nextTab !== undefined) {
+				actions.playUi(SFX.uiClick);
+				actions.setOptionsTab(nextTab);
+				return;
+			}
+			const nextDevice = stepTab(OPTIONS_DEVICES, options.controlsDevice, subTabStep(action));
+			if (nextDevice !== undefined && tab === "controls") {
+				actions.playUi(SFX.uiClick);
+				actions.setControlsDevice(nextDevice);
+			}
+		},
+	});
 
 	if (!open) return undefined;
-	const rememberFocus = () => {
-		returnFocus.current = GuiService.SelectedObject;
-	};
 	const selectable = !modal;
-	const tab = options.tab;
 	const tabs = OPTIONS_TABS.map((t, i) => (
 		<MenuButton
 			key={t}
-			ref={i === 0 ? firstRef : undefined}
+			ref={t === tab ? tabRef : undefined}
 			order={i + 1}
 			name={`tab_${t}`}
 			text={str(optionsTabKey(t))}
@@ -973,7 +992,6 @@ export function OptionsScreen() {
 					actions={actions}
 					options={options}
 					selectable={selectable}
-					rememberFocus={rememberFocus}
 					compact={compact}
 					listHeight={listHeight}
 				/>
@@ -985,7 +1003,13 @@ export function OptionsScreen() {
 	};
 	const dividers = screenDividers("options");
 	return (
-		<frame key="OptionsOverlay" Size={UDim2.fromScale(1, 1)} BackgroundTransparency={1} BorderSizePixel={0}>
+		<frame
+			key="OptionsOverlay"
+			ref={rootRef}
+			Size={UDim2.fromScale(1, 1)}
+			BackgroundTransparency={1}
+			BorderSizePixel={0}
+		>
 			<ScreenDim key="Dim" name="OptionsDim" transparency={HUD_VIEW.overlayTransparency} />
 			<MenuFit
 				flex={(compact) =>
@@ -1071,7 +1095,7 @@ export function OptionsScreen() {
 					</Panel>
 				)}
 			/>
-			<OptionsModal options={options} actions={actions} device={device} />
+			<OptionsModal options={options} actions={actions} />
 		</frame>
 	);
 }

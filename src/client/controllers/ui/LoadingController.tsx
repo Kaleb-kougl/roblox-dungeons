@@ -5,11 +5,12 @@ import { ReflexProvider } from "@rbxts/react-reflex";
 import { createPortal, createRoot } from "@rbxts/react-roblox";
 import { Players } from "@rbxts/services";
 import { clientStore } from "client/store";
-import { LoadingScreen, LocaleRoot } from "client/ui";
+import { FocusScopesContext, LoadingScreen, LocaleRoot } from "client/ui";
 import { SFX } from "shared/view/audio";
 import { AudioController } from "../audio/AudioController";
 import { InputController } from "../game/InputController";
 import { PreloadController } from "../game/PreloadController";
+import { FocusController } from "./FocusController";
 
 const ROOT_NAME = "KV_LoadingRoot";
 
@@ -18,7 +19,8 @@ const ROOT_NAME = "KV_LoadingRoot";
  * portal, early (loadOrder 2: right after PreloadController, before the HUD and the menus mount), unless the screen
  * already released (KV_SkipLoading, or nothing to load: the placeholder pack). Skip (click, Enter, pad A) plays
  * sfx.ui.click and calls PreloadController.skip (the click never reaches the game: InputController
- * suppressMouseUntilRelease). Once the release's fade ran, the React root unmounts and its folder goes (Janitor).
+ * suppressMouseUntilRelease); its Skip is a `loading` focus scope (FocusController, FocusScopesContext). Once the
+ * release's fade ran, the React root unmounts and its folder goes (Janitor).
  * Presentation only.
  */
 @Controller({ loadOrder: 2 })
@@ -29,6 +31,7 @@ export class LoadingController implements OnStart {
 		private readonly preload: PreloadController,
 		private readonly audio: AudioController,
 		private readonly input: InputController,
+		private readonly focus: FocusController,
 	) {}
 
 	onStart(): void {
@@ -53,9 +56,11 @@ export class LoadingController implements OnStart {
 		root.render(
 			createPortal(
 				<ReflexProvider producer={clientStore}>
-					<LocaleRoot>
-						<LoadingScreen onSkip={onSkip} onFaded={onFaded} />
-					</LocaleRoot>
+					<FocusScopesContext.Provider value={this.focus}>
+						<LocaleRoot>
+							<LoadingScreen onSkip={onSkip} onFaded={onFaded} />
+						</LocaleRoot>
+					</FocusScopesContext.Provider>
 				</ReflexProvider>,
 				playerGui,
 			),

@@ -1,7 +1,7 @@
-import React, { useEffect, useRef } from "@rbxts/react";
+import React, { useRef } from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
-import { GuiService } from "@rbxts/services";
 import { selectBindings, selectInputDevice, selectLeaderboard, type LeaderboardState } from "client/store";
+import { useFocusScope } from "client/ui/focus";
 import { role, str } from "client/ui/theme";
 import {
 	LEADERBOARD_TOP_COUNT,
@@ -31,9 +31,12 @@ import { useHudActions } from "./actions";
 import { MenuFit } from "./MenuFit";
 import { MenuButton, Panel, Row, Text } from "./primitives";
 import { ScreenDim } from "./ScreenDim";
-import { MENU_FIT, screenSkin } from "shared/view/menu";
+import { MENU_FIT, screenSkin, stepTab, subTabStep, tabStep } from "shared/view/menu";
 
 const HIDDEN = 1;
+
+/** The scope tabs' scopes, in tab order (LB / RB step them). */
+const SCOPES = LEADERBOARD_SCOPE_TABS.map((tab) => tab.scope);
 
 const TAB_LABEL: Readonly<Record<LeaderboardBoard, string>> = {
 	solo: LEADERBOARD_STRINGS.solo,
@@ -148,7 +151,9 @@ const BOARD_TAB = new Vector2(LEADERBOARD_VIEW.boardTab.x, LEADERBOARD_VIEW.boar
  * player's own row highlighted), and the player's best with its rank (daily: `#41`, `top 9%` or `#3 of 12`, against
  * the board's entrants, `1,240 players`). A friends view fills in as the server looks friends up (`finding friends...
  * (12)`). The all-time tab is exactly the old panel. Opened with B (LEADERBOARD_KEY) or from the pause overlay; B, pad
- * B or Close closes it. The run is paused while it is open. Text from theme strings (hud.leaderboard.*, daily.tab.*,
+ * B or Close closes it. A `panel` focus scope (docs/GAMEPAD_MENUS.md GM2-GM4): a gamepad starts on the first scope
+ * tab, LB / RB step the scope tabs and LT / RT the board tabs (clamped at the ends), B closes it. The run is paused
+ * while it is open. Text from theme strings (hud.leaderboard.*, daily.tab.*,
  * daily.board.*), colours from theme roles.
  */
 export function LeaderboardPanel(props: { localUserId: number }) {
@@ -157,25 +162,40 @@ export function LeaderboardPanel(props: { localUserId: number }) {
 	const bindings = useSelector(selectBindings);
 	const actions = useHudActions();
 	const firstRef = useRef<TextButton>();
-
-	useEffect(() => {
-		if (!lb.open || device !== "gamepad") return;
-		const button = firstRef.current;
-		if (button !== undefined) GuiService.SelectedObject = button;
-		return () => {
-			if (GuiService.SelectedObject === button) GuiService.SelectedObject = undefined;
-		};
-	}, [lb.open, device]);
-
-	if (!lb.open) return undefined;
+	const rootRef = useRef<Frame>();
 	const tabs: LeaderboardTabs = { scope: lb.scope, board: lb.board, friends: lb.friends };
-	const t = boardText(lb, tabs);
-	const rows = t.view?.rows ?? [];
-	const listHeight = math.min(LEADERBOARD_VIEW.listHeight, rows.size() * (LEADERBOARD_VIEW.rowHeight + HUD_VIEW.gap));
 	const show = (patch: Partial<LeaderboardTabs>) => {
 		actions.playUi(SFX.uiClick);
 		actions.showLeaderboardTabs(withLeaderboardTab(tabs, patch));
 	};
+	useFocusScope(rootRef, {
+		id: "leaderboard",
+		layer: "panel",
+		surface: "leaderboard",
+		defaultRef: firstRef,
+		active: lb.open,
+		padContext: { subTabs: true },
+		onPadAction: (action) => {
+			if (action.kind === "close") {
+				actions.playUi(SFX.uiBack);
+				actions.setLeaderboardOpen(false);
+				return;
+			}
+			// Clamped at the ends, silent there (padNav stepTab).
+			const scope = stepTab(SCOPES, tabs.scope, tabStep(action));
+			if (scope !== undefined) {
+				show({ scope });
+				return;
+			}
+			const board = stepTab(LEADERBOARD_BOARD_TABS, tabs.board, subTabStep(action));
+			if (board !== undefined) show({ board });
+		},
+	});
+
+	if (!lb.open) return undefined;
+	const t = boardText(lb, tabs);
+	const rows = t.view?.rows ?? [];
+	const listHeight = math.min(LEADERBOARD_VIEW.listHeight, rows.size() * (LEADERBOARD_VIEW.rowHeight + HUD_VIEW.gap));
 	const scopeTabs = LEADERBOARD_SCOPE_TABS.map((tab, i) => (
 		<MenuButton
 			key={tab.scope}
@@ -219,7 +239,13 @@ export function LeaderboardPanel(props: { localUserId: number }) {
 			<Text fill={true} order={order} size={HUD_VIEW.smallText} color={color} text={text} />
 		) : undefined;
 	return (
-		<frame key="LeaderboardOverlay" Size={UDim2.fromScale(1, 1)} BackgroundTransparency={1} BorderSizePixel={0}>
+		<frame
+			key="LeaderboardOverlay"
+			ref={rootRef}
+			Size={UDim2.fromScale(1, 1)}
+			BackgroundTransparency={1}
+			BorderSizePixel={0}
+		>
 			<ScreenDim key="Dim" name="LeaderboardDim" transparency={HUD_VIEW.overlayTransparency} />
 			<MenuFit
 				flex={{ min: MENU_FIT.listMin, max: listHeight }}

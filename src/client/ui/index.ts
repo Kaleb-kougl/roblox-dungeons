@@ -3,6 +3,7 @@
  * the theme through `client/ui/theme`; they are mounted by controllers (HudController, LoadingController,
  * SpikeHudController). `gui.ts` creates every root GUI made in code (AutoLocalize off).
  */
+export * from "./focus";
 export * from "./hud";
 export * from "./loading";
 export * from "./menu";

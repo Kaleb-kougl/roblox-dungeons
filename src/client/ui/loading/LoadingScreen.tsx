@@ -1,7 +1,8 @@
 import React, { useBinding, useEffect, useRef } from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
 import { GuiService, RunService, TextChatService, UserInputService } from "@rbxts/services";
-import { selectInputDevice, selectJuice, selectLoading } from "client/store";
+import { selectJuice, selectLoading } from "client/store";
+import { useFocusScope } from "client/ui/focus";
 import { MenuButton, Text, useHudScale } from "client/ui/hud";
 import { str } from "client/ui/theme";
 import { LOADING_STRINGS, LOADING_VIEW, PRELOAD } from "shared/view";
@@ -39,11 +40,20 @@ export interface LoadingScreenProps {
 export function LoadingScreen(props: LoadingScreenProps) {
 	const loading = useSelector(selectLoading);
 	const reducedMotion = useSelector(selectJuice).reducedMotion;
-	const device = useSelector(selectInputDevice);
 	const scale = useHudScale();
 	const [fade, setFade] = useBinding(OPAQUE);
 	const skipRef = useRef<TextButton>();
+	const columnRef = useRef<Frame>();
 	const showSkip = loading.skipVisible && !loading.released;
+	// With a gamepad the selection starts (and stays) on Skip once it shows (a `loading` scope: above every other
+	// layer, the stage cover included, until the release; docs/GAMEPAD_MENUS.md GM2).
+	useFocusScope(columnRef, {
+		id: "loading",
+		layer: "loading",
+		surface: "loading",
+		defaultRef: skipRef,
+		active: !loading.released,
+	});
 
 	// The fade-out, once released.
 	useEffect(() => {
@@ -64,16 +74,6 @@ export function LoadingScreen(props: LoadingScreenProps) {
 		});
 		return () => conn.Disconnect();
 	}, [loading.released]);
-
-	// With a gamepad, the selection starts (and stays) on Skip once it shows.
-	useEffect(() => {
-		if (!showSkip || device !== "gamepad") return;
-		const button = skipRef.current;
-		if (button !== undefined) GuiService.SelectedObject = button;
-		return () => {
-			if (GuiService.SelectedObject === button) GuiService.SelectedObject = undefined;
-		};
-	}, [showSkip, device]);
 
 	// Enter (and pad A when the GUI selection is elsewhere: on the button, the GUI's own press handles it).
 	useEffect(() => {
@@ -102,6 +102,7 @@ export function LoadingScreen(props: LoadingScreenProps) {
 			<Cover transparency={fade} />
 			<frame
 				key="Column"
+				ref={columnRef}
 				AnchorPoint={new Vector2(HALF, HALF)}
 				Position={UDim2.fromScale(HALF, HALF)}
 				Size={new UDim2(0, width, 0, 0)}

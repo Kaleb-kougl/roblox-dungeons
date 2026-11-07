@@ -5,6 +5,7 @@ import { createPortal, createRoot } from "@rbxts/react-roblox";
 import { Players, StarterGui } from "@rbxts/services";
 import { clientStore, selectMenuOpen } from "client/store";
 import {
+	FocusScopesContext,
 	GameHud,
 	HudActionsContext,
 	LocaleRoot,
@@ -20,6 +21,7 @@ import { RecapController } from "../fx/RecapController";
 import { InputController } from "../game/InputController";
 import { SimController } from "../game/SimController";
 import { TutorialController } from "../game/TutorialController";
+import { FocusController } from "./FocusController";
 import { LeaderboardController } from "./LeaderboardController";
 import { LobbyController } from "./LobbyController";
 import { MenuController } from "./MenuController";
@@ -35,7 +37,8 @@ const ROOT_NAME = "KV_HudRoot";
  * through a portal (three ScreenGuis: the HUD, the menu shell and the menu layer), after every other controller
  * started (loadOrder), so the first frame already shows the run's snapshot. Hands the menus their actions (resume /
  * restart / leave run / settings / UI sounds / the tutorial's; the main menu and lobby requests) through
- * HudActionsContext and MenuActionsContext, lets gamepad navigation reach the GUI while a menu is open
+ * HudActionsContext and MenuActionsContext, registers the menus' focus scopes with FocusController
+ * (FocusScopesContext, docs/GAMEPAD_MENUS.md GM2), lets gamepad navigation reach the GUI while a menu is open
  * (InputController.setUiNavigation), and hides the stock Health / Backpack CoreGui (pcall: SetCoreGuiEnabled can
  * throw before the CoreGui scripts exist).
  */
@@ -52,6 +55,7 @@ export class HudController implements OnStart {
 		private readonly rebind: RebindController,
 		private readonly tutorial: TutorialController,
 		private readonly recap: RecapController,
+		private readonly focus: FocusController,
 	) {}
 
 	onStart(): void {
@@ -73,6 +77,7 @@ export class HudController implements OnStart {
 				this.sim.resume();
 			}),
 			restart: click(() => this.sim.requestRestart()),
+			closeCoopOverlay: click(() => clientStore.setCoopOverlay(false)),
 			setSettingsOpen: click((open: boolean) => this.settings.setPanelOpen(open)),
 			updateSettings: (patch) => this.settings.update(patch),
 			resetSettings: (group) => this.settings.reset(group),
@@ -134,6 +139,7 @@ export class HudController implements OnStart {
 			inviteFriends: click(() => this.menu.inviteFriends()),
 			playTutorial: click(() => this.tutorial.playTutorial("menu")),
 			back: click(() => this.menu.back()),
+			screenBack: click(() => this.menu.screenBack()),
 			refreshLobbies: click(() => this.lobby.requestList()),
 			createLobby: click((v: LobbyVisibility) => this.menu.createLobby(v)),
 			joinLobby: click((id: string) => this.lobby.join(id)),
@@ -159,14 +165,16 @@ export class HudController implements OnStart {
 		createRoot(container).render(
 			createPortal(
 				<ReflexProvider producer={clientStore}>
-					<HudActionsContext.Provider value={actions}>
-						<MenuActionsContext.Provider value={menuActions}>
-							<LocaleRoot>
-								<GameHud key="Hud" />
-								<MenuLayer key="KV_MenuShell" />
-							</LocaleRoot>
-						</MenuActionsContext.Provider>
-					</HudActionsContext.Provider>
+					<FocusScopesContext.Provider value={this.focus}>
+						<HudActionsContext.Provider value={actions}>
+							<MenuActionsContext.Provider value={menuActions}>
+								<LocaleRoot>
+									<GameHud key="Hud" />
+									<MenuLayer key="KV_MenuShell" />
+								</LocaleRoot>
+							</MenuActionsContext.Provider>
+						</HudActionsContext.Provider>
+					</FocusScopesContext.Provider>
 				</ReflexProvider>,
 				playerGui,
 			),

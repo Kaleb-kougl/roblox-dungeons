@@ -14,7 +14,7 @@ import { DAILY_WORLD_KIND } from "shared/daily";
 import type { LobbyVisibility } from "shared/lobby";
 import type { FirstRunDecision } from "shared/tutorial";
 import { FIXED_INPUTS, RUN_ATTRIBUTES } from "shared/play";
-import { DAILY_MENU, LOBBY_ROOM_PATH, MENU_BACK_KEYS, afterRunPath, lobbyChangePath } from "shared/view/menu";
+import { DAILY_MENU, LOBBY_ROOM_PATH, MENU_BACK_KEYS, PAD_KEYS, afterRunPath, lobbyChangePath } from "shared/view/menu";
 import { SFX } from "shared/view/audio";
 import { AudioController } from "../audio/AudioController";
 import { SimController } from "../game/SimController";
@@ -37,8 +37,10 @@ function typing(): boolean {
  *              until then): a first-time player goes straight into the tutorial (no menu); everyone else gets the
  *              MAIN MENU instead of a run, or the lobby room when an invite / party arrival already put them in a
  *              lobby (docs/INVITES.md ID1 / ID6) (KV_SkipMenu = true: a solo run starts at once, as before)
- *   screens    main / lobbies / lobby with a back stack (Reflex `menu`, shared/view/menu menuNavReduce); pad B and
- *              Backspace go back (not while a juice settings / leaderboard panel is open: B closes those)
+ *   screens    main / lobbies / lobby with a back stack (Reflex `menu`, shared/view/menu menuNavReduce); Backspace
+ *              goes back (not while a juice settings / leaderboard panel is open), and closes the Leave run confirm and
+ *              the party overlay first. Pad B goes through the owning focus scope instead (FocusController,
+ *              docs/GAMEPAD_MENUS.md GM3; a screen's B calls screenBack)
  *   runs       any run start closes the menu; leaving a run (Leave run, run-over Main menu / Back to lobby)
  *              opens the lobby room while in a lobby, else the main menu (SimController.onRunExited)
  *   lobby      joining or creating a lobby opens its room, and so does a lobby the server put this player in (an
@@ -53,7 +55,10 @@ function typing(): boolean {
 @Controller({ loadOrder: 900 })
 export class MenuController implements OnStart {
 	private readonly janitor = new Janitor();
-	/** A menu panel was open at the end of the last frame (its pad B close must not also go back a screen). */
+	/**
+	 * A menu panel was open at the end of the last frame: a Backspace that lands as a panel closes (its Close button,
+	 * O, the leaderboard key) must not also go back a screen.
+	 */
 	private panelOpenLastFrame = false;
 
 	constructor(
@@ -192,6 +197,16 @@ export class MenuController implements OnStart {
 		clientStore.menuNav({ kind: "back" });
 	}
 
+	/**
+	 * Backspace / pad B on a menu screen: one screen back, with sfx.ui.back (at the root back changes nothing, so it
+	 * makes no sound either).
+	 */
+	screenBack(): void {
+		if (clientStore.getState().menu.nav.screen === "none") return;
+		if (clientStore.getState().menu.nav.stack.size() > 0) this.audio.playUi(SFX.uiBack);
+		this.back();
+	}
+
 	createLobby(visibility: LobbyVisibility): void {
 		this.lobby.create(visibility);
 	}
@@ -258,8 +273,9 @@ export class MenuController implements OnStart {
 			this.toggleCoopOverlay(state);
 			return;
 		}
-		if (!MENU_BACK_KEYS.includes(name)) return;
-		if (this.panelOpenLastFrame || selectAnyPanelOpen(state)) return; // B closed that panel
+		// Pad B is FocusController's (the owning scope's back, docs/GAMEPAD_MENUS.md GM3): only the keyboard's here.
+		if (!MENU_BACK_KEYS.includes(name) || name === PAD_KEYS.b) return;
+		if (this.panelOpenLastFrame || selectAnyPanelOpen(state)) return; // nothing goes back under (or out of) a panel
 		if (state.menu.leaveConfirm) {
 			this.audio.playUi(SFX.uiBack);
 			clientStore.setLeaveConfirm(false);
@@ -270,11 +286,7 @@ export class MenuController implements OnStart {
 			clientStore.setCoopOverlay(false);
 			return;
 		}
-		if (state.menu.nav.screen !== "none") {
-			// At the root back changes nothing, so it makes no sound either.
-			if (state.menu.nav.stack.size() > 0) this.audio.playUi(SFX.uiBack);
-			this.back();
-		}
+		this.screenBack();
 	}
 
 	/**

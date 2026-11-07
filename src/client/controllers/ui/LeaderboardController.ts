@@ -5,14 +5,15 @@ import { Events } from "client/network";
 import { clientStore, selectBindings, selectInputCaptured, selectLeaderboardOpen } from "client/store";
 import { leaderboardRequestKey, type LeaderboardBoard, type LeaderboardRequest } from "shared/leaderboard";
 import { inputsFor } from "shared/play";
-import { LEADERBOARD_VIEW, SETTINGS_PAD_CLOSE_KEY, leaderboardTabRequest, type LeaderboardTabs } from "shared/view/hud";
+import { LEADERBOARD_VIEW, leaderboardTabRequest, type LeaderboardTabs } from "shared/view/hud";
 import { SettingsController } from "./SettingsController";
 
 /**
  * The leaderboard panel (M5): the bound leaderboard key (default B, LEADERBOARD_KEY; N is the endless debug floor
- * skip; rebindable since task L4b) toggles it (not while typing, not during a rebind capture),
- * the pause overlay opens it, pad B or Close closes it. Opening it or switching tabs asks the server for that board (`getLeaderboard`), at most once per
- * LEADERBOARD_VIEW.refreshSeconds per board (the server caches its reads too); `leaderboard` answers fill the store.
+ * skip; rebindable since task L4b) toggles it (not while typing, not during a rebind capture), the pause overlay
+ * opens it, pad B (its focus scope: FocusController, docs/GAMEPAD_MENUS.md GM3) or Close closes it. Opening it or
+ * switching tabs asks the server for that board (`getLeaderboard`), at most once per LEADERBOARD_VIEW.refreshSeconds
+ * per board (the server caches its reads too); `leaderboard` answers fill the store.
  * Only one menu panel is open at a time: opening this closes the juice settings and the other way round. The run is
  * paused while either is open (SettingsController drives SimController.setUiPause from selectAnyPanelOpen).
  */
@@ -31,10 +32,6 @@ export class LeaderboardController implements OnStart {
 				const state = clientStore.getState();
 				if (selectInputCaptured(state)) return; // a rebind capture owns this input
 				const open = selectLeaderboardOpen(state);
-				if (open && input.KeyCode.Name === SETTINGS_PAD_CLOSE_KEY) {
-					this.setOpen(false);
-					return;
-				}
 				if (processed) return;
 				// The bound leaderboard key(s) (default B; a slot may hold a mouse button).
 				const t = input.UserInputType.Name;

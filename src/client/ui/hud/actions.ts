@@ -15,6 +15,8 @@ export interface HudActions {
 	/** Pause overlay: resume / restart the run (co-op: Resume closes the party overlay). */
 	readonly resume: () => void;
 	readonly restart: () => void;
+	/** The party overlay's pad B (docs/GAMEPAD_MENUS.md GM3): close it (as Backspace does). */
+	readonly closeCoopOverlay: () => void;
 	/** The Options screen (formerly the juice settings panel): open / close. Other menus open it through this. */
 	readonly setSettingsOpen: (open: boolean) => void;
 	/** Juice settings (merged into the juice group). */
@@ -72,6 +74,7 @@ const NOOP: HudActions = {
 	pause: () => undefined,
 	resume: () => undefined,
 	restart: () => undefined,
+	closeCoopOverlay: () => undefined,
 	setSettingsOpen: () => undefined,
 	updateSettings: () => undefined,
 	resetSettings: () => undefined,

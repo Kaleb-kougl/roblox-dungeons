@@ -2,6 +2,7 @@ import React from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
 import { Players } from "@rbxts/services";
 import { selectLobby, selectLobbyNotices, type LobbyNoticeToast } from "client/store";
+import { FocusScope } from "client/ui/focus";
 import { MenuButton, Panel, Row, Text } from "client/ui/hud";
 import { role, str, type FontRole } from "client/ui/theme";
 import { SFX } from "shared/view/audio";
@@ -22,7 +23,9 @@ const SMALL = new Vector2(MENU_VIEW.smallButton.x, MENU_VIEW.smallButton.y);
 
 /**
  * Lobby invites this player received (task L5), top right on the menu screens: "{from} invites you to {lobby}" with
- * Join / Decline, at most MENU_VIEW.maxInviteToasts, gone once expired (counted from when the list arrived).
+ * Join / Decline, at most MENU_VIEW.maxInviteToasts, gone once expired (counted from when the list arrived). Their own
+ * `invites` focus scope, inactive for now: never reached by direction from the screen (docs/GAMEPAD_MENUS.md GM2;
+ * GM6 adds the jump to them with Y).
  */
 export function InviteToasts() {
 	const actions = useMenuActions();
@@ -32,59 +35,61 @@ export function InviteToasts() {
 	const invites = receivedInvites(lobby.invites, now - lobby.invitesAt, nameOf, MENU_VIEW.maxInviteToasts);
 	if (invites.size() === 0) return undefined;
 	return (
-		<Panel
-			position={new UDim2(1, -HUD_VIEW.margin, 0, MENU_VIEW.inviteToastTop)}
-			anchor={new Vector2(1, 0)}
-			width={MENU_VIEW.inviteToastWidth}
-			transparency={1}
-			padding={0}
-			name="InviteToasts"
-		>
-			{invites.map((inv, i) => (
-				<Panel
-					key={inv.inviteId}
-					position={new UDim2()}
-					anchor={new Vector2()}
-					order={i + 1}
-					width={MENU_VIEW.inviteToastWidth}
-					transparency={0}
-					skin={screenSkin("inviteToast")}
-					flatOnly={<uistroke Thickness={1} Color={role("uiAccent")} />}
-				>
-					<Text
-						order={1}
-						size={HUD_VIEW.smallText}
-						color="uiAccent"
-						wrap={true}
-						text={str(LOBBY_STRINGS.inviteReceived, { from: inv.from, lobby: spec(inv.title) })}
-					/>
-					<Row order={2}>
-						<MenuButton
+		<FocusScope name="InviteToastsScope" id="invites" layer="invites" surface="invites" active={false}>
+			<Panel
+				position={new UDim2(1, -HUD_VIEW.margin, 0, MENU_VIEW.inviteToastTop)}
+				anchor={new Vector2(1, 0)}
+				width={MENU_VIEW.inviteToastWidth}
+				transparency={1}
+				padding={0}
+				name="InviteToasts"
+			>
+				{invites.map((inv, i) => (
+					<Panel
+						key={inv.inviteId}
+						position={new UDim2()}
+						anchor={new Vector2()}
+						order={i + 1}
+						width={MENU_VIEW.inviteToastWidth}
+						transparency={0}
+						skin={screenSkin("inviteToast")}
+						flatOnly={<uistroke Thickness={1} Color={role("uiAccent")} />}
+					>
+						<Text
 							order={1}
-							name="Join"
-							size={SMALL}
-							textSize={HUD_VIEW.smallText}
-							text={str(LOBBY_STRINGS.inviteAccept)}
-							onActivated={() => {
-								actions.playUi(SFX.uiConfirm);
-								actions.answerInvite(inv.inviteId, true);
-							}}
+							size={HUD_VIEW.smallText}
+							color="uiAccent"
+							wrap={true}
+							text={str(LOBBY_STRINGS.inviteReceived, { from: inv.from, lobby: spec(inv.title) })}
 						/>
-						<MenuButton
-							order={2}
-							name="Decline"
-							size={SMALL}
-							textSize={HUD_VIEW.smallText}
-							text={str(LOBBY_STRINGS.inviteDecline)}
-							onActivated={() => {
-								actions.playUi(SFX.uiClick);
-								actions.answerInvite(inv.inviteId, false);
-							}}
-						/>
-					</Row>
-				</Panel>
-			))}
-		</Panel>
+						<Row order={2}>
+							<MenuButton
+								order={1}
+								name="Join"
+								size={SMALL}
+								textSize={HUD_VIEW.smallText}
+								text={str(LOBBY_STRINGS.inviteAccept)}
+								onActivated={() => {
+									actions.playUi(SFX.uiConfirm);
+									actions.answerInvite(inv.inviteId, true);
+								}}
+							/>
+							<MenuButton
+								order={2}
+								name="Decline"
+								size={SMALL}
+								textSize={HUD_VIEW.smallText}
+								text={str(LOBBY_STRINGS.inviteDecline)}
+								onActivated={() => {
+									actions.playUi(SFX.uiClick);
+									actions.answerInvite(inv.inviteId, false);
+								}}
+							/>
+						</Row>
+					</Panel>
+				))}
+			</Panel>
+		</FocusScope>
 	);
 }
 

@@ -1,8 +1,6 @@
-import React, { useEffect, useRef } from "@rbxts/react";
+import React, { useRef } from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
-import { GuiService } from "@rbxts/services";
 import {
-	selectAnyPanelOpen,
 	selectBindings,
 	selectInputDevice,
 	selectBaselineRun,
@@ -12,9 +10,9 @@ import {
 	selectRecap,
 	selectRunInfo,
 	selectSnapshot,
-	selectStageCovered,
 	selectVerdict,
 } from "client/store";
+import { FocusScope } from "client/ui/focus";
 import { useHudFont, role, str, themePack } from "client/ui/theme";
 import type { ColorRole } from "shared/theme";
 import { DAILY_WORLD_KIND } from "shared/daily";
@@ -428,9 +426,6 @@ export function RunOverPanel() {
 	const info = useSelector(selectRunInfo);
 	const bindings = useSelector(selectBindings);
 	const myLobby = useSelector(selectMyLobbyId);
-	const panelOpen = useSelector(selectAnyPanelOpen);
-	// The stage loader's cover (a run that ends under a floor card): no selection on the hidden buttons until it goes.
-	const covered = useSelector(selectStageCovered);
 	const verdict = useSelector(selectVerdict);
 	const baseline = useSelector(selectRunBaseline);
 	const baselineRun = useSelector(selectBaselineRun);
@@ -438,15 +433,6 @@ export function RunOverPanel() {
 	const actions = useHudActions();
 	const firstRef = useRef<TextButton>();
 	const over = s.outcome !== "playing";
-
-	useEffect(() => {
-		if (!over || panelOpen || covered || device !== "gamepad") return;
-		const button = firstRef.current;
-		if (button !== undefined) GuiService.SelectedObject = button;
-		return () => {
-			if (GuiService.SelectedObject === button) GuiService.SelectedObject = undefined;
-		};
-	}, [over, panelOpen, covered, device]);
 
 	if (!over) return undefined;
 	const victory = s.outcome === "victory";
@@ -594,129 +580,145 @@ export function RunOverPanel() {
 	const breakdownWidth = HUD_VIEW.breakdownLabelWidth + HUD_VIEW.gap + HUD_VIEW.breakdownValueWidth;
 	const hasBuild = (s.boons.size() > 0 || s.duos.size() > 0) && details;
 	const legacyButton = new Vector2(MENU_FIT.runOverButton.x, MENU_FIT.runOverButton.y);
+	// An `overlay` focus scope with no memory (docs/GAMEPAD_MENUS.md GM2): a gamepad always starts on Again (Exit
+	// without it), whose retry gate is unchanged. A tap of B does nothing; hold-B to exit (holdExit), X for Details and
+	// the right stick reach `onPadAction` once those are wired (GM5 / GM6 / GM9).
 	return (
-		<MenuFit
-			render={(layout) => {
-				if (layout.compact) {
-					// A phone (docs/UI_ART.md "Phones"): the header, stats, exits and verdict on the left, the
-					// score breakdown (or the highlights) beside them, so the panel is about half as tall.
-					const left = MENU_FIT.runOverLeftWidth;
-					const right = s.scoring ? breakdownWidth : 0;
-					// docs/BUILDS.md BU10: the Build list as a third column (a phone's panel is wide, not tall); with
-					// highlights only behind Details (RRD5).
-					const build = hasBuild ? BUILD_HUD_VIEW.listCompactWidth : 0;
+		<FocusScope
+			name="RunOverScope"
+			id="runOver"
+			layer="overlay"
+			surface="runOver"
+			defaultRef={firstRef}
+			padContext={{ recap: highlightsOn, detailsOpen: recap.details }}
+		>
+			<MenuFit
+				render={(layout) => {
+					if (layout.compact) {
+						// A phone (docs/UI_ART.md "Phones"): the header, stats, exits and verdict on the left, the
+						// score breakdown (or the highlights) beside them, so the panel is about half as tall.
+						const left = MENU_FIT.runOverLeftWidth;
+						const right = s.scoring ? breakdownWidth : 0;
+						// docs/BUILDS.md BU10: the Build list as a third column (a phone's panel is wide, not tall); with
+						// highlights only behind Details (RRD5).
+						const build = hasBuild ? BUILD_HUD_VIEW.listCompactWidth : 0;
+						return (
+							<Panel
+								width={
+									left +
+									(s.scoring ? HUD_VIEW.gap + right : 0) +
+									(hasBuild ? HUD_VIEW.gap + build : 0) +
+									HUD_VIEW.pad * 4
+								}
+								align={Enum.HorizontalAlignment.Center}
+								skin={screenSkin("runOver")}
+								name="RunOver"
+							>
+								<Row order={1}>
+									<Column order={1} width={left} gap={HUD_VIEW.gap}>
+										{header}
+										{ribbon}
+										{mainLine}
+										{altLine}
+										{nearMissLine}
+										<Column order={ROW.stats} width={breakdownWidth} gap={HUD_VIEW.gap}>
+											{stats.map((st, i) => (
+												<BreakdownLine
+													key={`st${i}`}
+													order={i + 1}
+													label={st.label}
+													value={st.value}
+												/>
+											))}
+										</Column>
+										{exitButtons("compact", legacyButton)}
+										{verdictRow}
+										<RunInfoLine order={ROW.info} />
+									</Column>
+									{s.scoring ? (
+										<Column order={2} width={right} gap={MENU_FIT.runOverLineGap}>
+											<DailyResultBlock key="Daily" order={-4} bestLineShown={bestLineShown} />
+											<DailyPassedRow key="DailyPassed" order={-3} />
+											{best.ranked ? (
+												<BestBlock key="Best" order={-2} best={best} hideTarget={hideTarget} />
+											) : undefined}
+											{nearMissDim(-1)}
+											{grid(0)}
+											{details ? breakdownLines(breakdown) : undefined}
+										</Column>
+									) : undefined}
+									{hasBuild ? (
+										<Column order={3} width={build} gap={MENU_FIT.runOverLineGap}>
+											<BuildList
+												order={1}
+												width={build}
+												maxRows={BUILD_HUD_VIEW.listCompactRows}
+											/>
+										</Column>
+									) : undefined}
+								</Row>
+							</Panel>
+						);
+					}
+					// A phone in portrait: one narrow column (the stats as lines, the Build list under the breakdown).
+					const narrow = layout.narrow;
 					return (
 						<Panel
-							width={
-								left +
-								(s.scoring ? HUD_VIEW.gap + right : 0) +
-								(hasBuild ? HUD_VIEW.gap + build : 0) +
-								HUD_VIEW.pad * 4
-							}
+							width={narrow ? MENU_FIT.runOverNarrowWidth : HUD_VIEW.panelWidth * 2}
 							align={Enum.HorizontalAlignment.Center}
 							skin={screenSkin("runOver")}
 							name="RunOver"
 						>
-							<Row order={1}>
-								<Column order={1} width={left} gap={HUD_VIEW.gap}>
-									{header}
-									{ribbon}
-									{mainLine}
-									{altLine}
-									{nearMissLine}
-									<Column order={ROW.stats} width={breakdownWidth} gap={HUD_VIEW.gap}>
-										{stats.map((st, i) => (
-											<BreakdownLine
-												key={`st${i}`}
-												order={i + 1}
-												label={st.label}
-												value={st.value}
-											/>
-										))}
-									</Column>
-									{exitButtons("compact", legacyButton)}
-									{verdictRow}
-									<RunInfoLine order={ROW.info} />
+							{header}
+							{ribbon}
+							{mainLine}
+							{altLine}
+							{nearMissLine}
+							{narrow ? (
+								<Column order={ROW.stats} width={breakdownWidth} gap={HUD_VIEW.gap}>
+									{stats.map((st, i) => (
+										<BreakdownLine key={`st${i}`} order={i + 1} label={st.label} value={st.value} />
+									))}
 								</Column>
-								{s.scoring ? (
-									<Column order={2} width={right} gap={MENU_FIT.runOverLineGap}>
-										<DailyResultBlock key="Daily" order={-4} bestLineShown={bestLineShown} />
-										<DailyPassedRow key="DailyPassed" order={-3} />
-										{best.ranked ? (
-											<BestBlock key="Best" order={-2} best={best} hideTarget={hideTarget} />
-										) : undefined}
-										{nearMissDim(-1)}
-										{grid(0)}
-										{details ? breakdownLines(breakdown) : undefined}
-									</Column>
-								) : undefined}
-								{hasBuild ? (
-									<Column order={3} width={build} gap={MENU_FIT.runOverLineGap}>
-										<BuildList order={1} width={build} maxRows={BUILD_HUD_VIEW.listCompactRows} />
-									</Column>
-								) : undefined}
-							</Row>
+							) : (
+								<Row order={ROW.stats} align={Enum.HorizontalAlignment.Center}>
+									{stats.map((st, i) => (
+										<Stat key={`st${i}`} order={i + 1} label={st.label} value={st.value} />
+									))}
+								</Row>
+							)}
+							{bestBlock}
+							{nearMissDim(ROW.nearMissDim)}
+							{dailyBlock}
+							<DailyPassedRow key="DailyPassed" order={ROW.dailyPassed} />
+							{grid(ROW.breakdown)}
+							{/* docs/BUILDS.md BU10: the score breakdown and the Build list side by side (narrow: stacked). */}
+							{details ? (
+								<Row order={ROW.breakdown} align={Enum.HorizontalAlignment.Center}>
+									{s.scoring ? <ScoreBreakdown {...breakdown} order={1} /> : undefined}
+									{hasBuild && !narrow ? (
+										<BuildList
+											order={2}
+											width={BUILD_HUD_VIEW.listWidth}
+											maxRows={BUILD_HUD_VIEW.listMaxRows}
+										/>
+									) : undefined}
+								</Row>
+							) : undefined}
+							{hasBuild && narrow ? (
+								<BuildList
+									order={ROW.build}
+									width={BUILD_HUD_VIEW.listWidth}
+									maxRows={BUILD_HUD_VIEW.listCompactRows}
+								/>
+							) : undefined}
+							{verdictRow}
+							<RunInfoLine order={ROW.info} />
+							{exitButtons(narrow ? "narrow" : "wide", narrow ? legacyButton : undefined)}
 						</Panel>
 					);
-				}
-				// A phone in portrait: one narrow column (the stats as lines, the Build list under the breakdown).
-				const narrow = layout.narrow;
-				return (
-					<Panel
-						width={narrow ? MENU_FIT.runOverNarrowWidth : HUD_VIEW.panelWidth * 2}
-						align={Enum.HorizontalAlignment.Center}
-						skin={screenSkin("runOver")}
-						name="RunOver"
-					>
-						{header}
-						{ribbon}
-						{mainLine}
-						{altLine}
-						{nearMissLine}
-						{narrow ? (
-							<Column order={ROW.stats} width={breakdownWidth} gap={HUD_VIEW.gap}>
-								{stats.map((st, i) => (
-									<BreakdownLine key={`st${i}`} order={i + 1} label={st.label} value={st.value} />
-								))}
-							</Column>
-						) : (
-							<Row order={ROW.stats} align={Enum.HorizontalAlignment.Center}>
-								{stats.map((st, i) => (
-									<Stat key={`st${i}`} order={i + 1} label={st.label} value={st.value} />
-								))}
-							</Row>
-						)}
-						{bestBlock}
-						{nearMissDim(ROW.nearMissDim)}
-						{dailyBlock}
-						<DailyPassedRow key="DailyPassed" order={ROW.dailyPassed} />
-						{grid(ROW.breakdown)}
-						{/* docs/BUILDS.md BU10: the score breakdown and the Build list side by side (narrow: stacked). */}
-						{details ? (
-							<Row order={ROW.breakdown} align={Enum.HorizontalAlignment.Center}>
-								{s.scoring ? <ScoreBreakdown {...breakdown} order={1} /> : undefined}
-								{hasBuild && !narrow ? (
-									<BuildList
-										order={2}
-										width={BUILD_HUD_VIEW.listWidth}
-										maxRows={BUILD_HUD_VIEW.listMaxRows}
-									/>
-								) : undefined}
-							</Row>
-						) : undefined}
-						{hasBuild && narrow ? (
-							<BuildList
-								order={ROW.build}
-								width={BUILD_HUD_VIEW.listWidth}
-								maxRows={BUILD_HUD_VIEW.listCompactRows}
-							/>
-						) : undefined}
-						{verdictRow}
-						<RunInfoLine order={ROW.info} />
-						{exitButtons(narrow ? "narrow" : "wide", narrow ? legacyButton : undefined)}
-					</Panel>
-				);
-			}}
-		/>
+				}}
+			/>
+		</FocusScope>
 	);
 }

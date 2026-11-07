@@ -199,6 +199,53 @@ with its memory.
 | Tutorial outro, loading Skip | Scope only (behaviour unchanged) |
 | Draft, shrine, spectate, full map | No change (sim input / gameplay keys) |
 
+## As built (GM2-GM4, 2026-11-06)
+
+- **Registry.** `client/ui/focus` (its own directory: hud and menu both use it): `useFocusScope(rootRef, { id, layer,
+  surface, defaultRef?, memoryKey?, active?, padContext?, onPadAction? })` and `<FocusScope name ...>` (a transparent
+  full-size frame for a surface without a root of its own: menu screens, run over, invite toasts). Options are read
+  again every render. `FocusScopesContext` is provided by HudController and LoadingController with the client's
+  `FocusController` (components never import controllers). `useOpeningId(open)` gives a session-unique id per opening,
+  put in a memory key by surfaces that should start on their default each time they open (pause, Options).
+- **FocusController.** Owner = `pickFocusScope` over the scopes whose root is drawn (Visible chain, ScreenGui Enabled).
+  Every drawn root gets SelectionGroup + four Stop behaviours, its default `GAMEPAD_MENU.defaultSelectionOrder` (-1).
+  `focusAction` runs on SelectedObject changes, mounts / unmounts / option changes, device / cover / capture changes
+  (deferred to the end of the frame) and every frame on a gamepad. Memory is recorded continuously while a scope owns
+  the pad and holds a usable selection (equal to "on losing ownership", but also survives the selected button being
+  destroyed in the same commit). Nothing is touched while the Roblox menu is open, during a rebind capture, or while
+  `KV_PadSpike` runs (it also gets the original SelectionImageObject back). `KV_FocusDebug`
+  (`GAMEPAD_MENU_ATTRIBUTES.focusDebug`) prints owner changes, selections and dispatched pad actions.
+- **Device.** `InputDeviceTracker.padPressed`: a pad button press or a stick past `STICK_DEADZONE` makes the device
+  gamepad even when no run samples input (the menus before the first run never did: the old `useGamepadFocus` could not
+  select Play solo on a fresh join).
+- **B (GM3).** FocusController's InputBegan sends ButtonB to the owner only (`menuPadAction`): one press, one action.
+  MenuController keeps Backspace exactly as before (ButtonB removed from its path); SettingsController and
+  LeaderboardController lost their pad-B handlers (folded into the Options / prompt / leaderboard scopes).
+- **Menu pad input (GM4).** `InputController.onMenuPadInput`: LB / RB / LT / RT / X / Y (`MENU_PAD_INPUT_KEYS`, sunk by the
+  CAS sink whether bound or not, never a driver key or the map while a menu is open) and right-stick steps
+  (`PadStickRepeat`: on leaving `stickDeadZone`, then every `scrollRepeatSec`, axes in the input), only while a menu owns
+  the pad and no capture runs. Closing a menu (`setUiNavigation(false)`) blocks every held pad button and trigger until
+  released (`padGate.block`). Start keeps its own pause path (not dispatched).
+- **Tabs.** Options LB / RB = top tabs, LT / RT = the Controls device (Controls tab only); Leaderboard LB / RB = scope,
+  LT / RT = board. `stepTab` clamps: at either end nothing happens and no sound plays (a held bumper never cycles round).
+  A change plays `sfx.ui.click`. Options' default is the current tab's button.
+
+| Surface | Scope id | Layer / surface | Default | Memory | B |
+|---|---|---|---|---|---|
+| Loading | `loading` | loading / loading | Skip | - | nothing |
+| Main menu | `main` | screen / main | Play solo | `main` | nothing |
+| Lobby browser | `lobbies` | screen / lobbies | first New / Your lobby | `lobbies` | back |
+| Lobby room | `lobby` | screen / lobby | Ready | `lobby` | back |
+| Credits | `credits` | screen / credits | Back | - | back |
+| Invite toasts | `invites` | invites / invites, `active: false` | - | - | (GM6) |
+| Options | `options` | panel / options | current tab | `options<opening>` | close |
+| Options prompt (swap / reset) | `optionsPrompt` | confirm / confirm | Swap / Reset | - | Cancel's action |
+| Leaderboard | `leaderboard` | panel / leaderboard | first scope tab | - | close |
+| Pause / party overlay | `pause` | overlay / pause or party | Resume | `pause<opening>` | resume / close |
+| Leave / skip confirm | `pauseConfirm` | confirm / confirm | Cancel / Keep playing | - | Cancel's action |
+| Run over | `runOver` | overlay / runOver | Again (else Exit) | - | holdExit (GM9) |
+| Tutorial outro | `outro` | overlay / outro | Start my first run | - | nothing |
+
 ## Tasks
 
 - [ ] **GM0. Spike `KV_PadSpike`** (docs/SPIKES.md, off by default, Janitor). Record, with an Xbox pad and (if
@@ -223,14 +270,14 @@ with its memory.
   `GAMEPAD_MENU` in shared/view/menu `config.ts`; specs next to each. One spec walks a `PAD_SURFACES` census (the
   table above) and checks that every surface has a layer, a B meaning and a hint for each action it maps.
   → Verify: `npm run test:only -- view/menu`.
-- [ ] **GM2. FocusController + `useFocusScope`.** Scopes (SelectionGroup, Stop, SelectionOrder), recovery, memory,
+- [x] **GM2. FocusController + `useFocusScope`.** Scopes (SelectionGroup, Stop, SelectionOrder), recovery, memory,
   device-switch clear, empty `SelectionImageObject`, `KV_FocusDebug`. Migrate the four `useGamepadFocus` users and
   the six hand-rolled effects, then delete `useGamepadFocus`. → Verify: `npm run verify`. In Studio, every surface
   still opens on its default button.
-- [ ] **GM3. One back path.** Order B by layer through FocusController. Add solo pause B = Resume and skip confirm
+- [x] **GM3. One back path.** Order B by layer through FocusController. Add solo pause B = Resume and skip confirm
   B = cancel. Panels' own B handlers fold in (`panelOpenLastFrame` stays the guard against double handling).
   → Verify: specs for the order. In Studio, B on each surface in the table does what the B column says.
-- [ ] **GM4. Bumpers, triggers and the pad input path.** `InputController.onMenuPadInput`, held-button block on menu
+- [x] **GM4. Bumpers, triggers and the pad input path.** `InputController.onMenuPadInput`, held-button block on menu
   close (if GM0 says it is missing). LB/RB and LT/RT on Options and Leaderboard. → Verify: tab specs. In Studio,
   holding LB through closing a menu does not roll.
 - [ ] **GM5. Scrolling.** `ScrollList` focus look, Leaderboard list selectable, right-stick scroll, `followSelection`

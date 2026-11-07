@@ -373,6 +373,15 @@ export class InputDeviceTracker {
 		this.aimDevice = "touch";
 	}
 
+	/**
+	 * A pad button was pressed, or a stick pushed past STICK_DEADZONE, outside a run's sample (the menus before the
+	 * first run poll nothing: docs/GAMEPAD_MENUS.md GM2 needs the device to read gamepad there too). Any button counts,
+	 * bound or not; the aim device is unchanged.
+	 */
+	padPressed(): void {
+		this.device = "gamepad";
+	}
+
 	/** Called once per sample with the current pad (or undefined). */
 	padSampled(pad: GamepadSnapshot | undefined): void {
 		if (isStickAiming(pad)) this.aimDevice = "stick";

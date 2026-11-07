@@ -1,6 +1,7 @@
 import React, { useRef } from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
 import { selectInviteEligible, selectMyLobbyId, selectSoloBest } from "client/store";
+import { FocusScope } from "client/ui/focus";
 import { MenuButton, MenuFit, Panel, Row, Text } from "client/ui/hud";
 import { str } from "client/ui/theme";
 import { SFX } from "shared/view/audio";
@@ -19,7 +20,6 @@ import {
 } from "shared/view/menu";
 import { useMenuActions } from "./actions";
 import { DailyCard, DailyPodiumStrip } from "./DailyCard";
-import { useGamepadFocus } from "./hooks";
 
 const SMALL = new Vector2(MENU_VIEW.smallButton.x, MENU_VIEW.smallButton.y);
 
@@ -36,7 +36,8 @@ const SMALL = new Vector2(MENU_VIEW.smallButton.x, MENU_VIEW.smallButton.y);
  * The Daily (docs/DAILY.md DS9): beside the button column (compact: under Play solo's row, before the other buttons)
  * the Daily card (DailyCard: label and date, roster and boss preview, best today, countdown, Play Daily, Daily with
  * friends) and under it yesterday's podium (DailyPodiumStrip, hidden when empty). Play solo keeps the pad's first
- * selection; the card never blocks it.
+ * selection; the card never blocks it. A `screen` focus scope with memory (docs/GAMEPAD_MENUS.md GM2): back from
+ * Lobbies or Credits, or a panel closing, lands on the button that opened it. B does nothing at the root.
  */
 export function MainMenu() {
 	const actions = useMenuActions();
@@ -45,7 +46,6 @@ export function MainMenu() {
 	const soloBest = useSelector(selectSoloBest);
 	const invite = platformInviteButton(eligible);
 	const playRef = useRef<TextButton>();
-	useGamepadFocus(playRef, "main");
 	const inLobby = myLobby !== undefined;
 	const play = (
 		<MenuButton
@@ -168,93 +168,95 @@ export function MainMenu() {
 	const columnWidth = MENU_VIEW.mainWidth - HUD_VIEW.pad * 4;
 	const compactInner = MENU_FIT.mainCompactWidth - HUD_VIEW.pad * 4;
 	return (
-		<MenuFit
-			ornament={screenOrnament("mainMenu")}
-			render={(layout) => {
-				// A phone in either orientation: the stacked two-column layout (the Daily card under Play solo's row).
-				const stacked = layout.compact || layout.narrow;
-				return (
-					<Panel
-						width={
-							stacked
-								? MENU_FIT.mainCompactWidth
-								: MENU_VIEW.mainWidth + HUD_VIEW.gap + DAILY_MENU.cardWidth
-						}
-						align={Enum.HorizontalAlignment.Center}
-						padding={HUD_VIEW.pad * 2}
-						skin={screenSkin("mainMenu")}
-						ornament={layout.ornament}
-						name="MainMenu"
-					>
-						<Text
-							fill={true}
-							order={1}
-							size={HUD_VIEW.bigText}
-							color="uiAccent"
-							align={Enum.TextXAlignment.Center}
-							text={str(HUD_STRINGS.title)}
-						/>
-						{stacked ? (
-							<>
-								<Row key="Row1" order={2}>
-									{play}
-									{lobbies}
-								</Row>
-								{best}
-								<DailyCard key="Daily" order={4} width={compactInner} compact={true} />
-								<DailyPodiumStrip key="Podium" order={5} width={compactInner} compact={true} />
-								<Row key="Row2" order={6}>
-									{inviteButton}
-									{tutorial}
-								</Row>
-								<Row key="Row3" order={7}>
-									{options}
-									{leaderboard}
-								</Row>
-								<Row key="Row4" order={8}>
-									{invite.reasonKey !== undefined ? (
-										<Text
-											key="InviteReason"
-											order={1}
-											width={compactInner - MENU_VIEW.smallButton.x - HUD_VIEW.gap}
-											size={HUD_VIEW.smallText}
-											color="uiTextDim"
-											align={Enum.TextXAlignment.Center}
-											wrap={true}
-											text={str(invite.reasonKey)}
-										/>
-									) : undefined}
-									{credits(true, 2)}
-								</Row>
-							</>
-						) : (
-							<Columns key="Columns" order={2}>
-								<Column key="Menu" order={1} width={columnWidth}>
-									{play}
+		<FocusScope name="MainMenuScope" id="main" layer="screen" surface="main" defaultRef={playRef} memoryKey="main">
+			<MenuFit
+				ornament={screenOrnament("mainMenu")}
+				render={(layout) => {
+					// A phone in either orientation: the stacked two-column layout (the Daily card under Play solo's row).
+					const stacked = layout.compact || layout.narrow;
+					return (
+						<Panel
+							width={
+								stacked
+									? MENU_FIT.mainCompactWidth
+									: MENU_VIEW.mainWidth + HUD_VIEW.gap + DAILY_MENU.cardWidth
+							}
+							align={Enum.HorizontalAlignment.Center}
+							padding={HUD_VIEW.pad * 2}
+							skin={screenSkin("mainMenu")}
+							ornament={layout.ornament}
+							name="MainMenu"
+						>
+							<Text
+								fill={true}
+								order={1}
+								size={HUD_VIEW.bigText}
+								color="uiAccent"
+								align={Enum.TextXAlignment.Center}
+								text={str(HUD_STRINGS.title)}
+							/>
+							{stacked ? (
+								<>
+									<Row key="Row1" order={2}>
+										{play}
+										{lobbies}
+									</Row>
 									{best}
-									{lobbies}
-									{inviteButton}
-									{reason(6)}
-									{tutorial}
-									{options}
-									{leaderboard}
-									{credits(false, 10)}
-								</Column>
-								<Column key="Daily" order={2} width={DAILY_MENU.cardWidth}>
-									<DailyCard key="Card" order={1} width={DAILY_MENU.cardWidth} compact={false} />
-									<DailyPodiumStrip
-										key="Podium"
-										order={2}
-										width={DAILY_MENU.cardWidth}
-										compact={false}
-									/>
-								</Column>
-							</Columns>
-						)}
-					</Panel>
-				);
-			}}
-		/>
+									<DailyCard key="Daily" order={4} width={compactInner} compact={true} />
+									<DailyPodiumStrip key="Podium" order={5} width={compactInner} compact={true} />
+									<Row key="Row2" order={6}>
+										{inviteButton}
+										{tutorial}
+									</Row>
+									<Row key="Row3" order={7}>
+										{options}
+										{leaderboard}
+									</Row>
+									<Row key="Row4" order={8}>
+										{invite.reasonKey !== undefined ? (
+											<Text
+												key="InviteReason"
+												order={1}
+												width={compactInner - MENU_VIEW.smallButton.x - HUD_VIEW.gap}
+												size={HUD_VIEW.smallText}
+												color="uiTextDim"
+												align={Enum.TextXAlignment.Center}
+												wrap={true}
+												text={str(invite.reasonKey)}
+											/>
+										) : undefined}
+										{credits(true, 2)}
+									</Row>
+								</>
+							) : (
+								<Columns key="Columns" order={2}>
+									<Column key="Menu" order={1} width={columnWidth}>
+										{play}
+										{best}
+										{lobbies}
+										{inviteButton}
+										{reason(6)}
+										{tutorial}
+										{options}
+										{leaderboard}
+										{credits(false, 10)}
+									</Column>
+									<Column key="Daily" order={2} width={DAILY_MENU.cardWidth}>
+										<DailyCard key="Card" order={1} width={DAILY_MENU.cardWidth} compact={false} />
+										<DailyPodiumStrip
+											key="Podium"
+											order={2}
+											width={DAILY_MENU.cardWidth}
+											compact={false}
+										/>
+									</Column>
+								</Columns>
+							)}
+						</Panel>
+					);
+				}}
+			/>
+		</FocusScope>
 	);
 }
 

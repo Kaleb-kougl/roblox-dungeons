@@ -18,7 +18,7 @@ import {
 	type SettingsGroup,
 	type SettingsOverrides,
 } from "shared/settings";
-import { SETTINGS_KEY, SETTINGS_PAD_CLOSE_KEY } from "shared/view/hud";
+import { SETTINGS_KEY } from "shared/view/hud";
 import { SimController } from "../game/SimController";
 
 /**
@@ -35,7 +35,8 @@ import { SimController } from "../game/SimController";
  *   system   GuiService.ReducedMotionEnabled (and its changes) is the default for reducedMotion.
  *   panel    O toggles the Options screen (not while typing, not while a rebind capture owns the input); the pause
  *            overlay opens it too (gamepad route). Pad B closes it (or, first, the swap prompt / reset confirmation
- *            on it). While it is open the run is paused (SimController.setUiPause) so its clicks never reach the game.
+ *            on it) through its focus scopes (FocusController, docs/GAMEPAD_MENUS.md GM3). While it is open the run
+ *            is paused (SimController.setUiPause) so its clicks never reach the game.
  */
 @Controller({})
 export class SettingsController implements OnStart {
@@ -67,13 +68,6 @@ export class SettingsController implements OnStart {
 				const state = clientStore.getState();
 				if (state.options.inputCaptured) return; // the rebind capture owns this input
 				const open = selectPanelOpen(state);
-				// B (GUI "back") closes a prompt, then the screen; the GUI may have processed it, so `processed` is ignored.
-				if (open && input.KeyCode.Name === SETTINGS_PAD_CLOSE_KEY) {
-					if (state.options.conflict !== undefined) clientStore.setConflict(undefined);
-					else if (state.options.confirmReset !== undefined) clientStore.setConfirmReset(undefined);
-					else this.setPanelOpen(false);
-					return;
-				}
 				if (processed || input.KeyCode.Name !== SETTINGS_KEY) return;
 				if (UserInputService.GetFocusedTextBox() !== undefined) return;
 				this.setPanelOpen(!open);

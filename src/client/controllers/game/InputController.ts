@@ -1,5 +1,5 @@
 import { Controller, OnStart } from "@flamework/core";
-import { ContextActionService, TextChatService, UserInputService, Workspace } from "@rbxts/services";
+import { ContextActionService, RunService, TextChatService, UserInputService, Workspace } from "@rbxts/services";
 import { clientStore, selectBindings, selectDisplay, selectInputCaptured } from "client/store";
 import { TOUCH } from "shared/config";
 import {
@@ -20,6 +20,7 @@ import {
 	maskDebugButtons,
 	LEFT_TRIGGER,
 	RIGHT_TRIGGER,
+	STICK_DEADZONE,
 	type Bindings,
 	type DriverKeyAction,
 	type GamepadSnapshot,
@@ -34,6 +35,14 @@ import {
 import { EMPTY_INPUT, playerAt, type InputFrame, type SimState } from "shared/sim";
 import type { BulletBlocker } from "shared/dungeon";
 import { pointerAimFromRay } from "shared/view";
+import {
+	GAMEPAD_MENU,
+	MENU_PAD_INPUT_KEYS,
+	PAD_KEYS,
+	PadStickRepeat,
+	isMenuPadInputKey,
+	type MenuPadInput,
+} from "shared/view/menu";
 
 const SINK_ACTION = "KV_GameInput";
 /** Sticks the default controls read (movement, camera): sunk so the stock character / camera never act. */
@@ -47,6 +56,7 @@ const UI_NAV_KEYS = new Set(["ButtonA", "ButtonB", "DPadUp", "DPadDown", "DPadLe
 
 type DriverListener = (action: Exclude<DriverKeyAction, undefined>) => void;
 type MapListener = () => void;
+type MenuPadListener = (input: MenuPadInput) => void;
 
 /** What a touch frame needs from the run (SimController passes it to sample). */
 export interface TouchAimContext {
@@ -72,6 +82,14 @@ function mouseTypeByName(): Map<string, Enum.UserInputType> {
 }
 
 const MOUSE_TYPES = mouseTypeByName();
+
+/** A thumbstick pushed past STICK_DEADZONE (an InputChanged from a pad). */
+function isStickInput(input: InputObject): boolean {
+	const code = input.KeyCode;
+	if (code !== Enum.KeyCode.Thumbstick1 && code !== Enum.KeyCode.Thumbstick2) return false;
+	const p = input.Position;
+	return p.X * p.X + p.Y * p.Y > STICK_DEADZONE * STICK_DEADZONE;
+}
 
 /** The gamepad the game reads: Gamepad1 when connected, else the first one. */
 function activePad(pads: ReadonlyArray<Enum.UserInputType>): Enum.UserInputType | undefined {
@@ -123,6 +141,9 @@ export class InputController implements OnStart {
 	private readonly padButtons = new Set<string>();
 	private readonly driverListeners = new Array<DriverListener>();
 	private readonly mapListeners = new Array<MapListener>();
+	private readonly menuPadListeners = new Array<MenuPadListener>();
+	/** The right stick's scroll repeat while a menu owns the pad (onMenuPadInput). */
+	private readonly menuStick = new PadStickRepeat();
 	private debugButtons = false;
 	private uiNavigation = false;
 	/** A rebind capture owns the input (Options screen): nothing reaches the game or the driver keys. */
@@ -178,11 +199,17 @@ export class InputController implements OnStart {
 			else if (t === Enum.UserInputType.MouseButton1 || t === Enum.UserInputType.MouseButton2) {
 				// A phone can report a touch as a mouse click: the mouse counts only when one is attached.
 				if (UserInputService.MouseEnabled) this.tracker.mouseClicked();
+			} else if (this.pads.includes(t)) {
+				// A pad press: the menus before a run sample nothing, so the device must follow the pad here too.
+				this.tracker.padPressed();
 			}
 			this.publishDevice();
 			// A restart bound to a mouse button (CAS sinks keys only): not over a GUI, not during a capture.
 			if (!processed && !this.inputCaptured && isMouseButtonName(t.Name)) this.reportDriver(t.Name);
 			if (processed && isMouseButtonName(t.Name)) this.guiMouse.add(t);
+			// A menu's bumpers / triggers / X / Y (sunk by the CAS sink, so `processed` is set: not read).
+			const key = input.KeyCode.Name;
+			if (this.menuPadInputOpen() && isMenuPadInputKey(key)) this.emitMenuPad({ keyName: key, x: 0, y: 0 });
 		});
 		UserInputService.InputEnded.Connect((input) => {
 			this.guiMouse.delete(input.UserInputType);
@@ -194,8 +221,12 @@ export class InputController implements OnStart {
 		UserInputService.InputChanged.Connect((input) => {
 			if (input.UserInputType === Enum.UserInputType.MouseMovement && UserInputService.MouseEnabled) {
 				this.tracker.mouseMoved();
+			} else if (this.pads.includes(input.UserInputType) && isStickInput(input)) {
+				this.tracker.padPressed();
+				this.publishDevice();
 			}
 		});
+		RunService.RenderStepped.Connect((dt) => this.stepMenuStick(dt));
 	}
 
 	/** The layout in use (the store's: applied in onStart and on every change). */
@@ -214,6 +245,13 @@ export class InputController implements OnStart {
 	 * SimController sends neutral input instead while `menuOwnsInput()` (shared/lockstep CoopMenuInputGate).
 	 */
 	setUiNavigation(on: boolean): void {
+		// The menu closed: every pad button / trigger still held reads released until let go (docs/GAMEPAD_MENUS.md
+		// GM4), so an A held through Resume never fires skill 1 and an LB held through a tab change never rolls.
+		if (this.uiNavigation && !on) {
+			const held = this.heldPadButtons();
+			if (held !== undefined) this.padGate.block(held);
+		}
+		if (!on) this.menuStick.reset();
 		this.uiNavigation = on;
 	}
 
@@ -258,6 +296,21 @@ export class InputController implements OnStart {
 		return () => {
 			const i = this.mapListeners.indexOf(listener);
 			if (i >= 0) this.mapListeners.remove(i);
+		};
+	}
+
+	/**
+	 * Menu pad input (docs/GAMEPAD_MENUS.md GM4): while a menu owns the pad (`setUiNavigation`) and no rebind capture
+	 * runs, a press of LB / RB / LT / RT / X / Y (shared/view/menu MENU_PAD_INPUT_KEYS; axes 0) and right-stick scroll
+	 * steps (`PAD_KEYS.rightStick` with the stick's axes, past GAMEPAD_MENU.stickDeadZone, every scrollRepeatSec). They
+	 * stay sunk (the CAS sink), so the game never sees them as actions. FocusController hands them to the owning menu
+	 * scope. Returns a disconnect function.
+	 */
+	onMenuPadInput(listener: MenuPadListener): () => void {
+		this.menuPadListeners.push(listener);
+		return () => {
+			const i = this.menuPadListeners.indexOf(listener);
+			if (i >= 0) this.menuPadListeners.remove(i);
 		};
 	}
 
@@ -402,8 +455,14 @@ export class InputController implements OnStart {
 		const mouse = new Set<string>();
 		for (const [name, t] of MOUSE_TYPES) if (UserInputService.IsMouseButtonPressed(t)) mouse.add(name);
 		this.mouseGate.block(mouse);
+		const pad = this.heldPadButtons();
+		if (pad !== undefined) this.padGate.block(pad);
+	}
+
+	/** The active pad's buttons and triggers held right now (undefined: no pad). */
+	private heldPadButtons(): Set<string> | undefined {
 		const gamepad = activePad(this.pads);
-		if (gamepad === undefined) return;
+		if (gamepad === undefined) return undefined;
 		const pad = new Set<string>();
 		for (const name of PAD_BUTTON_NAMES) {
 			const code = KEY_CODES.get(name);
@@ -413,7 +472,40 @@ export class InputController implements OnStart {
 			const name = obj.KeyCode.Name;
 			if ((name === LEFT_TRIGGER || name === RIGHT_TRIGGER) && obj.Position.Z > TRIGGER_THRESHOLD) pad.add(name);
 		}
-		this.padGate.block(pad);
+		return pad;
+	}
+
+	/** Menu pad input is reported: a menu owns the pad and no rebind capture runs. */
+	private menuPadInputOpen(): boolean {
+		return this.uiNavigation && !this.inputCaptured;
+	}
+
+	private emitMenuPad(input: MenuPadInput): void {
+		for (const listener of this.menuPadListeners) listener(input);
+	}
+
+	/** The right stick's menu scroll steps (onMenuPadInput), once per rendered frame while a menu owns the pad. */
+	private stepMenuStick(dt: number): void {
+		if (!this.menuPadInputOpen() || this.menuPadListeners.size() === 0) {
+			this.menuStick.reset();
+			return;
+		}
+		const gamepad = activePad(this.pads);
+		if (gamepad === undefined) {
+			this.menuStick.reset();
+			return;
+		}
+		let x = 0;
+		let y = 0;
+		for (const obj of UserInputService.GetGamepadState(gamepad)) {
+			if (obj.KeyCode !== Enum.KeyCode.Thumbstick2) continue;
+			x = obj.Position.X;
+			y = obj.Position.Y;
+		}
+		const m = GAMEPAD_MENU;
+		if (this.menuStick.step(x, y, dt, m.stickDeadZone, m.scrollRepeatSec)) {
+			this.emitMenuPad({ keyName: PAD_KEYS.rightStick, x, y });
+		}
 	}
 
 	/** (Re)binds the CAS sink to the current key list and both sticks. */
@@ -426,12 +518,20 @@ export class InputController implements OnStart {
 			const code = KEY_CODES.get(name);
 			if (code !== undefined) sunk.push(code);
 		}
+		// The menus' pad buttons, bound or not (docs/GAMEPAD_MENUS.md GM4): sunk, so nothing else acts on them.
+		for (const name of MENU_PAD_INPUT_KEYS) {
+			const code = KEY_CODES.get(name);
+			if (code !== undefined && !sunk.includes(code)) sunk.push(code);
+		}
 		ContextActionService.BindActionAtPriority(
 			SINK_ACTION,
 			(_, state, input) => {
 				if (this.inputCaptured) return Enum.ContextActionResult.Sink;
-				if (this.uiNavigation && UI_NAV_KEYS.has(input.KeyCode.Name)) return Enum.ContextActionResult.Pass;
-				if (state === Enum.UserInputState.Begin) this.reportDriver(input.KeyCode.Name);
+				const name = input.KeyCode.Name;
+				if (this.uiNavigation && UI_NAV_KEYS.has(name)) return Enum.ContextActionResult.Pass;
+				// A menu's bumper / trigger / X / Y is the menu's (onMenuPadInput), never a driver key or the map.
+				if (this.uiNavigation && isMenuPadInputKey(name)) return Enum.ContextActionResult.Sink;
+				if (state === Enum.UserInputState.Begin) this.reportDriver(name);
 				return Enum.ContextActionResult.Sink;
 			},
 			false,

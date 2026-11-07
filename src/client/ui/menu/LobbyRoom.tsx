@@ -3,6 +3,7 @@ import React, { useRef, useState } from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
 import { Players } from "@rbxts/services";
 import { selectInputDevice, selectLobby } from "client/store";
+import { FocusScope } from "client/ui/focus";
 import { MenuButton, MenuFit, Panel, Row, Text } from "client/ui/hud";
 import { str } from "client/ui/theme";
 import { LOBBY_VISIBILITIES, LOBBY_WORLDS, isLobbyWorld } from "shared/lobby";
@@ -25,7 +26,7 @@ import {
 	screenSkin,
 } from "shared/view/menu";
 import { useMenuActions } from "./actions";
-import { spec, useClock, useGamepadFocus, useNameOf } from "./hooks";
+import { spec, useClock, useNameOf } from "./hooks";
 import { Cell, ListRow, ScrollList } from "./widgets";
 
 const SMALL = new Vector2(MENU_VIEW.smallButton.x, MENU_VIEW.smallButton.y);
@@ -43,7 +44,9 @@ const WIDE = new Vector2(MENU_VIEW.wideButton.x, MENU_VIEW.wideButton.y);
  * not in this server yet. Fitted into the safe area on touch (MenuFit: the member list is the flexible list); compact
  * (a phone) while inviting, the invite list takes the member list's and the host controls' place (lobbyRoomParts).
  * Beside the members line, the lobby's world (docs/DAILY.md DS9): the host's Endless / Daily toggle while forming (a
- * change clears every Ready, server side), `World: Daily` for the others.
+ * change clears every Ready, server side), `World: Daily` for the others. A `screen` focus scope with memory
+ * (docs/GAMEPAD_MENUS.md GM2): a list refresh (a kick, a leave) that removes the selected row falls back to Ready; B
+ * goes back.
  */
 export function LobbyRoom() {
 	const actions = useMenuActions();
@@ -54,7 +57,6 @@ export function LobbyRoom() {
 	const firstRef = useRef<TextButton>();
 	const view = lobby.mine;
 	const now = useClock(view?.phase === "countdown");
-	useGamepadFocus(firstRef, `lobby${view?.lobbyId ?? ""}${inviting ? "i" : ""}`, view !== undefined);
 	if (view === undefined) return undefined;
 
 	const me = Players.LocalPlayer.UserId;
@@ -234,115 +236,137 @@ export function LobbyRoom() {
 		) : undefined;
 
 	return (
-		<MenuFit
-			flex={{ min: MENU_FIT.listMin, max: MENU_VIEW.listHeight }}
-			render={(layout) => {
-				// Compact (a phone) while inviting: the invite list takes the member list's place (and its height).
-				const parts = lobbyRoomParts(layout.compact, inviting);
-				return (
-					<Panel
-						width={MENU_VIEW.screenWidth}
-						padding={HUD_VIEW.pad * 2}
-						skin={screenSkin("lobbyRoom")}
-						name="LobbyRoom"
-					>
-						<Text
-							fill={true}
-							order={1}
-							size={HUD_VIEW.titleText}
-							color="uiAccent"
-							font="name"
-							text={spec(m.title)}
-						/>
-						<Text fill={true} order={2} color={m.inRun ? "uiTextDim" : "uiText"} text={spec(m.status)} />
-						<Row key="MembersWorld" order={3}>
-							<Text order={1} size={HUD_VIEW.smallText} color="uiTextDim" text={spec(m.membersLine)} />
-							{worldRow}
-						</Row>
-						{parts.members ? (
-							<ScrollList order={4} height={layout.flex}>
-								{memberRows}
-							</ScrollList>
-						) : undefined}
-						{hostControls(parts.hostControls)}
-						<Row order={6} align={Enum.HorizontalAlignment.Center}>
-							<MenuButton
-								ref={firstRef}
-								order={1}
-								name="Ready"
-								size={SMALL}
-								textSize={HUD_VIEW.smallText}
-								text={str(m.meReady ? LOBBY_STRINGS.unready : LOBBY_STRINGS.readyUp)}
-								active={m.meReady}
-								disabled={!m.canReady}
-								onActivated={() => {
-									actions.playUi(SFX.uiClick);
-									actions.setReady(!m.meReady);
-								}}
-							/>
-							<MenuButton
-								order={2}
-								name="Invite"
-								size={SMALL}
-								textSize={HUD_VIEW.smallText}
-								text={str(LOBBY_STRINGS.invite)}
-								active={inviting}
-								onActivated={() => {
-									actions.playUi(SFX.uiClick);
-									setInviting(!inviting);
-								}}
-							/>
-							{m.isHost ? (
-								<MenuButton
-									order={3}
-									name="Start"
-									size={WIDE}
-									textSize={HUD_VIEW.smallText}
-									text={str(m.startKey)}
-									disabled={!m.canStart}
-									onActivated={() => {
-										actions.playUi(SFX.uiConfirm);
-										actions.startLobby();
-									}}
-								/>
-							) : undefined}
-							<MenuButton
-								order={4}
-								name="Leave"
-								size={SMALL}
-								textSize={HUD_VIEW.smallText}
-								text={str(LOBBY_STRINGS.leave)}
-								onActivated={() => {
-									actions.playUi(SFX.uiClick);
-									actions.leaveLobby();
-								}}
-							/>
-							<MenuButton
-								order={5}
-								name="Back"
-								size={SMALL}
-								textSize={HUD_VIEW.smallText}
-								text={str(MENU_STRINGS.back)}
-								onActivated={() => {
-									actions.playUi(SFX.uiBack);
-									actions.back();
-								}}
-							/>
-						</Row>
-						{invitePanel(parts.members ? MENU_VIEW.inviteListHeight : layout.flex)}
-						{device === "touch" ? undefined : (
+		<FocusScope
+			name="LobbyRoomScope"
+			id="lobby"
+			layer="screen"
+			surface="lobby"
+			defaultRef={firstRef}
+			memoryKey="lobby"
+			onPadAction={(action) => {
+				if (action.kind === "back") actions.screenBack();
+			}}
+		>
+			<MenuFit
+				flex={{ min: MENU_FIT.listMin, max: MENU_VIEW.listHeight }}
+				render={(layout) => {
+					// Compact (a phone) while inviting: the invite list takes the member list's place (and its height).
+					const parts = lobbyRoomParts(layout.compact, inviting);
+					return (
+						<Panel
+							width={MENU_VIEW.screenWidth}
+							padding={HUD_VIEW.pad * 2}
+							skin={screenSkin("lobbyRoom")}
+							name="LobbyRoom"
+						>
 							<Text
 								fill={true}
-								order={8}
-								size={HUD_VIEW.smallText}
-								color="uiTextDim"
-								align={Enum.TextXAlignment.Center}
-								text={str(MENU_STRINGS.backHint, { key: MENU_BACK_HINT[keyDevice(device)] })}
+								order={1}
+								size={HUD_VIEW.titleText}
+								color="uiAccent"
+								font="name"
+								text={spec(m.title)}
 							/>
-						)}
-					</Panel>
-				);
-			}}
-		/>
+							<Text
+								fill={true}
+								order={2}
+								color={m.inRun ? "uiTextDim" : "uiText"}
+								text={spec(m.status)}
+							/>
+							<Row key="MembersWorld" order={3}>
+								<Text
+									order={1}
+									size={HUD_VIEW.smallText}
+									color="uiTextDim"
+									text={spec(m.membersLine)}
+								/>
+								{worldRow}
+							</Row>
+							{parts.members ? (
+								<ScrollList order={4} height={layout.flex}>
+									{memberRows}
+								</ScrollList>
+							) : undefined}
+							{hostControls(parts.hostControls)}
+							<Row order={6} align={Enum.HorizontalAlignment.Center}>
+								<MenuButton
+									ref={firstRef}
+									order={1}
+									name="Ready"
+									size={SMALL}
+									textSize={HUD_VIEW.smallText}
+									text={str(m.meReady ? LOBBY_STRINGS.unready : LOBBY_STRINGS.readyUp)}
+									active={m.meReady}
+									disabled={!m.canReady}
+									onActivated={() => {
+										actions.playUi(SFX.uiClick);
+										actions.setReady(!m.meReady);
+									}}
+								/>
+								<MenuButton
+									order={2}
+									name="Invite"
+									size={SMALL}
+									textSize={HUD_VIEW.smallText}
+									text={str(LOBBY_STRINGS.invite)}
+									active={inviting}
+									onActivated={() => {
+										actions.playUi(SFX.uiClick);
+										setInviting(!inviting);
+									}}
+								/>
+								{m.isHost ? (
+									<MenuButton
+										order={3}
+										name="Start"
+										size={WIDE}
+										textSize={HUD_VIEW.smallText}
+										text={str(m.startKey)}
+										disabled={!m.canStart}
+										onActivated={() => {
+											actions.playUi(SFX.uiConfirm);
+											actions.startLobby();
+										}}
+									/>
+								) : undefined}
+								<MenuButton
+									order={4}
+									name="Leave"
+									size={SMALL}
+									textSize={HUD_VIEW.smallText}
+									text={str(LOBBY_STRINGS.leave)}
+									onActivated={() => {
+										actions.playUi(SFX.uiClick);
+										actions.leaveLobby();
+									}}
+								/>
+								<MenuButton
+									order={5}
+									name="Back"
+									size={SMALL}
+									textSize={HUD_VIEW.smallText}
+									text={str(MENU_STRINGS.back)}
+									onActivated={() => {
+										actions.playUi(SFX.uiBack);
+										actions.back();
+									}}
+								/>
+							</Row>
+							{invitePanel(parts.members ? MENU_VIEW.inviteListHeight : layout.flex)}
+							{device === "touch" ? undefined : (
+								<Text
+									fill={true}
+									order={8}
+									size={HUD_VIEW.smallText}
+									color="uiTextDim"
+									align={Enum.TextXAlignment.Center}
+									text={str(MENU_STRINGS.backHint, { key: MENU_BACK_HINT[keyDevice(device)] })}
+								/>
+							)}
+						</Panel>
+					);
+				}}
+			/>
+		</FocusScope>
 	);
 }

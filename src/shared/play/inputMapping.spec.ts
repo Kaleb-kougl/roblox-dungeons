@@ -258,6 +258,16 @@ describe("InputDeviceTracker (web InputSampler's device logic)", () => {
 		t.mouseClicked();
 		expect(t.device).toBe("keyboard");
 	});
+
+	it("a pad press outside a sample (the menus) makes the gamepad the device, the aim device unchanged", () => {
+		const t = new InputDeviceTracker();
+		t.mouseMoved();
+		t.padPressed();
+		expect(t.device).toBe("gamepad");
+		expect(t.aimDevice).toBe("mouse");
+		t.keyPressed();
+		expect(t.device).toBe("keyboard");
+	});
 });
 
 describe("debug gating and driver keys", () => {

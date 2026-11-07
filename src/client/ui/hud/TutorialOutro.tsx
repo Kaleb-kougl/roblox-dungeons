@@ -1,8 +1,8 @@
 import { keyDevice } from "shared/play";
-import React, { useEffect, useRef } from "@rbxts/react";
+import React, { useRef } from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
-import { GuiService } from "@rbxts/services";
 import { selectBindings, selectInputDevice, selectTutorialOutroOpen } from "client/store";
+import { useFocusScope } from "client/ui/focus";
 import { str } from "client/ui/theme";
 import { TUTORIAL_STRINGS } from "shared/tutorial";
 import { SFX } from "shared/view/audio";
@@ -18,8 +18,9 @@ const BUTTON = new Vector2(TUTORIAL_VIEW.outroButtonSize.x, TUTORIAL_VIEW.outroB
 /**
  * The tutorial's outro card (menu layer; docs/TUTORIAL.md "Outro card"), a beat after the tutorial ended: what a real
  * run is (no respawns, harder floors, the leaderboard and where it opens: the bound key), then Start my first run
- * (the main menu's Play solo) or Play the tutorial again. A menu like the pause overlay: the scene dimmed, gamepad selection on its first button
- * (HudController lets the pad's navigation keys through while it is open), mouse buttons read released after a click.
+ * (the main menu's Play solo) or Play the tutorial again. A menu like the pause overlay: the scene dimmed, gamepad
+ * selection on its first button (an `overlay` focus scope, no memory; B does nothing: docs/GAMEPAD_MENUS.md GM2 / GM3;
+ * HudController lets the pad's navigation keys through while it is open), mouse buttons read released after a click.
  */
 export function TutorialOutro() {
 	const open = useSelector(selectTutorialOutroOpen);
@@ -27,19 +28,18 @@ export function TutorialOutro() {
 	const bindings = useSelector(selectBindings);
 	const actions = useHudActions();
 	const startRef = useRef<TextButton>();
-
-	useEffect(() => {
-		if (!open || device !== "gamepad") return;
-		const button = startRef.current;
-		if (button !== undefined) GuiService.SelectedObject = button;
-		return () => {
-			if (GuiService.SelectedObject === button) GuiService.SelectedObject = undefined;
-		};
-	}, [open, device]);
+	const rootRef = useRef<Frame>();
+	useFocusScope(rootRef, { id: "outro", layer: "overlay", surface: "outro", defaultRef: startRef, active: open });
 
 	if (!open) return undefined;
 	return (
-		<frame key="TutorialOutro" Size={UDim2.fromScale(1, 1)} BackgroundTransparency={1} BorderSizePixel={0}>
+		<frame
+			key="TutorialOutro"
+			ref={rootRef}
+			Size={UDim2.fromScale(1, 1)}
+			BackgroundTransparency={1}
+			BorderSizePixel={0}
+		>
 			<ScreenDim key="Dim" name="TutorialOutroDim" transparency={HUD_VIEW.overlayTransparency} />
 			<MenuFit
 				render={() => (

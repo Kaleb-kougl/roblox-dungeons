@@ -27,8 +27,10 @@ export interface MenuActions {
 	readonly openCredits: () => void;
 	/** Roblox's invite prompt without a lobby (docs/INVITES.md ID7). */
 	readonly inviteFriends: () => void;
-	/** One screen back (also pad B / Backspace). */
+	/** One screen back (the Back buttons). */
 	readonly back: () => void;
+	/** Pad B on a menu screen (docs/GAMEPAD_MENUS.md GM3), as Backspace: back with sfx.ui.back (none at the root). */
+	readonly screenBack: () => void;
 	/** Lobby browser. */
 	readonly refreshLobbies: () => void;
 	readonly createLobby: (visibility: LobbyVisibility) => void;
@@ -67,6 +69,7 @@ const NOOP: MenuActions = {
 	openCredits: nothing,
 	inviteFriends: nothing,
 	back: nothing,
+	screenBack: nothing,
 	refreshLobbies: nothing,
 	createLobby: nothing,
 	joinLobby: nothing,
