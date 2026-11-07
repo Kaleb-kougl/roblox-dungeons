@@ -70,7 +70,7 @@ describe("snag scenarios (WALL_SLIDE.md WS0)", () => {
 		expect(open).toBe(87);
 		neu.forEach((t, i) => {
 			expect([i, t > 0]).toEqual([i, true]);
-			// Measured: the exact tie 100 (the plan's prototype 101), the rest at most 10 ticks slower than open floor.
+			// Measured: the exact tie 97 (the plan's prototype 101), the rest at most 10 ticks slower than open floor.
 			expect(t).toBeLessThanOrEqual(i === 9 ? 100 : open + 10);
 		});
 	});

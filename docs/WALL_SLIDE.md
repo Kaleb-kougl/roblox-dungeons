@@ -204,7 +204,8 @@ Unchanged: the server validator (same config builder), the lockstep wire and the
   - As built (Lune, 2026-11-06), today -> slide (PLAYER_SLIDE):
     - A (offsets 0.0-0.9, open floor 80 ticks): today stuck below 0.9; slide passes every offset, 89 88 87 86 85 84 83
       81 80 80 ticks (at most 9 slower).
-    - B (offsets -0.9..0.9, open floor 87): today stuck at 5 of 19; slide passes all, 88-97, the exact tie 100.
+    - B (offsets -0.9..0.9, open floor 87): today stuck at 5 of 19; slide passes all, 88-97, the exact tie 97 (100
+      before the review fixes).
     - C (0 / 5 / 15 / 25 degrees): today 1.00 / 0.91 / 0.72 / 0.52; slide 1.00 / 0.96 / 0.78 / 0.57.
     - D: identical to moveCircle (1e-9) on the prototype's row. **New finding (D')**: moveCircle stops dead on a flat
       wall's cell seams in 12 of 76 walls (rows 3-40, both sides): its rest `edge - r` rounds a hair inside r of the
@@ -226,6 +227,15 @@ Unchanged: the server validator (same config builder), the lockstep wire and the
     (circle-circle / circle-line intersection) instead of falling back to moveCircle, which stopped the slide dead at
     a pillar's corner. The step bound is absolute (`len + 1e-12`), so a tiny step far from the origin is not refused.
     No tunnelling holds for radius >= 0.18 at steps up to 0.5 (free regions farther apart than the step).
+  - Review fixes (2026-11-06):
+    - **Never against the input.** A result with a negative component along the step falls back (below), and a slip
+      that would is refused. Before: 813 of 461,760 fuzzed moves and 29 of 180,000 held real-floor ticks went
+      backward (worst 0.71 / 0.63 of the step, e.g. a pillar's corner popped 0.076 back against the input); after: 0.
+    - **A start overlap never grows.** A cell overlapped at the start blocks past that overlap (walk out or along,
+      never further in); only a start whose centre is inside a cell ignores it (walks out). The fallback is
+      moveCircle's result unless that sinks into a start overlap (moveCircle lets overlapped tiles go), then no move.
+      Before: a 0.001 start overlap sank 0.16 into a wall end, and 224 of 5,276 overlapping starts ended with the
+      centre in a blocking cell where moveCircle did not; after: 0.00106 stays 0.00106, and 0 of 5,276 end inside.
 - [x] **WS2. Tie-break, face assist and pillar slip** (Design 2-3), with `PLAYER_SLIDE` tunables. Specs:
   - every 1x1 pillar is passed head-on at every offset, within 10 ticks of open floor. Directions: the 8 keyboard
     directions, and 64 stick directions quantized like real input (`quantizeAxis`, so gamepad and touch values are
@@ -237,6 +247,27 @@ Unchanged: the server validator (same config builder), the lockstep wire and the
   - no slip on a long wall's middle, in a concave corner, or on a staircase face;
   - no back-and-forth over 300 ticks of pressing (the property `moveCircleAroundCorners` pins).
   → Verify: the same suite.
+  - Review fixes (2026-11-06; the as-built note below is the first version):
+    - **Run assist: only toward an end the move leans to, never against the slide** (cornerNudge's wall-end rule).
+      It used to slip toward the nearest clearable end whatever the input, fighting the tie-break: a slow diagonal
+      stick (0.0071-0.014 a tick) on a 2x1 block's corner cycled for 20,000 ticks at (11.24, 12.74), and slow sticks
+      flipped sideways 47,560 / 56,306 / 75,516 / 32,543 / 11,844 times at a 2x1, a 2x2 crate cluster, diagonal
+      crates, a wall end and a bookcase run (up to 22 flips in a row). After: the repro rests, 0 flips at all five.
+    - **The tie-break takes the side of the move's own tangential part** (the push never opposes the input); only an
+      exact zero uses a fixed side (an isolated blocker: the pillar side below; any other corner: the ray's right).
+    - **Pillar side** (`pillarSide`): the ray's side of the centre unless that is against the move's lean (its
+      secondary component), then the lean's side. A slip against the lean is a step backward (the face blocks the
+      forward part), so a slanted stick hit on the far side of the centre goes the long way round. On a graze the
+      pillar slips only when stalled and the slide is not rounding the corner the other way. Measured (offsets
+      -0.9..0.9, every 8 keys / 64 full sticks / 32 sticks at 0.3, 0.14, 0.1, 0.05 through the deadzone rescale and
+      `quantizeAxis`): keys at most 9 ticks past open floor; full sticks 13 ticks (1.3 tiles; was 10 ticks before
+      the fix, which went backward instead); slow sticks 1.27 tiles. The spec bounds keys at 10 ticks and sticks at
+      1.7 tiles (2r + 1, the long way). Before the fix slow sticks also stuck for good at a pillar's corner (mag 0.05,
+      e.g. (0.0028, -0.0042) from offset -0.15).
+    - Specs: slow-stick magnitudes in the pillar, wide-obstacle and jitter specs; the endless-floor walk and the
+      overlap starts on `buildEndlessFloor` floors with their breakables and vault chest as SolidCells; every move's
+      contract includes (result - start) . step >= -1e-9; a pinned FNV-1a digest of a 6,000-tick trace replaces the
+      same-VM determinism check.
   - As built: the assists sweep a forward leg on the move's primary axis (it stops on the obstacle), then a lateral
     leg of min(sqrt(step^2 - forward^2), distance to clear + 1e-6), so the result stays within the step. The pillar
     slip also applies to a face hit at any angle (the centre within the face) when the slide got less far toward the

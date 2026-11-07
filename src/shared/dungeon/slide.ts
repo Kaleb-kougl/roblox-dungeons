@@ -58,12 +58,17 @@ export function isIsolatedBlocker(d: Dungeon, gx: number, gy: number, solid?: So
 	return true;
 }
 
-/** deepest()'s result (module scratch): the deepest overlapped cell. */
-const hit = { gx: 0, gy: 0 };
+/**
+ * deepest()'s result (module scratch): the deepest overlapped cell, and the overlap it is allowed (the start's own
+ * overlap of that cell; 0 for a cell the start does not overlap).
+ */
+const hit = { gx: 0, gy: 0, allow: 0 };
 
 /**
- * The deepest overlap of the circle at (px, pz) with a blocking cell, scanned gy then gx (the first wins a tie); cells
- * the circle overlaps at the start (sx, sz) are skipped. False when nothing overlaps; else the cell is in `hit`.
+ * The deepest overlap of the circle at (px, pz) with a blocking cell, scanned gy then gx (the first wins a tie). The
+ * start-overlap rule: a cell the circle at the start (sx, sz) already overlaps blocks only past that overlap (the
+ * circle may walk out or along, never further in), and one the start's centre is inside does not block at all (a body
+ * spawned in a tile walks out). False when nothing overlaps beyond what it is allowed; else the cell is in `hit`.
  */
 function deepest(d: Dungeon, px: number, pz: number, sx: number, sz: number, r: number, solid?: SolidCells): boolean {
 	const half = TILE_SIZE / 2;
@@ -84,14 +89,24 @@ function deepest(d: Dungeon, px: number, pz: number, sx: number, sz: number, r: 
 			if (d2 >= touch2) continue;
 			const scx = math.min(math.max(sx, x0), x1);
 			const scz = math.min(math.max(sz, z0), z1);
-			if ((sx - scx) * (sx - scx) + (sz - scz) * (sz - scz) < start2) continue; // overlapped at the start
-			// Centre outside the box: r - distance; inside (or on its edge): r + the depth to the nearest face.
-			const pen = d2 > 0 ? r - math.sqrt(d2) : r + math.min(px - x0, x1 - px, pz - z0, z1 - pz);
+			const sd2 = (sx - scx) * (sx - scx) + (sz - scz) * (sz - scz);
+			let allow = 0;
+			if (sd2 < start2) {
+				if (sd2 === 0) continue; // the start's centre is inside: it walks out
+				allow = r - math.sqrt(sd2);
+				const reach = r - allow - EPS;
+				if (d2 >= reach * reach) continue; // no deeper than at the start
+			}
+			// Beyond the allowed overlap. Centre outside the box: (r - allow) - distance; inside (or on its edge):
+			// (r - allow) + the depth to the nearest face.
+			const re = r - allow;
+			const pen = d2 > 0 ? re - math.sqrt(d2) : re + math.min(px - x0, x1 - px, pz - z0, z1 - pz);
 			if (!found || pen > best) {
 				found = true;
 				best = pen;
 				hit.gx = gx;
 				hit.gy = gy;
+				hit.allow = allow;
 			}
 		}
 	return found;
@@ -196,14 +211,16 @@ const slipped = { x: 0, z: 0 };
  * swept first (the forward leg: it stops on the obstacle); the obstacle is the run of blocking cells in the column just
  * ahead that the circle then touches (like cornerNudge). Then a lateral leg (an exact sweep that must get all the way)
  * of min(sqrt(len^2 - forward^2), distance to clear + SLIP_CLEAR), so the result stays within the step:
- *   pillar  an isolated blocker (`pillarSlip`): toward the side the move's ray passes its centre on (a ray through the
- *           centre passes on its right, as cornerNudge's pillar), when stalled; on a face hit at any angle (the
- *           circle's centre within the face) when the slide got less far toward that side; on a graze (past the face's
- *           end) when the slide went the other way. So every move at a pillar goes round it on the same side;
+ *   pillar  an isolated blocker (`pillarSlip`), toward pillarSide() (the ray's side of its centre, unless that is
+ *           against the move's lean): on a face hit at any angle (the circle's centre within the face) when the slide
+ *           got less far that way; on a graze (past the face's end) only when stalled and the slide is not rounding
+ *           the corner the other way (its frictionless way never opposes the input);
  *   run     anything else, when stalled: toward an end the circle clears within `assistTiles`, when the cells past that
- *           end (in the run's column and the column on the circle's side) are open. A long wall's middle, a concave
- *           corner or a staircase face has no such end.
- * The result must be overlap-free. True with the point in `slipped`; false = keep the slide.
+ *           end (in the run's column and the column on the circle's side) are open, and only if the move leans that
+ *           way (or not at all) and the slide does not go the other way (cornerNudge's wall-end rule). A long wall's
+ *           middle, a concave corner or a staircase face has no such end.
+ * The result must be overlap-free, within the step and never against the input. True with the point in `slipped`;
+ * false = keep the slide.
  */
 function slip(
 	d: Dungeon,
@@ -246,20 +263,21 @@ function slip(
 	let dir = 0;
 	let dist = 0;
 	const pillar = lo === hi && tuning.pillarSlip && isIsolatedBlocker(d, alongX ? gu : lo, alongX ? lo : gu, solid);
+	const lean = alongX ? dz : dx;
+	const slidV = (alongX ? pz : px) - v;
 	if (pillar) {
 		const ccx = (alongX ? gu : lo) * TILE_SIZE,
 			ccz = (alongX ? lo : gu) * TILE_SIZE;
-		// The ray's right is (dz, -dx): its lateral part has the sign -s across X moves, s across Z moves.
-		dir = rayPassesLeft(dx, dz, ccx - sx, ccz - sz) === alongX ? -s : s;
+		dir = pillarSide(dx, dz, ccx - sx, ccz - sz);
 		const vLo = lo * TILE_SIZE - half,
 			vHi = lo * TILE_SIZE + half;
 		dist = dir < 0 ? v - (vLo - r) : vHi + r - v;
-		if (!stalled) {
-			// How far the slide went toward that side. A face hit slips unless the slide already gets as far; a graze
-			// (the centre past the face's end) keeps the slide round the corner unless it goes the other way.
-			const slid = ((alongX ? pz : px) - v) * dir;
-			if (v < vLo || v > vHi ? slid >= 0 : slid >= (budget < dist ? budget : dist)) return false;
-		}
+		const slid = slidV * dir;
+		if (v < vLo || v > vHi) {
+			// A graze (the centre past the face's end): the slide rounds the corner (its frictionless way never opposes
+			// the input); only a stall that is not sliding the other way slips toward the chosen side.
+			if (!stalled || slid < 0) return false;
+		} else if (!stalled && slid >= (budget < dist ? budget : dist)) return false; // the slide gets as far
 	} else {
 		const a = tuning.assistTiles;
 		if (!stalled || a <= 0) return false;
@@ -286,6 +304,9 @@ function slip(
 			dir = 1;
 			dist = hiDist;
 		} else return false;
+		// Only toward an end the move already leans to (or straight at the face) and the slide does not leave: the
+		// slip never opposes the input or the slide's own sideways motion (cornerNudge's wall-end rule).
+		if (dir * lean < 0 || dir * slidV < 0) return false;
 	}
 	const want = dist + SLIP_CLEAR;
 	const m = budget < want ? budget : want;
@@ -297,6 +318,7 @@ function slip(
 	if (deepest(d, fx, fz, sx, sz, r, solid)) return false;
 	const bound = len + STEP_SLACK;
 	if ((fx - sx) * (fx - sx) + (fz - sz) * (fz - sz) > bound * bound) return false;
+	if ((fx - sx) * dx + (fz - sz) * dz < 0) return false;
 	slipped.x = fx;
 	slipped.z = fz;
 	return true;
@@ -310,9 +332,40 @@ function rayPassesLeft(dx: number, dz: number, ox: number, oz: number): boolean 
 	return dx * oz - dz * ox >= 0;
 }
 
+/**
+ * The lateral side (+1 / -1 along the move's secondary axis: Z when X is primary, X on a tie) the move's ray passes
+ * an obstacle centred at offset (ox, oz) from the start on (a ray through the centre passes on its right, (dz, -dx)).
+ */
+function raySide(dx: number, dz: number, ox: number, oz: number): number {
+	const alongX = math.abs(dx) >= math.abs(dz);
+	const s = (alongX ? dx : dz) > 0 ? 1 : -1;
+	// The ray's right is (dz, -dx): its lateral part has the sign -s across X moves, s across Z moves.
+	return rayPassesLeft(dx, dz, ox, oz) === alongX ? -s : s;
+}
+
+/**
+ * The side an isolated blocker centred at offset (ox, oz) is slipped round on (as raySide): the ray's side, unless
+ * that is against the move's own lean (its secondary component), then the lean's side. A slip then never moves
+ * against the input; only a move straight along an axis takes the ray's side whatever it is.
+ */
+function pillarSide(dx: number, dz: number, ox: number, oz: number): number {
+	const lean = math.abs(dx) >= math.abs(dz) ? dz : dx;
+	const ray = raySide(dx, dz, ox, oz);
+	return lean === 0 || ray * lean > 0 ? ray : lean > 0 ? 1 : -1;
+}
+
 /** blocksMove() at primary-axis cell `gu` and lateral cell `gv`. */
 function blocksAcross(d: Dungeon, gu: number, gv: number, alongX: boolean, solid?: SolidCells): boolean {
 	return alongX ? blocksMove(d, gu, gv, solid) : blocksMove(d, gv, gu, solid);
+}
+
+/**
+ * slideCircle's fallback: moveCircle's result (never farther than the step, never against the input), unless it takes
+ * the circle deeper into a cell it overlapped at the start (moveCircle lets an overlapped tile go): then no move.
+ */
+function fallback(d: Dungeon, x: number, z: number, dx: number, dz: number, r: number, solid?: SolidCells): WorldXZ {
+	const m = moveCircle(d, x, z, dx, dz, r, solid);
+	return deepest(d, m.x, m.z, x, z, r, solid) ? { x, z } : m;
 }
 
 /**
@@ -322,11 +375,13 @@ function blocksAcross(d: Dungeon, gu: number, gv: number, alongX: boolean, solid
  *      blocking cell (blocksMove: a non-FLOOR tile or a `solid` cell), along the box's closest-point normal; a push
  *      that would leave the circle farther than the step from the start stops on the contact at the step's length
  *      (pushOut), so the slide never speeds a move up (WSD2);
- *   2. a cell the circle already overlaps at the start does not block (a body spawned inside a tile walks out);
+ *   2. a cell the circle already overlaps at the start blocks only past that overlap (it walks out or along, never
+ *      further in), and one its centre starts inside does not block (a body spawned inside a tile walks out);
  *   3. corner tie-break: when the first contact is a box corner and the move's share along its tangent is below
- *      `tieShare`, the target first moves `tiePush` of the step along the tangent, to the side the move's ray passes
- *      the corner on (an isolated blocker: its centre; a ray straight through passes on its right);
- *   4. moveCircle's result instead when an overlap is left after the passes or the result is farther than the step;
+ *      `tieShare`, the target first moves `tiePush` of the step along the tangent, to the side of the move's own
+ *      tangential part (exactly straight at it: an isolated blocker pillarSide()'s, any other corner the ray's right);
+ *   4. fallback() (moveCircle's result, or no move where that would sink into a start overlap) when an overlap is left
+ *      after the passes, or the result is farther than the step or against the input;
  *   5. after a contact, the face assist / pillar slip (slip()): a stall (less than `assistStallShare` of the step
  *      kept) at a run's end within `assistTiles`, or any blocked move at an isolated blocker (`pillarSlip`).
  * Where no corner is touched (open floor, a flat wall, a square room corner) it rests where moveCircle rests (and
@@ -352,7 +407,7 @@ export function slideCircle(
 		pz = z + dz;
 	let pass = 0;
 	while (deepest(d, px, pz, x, z, r, solid)) {
-		if (pass >= tuning.iterations) return moveCircle(d, x, z, dx, dz, radius, solid); // a concave jam
+		if (pass >= tuning.iterations) return fallback(d, x, z, dx, dz, radius, solid); // a concave jam
 		const gx = hit.gx,
 			gy = hit.gy;
 		if (pass === 0) {
@@ -368,28 +423,33 @@ export function slideCircle(
 					tz = ex / el;
 				const along = dx * tx + dz * tz;
 				if (math.abs(along) < tuning.tieShare * len) {
-					// K on the ray's left (or on it): pass on its right, (dz, -dx). An isolated blocker (pillarSlip) is
-					// judged by its centre instead, as slip() does, so the two never pull opposite ways.
-					const left =
-						tuning.pillarSlip && isIsolatedBlocker(d, gx, gy, solid)
-							? rayPassesLeft(dx, dz, gx * TILE_SIZE - x, gy * TILE_SIZE - z)
-							: rayPassesLeft(dx, dz, kx - x, kz - z);
-					const right = tx * dz - tz * dx >= 0;
-					const sg = left === right ? 1 : -1;
+					// The side of the move's own tangential part, so the push never opposes the input. Exactly straight
+					// at the corner: an isolated blocker (pillarSlip) to pillarSide()'s side, as slip() does; any other
+					// corner to the ray's right, (dz, -dx).
+					let sg: number;
+					if (along !== 0) sg = along > 0 ? 1 : -1;
+					else if (tuning.pillarSlip && isIsolatedBlocker(d, gx, gy, solid)) {
+						const tv = math.abs(dx) >= math.abs(dz) ? tz : tx;
+						sg = tv * pillarSide(dx, dz, gx * TILE_SIZE - x, gy * TILE_SIZE - z) >= 0 ? 1 : -1;
+					} else {
+						const tangentRight = tx * dz - tz * dx >= 0;
+						sg = rayPassesLeft(dx, dz, kx - x, kz - z) === tangentRight ? 1 : -1;
+					}
 					const push = tuning.tiePush * len;
 					px += sg * tx * push;
 					pz += sg * tz * push;
 				}
 			}
 		}
-		pushOut(px, pz, gx, gy, r, x, z, len);
+		pushOut(px, pz, gx, gy, r - hit.allow, x, z, len);
 		px = pushed.x;
 		pz = pushed.z;
 		pass++;
 	}
 	const moved2 = (px - x) * (px - x) + (pz - z) * (pz - z);
 	const bound = len + STEP_SLACK;
-	if (moved2 > bound * bound) return moveCircle(d, x, z, dx, dz, radius, solid);
+	// Never farther than the step, never against the input (moveCircle's per-axis sweeps are neither).
+	if (moved2 > bound * bound || (px - x) * dx + (pz - z) * dz < 0) return fallback(d, x, z, dx, dz, radius, solid);
 	if (pass > 0 && (tuning.pillarSlip || tuning.assistTiles > 0)) {
 		const stall = tuning.assistStallShare * len;
 		if (slip(d, x, z, px, pz, dx, dz, len, moved2 < stall * stall, r, solid, tuning))

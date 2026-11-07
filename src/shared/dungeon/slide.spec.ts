@@ -1,16 +1,18 @@
 /**
  * The player's slide mover (docs/WALL_SLIDE.md WS1 / WS2): slideCircle's contract (no tunnelling, never farther than
- * the step, never left in a wall, start-overlap escape, moveCircle where no corner is touched, deterministic), the
- * corner tie-break, the face assist's 0.35 margin and the pillar slip, for keyboard and quantized stick input.
+ * the step, never against the input, never left in a wall, a start overlap walks out but never deeper, moveCircle where
+ * no corner is touched, a pinned trace digest), the corner tie-break, the face assist's 0.35 margin and the pillar
+ * slip, for keyboard and quantized stick input at full and slow deflection (the real deadzone / quantization path).
  */
 import { describe, expect, it } from "@rbxts/jest-globals";
 import {
 	KALEB_VALE_MVP_PARAMS,
 	PLAYER_SLIDE,
-	TileType,
+	TILE_SIZE,
+	blocksMove,
+	buildEndlessFloor,
 	cellKey,
 	circleOverlapsWall,
-	endlessFloorParams,
 	entranceSpawn,
 	generateDungeon,
 	isIsolatedBlocker,
@@ -19,13 +21,15 @@ import {
 	mulberry32,
 	playerSlideMover,
 	slideCircle,
-	tileAt,
+	worldToGrid,
 	type Dungeon,
 	type PlayerSlideTuning,
 	type SolidCells,
+	type WorldXZ,
 } from "shared/dungeon";
 import { sceneGrid, solidOf, ticksTo, walk, type SceneMover } from "shared/dungeon/testing";
-import { screenToWorld } from "shared/play";
+import { imul } from "shared/jsmath";
+import { STICK_DEADZONE, applyRadialDeadzone, screenToWorld } from "shared/play";
 import { AXIS_MAX, MAX_MOVE_STEP, PLAYER_RADIUS, SQRT1_2, WALK_STEP, quantizeAxis } from "shared/sim";
 
 const R = PLAYER_RADIUS;
@@ -87,7 +91,63 @@ for (let k = 0; k < 64; k++) {
 }
 const ALL_DIRS: Dir[] = [...KEYS, ...STICKS];
 
-/** One move's contract: never farther than the step, never ending in a wall (or `solid` cell). */
+/** A stick at `mag` of its post-deadzone range, through the real path: radial deadzone rescale, yaw, quantization. */
+function stickStep(a: number, mag: number): [number, number] {
+	const raw = STICK_DEADZONE + mag * (1 - STICK_DEADZONE);
+	const v = applyRadialDeadzone(math.cos(a) * raw, math.sin(a) * raw);
+	return inputStep(v.x, v.y);
+}
+
+/** Slow sticks: 32 directions at 0.3 / 0.14 / 0.1 / 0.05 of full deflection (steps of about 0.03 .. 0.005). */
+const SLOW_MAGS = [0.3, 0.14, 0.1, 0.05];
+const SLOW_STICKS: Dir[] = [];
+for (const mag of SLOW_MAGS)
+	for (let k = 0; k < 64; k += 2) {
+		const [dx, dz] = stickStep((2 * math.pi * k) / 64, mag);
+		SLOW_STICKS.push({ name: `stick ${k}/64 x${mag}`, dx, dz });
+	}
+const EVERY_DIR: Dir[] = [...ALL_DIRS, ...SLOW_STICKS];
+
+/** The deepest overlap of the circle with any blocking cell (0 when clear): r - distance, or r + depth inside. */
+function maxPen(d: Dungeon, x: number, z: number, r: number, solid?: SolidCells): number {
+	const half = TILE_SIZE / 2;
+	let best = 0;
+	for (let gy = worldToGrid(z - r); gy <= worldToGrid(z + r); gy++)
+		for (let gx = worldToGrid(x - r); gx <= worldToGrid(x + r); gx++) {
+			if (!blocksMove(d, gx, gy, solid)) continue;
+			const x0 = gx - half,
+				x1 = gx + half,
+				z0 = gy - half,
+				z1 = gy + half;
+			const cx = math.clamp(x, x0, x1),
+				cz = math.clamp(z, z0, z1);
+			const d2 = (x - cx) * (x - cx) + (z - cz) * (z - cz);
+			const p = d2 > 0 ? r - math.sqrt(d2) : r + math.min(x - x0, x1 - x, z - z0, z1 - z);
+			if (p > best) best = p;
+		}
+	return best;
+}
+
+/** A real endless floor as the sim walks it: its grid plus its breakables and vault chest as SolidCells. */
+interface RealFloor {
+	name: string;
+	d: Dungeon;
+	solid: SolidCells;
+	spawn: WorldXZ;
+}
+
+function realFloor(runSeed: number, floor: number, partySize: number): RealFloor {
+	const l = buildEndlessFloor(runSeed, floor, (p) => generateDungeon(p), partySize, { vaults: true });
+	const solid = new Map<number, number>();
+	(l.breakables ?? []).forEach((b, i) => solid.set(cellKey(b.x, b.y), i));
+	return { name: `run ${runSeed} floor ${floor}`, d: l.dungeon, solid, spawn: l.spawn };
+}
+
+const REAL_FLOORS: RealFloor[] = [];
+for (let run = 1; run <= 4; run++)
+	for (const floor of [1, 2, 3, 5, 8]) REAL_FLOORS.push(realFloor(run * 7919, floor, 1 + (run % 4)));
+
+/** One move's contract: never farther than the step, never against the input, never ending in a wall (or `solid`). */
 function contractBroken(
 	d: Dungeon,
 	x: number,
@@ -100,8 +160,9 @@ function contractBroken(
 	solid?: SolidCells,
 ): string | undefined {
 	const where = `(${x}, ${z}) + (${dx}, ${dz}) r ${r} -> (${px}, ${pz})`;
-	if (math.sqrt((px - x) * (px - x) + (pz - z) * (pz - z)) > math.sqrt(dx * dx + dz * dz) + 1e-9)
-		return `moved too far, ${where}`;
+	const len = math.sqrt(dx * dx + dz * dz);
+	if (math.sqrt((px - x) * (px - x) + (pz - z) * (pz - z)) > len + 1e-9) return `moved too far, ${where}`;
+	if (((px - x) * dx + (pz - z) * dz) / len < -1e-9) return `moved against the input, ${where}`;
 	if (circleOverlapsWall(d, px, pz, r, TOL, solid)) return `overlaps a wall, ${where}`;
 	return undefined;
 }
@@ -224,39 +285,34 @@ describe("slideCircle: the contract (WS1)", () => {
 		expect(clipped).toBeGreaterThan(2000);
 	});
 
-	it("walks the player through endless floors (pillars, solid decor, crates) at walk speed, never into a wall", () => {
+	it("walks real endless floors (pillars, solid decor, breakables, the chest), every input: contract held every tick", () => {
+		// Held directions from every key, full stick and slow stick, on buildEndlessFloor floors with their pieces as the
+		// sim's SolidCells: never into a wall, never farther than the step, never against the input.
 		const rand = mulberry32(77);
 		let moves = 0;
 		let clipped = 0;
 		let failure: string | undefined;
-		for (let run = 1; run <= 4; run++)
-			for (let floor = 1; floor <= 5; floor++) {
-				const d = generateDungeon(endlessFloorParams(run * 7919, floor));
-				// Crates: every 23rd FLOOR cell that is not the spawn's.
-				const sp = entranceSpawn(d);
-				const crates = new Map<number, number>();
-				let n = 0;
-				for (let gy = 0; gy < d.H; gy++)
-					for (let gx = 0; gx < d.W; gx++)
-						if (tileAt(d, gx, gy) === TileType.FLOOR && (gx !== sp.x || gy !== sp.z) && ++n % 23 === 0)
-							crates.set(cellKey(gx, gy), n);
-				const mover = playerSlideMover(d, R);
-				let x = sp.x,
-					z = sp.z;
-				let dir = ALL_DIRS[0];
-				for (let i = 0; i < 2500; i++) {
-					if (rand() < 0.03) dir = ALL_DIRS[math.floor(rand() * ALL_DIRS.size())];
-					const p = mover(x, z, dir.dx, dir.dz, crates);
-					moves++;
-					failure ??= contractBroken(d, x, z, dir.dx, dir.dz, R, p.x, p.z, crates);
-					if (math.abs(p.x - x - dir.dx) > 1e-9 || math.abs(p.z - z - dir.dz) > 1e-9) clipped++;
-					x = p.x;
-					z = p.z;
+		for (const f of REAL_FLOORS) {
+			const mover = playerSlideMover(f.d, R);
+			let x = f.spawn.x,
+				z = f.spawn.z;
+			let dir = EVERY_DIR[0];
+			for (let i = 0; i < 4000; i++) {
+				if (rand() < 0.02) dir = EVERY_DIR[math.floor(rand() * EVERY_DIR.size())];
+				const p = mover(x, z, dir.dx, dir.dz, f.solid);
+				moves++;
+				if (failure === undefined) {
+					const broke = contractBroken(f.d, x, z, dir.dx, dir.dz, R, p.x, p.z, f.solid);
+					if (broke !== undefined) failure = `${f.name} tick ${i}: ${broke}`;
 				}
+				if (math.abs(p.x - x - dir.dx) > 1e-9 || math.abs(p.z - z - dir.dz) > 1e-9) clipped++;
+				x = p.x;
+				z = p.z;
 			}
+		}
 		expect(failure).toBeUndefined();
-		expect(moves).toBe(20 * 2500);
-		expect(clipped).toBeGreaterThan(1000);
+		expect(moves).toBe(REAL_FLOORS.size() * 4000);
+		expect(clipped).toBeGreaterThan(5000);
 	});
 
 	it("lets a circle that starts overlapping a wall or a crate walk out", () => {
@@ -272,6 +328,55 @@ describe("slideCircle: the contract (WS1)", () => {
 			const w = walk(slide, d, 7.1, 6.95, dir.dx, dir.dz, R, 15, 1, crate);
 			expect([dir.name, circleOverlapsWall(d, w.x, w.z, R, TOL, crate)]).toEqual([dir.name, false]);
 		}
+	});
+
+	it("a start overlap never grows: 0.001 into a wall's end, pressed along it, stays 0.001 deep at most", () => {
+		// The review's repro: a wall end (column 12, rows >= 12), the circle 0.00106 into its face, a slow stick along it.
+		const d = sceneGrid(25, 25, (gx, gy) => gx === 12 && gy >= 12);
+		let x = 11.151060511953833,
+			z = 15.046194633577427;
+		const pen0 = maxPen(d, x, z, R);
+		expect(pen0).toBeGreaterThan(0.001);
+		let worst = 0;
+		for (let t = 0; t < 1200; t++) {
+			const p = slideCircle(d, x, z, 0.0056, -0.0083, R);
+			x = p.x;
+			z = p.z;
+			worst = math.max(worst, maxPen(d, x, z, R));
+		}
+		print(`[slide] start overlap ${pen0}: deepest over 1200 ticks ${worst} (was 0.16 before the review fix)`);
+		expect(worst).toBeLessThanOrEqual(pen0 + 1e-9);
+	});
+
+	it("overlapping starts on real floors: never deeper than at the start, the centre never ends in a blocking cell", () => {
+		const rand = mulberry32(3);
+		let tries = 0;
+		let failure: string | undefined;
+		for (let i = 0; i < 6; i++) {
+			const f = REAL_FLOORS[i];
+			for (let s = 0; s < 1500; s++) {
+				const x0 = 2 + rand() * (f.d.W - 4),
+					z0 = 2 + rand() * (f.d.H - 4);
+				if (blocksMove(f.d, worldToGrid(x0), worldToGrid(z0), f.solid)) continue;
+				const pen0 = maxPen(f.d, x0, z0, R, f.solid);
+				if (pen0 <= 1e-9) continue;
+				tries++;
+				const dir = EVERY_DIR[math.floor(rand() * EVERY_DIR.size())];
+				let x = x0,
+					z = z0;
+				for (let t = 0; t < 60; t++) {
+					const p = slideCircle(f.d, x, z, dir.dx, dir.dz, R, f.solid);
+					x = p.x;
+					z = p.z;
+					if (failure === undefined && maxPen(f.d, x, z, R, f.solid) > pen0 + 1e-9)
+						failure = `${f.name} (${x0}, ${z0}) ${dir.name}: deeper than ${pen0} at tick ${t}`;
+				}
+				if (failure === undefined && blocksMove(f.d, worldToGrid(x), worldToGrid(z), f.solid))
+					failure = `${f.name} (${x0}, ${z0}) ${dir.name}: the centre ends in a blocking cell`;
+			}
+		}
+		expect(failure).toBeUndefined();
+		expect(tries).toBeGreaterThan(200);
 	});
 
 	it("is moveCircle (within 1e-9) on open floor and along flat walls", () => {
@@ -316,33 +421,38 @@ describe("slideCircle: the contract (WS1)", () => {
 		expect(worst).toBeLessThanOrEqual(1e-9);
 	});
 
-	it("is deterministic: two runs give bit-identical positions", () => {
-		function trace(): number[] {
-			const out: number[] = [];
-			const rand = mulberry32(31337);
-			const d = generateDungeon(endlessFloorParams(4242, 3));
-			const mover = playerSlideMover(d, R);
-			const sp = entranceSpawn(d);
-			let x = sp.x,
-				z = sp.z;
-			let dir = ALL_DIRS[0];
-			for (let i = 0; i < 4000; i++) {
-				if (rand() < 0.03) dir = ALL_DIRS[math.floor(rand() * ALL_DIRS.size())];
-				const p = mover(x, z, dir.dx, dir.dz);
-				x = p.x;
-				z = p.z;
-				out.push(x, z);
+	it("is deterministic: a long trace on a real floor matches its pinned digest", () => {
+		// 32-bit FNV-1a over both float64 words of every position (forge.digest.spec's word stream). A change of this
+		// digest is a change of the player's movement: re-pin it only on purpose.
+		let h = FNV_OFFSET;
+		const word = (w: number) => (h = imul(bit32.bxor(h, w), FNV_PRIME));
+		const f = realFloor(4242, 3, 1);
+		const mover = playerSlideMover(f.d, R);
+		const rand = mulberry32(31337);
+		let x = f.spawn.x,
+			z = f.spawn.z;
+		let dir = EVERY_DIR[0];
+		for (let i = 0; i < 6000; i++) {
+			if (rand() < 0.03) dir = EVERY_DIR[math.floor(rand() * EVERY_DIR.size())];
+			const p = mover(x, z, dir.dx, dir.dz, f.solid);
+			x = p.x;
+			z = p.z;
+			for (const v of [x, z]) {
+				const [hi, lo] = string.unpack(">I4I4", string.pack(">d", v));
+				word(hi as number);
+				word(lo as number);
 			}
-			return out;
 		}
-		const a = trace();
-		const b = trace();
-		expect(a.size()).toBe(8000);
-		let same = true;
-		for (let i = 0; i < a.size(); i++) if (a[i] !== b[i]) same = false;
-		expect(same).toBe(true);
+		const hex = string.format("%08x", h);
+		print(`[slide] trace digest ${hex} at (${x}, ${z})`);
+		expect(hex).toBe(TRACE_DIGEST);
 	});
 });
+
+/** The pinned slide trace (see the determinism spec). */
+const TRACE_DIGEST = "956f2de8";
+const FNV_OFFSET = 2166136261;
+const FNV_PRIME = 16777619;
 
 /** A 25 x 25 room with the cells `blocked` (and nothing else but the border). */
 function room(blocked: (gx: number, gy: number) => boolean): Dungeon {
@@ -351,7 +461,7 @@ function room(blocked: (gx: number, gy: number) => boolean): Dungeon {
 
 /**
  * Walks `dir` at the obstacle centred on (cx, cz) from 5 tiles before it, `offset` tiles to the side; the ticks until
- * the circle is 1.5 past the centre along `dir` (-1: never in 200), and the first broken contract.
+ * the circle is 1.5 past the centre along `dir` (-1: never, in 20 tiles' worth of ticks), and the first broken contract.
  */
 function passTicks(
 	mover: SceneMover,
@@ -368,7 +478,8 @@ function passTicks(
 	let x = cx - ux * 5 - uz * offset,
 		z = cz - uz * 5 + ux * offset;
 	let failure: string | undefined;
-	for (let t = 1; t <= 200; t++) {
+	const maxTicks = math.max(200, math.ceil(20 / len));
+	for (let t = 1; t <= maxTicks; t++) {
 		const p = mover(d, x, z, dir.dx, dir.dz, R, solid);
 		failure ??= contractBroken(d, x, z, dir.dx, dir.dz, R, p.x, p.z, solid);
 		x = p.x;
@@ -401,25 +512,37 @@ describe("pillar slip and corner tie-break (WS2)", () => {
 		expect(isIsolatedBlocker(pillar, 12, 12, crateByPillar)).toBe(false);
 	});
 
-	it("a 1x1 pillar is passed head-on at every offset within 10 ticks of open floor: 8 keys and 64 stick angles", () => {
+	it("a 1x1 pillar is passed head-on at every offset, keys within 10 ticks of open floor, any stick within 1.7 tiles", () => {
+		// The slip goes the ray's side unless that is against the stick's lean (it never opposes the input): then the
+		// lean's side, the long way round at worst (2r + 1 = 1.7 tiles of sideways walk).
 		let failure: string | undefined;
-		let worst = 0;
-		let worstAt = "";
-		for (const dir of ALL_DIRS) {
-			const [open] = passTicks(slide, empty, 12, 12, dir, 0);
-			for (const off of OFFSETS) {
-				const [t, broke] = passTicks(slide, pillar, 12, 12, dir, off);
-				failure ??= broke;
-				if (failure === undefined && t < 0) failure = `${dir.name} offset ${off}: never got past`;
-				if (t - open > worst) {
-					worst = t - open;
-					worstAt = `${dir.name} offset ${off}`;
+		const worst = new Map<string, [number, string]>();
+		for (const [group, dirs] of [
+			["keys", KEYS],
+			["sticks", STICKS],
+			["slow sticks", SLOW_STICKS],
+		] as const)
+			for (const dir of dirs) {
+				const len = math.sqrt(dir.dx * dir.dx + dir.dz * dir.dz);
+				const [open] = passTicks(slide, empty, 12, 12, dir, 0);
+				for (const off of OFFSETS) {
+					const [t, broke] = passTicks(slide, pillar, 12, 12, dir, off);
+					failure ??= broke;
+					if (failure === undefined && t < 0) failure = `${dir.name} offset ${off}: never got past`;
+					const extra = (t - open) * len;
+					const w = worst.get(group);
+					if (w === undefined || extra > w[0])
+						worst.set(group, [extra, `${dir.name} offset ${off}, ${t - open} ticks`]);
 				}
 			}
-		}
-		print(`[slide] pillar head-on: worst ${worst} ticks slower than open floor (${worstAt})`);
+		for (const [group, [extra, at]] of worst)
+			print(
+				`[slide] pillar head-on, ${group}: worst ${string.format("%.3f", extra)} tiles past open floor (${at})`,
+			);
 		expect(failure).toBeUndefined();
-		expect(worst).toBeLessThanOrEqual(10);
+		expect(worst.get("keys")![0]).toBeLessThanOrEqual(10 * WALK_STEP + 1e-9);
+		expect(worst.get("sticks")![0]).toBeLessThanOrEqual(1.7);
+		expect(worst.get("slow sticks")![0]).toBeLessThanOrEqual(1.7);
 	});
 
 	it("a lone crate (a solid cell) slips exactly like a pillar", () => {
@@ -447,24 +570,26 @@ describe("pillar slip and corner tie-break (WS2)", () => {
 		expect(b).toBe(0.6);
 	});
 
-	it("the exact corner tie (W straight at a diamond's tip) takes a fixed side, the ray's right", () => {
+	it("the exact corner tie (W straight at a diamond's tip) takes one side and keeps it", () => {
 		// W walks (-0.707, -0.707) * WALK_STEP: straight down the pillar's diagonal from its (12.5, 12.5) corner.
 		const w = KEYS[0];
 		expect(w.dx).toBe(w.dz);
 		const [t] = passTicks(slide, pillar, 12, 12, w, 0);
 		expect(t).toBeGreaterThan(0);
-		// The ray's right of (-1, -1) is (-1, 1): the circle passes on the pillar's +Z side, x < z all the way past.
 		let x = 17,
 			z = 17;
-		let minSide = 0;
+		let side = 0;
+		let flips = 0;
 		for (let i = 0; i < 120; i++) {
 			const p = slideCircle(pillar, x, z, w.dx, w.dz, R);
 			x = p.x;
 			z = p.z;
-			minSide = math.min(minSide, z - x);
+			const now = z - x > 1e-9 ? 1 : z - x < -1e-9 ? -1 : 0;
+			if (now !== 0 && side !== 0 && now !== side) flips++;
+			if (now !== 0) side = now;
 		}
-		expect(minSide).toBeGreaterThanOrEqual(-1e-12);
-		expect(z - x).toBeGreaterThan(0.5);
+		expect(flips).toBe(0);
+		expect(math.abs(z - x)).toBeGreaterThan(0.5);
 	});
 });
 
@@ -630,5 +755,89 @@ describe("the face assist keeps its 0.35 margin; nothing slips or jitters where 
 				}
 		expect(failure).toBeUndefined();
 		expect(presses).toBe(17 * ALL_DIRS.size());
+	});
+
+	it("slow sticks at wide obstacles' corners: no back-and-forth (the review's 2x1 vibration repro included)", () => {
+		// The review's repro: a 2x1 block, a slow diagonal stick (0.0071 .. 0.014 a tick) on its corner cycled forever.
+		const tomb = room((gx, gy) => gy === 12 && (gx === 12 || gx === 13));
+		for (const c of [0.0071, 0.0085, 0.01, 0.012, 0.014]) {
+			const p = press(
+				tomb,
+				10.09583694396574,
+				13.838477631085023,
+				{ name: `(${c}, ${-c})`, dx: c, dz: -c },
+				undefined,
+				20000,
+			);
+			expect([c, p.still, p.failure]).toEqual([c, true, undefined]);
+		}
+		// Approaches from 3 tiles back, offsets -1.2 .. 1.2, slow sticks: over the last 100 ticks a walk either rests or
+		// gets somewhere (net >= half its path), never cycles in place.
+		const scenes: Array<[string, Dungeon, number, number, SolidCells | undefined]> = [
+			["pillar", room((gx, gy) => gx === 12 && gy === 12), 12, 12, undefined],
+			["2x1", tomb, 12.5, 12, undefined],
+			[
+				"crate 2x2",
+				room(() => false),
+				12.5,
+				12.5,
+				solidOf([
+					[12, 12],
+					[13, 12],
+					[12, 13],
+					[13, 13],
+				]),
+			],
+			[
+				"diagonal crates",
+				room(() => false),
+				12.5,
+				12.5,
+				solidOf([
+					[12, 12],
+					[13, 13],
+				]),
+			],
+			["wall end", room((gx, gy) => gx === 12 && gy >= 12), 12, 12, undefined],
+			["bookcase run", room((gx, gy) => gy >= 14 || (gy === 13 && gx >= 10 && gx <= 13)), 11.5, 13, undefined],
+		];
+		let failure: string | undefined;
+		let walks = 0;
+		for (const [name, d, cx, cz, solid] of scenes)
+			for (let k = 0; k < SLOW_STICKS.size(); k += 2) {
+				const dir = SLOW_STICKS[k];
+				const len = math.sqrt(dir.dx * dir.dx + dir.dz * dir.dz);
+				const ux = dir.dx / len,
+					uz = dir.dz / len;
+				for (let i = -4; i <= 4; i++) {
+					const off = i * 0.3;
+					let x = cx - ux * 3 - uz * off,
+						z = cz - uz * 3 + ux * off;
+					if (circleOverlapsWall(d, x, z, R, 0, solid)) continue;
+					walks++;
+					const n = math.ceil(5 / len) + 150;
+					const tail: number[] = [];
+					for (let t = 0; t < n; t++) {
+						const p = slideCircle(d, x, z, dir.dx, dir.dz, R, solid);
+						failure ??= contractBroken(d, x, z, dir.dx, dir.dz, R, p.x, p.z, solid);
+						x = p.x;
+						z = p.z;
+						if (t >= n - 101) tail.push(x, z);
+					}
+					let path = 0;
+					for (let j = 2; j < tail.size(); j += 2) {
+						const ex = tail[j] - tail[j - 2],
+							ez = tail[j + 1] - tail[j - 1];
+						path += math.sqrt(ex * ex + ez * ez);
+					}
+					const last = tail.size() - 2;
+					const nx = tail[last] - tail[0],
+						nz = tail[last + 1] - tail[1];
+					if (failure === undefined && path > 1e-6 && math.sqrt(nx * nx + nz * nz) < 0.5 * path)
+						failure = `${name} ${dir.name} offset ${off}: cycles in place at (${x}, ${z}), path ${path}`;
+				}
+			}
+		expect(failure).toBeUndefined();
+		expect(walks).toBeGreaterThan(500);
 	});
 });
