@@ -1,6 +1,6 @@
 // Goo art (docs/GOO_ART.md GA2): `bullet.enemy.goo` may take a FLOOR sprite set (land / hold, one facing, a lit box
-// and a meanColor read as goo), held to gooArtReport (folded into validateManifest); strike / ember still take no
-// art; read with ThemeCore / ThemePack.floorSprite. The placeholder pack is unchanged (the disc).
+// and a meanColor read as goo), held to gooArtReport (folded into validateManifest); strike / ember are hazard
+// sprites (hazardArt.spec); read with ThemeCore / ThemePack.floorSprite. The placeholder pack is unchanged (the disc).
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { colorDifference } from "./color";
 import { BULLET, BULLET_ART, BULLET_IDS, MAX_ENEMY_BULLET_ART_DIFFERENCE, requiredBaseAnimations } from "./contract";
@@ -56,9 +56,9 @@ function errorsAt(m: Obj): Array<string> {
 }
 
 describe("goo floor sprite contract (docs/GOO_ART.md GA2)", () => {
-	it("splits the decal ids: the goo is a floor sprite, strike and ember keep no art", () => {
+	it("the goo is a floor sprite; strike and ember are hazard sprites (docs/HAZARD_ART.md HA3), not floor sprites", () => {
 		expect([...BULLET_ART.floorSpriteIds]).toEqual([GOO]);
-		expect([...BULLET_ART.decalIds]).toEqual(["bullet.enemy.strike", "bullet.player.ember"]);
+		expect([...BULLET_ART.hazardSpriteIds]).toEqual(["bullet.enemy.strike", "bullet.player.ember"]);
 		expect([BULLET_ART.land, BULLET_ART.hold, BULLET_ART.landFrames]).toEqual(["land", "hold", 1]);
 		for (const id of BULLET_ART.floorSpriteIds) expect(BULLET_IDS.includes(id as never)).toBe(true);
 		// the BULLET slot's per-ID animations name the floor sprite ID written out
@@ -169,14 +169,14 @@ describe("goo floor sprite contract (docs/GOO_ART.md GA2)", () => {
 		]);
 	});
 
-	it("still rejects art on the strike and ember decals", () => {
-		for (const id of BULLET_ART.decalIds) {
+	it("a goo-shaped set on the strike or ember is neither a bullet nor a floor sprite (hazardArt.spec has their rules)", () => {
+		for (const id of BULLET_ART.hazardSpriteIds) {
 			const m = clone();
 			const set = gooSet(GOO_MEAN);
-			set.animations = { fly: { sheet: 0, start: 0, frames: 1, fps: 10, loop: true } };
-			set.lit = undefined;
 			assetsOf(m)[id] = set;
-			expect(bulletArtReport(m).map((e) => [e.id, e.check, e.ok])).toEqual([[id, "decal", false]]);
+			expect(bulletArtReport(m).map((e) => [e.id, e.check, e.ok])).toEqual([]);
+			expect(gooArtReport(m).filter((e) => e.id === id)).toEqual([]);
+			expect(new ThemePack(m, { warn: () => undefined }).floorSprite(id)).toBe(undefined);
 		}
 	});
 });

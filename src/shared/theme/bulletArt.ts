@@ -12,7 +12,8 @@
  *     every ENEMY_BULLET_ROLES colour and `telegraph`;
  *   - enemy art (`bullet.enemy.*`) still reads as THE danger colour: its meanColor <= MAX_ENEMY_BULLET_ART_DIFFERENCE
  *     (CIE76) from `enemyBullet`, and >= MIN_ENEMY_BULLET_CONTRAST (WCAG) on every biome floor and wall;
- *   - the floor decals (BULLET_ART.decalIds: strike, ember; PAD3) take no art at all;
+ *   - the floor hazards (BULLET_ART.hazardSpriteIds: strike, ember; docs/HAZARD_ART.md HA3, superseding PAD3) are not
+ *     flying bullets either: their sets are hazardArt.ts `hazardArtReport`'s;
  *   - the floor sprites (BULLET_ART.floorSpriteIds: the goo puddle, docs/GOO_ART.md GA2) are not flying bullets: no
  *     entry here, gooArt.ts `gooArtReport` holds them to their own rules.
  * The set's own fields (cells in range, fps, sheets) are validate.ts validateSpriteSet's, as for every sprites set.
@@ -35,8 +36,8 @@ const PLAYER_ART_AGAINST: ReadonlyArray<ColorRole> = [...ENEMY_BULLET_ROLES, "te
 
 /**
  * One check of `bulletArtReport`, per `bullet.*` ID with sprite art (BULLET_IDS order; floor sprites, BULLET_ART.
- * floorSpriteIds, have none: gooArtReport), in this order:
- *   - "decal": the ID is a floor decal (BULLET_ART.decalIds): always failed, no other check;
+ * floorSpriteIds, have none: gooArtReport; nor have the hazards, BULLET_ART.hazardSpriteIds: hazardArtReport), in this
+ * order:
  *   - "facings": `value` the facing count, `limit` 1 (ok when equal); only when the count is a number;
  *   - "frames": `value` the `fly` loop's frame count, `limit` BULLET_ART.maxFrames; only when it is a number;
  *   - "meanColor": failed when it is missing or not "#rrggbb" (`color` the value described); no colour check follows;
@@ -47,7 +48,7 @@ const PLAYER_ART_AGAINST: ReadonlyArray<ColorRole> = [...ENEMY_BULLET_ROLES, "te
  */
 export interface BulletArtEntry {
 	id: string;
-	check: "decal" | "facings" | "frames" | "meanColor" | "player" | "enemy" | "surface";
+	check: "facings" | "frames" | "meanColor" | "player" | "enemy" | "surface";
 	color: string;
 	against: string;
 	againstColor: string;
@@ -67,7 +68,12 @@ export function bulletArtReport(manifest: unknown): Array<BulletArtEntry> {
 	const biomes = isObj(manifest.biomes) ? sortedEntries(manifest.biomes) : [];
 	for (const id of BULLET_IDS) {
 		const def = manifest.assets[id];
-		if (!isObj(def) || def.kind !== "sprites" || BULLET_ART.floorSpriteIds.includes(id)) {
+		if (
+			!isObj(def) ||
+			def.kind !== "sprites" ||
+			BULLET_ART.floorSpriteIds.includes(id) ||
+			BULLET_ART.hazardSpriteIds.includes(id)
+		) {
 			continue;
 		}
 		const entry = (
@@ -80,10 +86,6 @@ export function bulletArtReport(manifest: unknown): Array<BulletArtEntry> {
 			againstColor = "",
 			surface?: "floor" | "wall",
 		) => out.push({ id, check, color, against, againstColor, surface, value, limit, ok });
-		if (BULLET_ART.decalIds.includes(id)) {
-			entry("decal", 0, 0, false);
-			continue;
-		}
 		const facings = def.facings;
 		if (isObj(facings) && typeIs(facings.count, "number")) {
 			entry("facings", facings.count, 1, facings.count === 1);
@@ -145,12 +147,7 @@ export function bulletArtProblems(manifest: unknown, suffix: (biome: string) => 
 			continue;
 		}
 		const at = ["assets", c.id];
-		if (c.check === "decal") {
-			out.push({
-				path: [...at, "kind"],
-				msg: `${c.id} is drawn as a floor decal (PAD3): it keeps its placeholder, give it no sprite art`,
-			});
-		} else if (c.check === "facings") {
+		if (c.check === "facings") {
 			out.push({
 				path: [...at, "facings", "count"],
 				msg: `a bullet is drawn in one facing (its art points screen-up, turned along the velocity): must be 1, got ${c.value}`,

@@ -67,6 +67,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/GOO_ART.md` | Goo art (the Ooze's goo puddles drawn with the heimlich3 Slime pack's last two frames: land then splat, recoloured into `enemyGoo`, flat on the floor sized to cover the hit; presentation only): plan, tasks GA0-GA7, decisions GAD1-GAD5 |
 | `docs/KENNEY_DECOR.md` | Kenney decor (Kenney's CC0 Isometric Dungeon / Library reprojected from their 30 degree camera to the game's 55 by `scripts/art/kenney/reproject.py`: flat / box / uniform warps; library v2, a `mess` theme, richer storerooms planned; the bookcase's alternative art set, its wide pairs and the floor patches wired): plan, as built, tasks KN0-KN13, decisions KND1-KND12 |
 | `docs/LEGENDARIES.md` | Legendaries (two legendary boons, Overkill: a kill's leftover damage streaks to the nearest enemy and chains; Bastion: a full-ring 27-tick guard, +1 pip and a brace that restores a pip when a guard or roll stops 3 bullets; four duos Supernova / Skewer / Citadel / Stone Heart; gameplay, opt-in `SimConfig.builds`): plan, LG0 findings, as built LG1-LG6, LG7 tuning, owner tuning, tasks LG0-LG9, decisions LGD1-LGD14 |
+| `docs/HAZARD_ART.md` | Hazard art (the Stormcaller's strike and the build embers as original greyscale pixel art tinted by their roles: a flash over the strike's 0.1 s life and a short scorch after it, the ember's burn loop; supersedes PAD3; presentation only): plan, as built, tasks HA0-HA8, decisions HAD1-HAD5 |
 
 Decision log (deviations from `PLAN.md`):
 - **Art (docs/ART.md).** The theme contract gained a `"sprites"` kind (large pre-rendered cells, 1/4/8/16 screen-space
@@ -836,6 +837,21 @@ Decision log (deviations from `PLAN.md`):
   shout (`FLOOR_SHOUT_PRIORITY.brace`), armor pulse and toasts. `DAILY.ruleset` 8 -> 9. M1, every fixture and the
   tutorial replay exactly as before; endless replays and scores changed (boards stay `_v1`). Tuning measured (LG7) and
   the owner's changes applied (2026-11-06); Studio check, art (LG8) and audio pending.
+
+- **Hazard art (docs/HAZARD_ART.md).** Presentation only (no sim, dungeon, lockstep, hash, replay, fixture or score
+  change). Supersedes docs/PROJECTILE_ART.md PAD3 for the strike and the embers: `BULLET_ART.decalIds` is gone,
+  `hazardSpriteIds` (`bullet.enemy.strike`, `bullet.player.ember`) may take a one-facing greyscale `sprites` set (the
+  strike `flash` / `scorch` and its hit rim `rimPx`, never `radiusPx`: the gameplay-key guard; the ember `burn` and its
+  patch `lit`), held to `hazardArt.ts` `hazardArtReport` (folded into `variantColorProblems`), read with
+  `ThemePack.hazardSprite`. Original art by `scripts/art/gen-hazard-art.js` (run by `art:build` / `art:lock`) into
+  `art/vendor/kaleb-vale/hazards/`, its own sheet `hazards.png` (group `hazards`, `--only hazards`, generated
+  `packs/vale/hazardLayout.ts`). View: `shared/view/hazards.ts` / `HAZARD_ART_VIEW`; the strike is top-down art laid
+  flat unstretched (its rim on `STRIKE_BULLET_RADIUS`), tinted `enemyBullet`, flipped by slot bits, and leaves a 0.8 s
+  scorch (view-only `ScorchTracker`, sim seconds, dropped on a floor change); the ember is 3/4 art sized by the goo's
+  cover rule, tinted `build.ember`, its loop phased per slot. Client `HazardSpritePool.ts`; `DecalPool` takes any
+  `FloorSpriteDrawer` and a per-frame `HazardClock`. Without a `hazards.png` id every pack draws the discs exactly as
+  before. No new colour role, string, sound or setting; no Luau-locals change. Upload (HA7) and Studio check (HA8)
+  pending.
 
 ## Commands
 

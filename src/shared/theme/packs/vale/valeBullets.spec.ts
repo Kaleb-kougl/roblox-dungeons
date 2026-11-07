@@ -14,6 +14,7 @@ import { VALE_BULLET_SOURCE, valeBulletAssets, type ValeBulletSource } from "./b
 import { VALE_BULLET_FX_LAYOUTS, VALE_BULLET_LAYOUTS, VALE_BULLET_SHEET, type ValeBulletLayout } from "./bulletLayout";
 import { VALE_FX } from "./fx";
 import { VALE_GOO_SHEET } from "./gooLayout";
+import { VALE_HAZARD_SHEET } from "./hazardLayout";
 import { VALE_MANIFEST, buildValeManifest } from "./manifest";
 
 const quiet = () => undefined;
@@ -62,11 +63,11 @@ function isBullet(id: string): boolean {
 }
 
 describe("vale bullets (docs/PROJECTILE_ART.md PA6)", () => {
-	it("maps only flying bullets: every layout key is a bullet ID that is not a floor decal", () => {
+	it("maps only flying bullets: every layout key is a bullet ID that is not a floor hazard", () => {
 		for (const source of [VALE_BULLET_SOURCE, FAKE]) {
 			for (const id of sortedKeys(source.layouts)) {
 				expect([id, (BULLET_IDS as ReadonlyArray<string>).includes(id)]).toEqual([id, true]);
-				expect([id, BULLET_ART.decalIds.includes(id)]).toEqual([id, false]);
+				expect([id, BULLET_ART.hazardSpriteIds.includes(id)]).toEqual([id, false]);
 			}
 		}
 		expect(VALE_BULLET_SOURCE.layouts).toBe(VALE_BULLET_LAYOUTS);
@@ -111,7 +112,8 @@ describe("vale bullets (docs/PROJECTILE_ART.md PA6)", () => {
 			expect([id, set.sheets]).toEqual([id, [{ assetId: SHEET_ID, w: 64, h: 64 }]]);
 			expect([id, sortedKeys(set.animations)]).toEqual([id, [BULLET_ART.animation]]);
 		}
-		for (const id of BULLET_ART.decalIds) expect([id, m.assets[id]]).toEqual([id, PLACEHOLDER_MANIFEST.assets[id]]);
+		for (const id of BULLET_ART.hazardSpriteIds)
+			expect([id, m.assets[id]]).toEqual([id, PLACEHOLDER_MANIFEST.assets[id]]);
 		// a source without `fx` carries no bullet impact (it follows the bullet source, not the generated one)
 		expect(m.assets[BULLET_ART.hitFx]).toBe(undefined);
 	});
@@ -196,7 +198,10 @@ describe("vale bullets (docs/PROJECTILE_ART.md PA6)", () => {
 			// the goo puddle draws its own sheet (docs/GOO_ART.md) once goo.png has an ID
 			const floorSprite =
 				BULLET_ART.floorSpriteIds.includes(id) && VALE_ASSET_IDS[VALE_GOO_SHEET.file] !== undefined;
-			const drawn = VALE_BULLET_LAYOUTS[id] !== undefined || floorSprite;
+			// likewise the floor hazards (docs/HAZARD_ART.md) once hazards.png has one
+			const hazard =
+				BULLET_ART.hazardSpriteIds.includes(id) && VALE_ASSET_IDS[VALE_HAZARD_SHEET.file] !== undefined;
+			const drawn = VALE_BULLET_LAYOUTS[id] !== undefined || floorSprite || hazard;
 			expect([id, m.assets[id].kind === "sprites"]).toEqual([id, drawn]);
 		}
 	});

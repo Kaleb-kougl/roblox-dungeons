@@ -151,6 +151,15 @@ export {
 export { bulletArtProblems, bulletArtReport, type BulletArtEntry, type BulletArtProblem } from "./bulletArt";
 export { GOO_ART_RULES, gooArtProblems, gooArtReport, type GooArtEntry, type GooArtProblem } from "./gooArt";
 export {
+	HAZARD_EMBER_ID,
+	HAZARD_STRIKE_ID,
+	hazardArtProblems,
+	hazardArtReport,
+	isGreyHex,
+	type HazardArtEntry,
+	type HazardArtProblem,
+} from "./hazardArt";
+export {
 	BOOST_AURA_ART,
 	boostAuraArtProblems,
 	boostAuraKindOf,
@@ -177,6 +186,7 @@ export {
 	type BreakableTheme,
 	type BulletArt,
 	type FloorSpriteArt,
+	type HazardSpriteArt,
 	type PelletTheme,
 	type TreasurePieceTheme,
 	type PactAltarTheme,
@@ -210,6 +220,7 @@ export {
 	type Breakable,
 	type BulletSprite,
 	type FloorSprite,
+	type HazardSprite,
 	type Pellet,
 	type TreasurePiece,
 	type PactAltar,

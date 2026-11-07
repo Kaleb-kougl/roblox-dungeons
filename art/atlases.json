@@ -2455,5 +2455,40 @@
 			"loop": true,
 			"grey": true
 		}
+	},
+	"hazards": {
+		"$comment": [
+			"docs/HAZARD_ART.md HA2: the floor hazards (the Stormcaller's strike, the build embers), ORIGINAL art drawn by",
+			"scripts/art/gen-hazard-art.js (art:build and art:lock run it first) into art/vendor/kaleb-vale/hazards/: the strike",
+			"seen from straight above (a true circle laid flat unstretched, so the camera foreshortens it onto the hit circle;",
+			"rimPx its hit rim, round(1.1 x 29.6) px), `flash` over its 0.1 s life and `scorch` (hot, cold) after it; the",
+			"ember in the 3/4 view, `burn` a seamless loop, `lit` its burning patch (covers the drawn disc, centred on the pivot).",
+			"Greyscale: the renderer tints the strike enemyBullet and the ember build.ember (HAD2). Its OWN sheet",
+			"art/build/<atlas>.png with src/shared/theme/packs/vale/hazardLayout.ts, so no other atlas repacks. pixelsPerTile:",
+			"the density it was drawn at (the swarmer's 29.6). Build just this group: node scripts/art/build-atlases.js --only",
+			"hazards (and --lock --only hazards)."
+		],
+		"atlas": "hazards",
+		"pixelsPerTile": 29.6,
+		"pixelsPerTileFrom": "enemy.swarmer",
+		"sets": {
+			"bullet.enemy.strike": {
+				"canvas": [77, 77],
+				"pivot": [38.5, 38.5],
+				"rimPx": 33,
+				"animations": {
+					"flash": { "file": "kaleb-vale/hazards/strike_flash.png", "frames": 3, "fps": 30 },
+					"scorch": { "file": "kaleb-vale/hazards/strike_scorch.png", "frames": 2, "fps": 1 }
+				}
+			},
+			"bullet.player.ember": {
+				"canvas": [17, 31],
+				"pivot": [8.5, 23.5],
+				"lit": [15, 12],
+				"animations": {
+					"burn": { "file": "kaleb-vale/hazards/ember_burn.png", "frames": 6, "fps": 12, "loop": true }
+				}
+			}
+		}
 	}
 }
