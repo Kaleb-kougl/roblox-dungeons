@@ -209,8 +209,9 @@ It never attacks and does no contact damage.
 - [ ] **FO10. [owner] Art and audio** (gold recolour via a pipeline `recolor` option, altar art, nine sounds; eight as
   built, no `amb.golden.loop`). The recolour is built (2026-11-04, docs/ART.md "Recolour"): `enemy.golden` = the
   swarmer's skeleton on a gold luminance ramp, bodyTiles 0.95, `golden-move.png` / `golden-death.png` + their two
-  outline sheets, uploaded 2026-11-04 5:03 PM (ids in `assetIds.ts`, so the bundled vale pack draws it); altar art
-  and the sounds pending.
+  outline sheets, uploaded 2026-11-04 5:03 PM (ids in `assetIds.ts`, so the bundled vale pack draws it). The altar
+  and the coin burst are built (2026-11-06, presentation only; "Altar and coin art" below): original pixel art,
+  `pact-altar.png` / `golden-coin.png`, upload pending; the sounds pending.
 - [ ] **FO11. Telemetry (optional).** Pending.
 - [x] **FO12. Docs** (this doc as built, CLAUDE.md log, sim README, CLIENT.md, DAILY.md).
 - [ ] **FO13. [owner] Playtest.** Pending.
@@ -451,11 +452,39 @@ Solo sword: focused 15 of 18, fighting the room 6 of 18, bracketing the plan's 5
   optional positional ambience.
 - `contract.luau` / `validate.luau` still 186 / 196 top-level locals.
 
+### Altar and coin art (FO10, 2026-11-06)
+
+Presentation only (no sim, dungeon, lockstep, hash, replay, fixture or score change). Original pixel art drawn by
+`scripts/art/gen-fortune-art.js` (art:build and art:lock run it first, like the vault cage) into
+`art/vendor/kaleb-vale/pact-altar/` and `golden-coin/`; no licence, notices or Credits entry.
+
+- **`pact.altar`**: a round stone altar (a two-step foot, a drum with a carved rune band, a cap slab) holding an iron
+  fire bowl with a bed of coals, modelled as solids of revolution and ray-cast in the game camera's projection (55
+  degrees, azimuth -45, 29.6 px a tile: gen-treasure-art.js' camera and sun), shaded from a 7-step neutral stone ramp
+  and the cage's iron ramp with cast shadows, a dark rim on the shadow side and a dithered contact shadow. Round, so one
+  facing. Neutral by design: the pact is still told by the view's Neon flame (in `pact.greed` / `pact.horde`) and the
+  card. A one-facing world sprite set (`idle`, 1 frame, `Pixelated`), cell 31 x 32, pivot the footprint centre.
+- **`fx.golden.coin`**: a greyscale one-shot (10 frames @ 20 fps, cell 29 x 30) tinted `golden.coin`: a four-point
+  flash, 7 coins tossed out over an arc spinning face / three-quarter / edge, twinkles at the top and on landing, a
+  one-pixel bounce, then they blink out. Vale look `sizeTiles` 1, not additive (the coins' dark rims would vanish);
+  GoldenRenderController plays it on each hit and x `fountainFxScale` 1.6 on a catch.
+- **Pipeline**: atlas group `fortune` (`--only fortune`, `--lock --only fortune`), each in a sheet of its own
+  (`pact-altar.png`, `golden-coin.png`), generated `packs/vale/fortuneLayout.ts` (`VALE_PACT_ALTAR_LAYOUT`,
+  `VALE_FORTUNE_FX_SHEET` / `_LAYOUTS`), so no shared atlas repacks. Vale maps the altar in `addWorldArt` and the coin
+  burst as its fourth fx source (`VALE_FX_PENDING` keeps only the boost pickup burst). Each switches on once its PNG has
+  an ID in `assetIds.ts`.
+- **View**: PactRenderController draws altar art at its own scale (shared/view/pacts `altarArtFit`: capped at
+  `PACTS_VIEW.artMaxHeightTiles` 1 above the pivot; `artHeightTiles` is gone) as an upright billboard of an image or a
+  sprite set's `idle` frame 0 in its resample mode, and stands the flame on `PACTS_VIEW.artTopTiles` 0.64 (the coal
+  bed, the generator's `ALTAR.coals`, scaled with any cap), so it rises out of the bowl. The plinth is unchanged.
+- Tests: `scripts/art/gen-fortune-art.test.js`, `scripts/art/fortune.test.js`, vale `fortuneArt.spec.ts`,
+  `pacts.spec.ts` (altarArtFit). Open: upload both PNGs, then the Studio check (the flame in the bowl, the burst's size).
+
 ### View (FO7-FO9)
 
 **Pacts.** `shared/view/pacts` (frame events collected per tick on `RunView.pacts`, altar look, the floor card, hint
 text, `GreedDealGap`, Horde helpers, `pactDebugText`); `PactRenderController` (folder / render step `KV_Pacts`: per
-altar `pact.altar` or the plinth with a Neon flame, the floor card on the combo shout's construction, the take's disc
+altar `pact.altar` (FO10 art at its own scale, the flame on its coal bed) or the plinth with a Neon flame, the floor card on the combo shout's construction, the take's disc
 pulse, `HORDE x2` / `WAVE 2` shouts, wave 2's spawn rings); `HordeChip` (status corner's boost row, touch strip);
 the shrine hint on an altar is the pact's title + accept line; the draft title from `draftKind` (`PACT OF GREED`);
 Greed's reveal waits 0.5 s after the draft opens (`GreedDealGap`, confirm held); room edges `roomEdge.horde`; kill pops

@@ -61,6 +61,7 @@ import {
 	PACT_HINT_SEPARATOR,
 	PACT_STRINGS,
 	PactFrameEvents,
+	altarArtFit,
 	altarFlameScale,
 	draftTitleKey,
 	greedPulseAt,
@@ -312,6 +313,22 @@ describe("pacts view: Greed's deal gap and take pulse (FO7)", () => {
 		expect(b.radiusTiles > a.radiusTiles && b.opacity < a.opacity).toBe(true);
 		expect(greedPulseAt(P.sec / 2, 0)!.radiusTiles).toBe(P.endTiles);
 		expect(greedPulseAt(P.sec, 1)).toBe(undefined);
+	});
+});
+
+describe("pacts view: altar art (docs/FORTUNE.md FO10)", () => {
+	it("draws art at its own scale with the flame on artTopTiles; art too tall is capped, its flame scaled with it", () => {
+		const own = { frameW: 31, frameH: 32, pivot: { x: 14, y: 20 }, pixelsPerTile: 29.6 };
+		const fit = altarArtFit(own);
+		expect(fit.layout).toEqual(own);
+		expect(fit.topTiles).toBe(PACTS_VIEW.artTopTiles);
+		const tall = { frameW: 30, frameH: 90, pivot: { x: 15, y: 88 }, pixelsPerTile: 29.6 };
+		const capped = altarArtFit(tall);
+		expect(capped.layout.pixelsPerTile).toBe(88 / PACTS_VIEW.artMaxHeightTiles);
+		expect(capped.layout.pivot.y / capped.layout.pixelsPerTile).toBe(PACTS_VIEW.artMaxHeightTiles);
+		expect(capped.topTiles).toBeCloseTo((PACTS_VIEW.artTopTiles * 29.6) / 88, 9);
+		// the flame always stands below the drawn top
+		expect(PACTS_VIEW.artTopTiles < PACTS_VIEW.artMaxHeightTiles).toBe(true);
 	});
 });
 

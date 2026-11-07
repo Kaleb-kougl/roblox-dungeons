@@ -731,7 +731,13 @@ Decision log (deviations from `PLAN.md`):
   pending. FO10's Goldling art is built (2026-11-04, presentation only): the atlas pipeline's per-set `recolor` (a
   gradient map by luminance, alpha kept, before crop / pivot / rim; docs/ART.md "Recolour") makes `enemy.golden` the
   swarmer's skeleton in gold (bodyTiles 0.95), `golden-move` / `golden-death` + rims; every older output byte-identical;
-  uploaded 2026-11-04 (ids in `assetIds.ts`).
+  uploaded 2026-11-04 (ids in `assetIds.ts`). The altar and the coin burst (2026-11-06, presentation only): original pixel art
+  from `scripts/art/gen-fortune-art.js` (a round stone altar with an iron fire bowl in the game camera's projection,
+  one facing, Pixelated; a greyscale 10-frame coin burst tinted `golden.coin`), each in a sheet of its own
+  (`pact-altar.png`, `golden-coin.png`) from atlas group `fortune` (`--only fortune`, generated
+  `packs/vale/fortuneLayout.ts`); vale's fourth fx source. PactRenderController draws altar art (an image or a sprite
+  set's idle frame) at its own scale (`altarArtFit`, cap `PACTS_VIEW.artMaxHeightTiles` 1; `artHeightTiles` gone) with
+  the flame on `PACTS_VIEW.artTopTiles` 0.64, the coal bed. Upload and Studio check pending.
 
 - **Projectile art (docs/PROJECTILE_ART.md).** Presentation only (no sim, dungeon, lockstep, hash, replay, fixture or
   score change). Every flying bullet can draw a sprite from J i m's 16Bit Bullets pack (free `Player Bullets.rar`;

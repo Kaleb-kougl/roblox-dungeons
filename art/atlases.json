@@ -2455,5 +2455,42 @@
 			"loop": true,
 			"grey": true
 		}
+	},
+	"fortune": {
+		"$comment": [
+			"The pact altar and the Goldling's coin burst (docs/FORTUNE.md FO10): original pixel art drawn by",
+			"scripts/art/gen-fortune-art.js (art:build and art:lock run it first) into art/vendor/kaleb-vale/, each in a sheet of",
+			"its own (pact-altar.png, golden-coin.png; generated src/shared/theme/packs/vale/fortuneLayout.ts), so neither",
+			"repacks the decor or effects atlas. altar: a round stone altar with an iron fire bowl in the game camera's",
+			"projection, one facing (round, so every camera turn sees the same), its pivot the footprint centre on the floor (the",
+			"generator's ALTAR_PIVOT); Pixelated (1 px detail); the view's flame stands on the coal bed (PACTS_VIEW.artTopTiles =",
+			"the generator's ALTAR.coals). coin: a greyscale burst strip, tinted golden.coin at draw time, played once. Build",
+			"just this group: node scripts/art/build-atlases.js --only fortune (and --lock --only fortune)."
+		],
+		"pixelsPerTile": 29.6,
+		"pixelsPerTileFrom": "enemy.swarmer",
+		"altar": {
+			"animations": {
+				"idle": {
+					"file": "kaleb-vale/pact-altar/altar_{f}.png",
+					"frames": [0],
+					"fps": 1,
+					"loop": true
+				}
+			},
+			"pivot": [[15, 22]],
+			"own": "pact-altar",
+			"resample": "Pixelated"
+		},
+		"coin": {
+			"atlas": "golden-coin",
+			"pad": 1,
+			"file": "kaleb-vale/golden-coin/coin.png",
+			"frameW": 36,
+			"frames": 10,
+			"fps": 20,
+			"loop": false,
+			"grey": true
+		}
 	}
 }

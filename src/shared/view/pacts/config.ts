@@ -16,10 +16,17 @@ export const PACTS_VIEW = {
 
 	// --- the altar -------------------------------------------------------------------------------------------------
 	/**
-	 * The altar's body: the pack's `pact.altar` (art drawn at artHeightTiles tall, standing on the floor, or the
-	 * placeholder plinth). Both altars draw the same body; the pact is told by the flame and the card.
+	 * The altar's body: the pack's `pact.altar` (an image or a sprite set's `idle` frame, drawn at its own pixelsPerTile
+	 * as an upright billboard on its pivot, at most artMaxHeightTiles above it), or the placeholder plinth. Both altars
+	 * draw the same body; the pact is told by the flame and the card.
 	 */
-	artHeightTiles: 0.75,
+	artMaxHeightTiles: 1,
+	/**
+	 * Where the flame stands on altar art, tiles above the floor at the art's own scale (scaled with it when the cap
+	 * shrinks it): the vale altar's coal bed (scripts/art/gen-fortune-art.js ALTAR.coals, docs/FORTUNE.md FO10), so the
+	 * flame rises out of the bowl's opening. The placeholder plinth's flame stands on its top.
+	 */
+	artTopTiles: 0.64,
 	/** The plinth stands this far above the floor, studs (ACTOR_VIEW.liftStuds' value, like the pellets' cubes). */
 	liftStuds: 0.02,
 	/**

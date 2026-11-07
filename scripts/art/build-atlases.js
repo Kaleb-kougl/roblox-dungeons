@@ -104,6 +104,8 @@
  *        node scripts/art/build-atlases.js --lock --only boostAuras BAD3; needs only the generated aura frames)
  *        node scripts/art/build-atlases.js --only treasure         the same for the vault cage and light column sheets
  *        node scripts/art/build-atlases.js --lock --only treasure  (docs/TREASURE.md TR9; needs only the generated frames)
+ *        node scripts/art/build-atlases.js --only fortune          the same for the pact altar and coin burst sheets
+ *        node scripts/art/build-atlases.js --lock --only fortune   (docs/FORTUNE.md FO10; needs only the generated frames)
  * Plain Node plus pngjs. The pure helpers are exported for scripts/art/build-atlases.test.js (npm run test:art).
  */
 "use strict";
@@ -129,6 +131,7 @@ const BULLET_LAYOUT_FILE = path.join(LAYOUT_DIR, "bulletLayout.ts");
 const GOO_LAYOUT_FILE = path.join(LAYOUT_DIR, "gooLayout.ts");
 const BOOST_AURA_LAYOUT_FILE = path.join(LAYOUT_DIR, "boostAuraLayout.ts");
 const TREASURE_LAYOUT_FILE = path.join(LAYOUT_DIR, "treasureLayout.ts");
+const FORTUNE_LAYOUT_FILE = path.join(LAYOUT_DIR, "fortuneLayout.ts");
 
 /** Roblox stores images at most this many pixels on a side. */
 const MAX_ATLAS = 1024;
@@ -545,6 +548,7 @@ function sourceFiles(config) {
 	for (const f of gooSourceFiles(config.goo)) files.add(f);
 	for (const f of boostAuraSourceFiles(config.boostAuras)) files.add(f);
 	for (const f of treasureSourceFiles(config.treasure)) files.add(f);
+	for (const f of fortuneSourceFiles(config.fortune)) files.add(f);
 	return [...files].sort();
 }
 
@@ -3792,6 +3796,144 @@ function printTreasure(t) {
 }
 
 // ---------------------------------------------------------------------------------------------
+// Fortune sheets (docs/FORTUNE.md FO10; config key `fortune`)
+//
+// The pact altar and the Goldling's coin burst: original pixel art drawn by scripts/art/gen-fortune-art.js (art:build and
+// art:lock run it first) into art/vendor/kaleb-vale/, each in a sheet of its own, so adding them never repacks the decor
+// or effects atlas. The treasure group's shape: `fortune`: { pixelsPerTile, pixelsPerTileFrom (optional, checked by a
+// full build), altar, coin }.
+//   altar  a world sprite set (the worldArt piece keys: facings (default one), animations, pivot, own; cleaned and cut by
+//          buildWorldSprites with worldArt's noiseAlpha / pad): its cells in one row of <own>.png; `resample` (optional,
+//          default "Default") is written into its layout.
+//   coin   an effect strip (the fx set keys: file, frameW, frames, fps, loop, grey; buildFxSet with `pad`) alone in
+//          <atlas>.png (packFx).
+// Outputs: art/build/<own>.png and <atlas>.png (also copied to art/upload/), contact sheets art/build/contact/
+// pact.altar.png / fx.golden.coin.png, and src/shared/theme/packs/vale/fortuneLayout.ts (VALE_PACT_ALTAR_LAYOUT,
+// VALE_FORTUNE_FX_SHEET, VALE_FORTUNE_FX_LAYOUTS). Build just this group: node scripts/art/build-atlases.js --only
+// fortune (and --lock --only fortune).
+
+const FORTUNE_ALTAR_ID = "pact.altar";
+const FORTUNE_COIN_ID = "fx.golden.coin";
+const FORTUNE_GROUP_KEYS = new Set(["$comment", "pixelsPerTile", "pixelsPerTileFrom", "altar", "coin"]);
+const FORTUNE_ALTAR_KEYS = new Set(["$comment", "facings", "animations", "pivot", "own", "resample"]);
+const FORTUNE_COIN_KEYS = new Set(["$comment", "atlas", "pad", "file", "frameW", "frames", "fps", "loop", "grey"]);
+
+/** Every vendor file the fortune group reads, sorted ([] without a group). */
+function fortuneSourceFiles(group) {
+	if (!group) return [];
+	const files = new Set();
+	const altar = group.altar;
+	if (!altar || !altar.animations) throw new Error("fortune.altar needs animations");
+	for (const fc of pieceFacings(FORTUNE_ALTAR_ID, altar)) {
+		for (const a of Object.values(altar.animations)) for (const f of a.frames) files.add(expandFile(a.file, fc.dir, fc.angle, f));
+	}
+	if (!group.coin || typeof group.coin.file !== "string" || group.coin.file === "") throw new Error("fortune.coin needs a file");
+	files.add(group.coin.file);
+	return [...files].sort();
+}
+
+/**
+ * Builds the fortune sheets: { altar: { piece, layout, file, img }, coin: { set, packed, sheet, layout },
+ * pixelsPerTileFrom }. `world` is the worldArt group (cleaning and pad); `spriteSets` as for buildGoo.
+ */
+function buildFortune(group, world, spriteSets) {
+	if (group === null || typeof group !== "object" || Array.isArray(group)) throw new Error("fortune must be an object");
+	for (const k of Object.keys(group)) if (!FORTUNE_GROUP_KEYS.has(k)) throw new Error(`fortune: unknown key ${k}`);
+	if (!world) throw new Error("fortune needs the worldArt group (its cleaning and pad)");
+	const ppt = group.pixelsPerTile;
+	if (typeof ppt !== "number" || !(ppt > 0)) throw new Error("fortune.pixelsPerTile must be a positive number");
+	const pixelsPerTileFrom = groupPixelsPerTileFrom("fortune", group, ppt, spriteSets);
+	// the altar: a world sprite set alone in its own sheet, one row of cells
+	const adef = group.altar;
+	for (const k of Object.keys(adef)) if (!FORTUNE_ALTAR_KEYS.has(k)) throw new Error(`${FORTUNE_ALTAR_ID}: unknown key ${k}`);
+	if (typeof adef.own !== "string" || !/^[a-z0-9-]+$/.test(adef.own)) throw new Error(`${FORTUNE_ALTAR_ID}: own must be a file name without .png`);
+	const resample = adef.resample === undefined ? "Default" : adef.resample;
+	if (!RESAMPLE_MODES.includes(resample)) throw new Error(`${FORTUNE_ALTAR_ID}: resample must be one of ${RESAMPLE_MODES.join(", ")}`);
+	const piece = buildWorldSprites(world, FORTUNE_ALTAR_ID, adef, ppt, world.pad);
+	if (piece.cells.length * piece.frameW > MAX_ATLAS) throw new Error(`${FORTUNE_ALTAR_ID}: ${piece.cells.length} cells of ${piece.frameW} px do not fit one row`);
+	const altarImg = raster(piece.cells.length * piece.frameW, piece.frameH);
+	piece.cells.forEach((c, k) => blit(c.img, 0, 0, piece.frameW, piece.frameH, altarImg, k * piece.frameW, 0, 0));
+	alphaBleed(altarImg);
+	const altarFile = `${adef.own}.png`;
+	piece.atlas = { file: altarFile, img: altarImg };
+	piece.startCell = 0;
+	piece.perRow = piece.cells.length;
+	const altarLayout = { ...worldLayout(piece), resample };
+	// the coin burst: an effect strip alone in its own sheet
+	const cdef = group.coin;
+	for (const k of Object.keys(cdef)) if (!FORTUNE_COIN_KEYS.has(k)) throw new Error(`${FORTUNE_COIN_ID}: unknown key ${k}`);
+	if (typeof cdef.atlas !== "string" || !/^[a-z0-9-]+$/.test(cdef.atlas)) throw new Error(`${FORTUNE_COIN_ID}: atlas must be a file name without .png`);
+	if (`${cdef.atlas}.png` === altarFile) throw new Error(`fortune: the altar and the coin burst cannot share ${altarFile}`);
+	const pad = cdef.pad === undefined ? 0 : cdef.pad;
+	if (!Number.isInteger(pad) || pad < 0) throw new Error(`${FORTUNE_COIN_ID}: pad must be a non-negative integer`);
+	if (typeof cdef.fps !== "number" || !(cdef.fps > 0)) throw new Error(`${FORTUNE_COIN_ID}: fps must be a positive number`);
+	const set = buildFxSet(FORTUNE_COIN_ID, cdef, pad);
+	const packed = packFx([set], "fortune");
+	const coinLayout = fxLayoutOf(packed.placed[0]);
+	const sheet = { file: `${cdef.atlas}.png`, w: packed.w, h: packed.h };
+	return { altar: { piece, layout: altarLayout, file: altarFile, img: altarImg }, coin: { set, packed, sheet, layout: coinLayout }, pixelsPerTileFrom };
+}
+
+/** packs/vale/fortuneLayout.ts: VALE_PACT_ALTAR_LAYOUT, VALE_FORTUNE_FX_SHEET, VALE_FORTUNE_FX_LAYOUTS. */
+function fortuneLayoutModule(t) {
+	const text = [
+		"// GENERATED by `npm run art:build` (scripts/art/build-atlases.js) from art/atlases.json. Do not edit.",
+		"",
+		"/**",
+		comment([
+			"Layout of the `vale` pack's Fortune art (docs/FORTUNE.md FO10): original pixel art by scripts/art/gen-fortune-art.js,",
+			"each in a sheet of its own. VALE_PACT_ALTAR_LAYOUT is `pact.altar`, a world sprite set (one facing: the altar is",
+			"round; `idle`); VALE_FORTUNE_FX_SHEET / VALE_FORTUNE_FX_LAYOUTS hold `fx.golden.coin`, a greyscale effect flipbook",
+			"(cells `start + f` of the SpriteSetAsset formula, perRow = floor(sheet w / frameW)) tinted at draw time. No asset",
+			"IDs: `file` names the PNG in art/build/ to upload.",
+		]),
+		" */",
+		"",
+		'import type { ValeFxLayout } from "./fxLayout";',
+		'import type { ValeSheetFile, ValeWorldSpriteLayout } from "./layout";',
+		"",
+		`export const VALE_PACT_ALTAR_LAYOUT: ValeWorldSpriteLayout = ${tsValue(t.altar.layout, 0, PRINT_WIDTH)};`,
+		"",
+		`export const VALE_FORTUNE_FX_SHEET: ValeSheetFile = ${tsValue(t.coin.sheet, 0, PRINT_WIDTH)};`,
+		"",
+		`export const VALE_FORTUNE_FX_LAYOUTS: Record<string, ValeFxLayout> = ${tsValue({ [FORTUNE_COIN_ID]: t.coin.layout }, 0, PRINT_WIDTH)};`,
+		"",
+	].join("\n");
+	for (const line of text.split("\n")) {
+		if (line.replace(/\t/g, "    ").length > PRINT_WIDTH) throw new Error(`fortuneLayout.ts line over ${PRINT_WIDTH} columns: ${line}`);
+	}
+	return text;
+}
+
+/** The coin burst's contact sheet: every frame read back through its layout. */
+function fortuneCoinContact(t) {
+	const l = t.coin.layout;
+	const cells = [];
+	for (let f = 0; f < l.frames; f++) cells.push([t.coin.packed.img, ...fxCellAt(t.coin.packed.w, l, f)]);
+	return scaledContact(cells, l.frameW, l.frameH, l.pivot);
+}
+
+/** Every output of the fortune group: [dir, name, img]. */
+function fortuneOutputs(t) {
+	return [
+		["build", t.altar.file, t.altar.img],
+		["build", t.coin.sheet.file, t.coin.packed.img],
+		["contact", `${FORTUNE_ALTAR_ID}.png`, worldContact(t.altar.piece)],
+		["contact", `${FORTUNE_COIN_ID}.png`, fortuneCoinContact(t)],
+	];
+}
+
+/** Log lines for the built fortune sheets. */
+function printFortune(t) {
+	const a = t.altar.layout;
+	const l = t.coin.layout;
+	const from = t.pixelsPerTileFrom ? ` (pixelsPerTileFrom ${t.pixelsPerTileFrom.id}: ${t.pixelsPerTileFrom.checked ? "equal" : "unchecked, its set is not built by --only"})` : "";
+	console.log(`fortune: ${a.pixelsPerTile} px/tile${from}`);
+	console.log(`  ${FORTUNE_ALTAR_ID}: ${t.altar.file} ${t.altar.img.w}x${t.altar.img.h}, cells ${a.frameW}x${a.frameH} x ${t.altar.piece.cells.length} (${t.altar.piece.dirs.join(" ")}), pivot (${a.pivot.x}, ${a.pivot.y}), ${a.resample}`);
+	console.log(`  ${FORTUNE_COIN_ID}: ${t.coin.sheet.file} ${t.coin.sheet.w}x${t.coin.sheet.h}, cell ${l.frameW}x${l.frameH}, ${l.frames} frames @ ${l.fps} fps${l.loop ? " loop" : ""}, ${l.grey ? "grey" : `mean ${l.meanColor}`}`);
+}
+
+// ---------------------------------------------------------------------------------------------
 // Main
 
 function writeIfChanged(file, content) {
@@ -3843,7 +3985,7 @@ function onlyGroup(argv) {
 }
 
 /** Groups `--only` can build on their own (their sources need no other pack). */
-const ONLY_GROUPS = ["bullets", "goo", "boostAuras", "treasure"];
+const ONLY_GROUPS = ["bullets", "goo", "boostAuras", "treasure", "fortune"];
 
 /** The vendor files `--lock --only <group>` re-hashes. */
 function onlyGroupSourceFiles(config, group) {
@@ -3859,6 +4001,10 @@ function onlyGroupSourceFiles(config, group) {
 	if (group === "treasure") {
 		if (!config.treasure) fail("art/atlases.json has no `treasure` group");
 		return treasureSourceFiles(config.treasure);
+	}
+	if (group === "fortune") {
+		if (!config.fortune) fail("art/atlases.json has no `fortune` group");
+		return fortuneSourceFiles(config.fortune);
 	}
 	throw new Error(`no --only group ${group}`);
 }
@@ -3940,6 +4086,26 @@ function mainOnlyTreasure(config) {
 	console.log(`art:build --only treasure: ${changed} file(s) updated`);
 }
 
+/**
+ * `--only fortune` (docs/FORTUNE.md FO10): checks the fortune group's files against the lock, then writes ONLY its two
+ * sheets (and their art/upload copies), their contact sheets and packs/vale/fortuneLayout.ts, byte for byte what a full
+ * build writes for them (pixelsPerTileFrom unchecked). Nothing else is read, written or removed.
+ */
+function mainOnlyFortune(config) {
+	if (!config.fortune) fail("art/atlases.json has no `fortune` group");
+	checkLock(config, fortuneSourceFiles(config.fortune));
+	const t = buildFortune(config.fortune, config.worldArt, undefined);
+	let changed = 0;
+	for (const [dir, name, img] of fortuneOutputs(t)) {
+		const png = encodePng(img);
+		if (writeIfChanged(path.join(dir === "build" ? BUILD : CONTACT, name), png)) changed++;
+		if (dir === "build" && writeIfChanged(path.join(UPLOAD, name), png)) changed++;
+	}
+	if (writeIfChanged(FORTUNE_LAYOUT_FILE, fortuneLayoutModule(t))) changed++;
+	printFortune(t);
+	console.log(`art:build --only fortune: ${changed} file(s) updated`);
+}
+
 function main() {
 	const config = JSON.parse(fs.readFileSync(CONFIG_FILE, "utf8"));
 	const only = onlyGroup(process.argv);
@@ -3961,6 +4127,10 @@ function main() {
 	}
 	if (only === "treasure") {
 		mainOnlyTreasure(config);
+		return;
+	}
+	if (only === "fortune") {
+		mainOnlyFortune(config);
 		return;
 	}
 	checkLock(config);
@@ -4021,6 +4191,11 @@ function main() {
 		treasure = buildTreasure(config.treasure, config.worldArt, sets);
 		for (const [dir, name, img] of treasureOutputs(treasure)) emit(dir === "build" ? BUILD : CONTACT, name, img, dir === "build" ? builtFiles : contactFiles);
 	}
+	let fortune;
+	if (config.fortune) {
+		fortune = buildFortune(config.fortune, config.worldArt, sets);
+		for (const [dir, name, img] of fortuneOutputs(fortune)) emit(dir === "build" ? BUILD : CONTACT, name, img, dir === "build" ? builtFiles : contactFiles);
+	}
 	removeStale(BUILD, builtFiles);
 	removeStale(CONTACT, contactFiles);
 
@@ -4037,6 +4212,7 @@ function main() {
 	if (goo && writeIfChanged(GOO_LAYOUT_FILE, gooLayoutModule(goo.sheet, goo.layout))) changed++;
 	if (auras && writeIfChanged(BOOST_AURA_LAYOUT_FILE, boostAuraLayoutModule(auras.sheet, auras.layouts))) changed++;
 	if (treasure && writeIfChanged(TREASURE_LAYOUT_FILE, treasureLayoutModule(treasure))) changed++;
+	if (fortune && writeIfChanged(FORTUNE_LAYOUT_FILE, fortuneLayoutModule(fortune))) changed++;
 
 	for (const s of sets) {
 		const l = s.layout;
@@ -4068,6 +4244,7 @@ function main() {
 	if (goo) printGoo(goo, config.goo);
 	if (auras) printBoostAuras(auras, config.boostAuras);
 	if (treasure) printTreasure(treasure);
+	if (fortune) printFortune(fortune);
 	if (icons) {
 		console.log(`ui icons: ${icons.file} ${icons.w}x${icons.h}, ${icons.pieces.length} icons, ${icons.gutter} px extruded gutter (contact numbers in id order)`);
 		Object.keys(icons.layouts)
@@ -4115,6 +4292,9 @@ module.exports = {
 	buildBoostAuras,
 	buildGoo,
 	buildTreasure,
+	buildFortune,
+	fortuneLayoutModule,
+	fortuneSourceFiles,
 	bulletContact,
 	bulletGates,
 	bulletLayoutModule,

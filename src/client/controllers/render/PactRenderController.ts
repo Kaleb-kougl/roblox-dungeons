@@ -7,7 +7,7 @@ import { CAMERA_PITCH_DEG, STUDS_PER_TILE } from "shared/config";
 import { keyDevice, RUN_ATTRIBUTES, shrineHint } from "shared/play";
 import { PACT_KIND_COUNT, PactKind, SIM_HZ, TILE_SIZE, type SimConfig, type SimState } from "shared/sim";
 import type { JuiceSettings } from "shared/settings";
-import type { ColorRole, PactAltar, StringVars, ThemePack, WorldImage } from "shared/theme";
+import type { ColorRole, PactAltar, StringVars, ThemePack, WorldVisual } from "shared/theme";
 import { BULLET_VIEW, SPRITE_VIEW, floorStudsY, spriteBillboard, studsX, studsZ } from "shared/view";
 import { FX_SPRITE_VIEW, effectiveParticles, motionScale } from "shared/view/fx";
 import {
@@ -22,6 +22,7 @@ import {
 	AltarFlame,
 	PACTS_VIEW,
 	PACT_STRINGS,
+	altarArtFit,
 	altarFlameScale,
 	greedPulseAt,
 	hordeRingFillOpacity,
@@ -46,7 +47,7 @@ import { ComboController } from "../fx/ComboController";
 import { FxTrackerController } from "../fx/FxTrackerController";
 import { SimController } from "../game/SimController";
 import { ThemeController } from "../game/ThemeController";
-import { heightLayout, visualLayout } from "./decorParts";
+import { restingAnimation, visualLayout } from "./decorParts";
 import { FLOOR_CANVAS_YAW, floorCanvasPartSize } from "./floorCanvas";
 import { buildPlaceholder, destroyModel, renderPart, setModelColor, type PlaceholderModel } from "./placeholders";
 
@@ -65,6 +66,8 @@ const PULSE_LAYER = COMBO_SHOUT_DRAW.layerStepsBelowEffects + 2;
 const RING_LAYER = COMBO_SHOUT_DRAW.layerStepsBelowEffects + 3;
 /** A card's opacity is rewritten only when it moves this much. */
 const EPS = 0.005;
+/** The altar art's resting animation (the pact slot's base animation, contract PACT): frame 0 is drawn. */
+const IDLE_ANIMATION = "idle";
 
 /** A floor layer's top, studs (FxSpriteController's floor placement, `steps` layers under the effects). */
 function layerTop(steps: number): number {
@@ -109,9 +112,10 @@ interface Disc {
  * ticks), with the view player (SimController.getViewPlayerIndex: the watched teammate while spectating) for what is
  * personal and party state otherwise:
  *
- *   altars    per floor whose altars stand, both altar cells get the pack's `pact.altar` (an upright image billboard
- *             at PACTS_VIEW.artHeightTiles, or the placeholder plinth; a sprite set draws the plinth too, as no altar
- *             art has animations yet) and a flame (a small Neon block on its top) by shared/view/pacts pactAltarLook:
+ *   altars    per floor whose altars stand, both altar cells get the pack's `pact.altar` (an upright billboard of the
+ *             image, or of a sprite set's `idle` frame 0 in its resample mode, at its own scale capped by
+ *             shared/view/pacts altarArtFit; or the placeholder plinth) and a flame (a small Neon block standing on
+ *             the art's PACTS_VIEW.artTopTiles, or the plinth's top) by shared/view/pacts pactAltarLook:
  *             Greed `pact.greed` while it is the view player's, the Horde a low ember of `pact.horde` while offered and
  *             full red and larger once armed; off (and the body darkened PACTS_VIEW.spentDim toward the background)
  *             once the altar gives the view player nothing. The flame flickers (x the juice motionScale: still under
@@ -263,11 +267,11 @@ export class PactRenderController implements OnStart {
 		let bodyAnchor: Part | undefined;
 		let topStuds = 0;
 		const art = theme.art;
-		if (art !== undefined && art.kind === "image") {
-			const built = this.buildImage(art, base, folder);
+		const built = art !== undefined ? this.buildArt(art, base, folder) : undefined;
+		if (built !== undefined) {
 			bodyImage = built.label;
 			bodyAnchor = built.anchor;
-			topStuds = V.artHeightTiles * STUDS_PER_TILE;
+			topStuds = built.topTiles * STUDS_PER_TILE;
 		} else {
 			body = buildPlaceholder(pack, theme.id, theme.placeholder, 1, folder, false);
 			for (const piece of body.pieces) piece.part.CFrame = base.mul(piece.offset);
@@ -320,14 +324,40 @@ export class PactRenderController implements OnStart {
 		return view;
 	}
 
-	/** An upright image billboard standing on the altar cell, PACTS_VIEW.artHeightTiles tall (its pivot on the cell). */
-	private buildImage(art: WorldImage, base: CFrame, folder: Folder): { anchor: Part; label: ImageLabel } {
+	/**
+	 * An upright billboard of the altar art standing on the altar cell (its pivot on the cell), laid out by altarArtFit:
+	 * an image region, or a sprite set's `idle` frame 0 (the altar does not animate) in the set's resample mode.
+	 * Undefined (draw the plinth) for a sprite set with no frames to show.
+	 */
+	private buildArt(
+		art: WorldVisual,
+		base: CFrame,
+		folder: Folder,
+	): { anchor: Part; label: ImageLabel; topTiles: number } | undefined {
+		let image: string;
+		let offset: Vector2;
+		let size: Vector2;
+		let resample: Enum.ResamplerMode = Enum.ResamplerMode.Default;
+		if (art.kind === "image") {
+			image = art.image;
+			offset = art.offset;
+			size = art.size;
+		} else {
+			const anim = restingAnimation(art.set, IDLE_ANIMATION);
+			if (anim === undefined) return undefined;
+			const frame = art.set.frame(anim, 0, 0);
+			image = frame.image;
+			offset = frame.offset;
+			size = frame.size;
+			resample = Enum.ResamplerMode[art.set.resample];
+		}
+		const fit = altarArtFit(visualLayout(art));
 		const anchor = renderPart("Part", false);
 		anchor.Name = "AltarArt";
 		anchor.Transparency = HIDDEN;
 		anchor.Size = new Vector3(SPRITE_VIEW.anchorStuds, SPRITE_VIEW.anchorStuds, SPRITE_VIEW.anchorStuds);
 		anchor.CFrame = base;
-		const board = spriteBillboard(heightLayout(visualLayout(art), PACTS_VIEW.artHeightTiles));
+		const board = spriteBillboard(fit.layout);
 		const gui = createKvBillboardGui("Altar");
 		gui.Size = new UDim2(board.w, 0, board.h, 0);
 		gui.StudsOffset = new Vector3(board.offsetX, board.offsetY, board.offsetZ);
@@ -340,13 +370,14 @@ export class PactRenderController implements OnStart {
 		label.BackgroundTransparency = HIDDEN;
 		label.BorderSizePixel = 0;
 		label.Size = UDim2.fromScale(1, 1);
-		label.Image = art.image;
-		label.ImageRectOffset = art.offset;
-		label.ImageRectSize = art.size;
+		label.Image = image;
+		label.ImageRectOffset = offset;
+		label.ImageRectSize = size;
+		label.ResampleMode = resample;
 		label.Parent = gui;
 		gui.Parent = anchor;
 		anchor.Parent = folder;
-		return { anchor, label };
+		return { anchor, label, topTiles: fit.topTiles };
 	}
 
 	private flameSize(scale: number): Vector3 {

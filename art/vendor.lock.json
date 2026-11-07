@@ -1332,6 +1332,11 @@
 			"bytes": 833
 		},
 		{
+			"path": "kaleb-vale/golden-coin/coin.png",
+			"sha256": "f9cab4c410bb725370c3c3e5e56db80a6cd3967ed28a784c27353a7bfce26e29",
+			"bytes": 2961
+		},
+		{
 			"path": "kaleb-vale/loot-glint/loot_glint_0.png",
 			"sha256": "14b3a0328651b9b4c19ff9808431b2365e073a5dd565d9d6c0c6d1ec23716a13",
 			"bytes": 145
@@ -1370,6 +1375,11 @@
 			"path": "kaleb-vale/loot-glint/loot_glint_7.png",
 			"sha256": "10f56ff132326812e168a78220b35a6f76a3d3e3e6961c20c482c937708f3c8a",
 			"bytes": 164
+		},
+		{
+			"path": "kaleb-vale/pact-altar/altar_0.png",
+			"sha256": "410a2f4558059130badefbd8fd4fb22ba929bf31200a5abbdac7cb6fd7baacec",
+			"bytes": 1170
 		},
 		{
 			"path": "kaleb-vale/pellets/pellet.png",

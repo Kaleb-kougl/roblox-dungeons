@@ -25,6 +25,8 @@ import {
 	type SimState,
 } from "shared/sim";
 import type { ColorRole, StringVars } from "shared/theme";
+import { breakableArtLayout } from "../breakables";
+import type { SpriteLayout } from "../sprites";
 import { HORDE_CHIP_VIEW, PACTS_VIEW } from "./config";
 
 export type PactStr = (key: string, vars?: StringVars) => string;
@@ -135,6 +137,22 @@ export function altarFlameScale(flame: AltarFlameId, timeSec: number, motion: nu
 	const m = math.clamp(motion, 0, 1);
 	const flicker = 1 + V.flickerAmount * m * math.sin(2 * math.pi * V.flickerHz * timeSec);
 	return flame === AltarFlame.ARMED ? flicker * V.armedScale : flicker;
+}
+
+/** Altar art as drawn: its billboard layout and where its flame stands (docs/FORTUNE.md FO10). */
+export interface AltarArtFit {
+	/** The art's layout at its own pixelsPerTile, capped at PACTS_VIEW.artMaxHeightTiles above its pivot. */
+	readonly layout: SpriteLayout;
+	/** The flame's base above the floor, tiles: PACTS_VIEW.artTopTiles, scaled with the cap. */
+	readonly topTiles: number;
+}
+
+/** How altar art laid out as `art` (an image region's or a sprite set's layout) is drawn (altarArtFit). */
+export function altarArtFit(art: SpriteLayout): AltarArtFit {
+	const V = PACTS_VIEW;
+	const layout = breakableArtLayout(art, V.artMaxHeightTiles);
+	const shrink = layout.pixelsPerTile > 0 ? art.pixelsPerTile / layout.pixelsPerTile : 1;
+	return { layout, topTiles: V.artTopTiles * shrink };
 }
 
 // ---------------------------------------------------------------------------------------------

@@ -84,6 +84,7 @@ import type {
 import { deepClone, sortedKeys } from "../../util";
 import { PELLET_KINDS, pelletId, type PelletKind } from "../../pellets";
 import { TREASURE_CAGE_ID, TREASURE_IDS } from "../../treasure";
+import { PACT_ALTAR_ID } from "../../fortune";
 import { PLACEHOLDER_MANIFEST } from "../placeholder";
 import { VALE_ASSET_IDS } from "./assetIds";
 import { VALE_SOUND_LAYOUTS, type ValeSoundLayout } from "./audioLayout";
@@ -92,6 +93,7 @@ import { valeBoostAuraAssets, type ValeBoostAuraSource } from "./boostAuras";
 import { valeGooAsset, type ValeGooSource } from "./goo";
 import { valeAmbientAssets, valeFxAssets, valeFxSources } from "./fx";
 import { VALE_TREASURE_CAGE_LAYOUT } from "./treasureLayout";
+import { VALE_PACT_ALTAR_LAYOUT } from "./fortuneLayout";
 import {
 	VALE_FLOOR_HEX,
 	VALE_IMAGE_LAYOUTS,
@@ -553,6 +555,10 @@ function addWorldArt(manifest: ThemeManifest, ids: AssetIds): void {
 	// the vault cage (docs/TREASURE.md TR9): its own sheet vault-cage.png; the placeholder bars until it has an ID
 	const cage = worldAsset(VALE_TREASURE_CAGE_LAYOUT, ids, {});
 	if (cage !== undefined) manifest.assets[TREASURE_CAGE_ID] = cage;
+	// the pact altar (docs/FORTUNE.md FO10): original pixel art (scripts/art/gen-fortune-art.js) in its own sheet
+	// pact-altar.png, one facing (round); the placeholder plinth until it has an ID
+	const altar = worldAsset(VALE_PACT_ALTAR_LAYOUT, ids, {});
+	if (altar !== undefined) manifest.assets[PACT_ALTAR_ID] = altar;
 }
 
 /** A sound from its layout, or undefined (the placeholder's SILENT stays) while any of its files has no ID. */
