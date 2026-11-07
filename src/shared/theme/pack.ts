@@ -33,6 +33,7 @@ import {
 	type BreakableTheme,
 	type BulletArt,
 	type FloorSpriteArt,
+	type HazardSpriteArt,
 	type DecorArt,
 	type FxArt,
 	type LocaleReport,
@@ -298,6 +299,27 @@ export interface FloorSprite {
 }
 
 /**
+ * A floor hazard sprite (docs/HAZARD_ART.md HA3, ThemeCore.hazardSprite: the strike, the embers): a one-facing greyscale
+ * set lying flat on the floor, tinted by the renderer. `frames(anim)` cells per animation (the strike's `flash` /
+ * `scorch`, the ember's `burn`), `frame(anim, index)` one of them (wraps). The strike's hit rim `rimPx`, the ember's
+ * patch `litW` x `litH`, art px (0 on the other). Undefined from ThemePack.hazardSprite: draw the placeholder disc.
+ */
+export interface HazardSprite {
+	readonly id: string;
+	readonly set: SpriteSet;
+	readonly rimPx: number;
+	readonly litW: number;
+	readonly litH: number;
+	/** Cells of `anim` (0 for an animation the hazard does not define). */
+	readonly frames: (anim: string) => number;
+	/** The animation's frame rate from the set (the ember's loop plays at it). */
+	readonly fps: (anim: string) => number;
+	/** Cell `index` of `anim` (wraps). */
+	readonly frame: (anim: string, index: number) => SpriteFrame;
+	readonly core: HazardSpriteArt;
+}
+
+/**
  * A sprite effect (ThemeCore.fx) with Roblox types: a one-facing SpriteSet, its flipbook and how to draw it. Drawn
  * widthTiles x heightTiles; `ImageColor3 = color`; `additive`: LightInfluence 0.
  */
@@ -379,6 +401,7 @@ export class ThemePack {
 	private readonly fxSprites = new Map<string, FxSprite | false>();
 	private readonly bulletSprites = new Map<string, BulletSprite | false>();
 	private readonly floorSprites = new Map<string, FloorSprite | false>();
+	private readonly hazardSprites = new Map<string, HazardSprite | false>();
 
 	/** Defensive: a manifest that failed validation still loads; bad entries fall back individually. */
 	constructor(manifest: unknown, opts: ThemePackOptions = {}) {
@@ -702,6 +725,40 @@ export class ThemePack {
 			};
 		}
 		this.floorSprites.set(id, out ?? false);
+		return out;
+	}
+
+	/**
+	 * A floor hazard's sprite (docs/HAZARD_ART.md HA3: a BULLET_ART.hazardSpriteIds id, the strike or the embers),
+	 * cached. Undefined, without a warning, when the pack has none: draw the placeholder disc. Art the renderer cannot
+	 * draw warns once and is undefined too (ThemeCore.hazardSprite).
+	 */
+	hazardSprite(id: string): HazardSprite | undefined {
+		const cached = this.hazardSprites.get(id);
+		if (cached !== undefined) {
+			return cached === false ? undefined : cached;
+		}
+		const core = this.core.hazardSprite(id);
+		const set = core !== undefined ? this.sprites(id) : undefined;
+		let out: HazardSprite | undefined;
+		if (core !== undefined && set !== undefined) {
+			const count = (anim: string) => core.frames.get(anim) ?? 0;
+			out = {
+				id,
+				set,
+				rimPx: core.rimPx,
+				litW: core.litW,
+				litH: core.litH,
+				frames: count,
+				fps: (anim) => core.set.animation(anim)?.fps ?? 1,
+				frame: (anim, index) => {
+					const n = math.max(1, count(anim));
+					return set.frame(anim, 0, ((index % n) + n) % n);
+				},
+				core,
+			};
+		}
+		this.hazardSprites.set(id, out ?? false);
 		return out;
 	}
 

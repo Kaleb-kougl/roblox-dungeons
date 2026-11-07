@@ -30,6 +30,9 @@
  *   -> src/shared/theme/packs/vale/boostAuraLayout.ts generated (committed): the boost aura sheet (docs/BOOST_ART.md
  *                                        BAD3; config key `boostAuras`; section "Boost aura sheet" below), with its
  *                                        sheet art/build/boost-auras.png and contact sheet art/build/contact/boost-auras.png
+ *   -> src/shared/theme/packs/vale/hazardLayout.ts generated (committed): the floor hazard sheet (docs/HAZARD_ART.md
+ *                                        HA2; config key `hazards`; section "Hazard sheet" below), with its sheet
+ *                                        art/build/hazards.png and contact sheet art/build/contact/hazards.png
  *
  * World art (decor props, effects, breakables; docs/DECOR.md R5) has its own section below ("World art").
  *
@@ -104,6 +107,8 @@
  *        node scripts/art/build-atlases.js --lock --only boostAuras BAD3; needs only the generated aura frames)
  *        node scripts/art/build-atlases.js --only treasure         the same for the vault cage and light column sheets
  *        node scripts/art/build-atlases.js --lock --only treasure  (docs/TREASURE.md TR9; needs only the generated frames)
+ *        node scripts/art/build-atlases.js --only hazards          the same for the floor hazard sheet (docs/HAZARD_ART.md
+ *        node scripts/art/build-atlases.js --lock --only hazards   HA2; needs only the generated strips)
  *        node scripts/art/build-atlases.js --only fortune          the same for the pact altar and coin burst sheets
  *        node scripts/art/build-atlases.js --lock --only fortune   (docs/FORTUNE.md FO10; needs only the generated frames)
  * Plain Node plus pngjs. The pure helpers are exported for scripts/art/build-atlases.test.js (npm run test:art).
@@ -548,6 +553,7 @@ function sourceFiles(config) {
 	for (const f of gooSourceFiles(config.goo)) files.add(f);
 	for (const f of boostAuraSourceFiles(config.boostAuras)) files.add(f);
 	for (const f of treasureSourceFiles(config.treasure)) files.add(f);
+	for (const f of hazardSourceFiles(config.hazards)) files.add(f);
 	for (const f of fortuneSourceFiles(config.fortune)) files.add(f);
 	return [...files].sort();
 }
@@ -3796,6 +3802,266 @@ function printTreasure(t) {
 }
 
 // ---------------------------------------------------------------------------------------------
+// Hazard sheet (docs/HAZARD_ART.md HA2; config key `hazards`)
+//
+// The floor hazards (the Stormcaller's strike, the build embers): original greyscale pixel art drawn by
+// scripts/art/gen-hazard-art.js (art:build and art:lock run it first) into art/vendor/kaleb-vale/hazards/, packed into
+// ONE sheet of its own (art/build/<atlas>.png, generated src/shared/theme/packs/vale/hazardLayout.ts), so no other
+// atlas repacks. `hazards`: { atlas, pixelsPerTile, pixelsPerTileFrom (optional: as for `goo`, checked by a full
+// build), sets: { "<bullet id>": { canvas [w, h] (every strip's frame size), pivot [x, y] (canvas px), rimPx (the
+// strike: its hit rim), lit [w, h] (the ember: the box that covers the drawn disc, centred on the pivot), animations:
+// { name: { file, frames, fps, loop? } } } } }. No crop (the generator's canvases are tight) and no recolour: every
+// visible pixel must already be grey (the renderer tints it), checked here. A set's animations are its frames in
+// animation order, one band of packFx. Build just this group: node scripts/art/build-atlases.js --only hazards (and
+// --lock --only hazards).
+
+const HAZARD_IDS = ["bullet.enemy.strike", "bullet.player.ember"];
+const HAZARD_GROUP_KEYS = new Set(["$comment", "atlas", "pixelsPerTile", "pixelsPerTileFrom", "sets"]);
+const HAZARD_SET_KEYS = new Set(["$comment", "canvas", "pivot", "rimPx", "lit", "animations"]);
+const HAZARD_ANIM_KEYS = new Set(["$comment", "file", "frames", "fps", "loop"]);
+const HAZARD_LAYOUT_FILE = path.join(LAYOUT_DIR, "hazardLayout.ts");
+
+/** The group's set ids in HAZARD_IDS order (throws on an unknown one). */
+function hazardIds(group) {
+	const ids = group.sets && typeof group.sets === "object" ? Object.keys(group.sets).filter((k) => !k.startsWith("$")) : [];
+	for (const id of ids) if (!HAZARD_IDS.includes(id)) throw new Error(`hazards.sets: unknown hazard ${id} (one of ${HAZARD_IDS.join(", ")})`);
+	return HAZARD_IDS.filter((id) => ids.includes(id));
+}
+
+/** A set's animation names in config order (no `$` keys). */
+function hazardAnimNames(id, def) {
+	if (!def.animations || typeof def.animations !== "object" || Array.isArray(def.animations)) throw new Error(`${id}: animations must be an object`);
+	const names = Object.keys(def.animations).filter((k) => !k.startsWith("$"));
+	if (names.length === 0) throw new Error(`${id}: no animations`);
+	return names;
+}
+
+/** Every vendor file the hazards group reads, sorted ([] without a group). */
+function hazardSourceFiles(group) {
+	if (!group) return [];
+	const out = [];
+	for (const id of hazardIds(group)) {
+		const def = group.sets[id];
+		for (const name of hazardAnimNames(id, def)) {
+			const a = def.animations[name];
+			if (!a || typeof a.file !== "string" || a.file === "") throw new Error(`${id}.${name} needs a file`);
+			out.push(a.file);
+		}
+	}
+	return out.sort();
+}
+
+/** A pair of positive numbers [a, b] (integers when `int`). */
+function hazardPair(what, v, int) {
+	const ok = Array.isArray(v) && v.length === 2 && v.every((n) => typeof n === "number" && n > 0 && (!int || Number.isInteger(n)));
+	if (!ok) throw new Error(`${what} must be [a, b] of positive ${int ? "integers" : "numbers"}, got ${JSON.stringify(v)}`);
+	return v;
+}
+
+/**
+ * Builds the hazard sheet: { file, sets, packed, sheet, layouts, pixelsPerTileFrom }. `spriteSets` as for buildGoo
+ * (undefined: pixelsPerTileFrom unchecked). Throws on a bad config, a strip of the wrong size or a pixel not grey.
+ */
+function buildHazards(group, spriteSets) {
+	if (group === null || typeof group !== "object" || Array.isArray(group)) throw new Error("hazards must be an object");
+	for (const k of Object.keys(group)) if (!HAZARD_GROUP_KEYS.has(k)) throw new Error(`hazards: unknown key ${k}`);
+	if (typeof group.atlas !== "string" || !/^[a-z0-9-]+$/.test(group.atlas)) throw new Error(`hazards.atlas must be a file name without .png, got ${JSON.stringify(group.atlas)}`);
+	const ppt = group.pixelsPerTile;
+	if (typeof ppt !== "number" || !(ppt > 0)) throw new Error("hazards.pixelsPerTile must be a positive number");
+	const pixelsPerTileFrom = groupPixelsPerTileFrom("hazards", group, ppt, spriteSets);
+	const ids = hazardIds(group);
+	if (ids.length === 0) throw new Error("hazards.sets holds no hazard");
+	const sets = ids.map((id) => {
+		const def = group.sets[id];
+		if (def === null || typeof def !== "object" || Array.isArray(def)) throw new Error(`${id}: the hazard set must be an object`);
+		for (const k of Object.keys(def)) if (!HAZARD_SET_KEYS.has(k)) throw new Error(`${id}: unknown hazard set key ${k}`);
+		const [w, h] = hazardPair(`${id}.canvas`, def.canvas, true);
+		const [px, py] = hazardPair(`${id}.pivot`, def.pivot, false);
+		if (px > w || py > h) throw new Error(`${id}: pivot ${def.pivot} outside its ${w}x${h} canvas`);
+		if (id === "bullet.enemy.strike" && !(typeof def.rimPx === "number" && def.rimPx > 0 && def.rimPx <= Math.min(w, h) / 2)) {
+			throw new Error(`${id}: rimPx must be a positive number within half the canvas`);
+		}
+		if (id !== "bullet.enemy.strike" && def.rimPx !== undefined) throw new Error(`${id}: only the strike takes rimPx`);
+		if (id === "bullet.player.ember") {
+			const [lw, lh] = hazardPair(`${id}.lit`, def.lit, true);
+			if (lw > w || lh > h) throw new Error(`${id}: lit ${def.lit} larger than its canvas`);
+		} else if (def.lit !== undefined) throw new Error(`${id}: only the ember takes lit`);
+		const frames = [];
+		const anims = [];
+		for (const name of hazardAnimNames(id, def)) {
+			const a = def.animations[name];
+			for (const k of Object.keys(a)) if (!HAZARD_ANIM_KEYS.has(k)) throw new Error(`${id}.${name}: unknown key ${k}`);
+			if (!Number.isInteger(a.frames) || a.frames < 1) throw new Error(`${id}.${name}: frames must be a positive integer`);
+			if (typeof a.fps !== "number" || !(a.fps > 0)) throw new Error(`${id}.${name}: fps must be a positive number`);
+			const strip = stripFrames(`${id}.${name}`, { file: a.file, frameW: w, frames: a.frames });
+			for (const img of strip) {
+				if (img.h !== h) throw new Error(`${id}.${name}: ${a.file} is ${img.h} px tall, not ${h}`);
+				for (let i = 0; i < img.w * img.h; i++) {
+					const p = i * 4;
+					if (img.data[p + 3] === 0) continue;
+					if (img.data[p] !== img.data[p + 1] || img.data[p + 1] !== img.data[p + 2]) throw new Error(`${id}.${name}: ${a.file} has a pixel that is not grey (the renderer tints it)`);
+				}
+			}
+			anims.push({ name, offset: frames.length, frames: a.frames, fps: a.fps, loop: a.loop === true });
+			frames.push(...strip);
+		}
+		return { id, def, frameW: w, frameH: h, frames, anims, pivot: { x: px, y: py }, meanColor: meanColor(frames) };
+	});
+	const packed = packFx(sets, "hazards");
+	const file = `${group.atlas}.png`;
+	const layouts = {};
+	for (const p of packed.placed) {
+		const s = p.s;
+		const animations = {};
+		for (const a of s.anims) animations[a.name] = { start: p.start + a.offset, frames: a.frames, fps: a.fps, loop: a.loop };
+		const l = { frameW: s.frameW, frameH: s.frameH, pivot: s.pivot, animations, meanColor: s.meanColor, pixelsPerTile: ppt };
+		if (s.def.rimPx !== undefined) l.rimPx = s.def.rimPx;
+		if (s.def.lit !== undefined) l.lit = { w: s.def.lit[0], h: s.def.lit[1] };
+		layouts[s.id] = l;
+	}
+	const ordered = {};
+	for (const id of ids) ordered[id] = layouts[id];
+	return { file, sets, packed, sheet: { file, w: packed.w, h: packed.h }, layouts: ordered, pixelsPerTileFrom };
+}
+
+/** packs/vale/hazardLayout.ts: ValeHazardLayout, VALE_HAZARD_SHEET and VALE_HAZARD_LAYOUTS (docs/HAZARD_ART.md HA2). */
+function hazardLayoutModule(sheet, layouts) {
+	const text = [
+		"// GENERATED by `npm run art:build` (scripts/art/build-atlases.js) from art/atlases.json. Do not edit.",
+		"",
+		"/**",
+		comment([
+			"Layout of the `vale` pack's floor hazards (docs/HAZARD_ART.md HA2): original greyscale pixel art by",
+			"scripts/art/gen-hazard-art.js (the Stormcaller's strike seen from straight above, the build embers in the 3/4",
+			"view), in its own sheet VALE_HAZARD_SHEET. Per hazard one cell size; animation `name`'s frames are cells start ..",
+			"start + frames - 1 (cell c at x = (c % perRow) * frameW, y = floor(c / perRow) * frameH, perRow = floor(sheet w /",
+			"frameW): the SpriteSetAsset formula). `pivot` is where the bullet sits (cell px). `rimPx` (the strike) is its",
+			"hit rim, px from the pivot; `lit` (the ember) the box, centred on the pivot, that covers the drawn disc. Grey: the",
+			"renderer tints it. `meanColor` is the alpha-weighted mean of every visible pixel (grey). No asset IDs: `file`",
+			"names the PNG in art/build/ to upload.",
+		]),
+		" */",
+		"",
+		'import type { HexColor, Pivot } from "../../types";',
+		'import type { ValeSheetFile } from "./layout";',
+		"",
+		"/** One hazard animation's cells. */",
+		"export interface ValeHazardAnimation {",
+		"\tstart: number;",
+		"\tframes: number;",
+		"\tfps: number;",
+		"\tloop: boolean;",
+		"}",
+		"",
+		"/** One hazard's cells in VALE_HAZARD_SHEET (docs/HAZARD_ART.md HA2). */",
+		"export interface ValeHazardLayout {",
+		"\t/** Cell size, art px (every cell of the hazard the same). */",
+		"\tframeW: number;",
+		"\tframeH: number;",
+		"\t/** Where the bullet sits, cell px. */",
+		"\tpivot: Pivot;",
+		"\tanimations: Record<string, ValeHazardAnimation>;",
+		"\t/** Alpha-weighted mean of every visible pixel (grey: the sheet is tinted by the renderer). */",
+		"\tmeanColor: HexColor;",
+		"\t/** Nominal texel density from atlases.json. */",
+		"\tpixelsPerTile: number;",
+		"\t/** The strike only: its hit rim, art px from the pivot. */",
+		"\trimPx?: number;",
+		"\t/** The ember only: the box covering the drawn disc, art px, centred on the pivot. */",
+		"\tlit?: { w: number; h: number };",
+		"}",
+		"",
+		`export const VALE_HAZARD_SHEET: ValeSheetFile = ${tsValue(sheet, 0, PRINT_WIDTH)};`,
+		"",
+		`export const VALE_HAZARD_LAYOUTS: Record<string, ValeHazardLayout> = ${tsValue(layouts, 0, PRINT_WIDTH)};`,
+		"",
+	].join("\n");
+	for (const line of text.split("\n")) {
+		if (line.replace(/\t/g, "    ").length > PRINT_WIDTH) throw new Error(`hazardLayout.ts line over ${PRINT_WIDTH} columns: ${line}`);
+	}
+	return text;
+}
+
+/** Contact sheet of the hazard sheet: every cell of every hazard read back through its layout (one hazard per row band). */
+function hazardContact(result) {
+	const rows = [];
+	for (const id of Object.keys(result.layouts)) {
+		const l = result.layouts[id];
+		const perRow = Math.floor(result.packed.img.w / l.frameW);
+		const cells = [];
+		for (const name of Object.keys(l.animations)) {
+			const a = l.animations[name];
+			for (let f = 0; f < a.frames; f++) {
+				const c = a.start + f;
+				cells.push([result.packed.img, (c % perRow) * l.frameW, Math.floor(c / perRow) * l.frameH]);
+			}
+		}
+		rows.push(scaledContact(cells, l.frameW, l.frameH, l.pivot));
+	}
+	const w = Math.max(...rows.map((r) => r.w));
+	const out = raster(w, rows.reduce((n, r) => n + r.h, 0));
+	let y = 0;
+	for (const r of rows) {
+		blit(r, 0, 0, r.w, r.h, out, 0, y, 0);
+		y += r.h;
+	}
+	return out;
+}
+
+/** Log lines for a built hazard sheet. */
+function printHazards(h) {
+	const from = h.pixelsPerTileFrom ? ` (pixelsPerTileFrom ${h.pixelsPerTileFrom.id}: ${h.pixelsPerTileFrom.checked ? "equal" : "unchecked, its set is not built by --only"})` : "";
+	console.log(`hazards: ${h.file} ${h.packed.w}x${h.packed.h}, ${h.sets.reduce((n, s) => n + s.frames.length, 0)} cells${from}`);
+	for (const id of Object.keys(h.layouts)) {
+		const l = h.layouts[id];
+		const anims = Object.keys(l.animations)
+			.map((n) => `${n} ${l.animations[n].frames} @ ${l.animations[n].fps} fps from cell ${l.animations[n].start}${l.animations[n].loop ? " loop" : ""}`)
+			.join(", ");
+		const extra = `${l.rimPx !== undefined ? `, rim ${l.rimPx} px` : ""}${l.lit ? `, lit ${l.lit.w}x${l.lit.h}` : ""}`;
+		console.log(`  ${id}: cell ${l.frameW}x${l.frameH}, pivot (${l.pivot.x}, ${l.pivot.y}), ${anims}${extra}, grey mean ${l.meanColor}`);
+	}
+}
+
+/**
+ * `--only hazards` (docs/HAZARD_ART.md HA2): checks the hazard strips against the lock, then writes ONLY
+ * art/build/<atlas>.png (and its art/upload copy), art/build/contact/<atlas>.png and packs/vale/hazardLayout.ts, byte for
+ * byte what a full build writes for them (pixelsPerTileFrom unchecked). Nothing else is read, written or removed.
+ */
+function mainOnlyHazards(config) {
+	if (!config.hazards) fail("art/atlases.json has no `hazards` group");
+	checkLock(config, hazardSourceFiles(config.hazards));
+	const h = buildHazards(config.hazards, undefined);
+	let changed = 0;
+	const png = encodePng(h.packed.img);
+	if (writeIfChanged(path.join(BUILD, h.file), png)) changed++;
+	if (writeIfChanged(path.join(CONTACT, h.file), encodePng(hazardContact(h)))) changed++;
+	if (writeIfChanged(path.join(UPLOAD, h.file), png)) changed++;
+	if (writeIfChanged(HAZARD_LAYOUT_FILE, hazardLayoutModule(h.sheet, h.layouts))) changed++;
+	printHazards(h);
+	console.log(`art:build --only hazards: ${changed} file(s) updated`);
+}
+
+/**
+ * `--only fortune` (docs/FORTUNE.md FO10): checks the fortune group's files against the lock, then writes ONLY its two
+ * sheets (and their art/upload copies), their contact sheets and packs/vale/fortuneLayout.ts, byte for byte what a full
+ * build writes for them (pixelsPerTileFrom unchecked). Nothing else is read, written or removed.
+ */
+function mainOnlyFortune(config) {
+	if (!config.fortune) fail("art/atlases.json has no `fortune` group");
+	checkLock(config, fortuneSourceFiles(config.fortune));
+	const t = buildFortune(config.fortune, config.worldArt, undefined);
+	let changed = 0;
+	for (const [dir, name, img] of fortuneOutputs(t)) {
+		const png = encodePng(img);
+		if (writeIfChanged(path.join(dir === "build" ? BUILD : CONTACT, name), png)) changed++;
+		if (dir === "build" && writeIfChanged(path.join(UPLOAD, name), png)) changed++;
+	}
+	if (writeIfChanged(FORTUNE_LAYOUT_FILE, fortuneLayoutModule(t))) changed++;
+	printFortune(t);
+	console.log(`art:build --only fortune: ${changed} file(s) updated`);
+}
+
+// ---------------------------------------------------------------------------------------------
 // Fortune sheets (docs/FORTUNE.md FO10; config key `fortune`)
 //
 // The pact altar and the Goldling's coin burst: original pixel art drawn by scripts/art/gen-fortune-art.js (art:build and
@@ -3985,7 +4251,7 @@ function onlyGroup(argv) {
 }
 
 /** Groups `--only` can build on their own (their sources need no other pack). */
-const ONLY_GROUPS = ["bullets", "goo", "boostAuras", "treasure", "fortune"];
+const ONLY_GROUPS = ["bullets", "goo", "boostAuras", "treasure", "hazards", "fortune"];
 
 /** The vendor files `--lock --only <group>` re-hashes. */
 function onlyGroupSourceFiles(config, group) {
@@ -4001,6 +4267,10 @@ function onlyGroupSourceFiles(config, group) {
 	if (group === "treasure") {
 		if (!config.treasure) fail("art/atlases.json has no `treasure` group");
 		return treasureSourceFiles(config.treasure);
+	}
+	if (group === "hazards") {
+		if (!config.hazards) fail("art/atlases.json has no `hazards` group");
+		return hazardSourceFiles(config.hazards);
 	}
 	if (group === "fortune") {
 		if (!config.fortune) fail("art/atlases.json has no `fortune` group");
@@ -4086,26 +4356,6 @@ function mainOnlyTreasure(config) {
 	console.log(`art:build --only treasure: ${changed} file(s) updated`);
 }
 
-/**
- * `--only fortune` (docs/FORTUNE.md FO10): checks the fortune group's files against the lock, then writes ONLY its two
- * sheets (and their art/upload copies), their contact sheets and packs/vale/fortuneLayout.ts, byte for byte what a full
- * build writes for them (pixelsPerTileFrom unchecked). Nothing else is read, written or removed.
- */
-function mainOnlyFortune(config) {
-	if (!config.fortune) fail("art/atlases.json has no `fortune` group");
-	checkLock(config, fortuneSourceFiles(config.fortune));
-	const t = buildFortune(config.fortune, config.worldArt, undefined);
-	let changed = 0;
-	for (const [dir, name, img] of fortuneOutputs(t)) {
-		const png = encodePng(img);
-		if (writeIfChanged(path.join(dir === "build" ? BUILD : CONTACT, name), png)) changed++;
-		if (dir === "build" && writeIfChanged(path.join(UPLOAD, name), png)) changed++;
-	}
-	if (writeIfChanged(FORTUNE_LAYOUT_FILE, fortuneLayoutModule(t))) changed++;
-	printFortune(t);
-	console.log(`art:build --only fortune: ${changed} file(s) updated`);
-}
-
 function main() {
 	const config = JSON.parse(fs.readFileSync(CONFIG_FILE, "utf8"));
 	const only = onlyGroup(process.argv);
@@ -4127,6 +4377,10 @@ function main() {
 	}
 	if (only === "treasure") {
 		mainOnlyTreasure(config);
+		return;
+	}
+	if (only === "hazards") {
+		mainOnlyHazards(config);
 		return;
 	}
 	if (only === "fortune") {
@@ -4191,6 +4445,12 @@ function main() {
 		treasure = buildTreasure(config.treasure, config.worldArt, sets);
 		for (const [dir, name, img] of treasureOutputs(treasure)) emit(dir === "build" ? BUILD : CONTACT, name, img, dir === "build" ? builtFiles : contactFiles);
 	}
+	let hazards;
+	if (config.hazards) {
+		hazards = buildHazards(config.hazards, sets);
+		emit(BUILD, hazards.file, hazards.packed.img, builtFiles);
+		emit(CONTACT, hazards.file, hazardContact(hazards), contactFiles);
+	}
 	let fortune;
 	if (config.fortune) {
 		fortune = buildFortune(config.fortune, config.worldArt, sets);
@@ -4212,6 +4472,7 @@ function main() {
 	if (goo && writeIfChanged(GOO_LAYOUT_FILE, gooLayoutModule(goo.sheet, goo.layout))) changed++;
 	if (auras && writeIfChanged(BOOST_AURA_LAYOUT_FILE, boostAuraLayoutModule(auras.sheet, auras.layouts))) changed++;
 	if (treasure && writeIfChanged(TREASURE_LAYOUT_FILE, treasureLayoutModule(treasure))) changed++;
+	if (hazards && writeIfChanged(HAZARD_LAYOUT_FILE, hazardLayoutModule(hazards.sheet, hazards.layouts))) changed++;
 	if (fortune && writeIfChanged(FORTUNE_LAYOUT_FILE, fortuneLayoutModule(fortune))) changed++;
 
 	for (const s of sets) {
@@ -4244,6 +4505,7 @@ function main() {
 	if (goo) printGoo(goo, config.goo);
 	if (auras) printBoostAuras(auras, config.boostAuras);
 	if (treasure) printTreasure(treasure);
+	if (hazards) printHazards(hazards);
 	if (fortune) printFortune(fortune);
 	if (icons) {
 		console.log(`ui icons: ${icons.file} ${icons.w}x${icons.h}, ${icons.pieces.length} icons, ${icons.gutter} px extruded gutter (contact numbers in id order)`);
@@ -4295,6 +4557,10 @@ module.exports = {
 	buildFortune,
 	fortuneLayoutModule,
 	fortuneSourceFiles,
+	buildHazards,
+	hazardContact,
+	hazardLayoutModule,
+	hazardSourceFiles,
 	bulletContact,
 	bulletGates,
 	bulletLayoutModule,

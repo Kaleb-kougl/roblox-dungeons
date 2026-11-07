@@ -33,6 +33,7 @@ import {
 	BIOMES,
 	BIOME_MATERIALS,
 	BIOME_MATERIAL_SURFACES,
+	BULLET,
 	BULLET_ART,
 	DECOR_MAX_VARIANTS,
 	DECOR_MIN_OUTLINE_POINTS,
@@ -103,6 +104,7 @@ import {
 } from "./types";
 import { describeValue, isArrayLike, isInteger, isObj, sortedEntries, sortedKeys, startsWith, type Obj } from "./util";
 import { boostAuraRanksOf } from "./boostAuraArt";
+import { hazardArtReport } from "./hazardArt";
 import { voidLedgeColor } from "./voidColors";
 import type { PelletKind } from "./pellets";
 import { TREASURE_CHEST_ID, TREASURE_CHEST_OPEN_ID } from "./treasure";
@@ -667,6 +669,24 @@ export interface FloorSpriteArt {
 	readonly meanColor: HexColor;
 }
 
+/**
+ * A floor hazard sprite (docs/HAZARD_ART.md HA3, BULLET_ART.hazardSpriteIds: the strike, the embers): a one-facing
+ * greyscale set lying flat on the floor, tinted by the renderer with the hazard's colour role. `frames` per required
+ * animation (the strike's `flash` / `scorch`, the ember's `burn`). The strike carries its hit rim `rimPx`, the ember
+ * its burning patch `litW` x `litH` (0 on the other).
+ */
+export interface HazardSpriteArt {
+	readonly id: string;
+	readonly set: SpriteSetLayout;
+	/** Frame count per required animation (BULLET `idBaseAnimations`). */
+	readonly frames: ReadonlyMap<string, number>;
+	readonly rimPx: number;
+	readonly litW: number;
+	readonly litH: number;
+	/** The sheet's grey mean (hazardArt.ts): checked, never a tint. */
+	readonly meanColor: HexColor;
+}
+
 const NO_VARIANTS: ReadonlyArray<string> = [];
 const NO_CONTENT: ReadonlyArray<ContentRef> = [];
 /** The scheme every uploaded content id starts with (types.ts RobloxAssetId). */
@@ -748,6 +768,7 @@ export class ThemeCore {
 	/** Bullet sprite lookups, misses included (`false`). */
 	private readonly bulletArt = new Map<string, BulletArt | false>();
 	private readonly floorSpriteArt = new Map<string, FloorSpriteArt | false>();
+	private readonly hazardSpriteArt = new Map<string, HazardSpriteArt | false>();
 	private readonly soundRefs = new Map<string, SoundRef>();
 	/** contentIds / biomeContentIds lookups (docs/PRELOAD.md P1), empty lists included. */
 	private readonly contentRefs = new Map<string, ReadonlyArray<ContentRef>>();
@@ -1481,9 +1502,9 @@ export class ThemeCore {
 	 * A bullet's sprite art, or undefined WITHOUT a warning when the pack has none (any kind but `sprites`, or no
 	 * entry): draw `placeholder(id)`. Cached, misses too. A sprites set the renderer cannot draw as a bullet warns once
 	 * and is undefined (the placeholder is drawn): malformed (`sprites(id)` rejects it), more than one facing, a `fly`
-	 * loop longer than BULLET_ART.maxFrames, no valid `meanColor` (the readability rules could not be checked), or an
-	 * ID drawn as a floor decal (BULLET_ART.decalIds). A floor sprite ID (BULLET_ART.floorSpriteIds, the goo) is never
-	 * a flying bullet: undefined without a warning (read it with `floorSprite`).
+	 * loop longer than BULLET_ART.maxFrames, or no valid `meanColor` (the readability rules could not be checked). A
+	 * floor sprite ID (BULLET_ART.floorSpriteIds, the goo) or a hazard ID (BULLET_ART.hazardSpriteIds, the strike and
+	 * the embers) is never a flying bullet: undefined without a warning (read them with `floorSprite` / `hazardSprite`).
 	 */
 	bullet(id: string): BulletArt | undefined {
 		const cached = this.bulletArt.get(id);
@@ -1497,16 +1518,18 @@ export class ThemeCore {
 
 	private createBullet(id: string): BulletArt | undefined {
 		const def = this.asset(id);
-		if (def === undefined || def.kind !== "sprites" || BULLET_ART.floorSpriteIds.includes(id)) {
+		if (
+			def === undefined ||
+			def.kind !== "sprites" ||
+			BULLET_ART.floorSpriteIds.includes(id) ||
+			BULLET_ART.hazardSpriteIds.includes(id)
+		) {
 			return undefined;
 		}
 		const skip = (why: string) => {
 			this.warnOnce(`bullet:${id}`, `bullet "${id}" ${why}; drawing its placeholder`);
 			return undefined;
 		};
-		if (BULLET_ART.decalIds.includes(id)) {
-			return skip("is a floor decal and takes no sprite art");
-		}
 		const set = this.sprites(id); // warns once when malformed
 		if (set === undefined) {
 			return undefined;
@@ -1591,6 +1614,59 @@ export class ThemeCore {
 			litW: lit.w as number,
 			litH: lit.h as number,
 			meanColor,
+		};
+	}
+
+	/**
+	 * A floor hazard's sprite art (docs/HAZARD_ART.md HA3: an ID in BULLET_ART.hazardSpriteIds), or undefined WITHOUT a
+	 * warning when the pack has none (any kind but `sprites`, no entry, or not a hazard ID): draw the placeholder disc.
+	 * Cached, misses too. A sprites set the renderer cannot draw warns once and is undefined: malformed (`sprites(id)`
+	 * rejects it, e.g. without its animations), more than one facing, an animation of more than
+	 * BULLET_ART.maxHazardFrames cells, a bad `rimPx` (the strike) or `lit` (the ember), or a meanColor that is not a
+	 * grey (the art would not take its tint): hazardArt.ts's rules.
+	 */
+	hazardSprite(id: string): HazardSpriteArt | undefined {
+		const cached = this.hazardSpriteArt.get(id);
+		if (cached !== undefined) {
+			return cached === false ? undefined : cached;
+		}
+		const art = this.createHazardSprite(id);
+		this.hazardSpriteArt.set(id, art ?? false);
+		return art;
+	}
+
+	private createHazardSprite(id: string): HazardSpriteArt | undefined {
+		const def = this.asset(id);
+		if (def === undefined || def.kind !== "sprites" || !BULLET_ART.hazardSpriteIds.includes(id)) {
+			return undefined;
+		}
+		const skip = (why: string) => {
+			this.warnOnce(`hazardSprite:${id}`, `floor hazard "${id}" ${why}; drawing its placeholder`);
+			return undefined;
+		};
+		const problems = hazardArtReport({ assets: { [id]: def } }).filter((e) => !e.ok);
+		if (problems.size() > 0) {
+			const p = problems[0];
+			return skip(`fails its ${p.check}${p.against !== "" ? ` (${p.against})` : ""} rule`);
+		}
+		const set = this.sprites(id); // warns once when malformed (the animations are required for this ID)
+		if (set === undefined) {
+			return undefined;
+		}
+		const frames = new Map<string, number>();
+		for (const name of requiredBaseAnimations(BULLET, id)) {
+			frames.set(name, (set.animation(name) as SpriteAnimationDef).frames); // required: sprites() checked it
+		}
+		const d = def as unknown as Obj;
+		const lit = isObj(d.lit) ? d.lit : undefined;
+		return {
+			id,
+			set,
+			frames,
+			rimPx: typeIs(d.rimPx, "number") ? d.rimPx : 0,
+			litW: lit !== undefined ? (lit.w as number) : 0,
+			litH: lit !== undefined ? (lit.h as number) : 0,
+			meanColor: d.meanColor as HexColor,
 		};
 	}
 

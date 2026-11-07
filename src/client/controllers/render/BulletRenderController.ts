@@ -6,6 +6,7 @@ import {
 	EMBER_BURST,
 	GOO_BULLET_RADIUS,
 	SLIME,
+	SIM_HZ,
 	STORMCALLER,
 	STRIKE_BULLET_RADIUS,
 	partySize,
@@ -20,6 +21,7 @@ import {
 	ENEMY_BULLET_LOOK_IDS,
 	GOO_ART_VIEW,
 	GOO_VIEW,
+	HAZARD_ART_VIEW,
 	PLAYER_BULLET_LOOK_IDS,
 	STRIKE_VIEW,
 	PlayerBulletLook,
@@ -49,7 +51,8 @@ import { ThemeController } from "../game/ThemeController";
 import { BulletTrails, type TrailLook } from "./bulletTrails";
 import { renderPart } from "./placeholders";
 import { SpriteBulletPool, spriteBulletLook, type SpriteBulletLook } from "./SpriteBulletPool";
-import { FloorSpritePool, floorSpriteLook, type FloorSpriteLook } from "./FloorSpritePool";
+import { FloorSpritePool, floorSpriteLook } from "./FloorSpritePool";
+import { EmberSpritePool, StrikeSpritePool, type FloorSpriteDrawer, type HazardClock } from "./HazardSpritePool";
 
 const RENDER_STEP = "KV_Bullets";
 const PARKED = new CFrame(BULLET_VIEW.parkedStuds[0], BULLET_VIEW.parkedStuds[1], BULLET_VIEW.parkedStuds[2]);
@@ -294,9 +297,10 @@ const EMBER_DECAL: DecalSpec = {
  * the affix rings, every marking and every moving bullet. It pops in and fades out over its life (spec.look;
  * Size / Transparency written only on a quantized change). Decals never move, so no interpolation. ONE BulkMoveTo per
  * frame.
- * Sprite mode (docs/GOO_ART.md GA4): given a floor sprite look (the goo's, when the pack's `bullet.enemy.goo` has
- * floor sprite art), the pool draws its bullets as FloorSpritePool anchors instead (flat, screen-up, placed once per
- * puddle, sized to cover the hit) and builds no disc; without one, exactly the discs.
+ * Sprite mode (docs/GOO_ART.md GA4): given a floor sprite drawer (the goo's FloorSpritePool, when the pack's
+ * `bullet.enemy.goo` has floor sprite art; docs/HAZARD_ART.md HA5: the strike's StrikeSpritePool and the embers'
+ * EmberSpritePool, when theirs have hazard art), the pool hands its frames to it instead and builds no disc; without
+ * one, exactly the discs.
  */
 class DecalPool {
 	private readonly parts = new Array<BasePart>();
@@ -307,7 +311,7 @@ class DecalPool {
 	private readonly moveCFrames = new Array<CFrame>();
 	private readonly look: GooLook = { scale: 0, transparency: 0 };
 	private readonly y: number;
-	private readonly sprites: FloorSpritePool | undefined;
+	private readonly sprites: FloorSpriteDrawer | undefined;
 	private sim: BulletSimulation | undefined;
 
 	constructor(
@@ -319,28 +323,16 @@ class DecalPool {
 		private readonly diameter: number,
 		/** A decal's whole life, seconds (the pop-in reads its age from it). */
 		private readonly totalLife: number,
-		/** Sprite mode: the floor sprite drawn instead of the disc (docs/GOO_ART.md GA4); absent: the disc. */
-		sprite?: FloorSpriteLook,
+		/** Sprite mode: the floor sprites drawn instead of the disc (GOO_ART GA4, HAZARD_ART HA5); absent: the disc. */
+		sprites?: FloorSpriteDrawer,
 	) {
 		this.y = floorStudsY() + spec.liftStuds + spec.thicknessStuds / 2;
-		this.sprites =
-			sprite !== undefined
-				? new FloorSpritePool(
-						folder,
-						`${spec.name}Sprite`,
-						PARKED,
-						sprite,
-						spec.accepts,
-						totalLife,
-						spec.liftStuds + spec.thicknessStuds,
-						spec.quantum,
-				  )
-				: undefined;
+		this.sprites = sprites;
 	}
 
-	frame(sim: BulletSimulation): void {
+	frame(sim: BulletSimulation, clock: HazardClock): void {
 		if (this.sprites !== undefined) {
-			this.sprites.frame(sim);
+			this.sprites.frame(sim, clock);
 			return;
 		}
 		if (sim !== this.sim) {
@@ -467,10 +459,14 @@ function trailLook(look: BulletLook): TrailLook {
  * A look whose `pack.bullet(id)` has art draws in a SpriteBulletPool on the same simulation (floor-flat sprites turned
  * along the velocity, flicker, unlit), and the neon pool skips those bullets; a look without art stays a neon part.
  * No look with art (the placeholder pack, vale before its bullet atlas has an id): no sprite pool is built and every
- * pool runs exactly as before. Trails stay neon parts; strike / ember decals are unchanged (PAD3).
+ * pool runs exactly as before. Trails stay neon parts.
  * Goo art (docs/GOO_ART.md GA4): when the pack's `bullet.enemy.goo` has floor sprite art (pack.floorSprite), the goo
  * DecalPool runs in sprite mode (FloorSpritePool: flat slime puddles, screen-up, sized to cover the hit); without it
  * the disc exactly as before, and with GOO_VIEW.decal off the normal enemy bullet look.
+ * Hazard art (docs/HAZARD_ART.md HA5, superseding PAD3): when the pack's `bullet.enemy.strike` / `bullet.player.ember`
+ * has hazard sprite art (pack.hazardSprite), their DecalPools run in sprite mode: StrikeSpritePool (the flash over the
+ * strike's life, then a scorch after it, tinted enemyBullet) and EmberSpritePool (the burn loop, tinted build.ember);
+ * without it the discs exactly as before.
  */
 @Controller({})
 export class BulletRenderController implements OnStart {
@@ -528,13 +524,35 @@ export class BulletRenderController implements OnStart {
 		let strike: DecalPool | undefined;
 		if (strikeDecal) {
 			const visual = pack.placeholder(STRIKE_BULLET_ID);
+			// docs/HAZARD_ART.md HA5: the pack's strike hazard sprite (flash + scorch), when it has one, instead of the disc
+			const strikeArt = pack.hazardSprite(STRIKE_BULLET_ID);
+			const life = STORMCALLER.data.strike.life;
+			const strikeFolder = subFolder(
+				folder,
+				strikeArt !== undefined ? HAZARD_ART_VIEW.strike.folderName : STRIKE_VIEW.folderName,
+			);
 			strike = new DecalPool(
-				subFolder(folder, STRIKE_VIEW.folderName),
+				strikeFolder,
 				STRIKE_DECAL,
 				pack.visualColor(visual.color),
 				Enum.Material[visual.material],
 				2 * STRIKE_BULLET_RADIUS * S,
-				STORMCALLER.data.strike.life,
+				life,
+				strikeArt !== undefined
+					? new StrikeSpritePool(
+							strikeFolder,
+							subFolder(folder, HAZARD_ART_VIEW.scorch.folderName),
+							PARKED,
+							strikeArt,
+							pack.color(HAZARD_ART_VIEW.strike.role),
+							STRIKE_DECAL.accepts,
+							life,
+							STRIKE_DECAL.liftStuds + STRIKE_DECAL.thicknessStuds,
+							STRIKE_DECAL.thicknessStuds,
+							HAZARD_ART_VIEW.quantum,
+							S,
+					  )
+					: undefined,
 			);
 		}
 		this.strike = strike;
@@ -543,28 +561,60 @@ export class BulletRenderController implements OnStart {
 			const visual = pack.placeholder(GOO_BULLET_ID);
 			// docs/GOO_ART.md GA4: the pack's goo floor sprite, when it has one, instead of the disc
 			const gooArt = pack.floorSprite(GOO_BULLET_ID);
+			const gooFolder = subFolder(folder, gooArt !== undefined ? GOO_ART_VIEW.folderName : GOO_VIEW.folderName);
 			goo = new DecalPool(
-				subFolder(folder, gooArt !== undefined ? GOO_ART_VIEW.folderName : GOO_VIEW.folderName),
+				gooFolder,
 				GOO_DECAL,
 				pack.visualColor(visual.color),
 				Enum.Material[visual.material],
 				2 * GOO_BULLET_RADIUS * S,
 				SLIME.data.goo.life,
-				gooArt !== undefined ? floorSpriteLook(gooArt, S, GOO_VIEW.thicknessStuds) : undefined,
+				gooArt !== undefined
+					? new FloorSpritePool(
+							gooFolder,
+							`${GOO_DECAL.name}Sprite`,
+							PARKED,
+							floorSpriteLook(gooArt, S, GOO_VIEW.thicknessStuds),
+							GOO_DECAL.accepts,
+							SLIME.data.goo.life,
+							GOO_DECAL.liftStuds + GOO_DECAL.thicknessStuds,
+							GOO_DECAL.quantum,
+					  )
+					: undefined,
 			);
 		}
 		this.goo = goo;
 		const emberDecal = BUILD_BULLET_VIEW.ember.decal;
 		let ember: DecalPool | undefined;
 		if (emberDecal) {
-			const visual = pack.placeholder(PLAYER_BULLET_LOOK_IDS[PlayerBulletLook.EMBER]);
+			const emberId = PLAYER_BULLET_LOOK_IDS[PlayerBulletLook.EMBER];
+			const visual = pack.placeholder(emberId);
+			// docs/HAZARD_ART.md HA5: the pack's ember hazard sprite (the burn loop), when it has one, instead of the disc
+			const emberArt = pack.hazardSprite(emberId);
+			const emberFolder = subFolder(
+				folder,
+				emberArt !== undefined ? HAZARD_ART_VIEW.ember.folderName : BUILD_BULLET_VIEW.ember.folderName,
+			);
 			ember = new DecalPool(
-				subFolder(folder, BUILD_BULLET_VIEW.ember.folderName),
+				emberFolder,
 				EMBER_DECAL,
 				pack.visualColor(visual.color),
 				Enum.Material[visual.material],
 				BUILD_BULLET_VIEW.ember.diameterTiles * S,
 				EMBER_BURST.life,
+				emberArt !== undefined
+					? new EmberSpritePool(
+							emberFolder,
+							PARKED,
+							emberArt,
+							pack.color(HAZARD_ART_VIEW.ember.role),
+							EMBER_DECAL.accepts,
+							EMBER_DECAL.liftStuds + EMBER_DECAL.thicknessStuds,
+							EMBER_DECAL.thicknessStuds,
+							HAZARD_ART_VIEW.quantum,
+							S,
+					  )
+					: undefined,
 			);
 		}
 		this.ember = ember;
@@ -619,9 +669,15 @@ export class BulletRenderController implements OnStart {
 					enemySprites.frame(state.combat.enemyBullets, alpha);
 				}
 				enemy.frame(state.combat.enemyBullets, alpha);
-				goo?.frame(state.combat.enemyBullets);
-				strike?.frame(state.combat.enemyBullets);
-				ember?.frame(state.combat.playerBullets);
+				// docs/HAZARD_ART.md HA5: the sprite drawers' clock (sim seconds, the floor, motion); discs ignore it
+				const clock: HazardClock = {
+					simSec: (state.tick + alpha) / SIM_HZ,
+					floorKey: state.endless?.floor ?? 0,
+					motion: !reducedMotion,
+				};
+				goo?.frame(state.combat.enemyBullets, clock);
+				strike?.frame(state.combat.enemyBullets, clock);
+				ember?.frame(state.combat.playerBullets, clock);
 				const n = partySize(state);
 				const me = this.sim.getViewPlayerIndex(); // spectating: the watched teammate's bullets stay opaque
 				const trailsOn = buildTrailsOn(selectDisplay(store).buildFx, reducedMotion);

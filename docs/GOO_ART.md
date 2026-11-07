@@ -5,7 +5,7 @@ draws them with the last two frames of heimlich3's **Slime** pack (https://heiml
 flattened blob) as the puddle landing, frame 4 (the spread splat) as the puddle for the rest of its life.
 **Presentation only:** no sim, dungeon, lockstep, hash, replay, fixture or score change. The goo stays an ordinary
 `BulletKind.GOO` bullet (speed 0, 3 s, hit radius `GOO_BULLET_RADIUS` 0.35); only the goo `DecalPool` changes how it
-draws one. Supersedes docs/PROJECTILE_ART.md PAD3 for goo only (strike and ember stay neon decals).
+draws one. Supersedes docs/PROJECTILE_ART.md PAD3 for goo only (strike and ember: docs/HAZARD_ART.md).
 
 ## Status (2026-11-06)
 

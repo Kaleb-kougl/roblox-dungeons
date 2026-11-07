@@ -71,8 +71,9 @@ describe("vale goo (docs/GOO_ART.md GA2)", () => {
 		expect([set.animations.land.start, set.animations.land.frames]).toEqual([0, 1]);
 		expect([set.animations.hold.start, set.animations.hold.frames]).toEqual([1, 2]);
 		expect([set.meanColor, set.lit]).toEqual(["#e824e8", { w: 31, h: 17 }]);
-		// strike and ember stay placeholders
-		for (const id of BULLET_ART.decalIds) expect([id, m.assets[id]]).toEqual([id, PLACEHOLDER_MANIFEST.assets[id]]);
+		// strike and ember stay placeholders (no hazards.png id in this manifest)
+		for (const id of BULLET_ART.hazardSpriteIds)
+			expect([id, m.assets[id]]).toEqual([id, PLACEHOLDER_MANIFEST.assets[id]]);
 	});
 
 	it("the real generated layout validates with zero problems and passes every goo rule", () => {

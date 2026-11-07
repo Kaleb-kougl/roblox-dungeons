@@ -47,9 +47,9 @@
  * decor-mote.png has an ID; until then a biome whose Ninja Adventure flipbook (fx-ambient-b<n>.png) has an ID uses it.
  *
  * Projectile sprites (bullets.ts, docs/PROJECTILE_ART.md PA6): every `bullet.*` entry of bulletLayout.ts becomes a
- * one-facing `sprites` set once the bullet atlas (bullets.png) has an ID; until then (and always for the strike /
- * ember floor decals) the placeholder's neon part. The goo puddle (goo.ts, docs/GOO_ART.md GA2) becomes a floor
- * sprite set once goo.png has an ID; until then the placeholder's neon disc.
+ * one-facing `sprites` set once the bullet atlas (bullets.png) has an ID; until then the placeholder's neon part. The goo puddle (goo.ts, docs/GOO_ART.md GA2) becomes a floor
+ * sprite set once goo.png has an ID; until then the placeholder's neon disc. Likewise the strike and the embers
+ * (hazards.ts, docs/HAZARD_ART.md HA3) once hazards.png has one.
  */
 import {
 	BIOMES,
@@ -91,6 +91,7 @@ import { VALE_SOUND_LAYOUTS, type ValeSoundLayout } from "./audioLayout";
 import { valeBulletAssets, type ValeBulletSource } from "./bullets";
 import { valeBoostAuraAssets, type ValeBoostAuraSource } from "./boostAuras";
 import { valeGooAsset, type ValeGooSource } from "./goo";
+import { valeHazardAssets, type ValeHazardSource } from "./hazards";
 import { valeAmbientAssets, valeFxAssets, valeFxSources } from "./fx";
 import { VALE_TREASURE_CAGE_LAYOUT } from "./treasureLayout";
 import { VALE_PACT_ALTAR_LAYOUT } from "./fortuneLayout";
@@ -662,6 +663,8 @@ export interface ValeLayoutSources {
 	readonly bullets?: ValeBulletSource;
 	/** VALE_GOO_SOURCE (goo.ts: the goo sheet and gooLayout.ts). */
 	readonly goo?: ValeGooSource;
+	/** VALE_HAZARD_SOURCE (hazards.ts: the hazard sheet and hazardLayout.ts). */
+	readonly hazards?: ValeHazardSource;
 	/** VALE_BOOST_AURA_SOURCE (boostAuras.ts: the aura sheet and boostAuraLayout.ts). */
 	readonly boostAuras?: ValeBoostAuraSource;
 }
@@ -765,6 +768,12 @@ export function buildValeManifest(ids: AssetIds = VALE_ASSET_IDS, sources: ValeL
 	const goo = valeGooAsset(ids, sources.goo);
 	for (const id of sortedKeys(goo)) {
 		manifest.assets[id] = goo[id];
+	}
+	// The floor hazards (docs/HAZARD_ART.md HA3; hazards.ts): the strike's and the embers' sprites replace the placeholder
+	// discs once hazards.png has an ID.
+	const hazards = valeHazardAssets(ids, sources.hazards);
+	for (const id of sortedKeys(hazards)) {
+		manifest.assets[id] = hazards[id];
 	}
 	// The boost auras (docs/BOOST_ART.md BAD3; boostAuras.ts): fx entries once boost-auras.png has an ID; until then
 	// none, and the aura is the Neon disc.

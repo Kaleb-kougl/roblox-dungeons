@@ -21,6 +21,8 @@
  *                 (DetonationWatch, the quick corpse), the stun / dizzy stars, the Warbanner's aura (AuraView, its
  *                 ring), the strike flash's pool filter and look (tunables: newEnemiesConfig.ts; sprite inputs in
  *                 sprites.ts, the strike row in markings.ts)
+ *   hazards.ts    the floor hazards' sprites (docs/HAZARD_ART.md HA4): the strike flash, the scorch it leaves
+ *                 (ScorchTracker), the ember's burn loop, the strike's flat size (tunables: hazardsConfig.ts)
  *   buildBullets.ts  build effect bullets (docs/BUILDS.md BU8): player bullet look by payload kind (burst / shard /
  *                 bolt), trails, the ember decal pool split and look (tunables: BUILD_BULLET_VIEW in buildBulletsConfig.ts)
  *   bullets/      sprite bullets (docs/PROJECTILE_ART.md PA4): enemy looks by kind, flicker frame, yaw along the
@@ -77,6 +79,8 @@ export * from "./bullets";
 export * from "./variants";
 export * from "./newEnemiesConfig";
 export * from "./newEnemies";
+export * from "./hazardsConfig";
+export * from "./hazards";
 export * from "./newEnemySprites";
 export * from "./spriteCell";
 export * from "./floorTexture";

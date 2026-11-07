@@ -338,7 +338,7 @@ Owner answers (2026-11-05, Kaleb):
   be stronger evidence than a comment, but it is optional.
   The paid `BulletPack.rar` may hold purpose-made enemy bullets. If bought, it could replace PAD1's recoloured
   shapes; that would need a new art pass and is not part of this plan.
-- **PAD3. Floor hazards unchanged.** Goo puddles, lightning strikes and ember flames stay flat neon decals. Only
+- **PAD3. Floor hazards unchanged** (superseded for goo by docs/GOO_ART.md and for strike / ember by docs/HAZARD_ART.md). Goo puddles, lightning strikes and ember flames stay flat neon decals. Only
   projectiles that fly get sprites.
 
 Recommended defaults (confirm or change before the task in brackets):

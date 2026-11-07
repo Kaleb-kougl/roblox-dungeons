@@ -1337,6 +1337,21 @@
 			"bytes": 2961
 		},
 		{
+			"path": "kaleb-vale/hazards/ember_burn.png",
+			"sha256": "de6ccd751964ec43273a098cc66fd894590dc044bb86bd4bcbbcd457e95f7c0e",
+			"bytes": 1582
+		},
+		{
+			"path": "kaleb-vale/hazards/strike_flash.png",
+			"sha256": "b6b421a4621edc49c0b872fde958ab8ecf9c8c734902654da2907b8f062aa375",
+			"bytes": 5046
+		},
+		{
+			"path": "kaleb-vale/hazards/strike_scorch.png",
+			"sha256": "a92409705783427d1eea766e08c6e5bccc12a39a4b3acb74eff217b79ad4a4cf",
+			"bytes": 3039
+		},
+		{
 			"path": "kaleb-vale/loot-glint/loot_glint_0.png",
 			"sha256": "14b3a0328651b9b4c19ff9808431b2365e073a5dd565d9d6c0c6d1ec23716a13",
 			"bytes": 145
