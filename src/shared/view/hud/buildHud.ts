@@ -17,6 +17,7 @@ import {
 	type HudText,
 } from "./draftCards";
 import { HUD_VIEW } from "./layout";
+import type { ItemRef } from "./tooltip";
 import {
 	CURSE_COLOR_ROLE,
 	RELIC_COLOR_ROLE,
@@ -69,6 +70,8 @@ export interface ItemCellModel {
 	readonly span: number;
 	/** A curse: its skull art behind the label (docs/UI_ART.md UA8). */
 	readonly curse: boolean;
+	/** The owned item it shows (item tooltips). */
+	readonly ref: ItemRef;
 }
 
 /**
@@ -100,6 +103,7 @@ export function runItemCells(
 			maxLevel: pips ? max : 0,
 			span: 1,
 			curse: false,
+			ref: { kind: "boon", index: b },
 		});
 	}
 	for (const d of duos) {
@@ -113,23 +117,24 @@ export function runItemCells(
 			maxLevel: 0,
 			span: DUO_CHIP_SPAN,
 			curse: false,
+			ref: { kind: "duo", index: d },
 		});
 	}
 	for (const x of relics) {
 		const def = RELICS[x];
 		if (def === undefined) continue;
-		out.push(plainCell(`r${x}`, def.id, RELIC_COLOR_ROLE, false));
+		out.push(plainCell(`r${x}`, def.id, RELIC_COLOR_ROLE, false, { kind: "relic", index: x }));
 	}
 	for (const c of curses) {
 		const def = CURSES[c];
 		if (def === undefined) continue;
-		out.push(plainCell(`c${c}`, def.id, CURSE_COLOR_ROLE, true));
+		out.push(plainCell(`c${c}`, def.id, CURSE_COLOR_ROLE, true, { kind: "curse", index: c }));
 	}
 	return out;
 }
 
-function plainCell(key: string, id: string, fill: ColorRole, curse: boolean): ItemCellModel {
-	return { key, icons: [itemIconKey(id)], fills: [fill], level: 0, maxLevel: 0, span: 1, curse };
+function plainCell(key: string, id: string, fill: ColorRole, curse: boolean, ref: ItemRef): ItemCellModel {
+	return { key, icons: [itemIconKey(id)], fills: [fill], level: 0, maxLevel: 0, span: 1, curse, ref };
 }
 
 /** A cell's width: `span` cells and the gaps inside it. */
@@ -197,6 +202,8 @@ export interface BuildListRow {
 	readonly desc: HudText;
 	/** The name's colour: the rarity's, boon.evolved for an evolved boon, boon.duo for a duo. */
 	readonly color: ColorRole;
+	/** The owned item it shows (item tooltips). */
+	readonly ref: ItemRef;
 }
 
 /**
@@ -224,6 +231,7 @@ export function buildListRows(
 			level: levelText(b, level),
 			desc: textOf(level > 0 ? boonLineKey(b, shown) : boonLevelDescKey(def.id, 1)),
 			color: evolved ? BUILD_EVOLVED_ROLE : rarityColorRole(def.rarity),
+			ref: { kind: "boon", index: b },
 		});
 	}
 	for (const d of duos) {
@@ -235,6 +243,7 @@ export function buildListRows(
 			level: "",
 			desc: textOf(`${duo.id}.desc`),
 			color: BUILD_DUO_ROLE,
+			ref: { kind: "duo", index: d },
 		});
 	}
 	return out;
