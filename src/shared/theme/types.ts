@@ -462,6 +462,13 @@ export interface SpriteSetAsset {
 	 */
 	lit?: { w: number; h: number };
 	/**
+	 * The strike's hazard sprite only (docs/HAZARD_ART.md HA3, contract.ts BULLET_ART.hazardSpriteIds), required there:
+	 * its hit rim, art px from the pivot. The renderer maps it exactly onto the strike's hit radius (the art is seen from
+	 * straight above and laid flat unstretched). The ember's hazard sprite carries `lit` instead: its burning patch,
+	 * centred on the pivot, which covers the drawn disc.
+	 */
+	rimPx?: number;
+	/**
 	 * Boost auras only (docs/BOOST_ART.md BAD3, boostAuraArt.ts: `fx.boost.aura.<kind>`), required on them: the ring's
 	 * radius per stack rank, art px from the pivot (rank 0's loop is `play`, rank r's `rank.<r>`). The renderer maps
 	 * rank r's ring exactly onto its disc's radius (shared/view auraArtSize), so a wider stack never scales the art.

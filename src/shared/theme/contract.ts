@@ -176,23 +176,32 @@ export const BOSS: SlotContract = {
 /**
  * Roblox port (docs/PROJECTILE_ART.md PA3): the BULLET slot's `sprites` rules, one table (contract.luau sits near Luau's
  * 200-locals limit). `animation`: the one loop a flying bullet's set defines (the slot's base animation); `maxFrames`:
- * its largest frame count; `decalIds`: bullets drawn as flat floor decals (lightning strikes, ember flames, PAD3), which
- * keep their placeholders and may not take art; `hitFx`: the optional player bullet impact effect (an FX_IDS entry,
- * PA7, PAD11: never for enemy bullets).
+ * its largest frame count; `hitFx`: the optional player bullet impact effect (an FX_IDS entry, PA7, PAD11: never for
+ * enemy bullets).
  * docs/GOO_ART.md GA2: `floorSpriteIds` (the goo puddle) may take a FLOOR sprite set instead: one facing, never turned
  * (the art is a 3/4 view, drawn screen-up), the animations `land` (`landFrames` cell: the drop hitting the floor) and
  * `hold` (1..`maxFrames` cells: variants picked per puddle, not a flipbook), a `meanColor` and the hold frame's lit
  * box `lit` ({ w, h }, art px), held to gooArt.ts `gooArtReport`. Declared before BULLET, whose per-ID animations
  * read it.
+ * docs/HAZARD_ART.md HA3 (supersedes PAD3's `decalIds`): `hazardSpriteIds`, the floor hazards (the Stormcaller's strike,
+ * the build embers), may take a HAZARD sprite set: one facing, greyscale (the renderer tints it with the hazard's own
+ * colour role, so its `meanColor` must be a grey), at most `maxHazardFrames` cells per animation. The strike defines
+ * `flash` (played over its life) and `scorch` (hot, then cold: what the view leaves after it) and its hit rim
+ * `rimPx` (art px from the pivot); the ember defines `burn` (a loop) and its burning patch `lit` ({ w, h }, centred on
+ * the pivot). Held to hazardArt.ts `hazardArtReport`; without art both keep their placeholder discs.
  */
 export const BULLET_ART = {
 	animation: "fly",
 	maxFrames: 4,
-	decalIds: ["bullet.enemy.strike", "bullet.player.ember"] as ReadonlyArray<string>,
 	floorSpriteIds: ["bullet.enemy.goo"] as ReadonlyArray<string>,
 	land: "land",
 	hold: "hold",
 	landFrames: 1,
+	hazardSpriteIds: ["bullet.enemy.strike", "bullet.player.ember"] as ReadonlyArray<string>,
+	flash: "flash",
+	scorch: "scorch",
+	burn: "burn",
+	maxHazardFrames: 8,
 	hitFx: "fx.bullet.hit",
 } as const;
 
@@ -201,9 +210,11 @@ export const BULLET_ART = {
  * Roblox port (docs/PROJECTILE_ART.md PA3): a bullet may also be a v2 `sprites` set like an effect (FX): its own cell,
  * ONE facing, the `fly` loop (BULLET_ART.animation, 1..BULLET_ART.maxFrames frames from the art), art pointing
  * screen-up (`heading`), plus a required `meanColor` held to the bullet colour rules (bulletArt.ts `bulletArtReport`).
- * BULLET_ART.decalIds never take art. The cell / pivot / `fly: 2` below are the spritesheet kind's, unchanged.
+ * The cell / pivot / `fly: 2` below are the spritesheet kind's, unchanged.
  * docs/GOO_ART.md GA2: a BULLET_ART.floorSpriteIds set (the goo puddle) defines `land` / `hold` instead of `fly`
  * (`idBaseAnimations`; the ID is written out: BULLET_ART.floorSpriteIds[0], pinned by gooArt.spec).
+ * docs/HAZARD_ART.md HA3: likewise the hazards, the strike `flash` / `scorch`, the ember `burn` (IDs written out,
+ * pinned by hazardArt.spec).
  */
 export const BULLET: SlotContract = {
 	slot: "bullet",
@@ -215,7 +226,11 @@ export const BULLET: SlotContract = {
 	animationOrder: ["fly"],
 	facings: [],
 	heading: "up",
-	idBaseAnimations: { "bullet.enemy.goo": [BULLET_ART.land, BULLET_ART.hold] },
+	idBaseAnimations: {
+		"bullet.enemy.goo": [BULLET_ART.land, BULLET_ART.hold],
+		"bullet.enemy.strike": [BULLET_ART.flash, BULLET_ART.scorch],
+		"bullet.player.ember": [BULLET_ART.burn],
+	},
 };
 
 /** One tile = PIXELS_PER_TILE (16) pixels square. */
@@ -420,7 +435,7 @@ export function requiredAnimations(slot: SlotContract): Record<string, number> {
  * play (`baseAnimations`). Each needs >= 1 frame; the
  * contract's exact frame counts, cells, pivots and facings apply to the 16 px `spritesheet` kind only. Empty for a
  * slot without animations. `id`: the asset's ID, for a slot with per-ID animations (`idBaseAnimations`: the goo
- * puddle's land / hold, docs/GOO_ART.md GA2).
+ * puddle's land / hold, docs/GOO_ART.md GA2; the hazards', docs/HAZARD_ART.md HA3).
  */
 export function requiredBaseAnimations(slot: SlotContract, id?: string): Array<string> {
 	const out = new Array<string>();

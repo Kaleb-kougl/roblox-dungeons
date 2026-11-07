@@ -2395,14 +2395,15 @@ function validateSpriteSet(def: Obj, path: Array<string>, slot: SlotContract, er
 	}
 	const fx = slot === FX;
 	// docs/PROJECTILE_ART.md PA3: a bullet set adds its meanColor (bulletArt.ts checks it; by slot name: no new local);
-	// docs/GOO_ART.md GA2: a floor sprite (the goo) also its hold frame's lit box `lit` (gooArt.ts checks it)
+	// docs/GOO_ART.md GA2: a floor sprite (the goo) also its hold frame's lit box `lit` (gooArt.ts checks it);
+	// docs/HAZARD_ART.md HA3: a hazard its `lit` (the ember) or hit rim `rimPx` (the strike; hazardArt.ts checks both)
 	const extraKeys =
 		decor !== undefined
 			? decorArtKeys(decor, "sprites")
 			: fx
 			? FX_ART_KEYS
 			: slot.slot === "bullet"
-			? ["meanColor", "lit"]
+			? ["meanColor", "lit", "rimPx"]
 			: [];
 	unknownKeys(def, path, [...SPRITE_SET_KEYS, ...extraKeys]);
 

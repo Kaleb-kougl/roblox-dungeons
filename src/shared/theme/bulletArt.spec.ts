@@ -58,11 +58,12 @@ describe("BULLET slot: sprites (docs/PROJECTILE_ART.md PA3)", () => {
 		expect([BULLET.heading, BULLET.perSheetCells]).toEqual(["up", undefined]);
 		expect(BULLET_ART.animation).toBe("fly");
 		expect(BULLET_ART.maxFrames).toBe(4);
-		// docs/GOO_ART.md GA2: the goo left the decals for a floor sprite (gooArt.spec)
-		expect([...BULLET_ART.decalIds]).toEqual(["bullet.enemy.strike", "bullet.player.ember"]);
+		// docs/GOO_ART.md GA2: the goo is a floor sprite (gooArt.spec); docs/HAZARD_ART.md HA3: strike and ember hazard
+		// sprites (hazardArt.spec)
+		expect([...BULLET_ART.hazardSpriteIds]).toEqual(["bullet.enemy.strike", "bullet.player.ember"]);
 		expect([...BULLET_ART.floorSpriteIds]).toEqual(["bullet.enemy.goo"]);
 		expect(MAX_ENEMY_BULLET_ART_DIFFERENCE).toBe(12);
-		for (const id of BULLET_ART.decalIds) expect(BULLET_IDS.includes(id as never)).toBe(true);
+		for (const id of BULLET_ART.hazardSpriteIds) expect(BULLET_IDS.includes(id as never)).toBe(true);
 	});
 
 	it("an art-less pack is unchanged: no entries, no problems, every bullet its placeholder", () => {
@@ -140,18 +141,15 @@ describe("BULLET slot: sprites (docs/PROJECTILE_ART.md PA3)", () => {
 		expect(bad.map((e) => e.check)).toEqual(["enemy"]);
 	});
 
-	it("rejects art on the floor decals (strike, ember)", () => {
-		for (const id of BULLET_ART.decalIds) {
+	it("a flying bullet set on a floor hazard (strike, ember) is no bullet: hazardArt's rules, never pack.bullet", () => {
+		for (const id of BULLET_ART.hazardSpriteIds) {
 			const m = withBullet(id, id === "bullet.player.ember" ? "#edc134" : "#f6449f");
-			expect([id, errorsAt(m, id)]).toEqual([
-				id,
-				[
-					`assets["${id}"].kind: ${id} is drawn as a floor decal (PAD3): it keeps its placeholder, give it no sprite art`,
-				],
-			]);
+			expect([id, bulletArtReport(m).filter((e) => e.id === id)]).toEqual([id, []]);
+			// docs/HAZARD_ART.md HA3: it lacks the hazard's animations (and its rim / patch, a grey mean)
+			expect([id, errorsAt(m, id).size() > 0]).toEqual([id, true]);
 			const warnings = new Array<string>();
 			expect(new ThemePack(m, { warn: (w) => warnings.push(w) }).bullet(id)).toBe(undefined);
-			expect([id, warnings.size()]).toEqual([id, 1]);
+			expect([id, warnings.size()]).toEqual([id, 0]);
 		}
 	});
 
@@ -209,7 +207,7 @@ describe("BULLET slot: sprites (docs/PROJECTILE_ART.md PA3)", () => {
 				id,
 			),
 		).toEqual([
-			`assets["${id}"].sizeTiles: unknown key (allowed: kind, frameW, frameH, pivot, pixelsPerTile, resample, facings, sheets, animations, meanColor, lit)`,
+			`assets["${id}"].sizeTiles: unknown key (allowed: kind, frameW, frameH, pivot, pixelsPerTile, resample, facings, sheets, animations, meanColor, lit, rimPx)`,
 			`assets["${id}"].animations: sprite contract: missing animation "fly" (>= 1 frame)`,
 		]);
 	});
