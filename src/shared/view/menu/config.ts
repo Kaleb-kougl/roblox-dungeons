@@ -120,6 +120,31 @@ export const GAMEPAD_MENU = {
 	 * `GuiService:Select(scopeRoot)` lands on it.
 	 */
 	defaultSelectionOrder: -1,
+	/**
+	 * A MenuButton activation counts as the pad's confirm (its haptic tick, GM9) only when ButtonA went down this many
+	 * seconds before it or less (a mouse click while the device still reads gamepad does not buzz).
+	 */
+	confirmPressWindowSec: 0.25,
+	/** The run-over Exit button's hold fill (uiAccent under the label, MenuButton `fill`): its transparency. */
+	holdFillTransparency: 0.45,
+} as const;
+
+/**
+ * The hint bar (client/ui/hud PadHintBar, GM7), reference px: one row of `[glyph] label` items at the bottom of a
+ * scope's panel, shown only on a gamepad.
+ */
+export const PAD_HINT_VIEW = {
+	/** A glyph's square (the engine's image, or the text fallback's box height). */
+	glyphSize: 22,
+	/** Between a hint's glyphs (LB RB) and between the glyphs and the label. */
+	glyphGap: 2,
+	labelGap: 4,
+	/** Between two hints. */
+	itemGap: 14,
+	/** The text fallback's plate behind a key name (uiPanel, this transparent). */
+	plateTransparency: 0.2,
+	/** The plate's outline (uiTextDim). */
+	plateStroke: 1,
 } as const;
 
 /**

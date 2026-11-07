@@ -9,15 +9,22 @@ import {
 	selectStageCovered,
 	type ClientState,
 } from "client/store";
-import type { FocusScopeHandle, FocusScopeRegistry } from "client/ui";
+import { PAD_HOLD_UI, type FocusScopeHandle, type FocusScopeRegistry } from "client/ui";
 import {
 	FocusMemory,
 	GAMEPAD_MENU,
 	GAMEPAD_MENU_ATTRIBUTES,
 	PAD_KEYS,
+	PadHoldGate,
+	ScrollEndLatch,
 	focusAction,
 	menuPadAction,
+	padBackMeaning,
+	padConfirmFeedback,
+	padScrollStep,
 	pickFocusScope,
+	scrollMaxY,
+	scrollToShow,
 	type FocusContext,
 	type FocusPath,
 	type FocusScopeEntry,
@@ -26,6 +33,7 @@ import {
 } from "shared/view/menu";
 import { InputController } from "../game/InputController";
 import { watchSpikeFlag } from "../spikes/spikeFlags";
+import { PadHapticsController } from "./PadHapticsController";
 
 /** One registered scope: its handle and its mount order (unique: the registry's key). */
 interface ScopeRecord {
@@ -72,6 +80,42 @@ function resolvePath(root: Instance, path: FocusPath): Instance | undefined {
 }
 
 /**
+ * The product of every UIScale above `obj` (the HUD's and MenuFit's): a ScrollingFrame's CanvasPosition is taken to
+ * be in unscaled (reference) px, its Absolute* sizes in screen px (GM5; the Studio check confirms the units).
+ */
+function uiScaleAbove(obj: Instance): number {
+	let scale = 1;
+	let node: Instance | undefined = obj.Parent;
+	while (node !== undefined && !node.IsA("LayerCollector")) {
+		const ui = node.FindFirstChildOfClass("UIScale");
+		if (ui !== undefined && ui.Scale > 0) scale *= ui.Scale;
+		node = node.Parent;
+	}
+	return scale;
+}
+
+/** The nearest vertically scrolling ScrollingFrame above `obj`, below `root` (exclusive), or undefined. */
+function scrollParentOf(obj: Instance, root: Instance): ScrollingFrame | undefined {
+	let node: Instance | undefined = obj.Parent;
+	while (node !== undefined && node !== root) {
+		if (node.IsA("ScrollingFrame") && node.ScrollingDirection !== Enum.ScrollingDirection.X) return node;
+		node = node.Parent;
+	}
+	return undefined;
+}
+
+/** B is held on any connected pad (behind pcall: the call throws for a pad that went away). */
+function padBDown(): boolean {
+	const [ok, pads] = pcall(() => UserInputService.GetConnectedGamepads());
+	if (!ok) return false;
+	for (const pad of pads) {
+		const [okDown, down] = pcall(() => UserInputService.IsGamepadButtonDown(pad, Enum.KeyCode.ButtonB));
+		if (okDown && down) return true;
+	}
+	return false;
+}
+
+/**
  * Gamepad menus: focus scopes, recovery and memory (docs/GAMEPAD_MENUS.md sections 1-3, GM2-GM4; the rules are pure in
  * shared/view/menu focus.ts / padActions.ts). Components register their surfaces through client/ui useFocusScope /
  * FocusScope (this controller is the FocusScopesContext registry HudController and LoadingController provide).
@@ -91,6 +135,16 @@ function resolvePath(root: Instance, path: FocusPath): Instance | undefined {
  *   pad       B (InputBegan; Backspace stays MenuController's keyboard path) and InputController.onMenuPadInput (the
  *             bumpers, triggers, X / Y, right-stick steps) go to the owner as menuPadAction(owner surface, key, its
  *             pad context): one press, one owner, one action (GM3). Never during a rebind capture or the Roblox menu.
+ *   scroll    (GM5) a scope's `scrollRef` list scrolls by GAMEPAD_MENU.scrollStepPx per right-stick step (padScrollStep,
+ *             clamped), with MENU_HAPTICS.listEnd once per arrival at an end (ScrollEndLatch); a newly selected
+ *             button inside a ScrollingFrame and outside its window is scrolled into view (followSelection:
+ *             scrollToShow with GAMEPAD_MENU.followMarginPx), harmless where the engine already does it
+ *   haptics   (GM9) a MenuButton activation right after ButtonA (buttonPressed) ticks `confirm` or buzzes `disabled`
+ *             (PadHapticsController: gamepad and vibration On only)
+ *   hold B    (GM9, GMD13) while a scope whose B means holdExit (the run over) owns the pad, B's held state is polled
+ *             every frame into PadHoldGate (a B held when it took the pad must be let go first; an early release
+ *             empties it); PAD_HOLD_UI carries the fill to the Exit button; completing sends `holdExit` to the scope
+ *             (it does what Exit does) and ticks `holdComplete`. A B press there dispatches nothing.
  *   debug     Workspace attribute KV_FocusDebug (GAMEPAD_MENU_ATTRIBUTES.focusDebug, off by default): owner changes,
  *             the selections made (full paths) and the pad actions dispatched.
  */
@@ -111,8 +165,17 @@ export class FocusController implements OnStart, FocusScopeRegistry {
 	private playerGui: PlayerGui | undefined;
 	/** Puts the original SelectionImageObject back (set while the empty one is in place). */
 	private restoreImage: (() => void) | undefined;
+	/** os.clock() of the last ButtonA press (the confirm haptic's window), or undefined. */
+	private lastAPress: number | undefined;
+	/** The selection followSelection last handled (it runs once per newly selected button). */
+	private followed: GuiObject | undefined;
+	/** The main list's end latch (reset when the owner changes). */
+	private readonly scrollEnds = new ScrollEndLatch();
+	/** Hold B to exit: the gate and the scope it was opened for. */
+	private readonly hold = new PadHoldGate();
+	private holdOwner: ScopeRecord | undefined;
 
-	constructor(private readonly input: InputController) {}
+	constructor(private readonly input: InputController, private readonly haptics: PadHapticsController) {}
 
 	onStart(): void {
 		this.playerGui = Players.LocalPlayer.WaitForChild("PlayerGui") as PlayerGui;
@@ -130,16 +193,20 @@ export class FocusController implements OnStart, FocusScopeRegistry {
 		this.janitor.Add(clientStore.subscribe(selectStageCovered, () => this.changed()));
 		this.janitor.Add(clientStore.subscribe(selectInputCaptured, () => this.changed()));
 		this.janitor.Add(
-			RunService.RenderStepped.Connect(() => {
+			RunService.RenderStepped.Connect((dt) => {
 				if (this.dirty || selectInputDevice(clientStore.getState()) === "gamepad") this.evaluate();
+				this.stepHold(dt);
 			}),
 		);
 		this.janitor.Add(
 			UserInputService.InputBegan.Connect((input) => {
-				if (input.KeyCode.Name !== PAD_KEYS.b) return;
+				const name = input.KeyCode.Name;
+				if (name === PAD_KEYS.a) this.lastAPress = os.clock();
+				if (name !== PAD_KEYS.b) return;
 				this.dispatch({ keyName: PAD_KEYS.b, x: 0, y: 0 });
 			}),
 		);
+		this.janitor.Add(() => PAD_HOLD_UI.set(0), true);
 		this.janitor.Add(this.input.onMenuPadInput((input) => this.dispatch(input)));
 		this.changed();
 	}
@@ -167,6 +234,19 @@ export class FocusController implements OnStart, FocusScopeRegistry {
 		task.defer(() => {
 			this.deferred = false;
 			if (this.dirty) this.evaluate();
+		});
+	}
+
+	buttonPressed(disabled: boolean): void {
+		// Deferred: the engine may fire Activated before UserInputService.InputBegan reports the A press that caused it.
+		task.defer(() => {
+			const since = this.lastAPress !== undefined ? os.clock() - this.lastAPress : undefined;
+			const device = selectInputDevice(clientStore.getState());
+			const feedback = padConfirmFeedback(device, since, GAMEPAD_MENU.confirmPressWindowSec, disabled);
+			if (feedback === "none") return;
+			// One A press, one cue (a button that re-renders and fires again within the window never buzzes twice).
+			this.lastAPress = undefined;
+			this.haptics.play(feedback);
 		});
 	}
 
@@ -229,6 +309,7 @@ export class FocusController implements OnStart, FocusScopeRegistry {
 		const owner = this.pickOwner(ctx);
 		if (owner !== this.owner) {
 			this.owner = owner;
+			this.scrollEnds.reset();
 			if (this.debug) {
 				const o = owner?.handle.options();
 				print(`[Focus] owner ${o !== undefined ? `${o.id} (${o.layer} / ${o.surface})` : "none"}`);
@@ -266,7 +347,12 @@ export class FocusController implements OnStart, FocusScopeRegistry {
 			selection,
 			memoryAvailable: remembered !== undefined,
 		});
-		if (action === "keep") return;
+		if (action === "keep") {
+			if (root !== undefined && selected !== undefined && selection?.insideOwner === true) {
+				this.followSelection(selected, root);
+			}
+			return;
+		}
 		if (action === "clear") {
 			this.select(undefined, "clear");
 			return;
@@ -320,8 +406,82 @@ export class FocusController implements OnStart, FocusScopeRegistry {
 		const o = owner.handle.options();
 		const action = menuPadAction(o.surface, input.keyName, o.padContext ?? {});
 		if (action.kind === "none" || action.kind === "select") return;
+		// Hold B: the press itself does nothing (GMD5); stepHold sends holdExit once the hold completes.
+		if (action.kind === "holdExit") return;
 		if (this.debug) print(`[Focus] ${input.keyName} on ${o.id} (${o.surface}): ${action.kind}`);
+		if (action.kind === "scroll") {
+			const list = o.scrollRef?.current;
+			if (list !== undefined) {
+				if (list.IsA("ScrollingFrame")) this.scrollList(list, input.y);
+				return;
+			}
+		}
 		o.onPadAction?.(action, input);
+	}
+
+	/** GM5: one right-stick step on `list` (up: toward its start), the list end's tick once per arrival. */
+	private scrollList(list: ScrollingFrame, stickY: number): void {
+		const k = uiScaleAbove(list);
+		const maxY = scrollMaxY(list.AbsoluteCanvasSize.Y / k, list.AbsoluteWindowSize.Y / k);
+		const result = padScrollStep(list.CanvasPosition.Y, maxY, stickY, GAMEPAD_MENU.scrollStepPx);
+		if (result.moved) list.CanvasPosition = new Vector2(list.CanvasPosition.X, result.y);
+		if (this.scrollEnds.step(result)) this.haptics.play("listEnd");
+	}
+
+	/**
+	 * GM5 followSelection: a newly selected button inside a vertical ScrollingFrame (under the owner's root) and outside
+	 * its window is scrolled into view, GAMEPAD_MENU.followMarginPx inside it (scrollToShow). Once per selection, so it
+	 * never fights the right stick; a frame the engine already scrolled is left as it is (scrollToShow moves nothing).
+	 */
+	private followSelection(selected: GuiObject, root: GuiObject): void {
+		if (selected === this.followed) return;
+		this.followed = selected;
+		const list = scrollParentOf(selected, root);
+		if (list === undefined) return;
+		const k = uiScaleAbove(list);
+		const canvasY = list.CanvasPosition.Y;
+		const itemTop = (selected.AbsolutePosition.Y - list.AbsolutePosition.Y) / k + canvasY;
+		const y = scrollToShow(
+			canvasY,
+			itemTop,
+			selected.AbsoluteSize.Y / k,
+			list.AbsoluteWindowSize.Y / k,
+			GAMEPAD_MENU.followMarginPx,
+			list.AbsoluteCanvasSize.Y / k,
+		);
+		if (y !== canvasY) list.CanvasPosition = new Vector2(list.CanvasPosition.X, y);
+	}
+
+	/** GM9 hold B to exit: polls B while a holdExit scope owns the pad (see the class comment). */
+	private stepHold(dt: number): void {
+		const state = clientStore.getState();
+		const owner = this.owner;
+		const holds =
+			owner !== undefined &&
+			padBackMeaning(owner.handle.options().surface) === "holdExit" &&
+			!selectInputCaptured(state) &&
+			!selectRobloxMenuOpen(state) &&
+			!this.spikeOn;
+		if (!holds || owner === undefined) {
+			if (this.holdOwner !== undefined) {
+				this.holdOwner = undefined;
+				this.hold.close();
+			}
+			PAD_HOLD_UI.set(0);
+			return;
+		}
+		const down = padBDown();
+		if (this.holdOwner !== owner) {
+			this.holdOwner = owner;
+			this.hold.open(down);
+		}
+		const step = this.hold.step(down, dt, GAMEPAD_MENU.holdExitSec);
+		PAD_HOLD_UI.set(this.hold.progress(GAMEPAD_MENU.holdExitSec));
+		if (step !== "complete") return;
+		const o = owner.handle.options();
+		if (this.debug) print(`[Focus] hold B complete on ${o.id} (${o.surface}): holdExit`);
+		this.haptics.play("holdComplete");
+		o.onPadAction?.({ kind: "holdExit" }, { keyName: PAD_KEYS.b, x: 0, y: 0 });
 	}
 
 	/** The pad spike (KV_PadSpike) takes over the selection and the selection image while it runs. */

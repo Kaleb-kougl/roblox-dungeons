@@ -62,6 +62,7 @@ import {
 import { MENU_FIT, screenDividers, screenSkin, stepTab, subTabStep, tabStep } from "shared/view/menu";
 import { useHudActions, type HudActions } from "./actions";
 import { FitScroll, MenuFit } from "./MenuFit";
+import { PadHintBar } from "./PadHintBar";
 import { ArtImage, Divider, MenuButton, Panel, Row, Text, panelIcon } from "./primitives";
 import { ScreenDim } from "./ScreenDim";
 
@@ -325,8 +326,11 @@ function ControlsTab(props: {
 	compact: boolean;
 	/** The action rows' scroll list height otherwise (OPTIONS_VIEW.listHeight; less on a short touch screen). */
 	listHeight: number;
+	/** The action rows' list (not compact): the Options scope's `scrollRef` (the right stick scrolls it, GM5). */
+	listRef?: React.Ref<ScrollingFrame>;
 }) {
 	const bindings = useSelector(selectBindings);
+	const display = useSelector(selectDisplay);
 	const { actions, options } = props;
 	const device = options.controlsDevice;
 	const list = device === "kbm" ? KBM_ACTIONS : PAD_ACTIONS;
@@ -404,6 +408,7 @@ function ControlsTab(props: {
 			) : (
 				<scrollingframe
 					key="Rows"
+					ref={props.listRef}
 					LayoutOrder={3}
 					Size={new UDim2(1, 0, 0, props.listHeight)}
 					CanvasSize={new UDim2()}
@@ -433,8 +438,26 @@ function ControlsTab(props: {
 					})}
 				/>
 			) : undefined}
+			{device === "pad" ? (
+				// docs/GAMEPAD_MENUS.md GM9: menu vibration On / Off (DisplaySettings.padVibration, only Off stored).
+				<SettingRow
+					order={7}
+					name="padVibration"
+					selectable={sel}
+					label={str(OPTIONS_STRINGS.vibration)}
+					value={display.padVibration}
+					options={[
+						{ value: true, label: str(SETTINGS_STRINGS.on) },
+						{ value: false, label: str(SETTINGS_STRINGS.off) },
+					]}
+					onPick={(v) => {
+						actions.playUi(SFX.uiClick);
+						actions.updateDisplay({ padVibration: v });
+					}}
+				/>
+			) : undefined}
 			<MenuButton
-				order={7}
+				order={8}
 				name="ResetBindings"
 				text={str(OPTIONS_STRINGS.resetDevice, { device: str(optionsDeviceKey(device)) })}
 				size={new Vector2(OPTIONS_VIEW.slotSize.x * 2, HUD_VIEW.buttonSize.y)}
@@ -819,6 +842,9 @@ function Modal(props: {
 						{buttons}
 					</Row>
 				) : undefined}
+				{buttons.size() > 0 ? (
+					<PadHintBar key="PadHints" order={props.lines.size() + 2} surface="confirm" />
+				) : undefined}
 			</Panel>
 		</textbutton>
 	);
@@ -932,7 +958,17 @@ export function OptionsScreen() {
 	const actions = useHudActions();
 	const tabRef = useRef<TextButton>();
 	const rootRef = useRef<Frame>();
+	const listRef = useRef<ScrollingFrame>();
 	const tab = options.tab;
+	const resetTab = () => {
+		if (tab === "controls") {
+			actions.playUi(SFX.uiClick);
+			actions.askResetBindings(options.controlsDevice);
+		} else {
+			actions.playUi(SFX.uiConfirm);
+			actions.resetSettings(tab);
+		}
+	};
 	// One memory per opening: a prompt that closes hands the selection back to the button that opened it (a slot,
 	// Reset); the next opening starts on the current tab.
 	const opened = useOpeningId(open);
@@ -943,11 +979,19 @@ export function OptionsScreen() {
 		defaultRef: tabRef,
 		memoryKey: `options${opened}`,
 		active: open,
-		padContext: { subTabs: tab === "controls" },
+		// The right stick scrolls the Controls list or (compact) the whole body, whichever is drawn (scrollRef).
+		padContext: { subTabs: tab === "controls", scrollList: true },
+		scrollRef: listRef,
 		onPadAction: (action) => {
 			if (action.kind === "close") {
 				actions.playUi(SFX.uiBack);
 				actions.setSettingsOpen(false);
+				return;
+			}
+			// X: this tab's Reset, exactly as its button (Controls asks first; the other tabs reset at once, as their
+			// Reset button does). Never while a prompt is open (the prompt owns the pad then).
+			if (action.kind === "shortcutX" && action.meaning === "reset") {
+				if (!modal) resetTab();
 				return;
 			}
 			// LB / RB the tabs, LT / RT the Controls device; clamped at the ends, silent there (padNav stepTab).
@@ -994,6 +1038,7 @@ export function OptionsScreen() {
 					selectable={selectable}
 					compact={compact}
 					listHeight={listHeight}
+					listRef={compact ? undefined : listRef}
 				/>
 			);
 		}
@@ -1043,6 +1088,7 @@ export function OptionsScreen() {
 								order={BODY_ORDER}
 								height={layout.flex}
 								onContent={layout.setFlexContent}
+								listRef={listRef}
 							>
 								{bodyFor(true, 0)}
 							</FitScroll>
@@ -1057,10 +1103,7 @@ export function OptionsScreen() {
 									name="Reset"
 									text={str(OPTIONS_STRINGS.reset)}
 									selectable={selectable}
-									onActivated={() => {
-										actions.playUi(SFX.uiConfirm);
-										actions.resetSettings(tab);
-									}}
+									onActivated={resetTab}
 								/>
 							) : undefined}
 							<MenuButton
@@ -1083,7 +1126,16 @@ export function OptionsScreen() {
 								text={str(SETTINGS_STRINGS.offline)}
 							/>
 						) : undefined}
-						{device === "touch" ? undefined : (
+						{device === "gamepad" ? (
+							<PadHintBar
+								order={8}
+								surface="options"
+								context={{
+									subTabs: tab === "controls",
+									scrollList: layout.compact || tab === "controls",
+								}}
+							/>
+						) : device === "touch" ? undefined : (
 							<Text
 								fill={true}
 								order={8}

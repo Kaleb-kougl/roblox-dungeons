@@ -3,7 +3,7 @@ import React, { useRef, useState } from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
 import { selectInputDevice, selectLobbyList, selectMyLobbyId } from "client/store";
 import { FocusScope } from "client/ui/focus";
-import { MenuButton, MenuFit, Panel, Row, Text } from "client/ui/hud";
+import { MenuButton, MenuFit, PadHintBar, Panel, Row, Text } from "client/ui/hud";
 import { str } from "client/ui/theme";
 import { LOBBY, LOBBY_VISIBILITIES, type LobbyVisibility } from "shared/lobby";
 import { SFX } from "shared/view/audio";
@@ -31,7 +31,8 @@ const WIDE = new Vector2(MENU_VIEW.wideButton.x, MENU_VIEW.wideButton.y);
  * (greyed, no Join) and Join. The top bar creates a lobby with the picked visibility (Open / Friends / Closed); while
  * in a lobby it offers "Your lobby" instead (Join is off: leave yours first). Refresh asks the server again. Fitted
  * into the safe area on touch (MenuFit: the lobby list is the flexible list). A `screen` focus scope with memory
- * (docs/GAMEPAD_MENUS.md GM2): a refresh that removes the selected row falls back to the first button; B goes back.
+ * (docs/GAMEPAD_MENUS.md GM2): a refresh that removes the selected row falls back to the first button; B goes back;
+ * X refreshes, Y creates (GM6), the right stick scrolls the list (GM5); on a gamepad the hint bar replaces the key hint.
  */
 export function LobbyBrowser() {
 	const actions = useMenuActions();
@@ -41,7 +42,18 @@ export function LobbyBrowser() {
 	const nameOf = useNameOf();
 	const [visibility, setVisibility] = useState<LobbyVisibility>(LOBBY.defaultVisibility);
 	const firstRef = useRef<TextButton>();
+	const listRef = useRef<ScrollingFrame>();
 	const rows = browserRows(list, myLobby, nameOf);
+	const create = () => {
+		actions.playUi(SFX.uiConfirm);
+		actions.createLobby(visibility);
+	};
+	const refresh = () => {
+		actions.playUi(SFX.uiClick);
+		actions.refreshLobbies();
+	};
+	// docs/GAMEPAD_MENUS.md GM6: X Refresh, Y Create (only while Create is on screen: not in a lobby).
+	const padContext = { canCreate: myLobby === undefined, scrollList: true };
 
 	const visButtons = LOBBY_VISIBILITIES.map((v, i) => (
 		<MenuButton
@@ -69,10 +81,7 @@ export function LobbyBrowser() {
 					name="Create"
 					size={WIDE}
 					text={str(LOBBY_STRINGS.create)}
-					onActivated={() => {
-						actions.playUi(SFX.uiConfirm);
-						actions.createLobby(visibility);
-					}}
+					onActivated={create}
 				/>
 			</Row>
 		) : (
@@ -128,8 +137,12 @@ export function LobbyBrowser() {
 			surface="lobbies"
 			defaultRef={firstRef}
 			memoryKey="lobbies"
+			padContext={padContext}
+			scrollRef={listRef}
 			onPadAction={(action) => {
 				if (action.kind === "back") actions.screenBack();
+				else if (action.kind === "shortcutX" && action.meaning === "refresh") refresh();
+				else if (action.kind === "shortcutY" && action.meaning === "create" && myLobby === undefined) create();
 			}}
 		>
 			<MenuFit
@@ -149,7 +162,7 @@ export function LobbyBrowser() {
 							text={str(LOBBY_STRINGS.browserTitle)}
 						/>
 						{top}
-						<ScrollList order={3} height={layout.flex}>
+						<ScrollList ref={listRef} order={3} height={layout.flex}>
 							{items.size() > 0 ? (
 								items
 							) : (
@@ -170,10 +183,7 @@ export function LobbyBrowser() {
 								size={SMALL}
 								textSize={HUD_VIEW.smallText}
 								text={str(LOBBY_STRINGS.refresh)}
-								onActivated={() => {
-									actions.playUi(SFX.uiClick);
-									actions.refreshLobbies();
-								}}
+								onActivated={refresh}
 							/>
 							<MenuButton
 								order={2}
@@ -187,7 +197,9 @@ export function LobbyBrowser() {
 								}}
 							/>
 						</Row>
-						{device === "touch" ? undefined : (
+						{device === "gamepad" ? (
+							<PadHintBar order={5} surface="lobbies" context={padContext} />
+						) : device === "touch" ? undefined : (
 							<Text
 								fill={true}
 								order={5}

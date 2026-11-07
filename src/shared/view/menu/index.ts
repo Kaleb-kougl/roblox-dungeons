@@ -6,8 +6,9 @@
  * and lobby world row (daily.ts, docs/DAILY.md DS9), the Credits list (credits.ts), and the gamepad menus' focus
  * scopes, recovery and memory (focus.ts), pad buttons per surface (padActions.ts), hint bar (padHints.ts;
  * docs/GAMEPAD_MENUS.md GM1) and the menu pad input path (padNav.ts: input keys, clamped tabs, the right stick's
- * repeat; GM4). Headlessly tested (menu.spec.ts, pause.spec.ts, firstJoin.spec.ts, focus.spec.ts,
- * padActions.spec.ts, padNav.spec.ts; the string keys in shared/view/hud hud.spec.ts).
+ * repeat; GM4), the right stick's list scroll and its end latch (padScroll.ts, GM5), the hint bar's glyph choice and
+ * the menu haptics' timeline (padFeedback.ts, GM7 / GM9). Headlessly tested (menu.spec.ts, pause.spec.ts, firstJoin.spec.ts, focus.spec.ts,
+ * padActions.spec.ts, padNav.spec.ts, padFeedback.spec.ts; the string keys in shared/view/hud hud.spec.ts).
  */
 export * from "./config";
 export * from "./credits";
@@ -18,8 +19,10 @@ export * from "./focus";
 export * from "./nav";
 export * from "./lobby";
 export * from "./padActions";
+export * from "./padFeedback";
 export * from "./padHints";
 export * from "./padNav";
+export * from "./padScroll";
 export * from "./pause";
 export * from "./strings";
 export * from "./skin";

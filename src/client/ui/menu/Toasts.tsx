@@ -1,9 +1,9 @@
-import React from "@rbxts/react";
+import React, { useRef } from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
 import { Players } from "@rbxts/services";
 import { selectLobby, selectLobbyNotices, type LobbyNoticeToast } from "client/store";
 import { FocusScope } from "client/ui/focus";
-import { MenuButton, Panel, Row, Text } from "client/ui/hud";
+import { MenuButton, PadHintBar, Panel, Row, Text } from "client/ui/hud";
 import { role, str, type FontRole } from "client/ui/theme";
 import { SFX } from "shared/view/audio";
 import { HUD_VIEW } from "shared/view/hud";
@@ -14,6 +14,7 @@ import {
 	arrivedInviteShown,
 	receivedInvites,
 	screenSkin,
+	type ReceivedInvite,
 } from "shared/view/menu";
 import { useMenuActions } from "./actions";
 import { spec, useClock, useNameOf } from "./hooks";
@@ -22,20 +23,44 @@ const HALF = 0.5;
 const SMALL = new Vector2(MENU_VIEW.smallButton.x, MENU_VIEW.smallButton.y);
 
 /**
- * Lobby invites this player received (task L5), top right on the menu screens: "{from} invites you to {lobby}" with
- * Join / Decline, at most MENU_VIEW.maxInviteToasts, gone once expired (counted from when the list arrived). Their own
- * `invites` focus scope, inactive for now: never reached by direction from the screen (docs/GAMEPAD_MENUS.md GM2;
- * GM6 adds the jump to them with Y).
+ * The invite toasts on screen now (task L5): the received invites still live (counted from when the list arrived), at
+ * most MENU_VIEW.maxInviteToasts, in the server's order (the newest last). MenuLayer reads it once for the toasts and
+ * the main menu's Y (docs/GAMEPAD_MENUS.md GM6).
  */
-export function InviteToasts() {
-	const actions = useMenuActions();
+export function useInviteToasts(): ReadonlyArray<ReceivedInvite> {
 	const lobby = useSelector(selectLobby);
 	const nameOf = useNameOf();
 	const now = useClock(lobby.invites.size() > 0);
-	const invites = receivedInvites(lobby.invites, now - lobby.invitesAt, nameOf, MENU_VIEW.maxInviteToasts);
+	return receivedInvites(lobby.invites, now - lobby.invitesAt, nameOf, MENU_VIEW.maxInviteToasts);
+}
+
+/**
+ * Lobby invites this player received (task L5), top right on the menu screens: "{from} invites you to {lobby}" with
+ * Join / Decline, gone once expired. Their own `invites` focus scope (docs/GAMEPAD_MENUS.md GM6, GMD2): never reached
+ * by direction from the screen, only through the main menu's Y (`focused`), which selects the newest toast's Join;
+ * B (`onLeave`) goes back to the screen, whose memory brings its button back. While focused the hint bar shows under
+ * them.
+ */
+export function InviteToasts(props: { invites: ReadonlyArray<ReceivedInvite>; focused: boolean; onLeave: () => void }) {
+	const actions = useMenuActions();
+	const newestRef = useRef<TextButton>();
+	const invites = props.invites;
 	if (invites.size() === 0) return undefined;
+	const newest = invites.size() - 1;
 	return (
-		<FocusScope name="InviteToastsScope" id="invites" layer="invites" surface="invites" active={false}>
+		<FocusScope
+			name="InviteToastsScope"
+			id="invites"
+			layer="invites"
+			surface="invites"
+			active={props.focused}
+			defaultRef={newestRef}
+			onPadAction={(action) => {
+				if (action.kind !== "back") return;
+				actions.playUi(SFX.uiBack);
+				props.onLeave();
+			}}
+		>
 			<Panel
 				position={new UDim2(1, -HUD_VIEW.margin, 0, MENU_VIEW.inviteToastTop)}
 				anchor={new Vector2(1, 0)}
@@ -64,6 +89,7 @@ export function InviteToasts() {
 						/>
 						<Row order={2}>
 							<MenuButton
+								ref={i === newest ? newestRef : undefined}
 								order={1}
 								name="Join"
 								size={SMALL}
@@ -88,6 +114,7 @@ export function InviteToasts() {
 						</Row>
 					</Panel>
 				))}
+				{props.focused ? <PadHintBar key="PadHints" order={invites.size() + 1} surface="invites" /> : undefined}
 			</Panel>
 		</FocusScope>
 	);

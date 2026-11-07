@@ -1,5 +1,5 @@
 import React from "@rbxts/react";
-import { SlicedImage, useArtScale } from "client/ui/hud";
+import { ListFocusStroke, SlicedImage, useArtScale } from "client/ui/hud";
 import { alignFor, fontFor, role, textSizeFor, themePack, useUiFonts, type FontRole } from "client/ui/theme";
 import type { ColorRole } from "shared/theme";
 import {
@@ -20,17 +20,23 @@ const HIDDEN = 1;
 
 /**
  * A vertical scrolling list `height` reference px tall (rows grow its canvas). `selectable`: a gamepad can select the
- * list itself and scroll it with the stick (a list of text with no buttons in it, like the Credits).
+ * list itself (a list of text with no buttons in it, like the Credits) and it shows a uiAccent stroke while selected
+ * (ListFocusStroke, docs/GAMEPAD_MENUS.md GM5). The ref is the ScrollingFrame (a focus scope's `scrollRef`: the
+ * right stick scrolls it).
  */
-export function ScrollList(props: {
-	order: number;
-	height: number;
-	width?: number;
-	selectable?: boolean;
-	children?: React.ReactNode;
-}) {
+export const ScrollList = React.forwardRef<
+	ScrollingFrame,
+	{
+		order: number;
+		height: number;
+		width?: number;
+		selectable?: boolean;
+		children?: React.ReactNode;
+	}
+>((props, ref) => {
 	return (
 		<scrollingframe
+			ref={ref}
 			LayoutOrder={props.order}
 			Size={
 				props.width !== undefined
@@ -51,10 +57,11 @@ export function ScrollList(props: {
 				SortOrder={Enum.SortOrder.LayoutOrder}
 				Padding={new UDim(0, HUD_VIEW.gap)}
 			/>
+			{props.selectable === true ? <ListFocusStroke key="ListFocus" /> : undefined}
 			{props.children}
 		</scrollingframe>
 	);
-}
+});
 
 interface ListRowProps {
 	order: number;

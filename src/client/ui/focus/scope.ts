@@ -26,6 +26,12 @@ export interface FocusScopeOptions {
 	/** The surface facts the pad table reads (absent = false). */
 	readonly padContext?: PadContext;
 	/**
+	 * The scope's main list (a ScrollingFrame; GM5): the right stick scrolls it by GAMEPAD_MENU.scrollStepPx per step
+	 * (FocusController, with the list end's haptic tick), and `scroll` never reaches `onPadAction`. Pass
+	 * `padContext.scrollList` while it is shown, so the hint bar names the stick.
+	 */
+	readonly scrollRef?: GuiRef;
+	/**
 	 * What a pad press means here, while this scope owns the pad: B (back / close / resume / cancel / holdExit), the
 	 * bumpers and triggers (tabPrev / tabNext / subTabPrev / subTabNext), X / Y (shortcutX / shortcutY) and right-stick
 	 * steps (scroll, `input.x` / `input.y` the stick's axes). Never called for `none` or `select`.
@@ -47,6 +53,11 @@ export interface FocusScopeRegistry {
 	register(handle: FocusScopeHandle): () => void;
 	/** A scope's options changed (layer, surface, active, memory): the owner and the selection are checked again. */
 	changed(): void;
+	/**
+	 * A MenuButton was activated (`disabled`: it is greyed out and did nothing). On the pad, right after A, this is the
+	 * menu's confirm / disabled-press haptic (GM9); anything else ignores it.
+	 */
+	buttonPressed(disabled: boolean): void;
 }
 
 class NoRegistry implements FocusScopeRegistry {
@@ -56,6 +67,10 @@ class NoRegistry implements FocusScopeRegistry {
 
 	changed(): void {
 		// Nothing is registered, so nothing to check.
+	}
+
+	buttonPressed(): void {
+		// No pad feedback without a registry.
 	}
 }
 

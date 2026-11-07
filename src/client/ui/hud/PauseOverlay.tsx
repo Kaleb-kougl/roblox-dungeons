@@ -44,6 +44,7 @@ import { useHudActions, type HudActions } from "./actions";
 import { PauseBuild } from "./BuildList";
 import { PauseMap } from "./FullMapOverlay";
 import { MenuFit } from "./MenuFit";
+import { PadHintBar } from "./PadHintBar";
 import { Divider, MenuButton, Panel, Row, Text } from "./primitives";
 import { ScreenDim } from "./ScreenDim";
 import { usePortrait } from "./usePortrait";
@@ -309,7 +310,9 @@ export function PauseOverlay() {
 						/>
 					) : undefined}
 					<RunInfoLine order={20} />
-					{touch ? undefined : (
+					{device === "gamepad" ? (
+						<PadHintBar order={21} surface={confirmShown ? "confirm" : coop ? "party" : "pause"} />
+					) : touch ? undefined : (
 						<Text
 							fill={true}
 							order={21}

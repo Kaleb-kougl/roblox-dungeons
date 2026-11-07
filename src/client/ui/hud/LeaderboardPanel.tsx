@@ -29,7 +29,8 @@ import {
 } from "shared/view/hud";
 import { useHudActions } from "./actions";
 import { MenuFit } from "./MenuFit";
-import { MenuButton, Panel, Row, Text } from "./primitives";
+import { PadHintBar } from "./PadHintBar";
+import { ListFocusStroke, MenuButton, Panel, Row, Text } from "./primitives";
 import { ScreenDim } from "./ScreenDim";
 import { MENU_FIT, screenSkin, stepTab, subTabStep, tabStep } from "shared/view/menu";
 
@@ -152,7 +153,9 @@ const BOARD_TAB = new Vector2(LEADERBOARD_VIEW.boardTab.x, LEADERBOARD_VIEW.boar
  * the board's entrants, `1,240 players`). A friends view fills in as the server looks friends up (`finding friends...
  * (12)`). The all-time tab is exactly the old panel. Opened with B (LEADERBOARD_KEY) or from the pause overlay; B, pad
  * B or Close closes it. A `panel` focus scope (docs/GAMEPAD_MENUS.md GM2-GM4): a gamepad starts on the first scope
- * tab, LB / RB step the scope tabs and LT / RT the board tabs (clamped at the ends), B closes it. The run is paused
+ * tab, LB / RB step the scope tabs and LT / RT the board tabs (clamped at the ends), B closes it; the rows list is
+ * selectable (a uiAccent ring while selected) and the right stick scrolls it (GM5); on a gamepad the hint bar
+ * replaces the key hint (GM7). The run is paused
  * while it is open. Text from theme strings (hud.leaderboard.*, daily.tab.*,
  * daily.board.*), colours from theme roles.
  */
@@ -163,7 +166,12 @@ export function LeaderboardPanel(props: { localUserId: number }) {
 	const actions = useHudActions();
 	const firstRef = useRef<TextButton>();
 	const rootRef = useRef<Frame>();
+	const listRef = useRef<ScrollingFrame>();
 	const tabs: LeaderboardTabs = { scope: lb.scope, board: lb.board, friends: lb.friends };
+	const t = boardText(lb, tabs);
+	const rows = t.view?.rows ?? [];
+	// docs/GAMEPAD_MENUS.md GM5: the rows list is selectable (a ring while selected) and the right stick scrolls it.
+	const padContext = { subTabs: true, scrollList: rows.size() > 0 };
 	const show = (patch: Partial<LeaderboardTabs>) => {
 		actions.playUi(SFX.uiClick);
 		actions.showLeaderboardTabs(withLeaderboardTab(tabs, patch));
@@ -174,7 +182,8 @@ export function LeaderboardPanel(props: { localUserId: number }) {
 		surface: "leaderboard",
 		defaultRef: firstRef,
 		active: lb.open,
-		padContext: { subTabs: true },
+		padContext,
+		scrollRef: listRef,
 		onPadAction: (action) => {
 			if (action.kind === "close") {
 				actions.playUi(SFX.uiBack);
@@ -193,8 +202,6 @@ export function LeaderboardPanel(props: { localUserId: number }) {
 	});
 
 	if (!lb.open) return undefined;
-	const t = boardText(lb, tabs);
-	const rows = t.view?.rows ?? [];
 	const listHeight = math.min(LEADERBOARD_VIEW.listHeight, rows.size() * (LEADERBOARD_VIEW.rowHeight + HUD_VIEW.gap));
 	const scopeTabs = LEADERBOARD_SCOPE_TABS.map((tab, i) => (
 		<MenuButton
@@ -278,6 +285,7 @@ export function LeaderboardPanel(props: { localUserId: number }) {
 						{rows.size() > 0 ? (
 							<scrollingframe
 								key="Rows"
+								ref={listRef}
 								LayoutOrder={7}
 								Size={new UDim2(1, 0, 0, layout.flex)}
 								CanvasSize={new UDim2(0, 0, 0, 0)}
@@ -286,13 +294,14 @@ export function LeaderboardPanel(props: { localUserId: number }) {
 								ScrollBarImageColor3={role("uiTextDim")}
 								BackgroundTransparency={HIDDEN}
 								BorderSizePixel={0}
-								Selectable={false}
+								Selectable={true}
 							>
 								<uilistlayout
 									FillDirection={Enum.FillDirection.Vertical}
 									SortOrder={Enum.SortOrder.LayoutOrder}
 									Padding={new UDim(0, HUD_VIEW.gap)}
 								/>
+								<ListFocusStroke key="ListFocus" />
 								{rows.map((r) => (
 									<BoardRow key={`r${r.rank}`} row={r} highlight={r.userId === props.localUserId} />
 								))}
@@ -308,7 +317,9 @@ export function LeaderboardPanel(props: { localUserId: number }) {
 								actions.setLeaderboardOpen(false);
 							}}
 						/>
-						{device === "touch" ? undefined : (
+						{device === "gamepad" ? (
+							<PadHintBar order={10} surface="leaderboard" context={padContext} />
+						) : device === "touch" ? undefined : (
 							<Text
 								fill={true}
 								order={10}

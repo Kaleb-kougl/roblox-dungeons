@@ -237,14 +237,93 @@ with its memory.
 | Lobby browser | `lobbies` | screen / lobbies | first New / Your lobby | `lobbies` | back |
 | Lobby room | `lobby` | screen / lobby | Ready | `lobby` | back |
 | Credits | `credits` | screen / credits | Back | - | back |
-| Invite toasts | `invites` | invites / invites, `active: false` | - | - | (GM6) |
+| Invite toasts | `invites` | invites / invites, active after main menu Y (GM6) | newest Join | - | back to the screen |
 | Options | `options` | panel / options | current tab | `options<opening>` | close |
 | Options prompt (swap / reset) | `optionsPrompt` | confirm / confirm | Swap / Reset | - | Cancel's action |
 | Leaderboard | `leaderboard` | panel / leaderboard | first scope tab | - | close |
 | Pause / party overlay | `pause` | overlay / pause or party | Resume | `pause<opening>` | resume / close |
 | Leave / skip confirm | `pauseConfirm` | confirm / confirm | Cancel / Keep playing | - | Cancel's action |
-| Run over | `runOver` | overlay / runOver | Again (else Exit) | - | holdExit (GM9) |
+| Run over | `runOver` | overlay / runOver | Again (else Exit) | - | hold: Exit (GM9) |
 | Tutorial outro | `outro` | overlay / outro | Start my first run | - | nothing |
+
+## As built (GM5-GM12, 2026-11-06)
+
+Built without a Studio run: the GM0 spike's results are not in yet, so every engine call is behind pcall with a
+fallback, and the facts the code assumes are listed under "Studio check" below.
+
+- **Pure core (shared/view/menu).** `padScroll.ts`: `padScrollStep(canvasY, maxY, stickY, stepPx)` (one clamped
+  right-stick step, which end it pushed into), `scrollMaxY`, `ScrollEndLatch` (the list end's tick once per arrival,
+  rearmed when the list leaves that end). `padFeedback.ts`: `padGlyph` (engine image > engine text when it says more than
+  the KeyCode's name > our `inputLabel`), `menuHapticsOn` (gamepad and vibration On), `hapticTimeline` (a cue's
+  MENU_HAPTICS pulses as on / off motor events in time order), `padConfirmFeedback` (a MenuButton activation is a
+  confirm / disabled press only on the pad within `GAMEPAD_MENU.confirmPressWindowSec` of ButtonA). `fit.ts`:
+  `menuSafeShare(tenFoot)` (GAMEPAD_MENU.tvSafe on a ten-foot interface, else none; clamped to `MENU_SAFE_MAX_SHARE`)
+  and `menuFitOn(touch, tenFoot)`. `padActions.ts`: a new condition `canCreate` (the lobby browser's Y only while
+  Create is on screen, i.e. not in a lobby). Tunables: `GAMEPAD_MENU.confirmPressWindowSec` / `holdFillTransparency`,
+  `PAD_HINT_VIEW` (glyph size and gaps). Specs: `padFeedback.spec.ts` (scroll, latch, glyphs, haptics, TV-safe fit),
+  `padActions.spec.ts` (canCreate, the lobby browser's hints).
+- **GM5 scrolling.** `FocusScopeOptions.scrollRef` names a scope's main list: FocusController moves its
+  `CanvasPosition` by `scrollStepPx` per right-stick step (`PadStickRepeat` in InputController), clamped, and plays
+  `listEnd` once per arrival; `scroll` then never reaches `onPadAction`. Scopes with a list pass
+  `padContext.scrollList`: Credits, lobby browser (rows), lobby room (members; on a phone while inviting the invite
+  list), Options (the Controls list, or the compact body `FitScroll` `listRef`), Leaderboard (rows, only when there are
+  rows). `followSelection`: on each newly selected button inside a vertical ScrollingFrame under the owner's root, the
+  canvas is moved with `scrollToShow` (`followMarginPx`); once per selection, so it never fights the stick, and a
+  frame already showing the button is left alone. Canvas units are taken as the unscaled px under every UIScale above
+  the list (`uiScaleAbove`). Selectable text lists draw `ListFocusStroke` (client/ui/hud primitives: a uiAccent
+  stroke on its parent while selected): `ScrollList selectable` (Credits) and the leaderboard rows (now
+  `Selectable`). `ScrollList` forwards its ref. The run-over Build list keeps its `maxRows` cut (no scroll).
+- **GM6 shortcuts and the invites scope.** Through each scope's `onPadAction`, reusing the buttons' own actions and
+  sounds: main menu Y (only with a toast on screen) hands the pad to the invite toasts; lobby browser X Refresh,
+  Y Create (the picked visibility); lobby room X Ready (while `canReady`), Y the Roblox invite prompt
+  (`inviteFriendsToLobby`, the "Invite friends (Roblox)" button's action, while `platformInviteButton` is enabled; the
+  in-server Invite panel toggle stays a button); run over X Details / Highlights (while there are highlights);
+  Options X this tab's Reset exactly as its button: **Controls asks first (askResetBindings); Juice / Audio / Display
+  reset at once, as their Reset button always has** (owner call below), never while a prompt is open. Invite toasts:
+  MenuLayer reads them once (`useInviteToasts`), holds `invitesFocused` (cleared on B, when the last toast goes, or
+  on leaving the main menu) and passes it as the `invites` scope's `active`; its default is the newest (last shown)
+  toast's Join; B plays `sfx.ui.back` and returns, the main menu's memory restores its button.
+- **GM7 hint bar.** `PadHintBar` (client/ui/hud `PadHintBar.tsx`): `padHints(surface, context)` as `[glyph] label`
+  items (UIListLayout `Wraps` for narrow panels), only while the device is the gamepad; inside each panel, so the HUD
+  scale and MenuFit apply. Glyphs: `UserInputService:GetImageForKeyCode` in an ImageLabel (engine content at runtime,
+  GMD8; `check-asset-ids` stays clean), else `GetStringForKeyCode` text, else `inputLabel`, on a uiPanel plate. Labels
+  are `pad.hint.*` in the locale's font. Placed on: main menu (bottom), lobby browser, lobby room, credits, Options and
+  its swap / reset prompts, leaderboard, pause / party / leave and skip confirms, run over (last row; compact: the left
+  column), tutorial outro, the invite toasts while focused. On a gamepad it replaces the screens' text back / key
+  hints (keyboard and touch unchanged). `padLabelSet` (platform-aware text labels in localized sentences) is not built:
+  it waits for GM0's answer on what the engine reports per pad.
+- **GM9 haptics, vibration, hold B.** `PadHapticsController` plays `hapticTimeline` on the navigation pad (else the
+  first connected) with `HapticService:SetMotor`, only on motors `IsVibrationSupported` / `IsMotorSupported` report,
+  every call behind pcall; silent unless gamepad + `padVibration` On; a newer cue on a motor drops an older one's later
+  events (per-motor generation); motors back to 0 on cleanup. HapticEffect is not used. Cues: `confirm` / `disabled`
+  (MenuButton's Activated calls `FocusScopeRegistry.buttonPressed(disabled)`; FocusController checks, deferred one
+  step, that ButtonA went down within the window), `listEnd` (GM5), `holdComplete`. Options > Controls > Gamepad has a
+  Vibration On / Off row (`padVibration`, `options.controls.vibration`, saved like the other display overrides). Hold
+  B: while the owner's B means `holdExit`, FocusController polls `IsGamepadButtonDown(pad, ButtonB)` on every
+  connected pad each frame into `PadHoldGate` (opened when the scope takes the pad, with B's state then) and writes the
+  fill to `PAD_HOLD_UI.progress` (client/ui/focus `padHold.ts`, a React binding); the Exit button draws it
+  (`MenuButton fill`: a uiAccent `HoldFill` under the label; skinned buttons: between art and label, `SKIN_Z` 1 / 2 / 3
+  / 4; flat buttons draw their label as a child above the fill). On complete: `holdComplete` haptic, then the scope's
+  `holdExit` (RunOverPanel: `sfx.ui.back` + `exitRun`, Main menu or Back to lobby). A B press on run over dispatches
+  nothing. `RunOverRetryGate` and Again's default are untouched.
+- **GM12 console.** client/ui/hud `isTenFootInterface()` (GuiService, pcall, read once). MenuFit on a ten-foot
+  interface: the measured area frame is inset by `menuSafeShare` on each side and the panel is fitted into it as on
+  touch (`menuFitOn`; compact / narrow layouts stay touch only); elsewhere the frame is exactly as before (no Position
+  set). `ConsoleController` turns `ChatWindowConfiguration` and `ChatInputBarConfiguration` off on a ten-foot interface
+  only (waits for them to appear; restores on cleanup). Nothing changes on a PC or a phone.
+
+**Studio check (GM11 / GM0) must confirm:** CanvasPosition's units under a UIScale (the right-stick step should be
+`scrollStepPx` reference px; follow should land the row `followMarginPx` inside the frame); whether the engine also
+scrolls to a selected descendant (both must agree, no jitter); a selected ScrollingFrame (Credits, leaderboard rows)
+shows the ring and the D-pad still leaves it; ButtonA reaches `UserInputService.InputBegan` while a GUI button has the
+selection (else no confirm haptic); `IsGamepadButtonDown` reports B while GUI navigation is on (else no hold);
+`GetImageForKeyCode` returns art for A / B / X / Y / LB / RB / LT / RT / the right stick on Xbox and PlayStation pads;
+the motors' feel at MENU_HAPTICS' strengths; the hold fill reads under the Exit label (flat and skinned); Y on the main
+menu with `KV_FakeFriends` selects the newest Join and B returns to the button you left; on the console emulator the
+TV-safe inset and no chat window.
+
+**Owner call (new).** Options X on the Juice / Audio / Display tabs resets at once, because their Reset button does
+(only Controls asks first). Keep, or add a confirm to those tabs' Reset (button and X alike)?
 
 ## Tasks
 
@@ -280,18 +359,18 @@ with its memory.
 - [x] **GM4. Bumpers, triggers and the pad input path.** `InputController.onMenuPadInput`, held-button block on menu
   close (if GM0 says it is missing). LB/RB and LT/RT on Options and Leaderboard. → Verify: tab specs. In Studio,
   holding LB through closing a menu does not roll.
-- [ ] **GM5. Scrolling.** `ScrollList` focus look, Leaderboard list selectable, right-stick scroll, `followSelection`
+- [x] **GM5. Scrolling.** `ScrollList` focus look, Leaderboard list selectable, right-stick scroll, `followSelection`
   if needed. → Verify: in Studio, the top 100, Credits and a 12-boon Build list scroll on a pad only.
-- [ ] **GM6. Shortcuts and the invites scope.** The X / Y table. Invite toasts as a scope reached by Y.
+- [x] **GM6. Shortcuts and the invites scope.** The X / Y table. Invite toasts as a scope reached by Y.
   → Verify: specs. In Studio with `KV_FakeFriends`, receive an invite on the main menu, Y, Join.
-- [ ] **GM7. Hint bar and glyphs.** `PadHintBar`, `padLabelSet`, engine glyph images with a text fallback. Strings
+- [x] **GM7. Hint bar and glyphs.** `PadHintBar`, `padLabelSet`, engine glyph images with a text fallback. Strings
   `PAD_HINT_STRING_KEYS` (`pad.hint.*`) in their own shared/theme module, inside `REQUIRED_STRING_KEYS` (contract.luau
   is near Luau's 200 top-level locals: count on out/), with `l10n/context.json` entries. → Verify: `npm run verify`
   (`l10n:check`, `check:autolocalize`). In Studio, Xbox and PlayStation glyphs show.
 - [ ] **GM8. Directional pass.** Walk every surface pad-only at HUD scale 70 % and 125 %, and in a portrait phone
   layout with a pad. Add `NextSelection*` only where geometry picks wrong (main menu and Daily card, lobby member
   rows' Kick / Make host, Options' `-` / `+` rows, run-over exits row). Each override is listed in this doc.
-- [ ] **GM9. Sounds, haptics and hold-to-exit.** The tab switch plays `sfx.ui.click`. Haptics are on (GMD14),
+- [x] **GM9. Sounds, haptics and hold-to-exit.** The tab switch plays `sfx.ui.click`. Haptics are on (GMD14),
   through a client `PadHaptics` (`HapticEffect` or `HapticService`, whichever GM0 shows works; silent where the pad
   has no motor). Menus only, from a pure `MENU_HAPTICS` table (motor, strength, seconds) in shared/view/menu
   `config.ts`:
@@ -305,7 +384,7 @@ with its memory.
   Gamepad, with string `options.controls.vibration`. Build hold-B to exit on the run-over panel (section 3, GMD13).
   → Verify: specs for `MENU_HAPTICS`, `holdProgress` and the hold edge rule. In Studio, the hold fills and exits, an
   early release does nothing, and vibration Off is silent.
-- [ ] **GM12. Console readiness (Xbox, PlayStation; GMD15).** The game ships wherever Roblox runs.
+- [x] **GM12. Console readiness (Xbox, PlayStation; GMD15).** The game ships wherever Roblox runs.
   - Menus inside the TV-safe area on a ten-foot interface: `MenuFit` takes a console inset from `GAMEPAD_MENU.tvSafe`
     (GM0 measures it), the same way it takes the phone safe area.
   - Text at least the console guidelines' readable size at `DisplaySize.Large`: check `computeHudScale` on a TV.

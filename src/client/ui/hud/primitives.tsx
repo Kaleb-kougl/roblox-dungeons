@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from "@rbxts/react";
+import React, { useContext, useEffect, useMemo, useRef, useState } from "@rbxts/react";
+import { FocusScopesContext } from "client/ui/focus";
 import { alignFor, fontFor, role, textSizeFor, themePack, useUiFonts, type FontRole } from "client/ui/theme";
 import type { ColorRole, ImageRef } from "shared/theme";
 import {
@@ -31,6 +32,7 @@ import {
 	type SkinPadding,
 	type SkinPanelContext,
 } from "shared/view/hud";
+import { GAMEPAD_MENU } from "shared/view/menu";
 import { cornerFadeBinding, cornerRef } from "./cornerFade";
 import { useArtScale } from "./useHudScale";
 
@@ -57,8 +59,11 @@ const DISABLED_TEXT = 0.6;
 const WHITE = new Color3(1, 1, 1);
 /** Text box height = text size + this (room for the stroke). */
 const LINE_SLACK = 4;
-/** Draw order inside a skinned MenuButton (ZIndexBehavior Sibling): the frame art, the label over it, the brackets on top. */
-const SKIN_Z = { art: 1, label: 2, corners: 3 } as const;
+/**
+ * Draw order inside a skinned MenuButton (ZIndexBehavior Sibling): the frame art, a hold fill over it (`fill`, GM9),
+ * the label over both, the brackets on top.
+ */
+const SKIN_Z = { art: 1, fill: 2, label: 3, corners: 4 } as const;
 
 export interface TextProps {
 	/** A binding for a value written every frame (the rolling score): changes one property, never re-renders. */
@@ -820,6 +825,27 @@ export interface MenuButtonProps {
 	icon?: string;
 	/** Which locale font the label uses (default "text"; "name" for a display name or an endonym, LD13). */
 	font?: FontRole;
+	/**
+	 * A hold's progress, 0..1 (the run-over Exit button's hold B, docs/GAMEPAD_MENUS.md GM9): a uiAccent fill from the
+	 * left under the label, drawn from the binding (no re-render per frame). Absent: exactly the button as before.
+	 */
+	fill?: React.Binding<number>;
+}
+
+/** A hold's fill under a button's label: uiAccent from the left edge, as wide as the binding, hidden at 0. */
+function HoldFill(props: { fill: React.Binding<number>; zIndex?: number }) {
+	return (
+		<frame
+			key="HoldFill"
+			Size={props.fill.map((p) => new UDim2(math.clamp(p, 0, 1), 0, FULL, 0))}
+			Visible={props.fill.map((p) => p > 0)}
+			BackgroundColor3={role("uiAccent")}
+			BackgroundTransparency={GAMEPAD_MENU.holdFillTransparency}
+			BorderSizePixel={0}
+			Active={false}
+			ZIndex={props.zIndex}
+		/>
+	);
 }
 
 /**
@@ -830,6 +856,8 @@ export interface MenuButtonProps {
  */
 export const MenuButton = React.forwardRef<TextButton, MenuButtonProps>((props, ref) => {
 	const [focused, setFocused] = useState(false);
+	// The pad's confirm / disabled-press haptic (FocusController decides whether it was the pad's A).
+	const focusRegistry = useContext(FocusScopesContext);
 	const fonts = useUiFonts();
 	const font = fontFor(fonts, props.font);
 	const textSize = textSizeFor(fonts, props.textSize ?? HUD_VIEW.textSize);
@@ -859,6 +887,7 @@ export const MenuButton = React.forwardRef<TextButton, MenuButtonProps>((props, 
 				TextTransparency={HIDDEN}
 				Event={{
 					Activated: () => {
+						focusRegistry.buttonPressed(disabled);
 						if (!disabled) props.onActivated();
 					},
 					MouseEnter: () => setFocused(true),
@@ -868,6 +897,7 @@ export const MenuButton = React.forwardRef<TextButton, MenuButtonProps>((props, 
 				}}
 			>
 				<SlicedImage key="Skin" name="Skin" id={skinId} snap={true} zIndex={SKIN_Z.art} />
+				{props.fill !== undefined ? <HoldFill fill={props.fill} zIndex={SKIN_Z.fill} /> : undefined}
 				{icon !== undefined ? (
 					<IconLabel
 						key="Label"
@@ -922,9 +952,10 @@ export const MenuButton = React.forwardRef<TextButton, MenuButtonProps>((props, 
 			TextSize={textSize}
 			TextColor3={role(active ? "uiPanel" : focused ? "uiText" : "uiTextDim")}
 			Text={props.text}
-			TextTransparency={disabled ? DISABLED_TEXT : 0}
+			TextTransparency={props.fill !== undefined ? HIDDEN : disabled ? DISABLED_TEXT : 0}
 			Event={{
 				Activated: () => {
+					focusRegistry.buttonPressed(disabled);
 					if (!disabled) props.onActivated();
 				},
 				MouseEnter: () => setFocused(true),
@@ -938,6 +969,52 @@ export const MenuButton = React.forwardRef<TextButton, MenuButtonProps>((props, 
 				Thickness={focused ? FOCUS_STROKE : STROKE}
 				Color={role(focused || active ? "uiAccent" : "uiTextDim")}
 			/>
+			{props.fill !== undefined ? <HoldFill key="HoldFill" fill={props.fill} /> : undefined}
+			{props.fill !== undefined ? (
+				// With a fill the label is a child above it (a button's own text draws under its children).
+				<textlabel
+					key="Label"
+					Size={UDim2.fromScale(FULL, FULL)}
+					BackgroundTransparency={HIDDEN}
+					Active={false}
+					Font={font}
+					TextSize={textSize}
+					TextColor3={role(active ? "uiPanel" : focused ? "uiText" : "uiTextDim")}
+					Text={props.text}
+					TextTransparency={disabled ? DISABLED_TEXT : 0}
+				/>
+			) : undefined}
 		</textbutton>
 	);
 });
+
+/**
+ * A selectable list's focus look (docs/GAMEPAD_MENUS.md section 5, GM5; GMD7: the engine's selection box is hidden):
+ * a uiAccent stroke around its parent (a Selectable ScrollingFrame: the Credits, the leaderboard rows) while the
+ * parent is the gamepad's selection, nothing otherwise. Put it inside the list; it listens to the parent's
+ * SelectionGained / SelectionLost itself.
+ */
+export function ListFocusStroke() {
+	const strokeRef = useRef<UIStroke>();
+	const [focused, setFocused] = useState(false);
+	useEffect(() => {
+		const parent = strokeRef.current?.Parent;
+		if (parent === undefined || !parent.IsA("GuiObject")) return;
+		const gained = parent.SelectionGained.Connect(() => setFocused(true));
+		const lost = parent.SelectionLost.Connect(() => setFocused(false));
+		return () => {
+			gained.Disconnect();
+			lost.Disconnect();
+		};
+	}, []);
+	return (
+		<uistroke
+			key="ListFocus"
+			ref={strokeRef}
+			ApplyStrokeMode={Enum.ApplyStrokeMode.Border}
+			Thickness={FOCUS_STROKE}
+			Color={role("uiAccent")}
+			Enabled={focused}
+		/>
+	);
+}

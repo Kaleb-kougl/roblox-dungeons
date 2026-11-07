@@ -11,7 +11,9 @@ import {
 	menuCompact,
 	menuFitChanged,
 	menuFitDevice,
+	menuFitOn,
 	menuFitTrail,
+	menuSafeShare,
 	menuNarrow,
 	MENU_VIEW,
 	stepMenuFit,
@@ -19,6 +21,7 @@ import {
 	type MenuFitTrail,
 	type MenuSize,
 } from "shared/view/menu";
+import { isTenFootInterface } from "./tenFoot";
 import { ArtScaleContext, useArtScale, useHudScale } from "./useHudScale";
 
 const HALF = 0.5;
@@ -71,7 +74,10 @@ function guessArea(uiScale: number): MenuSize {
  * gets the compact flag, its flexible list's height and the ornament decision, and the box is scaled / moved to fit;
  * the art under it snaps at the scale it is drawn at (ArtScaleContext). "Touch" is menuFitDevice: the last-used device
  * is touch or the device has a touchscreen (a phone stays fitted after a key press). Without it the factor is 1,
- * nothing moves and the flexible list keeps its max: exactly the unfitted layout.
+ * nothing moves and the flexible list keeps its max: exactly the unfitted layout. On a ten-foot interface (a console,
+ * docs/GAMEPAD_MENUS.md GM12) the measured area is inset by GAMEPAD_MENU.tvSafe on each side (menuSafeShare) and the
+ * panel is fitted into it like on touch (menuFitOn), the compact / narrow layouts staying touch only; a PC or a phone
+ * is exactly as before.
  *
  * Measuring waits for a drawn frame (a RenderStepped, then the Heartbeat after it): the box's AutomaticSize and a new
  * UIScale resolve in the next layout pass, and a size read before it, divided by the new factor, is wrong. Reading it
@@ -83,6 +89,11 @@ function guessArea(uiScale: number): MenuSize {
 export function MenuFit(props: MenuFitProps) {
 	const hud = useHudScale();
 	const touch = menuFitDevice(useSelector(selectInputDevice) === "touch", UserInputService.TouchEnabled);
+	// docs/GAMEPAD_MENUS.md GM12: on a ten-foot interface (a console) the area is inset by the TV-safe share and a panel
+	// that does not fit inside it is fitted (shrunk) too; elsewhere `fitting` is `touch` and the area is the parent.
+	const tenFoot = isTenFootInterface();
+	const safe = menuSafeShare(tenFoot);
+	const fitting = menuFitOn(touch, tenFoot);
 	const areaRef = useRef<Frame>();
 	const boxRef = useRef<Frame>();
 	const scaleRef = useRef<UIScale>();
@@ -107,8 +118,8 @@ export function MenuFit(props: MenuFitProps) {
 		overflow: false,
 	};
 	const [fit, setFit] = useState<MenuFitResult>(initial);
-	// What is drawn: the fit on touch; without touch exactly the unfitted layout (initial), whatever was measured.
-	const shown = touch ? fit : initial;
+	// What is drawn: the fit on touch (and ten-foot); otherwise exactly the unfitted layout (initial).
+	const shown = fitting ? fit : initial;
 	const fitRef = useRef<MenuFitResult>(shown);
 	fitRef.current = shown;
 
@@ -131,7 +142,7 @@ export function MenuFit(props: MenuFitProps) {
 			areaW,
 			areaH,
 			uiScale: hud,
-			touch,
+			touch: fitting,
 			narrow,
 			ornament: wantsOrnament,
 			ornamentArtH: ornamentArt?.rect?.h ?? ornamentArt?.h ?? 0,
@@ -144,7 +155,7 @@ export function MenuFit(props: MenuFitProps) {
 					  }
 					: undefined,
 		});
-		if (!touch) {
+		if (!fitting) {
 			trailRef.current = undefined;
 			return;
 		}
@@ -200,7 +211,13 @@ export function MenuFit(props: MenuFitProps) {
 		},
 	};
 	return (
-		<frame key="MenuFit" ref={areaRef} Size={UDim2.fromScale(1, 1)} BackgroundTransparency={HIDDEN}>
+		<frame
+			key="MenuFit"
+			ref={areaRef}
+			Size={tenFoot ? UDim2.fromScale(1 - 2 * safe.x, 1 - 2 * safe.y) : UDim2.fromScale(1, 1)}
+			Position={tenFoot ? UDim2.fromScale(safe.x, safe.y) : undefined}
+			BackgroundTransparency={HIDDEN}
+		>
 			<frame
 				key="Box"
 				ref={boxRef}
@@ -226,6 +243,8 @@ export function FitScroll(props: {
 	order: number;
 	height: number;
 	onContent: (h: number) => void;
+	/** The scrolling frame (a focus scope's `scrollRef`: the right stick scrolls it, docs/GAMEPAD_MENUS.md GM5). */
+	listRef?: React.Ref<ScrollingFrame>;
 	children?: React.ReactNode;
 }) {
 	const scale = useArtScale();
@@ -241,6 +260,7 @@ export function FitScroll(props: {
 	return (
 		<scrollingframe
 			key="FitScroll"
+			ref={props.listRef}
 			LayoutOrder={props.order}
 			Size={new UDim2(1, 0, 0, props.height)}
 			CanvasSize={new UDim2()}

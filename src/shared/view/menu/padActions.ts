@@ -61,6 +61,8 @@ export type PadCondition =
 	| "invitePending"
 	/** Options on the Controls tab, the leaderboard with board tabs: LT / RT switch them. */
 	| "subTabs"
+	/** Lobby browser: not in a lobby, so Create is on screen (in one, the bar offers Your lobby instead). */
+	| "canCreate"
 	/** Lobby room: this member can toggle Ready. */
 	| "canReady"
 	/** Lobby room: this member can open the Roblox invite prompt. */
@@ -187,7 +189,12 @@ function shortcutY(meaning: PadShortcut, when?: PadCondition): PadRow {
 export const PAD_SURFACES: { readonly [K in PadSurface]: PadSurfaceDef } = {
 	loading: { layer: "loading", select: true, back: "none", rows: [] },
 	main: { layer: "screen", select: true, back: "none", rows: [shortcutY("invites", "invitePending")] },
-	lobbies: { layer: "screen", select: true, back: "back", rows: [shortcutX("refresh"), shortcutY("create"), SCROLL] },
+	lobbies: {
+		layer: "screen",
+		select: true,
+		back: "back",
+		rows: [shortcutX("refresh"), shortcutY("create", "canCreate"), SCROLL],
+	},
 	lobby: {
 		layer: "screen",
 		select: true,

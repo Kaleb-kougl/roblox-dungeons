@@ -4,7 +4,7 @@ import { useSelector } from "@rbxts/react-reflex";
 import { Players } from "@rbxts/services";
 import { selectInputDevice, selectLobby } from "client/store";
 import { FocusScope } from "client/ui/focus";
-import { MenuButton, MenuFit, Panel, Row, Text } from "client/ui/hud";
+import { MenuButton, MenuFit, PadHintBar, Panel, Row, Text } from "client/ui/hud";
 import { str } from "client/ui/theme";
 import { LOBBY_VISIBILITIES, LOBBY_WORLDS, isLobbyWorld } from "shared/lobby";
 import { SFX } from "shared/view/audio";
@@ -46,7 +46,8 @@ const WIDE = new Vector2(MENU_VIEW.wideButton.x, MENU_VIEW.wideButton.y);
  * Beside the members line, the lobby's world (docs/DAILY.md DS9): the host's Endless / Daily toggle while forming (a
  * change clears every Ready, server side), `World: Daily` for the others. A `screen` focus scope with memory
  * (docs/GAMEPAD_MENUS.md GM2): a list refresh (a kick, a leave) that removes the selected row falls back to Ready; B
- * goes back.
+ * goes back; X toggles Ready and Y opens the Roblox invite prompt (GM6); the right stick scrolls the member list (the
+ * invite list where it takes the members' place, GM5); on a gamepad the hint bar replaces the key hint (GM7).
  */
 export function LobbyRoom() {
 	const actions = useMenuActions();
@@ -55,12 +56,16 @@ export function LobbyRoom() {
 	const nameOf = useNameOf();
 	const [inviting, setInviting] = useState(false);
 	const firstRef = useRef<TextButton>();
+	const listRef = useRef<ScrollingFrame>();
 	const view = lobby.mine;
 	const now = useClock(view?.phase === "countdown");
 	if (view === undefined) return undefined;
 
 	const me = Players.LocalPlayer.UserId;
 	const m = lobbyRoomModel(view, me, nameOf, countdownLeft(view.countdownIn, now - lobby.mineAt));
+
+	const candidates = inviting ? inviteCandidates(lobby.players, view, me, m.canInvite, nameOf) : [];
+	const platform = platformInviteButton(lobby.inviteEligible, m.canInvite);
 
 	const memberRows = m.members.map((r, i) => (
 		<ListRow key={`m${r.userId}`} order={i + 1}>
@@ -174,9 +179,18 @@ export function LobbyRoom() {
 		<Text key="World" order={2} size={HUD_VIEW.smallText} color="uiTextDim" text={world.line} />
 	);
 
-	const candidates = inviting ? inviteCandidates(lobby.players, view, me, m.canInvite, nameOf) : [];
-	const platform = platformInviteButton(lobby.inviteEligible, m.canInvite);
-	const invitePanel = (listHeight: number) =>
+	const toggleReady = () => {
+		actions.playUi(SFX.uiClick);
+		actions.setReady(!m.meReady);
+	};
+	const invitePlatform = () => {
+		actions.playUi(SFX.uiConfirm);
+		actions.inviteFriendsToLobby();
+	};
+	// docs/GAMEPAD_MENUS.md GM6: X Ready (while this member can toggle it), Y the Roblox invite prompt (while it can
+	// open: the Invite friends (Roblox) button's own action); the right stick scrolls the member list (GM5).
+	const padContext = { canReady: m.canReady, canInvite: platform.enabled, scrollList: true };
+	const invitePanel = (listHeight: number, scrollTarget: boolean) =>
 		inviting ? (
 			<Panel
 				position={new UDim2()}
@@ -194,16 +208,13 @@ export function LobbyRoom() {
 						textSize={HUD_VIEW.smallText}
 						text={str(LOBBY_STRINGS.invitePlatform)}
 						disabled={!platform.enabled}
-						onActivated={() => {
-							actions.playUi(SFX.uiConfirm);
-							actions.inviteFriendsToLobby();
-						}}
+						onActivated={invitePlatform}
 					/>
 					{platform.reasonKey !== undefined ? (
 						<Text order={2} size={HUD_VIEW.smallText} color="uiTextDim" text={str(platform.reasonKey)} />
 					) : undefined}
 				</Row>
-				<ScrollList order={3} height={listHeight}>
+				<ScrollList ref={scrollTarget ? listRef : undefined} order={3} height={listHeight}>
 					{candidates.size() > 0 ? (
 						candidates.map((c, i) => (
 							<ListRow key={`c${c.userId}`} order={i + 1}>
@@ -243,8 +254,14 @@ export function LobbyRoom() {
 			surface="lobby"
 			defaultRef={firstRef}
 			memoryKey="lobby"
+			padContext={padContext}
+			scrollRef={listRef}
 			onPadAction={(action) => {
 				if (action.kind === "back") actions.screenBack();
+				else if (action.kind === "shortcutX" && action.meaning === "ready" && m.canReady) toggleReady();
+				else if (action.kind === "shortcutY" && action.meaning === "invite" && platform.enabled) {
+					invitePlatform();
+				}
 			}}
 		>
 			<MenuFit
@@ -283,7 +300,7 @@ export function LobbyRoom() {
 								{worldRow}
 							</Row>
 							{parts.members ? (
-								<ScrollList order={4} height={layout.flex}>
+								<ScrollList ref={listRef} order={4} height={layout.flex}>
 									{memberRows}
 								</ScrollList>
 							) : undefined}
@@ -298,10 +315,7 @@ export function LobbyRoom() {
 									text={str(m.meReady ? LOBBY_STRINGS.unready : LOBBY_STRINGS.readyUp)}
 									active={m.meReady}
 									disabled={!m.canReady}
-									onActivated={() => {
-										actions.playUi(SFX.uiClick);
-										actions.setReady(!m.meReady);
-									}}
+									onActivated={toggleReady}
 								/>
 								<MenuButton
 									order={2}
@@ -352,8 +366,10 @@ export function LobbyRoom() {
 									}}
 								/>
 							</Row>
-							{invitePanel(parts.members ? MENU_VIEW.inviteListHeight : layout.flex)}
-							{device === "touch" ? undefined : (
+							{invitePanel(parts.members ? MENU_VIEW.inviteListHeight : layout.flex, !parts.members)}
+							{device === "gamepad" ? (
+								<PadHintBar order={8} surface="lobby" context={padContext} />
+							) : device === "touch" ? undefined : (
 								<Text
 									fill={true}
 									order={8}

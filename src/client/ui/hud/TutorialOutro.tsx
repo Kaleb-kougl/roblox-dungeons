@@ -9,6 +9,7 @@ import { SFX } from "shared/view/audio";
 import { HUD_VIEW, LEADERBOARD_STRINGS, TUTORIAL_VIEW, tutorialLeaderboardHint } from "shared/view/hud";
 import { useHudActions } from "./actions";
 import { MenuFit } from "./MenuFit";
+import { PadHintBar } from "./PadHintBar";
 import { MenuButton, Panel, Text } from "./primitives";
 import { ScreenDim } from "./ScreenDim";
 import { screenSkin } from "shared/view/menu";
@@ -91,6 +92,7 @@ export function TutorialOutro() {
 								actions.playTutorial();
 							}}
 						/>
+						<PadHintBar order={5} surface="outro" />
 					</Panel>
 				)}
 			/>

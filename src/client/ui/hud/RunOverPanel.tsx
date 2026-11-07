@@ -12,7 +12,7 @@ import {
 	selectSnapshot,
 	selectVerdict,
 } from "client/store";
-import { FocusScope } from "client/ui/focus";
+import { FocusScope, PAD_HOLD_UI } from "client/ui/focus";
 import { useHudFont, role, str, themePack } from "client/ui/theme";
 import type { ColorRole } from "shared/theme";
 import { DAILY_WORLD_KIND } from "shared/daily";
@@ -56,6 +56,7 @@ import {
 import { useHudActions } from "./actions";
 import { DailyResultBlock } from "./DailyResultBlock";
 import { MenuFit } from "./MenuFit";
+import { PadHintBar } from "./PadHintBar";
 import { runOverBest, type RunOverBest } from "./newBestRunOver";
 import { NEW_BEST_UI } from "./newBestUi";
 import { ArtImage, MenuButton, Panel, Row, Text, panelIcon } from "./primitives";
@@ -89,6 +90,8 @@ const ROW = {
 	exits: 13,
 	verdict: 14,
 	info: 15,
+	/** docs/GAMEPAD_MENUS.md GM7: the gamepad hint bar (gamepad only), last. */
+	padHints: 16,
 } as const;
 
 function Stat(props: { order: number; label: string; value: string }) {
@@ -560,6 +563,7 @@ export function RunOverPanel() {
 					textSize={otherText}
 					text={str(exits.exitKey)}
 					icon={runOverExitIcon(exits.exitKey)}
+					fill={PAD_HOLD_UI.progress}
 					onActivated={() => {
 						actions.playUi(SFX.uiClick);
 						actions.exitRun();
@@ -581,8 +585,10 @@ export function RunOverPanel() {
 	const hasBuild = (s.boons.size() > 0 || s.duos.size() > 0) && details;
 	const legacyButton = new Vector2(MENU_FIT.runOverButton.x, MENU_FIT.runOverButton.y);
 	// An `overlay` focus scope with no memory (docs/GAMEPAD_MENUS.md GM2): a gamepad always starts on Again (Exit
-	// without it), whose retry gate is unchanged. A tap of B does nothing; hold-B to exit (holdExit), X for Details and
-	// the right stick reach `onPadAction` once those are wired (GM5 / GM6 / GM9).
+	// without it), whose retry gate is unchanged. A tap of B does nothing; holding B fills the Exit button and then does
+	// what Exit does (GM9, FocusController's hold); X toggles Details while there are highlights (GM6).
+	const padContext = { recap: highlightsOn, detailsOpen: recap.details };
+	const hints = <PadHintBar key="PadHints" order={ROW.padHints} surface="runOver" context={padContext} />;
 	return (
 		<FocusScope
 			name="RunOverScope"
@@ -590,7 +596,15 @@ export function RunOverPanel() {
 			layer="overlay"
 			surface="runOver"
 			defaultRef={firstRef}
-			padContext={{ recap: highlightsOn, detailsOpen: recap.details }}
+			padContext={padContext}
+			onPadAction={(action) => {
+				if (action.kind === "holdExit") {
+					actions.playUi(SFX.uiBack);
+					actions.exitRun();
+				} else if (action.kind === "shortcutX" && action.meaning === "details" && highlightsOn) {
+					actions.toggleRecapDetails();
+				}
+			}}
 		>
 			<MenuFit
 				render={(layout) => {
@@ -634,6 +648,7 @@ export function RunOverPanel() {
 										{exitButtons("compact", legacyButton)}
 										{verdictRow}
 										<RunInfoLine order={ROW.info} />
+										{hints}
 									</Column>
 									{s.scoring ? (
 										<Column order={2} width={right} gap={MENU_FIT.runOverLineGap}>
@@ -715,6 +730,7 @@ export function RunOverPanel() {
 							{verdictRow}
 							<RunInfoLine order={ROW.info} />
 							{exitButtons(narrow ? "narrow" : "wide", narrow ? legacyButton : undefined)}
+							{hints}
 						</Panel>
 					);
 				}}

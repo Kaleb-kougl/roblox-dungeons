@@ -2,7 +2,7 @@ import React, { useRef } from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
 import { selectInputDevice } from "client/store";
 import { FocusScope } from "client/ui/focus";
-import { MenuButton, MenuFit, Panel, Row, Text } from "client/ui/hud";
+import { MenuButton, MenuFit, PadHintBar, Panel, Row, Text } from "client/ui/hud";
 import { str } from "client/ui/theme";
 import { keyDevice } from "shared/play";
 import { SFX } from "shared/view/audio";
@@ -52,13 +52,16 @@ function CreditText(props: { line: CreditLine; order: number }) {
  * The Credits screen (main menu > Credits; shared/view/menu credits.ts): the third-party art, 3D models, sound and
  * code, by section, in a scrolling list (a gamepad selects the list and scrolls it with the stick), then Back and
  * its key hint. Fitted into the safe area on touch (MenuFit: the list is the flexible part). A `screen` focus scope
- * (docs/GAMEPAD_MENUS.md GM2): a gamepad starts on Back; B goes back.
+ * (docs/GAMEPAD_MENUS.md GM2): a gamepad starts on Back; B goes back; the right stick scrolls the list (GM5), which
+ * shows a ring while selected; on a gamepad the hint bar replaces the key hint (GM7).
  */
 export function CreditsScreen() {
 	const actions = useMenuActions();
 	const device = useSelector(selectInputDevice);
 	const backRef = useRef<TextButton>();
+	const listRef = useRef<ScrollingFrame>();
 	const lines = creditLines();
+	const padContext = { scrollList: true };
 	return (
 		<FocusScope
 			name="CreditsScope"
@@ -66,6 +69,8 @@ export function CreditsScreen() {
 			layer="screen"
 			surface="credits"
 			defaultRef={backRef}
+			padContext={padContext}
+			scrollRef={listRef}
 			onPadAction={(action) => {
 				if (action.kind === "back") actions.screenBack();
 			}}
@@ -86,7 +91,7 @@ export function CreditsScreen() {
 							color="uiAccent"
 							text={str(CREDIT_STRINGS.title)}
 						/>
-						<ScrollList order={2} height={layout.flex} selectable={true}>
+						<ScrollList ref={listRef} order={2} height={layout.flex} selectable={true}>
 							{lines.map((line, i) => (
 								<CreditText key={`Line${i}`} line={line} order={i + 1} />
 							))}
@@ -105,7 +110,9 @@ export function CreditsScreen() {
 								}}
 							/>
 						</Row>
-						{device === "touch" ? undefined : (
+						{device === "gamepad" ? (
+							<PadHintBar order={4} surface="credits" context={padContext} />
+						) : device === "touch" ? undefined : (
 							<Text
 								fill={true}
 								order={4}

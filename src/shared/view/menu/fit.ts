@@ -23,6 +23,7 @@
  * that room); otherwise it is skipped.
  */
 import { UI_ART, artDensityBox } from "shared/view/hud";
+import { GAMEPAD_MENU } from "./config";
 // By file: the shared/view barrel is this one's parent.
 import { PORTRAIT } from "../portrait";
 
@@ -128,6 +129,40 @@ export function pausePanelArea(area: MenuSize, gap: number): MenuSize {
  */
 export function menuFitDevice(lastDeviceTouch: boolean, touchScreen: boolean): boolean {
 	return lastDeviceTouch || touchScreen;
+}
+
+/** A TV-safe inset, a fraction of the screen on each side (left / right: x, top / bottom: y). */
+export interface MenuSafeShare {
+	readonly x: number;
+	readonly y: number;
+}
+
+const NO_INSET: MenuSafeShare = { x: 0, y: 0 };
+
+/** The most a TV-safe inset takes from each side (a quarter: half the screen stays). */
+export const MENU_SAFE_MAX_SHARE = 0.25;
+
+/**
+ * The menus' TV-safe inset (docs/GAMEPAD_MENUS.md GM12): GAMEPAD_MENU.tvSafe on a ten-foot interface
+ * (GuiService:IsTenFootInterface, a console), else none, so a PC or a phone keeps exactly its area. Each side is
+ * clamped to 0..0.25 (the area never inverts).
+ */
+export function menuSafeShare(tenFoot: boolean): MenuSafeShare {
+	if (!tenFoot) return NO_INSET;
+	return {
+		x: math.clamp(GAMEPAD_MENU.tvSafe.x, 0, MENU_SAFE_MAX_SHARE),
+		y: math.clamp(GAMEPAD_MENU.tvSafe.y, 0, MENU_SAFE_MAX_SHARE),
+	};
+}
+
+/**
+ * Whether a menu panel is fitted (fitMenu's `touch`, MenuFit's measuring): on a touch device (menuFitDevice), and on a
+ * ten-foot interface so a panel that does not fit inside the TV-safe area shrinks into it (GM12). The compact and
+ * narrow layouts stay touch only (menuCompact / menuNarrow are given menuFitDevice alone). Not ten-foot: exactly
+ * menuFitDevice.
+ */
+export function menuFitOn(touch: boolean, tenFoot: boolean): boolean {
+	return touch || tenFoot;
 }
 
 /** Whether the screens take their compact layouts: touch, and an area shorter than MENU_FIT.compactBelow. */

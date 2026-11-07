@@ -2,7 +2,7 @@ import React, { useRef } from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
 import { selectInviteEligible, selectMyLobbyId, selectSoloBest } from "client/store";
 import { FocusScope } from "client/ui/focus";
-import { MenuButton, MenuFit, Panel, Row, Text } from "client/ui/hud";
+import { MenuButton, MenuFit, PadHintBar, Panel, Row, Text } from "client/ui/hud";
 import { str } from "client/ui/theme";
 import { SFX } from "shared/view/audio";
 import { HUD_STRINGS, HUD_VIEW, NEW_BEST_STRINGS, UI_ART, bestText } from "shared/view/hud";
@@ -37,10 +37,17 @@ const SMALL = new Vector2(MENU_VIEW.smallButton.x, MENU_VIEW.smallButton.y);
  * the Daily card (DailyCard: label and date, roster and boss preview, best today, countdown, Play Daily, Daily with
  * friends) and under it yesterday's podium (DailyPodiumStrip, hidden when empty). Play solo keeps the pad's first
  * selection; the card never blocks it. A `screen` focus scope with memory (docs/GAMEPAD_MENUS.md GM2): back from
- * Lobbies or Credits, or a panel closing, lands on the button that opened it. B does nothing at the root.
+ * Lobbies or Credits, or a panel closing, lands on the button that opened it. B does nothing at the root; Y jumps to
+ * the newest invite toast while one is pending (GM6); on a gamepad the hint bar sits at the panel's bottom (GM7).
  */
-export function MainMenu() {
+export function MainMenu(props: {
+	/** An invite toast is on screen (the pad's Y jumps to it, docs/GAMEPAD_MENUS.md GM6). */
+	invitePending: boolean;
+	/** Y: hand the pad to the invite toasts (MenuLayer). */
+	onJumpToInvites: () => void;
+}) {
 	const actions = useMenuActions();
+	const padContext = { invitePending: props.invitePending };
 	const myLobby = useSelector(selectMyLobbyId);
 	const eligible = useSelector(selectInviteEligible);
 	const soloBest = useSelector(selectSoloBest);
@@ -168,7 +175,20 @@ export function MainMenu() {
 	const columnWidth = MENU_VIEW.mainWidth - HUD_VIEW.pad * 4;
 	const compactInner = MENU_FIT.mainCompactWidth - HUD_VIEW.pad * 4;
 	return (
-		<FocusScope name="MainMenuScope" id="main" layer="screen" surface="main" defaultRef={playRef} memoryKey="main">
+		<FocusScope
+			name="MainMenuScope"
+			id="main"
+			layer="screen"
+			surface="main"
+			defaultRef={playRef}
+			memoryKey="main"
+			padContext={padContext}
+			onPadAction={(action) => {
+				if (action.kind !== "shortcutY" || action.meaning !== "invites" || !props.invitePending) return;
+				actions.playUi(SFX.uiClick);
+				props.onJumpToInvites();
+			}}
+		>
 			<MenuFit
 				ornament={screenOrnament("mainMenu")}
 				render={(layout) => {
@@ -252,6 +272,7 @@ export function MainMenu() {
 									</Column>
 								</Columns>
 							)}
+							<PadHintBar order={9} surface="main" context={padContext} />
 						</Panel>
 					);
 				}}

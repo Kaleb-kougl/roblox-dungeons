@@ -10,7 +10,7 @@
  * Daily card and podium (docs/DAILY.md DS9), the run-over daily block (DailyResultBlock, DS11) and the headshot
  * cache (headshots) for DailyRankController (DS10); the run-over recap's bindings (recapBindings RECAP_BINDINGS) for
  * RecapController (docs/RUN_RECAP.md RR5 / RR6); the armor row pulse (braceUi BRACE_UI) for BraceFxController
- * (docs/LEGENDARIES.md LG6).
+ * (docs/LEGENDARIES.md LG6); the gamepad hint bar (PadHintBar, docs/GAMEPAD_MENUS.md GM7) for the menu screens.
  */
 export * from "./actions";
 export * from "./braceUi";
@@ -26,9 +26,11 @@ export * from "./newBestUi";
 export * from "./MinimapPanel";
 export * from "./GameHud";
 export * from "./MenuFit";
+export * from "./PadHintBar";
 export * from "./primitives";
 export * from "./recapBindings";
 export * from "./roomClearBindings";
 export * from "./ScreenDim";
+export * from "./tenFoot";
 export * from "./useHudScale";
 export * from "./usePortrait";

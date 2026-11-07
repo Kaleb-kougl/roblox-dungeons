@@ -26,6 +26,7 @@ import {
 
 const ALL_CONDITIONS: ReadonlyArray<PadCondition> = [
 	"invitePending",
+	"canCreate",
 	"subTabs",
 	"canReady",
 	"canInvite",
@@ -34,6 +35,7 @@ const ALL_CONDITIONS: ReadonlyArray<PadCondition> = [
 ];
 const EVERYTHING: PadContext = {
 	invitePending: true,
+	canCreate: true,
 	subTabs: true,
 	canReady: true,
 	canInvite: true,
@@ -188,7 +190,8 @@ describe("menuPadAction (section 3, 4.3)", () => {
 		expect(act("main", PAD_KEYS.y, { invitePending: true })).toBe("shortcutY:invites");
 		expect(act("main", PAD_KEYS.x, EVERYTHING)).toBe("none");
 		expect(act("lobbies", PAD_KEYS.x, NOTHING)).toBe("shortcutX:refresh");
-		expect(act("lobbies", PAD_KEYS.y, NOTHING)).toBe("shortcutY:create");
+		expect(act("lobbies", PAD_KEYS.y, NOTHING)).toBe("none");
+		expect(act("lobbies", PAD_KEYS.y, { canCreate: true })).toBe("shortcutY:create");
 		expect(act("lobby", PAD_KEYS.x, NOTHING)).toBe("none");
 		expect(act("lobby", PAD_KEYS.x, { canReady: true })).toBe("shortcutX:ready");
 		expect(act("lobby", PAD_KEYS.y, { canInvite: true })).toBe("shortcutY:invite");
@@ -246,6 +249,17 @@ describe("padHints (4.1)", () => {
 	it("the Y invite hint only while an invite is pending", () => {
 		expect(hintKeys("main", NOTHING)).toEqual(["pad.hint.select"]);
 		expect(hintKeys("main", { invitePending: true })).toEqual(["pad.hint.select", "pad.hint.invites"]);
+	});
+
+	it("lobby browser: Y Create only while not in a lobby (Create is on screen)", () => {
+		expect(hintKeys("lobbies", NOTHING)).toEqual(["pad.hint.select", "pad.hint.back", "pad.hint.refresh"]);
+		expect(hintKeys("lobbies", { canCreate: true, scrollList: true })).toEqual([
+			"pad.hint.select",
+			"pad.hint.back",
+			"pad.hint.refresh",
+			"pad.hint.create",
+			"pad.hint.scroll",
+		]);
 	});
 
 	it("run over: hold B shows Hold: Exit; X reads Highlights while the breakdown is open", () => {
