@@ -66,7 +66,7 @@ describe("recap texts (RR5)", () => {
 			countVar: "gap",
 			dim: false,
 		};
-		expect(recapNearMissText(score, 1240, s)).toBe("1,240 short of your best");
+		expect(recapNearMissText(score, 1240, s)).toBe("1,240 pts short of your best");
 		const stairs: RecapNearMiss = {
 			kind: "stairs",
 			key: RECAP_STRINGS.nearStairs,
@@ -79,7 +79,7 @@ describe("recap texts (RR5)", () => {
 		expect(recapNearMissText(floor, 0, s)).toBe("One more floor for a new deepest");
 	});
 
-	it("a highlight's value: grouped, `{n} of {total}`, or the combo with the counted tier's name", () => {
+	it("a highlight's value: grouped, `{n} of {total}`, `{n} pts`, or the combo with the counted tier's name", () => {
 		expect(recapHighlightValue(cell({ value: 1240 }), 1240, s)).toBe("1,240");
 		const perfect = cell({
 			id: "perfect",
@@ -89,6 +89,8 @@ describe("recap texts (RR5)", () => {
 			vars: { total: 11 },
 		});
 		expect(recapHighlightValue(perfect, 3, s)).toBe("3 of 11");
+		const speed = cell({ id: "speed", key: RECAP_STRINGS.hlSpeed, value: 1240, valueKey: RECAP_STRINGS.hlPoints });
+		expect(recapHighlightValue(speed, 1240, s)).toBe("1,240 pts");
 		const combo = cell({ id: "combo", key: RECAP_STRINGS.hlCombo, value: 42, from: 10, format: "combo" });
 		// x1.3: below RAMPAGE, the multiplier alone; x4.2: DOMINATING in the tier's colour.
 		expect(recapHighlightValue(combo, 13, s, "#ff0000")).toBe("x1.3");

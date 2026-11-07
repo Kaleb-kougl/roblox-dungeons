@@ -12,6 +12,7 @@ import {
 	SWORD_V_BUSY,
 	SWORD_V_LAST,
 	SWORD_V_STEP,
+	bowAssistAim,
 	bowCharge,
 	playerAt,
 	swordGuard,
@@ -33,6 +34,8 @@ import { DashLayer } from "./DashLayer";
 const RENDER_STEP = "KV_Weapons";
 const TAU = 2 * math.pi;
 const WINDUP_TRANSPARENCY = 0.5;
+/** Scratch: the full charge's aim-assisted direction (bowAssistAim). */
+const assistDir = { x: 0, z: 1 };
 
 function slotWith(w: Readonly<WeaponsState>, index: number): WeaponSlotState | undefined {
 	if (index === NO_WEAPON) return undefined;
@@ -192,14 +195,22 @@ export class WeaponViewController implements OnStart {
 			);
 		}
 
-		// Bow: charge ring + aim line, release ring.
+		// Bow: charge ring + aim line, release ring. Fully charged, the aim line shows where the heavy arrow will fly
+		// (the sim's aim assist, bowAssistAim, on the next tick's rules); the ring keeps the facing.
 		const bowInHand = alive && active !== undefined && active.weapon === idx.bow && active.weapon !== NO_WEAPON;
 		const charge = bowInHand && active.v[BOW_V_CHARGE] > 0 ? bowCharge(active) : 0;
 		if (charge > 0) {
 			const sink = charge >= 1 ? L.full : L.charge;
 			const h = heading(p.faceX, p.faceZ);
 			arc(sink, px, pz, WEAPON_VIEW.chargeRingRadius, h, h + TAU * charge);
-			ray(sink, px, pz, h, 0, WEAPON_VIEW.aimLineMin + WEAPON_VIEW.aimLineGrow * charge);
+			let aim = h;
+			if (charge >= 1) {
+				const blocked = this.sim.getContext()?.config.isBulletBlocked;
+				if (bowAssistAim(s.combat.actors, s.tick, blocked, p.x, p.z, p.faceX, p.faceZ, assistDir)) {
+					aim = heading(assistDir.x, assistDir.z);
+				}
+			}
+			ray(sink, px, pz, aim, 0, WEAPON_VIEW.aimLineMin + WEAPON_VIEW.aimLineGrow * charge);
 		}
 		const bowSlot = slotWith(w, idx.bow);
 		const heavyTick = bowSlot !== undefined ? bowSlot.v[BOW_V_HEAVY_TICK] : 0;

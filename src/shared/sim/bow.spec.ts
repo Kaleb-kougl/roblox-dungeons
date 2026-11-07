@@ -1,10 +1,13 @@
 // 'weapon.bow' (E1.8, ported from src/sim/weapons/defs/bow.test.ts): stream cadence and pattern under FIRE, the ALT
 // charge (timing, cancel, slow walk, no stream), the heavy arrow (damage, speed, size) and its pierce (each actor once,
-// up to heavyPierce + 1, then consumed).
+// up to heavyPierce + 1, then consumed), and the port's heavy arrow aim assist (CLAUDE.md decision log 2026-11-06).
 import { describe, expect, it } from "@rbxts/jest-globals";
 import "shared/sim/testing";
 import {
 	BOW_DATA,
+	BOW_HEAVY_DAMAGE,
+	WEB_BOW_TUNING,
+	setBowTuning,
 	BOW_V_CHARGE,
 	BOW_WOBBLE_COS,
 	BOW_WOBBLE_SIN,
@@ -211,10 +214,11 @@ describe("bow: piercing heavy arrow", () => {
 	});
 
 	it("hits each of several overlapping actors once (no ping-pong), and point-blank targets too", () => {
+		const left = 10 - BOW_DATA.heavyDamage;
 		const packed = flyHeavy(withBow(line([2, 2.6, 3.2])));
-		expect(hps(packed)).toEqual([6, 6, 6]);
+		expect(hps(packed)).toEqual([left, left, left]);
 		const pointBlank = flyHeavy(withBow(line([0.7, 3])));
-		expect(hps(pointBlank)).toEqual([6, 6]);
+		expect(hps(pointBlank)).toEqual([left, left]);
 		expect(pointBlank.combat.playerBullets.activeCount).toBe(0); // lifetime / bounds, not a hit: only 2 actors
 	});
 
@@ -241,5 +245,76 @@ describe("bow: piercing heavy arrow", () => {
 			}
 		}
 		expect(kills).toBe(1);
+	});
+});
+
+describe("bow: heavy arrow retune and aim assist (port)", () => {
+	const dummies = (at: ReadonlyArray<[number, number]>): ActorSpawn[] =>
+		at.map(([x, z]) => ({ kind: "test.dummy", x, z }));
+
+	/** Charges a full heavy arrow facing +Z and returns its unit direction on the release tick. */
+	function release(config: SimConfig): { x: number; z: number } {
+		const s = createSimState(1, 0, 0, config);
+		charge(s, BOW_DATA.chargeTicks, config);
+		const all = arrows(s);
+		expect(all.size()).toBe(1);
+		return { x: all[0].vx / all[0].speed, z: all[0].vz / all[0].speed };
+	}
+
+	function expectToward(d: { x: number; z: number }, x: number, z: number): void {
+		const len = math.sqrt(x * x + z * z);
+		expect(d.x).toBeCloseTo(x / len, 12);
+		expect(d.z).toBeCloseTo(z / len, 12);
+	}
+
+	it(`hits for BOW_HEAVY_DAMAGE (${BOW_HEAVY_DAMAGE}), one more than the web build's ${WEB_BOW_TUNING.heavyDamage}`, () => {
+		expect(BOW_DATA.heavyDamage).toBe(BOW_HEAVY_DAMAGE);
+		expect(BOW_HEAVY_DAMAGE).toBe(WEB_BOW_TUNING.heavyDamage + 1);
+		expect(BOW_DATA.heavyAssist).toBe(true);
+	});
+
+	it("flies straight at an enemy within 10 degrees of the facing (and hits it)", () => {
+		expect(BOW_DATA.heavyAssistConeCos).toBeCloseTo(math.cos(math.rad(10)), 15);
+		const config = withBow(dummies([[1, 8]])); // ~7.1 degrees off +Z
+		expectToward(release(config), 1, 8);
+		const s = createSimState(1, 0, 0, config);
+		charge(s, BOW_DATA.chargeTicks, config);
+		for (let t = 0; t < 40; t++) step(s, IDLE, config);
+		expect(s.combat.actors[0].hp).toBe(10 - BOW_DATA.heavyDamage);
+	});
+
+	it("keeps the facing for an enemy outside the cone, out of reach or behind a wall, or with no enemy", () => {
+		expectToward(release(BOW), 0, 1);
+		expectToward(release(withBow(dummies([[2, 7]]))), 0, 1); // ~15.9 degrees
+		expectToward(release(withBow(dummies([[0.5, 20]]))), 0, 1); // beyond heavySpeed x heavyLife
+		const walled: SimConfig = { ...withBow(dummies([[0.5, 6]])), isBulletBlocked: (_x, z) => z === 3 }; // a wall row of tiles at z 3
+		expectToward(release(walled), 0, 1);
+	});
+
+	it("picks the enemy whose bearing is nearest the facing, not the nearest one", () => {
+		const pair = withBow(
+			dummies([
+				[0.5, 3],
+				[0.3, 9],
+			]),
+		); // ~9.5 and ~1.9 degrees off +Z
+		expectToward(release(pair), 0.3, 9);
+	});
+
+	it("is off under WEB_BOW_TUNING (the golden fixtures' bow), which also restores the web damage", () => {
+		const previous = setBowTuning(WEB_BOW_TUNING);
+		try {
+			expect(BOW_DATA.heavyDamage).toBe(WEB_BOW_TUNING.heavyDamage);
+			const config = withBow(dummies([[1, 8]]));
+			expectToward(release(config), 0, 1);
+			const s = createSimState(1, 0, 0, withBow(dummies([[0, 4]])));
+			charge(s, BOW_DATA.chargeTicks, withBow(dummies([[0, 4]])));
+			for (let t = 0; t < 40; t++) step(s, IDLE, withBow(dummies([[0, 4]])));
+			expect(s.combat.actors[0].hp).toBe(10 - WEB_BOW_TUNING.heavyDamage);
+		} finally {
+			setBowTuning(previous);
+		}
+		expect(BOW_DATA.heavyDamage).toBe(BOW_HEAVY_DAMAGE);
+		expect(BOW_DATA.heavyAssist).toBe(true);
 	});
 });

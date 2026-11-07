@@ -129,7 +129,7 @@ function arenaWorld(floor: number): EndlessFloorWorld {
 }
 
 /**
- * The same arena as a boss floor: `bossKind` (Mother Bramble unless given) spawns in the boss room (never stepped by
+ * The same arena as a boss floor: `bossKind` (Mother Mayhem unless given) spawns in the boss room (never stepped by
  * killAt).
  */
 const bossArenaWorlds = new Map<string, EndlessFloorWorld>();

@@ -70,14 +70,15 @@ function todayRequests(board: LeaderboardBoard): LeaderboardRequest[] {
  *              reveal) and run over. It returns the target row once best today is passed (the next rung, #1, the next
  *              friend or the cut-off; text rebuilt only on a change), asks the floor shout for the highest threshold
  *              crossed (FLOOR_SHOUT_PRIORITY.rankThreshold: under new best's NEW BEST TODAY!, over a combo tier), and
- *              queues a toast per friend passed (ToastPanel, headshot by user id, `Passed Alex (21900)`), shown one at a
- *              time (DAILY_RANK.toastSeconds + toastGapSec apart), waiting while the solo run is paused or a boon draft
- *              is open, dropped at run over. The friends passed go to the store's dailyRank slice for the run-over
- *              row (DailyPassedRow).
+ *              queues a toast per friend passed (ToastPanel, headshot by user id, `Beat Alex's high score (21900)`),
+ *              shown one at a time (DAILY_RANK.toastSeconds + toastGapSec apart), waiting while the solo run is paused
+ *              or a boon draft is open, dropped at run over. The friends passed go to the store's dailyRank slice for
+ *              the run-over row (DailyPassedRow). Each friend toast also throws new best's gold edge confetti
+ *              (wantsConfetti -> NewBestTracker.burstConfetti; skipped while a burst is still falling).
  *   sound      its frame is AudioController's DailyRankCueSource (setRankCues): rankUp on a threshold frame, friendPassed
  *              on a frame a friend toast shows; the mapper keeps one celebration sound per frame (new best first).
- * Reduced motion: nothing here moves (the toast and the row are text; the shout's slide is ComboController's, which
- * already fades in place under reduced motion); text and sound stay.
+ * Reduced motion: nothing here moves (no confetti; the toast and the row are text; the shout's slide is
+ * ComboController's, which already fades in place under reduced motion); text and sound stay.
  */
 @Controller({})
 export class DailyRankController implements OnStart, NewBestRankLayer {
@@ -232,6 +233,11 @@ export class DailyRankController implements OnStart, NewBestRankLayer {
 		else if (!input.underCover) this.showToast();
 		this.cues = cues;
 		return this.rowOf(f);
+	}
+
+	/** A friend toast showed this frame: NewBestController throws the in-run confetti with it. */
+	wantsConfetti(): boolean {
+		return this.cues.friendPassed;
 	}
 
 	// --- beats ------------------------------------------------------------------------------------------

@@ -28,7 +28,7 @@
  *             whole DEFENSE_SECONDS and the hits measure the defence alone (the fighting bots also measure how a
  *             longer guard slows the killing: the guard cancels the combo and halves the walk)
  *    Guard cancels come from the scored state's ScoreEvents.guardPlayer (one entry per erased bullet), so every row,
- *    Bastion or not, counts its guards' erasures; a "3+" guard erased BASTION_BRACE_BULLETS or more. A roll's count is
+ *    Bastion or not, counts its guards' erasures; a "<brace>+" guard erased BASTION_BRACE_BULLETS or more. A roll's count is
  *    Bastion's own braceCount (only a Bastion roller marks bullets), read when the next roll starts and at the end.
  *    Braces from BuildEvents.braceKind (PIP = a pip restored). Guard shape variants without Bastion (DefenseCase
  *    guardTicks / guardCos): SWORD_DATA's guardTicks / guardHalfAngleCos are set for the fight and restored after
@@ -453,8 +453,8 @@ export const DEFENSE_GUARD_TRIGGER = SWORD_DATA.guardReach + 0.6;
 /** The roll bot rolls into a volley when this many enemy bullets are within DEFENSE_ROLL_RADIUS. */
 export const DEFENSE_ROLL_BULLETS = 2;
 export const DEFENSE_ROLL_RADIUS = 1.6;
-/** A higher brace threshold to compare with BASTION_BRACE_BULLETS (the tables' "5+" column). */
-export const DEFENSE_HIGH_STOPS = 5;
+/** A higher brace threshold to compare with BASTION_BRACE_BULLETS (the tables' second "stopping" column). */
+export const DEFENSE_HIGH_STOPS = 12;
 
 function room(label: string, kind: string, at: ReadonlyArray<readonly [number, number]>, untilClear: boolean) {
 	return {
@@ -754,7 +754,7 @@ export function defenseHeader(bot: DefenseBot): string {
 	const each = guardBot(bot) ? "erased per guard" : "counted per roll (Bastion)";
 	return (
 		`| room | build | s per room (cleared) | hits / min | half hearts lost / room | ${act} / room | ${each} | ` +
-		`${act} stopping 3+ / 5+ per room | braces / room (pips restored) |`
+		`${act} stopping ${BASTION_BRACE_BULLETS}+ / ${DEFENSE_HIGH_STOPS}+ per room | braces / room (pips restored) |`
 	);
 }
 

@@ -5,7 +5,7 @@
 // telegraph's first frame, the slam effect only on a charge's impact (his brimstone charge here), the stairwell loop
 // follows the open stairwell, the same state-derived cues at 1-5 ticks per frame; plus synthetic frames for the budget
 // levels, reduced motion, swings and the guard, splinters, resets, a pack without effect art, and the impact cue of
-// each boss (Mother Bramble's slam, the Demon Lord's charge) on a boss spawned into a fresh state.
+// each boss (Mother Mayhem's slam, the Demon Lord's charge) on a boss spawned into a fresh state.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { CAMERA_YAW_DEG, STUDS_PER_TILE } from "shared/config";
 import { accumulateEvents, newFrameEvents, resetFrameEvents, type FrameEvents } from "shared/play";
@@ -97,7 +97,7 @@ interface ReplayResult {
 	/** Cues landing within telegraphClearTiles of an actor whose telegraph started that frame (must stay 0). */
 	onTelegraph: number;
 	/**
-	 * fx.boss.slam cues not on a charge impact (must stay 0), and the impacts seen by the spec itself: Mother Bramble's
+	 * fx.boss.slam cues not on a charge impact (must stay 0), and the impacts seen by the spec itself: Mother Mayhem's
 	 * slam and the Demon Lord's charge.
 	 */
 	slamOff: number;
@@ -546,7 +546,7 @@ describe("FxCueMapper sources (synthetic)", () => {
 		expect(frameAt(5)).toBe(0);
 	}
 
-	it("Mother Bramble's slam: nothing during its telegraph or charge, one cue on the impact at the boss", () => {
+	it("Mother Mayhem's slam: nothing during its telegraph or charge, one cue on the impact at the boss", () => {
 		impactCue(BOSS_ACT1_ID, BossAttack.SLAM, BossState.ACTIVE, V_MARK, V_AUX_X, V_AUX_Z);
 	});
 

@@ -96,7 +96,7 @@
 		},
 		{
 			"term": "boss",
-			"meaning": "The big enemy that ends every 5th floor (Mother Bramble or The Demon Lord), with a health bar and phases.",
+			"meaning": "The big enemy that ends every 5th floor (Mother Mayhem or The Demon Lord), with a health bar and phases.",
 			"translate": true,
 			"keys": [
 				"boss.1.name",
@@ -722,8 +722,8 @@
 			]
 		},
 		{
-			"term": "Mother Bramble",
-			"meaning": "First boss: a huge thorny plant-demon mother (\"her\"). Translate the meaning consistently.",
+			"term": "Mother Mayhem",
+			"meaning": "First boss: a huge chaotic demon mother (\"her\"). Translate the meaning consistently.",
 			"translate": true,
 			"keys": [
 				"boss.act1.name"

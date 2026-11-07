@@ -15,12 +15,12 @@ import { RENDER_ORDER, floorStudsY, lerp, studsX, studsY, studsZ } from "shared/
 import { motionScale } from "shared/view/fx";
 import {
 	ALWAYS_ON_PANELS,
-	HUD_CORNERS,
+	HUD_FADE_SLOTS,
 	HUD_FOOTPRINT,
 	HUD_OCCLUSION,
 	OcclusionFader,
 	occludedPanels,
-	type HudCorner,
+	type HudFadeSlot,
 	type ScreenPoint,
 	type ScreenRect,
 } from "shared/view/hud";
@@ -45,24 +45,25 @@ function hudScaleOf(frame: GuiObject): number {
 }
 
 /**
- * The corner panels' occlusion fade (docs/HUD_LAYOUT.md H7) and the KV_Debug footprint check (H1). A render step
- * after the camera: every HUD_OCCLUSION.everyFrames frames it projects the watched player (spectating: the teammate,
+ * The HUD's occlusion fade (docs/HUD_LAYOUT.md H7) and the KV_Debug footprint check (H1). A render step after the
+ * camera: every HUD_OCCLUSION.everyFrames frames it projects the watched player (spectating: the teammate,
  * `getViewPlayerIndex`), every living actor (enemies and the boss) and up to HUD_OCCLUSION.maxBullets enemy bullets to
- * GUI space, tests them against the mounted corner panels' rects (client/ui/hud cornerFade registry), and every frame
- * advances one OcclusionFader per corner and writes its transparency to the corner's binding (no React re-render).
+ * GUI space, tests them against the mounted fading panels' rects (HUD_FADE_SLOTS: the corner panels, the top-centre
+ * toasts and the first-sighting card; client/ui/hud cornerFade registry), and every frame advances one OcclusionFader
+ * per slot and writes its transparency to the slot's binding (no React re-render).
  *
  * Coordinates: GuiObject.AbsolutePosition / AbsoluteSize are in GUI space, whose origin is the viewport's top left
  * moved by GuiService:GetGuiInset() (the top bar); ScreenInsets only moves where a ScreenGui's frames sit, not that
  * origin. Camera:WorldToScreenPoint returns points in that same space (it is WorldToViewportPoint minus the GUI inset),
- * so the two compare directly. Off (Options > Display > HUD fade) or no run: every corner opaque and no work. Read
+ * so the two compare directly. Off (Options > Display > HUD fade) or no run: every fading panel opaque and no work. Read
  * only on the sim.
  */
 @Controller({})
 export class HudOcclusionController implements OnStart {
 	private readonly janitor = new Janitor();
-	private readonly faders = new Map<HudCorner, OcclusionFader>();
+	private readonly faders = new Map<HudFadeSlot, OcclusionFader>();
 	private readonly rectPool = new Array<MutableRect>();
-	/** This pass's mounted panels: their rects, their HUD_CORNERS index, and the occlusion result per rect. */
+	/** This pass's mounted panels: their rects, their HUD_FADE_SLOTS index, and the occlusion result per rect. */
 	private readonly liveRects = new Array<ScreenRect>();
 	private readonly liveCorner = new Array<number>();
 	private readonly liveOut = new Array<boolean>();
@@ -76,7 +77,7 @@ export class HudOcclusionController implements OnStart {
 	constructor(private readonly sim: SimController) {}
 
 	onStart(): void {
-		for (const corner of HUD_CORNERS) {
+		for (const corner of HUD_FADE_SLOTS) {
 			this.faders.set(corner, new OcclusionFader());
 			this.rectPool.push({ x: 0, y: 0, w: 0, h: 0 });
 			this.occluded.push(false);
@@ -95,8 +96,8 @@ export class HudOcclusionController implements OnStart {
 	}
 
 	private resetAll(): void {
-		for (let i = 0; i < HUD_CORNERS.size(); i++) {
-			const corner = HUD_CORNERS[i];
+		for (let i = 0; i < HUD_FADE_SLOTS.size(); i++) {
+			const corner = HUD_FADE_SLOTS[i];
 			this.faders.get(corner)!.reset();
 			this.occluded[i] = false;
 			setCornerFade(corner, 0);
@@ -125,22 +126,22 @@ export class HudOcclusionController implements OnStart {
 			this.test(state);
 		}
 		const motion = motionScale(selectJuice(store));
-		for (let i = 0; i < HUD_CORNERS.size(); i++) {
-			const corner = HUD_CORNERS[i];
+		for (let i = 0; i < HUD_FADE_SLOTS.size(); i++) {
+			const corner = HUD_FADE_SLOTS[i];
 			setCornerFade(corner, this.faders.get(corner)!.update(this.occluded[i], dt, motion));
 		}
 	}
 
-	/** Projects the action and refreshes `occluded` (one entry per HUD_CORNERS). */
+	/** Projects the action and refreshes `occluded` (one entry per HUD_FADE_SLOTS). */
 	private test(state: NonNullable<ReturnType<SimController["getState"]>>): void {
 		const camera = Workspace.CurrentCamera;
 		if (camera === undefined) return;
 		let scale = 1;
 		this.liveRects.clear();
 		this.liveCorner.clear();
-		for (let i = 0; i < HUD_CORNERS.size(); i++) {
+		for (let i = 0; i < HUD_FADE_SLOTS.size(); i++) {
 			this.occluded[i] = false;
-			const frame = cornerFrame(HUD_CORNERS[i]);
+			const frame = cornerFrame(HUD_FADE_SLOTS[i]);
 			// A hidden corner panel (the minimap with Options > Display > Minimap Off, or under the full map) has a size.
 			if (frame === undefined || !frame.Visible) continue;
 			const size = frame.AbsoluteSize;

@@ -188,14 +188,14 @@ describe("new best: strings and audio IDs", () => {
 		]).toEqual(["Record floor", "NEW DEEPEST", "Deepest yet"]);
 		expect([pack.str("run.best.ribbon"), pack.str("run.best.first")]).toEqual(["NEW BEST!", "FIRST RECORD"]);
 		expect(pack.str("run.best.score", { old: 48210, new: 61930, delta: 13720 })).toBe(
-			"Score 48210 -> 61930 (+13720)",
+			"Score 48210 -> 61930 pts (+13720)",
 		);
 		expect(pack.str("run.best.floor", { old: 9, new: 11, delta: 2 })).toBe("Deepest floor 9 -> 11 (+2)");
 		expect([pack.str("run.best.saved"), pack.str("run.best.unsaved")]).toEqual([
 			"Saved",
 			"Not saved: run not verified",
 		]);
-		expect(pack.str("run.best.target", { score: 48210, floor: 9 })).toBe("Best 48210 · floor 9");
+		expect(pack.str("run.best.target", { score: 48210, floor: 9 })).toBe("Best 48210 pts · floor 9");
 		expect(pack.str("menu.best", { score: 48210, floor: 9 })).toBe("Best 48210 · floor 9");
 	});
 

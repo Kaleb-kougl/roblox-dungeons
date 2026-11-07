@@ -512,7 +512,7 @@ describe("breakables: a vault's chest (docs/TREASURE.md TR2, correction 3)", () 
 	});
 });
 
-describe("breakables: Mother Bramble's slam", () => {
+describe("breakables: Mother Mayhem's slam", () => {
 	it("slamBreakables breaks every intact piece within BREAKABLE_SLAM_RADIUS of the impact, nothing farther", () => {
 		const r = BREAKABLE_SLAM_RADIUS;
 		const pieces = [piece(0, 0), piece(r, 0, "barrel"), piece(r + 1, 0), piece(0, -2)];

@@ -1,7 +1,7 @@
 # Art assets: vertical-slice plan
 
 Scope: **only what the vertical slice draws** (PLAN.md "Vertical slice": the endless solo and co-op run, M1 sim,
-swarmer / sniper / bruiser rooms, Mother Bramble, relic pedestals and the curse shrine). Work it task by task, like
+swarmer / sniper / bruiser rooms, Mother Mayhem, relic pedestals and the curse shrine). Work it task by task, like
 `PLAN.md`; each task ends with a **Verify**. Art is presentation only: nothing here touches `src/shared/sim/**` or
 `src/shared/dungeon/**`, and every fixture hash must stay the same.
 
@@ -21,7 +21,7 @@ six bullet IDs, the biome tiles, `ui.cursor` (the facing pip) and the pedestal /
 | `enemy.dummy` (the tutorial's training dummy, docs/DUMMY_ART.md) | **Training Dummy** (idle 1, hit 7, break 9; one facing, pixel art, `Pixelated`, bodyTiles 1.4; the hit wobble on a view-side 0.7 s clip): `dummy.png` + rim, built 2026-11-06, not uploaded | Training Dummy 2D Pixel Art |
 | `enemy.sniper` (+ the tutorial's `turret.sniper`) | **Subservient** (worship; every other animation a stand-in, docs/SNIPER_ART.md) | Lords of Pain (full pack) |
 | `enemy.bruiser` | **Demon Beast 3** (idle, walk, Attack 4 leap and slam, TakeDamage 1, Die 1; docs/DEMON_ART.md): 3 sheets + rims, uploaded 2026-10-26 | 2D Demons - TopDown asset pack v1.1 |
-| `boss.act1` (Mother Bramble) | **Demon Elite 3** (idle, walk, taunt, Attack 1-4, Die 1; docs/BRAMBLE_ART.md): 7 sheets + rims, uploaded 2026-10-26 | 2D Demons - TopDown asset pack v1.1 |
+| `boss.act1` (Mother Mayhem) | **Demon Elite 3** (idle, walk, taunt, Attack 1-4, Die 1; docs/BRAMBLE_ART.md): 7 sheets + rims, uploaded 2026-10-26 | 2D Demons - TopDown asset pack v1.1 |
 | `enemy.sprayer` / `enemy.caster` (M1's turrets, the tutorial's sprayers) | **Demon Spawn 8** / **Demon Spawn 11** (Idle 1, TakeDamage 1, Die 1; the baked staff glow cut by `layerNoiseAlpha`; docs/DEMON_ART.md Phase 2): 2 sheets + rims each, uploaded 2026-10-30 (DA13) | 2D Demons - TopDown asset pack v1.1 |
 | boost drops `boost.fury` / `.quickstep` / `.frenzy` / `.aegis` (docs/BOOST_ART.md) | **`gold_drop`** (Fury) and **`gemstones_blue` / `_green` / `_white`**, S facing frame 0, 29.6 px/tile; halo `decor.fx.glow` and sparkle `decor.fx.glint` (the decor atlas), beam **`loot_indicator_white`** (`ui.marker.boost`), all tinted by the kind's role | Lords of Pain (full pack) |
 | the UI (menus, overlays, in-run HUD, touch; docs/UI_ART.md) | 12 sliced pieces (`ui.panel.*`, `ui.button*`, `ui.option.*`, `ui.bar.*`, `ui.slot*`) and the `ui-icons.png` atlas (hearts, flasks, candle, chips, glyphs, ornament); uploaded 2026-10-30 | UI User Interface Pack - Horror |
@@ -178,7 +178,7 @@ files await upload (the vale pack draws the placeholder gold block until all its
   → Verify: deterministic (same inputs, byte-identical outputs); a contact sheet per atlas looks right.
 
 - [x] **S4. Sprite renderer.** *(code and headless specs done; the Studio half of its Verify is open)* A `SpriteView` used by `ActorRenderController` when `pack.spriteSheet(id).assetId` is
-  set; the placeholder path stays per ID, so sniper / bruiser / Mother Bramble are untouched:
+  set; the placeholder path stays per ID, so sniper / bruiser / Mother Mayhem are untouched:
   - one BillboardGui + ImageLabel per pooled actor slot, adorned to the existing anchor Part (already moved by
     BulkMoveTo); size from `frameW / pixelsPerTile * STUDS_PER_TILE`, offset so the pivot sits on the feet;
   - facing: a pure function in `src/shared/view/` projecting the sim's world facing (`faceX`, `faceZ`) through the
@@ -205,7 +205,7 @@ files await upload (the vale pack draws the placeholder gold block until all its
     actually use; any other biome they reach stays a placeholder for now;
   - the ring and beam images for the co-op ring and the relic pedestals.
   → Verify: `npm run verify` (validator, contrast, `check-asset-ids`); in Studio a full endless run through a Mother
-  Bramble floor, solo and in a 2-player party, on PC and the phone emulator, with fps and texture memory written down.
+  Mayhem floor, solo and in a 2-player party, on PC and the phone emulator, with fps and texture memory written down.
 
 - [x] **S6. Docs.** `src/shared/theme/README.md` (format 2), `docs/CLIENT.md` (SpriteView), the `CLAUDE.md` decision log
   (contract v2, the `vale` pack, where the art lives), `docs/SPIKES.md` (spike C).

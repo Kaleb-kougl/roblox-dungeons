@@ -1,10 +1,20 @@
 /**
- * The corner panels' occlusion fade (docs/HUD_LAYOUT.md H7): when the watched player, a living enemy, the boss or an
- * enemy bullet is under an always-on corner panel, that panel fades to mostly transparent and comes back once the
- * area has stayed clear for a moment. Pure: screen rects and points in, booleans and transparencies out; the client
+ * The HUD's occlusion fade (docs/HUD_LAYOUT.md H7): when the watched player, a living enemy, the boss or an enemy
+ * bullet is under an always-on corner panel, the toast panel or the first-sighting card (HUD_FADE_SLOTS), that panel
+ * fades to mostly transparent and comes back once the area has stayed clear for a moment. Pure: screen rects and points in, booleans and transparencies out; the client
  * (HudOcclusionController) projects the world and drives the panels' GroupTransparency bindings.
  */
+import { HUD_CORNERS, type HudCorner } from "./corners";
 import type { ScreenRect } from "./footprint";
+
+/**
+ * The panels that fade under the action: the four always-on corner panels, the top-centre toast panel and the
+ * first-sighting card (docs/ENEMY_VARIANTS.md EV12, left edge under the status panel). Every one has its own fader.
+ */
+export type HudFadeSlot = HudCorner | "toasts" | "sighting";
+
+/** Every fade slot, in a fixed order (iterate this, never a record keyed by slot). */
+export const HUD_FADE_SLOTS: ReadonlyArray<HudFadeSlot> = [...HUD_CORNERS, "toasts", "sighting"];
 
 /** Occlusion fade tunables. Times are real seconds; padPx is reference px (the client multiplies by the HUD scale). */
 export const HUD_OCCLUSION = {

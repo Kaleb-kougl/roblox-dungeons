@@ -112,7 +112,7 @@ describe("PLACEHOLDER_VISUALS", () => {
 			expect(v[id]).toMatchObject({ shape: "Block", color: { kind: "role", role: "boss" } });
 			expect(v[id].size[0]).toBe(s(48));
 		}
-		// the Demon Lord (docs/BOSS_DEMONLORD.md): the boss block, taller and narrower than Mother Bramble's
+		// the Demon Lord (docs/BOSS_DEMONLORD.md): the boss block, taller and narrower than Mother Mayhem's
 		expect(v["boss.demonlord"]).toMatchObject({
 			shape: "Block",
 			color: { kind: "role", role: "boss" },

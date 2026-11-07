@@ -139,11 +139,11 @@ export const PLACEHOLDER_PROPORTIONS = {
 	reaper: [0.875, 0.25, 0.875],
 	/** Goldling (docs/FORTUNE.md FD9): a small gold block, smaller than the bomber (1.5 x 1.5 x 1.5 studs). */
 	golden: [0.375, 0.375, 0.375],
-	/** Bosses: a large block, the full 48 x 48 cell wide, 3/4 tall (Mother Bramble, boss.act1, and boss.1..5). */
+	/** Bosses: a large block, the full 48 x 48 cell wide, 3/4 tall (Mother Mayhem, boss.act1, and boss.1..5). */
 	boss: [1, 0.75, 1],
 	/**
 	 * The Demon Lord (boss.demonlord, docs/BOSS_DEMONLORD.md): a tall block, 3/4 of the cell wide and deep, the full
-	 * cell tall (9 x 12 x 9 studs against Mother Bramble's squat 12 x 9 x 12), so the hunter reads apart from the turret.
+	 * cell tall (9 x 12 x 9 studs against Mother Mayhem's squat 12 x 9 x 12), so the hunter reads apart from the turret.
 	 */
 	demonlord: [0.75, 1, 0.75],
 	/** Enemy bullets: a ball filling the 8 px cell (the renderer scales it to the gameplay radius). */
@@ -403,7 +403,7 @@ function buildTable(): Record<string, PlaceholderVisual> {
 	for (const archetype of ENEMY_ARCHETYPES) {
 		t[`enemy.${archetype}`] = enemyVisual(archetype);
 	}
-	// Bosses: a large block in the shared boss accent. boss.act1 is Mother Bramble (M1); boss.demonlord, the Demon
+	// Bosses: a large block in the shared boss accent. boss.act1 is Mother Mayhem (M1); boss.demonlord, the Demon
 	// Lord (the second endless boss), stands taller and narrower.
 	for (const b of BOSS_IDS) {
 		t[b] = bossVisual();

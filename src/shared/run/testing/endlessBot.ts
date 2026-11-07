@@ -1,7 +1,7 @@
 /**
  * Test support for specs (never imported by the game): the endless-mode walking bot (moved here from
  * run/endless.spec.ts so several specs can share the recorded run) and `recordEndlessRun`, the recorded seed-1337
- * descent: floors 1-4 by the debug skip, floor 5 walked into the boss's arena (Mother Bramble or the Demon Lord: the
+ * descent: floors 1-4 by the debug skip, floor 5 walked into the boss's arena (Mother Mayhem or the Demon Lord: the
  * floor's seeded pick, shared/dungeon bossKindFor), the boss killed (J presses), the
  * stairwell walked, floor 6 walked to its stairwell, floor 7 skipped, ending on floor 8 at Depth 2. M2: every floor
  * change opens a boon draft, which the bot resolves (resolveDraft: the stick on a card for DRAFT_MIN_OPEN_TICKS, then
@@ -398,7 +398,7 @@ export class Driver {
 	}
 }
 
-/** The floor's live boss (any `data.boss` archetype: Mother Bramble or the Demon Lord), if present. */
+/** The floor's live boss (any `data.boss` archetype: Mother Mayhem or the Demon Lord), if present. */
 export function bossOf(s: SimState) {
 	return s.combat.actors.find((a) => a.kind !== NO_KIND && a.alive !== 0 && archetypeAt(a.kind).data.boss === true);
 }

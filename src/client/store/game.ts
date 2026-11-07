@@ -114,6 +114,11 @@ export interface GameState {
 	readonly active: boolean;
 	/** Newest last; at most PROGRESSION_VIEW.maxToasts. */
 	readonly toasts: ReadonlyArray<ToastView>;
+	/**
+	 * The first-sighting card (docs/ENEMY_VARIANTS.md EV12: SightingController sets and expires it), apart from the
+	 * top-centre toasts so it never sits over the far side of the room; undefined: none.
+	 */
+	readonly sighting: ToastView | undefined;
 	readonly map: MapView;
 }
 
@@ -140,6 +145,7 @@ const initialState: GameState = {
 	},
 	active: false,
 	toasts: [],
+	sighting: undefined,
 	map: NO_MAP,
 };
 
@@ -167,6 +173,7 @@ export const gameSlice = createProducer(initialState, {
 		latencyProbe: undefined,
 		active: true,
 		toasts: [],
+		sighting: undefined,
 		map: NO_MAP,
 	}),
 	/** The run was left for the menu (run over, Leave run): no run, no HUD; the last verdict stays. */
@@ -178,6 +185,7 @@ export const gameSlice = createProducer(initialState, {
 		latencyProbe: undefined,
 		active: false,
 		toasts: [],
+		sighting: undefined,
 		map: NO_MAP,
 	}),
 	/** The minimap's floor state (MinimapController): whether this floor has a map, and the full map toggle. */
@@ -189,6 +197,9 @@ export const gameSlice = createProducer(initialState, {
 		while (toasts.size() > max) toasts.remove(0);
 		return { ...state, toasts };
 	},
+	/** Shows (or, with undefined, hides) the first-sighting card. */
+	setSighting: (state, sighting: ToastView | undefined) =>
+		state.sighting === sighting ? state : { ...state, sighting },
 	/** Drops the toasts whose time is up (no change, no new state). */
 	expireToasts: (state, now: number) =>
 		state.toasts.some((t) => t.until <= now)
@@ -206,4 +217,5 @@ export const selectLatencyProbe = (state: { game: GameState }) => state.game.lat
 export const selectRunInfo = (state: { game: GameState }) => state.game.run;
 export const selectGameActive = (state: { game: GameState }) => state.game.active;
 export const selectToasts = (state: { game: GameState }) => state.game.toasts;
+export const selectSighting = (state: { game: GameState }) => state.game.sighting;
 export const selectMapView = (state: { game: GameState }) => state.game.map;

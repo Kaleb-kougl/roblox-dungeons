@@ -11,7 +11,7 @@
  *      pack  8 swarmers in builds/procs.spec.ts's pack, 5-7 units ahead (TUNE_PACK)
  *      room  a real endless room's planned spawns and affixes (tuneCensusRoom), centred on the player (spawns closer
  *            than SPAWN_SAFE_RADIUS pushed out to it, as safeRoomSpawns keeps them away from a player)
- *      boss  Mother Bramble at the centre of a boss room (TUNE_BOSS_HALF), the player 3 units inside its edge (so she
+ *      boss  Mother Mayhem at the centre of a boss room (TUNE_BOSS_HALF), the player 3 units inside its edge (so she
  *            wakes on the first tick); done when she dies (her adds are swept with her)
  *    Bots: the target is the nearest living actor (the boss's adds included); the sword walks to TUNE_SWORD_CLOSE and
  *    holds FIRE in reach (the full combo), the bow keeps TUNE_BOW_DISTANCE and holds FIRE (the stream, no charged
@@ -335,7 +335,7 @@ export const TUNE_FLOORS: ReadonlyArray<TuneFloor> = [
 	{ floor: 11, depth: 3 },
 ];
 
-/** Boss fights: Mother Bramble's own floors 5 / 10 / 15 (Depth 1 / 2 / 3: the bosses before her). */
+/** Boss fights: Mother Mayhem's own floors 5 / 10 / 15 (Depth 1 / 2 / 3: the bosses before her). */
 export const TUNE_BOSS_FLOORS: ReadonlyArray<TuneFloor> = [
 	{ floor: 5, depth: 1 },
 	{ floor: 10, depth: 2 },
@@ -381,11 +381,11 @@ export const TUNE_PACK: TuneFight = {
 	maxSeconds: 60,
 };
 
-/** Mother Bramble's arena: a square boss room this half size, the player 3 units inside its -Z edge. */
+/** Mother Mayhem's arena: a square boss room this half size, the player 3 units inside its -Z edge. */
 export const TUNE_BOSS_HALF = 13;
 
 export const TUNE_BOSS: TuneFight = {
-	label: "Mother Bramble",
+	label: "Mother Mayhem",
 	spawns: [{ kind: BOSS_ACT1_ID, x: 0, z: 0, affix: AffixKind.NONE }],
 	half: TUNE_BOSS_HALF,
 	startX: 0,

@@ -115,20 +115,55 @@ function Stat(props: { order: number; label: string; value: string }) {
 	);
 }
 
-/** One line of the score breakdown: label left, value right. */
-function BreakdownLine(props: { order: number; label: string; value: string; color?: "uiText" | "uiAccent" }) {
+/**
+ * One line of the score breakdown: label left, value right. `fit`: the value is TextScaled up to HUD_VIEW.textSize
+ * (like the best combo line), so a long points value with its unit (`61930 pts`) shrinks to the column, never past it.
+ */
+function BreakdownLine(props: {
+	order: number;
+	label: string;
+	value: string;
+	color?: "uiText" | "uiAccent";
+	fit?: boolean;
+}) {
+	const hudFont = useHudFont();
+	const color = props.color ?? "uiText";
+	const h = HUD_VIEW.textSize + FOOTPRINT_ESTIMATE.lineSlack;
 	return (
 		<Row order={props.order}>
 			<Text order={1} width={HUD_VIEW.breakdownLabelWidth} color="uiTextDim" text={props.label} />
-			<Text
-				order={2}
-				width={HUD_VIEW.breakdownValueWidth}
-				color={props.color ?? "uiText"}
-				align={Enum.TextXAlignment.Right}
-				text={props.value}
-			/>
+			{props.fit === true ? (
+				<textlabel
+					LayoutOrder={2}
+					Size={new UDim2(0, HUD_VIEW.breakdownValueWidth, 0, h)}
+					BackgroundTransparency={HIDDEN}
+					Font={hudFont}
+					TextScaled={true}
+					TextSize={HUD_VIEW.textSize}
+					TextColor3={role(color)}
+					TextStrokeColor3={role("background")}
+					TextStrokeTransparency={HUD_VIEW.panelTransparency}
+					TextXAlignment={Enum.TextXAlignment.Right}
+					Text={props.value}
+				>
+					<uitextsizeconstraint MaxTextSize={HUD_VIEW.textSize} />
+				</textlabel>
+			) : (
+				<Text
+					order={2}
+					width={HUD_VIEW.breakdownValueWidth}
+					color={color}
+					align={Enum.TextXAlignment.Right}
+					text={props.value}
+				/>
+			)}
 		</Row>
 	);
+}
+
+/** A points value with its unit: "{points} pts" (hud.score.points). */
+function pointsText(points: number): string {
+	return str(HUD_STRINGS.points, { points: tostring(points) });
 }
 
 /**
@@ -179,15 +214,16 @@ interface BreakdownProps {
 	maxCombo: number;
 }
 
-/** The breakdown's lines: the score, its points per source, the best combo. */
+/** The breakdown's lines: the score, its points per source (both with the `pts` unit), the best combo. */
 function breakdownLines(props: BreakdownProps): React.Element[] {
 	const lines = [
 		<BreakdownLine
 			key="score"
 			order={1}
 			label={str(HUD_STRINGS.score)}
-			value={tostring(props.score)}
+			value={pointsText(props.score)}
 			color="uiAccent"
+			fit={true}
 		/>,
 	];
 	for (const row of scoreBreakdownRows(props.points)) {
@@ -196,7 +232,8 @@ function breakdownLines(props: BreakdownProps): React.Element[] {
 				key={`s${row.index}`}
 				order={row.index + 2}
 				label={str(row.key)}
-				value={tostring(row.points)}
+				value={pointsText(row.points)}
+				fit={true}
 			/>,
 		);
 	}
@@ -248,11 +285,11 @@ function BestRibbon(props: { order: number; text: string }) {
 
 /**
  * The run over's new-best block (docs/NEW_BEST.md NB9), ranked runs only (nothing otherwise: the old panel). A record
- * run: its record rows in gold (`Score 48210 -> 61930 (+13720)` / `Deepest floor 9 -> 11 (+2)`, the NEW_BEST_UI
+ * run: its record rows in gold (`Score 48210 -> 61930 pts (+13720)` / `Deepest floor 9 -> 11 (+2)`, the NEW_BEST_UI
  * record row bindings NewBestController rolls; none for a first record, whose ribbon says it) and the save chip
  * (recordSavedKey: `Saved` in gold once the accepted verdict carried the server's records, `Not saved: run not
  * verified` in uiHealth for a rejected one, nothing while waiting). No record: one dim line, the target for next time
- * (`Best 48210 · floor 9`, bestText run.best.target). What it draws is runOverBest's `lines` (shared/view/hud
+ * (`Best 48210 pts · floor 9`, bestText run.best.target). What it draws is runOverBest's `lines` (shared/view/hud
  * runOverBestLines); on a daily run it draws no save chip (the daily block's is the one, docs/DAILY.md DS11).
  */
 function BestBlock(props: { order: number; best: RunOverBest; hideTarget?: boolean }) {

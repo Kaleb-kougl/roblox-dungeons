@@ -186,7 +186,7 @@ describe("IDs of the port's endless bosses", () => {
 				pack.str(`${id}.name`);
 			}
 			expect([packId, pack.str("boss.demonlord.name")]).toEqual([packId, "The Demon Lord"]);
-			expect([packId, pack.str("boss.act1.name")]).toEqual([packId, "Mother Bramble"]);
+			expect([packId, pack.str("boss.act1.name")]).toEqual([packId, "Mother Mayhem"]);
 			expect([packId, warnings]).toEqual([packId, []]);
 		}
 	});

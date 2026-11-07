@@ -25,7 +25,7 @@ function tail(list: ReadonlyArray<string>, n: number, skip = 0): string[] {
 /** Every key's English and its sorted placeholder names. */
 const ENGLISH: ReadonlyArray<[string, string, string[]]> = [
 	["run.recap.near.boss", "{boss} had {pct}% left", ["boss", "pct"]],
-	["run.recap.near.score", "{gap} short of your best", ["gap"]],
+	["run.recap.near.score", "{gap} pts short of your best", ["gap"]],
 	["run.recap.near.recordFloor", "One more floor for a new deepest", []],
 	["run.recap.near.stairs", "{tiles} tiles from floor {next}", ["next", "tiles"]],
 	["run.recap.near.fullClear", "{rooms} rooms from a full clear", ["rooms"]],
@@ -37,6 +37,7 @@ const ENGLISH: ReadonlyArray<[string, string, string[]]> = [
 	["run.recap.hl.perfect", "PERFECT rooms", []],
 	["run.recap.hl.teamPerfect", "TEAM PERFECT rooms", []],
 	["run.recap.hl.ofTotal", "{n} of {total}", ["n", "total"]],
+	["run.recap.hl.points", "{n} pts", ["n"]],
 	["run.recap.hl.teamStreak", "Best team streak", []],
 	["run.recap.hl.duos", "Duos", []],
 	["run.recap.hl.evolved", "Evolved", []],
@@ -69,7 +70,7 @@ describe("run recap and co-op moments: contract", () => {
 	it("requires the recap strings and the co-op moment strings (written out in REQUIRED_STRING_KEYS, in order)", () => {
 		const all = [...RECAP_STRING_KEYS, ...TEAM_MOMENT_STRING_KEYS];
 		expect(all).toEqual(ENGLISH.map(([k]) => k));
-		expect(RECAP_STRING_KEYS.size()).toBe(29);
+		expect(RECAP_STRING_KEYS.size()).toBe(30);
 		expect(TEAM_MOMENT_STRING_KEYS.size()).toBe(4);
 		// docs/TREASURE.md TR6's strings come after them, then docs/FORTUNE.md FO6's
 		const after = TREASURE_STRING_KEYS.size() + FORTUNE_STRING_KEYS.size();

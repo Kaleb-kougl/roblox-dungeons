@@ -400,6 +400,38 @@ describe("new best: the crossing", () => {
 		expect([later.slamScale, later.shine, later.confettiAge]).toEqual([1, -1, -1]);
 	});
 
+	it("burstConfetti (the Daily's friend toast): a new burst from 0, never over a falling one, reduced motion, cover or run over", () => {
+		const t = new NewBestTracker(known(2000, 9));
+		const idle = {
+			dt: STEP,
+			shownScore: 100,
+			score: 100,
+			floor: 1,
+			underCover: false,
+			runOver: false,
+			reducedMotion: false,
+		};
+		step(t, { shown: 100 });
+		expect(t.burstConfetti({ ...idle, reducedMotion: true })).toBe(false);
+		expect(t.burstConfetti({ ...idle, underCover: true })).toBe(false);
+		expect(t.burstConfetti({ ...idle, runOver: true })).toBe(false);
+		expect(t.look.confettiAge).toBe(-1);
+		expect(t.burstConfetti(idle)).toBe(true);
+		expect([t.look.confettiAge, t.look.confettiSeed]).toEqual([0, 1]);
+		expect(step(t, { shown: 100 }).confettiAge).toBeCloseTo(STEP, 9);
+		expect(t.burstConfetti(idle)).toBe(false);
+		let elapsed = STEP;
+		while (elapsed < NEW_BEST.confetti.inRun.lifeSec + EPS) {
+			step(t, { shown: 100 });
+			elapsed += STEP;
+		}
+		expect(t.look.confettiAge).toBe(-1);
+		expect(t.burstConfetti(idle)).toBe(true);
+		expect(t.look.confettiSeed).toBe(2);
+		// The crossing after it starts its own burst with the next seed.
+		expect(step(t, { shown: 2001 }).confettiSeed).toBe(3);
+	});
+
 	it("clamps a long frame to NEW_BEST.maxFrameDtSec", () => {
 		const t = new NewBestTracker(known(2000, 9));
 		step(t, { shown: 2001 });

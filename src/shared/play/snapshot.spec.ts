@@ -57,7 +57,7 @@ describe("takeSnapshot", () => {
 		expect(findBoss(createSimState(1, 0, 0, DEFAULT_SIM_CONFIG))).toBe(undefined);
 	});
 
-	it("carries the run totals and the boss's phase marks (66 % / 33 % for Mother Bramble)", () => {
+	it("carries the run totals and the boss's phase marks (66 % / 33 % for Mother Mayhem)", () => {
 		const s = takeSnapshot(createSimState(1, 0, 0, DEFAULT_SIM_CONFIG), { ...EXTRAS, kills: 4, hitsTaken: 2 });
 		expect([s.kills, s.hitsTaken]).toEqual([4, 2]);
 		expect(s.bossPhaseMarks).toEqual([]);

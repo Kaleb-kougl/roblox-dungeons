@@ -1,7 +1,7 @@
 // 'boss.demonlord' (Roblox port, docs/BOSS_DEMONLORD.md D4; no web source): the GDD boss rules on real fights in M1
-// dungeons (seeds 1337 and 42) through the full sim, the same way bossAct1.spec.ts checks Mother Bramble:
+// dungeons (seeds 1337 and 42) through the full sim, the same way bossAct1.spec.ts checks Mother Mayhem:
 //   - registry: band PORT_BAND_BOSSES, index 8; every web index (0..6) and the dummy (7) unchanged
-//   - Mother Bramble's budget: 540 hp, cap 6/s, phases at 66 % / 33 %, heavy contact damage
+//   - Mother Mayhem's budget: BOSS_HP (270) hp, cap 6/s, phases at 66 % / 33 %, heavy contact damage
 //   - every attack telegraphs >= 30 ticks, and bullets only leave from a running attack after its wind-up
 //   - phases 1 -> 2 -> 3 never skipped (hp stops on the threshold, immune roar, own bullets cleared), each phase opens
 //     with its new attack, attacks only from the phase's table, never 3 in a row
@@ -92,6 +92,8 @@ import {
 	type InputFrame,
 	type SimConfig,
 	type SimState,
+	BOSS_HP,
+	WEB_BOSS_HP,
 } from "shared/sim";
 
 const D = DEMONLORD_DATA;
@@ -494,7 +496,7 @@ describe("boss.demonlord registry and data", () => {
 		expect(archetypeAt(8)).toBe(BOSS_DEMONLORD);
 	});
 
-	it("has Mother Bramble's budget: 540 hp, cap 6/s (hp / cap = 90 s), phases at 66 % / 33 %, heavy contact", () => {
+	it("has Mother Mayhem's budget: 270 hp, cap 6/s (hp / cap = 45 s), phases at 66 % / 33 %, heavy contact", () => {
 		const b = BOSS_ACT1_DATA;
 		expect(D.boss).toBe(true);
 		expect(D.spriteId).toBe("boss.demonlord");
@@ -505,9 +507,10 @@ describe("boss.demonlord registry and data", () => {
 			b.radius,
 			b.corpseTicks,
 		]);
-		// The flawless floor (100 % uptime at the cap): hp / cap = 90 s, plus the immune roars.
+		// The flawless floor (100 % uptime at the cap): hp / cap = 45 s (90 s at the web build's 540), plus the roars.
+		expect(D.hp).toBe(BOSS_HP);
 		expect(D.hp / D.damageCapPerSecond!).toBe(b.hp / b.damageCapPerSecond!);
-		expect(D.hp / D.damageCapPerSecond!).toBe(90);
+		expect(D.hp / D.damageCapPerSecond!).toBe(45);
 		expect([...D.phaseHp]).toEqual([...b.phaseHp]);
 		expect([D.introTicks, D.transitionTicks, D.engageInset, D.debugDamage]).toEqual([
 			b.introTicks,
@@ -750,7 +753,8 @@ for (const seed of [1337, 42]) {
 		const log = runFight(seed, 4 * 60 * SIM_HZ + 600, makeBot(seed, { duty: 0.7, rollChance: 1 / 150 }));
 		const ticks = log.ticks;
 
-		it("dies within 1.5..4 minutes of sim time after engaging", () => {
+		// 1.5..4 minutes at the web build's 540 hp, scaled to the port's halved BOSS_HP: 45 s..2 minutes.
+		it("dies within 45 s..2 minutes of sim time after engaging", () => {
 			expect(log.engageTick).toBeGreaterThan(0);
 			expect(log.deathTick).toBeGreaterThan(0);
 			const ttk = SECONDS(log.deathTick - log.engageTick);
@@ -760,8 +764,8 @@ for (const seed of [1337, 42]) {
 					ttk,
 				)} s`,
 			);
-			expect(ttk).toBeGreaterThanOrEqual(90);
-			expect(ttk).toBeLessThanOrEqual(240);
+			expect(ttk).toBeGreaterThanOrEqual((90 * BOSS_HP) / WEB_BOSS_HP);
+			expect(ttk).toBeLessThanOrEqual((240 * BOSS_HP) / WEB_BOSS_HP);
 		});
 
 		it("phases 1 -> 2 -> 3 at 66% / 33% hp, never skipped; each change is an immune roar that clears its bullets", () => {
@@ -973,7 +977,7 @@ describe("boss.demonlord DEBUG_BOSS (J) and determinism", () => {
 		const a = runFight(1337, 3000, makeBot(9, { duty: 0.8, rollChance: 1 / 90, debugChance: 1 / 200 }), false);
 		const b = runFight(1337, 3000, makeBot(9, { duty: 0.8, rollChance: 1 / 90, debugChance: 1 / 200 }), false);
 		expect(hashState(a.fight.state)).toBe(hashState(b.fight.state));
-		expect(a.fight.state.combat.enemySpawned).toBeGreaterThan(100);
+		expect(a.fight.state.combat.enemySpawned).toBeGreaterThan(50); // 92 at BOSS_HP (the fight ends sooner)
 	});
 
 	for (const seed of [1337, 42]) {

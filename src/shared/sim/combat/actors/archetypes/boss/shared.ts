@@ -1,6 +1,6 @@
 /**
  * The boss fight skeleton every boss on it shares (Roblox port, docs/BOSS_DEMONLORD.md D3; moved out of
- * `boss/act1.ts`, source: `src/sim/actors/archetypes/boss/act1.ts` @ 42897e2). A pure move: Mother Bramble's fight
+ * `boss/act1.ts`, source: `src/sim/actors/archetypes/boss/act1.ts` @ 42897e2). A pure move: Mother Mayhem's fight
  * runs exactly the code it ran before (same order of state writes and rng draws), so every golden boss run still
  * matches bit for bit. Parameterised only where a second boss needs it: its data (BossFightData), its phase-first
  * table and roar attack id (BossFightSpec), and its attacks (BossFightHooks).
@@ -41,7 +41,7 @@ import { V_HOME_X, V_HOME_Z, engage, isRoomEnemyData } from "../enemyShared";
 // ---------------------------------------------------------------------------------------------
 // States, slots, rules
 
-/** aiState values of the skeleton (AiState.TELEGRAPH = 1 is the shared wind-up state). Mother Bramble's BossState. */
+/** aiState values of the skeleton (AiState.TELEGRAPH = 1 is the shared wind-up state). Mother Mayhem's BossState. */
 export const BossFightState = {
 	TELEGRAPH: AiState.TELEGRAPH,
 	DORMANT: AiState.CUSTOM,
@@ -60,7 +60,7 @@ export const BOSS_LAST_PHASE = 3;
 /** Never the same attack more than this many times in a row. */
 export const BOSS_MAX_REPEAT = 2;
 
-/** v[] slot zeroed when a phase transition starts (Mother Bramble: the slam's impact mark). */
+/** v[] slot zeroed when a phase transition starts (Mother Mayhem: the slam's impact mark). */
 export const BOSS_V_MARK = 4;
 /** v[] slots: the last attack started, and how many times in a row. */
 export const BOSS_V_LAST = 5;
@@ -75,6 +75,18 @@ export const BOSS_REPOSITION_DONE = 0.5;
 /** While the player is dead the boss waits this long between checks (RECOVER). */
 export const BOSS_PLAYER_DEAD_WAIT_TICKS = 30;
 const HP_EPS = 1e-6;
+
+/**
+ * The web build's boss hp (Mother Mayhem, fixtures/constants.json). Every golden fixture was recorded with it, so the
+ * parity specs replay under it (setBossHp), like the sword's WEB_SWORD_TIMINGS and WEB_SWARMER_HP.
+ */
+export const WEB_BOSS_HP = 540;
+
+/** The port's boss hp, percent of WEB_BOSS_HP (CLAUDE.md decision log, 2026-11-06: halved). */
+export const BOSS_HP_PERCENT = 50;
+
+/** Every boss's base hp (Mother Mayhem and the Demon Lord), before the endless Depth, party and tutorial scaling. */
+export const BOSS_HP = (WEB_BOSS_HP * BOSS_HP_PERCENT) / 100;
 
 /** What every boss on the skeleton has on top of ArchetypeData. */
 export interface BossFightData extends ArchetypeData {

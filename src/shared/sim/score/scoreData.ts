@@ -22,7 +22,7 @@ export const KILL_POINTS: ReadonlyMap<string, number> = new Map<string, number>(
 	["turret.sniper", 150],
 	["turret.sprayer", 150],
 	["boss.act1", 5000],
-	// Roblox port: the second endless boss (docs/BOSS_DEMONLORD.md), Mother Bramble's budget and points.
+	// Roblox port: the second endless boss (docs/BOSS_DEMONLORD.md), Mother Mayhem's budget and points.
 	["boss.demonlord", 5000],
 	// Roblox port: the endless room enemies (docs/ENEMY_VARIANTS.md EV1).
 	["imp", 120],

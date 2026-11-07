@@ -983,7 +983,7 @@ describe("vale per-sheet cells (docs/DEMON_ART.md DA2 / DD4)", () => {
 
 /**
  * The 2D Demons sets (docs/DEMON_ART.md DA5, docs/BRAMBLE_ART.md BR6): enemy.bruiser (Demon Beast 3) and boss.act1
- * (Mother Bramble, Demon Elite 3), per-sheet cells, a rim on every sheet. All 20 files were uploaded 2026-10-26
+ * (Mother Mayhem, Demon Elite 3), per-sheet cells, a rim on every sheet. All 20 files were uploaded 2026-10-26
  * (assetIds.ts), so the bundled pack draws both as sprite sets with their rims.
  */
 describe("vale enemy.bruiser and boss.act1 (2D Demons, per-sheet cells)", () => {
@@ -1006,7 +1006,7 @@ describe("vale enemy.bruiser and boss.act1 (2D Demons, per-sheet cells)", () => 
 			pivot: { x: number; y: number };
 		};
 
-	it("the layouts: 8 facings; the bruiser at the knight's density, Mother Bramble at bodyTiles 2.5; every sheet <= 1024", () => {
+	it("the layouts: 8 facings; the bruiser at the knight's density, Mother Mayhem at bodyTiles 2.5; every sheet <= 1024", () => {
 		const b = VALE_SPRITE_LAYOUTS["enemy.bruiser"];
 		expect([b.frameW, b.frameH, b.pivot, b.pixelsPerTile]).toEqual([99, 118, { x: 51, y: 89 }, 38]);
 		expect(b.pixelsPerTile).toBe(VALE_SPRITE_LAYOUTS["class.vanguard"].pixelsPerTile);
@@ -1074,7 +1074,7 @@ describe("vale enemy.bruiser and boss.act1 (2D Demons, per-sheet cells)", () => 
 				expect(sheet.outlineFile).toBe(outlineOf(sheet.file));
 			}
 		}
-		// idle and attack.3 share Mother Bramble's first sheet; hit is idle's cell held (BD3: the boss never flinches)
+		// idle and attack.3 share Mother Mayhem's first sheet; hit is idle's cell held (BD3: the boss never flinches)
 		expect(e.animations["attack.3"]).toEqual({ sheet: 0, start: 32, frames: 6, fps: 10, loop: false });
 		expect(e.animations.hit).toEqual({ sheet: 0, start: 0, frames: 1, stride: 4, fps: 1, loop: false });
 	});
@@ -1137,7 +1137,7 @@ describe("vale enemy.bruiser and boss.act1 (2D Demons, per-sheet cells)", () => 
 		]);
 	});
 
-	it("Mother Bramble's optional sheets join when uploaded and never hold the set back", () => {
+	it("Mother Mayhem's optional sheets join when uploaded and never hold the set back", () => {
 		const m = buildValeManifest(fakeIds(...BRAMBLE_OPTIONAL));
 		expect(validateManifest(m, { packId: "vale" })).toEqual([]);
 		const set = m.assets["boss.act1"] as SpriteSetAsset;

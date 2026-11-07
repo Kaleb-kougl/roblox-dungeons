@@ -20,7 +20,7 @@
  *           `attack`) > hit (multi-frame only; a 1-frame stand-in leaves it to the tint; over the view-side hit clip
  *           when the renderer gives one, docs/DUMMY_ART.md DD1) > move > idle
  * An actor's attack comes from its archetype's own states (ACTOR_SPRITE_INPUTS): the swarmer's wind-up + lunge, the
- * sniper's line telegraph, the bruiser's leap + slam, Mother Bramble's phased attacks, the Demon Lord's swings
+ * sniper's line telegraph, the bruiser's leap + slam, Mother Mayhem's phased attacks, the Demon Lord's swings
  * (demonlordSpriteInput); a turret (turret.sniper, and the M1 turrets turret.sprayer / turret.caster of
  * docs/DEMON_ART.md Phase 2) never attacks or moves (idle loop), and its corpse is the one dead spell before it
  * respawns alive (turretShared.ts).
@@ -37,8 +37,8 @@
  * frames from SPRITE_ANIM_MARKS): the wind-up stretched over the telegraph, the release over a volley, a looped release
  * (the spiral's channel, at the animation's fps), the leap's airborne and landing parts. A `special` is a one-shot with
  * its own gameplay timer (the bosses' roars, the Demon Lord's summon; ActorSpecial.fallback names a stand-in: Mother
- * Bramble's `intro` falls back to `taunt`); it beats attacks because a roar never overlaps one. `flinch: false`
- * (Mother Bramble, BD3) never plays `hit`: the tint carries the hits. `deathTicks` / `corpseFadeFrom` (the Demon Lord)
+ * Mayhem's `intro` falls back to `taunt`); it beats attacks because a roar never overlaps one. `flinch: false`
+ * (Mother Mayhem, BD3) never plays `hit`: the tint carries the hits. `deathTicks` / `corpseFadeFrom` (the Demon Lord)
  * stretch the death over part of the corpse time and start the fade after it.
  */
 import { CAMERA_PITCH_DEG, PIXELS_PER_TILE, STUDS_PER_TILE } from "shared/config";
@@ -428,7 +428,7 @@ export const SPECIAL_TAUNT = "taunt";
 /**
  * A one-shot that is not an attack (a boss's intro / taunt roar, the Demon Lord's summon), stretched over the
  * gameplay timer that drives it: elapsed ticks (render-interpolated) of `total`. A set without `anim` plays `fallback`
- * (Mother Bramble's intro: `taunt`); without either the special is skipped (what plays without it: move / idle).
+ * (Mother Mayhem's intro: `taunt`); without either the special is skipped (what plays without it: move / idle).
  */
 export interface ActorSpecial {
 	readonly anim: string;
@@ -452,7 +452,7 @@ export interface ActorSpriteInput {
 	readonly attack: ActorAttack | undefined;
 	/** A special one-shot in progress (bosses: intro, taunt, summon); beats the attack. Absent / undefined: none. */
 	readonly special?: ActorSpecial;
-	/** false: never play `hit` (Mother Bramble, BRAMBLE_ART BD3: the tint carries the hits). Unset: true. */
+	/** false: never play `hit` (Mother Mayhem, BRAMBLE_ART BD3: the tint carries the hits). Unset: true. */
 	readonly flinch?: boolean;
 	/** Ticks the death animation is stretched over (default: corpseTicks x SPRITE_VIEW.deathCorpseFraction). */
 	readonly deathTicks?: number;
@@ -860,7 +860,7 @@ export function bruiserSpriteInput(a: Readonly<ActorState>, alpha: number): Acto
 	};
 }
 
-// --- Mother Bramble (boss.act1, docs/BRAMBLE_ART.md BR4)
+// --- Mother Mayhem (boss.act1, docs/BRAMBLE_ART.md BR4)
 
 const BOSS_MARKS = SPRITE_ANIM_MARKS.bossAct1;
 const BOSS_FAN = phasedAnim(ATTACK, BOSS_MARKS.fanRelease);
@@ -873,7 +873,7 @@ const BOSS_SLAM_AIR: AnimSegment = { from: BOSS_MARKS.slamTakeoff, to: BOSS_MARK
 const BOSS_SLAM_LAND: AnimSegment = { from: BOSS_MARKS.slamLanding, to: 1 };
 
 /**
- * Mother Bramble's attack animation per BossAttack (BRAMBLE_ART mapping): FAN / FAST_FAN `attack`, RING / DOUBLE_RING
+ * Mother Mayhem's attack animation per BossAttack (BRAMBLE_ART mapping): FAN / FAST_FAN `attack`, RING / DOUBLE_RING
  * `attack.2`, SPIRAL `attack.3`, SLAM `attack.4`; undefined for NONE and ROAR (the roar is a special).
  */
 export function bossAct1AttackAnim(attack: number): string | undefined {
@@ -981,7 +981,7 @@ function bossRecoverAttack(a: Readonly<ActorState>, alpha: number): ActorAttack 
 }
 
 /**
- * Mother Bramble's attack timeline from aiState, attack, aiTicks and v[] (act1.ts): TELEGRAPH (aiTicks counting down
+ * Mother Mayhem's attack timeline from aiState, attack, aiTicks and v[] (act1.ts): TELEGRAPH (aiTicks counting down
  * from BOSS_TELEGRAPH_TICKS[attack], set by ctx.telegraph; its last tick is aiTicks 1) plays the attack's wind-up (the
  * slam's crouch); ACTIVE (aiTicks counting up from 0 = the first bullet) the release per volley / ring, the looped spiral,
  * the leap; RECOVER the last burst's release, then nothing. Undefined in every other state.
@@ -1006,7 +1006,7 @@ export function bossAct1Attack(a: Readonly<ActorState>, alpha: number): ActorAtt
 }
 
 /**
- * Mother Bramble's roar (TRANSITION, attack ROAR; aiTicks counting down): the intro roar after engaging plays `intro`
+ * Mother Mayhem's roar (TRANSITION, attack ROAR; aiTicks counting down): the intro roar after engaging plays `intro`
  * over introTicks, a phase change's roar `taunt` over transitionTicks. They are told apart by the phase: engaging sets
  * phase 1 and starts the intro; every later roar comes from beginTransition, which first moves to phase 2 or 3. A set
  * without `intro` plays `taunt` for it (BRAMBLE_ART: Elite 3 has no separate intro animation).
@@ -1023,7 +1023,7 @@ export function bossAct1Special(a: Readonly<ActorState>, alpha: number): ActorSp
 }
 
 /**
- * ActorSpriteInput for Mother Bramble: the roar as a special, the phased attack timeline, never the hit flinch (BD3),
+ * ActorSpriteInput for Mother Mayhem: the roar as a special, the phased attack timeline, never the hit flinch (BD3),
  * the move loop (REPOSITION) at SPRITE_VIEW.bossAct1MoveRefSpeed; DORMANT and RECOVER (after the release) stand: idle.
  */
 export function bossAct1SpriteInput(a: Readonly<ActorState>, alpha: number): ActorSpriteInput {
@@ -1357,7 +1357,7 @@ export function bossSpriteLayout(layout: SpriteLayout, minDrawPx: number): Sprit
  * Archetypes drawn as sprites when the pack has a sprite set for their spriteId: archetype ID -> input builder. The
  * swarmer, the sniper, the tutorial's turret.sniper (same spriteId "enemy.sniper", docs/SNIPER_ART.md D3), M1's
  * turret.sprayer / turret.caster ("enemy.sprayer" / "enemy.caster", docs/DEMON_ART.md Phase 2), the bruiser, Mother
- * Bramble (boss.act1), the Demon Lord (boss.demonlord), the enemy variants (docs/ENEMY_VARIANTS.md EV9: imp, slime,
+ * Mayhem (boss.act1), the Demon Lord (boss.demonlord), the enemy variants (docs/ENEMY_VARIANTS.md EV9: imp, slime,
  * slime.small, summoner) and the second endless set (docs/NEW_ENEMIES.md NE8: bomber, charger, stormcaller,
  * warbanner, reaper; their sets land in NE9) and the Goldling (docs/FORTUNE.md FO8: `enemy.golden`, the owner's FO10
  * recolour) and the tutorial's training dummy (docs/DUMMY_ART.md: `enemy.dummy`); every other archetype stays a

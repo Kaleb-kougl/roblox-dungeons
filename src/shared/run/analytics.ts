@@ -42,10 +42,10 @@ export const RUN_FUNNEL_STEPS = ["RunStarted", "FirstKill", "BossEngaged", "Boss
 
 /**
  * The boss fight as a progression level (Start on engage, Complete on the kill, Fail on a death after engaging), on
- * one path. The level is the run's first boss (RunTelemetryRecord.bossId): Mother Bramble keeps level 1
- * "MotherBramble" (M1's only boss; the event M1 has always logged), the Demon Lord (endless floors only) is level 2
+ * one path. The level is the run's first boss (RunTelemetryRecord.bossId): Mother Mayhem keeps level 1
+ * "MotherBramble" (her old name, kept so M1's history and dashboards keep their key; M1's only boss), the Demon Lord (endless floors only) is level 2
  * "DemonLord". The level number names the boss, it is no order: endless floors pick either. A record without a boss id
- * (fixture event streams) or an unlisted boss logs Mother Bramble's level, as before.
+ * (fixture event streams) or an unlisted boss logs Mother Mayhem's level, as before.
  */
 export const BOSS_PROGRESSION_PATH = "ActI";
 export const BOSS_PROGRESSION_LEVEL = 1;
@@ -64,7 +64,7 @@ export const BOSS_PROGRESSION_LEVELS: ReadonlyMap<string, BossProgressionLevel> 
 	[BOSS_DEMONLORD_ID, { level: 2, levelName: "DemonLord" }],
 ]);
 
-/** The progression level of boss `bossId` (Mother Bramble's for undefined or an unlisted id). */
+/** The progression level of boss `bossId` (Mother Mayhem's for undefined or an unlisted id). */
 export function bossProgressionLevel(bossId: string | undefined): BossProgressionLevel {
 	const level = bossId !== undefined ? BOSS_PROGRESSION_LEVELS.get(bossId) : undefined;
 	return level ?? BRAMBLE_LEVEL;

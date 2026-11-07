@@ -147,6 +147,20 @@ export const PROGRESSION_VIEW = {
 	pedestalBeamHeightTiles: 3,
 } as const;
 
+/**
+ * The first-sighting card (docs/ENEMY_VARIANTS.md EV12, "the toast blocks the view" fix): first sightings no longer
+ * join the top-centre toasts (over the far side of the room, where the new enemy usually is) but show on a card of
+ * their own at the left edge, under the status panel (on touch: the safe area's top left, under the touch strip when
+ * it hangs below the top bar). Reference px. footprint.ts HUD_TRANSIENT.sighting / TOUCH_SIGHTING_BOX place it, and
+ * footprint.spec.ts holds it out of HUD_CLEAR_ZONE.
+ */
+export const SIGHTING_CARD = {
+	/** The status panel's budget width: the card stays in the left quarter of the screen at HUD scale <= 100 %. */
+	width: 240,
+	/** Wrapped lines the longest English bestiary line takes at smallText (the footprint estimate). */
+	lines: 3,
+} as const;
+
 /** A toast line: its string key and vars (the client looks the names / descriptions up in the theme). */
 export interface ToastSpec {
 	readonly key: string;

@@ -203,7 +203,7 @@ describe("boosts: Fury", () => {
 		}
 	});
 
-	it("Mother Bramble's damage cap still binds: capped hits deal the same total with or without Fury", () => {
+	it("Mother Mayhem's damage cap still binds: capped hits deal the same total with or without Fury", () => {
 		const totals: number[] = [];
 		for (const fury of [false, true]) {
 			const s = fresh();

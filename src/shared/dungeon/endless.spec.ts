@@ -147,7 +147,7 @@ describe("buildEndlessFloor", () => {
 			expect(roomIdAt(fl.dungeon, fl.stairwell.x, fl.stairwell.z)).toBe(fl.dungeon.boss);
 			if (isBossFloor(fl.floor)) {
 				expect(fl.bossFloor).toBe(true);
-				// D5: floor 5 of run 1337 picks the Demon Lord (it was Mother Bramble on every boss floor before).
+				// D5: floor 5 of run 1337 picks the Demon Lord (it was Mother Mayhem on every boss floor before).
 				expect(fl.bossKind).toBe(bossKindFor(fl.seed));
 				expect(fl.encounter.spawns).toEqual([{ kind: fl.bossKind!, x: boss.cx, z: boss.cz }]);
 			} else {
@@ -307,15 +307,15 @@ describe("the endless boss pick (bossKindFor)", () => {
 });
 
 describe("the boss pick moves nothing else on the floor", () => {
-	// Run 1: the Demon Lord on floor 5, Mother Bramble on 10; run 3: Mother Bramble on both; run 1337: the Demon Lord on
+	// Run 1: the Demon Lord on floor 5, Mother Mayhem on 10; run 3: Mother Mayhem on both; run 1337: the Demon Lord on
 	// floor 5. Two party sizes (breakables keep clear of the party's spawns).
 	for (const seed of [1, 3, 1337]) {
 		for (const party of [1, 3]) {
-			it(`run ${seed}, party ${party}: only the boss spawn's kind differs from a Mother Bramble floor`, () => {
+			it(`run ${seed}, party ${party}: only the boss spawn's kind differs from a Mother Mayhem floor`, () => {
 				for (const floor of [5, 10]) {
 					const fl = buildEndlessFloor(seed, floor, dungeonFor, party);
 					const d = fl.dungeon;
-					// The floor as it was built before the pick (Mother Bramble on every boss floor), piece by piece.
+					// The floor as it was built before the pick (Mother Mayhem on every boss floor), piece by piece.
 					const bramble = placeEncounter(d, { boss: BOSS_ACT1_KIND });
 					const roomSpawns = endlessRoomSpawns(d, floor, party, endlessRoster(seed, floor));
 					const boss = bramble.rooms[d.boss];

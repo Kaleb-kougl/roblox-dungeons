@@ -2,7 +2,7 @@
 //   - endless (seed 1337, floor 1): a fighting bot walks into the nearest enemy rooms and clears one; every room with
 //     spawns is WAITING until its roomEntered tick, LIVE from that very tick, SAFE from the tick its record clears;
 //     rooms without spawns are SAFE throughout
-//   - the boss: the recorded seed-1337 descent (recordEndlessRun) replayed; on floor 5 Mother Bramble's room is WAITING
+//   - the boss: the recorded seed-1337 descent (recordEndlessRun) replayed; on floor 5 Mother Mayhem's room is WAITING
 //     while she is dormant, LIVE from her phase-1 tick, SAFE from her kill; every other floor obeys the room rules
 //   - tutorial floor 1 under the tutorial bot: the lesson rooms go WAITING -> LIVE -> SAFE, in walk order
 //   - fallback parity: run-full-1337's recorded inputs unscored (fallback records from buildScoreRooms at tick 0) and
@@ -19,6 +19,7 @@ import {
 	Button,
 	NO_KIND,
 	WEB_SWORD_TIMINGS,
+	WEB_BOSS_HP,
 	WEB_SWARMER_HP,
 	archetypeAt,
 	buildScoreRooms,
@@ -26,6 +27,7 @@ import {
 	deserializeRecording,
 	hashState,
 	setSwordTimings,
+	setBossHp,
 	setSwarmerHp,
 	step,
 	stepRecorded,
@@ -390,6 +392,7 @@ describe("RoomEdgeStates: fallback parity (run-full-1337's inputs, unscored vs K
 	// Recorded with the web build's sword (CLAUDE.md decision log): replay under its timings, restored right after.
 	const portSword = setSwordTimings(WEB_SWORD_TIMINGS);
 	const portSwarmerHp = setSwarmerHp(WEB_SWARMER_HP); // the web swarmer's 2 hp (port: 1)
+	const portBossHp = setBossHp(WEB_BOSS_HP); // the web boss's 540 hp (port: 270)
 	try {
 		// The fallback records the unscored observer builds at tick 0, kept to prove update() never mutates them.
 		const probe = new EdgeObserver(
@@ -418,6 +421,7 @@ describe("RoomEdgeStates: fallback parity (run-full-1337's inputs, unscored vs K
 	} finally {
 		setSwordTimings(portSword);
 		setSwarmerHp(portSwarmerHp);
+		setBossHp(portBossHp);
 	}
 	print(
 		`[roomEdgeState] run-full-1337 unscored\n${describeTrace([unscoredTrace!])}\nscored\n${describeTrace([

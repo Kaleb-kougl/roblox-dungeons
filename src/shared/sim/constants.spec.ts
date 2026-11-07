@@ -39,9 +39,14 @@ import {
 	SWORD_REACH_PERCENT,
 	SWORD_TEMPO_PERCENT,
 	WEB_SWORD_TIMINGS,
+	WEB_BOSS_HP,
+	WEB_BOW_TUNING,
 	WEB_SWARMER_HP,
+	setBowTuning,
 	setSwordTimings,
+	setBossHp,
 	setSwarmerHp,
+	type BowTuning,
 	type SwordTimings,
 } from "shared/sim";
 
@@ -98,13 +103,19 @@ describe("constants.json parity", () => {
 	// The port's sword is 20% slower (CLAUDE.md decision log); its web timers are compared here, the retune below.
 	let portSword: SwordTimings;
 	let portSwarmerHp = 0;
+	let portBossHp = 0;
+	let portBow: BowTuning;
 	beforeAll(() => {
+		portBow = setBowTuning(WEB_BOW_TUNING);
 		portSword = setSwordTimings(WEB_SWORD_TIMINGS);
 		portSwarmerHp = setSwarmerHp(WEB_SWARMER_HP);
+		portBossHp = setBossHp(WEB_BOSS_HP);
 	});
 	afterAll(() => {
 		setSwordTimings(portSword);
 		setSwarmerHp(portSwarmerHp);
+		setBossHp(portBossHp);
+		setBowTuning(portBow);
 	});
 
 	it("every exported constant of the ported modules matches bit for bit", () => {

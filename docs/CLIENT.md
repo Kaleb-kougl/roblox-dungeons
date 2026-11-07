@@ -36,7 +36,7 @@ rebinding, audio, display). Everything presentation-side reads the sim and never
 | `TutorialMarkerController` | `.../render/TutorialMarkerController.ts` | Tutorial runs only: one upright beam (a Neon Cylinder in `uiAccent`; plus a camera-facing `ui.marker.tutorial` billboard if the pack has that image) on the director's marker target (next lesson door, pedestal, shrine, stairwell, the live boss, the boost drop of the `boost` step), bobbing / breathing by the juice `motionScale` (still under reduced motion), hidden without a target and once the tutorial ended. Built per tutorial run (Janitor). |
 | `TutorialArrowController` | `.../render/TutorialArrowController.ts` | Tutorial runs only: the guidance arrow (docs/TUTORIAL_ARROW.md), a flat chevron on the floor `arrowOrbitTiles` from the player pointing along the walkable path to the director's marker target. shared/tutorial `TutorialGuide` decides the heading, the show rule (hidden without a target, near it, and with the target on screen (`WorldToViewportPoint`, inset `arrowScreenInset`) and a clear walk to it) and the fade; two thin Neon Parts in `uiAccent` (or a `ui.arrow.tutorial` Decal on a flat invisible Part if the pack has that image) under the markings and bullets, sliding by the juice `motionScale`. Warns once per run if the target has no path. Built per tutorial run (Janitor). |
 | `RoomEdgeController` | `.../render/RoomEdgeController.ts` | Room edges (docs/ROOM_EDGES.md), every dungeon floor: a dashed line on the floor wherever a corridor (or another room) meets a room, inner edge on the room's tile edge (the `roomIdAt` trigger), on the outside. Per floor (`onRunStarted` / `onFloorChanged`, Janitor): shared/view `roomEdges` runs, one static `DashLayer` per room (`ROOM_EDGE_VIEW.dash`, SmoothPlastic, `liftStuds` 0.03, under the tutorial arrow and markings), filled once. Each frame shared/view `RoomEdgeStates` (scoring's room records; unscored M1: `buildScoreRooms` at tick 0) gives SAFE / WAITING / LIVE, `roomEdgeLook` the fade and the live pulse (juice `motionScale`), colours `ROOM_EDGE_ROLES`. Options > Display > Room edges Off takes the folder out of Workspace. Prints `[RoomEdges] built N dashes` per floor. |
-| `TelegraphController` | `.../render/TelegraphController.ts` | Sniper aim lines (cut at the first intact breakable), bruiser shockwave rings (archetype `data.fx`), a ring for any other wind-up, Mother Bramble's attack previews, slam lane, roar rings and the arena seal fence. |
+| `TelegraphController` | `.../render/TelegraphController.ts` | Sniper aim lines (cut at the first intact breakable), bruiser shockwave rings (archetype `data.fx`), a ring for any other wind-up, Mother Mayhem's attack previews, slam lane, roar rings and the arena seal fence. |
 | `FxTrackerController` | `.../fx/FxTrackerController.ts` | Right after the sim (render step 102): the pure `HitTracker` diffs the live actors and dispatches the frame's FX events (hit, killed, spawned, capped, bossPhase, bossDefeated, reset) to the juice views and audio, with the effective juice settings. |
 | `FreezeFrameController` | `.../fx/FreezeFrameController.ts` | FX events -> hitstop requests on `SimController.hitstop` (kill 50 ms, heavy / elite 80 ms, boss phase 120 ms, boss death 250 ms + slow-mo; solo: heavy hit 40 ms, a heart / lethal hurt 40 ms, docs/FEEL.md J3); clears it when the setting goes off; drains it every co-op frame (co-op never paces the sim by it); the whole-render-pixel camera nudge (`getNudge()`, read by CameraController: boss phase / death, player hurt, heavy hits; off by `screenShakeOn`). |
 | `HurtFlashController` | `.../fx/HurtFlashController.ts` | docs/FEEL.md J2 / J11: a ScreenGui under the HUD with four edge Frames in `uiHealth` (UIGradient to clear at 0.18 of the short side): the hurt flash on the view player's hurt edges (`StateWatch.hurtKind`; half strength while spectating) and the low-health pulse (1 Hz; steady under reduced motion). Disabled while clear. |
@@ -76,7 +76,7 @@ token, layout sizes, UIScale rule, HUD helpers, every HUD string key).
 Per logical ID, at the time a view is built: if `pack.sprites(id)` returns a set (and, for actors, the archetype is in
 `shared/view` `ACTOR_SPRITE_INPUTS`: the swarmer, the sniper, the tutorial's `turret.sniper` and the Demon Lord),
 `ActorRenderController` draws a `SpriteView`; otherwise the placeholder model, exactly as before. With the placeholder
-pack every ID takes the placeholder path. The bruiser, the other turrets and Mother Bramble stay placeholders until they
+pack every ID takes the placeholder path. The bruiser, the other turrets and Mother Mayhem stay placeholders until they
 get art and an input builder.
 
 All sprite logic is pure and specced in `src/shared/view/sprites.ts`:
@@ -109,7 +109,7 @@ All sprite logic is pure and specced in `src/shared/view/sprites.ts`:
 
 ### Boss sprites (docs/BOSS_DEMONLORD.md D6)
 
-The Demon Lord (`boss.demonlord`) is the first boss drawn as a sprite (Mother Bramble has no art). His set draws once
+The Demon Lord (`boss.demonlord`) is the first boss drawn as a sprite (Mother Mayhem has no art). His set draws once
 the vale pack has ids for its required sheets (idle, move, attack, death; `hit` = idle frame 0); `attack.2`, `intro`
 and `taunt` join when uploaded. `chooseActorAnim` adds two choices for him: a named attack (`ActorAttack.anim`,
 falling back to `attack`) and a special (`ActorSpecial`: intro / taunt / summon, skipped when the set lacks it), in the
@@ -118,7 +118,7 @@ docs/BOSS_DEMONLORD.md D6, names in `SPRITE_VIEW.demonlordAnims`), every one-sho
 drives it. A boss sprite is drawn at least `ACTOR_VIEW.bossMinDrawPx` wide (`bossSpriteLayout`), its corpse fades
 only after its death animation (`SPRITE_VIEW.bossDeathCorpseFraction` / `bossCorpseFadeFrom`), and its outline sheet
 draws like every enemy's. Telegraph previews: `TelegraphController.drawBoss` draws the seal and the roar for any boss,
-then Mother Bramble's (`render/bossAct1.ts`) or the Demon Lord's previews (`render/demonlord.ts`, builders in
+then Mother Mayhem's (`render/bossAct1.ts`) or the Demon Lord's previews (`render/demonlord.ts`, builders in
 `shared/view/markings.ts`: cleave lanes to their reach, the 3-gap hellfire ring, the charge lane + shockwave, the
 adds' landing spots).
 
@@ -486,7 +486,7 @@ the centre bands. Corner panels fade when the watched player, an enemy or an ene
 | centre (endless) | `DraftOverlay` | M2 boon draft: `Choose a boon`, up to 3 cards (`<id>.name` in the rarity colour, `boon.rarity.<r>`, `<id>.desc`), the card under the stick highlighted (`uiAccent` ring, scaled up; the snapshot is taken every frame while the draft is open), the device's hint (`A / D to choose · Click to take`) once a confirm counts. Co-op: the LOCAL player's offers and selection, plus `Waiting for N teammate(s) to choose` (`hud.draft.waiting`) while others still choose (alone once this player confirmed) |
 | top centre (endless) | `ToastPanel` | M2: `Boon: <name>` / `Relic found: <name>` / `Cursed: <name>` / `Second Wind!` / Vampire Fang heals / a boost pickup (`hud.toast.boost`: `Fury: +50% damage for 30 s`, the local player's only) for 3 s (store `game.toasts`, from the run view's `runEvents`: the local player's own events, solo or co-op), and the `1: accept a curse` hint while the player stands in an unused shrine's zone |
 | top centre | `BossBar` | while a boss is engaged: `<boss id>.name`, `Phase I / II / III`, an hp bar (`boss` role) with notches at the phase marks (66 % / 33 %, from the archetype's `phaseHp`) |
-| centre | `RunOverPanel` | after a death / victory: `Run over` / `Victory`, `You died — press R to retry` / `Mother Bramble defeated — press R to play again` (R, or A with a pad: the selection starts on Again) + `or <other key>`, time, hits taken, kills; in scored runs the score, best combo and the points per source (kills, grazes, guard, rooms, perfect, fast, floors, boss); then **Again** (solo) and **Main menu**, or **Back to lobby** while in a lobby. A party run: `The party is down — press R to return` (or `The server ended the run (<reason>) — press R to return` once the server rejected it, also before the wipe), Back to lobby only. Endless runs have no victory: only death ends them. |
+| centre | `RunOverPanel` | after a death / victory: `Run over` / `Victory`, `You died — press R to retry` / `Mother Mayhem defeated — press R to play again` (R, or A with a pad: the selection starts on Again) + `or <other key>`, time, hits taken, kills; in scored runs the score, best combo and the points per source (kills, grazes, guard, rooms, perfect, fast, floors, boss); then **Again** (solo) and **Main menu**, or **Back to lobby** while in a lobby. A party run: `The party is down — press R to return` (or `The server ended the run (<reason>) — press R to return` once the server rejected it, also before the wipe), Back to lobby only. Endless runs have no victory: only death ends them. |
 | centre (menu) | `PauseOverlay` | solo, while paused and playing: dimmed scene, `Paused`, Resume / Restart / Leave run / Options / Leaderboards, `P to resume` / `Start to resume`. Co-op (the pause key; the run goes on, no dimming): `Party run`, Resume / Leave run / Options / Leaderboards, `P to close · the run does not pause`. Leave run shows the confirm first (`Leaving ends your run. It counts as a death and your score is submitted.`, Leave / Cancel; Cancel selected with a pad). In a tutorial run: Resume / Restart tutorial / Skip tutorial / Options; Skip asks `Skip the tutorial?` (Skip / Keep playing; Keep playing selected with a pad). Buttons: `shared/view/menu` `pauseItems(coop, tutorial)` |
 | lower centre (tutorial) | `TutorialPanel` | the step's prompt in the last-used device's words (`tutorial.prompt.<id>.<keyboard\|gamepad>`, a template naming the player's BOUND keys: `{flask}`, `{roll}`, ... from `shared/view/hud` `tutorialPromptVars(device, bindings)`), progress `{step} / {count}` (steps done), `P: pause / skip` / `Start: pause / skip`; hidden while the objective card is up and once the tutorial ended |
 | centre (tutorial) | `ObjectiveCard` | the first step: `Practice Descent`, the objective in two lines, `Click: Continue` / `RT: Continue` (the bound attack input; FIRE, after 0.75 s) |
@@ -605,7 +605,7 @@ The web build delays sim stepping: SimDriver feeds `computeFrameAdvance(delta)` 
 runs no tick, slow motion feeds less time) and never adds frozen time to the accumulator. The port does exactly that
 in `LiveRun.frame(dt, input, pacer)`: paused frames never reach the pacer; a frozen frame returns before the loop (no
 step, nothing recorded, accumulator and alpha untouched). Ticks still record the frame's input, so **the recording does
-not depend on hitstop**. `shared/play/liveRun.hitstop.spec.ts` drives a scripted Mother Bramble fight on the seed-1337
+not depend on hitstop**. `shared/play/liveRun.hitstop.spec.ts` drives a scripted Mother Mayhem fight on the seed-1337
 floor (boss door, bow, J through phases 2 and 3, summoned swarmers) through the client's own loop with the tracker and
 the freeze rules, and checks: at 60 Hz, hitstop on vs off records the identical serialized recording (input per tick)
 and identical hashes every 120 ticks and at the end (57 frozen frames, 13 partial, 30 slow-mo frames, ~1.1 s frozen);
@@ -1132,13 +1132,13 @@ With the actors merged the default `game` world has enemies; without them see "f
    buttons, only while playing) pauses the same way, and clicking it does not swing the sword.
 9. **Boss.** (Faster: set `KV_Debug` and `KV_SpawnBoss` true on Workspace, then R.) Enter the boss room: a large
    yellow block wakes, a translucent yellow fence of dashes outlines the room (the seal), the top centre shows
-   `Mother Bramble` and `Phase I` over a yellow bar with two white notches (66 % / 33 %) that shrinks as you hit it;
+   `Mother Mayhem` and `Phase I` over a yellow bar with two white notches (66 % / 33 %) that shrinks as you hit it;
    the phase reads `II` / `III` past each notch. Before every attack orange
    dashed previews show exactly where the bullets will go (5 fan lanes, ring arcs with two gaps, spiral arms with
    arrow heads, the slam lane), dim then bright, blinking at the end. Phase changes show expanding yellow roar rings.
    With KV_Debug, J takes 10 % off.
 10. **Victory.** Kill the boss: a short freeze, then ~0.5 s of slow motion, the camera jiggles one pixel, three
-    waves of yellow particles. The centre panel: `Victory` (gold), `Mother Bramble defeated — press R to play again`,
+    waves of yellow particles. The centre panel: `Victory` (gold), `Mother Mayhem defeated — press R to play again`,
     `or A`, the time, hits taken and kills. Bottom right `Run 1 (victory): submitted, checking...` then
     `Run 1 (victory): verified by the server (<hash>)`.
     (A boss-door / K / J run is rejected `debug_spawn` / `debug_input` unless the server has `KV_AllowDebugRuns`.)
@@ -1224,7 +1224,7 @@ With the actors merged the default `game` world has enemies; without them see "f
     turns its torch lights on one after another from the door; corridor torches are on from the start; never more
     than 6 pool lights at once (Explorer: `KV_DecorFx`), handed over with fades as you walk. Note `T` (plan time) on
     PC and the phone emulator.
-26. **Boss floor** (`KV_Debug`, N to floor 5): the boss room is dark until Mother Bramble wakes; the ring lights come on
+26. **Boss floor** (`KV_Debug`, N to floor 5): the boss room is dark until Mother Mayhem wakes; the ring lights come on
     a third per phase (J), all steady after the kill; the stairwell light comes on with the stairwell.
 27. **Shrine / pedestal**: the shrine room's 2 lights dim once the curse is taken.
 28. **Ember / death / pause / draft**: Q flickers the lights down for 0.3 s; dying fades them to blue; P and a boon
@@ -1239,7 +1239,7 @@ With the actors merged the default `game` world has enemies; without them see "f
 
 ### Enemy outlines (docs/OUTLINE.md O6; not run in Studio yet)
 
-- **Placeholders:** every archetype, the dummy and Mother Bramble show a red rim on every biome and at every
+- **Placeholders:** every archetype, the dummy and Mother Mayhem show a red rim on every biome and at every
   `KV_DecorBand`; Explorer shows them under `KV_Actors/Enemies` with one `EnemyOutline` Highlight; a kill moves the
   body to `Corpses` and the rim goes at once, with no flicker; a crowded room (or the boss summoning swarmers) keeps fps.
 - **Switch:** `Workspace:SetAttribute("KV_EnemyOutline", false)` hides every rim at once; `true` brings them back.
@@ -1263,7 +1263,7 @@ With the actors merged the default `game` world has enemies; without them see "f
 ### Demon Lord (docs/BOSS_DEMONLORD.md D6 / D7; not run in Studio yet)
 
 Reach a Demon Lord floor: `KV_Debug` = true, `KV_Seed` = 1 (floor 5 holds the Demon Lord; also 2, 8, 9, 13, 14, 1337;
-Mother Bramble on 3, 4, 5, 6, 7, 10: `node scripts/find-boss-seed.js`, `--floor 10` for later boss floors), endless
+Mother Mayhem on 3, 4, 5, 6, 7, 10: `node scripts/find-boss-seed.js`, `--floor 10` for later boss floors), endless
 world (`KV_World` unset), Play solo, then **N** on floors 1-4 (debug floor skip) and walk into floor 5's boss room.
 **J** takes 10 % of his hp per press (never past a phase threshold) to reach phases 2 and 3 fast.
 
@@ -1278,10 +1278,10 @@ world (`KV_World` unset), Play solo, then **N** on floors 1-4 (debug floor skip)
   charge's impact; rising from the crouch on engage and when summoning; the laugh on phases 2 and 3; the death darkens
   and holds, then fades over the last 40 % of the 1.5 s corpse time. 16 facings follow his heading. Check that bullets
   and markings draw over the large sprite and the rim stays on.
-- **FX and audio:** the slam burst on his charge impact (and on Mother Bramble's slam on a Bramble seed), never during
-  a wind-up; the boss death bursts and the phase effect as for Mother Bramble; the roar on engage; on phases 2 / 3 the
+- **FX and audio:** the slam burst on his charge impact (and on Mother Mayhem's slam on a Mayhem seed), never during
+  a wind-up; the boss death bursts and the phase effect as for Mother Mayhem; the roar on engage; on phases 2 / 3 the
   roar until `sfx.boss.taunt` has a clip, then the taunt.
-- **Bramble regression (seed 3):** her placeholder, previews, slam cue and roars exactly as before.
+- **Mayhem regression (seed 3):** her placeholder, previews, slam cue and roars exactly as before.
 
 ### Boost drops (docs/BOOSTS.md B6 / B7; not run in Studio yet)
 

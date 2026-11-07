@@ -22,7 +22,7 @@ the funnel renumbered again (§6); see "Decisions" 11 and docs/PELLETS.md "Tutor
 
 The first time a player joins, they play a short, guided **Practice Descent** instead of a ranked run. It is the real
 game: the same sim, Dungeon Forge collision, renderers, HUD, juice, boon draft, relics, shrine, stairwell and Mother
-Bramble. The one difference is that **enemies can hit you but never take hearts**. Prompts teach every verb in the
+Mayhem. The one difference is that **enemies can hit you but never take hearts**. Prompts teach every verb in the
 room where it matters, and the last screen spells out the objective: go as deep as you can, because death ends the run
 and your score goes on the leaderboard.
 
@@ -81,7 +81,7 @@ up even if the player wanders off. A world marker (beam or arrow) always points 
 Then the real **boon draft** opens. Prompt: "Pick a boon: **A / D** / stick, then click / RT." It is done when a boon
 is confirmed.
 
-### Floor 2: "Mother Bramble" (boss floor, harmless)
+### Floor 2: "Mother Mayhem" (boss floor, harmless)
 
 - On entry: "Every 5th floor ends with a boss. **Orange previews show exactly where her bullets will go.**"
 - Boss phase callouts on `bossPhase` events: "Phase II: new patterns." The boss bar is highlighted the first time.
@@ -204,7 +204,7 @@ registerRunWorld("tutorial", (_seed, o) => buildTutorialRunConfig(o.partySize));
   `TUTORIAL_WORLD_KIND`.
 - **Floor 2**: Forge seed **905**, 2 rooms (the entrance and a 34x26 boss arena, a 28-tile walk; `--floor 2 --rooms
   2,3,4 --to 3000`: the shortest walk, then the larger of the two 28-tile arenas) as a boss floor:
-  Mother Bramble is the only spawn. **Floor 3+** (reached only by the floor 2 -> 3 change that ends the tutorial, or a
+  Mother Mayhem is the only spawn. **Floor 3+** (reached only by the floor 2 -> 3 change that ends the tutorial, or a
   debug skip) reuses floor 2's layout, empty, with the stairwell open, so the sim never throws.
 - **Scaling**: in a tutorial run enemy hp and bullet speed scale as endless floor 1 on every floor (sim
   `tutorialScalingFloor`), and Depth is 1 until the boss dies: the dummy has its 8 hp. **Boss hp** (built on
@@ -213,7 +213,7 @@ registerRunWorld("tutorial", (_seed, o) => buildTutorialRunConfig(o.partySize));
   harmless, harmlessHits, bossHpPercent), and spawnActor gives a boss archetype `hp x percent / 100`
   (`tutorialBossHp`, after the endless and party scaling; outside a tutorial run, and at 100, the hp is untouched, so
   every fixture and normal run hashes as before; every tutorial run's state hash changed by the appended field). The
-  tutorial passes `TUTORIAL.bossHpPercent` = **20**: Mother Bramble has 108 hp. Her phase marks (`phaseHp` 0.66 /
+  tutorial passes `TUTORIAL.bossHpPercent` = **20**: Mother Mayhem has 108 hp. Her phase marks (`phaseHp` 0.66 /
   0.33) are fractions of hpMax, so phases II and III start at 71.28 and 35.64 hp, and the HUD boss bar (snapshot
   `bossHp / bossHpMax`, notches at `phaseHp`) stands on its notches then (0.660 / 0.331 measured). The damage cap
   (`damageCapPerSecond` 6) and the roars (intro 1 s, transitions 1.5 s x2, immune) were **left alone**: the bot fight
@@ -280,7 +280,7 @@ registerRunWorld("tutorial", (_seed, o) => buildTutorialRunConfig(o.partySize));
   | 14 | `curse` | shrine (highlight: score) | a curse accepted, or the shrine zone left after standing in it |
   | 15 | `stairwell` | stairwell room (prompt shown on the way) | floor >= 2 |
   | 16 | `draft` | floor 2 | a boon confirmed |
-  | 17 | `boss` | floor 2 (highlight: boss bar; marker: the boss) | Mother Bramble dead (Depth grew) |
+  | 17 | `boss` | floor 2 (highlight: boss bar; marker: the boss) | Mother Mayhem dead (Depth grew) |
   | 18 | `finish` | floor 2 (marker: its stairwell) | floor >= 3: `finished` |
 
   Callouts (`TUTORIAL_CALLOUTS`, one-shot toasts `tutorial.callout.<id>`, not funnel steps): `score` on the first kill
@@ -345,7 +345,7 @@ registerRunWorld("tutorial", (_seed, o) => buildTutorialRunConfig(o.partySize));
   pellets in 9.4 s, the sniper 1.7 s); option `pellets` (`first`: the pellets, then the sniper; `late`: the sniper until
   the sweep lock holds it, then the pellets, about 15 s) picks the order (docs/PELLETS.md PL13).
   Bot time (on `tutorial-linear`): **69.8 s** of sim (4187 ticks;
-  was 151 s): floor 1 ~45 s on the chain, the Mother Bramble fight
+  was 151 s): floor 1 ~45 s on the chain, the Mother Mayhem fight
   **21.3 s** from engage to death at 20 % hp (was ~100 s); the out-of-order run (combat C before B, walking through B)
   76.4 s. It records the boss milestones (engage, each phase with the HUD bar's fill, death), and the director spec
   asserts the fight is <= 30 s with phases II and III. A human reads prompts and fights at well under full uptime, so
@@ -532,7 +532,7 @@ Critical path: T1 -> T2 -> T4 -> T6. T5 can run alongside T2-T4.
 - **Debug keys** (K, J, N) still work under KV_Debug. K is harmless here, and N skips a floor (that is how you test
   floor 2 quickly).
 - **Reduced motion**: the marker pulse and highlight ring scale by `motionScale`. Juice settings work as normal.
-- **Boss on the stairwell**: Mother Bramble fights around the arena centre, where her stairwell opens. A player
+- **Boss on the stairwell**: Mother Mayhem fights around the arena centre, where her stairwell opens. A player
   standing within `STAIRWELL_RADIUS` of it when she dies descends on that tick, so the `finish` prompt ("Take the
   stairwell to finish.") may never show and the outro follows the kill at once (the T4 bot, meleeing her, always does).
   Fine for the tutorial; T6 / T8 may want a short beat before the outro.
@@ -544,7 +544,7 @@ Critical path: T1 -> T2 -> T4 -> T6. T5 can run alongside T2-T4.
 
 1. **Flask lesson**: yes, the tutorial starts the player wounded (2 of 3 hearts, `TUTORIAL.startHalfHearts`).
 2. **Training dummy**: yes, combat A uses two training dummies (T3), not low-hp swarmers.
-3. **Boss in the tutorial**: yes, floor 2 is the Mother Bramble boss floor (the full loop).
+3. **Boss in the tutorial**: yes, floor 2 is the Mother Mayhem boss floor (the full loop).
 4. **Curse shrine**: yes, it is taught (lesson 10, the shrine room).
 5. **Forced vs offered**: offered on the first join (before the main menu), and **Skip is available from the pause
    menu at any time** (not hidden until the first room is done).

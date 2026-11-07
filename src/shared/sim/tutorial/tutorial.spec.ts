@@ -449,7 +449,7 @@ describe("bossHpPercent", () => {
 		const percent = 20;
 		const b = bossAt(withBoss({ harmless: true, bossHpPercent: percent }));
 		expect(b.hp).toBe((BOSS.hp * percent) / 100);
-		expect(b.hp).toBe(108);
+		expect(b.hp).toBe(54); // 20 % of the port's BOSS_HP 270
 		expect(b.hpMax).toBe(b.hp);
 		// Without the field, at 100, and outside the tutorial: her full hp, exactly.
 		expect(bossAt(withBoss({ harmless: true })).hp).toBe(BOSS.hp);

@@ -621,6 +621,14 @@ way new archetypes use only the shared choke points (`ctx.telegraph`, `enemyCool
   (`sightingsInView`: living actors within `SIGHTING_VIEW.radius` 9 of the view player; `SightingQueue`: one toast at a
   time, 5 s + 0.75 s gap, nothing before a loaded status), toast line `bestiary.<id>` through the existing toasts; not in
   the tutorial, under the stage cover or after run over; waits while a draft is open or paused. Studio check pending.
+  *Card, not a toast (owner, 2026-11-06: "the text blocks the player's view"):* the top-centre toast panel hangs over
+  the far side of the room, exactly where a new enemy walks in, for 5 s. The line now shows on its own card
+  (`SightingCard`, store `game.sighting`, set and expired by `SightingController`, hidden at run over / exit): the left
+  edge under the status panel (`HUD_TRANSIENT.sighting`, `SIGHTING_CARD` 240 wide, smallText, 3 lines estimated), held
+  out of `HUD_CLEAR_ZONE` at HUD scale <= 100 % by footprint.spec.ts; on touch the safe area's top left
+  (`TOUCH_SIGHTING_BOX`, under the touch strip when it hangs below the top bar; clear-zone overlap printed, not held).
+  The card and the top-centre toasts both fade under the action (docs/HUD_LAYOUT.md H7, fade slots `sighting` /
+  `toasts`). No new strings; presentation only. Studio check pending.
 - **EV13. Tuning.** TTK table per new archetype and affix vs the sword and the bow (like `bossAct1.ttk.spec.ts`), the
   EV5 census re-run with affixes, actor-pool high-water mark per floor (target < 48 of 64). **Verify:** the tables in
   this doc; no floor in the census drops a spawn.
@@ -896,7 +904,8 @@ Details (the task in brackets builds it):
 - **EVD7. Where** [EV6]: elite rooms from floor 4 (35 %, at least 1), combat rooms from floor 11 (10 % each).
 - **EVD8. Rewards** [EV7]: +50 % kill points, +4 points of drop chance, `AFFIX_PAR_COST` = 2 per affixed member.
 - **EVD9. Swift never shortens a telegraph** [EV7]. Readability beats difficulty.
-- **EVD10. First-sighting toast, once per account** [EV12].
+- **EVD10. First-sighting toast, once per account** [EV12]. Shown on a left-edge card, not the top-centre toasts
+  (owner, 2026-11-06).
 - **EVD11. Leaderboards stay on `LB_Solo_v1` / `LB_Coop_v1`** [EV7], as with the earlier endless changes (breakables,
   the Demon Lord, the combo window).
 - **EVD12. Affix colour is a floor ring plus the sprite rim's tint and the name chip, never a Highlight** [EV9].

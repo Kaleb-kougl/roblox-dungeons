@@ -326,6 +326,7 @@ describe("pickHighlights", () => {
 		const fast = (n: number) => sc(10, { [ScoreSource.FAST]: n }, { [ScoreSource.FAST]: 1240 });
 		expect([one(fast(2)), one(fast(3))]).toEqual(["kills", "speed"]);
 		expect(pickHighlights(input(fast(3)))[0].value).toBe(1240);
+		expect(pickHighlights(input(fast(3)))[0].valueKey).toBe(RECAP_STRINGS.hlPoints);
 	});
 
 	it("Sweeps and Jackpots only when the run has the source", () => {
@@ -399,7 +400,7 @@ describe("pickHighlights", () => {
 			expect(keys.includes(d.key)).toBe(true);
 		}
 		expect(keys.includes("run.recap.near.fullClearOne")).toBe(true);
-		expect(keys.size()).toBe(29);
+		expect(keys.size()).toBe(30);
 	});
 });
 

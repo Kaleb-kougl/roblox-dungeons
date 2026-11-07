@@ -259,9 +259,9 @@ describe("AnalyticsService mapping", () => {
 		expect(progression.map((e) => (e.kind === "progression" ? e.status : ""))).toEqual(["Start", "Complete"]);
 	});
 
-	it("the boss progression level names the run's first boss; Mother Bramble's event is unchanged", () => {
+	it("the boss progression level names the run's first boss; Mother Mayhem's event is unchanged", () => {
 		const progression = (rec: RunTelemetryRecord) => analyticsForRun(rec).filter((e) => e.kind === "progression");
-		// fixture event streams carry no actors: Mother Bramble's level, exactly as before
+		// fixture event streams carry no actors: Mother Mayhem's level, exactly as before
 		const full = fromStream(runFull as unknown as StreamFixture);
 		expect(full.bossId).toBe(undefined);
 		expect(progression(full)[0]).toEqual({

@@ -5,6 +5,7 @@
 import { describe, expect, it } from "@rbxts/jest-globals";
 import {
 	BOSS_ACT1_ID,
+	BOSS_HP,
 	BulletKind,
 	DEBUG_FLOOR_BUTTON,
 	EMPTY_INPUT,
@@ -297,7 +298,7 @@ describe("floor transitions", () => {
 		expect([s.player.x, s.player.z]).toEqual([w5.spawnX, w5.spawnZ]);
 		const boss = s.combat.actors.find((a) => a.kind === archetypeIndex(BOSS_ACT1_ID));
 		expect(boss).never.toBe(undefined);
-		expect(boss!.hpMax).toBe(540);
+		expect(boss!.hpMax).toBe(BOSS_HP); // Depth 1: her base hp (270, half the web build's 540)
 		s.player.flask = 0;
 		s.player.armor = 0;
 		s.player.hearts = 3;

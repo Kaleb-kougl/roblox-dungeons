@@ -75,7 +75,7 @@ export const RECAP_DEBUG = {
 export const RECAP_STRINGS = {
 	/** "{boss} had {pct}% left" */
 	nearBoss: "run.recap.near.boss",
-	/** "{gap} short of your best" */
+	/** "{gap} pts short of your best" */
 	nearScore: "run.recap.near.score",
 	/** "One more floor for a new deepest" */
 	nearRecordFloor: "run.recap.near.recordFloor",
@@ -94,6 +94,8 @@ export const RECAP_STRINGS = {
 	hlTeamPerfect: "run.recap.hl.teamPerfect",
 	/** "{n} of {total}" */
 	hlOfTotal: "run.recap.hl.ofTotal",
+	/** "{n} pts" (a points value: the speed bonus) */
+	hlPoints: "run.recap.hl.points",
 	hlTeamStreak: "run.recap.hl.teamStreak",
 	hlDuos: "run.recap.hl.duos",
 	hlEvolved: "run.recap.hl.evolved",

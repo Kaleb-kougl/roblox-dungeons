@@ -213,6 +213,11 @@ As built (differences from the design above):
   only on change, so the fade never re-renders the tree. A corner `Panel` is a transparent placed frame (the registry
   ref, the tutorial ring via `overlay`) around a `canvasgroup` with the panel's background, padding and layout.
   Points come from `Camera:WorldToScreenPoint` (GUI space, like `AbsolutePosition`); pad is reference px x the UIScale.
+  Fade slots (owner, 2026-11-06): the registry is keyed by `HUD_FADE_SLOTS` (the four corners plus `toasts` and
+  `sighting`); a non-corner `Panel` opts in with `fade` (placed by `position`, same CanvasGroup path), so the
+  top-centre toasts and the first-sighting card (docs/ENEMY_VARIANTS.md EV12) fade under the action too. The
+  first-sighting card is the transient `sighting` (anchor `topLeft`, under the status box) and, unlike the other
+  transients, footprint.spec.ts holds it out of the clear zone at HUD scale <= 100 %.
 - H8: `HUD_SCALE_PERCENTS` = [70, 80, 90, 100, 110, 125]; the HUD scale row's buttons are `HUD_VIEW.scaleOptionWidth`
   (76) wide so six fit.
 
@@ -251,3 +256,6 @@ uses the corner prop); H6 and H8 can go alongside.
   overlay and the run-over panel, never on screen during play. Verdict and notice lines still show briefly in play.
 - **HD7. Occlusion fade, with a switch** (owner, 2026-10-26): Options > Display > HUD fade, default On.
 - **HD8. Keep the row words** (owner, 2026-10-26): `HP` / `Flask` / `Ember` stay; no icon glyphs.
+- **HD9. Toasts fade too; first sightings move to the left edge** (owner, 2026-11-06): the occlusion fade (HD7) covers
+  the top-centre toast panel and the first-sighting card, which sits under the status panel instead of among the
+  toasts.

@@ -254,7 +254,7 @@ export const SPRITE_VIEW = {
 	bossCorpseFadeFrom: 0.6,
 	/** The bruiser's move loop plays at its authored fps at this ground speed, world units / s (its plod). */
 	bruiserMoveRefSpeed: BRUISER.data.speed,
-	/** Mother Bramble's (boss.act1) move loop (REPOSITION, the walk back to the centre) plays at its fps at this speed. */
+	/** Mother Mayhem's (boss.act1) move loop (REPOSITION, the walk back to the centre) plays at its fps at this speed. */
 	bossAct1MoveRefSpeed: BOSS_ACT1_DATA.speed,
 	/** Below this fraction of the reference speed a body counts as standing (idle): wall slides, separation nudges. */
 	moveMinFraction: 0.1,
@@ -291,7 +291,7 @@ export const SPRITE_VIEW = {
  * (they are read from the sim's data).
  */
 export const SPRITE_ANIM_MARKS = {
-	/** Mother Bramble (boss.act1, Demon Elite 3): wind-up = frames [0, release), played over the attack's telegraph. */
+	/** Mother Mayhem (boss.act1, Demon Elite 3): wind-up = frames [0, release), played over the attack's telegraph. */
 	bossAct1: {
 		/**
 		 * `attack` (Attack 1, the horizontal sweep, 6 frames; FAN, FAST_FAN): the release, index 3 [f5] (wind-up 0-2,

@@ -100,7 +100,7 @@ describe("enemies and solid pillars on an endless floor", () => {
 });
 
 describe("the boss never steers", () => {
-	it("Mother Bramble's charge and reposition move with the plain actorMover on an endless boss floor", () => {
+	it("Mother Mayhem's charge and reposition move with the plain actorMover on an endless boss floor", () => {
 		const boss = endlessRunFloor(7919, 5);
 		const radii = { steer: [] as number[], plain: [] as number[] };
 		const c = boss.config;

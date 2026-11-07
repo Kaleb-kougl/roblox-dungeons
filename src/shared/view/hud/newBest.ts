@@ -464,6 +464,21 @@ export class NewBestTracker {
 		return L;
 	}
 
+	/**
+	 * An extra in-run confetti burst from outside the tracker's own edges (the Daily's friend toast, docs/DAILY.md
+	 * DS10), after this frame's `frame()`: a new pattern from age 0, unless a burst is still falling (it is already
+	 * celebrating; restarting would cut its pieces off mid-fall). None under reduced motion, under the cover or once the
+	 * run is over. Returns whether it started.
+	 */
+	burstConfetti(input: Readonly<NewBestInput>): boolean {
+		if (input.reducedMotion || input.underCover || input.runOver || this.confettiT !== IDLE) return false;
+		this.confettiT = 0;
+		this.bursts++;
+		this.look.confettiSeed = this.bursts;
+		this.look.confettiAge = 0;
+		return true;
+	}
+
 	/** Queues the crossing the first frame the shown score exceeds the best (once per run). */
 	private watchScore(shown: number): void {
 		const target = this.target;
@@ -675,7 +690,7 @@ export function dailyServerRecords(d: NewBestDailyResult | undefined): NewBestSe
 	};
 }
 
-/** One record row: `Score 48210 -> 61930 (+13720)` / `Deepest floor 9 -> 11 (+2)`. */
+/** One record row: `Score 48210 -> 61930 pts (+13720)` / `Deepest floor 9 -> 11 (+2)`. */
 export interface RecordRow {
 	readonly kind: "score" | "floor";
 	readonly from: number;
@@ -833,7 +848,7 @@ export function recordSavedKey(records: RunOverRecords, status: NewBestVerdictSt
 }
 
 /**
- * "Best {score} · floor {floor}" for a record (run over with no record: `run.best.target`; pause overlay: the same;
+ * "Best {score} pts · floor {floor}" for a record (run over with no record: `run.best.target`; pause overlay: the same;
  * main menu: `menu.best`), or "" when there is none to show (undefined or no score).
  */
 export function bestText(

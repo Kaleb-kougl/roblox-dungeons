@@ -3,7 +3,7 @@
 Status (2026-10-26): **RE1-RE6 code-complete, verified headlessly only** (typecheck, lint, asset check, art tests,
 build, and the full Lune suite: 143 spec files, 2031 tests, run in chunks). **Nothing has run in Studio**: the Studio
 check below, RE7 and RE8 are pending. Planned against `main` @ `1bb9e99` plus the uncommitted working tree
-(boosts, Demon / Bramble art). Draws a dashed line on the floor wherever a corridor meets a room, so a player can see
+(boosts, Demon / Mayhem art). Draws a dashed line on the floor wherever a corridor meets a room, so a player can see
 exactly where a room starts and ends, and tints it by the room's state (safe / waiting / live). Presentation only: no
 sim, dungeon layout, hash, replay or fixture change. Every floor: M1, endless and the tutorial (owner, 2026-10-26).
 Owner answers to the first draft's open questions (2026-10-26): reveal enemy rooms before entry (RD7), an Options
@@ -227,7 +227,7 @@ Critical path: RE1 -> RE5 -> RE6. RE2, RE3 and RE4 can go alongside RE1.
    ellipse rooms show stepped lines; the entrance is dim (safe). Walk into the first combat room: its lines fade to
    live as the fight engages and back to safe on the last kill.
 2. Endless floor: unentered enemy rooms are grey (waiting); the step that crosses the line spawns the room and turns
-   it live on the same frame. Treasure / shrine rooms are dim throughout. Boss floor: grey until Mother Bramble (or
+   it live on the same frame. Treasure / shrine rooms are dim throughout. Boss floor: grey until Mother Mayhem (or
    the Demon Lord) wakes, live with the arena seal, dim after the kill. Next floor: the lines rebuild.
 3. Tutorial: lesson rooms light in order; the tutorial arrow draws over the lines; telegraphs, aim lines, weapon arcs
    and bullets draw over both.

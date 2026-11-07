@@ -2,7 +2,7 @@
 
 ## Goal
 Rebuild the M1 "First fight" build on Roblox: same deterministic sim, same Dungeon Forge floors, sword/bow,
-swarmer/sniper/bruiser rooms and Mother Bramble. Every visual and audio asset is a placeholder behind logical IDs,
+swarmer/sniper/bruiser rooms and Mother Mayhem. Every visual and audio asset is a placeholder behind logical IDs,
 so real art and sound drop in later by editing one manifest.
 
 ## Decisions
@@ -72,7 +72,7 @@ ranked runs, co-op), `src/shared/sim/README.md` (tick order, hash group order `c
 A guided "Practice Descent" on the first join (before the main menu; replayable from it; a player in it is busy for
 lobbies), built on the slice: the real sim in a harmless mode
 (`SimConfig.tutorial`, its own appended hash group), a fixed two-floor `tutorial` world (lesson rooms, then Mother
-Bramble) played locally and refused by the server, a pure `TutorialDirector` (15 funnel steps), a training dummy
+Mayhem) played locally and refused by the server, a pure `TutorialDirector` (15 funnel steps), a training dummy
 archetype, onboarding persistence (`KV_Onboarding_v1`) and a tutorial funnel. T1-T7 are **code-complete and verified
 headlessly only** (`npm run verify`: 108 suites, 1458 of 1459 tests pass; the one failure is the known `forge.spec.ts`
 NaN sign-bit vector on x86); none of it has run in Studio yet, and the T8 playtest is pending. Plan, as-built notes,

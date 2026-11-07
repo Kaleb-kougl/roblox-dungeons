@@ -1,12 +1,12 @@
-# Mother Bramble art: `boss.act1` as a Demon Elite
+# Mother Mayhem art: `boss.act1` as a Demon Elite
 
-`boss.act1` (Mother Bramble) is still a placeholder block. This plan draws it as a **Demon Elite** from the
+`boss.act1` (Mother Mayhem) is still a placeholder block. This plan draws it as a **Demon Elite** from the
 2D Demons - TopDown asset pack v1.1 (docs/DEMON_ART.md has the pack, its licence gap and the shared pipeline work).
 Work it task by task, like `PLAN.md`; each task ends with a **Verify**. It is **presentation only**: the fight (`archetypes/boss/
 act1.ts`), its states, timings, hitbox and telegraph previews do not change, so `run-boss-1337`, `run-full-1337`, the
 TTK spec and every fixture stay bit-identical. Lords of Pain art is untouched (owner, 2026-10-26).
 
-Owner choice (2026-10-26): Mother Bramble wears a Demon Elite. Which of the six is BD1.
+Owner choice (2026-10-26): Mother Mayhem wears a Demon Elite. Which of the six is BD1.
 
 ## Status (2026-10-26)
 
@@ -15,12 +15,12 @@ are built: the optional boss animations, the `boss.act1` set (Demon Elite 3, `ar
 phased renderer timeline with measured frame marks (`SPRITE_ANIM_MARKS.bossAct1`) and the vale pack's switch-over
 (`vale.spec`). Verified: typecheck, whole-repo eslint, `check:assets`, `test:art`, build and every Lune spec, in chunks
 on the aarch64 VM. The licence is recorded (SmallScaleInt's Standard Commercial License, docs/DEMON_ART.md DD6) and
-the 14 sheets were uploaded 2026-10-26 (`assetIds.ts`), so the bundled vale pack draws Mother Bramble as the Elite.
+the 14 sheets were uploaded 2026-10-26 (`assetIds.ts`), so the bundled vale pack draws Mother Mayhem as the Elite.
 **Nothing has run in Studio.** Open: BR1's look by eye at `art/build/contact/boss.act1.png`, BR5, the Studio part of
 BR6, BR7 (`docs/CLIENT.md`), and BD8.
 DEMON_ART DA0 (the pack is in `art/vendor/demons-topdown/`) and DA2 are done.
 
-## Where Mother Bramble is seen
+## Where Mother Mayhem is seen
 
 Every endless boss floor (5, 10, 15, ...; after docs/BOSS_DEMONLORD.md D5, the floors the seeded pick gives her), the
 tutorial's fast boss, and M1's first fight. The art lands in all three; none of their sims change.
@@ -115,10 +115,10 @@ attack, so a swing or landing lands on the tick its bullets appear (DA1-style fr
 - **BD5. The slam's impact cue.** With the baked dust dropped (DD3), the impact is the landing frame plus the existing
   shockwave render hint and `fx.boss.slam` (BOSS_DEMONLORD D6 adds that cue; if it is not in yet, this plan adds it).
   *Alternative:* keep only Attack 4's `Effects/` dust (white, not near the bullet colours) as a second layer.
-- **BD6. The name stays "Mother Bramble".** `boss.act1.name` is a theme string; renaming is a one-line pack change if
+- **BD6. The name stays "Mother Mayhem".** `boss.act1.name` is a theme string; renaming is a one-line pack change if
   the owner wants it.
 - **BD7. Shared boss sprite machinery.** The optional boss animations and named attacks / specials are the same work
-  as BOSS_DEMONLORD D2 / D6: whichever plan runs first builds it, the other reuses it (that plan's "Bramble stays a
+  as BOSS_DEMONLORD D2 / D6: whichever plan runs first builds it, the other reuses it (that plan's "Mayhem stays a
   placeholder" and its out-of-scope line are updated in BR7).
 
 - **BD8. Die 1's clipped wing tips (open, owner).** Elite 3's Die 1 is cut by the 128 cell's bottom edge in rows 1-3
@@ -207,7 +207,7 @@ attack, so a swing or landing lands on the tick its bullets appear (DA1-style fr
   pack now draws `boss.act1` as sprites with every rim (`vale.spec`). Studio: open.
 
 - [ ] **BR7. Docs.** `docs/ART.md` (slice table: `boss.act1` -> Demon Elite N; budget), `docs/DEMON_ART.md` (Phase 3
-  points here), `docs/BOSS_DEMONLORD.md` (D6 and out-of-scope: Bramble has art; the shared machinery, BD7),
+  points here), `docs/BOSS_DEMONLORD.md` (D6 and out-of-scope: Mayhem has art; the shared machinery, BD7),
   `docs/CLIENT.md` (boss sprite smoke steps), `CLAUDE.md` (document table; decision log: optional boss animations).
 
 ## Risks

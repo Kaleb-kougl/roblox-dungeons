@@ -52,7 +52,7 @@ export interface TutorialTunables {
 	 */
 	readonly floor1: TutorialChainLayout;
 	/**
-	 * Floor 2, "Mother Bramble": a small boss floor (`--floor 2 --rooms 2,3,4 --to 3000`: the shortest entrance ->
+	 * Floor 2, "Mother Mayhem": a small boss floor (`--floor 2 --rooms 2,3,4 --to 3000`: the shortest entrance ->
 	 * boss walk, fewest other rooms). Seed 905 at 2 rooms: the entrance and a 34x26 boss room (the larger arena of the
 	 * two 28-tile walks), nothing else. Every later floor reuses it, empty.
 	 */
@@ -60,8 +60,9 @@ export interface TutorialTunables {
 	/** The tutorial's last floor: stepping into its stairwell (the floor `lastFloor` -> `lastFloor + 1` change) ends it. */
 	readonly lastFloor: number;
 	/**
-	 * Mother Bramble's hp on floor 2, percent of her Depth 1 hp (TutorialSimConfig.bossHpPercent; her phase marks
-	 * are fractions of it, so phases II and III still play). Tuned so a practice fight is ~20-30 s (docs/TUTORIAL.md).
+	 * Mother Mayhem's hp on floor 2, percent of her Depth 1 hp (TutorialSimConfig.bossHpPercent; her phase marks
+	 * are fractions of it, so phases II and III still play). Tuned so a practice fight was ~20-30 s at 108 hp
+	 * (docs/TUTORIAL.md); 20 % of the port's halved BOSS_HP (2026-11-06) is 54 hp, about 11 s.
 	 */
 	readonly bossHpPercent: number;
 	/** Hearts at the start (half hearts): wounded, so the flask lesson can heal (TUTORIAL_START_HALF_HEARTS). */

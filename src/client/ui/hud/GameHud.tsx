@@ -18,6 +18,7 @@ import { DimLayerContext } from "./ScreenDim";
 import { RoomClearChips } from "./RoomClearChips";
 import { RoomClearStamp } from "./RoomClearStamp";
 import { ScorePanel } from "./ScorePanel";
+import { SightingCard } from "./SightingCard";
 import { SpectateBar } from "./SpectateBar";
 import { OptionsScreen } from "./OptionsScreen";
 import { StatusPanel } from "./StatusPanel";
@@ -40,7 +41,8 @@ import { WeaponPanel } from "./WeaponPanel";
  *                 RunOverPanel (centre: death / victory + stats, the score breakdown in scored runs), MinimapPanel
  *                 (bottom right: the corner map, docs/MINIMAP.md M8), FullMapOverlay (centre: the full map toggle, M9),
  *                 InfoPanel (bottom right, above the minimap: notice, verdict, debug line), ToastPanel (top centre: M2 progression toasts and the
- *                 curse shrine hint), DraftOverlay (centre: the M2 boon draft's cards), SpectateBar (bottom centre,
+ *                 curse shrine hint), SightingCard (left edge under the status panel: a new enemy's first-sighting
+ *                 line, docs/ENEMY_VARIANTS.md EV12), DraftOverlay (centre: the M2 boon draft's cards), SpectateBar (bottom centre,
  *                 co-op: who a dead player watches, the switch hint); the first-run tutorial's
  *                 TutorialPanel (lower centre: prompt, progress, pause hint) and ObjectiveCard (centre), and its
  *                 highlight ring on the taught element (tutorial slice `highlight`) and the ghost half heart
@@ -106,6 +108,7 @@ export function GameHud() {
 						<FullMapOverlay key="FullMap" />
 						<InfoPanel key="Info" />
 						<ToastPanel key="Toasts" />
+						<SightingCard key="Sighting" />
 						<DraftOverlay key="Draft" />
 						<SpectateBar key="Spectate" />
 						<TutorialPanel key="TutorialPanel" />

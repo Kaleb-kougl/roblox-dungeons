@@ -6,13 +6,15 @@
  * HUD_VIEW.referenceSize, scaled by computeHudScale like the HUD itself), and never enter HUD_CLEAR_ZONE, the middle of
  * the safe area. Transient panels (boss bar, toasts, tutorial prompt, spectate bar, the fading verdict line) may cross
  * the clear zone while they show; they are listed here so the spec can check they never land on an always-on panel.
+ * The first-sighting card (docs/ENEMY_VARIANTS.md EV12) is transient but is held out of the clear zone like an
+ * always-on panel: it shows while a new enemy is on screen.
  *
  * What the spec holds (HUD scale <= 100 %, every HUD_TEST_VIEWPORTS entry, ten-foot on and off): no always-on box in
  * the clear zone, the centre column and centre row never covered. Above 100 % (110 / 125 %) a box may reach into the
  * clear zone on some viewports; the spec prints those combinations rather than failing (the player chose a bigger HUD).
  */
 import type { HudCorner } from "./corners";
-import { PROGRESSION_VIEW } from "./progression";
+import { PROGRESSION_VIEW, SIGHTING_CARD } from "./progression";
 import { computeHudScale, HUD_VIEW } from "./layout";
 import { MINIMAP_PANEL } from "./minimapHud";
 import { ROOM_CLEAR_VIEW } from "./roomClear";
@@ -46,7 +48,15 @@ export const HUD_FOOTPRINT = {
 } as const satisfies Readonly<Record<AlwaysOnPanel, FootprintBox>>;
 
 /** The transient panels, in a fixed order. */
-export type TransientPanel = "bossBar" | "toasts" | "tutorial" | "spectate" | "verdict" | "roomClear" | "roomClearChip";
+export type TransientPanel =
+	| "bossBar"
+	| "toasts"
+	| "tutorial"
+	| "spectate"
+	| "verdict"
+	| "roomClear"
+	| "roomClearChip"
+	| "sighting";
 export const TRANSIENT_PANELS: ReadonlyArray<TransientPanel> = [
 	"bossBar",
 	"toasts",
@@ -55,13 +65,14 @@ export const TRANSIENT_PANELS: ReadonlyArray<TransientPanel> = [
 	"verdict",
 	"roomClear",
 	"roomClearChip",
+	"sighting",
 ];
 
 /**
- * Where a transient panel hangs: centred at the top / bottom of the safe area, or in the top-right / bottom-right
- * corner (topRight: the room clear chips, docs/ROOM_CLEAR.md RC6).
+ * Where a transient panel hangs: centred at the top / bottom of the safe area, or in the top-left / top-right /
+ * bottom-right corner (topRight: the room clear chips, docs/ROOM_CLEAR.md RC6; topLeft: the first-sighting card).
  */
-export type TransientAnchor = "topCentre" | "bottomCentre" | "topRight" | "bottomRight";
+export type TransientAnchor = "topCentre" | "bottomCentre" | "topLeft" | "topRight" | "bottomRight";
 
 export interface TransientBox {
 	readonly anchor: TransientAnchor;
@@ -107,6 +118,11 @@ function toastLines(): number[] {
 	const out = repeated(line(HUD_VIEW.textSize), PROGRESSION_VIEW.maxToasts);
 	out.push(line(HUD_VIEW.smallText));
 	return out;
+}
+
+/** The first-sighting card: its wrapped bestiary line (SIGHTING_CARD.lines lines at smallText). */
+function sightingLines(): number[] {
+	return repeated(line(HUD_VIEW.smallText), SIGHTING_CARD.lines);
 }
 
 /** The tutorial prompt (wrapped), its progress line and the pause hint. */
@@ -176,6 +192,13 @@ export const HUD_TRANSIENT = {
 		height: stack(repeated(line(ROOM_CLEAR_VIEW.chipText), ROOM_CLEAR_VIEW.maxChips)),
 		when: "a co-op teammate's room clear far from the view player (1.5 s)",
 	},
+	sighting: {
+		anchor: "topLeft",
+		edge: HUD_VIEW.margin + HUD_FOOTPRINT.status.maxH + HUD_VIEW.gap,
+		width: SIGHTING_CARD.width,
+		height: stack(sightingLines()),
+		when: "a first sighting of a new enemy / affix (SIGHTING_VIEW.toastSeconds, once per account)",
+	},
 } as const satisfies Readonly<Record<TransientPanel, TransientBox>>;
 
 /**
@@ -189,6 +212,12 @@ export const TOUCH_TUTORIAL_BOX: TransientBox = {
 	height: math.ceil((HUD_TRANSIENT.tutorial.height * TUTORIAL_VIEW.panelWidth) / TUTORIAL_VIEW.touchPanelWidth),
 	when: "a tutorial step's prompt on touch",
 };
+
+/**
+ * The first-sighting card on touch: the status panel is the touch strip in the top bar there, so the card takes the
+ * safe area's top left (the client moves it under the strip when the strip hangs below the top bar).
+ */
+export const TOUCH_SIGHTING_BOX: TransientBox = { ...HUD_TRANSIENT.sighting, edge: HUD_VIEW.margin };
 
 /** The middle of the safe area always-on panels never enter, as fractions of its width and height. */
 export const HUD_CLEAR_ZONE = { x0: 0.25, x1: 0.75, y0: 0.22, y1: 0.78 } as const;
@@ -243,6 +272,7 @@ function transientRect(box: TransientBox, vw: number, vh: number, scale: number)
 	const h = box.height * scale;
 	const edge = box.edge * scale;
 	if (box.anchor === "topCentre") return { x: vw * HALF - w * HALF, y: edge, w, h };
+	if (box.anchor === "topLeft") return { x: HUD_VIEW.margin * scale, y: edge, w, h };
 	if (box.anchor === "topRight") return { x: vw - HUD_VIEW.margin * scale - w, y: edge, w, h };
 	if (box.anchor === "bottomCentre") return { x: vw * HALF - w * HALF, y: vh - edge - h, w, h };
 	return { x: vw - edge - w, y: vh - edge - h, w, h };

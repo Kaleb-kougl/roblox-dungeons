@@ -144,7 +144,7 @@ ring), plus textures for the existing ambient emitters.
   belong in git; the pipelines' outputs (`art/build/`) are what gets uploaded.
 - **X2. FX style:** use the pack **selectively and tinted**. Use the shape effects (Attack, Slash, Magic Circle /
   Shield / Spark / Spirit, Smoke), turned grey in the pipeline and tinted by theme roles. Use the elemental sheets only
-  where they fit the content (Plant / RockSpike for Mother Bramble, a bramble boss in a burned forest), and only
+  where they fit the content (Plant / RockSpike for Mother Mayhem, a bramble boss in a burned forest), and only
   if F0 passes them. Fallback if F0 fails outright: keep today's geometry effects and use the pack only for ambient
   particle textures.
 - **X3. Bullets keep their neon placeholders** (the GDD rule, unchanged since `docs/ART.md`). The projectile
@@ -247,7 +247,7 @@ Leave out the bright village / sunny / boat tracks; they don't fit a dungeon.
 | `fx.ember.ring` | Ember | `Magic/Circle` (white) + `Magic/Spark` | `uiAccent` |
 | `fx.flask` | flask | `Magic/Boost` / `Aura` | a heal green (new role) |
 | `fx.boss.phase` | `bossPhase` >= 2 | `Magic/Aura` | `boss` |
-| `fx.boss.slam` | Mother Bramble's slam lands (after its telegraph, never over it) | `Elemental/RockSpike` / `Plant` | own sheet colours, if F0 passes them |
+| `fx.boss.slam` | Mother Mayhem's slam lands (after its telegraph, never over it) | `Elemental/RockSpike` / `Plant` | own sheet colours, if F0 passes them |
 | `fx.boss.death` | `bossDefeated` | `Elemental/Explosion`, 3 staggered | |
 | `fx.relic.take` / `fx.shrine.use` | pedestal / shrine | `Magic/Spark` / `Magic/Spirit` | `uiAccent` / a curse role |
 | `fx.stairwell` | stairwell opens | `Magic/Circle` spark loop | `decor.fx.zone` |
@@ -318,7 +318,7 @@ Ambient textures for the existing `decor.fx.ambient.b<n>` emitters: frost `Parti
 
 - [ ] **F0. Spike D: does the FX style fit? (go/no-go, Studio).** Hand-upload 4 sheets as they are and greyed:
   `Attack/Cut`, `Slash/SpriteSheetSlash02`, `Smoke/Smoke`, `Magic/Circle`, plus `Elemental/RockSpike`. Play them at
-  the game camera (FOV 7, yaw 45, pitch 55) on the knight, a skeleton pack and Mother Bramble, during a bullet ring. Try
+  the game camera (FOV 7, yaw 45, pitch 55) on the knight, a skeleton pack and Mother Mayhem, during a bullet ring. Try
   sizes 0.5 / 1 / 1.5 tiles, Pixelated vs Default, tinted vs own colours, additive vs not. Record in `docs/SPIKES.md`:
   which groups fit (X2), the drawn sizes, and whether any effect is ever mistaken for a bullet. Also note the fps cost of
   48 live effects on the phone emulator.

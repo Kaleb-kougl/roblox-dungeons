@@ -175,7 +175,7 @@ in the danger ramp. A player never sees their own shape in pink, or an enemy sha
 | `bullet.player.ember` | Fire Arrows / Blazing Trail | unchanged floor decal | | PAD3 |
 | `bullet.enemy.small` | SPRAYER / ENEMY / STRESS | Alt2 **cyan half**, recoloured to the danger ramp | 1 (+ frame 2 = pink half recoloured, if it reads as a flicker) | turned along the velocity |
 | `bullet.enemy.medium` | CASTER | Stream frame 1 (small teardrop), recoloured | 1 | |
-| `bullet.enemy.large` | BOSS (Mother Bramble, Demon Lord) | Stream frame 0 (large teardrop), recoloured | 1 | big, round-bottomed: reads as heavy |
+| `bullet.enemy.large` | BOSS (Mother Mayhem, Demon Lord) | Stream frame 0 (large teardrop), recoloured | 1 | big, round-bottomed: reads as heavy |
 | `bullet.enemy.needle` | SNIPER | p1_Bullet_Alt, recoloured | 2 | `Pink.png` (one frame) is the spare |
 | `bullet.enemy.goo` / `.strike` | Ooze / Stormcaller | unchanged floor decals | | PAD3 |
 | `fx.bullet.hit` (new, optional) | player bullet impact | Bullet_Hit | 5 | PA7, one-shot |

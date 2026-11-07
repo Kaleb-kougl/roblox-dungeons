@@ -9,7 +9,8 @@
  * Every run-over recap string (Part A, docs/RUN_RECAP.md RR3), all REQUIRED. The near-miss line's candidates
  * (`run.recap.near.*`: the boss nearly down `{boss}` / `{pct}`, the score just short `{gap}`, one floor from a record, the
  * stairs close `{tiles}` / `{next}`, nearly a full clear `{rooms}` and its one-room form, the next boss `{boss}`), the
- * highlight labels (`run.recap.hl.*`: values are drawn beside them; `ofTotal` is the value "{n} of {total}"), the co-op
+ * highlight labels (`run.recap.hl.*`: values are drawn beside them; `ofTotal` is the value "{n} of {total}", `points` a
+ * points value "{n} pts"), the co-op
  * row tags `Team` / `You` and the Details toggle (`details` opens the breakdown, `detailsHide` returns to the
  * highlights). The theme imports nothing outside shared/theme, so the view's list (shared/view/hud) repeats these.
  */
@@ -27,6 +28,7 @@ export const RECAP_STRING_KEYS: ReadonlyArray<string> = [
 	"run.recap.hl.perfect",
 	"run.recap.hl.teamPerfect",
 	"run.recap.hl.ofTotal",
+	"run.recap.hl.points",
 	"run.recap.hl.teamStreak",
 	"run.recap.hl.duos",
 	"run.recap.hl.evolved",

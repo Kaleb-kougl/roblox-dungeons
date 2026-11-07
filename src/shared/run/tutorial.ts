@@ -22,13 +22,13 @@
  *            TUTORIAL_ROOMS (one lesson per room, explicit kinds), not the encounter budget; the treasure and shrine
  *            rooms keep their M2 pedestal and curse shrine (progression keys off the room types); the entrance and
  *            the stairwell room are empty.
- *   floor 2  "Mother Bramble": the TUTORIAL.floor2 layout as a boss floor (the boss is its only spawn; the stairwell
+ *   floor 2  "Mother Mayhem": the TUTORIAL.floor2 layout as a boss floor (the boss is its only spawn; the stairwell
  *            opens on her death). Stepping into it ends the tutorial (the client stops the run on the 2 -> 3 change).
  *   floor 3+ never played (the client stops first), but the sim always asks for the next floor: floor 2's layout,
  *            empty and with an open stairwell, so the change (and a debug skip past it) never throws.
  *
  * Enemy hp and bullet speed scale as on endless floor 1 / Depth 1 on every floor (shared/sim tutorialScalingFloor),
- * so the training dummy has its 8 hp; Mother Bramble is the Depth 1 fight at TUTORIAL.bossHpPercent of her hp (the
+ * so the training dummy has its 8 hp; Mother Mayhem is the Depth 1 fight at TUTORIAL.bossHpPercent of her hp (the
  * sim's TutorialSimConfig.bossHpPercent), so the practice boss falls fast. The block lesson's bruiser (combat D) cannot
  * die until the player has blocked a bullet with the sword's guard (TutorialSimConfig.guardLock: TUTORIAL_GUARD_LOCK);
  * the pellet lesson's sniper (combat G) cannot die until every pellet of its room is taken (TutorialSimConfig.pelletLock:
@@ -563,7 +563,7 @@ function emptyPerRoom<T>(n: number): T[][] {
 function buildTutorialFloor(floor: number): EndlessRunFloor {
 	const d = tutorialDungeon(floor);
 	const bossFloor = floor === TUTORIAL.lastFloor;
-	// Mother Bramble, always (the endless boss pick, bossKindFor, is not used here).
+	// Mother Mayhem, always (the endless boss pick, bossKindFor, is not used here).
 	const bossKind = bossFloor ? BOSS_ACT1_KIND : undefined;
 	const encounter = placeEncounter(d, { boss: bossKind });
 	const bossRoom = encounter.rooms[d.boss];

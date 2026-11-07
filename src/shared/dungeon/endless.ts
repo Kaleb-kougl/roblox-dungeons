@@ -8,7 +8,7 @@
  *                 and elite rooms get solid tombs and candle stands (docs/DECOR.md "Solid decor"), and every room is
  *                 twice as wide and tall as M1's (ENDLESS_ROOM_SCALE); endless floors only, never in M1
  *   boss floors   every BOSS_FLOOR_EVERY-th floor: a boss in the boss room (the floor's only initial spawn), picked by
- *                 bossKindFor(floor seed) from ENDLESS_BOSSES (Mother Bramble or the Demon Lord) on its own stream
+ *                 bossKindFor(floor seed) from ENDLESS_BOSSES (Mother Mayhem or the Demon Lord) on its own stream
  *                 hash(floor seed, BOSS_PICK.salt), one draw, so nothing else on the floor depends on the pick
  *   stairwell     the boss room's center floor tile; on other floors the boss room is empty and holds it from the start
  *   roster        the room kinds the run meets on the floor (endlessRoster): swarmers plus seeded kinds, one more
@@ -430,7 +430,7 @@ export interface EndlessFloorLayout {
 	readonly bossFloor: boolean;
 	/**
 	 * The boss archetype id in the boss room (bossKindFor(seed) on an endless boss floor; the tutorial's last floor:
-	 * Mother Bramble); undefined: no boss.
+	 * Mother Mayhem); undefined: no boss.
 	 */
 	readonly bossKind?: string;
 	/**
