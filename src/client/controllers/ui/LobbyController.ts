@@ -15,6 +15,7 @@ import {
 	noticeSpec,
 } from "shared/view/menu";
 import { SimController } from "../game/SimController";
+import { FocusController } from "./FocusController";
 
 /**
  * Lobbies, client side (task L5; the server owns the lobbies, shared/lobby the model). Wires the lobby remotes into
@@ -36,7 +37,8 @@ import { SimController } from "../game/SimController";
  * (ExperienceInviteOptions with the server's LaunchData / InviteMessageId, pcall; kept until the local
  * GameInvitePromptClosed or INVITE.promptOptionsSeconds, then destroyed). The local player's
  * `SocialService.GameInvitePromptClosed` recipients always go back as `inviteRecipients` (the server dedupes), at
- * most LOBBY.maxPlatformInvitesPerMember of them.
+ * most LOBBY.maxPlatformInvitesPerMember of them. FocusController is told when the prompt is requested and when it
+ * closes, fails or is refused (its CorePromptGuard: the menus leave the pad to the prompt meanwhile).
  */
 @Controller({})
 export class LobbyController implements OnStart {
@@ -47,7 +49,7 @@ export class LobbyController implements OnStart {
 	/** os.clock() of the last `inviteEligibility` sent (undefined: never). */
 	private eligibilityAskedAt: number | undefined;
 
-	constructor(private readonly sim: SimController) {}
+	constructor(private readonly sim: SimController, private readonly focus: FocusController) {}
 
 	onStart(): void {
 		this.janitor.Add(Events.lobbyList.connect((list) => clientStore.setLobbyList(list)));
@@ -69,6 +71,7 @@ export class LobbyController implements OnStart {
 			this.janitor.Add(
 				SocialService.GameInvitePromptClosed.Connect((sender, recipientIds) => {
 					if (sender !== Players.LocalPlayer) return;
+					this.focus.invitePromptClosed();
 					this.dropPromptOptions();
 					this.relayRecipients(recipientIds);
 				}),
@@ -125,6 +128,7 @@ export class LobbyController implements OnStart {
 			},
 			MENU_VIEW.maxNotices,
 		);
+		if (notice.kind === "refused" && notice.requestKind === "invitePrompt") this.focus.invitePromptClosed();
 		if (notice.kind === "refused") {
 			warn(`[Lobby] ${notice.requestKind ?? "request"} refused (${notice.code ?? "?"}): ${notice.reason ?? ""}`);
 		}
@@ -142,6 +146,7 @@ export class LobbyController implements OnStart {
 
 	/** Roblox's invite prompt: with this player's lobby attached (the lobby room) or not (the main menu). */
 	invitePrompt(withLobby: boolean): void {
+		this.focus.invitePromptOpened();
 		Events.invitePrompt.fire({ withLobby });
 	}
 
@@ -159,9 +164,11 @@ export class LobbyController implements OnStart {
 			if (this.promptOptions === opts) this.promptOptions = undefined;
 			opts.Destroy();
 		});
+		this.focus.invitePromptOpened();
 		const [ok, err] = pcall(() => SocialService.PromptGameInvite(Players.LocalPlayer, opts));
 		if (!ok) {
 			warn(`[Invite] PromptGameInvite failed: ${tostring(err)}`);
+			this.focus.invitePromptClosed();
 			this.dropPromptOptions();
 		}
 	}

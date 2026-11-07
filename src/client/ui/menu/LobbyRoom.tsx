@@ -253,7 +253,7 @@ export function LobbyRoom() {
 			layer="screen"
 			surface="lobby"
 			defaultRef={firstRef}
-			memoryKey="lobby"
+			memoryKey={`lobby${view.lobbyId}`}
 			padContext={padContext}
 			scrollRef={listRef}
 			onPadAction={(action) => {

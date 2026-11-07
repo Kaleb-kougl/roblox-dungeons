@@ -10,6 +10,8 @@
  *   - Memory: FocusMemory keeps, per scope memory key, the path (Names under the scope's root) of the button that was
  *     selected when the scope lost the pad. Session only, never stored (GMD9); a scope without a memory key opts out.
  *   - Scrolling: scrollToShow, the canvas position that keeps a selected row inside a list's frame.
+ *   - CoreGui prompts: CorePromptGuard, whether a Roblox prompt (a CoreGui selection, our invite prompt) has the pad,
+ *     so FocusController neither steals the selection back nor acts on the B that closes it.
  *
  * Nothing here touches Roblox APIs: the client turns GuiObjects into the plain facts below.
  */
@@ -192,4 +194,50 @@ export function scrollToShow(
 	else if (bottom > y + viewHeight) y = bottom - viewHeight;
 	if (canvasHeight !== undefined) y = math.min(y, math.max(0, canvasHeight - viewHeight));
 	return math.max(0, y);
+}
+
+/**
+ * A Roblox CoreGui prompt has the pad (docs/GAMEPAD_MENUS.md, review fixes): while `GuiService.SelectedCoreObject` is
+ * set, or while our invite prompt is open (from the request until SocialService.GameInvitePromptClosed, a refusal, or
+ * `holdSec` at most), FocusController skips its recovery, its pad dispatch and the hold-B fill; for `graceSec` after the
+ * prompt went it still does, so the B that closed the prompt never also goes back a screen. Times are seconds on one
+ * clock (os.clock).
+ */
+export class CorePromptGuard {
+	private inviteAt: number | undefined;
+	private lastBusyAt: number | undefined;
+
+	/** Our invite prompt was requested at `now` (it opens on the server or here). */
+	invitePromptOpened(now: number): void {
+		this.inviteAt = now;
+	}
+
+	/** Our invite prompt closed (GameInvitePromptClosed), failed or was refused. */
+	invitePromptClosed(): void {
+		this.inviteAt = undefined;
+	}
+
+	/** Our invite prompt counts as open at `now`. */
+	invitePromptOpen(now: number, holdSec: number): boolean {
+		const at = this.inviteAt;
+		if (at === undefined) return false;
+		if (now - at > holdSec) {
+			this.inviteAt = undefined;
+			return false;
+		}
+		return true;
+	}
+
+	/** A prompt has the pad at `now` (`coreSelected`: SelectedCoreObject is set), or went less than `graceSec` ago. */
+	busy(now: number, coreSelected: boolean, holdSec: number, graceSec: number): boolean {
+		if (coreSelected || this.invitePromptOpen(now, holdSec)) {
+			this.lastBusyAt = now;
+			return true;
+		}
+		const last = this.lastBusyAt;
+		if (last === undefined) return false;
+		if (now - last < graceSec) return true;
+		this.lastBusyAt = undefined;
+		return false;
+	}
 }

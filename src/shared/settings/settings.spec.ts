@@ -31,6 +31,7 @@ import {
 	defaultAudioSettings,
 	defaultDisplaySettings,
 	defaultJuiceSettings,
+	displayResetOverrides,
 	encodeSettingsDoc,
 	languageOverride,
 	playerDataKey,
@@ -910,5 +911,17 @@ describe("display: gamepad menu vibration (docs/GAMEPAD_MENUS.md GM9)", () => {
 		expect(resolveDisplaySettings(decodeSettingsDoc({ v: SETTINGS_DOC_V1, juice: {} }).display).padVibration).toBe(
 			true,
 		);
+	});
+});
+
+describe("display: the Display tab's Reset keeps the gamepad vibration (Controls > Gamepad; review fix)", () => {
+	it("drops every other display override, keeps padVibration Off", () => {
+		expect(displayResetOverrides({ hudScale: 110, roomEdges: false, minimap: false, padVibration: false })).toEqual(
+			{ padVibration: false },
+		);
+		expect(displayResetOverrides({ hudScale: 110, roomEdges: false })).toEqual({});
+		expect(displayResetOverrides({})).toEqual({});
+		expect(displayResetOverrides(undefined)).toEqual({});
+		expect(displayResetOverrides({ padVibration: "off" })).toEqual({});
 	});
 });

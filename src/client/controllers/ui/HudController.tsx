@@ -3,7 +3,7 @@ import React from "@rbxts/react";
 import { ReflexProvider } from "@rbxts/react-reflex";
 import { createPortal, createRoot } from "@rbxts/react-roblox";
 import { Players, StarterGui } from "@rbxts/services";
-import { clientStore, selectMenuOpen } from "client/store";
+import { clientStore, selectMenuOpen, selectMenuShown } from "client/store";
 import {
 	FocusScopesContext,
 	GameHud,
@@ -72,6 +72,7 @@ export class HudController implements OnStart {
 		const actions: HudActions = {
 			// Called on the press (PauseButton), so the click never reaches the game as a swing.
 			pause: click(() => this.menu.openPauseMenu()),
+			// SimController.resume blocks the held pad buttons first (the A / B that pressed Resume never reach a tick).
 			resume: click(() => {
 				this.menu.closeOverlays();
 				this.sim.resume();
@@ -159,6 +160,10 @@ export class HudController implements OnStart {
 
 		clientStore.subscribe(selectMenuOpen, (open) => this.input.setUiNavigation(open));
 		this.input.setUiNavigation(selectMenuOpen(clientStore.getState()));
+		// A real menu closed (not the stage cover or the loading screen): the pad buttons held now wait for a release.
+		clientStore.subscribe(selectMenuShown, (shown) => {
+			if (!shown) this.input.blockHeldPadInputs();
+		});
 
 		const container = new Instance("Folder");
 		container.Name = ROOT_NAME;

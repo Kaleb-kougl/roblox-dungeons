@@ -155,6 +155,20 @@ export function sanitizeDisplayOverrides(raw: unknown): DisplayOverrides {
 	return out;
 }
 
+/**
+ * Display settings shown on another Options tab, which the Display tab's Reset (and Options X there) keeps:
+ * `padVibration` sits on Controls > Gamepad (docs/GAMEPAD_MENUS.md GM9).
+ */
+export const DISPLAY_RESET_KEEPS: ReadonlyArray<keyof DisplaySettings> = ["padVibration"];
+
+/** The display group after the Display tab's Reset: every override dropped but DISPLAY_RESET_KEEPS' (sanitized). */
+export function displayResetOverrides(current: unknown): DisplayOverrides {
+	const clean = sanitizeDisplayOverrides(current);
+	const kept: Record<string, unknown> = {};
+	for (const k of DISPLAY_RESET_KEEPS) if (clean[k] !== undefined) kept[k] = clean[k];
+	return sanitizeDisplayOverrides(kept);
+}
+
 export function resolveDisplaySettings(overrides: unknown): DisplaySettings {
 	return { ...defaultDisplaySettings(), ...sanitizeDisplayOverrides(overrides) };
 }

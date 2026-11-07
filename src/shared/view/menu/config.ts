@@ -127,7 +127,23 @@ export const GAMEPAD_MENU = {
 	confirmPressWindowSec: 0.25,
 	/** The run-over Exit button's hold fill (uiAccent under the label, MenuButton `fill`): its transparency. */
 	holdFillTransparency: 0.45,
+	/**
+	 * A Roblox CoreGui prompt (GuiService.SelectedCoreObject set, or our invite prompt) keeps FocusController away for
+	 * this long after it went, so the B that closed it never also goes back a screen (CorePromptGuard).
+	 */
+	corePromptGraceSec: 0.3,
+	/**
+	 * Our invite prompt (PromptGameInvite) counts as open from the request until SocialService.GameInvitePromptClosed,
+	 * a refusal, or this many seconds at most (a prompt that never reports closing never locks the menus for long).
+	 */
+	invitePromptHoldSec: 60,
 } as const;
+
+/**
+ * The Name of FocusController's empty PlayerGui.SelectionImageObject (GMD7). The pad spike (KV_PadSpike) treats a
+ * frame of this Name as "no image" when it saves the original, so it never restores a frame FocusController destroyed.
+ */
+export const NO_SELECTION_IMAGE_NAME = "KV_NoSelectionImage";
 
 /**
  * The hint bar (client/ui/hud PadHintBar, GM7), reference px: one row of `[glyph] label` items at the bottom of a

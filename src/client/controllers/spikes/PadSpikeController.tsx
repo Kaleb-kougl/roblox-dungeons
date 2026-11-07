@@ -7,6 +7,7 @@ import { GuiService, HapticService, Players, RunService, UserInputService, Works
 import { clientStore } from "client/store";
 import { DEV_MONO_FONT, MenuButton, createKvScreenGui } from "client/ui";
 import { PAD_SPIKE } from "shared/config";
+import { NO_SELECTION_IMAGE_NAME } from "shared/view/menu";
 import { watchSpikeFlag } from "./spikeFlags";
 
 const GUI_NAME = "KV_PadSpike";
@@ -249,7 +250,9 @@ export class PadSpikeController implements OnStart {
 		// ---- Column 1: 1. selection image, 3. destroyed / hidden selection ----
 		const c1 = panel(root, "Q1Q3", 1, cfg.columnWidth);
 		label(c1, "1. selection image over a button", 1);
-		const originalImage = playerGui.SelectionImageObject;
+		// FocusController's empty frame is not an original (it destroys it when the spike starts): read it as none.
+		const current = playerGui.SelectionImageObject;
+		const originalImage = current?.Name === NO_SELECTION_IMAGE_NAME ? undefined : current;
 		const emptyImage = new Instance("Frame");
 		emptyImage.Name = "EmptySelectionImage";
 		emptyImage.BackgroundTransparency = HIDDEN;

@@ -1,7 +1,7 @@
 import React from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
 import { UserInputService } from "@rbxts/services";
-import { selectInputDevice } from "client/store";
+import { selectBindings, selectInputDevice } from "client/store";
 import { fontFor, role, str, textSizeFor, useUiFonts } from "client/ui/theme";
 import { inputLabel } from "shared/play";
 import { HUD_VIEW } from "shared/view/hud";
@@ -79,15 +79,17 @@ function Glyph(props: { order: number; keyName: string }) {
 /**
  * The gamepad hint bar (docs/GAMEPAD_MENUS.md 4.1, GM7): a row of `[glyph] label` items at the bottom of a scope's
  * panel, from shared/view/menu padHints(surface, context) (the same table FocusController acts on, so it never names a
- * button that does nothing), shown only while the last-used device is the gamepad (elsewhere nothing: the screens keep
- * their keyboard back hints). Items wrap onto a second line in a narrow panel (UIListLayout Wraps). Labels are theme
+ * button that does nothing; a shortcut on the player's pad restart key is left out), shown only while the last-used
+ * device is the gamepad (elsewhere nothing: the screens keep their keyboard back hints). Items wrap onto a second line in a narrow panel (UIListLayout Wraps). Labels are theme
  * strings (`pad.hint.*`) in the locale's font; it sits inside the panel, so the HUD scale and MenuFit apply to it.
  */
 export function PadHintBar(props: { order: number; surface: PadSurface; context?: PadContext }) {
 	const device = useSelector(selectInputDevice);
+	const restartPad = useSelector(selectBindings).pad.restart;
 	const fonts = useUiFonts();
 	if (device !== "gamepad") return undefined;
-	const hints = padHints(props.surface, props.context ?? {});
+	// A shortcut on the player's pad restart key yields to the restart (padShortcutYields): not hinted.
+	const hints = padHints(props.surface, { ...(props.context ?? {}), restartPad });
 	if (hints.size() === 0) return undefined;
 	return (
 		<frame

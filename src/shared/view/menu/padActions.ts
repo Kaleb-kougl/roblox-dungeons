@@ -76,6 +76,11 @@ export type PadCondition =
 export type PadContext = { readonly [K in PadCondition]?: boolean } & {
 	/** Run over: the breakdown is open (X then reads Highlights). */
 	readonly detailsOpen?: boolean;
+	/**
+	 * The player's pad restart binding (an Enum.KeyCode name, `Bindings.pad.restart`). A menu shortcut on that key
+	 * yields to it (padShortcutYields): the restart wins, the shortcut does nothing and is not hinted.
+	 */
+	readonly restartPad?: string;
 };
 
 /** The pad keys menus read (Enum.KeyCode names). */
@@ -285,12 +290,29 @@ export function padBackMeaning(surface: PadSurface): PadBackMeaning {
 	return PAD_SURFACES[surface].back;
 }
 
+/**
+ * A shortcut (X / Y, 4.3) on `keyName` yields to the player's pad restart: the key is `ctx.restartPad`, so the restart
+ * (InputController's driver keys, gated by the RestartWindow) wins and the shortcut neither acts nor shows a hint.
+ * Only shortcuts yield: tabs, scrolling, A, B and Start keep their menu meaning.
+ */
+export function padShortcutYields(action: MenuPadAction, keyName: string, ctx: PadContext): boolean {
+	if (action.kind !== "shortcutX" && action.kind !== "shortcutY") return false;
+	return ctx.restartPad !== undefined && ctx.restartPad === keyName;
+}
+
+/** Every key of `row` yields to the pad restart (padShortcutYields): the row neither acts nor is hinted. */
+export function padRowYields(row: PadRow, ctx: PadContext): boolean {
+	for (let i = 0; i < row.keys.size(); i++) if (!padShortcutYields(row.actions[i], row.keys[i], ctx)) return false;
+	return row.keys.size() > 0;
+}
+
 /** What pressing `keyName` (an Enum.KeyCode name) means on `surface` (none: nothing, or another path handles it). */
 export function menuPadAction(surface: PadSurface, keyName: string, ctx: PadContext): MenuPadAction {
 	for (const row of padRows(surface)) {
 		if (!padConditionHolds(row.when, ctx)) continue;
 		const i = row.keys.indexOf(keyName);
-		if (i >= 0) return row.actions[i];
+		if (i < 0) continue;
+		return padShortcutYields(row.actions[i], keyName, ctx) ? NONE : row.actions[i];
 	}
 	return NONE;
 }

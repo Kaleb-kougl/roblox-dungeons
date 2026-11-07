@@ -3,6 +3,7 @@
 import { describe, expect, it } from "@rbxts/jest-globals";
 import {
 	GAMEPAD_MENU,
+	HapticGenerations,
 	MENU_HAPTICS,
 	MENU_HAPTIC_KINDS,
 	MENU_SAFE_MAX_SHARE,
@@ -144,5 +145,36 @@ describe("TV-safe menus (GM12)", () => {
 		});
 		expect(fit.factor < 1).toBe(true);
 		expect(fit.overflow).toBe(false);
+	});
+});
+
+describe("HapticGenerations: per pad + motor (review fix)", () => {
+	it("a newer cue on the same pad and motor drops the older one's events; another pad or motor never does", () => {
+		const g = new HapticGenerations();
+		const pad1 = g.begin("Gamepad1", "Small");
+		expect(g.current("Gamepad1", "Small", pad1)).toBe(true);
+		// A cue on a second pad: pad 1's later "off" still applies.
+		const pad2 = g.begin("Gamepad2", "Small");
+		expect(g.current("Gamepad1", "Small", pad1)).toBe(true);
+		expect(g.current("Gamepad2", "Small", pad2)).toBe(true);
+		// Another motor on pad 1: independent.
+		const large = g.begin("Gamepad1", "Large");
+		expect(g.current("Gamepad1", "Small", pad1)).toBe(true);
+		expect(g.current("Gamepad1", "Large", large)).toBe(true);
+		// A newer cue on pad 1's Small motor wins there.
+		const newer = g.begin("Gamepad1", "Small");
+		expect(g.current("Gamepad1", "Small", pad1)).toBe(false);
+		expect(g.current("Gamepad1", "Small", newer)).toBe(true);
+	});
+
+	it("after clear (every motor off) no pending event applies, and new cues never reuse an old generation", () => {
+		const g = new HapticGenerations();
+		const old = g.begin("Gamepad1", "Small");
+		g.clear();
+		expect(g.current("Gamepad1", "Small", old)).toBe(false);
+		const fresh = g.begin("Gamepad1", "Small");
+		expect(fresh !== old).toBe(true);
+		expect(g.current("Gamepad1", "Small", old)).toBe(false);
+		expect(g.current("Gamepad1", "Small", fresh)).toBe(true);
 	});
 });

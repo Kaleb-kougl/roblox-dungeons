@@ -7,6 +7,7 @@ import { diffControlsOverrides, type Bindings } from "shared/play";
 import {
 	SETTINGS_ATTRIBUTES,
 	applyJuicePatch,
+	displayResetOverrides,
 	sanitizeAudioOverrides,
 	sanitizeDisplayOverrides,
 	sanitizeJuiceOverrides,
@@ -114,8 +115,15 @@ export class SettingsController implements OnStart {
 		this.patch({ controls: diffControlsOverrides(bindings) });
 	}
 
-	/** One group back to its defaults, or (no group) every group (reducedMotion follows the system setting again). */
+	/**
+	 * One group back to its defaults, or (no group) every group (reducedMotion follows the system setting again). The
+	 * display group keeps what another tab shows (displayResetOverrides: Controls > Gamepad's vibration).
+	 */
 	reset(group?: SettingsGroup): void {
+		if (group === "display") {
+			this.patch({ display: displayResetOverrides(selectOverrides(clientStore.getState()).display ?? {}) });
+			return;
+		}
 		if (group !== undefined) {
 			const clear: Record<string, object> = {};
 			clear[group] = {};

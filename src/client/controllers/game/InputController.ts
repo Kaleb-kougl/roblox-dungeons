@@ -245,14 +245,24 @@ export class InputController implements OnStart {
 	 * SimController sends neutral input instead while `menuOwnsInput()` (shared/lockstep CoopMenuInputGate).
 	 */
 	setUiNavigation(on: boolean): void {
-		// The menu closed: every pad button / trigger still held reads released until let go (docs/GAMEPAD_MENUS.md
-		// GM4), so an A held through Resume never fires skill 1 and an LB held through a tab change never rolls.
-		if (this.uiNavigation && !on) {
-			const held = this.heldPadButtons();
-			if (held !== undefined) this.padGate.block(held);
-		}
+		// Held pad buttons are blocked by blockHeldPadInputs (a real menu closing, a resume), not here: this also turns
+		// off when the stage cover or the loading screen ends, which must not stop a trigger held through a stairwell card.
 		if (!on) this.menuStick.reset();
 		this.uiNavigation = on;
+	}
+
+	/**
+	 * Control goes back to the game from a menu (docs/GAMEPAD_MENUS.md GM4 and the review fixes): every pad button and
+	 * trigger held right now reads released until it is let go (`padGate.block`), so the B / A / Start that resumed a
+	 * solo run never reaches its first unpaused tick as skill 2 / skill 1, and an LB held through a tab change never
+	 * rolls. `alsoHeld`: key names to block as well (the key that drove the menu action, in case the engine does not
+	 * report it down yet); a name not held unblocks on the next sample. The mouse keeps its own suppression
+	 * (suppressMouseUntilRelease).
+	 */
+	blockHeldPadInputs(alsoHeld?: ReadonlyArray<string>): void {
+		const held = this.heldPadButtons() ?? new Set<string>();
+		if (alsoHeld !== undefined) for (const name of alsoHeld) held.add(name);
+		if (held.size() > 0) this.padGate.block(held);
 	}
 
 	/** A menu (HUD / menu shell) is open or a rebind capture owns the input: `sample()` is not meant for the game. */
@@ -529,8 +539,13 @@ export class InputController implements OnStart {
 				if (this.inputCaptured) return Enum.ContextActionResult.Sink;
 				const name = input.KeyCode.Name;
 				if (this.uiNavigation && UI_NAV_KEYS.has(name)) return Enum.ContextActionResult.Pass;
-				// A menu's bumper / trigger / X / Y is the menu's (onMenuPadInput), never a driver key or the map.
-				if (this.uiNavigation && isMenuPadInputKey(name)) return Enum.ContextActionResult.Sink;
+				// A menu's bumper / trigger / X / Y is the menu's (onMenuPadInput), never the map; it still reports the
+				// driver keys, so a pad restart bound to one of them works on the run over / pause (driverKeyAction gates it
+				// by the RestartWindow; FocusController drops that key's menu shortcut, menuPadAction `restartPad`).
+				if (this.uiNavigation && isMenuPadInputKey(name)) {
+					if (state === Enum.UserInputState.Begin) this.reportDriverOnly(name);
+					return Enum.ContextActionResult.Sink;
+				}
 				if (state === Enum.UserInputState.Begin) this.reportDriver(name);
 				return Enum.ContextActionResult.Sink;
 			},
@@ -542,9 +557,14 @@ export class InputController implements OnStart {
 	}
 
 	private reportDriver(name: string): void {
+		this.reportDriverOnly(name);
+		if (isMapInput(name, this.bindings)) for (const listener of this.mapListeners) listener();
+	}
+
+	/** The driver keys only (restart, replay check), not the map. */
+	private reportDriverOnly(name: string): void {
 		const action = driverKeyAction(name, this.debugButtons, this.restartWindow(), this.bindings);
 		if (action !== undefined) for (const listener of this.driverListeners) listener(action);
-		if (isMapInput(name, this.bindings)) for (const listener of this.mapListeners) listener();
 	}
 
 	private pollKeyboardMouse(): void {

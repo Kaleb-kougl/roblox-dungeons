@@ -3,6 +3,7 @@ import { Janitor } from "@rbxts/janitor";
 import { GuiService, Players, RunService, UserInputService, Workspace } from "@rbxts/services";
 import {
 	clientStore,
+	selectBindings,
 	selectInputCaptured,
 	selectInputDevice,
 	selectRobloxMenuOpen,
@@ -11,9 +12,11 @@ import {
 } from "client/store";
 import { PAD_HOLD_UI, type FocusScopeHandle, type FocusScopeRegistry } from "client/ui";
 import {
+	CorePromptGuard,
 	FocusMemory,
 	GAMEPAD_MENU,
 	GAMEPAD_MENU_ATTRIBUTES,
+	NO_SELECTION_IMAGE_NAME,
 	PAD_KEYS,
 	PadHoldGate,
 	ScrollEndLatch,
@@ -115,6 +118,20 @@ function padBDown(): boolean {
 	return false;
 }
 
+/** GuiService's CoreGui selection, which @rbxts/types leaves out (the engine may refuse a game script the read). */
+interface CoreSelection {
+	readonly SelectedCoreObject?: Instance;
+}
+
+/**
+ * A Roblox CoreGui object has the gamepad selection (a prompt navigates CoreGui). Behind pcall: where the engine refuses
+ * the read, this is false and only our invite prompt's own open / closed tracking holds the menus back.
+ */
+function coreSelected(): boolean {
+	const [ok, obj] = pcall(() => (GuiService as unknown as CoreSelection).SelectedCoreObject);
+	return ok && obj !== undefined;
+}
+
 /**
  * Gamepad menus: focus scopes, recovery and memory (docs/GAMEPAD_MENUS.md sections 1-3, GM2-GM4; the rules are pure in
  * shared/view/menu focus.ts / padActions.ts). Components register their surfaces through client/ui useFocusScope /
@@ -129,12 +146,17 @@ function padBDown(): boolean {
  *             under the root: session only, GMD9); a missing / outside / hidden / unselectable one goes to the
  *             remembered button if it still resolves, else the default (else GuiService:Select(root)); off the
  *             gamepad, or with no owner, it is cleared (GMD6). Nothing is touched while the Roblox menu is open,
- *             during a rebind capture (RebindController owns GuiNavigationEnabled then), or while KV_PadSpike runs.
+ *             during a rebind capture (RebindController owns GuiNavigationEnabled then), while KV_PadSpike runs, or
+ *             while a Roblox CoreGui prompt has the pad (CorePromptGuard: GuiService.SelectedCoreObject set, or our
+ *             invite prompt open until GameInvitePromptClosed; then GAMEPAD_MENU.corePromptGraceSec more).
  *   look      PlayerGui.SelectionImageObject is an empty, fully transparent Frame (GMD7: MenuButton's ring / corners
  *             are the only focus look), restored on cleanup and while the pad spike runs
  *   pad       B (InputBegan; Backspace stays MenuController's keyboard path) and InputController.onMenuPadInput (the
  *             bumpers, triggers, X / Y, right-stick steps) go to the owner as menuPadAction(owner surface, key, its
- *             pad context): one press, one owner, one action (GM3). Never during a rebind capture or the Roblox menu.
+ *             pad context): one press, one owner, one action (GM3). Never during a rebind capture, the Roblox menu
+ *             or a CoreGui prompt. A shortcut on the player's pad restart key yields to the restart (padContext
+ *             `restartPad`). The key that drove an action is blocked for the game until released
+ *             (InputController.blockHeldPadInputs), so a B / X that closes a menu never reaches the run.
  *   scroll    (GM5) a scope's `scrollRef` list scrolls by GAMEPAD_MENU.scrollStepPx per right-stick step (padScrollStep,
  *             clamped), with MENU_HAPTICS.listEnd once per arrival at an end (ScrollEndLatch); a newly selected
  *             button inside a ScrollingFrame and outside its window is scrolled into view (followSelection:
@@ -174,6 +196,8 @@ export class FocusController implements OnStart, FocusScopeRegistry {
 	/** Hold B to exit: the gate and the scope it was opened for. */
 	private readonly hold = new PadHoldGate();
 	private holdOwner: ScopeRecord | undefined;
+	/** A Roblox CoreGui prompt has the pad (the menus leave it alone meanwhile). */
+	private readonly corePrompt = new CorePromptGuard();
 
 	constructor(private readonly input: InputController, private readonly haptics: PadHapticsController) {}
 
@@ -237,6 +261,18 @@ export class FocusController implements OnStart, FocusScopeRegistry {
 		});
 	}
 
+	/** Our invite prompt (PromptGameInvite) was requested: the menus leave the pad to it until it closes. */
+	invitePromptOpened(): void {
+		this.corePrompt.invitePromptOpened(os.clock());
+		this.changed();
+	}
+
+	/** Our invite prompt closed (GameInvitePromptClosed), failed or was refused. */
+	invitePromptClosed(): void {
+		this.corePrompt.invitePromptClosed();
+		this.changed();
+	}
+
 	buttonPressed(disabled: boolean): void {
 		// Deferred: the engine may fire Activated before UserInputService.InputBegan reports the A press that caused it.
 		task.defer(() => {
@@ -251,6 +287,12 @@ export class FocusController implements OnStart, FocusScopeRegistry {
 	}
 
 	// --- internals ------------------------------------------------------------------------------
+
+	/** A Roblox CoreGui prompt has the pad now, or went within GAMEPAD_MENU.corePromptGraceSec (CorePromptGuard). */
+	private corePromptBusy(): boolean {
+		const m = GAMEPAD_MENU;
+		return this.corePrompt.busy(os.clock(), coreSelected(), m.invitePromptHoldSec, m.corePromptGraceSec);
+	}
 
 	private context(state: ClientState): FocusContext {
 		return {
@@ -317,6 +359,11 @@ export class FocusController implements OnStart, FocusScopeRegistry {
 		}
 		// The Roblox menu navigates CoreGui; the pad spike drives the selection itself.
 		if (this.spikeOn || selectRobloxMenuOpen(state)) return;
+		// A CoreGui prompt (an invite prompt) has the pad: no recovery stealing it back; check again once it went.
+		if (this.corePromptBusy()) {
+			this.dirty = true;
+			return;
+		}
 		const root = owner?.handle.root();
 		const options = owner?.handle.options();
 		const selected = GuiService.SelectedObject;
@@ -400,11 +447,13 @@ export class FocusController implements OnStart, FocusScopeRegistry {
 	/** A menu pad press (B, or InputController's menu pad input) for the owner, through its surface's table. */
 	private dispatch(input: MenuPadInput): void {
 		const state = clientStore.getState();
-		if (selectInputCaptured(state) || selectRobloxMenuOpen(state)) return;
+		if (selectInputCaptured(state) || selectRobloxMenuOpen(state) || this.corePromptBusy()) return;
 		const owner = this.pickOwner(this.context(state));
 		if (owner === undefined) return;
 		const o = owner.handle.options();
-		const action = menuPadAction(o.surface, input.keyName, o.padContext ?? {});
+		// The player's pad restart wins over a shortcut on the same key (padShortcutYields; the driver key fires).
+		const ctx = { ...(o.padContext ?? {}), restartPad: selectBindings(state).pad.restart };
+		const action = menuPadAction(o.surface, input.keyName, ctx);
 		if (action.kind === "none" || action.kind === "select") return;
 		// Hold B: the press itself does nothing (GMD5); stepHold sends holdExit once the hold completes.
 		if (action.kind === "holdExit") return;
@@ -416,6 +465,8 @@ export class FocusController implements OnStart, FocusScopeRegistry {
 				return;
 			}
 		}
+		// The button that drove the action reads released for the game until let go (it may hand control back to it).
+		if (input.keyName !== PAD_KEYS.rightStick) this.input.blockHeldPadInputs([input.keyName]);
 		o.onPadAction?.(action, input);
 	}
 
@@ -461,7 +512,8 @@ export class FocusController implements OnStart, FocusScopeRegistry {
 			padBackMeaning(owner.handle.options().surface) === "holdExit" &&
 			!selectInputCaptured(state) &&
 			!selectRobloxMenuOpen(state) &&
-			!this.spikeOn;
+			!this.spikeOn &&
+			!this.corePromptBusy();
 		if (!holds || owner === undefined) {
 			if (this.holdOwner !== undefined) {
 				this.holdOwner = undefined;
@@ -497,7 +549,7 @@ export class FocusController implements OnStart, FocusScopeRegistry {
 		if (playerGui === undefined || this.restoreImage !== undefined) return;
 		const original = playerGui.SelectionImageObject;
 		const empty = new Instance("Frame");
-		empty.Name = "KV_NoSelectionImage";
+		empty.Name = NO_SELECTION_IMAGE_NAME;
 		empty.BackgroundTransparency = 1;
 		empty.BorderSizePixel = 0;
 		empty.Size = UDim2.fromScale(1, 1);

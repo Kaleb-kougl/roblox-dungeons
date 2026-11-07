@@ -17,7 +17,9 @@ import {
 	menuPadAction,
 	padBackMeaning,
 	padHints,
+	padRowYields,
 	padRows,
+	padShortcutYields,
 	type MenuPadAction,
 	type PadCondition,
 	type PadContext,
@@ -382,5 +384,42 @@ describe("GAMEPAD_MENU and MENU_HAPTICS (GM9)", () => {
 		const d = MENU_HAPTICS.disabled;
 		expect(d.size()).toBe(2);
 		expect(d[1].delaySec > d[0].delaySec + d[0].seconds).toBe(true);
+	});
+});
+
+describe("a shortcut yields to the player's pad restart (review fix)", () => {
+	it("a shortcut on the restart key does nothing; another key, or no restart binding, keeps it", () => {
+		const recap: PadContext = { recap: true };
+		expect(menuPadAction("runOver", PAD_KEYS.x, recap).kind).toBe("shortcutX");
+		expect(menuPadAction("runOver", PAD_KEYS.x, { ...recap, restartPad: PAD_KEYS.x }).kind).toBe("none");
+		expect(menuPadAction("runOver", PAD_KEYS.x, { ...recap, restartPad: "DPadDown" }).kind).toBe("shortcutX");
+		const lobby: PadContext = { canReady: true, canInvite: true, restartPad: PAD_KEYS.y };
+		expect(menuPadAction("lobby", PAD_KEYS.x, lobby).kind).toBe("shortcutX");
+		expect(menuPadAction("lobby", PAD_KEYS.y, lobby).kind).toBe("none");
+	});
+
+	it("only shortcuts yield: tabs, sub-tabs, B and Start keep their menu meaning", () => {
+		expect(menuPadAction("options", PAD_KEYS.lb, { restartPad: PAD_KEYS.lb }).kind).toBe("tabPrev");
+		expect(menuPadAction("options", PAD_KEYS.rt, { subTabs: true, restartPad: PAD_KEYS.rt }).kind).toBe(
+			"subTabNext",
+		);
+		expect(menuPadAction("pause", PAD_KEYS.b, { restartPad: PAD_KEYS.b }).kind).toBe("resume");
+		expect(menuPadAction("pause", PAD_KEYS.start, { restartPad: PAD_KEYS.start }).kind).toBe("resume");
+		const reset: MenuPadAction = { kind: "shortcutX", meaning: "reset" };
+		expect(padShortcutYields(reset, PAD_KEYS.x, { restartPad: PAD_KEYS.x })).toBe(true);
+		expect(padShortcutYields(reset, PAD_KEYS.x, {})).toBe(false);
+		expect(padShortcutYields({ kind: "tabNext" }, PAD_KEYS.rb, { restartPad: PAD_KEYS.rb })).toBe(false);
+	});
+
+	it("the hint bar leaves a yielded shortcut out (it never names a button that does nothing)", () => {
+		const keysOf = (ctx: PadContext) => padHints("runOver", ctx).map((h) => h.keyNames.join("+"));
+		expect(keysOf({ recap: true }).includes(PAD_KEYS.x)).toBe(true);
+		expect(keysOf({ recap: true, restartPad: PAD_KEYS.x }).includes(PAD_KEYS.x)).toBe(false);
+		// The tab pair never yields, even with the restart on one of its keys.
+		const tabs = padHints("options", { restartPad: PAD_KEYS.lb }).map((h) => h.keyNames.join("+"));
+		expect(tabs.includes(`${PAD_KEYS.lb}+${PAD_KEYS.rb}`)).toBe(true);
+		for (const row of padRows("options")) {
+			if (row.keys.includes(PAD_KEYS.x)) expect(padRowYields(row, { restartPad: PAD_KEYS.x })).toBe(true);
+		}
 	});
 });

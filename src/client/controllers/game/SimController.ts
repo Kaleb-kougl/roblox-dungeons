@@ -479,7 +479,7 @@ export class SimController implements OnStart {
 			clientStore.setRobloxMenuOpen(false);
 			const run = this.ctx?.live;
 			const playing = run !== undefined && run.outcome() === "playing";
-			if (afterRobloxMenuClosed(this.pausedByMenu, playing, this.frozen) === "resume") run?.setPaused(false);
+			if (afterRobloxMenuClosed(this.pausedByMenu, playing, this.frozen) === "resume") this.unpause(run);
 			this.pausedByMenu = false;
 		});
 
@@ -703,7 +703,18 @@ export class SimController implements OnStart {
 	resume(): void {
 		this.pausedByMenu = false;
 		this.pausedByUi = false;
-		this.ctx?.live?.setPaused(false);
+		this.unpause(this.ctx?.live);
+	}
+
+	/**
+	 * A paused solo run plays again: every pad button held now is blocked until released first
+	 * (InputController.blockHeldPadInputs), because paused frames never step the sim's prevButtons, so the B / A that
+	 * resumed it would read as a fresh press (skill 2 / skill 1) on the first unpaused tick.
+	 */
+	private unpause(run: LiveRun | undefined): void {
+		if (run === undefined || !run.isPaused()) return;
+		this.inputController.blockHeldPadInputs();
+		run.setPaused(false);
 	}
 
 	/**
@@ -829,7 +840,7 @@ export class SimController implements OnStart {
 			}
 		} else if (this.pausedByUi) {
 			this.pausedByUi = false;
-			run.setPaused(false);
+			this.unpause(run);
 		}
 	}
 
@@ -1493,7 +1504,10 @@ export class SimController implements OnStart {
 		const godPulse = this.pendingGodToggle && ctx.dev;
 		if (godPulse) input.buttons = bit32.bor(input.buttons, DEV_GOD_BUTTON);
 		const stepStart = this.debug ? os.clock() : 0;
+		const pausedBefore = run.isPaused();
 		const ticks = run.frame(dt, input, simPacerFor(partySize(run.state), this.hitstop)); // solo: the hitstop clock paces
+		// P / Start resumed it (the PAUSE edge; that frame steps nothing): held pad buttons wait for a release, as in unpause.
+		if (pausedBefore && !run.isPaused()) this.inputController.blockHeldPadInputs();
 		if (godPulse && ticks > 0) this.pendingGodToggle = false;
 		const floor = run.state.endless?.floor;
 		if (floor !== undefined && floor !== ctx.floor) {

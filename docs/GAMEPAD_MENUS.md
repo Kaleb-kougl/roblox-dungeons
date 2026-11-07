@@ -167,7 +167,7 @@ reports).
 | Lobby browser | Refresh | Create |
 | Lobby room | Ready | Invite (Roblox prompt) |
 | Run over | Details / Highlights | - |
-| Options | Reset this tab (asks first, as today) | - |
+| Options | Reset this tab, exactly as this tab's Reset button: Controls asks first, the others reset at once | - |
 
 The invite toasts become their own scope, entered **only** through Y, never by direction. B returns to the screen
 with its memory.
@@ -222,10 +222,11 @@ with its memory.
   MenuController keeps Backspace exactly as before (ButtonB removed from its path); SettingsController and
   LeaderboardController lost their pad-B handlers (folded into the Options / prompt / leaderboard scopes).
 - **Menu pad input (GM4).** `InputController.onMenuPadInput`: LB / RB / LT / RT / X / Y (`MENU_PAD_INPUT_KEYS`, sunk by the
-  CAS sink whether bound or not, never a driver key or the map while a menu is open) and right-stick steps
+  CAS sink whether bound or not, never the map while a menu is open; a driver key still, see the review fixes) and right-stick steps
   (`PadStickRepeat`: on leaving `stickDeadZone`, then every `scrollRepeatSec`, axes in the input), only while a menu owns
-  the pad and no capture runs. Closing a menu (`setUiNavigation(false)`) blocks every held pad button and trigger until
-  released (`padGate.block`). Start keeps its own pause path (not dispatched).
+  the pad and no capture runs. Closing a real menu blocks every held pad button and trigger until released
+  (`blockHeldPadInputs`, `padGate.block`; not the cover or loading screen ending, see the review fixes). Start keeps its
+  own pause path (not dispatched).
 - **Tabs.** Options LB / RB = top tabs, LT / RT = the Controls device (Controls tab only); Leaderboard LB / RB = scope,
   LT / RT = board. `stepTab` clamps: at either end nothing happens and no sound plays (a held bumper never cycles round).
   A change plays `sfx.ui.click`. Options' default is the current tab's button.
@@ -235,7 +236,7 @@ with its memory.
 | Loading | `loading` | loading / loading | Skip | - | nothing |
 | Main menu | `main` | screen / main | Play solo | `main` | nothing |
 | Lobby browser | `lobbies` | screen / lobbies | first New / Your lobby | `lobbies` | back |
-| Lobby room | `lobby` | screen / lobby | Ready | `lobby` | back |
+| Lobby room | `lobby` | screen / lobby | Ready | `lobby<lobbyId>` | back |
 | Credits | `credits` | screen / credits | Back | - | back |
 | Invite toasts | `invites` | invites / invites, active after main menu Y (GM6) | newest Join | - | back to the screen |
 | Options | `options` | panel / options | current tab | `options<opening>` | close |
@@ -322,8 +323,43 @@ the motors' feel at MENU_HAPTICS' strengths; the hold fill reads under the Exit 
 menu with `KV_FakeFriends` selects the newest Join and B returns to the button you left; on the console emulator the
 TV-safe inset and no chat window.
 
-**Owner call (new).** Options X on the Juice / Audio / Display tabs resets at once, because their Reset button does
-(only Controls asks first). Keep, or add a confirm to those tabs' Reset (button and X alike)?
+**Owner call (answered).** Options X on the Juice / Audio / Display tabs resets at once, because their Reset button
+does (only Controls asks first): intended, kept.
+
+## As built (review fixes, 2026-11-06)
+
+- **Resume input leak (solo pause B / A / Start).** Paused frames never step the sim, so its `prevButtons` lacked the
+  B (or A) that pressed Resume and the first unpaused tick read a fresh press (skill 2 / skill 1). New
+  `InputController.blockHeldPadInputs(alsoHeld?)` blocks every pad button and trigger held right now
+  (`padGate.block`). SimController calls it before every unpause of a solo run (`unpause`: `resume()` from the Resume
+  button and pad B, the Roblox menu closing, the Options panel closing) and after a frame whose PAUSE edge (P / Start)
+  resumed it. FocusController also blocks the key that drove any menu action (B, X, Y, the bumpers, the triggers) as
+  it dispatches it. The mouse keeps `suppressMouseUntilRelease` unchanged.
+- **Pad restart on a menu key.** The CAS sink's menu-key branch reports the driver keys again (`reportDriverOnly`,
+  never the map), so a pad restart rebound to LB / RB / LT / RT / X / Y works where `driverKeyAction`'s RestartWindow
+  allows it (run over, paused). **The player's restart binding wins over a shortcut on the same key**:
+  `PadContext.restartPad` (FocusController and PadHintBar fill it from `selectBindings(...).pad.restart`);
+  `menuPadAction` answers none for an X / Y shortcut on that key and `padHints` leaves it out (`padShortcutYields` /
+  `padRowYields`). Only shortcuts yield: tabs, sub-tabs, scrolling, A, B and Start keep their menu meaning.
+- **CoreGui prompts.** `CorePromptGuard` (focus.ts): while `GuiService.SelectedCoreObject` is set (pcall; not in
+  @rbxts/types, and the Studio check must confirm a game script may read it, else only the invite tracking holds) or
+  while our invite prompt is open (LobbyController calls `FocusController.invitePromptOpened` on the request / the
+  client-side prompt, `invitePromptClosed` on the local `GameInvitePromptClosed`, a failed client prompt or an
+  `invitePrompt` refusal; at most `GAMEPAD_MENU.invitePromptHoldSec`), and for `corePromptGraceSec` after,
+  FocusController skips its evaluation (no recovery stealing the selection back), the pad dispatch (the B that closes
+  the prompt never goes back a screen) and the hold-B fill.
+- **Cover / loading blocks.** `setUiNavigation` no longer blocks held buttons. `selectMenuShown` (client/store
+  selectors: `selectMenuOpen` without the stage cover and the loading screen; `selectMenuOpen` is built on it) turning
+  off is what blocks them (HudController), so RT held through a stairwell card keeps firing. The cover's neutral input
+  (SimController `coverGate`) is unchanged.
+- **Lobby memory.** The lobby room's memory key is `lobby<lobbyId>`: a new lobby opens on Ready.
+- **Haptics, two pads.** `HapticGenerations` (padFeedback.ts): generations per pad + motor from one counter, so a cue
+  on one pad never drops another pad's "off". Every motor set goes back to 0 on every pad on cleanup, on vibration Off
+  and when the device leaves the gamepad (pending pulses dropped).
+- **Pad spike.** The spike reads a SelectionImageObject named `NO_SELECTION_IMAGE_NAME` (FocusController's empty
+  frame, destroyed when the spike starts) as no original, so it never puts a destroyed frame back.
+- **Display reset.** The Display tab's Reset (and Options X there) keeps `padVibration` (`displayResetOverrides`,
+  `DISPLAY_RESET_KEEPS`, shared/settings): it is shown on Controls > Gamepad.
 
 ## Tasks
 

@@ -7,6 +7,8 @@
  *     key (GetStringForKeyCode) when it says more than the KeyCode's own name, else our label (shared/play inputLabel).
  *   - menuHapticsOn / hapticTimeline: whether a menu cue may vibrate at all, and a cue's pulses as motor on / off
  *     events in time order (client PadHaptics schedules them).
+ *   - HapticGenerations: which scheduled motor event is still current (per pad and motor, so a cue on one pad never
+ *     drops another pad's "off").
  *   - padConfirmFeedback: what a MenuButton activation means for the pad's haptics (a confirm, a disabled press, or
  *     nothing: not on the pad, or not from A).
  */
@@ -62,6 +64,34 @@ export function hapticTimeline(cue: MenuHaptic): ReadonlyArray<HapticEvent> {
 	}
 	out.sort((a, b) => (a.atSec !== b.atSec ? a.atSec < b.atSec : a.strength < b.strength));
 	return out;
+}
+
+/**
+ * The latest cue per pad + motor (client PadHaptics): `begin` hands a cue its generation for one pad's motor, `current`
+ * says whether a scheduled event of that generation still applies. A newer cue on the SAME pad and motor drops an older
+ * one's later events (the newer cue schedules its own off); a cue on another pad never does, so every pad's "off"
+ * arrives. Generations come from one counter, so after `clear` (every motor off) no older event matches again.
+ */
+export class HapticGenerations {
+	private counter = 0;
+	private readonly latest = new Map<string, number>();
+
+	/** A new cue on `pad`'s `motor` (any stable names): its generation. */
+	begin(pad: string, motor: MenuHapticMotor): number {
+		this.counter += 1;
+		this.latest.set(`${pad}/${motor}`, this.counter);
+		return this.counter;
+	}
+
+	/** An event of generation `gen` on `pad`'s `motor` still applies. */
+	current(pad: string, motor: MenuHapticMotor, gen: number): boolean {
+		return this.latest.get(`${pad}/${motor}`) === gen;
+	}
+
+	/** Every pending event is stale (the motors were turned off). */
+	clear(): void {
+		this.latest.clear();
+	}
 }
 
 /** What a menu button press means for the pad's haptics. */

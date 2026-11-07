@@ -1,6 +1,7 @@
 // Gamepad menus (docs/GAMEPAD_MENUS.md GM1): focus scopes' owner, recovery / memory decisions, scrolling (focus.ts).
 import { describe, expect, it } from "@rbxts/jest-globals";
 import {
+	CorePromptGuard,
 	FOCUS_LAYERS,
 	FocusMemory,
 	focusAction,
@@ -182,5 +183,35 @@ describe("scrollToShow (section 5)", () => {
 	it("aligns the top of a row taller than the frame", () => {
 		expect(scrollToShow(0, 400, 500, 300, 10)).toBe(390);
 		expect(scrollToShow(800, 400, 500, 300, 10)).toBe(390);
+	});
+});
+
+describe("CorePromptGuard: a Roblox CoreGui prompt keeps the menus off the pad (review fix)", () => {
+	const HOLD = 60;
+	const GRACE = 0.3;
+
+	it("busy while a CoreGui object is selected, then for the grace period after", () => {
+		const g = new CorePromptGuard();
+		expect(g.busy(0, false, HOLD, GRACE)).toBe(false);
+		expect(g.busy(1, true, HOLD, GRACE)).toBe(true);
+		expect(g.busy(1.2, false, HOLD, GRACE)).toBe(true);
+		expect(g.busy(1.31, false, HOLD, GRACE)).toBe(false);
+		expect(g.busy(5, false, HOLD, GRACE)).toBe(false);
+	});
+
+	it("our invite prompt counts from the request until it closes (plus the grace), or `holdSec` at most", () => {
+		const g = new CorePromptGuard();
+		g.invitePromptOpened(10);
+		expect(g.busy(11, false, HOLD, GRACE)).toBe(true);
+		expect(g.invitePromptOpen(11, HOLD)).toBe(true);
+		g.invitePromptClosed();
+		expect(g.invitePromptOpen(11.1, HOLD)).toBe(false);
+		expect(g.busy(11.1, false, HOLD, GRACE)).toBe(true);
+		expect(g.busy(11.5, false, HOLD, GRACE)).toBe(false);
+		// Never reported closing: it lets go after holdSec.
+		g.invitePromptOpened(100);
+		expect(g.busy(100 + HOLD, false, HOLD, GRACE)).toBe(true);
+		expect(g.invitePromptOpen(100 + HOLD + 1, HOLD)).toBe(false);
+		expect(g.busy(100 + HOLD + 1, false, HOLD, GRACE)).toBe(false);
 	});
 });
