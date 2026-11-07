@@ -40,6 +40,9 @@
  *   roomEdges.ts  room edges (docs/ROOM_EDGES.md): the dashed corridor-to-room edge runs of a floor (tunables:
  *                 ROOM_EDGE_VIEW in roomEdgesConfig.ts); roomEdgeState.ts: each room's safe / waiting / live state
  *                 and fightOn (the LIVE rule alone: a fight is on; docs/COMBO.md CB1)
+ *   collisionDebug.ts  KV_CollisionDebug (docs/WALL_SLIDE.md WS6): the blocking cells near the watched player
+ *                 (isolated 1x1 blockers apart), the input magnitude, the StallDetector and its log line (tunables:
+ *                 COLLISION_DEBUG in collisionDebugConfig.ts)
  *   watch.ts      StateWatch: per-player and per-floor edges from sim state (hurt and its HurtKind, death, roll,
  *                 swing, ...) for the audio mapper and the feel controllers (docs/FEEL.md J1)
  *   preload.ts    asset preloading (docs/PRELOAD.md): the core / later tiers of a pack's content ids, the loading
@@ -95,6 +98,8 @@ export * from "./roomEdgeState";
 export * from "./decor";
 export * from "./voidDecor";
 export * from "./minimap";
+export * from "./collisionDebugConfig";
+export * from "./collisionDebug";
 export * from "./watch";
 export * from "./latencyProbeConfig";
 export * from "./latencyProbe";

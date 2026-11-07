@@ -534,6 +534,14 @@ export class SimController implements OnStart {
 		return this.input.buttons;
 	}
 
+	/**
+	 * The local player's input for the last frame, as the sim got it (neutral under a menu, a cover or death; world
+	 * axes): KV_CollisionDebug's stall flash (docs/WALL_SLIDE.md WS6). Read-only: never write it.
+	 */
+	getFrameInput(): Readonly<InputFrame> {
+		return this.input;
+	}
+
 	/** The current run is a tutorial run. */
 	isTutorialRun(): boolean {
 		return this.ctx?.tutorial === true;

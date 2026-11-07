@@ -274,6 +274,29 @@ Unchanged: the server validator (same config builder), the lockstep wire and the
 - [ ] **WS6. `KV_CollisionDebug`** (client, off by default, Janitor; presentation only). It draws the blocking cells
   near the watched player, the notch edges, the body circle and its contact normal, and flashes red on a stall (move
   held for 0.3 s or more, less than 25 % moved). → Verify: Studio, a pillar and an oct room.
+
+  **As built (WS6, branch `wall-slide-overlay`; Studio check pending).**
+  - **Turn it on:** set the Workspace boolean attribute `KV_CollisionDebug` to true (Studio, or a session with
+    `KV_Debug`, like `KV_PelletDebug` / `KV_LootDebug`). It toggles live; false removes every piece. Off by default.
+  - **What it shows**, around the watched player (`SimController.getViewPlayerIndex`, so the spectated teammate in
+    co-op), on floors with a Dungeon (not the greybox world):
+    - every blocking cell whose centre is within 3 tiles of the player's cell: a thin translucent square, `uiAccent`
+      for a wall / void / pool tile or an intact breakable (shared/sim `solidCells`), `uiMana` for an isolated 1x1
+      blocker (a pillar or a lone crate: the cell blocks and all 8 neighbours are open);
+    - the body circle (`PLAYER_RADIUS`) as a `uiText` ring at the interpolated position;
+    - the stall flash: the ring turns `uiHealth` while the move input is held (magnitude 0.5 or more) and the body
+      moved less than 25 % of a free walk (`PLAYER_SPEED` x magnitude x time) over the last 0.3 s of sim time, and one
+      `[collision] stall at x,z (gx,gy) input ix,iz` line is printed per episode. Only the local player's input is
+      known, so a spectated teammate's ring never flashes.
+  - Everything is drawn always-on-top (a wall cell's square would be inside its wall otherwise).
+  - **Not yet:** the notch edges (they come with WS3) and the contact normal.
+  - **Code:** logic `shared/view/collisionDebug.ts` (`blockingCellsNear`, `StallDetector`, `stallLine`, a local copy of
+    `isIsolatedBlocker` that mirrors the shared/dungeon helper of WS2: swap it for that export once both are merged),
+    tunables `COLLISION_DEBUG` in `shared/view/collisionDebugConfig.ts`, spec `collisionDebug.spec.ts`
+    (`npm run test:only -- view/collisionDebug`); drawing `client/controllers/render/CollisionDebugController.ts`
+    (HandleAdornments under one anchor Part, Janitor-owned, rebuilt per floor, the render step bound only while on);
+    `SimController.getFrameInput()` gives it the local player's frame input. Presentation only: no sim, dungeon or
+    hash change.
 - [ ] **WS7. Tutorial.** Its lock specs and scripted bot still finish every lesson (the guard and sweep locks, room G's
   ring). → Verify: `npm run test:only -- tutorial`.
 - [ ] **WS8. Studio / playtest.**
