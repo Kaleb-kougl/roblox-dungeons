@@ -14,7 +14,8 @@ Bullets, sight, enemies, the dungeon, the hash layout and the lockstep wire are 
 **WS0-WS2, WS4, WS5 and WS7 built; WS6 built (Studio check pending).** The slide (`shared/dungeon/slide.ts`,
 `slideData.ts`; specs `collision.snag.spec.ts`, `slide.spec.ts`; scenes in `dungeon/testing/slideScenes.ts`) is the
 player's mover in every world (`shared/run/playerMover.ts`, WS4); the snag census (WS5) finds no unexcused stall with
-it; the tutorial still finishes every lesson (WS7). Open: WS3 (stepped-wall smoothing), WS8 (the playtest). The table
+it; the tutorial still finishes every lesson (WS7); **the owner's playtest passed (WS8, 2026-11-07)**, merged to main.
+Open: WS3 (stepped-wall smoothing), the optional WS9 / WS10. The table
 below was first measured on a Python port; WS0 re-measured it in Lune (see "As built" under WS0).
 
 **Owner (2026-11-06): it is mostly pillars.** So pillars come first:
@@ -162,7 +163,7 @@ Replays:
 
 Unchanged: the server validator (same config builder), the lockstep wire and the hash layout (no new state).
 
-## Decisions (proposed: the owner to confirm)
+## Decisions (WSD2-WSD4 and WSD7 confirmed by the owner's playtest, 2026-11-07)
 
 - **WSD1. Every world, M1 included (owner, 2026-11-06).** Live play everywhere uses the slide. The web build's mover
   survives only as `PlayerMover.WEB` for the parity specs, the same pattern as the sword, swarmer and boss retunes.
@@ -191,8 +192,8 @@ Unchanged: the server validator (same config builder), the lockstep wire and the
    The pillar slip covers both, so no platform-specific rule is needed. The census and the specs sweep stick angles
    finely (WS2, WS5).
 2. ~~Should M1 get the slide too?~~ **Answered 2026-11-06: yes** (WSD1).
-3. ~~A full assist or a partial one?~~ Proposed in WSD3: full for pillars, partial for everything else. To confirm
-   in the pillar playtest.
+3. ~~A full assist or a partial one?~~ **Confirmed in the playtest (2026-11-07):** full for pillars, partial (0.35)
+   for everything else (WSD3).
 
 ## Order of work
 
@@ -413,7 +414,8 @@ Unchanged: the server validator (same config builder), the lockstep wire and the
     `roomEdgeState`'s `playTutorial` walk also finishes). The scripted bot (`tutorial/tutorial.spec`) completes all 18
     lessons, the guard lock (released by a guard) and the sweep lock (combat G: every pellet, one Sweep) included, with
     no stuck report; only the "out of order" lesson-time pin moved (WS4's list).
-- [ ] **WS8. Studio / playtest.**
+- [x] **WS8. Studio / playtest.** **Passed (owner, 2026-11-07)**: WSD2-WSD4, WSD7 and the tunables as built
+  (`PLAYER_SLIDE`: assist 0.35, pillar slip on) signed off.
   - Every platform, each signed off on its own: keyboard (W at diamonds, W+D at faces), gamepad, touch (the floating
     stick, with auto-target on and off).
   - Places: oct and ellipse rooms, pillar fields, doorways at speed, library runs and reading areas, storeroom crates,

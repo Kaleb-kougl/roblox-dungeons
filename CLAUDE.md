@@ -915,8 +915,8 @@ Decision log (deviations from `PLAN.md`):
   (`run/snagCensus.spec.ts`, WS5): zero unexcused stalls with the slide in every class. The new paths exposed a latent
   imp bug (a blink could land on a POOL tile, which bullets cross): `impBlinkValid` now reads the new optional
   `SimConfig.isBodyBlocked` (`bodyBlocker(d)`, endless floors; `isBulletBlocked` without it). Debug `KV_CollisionDebug`
-  (presentation only: blocking cells, isolated blockers, the body ring, a stall flash). Stepped-wall smoothing (WS3)
-  and the playtest (WS8) pending.
+  (presentation only: blocking cells, isolated blockers, the body ring, a stall flash). Playtest (WS8) passed
+  2026-11-07; stepped-wall smoothing (WS3) pending.
 
 ## Commands
 
