@@ -4,9 +4,10 @@ The player gets stuck on pillars, wall corners, door frames and the stepped wall
 the player's mover with one that **slides around corners** instead of stopping on them, adds two small assists, and
 measures the result with a census. Work it task by task, like `docs/ART.md`; each task ends with a **Verify**.
 
-**Gameplay (sim).** The player's body moves differently, so endless, daily, dev, co-op and tutorial replays and scores
-change. M1 and every golden fixture replay exactly as before (WSD1). Bullets, sight, enemies, the dungeon, hashes'
-layout and the lockstep wire are untouched.
+**Gameplay (sim).** The player's body moves differently in every world, M1 included (WSD1, owner 2026-11-06), so live
+replays and scores change. Every golden fixture and the web-tuned specs still match bit for bit: they replay under
+`setPlayerMover(PlayerMover.WEB)`, next to `setSwordTimings(WEB_SWORD_TIMINGS)` / `setSwarmerHp` / `setBossHp`.
+Bullets, sight, enemies, the dungeon, the hash layout and the lockstep wire are untouched.
 
 ## Status (2026-11-06)
 
@@ -129,15 +130,28 @@ over runs of 2 (WSD4).
 
 ### 5. Wiring
 
-`playerSlideMover(d, radius, PLAYER_SLIDE)` becomes `SimConfig.moveResolver` in `endlessFloorWorld`. That covers
-endless, daily, dev, co-op and the tutorial (its floors are endless floors).
+`playerSlideMover(d, radius, PLAYER_SLIDE)` becomes `SimConfig.moveResolver` in two places:
 
-`buildRunConfig`'s M1 path keeps `circleMover` (WSD1). The tunables go in `PLAYER_SLIDE` in a data module of
-shared/dungeon (no magic numbers in logic).
+- `endlessFloorWorld`, which covers endless, daily, dev, co-op and the tutorial (its floors are endless floors);
+- `buildRunConfig`'s M1 path (`game` / `dungeon` worlds, scored or not).
+
+Both get the player's mover from one helper, `playerMover(d)` in shared/run. That helper reads a specs-only switch,
+`setPlayerMover(kind)`, which returns the previous kind so a spec can restore it. It is read when the config is built,
+like the sword's timers, so a spec sets it before calling `buildRunConfig`:
+
+- `PlayerMover.SLIDE` (the default): `playerSlideMover`;
+- `PlayerMover.WEB`: the web build's `circleMover`.
+
+Specs that build `circleMover(d, PLAYER_RADIUS)` themselves (19 of them) are untouched. The tunables go in
+`PLAYER_SLIDE` in a data module of shared/dungeon (no magic numbers in logic).
 
 Replays:
 
-- endless, daily, dev, co-op and tutorial replays and scores change;
+- endless, daily, dev, co-op, tutorial and live M1 (`KV_Scoring` included) replays and scores change;
+- M1 runs recorded by older builds no longer replay, as after the sword / swarmer / boss retunes;
+- the 11 spec files that replay fixtures under `setSwordTimings(WEB_SWORD_TIMINGS)` also set
+  `setPlayerMover(PlayerMover.WEB)` (validate, segments, runFull, runBoss, runBullets, score.replay, constants,
+  recordingCodec, bossAct1.ttk, liveRun.forfeit, roomEdgeState) and still match bit for bit;
 - the all-time boards stay `_v1`, as for every earlier sim retune;
 - `DAILY.ruleset` goes up by one (10 -> 11);
 - the pins that record player paths are re-recorded (`enemies.determinism`, charger / stormcaller run 4, the
@@ -147,9 +161,9 @@ Unchanged: the server validator (same config builder), the lockstep wire and the
 
 ## Decisions (proposed: the owner to confirm)
 
-- **WSD1. Endless family only.** M1 is the web-parity world. Keeping `circleMover` there means every golden fixture,
-  validate / segments spec and boss TTK table replays unchanged, with no `setPlayerMover(WEB)` switch needed. Moving
-  M1 later is one line plus that switch.
+- **WSD1. Every world, M1 included (owner, 2026-11-06).** Live play everywhere uses the slide. The web build's mover
+  survives only as `PlayerMover.WEB` for the parity specs, the same pattern as the sword, swarmer and boss retunes.
+  A CLAUDE.md decision-log row records it as a port retune.
 - **WSD2. Frictionless, no speed boost.** Pushing into a flat wall still costs cos(angle), as today (case D). The slide
   only removes the stops.
 - **WSD3. Pillars slip on any hit; walls get 0.35 tiles** (revised after the owner's answer, "mostly pillars"). An
@@ -170,7 +184,7 @@ Unchanged: the server validator (same config builder), the lockstep wire and the
    - gamepad and touch sticks hit at any angle, faces included (case A).
    The pillar slip covers both, so no platform-specific rule is needed. The census and the specs sweep stick angles
    finely (WS2, WS5).
-2. Should M1 get the slide too (WSD1)?
+2. ~~Should M1 get the slide too?~~ **Answered 2026-11-06: yes** (WSD1).
 3. ~~A full assist or a partial one?~~ Proposed in WSD3: full for pillars, partial for everything else. To confirm
    in the pillar playtest.
 
@@ -213,9 +227,16 @@ Unchanged: the server validator (same config builder), the lockstep wire and the
   - over seeds 1-40 x floors 1-10: every pellet, spawn, chest front, altar, drop landing and stairwell stays reachable
     under the new body.
   → Verify: `npm run test:only -- dungeon`.
-- [ ] **WS4. Wire it** (Design 5). `endlessFloorWorld` uses `playerSlideMover`; M1 is unchanged. Re-record the pins;
-  `DAILY.ruleset` 11; CLAUDE.md decision log row and document table row. → Verify: `npm run verify`; the golden /
-  validate / segments specs unchanged.
+- [ ] **WS4. Wire it** (Design 5). `playerMover(d)` with `setPlayerMover` / `PlayerMover`; used by `endlessFloorWorld`
+  and `buildRunConfig`'s M1 path. The 11 fixture specs set `PlayerMover.WEB` next to `WEB_SWORD_TIMINGS`. Then:
+  - re-record the pins;
+  - `DAILY.ruleset` 11;
+  - add a CLAUDE.md decision log row and a document table row.
+  → Verify:
+  - `npm run verify`;
+  - every golden / validate / segments / constants / boss TTK spec matches bit for bit under the switch;
+  - a spec that M1's default config uses the slide mover (one scenario B walk ends past the pillar);
+  - a spec that `PlayerMover.WEB` gives exactly `circleMover`'s positions.
 - [ ] **WS5. Snag census** (`run/snagCensus.spec.ts`). Over seeds 1-40 x floors 1-10, start from every FLOOR cell that
   touches an obstacle and walk 40 ticks in each of the 8 keyboard screen directions and 32 stick directions (quantized
   through `quantizeAxis`). Counts are reported per input kind.
