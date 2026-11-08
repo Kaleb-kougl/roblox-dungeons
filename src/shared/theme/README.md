@@ -181,7 +181,7 @@ Asset IDs are lowercase, dot-separated, at least two segments; the first segment
 | `bullet.enemy.*`, `bullet.player.*` | small, medium, large, needle, goo / basic, heavy | spritesheet, placeholder | 8x8, pivot (4, 4); fly 2 |
 | `tile.biome.<n>.<floor\|wall>` | biome tiles | image, placeholder | 16x16; with `tilesPerImage` any size up to 1024x1024 |
 | `item.*` | loot icons | image, placeholder | 16x16 |
-| `ui.*` | cursor, panel, icons; optional skin ids `uiSkinIds()` (sliced, `slice`) and `uiIconIds()` (one atlas, `rect`), docs/UI_ART.md | image, placeholder | free size; `slice` (ui only) and `rect` (ui, decor, breakable), never both on a ui image |
+| `ui.*` | cursor, panel, icons; optional skin ids `uiSkinIds()` (sliced, `slice`) and `uiIconIds()` (one atlas, `rect`), docs/UI_ART.md; optional boon icons `ui.boon.<name>` (`boonIconId`, one sheet, `rect`), docs/BUILDS.md BU11 | image, placeholder | free size; `slice` (ui only) and `rect` (ui, decor, breakable), never both on a ui image |
 | `ui.font.digits` | pixel digit font | image, placeholder | `DIGIT_FONT`: glyphs `0123456789+-CAP!`, 5x7 cells; strip 80x7 |
 | `sfx.*`, `music.*` | audio events (`AUDIO_EVENTS`, `BREAKABLE_AUDIO_EVENTS`, `PORT_AUDIO_EVENTS`), **required** | sound, silent | play through SoundGroup `sfx` / `music` |
 | `amb.b<n>` | biome ambience loops (`AMBIENCE_IDS`, b1..b5), **required** | sound, silent | play through SoundGroup `sfx` |

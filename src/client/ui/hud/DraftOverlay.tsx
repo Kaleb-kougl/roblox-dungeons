@@ -8,6 +8,7 @@ import type { ColorRole } from "shared/theme";
 import {
 	DRAFT_CARD_VIEW,
 	DUO_CHIP_SPAN,
+	ITEM_ART_FILL_ROLE,
 	DraftBeat,
 	DRAFT_REVEAL_VIEW,
 	DRAFT_SKIN,
@@ -16,7 +17,10 @@ import {
 	PROGRESSION_VIEW,
 	TOUCH_STRINGS,
 	draftBodyBox,
+	draftChipArt,
+	draftChipCells,
 	draftShineOffset,
+	fitArt,
 	draftSkullPlacement,
 	draftSurfaceImageId,
 	draftTextNudge,
@@ -30,6 +34,7 @@ import { useHudActions } from "./actions";
 import { DraftRays } from "./DraftRays";
 import { DRAFT_UI, type DraftCardUi } from "./draftUi";
 import { usePortrait } from "./usePortrait";
+import { useArtScale } from "./useHudScale";
 import { Panel, SlicedImage, Text } from "./primitives";
 
 const HALF = 0.5;
@@ -188,13 +193,20 @@ function CardText(props: {
  * The row under a card's name (docs/BUILDS.md BU9), centred, every piece a binding (the card renders once): a Duo
  * card's joined chip (its two boons' icon cells side by side), the banner text (the rarity, "Level II", "EVOLVE ·
  * <boon>", "DUO") and an Upgrade / Evolution card's level pips (the level the card gives filled, in the card's colour).
- * Faded with the card's text.
+ * Faded with the card's text. With the boon icon art (docs/BUILDS.md BU11, shared/view/hud draftChipArt) the chip's
+ * cells draw the art on ITEM_ART_FILL_ROLE instead of the labels, and a boon card shows its own icon in a one-cell
+ * chip; without it the row is exactly as before.
  */
 function BannerRow(props: { ui: DraftCardUi; nudge: React.Binding<number> }) {
 	const hudFont = useHudFont();
+	const uiScale = useArtScale();
 	const ui = props.ui;
 	const look = useMemo(() => {
 		const m = ui.model.binding;
+		const pack = themePack();
+		const has = (id: string) => pack?.image(id) !== undefined;
+		const art = m.map((x) => draftChipArt(x, has));
+		const cells = m.map((x) => draftChipCells(x, draftChipArt(x, has)));
 		const textT = ui.textT.binding;
 		const pips: { slot: React.Binding<boolean>; filled: React.Binding<boolean> }[] = [];
 		for (let k = 0; k < BOON_MAX_LEVEL; k++)
@@ -202,17 +214,51 @@ function BannerRow(props: { ui: DraftCardUi; nudge: React.Binding<number> }) {
 				slot: m.map((x) => x !== undefined && x.maxLevel > k),
 				filled: m.map((x) => x !== undefined && x.level > k),
 			});
-		const chip: { text: React.Binding<string>; color: React.Binding<Color3> }[] = [];
-		for (let k = 0; k < DUO_CHIP_SPAN; k++)
+		const chip: {
+			text: React.Binding<string>;
+			color: React.Binding<Color3>;
+			visible: React.Binding<boolean>;
+			image: React.Binding<string>;
+			imageVisible: React.Binding<boolean>;
+			rectOffset: React.Binding<Vector2>;
+			rectSize: React.Binding<Vector2>;
+			imageSize: React.Binding<UDim2>;
+		}[] = [];
+		for (let k = 0; k < DUO_CHIP_SPAN; k++) {
+			const ref = art.map((a) => (a[k] !== undefined ? pack?.image(a[k]) : undefined));
 			chip.push({
-				text: m.map((x) => (x !== undefined && x.chipIcons[k] !== undefined ? str(x.chipIcons[k]) : "")),
-				color: m.map((x) => role(x?.chipRoles[k] ?? "uiPanel")),
+				text: m.map((x) =>
+					x !== undefined && draftChipArt(x, has).size() === 0 && x.chipIcons[k] !== undefined
+						? str(x.chipIcons[k])
+						: "",
+				),
+				color: m.map((x) =>
+					role(draftChipArt(x, has).size() > 0 ? ITEM_ART_FILL_ROLE : x?.chipRoles[k] ?? "uiPanel"),
+				),
+				visible: cells.map((n) => n > k),
+				image: ref.map((r) => r?.assetId ?? ""),
+				imageVisible: ref.map((r) => r !== undefined),
+				rectOffset: ref.map((r) => (r?.rect !== undefined ? new Vector2(r.rect.x, r.rect.y) : Vector2.zero)),
+				rectSize: ref.map((r) => (r?.rect !== undefined ? new Vector2(r.rect.w, r.rect.h) : Vector2.zero)),
+				imageSize: ref.map((r) => {
+					if (r === undefined) return new UDim2();
+					const fit = fitArt(
+						r.rect?.w ?? r.w,
+						r.rect?.h ?? r.h,
+						DRAFT_CARD_VIEW.chipCell,
+						DRAFT_CARD_VIEW.chipCell,
+						uiScale,
+					);
+					return UDim2.fromOffset(fit.w, fit.h);
+				}),
 			});
+		}
 		return {
 			position: props.nudge.map((px) => new UDim2(HALF, 0, RARITY_TOP, px)),
 			text: m.map((x) => (x !== undefined ? hudText(x.banner) : "")),
 			textColor: m.map((x) => role(bannerRole(x))),
-			chipVisible: m.map((x) => x !== undefined && x.chipIcons.size() > 0),
+			chipVisible: cells.map((n) => n > 0),
+			chipSize: cells.map((n) => UDim2.fromOffset(DRAFT_CARD_VIEW.chipCell * n, DRAFT_CARD_VIEW.chipCell)),
 			pipsVisible: m.map((x) => x !== undefined && x.maxLevel > 0),
 			pips,
 			chip,
@@ -220,7 +266,7 @@ function BannerRow(props: { ui: DraftCardUi; nudge: React.Binding<number> }) {
 			emptyT: textT.map(emptyPipT),
 			textT,
 		};
-	}, [ui]);
+	}, [ui, uiScale]);
 	const V = DRAFT_CARD_VIEW;
 	const rowH = math.max(V.chipCell, HUD_VIEW.smallText + 4);
 	return (
@@ -242,7 +288,7 @@ function BannerRow(props: { ui: DraftCardUi; nudge: React.Binding<number> }) {
 			<frame
 				key="Chip"
 				LayoutOrder={1}
-				Size={UDim2.fromOffset(V.chipCell * DUO_CHIP_SPAN, V.chipCell)}
+				Size={look.chipSize}
 				BackgroundTransparency={HIDDEN}
 				Visible={look.chipVisible}
 				ZIndex={BODY_Z.text}
@@ -260,6 +306,7 @@ function BannerRow(props: { ui: DraftCardUi; nudge: React.Binding<number> }) {
 						TextColor3={role("uiPanel")}
 						TextTransparency={look.textT}
 						Text={c.text}
+						Visible={c.visible}
 						ZIndex={BODY_Z.text}
 					>
 						<uistroke
@@ -267,6 +314,21 @@ function BannerRow(props: { ui: DraftCardUi; nudge: React.Binding<number> }) {
 							Thickness={V.chipStroke}
 							Color={look.pipColor}
 							Transparency={look.textT}
+						/>
+						<imagelabel
+							key="Art"
+							AnchorPoint={new Vector2(HALF, HALF)}
+							Position={UDim2.fromScale(HALF, HALF)}
+							Size={c.imageSize}
+							Image={c.image}
+							ImageRectOffset={c.rectOffset}
+							ImageRectSize={c.rectSize}
+							ImageTransparency={look.textT}
+							ResampleMode={Enum.ResamplerMode.Pixelated}
+							Visible={c.imageVisible}
+							BackgroundTransparency={HIDDEN}
+							BorderSizePixel={0}
+							ZIndex={BODY_Z.text}
 						/>
 					</textlabel>
 				))}

@@ -71,6 +71,7 @@ export {
 	type ValidateOptions,
 } from "./validate";
 export * from "./variants";
+export { BOON_ICON_PREFIX, boonIconId } from "./boonIcons";
 export {
 	AFFIX_COLOR_RULES,
 	AURA_COLOR_RULES,

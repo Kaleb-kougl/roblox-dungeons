@@ -124,6 +124,8 @@ import type { RobloxAssetId } from "../../types";
  * pact-altar.png / golden-coin.png (the pact altar and the Goldling's coin burst, docs/FORTUNE.md FO10; original art,
  * scripts/art/gen-fortune-art.js, built by `node scripts/art/build-atlases.js --only fortune`) uploaded 2026-11-06
  * 6:04 PM, transcribed from an Asset Manager screenshot.
+ * boon-icons.png (one icon per boon, docs/BUILDS.md BU11; original art, scripts/art/gen-boon-icons.js, built by
+ * `node scripts/art/build-atlases.js --only boonIcons`) uploaded 2026-11-08, the ID given by the owner in chat.
  */
 export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"amb-b1.ogg": "rbxassetid://91158343621799",
@@ -136,6 +138,7 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"bomber-body.png": "rbxassetid://111448586144487",
 	"bomber-death-outline.png": "rbxassetid://76498890264159",
 	"bomber-death.png": "rbxassetid://135000310498445",
+	"boon-icons.png": "rbxassetid://120375465703784",
 	"boost-aegis.png": "rbxassetid://140457804095686",
 	"boost-auras.png": "rbxassetid://102860615301253",
 	"boost-frenzy.png": "rbxassetid://123942115924560",

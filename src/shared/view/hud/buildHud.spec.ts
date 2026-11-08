@@ -11,7 +11,9 @@ import {
 	DEFAULT_BOUNDS,
 	DRAFT_CONFIRM_BUTTON,
 	DRAFT_MIN_OPEN_TICKS,
+	DUOS,
 	Duo,
+	BOONS,
 	RELICS,
 	Rarity,
 	createSimState,
@@ -21,11 +23,13 @@ import {
 	type EndlessFloorWorld,
 	type SimConfig,
 } from "shared/sim";
-import { PLACEHOLDER_MANIFEST, ThemePack } from "shared/theme";
+import { PLACEHOLDER_MANIFEST, ThemePack, boonIconId } from "shared/theme";
 import { collectRunEvents, takeSnapshot, type RunEventRecord } from "shared/play";
 import { frame, skipToFloor } from "shared/run/testing";
 import {
 	BUILD_HUD_VIEW,
+	ITEM_ART_FILL_ROLE,
+	itemCellArt,
 	buildListRows,
 	capBuildList,
 	capItemCells,
@@ -106,6 +110,27 @@ describe("items row (BU10)", () => {
 		// Without builds (no levels): today's row, no pips or frames.
 		for (const c of runItemCells([Boon.SHARPENED, Boon.VOLATILE], [], [], [], []))
 			expect([c.level, c.maxLevel, c.frame]).toEqual([0, 0, undefined]);
+	});
+
+	it("boon cells and duo halves carry their icon art (docs/BUILDS.md BU11); relics and curses none", () => {
+		const cells = runItemCells([Boon.SHARPENED], [], [Duo.FIRE_ARROWS], [0], [0]);
+		const duo = DUOS[Duo.FIRE_ARROWS];
+		expect(cells.map((c) => c.art)).toEqual([
+			["ui.boon.sharpened"],
+			[boonIconId(BOONS[duo.a].id), boonIconId(BOONS[duo.b].id)],
+			undefined,
+			undefined,
+		]);
+		const all = () => true;
+		const none = () => false;
+		expect(itemCellArt(cells[0], all)).toEqual(["ui.boon.sharpened"]);
+		expect(itemCellArt(cells[0], none)).toBe(undefined);
+		expect(itemCellArt(cells[1], all)?.size()).toBe(DUO_CHIP_SPAN);
+		// A duo chip draws art only when both halves have it.
+		expect(itemCellArt(cells[1], (id) => id === boonIconId(BOONS[duo.a].id))).toBe(undefined);
+		expect(itemCellArt(cells[2], all)).toBe(undefined);
+		expect(itemCellArt(cells[3], all)).toBe(undefined);
+		expect(ITEM_ART_FILL_ROLE).toBe("uiPanel");
 	});
 
 	it("caps to one row with spans: all when they fit, else the newest after a +N cell", () => {

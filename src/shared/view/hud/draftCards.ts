@@ -25,7 +25,7 @@ import {
 	type RarityId,
 	type SimState,
 } from "shared/sim";
-import type { ColorRole } from "shared/theme";
+import { boonIconId, type ColorRole } from "shared/theme";
 import { DraftBeat, type DraftBeatId } from "./draftReveal";
 import { romanPhase } from "./layout";
 import {
@@ -153,6 +153,35 @@ export interface DraftCardModel {
 	readonly chipIcons: ReadonlyArray<string>;
 	/** The duo chip's halves' fills (the two boons' rarity roles). */
 	readonly chipRoles: ReadonlyArray<ColorRole>;
+	/**
+	 * The icon art in the banner row's chip (shared/theme boonIconId, docs/BUILDS.md BU11): a Duo card's two boons'
+	 * (parallel to chipIcons), a boon card's own one. Drawn only where the pack has it: a Duo chip's cells keep their
+	 * labels without it, and a boon card shows its one-cell chip only with it (without art: today's banner row).
+	 */
+	readonly chipArt: ReadonlyArray<string>;
+}
+
+/**
+ * The art the banner row's chip draws (DraftOverlay, docs/BUILDS.md BU11): the card's chipArt when `has` (the pack's
+ * image lookup) has every id (and a Duo card has one per label), else none: a Duo chip keeps its labels, a boon card
+ * shows no chip.
+ */
+export function draftChipArt(model: DraftCardModel | undefined, has: (id: string) => boolean): ReadonlyArray<string> {
+	if (model === undefined || model.chipArt.size() === 0) return [];
+	if (model.chipIcons.size() > 0 && model.chipArt.size() !== model.chipIcons.size()) return [];
+	for (const id of model.chipArt) if (!has(id)) return [];
+	return model.chipArt;
+}
+
+/** Cells the banner row's chip shows: a Duo card's two (art or labels), a boon card's one with art, else none. */
+export function draftChipCells(model: DraftCardModel | undefined, art: ReadonlyArray<string>): number {
+	return math.max(model?.chipIcons.size() ?? 0, art.size());
+}
+
+/** A boon id's icon art (boonIconId), as a list: one entry, or none for an id that is not a boon's. */
+function artOf(id: string): string[] {
+	const art = boonIconId(id);
+	return art !== undefined ? [art] : [];
 }
 
 /** A HudText. */
@@ -185,6 +214,7 @@ export function draftCardModel(card: number, kind: CardKindId | -1): DraftCardMo
 			maxLevel: 0,
 			chipIcons: [itemIconKey(a.id), itemIconKey(b.id)],
 			chipRoles: [rarityColorRole(a.rarity), rarityColorRole(b.rarity)],
+			chipArt: [...artOf(a.id), ...artOf(b.id)],
 		};
 	}
 	const boon = cardBoon(card);
@@ -202,6 +232,7 @@ export function draftCardModel(card: number, kind: CardKindId | -1): DraftCardMo
 		beat: draftBeatFor(k, def.rarity),
 		chipIcons: [] as string[],
 		chipRoles: [] as ColorRole[],
+		chipArt: artOf(def.id),
 	};
 	if (k === CardKind.EVOLUTION) {
 		return {

@@ -5,7 +5,7 @@
  * client's RunItems and BuildList draw them. The draft cards are draftCards.ts (BU9).
  */
 import { BOONS, CURSES, DUOS, RELICS, boonMaxLevel } from "shared/sim";
-import type { ColorRole } from "shared/theme";
+import { boonIconId, type ColorRole } from "shared/theme";
 import {
 	BUILD_DUO_ROLE,
 	BUILD_EVOLVED_ROLE,
@@ -61,6 +61,12 @@ export interface ItemCellModel {
 	readonly icons: ReadonlyArray<string>;
 	/** Each icon's fill (a duo chip: the duo role behind both halves). */
 	readonly fills: ReadonlyArray<ColorRole>;
+	/**
+	 * Each icon's art (shared/theme boonIconId, docs/BUILDS.md BU11), parallel to `icons`: a boon cell's and a duo
+	 * chip's halves'; undefined for a relic or curse (labels only). The client draws the art in place of the labels when
+	 * the pack has every one of them, else the labels.
+	 */
+	readonly art?: ReadonlyArray<string>;
 	/** The cell's outline: the evolved frame (boon.evolved, thicker), else undefined (the plain dark outline). */
 	readonly frame?: ColorRole;
 	/** Level pips inside the bottom of the cell: `level` of `maxLevel` filled; 0 / 0 none. */
@@ -98,6 +104,7 @@ export function runItemCells(
 			key: `b${b}`,
 			icons: [itemIconKey(def.id)],
 			fills: [rarityColorRole(def.rarity)],
+			art: boonArt([def.id]),
 			frame: pips && level >= max ? BUILD_EVOLVED_ROLE : undefined,
 			level: pips ? level : 0,
 			maxLevel: pips ? max : 0,
@@ -113,6 +120,7 @@ export function runItemCells(
 			key: `d${d}`,
 			icons: [itemIconKey(BOONS[duo.a].id), itemIconKey(BOONS[duo.b].id)],
 			fills: [BUILD_DUO_ROLE, BUILD_DUO_ROLE],
+			art: boonArt([BOONS[duo.a].id, BOONS[duo.b].id]),
 			level: 0,
 			maxLevel: 0,
 			span: DUO_CHIP_SPAN,
@@ -129,6 +137,34 @@ export function runItemCells(
 		const def = CURSES[c];
 		if (def === undefined) continue;
 		out.push(plainCell(`c${c}`, def.id, CURSE_COLOR_ROLE, true, { kind: "curse", index: c }));
+	}
+	return out;
+}
+
+/**
+ * An item cell drawn with its icon art (docs/BUILDS.md BU11): this dark fill under the art; the cell's own fill role
+ * (rarity, boon.duo) becomes its outline and its level pips' colour (the evolved frame stays the evolved frame).
+ */
+export const ITEM_ART_FILL_ROLE: ColorRole = "uiPanel";
+
+/**
+ * The art cell `cell` draws (RunItems): its `art` when `has` (the pack's image lookup) has every id, one per icon;
+ * else undefined, and the cell draws its labels exactly as without art.
+ */
+export function itemCellArt(cell: ItemCellModel, has: (id: string) => boolean): ReadonlyArray<string> | undefined {
+	const art = cell.art;
+	if (art === undefined || art.size() === 0 || art.size() !== cell.icons.size()) return undefined;
+	for (const id of art) if (!has(id)) return undefined;
+	return art;
+}
+
+/** The icon art of boon ids `ids` (boonIconId), or undefined unless every one has an id. */
+function boonArt(ids: ReadonlyArray<string>): string[] | undefined {
+	const out: string[] = [];
+	for (const id of ids) {
+		const art = boonIconId(id);
+		if (art === undefined) return undefined;
+		out.push(art);
 	}
 	return out;
 }

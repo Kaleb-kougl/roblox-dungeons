@@ -917,6 +917,20 @@ Decision log (deviations from `PLAN.md`):
   `SimConfig.isBodyBlocked` (`bodyBlocker(d)`, endless floors; `isBulletBlocked` without it). Debug `KV_CollisionDebug`
   (presentation only: blocking cells, isolated blockers, the body ring, a stall flash). Playtest (WS8) passed
   2026-11-07; stepped-wall smoothing (WS3) pending.
+- **Boon icons (docs/BUILDS.md BU11, the boons part, 2026-11-08).** Presentation only (no sim, dungeon, lockstep, hash,
+  replay, fixture or score change). One 16 x 16 icon per boon, ORIGINAL pixel art by `scripts/art/gen-boon-icons.js`
+  (character maps in the UI sheet's palette, auto-outlined; run by `art:build` / `art:lock`) into
+  `art/vendor/kaleb-vale/boon-icons/`, packed by the atlas pipeline's new group `boonIcons` (buildUiIcons' packer, its
+  OWN sheet `boon-icons.png`, `--only boonIcons`, generated `packs/vale/boonIconLayout.ts`), so `ui-icons.png` does not
+  repack. Theme: optional free-form ui ids `ui.boon.<name>` (`shared/theme` `boonIconId`, the boon id's name
+  lower-cased: asset ids are lowercase), all or nothing on the sheet's one ID (vale `VALE_BOON_ICON_SOURCE`). View:
+  `ItemCellModel.art` / `itemCellArt` (the items row: the art on `ITEM_ART_FILL_ROLE` with the rarity / duo role as the
+  outline and pip colour) and `DraftCardModel.chipArt` / `draftChipArt` / `draftChipCells` (the banner row's chip: a
+  Duo's two halves as art, a boon card's own icon in a one-cell chip). Without the art every cell, chip and card is
+  exactly as before (labels; a boon card has no chip). Evolutions show their boon's icon; duos their two boons'. No
+  new strings, roles, sounds or settings; no Luau-locals change. `boon-icons.png` uploaded 2026-11-08 (`assetIds.ts`),
+  so the bundled vale pack draws the icons; the Studio check (banner row width on the longest Evolution banner, the
+  phone column) pending.
 
 ## Commands
 

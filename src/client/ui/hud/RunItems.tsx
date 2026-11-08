@@ -1,5 +1,5 @@
 import React from "@rbxts/react";
-import { useHudFont, role, str } from "client/ui/theme";
+import { useHudFont, role, str, themePack } from "client/ui/theme";
 import type { ColorRole } from "shared/theme";
 import {
 	BUILD_HUD_VIEW,
@@ -7,8 +7,10 @@ import {
 	PROGRESSION_VIEW,
 	HUD_STRINGS,
 	HUD_VIEW,
+	ITEM_ART_FILL_ROLE,
 	UI_ART,
 	capItemCells,
+	itemCellArt,
 	itemCellWidth,
 	itemPipLayout,
 	runItemCells,
@@ -20,7 +22,7 @@ import { ArtImage, panelIcon } from "./primitives";
 import { MORE_CELL_REF, useTooltipTarget } from "./tooltipTargets";
 
 const HIDDEN = 1;
-/** Inside a cell: the curse skull under the label, the level pips over both. */
+/** Inside a cell: the curse skull under the label (or the boon's icon art), the level pips over both. */
 const CELL_Z = { art: 1, label: 2, pips: 3 } as const;
 /** The status panel (RunItems' host) is a corner panel: the run's dark frame. */
 const HOST_SKIN = "hud";
@@ -40,6 +42,8 @@ const STATUS_LOOK: ItemLook = { size: PROGRESSION_VIEW.iconSize, text: PROGRESSI
  * behind the label, faded (UI_ART.curseSkullTransparency) and clipped to the cell: the label stays the item's name.
  * Builds (docs/BUILDS.md BU10): `level` of `maxLevel` pips inside the cell's bottom (the label moves up over them; the
  * status panel's footprint has no room for a row under the icons) and `frame`, the evolved boon's gold outline.
+ * `icon` (docs/BUILDS.md BU11: a boon's icon art the pack has) replaces the label: the cell is ITEM_ART_FILL_ROLE under
+ * the art and `color` (the rarity / duo role) moves to its outline and pips.
  */
 function ItemCell(props: {
 	order: number;
@@ -47,6 +51,8 @@ function ItemCell(props: {
 	text: string;
 	textColor: ColorRole;
 	art?: string;
+	/** The boon icon art drawn instead of the label (shared/view/hud itemCellArt: the pack has it). */
+	icon?: string;
 	look: ItemLook;
 	/** Width in reference px (default: the look's square; a duo chip's half is one cell of it). */
 	width?: number;
@@ -63,6 +69,8 @@ function ItemCell(props: {
 	const size = props.look.size;
 	const max = props.maxLevel ?? 0;
 	const pips = itemPipLayout(size);
+	const icon = props.icon;
+	const pipColor = icon !== undefined ? props.color : props.textColor;
 	const pipRow = new Array<React.Element>();
 	for (let k = 0; k < max; k++) {
 		pipRow.push(
@@ -70,7 +78,7 @@ function ItemCell(props: {
 				key={`p${k}`}
 				LayoutOrder={k + 1}
 				Size={UDim2.fromOffset(pips.pip, pips.pip)}
-				BackgroundColor3={role(props.textColor)}
+				BackgroundColor3={role(pipColor)}
 				BackgroundTransparency={k < (props.level ?? 0) ? 0 : DRAFT_CARD_VIEW.emptyPipTransparency}
 				BorderSizePixel={0}
 			/>,
@@ -82,14 +90,14 @@ function ItemCell(props: {
 			LayoutOrder={props.order}
 			Position={props.position}
 			Size={new UDim2(0, props.width ?? size, 0, size)}
-			BackgroundColor3={role(props.color)}
+			BackgroundColor3={role(icon !== undefined ? ITEM_ART_FILL_ROLE : props.color)}
 			BorderSizePixel={0}
 			ClipsDescendants={props.art !== undefined}
 		>
 			{props.bare === true ? undefined : (
 				<uistroke
 					Thickness={props.frame !== undefined ? BUILD_HUD_VIEW.evolvedStroke : BUILD_HUD_VIEW.cellStroke}
-					Color={role(props.frame ?? "background")}
+					Color={role(props.frame ?? (icon !== undefined ? props.color : "background"))}
 				/>
 			)}
 			{props.art !== undefined ? (
@@ -102,15 +110,26 @@ function ItemCell(props: {
 					zIndex={CELL_Z.art}
 				/>
 			) : undefined}
-			<textlabel
-				ZIndex={CELL_Z.label}
-				Size={max > 0 ? new UDim2(1, 0, 0, pips.labelHeight) : UDim2.fromScale(1, 1)}
-				BackgroundTransparency={HIDDEN}
-				Font={hudFont}
-				TextSize={props.look.text}
-				TextColor3={role(props.textColor)}
-				Text={props.text}
-			/>
+			{icon !== undefined ? (
+				<ArtImage
+					key="Icon"
+					name="Icon"
+					id={icon}
+					box={{ w: props.width ?? size, h: max > 0 ? pips.labelHeight : size }}
+					zIndex={CELL_Z.label}
+				/>
+			) : (
+				<textlabel
+					key="Label"
+					ZIndex={CELL_Z.label}
+					Size={max > 0 ? new UDim2(1, 0, 0, pips.labelHeight) : UDim2.fromScale(1, 1)}
+					BackgroundTransparency={HIDDEN}
+					Font={hudFont}
+					TextSize={props.look.text}
+					TextColor3={role(props.textColor)}
+					Text={props.text}
+				/>
+			)}
 			{max > 0 ? (
 				<frame
 					key="Pips"
@@ -145,6 +164,8 @@ function ModelCell(props: {
 	const c = props.cell;
 	const look = props.look;
 	const tipRef = useTooltipTarget(c.ref, "hud", { panel: HOST_CORNER, enabled: props.tooltips });
+	const pack = themePack();
+	const art = itemCellArt(c, (id) => pack?.image(id) !== undefined);
 	if (c.span <= 1) {
 		return (
 			<ItemCell
@@ -154,6 +175,7 @@ function ModelCell(props: {
 				text={str(c.icons[0])}
 				textColor="uiPanel"
 				art={c.curse ? props.curseArt : undefined}
+				icon={art?.[0]}
 				look={look}
 				frame={c.frame}
 				level={c.level}
@@ -172,6 +194,7 @@ function ModelCell(props: {
 				color={c.fills[k] ?? c.fills[0]}
 				text={str(c.icons[k])}
 				textColor="uiPanel"
+				icon={art?.[k]}
 				look={look}
 				bare={true}
 				position={UDim2.fromOffset(k * step, 0)}
@@ -183,10 +206,13 @@ function ModelCell(props: {
 			ref={tipRef}
 			LayoutOrder={props.order}
 			Size={UDim2.fromOffset(itemCellWidth(c.span, look.size, props.gap), look.size)}
-			BackgroundColor3={role(c.fills[0])}
+			BackgroundColor3={role(art !== undefined ? ITEM_ART_FILL_ROLE : c.fills[0])}
 			BorderSizePixel={0}
 		>
-			<uistroke Thickness={BUILD_HUD_VIEW.cellStroke} Color={role("background")} />
+			<uistroke
+				Thickness={BUILD_HUD_VIEW.cellStroke}
+				Color={role(art !== undefined ? c.fills[0] : "background")}
+			/>
 			{halves}
 		</frame>
 	);
@@ -212,7 +238,8 @@ function MoreCell(props: { count: number; hidden: ReadonlyArray<ItemRef>; look: 
 }
 
 /**
- * The owned boons (rarity colour), relics and curses of an endless run as a row of icons, in the order taken (the
+ * The owned boons (rarity colour; their icon art where the pack has it, docs/BUILDS.md BU11), relics and curses of an
+ * endless run as a row of icons, in the order taken (the
  * StatusPanel's last row); with builds (docs/BUILDS.md BU10) each boon's level pips, the evolved boons' gold frame and
  * the duos as joined chips after the boons (shared/view/hud runItemCells). ONE row at most (capItemCells,
  * docs/HUD_LAYOUT.md): when more are owned than fit the status panel's footprint width, the last ones show and a first
