@@ -1098,6 +1098,157 @@ any of it yet, BV11), plus one integration spec. Paths under `src/shared/` unles
   `packColumn`), `valeBoonIcons.spec.ts` (an older upload draws exactly the icons it holds at its size; the bundled IDs
   validate).
 
+## BV11 (as built: pure core)
+
+BV11a: the pure view core of every wave 1 effect, so the client workers (b) guard, (c) bow and (d) Wrecker / beam /
+Happy Hour / overcap can draw it in parallel against a fixed API. Presentation only: no sim, dungeon, hash, replay,
+lockstep or score change; no client file touched (the existing build compiles as is). Paths under `src/shared/view/`.
+
+- **Collection** (`fx/buildFxEvents.ts`). `BuildFxEvents.collect` (after every tick, reset per frame, every record
+  with its tick and owner) reads every BV1 list: `waves` (`WaveRecord`: origin, unit direction, `halfCos`, `range`,
+  `speed`, owner, damage, `kind` WaveKind, `count` = counterCount), `ballistas` (`BallistaRecord`: EffectRecord with
+  amount = bolts, kind = 1 back fan / 0 ring, plus `dirX` / `dirZ`, the unit direction from the burst toward its archer
+  at collect: the feed has no flight direction, so the fan's facing is a guess), `pinStarts` (`PinStartRecord`: actor
+  slot, archer, x / z), `pinEnds` (`PinEndRecord`: slot, archer, `carried`, `slam` boolean), `slams` (amount = struck),
+  `smashes` (gen = the smash's generation, amount = splinters), `demolitions`, `heartBeams` (`BeamRecord`), `happyHours`
+  (`PlayerTickRecord`), `overcaps` (amount = points). `SparkRecord.thunder` marks Thunder Guard's sparks
+  (`SparkFork.THUNDER`). **Fix (presentation):** `fork` was `sparkFork !== 0`, so a Thunder Guard spark drew as a thin
+  Storm Crown fork; now `fork` is `=== SparkFork.FORK` only. Rebuke has no list of its own (its rings are `waves` of kind
+  REBUKE), Dragon Bolt's embers are `embers` of kind `Duo.DRAGON_BOLT`, Thunder Guard's and Powder Keg's duoProc
+  entries go to `duoProcs` as before (an origin flare). `NO_BUILD_FX_EVENTS` and `count()` cover the new lists.
+- **Tunables** (`fx/buildsV2FxConfig.ts`, new): `BUILDS_V2_FX` (`teammateOpacity` 0.7; blocks `counter`,
+  `parryLadder`, `ballista`, `pin`, `slam`, `smash`, `demolition`, `heartBeam`, `happyHour`, `overcap`),
+  `OVERCAP_POP_MERGE_SEC` 0.25, the ring block type `WaveOneRingBlock`. Every planner ages on **sim time**
+  (`waveOneAgeSec(recordTick, state.tick, alpha)`: the bodies' time, so a pause, the draft and a freeze hold the
+  effects, and the counter-wave's edge is the sim's sweep exactly); the v1 director keeps its real clock. The sim's
+  gameplay numbers (wave speed / range from the record, `SIEGE_SHOCK_RADIUS`, `DEMOLITION_RADIUS`, `HAPPY_HOUR_TICKS`)
+  are read, never copied.
+- **Shared helpers** (`fx/buildsV2Fx.ts`, new): `waveOneAgeSec`, `ownerOpacity(owner, viewIndex)`,
+  `isRiposteOwner(state, player)`, `FloorShoutRequest` (key, vars, role, lifeSec, priority, player) with
+  `floorShoutText(pack, request)`, `fanSegments`, `FULL_RING_HALF_ANGLE` (pi), and the ring planner `WaveOneRings`
+  (radius r0 -> r1 eased out, r1 under reduced motion; life fade; an optional fan; capped per look) whose output is
+  `WaveOneRingView` (x, z, radius, fade, role, segments, `block` = its WaveOneRingBlock for thickness / width / lift,
+  dirX / dirZ / halfAngleRad, owner, mine, ageSec).
+- **Floor shout priorities** (`hud/dailyRankConfig.ts` `FLOOR_SHOUT_PRIORITY`): `counter`, `pinned`, `slam` all 0.5,
+  between BRACED / a combo tier (0) and the rank threshold (1): a COUNTER replaces the BRACED of the Rebuke that fired
+  it, a SLAM the PINNED before it (a tie: the later wins), every piece of news (rank threshold, Horde, new best,
+  Goldling) replaces them and is never replaced by one (they come with every guard, the news once a run). Suggested
+  "between brace and newBest" taken as strictly under the rank threshold for that reason.
+- **Counter-wave** (`fx/counterWaveFx.ts`, new): `CounterWaveFx`; `counterWaveRadius(speed, range, ageSec)` (speed x
+  age, capped), `counterWaveFade` (1 while growing, then `counter.fadeSec` 0.15 s), `counterWaveLifeSec`,
+  `counterWaveHalfAngle(halfCos)` (acos; a full ring at or below -1), `counterWaveSegments` (an arc's share of 32, at
+  least 6; Reduced halves), `counterWaveBand` (Full 0.45, Reduced 0.2 tiles, never above the radius), glow Full only;
+  `counterShoutFor(waves, viewIndex)`: COUNTER xN (`fx.counter.text`, n = counterCount) for the view player's highest
+  count (a teammate's wave asks for none), life 0.9 s, `build.counter`. Checked: at state.tick = the record's tick + k
+  and alpha a, the edge is (k + a) x speed x SIM_DT, the sim's radius between the two ticks the bodies are lerped over.
+- **Parry ladder** (`counterWaveFx.ts` `riposteParrySemitones(count)` / `riposteParrySpeed(count)`: +1 semitone per
+  bullet after the first, cap 9). **Decision: it climbs `sfx.player.parry`, not `sfx.build.counter`.** The tick is the
+  guard eating a bullet, so it is the parry's sound (and rides on the parry's grouping and PARRY! count); the counter is
+  the answer at the guard's end and stays one distinct sound there (while silent it falls back to the parry, so a
+  silent pack still hears an unpitched ring-out after a climb). Wired in the cue mapper (below).
+- **Ballista / Siege Bolt** (`fx/siegeFx.ts`, new): `BowFx` (rings: `ballista.ring` 0.22 s round the last pierce's
+  enemy, `ballista.fan` a fan of 0.9 rad either side of the facing guess, a full ring when the guess is 0 / 0; the
+  slam's `slam.ring` out to `SIEGE_SHOCK_RADIUS`, Full only; `pins`: `SiegePinView` per carried actor slot (slot,
+  owner, mine, sinceTick, ageSec, x0 / z0), built from pinStart / pinEnd in tick order (a start first on a tie) and
+  then held to the sim's carrying `state.builds.pins` records, so a pin the sim dropped without an event (a departed
+  archer, the floor change) ends too; `shout`: PINNED / SLAM for the view player, the frame's latest, SLAM on a tie;
+  `freezeMs`); `pinStreak(x0, z0, x, z, level, out)` (from the pin's start toward the body, at most 2.5 tiles, none
+  under 0.2, Reduced thinner); `slamFreezeMs(owner, viewIndex, partySize, juice)`: `slam.freezeMs` 40 =
+  `GOLDEN_VIEW.catchFreezeMs` (the Goldling catch's, spec'd equal), view player, solo, `freezeFrameOn`.
+- **Wrecker / Demolition** (`fx/wreckerFx.ts`, new): `WreckerFx` (a `smash.ring` pop in `build.shard` per smash, a
+  chip burst per smash Full with particles on (at most 6 a frame, the view player's first; Reduced drops the pops'
+  particles: `smashChipShape("reduced")` is all zeros), a `demolition.ring` out to `DEMOLITION_RADIUS` in
+  `build.ember` per blast, Full and Reduced); `smashSemitones(gen)` / `smashSpeed(gen)` = the build voice's
+  `buildGenSemitones` / `buildGenSpeed` (+2 a generation, cap 6); `smashChainLength(smashes)`.
+- **Full Heart** (`fx/heartBeamFx.ts`, new): `HeartBeamFx.frame(...)` -> `HeartBeamView[]` (the line, owner, mine,
+  struck, `widthStuds` Full 0.3 / Reduced 0.14, `core` Full only, `fade` = `heartBeamFade` (opaque 40 % of 0.2 s, then
+  linear) x owner opacity, `boon.duo`); at most 6.
+- **Happy Hour / overcap** (`fx/overcapFx.ts`, new): `HappyHourFx` (`frame(source, state, localIndex, quiet)` -> true
+  when the local player's drink started it this frame: show `hud.toast.happyHour` for `happyHour.toast.seconds` 2.5,
+  ids from `idBase` -(2^22); `isOn(player, tick)` / `ticksLeft`: start <= tick < start + `HAPPY_HOUR_TICKS`, from the
+  events only), `happyPopTone(tone, happy)` (KILL -> the new `ScorePopTone.HAPPY` 3, in `happyHour.popRole` `fx.heal`,
+  the flask's colour; Gold Rush / Horde keep theirs), `OvercapPops` (`frame(source, state, viewIndex, quiet, alpha)` ->
+  `OvercapPopView[]`: x / z of the first payout, `points` "+N", first / last tick, ageSec, `version` (grows with the
+  points: rebuild the label then), `mine`; a payout merges into the newest live pop whose first payout is less than
+  `OVERCAP_POP_MERGE_TICKS` (15) ticks earlier and within 2 tiles, else a new pop; at most 6; each lives
+  `SCORE_POP_LIFE` of sim time), `overcapPopRise(ageSec, motion)` (the score pops' rise x 0.6).
+  **Overcap's shape rule** (BV10: `build.overcap` is ~3.5 CIE76 from `nearMiss.parry`): an overcap pop is always a
+  bare "+N" number in the score pops' billboard machinery at the kill pops' glyph scale (1, half the Jackpot's),
+  `overcap.liftPx` 10 over the kill pops' start and rising 0.6 of their rise, over a boss; the parry's gold is only
+  ever the PARRY! word on the floor under a guarding player. Never a word, never on the floor, never at a player.
+- **Sounds** (`audio/cues.ts`): `sfx.build.counter` per wave spawned, `.pin` per pin start, `.slam` per slam: player
+  cues (yours full volume, a teammate's at teammate volume and rank - 50), outside the voice cap (the player's own move
+  and its payoff, like the brace), the pack's jitter. `.beam` per Full Heart beam at `BUILD_FX_VIEW.audio.volume`
+  (teammate quieter), outside the cap (one per finisher / release, never a cascade). `.smash` joins
+  `BUILD_VOICE_SFX` right after the spark (a Demolition chain and Powder Keg are cascades): one a frame at
+  `buildGenSpeed`(the frame's highest smash gen), build volume, cued right after the spark so a busy frame keeps it
+  over the burst. Demolition's blast has no sound of its own. The parry ladder: while the parry has a clip, on a frame
+  where the view player's PARRY! flash `grew` and is not `isNew` and they own Riposte, `sfx.player.parry` at
+  `riposteParrySpeed(count)`, volume 0.7, at most every 0.05 s (`parryLadder`); merges into the frame's parry cue; a
+  teammate's guard climbs silently; a silent parry keeps the ladder silent (GP6's deflect rule). Ranks / intervals are
+  BV10's, unchanged.
+- **Run-over breakdown**: already done by BV9 (`hud/strings.ts` `SCORE_SOURCE_KEYS` lists `score.source.overcap`, and
+  `scoreBreakdownRows` shows the row only when it scored, exactly like Jackpot / Treasure / Goldling; `RunOverPanel`
+  renders every row). Nothing to add; the room clear tally books overcap with the kills' remainder as it does the
+  Goldling's coins.
+- **Recap lines** (optional): **not done.** The recap's highlights read `RecapTally` (score events) and a fixed
+  `RECAP_HIGHLIGHTS` table pinned by recap specs; best counter / longest pin / biggest chain need a builds tally, three
+  strings with context entries and new table rows, more than "cheap". Left for a later task.
+- **Specs.** `fx/buildsV2Fx.spec.ts` (new, 28 tests): the collector (every list per tick across a three-tick frame, the
+  facing guess, reset, the THUNDER / FORK flags, Dragon Bolt / Powder Keg / Thunder Guard in the v1 lists, no builds,
+  `NO_BUILD_FX_EVENTS`); CounterWaveFx (radius / fade / life, the edge at tick + alpha against the sim's per-tick
+  growth, arc vs ring segments, Full / Reduced band and glow, co-op opacity and COUNTER for the view player only with the
+  placeholder's "COUNTER x5", players outside the party, frame pacing: three ticks in one frame keep three waves each
+  aged by its tick, quiet / new run / tick back), the ladder and its cap, `isRiposteOwner`, the priorities; BowFx (ring
+  vs fan vs a 0 / 0 guess, Reduced segments, reduced motion, sim-time life, pins from start to end and held to the
+  sim's records, PINNED once, SLAM over PINNED, the co-op freeze, a pin that starts and ends inside one frame, the
+  slam's ring Full only and its freeze = the Goldling catch's, solo / view / freezeFrameOn, a teammate's slam, the
+  streak, quiet); WreckerFx (pops, chips Full only and particles on, Demolition on its radius, the chain pitch, chips per
+  frame view-first, ring cap, teammate opacity); HeartBeamFx (fade, width, core, owners, life, quiet); HappyHourFx
+  (local toast only, the window's ends, restart, quiet, new run) and `happyPopTone`; OvercapPops (the 15-tick merge,
+  distance, `mine`, version, life, one frame of 40 ticks equal to 40 frames of one, the cap, quiet) and the shape rule.
+  `audio/buildCues.spec.ts`: the smash in `BUILD_VOICE_SFX` right after the spark (the other four not), and a new block
+  (counter / pin / slam player cues outside the cap, the beam's volume, the smash's generation pitch and cap, the
+  fallbacks while silent, the parry ladder: speed, interval, not on a guard's first frame / without growth / without
+  Riposte / for a teammate / with the parry silent).
+- **Verify.** `typecheck`, `lint` (0 warnings), `build`, `check:assets`, `check:autolocalize` green; headless
+  `test:only` on `view/fx`, `view/audio`, `view/hud` (77 suites, 1165 tests), `shared/theme`, `shared/play`,
+  `view/pacts`, `view/golden`, `shared/lockstep` (72 suites, 984 tests): all pass. No string changed (no `test:l10n`
+  needed). Not run: the full `npm run verify`.
+- **Deviations / limits.** Happy Hour's tint window counts state ticks from the drink; a draft that freezes the sim's
+  timer while ticks run (Greed's, the floor's boon draft) ends the view's window early by the frozen ticks (the brief:
+  no sim read beyond the events). Score pops carry no killer (the sim's `popX` feed has no player), so in co-op the
+  view player's Happy Hour tints every kill pop while it runs; telling them apart needs a `popPlayer` list in
+  ScoreEvents (a sim feed change, not BV11's). The back fan's facing is a guess toward the archer.
+
+**API for the client workers** (all from `shared/view/fx`; one instance per client; call `frame` once per rendered
+frame after the ticks with `run.builds` (RunView.builds), the run's state, `getViewPlayerIndex()`, `comboQuiet(covered,
+runOver)`, `{ juice, buildFx }` settings and `run.getAlpha()`; every output object is reused, read it in the frame):
+- (b) guard: `new CounterWaveFx().frame(src, state, view, quiet, settings, alpha)` -> `{ waves: CounterWaveView[]
+  (x, z, dirX, dirZ, radius, range, halfAngleRad, fullRing, kind, count, owner, mine, fade, bandTiles, glow, segments,
+  role), shout?: FloorShoutRequest }`; draw each wave as an arc band of `bandTiles` behind `radius` (plus a glow of
+  `BUILDS_V2_FX.counter.glowTiles` at `glowOpacity` when `glow`), `thicknessStuds` / `liftStuds` from
+  `BUILDS_V2_FX.counter`; hand `shout` to `ComboController.requestShout(floorShoutText(pack, s), pack.color(s.role),
+  s.lifeSec, s.priority)`. The parry ladder needs no client code (the cue mapper plays it from the NearMissFrame it
+  already gets).
+- (c) bow: `new BowFx().frame(...)` -> `{ rings: WaveOneRingView[], pins: SiegePinView[], shout?, freezeMs }`; rings
+  as pooled flat segments (a fan from `dirX / dirZ` +- `halfAngleRad`), sizes from `ring.block`; for each pin hold
+  actor `slot`'s animation and draw `pinStreak(p.x0, p.z0, actorX, actorZ, level, out)` in `BUILDS_V2_FX.pin.role`;
+  `freezeMs > 0` -> the hitstop clock (as the parry / Goldling catch); `shout` as above.
+- (d) Wrecker / beam / Happy Hour / overcap: `new WreckerFx().frame(...)` -> `{ rings, chips: SparkBurstView[],
+  chipShape }` (chips through the particle system like the spark bursts); `new HeartBeamFx().frame(...)` ->
+  `HeartBeamView[]` (the Overkill streak's construction: one straight Neon segment, white core when `core`);
+  `new HappyHourFx().frame(src, state, localIndex, quiet)` -> show the toast when true; the score pops take
+  `happyPopTone(tone, happy.isOn(viewIndex, state.tick))` per kill pop and colour `ScorePopTone.HAPPY` in
+  `BUILDS_V2_FX.happyHour.popRole`; `new OvercapPops().frame(src, state, view, quiet, alpha)` -> `OvercapPopView[]`
+  drawn as "+points" at scale `BUILDS_V2_FX.overcap.scale`, `liftPx` higher, `overcapPopRise`, alpha
+  `scorePopAlpha(ageSec)` (x `teammateOpacity` when not `mine`), `build.overcap`, rebuilding the label when `version`
+  changes. The run-over line needs nothing.
+
+Studio checklist items served (all still pending, nobody has run Studio): 1, 2, 3 (the request goes through the combo
+shout's construction), 4, 5, 6, 7, 8 (Rebuke's waves), 10 (the merge; "never over a boss bullet" is the client's draw
+order), 11 (every Reduced variant above), 12 (owner, `mine`, `teammateOpacity`).
+
 ## Appendix: the proposal (2026-11-05)
 
 Kept as written (Overkill withdrawn to docs/LEGENDARIES.md 2026-11-06, Matador dropped and the owner calls settled

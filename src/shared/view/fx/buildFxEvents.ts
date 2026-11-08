@@ -26,11 +26,25 @@
  *     bracing player, x / z where they stood at collect, kind = BraceKind PIP / HEAL / SPENT, amount 1, gen 0).
  *     Supernova's and Skewer's duoProc entries go to `duoProcs` like BU6's (an origin flare; amount: Supernova's bolts,
  *     Skewer's enemies struck including the target).
+ *   - docs/BUILDS_V2.md BV11 (builds v2, wave 1; BV1's BuildEvents lists as built): one WaveRecord per counter-wave
+ *     spawned (`waves`: Riposte's FORWARD crescent, Counterstrike's RING, Rebuke's REBUKE ring; the origin, unit
+ *     direction, half-angle cosine, range, speed, owner, damage, WaveKind and `count` = counterCount, the erases it
+ *     answers); one BallistaRecord per burst (`ballistas`: amount = bolts spawned, kind = 1 a wall's back fan / 0 the last
+ *     pierce's ring, dirX / dirZ the unit direction from the burst toward its archer where they stood at collect, the
+ *     fan's facing as the view guesses it: the feed carries no flight direction; 0 / 0 when they coincide); Siege
+ *     Bolt's `pinStarts` (actor slot, archer, where) and `pinEnds` (actor slot, archer, distance carried, slam); `slams`
+ *     (EffectRecord: the slammed actor, owner, amount = enemies struck); Wrecker's `smashes` (the piece's cell centre,
+ *     owner, gen = the smash's generation, amount = splinters spawned) and Demolition's `demolitions` (amount 1); Full
+ *     Heart's `heartBeams` (BeamRecord: the line, owner, enemies struck); Happy Hour's `happyHours` (the drinking
+ *     player); `overcaps` (EffectRecord: the boss, the hitter, amount = points paid). Thunder Guard's sparks are
+ *     ordinary SparkRecords with `thunder` set (sparkFork SparkFork.THUNDER: from an erased bullet; never a `fork`).
+ *     Rebuke has no list of its own (its rings are `waves` of kind REBUKE); Dragon Bolt's embers are `embers` of kind
+ *     Duo.DRAGON_BOLT; Thunder Guard's and Powder Keg's duoProc entries go to `duoProcs` like BU6's (an origin flare).
  *   - Runs without builds (`state.builds === undefined`: M1, the tutorial, fixtures) collect nothing: no tick, no record.
  *
  * Read-only on the sim. No allocation in steady state (records come from pools that only grow). Presentation only.
  */
-import { BulletKind, BulletPayload, Duo, playerAt, partySize, type SimState } from "shared/sim";
+import { BulletKind, BulletPayload, Duo, SparkFork, playerAt, partySize, type SimState } from "shared/sim";
 
 /** One spark segment: from (x1, z1) to the target at (x2, z2); `fork` a Storm Crown fork (from the hop's start). */
 export interface SparkRecord {
@@ -41,6 +55,8 @@ export interface SparkRecord {
 	readonly owner: number;
 	readonly gen: number;
 	readonly fork: boolean;
+	/** docs/BUILDS_V2.md BV11: a Thunder Guard spark (SparkFork.THUNDER: from an erased bullet to its target). */
+	readonly thunder: boolean;
 	readonly tick: number;
 }
 
@@ -81,6 +97,72 @@ export interface TakeRecord {
 	readonly tick: number;
 }
 
+/**
+ * One counter-wave spawned (docs/BUILDS_V2.md BV2 / BV6, BV11): the BuildWave's numbers at its spawn, the erases it
+ * answers (`count`, COUNTER xN) and the tick (the wave grew once on that tick: radius speed x SIM_DT at its end).
+ */
+export interface WaveRecord {
+	readonly x: number;
+	readonly z: number;
+	/** Unit direction (the facing); a full ring's too. */
+	readonly dirX: number;
+	readonly dirZ: number;
+	/** The cone's half-angle cosine (a full ring: below -1). */
+	readonly halfCos: number;
+	/** Where it ends and its growth, world units and units per second. */
+	readonly range: number;
+	readonly speed: number;
+	readonly owner: number;
+	readonly damage: number;
+	/** WaveKind (FORWARD / RING / REBUKE). */
+	readonly kind: number;
+	/** counterCount: the guard's (or roll's) erases it answers. */
+	readonly count: number;
+	readonly tick: number;
+}
+
+/** A Ballista burst (BV3, BV11): an EffectRecord (amount = bolts, kind = 1 back fan / 0 ring) and a facing guess. */
+export interface BallistaRecord extends EffectRecord {
+	/** Unit direction from the burst toward its archer at collect (0 / 0 when they coincide or the archer is gone). */
+	readonly dirX: number;
+	readonly dirZ: number;
+}
+
+/** A Siege Bolt pin that started (BV4): the pinned actor's slot, the archer, where the actor was. */
+export interface PinStartRecord {
+	readonly slot: number;
+	readonly owner: number;
+	readonly x: number;
+	readonly z: number;
+	readonly tick: number;
+}
+
+/** A Siege Bolt pin that ended (BV4): the actor's slot, the archer, the distance carried (world units), a slam or not. */
+export interface PinEndRecord {
+	readonly slot: number;
+	readonly owner: number;
+	readonly carried: number;
+	readonly slam: boolean;
+	readonly tick: number;
+}
+
+/** A Full Heart beam (BV7): from the player (x1, z1) to the line's end (x2, z2), the owner, enemies struck. */
+export interface BeamRecord {
+	readonly x1: number;
+	readonly z1: number;
+	readonly x2: number;
+	readonly z2: number;
+	readonly owner: number;
+	readonly struck: number;
+	readonly tick: number;
+}
+
+/** A player and the tick (Happy Hour's drink, BV7). */
+export interface PlayerTickRecord {
+	readonly player: number;
+	readonly tick: number;
+}
+
 /** What the views read once per frame (BuildFxEvents satisfies it). */
 export interface BuildFxFrameSource {
 	/** Builds ticks collected this frame. */
@@ -110,6 +192,25 @@ export interface BuildFxFrameSource {
 	readonly overkills: ReadonlyArray<StreakRecord>;
 	/** LG6: Bastion braces (owner: the bracing player; kind: BraceKind). */
 	readonly braces: ReadonlyArray<EffectRecord>;
+	// --- docs/BUILDS_V2.md BV11 (builds v2, wave 1; see the file comment). ---
+	/** Counter-waves spawned (Riposte, Counterstrike, Rebuke). */
+	readonly waves: ReadonlyArray<WaveRecord>;
+	/** Ballista bursts (kind 1 a back fan, 0 a ring; amount: bolts). */
+	readonly ballistas: ReadonlyArray<BallistaRecord>;
+	/** Siege Bolt pins that started / ended. */
+	readonly pinStarts: ReadonlyArray<PinStartRecord>;
+	readonly pinEnds: ReadonlyArray<PinEndRecord>;
+	/** Siege Bolt slams (amount: enemies struck). */
+	readonly slams: ReadonlyArray<EffectRecord>;
+	/** Wrecker smashes (gen: the smash's generation; amount: splinters) and Demolition blasts. */
+	readonly smashes: ReadonlyArray<EffectRecord>;
+	readonly demolitions: ReadonlyArray<EffectRecord>;
+	/** Full Heart beams. */
+	readonly heartBeams: ReadonlyArray<BeamRecord>;
+	/** Happy Hour drinks (the player whose timer started or restarted). */
+	readonly happyHours: ReadonlyArray<PlayerTickRecord>;
+	/** Overcap payouts (owner: the hitter; amount: points). */
+	readonly overcaps: ReadonlyArray<EffectRecord>;
 }
 
 interface SparkSlot {
@@ -120,6 +221,7 @@ interface SparkSlot {
 	owner: number;
 	gen: number;
 	fork: boolean;
+	thunder: boolean;
 	tick: number;
 }
 
@@ -151,6 +253,57 @@ interface NovaSlot extends EffectSlot {
 interface TakeSlot {
 	player: number;
 	index: number;
+	tick: number;
+}
+
+interface WaveSlot {
+	x: number;
+	z: number;
+	dirX: number;
+	dirZ: number;
+	halfCos: number;
+	range: number;
+	speed: number;
+	owner: number;
+	damage: number;
+	kind: number;
+	count: number;
+	tick: number;
+}
+
+interface BallistaSlot extends EffectSlot {
+	dirX: number;
+	dirZ: number;
+}
+
+interface PinStartSlot {
+	slot: number;
+	owner: number;
+	x: number;
+	z: number;
+	tick: number;
+}
+
+interface PinEndSlot {
+	slot: number;
+	owner: number;
+	carried: number;
+	slam: boolean;
+	tick: number;
+}
+
+interface BeamSlot {
+	x1: number;
+	z1: number;
+	x2: number;
+	z2: number;
+	owner: number;
+	struck: number;
+	tick: number;
+}
+
+interface PlayerTickSlot {
+	player: number;
 	tick: number;
 }
 
@@ -196,6 +349,7 @@ export class BuildFxEvents implements BuildFxFrameSource {
 		owner: 0,
 		gen: 0,
 		fork: false,
+		thunder: false,
 		tick: 0,
 	}));
 	private readonly burstList = new Pooled<EffectSlot>(newEffect);
@@ -226,6 +380,52 @@ export class BuildFxEvents implements BuildFxFrameSource {
 		tick: 0,
 	}));
 	private readonly braceList = new Pooled<EffectSlot>(newEffect);
+	// docs/BUILDS_V2.md BV11 (builds v2, wave 1).
+	private readonly waveList = new Pooled<WaveSlot>(() => ({
+		x: 0,
+		z: 0,
+		dirX: 0,
+		dirZ: 0,
+		halfCos: 0,
+		range: 0,
+		speed: 0,
+		owner: 0,
+		damage: 0,
+		kind: 0,
+		count: 0,
+		tick: 0,
+	}));
+	private readonly ballistaList = new Pooled<BallistaSlot>(() => ({ ...newEffect(), dirX: 0, dirZ: 0 }));
+	private readonly pinStartList = new Pooled<PinStartSlot>(() => ({ slot: 0, owner: 0, x: 0, z: 0, tick: 0 }));
+	private readonly pinEndList = new Pooled<PinEndSlot>(() => ({
+		slot: 0,
+		owner: 0,
+		carried: 0,
+		slam: false,
+		tick: 0,
+	}));
+	private readonly slamList = new Pooled<EffectSlot>(newEffect);
+	private readonly smashList = new Pooled<EffectSlot>(newEffect);
+	private readonly demolitionList = new Pooled<EffectSlot>(newEffect);
+	private readonly heartBeamList = new Pooled<BeamSlot>(() => ({
+		x1: 0,
+		z1: 0,
+		x2: 0,
+		z2: 0,
+		owner: 0,
+		struck: 0,
+		tick: 0,
+	}));
+	private readonly happyList = new Pooled<PlayerTickSlot>(() => ({ player: 0, tick: 0 }));
+	private readonly overcapList = new Pooled<EffectSlot>(newEffect);
+	/** BV11's lists that are not effect lists, for reset and count. */
+	private readonly waveOneLists: ReadonlyArray<{ readonly items: ReadonlyArray<defined>; clear(): void }> = [
+		this.waveList,
+		this.pinStartList,
+		this.pinEndList,
+		this.heartBeamList,
+		this.happyList,
+	];
 	/** Every effect list, for reset and count. */
 	private readonly effectLists: ReadonlyArray<Pooled<EffectSlot>> = [
 		this.burstList,
@@ -244,6 +444,11 @@ export class BuildFxEvents implements BuildFxFrameSource {
 		this.goldRushList,
 		this.unshakenList,
 		this.braceList,
+		this.ballistaList,
+		this.slamList,
+		this.smashList,
+		this.demolitionList,
+		this.overcapList,
 	];
 
 	readonly sparks: ReadonlyArray<SparkRecord> = this.sparkList.items;
@@ -266,6 +471,16 @@ export class BuildFxEvents implements BuildFxFrameSource {
 	readonly duos: ReadonlyArray<TakeRecord> = this.duoList.items;
 	readonly overkills: ReadonlyArray<StreakRecord> = this.streakList.items;
 	readonly braces: ReadonlyArray<EffectRecord> = this.braceList.items;
+	readonly waves: ReadonlyArray<WaveRecord> = this.waveList.items;
+	readonly ballistas: ReadonlyArray<BallistaRecord> = this.ballistaList.items;
+	readonly pinStarts: ReadonlyArray<PinStartRecord> = this.pinStartList.items;
+	readonly pinEnds: ReadonlyArray<PinEndRecord> = this.pinEndList.items;
+	readonly slams: ReadonlyArray<EffectRecord> = this.slamList.items;
+	readonly smashes: ReadonlyArray<EffectRecord> = this.smashList.items;
+	readonly demolitions: ReadonlyArray<EffectRecord> = this.demolitionList.items;
+	readonly heartBeams: ReadonlyArray<BeamRecord> = this.heartBeamList.items;
+	readonly happyHours: ReadonlyArray<PlayerTickRecord> = this.happyList.items;
+	readonly overcaps: ReadonlyArray<EffectRecord> = this.overcapList.items;
 
 	/** A new frame: forget the last one's records. */
 	reset(): void {
@@ -275,12 +490,14 @@ export class BuildFxEvents implements BuildFxFrameSource {
 		this.evolvedList.clear();
 		this.duoList.clear();
 		this.streakList.clear();
+		for (const l of this.waveOneLists) l.clear();
 	}
 
 	/** Every record of this frame (0: nothing happened). */
 	count(): number {
 		let n = this.sparks.size() + this.evolved.size() + this.duos.size() + this.overkills.size();
 		for (const l of this.effectLists) n += l.items.size();
+		for (const l of this.waveOneLists) n += l.items.size();
 		return n;
 	}
 
@@ -299,7 +516,10 @@ export class BuildFxEvents implements BuildFxFrameSource {
 			r.z2 = e.sparkZ2[i];
 			r.owner = e.sparkOwner[i];
 			r.gen = e.sparkGen[i];
-			r.fork = (e.sparkFork[i] ?? 0) !== 0;
+			// BV11: a Thunder Guard spark (SparkFork.THUNDER) is no Storm Crown fork (it was drawn thin before BV11).
+			const fork = e.sparkFork[i] ?? SparkFork.HOP;
+			r.fork = fork === SparkFork.FORK;
+			r.thunder = fork === SparkFork.THUNDER;
 			r.tick = tick;
 		}
 		for (let i = 0; i < e.burstX.size(); i++) {
@@ -330,6 +550,85 @@ export class BuildFxEvents implements BuildFxFrameSource {
 		this.collectEvolutions(state, tick);
 		this.collectDuos(state, tick);
 		this.collectLegendaries(state, tick);
+		this.collectWaveOne(state, tick);
+	}
+
+	/** docs/BUILDS_V2.md BV11: builds v2, wave 1's lists (see the file comment). */
+	private collectWaveOne(state: Readonly<SimState>, tick: number): void {
+		const e = state.builds!.events;
+		for (let i = 0; i < e.waveX.size(); i++) {
+			const r = this.waveList.push();
+			r.x = e.waveX[i];
+			r.z = e.waveZ[i];
+			r.dirX = e.waveDirX[i];
+			r.dirZ = e.waveDirZ[i];
+			r.halfCos = e.waveHalfCos[i];
+			r.range = e.waveRange[i];
+			r.speed = e.waveSpeed[i];
+			r.owner = e.waveOwner[i];
+			r.damage = e.waveDamage[i];
+			r.kind = e.waveKind[i];
+			r.count = e.counterCount[i] ?? 0;
+			r.tick = tick;
+		}
+		const n = partySize(state);
+		for (let i = 0; i < e.ballistaX.size(); i++) {
+			const r = this.ballistaList.push();
+			const x = e.ballistaX[i];
+			const z = e.ballistaZ[i];
+			const owner = e.ballistaOwner[i];
+			effect(r, x, z, owner, 0, e.ballistaFired[i], tick);
+			r.kind = e.ballistaWall[i];
+			const p = owner >= 0 && owner < n ? playerAt(state, owner) : undefined;
+			const dx = p !== undefined ? p.x - x : 0;
+			const dz = p !== undefined ? p.z - z : 0;
+			const d = math.sqrt(dx * dx + dz * dz);
+			r.dirX = d > 0 ? dx / d : 0;
+			r.dirZ = d > 0 ? dz / d : 0;
+		}
+		for (let i = 0; i < e.pinStartSlot.size(); i++) {
+			const r = this.pinStartList.push();
+			r.slot = e.pinStartSlot[i];
+			r.owner = e.pinStartOwner[i];
+			r.x = e.pinStartX[i];
+			r.z = e.pinStartZ[i];
+			r.tick = tick;
+		}
+		for (let i = 0; i < e.pinEndSlot.size(); i++) {
+			const r = this.pinEndList.push();
+			r.slot = e.pinEndSlot[i];
+			r.owner = e.pinEndOwner[i];
+			r.carried = e.pinEndCarried[i];
+			r.slam = e.pinEndSlam[i] !== 0;
+			r.tick = tick;
+		}
+		for (let i = 0; i < e.slamX.size(); i++)
+			effect(this.slamList.push(), e.slamX[i], e.slamZ[i], e.slamOwner[i], 0, e.slamStruck[i], tick);
+		for (let i = 0; i < e.smashX.size(); i++) {
+			const gen = e.smashGen[i];
+			effect(this.smashList.push(), e.smashX[i], e.smashZ[i], e.smashOwner[i], gen, e.smashFired[i], tick);
+		}
+		for (let i = 0; i < e.demolitionX.size(); i++)
+			effect(this.demolitionList.push(), e.demolitionX[i], e.demolitionZ[i], e.demolitionOwner[i], 0, 1, tick);
+		for (let i = 0; i < e.beamX1.size(); i++) {
+			const r = this.heartBeamList.push();
+			r.x1 = e.beamX1[i];
+			r.z1 = e.beamZ1[i];
+			r.x2 = e.beamX2[i];
+			r.z2 = e.beamZ2[i];
+			r.owner = e.beamOwner[i];
+			r.struck = e.beamStruck[i];
+			r.tick = tick;
+		}
+		for (let i = 0; i < e.happyPlayer.size(); i++) {
+			const r = this.happyList.push();
+			r.player = e.happyPlayer[i];
+			r.tick = tick;
+		}
+		for (let i = 0; i < e.overcapX.size(); i++) {
+			const points = e.overcapPoints[i];
+			effect(this.overcapList.push(), e.overcapX[i], e.overcapZ[i], e.overcapOwner[i], 0, points, tick);
+		}
 	}
 
 	/** LG6: Overkill's streaks and Bastion's braces (see the file comment). */
@@ -448,6 +747,12 @@ const EMPTY_EFFECTS = table.freeze([] as EffectRecord[]);
 const EMPTY_NOVAS = table.freeze([] as NovaRecord[]);
 const EMPTY_TAKES = table.freeze([] as TakeRecord[]);
 const EMPTY_STREAKS = table.freeze([] as StreakRecord[]);
+const EMPTY_WAVES = table.freeze([] as WaveRecord[]);
+const EMPTY_BALLISTAS = table.freeze([] as BallistaRecord[]);
+const EMPTY_PIN_STARTS = table.freeze([] as PinStartRecord[]);
+const EMPTY_PIN_ENDS = table.freeze([] as PinEndRecord[]);
+const EMPTY_BEAMS = table.freeze([] as BeamRecord[]);
+const EMPTY_PLAYER_TICKS = table.freeze([] as PlayerTickRecord[]);
 
 /** No build effects (no run, no builds, or audibleBuilds while quiet). Frozen. */
 export const NO_BUILD_FX_EVENTS: BuildFxFrameSource = table.freeze({
@@ -472,6 +777,16 @@ export const NO_BUILD_FX_EVENTS: BuildFxFrameSource = table.freeze({
 	duos: EMPTY_TAKES,
 	overkills: EMPTY_STREAKS,
 	braces: EMPTY_EFFECTS,
+	waves: EMPTY_WAVES,
+	ballistas: EMPTY_BALLISTAS,
+	pinStarts: EMPTY_PIN_STARTS,
+	pinEnds: EMPTY_PIN_ENDS,
+	slams: EMPTY_EFFECTS,
+	smashes: EMPTY_EFFECTS,
+	demolitions: EMPTY_EFFECTS,
+	heartBeams: EMPTY_BEAMS,
+	happyHours: EMPTY_PLAYER_TICKS,
+	overcaps: EMPTY_EFFECTS,
 });
 
 /**
