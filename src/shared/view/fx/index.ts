@@ -51,6 +51,7 @@ export * from "./buildsV2FxConfig";
 export * from "./buildsV2Fx";
 export * from "./counterWaveFx";
 export * from "./siegeFx";
+export * from "./siegeDraw"; // BV11c: the bow's drawing rules
 export * from "./wreckerFx";
 export * from "./heartBeamFx";
 export * from "./overcapFx";

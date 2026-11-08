@@ -34,4 +34,5 @@ export * from "./BuildFxController";
 export * from "./BraceFxController";
 // docs/BUILDS_V2.md BV11b: Riposte's counter-waves and COUNTER xN.
 export * from "./CounterWaveController";
+export * from "./SiegeFxController"; // docs/BUILDS_V2.md BV11c: Ballista / Siege Bolt
 export * from "./DailyRankController";

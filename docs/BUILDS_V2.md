@@ -1302,6 +1302,59 @@ Studio checklist items served (all still pending, nobody has run Studio): 1 (the
 sim's sweep), 2 (the ladder: the cue mapper, verified wired), 3 (COUNTER xN through the combo shout), 4 (the ring;
 the returns are the shard bullets), 8 (Rebuke's ring), 11 (Reduced: thinner band, no glow, half the segments), 12
 (a teammate's wave at teammateOpacity, no COUNTER for it).
+## BV11 (as built: bow visuals)
+
+BV11c: Ballista's and Siege Bolt's client view on the pure core's `BowFx` (above). Presentation only: no sim, dungeon,
+hash, replay, lockstep, score, theme or string change; the pure core's behaviour is unchanged (one small pure module
+added beside it, with a spec).
+
+- **Pure drawing rules** (`shared/view/fx/siegeDraw.ts`, new; in the fx barrel): `waveOneSegmentAngle(ring, i)` /
+  `waveOneChordTiles(ring)` place a `WaveOneRingView` as `segments` flat chords (a full ring's angles are
+  BuildFxController.drawRing's `2 pi (i + 0.5) / n`; a fan's spread over `atan2(dirZ, dirX) +- halfAngleRad`, chord
+  `2 r sin(span / 2n)`); `PinHoldMask` (slot -> held, exactly the frame's `BowFx` pins, no allocation, `isHeld`,
+  `clear`); `slamNudge(slams, viewIndex, partySize, quiet)`: `SIEGE_DRAW.slamNudge` for the view player's slam, else
+  `none`. Tunables `SIEGE_DRAW` (`slamNudge` `"stamp"`, `folderName` `KV_SiegeFx`); every size, life and role stays in
+  `BUILDS_V2_FX.ballista` / `.pin` / `.slam`.
+- **SiegeFxController** (`client/controllers/fx`, new; in the barrel): the ONE `BowFx`, stepped as an FxTrackerController
+  frame handler (after the frame's ticks, before ActorRenderController's render step) with `run.builds`, the state, the
+  view player, `comboQuiet(covered, runOver)`, `{ juice, buildFx }` and the run's alpha. It draws:
+  - **Ballista** (Studio 5): every ring / back-fan record's flash as pooled flat Neon chords, the build rings'
+    construction (Volatile's nova ring), sized by `ring.block`, transparency `1 - fade` (the fade carries a teammate's
+    0.7). **The bolts need nothing:** they are `BulletKind.BURST`, so `playerBulletLookOf` gives them `PlayerBulletLook.BURST`
+    (Volatile's trailed bolt) in the player bullet pool already.
+  - **Siege Bolt pins** (Studio 6): the hold (below) and the drag streak, `pinStreak(x0, z0, body, level)` toward the
+    body's drawn position (`lerp(prev, cur, alpha)`, as the actor renderer draws it), ONE straight Neon segment (the
+    Overkill streak's construction, no core) in `pin.role` at `pin.liftStuds`, `widthStuds` (Reduced thinner), a
+    teammate's at `1 - ownerOpacity`. PINNED: BowFx's shout through `ComboController.requestShout(floorShoutText(...),
+    role colour, lifeSec, FLOOR_SHOUT_PRIORITY.pinned)`, once per pin start of the view player.
+  - **The slam** (Studio 6): `freezeMs` (BowFx's `slamFreezeMs`: 40 ms, view player, solo, `freezeFrameOn`) to
+    `SimController.hitstop.request` (the Goldling catch's path), the shock ring to `SIEGE_SHOCK_RADIUS` (Full only: BowFx
+    drops it under Reduced), SLAM at `FLOOR_SHOUT_PRIORITY.slam`, and the **`stamp` nudge** through
+    `FreezeFrameController.requestNudge` (the Screen shake gate): the Goldling catch's / room clear stamp's 1-texel kick
+    down, the heavy rank, so it replaces the slam hit's own `heavy` nudge (the 300 % hit is >= HEAVY_HIT_DAMAGE) rather
+    than adding to it; `heavy` would have been the same kick 10 ms shorter.
+  - No run, quiet or the run's exit: the planner and the mask reset, every part parked. One BulkMoveTo a frame.
+- **The sprite hold** (`ActorRenderController`, two small hooks): `setPinHolds(held)` (SiegeFxController hands its
+  `PinHoldMask.held` over once at start) and in `applyHitReact` `sprite.setHold(look.hold || pinHolds[slot])`: a
+  carried actor's sprite keeps its frame, facing and clock (SpriteView's hit hold) until the pin ends, then animates
+  (a death that ends the pin plays). **Not gated by reduced motion** (the hit hold is, JD9): the pin is sim state, and a
+  walk cycle under a dragged body would be wrong rather than calmer. **Placeholders:** they have no sprite clock; their
+  facing is the sim's, already frozen by the pinned mask (`def.step` skipped), so nothing more to hold; they get the
+  streak, rings and text like sprites.
+- **BuildFxController**: `FxPartPool` exported (one word plus its comment) for SiegeFxController; nothing else.
+- **Specs.** `fx/siegeDraw.spec.ts` (new, 6 tests): full-ring angles and chord, fan angles symmetric inside facing +-
+  half and their chord, a -x fan, empty rings; the mask holds exactly the frame's slots, drops ended ones, ignores
+  out-of-range slots; the nudge for the view player's slam only (teammate, quiet, outside the party: none).
+- **Verify.** `typecheck`, `lint` (0 warnings), `build`, `check:assets`, `check:autolocalize` green; headless
+  `test:only` on `view/fx` (28 suites, 444 tests) and `view/audio` + `view/hud` (50 suites, 727 tests): all pass. No
+  string changed (no `test:l10n`). Not run: the full `npm run verify`; Studio.
+- **Deviations / limits.** The fan's facing is still BowFx's guess toward the archer. The streak has no fade of its own
+  (it shows while the pin lives and goes with it). The streak is drawn to the actor's sim centre, not its hit push.
+
+Studio checklist items served (all still pending, nobody has run Studio): 5 (ring at the last pierce, back fan at a
+wall), 6 (the held, carried body, its streak, PINNED, the slam's freeze, ring, SLAM and nudge), 11 (Reduced: thinner
+streak, fewer chords, no shock ring), 12 (a teammate's rings and streak at `teammateOpacity`; their pins hold the body
+too, their slam neither freezes nor kicks your camera, no PINNED / SLAM for them).
 
 ## Appendix: the proposal (2026-11-05)
 

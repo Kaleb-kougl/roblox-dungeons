@@ -282,6 +282,8 @@ export class ActorRenderController implements OnStart {
 	private flashingModel: Model | undefined;
 	private readonly hitToward = { x: 0, z: 0 };
 	private readonly pushScratch = [0, 0, 0];
+	/** Siege Bolt's pin hold (docs/BUILDS_V2.md BV11c; setPinHolds): slot -> held, or undefined. */
+	private pinHolds: ReadonlyArray<boolean> | undefined;
 
 	// --- elite affixes (docs/ENEMY_VARIANTS.md EV9) ----------------------------------------------
 	/** Shield hits from a per-frame diff of state.affixes (the body flashes in enemyShield). */
@@ -935,6 +937,14 @@ export class ActorRenderController implements OnStart {
 		this.fx.onFrame((events, settings, dt) => this.hitReactFrame(events, settings, dt));
 	}
 
+	/**
+	 * docs/BUILDS_V2.md BV11c, Siege Bolt: SiegeFxController's pin mask (PinHoldMask.held, slot -> carried by an arrow),
+	 * handed over once and read every frame by applyHitReact: a pinned actor's sprite holds while it is carried.
+	 */
+	setPinHolds(held: ReadonlyArray<boolean>): void {
+		this.pinHolds = held;
+	}
+
 	/** Holds an actor's sprite for `seconds` of the hit-reaction clock (docs/ROOM_CLEAR.md RC5). */
 	holdActor(slot: number, actorId: number, seconds: number): void {
 		this.hitReact.hold(slot, actorId, this.hitNow + seconds);
@@ -969,7 +979,7 @@ export class ActorRenderController implements OnStart {
 		const sprite = view.sprite;
 		if (sprite !== undefined) {
 			sprite.setRimFlash(look.rimFlash ? this.hitFlashColor : shieldFlash ? this.shieldColor : undefined);
-			sprite.setHold(look.hold);
+			sprite.setHold(look.hold || this.pinHolds?.[slot] === true); // BV11c: a Siege Bolt pin holds the sprite
 			sprite.setPushTexels(look.pushX, look.pushY, this.basis);
 			return;
 		}
