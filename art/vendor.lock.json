@@ -3257,6 +3257,16 @@
 			"bytes": 16191
 		},
 		{
+			"path": "lords-of-pain-patch/blotch1.png",
+			"sha256": "de1f61723e6da1dfa40bd85a69a52d22c046707273e3d6f96107a25666c49f8c",
+			"bytes": 16748
+		},
+		{
+			"path": "lords-of-pain-patch/blotch2.png",
+			"sha256": "6953b4258137c883608ea20498d0f7c60f05d8c6112c3f5e3cdcdb1bd3ca7cf4",
+			"bytes": 5793
+		},
+		{
 			"path": "lords-of-pain/boss/demonlord/demonlord_default_attack1/E/demonlord_default_attack1_E_0.0_0.png",
 			"sha256": "86f9d155a9c11256a6d1a70e737546f60da067f98c2d81e290f476b0bb3355f5",
 			"bytes": 42927

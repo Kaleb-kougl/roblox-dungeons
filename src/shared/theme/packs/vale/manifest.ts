@@ -255,7 +255,15 @@ export interface ValeDecorPiece {
  */
 export const VALE_PATCH_LOOKS = ["dirt", "planks-a", "planks-b", "planksbroken-a", "planksbroken-b"] as const;
 
-/** The floor patch pieces: decor.delve.b<n>.patch.<v> -> that biome's bake of look v (VALE_PATCH_LOOKS). */
+/**
+ * The ancient biome's own floor patches (docs/KENNEY_DECOR.md "LoP floor blotches"): the Lords of Pain ground overlays,
+ * a worn-stone blotch and a soft black stain, drawn for the camera by scripts/art/lop/floor_blotches.py. They belong to
+ * the pack's stone floor (`tile.biome.1.floor`), so biome.1 only, variants 6-7 after the Kenney looks; each switches on
+ * once its PNG has an ID (until then biome.1 keeps its five looks and the plan is unchanged).
+ */
+export const VALE_ANCIENT_PATCH_ART = ["lop-patch-blotch1", "lop-patch-blotch2"] as const;
+
+/** The floor patch pieces: decor.delve.b<n>.patch.<v> -> that biome's bake of look v (VALE_PATCH_LOOKS), then biome.1's LoP blotches. */
 function valePatchPieces(): ValeDecorPiece[] {
 	const out: ValeDecorPiece[] = [];
 	BIOMES.forEach((b, i) => {
@@ -268,6 +276,9 @@ function valePatchPieces(): ValeDecorPiece[] {
 				biome: b.id,
 			});
 		});
+	});
+	VALE_ANCIENT_PATCH_ART.forEach((art, k) => {
+		out.push({ kind: "patch", variant: VALE_PATCH_LOOKS.size() + k + 1, art, layer: "flat", biome: BIOMES[0].id });
 	});
 	return out;
 }

@@ -836,6 +836,8 @@ Decision log (deviations from `PLAN.md`):
   `biomeGrade`: mean 35 % of the way from the floor colour, detail x0.55, feathered): 25 own PNGs
   `kenney-patch-<look>-b<n>`; `ValeDecorPiece.biome` maps a piece in one biome only (`VALE_PATCH_LOOKS`). The 12 + 25
   PNGs uploaded 2026-11-06 (IDs in `packs/vale/assetIds.ts`), so the bundled vale pack draws both; Studio check pending.
+  **LoP floor blotches (2026-11-08):** biome.1 adds the Lords of Pain ground overlays as floor patches 6 / 7
+  (`VALE_ANCIENT_PATCH_ART`, `scripts/art/lop/floor_blotches.py`, own PNGs `lop-patch-blotch1` / `-2`); upload pending.
 
 - **Training dummy art (docs/DUMMY_ART.md).** Presentation only (no sim, dungeon, lockstep, hash, replay, fixture or
   score change; the dummy keeps its 8 hp, body and corpse time). `enemy.dummy` gets a one-facing pixel-art sprite set

@@ -2605,6 +2605,22 @@ export const VALE_WORLD_LAYOUTS: Record<string, ValeWorldLayout> = {
 			idle: { sheet: 0, start: 0, frames: 8, fps: 12, loop: true },
 		},
 	},
+	"lop-patch-blotch1": {
+		kind: "image",
+		file: "lop-patch-blotch1.png",
+		w: 115,
+		h: 96,
+		pivot: { x: 59.25, y: 49.25 },
+		pixelsPerTile: 29.6,
+	},
+	"lop-patch-blotch2": {
+		kind: "image",
+		file: "lop-patch-blotch2.png",
+		w: 114,
+		h: 93,
+		pivot: { x: 56.25, y: 47.25 },
+		pixelsPerTile: 29.6,
+	},
 	mote: {
 		kind: "image",
 		file: "decor-mote.png",
