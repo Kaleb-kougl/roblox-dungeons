@@ -65,6 +65,7 @@ import {
 	KillCause,
 	SIEGE_PINS_MAX,
 	SIEGE_SHOCK_DAMAGE,
+	SIEGE_SHOCK_GEN,
 	SIEGE_SHOCK_RADIUS,
 	SIEGE_SLAM_DAMAGE_PERCENT,
 	SIEGE_SLAM_SHORT,
@@ -250,7 +251,7 @@ function slam(ctx: SimCtx, s: BuildsState, pin: Readonly<BuildPin>, a: ActorStat
 	ctx.damageActor(a, playerHitDamage(state, owner, scalePercent(arrowDamage, SIEGE_SLAM_DAMAGE_PERCENT)));
 	let struck = 1;
 	// The shockwave: every other living enemy within the radius, slot order, one generation on.
-	ctx.procGen = 1;
+	ctx.procGen = SIEGE_SHOCK_GEN;
 	const shock = playerHitDamage(state, owner, SIEGE_SHOCK_DAMAGE);
 	const actors = ctx.actors;
 	for (let k = 0; k < actors.size(); k++) {
@@ -264,7 +265,7 @@ function slam(ctx: SimCtx, s: BuildsState, pin: Readonly<BuildPin>, a: ActorStat
 	}
 	ctx.procGen = gen;
 	ctx.procCause = cause;
-	breakPieces(state, x, z);
+	breakPieces(state, x, z, owner);
 	const e = s.events;
 	e.slamX.push(x);
 	e.slamZ.push(z);
@@ -272,8 +273,11 @@ function slam(ctx: SimCtx, s: BuildsState, pin: Readonly<BuildPin>, a: ActorStat
 	e.slamStruck.push(struck);
 }
 
-/** Breaks every intact piece but a chest whose cell centre is within SIEGE_SHOCK_RADIUS of (x, z). */
-function breakPieces(state: SimState, x: number, z: number): void {
+/**
+ * Breaks every intact piece but a chest whose cell centre is within SIEGE_SHOCK_RADIUS of (x, z), for `owner` at the
+ * shockwave's generation (1), so a Wrecker archer's pieces splinter (docs/BUILDS_V2.md BV5).
+ */
+function breakPieces(state: SimState, x: number, z: number, owner: number): void {
 	const b = state.breakables;
 	if (b === undefined || b.intact === 0) return;
 	for (let k = 0; k < b.pieces.size(); k++) {
@@ -282,7 +286,6 @@ function breakPieces(state: SimState, x: number, z: number): void {
 		const dx = gridToWorld(p.x) - x;
 		const dz = gridToWorld(p.y) - z;
 		if (dx * dx + dz * dz > SHOCK_RADIUS2) continue;
-		// Wrecker: owner (BV5 adds damageBreakable's trailing owner: pass the archer here).
-		damageBreakable(state, k, p.hp, BreakableSource.BUILD);
+		damageBreakable(state, k, p.hp, BreakableSource.BUILD, owner, SIEGE_SHOCK_GEN);
 	}
 }

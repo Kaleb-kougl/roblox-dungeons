@@ -409,6 +409,8 @@ export const SIEGE_SLAM_DAMAGE_PERCENT = 300;
 /** The slam's shockwave: every other living enemy within this of the pinned actor takes SIEGE_SHOCK_DAMAGE ... */
 export const SIEGE_SHOCK_RADIUS = 2 * TILE_SIZE;
 export const SIEGE_SHOCK_DAMAGE = 3;
+/** The shockwave's generation: its kills and the pieces it breaks proc one generation on from the slam (gen 0). */
+export const SIEGE_SHOCK_GEN = 1;
 
 // Wrecker (common, offense; BV5). Roll smash: PLAYER_RADIUS + BREAKABLE_HIT_RADIUS swept along the roll's step.
 
