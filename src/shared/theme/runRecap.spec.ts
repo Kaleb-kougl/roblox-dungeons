@@ -86,6 +86,7 @@ const ENGLISH: ReadonlyArray<[string, string, string[]]> = [
 	["run.recap.party.kills", "Kills", []],
 	["run.recap.party.parries", "Parries", []],
 	["run.recap.party.hits", "Hits", []],
+	["run.recap.party.share", "{pct}%", ["pct"]],
 	["run.recap.title.heavyHitter", "Heavy Hitter", []],
 	["run.recap.title.bossBreaker", "Boss Breaker", []],
 	["run.recap.title.finisher", "Finisher", []],
@@ -118,7 +119,7 @@ describe("run recap and co-op moments: contract", () => {
 		expect(all).toEqual(ENGLISH.map(([k]) => k));
 		expect(RECAP_STRING_KEYS.size()).toBe(30);
 		expect(TEAM_MOMENT_STRING_KEYS.size()).toBe(4);
-		expect(CONTRIB_STRING_KEYS.size()).toBe(44);
+		expect(CONTRIB_STRING_KEYS.size()).toBe(45);
 		// docs/TREASURE.md TR6's strings come after them, then docs/FORTUNE.md FO6's
 		const after = TREASURE_STRING_KEYS.size() + FORTUNE_STRING_KEYS.size();
 		expect(tail(REQUIRED_STRING_KEYS, all.size(), after)).toEqual(all);

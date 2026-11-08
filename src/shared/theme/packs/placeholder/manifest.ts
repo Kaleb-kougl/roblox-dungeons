@@ -1561,6 +1561,7 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"run.recap.party.kills": "Kills",
 		"run.recap.party.parries": "Parries",
 		"run.recap.party.hits": "Hits",
+		"run.recap.party.share": "{pct}%",
 		"run.recap.title.heavyHitter": "Heavy Hitter",
 		"run.recap.title.bossBreaker": "Boss Breaker",
 		"run.recap.title.finisher": "Finisher",

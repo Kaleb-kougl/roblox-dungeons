@@ -479,6 +479,11 @@ export interface RecapTimelineOptions {
 	readonly reducedMotion: boolean;
 	/** Start at this clock (a verdict's silent re-derive): rows already due show final, with no sound. Default 0. */
 	readonly atSec?: number;
+	/**
+	 * The first highlight's start (s) instead of RECAP.highlightsStartSec / after NB's rows: a party run's Team tab counts
+	 * its highlights from its first open (docs/RUN_CONTRIBUTION.md CT7, recapViews.ts). Default: as above.
+	 */
+	readonly highlightsAtSec?: number;
 }
 
 /** One row's state (read after step). */
@@ -536,8 +541,9 @@ export class RecapTimeline {
 		this.nearMissRow = nm !== undefined ? 0 : -1;
 		if (nm !== undefined) this.addRow(nm, record ? base : cfg.nearMissDelaySec, cfg.countSec);
 		this.firstHighlightRow = this.rows.size();
+		const first = options.highlightsAtSec ?? base;
 		for (let i = 0; i < options.highlights.size(); i++) {
-			this.addRow(options.highlights[i], base + i * cfg.highlightGapSec, cfg.highlightCountSec);
+			this.addRow(options.highlights[i], first + i * cfg.highlightGapSec, cfg.highlightCountSec);
 		}
 		let settle = 0;
 		for (const r of this.rows) settle = math.max(settle, r.endSec);

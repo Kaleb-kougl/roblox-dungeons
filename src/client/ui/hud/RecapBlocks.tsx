@@ -3,10 +3,12 @@ import { role, str, useHudFont } from "client/ui/theme";
 import type { ColorRole } from "shared/theme";
 import {
 	HUD_VIEW,
+	RECAP_CELL,
 	RECAP_STRINGS,
 	RECAP_UI,
 	recapGridSize,
 	type RecapButtonSize,
+	type RecapCellMetrics,
 	type RecapHighlight,
 } from "shared/view/hud";
 import { useHudActions } from "./actions";
@@ -17,12 +19,12 @@ const HIDDEN = 1;
 const FULL = 1;
 
 /** A text fade's stroke: never more opaque than the HUD's text stroke. */
-function strokeFor(t: number): number {
+export function strokeFor(t: number): number {
 	return math.max(t, HUD_VIEW.panelTransparency);
 }
 
 /** A cell's tile fades with its text: RECAP_UI.cellTransparency when shown, hidden before. */
-function tileFor(t: number): number {
+export function tileFor(t: number): number {
 	return 1 - (1 - RECAP_UI.cellTransparency) * (1 - t);
 }
 
@@ -87,20 +89,34 @@ function ScopeChip(props: { scope: "team" | "you"; fade: React.Binding<number> }
 	);
 }
 
-/** One highlight cell: the label (and the co-op chip) over the counted value. */
-function HighlightCell(props: { index: number; cell: RecapHighlight }) {
+/**
+ * One recap cell (docs/RUN_RECAP.md RR5; the You cells, docs/RUN_CONTRIBUTION.md CT5): the label (and the co-op chip)
+ * over the counted value, or with `metrics.inline` both on one line (label left, value right). The value and the fade
+ * are bindings RecapController writes. `width`: a cell outside the grid (the You card's full-width last cell).
+ */
+export function RecapCell(props: {
+	index: number;
+	labelKey: string;
+	metrics: RecapCellMetrics;
+	fade: React.Binding<number>;
+	value: React.Binding<string>;
+	scope?: "team" | "you";
+	width?: number;
+}) {
 	const font = useHudFont();
-	const U = RECAP_UI;
-	const fade = RECAP_BINDINGS.cellTransparency[props.index].binding;
-	const value = RECAP_BINDINGS.cellValue[props.index].binding;
-	const scope = props.cell.scope;
-	const labelW = U.cellWidth - 2 * HUD_VIEW.gap - (scope !== undefined ? U.chip.w + HUD_VIEW.gap : 0);
+	const M = props.metrics;
+	const fade = props.fade;
+	const scope = props.scope;
+	const width = props.width ?? M.width;
 	// The combo's tier name is tinted inside the RichText value (recapHighlightValue); its number stays uiText.
 	const valueRole: ColorRole = "uiText";
+	const inline = M.inline;
+	const labelW = width - 2 * HUD_VIEW.gap - (scope !== undefined ? RECAP_UI.chip.w + HUD_VIEW.gap : 0);
 	return (
 		<frame
 			key={`Cell${props.index}`}
 			LayoutOrder={props.index + 1}
+			Size={UDim2.fromOffset(width, M.height)}
 			BackgroundColor3={role("uiPanel")}
 			BackgroundTransparency={fade.map(tileFor)}
 			BorderSizePixel={0}
@@ -108,44 +124,58 @@ function HighlightCell(props: { index: number; cell: RecapHighlight }) {
 			<uipadding
 				PaddingLeft={new UDim(0, HUD_VIEW.gap)}
 				PaddingRight={new UDim(0, HUD_VIEW.gap)}
-				PaddingTop={new UDim(0, (U.cellHeight - U.labelHeight - U.valueHeight) / 2)}
+				PaddingTop={new UDim(0, inline ? 0 : (M.height - M.labelHeight - M.valueHeight) / 2)}
 			/>
 			<textlabel
 				key="Label"
-				Size={UDim2.fromOffset(labelW, U.labelHeight)}
+				Size={inline ? new UDim2(M.labelShare, 0, FULL, 0) : UDim2.fromOffset(labelW, M.labelHeight)}
 				BackgroundTransparency={HIDDEN}
 				Font={font}
 				TextScaled={true}
-				TextSize={U.labelText}
+				TextSize={M.labelText}
 				TextColor3={role("uiTextDim")}
 				TextStrokeColor3={role("background")}
 				TextTransparency={fade}
 				TextStrokeTransparency={fade.map(strokeFor)}
 				TextXAlignment={Enum.TextXAlignment.Left}
-				Text={str(props.cell.key)}
+				Text={str(props.labelKey)}
 			>
-				<uitextsizeconstraint MaxTextSize={U.labelText} MinTextSize={U.labelMinText} />
+				<uitextsizeconstraint MaxTextSize={M.labelText} MinTextSize={M.labelMinText} />
 			</textlabel>
 			{scope !== undefined ? <ScopeChip scope={scope} fade={fade} /> : undefined}
 			<textlabel
 				key="Value"
-				Position={UDim2.fromOffset(0, U.labelHeight)}
-				Size={new UDim2(FULL, 0, 0, U.valueHeight)}
+				Position={inline ? new UDim2(M.labelShare, 0, 0, 0) : UDim2.fromOffset(0, M.labelHeight)}
+				Size={inline ? new UDim2(FULL - M.labelShare, 0, FULL, 0) : new UDim2(FULL, 0, 0, M.valueHeight)}
 				BackgroundTransparency={HIDDEN}
 				Font={font}
 				RichText={true}
 				TextScaled={true}
-				TextSize={U.valueText}
+				TextSize={M.valueText}
 				TextColor3={role(valueRole)}
 				TextStrokeColor3={role("background")}
 				TextTransparency={fade}
 				TextStrokeTransparency={fade.map(strokeFor)}
-				TextXAlignment={Enum.TextXAlignment.Left}
-				Text={value}
+				TextXAlignment={inline ? Enum.TextXAlignment.Right : Enum.TextXAlignment.Left}
+				Text={props.value}
 			>
-				<uitextsizeconstraint MaxTextSize={U.valueText} MinTextSize={U.valueMinText} />
+				<uitextsizeconstraint MaxTextSize={M.valueText} MinTextSize={M.valueMinText} />
 			</textlabel>
 		</frame>
+	);
+}
+
+/** One highlight cell: the label (and the co-op chip) over the counted value. */
+function HighlightCell(props: { index: number; cell: RecapHighlight }) {
+	return (
+		<RecapCell
+			index={props.index}
+			labelKey={props.cell.key}
+			metrics={RECAP_CELL}
+			fade={RECAP_BINDINGS.cellTransparency[props.index].binding}
+			value={RECAP_BINDINGS.cellValue[props.index].binding}
+			scope={props.cell.scope}
+		/>
 	);
 }
 

@@ -21,7 +21,8 @@
  * docs/LOCALIZATION.md L6), and the run-over recap's tunables, highlight table, strings, near-miss line, highlights,
  * stairs distance and timeline (recapConfig.ts, recap.ts; docs/RUN_RECAP.md RR2) and how the recap is drawn (recapUi.ts,
  * RR5), and the co-op contribution's rows, shares, standing and titles (contributionConfig.ts, contribution.ts;
- * docs/RUN_CONTRIBUTION.md CT3).
+ * docs/RUN_CONTRIBUTION.md CT3), how its tabs, You card and Party rows are drawn (contributionUi.ts, CT5) and the
+ * recap's clocks per tab (recapViews.ts, CT7).
  */
 export * from "./layout";
 export * from "./strings";
@@ -72,4 +73,6 @@ export * from "./recap";
 export * from "./recapUi";
 export * from "./contributionConfig";
 export * from "./contribution";
+export * from "./contributionUi";
+export * from "./recapViews";
 export * from "./overcapPopDuck";

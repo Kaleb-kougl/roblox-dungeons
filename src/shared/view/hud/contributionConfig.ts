@@ -125,6 +125,8 @@ export const CONTRIB_STRINGS = {
 	partyKills: "run.recap.party.kills",
 	partyParries: "run.recap.party.parries",
 	partyHits: "run.recap.party.hits",
+	/** "{pct}%" (the Party tab's damage share column, CT5) */
+	partyShare: "run.recap.party.share",
 } as const;
 
 /** The title's display string key (`run.recap.title.<title>`). */

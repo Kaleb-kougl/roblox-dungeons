@@ -1,6 +1,8 @@
 # Co-op contribution on the run-over screen (plan)
 
-Status (2026-11-08): **plan**, nothing built. Checked against the code at `fb765ae5`. Owner answers (2026-11-08):
+Status (2026-11-08): **plan**, CT5 / CT7 (the panel, the controller) built on branch `ct-ui` with headless
+checks only (nothing has run in Studio); CT9 docs and CT10 (Studio check and tuning) pending. Checked against the code
+at `fb765ae5`. Owner answers (2026-11-08):
 CTD1 (open on **You**) and CTD4 (the Party tab stays) confirmed; the rest are proposed. Builds on docs/RUN_RECAP.md
 (the recap, its highlights, Details and `RecapTally`) and fills its "Later" line *co-op MVP rows*, without the MVP.
 
@@ -209,11 +211,53 @@ Each step is a commit; `npm run verify` before each.
   descriptions `run.recap.titleDesc.*` (Daredevil reads "Bullet Dancer": `boon.daredevil` and its evolution Thrill
   Seeker took the obvious words). Placeholder English (vale clones it), one `l10n/context.json` entry each (with
   `max` and examples). `contract.luau` / `validate.luau` stay 186 / 197 top-level locals (counted on out/).
-- [ ] **CT5. Panel.** Tabs, You card, Party rows; fit.spec: 2, 4 and 8 players, record daily party run (the worst
+- [x] **CT5. Panel.** Tabs, You card, Party rows; fit.spec: 2, 4 and 8 players, record daily party run (the worst
   case), phone landscape / portrait, HUD 70 %; `npm run build:place`.
+  As built: client/ui/hud ContributionBlocks.tsx `RecapTabBody` (in the highlights' slot of every layout, after the
+  near-miss line, which stays above it on every tab): `RecapTabStrip` (three MenuButtons, the shown one `active`,
+  `selectable` false: the pad steps them with LB / RB and its selection stays on the exits row), then a box as tall as
+  the taller of the You card and the Team grid (`contribBoxHeight`: a tab switch never resizes the panel) holding
+  `YouCard`, today's `HighlightGrid` or `PartyRows`. Shown when the recap has highlights and a contribution
+  (`recapTabsShown`: party runs in endless / daily / dev; solo, tutorial, M1 and unscored runs draw exactly the old
+  panel). You: `You · {title}` (uiAccent), the share bar (`contribShareSegments`: a segment per player with a share,
+  index order, whole px summing to the bar; the local one `playerOutline`, the others uiTextDim at
+  `barOtherTransparency`, no names) with `{pct}% of the team's damage` beside it, the cells (`RecapCell`, RecapBlocks'
+  highlight cell made generic: label over value, or `inline` label left / value right; values `contribCellText`:
+  `run.recap.you.share`, the pickups parts through `contribPickupParts` + `.pickupsValue`, filling boosts first while
+  counting) and the standing line (`contribStandingText`). Party: a header row (`run.recap.party.*`), then one row per
+  player in index order in a ScrollingFrame inside the box (wheel, drag, the pad's right stick via the run-over scope's
+  `scrollRef`): name in the theme's `name` font, title chip (the scope chip's look), damage share (new string
+  `run.recap.party.share` `{pct}%`: CONTRIB_STRING_KEYS 45, contract, placeholder, l10n context), kills, parries, hits;
+  the local row a `playerOutline` stroke over a faint tile, a leaver's row at `leftTransparency`. Details still swaps the
+  whole tab body (strip included) for the breakdown + Build list; closing returns to the tab shown. Layout numbers
+  `CONTRIB_UI` (shared/view/hud contributionUi.ts): **wide** the highlight cell itself, four a row (box 638 of the 840
+  panel; the tab strip and Team grid 316, centred), the share row with its label; **narrow** one-line cells (22) two a
+  row (316), the share row; **compact** one-line cells (20) two a row, the bar at the header row's right end and no share
+  label (the Damage cell already reads `{value} · {pct}%`); a lone last cell (seven cells in two columns: pickups) is a
+  full-width row. Store: `recap.tab` / `recap.contribution` (`showRecap` resets the tab to `you`, `updateRecap` keeps
+  it, `setRecapTab`); bindings `RECAP_BINDINGS.youValue` / `youTransparency` (7). Fit (fit.spec.ts, an 8-player record
+  daily party run with all seven You cells, the Party tab's height is the box's whatever the party size): fits every
+  landscape phone (compact) and portrait phone (narrow) at 100 % and 70 %; the 693 x 320 phone is the tight one (412 of
+  the 416 reference px the 0.6 effective floor allows); on desktop no taller than today's record daily run with its
+  breakdown (842 vs 856), and a plain endless party run fits every desktop at full size. Stacked 48 px cells two a row
+  (the first draft) overflowed the 693 x 320 phone and the desktop rule, hence the four-column wide card and the
+  one-line phone cells. Studio check: the share bar and the Party list's scroll on a phone; a long display name in the
+  name font (TextScaled down to `minText`); `en-XA`.
 - [ ] **CT6. Input.** LB / RB, Q / E / Tab, taps; hint bar; tab presses never reach `RunOverRetryGate`; focus memory
   keeps Back to lobby reachable.
-- [ ] **CT7. Controller.** Builds once, opens on You, count-up per first open, re-derive on a new final state only.
+- [x] **CT7. Controller.** Builds once, opens on You, count-up per first open, re-derive on a new final state only.
+  As built: RecapController builds the contribution once at the open beside the highlights (`contributionOf({ tally:
+  RunView.recapTally, partySize, localIndex: getLocalPlayerIndex(), names: ctx.memberNames })`, the wipe derived from
+  the tally) and steps one shared/view/hud `RecapViews` (recapViews.ts, spec) instead of the bare RecapTimeline:
+  untabbed it is exactly the old timeline; tabbed, the main clock carries the near-miss line and the arm, the You cells
+  count on their own clock from `RECAP.highlightsStartSec` (or after new best's rows on a record run), Team's
+  highlights count the first time Team opens (`RecapTimelineOptions.highlightsAtSec` = `CONTRIB_UI.teamOpenDelaySec`
+  0.1 s), Party never counts; leaving a tab settles it silently, so later opens show finals; a skip press (the gate's
+  `skip` / an early `press`) settles the near-miss line and the tab showing (each clock lands once; `recapCue` still
+  plays one sound a frame); reduced motion: finals, one land per clock. Its frames merge every clock's tick / lands
+  into the one recapCue call. A re-derive (same verdict signature rule, now including the You cells and every Party
+  row) is `RecapViews.renewed`: tab kept, each clock at its old time, settled stays settled. Bindings: the Team cells
+  from the Team clock (none until opened), the You cells (`contribCellText`) from the You clock.
 - [ ] **CT8. Telemetry.** The `views` row; catalog spec (still 37 names; field combinations under 8,000).
 - [ ] **CT9. Docs.** As-built here, RUN_RECAP.md cross-link (its "co-op MVP rows" Later line points here),
   docs/CLIENT.md, the CLAUDE.md decision log entry.
@@ -229,6 +273,12 @@ Each step is a commit; `npm run verify` before each.
 5. Eight players (`KV_Debug` fake party if available): the Party list scrolls on a phone.
 6. Tabs never retry or exit; Back to lobby still one press; reduced motion; `en-XA`.
 7. Feel: does any line read as blame? (Risk 1.)
+8. CT5-CT8 as built: the You cells count from 0.7 s (after NB's rows on a record run) with ticks / one land a frame; Team
+   counts on its first open only; a skip press settles the tab shown; Q / E / Tab (Tab also opens Roblox's player
+   list) and LB / RB cycle the tabs, a restart bound to a bumper still restarts; taps on the tabs never swing or skip;
+   the pad's selection never lands on a tab and Back to lobby stays one move away; the Party list scrolls with the
+   wheel, a drag and the right stick (hinted only when it overflows); the wide card's four cells a row, the compact
+   card's bar in its header row; the `KV_AnalyticsDebug` echo shows the `views` row on a party run's close.
 
 ## Decisions
 

@@ -1228,6 +1228,7 @@ export const REQUIRED_STRING_KEYS: ReadonlyArray<string> = ((): string[] => [
 	"run.recap.party.kills",
 	"run.recap.party.parries",
 	"run.recap.party.hits",
+	"run.recap.party.share",
 	"run.recap.title.heavyHitter",
 	"run.recap.title.bossBreaker",
 	"run.recap.title.finisher",

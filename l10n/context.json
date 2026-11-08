@@ -3610,6 +3610,13 @@
 		"note": "Run-over panel (after a party run), the Party tab, a column header above one row per player (narrow column, about 80 px; numbers under it): each player's parries (fx.parry.text).",
 		"max": 9
 	},
+	"run.recap.party.share": {
+		"note": "Run-over panel (after a party run), the Party tab, one player's row: their whole-percent share of the party's damage, under the Damage column header (narrow column, about 40 px). {pct} is a whole percent; keep the % sign where your language puts it.",
+		"max": 5,
+		"example": {
+			"pct": 41
+		}
+	},
 	"run.recap.tab.party": {
 		"note": "Run-over panel (after a party run), the tab strip above the highlights (three short tabs side by side, about 120 px each; switched with LB / RB): one row per party member (the group of players). One short word.",
 		"max": 10
