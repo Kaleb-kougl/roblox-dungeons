@@ -1452,6 +1452,46 @@
 			"bytes": 3039
 		},
 		{
+			"path": "kaleb-vale/item-icons/curse_frailty.png",
+			"sha256": "5e51bd322a8695b7dfed0c610e8bd0fd1edd199d8cb80aef38032472cc471b8d",
+			"bytes": 339
+		},
+		{
+			"path": "kaleb-vale/item-icons/curse_haste.png",
+			"sha256": "7ea3fa3f7c38d7fb0df74a98c6aedc66d573c26e0426b1d6ce0ae62530680a05",
+			"bytes": 290
+		},
+		{
+			"path": "kaleb-vale/item-icons/curse_impatience.png",
+			"sha256": "52d551b600cf097e1754ca2375c72a52d847ddf2301083abb3a16f378ad6a0c3",
+			"bytes": 479
+		},
+		{
+			"path": "kaleb-vale/item-icons/curse_thirst.png",
+			"sha256": "f0385ed694fc90974de362ad31b2da431d42ba6384b210abdc611fe3db5e7206",
+			"bytes": 380
+		},
+		{
+			"path": "kaleb-vale/item-icons/relic_hourglass.png",
+			"sha256": "5dfac1a49b00fe6cb270cab94dd9aa879c1fb522d7fdf97eb223c327d2d00249",
+			"bytes": 317
+		},
+		{
+			"path": "kaleb-vale/item-icons/relic_mirrorCloak.png",
+			"sha256": "ab25e8ce654778bef86b848bc1588bc3f819f890e2b0faefa9086d9e92298e6f",
+			"bytes": 397
+		},
+		{
+			"path": "kaleb-vale/item-icons/relic_secondWind.png",
+			"sha256": "940ee3c37a2c3c25e329a073fb003cf9c8774ab3e177ca32476b48bc80235acc",
+			"bytes": 433
+		},
+		{
+			"path": "kaleb-vale/item-icons/relic_vampireFang.png",
+			"sha256": "226ea6e08c1b2ae7ebd03c3a5a690a6631dd605230c9cb878de8a74419c6f190",
+			"bytes": 320
+		},
+		{
 			"path": "kaleb-vale/loot-glint/loot_glint_0.png",
 			"sha256": "14b3a0328651b9b4c19ff9808431b2365e073a5dd565d9d6c0c6d1ec23716a13",
 			"bytes": 145

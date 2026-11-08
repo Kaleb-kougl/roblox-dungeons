@@ -2587,5 +2587,28 @@
 			"ui.boon.warding": { "file": "kaleb-vale/boon-icons/boon_warding.png", "rect": [0, 0, 16, 16] },
 			"ui.boon.wrecker": { "file": "kaleb-vale/boon-icons/boon_wrecker.png", "rect": [0, 0, 16, 16] }
 		}
+	},
+	"itemIcons": {
+		"$comment": [
+			"The relic and curse icons (docs/BUILDS.md BU11, the relic and curse part): original 16 x 16 pixel art drawn by",
+			"scripts/art/gen-item-icons.js (art:build and art:lock run it first) into art/vendor/kaleb-vale/item-icons/, one per",
+			"relic (ui.relic.<name>) and per curse (ui.curse.<name>), lower-cased (shared/theme relicIconId / curseIconId); relics in",
+			"the UI sheet's palette, curses in a sickly plum / bile green. Packed exactly like `boonIcons` (buildUiIcons) into a sheet",
+			"of their OWN, art/build/<atlas>.png with src/shared/theme/packs/vale/itemIconLayout.ts, so neither ui-icons.png nor",
+			"boon-icons.png repacks; all switch on with its one ID.",
+			"Build just this group: node scripts/art/build-atlases.js --only itemIcons (and --lock --only itemIcons)."
+		],
+		"atlas": "item-icons",
+		"gutter": 1,
+		"icons": {
+			"ui.curse.frailty": { "file": "kaleb-vale/item-icons/curse_frailty.png", "rect": [0, 0, 16, 16] },
+			"ui.curse.haste": { "file": "kaleb-vale/item-icons/curse_haste.png", "rect": [0, 0, 16, 16] },
+			"ui.curse.impatience": { "file": "kaleb-vale/item-icons/curse_impatience.png", "rect": [0, 0, 16, 16] },
+			"ui.curse.thirst": { "file": "kaleb-vale/item-icons/curse_thirst.png", "rect": [0, 0, 16, 16] },
+			"ui.relic.hourglass": { "file": "kaleb-vale/item-icons/relic_hourglass.png", "rect": [0, 0, 16, 16] },
+			"ui.relic.mirrorcloak": { "file": "kaleb-vale/item-icons/relic_mirrorCloak.png", "rect": [0, 0, 16, 16] },
+			"ui.relic.secondwind": { "file": "kaleb-vale/item-icons/relic_secondWind.png", "rect": [0, 0, 16, 16] },
+			"ui.relic.vampirefang": { "file": "kaleb-vale/item-icons/relic_vampireFang.png", "rect": [0, 0, 16, 16] }
+		}
 	}
 }

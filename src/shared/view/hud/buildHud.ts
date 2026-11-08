@@ -5,7 +5,7 @@
  * client's RunItems and BuildList draw them. The draft cards are draftCards.ts (BU9).
  */
 import { BOONS, CURSES, DUOS, RELICS, boonMaxLevel } from "shared/sim";
-import { boonIconId, type ColorRole } from "shared/theme";
+import { boonIconId, curseIconId, relicIconId, type ColorRole } from "shared/theme";
 import {
 	BUILD_DUO_ROLE,
 	BUILD_EVOLVED_ROLE,
@@ -62,9 +62,9 @@ export interface ItemCellModel {
 	/** Each icon's fill (a duo chip: the duo role behind both halves). */
 	readonly fills: ReadonlyArray<ColorRole>;
 	/**
-	 * Each icon's art (shared/theme boonIconId, docs/BUILDS.md BU11), parallel to `icons`: a boon cell's and a duo
-	 * chip's halves'; undefined for a relic or curse (labels only). The client draws the art in place of the labels when
-	 * the pack has every one of them, else the labels.
+	 * Each icon's art (shared/theme boonIconId / relicIconId / curseIconId, docs/BUILDS.md BU11), parallel to `icons`:
+	 * a boon cell's, a duo chip's halves', a relic's or a curse's. The client draws the art in place of the labels when
+	 * the pack has every one of them, else the labels (and a curse's skull).
 	 */
 	readonly art?: ReadonlyArray<string>;
 	/** The cell's outline: the evolved frame (boon.evolved, thicker), else undefined (the plain dark outline). */
@@ -74,7 +74,7 @@ export interface ItemCellModel {
 	readonly maxLevel: number;
 	/** Cells wide (a duo chip: 2). */
 	readonly span: number;
-	/** A curse: its skull art behind the label (docs/UI_ART.md UA8). */
+	/** A curse: its skull art behind the label (docs/UI_ART.md UA8); not behind the curse's own icon art. */
 	readonly curse: boolean;
 	/** The owned item it shows (item tooltips). */
 	readonly ref: ItemRef;
@@ -131,19 +131,20 @@ export function runItemCells(
 	for (const x of relics) {
 		const def = RELICS[x];
 		if (def === undefined) continue;
-		out.push(plainCell(`r${x}`, def.id, RELIC_COLOR_ROLE, false, { kind: "relic", index: x }));
+		out.push(plainCell(`r${x}`, def.id, RELIC_COLOR_ROLE, false, relicIconId(def.id), { kind: "relic", index: x }));
 	}
 	for (const c of curses) {
 		const def = CURSES[c];
 		if (def === undefined) continue;
-		out.push(plainCell(`c${c}`, def.id, CURSE_COLOR_ROLE, true, { kind: "curse", index: c }));
+		out.push(plainCell(`c${c}`, def.id, CURSE_COLOR_ROLE, true, curseIconId(def.id), { kind: "curse", index: c }));
 	}
 	return out;
 }
 
 /**
  * An item cell drawn with its icon art (docs/BUILDS.md BU11): this dark fill under the art; the cell's own fill role
- * (rarity, boon.duo) becomes its outline and its level pips' colour (the evolved frame stays the evolved frame).
+ * (rarity, boon.duo, the relic / curse role) becomes its outline and its level pips' colour (the evolved frame stays
+ * the evolved frame).
  */
 export const ITEM_ART_FILL_ROLE: ColorRole = "uiPanel";
 
@@ -169,8 +170,26 @@ function boonArt(ids: ReadonlyArray<string>): string[] | undefined {
 	return out;
 }
 
-function plainCell(key: string, id: string, fill: ColorRole, curse: boolean, ref: ItemRef): ItemCellModel {
-	return { key, icons: [itemIconKey(id)], fills: [fill], level: 0, maxLevel: 0, span: 1, curse, ref };
+/** A relic's or curse's cell: one icon, no pips; `art` its icon art id (relicIconId / curseIconId) if it has one. */
+function plainCell(
+	key: string,
+	id: string,
+	fill: ColorRole,
+	curse: boolean,
+	art: string | undefined,
+	ref: ItemRef,
+): ItemCellModel {
+	return {
+		key,
+		icons: [itemIconKey(id)],
+		fills: [fill],
+		art: art !== undefined ? [art] : undefined,
+		level: 0,
+		maxLevel: 0,
+		span: 1,
+		curse,
+		ref,
+	};
 }
 
 /** A cell's width: `span` cells and the gaps inside it. */

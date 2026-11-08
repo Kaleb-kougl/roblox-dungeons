@@ -23,7 +23,7 @@ import {
 	type EndlessFloorWorld,
 	type SimConfig,
 } from "shared/sim";
-import { PLACEHOLDER_MANIFEST, ThemePack, boonIconId } from "shared/theme";
+import { PLACEHOLDER_MANIFEST, ThemePack, boonIconId, curseIconId, relicIconId } from "shared/theme";
 import { collectRunEvents, takeSnapshot, type RunEventRecord } from "shared/play";
 import { frame, skipToFloor } from "shared/run/testing";
 import {
@@ -112,15 +112,16 @@ describe("items row (BU10)", () => {
 			expect([c.level, c.maxLevel, c.frame]).toEqual([0, 0, undefined]);
 	});
 
-	it("boon cells and duo halves carry their icon art (docs/BUILDS.md BU11); relics and curses none", () => {
+	it("boon cells, duo halves, relics and curses carry their icon art (docs/BUILDS.md BU11)", () => {
 		const cells = runItemCells([Boon.SHARPENED], [], [Duo.FIRE_ARROWS], [0], [0]);
 		const duo = DUOS[Duo.FIRE_ARROWS];
 		expect(cells.map((c) => c.art)).toEqual([
 			["ui.boon.sharpened"],
 			[boonIconId(BOONS[duo.a].id), boonIconId(BOONS[duo.b].id)],
-			undefined,
-			undefined,
+			[relicIconId(RELICS[0].id)],
+			[curseIconId(CURSES[0].id)],
 		]);
+		expect([cells[2].art, cells[3].art]).toEqual([["ui.relic.mirrorcloak"], ["ui.curse.frailty"]]);
 		const all = () => true;
 		const none = () => false;
 		expect(itemCellArt(cells[0], all)).toEqual(["ui.boon.sharpened"]);
@@ -128,8 +129,12 @@ describe("items row (BU10)", () => {
 		expect(itemCellArt(cells[1], all)?.size()).toBe(DUO_CHIP_SPAN);
 		// A duo chip draws art only when both halves have it.
 		expect(itemCellArt(cells[1], (id) => id === boonIconId(BOONS[duo.a].id))).toBe(undefined);
-		expect(itemCellArt(cells[2], all)).toBe(undefined);
-		expect(itemCellArt(cells[3], all)).toBe(undefined);
+		// A relic or curse cell draws its art when the pack has it, else its label (and the curse its skull).
+		expect(itemCellArt(cells[2], all)).toEqual(["ui.relic.mirrorcloak"]);
+		expect(itemCellArt(cells[3], all)).toEqual(["ui.curse.frailty"]);
+		expect(itemCellArt(cells[2], none)).toBe(undefined);
+		expect(itemCellArt(cells[3], none)).toBe(undefined);
+		expect(cells[3].curse).toBe(true);
 		expect(ITEM_ART_FILL_ROLE).toBe("uiPanel");
 	});
 
