@@ -30,8 +30,10 @@ cannot see it happen, it is not in this plan.**
 the rules (Riposte and Counterstrike BV2, Ballista BV3, Siege Bolt BV4, Wrecker and Demolition BV5, the wave 1 duos BV6,
 Full Heart and Happy Hour BV7), the duo hint (BV8), overcap points (BV9) and the theme (BV10: colour roles, strings,
 audio IDs; plus the wave 1 integration spec), each in its "BVn (as built)" section. **Open:** BV11 (view), BV12
-(tuning), BV13 (art, audio, Studio check, playtest). The full suite (`npm run verify`) on the merged branch is pending
-the integrator's run; each task ran its targeted specs (listed in its section). The six owner calls of the proposal are settled
+(tuning), BV13 (art, audio, Studio check, playtest). The whole suite passed on the merged branch (2026-11-07, Linux x86_64 cloud box:
+typecheck, lint, the asset / autolocalize / art / checks / l10n tests, and every one of the 411 headless spec files,
+run in four slices), except `dungeon/forge/forge.spec.ts`'s "EncounterRng is the sim's new Rng(seed)", which fails the
+same way on `main` there (a NaN's sign bit, `fff8...` vs `7ff8...`: a platform difference, not this branch). The six owner calls of the proposal are settled
 ("Owner calls"); this plan turns them into tasks BV0-BV13 and decisions BVD1-BVD20; the owner settled BVD3 and
 BVD13-BVD15 on review (2026-11-07), the rest are defaults. Follows docs/BUILDS.md (BU0-BU10 built,
 BU11-BU14 open) and docs/LEGENDARIES.md (LG0-LG7 built, LG8-LG9 open). The proposal's advice to land after BU14 stands
