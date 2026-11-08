@@ -1,8 +1,7 @@
-# Co-op contribution on the run-over screen (plan)
+# Co-op contribution on the run-over screen
 
-Status (2026-11-08): **plan**, CT5-CT8 (the panel, input, controller, telemetry) built on branch `ct-ui` with headless
-checks only (nothing has run in Studio); CT9 docs and CT10 (Studio check and tuning) pending. Checked against the code
-at `fb765ae5`. Owner answers (2026-11-08):
+Status (2026-11-08): **built** (branch `run-contribution`: CT0-CT9; headless checks only, nothing has run in Studio).
+Pending: **CT10** (the owner's Studio check and tuning). Checked against the code at `fb765ae5`. Owner answers (2026-11-08):
 CTD1 (open on **You**) and CTD4 (the Party tab stays) confirmed; the rest are proposed. Builds on docs/RUN_RECAP.md
 (the recap, its highlights, Details and `RecapTally`) and fills its "Later" line *co-op MVP rows*, without the MVP.
 
@@ -177,10 +176,16 @@ Each step is a commit; `npm run verify` before each.
   RecapController passes `getLocalPlayerIndex()` and `buildsOf(ctx, me)` reads the local player's build. The stairs'
   near-miss distance (`stairsOf`) still measures from the view player's position (the camera's player at the wipe,
   the run's last stand), unchanged. Spec: recap.spec "CT1: You is the local player".
-- [ ] **CT2. Feed + tally.** The four parallel arrays, the collector's new counters and death / leave watch. Specs:
+- [x] **CT2. Feed + tally.** The four parallel arrays, the collector's new counters and death / leave watch. Specs:
   per-player sums equal the team totals (`damageDealt`, pops, `hitsTaken`) over a scripted 2-player run; solo runs
   unchanged; **every golden / replay / hash / determinism spec unchanged** (nothing new is hashed); bench.spec within
-  noise.
+  noise. As built: `ScoreEvents.popPlayer` / `dealtPlayer` / `dealtAmount` / `dealtBoss` / `hurtPlayer` (created, cleared
+  and cloned with the others, never hashed; `scoreDamageDealt` from `damageActor`'s `damageDealt` line, the boss flag
+  `ArchetypeData.boss`); `RecapTally` adds `kills` / `damage` / `bossDamage` / `hits` / `pellets` (eaten + the power
+  pellet) / `boosts` (ground pickups only, not `GIVEN_DROP_SLOT`) and `deathTick` / `deathFloor` / `leftFloor` /
+  `lastDeath` / `lastTick` (a floor change's revive clears a death; leaving is not a death). Specs
+  contributionFeed.spec (per-tick sums against `damageDealt`, `playerHits`, `counts[KILLS]` on plain-kill ticks) and
+  recapTally.spec; every golden / replay / hash / determinism subset unchanged.
 - [x] **CT3. Contribution core.** Shares (largest remainder, sum 100, a zero team total drops the cell), standing
   line, leaver, titles: greedy by lead, one per player, distinct, fallback, ties, thresholds, identical output for
   identical tallies (two "clients").
@@ -284,8 +289,8 @@ Each step is a commit; `npm run verify` before each.
   last tab. Catalog: field01 gains `views`, field02 the three tabs: the entry is 7 x 11 x 5 = 385 combinations (was
   240); still 37 event names. Specs: recapAnalytics.spec (accept / clamp / reject / drop, the row, the clock),
   analyticsCatalog.spec (every close x near-miss x flags x last tab in the catalog, the entry's 385).
-- [ ] **CT9. Docs.** As-built here, RUN_RECAP.md cross-link (its "co-op MVP rows" Later line points here),
-  docs/CLIENT.md, the CLAUDE.md decision log entry.
+- [x] **CT9. Docs.** As-built here, RUN_RECAP.md cross-link (its "co-op MVP rows" Later line points here),
+  docs/CLIENT.md, the CLAUDE.md docs row and decision log entry.
 - [ ] **CT10. [owner] Studio check and tuning** (below): title thresholds and wording from three co-op runs.
 
 ## Studio check

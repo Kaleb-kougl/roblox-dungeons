@@ -59,6 +59,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/NEW_ENEMIES.md` | New enemies (five endless room archetypes from floor 2: Bomber rusher that blows up, Charger lane charge stunned by walls, Stormcaller lightning strike rows, Warbanner aura support, Reaper bullet spiral; band 4, `BulletKind.STRIKE`, the Warbanner aura in `actorMods`; gameplay): plan, NE0 findings, tasks NE0-NE14, decisions NED1-NED14 |
 | `docs/PELLETS.md` | Pellets (Pac-Man lines of small cubes laid on a fight's floor, collected while enemies live, a Sweep bonus for every one, a rare power pellet that turns every enemy bullet on the floor into points; tutorial room G with a sweep lock; gameplay): plan, as built, open owner calls, tasks PL0-PL15, decisions PD1-PD16 |
 | `docs/RUN_RECAP.md` | Run-over recap and co-op moments (one honest near-miss line, up to four counting highlights, Again in one press armed at 0.6 s and a faster retry; co-op TEAM PERFECT stamp / chip / streak / pulse rings and SYNC! parries; revives reserved; presentation only): plan, tasks RR0-RR11 / CM1-CM7, decisions RRD1-RRD11 / CMD1-CMD7 |
+| `docs/RUN_CONTRIBUTION.md` | Co-op contribution on the run-over screen (a `You / Team / Party` tab strip in party runs, opening on You: your damage / kills / boss-damage share, parries, grazes, hits, pickups and standing; every player's row in index order with one positive title; the `You` rows fixed to the local player; one unhashed `ScoreEvents` feed, otherwise presentation only): plan, tasks CT0-CT10, decisions CTD1-CTD7 |
 | `docs/BOOKSHELVES.md` | Bookshelves (Dungeon Essential Kit bookcases, solid 1 x 1 cases flush in runs on rooms' far walls; a new `library` room theme plus a run in some `hall` rooms; endless layouts change): plan, tasks BK0-BK10 / RA1-RA6, decisions BKD1-BKD14; the library's reading area, a table and two chairs |
 | `docs/TREASURE.md` | Treasure rooms (vaults: about one endless floor in two from floor 2 has a caged chest in a combat / elite room, seen through the doorway; clearing the room unlocks it, its lock (UNTOUCHED / SWIFT) kept or cracked one tier down; walk up to open it: a relic, boosts or a bonus draft; gameplay, opt-in `SimConfig.treasure`): plan, TR0 findings, as built TR1-TR8, tasks TR0-TR11, decisions TRD1-TRD14 |
 | `docs/FORTUNE.md` | Fortune (risk shrines: two pact altars in the shrine room, Greed = a shown curse + a Legendary deal now, Horde = the next room fights a second wave for x2 score; the Goldling: a rare harmless gold enemy that flees within its room, coins per hit, a jackpot if caught within 10 s; gameplay, opt-in `SimConfig.pacts` / `SimConfig.golden` on endless only): plan, as built, open owner calls, Studio check, tasks FO0-FO13 / PS1-PS5 / GE1-GE4, decisions FD1-FD16 |
@@ -646,6 +647,20 @@ Decision log (deviations from `PLAN.md`):
   press -> control print). Vale clips uploaded 2026-11-03 (CM7: Success2 + Gold1, Bonus3); Studio check (RR10) and the retry measurement (RR8)
   pending.
 
+- **Co-op contribution (docs/RUN_CONTRIBUTION.md).** One unhashed sim feed, otherwise presentation, client input and
+  telemetry (no hash, replay, fixture, rng, score, leaderboard or lockstep change). `ScoreEvents` gained per-tick
+  `popPlayer` (the killer beside `popX`), `dealtPlayer` / `dealtAmount` / `dealtBoss` (`scoreDamageDealt` from
+  `damageActor`'s `damageDealt` line, credited to `ctx.playerIndex`: CT0 found every caller binds the damaging player)
+  and `hurtPlayer` (`damagePlayer`), scored runs only. `RecapTally` collects them per player with pellets, ground boost
+  pickups and death / leave floors. shared/view/hud `contribution.ts` (`contributionOf`: largest-remainder shares,
+  standing, one positive title per player by greedy lead, `CONTRIB` / `CONTRIB_TITLES`), `contributionUi.ts`,
+  `recapViews.ts` (a count-up per tab). Party runs' run-over: a You / Team / Party strip in the highlights' slot,
+  opening on You (owner, CTD1), the Party tab kept (CTD4), no per-player points; Details swaps the whole area; LB / RB,
+  Q / E / Tab, taps. Fixed in passing (CT1): the recap's `You` rows read the local player (`RunRecapInput.localIndex`),
+  not the spectate view, which a wipe leaves on the last watched teammate. Strings `CONTRIB_STRING_KEYS` (45,
+  `run.recap.tab.*` / `.you.*` / `.party.*` / `.title.*` / `.titleDesc.*`; the `daredevil` title reads "Bullet Dancer":
+  Daredevil is a boon); contract.luau / validate.luau stay 186 / 197. Telemetry: `RunRecapReport.views` and a `views`
+  row on `RunRecap` (still 37 names, 2760 of 8,000 combinations). Studio check (CT10) pending.
 - **Bookshelves (docs/BOOKSHELVES.md).** Gameplay (dungeon), same Forge option as solid decor (endless only). A new
   solid kind `bookcase` (1 x 1, the Dungeon Essential Kit's case at 125 kit units a tile) stands flush in runs of
   2-5 against far walls only (+X / +Z facings), with 2 non-walkable cells behind (`SOLID_DECOR.bookcase.backTiles`)
