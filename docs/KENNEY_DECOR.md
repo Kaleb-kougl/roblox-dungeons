@@ -254,6 +254,33 @@ replay or fixture change; walkable, flat).
 - Open (Studio): whether 35 % / x0.55 reads as worn floor under the game's lighting and the depth-band dimming; tune
   `biomeGrade` in kenney.json and rerun `reproject.py --only patch`, `art:lock`, `art:build`.
 
+### LoP floor blotches (2026-11-08)
+
+Owner (2026-11-08): two more floor variations for the ancient biome, from the Lords of Pain pack its stone floor comes
+from. Presentation only (no Forge, dungeon, sim, hash, replay or fixture change; walkable, flat).
+
+- **Source.** The pack's ground overlays `environment/ground_variation1.png` (a darker worn-stone patch, mean
+  #161114, alpha up to 255) and `ground_variation2.png` (a soft black stain, alpha about 70): top-down images at the
+  stone floor's density (256 px over `tilesPerImage` 4 = 64 px a tile). Both are darker than the floor, so bullets only
+  gain contrast; no grading (they are the floor's own companions). `ground_darken.png` is a plain black square and the
+  `tiles` prop is already the void's flagstones (VD6), so neither is used here.
+- **Art.** `scripts/art/lop/floor_blotches.py` (PIL + numpy, outside `npm run`, like reproject.py) lays each on the
+  ground plane centred on the patch block's centre and draws it as the game camera sees it (pitch 55, yaw 45) at the
+  decor scale 29.6 px a tile: 4x supersampled, a premultiplied Lanczos reduce, alpha below 4 cut, a 2 px margin. Out:
+  `art/vendor/lords-of-pain-patch/blotch1.png` (115 x 96, about 3.9 tiles across) and `blotch2.png` (114 x 93, about
+  3.4), pivot = the block centre, so each covers the block and most of its 1-tile FLOOR ring. atlases.json world
+  pieces `lop-patch-blotch1` / `-2` (own PNGs; the decor atlas does not repack). Contact on the stone floor:
+  `Claude outputs/lop-floor-blotches-contact.png` (floor alone, blotch 1, blotch 2).
+- **Theme.** `VALE_ANCIENT_PATCH_ART`: `decor.delve.b1.patch.6` / `.7` (biome.1 only, after the five Kenney looks), each
+  switching on once its PNG has an ID. Until then biome.1 keeps five looks and every plan is unchanged; after the
+  upload a biome.1 patch picks among seven by cell hash (about 2 in 7 are blotches), so ancient floors' patch looks
+  change (presentation only; the patch blocks themselves do not move).
+- **Checked**: typecheck, lint (the two edited files), check:assets, test:art 262 / 262 (build-atlases.test's stale-file
+  case rerun with a TMPDIR on the repo disk: the VM's tmp was full), build; Lune: theme/packs/vale and view/decor
+  (23 files, 266 tests), 0 failures.
+- Open: upload `lop-patch-blotch1.png` / `lop-patch-blotch2.png` (art/upload/) and paste the IDs into
+  `packs/vale/assetIds.ts`; Studio look (blotch 1 is subtle by design; a stronger look would weight the variant pick).
+
 ## Pipeline
 
 1. **`scripts/art/kenney/reproject.py`** (PIL + numpy; like render_kit.py, not part of `npm run`) reads

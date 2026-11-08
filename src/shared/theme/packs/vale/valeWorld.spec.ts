@@ -28,6 +28,7 @@ import { TREASURE_IDS } from "../../treasure";
 import { VALE_WORLD_LAYOUTS } from "./layout";
 import {
 	VALE_AMBIENT_ART,
+	VALE_ANCIENT_PATCH_ART,
 	VALE_BREAKABLE_ART,
 	VALE_DECOR_FX,
 	VALE_DECOR_PIECES,
@@ -205,6 +206,8 @@ describe("vale world art (docs/DECOR.md R5)", () => {
 			"kit-tomb-x.png",
 			"kit-tomb-z.png",
 			"loot-glint.png",
+			"lop-patch-blotch1.png",
+			"lop-patch-blotch2.png",
 			"pellet-power.png",
 			"pellet.png",
 		]);
@@ -295,10 +298,12 @@ describe("vale world art (docs/DECOR.md R5)", () => {
 			expect([kind, core.decorVariants("biome.3", kind).size()]).toEqual([kind, 4]);
 		}
 		expect(core.decorVariants("biome.4", "grave").size()).toBe(0); // no Lords of Pain art: not drawn
-		// the floor patches (docs/KENNEY_DECOR.md KN4): five looks in every biome, each biome its own bake, flat
+		// the floor patches (docs/KENNEY_DECOR.md KN4): five looks in every biome, each biome its own bake, flat; the
+		// ancient biome adds the two Lords of Pain blotches ("LoP floor blotches")
 		const ids = worldIds();
 		BIOMES.forEach((b, i) => {
-			expect([b.id, core.decorVariants(b.id, "patch").size()]).toEqual([b.id, VALE_PATCH_LOOKS.size()]);
+			const extra = i === 0 ? VALE_ANCIENT_PATCH_ART.size() : 0;
+			expect([b.id, core.decorVariants(b.id, "patch").size()]).toEqual([b.id, VALE_PATCH_LOOKS.size() + extra]);
 			VALE_PATCH_LOOKS.forEach((look, v) => {
 				const id = decorId(b.id, "patch", v + 1);
 				const a = m.assets[id] as ImageAsset;
@@ -310,6 +315,16 @@ describe("vale world art (docs/DECOR.md R5)", () => {
 				]);
 			});
 		});
+		VALE_ANCIENT_PATCH_ART.forEach((art, k) => {
+			const id = decorId("biome.1", "patch", VALE_PATCH_LOOKS.size() + k + 1);
+			const a = m.assets[id] as ImageAsset;
+			expect([id, a.kind, a.layer, a.assetId]).toEqual([id, "image", "flat", ids[`${art}.png`]]);
+		});
+		// without their PNGs' IDs the ancient biome keeps its five looks (the plan's variant picks unchanged)
+		const before = new ThemeCore(buildValeManifest(worldIds("lop-patch-blotch1.png", "lop-patch-blotch2.png")), {
+			warn: quiet,
+		});
+		expect(before.decorVariants("biome.1", "patch").size()).toBe(VALE_PATCH_LOOKS.size());
 	});
 
 	it("void pieces (docs/VOID_DECOR.md VD6): flagstones map once the atlas has their art, every biome alike", () => {
