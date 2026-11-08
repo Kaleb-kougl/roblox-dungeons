@@ -44,6 +44,7 @@ import { chainReactionKill, resetDuoScratch, stepDuosAfterDrain, stepDuosBeforeD
 import { isEvolved, stepBraceCooldowns } from "./hooks";
 import { chainSpark, overkill, soulShards, volatileBurst } from "./onKill";
 import { scoreJackpot } from "../score/score";
+import { resetRiposteScratch, stepWaves } from "./riposte";
 
 /** The boons a proc fires, in the order it fires them (boon index order). */
 export const ON_KILL_BOONS: ReadonlyArray<number> = [Boon.CHAIN_SPARK, Boon.VOLATILE, Boon.SOUL_SHARDS, Boon.OVERKILL];
@@ -133,6 +134,9 @@ export function stepBuilds(ctx: SimCtx): void {
 	// Citadel's brace cooldowns (docs/LEGENDARIES.md LGD14): one tick of combat time.
 	stepBraceCooldowns(s);
 	beginEffectBudget(state);
+	// 0. Riposte's counter-waves (docs/BUILDS_V2.md BV2; ./riposte.ts): leavers' dropped, Rebuke's roll rings, the
+	// waves grow and strike, then Counterstrike's queued returns.
+	stepWaves(ctx, s);
 	// 1. The evolutions before the drain (./evolutions.ts: Ricochet splits, Soul Swarm steering, novas, Thrill Seeker),
 	// then the duos' (./duos.ts: Close Call shards, Fire Arrows / Blazing Trail embers).
 	stepEvolutions(ctx, s);
@@ -171,4 +175,5 @@ export function resetBuildScratch(state: SimState): void {
 	resetEvolutionScratch();
 	resetDuoScratch();
 	resetEffectScratch();
+	resetRiposteScratch();
 }

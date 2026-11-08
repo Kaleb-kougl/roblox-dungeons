@@ -45,6 +45,11 @@
  *                                      before (payload lastHit 0; the walk marks it 1) overlaps rolling player i.
  *   buildsOnRollStart(state, i) / buildsOnSwap(state, i)   weapons.ts: a roll started (Ember Wake's moment) / a swap.
  *   buildsBraceRearm(state)            progression.ts stepRun: a floor's start and a room's enemies spawning.
+ *
+ * Riposte / its duos (docs/BUILDS_V2.md BV2 / BV6; the rules in ./riposte.ts): buildsOnRollStart and buildsOnSwap also
+ * discard `riposteCount` and Rebuke's guard mark (a roll or a swap ends a guard short: BVD3); buildsOnRollThrough marks
+ * Rebuke's roll ring (`rebukePending` ROLL) when its brace restored something; buildsStillwaterRecord (score.ts
+ * stepScore) records Stillwater's cut combo.
  */
 import { jsMin } from "shared/jsmath";
 import type { PlayerState, SimState } from "../state";
@@ -58,6 +63,9 @@ import {
 	FlurryKind,
 	CITADEL_BRACE_COOLDOWN_TICKS,
 	LIONHEART_HEAL_HALF_HEARTS,
+	RebukePending,
+	STILLWATER_TICKS,
+	STILL_NONE,
 	STONE_HEART_HEAL_HALF_HEARTS,
 } from "./effectsData";
 
@@ -256,19 +264,32 @@ export function buildsOnRollThrough(state: SimState, i: number): void {
 	const s = state.builds;
 	const p = bastionPlayer(state, i);
 	if (s === undefined || p === undefined) return;
+	const braces = s.events.bracePlayer.size();
 	addBraceCount(state, s, p, i, 1);
+	// Rebuke (docs/BUILDS_V2.md BV6): a roll's brace that restored something fires the ring this tick (stepBuilds).
+	if (s.events.bracePlayer.size() > braces && hasDuo(p, Duo.REBUKE)) p.rebukePending = RebukePending.ROLL;
 }
 
 /** Player i started a roll: a new count (a guard it cut short is over). */
 export function buildsOnRollStart(state: SimState, i: number): void {
 	const p = state.builds?.players[i];
 	if (hasBastion(p)) p!.braceCount = 0;
+	// Riposte / Rebuke (docs/BUILDS_V2.md BV2 / BV6, BVD3): a roll cuts a guard short: its count and Rebuke are gone.
+	if (p !== undefined) {
+		p.riposteCount = 0;
+		p.rebukePending = RebukePending.NONE;
+	}
 }
 
 /** Player i swapped weapon sets: a guard in progress ended, so its count is gone (a roll's count is kept). */
 export function buildsOnSwap(state: SimState, i: number): void {
 	const p = state.builds?.players[i];
 	if (hasBastion(p) && buildPlayerStateAt(state, i).rollTicks === 0) p!.braceCount = 0;
+	// Riposte / Rebuke (BV2 / BV6, BVD3): a swap ends a guard: its count and a Rebuke it braced are discarded.
+	if (p !== undefined) {
+		p.riposteCount = 0;
+		if (p.rebukePending === RebukePending.GUARD) p.rebukePending = RebukePending.NONE;
+	}
 }
 
 /** A floor started or a room's enemies spawned: every present Bastion owner's brace is ready again. */
@@ -279,4 +300,29 @@ export function buildsBraceRearm(state: SimState): void {
 		const p = s.players[i];
 		if (hasBastion(p) && !buildPlayerLeft(state, i)) p.braceReady = 1;
 	}
+}
+
+// ---------------------------------------------------------------------------------------------
+// Stillwater (docs/BUILDS_V2.md BV6; Composure + Riposte): the record of a cut combo (the restore is ./riposte.ts)
+
+/**
+ * score.ts stepScore, before the tick's combo cuts (cuts > 0 and a running combo `combo` > x1.0, with state.builds):
+ * when a present player owns Stillwater, the team combo before the cuts and the tick are recorded (stillCombo /
+ * stillTick). A live record (within STILLWATER_TICKS) of a combo at least as high is kept as it is, so a second cut
+ * never lowers what an owner's guard can give back.
+ */
+export function buildsStillwaterRecord(state: SimState, combo: number): void {
+	const s = state.builds;
+	if (s === undefined) return;
+	let owner = false;
+	for (let i = 0; i < s.players.size(); i++) {
+		if (hasDuo(s.players[i], Duo.STILLWATER) && !buildPlayerLeft(state, i)) {
+			owner = true;
+			break;
+		}
+	}
+	if (!owner) return;
+	if (s.stillTick !== STILL_NONE && state.tick - s.stillTick <= STILLWATER_TICKS && s.stillCombo >= combo) return;
+	s.stillCombo = combo;
+	s.stillTick = state.tick;
 }

@@ -361,10 +361,10 @@ describe("opt-in state and the builds hash group (BU1)", () => {
 			]);
 			expect(layout.values[g.finish - 1]).toBe(STILL_NONE);
 			expect(layout.values).toEqual(writeHashFields(s, []));
-			// 1 + per player (1 + 20 levels + 1 duos length + 13 scalars: BU5 appended bulwarkPending, BU6 closeGrazes,
+			// 1 + per player (1 + 20 levels + 1 duos length + 14 scalars: BU5 appended bulwarkPending, BU6 closeGrazes,
 			// docs/LEGENDARIES.md LG1 braceCount and braceReady, the owner's tuning braceCooldown, docs/BUILDS_V2.md BV1
-			// riposteCount, overcap, happyHourTicks) + procs, pins and waves lengths + 2 world scalars.
-			expect(g.finish - g.start).toBe(1 + n * (1 + BOON_COUNT + 1 + 13) + 3 + 2);
+			// riposteCount, overcap, happyHourTicks, BV6 rebukePending) + procs, pins and waves lengths + 2 world scalars.
+			expect(g.finish - g.start).toBe(1 + n * (1 + BOON_COUNT + 1 + 14) + 3 + 2);
 			const scalars = layout.names.filter((name) => name.sub(1, 19) === "builds.players[0].b");
 			expect(scalars).toEqual([
 				"builds.players[0].bigHits",
@@ -597,6 +597,7 @@ describe("legendaries Overkill and Bastion (docs/LEGENDARIES.md LG1)", () => {
 			"riposteCount",
 			"overcap",
 			"happyHourTicks",
+			"rebukePending",
 		]);
 		expect(BUILD_PROC_FIELDS).toEqual(["x", "z", "owner", "gen", "slot", "id", "excess", "kind"]);
 		const s = createSimState(SEED, 0, 0, ARENA);
@@ -921,7 +922,7 @@ describe("builds v2, wave 1 (docs/BUILDS_V2.md BV1): data and scaffolding, no ru
 			"builds.stillTick",
 		]);
 		expect(layout.values).toEqual(writeHashFields(c, []));
-		// The floor change drops the pins and waves with the procs, and Stillwater's record.
+		// The floor change drops the pins and waves with the procs, and Stillwater's record (and, BV2, Riposte's count).
 		clearBuildProcs(cb);
 		expect([cb.procs.size(), cb.pins.size(), cb.waves.size(), cb.stillCombo, cb.stillTick]).toEqual([
 			0,
@@ -930,7 +931,8 @@ describe("builds v2, wave 1 (docs/BUILDS_V2.md BV1): data and scaffolding, no ru
 			0,
 			STILL_NONE,
 		]);
-		expect(cb.players[0].riposteCount).toBe(3);
+		// BV2: the floor change discards every player's Riposte count (a guard running across it fires nothing).
+		expect(cb.players[0].riposteCount).toBe(0);
 	});
 
 	it("the new event lists exist, are cloned, and are cleared every tick", () => {

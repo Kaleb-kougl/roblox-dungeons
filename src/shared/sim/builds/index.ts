@@ -15,3 +15,4 @@ export * from "./execute";
 export * from "./hooks";
 export * from "./onKill";
 export * from "./procs";
+export * from "./riposte";

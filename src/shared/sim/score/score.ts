@@ -94,6 +94,7 @@ import {
 	buildsOnGraze,
 	buildsOnPerfectRoom,
 	buildsUnshakenKept,
+	buildsStillwaterRecord,
 } from "../builds/hooks";
 import { pelletRoomClear, pelletRoomLive } from "../pellets/pelletRooms";
 import { pactHoldsRoom, pactKillPercent, pactRoomCleared, pactRoomPercent } from "../pacts/pactRooms";
@@ -691,6 +692,18 @@ function feedCombo(state: Readonly<SimState>, s: ScoreState): void {
 }
 
 /**
+ * Stillwater (docs/BUILDS_V2.md BV6, builds runs): an owner's guard gives back the team combo `combo` (tenths) a hit
+ * cut: combo = max(now, combo), the timer refilled to the window. Nothing without a score.
+ */
+export function stillwaterRestoreCombo(state: Readonly<SimState>, combo: number): void {
+	const s = state.score;
+	if (s === undefined) return;
+	if (combo > s.combo) s.combo = combo;
+	if (s.combo > s.maxCombo) s.maxCombo = s.combo;
+	s.comboTimer = comboWindowTicks(state);
+}
+
+/**
  * One landed hit: combo x (1 - 1/d), d = max(2, players) x divisorMultiplier (M2 Composure: 2), floored to the
  * tenth, at least x1.0. `players`: the players present at the hit (stepScore passes presentPlayerCount in co-op);
  * default ScoringConfig.partySize.
@@ -1135,6 +1148,8 @@ export function stepScore(state: SimState): void {
 	const present = presentPlayerCount(state) ?? s.partySize;
 	// Builds (docs/BUILDS.md BU6, opt-in): Unshaken's hits taken on armor never cut the combo (they still count).
 	const cuts = state.builds !== undefined ? hits - buildsUnshakenKept(state) : hits;
+	// Builds (docs/BUILDS_V2.md BV6, opt-in): Stillwater records the team combo before this tick's cuts.
+	if (cuts > 0 && s.combo > COMBO_MIN && state.builds !== undefined) buildsStillwaterRecord(state, s.combo);
 	for (let k = 0; k < cuts; k++) cutCombo(s, cutMultiplier, present);
 	const hitsBefore = s.hitsTaken;
 	s.hitsTaken += hits;

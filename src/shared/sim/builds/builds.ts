@@ -29,6 +29,8 @@
  *   overcap          (BV1, appended) boss damage the cap dropped from this player's hits, not paid out yet (BV9: 1 is
  *                    taken per OVERCAP_POINTS payout)
  *   happyHourTicks   (BV1, appended) Happy Hour: ticks of doubled kill points left (BV7: set by a flask drink)
+ *   rebukePending    (BV6, appended) Rebuke: RebukePending GUARD while the current guard braced, ROLL for a roll's
+ *                    brace this tick, else NONE (./riposte.ts)
  * and for the world:
  *   procs            the proc queue (BU3, ./procs.ts: { x, z, owner, gen, slot, id, excess, kind } per entry, oldest
  *                    first). `excess`, appended by docs/LEGENDARIES.md LG1, is the kill's Overkill carry (LG2:
@@ -53,7 +55,7 @@ import {
 	type CardKindId,
 	type ProcKindId,
 } from "./buildsData";
-import { STILL_NONE } from "./effectsData";
+import { RebukePending, STILL_NONE } from "./effectsData";
 
 // ---------------------------------------------------------------------------------------------
 // Config
@@ -96,6 +98,11 @@ export interface BuildPlayerState {
 	overcap: number;
 	/** Happy Hour (BV1; BV7): ticks of doubled kill points left (0: off). */
 	happyHourTicks: number;
+	/**
+	 * Rebuke (docs/BUILDS_V2.md BV6, appended; RebukePending): GUARD while the current guard braced (its full-length
+	 * end fires the REBUKE ring), ROLL for a roll's brace this tick (stepBuilds fires it), else NONE.
+	 */
+	rebukePending: number;
 }
 
 /** One queued proc: a kill (BU3) or, from BV5, a smash (docs/BUILDS_V2.md, `kind`). Every field hashed. */
@@ -536,6 +543,7 @@ function newPlayer(): BuildPlayerState {
 		riposteCount: 0,
 		overcap: 0,
 		happyHourTicks: 0,
+		rebukePending: RebukePending.NONE,
 	};
 }
 
@@ -711,9 +719,15 @@ export function clearBuildEvents(s: BuildsState): void {
 
 /**
  * The floor change (endless.ts nextFloor): queued procs, pins and waves are dropped with the floor's actors and
- * bullets, and Stillwater's recorded combo with them (docs/BUILDS_V2.md BV1).
+ * bullets, and Stillwater's recorded combo with them (docs/BUILDS_V2.md BV1). Riposte (BV2): every player's
+ * `riposteCount` and Rebuke's `rebukePending` are discarded too, so a guard running across the change (weapon slots
+ * are not reset) fires nothing for what it erased on the old floor.
  */
 export function clearBuildProcs(s: BuildsState): void {
+	for (const p of s.players) {
+		p.riposteCount = 0;
+		p.rebukePending = RebukePending.NONE;
+	}
 	s.procs.clear();
 	s.pins.clear();
 	s.waves.clear();
@@ -775,6 +789,7 @@ export const BUILD_PLAYER_SCALARS = [
 	"riposteCount",
 	"overcap",
 	"happyHourTicks",
+	"rebukePending",
 ] as const;
 
 /** Per proc, in hash order. Append only. */

@@ -358,6 +358,17 @@ export const WaveKind = {
 	/** Rebuke's full ring (Bastion + Riposte: a brace that restored something). */
 	REBUKE: 2,
 } as const;
+/**
+ * BuildPlayerState.rebukePending (docs/BUILDS_V2.md BV6, appended, hashed): what Rebuke's ring waits for. Append only.
+ */
+export const RebukePending = {
+	/** Nothing: no brace that restored something in the current guard or roll. */
+	NONE: 0,
+	/** The current guard braced: its full-length end fires the REBUKE ring instead of the forward wave. */
+	GUARD: 1,
+	/** A roll braced this tick: stepBuilds (./riposte.ts stepWaves) fires the REBUKE ring at once. */
+	ROLL: 2,
+} as const;
 
 // Ballista (rare, offense; BV3 the bursts, BV4 Siege Bolt: ./siege.ts).
 

@@ -593,6 +593,96 @@ Settled on review of this plan (2026-11-07):
 9. Wrecker's splinters and Demolition fire for every piece the owner breaks (BVD13).
 10. Full Heart and Happy Hour ship in wave 1 (BVD15).
 
+## BV2 (as built)
+
+Riposte and Counterstrike, on BV1's names. Paths under `src/shared/sim/` unless noted.
+
+- **`builds/riposte.ts`** (new, in the builds barrel): `spawnWave(s, owner, x, z, dirX, dirZ, halfCos, damage, kind,
+  count)` (a `BuildWave` record, radius 0, `RIPOSTE_WAVE_RANGE` / `RIPOSTE_WAVE_SPEED`; refused with no event once
+  `RIPOSTE_WAVES_MAX` are live; pushes the `wave*` lists and `counterCount`), `buildsOnRiposteGuard(ctx, cancels,
+  starting, guardFrom, braced)` (every guard tick: the count and BV6's duos), `buildsOnGuardEnd(ctx)` (the counter-wave),
+  `stepWaves(ctx, s)` and `resetRiposteScratch()`.
+  - The count: `riposteCount` += the guard tick's `cancels` (goo is never in it), Riposte owners only; reset on the
+    guard's start tick (before the count, after Bastion's hook so a brace on the start tick is seen).
+  - The end: on the tick the guard's counter reaches 0, with at least `RIPOSTE_MIN_ERASED` counted, a living present
+    owner sends a wave from their position along the facing, damage min(count, `RIPOSTE_MAX_COUNT`[level]): FORWARD
+    (`RIPOSTE_WAVE_HALF_ANGLE_COS`), or at level III with `COUNTERSTRIKE_RING_ERASED` or more a RING
+    (`COUNTERSTRIKE_RING_HALF_ANGLE_COS`) plus min(count, max) returns queued in module scratch (owner, origin, count).
+    The count is spent (zeroed) at every end, fired or not.
+  - `stepWaves`: a party drops leavers' waves (`dropLeavers`' pattern); Rebuke's roll rings spawn (BV6); every wave in
+    index order grows by speed x `SIM_DT` (capped at the range) and strikes each living actor not in `hits` with
+    d2 <= (radius + a.radius)^2 inside the cone (melee's `inCone`: skipped only when d > a.radius and dot < halfCos x d),
+    slot order: id pushed to `hits`, then `ctx.damageActor(a, playerHitDamage(owner, damage))` under
+    `ctx.actingPlayer(owner)`, `procGen` 0, `KillCause.NONE`; a wave is removed after the tick its radius reached the
+    range (18 ticks). Then the queued returns fire (`fireAimedVolley`, `COUNTERSTRIKE_RETURN` within
+    `COUNTERSTRIKE_RANGE`, `BuildEffect.RIPOSTE` gen 0), after the wave struck, so they aim at what survived. A dead
+    owner's waves keep going; waves erase no bullet and hit no piece (BVD2).
+- **`combat/weapons/defs/sword.ts`** (the guard branch only): `guardFrom` (the score events' `guardX` size before the
+  sweep); after `buildsOnGuardCancels` (unchanged) `buildsOnRiposteGuard` with `braced` (Bastion's `bracePlayer` grew in
+  that call), and `if (v[SWORD_V_GUARD] === 0) buildsOnGuardEnd(ctx)`: only the full-length end (BVD3). The roll
+  branch and the swap branch are untouched: a roll or a swap zeroes the counter without the end hook.
+- **`builds/hooks.ts`**: `buildsOnRollStart` and `buildsOnSwap` also zero `riposteCount` (and Rebuke's mark, BV6) for
+  every builds player (0 already for anyone without Riposte, so no hash moves).
+- **`builds/procs.ts`**: `stepWaves(ctx, s)` right after `beginEffectBudget` (inside the budget session, so the returns
+  count in it), before `stepEvolutions`; `resetRiposteScratch()` in `resetBuildScratch`.
+- **`builds/builds.ts`**: `clearBuildProcs` (the floor change) zeroes every player's `riposteCount` and `rebukePending`.
+- **The floor change (choice).** The guard itself is **not** stopped at the floor change: weapon slots are not reset
+  there for anyone (BV0), and stopping it would change the guard (and Bastion's brace) for players without Riposte.
+  Its count is discarded, so a guard running across the change fires nothing for the old floor's bullets; it would
+  only fire for bullets it erased in its remaining ticks on the new floor (there are none at a floor's start).
+- **Specs** `builds/riposte.spec.ts` (BV2 part): 4 erased -> one FORWARD wave on the guard's 18th tick dealing 4 (5 with
+  Sharpened, `playerHitDamage`) to a dummy 6 tiles ahead, nothing to one behind; the wave's growth (0.4 a tick) and
+  18-tick life; 0 erased and goo-only guards send nothing; the cap (12 erased: 6 at I, 10 at II); one hit per enemy (a
+  body on the origin and one in the band); a roll-cut guard and a swapped guard (out, 30 ticks, back in) fire nothing and
+  zero the count; a guard across the floor change fires nothing; a wave kill procs at gen 0 (Chain Spark's segment
+  `sparkGen` 0); `RIPOSTE_WAVES_MAX`; Counterstrike 5 -> RING + 5 returns (the dummy behind struck), 4 -> FORWARD, no
+  returns; a full effect budget (`effectBulletsMax` live shards) drops all 6 returns (`effectDropped` 6) while the ring
+  still deals 6; determinism (below). `builds/builds.spec.ts`: 14 per-player scalars, `rebukePending` last,
+  `clearBuildProcs` now zeroes `riposteCount`.
+
+## BV6 (as built: Thunder Guard, Stillwater, Rebuke)
+
+The three guard-side duos (BV6's other two, Dragon Bolt and Powder Keg, are another worker's). Paths under
+`src/shared/sim/`.
+
+- **New hashed field**: `rebukePending` appended LAST to `BuildPlayerState` / `BUILD_PLAYER_SCALARS` (after
+  `happyHourTicks`; nothing BV1 declared could say "this guard braced"), values `RebukePending` { `NONE` 0, `GUARD` 1,
+  `ROLL` 2 } (`builds/effectsData.ts`, after `WaveKind`). Every builds run's group grows by 1 per player. `ROLL` never
+  outlives its tick (set in the enemy bullet walk, consumed by `stepWaves` in 6b).
+- **Thunder Guard** (`builds/riposte.ts` `buildsOnRiposteGuard`, `builds/duos.ts`): an owner's guard tick queues
+  min(cancels, `THUNDER_GUARD_MAX`) sparks (`queueThunderSpark(owner, x, z)`: the existing spark queue, duo
+  THUNDER_GUARD, slot -1, id `NO_SKIP_ID`) from the positions the guard's sink recorded this tick (`guardX` /
+  `guardZ` from `guardFrom`; without a score, the player's position). `releaseSparks` (after the drain) gives each to
+  `thunderSpark`: the nearest living enemy within `THUNDER_GUARD_RANGE` takes `playerHitDamage(owner,
+  THUNDER_GUARD_DAMAGE)` with `procGen` 1 and `KillCause.SPARK`; one spark segment (`sparkGen` 0, `sparkFork`
+  `SparkFork.THUNDER`) and the usual `duoProc` entry (value 1) per spark that struck.
+- **Stillwater** (`builds/hooks.ts` `buildsStillwaterRecord`, `score/score.ts`, `builds/riposte.ts`): `stepScore`, right
+  before the cut loop, with `cuts > 0`, a running combo and builds: when a present player owns the duo, records
+  `stillCombo` = the combo before the cuts and `stillTick` = the tick. **Deviation (choice):** a live record (within
+  `STILLWATER_TICKS`) of a combo at least as high is kept as it is (combo and tick), so a second hit never lowers what
+  can be given back. An owner's guard tick that erased >= 1 bullet with a record calls `stillwaterRestoreCombo(state,
+  stillCombo)` (new export in score.ts: combo = max(now, recorded), `maxCombo` kept, timer refilled to the window; it
+  does not set `comboFed`) when `tick - stillTick <= STILLWATER_TICKS`, and clears the record either way (an expired one
+  too). Team-wide (BVD16), scored runs only.
+- **Rebuke** (`builds/riposte.ts`, `builds/hooks.ts`): a brace that pushed PIP or HEAL marks the owner: in a guard
+  (`braced` from sword.ts) `GUARD`; in a roll (`buildsOnRollThrough`, the brace list grew) `ROLL`. `GUARD`: the guard's
+  full-length end sends a REBUKE ring (`COUNTERSTRIKE_RING_HALF_ANGLE_COS`, damage min(`riposteCount`, max)) instead
+  of the forward wave or Counterstrike's ring; **Counterstrike's returns still fire** with it (choice: the returns are
+  Counterstrike's own, the ring only replaces the wave). A roll's start or a swap discards `GUARD`, so a guard that
+  braced and is then cut fires nothing. `ROLL`: `stepWaves` spawns the REBUKE ring at once from the roller (any weapon),
+  damage min(`braceCount`, max) as counted by then. Once per guard or roll (the mark is reset on the guard's start and
+  the roll's start; a brace fires once per count). A brace that restored nothing pushes no brace, so marks nothing.
+- **Specs** `builds/riposte.spec.ts` (BV6 part): Thunder Guard: 10 erased -> exactly 8 THUNDER segments, each starting
+  at the first 8 `guardX` / `guardZ` positions, all at the dummy, 8 damage; none without the duo. Stillwater: a hit at
+  x3.0 records 30 and the tick; an erasing guard 179 ticks later restores 30 and clears the record; the next guard
+  gives nothing; 181 ticks later restores nothing; a guard that erased nothing keeps the record; no record without the
+  duo or at x1.0. Rebuke: a bow roll through 8 bullets with armor 0 restores the pip and sends one REBUKE ring at once
+  (damage 6, `counterCount` 8) that strikes a dummy behind; none at full armor (no Stone Heart), none on a second brace
+  in the room, none without the duo; a guard that braces sends one REBUKE ring (not a forward wave beside it; FORWARD
+  without the duo); a braced guard cut by a roll sends nothing. Determinism: a co-op room of 12 firing `test.chaser`s,
+  both players at Riposte III with Chain Spark, Composure, Bastion and all three duos, guarding into volleys and
+  rolling for 240 ticks: two runs hash the same every tick (waves > 0).
+
 ## Appendix: the proposal (2026-11-05)
 
 Kept as written (Overkill withdrawn to docs/LEGENDARIES.md 2026-11-06, Matador dropped and the owner calls settled

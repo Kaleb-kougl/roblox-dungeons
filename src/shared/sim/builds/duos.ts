@@ -43,7 +43,10 @@
  *     through playerHitDamage; a kill procs at gen 1), stop on walls and intact breakables exactly like other player
  *     bullets, and never touch enemy bullets (no player bullet does).
  *   stepDuosAfterDrain, after the drain (so the kills of these sparks proc next tick, one generation per tick):
- *     d. the queued sparks, in queue order: Storm Blade fires the owner's Chain Spark as if the enemy hit had died
+ *     d. the queued sparks, in queue order (Thunder Guard's, docs/BUILDS_V2.md BV6: one per bullet a guard erased, at
+ *        most THUNDER_GUARD_MAX a guard tick, queued from the sword's guard by ./riposte.ts; each strikes the nearest
+ *        living enemy within THUNDER_GUARD_RANGE of the erased bullet for playerHitDamage(owner, THUNDER_GUARD_DAMAGE)
+ *        at generation 1, a spark segment with sparkFork THUNDER): Storm Blade fires the owner's Chain Spark as if the enemy hit had died
  *        there (./onKill.ts chainSpark at the owner's level, generation 0: its kills proc at gen 1; the enemy hit is the
  *        victim it skips); Conductor strikes the nearest OTHER living enemy within CONDUCTOR_RANGE of the enemy passed
  *        through (nearestEnemy) for playerHitDamage(owner, CONDUCTOR_DAMAGE), one hop, generation 0 (its kill procs at
@@ -83,6 +86,9 @@ import {
 	FIRE_ARROWS_EMBER_TICKS,
 	KillCause,
 	STORM_BLADE_ARROW_HITS,
+	SparkFork,
+	THUNDER_GUARD_DAMAGE,
+	THUNDER_GUARD_RANGE,
 } from "./effectsData";
 import { NO_SKIP_ID, fireAimedVolley, fireEffect, nearestEnemy } from "./effects";
 import { buildPlayerLeft, buildPlayerStateAt, hasDuo, pushDuoProc } from "./hooks";
@@ -90,6 +96,7 @@ import { chainSpark, volatileBurst } from "./onKill";
 
 const CLOSE_CALL_RANGE2 = CLOSE_CALL_RANGE * CLOSE_CALL_RANGE;
 const CONDUCTOR_RANGE2 = CONDUCTOR_RANGE * CONDUCTOR_RANGE;
+const THUNDER_GUARD_RANGE2 = THUNDER_GUARD_RANGE * THUNDER_GUARD_RANGE;
 /** Fire Arrows' last ember age (ticks). */
 const FIRE_ARROWS_LAST_AGE = FIRE_ARROWS_EMBER_TICKS * FIRE_ARROWS_EMBERS_MAX;
 /** Nothing excluded (nearestEnemy's `exclude`). */
@@ -156,6 +163,20 @@ function queueSpark(ctx: SimCtx, duo: number, owner: number, a: Readonly<ActorSt
 	sparkZ.push(a.z);
 	sparkSlot.push(ctx.actors.indexOf(a as ActorState));
 	sparkId.push(a.id);
+}
+
+/**
+ * Thunder Guard (Riposte + Chain Spark, docs/BUILDS_V2.md BV6): a guard of `owner` erased an enemy bullet at (x, z);
+ * ./riposte.ts buildsOnRiposteGuard checks the duo and the cap (THUNDER_GUARD_MAX a guard tick). Released after the
+ * drain with the other queued sparks (thunderSpark).
+ */
+export function queueThunderSpark(owner: number, x: number, z: number): void {
+	sparkDuo.push(Duo.THUNDER_GUARD);
+	sparkOwner.push(owner);
+	sparkX.push(x);
+	sparkZ.push(z);
+	sparkSlot.push(-1);
+	sparkId.push(NO_SKIP_ID);
 }
 
 /** A sword finisher hit `first` first (undefined: it hit nothing); the acting player is ctx's. Storm Blade. */
@@ -230,6 +251,31 @@ function conductorSpark(ctx: SimCtx, s: BuildsState, owner: number, x: number, z
 	return 1;
 }
 
+/**
+ * Thunder Guard's spark from an erased bullet at (x, z): the nearest living enemy within THUNDER_GUARD_RANGE
+ * (nearestEnemy) takes playerHitDamage(owner, THUNDER_GUARD_DAMAGE), generation 1 (its kill procs at gen 1), one spark
+ * segment with sparkFork SparkFork.THUNDER. Returns the enemies struck (0 or 1).
+ */
+function thunderSpark(ctx: SimCtx, s: BuildsState, owner: number, x: number, z: number): number {
+	const k = nearestEnemy(ctx, x, z, THUNDER_GUARD_RANGE2, NO_SKIP_ID, NO_EXCLUDE);
+	if (k < 0) return 0;
+	const a = ctx.actors[k];
+	const e = s.events;
+	e.sparkX1.push(x);
+	e.sparkZ1.push(z);
+	e.sparkX2.push(a.x);
+	e.sparkZ2.push(a.z);
+	e.sparkOwner.push(owner);
+	e.sparkGen.push(0);
+	e.sparkFork.push(SparkFork.THUNDER);
+	ctx.procGen = 1;
+	ctx.procCause = KillCause.SPARK;
+	ctx.damageActor(a, playerHitDamage(ctx.state, owner, THUNDER_GUARD_DAMAGE));
+	ctx.procGen = 0;
+	ctx.procCause = KillCause.NONE;
+	return 1;
+}
+
 function releaseSparks(ctx: SimCtx, s: BuildsState): void {
 	const e = s.events;
 	for (let k = 0; k < sparkDuo.size(); k++) {
@@ -245,6 +291,8 @@ function releaseSparks(ctx: SimCtx, s: BuildsState): void {
 			const before = e.sparkX1.size();
 			chainSpark(ctx, s, setPseudo(x, z, owner, 0, sparkSlot[k], sparkId[k]), buildLevel(p, Boon.CHAIN_SPARK));
 			struck = e.sparkX1.size() - before;
+		} else if (duo === Duo.THUNDER_GUARD) {
+			struck = thunderSpark(ctx, s, owner, x, z);
 		} else {
 			struck = conductorSpark(ctx, s, owner, x, z, sparkId[k]);
 		}
