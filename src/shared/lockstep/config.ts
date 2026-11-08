@@ -69,6 +69,117 @@ export const LOCKSTEP_FINAL_RATE = table.freeze({ count: 4, windowSeconds: 10 })
 /** Per player: lockstepLeave calls per window (an honest client sends one per run; the leave is idempotent). */
 export const LOCKSTEP_LEAVE_RATE = table.freeze({ count: 4, windowSeconds: 10 });
 
+/**
+ * Co-op frame pacing (docs/FRAME_PACING.md, Design 1-3): the client's PlayoutPacer (pacer.ts) steps received merged
+ * frames on a steady playout clock from a small jitter buffer. Depths are in ticks of SIM_DT. All provisional until
+ * FP0 / FP6 measure a real session.
+ */
+export interface PacingTunables {
+	/** Buffer depth before any arrival is measured (the first batch places the playout clock this deep). */
+	readonly startDepthTicks: number;
+	/** The buffer is never shallower: one broadcast batch plus a tick of margin (FPD6). */
+	readonly minDepthTicks: number;
+	/**
+	 * The target depth never goes past this (200 ms): beyond it a hold is better than the delay. Also the most the input
+	 * lead adds for the buffer (depthTicks), so MAX_INPUT_LEAD_TICKS + this stays inside MAX_INPUT_AHEAD_TICKS.
+	 */
+	readonly maxDepthTicks: number;
+	/**
+	 * Added to the measured jitter: rounding and Heartbeat granularity. Arrivals are handled on a rendered frame, so an
+	 * offset can read a whole frame (one tick at 60 fps) later than any measured; 0.5 held about once a second on the
+	 * 20-120 ms spec network (lockstep.spec FP4), 1.5 not once after the warm-up.
+	 */
+	readonly marginTicks: number;
+	/** The jitter is measured over the arrivals of this many seconds (follows a changing network within seconds). */
+	readonly jitterWindowSec: number;
+	/** The jitter is this quantile of the arrival offsets (not the max: one outlier is one hold, not a lasting delay). */
+	readonly jitterPercentile: number;
+	/** The best-case path (the smallest arrival offset) is taken over this many seconds (follows a route change). */
+	readonly floorWindowSec: number;
+	/** The playout clock moves toward its target at most this share of real time (runs at 1 +/- this speed). */
+	readonly slewShare: number;
+	/** The faster share used while the clock is more than fastSlewTicks past its target (after a long hold, FPD7). */
+	readonly fastSlewShare: number;
+	/** How far past its target (ticks) the playout clock must be for the fast slew. */
+	readonly fastSlewTicks: number;
+	/**
+	 * Past its target by more than this (ticks; a long hold: a server stall, a long network hiccup) the playout clock is
+	 * not slewed back (10 % would take ten times the hold) but reset to the target + fastForwardMarginTicks, never past
+	 * the newest queued frame: the frames due step at maxCatchup per frame, a bounded fast-forward.
+	 */
+	readonly fastForwardTicks: number;
+	/** The fast-forward stops this far (ticks) above the target; the slew does the rest. */
+	readonly fastForwardMarginTicks: number;
+	/**
+	 * A rendered frame longer than this (seconds), or this much clock since the last frame (a stall inside the render
+	 * step before the pump), is a client hitch: P is not moved, and the arrivals of that frame and the next are left out
+	 * of the windows.
+	 */
+	readonly hitchFrameSec: number;
+	/**
+	 * The lead's depth (depthTicks) rises at once when the buffer depth passes it, but falls only once the depth is this
+	 * many ticks at or below the next whole tick down: a depth hovering at a tick boundary does not flicker the input
+	 * target. Just under half a tick, so a depth sitting mid-tick (where the phase shift tends to put it) is never on the
+	 * threshold.
+	 */
+	readonly leadHysteresisTicks: number;
+	/** The frames' phase on the tick grid and its spread are smoothed by this share per frame. */
+	readonly phaseSmoothing: number;
+	/**
+	 * The phase is locked (and the mid-tick phase shift applied) while the frames' mean distance from the smoothed phase
+	 * is under this (ticks): frames at or below about the sim rate with ordinary jitter (~0.03 at 60 fps +/- 1 ms); 120 /
+	 * 144 fps walk round the tick (~0.25) and are left unshifted.
+	 */
+	readonly phaseLockSpread: number;
+	/** The phase shift keeps its whole-tick choice while it stays within 0.5 + this (ticks): P* wobbling at a boundary. */
+	readonly phaseHysteresisTicks: number;
+}
+
+export const PACING: PacingTunables = table.freeze({
+	startDepthTicks: 3,
+	minDepthTicks: 3,
+	maxDepthTicks: 12,
+	marginTicks: 1.5,
+	jitterWindowSec: 4,
+	jitterPercentile: 0.95,
+	floorWindowSec: 10,
+	slewShare: 0.05,
+	fastSlewShare: 0.1,
+	fastSlewTicks: 6,
+	fastForwardTicks: 12,
+	fastForwardMarginTicks: 1,
+	hitchFrameSec: 0.1,
+	leadHysteresisTicks: 0.4,
+	phaseSmoothing: 0.1,
+	phaseLockSpread: 0.12,
+	phaseHysteresisTicks: 0.25,
+});
+
+/**
+ * The KV_Debug co-op arrival log (docs/FRAME_PACING.md FP0 / FP5; arrivalLog.ts): SimController prints one line per
+ * window with the batches' inter-arrival times and sizes, the pacer's numbers and the render fps. Diagnostics only:
+ * nothing here reaches the sim, the wire or a replay.
+ */
+export interface ArrivalLogTunables {
+	/** One line per this many seconds of local clock. */
+	readonly windowSec: number;
+	/** Batch-size histogram buckets: sizes 1 .. sizeBuckets - 1 alone, sizeBuckets or more in the last one. */
+	readonly sizeBuckets: number;
+	/** At most this many inter-arrival gaps kept per window (a window never reported cannot grow without bound). */
+	readonly maxGaps: number;
+	/** The two gap quantiles printed (nearest rank). */
+	readonly midPercentile: number;
+	readonly highPercentile: number;
+}
+
+export const ARRIVAL_LOG: ArrivalLogTunables = table.freeze({
+	windowSec: 10,
+	sizeBuckets: 8,
+	maxGaps: 2048,
+	midPercentile: 0.5,
+	highPercentile: 0.95,
+});
+
 export interface LockstepTunables {
 	readonly inputDelay: number;
 	readonly maxInputLead: number;
@@ -94,6 +205,12 @@ export interface LockstepTunables {
 	readonly maxHashBatch: number;
 	/** Debug input bits survive the relay (Studio tooling); otherwise they are stripped from every frame. */
 	readonly allowDebugInput: boolean;
+	/**
+	 * Client: co-op frame pacing (docs/FRAME_PACING.md). Defined: the client owns a PlayoutPacer and paces once its
+	 * caller passes a clock (`receive` / `pump`'s `now`); undefined: it steps every received frame at once, as before.
+	 * The server ignores it.
+	 */
+	readonly pacing: PacingTunables | undefined;
 }
 
 export const DEFAULT_LOCKSTEP: LockstepTunables = table.freeze({
@@ -115,4 +232,5 @@ export const DEFAULT_LOCKSTEP: LockstepTunables = table.freeze({
 	hashSendMinSeconds: HASH_SEND_MIN_SECONDS,
 	maxHashBatch: MAX_HASH_BATCH,
 	allowDebugInput: false,
+	pacing: PACING,
 });

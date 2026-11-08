@@ -5,7 +5,20 @@ import { describe, expect, it } from "@rbxts/jest-globals";
 import { Button, EMPTY_INPUT, SIM_DT, copyInput, type InputFrame } from "shared/sim";
 import { buildEndlessRunConfig } from "shared/run";
 import { DEFAULT_LOCKSTEP, LockstepClient, MergedEncoder, decodeInputBatch } from "shared/lockstep";
-import { LATENCY_PROBE, LatencyProbe, latencyProbeVars, latencyProbeView, latencyProbeViewsEqual } from "shared/view";
+import { PLACEHOLDER_MANIFEST, ThemePack } from "shared/theme";
+import {
+	LATENCY_PROBE,
+	LatencyProbe,
+	PACING_DEBUG_OFF,
+	latencyProbeVars,
+	latencyProbeView,
+	latencyProbeViewsEqual,
+	pacingDebugKey,
+	pacingDebugVars,
+	pacingDebugView,
+	type LatencyProbeView,
+} from "shared/view";
+import { HUD_STRINGS } from "shared/view/hud";
 
 const FIRE = Button.FIRE;
 const ROLL = Button.ROLL;
@@ -183,5 +196,95 @@ describe("LatencyProbe on a LockstepClient (loopback server, one tick per frame)
 		const s = probe.stats();
 		expect([s.count, s.late]).toEqual([1, 0]);
 		expect(s.lastMs).toBeCloseTo((DEFAULT_LOCKSTEP.inputDelay + 1) * DT * LATENCY_PROBE.msPerSecond, 6);
+	});
+});
+
+describe("the debug line's pacing part (docs/FRAME_PACING.md Design 7)", () => {
+	const stats = { started: true, depthTicks: 4, depthMs: 58.4, jitterMs: 9.6, holds: 2 };
+	const warnings: string[] = [];
+	const pack = new ThemePack(PLACEHOLDER_MANIFEST, { warn: (m) => warnings.push(m) });
+	const line = (v: LatencyProbeView) =>
+		pack.str(
+			HUD_STRINGS.netProbe,
+			latencyProbeVars(v, pack.str(pacingDebugKey(v.pacing), pacingDebugVars(v.pacing))),
+		);
+
+	it("off without pacing (KV_PacingOff), waiting before the playout clock starts, else the pacer's numbers", () => {
+		expect(pacingDebugView(stats, 3, false)).toEqual(PACING_DEBUG_OFF);
+		expect(pacingDebugView(undefined, 3, true)).toEqual({ ...PACING_DEBUG_OFF, mode: "waiting", backlog: 3 });
+		expect(pacingDebugView({ ...stats, started: false }, 1, true).mode).toBe("waiting");
+		expect(pacingDebugView(stats, 3, true)).toEqual({
+			mode: "on",
+			depthTicks: 4,
+			depthMs: 58,
+			holds: 2,
+			backlog: 3,
+			jitterMs: 10,
+		});
+		expect([pacingDebugKey(PACING_DEBUG_OFF), pacingDebugKey(pacingDebugView(stats, 0, true))]).toEqual([
+			HUD_STRINGS.paceProbeOff,
+			HUD_STRINGS.paceProbe,
+		]);
+		expect(pacingDebugKey(pacingDebugView(undefined, 0, true))).toBe(HUD_STRINGS.paceProbeWait);
+	});
+
+	it("shows the effective lead, the net lead and the pacing part", () => {
+		const p = new LatencyProbe();
+		const paced = latencyProbeView(p, 7, 1, 3, pacingDebugView(stats, 3, true));
+		expect(line(paced)).toBe(
+			"co-op lead 7t 117ms (net 3t) · pace 4t 58ms · holds 2 · backlog 3 · jitter p95 10ms · " +
+				"press->step -ms avg - max - n0 · late 0 miss 1",
+		);
+		const off = latencyProbeView(p, 3, 0, 3, pacingDebugView(undefined, 2, false));
+		expect(line(off)).toBe(
+			"co-op lead 3t 50ms (net 3t) · pace off (KV_PacingOff) · press->step -ms avg - max - n0 · late 0 miss 0",
+		);
+		const waiting = latencyProbeView(p, 3, 0, 3, pacingDebugView(undefined, 2, true));
+		expect(line(waiting).find("· pace waiting · backlog 2 ·", 1, true)[0]).never.toBe(undefined);
+		expect(warnings).toEqual([]);
+	});
+
+	it("a change in the net lead or the pacing part is a new view (the HUD store updates)", () => {
+		const p = new LatencyProbe();
+		const v = latencyProbeView(p, 7, 0, 3, pacingDebugView(stats, 3, true));
+		expect(latencyProbeViewsEqual(v, latencyProbeView(p, 7, 0, 3, pacingDebugView(stats, 3, true)))).toBe(true);
+		expect(latencyProbeViewsEqual(v, latencyProbeView(p, 7, 0, 4, pacingDebugView(stats, 3, true)))).toBe(false);
+		expect(latencyProbeViewsEqual(v, latencyProbeView(p, 7, 0, 3, pacingDebugView(stats, 2, true)))).toBe(false);
+		const held = pacingDebugView({ ...stats, holds: 3 }, 3, true);
+		expect(latencyProbeViewsEqual(v, latencyProbeView(p, 7, 0, 3, held))).toBe(false);
+		// Sub-millisecond changes round away.
+		const near = pacingDebugView({ ...stats, depthMs: 58.3, jitterMs: 9.7 }, 3, true);
+		expect(latencyProbeViewsEqual(v, latencyProbeView(p, 7, 0, 3, near))).toBe(true);
+	});
+
+	it("with a paced LockstepClient: the effective lead is the net lead plus the depth", () => {
+		const seed = 31337;
+		const setup = buildEndlessRunConfig(seed, 1);
+		const client = new LockstepClient({
+			runId: "paced",
+			seed,
+			spawn: setup.spawn!,
+			config: setup.config,
+			players: 1,
+			localIndex: 0,
+		});
+		const enc = new MergedEncoder(1);
+		const neutral = copyInput(EMPTY_INPUT);
+		let t = 0;
+		client.pump(SIM_DT, () => neutral, t);
+		for (let k = 0; k < 4; k++)
+			expect(client.receive(k, enc.encode([[copyInput(EMPTY_INPUT)]]), (t += SIM_DT))).toBe(true);
+		client.pump(SIM_DT, () => neutral, t);
+		const view = latencyProbeView(
+			new LatencyProbe(),
+			client.inputLead(),
+			client.misses,
+			client.netLead(),
+			pacingDebugView(client.pacingStats(), client.backlog(), true),
+		);
+		expect(view.pacing.mode).toBe("on");
+		expect(view.pacing.depthTicks).toBeGreaterThanOrEqual(DEFAULT_LOCKSTEP.pacing!.minDepthTicks);
+		expect(view.leadTicks).toBe(view.netLeadTicks + view.pacing.depthTicks);
+		expect(view.netLeadTicks).toBe(DEFAULT_LOCKSTEP.inputDelay);
 	});
 });

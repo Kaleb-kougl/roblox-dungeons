@@ -70,6 +70,8 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/HAZARD_ART.md` | Hazard art (the Stormcaller's strike and the build embers as original greyscale pixel art tinted by their roles: a flash over the strike's 0.1 s life and a short scorch after it, the ember's burn loop; supersedes PAD3; presentation only): plan, as built, tasks HA0-HA8, decisions HAD1-HAD5 |
 | `docs/GAMEPAD_MENUS.md` | Gamepad menus (every menu usable with a controller: focus scopes with one owner, recovery and memory, one B path (hold B to exit on run over), LB/RB / LT/RT tabs, right-stick scroll, X / Y shortcuts, a hint bar with Roblox button icons, menu haptics, console TV-safe fit; client input and presentation only): census, plan, as built, tasks GM0-GM12, decisions GMD1-GMD16 |
 | `docs/WALL_SLIDE.md` | Wall slide (the player's body slides round corners instead of stopping: `slideCircle` collide and slide, a corner tie-break, a face assist within 0.35 tiles of a wall's end, a full pillar slip on isolated 1 x 1 blockers; every world, M1 included; snag census; gameplay): findings, plan, as built, tasks WS0-WS10, decisions WSD1-WSD7 |
+| `docs/FRAME_PACING.md` | Co-op frame pacing (a playout clock: received merged frames stepped at a steady 60 Hz from a small jitter buffer, holds on underflow, the input lead covers the buffer; the lead-never-decays fix; client timing only): findings, plan, tasks FP0-FP8, decisions FPD1-FPD8 |
+| `docs/BUILDS_V2.md` | Builds v2, wave 1 (Riposte: a guard that erases bullets answers with a counter-wave, Counterstrike ring and returns; Ballista: the heavy arrow bursts into bolts, Siege Bolt pins and drags an enemy into a wall; Wrecker: rolls smash breakables, every piece you break fires splinters, Demolition chains them; duos Thunder Guard / Stillwater / Rebuke (Bastion + Riposte) / Dragon Bolt / Powder Keg / Full Heart / Happy Hour; the duo hint on New cards; overcap boss points `ScoreSource.OVERCAP`; gameplay, opt-in `SimConfig.builds`; wave 2 and the proposal in its appendix): plan, tasks BV0-BV13, decisions BVD1-BVD20 |
 
 Decision log (deviations from `PLAN.md`):
 - **Art (docs/ART.md).** The theme contract gained a `"sprites"` kind (large pre-rendered cells, 1/4/8/16 screen-space
@@ -931,6 +933,27 @@ Decision log (deviations from `PLAN.md`):
   new strings, roles, sounds or settings; no Luau-locals change. `boon-icons.png` uploaded 2026-11-08 (`assetIds.ts`),
   so the bundled vale pack draws the icons; the Studio check (banner row width on the longest Evolution banner, the
   phone column) pending.
+- **Co-op frame pacing (docs/FRAME_PACING.md).** Client timing and presentation only (no sim, dungeon, hash, replay,
+  wire, fixture or score change; the server is unchanged: every client still steps exactly the merged log, only WHEN
+  changes). shared/lockstep `pacer.ts` `PlayoutPacer`, a playout clock: merged frame k is stepped at local time k x
+  SIM_DT + P from a small jitter buffer (base = the smallest arrival offset over 10 s, depth = the 95th-percentile
+  jitter over 4 s + `marginTicks`, clamped to 3..12 ticks), one tick per 16.7 ms at any render rate, alpha in [0, 1);
+  a hold (views frozen on the newest state, never extrapolated) when a due frame is missing; slews at 5 % (10 % past 6
+  ticks); catches up at `maxCatchup` after a client hitch, whose arrivals stay out of the windows. Tunables `PACING`
+  (config.ts); `PACING.marginTicks` is 1.5, raised from the planned 0.5 by FP4's measurement (harness arrivals are
+  handled on whole rendered frames, so an offset can read a whole tick late; 0.5 held about once a second). Opt-in per
+  client through `LockstepTunables.pacing` (`DEFAULT_LOCKSTEP.pacing` = `PACING`; undefined = step on arrival, as the
+  older network specs assert): `receive(firstTick, data, now?)` / `pump(dt, sample, now?)` take the local clock
+  (SimController: `os.clock()`), pacing turns on at the first pump given `now`, `getAlpha()` is the pacer's, and the
+  input lead covers the buffer (`nextInputTick()` = tick + `netLead()` + depth; `inputLead()` the effective lead,
+  `isPacing()`, `pacingStats()`). The lead fix (FP1): a step whose target was already sent sends nothing, so the
+  effective lead falls back after a spike (it had stayed at the run's highest lead). `KV_PacingOff` (Workspace,
+  `RUN_ATTRIBUTES.pacingOff`, read at each co-op start) builds the client without pacing for an A/B. KV_Debug: the
+  co-op debug line shows the effective and net lead and a pacing part (docs/FEEL.md J9; developer strings
+  `hud.debug.pace` / `.paceWait` / `.paceOff`), and shared/lockstep `ArrivalLog` (created only under KV_Debug) prints a
+  `[Pace]` line every `ARRIVAL_LOG.windowSec` (10 s): batch gaps p50 / p95 / max, sizes, the pacer's numbers, the leads
+  and misses, render fps. Spec harness: paced at 60 fps over 20-120 ms, 99.7 % of frames step one tick (unpaced 0 %).
+  Studio check, FP0 (a measured real session) and FP6 (playtest) pending; FP7 optional.
 
 ## Commands
 

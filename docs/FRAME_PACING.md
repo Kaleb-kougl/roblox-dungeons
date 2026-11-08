@@ -1,0 +1,330 @@
+# Frame pacing (co-op)
+
+Co-op looks choppy because the client steps the server's merged frames **the moment they arrive**. They arrive in
+uneven bursts, so the picture moves, freezes, then jumps. This plan adds a **playout clock**: the client keeps a small
+buffer of received frames and steps them at a steady 60 Hz. It also fixes a bug where the input lead **never comes
+back down** after a lag spike. Work it task by task; each task ends with a **Verify**.
+
+**Client timing and presentation only.** No sim, dungeon, hash, replay, fixture, score or wire change: the client
+still steps exactly the server's merged log, only WHEN it steps changes. The server is unchanged (FP7 is an optional,
+measured tunable change). Solo runs are untouched (they keep `FixedStepLoop` and the hitstop pacer).
+
+**The cost: a little more input delay.** A buffer of D ticks delays what you see by D ticks, and your own inputs by
+the same amount (the lead has to cover it, Design 5). D is at least 3 ticks (50 ms, FPD6), typically 3-5 (50-83 ms). Drawing your own knight ahead
+of the server (local prediction, a separate plan) is what hides input delay; this plan only removes the stutter.
+
+## Status (2026-11-07)
+
+**Built: FP1-FP5 and FP8**, verified headlessly (typecheck, lint, asset / AutoLocalize checks, build, the lockstep,
+pacer, arrival log, latency probe and HUD specs). **Pending: FP0 and FP6 (owner: a measured real session, then the
+playtest), the Studio two-player check (FP5's Verify); FP7 optional.** The tunables stay provisional until FP0 / FP6.
+Drafted from an audit of `main` @ `0a8e8ec4` after the owner's first co-op playtest with friends on Roblox ("the game
+was laggy"). Owner answers (2026-11-07): a 3-tick minimum (FPD6), a 10 % fast slew (FPD7), one tuned default with no
+setting (FPD8). See "As built" for the real API and the deviations from the design.
+
+## Why co-op stutters (findings)
+
+| Fact | Where | Consequence |
+|---|---|---|
+| `pump` steps every queued frame at once (up to `MAX_CATCHUP_TICKS_PER_FRAME` 8), the same render frame it arrives in | lockstep/client.ts `pump` | No buffer: any lateness shows on screen at once |
+| The server batches frames: it finalizes `floor((now - start) x 60)` ticks per Heartbeat (at most 5) and flushes once 2 or more wait | lockstep/session.ts `step`, `BROADCAST_EVERY_TICKS` 2 | Batches carry 2-6 ticks and leave on the server's Heartbeat, not on a fixed 33 ms beat |
+| Roblox delivers RemoteEvents in network frames, reliable and ordered | shared/network.ts `lockstepFrames` | Arrival times jitter; one lost packet holds every later batch (head-of-line) |
+| `getAlpha()` = time since the last step / `SIM_DT`, clamped to [0, 1]; reset to 0 on any frame that stepped | client.ts `getAlpha` | Views lerp `prevX -> x` over **the last tick only** |
+| Views draw `lerp(prev, current, alpha)` per tick (35 `getAlpha()` call sites under client/) | ActorRenderController and every fx / render controller | A frame that steps 4 ticks shows a 3-tick jump: ticks 1-3 are never drawn |
+| At >60 fps a 2-tick batch every 33 ms glides for one tick (16.7 ms), then holds at alpha 1 for 16.7 ms | `getAlpha` | **On a 120 / 144 Hz screen everything moves half the time and stands still the other half**, even on a perfect network |
+| At 60 fps with perfect arrival it is smooth; a batch 10 ms late gives a hold of one frame, then a 2-3 tick jump | same | Every bit of network jitter becomes a visible hitch |
+| Solo uses `FixedStepLoop` (accumulator, alpha in [0, 1)) | shared/sim/loop.ts, play/liveRun.ts | The steady-clock pattern already exists; co-op never used it |
+
+### The lead bug (found in the same audit)
+
+`nextInputTick()` is `max(lastSentTick + 1, state.tick + lead)` and every stepped tick sends for it
+(client.ts 185, 334-340). When `lead` decays by one (after 10 clean seconds), `state.tick + lead` equals
+`lastSentTick`, so the `max` picks `lastSentTick + 1`: **the effective lead stays where it was, forever**. It is the
+highest lead the run ever reached. Worse, the internal `lead` keeps decaying, so after a quiet minute a new spike's
+misses first raise `lead` back up to the effective value **without changing anything**: every one of those misses is
+a dropped input (repeat-last) that buys nothing. The KV_Debug line shows the internal `lead`, so it under-reports the
+real delay. No spec covers the decay (the network specs only check that misses stay under a quarter of the ticks).
+
+One lag spike in a co-op run therefore sets the input delay for the rest of that run (up to `MAX_INPUT_LEAD_TICKS`
+30 = 500 ms). This likely explains part of what the playtest felt, and FP1 fixes it on its own.
+
+## Design
+
+### 1. The playout clock (pure, `shared/lockstep/pacer.ts`)
+
+A `PlayoutPacer` decides **how many queued frames to step this render frame** and the **alpha**. It knows nothing of
+the sim; LockstepClient owns one (when pacing is on) and asks it inside `pump`.
+
+The idea (standard adaptive playout, as in VoIP and lockstep RTS): tick k's frame is stepped at local time
+`k x SIM_DT + P`, where P is the **playout offset**. P is "the fastest a frame has ever reached us, plus a safety
+buffer". When P is right, every frame is already in the queue when its turn comes, and exactly one tick is stepped
+per 16.7 ms, whatever the render frame rate.
+
+- `arrived(now, newestTick)`: called by `receive` with the local clock. Records the batch's **offset**
+  `o = now - newestTick x SIM_DT`. The unknown server-client clock difference is the same in every offset, so it
+  cancels out. The newest tick of a batch is the right one: its older ticks waited on the server for it, so they are
+  never later than it.
+- `frame(now, queued)`: returns how many ticks are due (`floor((now - P) / SIM_DT) - steppedTicks`), never more than
+  queued, never more than `maxCatchup`. Then `alpha = (now - P) / SIM_DT - steppedTicks`, in [0, 1).
+
+### 2. How deep the buffer is
+
+- `base` = the **smallest** offset over the last `PACING.floorWindowSec` (10 s): the best-case path.
+- `jitter` = the `PACING.jitterPercentile` (95th) offset over the last `PACING.jitterWindowSec` (4 s), minus `base`.
+- **Target** `P* = base + clamp(jitter + marginTicks x SIM_DT, minDepthTicks, maxDepthTicks) x SIM_DT`.
+- The depth (`P - base`, in ticks, rounded up) is what LockstepClient adds to the input lead (Design 5) and what the
+  debug line shows.
+
+The 95th percentile, not the max: one 300 ms outlier every minute should cause one hold, not a permanent 300 ms delay.
+
+### 3. Holds, slewing and catch-up
+
+- **Hold (underflow).** A tick is due but not received: nothing is stepped, alpha stays at 1 (the views show the
+  newest state, frozen) and P moves forward by the time waited. The hold is counted (`holds`, one per contiguous
+  hold). The jitter window then raises P* by itself.
+- **Slew.** P moves toward P* gently: the playout clock runs between `1 - slewShare` and `1 + slewShare` (5 %) real
+  speed. Slower than 5 % is not noticeable in practice.
+- **Fast slew.** When P is more than `fastSlewTicks` (6) past P* (after a long hold), it slews at `fastSlewShare`
+  (10 %, FPD7) until within it: a 500 ms hold's extra delay is gone in about 5 s (10 s at 5 %), with no visible
+  fast-forward.
+- **Catch-up (a client hitch).** After a long render frame (a floor change rebuild, GC, a tab-out) many ticks are due
+  at once; `frame` steps up to `maxCatchup` (8) per frame as today until it is back on schedule. P is not touched.
+- **Hitched frames are not jitter.** Arrivals handled in a frame whose `dt` is over `PACING.hitchFrameSec` (0.1 s)
+  are left out of the windows: their late timestamps are the client's own stall, not the network's.
+
+### 4. Alpha
+
+`LockstepClient.getAlpha()` returns the pacer's alpha when pacing is on, else today's value. Views do not change:
+they keep `lerp(prev, current, alpha)` and now see one tick per 16.7 ms, with alpha moving smoothly through [0, 1).
+
+### 5. The input lead with a buffer
+
+A client steps tick s at local time `s x SIM_DT + P`, so its input for `s + lead` reaches the server later the deeper
+the buffer is. The lead must cover **round trip + depth**. So the lead becomes two parts:
+
+- `netLead`: today's `lead` (starts at `INPUT_DELAY_TICKS`, +1 per miss, -1 after `leadDecayTicks` clean ticks);
+- `depthTicks`: the pacer's depth, rounded up (0 with pacing off).
+
+`nextInputTick()` = `tick + netLead + depthTicks`. With FP1's fix, a step whose target was already sent sends
+**nothing** (the delay really falls), and a target that jumps by one leaves one tick to the server's repeat-last (a
+held input repeats; not counted as a miss, it was never sent). Raising the depth raises the lead at once, so a deeper
+buffer causes no misses.
+
+### 6. Wiring
+
+- `LockstepTunables.pacing: PacingTunables | undefined` (`DEFAULT_LOCKSTEP.pacing` = `PACING`; the network specs and
+  `latencyProbe.spec` pass `undefined` where they assert today's exact stepping).
+- `receive(firstTick, data, now?)` and `pump(dt, sample, now?)`: `now` is the local clock (SimController passes
+  `os.clock()`; the spec harness its simulated clock). Without `now` (or with pacing off) the client behaves exactly
+  as today.
+- `SimController`: `Events.lockstepFrames` passes `os.clock()`; `coopFrame` passes `os.clock()` to `pump`.
+- `KV_PacingOff` (Workspace attribute, read at each co-op start, like `KV_Debug`): pacing off, for A/B in a playtest.
+- Unchanged: hash reports, the final claim, `end`, floor changes, the stage cover (still never held), spectating,
+  drafts, the hitstop rule (`simPacerFor` still gives co-op no sim pacer: the playout clock is not hitstop).
+
+### 7. Diagnostics (KV_Debug)
+
+The co-op debug line (docs/FEEL.md J9) gains a pacing part: `pace {depth}t {ms}ms · holds {n} · backlog {b} ·
+jitter p95 {ms}` and shows the **effective** lead (`nextInputTick() - tick`), not the internal one. The pacer exposes
+`stats()` (pure numbers, never reaches the sim).
+
+### 8. Broadcast every tick? (measured, optional)
+
+`BROADCAST_EVERY_TICKS` 2 -> 1 would halve the batch wait (one tick less depth needed) for twice the remote calls
+(60 per second per client). Roblox may coalesce remote events into its own network frames anyway; FP0 measures
+whether batches of 1 arrive any more evenly. Only changed if FP0 / FP6 show a gain (FPD5).
+
+## Tunables (`PACING`, shared/lockstep/config.ts)
+
+| Name | Value | Why |
+|---|---|---|
+| `startDepthTicks` | 3 | Before any arrival is measured |
+| `minDepthTicks` | 3 | One broadcast batch + a tick of margin (FPD6) |
+| `maxDepthTicks` | 12 | 200 ms; past that a hold is better than the delay |
+| `marginTicks` | 1.5 | Rounding and Heartbeat granularity: arrivals are handled on a rendered frame, so an offset can read one whole frame (1 tick at 60 fps) later than the last; 0.5 held about once a second on FP4's 20-120 ms network (1.5: none after the warm-up) |
+| `jitterWindowSec` / `jitterPercentile` | 4 / 0.95 | Follows a changing network within seconds |
+| `floorWindowSec` | 10 | The best-case path; follows a route change |
+| `slewShare` / `fastSlewShare` / `fastSlewTicks` | 0.05 / 0.10 / 6 | Section 3 |
+| `fastForwardTicks` / `fastForwardMarginTicks` | 12 / 1 | Past its target by more than 12 ticks (a long hold: a server stall) P is reset to the target + 1 tick, never past the newest queued frame, and the due frames step at `maxCatchup` a frame; a 10 % slew would take ten times the hold ("As built", review fixes) |
+| `hitchFrameSec` | 0.1 | Section 3; also the clock elapsed since the last frame (a stall inside the render step) |
+| `leadHysteresisTicks` | 0.4 | The lead's depth falls only once the depth is 0.4 tick at or below the next whole tick down (just under half a tick, so a depth sitting mid-tick is never on the threshold) |
+| `phaseSmoothing` / `phaseLockSpread` / `phaseHysteresisTicks` | 0.1 / 0.12 / 0.25 | The mid-tick phase shift: the frames' phase on the tick grid smoothed by 0.1 a frame; applied while their mean distance from it is under 0.12 tick (60 fps +/- 1 ms: ~0.03; 120 / 144 fps: ~0.25, left unshifted); the shift keeps its whole-tick choice within 0.5 + 0.25 |
+
+All provisional until FP0 / FP6.
+
+## Decisions (FPD1-FPD5 proposed; FPD6-FPD8 the owner's answers, 2026-11-07)
+
+- **FPD1. Client only.** The client still steps exactly the merged log; only the timing changes. No sim, wire or
+  server change (FP7 is a tunable, and only if measured).
+- **FPD2. Smooth beats instant.** A buffer of 3-5 ticks (50-83 ms) is worth it: stutter is visible to everyone all the
+  time, the delay only in your own presses. Local prediction (separate plan) is the fix for the delay.
+- **FPD3. Hold, never extrapolate.** On an empty buffer the views freeze on the newest state; nothing is drawn that
+  the sim has not stepped (no extrapolated enemies or bullets in a bullet hell).
+- **FPD4. The lead fix ships first and on its own (FP1).** It is a bug, it costs nothing, and it is part of the lag.
+- **FPD5. Broadcast cadence stays 2** unless FP0 / FP6 show batches of 1 arrive measurably more evenly.
+- **FPD6. The buffer is at least 3 ticks (50 ms).** Fewer holds for 17 ms more delay than a 2-tick minimum.
+- **FPD7. The fast slew is 10 %.** Less visible than a 25 % fast-forward; the extra delay after a long hold still
+  clears within seconds.
+- **FPD8. One tuned default, no player setting.** `KV_PacingOff` stays a debug switch for playtests only.
+
+## As built (FP1-FP5)
+
+**API (shared/lockstep).**
+
+- `PlayoutPacer` (`pacer.ts`, pure): `arrived(now, newestTick)`; `frame(now, frameDt, stepped, queued, maxCatchup)`
+  returns how many queued frames to step (Design 1's `frame(now, queued)` also takes the frame's dt (the hitch rule),
+  the ticks stepped so far and the cap); `alpha()`, `depthTicks()` (the lead's depth: whole ticks with hysteresis,
+  capped; below), `targetOffset()` (P*, before the phase shift), `stats(): PacingStats` (`started`, `depthTicks`,
+  `depthMs` (the raw P - base), `targetTicks`, `jitterMs`, `holds`, `holding`, `catchingUp`, `fastForwarding`,
+  `hitched`, `samples`, `pending`, `committed`, `discarded`, `position`, `phase`, `phaseLocked`, `phaseShiftTicks`,
+  `offsetSec`, `targetOffsetSec`, `baseSec`). Arrivals are kept pending until the next `frame`, which commits them to
+  the windows or discards them around a hitch (below).
+- `LockstepTunables.pacing: PacingTunables | undefined`, `DEFAULT_LOCKSTEP.pacing = PACING`.
+- `LockstepClient`: `receive(firstTick, data, now?)`, `pump(dt, sample, now?)`. Pacing turns on at the first pump
+  given a finite `now` and stays on for the run (`isPacing()`); arrivals before it keep only the best offset, handed
+  to the pacer when pacing turns on; a later pump without `now` runs on the last clock + dt; a batch without `now` is
+  stamped by the next paced pump. `getAlpha()` is the pacer's (1 once nothing more will be stepped).
+  `nextInputTick()` = tick + `netLead()` + depth; `inputLead()` = max(lead + depth, last sent - tick), the effective
+  lead (FP1); `netLead()` the internal lead; `pacingStats()` (undefined while not pacing).
+- `ArrivalLog` / `formatArrivalLine` / `nearestRank` (`arrivalLog.ts`, pure) and `ARRIVAL_LOG` (config.ts:
+  `windowSec` 10, `sizeBuckets` 8, `maxGaps` 2048, quantiles 0.5 / 0.95).
+
+**Client (SimController).** `Events.lockstepFrames` passes `os.clock()` to `receive`, `coopFrame` passes `os.clock()`
+to `pump`. `KV_PacingOff` (`RUN_ATTRIBUTES.pacingOff`, boolean, off by default) is read in `startCoop`: true builds
+the client with `{ ...DEFAULT_LOCKSTEP, pacing: undefined }` and prints `[Sim] co-op run <runId>: frame pacing off
+(KV_PacingOff)`. Under KV_Debug (the value read at the last solo / tutorial start, docs/FEEL.md J9's caveat) a co-op
+run gets the latency probe and an `ArrivalLog`; without KV_Debug neither exists.
+
+**The debug line** (docs/FEEL.md J9; shared/view `latencyProbe.ts`): `co-op lead {lead}t {leadMs}ms (net {net}t) ·
+{pace} · press->step {last}ms avg {mean} max {max} n{count} · late {late} miss {misses}`, with `{pace}` one of
+`pace {depth}t {depthMs}ms · holds {holds} · backlog {backlog} · jitter p95 {jitter}ms`, `pace waiting · backlog
+{backlog}` (pacing not on, or no batch yet) and `pace off (KV_PacingOff)`. `LatencyProbeView` gained `netLeadTicks`
+and `pacing: PacingDebugView` (`pacingDebugView(stats, backlog, configured)`: whole ms, so the HUD store only changes
+with the line); strings `hud.debug.pace` / `.paceWait` / `.paceOff` (developer strings, English, no l10n context).
+The lead shown is `inputLead()` (Design 7 said `nextInputTick() - tick`: the same whenever a send happens, and the
+truth right after a depth drop, when the inputs already sent reach further). Example:
+`co-op lead 7t 117ms (net 3t) · pace 4t 58ms · holds 2 · backlog 3 · jitter p95 10ms · press->step 133ms avg 128 max
+150 n9 · late 0 miss 1`.
+
+**The arrival log** (FP0's instrument; KV_Debug co-op only): every 10 s of local clock one line, e.g.
+`[Pace] 10.0s batches 300 ticks 600 · gap p50 33 p95 41 max 87 ms · sizes 2:290 3:10 · pace 4t 58ms target 3.5t
+jitter p95 9ms holds 0 discarded 0 · lead 7t net 3t miss 0 backlog 3 · fps 60.0 worst 21ms`: the window's length,
+batches and ticks, the batch inter-arrival gaps (nearest rank; a window's first gap runs from the previous window's
+last batch), the batch-size histogram (non-empty buckets, `8+` for 8 or more), the pacer's depth / target / jitter /
+holds (totals) / discarded arrivals, the effective and net lead, misses and backlog, the render fps and the longest
+frame. Holds and misses are run totals: diff two lines for a window's.
+
+**Review fixes (2026-11-07).** An independent review traced six problems in the first build; all fixed in
+shared/lockstep only (no wire, relay, session or sim change):
+
+- **A stall inside a render step is a hitch.** SimController runs `stage.frame(dt)` (deferred floor-change work)
+  before `coopFrame`, so such a stall is in `now` but not in `frameDt`; it used to read as a hold and move P forward by
+  the stall. Now a frame is hitched when `frameDt` or the clock elapsed since the last `frame()` is over
+  `hitchFrameSec`. A hitched frame never moves P (no hold, slew or fast-forward), steps only what is due and queued up
+  to the cap, and discards the arrivals pending at it AND at the frame right after it (handled after the stall, so
+  stamped late by it). Then the ordinary catch-up.
+- **A long hold is fast-forwarded, not slewed.** Once P is more than `fastForwardTicks` (12) past P* (a hold of
+  ~200 ms past the buffer; after an H s server stall it used to leave about 10 x H s of extra delay at the 10 % slew),
+  P is reset to the slew target + `fastForwardMarginTicks` (1), but never past the newest queued frame (it lands
+  mid-tick before it), and the due frames step at `maxCatchup` a frame; while frames are missing it holds without
+  moving P (counted in the same hold). Arrivals handled while fast-forwarding count for base but not for the jitter
+  (the burst behind the hold, not network jitter: a server's catch-up would otherwise pin the target at
+  `maxDepthTicks` for the whole jitter window). Measured: a 3 s server stall, the depth is back on target 0.2 tick
+  ~1 s after the first batch (pacer spec); over the 20-120 ms spec network within 0.7 tick 1.25 s after the server
+  resumed (its own catch-up at 5 ticks a step takes 0.75 s).
+- **The lead's depth is capped and has hysteresis.** `depthTicks()` (what `nextInputTick()` adds) rises at once when
+  the raw depth `P - base` passes it, falls only to `ceil(raw + leadHysteresisTicks)` (0.4), and never exceeds
+  `maxDepthTicks`, so `MAX_INPUT_LEAD_TICKS + maxDepthTicks` (42) stays inside the relay's `MAX_INPUT_AHEAD_TICKS`
+  (120): a server stall used to push targets past it (refused inputs, counted as misses, ratcheting the lead). A raw
+  depth oscillating +/- 0.2 tick round a whole tick leaves it unchanged. A depth sitting exactly on a whole tick (144
+  fps, no phase shift) keeps the lead one tick up rather than flicker.
+- **The playout phase is kept mid-tick.** Arrivals stamped on rendered frames left `pos` at the pump on a whole tick,
+  so +/- 1 ms of frame jitter flipped frames between 0 and 2 ticks, and a hold left the phase at 1 - 1e-6. The pacer
+  smooths the frames' phase on the tick grid (`frac(now / dt)`, `phaseSmoothing`), and while it is steady (mean
+  distance under `phaseLockSpread`: render rates at or below about the sim rate) the slew aims at P* +
+  (frac(pos at P*) - 0.5) x dt, at the same slew limits (a pure relabelling in steady state: the same frames step the
+  same ticks, only away from the boundary), with `phaseHysteresisTicks` so a P* wobbling across a boundary does not
+  flip the target by a tick. At 120 / 144 fps the frames walk round the tick and nothing is shifted. A hold now freezes
+  where the views already are, at most half a tick behind the newest state (`max(drawn, after - 0.5)`; Design 3 said
+  alpha 1), so playout resumes mid-tick; the drawn position `stepped - 1 + alpha` never decreases (alpha capped at
+  1 - 1e-6). Measured at 60 fps, +/- 1 ms frame and stamp jitter, stamps 2 ms after the previous frame (the worst
+  case): 100 % of frames step one tick after the warm-up, phase 0.50; without the shift 52.5 %.
+- **No pacer work after the run.** Once nothing more will be stepped (final claim, `end`, broken) `receive` no longer
+  hands arrivals to the pacer (they piled up pending until the session ended).
+- **Specs.** The paced NET_RUNS assert misses per player at or below the unpaced run's on the same network (the harness
+  `Channel` now draws one latency per DT of simulated clock from its own seed, so both runs see the same network) and
+  zero refused inputs; measured 3p paced 13,10,12 / unpaced 13,13,12, 8p paced 13-21 / unpaced 21-23. A 3 s server
+  stall: zero refused inputs paced and unpaced (misses stay: the server's catch-up finalizes 5 ticks a step, faster
+  than inputs can arrive, paced or not). FP4's 3-player 60 fps run now measures 99.6 % one-tick frames (the new
+  network draws; 99.7 % before). The NET_RUNS nets are built once on first use (`finishedNet`), so no
+  describe depends on another having run first.
+
+**Deviations from the design.**
+
+- `PACING.marginTicks` is 1.5, not 0.5: FP4 measured that 0.5 held about once a second on the 20-120 ms spec
+  network (arrivals are handled on a rendered frame, so an offset can read a whole tick later than any measured);
+  1.5 held not once after the warm-up (99.7 % of frames step one tick at 60 fps; unpaced 0 %).
+- `PlayoutPacer.frame` takes `(now, frameDt, stepped, queued, maxCatchup)` (above); arrivals commit on the next frame.
+- A hold freezes at most half a tick behind the newest state, not at alpha 1 (Design 3), so playout resumes mid-tick;
+  a hold longer than `fastForwardTicks` past the target is fast-forwarded (Design 3's fast slew only between
+  `fastSlewTicks` and it). The lead's depth (Design 5) has hysteresis and a cap.
+- The effective lead is `inputLead()` (above); the arrival log has no per-window holds (totals only).
+
+## Tasks
+
+- [ ] **FP0 [owner]. Measure a real session.** Build FP5's arrival log first (debug only, nothing else changes): in
+  a private published place with 2-4 friends, KV_Debug on, record per client: ping, batch inter-arrival times and
+  sizes, offset spread (p50 / p95 / max), render fps, effective lead over time. Once with `BROADCAST_EVERY_TICKS` 1 if
+  possible. -> Verify: a table in docs/SPIKES.md "Frame pacing"; the tunables above confirmed or edited.
+- [x] **FP1. Fix the lead.** A step whose target is at or below `lastSentTick` sends nothing; `inputLead()` reports the
+  effective lead. -> Verify: new lockstep spec: a spike raises the lead, the network calms, and **the effective lead
+  falls back** to the floor after `leadDecayTicks` per step; a later spike's first miss raises it at once; the existing
+  network runs still finish ranked with misses under a quarter; `latencyProbe.spec` updated ("press steps lead + 1
+  ticks later" holds for the effective lead).
+- [x] **FP2. `PlayoutPacer` (pure).** `shared/lockstep/pacer.ts` + `PACING` + barrel. -> Verify: `pacer.spec.ts` on
+  synthetic arrival traces: steady arrivals step exactly one tick per 16.7 ms at 30 / 60 / 144 fps; alpha strictly
+  increases within a tick and stays in [0, 1); a late batch makes one hold, then no jump past `maxCatchup`; depth
+  follows the 95th percentile, not a single outlier; slew within `slewShare`; a 0.5 s client hitch catches up without
+  touching P; hitched-frame arrivals are ignored.
+- [x] **FP3. LockstepClient wiring.** `pacing` tunable, `now` on `receive` / `pump`, alpha, `depthTicks` in the lead.
+  -> Verify: every existing lockstep spec passes unchanged with pacing off; the simulated-network runs
+  (`NET_RUNS`, 20-120 ms and 0-200 ms one way) pass with pacing on: identical final state on every client, the log
+  validates, misses under a quarter.
+- [x] **FP4. Smoothness metric in the spec harness.** The `Net` harness renders at a chosen fps and records, per
+  client and frame, the ticks stepped and the alpha. -> Verify: with pacing on, at 60 fps and 20-120 ms jitter, at
+  least 99 % of frames step exactly one tick and holds stay under 1 per 10 s; with pacing off the same run shows
+  today's pattern (the spec logs both, so the gain is measured).
+- [x] **FP5. SimController and diagnostics.** `os.clock()` into `receive` / `pump`; `KV_PacingOff`; the debug line's
+  pacing part and effective lead; the arrival log for FP0 (KV_Debug only, printed every 10 s). -> Verify:
+  `npm run verify`; Studio two-player test (Test > Clients and Servers) runs, the debug line shows depth 3 and no
+  holds on loopback. (Built and verified headlessly; the Studio two-player check is pending.)
+- [ ] **FP6 [owner]. Playtest.** The FP0 group again, pacing on vs `KV_PacingOff`, on a 60 Hz and a 120 Hz+ screen and
+  one phone if possible. -> Verify: players notice the difference; holds per minute and depth recorded; tunables
+  adjusted.
+- [ ] **FP7 (optional). Broadcast cadence.** Only if FP0 / FP6 point to it: `BROADCAST_EVERY_TICKS` 1, the input and
+  hash rate limits re-checked. -> Verify: the network specs and the replay bench pass; FP6's numbers improve.
+- [x] **FP8. Docs.** docs/SERVER.md "Clients" (pacing, the effective lead), docs/FEEL.md J9 (debug line), CLAUDE.md's
+  decision log entry, this file's status.
+
+Order: FP1 (ship alone) -> FP5's arrival log -> FP0 -> FP2 -> FP3 -> FP4 -> FP5 -> FP6 -> FP7? -> FP8. FP2 can start
+before FP0's numbers; only the tunables wait for them.
+
+## Testing
+
+- **Headless:** the pacer on synthetic traces (FP2), the lockstep network runs with pacing on and the smoothness
+  metric (FP3, FP4), the lead fix (FP1). The harness's `Channel` already gives random latency with ordered delivery.
+- **Studio:** Test > Clients and Servers proves the wiring, not the network (loopback). Studio's Network setting
+  "Incoming Replication Lag" adds a fixed delay only, no jitter: useful for the lead, not for holds.
+- **Published place:** the only real test of jitter, Roblox's batching, phones and high refresh screens (FP0, FP6).
+
+## Risks
+
+- **The client's own hitches look like jitter.** Floor changes rebuild views (deferred one item per frame, but some
+  items are heavy) and the sim catch-up itself costs frame time on phones. Mitigation: hitched frames are left out of
+  the windows (Design 3); if FP0 shows phones still inflating the depth, cap the depth per device class.
+- **Head-of-line blocking.** A lost packet on a reliable remote delays every later batch; the buffer absorbs short
+  ones, long ones still hold. Unreliable remotes would need a resend scheme on the wire: out of scope.
+- **Feels slower to the press.** 50-83 ms more input delay. FP6 checks players prefer it; there is no setting
+  (FPD8), so if they do not, the fix is the tunables (or local prediction sooner).
+- **Drafts and the stage cover.** Both keep stepping as today (the draft freezes the world inside the sim); a draft
+  confirm reaches the server D ticks later, which only matters to the "waiting for N teammates" line.

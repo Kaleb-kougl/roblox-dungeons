@@ -1,18 +1,41 @@
 /**
  * The client side of a co-op lockstep run (M4), pure: the SimController owns one per party run.
  *
- *   receive(firstTick, data)   a merged batch from the server (wire.ts), queued in tick order. Batches arrive in order
- *                              (reliable ordered remotes); a gap or a malformed batch is fatal (`broken`).
- *   pump(dt, sample)           steps queued merged frames, at most `maxCatchup` per call (bounded catch-up), and ONLY
- *                              those: the sim never runs ahead of the server's log, never on local input. After each
- *                              stepped tick T it samples the local input once and sends it for tick T + lead (lead
- *                              starts at INPUT_DELAY_TICKS, +1 each time its own input missed the deadline, -1 after
- *                              `leadDecayTicks` clean ticks), reports hashState every `hashEvery` ticks (batched: one
- *                              call per pump at most, throttled; resent until the server's ack covers them,
- *                              `acknowledge`), and once the whole party is down returns the RunFinal claim and stops
- *                              stepping.
+ *   receive(firstTick, data, now?)  a merged batch from the server (wire.ts), queued in tick order. Batches arrive in
+ *                              order (reliable ordered remotes); a gap or a malformed batch is fatal (`broken`). With
+ *                              pacing configured, `now` (the local clock) timestamps the arrival for the pacer.
+ *   pump(dt, sample, now?)     steps queued merged frames, at most `maxCatchup` per call (bounded catch-up), and ONLY
+ *                              those: the sim never runs ahead of the server's log, never on local input. HOW MANY is
+ *                              the pacing below; today's rule without it is "every queued frame, up to the cap". After
+ *                              each stepped tick it samples the local input once and sends it for tick state.tick +
+ *                              lead + depth (`nextInputTick`; lead starts at INPUT_DELAY_TICKS, +1 each time its own
+ *                              input missed the deadline, -1 after `leadDecayTicks` clean ticks; depth is the pacing
+ *                              buffer's, 0 without pacing), reports hashState every
+ *                              `hashEvery` ticks (batched: one call per pump at most, throttled; resent until the
+ *                              server's ack covers them, `acknowledge`), and once the whole party is down returns the
+ *                              RunFinal claim and stops stepping. Sends follow the lead both ways: a step whose target
+ *                              is at or below the last tick sent (the lead just fell by one) samples and sends NOTHING,
+ *                              that tick is already covered, so the delay really falls; a target past the last sent
+ *                              tick + 1 (the lead just rose) leaves the ticks between to the server's repeat-last.
+ *                              No tick is ever sent twice.
  *   end(reason)                the server decided the run before the party went down (desync, expiry, an error):
  *                              over here too, nothing more is stepped or sent.
+ *
+ * Frame pacing (docs/FRAME_PACING.md, Design 1-6). With `tunables.pacing` defined the client owns a PlayoutPacer
+ * (pacer.ts), and pacing turns on at the first `pump` given a `now`: from then on each pump steps exactly
+ * `pacer.frame(now, dt, state.tick, backlog, maxCatchup)` frames (a steady one tick per SIM_DT from a small jitter
+ * buffer; none on a hold; up to the cap after a client hitch or in a fast-forward), `getAlpha()` is the pacer's (in
+ * [0, 1)), and the input lead covers the buffer: `nextInputTick()` = state.tick + lead + pacer.depthTicks() (Design 5;
+ * the pacer's lead depth: whole ticks with half a tick of hysteresis, capped at maxDepthTicks, so lead + depth stays
+ * inside the relay's maxInputAhead even while P is far past its target). When the depth rises the target jumps and the
+ * skipped ticks fall to the server's repeat-last (never sent, so never counted as misses); when it falls the FP1 rule
+ * above sends nothing until the target passes the last tick sent. Once nothing more will be stepped (final claim,
+ * `end`, broken) arrivals are no longer handed to the pacer. Pacing is never half on:
+ * once on it stays on for the run (`isPacing`). A later pump without `now` is a caller mistake, not an error: it runs
+ * on the last clock + dt. A batch received without `now` is timestamped by the next paced pump's clock (late, so it
+ * can only deepen the buffer). Pacing changes WHEN frames are stepped, never which: the sim still steps exactly the
+ * merged log, and the inputs it sends are the only thing the client influences. Without pacing configured, or until a
+ * pump passes `now`, everything behaves exactly as before.
  *
  * Hitstop is never applied here: a co-op sim is paced by the server's frames alone (shared/view/fx freezeRules
  * `simPacerFor`); presentation may freeze sprites or the camera instead. The local player's character may be drawn
@@ -24,6 +47,7 @@ import {
 	createSimState,
 	hashState,
 	inputsEqual,
+	isFiniteNumber,
 	isPartyWiped,
 	stepParty,
 	type InputFrame,
@@ -56,6 +80,7 @@ import {
 	VariantCueEvents,
 } from "shared/view/fx";
 import { DEFAULT_LOCKSTEP, type LockstepTunables } from "./config";
+import { PlayoutPacer, type PacingStats } from "./pacer";
 import { MergedDecoder, encodeInputBatch } from "./wire";
 
 export interface LockstepClientParams {
@@ -150,6 +175,20 @@ export class LockstepClient implements RunView {
 	private endedReason: string | undefined;
 	/** Deadline misses of this client's own input (diagnostics). */
 	misses = 0;
+	/** The playout clock (docs/FRAME_PACING.md), when `tunables.pacing` is defined. */
+	private readonly pacer: PlayoutPacer | undefined;
+	/** A pump passed `now` with a pacer: pacing is on for the rest of the run. */
+	private pacing = false;
+	/** The clock of the last paced pump (a later pump without `now` continues from it). */
+	private paceClock = 0;
+	/** The newest tick of batches received without `now`, stamped by the next paced pump. */
+	private unstampedNewest: number | undefined;
+	/**
+	 * Before pacing is on, the stamped arrival with the smallest offset (the best-case path), handed to the pacer when a
+	 * pump turns pacing on: a caller that never paces keeps nothing growing.
+	 */
+	private earlyAt: number | undefined;
+	private earlyNewest = 0;
 
 	constructor(params: LockstepClientParams) {
 		this.runId = params.runId;
@@ -158,6 +197,8 @@ export class LockstepClient implements RunView {
 		this.config = params.config;
 		this.tunables = params.tunables ?? DEFAULT_LOCKSTEP;
 		this.lead = this.tunables.inputDelay;
+		const pacing = this.tunables.pacing;
+		this.pacer = pacing !== undefined ? new PlayoutPacer(pacing) : undefined;
 		this.decoder = new MergedDecoder(params.players);
 		this.state = createSimState(params.seed, params.spawn.x, params.spawn.z, params.config);
 		this.telemetry = new RunTelemetry(runStartHalfHearts(params.config));
@@ -173,17 +214,53 @@ export class LockstepClient implements RunView {
 		return this.queue.size() - this.queueHead;
 	}
 
-	/** The current input lead (ticks between the tick just stepped and the tick an input is sent for). */
+	/**
+	 * The effective input lead, in ticks: how far this client's inputs already reach past the next tick to step
+	 * (the last tick sent - state.tick), or the lead the next send would use when that is more (before the first
+	 * send; after a miss on the wiping tick, which sends nothing). A press sampled now is stepped inputLead() + 1 ticks
+	 * later. Since a step whose target was already sent sends nothing (see pump), this equals the internal lead
+	 * whenever a send happens.
+	 */
 	inputLead(): number {
+		return math.max(this.lead + this.depthTicks(), this.lastSentTick - this.state.tick);
+	}
+
+	/**
+	 * The network part of the lead ("netLead", docs/FRAME_PACING.md Design 5): the internal lead that adapts to misses
+	 * (+1 per miss, -1 after `leadDecayTicks` clean ticks), without the pacing buffer's depth. The KV_Debug line.
+	 */
+	netLead(): number {
 		return this.lead;
 	}
 
 	/**
-	 * The tick the next sampled input goes out for: (the tick just stepped) + lead, monotonic. Inside pump's `sample()`
-	 * it is the tick that input is sent for (the KV_Debug latency probe, shared/view latencyProbe.ts).
+	 * The tick an input sampled now goes out for: state.tick (the next tick to step) + lead + the pacing buffer's depth
+	 * (0 without pacing). pump samples and sends only when this is past the last tick sent, so inside pump's `sample()`
+	 * it is exactly the tick that input is sent for (the KV_Debug latency probe, shared/view latencyProbe.ts), and those
+	 * ticks strictly increase.
 	 */
 	nextInputTick(): number {
-		return math.max(this.lastSentTick + 1, this.state.tick + this.lead);
+		return this.state.tick + this.lead + this.depthTicks();
+	}
+
+	/** Pacing is on (see the file comment): a pacer is configured and a pump passed `now`. Stays on for the run. */
+	isPacing(): boolean {
+		return this.pacing;
+	}
+
+	/** The pacer's numbers (depth, holds, jitter...) while pacing is on; undefined otherwise. */
+	pacingStats(): PacingStats | undefined {
+		return this.pacing && this.pacer !== undefined ? this.pacer.stats() : undefined;
+	}
+
+	/** The pacing buffer's lead depth (PlayoutPacer.depthTicks: whole ticks, hysteresis, capped) while pacing, else 0. */
+	private depthTicks(): number {
+		return this.pacing && this.pacer !== undefined ? this.pacer.depthTicks() : 0;
+	}
+
+	/** Nothing more will be stepped: broken, ended by the server, or the final claim made. */
+	private steppingDone(): boolean {
+		return this.broken !== undefined || this.endedReason !== undefined || this.finalSent;
 	}
 
 	/** Why the stream broke (a gap or a malformed batch), if it did. */
@@ -210,8 +287,12 @@ export class LockstepClient implements RunView {
 		return this.endedReason;
 	}
 
-	/** Interpolation alpha for rendering prev -> current: time since the last step, in ticks, clamped to [0, 1]. */
+	/**
+	 * Interpolation alpha for rendering prev -> current. Paced: the pacer's, in [0, 1) (1 once nothing more will be
+	 * stepped: the views show the final state). Otherwise: time since the last step, in ticks, clamped to [0, 1].
+	 */
 	getAlpha(): number {
+		if (this.pacing && this.pacer !== undefined) return this.steppingDone() ? 1 : this.pacer.alpha();
 		const a = this.sinceStep / SIM_DT;
 		return a < 0 ? 0 : a > 1 ? 1 : a;
 	}
@@ -240,8 +321,11 @@ export class LockstepClient implements RunView {
 		this.unackedHashes.clear();
 	}
 
-	/** A merged batch (see the file comment). Returns false when it broke the stream. */
-	receive(firstTick: number, data: unknown): boolean {
+	/**
+	 * A merged batch (see the file comment). `now`: the local clock at arrival (the pacer's timestamp; ignored without
+	 * pacing configured). Returns false when it broke the stream.
+	 */
+	receive(firstTick: number, data: unknown, now?: number): boolean {
 		if (this.broken !== undefined) return false;
 		if (firstTick !== this.received) {
 			this.broken = `merged batch for tick ${firstTick}, expected ${this.received}`;
@@ -254,11 +338,24 @@ export class LockstepClient implements RunView {
 		}
 		for (const t of ticks) this.queue.push(t);
 		this.received += ticks.size();
+		// Once nothing more will be stepped the pacer never runs another frame: nothing is handed to it (or kept).
+		if (this.pacer !== undefined && ticks.size() > 0 && !this.steppingDone()) {
+			const newest = firstTick + ticks.size() - 1;
+			if (now === undefined || !isFiniteNumber(now)) this.unstampedNewest = newest;
+			else if (this.pacing) this.pacer.arrived(now, newest);
+			else if (this.earlyAt === undefined || now - newest * SIM_DT < this.earlyAt - this.earlyNewest * SIM_DT) {
+				this.earlyAt = now;
+				this.earlyNewest = newest;
+			}
+		}
 		return true;
 	}
 
-	/** Steps queued merged frames (see the file comment). `sample()` is the local input now (read once per tick). */
-	pump(dt: number, sample: () => Readonly<InputFrame>): PumpResult {
+	/**
+	 * Steps queued merged frames (see the file comment). `sample()` is the local input now (read once per tick). `now`:
+	 * the local clock (the same one `receive` is given); with pacing configured, passing it turns pacing on.
+	 */
+	pump(dt: number, sample: () => Readonly<InputFrame>, now?: number): PumpResult {
 		resetFrameEvents(this.frameEvents);
 		this.scorePops.clear();
 		this.runEvents.clear();
@@ -285,11 +382,12 @@ export class LockstepClient implements RunView {
 			outgoing.clear();
 		};
 		const state = this.state;
+		const budget = this.stepBudget(dt, now);
 		while (
 			this.broken === undefined &&
 			this.endedReason === undefined &&
 			!this.finalSent &&
-			stepped < this.tunables.maxCatchup &&
+			stepped < budget &&
 			this.queueHead < this.queue.size()
 		) {
 			const merged = this.queue[this.queueHead];
@@ -330,8 +428,11 @@ export class LockstepClient implements RunView {
 				this.finalSent = true;
 				break;
 			}
-			// The local input for tick (next tick + lead), monotonic.
+			// The local input for tick (next tick + lead). At or below the last tick sent (the lead just fell): already
+			// covered, nothing is sampled or sent. Past it by more than one (the lead just rose): the ticks between
+			// repeat the last input on the server.
 			const target = this.nextInputTick();
+			if (target <= this.lastSentTick) continue;
 			if (outgoing.size() > 0 && target !== outgoingFirst + outgoing.size()) flushInputs();
 			if (outgoing.size() === 0) outgoingFirst = target;
 			const f = copyInput(sample());
@@ -345,6 +446,29 @@ export class LockstepClient implements RunView {
 		// Release stepped frames now and then (the queue is read from queueHead).
 		if (this.queueHead > this.tunables.maxCatchup * 2 && this.queueHead * 2 > this.queue.size()) this.compact();
 		return { stepped, inputs, hashes, final };
+	}
+
+	/**
+	 * How many frames this pump may step: `maxCatchup` without pacing; paced, what the pacer says is due (it turns
+	 * pacing on at the first pump given `now`, and keeps it on).
+	 */
+	private stepBudget(dt: number, now: number | undefined): number {
+		const pacer = this.pacer;
+		const cap = this.tunables.maxCatchup;
+		const given = now !== undefined && isFiniteNumber(now) ? now : undefined;
+		if (pacer === undefined || (given === undefined && !this.pacing)) return cap;
+		// A missing (or broken) clock continues from the last one; the pacer itself never lets its clock go back.
+		const clock = given ?? this.paceClock + (dt > 0 ? dt : 0);
+		const done = this.steppingDone();
+		if (!this.pacing && this.earlyAt !== undefined && !done) pacer.arrived(this.earlyAt, this.earlyNewest);
+		this.earlyAt = undefined;
+		this.pacing = true;
+		this.paceClock = clock;
+		if (this.unstampedNewest !== undefined && !done) pacer.arrived(clock, this.unstampedNewest);
+		this.unstampedNewest = undefined;
+		// Nothing more will be stepped: leave the playout clock alone (no hold is counted for the run's end).
+		if (done) return 0;
+		return pacer.frame(clock, dt, this.state.tick, this.backlog(), cap);
 	}
 
 	/**
