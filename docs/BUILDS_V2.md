@@ -1,12 +1,426 @@
-# Builds v2: more builds (proposal)
+# Builds v2: plan (wave 1)
 
-Status (2026-11-05): **proposal only, nothing built.** Follows `docs/BUILDS.md` (BU0-BU10 built, BU11-BU14 open).
-Everything here uses the same patterns: new boons appended to `BOONS` (indices 17+ after docs/LEGENDARIES.md's two, append only, hashed), effects run
-through the proc engine with the same `gen` / `GEN_MAX` 3 / `EFFECT_BULLETS_MAX` budgets, new bullet kinds pass
-`buildReport` (BUD12), everything follows the `buildFx` Reduced setting (BUD13), and builds stay endless-only (BUD8).
-Same rule of thumb as v1: **if a player cannot see it happen, it is not in this plan.**
+Wave 1 of the builds v2 proposal (the proposal itself is kept below as "Appendix: the proposal (2026-11-05)"; wave 2 is
+still read from it). Three boons, seven duos and two fixes:
 
-## Why: the gaps v1 leaves
+1. **Riposte** (rare, offense). A guard that erases bullets answers with a counter-wave. The sword's best skill move
+   gets a build (gap 1).
+2. **Ballista** (rare, offense). The heavy arrow bursts into bolts; evolved, it pins an enemy and slams it into a wall.
+   Holding ALT becomes a build decision (gap 2).
+3. **Wrecker** (common, offense). Rolling smashes breakables, and every piece you break fires splinters; evolved, the
+   pieces explode and set each other off (gap 4).
+4. **Seven duos.** Thunder Guard, Stillwater and **Rebuke** (the Bastion + Riposte duo, owner call 6) on Riposte;
+   Dragon Bolt on Ballista; Powder Keg on Wrecker; Full Heart and Happy Hour give Hearty and Deep Flask a duo (gap 3).
+5. **Duo hint** (presentation): a New card that unlocks a duo says so (gap 6).
+6. **Overcap points** (score): boss damage the cap throws away pops as gold points (gap 5).
+
+Work it task by task, like `PLAN.md`; each task ends with a **Verify**.
+
+This is **gameplay**, on the established builds patterns (docs/BUILDS.md, docs/LEGENDARIES.md): boons appended to
+`BOONS`, duos to `DUOS`, effects to `BuildEffect` (hashed, append only); everything opt-in through `SimConfig.builds`
+(endless worlds only, BUD8); new hashed fields appended to the `builds` group; effects through the proc engine (`gen`,
+`GEN_MAX` 3, `procsPerTick`, the per-player effect budget); unhashed `BuildEvents` for the view; the `buildFx` Reduced
+setting respected; new bullet looks through `buildReport` (BUD12). M1 (`KALEB_VALE_MVP_PARAMS`), every golden fixture
+and the tutorial (`CLASSIC_BOON_COUNT` 12, no builds) replay exactly as before. Same rule of thumb: **if a player
+cannot see it happen, it is not in this plan.**
+
+## Status (2026-11-07)
+
+**Plan only, nothing built.** The six owner calls of the proposal are settled ("Owner calls"); this plan turns them into
+tasks BV0-BV13 and decisions BVD1-BVD20; the owner settled BVD3 and BVD13-BVD15 on review (2026-11-07), the rest
+are defaults. Follows docs/BUILDS.md (BU0-BU10 built,
+BU11-BU14 open) and docs/LEGENDARIES.md (LG0-LG7 built, LG8-LG9 open). The proposal's advice to land after BU14 stands
+for the merge to `main`: BV1-BV10 can be built on a branch; BV13's frame-time check uses BU14's budget.
+
+## What the code gives us (read on `main` @ `0a8e8ec`)
+
+Paths under `src/shared/sim/` unless noted.
+
+| Fact | Where | Consequence |
+|---|---|---|
+| The guard: `SWORD_V_GUARD` ticks left, set on the ALT press (`swordGuardTicks`: 18, Bastion 27), decremented every guard tick; each tick's erases are `ctx.events.bulletsDeleted - deletedBefore` (goo erased outside it, strikes never); `buildsOnGuardCancels(state, i, cancels, starting)` is called every guard tick | `combat/weapons/defs/sword.ts` 240-289 | Riposte counts in the same place. The guard **ends** on the tick its counter reaches 0, or early when the sword's step sees a roll (`rollTicks > 0` zeroes it) or a swap (in) |
+| The erased bullets' positions reach `score.events.guardX` / `guardZ` (the parry feed's sink) only in scored runs | `sword.ts` 249-285 | Thunder Guard sparks from those positions; every builds run is an endless run, which is scored (BV0 confirms) |
+| Bastion's `braceCount` exists only for Bastion owners and is reset by a roll's start and by a swap | `builds/hooks.ts` | Riposte needs its own per-guard count (`riposteCount`); Rebuke reads both |
+| Heavy arrow: a `BulletKind.PLAYER` bullet with the bow's source, speed 22, life 0.7 (15.4 tiles), pierce 2 (+ Piercing Arrows), damage 5; told apart from stream arrows (16), Flurry arrows and the bow-held Ember Wake ring (12) by its squared speed (`bowArrowLife`) | `combat/weapons/defs/bow.ts`, `builds/duos.ts` 110-150 | Ballista needs no payload change to find its arrows |
+| The charge reads `BOW_DATA.chargeTicks` (36) directly in `BOW.step` and `bowCharge` | `bow.ts` 245-291 | Ballista II's shorter charge needs a `bowChargeTicks(state, i)` read (like `swordGuardTicks`) |
+| A player bullet on a blocked cell is consumed first thing in `playerBulletHit`; a piece it does not break consumes it too; a piercing hit with no pierce left consumes it, and `buildsOnPierceHit(..., consumed)` already says which hit that is | `combat/combat.ts` 466-545, `builds/evolutions.ts` 140 | Ballista's two moments (wall, last pierce) each have one line to hook |
+| The bullet walks never spawn into the pool they walk: Fire Arrows records ember spots in the walk and fires them after | `builds/duos.ts` 351-398 | Ballista's bursts and Wrecker's splinters are queued in the walk and fired in `stepBuilds` |
+| The bullet pool's free list is a LIFO stack; `isLive(i)`; a slot released by `step` (life over) is the next one handed out | `combat/bullets.ts` | A pin keyed by bullet slot must be checked right after the move phase, before anything can spawn |
+| `moveActor(ctx, actor, dx, dz)` moves a body with `config.actorMover` (walls slide, intact pieces block) in sub-steps of 0.1; `stepActors` calls `def.step`; the Warbanner's aura is a transient per-tick mask rebuilt from hashed state (`ctx.rebuildAura`) | `combat/actors/helpers.ts` 71, `combat/actors/actors.ts` 294 | Siege Bolt drags with `moveActor` and holds a pinned actor's AI with the same kind of mask |
+| `damageActor`: `filterDamage`, the Shielded absorb, `applyDamageCap` (returns what it let through), Executioner, the clamp | `combat/actors/actors.ts` 198-236 | The dropped damage is `before - after` at one line; only bosses have a cap (`damageCapPerSecond` 6) |
+| Breakables are **barrels and crates only** (`BreakableKind` 0 / 1; the vault chest 2 never breaks). Bookcases, tombs, candle stands, statues and solid pillars are WALL cells | `breakables/breakablesData.ts`, shared/dungeon `solidDecor` | The proposal's "bookshelf rows and pillars go off like fireworks" cannot happen: Demolition chains barrels and crates (BVD11) |
+| Pieces sit in wall clusters of 2-4 (storerooms x2 + 3, clusters 3-5); 0-2 per 150 floor tiles on floors 1-4, up to 3-6 from floor 15; rooms are double size | shared/dungeon `breakablesData.ts` `BREAKABLE` | A chain has neighbours to reach; floor 1 rooms often have none (BV11 measures) |
+| `damageBreakable(state, slot, amount, source)` knows no player; it scores only `MELEE` / `PLAYER_BULLET` (`scoreBreakable`) | `breakables/breakables.ts` 198-224 | Wrecker passes an owner and two new scored sources (`ROLL`, `BUILD`) |
+| Pieces block bodies: the roll moves through `movePlayer` with the intact pieces as `solid` | `player.ts` 107-125, 209-212 | A roll smash breaks the piece before the roll's move, so the roll goes through |
+| The combo is team-wide (`state.score.combo`, `comboTimer`); `feedCombo` (+0.1, timer refilled) is private; `cutCombo` runs in `stepScore` once per landed hit | `score/score.ts` 685-705, 1138 | Wrecker refills the timer and Demolition steps the combo through two new exports; Stillwater records the combo before the tick's cuts |
+| Score sources 0-14, the gated ones padded (`addBuildScoreSources` .. `addGoldenScoreSources`); every endless run holds 15 | `score/scoreData.ts` 136-176, `score/score.ts` 781-910 | Overcap is `ScoreSource.OVERCAP` 15, builds runs only, padded like the others |
+| `duoAvailable(levels, duos, d)`; the draft card model is pure (`draftCardModel`); the snapshot carries every player's levels and duos | `builds/cards.ts` 65, shared/view/hud `draftCards.ts`, shared/play `snapshot.ts` | The duo hint is a pure view function |
+| A duo card is only **offered** once both boons are owned (the duo band, BUD3); owning both never grants it | `builds/cards.ts` | The hint says "Unlocks a duo", not "Completes" (BVD17) |
+| Strings come from the tables: `<id>.name` / `.desc` / `.icon`, levelled boons also `.desc.2`, `.evo.name`, `.evo.desc` | shared/view/hud `progression.ts` `progressionStringKeys` | New boons and duos need their rows and `l10n/context.json` entries, nothing else |
+| Arc rows: web 16 @ FULL_RING, 5 @ 0.5, 1 @ 0; port 8 / 12 @ FULL_RING; no 6 or 10 row | `combat/arcTable.ts`, `combat/arcTablePort.ts` | Ballista's bolts need four port rows (BVD8) |
+| Free indices: Boon 17+, Duo 13+ (card ids 77+), `BuildEffect` 9+, `BreakableSource` 4+, `ScoreSource` 15; `DAILY.ruleset` is 11 | `progressionData.ts`, `buildsData.ts`, `breakablesData.ts`, shared/daily `config.ts` | Wave 1 takes them in this plan's order; ruleset 11 -> 12 (BVD20) |
+
+## Player experience
+
+1. **Riposte, floor 3.** A sniper's fan arrives. The guard eats four bullets, the parry tick climbing a step each, and
+   when the guard drops a crescent of light rolls out from the knight: **COUNTER x4.** The sniper takes 4.
+2. **Counterstrike.** A reaper's spiral: the guard eats seven. The counter goes out as a full ring and seven shards fly
+   back at the nearest enemies. The pack in front is gone.
+3. **Ballista.** A fully charged arrow pierces two swarmers and bursts into six bolts where it stops. At a wall it
+   shatters into a fan that comes back into the room.
+4. **Siege Bolt.** The arrow hits a bruiser and does not stop: it carries it, plows through three swarmers and slams it
+   into the far wall. Freeze, a shockwave ring, the crates beside it break: **PINNED** while it flies, **SLAM** at the
+   wall.
+5. **Wrecker.** The knight rolls through a crate cluster; each crate pops and throws splinters at the nearest enemies,
+   and the combo timer jumps back to full. With Demolition the cluster goes off one piece after the other.
+6. **Rebuke.** With Bastion, a roll through eight bullets that wins back a pip fires the counter as a full ring, even
+   with the bow in hand.
+7. **The draft.** A New card shows a small joined chip: **Unlocks a duo: Thunder Guard.** The duo is now a goal two
+   picks early.
+8. **The boss.** A strong build hits the cap; small gold numbers rise off the boss, `+12`, `+12`: the build is working
+   even when the fight cannot go faster.
+
+## Design
+
+Numbers are starting points for BV11's tuning pass. Every damage below goes through `playerHitDamage` (Sharpened,
+Fury) unless it says otherwise, and every kill it makes queues a proc like any kill.
+
+### Riposte (`boon.riposte`, rare, offense, icon `RIP`)
+
+`riposteCount` (per player, hashed) counts the enemy bullets the current guard erased (`cancels`, the number Bastion
+counts; goo never). Reset on the guard's start tick.
+
+| Level | Rule |
+|---|---|
+| I | When a guard that erased at least `RIPOSTE_MIN_ERASED` (1) ends, a **counter-wave** goes out forward: a crescent (`RIPOSTE_WAVE_HALF_ANGLE_COS` 0.5, 120 degrees) that grows at `RIPOSTE_WAVE_SPEED` 24 tiles/s to `RIPOSTE_WAVE_RANGE` 7 tiles and hits every enemy it reaches once, for min(`riposteCount`, `RIPOSTE_MAX_COUNT`[I] 6) |
+| II | `RIPOSTE_MAX_COUNT`[II] 10 |
+| III **Counterstrike** | max 10; a guard that erased `COUNTERSTRIKE_RING_ERASED` (5) or more sends the wave as a full ring (`NOVA_HALF_ANGLE_COS`), and fires min(count, max) **returns**: shards (`COUNTERSTRIKE_RETURN`, Soul Shards' look, 1 damage) at the nearest enemies within `SOUL_SHARDS_RANGE`, nearest first (Soul Shards' aim), effect `BuildEffect.RIPOSTE` gen 0 |
+
+**The wave is not bullets** (BVD1). It is a hashed record in `state.builds.waves` (`BuildWave`: owner, origin, unit
+direction, half-angle cosine, radius, damage, the ids it has hit) stepped first in `stepBuilds`: the radius grows by
+speed x `SIM_DT`, and every living, non-hit enemy whose circle the radius reaches (`d - a.radius <= radius`) and that
+stands in the cone (melee's `inCone` test, so an enemy the origin is inside always counts) is struck once, in slot
+order, through `ctx.damageActor` with `procGen` 0 (the player's own move). It reaches far enough for a sniper, hits each
+enemy once (no double hits from overlapping bolts), takes no bullet slot and no arc row, and the full ring is the same
+record with another cosine. A wave ends at its range; at most `RIPOSTE_WAVES_MAX` (8) live at once (a ninth is not
+spawned; the guard's 60-tick cooldown and the wave's 18-tick life keep each player to one wave at a time). The wave does not erase
+bullets and does not hit breakables (BVD2).
+
+**When a guard ends** (BVD3, owner 2026-11-07): only a guard that runs its full length (its counter reaching 0)
+fires the counter, on that tick. A roll cutting it short (the sword's step zeroes it) discards the count, and so does a
+swap (the sword does not step while holstered, so a swap-out guard is frozen and zeroed on the swap back in). Damage =
+the capped count, through `playerHitDamage`.
+
+### Ballista (`boon.ballista`, rare, offense, icon `BAL`)
+
+| Level | Rule |
+|---|---|
+| I | A heavy arrow **bursts** into `BALLISTA_BOLTS`[I] 6 bolts when it is consumed: on its last pierce, a ring at the hit (6 @ FULL_RING); on a wall or a piece it does not break, a **back fan** from its position at the start of the tick, aimed back along its flight (6 @ `BALLISTA_FAN_SPREAD` 1.6 rad). Bolts: `BALLISTA_BOLT` (speed 12, life 0.35, 1 damage, `BulletKind.BURST`), effect `BuildEffect.BALLISTA` gen 0 |
+| II | 10 bolts; the charge takes `BALLISTA_CHARGE_PERCENT`[II] 75 % (36 -> 27 ticks, `bowChargeTicks`) |
+| III **Siege Bolt** | II's bolts and charge; the first enemy the heavy arrow hits and does not kill is **pinned** (owner call 2) |
+
+An arrow that ends its life in the air does not burst (BVD5; the pool releases expired bullets silently). Bursts found
+in the bullet walk are queued and fired in `stepBuilds` (the walk never spawns into the pool it walks).
+
+**Siege Bolt.** A pin is a hashed record in `state.builds.pins` (`BuildPin`: bullet slot, owner, actor slot and id, the
+pin's start x / z, a `slam` flag), at most `SIEGE_PINS_MAX` (4).
+
+- **Who pins**: any living enemy but a boss, the Goldling, a reviver (turrets), the dummy, or an actor already pinned
+  (`PROC_INELIGIBLE_ARCHETYPES`, `def.stepDead`, the boss archetypes and `GOLDEN_KIND`; BV0 names the boss test). A hit that kills pins nothing.
+  One pin per arrow, ever: losing it does not re-arm the arrow (BVD6).
+- **Carrying** (a new phase 5b in `stepCombat`, right after the bullets move, before the collisions): pins whose bullet
+  is no longer live are dropped (the arrow expired: no slam), pins whose actor died are dropped (the arrow flies on as
+  an ordinary heavy arrow), then each pin in index order drags its actor to the arrow's position with `moveActor` (the
+  actor's own mover: walls slide, pieces block). A drag that falls more than `SIEGE_SLAM_SHORT` (0.25 tiles) short of
+  the arrow sets `slam` (the body hit something the arrow did not).
+- **Held**: a pinned actor does not step (no walk, no attack, no timers), through a transient mask rebuilt from
+  `state.builds.pins` at the start of `stepActors` (the Warbanner aura's construction; never hashed, a pure function of
+  hashed state). Contact damage is unchanged.
+- **Plowing**: while it carries, the arrow still hits every enemy it enters (the piercing walk's rules, never the pinned
+  one) but spends no pierce, so a pierce hit cannot end the pin (BVD7). Each hit enemy is hit once (the walk's
+  "already inside at the start of the tick" rule holds while `lastHit` is set).
+- **The slam**: in the arrow's walk visit, a wall, a piece it does not break, or a set `slam` consumes it. The pinned
+  actor takes `SIEGE_SLAM_DAMAGE_PERCENT` (300 %) of the heavy arrow's damage; every other living enemy within
+  `SIEGE_SHOCK_RADIUS` (2 tiles) of it takes `SIEGE_SHOCK_DAMAGE` (3), in slot order, `procGen` 1; every intact piece in
+  that radius breaks (`BreakableSource.BUILD`, owner the archer). Ballista's back fan fires too. The slam damage's kill is
+  the player's own (gen 0).
+- **Floor change**: pins are cleared with the procs (`clearBuildProcs`).
+
+### Wrecker (`boon.wrecker`, common, offense, icon `WRK`)
+
+| Level | Rule |
+|---|---|
+| I | **Roll smash**: a rolling owner breaks every intact piece their body would touch this roll tick (before the roll's move: the circle of `PLAYER_RADIUS` + `BREAKABLE_HIT_RADIUS` swept along the step), so the roll goes through. **Every piece the owner breaks** (rolled, swung, shot, or broken by their build effects) fires `WRECKER_SPLINTERS`[I] 3 splinters (`WRECKER_SPLINTER`: Soul Shards' aim, speed 14, life 0.6, 1 damage, `BulletKind.SHARD`, effect `BuildEffect.WRECKER`) and refills the combo timer (a running combo only) |
+| II | 5 splinters |
+| III **Demolition** | 5 splinters; every piece the owner breaks also **explodes**: `DEMOLITION_DAMAGE` (2) to every enemy within `DEMOLITION_RADIUS` (1.5 tiles), and every intact piece in that radius breaks (`BreakableSource.BUILD`), each its own smash one generation on, so a cluster goes off piece by piece; each piece adds one combo step (+0.1) |
+
+A broken piece queues a **smash proc**: `BuildProc` gains an appended `kind` (`ProcKind.KILL` 0, `ProcKind.SMASH` 1);
+a smash has the piece's cell centre as x / z, slot / id -1, the breaker's generation (a roll or a swing 0, a bullet
+`killGenOfSource`, a blast or slam the proc's gen + 1), and is queued only for an owner with Wrecker or Powder Keg and
+below `genMax`. Smashes resolve in the same drain as kills, so a chain ripples one piece a tick and stops at
+`GEN_MAX` (3) (BVD10). `damageBreakable` takes an optional trailing `owner` (-1: none, as today) and calls a leaf hook
+`buildsOnPieceBroken(state, slot, owner, gen)`; pieces broken by `ROLL` and `BUILD` score like a swing's (BVD12).
+
+### Duos (appended: Duo indices 13-19, card ids 77-83)
+
+| Duo | Boons | Rule | Beat |
+|---|---|---|---|
+| **Thunder Guard** | Riposte + Chain Spark | every bullet the guard erases sparks from where it was to the nearest enemy within `CHAIN_SPARK_RANGE`: `THUNDER_GUARD_DAMAGE` 1, `procGen` 1, at most `THUNDER_GUARD_MAX` (8) per guard tick; queued like Storm Blade's sparks, released after the drain | One guard against a sprayer lights up the room |
+| **Stillwater** | Composure + Riposte | a hit that cuts the combo while an owner is present records the combo before the cut (`stillCombo`, `stillTick`, world scalars); an owner's guard that erases at least one bullet within `STILLWATER_TICKS` (180, 3 s) gives it back (combo = max(now, recorded), timer refilled), once | The greyed lost multiplier lights up again |
+| **Rebuke** | Bastion + Riposte | a guard or roll whose brace count reaches `BASTION_BRACE_BULLETS` (8) fires Riposte's counter as a **full ring**, but only when that brace restored something (a pip, or Stone Heart's heal), so it follows Bastion's once per room (Citadel: its cooldown): a roll at once (damage min(brace count, Riposte's max)), a guard at its full-length end instead of the forward wave (damage min(`riposteCount`, max)); a guard cut by a roll after it braced fires nothing (BVD3); once per guard or roll (BVD14) | A bow player's roll through a volley answers it |
+| **Dragon Bolt** | Ballista + Ember Wake | a heavy arrow drops an ember every `DRAGON_BOLT_EMBER_TICKS` (3) for its whole flight (Fire Arrows' `dropEmber`; `FIRE_ARROWS_EMBERS_MAX` does not apply; ember duo id DRAGON_BOLT) | A line of fire across the room |
+| **Powder Keg** | Wrecker + Volatile | a smash proc also fires the owner's on-kill boons from the piece (Chain Spark, Volatile, Soul Shards; Overkill carries nothing) | Every crate is a kill |
+| **Full Heart** | Hearty + Sharpened | at full hearts, every finisher swing and every heavy arrow release also strikes a **beam**: every living enemy within `SKEWER_RADIUS` of the line from the player along the facing (the arrow's aim) to `FULL_HEART_RANGE` (4 tiles), slot order, for the finisher's damage, gen 0 | Not getting hit pays off in every swing |
+| **Happy Hour** | Deep Flask + Bounty | a flask drink sets `happyHourTicks` to `HAPPY_HOUR_TICKS` (300, 5 s); the owner's kill points x `HAPPY_HOUR_KILL_PERCENT` (200) while it runs, folded into Bounty's `bonusPercent` as one integer percent (130 x 200 / 100 = 260), so `awardPoints` keeps its exact two-factor numerator | Saving a flask for a big pack is a score play |
+
+Duo anchors after wave 1: Riposte 3, Chain Spark 4, Volatile 4, Bastion 3, Ember Wake 3, Hearty 2, Deep Flask 1. Every
+v1 boon now has a duo (gap 3).
+
+Full Heart and Happy Hour need no wave 1 boon; they are in this wave because the proposal put gap 3 first (BVD15,
+settled). BV7 builds them on its own.
+
+### Duo hint (presentation only)
+
+`duoUnlockedBy(levels, duos, boon)` (pure, shared/view/hud, beside `draftCardModel`): the duos that picking an unowned
+`boon` would make available (`duoAvailable` true after, false before), in duo index order. A New card with one or more
+shows a joined chip (the first duo's two icon labels, `DUO_CHIP_SPAN`) and `hud.draft.duoHint` ("Unlocks a duo:
+{duo}"). Upgrade, evolution and duo cards never show it. Read from the snapshot (levels and duos are in it). No partner
+bias in the odds (owner call 4).
+
+### Overcap points (score)
+
+`damageActor`, right after `applyDamageCap`: with `state.builds` and `state.score`, the damage the cap dropped
+(`before - after`, after `filterDamage` and the Shielded absorb, so a phase-invulnerable boss gives nothing) goes to the
+acting player's `overcap` (hashed). While `overcap >= 1`, 1 is taken and `OVERCAP_POINTS` (10) are awarded into
+`ScoreSource.OVERCAP` (15) at the kills' floor scaling (`floorScalePercent`), the Goldling coins' way: through the
+usual multipliers, never feeding the combo (BVD18). Builds runs only (`addOvercapScoreSources` pads the earlier gated
+sources); every other scored run's `score` group is unchanged. `BuildEvents` `overcapX` / `Z` / `Owner` / `Points` for
+the pops.
+
+## Architecture
+
+1. **Data.** `progressionData.ts`: `Boon.RIPOSTE` 17, `BALLISTA` 18, `WRECKER` 19 (rare / rare / common, offense);
+   their per-level tables. `buildsData.ts`: `Duo.THUNDER_GUARD` 13 .. `Duo.HAPPY_HOUR` 19; `BuildEffect.BALLISTA` 9,
+   `WRECKER` 10, `RIPOSTE` 11; `ProcKind`. `effectsData.ts`: every tunable above, the specs (`BALLISTA_BOLTS` as
+   BurstSpecs by level for the ring and the fan, `WRECKER_SPLINTER`, `COUNTERSTRIKE_RETURN`). `breakablesData.ts`:
+   `BreakableSource.ROLL` 4, `BUILD` 5. `scoreData.ts`: `ScoreSource.OVERCAP` 15, `OVERCAP_POINTS`.
+   `combat/arcTablePort.ts`: 6 / 10 @ FULL_RING and 6 / 10 @ `BALLISTA_FAN_SPREAD`.
+2. **State** (`builds/builds.ts`, hashed, appended in this order): `BUILD_PLAYER_SCALARS` += `riposteCount`,
+   `overcap`, `happyHourTicks`; `BUILD_PROC_FIELDS` += `kind`; after the procs, `pins` (length, then `BUILD_PIN_FIELDS`
+   per pin), `waves` (length, then `BUILD_WAVE_FIELDS` and the hit ids, length + values, per wave), then the world
+   scalars `stillCombo`, `stillTick`. `levels` grows with `BOON_COUNT` (20). Clone, hash names and the snapshot follow
+   the existing pattern.
+3. **Rules.**
+   - `sword.ts`: `buildsOnGuardCancels` also counts `riposteCount` and Thunder Guard's sparks (positions from the
+     sink); a new `buildsOnGuardEnd(ctx)` on the natural end only (Riposte's wave, Counterstrike's returns, Rebuke's ring,
+     Stillwater's restore); a roll's cut and a swap discard the count.
+   - `builds/riposte.ts` (new): waves (`spawnWave`, `stepWaves`, first in `stepBuilds`).
+   - `bow.ts`: `bowChargeTicks(state, i)` (runMods `ballistaChargePercent`; exactly 36 without Ballista II); a release
+     hook for Full Heart's beam.
+   - `combat.ts`: `playerBulletHit`'s wall / unbroken-piece exits and `piercingBulletHit`'s last pierce call
+     `buildsOnHeavyEnd(ctx, i, pos, payload, wall)` (queue the burst; the slam); `piercingBulletHit` reads the pin
+     (no pierce spent while carrying); phase 5b `stepPins(ctx)` between the move and the collisions.
+   - `builds/siege.ts` (new): pins (pin on the first surviving hit, carry, slam, the pinned mask).
+   - `actors.ts`: `stepActors` skips `def.step` for a masked (pinned) actor; `damageActor` calls
+     `buildsOnOvercap(ctx, dropped)`.
+   - `player.ts`: the roll's step calls the leaf `buildsRollSmash(state, i, x, z, dx, dz)` before `movePlayer`.
+   - `breakables.ts`: `damageBreakable(..., owner = -1)`; `ROLL` / `BUILD` scored; `buildsOnPieceBroken` queues smashes.
+   - `builds/procs.ts`: smash procs (Wrecker's splinters and combo refill, Demolition's blast, Powder Keg's on-kill
+     boons); `hasOnKillEffect` stays the kill gate, smashes have their own (`hasSmashEffect`).
+   - `score/score.ts`: exported `refillComboTimer(state)` (a running combo only) and `stepCombo(state)` (+0.1, the
+     timer refilled: `feedCombo`'s body); `stepScore` records Stillwater's combo before its cuts; Happy Hour's percent
+     in `scoreKill`; `addOvercapScoreSources`, `scoreOvercap`.
+   - Duos in `builds/duos.ts` (Thunder Guard, Dragon Bolt, Powder Keg's branch) and `builds/hooks.ts` (Stillwater,
+     Rebuke, Happy Hour's drink, read on the drink tick as Overflowing does).
+4. **Feed** (`BuildEvents`, unhashed): `waveX/Z/DirX/DirZ/HalfCos/Range/Speed/Owner/Damage/Kind` per spawned wave
+   (forward / ring / Rebuke), `counterCount`; `ballistaX/Z/Owner/Fired/Wall`; `pinStart*` / `pinEnd*` (actor slot,
+   owner, distance carried, `slam`); `slamX/Z/Owner/Struck`; `smashX/Z/Owner/Gen/Fired` and `demolitionX/Z/Owner`;
+   `thunder*` through the spark lists (`sparkFork` 2: a Thunder Guard spark); `beamX1/Z1/X2/Z2/Owner/Struck`;
+   `happyPlayer`; `overcapX/Z/Owner/Points`.
+5. **Theme**: strings for the three boons (name, desc, icon, `.desc.2`, `.evo.name`, `.evo.desc`) and the seven duos,
+   `fx.counter.text` ("COUNTER x{n}"), `fx.pinned.text`, `fx.slam.text`, `hud.draft.duoHint`,
+   `score.source.overcap`, `hud.toast.happyHour`; context entries in `l10n/context.json`. Colour roles `build.counter`
+   (the wave) and `build.overcap` (the pops; gold, `buildReport`: >= 40 CIE76 from every danger and boost role, and
+   far enough from `newBest` that an overcap pop never reads as a record; measured in BV10). Port audio IDs
+   `sfx.build.counter`, `sfx.build.pin`, `sfx.build.slam`, `sfx.build.smash`, `sfx.build.beam` (SILENT in the
+   placeholder; `SFX_FALLBACK` entries to existing clips, picked in BV10). Ballista's bolts are `BulletKind.BURST` and the splinters and
+   returns `SHARD`: no new bullet look (BVD9). Check `contract.luau` / `validate.luau` stay under Luau's 200 top-level
+   locals (186 / 197 today).
+6. **View**: the wave (a crescent / ring growing on the record's numbers, in `build.counter`), the parry tick's pitch
+   climbing per bullet eaten (from the guard events), `COUNTER xN` / `PINNED` / `SLAM` floor text on the combo shout's
+   construction (never over a bullet, CD9), the pin's drag streak, the slam's solo 40 ms freeze (the Goldling catch's)
+   and shock ring, splinter and demolition pops climbing in pitch (voice cap, generation pitch), the beam, Happy Hour's
+   pop colour, the overcap pops (merged per 0.25 s), the duo hint chip; Reduced `buildFx` thins the wave and drops the
+   shock ring and the pops' particles. Recap lines (RUN_RECAP highlights, optional): best counter, longest pin (tiles),
+   biggest demolition chain.
+
+## Tasks
+
+- **BV0 Audit.** Read the files in "What the code gives us" on the branch's base; record differences here as "BV0
+  findings". Confirm: every builds run is scored; the bullet pool's `isLive` and free list as described; nothing can
+  spawn a player bullet between phase 5 and the collisions; the indices free. **Verify:** findings written; indices
+  confirmed.
+- **BV1 Data and scaffolding.** The boons, duos, effects, sources, `ProcKind`, tunables, the hashed fields (no rule
+  yet), the four port arc rows, `bowChargeTicks` (no Ballista: 36), placeholder strings, `DAILY.ruleset` 11 -> 12; the
+  specs that count boons / duos / the builds group (as LG1 did). **Verify:** `npm run verify` green; the tutorial's
+  floor-2 draft and `roomPool.lock.spec` unchanged; golden fixtures match; a builds run is offered and granted each new
+  boon and duo (cards spec); the three boons reach II and III and the seven duos are offered only with both boons.
+- **BV2 Riposte and Counterstrike.** `riposteCount`, `buildsOnGuardEnd`, waves, returns. **Verify:** specs: a guard
+  that erases 4 sends a forward wave dealing 4 (x Sharpened) to an enemy 6 tiles ahead and nothing behind; 0 erased
+  sends nothing; the cap (6 / 10); a wave hits an enemy once however long it stays in the band; a roll-cut guard and a
+  swapped guard fire nothing; Counterstrike: 5 erased -> full ring + 5 returns, 4 -> forward wave, no returns; a full
+  effect budget drops returns, never the wave; the wave kills proc at gen 0; two runs hash the same every tick.
+- **BV3 Ballista.** The burst on the last pierce (ring) and on a wall / unbroken piece (back fan); II's bolts and charge.
+  **Verify:** specs: a heavy arrow through 3 enemies bursts 6 on the third; into a wall, 6 back into the room (none
+  spawned inside the wall cell); an expired arrow bursts nothing; stream arrows, Flurry arrows and the Ember Wake ring
+  never burst; II charges in 27 ticks and the view's `bowCharge` reads it; no "arc table miss".
+- **BV4 Siege Bolt.** Pins, phase 5b, the mask, plowing, the slam. **Verify:** specs: a bruiser hit is carried to the
+  wall and slams for 300 %; a swarmer the first hit kills is not pinned; a boss, the Goldling and a turret are never
+  pinned; a pinned actor does not fire or walk; an expired arrow drops its actor with no slam; a pinned actor killed by
+  a teammate releases the arrow, which flies on; the drag never leaves an actor inside a wall or a piece (every tick,
+  `isBodyBlocked` false at its centre); a body stopped by a pillar short of the arrow slams there; four pins at once,
+  a fifth arrow plows only; the slot-reuse case (an arrow expiring on the tick a burst spawns) cannot hand a pin to the
+  new bullet; co-op: two archers, one actor, one pin.
+- **BV5 Wrecker and Demolition.** The roll smash, owners on `damageBreakable`, the two sources, smash procs, splinters,
+  the combo refill and step, the blast. **Verify:** specs: a roll into a crate breaks it before the move and the roll
+  reaches the far side; a piece broken by a swing / an arrow / a Volatile bolt splinters for its owner only; a teammate's
+  break splinters nothing for you; the timer refill keeps a x2 combo alive past its window; a 4-crate cluster chains
+  over 3 ticks and stops at `GEN_MAX`; the chest never breaks; pieces broken by `ROLL` / `BUILD` score; without Wrecker
+  a roll still stops at a crate (golden runs, `breakables.spec`).
+- **BV6 Wave 1 duos.** Thunder Guard, Stillwater, Rebuke, Dragon Bolt, Powder Keg. **Verify:** one spec each:
+  Thunder Guard's sparks start at the erased bullets and cap at 8 a tick; Stillwater restores within 3 s, not after,
+  once; Rebuke fires a ring from a bow roll through 8 bullets that restores a pip, none when no pip is missing (no Stone
+  Heart), none on a second brace in the room, and replaces (not adds to) the guard's forward wave;
+  Dragon Bolt's embers keep coming past 4 and stay inside the effect budget; Powder Keg's crate fires Volatile's ring.
+- **BV7 Gap-3 duos.** Full Heart, Happy Hour. **Verify:** Full Heart's beam only at full hearts, from both the finisher
+  and the heavy arrow; Happy Hour doubles kill points for 300 ticks after a drink, multiplied with Bounty.
+- **BV8 Duo hint.** `duoUnlockedBy`, the chip and string on New cards. **Verify:** pure specs (no hint for upgrades,
+  evolutions, duos, or a boon whose partner is unowned; one hint per card even with two duos); draft overlay renders it
+  (Studio item 9). Presentation only: no hash change from this task.
+- **BV9 Overcap points.** `overcap`, `ScoreSource.OVERCAP`, padding, the pops' events. **Verify:** specs: hitting a
+  capped boss at 10/s for 10 s books 40 payouts of `OVERCAP_POINTS` (through `awardPoints`: combo, depth, curses, the floor scale); a phase-invulnerable boss pays nothing;
+  the combo is untouched; a scored run without builds keeps 15 sources (hash unchanged); co-op credits the hitter.
+- **BV10 Theme.** Strings, context entries, the two colour roles (measured), the five audio IDs and fallbacks.
+  **Verify:** theme validator and `l10n:check` green; Luau locals counted on out/.
+- **BV11 View.** Everything in Architecture 6. **Verify:** Studio checklist below; presentation only.
+- **BV12 Tuning.** Extend the BU13 / LG7 harnesses: TTK rows for the three boons by level (sword / bow, room and pack),
+  Riposte's counts per guard in sniper / caster / reaper rooms, pin rate and carried distance, smashes and chain length
+  per floor band, overcap points per boss fight by build, and offer statistics with 20 boons (evolutions and duos per
+  run by floor 11: pool dilution). **Verify:** tables in this doc; recommendations listed as owner calls, no number
+  changed in this task.
+- **BV13 Art, audio, Studio check, playtest.** Three boon icons and seven duo icons (BU11's sheet), the five clips
+  (BU12's path); the checklist; frame time with Demolition in a storeroom and Siege Bolt + Dragon Bolt in a dense room
+  within BU14's budget. **Verify:** vale pack validates; ids in `assetIds.ts`; checklist passed.
+
+Studio checklist (BV11 / BV13): 1. the counter wave grows from the knight and reads as the bullets coming back; 2. the
+parry tick climbs per bullet; 3. `COUNTER xN` never covers a bullet; 4. Counterstrike's ring and returns; 5. Ballista's
+ring at the last pierce and the back fan at a wall; 6. a pinned bruiser travels with the arrow, its animation held, and
+slams with a freeze and a ring; 7. a roll through a crate cluster; Demolition's chain one piece a tick; 8. Rebuke's ring
+from a bow roll; 9. the duo hint chip on a New card (and none on an Upgrade); 10. overcap pops on a capped boss,
+merged, never over a boss bullet; 11. Reduced build effects; 12. co-op: a teammate's waves, pins and smashes read as
+theirs (owner tint rules as for sparks).
+
+## Edge cases
+
+- A guard cut by the floor change: the count is reset with the floor (no wave crosses floors; waves are cleared with
+  the procs).
+- Riposte with Mirror Cloak: the guard reflects as today; the counter fires on top. With Bastion: a 27-tick full-ring
+  guard counts more, the wave stays forward unless Counterstrike's 5 or Rebuke.
+- A wave reaching a boss: the cap applies (overcap points if over). Shielded absorbs. The Goldling can be struck
+  (LGD12's rule for sparks and streaks).
+- A heavy arrow that breaks a piece flies on (today's rule): no burst there.
+- Siege Bolt with Piercing Arrows III (Ricochet): a last-pierce kill splits as today, but a carrying arrow spends no
+  pierce, so it never has a last pierce while it carries.
+- A pinned Charger mid-charge or Bomber mid-fuse: its step is held, so the charge and the fuse wait; a Bomber released
+  by the slam's death never blasts (a killed Bomber fizzles, NE2).
+- A pinned actor carried out of its room's box: the room's engagement and the score room records use the actor's
+  position as for any knock (BV0 checks the room box tests tolerate it; fallback: the drag stops at the room's box and
+  slams there).
+- The vault chest is a piece and the solid decor is wall: a drag stops on either and slams; the chest never breaks.
+- A smash on the floor-change tick: dropped with the queue. A piece broken by an enemy bullet or a boss slam has no
+  owner: no splinters.
+- Wrecker in co-op: one roll through a cluster another player is shooting: each piece belongs to whoever broke it.
+- Stillwater with no running combo cut (a hit at x1.0 cuts nothing): nothing recorded.
+- Happy Hour and the Greed draft: `happyHourTicks` waits through frozen draft ticks (counted in `stepBuilds`, which a
+  frozen tick never reaches).
+- Overcap on the boss's killing hit: the dropped part still pays.
+
+## Decisions (2026-11-07; BVD3, BVD13-BVD15 settled by the owner, the rest defaults)
+
+- **BVD1** Riposte's wave is a hashed expanding sweep, not bullets: one hit per enemy, sniper reach, no slot or arc row.
+- **BVD2** The wave neither erases bullets nor hits breakables.
+- **BVD3** (settled, owner 2026-11-07) Only a guard that runs its full length fires the counter; a roll's cut and a
+  swap discard the count.
+- **BVD4** Counterstrike's returns fire at the guard's end (with the ring), not per erase.
+- **BVD5** A heavy arrow that expires in the air does not burst.
+- **BVD6** One pin per arrow; a lost pin does not re-arm it.
+- **BVD7** A carrying arrow plows (hits) without spending pierce.
+- **BVD8** Ballista keeps the proposal's 6 / 10 bolts: four new port arc rows (6 / 10 @ FULL_RING, 6 / 10 @ the fan).
+- **BVD9** No new bullet look: bolts are `BURST`, splinters and returns `SHARD`; the wave is the one new colour role.
+- **BVD10** Demolition's chain is bounded by `GEN_MAX` like every cascade (3 pieces after the first).
+- **BVD11** Demolition chains barrels and crates only: bookcases, tombs and pillars are walls (the proposal's
+  bookshelf line is withdrawn).
+- **BVD12** Pieces broken by a roll or a build effect score `BREAKABLES` like a swing's.
+- **BVD13** (settled, owner 2026-11-07) Wrecker's splinters fire for every piece its owner breaks, not only rolled ones; the roll smash is what
+  Wrecker adds to the roll.
+- **BVD14** (settled, owner 2026-11-07) Rebuke: the name, and the ring fires only when the brace restored something
+  (a pip, or Stone Heart's heal), once per guard or roll, replacing the guard's forward wave.
+- **BVD15** (settled, owner 2026-11-07) Full Heart and Happy Hour ship in wave 1 (gap 3), as BV7.
+- **BVD16** Stillwater's combo is the team's (the combo is team-wide); any owner's parry restores it.
+- **BVD17** The duo hint says "Unlocks a duo: {name}": a duo is only offered once both boons are owned.
+- **BVD18** Overcap points: `OVERCAP_POINTS` 10 per point of dropped damage at the kills' floor scaling, combo-neutral,
+  builds runs only.
+- **BVD19** Boon indices 17-19, duo indices 13-19 in this plan's order; wave 2 renumbers after them.
+- **BVD20** `DAILY.ruleset` 11 -> 12 once, in BV1; the all-time boards stay `_v1` (BUD9's precedent).
+
+## Risks
+
+- **Siege Bolt's collision.** Dragging bodies is new (owner call 2 chose it). The drag reuses `moveActor`, so a body
+  can never enter a wall, but a body pulled out of its room or into a doorway can strand an enemy; BV4's specs and BV12's
+  pin census look for it.
+- **Riposte trivialises bullet rooms with Bastion.** A 27-tick full-ring guard plus Counterstrike's ring may clear
+  reaper and caster rooms by itself. BV12's counts decide; fallbacks: Rebuke and Counterstrike share a cooldown, or the
+  cap stays 6 with Bastion.
+- **Wrecker is floor-dependent.** Floors 1-4 have 0-2 pieces per 150 tiles; the boon may read as dead early. BV12's
+  smash census decides; fallback: Wrecker's splinters also fire on a roll through an enemy (the proposal did not ask).
+- **Pool dilution.** 20 boons: every given boon and evolution is rarer. BV12's offer table shows the cost; the upgrade
+  pity and the duo hint soften it.
+- **Cascade noise and frame time.** Demolition in a storeroom, Powder Keg and Dragon Bolt are new spawners. The proc cap
+  and the effect budget hold the sim; the view needs the voice cap and pop merging (BUILDS.md audio risk). BV13 measures.
+- **Overcap farming.** Points scale with damage over the cap; a strong build over a 45 s fight could pay more than the
+  boss kill (5000). BV12 measures; `OVERCAP_POINTS` is the dial.
+
+## Out of scope
+
+- Wave 2: Hemorrhage, Berserk (on at or below 25 % of max hearts, owner call 3), Glutton, and the duos Adrenaline and
+  Blood Shards. Read from the appendix when wave 1 is in.
+- Partner bias in the draft odds (owner call 4: badge only).
+- New bullet looks, a new card frame, recap lines beyond the optional three.
+
+## Owner calls
+
+Settled 2026-11-07 (the proposal's six):
+
+1. Wave 1 is Riposte, Ballista and Wrecker; wave 2 stays Hemorrhage, Berserk and Glutton.
+2. Siege Bolt is a true pin and drag; bosses and the Goldling never pin.
+3. Berserk turns on at or below 25 % of max hearts (wave 2).
+4. Duo hint: the badge only, no partner bias.
+5. Overcap points: yes, their own score source.
+6. A Bastion + Riposte duo, designed here: **Rebuke** (Design, Duos).
+
+Settled on review of this plan (2026-11-07):
+
+7. Rebuke keeps its name; its ring fires only when the brace restored something (BVD14).
+8. A guard cut short by a roll fires nothing (BVD3).
+9. Wrecker's splinters and Demolition fire for every piece the owner breaks (BVD13).
+10. Full Heart and Happy Hour ship in wave 1 (BVD15).
+
+## Appendix: the proposal (2026-11-05)
+
+Kept as written (Overkill withdrawn to docs/LEGENDARIES.md 2026-11-06, Matador dropped and the owner calls settled
+2026-11-07), for wave 2. Where this plan differs (Rebuke, BVD1-BVD20), the plan above wins.
+
+### Why: the gaps v1 leaves
 
 Read from the code and docs on `main` today:
 
@@ -22,7 +436,7 @@ Read from the code and docs on `main` today:
    strong build feels the same as no build in the biggest fight of a floor.
 6. **Duos are hard to find** (BU13 recommendation 1). The best moment of v1 is also its rarest.
 
-## New boons (indices 17-22)
+### New boons (indices 17-22)
 
 **Overkill moved (2026-11-06):** the owner made Overkill a legendary in docs/LEGENDARIES.md (indices 15 / 16 go to
 Overkill and Bastion), so its row below is withdrawn and the rest renumber after them.
@@ -44,7 +458,7 @@ Recommended order (owner call): **wave 1** = Riposte, Ballista, Wrecker (they fi
 an existing sim hook: guard cancels, the heavy arrow, breakable hits). **Wave 2** = Hemorrhage, Berserk,
 Glutton.
 
-## New duos
+### New duos
 
 Gap 3 first: every v1 boon now has at least one duo.
 
@@ -63,7 +477,7 @@ Gap 3 first: every v1 boon now has at least one duo.
 **Matador dropped (owner, 2026-11-07).** Riposte + Slippery (a bullet rolled through counts as a guard erase) is
 withdrawn: Bastion's roll brace (docs/LEGENDARIES.md LGD7) already counts bullets rolled through as blocked.
 
-## Builds: how they come together
+### Builds: how they come together
 
 Each build is named as the player would describe it, with the cards that make it and the moment it "comes online".
 
@@ -84,7 +498,7 @@ Each build is named as the player would describe it, with the cards that make it
 8. **The Glutton**: Glutton -> Devour, Bounty -> Jackpot (Happy Hour), Lingering (Gold Rush). *Online:* a Sweep, bullets
    turn to points, Jackpot pops, the score panel's number jumps.
 
-## Dopamine rules for every new boon
+### Dopamine rules for every new boon
 
 Reused from systems already in the game, so no new presentation machinery is needed:
 
@@ -99,7 +513,7 @@ Reused from systems already in the game, so no new presentation machinery is nee
 - **Recap brag lines** (RUN_RECAP highlights, presentation only from an unhashed feed): `Biggest cascade 23 kills`,
   `Best counter x9`, `Longest pin 6 tiles`, `Rooms cleared at 1 heart: 4`.
 
-## Two fixes that make every build feel better
+### Two fixes that make every build feel better
 
 1. **Duo hint on cards** (presentation only). A New card whose boon completes a duo with something you own shows a small
    joined-icon badge with the duo's silhouette and `Completes a duo`. This makes the duo visible as a goal two picks
@@ -108,7 +522,7 @@ Reused from systems already in the game, so no new presentation machinery is nee
    gold points (`+12`) at the boss, in its own score source. A strong build still can't shorten the fight, but the
    player sees their build working on the boss.
 
-## Fit with the sim (what each one needs)
+### Fit with the sim (what each one needs)
 
 | Item | Sim hook it reuses | New state (hashed, `builds` group) | Risk |
 |---|---|---|---|
@@ -127,7 +541,7 @@ Every row changes endless replays and scores from the first draft on, as v1 did 
 move). Recommend landing wave 1 **after BU14**, so the frame-time and readability numbers for v1 are known before more
 bullets go on screen.
 
-## Owner calls (settled 2026-11-07)
+### Owner calls (settled 2026-11-07)
 
 1. **Wave 1:** Riposte, Ballista and Wrecker, as proposed. Wave 2 stays Hemorrhage, Berserk and Glutton.
 2. **Siege Bolt:** true pin and drag. The first non-boss enemy the heavy arrow hits is carried with it until the arrow
