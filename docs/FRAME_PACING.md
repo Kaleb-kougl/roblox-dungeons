@@ -138,7 +138,7 @@ whether batches of 1 arrive any more evenly. Only changed if FP0 / FP6 show a ga
 | `startDepthTicks` | 3 | Before any arrival is measured |
 | `minDepthTicks` | 3 | One broadcast batch + a tick of margin (FPD6) |
 | `maxDepthTicks` | 12 | 200 ms; past that a hold is better than the delay |
-| `marginTicks` | 0.5 | Rounding and Heartbeat granularity |
+| `marginTicks` | 1.5 | Rounding and Heartbeat granularity: arrivals are handled on a rendered frame, so an offset can read one whole frame (1 tick at 60 fps) later than the last; 0.5 held about once a second on FP4's 20-120 ms network (1.5: none after the warm-up) |
 | `jitterWindowSec` / `jitterPercentile` | 4 / 0.95 | Follows a changing network within seconds |
 | `floorWindowSec` | 10 | The best-case path; follows a route change |
 | `slewShare` / `fastSlewShare` / `fastSlewTicks` | 0.05 / 0.10 / 6 | Section 3 |

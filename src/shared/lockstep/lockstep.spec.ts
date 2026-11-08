@@ -11,6 +11,7 @@ import {
 	EMPTY_INPUT,
 	PARTY_LEFT_BUTTON,
 	Rng,
+	SIM_HZ,
 	createSimState,
 	hashState,
 	isPartyWiped,
@@ -41,6 +42,7 @@ import {
 	LockstepSession,
 	MergedDecoder,
 	MergedEncoder,
+	PACING,
 	decodeInputBatch,
 	encodeInputBatch,
 	outliersOf,
@@ -249,6 +251,9 @@ class Channel {
 
 const SEED = 31337;
 const DT = 1 / 60;
+/** Frames per second the Net harness renders at by default (DT). */
+const NET_FPS = 60;
+// No pacing: these specs assert today's stepping (every received frame at once); Net's `pacing` option turns it on.
 const TUNABLES: LockstepTunables = {
 	...DEFAULT_LOCKSTEP,
 	segmentTicks: 240,
@@ -256,6 +261,7 @@ const TUNABLES: LockstepTunables = {
 	reportTimeoutTicks: 600,
 	finalTimeoutTicks: 600,
 	allowDebugInput: true,
+	pacing: undefined,
 };
 const SEG_LIMITS: SegmentLimits = { ...DEFAULT_SEGMENT_LIMITS, checkpointEvery: 120, allowDebugInput: true };
 
@@ -268,6 +274,24 @@ interface NetOptions {
 	readonly tunables?: LockstepTunables;
 	/** Return true to lose this hash call of player `i` on the way up (a dropped remote). */
 	readonly dropHashCall?: (i: number, ticks: ReadonlyArray<number>) => boolean;
+	/**
+	 * Frame pacing (docs/FRAME_PACING.md FP4): the clients get `PACING` and the simulated clock on `receive` (at
+	 * delivery) and `pump`. Off by default: every client steps each received frame at once, as before.
+	 */
+	readonly pacing?: boolean;
+	/** The rendered frame rate (default NET_FPS); maxFrames defaults to 120 s of frames at it. */
+	readonly fps?: number;
+}
+
+/** One client's rendered frames while its run was on (docs/FRAME_PACING.md FP4): per frame, ticks stepped and more. */
+interface FrameTrace {
+	/** The simulated clock of each frame. */
+	readonly at: number[];
+	readonly stepped: number[];
+	/** getAlpha() after the pump. */
+	readonly alpha: number[];
+	/** pacingStats().holds after the pump (0 unpaced). */
+	readonly holds: number[];
 }
 
 /** A client's scripted player: small left / right walks, rolls, swings, and a debug hit (K) every 120 ticks. */
@@ -307,15 +331,21 @@ class Net {
 	readonly hashCallsLost: number[] = [];
 	readonly inputCallsLimited: number[] = [];
 	readonly hashTicksSent: number[][] = [];
+	/** Per client, every frame it pumped while its run was on (not over before the pump). */
+	readonly traces: FrameTrace[] = [];
 	result: SegmentedRunResult | undefined;
 	now = 0;
 	private readonly logDecoder: MergedDecoder;
 	private readonly tunables: LockstepTunables;
+	private readonly frameDt: number;
 
 	constructor(readonly opts: NetOptions) {
 		const n = opts.players;
-		this.tunables = opts.tunables ?? TUNABLES;
+		const base = opts.tunables ?? TUNABLES;
+		this.tunables = opts.pacing === true ? { ...base, pacing: base.pacing ?? PACING } : base;
+		this.frameDt = 1 / (opts.fps ?? NET_FPS);
 		for (let i = 0; i < n; i++) {
+			this.traces.push({ at: [], stepped: [], alpha: [], holds: [] });
 			this.hashCalls.push(0);
 			this.hashCallsLimited.push(0);
 			this.hashCallsLost.push(0);
@@ -363,9 +393,12 @@ class Net {
 	}
 
 	run(): void {
-		const maxFrames = this.opts.maxFrames ?? 60 * 120;
+		const fps = this.opts.fps ?? NET_FPS;
+		const maxFrames = this.opts.maxFrames ?? fps * 120;
+		const paced = this.opts.pacing === true;
+		const frameDt = this.frameDt;
 		for (let frame = 0; frame < maxFrames && this.result === undefined; frame++) {
-			this.now += DT;
+			this.now += frameDt;
 			for (const c of this.up) c.pump(this.now);
 			const out = this.session.step(this.now);
 			for (const b of out.broadcasts) {
@@ -377,7 +410,7 @@ class Net {
 					if (this.gone.has(i)) continue;
 					const c = this.clients[i];
 					this.down[i].send(this.now, () => {
-						c.receive(b.firstTick, b.data);
+						c.receive(b.firstTick, b.data, paced ? this.now : undefined);
 						c.acknowledge(ack);
 					});
 				}
@@ -399,7 +432,15 @@ class Net {
 				if (this.frozen.has(i) || this.gone.has(i)) continue;
 				const c = this.clients[i];
 				const user = this.members[i];
-				const res = c.pump(DT, () => botInput(c.state, i));
+				const live = !c.isOver();
+				const res = c.pump(frameDt, () => botInput(c.state, i), paced ? this.now : undefined);
+				if (live) {
+					const tr = this.traces[i];
+					tr.at.push(this.now);
+					tr.stepped.push(res.stepped);
+					tr.alpha.push(c.getAlpha());
+					tr.holds.push(c.pacingStats()?.holds ?? 0);
+				}
 				for (const inp of res.inputs) {
 					this.up[i].send(this.now, () => {
 						if (!this.inputLimiter.tryAcquire(user, this.now)) this.inputCallsLimited[i]++;
@@ -446,60 +487,218 @@ const NET_RUNS: ReadonlyArray<readonly [number, number, number]> = [
 	[8, 0, 0.2],
 ];
 
+/** The whole-run checks of a finished Net run: ranked, identical on every client, the log is what they stepped. */
+function itRanAndValidated(net: Net, label: string): void {
+	const players = net.opts.players;
+	it("the run ends (the party is wiped) and the server's replay accepts it", () => {
+		const fin = net.finals.get(0)!;
+		print(
+			`[lockstep ${label}] final tick ${fin.finalTick} hash ${fin.claimedHash} score ${fin.claimed.score}; leads ` +
+				`${net.clients.map((c) => c.inputLead()).join(",")}; misses ${net.clients
+					.map((c) => c.misses)
+					.join(",")}; relay missed ${net.session.getRelay().getStats().missed.join(",")} late ${net.session
+					.getRelay()
+					.getStats()
+					.late.join(",")} of ${net.session.finalizedTicks()} ticks`,
+		);
+		expect(net.result?.reason).toBe(undefined);
+		expect(net.result?.ok).toBe(true);
+		expect(net.result?.serverHash).toBe(fin.claimedHash);
+		expect(net.result?.score.score).toBe(fin.claimed.score);
+		expect(net.result?.verifiedTicks).toBe(fin.finalTick);
+		expect(fin.finalTick > 600).toBe(true);
+	});
+
+	it("every client reached the identical state at the same tick", () => {
+		const fin = net.finals.get(0)!;
+		for (let i = 0; i < players; i++) {
+			const c = net.clients[i];
+			expect(isPartyWiped(c.state)).toBe(true);
+			expect(c.state.tick).toBe(fin.finalTick);
+			expect(hashState(c.state)).toBe(fin.claimedHash);
+			expect(net.finals.get(i)).toEqual(fin);
+			expect(c.brokenReason()).toBe(undefined);
+		}
+	});
+
+	it("the merged log the server broadcast is exactly what the clients stepped", () => {
+		const fin = net.finals.get(0)!;
+		expect(hashState(net.replayLog(fin.finalTick))).toBe(fin.claimedHash);
+	});
+
+	it("players' own inputs made it into the log (the lead adapts to the latency)", () => {
+		const stats = net.session.getRelay().getStats();
+		const ticks = net.session.finalizedTicks();
+		for (let i = 0; i < players; i++) expect(stats.missed[i] < ticks / 4).toBe(true);
+		let moved = 0;
+		for (const row of net.log) if (row[1].moveX !== 0) moved++;
+		expect(moved > ticks / 2).toBe(true);
+	});
+}
+
+/**
+ * The finished NET_RUNS nets by index, unpaced and paced (docs/FRAME_PACING.md FP3: the same networks pass with pacing
+ * on). The smoothness specs below read them: describe bodies run in file order while the suite is collected.
+ */
+const unpacedNetRuns: Net[] = [];
+const pacedNetRuns: Net[] = [];
+
 for (const [players, lo, hi] of NET_RUNS) {
 	describe(`co-op over a simulated network: ${players} players, ${lo * 1000}-${hi * 1000} ms each way`, () => {
 		const net = new Net({ players, latency: [lo, hi] });
 		net.run();
-
-		it("the run ends (the party is wiped) and the server's replay accepts it", () => {
-			const fin = net.finals.get(0)!;
-			print(
-				`[lockstep ${players}p] final tick ${fin.finalTick} hash ${fin.claimedHash} score ${fin.claimed.score}; leads ` +
-					`${net.clients.map((c) => c.inputLead()).join(",")}; misses ${net.clients
-						.map((c) => c.misses)
-						.join(",")}; relay missed ${net.session
-						.getRelay()
-						.getStats()
-						.missed.join(",")} late ${net.session
-						.getRelay()
-						.getStats()
-						.late.join(",")} of ${net.session.finalizedTicks()} ticks`,
-			);
-			expect(net.result?.reason).toBe(undefined);
-			expect(net.result?.ok).toBe(true);
-			expect(net.result?.serverHash).toBe(fin.claimedHash);
-			expect(net.result?.score.score).toBe(fin.claimed.score);
-			expect(net.result?.verifiedTicks).toBe(fin.finalTick);
-			expect(fin.finalTick > 600).toBe(true);
-		});
-
-		it("every client reached the identical state at the same tick", () => {
-			const fin = net.finals.get(0)!;
-			for (let i = 0; i < players; i++) {
-				const c = net.clients[i];
-				expect(isPartyWiped(c.state)).toBe(true);
-				expect(c.state.tick).toBe(fin.finalTick);
-				expect(hashState(c.state)).toBe(fin.claimedHash);
-				expect(net.finals.get(i)).toEqual(fin);
-				expect(c.brokenReason()).toBe(undefined);
-			}
-		});
-
-		it("the merged log the server broadcast is exactly what the clients stepped", () => {
-			const fin = net.finals.get(0)!;
-			expect(hashState(net.replayLog(fin.finalTick))).toBe(fin.claimedHash);
-		});
-
-		it("players' own inputs made it into the log (the lead adapts to the latency)", () => {
-			const stats = net.session.getRelay().getStats();
-			const ticks = net.session.finalizedTicks();
-			for (let i = 0; i < players; i++) expect(stats.missed[i] < ticks / 4).toBe(true);
-			let moved = 0;
-			for (const row of net.log) if (row[1].moveX !== 0) moved++;
-			expect(moved > ticks / 2).toBe(true);
+		unpacedNetRuns.push(net);
+		itRanAndValidated(net, `${players}p`);
+	});
+	describe(`co-op over a simulated network, paced: ${players} players, ${lo * 1000}-${hi * 1000} ms each way`, () => {
+		const net = new Net({ players, latency: [lo, hi], pacing: true });
+		net.run();
+		pacedNetRuns.push(net);
+		itRanAndValidated(net, `${players}p paced`);
+		it("every client paced", () => {
+			for (const c of net.clients) expect(c.isPacing()).toBe(true);
 		});
 	});
 }
+
+// Smoothness (docs/FRAME_PACING.md FP4): the same 3-player 20-120 ms network with frame pacing on and off. Paced, a
+// client steps one tick per 16.7 ms whatever the arrivals do; unpaced it steps whatever arrived that frame.
+
+/** Frames before this (simulated seconds) are the warm-up: the pacer is still measuring and slewing to its depth. */
+const PACING_WARMUP_SEC = 2;
+/** Paced at 60 fps, at least this share of frames after the warm-up step exactly one tick. */
+const PACED_ONE_TICK_SHARE = 0.99;
+/** Paced, holds stay under this many per client per 10 s of run. */
+const PACED_HOLDS_PER_10_SEC = 1;
+const TEN_SEC = 10;
+/** The step-count buckets printed: 0, 1, 2, 3 or more ticks in one frame. */
+const STEP_BUCKETS = 4;
+/** The high-refresh run: frames per second, and how long it plays (seconds; cut by maxFrames, no wipe needed). */
+const HIGH_FPS = 144;
+const HIGH_FPS_RUN_SEC = 8;
+
+interface StepShares {
+	/** Frames after the warm-up, over every client. */
+	readonly frames: number;
+	/** Share of those frames stepping 0, 1, 2, 3+ ticks. */
+	readonly shares: number[];
+	/** Per client: holds after the warm-up, and the length (s) of the run after it. */
+	readonly holds: number[];
+	readonly seconds: number[];
+}
+
+function stepShares(net: Net): StepShares {
+	const counts: number[] = [];
+	for (let b = 0; b < STEP_BUCKETS; b++) counts.push(0);
+	let frames = 0;
+	const holds: number[] = [];
+	const seconds: number[] = [];
+	for (const tr of net.traces) {
+		const n = tr.at.size();
+		for (let k = 0; k < n; k++) {
+			if (tr.at[k] < PACING_WARMUP_SEC) continue;
+			counts[math.min(tr.stepped[k], STEP_BUCKETS - 1)]++;
+			frames++;
+		}
+		let first = 0;
+		while (first < n && tr.at[first] < PACING_WARMUP_SEC) first++;
+		const before = first > 0 ? tr.holds[first - 1] : 0;
+		holds.push(n > 0 ? tr.holds[n - 1] - before : 0);
+		seconds.push(n > first ? tr.at[n - 1] - tr.at[first] : 0);
+	}
+	return { frames, shares: counts.map((c) => (frames > 0 ? c / frames : 0)), holds, seconds };
+}
+
+function sharesText(s: StepShares): string {
+	const pct = s.shares.map((x) => string.format("%.1f%%", x * 100));
+	return `0: ${pct[0]}, 1: ${pct[1]}, 2: ${pct[2]}, 3+: ${pct[3]} of ${s.frames} frames; holds ${s.holds.join(",")}`;
+}
+
+describe("co-op frame pacing over a simulated network: 3 players, 20-120 ms each way, 60 fps", () => {
+	// NET_RUNS' first network, run above with pacing on and off.
+	const [players] = NET_RUNS[0];
+	const paced = pacedNetRuns[0];
+	const unpaced = unpacedNetRuns[0];
+	const pacedShares = stepShares(paced);
+	const unpacedShares = stepShares(unpaced);
+	print(`[lockstep pacing] paced   ${sharesText(pacedShares)}`);
+	print(`[lockstep pacing] unpaced ${sharesText(unpacedShares)}`);
+	print(
+		`[lockstep pacing] paced net leads ${paced.clients.map((c) => c.netLead()).join(",")}, depths ${paced.clients
+			.map((c) => c.pacingStats()?.depthTicks ?? 0)
+			.join(",")}, jitter p95 ${paced.clients
+			.map((c) => string.format("%.0f", c.pacingStats()?.jitterMs ?? 0))
+			.join(",")} ms`,
+	);
+
+	it("pacing is on for every paced client, off for the others", () => {
+		for (const c of paced.clients) {
+			expect(c.isPacing()).toBe(true);
+			expect(c.pacingStats()?.started).toBe(true);
+		}
+		for (const c of unpaced.clients) {
+			expect(c.isPacing()).toBe(false);
+			expect(c.pacingStats()).toBe(undefined);
+		}
+	});
+
+	it("after the warm-up at least 99 % of frames step exactly one tick", () => {
+		expect(pacedShares.frames > 0).toBe(true);
+		expect(pacedShares.shares[1] >= PACED_ONE_TICK_SHARE).toBe(true);
+	});
+
+	it("holds stay under 1 per 10 s after the warm-up", () => {
+		for (let i = 0; i < players; i++) {
+			expect(pacedShares.seconds[i] > TEN_SEC).toBe(true);
+			expect(pacedShares.holds[i] * TEN_SEC < PACED_HOLDS_PER_10_SEC * pacedShares.seconds[i]).toBe(true);
+		}
+	});
+
+	it("the input lead covers the buffer: effective lead = net lead + depth while the inputs keep up", () => {
+		for (const c of paced.clients) {
+			expect(c.netLead() >= DEFAULT_LOCKSTEP.inputDelay).toBe(true);
+			expect(c.nextInputTick()).toBe(c.state.tick + c.netLead() + c.pacingStats()!.depthTicks);
+		}
+	});
+});
+
+describe(`co-op frame pacing at ${HIGH_FPS} fps: 3 players, 20-120 ms each way`, () => {
+	const [players, lo, hi] = NET_RUNS[0];
+	const net = new Net({
+		players,
+		latency: [lo, hi],
+		pacing: true,
+		fps: HIGH_FPS,
+		maxFrames: HIGH_FPS * HIGH_FPS_RUN_SEC,
+	});
+	net.run();
+	const shares = stepShares(net);
+	print(`[lockstep pacing ${HIGH_FPS} fps] ${sharesText(shares)}`);
+
+	it("alpha stays in [0, 1) and every frame after the warm-up steps 0 or 1 tick", () => {
+		let checked = 0;
+		for (const tr of net.traces) {
+			for (let k = 0; k < tr.at.size(); k++) {
+				const a = tr.alpha[k];
+				expect(a >= 0 && a < 1).toBe(true);
+				if (tr.at[k] < PACING_WARMUP_SEC) continue;
+				expect(tr.stepped[k] <= 1).toBe(true);
+				checked++;
+			}
+		}
+		expect(checked > 0).toBe(true);
+		expect(shares.shares[2] + shares.shares[3]).toBe(0);
+	});
+
+	it("every client stepped the same ticks as the server's log", () => {
+		const ticks = net.clients[0].state.tick;
+		expect(ticks > (HIGH_FPS_RUN_SEC - PACING_WARMUP_SEC) * SIM_HZ).toBe(true);
+		for (const c of net.clients) {
+			expect(c.brokenReason()).toBe(undefined);
+			expect(hashState(c.state)).toBe(hashState(net.replayLog(c.state.tick)));
+		}
+	});
+});
 
 // The input lead over a latency that changes (docs/FRAME_PACING.md FP1): one client against the server's relay, one
 // tick finalized per frame, every tick broadcast at once; the latency each way is picked per frame.
@@ -753,6 +952,68 @@ describe("LockstepClient.end (the server decided the run before the wipe)", () =
 		c.end("desync");
 		expect(c.endReason()).toBe(undefined);
 		expect(c.isOver()).toBe(true);
+	});
+});
+
+describe("LockstepClient pacing activation (docs/FRAME_PACING.md FP3)", () => {
+	const ONE_IDLE: InputFrame[][] = [[{ ...EMPTY_INPUT }]];
+	function client(tunables: LockstepTunables): { c: LockstepClient; enc: MergedEncoder } {
+		const setup = buildEndlessRunConfig(SEED, 1);
+		const c = new LockstepClient({
+			runId: "pace",
+			seed: SEED,
+			spawn: setup.spawn!,
+			config: setup.config,
+			players: 1,
+			localIndex: 0,
+			tunables,
+		});
+		return { c, enc: new MergedEncoder(1) };
+	}
+
+	it("without pacing configured, `now` changes nothing: every queued frame at once, today's alpha", () => {
+		const { c, enc } = client(TUNABLES);
+		for (let t = 0; t < 5; t++) expect(c.receive(t, enc.encode(ONE_IDLE), t * DT)).toBe(true);
+		const res = c.pump(DT, () => EMPTY_INPUT, DT);
+		expect(res.stepped).toBe(5);
+		expect(c.isPacing()).toBe(false);
+		expect(c.pacingStats()).toBe(undefined);
+		expect(c.getAlpha()).toBe(0);
+		expect(c.nextInputTick()).toBe(c.state.tick + c.netLead());
+	});
+
+	it("with pacing configured but no `now`, it behaves as before (not pacing)", () => {
+		const { c, enc } = client({ ...TUNABLES, pacing: PACING });
+		for (let t = 0; t < 5; t++) expect(c.receive(t, enc.encode(ONE_IDLE))).toBe(true);
+		expect(c.pump(DT, () => EMPTY_INPUT).stepped).toBe(5);
+		expect(c.isPacing()).toBe(false);
+		expect(c.pacingStats()).toBe(undefined);
+	});
+
+	it("paced: one tick per frame from a startDepthTicks buffer; the lead covers the depth; it never turns off", () => {
+		const { c, enc } = client({ ...TUNABLES, pacing: PACING });
+		const FRAMES = 120;
+		const NO_CLOCK_FROM = 60;
+		const NO_CLOCK_TO = 70;
+		for (let frame = 0; frame < FRAMES; frame++) {
+			const now = frame * DT;
+			// One tick arrives per frame; frames 60-69 pass no clock at all (a caller mistake): the client keeps pacing
+			// on its last clock + dt and stamps those arrivals with it.
+			const clockless = frame >= NO_CLOCK_FROM && frame < NO_CLOCK_TO;
+			expect(c.receive(frame, enc.encode(ONE_IDLE), clockless ? undefined : now)).toBe(true);
+			const res = c.pump(DT, () => EMPTY_INPUT, clockless ? undefined : now);
+			expect(c.isPacing()).toBe(true);
+			// Frame k is due startDepthTicks ticks after it arrived.
+			expect(res.stepped).toBe(frame < PACING.startDepthTicks ? 0 : 1);
+			const stats = c.pacingStats()!;
+			expect(stats.holds).toBe(0);
+			expect(stats.depthTicks).toBe(PACING.startDepthTicks);
+			expect(c.backlog()).toBe(math.min(frame + 1, PACING.startDepthTicks));
+			const a = c.getAlpha();
+			expect(a >= 0 && a < 1).toBe(true);
+			expect(c.nextInputTick()).toBe(c.state.tick + c.netLead() + stats.depthTicks);
+			if (c.state.tick > 0) expect(c.inputLead()).toBe(c.netLead() + stats.depthTicks);
+		}
 	});
 });
 

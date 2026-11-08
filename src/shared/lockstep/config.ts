@@ -81,7 +81,11 @@ export interface PacingTunables {
 	readonly minDepthTicks: number;
 	/** The target depth never goes past this (200 ms): beyond it a hold is better than the delay. */
 	readonly maxDepthTicks: number;
-	/** Added to the measured jitter: rounding and Heartbeat granularity. */
+	/**
+	 * Added to the measured jitter: rounding and Heartbeat granularity. Arrivals are handled on a rendered frame, so an
+	 * offset can read a whole frame (one tick at 60 fps) later than any measured; 0.5 held about once a second on the
+	 * 20-120 ms spec network (lockstep.spec FP4), 1.5 not once after the warm-up.
+	 */
 	readonly marginTicks: number;
 	/** The jitter is measured over the arrivals of this many seconds (follows a changing network within seconds). */
 	readonly jitterWindowSec: number;
@@ -103,7 +107,7 @@ export const PACING: PacingTunables = table.freeze({
 	startDepthTicks: 3,
 	minDepthTicks: 3,
 	maxDepthTicks: 12,
-	marginTicks: 0.5,
+	marginTicks: 1.5,
 	jitterWindowSec: 4,
 	jitterPercentile: 0.95,
 	floorWindowSec: 10,
@@ -138,6 +142,12 @@ export interface LockstepTunables {
 	readonly maxHashBatch: number;
 	/** Debug input bits survive the relay (Studio tooling); otherwise they are stripped from every frame. */
 	readonly allowDebugInput: boolean;
+	/**
+	 * Client: co-op frame pacing (docs/FRAME_PACING.md). Defined: the client owns a PlayoutPacer and paces once its
+	 * caller passes a clock (`receive` / `pump`'s `now`); undefined: it steps every received frame at once, as before.
+	 * The server ignores it.
+	 */
+	readonly pacing: PacingTunables | undefined;
 }
 
 export const DEFAULT_LOCKSTEP: LockstepTunables = table.freeze({
@@ -159,4 +169,5 @@ export const DEFAULT_LOCKSTEP: LockstepTunables = table.freeze({
 	hashSendMinSeconds: HASH_SEND_MIN_SECONDS,
 	maxHashBatch: MAX_HASH_BATCH,
 	allowDebugInput: false,
+	pacing: PACING,
 });
