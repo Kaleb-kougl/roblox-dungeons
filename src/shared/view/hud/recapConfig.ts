@@ -147,7 +147,7 @@ export type RecapHighlightId =
 	| "rooms";
 
 /**
- * How a co-op run labels the highlight: `team` (the party's value: `Team`), `you` (the view player's own: `You`), or
+ * How a co-op run labels the highlight: `team` (the party's value: `Team`), `you` (the local player's own: `You`), or
  * `label` (the label itself says team: TEAM PERFECT, team streak, sync parries; no extra label). Solo runs label
  * nothing.
  */

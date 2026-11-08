@@ -122,8 +122,9 @@ function recapSignature(nearMiss: RecapNearMiss | undefined, highlights: Readonl
  *   open       the frame the run-over panel opens (the snapshot's outcome is no longer "playing", as RunOverPanel reads
  *              it) the recap's input is built once (inputOf: world from the run's world kind; the boss from the
  *              snapshot's bossVisible / bossId / bossHp / bossHpMax; the stairs' walking distance from the death floor's
- *              world and the view player's position, once; room counts from floorRoomTally; the view player's duos and
- *              evolved boons (level III); new best's baseline and the panel's own record (runOverBest); a daily run's
+ *              world and the view player's position, once; room counts from floorRoomTally; the LOCAL player's duos
+ *              and evolved boons (level III; `You` is the local player, never the view, docs/RUN_CONTRIBUTION.md CT1); new
+ *              best's baseline and the panel's own record (runOverBest); a daily run's
  *              best today from an accepted verdict; RunView.recapTally; Part B's team moments through the provider
  *              seam) and nearMissFor / pickHighlights / a RecapTimeline (a record run's highlights after NB's rows:
  *              recapRecordRowsSec) are made. Dev runs: highlights only (the core gives them no near-miss). Other worlds
@@ -538,11 +539,11 @@ export class RecapController implements OnStart {
 		);
 	}
 
-	/** The view player's duos and evolved boons (level III, BOON_MAX_LEVEL); zeros without builds. */
-	private buildsOf(ctx: RunContext, view: number): RecapBuildsInput {
+	/** Player `me`'s duos and evolved boons (level III, BOON_MAX_LEVEL); zeros without builds. */
+	private buildsOf(ctx: RunContext, me: number): RecapBuildsInput {
 		const state = ctx.run.state;
-		const build = state.builds?.players[view];
-		const owned = state.run?.players[view];
+		const build = state.builds?.players[me];
+		const owned = state.run?.players[me];
 		if (build === undefined) return { duos: 0, evolutions: 0 };
 		let evolutions = 0;
 		if (owned !== undefined)
@@ -557,7 +558,8 @@ export class RecapController implements OnStart {
 		const score = state.score;
 		if (world === "other" || score === undefined) return undefined;
 		const snap = st.game.snapshot;
-		const view = this.sim.getViewPlayerIndex();
+		// `You` rows are the local player's (CT1): at a wipe the view stays on the last watched teammate.
+		const me = this.sim.getLocalPlayerIndex();
 		const floor = state.endless?.floor ?? snap.floor;
 		const depth = state.endless?.depth ?? snap.depth;
 		const bossFloor = floor > 0 && isBossFloor(floor);
@@ -582,13 +584,13 @@ export class RecapController implements OnStart {
 		return {
 			world,
 			partySize: partySize(state),
-			viewIndex: view,
+			localIndex: me,
 			score,
 			kills: snap.kills,
 			floor,
 			depth,
 			startDepth: ctx.config.endless?.startDepth,
-			builds: this.buildsOf(ctx, view),
+			builds: this.buildsOf(ctx, me),
 			bossFloor,
 			boss,
 			nextBossId,

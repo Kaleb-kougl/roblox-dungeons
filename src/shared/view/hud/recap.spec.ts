@@ -3,6 +3,7 @@
 //     rooms left, the pre-boss floor), RRD2's order, record-run drops and the dim line, FIRST RECORD none, unknown /
 //     unranked / none baselines, daily best today, dev and other worlds
 //   - pickHighlights: priority, one slot per priority, cap 4, fill to 2, every notable edge, source guards, Team / You
+//     (You = the local player, never the spectate view: docs/RUN_CONTRIBUTION.md CT1)
 //   - stairsPathTiles on small grids; the no-hit / boss-kill split (RR0 2)
 //   - RecapTimeline: row order and start times, count-up and sound edges, the arm, skip before the arm, reduced motion,
 //     the record offset, the verdict's silent re-derive
@@ -46,7 +47,7 @@ function input(patch: Partial<RunRecapInput> = {}): RunRecapInput {
 	return {
 		world: "endless",
 		partySize: 1,
-		viewIndex: 0,
+		localIndex: 0,
 		score: { total: 1000, maxCombo: 10, points: sources({}), counts: sources({}) },
 		kills: 20,
 		floor: 3,
@@ -357,11 +358,11 @@ describe("pickHighlights", () => {
 		expect([coop[0].id, coop[0].scope]).toEqual(["chests", "team"]);
 	});
 
-	it("co-op: Team and You labels, the view player's tally, TEAM PERFECT, the team rows", () => {
+	it("co-op: Team and You labels, the local player's tally, TEAM PERFECT, the team rows", () => {
 		const h = pickHighlights(
 			input({
 				partySize: 2,
-				viewIndex: 1,
+				localIndex: 1,
 				score: {
 					total: 1,
 					maxCombo: 20,
@@ -378,7 +379,7 @@ describe("pickHighlights", () => {
 		const g = pickHighlights(
 			input({
 				partySize: 2,
-				viewIndex: 1,
+				localIndex: 1,
 				tally: { ...NO_RECAP_TALLY, parries: [], grazes: [450, 50] },
 				team: undefined,
 			}),
@@ -389,6 +390,17 @@ describe("pickHighlights", () => {
 			input({ partySize: 3, team: { teamPerfects: 0, bestTeamStreak: 0, syncParries: 1 } }),
 		);
 		expect(ids(sync)).toEqual(["syncParries", "kills"]);
+	});
+
+	it("CT1: You is the local player, not the view: player 0 died first and spectated player 1 at the wipe", () => {
+		// The spectate view stays on player 1 at the wipe; the local client is player 0: its own parries and grazes show.
+		const tally = { ...NO_RECAP_TALLY, parries: [7, 30], grazes: [60, 300] };
+		const h = pickHighlights(input({ partySize: 2, localIndex: 0, tally }));
+		expect(ids(h)).toEqual(["parries", "grazes"]);
+		expect([h[0].value, h[0].scope, h[1].value, h[1].scope]).toEqual([7, "you", 60, "you"]);
+		// player 1's own client shows player 1's
+		const other = pickHighlights(input({ partySize: 2, localIndex: 1, tally }));
+		expect([other[0].value, other[1].value]).toEqual([30, 300]);
 	});
 
 	it("solo runs never show the team rows; other worlds show nothing", () => {

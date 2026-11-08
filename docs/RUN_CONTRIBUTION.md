@@ -168,9 +168,13 @@ Each step is a commit; `npm run verify` before each.
   player's gets a transient `SimCtx.creditPlayer` (-1 = nobody), reset in `bind()`, set beside `procGen`, never hashed.
   Confirm `damagePlayer`'s `playerIndex` at every caller (`hurtPlayerAt`, contact, strikes, Vengeful, bomber blast).
   Confirm the pop count equals `counts[KILLS]` in scored runs. -> Verify: each written here.
-- [ ] **CT1. `You` is the local player.** `RunRecapInput.localIndex` from `SimController.getLocalPlayerIndex()`;
+- [x] **CT1. `You` is the local player.** `RunRecapInput.localIndex` from `SimController.getLocalPlayerIndex()`;
   `pickHighlights`' `You` rows (parries, grazes, duos / evolutions via `buildsOf`) read it. Spec: a party where player 0
   died first and spectates player 1 at the wipe shows player 0's parries. Ship this alone first (a bug fix today).
+  As built: `RunRecapInput.viewIndex` is gone (nothing in the recap core needed the view) and replaced by `localIndex`;
+  RecapController passes `getLocalPlayerIndex()` and `buildsOf(ctx, me)` reads the local player's build. The stairs'
+  near-miss distance (`stairsOf`) still measures from the view player's position (the camera's player at the wipe,
+  the run's last stand), unchanged. Spec: recap.spec "CT1: You is the local player".
 - [ ] **CT2. Feed + tally.** The four parallel arrays, the collector's new counters and death / leave watch. Specs:
   per-player sums equal the team totals (`damageDealt`, pops, `hitsTaken`) over a scripted 2-player run; solo runs
   unchanged; **every golden / replay / hash / determinism spec unchanged** (nothing new is hashed); bench.spec within
