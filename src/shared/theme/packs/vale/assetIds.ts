@@ -135,6 +135,13 @@ import type { RobloxAssetId } from "../../types";
  * original art, scripts/art/gen-pip-icons.js, built by `node scripts/art/build-atlases.js --only pipIcons`): the first
  * 9 x 9 sheet was uploaded 2026-11-08 (103884093874949) and is retired: the 16 x 15 sheet (the hearts' size) changed
  * every rect; the 16 x 15 sheet uploaded 2026-11-08, the ID given by the owner in chat.
+ * sfx-boost-collect ("Pick up sfx", Pixabay 38516) and sfx-boost-expire ("Power down 02", Pixabay 82200; both by
+ * freesound_community, docs/BOOSTS.md) uploaded 2026-11-08 10:17 AM by k9kbdev as built by audio:build, transcribed
+ * from an Asset Manager screenshot. The same upload replaced sfx-pellet-power (was the raw MP3, 119476079306502),
+ * sfx-player-syncparry (was 84948565537343) and sfx-room-teamperfect (was 82497842436869) with that build's OGGs.
+ * sfx-boost-drop ("Retro Coin 4" by Driken Stan, Pixabay 236671) and sfx-boost-aegisbreak ("Plate Break 1" by
+ * freesound_community, Pixabay 36468) uploaded 2026-11-08 by k9kbdev as built by audio:build, transcribed from an Asset
+ * Manager screenshot.
  */
 export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"amb-b1.ogg": "rbxassetid://91158343621799",
@@ -306,6 +313,10 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"sfx-best-new.ogg": "rbxassetid://139947943484777",
 	"sfx-boss-death.ogg": "rbxassetid://98231076745245",
 	"sfx-boss-roar.ogg": "rbxassetid://103385650363670",
+	"sfx-boost-aegisbreak.ogg": "rbxassetid://80580285857653",
+	"sfx-boost-collect.ogg": "rbxassetid://71429770968359",
+	"sfx-boost-drop.ogg": "rbxassetid://104321784920923",
+	"sfx-boost-expire.ogg": "rbxassetid://84893927450014",
 	"sfx-breakable-break.ogg": "rbxassetid://116444193017210",
 	"sfx-breakable-hit.ogg": "rbxassetid://77751477617243",
 	"sfx-combo-break.ogg": "rbxassetid://82071923495161",
@@ -343,7 +354,7 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"sfx-jingle-gameover.ogg": "rbxassetid://100204013637893",
 	"sfx-jingle-record.ogg": "rbxassetid://136565259970905",
 	"sfx-pellet-eat.ogg": "rbxassetid://140235243025020",
-	"sfx-pellet-power.ogg": "rbxassetid://119476079306502",
+	"sfx-pellet-power.ogg": "rbxassetid://86595394427576",
 	"sfx-pellet-sweep.ogg": "rbxassetid://91831138556237",
 	"sfx-player-charged.ogg": "rbxassetid://134000846415949",
 	"sfx-player-death.ogg": "rbxassetid://116272723028955",
@@ -361,12 +372,12 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"sfx-player-swing-3.ogg": "rbxassetid://77155197597647",
 	"sfx-player-swing-4.ogg": "rbxassetid://123568922754251",
 	"sfx-player-swing-5.ogg": "rbxassetid://119336453391941",
-	"sfx-player-syncparry.ogg": "rbxassetid://84948565537343",
+	"sfx-player-syncparry.ogg": "rbxassetid://86800062008466",
 	"sfx-rank-up.ogg": "rbxassetid://72950951266263",
 	"sfx-relic-take.ogg": "rbxassetid://117702527882611",
 	"sfx-room-clear.ogg": "rbxassetid://91705259787657",
 	"sfx-room-perfect.ogg": "rbxassetid://126017159048037",
-	"sfx-room-teamperfect.ogg": "rbxassetid://82497842436869",
+	"sfx-room-teamperfect.ogg": "rbxassetid://128281307405603",
 	"sfx-score-land.ogg": "rbxassetid://77069986772456",
 	"sfx-score-tick.ogg": "rbxassetid://117631758592807",
 	"sfx-shrine-use.ogg": "rbxassetid://116463287240842",

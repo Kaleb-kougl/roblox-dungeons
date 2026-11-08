@@ -504,6 +504,56 @@
 			],
 			"confirmed": false
 		},
+		"sfx.boost.drop": {
+			"category": "sfx",
+			"clips": [
+				"pixabay/driken5482-retro-coin-4-236671.mp3"
+			],
+			"volume": 0.5,
+			"pitch": [
+				0.97,
+				1.03
+			],
+			"notes": "docs/BOOSTS.md: a boost lands on the floor (a kill drop; while sfx.breakable.loot is silent, a loaded piece's drop too, SFX_FALLBACK). \"Retro Coin 4\" by Driken Stan (driken5482, Pixabay, id 236671), the owner's pick: 0.18 s, 44.1 kHz mono MP3, peaking at 0 dBFS: a bright coin blip from 0.013 s to 0.163 s (the silence trim takes both ends); used whole. Quieter than the collect, which is the reward. Light pitch jitter; the 0.1 s minimum interval lives in code (cues.ts).",
+			"confirmed": false
+		},
+		"sfx.boost.collect": {
+			"category": "sfx",
+			"clips": [
+				"pixabay/freesound-community-pick-up-sfx-38516.mp3"
+			],
+			"volume": 0.6,
+			"pitch": [
+				0.97,
+				1.03
+			],
+			"minInterval": 0.08,
+			"notes": "docs/BOOSTS.md: a boost picked up (the local player at full volume, teammates at the teammate level). \"Pick up sfx\" by freesound_community (Pixabay, id 38516), the owner's pick: 3.21 s, 44.1 kHz mono MP3: two blips (0 - 0.12 s and 0.22 - 0.42 s), silent after 0.42 s (the silence trim takes the tail); used whole. Light pitch jitter so back-to-back pickups do not sound identical.",
+			"confirmed": false
+		},
+		"sfx.boost.expire": {
+			"category": "sfx",
+			"clips": [
+				"pixabay/freesound-community-power-down-02-82200.mp3"
+			],
+			"volume": 0.5,
+			"minInterval": 0.2,
+			"notes": "docs/BOOSTS.md: a boost runs out. \"Power down 02\" by freesound_community (Pixabay, id 82200), the owner's pick: 3.98 s, 24 kHz stereo MP3 (downmixed to mono): silent to 1.16 s, a falling power-down to 2.15 s, silent after (the silence trim takes both ends, about 1 s kept); used whole. Quieter than the collect: it is a notice, not a reward. No pitch jitter.",
+			"confirmed": false
+		},
+		"sfx.boost.aegisbreak": {
+			"category": "sfx",
+			"clips": [
+				"pixabay/freesound-community-plate-break-1-36468.mp3"
+			],
+			"volume": 0.6,
+			"pitch": [
+				0.97,
+				1.03
+			],
+			"notes": "docs/BOOSTS.md: the Aegis pip breaks (a hit taken by the Aegis before armor); also Bastion's brace while sfx.build.brace is silent (SFX_FALLBACK). \"Plate Break 1\" by freesound_community (Pixabay, id 36468), the owner's pick: 2.26 s, 24 kHz stereo MP3 (downmixed to mono), peaking over 0 dBFS: the shatter from 0.07 s, loudest to about 0.75 s, a faint tail to 1.12 s, silent after (the silence trim takes both ends); used whole. Light pitch jitter. Audition it next to sfx.combo.break (a glass shatter) so the two read apart.",
+			"confirmed": false
+		},
 		"sfx.shrine.use": {
 			"category": "jingle",
 			"clips": [

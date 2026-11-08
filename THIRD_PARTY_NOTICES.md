@@ -152,6 +152,57 @@ SOFTWARE.
   non-commercial use, no attribution required, modification allowed; the content may not be sold or distributed on
   its own (unmodified, as a standalone file), which is why the raw file is kept out of the repo.
 
+## "Retro Coin 4" (Pixabay sound effect)
+
+- Author: Driken Stan (driken5482). Source: Pixabay (https://pixabay.com/sound-effects/, id 236671; credited by the
+  owner as "Sound Effect by Driken Stan from Pixabay"), downloaded by the owner as `driken5482-retro-coin-4-236671.mp3`
+  (0.18 s, 44.1 kHz mono MP3).
+- Used for: `sfx.boost.drop`, a boost landing on the floor (docs/BOOSTS.md): silence-trimmed, peak-normalised and
+  encoded to OGG by `scripts/audio/build-audio.js`.
+- Raw file: `art/vendor/pixabay/` (gitignored, not redistributed).
+- License: Pixabay Content License (https://pixabay.com/service/license-summary/): free for commercial and
+  non-commercial use, no attribution required, modification allowed; the content may not be sold or distributed on
+  its own (unmodified, as a standalone file), which is why the raw file is kept out of the repo.
+
+## "Pick up sfx" (Pixabay sound effect)
+
+- Author: freesound_community. Source: Pixabay (https://pixabay.com/sound-effects/, id 38516; credited by the owner as
+  "Sound Effect by freesound_community from Pixabay"), downloaded by the owner as
+  `freesound_community-pick-up-sfx-38516.mp3` (3.21 s, 44.1 kHz mono MP3; kept as
+  `freesound-community-pick-up-sfx-38516.mp3`).
+- Used for: `sfx.boost.collect`, a boost picked up (docs/BOOSTS.md): silence-trimmed, peak-normalised and encoded to
+  OGG by `scripts/audio/build-audio.js`.
+- Raw file: `art/vendor/pixabay/` (gitignored, not redistributed).
+- License: Pixabay Content License (https://pixabay.com/service/license-summary/): free for commercial and
+  non-commercial use, no attribution required, modification allowed; the content may not be sold or distributed on
+  its own (unmodified, as a standalone file), which is why the raw file is kept out of the repo.
+
+## "Power down 02" (Pixabay sound effect)
+
+- Author: freesound_community. Source: Pixabay (https://pixabay.com/sound-effects/, id 82200; credited by the owner as
+  "Sound Effect by freesound_community from Pixabay"), downloaded by the owner as
+  `freesound_community-power-down-02-82200.mp3` (3.98 s, 24 kHz stereo MP3; kept as
+  `freesound-community-power-down-02-82200.mp3`).
+- Used for: `sfx.boost.expire`, a boost running out (docs/BOOSTS.md): silence-trimmed, downmixed to mono,
+  peak-normalised and encoded to OGG by `scripts/audio/build-audio.js`.
+- Raw file: `art/vendor/pixabay/` (gitignored, not redistributed).
+- License: Pixabay Content License (https://pixabay.com/service/license-summary/): free for commercial and
+  non-commercial use, no attribution required, modification allowed; the content may not be sold or distributed on
+  its own (unmodified, as a standalone file), which is why the raw file is kept out of the repo.
+
+## "Plate Break 1" (Pixabay sound effect)
+
+- Author: freesound_community. Source: Pixabay (https://pixabay.com/sound-effects/, id 36468; credited by the owner as
+  "Sound Effect by freesound_community from Pixabay"), downloaded by the owner as
+  `freesound_community-plate-break-1-36468.mp3` (2.26 s, 24 kHz stereo MP3; kept as
+  `freesound-community-plate-break-1-36468.mp3`).
+- Used for: `sfx.boost.aegisbreak`, the Aegis pip breaking (docs/BOOSTS.md): silence-trimmed, downmixed to mono,
+  peak-normalised and encoded to OGG by `scripts/audio/build-audio.js`.
+- Raw file: `art/vendor/pixabay/` (gitignored, not redistributed).
+- License: Pixabay Content License (https://pixabay.com/service/license-summary/): free for commercial and
+  non-commercial use, no attribution required, modification allowed; the content may not be sold or distributed on
+  its own (unmodified, as a standalone file), which is why the raw file is kept out of the repo.
+
 ## UI User Interface Pack - Horror
 
 - Author: ToffeeCraft. Source: https://toffeecraft.itch.io/ui-user-interface-pack-horror ("a 32x32 pixel horror UI
