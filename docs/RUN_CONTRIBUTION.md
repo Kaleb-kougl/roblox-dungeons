@@ -1,6 +1,6 @@
 # Co-op contribution on the run-over screen (plan)
 
-Status (2026-11-08): **plan**, CT5-CT7 (the panel, input, controller) built on branch `ct-ui` with headless
+Status (2026-11-08): **plan**, CT5-CT8 (the panel, input, controller, telemetry) built on branch `ct-ui` with headless
 checks only (nothing has run in Studio); CT9 docs and CT10 (Studio check and tuning) pending. Checked against the code
 at `fb765ae5`. Owner answers (2026-11-08):
 CTD1 (open on **You**) and CTD4 (the Party tab stays) confirmed; the rest are proposed. Builds on docs/RUN_RECAP.md
@@ -274,7 +274,16 @@ Each step is a commit; `npm run verify` before each.
   into the one recapCue call. A re-derive (same verdict signature rule, now including the You cells and every Party
   row) is `RecapViews.renewed`: tab kept, each clock at its old time, settled stays settled. Bindings: the Team cells
   from the Team clock (none until opened), the You cells (`contribCellText`) from the You clock.
-- [ ] **CT8. Telemetry.** The `views` row; catalog spec (still 37 names; field combinations under 8,000).
+- [x] **CT8. Telemetry.** The `views` row; catalog spec (still 37 names; field combinations under 8,000).
+  As built: `RunRecapReport.views?` (`{ you, party, last }`: real seconds the You and the Party tab's content showed,
+  Details over them counting for neither, and the tab selected when the panel was left), filled by the client's
+  `RunRecapViewClock` (shared/run, stepped with the recap's frame seconds) on a party run with the tabs.
+  `readRunRecapReport` reads both seconds like `seconds` (clamped 0..600, tenths), `last` from `RUN_RECAP_TABS` (pinned
+  by spec to RECAP_TABS); a malformed views rejects the report, views on a solo close are dropped. A `lobby` report
+  with views adds one row on the same `RunRecap` event: field01 `views`, value = You + Party seconds (tenths), field02 the
+  last tab. Catalog: field01 gains `views`, field02 the three tabs: the entry is 7 x 11 x 5 = 385 combinations (was
+  240); still 37 event names. Specs: recapAnalytics.spec (accept / clamp / reject / drop, the row, the clock),
+  analyticsCatalog.spec (every close x near-miss x flags x last tab in the catalog, the entry's 385).
 - [ ] **CT9. Docs.** As-built here, RUN_RECAP.md cross-link (its "co-op MVP rows" Later line points here),
   docs/CLIENT.md, the CLAUDE.md decision log entry.
 - [ ] **CT10. [owner] Studio check and tuning** (below): title thresholds and wording from three co-op runs.

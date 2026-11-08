@@ -30,7 +30,9 @@ import {
 	RUN_RECAP_FLAGS,
 	RUN_RECAP_NEAR_MISS_KINDS,
 	RUN_RECAP_NO_NEAR_MISS,
+	RUN_RECAP_TABS,
 	RUN_RECAP_TEAM_ROWS,
+	RUN_RECAP_VIEWS_ROW,
 	type AnalyticsBucket,
 	type RunEndReason,
 	type RunRejectCode,
@@ -246,10 +248,11 @@ function buildCatalog(): ReadonlyArray<AnalyticsCatalogEntry> {
 		custom(ANALYTICS_EVENT.sessionRuns, run),
 		custom(ANALYTICS_EVENT.sessionRetriesAfterDeath, run),
 		custom(ANALYTICS_EVENT.sessionLongestRetryStreak, run),
-		// --- The run-over recap (docs/RUN_RECAP.md RR9): close rows carry fields 2 / 3, team rows field01 only
+		// --- The run-over recap (docs/RUN_RECAP.md RR9): close rows carry fields 2 / 3, team rows field01 only; a party
+		// run's views row (docs/RUN_CONTRIBUTION.md CT8) field02 the last tab
 		custom(ANALYTICS_EVENT.runRecap, "shared/run recapAnalytics.ts", {
-			field01: set([...RUN_RECAP_CLOSES, ...RUN_RECAP_TEAM_ROWS]),
-			field02: set([...RUN_RECAP_NEAR_MISS_KINDS, RUN_RECAP_NO_NEAR_MISS], true),
+			field01: set([...RUN_RECAP_CLOSES, ...RUN_RECAP_TEAM_ROWS, RUN_RECAP_VIEWS_ROW]),
+			field02: set([...RUN_RECAP_NEAR_MISS_KINDS, RUN_RECAP_NO_NEAR_MISS, ...RUN_RECAP_TABS], true),
 			field03: set(flagValues(), true),
 		}),
 		// --- The Daily

@@ -18,6 +18,7 @@ import {
 	DEV_WORLD_KIND,
 	ENDLESS_WORLD_KIND,
 	RUN_RECAP_NO_NEAR_MISS,
+	RunRecapViewClock,
 	type RunRecapClose,
 	type RunRecapReport,
 } from "shared/run";
@@ -108,6 +109,8 @@ interface ReportFacts {
 	record: boolean;
 	team: RecapTeamInput;
 	sent: boolean;
+	/** docs/RUN_CONTRIBUTION.md CT8: a party run's tab views (undefined: no tabs). */
+	readonly views: RunRecapViewClock | undefined;
 }
 
 /** What decides a re-derive (docs/RUN_RECAP.md "Rules": a verdict with other numbers re-derives silently). */
@@ -181,7 +184,8 @@ function recapSignature(
  *              the close (`retry`: Again / Retry Daily / the restart key, seen as our own retry, the run context going
  *              away under a ranked restart, or the next run starting; `exit`: the run left for the menu; `lobby`: any
  *              close of a party run), the seconds since the open (os.clock), the near-miss kind shown (or `none`), the
- *              record flag, whether a press skipped the timeline first, and a party run's team moments. Ranked runs
+ *              record flag, whether a press skipped the timeline first, and a party run's team moments and tab views
+ *              (CT8: RunRecapViewClock, seconds on You / Party and the last tab). Ranked runs
  *              only (the server takes one per run session it issued); the server logs it as `RunRecap`.
  *   timing     (RR8 aid) with the Workspace attribute RECAP_DEBUG.retryTimingAttribute (`KV_RetryTiming`, off by
  *              default, read at the press) a retry prints `[Recap] retry: press -> control <s> s` once the next run takes
@@ -307,7 +311,10 @@ export class RecapController implements OnStart {
 		}
 		const t = this.views;
 		if (t === undefined) return;
-		const f = t.step(selectStageCovered(st) ? 0 : dt);
+		const step = selectStageCovered(st) ? 0 : dt;
+		// CT8: the seconds each tab's content showed (Details over the tabs counts for none).
+		this.facts?.views?.step(step, t.tab(), st.recap.details ? undefined : t.tab());
+		const f = t.step(step);
 		const cue = recapCue(f, this.firstFrame, this.cue);
 		this.firstFrame = false;
 		if (cue !== undefined) this.audio.play(cue.id, cue.volume);
@@ -346,6 +353,7 @@ export class RecapController implements OnStart {
 			record: this.runOverBestOf(st).records.record,
 			team: input.team ?? NO_TEAM_MOMENTS,
 			sent: false,
+			views: this.views.tabbed ? new RunRecapViewClock() : undefined,
 		};
 	}
 
@@ -498,6 +506,8 @@ export class RecapController implements OnStart {
 							bestTeamStreak: f.team.bestTeamStreak,
 							syncParries: f.team.syncParries,
 						},
+						// docs/RUN_CONTRIBUTION.md CT8: seconds on You and Party, the last tab (runs with the tabs).
+						views: f.views?.views(),
 				  }
 				: report,
 		);

@@ -389,7 +389,7 @@ export interface ClientToServerEvents {
 	/**
 	 * Run-over recap telemetry (docs/RUN_RECAP.md RR9): how this player left the run-over panel of run session
 	 * `report.runId` (retry / exit / lobby), the seconds it was open, the near-miss kind shown, record / skipped, and a
-	 * party run's team moments. Re-read with shared/run readRunRecapReport, rate limited (RUN_RECAP_RATE), at most one
+	 * party run's team moments and tab views (docs/RUN_CONTRIBUTION.md CT8). Re-read with shared/run readRunRecapReport, rate limited (RUN_RECAP_RATE), at most one
 	 * per run session the server issued to this player (RunRecapGate); logged as `RunRecap` by TelemetryService and
 	 * used for nothing else. No reply.
 	 */
