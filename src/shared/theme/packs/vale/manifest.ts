@@ -30,6 +30,9 @@
  *     is (every boon keeps its text label). An ID listed in VALE_UPLOADED_SIZES names an older, smaller upload of an
  *     append-only sheet: only the icons inside it are drawn (builds v2's three boons keep their labels until the
  *     re-upload).
+ *   - the duo icons (docs/BUILDS.md BU11, the duo part; shared/theme duoIcons.ts: ui.duo.<name>, original art from
+ *     scripts/art/gen-duo-icons.js) likewise share ONE sheet of their own (duoIconLayout.ts), all or nothing on
+ *     VALE_DUO_ICON_FILE's ID (until then a duo shows its two boons' icons).
  *   - the relic and curse icons (docs/BUILDS.md BU11; shared/theme itemIcons.ts: ui.relic.<name> / ui.curse.<name>,
  *     original art from scripts/art/gen-item-icons.js) likewise share ONE sheet of their own (itemIconLayout.ts), all
  *     or nothing on VALE_ITEM_ICON_FILE's ID.
@@ -122,6 +125,7 @@ import {
 } from "./layout";
 import { VALE_UI_ICONS, VALE_UI_ICON_ATLAS, VALE_UI_ICON_FILE, type ValeUiIconLayout } from "./uiIconLayout";
 import { VALE_BOON_ICONS, VALE_BOON_ICON_ATLAS, VALE_BOON_ICON_FILE } from "./boonIconLayout";
+import { VALE_DUO_ICONS, VALE_DUO_ICON_ATLAS, VALE_DUO_ICON_FILE } from "./duoIconLayout";
 import { VALE_ITEM_ICONS, VALE_ITEM_ICON_ATLAS, VALE_ITEM_ICON_FILE } from "./itemIconLayout";
 import { VALE_BOOST_ICONS, VALE_BOOST_ICON_ATLAS, VALE_BOOST_ICON_FILE } from "./boostIconLayout";
 import { VALE_PIP_ICONS, VALE_PIP_ICON_ATLAS, VALE_PIP_ICON_FILE } from "./pipIconLayout";
@@ -635,6 +639,13 @@ export const VALE_BOON_ICON_SOURCE: ValeUiIconSource = {
 	icons: VALE_BOON_ICONS,
 };
 
+/** The duo icon sheet as generated (duoIconLayout.ts), in the icon atlas's shape. */
+export const VALE_DUO_ICON_SOURCE: ValeUiIconSource = {
+	file: VALE_DUO_ICON_FILE,
+	atlas: VALE_DUO_ICON_ATLAS,
+	icons: VALE_DUO_ICONS,
+};
+
 /** The relic and curse icon sheet as generated (itemIconLayout.ts), in the icon atlas's shape. */
 export const VALE_ITEM_ICON_SOURCE: ValeUiIconSource = {
 	file: VALE_ITEM_ICON_FILE,
@@ -716,6 +727,8 @@ export interface ValeLayoutSources {
 	readonly uiIcons?: ValeUiIconSource;
 	/** VALE_BOON_ICON_SOURCE (boonIconLayout.ts: the boon icon sheet). */
 	readonly boonIcons?: ValeUiIconSource;
+	/** VALE_DUO_ICON_SOURCE (duoIconLayout.ts: the duo icon sheet). */
+	readonly duoIcons?: ValeUiIconSource;
 	/** VALE_ITEM_ICON_SOURCE (itemIconLayout.ts: the relic and curse icon sheet). */
 	readonly itemIcons?: ValeUiIconSource;
 	/** VALE_BOOST_ICON_SOURCE (boostIconLayout.ts: the boost icon sheet). */
@@ -741,6 +754,7 @@ export function buildValeManifest(ids: AssetIds = VALE_ASSET_IDS, sources: ValeL
 	const images = sources.images ?? VALE_IMAGE_LAYOUTS;
 	const uiIcons = sources.uiIcons ?? VALE_UI_ICON_SOURCE;
 	const boonIcons = sources.boonIcons ?? VALE_BOON_ICON_SOURCE;
+	const duoIcons = sources.duoIcons ?? VALE_DUO_ICON_SOURCE;
 	const itemIcons = sources.itemIcons ?? VALE_ITEM_ICON_SOURCE;
 	const boostIcons = sources.boostIcons ?? VALE_BOOST_ICON_SOURCE;
 	const pipIcons = sources.pipIcons ?? VALE_PIP_ICON_SOURCE;
@@ -795,6 +809,11 @@ export function buildValeManifest(ids: AssetIds = VALE_ASSET_IDS, sources: ValeL
 	const boonArt = valeUiIconImages(boonIcons.icons, boonIcons.atlas, ids[boonIcons.file]);
 	for (const id of sortedKeys(boonArt)) {
 		manifest.assets[id] = boonArt[id];
+	}
+	// The duo icon sheet (docs/BUILDS.md BU11, the duo part): every duo icon once uploaded, none before.
+	const duoArt = valeUiIconImages(duoIcons.icons, duoIcons.atlas, ids[duoIcons.file]);
+	for (const id of sortedKeys(duoArt)) {
+		manifest.assets[id] = duoArt[id];
 	}
 	// The relic and curse icon sheet (docs/BUILDS.md BU11): every relic and curse icon once uploaded, none before.
 	const itemArt = valeUiIconImages(itemIcons.icons, itemIcons.atlas, ids[itemIcons.file]);

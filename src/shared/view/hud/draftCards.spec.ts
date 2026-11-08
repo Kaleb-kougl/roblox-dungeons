@@ -27,7 +27,7 @@ import {
 	type SimConfig,
 	type SimState,
 } from "shared/sim";
-import { PLACEHOLDER_MANIFEST, ThemePack, boonIconId } from "shared/theme";
+import { PLACEHOLDER_MANIFEST, ThemePack, boonIconId, duoIconId } from "shared/theme";
 import { PactKind, pactDraftKind } from "shared/sim";
 import { altarFloor, frame, pactsSetup, pressPact, skipToFloor } from "shared/run/testing";
 import {
@@ -331,10 +331,16 @@ describe("draft card icon art (docs/BUILDS.md BU11)", () => {
 		}
 	});
 
-	it("a Duo card's chip is two cells with or without art; the art only when both halves have it", () => {
+	it("a Duo card's chip is its own icon in one cell; else two cells, the boons' art only when both halves have it", () => {
 		for (let d = 0; d < DUO_COUNT; d++) {
 			const m = draftCardModel(duoCard(d), CardKind.NEW)!;
-			expect([d, draftChipArt(m, all).size(), draftChipCells(m, draftChipArt(m, all))]).toEqual([d, 2, 2]);
+			expect([d, m.duoArt]).toEqual([d, duoIconId(DUOS[d].id)]);
+			// the duo's own icon wins (BU11, the duo part): one cell
+			expect([d, draftChipArt(m, all), draftChipCells(m, draftChipArt(m, all))]).toEqual([d, [m.duoArt], 1]);
+			// without it, the two boons' halves as before
+			const boonsOnly = (id: string) => id !== m.duoArt;
+			const halves = draftChipArt(m, boonsOnly);
+			expect([d, halves.size(), draftChipCells(m, halves)]).toEqual([d, 2, 2]);
 			expect([d, draftChipArt(m, none).size(), draftChipCells(m, draftChipArt(m, none))]).toEqual([d, 0, 2]);
 			const half = (id: string) => id === m.chipArt[0];
 			expect([d, draftChipArt(m, half).size()]).toEqual([d, 0]);

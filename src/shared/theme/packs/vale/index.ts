@@ -9,6 +9,7 @@ export * from "./fxLayout";
 export * from "./bulletLayout";
 export * from "./uiIconLayout";
 export * from "./boonIconLayout";
+export * from "./duoIconLayout";
 export * from "./itemIconLayout";
 export * from "./boostIconLayout";
 export * from "./pipIconLayout";

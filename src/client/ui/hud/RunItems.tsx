@@ -242,7 +242,7 @@ function MoreCell(props: { count: number; hidden: ReadonlyArray<ItemRef>; look: 
  * The owned boons (rarity colour), relics and curses of an endless run (their icon art where the pack has it,
  * docs/BUILDS.md BU11) as a row of icons, in the order taken (the
  * StatusPanel's last row); with builds (docs/BUILDS.md BU10) each boon's level pips, the evolved boons' gold frame and
- * the duos as joined chips after the boons (shared/view/hud runItemCells). ONE row at most (capItemCells,
+ * the duos after the boons, each its own icon where the pack has it, else a joined chip (shared/view/hud runItemCells). ONE row at most (capItemCells,
  * docs/HUD_LAYOUT.md): when more are owned than fit the status panel's footprint width, the last ones show and a first
  * "+N" cell counts the rest. Nothing when there are none.
  */
@@ -268,7 +268,15 @@ export function RunItems(props: {
 	const tooltips = props.tooltips === true;
 	const maxWidth = props.maxWidth ?? statusRowMaxWidth();
 	const gap = props.gap ?? HUD_VIEW.gap;
-	const cells = runItemCells(props.boons, props.levels ?? [], props.duos ?? [], props.relics, props.curses);
+	const pack = themePack();
+	const cells = runItemCells(
+		props.boons,
+		props.levels ?? [],
+		props.duos ?? [],
+		props.relics,
+		props.curses,
+		(id) => pack?.image(id) !== undefined,
+	);
 	if (cells.size() === 0) return undefined;
 	const size = look.size;
 	const cap = capItemCells(
