@@ -1248,7 +1248,7 @@ duo in v1 (they are the safe picks); every other boon is in one or two.
   unchanged) and on draft cards (a Duo chip's halves; a boon card's own one-cell chip in the banner row). Budget: one
   18 x 306 PNG (5.5 K px), one content id in the core preload tier. Specs: `gen-boon-icons.test.js` (palette,
   outline, the group, the committed layout), `valeBoonIcons.spec.ts`, `buildHud.spec` / `draftCards.spec` (art and
-  its fallback). Open: upload `art/upload/boon-icons.png` and paste its id into `assetIds.ts`; Studio check of the
+  its fallback). `boon-icons.png` uploaded 2026-11-08 (`assetIds.ts`). Open: Studio check of the
   longest Evolution banner row (chip + "EVOLVE · Piercing Arrows" + pips inside the card) and the portrait column;
   effect sprites and duo / evolution icons of their own (if wanted).
 - **BU12. Audio.** The nine port IDs from Ninja Adventure (`art/audio.json`), `audio:build`, `audio:audition`.

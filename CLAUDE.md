@@ -928,8 +928,9 @@ Decision log (deviations from `PLAN.md`):
   outline and pip colour) and `DraftCardModel.chipArt` / `draftChipArt` / `draftChipCells` (the banner row's chip: a
   Duo's two halves as art, a boon card's own icon in a one-cell chip). Without the art every cell, chip and card is
   exactly as before (labels; a boon card has no chip). Evolutions show their boon's icon; duos their two boons'. No
-  new strings, roles, sounds or settings; no Luau-locals change. Upload of `boon-icons.png` and the Studio check
-  (banner row width on the longest Evolution banner, the phone column) pending.
+  new strings, roles, sounds or settings; no Luau-locals change. `boon-icons.png` uploaded 2026-11-08 (`assetIds.ts`),
+  so the bundled vale pack draws the icons; the Studio check (banner row width on the longest Evolution banner, the
+  phone column) pending.
 
 ## Commands
 
