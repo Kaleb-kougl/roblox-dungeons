@@ -2535,11 +2535,38 @@
 			"boon.<Name> lower-cased, shared/theme boonIconId), full colour in the UI sheet's palette, outlined. Packed exactly like `uiIcons`",
 			"(buildUiIcons: rect = the whole 16 x 16 file, 1 px extruded gutter) but into a sheet of its OWN, art/build/<atlas>.png",
 			"with src/shared/theme/packs/vale/boonIconLayout.ts, so ui-icons.png never repacks; all switch on with its one ID.",
-			"Build just this group: node scripts/art/build-atlases.js --only boonIcons (and --lock --only boonIcons)."
+			"Build just this group: node scripts/art/build-atlases.js --only boonIcons (and --lock --only boonIcons).",
+			"`order` (builds v2, docs/BUILDS_V2.md BV10): the sheet is ONE column in this order (packColumn). The first 17 are",
+			"the first upload's (2026-11-08, 18 x 306, in its packed order); a new boon is appended at the END, so no uploaded",
+			"icon's rect ever moves and an older uploaded sheet keeps drawing what it holds (packs/vale assetIds.ts",
+			"VALE_UPLOADED_SIZES)."
 		],
 		"atlas": "boon-icons",
 		"gutter": 1,
+		"order": [
+			"ui.boon.bastion",
+			"ui.boon.bounty",
+			"ui.boon.chainspark",
+			"ui.boon.composure",
+			"ui.boon.daredevil",
+			"ui.boon.deepflask",
+			"ui.boon.emberwake",
+			"ui.boon.hearty",
+			"ui.boon.lingering",
+			"ui.boon.overkill",
+			"ui.boon.piercingarrows",
+			"ui.boon.sharpened",
+			"ui.boon.slippery",
+			"ui.boon.soulshards",
+			"ui.boon.swiftstrikes",
+			"ui.boon.volatile",
+			"ui.boon.warding",
+			"ui.boon.riposte",
+			"ui.boon.ballista",
+			"ui.boon.wrecker"
+		],
 		"icons": {
+			"ui.boon.ballista": { "file": "kaleb-vale/boon-icons/boon_ballista.png", "rect": [0, 0, 16, 16] },
 			"ui.boon.bastion": { "file": "kaleb-vale/boon-icons/boon_bastion.png", "rect": [0, 0, 16, 16] },
 			"ui.boon.bounty": { "file": "kaleb-vale/boon-icons/boon_bounty.png", "rect": [0, 0, 16, 16] },
 			"ui.boon.chainspark": { "file": "kaleb-vale/boon-icons/boon_chainSpark.png", "rect": [0, 0, 16, 16] },
@@ -2551,12 +2578,14 @@
 			"ui.boon.lingering": { "file": "kaleb-vale/boon-icons/boon_lingering.png", "rect": [0, 0, 16, 16] },
 			"ui.boon.overkill": { "file": "kaleb-vale/boon-icons/boon_overkill.png", "rect": [0, 0, 16, 16] },
 			"ui.boon.piercingarrows": { "file": "kaleb-vale/boon-icons/boon_piercingArrows.png", "rect": [0, 0, 16, 16] },
+			"ui.boon.riposte": { "file": "kaleb-vale/boon-icons/boon_riposte.png", "rect": [0, 0, 16, 16] },
 			"ui.boon.sharpened": { "file": "kaleb-vale/boon-icons/boon_sharpened.png", "rect": [0, 0, 16, 16] },
 			"ui.boon.slippery": { "file": "kaleb-vale/boon-icons/boon_slippery.png", "rect": [0, 0, 16, 16] },
 			"ui.boon.soulshards": { "file": "kaleb-vale/boon-icons/boon_soulShards.png", "rect": [0, 0, 16, 16] },
 			"ui.boon.swiftstrikes": { "file": "kaleb-vale/boon-icons/boon_swiftStrikes.png", "rect": [0, 0, 16, 16] },
 			"ui.boon.volatile": { "file": "kaleb-vale/boon-icons/boon_volatile.png", "rect": [0, 0, 16, 16] },
-			"ui.boon.warding": { "file": "kaleb-vale/boon-icons/boon_warding.png", "rect": [0, 0, 16, 16] }
+			"ui.boon.warding": { "file": "kaleb-vale/boon-icons/boon_warding.png", "rect": [0, 0, 16, 16] },
+			"ui.boon.wrecker": { "file": "kaleb-vale/boon-icons/boon_wrecker.png", "rect": [0, 0, 16, 16] }
 		}
 	}
 }

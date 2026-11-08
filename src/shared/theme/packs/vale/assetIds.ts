@@ -455,3 +455,15 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"warbanner-death-outline.png": "rbxassetid://87407464541596",
 	"warbanner-death.png": "rbxassetid://83864438929127",
 };
+
+/**
+ * Uploaded sheets OLDER than their generated layout, by the ID pasted above: the uploaded image's size, pixels. Only a
+ * sheet whose layout appends pieces without moving the older ones (the boon icons' `order`, art/atlases.json) may be
+ * listed: the manifest then draws the pieces whose rect lies inside this size, at this size, and leaves out the rest
+ * (they keep their fallback) until the new sheet is uploaded and its ID replaces the old one (delete the entry then).
+ */
+export const VALE_UPLOADED_SIZES: Readonly<Record<string, { readonly w: number; readonly h: number }>> = {
+	// boon-icons.png, first upload (2026-11-08): the 17 boons before builds v2 wave 1; the sheet is 18 x 360 since
+	// Riposte / Ballista / Wrecker were appended (docs/BUILDS_V2.md BV10). Upload art/upload/boon-icons.png again.
+	"rbxassetid://120375465703784": { w: 18, h: 306 },
+};

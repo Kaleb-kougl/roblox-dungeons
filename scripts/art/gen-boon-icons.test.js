@@ -2,7 +2,8 @@
 // order, deterministic, every icon a 16 x 16 opaque-or-clear canvas in the palette only, outlined (nothing clipped at
 // the canvas edge: the outermost px is outline or clear), and distinct from every other icon; and the atlas group that
 // packs them (art/atlases.json `boonIcons`, build-atlases.js buildBoonIcons): one entry per icon file, and the
-// generated packs/vale/boonIconLayout.ts is exactly what the build makes from these icons.
+// generated packs/vale/boonIconLayout.ts is exactly what the build makes from these icons; its `order` packs one
+// column that only appends (the first upload's 17 icons keep their rects; build-atlases.js packColumn).
 "use strict";
 
 const assert = require("node:assert/strict");
@@ -18,6 +19,8 @@ const CONFIG = JSON.parse(fs.readFileSync(path.join(ROOT, "art", "atlases.json")
 const LAYOUT = path.join(ROOT, "src", "shared", "theme", "packs", "vale", "boonIconLayout.ts");
 /** The art/vendor-relative file of an icon (the generator's default out dir). */
 const vendorFile = (id) => `kaleb-vale/boon-icons/${G.fileOf(id)}`;
+/** Boons in the first upload of boon-icons.png (2026-11-08): BOONS 0-16, before builds v2 wave 1. */
+const FIRST_UPLOAD = 17;
 /** The theme id of a boon id (shared/theme boonIconId: lower-cased, asset ids are lowercase). */
 const iconId = (id) => `ui.boon.${id.replace(/^boon\./, "").toLowerCase()}`;
 
@@ -133,6 +136,27 @@ describe("the boonIcons atlas group", () => {
 			}
 		}
 		for (const id of G.BOON_IDS) A.sourceCache.delete(vendorFile(id));
+	});
+
+	it("packs one column in `order`: the first upload's 17 icons in id order, then every newer boon in BOONS order", () => {
+		const first = G.BOON_IDS.slice(0, FIRST_UPLOAD).map(iconId).sort();
+		const newer = G.BOON_IDS.slice(FIRST_UPLOAD).map(iconId);
+		assert.deepEqual(CONFIG.boonIcons.order, [...first, ...newer]);
+		const layout = fs.readFileSync(LAYOUT, "utf8");
+		// the first upload (2026-11-08) was packUiIcons' 18 x 306 column in id order: every one of its rects is kept
+		first.forEach((id, n) => assert.ok(layout.includes(`"${id}": { rect: { x: 1, y: ${1 + n * 18}, w: 16, h: 16 } },`), id));
+	});
+
+	it("packColumn: stacks in order, appending never moves a rect; a bad order or an overflow throws", () => {
+		const piece = (id, h = 16) => ({ id, img: { w: 16, h } });
+		const two = A.packColumn(["ui.b", "ui.a"])([piece("ui.a"), piece("ui.b", 8)], 1, 1024);
+		assert.deepEqual(two, { w: 18, h: 28, rects: { "ui.b": { x: 1, y: 1, w: 16, h: 8 }, "ui.a": { x: 1, y: 11, w: 16, h: 16 } } });
+		const three = A.packColumn(["ui.b", "ui.a", "ui.c"])([piece("ui.c"), piece("ui.a"), piece("ui.b", 8)], 1, 1024);
+		assert.deepEqual(three.rects["ui.a"], two.rects["ui.a"]);
+		assert.deepEqual(three.rects["ui.b"], two.rects["ui.b"]);
+		assert.throws(() => A.packColumn(["ui.a"])([piece("ui.a"), piece("ui.b")], 1, 1024), /order must list every icon id once/);
+		assert.throws(() => A.packColumn(["ui.a", "ui.a"])([piece("ui.a"), piece("ui.b")], 1, 1024), /order must list every icon id once/);
+		assert.throws(() => A.packColumn(["ui.a", "ui.b"])([piece("ui.a"), piece("ui.b")], 1, 30), /do not fit one 30x30 column/);
 	});
 
 	it("takes ui.boon.* ids only", () => {

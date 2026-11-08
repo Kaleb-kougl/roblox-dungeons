@@ -2770,8 +2770,12 @@ function extrudeGutter(img, r, g) {
 	}
 }
 
-/** Builds every icon, packs them and draws the atlas: { file, gutter, pieces, w, h, rects, img, layouts }. */
-function buildUiIcons(section) {
+/**
+ * Builds every icon, packs them and draws the atlas: { file, gutter, pieces, w, h, rects, img, layouts }. `pack`
+ * (pieces, gutter, maxSize) -> { w, h, rects } places them (default packUiIcons; the boon sheet's `order` packs a fixed
+ * column, packColumn).
+ */
+function buildUiIcons(section, pack = packUiIcons) {
 	if (typeof section.atlas !== "string" || !/^[a-z0-9-]+$/.test(section.atlas)) throw new Error(`uiIcons.atlas must be a file name without .png, got ${JSON.stringify(section.atlas)}`);
 	const gutter = section.gutter === undefined ? 1 : section.gutter;
 	if (!Number.isInteger(gutter) || gutter < 1) throw new Error(`uiIcons.gutter must be an integer >= 1, got ${JSON.stringify(section.gutter)}`);
@@ -2785,7 +2789,7 @@ function buildUiIcons(section) {
 		const built = buildImage(id, { ...def, file: uiIconFile(section, id), name: id, crop: def.crop === undefined ? "none" : def.crop });
 		return { id, img: built.img, pivot: built.layout.pivot };
 	});
-	const packed = packUiIcons(pieces, gutter, maxSize);
+	const packed = pack(pieces, gutter, maxSize);
 	const img = raster(packed.w, packed.h);
 	for (const p of pieces) {
 		const r = packed.rects[p.id];
@@ -2889,6 +2893,8 @@ function uiIconContact(icons) {
 // UI icon atlas (same packer, extruded gutter, contact sheet), written to art/build/<atlas>.png with
 // packs/vale/boonIconLayout.ts (VALE_BOON_ICON_FILE / _ATLAS, VALE_BOON_ICONS by id, in uiIconLayout.ts's
 // ValeUiIconLayout shape), so ui-icons.png never repacks for them. Optional: absent, every other output is unchanged.
+// Its optional `order` (every id once) packs one fixed column instead (packColumn): new icons are appended below the
+// uploaded ones, whose rects never move.
 
 const BOON_ICON_PREFIX = "ui.boon.";
 
@@ -2898,12 +2904,41 @@ function boonIconSourceFiles(section) {
 	return uiIconIds(section).map((id) => uiIconFile(section, id));
 }
 
-/** buildUiIcons over the boon icon section, every id under BOON_ICON_PREFIX. */
+/**
+ * A packer (buildUiIcons' `pack`) that stacks the pieces in ONE column in `order` (every id once), top to bottom, each in
+ * its gutter: piece n's rect starts at y = gutter + the heights (+ 2 gutters) of the pieces before it. An id appended
+ * to `order` never moves an earlier rect, so an uploaded sheet keeps drawing every piece it already holds.
+ */
+function packColumn(order) {
+	return (pieces, gutter, maxSize) => {
+		const byId = new Map(pieces.map((p) => [p.id, p]));
+		if (!Array.isArray(order) || order.length !== pieces.length || new Set(order).size !== order.length || !order.every((id) => byId.has(id))) {
+			throw new Error(`order must list every icon id once, got ${JSON.stringify(order)}`);
+		}
+		const g2 = 2 * gutter;
+		const w = Math.max(...pieces.map((p) => p.img.w + g2));
+		const rects = {};
+		let y = 0;
+		for (const id of order) {
+			const p = byId.get(id);
+			rects[id] = { x: gutter, y: y + gutter, w: p.img.w, h: p.img.h };
+			y += p.img.h + g2;
+		}
+		if (w > maxSize || y > maxSize) throw new Error(`the ${order.length} icons do not fit one ${maxSize}x${maxSize} column (${w}x${y})`);
+		return { w, h: y, rects };
+	};
+}
+
+/**
+ * buildUiIcons over the boon icon section, every id under BOON_ICON_PREFIX. With `order` (builds v2: every icon id,
+ * the first upload's 17 in its packed order, newer boons appended) the sheet is that one column (packColumn), so a new
+ * boon never moves an uploaded icon; without it, packUiIcons as for the UI icon atlas.
+ */
 function buildBoonIcons(section) {
 	for (const id of uiIconIds(section)) {
 		if (!id.startsWith(BOON_ICON_PREFIX)) throw new Error(`${id}: boon icon ids start with "${BOON_ICON_PREFIX}"`);
 	}
-	return buildUiIcons(section);
+	return section.order === undefined ? buildUiIcons(section) : buildUiIcons(section, packColumn(section.order));
 }
 
 /** packs/vale/boonIconLayout.ts: VALE_BOON_ICON_FILE / _ATLAS and VALE_BOON_ICONS by id (ValeUiIconLayout). */
@@ -4701,6 +4736,7 @@ module.exports = {
 	packFx,
 	outlineConfig,
 	packUiIcons,
+	packColumn,
 	outlineSheet,
 	packWorldAtlases,
 	rimClip,

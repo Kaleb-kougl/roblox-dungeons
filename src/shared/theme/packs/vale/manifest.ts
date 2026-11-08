@@ -27,7 +27,9 @@
  *   - the boon icons (docs/BUILDS.md BU11; shared/theme boonIcons.ts: ui.boon.<name>, original art from
  *     scripts/art/gen-boon-icons.js) share ONE sheet of their own (boonIconLayout.ts), all or nothing like the icon
  *     atlas: once VALE_BOON_ICON_FILE has an ID every boon icon is an `image` of the sheet with its `rect`, else none
- *     is (every boon keeps its text label).
+ *     is (every boon keeps its text label). An ID listed in VALE_UPLOADED_SIZES names an older, smaller upload of an
+ *     append-only sheet: only the icons inside it are drawn (builds v2's three boons keep their labels until the
+ *     re-upload).
  * Image pivots and 9-slice insets (VALE_IMAGE_LAYOUTS) go into the ui images' `pivot` / `slice`, icon rects into
  * `rect`; the renderer reads them through ThemePack.image(id).pivot / .slice / .rect.
  *
@@ -90,7 +92,7 @@ import { PELLET_KINDS, pelletId, type PelletKind } from "../../pellets";
 import { TREASURE_CAGE_ID, TREASURE_IDS } from "../../treasure";
 import { PACT_ALTAR_ID } from "../../fortune";
 import { PLACEHOLDER_MANIFEST } from "../placeholder";
-import { VALE_ASSET_IDS } from "./assetIds";
+import { VALE_ASSET_IDS, VALE_UPLOADED_SIZES } from "./assetIds";
 import { VALE_SOUND_LAYOUTS, type ValeSoundLayout } from "./audioLayout";
 import { valeBulletAssets, type ValeBulletSource } from "./bullets";
 import { valeBoostAuraAssets, type ValeBoostAuraSource } from "./boostAuras";
@@ -624,25 +626,33 @@ export const VALE_BOON_ICON_SOURCE: ValeUiIconSource = {
 /**
  * The UI icons (contract.ts uiIconIds) of one uploaded icon atlas: every piece of `icons` as an `image` of the whole
  * atlas (`assetId`, `atlas` w / h) with its `rect` and `pivot`. All or nothing: no `assetId` (the atlas is not uploaded
- * yet), no icons. Pure (a fresh object every call); exported for the specs, which feed a synthetic layout.
+ * yet), no icons. An `assetId` in `uploaded` (default VALE_UPLOADED_SIZES) is an older, smaller upload of an append-only
+ * sheet: its size replaces `atlas` and only the pieces inside it are drawn. Pure (a fresh object every call); exported
+ * for the specs, which feed a synthetic layout.
  */
 export function valeUiIconImages(
 	icons: Readonly<Record<string, ValeUiIconLayout>>,
 	atlas: { readonly w: number; readonly h: number },
 	assetId: string | undefined,
+	uploaded: Readonly<Record<string, { readonly w: number; readonly h: number }>> = VALE_UPLOADED_SIZES,
 ): Record<string, ImageAsset> {
 	const out: Record<string, ImageAsset> = {};
 	if (assetId === undefined) {
 		return out;
 	}
+	const older: { readonly w: number; readonly h: number } | undefined = uploaded[assetId];
+	const size = older ?? atlas;
 	for (const id of sortedKeys(icons)) {
 		const piece = icons[id];
 		const r = piece.rect;
+		if (r.x + r.w > size.w || r.y + r.h > size.h) {
+			continue;
+		}
 		const image: ImageAsset = {
 			kind: "image",
 			assetId: assetId as ImageAsset["assetId"],
-			w: atlas.w,
-			h: atlas.h,
+			w: size.w,
+			h: size.h,
 			rect: { x: r.x, y: r.y, w: r.w, h: r.h },
 		};
 		if (piece.pivot !== undefined) {
@@ -738,7 +748,8 @@ export function buildValeManifest(ids: AssetIds = VALE_ASSET_IDS, sources: ValeL
 	for (const id of sortedKeys(icons)) {
 		manifest.assets[id] = icons[id];
 	}
-	// The boon icon sheet (docs/BUILDS.md BU11): every boon icon once uploaded, none before.
+	// The boon icon sheet (docs/BUILDS.md BU11): every boon icon once uploaded, none before (an older upload: the icons
+	// it holds, VALE_UPLOADED_SIZES).
 	const boonArt = valeUiIconImages(boonIcons.icons, boonIcons.atlas, ids[boonIcons.file]);
 	for (const id of sortedKeys(boonArt)) {
 		manifest.assets[id] = boonArt[id];

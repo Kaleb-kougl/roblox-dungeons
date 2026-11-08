@@ -29,8 +29,9 @@ cannot see it happen, it is not in this plan.**
 **BV0-BV10 built** (on branch `builds-v2`): the audit ("BV0 findings"), the data and scaffolding ("BV1 (as built)"),
 the rules (Riposte and Counterstrike BV2, Ballista BV3, Siege Bolt BV4, Wrecker and Demolition BV5, the wave 1 duos BV6,
 Full Heart and Happy Hour BV7), the duo hint (BV8), overcap points (BV9) and the theme (BV10: colour roles, strings,
-audio IDs; plus the wave 1 integration spec), each in its "BVn (as built)" section. **Open:** BV11 (view), BV12
-(tuning), BV13 (art, audio, Studio check, playtest). The whole suite passed on the merged branch (2026-11-07, Linux x86_64 cloud box:
+audio IDs; plus the wave 1 integration spec; the three boon icons), each in its "BVn (as built)" section. **Open:**
+BV11 (view), BV12 (tuning), BV13 (art, audio, Studio check, playtest; the three boon icons are drawn, the re-upload of
+`art/upload/boon-icons.png` and its ID in `assetIds.ts` pending, see "BV10 (as built)"). The whole suite passed on the merged branch (2026-11-07, Linux x86_64 cloud box:
 typecheck, lint, the asset / autolocalize / art / checks / l10n tests, and every one of the 411 headless spec files,
 run in four slices), except `dungeon/forge/forge.spec.ts`'s "EncounterRng is the sim's new Rng(seed)", which fails the
 same way on `main` there (a NaN's sign bit, `fff8...` vs `7ff8...`: a platform difference, not this branch). The six owner calls of the proposal are settled
@@ -1075,6 +1076,27 @@ any of it yet, BV11), plus one integration spec. Paths under `src/shared/` unles
   errors, 0 warnings) green. Headless (Lune): every spec under `shared/theme` (644), `view/hud` (524), `view/audio`
   (195), `view/fx` (410), `shared/l10n`, `shared/tutorial`, `play/bindings`, and `sim/builds/` (the new spec among
   them) pass. Not run here: the full `npm run verify` (the integrator's).
+- **Boon icons for the wave 1 boons** (2026-11-08, after main's boon icons, docs/BUILDS.md BU11; presentation only).
+  `scripts/art/gen-boon-icons.js` draws three more ORIGINAL 16 x 16 icons in the same style (character maps,
+  auto-outlined): **Riposte** a raised sword (steel blade, gold guard and pommel) with a white-gold parry spark on its
+  blade and a thick green crescent, the counter-wave, leaving it to the right; **Ballista** a heavy siege bolt pointing
+  up-left, a broad iron head bursting at its tip into a gold flash, two small bolts flying off it and bone fins on the
+  tail; **Wrecker** a steel hammer coming down from the upper right onto the corner of a light-wood crate (planks,
+  brace, a crack) with splinters and impact glints flying. The palette gains the counter green (`n` / `N` / `u` / `U`,
+  `build.counter` `#00ff8c`'s ramp) and a light wood (`A`). The sheet `boon-icons.png` is now 18 x 360 (20 icons):
+  art/atlases.json `boonIcons` gained `order` (build-atlases.js `packColumn`: ONE column in that order instead of
+  packUiIcons' best fit, which would have re-flowed 20 icons into a grid and moved every uploaded rect): the first
+  upload's 17 in their packed order, then Riposte, Ballista, Wrecker; a later boon is appended at the end. The 17 old
+  icons are byte-identical (their lock entries unchanged; `--lock --only boonIcons` added the 3) and keep their rects,
+  so the uploaded 18 x 306 sheet still draws them: `packs/vale/assetIds.ts` `VALE_UPLOADED_SIZES` records that its ID
+  (`rbxassetid://120375465703784`) names that older, smaller image, and `valeUiIconImages` then declares the image at
+  18 x 306 and draws only the icons inside it, so the three new boons keep their text labels (`RIP` / `BAL` / `WRK`)
+  instead of sampling past the end of the old image. **Owner:** upload `art/upload/boon-icons.png` (18 x 360; rebuild
+  with `node scripts/art/gen-boon-icons.js && node scripts/art/build-atlases.js --only boonIcons`), paste its ID as
+  `"boon-icons.png"` in `VALE_ASSET_IDS` and delete the `VALE_UPLOADED_SIZES` entry. Specs: `gen-boon-icons.test.js`
+  (the `order`: the first upload's 17 in id order at their old rects, then the newer boons in BOONS order;
+  `packColumn`), `valeBoonIcons.spec.ts` (an older upload draws exactly the icons it holds at its size; the bundled IDs
+  validate).
 
 ## Appendix: the proposal (2026-11-05)
 
