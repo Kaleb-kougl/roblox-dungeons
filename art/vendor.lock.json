@@ -1552,6 +1552,21 @@
 			"bytes": 146
 		},
 		{
+			"path": "kaleb-vale/pip-icons/pip_aegis.png",
+			"sha256": "a5f48cb53462055fba88fdfc2212219281d79613a337e8c96b85d422cc7dfbb8",
+			"bytes": 238
+		},
+		{
+			"path": "kaleb-vale/pip-icons/pip_armor.png",
+			"sha256": "1a861769ab3ee0b63994f28a97f8d09600f8f67b481a155971438f8e0b8a4ed9",
+			"bytes": 255
+		},
+		{
+			"path": "kaleb-vale/pip-icons/pip_armor_empty.png",
+			"sha256": "120b2cd55e4611a3aeb3a66974370eb125f6d5424a7e3f366d805ae935399b69",
+			"bytes": 217
+		},
+		{
 			"path": "kaleb-vale/treasure-column/column.png",
 			"sha256": "504e863028aa906e432c4e153d07d1f91c90d29a2c7d87263ca2acdd82d7e768",
 			"bytes": 24067

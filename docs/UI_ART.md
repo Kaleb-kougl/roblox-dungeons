@@ -275,6 +275,32 @@ Changes from the plan, found while building:
 - **Below UIScale ~0.75** art never drops under 1 screen px per art px, so hud frames pad a few px more than 8 and
   icons (ghost, run-over header) can overflow their boxes slightly.
 
+## As built: armor pips (2026-11-08)
+
+The sheet's chips read as dark discs, not armor, and the 10 x 10 grey chip drew at 1 screen px per art px at 1080 p
+(10 screen px beside 30 px hearts). The armor row now has art of its own. Presentation only (no sim, dungeon, lockstep,
+hash, replay, fixture or score change).
+
+- **Art.** ORIGINAL 9 x 9 pixel art by `scripts/art/gen-pip-icons.js` (the boon icons' kit: a 7 x 7 palette map
+  centred and auto-outlined in their warm near black; run by `art:build` / `art:lock`) into
+  `art/vendor/kaleb-vale/pip-icons/`: small heater shields lit from the top left, all the same silhouette.
+  `ui.pip.armor` a steel rim round a field in the armor blue (third step = `uiMana` #4a78d9, the flat pip's colour);
+  `ui.pip.armor.empty` the shield hollow and cracked (dark iron rim, near-black field), drawn as its own state, not the
+  full pip dimmed; `ui.pip.aegis` the shield in the Aegis lavender (third step = `boost.aegis` #c3a6ff, the boost
+  icons' ramp) with a white diamond, drawn in its own colours (not tinted). 9 px is the largest art that draws at 2
+  screen px per art px in the unchanged 12 reference px pip box at 1080 p (`fitArt`: 18 / 9), so no row grows.
+  Review: `node scripts/art/gen-pip-icons.js --contact <file.png>` (1x / 8x and a mock armor row at 2x).
+- **Sheet.** Atlas group `pipIcons` (`--only pipIcons`, buildUiIcons' packer) into its OWN sheet `pip-icons.png` (11 x
+  33), generated `packs/vale/pipIconLayout.ts`; the vale manifest maps all three on the sheet's one ID
+  (`VALE_PIP_ICON_SOURCE`, all or nothing); `ui-icons.png` does not repack.
+- **Theme.** Optional free-form ui ids `PIP_ICON_IDS` (`shared/theme` pipIcons.ts, prefix `ui.pip.`).
+- **View.** `shared/view/hud` `pipArt`: armor draws `ui.pip.armor` / `.armor.empty` (opaque, untinted) when the pack has
+  both, else the chip as before; Aegis draws `ui.pip.aegis` untinted when the pack has it, else the tinted white chip.
+  The status panel and the touch strip both go through `pipArt`, and the brace pulse still rings the row. Without the
+  art every pip is exactly as before. The combo shards keep the white chip.
+- **Uploaded** 2026-11-08 (`pip-icons.png` in `packs/vale/assetIds.ts`), so the bundled vale pack draws the shields.
+  Pending: the Studio check (the row beside the hearts at 720 / 1080 / 1440 p, the touch strip).
+
 ## Phones (2026-10-30, after the first phone look)
 
 Kaleb's phone screenshots (about 693-714 x 320-330 pt landscape, smaller than MOBILE.md's 844 x 390 reference) showed

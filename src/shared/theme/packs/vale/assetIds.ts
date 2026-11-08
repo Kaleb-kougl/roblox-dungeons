@@ -131,6 +131,9 @@ import type { RobloxAssetId } from "../../types";
  * boost-icons.png (one icon per temporary boost, docs/BOOSTS.md "As built: boost icons"; original art,
  * scripts/art/gen-boost-icons.js, built by `node scripts/art/build-atlases.js --only boostIcons`) uploaded 2026-11-08,
  * the ID given by the owner in chat.
+ * pip-icons.png (the armor row's full / spent armor pips and the Aegis pip, docs/UI_ART.md "As built: armor pips";
+ * original art, scripts/art/gen-pip-icons.js, built by `node scripts/art/build-atlases.js --only pipIcons`) uploaded
+ * 2026-11-08, the ID given by the owner in chat.
  */
 export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"amb-b1.ogg": "rbxassetid://91158343621799",
@@ -290,6 +293,7 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"pact-altar.png": "rbxassetid://117430889650812",
 	"pellet-power.png": "rbxassetid://135982735087293",
 	"pellet.png": "rbxassetid://104506728931703",
+	"pip-icons.png": "rbxassetid://103884093874949",
 	"reaper-attack-outline.png": "rbxassetid://95992799302634",
 	"reaper-attack.png": "rbxassetid://81078161742843",
 	"reaper-body-outline.png": "rbxassetid://130853749528261",

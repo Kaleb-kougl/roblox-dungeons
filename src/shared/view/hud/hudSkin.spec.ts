@@ -1,7 +1,7 @@
 // The in-run HUD's and the touch controls' skin decisions (docs/UI_ART.md UA10-UA13): pip art per kind and state, the
 // pill bar's whole-pixel fit and fill clip, the framed minimap's footprint, the touch rings.
 import { describe, expect, it } from "@rbxts/jest-globals";
-import { uiIconIds, uiSkinIds } from "shared/theme";
+import { PIP_ICON_IDS, PIP_ICON_PREFIX, uiIconIds, uiSkinIds } from "shared/theme";
 import { VALE_IMAGE_LAYOUTS, VALE_UI_ICONS } from "shared/theme/packs/vale";
 import {
 	HUD_SKIN,
@@ -101,6 +101,21 @@ describe("heartSkinState / pipArt", () => {
 		expect(pipArt(hasAll, "armor", false)?.transparency).toBe(HUD_SKIN.chipDimTransparency);
 		expect(pipArt(hasAll, "aegis", true)).toEqual({ id: "ui.chip.white", transparency: 0, tinted: true });
 		expect(HUD_SKIN.chipDimTransparency > 0 && HUD_SKIN.chipDimTransparency < 1).toBe(true);
+	});
+
+	it("armor / aegis: the pack's own pips win over the chips, drawn as is (docs/UI_ART.md armor pips)", () => {
+		const own: SkinHas = (id) => hasAll(id) || id.sub(1, PIP_ICON_PREFIX.size()) === PIP_ICON_PREFIX;
+		expect(pipArt(own, "armor", true)).toEqual({ id: PIP_ICON_IDS.armor, transparency: 0, tinted: false });
+		expect(pipArt(own, "armor", false)).toEqual({ id: PIP_ICON_IDS.armorEmpty, transparency: 0, tinted: false });
+		expect(pipArt(own, "aegis", true)).toEqual({ id: PIP_ICON_IDS.aegis, transparency: 0, tinted: false });
+		// both armor ids or neither: one alone keeps the chip
+		const fullOnly: SkinHas = (id) => hasAll(id) || id === PIP_ICON_IDS.armor;
+		expect(pipArt(fullOnly, "armor", true)?.id).toBe("ui.chip");
+		expect(pipArt(fullOnly, "armor", false)?.id).toBe("ui.chip");
+		// without the chips the own pips still draw
+		const onlyOwn: SkinHas = (id) => id.sub(1, PIP_ICON_PREFIX.size()) === PIP_ICON_PREFIX;
+		expect(pipArt(onlyOwn, "armor", false)?.id).toBe(PIP_ICON_IDS.armorEmpty);
+		expect(pipArt(onlyOwn, "aegis", true)?.id).toBe(PIP_ICON_IDS.aegis);
 	});
 });
 

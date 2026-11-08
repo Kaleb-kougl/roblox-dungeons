@@ -49,7 +49,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/DRAFT_REVEAL.md` | Boon draft reveal (cards deal face down and flip one by one, a rare chime, a legendary beat: charge, hush, flare and halo; a pick stamp; skip by pressing; the client holds the confirm until settled; cards in the ToffeeCraft Horror UI sheet's style; presentation and client input only): plan, tasks DR0-DR9, decisions DRD1-DRD12 |
 | `docs/ENEMY_VARIANTS.md` | Enemy variants (three new endless archetypes: Imp flanker, Ooze zone-denier that splits, Summoner support; elite affixes Hulking / Swift / Shielded / Vengeful; both unlock by depth): plan, tasks EV0-EV14, decisions EVD1-EVD12 |
 | `docs/GRAZE_PARRY.md` | Grazes and parries (graze spark + shimmer climbing in pitch, parry sparks / ring-out / PARRY! floor flash / solo 30 ms freeze for a guard that erases bullets; one unhashed ScoreEvents feed, otherwise presentation only): plan, tasks GP0-GP10, decisions GPD1-GPD10 |
-| `docs/UI_ART.md` | UI art (the dark red pixel UI sheet: 9-sliced panels / buttons, hearts, potions, pills, icons, focus brackets; menus, then the in-run HUD, then touch; presentation only): builds on the Draft reveal (`slice`, `SlicedImage`): plan, as built, tasks UA0-UA15, decisions UAD1-UAD10 |
+| `docs/UI_ART.md` | UI art (the dark red pixel UI sheet: 9-sliced panels / buttons, hearts, potions, pills, icons, focus brackets; menus, then the in-run HUD, then touch; presentation only): builds on the Draft reveal (`slice`, `SlicedImage`): plan, as built, the armor pips (original 9 x 9 shields), tasks UA0-UA15, decisions UAD1-UAD10 |
 | `docs/NEW_BEST.md` | New-best celebration (points-to-best in the score panel's label row, a fanfare + NEW BEST stamp / floor shout / edge confetti when the shown score passes your best or you reach a floor past your deepest, a record fanfare and old -> new roll at run over; server-owned personal records doc `KV_Records_v1`; no sim change): plan, as built, tasks NB0-NB11, decisions NBD1-NBD11 |
 | `docs/DEV_MODE.md` | Developer mode (jump to any floor, instant R restart, god mode; local `dev` world, server-allowed players only via `DEV_MODE`): usage, access, how it works |
 | `docs/BUILDS.md` | Builds (on-kill boons Chain Spark / Volatile / Soul Shards with chain reactions, boon levels with an evolution at III, duo boons, the boss double draft; gameplay, opt-in `SimConfig.builds` on endless only): plan, tasks BU0-BU14, decisions BUD1-BUD14 |
@@ -956,6 +956,19 @@ Decision log (deviations from `PLAN.md`):
   `BOOST_VIEW.iconArtFillRole` with the kind's role as the outline, blinking with the bar; without the art every cell
   is exactly as before (colour square and label). No new strings, roles, sounds or settings; no Luau-locals change.
   `boost-icons.png` uploaded 2026-11-08 (`assetIds.ts`), so the bundled vale pack draws them; the Studio check pending.
+- **Armor pips (docs/UI_ART.md "As built: armor pips", 2026-11-08).** Presentation only (no sim, dungeon, lockstep,
+  hash, replay, fixture or score change). The armor row's pips as ORIGINAL 9 x 9 pixel art by
+  `scripts/art/gen-pip-icons.js` (the boon icons' kit; run by `art:build` / `art:lock`) into
+  `art/vendor/kaleb-vale/pip-icons/`: small heater shields, `ui.pip.armor` (steel round the armor blue, `uiMana`),
+  `ui.pip.armor.empty` (hollow and cracked, its own state) and `ui.pip.aegis` (the Aegis lavender with a white diamond,
+  untinted), one silhouette; 9 px draws at 2 screen px per art px in the unchanged 12 reference px pip box at 1080 p.
+  Packed by a new atlas group `pipIcons` into its OWN sheet `pip-icons.png` (`--only pipIcons`, generated
+  `packs/vale/pipIconLayout.ts`), so `ui-icons.png` does not repack. Theme: optional free-form ui ids `PIP_ICON_IDS`
+  (`shared/theme` pipIcons.ts), all or nothing on the sheet's one ID (vale `VALE_PIP_ICON_SOURCE`). View:
+  `shared/view/hud` `pipArt` prefers them (both armor ids, or the Aegis id) over the UI sheet's chips (the combo shards
+  keep the white chip); without the art every pip is exactly as before. No new strings, roles, sounds or settings; no
+  Luau-locals change. `pip-icons.png` uploaded 2026-11-08 (`assetIds.ts`), so the bundled vale pack draws them; the
+  Studio check pending.
 - **Co-op frame pacing (docs/FRAME_PACING.md).** Client timing and presentation only (no sim, dungeon, hash, replay,
   wire, fixture or score change; the server is unchanged: every client still steps exactly the merged log, only WHEN
   changes). shared/lockstep `pacer.ts` `PlayoutPacer`, a playout clock: merged frame k is stepped at local time k x

@@ -5,7 +5,7 @@
  * skinConfig.ts (UA5), whose skinFor chains decide whether the pack has the art at all. Every function returns
  * undefined (or a flat value) when the art is absent, so the client draws exactly today's flat HUD. Presentation only.
  */
-import type { SliceInsets } from "shared/theme";
+import { PIP_ICON_IDS, type SliceInsets } from "shared/theme";
 import { HUD_VIEW } from "./layout";
 import { fitArt, skinFor, skinPadding, uniformPadding, type ArtFit, type SkinHas, type SkinPadding } from "./skin";
 import { UI_ART } from "./skinConfig";
@@ -120,8 +120,10 @@ export interface PipArt {
  * The art for a status pip of `kind`, `filled` or not, or undefined (the pack lacks it: the flat Pip):
  *   - flask: ui.flask.full / .empty (skinFor: both or neither);
  *   - ember: ui.candle, an unlit one at HUD_SKIN.emberDimTransparency;
- *   - armor: ui.chip, an empty one at HUD_SKIN.chipDimTransparency;
- *   - aegis: ui.chip.white tinted by its role (always filled: an Aegis pip exists only while held).
+ *   - armor: the pack's own armor pips (shared/theme PIP_ICON_IDS: ui.pip.armor / .armor.empty, both or neither, drawn
+ *     as is), else ui.chip, an empty one at HUD_SKIN.chipDimTransparency;
+ *   - aegis: the pack's own ui.pip.aegis (drawn in its own colours), else ui.chip.white tinted by its role (always
+ *     filled: an Aegis pip exists only while held).
  */
 export function pipArt(has: SkinHas, kind: HudPipKind, filled: boolean): PipArt | undefined {
 	switch (kind) {
@@ -136,12 +138,18 @@ export function pipArt(has: SkinHas, kind: HudPipKind, filled: boolean): PipArt 
 				: undefined;
 		}
 		case "armor": {
+			if (has(PIP_ICON_IDS.armor) && has(PIP_ICON_IDS.armorEmpty)) {
+				return { id: filled ? PIP_ICON_IDS.armor : PIP_ICON_IDS.armorEmpty, transparency: 0, tinted: false };
+			}
 			const id = skinFor(has, "pip", "armor");
 			return id !== undefined
 				? { id, transparency: filled ? 0 : HUD_SKIN.chipDimTransparency, tinted: false }
 				: undefined;
 		}
 		case "aegis": {
+			if (has(PIP_ICON_IDS.aegis)) {
+				return { id: PIP_ICON_IDS.aegis, transparency: 0, tinted: false };
+			}
 			const id = skinFor(has, "pip", "tinted");
 			return id !== undefined ? { id, transparency: 0, tinted: true } : undefined;
 		}

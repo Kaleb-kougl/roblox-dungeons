@@ -88,7 +88,8 @@ export function pipArtProps(skin: StatusSkin | undefined, kind: HudPipKind, fill
 
 /**
  * A row of `max` pips, `count` filled. With the art (UA10): flask charges are potions (full / spent), Ember pips
- * candles (unlit: dimmed), armor pips grey chips (empty: dimmed); without, the flat square / diamond pips.
+ * candles (unlit: dimmed), armor pips shields (shared/theme PIP_ICON_IDS; else grey chips, empty: dimmed); without, the
+ * flat square / diamond pips.
  */
 export function pips(
 	count: number,
@@ -117,7 +118,7 @@ export function pips(
 
 /**
  * The Aegis pips (docs/BOOSTS.md B7): filled diamonds in their own colour after the `after` armor pips; with the art
- * (UA10) the white chip tinted by that colour.
+ * (UA10) the Aegis shield (ui.pip.aegis), else the white chip tinted by that colour.
  */
 export function aegisPips(count: number, after: number, skin: StatusSkin | undefined) {
 	const out = new Array<React.Element>();

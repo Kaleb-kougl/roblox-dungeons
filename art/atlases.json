@@ -2600,5 +2600,23 @@
 			"ui.boost.fury": { "file": "kaleb-vale/boost-icons/boost_fury.png", "rect": [0, 0, 16, 16] },
 			"ui.boost.quickstep": { "file": "kaleb-vale/boost-icons/boost_quickstep.png", "rect": [0, 0, 16, 16] }
 		}
+	},
+	"pipIcons": {
+		"$comment": [
+			"The armor pips (docs/UI_ART.md \"As built: armor pips\", the status panel's armor row): original 9 x 9 pixel art drawn",
+			"by scripts/art/gen-pip-icons.js (art:build and art:lock run it first) into art/vendor/kaleb-vale/pip-icons/: a full",
+			"armor pip (ui.pip.armor), a spent one (ui.pip.armor.empty) and the Aegis pip (ui.pip.aegis), small heater shields in",
+			"the boon icons' steel plus the armor blue (uiMana) / the Aegis lavender (boost.aegis). 9 px draws at 2 screen px per",
+			"art px in the 12 reference px pip box at 1080 p. Packed exactly like `boostIcons` (buildUiIcons) into a sheet of their",
+			"OWN, art/build/<atlas>.png with src/shared/theme/packs/vale/pipIconLayout.ts; all switch on with its one ID.",
+			"Build just this group: node scripts/art/build-atlases.js --only pipIcons (and --lock --only pipIcons)."
+		],
+		"atlas": "pip-icons",
+		"gutter": 1,
+		"icons": {
+			"ui.pip.aegis": { "file": "kaleb-vale/pip-icons/pip_aegis.png", "rect": [0, 0, 9, 9] },
+			"ui.pip.armor": { "file": "kaleb-vale/pip-icons/pip_armor.png", "rect": [0, 0, 9, 9] },
+			"ui.pip.armor.empty": { "file": "kaleb-vale/pip-icons/pip_armor_empty.png", "rect": [0, 0, 9, 9] }
+		}
 	}
 }
