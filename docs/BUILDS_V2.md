@@ -55,11 +55,13 @@ Gap 3 first: every v1 boon now has at least one duo.
 | **Happy Hour** | Deep Flask + Bounty | drinking doubles kill points for 5 s (its own pop colour) | Saving a flask for a big pack becomes a score play |
 | **Stillwater** | Composure + Riposte | a parry gives back the combo the last hit cut, if within 3 s | You take it back. The greyed-out lost multiplier (COMBO break) lights up again |
 | **Thunder Guard** | Riposte + Chain Spark | every bullet the guard erases sparks to the nearest enemy (1 damage, gen 1) | One guard against a sprayer turret lights up the room |
-| **Matador** | Riposte + Slippery | an enemy bullet you roll through counts as a guard erase (feeds Riposte's wave) | Rolling through a volley charges the counter |
 | **Dragon Bolt** | Ballista + Ember Wake | a heavy arrow leaves an ember along its whole path (the Fire Arrows ember, `FIRE_ARROWS_EMBERS_MAX` does not apply) | A line of fire across the room in one shot |
 | **Blood Shards** | Hemorrhage + Soul Shards | each shard hit adds 2 marks instead of 1 | Shards seed the room, ruptures finish it |
 | ~~**Supernova**~~ | Overkill + Volatile | moved to docs/LEGENDARIES.md (redefined: a 3+ carry bursts one ring larger) | |
 | **Powder Keg** | Wrecker + Volatile | a smashed breakable procs like a kill (gen 0: bursts, sparks and shards all fire) | Every crate is a kill |
+
+**Matador dropped (owner, 2026-11-07).** Riposte + Slippery (a bullet rolled through counts as a guard erase) is
+withdrawn: Bastion's roll brace (docs/LEGENDARIES.md LGD7) already counts bullets rolled through as blocked.
 
 ## Builds: how they come together
 
@@ -110,7 +112,7 @@ Reused from systems already in the game, so no new presentation machinery is nee
 
 | Item | Sim hook it reuses | New state (hashed, `builds` group) | Risk |
 |---|---|---|---|
-| Riposte, Thunder Guard, Matador | `scoreGuardCancels` / the guard sweep's erase count, Phantom Step's roll-through test | per-player erase count for the current guard | low |
+| Riposte, Thunder Guard | `scoreGuardCancels` / the guard sweep's erase count | per-player erase count for the current guard | low |
 | Ballista, Dragon Bolt | the heavy arrow's last pierce and wall hit | none | low |
 | Siege Bolt | the heavy arrow | pinned actor id per arrow | **medium**: moving actors through walls and pillars needs `collision.ts`; bosses and Goldlings never pin |
 | Hemorrhage, Blood Shards | `damageActor` | marks per actor slot (cleared on death and floor change) | medium: per-actor state and its clone / hash |
@@ -125,11 +127,14 @@ Every row changes endless replays and scores from the first draft on, as v1 did 
 move). Recommend landing wave 1 **after BU14**, so the frame-time and readability numbers for v1 are known before more
 bullets go on screen.
 
-## Owner calls
+## Owner calls (settled 2026-11-07)
 
-1. Which wave 1 set: Riposte / Ballista / Wrecker as proposed, or another three?
-2. Siege Bolt pinning (moves enemies) or the simpler alternative: the heavy arrow knocks back hard and a wall slam does
-   the bonus damage?
-3. Berserk at "1 heart" or "at or below 25 % of max hearts" (so it scales with Hearty)?
-4. Duo hint: presentation only, or with the partner bias (BU13 1(a) / (b))?
-5. Overcap points: yes / no.
+1. **Wave 1:** Riposte, Ballista and Wrecker, as proposed. Wave 2 stays Hemorrhage, Berserk and Glutton.
+2. **Siege Bolt:** true pin and drag. The first non-boss enemy the heavy arrow hits is carried with it until the arrow
+   hits a wall (bosses and the Goldling never pin). This needs the collision work in the risk table (medium).
+3. **Berserk:** on at or below 25 % of max hearts, so it scales with Hearty and Stone Heart.
+4. **Duo hint:** the badge only (presentation). No partner bias in the odds.
+5. **Overcap points:** yes. Damage the boss cap throws away pops as small gold points at the boss, in its own score
+   source (a score change: endless scores and replays change).
+6. **Bastion + Riposte duo:** yes, designed as part of the wave 1 plan (Riposte lands in wave 1; the duo's rule is open,
+   for example a brace also fires Riposte's counter-wave as a full ring).
