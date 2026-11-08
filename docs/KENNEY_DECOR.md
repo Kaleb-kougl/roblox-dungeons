@@ -306,7 +306,14 @@ Presentation only (the Forge half, KN5-KN8, places the pieces; this draws them).
 - **Checked** (cloud container, 2 cores): typecheck, lint, check:assets, test:art, rbxtsc build; Lune: decorPlan.spec
   (Kenney pieces once each with their variants and boxes, the runner vs the throne carpet, the library candles, the
   stockpile drop, the study table replacing the reading line), valeArt.spec, valeWorld.spec, void.spec and every spec
-  under shared/view and shared/theme.
+  under shared/view and shared/theme. Re-verified 2026-11-08 (x86 cloud container): typecheck, lint, check:assets,
+  check:autolocalize, test:art (258 pass, 3 skipped without vendor frames, 0 fail) and rbxtsc exit 0; contract.luau /
+  validate.luau at 186 / 192 top-level locals (counted on out/); Lune, every spec under shared/view, shared/theme and
+  shared/dungeon: 233 of 234 pass, the one failure `dungeon/forge/forge.spec`'s NaN bit pattern (7ff8 vs fff8, an x86
+  environment difference; it passes on aarch64). Byte-identity, a throwaway digest spec built against f0eb023 (the
+  Forge half with its bridge) and this branch: every M1 floor (seeds 1, 7, 42, 1337, 2024) and every endless floor of
+  runs 1-30 x floors 1-6 without a Kenney piece or runner (10 of 180) plans identically, both without variants and with
+  the vale pack's real IDs (no `kenney-decor.png` ID).
 - **Upload (KN12)**: `art/upload/kenney-decor.png` -> its ID under the key `"kenney-decor.png"` in
   `packs/vale/assetIds.ts`. Until then the pieces block and draw nothing. Open: the Studio look (KN13), the toppled
   case's Z art, the 1 x 1 stock's facings (Kenney N / E picked per axis by eye, not measured).
