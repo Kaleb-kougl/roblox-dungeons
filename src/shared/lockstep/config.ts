@@ -69,6 +69,50 @@ export const LOCKSTEP_FINAL_RATE = table.freeze({ count: 4, windowSeconds: 10 })
 /** Per player: lockstepLeave calls per window (an honest client sends one per run; the leave is idempotent). */
 export const LOCKSTEP_LEAVE_RATE = table.freeze({ count: 4, windowSeconds: 10 });
 
+/**
+ * Co-op frame pacing (docs/FRAME_PACING.md, Design 1-3): the client's PlayoutPacer (pacer.ts) steps received merged
+ * frames on a steady playout clock from a small jitter buffer. Depths are in ticks of SIM_DT. All provisional until
+ * FP0 / FP6 measure a real session.
+ */
+export interface PacingTunables {
+	/** Buffer depth before any arrival is measured (the first batch places the playout clock this deep). */
+	readonly startDepthTicks: number;
+	/** The buffer is never shallower: one broadcast batch plus a tick of margin (FPD6). */
+	readonly minDepthTicks: number;
+	/** The target depth never goes past this (200 ms): beyond it a hold is better than the delay. */
+	readonly maxDepthTicks: number;
+	/** Added to the measured jitter: rounding and Heartbeat granularity. */
+	readonly marginTicks: number;
+	/** The jitter is measured over the arrivals of this many seconds (follows a changing network within seconds). */
+	readonly jitterWindowSec: number;
+	/** The jitter is this quantile of the arrival offsets (not the max: one outlier is one hold, not a lasting delay). */
+	readonly jitterPercentile: number;
+	/** The best-case path (the smallest arrival offset) is taken over this many seconds (follows a route change). */
+	readonly floorWindowSec: number;
+	/** The playout clock moves toward its target at most this share of real time (runs at 1 +/- this speed). */
+	readonly slewShare: number;
+	/** The faster share used while the clock is more than fastSlewTicks past its target (after a long hold, FPD7). */
+	readonly fastSlewShare: number;
+	/** How far past its target (ticks) the playout clock must be for the fast slew. */
+	readonly fastSlewTicks: number;
+	/** A rendered frame longer than this (seconds) is a client hitch: its arrivals are left out of the windows. */
+	readonly hitchFrameSec: number;
+}
+
+export const PACING: PacingTunables = table.freeze({
+	startDepthTicks: 3,
+	minDepthTicks: 3,
+	maxDepthTicks: 12,
+	marginTicks: 0.5,
+	jitterWindowSec: 4,
+	jitterPercentile: 0.95,
+	floorWindowSec: 10,
+	slewShare: 0.05,
+	fastSlewShare: 0.1,
+	fastSlewTicks: 6,
+	hitchFrameSec: 0.1,
+});
+
 export interface LockstepTunables {
 	readonly inputDelay: number;
 	readonly maxInputLead: number;
