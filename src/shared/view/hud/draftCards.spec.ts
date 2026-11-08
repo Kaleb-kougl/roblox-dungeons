@@ -27,7 +27,7 @@ import {
 	type SimConfig,
 	type SimState,
 } from "shared/sim";
-import { PLACEHOLDER_MANIFEST, ThemePack } from "shared/theme";
+import { PLACEHOLDER_MANIFEST, ThemePack, boonIconId } from "shared/theme";
 import { PactKind, pactDraftKind } from "shared/sim";
 import { altarFloor, frame, pactsSetup, pressPact, skipToFloor } from "shared/run/testing";
 import {
@@ -36,6 +36,8 @@ import {
 	draftBeatFor,
 	draftCardKinds,
 	draftCardModel,
+	draftChipArt,
+	draftChipCells,
 	draftRedealt,
 	draftToneRole,
 	type DraftCardModel,
@@ -179,6 +181,7 @@ describe("draft cards by kind (BU9)", () => {
 			]);
 			expect(m.chipIcons).toEqual([`${BOONS[duo.a].id}.icon`, `${BOONS[duo.b].id}.icon`]);
 			expect(m.chipRoles).toEqual([rarityColorRole(BOONS[duo.a].rarity), rarityColorRole(BOONS[duo.b].rarity)]);
+			expect(m.chipArt).toEqual([boonIconId(BOONS[duo.a].id), boonIconId(BOONS[duo.b].id)]);
 		}
 		expect(draftToneRole("duo")).toBe(BUILD_DUO_ROLE);
 		expect(BUILD_DUO_ROLE).toBe("boon.duo");
@@ -309,5 +312,34 @@ describe("a pact's mid-floor draft (docs/FORTUNE.md FO0)", () => {
 			checked++;
 		}
 		expect(checked).toBe(1);
+	});
+});
+
+describe("draft card icon art (docs/BUILDS.md BU11)", () => {
+	const all = () => true;
+	const none = () => false;
+
+	it("a boon card of every kind carries its own icon and shows a one-cell chip only with the art", () => {
+		for (let b = 0; b < BOON_COUNT; b++) {
+			for (const kind of [CardKind.NEW, CardKind.UPGRADE, CardKind.EVOLUTION]) {
+				const m = draftCardModel(b, kind)!;
+				expect([b, kind, m.chipArt]).toEqual([b, kind, [boonIconId(BOONS[b].id)]]);
+				expect([b, kind, m.chipIcons.size()]).toEqual([b, kind, 0]);
+				expect([b, kind, draftChipCells(m, draftChipArt(m, all))]).toEqual([b, kind, 1]);
+				expect([b, kind, draftChipCells(m, draftChipArt(m, none))]).toEqual([b, kind, 0]);
+			}
+		}
+	});
+
+	it("a Duo card's chip is two cells with or without art; the art only when both halves have it", () => {
+		for (let d = 0; d < DUO_COUNT; d++) {
+			const m = draftCardModel(duoCard(d), CardKind.NEW)!;
+			expect([d, draftChipArt(m, all).size(), draftChipCells(m, draftChipArt(m, all))]).toEqual([d, 2, 2]);
+			expect([d, draftChipArt(m, none).size(), draftChipCells(m, draftChipArt(m, none))]).toEqual([d, 0, 2]);
+			const half = (id: string) => id === m.chipArt[0];
+			expect([d, draftChipArt(m, half).size()]).toEqual([d, 0]);
+		}
+		expect(draftChipArt(undefined, all)).toEqual([]);
+		expect(draftChipCells(undefined, [])).toBe(0);
 	});
 });

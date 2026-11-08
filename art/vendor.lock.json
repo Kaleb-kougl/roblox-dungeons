@@ -692,6 +692,91 @@
 			"bytes": 6541
 		},
 		{
+			"path": "kaleb-vale/boon-icons/boon_bastion.png",
+			"sha256": "91d0fbf6cecb2137d5366e805d7b58af13beafb471c584eded227f5ce62f459b",
+			"bytes": 335
+		},
+		{
+			"path": "kaleb-vale/boon-icons/boon_bounty.png",
+			"sha256": "98605cda0de9def7bb75af772ad234a445eb0663d354ad5cd2170d3705b440df",
+			"bytes": 445
+		},
+		{
+			"path": "kaleb-vale/boon-icons/boon_chainSpark.png",
+			"sha256": "4e3c839a4445ed441cdbe862fa63734625694a9c7cb2ea6d6c906417a9b1ad7d",
+			"bytes": 396
+		},
+		{
+			"path": "kaleb-vale/boon-icons/boon_composure.png",
+			"sha256": "19ba52d97947f803541abecbfc01b5dbbf6e1b0d621daf987353b2f685f61b07",
+			"bytes": 320
+		},
+		{
+			"path": "kaleb-vale/boon-icons/boon_daredevil.png",
+			"sha256": "dd0f51d8b39e41325456e0a83d2e9374bfc57febf5e76c42e9c3275d74f7a3ab",
+			"bytes": 400
+		},
+		{
+			"path": "kaleb-vale/boon-icons/boon_deepFlask.png",
+			"sha256": "37f2cc7b79ed9af389ab6cdefab47fa0d9101d9a30ac9ebccf573690730847d7",
+			"bytes": 394
+		},
+		{
+			"path": "kaleb-vale/boon-icons/boon_emberWake.png",
+			"sha256": "c4f86bf08b11c1399d6639fc3132b8400d8121ea8cd51025d2443077bfd8ad0b",
+			"bytes": 479
+		},
+		{
+			"path": "kaleb-vale/boon-icons/boon_hearty.png",
+			"sha256": "bc11e20a9e6aa774f3d856a3b557d501ad44538f678003a15136ed5cd30631f1",
+			"bytes": 343
+		},
+		{
+			"path": "kaleb-vale/boon-icons/boon_lingering.png",
+			"sha256": "608e4148b0390bf780acc02628bb02270f2cad453d1596239aeff796be0affdd",
+			"bytes": 318
+		},
+		{
+			"path": "kaleb-vale/boon-icons/boon_overkill.png",
+			"sha256": "95553f3c17c4b995e079500de86c2a0b0d8a8bdb1fedb4f77b3ead39044ade33",
+			"bytes": 386
+		},
+		{
+			"path": "kaleb-vale/boon-icons/boon_piercingArrows.png",
+			"sha256": "ae8d93b333d53fc1eee6142684ba36a3d256b33806f903fc8f405faaaaf98ec0",
+			"bytes": 434
+		},
+		{
+			"path": "kaleb-vale/boon-icons/boon_sharpened.png",
+			"sha256": "21f3510a1db4445cf3210867ea6611c24ab82a2aca42b5a114ed66304b0b765f",
+			"bytes": 460
+		},
+		{
+			"path": "kaleb-vale/boon-icons/boon_slippery.png",
+			"sha256": "67c2ed7ddcd794df7f3f7a4337aae971b54aa5bbb3e61aa56468ccabd5c46fa3",
+			"bytes": 372
+		},
+		{
+			"path": "kaleb-vale/boon-icons/boon_soulShards.png",
+			"sha256": "a71039e4834cad5c93dc12ab54bca5c5d17b78915ddfde8cd3e69e53f680676c",
+			"bytes": 372
+		},
+		{
+			"path": "kaleb-vale/boon-icons/boon_swiftStrikes.png",
+			"sha256": "610281e7bdcf6581cc8a99fe38ba0f9439785e95d123f6e11d4670cce6a193d2",
+			"bytes": 259
+		},
+		{
+			"path": "kaleb-vale/boon-icons/boon_volatile.png",
+			"sha256": "3a09e615845c00ae341deaef2132bbc35f6b72a2270bdb51574e7f242ea01084",
+			"bytes": 449
+		},
+		{
+			"path": "kaleb-vale/boon-icons/boon_warding.png",
+			"sha256": "d6f5388660624f8866e6db371a78fd4e5530c826673aeac17209423cfe41f992",
+			"bytes": 368
+		},
+		{
 			"path": "kaleb-vale/boost-auras/aura_aegis_r0_0.png",
 			"sha256": "e71f7396fa45443786e5f9c0d0b8bd9b631ffdb94f07af065fb4730b10b83d6d",
 			"bytes": 795

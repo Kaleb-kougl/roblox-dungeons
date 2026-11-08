@@ -24,6 +24,10 @@
  *     VALE_UI_ICON_FILE has an ID every icon is an `image` of the whole atlas with its `rect` (and `pivot`), else none
  *     is (all or nothing, valeUiIconImages). The required ui.panel / ui.icon.health / .mana / .ember take the art named
  *     in VALE_UI_REQUIRED_ART once it exists, else stay the placeholder.
+ *   - the boon icons (docs/BUILDS.md BU11; shared/theme boonIcons.ts: ui.boon.<name>, original art from
+ *     scripts/art/gen-boon-icons.js) share ONE sheet of their own (boonIconLayout.ts), all or nothing like the icon
+ *     atlas: once VALE_BOON_ICON_FILE has an ID every boon icon is an `image` of the sheet with its `rect`, else none
+ *     is (every boon keeps its text label).
  * Image pivots and 9-slice insets (VALE_IMAGE_LAYOUTS) go into the ui images' `pivot` / `slice`, icon rects into
  * `rect`; the renderer reads them through ThemePack.image(id).pivot / .slice / .rect.
  *
@@ -106,6 +110,7 @@ import {
 	type ValeWorldLayout,
 } from "./layout";
 import { VALE_UI_ICONS, VALE_UI_ICON_ATLAS, VALE_UI_ICON_FILE, type ValeUiIconLayout } from "./uiIconLayout";
+import { VALE_BOON_ICONS, VALE_BOON_ICON_ATLAS, VALE_BOON_ICON_FILE } from "./boonIconLayout";
 
 /** The image whose mean colour VALE_FLOOR_HEX is. */
 const VALE_FLOOR_TEXTURE_ID = "tile.biome.1.floor";
@@ -609,6 +614,13 @@ export const VALE_UI_ICON_SOURCE: ValeUiIconSource = {
 	icons: VALE_UI_ICONS,
 };
 
+/** The boon icon sheet as generated (boonIconLayout.ts), in the icon atlas's shape. */
+export const VALE_BOON_ICON_SOURCE: ValeUiIconSource = {
+	file: VALE_BOON_ICON_FILE,
+	atlas: VALE_BOON_ICON_ATLAS,
+	icons: VALE_BOON_ICONS,
+};
+
 /**
  * The UI icons (contract.ts uiIconIds) of one uploaded icon atlas: every piece of `icons` as an `image` of the whole
  * atlas (`assetId`, `atlas` w / h) with its `rect` and `pivot`. All or nothing: no `assetId` (the atlas is not uploaded
@@ -659,6 +671,8 @@ export interface ValeLayoutSources {
 	readonly images?: Readonly<Record<string, ValeImageLayout>>;
 	/** VALE_UI_ICON_SOURCE. */
 	readonly uiIcons?: ValeUiIconSource;
+	/** VALE_BOON_ICON_SOURCE (boonIconLayout.ts: the boon icon sheet). */
+	readonly boonIcons?: ValeUiIconSource;
 	/** VALE_BULLET_SOURCE (bullets.ts: the bullet atlas and bulletLayout.ts). */
 	readonly bullets?: ValeBulletSource;
 	/** VALE_GOO_SOURCE (goo.ts: the goo sheet and gooLayout.ts). */
@@ -677,6 +691,7 @@ export interface ValeLayoutSources {
 export function buildValeManifest(ids: AssetIds = VALE_ASSET_IDS, sources: ValeLayoutSources = {}): ThemeManifest {
 	const images = sources.images ?? VALE_IMAGE_LAYOUTS;
 	const uiIcons = sources.uiIcons ?? VALE_UI_ICON_SOURCE;
+	const boonIcons = sources.boonIcons ?? VALE_BOON_ICON_SOURCE;
 	const manifest = deepClone(PLACEHOLDER_MANIFEST);
 	manifest.id = "vale";
 	manifest.name = "Vale";
@@ -722,6 +737,11 @@ export function buildValeManifest(ids: AssetIds = VALE_ASSET_IDS, sources: ValeL
 	const icons = valeUiIconImages(uiIcons.icons, uiIcons.atlas, ids[uiIcons.file]);
 	for (const id of sortedKeys(icons)) {
 		manifest.assets[id] = icons[id];
+	}
+	// The boon icon sheet (docs/BUILDS.md BU11): every boon icon once uploaded, none before.
+	const boonArt = valeUiIconImages(boonIcons.icons, boonIcons.atlas, ids[boonIcons.file]);
+	for (const id of sortedKeys(boonArt)) {
+		manifest.assets[id] = boonArt[id];
 	}
 	for (const id of sortedKeys(VALE_UI_REQUIRED_ART)) {
 		const art = manifest.assets[VALE_UI_REQUIRED_ART[id]];

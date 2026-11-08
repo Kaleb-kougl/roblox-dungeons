@@ -1239,6 +1239,18 @@ duo in v1 (they are the safe picks); every other boon is in one or two.
 - **BU11. Art.** Icons for 3 boons, 13 evolutions, 9 duos (ToffeeCraft UI sheet glyphs or Ninja Adventure icons,
   packed into `ui-icons.png`), effect sprites from Ninja Adventure FX (spark, burst, ember). **Verify:** `npm run
   test:art`; the contact sheet signed off; budget recorded here.
+  **Boons part, as built (2026-11-08; presentation only).** Every boon (all 17, not just the 3 on-kill ones) has an
+  ORIGINAL 16 x 16 icon from `scripts/art/gen-boon-icons.js` (owner picks: full colour in the dark red UI's palette,
+  evolutions reuse their boon's icon, duo icons deferred: a duo shows its two boons' icons), in its own sheet
+  `boon-icons.png` (18 x 306, art/atlases.json `boonIcons`, `packs/vale/boonIconLayout.ts`) instead of `ui-icons.png`,
+  so the shipped icon atlas never repacks. Theme ids `ui.boon.<name>` (shared/theme `boonIconId`). Drawn in the items
+  row (status panel and touch chips: the art on a dark cell, the rarity / duo colour as outline and pips; evolved frame
+  unchanged) and on draft cards (a Duo chip's halves; a boon card's own one-cell chip in the banner row). Budget: one
+  18 x 306 PNG (5.5 K px), one content id in the core preload tier. Specs: `gen-boon-icons.test.js` (palette,
+  outline, the group, the committed layout), `valeBoonIcons.spec.ts`, `buildHud.spec` / `draftCards.spec` (art and
+  its fallback). Open: upload `art/upload/boon-icons.png` and paste its id into `assetIds.ts`; Studio check of the
+  longest Evolution banner row (chip + "EVOLVE · Piercing Arrows" + pips inside the card) and the portrait column;
+  effect sprites and duo / evolution icons of their own (if wanted).
 - **BU12. Audio.** The nine port IDs from Ninja Adventure (`art/audio.json`), `audio:build`, `audio:audition`.
   **Verify:** owner audition; silent fallback while ids are missing.
 - **BU13. Tuning.** A build TTK table (`variantTtk` harness: plain, each on-kill boon I / III, each duo) on swarmer
