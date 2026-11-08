@@ -139,6 +139,8 @@
  *   - sfx.build.brace (LG6): a Bastion brace that restored a pip or healed (braceFeedbackOf: SPENT plays nothing),
  *     the local (view) player's at full volume, a teammate's at teammateVolume; outside the voice cap like the stings
  *     (it answers the player's own guard). Falls back to the Aegis break while silent (LG5).
+ *   - Builds v2, wave 1 (docs/BUILDS_V2.md BV10): sfx.build.counter (Riposte's counter-wave), .pin / .slam (Siege
+ *     Bolt), .smash (a Wrecker piece), .beam (Full Heart). Registered only (ranked, timed, fallbacks): BV11 maps them.
  *
  * The Daily's rank layer (docs/DAILY.md DS10) comes from the frame's DailyRankCueSource (the client's
  * DailyRankController, stepped BEFORE the mapper in the same frame; NO_DAILY_RANK_CUES by default, so every other cue is
@@ -360,6 +362,17 @@ export const SFX = {
 	buildOverkill: "sfx.build.overkill",
 	buildBrace: "sfx.build.brace",
 	/**
+	 * Builds v2, wave 1 (docs/BUILDS_V2.md BV10; BUILD_AUDIO_IDS' last five): Riposte's counter-wave goes out, Siege
+	 * Bolt pins an enemy / slams it into a wall, a Wrecker piece smashes (splinters, Demolition's blast), Full Heart's
+	 * beam strikes. Registered only: BV11 maps them. While silent they fall back to the parry, the bow's full charge, a
+	 * Charger's wall stun, the breakable break and the spark (SFX_FALLBACK).
+	 */
+	buildCounter: "sfx.build.counter",
+	buildPin: "sfx.build.pin",
+	buildSlam: "sfx.build.slam",
+	buildSmash: "sfx.build.smash",
+	buildBeam: "sfx.build.beam",
+	/**
 	 * The Daily's rank layer (docs/DAILY.md DS10; the theme's PORT_AUDIO_EVENTS): a predicted rank threshold (top 100 /
 	 * 10 / 3 / #1, with the floor shout) and a friend passed (with their toast). Short stings, not jingles.
 	 */
@@ -486,6 +499,11 @@ export const ALL_SFX: ReadonlyArray<SfxId> = [
 	SFX.buildJackpot,
 	SFX.buildOverkill,
 	SFX.buildBrace,
+	SFX.buildCounter,
+	SFX.buildPin,
+	SFX.buildSlam,
+	SFX.buildSmash,
+	SFX.buildBeam,
 	SFX.rankUp,
 	SFX.friendPassed,
 	SFX.breakableLoot,
@@ -569,6 +587,11 @@ export const PORT_SFX: ReadonlyArray<SfxId> = [
 	SFX.buildJackpot,
 	SFX.buildOverkill,
 	SFX.buildBrace,
+	SFX.buildCounter,
+	SFX.buildPin,
+	SFX.buildSlam,
+	SFX.buildSmash,
+	SFX.buildBeam,
 	SFX.rankUp,
 	SFX.friendPassed,
 	SFX.breakableLoot,
@@ -724,6 +747,15 @@ export const SFX_MIN_INTERVAL: Readonly<Partial<Record<SfxId, number>>> = {
 	/** docs/LEGENDARIES.md LG5: a chain's streaks climb like the sparks; one brace sound per brace (once per room). */
 	[SFX.buildOverkill]: 0.06,
 	[SFX.buildBrace]: 0.3,
+	/**
+	 * docs/BUILDS_V2.md BV10: one counter per guard (a co-op pair's two waves a moment apart are one); pins and slams
+	 * of a volley of charged arrows; a Demolition chain climbs one piece a tick like the sparks; a finisher's beam.
+	 */
+	[SFX.buildCounter]: 0.15,
+	[SFX.buildPin]: 0.1,
+	[SFX.buildSlam]: 0.15,
+	[SFX.buildSmash]: 0.06,
+	[SFX.buildBeam]: 0.1,
 	/** The rank layer (DS10): two thresholds a moment apart (or a friend toast each queue step) never stutter. */
 	[SFX.rankUp]: 0.5,
 	[SFX.friendPassed]: 0.3,
@@ -911,6 +943,16 @@ export const SFX_PRIORITY: Readonly<Record<SfxId, number>> = {
 	 */
 	[SFX.buildOverkill]: 53,
 	[SFX.buildBrace]: 60,
+	/**
+	 * docs/BUILDS_V2.md BV10: the slam (Siege Bolt's payoff) and the counter (the guard's) over the parry they answer,
+	 * under the brace, the hurt and the telegraph; the pin with the Overkill streak, under the swing; the beam over the
+	 * shot it rides with; a smash over the breakable break and the burst, under the spark.
+	 */
+	[SFX.buildSlam]: 59,
+	[SFX.buildCounter]: 58,
+	[SFX.buildPin]: 53,
+	[SFX.buildBeam]: 53,
+	[SFX.buildSmash]: 49,
 	[SFX.uiConfirm]: 45,
 	[SFX.uiBack]: 45,
 	[SFX.uiClick]: 44,
@@ -1066,6 +1108,17 @@ export const SFX_FALLBACK: Readonly<Partial<Record<SfxId, SfxId>>> = {
 	 */
 	[SFX.buildOverkill]: SFX.buildSpark,
 	[SFX.buildBrace]: SFX.boostAegisBreak,
+	/**
+	 * docs/BUILDS_V2.md BV10: until wave 1's clips are picked (BV13), the counter plays the parry's chime (the guard it
+	 * answers), the pin the bow's full-charge ping (the heavy arrow's own sound), the slam a Charger's wall stun (a body
+	 * hitting a wall), a smash the breakable break and the beam the spark's zap. One step each: the placeholder pack's
+	 * targets are silent too (no sound); the vale pack has clips for the first four targets, not yet the spark (BU12).
+	 */
+	[SFX.buildCounter]: SFX.playerParry,
+	[SFX.buildPin]: SFX.playerCharged,
+	[SFX.buildSlam]: SFX.enemyStun,
+	[SFX.buildSmash]: SFX.breakableBreak,
+	[SFX.buildBeam]: SFX.buildSpark,
 };
 
 /**

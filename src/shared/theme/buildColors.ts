@@ -3,9 +3,11 @@
  * validate.ts sits at Luau's 200-locals-per-function limit, so it imports nothing from here; variantColors.ts'
  * `variantColorProblems` (already called by validateManifest) folds this report's failures into its own.
  *
- * Every effect role (builds.ts BUILD_EFFECT_ROLES: spark, burst, shard, ember, overkill) is >= 3:1 (WCAG's graphics bar) on every
+ * Every effect role (builds.ts BUILD_EFFECT_ROLES: spark, burst, shard, ember, overkill, counter, overcap) is >= 3:1 (WCAG's graphics bar) on every
  * biome floor and >= MIN_DECOR_FX_BULLET_DIFFERENCE (40, CIE76) from every enemy-bullet role, `telegraph`, `enemyGoo`,
  * `enemyOutline` and every boost role: a player effect must never read as danger, and danger never as decoration.
+ * Then BUILD_APART_RULES (docs/BUILDS_V2.md BV10): the overcap points' gold is also >= 40 CIE76 from `newBest`, so an
+ * overcap pop never reads as a record.
  */
 
 import { colorDifference, contrastRatio, isHexColor } from "./color";
@@ -30,14 +32,30 @@ export const BUILD_COLOR_RULES: BuildColorRules = {
 	minDifference: MIN_DECOR_FX_BULLET_DIFFERENCE,
 };
 
+/** One role that must also read apart from a few colours outside BUILD_COLOR_RULES.against (buildReport's "apart"). */
+export interface BuildApartRule {
+	readonly role: ColorRole;
+	readonly from: ReadonlyArray<ColorRole>;
+	readonly minApart: number;
+}
+
+/**
+ * docs/BUILDS_V2.md BV10: the overcap pops are gold, like the new-best score number and floor shout; they must never
+ * read as a record (the decor fx bar, 40 CIE76). Checked after BUILD_COLOR_RULES' entries.
+ */
+export const BUILD_APART_RULES: ReadonlyArray<BuildApartRule> = [
+	{ role: "build.overcap", from: ["newBest"], minApart: MIN_DECOR_FX_BULLET_DIFFERENCE },
+];
+
 /**
  * One check of buildReport, per role in BUILD_COLOR_RULES.roles order: check "floor" (the role vs every biome's floor,
- * biomes in sorted order; `against` = the biome ID) then "difference" (the role vs every `against` colour, CIE76).
+ * biomes in sorted order; `against` = the biome ID) then "difference" (the role vs every `against` colour, CIE76);
+ * then, per BUILD_APART_RULES entry, check "apart" (the role vs every `from` colour, CIE76).
  * A role that is missing or not a hex colour is skipped (the colour-role check reports it).
  */
 export interface BuildColorEntry {
 	role: string;
-	check: "floor" | "difference";
+	check: "floor" | "difference" | "apart";
 	color: string;
 	against: string;
 	againstColor: string;
@@ -46,9 +64,29 @@ export interface BuildColorEntry {
 	ok: boolean;
 }
 
-/** Every check of BUILD_COLOR_RULES on `manifest` (see BuildColorEntry). */
+/** Every check of BUILD_COLOR_RULES, then BUILD_APART_RULES, on `manifest` (see BuildColorEntry). */
 export function buildReport(manifest: unknown): Array<BuildColorEntry> {
-	return floorAndDifferenceReport(manifest, BUILD_COLOR_RULES);
+	const out = floorAndDifferenceReport(manifest, BUILD_COLOR_RULES);
+	if (!isObj(manifest) || !isObj(manifest.colors)) {
+		return out;
+	}
+	const colors = manifest.colors;
+	for (const rule of BUILD_APART_RULES) {
+		const color = colors[rule.role];
+		if (!isHexColor(color)) {
+			continue;
+		}
+		for (const against of rule.from) {
+			const againstColor = colors[against];
+			if (!isHexColor(againstColor)) {
+				continue;
+			}
+			const value = colorDifference(color, againstColor);
+			const min = rule.minApart;
+			out.push({ role: rule.role, check: "apart", color, against, againstColor, value, min, ok: value >= min });
+		}
+	}
+	return out;
 }
 
 /**

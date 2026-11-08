@@ -22,7 +22,7 @@ import { PLACEHOLDER_VISUALS } from "./placeholders";
 import { COLOR_ROLES } from "./types";
 import { deepClone, sortedKeys, type Obj } from "./util";
 import { validateManifest } from "./validate";
-import { BUILD_COLOR_RULES, buildReport } from "./buildColors";
+import { BUILD_APART_RULES, BUILD_COLOR_RULES, buildReport } from "./buildColors";
 import {
 	BOON_BUILD_ROLES,
 	BUILD_AUDIO_IDS,
@@ -59,6 +59,12 @@ describe("builds: contract", () => {
 			"hud.toast.brace",
 			"hud.toast.braceHeal",
 			"fx.brace.text",
+			// docs/BUILDS_V2.md BV10
+			"hud.draft.duoHint",
+			"fx.counter.text",
+			"fx.pinned.text",
+			"fx.slam.text",
+			"hud.toast.happyHour",
 		]);
 		for (const k of BUILD_STRING_KEYS) expect([k, has(REQUIRED_STRING_KEYS, k)]).toEqual([k, true]);
 		expect(new Set(REQUIRED_STRING_KEYS).size()).toBe(REQUIRED_STRING_KEYS.size());
@@ -87,7 +93,8 @@ describe("builds: contract", () => {
 		expect(PLACEHOLDER_VISUALS["bullet.player.burst"].shape).toBe("Block");
 	});
 
-	it("appends the eleven build sounds to PORT_AUDIO_EVENTS: required, sfx, SILENT in the placeholder", () => {
+	it("appends the sixteen build sounds to PORT_AUDIO_EVENTS: required, sfx, SILENT in the placeholder", () => {
+		expect(BUILD_AUDIO_IDS.size()).toBe(16);
 		// right after new best's block (docs/DAILY.md DS10's rank layer two come after them)
 		const first = (PORT_AUDIO_EVENTS as ReadonlyArray<string>).indexOf("sfx.jingle.record") + 1;
 		const block = new Array<string>();
@@ -116,6 +123,13 @@ describe("builds: buildReport (BUD12)", () => {
 			...BOOST_ROLES,
 		]);
 		expect([BUILD_COLOR_RULES.minFloorContrast, BUILD_COLOR_RULES.minDifference]).toEqual([3, 40]);
+		// docs/BUILDS_V2.md BV10: the overcap gold also away from the new-best gold
+		expect(BUILD_APART_RULES.size()).toBe(1);
+		expect([BUILD_APART_RULES[0].role, [...BUILD_APART_RULES[0].from], BUILD_APART_RULES[0].minApart]).toEqual([
+			"build.overcap",
+			["newBest"],
+			40,
+		]);
 	});
 
 	it("passes for every bundled pack (and vale's textured floor), every check in the report (numbers printed)", () => {
@@ -123,10 +137,11 @@ describe("builds: buildReport (BUD12)", () => {
 		for (const [id, manifest] of packsToCheck()) {
 			const report = buildReport(manifest);
 			const count = (check: string) => report.filter((e) => e.check === check).size();
-			expect([id, count("floor"), count("difference")]).toEqual([
+			expect([id, count("floor"), count("difference"), count("apart")]).toEqual([
 				id,
 				rules.roles.size() * BIOMES.size(),
 				rules.roles.size() * rules.against.size(),
+				1,
 			]);
 			for (const e of report) {
 				expect([id, e.role, e.check, e.against, e.ok]).toEqual([id, e.role, e.check, e.against, true]);
@@ -159,5 +174,16 @@ describe("builds: buildReport (BUD12)", () => {
 		expect(validateManifest(dark).some((e) => e.find("must read on the floor", 1, true)[0] !== undefined)).toBe(
 			true,
 		);
+		// docs/BUILDS_V2.md BV10: an overcap gold that reads as the new-best gold fails (only that check)
+		const record = deepClone(PLACEHOLDER_MANIFEST) as unknown as Obj;
+		(record.colors as Obj)["build.overcap"] = (record.colors as Obj).newBest;
+		const apart = buildReport(record).filter((e) => !e.ok);
+		expect(apart.map((e) => [e.role, e.check, e.against])).toEqual([
+			["build.overcap", "difference", "boost.fury"],
+			["build.overcap", "apart", "newBest"],
+		]);
+		expect(
+			validateManifest(record).some((e) => e.find("never read as the new-best gold", 1, true)[0] !== undefined),
+		).toBe(true);
 	});
 });

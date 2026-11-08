@@ -187,10 +187,11 @@ describe("required IDs and strings", () => {
 		// + docs/TREASURE.md TR6: 4 port audio events (sfx.treasure.*, sfx.jingle.treasure), 3 treasure looks.
 		// + docs/FORTUNE.md FD9: 1 enemy archetype (enemy.golden). + FO6: 8 port audio events (sfx.pact.take,
 		// sfx.horde.*, sfx.golden.*), the pact altar. + docs/LEGENDARIES.md LG5: 2 port audio events (sfx.build.overkill,
-		// sfx.build.brace).
-		expect(REQUIRED_ASSET_IDS.size()).toBe(
-			60 + 1 + 2 + 2 + 37 + 5 + 4 + 2 + 1 + 5 + 2 + 4 + 9 + 2 + 1 + 5 + 1 + 6 + 3 + 2 + 2 + 4 + 3 + 1 + 8 + 1 + 2,
-		);
+		// sfx.build.brace). + docs/BUILDS_V2.md BV10: 5 port audio events (sfx.build.counter / .pin / .slam / .smash /
+		// .beam).
+		const assetsBefore =
+			60 + 1 + 2 + 2 + 37 + 5 + 4 + 2 + 1 + 5 + 2 + 4 + 9 + 2 + 1 + 5 + 1 + 6 + 3 + 2 + 2 + 4 + 3 + 1 + 8 + 1 + 2;
+		expect(REQUIRED_ASSET_IDS.size()).toBe(assetsBefore + 5);
 		expect(AUDIO_EVENTS.size()).toBe(20);
 		expect(new Set(REQUIRED_ASSET_IDS).size()).toBe(REQUIRED_ASSET_IDS.size());
 		for (const id of REQUIRED_ASSET_IDS) {
@@ -218,7 +219,9 @@ describe("required IDs and strings", () => {
 		const before =
 			41 + 1 + 2 + 4 * 3 + 1 + 3 + 5 + 13 + 10 + 8 + 2 + 2 + 4 + 7 + 17 + 7 + 3 + 64 + 22 + 52 + 5 + 5 + 2 + 1;
 		// + docs/GAMEPAD_MENUS.md GM7 / GM9: GAMEPAD_MENU_STRING_KEYS (16 pad.hint.*, options.controls.vibration)
-		expect(REQUIRED_STRING_KEYS.size()).toBe(before + 28 + 1 + 1 + 4 + 16 + 1 + 19 + 1 + 1 + 3 + 18 + 17);
+		// + docs/BUILDS_V2.md BV10: 5 BUILD_STRING_KEYS (hud.draft.duoHint, fx.counter / .pinned / .slam.text,
+		// hud.toast.happyHour)
+		expect(REQUIRED_STRING_KEYS.size()).toBe(before + 28 + 1 + 1 + 4 + 16 + 1 + 19 + 1 + 1 + 3 + 18 + 17 + 5);
 		expect(new Set(REQUIRED_STRING_KEYS).size()).toBe(REQUIRED_STRING_KEYS.size());
 		expect(BIOMES.map((b) => b.forgeTheme)).toEqual(["ancient", "molten", "frost", "grim", "verdant"]);
 	});

@@ -26,8 +26,12 @@ cannot see it happen, it is not in this plan.**
 
 ## Status (2026-11-07)
 
-**BV0-BV1 built** (the audit, "BV0 findings"; the data and scaffolding, "BV1 (as built)": every index, tunable, hashed
-field, event list and placeholder string declared, no rule yet). The six owner calls of the proposal are settled
+**BV0-BV10 built** (on branch `builds-v2`): the audit ("BV0 findings"), the data and scaffolding ("BV1 (as built)"),
+the rules (Riposte and Counterstrike BV2, Ballista BV3, Siege Bolt BV4, Wrecker and Demolition BV5, the wave 1 duos BV6,
+Full Heart and Happy Hour BV7), the duo hint (BV8), overcap points (BV9) and the theme (BV10: colour roles, strings,
+audio IDs; plus the wave 1 integration spec), each in its "BVn (as built)" section. **Open:** BV11 (view), BV12
+(tuning), BV13 (art, audio, Studio check, playtest). The full suite (`npm run verify`) on the merged branch is pending
+the integrator's run; each task ran its targeted specs (listed in its section). The six owner calls of the proposal are settled
 ("Owner calls"); this plan turns them into tasks BV0-BV13 and decisions BVD1-BVD20; the owner settled BVD3 and
 BVD13-BVD15 on review (2026-11-07), the rest are defaults. Follows docs/BUILDS.md (BU0-BU10 built,
 BU11-BU14 open) and docs/LEGENDARIES.md (LG0-LG7 built, LG8-LG9 open). The proposal's advice to land after BU14 stands
@@ -969,6 +973,106 @@ Gameplay (score), builds runs only.
   new padding: `builds.spec` (the score group's padding, 16 sources), `evolutions.spec` (Jackpot's run), `golden/
   payouts.spec`, `pacts/pacts.spec`, `pellets/pellets.spec`, `score/score.spec` (the subset table, the treasure
   gate), `treasure/treasure.spec`, `view/hud/hud.spec` (16 keys, the Overcap row).
+
+## BV10 (as built)
+
+Theme, l10n and audio registration (presentation only: no sim, hash, replay or fixture change; nothing draws or plays
+any of it yet, BV11), plus one integration spec. Paths under `src/shared/` unless noted.
+
+- **Colour roles** `build.counter` `#00ff8c` (Riposte's wave: a spring green) and `build.overcap` `#fff0b0` (the
+  overcap pops: a pale gold), in `theme/types.ts` `COLOR_ROLES` after `build.overkill` (so required) and appended to
+  `theme/builds.ts` `BUILD_EFFECT_ROLES`, so `buildReport` holds both to BUD12's bars (and `pelletReport` keeps the
+  pellets away from them). New in `theme/buildColors.ts`: `BUILD_APART_RULES` (`build.overcap` >= 40 CIE76 from
+  `newBest`, the decor fx bar), reported as `buildReport` entries with check `"apart"` after the floor / difference
+  ones; `variantColors.ts`' `WHY.build.apart` words the failure ("the overcap points' gold must never read as the
+  new-best gold (a pop is not a record)"). Placeholder pack only; vale clones the placeholder's colours, so the same
+  hexes there. Measured by `buildReport` (printed by `theme/builds.spec.ts`; identical in placeholder, vale and vale's
+  textured floor but for the floor contrast):
+
+  | Against | `build.counter` | `build.overcap` |
+  |---|---|---|
+  | `boost.frenzy` | **42.9** (nearest) | 60.2 |
+  | `boost.quickstep` | 49.5 | 56.7 |
+  | `boost.fury` | 87.7 | **42.5** (nearest) |
+  | `telegraph` | 116.8 | 56.4 |
+  | `boost.aegis` | 132.3 | 82.8 |
+  | `enemyOutline` | 150.2 | 87.0 |
+  | `enemyBullet` | 163.7 | 99.2 |
+  | `enemyBulletOutline` | 126.8 | 98.3 |
+  | `enemyGoo` | 198.2 | 139.0 |
+  | `newBest` (apart, overcap only) | | 54.9 |
+  | lowest biome floor contrast | 10.93:1 (biome.3) | 12.79:1 (biome.3) |
+  | vale's textured floor | 13.37:1 | 15.64:1 |
+
+  How they were picked (a grid search over sRGB with the bars above, the pellet yellow's 40 and >= 3:1 on every floor):
+  - **The overcap gold has to be pale.** Every saturated gold sits within 40 CIE76 of `boost.fury` (`#ffc83d`; the
+    new-best gold itself is 17.7 from it); the golds that pass are either dark bronzes (about 3:1 on the floors, too
+    dim for a small number) or pale golds with chroma <= ~37. `#fff0b0` keeps 42.5 from Fury and 54.9 from `newBest`.
+    Not checked but measured: it is the family of the pale golds already in use, 3.5 from `nearMiss.parry`, 3.6 from
+    `boon.evolved` (a card frame), 6.1 from `build.ember`, 10.5 from `build.overkill`; 28.5 above the kill pops'
+    `uiAccent` (`#c9a45c`), 37.6 from the Jackpot pops' `boon.legendary`, 34.0 from `golden.coin`. BV11 should tell the
+    pops apart by their small size and rise (as LG5 said of the streak vs the burst). A changed `newBest` now also has to
+    keep the 40 (`newBest.spec`'s `#ffd75e` case shows the second error).
+  - **The counter wave is the one hue left at full brightness.** Every light colour that clears the danger, boost and
+    pellet bars sits within ~30 of an existing player colour (the pale golds, the sky / ice blues, the violet-white);
+    the spring greens are the exception: `#00ff8c` is >= 63 from every build role, `nearMiss.*`, `playerOutline` and
+    `boon.duo`. Not checked but measured: 29.7 from `affix.swift` (`#3ce0a0`, the Swift elite's floor ring): the wave is
+    a crescent leaving the player, the affix a ring under an enemy. Mint whites (`#a0ffc0`) fail Quickstep (24.7).
+- **Strings** (placeholder pack; `theme/builds.ts` `BUILD_STRING_KEYS` appended, written out in `contract.ts`
+  `REQUIRED_STRING_KEYS` right after `fx.brace.text`): `hud.draft.duoHint` (BV8's, now required), `fx.counter.text`
+  "COUNTER x{n}" (`{n}` the bullets the guard erased), `fx.pinned.text` "PINNED", `fx.slam.text` "SLAM" (floor texts,
+  capitals in the strings, never upper-cased in code), `hud.toast.happyHour` "Happy Hour: double kill points".
+  `score.source.overcap` (BV9's) stays a score-source string like `score.source.jackpot` / `.treasure` / `.pellets`:
+  checked by shared/view/hud `SCORE_SOURCE_KEYS` (`hud.spec`), not in `REQUIRED_STRING_KEYS` (the treasure / pellet
+  precedent). New `l10n/context.json` entries for the four new keys (`fx.counter.text` max 13 with an example, like
+  `fx.parry.count`; the floor words max 10; the toast max 40); BV8 / BV9 already added `hud.draft.duoHint` and
+  `score.source.overcap`. The generated locale tables are untouched (English fallback, LD7).
+- **Audio** (port audio IDs, `theme/builds.ts` `BUILD_AUDIO_IDS`' last five, `contract.ts` `PORT_AUDIO_EVENTS` right
+  after `sfx.build.brace`, so the build block stays one run): `sfx.build.counter`, `.pin`, `.slam`, `.smash`, `.beam`,
+  SILENT in the placeholder; vale has no layout entry for them, so it keeps the placeholder's SILENT (its manifest
+  switches a sound on only once every file has an ID). `view/audio/cues.ts`: `SFX.buildCounter` .. `SFX.buildBeam` in
+  `ALL_SFX` and `PORT_SFX`; registered only (no cue mapping, not in `BUILD_VOICE_SFX`: BV11 decides). Tables:
+
+  | ID | `SFX_FALLBACK` (one step) | Why | Rank | Interval |
+  |---|---|---|---|---|
+  | `sfx.build.counter` | `sfx.player.parry` | the counter answers the guard's parry | 58 (over the parry 57, under the brace 60) | 0.15 s |
+  | `sfx.build.pin` | `sfx.player.charged` | the heavy arrow's own sound (the bow's full-charge ping) | 53 (with the Overkill streak, under the swing 54) | 0.1 s |
+  | `sfx.build.slam` | `sfx.enemy.stun` | a Charger hitting a wall: a body slammed into a wall | 59 | 0.15 s |
+  | `sfx.build.smash` | `sfx.breakable.break` | the piece breaking | 49 (over the burst 48, under the spark 51) | 0.06 s (a chain climbs like the sparks) |
+  | `sfx.build.beam` | `sfx.build.spark` | a line of light, like the spark's zap | 53 | 0.1 s |
+
+  In the placeholder every target is silent too (no sound); vale has clips for the parry, the charge, the stun and the
+  break, not yet for the spark (BU12), so a beam is silent there until its own clip or the spark's.
+- **Luau locals.** No top-level constant added to `contract.ts` (list entries only): `contract.luau` / `validate.luau`
+  at 186 / 197 of Luau's 200 top-level locals (counted on out/ after the build: `local function` = 1, `local a, b =
+  ...` = one per name), unchanged.
+- **Integration spec** `sim/builds/wave1.spec.ts` (new). Scenario 1: three players on siege.spec's walled-floor
+  construction (three pillars, 28 barrels / crates in four rows, 20 bruisers / snipers / swarmers / chasers and six
+  stationary 10-hp bodies on the archer's lanes), every wave 1 boon at III and every wave 1 duo granted through
+  `grantCard`: player 0 (sword) Riposte III + Chain Spark + Composure + Bastion with Thunder Guard / Stillwater / Rebuke,
+  guarding into a 10-bullet volley every 70 ticks (armor emptied every other one) and swinging; player 1 (bow) Ballista
+  III + Ember Wake + Hearty + Sharpened + Bastion + Riposte with Dragon Bolt / Full Heart / Rebuke, 30-tick charged shots
+  on six lanes 14.5 tiles from the east wall, every fourth cycle a roll through a 12-bullet volley with armor 0; player 2
+  (sword) Wrecker III + Volatile + Soul Shards + Deep Flask + Bounty with Powder Keg / Happy Hour, walking and rolling
+  through the crate rows, swinging, two drinks. 720 ticks, players kept unhurt by i-frames. Two runs hash the same every
+  tick; every tick each player's live effect bullets stay <= `effectBulletsMax`, the live player bullets <= the pool,
+  carrying pins <= `SIEGE_PINS_MAX` and waves <= `RIPOSTE_WAVES_MAX`; nothing throws. Measured: 9 Counterstrike rings,
+  1 Rebuke ring, 14 Thunder Guard sparks, 11 Ballista back fans, 7 pins, 5 slams, 18 smashes and 18 Demolition blasts
+  (all 28 pieces broken), 11 Full Heart beams, both Happy Hour drinks, 22 kills, at most 68 effect bullets per player,
+  0 dropped. Scenario 2: two players and a capped boss (Mother Mayhem in her final phase, 100,000 hp) in an open arena,
+  a Counterstrike guard into a volley every 70 ticks and Siege Bolt heavy arrows aimed at the boss, 480 ticks: two runs
+  hash the same every tick, 97 overcap payouts, 7 rings, no pin (a boss never pins; no wall, so no burst). No bug found
+  in the merged rules. Both scenarios run in about 9 s headless.
+- **Specs updated.** `theme/builds.spec.ts` (the fifteen string keys, sixteen sounds, `BUILD_APART_RULES`, the apart
+  count per pack, an overcap gold equal to `newBest` failing Fury's difference and the apart check), `theme/contract.spec.ts`
+  (required assets + 5, strings + 5), `theme/audio.spec.ts` (the port list), `theme/newBest.spec.ts` (the plan's
+  `#ffd75e` case now also trips the overcap apart check), `view/audio/buildCues.spec.ts` (the sixteen IDs; the five new
+  ranked, timed, never a jingle / duck, not under the voice cap, their fallbacks and ranks),
+  `view/hud/dailyRankStrings.spec.ts` (the rank layer's two now follow `sfx.build.beam`).
+- **Verify.** typecheck, lint, build, `check:assets`, `check:autolocalize`, `test:l10n` (36 pass) and `l10n:check` (0
+  errors, 0 warnings) green. Headless (Lune): every spec under `shared/theme` (644), `view/hud` (524), `view/audio`
+  (195), `view/fx` (410), `shared/l10n`, `shared/tutorial`, `play/bindings`, and `sim/builds/` (the new spec among
+  them) pass. Not run here: the full `npm run verify` (the integrator's).
 
 ## Appendix: the proposal (2026-11-05)
 

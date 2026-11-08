@@ -87,10 +87,18 @@ describe("new best: validator", () => {
 	it("the plan's starting gold #ffd75e sits too close to ember (why the placeholder moved it)", () => {
 		const ember = PLACEHOLDER_MANIFEST.colors.ember;
 		expect(colorDifference("#ffd75e", ember)).toBeLessThan(RULES.minApart);
-		expect(errorsWith("newBest", "#ffd75e")).toEqual([
+		const errors = errorsWith("newBest", "#ffd75e");
+		expect(errors.filter((e) => e.find("colors.newBest:", 1, true)[0] === 1)).toEqual([
 			`colors.newBest: colour difference: newBest #ffd75e vs ember ${ember} is ${fixed1(
 				colorDifference("#ffd75e", ember),
 			)} (CIE76), needs >= 25.0: the new-best gold must read apart from ember and every combo tier`,
+		]);
+		// docs/BUILDS_V2.md BV10: that paler gold would also sit within 40 CIE76 of the overcap pops' gold (buildReport)
+		const overcap = PLACEHOLDER_MANIFEST.colors["build.overcap"];
+		expect(errors.filter((e) => e.find("colors.newBest:", 1, true)[0] !== 1)).toEqual([
+			`colors["build.overcap"]: colour difference: build.overcap ${overcap} vs newBest #ffd75e is ${fixed1(
+				colorDifference(overcap, "#ffd75e"),
+			)} (CIE76), needs >= 40.0: the overcap points' gold must never read as the new-best gold (a pop is not a record)`,
 		]);
 	});
 

@@ -954,6 +954,40 @@ Decision log (deviations from `PLAN.md`):
   `[Pace]` line every `ARRIVAL_LOG.windowSec` (10 s): batch gaps p50 / p95 / max, sizes, the pacer's numbers, the leads
   and misses, render fps. Spec harness: paced at 60 fps over 20-120 ms, 99.7 % of frames step one tick (unpaced 0 %).
   Studio check, FP0 (a measured real session) and FP6 (playtest) pending; FP7 optional.
+- **Builds v2, wave 1 (docs/BUILDS_V2.md).** Gameplay, opt-in `SimConfig.builds` (endless only). Three boons appended
+  to `BOONS` (`Boon.RIPOSTE` 17 rare, `BALLISTA` 18 rare, `WRECKER` 19 common; `BOON_COUNT` 20, `CLASSIC_BOON_COUNT`
+  stays 12, so the tutorial's draft is unchanged; evolutions Counterstrike / Siege Bolt / Demolition) and seven duos
+  appended to `DUOS` (Thunder Guard, Stillwater, Rebuke (Bastion + Riposte), Dragon Bolt, Powder Keg, Full Heart, Happy
+  Hour: indices 13-19, card ids 77-83); `BuildEffect.BALLISTA` / `WRECKER` / `RIPOSTE` 9-11, `ProcKind` { `KILL` 0,
+  `SMASH` 1 }, `BreakableSource.ROLL` 4 / `BUILD` 5 (scored like a swing, BVD12), `ScoreSource.OVERCAP` 15 (builds runs
+  only: `addOvercapScoreSources` pads every earlier gated source, so every builds run holds 16 sources; a scored run
+  without builds keeps its sources and hash). Hashed fields appended to the `builds` group: per player `riposteCount`,
+  `overcap`, `happyHourTicks`, `rebukePending`; `BuildProc.kind`; then `pins` (`BuildPin`), `waves` (`BuildWave` with
+  its `hits` ids) and the world scalars `stillCombo` / `stillTick` (`clearBuildProcs` clears pins and waves, the
+  Stillwater record and every `riposteCount` / `rebukePending` at the floor change). Riposte: a guard that runs its full
+  length (BVD3; a roll or a swap discards the count) sends a counter-wave, an expanding hashed sweep (BVD1: no bullet
+  slot or arc row, each enemy once, `stepWaves` first in `stepBuilds`), Counterstrike's ring + shard returns at 5
+  erased. Ballista: a heavy arrow bursts on its last pierce (a ring on the struck enemy's hit circle) or a wall /
+  unbroken piece (a back fan), `bowChargeTicks` through `RunMods.ballistaChargePercent` (27 ticks at II-III); Siege
+  Bolt pins the first enemy it hits and does not kill (never a boss, the Goldling, a reviver or the dummy; one pin per
+  arrow, BVD6), drags it in a new `stepCombat` phase 5b with `moveActor`, holds its AI through a transient pinned mask
+  (`SimCtx.pinMask`, rebuilt from `state.builds.pins` at the start of `stepActors`, never hashed), plows without
+  spending pierce while it carries (BVD7) and slams it into a wall (300 %, a shockwave, pieces broken as `BUILD`).
+  Wrecker: the roll smashes pieces before its move (`rollSmashBreakables`), `damageBreakable` takes an owner and a gen,
+  and every piece the owner breaks queues a smash proc (splinters, the combo refill; Demolition's blast chains piece by
+  piece up to `GEN_MAX`; Powder Keg fires the on-kill boons from it). Overcap: the damage a boss's cap drops pays
+  `OVERCAP_POINTS` into OVERCAP at the kills' floor scaling (`buildsOnOvercap` in `damageActor`, combo-neutral). Port arc
+  rows 6 / 10 @ FULL_RING and 6 / 10 @ 1.6 (`combat/arcTablePort.ts`). Feed: unhashed `BuildEvents` (`wave*`,
+  `ballista*`, `pinStart*` / `pinEnd*`, `slam*`, `smash*`, `demolition*`, `beam*`, `happyPlayer`, `overcap*`, Thunder
+  Guard sparks as `SparkFork.THUNDER`). Duo hint (BV8, presentation): `duoUnlockedBy` / `draftDuoHint` on New cards.
+  Theme (BV10): colour roles `build.counter` `#00ff8c` / `build.overcap` `#fff0b0` (`buildReport`; the overcap gold also
+  >= 40 CIE76 from `newBest`, `BUILD_APART_RULES`), strings `hud.draft.duoHint`, `fx.counter.text` / `fx.pinned.text` /
+  `fx.slam.text`, `hud.toast.happyHour` (`BUILD_STRING_KEYS`) and `score.source.overcap`, port audio IDs
+  `sfx.build.counter` / `.pin` / `.slam` / `.smash` / `.beam` (SILENT in the placeholder, `SFX_FALLBACK` to the parry,
+  the bow's full charge, a Charger's wall stun, the breakable break, the spark); `contract.luau` / `validate.luau` stay
+  186 / 197. `DAILY.ruleset` 11 -> 12. M1, every golden fixture and the tutorial replay exactly as before; endless
+  replays and scores changed (boards stay `_v1`). View (BV11), tuning (BV12), art / audio and the Studio check (BV13)
+  pending.
 
 ## Commands
 

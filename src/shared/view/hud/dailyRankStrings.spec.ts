@@ -75,11 +75,11 @@ describe("the daily rank layer's strings and sounds", () => {
 	});
 
 	it("append sfx.rank.up and sfx.friend.passed to the port's audio IDs, silent in the placeholder", () => {
-		// after the build sounds (the legendaries' brace last, docs/LEGENDARIES.md LG5); later features append after them
+		// after the build sounds (builds v2's beam last, docs/BUILDS_V2.md BV10); later features append after them
 		// (docs/BREAKABLE_DROPS.md BL5)
 		const n = (PORT_AUDIO_EVENTS as ReadonlyArray<string>).indexOf("sfx.friend.passed") + 1;
 		expect([PORT_AUDIO_EVENTS[n - 3], PORT_AUDIO_EVENTS[n - 2], PORT_AUDIO_EVENTS[n - 1]]).toEqual([
-			"sfx.build.brace",
+			"sfx.build.beam",
 			"sfx.rank.up",
 			"sfx.friend.passed",
 		]);

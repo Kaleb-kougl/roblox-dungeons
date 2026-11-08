@@ -1229,6 +1229,13 @@
 		"note": "Text written on the floor beside the player when the Bastion boon \"braces\": a guard (the sword's block) or a roll stopped 8 bullets and restored an armor pip (or, with the Stone Heart duo, healed). ALL CAPS, one word, like the parry flash (fx.parry.text); keep capitals if the script has them.",
 		"max": 10
 	},
+	"fx.counter.text": {
+		"note": "Text written on the floor beside the player when the Riposte boon's counter fires: a guard (the sword's block) that ran its full length sends back a wave of light; {n} is the number of enemy bullets the guard erased (the wave's damage); the x means \"times\". ALL CAPS, like the parry flash (fx.parry.text); keep capitals if the script has them.",
+		"max": 13,
+		"example": {
+			"n": 4
+		}
+	},
 	"fx.golden.escaped": {
 		"note": "Short line written where the Goldling vanished when it escapes before being caught. {points} is a number: the coins (points) already won from hitting it, which the player keeps. The two spaces before the plus are a visual gap; keep them or use the language's equivalent.",
 		"max": 36,
@@ -1269,6 +1276,10 @@
 	},
 	"fx.parry.text": {
 		"note": "Flash written on the floor when the player parries (blocks bullets with a well-timed guard). ALL CAPS exclamation, one word; keep capitals if the script has them. The game may append \" x5\" (fx.parry.count) after it.",
+		"max": 10
+	},
+	"fx.pinned.text": {
+		"note": "Text written on the floor while a charged arrow (the Siege Bolt boon) carries an enemy it hit along with it. ALL CAPS, one word, like the parry flash (fx.parry.text); keep capitals if the script has them.",
 		"max": 10
 	},
 	"fx.settings.close": {
@@ -1360,6 +1371,10 @@
 	},
 	"fx.settings.title": {
 		"note": "Title of the visual-effects settings panel. \"Juice\" is game-design slang for screen shake, flashes, particles and similar feedback effects; translate the idea (\"Effects\", \"Game feel\") rather than the fruit. Same term as options.tab.juice."
+	},
+	"fx.slam.text": {
+		"note": "Text written on the floor when a charged arrow (the Siege Bolt boon) that carried an enemy slams it into a wall, with a shockwave. ALL CAPS, one word, like the parry flash (fx.parry.text); keep capitals if the script has them.",
+		"max": 10
 	},
 	"game.title": {
 		"note": "The game's title, shown large on the main menu header and in the run info line of the pause menu. Keep \"Roblox Dungeons\" exactly as written (the brand: never translate or transliterate any part of it)."
@@ -1994,6 +2009,10 @@
 		"example": {
 			"amount": 1
 		}
+	},
+	"hud.toast.happyHour": {
+		"note": "Toast (top centre) when a player with the Happy Hour duo (Deep Flask + Bounty) drinks a flask: for the next 5 seconds their kills score double points. \"Happy Hour\" is the duo's name (duo.happyHour.name); keep it as translated there.",
+		"max": 40
 	},
 	"hud.toast.relic": {
 		"note": "Toast (top centre) after picking up a relic (a permanent item for this run). {name} is the relic's name.",

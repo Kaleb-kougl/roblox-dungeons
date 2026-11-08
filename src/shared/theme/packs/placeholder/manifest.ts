@@ -206,6 +206,15 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		// vale's textured floor (buildReport, printed by theme/builds.spec.ts). It sits near the apricot burst (10.4): the
 		// streak is a straight line, the burst a ring of bolts.
 		"build.overkill": "#ffe0b0",
+		// docs/BUILDS_V2.md BV10: Riposte's counter-wave, a spring green (the one hue the danger, boost and pellet colours
+		// leave >= 40 CIE76 clear at full brightness: nearest frenzy 42.9, quickstep 49.5; 29.7 from affix.swift, not
+		// checked, the wave is a crescent from the player, the affix a ring under an enemy); then the overcap pops' pale gold
+		// (a richer gold sits within 40 of Fury: nearest fury 42.5, newBest 54.9 (BUILD_APART_RULES), telegraph 56.4; it
+		// sits beside the pale golds already in use, parry 3.5, boon.evolved 3.6, build.ember 6.1, and 28.5 above the kill
+		// pops' uiAccent). Both >= 10.9:1 on every biome floor and vale's textured floor (buildReport, printed by
+		// theme/builds.spec.ts).
+		"build.counter": "#00ff8c",
+		"build.overcap": "#fff0b0",
 		// Roblox port (docs/PELLETS.md PL6, PD3; yellow by the owner, 2026-11-03): the pellets are Pac-Man yellow, the power
 		// pellet the same yellow (it reads by its size, pulse and glow). >= 40 CIE76 from the enemy bullet (82), its
 		// outline, the telegraph (76), every build effect colour (nearest build.ember 63) and the player outline; >= 30 from
@@ -463,6 +472,14 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		// spark and the Aegis pip's break: shared/view/audio SFX_FALLBACK)
 		"sfx.build.overkill": SILENT,
 		"sfx.build.brace": SILENT,
+		// docs/BUILDS_V2.md BV10: Riposte's counter-wave, Siege Bolt's pin and slam, a Wrecker smash, Full Heart's beam
+		// (BV13 picks them; while silent they fall back to the parry, the bow's full charge, a Charger's wall stun, the
+		// breakable break and the spark: shared/view/audio SFX_FALLBACK)
+		"sfx.build.counter": SILENT,
+		"sfx.build.pin": SILENT,
+		"sfx.build.slam": SILENT,
+		"sfx.build.smash": SILENT,
+		"sfx.build.beam": SILENT,
 		// Roblox port (docs/DAILY.md DS10): a daily run's rank threshold sting and a friend passed; silent until the vale
 		// pack's clips are auditioned, built and uploaded (DS12)
 		"sfx.rank.up": SILENT,
@@ -925,6 +942,8 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		// docs/LEGENDARIES.md LG5 (BUILD_STRING_KEYS): Bastion's brace restored a pip / (Stone Heart) healed instead
 		"hud.toast.brace": "Braced: +1 armor",
 		"hud.toast.braceHeal": "Braced: healed",
+		// docs/BUILDS_V2.md BV10 (BUILD_STRING_KEYS): Happy Hour's toast after a drink (the duo's 5 s of doubled kill points)
+		"hud.toast.happyHour": "Happy Hour: double kill points",
 		// Item tooltips (docs/ITEM_TOOLTIPS.md IT3; shared/view/hud TOOLTIP_STRINGS): the tooltip's kind lines, its Next /
 		// evolution / duo recipe / time-left lines, the "+N" cell's count, the Build list's sections, the upright pause
 		// panel's Build / Map toggle.
@@ -1351,6 +1370,11 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"fx.parry.syncCount": "SYNC x{n}",
 		// docs/LEGENDARIES.md LG5: Bastion's brace, written on the floor (the combo shout's construction)
 		"fx.brace.text": "BRACED",
+		// docs/BUILDS_V2.md BV10: Riposte's counter ({n} = the bullets the guard erased), Siege Bolt's pin and its slam,
+		// written on the floor (the combo shout's construction)
+		"fx.counter.text": "COUNTER x{n}",
+		"fx.pinned.text": "PINNED",
+		"fx.slam.text": "SLAM",
 		// --- affix.* / bestiary.* (docs/ENEMY_VARIANTS.md EV1: the affix name chips and the first-sighting toasts) -----
 		"affix.hulking.name": "Hulking",
 		"affix.swift.name": "Swift",

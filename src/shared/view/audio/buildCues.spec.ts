@@ -212,7 +212,7 @@ function frame(m: AudioCueMapper, now: number, builds: BuildFxFrameSource, me = 
 const ids = (out: AudioCueList) => out.toIds();
 
 describe("build cues: the IDs", () => {
-	it("the eleven IDs are the theme's build sounds, ranked, timed, never a jingle / duck (BU8's nine: no fallback)", () => {
+	it("the sixteen IDs are the theme's build sounds, ranked, timed, never a jingle / duck (BU8's nine: no fallback)", () => {
 		const build = [
 			SFX.buildSpark,
 			SFX.buildBurst,
@@ -226,7 +226,9 @@ describe("build cues: the IDs", () => {
 		];
 		// docs/LEGENDARIES.md LG5: the legendaries' two close the list; they have a fallback (checked below)
 		const legendary = [SFX.buildOverkill, SFX.buildBrace];
-		expect([...build, ...legendary]).toEqual([...BUILD_AUDIO_IDS]);
+		// docs/BUILDS_V2.md BV10: builds v2, wave 1's five after them, each with a fallback (checked below)
+		const wave1 = [SFX.buildCounter, SFX.buildPin, SFX.buildSlam, SFX.buildSmash, SFX.buildBeam];
+		expect([...build, ...legendary, ...wave1]).toEqual([...BUILD_AUDIO_IDS]);
 		for (const id of build) {
 			expect([
 				id,
@@ -240,7 +242,7 @@ describe("build cues: the IDs", () => {
 				SFX_FALLBACK[id],
 			]).toEqual([id, true, true, true, true, true, false, false, undefined]);
 		}
-		for (const id of legendary) {
+		for (const id of [...legendary, ...wave1]) {
 			expect([
 				id,
 				PORT_AUDIO_EVENTS.includes(id),
@@ -257,6 +259,23 @@ describe("build cues: the IDs", () => {
 			SFX.buildSpark,
 			SFX.boostAegisBreak,
 		]);
+		// BV10: the counter the parry, the pin the bow's full charge, the slam a Charger's wall stun, a smash the breakable
+		// break, the beam the spark; one step each (no target has a fallback of its own but the parry, GP6's deflect).
+		expect(wave1.map((id) => SFX_FALLBACK[id])).toEqual([
+			SFX.playerParry,
+			SFX.playerCharged,
+			SFX.enemyStun,
+			SFX.breakableBreak,
+			SFX.buildSpark,
+		]);
+		for (const id of wave1) expect([id, BUILD_VOICE_SFX.includes(id)]).toEqual([id, false]);
+		// The counter and the slam over the parry, under the brace and the hurt; a smash under the spark (a cascade).
+		expect(SFX_PRIORITY[SFX.buildCounter] > SFX_PRIORITY[SFX.playerParry]).toBe(true);
+		expect(SFX_PRIORITY[SFX.buildSlam] > SFX_PRIORITY[SFX.playerParry]).toBe(true);
+		expect(SFX_PRIORITY[SFX.buildSlam] < SFX_PRIORITY[SFX.buildBrace]).toBe(true);
+		expect(SFX_PRIORITY[SFX.buildCounter] < SFX_PRIORITY[SFX.playerHurt]).toBe(true);
+		expect(SFX_PRIORITY[SFX.buildSmash] < SFX_PRIORITY[SFX.buildSpark]).toBe(true);
+		expect(SFX_PRIORITY[SFX.buildPin] < SFX_PRIORITY[SFX.playerSwing]).toBe(true);
 		// The streak is a cascade sound (over the spark, under the swing); the brace under the hurt and the Aegis break.
 		expect(SFX_PRIORITY[SFX.buildOverkill] > SFX_PRIORITY[SFX.buildSpark]).toBe(true);
 		expect(SFX_PRIORITY[SFX.buildOverkill] < SFX_PRIORITY[SFX.playerSwing]).toBe(true);
