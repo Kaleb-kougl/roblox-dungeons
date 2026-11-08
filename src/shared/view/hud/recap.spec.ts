@@ -9,6 +9,7 @@
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { TileType, type Dungeon } from "shared/dungeon";
 import { SCORE_SOURCE_COUNT, ScoreSource } from "shared/sim";
+import { NO_RECAP_TALLY } from "shared/view/fx";
 import {
 	RECAP,
 	RECAP_HIGHLIGHTS,
@@ -59,7 +60,7 @@ function input(patch: Partial<RunRecapInput> = {}): RunRecapInput {
 		roomsUncleared: 0,
 		baseline: KNOWN,
 		records: NO_RECORD,
-		tally: { parries: [], grazes: [] },
+		tally: { ...NO_RECAP_TALLY, parries: [], grazes: [] },
 		...patch,
 	};
 }
@@ -258,7 +259,7 @@ describe("pickHighlights", () => {
 					counts: sources({ [ScoreSource.BOSS]: 3, [ScoreSource.PERFECT]: 7, [ScoreSource.ROOMS]: 11 }),
 				},
 				builds: { duos: 2, evolutions: 3 },
-				tally: { parries: [14], grazes: [0] },
+				tally: { ...NO_RECAP_TALLY, parries: [14], grazes: [0] },
 			}),
 		);
 		expect(ids(h)).toEqual(["bossNoHit", "combo", "perfect", "duos"]);
@@ -315,10 +316,10 @@ describe("pickHighlights", () => {
 		expect(one(sc(10, { [ScoreSource.PERFECT]: 2, [ScoreSource.ROOMS]: 10 }))).toBe("kills");
 		expect(one(sc(10, { [ScoreSource.PERFECT]: 2, [ScoreSource.ROOMS]: 4 }))).toBe("perfect");
 		expect(one(sc(10, { [ScoreSource.PERFECT]: 1, [ScoreSource.ROOMS]: 3 }))).toBe("kills");
-		expect([one({ tally: { parries: [4], grazes: [] } }), one({ tally: { parries: [5], grazes: [] } })]).toEqual([
-			"kills",
-			"parries",
-		]);
+		expect([
+			one({ tally: { ...NO_RECAP_TALLY, parries: [4], grazes: [] } }),
+			one({ tally: { ...NO_RECAP_TALLY, parries: [5], grazes: [] } }),
+		]).toEqual(["kills", "parries"]);
 		expect([one(sc(10, { [ScoreSource.GRAZES]: 49 })), one(sc(10, { [ScoreSource.GRAZES]: 50 }))]).toEqual([
 			"kills",
 			"grazes",
@@ -367,7 +368,7 @@ describe("pickHighlights", () => {
 					points: sources({}),
 					counts: sources({ [ScoreSource.PERFECT]: 4, [ScoreSource.ROOMS]: 5, [ScoreSource.GRAZES]: 500 }),
 				},
-				tally: { parries: [40, 6], grazes: [450, 50] },
+				tally: { ...NO_RECAP_TALLY, parries: [40, 6], grazes: [450, 50] },
 				team: { teamPerfects: 4, bestTeamStreak: 3, syncParries: 2 },
 			}),
 		);
@@ -375,7 +376,12 @@ describe("pickHighlights", () => {
 		expect([h[0].scope, h[1].scope, h[2].scope, h[3].scope]).toEqual(["team", undefined, undefined, "you"]);
 		expect([h[1].key, h[3].value]).toEqual([RECAP_STRINGS.hlTeamPerfect, 6]);
 		const g = pickHighlights(
-			input({ partySize: 2, viewIndex: 1, tally: { parries: [], grazes: [450, 50] }, team: undefined }),
+			input({
+				partySize: 2,
+				viewIndex: 1,
+				tally: { ...NO_RECAP_TALLY, parries: [], grazes: [450, 50] },
+				team: undefined,
+			}),
 		);
 		expect(ids(g)).toEqual(["grazes", "kills"]);
 		expect([g[0].value, g[0].scope, g[1].scope]).toEqual([50, "you", "team"]);
