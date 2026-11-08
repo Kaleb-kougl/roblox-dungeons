@@ -303,3 +303,60 @@ export function counterWaveReachTick(r: Readonly<WaveRecord>, d: number): number
 	// The record's tick already grew the wave once (radius perTick at its end).
 	return r.tick + math.max(math.ceil(d / perTick) - 1, 0);
 }
+
+/**
+ * One drawn strip of a counter-wave (BV11b, the client's CounterWaveController): its band, or its glow under it. Radii
+ * in tiles from the wave's origin; the arc runs from startRad in `segments` steps of stepRad (sim x / z angle:
+ * atan2(dirZ, dirX) - halfAngleRad; a full ring starts there too); each segment a flat chord of chordTiles (the outer
+ * edge's, so the leading edge reads unbroken) at midTiles, widthTiles across, at liftStuds, at `transparency`.
+ */
+export interface CounterWaveStrip {
+	innerTiles: number;
+	outerTiles: number;
+	midTiles: number;
+	widthTiles: number;
+	startRad: number;
+	stepRad: number;
+	chordTiles: number;
+	liftStuds: number;
+	transparency: number;
+}
+
+/** A blank CounterWaveStrip for counterWaveStrip to fill. */
+export function newCounterWaveStrip(): CounterWaveStrip {
+	return {
+		innerTiles: 0,
+		outerTiles: 0,
+		midTiles: 0,
+		widthTiles: 0,
+		startRad: 0,
+		stepRad: 0,
+		chordTiles: 0,
+		liftStuds: 0,
+		transparency: 1,
+	};
+}
+
+/**
+ * Fills `out` with wave `w`'s band (`glow` false: bandTiles behind the edge, out to the edge, at counter.liftStuds,
+ * transparency 1 - fade) or its glow (`glow` true: glowTiles wider, half each side of the band and never inside the
+ * origin, one thicknessStuds under the band so the two never z-fight, transparency 1 - glowOpacity x fade). A strip with
+ * nothing to draw (no segments, no radius) has chordTiles 0. Returns `out`.
+ */
+export function counterWaveStrip(w: Readonly<CounterWaveView>, glow: boolean, out: CounterWaveStrip): CounterWaveStrip {
+	const c = BUILDS_V2_FX.counter;
+	const edge = math.max(w.radius, 0);
+	const bandInner = math.max(edge - w.bandTiles, 0);
+	const pad = glow ? c.glowTiles / 2 : 0;
+	out.outerTiles = edge + pad;
+	out.innerTiles = math.max(bandInner - pad, 0);
+	out.midTiles = (out.innerTiles + out.outerTiles) / 2;
+	out.widthTiles = out.outerTiles - out.innerTiles;
+	out.startRad = math.atan2(w.dirZ, w.dirX) - w.halfAngleRad;
+	out.stepRad = w.segments > 0 ? (2 * w.halfAngleRad) / w.segments : 0;
+	out.chordTiles =
+		w.segments > 0 && edge > 0 && out.widthTiles > 0 ? 2 * out.outerTiles * math.sin(out.stepRad / 2) : 0;
+	out.liftStuds = glow ? c.liftStuds - c.thicknessStuds : c.liftStuds;
+	out.transparency = 1 - math.clamp(glow ? c.glowOpacity * w.fade : w.fade, 0, 1);
+	return out;
+}

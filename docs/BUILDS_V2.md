@@ -1249,6 +1249,60 @@ Studio checklist items served (all still pending, nobody has run Studio): 1, 2, 
 shout's construction), 4, 5, 6, 7, 8 (Rebuke's waves), 10 (the merge; "never over a boss bullet" is the client's draw
 order), 11 (every Reduced variant above), 12 (owner, `mine`, `teammateOpacity`).
 
+## BV11 (as built: guard visuals)
+
+BV11b: Riposte's counter-wave on the floor and COUNTER xN, the client half of the pure core's guard API. Presentation
+only: no sim, dungeon, hash, replay, lockstep or score change; the pure core's behaviour unchanged (one pure addition,
+below).
+
+- **`src/client/controllers/fx/CounterWaveController.ts`** (new Flamework controller, its own Janitor and folder
+  `KV_CounterWaves`): an FxTrackerController frame handler (`FX_FRAME_PHASE.normal`, after the frame's ticks, like
+  BuildFxController) steps ONE `CounterWaveFx` with `ctx.run.builds` (collected per tick), the live state,
+  `getViewPlayerIndex()`, `comboQuiet(isInputCovered, isRunOver)`, `{ juice, buildFx }` (reused object) and
+  `ctx.run.getAlpha()`, then draws every live wave: `segments` pooled flat Neon chords along its arc (two pools: the
+  glow chords under, the band chords over; one BulkMoveTo a frame, parked parts past the frame's count, the
+  BuildFxController pool's quantized transparency), each chord along the arc's tangent with its radial width as X,
+  `BUILDS_V2_FX.counter.thicknessStuds` thick, in the wave's role (`build.counter`, cached per role). FORWARD,
+  RING and REBUKE share one look; the cone tells them apart (a 120-degree crescent from the knight along the facing, a
+  full ring). The shout: `out.shout` -> `ComboController.requestShout(floorShoutText(pack, s), pack.color(s.role),
+  s.lifeSec, s.priority)` (`FLOOR_SHOUT_PRIORITY.counter` 0.5; the view player's waves only, as `counterShoutFor`
+  decides), so COUNTER xN sits in the combo shout's slot under every bullet (CD9). `onRunStarted` /
+  `onFloorChanged` / `onRunExited` forget every wave (`resetAll`) and park every part (FxTrackerController does not
+  dispatch without a run, so the exit park is needed). `getPoolSizes()` [band, glow] for a Studio count.
+- **`src/shared/view/fx/counterWaveFx.ts`** (pure addition, appended): `CounterWaveStrip`, `newCounterWaveStrip()`
+  and `counterWaveStrip(view, glow, out)`, the drawing geometry, so the controller only places parts: the band from
+  `radius - bandTiles` out to the edge (the sim's strike radius), at `counter.liftStuds`, transparency `1 - fade`;
+  the glow `glowTiles` wider (half each side of the band, never inside the origin), one `thicknessStuds` under the
+  band (no z-fight), transparency `1 - glowOpacity x fade`; the arc from `atan2(dirZ, dirX) - halfAngleRad` in
+  `segments` steps; each chord the OUTER edge's (`2 x outer x sin(step / 2)`), so the leading edge reads unbroken (the
+  inner side overlaps slightly); chord 0 (nothing drawn) at radius 0 or with no segments. Spec
+  `counterWaveStrip.spec.ts` (new, 7 tests: band, glow, a young wave, crescent / ring angles and the chord, teammate
+  opacity in both strips, empty, and end to end through `CounterWaveFx` Full vs Reduced on a FORWARD and a REBUKE
+  wave).
+- **`BuildFxController.ts`**: `FxPartPool` exported (one word plus its comment), reused by the new controller.
+- **`controllers/fx/index.ts`**: one export line.
+- **No new tunables**: everything is the pure core's `BUILDS_V2_FX.counter` (band / reduced band / glow / opacity /
+  segments / thickness / lift / maxAlive / shout).
+- **Checked, nothing to add client side.** The parry ladder: the cue mapper's `parryLadderCue` runs inside
+  AudioController's near-miss subscriber on the NearMissFrame it already gets (the view player's PARRY! flash that
+  grew, Riposte owner, `sfx.player.parry` at `riposteParrySpeed`). The counter sound: the same sound frame hands
+  `audibleBuilds(ctx.run.builds, quiet)` to the mapper, which cues `sfx.build.counter` per `builds.waves` record
+  (player cue, a teammate's quieter; falls back to the parry while silent). Counterstrike's returns:
+  `fireReturns` fires `COUNTERSTRIKE_RETURN` (`{ ...SOUL_SHARD }`, `BulletKind.SHARD`) with source
+  `BuildEffect.RIPOSTE` gen 0, and `playerBulletLookOf` draws by kind, so they render as Soul Shards' shards (trail
+  included) in the bullet pools; no work here.
+- **Deviations / notes.** Rebuke's ring is drawn exactly like Counterstrike's (same role and look; the planner gives no
+  REBUKE-specific tunable). The glow pokes `glowTiles / 2` (0.175 tiles) past the strike edge; the band itself ends on
+  it. The shout reaches ComboController on its next frame when Flamework starts this controller after it (as BRACED
+  does). A theme pack change mid-session keeps the cached colour (BuildFxController's rule).
+- **Verify.** `typecheck`, `lint` (0 warnings), `build`, `check:assets`, `check:autolocalize` green; `test:only` on
+  `view/fx` (28 suites, 445 tests) and `view/audio` (15 suites, 200 tests): all pass. No string changed.
+
+Studio checklist items served (all still pending, nobody has run Studio): 1 (the wave grows from the knight on the
+sim's sweep), 2 (the ladder: the cue mapper, verified wired), 3 (COUNTER xN through the combo shout), 4 (the ring;
+the returns are the shard bullets), 8 (Rebuke's ring), 11 (Reduced: thinner band, no glow, half the segments), 12
+(a teammate's wave at teammateOpacity, no COUNTER for it).
+
 ## Appendix: the proposal (2026-11-05)
 
 Kept as written (Overkill withdrawn to docs/LEGENDARIES.md 2026-11-06, Matador dropped and the owner calls settled
