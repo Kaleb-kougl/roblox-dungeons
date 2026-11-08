@@ -412,9 +412,29 @@
 			"bytes": 40930
 		},
 		{
+			"path": "pixabay/driken5482-retro-coin-4-236671.mp3",
+			"sha256": "7ab5207b2b0ed1fd81c8e8ecb637c483350c4d6175023165bd7ac6645483c390",
+			"bytes": 11673
+		},
+		{
 			"path": "pixabay/edr-power-up-01a-484722.mp3",
 			"sha256": "9d1cd717625f9fff77797d23b9c471fbf6333a51e820e49971746530d4f6422f",
 			"bytes": 39258
+		},
+		{
+			"path": "pixabay/freesound-community-pick-up-sfx-38516.mp3",
+			"sha256": "a0ccb6e09a9548b3e46082996ed98af0544b1c413e27c10929b4986ba6cdefaf",
+			"bytes": 108640
+		},
+		{
+			"path": "pixabay/freesound-community-plate-break-1-36468.mp3",
+			"sha256": "186186935e934290879143e2f27dad0e0d2696cd2f4dd6251bc6c43bc20d08d6",
+			"bytes": 50942
+		},
+		{
+			"path": "pixabay/freesound-community-power-down-02-82200.mp3",
+			"sha256": "857565808e2c588d54010546a3b947c00294d25761704c1a235fe7915b8a4c84",
+			"bytes": 85502
 		},
 		{
 			"path": "pixabay/stereogenicstudio-swish-swoosh-woosh-sfx-27-357164.mp3",
