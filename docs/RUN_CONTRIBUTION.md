@@ -32,6 +32,40 @@ same merged log, so **every client shows the same numbers and the same titles** 
 | Run-over pad surface: X toggles Details, B held exits; tabs (LB / RB) are already a menu primitive | shared/view/menu padActions.ts `runOver`, docs/GAMEPAD_MENUS.md | LB / RB switch `You / Team / Party`; X keeps Details |
 | Party runs end on Back to lobby (no Again) and wait for the verdict | RunOverPanel `runOverExits` | Players sit on the panel for a few seconds anyway: the natural moment to look at the You tab |
 
+### CT0 findings (2026-11-08)
+
+Every `damageActor` deals a player's damage with that player bound as `ctx.playerIndex`, so **no `creditPlayer` was
+needed** (CTD6 holds as written). Solo runs bind 0 throughout (`bind()`; `targetNearest` can only pick 0).
+
+| Call site | What hits | `ctx.playerIndex` is |
+|---|---|---|
+| combat/combat.ts 505 `piercingBulletHit`, 581 `playerBulletHit` | Player bullets (arrows, test gun, every build bolt / shard / ember / reflected bullet: all carry the owner's emitter) | The bullet's owner: `playerBulletHitParty` -> `actingPlayer(playerBulletOwner(emitter))` |
+| weapons/defs/sword.ts 160 / 166 (`hitSwing`, `hitFinisher`), testMelee.ts 29 | Swings through `sweepArc` | The swinging player (`stepPartyWeapons` -> `bindPlayer(i)`) |
+| builds/fullHeart.ts 61 | Full Heart's beam (sword finisher via `buildsOnFinisher`, bow release in bow.ts) | The swinging / releasing player (weapons phase); `owner = ctx.playerIndex` |
+| builds/siege.ts 251 / 263 | Siege Bolt slam + shockwave (`siegeArrowEnd` from `buildsOnHeavyEnd`) | The arrow's owner (the bullet walk's binding; `pin.owner` is that arrow's owner) |
+| builds/onKill.ts 124 / 141 (Chain Spark, fork), 217 (Overkill streak); builds/smash.ts 63 (Demolition) | Proc drain | `resolveProc` -> `actingPlayer(q.owner)`; Storm Blade's pseudo proc via `releaseSparks` -> `actingPlayer(owner)`; smash procs are only queued for `owner >= 0` (breakables.ts 240) |
+| builds/duos.ts 270 (Conductor), 295 (Thunder Guard) | Duo sparks | `releaseSparks` -> `actingPlayer(owner)` (queued by the arrow's owner / the guarding player) |
+| builds/riposte.ts 314 | Counter-waves | `stepWave` -> `actingPlayer(w.owner)` |
+| combat/ctx.ts 211 | `SimCtx.damageActor`, the wrapper all of the above but combat.ts use | Whatever the caller bound |
+
+Kills without damage: a summoner's withering summons and a boss's withering adds die in `onDeath` inside the killing
+hit, so their pops go to that hit's player; the debug boss key (J, `debugHit`, actor phase) credits the nearest living
+player and is no `damageActor` (debug only). The Bomber's own blast is a quiet death (no pop). Builds v2 overcap points
+(`buildsOnOvercap`) already read the same `ctx.playerIndex`.
+
+`damagePlayer(state, n, p, playerIndex)`: every caller passes `p` and its own index: `ctx.hurtPlayer` (solo enemy
+bullets, combat.ts 406: player 0), `ctx.hurtPlayerAt(k, ...)` for co-op enemy bullets (combat.ts 456: strikes,
+Vengeful rings and the Bomber's blast are enemy bullets on this path), contact damage (actors.ts 357) and the Charger
+(charger.ts 303); the debug hit K in `stepPlayer` (step.ts 316 solo default 0, 409 index `i`). `playerHits` is
+incremented only in `damagePlayer` (twice: the tutorial's harmless path and the normal path) and `stepScore` adds it to
+`hitsTaken` on every stepped tick, so hurt entries sum to `hitsTaken`.
+
+Pops: `scoreKill` pushes one pop per scored kill (`events.kills` = pops). Per tick, pops = Δ`counts[KILLS]` + boss
+kills (a `BOSS` award; the no-hit bonus is a second `BOSS` count with no pop) + Goldling jackpots (`GOLDEN`, whose count
+also takes per-hit awards). With no boss or Goldling dying that tick, pops = Δ`counts[KILLS]` exactly (Horde's x2 adds a
+`HORDE` count, never a pop; revived turrets pop once). So "kills" in the recap = pops, as Rules says. Checked per tick
+in `sim/score/contributionFeed.spec.ts`.
+
 ## The views
 
 A tab strip above the highlight grid (the near-miss line stays above the tabs on every tab), **party runs only** (`partySize >= 2`), in every world that has a recap
@@ -129,7 +163,7 @@ Executioner). Thresholds are `CONTRIB_TITLES` tunables (CT10).
 
 Each step is a commit; `npm run verify` before each.
 
-- [ ] **CT0. Findings.** List all 19 `damageActor` call sites and what `ctx.playerIndex` is bound to at each (player
+- [x] **CT0. Findings.** List all 19 `damageActor` call sites and what `ctx.playerIndex` is bound to at each (player
   hits, swings, builds procs, duos, riposte, siege, smash, full heart, ctx wrappers); any site whose damage is not a
   player's gets a transient `SimCtx.creditPlayer` (-1 = nobody), reset in `bind()`, set beside `procGen`, never hashed.
   Confirm `damagePlayer`'s `playerIndex` at every caller (`hurtPlayerAt`, contact, strikes, Vengeful, bomber blast).
