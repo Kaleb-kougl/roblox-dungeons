@@ -50,6 +50,12 @@ export const RUN_ATTRIBUTES = {
 	 * ranked run in world "daily" on the server's seed of the day), until the menu's Daily card exists. Off by default.
 	 */
 	daily: "KV_Daily",
+	/**
+	 * Boolean, debug (docs/FRAME_PACING.md FPD8), read at every co-op run start: true builds the co-op client without
+	 * the playout clock (it steps every merged frame the moment it arrives, as before the pacing), for an A/B in a
+	 * playtest. Off by default.
+	 */
+	pacingOff: "KV_PacingOff",
 } as const;
 
 /** The web build's DEFAULT_SEED (`?seed=` absent). */

@@ -8,6 +8,7 @@
  *   log.ts      PartyRunLog: the server's merged log, sliced into party-codec segments
  *   session.ts  LockstepSession: the server side of one party run (clock, relay, ledger, validator feed, final)
  *   pacer.ts    PlayoutPacer: co-op frame pacing, how many queued frames to step per rendered frame and the alpha
+ *   arrivalLog.ts  ArrivalLog: the KV_Debug co-op arrival log (batch gaps and sizes, pacing, fps; FP0)
  *   client.ts   LockstepClient: steps the sim with merged frames only, sends inputs / hashes / the final claim
  *   menuInput.ts  CoopMenuInputGate: neutral local input while a menu owns the controls (a party run never pauses)
  *
@@ -20,5 +21,6 @@ export * from "./ledger";
 export * from "./log";
 export * from "./session";
 export * from "./pacer";
+export * from "./arrivalLog";
 export * from "./client";
 export * from "./menuInput";

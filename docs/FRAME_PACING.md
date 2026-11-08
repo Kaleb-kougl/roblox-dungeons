@@ -15,9 +15,12 @@ of the server (local prediction, a separate plan) is what hides input delay; thi
 
 ## Status (2026-11-07)
 
-Planned, nothing built. Drafted from an audit of `main` @ `0a8e8ec4` after the owner's first co-op playtest with
-friends on Roblox ("the game was laggy"). No numbers from that session: FP0 measures them. Owner answers
-(2026-11-07): a 3-tick minimum (FPD6), a 10 % fast slew (FPD7), one tuned default with no setting (FPD8).
+**Built: FP1-FP5 and FP8**, verified headlessly (typecheck, lint, asset / AutoLocalize checks, build, the lockstep,
+pacer, arrival log, latency probe and HUD specs). **Pending: FP0 and FP6 (owner: a measured real session, then the
+playtest), the Studio two-player check (FP5's Verify); FP7 optional.** The tunables stay provisional until FP0 / FP6.
+Drafted from an audit of `main` @ `0a8e8ec4` after the owner's first co-op playtest with friends on Roblox ("the game
+was laggy"). Owner answers (2026-11-07): a 3-tick minimum (FPD6), a 10 % fast slew (FPD7), one tuned default with no
+setting (FPD8). See "As built" for the real API and the deviations from the design.
 
 ## Why co-op stutters (findings)
 
@@ -161,40 +164,94 @@ All provisional until FP0 / FP6.
   clears within seconds.
 - **FPD8. One tuned default, no player setting.** `KV_PacingOff` stays a debug switch for playtests only.
 
+## As built (FP1-FP5)
+
+**API (shared/lockstep).**
+
+- `PlayoutPacer` (`pacer.ts`, pure): `arrived(now, newestTick)`; `frame(now, frameDt, stepped, queued, maxCatchup)`
+  returns how many queued frames to step (Design 1's `frame(now, queued)` also takes the frame's dt (the hitch rule),
+  the ticks stepped so far and the cap); `alpha()`, `depthTicks()` (`ceil(P - base)` in ticks), `targetOffset()`,
+  `stats(): PacingStats` (`started`, `depthTicks`, `depthMs`, `targetTicks`, `jitterMs`, `holds`, `holding`,
+  `catchingUp`, `samples`, `committed`, `discarded`, `position`, `offsetSec`, `targetOffsetSec`, `baseSec`).
+  Arrivals are kept pending until the next `frame`, which commits them to the windows or discards them when that
+  frame's dt is over `hitchFrameSec`.
+- `LockstepTunables.pacing: PacingTunables | undefined`, `DEFAULT_LOCKSTEP.pacing = PACING`.
+- `LockstepClient`: `receive(firstTick, data, now?)`, `pump(dt, sample, now?)`. Pacing turns on at the first pump
+  given a finite `now` and stays on for the run (`isPacing()`); arrivals before it keep only the best offset, handed
+  to the pacer when pacing turns on; a later pump without `now` runs on the last clock + dt; a batch without `now` is
+  stamped by the next paced pump. `getAlpha()` is the pacer's (1 once nothing more will be stepped).
+  `nextInputTick()` = tick + `netLead()` + depth; `inputLead()` = max(lead + depth, last sent - tick), the effective
+  lead (FP1); `netLead()` the internal lead; `pacingStats()` (undefined while not pacing).
+- `ArrivalLog` / `formatArrivalLine` / `nearestRank` (`arrivalLog.ts`, pure) and `ARRIVAL_LOG` (config.ts:
+  `windowSec` 10, `sizeBuckets` 8, `maxGaps` 2048, quantiles 0.5 / 0.95).
+
+**Client (SimController).** `Events.lockstepFrames` passes `os.clock()` to `receive`, `coopFrame` passes `os.clock()`
+to `pump`. `KV_PacingOff` (`RUN_ATTRIBUTES.pacingOff`, boolean, off by default) is read in `startCoop`: true builds
+the client with `{ ...DEFAULT_LOCKSTEP, pacing: undefined }` and prints `[Sim] co-op run <runId>: frame pacing off
+(KV_PacingOff)`. Under KV_Debug (the value read at the last solo / tutorial start, docs/FEEL.md J9's caveat) a co-op
+run gets the latency probe and an `ArrivalLog`; without KV_Debug neither exists.
+
+**The debug line** (docs/FEEL.md J9; shared/view `latencyProbe.ts`): `co-op lead {lead}t {leadMs}ms (net {net}t) ·
+{pace} · press->step {last}ms avg {mean} max {max} n{count} · late {late} miss {misses}`, with `{pace}` one of
+`pace {depth}t {depthMs}ms · holds {holds} · backlog {backlog} · jitter p95 {jitter}ms`, `pace waiting · backlog
+{backlog}` (pacing not on, or no batch yet) and `pace off (KV_PacingOff)`. `LatencyProbeView` gained `netLeadTicks`
+and `pacing: PacingDebugView` (`pacingDebugView(stats, backlog, configured)`: whole ms, so the HUD store only changes
+with the line); strings `hud.debug.pace` / `.paceWait` / `.paceOff` (developer strings, English, no l10n context).
+The lead shown is `inputLead()` (Design 7 said `nextInputTick() - tick`: the same whenever a send happens, and the
+truth right after a depth drop, when the inputs already sent reach further). Example:
+`co-op lead 7t 117ms (net 3t) · pace 4t 58ms · holds 2 · backlog 3 · jitter p95 10ms · press->step 133ms avg 128 max
+150 n9 · late 0 miss 1`.
+
+**The arrival log** (FP0's instrument; KV_Debug co-op only): every 10 s of local clock one line, e.g.
+`[Pace] 10.0s batches 300 ticks 600 · gap p50 33 p95 41 max 87 ms · sizes 2:290 3:10 · pace 4t 58ms target 3.5t
+jitter p95 9ms holds 0 discarded 0 · lead 7t net 3t miss 0 backlog 3 · fps 60.0 worst 21ms`: the window's length,
+batches and ticks, the batch inter-arrival gaps (nearest rank; a window's first gap runs from the previous window's
+last batch), the batch-size histogram (non-empty buckets, `8+` for 8 or more), the pacer's depth / target / jitter /
+holds (totals) / discarded arrivals, the effective and net lead, misses and backlog, the render fps and the longest
+frame. Holds and misses are run totals: diff two lines for a window's.
+
+**Deviations from the design.**
+
+- `PACING.marginTicks` is 1.5, not 0.5: FP4 measured that 0.5 held about once a second on the 20-120 ms spec
+  network (arrivals are handled on a rendered frame, so an offset can read a whole tick later than any measured);
+  1.5 held not once after the warm-up (99.7 % of frames step one tick at 60 fps; unpaced 0 %).
+- `PlayoutPacer.frame` takes `(now, frameDt, stepped, queued, maxCatchup)` (above); arrivals commit on the next frame.
+- The effective lead is `inputLead()` (above); the arrival log has no per-window holds (totals only).
+
 ## Tasks
 
 - [ ] **FP0 [owner]. Measure a real session.** Build FP5's arrival log first (debug only, nothing else changes): in
   a private published place with 2-4 friends, KV_Debug on, record per client: ping, batch inter-arrival times and
   sizes, offset spread (p50 / p95 / max), render fps, effective lead over time. Once with `BROADCAST_EVERY_TICKS` 1 if
   possible. -> Verify: a table in docs/SPIKES.md "Frame pacing"; the tunables above confirmed or edited.
-- [ ] **FP1. Fix the lead.** A step whose target is at or below `lastSentTick` sends nothing; `inputLead()` reports the
+- [x] **FP1. Fix the lead.** A step whose target is at or below `lastSentTick` sends nothing; `inputLead()` reports the
   effective lead. -> Verify: new lockstep spec: a spike raises the lead, the network calms, and **the effective lead
   falls back** to the floor after `leadDecayTicks` per step; a later spike's first miss raises it at once; the existing
   network runs still finish ranked with misses under a quarter; `latencyProbe.spec` updated ("press steps lead + 1
   ticks later" holds for the effective lead).
-- [ ] **FP2. `PlayoutPacer` (pure).** `shared/lockstep/pacer.ts` + `PACING` + barrel. -> Verify: `pacer.spec.ts` on
+- [x] **FP2. `PlayoutPacer` (pure).** `shared/lockstep/pacer.ts` + `PACING` + barrel. -> Verify: `pacer.spec.ts` on
   synthetic arrival traces: steady arrivals step exactly one tick per 16.7 ms at 30 / 60 / 144 fps; alpha strictly
   increases within a tick and stays in [0, 1); a late batch makes one hold, then no jump past `maxCatchup`; depth
   follows the 95th percentile, not a single outlier; slew within `slewShare`; a 0.5 s client hitch catches up without
   touching P; hitched-frame arrivals are ignored.
-- [ ] **FP3. LockstepClient wiring.** `pacing` tunable, `now` on `receive` / `pump`, alpha, `depthTicks` in the lead.
+- [x] **FP3. LockstepClient wiring.** `pacing` tunable, `now` on `receive` / `pump`, alpha, `depthTicks` in the lead.
   -> Verify: every existing lockstep spec passes unchanged with pacing off; the simulated-network runs
   (`NET_RUNS`, 20-120 ms and 0-200 ms one way) pass with pacing on: identical final state on every client, the log
   validates, misses under a quarter.
-- [ ] **FP4. Smoothness metric in the spec harness.** The `Net` harness renders at a chosen fps and records, per
+- [x] **FP4. Smoothness metric in the spec harness.** The `Net` harness renders at a chosen fps and records, per
   client and frame, the ticks stepped and the alpha. -> Verify: with pacing on, at 60 fps and 20-120 ms jitter, at
   least 99 % of frames step exactly one tick and holds stay under 1 per 10 s; with pacing off the same run shows
   today's pattern (the spec logs both, so the gain is measured).
-- [ ] **FP5. SimController and diagnostics.** `os.clock()` into `receive` / `pump`; `KV_PacingOff`; the debug line's
+- [x] **FP5. SimController and diagnostics.** `os.clock()` into `receive` / `pump`; `KV_PacingOff`; the debug line's
   pacing part and effective lead; the arrival log for FP0 (KV_Debug only, printed every 10 s). -> Verify:
   `npm run verify`; Studio two-player test (Test > Clients and Servers) runs, the debug line shows depth 3 and no
-  holds on loopback.
+  holds on loopback. (Built and verified headlessly; the Studio two-player check is pending.)
 - [ ] **FP6 [owner]. Playtest.** The FP0 group again, pacing on vs `KV_PacingOff`, on a 60 Hz and a 120 Hz+ screen and
   one phone if possible. -> Verify: players notice the difference; holds per minute and depth recorded; tunables
   adjusted.
 - [ ] **FP7 (optional). Broadcast cadence.** Only if FP0 / FP6 point to it: `BROADCAST_EVERY_TICKS` 1, the input and
   hash rate limits re-checked. -> Verify: the network specs and the replay bench pass; FP6's numbers improve.
-- [ ] **FP8. Docs.** docs/SERVER.md "Clients" (pacing, the effective lead), docs/FEEL.md J9 (debug line), CLAUDE.md's
+- [x] **FP8. Docs.** docs/SERVER.md "Clients" (pacing, the effective lead), docs/FEEL.md J9 (debug line), CLAUDE.md's
   decision log entry, this file's status.
 
 Order: FP1 (ship alone) -> FP5's arrival log -> FP0 -> FP2 -> FP3 -> FP4 -> FP5 -> FP6 -> FP7? -> FP8. FP2 can start

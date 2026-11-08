@@ -11,6 +11,7 @@ import {
 	SCORE_SOURCE_NAMES,
 	TREASURE_SCORE_SOURCE_NAMES,
 } from "shared/sim";
+import { PACING_DEBUG_STRINGS } from "../latencyProbeConfig";
 export const HUD_STRINGS = {
 	title: "game.title",
 	health: "hud.health",
@@ -47,6 +48,10 @@ export const HUD_STRINGS = {
 	replayMismatch: "hud.debug.replayMismatch",
 	/** Co-op, KV_Debug: the input lead and press -> stepped latency (docs/FEEL.md J9, shared/view latencyProbe.ts). */
 	netProbe: "hud.debug.net",
+	/** Its `{pace}` part (docs/FRAME_PACING.md Design 7): paced, pacing not started yet, KV_PacingOff. */
+	paceProbe: PACING_DEBUG_STRINGS.on,
+	paceProbeWait: PACING_DEBUG_STRINGS.waiting,
+	paceProbeOff: PACING_DEBUG_STRINGS.off,
 	cap: "fx.cap",
 	score: "hud.score",
 	combo: "hud.score.combo",

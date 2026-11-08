@@ -117,6 +117,31 @@ export const PACING: PacingTunables = table.freeze({
 	hitchFrameSec: 0.1,
 });
 
+/**
+ * The KV_Debug co-op arrival log (docs/FRAME_PACING.md FP0 / FP5; arrivalLog.ts): SimController prints one line per
+ * window with the batches' inter-arrival times and sizes, the pacer's numbers and the render fps. Diagnostics only:
+ * nothing here reaches the sim, the wire or a replay.
+ */
+export interface ArrivalLogTunables {
+	/** One line per this many seconds of local clock. */
+	readonly windowSec: number;
+	/** Batch-size histogram buckets: sizes 1 .. sizeBuckets - 1 alone, sizeBuckets or more in the last one. */
+	readonly sizeBuckets: number;
+	/** At most this many inter-arrival gaps kept per window (a window never reported cannot grow without bound). */
+	readonly maxGaps: number;
+	/** The two gap quantiles printed (nearest rank). */
+	readonly midPercentile: number;
+	readonly highPercentile: number;
+}
+
+export const ARRIVAL_LOG: ArrivalLogTunables = table.freeze({
+	windowSec: 10,
+	sizeBuckets: 8,
+	maxGaps: 2048,
+	midPercentile: 0.5,
+	highPercentile: 0.95,
+});
+
 export interface LockstepTunables {
 	readonly inputDelay: number;
 	readonly maxInputLead: number;

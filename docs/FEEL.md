@@ -231,6 +231,14 @@ As built (differences from the design above):
   (`LatencyProbe`, the window of 16 presses). `LockstepClient.nextInputTick()` is the send target's own expression,
   now shared by `pump` (behaviour unchanged). The headless floor is (lead + 1) ticks = 66.7 ms; Studio numbers pending.
   Caveat: `startCoop` uses the KV_Debug value read at the last solo / tutorial start.
+  Since co-op frame pacing (docs/FRAME_PACING.md FP5) the line reads `co-op lead {lead}t {leadMs}ms (net {net}t) ·
+  {pace} · press->step ...`: `lead` is the EFFECTIVE lead (`inputLead()`: the net lead plus the pacing buffer's depth,
+  what a press really waits), `net` the network part (`netLead()`). `{pace}` is `pace {depth}t {depthMs}ms · holds
+  {holds} · backlog {backlog} · jitter p95 {jitter}ms` (`hud.debug.pace`), `pace waiting · backlog {backlog}` before
+  the first batch placed the playout clock (`hud.debug.paceWait`), or `pace off (KV_PacingOff)` (`hud.debug.paceOff`);
+  formatted by shared/view `pacingDebugView` / `pacingDebugKey` / `pacingDebugVars`. The headless floor is now
+  (net lead + depth + 1) ticks: 7 ticks = 117 ms at the minimum depth of 3. KV_Debug co-op also prints the `[Pace]`
+  arrival log every 10 s (docs/FRAME_PACING.md "As built").
 
 Critical path: J1 -> J2 -> J3 (the hurt package, the biggest gap; ship it first) -> J4 / J5 -> J6 / J7 -> J12. J8 can go
 with J3, J11 right after J2; J9 any time.

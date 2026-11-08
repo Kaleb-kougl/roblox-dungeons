@@ -3,7 +3,7 @@ import { GuiService, Players, RunService, Workspace } from "@rbxts/services";
 import { Events } from "client/network";
 import { clientStore, selectDailyStatus, type RunInfo, type VerdictView } from "client/store";
 import type { PartyRunStart, RunFinishVerdict, RunVerdict } from "shared/network";
-import { CoopMenuInputGate, LockstepClient } from "shared/lockstep";
+import { ArrivalLog, CoopMenuInputGate, DEFAULT_LOCKSTEP, LockstepClient, formatArrivalLine } from "shared/lockstep";
 import {
 	ALL_DEBUG_BUTTONS,
 	DEFAULT_RUN_SEED,
@@ -69,6 +69,7 @@ import {
 	formatListenerTimes,
 	latencyProbeView,
 	listenerLabel,
+	pacingDebugView,
 	spectateCommand,
 	type ListenerTime,
 	type SpectateView,
@@ -158,6 +159,13 @@ export interface RunContext {
 	 * tick numbers. Measurement only: nothing it does reaches what is sent, stepped, hashed or recorded.
 	 */
 	readonly latencyProbe?: LatencyProbe;
+	/**
+	 * KV_Debug co-op runs only (docs/FRAME_PACING.md FP0 / FP5): the arrival log behind the `[Pace]` line printed every
+	 * ARRIVAL_LOG.windowSec. Measurement only, like the latency probe.
+	 */
+	readonly arrivalLog?: ArrivalLog;
+	/** A co-op run built without the playout clock (KV_PacingOff, read at the run's start). */
+	readonly pacingOff?: boolean;
 }
 
 export type RunListener = (ctx: RunContext) => void;
@@ -449,7 +457,11 @@ export class SimController implements OnStart {
 		Events.lockstepFrames.connect((runId, firstTick, data, hashAck) => {
 			const coop = this.ctx?.coop;
 			if (coop === undefined || coop.runId !== runId) return;
-			if (!coop.receive(firstTick, data)) warn(`[Sim] co-op run ${runId}: ${coop.brokenReason() ?? ""}`);
+			// The local clock stamps the arrival for the playout clock (docs/FRAME_PACING.md Design 6).
+			const now = os.clock();
+			const before = coop.receivedTicks();
+			if (!coop.receive(firstTick, data, now)) warn(`[Sim] co-op run ${runId}: ${coop.brokenReason() ?? ""}`);
+			this.ctx?.arrivalLog?.arrived(now, coop.receivedTicks() - before);
 			coop.acknowledge(hashAck);
 		});
 		Events.runVerdict.connect((verdict) => this.onVerdict(verdict));
@@ -990,6 +1002,8 @@ export class SimController implements OnStart {
 		const setup = result as ReturnType<typeof buildWorldSetup>;
 		const spawn = setup.spawn ?? { x: 0, z: 0 };
 		this.draftGate.reset();
+		// KV_PacingOff (docs/FRAME_PACING.md FPD8): an A/B switch for playtests, read at every co-op start.
+		const pacingOff = Workspace.GetAttribute(RUN_ATTRIBUTES.pacingOff) === true;
 		const client = new LockstepClient({
 			runId: start.runId,
 			seed: start.seed,
@@ -997,7 +1011,9 @@ export class SimController implements OnStart {
 			config: setup.config,
 			players: start.members.size(),
 			localIndex,
+			tunables: pacingOff ? { ...DEFAULT_LOCKSTEP, pacing: undefined } : undefined,
 		});
+		if (pacingOff) print(`[Sim] co-op run ${start.runId}: frame pacing off (${RUN_ATTRIBUTES.pacingOff})`);
 		this.counter++;
 		this.submitted = false;
 		this.hudTimer = 0;
@@ -1028,6 +1044,8 @@ export class SimController implements OnStart {
 			tutorial: false,
 			dev: false,
 			latencyProbe: this.debug ? new LatencyProbe() : undefined,
+			arrivalLog: this.debug ? new ArrivalLog() : undefined,
+			pacingOff,
 		};
 		this.frozen = false;
 		this.ctx = ctx;
@@ -1084,10 +1102,12 @@ export class SimController implements OnStart {
 				return input;
 			};
 		}
-		const stepStart = this.debug ? os.clock() : 0;
-		const res = coop.pump(dt, sample);
-		const stepMs = this.debug ? (os.clock() - stepStart) * MS_PER_SECOND : 0;
+		// The playout clock (docs/FRAME_PACING.md Design 6): the same local clock the arrivals are stamped with.
+		const now = os.clock();
+		const res = coop.pump(dt, sample, now);
+		const stepMs = this.debug ? (os.clock() - now) * MS_PER_SECOND : 0;
 		probe?.stepped(coop.state.tick, os.clock(), coop.misses > missesBefore);
+		this.logArrivals(ctx, coop, now, dt);
 		const runId = coop.runId;
 		for (const b of res.inputs) Events.lockstepInput.fire(runId, b.firstTick, b.data);
 		// One call with every report due (new ones and unacknowledged resends; LockstepClient throttles it).
@@ -1138,11 +1158,36 @@ export class SimController implements OnStart {
 		}
 	}
 
-	/** KV_Debug co-op: the latency probe's numbers to the debug line (with the HUD snapshot); nothing otherwise. */
+	/**
+	 * KV_Debug co-op: the latency probe's numbers, the effective and net lead and the pacing part to the debug line
+	 * (with the HUD snapshot); nothing otherwise.
+	 */
 	private publishLatencyProbe(ctx: RunContext, coop: LockstepClient): void {
 		const probe = ctx.latencyProbe;
 		if (probe === undefined) return;
-		clientStore.setLatencyProbe(latencyProbeView(probe, coop.inputLead(), coop.misses));
+		const pacing = pacingDebugView(coop.pacingStats(), coop.backlog(), ctx.pacingOff !== true);
+		clientStore.setLatencyProbe(latencyProbeView(probe, coop.inputLead(), coop.misses, coop.netLead(), pacing));
+	}
+
+	/**
+	 * KV_Debug co-op (docs/FRAME_PACING.md FP0): the frame into the arrival log, and its `[Pace]` line once a window is
+	 * full. Nothing without the log (it only exists under KV_Debug).
+	 */
+	private logArrivals(ctx: RunContext, coop: LockstepClient, now: number, dt: number): void {
+		const log = ctx.arrivalLog;
+		if (log === undefined) return;
+		log.frame(now, dt);
+		if (!log.due(now)) return;
+		print(
+			formatArrivalLine(log.take(now), {
+				pacing: coop.pacingStats(),
+				pacingOff: ctx.pacingOff === true,
+				lead: coop.inputLead(),
+				netLead: coop.netLead(),
+				misses: coop.misses,
+				backlog: coop.backlog(),
+			}),
+		);
 	}
 
 	/** The co-op HUD snapshot: this client's own items, the vitals and spectate bar of the player the views follow. */

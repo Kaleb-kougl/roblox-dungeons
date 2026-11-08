@@ -17,7 +17,7 @@
  * is not measured.
  */
 import { SIM_DT } from "shared/sim";
-import { LATENCY_PROBE } from "./latencyProbeConfig";
+import { LATENCY_PROBE, PACING_DEBUG_STRINGS } from "./latencyProbeConfig";
 
 export interface LatencyProbeStats {
 	/** The last measured press, ms (undefined before the first). */
@@ -31,12 +31,59 @@ export interface LatencyProbeStats {
 	readonly late: number;
 }
 
+/**
+ * The pacer's numbers the debug line reads (docs/FRAME_PACING.md Design 7): a structural subset of shared/lockstep
+ * PacingStats (LockstepClient.pacingStats()).
+ */
+export interface PacingStatsInput {
+	readonly started: boolean;
+	readonly depthTicks: number;
+	readonly depthMs: number;
+	readonly jitterMs: number;
+	readonly holds: number;
+}
+
+/**
+ * The debug line's pacing part: `off` (KV_PacingOff: the client was built without pacing), `waiting` (pacing not on
+ * yet, or no batch has placed the playout clock), `on` (the numbers below). Whole milliseconds, so the HUD store only
+ * changes when the line does.
+ */
+export interface PacingDebugView {
+	readonly mode: "off" | "waiting" | "on";
+	/** The buffer depth in whole ticks (what the lead adds) and in ms (unrounded depth, rounded to whole ms). */
+	readonly depthTicks: number;
+	readonly depthMs: number;
+	/** Holds so far (one per contiguous run of held frames). */
+	readonly holds: number;
+	/** Received ticks not stepped yet (LockstepClient.backlog()). */
+	readonly backlog: number;
+	/** The measured jitter (the pacer's percentile offset minus its base), whole ms. */
+	readonly jitterMs: number;
+}
+
+/** No pacing part: the client paces nothing. */
+export const PACING_DEBUG_OFF: PacingDebugView = table.freeze({
+	mode: "off",
+	depthTicks: 0,
+	depthMs: 0,
+	holds: 0,
+	backlog: 0,
+	jitterMs: 0,
+});
+
 /** What the debug line shows (the SimController hands it to the HUD store). */
 export interface LatencyProbeView extends LatencyProbeStats {
-	/** The client's effective input lead, ticks (LockstepClient.inputLead(): how far its sent inputs reach). */
+	/**
+	 * The client's EFFECTIVE input lead, ticks (LockstepClient.inputLead(): how far its sent inputs reach, the pacing
+	 * buffer's depth included).
+	 */
 	readonly leadTicks: number;
+	/** The network part of the lead, ticks (LockstepClient.netLead(): the lead that adapts to misses, no depth). */
+	readonly netLeadTicks: number;
 	/** Deadline misses of this client's own input so far (LockstepClient.misses). */
 	readonly misses: number;
+	/** The pacing part (docs/FRAME_PACING.md Design 7). */
+	readonly pacing: PacingDebugView;
 }
 
 export class LatencyProbe {
@@ -112,16 +159,59 @@ export class LatencyProbe {
 	}
 }
 
-/** The probe's view for the debug line: its stats plus the client's lead and misses. */
-export function latencyProbeView(probe: LatencyProbe, leadTicks: number, misses: number): LatencyProbeView {
-	return { ...probe.stats(), leadTicks, misses };
+/**
+ * The debug line's pacing part from the client's pacer stats (undefined while pacing is not on), its backlog, and
+ * whether the client was built with pacing at all (false: KV_PacingOff).
+ */
+export function pacingDebugView(
+	stats: PacingStatsInput | undefined,
+	backlog: number,
+	configured: boolean,
+): PacingDebugView {
+	if (!configured) return PACING_DEBUG_OFF;
+	const on = stats !== undefined && stats.started;
+	return {
+		mode: on ? "on" : "waiting",
+		depthTicks: on ? stats.depthTicks : 0,
+		depthMs: on ? math.round(stats.depthMs) : 0,
+		holds: stats !== undefined ? stats.holds : 0,
+		backlog,
+		jitterMs: on ? math.round(stats.jitterMs) : 0,
+	};
+}
+
+/**
+ * The probe's view for the debug line: its stats plus the client's effective lead, misses, net lead (default: the
+ * effective lead) and pacing part (default: off).
+ */
+export function latencyProbeView(
+	probe: LatencyProbe,
+	leadTicks: number,
+	misses: number,
+	netLeadTicks: number = leadTicks,
+	pacing: PacingDebugView = PACING_DEBUG_OFF,
+): LatencyProbeView {
+	return { ...probe.stats(), leadTicks, netLeadTicks, misses, pacing };
+}
+
+function pacingViewsEqual(a: PacingDebugView, b: PacingDebugView): boolean {
+	return (
+		a.mode === b.mode &&
+		a.depthTicks === b.depthTicks &&
+		a.depthMs === b.depthMs &&
+		a.holds === b.holds &&
+		a.backlog === b.backlog &&
+		a.jitterMs === b.jitterMs
+	);
 }
 
 export function latencyProbeViewsEqual(a: LatencyProbeView | undefined, b: LatencyProbeView | undefined): boolean {
 	if (a === undefined || b === undefined) return a === b;
 	return (
 		a.leadTicks === b.leadTicks &&
+		a.netLeadTicks === b.netLeadTicks &&
 		a.misses === b.misses &&
+		pacingViewsEqual(a.pacing, b.pacing) &&
 		a.lastMs === b.lastMs &&
 		a.meanMs === b.meanMs &&
 		a.maxMs === b.maxMs &&
@@ -134,16 +224,38 @@ function msText(ms: number | undefined): string | number {
 	return ms === undefined ? LATENCY_PROBE.none : math.round(ms);
 }
 
-/** The vars of the `hud.debug.net` string: lead in ticks and ms, last / mean / max press -> step in whole ms. */
-export function latencyProbeVars(view: LatencyProbeView): Readonly<Record<string, string | number>> {
+/**
+ * The vars of the `hud.debug.net` string: the effective lead in ticks and ms, the net lead in ticks, last / mean / max
+ * press -> step in whole ms. Its `{pace}` is the pacing part's own string (pacingDebugKey / pacingDebugVars), which the
+ * caller formats and passes as `pace`.
+ */
+export function latencyProbeVars(view: LatencyProbeView, pace = ""): Readonly<Record<string, string | number>> {
 	return {
 		lead: view.leadTicks,
 		leadMs: math.round(view.leadTicks * SIM_DT * LATENCY_PROBE.msPerSecond),
+		net: view.netLeadTicks,
+		pace,
 		last: msText(view.lastMs),
 		mean: msText(view.meanMs),
 		max: msText(view.maxMs),
 		count: view.count,
 		late: view.late,
 		misses: view.misses,
+	};
+}
+
+/** The pacing part's string key by mode (PACING_DEBUG_STRINGS; HUD_STRINGS paceProbe / paceProbeWait / paceProbeOff). */
+export function pacingDebugKey(view: PacingDebugView): string {
+	return PACING_DEBUG_STRINGS[view.mode];
+}
+
+/** The vars of the pacing part's strings: depth in ticks and ms, holds, backlog, jitter in ms. */
+export function pacingDebugVars(view: PacingDebugView): Readonly<Record<string, number>> {
+	return {
+		depth: view.depthTicks,
+		depthMs: view.depthMs,
+		holds: view.holds,
+		backlog: view.backlog,
+		jitter: view.jitterMs,
 	};
 }

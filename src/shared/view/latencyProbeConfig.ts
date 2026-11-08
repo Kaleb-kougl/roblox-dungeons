@@ -12,3 +12,13 @@ export const LATENCY_PROBE = {
 	/** Shown for a stat with no measured press yet. */
 	none: "-",
 } as const;
+
+/**
+ * The co-op debug line's pacing part (docs/FRAME_PACING.md Design 7), one string per PacingDebugView mode. Developer
+ * strings (`hud.debug*`): English in every locale, never exported for translation.
+ */
+export const PACING_DEBUG_STRINGS = {
+	on: "hud.debug.pace",
+	waiting: "hud.debug.paceWait",
+	off: "hud.debug.paceOff",
+} as const;
