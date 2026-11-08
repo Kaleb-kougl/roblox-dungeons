@@ -284,6 +284,7 @@ export function damagePlayer(
 	const tutorial = state.tutorial;
 	if (tutorial !== undefined && tutorial.harmless !== 0) {
 		state.events.playerHits += 1;
+		state.score?.events.hurtPlayer.push(playerIndex); // docs/RUN_CONTRIBUTION.md CT2 (unhashed feed)
 		p.hurtTicks = HURT_INVULN_TICKS;
 		runOnPlayerHit(state, playerIndex);
 		tutorial.harmlessHits += 1;
@@ -299,6 +300,8 @@ export function damagePlayer(
 		} else p.hearts = jsMax(0, p.hearts - halfHearts);
 	}
 	state.events.playerHits += 1;
+	// Run contribution (docs/RUN_CONTRIBUTION.md CT2, scored runs): who took the hit. Unhashed feed, never read back.
+	state.score?.events.hurtPlayer.push(playerIndex);
 	p.hurtTicks = HURT_INVULN_TICKS;
 	runOnPlayerHit(state, playerIndex);
 
