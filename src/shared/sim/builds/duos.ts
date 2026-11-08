@@ -66,7 +66,7 @@ import { SIM_HZ } from "../units";
 import { Boon } from "../progression/progressionData";
 import { playerHitDamage } from "../progression/runMods";
 import { buildLevel, type BuildPlayerState, type BuildProc, type BuildsState } from "./builds";
-import { BuildEffect, Duo } from "./buildsData";
+import { BuildEffect, Duo, ProcKind } from "./buildsData";
 import {
 	ARROW_SPEED_TOLERANCE,
 	BLAZING_TRAIL_EMBER_TICKS,
@@ -197,7 +197,7 @@ export function buildsOnArrowHit(
 }
 
 /** Scratch proc for Storm Blade and Chain Reaction (never re-entered: chainSpark / volatileBurst only queue procs). */
-const pseudo: BuildProc = { x: 0, z: 0, owner: 0, gen: 0, slot: 0, id: 0, excess: 0 };
+const pseudo: BuildProc = { x: 0, z: 0, owner: 0, gen: 0, slot: 0, id: 0, excess: 0, kind: ProcKind.KILL };
 
 function setPseudo(x: number, z: number, owner: number, gen: number, slot: number, id: number): BuildProc {
 	pseudo.x = x;

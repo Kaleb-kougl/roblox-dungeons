@@ -5,6 +5,9 @@ import arcTable from "shared/fixtures-generated/arc-table";
 import { dcos, dsin } from "shared/dungeon";
 import {
 	ARC_SHAPES,
+	BALLISTA_FAN_SPREAD,
+	BALLISTA_FANS,
+	BALLISTA_RINGS,
 	CLEAVE,
 	FULL_RING,
 	HELLFIRE_ARC,
@@ -104,5 +107,41 @@ describe("port arc shapes (combat/arcTablePort.ts)", () => {
 		}
 		// Any spread at or past the full-ring threshold is the same ring.
 		expect(arcTrig(8, FULL_RING + 1)).toBe(eight);
+	});
+
+	it("Ballista's bolts (6 / 10 @ FULL_RING and @ BALLISTA_FAN_SPREAD, docs/BUILDS_V2.md BV1) resolve and fire", () => {
+		const six = PORT_ARC_SHAPES[5];
+		const ten = PORT_ARC_SHAPES[6];
+		const fan6 = PORT_ARC_SHAPES[7];
+		const fan10 = PORT_ARC_SHAPES[8];
+		expect([six.count, six.full, ten.count, ten.full]).toEqual([6, true, 10, true]);
+		expect([fan6.count, fan6.full, fan10.count, fan10.full]).toEqual([6, false, 10, false]);
+		expect([float64Hex(fan6.spread), float64Hex(fan10.spread)]).toEqual([
+			float64Hex(BALLISTA_FAN_SPREAD),
+			float64Hex(BALLISTA_FAN_SPREAD),
+		]);
+		expect(BALLISTA_FAN_SPREAD).toBe(1.6);
+		// Every level's ring and fan is a row (no "arc table miss"), the right one, and fires its count.
+		const rings = [six, ten, ten];
+		const fans = [fan6, fan10, fan10];
+		for (let l = 0; l < 3; l++) {
+			const ring = BALLISTA_RINGS[l];
+			const fan = BALLISTA_FANS[l];
+			expect([
+				l,
+				arcTrig(ring.count, ring.spread) === rings[l],
+				arcTrig(fan.count, fan.spread) === fans[l],
+			]).toEqual([l, true, true]);
+			expect(gen.arc(ring.count, ring.spread, 2).size()).toBe(ring.count);
+			expect(gen.arc(fan.count, fan.spread, 2).size()).toBe(fan.count);
+		}
+		// The rings start straight down +Z; a fan is symmetric about the aim (its ends half the spread either side).
+		for (const s of [six, ten])
+			expect([float64Hex(s.sin[0]), float64Hex(s.cos[0])]).toEqual([float64Hex(0), float64Hex(1)]);
+		for (const s of [fan6, fan10]) {
+			expect(s.sin[0]).toBeCloseTo(math.sin(-BALLISTA_FAN_SPREAD / 2), 15);
+			expect(s.sin[s.count - 1]).toBeCloseTo(math.sin(BALLISTA_FAN_SPREAD / 2), 15);
+		}
+		expect(() => gen.arc(6, BALLISTA_FAN_SPREAD + 1e-12)).toThrow("arc table miss");
 	});
 });

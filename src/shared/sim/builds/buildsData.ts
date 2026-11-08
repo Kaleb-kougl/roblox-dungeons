@@ -27,6 +27,14 @@ export const Duo = {
 	SKEWER: 10,
 	CITADEL: 11,
 	STONE_HEART: 12,
+	// Builds v2, wave 1 (docs/BUILDS_V2.md "Duos", BV1 data; rules BV6 / BV7).
+	THUNDER_GUARD: 13,
+	STILLWATER: 14,
+	REBUKE: 15,
+	DRAGON_BOLT: 16,
+	POWDER_KEG: 17,
+	FULL_HEART: 18,
+	HAPPY_HOUR: 19,
 } as const;
 export type DuoId = (typeof Duo)[keyof typeof Duo];
 
@@ -38,7 +46,10 @@ export interface DuoDef {
 	readonly b: number;
 }
 
-/** Every duo, by Duo index (docs/BUILDS.md "Duo boons"; 9-12 docs/LEGENDARIES.md "Duos"). */
+/**
+ * Every duo, by Duo index (docs/BUILDS.md "Duo boons"; 9-12 docs/LEGENDARIES.md "Duos"; 13-19 docs/BUILDS_V2.md
+ * "Duos": card ids 77-83).
+ */
 export const DUOS: ReadonlyArray<DuoDef> = [
 	{ id: "duo.fireArrows", a: Boon.EMBER_WAKE, b: Boon.PIERCING_ARROWS },
 	{ id: "duo.blazingTrail", a: Boon.EMBER_WAKE, b: Boon.SLIPPERY },
@@ -53,6 +64,13 @@ export const DUOS: ReadonlyArray<DuoDef> = [
 	{ id: "duo.skewer", a: Boon.OVERKILL, b: Boon.PIERCING_ARROWS },
 	{ id: "duo.citadel", a: Boon.BASTION, b: Boon.WARDING },
 	{ id: "duo.stoneHeart", a: Boon.BASTION, b: Boon.HEARTY },
+	{ id: "duo.thunderGuard", a: Boon.RIPOSTE, b: Boon.CHAIN_SPARK },
+	{ id: "duo.stillwater", a: Boon.COMPOSURE, b: Boon.RIPOSTE },
+	{ id: "duo.rebuke", a: Boon.BASTION, b: Boon.RIPOSTE },
+	{ id: "duo.dragonBolt", a: Boon.BALLISTA, b: Boon.EMBER_WAKE },
+	{ id: "duo.powderKeg", a: Boon.WRECKER, b: Boon.VOLATILE },
+	{ id: "duo.fullHeart", a: Boon.HEARTY, b: Boon.SHARPENED },
+	{ id: "duo.happyHour", a: Boon.DEEP_FLASK, b: Boon.BOUNTY },
 ];
 export const DUO_COUNT = DUOS.size();
 
@@ -189,6 +207,12 @@ export const BuildEffect = {
 	CLOSE_CALL: 7,
 	/** Soul Swarm (Soul Shards III): its shards steer (BU5), told apart from straight shards by this source. */
 	SOUL_SWARM: 8,
+	/** Ballista's bolts (docs/BUILDS_V2.md BV1; the rule is BV3): the last-pierce ring, the wall's back fan. */
+	BALLISTA: 9,
+	/** Wrecker's splinters (BV1; BV5). */
+	WRECKER: 10,
+	/** Counterstrike's returns (Riposte III; BV1; BV2). The wave itself is no bullet (BVD1). */
+	RIPOSTE: 11,
 } as const;
 export type BuildEffectId = (typeof BuildEffect)[keyof typeof BuildEffect];
 
@@ -222,6 +246,18 @@ export function sourceGen(source: number): number {
 export function killGenOfSource(source: number): number {
 	return isBuildSource(source) ? sourceGen(source) + 1 : 0;
 }
+
+/**
+ * What a queued BuildProc is (docs/BUILDS_V2.md "Wrecker", BV1; hashed as BuildProc.kind, appended). Append only.
+ *   KILL   an enemy's death (BU3): x / z the corpse, slot / id the victim
+ *   SMASH  a piece broken by an owner with Wrecker or Powder Keg (BV5): x / z the cell centre, slot / id -1
+ * BV1: every proc is a KILL; nothing queues a SMASH yet.
+ */
+export const ProcKind = {
+	KILL: 0,
+	SMASH: 1,
+} as const;
+export type ProcKindId = (typeof ProcKind)[keyof typeof ProcKind];
 
 /** Archetype ids whose kills never proc (BU3), besides every reviving archetype (def.stepDead: turrets). */
 export const PROC_INELIGIBLE_ARCHETYPES: ReadonlyArray<string> = ["dummy"];

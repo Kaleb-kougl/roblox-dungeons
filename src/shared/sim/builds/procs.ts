@@ -3,9 +3,9 @@
  * state.builds; without it nothing here is reached.
  *
  * Kills (buildsOnKill, from actors.ts damageActor's kill line, before killActor): a kill by player damage pushes a proc
- * { x, z, owner, gen, slot, id, excess } (the corpse, ctx.playerIndex = the bullet's owner / the swinging player / the
- * spark's owner, ctx.procGen, the victim's slot and actor id; excess: docs/LEGENDARIES.md LG2's Overkill carry,
- * ctx.killCarry when the owner has Overkill, else 0)
+ * { x, z, owner, gen, slot, id, excess, kind } (the corpse, ctx.playerIndex = the bullet's owner / the swinging player /
+ * the spark's owner, ctx.procGen, the victim's slot and actor id; excess: docs/LEGENDARIES.md LG2's Overkill carry,
+ * ctx.killCarry when the owner has Overkill, else 0; kind: ProcKind.KILL, docs/BUILDS_V2.md BV1; BV5 adds SMASH)
  * onto state.builds.procs, unless
  *   - the victim revives (def.stepDead: turrets) or is in PROC_INELIGIBLE_ARCHETYPES (the training dummy),
  *   - gen >= genMax (BUD5: a generation-3 proc would do nothing, so none is queued; a kill of generation exactly
@@ -36,7 +36,7 @@ import type { ActorState, ArchetypeDef } from "../combat/actors/types";
 import { hasLeft } from "../party";
 import { Boon } from "../progression/progressionData";
 import { buildLevel, type BuildPlayerState, type BuildProc, type BuildsState } from "./builds";
-import { PROC_INELIGIBLE_ARCHETYPES } from "./buildsData";
+import { PROC_INELIGIBLE_ARCHETYPES, ProcKind } from "./buildsData";
 import { beginEffectBudget, endEffectBudget, resetEffectScratch } from "./effects";
 import { JACKPOT_KILLS, KillCause } from "./effectsData";
 import { resetEvolutionScratch, stepEvolutions, stepMomentum } from "./evolutions";
@@ -93,7 +93,7 @@ export function buildsOnKill(ctx: SimCtx, a: Readonly<ActorState>, def: Readonly
 	if (!hasOnKillEffect(p)) return;
 	// Overkill (docs/LEGENDARIES.md LG2): the kill's carry (damageActor's ctx.killCarry), kept only for an owner of it.
 	const excess = buildLevel(p, Boon.OVERKILL) > 0 ? ctx.killCarry : 0;
-	s.procs.push({ x: a.x, z: a.z, owner, gen, slot: ctx.actors.indexOf(a), id: a.id, excess });
+	s.procs.push({ x: a.x, z: a.z, owner, gen, slot: ctx.actors.indexOf(a), id: a.id, excess, kind: ProcKind.KILL });
 }
 
 function resolveProc(ctx: SimCtx, s: BuildsState, q: Readonly<BuildProc>): void {

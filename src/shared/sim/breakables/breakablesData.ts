@@ -24,8 +24,13 @@ import { BOW_DATA } from "../combat/weapons/defs/bow";
 export const BreakableKind = { BARREL: 0, CRATE: 1, CHEST: 2 } as const;
 export type BreakableKindId = (typeof BreakableKind)[keyof typeof BreakableKind];
 
-/** What dealt a piece's damage (presentation and scoring: only players' breaks score). */
-export const BreakableSource = { MELEE: 0, PLAYER_BULLET: 1, ENEMY_BULLET: 2, SLAM: 3 } as const;
+/**
+ * What dealt a piece's damage (presentation and scoring: only players' breaks score). Append only. ROLL and BUILD are
+ * builds v2's (docs/BUILDS_V2.md BV1, declared only): Wrecker's roll smash and a build effect's break (Demolition's
+ * blast, Siege Bolt's slam); BV5 scores them like a swing's (BVD12). In BV1 nothing passes them and damageBreakable
+ * still scores MELEE / PLAYER_BULLET only.
+ */
+export const BreakableSource = { MELEE: 0, PLAYER_BULLET: 1, ENEMY_BULLET: 2, SLAM: 3, ROLL: 4, BUILD: 5 } as const;
 export type BreakableSourceId = (typeof BreakableSource)[keyof typeof BreakableSource];
 
 /** B4: bow stream arrows that break a piece, by kind (barrel 2, crate 4). */

@@ -26,9 +26,10 @@ cannot see it happen, it is not in this plan.**
 
 ## Status (2026-11-07)
 
-**Plan only, nothing built.** The six owner calls of the proposal are settled ("Owner calls"); this plan turns them into
-tasks BV0-BV13 and decisions BVD1-BVD20; the owner settled BVD3 and BVD13-BVD15 on review (2026-11-07), the rest
-are defaults. Follows docs/BUILDS.md (BU0-BU10 built,
+**BV0-BV1 built** (the audit, "BV0 findings"; the data and scaffolding, "BV1 (as built)": every index, tunable, hashed
+field, event list and placeholder string declared, no rule yet). The six owner calls of the proposal are settled
+("Owner calls"); this plan turns them into tasks BV0-BV13 and decisions BVD1-BVD20; the owner settled BVD3 and
+BVD13-BVD15 on review (2026-11-07), the rest are defaults. Follows docs/BUILDS.md (BU0-BU10 built,
 BU11-BU14 open) and docs/LEGENDARIES.md (LG0-LG7 built, LG8-LG9 open). The proposal's advice to land after BU14 stands
 for the merge to `main`: BV1-BV10 can be built on a branch; BV13's frame-time check uses BU14's budget.
 
@@ -59,6 +60,182 @@ Paths under `src/shared/sim/` unless noted.
 | Strings come from the tables: `<id>.name` / `.desc` / `.icon`, levelled boons also `.desc.2`, `.evo.name`, `.evo.desc` | shared/view/hud `progression.ts` `progressionStringKeys` | New boons and duos need their rows and `l10n/context.json` entries, nothing else |
 | Arc rows: web 16 @ FULL_RING, 5 @ 0.5, 1 @ 0; port 8 / 12 @ FULL_RING; no 6 or 10 row | `combat/arcTable.ts`, `combat/arcTablePort.ts` | Ballista's bolts need four port rows (BVD8) |
 | Free indices: Boon 17+, Duo 13+ (card ids 77+), `BuildEffect` 9+, `BreakableSource` 4+, `ScoreSource` 15; `DAILY.ruleset` is 11 | `progressionData.ts`, `buildsData.ts`, `breakablesData.ts`, shared/daily `config.ts` | Wave 1 takes them in this plan's order; ruleset 11 -> 12 (BVD20) |
+
+## BV0 findings (2026-11-07)
+
+Read on `builds-v2` @ `d9ab301` (= `main` @ `0a8e8ec` + this plan). Paths under `src/shared/sim/` unless noted. Every
+row of the table above holds (line numbers drift by a few lines, given here as found); the points below add to it or say
+where the next tasks must take care.
+
+- **Indices.** Boon 17-19, Duo 13-19 (card ids 77-83), `BuildEffect` 9-11, `BreakableSource` 4-5 and `ScoreSource` 15
+  were free; no code named Riposte, Ballista, Wrecker or overcap. `DAILY.ruleset` was 11 (`shared/daily/config.ts`).
+- **Every builds run is scored.** Every game config that sets `builds` (shared/run `buildEndlessRunConfig`, solo and
+  co-op, so the daily and dev worlds built from it, and `run/testing/buildTune.ts`'s tuning config) also sets
+  `scoring`. A hand-built `SimConfig` may still set `builds` without `scoring` (specs do), so BV2 / BV6 / BV9 must keep
+  their `state.score !== undefined` guards: the guard's erase positions reach `score.events.guardX` / `guardZ` only in
+  a scored run (`combat/weapons/defs/sword.ts` 251-285), and an overcap payout needs a score to pay into.
+- **The guard** (`sword.ts` 227-290) as the table says, with three details for BV2: the guard sweeps on its press tick
+  (`starting`, the counter set and decremented on the same tick), so an 18-tick guard sweeps 18 ticks; its natural end
+  is the tick the decrement leaves `SWORD_V_GUARD` at 0, inside the same branch, right after `buildsOnGuardCancels`;
+  a roll zeroes it at the top of `step` (line 234), and a swap zeroes it only when the sword is swapped back IN
+  (`weaponSwapped` while the sword is the active set, line 230): while holstered the sword does not step, so its counter
+  is frozen, as the plan says. **The floor change does not touch weapon slots** (`endless.ts` `nextFloor` 264-: it clears
+  both bullet pools and calls `clearBuildProcs`, nothing else of the weapons), so a guard running at a floor change keeps
+  running on the next floor and would end "naturally" there: BV2 must discard `riposteCount` at the floor change
+  (`clearBuildProcs`, which BV1 left free of per-player counters) to keep the edge case "count reset with the floor".
+- **Bastion's `braceCount`** (`builds/hooks.ts` 223-272) is a field of every player but only counted and reset for
+  Bastion owners (`hasBastion`); a swap resets it only when not mid-roll. Riposte's own count is needed, as the table says.
+- **The bow.** `BOW.step` read `BOW_DATA.chargeTicks` at two places and `bowCharge(slot)` (the view's charge, also
+  `client/.../WeaponViewController.ts` 201) divided by it; BV1 routes them through `bowChargeTicks` (below). Heavy arrows
+  (speed 22) are told from stream and Flurry arrows (both 16: Flurry fires stream specs with the bow's source) and the
+  bow-held Ember Wake ring (12) by `builds/duos.ts` `bowArrowLife` (128-140); Ricochet's split arrows are `SPARK_BOLT`
+  effect bolts with a build source, so no arrow test confuses them. The heavy arrow's `pierce` field is 3 bits (max 7:
+  2 + Piercing Arrows' 2 fits).
+- **Collisions** (`combat/combat.ts`): `playerBulletHit` 514-551 (blocked cell first, then the piece: a piercing bullet
+  flies on only when it broke the piece, else consumed), `piercingBulletHit` 472-512 (`buildsOnPierceHit(..., pierce ===
+  0)` is the consuming hit). `lastHit` holds the last actor's slot + 1 (7 bits); the "already inside at the start of
+  the tick" rule applies only while `lastHit !== 0`, so a plowing arrow (BV4) must keep `lastHit` set.
+- **The bullet pool** (`combat/bullets.ts`): the free list is a LIFO stack (`free` / `freeTop`, 235-304), `isLive(i)` is
+  `slotToDense[i] >= 0` (510), `forEachActive` skips delayed bullets (465-472). There is **no release by index**: a slot
+  is released only by `step` (life over or out of bounds), `clear(emitter?)` or a `true` return from a `forEachActive`
+  visitor. So a pin must end in the same walk visit that consumes its arrow (BV4: the slam / last-pierce / wall hooks),
+  because the next spawn (`fireEffect` in `stepBuilds` 6b, or the next tick's weapons before phase 5b) can reuse that
+  very slot; an arrow released by `step` is caught by phase 5b's `isLive` check before anything spawns.
+- **Nothing spawns a player bullet between the move and the collisions.** Phase 5 (`stepCombat` 600-603) is followed
+  only by the collision setup (605-614); player bullets spawn only in the weapons phase (4: `ctx.firePlayer` from
+  `weapons.ts` / `bow.ts` / `test.ts`, Mirror Cloak's reflections in the guard's `sweepArc`, `melee.ts` 44-60) and in
+  `stepBuilds` (6b: every `fireEffect`). Kills in the walk queue procs and module scratch (Ricochet, duo sparks, Fire
+  Arrows' embers) that fire after the walk. Phase 5b is safe where the plan puts it.
+- **Actors.** `damageActor` (`combat/actors/actors.ts` 198-236): the dropped damage is `before - after` around
+  `applyDamageCap` (207), after `filterDamage` and the Shielded absorb, as the plan says. `stepActors` (294-) rebuilds the
+  Warbanner mask first (`ctx.rebuildAura`, `combat/ctx.ts` 84-130: a transient `Map<ActorState, id>` cleared by `bind`);
+  the pinned mask can copy it exactly. `moveActor` (`helpers.ts` 71) uses `config.actorMover` with the intact pieces as
+  `solid`. Actor slots are freed by the corpse timer and reused: a pin keeps slot AND id (as `nearestEnemy` skips by id).
+- **Who pins (BV4).** A boss is `def.data.boss === true` (`ArchetypeData.boss`, `combat/actors/types.ts` 121; set by
+  `boss/act1.ts` 270 and `boss/demonlord.ts` 284; the test Executioner and Overkill use, `builds/execute.ts`). The
+  Goldling is the archetype id `GOLDEN_KIND` = `"golden"` (`golden/goldenData.ts` 12; test `def.id === GOLDEN_KIND`): its
+  kills do proc today (`PROC_INELIGIBLE_ARCHETYPES` is only `"dummy"`), so the pin test must name it. Revivers (turrets)
+  are `def.stepDead !== undefined`.
+- **Rooms tolerate a carried actor.** Score room records are membership lists (`memberSlots`): `scoreRoomEngaged` /
+  `scoreRoomDown` (`score/score.ts` 1059-1081) read player positions and member state, never a member's position, so a
+  pinned actor dragged out of its room's box still belongs to its record (and so do pellets / vaults, which follow the
+  record). The plan's fallback (stop the drag at the room's box) is not needed for scoring; BV4 should still check the
+  Charger's room-box stun and the Goldling's walk mask, which read positions.
+- **Breakables.** `damageBreakable` (`breakables/breakables.ts` 198-220) scores MELEE / PLAYER_BULLET only and knows no
+  player; `scoreBreakable(state, kind)` (`score/score.ts` 769) credits no one either. `stepCombat` caches `hitPieces`
+  once before the walk (`intact > 0`), so pieces broken mid-walk (a slam, BV4) are handled by `breakableSlotAt`'s
+  cell map, not that cache.
+- **Procs** (`builds/procs.ts`): `resolveProc` treats every proc as a kill and `dropLeavers` drops a leaver's procs
+  (132); BV5 must branch on `BuildProc.kind` before the on-kill boons, and BV2 / BV4 must drop a leaver's waves and pins
+  the same way. A kill of generation `genMax` queues nothing (Chain Reaction aside), so smashes stop at `GEN_MAX` too.
+- **Flask drink** (`player.ts` 200-205): `events.flaskUsed` is not per player; Overflowing reads the drinker's
+  `flaskTicks === FLASK_USE_TICKS` on the drink tick (`builds/evolutions.ts` 268), and Happy Hour (BV7) should too.
+- **Hashed pins.** Endless state hashes pinned in specs (`charger.spec.ts` `PIN_HASH`, `stormcaller.spec.ts`,
+  `warbanner.spec.ts`, `reaper.spec.ts`) build their configs without `builds`, so BV1's appended fields moved none of
+  them (all pass unchanged).
+
+## BV1 (as built)
+
+Data and hashed state only: no rule reads any of it yet, so a builds run plays as before, except that the draft can deal
+the three new boons and seven duos (endless drafts change) and every builds run's `builds` hash group is wider (endless
+state hashes differ from tick 0). M1, every golden fixture and the tutorial (no builds; `CLASSIC_BOON_COUNT` 12) replay
+exactly as before. Paths under `src/shared/` unless noted. The names below are final: later tasks use them as is.
+
+- **Boons** (`sim/progression/progressionData.ts`): `Boon.RIPOSTE` 17 (`boon.riposte`, rare, offense), `Boon.BALLISTA`
+  18 (`boon.ballista`, rare, offense), `Boon.WRECKER` 19 (`boon.wrecker`, common, offense) appended to `Boon` / `BOONS`;
+  `BOON_COUNT` 20, `CLASSIC_BOON_COUNT` stays 12. Each goes I -> II -> III through `grantCard` (the evolution event at
+  III); no level does anything yet. `BALLISTA_CHARGE_PERCENT` [100, 75, 75] sits beside Bastion's numbers (a weapon mod
+  `runMods` will read, like `BASTION_GUARD_TICKS`).
+- **Duos** (`sim/builds/buildsData.ts`): `Duo.THUNDER_GUARD` 13 (`duo.thunderGuard`, Riposte + Chain Spark),
+  `STILLWATER` 14 (`duo.stillwater`, Composure + Riposte), `REBUKE` 15 (`duo.rebuke`, Bastion + Riposte), `DRAGON_BOLT`
+  16 (`duo.dragonBolt`, Ballista + Ember Wake), `POWDER_KEG` 17 (`duo.powderKeg`, Wrecker + Volatile), `FULL_HEART` 18
+  (`duo.fullHeart`, Hearty + Sharpened), `HAPPY_HOUR` 19 (`duo.happyHour`, Deep Flask + Bounty); `DUO_COUNT` 20, card
+  ids 77-83. Every boon is now in 1-4 duos (Chain Spark and Volatile 4; Deep Flask 1).
+- **Effects and procs** (`buildsData.ts`): `BuildEffect.BALLISTA` 9, `WRECKER` 10, `RIPOSTE` 11 (Counterstrike's
+  returns); `ProcKind` { `KILL` 0, `SMASH` 1 } (type `ProcKindId`).
+- **Tunables** (`sim/builds/effectsData.ts`, block "Builds v2, wave 1"; values exactly the Design's, world units with
+  `TILE_SIZE` 1, durations in ticks):
+  - Riposte: `RIPOSTE_MIN_ERASED` 1, `RIPOSTE_WAVE_HALF_ANGLE_COS` 0.5, `RIPOSTE_WAVE_SPEED` 24, `RIPOSTE_WAVE_RANGE` 7,
+    `RIPOSTE_MAX_COUNT` [6, 10, 10], `RIPOSTE_WAVES_MAX` 8, `COUNTERSTRIKE_RING_ERASED` 5,
+    `COUNTERSTRIKE_RING_HALF_ANGLE_COS` (= `NOVA_HALF_ANGLE_COS` -2), `COUNTERSTRIKE_RETURN` (`SOUL_SHARD` at 1 damage),
+    `COUNTERSTRIKE_RANGE` (= `SOUL_SHARDS_RANGE`), `WaveKind` { `FORWARD` 0, `RING` 1, `REBUKE` 2 }.
+  - Ballista: `BALLISTA_BOLT_COUNTS` [6, 10, 10], `BALLISTA_FAN_SPREAD` 1.6, `BALLISTA_BOLT_SPEED` 12 / `_LIFE` 0.35 /
+    `_DAMAGE` 1, `BALLISTA_BOLT` (one `BURST` bolt), `BALLISTA_RINGS` (per level, @ `FULL_RING`) and `BALLISTA_FANS` (per
+    level, @ `BALLISTA_FAN_SPREAD`). Siege Bolt: `SIEGE_PINS_MAX` 4, `SIEGE_SLAM_SHORT` 0.25, `SIEGE_SLAM_DAMAGE_PERCENT`
+    300, `SIEGE_SHOCK_RADIUS` 2, `SIEGE_SHOCK_DAMAGE` 3.
+  - Wrecker: `WRECKER_SPLINTERS` [3, 5, 5], `WRECKER_SPLINTER` (speed 14, life 0.6, 1 damage, `SHARD`), `WRECKER_RANGE`
+    (= `SOUL_SHARDS_RANGE`), `DEMOLITION_DAMAGE` 2, `DEMOLITION_RADIUS` 1.5. The roll smash radius is not a new
+    tunable (`PLAYER_RADIUS` + `BREAKABLE_HIT_RADIUS`); Demolition's combo step is `COMBO_STEP`.
+  - Duos: `THUNDER_GUARD_RANGE` (= `CHAIN_SPARK_RANGE`), `THUNDER_GUARD_DAMAGE` 1, `THUNDER_GUARD_MAX` 8, `SparkFork`
+    { `HOP` 0, `FORK` 1, `THUNDER` 2 } (the existing `sparkFork` values named; existing pushes still write 0 / 1 as
+    literals), `STILLWATER_SECONDS` 3 / `STILLWATER_TICKS` 180, `STILL_NONE` -1, `DRAGON_BOLT_EMBER_TICKS` 3,
+    `FULL_HEART_RADIUS` (= `SKEWER_RADIUS`), `FULL_HEART_RANGE` 4, `HAPPY_HOUR_SECONDS` 5 / `HAPPY_HOUR_TICKS` 300,
+    `HAPPY_HOUR_KILL_PERCENT` 200. Rebuke needs no tunable of its own (`BASTION_BRACE_BULLETS`, `RIPOSTE_MAX_COUNT`).
+- **Arc rows** (`sim/combat/arcTablePort.ts`): 6 @ FULL_RING, 10 @ FULL_RING, 6 @ 1.6, 10 @ 1.6 appended to
+  `PORT_ARC_SOURCES` (`PORT_ARC_SHAPES[5..8]`); `sim/arcTablePort.spec.ts` checks every level's ring and fan resolves to
+  its row and fires (no "arc table miss"), and none shadows a web row.
+- **Breakables and score** (declared only): `BreakableSource.ROLL` 4, `BUILD` 5 (`damageBreakable` still scores MELEE /
+  PLAYER_BULLET only); `ScoreSource.OVERCAP` 15 and `OVERCAP_POINTS` 10 (`sim/score/scoreData.ts`). **No run's points /
+  counts hold OVERCAP yet** (an endless run still has 15 entries, 0..14): BV9 adds `addOvercapScoreSources`, which
+  changes every builds run's `score` group.
+- **Hashed state** (`sim/builds/builds.ts`, appended, empty / 0 everywhere for now):
+  - per player, after `braceCooldown`: `riposteCount`, `overcap`, `happyHourTicks` (`BUILD_PLAYER_SCALARS`);
+  - per proc, after `excess`: `kind` (`BUILD_PROC_FIELDS`), `ProcKind.KILL` in `buildsOnKill` (`procs.ts`), the duos'
+    scratch `pseudo` proc (`duos.ts`) and the spec literals (`procs.spec.ts`, `overkill.spec.ts`);
+  - after the procs: `pins: BuildPin[]` (`bullet`, `owner`, `slot`, `id`, `x0`, `z0`, `slam`; `BUILD_PIN_FIELDS`), then
+    `waves: BuildWave[]` (`owner`, `x`, `z`, `dirX`, `dirZ`, `halfCos`, `radius`, `range`, `speed`, `damage`, `kind`;
+    `BUILD_WAVE_FIELDS`, then `hits: number[]` (actor ids) as length + values), then the world scalars `stillCombo`,
+    `stillTick` (`BUILD_WORLD_SCALARS`; `stillTick` starts at `STILL_NONE`). Each list hashes its length first.
+  - Clone (pins spread, waves with `hits` copied), `writeBuildsHash`, `buildsHashNames` (`builds.pins[0].bullet`,
+    `builds.waves[0].hits[1]`, `builds.stillTick`, ...) follow the existing pattern; `clearBuildProcs` (the floor change)
+    now also clears pins and waves and resets `stillCombo` 0 / `stillTick` `STILL_NONE`. Per-player counters are not
+    touched there (BV2 adds `riposteCount`'s discard: BV0 findings, "The guard"). No snapshot field (no view reads them
+    yet). Every builds run's group grows by 3 scalars per player, 1 value per queued proc and 4 values (two lengths, two
+    scalars); no spec pins an endless builds hash, and no pinned value changed.
+- **Events** (`BuildEvents`, unhashed, in the interface, `BUILD_EVENT_LISTS` and `emptyEvents`, so clone and the
+  per-tick clear cover them): `waveX` / `waveZ` / `waveDirX` / `waveDirZ` / `waveHalfCos` / `waveRange` / `waveSpeed` /
+  `waveOwner` / `waveDamage` / `waveKind` and `counterCount` (parallel, one per spawned wave); `ballistaX` / `Z` /
+  `Owner` / `Fired` / `Wall` (1 back fan, 0 ring); `pinStartSlot` / `Owner` / `X` / `Z`; `pinEndSlot` / `Owner` /
+  `Carried` / `Slam`; `slamX` / `Z` / `Owner` / `Struck`; `smashX` / `Z` / `Owner` / `Gen` / `Fired`; `demolitionX` /
+  `Z` / `Owner`; `beamX1` / `Z1` / `X2` / `Z2` / `Owner` / `Struck`; `happyPlayer`; `overcapX` / `Z` / `Owner` /
+  `Points`. Thunder Guard's sparks use the spark lists with `sparkFork` `SparkFork.THUNDER`.
+- **The bow** (`sim/combat/weapons/defs/bow.ts`): `bowChargeTicks(state, playerIndex)` (exported through the weapons
+  barrel) returns `BOW_DATA.chargeTicks` (36) for everyone; `BOW.step` reads it for the charge and the release, and
+  `bowCharge(slot, chargeTicks = BOW_DATA.chargeTicks)` takes it like `swordGuard`'s `guardTicks`. BV3 makes it read
+  `BALLISTA_CHARGE_PERCENT` (through `runMods`) and passes it from WeaponViewController.
+- **Theme** (placeholder pack, `theme/packs/placeholder/manifest.ts`): `boon.riposte.*` ("Riposte", `RIP`),
+  `boon.ballista.*` ("Ballista", `BAL`), `boon.wrecker.*` ("Wrecker", `WRK`) with `.name` / `.desc` / `.icon` /
+  `.desc.2` / `.evo.name` ("Counterstrike", "Siege Bolt", "Demolition") / `.evo.desc`; `duo.<id>.name` / `.desc` /
+  `.icon` for the seven duos (`TGD`, `STW`, `RBK`, `DRB`, `PKG`, `FHT`, `HHR`): 39 strings, listed by
+  `progressionStringKeys` through `BOONS` / `DUOS`. Each has an `l10n/context.json` entry (the existing boon / duo notes
+  plus a glossary line on guards, counter-waves, charged arrows, pieces, splinters, braces and finishers); `l10n:check`
+  0 errors, 0 warnings. The generated locale tables are untouched (new English keys fall back to English, LD7). No
+  colour role, audio ID, toast, floor text or `hud.draft.duoHint` yet (BV10); no top-level constant in `contract.ts`,
+  so the Luau locals are unchanged.
+- **`DAILY.ruleset`** 11 -> 12 (`shared/daily/config.ts`, BVD20).
+- **Specs.** `sim/builds/builds.spec.ts`: `BOON_COUNT` 20, twenty duos with every boon in 1-4 (the hubs Chain Spark and
+  Volatile 4), the builds hash group's size and its new tail names (`builds.procs.length` .. `builds.stillTick`), the
+  LG1 block's field lists; a new block "builds v2, wave 1 (BV1)": the three boons' rows and tables, the tutorial draft
+  never dealing them, the seven duos' pairs and card ids, the other indices (and an endless run still holding 15 score
+  sources), each new boon dealt New to a fresh build and taken to II and III, each duo available exactly when both
+  boons are owned (never dealt with one, a boss deal's guaranteed duo, granted once), the appended hashed state (zeroed,
+  hashed, cloned independently, named in hash order, cleared by `clearBuildProcs`), the new event lists cleared each
+  tick, and `bowChargeTicks` 36. `sim/arcTablePort.spec.ts` (the four rows), `progression.spec.ts` (`BOON_COUNT` 20),
+  `procs.spec.ts` / `overkill.spec.ts` (the proc literal's `kind`), `pacts/greed.spec.ts` (Hearty + Sharpened now make
+  Full Heart, so the Greed pool lists it after Gold Rush) and `daily/daily.spec.ts` (ruleset 12).
+- **Verify.** typecheck, lint, build, check:assets, check:autolocalize, test:checks, test:l10n and `l10n:check` green.
+  Headless (Lune), about 3,100 tests in 227 suites, all passing (`pacts/greed.spec` after its update): every spec
+  under `sim/builds` (the five `builds.ttk.*` harnesses included), `sim/progression`, `sim/pacts`, `sim/score`, `sim/breakables`, `sim/drops`, `sim/golden`,
+  `sim/treasure`, `sim/pellets`, `shared/daily`, `shared/theme`, `view/hud`, `view/fx`, `view/audio`, `shared/play`,
+  `shared/tutorial`, `shared/lockstep`, `dungeon/roomPool*` (`roomPool.lock.spec` matches), `run/tutorial` (the tutorial
+  lock), `run/validate`, `run/segments`, `run/endless`, `run/dev`, `run/party`, `run/slice`, `run/config`,
+  `run/affixes`, `run/endlessSpawn`; the fixture parity specs (`sim/runFull`, `runBoss`, `runBullets`, `constants`,
+  `hash`, `recordingCodec`), the determinism specs (`sim/determinism`, `combat.determinism`, `enemies.determinism`,
+  `swordBow.determinism`), the hashed pins (`charger`, `stormcaller`, `warbanner`, `reaper`), `arcTablePort`, `bow`,
+  `bullets`, `combat`, `weapons`, `step`, `smoke`, `encounterRun`, `forfeit`, `party`, `runPlayer*`,
+  `legendaries.bastion.*`. Not run on this 2-core box: the full `npm run verify` / unfiltered `npm test` (hours) and
+  the other tuning censuses (`run/buildsOffers`, `run/buildsPool`, `run/legendariesOffers`, `legendaries.ttk.*`,
+  `variants.ttk.*`).
 
 ## Player experience
 
@@ -323,7 +500,8 @@ theirs (owner tint rules as for sparks).
 ## Edge cases
 
 - A guard cut by the floor change: the count is reset with the floor (no wave crosses floors; waves are cleared with
-  the procs).
+  the procs). The guard itself survives the floor change (weapon slots are not reset, BV0 findings), so BV2 zeroes every
+  player's `riposteCount` in `clearBuildProcs`.
 - Riposte with Mirror Cloak: the guard reflects as today; the counter fires on top. With Bastion: a 27-tick full-ring
   guard counts more, the wave stays forward unless Counterstrike's 5 or Rebuke.
 - A wave reaching a boss: the cap applies (overcap points if over). Shielded absorbs. The Goldling can be struck

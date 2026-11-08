@@ -45,7 +45,8 @@ export const DAILY: DailyConfig = table.freeze({
 	// 10: Bastion's brace needs 8 bullets, not 3 (docs/LEGENDARIES.md LGD6, owner 2026-11-06).
 	// 11: the player's wall slide (docs/WALL_SLIDE.md WSD1: the player moves differently in every world); main's brace
 	// threshold took 10.
-	ruleset: 11,
+	// 12: builds v2 wave 1 (docs/BUILDS_V2.md BVD20): Riposte, Ballista, Wrecker and seven duos change endless drafts.
+	ruleset: 12,
 	labelOffset: 1,
 	yesterdayCacheSeconds: 600,
 	minEntrantsForPercentile: 20,

@@ -30,7 +30,8 @@ const FULL_RING_THRESHOLD = TAU - 1e-9;
 /**
  * Every port-only burst shape. Spreads are written with the same expression (and constants) as the archetype's
  * BurstSpec so the float is the same one: boss/demonlord.ts CLEAVE_SPREAD = 2.4, HELLFIRE_GAP = 1.0 (FULL_RING = 2 PI);
- * archetypes/imp.ts IMP_FAN_SPREAD = 0.7 (docs/ENEMY_VARIANTS.md EV2).
+ * archetypes/imp.ts IMP_FAN_SPREAD = 0.7 (docs/ENEMY_VARIANTS.md EV2); builds/effectsData.ts BALLISTA_FAN_SPREAD = 1.6
+ * (docs/BUILDS_V2.md BV1).
  *
  * docs/NEW_ENEMIES.md NE1: the new archetypes need no row. The Bomber's blast (12 @ FULL_RING) is the builds' row
  * below; the Reaper's spiral reads 16 @ FULL_RING, which is a WEB row (fixtures/arc-table.json: the turret sprayer's
@@ -43,6 +44,11 @@ export const PORT_ARC_SOURCES: ReadonlyArray<PortArcSource> = [
 	// docs/BUILDS.md BU1: full rings (spread FULL_RING = 2 PI, combat/patterns.ts; TAU here is the same expression)
 	{ count: 8, spread: TAU, source: "builds/effectsData.ts VOLATILE_BURSTS[0], THRILL_SEEKER_RING (8 @ FULL_RING)" },
 	{ count: 12, spread: TAU, source: "builds/effectsData.ts VOLATILE_BURSTS[1] (12 @ FULL_RING)" },
+	// docs/BUILDS_V2.md BV1 (BVD8): Ballista's bolts, the last-pierce ring and the back fan (BALLISTA_FAN_SPREAD = 1.6)
+	{ count: 6, spread: TAU, source: "builds/effectsData.ts BALLISTA_RINGS[0] (6 @ FULL_RING)" },
+	{ count: 10, spread: TAU, source: "builds/effectsData.ts BALLISTA_RINGS[1], [2] (10 @ FULL_RING)" },
+	{ count: 6, spread: 1.6, source: "builds/effectsData.ts BALLISTA_FANS[0] (6 @ BALLISTA_FAN_SPREAD)" },
+	{ count: 10, spread: 1.6, source: "builds/effectsData.ts BALLISTA_FANS[1], [2] (10 @ BALLISTA_FAN_SPREAD)" },
 ];
 
 /** gen.arc's angle of bullet `i` of (count, spread) at heading 0 (the formula in ./projectilePatterns.ts). */

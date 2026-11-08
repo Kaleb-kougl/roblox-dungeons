@@ -92,6 +92,12 @@ export const BREAKABLE_POINTS: ReadonlyArray<number> = [10, 20];
  * source, through the usual multipliers (combo, Depth, curses); it never feeds the combo and touches no room record.
  */
 export const JACKPOT_POINTS = 100;
+/**
+ * Overcap (docs/BUILDS_V2.md BVD18; BV1 declares it, BV9 pays it): points per point of boss damage the cap dropped,
+ * into ScoreSource.OVERCAP at the kills' floor scaling (floorScalePercent), through the usual multipliers, never
+ * feeding the combo.
+ */
+export const OVERCAP_POINTS = 10;
 
 // --- Multipliers -----------------------------------------------------------------------------------------
 
@@ -174,6 +180,12 @@ export const ScoreSource = {
 	 * run without builds / pellets / treasure / pacts). Every other scored run's "score" hash group is unchanged.
 	 */
 	GOLDEN: 14,
+	/**
+	 * Overcap (docs/BUILDS_V2.md "Overcap points"): boss damage the cap drops pays OVERCAP_POINTS per point, builds runs
+	 * only, combo-neutral. BV1 declares the index only: no run's points / counts hold it yet (that would change every
+	 * builds run's "score" hash group); BV9 adds addOvercapScoreSources (padding every earlier gated source).
+	 */
+	OVERCAP: 15,
 } as const;
 export type ScoreSourceId = (typeof ScoreSource)[keyof typeof ScoreSource];
 /** Source names in index order (dump names, results screen string keys `score.source.<name>`). */

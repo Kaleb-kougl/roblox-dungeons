@@ -47,6 +47,7 @@ import {
 	type InputFrame,
 	type SimConfig,
 	type SimState,
+	ProcKind,
 } from "shared/sim";
 import { frame } from "shared/run/testing";
 
@@ -179,7 +180,9 @@ describe("the kill hook (BU3)", () => {
 		const target = dummy(ctx, 5, 0);
 		kill(ctx, victim);
 		// excess (docs/LEGENDARIES.md LG1): Overkill's carry, 0 until LG2's rule.
-		expect(s.builds!.procs).toEqual([{ x: 2, z: 0, owner: 0, gen: 0, slot: 0, id: victim.id, excess: 0 }]);
+		expect(s.builds!.procs).toEqual([
+			{ x: 2, z: 0, owner: 0, gen: 0, slot: 0, id: victim.id, excess: 0, kind: ProcKind.KILL },
+		]);
 		step(s, IDLE, ARENA);
 		expect(s.builds!.procs.size()).toBe(0);
 		expect(target.hp).toBe(8);
