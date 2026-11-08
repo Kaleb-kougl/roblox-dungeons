@@ -7,6 +7,7 @@ import { charCount } from "shared/l10n";
 import { RENDER_ORDER } from "shared/view";
 import {
 	BUILD_FX_VIEW,
+	BUILDS_V2_FX,
 	FX_VIEW,
 	SCORE_POP_BASE_PX,
 	SCORE_POP_FOLDER,
@@ -18,6 +19,7 @@ import {
 	scorePopRise,
 	scorePopTones,
 	ScorePopTone,
+	happyPopTone,
 } from "shared/view/fx";
 import { HUD_STRINGS } from "shared/view/hud";
 import { PACTS_VIEW, PACT_STRINGS, inHordeRoom } from "shared/view/pacts";
@@ -27,6 +29,7 @@ import { GOLDEN_COIN_ROLE } from "shared/theme";
 import { SimController } from "../game/SimController";
 import { ThemeController } from "../game/ThemeController";
 import { FxTrackerController } from "./FxTrackerController";
+import { HappyHourController } from "./HappyHourController";
 import { attachmentHolder, floorPoint, fxFolder } from "./fxHelpers";
 
 const RENDER_STEP = "KV_ScorePops";
@@ -117,6 +120,10 @@ const KILL_POP_ALPHA = (age: number): number => scorePopAlpha(age);
  * Pacts' Horde (docs/FORTUNE.md FO7): a kill pop inside the roused horde room (shared/view/pacts inHordeRoom) is drawn
  * in PACTS_VIEW.horde.popRole with the x2 mark (`hud.score.pop.horde`; its points are already the doubled award), over
  * a Gold Rush tone (the room-wide x2 is the story there).
+ *
+ * Happy Hour (docs/BUILDS_V2.md BV11d): while the view player's Happy Hour runs (HappyHourController.isOn, the drinks
+ * seen so far), a plain kill pop is ScorePopTone.HAPPY (happyPopTone) in BUILDS_V2_FX.happyHour.popRole (fx.heal); Gold
+ * Rush and Horde keep theirs. The overcap pops are OvercapPopController's (a bare "+N" over the boss).
  */
 @Controller({})
 export class ScorePopController implements OnStart {
@@ -178,6 +185,7 @@ export class ScorePopController implements OnStart {
 		private readonly sim: SimController,
 		private readonly theme: ThemeController,
 		private readonly fx: FxTrackerController,
+		private readonly happyHour: HappyHourController,
 	) {}
 
 	onStart(): void {
@@ -190,6 +198,8 @@ export class ScorePopController implements OnStart {
 			pack.color("uiAccent"),
 			pack.color(BUILD_FX_VIEW.goldRush.role),
 			pack.color(PACTS_VIEW.horde.popRole),
+			// Happy Hour (docs/BUILDS_V2.md BV11d): ScorePopTone.HAPPY's colour.
+			pack.color(BUILDS_V2_FX.happyHour.popRole),
 		);
 		for (let i = 0; i < kills.pool.capacity; i++)
 			kills.views.push(new PopView(holder, folder, `Pop${i}`, kills.colors[0], stroke));
@@ -254,11 +264,13 @@ export class ScorePopController implements OnStart {
 			const tones = scorePopTones(pops, run.builds.goldRush, this.tones);
 			const state = run.state;
 			const jackpot = jackpotPopMask(pops, run.golden.caught, this.jackpotMask);
+			// Happy Hour (docs/BUILDS_V2.md BV11d): the view player's window tints the kill pops (happyPopTone).
+			const happy = this.happyHour.isOn(this.sim.getViewPlayerIndex(), state.tick);
 			for (let i = 0; i < pops.size(); i++) {
 				const p = pops[i];
 				if (jackpot[i]) goldenJackpots.pool.add(p.x, p.z, p.points, now);
 				else {
-					const tone = inHordeRoom(state, p.x, p.z) ? ScorePopTone.HORDE : tones[i];
+					const tone = inHordeRoom(state, p.x, p.z) ? ScorePopTone.HORDE : happyPopTone(tones[i], happy);
 					kills.pool.add(p.x, p.z, p.points, now, tone);
 				}
 			}

@@ -31,6 +31,7 @@ import {
 } from "shared/view";
 import {
 	BUILD_FX_VIEW,
+	BUILDS_V2_FX,
 	DeathParticleSystem,
 	FX_VIEW,
 	NEAR_MISS_VIEW,
@@ -164,6 +165,8 @@ export class ParticleController implements OnStart, ParticleWriter {
 	private treasureShape: ChipBurst | undefined;
 	/** golden.coin's palette index (docs/FORTUNE.md FO8: the Goldling's flash, coins and fountain). */
 	private goldenCoinColor = PAL_SPARK;
+	/** Wrecker's smash chips' palette index (docs/BUILDS_V2.md BV11d: BUILDS_V2_FX.smash.ring.role, build.shard). */
+	private smashChipColor = PAL_SPARK;
 	private readonly moveParts = new Array<BasePart>();
 	private readonly moveCFrames = new Array<CFrame>();
 	private folder: Folder | undefined;
@@ -229,6 +232,9 @@ export class ParticleController implements OnStart, ParticleWriter {
 		this.treasureShape = chipBurstOf(TREASURE_VIEW.open.burst);
 		this.goldenCoinColor = this.palette.size();
 		this.palette.push(pack.color(GOLDEN_COIN_ROLE));
+		// Wrecker's smash chips (docs/BUILDS_V2.md BV11d), appended last.
+		this.smashChipColor = this.palette.size();
+		this.palette.push(pack.color(BUILDS_V2_FX.smash.ring.role));
 
 		this.nearMiss.onFrame((frame, settings) => this.nearMissFrame(frame, settings));
 		const [impOk, impKind] = pcall(() => archetypeIndex(IMP.id));
@@ -413,6 +419,14 @@ export class ParticleController implements OnStart, ParticleWriter {
 	 */
 	buildPhantomBurst(x: number, z: number, shape: Readonly<ChipBurst>, seed: number): void {
 		this.system.chips(x, z, this.buildPhantomColor, shape, seed, this.fx.settings());
+	}
+
+	/**
+	 * Wrecker's smash chips (docs/BUILDS_V2.md BV11d; WreckerFxController calls it per WreckerFx chip, shape
+	 * smashChipShape: Full only), in BUILDS_V2_FX.smash.ring.role.
+	 */
+	buildSmashChips(x: number, z: number, shape: Readonly<ChipBurst>, seed: number): void {
+		this.system.chips(x, z, this.smashChipColor, shape, seed, this.fx.settings());
 	}
 
 	/** A frame's graze sparks and parry bursts (the frame object is reused: read now, never kept). */

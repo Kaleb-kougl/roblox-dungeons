@@ -212,7 +212,8 @@ export const BUILDS_V2_FX = {
 	 * flask's fx.heal: the drink is what started it). ScorePopTone.HAPPY.
 	 */
 	happyHour: {
-		toast: { key: "hud.toast.happyHour", seconds: 2.5, idBase: -(2 ** 22) },
+		/** idBase -(2^24): apart from every other toast base (sightings 2^20, daily rank 2^21, vault 2^22, brace 2^23). */
+		toast: { key: "hud.toast.happyHour", seconds: 2.5, idBase: -(2 ** 24) },
 		popRole: "fx.heal" as ColorRole,
 	},
 	/**

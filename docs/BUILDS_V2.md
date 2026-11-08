@@ -1165,7 +1165,7 @@ lockstep or score change; no client file touched (the existing build compiles as
   linear) x owner opacity, `boon.duo`); at most 6.
 - **Happy Hour / overcap** (`fx/overcapFx.ts`, new): `HappyHourFx` (`frame(source, state, localIndex, quiet)` -> true
   when the local player's drink started it this frame: show `hud.toast.happyHour` for `happyHour.toast.seconds` 2.5,
-  ids from `idBase` -(2^22); `isOn(player, tick)` / `ticksLeft`: start <= tick < start + `HAPPY_HOUR_TICKS`, from the
+  ids from `idBase` -(2^24) (BV11d; it was -(2^22), the vault toasts' base); `isOn(player, tick)` / `ticksLeft`: start <= tick < start + `HAPPY_HOUR_TICKS`, from the
   events only), `happyPopTone(tone, happy)` (KILL -> the new `ScorePopTone.HAPPY` 3, in `happyHour.popRole` `fx.heal`,
   the flask's colour; Gold Rush / Horde keep theirs), `OvercapPops` (`frame(source, state, viewIndex, quiet, alpha)` ->
   `OvercapPopView[]`: x / z of the first payout, `points` "+N", first / last tick, ageSec, `version` (grows with the
@@ -1355,6 +1355,71 @@ Studio checklist items served (all still pending, nobody has run Studio): 5 (rin
 wall), 6 (the held, carried body, its streak, PINNED, the slam's freeze, ring, SLAM and nudge), 11 (Reduced: thinner
 streak, fewer chords, no shock ring), 12 (a teammate's rings and streak at `teammateOpacity`; their pins hold the body
 too, their slam neither freezes nor kicks your camera, no PINNED / SLAM for them).
+## BV11 (as built: Wrecker, beam, Happy Hour, overcap)
+
+BV11d: the client half of Wrecker / Demolition, Full Heart, Happy Hour and the overcap pops, drawn from the pure core
+above. Presentation only: no sim, dungeon, hash, replay, lockstep or score change. Paths under `src/`.
+
+- **Wrecker / Demolition** (`client/controllers/fx/WreckerFxController.ts`, new): the client's ONE `WreckerFx`, stepped
+  in an FxTrackerController frame handler (after the frame's ticks: every tick's records are in `RunView.builds`) with
+  the view player, `comboQuiet`, `{ juice, buildFx }` and `run.getAlpha()`. Rings: every `WreckerFxFrame.rings` entry
+  (smash pops in `build.shard`, Demolition blasts out to `DEMOLITION_RADIUS` in `build.ember`) as pooled flat Neon chords
+  (`placeWaveOneRing`), sized by the ring's block, faded by the planner (a teammate's at `teammateOpacity`). Chips: per
+  `WreckerFxFrame.chips` entry `ParticleController.buildSmashChips` (new, a palette entry for `smash.ring.role`
+  appended last; the DeathParticleSystem `chips` kind, the breakables' and spark bursts' construction) in
+  `chipShape` (`smashChipShape`: Reduced is all zeros, and the planner emits none then). **The ring split with the bow
+  worker:** no filtering is needed: `WreckerFx` owns its own `WaveOneRings`, which only ever holds the `smash.ring` and
+  `demolition.ring` looks; the Siege Bolt's shock ring lives in `BowFx`'s instance and is drawn by the bow controller, so
+  each ring is drawn exactly once. Studio items 7, 11, 12.
+- **Shared drawing** (`client/controllers/fx/neonPartPool.ts`, new): `NeonPartPool` (BuildFxController's private
+  `FxPartPool`, copied rather than moved so BuildFxController stays untouched; transparency clamped to 0..1) and
+  `placeWaveOneRing(pool, ring, color, parts, cframes)` (a full ring over 2 pi, or a fan over dir +- halfAngleRad, chord
+  = 2 r sin(step / 2), `block.widthStuds` x `thicknessStuds`, `liftStuds` over the floor). Exported from the barrel for
+  any `WaveOneRingView` drawer.
+- **Full Heart** (`client/controllers/fx/HeartBeamController.ts`, new): the client's ONE `HeartBeamFx`, same frame slot
+  and arguments; each `HeartBeamView` as the Overkill streak: one straight Neon segment, `widthStuds` square, in
+  `heartBeam.role` (`boon.duo`) at 1 - `fade`, at `heartBeam.liftStuds`; with `core` (Full) a second segment of
+  `coreShare` of the width in the role mixed `coreWhiteMix` toward white, lifted so its top is the streak's
+  `BUILD_FX_VIEW.overkill.coreLiftStuds` over the beam's top (so the camera sees it; the Overkill streak's own core sits
+  inside its streak, which only shows through as it fades: left as is, outside this task). Studio items 11, 12.
+- **Happy Hour** (`client/controllers/fx/HappyHourController.ts`, new): the client's ONE `HappyHourFx`, stepped in an
+  FxTracker frame handler with the LOCAL player and `comboQuiet`; on true it pushes `hud.toast.happyHour` through the
+  toast path (`clientStore.pushToast(..., PROGRESSION_VIEW.maxToasts)`, BraceFxController's construction for
+  `hud.toast.brace`) for `happyHour.toast.seconds`; `isOn(player, tick)` for the pops; a run exit resets it.
+  `ScorePopController` (edited: an injected HappyHourController, `BUILDS_V2_FX.happyHour.popRole` pushed as the kill
+  layer's 4th colour = `ScorePopTone.HAPPY` 3, and `happyPopTone(tones[i], happyHour.isOn(viewPlayer, state.tick))` for
+  every kill pop outside a Horde room). The FxTracker step (Input priority) runs before the score pops' render step
+  (Camera priority) every frame, so a drink's own frame already tints. **Fix (core data):** `happyHour.toast.idBase`
+  was -(2^22), the vault toasts' base (`TREASURE_VIEW.toast.idBase`): ToastPanel keys rows by id, so the two could
+  collide; now -(2^24), pinned by `hud/toastIds.spec.ts` (every toast base negative and pairwise apart). Studio item 12.
+- **Overcap pops** (`client/controllers/fx/OvercapPopController.ts`, new): the client's ONE `OvercapPops`, stepped in
+  its own render step at the score pops' priority (`Camera + RENDER_ORDER.viewsAfterCamera`); up to `overcap.maxAlive`
+  pooled billboards built as ScorePopController's (`createKvBillboardGui`, AlwaysOnTop, HUD font, `background`
+  stroke): "+N" (`hud.score.pop`, a bare number) in `build.overcap` at `overcap.scale`, `SCORE_POP_BASE_PX +
+  overcap.liftPx + overcapPopRise(ageSec, motion)` over the payout's floor point (the boss), the label rebuilt only when
+  the pop or its `version` changes (and on a locale switch). Off with `damageNumbers` (every score pop's gate).
+  **Pure addition** (`shared/view/hud/overcapPopDuck.ts`, new, spec `overcapPopDuck.spec.ts`, 5 tests): Studio item
+  10's "never over a boss bullet" is not a draw-order matter (an AlwaysOnTop billboard covers everything, and a
+  depth-tested one stands nearer the camera than the floor bullets it overlaps), so the pop ducks like the floor
+  texts (CD9): `overcapPopBox(out, x, z, chars, risePx)` maps the label's screen rectangle to the floor it covers
+  (centre screen-up by its height / tan(pitch), depth / sin(pitch), width along the screen's right axis; checked
+  against `isoBasis`'s projection), `overcapPopDucked` is `shoutDucked` on it grown by `OVERCAP_POP_DUCK.marginTiles`
+  (0.3) over the enemy pool, and `overcapPopOpacity(ageSec, mine, ducked)` = `scorePopAlpha` x (`teammateOpacity` when
+  not `mine`) x `OVERCAP_POP_DUCK.opacity` (0.15, the combo shout's duck) while ducked. The duck is instant (no ease):
+  a pop lives 1.1 s. In `shared/view/hud`, not `fx`: hud already imports fx. Studio items 10, 12.
+- **Run-over breakdown**: confirmed, no change. `RunOverPanel` renders a `BreakdownLine` per `scoreBreakdownRows(points)`
+  row, and `SCORE_SOURCE_KEYS` ends with `OVERCAP_SCORE_SOURCE_NAMES` (`score.source.overcap`, "Overcap"), shown only
+  when it scored.
+- **Edits to shared files** (each local, commented): `ParticleController.ts` (palette entry + `buildSmashChips`),
+  `ScorePopController.ts` (the HAPPY colour and tone), `client/controllers/fx/index.ts` and `shared/view/hud/index.ts`
+  (barrel lines), `buildsV2FxConfig.ts` (the toast id base). BuildFxController untouched.
+- **Verify.** `typecheck`, `lint` (0 warnings), `build`, `check:assets`, `check:autolocalize` green; headless
+  `test:only` on `view/fx` (27 suites, 438 tests), `view/hud` (37 suites, 533 tests, the two new specs included),
+  `view/audio` (15 suites, 200 tests), `shared/theme` (49 / 654), `shared/play` (17 / 196): all pass. No string changed.
+  Not run: the full `npm run verify`. Client code is checked by typecheck / lint / build only.
+- **Limits.** Happy Hour's co-op tint is the core's (every kill pop while the view player's window runs: pops carry no
+  killer). The smash chips' colour is the ring's `build.shard` (the breakable's own break chips still fire in its
+  colour). Studio checklist items served (pending, nobody has run Studio): 7, 10, 11, 12.
 
 ## Appendix: the proposal (2026-11-05)
 

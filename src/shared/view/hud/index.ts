@@ -69,3 +69,4 @@ export * from "./dailyRank";
 export * from "./recapConfig";
 export * from "./recap";
 export * from "./recapUi";
+export * from "./overcapPopDuck";
