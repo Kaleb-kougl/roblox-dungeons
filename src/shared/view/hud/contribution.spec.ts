@@ -328,6 +328,69 @@ describe("assignTitles", () => {
 		expect(t).toEqual(["untouchable", "teammate"]);
 	});
 
+	it("Untouchable needs a player who never left and stood CONTRIB_TITLES.untouchable.minStandPercent of the run", () => {
+		expect(CONTRIB_TITLES.untouchable.minStandPercent).toBe(75);
+		const run = 1000;
+		// A leaver with the fewest hits never leads it; the fewest among the rest does.
+		const left = assignTitles([
+			stat({ hits: 4, stoodTicks: run, runTicks: run }),
+			stat({ hits: 6, stoodTicks: run, runTicks: run }),
+			stat({ hits: 1, left: true, stoodTicks: 100, runTicks: run }),
+		]);
+		expect(left[2]).toBe("teammate");
+		expect(left[0]).toBe("untouchable");
+		// Stood 74.9 % of the run: not eligible; 75 %: eligible.
+		const short = (stood: number) =>
+			assignTitles([
+				stat({ hits: 0, stoodTicks: stood, runTicks: run }),
+				stat({ hits: 5, stoodTicks: run, runTicks: run }),
+			]);
+		expect(short(749)[0]).toBe("teammate");
+		expect(short(750)[0]).toBe("untouchable");
+	});
+
+	it("contributionOf: a leaver on floor 1 with 1 hit, or a death at 30 % of the run, is never Untouchable", () => {
+		const leaver = contributionOf(
+			input(3, {
+				hits: [4, 6, 1],
+				leftFloor: [0, 0, 1],
+				deathTick: [RECAP_ALIVE_TICK, RECAP_ALIVE_TICK, RECAP_ALIVE_TICK],
+			}),
+		)!;
+		expect(leaver.rows[2].title).never.toBe("untouchable");
+		expect(leaver.rows[0].title).toBe("untouchable");
+		const lastTick = 600 * SIM_HZ;
+		const early = contributionOf(
+			input(3, {
+				hits: [4, 6, 1],
+				deathTick: [RECAP_ALIVE_TICK, RECAP_ALIVE_TICK, math.floor(lastTick * 0.3)],
+				deathFloor: [0, 0, 2],
+			}),
+		)!;
+		expect(early.rows[2].title).never.toBe("untouchable");
+		expect(early.rows[0].title).toBe("untouchable");
+	});
+
+	it("Last Stand scores its lead in seconds over CONTRIB_TITLES.lastStand.fullLeadSec, capped at 1", () => {
+		expect(CONTRIB_TITLES.lastStand.fullLeadSec).toBe(60);
+		const full = 60 * SIM_HZ;
+		// A full 60 s lead (score 1) beats a 0.5 relative damage lead held by the same player.
+		const big = assignTitles([stat({ damage: 100, stand: 1000 + full }), stat({ damage: 50, stand: 1000 })]);
+		expect(big).toEqual(["lastStand", "teammate"]);
+		// A 15 s lead (0.25) loses to the same player's 0.5 damage lead; nobody else may take Last Stand.
+		const small = assignTitles([stat({ damage: 100, stand: 1000 + full / 4 }), stat({ damage: 50, stand: 1000 })]);
+		expect(small).toEqual(["heavyHitter", "teammate"]);
+		// Against another player's lead: 30 s (0.5) beats a 0.4 kills lead, 18 s (0.3) does not.
+		const vs = (lead: number) =>
+			assignTitles([stat({ stand: 1000 + lead, kills: 30 }), stat({ stand: 1000, kills: 50 })]);
+		expect(vs(full / 2)).toEqual(["lastStand", "finisher"]);
+		const kept = assignTitles([
+			stat({ stand: 1000 + (full * 3) / 10, kills: 50 }),
+			stat({ stand: 1000, kills: 30 }),
+		]);
+		expect(kept).toEqual(["finisher", "teammate"]);
+	});
+
 	it("Last Stand: the wipe's last to fall even on a same-tick death; else the strict longest standing", () => {
 		expect(assignTitles([stat({ stand: 50 }), stat({ stand: 90 })])).toEqual(["teammate", "lastStand"]);
 		const sameTick = assignTitles([stat({ stand: 90 }), stat({ stand: 90, lastToFall: true })]);
@@ -388,7 +451,8 @@ describe("contributionOf: titles over the party", () => {
 		parries: [2, 3, 14, 1],
 		grazes: [10, 12, 9, 63],
 		hits: [5, 8, 6, 9],
-		deathTick: [860 * SIM_HZ, 700 * SIM_HZ, 500 * SIM_HZ, 300 * SIM_HZ],
+		// The last to fall stands only 10 s longer (Last Stand 10 / 60 = 0.17, under Heavy Hitter's 0.28).
+		deathTick: [710 * SIM_HZ, 700 * SIM_HZ, 500 * SIM_HZ, 300 * SIM_HZ],
 		deathFloor: [9, 8, 7, 5],
 		lastDeath: 0,
 	};

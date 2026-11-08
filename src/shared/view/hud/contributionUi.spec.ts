@@ -23,6 +23,7 @@ import {
 	contribCellRows,
 	contribCellText,
 	contribHeaderText,
+	contribPartyColumns,
 	contribPartyHeight,
 	contribPartyScrolls,
 	contribPartyTexts,
@@ -283,6 +284,38 @@ describe("layout numbers (CONTRIB_UI)", () => {
 		expect(contribPartyScrolls(party(8), 4, "narrow")).toBe(true);
 		const P = CONTRIB_UI.party.wide;
 		expect(contribPartyHeight(8, "wide")).toBe(P.headerHeight + 8 * (P.rowHeight + P.gap));
+	});
+});
+
+describe("the Party columns and a leaver's row (review fixes)", () => {
+	it("header and rows share contribPartyColumns: consecutive columns, the last ending at the box's right edge", () => {
+		for (const layout of LAYOUTS) {
+			const P = CONTRIB_UI.party[layout];
+			const cols = contribPartyColumns(layout);
+			expect(cols.numbers.size()).toBe(CONTRIB_PARTY_COLUMNS.size());
+			expect([layout, cols.name.x, cols.name.w >= P.nameWidth]).toEqual([layout, 0, true]);
+			expect(cols.title.x).toBe(cols.name.x + cols.name.w + P.columnGap);
+			let x = cols.title.x + cols.title.w + P.columnGap;
+			for (const n of cols.numbers) {
+				expect([layout, n.x, n.w]).toEqual([layout, x, P.numberWidth]);
+				x += n.w + P.columnGap;
+			}
+			const last = cols.numbers[cols.numbers.size() - 1];
+			expect([layout, last.x + last.w]).toEqual([layout, contribBoxWidth(layout)]);
+		}
+	});
+
+	it("a leaver's row carries `Left on floor {n}` (contribStandingText); others none", () => {
+		const c = party(3, { leftFloor: [0, 0, 1], deathTick: [RECAP_ALIVE_TICK, RECAP_ALIVE_TICK, RECAP_ALIVE_TICK] });
+		expect(c.rows[2].left).toBe(true);
+		expect(contribPartyTexts(c.rows[2], s).left).toBe("Left on floor 1");
+		expect(contribPartyTexts(c.rows[0], s).left).toBe(undefined);
+	});
+
+	it("the share bar's total defaults to CONTRIB.shareTotal", () => {
+		let w = 0;
+		for (const g of contribShareSegments([30, 70], 0, 140)) w += g.w;
+		expect(w).toBe(140);
 	});
 });
 

@@ -30,7 +30,7 @@ import {
 	type ContributionRow,
 	type RunContribution,
 } from "./contribution";
-import { CONTRIB_STRINGS, contribTitleKey } from "./contributionConfig";
+import { CONTRIB, CONTRIB_STRINGS, contribTitleKey } from "./contributionConfig";
 import { RECAP_UI, recapGridSize, type RecapFormat, type RecapLayout, type RecapStr } from "./recapUi";
 
 /** A tab of a party run's run-over panel. */
@@ -97,7 +97,10 @@ export interface ContribPartyLayout {
 	readonly minText: number;
 	readonly headerText: number;
 	readonly headerMinText: number;
-	/** Column widths, left to right (their sum and 5 x columnGap fit the box, contribBoxWidth). */
+	/**
+	 * The name column's least width (contribPartyColumns gives it whatever the other columns leave of the box), the
+	 * title's and each number's widths, the gap between columns.
+	 */
 	readonly nameWidth: number;
 	readonly titleWidth: number;
 	readonly numberWidth: number;
@@ -387,7 +390,7 @@ export function contribShareSegments(
 	shares: ReadonlyArray<number>,
 	localIndex: number,
 	width: number,
-	total = 100,
+	total: number = CONTRIB.shareTotal,
 ): ContribShareSegment[] {
 	const out: ContribShareSegment[] = [];
 	if (total <= 0 || width <= 0) return out;
@@ -457,6 +460,8 @@ export interface ContribPartyTexts {
 	readonly kills: string;
 	readonly parries: string;
 	readonly hits: string;
+	/** A leaver's standing line (`Left on floor {n}`, contribStandingText), shown in the title's place; else undefined. */
+	readonly left?: string;
 }
 
 /** Party row `row`'s texts: its display name, title, damage share (`{pct}%`), kills, parries and hits taken. */
@@ -468,6 +473,7 @@ export function contribPartyTexts(row: ContributionRow, s: RecapStr, fmt: RecapF
 		kills: fmt(row.kills),
 		parries: fmt(row.parries),
 		hits: fmt(row.hits),
+		left: row.left ? contribStandingLine(row, s) : undefined,
 	};
 }
 
@@ -478,3 +484,33 @@ export const CONTRIB_PARTY_COLUMNS: ReadonlyArray<string> = [
 	CONTRIB_STRINGS.partyParries,
 	CONTRIB_STRINGS.partyHits,
 ];
+
+/** One Party column: its x (reference px from the row's left edge) and width. */
+export interface ContribPartyColumn {
+	readonly x: number;
+	readonly w: number;
+}
+
+/**
+ * The Party list's columns in `layout` (the header and every row place their cells by these, so they line up): the
+ * name column takes whatever the title and the four number columns (CONTRIB_PARTY_COLUMNS) and the gaps leave of the
+ * box, so the last column ends exactly at the box's right edge.
+ */
+export function contribPartyColumns(layout: RecapLayout): {
+	readonly name: ContribPartyColumn;
+	readonly title: ContribPartyColumn;
+	readonly numbers: ReadonlyArray<ContribPartyColumn>;
+} {
+	const P = CONTRIB_UI.party[layout];
+	const box = contribBoxWidth(layout);
+	const n = CONTRIB_PARTY_COLUMNS.size();
+	const nameW = math.max(0, box - P.titleWidth - n * P.numberWidth - (n + 1) * P.columnGap);
+	const title = { x: nameW + P.columnGap, w: P.titleWidth };
+	const numbers: ContribPartyColumn[] = [];
+	let x = title.x + title.w + P.columnGap;
+	for (let i = 0; i < n; i++) {
+		numbers.push({ x, w: P.numberWidth });
+		x += P.numberWidth + P.columnGap;
+	}
+	return { name: { x: 0, w: nameW }, title, numbers };
+}

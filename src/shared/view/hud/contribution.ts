@@ -17,10 +17,11 @@
  *                             `endedInWipe`, by default every player who has not left has a death. Seconds are whole
  *                             seconds of sim time (ticks / SIM_HZ, floored).
  *   - `assignTitles`          one title per player. For each title the stat's strict leader (Untouchable: the strict
- *                             fewest hits; Last Stand: the last to fall in a wipe, else the strict longest standing),
- *                             if they pass the title's rule (CONTRIB_TITLES), is a candidate with score = the relative
- *                             lead over the next player, (lead - next) / max(lead, 1) (Untouchable: (next - lead) /
- *                             max(next, 1)), in [0, 1]. Greedy: the largest score takes its title, its player and title
+ *                             fewest hits among players who never left and stood minStandPercent of the run; Last
+ *                             Stand: the last to fall in a wipe, else the strict longest standing), if they pass the
+ *                             title's rule (CONTRIB_TITLES), is a candidate with score = the relative lead over the
+ *                             next player, (lead - next) / max(lead, 1) (Untouchable: (next - lead) / max(next, 1); Last
+ *                             Stand: the lead in seconds / fullLeadSec, capped at 1), in [0, 1]. Greedy: the largest score takes its title, its player and title
  *                             leave the pool, repeat (ties: CONTRIB_TITLE_ORDER, then the lower index). A player left
  *                             without a title is a Teammate. Titles are distinct except Teammate.
  *   - `youCells`              the You card's cells in CONTRIB.cellOrder; a cell whose team total is 0 is dropped (no
@@ -128,6 +129,11 @@ export interface ContribStats {
 	readonly stand: number;
 	/** The wipe's last to fall (leads Last Stand outright, so a same-tick death cannot tie it). */
 	readonly lastToFall?: boolean;
+	/** Left the run (never leads Untouchable). */
+	readonly left?: boolean;
+	/** Ticks stood (the death tick, else the run's last tick) and the run's length: Untouchable's minStandPercent. */
+	readonly stoodTicks?: number;
+	readonly runTicks?: number;
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -280,23 +286,31 @@ interface Lead {
 }
 
 /** The strict leader of `stat` (fewest: the strict minimum) and the next value, or undefined on a tie / empty. */
-function leaderOf(stats: ReadonlyArray<ContribStats>, stat: StatOf, fewest: boolean): Lead | undefined {
+function leaderOf(
+	stats: ReadonlyArray<ContribStats>,
+	stat: StatOf,
+	fewest: boolean,
+	eligible: (s: ContribStats) => boolean = () => true,
+): Lead | undefined {
 	const n = stats.size();
-	if (n < 1) return undefined;
-	let best = 0;
-	for (let i = 1; i < n; i++) {
+	let best = -1;
+	for (let i = 0; i < n; i++) {
+		if (!eligible(stats[i])) continue;
 		const v = stat(stats[i]);
-		const b = stat(stats[best]);
-		if (fewest ? v < b : v > b) best = i;
+		if (best < 0) best = i;
+		else if (fewest ? v < stat(stats[best]) : v > stat(stats[best])) best = i;
 	}
+	if (best < 0) return undefined;
 	const lead = stat(stats[best]);
 	let second: number | undefined;
 	for (let i = 0; i < n; i++) {
-		if (i === best) continue;
+		if (i === best || !eligible(stats[i])) continue;
 		const v = stat(stats[i]);
 		if (v === lead) return undefined; // a tie for the lead: nobody leads
 		if (second === undefined || (fewest ? v < second : v > second)) second = v;
 	}
+	// Fewest with nobody else (eligible) to compare: no lead (Untouchable is never the only one who stood).
+	if (second === undefined && fewest) return undefined;
 	// One player alone (never in a party): the lead over nothing.
 	return { player: best, lead, second: second ?? (fewest ? lead : 0) };
 }
@@ -315,6 +329,14 @@ function passes(rule: ContribTitleRule, lead: number, stats: ReadonlyArray<Contr
 		if (rule.minPartyHits !== undefined && !(total >= rule.minPartyHits)) return false;
 	}
 	return true;
+}
+
+/** `rule.minStandPercent`: a player who never left and stood at least that share of the run (stats without the facts pass). */
+function standsEnough(st: ContribStats, rule: ContribTitleRule): boolean {
+	if (rule.minStandPercent === undefined) return true;
+	if (st.left === true) return false;
+	if (st.stoodTicks === undefined || st.runTicks === undefined || st.runTicks <= 0) return true;
+	return st.stoodTicks * CONTRIB.shareTotal >= rule.minStandPercent * st.runTicks;
 }
 
 function candidateFor(
@@ -339,12 +361,16 @@ function candidateFor(
 			}
 			lead = { player: ltf, lead: stats[ltf].stand, second: math.min(second ?? 0, stats[ltf].stand) };
 		} else lead = leaderOf(stats, stat, false);
-	} else lead = leaderOf(stats, stat, fewest);
+	} else lead = leaderOf(stats, stat, fewest, (st) => standsEnough(st, rules[title]));
 	if (lead === undefined) return undefined;
-	if (!passes(rules[title], lead.lead, stats, stat)) return undefined;
-	const score = fewest
-		? (lead.second - lead.lead) / math.max(lead.second, 1)
-		: (lead.lead - lead.second) / math.max(lead.lead, 1);
+	const rule = rules[title];
+	if (!passes(rule, lead.lead, stats, stat)) return undefined;
+	let score: number;
+	if (rule.fullLeadSec !== undefined) {
+		// Last Stand: the lead in seconds over fullLeadSec, capped at 1 (the same 0..1 scale as the relative leads).
+		score = math.clamp((lead.lead - lead.second) / math.max(rule.fullLeadSec * SIM_HZ, 1), 0, 1);
+	} else if (fewest) score = (lead.second - lead.lead) / math.max(lead.second, 1);
+	else score = (lead.lead - lead.second) / math.max(lead.lead, 1);
 	return { title, order, player: lead.player, score };
 }
 
@@ -511,6 +537,9 @@ export function contributionOf(input: ContributionInput, cfg: ContribConfig = CO
 			pickups: at(t.pellets, i, 0) + at(t.boosts, i, 0),
 			stand,
 			lastToFall: i === lastToFall,
+			left: hasLeftRun(t, i),
+			stoodTicks: death !== RECAP_ALIVE_TICK ? death : t.lastTick,
+			runTicks: t.lastTick,
 		});
 	}
 	const titles = assignTitles(stats);

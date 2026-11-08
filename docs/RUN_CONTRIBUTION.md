@@ -202,7 +202,11 @@ Each step is a commit; `npm run verify` before each.
   outright, else the strict longest standing; a tie for a lead gives nobody that title), score (lead - second) /
   max(lead, 1) (Untouchable (second - lead) / max(second, 1)), greedy by score, then title order, then index; a
   title its leader cannot take (they hold a better one) goes to nobody. English: Daredevil is a boon's name, so the
-  `daredevil` title reads **Bullet Dancer** (CT4). Spec: contribution.spec.ts.
+  `daredevil` title reads **Bullet Dancer** (CT4). Spec: contribution.spec.ts. Review fixes: Untouchable only goes to
+  a player who never left and stood `CONTRIB_TITLES.untouchable.minStandPercent` (75) % of the run (the death tick, else
+  the last tick, over the last tick; a leaver or an early death takes few hits) and needs a second eligible player to
+  lead; Last Stand scores its lead in seconds over `CONTRIB_TITLES.lastStand.fullLeadSec` (60), capped at 1 (the
+  relative death-tick lead was near 0, so the last to fall almost never got it).
 - [x] **CT4. Strings** (contract, placeholder, vale, l10n context); Luau locals counted on out/.
   As built: shared/theme runRecap.ts `CONTRIB_STRING_KEYS` (44), written out in `REQUIRED_STRING_KEYS` right after
   `TEAM_MOMENT_STRING_KEYS` (no new top-level local): tabs `run.recap.tab.you` / `.team` / `.party`; You card
@@ -233,7 +237,10 @@ Each step is a commit; `npm run verify` before each.
   player in index order in a ScrollingFrame inside the box (wheel, drag, the pad's right stick via the run-over scope's
   `scrollRef`): name in the theme's `name` font, title chip (the scope chip's look), damage share (new string
   `run.recap.party.share` `{pct}%`: CONTRIB_STRING_KEYS 45, contract, placeholder, l10n context), kills, parries, hits;
-  the local row a `playerOutline` stroke over a faint tile, a leaver's row at `leftTransparency`. Details still swaps the
+  the local row a `playerOutline` stroke over a faint tile, a leaver's row at `leftTransparency` with its standing line
+  (`Left on floor {n}`, contribStandingText) in the title's place. Header and rows place every cell at
+  `contribPartyColumns` (the name column takes the slack, so the last column ends at the box's edge and the header's
+  labels sit over their numbers); the scroll bar follows `contribPartyScrolls`. Details still swaps the
   whole tab body (strip included) for the breakdown + Build list; closing returns to the tab shown. Layout numbers
   `CONTRIB_UI` (shared/view/hud contributionUi.ts): **wide** the highlight cell itself, four a row (box 638 of the 840
   panel; the tab strip and Team grid 316, centred), the share row with its label; **narrow** one-line cells (22) two a

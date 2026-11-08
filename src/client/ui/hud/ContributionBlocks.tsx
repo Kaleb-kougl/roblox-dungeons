@@ -12,7 +12,8 @@ import {
 	contribCellMetrics,
 	contribCellRows,
 	contribHeaderText,
-	contribPartyHeight,
+	contribPartyColumns,
+	contribPartyScrolls,
 	contribPartyTexts,
 	contribShareBarShown,
 	contribShareSegments,
@@ -265,9 +266,14 @@ export function YouCard(props: { order: number; layout: RecapLayout; c: RunContr
 	);
 }
 
-/** One Party row: name (the `name` font), title chip, damage share, kills, parries, hits; the local row outlined. */
+/**
+ * One Party row: name (the `name` font), title chip, damage share, kills, parries, hits, each at its
+ * contribPartyColumns position (the header's too, so they line up); the local row outlined; a leaver's row dim with its
+ * standing line (`Left on floor {n}`) in the title's place.
+ */
 function PartyRow(props: { layout: RecapLayout; row: ContributionRow }) {
 	const P = CONTRIB_UI.party[props.layout];
+	const cols = contribPartyColumns(props.layout);
 	const nameFont = useNameFont();
 	const hudFont = useHudFont();
 	const r = props.row;
@@ -275,6 +281,7 @@ function PartyRow(props: { layout: RecapLayout; row: ContributionRow }) {
 	const dim = r.left ? CONTRIB_UI.leftTransparency : 0;
 	const gridW = contribBoxWidth(props.layout);
 	const numbers = [t.damage, t.kills, t.parries, t.hits];
+	const chipH = P.rowHeight - 2 * P.gap;
 	return (
 		<frame
 			key={`Row${r.index}`}
@@ -284,12 +291,6 @@ function PartyRow(props: { layout: RecapLayout; row: ContributionRow }) {
 			BackgroundTransparency={r.local ? CONTRIB_UI.localTileTransparency : HIDDEN}
 			BorderSizePixel={0}
 		>
-			<uilistlayout
-				FillDirection={Enum.FillDirection.Horizontal}
-				VerticalAlignment={Enum.VerticalAlignment.Center}
-				SortOrder={Enum.SortOrder.LayoutOrder}
-				Padding={new UDim(0, P.columnGap)}
-			/>
 			{r.local ? (
 				<uistroke
 					key="Local"
@@ -300,37 +301,49 @@ function PartyRow(props: { layout: RecapLayout; row: ContributionRow }) {
 			) : undefined}
 			<Line
 				name="Name"
-				order={1}
-				size={UDim2.fromOffset(P.nameWidth, P.rowHeight)}
+				position={UDim2.fromOffset(cols.name.x, 0)}
+				size={UDim2.fromOffset(cols.name.w, P.rowHeight)}
 				text={t.name}
 				textSize={P.text}
 				minText={P.minText}
 				transparency={dim}
 				font={nameFont}
 			/>
-			<textlabel
-				key="Title"
-				LayoutOrder={2}
-				Size={UDim2.fromOffset(P.titleWidth, P.rowHeight - 2 * P.gap)}
-				BackgroundColor3={role("uiTextDim")}
-				BackgroundTransparency={1 - (1 - CONTRIB_UI.chipTransparency) * (1 - dim)}
-				BorderSizePixel={0}
-				Font={hudFont}
-				TextScaled={true}
-				TextSize={P.headerText}
-				TextColor3={role("background")}
-				TextTransparency={dim}
-				TextXAlignment={Enum.TextXAlignment.Center}
-				Text={t.title}
-			>
-				<uitextsizeconstraint MaxTextSize={P.headerText} MinTextSize={P.headerMinText} />
-			</textlabel>
+			{t.left !== undefined ? (
+				<Line
+					name="Left"
+					position={UDim2.fromOffset(cols.title.x, 0)}
+					size={UDim2.fromOffset(cols.title.w, P.rowHeight)}
+					text={t.left}
+					textSize={P.headerText}
+					minText={P.headerMinText}
+					color="uiTextDim"
+					align={Enum.TextXAlignment.Center}
+				/>
+			) : (
+				<textlabel
+					key="Title"
+					Position={UDim2.fromOffset(cols.title.x, (P.rowHeight - chipH) / 2)}
+					Size={UDim2.fromOffset(cols.title.w, chipH)}
+					BackgroundColor3={role("uiTextDim")}
+					BackgroundTransparency={CONTRIB_UI.chipTransparency}
+					BorderSizePixel={0}
+					Font={hudFont}
+					TextScaled={true}
+					TextSize={P.headerText}
+					TextColor3={role("background")}
+					TextXAlignment={Enum.TextXAlignment.Center}
+					Text={t.title}
+				>
+					<uitextsizeconstraint MaxTextSize={P.headerText} MinTextSize={P.headerMinText} />
+				</textlabel>
+			)}
 			{numbers.map((text, i) => (
 				<Line
 					key={`N${i}`}
 					name={`N${i}`}
-					order={3 + i}
-					size={UDim2.fromOffset(P.numberWidth, P.rowHeight)}
+					position={UDim2.fromOffset(cols.numbers[i].x, 0)}
+					size={UDim2.fromOffset(cols.numbers[i].w, P.rowHeight)}
 					text={text}
 					textSize={P.text}
 					minText={P.minText}
@@ -352,12 +365,14 @@ export function PartyRows(props: {
 	layout: RecapLayout;
 	c: RunContribution;
 	height: number;
+	/** The rows are taller than the box (contribPartyScrolls): the scroll bar shows. */
+	scrolls: boolean;
 	listRef: React.Ref<ScrollingFrame>;
 }) {
 	const P = CONTRIB_UI.party[props.layout];
 	const gridW = contribBoxWidth(props.layout);
+	const cols = contribPartyColumns(props.layout);
 	const listH = math.max(0, props.height - P.headerHeight - P.gap);
-	const full = contribPartyHeight(props.c.rows.size(), props.layout) - P.headerHeight;
 	return (
 		<frame
 			key="Party"
@@ -376,18 +391,12 @@ export function PartyRows(props: {
 				Size={UDim2.fromOffset(gridW, P.headerHeight)}
 				BackgroundTransparency={HIDDEN}
 			>
-				<uilistlayout
-					FillDirection={Enum.FillDirection.Horizontal}
-					HorizontalAlignment={Enum.HorizontalAlignment.Right}
-					SortOrder={Enum.SortOrder.LayoutOrder}
-					Padding={new UDim(0, P.columnGap)}
-				/>
 				{CONTRIB_PARTY_COLUMNS.map((key, i) => (
 					<Line
 						key={`H${i}`}
 						name={`H${i}`}
-						order={i + 1}
-						size={UDim2.fromOffset(P.numberWidth, P.headerHeight)}
+						position={UDim2.fromOffset(cols.numbers[i].x, 0)}
+						size={UDim2.fromOffset(cols.numbers[i].w, P.headerHeight)}
 						text={str(key)}
 						textSize={P.headerText}
 						minText={P.headerMinText}
@@ -404,7 +413,7 @@ export function PartyRows(props: {
 				CanvasSize={new UDim2(0, 0, 0, 0)}
 				AutomaticCanvasSize={Enum.AutomaticSize.Y}
 				ScrollingDirection={Enum.ScrollingDirection.Y}
-				ScrollBarThickness={full > listH ? CONTRIB_UI.scrollBarThickness : 0}
+				ScrollBarThickness={props.scrolls ? CONTRIB_UI.scrollBarThickness : 0}
 				ScrollBarImageColor3={role("uiTextDim")}
 				BackgroundTransparency={HIDDEN}
 				BorderSizePixel={0}
@@ -446,7 +455,15 @@ export function RecapTabBody(props: {
 		) : props.tab === "team" ? (
 			<HighlightGrid key="Highlights" order={1} cells={props.highlights} />
 		) : (
-			<PartyRows key="Party" order={1} layout={props.layout} c={props.c} height={boxH} listRef={props.listRef} />
+			<PartyRows
+				key="Party"
+				order={1}
+				layout={props.layout}
+				c={props.c}
+				height={boxH}
+				scrolls={contribPartyScrolls(props.c, props.highlights.size(), props.layout)}
+				listRef={props.listRef}
+			/>
 		);
 	return (
 		<frame

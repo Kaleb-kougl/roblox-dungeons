@@ -41,6 +41,10 @@ export const CONTRIB: ContribConfig = {
  *   - `above`: the leader's value > above.
  *   - `evenSharePercent`: the leader's share of the team total >= this percent of an even share (100 / party size).
  *   - `minPartyHits`: the party took at least this many hits (Untouchable).
+ *   - `minStandPercent`: only players who stood at least this percent of the run (death tick, or the run's last tick
+ *     alive, over the last tick) and never left can lead it (Untouchable: an early death or a leaver takes few hits).
+ *   - `fullLeadSec`: the score is the lead in seconds over this, capped at 1 (Last Stand: a lead in death ticks is
+ *     tiny relative to the tick itself, so the relative lead every other title uses would rarely let it win).
  * Last Stand needs nothing (always one, docs/RUN_CONTRIBUTION.md); Teammate is the fallback.
  */
 export interface ContribTitleRule {
@@ -48,6 +52,8 @@ export interface ContribTitleRule {
 	readonly above?: number;
 	readonly evenSharePercent?: number;
 	readonly minPartyHits?: number;
+	readonly minStandPercent?: number;
+	readonly fullLeadSec?: number;
 }
 
 export type ContribLeadTitle = Exclude<ContribTitle, "teammate">;
@@ -58,8 +64,8 @@ export const CONTRIB_TITLES: Readonly<Record<ContribLeadTitle, ContribTitleRule>
 	finisher: { min: 10 },
 	guardian: { min: 5 },
 	daredevil: { min: 30 },
-	untouchable: { minPartyHits: 3 },
-	lastStand: {},
+	untouchable: { minPartyHits: 3, minStandPercent: 75 },
+	lastStand: { fullLeadSec: 60 },
 	collector: { min: 10 },
 };
 
