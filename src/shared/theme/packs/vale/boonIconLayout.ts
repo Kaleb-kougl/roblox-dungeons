@@ -4,8 +4,9 @@ import type { ValeUiIconLayout } from "./uiIconLayout";
 /** The boon icon sheet's file name (the key of its id in assetIds.ts). */
 export const VALE_BOON_ICON_FILE = "boon-icons.png";
 /** The sheet size, pixels. */
-export const VALE_BOON_ICON_ATLAS = { w: 18, h: 306 } as const;
+export const VALE_BOON_ICON_ATLAS = { w: 18, h: 360 } as const;
 export const VALE_BOON_ICONS: Record<string, ValeUiIconLayout> = {
+	"ui.boon.ballista": { rect: { x: 1, y: 325, w: 16, h: 16 } },
 	"ui.boon.bastion": { rect: { x: 1, y: 1, w: 16, h: 16 } },
 	"ui.boon.bounty": { rect: { x: 1, y: 19, w: 16, h: 16 } },
 	"ui.boon.chainspark": { rect: { x: 1, y: 37, w: 16, h: 16 } },
@@ -17,10 +18,12 @@ export const VALE_BOON_ICONS: Record<string, ValeUiIconLayout> = {
 	"ui.boon.lingering": { rect: { x: 1, y: 145, w: 16, h: 16 } },
 	"ui.boon.overkill": { rect: { x: 1, y: 163, w: 16, h: 16 } },
 	"ui.boon.piercingarrows": { rect: { x: 1, y: 181, w: 16, h: 16 } },
+	"ui.boon.riposte": { rect: { x: 1, y: 307, w: 16, h: 16 } },
 	"ui.boon.sharpened": { rect: { x: 1, y: 199, w: 16, h: 16 } },
 	"ui.boon.slippery": { rect: { x: 1, y: 217, w: 16, h: 16 } },
 	"ui.boon.soulshards": { rect: { x: 1, y: 235, w: 16, h: 16 } },
 	"ui.boon.swiftstrikes": { rect: { x: 1, y: 253, w: 16, h: 16 } },
 	"ui.boon.volatile": { rect: { x: 1, y: 271, w: 16, h: 16 } },
 	"ui.boon.warding": { rect: { x: 1, y: 289, w: 16, h: 16 } },
+	"ui.boon.wrecker": { rect: { x: 1, y: 343, w: 16, h: 16 } },
 };

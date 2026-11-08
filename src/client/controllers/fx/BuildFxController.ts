@@ -43,8 +43,12 @@ interface FxPart {
 	size: Vector3 | undefined;
 }
 
-/** A grow-only pool of Neon parts used front to back each frame; the ones past this frame's count are parked. */
-class FxPartPool {
+/**
+ * A grow-only pool of Neon parts used front to back each frame; the ones past this frame's count are parked. Exported
+ * for docs/BUILDS_V2.md BV11b (CounterWaveController draws the counter-waves with its own pools).
+ * for SiegeFxController (docs/BUILDS_V2.md BV11c: the same pooled parts).
+ */
+export class FxPartPool {
 	private readonly parts = new Array<FxPart>();
 	private used = 0;
 	private lastUsed = 0;

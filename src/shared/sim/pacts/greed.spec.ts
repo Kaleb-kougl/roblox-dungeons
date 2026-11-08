@@ -356,10 +356,17 @@ describe("drawLegendaryOffers (PS3, FD4)", () => {
 		levels[Boon.EMBER_WAKE] = 1;
 		// docs/LEGENDARIES.md: Overkill and Bastion are unowned legendaries too, after Composure in Boon order.
 		const legendaries = [boonCard(Boon.COMPOSURE), boonCard(Boon.OVERKILL), boonCard(Boon.BASTION)];
-		expect(legendaryPool(levels, [])).toEqual([...legendaries, duoCard(Duo.GOLD_RUSH), boonCard(Boon.HEARTY)]);
-		expect(legendaryPool(levels, [Duo.GOLD_RUSH])).toEqual([...legendaries, boonCard(Boon.HEARTY)]);
+		// docs/BUILDS_V2.md BV1: Hearty + Sharpened now make a duo (Full Heart), after Gold Rush in duo order.
+		const fullHeart = duoCard(Duo.FULL_HEART);
+		expect(legendaryPool(levels, [])).toEqual([
+			...legendaries,
+			duoCard(Duo.GOLD_RUSH),
+			fullHeart,
+			boonCard(Boon.HEARTY),
+		]);
+		expect(legendaryPool(levels, [Duo.GOLD_RUSH])).toEqual([...legendaries, fullHeart, boonCard(Boon.HEARTY)]);
 		levels[Boon.HEARTY] = BOON_MAX_LEVEL;
-		expect(legendaryPool(levels, [Duo.GOLD_RUSH])).toEqual(legendaries);
+		expect(legendaryPool(levels, [Duo.GOLD_RUSH, Duo.FULL_HEART])).toEqual(legendaries);
 	});
 
 	it("deals the pool first (no repeats, one rngInt each), then fills with ordinary upgrades", () => {

@@ -210,8 +210,8 @@ const me = (s: SimState) => s.run!.players[SOLO_PLAYER];
 describe("boon offers", () => {
 	it("12 classic boons: 7 common, 3 rare, 2 legendary, 4 per category; 4 relics, 4 curses", () => {
 		// docs/BUILDS.md BU1: three on-kill boons appended after them, docs/LEGENDARIES.md LG1 two legendaries after those
-		// (builds-only; drawBoonOffers never sees them).
-		expect([CLASSIC_BOON_COUNT, BOON_COUNT]).toEqual([12, 17]);
+		// and docs/BUILDS_V2.md BV1 three more (builds-only; drawBoonOffers never sees them).
+		expect([CLASSIC_BOON_COUNT, BOON_COUNT]).toEqual([12, 20]);
 		const classic = BOONS.filter((_, i) => i < CLASSIC_BOON_COUNT);
 		const by = (rarity: number) => classic.filter((b) => b.rarity === rarity).size();
 		expect([by(Rarity.COMMON), by(Rarity.RARE), by(Rarity.LEGENDARY)]).toEqual([7, 3, 2]);

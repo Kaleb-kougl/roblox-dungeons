@@ -184,8 +184,9 @@ describe("fortune: pacts and the Goldling together (docs/FORTUNE.md)", () => {
 			]).toEqual([PELLETS_SUBSYSTEM, TREASURE_SUBSYSTEM, PACTS_SUBSYSTEM, GOLDEN_SUBSYSTEM]);
 			expect(layout.values).toEqual(writeHashFields(s, []));
 			expect([ScoreSource.TREASURE, ScoreSource.HORDE, ScoreSource.GOLDEN]).toEqual([12, 13, 14]);
-			expect(s.score!.points.size()).toBe(ScoreSource.GOLDEN + 1);
-			expect(s.score!.counts.size()).toBe(ScoreSource.GOLDEN + 1);
+			// ... then the builds run's OVERCAP (docs/BUILDS_V2.md BV9): every endless world sets builds.
+			expect(s.score!.points.size()).toBe(ScoreSource.OVERCAP + 1);
+			expect(s.score!.counts.size()).toBe(ScoreSource.OVERCAP + 1);
 			expect(layout.names.includes("score.points.treasure")).toBe(true);
 			expect(layout.names.includes("score.points.horde")).toBe(true);
 			expect(layout.names.includes("score.points.golden")).toBe(true);
@@ -195,12 +196,15 @@ describe("fortune: pacts and the Goldling together (docs/FORTUNE.md)", () => {
 	it("any subset of treasure / pacts / golden pads up to its last gated source (12 entries with none)", () => {
 		const run = buildEndlessRunConfig(1337);
 		const f1 = run.endlessFloor(1);
+		// The matrix without builds: since docs/BUILDS_V2.md BV9 a builds run (every endless world) pads on to OVERCAP.
 		const sources = (config: SimConfig) => {
-			const s = createSimState(1337, f1.spawnX, f1.spawnZ, config);
+			const s = createSimState(1337, f1.spawnX, f1.spawnZ, { ...config, builds: undefined });
 			const names = hashLayout(s, true).groups.map((g) => g.name);
 			return [s.score!.points.size(), s.score!.counts.size(), names[names.size() - 1]];
 		};
 		const c = run.config;
+		const built = createSimState(1337, f1.spawnX, f1.spawnZ, c);
+		expect([built.score!.points.size(), built.score!.counts.size()]).toEqual([16, 16]);
 		expect(sources(c)).toEqual([15, 15, GOLDEN_SUBSYSTEM]);
 		expect(sources({ ...c, golden: undefined })).toEqual([14, 14, PACTS_SUBSYSTEM]);
 		expect(sources({ ...c, pacts: undefined })).toEqual([15, 15, GOLDEN_SUBSYSTEM]);

@@ -18,6 +18,10 @@ import type { ColorRole } from "./types";
  * draft's "Pick again" line, the evolve / duo toasts (`{boon}` / `{name}`, `{evo}`), the pause menu's Build list title.
  * Then Bastion's brace (docs/LEGENDARIES.md LG5): the toast for a pip restored, Stone Heart's heal toast and the floor
  * text (written in capitals in the string itself, like fx.parry.text; never upper-cased in code).
+ * Then builds v2, wave 1 (docs/BUILDS_V2.md BV10): a New draft card's duo hint (`{duo}`, BV8), the floor texts of
+ * Riposte's counter (`{n}`: the bullets the guard erased), Siege Bolt's pin and slam (capitals in the string, as above)
+ * and Happy Hour's toast. The run-over row `score.source.overcap` (BV9) is a score-source string like
+ * `score.source.jackpot`: checked by shared/view/hud SCORE_SOURCE_KEYS, not required here.
  */
 export const BUILD_STRING_KEYS: ReadonlyArray<string> = [
 	"hud.draft.level",
@@ -30,6 +34,11 @@ export const BUILD_STRING_KEYS: ReadonlyArray<string> = [
 	"hud.toast.brace",
 	"hud.toast.braceHeal",
 	"fx.brace.text",
+	"hud.draft.duoHint",
+	"fx.counter.text",
+	"fx.pinned.text",
+	"fx.slam.text",
+	"hud.toast.happyHour",
 ];
 
 /** The evolution and duo cards' frames (held with the rarity ladder by boonRarityReport). */
@@ -37,8 +46,10 @@ export const BOON_BUILD_ROLES: ReadonlyArray<ColorRole> = ["boon.evolved", "boon
 
 /**
  * One colour per effect (docs/BUILDS.md BUD12): spark beams, Volatile's bolts, Soul Shards, embers, then Overkill's
- * streak (docs/LEGENDARIES.md LG5; a colour role only, like the spark beam: no bullet visual). Held to
- * BUILD_COLOR_RULES by `buildReport` (buildColors.ts): a player effect must never read as danger.
+ * streak (docs/LEGENDARIES.md LG5; a colour role only, like the spark beam: no bullet visual), then Riposte's
+ * counter-wave and the overcap points' gold pops (docs/BUILDS_V2.md BV10; colour roles only: Ballista's bolts are
+ * BURST, the splinters and returns SHARD, BVD9). Held to BUILD_COLOR_RULES by `buildReport` (buildColors.ts): a player
+ * effect must never read as danger; the overcap gold also never as the new-best gold (BUILD_APART_RULES).
  */
 export const BUILD_EFFECT_ROLES: ReadonlyArray<ColorRole> = [
 	"build.spark",
@@ -46,6 +57,8 @@ export const BUILD_EFFECT_ROLES: ReadonlyArray<ColorRole> = [
 	"build.shard",
 	"build.ember",
 	"build.overkill",
+	"build.counter",
+	"build.overcap",
 ];
 
 /** The effect bullets' visuals (sim BulletKind BURST / SHARD / EMBER / SPARK_BOLT), in BULLET_IDS. */
@@ -67,7 +80,9 @@ export const BUILD_BULLET_ROLES: ReadonlyArray<ColorRole> = [
 /**
  * The build sounds (port audio IDs, SILENT in the placeholder), in PORT_AUDIO_EVENTS. The last two are the
  * legendaries' (docs/LEGENDARIES.md LG5): an Overkill streak and a Bastion brace; while silent they fall back to the
- * spark and the Aegis pip's break (shared/view/audio SFX_FALLBACK).
+ * spark and the Aegis pip's break (shared/view/audio SFX_FALLBACK). Then builds v2, wave 1's five (docs/BUILDS_V2.md
+ * BV10): Riposte's counter-wave, Siege Bolt's pin and slam, a Wrecker smash, Full Heart's beam; while silent they fall
+ * back to the parry, the bow's full charge, a Charger's wall stun, the breakable break and the spark.
  */
 export const BUILD_AUDIO_IDS: ReadonlyArray<string> = [
 	"sfx.build.spark",
@@ -81,4 +96,9 @@ export const BUILD_AUDIO_IDS: ReadonlyArray<string> = [
 	"sfx.build.jackpot",
 	"sfx.build.overkill",
 	"sfx.build.brace",
+	"sfx.build.counter",
+	"sfx.build.pin",
+	"sfx.build.slam",
+	"sfx.build.smash",
+	"sfx.build.beam",
 ];

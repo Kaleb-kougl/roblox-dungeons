@@ -88,6 +88,27 @@
 	"biome.5.name": {
 		"note": "Dungeon area (biome) name: overgrown, plant-covered ruins. Shown on the stage card under the floor number when a floor loads, and in the run info line of the pause menu. Evocative place name, title case."
 	},
+	"boon.ballista.desc": {
+		"note": "Effect line of the boon \"Ballista\" on its draft card (wraps over two or three lines of a 240 px card) and in the build list. Terse game-rules style: keep numbers, % and units (\"s\" = seconds) exactly. A \"heart\" is one unit of health; \"combo\" the kill-streak multiplier; \"graze\" a bullet skimming past without hitting. A \"charged arrow\" is the bow's heavy shot (hold the alt button); \"bolts\" are small projectiles."
+	},
+	"boon.ballista.desc.2": {
+		"note": "Effect line of the boon \"Ballista\" at level II (shown on its Upgrade draft card, with the level I line under it as \"was: ...\"). Same terse style as boon.ballista.desc; keep numbers exactly."
+	},
+	"boon.ballista.evo.desc": {
+		"note": "Effect line of \"Siege Bolt\", the evolved form of the boon \"Ballista\" (Evolution draft card, build list). Terse game-rules style; keep numbers exactly. A \"nova\" is a burst that wipes nearby enemy bullets; \"bolts\", \"shards\" and \"sparks\" are small projectiles. A \"charged arrow\" is the bow's heavy shot (hold the alt button); \"bolts\" are small projectiles."
+	},
+	"boon.ballista.evo.name": {
+		"note": "Name of the evolved form of the boon \"Ballista\" (at level III it turns into this stronger version; effect: \"Charged arrows pin an enemy and slam it into a wall\"). Shown on the Evolution draft card and in toasts. Short and dramatic, title case; glossary term.",
+		"max": 20
+	},
+	"boon.ballista.icon": {
+		"note": "Icon label of the boon \"Ballista\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
+		"max": 3
+	},
+	"boon.ballista.name": {
+		"note": "Name of a boon (a power-up kept for the rest of the run, picked from a draft of cards); its effect: \"Charged arrows burst into 6 bolts\". Shown as a draft card's one-line title (24 px text on a 240 px card, no wrapping), in toasts, and in the build list. Short and flavourful, title case; glossary term.",
+		"max": 20
+	},
 	"boon.bastion.desc": {
 		"note": "Effect line of the boon \"Bastion\" on its draft card (wraps over two or three lines of a 240 px card) and in the build list. Terse game-rules style: keep numbers, % and units (\"s\" = seconds) exactly. A \"heart\" is one unit of health; \"combo\" the kill-streak multiplier; \"graze\" a bullet skimming past without hitting. An armor \"pip\" is one unit of armor that absorbs a whole hit; the \"guard\" is the sword's block; a \"brace\" is Bastion restoring a pip after a guard or roll stops 8 bullets."
 	},
@@ -291,6 +312,27 @@
 		"note": "Boon rarity shown on a draft card: the middle tier (blood-red cards).",
 		"max": 12
 	},
+	"boon.riposte.desc": {
+		"note": "Effect line of the boon \"Riposte\" on its draft card (wraps over two or three lines of a 240 px card) and in the build list. Terse game-rules style: keep numbers, % and units (\"s\" = seconds) exactly. A \"heart\" is one unit of health; \"combo\" the kill-streak multiplier; \"graze\" a bullet skimming past without hitting. The \"guard\" is the sword's block; a \"counter-wave\" is a crescent of force that rolls out from the player when a guard ends."
+	},
+	"boon.riposte.desc.2": {
+		"note": "Effect line of the boon \"Riposte\" at level II (shown on its Upgrade draft card, with the level I line under it as \"was: ...\"). Same terse style as boon.riposte.desc; keep numbers exactly."
+	},
+	"boon.riposte.evo.desc": {
+		"note": "Effect line of \"Counterstrike\", the evolved form of the boon \"Riposte\" (Evolution draft card, build list). Terse game-rules style; keep numbers exactly. A \"nova\" is a burst that wipes nearby enemy bullets; \"bolts\", \"shards\" and \"sparks\" are small projectiles. The \"guard\" is the sword's block; a \"counter-wave\" is a crescent of force that rolls out from the player when a guard ends."
+	},
+	"boon.riposte.evo.name": {
+		"note": "Name of the evolved form of the boon \"Riposte\" (at level III it turns into this stronger version; effect: \"Blocking 5 or more fires the wave as a ring and sends shards back\"). Shown on the Evolution draft card and in toasts. Short and dramatic, title case; glossary term.",
+		"max": 20
+	},
+	"boon.riposte.icon": {
+		"note": "Icon label of the boon \"Riposte\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
+		"max": 3
+	},
+	"boon.riposte.name": {
+		"note": "Name of a boon (a power-up kept for the rest of the run, picked from a draft of cards); its effect: \"A full guard that blocks bullets fires a counter-wave: 1 damage per bullet, up to 6\". Shown as a draft card's one-line title (24 px text on a 240 px card, no wrapping), in toasts, and in the build list. Short and flavourful, title case; glossary term.",
+		"max": 20
+	},
 	"boon.sharpened.desc": {
 		"note": "Effect line of the boon \"Sharpened\" on its draft card (wraps over two or three lines of a 240 px card) and in the build list. Terse game-rules style: keep numbers, % and units (\"s\" = seconds) exactly. A \"heart\" is one unit of health; \"combo\" the kill-streak multiplier; \"graze\" a bullet skimming past without hitting."
 	},
@@ -415,6 +457,27 @@
 	},
 	"boon.warding.name": {
 		"note": "Name of a boon (a power-up kept for the rest of the run, picked from a draft of cards); its effect: \"1 armor pip, refilled in every room\". Shown as a draft card's one-line title (24 px text on a 240 px card, no wrapping), in toasts, and in the build list. Short and flavourful, title case; glossary term.",
+		"max": 20
+	},
+	"boon.wrecker.desc": {
+		"note": "Effect line of the boon \"Wrecker\" on its draft card (wraps over two or three lines of a 240 px card) and in the build list. Terse game-rules style: keep numbers, % and units (\"s\" = seconds) exactly. A \"heart\" is one unit of health; \"combo\" the kill-streak multiplier; \"graze\" a bullet skimming past without hitting. \"Pieces\" are the breakable crates and barrels in rooms; \"splinters\" are small projectiles; to \"roll\" is the player's dodge."
+	},
+	"boon.wrecker.desc.2": {
+		"note": "Effect line of the boon \"Wrecker\" at level II (shown on its Upgrade draft card, with the level I line under it as \"was: ...\"). Same terse style as boon.wrecker.desc; keep numbers exactly."
+	},
+	"boon.wrecker.evo.desc": {
+		"note": "Effect line of \"Demolition\", the evolved form of the boon \"Wrecker\" (Evolution draft card, build list). Terse game-rules style; keep numbers exactly. A \"nova\" is a burst that wipes nearby enemy bullets; \"bolts\", \"shards\" and \"sparks\" are small projectiles. \"Pieces\" are the breakable crates and barrels in rooms; \"splinters\" are small projectiles; to \"roll\" is the player's dodge."
+	},
+	"boon.wrecker.evo.name": {
+		"note": "Name of the evolved form of the boon \"Wrecker\" (at level III it turns into this stronger version; effect: \"Pieces you break explode and set off pieces nearby\"). Shown on the Evolution draft card and in toasts. Short and dramatic, title case; glossary term.",
+		"max": 20
+	},
+	"boon.wrecker.icon": {
+		"note": "Icon label of the boon \"Wrecker\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
+		"max": 3
+	},
+	"boon.wrecker.name": {
+		"note": "Name of a boon (a power-up kept for the rest of the run, picked from a draft of cards); its effect: \"Rolls smash crates and barrels; each piece you break fires 3 splinters\". Shown as a draft card's one-line title (24 px text on a 240 px card, no wrapping), in toasts, and in the build list. Short and flavourful, title case; glossary term.",
 		"max": 20
 	},
 	"boost.aegis.desc": {
@@ -948,6 +1011,17 @@
 		"note": "Name of a Duo boon (a special boon offered when the player owns two boons that combine); its effect: \"Arrows passing through an enemy spark\". Shown as a draft card's one-line title (24 px text on a 240 px card, no wrapping), in toasts and the build list. Title case; glossary term.",
 		"max": 20
 	},
+	"duo.dragonBolt.desc": {
+		"note": "Effect line of the Duo boon \"Dragon Bolt\" on its draft card (wraps) and in the build list. Terse game-rules style; keep numbers exactly. \"Embers\" here are burning patches on the floor; a \"spark\" jumps between enemies; a \"burst\" is a ring of bolts. An armor \"pip\" is one unit of armor; the \"guard\" is the sword's block; a \"brace\" is Bastion restoring a pip after a guard or roll stops 8 bullets; a \"charged arrow\" is the bow's heavy shot; \"pieces\" are breakable crates and barrels; a \"finisher\" is the sword combo's third, strongest swing; \"combo\" the kill-streak multiplier."
+	},
+	"duo.dragonBolt.icon": {
+		"note": "Icon label of the Duo boon \"Dragon Bolt\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
+		"max": 3
+	},
+	"duo.dragonBolt.name": {
+		"note": "Name of a Duo boon (a special boon offered when the player owns two boons that combine); its effect: \"Charged arrows leave a line of embers\". Shown as a draft card's one-line title (24 px text on a 240 px card, no wrapping), in toasts and the build list. Title case; glossary term.",
+		"max": 20
+	},
 	"duo.fireArrows.desc": {
 		"note": "Effect line of the Duo boon \"Fire Arrows\" on its draft card (wraps) and in the build list. Terse game-rules style; keep numbers exactly. \"Embers\" here are burning patches on the floor; a \"spark\" jumps between enemies; a \"burst\" is a ring of bolts."
 	},
@@ -959,6 +1033,17 @@
 		"note": "Name of a Duo boon (a special boon offered when the player owns two boons that combine); its effect: \"Arrows leave burning embers on the floor\". Shown as a draft card's one-line title (24 px text on a 240 px card, no wrapping), in toasts and the build list. Title case; glossary term.",
 		"max": 20
 	},
+	"duo.fullHeart.desc": {
+		"note": "Effect line of the Duo boon \"Full Heart\" on its draft card (wraps) and in the build list. Terse game-rules style; keep numbers exactly. \"Embers\" here are burning patches on the floor; a \"spark\" jumps between enemies; a \"burst\" is a ring of bolts. An armor \"pip\" is one unit of armor; the \"guard\" is the sword's block; a \"brace\" is Bastion restoring a pip after a guard or roll stops 8 bullets; a \"charged arrow\" is the bow's heavy shot; \"pieces\" are breakable crates and barrels; a \"finisher\" is the sword combo's third, strongest swing; \"combo\" the kill-streak multiplier."
+	},
+	"duo.fullHeart.icon": {
+		"note": "Icon label of the Duo boon \"Full Heart\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
+		"max": 3
+	},
+	"duo.fullHeart.name": {
+		"note": "Name of a Duo boon (a special boon offered when the player owns two boons that combine); its effect: \"At full hearts, finishers and charged arrows fire a beam\". Shown as a draft card's one-line title (24 px text on a 240 px card, no wrapping), in toasts and the build list. Title case; glossary term.",
+		"max": 20
+	},
 	"duo.goldRush.desc": {
 		"note": "Effect line of the Duo boon \"Gold Rush\" on its draft card (wraps) and in the build list. Terse game-rules style; keep numbers exactly. \"Embers\" here are burning patches on the floor; a \"spark\" jumps between enemies; a \"burst\" is a ring of bolts."
 	},
@@ -968,6 +1053,39 @@
 	},
 	"duo.goldRush.name": {
 		"note": "Name of a Duo boon (a special boon offered when the player owns two boons that combine); its effect: \"Kills at combo x3 or more score 25% more\". Shown as a draft card's one-line title (24 px text on a 240 px card, no wrapping), in toasts and the build list. Title case; glossary term.",
+		"max": 20
+	},
+	"duo.happyHour.desc": {
+		"note": "Effect line of the Duo boon \"Happy Hour\" on its draft card (wraps) and in the build list. Terse game-rules style; keep numbers exactly. \"Embers\" here are burning patches on the floor; a \"spark\" jumps between enemies; a \"burst\" is a ring of bolts. An armor \"pip\" is one unit of armor; the \"guard\" is the sword's block; a \"brace\" is Bastion restoring a pip after a guard or roll stops 8 bullets; a \"charged arrow\" is the bow's heavy shot; \"pieces\" are breakable crates and barrels; a \"finisher\" is the sword combo's third, strongest swing; \"combo\" the kill-streak multiplier."
+	},
+	"duo.happyHour.icon": {
+		"note": "Icon label of the Duo boon \"Happy Hour\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
+		"max": 3
+	},
+	"duo.happyHour.name": {
+		"note": "Name of a Duo boon (a special boon offered when the player owns two boons that combine); its effect: \"Drinking a flask doubles kill points for 5 s\". Shown as a draft card's one-line title (24 px text on a 240 px card, no wrapping), in toasts and the build list. Title case; glossary term.",
+		"max": 20
+	},
+	"duo.powderKeg.desc": {
+		"note": "Effect line of the Duo boon \"Powder Keg\" on its draft card (wraps) and in the build list. Terse game-rules style; keep numbers exactly. \"Embers\" here are burning patches on the floor; a \"spark\" jumps between enemies; a \"burst\" is a ring of bolts. An armor \"pip\" is one unit of armor; the \"guard\" is the sword's block; a \"brace\" is Bastion restoring a pip after a guard or roll stops 8 bullets; a \"charged arrow\" is the bow's heavy shot; \"pieces\" are breakable crates and barrels; a \"finisher\" is the sword combo's third, strongest swing; \"combo\" the kill-streak multiplier."
+	},
+	"duo.powderKeg.icon": {
+		"note": "Icon label of the Duo boon \"Powder Keg\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
+		"max": 3
+	},
+	"duo.powderKeg.name": {
+		"note": "Name of a Duo boon (a special boon offered when the player owns two boons that combine); its effect: \"Pieces you break trigger your on-kill boons\". Shown as a draft card's one-line title (24 px text on a 240 px card, no wrapping), in toasts and the build list. Title case; glossary term.",
+		"max": 20
+	},
+	"duo.rebuke.desc": {
+		"note": "Effect line of the Duo boon \"Rebuke\" on its draft card (wraps) and in the build list. Terse game-rules style; keep numbers exactly. \"Embers\" here are burning patches on the floor; a \"spark\" jumps between enemies; a \"burst\" is a ring of bolts. An armor \"pip\" is one unit of armor; the \"guard\" is the sword's block; a \"brace\" is Bastion restoring a pip after a guard or roll stops 8 bullets; a \"charged arrow\" is the bow's heavy shot; \"pieces\" are breakable crates and barrels; a \"finisher\" is the sword combo's third, strongest swing; \"combo\" the kill-streak multiplier."
+	},
+	"duo.rebuke.icon": {
+		"note": "Icon label of the Duo boon \"Rebuke\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
+		"max": 3
+	},
+	"duo.rebuke.name": {
+		"note": "Name of a Duo boon (a special boon offered when the player owns two boons that combine); its effect: \"A brace fires Riposte's counter-wave as a full ring\". Shown as a draft card's one-line title (24 px text on a 240 px card, no wrapping), in toasts and the build list. Title case; glossary term.",
 		"max": 20
 	},
 	"duo.shrapnel.desc": {
@@ -990,6 +1108,17 @@
 	},
 	"duo.skewer.name": {
 		"note": "Name of a Duo boon (a special boon offered when the player owns two boons that combine); its effect: \"Overkill streaks strike every enemy in their line\". Shown as a draft card's one-line title (24 px text on a 240 px card, no wrapping), in toasts and the build list. Title case; glossary term.",
+		"max": 20
+	},
+	"duo.stillwater.desc": {
+		"note": "Effect line of the Duo boon \"Stillwater\" on its draft card (wraps) and in the build list. Terse game-rules style; keep numbers exactly. \"Embers\" here are burning patches on the floor; a \"spark\" jumps between enemies; a \"burst\" is a ring of bolts. An armor \"pip\" is one unit of armor; the \"guard\" is the sword's block; a \"brace\" is Bastion restoring a pip after a guard or roll stops 8 bullets; a \"charged arrow\" is the bow's heavy shot; \"pieces\" are breakable crates and barrels; a \"finisher\" is the sword combo's third, strongest swing; \"combo\" the kill-streak multiplier."
+	},
+	"duo.stillwater.icon": {
+		"note": "Icon label of the Duo boon \"Stillwater\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
+		"max": 3
+	},
+	"duo.stillwater.name": {
+		"note": "Name of a Duo boon (a special boon offered when the player owns two boons that combine); its effect: \"Blocking a bullet within 3 s of a hit gives back the combo it cut\". Shown as a draft card's one-line title (24 px text on a 240 px card, no wrapping), in toasts and the build list. Title case; glossary term.",
 		"max": 20
 	},
 	"duo.stoneHeart.desc": {
@@ -1023,6 +1152,17 @@
 	},
 	"duo.supernova.name": {
 		"note": "Name of a Duo boon (a special boon offered when the player owns two boons that combine); its effect: \"Big overkills burst one ring bigger\". Shown as a draft card's one-line title (24 px text on a 240 px card, no wrapping), in toasts and the build list. Title case; glossary term.",
+		"max": 20
+	},
+	"duo.thunderGuard.desc": {
+		"note": "Effect line of the Duo boon \"Thunder Guard\" on its draft card (wraps) and in the build list. Terse game-rules style; keep numbers exactly. \"Embers\" here are burning patches on the floor; a \"spark\" jumps between enemies; a \"burst\" is a ring of bolts. An armor \"pip\" is one unit of armor; the \"guard\" is the sword's block; a \"brace\" is Bastion restoring a pip after a guard or roll stops 8 bullets; a \"charged arrow\" is the bow's heavy shot; \"pieces\" are breakable crates and barrels; a \"finisher\" is the sword combo's third, strongest swing; \"combo\" the kill-streak multiplier."
+	},
+	"duo.thunderGuard.icon": {
+		"note": "Icon label of the Duo boon \"Thunder Guard\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
+		"max": 3
+	},
+	"duo.thunderGuard.name": {
+		"note": "Name of a Duo boon (a special boon offered when the player owns two boons that combine); its effect: \"Every bullet your guard blocks sparks to an enemy\". Shown as a draft card's one-line title (24 px text on a 240 px card, no wrapping), in toasts and the build list. Title case; glossary term.",
 		"max": 20
 	},
 	"duo.unshaken.desc": {
@@ -1089,6 +1229,13 @@
 		"note": "Text written on the floor beside the player when the Bastion boon \"braces\": a guard (the sword's block) or a roll stopped 8 bullets and restored an armor pip (or, with the Stone Heart duo, healed). ALL CAPS, one word, like the parry flash (fx.parry.text); keep capitals if the script has them.",
 		"max": 10
 	},
+	"fx.counter.text": {
+		"note": "Text written on the floor beside the player when the Riposte boon's counter fires: a guard (the sword's block) that ran its full length sends back a wave of light; {n} is the number of enemy bullets the guard erased (the wave's damage); the x means \"times\". ALL CAPS, like the parry flash (fx.parry.text); keep capitals if the script has them.",
+		"max": 13,
+		"example": {
+			"n": 4
+		}
+	},
 	"fx.golden.escaped": {
 		"note": "Short line written where the Goldling vanished when it escapes before being caught. {points} is a number: the coins (points) already won from hitting it, which the player keeps. The two spaces before the plus are a visual gap; keep them or use the language's equivalent.",
 		"max": 36,
@@ -1129,6 +1276,10 @@
 	},
 	"fx.parry.text": {
 		"note": "Flash written on the floor when the player parries (blocks bullets with a well-timed guard). ALL CAPS exclamation, one word; keep capitals if the script has them. The game may append \" x5\" (fx.parry.count) after it.",
+		"max": 10
+	},
+	"fx.pinned.text": {
+		"note": "Text written on the floor while a charged arrow (the Siege Bolt boon) carries an enemy it hit along with it. ALL CAPS, one word, like the parry flash (fx.parry.text); keep capitals if the script has them.",
 		"max": 10
 	},
 	"fx.settings.close": {
@@ -1220,6 +1371,10 @@
 	},
 	"fx.settings.title": {
 		"note": "Title of the visual-effects settings panel. \"Juice\" is game-design slang for screen shake, flashes, particles and similar feedback effects; translate the idea (\"Effects\", \"Game feel\") rather than the fruit. Same term as options.tab.juice."
+	},
+	"fx.slam.text": {
+		"note": "Text written on the floor when a charged arrow (the Siege Bolt boon) that carried an enemy slams it into a wall, with a shockwave. ALL CAPS, one word, like the parry flash (fx.parry.text); keep capitals if the script has them.",
+		"max": 10
 	},
 	"game.title": {
 		"note": "The game's title, shown large on the main menu header and in the run info line of the pause menu. Keep \"Roblox Dungeons\" exactly as written (the brand: never translate or transliterate any part of it)."
@@ -1431,6 +1586,13 @@
 	"hud.draft.duo": {
 		"note": "Banner on a Duo draft card: a special boon that combines two boons the player owns. All caps in English: keep capitals if the script has them. Very short.",
 		"max": 6
+	},
+	"hud.draft.duoHint": {
+		"note": "Small line at the foot of a New boon draft card when taking that boon would let the player be offered a Duo boon (a special boon that combines two boons the player owns) in later drafts. {duo} is the Duo boon's name (e.g. \"Thunder Guard\"). Shown next to a small two-cell chip of the two boons' icons; one line on a 240 px card.",
+		"max": 36,
+		"example": {
+			"duo": "Thunder Guard"
+		}
 	},
 	"hud.draft.evolve": {
 		"note": "Banner on an Evolution draft card (a boon at its top level turns into a stronger form). {boon} is the boon's name. English is all caps (EVOLVE): keep the label in capitals if the script has them.",
@@ -1847,6 +2009,10 @@
 		"example": {
 			"amount": 1
 		}
+	},
+	"hud.toast.happyHour": {
+		"note": "Toast (top centre) when a player with the Happy Hour duo (Deep Flask + Bounty) drinks a flask: for the next 5 seconds their kills score double points. \"Happy Hour\" is the duo's name (duo.happyHour.name); keep it as translated there.",
+		"max": 40
 	},
 	"hud.toast.relic": {
 		"note": "Toast (top centre) after picking up a relic (a permanent item for this run). {name} is the relic's name.",
@@ -3474,6 +3640,10 @@
 	},
 	"score.source.kills": {
 		"note": "Run-over panel: score breakdown row label (200 px label column, the points sit to the right) for points from killing enemies.",
+		"max": 20
+	},
+	"score.source.overcap": {
+		"note": "Run-over panel: score breakdown row label (200 px label column, the points sit to the right) for points from boss damage dealt over the boss's damage-per-second limit (the damage that could not land is paid as points instead). Short noun.",
 		"max": 20
 	},
 	"score.source.pellets": {

@@ -206,6 +206,15 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		// vale's textured floor (buildReport, printed by theme/builds.spec.ts). It sits near the apricot burst (10.4): the
 		// streak is a straight line, the burst a ring of bolts.
 		"build.overkill": "#ffe0b0",
+		// docs/BUILDS_V2.md BV10: Riposte's counter-wave, a spring green (the one hue the danger, boost and pellet colours
+		// leave >= 40 CIE76 clear at full brightness: nearest frenzy 42.9, quickstep 49.5; 29.7 from affix.swift, not
+		// checked, the wave is a crescent from the player, the affix a ring under an enemy); then the overcap pops' pale gold
+		// (a richer gold sits within 40 of Fury: nearest fury 42.5, newBest 54.9 (BUILD_APART_RULES), telegraph 56.4; it
+		// sits beside the pale golds already in use, parry 3.5, boon.evolved 3.6, build.ember 6.1, and 28.5 above the kill
+		// pops' uiAccent). Both >= 10.9:1 on every biome floor and vale's textured floor (buildReport, printed by
+		// theme/builds.spec.ts).
+		"build.counter": "#00ff8c",
+		"build.overcap": "#fff0b0",
 		// Roblox port (docs/PELLETS.md PL6, PD3; yellow by the owner, 2026-11-03): the pellets are Pac-Man yellow, the power
 		// pellet the same yellow (it reads by its size, pulse and glow). >= 40 CIE76 from the enemy bullet (82), its
 		// outline, the telegraph (76), every build effect colour (nearest build.ember 63) and the player outline; >= 30 from
@@ -463,6 +472,14 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		// spark and the Aegis pip's break: shared/view/audio SFX_FALLBACK)
 		"sfx.build.overkill": SILENT,
 		"sfx.build.brace": SILENT,
+		// docs/BUILDS_V2.md BV10: Riposte's counter-wave, Siege Bolt's pin and slam, a Wrecker smash, Full Heart's beam
+		// (BV13 picks them; while silent they fall back to the parry, the bow's full charge, a Charger's wall stun, the
+		// breakable break and the spark: shared/view/audio SFX_FALLBACK)
+		"sfx.build.counter": SILENT,
+		"sfx.build.pin": SILENT,
+		"sfx.build.slam": SILENT,
+		"sfx.build.smash": SILENT,
+		"sfx.build.beam": SILENT,
 		// Roblox port (docs/DAILY.md DS10): a daily run's rank threshold sting and a friend passed; silent until the vale
 		// pack's clips are auditioned, built and uploaded (DS12)
 		"sfx.rank.up": SILENT,
@@ -769,6 +786,8 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		// Roblox port (docs/FORTUNE.md FO6): Fortune's sources (the Horde's doubled half; the Goldling's coins and jackpot).
 		"score.source.horde": "Horde",
 		"score.source.golden": "Goldling",
+		// Roblox port (docs/BUILDS_V2.md BV9): boss damage over the damage cap, paid as points.
+		"score.source.overcap": "Overcap",
 		// M5: leaderboards.
 		"hud.pause.leaderboard": "Leaderboards",
 		"hud.leaderboard.title": "Leaderboards",
@@ -915,12 +934,16 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"hud.draft.duo": "DUO",
 		"hud.draft.again": "Pick again",
 		"hud.draft.was": "was: {desc}",
+		// docs/BUILDS_V2.md BV8: the duo hint on a New card (shared/view/hud PROGRESSION_STRINGS.draftDuoHint)
+		"hud.draft.duoHint": "Unlocks a duo: {duo}",
 		"hud.toast.evolved": "{boon} evolved: {evo}",
 		"hud.toast.duo": "Duo: {name}",
 		"hud.build.title": "Build",
 		// docs/LEGENDARIES.md LG5 (BUILD_STRING_KEYS): Bastion's brace restored a pip / (Stone Heart) healed instead
 		"hud.toast.brace": "Braced: +1 armor",
 		"hud.toast.braceHeal": "Braced: healed",
+		// docs/BUILDS_V2.md BV10 (BUILD_STRING_KEYS): Happy Hour's toast after a drink (the duo's 5 s of doubled kill points)
+		"hud.toast.happyHour": "Happy Hour: double kill points",
 		// Item tooltips (docs/ITEM_TOOLTIPS.md IT3; shared/view/hud TOOLTIP_STRINGS): the tooltip's kind lines, its Next /
 		// evolution / duo recipe / time-left lines, the "+N" cell's count, the Build list's sections, the upright pause
 		// panel's Build / Map toggle.
@@ -1022,6 +1045,16 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"boon.bastion.name": "Bastion",
 		"boon.bastion.desc": "+1 armor pip; a full-ring guard; stop 8 bullets: +1 pip",
 		"boon.bastion.icon": "BST",
+		// docs/BUILDS_V2.md BV1: builds v2's three boons (placeholder wording from the plan; BV10 polishes it).
+		"boon.riposte.name": "Riposte",
+		"boon.riposte.desc": "A full guard that blocks bullets fires a counter-wave: 1 damage per bullet, up to 6",
+		"boon.riposte.icon": "RIP",
+		"boon.ballista.name": "Ballista",
+		"boon.ballista.desc": "Charged arrows burst into 6 bolts",
+		"boon.ballista.icon": "BAL",
+		"boon.wrecker.name": "Wrecker",
+		"boon.wrecker.desc": "Rolls smash crates and barrels; each piece you break fires 3 splinters",
+		"boon.wrecker.icon": "WRK",
 		"boon.sharpened.desc.2": "+50% weapon damage",
 		"boon.sharpened.evo.name": "Executioner",
 		"boon.sharpened.evo.desc": "+75% damage; enemies at 20% health die on the next hit",
@@ -1061,6 +1094,15 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"boon.soulShards.desc.2": "3 shards",
 		"boon.soulShards.evo.name": "Soul Swarm",
 		"boon.soulShards.evo.desc": "4 shards that seek and pierce",
+		"boon.riposte.desc.2": "The counter-wave deals up to 10",
+		"boon.riposte.evo.name": "Counterstrike",
+		"boon.riposte.evo.desc": "Blocking 5 or more fires the wave as a ring and sends shards back",
+		"boon.ballista.desc.2": "10 bolts; charging takes 25% less time",
+		"boon.ballista.evo.name": "Siege Bolt",
+		"boon.ballista.evo.desc": "Charged arrows pin an enemy and slam it into a wall",
+		"boon.wrecker.desc.2": "5 splinters",
+		"boon.wrecker.evo.name": "Demolition",
+		"boon.wrecker.evo.desc": "Pieces you break explode and set off pieces nearby",
 		"duo.fireArrows.name": "Fire Arrows",
 		"duo.fireArrows.desc": "Arrows leave burning embers on the floor",
 		"duo.fireArrows.icon": "FIR",
@@ -1101,6 +1143,28 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"duo.stoneHeart.name": "Stone Heart",
 		"duo.stoneHeart.desc": "A brace at full armor heals half a heart",
 		"duo.stoneHeart.icon": "STH",
+		// docs/BUILDS_V2.md BV1: builds v2's seven duos.
+		"duo.thunderGuard.name": "Thunder Guard",
+		"duo.thunderGuard.desc": "Every bullet your guard blocks sparks to an enemy",
+		"duo.thunderGuard.icon": "TGD",
+		"duo.stillwater.name": "Stillwater",
+		"duo.stillwater.desc": "Blocking a bullet within 3 s of a hit gives back the combo it cut",
+		"duo.stillwater.icon": "STW",
+		"duo.rebuke.name": "Rebuke",
+		"duo.rebuke.desc": "A brace fires Riposte's counter-wave as a full ring",
+		"duo.rebuke.icon": "RBK",
+		"duo.dragonBolt.name": "Dragon Bolt",
+		"duo.dragonBolt.desc": "Charged arrows leave a line of embers",
+		"duo.dragonBolt.icon": "DRB",
+		"duo.powderKeg.name": "Powder Keg",
+		"duo.powderKeg.desc": "Pieces you break trigger your on-kill boons",
+		"duo.powderKeg.icon": "PKG",
+		"duo.fullHeart.name": "Full Heart",
+		"duo.fullHeart.desc": "At full hearts, finishers and charged arrows fire a beam",
+		"duo.fullHeart.icon": "FHT",
+		"duo.happyHour.name": "Happy Hour",
+		"duo.happyHour.desc": "Drinking a flask doubles kill points for 5 s",
+		"duo.happyHour.icon": "HHR",
 		"relic.mirrorCloak.name": "Mirror Cloak",
 		"relic.mirrorCloak.desc": "Guarded bullets fly back at your foes",
 		"relic.mirrorCloak.icon": "MIR",
@@ -1306,6 +1370,11 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"fx.parry.syncCount": "SYNC x{n}",
 		// docs/LEGENDARIES.md LG5: Bastion's brace, written on the floor (the combo shout's construction)
 		"fx.brace.text": "BRACED",
+		// docs/BUILDS_V2.md BV10: Riposte's counter ({n} = the bullets the guard erased), Siege Bolt's pin and its slam,
+		// written on the floor (the combo shout's construction)
+		"fx.counter.text": "COUNTER x{n}",
+		"fx.pinned.text": "PINNED",
+		"fx.slam.text": "SLAM",
 		// --- affix.* / bestiary.* (docs/ENEMY_VARIANTS.md EV1: the affix name chips and the first-sighting toasts) -----
 		"affix.hulking.name": "Hulking",
 		"affix.swift.name": "Swift",

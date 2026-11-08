@@ -139,7 +139,10 @@ describe("pellets: config and tunables", () => {
 		expect(s.pellets).toBe(undefined);
 		const l = hashLayout(s);
 		expect(l.groups[l.groups.size() - 1].name).toBe(BUILDS_SUBSYSTEM);
-		expect(s.score!.points.size()).toBe(SCORE_SOURCE_COUNT + BUILD_SCORE_SOURCE_NAMES.size());
+		// The builds run's sources only (since docs/BUILDS_V2.md BV9 padded up to OVERCAP: PELLETS / SWEEP stay 0).
+		expect(s.score!.points.size()).toBe(ScoreSource.OVERCAP + 1);
+		expect([s.score!.points[ScoreSource.PELLETS], s.score!.points[ScoreSource.SWEEP]]).toEqual([0, 0]);
+		expect(BUILD_SCORE_SOURCE_NAMES.size()).toBe(1);
 	});
 });
 
@@ -279,7 +282,11 @@ describe("pellets: score sources", () => {
 		const s = fresh();
 		const total = SCORE_SOURCE_COUNT + BUILD_SCORE_SOURCE_NAMES.size() + PELLET_SCORE_SOURCE_NAMES.size();
 		expect(total).toBe(12);
-		expect([s.score!.points.size(), s.score!.counts.size()]).toEqual([total, total]);
+		// A builds run pads on to OVERCAP (docs/BUILDS_V2.md BV9).
+		expect([s.score!.points.size(), s.score!.counts.size()]).toEqual([
+			ScoreSource.OVERCAP + 1,
+			ScoreSource.OVERCAP + 1,
+		]);
 		const names = hashLayout(s, true).names;
 		for (const n of ["jackpot", "pellets", "sweep"]) {
 			expect(names.includes(`score.points.${n}`)).toBe(true);
@@ -376,7 +383,8 @@ describe("pellets: the award functions (PD1: the combo is never fed)", () => {
 		expect([scorePellet(off), scoreSweep(off), scorePowerBullets(off, 5)]).toEqual([0, 0, 0]);
 		expect(off.score!.total).toBe(0);
 		const s = fresh();
-		s.score!.points.remove(s.score!.points.size() - 1);
+		// Cut the sources back to end before SWEEP (a builds run pads on to OVERCAP since docs/BUILDS_V2.md BV9).
+		while (s.score!.points.size() > ScoreSource.SWEEP) s.score!.points.remove(s.score!.points.size() - 1);
 		expect(scoreSweep(s)).toBe(0);
 		expect(scorePellet(s)).toBeGreaterThan(0);
 		const unscored = fresh({ ...WITH, scoring: undefined });

@@ -10,6 +10,8 @@
  *                                   them). Flurry (Swift Strikes III): FLURRY_CRESCENT from the player along the
  *                                   facing (fireEffect FLURRY, gen 0; first moves this tick, like an arrow). BU6 Storm
  *                                   Blade (./duos.ts stormBladeFinisher): a finisher that hit queues a spark.
+ *                                   docs/BUILDS_V2.md BV7 Full Heart (./fullHeart.ts fullHeartBeam): at full hearts,
+ *                                   a beam along the facing (the bow's heavy release calls it too, along its aim).
  *   buildsFlurryArrow(ctx)          (./hooks.ts: bow.ts cannot import this module) per stream arrow, not the heavy
  *                                   arrow: Flurry counts it in `arrows`; the FLURRY_ARROW_EVERY-th returns true and the
  *                                   bow fires that arrow as FLURRY_ARROW_COUNT @ FLURRY_ARROW_SPREAD (weapon arrows:
@@ -84,6 +86,7 @@ import {
 import { NO_SKIP_ID, fireAimedVolley, fireEffect, nearestEnemy } from "./effects";
 import { buildPlayerLeft, buildPlayerStateAt, isEvolved, pushFlurry } from "./hooks";
 import { stormBladeFinisher } from "./duos";
+import { fullHeartBeam } from "./fullHeart";
 
 const RICOCHET_RANGE2 = RICOCHET_RANGE * RICOCHET_RANGE;
 const SOUL_SWARM_RANGE2 = SOUL_SWARM_RANGE * SOUL_SWARM_RANGE;
@@ -111,6 +114,8 @@ export function buildsOnFinisher(ctx: SimCtx, hits: number, first?: Readonly<Act
 	const s = ctx.state.builds;
 	if (s === undefined) return;
 	if (hits > 0) stormBladeFinisher(ctx, first);
+	// Full Heart (Hearty + Sharpened, docs/BUILDS_V2.md BV7): at full hearts the finisher also strikes a beam.
+	fullHeartBeam(ctx, ctx.player.faceX, ctx.player.faceZ);
 	const owner = ctx.playerIndex;
 	if (!isEvolved(s.players[owner], Boon.SWIFT_STRIKES)) return;
 	const p = ctx.player;

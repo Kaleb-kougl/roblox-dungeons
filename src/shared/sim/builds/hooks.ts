@@ -26,6 +26,9 @@
  *   buildsGoldRush(state, killer) / buildsGoldRushPop(state, killer, x, z, points)   score.ts scoreKill: Gold Rush
  *                                      (Bounty + Lingering) applies to the killer; its duoProc entry.
  *   buildsUnshakenKept(state)          score.ts stepScore: this tick's Unshaken hits.
+ *   buildsHappyHourPercent(state, killer) / stepHappyHour(state, s)   docs/BUILDS_V2.md BV7 Happy Hour (Deep Flask +
+ *                                      Bounty): score.ts scoreKill's percent while the killer's happyHourTicks run
+ *                                      (folded into Bounty's bonusPercent); stepBuilds' countdown and the drink's start.
  *
  * Bastion (docs/LEGENDARIES.md "Bastion", LG3; legendary, level I; nothing for a player without it, who left or is
  * dead). Brace: one guard or one roll that stops BASTION_BRACE_BULLETS enemy bullets restores one armor pip up to
@@ -45,11 +48,18 @@
  *                                      before (payload lastHit 0; the walk marks it 1) overlaps rolling player i.
  *   buildsOnRollStart(state, i) / buildsOnSwap(state, i)   weapons.ts: a roll started (Ember Wake's moment) / a swap.
  *   buildsBraceRearm(state)            progression.ts stepRun: a floor's start and a room's enemies spawning.
+ *
+ * Riposte / its duos (docs/BUILDS_V2.md BV2 / BV6; the rules in ./riposte.ts): buildsOnRollStart and buildsOnSwap also
+ * discard `riposteCount` and Rebuke's guard mark (a roll or a swap ends a guard short: BVD3); buildsOnRollThrough marks
+ * Rebuke's roll ring (`rebukePending` ROLL) when its brace restored something; buildsStillwaterRecord (score.ts
+ * stepScore) records Stillwater's cut combo.
  */
 import { jsMin } from "shared/jsmath";
 import type { PlayerState, SimState } from "../state";
 import type { SimCtx } from "../combat/ctx";
 import { BASTION_BRACE_BULLETS, BOON_MAX_LEVEL, Boon } from "../progression/progressionData";
+import { FLASK_USE_TICKS } from "../playerData";
+import { FLOOR_SCALE_DENOMINATOR } from "../score/scoreData";
 import type { BuildPlayerState, BuildsState } from "./builds";
 import { Duo } from "./buildsData";
 import {
@@ -57,7 +67,12 @@ import {
 	FLURRY_ARROW_EVERY,
 	FlurryKind,
 	CITADEL_BRACE_COOLDOWN_TICKS,
+	HAPPY_HOUR_KILL_PERCENT,
+	HAPPY_HOUR_TICKS,
 	LIONHEART_HEAL_HALF_HEARTS,
+	RebukePending,
+	STILLWATER_TICKS,
+	STILL_NONE,
 	STONE_HEART_HEAL_HALF_HEARTS,
 } from "./effectsData";
 
@@ -123,6 +138,34 @@ export function buildsGoldRush(state: Readonly<SimState>, killer: number): boole
 export function buildsGoldRushPop(state: SimState, killer: number, x: number, z: number, points: number): void {
 	const s = state.builds;
 	if (s !== undefined) pushDuoProc(s, Duo.GOLD_RUSH, killer, x, z, points);
+}
+
+/**
+ * Happy Hour (Deep Flask + Bounty, docs/BUILDS_V2.md BV7): the kill points percent for a kill credited to player
+ * `killer`: HAPPY_HOUR_KILL_PERCENT while their happyHourTicks run and they are present, else 100 (score.ts scoreKill
+ * folds it into Bounty's bonusPercent).
+ */
+export function buildsHappyHourPercent(state: Readonly<SimState>, killer: number): number {
+	const p = state.builds?.players[killer];
+	if (p === undefined || p.happyHourTicks <= 0 || buildPlayerLeft(state, killer)) return FLOOR_SCALE_DENOMINATOR;
+	return HAPPY_HOUR_KILL_PERCENT;
+}
+
+/**
+ * stepBuilds, every unfrozen tick (a frozen draft tick never reaches it, so the timer waits): Happy Hour's timers
+ * count down, then an owner's drink (flaskTicks === FLASK_USE_TICKS: the drink tick, Overflowing's moment; present and
+ * alive) sets theirs to HAPPY_HOUR_TICKS (a drink while it runs restarts it). BuildEvents happyPlayer per drink.
+ */
+export function stepHappyHour(state: Readonly<SimState>, s: BuildsState): void {
+	for (let i = 0; i < s.players.size(); i++) {
+		const p = s.players[i];
+		if (p.happyHourTicks > 0) p.happyHourTicks -= 1;
+		if (!hasDuo(p, Duo.HAPPY_HOUR) || buildPlayerLeft(state, i)) continue;
+		const pl = buildPlayerStateAt(state, i);
+		if (pl.dead !== 0 || pl.flaskTicks !== FLASK_USE_TICKS) continue;
+		p.happyHourTicks = HAPPY_HOUR_TICKS;
+		s.events.happyPlayer.push(i);
+	}
 }
 
 /** This tick's hits taken on armor by Unshaken owners (0 without builds). */
@@ -256,19 +299,32 @@ export function buildsOnRollThrough(state: SimState, i: number): void {
 	const s = state.builds;
 	const p = bastionPlayer(state, i);
 	if (s === undefined || p === undefined) return;
+	const braces = s.events.bracePlayer.size();
 	addBraceCount(state, s, p, i, 1);
+	// Rebuke (docs/BUILDS_V2.md BV6): a roll's brace that restored something fires the ring this tick (stepBuilds).
+	if (s.events.bracePlayer.size() > braces && hasDuo(p, Duo.REBUKE)) p.rebukePending = RebukePending.ROLL;
 }
 
 /** Player i started a roll: a new count (a guard it cut short is over). */
 export function buildsOnRollStart(state: SimState, i: number): void {
 	const p = state.builds?.players[i];
 	if (hasBastion(p)) p!.braceCount = 0;
+	// Riposte / Rebuke (docs/BUILDS_V2.md BV2 / BV6, BVD3): a roll cuts a guard short: its count and Rebuke are gone.
+	if (p !== undefined) {
+		p.riposteCount = 0;
+		p.rebukePending = RebukePending.NONE;
+	}
 }
 
 /** Player i swapped weapon sets: a guard in progress ended, so its count is gone (a roll's count is kept). */
 export function buildsOnSwap(state: SimState, i: number): void {
 	const p = state.builds?.players[i];
 	if (hasBastion(p) && buildPlayerStateAt(state, i).rollTicks === 0) p!.braceCount = 0;
+	// Riposte / Rebuke (BV2 / BV6, BVD3): a swap ends a guard: its count and a Rebuke it braced are discarded.
+	if (p !== undefined) {
+		p.riposteCount = 0;
+		if (p.rebukePending === RebukePending.GUARD) p.rebukePending = RebukePending.NONE;
+	}
 }
 
 /** A floor started or a room's enemies spawned: every present Bastion owner's brace is ready again. */
@@ -279,4 +335,29 @@ export function buildsBraceRearm(state: SimState): void {
 		const p = s.players[i];
 		if (hasBastion(p) && !buildPlayerLeft(state, i)) p.braceReady = 1;
 	}
+}
+
+// ---------------------------------------------------------------------------------------------
+// Stillwater (docs/BUILDS_V2.md BV6; Composure + Riposte): the record of a cut combo (the restore is ./riposte.ts)
+
+/**
+ * score.ts stepScore, before the tick's combo cuts (cuts > 0 and a running combo `combo` > x1.0, with state.builds):
+ * when a present player owns Stillwater, the team combo before the cuts and the tick are recorded (stillCombo /
+ * stillTick). A live record (within STILLWATER_TICKS) of a combo at least as high is kept as it is, so a second cut
+ * never lowers what an owner's guard can give back.
+ */
+export function buildsStillwaterRecord(state: SimState, combo: number): void {
+	const s = state.builds;
+	if (s === undefined) return;
+	let owner = false;
+	for (let i = 0; i < s.players.size(); i++) {
+		if (hasDuo(s.players[i], Duo.STILLWATER) && !buildPlayerLeft(state, i)) {
+			owner = true;
+			break;
+		}
+	}
+	if (!owner) return;
+	if (s.stillTick !== STILL_NONE && state.tick - s.stillTick <= STILLWATER_TICKS && s.stillCombo >= combo) return;
+	s.stillCombo = combo;
+	s.stillTick = state.tick;
 }

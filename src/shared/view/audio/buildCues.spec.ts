@@ -4,11 +4,13 @@
 // Ricochet) cues; Phantom Step and Lionheart silent; evolve / duo stings from the takes; teammates quieter; silent IDs
 // nothing; the quiet gate; the theme's IDs. docs/LEGENDARIES.md LG6: the Overkill streak's cue (one per frame,
 // climbing per overkillGen, first under the voice cap) and the brace's (PIP / HEAL, the local player's loud, outside
-// the cap; SPENT silent).
+// the cap; SPENT silent). docs/BUILDS_V2.md BV11: wave 1's five cues (counter / pin / slam outside the cap, the beam
+// outside it at the build volume, the smash under it climbing per generation) and the Riposte parry ladder.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import {
 	ALL_EVENT_FIELDS,
 	BUILDS_CONFIG,
+	Boon,
 	BraceKind,
 	createSimState,
 	eventDefault,
@@ -19,13 +21,17 @@ import { BUILD_AUDIO_IDS, PORT_AUDIO_EVENTS } from "shared/theme";
 import { NO_BOOST_EVENTS } from "../boosts";
 import {
 	BUILD_FX_VIEW,
+	BUILDS_V2_FX,
 	BuildFxEvents,
 	NO_COMBO_EVENTS,
 	NO_VARIANT_CUES,
 	audibleBuilds,
 	buildGenSpeed,
 	comboQuiet,
+	riposteParrySpeed,
 	type BuildFxFrameSource,
+	type NearMissFrame,
+	type ParryFlash,
 } from "../fx";
 import { FxEventBuffer } from "../fx/events";
 import { NO_NEW_BEST_CUES } from "../hud";
@@ -83,6 +89,12 @@ interface Fx {
 	// LG6: Overkill streaks [owner, gen] and braces [player, BraceKind].
 	overkills?: ReadonlyArray<[number, number]>;
 	braces?: ReadonlyArray<[number, number]>;
+	// docs/BUILDS_V2.md BV11: owners (smashes [owner, gen]).
+	waves?: ReadonlyArray<number>;
+	pins?: ReadonlyArray<number>;
+	slams?: ReadonlyArray<number>;
+	smashes?: ReadonlyArray<[number, number]>;
+	beams?: ReadonlyArray<number>;
 }
 
 /** A frame source with these records (one tick). */
@@ -186,6 +198,42 @@ function source(fx: Fx, players = 2): BuildFxEvents {
 		e.bracePlayer.push(p);
 		e.braceKind.push(k);
 	}
+	for (const o of fx.waves ?? []) {
+		for (const l of [e.waveX, e.waveZ, e.waveDirZ]) l.push(0);
+		e.waveDirX.push(1);
+		e.waveHalfCos.push(0.5);
+		e.waveRange.push(7);
+		e.waveSpeed.push(24);
+		e.waveOwner.push(o);
+		e.waveDamage.push(4);
+		e.waveKind.push(0);
+		e.counterCount.push(4);
+	}
+	for (const o of fx.pins ?? []) {
+		e.pinStartSlot.push(3);
+		e.pinStartOwner.push(o);
+		e.pinStartX.push(0);
+		e.pinStartZ.push(0);
+	}
+	for (const o of fx.slams ?? []) {
+		e.slamX.push(0);
+		e.slamZ.push(0);
+		e.slamOwner.push(o);
+		e.slamStruck.push(1);
+	}
+	for (const [o, g] of fx.smashes ?? []) {
+		e.smashX.push(0.5);
+		e.smashZ.push(0.5);
+		e.smashOwner.push(o);
+		e.smashGen.push(g);
+		e.smashFired.push(3);
+	}
+	for (const o of fx.beams ?? []) {
+		for (const l of [e.beamX1, e.beamZ1, e.beamZ2]) l.push(0);
+		e.beamX2.push(4);
+		e.beamOwner.push(o);
+		e.beamStruck.push(1);
+	}
 	s.tick = 1;
 	const ev = new BuildFxEvents();
 	ev.collect(s);
@@ -212,7 +260,7 @@ function frame(m: AudioCueMapper, now: number, builds: BuildFxFrameSource, me = 
 const ids = (out: AudioCueList) => out.toIds();
 
 describe("build cues: the IDs", () => {
-	it("the eleven IDs are the theme's build sounds, ranked, timed, never a jingle / duck (BU8's nine: no fallback)", () => {
+	it("the sixteen IDs are the theme's build sounds, ranked, timed, never a jingle / duck (BU8's nine: no fallback)", () => {
 		const build = [
 			SFX.buildSpark,
 			SFX.buildBurst,
@@ -226,7 +274,9 @@ describe("build cues: the IDs", () => {
 		];
 		// docs/LEGENDARIES.md LG5: the legendaries' two close the list; they have a fallback (checked below)
 		const legendary = [SFX.buildOverkill, SFX.buildBrace];
-		expect([...build, ...legendary]).toEqual([...BUILD_AUDIO_IDS]);
+		// docs/BUILDS_V2.md BV10: builds v2, wave 1's five after them, each with a fallback (checked below)
+		const wave1 = [SFX.buildCounter, SFX.buildPin, SFX.buildSlam, SFX.buildSmash, SFX.buildBeam];
+		expect([...build, ...legendary, ...wave1]).toEqual([...BUILD_AUDIO_IDS]);
 		for (const id of build) {
 			expect([
 				id,
@@ -240,7 +290,7 @@ describe("build cues: the IDs", () => {
 				SFX_FALLBACK[id],
 			]).toEqual([id, true, true, true, true, true, false, false, undefined]);
 		}
-		for (const id of legendary) {
+		for (const id of [...legendary, ...wave1]) {
 			expect([
 				id,
 				PORT_AUDIO_EVENTS.includes(id),
@@ -257,6 +307,25 @@ describe("build cues: the IDs", () => {
 			SFX.buildSpark,
 			SFX.boostAegisBreak,
 		]);
+		// BV10: the counter the parry, the pin the bow's full charge, the slam a Charger's wall stun, a smash the breakable
+		// break, the beam the spark; one step each (no target has a fallback of its own but the parry, GP6's deflect).
+		expect(wave1.map((id) => SFX_FALLBACK[id])).toEqual([
+			SFX.playerParry,
+			SFX.playerCharged,
+			SFX.enemyStun,
+			SFX.breakableBreak,
+			SFX.buildSpark,
+		]);
+		// BV11: only the smash (a Demolition chain is a cascade) joins the voice cap, right after the spark.
+		for (const id of wave1) expect([id, BUILD_VOICE_SFX.includes(id)]).toEqual([id, id === SFX.buildSmash]);
+		expect(BUILD_VOICE_SFX.indexOf(SFX.buildSmash)).toBe(BUILD_VOICE_SFX.indexOf(SFX.buildSpark) + 1);
+		// The counter and the slam over the parry, under the brace and the hurt; a smash under the spark (a cascade).
+		expect(SFX_PRIORITY[SFX.buildCounter] > SFX_PRIORITY[SFX.playerParry]).toBe(true);
+		expect(SFX_PRIORITY[SFX.buildSlam] > SFX_PRIORITY[SFX.playerParry]).toBe(true);
+		expect(SFX_PRIORITY[SFX.buildSlam] < SFX_PRIORITY[SFX.buildBrace]).toBe(true);
+		expect(SFX_PRIORITY[SFX.buildCounter] < SFX_PRIORITY[SFX.playerHurt]).toBe(true);
+		expect(SFX_PRIORITY[SFX.buildSmash] < SFX_PRIORITY[SFX.buildSpark]).toBe(true);
+		expect(SFX_PRIORITY[SFX.buildPin] < SFX_PRIORITY[SFX.playerSwing]).toBe(true);
 		// The streak is a cascade sound (over the spark, under the swing); the brace under the hurt and the Aegis break.
 		expect(SFX_PRIORITY[SFX.buildOverkill] > SFX_PRIORITY[SFX.buildSpark]).toBe(true);
 		expect(SFX_PRIORITY[SFX.buildOverkill] < SFX_PRIORITY[SFX.playerSwing]).toBe(true);
@@ -517,5 +586,130 @@ describe("build cues: the legendaries (LG6)", () => {
 			[],
 			[SFX.buildBrace],
 		]);
+	});
+});
+
+/** A near-miss frame with these PARRY! flashes (the director's output shape; nothing else). */
+function nearMissWith(flashes: ReadonlyArray<Partial<ParryFlash>>): NearMissFrame {
+	return {
+		grazeSparks: [],
+		parryBursts: [],
+		grazeCue: undefined,
+		parryCues: [],
+		flashes: flashes.map((f) => ({
+			player: 0,
+			count: 1,
+			isNew: false,
+			grew: false,
+			ageSec: 0,
+			scale: 1,
+			pop: 1,
+			fade: 1,
+			showCount: false,
+			x: 0,
+			z: 0,
+			...f,
+		})),
+		freezeMs: 0,
+		parryGroups: [],
+	};
+}
+
+describe("build cues: builds v2, wave 1 (BV11)", () => {
+	it("counter / pin / slam: player cues outside the voice cap (yours full, a teammate's quieter and lower)", () => {
+		const out = frame(new AudioCueMapper(), 0, source({ waves: [0], pins: [0], slams: [1] }));
+		expect(ids(out)).toEqual([SFX.buildCounter, SFX.buildPin, SFX.buildSlam]);
+		expect([out.volume(0), out.volume(1), out.volume(2)]).toEqual([1, 1, AUDIO_VIEW.teammateVolume]);
+		expect([out.speed(0), out.speed(1), out.speed(2)]).toEqual([0, 0, 0]);
+		// Outside the cap: a full cascade first still lets them through.
+		const m = new AudioCueMapper();
+		for (const id of BUILD_VOICE_SFX) m.setMinInterval(id, 0.001);
+		const cascade = source({ overkills: [[0, 0]], sparks: [[0, 0]], bursts: [[0, 0]], shards: [[0, 0]] });
+		for (let k = 0; k < 4; k++) frame(m, k * 0.01, cascade);
+		expect(ids(frame(m, 0.05, source({ smashes: [[0, 0]], waves: [0], slams: [0], beams: [0] })))).toEqual([
+			SFX.buildCounter,
+			SFX.buildSlam,
+			SFX.buildBeam,
+		]);
+	});
+
+	it("a beam plays at the build volume (a teammate's quieter and lower), outside the cap", () => {
+		const mine = frame(new AudioCueMapper(), 0, source({ beams: [0] }));
+		expect([ids(mine), mine.volume(0)]).toEqual([[SFX.buildBeam], A.volume]);
+		const theirs = frame(new AudioCueMapper(), 0, source({ beams: [1] }));
+		expect([ids(theirs), theirs.volume(0)]).toEqual([[SFX.buildBeam], A.volume * AUDIO_VIEW.teammateVolume]);
+	});
+
+	it("a smash climbs with the frame's highest generation (buildGenSpeed), once a frame, under the voice cap", () => {
+		const out = frame(
+			new AudioCueMapper(),
+			0,
+			source({
+				smashes: [
+					[0, 0],
+					[0, 2],
+					[0, 1],
+				],
+			}),
+		);
+		expect([ids(out), out.speed(0), out.volume(0)]).toEqual([[SFX.buildSmash], buildGenSpeed(2), A.volume]);
+		const chain = new AudioCueMapper();
+		chain.setMinInterval(SFX.buildSmash, 0);
+		const speeds = [0, 1, 2].map((g) => frame(chain, g * 0.1, source({ smashes: [[0, g]] })).speed(0));
+		expect(speeds).toEqual([buildGenSpeed(0), buildGenSpeed(1), buildGenSpeed(2)]);
+		// Under the cap: after maxVoices build starts in the window the smash is dropped.
+		const m = new AudioCueMapper();
+		for (const id of BUILD_VOICE_SFX) m.setMinInterval(id, 0.001);
+		const cascade = source({ overkills: [[0, 0]], sparks: [[0, 0]], bursts: [[0, 0]], shards: [[0, 0]] });
+		frame(m, 0, cascade);
+		expect(ids(frame(m, 0.05, source({ smashes: [[0, 0]] })))).toEqual([]);
+		// A teammate's chain alone: quieter, lower.
+		const t = frame(new AudioCueMapper(), 0, source({ smashes: [[1, 0]] }));
+		expect(t.volume(0)).toBe(A.volume * AUDIO_VIEW.teammateVolume);
+	});
+
+	it("a silent ID plays its fallback (one step): the counter the parry, the smash the break", () => {
+		const playable: Playable = (id) => (id as string).sub(1, 10) !== "sfx.build.";
+		const out = frame(new AudioCueMapper(playable), 0, source({ waves: [0], smashes: [[0, 1]] }));
+		expect(ids(out)).toEqual([SFX.breakableBreak, SFX.playerParry]);
+		const none: Playable = () => false;
+		expect(ids(frame(new AudioCueMapper(none), 0, source({ waves: [0], pins: [0], slams: [0] })))).toEqual([]);
+	});
+
+	function ladderFrame(m: AudioCueMapper, now: number, flashes: ReadonlyArray<Partial<ParryFlash>>, riposte = true) {
+		const s = runState(2);
+		if (riposte) s.builds!.players[0].levels[Boon.RIPOSTE] = 1;
+		return m.frame(
+			now,
+			noEvents(),
+			NO_FX,
+			s,
+			0,
+			new AudioCueList(),
+			NO_BOOST_EVENTS,
+			NO_COMBO_EVENTS,
+			nearMissWith(flashes),
+		);
+	}
+
+	it("the parry ladder: a Riposte guard's grown PARRY! count replays the parry at riposteParrySpeed(count)", () => {
+		const L = BUILDS_V2_FX.parryLadder;
+		const out = ladderFrame(new AudioCueMapper(), 0, [{ player: 0, count: 4, grew: true }]);
+		expect([ids(out), out.speed(0), out.volume(0)]).toEqual([[SFX.playerParry], riposteParrySpeed(4), L.volume]);
+		// Climbs frame to frame, at most once per minIntervalSec.
+		const m = new AudioCueMapper();
+		const a = ladderFrame(m, 1, [{ count: 2, grew: true }]);
+		const b = ladderFrame(m, 1 + L.minIntervalSec / 2, [{ count: 3, grew: true }]);
+		const c = ladderFrame(m, 1 + L.minIntervalSec, [{ count: 4, grew: true }]);
+		expect([a.speed(0), ids(b), c.speed(0)]).toEqual([riposteParrySpeed(2), [], riposteParrySpeed(4)]);
+		expect(riposteParrySpeed(4) > riposteParrySpeed(2)).toBe(true);
+		// Not on a guard's first frame (its own parry cue), not without growth, not without Riposte, not a teammate's.
+		expect(ids(ladderFrame(new AudioCueMapper(), 0, [{ count: 3, grew: true, isNew: true }]))).toEqual([]);
+		expect(ids(ladderFrame(new AudioCueMapper(), 0, [{ count: 3, grew: false }]))).toEqual([]);
+		expect(ids(ladderFrame(new AudioCueMapper(), 0, [{ count: 3, grew: true }], false))).toEqual([]);
+		expect(ids(ladderFrame(new AudioCueMapper(), 0, [{ player: 1, count: 3, grew: true }]))).toEqual([]);
+		// A silent parry (the deflect's fallback): the ladder stays silent too (GP6's rule).
+		const silent: Playable = (id) => id !== SFX.playerParry;
+		expect(ids(ladderFrame(new AudioCueMapper(silent), 0, [{ count: 3, grew: true }]))).toEqual([]);
 	});
 });

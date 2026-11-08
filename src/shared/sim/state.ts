@@ -17,6 +17,7 @@ import {
 	addBuildScoreSources,
 	addPactScoreSources,
 	addGoldenScoreSources,
+	addOvercapScoreSources,
 	addPelletScoreSources,
 	addTreasureScoreSources,
 	cloneScoreState,
@@ -368,6 +369,8 @@ export interface SimState {
  * With `config.golden`, `golden` state is created after the score state (its own stream from `seed`; the first floor's
  * Goldling room in endless mode, none otherwise), and a scored run's points / counts gain the GOLDEN source
  * (addGoldenScoreSources).
+ * With `config.builds`, a scored run's points / counts finally gain OVERCAP (docs/BUILDS_V2.md BV9,
+ * addOvercapScoreSources, padding every earlier gated source).
  */
 export function createSimState(
 	seed: number,
@@ -470,6 +473,9 @@ export function createSimState(
 		// The Goldling's score source (GOLDEN; the earlier gated ones padded), so it hashes only here.
 		if (state.score !== undefined) addGoldenScoreSources(state.score);
 	}
+	// Overcap points (docs/BUILDS_V2.md BV9): builds runs' last gated source (OVERCAP; every earlier one padded), so
+	// it hashes only in builds runs.
+	if (config.builds !== undefined && state.score !== undefined) addOvercapScoreSources(state.score);
 	return state;
 }
 

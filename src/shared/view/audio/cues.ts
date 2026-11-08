@@ -139,6 +139,21 @@
  *   - sfx.build.brace (LG6): a Bastion brace that restored a pip or healed (braceFeedbackOf: SPENT plays nothing),
  *     the local (view) player's at full volume, a teammate's at teammateVolume; outside the voice cap like the stings
  *     (it answers the player's own guard). Falls back to the Aegis break while silent (LG5).
+ *   - Builds v2, wave 1 (docs/BUILDS_V2.md BV10 registered, BV11 maps them): sfx.build.counter on a counter-wave
+ *     spawned (Riposte, Counterstrike, Rebuke: `waves`), sfx.build.pin on a Siege Bolt pin start (`pinStarts`),
+ *     sfx.build.slam on its slam (`slams`): the player's own moves and their payoff, so like the brace outside the
+ *     voice cap, the local (view) player's at full volume, a teammate's at teammateVolume, the pack's jitter.
+ *     sfx.build.beam on a Full Heart beam (`heartBeams`): outside the cap too (one per finisher or heavy release, never
+ *     a cascade), at BUILD_FX_VIEW.audio.volume (it rides on the swing / the release), a teammate's quieter.
+ *     sfx.build.smash on a Wrecker smash (`smashes`): a cascade (a Demolition chain, Powder Keg), so UNDER the voice cap
+ *     (in BUILD_VOICE_SFX right after the spark) at buildGenSpeed(the frame's highest smash generation) (wreckerFx.ts
+ *     smashSpeed): a chain climbs +2 semitones a piece. Demolition's blast has no sound of its own (its piece's
+ *     smash is the sound). Each falls back one step while silent (SFX_FALLBACK, BV10).
+ *   - The parry ladder (BV11, Player experience 1): while the parry has a clip, on every frame the view player's PARRY!
+ *     count grew past the guard's first frame (NearMissFrame.flashes: grew, not isNew) and they own Riposte,
+ *     sfx.player.parry plays again at riposteParrySpeed(count) (BUILDS_V2_FX.parryLadder: +1 semitone per bullet the
+ *     guard ate after the first, capped), at parryLadder.volume, at most once per parryLadder.minIntervalSec; the
+ *     guard's first erase keeps its ordinary parry cue. A teammate's guard climbs silently.
  *
  * The Daily's rank layer (docs/DAILY.md DS10) comes from the frame's DailyRankCueSource (the client's
  * DailyRankController, stepped BEFORE the mapper in the same frame; NO_DAILY_RANK_CUES by default, so every other cue is
@@ -188,11 +203,14 @@ import { AMBIENCE_IDS } from "shared/theme";
 import { NO_BOOST_EVENTS, type BoostEventSource } from "../boosts";
 import {
 	BUILD_FX_VIEW,
+	BUILDS_V2_FX,
 	NEAR_MISS_VIEW,
 	NO_BUILD_FX_EVENTS,
 	NO_COMBO_EVENTS,
 	braceFeedbackOf,
 	buildGenSpeed,
+	isRiposteOwner,
+	riposteParrySpeed,
 	type BuildFxFrameSource,
 	type EffectRecord,
 	type ComboFrameSource,
@@ -360,6 +378,17 @@ export const SFX = {
 	buildOverkill: "sfx.build.overkill",
 	buildBrace: "sfx.build.brace",
 	/**
+	 * Builds v2, wave 1 (docs/BUILDS_V2.md BV10; BUILD_AUDIO_IDS' last five): Riposte's counter-wave goes out, Siege
+	 * Bolt pins an enemy / slams it into a wall, a Wrecker piece smashes (splinters, Demolition's blast), Full Heart's
+	 * beam strikes. Registered only: BV11 maps them. While silent they fall back to the parry, the bow's full charge, a
+	 * Charger's wall stun, the breakable break and the spark (SFX_FALLBACK).
+	 */
+	buildCounter: "sfx.build.counter",
+	buildPin: "sfx.build.pin",
+	buildSlam: "sfx.build.slam",
+	buildSmash: "sfx.build.smash",
+	buildBeam: "sfx.build.beam",
+	/**
 	 * The Daily's rank layer (docs/DAILY.md DS10; the theme's PORT_AUDIO_EVENTS): a predicted rank threshold (top 100 /
 	 * 10 / 3 / #1, with the floor shout) and a friend passed (with their toast). Short stings, not jingles.
 	 */
@@ -486,6 +515,11 @@ export const ALL_SFX: ReadonlyArray<SfxId> = [
 	SFX.buildJackpot,
 	SFX.buildOverkill,
 	SFX.buildBrace,
+	SFX.buildCounter,
+	SFX.buildPin,
+	SFX.buildSlam,
+	SFX.buildSmash,
+	SFX.buildBeam,
 	SFX.rankUp,
 	SFX.friendPassed,
 	SFX.breakableLoot,
@@ -569,6 +603,11 @@ export const PORT_SFX: ReadonlyArray<SfxId> = [
 	SFX.buildJackpot,
 	SFX.buildOverkill,
 	SFX.buildBrace,
+	SFX.buildCounter,
+	SFX.buildPin,
+	SFX.buildSlam,
+	SFX.buildSmash,
+	SFX.buildBeam,
 	SFX.rankUp,
 	SFX.friendPassed,
 	SFX.breakableLoot,
@@ -724,6 +763,15 @@ export const SFX_MIN_INTERVAL: Readonly<Partial<Record<SfxId, number>>> = {
 	/** docs/LEGENDARIES.md LG5: a chain's streaks climb like the sparks; one brace sound per brace (once per room). */
 	[SFX.buildOverkill]: 0.06,
 	[SFX.buildBrace]: 0.3,
+	/**
+	 * docs/BUILDS_V2.md BV10: one counter per guard (a co-op pair's two waves a moment apart are one); pins and slams
+	 * of a volley of charged arrows; a Demolition chain climbs one piece a tick like the sparks; a finisher's beam.
+	 */
+	[SFX.buildCounter]: 0.15,
+	[SFX.buildPin]: 0.1,
+	[SFX.buildSlam]: 0.15,
+	[SFX.buildSmash]: 0.06,
+	[SFX.buildBeam]: 0.1,
 	/** The rank layer (DS10): two thresholds a moment apart (or a friend toast each queue step) never stutter. */
 	[SFX.rankUp]: 0.5,
 	[SFX.friendPassed]: 0.3,
@@ -911,6 +959,16 @@ export const SFX_PRIORITY: Readonly<Record<SfxId, number>> = {
 	 */
 	[SFX.buildOverkill]: 53,
 	[SFX.buildBrace]: 60,
+	/**
+	 * docs/BUILDS_V2.md BV10: the slam (Siege Bolt's payoff) and the counter (the guard's) over the parry they answer,
+	 * under the brace, the hurt and the telegraph; the pin with the Overkill streak, under the swing; the beam over the
+	 * shot it rides with; a smash over the breakable break and the burst, under the spark.
+	 */
+	[SFX.buildSlam]: 59,
+	[SFX.buildCounter]: 58,
+	[SFX.buildPin]: 53,
+	[SFX.buildBeam]: 53,
+	[SFX.buildSmash]: 49,
 	[SFX.uiConfirm]: 45,
 	[SFX.uiBack]: 45,
 	[SFX.uiClick]: 44,
@@ -939,6 +997,8 @@ const NO_EFFECTS: ReadonlyArray<EffectRecord> = table.freeze([] as EffectRecord[
 export const BUILD_VOICE_SFX: ReadonlyArray<SfxId> = [
 	SFX.buildOverkill,
 	SFX.buildSpark,
+	/** docs/BUILDS_V2.md BV11: a Wrecker smash (a Demolition chain is a cascade); under the spark, over the burst. */
+	SFX.buildSmash,
 	SFX.buildBurst,
 	SFX.buildShard,
 	SFX.buildNova,
@@ -1066,6 +1126,17 @@ export const SFX_FALLBACK: Readonly<Partial<Record<SfxId, SfxId>>> = {
 	 */
 	[SFX.buildOverkill]: SFX.buildSpark,
 	[SFX.buildBrace]: SFX.boostAegisBreak,
+	/**
+	 * docs/BUILDS_V2.md BV10: until wave 1's clips are picked (BV13), the counter plays the parry's chime (the guard it
+	 * answers), the pin the bow's full-charge ping (the heavy arrow's own sound), the slam a Charger's wall stun (a body
+	 * hitting a wall), a smash the breakable break and the beam the spark's zap. One step each: the placeholder pack's
+	 * targets are silent too (no sound); the vale pack has clips for the first four targets, not yet the spark (BU12).
+	 */
+	[SFX.buildCounter]: SFX.playerParry,
+	[SFX.buildPin]: SFX.playerCharged,
+	[SFX.buildSlam]: SFX.enemyStun,
+	[SFX.buildSmash]: SFX.breakableBreak,
+	[SFX.buildBeam]: SFX.buildSpark,
 };
 
 /**
@@ -1215,6 +1286,8 @@ export class AudioCueMapper {
 	/** buildCue's scan of its lists: the highest generation, and whether the local player set one off. */
 	private scanGen = 0;
 	private scanMine = false;
+	/** docs/BUILDS_V2.md BV11: the parry ladder's last start (real seconds; -huge: never). */
+	private lastLadder = -math.huge;
 	/** `playable`: whether an ID has a clip (silent IDs and their fallbacks; default: every ID plays). */
 	constructor(private readonly playable: Playable = EVERY_ID) {}
 
@@ -1322,6 +1395,23 @@ export class AudioCueMapper {
 		const rank = priorityOf(SFX.playerParry);
 		if (best.local) this.cue(SFX.playerParry, 1, rank, best.speed);
 		else this.cue(SFX.playerParry, AUDIO_VIEW.teammateVolume, rank - TEAMMATE_PRIORITY_DROP, best.speed);
+	}
+
+	/**
+	 * The parry ladder (docs/BUILDS_V2.md BV11; see the file comment): the view player's Riposte guard that ate more
+	 * bullets this frame (a flash that grew, not on its first frame) plays the parry again at riposteParrySpeed(count),
+	 * at most once per parryLadder.minIntervalSec. It merges into the frame's parry cue (one sound: the louder volume,
+	 * the ladder's speed).
+	 */
+	private parryLadderCue(frame: Readonly<NearMissFrame>, state: Readonly<SimState>, localIndex: number): void {
+		const l = BUILDS_V2_FX.parryLadder;
+		if (this.now - this.lastLadder < l.minIntervalSec) return;
+		for (const f of frame.flashes) {
+			if (f.player !== localIndex || !f.grew || f.isNew || !isRiposteOwner(state, f.player)) continue;
+			this.cue(SFX.playerParry, l.volume, priorityOf(SFX.playerParry), riposteParrySpeed(f.count));
+			this.lastLadder = this.now;
+			return;
+		}
 	}
 
 	/**
@@ -1493,6 +1583,8 @@ export class AudioCueMapper {
 			}
 			this.buildVoiceCue(SFX.buildSpark, gen, mine);
 		}
+		// docs/BUILDS_V2.md BV11: a Wrecker smash, under the cap, climbing with the chain's generation.
+		this.smashCue(builds.smashes, localIndex);
 		this.buildCue(SFX.buildBurst, localIndex, builds.bursts, builds.thrills, builds.flurries);
 		this.buildCue(SFX.buildShard, localIndex, builds.shards, builds.momentum, builds.ricochets);
 		this.buildCue(SFX.buildNova, localIndex, builds.novas);
@@ -1503,6 +1595,33 @@ export class AudioCueMapper {
 		for (const t of builds.duos) this.playerCue(SFX.buildDuo, t.player, localIndex);
 		for (const r of builds.braces)
 			if (braceFeedbackOf(r.kind).sound) this.playerCue(SFX.buildBrace, r.owner, localIndex);
+		// docs/BUILDS_V2.md BV11: the counter, the pin and the slam answer the player's own moves (outside the cap).
+		for (const r of builds.waves) this.playerCue(SFX.buildCounter, r.owner, localIndex);
+		for (const r of builds.pinStarts) this.playerCue(SFX.buildPin, r.owner, localIndex);
+		for (const r of builds.slams) this.playerCue(SFX.buildSlam, r.owner, localIndex);
+		for (const r of builds.heartBeams) this.beamCue(r.owner, localIndex);
+	}
+
+	/**
+	 * BV11: one sfx.build.smash for the frame's smashes, under the voice cap, at buildGenSpeed(the highest generation)
+	 * (wreckerFx.ts smashSpeed, the same ladder).
+	 */
+	private smashCue(smashes: ReadonlyArray<EffectRecord>, localIndex: number): void {
+		if (smashes.size() === 0) return;
+		let gen = 0;
+		let mine = false;
+		for (const r of smashes) {
+			if (r.gen > gen) gen = r.gen;
+			if (r.owner === localIndex) mine = true;
+		}
+		this.buildVoiceCue(SFX.buildSmash, gen, mine);
+	}
+
+	/** BV11: a Full Heart beam at the build volume (a teammate's quieter, lower), outside the voice cap. */
+	private beamCue(owner: number, localIndex: number): void {
+		const mine = owner === localIndex;
+		const volume = BUILD_FX_VIEW.audio.volume * (mine ? 1 : AUDIO_VIEW.teammateVolume);
+		this.cue(SFX.buildBeam, volume, priorityOf(SFX.buildBeam) - (mine ? 0 : TEAMMATE_PRIORITY_DROP));
 	}
 
 	/**
@@ -1726,6 +1845,8 @@ export class AudioCueMapper {
 			this.cue(SFX.playerGraze, NEAR_MISS_VIEW.graze.volume, priorityOf(SFX.playerGraze), graze.speed);
 		}
 		if (parries !== undefined) this.parryCue(parries);
+		// The parry ladder (docs/BUILDS_V2.md BV11): a Riposte guard's parry climbs per bullet it eats.
+		if (parries !== undefined) this.parryLadderCue(parries, state, localIndex);
 		// SYNC! (docs/RUN_RECAP.md CM4): after the parry, so a silent sync's fallback merges into it.
 		this.syncCue(syncs, localIndex);
 		// Build effects (docs/BUILDS.md BU8): generation pitch, intervals and the voice cap.

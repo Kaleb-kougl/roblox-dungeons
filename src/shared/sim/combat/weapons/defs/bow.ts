@@ -30,10 +30,12 @@ import { lineOfSight } from "../../actors/helpers";
 import type { BulletBlocker } from "shared/dungeon";
 import { BOW_PIERCE_BOONS } from "../../../progression/progressionData";
 import { buildsFlurryArrow, buildsFlurryArrowsFired } from "../../../builds/hooks";
+import { fullHeartBeam } from "../../../builds/fullHeart";
 import { FLURRY_ARROW_COUNT, FLURRY_ARROW_SPREAD } from "../../../builds/effectsData";
 import type { SimCtx } from "../../ctx";
 import { jsMin } from "shared/jsmath";
-import { runMods } from "../../../progression/runMods";
+import { runMods, scaleTicks } from "../../../progression/runMods";
+import type { SimState } from "../../../state";
 
 export interface BowData extends WeaponData {
 	/** Stream: ticks between arrows while FIRE is held (= cooldownTicks). */
@@ -247,16 +249,18 @@ export const BOW = registerWeapon<BowData>({
 			v[BOW_V_CHARGE] = 0; // a swap (in) or a roll cancels the charge
 			return;
 		}
+		const chargeTicks = bowChargeTicks(ctx.state, ctx.playerIndex);
 		if (altHeld(ctx)) {
-			if (v[BOW_V_CHARGE] < BOW_DATA.chargeTicks) v[BOW_V_CHARGE]++;
+			if (v[BOW_V_CHARGE] < chargeTicks) v[BOW_V_CHARGE]++;
 			return;
 		}
 		if (v[BOW_V_CHARGE] === 0) return;
 		// ALT released this tick.
-		if (v[BOW_V_CHARGE] >= BOW_DATA.chargeTicks) {
+		if (v[BOW_V_CHARGE] >= chargeTicks) {
 			const p = ctx.player;
 			bowAssistAim(ctx.actors, ctx.tick, ctx.config.isBulletBlocked, p.x, p.z, p.faceX, p.faceZ, dir);
 			muzzleFire(ctx, slot, dir.x, dir.z, arrowSpec(ctx, true));
+			if (ctx.state.builds !== undefined) fullHeartBeam(ctx, dir.x, dir.z); // Full Heart (BV7): the release's beam
 			v[BOW_V_HEAVY_TICK] = ctx.tick + 1;
 			if (slot.cooldown < BOW_DATA.heavyRecoverTicks) slot.cooldown = BOW_DATA.heavyRecoverTicks;
 		}
@@ -285,7 +289,20 @@ export const BOW = registerWeapon<BowData>({
 	},
 });
 
-/** Charge progress 0..1 of a bow slot (render / UI). */
-export function bowCharge(slot: Readonly<WeaponSlotState>): number {
-	return jsMin(1, slot.v[BOW_V_CHARGE] / BOW_DATA.chargeTicks);
+/**
+ * Charge progress 0..1 of a bow slot (render / UI). `chargeTicks`: the charge's length for its player
+ * (bowChargeTicks; BOW_DATA.chargeTicks by default), like swordGuard's `guardTicks`.
+ */
+export function bowCharge(slot: Readonly<WeaponSlotState>, chargeTicks: number = BOW_DATA.chargeTicks): number {
+	return jsMin(1, slot.v[BOW_V_CHARGE] / chargeTicks);
+}
+
+/**
+ * The length of player `playerIndex`'s full charge in ticks (docs/BUILDS_V2.md "Ballista", BV3): the sim's and the
+ * view's (bowCharge's `chargeTicks`). BOW_DATA.chargeTicks (36) scaled by runMods' `ballistaChargePercent` (Ballista II /
+ * III: 75 % -> 27; scaleTicks returns 36 itself at 100, so exactly BOW_DATA.chargeTicks without Ballista II), like
+ * swordGuardTicks reads Bastion.
+ */
+export function bowChargeTicks(state: Readonly<SimState>, playerIndex: number): number {
+	return scaleTicks(BOW_DATA.chargeTicks, runMods(state, playerIndex).ballistaChargePercent);
 }

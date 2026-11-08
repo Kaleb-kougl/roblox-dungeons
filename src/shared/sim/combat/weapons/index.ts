@@ -18,6 +18,7 @@ export {
 	WEB_BOW_TUNING,
 	bowAssistAim,
 	bowCharge,
+	bowChargeTicks,
 	setBowTuning,
 } from "./defs/bow";
 export type { BowData, BowTuning } from "./defs/bow";

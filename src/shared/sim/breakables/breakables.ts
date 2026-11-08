@@ -18,7 +18,8 @@
  *            consumed, BREAKABLE_ENEMY_BULLET_DAMAGE each. The sword: sweepArc's breakables pass after the actors
  *            (the swing's base damage; no enemyHits, no combo). Mother Mayhem's slam: breaks every piece within
  *            BREAKABLE_SLAM_RADIUS. Not the Ember, not bodies.
- *   score    a piece a PLAYER breaks (sword, player bullet) scores ScoreSource.BREAKABLES (score.ts scoreBreakable):
+ *   score    a piece a PLAYER breaks (sword, player bullet; builds v2's roll smash and build effects, BVD12) scores
+ *            ScoreSource.BREAKABLES (score.ts scoreBreakable):
  *            BREAKABLE_POINTS[kind] x floor; it never feeds the combo and no room record sees it.
  *   loot     a piece that holds a boost (docs/BREAKABLE_DROPS.md, drops/breakLoot.ts) releases it when it breaks, from
  *            any source (dropsOnBreak, after the score); only with DropsConfig.breakableLoot.
@@ -42,6 +43,8 @@ import { breakableSlotAt } from "./cells";
 import { scoreBreakable } from "../score/score";
 import { dropsOnBreak } from "../drops/breakLoot";
 import { CHEST_HP } from "../treasure/treasureData";
+import { bindRollSmash, buildsOnPieceBroken } from "../builds/wrecker";
+import { PLAYER_RADIUS } from "../playerData";
 import {
 	BREAKABLE_ENEMY_BULLET_DAMAGE,
 	BREAKABLE_HIT_RADIUS,
@@ -192,10 +195,21 @@ export function clearBreakableEvents(b: BreakablesState): void {
  * docs/TREASURE.md correction 3) returns false before any of this: no hit event, hit slot, score, loot or break (a
  * bullet that reached it still stops: the callers consume it). Otherwise events.breakableHits += 1 and the
  * slot joins hitSlots; at hp <= 0 it breaks this tick: hp 0, brokenTick = state.tick, out of the lookup,
- * events.breakablesBroken += 1, brokenSlots; a player's break (MELEE / PLAYER_BULLET) scores (scoreBreakable); a
- * loaded piece releases its boost (dropsOnBreak, every source). Returns true when it broke. A broken (or missing) slot: nothing, false.
+ * events.breakablesBroken += 1, brokenSlots; a player's break (MELEE / PLAYER_BULLET, and builds v2's ROLL / BUILD,
+ * docs/BUILDS_V2.md BVD12) scores (scoreBreakable); a loaded piece releases its boost (dropsOnBreak, every source).
+ * `owner` (docs/BUILDS_V2.md BV5): the party index of the player who broke it (-1: nobody, as for enemy bullets, the
+ * boss's slam, a Bomber's blast or a Charger's charge) and `gen` the break's proc generation; a break with an owner
+ * calls the leaf hook buildsOnPieceBroken (Wrecker / Powder Keg's smash proc; nothing without builds). Returns true
+ * when it broke. A broken (or missing) slot: nothing, false.
  */
-export function damageBreakable(state: SimState, slot: number, amount: number, source: BreakableSourceId): boolean {
+export function damageBreakable(
+	state: SimState,
+	slot: number,
+	amount: number,
+	source: BreakableSourceId,
+	owner = -1,
+	gen = 0,
+): boolean {
 	const b = state.breakables;
 	if (b === undefined) return false;
 	const p = b.pieces[slot];
@@ -214,10 +228,57 @@ export function damageBreakable(state: SimState, slot: number, amount: number, s
 	b.intact -= 1;
 	ev.breakablesBroken += 1;
 	b.brokenSlots.push(slot);
-	if (source === BreakableSource.MELEE || source === BreakableSource.PLAYER_BULLET) scoreBreakable(state, p.kind);
+	if (
+		source === BreakableSource.MELEE ||
+		source === BreakableSource.PLAYER_BULLET ||
+		source === BreakableSource.ROLL ||
+		source === BreakableSource.BUILD
+	)
+		scoreBreakable(state, p.kind);
 	dropsOnBreak(state, slot);
+	// Builds v2 (BV5): Wrecker / Powder Keg's smash proc for the piece's owner (a leaf; nothing without builds).
+	if (owner >= 0) buildsOnPieceBroken(state, slot, owner, gen);
 	return true;
 }
+
+/**
+ * Wrecker's roll smash (docs/BUILDS_V2.md BV5; called through the leaf builds/wrecker.ts buildsRollSmash, which checks
+ * the boon): player `owner`'s body (PLAYER_RADIUS) at (x, z) about to move by (dx, dz) this roll tick breaks, in slot
+ * order, every intact piece but a chest whose circle (config.hitRadius round its cell centre) the body touches along
+ * that step (the segment's distance to the centre below the two radii's sum; no trig), at full hp, BreakableSource.ROLL,
+ * credited to `owner` at generation 0. Returns the pieces broken.
+ */
+export function rollSmashBreakables(
+	state: SimState,
+	owner: number,
+	x: number,
+	z: number,
+	dx: number,
+	dz: number,
+): number {
+	const b = state.breakables;
+	if (b === undefined || b.intact === 0) return 0;
+	const reach = PLAYER_RADIUS + b.config.hitRadius;
+	const reach2 = reach * reach;
+	const len2 = dx * dx + dz * dz;
+	let broken = 0;
+	for (let i = 0; i < b.pieces.size(); i++) {
+		const p = b.pieces[i];
+		if (p.brokenTick !== NOT_BROKEN || p.kind === BreakableKind.CHEST) continue;
+		const px = gridToWorld(p.x) - x;
+		const pz = gridToWorld(p.y) - z;
+		// The step's point nearest the centre: t along (dx, dz), clamped to the segment.
+		let t = len2 > 0 ? (px * dx + pz * dz) / len2 : 0;
+		if (t < 0) t = 0;
+		else if (t > 1) t = 1;
+		const ex = px - t * dx;
+		const ez = pz - t * dz;
+		if (ex * ex + ez * ez >= reach2) continue;
+		if (damageBreakable(state, i, p.hp, BreakableSource.ROLL, owner, 0)) broken++;
+	}
+	return broken;
+}
+bindRollSmash(rollSmashBreakables);
 
 /**
  * An enemy bullet whose centre is at (x, z): true when a piece stopped it (consumed; the piece took the damage, but a
@@ -233,8 +294,8 @@ export function enemyBulletHitsBreakable(state: SimState, b: Readonly<Breakables
 /**
  * The melee pass (sweepArc, after the actors): every intact piece but a chest, in slot order, whose circle (hitRadius round its
  * cell centre) reaches into the arc from (x, z) toward (dirX, dirZ), `radius` long, half-angle cosine `halfAngleCos`
- * (the actors' test: in reach, and in the cone unless the arc's origin is inside the circle), takes `damage`.
- * Returns the pieces hit.
+ * (the actors' test: in reach, and in the cone unless the arc's origin is inside the circle), takes `damage`, credited
+ * to `owner` (docs/BUILDS_V2.md BV5: the swinging player, generation 0; -1 nobody). Returns the pieces hit.
  */
 export function meleeHitBreakables(
 	state: SimState,
@@ -245,6 +306,7 @@ export function meleeHitBreakables(
 	radius: number,
 	halfAngleCos: number,
 	damage: number,
+	owner = -1,
 ): number {
 	const b = state.breakables;
 	if (b === undefined || b.intact === 0) return 0;
@@ -261,7 +323,7 @@ export function meleeHitBreakables(
 		if (d2 > reach * reach) continue;
 		const d = math.sqrt(d2);
 		if (d > r && dx * dirX + dz * dirZ < halfAngleCos * d) continue;
-		damageBreakable(state, i, damage, BreakableSource.MELEE);
+		damageBreakable(state, i, damage, BreakableSource.MELEE, owner, 0);
 		hits++;
 	}
 	return hits;

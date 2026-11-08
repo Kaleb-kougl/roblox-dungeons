@@ -159,7 +159,8 @@ export function sweepArc(
 		}
 	}
 	if (breakableDamage !== undefined && ctx.state.breakables !== undefined) {
-		meleeHitBreakables(ctx.state, x, z, dirX, dirZ, radius, halfAngleCos, breakableDamage);
+		// Builds v2 (BV5): the swinging player owns the breaks (Wrecker's splinters), generation 0.
+		meleeHitBreakables(ctx.state, x, z, dirX, dirZ, radius, halfAngleCos, breakableDamage, ctx.playerIndex);
 	}
 	if (deleteEnemyBullets) {
 		arcCtx = ctx;

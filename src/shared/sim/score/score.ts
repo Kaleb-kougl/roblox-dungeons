@@ -91,14 +91,22 @@ import { AFFIX_PAR_COST } from "../affixes/affixesData";
 import {
 	buildsGoldRush,
 	buildsGoldRushPop,
+	buildsHappyHourPercent,
 	buildsOnGraze,
 	buildsOnPerfectRoom,
 	buildsUnshakenKept,
+	buildsStillwaterRecord,
 } from "../builds/hooks";
 import { pelletRoomClear, pelletRoomLive } from "../pellets/pelletRooms";
 import { pactHoldsRoom, pactKillPercent, pactRoomCleared, pactRoomPercent } from "../pacts/pactRooms";
 import { GOLDEN_KIND } from "../golden/goldenData";
-import { SOLO_PLAYER, runMods, teamComboCutDivisorMultiplier, teamComboWindowTicks } from "../progression/runMods";
+import {
+	SOLO_PLAYER,
+	combinedPercent,
+	runMods,
+	teamComboCutDivisorMultiplier,
+	teamComboWindowTicks,
+} from "../progression/runMods";
 import {
 	BOSS_FINAL_PHASE,
 	BOSS_NO_HIT_BONUS,
@@ -133,6 +141,8 @@ import {
 	BUILD_SCORE_SOURCE_NAMES,
 	PACT_SCORE_SOURCE_NAMES,
 	GOLDEN_SCORE_SOURCE_NAMES,
+	OVERCAP_POINTS,
+	OVERCAP_SCORE_SOURCE_NAMES,
 	PELLET_SCORE_SOURCE_NAMES,
 	TREASURE_SCORE_SOURCE_NAMES,
 	SCORE_SOURCE_COUNT,
@@ -691,6 +701,35 @@ function feedCombo(state: Readonly<SimState>, s: ScoreState): void {
 }
 
 /**
+ * Stillwater (docs/BUILDS_V2.md BV6, builds runs): an owner's guard gives back the team combo `combo` (tenths) a hit
+ * cut: combo = max(now, combo), the timer refilled to the window. Nothing without a score.
+ */
+export function stillwaterRestoreCombo(state: Readonly<SimState>, combo: number): void {
+	const s = state.score;
+	if (s === undefined) return;
+	if (combo > s.combo) s.combo = combo;
+	if (s.combo > s.maxCombo) s.maxCombo = s.combo;
+	s.comboTimer = comboWindowTicks(state);
+}
+
+/**
+ * Builds v2 (docs/BUILDS_V2.md BV5, Wrecker): a running combo's timer back to the full window. Nothing without scoring,
+ * at x1.0 (COMBO_MIN) or with the timer already out.
+ */
+export function refillComboTimer(state: SimState): void {
+	const s = state.score;
+	if (s === undefined || !(s.combo > COMBO_MIN) || s.comboTimer <= 0) return;
+	s.comboTimer = comboWindowTicks(state);
+}
+
+/** Builds v2 (BV5, Demolition): one combo step, feedCombo's (+0.1 capped, timer refilled). Nothing without scoring. */
+export function stepCombo(state: SimState): void {
+	const s = state.score;
+	if (s === undefined) return;
+	feedCombo(state, s);
+}
+
+/**
  * One landed hit: combo x (1 - 1/d), d = max(2, players) x divisorMultiplier (M2 Composure: 2), floored to the
  * tenth, at least x1.0. `players`: the players present at the hit (stepScore passes presentPlayerCount in co-op);
  * default ScoringConfig.partySize.
@@ -717,7 +756,10 @@ export function scoreKill(state: SimState, a: Readonly<ActorState>, killer = 0):
 	}
 	const base = KILL_POINTS.get(def.id) ?? DEFAULT_KILL_POINTS;
 	// Bounty (the killer's boons), then (elite affixes, EVD8) x killPointsPercent for an affixed kill.
-	const bonus = affixKillPercent(state, a, runMods(state, killer).killPointsPercent);
+	let bonus = affixKillPercent(state, a, runMods(state, killer).killPointsPercent);
+	// Builds v2 (docs/BUILDS_V2.md BV7, opt-in): Happy Hour (Deep Flask + Bounty) x HAPPY_HOUR_KILL_PERCENT while it
+	// runs for the killer, folded into the same integer percent (130 x 200 / 100 = 260: awardPoints' numerator exact).
+	if (state.builds !== undefined) bonus = combinedPercent(bonus, buildsHappyHourPercent(state, killer));
 	// Builds (docs/BUILDS.md BU6, opt-in): Gold Rush, after Bounty, at combo x3 or more (before this kill's +0.1).
 	const gold =
 		state.builds !== undefined && s.combo >= GOLD_RUSH_MIN_COMBO && buildsGoldRush(state, killer)
@@ -762,7 +804,8 @@ export function scoreKill(state: SimState, a: Readonly<ActorState>, killer = 0):
 }
 
 /**
- * Breakables hook (docs/DECOR.md D4, breakables/breakables.ts): a player broke a piece of `kind` (BreakableKind).
+ * Breakables hook (docs/DECOR.md D4, breakables/breakables.ts): a player broke a piece of `kind` (BreakableKind; a
+ * swing, a player bullet, and builds v2's roll smash / build effects, docs/BUILDS_V2.md BVD12).
  * BREAKABLE_POINTS[kind] x the floor, through the usual multipliers; the combo is NOT fed (no farming) and no room
  * record is touched. Returns the points.
  */
@@ -826,7 +869,8 @@ export function treasureAwardPoints(state: Readonly<SimState>, s: Readonly<Score
  */
 export function scoreTreasure(state: SimState, base: number): number {
 	const s = state.score;
-	if (s === undefined || s.points.size() <= ScoreSource.TREASURE) return 0;
+	// Also gated on the treasure state: a builds run pads TREASURE (0) on its way to OVERCAP (docs/BUILDS_V2.md BV9).
+	if (s === undefined || state.treasure === undefined || s.points.size() <= ScoreSource.TREASURE) return 0;
 	return credit(s, ScoreSource.TREASURE, treasureAwardPoints(state, s, base));
 }
 
@@ -922,6 +966,29 @@ export function scoreGoldenHit(state: SimState): number {
 	const g = state.golden;
 	if (s === undefined || g === undefined || s.points.size() <= ScoreSource.GOLDEN) return 0;
 	return award(state, s, ScoreSource.GOLDEN, g.config.hitPoints, floorScalePercent(scoreFloor(state)));
+}
+
+/**
+ * Builds runs (docs/BUILDS_V2.md BV9, state.ts createSimState, last of the paddings): pads points / counts to every
+ * source up to OVERCAP_SCORE_SOURCE_NAMES (PELLETS .. GOLDEN included when the run lacks them: they stay 0), so OVERCAP
+ * hashes only in builds runs. Idempotent.
+ */
+export function addOvercapScoreSources(s: ScoreState): void {
+	const total = ScoreSource.OVERCAP + OVERCAP_SCORE_SOURCE_NAMES.size();
+	while (s.points.size() < total) s.points.push(0);
+	while (s.counts.size() < total) s.counts.push(0);
+}
+
+/**
+ * Overcap hook (docs/BUILDS_V2.md BV9, sim/builds overcap.ts): one point of boss damage the cap dropped. OVERCAP_POINTS
+ * at the kills' floor scaling (floorScalePercent) into ScoreSource.OVERCAP, through the usual multipliers (combo, depth,
+ * curses); it NEVER feeds the combo or refills its timer (BVD18) and touches no room record (scoreGoldenHit's way).
+ * Returns the points (0 without scoring or without the overcap source: addOvercapScoreSources).
+ */
+export function scoreOvercap(state: SimState): number {
+	const s = state.score;
+	if (s === undefined || s.points.size() <= ScoreSource.OVERCAP) return 0;
+	return award(state, s, ScoreSource.OVERCAP, OVERCAP_POINTS, floorScalePercent(scoreFloor(state)));
 }
 
 /** Sword guard hook: `n` enemy bullets erased by this tick's guard sweep. One award per bullet. */
@@ -1135,6 +1202,8 @@ export function stepScore(state: SimState): void {
 	const present = presentPlayerCount(state) ?? s.partySize;
 	// Builds (docs/BUILDS.md BU6, opt-in): Unshaken's hits taken on armor never cut the combo (they still count).
 	const cuts = state.builds !== undefined ? hits - buildsUnshakenKept(state) : hits;
+	// Builds (docs/BUILDS_V2.md BV6, opt-in): Stillwater records the team combo before this tick's cuts.
+	if (cuts > 0 && s.combo > COMBO_MIN && state.builds !== undefined) buildsStillwaterRecord(state, s.combo);
 	for (let k = 0; k < cuts; k++) cutCombo(s, cutMultiplier, present);
 	const hitsBefore = s.hitsTaken;
 	s.hitsTaken += hits;
@@ -1210,8 +1279,8 @@ export function writeScoreHash(s: Readonly<ScoreState>, out: number[]): void {
 }
 
 /**
- * The dump name of source index `k` (SCORE_SOURCE_NAMES, then BUILD_, PELLET_, TREASURE_, PACT_, then
- * GOLDEN_SCORE_SOURCE_NAMES).
+ * The dump name of source index `k` (SCORE_SOURCE_NAMES, then BUILD_, PELLET_, TREASURE_, PACT_, GOLDEN_, then
+ * OVERCAP_SCORE_SOURCE_NAMES).
  */
 function sourceName(k: number): string {
 	if (k < SCORE_SOURCE_COUNT) return SCORE_SOURCE_NAMES[k];
@@ -1223,7 +1292,9 @@ function sourceName(k: number): string {
 	if (treasure < TREASURE_SCORE_SOURCE_NAMES.size()) return TREASURE_SCORE_SOURCE_NAMES[treasure];
 	const pact = treasure - TREASURE_SCORE_SOURCE_NAMES.size();
 	if (pact < PACT_SCORE_SOURCE_NAMES.size()) return PACT_SCORE_SOURCE_NAMES[pact];
-	return GOLDEN_SCORE_SOURCE_NAMES[pact - PACT_SCORE_SOURCE_NAMES.size()];
+	const golden = pact - PACT_SCORE_SOURCE_NAMES.size();
+	if (golden < GOLDEN_SCORE_SOURCE_NAMES.size()) return GOLDEN_SCORE_SOURCE_NAMES[golden];
+	return OVERCAP_SCORE_SOURCE_NAMES[golden - GOLDEN_SCORE_SOURCE_NAMES.size()];
 }
 
 /** Dump names for writeScoreHash, same order (`score.total`, `score.points.kills`, `score.rooms[0].cleared`, ...). */

@@ -17,6 +17,11 @@ export const DAILY_RANK_ROLE = "newBest";
  * line is news like a rank threshold (the later of the two on one frame wins). Bastion's BRACED (docs/LEGENDARIES.md
  * LG6) is the lowest request: feedback on the player's own guard, so any news replaces it; it ranks with a tier shout
  * (the request path replaces a showing tier shout, and a later tier-up while it shows stays in the panel).
+ * Builds v2, wave 1 (docs/BUILDS_V2.md BV11): COUNTER xN (Riposte's wave), PINNED and SLAM (Siege Bolt) are feedback
+ * on the player's own move like BRACED, but its payoff: they rank between BRACED / a tier (0) and the rank threshold
+ * (1), at 0.5, so a COUNTER replaces the BRACED of the Rebuke that fired it, a SLAM the PINNED before it (a tie: the
+ * later wins), and any news (a rank threshold, the Horde, new best, the Goldling) replaces them and is never replaced
+ * by one: they come with every guard and every Siege Bolt, the news once a run.
  */
 export const FLOOR_SHOUT_PRIORITY = {
 	comboTier: 0,
@@ -26,6 +31,10 @@ export const FLOOR_SHOUT_PRIORITY = {
 	newBest: 3,
 	goldenAppear: 4,
 	goldenEscaped: 1,
+	/** docs/BUILDS_V2.md BV11: Riposte's COUNTER xN, Siege Bolt's PINNED and SLAM (see above). */
+	counter: 0.5,
+	pinned: 0.5,
+	slam: 0.5,
 } as const;
 
 export const DAILY_RANK = {

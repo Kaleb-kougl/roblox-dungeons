@@ -14,6 +14,7 @@ import {
 	SWORD_V_STEP,
 	bowAssistAim,
 	bowCharge,
+	bowChargeTicks,
 	playerAt,
 	swordGuard,
 	swordGuardHalfAngleCos,
@@ -198,7 +199,7 @@ export class WeaponViewController implements OnStart {
 		// Bow: charge ring + aim line, release ring. Fully charged, the aim line shows where the heavy arrow will fly
 		// (the sim's aim assist, bowAssistAim, on the next tick's rules); the ring keeps the facing.
 		const bowInHand = alive && active !== undefined && active.weapon === idx.bow && active.weapon !== NO_WEAPON;
-		const charge = bowInHand && active.v[BOW_V_CHARGE] > 0 ? bowCharge(active) : 0;
+		const charge = bowInHand && active.v[BOW_V_CHARGE] > 0 ? bowCharge(active, bowChargeTicks(s, me)) : 0;
 		if (charge > 0) {
 			const sink = charge >= 1 ? L.full : L.charge;
 			const h = heading(p.faceX, p.faceZ);

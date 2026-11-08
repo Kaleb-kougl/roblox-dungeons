@@ -36,6 +36,7 @@ import {
 	type EndlessFloorWorld,
 	type SimConfig,
 	type SimState,
+	ProcKind,
 } from "shared/sim";
 import { frame } from "shared/run/testing";
 
@@ -331,7 +332,16 @@ describe("Overkill's streak (LG2)", () => {
 		const ctx = ctxOf(s);
 		const target = dummy(ctx, 4, 0, 1);
 		const bystander = dummy(ctx, 6, 0);
-		s.builds!.procs.push({ x: 2, z: 0, owner: 0, gen: BUILD_RULES.genMax - 1, slot: 0, id: 0, excess: 5 });
+		s.builds!.procs.push({
+			x: 2,
+			z: 0,
+			owner: 0,
+			gen: BUILD_RULES.genMax - 1,
+			slot: 0,
+			id: 0,
+			excess: 5,
+			kind: ProcKind.KILL,
+		});
 		step(s, IDLE, ARENA);
 		const e = s.builds!.events;
 		expect([target.alive, bystander.hp]).toEqual([0, 10]);

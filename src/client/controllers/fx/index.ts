@@ -32,4 +32,14 @@ export * from "./NewBestController";
 export * from "./RecapController";
 export * from "./BuildFxController";
 export * from "./BraceFxController";
+// docs/BUILDS_V2.md BV11b: Riposte's counter-waves and COUNTER xN.
+export * from "./CounterWaveController";
+export * from "./SiegeFxController"; // docs/BUILDS_V2.md BV11c: Ballista / Siege Bolt
 export * from "./DailyRankController";
+// Builds v2 BV11d (docs/BUILDS_V2.md): Wrecker / Demolition rings and chips, Full Heart's beam, Happy Hour's toast and
+// pop tint, the overcap pops.
+export * from "./neonPartPool";
+export * from "./WreckerFxController";
+export * from "./HeartBeamController";
+export * from "./HappyHourController";
+export * from "./OvercapPopController";

@@ -125,6 +125,12 @@ describe("audio contract: port IDs and ambience", () => {
 			// docs/LEGENDARIES.md LG5
 			"sfx.build.overkill",
 			"sfx.build.brace",
+			// docs/BUILDS_V2.md BV10
+			"sfx.build.counter",
+			"sfx.build.pin",
+			"sfx.build.slam",
+			"sfx.build.smash",
+			"sfx.build.beam",
 			// docs/DAILY.md DS10
 			"sfx.rank.up",
 			"sfx.friend.passed",

@@ -24,15 +24,38 @@
  *                    after one; counted down by stepBuilds)
  *   draftsLeft       deals left in the open draft, the one on screen included: 1 after a floor, 2 after a boss floor
  *                    (BUD4); a confirm with draftsLeft > 1 re-deals (./cards.ts) instead of closing. 0 while closed
- * and for the world: `procs`, the kill queue (BU3, ./procs.ts: { x, z, owner, gen, slot, id, excess } per kill, oldest
- * first; `excess`, appended by docs/LEGENDARIES.md LG1, is the kill's Overkill carry (LG2: execute.ts buildsKillCarry,
- * set only when the owner has Overkill; 0 for a proc that carries nothing).
+ *   riposteCount     (docs/BUILDS_V2.md BV1, appended) Riposte: enemy bullets the current guard erased (BV2's rule;
+ *                    reset on the guard's start tick, discarded by a roll's cut or a swap)
+ *   overcap          (BV1, appended) boss damage the cap dropped from this player's hits, not paid out yet (BV9: 1 is
+ *                    taken per OVERCAP_POINTS payout)
+ *   happyHourTicks   (BV1, appended) Happy Hour: ticks of doubled kill points left (BV7: set by a flask drink)
+ *   rebukePending    (BV6, appended) Rebuke: RebukePending GUARD while the current guard braced, ROLL for a roll's
+ *                    brace this tick, else NONE (./riposte.ts)
+ * and for the world:
+ *   procs            the proc queue (BU3, ./procs.ts: { x, z, owner, gen, slot, id, excess, kind } per entry, oldest
+ *                    first). `excess`, appended by docs/LEGENDARIES.md LG1, is the kill's Overkill carry (LG2:
+ *                    execute.ts buildsKillCarry, set only when the owner has Overkill; 0 for a proc that carries
+ *                    nothing). `kind` (docs/BUILDS_V2.md BV1, appended): ProcKind.KILL (every proc in BV1) or SMASH
+ *                    (BV5: a piece an owner broke; x / z its cell centre, slot / id -1)
+ *   pins             (BV1, appended) Siege Bolt's pins (BV4, ./siege.ts): a heavy arrow's bullet slot carrying an actor
+ *   waves            (BV1, appended) Riposte's counter-waves (BV2, ./riposte.ts): growing sweeps, each enemy hit once
+ *   stillCombo / stillTick   (BV1, appended) Stillwater: the team combo a hit cut and the tick it was cut (BV6;
+ *                    stillTick STILL_NONE -1: nothing recorded)
  *
  * Events (BuildEvents) are presentation only: cleared every tick, NOT hashed.
  */
 import type { SimState } from "../state";
 import { BOON_COUNT } from "../progression/progressionData";
-import { CardKind, BUILD_RULES, cardBoon, cardDuo, type BuildRules, type CardKindId } from "./buildsData";
+import {
+	CardKind,
+	BUILD_RULES,
+	cardBoon,
+	cardDuo,
+	type BuildRules,
+	type CardKindId,
+	type ProcKindId,
+} from "./buildsData";
+import { RebukePending, STILL_NONE } from "./effectsData";
 
 // ---------------------------------------------------------------------------------------------
 // Config
@@ -69,9 +92,20 @@ export interface BuildPlayerState {
 	braceReady: number;
 	/** Citadel (owner's tuning, LGD14; appended): ticks before its next brace may fire (0: ready; ./hooks.ts). */
 	braceCooldown: number;
+	/** Riposte (docs/BUILDS_V2.md BV1; the rule is BV2): enemy bullets the current guard erased (goo never). */
+	riposteCount: number;
+	/** Overcap (BV1; BV9): boss damage the cap dropped from this player's hits, not paid out yet. */
+	overcap: number;
+	/** Happy Hour (BV1; BV7): ticks of doubled kill points left (0: off). */
+	happyHourTicks: number;
+	/**
+	 * Rebuke (docs/BUILDS_V2.md BV6, appended; RebukePending): GUARD while the current guard braced (its full-length
+	 * end fires the REBUKE ring), ROLL for a roll's brace this tick (stepBuilds fires it), else NONE.
+	 */
+	rebukePending: number;
 }
 
-/** One queued kill (BU3). Every field hashed. */
+/** One queued proc: a kill (BU3) or, from BV5, a smash (docs/BUILDS_V2.md, `kind`). Every field hashed. */
 export interface BuildProc {
 	/** The corpse's position. */
 	x: number;
@@ -85,6 +119,54 @@ export interface BuildProc {
 	id: number;
 	/** Overkill's carry (docs/LEGENDARIES.md LG1, appended; LG2: 0 for a proc that carries nothing or no Overkill). */
 	excess: number;
+	/** What the proc is (docs/BUILDS_V2.md BV1, appended; ProcKind): KILL, or SMASH (BV5: a broken piece). */
+	kind: ProcKindId;
+}
+
+/**
+ * Siege Bolt's pin (docs/BUILDS_V2.md "Siege Bolt", BV1 declares it, BV4 the rule): a heavy arrow carrying an actor.
+ * Every field hashed. At most SIEGE_PINS_MAX at once.
+ */
+export interface BuildPin {
+	/** The heavy arrow's player bullet slot (checked live right after the move phase, before anything can spawn). */
+	bullet: number;
+	/** The archer (party index). */
+	owner: number;
+	/** The pinned actor's slot and id (the id tells a freed and reused slot apart). */
+	slot: number;
+	id: number;
+	/** Where the pin started (the actor's position when pinned): the distance carried is measured from here. */
+	x0: number;
+	z0: number;
+	/** 1 once a drag left the body more than SIEGE_SLAM_SHORT short of the arrow (the next walk visit slams), else 0. */
+	slam: number;
+}
+
+/**
+ * Riposte's counter-wave (docs/BUILDS_V2.md "Riposte", BVD1; BV1 declares it, BV2 the rule): a sweep from (x, z) whose
+ * radius grows by `speed` x SIM_DT a tick up to `range`, striking every enemy it reaches inside its cone once. Every
+ * field hashed (`hits` as its length, then its values).
+ */
+export interface BuildWave {
+	/** The credited player (party index). */
+	owner: number;
+	/** The origin (the guarding player's position when the wave went out). */
+	x: number;
+	z: number;
+	/** The unit direction (the facing) and the cone's half-angle cosine (a full ring: below -1). */
+	dirX: number;
+	dirZ: number;
+	halfCos: number;
+	/** The current radius, where it ends, and its growth per second (world units). */
+	radius: number;
+	range: number;
+	speed: number;
+	/** Damage per enemy struck (before playerHitDamage). */
+	damage: number;
+	/** WaveKind (FORWARD / RING / REBUKE). */
+	kind: number;
+	/** Actor ids already struck (each enemy once), in the order struck. */
+	hits: number[];
 }
 
 /**
@@ -213,6 +295,83 @@ export interface BuildEvents {
 	 */
 	bracePlayer: number[];
 	braceKind: number[];
+	// --- docs/BUILDS_V2.md (builds v2, wave 1; BV1 declares the lists, BV2-BV9 push them). Parallel lists per group,
+	// one entry per event, pushed in resolution order. Thunder Guard's sparks go through the spark lists (sparkFork
+	// SparkFork.THUNDER, from the erased bullet's position). ---
+	/**
+	 * Counter-waves spawned (BV2 Riposte / Counterstrike, BV6 Rebuke): the origin, the unit direction, the cone's
+	 * half-angle cosine, the range and growth speed (world units, per second), the owner, the damage per enemy and the
+	 * WaveKind; the view grows its crescent / ring from these numbers.
+	 */
+	waveX: number[];
+	waveZ: number[];
+	waveDirX: number[];
+	waveDirZ: number[];
+	waveHalfCos: number[];
+	waveRange: number[];
+	waveSpeed: number[];
+	waveOwner: number[];
+	waveDamage: number[];
+	waveKind: number[];
+	/** Per spawned wave, parallel to the wave lists: the guard's (or roll's) erased count it answers (COUNTER xN). */
+	counterCount: number[];
+	/**
+	 * Ballista bursts (BV3) that spawned at least one bolt: where, the owner, bolts spawned, and 1 for a wall's (or an
+	 * unbroken piece's) back fan, 0 for the last pierce's ring.
+	 */
+	ballistaX: number[];
+	ballistaZ: number[];
+	ballistaOwner: number[];
+	ballistaFired: number[];
+	ballistaWall: number[];
+	/** Siege Bolt pins that started (BV4): the actor's slot, the archer, and where (the actor's position). */
+	pinStartSlot: number[];
+	pinStartOwner: number[];
+	pinStartX: number[];
+	pinStartZ: number[];
+	/**
+	 * Pins that ended (BV4): the actor's slot, the archer, the distance carried (world units, from the pin's start) and
+	 * 1 when it ended in a slam (0: dropped: the arrow expired, or the actor died).
+	 */
+	pinEndSlot: number[];
+	pinEndOwner: number[];
+	pinEndCarried: number[];
+	pinEndSlam: number[];
+	/** Slams (BV4): the pinned actor's position, the archer, enemies the slam and its shockwave struck (it included). */
+	slamX: number[];
+	slamZ: number[];
+	slamOwner: number[];
+	slamStruck: number[];
+	/**
+	 * Smashes resolved (BV5, Wrecker / Powder Keg): the piece's cell centre, the owner, the smash's generation and the
+	 * splinters spawned.
+	 */
+	smashX: number[];
+	smashZ: number[];
+	smashOwner: number[];
+	smashGen: number[];
+	smashFired: number[];
+	/** Demolition blasts (BV5): the piece's cell centre, the owner. */
+	demolitionX: number[];
+	demolitionZ: number[];
+	demolitionOwner: number[];
+	/**
+	 * Full Heart beams (BV7): from the player (beamX1, beamZ1) to the line's end (beamX2, beamZ2), the owner, enemies
+	 * struck.
+	 */
+	beamX1: number[];
+	beamZ1: number[];
+	beamX2: number[];
+	beamZ2: number[];
+	beamOwner: number[];
+	beamStruck: number[];
+	/** Happy Hour (BV7): players whose drink started (or restarted) it this tick. */
+	happyPlayer: number[];
+	/** Overcap payouts (BV9): where (the boss), the hitter, the points paid (ScoreSource.OVERCAP). */
+	overcapX: number[];
+	overcapZ: number[];
+	overcapOwner: number[];
+	overcapPoints: number[];
 	/**
 	 * Unshaken: hits taken on armor this tick by its owners, which stepScore leaves out of the combo cuts. The one
 	 * BuildEvents field the sim reads (same tick only: written in stepCombat, read in stepScore, cleared next tick).
@@ -297,6 +456,53 @@ const BUILD_EVENT_LISTS = [
 	"overkillCarry",
 	"bracePlayer",
 	"braceKind",
+	"waveX",
+	"waveZ",
+	"waveDirX",
+	"waveDirZ",
+	"waveHalfCos",
+	"waveRange",
+	"waveSpeed",
+	"waveOwner",
+	"waveDamage",
+	"waveKind",
+	"counterCount",
+	"ballistaX",
+	"ballistaZ",
+	"ballistaOwner",
+	"ballistaFired",
+	"ballistaWall",
+	"pinStartSlot",
+	"pinStartOwner",
+	"pinStartX",
+	"pinStartZ",
+	"pinEndSlot",
+	"pinEndOwner",
+	"pinEndCarried",
+	"pinEndSlam",
+	"slamX",
+	"slamZ",
+	"slamOwner",
+	"slamStruck",
+	"smashX",
+	"smashZ",
+	"smashOwner",
+	"smashGen",
+	"smashFired",
+	"demolitionX",
+	"demolitionZ",
+	"demolitionOwner",
+	"beamX1",
+	"beamZ1",
+	"beamX2",
+	"beamZ2",
+	"beamOwner",
+	"beamStruck",
+	"happyPlayer",
+	"overcapX",
+	"overcapZ",
+	"overcapOwner",
+	"overcapPoints",
 ] as const;
 
 /** SimState.builds. */
@@ -305,8 +511,15 @@ export interface BuildsState {
 	readonly config: Readonly<BuildsConfig>;
 	/** One per player, party index order. */
 	players: BuildPlayerState[];
-	/** The kill queue, oldest first (BU3, ./procs.ts). */
+	/** The proc queue, oldest first (BU3, ./procs.ts; docs/BUILDS_V2.md: kills and smashes, BuildProc.kind). */
 	procs: BuildProc[];
+	/** Siege Bolt's pins, oldest first (docs/BUILDS_V2.md BV1; BV4). At most SIEGE_PINS_MAX. */
+	pins: BuildPin[];
+	/** Riposte's counter-waves, oldest first (BV1; BV2). At most RIPOSTE_WAVES_MAX. */
+	waves: BuildWave[];
+	/** Stillwater (BV1; BV6): the team combo (tenths) a hit cut, and the tick it was cut (STILL_NONE: none). */
+	stillCombo: number;
+	stillTick: number;
 	/** NOT hashed. */
 	events: BuildEvents;
 }
@@ -327,6 +540,10 @@ function newPlayer(): BuildPlayerState {
 		braceCount: 0,
 		braceReady: 0,
 		braceCooldown: 0,
+		riposteCount: 0,
+		overcap: 0,
+		happyHourTicks: 0,
+		rebukePending: RebukePending.NONE,
 	};
 }
 
@@ -408,6 +625,53 @@ function emptyEvents(): BuildEvents {
 		overkillCarry: [],
 		bracePlayer: [],
 		braceKind: [],
+		waveX: [],
+		waveZ: [],
+		waveDirX: [],
+		waveDirZ: [],
+		waveHalfCos: [],
+		waveRange: [],
+		waveSpeed: [],
+		waveOwner: [],
+		waveDamage: [],
+		waveKind: [],
+		counterCount: [],
+		ballistaX: [],
+		ballistaZ: [],
+		ballistaOwner: [],
+		ballistaFired: [],
+		ballistaWall: [],
+		pinStartSlot: [],
+		pinStartOwner: [],
+		pinStartX: [],
+		pinStartZ: [],
+		pinEndSlot: [],
+		pinEndOwner: [],
+		pinEndCarried: [],
+		pinEndSlam: [],
+		slamX: [],
+		slamZ: [],
+		slamOwner: [],
+		slamStruck: [],
+		smashX: [],
+		smashZ: [],
+		smashOwner: [],
+		smashGen: [],
+		smashFired: [],
+		demolitionX: [],
+		demolitionZ: [],
+		demolitionOwner: [],
+		beamX1: [],
+		beamZ1: [],
+		beamX2: [],
+		beamZ2: [],
+		beamOwner: [],
+		beamStruck: [],
+		happyPlayer: [],
+		overcapX: [],
+		overcapZ: [],
+		overcapOwner: [],
+		overcapPoints: [],
 		unshakenKept: 0,
 	};
 }
@@ -416,7 +680,16 @@ function emptyEvents(): BuildEvents {
 export function createBuildsState(config: Readonly<BuildsConfig>, players = 1): BuildsState {
 	const out: BuildPlayerState[] = [];
 	for (let i = 0; i < players; i++) out.push(newPlayer());
-	return { config, players: out, procs: [], events: emptyEvents() };
+	return {
+		config,
+		players: out,
+		procs: [],
+		pins: [],
+		waves: [],
+		stillCombo: 0,
+		stillTick: STILL_NONE,
+		events: emptyEvents(),
+	};
 }
 
 export function cloneBuildsState(s: Readonly<BuildsState>): BuildsState {
@@ -428,6 +701,10 @@ export function cloneBuildsState(s: Readonly<BuildsState>): BuildsState {
 		config: s.config,
 		players: s.players.map((p) => ({ ...p, levels: [...p.levels], duos: [...p.duos] })),
 		procs: s.procs.map((q) => ({ ...q })),
+		pins: s.pins.map((q) => ({ ...q })),
+		waves: s.waves.map((w) => ({ ...w, hits: [...w.hits] })),
+		stillCombo: s.stillCombo,
+		stillTick: s.stillTick,
 		events,
 	};
 }
@@ -440,9 +717,22 @@ export function clearBuildEvents(s: BuildsState): void {
 	e.unshakenKept = 0;
 }
 
-/** The floor change (endless.ts nextFloor): queued procs are dropped with the floor's actors and bullets. */
+/**
+ * The floor change (endless.ts nextFloor): queued procs, pins and waves are dropped with the floor's actors and
+ * bullets, and Stillwater's recorded combo with them (docs/BUILDS_V2.md BV1). Riposte (BV2): every player's
+ * `riposteCount` and Rebuke's `rebukePending` are discarded too, so a guard running across the change (weapon slots
+ * are not reset) fires nothing for what it erased on the old floor.
+ */
 export function clearBuildProcs(s: BuildsState): void {
+	for (const p of s.players) {
+		p.riposteCount = 0;
+		p.rebukePending = RebukePending.NONE;
+	}
 	s.procs.clear();
+	s.pins.clear();
+	s.waves.clear();
+	s.stillCombo = 0;
+	s.stillTick = STILL_NONE;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -480,7 +770,9 @@ export function cardKind(state: Readonly<SimState>, playerIndex: number, card: n
 // ---------------------------------------------------------------------------------------------
 // Hash: the "builds" group, appended after every other group (after "affixes") only when state.builds exists.
 //   players.length; per player: levels (length + values), duos (length + values), BUILD_PLAYER_SCALARS;
-//   procs.length; per proc BUILD_PROC_FIELDS
+//   procs.length; per proc BUILD_PROC_FIELDS;
+//   (docs/BUILDS_V2.md BV1, appended) pins.length; per pin BUILD_PIN_FIELDS; waves.length; per wave BUILD_WAVE_FIELDS
+//   then hits (length + values); BUILD_WORLD_SCALARS
 
 /** Scalar BuildPlayerState fields after the two lists, in hash order. Append only. */
 export const BUILD_PLAYER_SCALARS = [
@@ -494,10 +786,35 @@ export const BUILD_PLAYER_SCALARS = [
 	"braceCount",
 	"braceReady",
 	"braceCooldown",
+	"riposteCount",
+	"overcap",
+	"happyHourTicks",
+	"rebukePending",
 ] as const;
 
 /** Per proc, in hash order. Append only. */
-export const BUILD_PROC_FIELDS = ["x", "z", "owner", "gen", "slot", "id", "excess"] as const;
+export const BUILD_PROC_FIELDS = ["x", "z", "owner", "gen", "slot", "id", "excess", "kind"] as const;
+
+/** Per pin, in hash order (docs/BUILDS_V2.md BV1). Append only. */
+export const BUILD_PIN_FIELDS = ["bullet", "owner", "slot", "id", "x0", "z0", "slam"] as const;
+
+/** Per wave, in hash order, before its `hits` list (BV1). Append only. */
+export const BUILD_WAVE_FIELDS = [
+	"owner",
+	"x",
+	"z",
+	"dirX",
+	"dirZ",
+	"halfCos",
+	"radius",
+	"range",
+	"speed",
+	"damage",
+	"kind",
+] as const;
+
+/** The world's scalars after the waves, in hash order (BV1). Append only. */
+export const BUILD_WORLD_SCALARS = ["stillCombo", "stillTick"] as const;
 
 function pushList(out: number[], list: ReadonlyArray<number>): void {
 	out.push(list.size());
@@ -518,6 +835,14 @@ export function writeBuildsHash(s: Readonly<BuildsState>, out: number[]): void {
 	}
 	out.push(s.procs.size());
 	for (const q of s.procs) for (const f of BUILD_PROC_FIELDS) out.push(q[f]);
+	out.push(s.pins.size());
+	for (const q of s.pins) for (const f of BUILD_PIN_FIELDS) out.push(q[f]);
+	out.push(s.waves.size());
+	for (const w of s.waves) {
+		for (const f of BUILD_WAVE_FIELDS) out.push(w[f]);
+		pushList(out, w.hits);
+	}
+	for (const f of BUILD_WORLD_SCALARS) out.push(s[f]);
 }
 
 /** Dump names for writeBuildsHash, same order (`builds.players[0].levels[3]`, `builds.procs[0].gen`, ...). */
@@ -532,4 +857,13 @@ export function buildsHashNames(s: Readonly<BuildsState>, out: string[]): void {
 	}
 	out.push("builds.procs.length");
 	for (let k = 0; k < s.procs.size(); k++) for (const f of BUILD_PROC_FIELDS) out.push(`builds.procs[${k}].${f}`);
+	out.push("builds.pins.length");
+	for (let k = 0; k < s.pins.size(); k++) for (const f of BUILD_PIN_FIELDS) out.push(`builds.pins[${k}].${f}`);
+	out.push("builds.waves.length");
+	for (let k = 0; k < s.waves.size(); k++) {
+		const prefix = `builds.waves[${k}]`;
+		for (const f of BUILD_WAVE_FIELDS) out.push(`${prefix}.${f}`);
+		pushListNames(out, `${prefix}.hits`, s.waves[k].hits);
+	}
+	for (const f of BUILD_WORLD_SCALARS) out.push(`builds.${f}`);
 }

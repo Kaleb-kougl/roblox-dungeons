@@ -17,6 +17,10 @@
  *   Bastion (docs/LEGENDARIES.md LG3, builds runs): the guard lasts BASTION_GUARD_TICKS and sweeps the full ring
  *   (swordGuardTicks / swordGuardSweepCos read runMods' `bastion`; without it SWORD_DATA's numbers exactly), and every
  *   guard tick tells sim/builds hooks.ts buildsOnGuardCancels what it erased (the brace count).
+ *   Riposte (docs/BUILDS_V2.md BV2 / BV6, builds runs): every guard tick then calls sim/builds riposte.ts
+ *   buildsOnRiposteGuard (the count, Rebuke's mark, Thunder Guard's sparks from the erased positions, Stillwater), and
+ *   the tick the counter reaches 0 (the guard ran its full length; a roll or a swap zeroes it without this, BVD3)
+ *   buildsOnGuardEnd (the counter-wave).
  */
 
 import { secondsToTicks } from "../../../playerData";
@@ -37,6 +41,7 @@ import {
 	BASTION_GUARD_TICKS,
 } from "../../../progression/progressionData";
 import { buildsOnGuardCancels } from "../../../builds/hooks";
+import { buildsOnGuardEnd, buildsOnRiposteGuard } from "../../../builds/riposte";
 import type { SimState } from "../../../state";
 
 export interface SwordData extends WeaponData {
@@ -252,6 +257,8 @@ export const SWORD = registerWeapon<SwordData>({
 			// score events' guardX / guardZ (one reused sink, no allocation per tick); guardPlayer follows below.
 			const score = ctx.state.score;
 			let sink: ArcEraseSink | undefined;
+			// Riposte's duos (docs/BUILDS_V2.md BV6): where this tick's erased positions start in guardX / guardZ.
+			const guardFrom = score !== undefined ? score.events.guardX.size() : 0;
 			if (score !== undefined) {
 				guardSink.x = score.events.guardX;
 				guardSink.z = score.events.guardZ;
@@ -285,7 +292,16 @@ export const SWORD = registerWeapon<SwordData>({
 			}
 			if (ctx.state.tutorial !== undefined) tutorialOnGuardCancels(ctx.state, cancels);
 			// Builds (docs/LEGENDARIES.md LG3, opt-in): Bastion's brace count (reset on the guard's start tick).
-			if (ctx.state.builds !== undefined) buildsOnGuardCancels(ctx.state, ctx.playerIndex, cancels, starting);
+			const builds = ctx.state.builds;
+			if (builds !== undefined) {
+				const braces = builds.events.bracePlayer.size();
+				buildsOnGuardCancels(ctx.state, ctx.playerIndex, cancels, starting);
+				// Riposte (docs/BUILDS_V2.md BV2 / BV6): its count, Rebuke's mark, Thunder Guard, Stillwater.
+				const braced = builds.events.bracePlayer.size() > braces;
+				buildsOnRiposteGuard(ctx, cancels, starting, guardFrom, braced);
+				// Riposte (BV2, BVD3): only a guard that runs its full length fires the counter-wave.
+				if (v[SWORD_V_GUARD] === 0) buildsOnGuardEnd(ctx);
+			}
 			return;
 		}
 

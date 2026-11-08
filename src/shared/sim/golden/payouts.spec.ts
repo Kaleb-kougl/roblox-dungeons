@@ -117,7 +117,8 @@ describe("golden: the score source (GE3)", () => {
 		expect([...GOLDEN_SCORE_SOURCE_NAMES]).toEqual(["golden"]);
 		const r = run();
 		const sc = r.s.score!;
-		expect([sc.points.size(), sc.counts.size()]).toEqual([15, 15]);
+		// 15 up to GOLDEN, then the builds run's OVERCAP (docs/BUILDS_V2.md BV9): 16.
+		expect([sc.points.size(), sc.counts.size()]).toEqual([16, 16]);
 		const layout = hashLayout(r.s, true);
 		const score = layout.groups.find((gr) => gr.name === SCORE_SUBSYSTEM)!;
 		const names: string[] = [];
@@ -126,9 +127,10 @@ describe("golden: the score source (GE3)", () => {
 		expect(names.includes("score.points.golden")).toBe(true);
 		expect(names.includes("score.counts.golden")).toBe(true);
 		expect(layout.groups[layout.groups.size() - 1].name).toBe(GOLDEN_SUBSYSTEM);
-		// Without the config: the pellet run's 12 sources, treasure's TREASURE and pacts' HORDE (docs/TREASURE.md TR5,
-		// docs/FORTUNE.md PS5: every endless world sets both), 14, as before the Goldling.
-		expect(run(1, false).s.score!.points.size()).toBe(14);
+		// Without the config: every endless world sets builds, so since docs/BUILDS_V2.md BV9 it pads GOLDEN (0) on its
+		// way to OVERCAP: 16 sources, GOLDEN never paid.
+		const off = run(1, false).s.score!;
+		expect([off.points.size(), off.points[ScoreSource.GOLDEN], off.counts[ScoreSource.GOLDEN]]).toEqual([16, 0, 0]);
 	});
 
 	it("every endless world sets ENDLESS_GOLDEN_CONFIG (solo, co-op, daily, dev)", () => {

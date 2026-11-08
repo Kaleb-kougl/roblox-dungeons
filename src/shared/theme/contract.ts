@@ -880,6 +880,13 @@ export const PORT_AUDIO_EVENTS = [
 	// docs/LEGENDARIES.md LG5 (the same list): an Overkill streak, a Bastion brace
 	"sfx.build.overkill",
 	"sfx.build.brace",
+	// docs/BUILDS_V2.md BV10 (the same list): Riposte's counter-wave, Siege Bolt's pin / slam, a Wrecker smash, Full
+	// Heart's beam
+	"sfx.build.counter",
+	"sfx.build.pin",
+	"sfx.build.slam",
+	"sfx.build.smash",
+	"sfx.build.beam",
 	// docs/DAILY.md DS10 / DS12: a daily run's predicted rank enters the top 100 / 10 / 3 / #1 (with the floor shout);
 	// the shown score passes a friend's best today (with their toast)
 	"sfx.rank.up",
@@ -1102,6 +1109,13 @@ export const REQUIRED_STRING_KEYS: ReadonlyArray<string> = ((): string[] => [
 	"hud.toast.brace",
 	"hud.toast.braceHeal",
 	"fx.brace.text",
+	// docs/BUILDS_V2.md BV10 (BUILD_STRING_KEYS): the duo hint, Riposte's counter, Siege Bolt's pin / slam floor texts,
+	// Happy Hour's toast
+	"hud.draft.duoHint",
+	"fx.counter.text",
+	"fx.pinned.text",
+	"fx.slam.text",
+	"hud.toast.happyHour",
 	// docs/ITEM_TOOLTIPS.md IT3: shared/view/hud TOOLTIP_STRINGS, written out (tooltip.spec.ts checks they agree): the
 	// kind lines, Next / evolves / duo recipe / time left, the "+N" count, the Build list's sections, Build / Map
 	"hud.tip.kind.boon",

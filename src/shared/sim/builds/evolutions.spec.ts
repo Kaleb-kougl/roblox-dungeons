@@ -735,7 +735,9 @@ describe("Jackpot (Bounty III)", () => {
 		const ctx = ctxOf(s);
 		for (let k = 0; k < JACKPOT_KILLS; k++) kill(ctx, dummy(ctx, -6 + k * 0.8, 0, 1));
 		expect(s.score!.counts[ScoreSource.JACKPOT]).toBe(0);
-		expect(s.score!.points.size()).toBe(SCORE_SOURCE_COUNT + 1);
+		// JACKPOT right after the always-on sources; since docs/BUILDS_V2.md BV9 a builds run pads on to OVERCAP.
+		expect(s.score!.points.size()).toBe(ScoreSource.OVERCAP + 1);
+		expect(ScoreSource.JACKPOT).toBe(SCORE_SOURCE_COUNT);
 		const plain = fresh({ ...ARENA, builds: undefined });
 		expect([plain.score!.points.size(), plain.score!.counts.size()]).toEqual([
 			SCORE_SOURCE_COUNT,

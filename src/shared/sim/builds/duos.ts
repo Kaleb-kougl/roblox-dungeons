@@ -34,7 +34,10 @@
  *        is when its age (ticks since it was fired: round((spawn life - life) x SIM_HZ), 1 on the tick it was fired) is
  *        a multiple of FIRE_ARROWS_EMBER_TICKS, at most FIRE_ARROWS_EMBERS_MAX per arrow (ages 6, 12, 18, 24). The
  *        spawn life is the bow's (stream or heavy) found by the speed match, so the counter is the bullet's own life:
- *        no new payload field. Embers in the walk's order (dense slots, backwards)
+ *        no new payload field. Embers in the walk's order (dense slots, backwards). Dragon Bolt (Ballista + Ember
+ *        Wake, docs/BUILDS_V2.md BV6) in the same walk: every live HEAVY arrow of an owner drops an ember at every age
+ *        that is a multiple of DRAGON_BOLT_EMBER_TICKS for its whole flight (no FIRE_ARROWS_EMBERS_MAX; ember duo
+ *        DRAGON_BOLT); an owner of both duos gets Dragon Bolt's schedule on heavy arrows, Fire Arrows' on the rest
  *     c. Blazing Trail (Ember Wake + Slippery): a rolling, living owner drops an ember where they stand when the roll's
  *        elapsed ticks (ROLL_TICKS - rollTicks, 0 on the start tick) are a positive multiple of
  *        BLAZING_TRAIL_EMBER_TICKS (6 embers per roll: elapsed 3 .. 18), players in index order
@@ -43,7 +46,10 @@
  *     through playerHitDamage; a kill procs at gen 1), stop on walls and intact breakables exactly like other player
  *     bullets, and never touch enemy bullets (no player bullet does).
  *   stepDuosAfterDrain, after the drain (so the kills of these sparks proc next tick, one generation per tick):
- *     d. the queued sparks, in queue order: Storm Blade fires the owner's Chain Spark as if the enemy hit had died
+ *     d. the queued sparks, in queue order (Thunder Guard's, docs/BUILDS_V2.md BV6: one per bullet a guard erased, at
+ *        most THUNDER_GUARD_MAX a guard tick, queued from the sword's guard by ./riposte.ts; each strikes the nearest
+ *        living enemy within THUNDER_GUARD_RANGE of the erased bullet for playerHitDamage(owner, THUNDER_GUARD_DAMAGE)
+ *        at generation 1, a spark segment with sparkFork THUNDER): Storm Blade fires the owner's Chain Spark as if the enemy hit had died
  *        there (./onKill.ts chainSpark at the owner's level, generation 0: its kills proc at gen 1; the enemy hit is the
  *        victim it skips); Conductor strikes the nearest OTHER living enemy within CONDUCTOR_RANGE of the enemy passed
  *        through (nearestEnemy) for playerHitDamage(owner, CONDUCTOR_DAMAGE), one hop, generation 0 (its kill procs at
@@ -66,7 +72,7 @@ import { SIM_HZ } from "../units";
 import { Boon } from "../progression/progressionData";
 import { playerHitDamage } from "../progression/runMods";
 import { buildLevel, type BuildPlayerState, type BuildProc, type BuildsState } from "./builds";
-import { BuildEffect, Duo } from "./buildsData";
+import { BuildEffect, Duo, ProcKind } from "./buildsData";
 import {
 	ARROW_SPEED_TOLERANCE,
 	BLAZING_TRAIL_EMBER_TICKS,
@@ -75,6 +81,7 @@ import {
 	CLOSE_CALL_SHARD,
 	CONDUCTOR_DAMAGE,
 	CONDUCTOR_RANGE,
+	DRAGON_BOLT_EMBER_TICKS,
 	DUO_ARROW_WEAPON_ID,
 	EFFECT_DIR_X,
 	EFFECT_DIR_Z,
@@ -83,6 +90,9 @@ import {
 	FIRE_ARROWS_EMBER_TICKS,
 	KillCause,
 	STORM_BLADE_ARROW_HITS,
+	SparkFork,
+	THUNDER_GUARD_DAMAGE,
+	THUNDER_GUARD_RANGE,
 } from "./effectsData";
 import { NO_SKIP_ID, fireAimedVolley, fireEffect, nearestEnemy } from "./effects";
 import { buildPlayerLeft, buildPlayerStateAt, hasDuo, pushDuoProc } from "./hooks";
@@ -90,6 +100,7 @@ import { chainSpark, volatileBurst } from "./onKill";
 
 const CLOSE_CALL_RANGE2 = CLOSE_CALL_RANGE * CLOSE_CALL_RANGE;
 const CONDUCTOR_RANGE2 = CONDUCTOR_RANGE * CONDUCTOR_RANGE;
+const THUNDER_GUARD_RANGE2 = THUNDER_GUARD_RANGE * THUNDER_GUARD_RANGE;
 /** Fire Arrows' last ember age (ticks). */
 const FIRE_ARROWS_LAST_AGE = FIRE_ARROWS_EMBER_TICKS * FIRE_ARROWS_EMBERS_MAX;
 /** Nothing excluded (nearestEnemy's `exclude`). */
@@ -139,6 +150,24 @@ export function bowArrowLife(payload: number, vx: number, vz: number): number {
 	return -1;
 }
 
+/** arrowSpeed2 / arrowLife index of the heavy arrow (readArrows: stream, heavy). */
+const HEAVY_ARROW = 1;
+
+/**
+ * True when player bullet with payload `payload` and velocity (vx, vz) is a heavy (charged) bow arrow: kind PLAYER, the
+ * bow's source, the heavy arrow's squared speed (bowArrowLife's test; docs/BUILDS_V2.md BV3: Ballista and Siege Bolt
+ * find their arrows by it). Stream and Flurry arrows (16), the bow-held Ember Wake ring (12) and every effect bolt are not.
+ */
+export function isHeavyArrow(payload: number, vx: number, vz: number): boolean {
+	if (BulletPayload.get(payload, "kind") !== BulletKind.PLAYER) return false;
+	if (arrowSource < 0) readArrows();
+	if (BulletPayload.get(payload, "source") !== arrowSource) return false;
+	const s2 = arrowSpeed2[HEAVY_ARROW];
+	const v2 = vx * vx + vz * vz;
+	const diff = v2 > s2 ? v2 - s2 : s2 - v2;
+	return diff <= s2 * ARROW_SPEED_TOLERANCE;
+}
+
 // ---------------------------------------------------------------------------------------------
 // Sparks queued during the tick (Storm Blade, Conductor), released after the drain
 
@@ -156,6 +185,20 @@ function queueSpark(ctx: SimCtx, duo: number, owner: number, a: Readonly<ActorSt
 	sparkZ.push(a.z);
 	sparkSlot.push(ctx.actors.indexOf(a as ActorState));
 	sparkId.push(a.id);
+}
+
+/**
+ * Thunder Guard (Riposte + Chain Spark, docs/BUILDS_V2.md BV6): a guard of `owner` erased an enemy bullet at (x, z);
+ * ./riposte.ts buildsOnRiposteGuard checks the duo and the cap (THUNDER_GUARD_MAX a guard tick). Released after the
+ * drain with the other queued sparks (thunderSpark).
+ */
+export function queueThunderSpark(owner: number, x: number, z: number): void {
+	sparkDuo.push(Duo.THUNDER_GUARD);
+	sparkOwner.push(owner);
+	sparkX.push(x);
+	sparkZ.push(z);
+	sparkSlot.push(-1);
+	sparkId.push(NO_SKIP_ID);
 }
 
 /** A sword finisher hit `first` first (undefined: it hit nothing); the acting player is ctx's. Storm Blade. */
@@ -197,7 +240,7 @@ export function buildsOnArrowHit(
 }
 
 /** Scratch proc for Storm Blade and Chain Reaction (never re-entered: chainSpark / volatileBurst only queue procs). */
-const pseudo: BuildProc = { x: 0, z: 0, owner: 0, gen: 0, slot: 0, id: 0, excess: 0 };
+const pseudo: BuildProc = { x: 0, z: 0, owner: 0, gen: 0, slot: 0, id: 0, excess: 0, kind: ProcKind.KILL };
 
 function setPseudo(x: number, z: number, owner: number, gen: number, slot: number, id: number): BuildProc {
 	pseudo.x = x;
@@ -230,6 +273,31 @@ function conductorSpark(ctx: SimCtx, s: BuildsState, owner: number, x: number, z
 	return 1;
 }
 
+/**
+ * Thunder Guard's spark from an erased bullet at (x, z): the nearest living enemy within THUNDER_GUARD_RANGE
+ * (nearestEnemy) takes playerHitDamage(owner, THUNDER_GUARD_DAMAGE), generation 1 (its kill procs at gen 1), one spark
+ * segment with sparkFork SparkFork.THUNDER. Returns the enemies struck (0 or 1).
+ */
+function thunderSpark(ctx: SimCtx, s: BuildsState, owner: number, x: number, z: number): number {
+	const k = nearestEnemy(ctx, x, z, THUNDER_GUARD_RANGE2, NO_SKIP_ID, NO_EXCLUDE);
+	if (k < 0) return 0;
+	const a = ctx.actors[k];
+	const e = s.events;
+	e.sparkX1.push(x);
+	e.sparkZ1.push(z);
+	e.sparkX2.push(a.x);
+	e.sparkZ2.push(a.z);
+	e.sparkOwner.push(owner);
+	e.sparkGen.push(0);
+	e.sparkFork.push(SparkFork.THUNDER);
+	ctx.procGen = 1;
+	ctx.procCause = KillCause.SPARK;
+	ctx.damageActor(a, playerHitDamage(ctx.state, owner, THUNDER_GUARD_DAMAGE));
+	ctx.procGen = 0;
+	ctx.procCause = KillCause.NONE;
+	return 1;
+}
+
 function releaseSparks(ctx: SimCtx, s: BuildsState): void {
 	const e = s.events;
 	for (let k = 0; k < sparkDuo.size(); k++) {
@@ -245,6 +313,8 @@ function releaseSparks(ctx: SimCtx, s: BuildsState): void {
 			const before = e.sparkX1.size();
 			chainSpark(ctx, s, setPseudo(x, z, owner, 0, sparkSlot[k], sparkId[k]), buildLevel(p, Boon.CHAIN_SPARK));
 			struck = e.sparkX1.size() - before;
+		} else if (duo === Duo.THUNDER_GUARD) {
+			struck = thunderSpark(ctx, s, owner, x, z);
 		} else {
 			struck = conductorSpark(ctx, s, owner, x, z, sparkId[k]);
 		}
@@ -360,41 +430,66 @@ function dropEmber(ctx: SimCtx, s: BuildsState, owner: number, x: number, z: num
 
 /** Per player (party index): Fire Arrows drops embers from their arrows this tick. */
 const fireArrowsOn: boolean[] = [];
+/** Per player (party index): Dragon Bolt (docs/BUILDS_V2.md BV6) drops embers from their heavy arrows this tick. */
+const dragonBoltOn: boolean[] = [];
 /** The ctx while the Fire Arrows walk runs (synchronous, never re-entered). */
 let walkCtx: SimCtx | undefined;
 /** Embers the walk found (fired after it: the walk never spawns into the pool it walks). */
 const emberOwner: number[] = [];
 const emberX: number[] = [];
 const emberZ: number[] = [];
+/** The Duo of each ember the walk found (FIRE_ARROWS or DRAGON_BOLT). */
+const emberDuo: number[] = [];
 
 function fireArrowsVisit(i: number, pos: Readonly<Vec3>, payload: number, emitter: number): boolean {
 	const owner = playerBulletOwner(emitter);
-	if (fireArrowsOn[owner] !== true) return false;
+	const fire = fireArrowsOn[owner] === true;
+	const dragon = dragonBoltOn[owner] === true;
+	if (!fire && !dragon) return false;
 	const sim = walkCtx!.combat.playerBullets;
 	const v = sim.velocityAt(i);
 	const spawnLife = bowArrowLife(payload, v.x, v.z);
 	if (spawnLife < 0) return false;
 	const age = math.floor((spawnLife - sim.lifeAt(i)) * SIM_HZ + 0.5);
+	// Dragon Bolt (BV6): a heavy arrow drops an ember every DRAGON_BOLT_EMBER_TICKS of its whole flight (no
+	// FIRE_ARROWS_EMBERS_MAX); with Fire Arrows too, this schedule replaces Fire Arrows' on heavy arrows (a superset).
+	if (dragon && spawnLife === arrowLife[HEAVY_ARROW]) {
+		if (age <= 0 || age % DRAGON_BOLT_EMBER_TICKS !== 0) return false;
+		pushEmber(owner, pos, Duo.DRAGON_BOLT);
+		return false;
+	}
+	if (!fire) return false;
 	if (age <= 0 || age > FIRE_ARROWS_LAST_AGE || age % FIRE_ARROWS_EMBER_TICKS !== 0) return false;
-	emberOwner.push(owner);
-	emberX.push(pos.x);
-	emberZ.push(pos.z);
+	pushEmber(owner, pos, Duo.FIRE_ARROWS);
 	return false;
 }
 
+function pushEmber(owner: number, pos: Readonly<Vec3>, duo: number): void {
+	emberOwner.push(owner);
+	emberX.push(pos.x);
+	emberZ.push(pos.z);
+	emberDuo.push(duo);
+}
+
 function fireArrows(ctx: SimCtx, s: BuildsState): void {
-	if (!anyDuo(s, Duo.FIRE_ARROWS)) return;
+	const fire = anyDuo(s, Duo.FIRE_ARROWS);
+	const dragon = anyDuo(s, Duo.DRAGON_BOLT);
+	if (!fire && !dragon) return;
 	fireArrowsOn.clear();
+	dragonBoltOn.clear();
 	for (let i = 0; i < s.players.size(); i++) {
-		fireArrowsOn.push(hasDuo(s.players[i], Duo.FIRE_ARROWS) && !buildPlayerLeft(ctx.state, i));
+		const present = !buildPlayerLeft(ctx.state, i);
+		fireArrowsOn.push(hasDuo(s.players[i], Duo.FIRE_ARROWS) && present);
+		dragonBoltOn.push(hasDuo(s.players[i], Duo.DRAGON_BOLT) && present);
 	}
 	walkCtx = ctx;
 	ctx.combat.playerBullets.forEachActive(fireArrowsVisit);
 	walkCtx = undefined;
-	for (let k = 0; k < emberOwner.size(); k++) dropEmber(ctx, s, emberOwner[k], emberX[k], emberZ[k], Duo.FIRE_ARROWS);
+	for (let k = 0; k < emberOwner.size(); k++) dropEmber(ctx, s, emberOwner[k], emberX[k], emberZ[k], emberDuo[k]);
 	emberOwner.clear();
 	emberX.clear();
 	emberZ.clear();
+	emberDuo.clear();
 }
 
 function blazingTrail(ctx: SimCtx, s: BuildsState): void {
@@ -441,8 +536,10 @@ export function resetDuoScratch(): void {
 	crossId.clear();
 	crossCause.clear();
 	fireArrowsOn.clear();
+	dragonBoltOn.clear();
 	walkCtx = undefined;
 	emberOwner.clear();
 	emberX.clear();
 	emberZ.clear();
+	emberDuo.clear();
 }

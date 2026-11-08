@@ -168,7 +168,8 @@ describe("treasure: opt-in", () => {
 				for (let i = ga.start; i < ga.finish; i++) va.push(la.values[i]);
 				for (let i = gb.start; i < gb.finish; i++) vb.push(lb.values[i]);
 				if (ga.name !== SCORE_SUBSYSTEM) expect(vb).toEqual(va);
-				else expect(vb.size()).toBe(va.size() + 2); // one more source in points and in counts
+				// The same sources: since docs/BUILDS_V2.md BV9 the builds run pads TREASURE on its way to OVERCAP.
+				else expect(vb.size()).toBe(va.size());
 			}
 			expect(lb.values).toEqual(writeHashFields(b, []));
 			step(a, EMPTY_INPUT, off);

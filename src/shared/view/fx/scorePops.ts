@@ -36,9 +36,10 @@ export function scorePopRise(age: number, motion: number): number {
 
 /**
  * A pop's colour (ScorePopPool.tone): a kill pop, or a kill Gold Rush raised (docs/BUILDS.md BU6, its own colour), or a
- * kill in a Pact of the Horde room (docs/FORTUNE.md FO7: `pact.horde`, its text with the x2 mark).
+ * kill in a Pact of the Horde room (docs/FORTUNE.md FO7: `pact.horde`, its text with the x2 mark), or a kill pop while
+ * the view player's Happy Hour runs (docs/BUILDS_V2.md BV11: BUILDS_V2_FX.happyHour.popRole; overcapFx.ts happyPopTone).
  */
-export const ScorePopTone = { KILL: 0, GOLD_RUSH: 1, HORDE: 2 } as const;
+export const ScorePopTone = { KILL: 0, GOLD_RUSH: 1, HORDE: 2, HAPPY: 3 } as const;
 export type ScorePopTone = (typeof ScorePopTone)[keyof typeof ScorePopTone];
 
 /** A kill's score pop (the run views' scorePops). */

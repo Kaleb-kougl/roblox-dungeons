@@ -602,15 +602,16 @@ describe("treasure score source (docs/TREASURE.md TR2, TRD11 / correction 5)", (
 	});
 
 	it("padding for every subset of builds / pellets / treasure: sizes and the dump names' tail", () => {
+		// Builds runs end at OVERCAP (16 sources, docs/BUILDS_V2.md BV9), every earlier gated source padded.
 		const cases: Array<[boolean, boolean, boolean, number, string]> = [
 			[false, false, false, 9, "breakables"],
-			[true, false, false, 10, "jackpot"],
+			[true, false, false, 16, "overcap"],
 			[false, true, false, 12, "sweep"],
-			[true, true, false, 12, "sweep"],
+			[true, true, false, 16, "overcap"],
 			[false, false, true, 13, "treasure"],
-			[true, false, true, 13, "treasure"],
+			[true, false, true, 16, "overcap"],
 			[false, true, true, 13, "treasure"],
-			[true, true, true, 13, "treasure"],
+			[true, true, true, 16, "overcap"],
 		];
 		for (const [b, p, t, size, last] of cases) {
 			const st = make(subset(b, p, t));
@@ -619,7 +620,8 @@ describe("treasure score source (docs/TREASURE.md TR2, TRD11 / correction 5)", (
 			const names = hashLayout(st, true).names;
 			expect(names.includes(`score.points.${last}`)).toBe(true);
 			expect(names.includes(`score.counts.${last}`)).toBe(true);
-			expect(names.includes("score.points.treasure")).toBe(t);
+			expect(names.includes("score.points.treasure")).toBe(t || b);
+			expect(names.includes("score.points.overcap")).toBe(b);
 			for (const n of sc.points) expect(n).toBe(0);
 		}
 	});
@@ -655,7 +657,11 @@ describe("treasure score source (docs/TREASURE.md TR2, TRD11 / correction 5)", (
 	it("gated: no treasure sources -> 0 and nothing booked; treasure alone keeps the padded JACKPOT / PELLETS / SWEEP at 0", () => {
 		const none = make(subset(true, true, false));
 		expect(scoreTreasure(none, 800)).toBe(0);
-		expect([none.score!.total, none.score!.points.size()]).toEqual([0, 12]);
+		// A builds run pads TREASURE (docs/BUILDS_V2.md BV9: 16 sources); without the treasure state it still pays 0.
+		expect([none.score!.total, none.score!.points.size()]).toEqual([0, 16]);
+		const noBuilds = make(subset(false, true, false));
+		expect(scoreTreasure(noBuilds, 800)).toBe(0);
+		expect([noBuilds.score!.total, noBuilds.score!.points.size()]).toEqual([0, 12]);
 		const unscored = make({ ...subset(true, true, true), scoring: undefined });
 		expect(scoreTreasure(unscored, 800)).toBe(0);
 		const alone = make(subset(false, false, true));

@@ -212,7 +212,7 @@ const WHY = {
 		floor: "a build effect must read on the floor",
 		difference:
 			"a build effect must never read as an enemy bullet, a telegraph, goo, the enemy outline or a boost drop",
-		apart: "",
+		apart: "the overcap points' gold must never read as the new-best gold (a pop is not a record)",
 	},
 	pellet: {
 		floor: "a pellet must read on the floor",

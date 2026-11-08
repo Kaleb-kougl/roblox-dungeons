@@ -92,6 +92,12 @@ export const BREAKABLE_POINTS: ReadonlyArray<number> = [10, 20];
  * source, through the usual multipliers (combo, Depth, curses); it never feeds the combo and touches no room record.
  */
 export const JACKPOT_POINTS = 100;
+/**
+ * Overcap (docs/BUILDS_V2.md BVD18; BV1 declares it, BV9 pays it): points per point of boss damage the cap dropped,
+ * into ScoreSource.OVERCAP at the kills' floor scaling (floorScalePercent), through the usual multipliers, never
+ * feeding the combo.
+ */
+export const OVERCAP_POINTS = 10;
 
 // --- Multipliers -----------------------------------------------------------------------------------------
 
@@ -174,6 +180,13 @@ export const ScoreSource = {
 	 * run without builds / pellets / treasure / pacts). Every other scored run's "score" hash group is unchanged.
 	 */
 	GOLDEN: 14,
+	/**
+	 * Overcap (docs/BUILDS_V2.md "Overcap points", BV9): boss damage the cap drops pays OVERCAP_POINTS per point, builds
+	 * runs only, combo-neutral. Appended after GOLDEN, and ONLY in runs with SimConfig.builds (OVERCAP_SCORE_SOURCE_NAMES;
+	 * createSimState pads points / counts to it last, every earlier gated source included, addOvercapScoreSources).
+	 * Every other scored run's "score" hash group is unchanged.
+	 */
+	OVERCAP: 15,
 } as const;
 export type ScoreSourceId = (typeof ScoreSource)[keyof typeof ScoreSource];
 /** Source names in index order (dump names, results screen string keys `score.source.<name>`). */
@@ -219,3 +232,9 @@ export const PACT_SCORE_SOURCE_NAMES = ["horde"] as const;
  * ones).
  */
 export const GOLDEN_SCORE_SOURCE_NAMES = ["golden"] as const;
+/**
+ * Sources only a builds run has after the Goldling's (docs/BUILDS_V2.md BV9), at ScoreSource.OVERCAP (15). A builds
+ * run's points / counts hold every source up to it (padding the earlier gated ones: PELLETS .. GOLDEN stay 0 in a builds
+ * run without pellets / treasure / pacts / the Goldling).
+ */
+export const OVERCAP_SCORE_SOURCE_NAMES = ["overcap"] as const;

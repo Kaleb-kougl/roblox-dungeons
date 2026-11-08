@@ -2,8 +2,10 @@
 /*
  * The boon icons: original 16 x 16 pixel art drawn by code, one icon per boon (BOONS order, shared/sim progression
  * progressionData.ts), so they need no third-party pack. Full colour in the dark red UI's palette (the ToffeeCraft
- * Horror UI sheet's bone, blood red, steel, glass, wood and candle gold, sampled from art/build/ui-icons.png) plus three
- * accents the build effects already use (spark blue, burst peach, shard lilac), lit from the top left.
+ * Horror UI sheet's bone, blood red, steel, glass, wood and candle gold, sampled from art/build/ui-icons.png) plus the
+ * accents the build effects already use (spark blue, burst peach, shard lilac; builds v2: the counter green) and a light
+ * wood (builds v2: Wrecker's crate), lit from the top left. A new boon's icon is appended to ICONS (BOONS order) and
+ * to art/atlases.json `boonIcons.order` (the sheet only appends, so an uploaded sheet keeps its rects).
  *
  *   node scripts/art/gen-boon-icons.js [outDir] [--contact <file.png>]   (default art/vendor/kaleb-vale/boon-icons)
  *
@@ -56,6 +58,7 @@ const PALETTE = {
 	// wood / leather
 	w: { rgb: [66, 46, 32], outlined: true },
 	W: { rgb: [112, 80, 52], outlined: true },
+	A: { rgb: [164, 118, 72], outlined: true }, // light wood (builds v2: Wrecker's crate)
 	// glass (the flasks' pale blue)
 	q: { rgb: [124, 150, 170], outlined: true },
 	Q: { rgb: [200, 222, 236], outlined: true },
@@ -76,6 +79,11 @@ const PALETTE = {
 	K: { rgb: [112, 102, 96], outlined: true },
 	l: { rgb: [158, 148, 138], outlined: true },
 	L: { rgb: [204, 196, 186], outlined: true },
+	// counter green (build.counter #00ff8c, Riposte's wave; builds v2)
+	n: { rgb: [0, 92, 60], outlined: true },
+	N: { rgb: [0, 168, 96], outlined: true },
+	u: { rgb: [0, 255, 140], outlined: true },
+	U: { rgb: [196, 255, 222], outlined: true },
 	// glows: no outline
 	"*": { rgb: [255, 255, 240], outlined: false },
 	"+": { rgb: [255, 236, 150], outlined: false },
@@ -376,6 +384,58 @@ const ICONS = [
 		"..LLlwwwwKK...",
 		".LLlllllllKK..",
 		"..............",
+	]],
+	// Riposte (a guard that erases bullets answers with a counter-wave): a raised sword, the parry spark on its blade
+	// and the green crescent of the wave leaving it
+	["boon.riposte", [
+		"..T....n......",
+		"..TS...nN.....",
+		"..TS....Nu....",
+		"..tS.+...NuU..",
+		"..tS+*+..NuuU.",
+		"..tS.+....NuuU",
+		"..tS......NuuU",
+		"..tS......NuuU",
+		"..tS......NuuU",
+		"egGGge...NuuU.",
+		"..wW.....NuU..",
+		"..wW....Nu....",
+		".EggE..nN.....",
+		".......n......",
+	]],
+	// Ballista (the heavy arrow bursts into bolts): a siege bolt, its iron head bursting into gold bolts
+	["boon.ballista", [
+		"..g.......T...",
+		".gGg.....W....",
+		"gG*Gg.........",
+		".gGTTTTTS.....",
+		"..gTtttS......",
+		"...TttS.......",
+		"...TtSWW......",
+		"...TS.wWW.....",
+		"...S...sSt....",
+		".W......wWW..4",
+		"T........wWW32",
+		"..........w32.",
+		"..........32..",
+		".........42...",
+	]],
+	// Wrecker (rolling smashes breakables, every piece fires splinters): a hammer smashing a crate into splinters
+	["boon.wrecker", [
+		".............W",
+		"........s...Ww",
+		"....A..stT.Ww.",
+		".A....sSttT...",
+		"..W.~..SSttT..",
+		".....+..SStts.",
+		"AAAAAAAW.SSs..",
+		"AWwWwWow..s...",
+		"AWwWwoAw~+....",
+		"AWwWAAow..~W..",
+		"AWwAAWww..A...",
+		"AWAAwWww......",
+		"AAAWwWww.W..A.",
+		"Wwwwwwww......",
 	]],
 ];
 

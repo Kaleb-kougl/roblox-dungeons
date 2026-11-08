@@ -6,6 +6,7 @@
 import {
 	BUILD_SCORE_SOURCE_NAMES,
 	GOLDEN_SCORE_SOURCE_NAMES,
+	OVERCAP_SCORE_SOURCE_NAMES,
 	PACT_SCORE_SOURCE_NAMES,
 	PELLET_SCORE_SOURCE_NAMES,
 	SCORE_SOURCE_NAMES,
@@ -72,8 +73,8 @@ export const HUD_STRINGS = {
  * run-over breakdown shows its row there and nowhere else), then PELLET_SCORE_SOURCE_NAMES (docs/PELLETS.md PL7:
  * `pellets` 10 / `sweep` 11, only in pellet runs' points), then the treasure rooms' (docs/TREASURE.md TR6: `treasure`
  * 12, only in vault runs' points: shared/sim TREASURE_SCORE_SOURCE_NAMES; the theme's TREASURE_SCORE_SOURCE_KEY), then
- * PACT_SCORE_SOURCE_NAMES (docs/FORTUNE.md FO6: `horde` 13, pacts runs only) and GOLDEN_SCORE_SOURCE_NAMES (`golden`
- * 14, Goldling runs only).
+ * PACT_SCORE_SOURCE_NAMES (docs/FORTUNE.md FO6: `horde` 13, pacts runs only), GOLDEN_SCORE_SOURCE_NAMES (`golden`
+ * 14, Goldling runs only) and OVERCAP_SCORE_SOURCE_NAMES (docs/BUILDS_V2.md BV9: `overcap` 15, builds runs only).
  */
 export const SCORE_SOURCE_KEYS: ReadonlyArray<string> = [
 	...SCORE_SOURCE_NAMES,
@@ -82,6 +83,7 @@ export const SCORE_SOURCE_KEYS: ReadonlyArray<string> = [
 	...TREASURE_SCORE_SOURCE_NAMES,
 	...PACT_SCORE_SOURCE_NAMES,
 	...GOLDEN_SCORE_SOURCE_NAMES,
+	...OVERCAP_SCORE_SOURCE_NAMES,
 ].map((n) => `score.source.${n}`);
 
 /** One run-over breakdown row: the score source's index, its label key and its points. */

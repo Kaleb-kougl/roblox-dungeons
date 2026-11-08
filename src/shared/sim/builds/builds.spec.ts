@@ -84,6 +84,25 @@ import {
 	stepParty,
 	teamComboWindowTicks,
 	writeHashFields,
+	BALLISTA_BOLT_COUNTS,
+	BALLISTA_CHARGE_PERCENT,
+	BALLISTA_FANS,
+	BALLISTA_RINGS,
+	BOW_DATA,
+	BUILD_PIN_FIELDS,
+	BUILD_WAVE_FIELDS,
+	BUILD_WORLD_SCALARS,
+	BreakableSource,
+	BuildEffect,
+	OVERCAP_POINTS,
+	ProcKind,
+	RIPOSTE_MAX_COUNT,
+	STILL_NONE,
+	ScoreSource,
+	WRECKER_SPLINTERS,
+	bowChargeTicks,
+	buildsHashNames,
+	clearBuildProcs,
 	createTreasureState,
 	ENDLESS_TREASURE_CONFIG,
 	TREASURE_SUBSYSTEM,
@@ -153,7 +172,7 @@ function confirmSolo(s: SimState, config: SimConfig, stick: InputFrame = frame(0
 describe("builds data (BU1)", () => {
 	it("appends Chain Spark (rare), Volatile (common) and Soul Shards (rare) at 12 / 13 / 14; the classic draft keeps 12", () => {
 		expect([Boon.CHAIN_SPARK, Boon.VOLATILE, Boon.SOUL_SHARDS]).toEqual([12, 13, 14]);
-		expect([BOON_COUNT, CLASSIC_BOON_COUNT]).toEqual([17, 12]);
+		expect([BOON_COUNT, CLASSIC_BOON_COUNT]).toEqual([20, 12]);
 		const rows = [12, 13, 14].map((b) => [BOONS[b].id, BOONS[b].rarity, BOONS[b].category]);
 		expect(rows).toEqual([
 			["boon.chainSpark", Rarity.RARE, "offense"],
@@ -192,8 +211,8 @@ describe("builds data (BU1)", () => {
 		}
 	});
 
-	it("thirteen duos (append only): two distinct boons each, no pair twice; Deep Flask in none, the rest in 1-3", () => {
-		expect(DUO_COUNT).toBe(13);
+	it("twenty duos (append only): two distinct boons each, no pair twice; every boon in 1-4", () => {
+		expect(DUO_COUNT).toBe(20);
 		expect([Duo.FIRE_ARROWS, Duo.UNSHAKEN]).toEqual([0, 8]);
 		// docs/LEGENDARIES.md LG1: each new legendary anchors two duos; Stone Heart is Hearty's first.
 		expect([Duo.SUPERNOVA, Duo.SKEWER, Duo.CITADEL, Duo.STONE_HEART]).toEqual([9, 10, 11, 12]);
@@ -219,14 +238,16 @@ describe("builds data (BU1)", () => {
 			uses[d.b] += 1;
 			expect(d.id.sub(1, 4)).toBe("duo.");
 		}
-		expect([uses[Boon.HEARTY], uses[Boon.DEEP_FLASK]]).toEqual([1, 0]);
-		expect([uses[Boon.OVERKILL], uses[Boon.BASTION]]).toEqual([2, 2]);
-		for (let b = 0; b < BOON_COUNT; b++) {
-			if (b === Boon.DEEP_FLASK) continue;
-			expect([b, uses[b] >= 1 && uses[b] <= 3]).toEqual([b, true]);
-		}
-		// Chain Spark is the hub (Storm Blade, Conductor, Chain Reaction); the plan's "one or two" holds for the rest.
-		expect(uses[Boon.CHAIN_SPARK]).toBe(3);
+		// docs/BUILDS_V2.md "Duos": after wave 1 every boon has a duo (Deep Flask's first is Happy Hour); the anchors.
+		expect([uses[Boon.HEARTY], uses[Boon.DEEP_FLASK]]).toEqual([2, 1]);
+		expect([uses[Boon.OVERKILL], uses[Boon.BASTION]]).toEqual([2, 3]);
+		expect([uses[Boon.RIPOSTE], uses[Boon.BALLISTA], uses[Boon.WRECKER], uses[Boon.EMBER_WAKE]]).toEqual([
+			3, 1, 1, 3,
+		]);
+		for (let b = 0; b < BOON_COUNT; b++) expect([b, uses[b] >= 1 && uses[b] <= 4]).toEqual([b, true]);
+		// Chain Spark and Volatile are the hubs (Storm Blade, Conductor, Chain Reaction, Thunder Guard; Shrapnel, Chain
+		// Reaction, Supernova, Powder Keg).
+		expect([uses[Boon.CHAIN_SPARK], uses[Boon.VOLATILE]]).toEqual([4, 4]);
 		expect([DUOS[Duo.FIRE_ARROWS].a, DUOS[Duo.FIRE_ARROWS].b]).toEqual([Boon.EMBER_WAKE, Boon.PIERCING_ARROWS]);
 		expect([DUOS[Duo.CHAIN_REACTION].a, DUOS[Duo.CHAIN_REACTION].b]).toEqual([Boon.VOLATILE, Boon.CHAIN_SPARK]);
 	});
@@ -324,11 +345,26 @@ describe("opt-in state and the builds hash group (BU1)", () => {
 			expect(layout.names[g.start + 1]).toBe("builds.players[0].levels.length");
 			expect(layout.values[g.start + 1]).toBe(BOON_COUNT);
 			expect(layout.names.size()).toBe(layout.values.size());
-			expect(layout.names[g.finish - 1]).toBe("builds.procs.length");
+			// docs/BUILDS_V2.md BV1: after the procs, the pins and waves (empty) and the world's two Stillwater scalars.
+			expect([
+				layout.names[g.finish - 5],
+				layout.names[g.finish - 4],
+				layout.names[g.finish - 3],
+				layout.names[g.finish - 2],
+				layout.names[g.finish - 1],
+			]).toEqual([
+				"builds.procs.length",
+				"builds.pins.length",
+				"builds.waves.length",
+				"builds.stillCombo",
+				"builds.stillTick",
+			]);
+			expect(layout.values[g.finish - 1]).toBe(STILL_NONE);
 			expect(layout.values).toEqual(writeHashFields(s, []));
-			// 1 + per player (1 + 17 levels + 1 duos length + 10 scalars: BU5 appended bulwarkPending, BU6 closeGrazes,
-			// docs/LEGENDARIES.md LG1 braceCount and braceReady, the owner's tuning braceCooldown) + 1 procs length.
-			expect(g.finish - g.start).toBe(1 + n * (1 + BOON_COUNT + 1 + 10) + 1);
+			// 1 + per player (1 + 20 levels + 1 duos length + 14 scalars: BU5 appended bulwarkPending, BU6 closeGrazes,
+			// docs/LEGENDARIES.md LG1 braceCount and braceReady, the owner's tuning braceCooldown, docs/BUILDS_V2.md BV1
+			// riposteCount, overcap, happyHourTicks, BV6 rebukePending) + procs, pins and waves lengths + 2 world scalars.
+			expect(g.finish - g.start).toBe(1 + n * (1 + BOON_COUNT + 1 + 14) + 3 + 2);
 			const scalars = layout.names.filter((name) => name.sub(1, 19) === "builds.players[0].b");
 			expect(scalars).toEqual([
 				"builds.players[0].bigHits",
@@ -371,7 +407,9 @@ describe("opt-in state and the builds hash group (BU1)", () => {
 			expect(last.name).toBe(BUILDS_SUBSYSTEM);
 			expect(lb.groups.size()).toBe(la.groups.size() + 1);
 			// BU5: a builds run's score group also holds the build-only sources (Jackpot) after the points and after
-			// the counts (0 here); every other group is identical.
+			// the counts (0 here); since docs/BUILDS_V2.md BV9 every gated source up to OVERCAP (padded, 0 here). Every
+			// other group is identical.
+			const pad = ScoreSource.OVERCAP + 1 - SCORE_SOURCE_COUNT;
 			for (let gi = 0; gi < la.groups.size(); gi++) {
 				const ga = la.groups[gi];
 				const gb = lb.groups[gi];
@@ -382,7 +420,7 @@ describe("opt-in state and the builds hash group (BU1)", () => {
 					const c = SCORE_SOURCE_COUNT;
 					for (let i = 0; i < va.size(); i++) {
 						want.push(va[i]);
-						if (i === f + c - 1 || i === f + 2 * c - 1) want.push(0);
+						if (i === f + c - 1 || i === f + 2 * c - 1) for (let k = 0; k < pad; k++) want.push(0);
 					}
 				} else for (const v of va) want.push(v);
 				expect([t, gb.name, ...groupValues(lb, gb)]).toEqual([t, ga.name, ...want]);
@@ -558,8 +596,12 @@ describe("legendaries Overkill and Bastion (docs/LEGENDARIES.md LG1)", () => {
 			"braceCount",
 			"braceReady",
 			"braceCooldown",
+			"riposteCount",
+			"overcap",
+			"happyHourTicks",
+			"rebukePending",
 		]);
-		expect(BUILD_PROC_FIELDS).toEqual(["x", "z", "owner", "gen", "slot", "id", "excess"]);
+		expect(BUILD_PROC_FIELDS).toEqual(["x", "z", "owner", "gen", "slot", "id", "excess", "kind"]);
 		const s = createSimState(SEED, 0, 0, ARENA);
 		expect([bp(s).braceCount, bp(s).braceReady, bp(s).levels.size()]).toEqual([0, 0, BOON_COUNT]);
 		const c = cloneSimState(s);
@@ -661,6 +703,272 @@ describe("legendaries Overkill and Bastion (docs/LEGENDARIES.md LG1)", () => {
 		const seen = new Set<number>();
 		for (let k = 0; k < 200; k++) for (const c of drawLegendaryOffers(new Rng(k), zeros(), [], 1)) seen.add(c);
 		expect([seen.has(Boon.OVERKILL), seen.has(Boon.BASTION), seen.size()]).toEqual([true, true, 4]);
+	});
+});
+
+// ---------------------------------------------------------------------------------------------
+
+describe("builds v2, wave 1 (docs/BUILDS_V2.md BV1): data and scaffolding, no rules", () => {
+	const V2_BOONS = [Boon.RIPOSTE, Boon.BALLISTA, Boon.WRECKER];
+	const V2_DUOS = [
+		Duo.THUNDER_GUARD,
+		Duo.STILLWATER,
+		Duo.REBUKE,
+		Duo.DRAGON_BOLT,
+		Duo.POWDER_KEG,
+		Duo.FULL_HEART,
+		Duo.HAPPY_HOUR,
+	];
+
+	it("appends Riposte (rare), Ballista (rare) and Wrecker (common) at 17 / 18 / 19, offense, levels I-III", () => {
+		expect(V2_BOONS).toEqual([17, 18, 19]);
+		expect(V2_BOONS.map((b) => [BOONS[b].id, BOONS[b].rarity, BOONS[b].category, boonMaxLevel(b)])).toEqual([
+			["boon.riposte", Rarity.RARE, "offense", BOON_MAX_LEVEL],
+			["boon.ballista", Rarity.RARE, "offense", BOON_MAX_LEVEL],
+			["boon.wrecker", Rarity.COMMON, "offense", BOON_MAX_LEVEL],
+		]);
+		// The per-level tables (Design): caps, bolts, the charge, splinters; Ballista's ring and fan per level.
+		expect([RIPOSTE_MAX_COUNT, BALLISTA_BOLT_COUNTS, BALLISTA_CHARGE_PERCENT, WRECKER_SPLINTERS]).toEqual([
+			[6, 10, 10],
+			[6, 10, 10],
+			[100, 75, 75],
+			[3, 5, 5],
+		]);
+		expect(BALLISTA_RINGS.map((r) => r.count)).toEqual(BALLISTA_BOLT_COUNTS);
+		expect(BALLISTA_FANS.map((r) => r.count)).toEqual(BALLISTA_BOLT_COUNTS);
+		for (const r of [...BALLISTA_RINGS, ...BALLISTA_FANS]) expect(r.kind).toBe(BulletKind.BURST);
+		// The tutorial's draft (drawBoonOffers, no builds) never deals them.
+		const rng = new Rng(29);
+		for (let i = 0; i < 1000; i++) for (const b of drawBoonOffers(rng, [], 1 + (i % 20))) expect(b < 12).toBe(true);
+	});
+
+	it("seven duos at 13-19 (card ids 77-83) with the plan's pairs", () => {
+		expect(V2_DUOS).toEqual([13, 14, 15, 16, 17, 18, 19]);
+		expect(V2_DUOS.map((d) => [DUOS[d].id, DUOS[d].a, DUOS[d].b, duoCard(d)])).toEqual([
+			["duo.thunderGuard", Boon.RIPOSTE, Boon.CHAIN_SPARK, 77],
+			["duo.stillwater", Boon.COMPOSURE, Boon.RIPOSTE, 78],
+			["duo.rebuke", Boon.BASTION, Boon.RIPOSTE, 79],
+			["duo.dragonBolt", Boon.BALLISTA, Boon.EMBER_WAKE, 80],
+			["duo.powderKeg", Boon.WRECKER, Boon.VOLATILE, 81],
+			["duo.fullHeart", Boon.HEARTY, Boon.SHARPENED, 82],
+			["duo.happyHour", Boon.DEEP_FLASK, Boon.BOUNTY, 83],
+		]);
+	});
+
+	it("the other indices: BuildEffect 9-11, ProcKind, BreakableSource 4 / 5, ScoreSource.OVERCAP 15 (BV9: builds runs)", () => {
+		expect([BuildEffect.BALLISTA, BuildEffect.WRECKER, BuildEffect.RIPOSTE]).toEqual([9, 10, 11]);
+		for (const e of [9, 10, 11]) expect(sourceEffect(buildSource(e, 2))).toBe(e);
+		expect([ProcKind.KILL, ProcKind.SMASH]).toEqual([0, 1]);
+		expect([BreakableSource.ROLL, BreakableSource.BUILD]).toEqual([4, 5]);
+		expect([ScoreSource.OVERCAP, OVERCAP_POINTS]).toEqual([15, 10]);
+		// BV9 adds the source: an endless (builds) run's points / counts end at OVERCAP (16 entries, 0..15).
+		const setup = buildEndlessRunConfig(SEED);
+		const s = createSimState(SEED, setup.spawn!.x, setup.spawn!.z, setup.config);
+		expect([s.score!.points.size(), s.score!.counts.size()]).toEqual([
+			ScoreSource.OVERCAP + 1,
+			ScoreSource.OVERCAP + 1,
+		]);
+	});
+
+	it("a fresh build is dealt each as a New card; each reaches II and III (the evolution) through grantCard", () => {
+		const seen = new Set<number>();
+		for (let k = 0; k < 600; k++)
+			for (const c of drawCardOffers(new Rng(k), BUILD_RULES, zeros(), [], 1 + (k % 15))) seen.add(c);
+		for (const b of V2_BOONS) expect([b, seen.has(b)]).toEqual([b, true]);
+		const s = createSimState(SEED, 0, 0, ARENA);
+		for (const b of V2_BOONS) {
+			expect([b, cardKind(s, 0, b), grantCard(s, 0, b)]).toEqual([b, CardKind.NEW, CardKind.NEW]);
+			expect([b, cardKind(s, 0, b), grantCard(s, 0, b)]).toEqual([b, CardKind.UPGRADE, CardKind.UPGRADE]);
+			expect([b, cardKind(s, 0, b), grantCard(s, 0, b)]).toEqual([b, CardKind.EVOLUTION, CardKind.EVOLUTION]);
+			expect([b, grantCard(s, 0, b), bp(s).levels[b]]).toEqual([b, -1, 3]);
+		}
+		expect(s.builds!.events.evolvedBoon).toEqual(V2_BOONS);
+		expect(rp(s).boons).toEqual(V2_BOONS);
+	});
+
+	it("each of the seven duos is available exactly when both of its boons are owned, dealt then, granted once", () => {
+		for (const d of V2_DUOS) {
+			const def = DUOS[d];
+			const one = levelsOf([[def.a, 1]]);
+			const other = levelsOf([[def.b, 1]]);
+			const both = levelsOf([
+				[def.a, 2],
+				[def.b, 1],
+			]);
+			expect([d, duoAvailable(one, [], d), duoAvailable(other, [], d), duoAvailable(both, [], d)]).toEqual([
+				d,
+				false,
+				false,
+				true,
+			]);
+			expect(duoAvailable(both, [d], d)).toBe(false);
+			// Never dealt without both boons (600 drafts each with one of them at level II, boss deals included).
+			for (let k = 0; k < 300; k++) {
+				const a = drawCardOffers(
+					new Rng(k),
+					BUILD_RULES,
+					levelsOf([[def.a, 2]]),
+					[],
+					1 + (k % 15),
+					k % 2 === 0,
+				);
+				const b = drawCardOffers(
+					new Rng(k),
+					BUILD_RULES,
+					levelsOf([[def.b, 2]]),
+					[],
+					1 + (k % 15),
+					k % 2 === 0,
+				);
+				expect([d, k, a.includes(duoCard(d)), b.includes(duoCard(d))]).toEqual([d, k, false, false]);
+			}
+			// A boss deal's guaranteed duo: the only available one is card 0.
+			for (let k = 1; k <= 10; k++) {
+				const boss = drawCardOffers(new Rng(k), BUILD_RULES, both, [], 5, true);
+				expect([d, k, boss[0]]).toEqual([d, k, duoCard(d)]);
+			}
+			const s = createSimState(SEED, 0, 0, ARENA);
+			expect(grantCard(s, 0, duoCard(d))).toBe(-1);
+			grantCard(s, 0, def.a);
+			grantCard(s, 0, def.b);
+			expect([grantCard(s, 0, duoCard(d)), grantCard(s, 0, duoCard(d)), bp(s).duos]).toEqual([
+				CardKind.DUO,
+				-1,
+				[d],
+			]);
+		}
+	});
+
+	it("the appended hashed state: per player riposteCount / overcap / happyHourTicks, proc kind, pins, waves, Stillwater", () => {
+		expect(BUILD_PIN_FIELDS).toEqual(["bullet", "owner", "slot", "id", "x0", "z0", "slam"]);
+		expect(BUILD_WAVE_FIELDS).toEqual([
+			"owner",
+			"x",
+			"z",
+			"dirX",
+			"dirZ",
+			"halfCos",
+			"radius",
+			"range",
+			"speed",
+			"damage",
+			"kind",
+		]);
+		expect(BUILD_WORLD_SCALARS).toEqual(["stillCombo", "stillTick"]);
+		const s = createSimState(SEED, 0, 0, ARENA);
+		const b = s.builds!;
+		expect([bp(s).riposteCount, bp(s).overcap, bp(s).happyHourTicks]).toEqual([0, 0, 0]);
+		expect([b.pins.size(), b.waves.size(), b.stillCombo, b.stillTick]).toEqual([0, 0, 0, STILL_NONE]);
+		// Each new field moves the hash, is cloned and is named in the dump in writeHashFields' order.
+		const c = cloneSimState(s);
+		const cb = c.builds!;
+		cb.players[0].riposteCount = 3;
+		cb.procs.push({ x: 1, z: 2, owner: 0, gen: 0, slot: -1, id: -1, excess: 0, kind: ProcKind.SMASH });
+		cb.pins.push({ bullet: 5, owner: 0, slot: 2, id: 9, x0: 1.5, z0: -2, slam: 0 });
+		cb.waves.push({
+			owner: 0,
+			x: 1,
+			z: 2,
+			dirX: 0,
+			dirZ: 1,
+			halfCos: 0.5,
+			radius: 0.4,
+			range: 7,
+			speed: 24,
+			damage: 4,
+			kind: 0,
+			hits: [7, 11],
+		});
+		cb.stillCombo = 25;
+		cb.stillTick = 40;
+		expect(hashState(c) !== hashState(s)).toBe(true);
+		const d = cloneSimState(c);
+		expect(hashState(d)).toBe(hashState(c));
+		d.builds!.waves[0].hits.push(13);
+		d.builds!.pins[0].slam = 1;
+		expect([cb.waves[0].hits, cb.pins[0].slam, hashState(d) !== hashState(c)]).toEqual([[7, 11], 0, true]);
+		const layout = hashLayout(c, true);
+		const g = layout.groups.find((x) => x.name === BUILDS_SUBSYSTEM)!;
+		const names: string[] = [];
+		buildsHashNames(cb, names);
+		expect(names.size()).toBe(g.finish - g.start);
+		for (let k = 0; k < names.size(); k++) expect(layout.names[g.start + k]).toBe(names[k]);
+		const tail: string[] = [];
+		for (let k = names.size() - 26; k < names.size(); k++) tail.push(names[k]);
+		expect(tail).toEqual([
+			"builds.procs[0].kind",
+			"builds.pins.length",
+			"builds.pins[0].bullet",
+			"builds.pins[0].owner",
+			"builds.pins[0].slot",
+			"builds.pins[0].id",
+			"builds.pins[0].x0",
+			"builds.pins[0].z0",
+			"builds.pins[0].slam",
+			"builds.waves.length",
+			"builds.waves[0].owner",
+			"builds.waves[0].x",
+			"builds.waves[0].z",
+			"builds.waves[0].dirX",
+			"builds.waves[0].dirZ",
+			"builds.waves[0].halfCos",
+			"builds.waves[0].radius",
+			"builds.waves[0].range",
+			"builds.waves[0].speed",
+			"builds.waves[0].damage",
+			"builds.waves[0].kind",
+			"builds.waves[0].hits.length",
+			"builds.waves[0].hits[0]",
+			"builds.waves[0].hits[1]",
+			"builds.stillCombo",
+			"builds.stillTick",
+		]);
+		expect(layout.values).toEqual(writeHashFields(c, []));
+		// The floor change drops the pins and waves with the procs, and Stillwater's record (and, BV2, Riposte's count).
+		clearBuildProcs(cb);
+		expect([cb.procs.size(), cb.pins.size(), cb.waves.size(), cb.stillCombo, cb.stillTick]).toEqual([
+			0,
+			0,
+			0,
+			0,
+			STILL_NONE,
+		]);
+		// BV2: the floor change discards every player's Riposte count (a guard running across it fires nothing).
+		expect(cb.players[0].riposteCount).toBe(0);
+	});
+
+	it("the new event lists exist, are cloned, and are cleared every tick", () => {
+		const s = createSimState(SEED, 0, 0, ARENA);
+		const e = s.builds!.events;
+		const lists = [
+			e.waveX,
+			e.waveKind,
+			e.counterCount,
+			e.ballistaWall,
+			e.pinStartSlot,
+			e.pinEndSlam,
+			e.slamStruck,
+			e.smashGen,
+			e.demolitionOwner,
+			e.beamStruck,
+			e.happyPlayer,
+			e.overcapPoints,
+		];
+		for (const l of lists) {
+			expect(l.size()).toBe(0);
+			l.push(1);
+		}
+		expect(cloneSimState(s).builds!.events.overcapPoints).toEqual([1]);
+		step(s, frame(0, 0), ARENA);
+		for (const l of lists) expect(l.size()).toBe(0);
+	});
+
+	it("bowChargeTicks: BOW_DATA.chargeTicks (36) without Ballista and at Ballista I (100 %)", () => {
+		const s = createSimState(SEED, 0, 0, ARENA);
+		expect(bowChargeTicks(s, 0)).toBe(BOW_DATA.chargeTicks);
+		grantCard(s, 0, Boon.BALLISTA);
+		expect([bowChargeTicks(s, 0), BOW_DATA.chargeTicks]).toEqual([36, 36]);
+		expect(bowChargeTicks(createSimState(SEED, 0, 0, PLAIN_ARENA), 0)).toBe(36);
 	});
 });
 

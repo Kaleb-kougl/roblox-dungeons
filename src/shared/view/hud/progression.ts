@@ -39,6 +39,8 @@ export const PROGRESSION_STRINGS = {
 	draftAgain: "hud.draft.again",
 	/** An Upgrade card's previous line under the new one: `{desc}` (a theme key). */
 	draftWas: "hud.draft.was",
+	/** docs/BUILDS_V2.md BV8: a New card that unlocks a duo, at its foot: `{duo}` (the duo's name, a theme key). */
+	draftDuoHint: "hud.draft.duoHint",
 	/** An evolution taken: `{boon}`, `{evo}`; a duo taken: `{name}` (theme keys). */
 	toastEvolved: "hud.toast.evolved",
 	toastDuo: "hud.toast.duo",

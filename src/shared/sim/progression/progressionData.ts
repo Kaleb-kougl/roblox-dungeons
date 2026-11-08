@@ -85,6 +85,10 @@ export const Boon = {
 	// Legendaries (docs/LEGENDARIES.md LG1): two more anchors, builds-only like the on-kill boons (CLASSIC_BOON_COUNT).
 	OVERKILL: 15,
 	BASTION: 16,
+	// Builds v2, wave 1 (docs/BUILDS_V2.md BV1): builds-only like the on-kill boons (CLASSIC_BOON_COUNT).
+	RIPOSTE: 17,
+	BALLISTA: 18,
+	WRECKER: 19,
 } as const;
 export type BoonId = (typeof Boon)[keyof typeof Boon];
 
@@ -116,13 +120,16 @@ export const BOONS: ReadonlyArray<BoonDef> = [
 	{ id: "boon.soulShards", rarity: Rarity.RARE, category: "offense" },
 	{ id: "boon.overkill", rarity: Rarity.LEGENDARY, category: "offense" },
 	{ id: "boon.bastion", rarity: Rarity.LEGENDARY, category: "defense" },
+	{ id: "boon.riposte", rarity: Rarity.RARE, category: "offense" },
+	{ id: "boon.ballista", rarity: Rarity.RARE, category: "offense" },
+	{ id: "boon.wrecker", rarity: Rarity.COMMON, category: "offense" },
 ];
 export const BOON_COUNT = BOONS.size();
 /**
  * The boons a draft without builds offers (drawBoonOffers: the tutorial, hand-built endless configs): the first 12,
- * Boon.SHARPENED .. Boon.COMPOSURE. The on-kill boons (docs/BUILDS.md) and the legendaries Overkill / Bastion
- * (docs/LEGENDARIES.md) appended after them are builds-only, so a run without SimConfig.builds draws exactly as before
- * they existed.
+ * Boon.SHARPENED .. Boon.COMPOSURE. The on-kill boons (docs/BUILDS.md), the legendaries Overkill / Bastion
+ * (docs/LEGENDARIES.md) and builds v2's Riposte / Ballista / Wrecker (docs/BUILDS_V2.md) appended after them are
+ * builds-only, so a run without SimConfig.builds draws exactly as before they existed.
  */
 export const CLASSIC_BOON_COUNT = 12;
 
@@ -218,6 +225,16 @@ export const BASTION_GUARD_TICKS = 27;
  * 8 since the owner's retune (2026-11-06; was 3, docs/LEGENDARIES.md LGD6).
  */
 export const BASTION_BRACE_BULLETS = 8;
+
+// --- Ballista's charge (docs/BUILDS_V2.md "Ballista"; BV1 declares it, the rule is BV3) ----------------------
+// Riposte's, Ballista's bolts and Wrecker's tunables are in builds/effectsData.ts (build effects, like Chain Spark's);
+// the charge is a weapon mod runMods reads (BV3: `ballistaChargePercent`, sword.ts swordGuardTicks' pattern).
+
+/**
+ * Per level: the bow's charge time percent with Ballista (I 100 = BOW_DATA.chargeTicks 36; II / III Siege Bolt 75 = 27
+ * ticks). Read through bow.ts bowChargeTicks (BV1: always BOW_DATA.chargeTicks; BV3 applies this).
+ */
+export const BALLISTA_CHARGE_PERCENT: ReadonlyArray<number> = [100, 75, 75];
 
 // --- Relics ------------------------------------------------------------------------------------------
 

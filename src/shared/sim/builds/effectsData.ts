@@ -1,7 +1,8 @@
 /**
  * Build effect tunables (docs/BUILDS.md "The three on-kill boons", "Duo boons"; BU1 declares them, their rules are
  * BU3+): the on-kill boons per level and the effect bullets' BurstSpecs. Data only. Every burst shape is an arc-table
- * row: 16 @ FULL_RING and 1 @ 0 are the web build's, 8 and 12 @ FULL_RING port rows (combat/arcTablePort.ts).
+ * row: 16 @ FULL_RING and 1 @ 0 are the web build's, 8 and 12 @ FULL_RING port rows (combat/arcTablePort.ts); builds
+ * v2 (docs/BUILDS_V2.md BV1) adds 6 / 10 @ FULL_RING and 6 / 10 @ BALLISTA_FAN_SPREAD (port rows too).
  * Per-level tables are indexed by level - 1 (progressionData levelValue).
  */
 import { TILE_SIZE } from "../units";
@@ -318,6 +319,150 @@ export const EFFECT_BULLET_KINDS: ReadonlyArray<number> = [
 	BulletKind.EMBER,
 	BulletKind.SPARK_BOLT,
 ];
+
+// --- Builds v2, wave 1 (docs/BUILDS_V2.md "Design"; BV1 declares these, the rules are BV2-BV9) ---------------
+// Numbers are the plan's starting points for BV12's tuning pass. Per-level tables by level - 1 (levelValue). Distances
+// in world units (TILE_SIZE 1), speeds in world units per second, durations in ticks. Ballista's charge percent is in
+// progression/progressionData.ts (a weapon mod, like Bastion's guard).
+
+// Riposte (rare, offense; BV2: ./riposte.ts). The counter-wave is a hashed sweep (BuildWave), not bullets (BVD1).
+
+/** A guard that ran its full length and erased at least this many enemy bullets fires the counter-wave. */
+export const RIPOSTE_MIN_ERASED = 1;
+/** The forward wave's half-angle cosine (a 120 degree crescent; melee's inCone test). A literal: no trig. */
+export const RIPOSTE_WAVE_HALF_ANGLE_COS = 0.5;
+/** The wave's radius grows this fast (24 tiles per second, x SIM_DT per tick) ... */
+export const RIPOSTE_WAVE_SPEED = 24 * TILE_SIZE;
+/** ... up to this radius, where it ends (an 18-tick life at 24 tiles / s, rounded up). */
+export const RIPOSTE_WAVE_RANGE = 7 * TILE_SIZE;
+/** Per level: the most damage a wave deals (its damage is min(riposteCount, this) before playerHitDamage). */
+export const RIPOSTE_MAX_COUNT: ReadonlyArray<number> = [6, 10, 10];
+/** At most this many waves live at once (state.builds.waves); one more is not spawned. */
+export const RIPOSTE_WAVES_MAX = 8;
+/** Counterstrike (Riposte III): a guard that erased at least this many sends the wave as a full ring, with returns. */
+export const COUNTERSTRIKE_RING_ERASED = 5;
+/** The full ring's half-angle cosine: the novas' (below -1, so the cone test always holds). */
+export const COUNTERSTRIKE_RING_HALF_ANGLE_COS = NOVA_HALF_ANGLE_COS;
+/**
+ * Counterstrike's returns: min(riposteCount, RIPOSTE_MAX_COUNT) shards at the nearest enemies within
+ * COUNTERSTRIKE_RANGE, nearest first (Soul Shards' aim and look, 1 damage; BuildEffect.RIPOSTE, gen 0).
+ */
+export const COUNTERSTRIKE_RETURN: BurstSpec = { ...SOUL_SHARD, damage: 1 };
+export const COUNTERSTRIKE_RANGE = SOUL_SHARDS_RANGE;
+/** BuildWave.kind and BuildEvents.waveKind: what sent a wave. Append only (hashed). */
+export const WaveKind = {
+	/** Riposte's crescent along the facing at the guard's end. */
+	FORWARD: 0,
+	/** Counterstrike's full ring (COUNTERSTRIKE_RING_ERASED or more erased). */
+	RING: 1,
+	/** Rebuke's full ring (Bastion + Riposte: a brace that restored something). */
+	REBUKE: 2,
+} as const;
+/**
+ * BuildPlayerState.rebukePending (docs/BUILDS_V2.md BV6, appended, hashed): what Rebuke's ring waits for. Append only.
+ */
+export const RebukePending = {
+	/** Nothing: no brace that restored something in the current guard or roll. */
+	NONE: 0,
+	/** The current guard braced: its full-length end fires the REBUKE ring instead of the forward wave. */
+	GUARD: 1,
+	/** A roll braced this tick: stepBuilds (./riposte.ts stepWaves) fires the REBUKE ring at once. */
+	ROLL: 2,
+} as const;
+
+// Ballista (rare, offense; BV3 the bursts, BV4 Siege Bolt: ./siege.ts).
+
+/** Per level: bolts a heavy arrow bursts into when it is consumed (I / II / III Siege Bolt). */
+export const BALLISTA_BOLT_COUNTS: ReadonlyArray<number> = [6, 10, 10];
+/** The back fan's spread (radians) at a wall or a piece the arrow does not break, aimed back along its flight. */
+export const BALLISTA_FAN_SPREAD = 1.6;
+export const BALLISTA_BOLT_SPEED = 12;
+export const BALLISTA_BOLT_LIFE = 0.35;
+export const BALLISTA_BOLT_DAMAGE = 1;
+/** One bolt (BulletKind.BURST, Volatile's look: BVD9); the bursts below are this at their counts and shapes. */
+export const BALLISTA_BOLT: BurstSpec = {
+	count: 1,
+	spread: 0,
+	speed: BALLISTA_BOLT_SPEED,
+	life: BALLISTA_BOLT_LIFE,
+	damage: BALLISTA_BOLT_DAMAGE,
+	kind: BulletKind.BURST,
+};
+/** Per level: the last-pierce ring (6 / 10 / 10 @ FULL_RING; port arc rows, combat/arcTablePort.ts). */
+export const BALLISTA_RINGS: ReadonlyArray<BurstSpec> = BALLISTA_BOLT_COUNTS.map((count) => ({
+	...BALLISTA_BOLT,
+	count,
+	spread: FULL_RING,
+}));
+/** Per level: the back fan (6 / 10 / 10 @ BALLISTA_FAN_SPREAD; port arc rows). */
+export const BALLISTA_FANS: ReadonlyArray<BurstSpec> = BALLISTA_BOLT_COUNTS.map((count) => ({
+	...BALLISTA_BOLT,
+	count,
+	spread: BALLISTA_FAN_SPREAD,
+}));
+/** Siege Bolt: at most this many pins live at once (state.builds.pins); a further arrow plows only. */
+export const SIEGE_PINS_MAX = 4;
+/** A drag that leaves the pinned body more than this short of its arrow sets the pin's `slam` (it hit something). */
+export const SIEGE_SLAM_SHORT = 0.25 * TILE_SIZE;
+/** The slam: the pinned actor takes this percent of the heavy arrow's damage (through playerHitDamage). */
+export const SIEGE_SLAM_DAMAGE_PERCENT = 300;
+/** The slam's shockwave: every other living enemy within this of the pinned actor takes SIEGE_SHOCK_DAMAGE ... */
+export const SIEGE_SHOCK_RADIUS = 2 * TILE_SIZE;
+export const SIEGE_SHOCK_DAMAGE = 3;
+/** The shockwave's generation: its kills and the pieces it breaks proc one generation on from the slam (gen 0). */
+export const SIEGE_SHOCK_GEN = 1;
+
+// Wrecker (common, offense; BV5). Roll smash: PLAYER_RADIUS + BREAKABLE_HIT_RADIUS swept along the roll's step.
+
+/** Per level: splinters every piece the owner breaks fires (I / II / III Demolition). */
+export const WRECKER_SPLINTERS: ReadonlyArray<number> = [3, 5, 5];
+/** One splinter (Soul Shards' aim and look, BulletKind.SHARD; BuildEffect.WRECKER). */
+export const WRECKER_SPLINTER: BurstSpec = {
+	count: 1,
+	spread: 0,
+	speed: 14,
+	life: 0.6,
+	damage: 1,
+	kind: BulletKind.SHARD,
+};
+/** Splinters aim at the nearest living enemies within this of the piece (nearest first). */
+export const WRECKER_RANGE = SOUL_SHARDS_RANGE;
+/** Demolition (III): every piece the owner breaks explodes for this to every enemy within DEMOLITION_RADIUS ... */
+export const DEMOLITION_DAMAGE = 2;
+/** ... and breaks every intact piece in it (BreakableSource.BUILD), each its own smash one generation on (BVD10). */
+export const DEMOLITION_RADIUS = 1.5 * TILE_SIZE;
+
+// Wave 1 duos (BV6 / BV7).
+
+/** Thunder Guard (Riposte + Chain Spark): each erased bullet sparks to the nearest enemy within this, for this ... */
+export const THUNDER_GUARD_RANGE = CHAIN_SPARK_RANGE;
+export const THUNDER_GUARD_DAMAGE = 1;
+/** ... at most this many sparks per guard tick. */
+export const THUNDER_GUARD_MAX = 8;
+/** BuildEvents.sparkFork values: 0 a hop, 1 a Storm Crown fork, 2 a Thunder Guard spark (from an erased bullet). */
+export const SparkFork = {
+	HOP: 0,
+	FORK: 1,
+	THUNDER: 2,
+} as const;
+/** Stillwater (Composure + Riposte): a cut combo can be given back by an owner's erasing guard within this long. */
+export const STILLWATER_SECONDS = 3;
+export const STILLWATER_TICKS = secondsToTicks(STILLWATER_SECONDS); // 180
+/** BuildsState.stillTick when no cut combo is recorded. */
+export const STILL_NONE = -1;
+/** Dragon Bolt (Ballista + Ember Wake): a heavy arrow drops an ember every this many ticks of its whole flight. */
+export const DRAGON_BOLT_EMBER_TICKS = 3;
+/** Full Heart (Hearty + Sharpened): at full hearts the beam strikes every enemy within FULL_HEART_RADIUS of ... */
+export const FULL_HEART_RADIUS = SKEWER_RADIUS;
+/** ... the line from the player along the facing to this length, for the finisher's damage. */
+export const FULL_HEART_RANGE = 4 * TILE_SIZE;
+/** ... the weapon whose finisher damage the beam deals (read through the registry: the bow cannot import the sword). */
+export const FULL_HEART_WEAPON_ID = "weapon.sword";
+/** Happy Hour (Deep Flask + Bounty): a flask drink sets `happyHourTicks` to this ... */
+export const HAPPY_HOUR_SECONDS = 5;
+export const HAPPY_HOUR_TICKS = secondsToTicks(HAPPY_HOUR_SECONDS); // 300
+/** ... and the owner's kill points are x this percent while it runs (folded into Bounty's bonusPercent). */
+export const HAPPY_HOUR_KILL_PERCENT = 200;
 
 /** Spark beams stay on screen this long (presentation, BuildEvents). */
 export const SPARK_BEAM_TICKS = secondsToTicks(0.12);

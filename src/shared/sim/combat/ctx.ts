@@ -87,6 +87,12 @@ export class SimCtx {
 	 * id check makes a slot freed and reused mid-tick read as unbuffed (actor ids are unique for the run).
 	 */
 	readonly auraMask = new Map<ActorState, number>();
+	/**
+	 * Siege Bolt's held actors (docs/BUILDS_V2.md BV4, sim/builds siege.ts): pinned actor -> its actor id when the mask
+	 * was built. Transient, never hashed, the aura mask's construction: rebuildPins fills it at the START of stepActors
+	 * from state.builds.pins (carrying records only; a pure function of hashed state), bind() empties it.
+	 */
+	readonly pinMask = new Map<ActorState, number>();
 
 	bind(state: SimState, config: Readonly<SimConfig>, input: Readonly<InputFrame>): this {
 		this.state = state;
@@ -104,6 +110,7 @@ export class SimCtx {
 		this.procCause = 0;
 		this.killCarry = 0;
 		this.auraMask.clear();
+		this.pinMask.clear();
 		return this;
 	}
 
@@ -112,6 +119,23 @@ export class SimCtx {
 	/** stepActors, first thing: the aura mask from the actor pool as the tick starts. */
 	rebuildAura(): void {
 		warbannerAuraMask(this.actors, this.auraMask);
+	}
+
+	/** stepActors, first thing: Siege Bolt's held actors from state.builds.pins (empty without builds or pins). */
+	rebuildPins(): void {
+		this.pinMask.clear();
+		const pins = this.state.builds?.pins;
+		if (pins === undefined) return;
+		for (const pin of pins) {
+			if (pin.slot < 0) continue;
+			const a = this.actors[pin.slot];
+			if (a !== undefined) this.pinMask.set(a, pin.id);
+		}
+	}
+
+	/** True when `a` is held by a Siege Bolt pin (this tick's rebuildPins; slot reuse reads as free by the id). */
+	isPinned(a: Readonly<ActorState>): boolean {
+		return this.pinMask.size() > 0 && this.pinMask.get(a as ActorState) === a.id;
 	}
 
 	/** True when `a` stood inside a living Warbanner's aura at this tick's rebuild (one aura at most: no stacking). */

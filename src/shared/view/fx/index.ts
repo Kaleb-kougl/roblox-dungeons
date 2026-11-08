@@ -3,7 +3,7 @@
  * events, the shared juice rules (reduced motion, particle budget), the hitstop clock and freeze-frame rules, health
  * bar layout and state, the damage number pool, the death particle system, the render-side PRNG and the sprite-effect
  * cues (fxCues), the per-tick collectors the run views fill (roomClears, comboEvents, nearMissEvents, variantCueEvents, buildFxEvents; the run-long recapTally), the grazes and
- * parries rules (nearMissRules, nearMissConfig), the co-op moments (teamMoments, teamMomentsConfig, teamMomentsView, syncCallout) and the build effects' rules (buildFxRules, buildFxConfig) and Bastion's brace feedback (braceFx, braceFxConfig; docs/LEGENDARIES.md LG6). No Roblox API: every module is tested headlessly. The client controllers in src/client/controllers/fx
+ * parries rules (nearMissRules, nearMissConfig), the co-op moments (teamMoments, teamMomentsConfig, teamMomentsView, syncCallout) and the build effects' rules (buildFxRules, buildFxConfig) and Bastion's brace feedback (braceFx, braceFxConfig; docs/LEGENDARIES.md LG6), and builds v2, wave 1's planners (docs/BUILDS_V2.md BV11: buildsV2FxConfig, buildsV2Fx, counterWaveFx, siegeFx, wreckerFx, heartBeamFx, overcapFx). No Roblox API: every module is tested headlessly. The client controllers in src/client/controllers/fx
  * draw them.
  */
 export * from "./events";
@@ -46,3 +46,12 @@ export * from "./buildFxEvents";
 export * from "./buildFxRules";
 export * from "./braceFxConfig";
 export * from "./braceFx";
+// docs/BUILDS_V2.md BV11: builds v2, wave 1's pure view core.
+export * from "./buildsV2FxConfig";
+export * from "./buildsV2Fx";
+export * from "./counterWaveFx";
+export * from "./siegeFx";
+export * from "./siegeDraw"; // BV11c: the bow's drawing rules
+export * from "./wreckerFx";
+export * from "./heartBeamFx";
+export * from "./overcapFx";
