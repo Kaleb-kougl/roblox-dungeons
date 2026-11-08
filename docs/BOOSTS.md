@@ -315,6 +315,29 @@ read helpers, hash), `boostMods.ts` (the effect reads, a leaf), specs `drops.spe
   stored binding on Semicolon is dropped (that action reads its default), and one on M clashes with the map's default
   unless the map was moved too, so it falls back to its default (`sanitizeControlsOverrides`; `bindings.spec.ts`).
 
+## As built: boost icons (2026-11-08)
+
+Presentation only (no sim, dungeon, lockstep, hash, replay, fixture or score change). The HUD's boost row (status panel
+and the touch strip's chips) can draw one 16 x 16 icon per boost instead of its colour square and three-letter label.
+
+- **Art.** ORIGINAL pixel art by `scripts/art/gen-boost-icons.js` (the boon icons' kit and palette, plus one four-step
+  ramp per boost whose third step is its identity role: Fury `#ffc83d`, Quickstep `#3ff0d8`, Frenzy `#a8f03c`, Aegis
+  `#c3a6ff`), so each icon matches its drop halo and aura (docs/BOOST_ART.md) and echoes the aura's motif: Fury an angry
+  flame, Quickstep a winged boot with streaks, Frenzy twin daggers crossed under a swing arc, Aegis a round ward set
+  with the Aegis pip's diamond. Run by `art:build` / `art:lock` into `art/vendor/kaleb-vale/boost-icons/`, packed by a
+  new atlas group `boostIcons` into its OWN sheet `boost-icons.png` (36 x 36; `--only boostIcons`, generated
+  `packs/vale/boostIconLayout.ts`), so no other icon sheet repacks. Original art: no notices or Credits entry.
+- **Theme.** Optional free-form ui ids `ui.boost.<kind>` (`shared/theme` `boostIconId`), all or nothing on the sheet's
+  one ID (vale `VALE_BOOST_ICON_SOURCE`). No new strings, roles, sounds or settings; no Luau-locals change.
+- **View.** `shared/view/boosts` `boostIconArtId(kind)`; `BoostRow` draws the art on `BOOST_VIEW.iconArtFillRole`
+  (`uiPanel`) with the kind's colour role as the square's outline (an item cell's art rule), and the art blinks with the
+  bar. Without the art every cell is exactly as before.
+- **Specs.** `scripts/art/gen-boost-icons.test.js` (order from `BOOST_KINDS`, palette, outline, each icon at least half
+  in its own ramp and none in another's, no repeat of a boon / relic / curse icon, the atlas group and the committed
+  layout), `valeBoostIcons.spec.ts` (all or nothing, validates, one core-tier content id), `boosts.spec.ts`.
+- **Uploaded** 2026-11-08 (`boost-icons.png` in `packs/vale/assetIds.ts`), so the bundled vale pack draws the icons.
+  Pending: the Studio check (status panel and touch strip, the blink).
+
 ## Edge cases
 
 - **A kill on the tick a floor ends** (the last enemy and the stairwell): the drop lands, then the floor change frees

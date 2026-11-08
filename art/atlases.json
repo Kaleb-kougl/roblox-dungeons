@@ -2581,5 +2581,24 @@
 			"ui.relic.secondwind": { "file": "kaleb-vale/item-icons/relic_secondWind.png", "rect": [0, 0, 16, 16] },
 			"ui.relic.vampirefang": { "file": "kaleb-vale/item-icons/relic_vampireFang.png", "rect": [0, 0, 16, 16] }
 		}
+	},
+	"boostIcons": {
+		"$comment": [
+			"The boost icons (docs/BOOSTS.md B7, the HUD's boost row): original 16 x 16 pixel art drawn by",
+			"scripts/art/gen-boost-icons.js (art:build and art:lock run it first) into art/vendor/kaleb-vale/boost-icons/, one per",
+			"temporary boost (ui.boost.<kind>, shared/theme boostIconId: Fury, Quickstep, Frenzy, Aegis), in the boon icons' palette",
+			"plus a ramp per boost around its identity colour. Packed exactly like `itemIcons` (buildUiIcons) into a sheet of their",
+			"OWN, art/build/<atlas>.png with src/shared/theme/packs/vale/boostIconLayout.ts, so no other icon sheet repacks; all",
+			"switch on with its one ID.",
+			"Build just this group: node scripts/art/build-atlases.js --only boostIcons (and --lock --only boostIcons)."
+		],
+		"atlas": "boost-icons",
+		"gutter": 1,
+		"icons": {
+			"ui.boost.aegis": { "file": "kaleb-vale/boost-icons/boost_aegis.png", "rect": [0, 0, 16, 16] },
+			"ui.boost.frenzy": { "file": "kaleb-vale/boost-icons/boost_frenzy.png", "rect": [0, 0, 16, 16] },
+			"ui.boost.fury": { "file": "kaleb-vale/boost-icons/boost_fury.png", "rect": [0, 0, 16, 16] },
+			"ui.boost.quickstep": { "file": "kaleb-vale/boost-icons/boost_quickstep.png", "rect": [0, 0, 16, 16] }
+		}
 	}
 }

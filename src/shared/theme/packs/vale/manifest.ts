@@ -31,6 +31,9 @@
  *   - the relic and curse icons (docs/BUILDS.md BU11; shared/theme itemIcons.ts: ui.relic.<name> / ui.curse.<name>,
  *     original art from scripts/art/gen-item-icons.js) likewise share ONE sheet of their own (itemIconLayout.ts), all
  *     or nothing on VALE_ITEM_ICON_FILE's ID.
+ *   - the boost icons (docs/BOOSTS.md B7, the HUD's boost row; shared/theme boostIcons.ts: ui.boost.<kind>, original art
+ *     from scripts/art/gen-boost-icons.js) likewise share ONE sheet of their own (boostIconLayout.ts), all or nothing on
+ *     VALE_BOOST_ICON_FILE's ID.
  * Image pivots and 9-slice insets (VALE_IMAGE_LAYOUTS) go into the ui images' `pivot` / `slice`, icon rects into
  * `rect`; the renderer reads them through ThemePack.image(id).pivot / .slice / .rect.
  *
@@ -115,6 +118,7 @@ import {
 import { VALE_UI_ICONS, VALE_UI_ICON_ATLAS, VALE_UI_ICON_FILE, type ValeUiIconLayout } from "./uiIconLayout";
 import { VALE_BOON_ICONS, VALE_BOON_ICON_ATLAS, VALE_BOON_ICON_FILE } from "./boonIconLayout";
 import { VALE_ITEM_ICONS, VALE_ITEM_ICON_ATLAS, VALE_ITEM_ICON_FILE } from "./itemIconLayout";
+import { VALE_BOOST_ICONS, VALE_BOOST_ICON_ATLAS, VALE_BOOST_ICON_FILE } from "./boostIconLayout";
 
 /** The image whose mean colour VALE_FLOOR_HEX is. */
 const VALE_FLOOR_TEXTURE_ID = "tile.biome.1.floor";
@@ -632,6 +636,13 @@ export const VALE_ITEM_ICON_SOURCE: ValeUiIconSource = {
 	icons: VALE_ITEM_ICONS,
 };
 
+/** The boost icon sheet as generated (boostIconLayout.ts), in the icon atlas's shape. */
+export const VALE_BOOST_ICON_SOURCE: ValeUiIconSource = {
+	file: VALE_BOOST_ICON_FILE,
+	atlas: VALE_BOOST_ICON_ATLAS,
+	icons: VALE_BOOST_ICONS,
+};
+
 /**
  * The UI icons (contract.ts uiIconIds) of one uploaded icon atlas: every piece of `icons` as an `image` of the whole
  * atlas (`assetId`, `atlas` w / h) with its `rect` and `pivot`. All or nothing: no `assetId` (the atlas is not uploaded
@@ -686,6 +697,8 @@ export interface ValeLayoutSources {
 	readonly boonIcons?: ValeUiIconSource;
 	/** VALE_ITEM_ICON_SOURCE (itemIconLayout.ts: the relic and curse icon sheet). */
 	readonly itemIcons?: ValeUiIconSource;
+	/** VALE_BOOST_ICON_SOURCE (boostIconLayout.ts: the boost icon sheet). */
+	readonly boostIcons?: ValeUiIconSource;
 	/** VALE_BULLET_SOURCE (bullets.ts: the bullet atlas and bulletLayout.ts). */
 	readonly bullets?: ValeBulletSource;
 	/** VALE_GOO_SOURCE (goo.ts: the goo sheet and gooLayout.ts). */
@@ -706,6 +719,7 @@ export function buildValeManifest(ids: AssetIds = VALE_ASSET_IDS, sources: ValeL
 	const uiIcons = sources.uiIcons ?? VALE_UI_ICON_SOURCE;
 	const boonIcons = sources.boonIcons ?? VALE_BOON_ICON_SOURCE;
 	const itemIcons = sources.itemIcons ?? VALE_ITEM_ICON_SOURCE;
+	const boostIcons = sources.boostIcons ?? VALE_BOOST_ICON_SOURCE;
 	const manifest = deepClone(PLACEHOLDER_MANIFEST);
 	manifest.id = "vale";
 	manifest.name = "Vale";
@@ -761,6 +775,11 @@ export function buildValeManifest(ids: AssetIds = VALE_ASSET_IDS, sources: ValeL
 	const itemArt = valeUiIconImages(itemIcons.icons, itemIcons.atlas, ids[itemIcons.file]);
 	for (const id of sortedKeys(itemArt)) {
 		manifest.assets[id] = itemArt[id];
+	}
+	// The boost icon sheet (docs/BOOSTS.md B7): every boost icon once uploaded, none before.
+	const boostArt = valeUiIconImages(boostIcons.icons, boostIcons.atlas, ids[boostIcons.file]);
+	for (const id of sortedKeys(boostArt)) {
+		manifest.assets[id] = boostArt[id];
 	}
 	for (const id of sortedKeys(VALE_UI_REQUIRED_ART)) {
 		const art = manifest.assets[VALE_UI_REQUIRED_ART[id]];

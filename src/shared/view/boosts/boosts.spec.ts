@@ -45,6 +45,7 @@ import {
 	boostEntriesEqual,
 	boostHudEntries,
 	boostHudEntry,
+	boostIconArtId,
 	boostIconKey,
 	boostKindName,
 	dropAgeSec,
@@ -107,6 +108,15 @@ describe("boosts: theme and sim agree", () => {
 			"Fury: x",
 		);
 		expect(warnings).toEqual([]);
+	});
+
+	it("every kind's icon art id is ui.boost.<kind> (the placeholder has none: the boost row keeps its labels)", () => {
+		const pack = new ThemePack(PLACEHOLDER_MANIFEST, { warn: () => undefined });
+		for (let k = 0; k < BOOST_COUNT; k++) {
+			expect(boostIconArtId(k)).toBe(`ui.boost.${BOOST_KINDS[k]}`);
+			expect(pack.image(boostIconArtId(k))).toBe(undefined);
+		}
+		expect(boostIconArtId(BOOST_COUNT)).toBe("ui.boost.fury");
 	});
 });
 

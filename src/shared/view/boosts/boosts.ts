@@ -15,7 +15,7 @@
  */
 import { STUDS_PER_TILE } from "shared/config";
 import { NO_BOOST, SIM_HZ, activeBoosts, type ActiveBoost, type GroundDrop, type SimState } from "shared/sim";
-import { BOOST_KINDS, boostId, boostStringKey, type BoostKind, type ColorRole } from "shared/theme";
+import { BOOST_KINDS, boostIconId, boostId, boostStringKey, type BoostKind, type ColorRole } from "shared/theme";
 import { BOOST_VIEW } from "./config";
 
 const TAU = 2 * math.pi;
@@ -37,6 +37,14 @@ export function boostColorRole(kind: number): ColorRole {
 /** The HUD icon label key of a sim Boost index (`boost.<kind>.icon`). */
 export function boostIconKey(kind: number): string {
 	return boostStringKey(boostKindName(kind) ?? BOOST_KINDS[0], "icon");
+}
+
+/**
+ * The HUD icon art id of a sim Boost index (shared/theme boostIconId: `ui.boost.<kind>`; the first kind's for an
+ * unknown index). The boost row draws it in place of the label when the pack has it.
+ */
+export function boostIconArtId(kind: number): string {
+	return boostIconId(boostKindName(kind) ?? BOOST_KINDS[0]);
 }
 
 // ---------------------------------------------------------------------------------------------

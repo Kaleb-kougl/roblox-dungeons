@@ -945,6 +945,17 @@ Decision log (deviations from `PLAN.md`):
   curse skull behind a curse's own icon; without the art every cell is exactly as before. No new strings, roles,
   sounds or settings; no Luau-locals change. `item-icons.png` uploaded 2026-11-08 (`assetIds.ts`), so the bundled vale
   pack draws them; the Studio check pending.
+- **Boost icons (docs/BOOSTS.md "As built: boost icons", 2026-11-08).** Presentation only (no sim, dungeon, lockstep,
+  hash, replay, fixture or score change). One 16 x 16 icon per temporary boost (Fury an angry flame, Quickstep a winged
+  boot, Frenzy crossed daggers, Aegis a round ward with the Aegis diamond), ORIGINAL pixel art by
+  `scripts/art/gen-boost-icons.js` (the boon icons' kit and palette plus a ramp per boost around its `boost.<kind>`
+  role; run by `art:build` / `art:lock`) into `art/vendor/kaleb-vale/boost-icons/`, packed by a new atlas group
+  `boostIcons` into its OWN sheet `boost-icons.png` (`--only boostIcons`, generated `packs/vale/boostIconLayout.ts`).
+  Theme: optional free-form ui ids `ui.boost.<kind>` (`shared/theme` `boostIconId`), all or nothing on the sheet's one
+  ID (vale `VALE_BOOST_ICON_SOURCE`). View: `BoostRow` (status panel and touch strip) draws `boostIconArtId(kind)` on
+  `BOOST_VIEW.iconArtFillRole` with the kind's role as the outline, blinking with the bar; without the art every cell
+  is exactly as before (colour square and label). No new strings, roles, sounds or settings; no Luau-locals change.
+  `boost-icons.png` uploaded 2026-11-08 (`assetIds.ts`), so the bundled vale pack draws them; the Studio check pending.
 - **Co-op frame pacing (docs/FRAME_PACING.md).** Client timing and presentation only (no sim, dungeon, hash, replay,
   wire, fixture or score change; the server is unchanged: every client still steps exactly the merged log, only WHEN
   changes). shared/lockstep `pacer.ts` `PlayoutPacer`, a playout clock: merged frame k is stepped at local time k x

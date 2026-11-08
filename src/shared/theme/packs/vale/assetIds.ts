@@ -128,6 +128,9 @@ import type { RobloxAssetId } from "../../types";
  * `node scripts/art/build-atlases.js --only boonIcons`) uploaded 2026-11-08, the ID given by the owner in chat.
  * item-icons.png (one icon per relic and per curse, docs/BUILDS.md BU11; original art, scripts/art/gen-item-icons.js,
  * built by `node scripts/art/build-atlases.js --only itemIcons`) uploaded 2026-11-08, the ID given by the owner in chat.
+ * boost-icons.png (one icon per temporary boost, docs/BOOSTS.md "As built: boost icons"; original art,
+ * scripts/art/gen-boost-icons.js, built by `node scripts/art/build-atlases.js --only boostIcons`) uploaded 2026-11-08,
+ * the ID given by the owner in chat.
  */
 export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"amb-b1.ogg": "rbxassetid://91158343621799",
@@ -145,6 +148,7 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"boost-auras.png": "rbxassetid://102860615301253",
 	"boost-frenzy.png": "rbxassetid://123942115924560",
 	"boost-fury.png": "rbxassetid://81008876085390",
+	"boost-icons.png": "rbxassetid://98909071423779",
 	"boost-quickstep.png": "rbxassetid://94521729890331",
 	"bramble-attack1-outline.png": "rbxassetid://107870513920568",
 	"bramble-attack1.png": "rbxassetid://108836550185712",

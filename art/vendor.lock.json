@@ -1417,6 +1417,26 @@
 			"bytes": 833
 		},
 		{
+			"path": "kaleb-vale/boost-icons/boost_aegis.png",
+			"sha256": "4ae7156147633624ce4288ca52d8944eb7b7e5236bf6a81c207582fb8ee525ca",
+			"bytes": 403
+		},
+		{
+			"path": "kaleb-vale/boost-icons/boost_frenzy.png",
+			"sha256": "fdf2bffd36b0cfd8cf5af96bbeaa72e37b5351fd02f8b192765b80fd950e7d21",
+			"bytes": 610
+		},
+		{
+			"path": "kaleb-vale/boost-icons/boost_fury.png",
+			"sha256": "ff7dd01a1ae43eff8d4293a58e03b201c45291dc35dc8cb1ccd0414949d0f836",
+			"bytes": 422
+		},
+		{
+			"path": "kaleb-vale/boost-icons/boost_quickstep.png",
+			"sha256": "73ed24c4c434f4453bf493f4f6e00e8c6042870248bd75e96390bf1abaffe06f",
+			"bytes": 398
+		},
+		{
 			"path": "kaleb-vale/golden-coin/coin.png",
 			"sha256": "f9cab4c410bb725370c3c3e5e56db80a6cd3967ed28a784c27353a7bfce26e29",
 			"bytes": 2961

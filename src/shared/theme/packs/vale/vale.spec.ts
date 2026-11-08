@@ -29,6 +29,7 @@ import { VALE_ASSET_IDS } from "./assetIds";
 import { VALE_AUDIO_FILES } from "./audioLayout";
 import { VALE_BOON_ICON_FILE } from "./boonIconLayout";
 import { VALE_ITEM_ICON_FILE } from "./itemIconLayout";
+import { VALE_BOOST_ICON_FILE } from "./boostIconLayout";
 import { VALE_BOOST_AURA_SHEET } from "./boostAuraLayout";
 import { VALE_BULLET_SHEET } from "./bulletLayout";
 import { VALE_FORTUNE_FX_SHEET, VALE_PACT_ALTAR_LAYOUT } from "./fortuneLayout";
@@ -126,8 +127,9 @@ describe("vale pack", () => {
 		// docs/PROJECTILE_ART.md), the goo sheet (gooLayout.ts, docs/GOO_ART.md) and the vault's cage and column sheets
 		// (treasureLayout.ts, docs/TREASURE.md TR9), the boost aura sheet (boostAuraLayout.ts, docs/BOOST_ART.md BAD3)
 		// the hazard sheet (hazardLayout.ts, docs/HAZARD_ART.md) and the pact altar and coin burst sheets (fortuneLayout.ts,
-		// docs/FORTUNE.md FO10), the boon icon sheet (boonIconLayout.ts, docs/BUILDS.md BU11) and the relic and curse
-		// icon sheet (itemIconLayout.ts, BU11) are art/build files too
+		// docs/FORTUNE.md FO10), the boon icon sheet (boonIconLayout.ts, docs/BUILDS.md BU11), the relic and curse
+		// icon sheet (itemIconLayout.ts, BU11) and the boost icon sheet (boostIconLayout.ts, docs/BOOSTS.md B7) are
+		// art/build files too
 		const files = allFiles();
 		files.push(VALE_FX_SHEET.file);
 		files.push(VALE_BULLET_SHEET.file);
@@ -140,6 +142,7 @@ describe("vale pack", () => {
 		files.push(VALE_FORTUNE_FX_SHEET.file);
 		files.push(VALE_BOON_ICON_FILE);
 		files.push(VALE_ITEM_ICON_FILE);
+		files.push(VALE_BOOST_ICON_FILE);
 		for (const id of sortedKeys(VALE_AMBIENT_LAYOUTS)) files.push(VALE_AMBIENT_LAYOUTS[id].file);
 		for (const file of sortedKeys(VALE_ASSET_IDS)) {
 			expect([file, files.includes(file)]).toEqual([file, true]);
