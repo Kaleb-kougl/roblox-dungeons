@@ -1652,6 +1652,16 @@
 			"bytes": 164
 		},
 		{
+			"path": "kaleb-vale/molten/molten-floor.png",
+			"sha256": "a5e97945bc1cde131b9c436e62574883c292e1552db04c6b1d7657ab6ac2de04",
+			"bytes": 104828
+		},
+		{
+			"path": "kaleb-vale/molten/molten-wall.png",
+			"sha256": "2c252f0dfcefac5165b70adde5d6a18296a27b949ac1063110dc6f760cea8b83",
+			"bytes": 104210
+		},
+		{
 			"path": "kaleb-vale/pact-altar/altar_0.png",
 			"sha256": "410a2f4558059130badefbd8fd4fb22ba929bf31200a5abbdac7cb6fd7baacec",
 			"bytes": 1170

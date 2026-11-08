@@ -1510,3 +1510,64 @@ describe("recolor (a gradient map by luminance; docs/FORTUNE.md FO10, the Goldli
 		assert.throws(() => A.buildSpriteSet("enemy.bad", syntheticSet("recolorbad", { recolor: { ramp: [[0, "#000000"]] } })), /enemy\.bad: recolor ramp/);
 	});
 });
+
+describe("tile textures' mean colours (VALE_FLOOR_HEX, VALE_TILE_MEAN_HEX)", () => {
+	// a 4 x 2 opaque tile: its left half one colour, its right half another, so the rounded mean is easy to check
+	const tile = (file, left, right) => {
+		const img = A.raster(4, 2);
+		for (let y = 0; y < 2; y++) for (let x = 0; x < 4; x++) put(img, x, y, x < 2 ? left : right);
+		A.sourceCache.set(file, img);
+	};
+	const def = (file, name, extra) => ({ file, name, crop: "none", tilesPerImage: 4, meanHex: true, ...extra });
+	const floorAndWall = () => {
+		// means: (10, 20, 30) / (11, 21, 31) -> 10.5 / 20.5 / 30.5, rounded half up; black / white -> 127.5 -> 128
+		tile("synthetic/floor.png", [10, 20, 30, 255], [11, 21, 31, 255]);
+		tile("synthetic/wall.png", [0, 0, 0, 255], [255, 255, 255, 255]);
+		return A.buildImages(
+			{
+				[A.FLOOR_IMAGE_ID]: def("synthetic/floor.png", "tile-biome1-floor"),
+				"tile.biome.2.wall": def("synthetic/wall.png", "tile-biome2-wall"),
+				"ui.plain.test": { file: "synthetic/wall.png", name: "plain", crop: "none" },
+			},
+			[],
+		);
+	};
+
+	it("measures the rounded mean of every meanHex image; VALE_FLOOR_HEX stays tile.biome.1.floor's", () => {
+		assert.equal(A.FLOOR_IMAGE_ID, "tile.biome.1.floor");
+		const images = floorAndWall();
+		assert.deepEqual(
+			images.map((i) => [i.id, i.meanHex]),
+			[
+				["tile.biome.1.floor", "#0b151f"],
+				["tile.biome.2.wall", "#808080"],
+				["ui.plain.test", undefined],
+			],
+		);
+		const text = A.layoutModule([], images, images[0].meanHex);
+		assert.match(text, /\nexport const VALE_FLOOR_HEX: HexColor = "#0b151f";\n/);
+	});
+
+	it("VALE_TILE_MEAN_HEX maps every meanHex image's id to its mean (prettier's layout: inline when it fits)", () => {
+		const images = floorAndWall();
+		assert.ok(
+			A.layoutModule([], images, "#0b151f").includes(
+				'export const VALE_TILE_MEAN_HEX: Record<string, HexColor> = {\n\t"tile.biome.1.floor": "#0b151f",\n\t"tile.biome.2.wall": "#808080",\n};\n',
+			),
+		);
+		assert.ok(
+			A.layoutModule([], [images[0], images[2]], "#0b151f").includes(
+				'export const VALE_TILE_MEAN_HEX: Record<string, HexColor> = { "tile.biome.1.floor": "#0b151f" };\n',
+			),
+		);
+		assert.ok(A.layoutModule([], [], "#000000").includes("export const VALE_TILE_MEAN_HEX: Record<string, HexColor> = {};\n"));
+	});
+
+	it("a repeating tile (tilesPerImage) must measure its mean: it becomes the biome surface's colour", () => {
+		tile("synthetic/floor.png", [10, 20, 30, 255], [11, 21, 31, 255]);
+		assert.throws(
+			() => A.buildImages({ "tile.bad.test": def("synthetic/floor.png", "bad", { meanHex: undefined }) }, []),
+			/tile\.bad\.test: a repeating tile \(tilesPerImage\) needs meanHex/,
+		);
+	});
+});

@@ -13,6 +13,7 @@
  *   portrait.ts   portrait play (docs/PORTRAIT.md): the view's framing on any aspect (the short side keeps
  *                 VIEW_TILES_HIGH), the upright lift, the backdrop's reach (tunables: PORTRAIT)
  *   floorTexture.ts  world-anchored Texture offsets so merged floor slabs show one continuous pattern
+ *   wallTexture.ts   the same for wall Parts' Top and side faces (a biome with a repeating wall image)
  *   sprites.ts    sprite renderer logic: world facing -> screen facing, animation + frame from sim state, billboard
  *   variants.ts   enemy variants on screen (docs/ENEMY_VARIANTS.md EV9): affix reads / looks (ring, chip, shield row,
  *                 shield flash, Hulking scale, elite), the Vengeful corpse, the goo pool split and decal look, imp
@@ -87,6 +88,7 @@ export * from "./hazards";
 export * from "./newEnemySprites";
 export * from "./spriteCell";
 export * from "./floorTexture";
+export * from "./wallTexture";
 export * from "./breakablesConfig";
 export * from "./breakables";
 export * from "./breakableLootConfig";

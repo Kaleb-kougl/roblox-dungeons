@@ -8,13 +8,16 @@
  *     attack.2..4 / intro / taunt) is left out until its sheet is uploaded; a sheet's outline (layout `outlineFile`,
  *     enemy and boss sets) becomes its `outlineAssetId` once uploaded, and never holds the set back; per-sheet cells
  *     are copied;
- *   - tile.biome.1.floor (with tilesPerImage), ui.ring.player, ui.marker.pedestal, ui.marker.boost (the boost drops'
- *     white beam, docs/BOOST_ART.md) and boost.<kind> (the Lords of Pain gold coins / gemstones, with the layout's
+ *   - the tile textures tile.biome.1.floor (the Lords of Pain stone), tile.biome.2.floor / tile.biome.2.wall (the
+ *     molten basalt flagstones and wall face, original art from scripts/art/molten/gen_molten_tiles.py; all three with
+ *     tilesPerImage), ui.ring.player, ui.marker.pedestal, ui.marker.boost (the boost drops' white beam,
+ *     docs/BOOST_ART.md) and boost.<kind> (the Lords of Pain gold coins / gemstones, with the layout's
  *     pixelsPerTile; their colour role stays manifest.colors[boost.<kind>]): `image` once uploaded, else placeholder
  *     (the ui IDs exist either way; a boost kind keeps its placeholder gem). A boost image needs decor.fx.glow (its halo,
  *     validator rule BA-P2), which comes with decor-atlas.png;
- *   - the floor colour of every biome tiled with tile.biome.1.floor becomes VALE_FLOOR_HEX (the texture's mean colour)
- *     once the texture is uploaded, so the contrast checks describe what is drawn.
+ *   - a biome floor or wall whose tile is an uploaded repeating texture (an `image` with tilesPerImage) takes that
+ *     texture's mean colour (VALE_TILE_MEAN_HEX; biome.1's floor is VALE_FLOOR_HEX), so the contrast checks describe
+ *     what is drawn.
  *   - the boon draft's card art (docs/DRAFT_REVEAL.md DR3, contract.ts draftSkinIds: ui.draft.back / .back.eyes /
  *     .card.common / .card.rare / .skull.left / .skull.right, cut from the ToffeeCraft Horror UI sheet): `image` once
  *     uploaded, else ABSENT (optional ids: the overlay draws the flat card), never a placeholder.
@@ -51,8 +54,8 @@
  * so no sound plays half its variant pool.
  *
  * Biome materials (docs/DECOR.md R1) need no upload, so they apply whatever is in assetIds.ts: VALE_BIOME_MATERIALS,
- * except that a biome whose floor tile is a repeating texture keeps its floor SmoothPlastic (the default, so the
- * floor entry is dropped): a patterned material under the image would fight it.
+ * except that a biome floor or wall whose tile is a repeating texture stays SmoothPlastic (the default, so that
+ * surface's entry is dropped): a patterned material under the image would fight it.
  *
  * World art (docs/DECOR.md R5): the Lords of Pain props, effects and breakables (VALE_WORLD_LAYOUTS, one shared atlas
  * plus the ambient particle texture), and the pellets' own cubes (VALE_PELLET_ART, docs/PELLETS.md PL8). VALE_DECOR_PIECES / VALE_DECOR_FX / VALE_AMBIENT_ART / VALE_BREAKABLE_ART say
@@ -99,6 +102,7 @@ import type {
 	SpriteSheetImage,
 	ThemeManifest,
 } from "../../types";
+import { BIOME_TILE_KEYS } from "../../types";
 import { deepClone, sortedKeys } from "../../util";
 import { PELLET_KINDS, pelletId, type PelletKind } from "../../pellets";
 import { TREASURE_CAGE_ID, TREASURE_IDS } from "../../treasure";
@@ -114,9 +118,9 @@ import { valeAmbientAssets, valeFxAssets, valeFxSources } from "./fx";
 import { VALE_TREASURE_CAGE_LAYOUT } from "./treasureLayout";
 import { VALE_PACT_ALTAR_LAYOUT } from "./fortuneLayout";
 import {
-	VALE_FLOOR_HEX,
 	VALE_IMAGE_LAYOUTS,
 	VALE_SPRITE_LAYOUTS,
+	VALE_TILE_MEAN_HEX,
 	VALE_WORLD_LAYOUTS,
 	type ValeImageLayout,
 	type ValeSpriteLayout,
@@ -130,10 +134,13 @@ import { VALE_ITEM_ICONS, VALE_ITEM_ICON_ATLAS, VALE_ITEM_ICON_FILE } from "./it
 import { VALE_BOOST_ICONS, VALE_BOOST_ICON_ATLAS, VALE_BOOST_ICON_FILE } from "./boostIconLayout";
 import { VALE_PIP_ICONS, VALE_PIP_ICON_ATLAS, VALE_PIP_ICON_FILE } from "./pipIconLayout";
 
-/** The image whose mean colour VALE_FLOOR_HEX is. */
-const VALE_FLOOR_TEXTURE_ID = "tile.biome.1.floor";
-
 type AssetIds = Readonly<Record<string, string>>;
+
+/** `id`'s asset when it is a repeating texture (an uploaded `image` with tilesPerImage), else undefined. */
+function tiledImage(manifest: ThemeManifest, id: string): ImageAsset | undefined {
+	const asset = manifest.assets[id];
+	return asset !== undefined && asset.kind === "image" && asset.tilesPerImage !== undefined ? asset : undefined;
+}
 
 /**
  * Roblox materials per biome (Part.Color stays the biome hex; the material adds the texture). Walls always differ
@@ -856,9 +863,10 @@ export function buildValeManifest(ids: AssetIds = VALE_ASSET_IDS, sources: ValeL
 		}
 		const biome = manifest.biomes[biomeId];
 		const out: BiomeMaterials = deepClone(materials) as BiomeMaterials;
-		const floorTile = manifest.assets[biome.tiles.floor];
-		if (floorTile !== undefined && floorTile.kind === "image" && floorTile.tilesPerImage !== undefined) {
-			out.floor = undefined; // a textured floor stays SmoothPlastic (DEFAULT_BIOME_MATERIAL)
+		for (const surface of BIOME_TILE_KEYS) {
+			if (tiledImage(manifest, biome.tiles[surface]) !== undefined) {
+				out[surface] = undefined; // a textured surface stays SmoothPlastic (DEFAULT_BIOME_MATERIAL)
+			}
 		}
 		biome.materials = out;
 	}
@@ -908,12 +916,15 @@ export function buildValeManifest(ids: AssetIds = VALE_ASSET_IDS, sources: ValeL
 		}
 	}
 
-	const floor = images[VALE_FLOOR_TEXTURE_ID];
-	if (floor !== undefined && ids[floor.file] !== undefined) {
-		for (const biomeId of sortedKeys(manifest.biomes)) {
-			const biome = manifest.biomes[biomeId];
-			if (biome.tiles.floor === VALE_FLOOR_TEXTURE_ID) {
-				biome.floor = VALE_FLOOR_HEX;
+	// A textured biome surface's colour is its texture's mean (VALE_TILE_MEAN_HEX; the pipeline measures every
+	// repeating tile), so the contrast checks describe what is drawn.
+	for (const biomeId of sortedKeys(manifest.biomes)) {
+		const biome = manifest.biomes[biomeId];
+		for (const surface of BIOME_TILE_KEYS) {
+			const tile = biome.tiles[surface];
+			const mean = VALE_TILE_MEAN_HEX[tile];
+			if (mean !== undefined && tiledImage(manifest, tile) !== undefined) {
+				biome[surface] = mean;
 			}
 		}
 	}

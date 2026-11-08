@@ -1691,7 +1691,8 @@ export function validateManifest(manifest: unknown, opts: ValidateOptions = {}):
 
 /**
  * A biome's optional `materials` (docs/DECOR.md R1): an object of surface (floor, wall, pool) -> a BIOME_MATERIALS
- * name. A floor whose tile is a repeating texture (an image with `tilesPerImage`) must keep DEFAULT_BIOME_MATERIAL.
+ * name. A floor or wall whose tile is a repeating texture (an image with `tilesPerImage`) must keep
+ * DEFAULT_BIOME_MATERIAL.
  */
 function validateBiomeMaterials(def: Obj, path: Array<string>, assets: Obj, err: Err, unknownKeys: UnknownKeys) {
 	const materials = def.materials;
@@ -1715,24 +1716,26 @@ function validateBiomeMaterials(def: Obj, path: Array<string>, assets: Obj, err:
 			err(append(mp, surface), `unknown material ${q(name)} (allowed: ${BIOME_MATERIAL_LIST})`);
 		}
 	}
-	const floorName = materials.floor;
-	const floorRef = isObj(def.tiles) ? def.tiles.floor : undefined;
-	const floorAsset = typeIs(floorRef, "string") ? assets[floorRef] : undefined;
-	if (
-		typeIs(floorName, "string") &&
-		typeIs(floorRef, "string") &&
-		floorName !== DEFAULT_BIOME_MATERIAL &&
-		BIOME_MATERIAL_SET.has(floorName) &&
-		isObj(floorAsset) &&
-		floorAsset.kind === "image" &&
-		floorAsset.tilesPerImage !== undefined
-	) {
-		err(
-			append(mp, "floor"),
-			`floor tile ${q(floorRef)} is a repeating texture: use ${q(DEFAULT_BIOME_MATERIAL)}, ${q(
-				floorName,
-			)} would fight the image`,
-		);
+	for (const surface of BIOME_TILE_KEYS) {
+		const name = materials[surface];
+		const ref = isObj(def.tiles) ? def.tiles[surface] : undefined;
+		const asset = typeIs(ref, "string") ? assets[ref] : undefined;
+		if (
+			typeIs(name, "string") &&
+			typeIs(ref, "string") &&
+			name !== DEFAULT_BIOME_MATERIAL &&
+			BIOME_MATERIAL_SET.has(name) &&
+			isObj(asset) &&
+			asset.kind === "image" &&
+			asset.tilesPerImage !== undefined
+		) {
+			err(
+				append(mp, surface),
+				`${surface} tile ${q(ref)} is a repeating texture: use ${q(DEFAULT_BIOME_MATERIAL)}, ${q(
+					name,
+				)} would fight the image`,
+			);
+		}
 	}
 }
 

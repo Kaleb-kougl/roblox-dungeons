@@ -20,7 +20,9 @@ import {
 	greedyRectsOf,
 	studsX,
 	studsZ,
+	wallTextureOffsets,
 	type TileRect,
+	type WallTextureFace,
 } from "shared/view";
 import { renderPart } from "../render/placeholders";
 import { SimController, type RunContext } from "./SimController";
@@ -37,8 +39,13 @@ interface Surface {
 	readonly color: Color3;
 	/** The Part material: the biome's `materials` entry for this surface (theme), else the placeholder's. */
 	readonly material: Enum.Material;
-	/** A repeating texture laid on the slabs' top faces (the biome's floor image, when the pack has one). */
+	/**
+	 * A repeating texture laid on the Parts' faces: the biome's floor image on floor slabs' top faces, its wall image
+	 * on wall Parts' `textureFaces`, when the pack has one.
+	 */
 	readonly texture?: ImageRef;
+	/** The faces that carry `texture` (wall Parts: GAME_WORLD.wallTextureFaces); undefined: the Top face (a floor). */
+	readonly textureFaces?: ReadonlyArray<WallTextureFace>;
 }
 
 /**
@@ -51,7 +58,10 @@ interface Surface {
  * theme matches the floor (falling back to the pack's `floor` / `wall` roles, as the web build does). When the pack has
  * the biome's floor tile as an image with `tilesPerImage`, every floor slab also gets it as a top-face Texture
  * repeating every tilesPerImage tiles, offset by the slab's world corner so the pattern runs on across slabs
- * (shared/view floorTextureOffsets; the biome colour stays on the Part). Pools have no
+ * (shared/view floorTextureOffsets; the biome colour stays on the Part). Likewise a biome whose wall tile is such an
+ * image draws it on every wall Part's GAME_WORLD.wallTextureFaces (the Top face and the four sides: 5 Textures per wall
+ * Part), world-anchored along each face and hung from the wall's top edge (shared/view wallTextureOffsets), the wall
+ * Part in DEFAULT_BIOME_MATERIAL; without a wall image walls draw as before. Pools have no
  * theme role yet: like the web build they use the Dungeon Forge theme's liquid colour (data in shared/dungeon).
  * Materials (docs/DECOR.md R1): floor, wall and pool Parts take the matched biome's `materials` (ThemePack.biome,
  * SmoothPlastic where the pack names none), mapped through `Enum.Material[name]`; a textured floor is always drawn
@@ -108,6 +118,7 @@ export class WorldController implements OnStart {
 		const floorVisual = pack.placeholder(floorId);
 		const floorImage = pack.image(floorId);
 		const wallVisual = pack.placeholder(wallId);
+		const wallImage = pack.image(wallId);
 		const usable = (hex: string) => hex.lower() !== MISSING_COLOR;
 		const floorHex = pack.visualHex(floorVisual.color);
 		const wallHex = pack.visualHex(wallVisual.color);
@@ -116,6 +127,10 @@ export class WorldController implements OnStart {
 		const texture = biome !== undefined && floorImage?.tilesPerImage !== undefined ? floorImage : undefined;
 		const materials = biome !== undefined ? pack.biome(biome.id).materials : undefined;
 		const floorMaterial = texture !== undefined ? DEFAULT_BIOME_MATERIAL : materials?.floor ?? floorVisual.material;
+		// The wall the same way: a repeating wall image (a matched biome only) is drawn in DEFAULT_BIOME_MATERIAL.
+		const wallTexture = biome !== undefined && wallImage?.tilesPerImage !== undefined ? wallImage : undefined;
+		const wallMaterial =
+			wallTexture !== undefined ? DEFAULT_BIOME_MATERIAL : materials?.wall ?? wallVisual.material;
 		return {
 			floor: {
 				visual: floorVisual,
@@ -127,7 +142,9 @@ export class WorldController implements OnStart {
 			wall: {
 				visual: wallVisual,
 				color: biome !== undefined && usable(wallHex) ? pack.visualColor(wallVisual.color) : pack.color("wall"),
-				material: Enum.Material[materials?.wall ?? wallVisual.material],
+				material: Enum.Material[wallMaterial],
+				texture: wallTexture,
+				textureFaces: wallTexture !== undefined ? GAME_WORLD.wallTextureFaces : undefined,
 			},
 			poolMaterial: Enum.Material[materials?.pool ?? floorVisual.material],
 			// the backdrop: the biome's abyss (docs/VOID_DECOR.md VD1 / VD3); greybox / unmatched keep `background`
@@ -222,29 +239,55 @@ export class WorldController implements OnStart {
 			part.Material = surface.material;
 			const image = surface.texture;
 			if (image !== undefined && image.tilesPerImage !== undefined) {
-				// The floor image repeats every tilesPerImage tiles; the Part keeps the biome colour underneath.
-				const texture = new Instance("Texture");
-				texture.Face = Enum.NormalId.Top;
-				texture.Texture = image.assetId;
+				// The image repeats every tilesPerImage tiles both ways (its own pixel density: a 1-tile wall face
+				// shows 1 / tilesPerImage of its height); the Part keeps the biome colour underneath.
 				const period = image.tilesPerImage * S;
-				texture.StudsPerTileU = period;
-				texture.StudsPerTileV = period;
-				// Start the pattern at the slab's world corner (mod the period), so merged slabs show no seams.
-				const [offU, offV] = floorTextureOffsets(
-					studsX(r.x - HALF_TILE),
-					studsZ(r.y - HALF_TILE),
-					studsX(r.x + r.w - HALF_TILE),
-					studsZ(r.y + r.h - HALF_TILE),
-					period,
-					GAME_WORLD.floorTextureUV,
-				);
-				texture.OffsetStudsU = offU;
-				texture.OffsetStudsV = offV;
-				texture.Parent = part;
+				const minX = studsX(r.x - HALF_TILE);
+				const minZ = studsZ(r.y - HALF_TILE);
+				const maxX = studsX(r.x + r.w - HALF_TILE);
+				const maxZ = studsZ(r.y + r.h - HALF_TILE);
+				// Start the pattern at the Part's world corner (mod the period), so merged Parts show no seams.
+				const faces = surface.textureFaces;
+				if (faces === undefined) {
+					const offsets = floorTextureOffsets(minX, minZ, maxX, maxZ, period, GAME_WORLD.floorTextureUV);
+					this.faceTexture(part, image.assetId, Enum.NormalId.Top, period, offsets);
+				} else {
+					for (const face of faces) {
+						const offsets = wallTextureOffsets(
+							face,
+							minX,
+							minZ,
+							maxX,
+							maxZ,
+							height,
+							period,
+							GAME_WORLD.wallTextureUV,
+						);
+						this.faceTexture(part, image.assetId, Enum.NormalId[face], period, offsets);
+					}
+				}
 			}
 			part.Parent = folder;
 		}
 		return rects.size();
+	}
+
+	/** One repeating Texture on `face` of `part`, `period` studs square, shifted by `offsets` (OffsetStudsU / V). */
+	private faceTexture(
+		part: Part,
+		assetId: string,
+		face: Enum.NormalId,
+		period: number,
+		offsets: readonly [number, number],
+	): void {
+		const texture = new Instance("Texture");
+		texture.Face = face;
+		texture.Texture = assetId;
+		texture.StudsPerTileU = period;
+		texture.StudsPerTileV = period;
+		texture.OffsetStudsU = offsets[0];
+		texture.OffsetStudsV = offsets[1];
+		texture.Parent = part;
 	}
 
 	/**

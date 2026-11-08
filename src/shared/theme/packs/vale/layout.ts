@@ -732,6 +732,8 @@ export const VALE_IMAGE_LAYOUTS: Record<string, ValeImageLayout> = {
 		pixelsPerTile: 29.6,
 	},
 	"tile.biome.1.floor": { file: "tile-biome1-floor.png", w: 256, h: 256, tilesPerImage: 4 },
+	"tile.biome.2.floor": { file: "tile-biome2-floor.png", w: 256, h: 256, tilesPerImage: 4 },
+	"tile.biome.2.wall": { file: "tile-biome2-wall.png", w: 256, h: 256, tilesPerImage: 4 },
 	"ui.bar.fill": {
 		file: "ui-bar-fill.png",
 		w: 48,
@@ -862,6 +864,16 @@ export const VALE_IMAGE_LAYOUTS: Record<string, ValeImageLayout> = {
 
 /** Rounded mean colour of the biome.1 floor texture (tile.biome.1.floor): the `biome.1` floor colour. */
 export const VALE_FLOOR_HEX: HexColor = "#1a1619";
+
+/**
+ * Rounded mean colour of every image with art/atlases.json `meanHex` (every repeating tile texture), by asset
+ * id: the colour of each biome floor or wall drawn with it, once uploaded (VALE_FLOOR_HEX is tile.biome.1.floor's).
+ */
+export const VALE_TILE_MEAN_HEX: Record<string, HexColor> = {
+	"tile.biome.1.floor": "#1a1619",
+	"tile.biome.2.floor": "#2d211e",
+	"tile.biome.2.wall": "#342622",
+};
 
 /**
  * World art (docs/DECOR.md R5): decor pieces, decor effects and breakables by art name (art/atlases.json
