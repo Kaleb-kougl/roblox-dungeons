@@ -1789,8 +1789,8 @@ export function bookcasePairs(
  * A Kenney solid piece's variant (0-based) among the pack's `count` (docs/KENNEY_DECOR.md KN9, DECOR_KENNEY): `looks.per`
  * variants per look (one per facing or axis; `facing` the one drawn), looks in order. The last `rareLooks` looks take
  * the pieces whose hash `look01` (0..1) falls under `rareShare` (evenly among them), the others the rest (evenly). No
- * whole look or no facing: -1 (the caller's pick). Only the looks the pack has count (a pack with the common looks only
- * draws those, at every hash).
+ * whole look or no facing: -1 (the caller's pick). Only the looks the pack has count: the rare ones are the last of
+ * those, and at least one common look is kept (a pack with one look draws it at every hash).
  */
 export function kenneyVariant(
 	count: number,
