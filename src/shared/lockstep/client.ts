@@ -5,12 +5,16 @@
  *                              (reliable ordered remotes); a gap or a malformed batch is fatal (`broken`).
  *   pump(dt, sample)           steps queued merged frames, at most `maxCatchup` per call (bounded catch-up), and ONLY
  *                              those: the sim never runs ahead of the server's log, never on local input. After each
- *                              stepped tick T it samples the local input once and sends it for tick T + lead (lead
- *                              starts at INPUT_DELAY_TICKS, +1 each time its own input missed the deadline, -1 after
- *                              `leadDecayTicks` clean ticks), reports hashState every `hashEvery` ticks (batched: one
- *                              call per pump at most, throttled; resent until the server's ack covers them,
- *                              `acknowledge`), and once the whole party is down returns the RunFinal claim and stops
- *                              stepping.
+ *                              stepped tick it samples the local input once and sends it for tick state.tick + lead
+ *                              (`nextInputTick`; lead starts at INPUT_DELAY_TICKS, +1 each time its own input missed
+ *                              the deadline, -1 after `leadDecayTicks` clean ticks), reports hashState every
+ *                              `hashEvery` ticks (batched: one call per pump at most, throttled; resent until the
+ *                              server's ack covers them, `acknowledge`), and once the whole party is down returns the
+ *                              RunFinal claim and stops stepping. Sends follow the lead both ways: a step whose target
+ *                              is at or below the last tick sent (the lead just fell by one) samples and sends NOTHING,
+ *                              that tick is already covered, so the delay really falls; a target past the last sent
+ *                              tick + 1 (the lead just rose) leaves the ticks between to the server's repeat-last.
+ *                              No tick is ever sent twice.
  *   end(reason)                the server decided the run before the party went down (desync, expiry, an error):
  *                              over here too, nothing more is stepped or sent.
  *
@@ -173,17 +177,24 @@ export class LockstepClient implements RunView {
 		return this.queue.size() - this.queueHead;
 	}
 
-	/** The current input lead (ticks between the tick just stepped and the tick an input is sent for). */
+	/**
+	 * The effective input lead, in ticks: how far this client's inputs already reach past the next tick to step
+	 * (the last tick sent - state.tick), or the lead the next send would use when that is more (before the first
+	 * send; after a miss on the wiping tick, which sends nothing). A press sampled now is stepped inputLead() + 1 ticks
+	 * later. Since a step whose target was already sent sends nothing (see pump), this equals the internal lead
+	 * whenever a send happens.
+	 */
 	inputLead(): number {
-		return this.lead;
+		return math.max(this.lead, this.lastSentTick - this.state.tick);
 	}
 
 	/**
-	 * The tick the next sampled input goes out for: (the tick just stepped) + lead, monotonic. Inside pump's `sample()`
-	 * it is the tick that input is sent for (the KV_Debug latency probe, shared/view latencyProbe.ts).
+	 * The tick an input sampled now goes out for: state.tick (the next tick to step) + lead. pump samples and sends
+	 * only when this is past the last tick sent, so inside pump's `sample()` it is exactly the tick that input is sent
+	 * for (the KV_Debug latency probe, shared/view latencyProbe.ts), and those ticks strictly increase.
 	 */
 	nextInputTick(): number {
-		return math.max(this.lastSentTick + 1, this.state.tick + this.lead);
+		return this.state.tick + this.lead;
 	}
 
 	/** Why the stream broke (a gap or a malformed batch), if it did. */
@@ -330,8 +341,11 @@ export class LockstepClient implements RunView {
 				this.finalSent = true;
 				break;
 			}
-			// The local input for tick (next tick + lead), monotonic.
+			// The local input for tick (next tick + lead). At or below the last tick sent (the lead just fell): already
+			// covered, nothing is sampled or sent. Past it by more than one (the lead just rose): the ticks between
+			// repeat the last input on the server.
 			const target = this.nextInputTick();
+			if (target <= this.lastSentTick) continue;
 			if (outgoing.size() > 0 && target !== outgoingFirst + outgoing.size()) flushInputs();
 			if (outgoing.size() === 0) outgoingFirst = target;
 			const f = copyInput(sample());

@@ -501,6 +501,209 @@ for (const [players, lo, hi] of NET_RUNS) {
 	});
 }
 
+// The input lead over a latency that changes (docs/FRAME_PACING.md FP1): one client against the server's relay, one
+// tick finalized per frame, every tick broadcast at once; the latency each way is picked per frame.
+
+/** One-way FIFO delivery at a time the sender picks (a latency that falls never reorders, like a RemoteEvent). */
+class DelayQueue {
+	private readonly queue: Message[] = [];
+	private last = 0;
+
+	send(at: number, deliver: () => void): void {
+		const due = math.max(this.last, at);
+		this.last = due;
+		this.queue.push({ at: due, deliver });
+	}
+
+	pump(now: number): void {
+		while (this.queue.size() > 0 && this.queue[0].at <= now) this.queue.remove(0)!.deliver();
+	}
+}
+
+/** One sampled input: the frame, state.tick when it was sampled (the next tick to step), the tick it was sent for. */
+interface LeadSend {
+	readonly frame: number;
+	readonly next: number;
+	readonly tick: number;
+	/** client.misses when it was sampled (this step's deadline check included). */
+	readonly misses: number;
+}
+
+class LeadNet {
+	readonly client: LockstepClient;
+	readonly relay: LockstepRelay;
+	/** Every sampled input, in order, with the tick the batches actually carried it for. */
+	readonly sends: LeadSend[] = [];
+	/** Per pump that stepped: state.tick, inputLead() and the last tick sent so far. */
+	readonly reports: Array<{ readonly next: number; readonly lead: number; readonly lastSent: number }> = [];
+	/** nextInputTick() as seen inside each sample() (must be the tick that input was sent for). */
+	readonly sampledTargets: number[] = [];
+	steps = 0;
+	private readonly enc = new MergedEncoder(1);
+	private readonly down = new DelayQueue();
+	private readonly up = new DelayQueue();
+	private samples = 0;
+
+	constructor(private readonly tunables: LockstepTunables, private readonly latencyAt: (frame: number) => number) {
+		const setup = buildEndlessRunConfig(SEED, 1);
+		this.client = new LockstepClient({
+			runId: "lead",
+			seed: SEED,
+			spawn: setup.spawn!,
+			config: setup.config,
+			players: 1,
+			localIndex: 0,
+			tunables,
+		});
+		this.relay = new LockstepRelay(1, tunables);
+	}
+
+	run(frames: number): void {
+		const c = this.client;
+		for (let frame = 0; frame < frames; frame++) {
+			const now = frame * DT;
+			const latency = this.latencyAt(frame);
+			this.up.pump(now);
+			const tick = this.relay.finalizedTicks();
+			const data = this.enc.encode([this.relay.finalizeNext()]);
+			this.down.send(now + latency, () => c.receive(tick, data));
+			this.down.pump(now);
+			const pending: Array<{ next: number; misses: number }> = [];
+			const res = c.pump(DT, () => {
+				pending.push({ next: c.state.tick, misses: c.misses });
+				this.sampledTargets.push(c.nextInputTick());
+				this.samples++;
+				// Aim only (the player stands still); every sample differs, so a repeat-last is a visible miss.
+				return { ...EMPTY_INPUT, aimX: 1 + (this.samples % AXIS_MAX) };
+			});
+			this.steps += res.stepped;
+			let k = 0;
+			for (const b of res.inputs) {
+				const batch = decodeInputBatch(b.data, this.tunables.maxBatchFrames)!;
+				for (let j = 0; j < batch.size(); j++) {
+					const p = pending[k];
+					this.sends.push({ frame, next: p.next, tick: b.firstTick + j, misses: p.misses });
+					k++;
+				}
+				this.up.send(now + latency, () => this.relay.submit(0, b.firstTick, batch));
+			}
+			expect(k).toBe(pending.size());
+			if (res.stepped > 0) {
+				const lastSent = this.sends.size() > 0 ? this.sends[this.sends.size() - 1].tick : -1;
+				this.reports.push({ next: c.state.tick, lead: c.inputLead(), lastSent });
+			}
+		}
+	}
+}
+
+/** The effective lead of a send: the tick it went out for minus the next tick to step when it was sampled. */
+function leadOf(s: LeadSend): number {
+	return s.tick - s.next;
+}
+
+describe("the input lead follows the latency both ways (FP1)", () => {
+	const tunables: LockstepTunables = { ...DEFAULT_LOCKSTEP, leadDecayTicks: 15 };
+	const floor = tunables.inputDelay;
+	const CALM_LATENCY = 0.005;
+	const SPIKE_LATENCY = 0.15;
+	const SPIKE1_START = 60;
+	const SPIKE1_END = 240;
+	const SPIKE2_START = 760;
+	const SPIKE2_END = 880;
+	const FRAMES = 940;
+	const net = new LeadNet(tunables, (frame) =>
+		(frame >= SPIKE1_START && frame < SPIKE1_END) || (frame >= SPIKE2_START && frame < SPIKE2_END)
+			? SPIKE_LATENCY
+			: CALM_LATENCY,
+	);
+	net.run(FRAMES);
+	const sends = net.sends;
+	// The calm stretch between the spikes: from the first send after spike 1's last miss to the last send before
+	// spike 2 starts.
+	let calmEnd = 0;
+	while (calmEnd < sends.size() && sends[calmEnd].frame < SPIKE2_START) calmEnd++;
+	const calmMisses = sends[calmEnd - 1].misses;
+	let calmStart = 0;
+	while (sends[calmStart].misses < calmMisses) calmStart++;
+	const peak = leadOf(sends[calmStart]);
+	print(
+		`[lockstep lead] steps ${net.steps} sends ${sends.size()} misses ${net.client.misses}; ` +
+			`peak ${peak}, calm sends ${calmStart}..${calmEnd - 1}, lead at spike 2 ${leadOf(sends[calmEnd - 1])}`,
+	);
+
+	it("after a spike the effective lead falls back to inputDelay, one tick per leadDecayTicks clean ticks", () => {
+		expect(net.client.brokenReason()).toBe(undefined);
+		expect(isPartyWiped(net.client.state)).toBe(false);
+		expect(calmMisses > 0).toBe(true);
+		expect(peak >= floor + 10).toBe(true); // the spike raised it well above the floor
+		// Measured in stepped ticks (state.tick when each send was sampled): every level after the first holds for at
+		// least leadDecayTicks steps (clean deadline checks), and the whole fall takes no more than that per level plus
+		// the ticks already in flight at the first drop (sent at the old lead, never checked: the spike's gaps).
+		let level = peak;
+		let levelFrom = sends[calmStart].next;
+		let firstDrop = -1;
+		let drops = 0;
+		for (let k = calmStart; k < calmEnd; k++) {
+			const s = sends[k];
+			const lead = leadOf(s);
+			if (lead === level) continue;
+			expect(lead).toBe(level - 1); // down by exactly one at a time
+			if (drops === 0) firstDrop = s.next;
+			else expect(s.next - levelFrom >= tunables.leadDecayTicks).toBe(true);
+			level = lead;
+			levelFrom = s.next;
+			drops++;
+		}
+		expect(level).toBe(floor);
+		expect(drops).toBe(peak - floor);
+		expect(levelFrom - firstDrop <= (drops - 1) * tunables.leadDecayTicks + peak).toBe(true);
+		// inputLead() reports the effective lead: how far the sent inputs reach past the next tick to step.
+		for (const r of net.reports) {
+			if (r.lastSent >= 0) expect(r.lead).toBe(r.lastSent - r.next);
+		}
+		expect(net.reports[net.reports.size() - 1].lead).toBe(leadOf(sends[sends.size() - 1]));
+	});
+
+	it("after the lead decayed, a new spike's first miss raises the effective lead at once (no silent misses)", () => {
+		expect(leadOf(sends[calmEnd - 1])).toBe(floor);
+		let raised = 0;
+		for (let k = calmEnd; k < sends.size(); k++) {
+			const prev = sends[k - 1];
+			const cur = sends[k];
+			const missed = cur.misses - prev.misses;
+			if (missed === 0) continue;
+			// Every miss counts: the very next send goes out that many ticks further ahead.
+			expect(leadOf(cur) - leadOf(prev)).toBe(missed);
+			raised += missed;
+		}
+		expect(raised).toBe(net.client.misses - calmMisses);
+		expect(raised >= 10).toBe(true);
+	});
+
+	it("a step whose target was already sent sends nothing; no tick is ever sent twice", () => {
+		// The batches carry exactly the sampled inputs, each for the tick nextInputTick() named inside sample().
+		expect(net.sampledTargets.size()).toBe(sends.size());
+		for (let k = 0; k < sends.size(); k++) expect(sends[k].tick).toBe(net.sampledTargets[k]);
+		let skipped = 0;
+		for (let k = 1; k < sends.size(); k++) {
+			const prev = sends[k - 1];
+			const cur = sends[k];
+			expect(cur.tick > prev.tick).toBe(true);
+			const gap = cur.next - prev.next - 1;
+			if (gap === 0) continue;
+			// One step between them sent nothing: the lead had just fallen by one, so its target was prev.tick.
+			expect(gap).toBe(1);
+			expect(leadOf(cur)).toBe(leadOf(prev) - 1 + (cur.misses - prev.misses));
+			skipped++;
+		}
+		// Every decay of the lead is one step that sent nothing (decays = misses - the net rise); every other step
+		// sent once.
+		expect(skipped > 0).toBe(true);
+		expect(skipped).toBe(net.client.misses - (leadOf(sends[sends.size() - 1]) - floor));
+		expect(net.steps).toBe(sends.size() + skipped);
+	});
+});
+
 describe("LockstepClient.end (the server decided the run before the wipe)", () => {
 	function client(): { c: LockstepClient; enc: MergedEncoder } {
 		const setup = buildEndlessRunConfig(SEED, 2);

@@ -33,7 +33,7 @@ export interface LatencyProbeStats {
 
 /** What the debug line shows (the SimController hands it to the HUD store). */
 export interface LatencyProbeView extends LatencyProbeStats {
-	/** The client's input lead, ticks (LockstepClient.inputLead()). */
+	/** The client's effective input lead, ticks (LockstepClient.inputLead(): how far its sent inputs reach). */
 	readonly leadTicks: number;
 	/** Deadline misses of this client's own input so far (LockstepClient.misses). */
 	readonly misses: number;
