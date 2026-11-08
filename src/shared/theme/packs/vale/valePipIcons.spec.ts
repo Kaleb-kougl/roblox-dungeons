@@ -1,10 +1,10 @@
 // The vale pack's armor pips (docs/UI_ART.md "As built: armor pips"): the generated sheet (pipIconLayout.ts,
-// scripts/art/gen-pip-icons.js via art/atlases.json `pipIcons`) holds the three 9 x 9 pips under shared/theme
+// scripts/art/gen-pip-icons.js via art/atlases.json `pipIcons`) holds the three 16 x 15 pips under shared/theme
 // PIP_ICON_IDS; every one switches on with the sheet's one ID (all or nothing, like the boon / item / boost icon
 // sheets), validates, is one core-tier content id, and once in the pack the HUD's pipArt picks it over the chips.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { preloadPlan } from "shared/view";
-import { pipArt, skinHasOf } from "shared/view/hud";
+import { HUD_SKIN, pipArt, skinHasOf } from "shared/view/hud";
 import { ThemePack } from "../../pack";
 import { PIP_ICON_IDS, PIP_ICON_PREFIX } from "../../pipIcons";
 import { sortedKeys } from "../../util";
@@ -15,7 +15,8 @@ import { VALE_PIP_ICON_SOURCE, buildValeManifest } from "./manifest";
 
 const quiet = () => undefined;
 const SHEET_ID = "rbxassetid://7303";
-const PIP_PX = 9;
+const PIP_W = 16;
+const PIP_H = 15;
 
 /** The uploaded IDs without the pip sheet's, plus it when `sheet`. */
 function idsWith(sheet: boolean): Record<string, string> {
@@ -37,11 +38,11 @@ describe("vale armor pips: the generated sheet", () => {
 		for (const id of pipIds()) expect(id.sub(1, PIP_ICON_PREFIX.size())).toBe(PIP_ICON_PREFIX);
 	});
 
-	it("every pip is 9 x 9, inside the sheet, no two overlapping", () => {
+	it("every pip is 16 x 15 (the hearts' height), inside the sheet, no two overlapping", () => {
 		const ids = sortedKeys(VALE_PIP_ICONS);
 		for (const id of ids) {
 			const r = VALE_PIP_ICONS[id].rect;
-			expect([id, r.w, r.h]).toEqual([id, PIP_PX, PIP_PX]);
+			expect([id, r.w, r.h]).toEqual([id, PIP_W, PIP_H]);
 			const inside =
 				r.x >= 0 && r.y >= 0 && r.x + r.w <= VALE_PIP_ICON_ATLAS.w && r.y + r.h <= VALE_PIP_ICON_ATLAS.h;
 			expect([id, inside]).toEqual([id, true]);
@@ -86,7 +87,12 @@ describe("vale armor pips: the manifest", () => {
 		const has = skinHasOf(new ThemePack(m, { warn: quiet }));
 		expect(pipArt(has, "armor", true)?.id).toBe(PIP_ICON_IDS.armor);
 		expect(pipArt(has, "armor", false)?.id).toBe(PIP_ICON_IDS.armorEmpty);
-		expect(pipArt(has, "aegis", true)).toEqual({ id: PIP_ICON_IDS.aegis, transparency: 0, tinted: false });
+		expect(pipArt(has, "aegis", true)).toEqual({
+			id: PIP_ICON_IDS.aegis,
+			transparency: 0,
+			tinted: false,
+			box: HUD_SKIN.shieldPipBox,
+		});
 	});
 
 	it("the sheet is one content id for every pip, in the core preload tier, and none before its upload", () => {

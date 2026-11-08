@@ -5,6 +5,7 @@ import { describe, expect, it } from "@rbxts/jest-globals";
 import { HUD_SCALE_PERCENTS } from "shared/settings";
 import { PAUSE_BUTTON_VIEW, pauseButtonSlot, robloxButtonsEnd } from "shared/view/menu";
 import {
+	HUD_SKIN,
 	HUD_TRANSIENT,
 	HUD_VIEW,
 	PROGRESSION_VIEW,
@@ -63,9 +64,12 @@ const VALE_ART: TouchStripArt = {
 	coin: { w: 5, h: 6 },
 	pip: { w: 10, h: 10 },
 };
+/** The vale art with its own armor pips (docs/UI_ART.md armor pips): 16 x 15 shields in the hearts' box. */
+const SHIELD_ART: TouchStripArt = { ...VALE_ART, pip: { w: 16, h: 15 }, pipBox: HUD_SKIN.shieldPipBox };
 const LOOKS: ReadonlyArray<readonly [string, TouchStripArt | undefined]> = [
 	["flat", undefined],
 	["art", VALE_ART],
+	["shields", SHIELD_ART],
 ];
 
 function content(art: TouchStripArt | undefined, over: Partial<TouchStripContent> = {}): TouchStripContent {
@@ -142,6 +146,15 @@ describe("touch strip: layout helpers", () => {
 		// The 5 x 6 coin draws at 3 screen px per art px there.
 		expect(art.coin.w).toBeCloseTo(fitArt(5, 6, TOUCH_STRIP.iconBox, TOUCH_STRIP.iconBox, 0.75).w, 6);
 		expect(fitArt(5, 6, TOUCH_STRIP.iconBox, TOUCH_STRIP.iconBox, 0.75).scale).toBe(3);
+	});
+
+	it("the pack's own shield pips take the hearts' slot, so they are spaced like the hearts", () => {
+		for (const s of [0.75, 1, 1.5]) {
+			const slots = touchStripSlots(SHIELD_ART, s);
+			expect([s, slots.pip.w, slots.pip.h]).toEqual([s, slots.heart.w, slots.heart.h]);
+		}
+		// the chips keep their trimmed pip slot
+		expect(touchStripSlots(VALE_ART, 1).pip.w < touchStripSlots(VALE_ART, 1).heart.w).toBe(true);
 	});
 
 	it("drops the multiplier's text before anything else, then collapses the hearts", () => {

@@ -957,18 +957,19 @@ Decision log (deviations from `PLAN.md`):
   is exactly as before (colour square and label). No new strings, roles, sounds or settings; no Luau-locals change.
   `boost-icons.png` uploaded 2026-11-08 (`assetIds.ts`), so the bundled vale pack draws them; the Studio check pending.
 - **Armor pips (docs/UI_ART.md "As built: armor pips", 2026-11-08).** Presentation only (no sim, dungeon, lockstep,
-  hash, replay, fixture or score change). The armor row's pips as ORIGINAL 9 x 9 pixel art by
-  `scripts/art/gen-pip-icons.js` (the boon icons' kit; run by `art:build` / `art:lock`) into
-  `art/vendor/kaleb-vale/pip-icons/`: small heater shields, `ui.pip.armor` (steel round the armor blue, `uiMana`),
-  `ui.pip.armor.empty` (hollow and cracked, its own state) and `ui.pip.aegis` (the Aegis lavender with a white diamond,
-  untinted), one silhouette; 9 px draws at 2 screen px per art px in the unchanged 12 reference px pip box at 1080 p.
-  Packed by a new atlas group `pipIcons` into its OWN sheet `pip-icons.png` (`--only pipIcons`, generated
-  `packs/vale/pipIconLayout.ts`), so `ui-icons.png` does not repack. Theme: optional free-form ui ids `PIP_ICON_IDS`
-  (`shared/theme` pipIcons.ts), all or nothing on the sheet's one ID (vale `VALE_PIP_ICON_SOURCE`). View:
-  `shared/view/hud` `pipArt` prefers them (both armor ids, or the Aegis id) over the UI sheet's chips (the combo shards
-  keep the white chip); without the art every pip is exactly as before. No new strings, roles, sounds or settings; no
-  Luau-locals change. `pip-icons.png` uploaded 2026-11-08 (`assetIds.ts`), so the bundled vale pack draws them; the
-  Studio check pending.
+  hash, replay, fixture or score change). The armor row's pips as ORIGINAL 16 x 15 pixel art (the hearts' 18 x 15
+  height) by `scripts/art/gen-pip-icons.js` (the boon icons' kit; run by `art:build` / `art:lock`) into
+  `art/vendor/kaleb-vale/pip-icons/`: heater shields on one silhouette, `ui.pip.armor` (steel round the armor blue,
+  `uiMana`), `ui.pip.armor.empty` (hollow and cracked, its own state) and `ui.pip.aegis` (the Aegis lavender with a
+  white diamond, untinted). Packed by a new atlas group `pipIcons` into its OWN sheet `pip-icons.png` (`--only
+  pipIcons`, generated `packs/vale/pipIconLayout.ts`), so `ui-icons.png` does not repack. Theme: optional free-form ui
+  ids `PIP_ICON_IDS` (`shared/theme` pipIcons.ts), all or nothing on the sheet's one ID (vale `VALE_PIP_ICON_SOURCE`).
+  View: `shared/view/hud` `pipArt` prefers them (both armor ids, or the Aegis id) over the UI sheet's chips (the combo
+  shards keep the white chip) and draws them like hearts, in the hearts' whole 24 reference px box
+  (`HUD_SKIN.shieldPipBox`, `PipArt.box`; the touch strip's `TouchStripArt.pipBox`), so they are spaced like the
+  hearts (owner, 2026-11-08); without the art every pip is exactly as before. No new strings, roles, sounds or
+  settings; no Luau-locals change. The first 9 x 9 sheet's upload (2026-11-08) is retired with its rects; the 16 x 15
+  `pip-icons.png` uploaded 2026-11-08 (`assetIds.ts`), so the bundled vale pack draws them; the Studio check pending.
 - **Co-op frame pacing (docs/FRAME_PACING.md).** Client timing and presentation only (no sim, dungeon, hash, replay,
   wire, fixture or score change; the server is unchanged: every client still steps exactly the merged log, only WHEN
   changes). shared/lockstep `pacer.ts` `PlayoutPacer`, a playout clock: merged frame k is stepped at local time k x

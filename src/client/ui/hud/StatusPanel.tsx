@@ -82,7 +82,11 @@ export function pipArtProps(skin: StatusSkin | undefined, kind: HudPipKind, fill
 	const ref = skin.pack.image(art.id);
 	if (ref === undefined) return undefined;
 	const r = ref.rect;
-	const box = pipArtSlot(kind, r?.w ?? ref.w, r?.h ?? ref.h, skin.uiScale);
+	// The pack's own shields sit in the hearts' whole box, spaced like the hearts; the chips in their trimmed pip slot.
+	const box =
+		art.box !== undefined
+			? { w: art.box, h: art.box }
+			: pipArtSlot(kind, r?.w ?? ref.w, r?.h ?? ref.h, skin.uiScale);
 	return { id: art.id, box, transparency: art.transparency, tinted: art.tinted };
 }
 

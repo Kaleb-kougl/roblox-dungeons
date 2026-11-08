@@ -41,6 +41,12 @@ export const HUD_SKIN = {
 		armor: UI_ART.iconBox.pip,
 		aegis: UI_ART.iconBox.pip,
 	} satisfies Record<HudPipKind, number>,
+	/**
+	 * The pack's own armor / Aegis pips (shared/theme PIP_ICON_IDS: shields the hearts' height) take the hearts' whole
+	 * square box, reference px, like a heart (not trimmed to the art: pipArtSlot), so they draw at the hearts' density
+	 * and sit as far apart as the hearts.
+	 */
+	shieldPipBox: HUD_VIEW.heartSize,
 	/** An unlit Ember pip: the same candle art at this ImageTransparency (there is no unlit candle on the sheet). */
 	emberDimTransparency: 0.65,
 	/** An empty armor pip: the grey chip at this ImageTransparency (the flat look's empty pip is a dim outline). */
@@ -114,6 +120,11 @@ export interface PipArt {
 	readonly id: string;
 	readonly transparency: number;
 	readonly tinted: boolean;
+	/**
+	 * Drawn like a heart: the art in this whole square box (reference px, HUD_SKIN.shieldPipBox); absent, the slot is
+	 * pipArtSlot's (the kind's box, trimmed to the fitted art's width).
+	 */
+	readonly box?: number;
 }
 
 /**
@@ -121,9 +132,9 @@ export interface PipArt {
  *   - flask: ui.flask.full / .empty (skinFor: both or neither);
  *   - ember: ui.candle, an unlit one at HUD_SKIN.emberDimTransparency;
  *   - armor: the pack's own armor pips (shared/theme PIP_ICON_IDS: ui.pip.armor / .armor.empty, both or neither, drawn
- *     as is), else ui.chip, an empty one at HUD_SKIN.chipDimTransparency;
- *   - aegis: the pack's own ui.pip.aegis (drawn in its own colours), else ui.chip.white tinted by its role (always
- *     filled: an Aegis pip exists only while held).
+ *     as is, in the hearts' box HUD_SKIN.shieldPipBox), else ui.chip, an empty one at HUD_SKIN.chipDimTransparency;
+ *   - aegis: the pack's own ui.pip.aegis (drawn in its own colours, in the hearts' box), else ui.chip.white tinted by
+ *     its role (always filled: an Aegis pip exists only while held).
  */
 export function pipArt(has: SkinHas, kind: HudPipKind, filled: boolean): PipArt | undefined {
 	switch (kind) {
@@ -139,7 +150,12 @@ export function pipArt(has: SkinHas, kind: HudPipKind, filled: boolean): PipArt 
 		}
 		case "armor": {
 			if (has(PIP_ICON_IDS.armor) && has(PIP_ICON_IDS.armorEmpty)) {
-				return { id: filled ? PIP_ICON_IDS.armor : PIP_ICON_IDS.armorEmpty, transparency: 0, tinted: false };
+				return {
+					id: filled ? PIP_ICON_IDS.armor : PIP_ICON_IDS.armorEmpty,
+					transparency: 0,
+					tinted: false,
+					box: HUD_SKIN.shieldPipBox,
+				};
 			}
 			const id = skinFor(has, "pip", "armor");
 			return id !== undefined
@@ -148,7 +164,7 @@ export function pipArt(has: SkinHas, kind: HudPipKind, filled: boolean): PipArt 
 		}
 		case "aegis": {
 			if (has(PIP_ICON_IDS.aegis)) {
-				return { id: PIP_ICON_IDS.aegis, transparency: 0, tinted: false };
+				return { id: PIP_ICON_IDS.aegis, transparency: 0, tinted: false, box: HUD_SKIN.shieldPipBox };
 			}
 			const id = skinFor(has, "pip", "tinted");
 			return id !== undefined ? { id, transparency: 0, tinted: true } : undefined;

@@ -1,5 +1,5 @@
 // Specs for the generated armor pips (scripts/art/gen-pip-icons.js; npm run test:art): the three pips, deterministic,
-// 9 x 9 opaque-or-clear canvases in the palette only, outlined (nothing clipped at the canvas edge), the same shield
+// 16 x 15 (the hearts' height) opaque-or-clear canvases in the palette only, outlined (nothing clipped at the canvas edge), the same shield
 // silhouette for all three (so a spent or Aegis pip sits exactly where a full one would), the full pip in the armor
 // blue around uiMana, the Aegis pip in the Aegis lavender around boost.aegis, the spent pip with none of either; and the
 // atlas group that packs them (art/atlases.json `pipIcons`, build-atlases.js buildPipIcons): one entry per file, and the
@@ -53,18 +53,26 @@ describe("gen-pip-icons", () => {
 		assert.deepEqual(G.PALETTE.o.rgb, BOON.OUTLINE);
 	});
 
+	it("is as tall as the hearts (ui.heart.* in packs/vale/uiIconLayout.ts) and no wider", () => {
+		const src = fs.readFileSync(path.join(ROOT, "src", "shared", "theme", "packs", "vale", "uiIconLayout.ts"), "utf8");
+		const m = src.match(/"ui\.heart\.full": \{ rect: \{ x: \d+, y: \d+, w: (\d+), h: (\d+) \}/);
+		assert.equal(G.H, Number(m[2]));
+		assert.ok(G.W <= Number(m[1]));
+		assert.equal(G.SHAPE.length, G.MAP_H);
+	});
+
 	it("is deterministic (byte-identical PNGs)", () => {
 		for (const id of G.PIP_IDS) assert.deepEqual(G.renderIcon(id), G.renderIcon(id));
 	});
 
-	it("every pip: 9 x 9, alpha 0 or 255, palette colours only, the same silhouette", () => {
+	it("every pip: 16 x 15, as tall as the hearts, alpha 0 or 255, palette colours only, the same silhouette", () => {
 		const colours = new Set(Object.values(G.PALETTE).map((p) => p.rgb.join(",")));
 		const mask = (id) => [...PNG.sync.read(G.renderIcon(id)).data].filter((_, i) => i % 4 === 3).join(",");
 		for (const id of G.PIP_IDS) {
 			const png = PNG.sync.read(G.renderIcon(id));
-			assert.equal(png.width, G.SIZE);
-			assert.equal(png.height, G.SIZE);
-			for (let i = 0; i < G.SIZE * G.SIZE; i++) {
+			assert.equal(png.width, G.W);
+			assert.equal(png.height, G.H);
+			for (let i = 0; i < G.W * G.H; i++) {
 				const a = png.data[i * 4 + 3];
 				assert.ok(a === 0 || a === 255, `${id}: alpha ${a}`);
 				if (a === 0) continue;
@@ -78,11 +86,11 @@ describe("gen-pip-icons", () => {
 	it("outlined: an outlined colour never touches a clear pixel or the canvas edge", () => {
 		for (const id of G.PIP_IDS) {
 			const rows = G.drawIcon(id);
-			for (let y = 0; y < G.SIZE; y++) {
-				for (let x = 0; x < G.SIZE; x++) {
+			for (let y = 0; y < G.H; y++) {
+				for (let x = 0; x < G.W; x++) {
 					const ch = rows[y][x];
 					if (ch === "." || ch === "o") continue;
-					assert.ok(x > 0 && y > 0 && x < G.SIZE - 1 && y < G.SIZE - 1, `${id}: ${ch} at the edge (${x}, ${y})`);
+					assert.ok(x > 0 && y > 0 && x < G.W - 1 && y < G.H - 1, `${id}: ${ch} at the edge (${x}, ${y})`);
 					for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
 						assert.notEqual(rows[y + dy][x + dx], ".", `${id}: ${ch} at (${x}, ${y}) has no outline`);
 					}
@@ -103,16 +111,16 @@ describe("gen-pip-icons", () => {
 
 	it("draws a contact sheet", () => {
 		const png = PNG.sync.read(G.renderContact());
-		assert.ok(png.width > G.SIZE && png.height > G.SIZE);
+		assert.ok(png.width > G.W && png.height > G.H);
 	});
 });
 
 describe("the pipIcons atlas group", () => {
-	it("lists every pip file once, as the whole 9 x 9 canvas", () => {
+	it("lists every pip file once, as the whole 16 x 15 canvas", () => {
 		const group = CONFIG.pipIcons;
 		assert.equal(group.atlas, "pip-icons");
 		assert.deepEqual(Object.keys(group.icons).sort(), [...G.PIP_IDS].sort());
-		for (const id of G.PIP_IDS) assert.deepEqual(group.icons[id], { file: vendorFile(id), rect: [0, 0, G.SIZE, G.SIZE] });
+		for (const id of G.PIP_IDS) assert.deepEqual(group.icons[id], { file: vendorFile(id), rect: [0, 0, G.W, G.H] });
 		assert.deepEqual(A.pipIconSourceFiles(group), G.PIP_IDS.map(vendorFile).sort());
 		assert.ok(A.sourceFiles(CONFIG).includes(vendorFile(G.PIP_IDS[0])));
 		assert.equal(A.onlyGroup(["node", "x", "--only", "pipIcons"]), "pipIcons");
@@ -130,10 +138,10 @@ describe("the pipIcons atlas group", () => {
 		for (const id of G.PIP_IDS) {
 			const r = icons.layouts[id].rect;
 			const want = G.rgbaOf(id);
-			for (let y = 0; y < G.SIZE; y++) {
-				for (let x = 0; x < G.SIZE; x++) {
+			for (let y = 0; y < G.H; y++) {
+				for (let x = 0; x < G.W; x++) {
 					const a = ((r.y + y) * icons.w + r.x + x) * 4;
-					const b = (y * G.SIZE + x) * 4;
+					const b = (y * G.W + x) * 4;
 					if (want[b + 3] === 0) {
 						assert.equal(icons.img.data[a + 3], 0, `${id} (${x}, ${y})`);
 						continue;
@@ -148,7 +156,7 @@ describe("the pipIcons atlas group", () => {
 	it("takes ui.pip.* ids only", () => {
 		const png = PNG.sync.read(G.renderIcon(G.PIP_IDS[0]));
 		A.sourceCache.set("synthetic/pip.png", { w: png.width, h: png.height, data: new Uint8Array(png.data) });
-		const section = (id) => ({ atlas: "pip-test", icons: { [id]: { file: "synthetic/pip.png", rect: [0, 0, 9, 9] } } });
+		const section = (id) => ({ atlas: "pip-test", icons: { [id]: { file: "synthetic/pip.png", rect: [0, 0, 16, 15] } } });
 		assert.throws(() => A.buildPipIcons(section("ui.boost.aegis")), /pip icon ids start with/);
 		assert.doesNotThrow(() => A.buildPipIcons(section("ui.pip.test")));
 		A.sourceCache.delete("synthetic/pip.png");

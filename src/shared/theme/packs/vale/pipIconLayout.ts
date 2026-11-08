@@ -4,9 +4,9 @@ import type { ValeUiIconLayout } from "./uiIconLayout";
 /** The armor pip sheet's file name (the key of its id in assetIds.ts). */
 export const VALE_PIP_ICON_FILE = "pip-icons.png";
 /** The sheet size, pixels. */
-export const VALE_PIP_ICON_ATLAS = { w: 11, h: 33 } as const;
+export const VALE_PIP_ICON_ATLAS = { w: 18, h: 51 } as const;
 export const VALE_PIP_ICONS: Record<string, ValeUiIconLayout> = {
-	"ui.pip.aegis": { rect: { x: 1, y: 1, w: 9, h: 9 } },
-	"ui.pip.armor": { rect: { x: 1, y: 12, w: 9, h: 9 } },
-	"ui.pip.armor.empty": { rect: { x: 1, y: 23, w: 9, h: 9 } },
+	"ui.pip.aegis": { rect: { x: 1, y: 1, w: 16, h: 15 } },
+	"ui.pip.armor": { rect: { x: 1, y: 18, w: 16, h: 15 } },
+	"ui.pip.armor.empty": { rect: { x: 1, y: 35, w: 16, h: 15 } },
 };
