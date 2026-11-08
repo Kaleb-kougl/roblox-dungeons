@@ -113,6 +113,7 @@ import { valeHazardAssets, type ValeHazardSource } from "./hazards";
 import { valeAmbientAssets, valeFxAssets, valeFxSources } from "./fx";
 import { VALE_TREASURE_CAGE_LAYOUT } from "./treasureLayout";
 import { VALE_PACT_ALTAR_LAYOUT } from "./fortuneLayout";
+import { VALE_KENNEY_LAYOUTS } from "./kenneyLayout";
 import {
 	VALE_FLOOR_HEX,
 	VALE_IMAGE_LAYOUTS,
@@ -255,6 +256,114 @@ export interface ValeDecorPiece {
  */
 export const VALE_PATCH_LOOKS = ["dirt", "planks-a", "planks-b", "planksbroken-a", "planksbroken-b"] as const;
 
+/**
+ * The Kenney solid pieces' art (docs/KENNEY_DECOR.md KN9), by kind, in variant order from `first` (1-based): the
+ * kenneyLayout.ts names. The library's runner after the throne carpet (5 / 6 a segment along X / Z, 7-10 the end of a
+ * runner running toward +X / +Z / -X / -Z); the study table in axis pairs (odd along X): books, plain, cloth; the display
+ * case in axis pairs: case, books, open, sword; the lectern: the open book facing +X / +Z / -X / -Z, then the same
+ * empty; the toppled case and the barrel stack along X / Z; the dining tables: six whole, then two broken; crates,
+ * lumber, lying barrels and the stockpile: Kenney N / E, drawn facing +-X / +-Z; a library's candle stands. The
+ * stockpile stands tall, every other piece low; the runner lies flat.
+ */
+export const VALE_KENNEY_PIECES: ReadonlyArray<{
+	readonly kind: DecorKind;
+	readonly first: number;
+	readonly layer: DecorLayer;
+	readonly art: ReadonlyArray<string>;
+}> = [
+	{
+		kind: "carpet",
+		first: 5,
+		layer: "flat",
+		art: [
+			"kenney-runner-x",
+			"kenney-runner-z",
+			"kenney-runner-end-px",
+			"kenney-runner-end-pz",
+			"kenney-runner-end-nx",
+			"kenney-runner-end-nz",
+		],
+	},
+	{
+		kind: "studyTable",
+		first: 1,
+		layer: "low",
+		art: [
+			"kenney-studytable-books-x",
+			"kenney-studytable-books-z",
+			"kenney-studytable-plain-x",
+			"kenney-studytable-plain-z",
+			"kenney-studytable-cloth-x",
+			"kenney-studytable-cloth-z",
+		],
+	},
+	{
+		kind: "display",
+		first: 1,
+		layer: "low",
+		art: [
+			"kenney-display-case-x",
+			"kenney-display-case-z",
+			"kenney-display-books-x",
+			"kenney-display-books-z",
+			"kenney-display-open-x",
+			"kenney-display-open-z",
+			"kenney-display-sword-x",
+			"kenney-display-sword-z",
+		],
+	},
+	{
+		kind: "lectern",
+		first: 1,
+		layer: "low",
+		art: [
+			"kenney-lectern-open-px",
+			"kenney-lectern-open-pz",
+			"kenney-lectern-open-nx",
+			"kenney-lectern-open-nz",
+			"kenney-lectern-empty-px",
+			"kenney-lectern-empty-pz",
+			"kenney-lectern-empty-nx",
+			"kenney-lectern-empty-nz",
+		],
+	},
+	{ kind: "fallenShelf", first: 1, layer: "low", art: ["kenney-fallenshelf-x", "kenney-fallenshelf-z"] },
+	{
+		kind: "diningTable",
+		first: 1,
+		layer: "low",
+		art: [
+			"kenney-diningtable-round-a",
+			"kenney-diningtable-round-b",
+			"kenney-diningtable-items-a",
+			"kenney-diningtable-items-b",
+			"kenney-diningtable-short-a",
+			"kenney-diningtable-short-b",
+			"kenney-diningtable-broken-a",
+			"kenney-diningtable-broken-b",
+		],
+	},
+	{ kind: "barrelStack", first: 1, layer: "low", art: ["kenney-barrelstack-x", "kenney-barrelstack-z"] },
+	{ kind: "crateStack", first: 1, layer: "low", art: ["kenney-cratestack-a", "kenney-cratestack-b"] },
+	{ kind: "lumber", first: 1, layer: "low", art: ["kenney-lumber-a", "kenney-lumber-b"] },
+	{ kind: "barrelHeap", first: 1, layer: "low", art: ["kenney-barrelheap-a", "kenney-barrelheap-b"] },
+	{ kind: "stockpile", first: 1, layer: "tall", art: ["kenney-stockpile-a", "kenney-stockpile-b"] },
+	{
+		kind: "libraryCandle",
+		first: 1,
+		layer: "low",
+		art: ["kenney-candle-single", "kenney-candle-double-a", "kenney-candle-double-b"],
+	},
+];
+
+/** VALE_KENNEY_PIECES as decor pieces: decor.delve.b<n>.<kind>.<first + i> -> art i, every biome alike. */
+function valeKenneyPieces(): ValeDecorPiece[] {
+	const out: ValeDecorPiece[] = [];
+	for (const k of VALE_KENNEY_PIECES)
+		k.art.forEach((art, i) => out.push({ kind: k.kind, variant: k.first + i, art, layer: k.layer }));
+	return out;
+}
+
 /** The floor patch pieces: decor.delve.b<n>.patch.<v> -> that biome's bake of look v (VALE_PATCH_LOOKS). */
 function valePatchPieces(): ValeDecorPiece[] {
 	const out: ValeDecorPiece[] = [];
@@ -368,6 +477,9 @@ export const VALE_DECOR_PIECES: ReadonlyArray<ValeDecorPiece> = [
 	{ kind: "brokenCrate", art: "crate-broken", layer: "flat" },
 	// floor patches (docs/KENNEY_DECOR.md KN4): Kenney planks and dirt, baked per biome
 	...valePatchPieces(),
+	// Kenney's solid pieces (docs/KENNEY_DECOR.md KN9: Isometric Library / Isometric Dungeon, CC0, reprojected), all in
+	// ONE sheet of their own (kenneyLayout.ts, kenney-decor.png): VALE_KENNEY_PIECES
+	...valeKenneyPieces(),
 ];
 
 /**
@@ -510,10 +622,14 @@ function worldAsset(
 	return set;
 }
 
-/** The world art layout named `art` (a programming error, not a missing upload, when absent). */
+/**
+ * The world art layout named `art`: layout.ts's (the decor atlas and its own PNGs) or kenneyLayout.ts's (the Kenney
+ * decor sheet, docs/KENNEY_DECOR.md KN9). A programming error, not a missing upload, when absent.
+ */
 function worldLayout(art: string): ValeWorldLayout {
-	const layout = VALE_WORLD_LAYOUTS[art];
-	if (layout === undefined) error(`vale: no world art "${art}" in layout.ts (art/atlases.json worldArt.pieces)`, 0);
+	const layout = VALE_WORLD_LAYOUTS[art] ?? VALE_KENNEY_LAYOUTS[art];
+	if (layout === undefined)
+		error(`vale: no world art "${art}" in layout.ts or kenneyLayout.ts (art/atlases.json worldArt / kenney)`, 0);
 	return layout;
 }
 

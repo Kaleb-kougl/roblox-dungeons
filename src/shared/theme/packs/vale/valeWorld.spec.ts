@@ -25,12 +25,14 @@ import { PLACEHOLDER_MANIFEST } from "../placeholder";
 import { PELLET_KINDS, pelletId } from "../../pellets";
 import { pelletReport } from "../../pelletColors";
 import { TREASURE_IDS } from "../../treasure";
+import { VALE_KENNEY_LAYOUTS, VALE_KENNEY_SHEETS } from "./kenneyLayout";
 import { VALE_WORLD_LAYOUTS } from "./layout";
 import {
 	VALE_AMBIENT_ART,
 	VALE_BREAKABLE_ART,
 	VALE_DECOR_FX,
 	VALE_DECOR_PIECES,
+	VALE_KENNEY_PIECES,
 	VALE_PATCH_LOOKS,
 	VALE_PELLET_ART,
 	VALE_RETIRED_WORLD_ART,
@@ -50,6 +52,8 @@ function worldFiles(): Array<string> {
 		if (l.kind === "image") files.add(l.file);
 		else for (const s of l.sheets) files.add(s.file);
 	}
+	// the Kenney decor sheet (docs/KENNEY_DECOR.md KN9)
+	for (const name of sortedKeys(VALE_KENNEY_LAYOUTS)) files.add(VALE_KENNEY_LAYOUTS[name].file);
 	const out = new Array<string>();
 	for (const f of files) out.push(f);
 	out.sort();
@@ -91,7 +95,13 @@ describe("vale world art (docs/DECOR.md R5)", () => {
 		const pending = new Set<string>();
 		for (const p of VALE_VOID_DECOR_PIECES) if (VALE_WORLD_LAYOUTS[p.art] === undefined) pending.add(p.art);
 		for (const art of used)
-			if (!pending.has(art)) expect([art, VALE_WORLD_LAYOUTS[art] !== undefined]).toEqual([art, true]);
+			if (!pending.has(art))
+				expect([art, (VALE_WORLD_LAYOUTS[art] ?? VALE_KENNEY_LAYOUTS[art]) !== undefined]).toEqual([art, true]);
+		// the Kenney sheet's pieces (docs/KENNEY_DECOR.md KN9): every one used, none also in layout.ts, all in its sheet(s)
+		for (const name of sortedKeys(VALE_KENNEY_LAYOUTS)) {
+			expect([name, used.has(name), VALE_WORLD_LAYOUTS[name] === undefined]).toEqual([name, true, true]);
+			expect([name, VALE_KENNEY_SHEETS.includes(VALE_KENNEY_LAYOUTS[name].file)]).toEqual([name, true]);
+		}
 		// every layout is used, except the retired gems (docs/BOOST_ART.md decision 2), which nothing may use
 		for (const name of sortedKeys(VALE_WORLD_LAYOUTS)) {
 			expect([name, used.has(name)]).toEqual([name, !VALE_RETIRED_WORLD_ART.includes(name)]);
@@ -121,7 +131,7 @@ describe("vale world art (docs/DECOR.md R5)", () => {
 		// 3D kit's own PNGs (docs/DECOR.md "3D kits") and the
 		// two pellet cubes (docs/PELLETS.md PL8) and the vault chest's two sheets (docs/TREASURE.md TR9) and Kenney's
 		// bookcases, the bookcase's alternative set and its wide cases, and the floor patches baked per biome
-		// (docs/KENNEY_DECOR.md)
+		// (docs/KENNEY_DECOR.md), and the one Kenney decor sheet of the solid pieces and the runner (KN9)
 		expect(worldFiles()).toEqual([
 			"decor-atlas.png",
 			"decor-mote.png",
@@ -151,6 +161,7 @@ describe("vale world art (docs/DECOR.md R5)", () => {
 			"kenney-bookcase-wideemptyladder-z.png",
 			"kenney-bookcase-wideladder-x.png",
 			"kenney-bookcase-wideladder-z.png",
+			"kenney-decor.png",
 			"kenney-patch-dirt-b1.png",
 			"kenney-patch-dirt-b2.png",
 			"kenney-patch-dirt-b3.png",
@@ -310,6 +321,32 @@ describe("vale world art (docs/DECOR.md R5)", () => {
 				]);
 			});
 		});
+	});
+
+	it("the Kenney solid pieces and the runner (docs/KENNEY_DECOR.md KN9): rect cuts of one sheet, all or nothing", () => {
+		const m = buildValeManifest(worldIds());
+		const core = new ThemeCore(m, { warn: quiet });
+		const ids = worldIds();
+		for (const k of VALE_KENNEY_PIECES) {
+			k.art.forEach((art, i) => {
+				const id = decorId("biome.3", k.kind, k.first + i);
+				const a = m.assets[id] as ImageAsset;
+				const l = VALE_KENNEY_LAYOUTS[art];
+				expect([id, a.kind, a.layer, a.assetId, a.rect]).toEqual([id, "image", k.layer, ids[l.file], l.rect]);
+				expect([id, a.w, a.h, a.pivot, a.pixelsPerTile]).toEqual([id, l.w, l.h, l.pivot, 29.6]);
+			});
+			// every variant listed in order after the kit's (the runner after the throne carpet's four)
+			expect([k.kind, core.decorVariants("biome.5", k.kind).size()]).toEqual([
+				k.kind,
+				k.first - 1 + k.art.size(),
+			]);
+		}
+		// without the sheet's ID: none of them, the kit's carpet kept
+		const without = buildValeManifest(worldIds(...VALE_KENNEY_SHEETS));
+		expect(validateManifest(without, { packId: "vale" })).toEqual([]);
+		const bare = new ThemeCore(without, { warn: quiet });
+		for (const k of VALE_KENNEY_PIECES)
+			expect([k.kind, bare.decorVariants("biome.1", k.kind).size()]).toEqual([k.kind, k.first - 1]);
 	});
 
 	it("void pieces (docs/VOID_DECOR.md VD6): flagstones map once the atlas has their art, every biome alike", () => {

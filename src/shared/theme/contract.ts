@@ -1354,7 +1354,8 @@ export const DECOR_KIND_LAYERS = {
 	candelabrum: ["low"] as const,
 	// room themes (docs/DECOR.md "Room themes"): the boss room's throne on its dais and the statue on its base (solid,
 	// low; variant 1 faces +X, 2 faces +Z), and the throne's carpet (flat, walkable; variants 1 / 2 a 2 x 2 segment
-	// along X / Z, 3 / 4 the end along X / Z)
+	// along X / Z, 3 / 4 the end along X / Z); a library's runner (1 wide, docs/KENNEY_DECOR.md KN9) takes variants 5 / 6
+	// (a 2 x 1 segment along X / Z) and 7-10 (the end of a runner running toward +X / +Z / -X / -Z)
 	throne: ["low"] as const,
 	statue: ["low"] as const,
 	carpet: FLAT_SPOT,
@@ -1373,6 +1374,25 @@ export const DECOR_KIND_LAYERS = {
 	// a floor patch (docs/KENNEY_DECOR.md KN4): planks or dirt worn into 2 x 2 tiles of open floor, flat, walkable;
 	// laid by the decor plan itself (no Forge piece), its variants any look (picked per block by hash)
 	patch: FLAT_SPOT,
+	// Kenney solid pieces (docs/KENNEY_DECOR.md KN9), standing on their own WALL cells (Dungeon.solidDecor). Library: a
+	// study table (2 x 2; variants in axis pairs, odd along X, even along Z: 1 / 2 with books, 3 / 4 plain, 5 / 6 with a
+	// cloth), a display case (2 x 1; axis pairs: case, books, open, sword), a lectern (1 x 1; 1-4 the open book facing
+	// +X / +Z / -X / -Z, 5-8 the same empty) and a toppled case (2 x 1, axis pair). Mess hall: a dining table (1 x 1;
+	// 1-6 whole, 7 / 8 broken). Stores: a barrel stack (2 x 1, axis pair), crate stack, lumber pile and lying barrels
+	// (1 x 1; 1 facing +-X, 2 facing +-Z) and the stockpile (2 x 2 under a scaffold, tall; 1 facing +-X, 2 +-Z). All
+	// low but the stockpile. A library's candle stand (presentation only: the decor plan draws a library room's
+	// `candelabrum` as this kind when the pack has it; low, any variant by hash)
+	studyTable: ["low"] as const,
+	display: ["low"] as const,
+	lectern: ["low"] as const,
+	fallenShelf: ["low"] as const,
+	diningTable: ["low"] as const,
+	barrelStack: ["low"] as const,
+	crateStack: ["low"] as const,
+	lumber: ["low"] as const,
+	barrelHeap: ["low"] as const,
+	stockpile: ["tall"] as const,
+	libraryCandle: ["low"] as const,
 } as const satisfies Record<string, ReadonlyArray<DecorLayer>>;
 export type DecorKind = keyof typeof DECOR_KIND_LAYERS;
 
@@ -1413,6 +1433,17 @@ export const DECOR_KINDS: ReadonlyArray<DecorKind> = [
 	"chair",
 	"bookcaseWide",
 	"patch",
+	"studyTable",
+	"display",
+	"lectern",
+	"fallenShelf",
+	"diningTable",
+	"barrelStack",
+	"crateStack",
+	"lumber",
+	"barrelHeap",
+	"stockpile",
+	"libraryCandle",
 ];
 
 /**

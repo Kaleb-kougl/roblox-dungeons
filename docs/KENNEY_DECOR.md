@@ -3,7 +3,9 @@
 Status (2026-11-06): **every piece redrawn** (KN1, KN2's renders) and **Kenney's bookcases wired as alternative art
 for the existing bookcase** (presentation only, "As built" below), uploaded 2026-11-06 11:46 AM; **wide pairs wired**
 (KN3, "Wide cases" below) and **floor patches wired** (KN4, "Floor patches" below: planks and dirt, baked per biome);
-their 12 + 25 PNGs uploaded 2026-11-06 1:19 PM; Studio check open. The Forge half (KN5-KN8) is not started. Owner answers (2026-11-06): **gameplay too, at once** (new solid set
+their 12 + 25 PNGs uploaded 2026-11-06 1:19 PM; Studio check open. The Forge half (KN5-KN8) places the new pieces
+(branch kenney-forge) and **KN9 draws them** ("Decor plan and theme for the Forge pieces" below: one `kenney-decor.png`
+sheet, its upload pending). Owner answers (2026-11-06): **gameplay too, at once** (new solid set
 pieces with the art, KND1); **kit art vs Kenney art is decided after a spike** (KND2); **props + floor patches**, walls
 and biome floors unchanged (KND3); **both** a new `mess` (mess hall) theme and richer storerooms (KND4). Everything else
 is proposed.
@@ -254,6 +256,61 @@ replay or fixture change; walkable, flat).
 - Open (Studio): whether 35 % / x0.55 reads as worn floor under the game's lighting and the depth-band dimming; tune
   `biomeGrade` in kenney.json and rerun `reproject.py --only patch`, `art:lock`, `art:build`.
 
+### Decor plan and theme for the Forge pieces (KN9, 2026-11-08)
+
+Presentation only (the Forge half, KN5-KN8, places the pieces; this draws them). No dungeon, sim, hash or replay change.
+
+- **Art: one sheet** (KND8 kept). The decor world-art path already draws images cut from a shared atlas (`rect`, as
+  the Lords of Pain decor atlas), so a new atlas group `kenney` (build-atlases.js "Kenney decor sheet"; `--only
+  kenney` / `--lock --only kenney`, needs only `art/vendor/kenney/`) packs the 51 new PNGs into ONE `kenney-decor.png`
+  (512 x 512, MaxRects) with a generated `packs/vale/kenneyLayout.ts` (`VALE_KENNEY_LAYOUTS`, world image layouts,
+  outlines for the standing pieces), and the manifest's world-art lookup reads it after `layout.ts`. No renderer change,
+  one upload, the decor atlas never repacks. Pivots are reproject.py's `.pivot.json`, except the barrel stack's (below).
+- **Orientation** (checked on the PNGs against the game camera, `+X` screen-down-right, `+Z` down-left): display case
+  and study table: Kenney N (`_a`) runs along X, E (`_b`) along Z; the toppled case the other way round (E along X,
+  N along Z: N reads as a box seen end-on, the least certain pick, check in Studio); lectern: the open book faces
+  +X / +Z / -X / -Z on Kenney E / S / W / N (the bookcases' convention); runner segment: N along X, E along Z; runner
+  end: the open (unbordered) side measured on the pixels, N open to +X, E to +Z, S to -X, W to -Z; barrel stack:
+  `stack_x` runs along X. **Fix:** kenney.json gives the barrel stack's `wall` normal on the wrong axis (N runs along X,
+  so its back is its -Z edge, not -X), which put its pivot 0.34 tile off along the stack; the atlas entry moves the
+  pivot to the stack's box centre (0.88 deep in a 1-deep cell: within 0.06 tile of flush against either wall, and the
+  Forge stands it against any of the four). 1 x 1 stock (crates, lumber, lying barrels) and the stockpile: Kenney N /
+  E drawn facing +-X / +-Z.
+- **Kinds** appended after `patch` (no Luau top-level local): `studyTable`, `display`, `lectern`, `fallenShelf`,
+  `diningTable`, `barrelStack`, `crateStack`, `lumber`, `barrelHeap` (low), `stockpile` (tall), and `libraryCandle`
+  (low, presentation only: a library room's `candelabrum` draws as it when the pack has it, `DECOR_LIBRARY_THEME`;
+  every other candle stand and its fade box are unchanged). Vale variants (`VALE_KENNEY_PIECES`): study table axis
+  pairs books / plain / cloth; display case axis pairs case / books / open / sword; lectern open +X / +Z / -X / -Z then
+  empty; toppled case, barrel stack, stock and stockpile one per axis; dining table round / items / short (a, b) then
+  broken (a, b); library candle single / double a / double b.
+- **Plan** (the `solid` step, the bridge gone): every Forge piece one entry over its cells, anchored at the
+  footprint's centre (2 x 1 boxes at both run ends, 2 x 2 at the four corners, hulled). Variant: the axis (`w > 1`) or
+  the facing axis (a study table's fx / fz is its long axis), a lectern its facing (as the chair), then a look by cell
+  hash (`kenneyVariant`, `DECOR_KENNEY`, salt `kenneyLook`): display sword 1 in 4, lectern empty 1 in 4, dining
+  broken 1 in 4, the rest evenly. `DECOR_BOX` per kind: the smallest box (w x (h + below)) holding every look's
+  outline whole in every facing at full size around those anchors, + 2 / 1 / 1 px (studyTable 4/5/1, display 5/17/7,
+  lectern 11/15/4, fallenShelf 10/23/14, diningTable 24/21/9, barrelStack 9/23/6, crateStack 21/17/6, lumber 27/18/9,
+  barrelHeap 26/18/8, stockpile 4/20/2, libraryCandle 10/18/3). A stockpile's -X / -Z non-floor neighbours (and the
+  corner between) join the `behindShelf` cells: nothing stands or hangs there (its scaffold rises over those walls).
+- **Runner** (`DECOR_RUNNER`): a carpet with min(w, h) = 1 draws `carpet` variants 5-10 (5 / 6 a 2 x 1 segment along
+  X / Z, 7-10 the end of a runner running toward +X / +Z / -X / -Z): an end piece on each end cell (open toward the
+  runner), segments over the cells between (the Forge lays an even length, so they pair up). Deviation: the plan said
+  "segments every 2 tiles + the end piece"; with a 1-cell end art that leaves one odd cell, so both ends take an end
+  piece (the head's border faces the lectern). Only with all six runner variants; else the runner draws nothing and its
+  cells keep the Forge's flat pieces. The throne carpet is unchanged.
+- **Unchanged without the art**: every new branch reads the pack's variant counts (no ID: count 0, the piece blocks and
+  draws nothing; a runner with the kit carpet's four variants only draws nothing), and floors without the new kinds or
+  runners plan exactly as before.
+- **Credits**: "Isometric Library, Isometric Dungeon" (Kenney, CC0) in `CREDITS` and THIRD_PARTY_NOTICES.md (data, no
+  new string).
+- **Checked** (cloud container, 2 cores): typecheck, lint, check:assets, test:art, rbxtsc build; Lune: decorPlan.spec
+  (Kenney pieces once each with their variants and boxes, the runner vs the throne carpet, the library candles, the
+  stockpile drop, the study table replacing the reading line), valeArt.spec, valeWorld.spec, void.spec and every spec
+  under shared/view and shared/theme.
+- **Upload (KN12)**: `art/upload/kenney-decor.png` -> its ID under the key `"kenney-decor.png"` in
+  `packs/vale/assetIds.ts`. Until then the pieces block and draw nothing. Open: the Studio look (KN13), the toppled
+  case's Z art, the 1 x 1 stock's facings (Kenney N / E picked per axis by eye, not measured).
+
 ## Pipeline
 
 1. **`scripts/art/kenney/reproject.py`** (PIL + numpy; like render_kit.py, not part of `npm run`) reads
@@ -282,7 +339,7 @@ replay or fixture change; walkable, flat).
   gameplay half (KN5-KN8) does not depend on the art.
 - [x] **KN1. Reprojection tool** (2026-11-06; the self-check is not written yet). `reproject.py` + `kenney.json`, with a self-check: reprojecting a synthetic box's
   corners matches the game projection within 0.5 px, and a flat diamond becomes the 55 deg diamond.
-- [~] **KN2. Art set** (2026-11-06: every piece rendered; atlases / credits for the bookcases only). Render every piece in the tables above (both facings for wall and 2 x 1 pieces), the `kenney`
+- [x] **KN2. Art set** (2026-11-06: every piece rendered; 2026-11-08: the `kenney` atlas group, credits, valeWorld.spec, KN9). Render every piece in the tables above (both facings for wall and 2 x 1 pieces), the `kenney`
   atlas group, `art:build` / `art:lock`, valeWorld.spec's file list, THIRD_PARTY_NOTICES.md and `CREDITS`.
 - [~] **KN3. Variants (presentation)** (2026-11-06: narrow bookcase variants wired as a per-room alternative set; wide
   pairs wired and uploaded; the run-end / ladder rules and other kit -> Kenney swaps open). Bookcase variants, wide-pair drawing (KND11) and any kit -> Kenney swaps from
@@ -298,13 +355,15 @@ replay or fixture change; walkable, flat).
 - [ ] **KN7. Mess hall.** `RoomTheme` gains `mess` and the weights above. Tables, barrel stacks, breakables x1.5.
   Census `[mess]`, including spawn tiles lost per room.
 - [ ] **KN8. Storerooms.** Stock pieces before the breakables, `stockpile` in big rooms. Census `[store]`.
-- [ ] **KN9. Decor plan and theme for the new kinds.** Append them to DECOR_KINDS (no new Luau top-level local) and the
+- [x] **KN9. Decor plan and theme for the new kinds** (2026-11-08, "Decor plan and theme for the Forge pieces" above;
+  upload pending, KN12). Append them to DECOR_KINDS (no new Luau top-level local) and the
   layer table. `DECOR_BOX` per kind is measured on the built outlines, with fade boxes, facing variants, carpet
   variants 5-8 and a `behindShelf`-style drop for wall-top pieces behind a tall stock piece.
 - [ ] **KN10. Re-pins and docs.** roomPool.lock roster digests, the stormcaller run, `DAILY.ruleset`, the CLAUDE.md
   table row and decision log, docs/DECOR.md and BOOKSHELVES.md pointers.
 - [ ] **KN11. Verify** (the Mac's aarch64 VM). Typecheck, lint, check:assets, build, test:art, and every spec file.
-- [ ] **KN12. [owner] Upload** the `kenney` sheet(s) and add the ids to `packs/vale/assetIds.ts`.
+- [ ] **KN12. [owner] Upload** the `kenney` sheet (`art/upload/kenney-decor.png`) and add its id to
+  `packs/vale/assetIds.ts` under `"kenney-decor.png"`.
 - [ ] **KN13. [owner] Studio check and playtest.** Libraries and mess halls read as rooms; bullets never hide behind
   tables or stock; walkers, bots and the charger (its wall stun now hits tables) get round the new pieces; the count
   of decor instances per floor on a phone (DecorController's report).

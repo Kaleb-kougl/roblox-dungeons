@@ -1707,6 +1707,26 @@
 			"bytes": 1444
 		},
 		{
+			"path": "kenney/barrelHeap/heap_a.png",
+			"sha256": "d93e783b9bcf42e7cb2704e7031bb657838471bc031fd3d5666b509765414035",
+			"bytes": 4293
+		},
+		{
+			"path": "kenney/barrelHeap/heap_b.png",
+			"sha256": "e18f26abb5d19e04428c4505f9dccf571741963c4573bc09e1a5be45c869a35a",
+			"bytes": 4433
+		},
+		{
+			"path": "kenney/barrelStack/stack_x.png",
+			"sha256": "d44e280e612f513ab89d723a4992eccdbab7a6a45e49efcf33e557f91113510a",
+			"bytes": 6351
+		},
+		{
+			"path": "kenney/barrelStack/stack_z.png",
+			"sha256": "a946430b0f62e54bf717e28a2eefd8253e9fc7bf5941737171430807c0b79703",
+			"bytes": 6270
+		},
+		{
 			"path": "kenney/bookcase/books_x.png",
 			"sha256": "be8e261023d60de358dd9919e378b09d0372994cb5bcb9aa0ac1e0c2f303499d",
 			"bytes": 3639
@@ -1837,6 +1857,201 @@
 			"bytes": 6745
 		},
 		{
+			"path": "kenney/candle/single.png",
+			"sha256": "76113a60261bbea319c6649564b79e259fea3fa5dee8f4ccda3c612c930ce6c0",
+			"bytes": 754
+		},
+		{
+			"path": "kenney/candleDouble/double_a.png",
+			"sha256": "54f595ee833a6be294ad844745b7f7ee001d6351cc970fa28f3b2973a8e12cfb",
+			"bytes": 1240
+		},
+		{
+			"path": "kenney/candleDouble/double_b.png",
+			"sha256": "29c74249a4e1d1035c88b3449e43289ef8a363572e5e8434720e168797278ee6",
+			"bytes": 1250
+		},
+		{
+			"path": "kenney/carpet/segment_a.png",
+			"sha256": "9a628c2131c99d5ecd157c006231e3b93a1ce57a86d5edc6e1f81d1b4b856f90",
+			"bytes": 5325
+		},
+		{
+			"path": "kenney/carpet/segment_b.png",
+			"sha256": "a546f9085b8afdc2ea0cfcf1b9e6f37fa1809a88afb87fc6fd77599910f26e84",
+			"bytes": 5247
+		},
+		{
+			"path": "kenney/carpetEnd/end_e.png",
+			"sha256": "b7553a837c71935ca72f0c96267a7c6b6142240fcaf959ed06b6c8382f20e5c9",
+			"bytes": 2850
+		},
+		{
+			"path": "kenney/carpetEnd/end_n.png",
+			"sha256": "17b5d95ed26af934e65c9e7b57c4d98888251be232c15c7d053d58a3e0fbb5f3",
+			"bytes": 2867
+		},
+		{
+			"path": "kenney/carpetEnd/end_s.png",
+			"sha256": "9ab906b492c62447cf7fb0c299bc4a97177711aecabf267bfde25400922a3f37",
+			"bytes": 2933
+		},
+		{
+			"path": "kenney/carpetEnd/end_w.png",
+			"sha256": "2aa4cc4310ca84fc90aa83a0a9101ef4bcb9b36cd58a114071d629af44a2ed14",
+			"bytes": 2916
+		},
+		{
+			"path": "kenney/crateStack/crates_a.png",
+			"sha256": "8289465953a78c6aaba0eb0375fe0678a58aaea69cbcf69b00632f40fa4af4ba",
+			"bytes": 2086
+		},
+		{
+			"path": "kenney/crateStack/crates_b.png",
+			"sha256": "db896e0d6b0011278425a70ab46663781bfe1c3699d26d49e7e47ec93b1f3b37",
+			"bytes": 2629
+		},
+		{
+			"path": "kenney/diningTable/round_a.png",
+			"sha256": "e677d206364c7ab01aceb12b609bdceab1bb5aab709d3b3431a35bc7ce6f88df",
+			"bytes": 4364
+		},
+		{
+			"path": "kenney/diningTable/round_b.png",
+			"sha256": "12af79186d747f6f7c6853e1c0eee41de2dbeb4d9b89346a8498e18bded66421",
+			"bytes": 4472
+		},
+		{
+			"path": "kenney/diningTableBroken/broken_a.png",
+			"sha256": "f213bc55e390130a0a4f418d0908eb9f6e43a94703871337cf7bf1217f745ccc",
+			"bytes": 4135
+		},
+		{
+			"path": "kenney/diningTableBroken/broken_b.png",
+			"sha256": "4673e9b59406729aa251bd32d7ca45b21ef06e71382553c1269806a79025c53c",
+			"bytes": 4249
+		},
+		{
+			"path": "kenney/diningTableItems/items_a.png",
+			"sha256": "38c5fe49c272c94aaa30f49bf87208ca53efeb49b7f34194d6f23f5bc90be6a9",
+			"bytes": 4618
+		},
+		{
+			"path": "kenney/diningTableItems/items_b.png",
+			"sha256": "454e06ed508a3418f79c959323147c4a9feeaa3b3d96922006a44f0ac381e79b",
+			"bytes": 4575
+		},
+		{
+			"path": "kenney/diningTableShort/short_a.png",
+			"sha256": "e337a64b8799d877c44dba7fcb51083288dd2feaca256f28a481a74a8f7e9f5e",
+			"bytes": 3957
+		},
+		{
+			"path": "kenney/diningTableShort/short_b.png",
+			"sha256": "ef491a083627bc3a7543e8c633e81c0d641be1ab8d5f14829f93e1e0a1a071e4",
+			"bytes": 3960
+		},
+		{
+			"path": "kenney/display/case_a.png",
+			"sha256": "2180242ea835f3198befb1a4b6a1ff726dabe99d3f9ebe55253ef1a0ce0f5f5d",
+			"bytes": 5024
+		},
+		{
+			"path": "kenney/display/case_b.png",
+			"sha256": "a43d710b99ecf5e02275cba476cc389d49970fe15b91cd9f75ae7e03ee5b3486",
+			"bytes": 5673
+		},
+		{
+			"path": "kenney/displayBooks/books_a.png",
+			"sha256": "23434b45a8f2a8108cb11b6019af8f283f5a5e7a75a5f6546faf94d85310ef33",
+			"bytes": 5068
+		},
+		{
+			"path": "kenney/displayBooks/books_b.png",
+			"sha256": "b5127f2f9fda31bca93b1bed4982c56bce2aa9546964b1f06f27e25e77482211",
+			"bytes": 5764
+		},
+		{
+			"path": "kenney/displayOpen/open_a.png",
+			"sha256": "4f6beb5c2338848e6f500c0114bc96fe5060c3b7d8cff4a36dc48307a4409069",
+			"bytes": 4955
+		},
+		{
+			"path": "kenney/displayOpen/open_b.png",
+			"sha256": "cd3272c33cc5e9cce1197727050c904cfca12a3af8c6e603800393d225baf09a",
+			"bytes": 5042
+		},
+		{
+			"path": "kenney/displaySword/sword_a.png",
+			"sha256": "732cd2e0e10873f0c7404b0b14e76f8377654f043e88f1b6349080a77ee77bad",
+			"bytes": 4998
+		},
+		{
+			"path": "kenney/displaySword/sword_b.png",
+			"sha256": "d89537b1ed0d623faf1e055f2340d864e4848e0e54a2d0f6dd6ce206e4c677dd",
+			"bytes": 5614
+		},
+		{
+			"path": "kenney/fallenShelf/fallen_a.png",
+			"sha256": "8177280080e08423a65241ce44b3135c1759f37a577ddd033a052eb35be42856",
+			"bytes": 6606
+		},
+		{
+			"path": "kenney/fallenShelf/fallen_b.png",
+			"sha256": "c36f077c61b1a537791dabf2d6a9d2352474d5773b18384427bb53daa171de7c",
+			"bytes": 7043
+		},
+		{
+			"path": "kenney/lectern/open_e.png",
+			"sha256": "05cbb51f8d4ecb2a10a5d4b4118b35f763f05611d3a5a5c1e53fdfa1f9710c68",
+			"bytes": 1135
+		},
+		{
+			"path": "kenney/lectern/open_n.png",
+			"sha256": "2f8cf8e0752397c3d26fdb79175d3dc03dcd41d7a6b94f174d7d5dffc60d586a",
+			"bytes": 1066
+		},
+		{
+			"path": "kenney/lectern/open_s.png",
+			"sha256": "41c3e6e00f53b3cf01aa6a26fd867365a63da6c6b70efe575528d23013efe48a",
+			"bytes": 1157
+		},
+		{
+			"path": "kenney/lectern/open_w.png",
+			"sha256": "5c93bb558beccc0a6b11643bbd30cad5efcc21ecc84d7d569c0e9fa58e03e92f",
+			"bytes": 1068
+		},
+		{
+			"path": "kenney/lecternEmpty/empty_e.png",
+			"sha256": "a13be4fa73f700672b9ee87ae21d65ae3149aaac69c9f32c48eb8590f76b70bf",
+			"bytes": 1110
+		},
+		{
+			"path": "kenney/lecternEmpty/empty_n.png",
+			"sha256": "45ade932f2188de4f8340e4803c0844a4b54e99f691eaf2c86e600923f2a1460",
+			"bytes": 1043
+		},
+		{
+			"path": "kenney/lecternEmpty/empty_s.png",
+			"sha256": "2580d3490b35fa987ec6604dd40a133e55d618309802e21a0e73be426355c9ec",
+			"bytes": 1094
+		},
+		{
+			"path": "kenney/lecternEmpty/empty_w.png",
+			"sha256": "f962bbf7103feeb14fb24f697a237d5841dddc93cffbd6d70da8519e6fa1c230",
+			"bytes": 1055
+		},
+		{
+			"path": "kenney/lumber/pile_a.png",
+			"sha256": "3669c71402f55013495e42f850e10b8df8b148a0f438d5462c041682d1ddad27",
+			"bytes": 5111
+		},
+		{
+			"path": "kenney/lumber/pile_b.png",
+			"sha256": "268126f742676e42a54b9a0c74bf8eb79c134713cf7300713931a8edbd5f9821",
+			"bytes": 4216
+		},
+		{
 			"path": "kenney/patch/dirt_b1.png",
 			"sha256": "752d3f93cd9eb4be3dfd7c60537c9d13a99b4e693868132666a6945ec4e17af9",
 			"bytes": 7770
@@ -1960,6 +2175,46 @@
 			"path": "kenney/patch/planksbroken_b_b5.png",
 			"sha256": "0b036e6b184a8ca1215bb42b79b71654ec27e38dad6577ace08d2ea7b436000c",
 			"bytes": 7882
+		},
+		{
+			"path": "kenney/stockpile/stockpile_a.png",
+			"sha256": "66091e8dc6910d8a230e13783ac73b8dc887796faa28bc9e0f285589b50d6b5e",
+			"bytes": 13818
+		},
+		{
+			"path": "kenney/stockpile/stockpile_b.png",
+			"sha256": "d154f3245750d308c4c20e64fcb1d974758266a361e638edd9427992a5941750",
+			"bytes": 13839
+		},
+		{
+			"path": "kenney/studyTable/books_a.png",
+			"sha256": "1a317d1dec54458642973925a97aaa9e98b465894d99546edf82f8461de7dd73",
+			"bytes": 6121
+		},
+		{
+			"path": "kenney/studyTable/books_b.png",
+			"sha256": "956adddd6144e0484d8fa5d21216af4b502a8d497384b62caff5d3a8e67b4fd6",
+			"bytes": 5888
+		},
+		{
+			"path": "kenney/studyTableCloth/cloth_a.png",
+			"sha256": "7dfa7f88e012570dd1e49c28292b269cafd318444ad22b1096dde48d963c592f",
+			"bytes": 6131
+		},
+		{
+			"path": "kenney/studyTableCloth/cloth_b.png",
+			"sha256": "0c2a79801ce9b66911bde5606bcc1a0dd4ffd7a7cb534f97b2fe299f5344da26",
+			"bytes": 5917
+		},
+		{
+			"path": "kenney/studyTablePlain/plain_a.png",
+			"sha256": "c8848d11b2fe25fa66bbd8e091bdfabc05c9328f384b0e1578de8a34e89436b7",
+			"bytes": 6084
+		},
+		{
+			"path": "kenney/studyTablePlain/plain_b.png",
+			"sha256": "a29dbf8dff940849eb051ba7e22edb13f0d32cc6f74721a787cac4b210cd4a83",
+			"bytes": 5868
 		},
 		{
 			"path": "lords-of-pain-demo/enemy/skeleton/skeleton_default_walk/E/skeleton_default_walk_E_0.0_0.png",

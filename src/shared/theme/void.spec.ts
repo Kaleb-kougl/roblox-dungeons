@@ -397,7 +397,23 @@ describe("void decor (docs/VOID_DECOR.md VD7)", () => {
 
 describe("void dressing decor kinds (docs/VOID_DECOR.md VD7)", () => {
 	it("flagstones (flat) is a standard decor kind, appended after the Forge's; curb is not one (VDD10: no wall props)", () => {
-		const n = DECOR_KINDS.size();
+		// the kinds up to the floor patch; the Kenney solid pieces follow it (docs/KENNEY_DECOR.md KN9), last
+		const n = DECOR_KINDS.indexOf("patch") + 1;
+		const kenney: string[] = [];
+		for (let i = n; i < DECOR_KINDS.size(); i++) kenney.push(DECOR_KINDS[i]);
+		expect(kenney).toEqual([
+			"studyTable",
+			"display",
+			"lectern",
+			"fallenShelf",
+			"diningTable",
+			"barrelStack",
+			"crateStack",
+			"lumber",
+			"barrelHeap",
+			"stockpile",
+			"libraryCandle",
+		]);
 		expect(DECOR_KINDS[n - 12]).toBe("flagstones");
 		expect(DECOR_KINDS[n - 11]).toBe("chandelier"); // scattered (docs/DECOR.md "3D kits")
 		expect([DECOR_KINDS[n - 10], DECOR_KINDS[n - 9]]).toEqual(["tomb", "candelabrum"]); // solid decor

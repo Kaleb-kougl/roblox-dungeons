@@ -208,16 +208,19 @@ SOFTWARE.
 
 - Author: Kenney (https://www.kenney.nl). Packs: "Isometric Library" and "Dungeon Pack" 2.3 ("Isometric Dungeon"),
   each with its `License.txt` (Creative Commons Zero, CC0 1.0: http://creativecommons.org/publicdomain/zero/1.0/).
-- Used for: docs/KENNEY_DECOR.md. Shipping now: the bookcase's alternative art set (`decor.delve.b<n>.bookcase.3` ..
-  `.16`, seven cases in two facings, from the Isometric Library). The other reprojected pieces (study tables, display
-  cases, dining tables, stock, carpets, floor patches) are rendered into `art/vendor/kenney/` but not yet wired.
+- Used for: docs/KENNEY_DECOR.md. From the Isometric Library: the bookcase's alternative art set
+  (`decor.delve.b<n>.bookcase.3` .. `.16`) and its wide cases (`bookcaseWide`), the study tables, display cases,
+  lecterns, the toppled case, the library's carpet runner (`carpet.5` .. `.10`) and candle stands (`libraryCandle`).
+  From the Isometric Dungeon: the floor patches (planks, dirt), the dining tables, the barrel stacks, crate stacks,
+  lumber piles, lying barrels and the stockpile (its barrels under the wooden supports). The solid pieces and the runner
+  share one sheet, `kenney-decor.png` (docs/KENNEY_DECOR.md KN9).
   **Changes made:** reprojected from Kenney's 30 degree camera to the game's 55 degree camera by
   `scripts/art/kenney/reproject.py` (per-face affine warps), baked shadows removed, scaled down, colour graded; packed
   by `scripts/art/build-atlases.js` and uploaded to Roblox.
 - Raw files: `art/vendor/kenney-library/`, `art/vendor/kenney-dungeon/` (the packs' `Isometric/` folders and licences)
   and the renders in `art/vendor/kenney/` (all gitignored, like every pack, though CC0 would allow committing them).
 - License: CC0, public domain: no restriction and no credit required. Credited anyway (the main menu's Credits screen,
-  shared/view/menu `CREDITS`: "Isometric Library", "by Kenney (kenney.nl)", "CC0").
+  shared/view/menu `CREDITS`: "Isometric Library, Isometric Dungeon", "by Kenney (kenney.nl)", "CC0").
 
 ## Training Dummy 2D Pixel Art
 
