@@ -72,6 +72,7 @@ export {
 } from "./validate";
 export * from "./variants";
 export { BOON_ICON_PREFIX, boonIconId } from "./boonIcons";
+export { CURSE_ICON_PREFIX, RELIC_ICON_PREFIX, curseIconId, relicIconId } from "./itemIcons";
 export {
 	AFFIX_COLOR_RULES,
 	AURA_COLOR_RULES,

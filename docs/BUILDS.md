@@ -1251,6 +1251,23 @@ duo in v1 (they are the safe picks); every other boon is in one or two.
   its fallback). `boon-icons.png` uploaded 2026-11-08 (`assetIds.ts`). Open: Studio check of the
   longest Evolution banner row (chip + "EVOLVE · Piercing Arrows" + pips inside the card) and the portrait column;
   effect sprites and duo / evolution icons of their own (if wanted).
+  **Relic and curse part (2026-11-08; presentation only).** Every relic (4) and curse (4) has an ORIGINAL
+  16 x 16 icon from `scripts/art/gen-item-icons.js` (the boon icons' kit and palette; owner picks: relics in the UI
+  palette, curses in a sickly palette of their own, corrupted plum and bile green; Frailty / Thirst mirror Hearty /
+  Deep Flask with a bile minus where the boon has its plus): Mirror Cloak a gold hand mirror sending a bullet back,
+  Hourglass a gold-capped hourglass on steel posts with ice-blue sand (Lingering's is wood and blood red), Vampire
+  Fang an upper jaw's fangs dripping blood, Second Wind a winged heart; Frailty a cracked rotting heart, Haste a bile
+  bullet on plum streaks, Impatience a cracked pocket watch, Thirst an empty cracked flask. Own sheet `item-icons.png`
+  (36 x 72, art/atlases.json `itemIcons`, `--only itemIcons`, generated `packs/vale/itemIconLayout.ts`), so neither
+  `ui-icons.png` nor `boon-icons.png` repacks. Theme ids `ui.relic.<name>` / `ui.curse.<name>` (shared/theme
+  `relicIconId` / `curseIconId`, lower-cased), all or nothing on the sheet's one ID (vale `VALE_ITEM_ICON_SOURCE`).
+  Specs: `gen-item-icons.test.js` (palette, outline, curses sickly / relics not, no repeat of a boon icon, the group,
+  the committed layout), `valeItemIcons.spec.ts`. Wired into the items row like the boons' (status panel and touch
+  chips): `runItemCells`' relic / curse cells carry `art` (`relicIconId` / `curseIconId`), drawn on the dark cell with
+  the relic role (`uiAccent`) / curse role (`uiHealth`) as the outline; a curse with its icon draws no skull behind it
+  (UA8's skull stays the fallback). Without the sheet's ID every relic and curse cell is exactly as before
+  (`buildHud.spec`). `item-icons.png` uploaded 2026-11-08 (`assetIds.ts`), so the bundled vale pack draws them. Open:
+  the Studio check.
 - **BU12. Audio.** The nine port IDs from Ninja Adventure (`art/audio.json`), `audio:build`, `audio:audition`.
   **Verify:** owner audition; silent fallback while ids are missing.
 - **BU13. Tuning.** A build TTK table (`variantTtk` harness: plain, each on-kill boon I / III, each duo) on swarmer

@@ -126,6 +126,8 @@ import type { RobloxAssetId } from "../../types";
  * 6:04 PM, transcribed from an Asset Manager screenshot.
  * boon-icons.png (one icon per boon, docs/BUILDS.md BU11; original art, scripts/art/gen-boon-icons.js, built by
  * `node scripts/art/build-atlases.js --only boonIcons`) uploaded 2026-11-08, the ID given by the owner in chat.
+ * item-icons.png (one icon per relic and per curse, docs/BUILDS.md BU11; original art, scripts/art/gen-item-icons.js,
+ * built by `node scripts/art/build-atlases.js --only itemIcons`) uploaded 2026-11-08, the ID given by the owner in chat.
  */
 export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"amb-b1.ogg": "rbxassetid://91158343621799",
@@ -186,6 +188,7 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"golden-move.png": "rbxassetid://88829506171960",
 	"goo.png": "rbxassetid://82002931490706",
 	"hazards.png": "rbxassetid://121912104813388",
+	"item-icons.png": "rbxassetid://82172693899829",
 	"imp-attack-outline.png": "rbxassetid://87826495349638",
 	"imp-attack.png": "rbxassetid://106802821695726",
 	"imp-body-outline.png": "rbxassetid://80038327609999",

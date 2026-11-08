@@ -933,6 +933,18 @@ Decision log (deviations from `PLAN.md`):
   new strings, roles, sounds or settings; no Luau-locals change. `boon-icons.png` uploaded 2026-11-08 (`assetIds.ts`),
   so the bundled vale pack draws the icons; the Studio check (banner row width on the longest Evolution banner, the
   phone column) pending.
+- **Relic and curse icons (docs/BUILDS.md BU11, the relic and curse part, 2026-11-08).** Presentation only (no sim,
+  dungeon, lockstep, hash, replay, fixture or score change). One 16 x 16 icon per relic and per curse,
+  ORIGINAL pixel art by `scripts/art/gen-item-icons.js` (the boon icons' kit and palette; curses in an added sickly
+  plum / bile green; run by `art:build` / `art:lock`) into `art/vendor/kaleb-vale/item-icons/`, packed by a new atlas
+  group `itemIcons` into its OWN sheet `item-icons.png` (`--only itemIcons`, generated
+  `packs/vale/itemIconLayout.ts`), so `ui-icons.png` and `boon-icons.png` do not repack. Theme: optional free-form ui
+  ids `ui.relic.<name>` / `ui.curse.<name>` (`shared/theme` `relicIconId` / `curseIconId`, lower-cased), all or
+  nothing on the sheet's one ID (vale `VALE_ITEM_ICON_SOURCE`). View: the items row's relic / curse cells carry `art`
+  like the boons' (`runItemCells`, `itemCellArt`): the icon on the dark cell, the relic / curse role as its outline, no
+  curse skull behind a curse's own icon; without the art every cell is exactly as before. No new strings, roles,
+  sounds or settings; no Luau-locals change. `item-icons.png` uploaded 2026-11-08 (`assetIds.ts`), so the bundled vale
+  pack draws them; the Studio check pending.
 - **Co-op frame pacing (docs/FRAME_PACING.md).** Client timing and presentation only (no sim, dungeon, hash, replay,
   wire, fixture or score change; the server is unchanged: every client still steps exactly the merged log, only WHEN
   changes). shared/lockstep `pacer.ts` `PlayoutPacer`, a playout clock: merged frame k is stepped at local time k x

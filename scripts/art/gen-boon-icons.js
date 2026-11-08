@@ -519,4 +519,4 @@ if (require.main === module) {
 	console.log(`gen-boon-icons: ${BOON_IDS.length} icons -> ${outDir}`);
 }
 
-module.exports = { SIZE, MAP, OUTLINE, PALETTE, ICONS, BOON_IDS, fileOf, drawIcon, rgbaOf, renderIcon, renderContact };
+module.exports = { SIZE, MAP, OUTLINE, PALETTE, FONT, ICONS, BOON_IDS, fileOf, drawIcon, rgbaOf, renderIcon, renderContact };

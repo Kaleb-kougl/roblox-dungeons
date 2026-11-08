@@ -22,7 +22,7 @@ import { ArtImage, panelIcon } from "./primitives";
 import { MORE_CELL_REF, useTooltipTarget } from "./tooltipTargets";
 
 const HIDDEN = 1;
-/** Inside a cell: the curse skull under the label (or the boon's icon art), the level pips over both. */
+/** Inside a cell: the curse skull under the label (or the item's icon art), the level pips over both. */
 const CELL_Z = { art: 1, label: 2, pips: 3 } as const;
 /** The status panel (RunItems' host) is a corner panel: the run's dark frame. */
 const HOST_SKIN = "hud";
@@ -42,8 +42,9 @@ const STATUS_LOOK: ItemLook = { size: PROGRESSION_VIEW.iconSize, text: PROGRESSI
  * behind the label, faded (UI_ART.curseSkullTransparency) and clipped to the cell: the label stays the item's name.
  * Builds (docs/BUILDS.md BU10): `level` of `maxLevel` pips inside the cell's bottom (the label moves up over them; the
  * status panel's footprint has no room for a row under the icons) and `frame`, the evolved boon's gold outline.
- * `icon` (docs/BUILDS.md BU11: a boon's icon art the pack has) replaces the label: the cell is ITEM_ART_FILL_ROLE under
- * the art and `color` (the rarity / duo role) moves to its outline and pips.
+ * `icon` (docs/BUILDS.md BU11: a boon's, relic's or curse's icon art the pack has) replaces the label: the cell is
+ * ITEM_ART_FILL_ROLE under the art and `color` (the rarity / duo / relic / curse role) moves to its outline and pips; a
+ * curse with its own icon draws no skull behind it.
  */
 function ItemCell(props: {
 	order: number;
@@ -51,7 +52,7 @@ function ItemCell(props: {
 	text: string;
 	textColor: ColorRole;
 	art?: string;
-	/** The boon icon art drawn instead of the label (shared/view/hud itemCellArt: the pack has it). */
+	/** The item's icon art drawn instead of the label (shared/view/hud itemCellArt: the pack has it). */
 	icon?: string;
 	look: ItemLook;
 	/** Width in reference px (default: the look's square; a duo chip's half is one cell of it). */
@@ -174,7 +175,7 @@ function ModelCell(props: {
 				color={c.fills[0]}
 				text={str(c.icons[0])}
 				textColor="uiPanel"
-				art={c.curse ? props.curseArt : undefined}
+				art={c.curse && art === undefined ? props.curseArt : undefined}
 				icon={art?.[0]}
 				look={look}
 				frame={c.frame}
@@ -238,8 +239,8 @@ function MoreCell(props: { count: number; hidden: ReadonlyArray<ItemRef>; look: 
 }
 
 /**
- * The owned boons (rarity colour; their icon art where the pack has it, docs/BUILDS.md BU11), relics and curses of an
- * endless run as a row of icons, in the order taken (the
+ * The owned boons (rarity colour), relics and curses of an endless run (their icon art where the pack has it,
+ * docs/BUILDS.md BU11) as a row of icons, in the order taken (the
  * StatusPanel's last row); with builds (docs/BUILDS.md BU10) each boon's level pips, the evolved boons' gold frame and
  * the duos as joined chips after the boons (shared/view/hud runItemCells). ONE row at most (capItemCells,
  * docs/HUD_LAYOUT.md): when more are owned than fit the status panel's footprint width, the last ones show and a first
