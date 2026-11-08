@@ -1,6 +1,6 @@
 # Co-op contribution on the run-over screen (plan)
 
-Status (2026-11-08): **plan**, CT5 / CT7 (the panel, the controller) built on branch `ct-ui` with headless
+Status (2026-11-08): **plan**, CT5-CT7 (the panel, input, controller) built on branch `ct-ui` with headless
 checks only (nothing has run in Studio); CT9 docs and CT10 (Studio check and tuning) pending. Checked against the code
 at `fb765ae5`. Owner answers (2026-11-08):
 CTD1 (open on **You**) and CTD4 (the Party tab stays) confirmed; the rest are proposed. Builds on docs/RUN_RECAP.md
@@ -243,8 +243,24 @@ Each step is a commit; `npm run verify` before each.
   (the first draft) overflowed the 693 x 320 phone and the desktop rule, hence the four-column wide card and the
   one-line phone cells. Studio check: the share bar and the Party list's scroll on a phone; a long display name in the
   name font (TextScaled down to `minText`); `en-XA`.
-- [ ] **CT6. Input.** LB / RB, Q / E / Tab, taps; hint bar; tab presses never reach `RunOverRetryGate`; focus memory
+- [x] **CT6. Input.** LB / RB, Q / E / Tab, taps; hint bar; tab presses never reach `RunOverRetryGate`; focus memory
   keeps Back to lobby reachable.
+  As built: shared/view/menu padActions `PadCondition` `partyTabs` (the tabs show: Details closed) and a `runOver` row
+  `{ ...TABS, when: "partyTabs", yieldsToRestart: true }` before X (hint `pad.hint.tabs`, the existing key; no new
+  string): LB / RB cycle the tabs (`recapTabStep`, wrapping). New `PadRow.yieldsToRestart` / `padKeyYields`: the run-over
+  tabs yield a bumper bound to the pad restart (that key is live on the panel), the other bumper still steps; Options'
+  and the leaderboard's tabs still never yield. RunOverPanel's `onPadAction` maps tabPrev / tabNext to
+  `HudActions.setRecapTab`; the hint bar names the right stick (`scrollList`) while a Party list taller than its box
+  shows (measured in the wide layout). Keyboard: RecapController binds Q (previous), E and Tab (next; Shift+Tab
+  previous) through ContextActionService at the confirm keys' priority while the tabs show and nothing is over the
+  panel (`pressAllowed`), any device, a key bound to `restart` left to it. Mouse / touch: the tab buttons
+  (`HudActions.setRecapTab`, the menu-click wrapper so no FIRE follows). Every path ends in
+  `RecapController.setTab` (a click sound, `RecapViews.setTab`, `clientStore.setRecapTab`), never in
+  `RunOverRetryGate`; the tab buttons are not pad-selectable, so the pad's selection stays on the exits row (Back to
+  lobby the default, as before). Specs: padActions.spec (LB / RB only with `partyTabs`, the yield, the hint order with
+  and without Details / the stick, every hinted key acts in all 256 condition combinations). Studio check: Tab also
+  toggles Roblox's player list (CoreGui; a sink cannot stop it), so Q / E are the hinted keys; the pad's bumpers sunk
+  by InputController.onMenuPadInput.
 - [x] **CT7. Controller.** Builds once, opens on You, count-up per first open, re-derive on a new final state only.
   As built: RecapController builds the contribution once at the open beside the highlights (`contributionOf({ tally:
   RunView.recapTally, partySize, localIndex: getLocalPlayerIndex(), names: ctx.memberNames })`, the wipe derived from

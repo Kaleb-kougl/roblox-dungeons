@@ -17,6 +17,7 @@ import {
 	menuPadAction,
 	padBackMeaning,
 	padHints,
+	padKeyYields,
 	padRowYields,
 	padRows,
 	padShortcutYields,
@@ -33,6 +34,7 @@ const ALL_CONDITIONS: ReadonlyArray<PadCondition> = [
 	"canReady",
 	"canInvite",
 	"recap",
+	"partyTabs",
 	"scrollList",
 ];
 const EVERYTHING: PadContext = {
@@ -42,6 +44,7 @@ const EVERYTHING: PadContext = {
 	canReady: true,
 	canInvite: true,
 	recap: true,
+	partyTabs: true,
 	scrollList: true,
 };
 const NOTHING: PadContext = {};
@@ -180,10 +183,40 @@ describe("menuPadAction (section 3, 4.3)", () => {
 		}
 		for (const s of PAD_SURFACE_IDS) {
 			if (s === "options" || s === "leaderboard") continue;
-			for (const k of [PAD_KEYS.lb, PAD_KEYS.rb, PAD_KEYS.lt, PAD_KEYS.rt]) {
+			// The run-over panel's bumpers: a party run's tabs (below); its triggers do nothing.
+			const keys =
+				s === "runOver" ? [PAD_KEYS.lt, PAD_KEYS.rt] : [PAD_KEYS.lb, PAD_KEYS.rb, PAD_KEYS.lt, PAD_KEYS.rt];
+			for (const k of keys) {
 				expect([s, k, menuPadAction(s, k, EVERYTHING).kind]).toEqual([s, k, "none"]);
 			}
 		}
+	});
+
+	it("run over (docs/RUN_CONTRIBUTION.md CT6): LB / RB step a party run's tabs only while they show", () => {
+		expect(menuPadAction("runOver", PAD_KEYS.lb, { recap: true }).kind).toBe("none");
+		expect(menuPadAction("runOver", PAD_KEYS.rb, { recap: true, detailsOpen: true }).kind).toBe("none");
+		const tabs: PadContext = { recap: true, partyTabs: true };
+		expect(menuPadAction("runOver", PAD_KEYS.lb, tabs).kind).toBe("tabPrev");
+		expect(menuPadAction("runOver", PAD_KEYS.rb, tabs).kind).toBe("tabNext");
+		// A, B, X keep their meaning beside the tabs (Details, the hold to exit; never a retry from a bumper).
+		expect(menuPadAction("runOver", PAD_KEYS.b, tabs).kind).toBe("holdExit");
+		expect(actionId(menuPadAction("runOver", PAD_KEYS.x, tabs))).toBe("shortcutX:details");
+		expect(menuPadAction("runOver", PAD_KEYS.a, tabs).kind).toBe("select");
+		// Other surfaces never read the condition.
+		expect(menuPadAction("pause", PAD_KEYS.rb, tabs).kind).toBe("none");
+	});
+
+	it("run over's tabs yield to a pad restart on a bumper (the restart is live there); the other bumper still steps", () => {
+		const tabs: PadContext = { recap: true, partyTabs: true, restartPad: PAD_KEYS.rb };
+		expect(menuPadAction("runOver", PAD_KEYS.rb, tabs).kind).toBe("none");
+		expect(menuPadAction("runOver", PAD_KEYS.lb, tabs).kind).toBe("tabPrev");
+		// Options' tabs never yield (no restart there).
+		expect(menuPadAction("options", PAD_KEYS.rb, { restartPad: PAD_KEYS.rb }).kind).toBe("tabNext");
+		const rows = padRows("runOver").filter((r) => r.keys.includes(PAD_KEYS.lb));
+		expect(rows.size()).toBe(1);
+		expect(padKeyYields(rows[0], 1, tabs)).toBe(true);
+		expect(padKeyYields(rows[0], 0, tabs)).toBe(false);
+		expect(padRowYields(rows[0], tabs)).toBe(false);
 	});
 
 	it("the X / Y shortcuts of 4.3, each only when it can act", () => {
@@ -276,6 +309,30 @@ describe("padHints (4.1)", () => {
 			"run.recap.detailsHide",
 		]);
 		expect(hintKeys("runOver", NOTHING)).toEqual(["pad.hint.select", "pad.hint.holdExit"]);
+	});
+
+	it("run over, a party run (docs/RUN_CONTRIBUTION.md CT6): LB / RB Tabs before X, the stick for a long Party list", () => {
+		expect(hintKeys("runOver", { recap: true, partyTabs: true })).toEqual([
+			"pad.hint.select",
+			"pad.hint.holdExit",
+			"pad.hint.tabs",
+			"pad.hint.details",
+		]);
+		expect(hintKeys("runOver", { recap: true, partyTabs: true, scrollList: true })).toEqual([
+			"pad.hint.select",
+			"pad.hint.holdExit",
+			"pad.hint.tabs",
+			"pad.hint.details",
+			"pad.hint.scroll",
+		]);
+		// Details open: the tabs are swapped out with the highlights, so no Tabs hint.
+		expect(hintKeys("runOver", { recap: true, detailsOpen: true })).toEqual([
+			"pad.hint.select",
+			"pad.hint.holdExit",
+			"run.recap.detailsHide",
+		]);
+		const keys = padHints("runOver", { recap: true, partyTabs: true }).map((h) => h.keyNames.join("+"));
+		expect(keys.includes(`${PAD_KEYS.lb}+${PAD_KEYS.rb}`)).toBe(true);
 	});
 
 	it("pause: B Resume once (Start resumes too, unhinted); B shows nothing where it does nothing", () => {

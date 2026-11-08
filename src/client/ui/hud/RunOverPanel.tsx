@@ -31,6 +31,7 @@ import {
 	NEW_BEST_STRINGS,
 	UI_ART,
 	bestBlockDrawsBestLine,
+	contribPartyScrolls,
 	bestTargetKey,
 	bestText,
 	comboBestRichText,
@@ -39,6 +40,7 @@ import {
 	formatCombo,
 	recapExitSizes,
 	recapHidesBestLine,
+	recapTabStep,
 	recapTabsShown,
 	runOverRibbonKey,
 	scoreBreakdownRows,
@@ -53,6 +55,7 @@ import {
 	runOverExits,
 	runOverIcon,
 	screenSkin,
+	tabStep,
 } from "shared/view/menu";
 import { useHudActions } from "./actions";
 import { DailyResultBlock } from "./DailyResultBlock";
@@ -464,8 +467,8 @@ function RunOverHeader(props: { order: number; victory: boolean; icon: string | 
  * A party run's contribution (docs/RUN_CONTRIBUTION.md CT5 / CT6, the store's `recap.contribution` / `recap.tab`): in
  * the highlights' place the `You | Team | Party` tabs and their box (ContributionBlocks RecapTabBody; the near-miss line
  * stays above them on every tab), opening on You; Details swaps the whole tab body for the breakdown and the Build list
- * and closing it returns to the tab shown. Taps switch tabs through HudActions.setRecapTab, never through the retry
- * gate.
+ * and closing it returns to the tab shown. LB / RB (the `partyTabs` pad row), Q / E / Tab (RecapController) and taps
+ * switch tabs through HudActions.setRecapTab, never through the retry gate; the right stick scrolls a long Party list.
  */
 export function RunOverPanel() {
 	const s = useSelector(selectSnapshot);
@@ -513,6 +516,7 @@ export function RunOverPanel() {
 	// as it swaps the highlights; closing it returns to the tab shown).
 	const contribution = recap.contribution;
 	const tabsOn = highlightsOn && recapTabsShown(contribution, recap.highlights.size());
+	const tabsShown = tabsOn && !details;
 	const best = runOverBest(baseline, baselineRun, info.run, verdict, s.score, s.floor);
 	const ribbonKey = runOverRibbonKey(best.records, best.daily);
 	const ribbon =
@@ -651,7 +655,18 @@ export function RunOverPanel() {
 	// An `overlay` focus scope with no memory (docs/GAMEPAD_MENUS.md GM2): a gamepad always starts on Again (Exit
 	// without it), whose retry gate is unchanged. A tap of B does nothing; holding B fills the Exit button and then does
 	// what Exit does (GM9, FocusController's hold); X toggles Details while there are highlights (GM6).
-	const padContext = { recap: highlightsOn, detailsOpen: recap.details };
+	// docs/RUN_CONTRIBUTION.md CT6: LB / RB cycle a party run's tabs while they show; the right stick scrolls a Party list
+	// taller than its box (measured in the wide layout: the pad's hint bar is a desktop / console one).
+	const partyScrolls =
+		tabsShown && recap.tab === "party" && contribution !== undefined
+			? contribPartyScrolls(contribution, recap.highlights.size(), "wide")
+			: false;
+	const padContext = {
+		recap: highlightsOn,
+		detailsOpen: recap.details,
+		partyTabs: tabsShown,
+		scrollList: partyScrolls,
+	};
 	const hints = <PadHintBar key="PadHints" order={ROW.padHints} surface="runOver" context={padContext} />;
 	return (
 		<FocusScope
@@ -661,12 +676,16 @@ export function RunOverPanel() {
 			surface="runOver"
 			defaultRef={firstRef}
 			padContext={padContext}
+			scrollRef={partyListRef}
 			onPadAction={(action) => {
 				if (action.kind === "holdExit") {
 					actions.playUi(SFX.uiBack);
 					actions.exitRun();
 				} else if (action.kind === "shortcutX" && action.meaning === "details" && highlightsOn) {
 					actions.toggleRecapDetails();
+				} else if ((action.kind === "tabPrev" || action.kind === "tabNext") && tabsShown) {
+					// A tab press is never a retry or a skip (it never reaches RunOverRetryGate).
+					actions.setRecapTab(recapTabStep(recap.tab, tabStep(action)));
 				}
 			}}
 		>

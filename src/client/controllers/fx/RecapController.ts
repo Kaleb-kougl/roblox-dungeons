@@ -1,6 +1,6 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
-import { ContextActionService, Workspace } from "@rbxts/services";
+import { ContextActionService, UserInputService, Workspace } from "@rbxts/services";
 import { Events } from "client/network";
 import {
 	clientStore,
@@ -42,6 +42,7 @@ import {
 	recapNearMissText,
 	recapRecordRowsSec,
 	recapRowTransparency,
+	recapTabStep,
 	recapTabsShown,
 	stairsPathTiles,
 	type RecapTab,
@@ -75,6 +76,14 @@ const CONFIRM_ACTION = "KV_RecapConfirm";
 /** Enter / Space press the focused Again on a keyboard (RR7); above the input sink's High priority (Space is roll). */
 const CONFIRM_KEYS = [Enum.KeyCode.Return, Enum.KeyCode.KeypadEnter, Enum.KeyCode.Space];
 const CONFIRM_PRIORITY = Enum.ContextActionPriority.High.Value + 1;
+const TABS_ACTION = "KV_RecapTabs";
+/**
+ * docs/RUN_CONTRIBUTION.md CT6: a party run's tabs on the keyboard (Q previous, E next, Tab next / Shift+Tab previous),
+ * bound like the confirm keys (above the input sink, only while the tabs show with nothing over the panel; a key bound
+ * to `restart` is left to it). Q / E are Ember / Swap in a run: idle on the run-over panel.
+ */
+const TAB_PREV_KEYS: ReadonlyArray<Enum.KeyCode> = [Enum.KeyCode.Q];
+const TAB_NEXT_KEYS: ReadonlyArray<Enum.KeyCode> = [Enum.KeyCode.E, Enum.KeyCode.Tab];
 const UNRANKED: RunBaseline = { kind: "unranked" };
 
 /** The recap's world from the run's world kind (shared/run, shared/daily): the tutorial and every other world: none. */
@@ -165,8 +174,9 @@ function recapSignature(
  *              (contributionOf: the run's tally, the LOCAL player, ctx.memberNames) and stored for the panel; the clocks are
  *              one shared/view/hud RecapViews (the near-miss line and the arm; the You cells counting where the
  *              highlights did; Team's highlights on its first open; Party final), setTab switches them (HudActions
- *              .setRecapTab from a tap), never a retry or a skip; a re-derive renews every clock at its old time.
- *   reset      a run start or exit drops everything (store, bindings, the confirm binding).
+ *              .setRecapTab from a tap or LB / RB, and Q / E / Tab bound here like the confirm keys), never a retry or a
+ *              skip; a re-derive renews every clock at its old time.
+ *   reset      a run start or exit drops everything (store, bindings, the confirm and tab bindings).
  *   telemetry  (RR9) once per run over with a recap, when the panel is left: `runRecap` (shared/run RunRecapReport) with
  *              the close (`retry`: Again / Retry Daily / the restart key, seen as our own retry, the run context going
  *              away under a ranked restart, or the next run starting; `exit`: the run left for the menu; `lobby`: any
@@ -199,6 +209,7 @@ export class RecapController implements OnStart {
 	/** The panel's first frame: the run-over jingle's (no recap sound). */
 	private firstFrame = true;
 	private confirmBound = false;
+	private tabsBound = false;
 	private facts: ReportFacts | undefined;
 	/** RR8 aid: a retry press waiting for the next run's first controllable frame (KV_RetryTiming). */
 	private retryTiming: { readonly at: number; readonly run: number } | undefined;
@@ -231,6 +242,7 @@ export class RecapController implements OnStart {
 		});
 		this.janitor.Add(onLocaleChanged(() => this.invalidateTexts()));
 		this.janitor.Add(() => this.unbindConfirm());
+		this.janitor.Add(() => this.unbindTabs());
 	}
 
 	/**
@@ -253,7 +265,7 @@ export class RecapController implements OnStart {
 	}
 
 	/**
-	 * A party run's run-over tab (docs/RUN_CONTRIBUTION.md CT5 / CT7: a tap on the tab strip): the views
+	 * A party run's run-over tab (docs/RUN_CONTRIBUTION.md CT6 / CT7: a tap, the pad's LB / RB, Q / E / Tab): the views
 	 * switch (the tab left settles, Team's first open starts its count-up) and the store follows. Never a press for
 	 * RunOverRetryGate: a tab neither retries nor skips.
 	 */
@@ -289,6 +301,7 @@ export class RecapController implements OnStart {
 		if (this.openRun !== run) this.open(ctx, st, settings.reducedMotion);
 		else this.rederive(ctx, st);
 		this.syncConfirm(st);
+		this.syncTabs(st);
 		if (this.gate.fireEdge(this.sim.getFrameButtons(), this.input.mousePressOnGui()) && this.pressAllowed(st)) {
 			this.press("fire");
 		}
@@ -377,6 +390,7 @@ export class RecapController implements OnStart {
 	/** Drops the recap (a run start / exit, or the panel closed). */
 	private close(): void {
 		this.unbindConfirm();
+		this.unbindTabs();
 		this.openRun = 0;
 		this.views = undefined;
 		this.nearMiss = undefined;
@@ -526,6 +540,47 @@ export class RecapController implements OnStart {
 		if (!this.confirmBound) return;
 		ContextActionService.UnbindAction(CONFIRM_ACTION);
 		this.confirmBound = false;
+	}
+
+	/**
+	 * docs/RUN_CONTRIBUTION.md CT6: Q / E / Tab (Shift+Tab: back) step a party run's tabs while they show (Details closed)
+	 * and nothing is over the panel, on any device (a keyboard press must work on the first try); a key bound to
+	 * `restart` is left to it. A tab key is never a press for the retry gate.
+	 */
+	private syncTabs(st: ClientState): void {
+		const v = this.views;
+		const want = v !== undefined && v.tabbed && !st.recap.details && this.pressAllowed(st);
+		if (want === this.tabsBound) return;
+		if (want) {
+			const restart = inputsFor(this.input.getBindings(), "kbm", "restart");
+			const keys = [...TAB_PREV_KEYS, ...TAB_NEXT_KEYS].filter((k) => !restart.includes(k.Name));
+			ContextActionService.BindActionAtPriority(
+				TABS_ACTION,
+				(_, state, input) => {
+					if (state !== Enum.UserInputState.Begin) return Enum.ContextActionResult.Sink;
+					const now = this.views;
+					if (now === undefined || !this.pressAllowed(clientStore.getState())) {
+						return Enum.ContextActionResult.Pass;
+					}
+					const shift =
+						UserInputService.IsKeyDown(Enum.KeyCode.LeftShift) ||
+						UserInputService.IsKeyDown(Enum.KeyCode.RightShift);
+					const back = TAB_PREV_KEYS.includes(input.KeyCode) || (input.KeyCode === Enum.KeyCode.Tab && shift);
+					this.setTab(recapTabStep(now.tab(), back ? -1 : 1));
+					return Enum.ContextActionResult.Sink;
+				},
+				false,
+				CONFIRM_PRIORITY,
+				...keys,
+			);
+			this.tabsBound = true;
+		} else this.unbindTabs();
+	}
+
+	private unbindTabs(): void {
+		if (!this.tabsBound) return;
+		ContextActionService.UnbindAction(TABS_ACTION);
+		this.tabsBound = false;
 	}
 
 	// --- bindings ---------------------------------------------------------------------------------------
