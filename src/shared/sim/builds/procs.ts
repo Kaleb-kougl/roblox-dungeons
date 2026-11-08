@@ -47,7 +47,7 @@ import { beginEffectBudget, endEffectBudget, resetEffectScratch } from "./effect
 import { JACKPOT_KILLS, KillCause } from "./effectsData";
 import { resetEvolutionScratch, stepEvolutions, stepMomentum } from "./evolutions";
 import { chainReactionKill, resetDuoScratch, stepDuosAfterDrain, stepDuosBeforeDrain } from "./duos";
-import { hasDuo, isEvolved, pushDuoProc, stepBraceCooldowns } from "./hooks";
+import { hasDuo, isEvolved, pushDuoProc, stepBraceCooldowns, stepHappyHour } from "./hooks";
 import { hasSmashEffect } from "./wrecker";
 import { resolveSmash } from "./smash";
 import { chainSpark, overkill, soulShards, volatileBurst } from "./onKill";
@@ -150,6 +150,8 @@ export function stepBuilds(ctx: SimCtx): void {
 	if (state.party !== undefined && procs.size() > 0) dropLeavers(state, procs);
 	// Citadel's brace cooldowns (docs/LEGENDARIES.md LGD14): one tick of combat time.
 	stepBraceCooldowns(s);
+	// Happy Hour (Deep Flask + Bounty, docs/BUILDS_V2.md BV7): its timers, and a drink this tick starts one.
+	stepHappyHour(state, s);
 	beginEffectBudget(state);
 	// 0. Riposte's counter-waves (docs/BUILDS_V2.md BV2; ./riposte.ts): leavers' dropped, Rebuke's roll rings, the
 	// waves grow and strike, then Counterstrike's queued returns.

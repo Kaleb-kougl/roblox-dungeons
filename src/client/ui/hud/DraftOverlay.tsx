@@ -43,7 +43,10 @@ const NAME_TOP = 0.08;
 const RARITY_TOP = 0.3;
 const DESC_TOP = 0.48;
 const DESC_HEIGHT = 0.46;
-/** An Upgrade card (docs/BUILDS.md BU9): the new line above, the "was" line at WAS_TOP under it. */
+/**
+ * An Upgrade card (docs/BUILDS.md BU9): the new line above, the "was" line at WAS_TOP under it; a New card's duo hint
+ * (docs/BUILDS_V2.md BV8) takes the same foot row.
+ */
 const DESC_HEIGHT_WITH_WAS = 0.28;
 const WAS_TOP = 0.78;
 const INSET = 0.92;
@@ -186,6 +189,145 @@ function CardText(props: {
 			Text={props.text}
 			ZIndex={BODY_Z.text}
 		/>
+	);
+}
+
+/** One cell of a joined duo chip: its label (a boon's icon text) and fill (the boon's rarity colour). */
+interface ChipCell {
+	text: React.Binding<string>;
+	color: React.Binding<Color3>;
+}
+
+/** A model's chip cells (DUO_CHIP_SPAN of them) from `pick` (the duo card's chip, or the hint's), as bindings. */
+function chipCells(
+	m: React.Binding<DraftCardModel | undefined>,
+	pick: (x: DraftCardModel) => { icons: ReadonlyArray<string>; roles: ReadonlyArray<ColorRole> } | undefined,
+): ChipCell[] {
+	const cells: ChipCell[] = [];
+	for (let k = 0; k < DUO_CHIP_SPAN; k++)
+		cells.push({
+			text: m.map((x) => {
+				const c = x !== undefined ? pick(x) : undefined;
+				return c !== undefined && c.icons[k] !== undefined ? str(c.icons[k]) : "";
+			}),
+			color: m.map((x) => role((x !== undefined ? pick(x)?.roles[k] : undefined) ?? "uiPanel")),
+		});
+	return cells;
+}
+
+/** A joined duo chip (docs/BUILDS.md BU9): its cells side by side, outlined in `stroke`, faded with the card's text. */
+function DuoChip(props: {
+	cells: ReadonlyArray<ChipCell>;
+	cell: number;
+	textSize: number;
+	textT: React.Binding<number>;
+	stroke: Color3 | React.Binding<Color3>;
+	visible: React.Binding<boolean>;
+	layoutOrder: number;
+}) {
+	const hudFont = useHudFont();
+	const V = DRAFT_CARD_VIEW;
+	return (
+		<frame
+			key="Chip"
+			LayoutOrder={props.layoutOrder}
+			Size={UDim2.fromOffset(props.cell * DUO_CHIP_SPAN, props.cell)}
+			BackgroundTransparency={HIDDEN}
+			Visible={props.visible}
+			ZIndex={BODY_Z.text}
+		>
+			{props.cells.map((c, k) => (
+				<textlabel
+					key={`Icon${k}`}
+					Position={UDim2.fromOffset(k * props.cell, 0)}
+					Size={UDim2.fromOffset(props.cell, props.cell)}
+					BackgroundColor3={c.color}
+					BackgroundTransparency={props.textT}
+					BorderSizePixel={0}
+					Font={hudFont}
+					TextSize={props.textSize}
+					TextColor3={role("uiPanel")}
+					TextTransparency={props.textT}
+					Text={c.text}
+					ZIndex={BODY_Z.text}
+				>
+					<uistroke
+						ApplyStrokeMode={Enum.ApplyStrokeMode.Border}
+						Thickness={V.chipStroke}
+						Color={props.stroke}
+						Transparency={props.textT}
+					/>
+				</textlabel>
+			))}
+		</frame>
+	);
+}
+
+/**
+ * A New card's duo hint (docs/BUILDS_V2.md BV8) at the card's foot (WAS_TOP: a New card has no "was" line), centred:
+ * the duo's joined chip (smaller, outlined in the duo colour) and "Unlocks a duo: {duo}" in the duo colour. Hidden
+ * without a hint; faded with the card's text.
+ */
+function HintRow(props: { ui: DraftCardUi }) {
+	const hudFont = useHudFont();
+	const ui = props.ui;
+	const look = useMemo(() => {
+		const m = ui.model.binding;
+		return {
+			visible: m.map((x) => x?.hint !== undefined),
+			text: m.map((x) => (x?.hint !== undefined ? hudText(x.hint.text) : "")),
+			cells: chipCells(m, (x) =>
+				x.hint !== undefined ? { icons: x.hint.chipIcons, roles: x.hint.chipRoles } : undefined,
+			),
+			textT: ui.textT.binding,
+		};
+	}, [ui]);
+	const V = DRAFT_CARD_VIEW;
+	const duo = role(draftToneRole("duo"));
+	const rowH = math.max(V.hintChipCell, V.hintText + 2);
+	return (
+		<frame
+			key="Hint"
+			AnchorPoint={new Vector2(HALF, 0)}
+			Position={new UDim2(HALF, 0, WAS_TOP, 0)}
+			Size={new UDim2(INSET, 0, 0, rowH)}
+			BackgroundTransparency={HIDDEN}
+			Visible={look.visible}
+			ZIndex={BODY_Z.text}
+		>
+			<uilistlayout
+				FillDirection={Enum.FillDirection.Horizontal}
+				HorizontalAlignment={Enum.HorizontalAlignment.Center}
+				VerticalAlignment={Enum.VerticalAlignment.Center}
+				SortOrder={Enum.SortOrder.LayoutOrder}
+				Padding={new UDim(0, V.bannerGap)}
+			/>
+			<DuoChip
+				cells={look.cells}
+				cell={V.hintChipCell}
+				textSize={V.hintChipText}
+				textT={look.textT}
+				stroke={duo}
+				visible={look.visible}
+				layoutOrder={1}
+			/>
+			<textlabel
+				key="Text"
+				LayoutOrder={2}
+				Size={new UDim2(0, 0, 0, V.hintText + 2)}
+				AutomaticSize={Enum.AutomaticSize.X}
+				BackgroundTransparency={HIDDEN}
+				Font={hudFont}
+				TextSize={V.hintText}
+				TextTruncate={Enum.TextTruncate.AtEnd}
+				TextColor3={duo}
+				TextTransparency={look.textT}
+				Text={look.text}
+				ZIndex={BODY_Z.text}
+			>
+				<uisizeconstraint MaxSize={new Vector2(V.hintTextMaxWidth, math.huge)} />
+			</textlabel>
+		</frame>
 	);
 }
 
@@ -450,7 +592,13 @@ function DraftCard(props: { index: number; onTap?: () => void }) {
 			nameColor: model.map((m) => toneColor(m?.tone ?? "common")),
 			desc: model.map((m) => (m !== undefined ? hudText(m.desc) : "")),
 			descSize: model.map(
-				(m) => new UDim2(INSET, 0, m?.was !== undefined ? DESC_HEIGHT_WITH_WAS : DESC_HEIGHT, 0),
+				(m) =>
+					new UDim2(
+						INSET,
+						0,
+						m?.was !== undefined || m?.hint !== undefined ? DESC_HEIGHT_WITH_WAS : DESC_HEIGHT,
+						0,
+					),
 			),
 			was: model.map((m) => (m?.was !== undefined ? hudText(m.was) : "")),
 			shineVisible: ui.shine.binding.map((u) => u >= 0),
@@ -569,6 +717,7 @@ function DraftCard(props: { index: number; onTap?: () => void }) {
 					color={dim}
 					transparency={ui.textT.binding}
 				/>
+				<HintRow key="Hint" ui={ui} />
 				<frame
 					key="Shine"
 					Position={look.boxPosition}

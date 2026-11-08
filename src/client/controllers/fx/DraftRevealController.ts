@@ -228,10 +228,12 @@ export class DraftRevealController implements OnStart, DraftRevealDriver {
 		this.count = math.min(offers.size(), DRAFT_OFFER_COUNT);
 		// docs/BUILDS.md BU9: each card's kind for the local player now (the deal), before the pick raises a level.
 		const kinds = draftCardKinds(ctx.run.state, ctx.localIndex, offers);
+		// docs/BUILDS_V2.md BV8: the local build at the deal, for the New cards' duo hints (none without builds).
+		const build = ctx.run.state.builds?.players[ctx.localIndex];
 		const beats: DraftBeatId[] = [];
 		const tones: DraftTone[] = [];
 		for (let i = 0; i < this.count; i++) {
-			const model = draftCardModel(offers[i], kinds[i]);
+			const model = draftCardModel(offers[i], kinds[i], build?.levels, build?.duos);
 			const override = debug !== undefined && i < debug.size() ? debug[i] : undefined;
 			beats.push(override ?? model?.beat ?? DraftBeat.COMMON);
 			tones.push(override !== undefined ? rarityTone(override) : model?.tone ?? "common");

@@ -181,9 +181,10 @@ export const ScoreSource = {
 	 */
 	GOLDEN: 14,
 	/**
-	 * Overcap (docs/BUILDS_V2.md "Overcap points"): boss damage the cap drops pays OVERCAP_POINTS per point, builds runs
-	 * only, combo-neutral. BV1 declares the index only: no run's points / counts hold it yet (that would change every
-	 * builds run's "score" hash group); BV9 adds addOvercapScoreSources (padding every earlier gated source).
+	 * Overcap (docs/BUILDS_V2.md "Overcap points", BV9): boss damage the cap drops pays OVERCAP_POINTS per point, builds
+	 * runs only, combo-neutral. Appended after GOLDEN, and ONLY in runs with SimConfig.builds (OVERCAP_SCORE_SOURCE_NAMES;
+	 * createSimState pads points / counts to it last, every earlier gated source included, addOvercapScoreSources).
+	 * Every other scored run's "score" hash group is unchanged.
 	 */
 	OVERCAP: 15,
 } as const;
@@ -231,3 +232,9 @@ export const PACT_SCORE_SOURCE_NAMES = ["horde"] as const;
  * ones).
  */
 export const GOLDEN_SCORE_SOURCE_NAMES = ["golden"] as const;
+/**
+ * Sources only a builds run has after the Goldling's (docs/BUILDS_V2.md BV9), at ScoreSource.OVERCAP (15). A builds
+ * run's points / counts hold every source up to it (padding the earlier gated ones: PELLETS .. GOLDEN stay 0 in a builds
+ * run without pellets / treasure / pacts / the Goldling).
+ */
+export const OVERCAP_SCORE_SOURCE_NAMES = ["overcap"] as const;

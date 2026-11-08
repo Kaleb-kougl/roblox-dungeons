@@ -69,6 +69,7 @@ import {
 } from "./effectsData";
 import { fireAimedVolley, fireEffect, nearestEnemy } from "./effects";
 import { hasDuo, pushDuoProc } from "./hooks";
+import { nearSegment } from "./segment";
 
 const CHAIN_SPARK_RANGE2 = CHAIN_SPARK_RANGE * CHAIN_SPARK_RANGE;
 const SOUL_SHARDS_RANGE2 = SOUL_SHARDS_RANGE * SOUL_SHARDS_RANGE;
@@ -204,25 +205,9 @@ export function soulShards(ctx: SimCtx, s: BuildsState, q: Readonly<BuildProc>, 
 /** Scratch: Skewer's line (slots in slot order, the target not among them; never re-entered). */
 const skewered: number[] = [];
 
-/**
- * True when (x, z) lies within SKEWER_RADIUS of the segment (x1, z1) -> (x2, z2): the squared distance to the nearest
- * point of the segment, with multiplies and comparisons only (no sqrt, no division): inside the segment's span the
- * squared perpendicular distance times the squared length is |p|^2 |d|^2 - (p . d)^2.
- */
+/** True when (x, z) lies within SKEWER_RADIUS of the segment (x1, z1) -> (x2, z2) (./segment.ts nearSegment). */
 function onSkewerLine(x: number, z: number, x1: number, z1: number, x2: number, z2: number): boolean {
-	const dx = x2 - x1;
-	const dz = z2 - z1;
-	const px = x - x1;
-	const pz = z - z1;
-	const t = px * dx + pz * dz;
-	if (t <= 0) return px * px + pz * pz <= SKEWER_RADIUS2;
-	const len2 = dx * dx + dz * dz;
-	if (t >= len2) {
-		const ex = x - x2;
-		const ez = z - z2;
-		return ex * ex + ez * ez <= SKEWER_RADIUS2;
-	}
-	return (px * px + pz * pz) * len2 - t * t <= SKEWER_RADIUS2 * len2;
+	return nearSegment(x, z, x1, z1, x2, z2, SKEWER_RADIUS2);
 }
 
 /** One streak strike of `carry` on `a` for proc `q` (one generation on, KillCause.OVERKILL). */

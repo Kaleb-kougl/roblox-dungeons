@@ -868,6 +868,107 @@ as a kill proc there would (slot / id -1: nothing is skipped as the victim; exce
 nothing). Spec (`builds/wrecker.spec.ts`): a crate broken by a Wrecker + Volatile + Powder Keg owner fires Volatile's
 ring at the cell centre (`burst*` event, gen 0, `VOLATILE_BURSTS[0].count` bolts live) beside the splinters and a
 Powder Keg `duoProc`; without the duo, no ring.
+## BV7 (as built)
+
+Full Heart and Happy Hour, gameplay, builds runs only (both need the duo, which only `SimConfig.builds` deals). Paths
+under `src/shared/sim/` unless noted.
+
+- **Full Heart** (`builds/fullHeart.ts`, new): `fullHeartBeam(ctx, dirX, dirZ)`: nothing without `state.builds`, the
+  duo, or with the acting player dead or below full hearts (`hearts !== heartsMax`); else the segment from the player
+  to `FULL_HEART_RANGE` along the unit direction, every living enemy whose centre is within `FULL_HEART_RADIUS` of it
+  (nearestEnemy's skips: free slots, corpses, actors spawned this tick; no actor radius, as Skewer), chosen in slot
+  order before any strike, each struck through `ctx.damageActor` for `playerHitDamage(owner, finisherDamage)` at
+  `procGen` 0 (restored after). One `beam*` event per beam (`beamStruck` may be 0: the beam still shows). Returns the
+  count struck, -1 for no beam. It neither erases bullets nor hits breakables.
+  - Callers: `builds/evolutions.ts` `buildsOnFinisher` (one line, along `faceX` / `faceZ`, before the Swift Strikes
+    check, so every finisher fires it) and `combat/weapons/defs/bow.ts` (one line right after the heavy arrow's
+    `muzzleFire`, along the assisted aim `dir`, guarded by `state.builds`). The stream never fires it.
+  - The finisher damage is read through the weapon registry (`weaponAt(weaponIndex(FULL_HEART_WEAPON_ID))`, a new
+    constant `FULL_HEART_WEAPON_ID` = `"weapon.sword"` in `effectsData.ts`): bow.ts cannot import sword.ts's
+    `SWORD_DATA` (sword.ts -> evolutions.ts -> fullHeart.ts would cycle).
+  - Skewer's point-to-segment test moved to a leaf `builds/segment.ts` (`nearSegment(x, z, x1, z1, x2, z2, r2)`, the
+    same operations in the same order); `onKill.ts` `onSkewerLine` now calls it (Skewer unchanged).
+- **Happy Hour** (`builds/hooks.ts`, the leaf): `stepHappyHour(state, s)`, called by `stepBuilds` right after
+  `stepBraceCooldowns` (`builds/procs.ts`, one line): every player's `happyHourTicks` counts down by 1, then an owner
+  present, alive and on the drink tick (`flaskTicks === FLASK_USE_TICKS`, Overflowing's moment) gets
+  `HAPPY_HOUR_TICKS` (a drink while it runs restarts it) and a `happyPlayer` entry. A frozen draft tick never reaches
+  stepBuilds, so the timer waits. `buildsHappyHourPercent(state, killer)`: `HAPPY_HOUR_KILL_PERCENT` while the
+  killer's timer runs and they are present, else 100. `score/score.ts` `scoreKill` folds it into the existing bonus
+  (Bounty, then the affix percent) with `combinedPercent` (130 x 200 / 100 = 260; exactly the bonus at 100), so
+  `awardPoints` keeps its integer numerator. It applies to every kill branch the bonus reaches (kills, the boss, the
+  Goldling's jackpot), as Bounty does. Window: the drink tick's drain kills and the next 299 ticks get it, and tick
+  300's weapon-phase kills (the countdown runs at the start of stepBuilds).
+- **Specs** (`builds/gapDuos.spec.ts`, new): tunables; a finisher's beam strikes an enemy past the swing's reach (one
+  beam per finisher, its segment, Sharpened's damage), none off the line; no beam below full hearts, without the duo,
+  or dead; the heavy release's beam along the assisted aim (none during the charge, none below full hearts, none from
+  the stream); slot order, the radius at the segment's end, kills queue procs at gen 0; co-op per-player ownership;
+  Happy Hour's start / countdown / no-duo case; doubled kill points at Bounty 0 / I / III on the drink tick and on the
+  300th tick, back to normal after, 130 x 200 / 100 = 260; co-op (a teammate's kill unchanged); a determinism run (8
+  swarmers, both duos, a drink at tick 100: two runs hash the same every tick).
+
+## BV8 (as built)
+
+Presentation only (no sim, hash or replay change).
+
+- **`src/shared/view/hud/draftCards.ts`**: `duoUnlockedBy(levels, duos, boon)` (pure: empty for an owned boon; else
+  every duo with `duoAvailable` false now and true with `boon` at level I, in duo index order); `draftDuoHint(levels,
+  duos, boon)` (the first: `DraftDuoHint { duo, chipIcons, chipRoles, text }`, the chip exactly the duo card's, the
+  text `hud.draft.duoHint` with `varKeys { duo: <duo>.name }`); `DraftCardModel.hint?` (only on the New branch);
+  `draftCardModel(card, kind, levels?, duos?)` takes the local build as two optional trailing arguments (absent
+  without builds: no hint); the duo chip is built by one helper `duoChip(d)` for the duo card and the hint.
+  `DRAFT_CARD_VIEW` gained `hintChipCell` 16, `hintChipText` 8, `hintText` 14, `hintTextMaxWidth` 180.
+- **String**: `PROGRESSION_STRINGS.draftDuoHint` = `hud.draft.duoHint` ("Unlocks a duo: {duo}", placeholder
+  manifest) with an `l10n/context.json` entry (max 36). Not added to `BUILD_STRING_KEYS` (BV10 decides what is
+  required); `progressionStringKeys` lists it through `PROGRESSION_STRINGS`.
+- **Client**: `DraftRevealController.begin` passes `run.state.builds?.players[localIndex]`'s `levels` / `duos` to
+  `draftCardModel` at the deal (the state, as `draftCardKinds` already reads; the snapshot carries the same).
+  `DraftOverlay.tsx`: the duo chip is a component (`DuoChip`, cells from `chipCells`), shared by the banner row and a
+  new `HintRow` at the card's foot (`WAS_TOP`: a New card has no "was" line; the description shrinks to the Upgrade
+  card's height while a hint shows): the smaller chip outlined in `boon.duo` and the line in `boon.duo`, truncated
+  past `hintTextMaxWidth`, faded with the card's text. **Deviation:** the plan says "under the banner"; the banner row
+  sits at 0.30 and the description at 0.48 of a 150 px card, so the hint takes the foot row instead of pushing the
+  description down. Studio item 9 pending.
+- **Specs** (`src/shared/view/hud/duoHint.spec.ts`, new): an unowned boon with its partner owned unlocks the duo; an
+  unowned partner, a taken duo or an owned boon unlock nothing; several duos in index order (and the definition
+  checked over every boon); the New card's hint (first duo only, the duo card's chip, key and varKeys); no hint on
+  Upgrade / Evolution / Duo cards, without a build, or with the partner unowned; the placeholder reads "Unlocks a
+  duo: Thunder Guard".
+
+## BV9 (as built)
+
+Gameplay (score), builds runs only.
+
+- **Score sources** (`score/scoreData.ts`, `score/score.ts`): `OVERCAP_SCORE_SOURCE_NAMES` `["overcap"]`;
+  `addOvercapScoreSources(s)` pads points / counts to `ScoreSource.OVERCAP + 1` (16), every earlier gated source
+  included; `createSimState` calls it LAST (after the Goldling's padding) when `config.builds` and a score are set;
+  `sourceName` (the dump names) knows it. A scored run without builds keeps its sources and hash (9 bare, 15 for an
+  endless config without builds); every builds run's `score` group grows (a builds-only run from 10 to 16 sources, an
+  endless run from 15 to 16). No nextFloor / clone change (both copy the arrays). `scoreOvercap(state)`: one award of
+  `OVERCAP_POINTS` at `floorScalePercent(scoreFloor(state))` into OVERCAP through `award` (combo, depth, curses), never
+  the combo (scoreGoldenHit's way); 0 without the source.
+- **Hook** (`builds/overcap.ts`, new): `buildsOnOvercap(ctx, a, dropped)`: with `state.builds` and `state.score`,
+  adds `dropped` to the acting player's `overcap` (`ctx.playerIndex`), then while it holds 1 or more takes 1 and pays
+  `scoreOvercap`; one `overcap*` event per paying hit (the boss's position, the hitter, this hit's points).
+  `combat/actors/actors.ts` `damageActor`: two lines around `applyDamageCap` (`const uncapped = dmg;` before it; after
+  it `if (dmg < uncapped && ctx.state.builds !== undefined) buildsOnOvercap(ctx, a, uncapped - dmg)`).
+- **Gating fix** (`score.ts` `scoreTreasure`): it also returns 0 without `state.treasure`, because a builds run now pads
+  TREASURE (0) on its way to OVERCAP; its only caller (sim/treasure) always has the state, so no run changes. The other
+  gated awards already check their state (pellets, Goldling) or are build-only (Jackpot); `awardX`'s Horde reads
+  pacts' percent (100 without pacts).
+- **Views**: `shared/view/hud` `SCORE_SOURCE_KEYS` adds `score.source.overcap` ("Overcap", placeholder manifest,
+  `l10n/context.json`); the run-over breakdown shows the row only when it scored (`scoreBreakdownRows`).
+- **Edge case found:** "Overcap on the boss's killing hit: the dropped part still pays" cannot happen with today's
+  bosses: their `filterDamage` (the phase floor, 0 in the final phase) cuts a killing hit to the hp left BEFORE the
+  cap, so the cap only drops part of a hit that leaves the boss alive. Kept as the plan says (after `filterDamage`);
+  the spec documents it.
+- **Specs** (`builds/overcap.spec.ts`, new): sources (16 in a builds run, the names hashed; 15 for the endless config
+  without builds; 9 bare; a bare builds run 16); a capped boss hit at 10/s for 10 s lands 60 and books exactly 40
+  payouts of `awardPoints(OVERCAP_POINTS, floor scale)` at x2.3, combo / timer / `comboFed` untouched; a fractional
+  drop waits in `overcap`, one event per hit; a phase-invulnerable boss (TRANSITION) pays nothing; the killing-hit
+  case above; co-op credits the hitter; without builds nothing is counted and two runs hash the same. Updated for the
+  new padding: `builds.spec` (the score group's padding, 16 sources), `evolutions.spec` (Jackpot's run), `golden/
+  payouts.spec`, `pacts/pacts.spec`, `pellets/pellets.spec`, `score/score.spec` (the subset table, the treasure
+  gate), `treasure/treasure.spec`, `view/hud/hud.spec` (16 keys, the Overcap row).
 
 ## Appendix: the proposal (2026-11-05)
 

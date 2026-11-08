@@ -31,6 +31,7 @@ import { dropsOnKill } from "../../drops/drops";
 import { affixAbsorb, affixHoldsCorpse, affixesOnFree, affixesOnKill, affixesOnSpawn } from "../../affixes/affixes";
 import { buildsOnKill } from "../../builds/procs";
 import { buildsExecute, buildsKillCarry } from "../../builds/execute";
+import { buildsOnOvercap } from "../../builds/overcap";
 import { ACTOR_HASH_FIELDS, ACTOR_SCRATCH_SLOTS, AiState, NO_KIND, type ActorState } from "./types";
 
 function zeros(n: number): number[] {
@@ -205,7 +206,10 @@ export function damageActor(ctx: SimCtx, a: ActorState, amount: number): number 
 	// Elite affixes (opt-in): a Shielded actor's shield takes its share after filterDamage, before the cap.
 	if (dmg > 0 && ctx.state.affixes !== undefined) dmg = affixAbsorb(ctx.state, a, dmg);
 	const cap = def.data.damageCapPerSecond;
+	const uncapped = dmg;
 	if (cap !== undefined && dmg > 0) dmg = applyDamageCap(a, ctx.tick, dmg, cap);
+	// Builds v2 (docs/BUILDS_V2.md BV9, opt-in): the damage the cap dropped pays overcap points to the hitter.
+	if (dmg < uncapped && ctx.state.builds !== undefined) buildsOnOvercap(ctx, a, uncapped - dmg);
 	// Builds (docs/LEGENDARIES.md LG2): Overkill's carry reads the hit as it is here (after the cap, before Executioner,
 	// LGD3) and the hp it met.
 	const hit = dmg;

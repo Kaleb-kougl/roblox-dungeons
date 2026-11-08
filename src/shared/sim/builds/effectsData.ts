@@ -454,6 +454,8 @@ export const DRAGON_BOLT_EMBER_TICKS = 3;
 export const FULL_HEART_RADIUS = SKEWER_RADIUS;
 /** ... the line from the player along the facing to this length, for the finisher's damage. */
 export const FULL_HEART_RANGE = 4 * TILE_SIZE;
+/** ... the weapon whose finisher damage the beam deals (read through the registry: the bow cannot import the sword). */
+export const FULL_HEART_WEAPON_ID = "weapon.sword";
 /** Happy Hour (Deep Flask + Bounty): a flask drink sets `happyHourTicks` to this ... */
 export const HAPPY_HOUR_SECONDS = 5;
 export const HAPPY_HOUR_TICKS = secondsToTicks(HAPPY_HOUR_SECONDS); // 300

@@ -21,6 +21,7 @@ import {
 	cardBoon,
 	cardDuo,
 	cardKind,
+	duoAvailable,
 	type CardKindId,
 	type RarityId,
 	type SimState,
@@ -63,6 +64,14 @@ export const DRAFT_CARD_VIEW = {
 	emptyPipTransparency: 0.6,
 	/** The duo chip cells' outline, reference px. */
 	chipStroke: 1,
+	/**
+	 * docs/BUILDS_V2.md BV8: a New card's duo hint row at the card's foot (where an Upgrade's "was" line sits): its
+	 * smaller joined chip (cell, label size), the line's text size and its widest (the line truncates past it).
+	 */
+	hintChipCell: 16,
+	hintChipText: 8,
+	hintText: 14,
+	hintTextMaxWidth: 180,
 } as const;
 
 /** Cells a duo chip spans (the draft card's joined chip and the items row's). */
@@ -159,6 +168,8 @@ export interface DraftCardModel {
 	 * labels without it, and a boon card shows its one-cell chip only with it (without art: today's banner row).
 	 */
 	readonly chipArt: ReadonlyArray<string>;
+	/** docs/BUILDS_V2.md BV8: a New card whose boon unlocks a duo (duoUnlockedBy's first), else undefined. */
+	readonly hint?: DraftDuoHint;
 }
 
 /**
@@ -184,22 +195,89 @@ function artOf(id: string): string[] {
 	return art !== undefined ? [art] : [];
 }
 
+/**
+ * The duo hint on a New card (docs/BUILDS_V2.md "Duo hint", BV8; presentation only): the first duo the pick would
+ * unlock, its joined chip (the duo card's: its two boons' icon labels and rarity roles) and the line "Unlocks a duo:
+ * {duo}" (`hud.draft.duoHint`, `{duo}` the duo's name key in varKeys).
+ */
+export interface DraftDuoHint {
+	readonly duo: number;
+	readonly chipIcons: ReadonlyArray<string>;
+	readonly chipRoles: ReadonlyArray<ColorRole>;
+	readonly text: HudText;
+}
+
 /** A HudText. */
 export function textOf(key: string, vars?: Record<string, string | number>, varKeys?: Record<string, string>): HudText {
 	return { key, vars, varKeys };
 }
 
+/** Duo `d`'s joined chip: its two boons' icon labels and rarity roles (the duo card's and the hint's). */
+function duoChip(d: number): { icons: string[]; roles: ColorRole[] } {
+	const duo = DUOS[d];
+	const a = BOONS[duo.a];
+	const b = BOONS[duo.b];
+	return {
+		icons: [itemIconKey(a.id), itemIconKey(b.id)],
+		roles: [rarityColorRole(a.rarity), rarityColorRole(b.rarity)],
+	};
+}
+
+/**
+ * The duos (Duo indices, in index order) that taking boon `boon` would make available to a player with builds
+ * `levels` / `duos` (shared/sim duoAvailable false now, true with `boon` at level I). Empty when `boon` is already
+ * owned (an Upgrade or an Evolution never unlocks one), when its partner is unowned, or when the duo is taken. Pure.
+ */
+export function duoUnlockedBy(levels: ReadonlyArray<number>, duos: ReadonlyArray<number>, boon: number): number[] {
+	const out: number[] = [];
+	if (boon < 0 || (levels[boon] ?? 0) > 0) return out;
+	const after: number[] = [];
+	for (let k = 0; k < levels.size(); k++) after.push(levels[k]);
+	while (after.size() <= boon) after.push(0);
+	after[boon] = 1;
+	for (let d = 0; d < DUOS.size(); d++) {
+		if (!duoAvailable(levels, duos, d) && duoAvailable(after, duos, d)) out.push(d);
+	}
+	return out;
+}
+
+/** The duo hint for a New card of `boon` (the first duo it unlocks), or undefined (see DraftDuoHint). */
+export function draftDuoHint(
+	levels: ReadonlyArray<number>,
+	duos: ReadonlyArray<number>,
+	boon: number,
+): DraftDuoHint | undefined {
+	const unlocked = duoUnlockedBy(levels, duos, boon);
+	if (unlocked.size() === 0) return undefined;
+	const d = unlocked[0];
+	const chip = duoChip(d);
+	return {
+		duo: d,
+		chipIcons: chip.icons,
+		chipRoles: chip.roles,
+		text: textOf(PROGRESSION_STRINGS.draftDuoHint, undefined, { duo: itemNameKey(DUOS[d].id) }),
+	};
+}
+
 /**
  * What card id `card` shows when it is of kind `kind` for the local player (shared/sim cardKind, read when the deal
  * is dealt: the level it raises is the one before the pick). undefined for no card. Without builds every boon card
- * is New (today's card: name, rarity, line).
+ * is New (today's card: name, rarity, line). `levels` / `duos`: the local player's build (shared/sim
+ * BuildPlayerState, read at the deal; absent without builds): a New card whose boon unlocks a duo carries its `hint`
+ * (docs/BUILDS_V2.md BV8); Upgrade, Evolution and Duo cards never do.
  */
-export function draftCardModel(card: number, kind: CardKindId | -1): DraftCardModel | undefined {
+export function draftCardModel(
+	card: number,
+	kind: CardKindId | -1,
+	levels?: ReadonlyArray<number>,
+	duos?: ReadonlyArray<number>,
+): DraftCardModel | undefined {
 	const d = cardDuo(card);
 	if (d >= 0) {
 		const duo = DUOS[d];
 		const a = BOONS[duo.a];
 		const b = BOONS[duo.b];
+		const chip = duoChip(d);
 		return {
 			card,
 			kind: CardKind.DUO,
@@ -212,8 +290,8 @@ export function draftCardModel(card: number, kind: CardKindId | -1): DraftCardMo
 			desc: textOf(`${duo.id}.desc`),
 			level: 0,
 			maxLevel: 0,
-			chipIcons: [itemIconKey(a.id), itemIconKey(b.id)],
-			chipRoles: [rarityColorRole(a.rarity), rarityColorRole(b.rarity)],
+			chipIcons: chip.icons,
+			chipRoles: chip.roles,
 			chipArt: [...artOf(a.id), ...artOf(b.id)],
 		};
 	}
@@ -265,6 +343,7 @@ export function draftCardModel(card: number, kind: CardKindId | -1): DraftCardMo
 		desc: textOf(boonLineKey(boon, 1)),
 		level: 0,
 		maxLevel: 0,
+		hint: levels !== undefined && duos !== undefined ? draftDuoHint(levels, duos, boon) : undefined,
 	};
 }
 

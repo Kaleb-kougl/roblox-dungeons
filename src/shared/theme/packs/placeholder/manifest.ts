@@ -769,6 +769,8 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		// Roblox port (docs/FORTUNE.md FO6): Fortune's sources (the Horde's doubled half; the Goldling's coins and jackpot).
 		"score.source.horde": "Horde",
 		"score.source.golden": "Goldling",
+		// Roblox port (docs/BUILDS_V2.md BV9): boss damage over the damage cap, paid as points.
+		"score.source.overcap": "Overcap",
 		// M5: leaderboards.
 		"hud.pause.leaderboard": "Leaderboards",
 		"hud.leaderboard.title": "Leaderboards",
@@ -915,6 +917,8 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"hud.draft.duo": "DUO",
 		"hud.draft.again": "Pick again",
 		"hud.draft.was": "was: {desc}",
+		// docs/BUILDS_V2.md BV8: the duo hint on a New card (shared/view/hud PROGRESSION_STRINGS.draftDuoHint)
+		"hud.draft.duoHint": "Unlocks a duo: {duo}",
 		"hud.toast.evolved": "{boon} evolved: {evo}",
 		"hud.toast.duo": "Duo: {name}",
 		"hud.build.title": "Build",

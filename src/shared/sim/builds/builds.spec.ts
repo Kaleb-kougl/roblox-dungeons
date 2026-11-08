@@ -407,7 +407,9 @@ describe("opt-in state and the builds hash group (BU1)", () => {
 			expect(last.name).toBe(BUILDS_SUBSYSTEM);
 			expect(lb.groups.size()).toBe(la.groups.size() + 1);
 			// BU5: a builds run's score group also holds the build-only sources (Jackpot) after the points and after
-			// the counts (0 here); every other group is identical.
+			// the counts (0 here); since docs/BUILDS_V2.md BV9 every gated source up to OVERCAP (padded, 0 here). Every
+			// other group is identical.
+			const pad = ScoreSource.OVERCAP + 1 - SCORE_SOURCE_COUNT;
 			for (let gi = 0; gi < la.groups.size(); gi++) {
 				const ga = la.groups[gi];
 				const gb = lb.groups[gi];
@@ -418,7 +420,7 @@ describe("opt-in state and the builds hash group (BU1)", () => {
 					const c = SCORE_SOURCE_COUNT;
 					for (let i = 0; i < va.size(); i++) {
 						want.push(va[i]);
-						if (i === f + c - 1 || i === f + 2 * c - 1) want.push(0);
+						if (i === f + c - 1 || i === f + 2 * c - 1) for (let k = 0; k < pad; k++) want.push(0);
 					}
 				} else for (const v of va) want.push(v);
 				expect([t, gb.name, ...groupValues(lb, gb)]).toEqual([t, ga.name, ...want]);
@@ -753,18 +755,18 @@ describe("builds v2, wave 1 (docs/BUILDS_V2.md BV1): data and scaffolding, no ru
 		]);
 	});
 
-	it("the other indices: BuildEffect 9-11, ProcKind, BreakableSource 4 / 5, ScoreSource.OVERCAP 15 (no run holds it yet)", () => {
+	it("the other indices: BuildEffect 9-11, ProcKind, BreakableSource 4 / 5, ScoreSource.OVERCAP 15 (BV9: builds runs)", () => {
 		expect([BuildEffect.BALLISTA, BuildEffect.WRECKER, BuildEffect.RIPOSTE]).toEqual([9, 10, 11]);
 		for (const e of [9, 10, 11]) expect(sourceEffect(buildSource(e, 2))).toBe(e);
 		expect([ProcKind.KILL, ProcKind.SMASH]).toEqual([0, 1]);
 		expect([BreakableSource.ROLL, BreakableSource.BUILD]).toEqual([4, 5]);
 		expect([ScoreSource.OVERCAP, OVERCAP_POINTS]).toEqual([15, 10]);
-		// BV9 adds the source; until then an endless run's points / counts end at GOLDEN (15 entries, 0..14).
+		// BV9 adds the source: an endless (builds) run's points / counts end at OVERCAP (16 entries, 0..15).
 		const setup = buildEndlessRunConfig(SEED);
 		const s = createSimState(SEED, setup.spawn!.x, setup.spawn!.z, setup.config);
 		expect([s.score!.points.size(), s.score!.counts.size()]).toEqual([
-			ScoreSource.GOLDEN + 1,
-			ScoreSource.GOLDEN + 1,
+			ScoreSource.OVERCAP + 1,
+			ScoreSource.OVERCAP + 1,
 		]);
 	});
 

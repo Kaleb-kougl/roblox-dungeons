@@ -30,6 +30,7 @@ import { lineOfSight } from "../../actors/helpers";
 import type { BulletBlocker } from "shared/dungeon";
 import { BOW_PIERCE_BOONS } from "../../../progression/progressionData";
 import { buildsFlurryArrow, buildsFlurryArrowsFired } from "../../../builds/hooks";
+import { fullHeartBeam } from "../../../builds/fullHeart";
 import { FLURRY_ARROW_COUNT, FLURRY_ARROW_SPREAD } from "../../../builds/effectsData";
 import type { SimCtx } from "../../ctx";
 import { jsMin } from "shared/jsmath";
@@ -259,6 +260,7 @@ export const BOW = registerWeapon<BowData>({
 			const p = ctx.player;
 			bowAssistAim(ctx.actors, ctx.tick, ctx.config.isBulletBlocked, p.x, p.z, p.faceX, p.faceZ, dir);
 			muzzleFire(ctx, slot, dir.x, dir.z, arrowSpec(ctx, true));
+			if (ctx.state.builds !== undefined) fullHeartBeam(ctx, dir.x, dir.z); // Full Heart (BV7): the release's beam
 			v[BOW_V_HEAVY_TICK] = ctx.tick + 1;
 			if (slot.cooldown < BOW_DATA.heavyRecoverTicks) slot.cooldown = BOW_DATA.heavyRecoverTicks;
 		}

@@ -78,7 +78,9 @@ describe("pacts state (PS2)", () => {
 		// treasure (docs/TREASURE.md TR5: every endless world sets it) is the last group then, its TREASURE the last source
 		expect(names[names.size() - 1]).toBe(TREASURE_SUBSYSTEM);
 		expect(names[names.size() - 2]).toBe(PELLETS_SUBSYSTEM);
-		expect(s.score!.points.size()).toBe(ScoreSource.HORDE);
+		// No HORDE of its own: since docs/BUILDS_V2.md BV9 the run's builds pad every gated source up to OVERCAP (0).
+		expect(s.score!.points.size()).toBe(ScoreSource.OVERCAP + 1);
+		expect(s.score!.points[ScoreSource.HORDE]).toBe(0);
 	});
 
 	it("present: the LAST group (after pellets, treasure), names match values, writeHashFields agrees, clone hashes the same", () => {
@@ -95,15 +97,16 @@ describe("pacts state (PS2)", () => {
 		expect(b.values).toEqual(writeHashFields(s, []));
 		expect(b.names[last.start]).toBe("pacts.room");
 		expect(hashState(cloneSimState(s))).toBe(hashState(s));
-		// Every group before score is the no-pacts state's; score only grows by the padded HORDE source.
+		// Every group before score is the no-pacts state's; score holds the same padded sources (docs/BUILDS_V2.md BV9:
+		// the builds run already pads HORDE on its way to OVERCAP).
 		for (let g = 0; g < a.groups.size(); g++) {
 			const name = a.groups[g].name;
 			const va = groupValues(a, a.groups[g]);
 			const vb = groupValues(b, b.groups[g]);
 			if (name !== SCORE_SUBSYSTEM) expect(vb).toEqual(va);
-			else expect(vb.size()).toBe(va.size() + 2);
+			else expect(vb.size()).toBe(va.size());
 		}
-		expect(s.score!.points.size()).toBe(ScoreSource.HORDE + 1);
+		expect(s.score!.points.size()).toBe(ScoreSource.OVERCAP + 1);
 		expect(s.score!.points[ScoreSource.HORDE]).toBe(0);
 	});
 

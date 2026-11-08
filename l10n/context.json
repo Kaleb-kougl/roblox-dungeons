@@ -1572,6 +1572,13 @@
 		"note": "Banner on a Duo draft card: a special boon that combines two boons the player owns. All caps in English: keep capitals if the script has them. Very short.",
 		"max": 6
 	},
+	"hud.draft.duoHint": {
+		"note": "Small line at the foot of a New boon draft card when taking that boon would let the player be offered a Duo boon (a special boon that combines two boons the player owns) in later drafts. {duo} is the Duo boon's name (e.g. \"Thunder Guard\"). Shown next to a small two-cell chip of the two boons' icons; one line on a 240 px card.",
+		"max": 36,
+		"example": {
+			"duo": "Thunder Guard"
+		}
+	},
 	"hud.draft.evolve": {
 		"note": "Banner on an Evolution draft card (a boon at its top level turns into a stronger form). {boon} is the boon's name. English is all caps (EVOLVE): keep the label in capitals if the script has them.",
 		"max": 23,
@@ -3614,6 +3621,10 @@
 	},
 	"score.source.kills": {
 		"note": "Run-over panel: score breakdown row label (200 px label column, the points sit to the right) for points from killing enemies.",
+		"max": 20
+	},
+	"score.source.overcap": {
+		"note": "Run-over panel: score breakdown row label (200 px label column, the points sit to the right) for points from boss damage dealt over the boss's damage-per-second limit (the damage that could not land is paid as points instead). Short noun.",
 		"max": 20
 	},
 	"score.source.pellets": {
