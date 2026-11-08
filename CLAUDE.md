@@ -986,8 +986,14 @@ Decision log (deviations from `PLAN.md`):
   `sfx.build.counter` / `.pin` / `.slam` / `.smash` / `.beam` (SILENT in the placeholder, `SFX_FALLBACK` to the parry,
   the bow's full charge, a Charger's wall stun, the breakable break, the spark); `contract.luau` / `validate.luau` stay
   186 / 197. `DAILY.ruleset` 11 -> 12. M1, every golden fixture and the tutorial replay exactly as before; endless
-  replays and scores changed (boards stay `_v1`). View (BV11), tuning (BV12), art / audio and the Studio check (BV13)
-  pending.
+  replays and scores changed (boards stay `_v1`). View (BV11, presentation only): pure core in shared/view/fx
+  (`BuildFxEvents` collects every wave 1 list per tick; planners `CounterWaveFx`, `BowFx`, `WreckerFx`, `HeartBeamFx`,
+  `HappyHourFx`, `OvercapPops`, `WaveOneRings`; tunables `BUILDS_V2_FX`; `FLOOR_SHOUT_PRIORITY.counter` / `.pinned` /
+  `.slam` 0.5; cue mappings for the five sounds, the parry tick climbing per bullet for a Riposte owner,
+  `ScorePopTone.HAPPY` in `fx.heal`) and the controllers `CounterWaveController`, `SiegeFxController` (the pin's sprite
+  hold through `ActorRenderController.setPinHolds`, the slam's solo 40 ms freeze and `stamp` nudge),
+  `WreckerFxController`, `HeartBeamController`, `HappyHourController`, `OvercapPopController` (pops duck near bullets,
+  `overcapPopDuck`). Tuning (BV12), art / audio and the Studio checks (BV11 checklist, BV13) pending.
 
 ## Commands
 

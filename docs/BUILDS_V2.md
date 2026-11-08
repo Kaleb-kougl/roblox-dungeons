@@ -26,11 +26,12 @@ cannot see it happen, it is not in this plan.**
 
 ## Status (2026-11-07)
 
-**BV0-BV10 built** (on branch `builds-v2`): the audit ("BV0 findings"), the data and scaffolding ("BV1 (as built)"),
+**BV0-BV11 built** (on branch `builds-v2`): the audit ("BV0 findings"), the data and scaffolding ("BV1 (as built)"),
 the rules (Riposte and Counterstrike BV2, Ballista BV3, Siege Bolt BV4, Wrecker and Demolition BV5, the wave 1 duos BV6,
 Full Heart and Happy Hour BV7), the duo hint (BV8), overcap points (BV9) and the theme (BV10: colour roles, strings,
-audio IDs; plus the wave 1 integration spec; the three boon icons), each in its "BVn (as built)" section. **Open:**
-BV11 (view), BV12 (tuning), BV13 (art, audio, Studio check, playtest; the three boon icons are drawn, the re-upload of
+audio IDs; plus the wave 1 integration spec; the three boon icons) and the view (BV11, 2026-11-08: the pure core plus
+the guard, bow and Wrecker / beam / Happy Hour / overcap visuals; its Studio checklist is not run), each in its "BVn
+(as built)" section. **Open:** BV11's Studio checklist, BV12 (tuning), BV13 (art, audio, Studio check, playtest; the three boon icons are drawn, the re-upload of
 `art/upload/boon-icons.png` and its ID in `assetIds.ts` pending, see "BV10 (as built)"). The whole suite passed on the merged branch (2026-11-07, Linux x86_64 cloud box:
 typecheck, lint, the asset / autolocalize / art / checks / l10n tests, and every one of the 411 headless spec files,
 run in four slices), except `dungeon/forge/forge.spec.ts`'s "EncounterRng is the sim's new Rng(seed)", which fails the
