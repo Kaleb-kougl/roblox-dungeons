@@ -704,6 +704,23 @@ export function stillwaterRestoreCombo(state: Readonly<SimState>, combo: number)
 }
 
 /**
+ * Builds v2 (docs/BUILDS_V2.md BV5, Wrecker): a running combo's timer back to the full window. Nothing without scoring,
+ * at x1.0 (COMBO_MIN) or with the timer already out.
+ */
+export function refillComboTimer(state: SimState): void {
+	const s = state.score;
+	if (s === undefined || !(s.combo > COMBO_MIN) || s.comboTimer <= 0) return;
+	s.comboTimer = comboWindowTicks(state);
+}
+
+/** Builds v2 (BV5, Demolition): one combo step, feedCombo's (+0.1 capped, timer refilled). Nothing without scoring. */
+export function stepCombo(state: SimState): void {
+	const s = state.score;
+	if (s === undefined) return;
+	feedCombo(state, s);
+}
+
+/**
  * One landed hit: combo x (1 - 1/d), d = max(2, players) x divisorMultiplier (M2 Composure: 2), floored to the
  * tenth, at least x1.0. `players`: the players present at the hit (stepScore passes presentPlayerCount in co-op);
  * default ScoringConfig.partySize.
@@ -775,7 +792,8 @@ export function scoreKill(state: SimState, a: Readonly<ActorState>, killer = 0):
 }
 
 /**
- * Breakables hook (docs/DECOR.md D4, breakables/breakables.ts): a player broke a piece of `kind` (BreakableKind).
+ * Breakables hook (docs/DECOR.md D4, breakables/breakables.ts): a player broke a piece of `kind` (BreakableKind; a
+ * swing, a player bullet, and builds v2's roll smash / build effects, docs/BUILDS_V2.md BVD12).
  * BREAKABLE_POINTS[kind] x the floor, through the usual multipliers; the combo is NOT fed (no farming) and no room
  * record is touched. Returns the points.
  */

@@ -556,6 +556,8 @@ function playerBulletHit(i: number, pos: Readonly<Vec3>, payload: number): boole
 				slot,
 				BulletPayload.get(payload, "damage"),
 				BreakableSource.PLAYER_BULLET,
+				ctx.playerIndex, // Builds v2 (BV5): the bullet's owner and generation own the break (Wrecker)
+				ctx.procGen,
 			);
 			if (!broke || !piercing) {
 				// Ballista (BV3): a heavy arrow stopped by a piece bursts back (Siege Bolt, BV4: and slams its pin).

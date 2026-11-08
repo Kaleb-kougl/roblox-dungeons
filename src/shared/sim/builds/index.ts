@@ -18,3 +18,5 @@ export * from "./procs";
 export * from "./riposte";
 export * from "./ballista";
 export * from "./siege";
+export * from "./wrecker";
+export * from "./smash";

@@ -790,6 +790,84 @@ doubled ember) and Fire Arrows' on the rest. Embers go through `dropEmber` / `fi
 them. Specs (`builds/ballista.spec.ts`): ages 3, 6, 9, ... while it flies (13 in its 0.7 s, past 4), none without the
 duo, Fire Arrows + Dragon Bolt (one ember per tick at most, all Dragon Bolt's), none from stream arrows, and a nearly
 full budget spawning 3 then dropping the rest.
+## BV5 (as built)
+
+Wrecker and Demolition (gameplay, builds runs only). Paths under `src/shared/sim/`. Nothing changes for a player
+without Wrecker (or Powder Keg): no proc is queued, the roll hook returns at its ownership test, and the only shared
+change, two more scored breakables sources, reaches no run today (nothing but Wrecker passes `ROLL`; `BUILD` is also
+passed by BV4's Siege slam). M1, every golden fixture and the tutorial (no builds, no breakables) replay as before.
+
+- **`breakables/breakables.ts`.** `damageBreakable(state, slot, amount, source, owner = -1, gen = 0)`: the chest still
+  returns before anything; `ROLL` and `BUILD` breaks score like a swing's (BVD12); after `dropsOnBreak`, a break with
+  an owner calls the leaf hook `buildsOnPieceBroken(state, slot, owner, gen)`. `meleeHitBreakables` takes a trailing
+  `owner = -1` (generation 0). New `rollSmashBreakables(state, owner, x, z, dx, dz)`: every intact non-chest piece, in
+  slot order, whose circle (`config.hitRadius` round its cell centre) the body (`PLAYER_RADIUS`) touches along the
+  step (squared segment-to-point distance strictly below the radii's sum, a division for the segment parameter, no
+  trig or sqrt) breaks at full hp, `BreakableSource.ROLL`, owner, gen 0. Bound into the leaf at load
+  (`bindRollSmash(rollSmashBreakables)`).
+- **`builds/wrecker.ts` (new leaf).** `player.ts` cannot import `breakables.ts` (its scoring imports `party.ts`, which
+  imports `player.ts`: a require cycle), and `breakables.ts` needs the proc queue, so the hooks sit in a leaf importing
+  only data, `shared/dungeon` and `./hooks.ts`: `hasSmashEffect(p)` (Wrecker at any level, or Powder Keg),
+  `buildsOnPieceBroken` (queues `{ x / z the cell centre, owner, gen, slot -1, id -1, excess 0, kind SMASH }` when the
+  owner has a smash effect, has not left and `gen < genMax`), `buildsRollSmash(state, i, x, z, dx, dz)` (Wrecker owner
+  present: calls the bound `rollSmashBreakables`; an unbound smasher is an error: `breakables.ts` creates
+  `state.breakables`, so it is always loaded when there are pieces) and `bindRollSmash`.
+- **`player.ts`.** The roll branch calls `buildsRollSmash(state, playerIndex, p.x, p.z, dx, dz)` (only with
+  `state.builds`) right before `movePlayer`, so the pieces leave the solid cells before the move and the roll goes
+  through. `playerIndex` is the party index in co-op (`stepParty` passes it) and `SOLO_PLAYER` 0 solo.
+- **Owners at the call sites.** `combat/weapons/melee.ts` `sweepArc` passes `ctx.playerIndex` (the swinging player;
+  only the sword's swings pass `breakableDamage`); `combat/combat.ts` `playerBulletHit` passes `ctx.playerIndex` (the
+  bullet's owner, bound by `playerBulletHitParty`) and `ctx.procGen` (the bullet's `killGenOfSource`: 0 for a weapon
+  shot, gen + 1 for an effect bolt). Enemy bullets, the boss slam, Bomber blasts and Charger charges keep no owner.
+- **`builds/smash.ts` (new).** `resolveSmash(ctx, s, q, p)`: at III (Demolition) first the blast (one `demolition*`
+  entry; every living enemy not spawned this tick whose body reaches within `DEMOLITION_RADIUS` of the cell centre,
+  i.e. centre distance <= radius + body radius, slot order, takes `playerHitDamage(owner, DEMOLITION_DAMAGE)` through
+  `ctx.damageActor` at `procGen` gen + 1; then every intact non-chest piece whose cell centre lies within the radius
+  breaks at full hp, `BUILD`, owner, gen + 1, queuing its own smash); then the splinters (`fireAimedVolley`,
+  `WRECKER_SPLINTERS[level]` x `WRECKER_SPLINTER` within `WRECKER_RANGE`, `BuildEffect.WRECKER` at the proc's gen);
+  then the combo (III: `stepCombo`, one step per exploding piece; I-II: `refillComboTimer`); one `smash*` entry
+  (`smashFired` = splinters spawned).
+- **`builds/procs.ts`.** `resolveProc` branches on `q.kind`: a SMASH resolves through `resolveSmash` (when
+  `hasSmashEffect`) and returns, except for a Powder Keg owner (BV6 below). `hasOnKillEffect` stays the kill gate.
+  `dropLeavers` needed no change: it drops by owner, kills and smashes alike (comment says so; a spec covers it).
+- **`score/score.ts`.** `refillComboTimer(state)` (timer = the window, only when combo > `COMBO_MIN` and the timer is
+  running) and `stepCombo(state)` (`feedCombo`'s body: +0.1 capped, timer refilled, `comboFed`).
+- **Barrel.** `builds/index.ts` exports `./wrecker` and `./smash`. No new hashed field, tunable, event list or string:
+  BV1's `BuildProc.kind`, `smash*` / `demolition*` lists and Wrecker tunables are used as declared.
+
+Decisions taken while building (defaults, open to BV11 / the owner):
+- **Order inside a Demolition smash:** blast first, splinters after, so the splinters aim at what the blast left alive.
+- **Demolition's combo step** is per exploding piece (each Demolition smash resolved), the first piece included; the
+  last piece of a chain (broken at `genMax`, no smash) adds none. A Demolition smash can start a combo from x1.0
+  (`stepCombo` is a feed); Wrecker I-II only refill a running one.
+- **Blast reach** counts the enemy's body (as the wave's `d - a.radius <= radius`); pieces use the centre distance
+  (as `slamBreakables`). A cluster's pieces are 1 tile apart, so the 1.5 radius reaches orthogonal and diagonal
+  neighbours only.
+- **Roll smash touch** is strict (`<`): a body resting flush against a crate and rolling away does not break it.
+- A dead owner's bullets still break pieces for them (only "left" is tested, as for kills).
+
+Specs: `builds/wrecker.spec.ts` (13): without Wrecker the roll stops at a crate row's face and breaks nothing; with
+it the middle crate breaks before the move (the body did not yet reach it at the tick's start), the side crates stay,
+the roll's path equals a roll on open floor tick for tick and reaches the far side, and the break scores; the chest
+never breaks and stops the roll (Wrecker III); a sword swing's break queues a smash at the cell centre and fires 3
+SHARD splinters (gen 0); an arrow's break (gen 0, level II: 5) and a Volatile bolt's (gen 1) splinter; no enemy: 0
+splinters; an enemy bullet's break queues nothing; co-op: a teammate's break splinters nothing for you, yours is
+credited to you; a leaver's queued smash is dropped; the refill keeps a x2 combo alive past its window (control: it
+lapses), nothing at x1.0; Demolition: a line of five crates breaks on ticks t, t, t + 1, t + 2 and the fifth stays
+(smash gens 0 / 1 / 2, three blasts, combo +0.3, four BREAKABLES counts, a chest beside the chain intact); the blast
+hits a body within reach and not one just outside, and its kill procs at gen 1; Powder Keg (below); a dense room
+with Demolition, Powder Keg, Volatile and Soul Shards (bow, rolls through two rows) hashes the same every tick.
+
+## BV6 (as built, Powder Keg only)
+
+Powder Keg (Wrecker + Volatile; the other BV6 duos are other workers'). In `builds/procs.ts` `resolveProc`: after
+`resolveSmash`, a smash of an owner with `Duo.POWDER_KEG` pushes one `duoProc` entry (`Duo.POWDER_KEG`, the owner, the
+cell centre, value 1) and falls through to the on-kill loop with the smash proc itself, so Chain Spark, Volatile
+(Shrapnel's ring with that duo) and Soul Shards fire from the piece at the owner's levels and the proc's gen, exactly
+as a kill proc there would (slot / id -1: nothing is skipped as the victim; excess 0: Overkill and Supernova do
+nothing). Spec (`builds/wrecker.spec.ts`): a crate broken by a Wrecker + Volatile + Powder Keg owner fires Volatile's
+ring at the cell centre (`burst*` event, gen 0, `VOLATILE_BURSTS[0].count` bolts live) beside the splinters and a
+Powder Keg `duoProc`; without the duo, no ring.
 
 ## Appendix: the proposal (2026-11-05)
 

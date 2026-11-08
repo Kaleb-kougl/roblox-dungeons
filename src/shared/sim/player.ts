@@ -43,6 +43,7 @@ import type { PlayerState, SimState } from "./state";
 import type { SimConfig } from "./step";
 import { weaponMoveMultiplier } from "./combat/weapons/weapons";
 import { buildsOnArmorBreak } from "./builds/hooks";
+import { buildsRollSmash } from "./builds/wrecker";
 import { SOLO_PLAYER, rollIframeTicks, runOnPlayerHit, runSecondWind, scalePercent } from "./progression/runMods";
 import { absorbWithAegis, boostWalkPercent, boostsOnPlayerDied } from "./drops/boostMods";
 import type { WeaponsState } from "./combat/weapons/types";
@@ -209,6 +210,9 @@ export function stepPlayer(
 	if (p.rollTicks > 0) {
 		const elapsed = ROLL_TICKS - p.rollTicks; // 0 on the tick the roll starts
 		const dist = elapsed < ROLL_DASH_TICKS ? ROLL_DASH_STEP : ROLL_RECOVERY_STEP;
+		// Builds v2 (BV5): Wrecker's roll smash breaks the pieces this step touches before the move (a leaf hook).
+		if (state.builds !== undefined)
+			buildsRollSmash(state, playerIndex, p.x, p.z, p.rollDirX * dist, p.rollDirZ * dist);
 		movePlayer(state, p.rollDirX * dist, p.rollDirZ * dist, config, p);
 	} else {
 		// E1.8: the weapon in hand may slow walking (e.g. a bow while charging); 1 otherwise.

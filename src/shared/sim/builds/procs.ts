@@ -5,8 +5,8 @@
  * Kills (buildsOnKill, from actors.ts damageActor's kill line, before killActor): a kill by player damage pushes a proc
  * { x, z, owner, gen, slot, id, excess, kind } (the corpse, ctx.playerIndex = the bullet's owner / the swinging player /
  * the spark's owner, ctx.procGen, the victim's slot and actor id; excess: docs/LEGENDARIES.md LG2's Overkill carry,
- * ctx.killCarry when the owner has Overkill, else 0; kind: ProcKind.KILL, docs/BUILDS_V2.md BV1; BV5 adds SMASH)
- * onto state.builds.procs, unless
+ * ctx.killCarry when the owner has Overkill, else 0; kind: ProcKind.KILL, docs/BUILDS_V2.md BV1) onto
+ * state.builds.procs, unless
  *   - the victim revives (def.stepDead: turrets) or is in PROC_INELIGIBLE_ARCHETYPES (the training dummy),
  *   - gen >= genMax (BUD5: a generation-3 proc would do nothing, so none is queued; a kill of generation exactly
  *     genMax goes to Chain Reaction's cross trigger instead, ./duos.ts chainReactionKill),
@@ -25,9 +25,15 @@
  * except by the floor change (endless.ts nextFloor: clearBuildProcs). A frozen draft tick never steps combat, so the
  * queue waits.
  *
+ * Smashes (docs/BUILDS_V2.md BV5): a piece broken by an owner with Wrecker or Powder Keg queues a ProcKind.SMASH proc
+ * (the leaf ./wrecker.ts buildsOnPieceBroken: the cell centre, slot / id -1, excess 0, below genMax); they share the
+ * queue, its order, procsPerTick and the floor-change clear with the kills.
+ *
  * One proc: ctx.actingPlayer(owner) (its kills are scored for, and read the mods of, the owner), then each on-kill boon
- * the owner has, in boon index order (ON_KILL_BOONS: Chain Spark, Volatile, Soul Shards, Overkill; ./onKill.ts). Afterwards
- * player 0 is bound again and ctx.procGen is 0.
+ * the owner has, in boon index order (ON_KILL_BOONS: Chain Spark, Volatile, Soul Shards, Overkill; ./onKill.ts). A smash
+ * instead resolves through ./smash.ts resolveSmash (an owner with a smash effect, ./wrecker.ts hasSmashEffect), and
+ * fires the on-kill boons too only for a Powder Keg owner (BV6; Overkill does nothing: excess 0). Afterwards player 0
+ * is bound again and ctx.procGen is 0.
  */
 import { jsMin } from "shared/jsmath";
 import type { SimCtx } from "../combat/ctx";
@@ -36,12 +42,14 @@ import type { ActorState, ArchetypeDef } from "../combat/actors/types";
 import { hasLeft } from "../party";
 import { Boon } from "../progression/progressionData";
 import { buildLevel, type BuildPlayerState, type BuildProc, type BuildsState } from "./builds";
-import { PROC_INELIGIBLE_ARCHETYPES, ProcKind } from "./buildsData";
+import { Duo, PROC_INELIGIBLE_ARCHETYPES, ProcKind } from "./buildsData";
 import { beginEffectBudget, endEffectBudget, resetEffectScratch } from "./effects";
 import { JACKPOT_KILLS, KillCause } from "./effectsData";
 import { resetEvolutionScratch, stepEvolutions, stepMomentum } from "./evolutions";
 import { chainReactionKill, resetDuoScratch, stepDuosAfterDrain, stepDuosBeforeDrain } from "./duos";
-import { isEvolved, stepBraceCooldowns } from "./hooks";
+import { hasDuo, isEvolved, pushDuoProc, stepBraceCooldowns } from "./hooks";
+import { hasSmashEffect } from "./wrecker";
+import { resolveSmash } from "./smash";
 import { chainSpark, overkill, soulShards, volatileBurst } from "./onKill";
 import { scoreJackpot } from "../score/score";
 import { resetRiposteScratch, stepWaves } from "./riposte";
@@ -102,6 +110,14 @@ function resolveProc(ctx: SimCtx, s: BuildsState, q: Readonly<BuildProc>): void 
 	const p = s.players[q.owner];
 	if (p === undefined || q.gen >= s.config.genMax) return;
 	ctx.actingPlayer(q.owner);
+	// Builds v2 (BV5): a smash (a broken piece; ./smash.ts: Wrecker's splinters, Demolition). Powder Keg (BV6): the
+	// owner's on-kill boons then fire from the piece below, as a kill there would (no victim, no Overkill carry).
+	if (q.kind === ProcKind.SMASH) {
+		if (!hasSmashEffect(p)) return;
+		resolveSmash(ctx, s, q, p);
+		if (!hasDuo(p, Duo.POWDER_KEG)) return;
+		pushDuoProc(s, Duo.POWDER_KEG, q.owner, q.x, q.z, 1);
+	}
 	for (const b of ON_KILL_BOONS) {
 		const level = buildLevel(p, b);
 		if (level <= 0) continue;
@@ -112,7 +128,7 @@ function resolveProc(ctx: SimCtx, s: BuildsState, q: Readonly<BuildProc>): void 
 	}
 }
 
-/** Party: drops the queued procs of players who left (order kept). */
+/** Party: drops the queued procs (kills and smashes alike) of players who left (order kept). */
 function dropLeavers(state: Readonly<SimState>, procs: BuildProc[]): void {
 	let w = 0;
 	const total = procs.size();
