@@ -196,7 +196,19 @@ Each step is a commit; `npm run verify` before each.
   max(lead, 1) (Untouchable (second - lead) / max(second, 1)), greedy by score, then title order, then index; a
   title its leader cannot take (they hold a better one) goes to nobody. English: Daredevil is a boon's name, so the
   `daredevil` title reads **Bullet Dancer** (CT4). Spec: contribution.spec.ts.
-- [ ] **CT4. Strings** (contract, placeholder, vale, l10n context); Luau locals counted on out/.
+- [x] **CT4. Strings** (contract, placeholder, vale, l10n context); Luau locals counted on out/.
+  As built: shared/theme runRecap.ts `CONTRIB_STRING_KEYS` (44), written out in `REQUIRED_STRING_KEYS` right after
+  `TEAM_MOMENT_STRING_KEYS` (no new top-level local): tabs `run.recap.tab.you` / `.team` / `.party`; You card
+  `run.recap.you.header` (`{title}`: the title's name), `.shareBar` (`{pct}`), labels `.damage` / `.kills` /
+  `.bossDamage` / `.parries` / `.grazes` / `.hits` / `.pickups`, `.share` (`{value}` formatted, `{pct}`); pickups as
+  parts, the repo's plural style (a separate singular string, as `near.fullClearOne`): `.pickupsValue`
+  "{boosts} · {pellets}" (both string vars) over `.boosts` "{n} boosts" / `.boostOne` "1 boost" / `.pellets`
+  "{n} pellets" / `.pelletOne` "1 pellet" (a part whose team total is 0 is left out, `contribPickupParts`); standing
+  `.lastToFall` / `.stood` / `.fell` / `.left` (`{floor}`, `{time}` a string, m:ss by `formatClock` as the run-over
+  Time); Party header `run.recap.party.damage` / `.kills` / `.parries` / `.hits`; nine titles `run.recap.title.*` and
+  descriptions `run.recap.titleDesc.*` (Daredevil reads "Bullet Dancer": `boon.daredevil` and its evolution Thrill
+  Seeker took the obvious words). Placeholder English (vale clones it), one `l10n/context.json` entry each (with
+  `max` and examples). `contract.luau` / `validate.luau` stay 186 / 197 top-level locals (counted on out/).
 - [ ] **CT5. Panel.** Tabs, You card, Party rows; fit.spec: 2, 4 and 8 players, record daily party run (the worst
   case), phone landscape / portrait, HUD 70 %; `npm run build:place`.
 - [ ] **CT6. Input.** LB / RB, Q / E / Tab, taps; hint bar; tab presses never reach `RunOverRetryGate`; focus memory

@@ -5,8 +5,10 @@
 //   - standing: lastToFall / fell / stood / left, seconds from SIM_HZ, a revive (lastDeath alive), the derived wipe
 //   - assignTitles: one per player, distinct but Teammate, greedy by relative lead, every threshold at its edge, ties
 //     (a tie for the lead, an equal score), the fallback, 2 / 4 / 8 players, identical output for identical tallies
+//   - strings (CT4): every view key is a contract string with placeholder English; the texts fill as the plan shows
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { SIM_HZ } from "shared/sim";
+import { CONTRIB_STRING_KEYS, PLACEHOLDER_MANIFEST, REQUIRED_STRING_KEYS, ThemePack } from "shared/theme";
 import { NO_RECAP_TALLY, RECAP_ALIVE_TICK, type RecapTallySource } from "shared/view/fx";
 import {
 	CONTRIB,
@@ -416,5 +418,41 @@ describe("contributionOf: titles over the party", () => {
 		for (const r of c.rows) seen.set(r.title, (seen.get(r.title) ?? 0) + 1);
 		for (const [t, k] of seen) if (t !== "teammate") expect([t, k]).toEqual([t, 1]);
 		expect(c.rows[7].title).toBe("heavyHitter");
+	});
+});
+
+describe("contribution strings (CT4)", () => {
+	const quiet = (): void => {};
+	const pack = new ThemePack(PLACEHOLDER_MANIFEST, { warn: quiet });
+
+	it("every view key is in the contract's CONTRIB_STRING_KEYS and REQUIRED_STRING_KEYS", () => {
+		const view = contribStringKeys();
+		view.sort();
+		const contract = [...CONTRIB_STRING_KEYS];
+		contract.sort();
+		expect(view).toEqual(contract);
+		for (const key of view) expect([key, REQUIRED_STRING_KEYS.includes(key)]).toEqual([key, true]);
+	});
+
+	it("the You card's lines read as the plan draws them", () => {
+		const title = pack.str(contribTitleKey("guardian"));
+		expect(pack.str(CONTRIB_STRINGS.youHeader, { title })).toBe("You · Guardian");
+		expect(pack.str(CONTRIB_STRINGS.youShareBar, { pct: 41 })).toBe("41% of the team's damage");
+		expect(pack.str(CONTRIB_STRINGS.youShare, { value: "12,480", pct: 41 })).toBe("12,480 · 41%");
+		const st = contribStandingText({ kind: "lastToFall", floor: 9, seconds: 860 });
+		expect(pack.str(st.key, st.vars)).toBe("Last to fall · floor 9 · 14:20");
+		const fell = contribStandingText({ kind: "fell", floor: 7, seconds: 760 });
+		expect(pack.str(fell.key, fell.vars)).toBe("Fell on floor 7 · 12:40");
+		const parts = contribPickupParts({
+			kind: "pickups",
+			labelKey: CONTRIB_STRINGS.youPickups,
+			value: 26,
+			boosts: 4,
+			pellets: 22,
+		});
+		const [b, p] = [pack.str(parts[0].key, parts[0].vars), pack.str(parts[1].key, parts[1].vars)];
+		expect(pack.str(CONTRIB_STRINGS.youPickupsValue, { boosts: b, pellets: p })).toBe("4 boosts · 22 pellets");
+		expect(pack.str(contribTitleKey("daredevil"))).toBe("Bullet Dancer");
+		expect(pack.str(contribTitleDescKey("teammate"))).toBe("Fought for the team");
 	});
 });

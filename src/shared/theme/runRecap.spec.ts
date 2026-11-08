@@ -1,4 +1,5 @@
-// Roblox port (docs/RUN_RECAP.md RR3 / CM3 / CM4): the run-over recap's and the co-op moments' strings and sounds are
+// Roblox port (docs/RUN_RECAP.md RR3 / CM3 / CM4, docs/RUN_CONTRIBUTION.md CT4): the run-over recap's, the co-op
+// moments' and the co-op contribution's strings and the moments' sounds are
 // in the contract's lists, every bundled pack fills them with well-formed templates, and the two sounds are required,
 // silent everywhere until clips exist. contract.ts names the keys inline (its compiled Luau sits near the 200-locals
 // limit), so these specs are what keeps runRecap.ts and contract.ts in step.
@@ -6,7 +7,7 @@ import { describe, expect, it } from "@rbxts/jest-globals";
 import { PORT_AUDIO_EVENTS, REQUIRED_ASSET_IDS, REQUIRED_STRING_KEYS, slotFor } from "./contract";
 import { THEME_PACKS } from "./packs";
 import { PLACEHOLDER_MANIFEST } from "./packs/placeholder";
-import { RECAP_STRING_KEYS, TEAM_MOMENT_AUDIO_IDS, TEAM_MOMENT_STRING_KEYS } from "./runRecap";
+import { CONTRIB_STRING_KEYS, RECAP_STRING_KEYS, TEAM_MOMENT_AUDIO_IDS, TEAM_MOMENT_STRING_KEYS } from "./runRecap";
 import { placeholders, templateProblem } from "./strings";
 import { TREASURE_AUDIO_IDS, TREASURE_STRING_KEYS } from "./treasure";
 import { FORTUNE_AUDIO_IDS, FORTUNE_STRING_KEYS } from "./fortune";
@@ -58,6 +59,51 @@ const ENGLISH: ReadonlyArray<[string, string, string[]]> = [
 	["room.clear.teamStreak", "TEAM PERFECT x{n}", ["n"]],
 	["fx.parry.sync", "SYNC!", []],
 	["fx.parry.syncCount", "SYNC x{n}", ["n"]],
+	// docs/RUN_CONTRIBUTION.md CT4: CONTRIB_STRING_KEYS
+	["run.recap.tab.you", "You", []],
+	["run.recap.tab.team", "Team", []],
+	["run.recap.tab.party", "Party", []],
+	["run.recap.you.header", "You · {title}", ["title"]],
+	["run.recap.you.shareBar", "{pct}% of the team's damage", ["pct"]],
+	["run.recap.you.damage", "Damage", []],
+	["run.recap.you.kills", "Kills", []],
+	["run.recap.you.bossDamage", "Boss dmg", []],
+	["run.recap.you.parries", "Parries", []],
+	["run.recap.you.grazes", "Grazes", []],
+	["run.recap.you.hits", "Hits taken", []],
+	["run.recap.you.pickups", "Pickups", []],
+	["run.recap.you.share", "{value} · {pct}%", ["pct", "value"]],
+	["run.recap.you.pickupsValue", "{boosts} · {pellets}", ["boosts", "pellets"]],
+	["run.recap.you.boosts", "{n} boosts", ["n"]],
+	["run.recap.you.boostOne", "1 boost", []],
+	["run.recap.you.pellets", "{n} pellets", ["n"]],
+	["run.recap.you.pelletOne", "1 pellet", []],
+	["run.recap.you.lastToFall", "Last to fall · floor {floor} · {time}", ["floor", "time"]],
+	["run.recap.you.stood", "Stood to the end · {time}", ["time"]],
+	["run.recap.you.fell", "Fell on floor {floor} · {time}", ["floor", "time"]],
+	["run.recap.you.left", "Left on floor {floor}", ["floor"]],
+	["run.recap.party.damage", "Damage", []],
+	["run.recap.party.kills", "Kills", []],
+	["run.recap.party.parries", "Parries", []],
+	["run.recap.party.hits", "Hits", []],
+	["run.recap.title.heavyHitter", "Heavy Hitter", []],
+	["run.recap.title.bossBreaker", "Boss Breaker", []],
+	["run.recap.title.finisher", "Finisher", []],
+	["run.recap.title.guardian", "Guardian", []],
+	["run.recap.title.daredevil", "Bullet Dancer", []],
+	["run.recap.title.untouchable", "Untouchable", []],
+	["run.recap.title.lastStand", "Last Stand", []],
+	["run.recap.title.collector", "Collector", []],
+	["run.recap.title.teammate", "Teammate", []],
+	["run.recap.titleDesc.heavyHitter", "Most damage dealt", []],
+	["run.recap.titleDesc.bossBreaker", "Most boss damage", []],
+	["run.recap.titleDesc.finisher", "Most kills", []],
+	["run.recap.titleDesc.guardian", "Most parries", []],
+	["run.recap.titleDesc.daredevil", "Most grazes", []],
+	["run.recap.titleDesc.untouchable", "Fewest hits taken", []],
+	["run.recap.titleDesc.lastStand", "Last one standing", []],
+	["run.recap.titleDesc.collector", "Most pickups", []],
+	["run.recap.titleDesc.teammate", "Fought for the team", []],
 ];
 
 function sortedPlaceholders(text: string): string[] {
@@ -67,11 +113,12 @@ function sortedPlaceholders(text: string): string[] {
 }
 
 describe("run recap and co-op moments: contract", () => {
-	it("requires the recap strings and the co-op moment strings (written out in REQUIRED_STRING_KEYS, in order)", () => {
-		const all = [...RECAP_STRING_KEYS, ...TEAM_MOMENT_STRING_KEYS];
+	it("requires the recap, co-op moment and contribution strings (written out in REQUIRED_STRING_KEYS, in order)", () => {
+		const all = [...RECAP_STRING_KEYS, ...TEAM_MOMENT_STRING_KEYS, ...CONTRIB_STRING_KEYS];
 		expect(all).toEqual(ENGLISH.map(([k]) => k));
 		expect(RECAP_STRING_KEYS.size()).toBe(30);
 		expect(TEAM_MOMENT_STRING_KEYS.size()).toBe(4);
+		expect(CONTRIB_STRING_KEYS.size()).toBe(44);
 		// docs/TREASURE.md TR6's strings come after them, then docs/FORTUNE.md FO6's
 		const after = TREASURE_STRING_KEYS.size() + FORTUNE_STRING_KEYS.size();
 		expect(tail(REQUIRED_STRING_KEYS, all.size(), after)).toEqual(all);
@@ -113,7 +160,12 @@ describe("run recap and co-op moments: packs", () => {
 	});
 
 	it("a pack missing one of them fails validation", () => {
-		for (const k of ["run.recap.near.stairs", "room.clear.teamPerfect", "fx.parry.syncCount"]) {
+		for (const k of [
+			"run.recap.near.stairs",
+			"room.clear.teamPerfect",
+			"fx.parry.syncCount",
+			"run.recap.you.fell",
+		]) {
 			const m = deepClone(PLACEHOLDER_MANIFEST) as unknown as Obj;
 			(m.strings as Obj)[k] = undefined;
 			expect([k, validateManifest(m).some((e) => e.find(`"${k}"`, 1, true)[0] !== undefined)]).toEqual([k, true]);
