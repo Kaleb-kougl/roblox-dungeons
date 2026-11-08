@@ -33,7 +33,7 @@ import { buildsFlurryArrow, buildsFlurryArrowsFired } from "../../../builds/hook
 import { FLURRY_ARROW_COUNT, FLURRY_ARROW_SPREAD } from "../../../builds/effectsData";
 import type { SimCtx } from "../../ctx";
 import { jsMin } from "shared/jsmath";
-import { runMods } from "../../../progression/runMods";
+import { runMods, scaleTicks } from "../../../progression/runMods";
 import type { SimState } from "../../../state";
 
 export interface BowData extends WeaponData {
@@ -296,10 +296,11 @@ export function bowCharge(slot: Readonly<WeaponSlotState>, chargeTicks: number =
 }
 
 /**
- * The length of player `playerIndex`'s full charge in ticks (docs/BUILDS_V2.md "Ballista"): the sim's and the view's
- * (bowCharge's `chargeTicks`). BV1: always BOW_DATA.chargeTicks (36); BV3 applies Ballista II's
- * BALLISTA_CHARGE_PERCENT through runMods, like swordGuardTicks reads Bastion.
+ * The length of player `playerIndex`'s full charge in ticks (docs/BUILDS_V2.md "Ballista", BV3): the sim's and the
+ * view's (bowCharge's `chargeTicks`). BOW_DATA.chargeTicks (36) scaled by runMods' `ballistaChargePercent` (Ballista II /
+ * III: 75 % -> 27; scaleTicks returns 36 itself at 100, so exactly BOW_DATA.chargeTicks without Ballista II), like
+ * swordGuardTicks reads Bastion.
  */
-export function bowChargeTicks(_state: Readonly<SimState>, _playerIndex: number): number {
-	return BOW_DATA.chargeTicks;
+export function bowChargeTicks(state: Readonly<SimState>, playerIndex: number): number {
+	return scaleTicks(BOW_DATA.chargeTicks, runMods(state, playerIndex).ballistaChargePercent);
 }

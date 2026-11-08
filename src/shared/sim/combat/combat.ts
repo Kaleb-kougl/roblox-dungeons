@@ -11,6 +11,8 @@
  *   4. the player's weapons (stepWeapons: cooldowns, SWAP, trigger -> fire / melee sweep)
  *   5. step both simulations by SIM_DT (./bullets.ts, the ported r3f-projectiles pool); M2 Hourglass (endless runs):
  *      enemy bullets step by SIM_DT x HOURGLASS_TIME_SCALE for 1 s after a hit landed on a player holding it
+ *   5b. Siege Bolt (only with state.builds pins, docs/BUILDS_V2.md BV4): sim/builds siege.ts stepPins drops the pins of
+ *      expired arrows and drags each pinned actor onto its arrow (nothing spawns a player bullet between 5 and 6)
  *   6. collisions, one forEachActive walk per simulation:
  *        enemy bullets:  wall (consume) -> [breakables: an intact piece's cell (consume, damage it)] -> [scoring:
  *                        graze flags] -> player circle -> ctx.hurtPlayer; consumed ONLY if the hit landed
@@ -80,6 +82,8 @@ import { KillCause } from "../builds/effectsData";
 import { buildsOnPierceHit, phantomStepErased, phantomStepOn } from "../builds/evolutions";
 import { buildsOnArrowHit } from "../builds/duos";
 import { bastionRollOn, buildsOnRollThrough } from "../builds/hooks";
+import { ballistaActive, buildsOnHeavyEnd } from "../builds/ballista";
+import { siegeCarriedSlot, siegeSlamDue, siegeTryPin, stepPins } from "../builds/siege";
 import { damageBreakable, enemyBulletHitsBreakable, type BreakablesState } from "../breakables/breakables";
 import { breakableSlotAt } from "../breakables/cells";
 import { BreakableSource } from "../breakables/breakablesData";
@@ -321,6 +325,11 @@ let grazeR2 = 0;
 /** Builds are on for this tick's state (playerBulletHit binds ctx.procGen from the payload source). */
 let buildsOn = false;
 /**
+ * Builds v2 (docs/BUILDS_V2.md BV3 / BV4): some player owns Ballista or a Siege Bolt pin is recorded this tick
+ * (sim/builds ballista.ts ballistaActive): heavy arrows burst, pin, plow and slam in the player bullet walk.
+ */
+let ballistaOn = false;
+/**
  * Builds (docs/BUILDS.md BU5, Phantom Step): per player, enemy bullets inside their hit circle are erased this tick
  * (sim/builds evolutions.ts phantomStepOn: Slippery III, rolling with i-frames). phantomAny: any of them.
  */
@@ -481,9 +490,11 @@ function piercingBulletHit(i: number, pos: Readonly<Vec3>, payload: number): boo
 	const lastHit = BulletPayload.get(payload, "lastHit");
 	let pierce = BulletPayload.get(payload, "pierce");
 	let hit = lastHit;
+	// Siege Bolt (BV4): the actor this arrow carries (never hit by it; while it carries, no pierce is spent), else -1.
+	let carriedSlot = ballistaOn ? siegeCarriedSlot(ctx, i) : -1;
 	for (let k = 0; k < actors.size(); k++) {
 		const a = actors[k];
-		if (a.kind === NO_KIND || a.alive === 0 || k + 1 === lastHit) continue;
+		if (a.kind === NO_KIND || a.alive === 0 || k + 1 === lastHit || k === carriedSlot) continue;
 		const r2 = (a.radius + PLAYER_BULLET_RADIUS) * (a.radius + PLAYER_BULLET_RADIUS);
 		const dx = pos.x - a.x;
 		const dz = pos.z - a.z;
@@ -492,14 +503,24 @@ function piercingBulletHit(i: number, pos: Readonly<Vec3>, payload: number): boo
 		const ez = pz - a.z;
 		if (lastHit !== 0 && ex * ex + ez * ez < r2) continue; // already inside at the start of the tick
 		damageActor(ctx, a, damage);
+		// Siege Bolt (BV4): the first surviving hit of an owner's heavy arrow pins (that hit starts the carry).
+		if (ballistaOn && carriedSlot < 0 && siegeTryPin(ctx, i, payload, a, k)) carriedSlot = k;
+		// Builds v2 (BV4): a carrying arrow spends no pierce, so no hit consumes it.
+		const spends = carriedSlot < 0;
 		// Builds (BU5 / BU6): the pierce-hit hook (Ricochet: an arrow's last hit that kills splits) and the arrow-hit
 		// hook (Storm Blade's count; Conductor when the arrow flies on).
 		if (buildsOn) {
-			buildsOnPierceHit(ctx, a, pos.x, pos.z, BulletPayload.get(payload, "source"), pierce === 0);
-			buildsOnArrowHit(ctx, a, i, payload, pierce > 0);
+			buildsOnPierceHit(ctx, a, pos.x, pos.z, BulletPayload.get(payload, "source"), spends && pierce === 0);
+			buildsOnArrowHit(ctx, a, i, payload, !spends || pierce > 0);
 		}
-		if (pierce === 0) return true;
-		pierce--;
+		if (spends) {
+			if (pierce === 0) {
+				// Ballista (BV3): a heavy arrow's last pierce bursts into a ring.
+				if (ballistaOn) buildsOnHeavyEnd(ctx, i, pos, payload, false, a);
+				return true;
+			}
+			pierce--;
+		}
 		hit = k + 1;
 	}
 	if (hit !== lastHit) {
@@ -512,7 +533,11 @@ function piercingBulletHit(i: number, pos: Readonly<Vec3>, payload: number): boo
 }
 
 function playerBulletHit(i: number, pos: Readonly<Vec3>, payload: number): boolean {
-	if (hitBlocked !== undefined && hitBlocked(pos.x, pos.z)) return true;
+	if (hitBlocked !== undefined && hitBlocked(pos.x, pos.z)) {
+		// Ballista (BV3): a heavy arrow on a wall bursts back into the room (Siege Bolt, BV4: and slams its pin).
+		if (ballistaOn) buildsOnHeavyEnd(ctx, i, pos, payload, true);
+		return true;
+	}
 	// Builds (opt-in): the generation a kill by this bullet gives its proc, bound like the owner, and (BU6, Chain
 	// Reaction) whether it is a Volatile bolt.
 	if (buildsOn) {
@@ -532,8 +557,17 @@ function playerBulletHit(i: number, pos: Readonly<Vec3>, payload: number): boole
 				BulletPayload.get(payload, "damage"),
 				BreakableSource.PLAYER_BULLET,
 			);
-			if (!broke || !piercing) return true;
+			if (!broke || !piercing) {
+				// Ballista (BV3): a heavy arrow stopped by a piece bursts back (Siege Bolt, BV4: and slams its pin).
+				if (ballistaOn && !broke) buildsOnHeavyEnd(ctx, i, pos, payload, true);
+				return true;
+			}
 		}
+	}
+	// Siege Bolt (BV4): a carried body that fell short of its arrow (a pillar, a piece) slams here.
+	if (ballistaOn && siegeSlamDue(ctx, i)) {
+		buildsOnHeavyEnd(ctx, i, pos, payload, true);
+		return true;
 	}
 	if (piercing) return piercingBulletHit(i, pos, payload);
 	for (const a of ctx.state.combat.actors) {
@@ -601,6 +635,8 @@ export function stepCombat(
 	const enemyTimeScale = consumeEnemyBulletTimeScale(state);
 	c.enemyBullets.step(enemyTimeScale === 1 ? SIM_DT : SIM_DT * enemyTimeScale);
 	c.playerBullets.step(SIM_DT);
+	// 5b. Siege Bolt (docs/BUILDS_V2.md BV4, only with pins): drop expired arrows' pins, drag the pinned actors.
+	if (state.builds !== undefined && state.builds.pins.size() > 0) stepPins(ctx);
 
 	// 6. Collide.
 	hitBlocked = config.isBulletBlocked;
@@ -611,6 +647,8 @@ export function stepCombat(
 	if (buildsOn) {
 		computePhantom(state);
 		computeBastion(state);
+		// Builds v2 (BV3 / BV4): Ballista's bursts and Siege Bolt's pins in the player bullet walk.
+		ballistaOn = ballistaActive(state);
 	}
 	if (party) {
 		c.enemyBullets.forEachActive(enemyBulletHitParty);
@@ -627,6 +665,7 @@ export function stepCombat(
 		ctx.procGen = 0;
 		ctx.procCause = KillCause.NONE;
 		buildsOn = false;
+		ballistaOn = false;
 		phantomAny = false;
 		bastionAny = false;
 		// 6b. Builds (opt-in): the proc queue (on-kill effects of this tick's kills and the carry-over).

@@ -34,7 +34,10 @@
  *        is when its age (ticks since it was fired: round((spawn life - life) x SIM_HZ), 1 on the tick it was fired) is
  *        a multiple of FIRE_ARROWS_EMBER_TICKS, at most FIRE_ARROWS_EMBERS_MAX per arrow (ages 6, 12, 18, 24). The
  *        spawn life is the bow's (stream or heavy) found by the speed match, so the counter is the bullet's own life:
- *        no new payload field. Embers in the walk's order (dense slots, backwards)
+ *        no new payload field. Embers in the walk's order (dense slots, backwards). Dragon Bolt (Ballista + Ember
+ *        Wake, docs/BUILDS_V2.md BV6) in the same walk: every live HEAVY arrow of an owner drops an ember at every age
+ *        that is a multiple of DRAGON_BOLT_EMBER_TICKS for its whole flight (no FIRE_ARROWS_EMBERS_MAX; ember duo
+ *        DRAGON_BOLT); an owner of both duos gets Dragon Bolt's schedule on heavy arrows, Fire Arrows' on the rest
  *     c. Blazing Trail (Ember Wake + Slippery): a rolling, living owner drops an ember where they stand when the roll's
  *        elapsed ticks (ROLL_TICKS - rollTicks, 0 on the start tick) are a positive multiple of
  *        BLAZING_TRAIL_EMBER_TICKS (6 embers per roll: elapsed 3 .. 18), players in index order
@@ -78,6 +81,7 @@ import {
 	CLOSE_CALL_SHARD,
 	CONDUCTOR_DAMAGE,
 	CONDUCTOR_RANGE,
+	DRAGON_BOLT_EMBER_TICKS,
 	DUO_ARROW_WEAPON_ID,
 	EFFECT_DIR_X,
 	EFFECT_DIR_Z,
@@ -144,6 +148,24 @@ export function bowArrowLife(payload: number, vx: number, vz: number): number {
 		if (diff <= s2 * ARROW_SPEED_TOLERANCE) return arrowLife[k];
 	}
 	return -1;
+}
+
+/** arrowSpeed2 / arrowLife index of the heavy arrow (readArrows: stream, heavy). */
+const HEAVY_ARROW = 1;
+
+/**
+ * True when player bullet with payload `payload` and velocity (vx, vz) is a heavy (charged) bow arrow: kind PLAYER, the
+ * bow's source, the heavy arrow's squared speed (bowArrowLife's test; docs/BUILDS_V2.md BV3: Ballista and Siege Bolt
+ * find their arrows by it). Stream and Flurry arrows (16), the bow-held Ember Wake ring (12) and every effect bolt are not.
+ */
+export function isHeavyArrow(payload: number, vx: number, vz: number): boolean {
+	if (BulletPayload.get(payload, "kind") !== BulletKind.PLAYER) return false;
+	if (arrowSource < 0) readArrows();
+	if (BulletPayload.get(payload, "source") !== arrowSource) return false;
+	const s2 = arrowSpeed2[HEAVY_ARROW];
+	const v2 = vx * vx + vz * vz;
+	const diff = v2 > s2 ? v2 - s2 : s2 - v2;
+	return diff <= s2 * ARROW_SPEED_TOLERANCE;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -408,41 +430,66 @@ function dropEmber(ctx: SimCtx, s: BuildsState, owner: number, x: number, z: num
 
 /** Per player (party index): Fire Arrows drops embers from their arrows this tick. */
 const fireArrowsOn: boolean[] = [];
+/** Per player (party index): Dragon Bolt (docs/BUILDS_V2.md BV6) drops embers from their heavy arrows this tick. */
+const dragonBoltOn: boolean[] = [];
 /** The ctx while the Fire Arrows walk runs (synchronous, never re-entered). */
 let walkCtx: SimCtx | undefined;
 /** Embers the walk found (fired after it: the walk never spawns into the pool it walks). */
 const emberOwner: number[] = [];
 const emberX: number[] = [];
 const emberZ: number[] = [];
+/** The Duo of each ember the walk found (FIRE_ARROWS or DRAGON_BOLT). */
+const emberDuo: number[] = [];
 
 function fireArrowsVisit(i: number, pos: Readonly<Vec3>, payload: number, emitter: number): boolean {
 	const owner = playerBulletOwner(emitter);
-	if (fireArrowsOn[owner] !== true) return false;
+	const fire = fireArrowsOn[owner] === true;
+	const dragon = dragonBoltOn[owner] === true;
+	if (!fire && !dragon) return false;
 	const sim = walkCtx!.combat.playerBullets;
 	const v = sim.velocityAt(i);
 	const spawnLife = bowArrowLife(payload, v.x, v.z);
 	if (spawnLife < 0) return false;
 	const age = math.floor((spawnLife - sim.lifeAt(i)) * SIM_HZ + 0.5);
+	// Dragon Bolt (BV6): a heavy arrow drops an ember every DRAGON_BOLT_EMBER_TICKS of its whole flight (no
+	// FIRE_ARROWS_EMBERS_MAX); with Fire Arrows too, this schedule replaces Fire Arrows' on heavy arrows (a superset).
+	if (dragon && spawnLife === arrowLife[HEAVY_ARROW]) {
+		if (age <= 0 || age % DRAGON_BOLT_EMBER_TICKS !== 0) return false;
+		pushEmber(owner, pos, Duo.DRAGON_BOLT);
+		return false;
+	}
+	if (!fire) return false;
 	if (age <= 0 || age > FIRE_ARROWS_LAST_AGE || age % FIRE_ARROWS_EMBER_TICKS !== 0) return false;
-	emberOwner.push(owner);
-	emberX.push(pos.x);
-	emberZ.push(pos.z);
+	pushEmber(owner, pos, Duo.FIRE_ARROWS);
 	return false;
 }
 
+function pushEmber(owner: number, pos: Readonly<Vec3>, duo: number): void {
+	emberOwner.push(owner);
+	emberX.push(pos.x);
+	emberZ.push(pos.z);
+	emberDuo.push(duo);
+}
+
 function fireArrows(ctx: SimCtx, s: BuildsState): void {
-	if (!anyDuo(s, Duo.FIRE_ARROWS)) return;
+	const fire = anyDuo(s, Duo.FIRE_ARROWS);
+	const dragon = anyDuo(s, Duo.DRAGON_BOLT);
+	if (!fire && !dragon) return;
 	fireArrowsOn.clear();
+	dragonBoltOn.clear();
 	for (let i = 0; i < s.players.size(); i++) {
-		fireArrowsOn.push(hasDuo(s.players[i], Duo.FIRE_ARROWS) && !buildPlayerLeft(ctx.state, i));
+		const present = !buildPlayerLeft(ctx.state, i);
+		fireArrowsOn.push(hasDuo(s.players[i], Duo.FIRE_ARROWS) && present);
+		dragonBoltOn.push(hasDuo(s.players[i], Duo.DRAGON_BOLT) && present);
 	}
 	walkCtx = ctx;
 	ctx.combat.playerBullets.forEachActive(fireArrowsVisit);
 	walkCtx = undefined;
-	for (let k = 0; k < emberOwner.size(); k++) dropEmber(ctx, s, emberOwner[k], emberX[k], emberZ[k], Duo.FIRE_ARROWS);
+	for (let k = 0; k < emberOwner.size(); k++) dropEmber(ctx, s, emberOwner[k], emberX[k], emberZ[k], emberDuo[k]);
 	emberOwner.clear();
 	emberX.clear();
 	emberZ.clear();
+	emberDuo.clear();
 }
 
 function blazingTrail(ctx: SimCtx, s: BuildsState): void {
@@ -489,8 +536,10 @@ export function resetDuoScratch(): void {
 	crossId.clear();
 	crossCause.clear();
 	fireArrowsOn.clear();
+	dragonBoltOn.clear();
 	walkCtx = undefined;
 	emberOwner.clear();
 	emberX.clear();
 	emberZ.clear();
+	emberDuo.clear();
 }

@@ -294,6 +294,8 @@ export function freeActor(ctx: SimCtx, a: ActorState): void {
 export function stepActors(ctx: SimCtx): void {
 	// The Warbanner aura (docs/NEW_ENEMIES.md NE6): one mask per tick from tick-start positions (empty without a banner).
 	ctx.rebuildAura();
+	// Siege Bolt (docs/BUILDS_V2.md BV4): actors a heavy arrow carries are held (empty without pins).
+	ctx.rebuildPins();
 	const actors = ctx.combat.actors;
 	const tick = ctx.tick;
 	// Co-op: each actor's hooks see its own target (the nearest living player) as ctx.player.
@@ -311,7 +313,8 @@ export function stepActors(ctx: SimCtx): void {
 		const def = archetypeAt(a.kind);
 		if (party) ctx.targetNearest(a);
 		if (a.alive !== 0) {
-			def.step(ctx, a);
+			// Siege Bolt (BV4): a pinned actor does not step (no walk, no attack, no timers).
+			if (!ctx.isPinned(a)) def.step(ctx, a);
 		} else {
 			a.deadTicks++;
 			if (def.stepDead !== undefined) def.stepDead(ctx, a);

@@ -45,6 +45,7 @@ import { isEvolved, stepBraceCooldowns } from "./hooks";
 import { chainSpark, overkill, soulShards, volatileBurst } from "./onKill";
 import { scoreJackpot } from "../score/score";
 import { resetRiposteScratch, stepWaves } from "./riposte";
+import { resetBallistaScratch, stepBallista } from "./ballista";
 
 /** The boons a proc fires, in the order it fires them (boon index order). */
 export const ON_KILL_BOONS: ReadonlyArray<number> = [Boon.CHAIN_SPARK, Boon.VOLATILE, Boon.SOUL_SHARDS, Boon.OVERKILL];
@@ -141,6 +142,8 @@ export function stepBuilds(ctx: SimCtx): void {
 	// then the duos' (./duos.ts: Close Call shards, Fire Arrows / Blazing Trail embers).
 	stepEvolutions(ctx, s);
 	stepDuosBeforeDrain(ctx, s);
+	// 1b. Ballista (docs/BUILDS_V2.md BV3): the bursts this tick's walk queued (gen 0 bolts).
+	stepBallista(ctx, s);
 	// 2. The drain.
 	const n = jsMin(s.config.procsPerTick, procs.size());
 	for (let k = 0; k < n; k++) resolveProc(ctx, s, procs[k]);
@@ -176,4 +179,5 @@ export function resetBuildScratch(state: SimState): void {
 	resetDuoScratch();
 	resetEffectScratch();
 	resetRiposteScratch();
+	resetBallistaScratch();
 }

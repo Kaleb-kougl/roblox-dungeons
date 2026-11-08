@@ -682,6 +682,114 @@ The three guard-side duos (BV6's other two, Dragon Bolt and Powder Keg, are anot
   without the duo); a braced guard cut by a roll sends nothing. Determinism: a co-op room of 12 firing `test.chaser`s,
   both players at Riposte III with Chain Spark, Composure, Bastion and all three duos, guarding into volleys and
   rolling for 240 ticks: two runs hash the same every tick (waves > 0).
+## BV3 (as built)
+
+Ballista I / II / III's bursts and II's charge. Gameplay, builds runs only: a run whose players own no Ballista takes
+exactly the old paths (the walk's new branches sit behind one per-tick boolean, `ballistaOn`, false without Ballista and
+pins). Paths under `src/shared/sim/` unless noted.
+
+- **Heavy arrows** (`builds/duos.ts`): `isHeavyArrow(payload, vx, vz)` beside `bowArrowLife` (kind PLAYER, the bow's
+  source, the heavy arrow's squared speed within `ARROW_SPEED_TOLERANCE`). Stream / Flurry arrows (16), the bow-held
+  Ember Wake ring (12) and effect bolts (Ricochet's splits are `SPARK_BOLT`) are not.
+- **`builds/ballista.ts`** (new): `ballistaActive(state)` (some player owns Ballista, or a pin record exists),
+  `buildsOnHeavyEnd(ctx, i, pos, payload, wall, struck?)` (called by the walk where a heavy arrow is consumed; ends its
+  Siege Bolt record through `siegeArrowEnd` and queues the owner's burst in module scratch), `stepBallista(ctx, s)`
+  (fires the queue: `fireEffect`, `BuildEffect.BALLISTA` gen 0, the owner's level at fire time through `levelEntry`;
+  a departed owner's bursts are dropped; `ballistaX / Z / Owner / Fired / Wall` per burst that spawned a bolt) and
+  `resetBallistaScratch` (in `resetBuildScratch`).
+  - Ring (`BALLISTA_RINGS`): the last pierce (`piercingBulletHit`'s `pierce === 0` hit). **Deviation:** centred on the
+    struck enemy, its bolts spawned on that enemy's hit circle (BurstSpec `radius` = its radius + `PLAYER_BULLET_RADIUS`)
+    and flying outward, turned onto the arrow's flight direction. "A ring at the hit" taken literally (at the arrow's
+    position) puts every bolt inside a surviving enemy, which would soak the whole ring next tick (+6 / +10 damage to one
+    enemy, no burst); the spec pins that a survivor keeps its hp and the bolts all fly away from it.
+  - Back fan (`BALLISTA_FANS`): a blocked cell or a piece it does not break (`playerBulletHit`'s two consuming exits:
+    the chest, or a piece with hp left), from `pos - v x SIM_DT` aimed along `-v` (one sqrt). A blocked start position
+    (an arrow fired point blank into a wall) fans nothing, so no bolt ever spawns in a wall cell. A Siege Bolt slam's fan
+    starts from the slammed actor instead (BV4).
+  - Nothing for an arrow that expires (the pool releases it silently), breaks a piece and flies on, or is no heavy arrow.
+- **Charge**: `RunMods.ballistaChargePercent` (appended, derived, not hashed; `NEUTRAL_RUN_MODS` 100;
+  `perLevel(level(Boon.BALLISTA), BALLISTA_CHARGE_PERCENT, PERCENT)`); `combat/weapons/defs/bow.ts` `bowChargeTicks` =
+  `scaleTicks(BOW_DATA.chargeTicks, ...)` (36 itself at 100, 27 at 75); `client/controllers/render/WeaponViewController.ts`
+  passes `bowChargeTicks(s, me)` to `bowCharge`.
+- **Hot files**: `combat/combat.ts` (imports; `ballistaOn` next to `buildsOn`, set in the collide setup and cleared after;
+  `playerBulletHit`'s wall exit and unbroken-piece exit, each one `buildsOnHeavyEnd` line; `piercingBulletHit`'s
+  consuming hit); `builds/procs.ts` (`stepBallista` as step 1b after `stepDuosBeforeDrain`, the scratch reset).
+- **Specs** (`builds/ballista.spec.ts`, a hand-built walled floor): ring on the third of three enemies (6, BURST, BALLISTA
+  gen 0, flying outward, the survivor untouched), the ring's bolts hitting enemies round it, 6 / 10 / 10 by level and
+  none without Ballista, an expired arrow, the wall's fan (start-of-tick position, outside the wall, every bolt within the
+  1.6 rad spread of `-v`), a point-blank wall shot, the chest's fan and a crate it breaks (flies on, fans at the wall),
+  stream / Flurry / Ember Wake ring / Ricochet bolts never burst, a real charged shot vs the stream, `bowChargeTicks` 36 /
+  36 / 27 / 27 and `bowCharge` reading it, a 27-tick hold releasing at II (26 not, 36 at I), and a full effect budget
+  dropping the burst (`effectDropped` 6).
+
+## BV4 (as built)
+
+Siege Bolt (Ballista III). Paths under `src/shared/sim/` unless noted.
+
+- **`builds/siege.ts`** (new; the file comment is the rule): `siegeTryPin` (the walk, after a piercing hit's damage),
+  `stepPins` (phase 5b), `siegeCarriedSlot` / `siegeSlamDue` (the walk's reads), `siegeArrowEnd` (the slam; from
+  `buildsOnHeavyEnd`), `PIN_SPENT` (-1).
+  - **One pin per arrow, hashed** (BVD6): when a carried actor dies or its slot is freed (slot AND id checked), its
+    `BuildPin` becomes a **spent record** (`slot` -1, `id` 0, `slam` 0) and stays until its arrow is consumed or expires,
+    so the arrow, flying on as an ordinary heavy arrow (pierce spent again), can never pin again. No field added: the
+    record's `slot` says it. `SIEGE_PINS_MAX` counts carrying records only (spent ones live at most an arrow's 0.7 s).
+  - **Pin**: a heavy arrow of a present Ballista III owner with no record hits an actor that survives the hit; never a
+    boss (`def.data.boss`), the Goldling (`GOLDEN_KIND`), a reviver (`def.stepDead`), `PROC_INELIGIBLE_ARCHETYPES` or an
+    actor already pinned; `pinStart*`. **The pinning hit spends no pierce** and so never consumes the arrow (the plan
+    leaves it open; a pin on the arrow's last pierce would otherwise end at once): the pin wins over the last pierce's ring.
+  - **Phase 5b** (`combat/combat.ts`, one line after the player bullets move, only with records): a departed owner's
+    record is dropped; a record whose slot is not live, or no longer holds a heavy arrow (belt and braces: by BV0 nothing
+    spawns between the move and the walk), is dropped (an expired arrow: no slam); a carried actor that died or was freed
+    makes its record spent; the rest drag their actor onto the arrow with `moveActor` (no steer) and set `slam` when it
+    ends more than `SIEGE_SLAM_SHORT` short. Ended carries push `pinEnd*` (carried = distance from x0 / z0, slam 0).
+  - **Held**: `combat/ctx.ts` `pinMask` / `rebuildPins()` / `isPinned(a)` (the aura mask's construction: actor -> id,
+    rebuilt first thing in `stepActors` from the carrying records, cleared by `bind`; never hashed), and
+    `combat/actors/actors.ts` `stepActors` skips `def.step` for a pinned living actor (prevX / prevZ and the hit flash
+    still update; contact damage unchanged).
+  - **Plow** (`piercingBulletHit`): `carriedSlot` (the live pinned actor) is skipped like `lastHit`; while it is set no
+    pierce is spent and no hit consumes the arrow (`buildsOnPierceHit`'s `consumed` and `buildsOnArrowHit`'s `passing`
+    follow, so Ricochet never splits a carrying arrow); `lastHit` still moves to each actor hit, so each is hit once.
+    With no pin both flags are exactly the old `pierce === 0` / `pierce > 0`.
+  - **Slam** (the arrow's walk visit: a blocked cell, a piece it does not break, or `siegeSlamDue`, checked after the
+    pieces and before the piercing walk): the pinned actor takes `playerHitDamage(owner, scalePercent(payload damage,
+    300))` at procGen 0; every other living enemy within `SIEGE_SHOCK_RADIUS` (centre distance; not one spawned this tick),
+    slot order, `playerHitDamage(owner, SIEGE_SHOCK_DAMAGE)` at procGen 1 (ctx.procGen / procCause saved and restored:
+    the wall exit runs before the walk binds them); every intact piece but the chest whose cell centre is within the
+    radius breaks through `damageBreakable(state, slot, piece hp, BreakableSource.BUILD)` (a `// Wrecker: owner` comment
+    marks where BV5's owner argument goes; `BUILD` scores nothing until BV5). The record is removed, `pinEnd*` (slam 1) and
+    `slam*` pushed, and Ballista's back fan queues **from the slammed actor** (its hit circle, aimed `-v`): from the arrow,
+    as the plan's fan, every bolt would start inside the body just behind it and hit it (+10 at III).
+- **BV0 checks.** The Charger: held mid-charge it keeps `CHARGER_CHARGE` and its `CHARGER_LEFT`; dropped on open floor
+  outside its room's box, its next charge tick's box bound cuts the step to 0 and it is stunned (spec); outside a charge
+  it cannot start a lane until it walks back inside the box, so nothing strands it outward. Score rooms are membership
+  lists (BV0), so carrying out of a room changes nothing there. The Goldling is never pinned, so its walk mask never sees
+  a dragged Goldling. A pinned Bomber's fuse waits (its step is held).
+- **Specs** (`builds/siege.spec.ts`, a walled floor with nine pillars): carried to the wall (the body exactly on the arrow
+  every tick until it stops, at x <= 36) and slammed for 5 + 15, the back fan, released afterwards; the shockwave (two in
+  the radius take 3, one outside none; a crate in the radius breaks, one outside and the chest do not); a swarmer the
+  first hit kills is not pinned, the dummy behind it is; a boss, the Goldling, a turret and the training dummy never are;
+  a pinned test chaser / sniper / bruiser keeps every AI field and fires nothing while carried; an expired arrow drops its
+  actor (no slam, no fan); a pinned actor killed by someone else leaves a spent record and the arrow hits the next one as
+  an ordinary arrow without pinning it; plowing through five (pierce never spent, each hit once); the Charger case; a
+  pillar stopping the body beside the arrow's lane (slam there); 60 drags across the pillared room (30 lanes x 2
+  directions, two chests in the way) with the body's centre cell and circle clear of walls and pieces every tick; four pins
+  at once and a fifth arrow that plows only; the slot-reuse case (a pinned arrow expiring on the very tick a wall fan
+  spawns: its slot goes to a BURST bolt, no record survives, the actor is never dragged again); co-op (two archers on one
+  actor: one pin, the second arrow still hits it; a departed archer's pin dropped with no slam); determinism (a dense room,
+  Ballista III + Ember Wake + Dragon Bolt, 600 ticks of charged shots twice: identical hashes every tick, pins and slams
+  happen).
+
+## BV6 (as built, Dragon Bolt)
+
+Dragon Bolt only (Ballista + Ember Wake; the other wave 1 duos are other tasks). `builds/duos.ts`: the Fire Arrows walk
+also runs when any player owns Dragon Bolt (`dragonBoltOn` per player, beside `fireArrowsOn`); a live heavy arrow of an
+owner (`bowArrowLife` = the heavy life) drops an ember at every age that is a multiple of `DRAGON_BOLT_EMBER_TICKS` for
+its whole flight (no `FIRE_ARROWS_EMBERS_MAX`), ember duo `Duo.DRAGON_BOLT` (the walk now records each ember's duo). An
+owner of both duos gets Dragon Bolt's schedule on heavy arrows (a superset of Fire Arrows' ages 6 / 12 / 18 / 24: no
+doubled ember) and Fire Arrows' on the rest. Embers go through `dropEmber` / `fireEffect`, so the effect budget holds
+them. Specs (`builds/ballista.spec.ts`): ages 3, 6, 9, ... while it flies (13 in its 0.7 s, past 4), none without the
+duo, Fire Arrows + Dragon Bolt (one ember per tick at most, all Dragon Bolt's), none from stream arrows, and a nearly
+full budget spawning 3 then dropping the rest.
 
 ## Appendix: the proposal (2026-11-05)
 

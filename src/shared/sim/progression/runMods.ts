@@ -38,6 +38,7 @@ import { ENEMY_BULLET_RADIUS } from "../combat/combatData";
 import { COMBO_WINDOW_TICKS, GRAZE_MARGIN } from "../score/scoreData";
 import {
 	ATTACK_TICKS_BOON_PERCENTS,
+	BALLISTA_CHARGE_PERCENT,
 	BOW_PIERCE_BOONS,
 	Boon,
 	COMBO_CUT_BOON_DIVISOR_MULTIPLIER,
@@ -98,6 +99,11 @@ export interface RunMods {
 	 * swordGuardTicks / swordGuardSweepCos); false: SWORD_DATA's numbers exactly.
 	 */
 	readonly bastion: boolean;
+	/**
+	 * Ballista (docs/BUILDS_V2.md BV3): the bow's charge time percent (BALLISTA_CHARGE_PERCENT by level: II / III 75;
+	 * PERCENT without it), read by bow.ts bowChargeTicks.
+	 */
+	readonly ballistaChargePercent: number;
 }
 
 /** One player's run progression. Every field but `mods` is hashed (progression.ts writeRunHash). */
@@ -192,6 +198,7 @@ export const NEUTRAL_RUN_MODS: RunMods = table.freeze({
 	fang: false,
 	secondWind: false,
 	bastion: false,
+	ballistaChargePercent: PERCENT,
 });
 
 /**
@@ -261,6 +268,7 @@ export function computeRunMods(
 		fang: owns(p.relics, Relic.VAMPIRE_FANG),
 		secondWind: owns(p.relics, Relic.SECOND_WIND),
 		bastion: owns(b, Boon.BASTION),
+		ballistaChargePercent: perLevel(level(Boon.BALLISTA), BALLISTA_CHARGE_PERCENT, PERCENT),
 	};
 }
 
