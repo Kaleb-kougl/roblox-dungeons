@@ -2670,5 +2670,62 @@
 			"ui.pip.armor": { "file": "kaleb-vale/pip-icons/pip_armor.png", "rect": [0, 0, 16, 15] },
 			"ui.pip.armor.empty": { "file": "kaleb-vale/pip-icons/pip_armor_empty.png", "rect": [0, 0, 16, 15] }
 		}
+	},
+	"duoIcons": {
+		"$comment": [
+			"The duo icons (docs/BUILDS.md BU11, the duo part): original 16 x 16 pixel art drawn by scripts/art/gen-duo-icons.js",
+			"(art:build and art:lock run it first) into art/vendor/kaleb-vale/duo-icons/, one per duo (ui.duo.<name> = duo.<Name>",
+			"lower-cased, shared/theme duoIconId), in the boon icons' palette, each drawing what the duo does. Packed exactly like",
+			"`boonIcons` (buildUiIcons with `order`: ONE column, packColumn) into a sheet of its OWN, art/build/<atlas>.png with",
+			"src/shared/theme/packs/vale/duoIconLayout.ts, so no other icon sheet repacks; all switch on with its one ID.",
+			"`order` is DUOS order; a new duo is appended at the END, so no uploaded icon's rect ever moves.",
+			"Build just this group: node scripts/art/build-atlases.js --only duoIcons (and --lock --only duoIcons)."
+		],
+		"atlas": "duo-icons",
+		"gutter": 1,
+		"order": [
+			"ui.duo.firearrows",
+			"ui.duo.blazingtrail",
+			"ui.duo.stormblade",
+			"ui.duo.conductor",
+			"ui.duo.shrapnel",
+			"ui.duo.chainreaction",
+			"ui.duo.closecall",
+			"ui.duo.goldrush",
+			"ui.duo.unshaken",
+			"ui.duo.supernova",
+			"ui.duo.skewer",
+			"ui.duo.citadel",
+			"ui.duo.stoneheart",
+			"ui.duo.thunderguard",
+			"ui.duo.stillwater",
+			"ui.duo.rebuke",
+			"ui.duo.dragonbolt",
+			"ui.duo.powderkeg",
+			"ui.duo.fullheart",
+			"ui.duo.happyhour"
+		],
+		"icons": {
+			"ui.duo.blazingtrail": { "file": "kaleb-vale/duo-icons/duo_blazingTrail.png", "rect": [0, 0, 16, 16] },
+			"ui.duo.chainreaction": { "file": "kaleb-vale/duo-icons/duo_chainReaction.png", "rect": [0, 0, 16, 16] },
+			"ui.duo.citadel": { "file": "kaleb-vale/duo-icons/duo_citadel.png", "rect": [0, 0, 16, 16] },
+			"ui.duo.closecall": { "file": "kaleb-vale/duo-icons/duo_closeCall.png", "rect": [0, 0, 16, 16] },
+			"ui.duo.conductor": { "file": "kaleb-vale/duo-icons/duo_conductor.png", "rect": [0, 0, 16, 16] },
+			"ui.duo.dragonbolt": { "file": "kaleb-vale/duo-icons/duo_dragonBolt.png", "rect": [0, 0, 16, 16] },
+			"ui.duo.firearrows": { "file": "kaleb-vale/duo-icons/duo_fireArrows.png", "rect": [0, 0, 16, 16] },
+			"ui.duo.fullheart": { "file": "kaleb-vale/duo-icons/duo_fullHeart.png", "rect": [0, 0, 16, 16] },
+			"ui.duo.goldrush": { "file": "kaleb-vale/duo-icons/duo_goldRush.png", "rect": [0, 0, 16, 16] },
+			"ui.duo.happyhour": { "file": "kaleb-vale/duo-icons/duo_happyHour.png", "rect": [0, 0, 16, 16] },
+			"ui.duo.powderkeg": { "file": "kaleb-vale/duo-icons/duo_powderKeg.png", "rect": [0, 0, 16, 16] },
+			"ui.duo.rebuke": { "file": "kaleb-vale/duo-icons/duo_rebuke.png", "rect": [0, 0, 16, 16] },
+			"ui.duo.shrapnel": { "file": "kaleb-vale/duo-icons/duo_shrapnel.png", "rect": [0, 0, 16, 16] },
+			"ui.duo.skewer": { "file": "kaleb-vale/duo-icons/duo_skewer.png", "rect": [0, 0, 16, 16] },
+			"ui.duo.stillwater": { "file": "kaleb-vale/duo-icons/duo_stillwater.png", "rect": [0, 0, 16, 16] },
+			"ui.duo.stoneheart": { "file": "kaleb-vale/duo-icons/duo_stoneHeart.png", "rect": [0, 0, 16, 16] },
+			"ui.duo.stormblade": { "file": "kaleb-vale/duo-icons/duo_stormBlade.png", "rect": [0, 0, 16, 16] },
+			"ui.duo.supernova": { "file": "kaleb-vale/duo-icons/duo_supernova.png", "rect": [0, 0, 16, 16] },
+			"ui.duo.thunderguard": { "file": "kaleb-vale/duo-icons/duo_thunderGuard.png", "rect": [0, 0, 16, 16] },
+			"ui.duo.unshaken": { "file": "kaleb-vale/duo-icons/duo_unshaken.png", "rect": [0, 0, 16, 16] }
+		}
 	}
 }

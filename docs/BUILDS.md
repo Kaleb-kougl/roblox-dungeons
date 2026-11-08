@@ -30,9 +30,9 @@ before.
 boons appended, level tables, card ids, `drawCardOffers` / `grantCard`, the boss double draft), the proc engine and the
 on-kill boons at I-II (BU3 / BU4), the 13 evolutions (BU5) and the 9 duos (BU6), the effect colours (BU7), the effect
 view (BU8, its follow-up and the BU6 view below: every `BuildEvents` field is read), the draft UI (BU9) and the build
-HUD (BU10). Each step is described in its "as built" section below. Still open: **BU11 art** and **BU12 audio** need
-the vendor packs (ToffeeCraft / Ninja Adventure, gitignored `art/vendor/`) on the owner's machine (every build sound
-is SILENT and every icon a text label until then); **BU13 tuning** is measured ("BU13 tuning (as built)"; its recommendations are owner calls, nothing changed); **BU14** (Studio
+HUD (BU10). Each step is described in its "as built" section below. Still open: **BU11 art**: the boon, relic /
+curse and duo icons are drawn (original art; the duo sheet's upload is pending), effect sprites are not; **BU12 audio**
+needs the Ninja Adventure pack (gitignored `art/vendor/`) on the owner's machine (every build sound is SILENT until then); **BU13 tuning** is measured ("BU13 tuning (as built)"; its recommendations are owner calls, nothing changed); **BU14** (Studio
 check, frame time, readability) is pending, with the Studio checklists below (items 1-8 of BU9 / BU10, 1-19 of the
 effect view). Decisions BUD1-BUD14 are **settled** (2026-10-31, Kaleb: every proposed default accepted; BUD8 and
 BUD12 stand as technical requirements).
@@ -1268,6 +1268,32 @@ duo in v1 (they are the safe picks); every other boon is in one or two.
   (UA8's skull stays the fallback). Without the sheet's ID every relic and curse cell is exactly as before
   (`buildHud.spec`). `item-icons.png` uploaded 2026-11-08 (`assetIds.ts`), so the bundled vale pack draws them. Open:
   the Studio check.
+  **Duo part (2026-11-08; presentation only).** Every duo (all 20: the 9 of BU6, the 4 legendary ones, builds v2's 7)
+  has an ORIGINAL 16 x 16 icon from `scripts/art/gen-duo-icons.js` in the boon icons' kit and exactly their palette
+  (owner picks: the duo's own icon replaces its two boons' halves in the items row and on the draft card's chip; each
+  icon draws what the duo DOES in its two boons' colours): Fire Arrows a flaming arrow dropping embers, Blazing Trail
+  Slippery's ghost rolling away from a trail of flames, Storm Blade a blade beside a bolt with sparks on its edge,
+  Conductor an arrow through a spark orb forking up and down, Shrapnel a burst flinging steel shards, Chain Reaction a
+  bolt striking a burst, Close Call a red bullet grazing past and a lilac shard leaving the spark, Gold Rush an
+  hourglass of gold beside a coin stack, Unshaken Composure's cairn behind a warding shield, Supernova a burst in a gold
+  ring, Skewer a gold streak through three blood orbs, Citadel a keep with a warding shield on its gate, Stone Heart a
+  stone heart cracked through to the red, Thunder Guard the raised guard sending a bolt, Stillwater a drop over still
+  ripples with Riposte's green at their centre, Rebuke a tower in the green ring, Dragon Bolt a siege bolt over its
+  line of fire, Powder Keg a keg with its fuse lit, Full Heart a heart sending a beam, Happy Hour a flask of liquid gold
+  beside coins. Own sheet `duo-icons.png` (18 x 360, ONE append-only column in DUOS order like `boon-icons.png`'s
+  `order`; art/atlases.json `duoIcons`, `--only duoIcons`, generated `packs/vale/duoIconLayout.ts`), so no other icon
+  sheet repacks. Theme ids `ui.duo.<name>` (shared/theme `duoIconId`, lower-cased), all or nothing on the sheet's one
+  ID (vale `VALE_DUO_ICON_SOURCE`). View: `runItemCells` takes the pack's image lookup (`has`, optional): a duo whose
+  own icon the pack has is ONE cell (`span` 1, label `duo.<name>.icon`, `art` its icon, outline `boon.duo`), so it also
+  costs one cell of the row's one-row cap; else (or without `has`) the two-cell chip exactly as before.
+  `DraftCardModel.duoArt` (a Duo card's `duoIconId`): `draftChipArt` returns it alone when the pack has it and
+  `draftChipCells` then counts 1; else the boons' halves as before. The New card's duo hint (BV8) keeps the two boons'
+  labels (it teaches which two boons combine). Budget: one 18 x 360 PNG, one content id in the core preload tier.
+  Specs: `gen-duo-icons.test.js` (DUOS order from the source, the boon palette exactly, outline, no repeat of a duo or
+  boon icon, the group, the column, the committed layout), `valeDuoIcons.spec.ts`, `buildHud.spec` / `draftCards.spec`
+  (the one cell and its fallback). Open: upload `art/upload/duo-icons.png` and paste its ID into `assetIds.ts`
+  (`"duo-icons.png"`); until then every duo is the two-cell chip. Then the Studio check (the one-cell chip on the
+  draft card's banner row, the items row on PC and the touch strip).
 - **BU12. Audio.** The nine port IDs from Ninja Adventure (`art/audio.json`), `audio:build`, `audio:audition`.
   **Verify:** owner audition; silent fallback while ids are missing.
 - **BU13. Tuning.** A build TTK table (`variantTtk` harness: plain, each on-kill boon I / III, each duo) on swarmer

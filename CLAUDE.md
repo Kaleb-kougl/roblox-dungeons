@@ -970,6 +970,19 @@ Decision log (deviations from `PLAN.md`):
   hearts (owner, 2026-11-08); without the art every pip is exactly as before. No new strings, roles, sounds or
   settings; no Luau-locals change. The first 9 x 9 sheet's upload (2026-11-08) is retired with its rects; the 16 x 15
   `pip-icons.png` uploaded 2026-11-08 (`assetIds.ts`), so the bundled vale pack draws them; the Studio check pending.
+- **Duo icons (docs/BUILDS.md BU11, the duo part, 2026-11-08).** Presentation only (no sim, dungeon, lockstep, hash,
+  replay, fixture or score change). One 16 x 16 icon per duo (all 20), ORIGINAL pixel art by
+  `scripts/art/gen-duo-icons.js` (the boon icons' kit and exactly their palette; each icon draws what the duo does in its
+  two boons' colours; run by `art:build` / `art:lock`) into `art/vendor/kaleb-vale/duo-icons/`, packed by a new atlas
+  group `duoIcons` into its OWN sheet `duo-icons.png` (18 x 360, one append-only column in DUOS order like the boon
+  sheet's `order`; `--only duoIcons`, generated `packs/vale/duoIconLayout.ts`), so no other icon sheet repacks. Theme:
+  optional free-form ui ids `ui.duo.<name>` (`shared/theme` `duoIconId`, lower-cased), all or nothing on the sheet's one
+  ID (vale `VALE_DUO_ICON_SOURCE`). View: `runItemCells`' optional trailing `has` (the pack's image lookup): a duo whose
+  own icon the pack has is one cell (`span` 1, outline `boon.duo`), else the two-cell chip; `DraftCardModel.duoArt`:
+  `draftChipArt` / `draftChipCells` give the Duo card's chip that one icon in one cell, else the halves. The New card's
+  duo hint keeps the boons' labels. Without the art every cell and chip is exactly as before. No new strings, roles,
+  sounds or settings; no Luau-locals change. Upload of `duo-icons.png` (its ID into `assetIds.ts`) and the Studio check
+  pending.
 - **Co-op frame pacing (docs/FRAME_PACING.md).** Client timing and presentation only (no sim, dungeon, hash, replay,
   wire, fixture or score change; the server is unchanged: every client still steps exactly the merged log, only WHEN
   changes). shared/lockstep `pacer.ts` `PlayoutPacer`, a playout clock: merged frame k is stepped at local time k x

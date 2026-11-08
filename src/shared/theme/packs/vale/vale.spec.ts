@@ -28,6 +28,7 @@ import { PLACEHOLDER_MANIFEST } from "../placeholder";
 import { VALE_ASSET_IDS } from "./assetIds";
 import { VALE_AUDIO_FILES } from "./audioLayout";
 import { VALE_BOON_ICON_FILE } from "./boonIconLayout";
+import { VALE_DUO_ICON_FILE } from "./duoIconLayout";
 import { VALE_ITEM_ICON_FILE } from "./itemIconLayout";
 import { VALE_BOOST_ICON_FILE } from "./boostIconLayout";
 import { VALE_PIP_ICON_FILE } from "./pipIconLayout";
@@ -130,7 +131,8 @@ describe("vale pack", () => {
 		// the hazard sheet (hazardLayout.ts, docs/HAZARD_ART.md) and the pact altar and coin burst sheets (fortuneLayout.ts,
 		// docs/FORTUNE.md FO10), the boon icon sheet (boonIconLayout.ts, docs/BUILDS.md BU11), the relic and curse
 		// icon sheet (itemIconLayout.ts, BU11), the boost icon sheet (boostIconLayout.ts, docs/BOOSTS.md B7) and the
-		// armor pip sheet (pipIconLayout.ts, docs/UI_ART.md) are art/build files too
+		// armor pip sheet (pipIconLayout.ts, docs/UI_ART.md) and the duo icon sheet (duoIconLayout.ts, BU11) are art/build
+		// files too
 		const files = allFiles();
 		files.push(VALE_FX_SHEET.file);
 		files.push(VALE_BULLET_SHEET.file);
@@ -145,6 +147,7 @@ describe("vale pack", () => {
 		files.push(VALE_ITEM_ICON_FILE);
 		files.push(VALE_BOOST_ICON_FILE);
 		files.push(VALE_PIP_ICON_FILE);
+		files.push(VALE_DUO_ICON_FILE);
 		for (const id of sortedKeys(VALE_AMBIENT_LAYOUTS)) files.push(VALE_AMBIENT_LAYOUTS[id].file);
 		for (const file of sortedKeys(VALE_ASSET_IDS)) {
 			expect([file, files.includes(file)]).toEqual([file, true]);

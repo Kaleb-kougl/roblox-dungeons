@@ -26,7 +26,7 @@ import {
 	type RarityId,
 	type SimState,
 } from "shared/sim";
-import { boonIconId, type ColorRole } from "shared/theme";
+import { boonIconId, duoIconId, type ColorRole } from "shared/theme";
 import { DraftBeat, type DraftBeatId } from "./draftReveal";
 import { romanPhase } from "./layout";
 import {
@@ -168,24 +168,35 @@ export interface DraftCardModel {
 	 * labels without it, and a boon card shows its one-cell chip only with it (without art: today's banner row).
 	 */
 	readonly chipArt: ReadonlyArray<string>;
+	/**
+	 * A Duo card's own icon (shared/theme duoIconId, docs/BUILDS.md BU11, the duo part): where the pack has it, the chip
+	 * is this one cell instead of the two boons' halves. undefined on a boon card.
+	 */
+	readonly duoArt?: string;
 	/** docs/BUILDS_V2.md BV8: a New card whose boon unlocks a duo (duoUnlockedBy's first), else undefined. */
 	readonly hint?: DraftDuoHint;
 }
 
 /**
- * The art the banner row's chip draws (DraftOverlay, docs/BUILDS.md BU11): the card's chipArt when `has` (the pack's
- * image lookup) has every id (and a Duo card has one per label), else none: a Duo chip keeps its labels, a boon card
- * shows no chip.
+ * The art the banner row's chip draws (DraftOverlay, docs/BUILDS.md BU11): a Duo card's own icon (duoArt) when `has`
+ * (the pack's image lookup) has it; else the card's chipArt when `has` has every id (and a Duo card has one per label),
+ * else none: a Duo chip keeps its labels, a boon card shows no chip.
  */
 export function draftChipArt(model: DraftCardModel | undefined, has: (id: string) => boolean): ReadonlyArray<string> {
-	if (model === undefined || model.chipArt.size() === 0) return [];
+	if (model === undefined) return [];
+	if (model.duoArt !== undefined && has(model.duoArt)) return [model.duoArt];
+	if (model.chipArt.size() === 0) return [];
 	if (model.chipIcons.size() > 0 && model.chipArt.size() !== model.chipIcons.size()) return [];
 	for (const id of model.chipArt) if (!has(id)) return [];
 	return model.chipArt;
 }
 
-/** Cells the banner row's chip shows: a Duo card's two (art or labels), a boon card's one with art, else none. */
+/**
+ * Cells the banner row's chip shows: a Duo card's one with its own icon, else its two (the boons' art or labels); a boon
+ * card's one with art, else none.
+ */
 export function draftChipCells(model: DraftCardModel | undefined, art: ReadonlyArray<string>): number {
+	if (model?.duoArt !== undefined && art.size() === 1 && art[0] === model.duoArt) return 1;
 	return math.max(model?.chipIcons.size() ?? 0, art.size());
 }
 
@@ -293,6 +304,7 @@ export function draftCardModel(
 			chipIcons: chip.icons,
 			chipRoles: chip.roles,
 			chipArt: [...artOf(a.id), ...artOf(b.id)],
+			duoArt: duoIconId(duo.id),
 		};
 	}
 	const boon = cardBoon(card);

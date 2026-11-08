@@ -1,11 +1,11 @@
 /**
  * The build in the HUD (docs/BUILDS.md BU10; presentation only): the owned-items row's cells (level pips inside each
- * boon cell, the evolved boon's gold frame, duos as joined chips) and its one-row cap, and the pause / run-over Build
+ * boon cell, the evolved boon's gold frame, duos as their own icon or joined chips) and its one-row cap, and the pause / run-over Build
  * list. Pure data and helpers over the snapshot's boons / levels / duos, checked headlessly (buildHud.spec.ts); the
  * client's RunItems and BuildList draw them. The draft cards are draftCards.ts (BU9).
  */
 import { BOONS, CURSES, DUOS, RELICS, boonMaxLevel } from "shared/sim";
-import { boonIconId, curseIconId, relicIconId, type ColorRole } from "shared/theme";
+import { boonIconId, curseIconId, duoIconId, relicIconId, type ColorRole } from "shared/theme";
 import {
 	BUILD_DUO_ROLE,
 	BUILD_EVOLVED_ROLE,
@@ -57,13 +57,14 @@ export const BUILD_HUD_VIEW = {
 export interface ItemCellModel {
 	/** Stable React key. */
 	readonly key: string;
-	/** Icon labels (`<id>.icon`): one, or a duo chip's two boons (drawn joined, side by side). */
+	/** Icon labels (`<id>.icon`): one (a duo with its own icon: the duo's), or a duo chip's two boons (joined). */
 	readonly icons: ReadonlyArray<string>;
 	/** Each icon's fill (a duo chip: the duo role behind both halves). */
 	readonly fills: ReadonlyArray<ColorRole>;
 	/**
 	 * Each icon's art (shared/theme boonIconId / relicIconId / curseIconId, docs/BUILDS.md BU11), parallel to `icons`:
-	 * a boon cell's, a duo chip's halves', a relic's or a curse's. The client draws the art in place of the labels when
+	 * a boon cell's, a duo's own icon (duoIconId) or a duo chip's halves', a relic's or a curse's. The client draws the
+	 * art in place of the labels when
 	 * the pack has every one of them, else the labels (and a curse's skull).
 	 */
 	readonly art?: ReadonlyArray<string>;
@@ -72,7 +73,7 @@ export interface ItemCellModel {
 	/** Level pips inside the bottom of the cell: `level` of `maxLevel` filled; 0 / 0 none. */
 	readonly level: number;
 	readonly maxLevel: number;
-	/** Cells wide (a duo chip: 2). */
+	/** Cells wide (a duo chip: 2; a duo with its own icon: 1). */
 	readonly span: number;
 	/** A curse: its skull art behind the label (docs/UI_ART.md UA8); not behind the curse's own icon art. */
 	readonly curse: boolean;
@@ -82,8 +83,10 @@ export interface ItemCellModel {
 
 /**
  * The items row in the order the HUD shows it: the boons (order taken; with builds their level pips and the evolved
- * frame), then the duos (order taken; a joined chip of their two boons' icons in boon.duo), then relics and curses.
- * `levels[i]` is `boons[i]`'s level (snapshot boonLevels: empty without builds: no pips, today's row).
+ * frame), then the duos (order taken; in boon.duo: one cell of the duo's own icon where `has`, the pack's image lookup,
+ * has it (docs/BUILDS.md BU11, the duo part), else a joined chip of their two boons' icons), then relics and curses.
+ * `levels[i]` is `boons[i]`'s level (snapshot boonLevels: empty without builds: no pips, today's row). Without `has`
+ * every duo is the joined chip.
  */
 export function runItemCells(
 	boons: ReadonlyArray<number>,
@@ -91,6 +94,7 @@ export function runItemCells(
 	duos: ReadonlyArray<number>,
 	relics: ReadonlyArray<number>,
 	curses: ReadonlyArray<number>,
+	has?: (id: string) => boolean,
 ): ItemCellModel[] {
 	const out: ItemCellModel[] = [];
 	for (let i = 0; i < boons.size(); i++) {
@@ -116,6 +120,21 @@ export function runItemCells(
 	for (const d of duos) {
 		const duo = DUOS[d];
 		if (duo === undefined) continue;
+		const own = duoIconId(duo.id);
+		if (own !== undefined && has !== undefined && has(own)) {
+			out.push({
+				key: `d${d}`,
+				icons: [itemIconKey(duo.id)],
+				fills: [BUILD_DUO_ROLE],
+				art: [own],
+				level: 0,
+				maxLevel: 0,
+				span: 1,
+				curse: false,
+				ref: { kind: "duo", index: d },
+			});
+			continue;
+		}
 		out.push({
 			key: `d${d}`,
 			icons: [itemIconKey(BOONS[duo.a].id), itemIconKey(BOONS[duo.b].id)],

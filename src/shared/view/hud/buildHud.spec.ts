@@ -23,7 +23,7 @@ import {
 	type EndlessFloorWorld,
 	type SimConfig,
 } from "shared/sim";
-import { PLACEHOLDER_MANIFEST, ThemePack, boonIconId, curseIconId, relicIconId } from "shared/theme";
+import { PLACEHOLDER_MANIFEST, ThemePack, boonIconId, curseIconId, duoIconId, relicIconId } from "shared/theme";
 import { collectRunEvents, takeSnapshot, type RunEventRecord } from "shared/play";
 import { frame, skipToFloor } from "shared/run/testing";
 import {
@@ -136,6 +136,29 @@ describe("items row (BU10)", () => {
 		expect(itemCellArt(cells[3], none)).toBe(undefined);
 		expect(cells[3].curse).toBe(true);
 		expect(ITEM_ART_FILL_ROLE).toBe("uiPanel");
+	});
+
+	it("a duo whose own icon the pack has is one cell of that icon; else the joined chip (BU11, the duo part)", () => {
+		const duo = DUOS[Duo.FIRE_ARROWS];
+		const own = duoIconId(duo.id)!;
+		expect(own).toBe("ui.duo.firearrows");
+		const withArt = runItemCells([], [], [Duo.FIRE_ARROWS], [], [], () => true)[0];
+		expect([withArt.key, withArt.icons, withArt.fills, withArt.art, withArt.span]).toEqual([
+			`d${Duo.FIRE_ARROWS}`,
+			["duo.fireArrows.icon"],
+			[BUILD_DUO_ROLE],
+			[own],
+			1,
+		]);
+		expect(withArt.ref).toEqual({ kind: "duo", index: Duo.FIRE_ARROWS });
+		expect(itemCellArt(withArt, () => true)).toEqual([own]);
+		// the pack has the boons' icons but not the duo's, or no lookup at all: the two-cell chip as before
+		const boonsOnly = runItemCells([], [], [Duo.FIRE_ARROWS], [], [], (id) => id !== own)[0];
+		expect([boonsOnly.span, boonsOnly.art]).toEqual([
+			DUO_CHIP_SPAN,
+			[boonIconId(BOONS[duo.a].id), boonIconId(BOONS[duo.b].id)],
+		]);
+		expect(runItemCells([], [], [Duo.FIRE_ARROWS], [], [])[0].span).toBe(DUO_CHIP_SPAN);
 	});
 
 	it("caps to one row with spans: all when they fit, else the newest after a +N cell", () => {

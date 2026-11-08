@@ -1452,6 +1452,106 @@
 			"bytes": 398
 		},
 		{
+			"path": "kaleb-vale/duo-icons/duo_blazingTrail.png",
+			"sha256": "97ed73c4b6ea365f1b7db40a2258424fe44ba878d3f6186e0988e6f44dfec8bc",
+			"bytes": 472
+		},
+		{
+			"path": "kaleb-vale/duo-icons/duo_chainReaction.png",
+			"sha256": "b26386a7299f1148f1b4d79ba25d7cb05e1f897deb61c3844c55f5a5879b1679",
+			"bytes": 517
+		},
+		{
+			"path": "kaleb-vale/duo-icons/duo_citadel.png",
+			"sha256": "287f089fd58a70f1176623c2b57acbca5f851d588a8a0cbcb77305828a9be86b",
+			"bytes": 475
+		},
+		{
+			"path": "kaleb-vale/duo-icons/duo_closeCall.png",
+			"sha256": "15d1950026d99f2c340cbd01006329964af18afdc880a45c4b8d3a49109df7e1",
+			"bytes": 457
+		},
+		{
+			"path": "kaleb-vale/duo-icons/duo_conductor.png",
+			"sha256": "9dc4f0c9c7ab7ef318c44898df4d1a65dcc3830045056c52268d44dbd39421bd",
+			"bytes": 408
+		},
+		{
+			"path": "kaleb-vale/duo-icons/duo_dragonBolt.png",
+			"sha256": "973c957f71e9cff015e43b280d2fa57b77e023978f37f7899ddd78249331ccd3",
+			"bytes": 503
+		},
+		{
+			"path": "kaleb-vale/duo-icons/duo_fireArrows.png",
+			"sha256": "bf26e710e2831b4abd158fd603885dd601f7847ca5bc1b4514fdab70d2e94f25",
+			"bytes": 422
+		},
+		{
+			"path": "kaleb-vale/duo-icons/duo_fullHeart.png",
+			"sha256": "a8f23b5cf9967573b8c3cd2efd3b7b102208be9c6d3daa60ef717eb284ca12e3",
+			"bytes": 287
+		},
+		{
+			"path": "kaleb-vale/duo-icons/duo_goldRush.png",
+			"sha256": "c8e0a41ae2383b74dde72797cdf13a9be9ee515f1a4f8c15392df0517fd02673",
+			"bytes": 452
+		},
+		{
+			"path": "kaleb-vale/duo-icons/duo_happyHour.png",
+			"sha256": "d7e8922c316233c4c4e4f84b655266edaff9896ea736a8b662a05b1733c757d7",
+			"bytes": 490
+		},
+		{
+			"path": "kaleb-vale/duo-icons/duo_powderKeg.png",
+			"sha256": "9f74ab22c93eb0f6de3d7c0e3c65901d8b10decec25f0b935570a933034584ef",
+			"bytes": 355
+		},
+		{
+			"path": "kaleb-vale/duo-icons/duo_rebuke.png",
+			"sha256": "8fc7d475cb37a0231d36fc042807f95ec3aa7a59d28453a6c2d7a74ea6b491df",
+			"bytes": 440
+		},
+		{
+			"path": "kaleb-vale/duo-icons/duo_shrapnel.png",
+			"sha256": "1afd96331bd1ded9d846891efa8434951874876bf8405393ee1ff5657c373cb8",
+			"bytes": 578
+		},
+		{
+			"path": "kaleb-vale/duo-icons/duo_skewer.png",
+			"sha256": "636f6b94b74e0488f3b8a70c976995c46c829d5a0ce08d417e65a547fb38afb5",
+			"bytes": 347
+		},
+		{
+			"path": "kaleb-vale/duo-icons/duo_stillwater.png",
+			"sha256": "5dcb041ebcdf2898cc0e7528d74a493899e7d226b8882ba92777d31babcf3991",
+			"bytes": 268
+		},
+		{
+			"path": "kaleb-vale/duo-icons/duo_stoneHeart.png",
+			"sha256": "fdeb678616c453c6b7245a779b24573c1168faffdc15175ab7919b73fb37490e",
+			"bytes": 387
+		},
+		{
+			"path": "kaleb-vale/duo-icons/duo_stormBlade.png",
+			"sha256": "f9f32efbfbdc1480bcddb38b366590beb697252c99f533b48eaaa1007e77f8a0",
+			"bytes": 546
+		},
+		{
+			"path": "kaleb-vale/duo-icons/duo_supernova.png",
+			"sha256": "e08ec49b94159805049ad93cdbdb7e5c6ead54138541c1dbbde1ee3851707ad8",
+			"bytes": 494
+		},
+		{
+			"path": "kaleb-vale/duo-icons/duo_thunderGuard.png",
+			"sha256": "00f67110e7e63c7acf2a05d871d90b490558d0bb9a12d3863e1eeeee70e1e152",
+			"bytes": 434
+		},
+		{
+			"path": "kaleb-vale/duo-icons/duo_unshaken.png",
+			"sha256": "c0410a9799fc398ba9f7044b2f51aa682cb638f9ccea994373589f5f00cfcfae",
+			"bytes": 420
+		},
+		{
 			"path": "kaleb-vale/golden-coin/coin.png",
 			"sha256": "f9cab4c410bb725370c3c3e5e56db80a6cd3967ed28a784c27353a7bfce26e29",
 			"bytes": 2961
