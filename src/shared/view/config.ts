@@ -1,6 +1,7 @@
 import { BOSS_ACT1_DATA, BRUISER, DEMONLORD_DATA, HURT_INVULN_TICKS, PLAYER_SPEED, SNIPER, SWARMER } from "shared/sim";
 import type { ColorRole } from "shared/theme";
 import type { TopFaceUV } from "./floorTexture";
+import type { WallTextureFace, WallTextureUV } from "./wallTexture";
 
 /**
  * Presentation tunables for the client's game views (task 8): camera rig, world placement, draw sizes, pools and
@@ -21,6 +22,12 @@ export const GAME_CAMERA = {
 	/** Frames longer than this (seconds) are clamped for the follow (web IsoCamera: min(delta, 0.1)). */
 	maxFollowDtSec: 0.1,
 } as const;
+
+/**
+ * How a Texture on an axis-aligned Part's Top face maps to world axes (floorTexture.ts). Assumed: U along +X, V along
+ * +Z, OffsetStuds added. Check in Studio (S0 / S5): if slab joins show seams, flip the sign that is wrong.
+ */
+const TOP_FACE_UV: TopFaceUV = { uAxis: "x", uSign: 1, vSign: 1, offsetSign: 1 };
 
 /** Where the dungeon sits in Workspace and how tall its pieces are. */
 export const GAME_WORLD = {
@@ -44,11 +51,30 @@ export const GAME_WORLD = {
 	 * lift; docs/PORTRAIT.md PT4, was 24).
 	 */
 	backdropMarginTiles: 28,
+	/** How a floor Texture's U / V map to world axes on a Top face (TOP_FACE_UV above). */
+	floorTextureUV: TOP_FACE_UV,
 	/**
-	 * How a floor Texture's U / V map to world axes on a Top face (floorTexture.ts). Assumed: U along +X, V along +Z,
-	 * OffsetStuds added. Check in Studio (S0 / S5): if slab joins show seams, flip the sign that is wrong.
+	 * The faces of every wall Part that carry the biome's wall image when its wall tile is a repeating image
+	 * (`tilesPerImage`; WorldController): 5 Textures per wall Part (a floor slab has 1). The Bottom face lies on the floor
+	 * and is never seen; faces between two merged wall Parts are hidden but drawn (no per-face neighbour test).
 	 */
-	floorTextureUV: { uAxis: "x", uSign: 1, vSign: 1, offsetSign: 1 } as TopFaceUV,
+	wallTextureFaces: ["Top", "Front", "Back", "Left", "Right"] as ReadonlyArray<WallTextureFace>,
+	/**
+	 * How a wall Texture's U / V map to world axes (wallTexture.ts). Top: the floor's. Side faces, assumed from a Decal
+	 * reading upright and unmirrored from outside the face (origin at the top-left as seen from there; NormalId Front
+	 * -Z, Back +Z, Left -X, Right +X): U runs along the viewer's right (Front -X, Back +X, Left +Z, Right -Z), V down
+	 * from the top edge, OffsetStuds added as on the floor. Check in Studio: no seams where wall Parts meet along a
+	 * face, the image upright; flip the sign that is wrong.
+	 */
+	wallTextureUV: {
+		top: TOP_FACE_UV,
+		sides: {
+			Front: { uAxis: "x", uSign: -1, vSign: 1, offsetSign: 1 },
+			Back: { uAxis: "x", uSign: 1, vSign: 1, offsetSign: 1 },
+			Left: { uAxis: "z", uSign: 1, vSign: 1, offsetSign: 1 },
+			Right: { uAxis: "z", uSign: -1, vSign: 1, offsetSign: 1 },
+		},
+	} as WallTextureUV,
 	folderName: "KV_World",
 } as const;
 

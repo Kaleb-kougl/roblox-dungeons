@@ -810,6 +810,22 @@
 			"tilesPerImage": 4,
 			"meanHex": true
 		},
+		"tile.biome.2.floor": {
+			"$comment": "Molten basalt flagstones with lava joints: original art by scripts/art/molten/gen_molten_tiles.py (python3, numpy + Pillow; not run by art:build). 256x256, opaque, seamless, at the stone floor's density. meanHex = the biome.2 floor colour once uploaded (VALE_TILE_MEAN_HEX).",
+			"file": "kaleb-vale/molten/molten-floor.png",
+			"name": "tile-biome2-floor",
+			"crop": "none",
+			"tilesPerImage": 4,
+			"meanHex": true
+		},
+		"tile.biome.2.wall": {
+			"$comment": "Molten coursed basalt wall face: original art by scripts/art/molten/gen_molten_tiles.py, like tile.biome.2.floor. meanHex = the biome.2 wall colour once uploaded (VALE_TILE_MEAN_HEX).",
+			"file": "kaleb-vale/molten/molten-wall.png",
+			"name": "tile-biome2-wall",
+			"crop": "none",
+			"tilesPerImage": 4,
+			"meanHex": true
+		},
 		"ui.ring.player": {
 			"$comment": "Soft ring; cropped to alpha > noiseAlpha + pad. Pivot = centre of the crop (the ring sits centred under the player).",
 			"file": "lords-of-pain-demo/user interface/highlight/highlight_yellow.png",

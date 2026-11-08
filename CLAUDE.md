@@ -1047,6 +1047,22 @@ Decision log (deviations from `PLAN.md`):
   `WreckerFxController`, `HeartBeamController`, `HappyHourController`, `OvercapPopController` (pops duck near bullets,
   `overcapPopDuck`). Tuning (BV12), art / audio and the Studio checks (BV11 checklist, BV13) pending.
 
+- **Molten tiles (docs/ART.md "As built: molten tiles", 2026-11-08).** Presentation only (no sim, dungeon, lockstep,
+  hash, replay, fixture or score change). The molten biome (`biome.2`) gets a repeating floor and wall texture,
+  ORIGINAL art (basalt with bright red lava in the cracks) by `scripts/art/molten/gen_molten_tiles.py` (python3, numpy +
+  Pillow; not run by `art:build`) into `art/vendor/kaleb-vale/molten/`: images `tile.biome.2.floor` / `.wall`
+  (`tile-biome2-floor.png` / `-wall.png`, 256 x 256, seamless, `tilesPerImage` 4, means `#2d211e` / `#342622`). The
+  pipeline writes `VALE_TILE_MEAN_HEX` (asset id -> mean colour of every `meanHex` image; `VALE_FLOOR_HEX` is now
+  `tile.biome.1.floor`'s by id) and refuses `tilesPerImage` without `meanHex`. Manifest: an uploaded repeating floor or
+  wall texture makes its mean that surface's biome colour and drops that surface's material; validator: a textured
+  wall must use SmoothPlastic, like a textured floor. WorldController: a repeating wall image gives every wall Part 5
+  Textures (`GAME_WORLD.wallTextureFaces`, Top + 4 sides) in DEFAULT_BIOME_MATERIAL, world-anchored by shared/view
+  `wallTextureOffsets` (side-face conventions assumed in `GAME_WORLD.wallTextureUV`); without one walls draw as before.
+  No IDs in `assetIds.ts` yet, so the bundled pack draws exactly as today. Upload and the Studio checks (no seams at
+  wall joins, stone upright on side faces, telegraph rings readable on molten floors: the lava's hottest pixel is 31
+  CIE76 from `telegraph`) pending; the biome.2 Kenney floor patches still bake toward the old `#2a1a16` (optional
+  rebake).
+
 ## Commands
 
 ```

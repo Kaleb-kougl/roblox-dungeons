@@ -1185,6 +1185,10 @@ function contactSheet(result) {
  *     crop and the cutout (a piece painted on an opaque backdrop: the portrait frame's coin);
  *   - `rgb` (optional, after `clearRgb`): "white" makes every pixel white with its alpha kept (a piece tinted by a
  *     colour role in code, like the white loot beam), "grey" its rounded luminance (LUMA, alpha kept; a dimmed state).
+ *
+ * A repeating tile (`tilesPerImage`, a biome floor or wall texture) needs `meanHex: true`: the rounded mean sRGB of all
+ * its pixels, written to layout.ts's VALE_TILE_MEAN_HEX, which the pack manifest makes that biome surface's colour
+ * once the texture is uploaded (so the contrast checks describe what is drawn).
  */
 function buildImage(id, def, built) {
 	let pixelsPerTile;
@@ -1238,6 +1242,9 @@ function buildImage(id, def, built) {
 		img = maskPixels(img, def.mask.maxRgb, boxes);
 	}
 
+	if (def.tilesPerImage !== undefined && !def.meanHex) {
+		throw new Error(`${id}: a repeating tile (tilesPerImage) needs meanHex: its mean colour is the biome surface's`);
+	}
 	let meanHex;
 	if (def.meanHex) {
 		const sum = [0, 0, 0];
@@ -2145,6 +2152,18 @@ function comment(lines) {
 	return lines.map((l) => (l ? ` * ${l}` : " *")).join("\n");
 }
 
+/** The image whose mean colour is layout.ts's VALE_FLOOR_HEX (the biome.1 floor colour). */
+const FLOOR_IMAGE_ID = "tile.biome.1.floor";
+
+/** Every image's meanHex (art/atlases.json `meanHex`), by asset id, in image order: layout.ts's VALE_TILE_MEAN_HEX. */
+function tileMeanHexes(images) {
+	const out = {};
+	for (const i of images) if (i.meanHex !== undefined) out[i.id] = i.meanHex;
+	return out;
+}
+
+const TILE_MEAN_DECL = "export const VALE_TILE_MEAN_HEX: Record<string, HexColor> = ";
+
 function layoutModule(sets, images, floorHex, world) {
 	const spriteLayouts = {};
 	for (const s of sets) spriteLayouts[s.id] = s.layout;
@@ -2224,6 +2243,14 @@ function layoutModule(sets, images, floorHex, world) {
 		"",
 		"/** Rounded mean colour of the biome.1 floor texture (tile.biome.1.floor): the `biome.1` floor colour. */",
 		`export const VALE_FLOOR_HEX: HexColor = ${JSON.stringify(floorHex)};`,
+		"",
+		"/**",
+		comment([
+			"Rounded mean colour of every image with art/atlases.json `meanHex` (every repeating tile texture), by asset",
+			"id: the colour of each biome floor or wall drawn with it, once uploaded (VALE_FLOOR_HEX is tile.biome.1.floor's).",
+		]),
+		" */",
+		`${TILE_MEAN_DECL}${tsValue(tileMeanHexes(images), 0, TILE_MEAN_DECL.length)};`,
 		"",
 	];
 	if (world) {
@@ -4924,8 +4951,8 @@ function main() {
 
 	const sets = buildSpriteSets(config.spriteSets);
 	const images = buildImages(config.images, sets);
-	const floor = images.find((i) => i.meanHex);
-	if (!floor) throw new Error("no image has meanHex (the floor colour)");
+	const floor = images.find((i) => i.id === FLOOR_IMAGE_ID);
+	if (!floor || !floor.meanHex) throw new Error(`no ${FLOOR_IMAGE_ID} image with meanHex (VALE_FLOOR_HEX)`);
 
 	const builtFiles = new Set();
 	const contactFiles = new Set();
@@ -5107,6 +5134,7 @@ function uploadedFiles() {
 }
 
 module.exports = {
+	FLOOR_IMAGE_ID,
 	MAX_ATLAS,
 	OUTLINE_PREVIEW_RGB,
 	alphaBleed,

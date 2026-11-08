@@ -26,7 +26,11 @@ export function wrapStuds(a: number, period: number): number {
 	return w >= period ? w - period : w;
 }
 
-function axisOffset(min: number, max: number, sign: number, offsetSign: number, period: number): number {
+/**
+ * The offset along one face axis spanning [min, max] (studs) so the pattern at coordinate a is sign * a (mod period):
+ * the pattern starts at the min edge for sign +1, the max edge for -1 (shared with wallTexture.ts).
+ */
+export function textureAxisOffset(min: number, max: number, sign: number, offsetSign: number, period: number): number {
 	const corner = sign > 0 ? min : max;
 	return wrapStuds(offsetSign * sign * corner, period);
 }
@@ -47,7 +51,7 @@ export function floorTextureOffsets(
 	if (!(period > 0)) return [0, 0];
 	const [uMin, uMax, vMin, vMax] = uv.uAxis === "x" ? [minX, maxX, minZ, maxZ] : [minZ, maxZ, minX, maxX];
 	return [
-		axisOffset(uMin, uMax, uv.uSign, uv.offsetSign, period),
-		axisOffset(vMin, vMax, uv.vSign, uv.offsetSign, period),
+		textureAxisOffset(uMin, uMax, uv.uSign, uv.offsetSign, period),
+		textureAxisOffset(vMin, vMax, uv.vSign, uv.offsetSign, period),
 	];
 }

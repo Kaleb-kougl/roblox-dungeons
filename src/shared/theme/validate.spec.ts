@@ -1005,7 +1005,7 @@ describe("validateManifest: biome materials (docs/DECOR.md R1)", () => {
 		]);
 	});
 
-	it("a textured floor (tilesPerImage) must stay SmoothPlastic; walls and pools are free", () => {
+	it("a textured floor (tilesPerImage) must stay SmoothPlastic; an untextured wall and pools are free", () => {
 		const m = clone();
 		at(m, "assets")["tile.biome.1.floor"] = {
 			kind: "image",
@@ -1024,6 +1024,32 @@ describe("validateManifest: biome materials (docs/DECOR.md R1)", () => {
 		// a plain 16x16 tile image is not a repeating texture: any floor material
 		at(m, "assets")["tile.biome.1.floor"] = { kind: "image", assetId: "rbxassetid://1002", w: 16, h: 16 };
 		at(m, "biomes", "biome.1").materials = { floor: "Slate" };
+		expect(validateManifest(m)).toEqual([]);
+	});
+
+	it("a textured wall (tilesPerImage) must stay SmoothPlastic too, floor and wall each named", () => {
+		const m = clone();
+		const texture = (assetId: string): Obj => ({ kind: "image", assetId, w: 256, h: 256, tilesPerImage: 4 });
+		at(m, "assets")["tile.biome.2.wall"] = texture("rbxassetid://1003");
+		at(m, "biomes", "biome.2").materials = { floor: "Basalt", wall: "Rock", pool: "CrackedLava" };
+		expect(validateManifest(m)).toEqual([
+			'biomes["biome.2"].materials.wall: wall tile "tile.biome.2.wall" is a repeating texture: use ' +
+				'"SmoothPlastic", "Rock" would fight the image',
+		]);
+		// both surfaces textured: one problem each, floor first
+		at(m, "assets")["tile.biome.2.floor"] = texture("rbxassetid://1004");
+		expect(validateManifest(m)).toEqual([
+			'biomes["biome.2"].materials.floor: floor tile "tile.biome.2.floor" is a repeating texture: use ' +
+				'"SmoothPlastic", "Basalt" would fight the image',
+			'biomes["biome.2"].materials.wall: wall tile "tile.biome.2.wall" is a repeating texture: use ' +
+				'"SmoothPlastic", "Rock" would fight the image',
+		]);
+		// SmoothPlastic or no entry is fine; the pool keeps its material
+		at(m, "biomes", "biome.2").materials = { wall: "SmoothPlastic", pool: "CrackedLava" };
+		expect(validateManifest(m)).toEqual([]);
+		// a plain 16x16 wall image is not a repeating texture: any wall material
+		at(m, "assets")["tile.biome.2.wall"] = { kind: "image", assetId: "rbxassetid://1003", w: 16, h: 16 };
+		at(m, "biomes", "biome.2").materials = { wall: "Rock" };
 		expect(validateManifest(m)).toEqual([]);
 	});
 });

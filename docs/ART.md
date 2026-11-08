@@ -15,6 +15,7 @@ six bullet IDs, the biome tiles, `ui.cursor` (the facing pip) and the pedestal /
 | `class.vanguard` (every player, solo and co-op) | **Knight** | SmallScaleInt free edition (already here) |
 | `enemy.swarmer` (packs of 4-6, the most common enemy) | **Skeleton** (walk, death) | Lords of Pain demo |
 | `tile.biome.1.floor` | **`ground_stone1`**, tiled | Lords of Pain demo |
+| `tile.biome.2.floor` / `tile.biome.2.wall` (the molten biome; "As built: molten tiles" below) | **Original art**: basalt flagstones / coursed basalt blocks with lava in the joints, by `scripts/art/molten/gen_molten_tiles.py`, tiled (256 x 256, `tilesPerImage` 4); built 2026-11-08, not uploaded | none (original) |
 | co-op player marker / under-player ring | **`highlight_yellow`**, tinted per player | Lords of Pain demo |
 | relic pedestal marker (`RunMarkerController`) | **`loot_indicator_yellow`** beam (+ `glint`, stretch) | Lords of Pain demo |
 | `enemy.golden` (the Goldling, docs/FORTUNE.md FO10 / FD14) | **Skeleton recoloured gold** (`recolor`, below; bodyTiles 0.95): `golden-move.png`, `golden-death.png` + rims, built 2026-11-04, not uploaded | Lords of Pain demo |
@@ -221,3 +222,41 @@ files await upload (the vale pack draws the placeholder gold block until all its
 - **Readability.** A skeleton drawn larger than the swarmer's small hitbox can make dodges feel unfair; tune the
   drawn size with the hitbox debug view on.
 - **Faked animations.** The skeleton has no idle, attack or hit frames; they are stand-ins.
+
+## As built: molten tiles (2026-11-08)
+
+Presentation only (no sim, dungeon, lockstep, hash, replay, fixture or score change). The molten biome (`biome.2`)
+gets a repeating floor and a repeating wall texture, ORIGINAL art in the Lords of Pain ground's style: dark basalt with
+bright red lava in the cracks.
+
+- **Art.** `scripts/art/molten/gen_molten_tiles.py` (python3 with numpy + Pillow; NOT run by `art:build` / `art:lock`,
+  so the PNGs are inputs like any vendor file) writes `art/vendor/kaleb-vale/molten/molten-floor.png` (basalt
+  flagstones: a domain-warped jittered hex Voronoi, grit, a top-left bevel, lava glowing in many joints) and
+  `molten-wall.png` (8 staggered courses of 32 px blocks lit from above, faint embers in a few joints). Both 256 x 256,
+  opaque and seamless (every layer periodic), at the stone floor's density (`tilesPerImage` 4). Means `#2d211e` (floor)
+  and `#342622` (wall); the lava's hottest pixel is 30.8 CIE76 from `telegraph` `#ff8a3d` (about 0.4 % of pixels lie
+  within 40).
+- **Pipeline.** `art/atlases.json` images `tile.biome.2.floor` / `tile.biome.2.wall` (`crop: "none"`,
+  `tilesPerImage` 4, `meanHex`) -> `art/upload/tile-biome2-floor.png` / `tile-biome2-wall.png`. `build-atlases.js`
+  now takes `VALE_FLOOR_HEX` from `tile.biome.1.floor` by id (`FLOOR_IMAGE_ID`; it had taken the first `meanHex`
+  image) and writes `VALE_TILE_MEAN_HEX` to `layout.ts`: asset id -> rounded mean colour for every `meanHex` image. A
+  repeating tile (`tilesPerImage`) without `meanHex` fails the build.
+- **Pack.** `packs/vale/manifest.ts`: a biome floor or wall whose tile is an uploaded repeating texture (an `image` with
+  `tilesPerImage`) takes its `VALE_TILE_MEAN_HEX` colour as that surface's biome colour (so the contrast checks describe
+  what is drawn) and drops that surface's material (SmoothPlastic). Each texture switches on alone; the other biomes
+  never pick up the molten means. As bundled (no IDs) `biome.2` is exactly as before (vale.spec "vale molten tiles").
+- **Validator.** A textured wall must use `SmoothPlastic` (no `materials.wall` or `"SmoothPlastic"`), like a textured
+  floor; a patterned material under the image would fight it.
+- **Renderer.** `WorldController`: when the biome's wall image has `tilesPerImage`, every wall Part gets 5 Textures
+  (`GAME_WORLD.wallTextureFaces`: Top and the four sides; the Bottom lies on the floor) and `DEFAULT_BIOME_MATERIAL`;
+  otherwise walls draw as before. shared/view `wallTexture.ts` (`wallTextureOffsets`) anchors each face's pattern to
+  the world (U along the face's world axis, V down from the wall's top edge), so merged wall Parts run on without
+  seams; the Top face is the floor's rule (`floorTexture.ts`, whose per-axis helper is now `textureAxisOffset`). The
+  side faces' U / V conventions are assumed in `GAME_WORLD.wallTextureUV` (from a Decal's: upright and unmirrored from
+  outside the face) until Studio confirms them. Faces hidden between merged wall Parts are drawn anyway (no per-face
+  neighbour test).
+- **Pending.** Upload `art/upload/tile-biome2-floor.png` and `tile-biome2-wall.png` and paste their IDs into
+  `packs/vale/assetIds.ts`. Studio checks: no seams where wall Parts meet; the stone upright on the side faces (flip a
+  face's sign in `GAME_WORLD.wallTextureUV` if not); telegraph rings still readable on molten floors (the 30.8 CIE76
+  above). Optional: `scripts/art/kenney/kenney.json` still bakes the biome.2 Kenney floor patches toward the old
+  placeholder floor `#2a1a16`; rebake toward `#2d211e` once the floor is uploaded.
