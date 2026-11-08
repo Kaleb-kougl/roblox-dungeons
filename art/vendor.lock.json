@@ -1432,6 +1432,26 @@
 			"bytes": 833
 		},
 		{
+			"path": "kaleb-vale/boost-icons/boost_aegis.png",
+			"sha256": "4ae7156147633624ce4288ca52d8944eb7b7e5236bf6a81c207582fb8ee525ca",
+			"bytes": 403
+		},
+		{
+			"path": "kaleb-vale/boost-icons/boost_frenzy.png",
+			"sha256": "fdf2bffd36b0cfd8cf5af96bbeaa72e37b5351fd02f8b192765b80fd950e7d21",
+			"bytes": 610
+		},
+		{
+			"path": "kaleb-vale/boost-icons/boost_fury.png",
+			"sha256": "ff7dd01a1ae43eff8d4293a58e03b201c45291dc35dc8cb1ccd0414949d0f836",
+			"bytes": 422
+		},
+		{
+			"path": "kaleb-vale/boost-icons/boost_quickstep.png",
+			"sha256": "73ed24c4c434f4453bf493f4f6e00e8c6042870248bd75e96390bf1abaffe06f",
+			"bytes": 398
+		},
+		{
 			"path": "kaleb-vale/golden-coin/coin.png",
 			"sha256": "f9cab4c410bb725370c3c3e5e56db80a6cd3967ed28a784c27353a7bfce26e29",
 			"bytes": 2961
@@ -1545,6 +1565,21 @@
 			"path": "kaleb-vale/pellets/pellet_power.png",
 			"sha256": "5c14a0ffd1d2e3a1684cef77b714e70b7dcf863a264a2844bc64c3d997abda2d",
 			"bytes": 146
+		},
+		{
+			"path": "kaleb-vale/pip-icons/pip_aegis.png",
+			"sha256": "8b73eec8972e75f76382edf3173f17e2289350573a118a318a6b972436aa3a2d",
+			"bytes": 342
+		},
+		{
+			"path": "kaleb-vale/pip-icons/pip_armor.png",
+			"sha256": "162beae10354c00a0d2140c209d2f201af0d0df09cc5a3ab940ac5215d5b964c",
+			"bytes": 361
+		},
+		{
+			"path": "kaleb-vale/pip-icons/pip_armor_empty.png",
+			"sha256": "e33c11b6b4ff49f8568f9d553cb41580c639fdbf2bad733b40e1ee1c7cab058a",
+			"bytes": 320
 		},
 		{
 			"path": "kaleb-vale/treasure-column/column.png",

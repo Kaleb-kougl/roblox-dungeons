@@ -1,17 +1,19 @@
 import React from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
 import { selectJuice } from "client/store";
-import { useHudFont, role, str } from "client/ui/theme";
+import { useHudFont, role, str, themePack } from "client/ui/theme";
 import {
 	BOOST_VIEW,
 	boostBlinkTransparency,
 	boostColorRole,
+	boostIconArtId,
 	boostIconKey,
 	type BoostHudEntry,
 } from "shared/view/boosts";
 import { motionScale } from "shared/view/fx";
 import { statusRowMaxWidth } from "shared/view/hud";
 import { GridRow } from "./GridRow";
+import { ArtImage } from "./primitives";
 import { useTooltipTarget } from "./tooltipTargets";
 import { HighlightRing } from "./TutorialFx";
 
@@ -37,8 +39,9 @@ export function boostCellWidth(look: BoostLook): number {
 }
 
 /**
- * One running boost: an icon square in the kind's colour role with its `boost.<kind>.icon` label, and a bar beside it
- * draining with `fraction`. Under BOOST_VIEW.blinkSeconds left both blink (boostBlinkTransparency on the snapshot's
+ * One running boost: an icon square in the kind's colour role with its `boost.<kind>.icon` label (with the pack's icon
+ * art, `ui.boost.<kind>`: the art on BOOST_VIEW.iconArtFillRole, the colour role as the square's outline), and a bar
+ * beside it draining with `fraction`. Under BOOST_VIEW.blinkSeconds left both blink (boostBlinkTransparency on the snapshot's
  * quantised secondsLeft, so the blink follows sim time and needs no frame connection; a steady dim under reduced
  * motion).
  */
@@ -59,6 +62,8 @@ function BoostEntry(props: {
 	const tint = BOOST_VIEW;
 	const color = boostColorRole(e.kind);
 	const fade = boostBlinkTransparency(e.secondsLeft, props.motion);
+	const artId = boostIconArtId(e.kind);
+	const art = themePack()?.image(artId) !== undefined;
 	return (
 		<frame
 			ref={tipRef}
@@ -75,20 +80,31 @@ function BoostEntry(props: {
 			<frame
 				LayoutOrder={1}
 				Size={new UDim2(0, v.iconSize, 0, v.iconSize)}
-				BackgroundColor3={role(color)}
+				BackgroundColor3={role(art ? tint.iconArtFillRole : color)}
 				BackgroundTransparency={fade}
 				BorderSizePixel={0}
 			>
-				<uistroke Thickness={STROKE} Color={role("background")} Transparency={fade} />
-				<textlabel
-					Size={UDim2.fromScale(1, 1)}
-					BackgroundTransparency={HIDDEN}
-					Font={hudFont}
-					TextSize={v.iconTextSize}
-					TextColor3={role(tint.iconTextRole)}
-					TextTransparency={fade}
-					Text={str(boostIconKey(e.kind))}
-				/>
+				<uistroke Thickness={STROKE} Color={role(art ? color : "background")} Transparency={fade} />
+				{art ? (
+					<ArtImage
+						key="Icon"
+						name="Icon"
+						id={artId}
+						box={{ w: v.iconSize, h: v.iconSize }}
+						transparency={fade}
+					/>
+				) : (
+					<textlabel
+						key="Label"
+						Size={UDim2.fromScale(1, 1)}
+						BackgroundTransparency={HIDDEN}
+						Font={hudFont}
+						TextSize={v.iconTextSize}
+						TextColor3={role(tint.iconTextRole)}
+						TextTransparency={fade}
+						Text={str(boostIconKey(e.kind))}
+					/>
+				)}
 			</frame>
 			<frame
 				LayoutOrder={2}

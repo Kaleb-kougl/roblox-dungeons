@@ -82,13 +82,18 @@ export function pipArtProps(skin: StatusSkin | undefined, kind: HudPipKind, fill
 	const ref = skin.pack.image(art.id);
 	if (ref === undefined) return undefined;
 	const r = ref.rect;
-	const box = pipArtSlot(kind, r?.w ?? ref.w, r?.h ?? ref.h, skin.uiScale);
+	// The pack's own shields sit in the hearts' whole box, spaced like the hearts; the chips in their trimmed pip slot.
+	const box =
+		art.box !== undefined
+			? { w: art.box, h: art.box }
+			: pipArtSlot(kind, r?.w ?? ref.w, r?.h ?? ref.h, skin.uiScale);
 	return { id: art.id, box, transparency: art.transparency, tinted: art.tinted };
 }
 
 /**
  * A row of `max` pips, `count` filled. With the art (UA10): flask charges are potions (full / spent), Ember pips
- * candles (unlit: dimmed), armor pips grey chips (empty: dimmed); without, the flat square / diamond pips.
+ * candles (unlit: dimmed), armor pips shields (shared/theme PIP_ICON_IDS; else grey chips, empty: dimmed); without, the
+ * flat square / diamond pips.
  */
 export function pips(
 	count: number,
@@ -117,7 +122,7 @@ export function pips(
 
 /**
  * The Aegis pips (docs/BOOSTS.md B7): filled diamonds in their own colour after the `after` armor pips; with the art
- * (UA10) the white chip tinted by that colour.
+ * (UA10) the Aegis shield (ui.pip.aegis), else the white chip tinted by that colour.
  */
 export function aegisPips(count: number, after: number, skin: StatusSkin | undefined) {
 	const out = new Array<React.Element>();

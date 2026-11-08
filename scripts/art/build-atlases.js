@@ -40,6 +40,14 @@
  *                                        (docs/BUILDS.md BU11; config key `itemIcons`; section "Item icon sheet"
  *                                        below), with its sheet art/build/item-icons.png and contact sheet
  *                                        art/build/contact/item-icons.png
+ *   -> src/shared/theme/packs/vale/boostIconLayout.ts generated (committed): the boost icon sheet (docs/BOOSTS.md
+ *                                        B7, the HUD's boost row; config key `boostIcons`; section "Boost icon sheet"
+ *                                        below), with its sheet art/build/boost-icons.png and contact sheet
+ *                                        art/build/contact/boost-icons.png
+ *   -> src/shared/theme/packs/vale/pipIconLayout.ts generated (committed): the armor pip sheet (docs/UI_ART.md "As
+ *                                        built: armor pips"; config key `pipIcons`; section "Pip icon sheet" below),
+ *                                        with its sheet art/build/pip-icons.png and contact sheet
+ *                                        art/build/contact/pip-icons.png
  *
  * World art (decor props, effects, breakables; docs/DECOR.md R5) has its own section below ("World art").
  *
@@ -122,6 +130,10 @@
  *        node scripts/art/build-atlases.js --lock --only boonIcons needs only the generated icons)
  *        node scripts/art/build-atlases.js --only itemIcons        the same for the relic and curse icon sheet
  *        node scripts/art/build-atlases.js --lock --only itemIcons (docs/BUILDS.md BU11; needs only the generated icons)
+ *        node scripts/art/build-atlases.js --only boostIcons       the same for the boost icon sheet (docs/BOOSTS.md B7;
+ *        node scripts/art/build-atlases.js --lock --only boostIcons needs only the generated icons)
+ *        node scripts/art/build-atlases.js --only pipIcons         the same for the armor pip sheet (docs/UI_ART.md;
+ *        node scripts/art/build-atlases.js --lock --only pipIcons  needs only the generated icons)
  * Plain Node plus pngjs. The pure helpers are exported for scripts/art/build-atlases.test.js (npm run test:art).
  */
 "use strict";
@@ -150,6 +162,8 @@ const TREASURE_LAYOUT_FILE = path.join(LAYOUT_DIR, "treasureLayout.ts");
 const FORTUNE_LAYOUT_FILE = path.join(LAYOUT_DIR, "fortuneLayout.ts");
 const BOON_ICON_LAYOUT_FILE = path.join(LAYOUT_DIR, "boonIconLayout.ts");
 const ITEM_ICON_LAYOUT_FILE = path.join(LAYOUT_DIR, "itemIconLayout.ts");
+const BOOST_ICON_LAYOUT_FILE = path.join(LAYOUT_DIR, "boostIconLayout.ts");
+const PIP_ICON_LAYOUT_FILE = path.join(LAYOUT_DIR, "pipIconLayout.ts");
 
 /** Roblox stores images at most this many pixels on a side. */
 const MAX_ATLAS = 1024;
@@ -570,6 +584,8 @@ function sourceFiles(config) {
 	for (const f of fortuneSourceFiles(config.fortune)) files.add(f);
 	for (const f of boonIconSourceFiles(config.boonIcons)) files.add(f);
 	for (const f of itemIconSourceFiles(config.itemIcons)) files.add(f);
+	for (const f of boostIconSourceFiles(config.boostIcons)) files.add(f);
+	for (const f of pipIconSourceFiles(config.pipIcons)) files.add(f);
 	return [...files].sort();
 }
 
@@ -3050,6 +3066,132 @@ function printItemIcons(icons) {
 }
 
 // ---------------------------------------------------------------------------------------------
+// Boost icon sheet (docs/BOOSTS.md B7, the HUD's boost row; config key `boostIcons`)
+//
+// The boost icons (ORIGINAL art, scripts/art/gen-boost-icons.js) in a sheet of their own, exactly like the
+// item icon sheet above: a `uiIcons`-shaped section built and packed by buildUiIcons, written to art/build/<atlas>.png
+// with packs/vale/boostIconLayout.ts (VALE_BOOST_ICON_FILE / _ATLAS, VALE_BOOST_ICONS by id, ValeUiIconLayout shape),
+// so no other icon sheet repacks for them. Optional: absent, every other output is unchanged.
+
+const BOOST_ICON_PREFIXES = ["ui.boost."];
+
+/** The vendor files the boost icon group reads (none without the group). */
+function boostIconSourceFiles(section) {
+	if (!section) return [];
+	return uiIconIds(section).map((id) => uiIconFile(section, id));
+}
+
+/** buildUiIcons over the boost icon section, every id under one of BOOST_ICON_PREFIXES. */
+function buildBoostIcons(section) {
+	for (const id of uiIconIds(section)) {
+		if (!BOOST_ICON_PREFIXES.some((p) => id.startsWith(p))) {
+			throw new Error(`${id}: boost icon ids start with "${BOOST_ICON_PREFIXES.join('" or "')}"`);
+		}
+	}
+	return buildUiIcons(section);
+}
+
+/** packs/vale/boostIconLayout.ts: VALE_BOOST_ICON_FILE / _ATLAS and VALE_BOOST_ICONS by id (ValeUiIconLayout). */
+function boostIconLayoutModule(icons) {
+	const xy = (p) => `{ x: ${p.x}, y: ${p.y} }`;
+	const entry = (id) => {
+		const l = icons.layouts[id];
+		const r = l.rect;
+		return `\t${JSON.stringify(id)}: { rect: { x: ${r.x}, y: ${r.y}, w: ${r.w}, h: ${r.h} }${l.pivot ? `, pivot: ${xy(l.pivot)}` : ""} },`;
+	};
+	const text = [
+		"/** Generated by `npm run art:build` from art/atlases.json `boostIcons` (docs/BOOSTS.md B7). Do not edit. */",
+		'import type { ValeUiIconLayout } from "./uiIconLayout";',
+		"",
+		"/** The boost icon sheet's file name (the key of its id in assetIds.ts). */",
+		`export const VALE_BOOST_ICON_FILE = ${JSON.stringify(icons.file)};`,
+		"/** The sheet size, pixels. */",
+		`export const VALE_BOOST_ICON_ATLAS = { w: ${icons.w}, h: ${icons.h} } as const;`,
+		"export const VALE_BOOST_ICONS: Record<string, ValeUiIconLayout> = {",
+		...Object.keys(icons.layouts).sort().map(entry),
+		"};",
+		"",
+	].join("\n");
+	for (const line of text.split("\n")) {
+		if (line.replace(/\t/g, "    ").length > PRINT_WIDTH) throw new Error(`boostIconLayout.ts line over ${PRINT_WIDTH} columns: ${line}`);
+	}
+	return text;
+}
+
+function printBoostIcons(icons) {
+	console.log(`boost icons: ${icons.file} ${icons.w}x${icons.h}, ${icons.pieces.length} icons, ${icons.gutter} px extruded gutter (contact numbers in id order)`);
+	Object.keys(icons.layouts)
+		.sort()
+		.forEach((id, n) => {
+			const r = icons.layouts[id].rect;
+			console.log(`  #${n} ${id}: rect ${r.x},${r.y} ${r.w}x${r.h}`);
+		});
+}
+
+// ---------------------------------------------------------------------------------------------
+// Pip icon sheet (docs/UI_ART.md "As built: armor pips"; config key `pipIcons`)
+//
+// The armor pips (ORIGINAL art, scripts/art/gen-pip-icons.js: ui.pip.armor / .armor.empty / ui.pip.aegis) in a sheet
+// of their own, exactly like the boost icon sheet above (buildUiIcons), written to art/build/<atlas>.png with
+// packs/vale/pipIconLayout.ts (VALE_PIP_ICON_FILE / _ATLAS, VALE_PIP_ICONS by id, ValeUiIconLayout shape), so no other
+// icon sheet repacks for them. Optional: absent, every other output is unchanged.
+
+const PIP_ICON_PREFIXES = ["ui.pip."];
+
+/** The vendor files the pip icon group reads (none without the group). */
+function pipIconSourceFiles(section) {
+	if (!section) return [];
+	return uiIconIds(section).map((id) => uiIconFile(section, id));
+}
+
+/** buildUiIcons over the pip icon section, every id under one of PIP_ICON_PREFIXES. */
+function buildPipIcons(section) {
+	for (const id of uiIconIds(section)) {
+		if (!PIP_ICON_PREFIXES.some((p) => id.startsWith(p))) {
+			throw new Error(`${id}: pip icon ids start with "${PIP_ICON_PREFIXES.join('" or "')}"`);
+		}
+	}
+	return buildUiIcons(section);
+}
+
+/** packs/vale/pipIconLayout.ts: VALE_PIP_ICON_FILE / _ATLAS and VALE_PIP_ICONS by id (ValeUiIconLayout). */
+function pipIconLayoutModule(icons) {
+	const xy = (p) => `{ x: ${p.x}, y: ${p.y} }`;
+	const entry = (id) => {
+		const l = icons.layouts[id];
+		const r = l.rect;
+		return `\t${JSON.stringify(id)}: { rect: { x: ${r.x}, y: ${r.y}, w: ${r.w}, h: ${r.h} }${l.pivot ? `, pivot: ${xy(l.pivot)}` : ""} },`;
+	};
+	const text = [
+		"/** Generated by `npm run art:build` from art/atlases.json `pipIcons` (docs/UI_ART.md). Do not edit. */",
+		'import type { ValeUiIconLayout } from "./uiIconLayout";',
+		"",
+		"/** The armor pip sheet's file name (the key of its id in assetIds.ts). */",
+		`export const VALE_PIP_ICON_FILE = ${JSON.stringify(icons.file)};`,
+		"/** The sheet size, pixels. */",
+		`export const VALE_PIP_ICON_ATLAS = { w: ${icons.w}, h: ${icons.h} } as const;`,
+		"export const VALE_PIP_ICONS: Record<string, ValeUiIconLayout> = {",
+		...Object.keys(icons.layouts).sort().map(entry),
+		"};",
+		"",
+	].join("\n");
+	for (const line of text.split("\n")) {
+		if (line.replace(/\t/g, "    ").length > PRINT_WIDTH) throw new Error(`pipIconLayout.ts line over ${PRINT_WIDTH} columns: ${line}`);
+	}
+	return text;
+}
+
+function printPipIcons(icons) {
+	console.log(`pip icons: ${icons.file} ${icons.w}x${icons.h}, ${icons.pieces.length} icons, ${icons.gutter} px extruded gutter (contact numbers in id order)`);
+	Object.keys(icons.layouts)
+		.sort()
+		.forEach((id, n) => {
+			const r = icons.layouts[id].rect;
+			console.log(`  #${n} ${id}: rect ${r.x},${r.y} ${r.w}x${r.h}`);
+		});
+}
+
+// ---------------------------------------------------------------------------------------------
 // Bullet atlas (docs/PROJECTILE_ART.md PA2)
 //
 // Config key `bullets` (optional; absent: no bullet atlas, every other output exactly as without it): { atlas (file
@@ -4426,7 +4568,18 @@ function onlyGroup(argv) {
 }
 
 /** Groups `--only` can build on their own (their sources need no other pack). */
-const ONLY_GROUPS = ["bullets", "goo", "boostAuras", "treasure", "hazards", "fortune", "boonIcons", "itemIcons"];
+const ONLY_GROUPS = [
+	"bullets",
+	"goo",
+	"boostAuras",
+	"treasure",
+	"hazards",
+	"fortune",
+	"boonIcons",
+	"itemIcons",
+	"boostIcons",
+	"pipIcons",
+];
 
 /** The vendor files `--lock --only <group>` re-hashes. */
 function onlyGroupSourceFiles(config, group) {
@@ -4458,6 +4611,14 @@ function onlyGroupSourceFiles(config, group) {
 	if (group === "itemIcons") {
 		if (!config.itemIcons) fail("art/atlases.json has no `itemIcons` group");
 		return itemIconSourceFiles(config.itemIcons);
+	}
+	if (group === "boostIcons") {
+		if (!config.boostIcons) fail("art/atlases.json has no `boostIcons` group");
+		return boostIconSourceFiles(config.boostIcons);
+	}
+	if (group === "pipIcons") {
+		if (!config.pipIcons) fail("art/atlases.json has no `pipIcons` group");
+		return pipIconSourceFiles(config.pipIcons);
 	}
 	throw new Error(`no --only group ${group}`);
 }
@@ -4577,6 +4738,44 @@ function mainOnlyItemIcons(config) {
 	console.log(`art:build --only itemIcons: ${changed} file(s) updated`);
 }
 
+/**
+ * `--only boostIcons` (docs/BOOSTS.md B7): checks the boost icons against the lock, then writes ONLY
+ * art/build/<atlas>.png (and its art/upload copy), art/build/contact/<atlas>.png and packs/vale/boostIconLayout.ts, byte
+ * for byte what a full build writes for them. Nothing else is read, written or removed.
+ */
+function mainOnlyBoostIcons(config) {
+	if (!config.boostIcons) fail("art/atlases.json has no `boostIcons` group");
+	checkLock(config, boostIconSourceFiles(config.boostIcons));
+	const icons = buildBoostIcons(config.boostIcons);
+	let changed = 0;
+	const png = encodePng(icons.img);
+	if (writeIfChanged(path.join(BUILD, icons.file), png)) changed++;
+	if (writeIfChanged(path.join(CONTACT, icons.file), encodePng(uiIconContact(icons)))) changed++;
+	if (writeIfChanged(path.join(UPLOAD, icons.file), png)) changed++;
+	if (writeIfChanged(BOOST_ICON_LAYOUT_FILE, boostIconLayoutModule(icons))) changed++;
+	printBoostIcons(icons);
+	console.log(`art:build --only boostIcons: ${changed} file(s) updated`);
+}
+
+/**
+ * `--only pipIcons` (docs/UI_ART.md "As built: armor pips"): checks the pip icons against the lock, then writes ONLY
+ * art/build/<atlas>.png (and its art/upload copy), art/build/contact/<atlas>.png and packs/vale/pipIconLayout.ts, byte
+ * for byte what a full build writes for them. Nothing else is read, written or removed.
+ */
+function mainOnlyPipIcons(config) {
+	if (!config.pipIcons) fail("art/atlases.json has no `pipIcons` group");
+	checkLock(config, pipIconSourceFiles(config.pipIcons));
+	const icons = buildPipIcons(config.pipIcons);
+	let changed = 0;
+	const png = encodePng(icons.img);
+	if (writeIfChanged(path.join(BUILD, icons.file), png)) changed++;
+	if (writeIfChanged(path.join(CONTACT, icons.file), encodePng(uiIconContact(icons)))) changed++;
+	if (writeIfChanged(path.join(UPLOAD, icons.file), png)) changed++;
+	if (writeIfChanged(PIP_ICON_LAYOUT_FILE, pipIconLayoutModule(icons))) changed++;
+	printPipIcons(icons);
+	console.log(`art:build --only pipIcons: ${changed} file(s) updated`);
+}
+
 function main() {
 	const config = JSON.parse(fs.readFileSync(CONFIG_FILE, "utf8"));
 	const only = onlyGroup(process.argv);
@@ -4614,6 +4813,14 @@ function main() {
 	}
 	if (only === "itemIcons") {
 		mainOnlyItemIcons(config);
+		return;
+	}
+	if (only === "boostIcons") {
+		mainOnlyBoostIcons(config);
+		return;
+	}
+	if (only === "pipIcons") {
+		mainOnlyPipIcons(config);
 		return;
 	}
 	checkLock(config);
@@ -4697,6 +4904,18 @@ function main() {
 		emit(BUILD, itemIcons.file, itemIcons.img, builtFiles);
 		emit(CONTACT, itemIcons.file, uiIconContact(itemIcons), contactFiles);
 	}
+	let boostIcons;
+	if (config.boostIcons) {
+		boostIcons = buildBoostIcons(config.boostIcons);
+		emit(BUILD, boostIcons.file, boostIcons.img, builtFiles);
+		emit(CONTACT, boostIcons.file, uiIconContact(boostIcons), contactFiles);
+	}
+	let pipIcons;
+	if (config.pipIcons) {
+		pipIcons = buildPipIcons(config.pipIcons);
+		emit(BUILD, pipIcons.file, pipIcons.img, builtFiles);
+		emit(CONTACT, pipIcons.file, uiIconContact(pipIcons), contactFiles);
+	}
 	removeStale(BUILD, builtFiles);
 	removeStale(CONTACT, contactFiles);
 
@@ -4717,6 +4936,8 @@ function main() {
 	if (fortune && writeIfChanged(FORTUNE_LAYOUT_FILE, fortuneLayoutModule(fortune))) changed++;
 	if (boonIcons && writeIfChanged(BOON_ICON_LAYOUT_FILE, boonIconLayoutModule(boonIcons))) changed++;
 	if (itemIcons && writeIfChanged(ITEM_ICON_LAYOUT_FILE, itemIconLayoutModule(itemIcons))) changed++;
+	if (boostIcons && writeIfChanged(BOOST_ICON_LAYOUT_FILE, boostIconLayoutModule(boostIcons))) changed++;
+	if (pipIcons && writeIfChanged(PIP_ICON_LAYOUT_FILE, pipIconLayoutModule(pipIcons))) changed++;
 
 	for (const s of sets) {
 		const l = s.layout;
@@ -4752,6 +4973,8 @@ function main() {
 	if (fortune) printFortune(fortune);
 	if (boonIcons) printBoonIcons(boonIcons);
 	if (itemIcons) printItemIcons(itemIcons);
+	if (boostIcons) printBoostIcons(boostIcons);
+	if (pipIcons) printPipIcons(pipIcons);
 	if (icons) {
 		console.log(`ui icons: ${icons.file} ${icons.w}x${icons.h}, ${icons.pieces.length} icons, ${icons.gutter} px extruded gutter (contact numbers in id order)`);
 		Object.keys(icons.layouts)
@@ -4820,6 +5043,12 @@ module.exports = {
 	buildItemIcons,
 	itemIconLayoutModule,
 	itemIconSourceFiles,
+	buildBoostIcons,
+	boostIconLayoutModule,
+	boostIconSourceFiles,
+	buildPipIcons,
+	pipIconLayoutModule,
+	pipIconSourceFiles,
 	buildWorldPieces,
 	chooseGrid,
 	contactSheet,

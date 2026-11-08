@@ -7,6 +7,7 @@ import {
 	HUD_SKIN,
 	TOUCH_STRIP,
 	digitCount,
+	pipArt,
 	skinFor,
 	skinHasOf,
 	touchStrip,
@@ -36,12 +37,14 @@ function stripArt(): TouchStripArt | undefined {
 	const pack = themePack();
 	if (pack === undefined) return undefined;
 	const has = skinHasOf(pack);
+	const pip = pipArt(has, "armor", true);
 	return {
 		heart: artSize(skinFor(has, "heart", "full")),
 		flask: artSize(skinFor(has, "flask", "full")),
 		candle: artSize(skinFor(has, "ember", "lit")),
 		coin: artSize(HUD_SKIN.ids.coin),
-		pip: artSize(skinFor(has, "pip", "armor")),
+		pip: artSize(pip?.id),
+		pipBox: pip?.box,
 	};
 }
 

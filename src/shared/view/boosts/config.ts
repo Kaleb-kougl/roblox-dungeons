@@ -148,6 +148,11 @@ export const BOOST_VIEW = {
 	iconSize: 22,
 	iconTextSize: 10,
 	iconTextRole: "uiPanel" as ColorRole,
+	/**
+	 * With the pack's icon art (`ui.boost.<kind>`, boostIconArtId): the square is this dark fill under the art and the
+	 * kind's colour role moves to its outline (like an item cell's art, shared/view/hud ITEM_ART_FILL_ROLE).
+	 */
+	iconArtFillRole: "uiPanel" as ColorRole,
 	/** Gap between an entry's icon and its bar, reference px. */
 	iconBarGap: 3,
 	/** The Aegis pip in the armor row (a diamond after the armor pips): the Aegis kind's colour role. */

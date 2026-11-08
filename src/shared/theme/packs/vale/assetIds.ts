@@ -128,6 +128,13 @@ import type { RobloxAssetId } from "../../types";
  * `node scripts/art/build-atlases.js --only boonIcons`) uploaded 2026-11-08, the ID given by the owner in chat.
  * item-icons.png (one icon per relic and per curse, docs/BUILDS.md BU11; original art, scripts/art/gen-item-icons.js,
  * built by `node scripts/art/build-atlases.js --only itemIcons`) uploaded 2026-11-08, the ID given by the owner in chat.
+ * boost-icons.png (one icon per temporary boost, docs/BOOSTS.md "As built: boost icons"; original art,
+ * scripts/art/gen-boost-icons.js, built by `node scripts/art/build-atlases.js --only boostIcons`) uploaded 2026-11-08,
+ * the ID given by the owner in chat.
+ * pip-icons.png (the armor row's full / spent armor pips and the Aegis pip, docs/UI_ART.md "As built: armor pips";
+ * original art, scripts/art/gen-pip-icons.js, built by `node scripts/art/build-atlases.js --only pipIcons`): the first
+ * 9 x 9 sheet was uploaded 2026-11-08 (103884093874949) and is retired: the 16 x 15 sheet (the hearts' size) changed
+ * every rect; the 16 x 15 sheet uploaded 2026-11-08, the ID given by the owner in chat.
  */
 export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"amb-b1.ogg": "rbxassetid://91158343621799",
@@ -145,6 +152,7 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"boost-auras.png": "rbxassetid://102860615301253",
 	"boost-frenzy.png": "rbxassetid://123942115924560",
 	"boost-fury.png": "rbxassetid://81008876085390",
+	"boost-icons.png": "rbxassetid://98909071423779",
 	"boost-quickstep.png": "rbxassetid://94521729890331",
 	"bramble-attack1-outline.png": "rbxassetid://107870513920568",
 	"bramble-attack1.png": "rbxassetid://108836550185712",
@@ -286,6 +294,7 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"pact-altar.png": "rbxassetid://117430889650812",
 	"pellet-power.png": "rbxassetid://135982735087293",
 	"pellet.png": "rbxassetid://104506728931703",
+	"pip-icons.png": "rbxassetid://71522432232413",
 	"reaper-attack-outline.png": "rbxassetid://95992799302634",
 	"reaper-attack.png": "rbxassetid://81078161742843",
 	"reaper-body-outline.png": "rbxassetid://130853749528261",

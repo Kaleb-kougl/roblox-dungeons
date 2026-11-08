@@ -99,6 +99,8 @@ export interface TouchStripArt {
 	readonly candle?: { readonly w: number; readonly h: number };
 	readonly coin?: { readonly w: number; readonly h: number };
 	readonly pip?: { readonly w: number; readonly h: number };
+	/** The pip's whole square box when it is drawn like a heart (shared/view/hud PipArt.box: the pack's own shields). */
+	readonly pipBox?: number;
 }
 
 /** Where the strip may go, screen px. */
@@ -248,7 +250,10 @@ export function touchStripSlots(art: TouchStripArt | undefined, s: number): Touc
 	return {
 		// A heart keeps the full box (the tutorial's ghost heart takes the same one).
 		heart: { w: math.max(heart.w, T.iconBox), h: heart.h },
-		pip: slotOf(art?.pip, T.pipBox, T.pipBox, s),
+		pip:
+			art?.pip !== undefined && art.pipBox !== undefined
+				? { w: art.pipBox, h: art.pipBox }
+				: slotOf(art?.pip, T.pipBox, T.pipBox, s),
 		flask: slotOf(art?.flask, T.iconBox, T.flatIcon, s),
 		candle: slotOf(art?.candle, T.iconBox, T.flatIcon, s),
 		coin: slotOf(art?.coin, T.iconBox, T.flatIcon, s),
