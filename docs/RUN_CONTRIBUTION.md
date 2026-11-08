@@ -179,9 +179,23 @@ Each step is a commit; `npm run verify` before each.
   per-player sums equal the team totals (`damageDealt`, pops, `hitsTaken`) over a scripted 2-player run; solo runs
   unchanged; **every golden / replay / hash / determinism spec unchanged** (nothing new is hashed); bench.spec within
   noise.
-- [ ] **CT3. Contribution core.** Shares (largest remainder, sum 100, a zero team total drops the cell), standing
+- [x] **CT3. Contribution core.** Shares (largest remainder, sum 100, a zero team total drops the cell), standing
   line, leaver, titles: greedy by lead, one per player, distinct, fallback, ties, thresholds, identical output for
   identical tallies (two "clients").
+  As built: shared/view/hud `contribution.ts` / `contributionConfig.ts` (`CONTRIB`: `minPartySize` 2, `shareTotal`
+  100, `cellOrder`; `CONTRIB_TITLES` per-title rules `min` / `above` / `evenSharePercent` 120 / `minPartyHits` 3,
+  `CONTRIB_TITLE_ORDER`, `CONTRIB_STRINGS`). `contributionOf({ tally, partySize, localIndex, names, endedInWipe? })`
+  (solo: undefined) gives rows in index order, `local`, `youCells` (zero team totals dropped; pickups' `boosts` /
+  `pellets` undefined when that part's team total is 0; `contribPickupParts` for the line) and `damageShares`.
+  Standing: a wipe (default: everyone who has not left has a death) makes `tally.lastDeath` (else the latest death,
+  lower index) `lastToFall`; any other death `fell`; left without dying `left` (seconds 0: the tally has no leave
+  tick; a player who died and then left keeps `fell` and a dim row); else `stood` (`lastTick`). Seconds are whole
+  (ticks / `SIM_HZ`); `contribStandingText` passes `{time}` as m:ss (`formatClock`, the run-over Time). Titles
+  (`assignTitles(stats)`): per title only its strict leader is a candidate (Last Stand: the wipe's last to fall
+  outright, else the strict longest standing; a tie for a lead gives nobody that title), score (lead - second) /
+  max(lead, 1) (Untouchable (second - lead) / max(second, 1)), greedy by score, then title order, then index; a
+  title its leader cannot take (they hold a better one) goes to nobody. English: Daredevil is a boon's name, so the
+  `daredevil` title reads **Bullet Dancer** (CT4). Spec: contribution.spec.ts.
 - [ ] **CT4. Strings** (contract, placeholder, vale, l10n context); Luau locals counted on out/.
 - [ ] **CT5. Panel.** Tabs, You card, Party rows; fit.spec: 2, 4 and 8 players, record daily party run (the worst
   case), phone landscape / portrait, HUD 70 %; `npm run build:place`.
