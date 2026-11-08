@@ -79,7 +79,10 @@ export interface PacingTunables {
 	readonly startDepthTicks: number;
 	/** The buffer is never shallower: one broadcast batch plus a tick of margin (FPD6). */
 	readonly minDepthTicks: number;
-	/** The target depth never goes past this (200 ms): beyond it a hold is better than the delay. */
+	/**
+	 * The target depth never goes past this (200 ms): beyond it a hold is better than the delay. Also the most the input
+	 * lead adds for the buffer (depthTicks), so MAX_INPUT_LEAD_TICKS + this stays inside MAX_INPUT_AHEAD_TICKS.
+	 */
 	readonly maxDepthTicks: number;
 	/**
 	 * Added to the measured jitter: rounding and Heartbeat granularity. Arrivals are handled on a rendered frame, so an
@@ -99,8 +102,37 @@ export interface PacingTunables {
 	readonly fastSlewShare: number;
 	/** How far past its target (ticks) the playout clock must be for the fast slew. */
 	readonly fastSlewTicks: number;
-	/** A rendered frame longer than this (seconds) is a client hitch: its arrivals are left out of the windows. */
+	/**
+	 * Past its target by more than this (ticks; a long hold: a server stall, a long network hiccup) the playout clock is
+	 * not slewed back (10 % would take ten times the hold) but reset to the target + fastForwardMarginTicks, never past
+	 * the newest queued frame: the frames due step at maxCatchup per frame, a bounded fast-forward.
+	 */
+	readonly fastForwardTicks: number;
+	/** The fast-forward stops this far (ticks) above the target; the slew does the rest. */
+	readonly fastForwardMarginTicks: number;
+	/**
+	 * A rendered frame longer than this (seconds), or this much clock since the last frame (a stall inside the render
+	 * step before the pump), is a client hitch: P is not moved, and the arrivals of that frame and the next are left out
+	 * of the windows.
+	 */
 	readonly hitchFrameSec: number;
+	/**
+	 * The lead's depth (depthTicks) rises at once when the buffer depth passes it, but falls only once the depth is this
+	 * many ticks at or below the next whole tick down: a depth hovering at a tick boundary does not flicker the input
+	 * target. Just under half a tick, so a depth sitting mid-tick (where the phase shift tends to put it) is never on the
+	 * threshold.
+	 */
+	readonly leadHysteresisTicks: number;
+	/** The frames' phase on the tick grid and its spread are smoothed by this share per frame. */
+	readonly phaseSmoothing: number;
+	/**
+	 * The phase is locked (and the mid-tick phase shift applied) while the frames' mean distance from the smoothed phase
+	 * is under this (ticks): frames at or below about the sim rate with ordinary jitter (~0.03 at 60 fps +/- 1 ms); 120 /
+	 * 144 fps walk round the tick (~0.25) and are left unshifted.
+	 */
+	readonly phaseLockSpread: number;
+	/** The phase shift keeps its whole-tick choice while it stays within 0.5 + this (ticks): P* wobbling at a boundary. */
+	readonly phaseHysteresisTicks: number;
 }
 
 export const PACING: PacingTunables = table.freeze({
@@ -114,7 +146,13 @@ export const PACING: PacingTunables = table.freeze({
 	slewShare: 0.05,
 	fastSlewShare: 0.1,
 	fastSlewTicks: 6,
+	fastForwardTicks: 12,
+	fastForwardMarginTicks: 1,
 	hitchFrameSec: 0.1,
+	leadHysteresisTicks: 0.4,
+	phaseSmoothing: 0.1,
+	phaseLockSpread: 0.12,
+	phaseHysteresisTicks: 0.25,
 });
 
 /**

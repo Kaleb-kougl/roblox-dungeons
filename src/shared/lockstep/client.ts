@@ -24,10 +24,13 @@
  * Frame pacing (docs/FRAME_PACING.md, Design 1-6). With `tunables.pacing` defined the client owns a PlayoutPacer
  * (pacer.ts), and pacing turns on at the first `pump` given a `now`: from then on each pump steps exactly
  * `pacer.frame(now, dt, state.tick, backlog, maxCatchup)` frames (a steady one tick per SIM_DT from a small jitter
- * buffer; none on a hold; up to the cap after a client hitch), `getAlpha()` is the pacer's (in [0, 1)), and the input
- * lead covers the buffer: `nextInputTick()` = state.tick + lead + pacer.depthTicks() (Design 5). When the depth rises
- * the target jumps and the skipped ticks fall to the server's repeat-last (never sent, so never counted as misses);
- * when it falls the FP1 rule above sends nothing until the target passes the last tick sent. Pacing is never half on:
+ * buffer; none on a hold; up to the cap after a client hitch or in a fast-forward), `getAlpha()` is the pacer's (in
+ * [0, 1)), and the input lead covers the buffer: `nextInputTick()` = state.tick + lead + pacer.depthTicks() (Design 5;
+ * the pacer's lead depth: whole ticks with half a tick of hysteresis, capped at maxDepthTicks, so lead + depth stays
+ * inside the relay's maxInputAhead even while P is far past its target). When the depth rises the target jumps and the
+ * skipped ticks fall to the server's repeat-last (never sent, so never counted as misses); when it falls the FP1 rule
+ * above sends nothing until the target passes the last tick sent. Once nothing more will be stepped (final claim,
+ * `end`, broken) arrivals are no longer handed to the pacer. Pacing is never half on:
  * once on it stays on for the run (`isPacing`). A later pump without `now` is a caller mistake, not an error: it runs
  * on the last clock + dt. A batch received without `now` is timestamped by the next paced pump's clock (late, so it
  * can only deepen the buffer). Pacing changes WHEN frames are stepped, never which: the sim still steps exactly the
@@ -250,7 +253,7 @@ export class LockstepClient implements RunView {
 		return this.pacing && this.pacer !== undefined ? this.pacer.stats() : undefined;
 	}
 
-	/** The pacing buffer's depth in whole ticks while pacing is on, else 0. */
+	/** The pacing buffer's lead depth (PlayoutPacer.depthTicks: whole ticks, hysteresis, capped) while pacing, else 0. */
 	private depthTicks(): number {
 		return this.pacing && this.pacer !== undefined ? this.pacer.depthTicks() : 0;
 	}
@@ -335,7 +338,8 @@ export class LockstepClient implements RunView {
 		}
 		for (const t of ticks) this.queue.push(t);
 		this.received += ticks.size();
-		if (this.pacer !== undefined && ticks.size() > 0) {
+		// Once nothing more will be stepped the pacer never runs another frame: nothing is handed to it (or kept).
+		if (this.pacer !== undefined && ticks.size() > 0 && !this.steppingDone()) {
 			const newest = firstTick + ticks.size() - 1;
 			if (now === undefined || !isFiniteNumber(now)) this.unstampedNewest = newest;
 			else if (this.pacing) this.pacer.arrived(now, newest);
@@ -455,16 +459,15 @@ export class LockstepClient implements RunView {
 		if (pacer === undefined || (given === undefined && !this.pacing)) return cap;
 		// A missing (or broken) clock continues from the last one; the pacer itself never lets its clock go back.
 		const clock = given ?? this.paceClock + (dt > 0 ? dt : 0);
-		if (!this.pacing && this.earlyAt !== undefined) pacer.arrived(this.earlyAt, this.earlyNewest);
+		const done = this.steppingDone();
+		if (!this.pacing && this.earlyAt !== undefined && !done) pacer.arrived(this.earlyAt, this.earlyNewest);
 		this.earlyAt = undefined;
 		this.pacing = true;
 		this.paceClock = clock;
-		if (this.unstampedNewest !== undefined) {
-			pacer.arrived(clock, this.unstampedNewest);
-			this.unstampedNewest = undefined;
-		}
+		if (this.unstampedNewest !== undefined && !done) pacer.arrived(clock, this.unstampedNewest);
+		this.unstampedNewest = undefined;
 		// Nothing more will be stepped: leave the playout clock alone (no hold is counted for the run's end).
-		if (this.steppingDone()) return 0;
+		if (done) return 0;
 		return pacer.frame(clock, dt, this.state.tick, this.backlog(), cap);
 	}
 

@@ -46,6 +46,7 @@ import {
 	decodeInputBatch,
 	encodeInputBatch,
 	outliersOf,
+	type LockstepStepResult,
 	type LockstepTunables,
 } from "shared/lockstep";
 import { HitstopClock, simPacerFor } from "shared/view/fx";
@@ -226,20 +227,40 @@ describe("HashLedger", () => {
 // ---------------------------------------------------------------------------------------------
 // Whole runs over a simulated network
 
+const SEED = 31337;
+/** Channel i's latencies come from seeds NET_CHANNEL_SEED + 2i (down) and + 2i + 1 (up). */
+const NET_CHANNEL_SEED = 7;
+const DT = 1 / 60;
+
 interface Message {
 	readonly at: number;
 	readonly deliver: () => void;
 }
 
-/** One-way FIFO channel with random latency (in seconds); order is kept like a RemoteEvent's. */
+/**
+ * One-way FIFO channel with random latency (in seconds); order is kept like a RemoteEvent's. The latency is drawn once
+ * per DT of the simulated clock from the channel's own generator, so two runs over channels with the same seed see the
+ * same network at the same times, whatever (and however much) they send.
+ */
 class Channel {
 	private readonly queue: Message[] = [];
+	private readonly latencies: number[] = [];
+	private readonly rng: Rng;
 	private last = 0;
-	constructor(private readonly rng: Rng, private readonly minLatency: number, private readonly maxLatency: number) {}
+	constructor(seed: number, private readonly minLatency: number, private readonly maxLatency: number) {
+		this.rng = new Rng(seed);
+	}
+
+	private latencyAt(now: number): number {
+		const slot = math.max(0, math.floor(now / DT + 0.5));
+		while (this.latencies.size() <= slot) {
+			this.latencies.push(this.minLatency + (this.maxLatency - this.minLatency) * this.rng.next());
+		}
+		return this.latencies[slot];
+	}
 
 	send(now: number, deliver: () => void): void {
-		const latency = this.minLatency + (this.maxLatency - this.minLatency) * this.rng.next();
-		const at = math.max(this.last, now + latency);
+		const at = math.max(this.last, now + this.latencyAt(now));
 		this.last = at;
 		this.queue.push({ at, deliver });
 	}
@@ -249,8 +270,6 @@ class Channel {
 	}
 }
 
-const SEED = 31337;
-const DT = 1 / 60;
 /** Frames per second the Net harness renders at by default (DT). */
 const NET_FPS = 60;
 // No pacing: these specs assert today's stepping (every received frame at once); Net's `pacing` option turns it on.
@@ -281,6 +300,11 @@ interface NetOptions {
 	readonly pacing?: boolean;
 	/** The rendered frame rate (default NET_FPS); maxFrames defaults to 120 s of frames at it. */
 	readonly fps?: number;
+	/**
+	 * A server stall (a long Heartbeat, the server's GC): from `at` for `sec` seconds the session neither steps nor
+	 * handles remotes (inputs and hashes queue up on the way); it then catches up at maxTicksPerStep per step.
+	 */
+	readonly serverStall?: { readonly at: number; readonly sec: number };
 }
 
 /** One client's rendered frames while its run was on (docs/FRAME_PACING.md FP4): per frame, ticks stepped and more. */
@@ -306,8 +330,16 @@ function botInput(s: SimState, i: number): InputFrame {
 	return { moveX: p.dead !== 0 ? 0 : dir * 600, moveZ: ((i % 3) - 1) * 300, aimX: dir * AXIS_MAX, aimZ: 0, buttons };
 }
 
+/** A stalled server's step: nothing finalized, broadcast or decided. */
+const SERVER_STALLED: LockstepStepResult = {
+	broadcasts: [],
+	segmentsOffered: 0,
+	submitted: false,
+	dropped: [],
+	ackTick: 0,
+};
+
 class Net {
-	readonly rng = new Rng(7);
 	readonly members: number[] = [];
 	readonly session: LockstepSession;
 	readonly validator: SegmentedValidator;
@@ -387,8 +419,8 @@ class Net {
 					tunables: this.tunables,
 				}),
 			);
-			this.down.push(new Channel(this.rng, lo, hi));
-			this.up.push(new Channel(this.rng, lo, hi));
+			this.down.push(new Channel(NET_CHANNEL_SEED + 2 * i, lo, hi));
+			this.up.push(new Channel(NET_CHANNEL_SEED + 2 * i + 1, lo, hi));
 		}
 	}
 
@@ -399,8 +431,10 @@ class Net {
 		const frameDt = this.frameDt;
 		for (let frame = 0; frame < maxFrames && this.result === undefined; frame++) {
 			this.now += frameDt;
-			for (const c of this.up) c.pump(this.now);
-			const out = this.session.step(this.now);
+			const stall = this.opts.serverStall;
+			const serverRuns = stall === undefined || this.now < stall.at || this.now >= stall.at + stall.sec;
+			if (serverRuns) for (const c of this.up) c.pump(this.now);
+			const out = serverRuns ? this.session.step(this.now) : SERVER_STALLED;
 			for (const b of out.broadcasts) {
 				const ticks = this.logDecoder.decode(b.data)!;
 				expect(b.firstTick).toBe(this.log.size());
@@ -419,7 +453,7 @@ class Net {
 				this.result = this.validator.getResult();
 				break;
 			}
-			for (let guard = 0; guard < 100 && this.validator.hasWork(); guard++) {
+			for (let guard = 0; serverRuns && guard < 100 && this.validator.hasWork(); guard++) {
 				const r = this.validator.advance(1000);
 				if (r.result !== undefined) this.result = r.result;
 			}
@@ -537,29 +571,122 @@ function itRanAndValidated(net: Net, label: string): void {
 }
 
 /**
- * The finished NET_RUNS nets by index, unpaced and paced (docs/FRAME_PACING.md FP3: the same networks pass with pacing
- * on). The smoothness specs below read them: describe bodies run in file order while the suite is collected.
+ * The finished NET_RUNS nets, unpaced and paced (docs/FRAME_PACING.md FP3: the same networks pass with pacing on), each
+ * built and run once on first use: every describe below that reads one asks for it here, so none depends on another
+ * describe having run first (describe bodies run in file order while the suite is collected).
  */
-const unpacedNetRuns: Net[] = [];
-const pacedNetRuns: Net[] = [];
+const finishedNets = new Map<string, Net>();
+function finishedNet(run: number, paced: boolean): Net {
+	const key = `${run}:${paced}`;
+	const cached = finishedNets.get(key);
+	if (cached !== undefined) return cached;
+	const [players, lo, hi] = NET_RUNS[run];
+	const net = new Net({ players, latency: [lo, hi], pacing: paced });
+	net.run();
+	finishedNets.set(key, net);
+	return net;
+}
 
-for (const [players, lo, hi] of NET_RUNS) {
+/** Relay-refused input frames over every player (too far ahead, invalid, or after a leave). */
+function refusedInputs(net: Net): number {
+	let n = 0;
+	for (const r of net.session.getRelay().getStats().refused) n += r;
+	return n;
+}
+
+for (let run = 0; run < NET_RUNS.size(); run++) {
+	const [players, lo, hi] = NET_RUNS[run];
 	describe(`co-op over a simulated network: ${players} players, ${lo * 1000}-${hi * 1000} ms each way`, () => {
-		const net = new Net({ players, latency: [lo, hi] });
-		net.run();
-		unpacedNetRuns.push(net);
-		itRanAndValidated(net, `${players}p`);
+		itRanAndValidated(finishedNet(run, false), `${players}p`);
 	});
 	describe(`co-op over a simulated network, paced: ${players} players, ${lo * 1000}-${hi * 1000} ms each way`, () => {
-		const net = new Net({ players, latency: [lo, hi], pacing: true });
-		net.run();
-		pacedNetRuns.push(net);
+		const net = finishedNet(run, true);
+		const unpaced = finishedNet(run, false);
 		itRanAndValidated(net, `${players}p paced`);
 		it("every client paced", () => {
 			for (const c of net.clients) expect(c.isPacing()).toBe(true);
 		});
+		it("the input lead covers the buffer: no more misses per player than unpaced on the same network, none refused", () => {
+			// The client's own deadline misses (an input sent but finalized late). Paced, the lead adds the buffer's depth
+			// (rising at once), so a deeper buffer costs no misses; the ticks a rise skips are never sent, so never missed.
+			print(
+				`[lockstep ${players}p misses] paced ${net.clients
+					.map((c) => c.misses)
+					.join(",")} unpaced ${unpaced.clients
+					.map((c) => c.misses)
+					.join(",")}; relay refused paced ${refusedInputs(net)} unpaced ${refusedInputs(unpaced)}`,
+			);
+			for (let i = 0; i < players; i++) expect(net.clients[i].misses <= unpaced.clients[i].misses).toBe(true);
+			expect(refusedInputs(net)).toBe(0);
+			expect(refusedInputs(unpaced)).toBe(0);
+		});
 	});
 }
+
+describe("co-op over a simulated network with a 3 s server stall: 3 players, 20-120 ms each way", () => {
+	const [players, lo, hi] = NET_RUNS[0];
+	const STALL_AT = 6;
+	const STALL_SEC = 3;
+	const RUN_SEC = 16;
+	/** After the stall the paced depth is back within this many ticks of its target... */
+	const NEAR_TICKS = 1.5;
+	/** ...this long after the server resumed (seconds; the server's own catch-up plus the round trip). */
+	const RECOVER_SEC = 1.25;
+	const nets: Net[] = [];
+	const depthOff: number[] = [];
+	for (const paced of [false, true]) {
+		const net = new Net({
+			players,
+			latency: [lo, hi],
+			pacing: paced,
+			maxFrames: NET_FPS * RUN_SEC,
+			serverStall: { at: STALL_AT, sec: STALL_SEC },
+			onFrame: (n) => {
+				if (!paced || math.abs(n.now - (STALL_AT + STALL_SEC + RECOVER_SEC)) >= DT / 2) return;
+				for (const c of n.clients) {
+					const st = c.pacingStats()!;
+					depthOff.push(st.depthMs / 1000 / DT - (st.targetTicks + st.phaseShiftTicks));
+				}
+			},
+		});
+		net.run();
+		nets.push(net);
+	}
+	const [unpaced, paced] = nets;
+	print(
+		`[lockstep server stall] refused paced ${refusedInputs(paced)} unpaced ${refusedInputs(
+			unpaced,
+		)}; misses paced ` +
+			`${paced.clients.map((c) => c.misses).join(",")} unpaced ${unpaced.clients
+				.map((c) => c.misses)
+				.join(",")}; ` +
+			`net leads paced ${paced.clients.map((c) => c.netLead()).join(",")}; depth off target after ` +
+			`${RECOVER_SEC} s ${depthOff.map((d) => string.format("%.2f", d)).join(",")} ticks`,
+	);
+
+	it("a paced client sees no refused inputs across the stall (the lead's depth is capped)", () => {
+		expect(refusedInputs(paced)).toBe(0);
+		expect(refusedInputs(unpaced)).toBe(0);
+		for (const c of paced.clients) {
+			expect(c.isPacing()).toBe(true);
+			expect(c.brokenReason()).toBe(undefined);
+			expect(c.pacingStats()!.depthTicks <= PACING.maxDepthTicks).toBe(true);
+		}
+		expect(DEFAULT_LOCKSTEP.maxInputLead + PACING.maxDepthTicks <= DEFAULT_LOCKSTEP.maxInputAhead).toBe(true);
+	});
+
+	it("the paced depth is back near its target soon after the server resumed (a fast-forward, not a slew)", () => {
+		expect(depthOff.size()).toBe(players);
+		for (const d of depthOff) expect(math.abs(d) <= NEAR_TICKS).toBe(true);
+	});
+
+	it("every client still steps exactly the server's log", () => {
+		for (const net of nets) {
+			expect(net.session.finalizedTicks() > (RUN_SEC - STALL_SEC - 1) * SIM_HZ).toBe(true);
+			for (const c of net.clients) expect(hashState(c.state)).toBe(hashState(net.replayLog(c.state.tick)));
+		}
+	});
+});
 
 // Smoothness (docs/FRAME_PACING.md FP4): the same 3-player 20-120 ms network with frame pacing on and off. Paced, a
 // client steps one tick per 16.7 ms whatever the arrivals do; unpaced it steps whatever arrived that frame.
@@ -615,10 +742,10 @@ function sharesText(s: StepShares): string {
 }
 
 describe("co-op frame pacing over a simulated network: 3 players, 20-120 ms each way, 60 fps", () => {
-	// NET_RUNS' first network, run above with pacing on and off.
+	// NET_RUNS' first network with pacing on and off (built once, shared with the describes above).
 	const [players] = NET_RUNS[0];
-	const paced = pacedNetRuns[0];
-	const unpaced = unpacedNetRuns[0];
+	const paced = finishedNet(0, true);
+	const unpaced = finishedNet(0, false);
 	const pacedShares = stepShares(paced);
 	const unpacedShares = stepShares(unpaced);
 	print(`[lockstep pacing] paced   ${sharesText(pacedShares)}`);
@@ -651,13 +778,6 @@ describe("co-op frame pacing over a simulated network: 3 players, 20-120 ms each
 		for (let i = 0; i < players; i++) {
 			expect(pacedShares.seconds[i] > TEN_SEC).toBe(true);
 			expect(pacedShares.holds[i] * TEN_SEC < PACED_HOLDS_PER_10_SEC * pacedShares.seconds[i]).toBe(true);
-		}
-	});
-
-	it("the input lead covers the buffer: effective lead = net lead + depth while the inputs keep up", () => {
-		for (const c of paced.clients) {
-			expect(c.netLead() >= DEFAULT_LOCKSTEP.inputDelay).toBe(true);
-			expect(c.nextInputTick()).toBe(c.state.tick + c.netLead() + c.pacingStats()!.depthTicks);
 		}
 	});
 });
@@ -1014,6 +1134,43 @@ describe("LockstepClient pacing activation (docs/FRAME_PACING.md FP3)", () => {
 			expect(c.nextInputTick()).toBe(c.state.tick + c.netLead() + stats.depthTicks);
 			if (c.state.tick > 0) expect(c.inputLead()).toBe(c.netLead() + stats.depthTicks);
 		}
+	});
+});
+
+describe("LockstepClient pacing after the run (docs/FRAME_PACING.md)", () => {
+	it("once nothing more will be stepped (end), arrivals no longer reach the pacer: nothing grows", () => {
+		const setup = buildEndlessRunConfig(SEED, 1);
+		const c = new LockstepClient({
+			runId: "pace-end",
+			seed: SEED,
+			spawn: setup.spawn!,
+			config: setup.config,
+			players: 1,
+			localIndex: 0,
+			tunables: { ...TUNABLES, pacing: PACING },
+		});
+		const enc = new MergedEncoder(1);
+		const idle: InputFrame[][] = [[{ ...EMPTY_INPUT }]];
+		const LIVE = 30;
+		const AFTER = 300;
+		for (let frame = 0; frame < LIVE; frame++) {
+			c.receive(frame, enc.encode(idle), frame * DT);
+			c.pump(DT, () => EMPTY_INPUT, frame * DT);
+		}
+		const before = c.pacingStats()!;
+		expect(before.pending).toBe(0);
+		c.end("desync");
+		for (let frame = LIVE; frame < LIVE + AFTER; frame++) {
+			// Every tenth batch without a clock (stamped by the next pump, were it still pacing).
+			const now = frame % 10 === 0 ? undefined : frame * DT;
+			expect(c.receive(frame, enc.encode(idle), now)).toBe(true);
+			expect(c.pump(DT, () => EMPTY_INPUT, frame * DT).stepped).toBe(0);
+		}
+		const s = c.pacingStats()!;
+		expect(s.pending).toBe(0);
+		expect(s.committed).toBe(before.committed);
+		expect(s.discarded).toBe(before.discarded);
+		expect(c.getAlpha()).toBe(1);
 	});
 });
 

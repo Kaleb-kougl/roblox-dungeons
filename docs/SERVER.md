@@ -386,12 +386,14 @@ revived). The server's merged log is the authority: it is what every client step
 `wire.ts`; ~1-4 bytes per player per tick), at most `MAX_CATCHUP_TICKS_PER_FRAME` per rendered frame. WHEN they are
 stepped is the client's playout clock (docs/FRAME_PACING.md, `pacer.ts` `PlayoutPacer`, tunables `PACING`): received
 frames wait in a small jitter buffer (at least 3 ticks, sized from the 95th percentile of the batches' arrival
-offsets) and are stepped one per `SIM_DT` of local time whatever the render rate, holding (the views freeze on the
-newest state) when a due frame has not arrived; SimController passes `os.clock()` to `receive` and `pump`
+offsets) and are stepped one per `SIM_DT` of local time whatever the render rate, holding (the views freeze, at most
+half a tick behind the newest state) when a due frame has not arrived and fast-forwarding back to the buffer (at most
+`MAX_CATCHUP_TICKS_PER_FRAME` a frame) after a long hold such as a server stall; SimController passes `os.clock()` to `receive` and `pump`
 (`KV_PacingOff`: the old step-on-arrival, for an A/B). Only the timing changes: every client still steps exactly the
 merged log. After stepping tick T a client samples its input once and sends it for T + lead (`lockstepInput`, 10
 bytes per frame), where the lead covers the round trip AND the buffer: `nextInputTick()` = tick + `netLead()` + the
-buffer's depth in ticks. The net lead starts at `INPUT_DELAY_TICKS` = 3, grows by one on every missed deadline (seen
+buffer's depth in ticks (with hysteresis, and capped at `PACING.maxDepthTicks` so the target never passes
+`MAX_INPUT_AHEAD_TICKS`). The net lead starts at `INPUT_DELAY_TICKS` = 3, grows by one on every missed deadline (seen
 as its own frame not being what the server finalized) and shrinks again after 10 s without misses; a step whose
 target was already sent sends nothing, so the effective lead (`inputLead()`) really falls back after a lag spike
 (FP1: before it, it stayed at the run's highest lead), and a target that jumps leaves the skipped ticks to the

@@ -145,7 +145,10 @@ whether batches of 1 arrive any more evenly. Only changed if FP0 / FP6 show a ga
 | `jitterWindowSec` / `jitterPercentile` | 4 / 0.95 | Follows a changing network within seconds |
 | `floorWindowSec` | 10 | The best-case path; follows a route change |
 | `slewShare` / `fastSlewShare` / `fastSlewTicks` | 0.05 / 0.10 / 6 | Section 3 |
-| `hitchFrameSec` | 0.1 | Section 3 |
+| `fastForwardTicks` / `fastForwardMarginTicks` | 12 / 1 | Past its target by more than 12 ticks (a long hold: a server stall) P is reset to the target + 1 tick, never past the newest queued frame, and the due frames step at `maxCatchup` a frame; a 10 % slew would take ten times the hold ("As built", review fixes) |
+| `hitchFrameSec` | 0.1 | Section 3; also the clock elapsed since the last frame (a stall inside the render step) |
+| `leadHysteresisTicks` | 0.4 | The lead's depth falls only once the depth is 0.4 tick at or below the next whole tick down (just under half a tick, so a depth sitting mid-tick is never on the threshold) |
+| `phaseSmoothing` / `phaseLockSpread` / `phaseHysteresisTicks` | 0.1 / 0.12 / 0.25 | The mid-tick phase shift: the frames' phase on the tick grid smoothed by 0.1 a frame; applied while their mean distance from it is under 0.12 tick (60 fps +/- 1 ms: ~0.03; 120 / 144 fps: ~0.25, left unshifted); the shift keeps its whole-tick choice within 0.5 + 0.25 |
 
 All provisional until FP0 / FP6.
 
@@ -170,11 +173,12 @@ All provisional until FP0 / FP6.
 
 - `PlayoutPacer` (`pacer.ts`, pure): `arrived(now, newestTick)`; `frame(now, frameDt, stepped, queued, maxCatchup)`
   returns how many queued frames to step (Design 1's `frame(now, queued)` also takes the frame's dt (the hitch rule),
-  the ticks stepped so far and the cap); `alpha()`, `depthTicks()` (`ceil(P - base)` in ticks), `targetOffset()`,
-  `stats(): PacingStats` (`started`, `depthTicks`, `depthMs`, `targetTicks`, `jitterMs`, `holds`, `holding`,
-  `catchingUp`, `samples`, `committed`, `discarded`, `position`, `offsetSec`, `targetOffsetSec`, `baseSec`).
-  Arrivals are kept pending until the next `frame`, which commits them to the windows or discards them when that
-  frame's dt is over `hitchFrameSec`.
+  the ticks stepped so far and the cap); `alpha()`, `depthTicks()` (the lead's depth: whole ticks with hysteresis,
+  capped; below), `targetOffset()` (P*, before the phase shift), `stats(): PacingStats` (`started`, `depthTicks`,
+  `depthMs` (the raw P - base), `targetTicks`, `jitterMs`, `holds`, `holding`, `catchingUp`, `fastForwarding`,
+  `hitched`, `samples`, `pending`, `committed`, `discarded`, `position`, `phase`, `phaseLocked`, `phaseShiftTicks`,
+  `offsetSec`, `targetOffsetSec`, `baseSec`). Arrivals are kept pending until the next `frame`, which commits them to
+  the windows or discards them around a hitch (below).
 - `LockstepTunables.pacing: PacingTunables | undefined`, `DEFAULT_LOCKSTEP.pacing = PACING`.
 - `LockstepClient`: `receive(firstTick, data, now?)`, `pump(dt, sample, now?)`. Pacing turns on at the first pump
   given a finite `now` and stays on for the run (`isPacing()`); arrivals before it keep only the best offset, handed
@@ -210,12 +214,60 @@ last batch), the batch-size histogram (non-empty buckets, `8+` for 8 or more), t
 holds (totals) / discarded arrivals, the effective and net lead, misses and backlog, the render fps and the longest
 frame. Holds and misses are run totals: diff two lines for a window's.
 
+**Review fixes (2026-11-07).** An independent review traced six problems in the first build; all fixed in
+shared/lockstep only (no wire, relay, session or sim change):
+
+- **A stall inside a render step is a hitch.** SimController runs `stage.frame(dt)` (deferred floor-change work)
+  before `coopFrame`, so such a stall is in `now` but not in `frameDt`; it used to read as a hold and move P forward by
+  the stall. Now a frame is hitched when `frameDt` or the clock elapsed since the last `frame()` is over
+  `hitchFrameSec`. A hitched frame never moves P (no hold, slew or fast-forward), steps only what is due and queued up
+  to the cap, and discards the arrivals pending at it AND at the frame right after it (handled after the stall, so
+  stamped late by it). Then the ordinary catch-up.
+- **A long hold is fast-forwarded, not slewed.** Once P is more than `fastForwardTicks` (12) past P* (a hold of
+  ~200 ms past the buffer; after an H s server stall it used to leave about 10 x H s of extra delay at the 10 % slew),
+  P is reset to the slew target + `fastForwardMarginTicks` (1), but never past the newest queued frame (it lands
+  mid-tick before it), and the due frames step at `maxCatchup` a frame; while frames are missing it holds without
+  moving P (counted in the same hold). Arrivals handled while fast-forwarding count for base but not for the jitter
+  (the burst behind the hold, not network jitter: a server's catch-up would otherwise pin the target at
+  `maxDepthTicks` for the whole jitter window). Measured: a 3 s server stall, the depth is back on target 0.2 tick
+  ~1 s after the first batch (pacer spec); over the 20-120 ms spec network within 0.7 tick 1.25 s after the server
+  resumed (its own catch-up at 5 ticks a step takes 0.75 s).
+- **The lead's depth is capped and has hysteresis.** `depthTicks()` (what `nextInputTick()` adds) rises at once when
+  the raw depth `P - base` passes it, falls only to `ceil(raw + leadHysteresisTicks)` (0.4), and never exceeds
+  `maxDepthTicks`, so `MAX_INPUT_LEAD_TICKS + maxDepthTicks` (42) stays inside the relay's `MAX_INPUT_AHEAD_TICKS`
+  (120): a server stall used to push targets past it (refused inputs, counted as misses, ratcheting the lead). A raw
+  depth oscillating +/- 0.2 tick round a whole tick leaves it unchanged. A depth sitting exactly on a whole tick (144
+  fps, no phase shift) keeps the lead one tick up rather than flicker.
+- **The playout phase is kept mid-tick.** Arrivals stamped on rendered frames left `pos` at the pump on a whole tick,
+  so +/- 1 ms of frame jitter flipped frames between 0 and 2 ticks, and a hold left the phase at 1 - 1e-6. The pacer
+  smooths the frames' phase on the tick grid (`frac(now / dt)`, `phaseSmoothing`), and while it is steady (mean
+  distance under `phaseLockSpread`: render rates at or below about the sim rate) the slew aims at P* +
+  (frac(pos at P*) - 0.5) x dt, at the same slew limits (a pure relabelling in steady state: the same frames step the
+  same ticks, only away from the boundary), with `phaseHysteresisTicks` so a P* wobbling across a boundary does not
+  flip the target by a tick. At 120 / 144 fps the frames walk round the tick and nothing is shifted. A hold now freezes
+  where the views already are, at most half a tick behind the newest state (`max(drawn, after - 0.5)`; Design 3 said
+  alpha 1), so playout resumes mid-tick; the drawn position `stepped - 1 + alpha` never decreases (alpha capped at
+  1 - 1e-6). Measured at 60 fps, +/- 1 ms frame and stamp jitter, stamps 2 ms after the previous frame (the worst
+  case): 100 % of frames step one tick after the warm-up, phase 0.50; without the shift 52.5 %.
+- **No pacer work after the run.** Once nothing more will be stepped (final claim, `end`, broken) `receive` no longer
+  hands arrivals to the pacer (they piled up pending until the session ended).
+- **Specs.** The paced NET_RUNS assert misses per player at or below the unpaced run's on the same network (the harness
+  `Channel` now draws one latency per DT of simulated clock from its own seed, so both runs see the same network) and
+  zero refused inputs; measured 3p paced 13,10,12 / unpaced 13,13,12, 8p paced 13-21 / unpaced 21-23. A 3 s server
+  stall: zero refused inputs paced and unpaced (misses stay: the server's catch-up finalizes 5 ticks a step, faster
+  than inputs can arrive, paced or not). FP4's 3-player 60 fps run now measures 99.6 % one-tick frames (the new
+  network draws; 99.7 % before). The NET_RUNS nets are built once on first use (`finishedNet`), so no
+  describe depends on another having run first.
+
 **Deviations from the design.**
 
 - `PACING.marginTicks` is 1.5, not 0.5: FP4 measured that 0.5 held about once a second on the 20-120 ms spec
   network (arrivals are handled on a rendered frame, so an offset can read a whole tick later than any measured);
   1.5 held not once after the warm-up (99.7 % of frames step one tick at 60 fps; unpaced 0 %).
 - `PlayoutPacer.frame` takes `(now, frameDt, stepped, queued, maxCatchup)` (above); arrivals commit on the next frame.
+- A hold freezes at most half a tick behind the newest state, not at alpha 1 (Design 3), so playout resumes mid-tick;
+  a hold longer than `fastForwardTicks` past the target is fast-forwarded (Design 3's fast slew only between
+  `fastSlewTicks` and it). The lead's depth (Design 5) has hysteresis and a cap.
 - The effective lead is `inputLead()` (above); the arrival log has no per-window holds (totals only).
 
 ## Tasks
