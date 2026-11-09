@@ -1,7 +1,7 @@
 import React from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
 import { selectDisplay, selectInputDevice, selectMapView, selectSnapshot, type MapView } from "client/store";
-import { themePack } from "client/ui/theme";
+import { UI_IMAGES, uiImage, useUiArt } from "client/ui/theme";
 import {
 	HUD_SKIN,
 	MINIMAP_PANEL,
@@ -33,9 +33,8 @@ export function cornerMapShown(map: MapView, minimapSetting: boolean, outcome: s
 
 /** The map host's size, reference px: the whole panel, less the hud frame's border when the art draws it. */
 function hostSize(uiScale: number): ArtSlot {
-	const pack = themePack();
-	const id = pack !== undefined && HUD_SKIN.minimapFramed ? skinFor(skinHasOf(pack), "panel", "hud") : undefined;
-	const slice = id !== undefined ? pack?.image(id)?.slice : undefined;
+	const id = HUD_SKIN.minimapFramed ? skinFor(skinHasOf(UI_IMAGES), "panel", "hud") : undefined;
+	const slice = id !== undefined ? uiImage(id)?.slice : undefined;
 	if (id === undefined || slice === undefined) return { w: MINIMAP_PANEL.w, h: MINIMAP_PANEL.h };
 	// The visible border (the measured content insets), the same border the Panel pads by.
 	const border = sliceBorder(contentInsetsOf(id, slice), snappedSliceScale(uiScale, skinRefPerArt("hud")));
@@ -59,6 +58,7 @@ function hostSize(uiScale: number): ArtSlot {
  * or while the full map is open.
  */
 export function MinimapPanel(props: { readonly highlight?: boolean }) {
+	useUiArt();
 	const map = useSelector(selectMapView);
 	const display = useSelector(selectDisplay);
 	const s = useSelector(selectSnapshot);

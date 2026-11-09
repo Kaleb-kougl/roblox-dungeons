@@ -43,6 +43,7 @@ import {
 	floorImageOffset,
 	floorImageSize,
 	isoBasis,
+	lookWhenReady,
 	lootDebugText,
 	lootGlintBillboard,
 	lootGlintDucked,
@@ -51,12 +52,14 @@ import {
 	lootGlintTransparency,
 	oneShotSec,
 	spriteBillboard,
+	ReadinessCursor,
 	type PieceTop,
 	type SpriteAnimChoice,
 	type SpriteBillboard,
 	type SpriteLayout,
 } from "shared/view";
 import { burstSeed, motionScale } from "shared/view/fx";
+import { PreloadController } from "../game/PreloadController";
 import { SimController, type RunContext } from "../game/SimController";
 import { ThemeController } from "../game/ThemeController";
 import { FxTrackerController } from "../fx/FxTrackerController";
@@ -88,6 +91,8 @@ const SHATTER: SpriteAnimChoice = { anim: BREAKABLE_SHATTER_ANIMATION, rate: 1 }
 /** How one kind is drawn with this pack (resolved once): exactly one of set / image, or neither (placeholder). */
 interface KindLook {
 	readonly theme: Breakable;
+	/** Drawn with its art (the art is in the pack and downloaded, docs/STAGE_ASSETS.md SA18), else the placeholder. */
+	readonly art: boolean;
 	readonly set: SpriteSet | undefined;
 	readonly image: WorldImage | undefined;
 	/** Billboard layout (sprite / image paths), scaled down to BREAKABLE_VIEW.maxHeightTiles. */
@@ -109,6 +114,8 @@ interface ImageBody {
 /** The drawn body of one intact piece, pooled per kind across floors. Exactly one of model / sprite / image is set. */
 interface PieceBody {
 	readonly kind: number;
+	/** Built from an art look (KindLook.art): a pooled body of the other look is discarded, never reused. */
+	readonly art: boolean;
 	readonly model: PlaceholderModel | undefined;
 	readonly sprite: SpriteView | undefined;
 	readonly image: ImageBody | undefined;
@@ -155,6 +162,9 @@ const EMPTY_BOARD: SpriteBillboard = { w: 0, h: 0, offsetX: 0, offsetY: 0, offse
  *   intact       a body per piece, by what the pack has for `breakable.<kind>` (ThemePack.breakable): a sprite set's
  *                `idle` (SpriteView), an image billboard, or the placeholder box (`placeholder`, the kind's colour
  *                role). Every path is capped at BREAKABLE_VIEW.maxHeightTiles (breakableBoxStuds / breakableArtLayout).
+ *                The art only once its id has downloaded (PreloadController.isArtReady, docs/STAGE_ASSETS.md SA18):
+ *                until then the placeholder box is the stand-in, and on the readiness flip every intact piece of the
+ *                kind is given a body in the new look (swapLooks; KV_StandInsForce flips it back the same way).
  *   hit          a blink in BREAKABLE_VIEW.flashRole (Part colour / ImageColor3) and a small decaying shake along the
  *                screen's x axis, x the juice motionScale (none under reduced motion), on sim time; plus the juice
  *                layer's hit sparks at the piece (ParticleController.breakableHitSparks), which is also what a bullet
@@ -220,6 +230,8 @@ export class BreakableRenderController implements OnStart {
 	private readonly lootLabels = new Map<number, Part>();
 	private lootDebug = false;
 	private readonly slotScratch = new Array<number>();
+	/** The readiness flips this view has not handled yet (docs/STAGE_ASSETS.md SA18). */
+	private cursor: ReadinessCursor | undefined;
 
 	constructor(
 		private readonly sim: SimController,
@@ -227,6 +239,7 @@ export class BreakableRenderController implements OnStart {
 		private readonly fx: FxTrackerController,
 		private readonly particles: ParticleController,
 		private readonly sprites: FxSpriteController,
+		private readonly preload: PreloadController,
 	) {
 		const r = this.basis.right;
 		this.right = new Vector3(r[0], r[1], r[2]);
@@ -239,6 +252,7 @@ export class BreakableRenderController implements OnStart {
 		folder.Name = BREAKABLE_VIEW.folderName;
 		folder.Parent = Workspace;
 		this.folder = this.janitor.Add(folder);
+		this.cursor = new ReadinessCursor(this.preload.getReadiness());
 		for (let k = 0; k < BREAKABLE_KINDS.size(); k++) this.looks.push(this.lookFor(pack, k));
 		this.glintArt =
 			pack.decor(decorFxId(BREAKABLE_LOOT_VIEW.glintFx)) ??
@@ -266,7 +280,9 @@ export class BreakableRenderController implements OnStart {
 	}
 
 	private lookFor(pack: ThemePack, kind: number): KindLook {
-		const theme = pack.breakable(BREAKABLE_KINDS[kind]);
+		// a stand-in (the placeholder box) until the art has downloaded (docs/STAGE_ASSETS.md SA18)
+		const full = pack.breakable(BREAKABLE_KINDS[kind]);
+		const theme = lookWhenReady(full, this.preload.isArtReady(full.id));
 		const flash = pack.color(BREAKABLE_VIEW.flashRole);
 		const art = theme.art;
 		if (art !== undefined && art.kind === "sprites") {
@@ -275,6 +291,7 @@ export class BreakableRenderController implements OnStart {
 			const layout = breakableArtLayout(set);
 			return {
 				theme,
+				art: true,
 				set,
 				image: undefined,
 				layout,
@@ -293,6 +310,7 @@ export class BreakableRenderController implements OnStart {
 			const capped = breakableArtLayout(layout);
 			return {
 				theme,
+				art: true,
 				set: undefined,
 				image: art,
 				layout: capped,
@@ -302,7 +320,7 @@ export class BreakableRenderController implements OnStart {
 			};
 		}
 		const top = boxPieceTop(breakableBoxStuds(theme.placeholder.size));
-		return { theme, set: undefined, image: undefined, layout: undefined, shatterSec: 0, flash, top };
+		return { theme, art: false, set: undefined, image: undefined, layout: undefined, shatterSec: 0, flash, top };
 	}
 
 	private frame(): void {
@@ -317,6 +335,7 @@ export class BreakableRenderController implements OnStart {
 		const dtSec = animDtSec(this.lastSimSec, simSec);
 		this.lastSimSec = simSec;
 		const t = this.tracker;
+		this.swapLooks();
 		if (t.update(state.breakables, state.tick)) {
 			this.rebuild(ctx.dungeon ?? this.dungeon);
 		} else {
@@ -529,8 +548,39 @@ export class BreakableRenderController implements OnStart {
 		}
 	}
 
+	/**
+	 * docs/STAGE_ASSETS.md SA18: a kind whose art readiness flipped gets its look again, and every intact piece of it a
+	 * new body in that look (a piece mid-shatter keeps its body until the shatter ends); pooled bodies of the old look
+	 * are discarded as they are met (acquire).
+	 */
+	private swapLooks(): void {
+		const flipped = this.cursor?.take();
+		if (flipped === undefined || flipped.size() === 0) return;
+		const pack = this.pack!;
+		for (let k = 0; k < BREAKABLE_KINDS.size(); k++) {
+			if (!flipped.includes(pack.breakable(BREAKABLE_KINDS[k]).id)) continue;
+			const look = this.lookFor(pack, k);
+			this.looks[k] = look;
+			// by slot index (a chest's slot holds no view: `for of` would stop at the hole)
+			for (let slot = 0; slot < this.tracker.count(); slot++) {
+				const view = this.views[slot];
+				if (view === undefined || view.kind !== k || view.body === undefined) continue;
+				if (view.body.art === look.art || view.shatterEnd !== undefined) continue;
+				this.releaseGlint(view.slot); // its glint sits on the drawn top: re-attached by syncLoot
+				this.release(view);
+				this.attach(view);
+			}
+		}
+	}
+
 	private acquire(kind: number): PieceBody {
-		const pooled = this.free.get(kind)?.pop();
+		const want = (this.looks[kind] ?? this.looks[0]).art;
+		const list = this.free.get(kind);
+		let pooled = list?.pop();
+		while (pooled !== undefined && pooled.art !== want) {
+			this.discard(pooled);
+			pooled = list?.pop();
+		}
 		if (pooled !== undefined) {
 			if (pooled.sprite !== undefined) pooled.sprite.reset();
 			if (pooled.image !== undefined) pooled.image.gui.Enabled = true;
@@ -546,11 +596,12 @@ export class BreakableRenderController implements OnStart {
 		const look = this.looks[kind] ?? this.looks[0];
 		if (look.set !== undefined) {
 			const sprite = new SpriteView(look.set, folder, look.layout);
-			return { kind, model: undefined, sprite, image: undefined, flashed: false };
+			return { kind, art: true, model: undefined, sprite, image: undefined, flashed: false };
 		}
 		if (look.image !== undefined && look.layout !== undefined) {
 			return {
 				kind,
+				art: true,
 				model: undefined,
 				sprite: undefined,
 				image: buildImage(look.image, look.layout, folder),
@@ -560,7 +611,23 @@ export class BreakableRenderController implements OnStart {
 		const visual = look.theme.placeholder;
 		const capped = { ...visual, size: breakableBoxStuds(visual.size) };
 		const model = buildPlaceholder(pack, look.theme.id, capped, 1, folder, true);
-		return { kind, model, sprite: undefined, image: undefined, flashed: false };
+		return { kind, art: false, model, sprite: undefined, image: undefined, flashed: false };
+	}
+
+	/** A pooled body of a look no longer drawn: its parts leave this frame's moves, then it is destroyed. */
+	private discard(body: PieceBody): void {
+		if (body.model !== undefined) {
+			for (const piece of body.model.pieces) this.moves.delete(piece.part);
+			destroyModel(body.model);
+		}
+		if (body.sprite !== undefined) {
+			this.moves.delete(body.sprite.anchor);
+			body.sprite.destroy();
+		}
+		if (body.image !== undefined) {
+			this.moves.delete(body.image.anchor);
+			body.image.anchor.Destroy();
+		}
 	}
 
 	/** The view's body back to its kind's pool, parked. */
@@ -759,13 +826,7 @@ export class BreakableRenderController implements OnStart {
 		this.releaseLoot();
 		for (const g of this.freeGlints) g.anchor.Destroy();
 		this.freeGlints.clear();
-		for (const [, list] of this.free) {
-			for (const body of list) {
-				if (body.model !== undefined) destroyModel(body.model);
-				body.sprite?.destroy();
-				body.image?.anchor.Destroy();
-			}
-		}
+		for (const [, list] of this.free) for (const body of list) this.discard(body);
 		this.free.clear();
 	}
 }

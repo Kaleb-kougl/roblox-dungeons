@@ -5,7 +5,16 @@ import { DEV_MONO_FONT, createKvBillboardGui } from "client/ui";
 import { RUN_ATTRIBUTES } from "shared/play";
 import { PelletPhase, SIM_HZ, partySize, type SimState } from "shared/sim";
 import { PELLET_KINDS, type Pellet, type PelletKind, type ThemePack } from "shared/theme";
-import { BULLET_VIEW, RENDER_ORDER, SPRITE_VIEW, floorStudsY, studsX, studsZ } from "shared/view";
+import {
+	BULLET_VIEW,
+	RENDER_ORDER,
+	ReadinessCursor,
+	SPRITE_VIEW,
+	floorStudsY,
+	lookWhenReady,
+	studsX,
+	studsZ,
+} from "shared/view";
 import { motionScale } from "shared/view/fx";
 import {
 	PELLETS_VIEW,
@@ -17,6 +26,7 @@ import {
 } from "shared/view/pellets";
 import { ParticleController } from "../fx/ParticleController";
 import { FxTrackerController } from "../fx/FxTrackerController";
+import { PreloadController } from "../game/PreloadController";
 import { SimController } from "../game/SimController";
 import { ThemeController } from "../game/ThemeController";
 import { buildFloorArt, visualLayout, widthLayout } from "./decorParts";
@@ -41,6 +51,8 @@ const UNLIFT = new Vector3(0, -PELLETS_VIEW.liftStuds, 0);
 /** One pooled pellet body: the placeholder cube (model) or the art laid flat on the floor (part + label). */
 interface PelletBody {
 	readonly kind: number;
+	/** Built from the kind's art look (docs/STAGE_ASSETS.md SA18): a body of the other look is discarded, never reused. */
+	readonly withArt: boolean;
 	readonly model: PlaceholderModel | undefined;
 	/** The model's pieces at full size (the pop-in / pulse / shrink scale them). */
 	readonly sizes: ReadonlyArray<Vector3>;
@@ -53,7 +65,8 @@ interface PelletBody {
 }
 
 interface PelletView {
-	readonly body: PelletBody;
+	/** Replaced when the kind's art readiness flips (swapLooks). */
+	body: PelletBody;
 	/** The floor point under the pellet lifted by PELLETS_VIEW.liftStuds (the placeholder's base; the art undoes it). */
 	readonly lifted: CFrame;
 	/** Placed at its spot since it was attached (false: the next apply moves it whatever its scale). */
@@ -74,7 +87,8 @@ interface PelletView {
  *
  * Bodies by what the pack has for `pellet.<kind>` (ThemePack.pellet): the art laid flat on the floor at
  * PELLETS_VIEW.artTiles wide (FX floor placement: over floor effects, under every marking and bullet), tinted by the
- * kind's colour role; else the placeholder Block cube in that role, standing on the floor. Pooled per kind
+ * kind's colour role; else the placeholder Block cube in that role, standing on the floor. The art only once its id has
+ * downloaded (docs/STAGE_ASSETS.md SA18): the cube is the stand-in until then, swapped on the flip (swapLooks). Pooled per kind
  * (PELLETS_VIEW.poolSize built ahead), parked far below when unused; every move in one workspace:BulkMoveTo per frame,
  * and a pellet is re-placed only when it was just attached or its scale changed (a still one costs nothing).
  *
@@ -105,19 +119,23 @@ export class PelletRenderController implements OnStart {
 	private folder: Folder | undefined;
 	private debug = false;
 	private shown = false;
+	/** The readiness flips this view has not handled yet (docs/STAGE_ASSETS.md SA18). */
+	private cursor: ReadinessCursor | undefined;
 
 	constructor(
 		private readonly sim: SimController,
 		private readonly theme: ThemeController,
 		private readonly fx: FxTrackerController,
 		private readonly particles: ParticleController,
+		private readonly preload: PreloadController,
 	) {}
 
 	onStart(): void {
 		const pack = this.theme.getPack();
 		this.pack = pack;
 		this.glowColor = pack.color(PELLETS_VIEW.glowRole);
-		for (const k of PELLET_KINDS) this.looks.push(pack.pellet(k));
+		this.cursor = new ReadinessCursor(this.preload.getReadiness());
+		for (const k of PELLET_KINDS) this.looks.push(this.lookOf(pack.pellet(k)));
 		const folder = new Instance("Folder");
 		folder.Name = PELLETS_VIEW.folderName;
 		folder.Parent = Workspace;
@@ -155,6 +173,7 @@ export class PelletRenderController implements OnStart {
 			return;
 		}
 		debug.profilebegin(PELLETS_VIEW.profileLabel);
+		this.swapLooks();
 		const events = ctx.run.pellets;
 		if (this.tracker.sync(state, events)) this.releaseAll();
 		const settings = this.fx.settings();
@@ -197,8 +216,63 @@ export class PelletRenderController implements OnStart {
 
 	// --- bodies ------------------------------------------------------------------------------------
 
+	/** A kind's look: its art once downloaded, else the stand-in cube (docs/STAGE_ASSETS.md SA18). */
+	private lookOf(p: Pellet): Pellet {
+		return lookWhenReady(p, this.preload.isArtReady(p.id));
+	}
+
+	/**
+	 * docs/STAGE_ASSETS.md SA18: a kind whose art readiness flipped gets its look again; every pellet of it on the floor
+	 * a new body in that look (placed and styled by the next apply), and its pool is rebuilt in the new look.
+	 */
+	private swapLooks(): void {
+		const flipped = this.cursor?.take();
+		if (flipped === undefined || flipped.size() === 0) return;
+		const pack = this.pack!;
+		for (let k = 0; k < PELLET_KINDS.size(); k++) {
+			const p = pack.pellet(PELLET_KINDS[k] as PelletKind);
+			if (!flipped.includes(p.id)) continue;
+			this.looks[k] = this.lookOf(p);
+			const want = this.looks[k].art !== undefined;
+			const pool = this.free[k];
+			let rebuilt = 0;
+			for (const body of pool) {
+				if (body.withArt === want) continue;
+				this.discard(body);
+				rebuilt++;
+			}
+			pool.clear();
+			for (let n = 0; n < rebuilt; n++) pool.push(this.build(k));
+			for (const [, view] of this.views) {
+				if (view.body.kind !== k || view.body.withArt === want) continue;
+				this.discard(view.body);
+				view.body = this.build(k);
+				view.placed = false;
+				if (view.body.art !== undefined) view.body.art.label.Visible = true;
+			}
+		}
+	}
+
+	/** A body of a look no longer drawn: its parts leave this frame's moves, then it is destroyed. */
+	private discard(body: PelletBody): void {
+		if (body.model !== undefined) {
+			for (const piece of body.model.pieces) this.moves.delete(piece.part);
+			destroyModel(body.model);
+		}
+		if (body.art !== undefined) {
+			this.moves.delete(body.art.part);
+			body.art.part.Destroy();
+		}
+	}
+
 	private attach(i: number, x: number, z: number, kind: number): PelletView {
-		const body = this.free[kind].pop() ?? this.build(kind);
+		const want = this.looks[kind] !== undefined && this.looks[kind].art !== undefined;
+		let body = this.free[kind].pop();
+		while (body !== undefined && body.withArt !== want) {
+			this.discard(body);
+			body = this.free[kind].pop();
+		}
+		if (body === undefined) body = this.build(kind);
 		const lifted = new CFrame(studsX(x), floorStudsY() + PELLETS_VIEW.liftStuds, studsZ(z));
 		const view: PelletView = { body, lifted, placed: false };
 		this.views.set(i, view);
@@ -228,7 +302,7 @@ export class PelletRenderController implements OnStart {
 	private build(kind: number): PelletBody {
 		const folder = this.folder!;
 		const look = this.looks[kind] ?? this.looks[NORMAL];
-		const base = { kind, scale: 1, transparency: 0, glow: 0 };
+		const base = { kind, withArt: look.art !== undefined, scale: 1, transparency: 0, glow: 0 };
 		const artVisual = look.art;
 		if (artVisual !== undefined) {
 			const widthTiles = PELLETS_VIEW.artTiles[PELLET_KINDS[kind] as PelletKind];
@@ -336,10 +410,7 @@ export class PelletRenderController implements OnStart {
 		this.releaseAll();
 		this.removeLabels();
 		for (const list of this.free) {
-			for (const body of list) {
-				if (body.model !== undefined) destroyModel(body.model);
-				body.art?.part.Destroy();
-			}
+			for (const body of list) this.discard(body);
 			list.clear();
 		}
 	}

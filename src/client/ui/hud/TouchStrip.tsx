@@ -1,7 +1,7 @@
 import React from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
 import { selectSnapshot } from "client/store";
-import { role, themePack } from "client/ui/theme";
+import { UI_IMAGES, role, uiImage, useUiArt } from "client/ui/theme";
 import {
 	FOOTPRINT_ESTIMATE,
 	HUD_SKIN,
@@ -161,8 +161,8 @@ export function TouchStrip(props: TouchStripProps) {
 	const L = props.layout;
 	const k = L.scale;
 	const T = TOUCH_STRIP;
-	const pack = themePack();
-	const skin: StatusSkin | undefined = pack !== undefined ? { pack, has: skinHasOf(pack), uiScale: k } : undefined;
+	useUiArt();
+	const skin: StatusSkin = { pack: UI_IMAGES, has: skinHasOf(UI_IMAGES), uiScale: k };
 	const slots = L.slots;
 	const row = L.rowHeight;
 
@@ -181,7 +181,7 @@ export function TouchStrip(props: TouchStripProps) {
 	const has = skin?.has;
 	const flaskArt = has !== undefined ? pipArt(has, "flask", s.flask > 0) : undefined;
 	const emberArt = has !== undefined ? pipArt(has, "ember", s.embers > 0) : undefined;
-	const coin = pack?.image(HUD_SKIN.ids.coin) !== undefined;
+	const coin = uiImage(HUD_SKIN.ids.coin) !== undefined;
 	const multW = T.multChars * T.multText * T.charEm;
 	const lineH = T.multText + FOOTPRINT_ESTIMATE.lineSlack;
 

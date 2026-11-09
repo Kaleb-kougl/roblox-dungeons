@@ -28,9 +28,11 @@ import {
 	degToRad,
 	floorStudsY,
 	isoBasis,
+	lookWhenReady,
 	lootHopStuds,
 	lootSettledAgeSec,
 	spriteBillboard,
+	ReadinessCursor,
 	studsX,
 	studsZ,
 	uprightImageBillboard,
@@ -64,6 +66,7 @@ import {
 import { goldenBoostHopped } from "shared/view/golden";
 import { burstSeed, motionScale } from "shared/view/fx";
 import { chestHopAge } from "shared/view/treasure";
+import { PreloadController } from "../game/PreloadController";
 import { SimController } from "../game/SimController";
 import { ThemeController } from "../game/ThemeController";
 import { FxTrackerController } from "../fx/FxTrackerController";
@@ -93,6 +96,8 @@ const S = STUDS_PER_TILE;
 /** How one kind is drawn with this pack (resolved once): exactly one of set / image, or neither (placeholder gem). */
 interface KindLook {
 	readonly theme: Boost;
+	/** Drawn with its art (in the pack and downloaded, docs/STAGE_ASSETS.md SA18), else the placeholder gem. */
+	readonly art: boolean;
 	readonly set: SpriteSet | undefined;
 	readonly image: WorldImage | undefined;
 	/** Billboard layout (sprite / image paths): an image at the Lords of Pain scale, both capped by maxHeightTiles. */
@@ -141,6 +146,8 @@ interface ArtLayers {
 /** The drawn body of one drop, pooled per kind. Exactly one of model / sprite / image is set. */
 interface DropBody {
 	readonly kind: number;
+	/** Built from an art look (KindLook.art): a pooled body of the other look is discarded, never reused. */
+	readonly art: boolean;
 	readonly model: PlaceholderModel | undefined;
 	/** The model's pieces at full size (the landing pop scales them). */
 	readonly sizes: ReadonlyArray<Vector3>;
@@ -195,6 +202,8 @@ interface Flash {
  *            life (boostBlinkTransparency on `ticksLeft`; steady dim under reduced motion) over the whole stack
  *            (boostLayerTransparency). Every value is read from state each frame (age from `spawnTick` + the sim's
  *            alpha); nothing is interpolated.
+ *            The art only once its id has downloaded (PreloadController.isArtReady, docs/STAGE_ASSETS.md SA18): the gem
+ *            is the stand-in until then, and every drop of a kind whose readiness flipped gets a new body (swapLooks).
  *   cleared  the body and its layers go back to its kind's pool (parked far below).
  *
  * Effects come from the run view's per-tick boost events (`RunView.boostEvents`, every tick of the frame): a pickup
@@ -239,6 +248,8 @@ export class BoostDropRenderController implements OnStart {
 	private beam: ImageRef | undefined;
 	private lastSimSec: number | undefined;
 	private shown = false;
+	/** The readiness flips this view has not handled yet (docs/STAGE_ASSETS.md SA18). */
+	private cursor: ReadinessCursor | undefined;
 
 	constructor(
 		private readonly sim: SimController,
@@ -246,6 +257,7 @@ export class BoostDropRenderController implements OnStart {
 		private readonly fx: FxTrackerController,
 		private readonly particles: ParticleController,
 		private readonly sprites: FxSpriteController,
+		private readonly preload: PreloadController,
 	) {}
 
 	onStart(): void {
@@ -259,7 +271,8 @@ export class BoostDropRenderController implements OnStart {
 		folder.Name = BOOST_VIEW.folderName;
 		folder.Parent = Workspace;
 		this.folder = this.janitor.Add(folder);
-		for (const k of BOOST_KINDS) this.looks.push(lookFor(pack.boost(k)));
+		this.cursor = new ReadinessCursor(this.preload.getReadiness());
+		for (const k of BOOST_KINDS) this.looks.push(this.lookOf(pack.boost(k)));
 
 		const reset = () => {
 			this.tracker.reset();
@@ -286,6 +299,7 @@ export class BoostDropRenderController implements OnStart {
 		}
 		const state = ctx.run.state;
 		const ground = dropsGround(state);
+		this.swapLooks(ground);
 		if (ground.size() === 0 && !this.shown && this.flashes.size() === 0) return;
 		debug.profilebegin(BOOST_VIEW.profileLabel);
 		const alpha = this.sim.getAlpha();
@@ -311,7 +325,7 @@ export class BoostDropRenderController implements OnStart {
 		}
 
 		for (const c of ev.collected) {
-			if (this.collectFx) this.sprites.boostCollect(c.x, c.z);
+			if (this.collectFx && this.preload.isArtReady(BOOST_COLLECT_FX_ID)) this.sprites.boostCollect(c.x, c.z);
 			else if (this.hasArt(c.kind)) this.startFlash(c.kind, c.x, c.z, simSec, motion);
 			else
 				this.particles.boostBurst(
@@ -408,6 +422,39 @@ export class BoostDropRenderController implements OnStart {
 
 	// --- bodies ----------------------------------------------------------------------------------
 
+	/** A kind's look: its art once downloaded, else the stand-in (docs/STAGE_ASSETS.md SA18). */
+	private lookOf(theme: Boost): KindLook {
+		return lookFor(lookWhenReady(theme, this.preload.isArtReady(theme.id)));
+	}
+
+	/**
+	 * docs/STAGE_ASSETS.md SA18: a kind whose art readiness flipped gets its look again, and every drop of it on the
+	 * floor a new body in that look (same slot, hop and chest flags; its age is read from state, so nothing replays);
+	 * pooled bodies of the old look are discarded as they are met (acquire).
+	 */
+	private swapLooks(ground: ReadonlyArray<Readonly<GroundDrop> | undefined>): void {
+		const flipped = this.cursor?.take();
+		if (flipped === undefined || flipped.size() === 0) return;
+		const pack = this.pack!;
+		for (let k = 0; k < BOOST_KINDS.size(); k++) {
+			const theme = pack.boost(BOOST_KINDS[k]);
+			if (!flipped.includes(theme.id)) continue;
+			const look = this.lookOf(theme);
+			this.looks[k] = look;
+			const swap = this.slotScratch;
+			swap.clear();
+			for (const [slot, view] of this.views)
+				if (view.body.kind === k && view.body.art !== look.art) swap.push(slot);
+			for (const slot of swap) {
+				const view = this.views.get(slot)!;
+				const g = ground[slot];
+				this.release(slot);
+				if (g !== undefined) this.attach(slot, g, view.hopped, view.chest);
+			}
+			swap.clear();
+		}
+	}
+
 	private hasArt(kind: number): boolean {
 		const look = this.looks[kind];
 		return look !== undefined && look.board !== undefined;
@@ -440,7 +487,13 @@ export class BoostDropRenderController implements OnStart {
 	}
 
 	private acquire(kind: number): DropBody {
-		const pooled = this.free.get(kind)?.pop();
+		const want = (this.looks[kind] ?? this.looks[0]).art;
+		const list = this.free.get(kind);
+		let pooled = list?.pop();
+		while (pooled !== undefined && pooled.art !== want) {
+			this.discard(pooled);
+			pooled = list?.pop();
+		}
 		if (pooled !== undefined) {
 			if (pooled.sprite !== undefined) pooled.sprite.reset();
 			if (pooled.image !== undefined) pooled.image.gui.Enabled = true;
@@ -459,16 +512,37 @@ export class BoostDropRenderController implements OnStart {
 		if (look.set !== undefined) {
 			const sprite = new SpriteView(look.set, folder, look.layout);
 			const layers = this.buildLayers(look, sprite.anchor, folder);
-			return { kind, model: undefined, sizes: [], sprite, image: undefined, layers, ...empty };
+			return { kind, art: true, model: undefined, sizes: [], sprite, image: undefined, layers, ...empty };
 		}
 		if (look.image !== undefined && look.layout !== undefined) {
 			const image = buildImage(look.image, look.layout, folder);
 			const layers = this.buildLayers(look, image.anchor, folder);
-			return { kind, model: undefined, sizes: [], sprite: undefined, image, layers, ...empty };
+			return { kind, art: true, model: undefined, sizes: [], sprite: undefined, image, layers, ...empty };
 		}
 		const model = buildPlaceholder(this.pack!, look.theme.id, look.theme.placeholder, 1, folder, false);
 		const sizes = model.pieces.map((p) => p.part.Size);
-		return { kind, model, sizes, sprite: undefined, image: undefined, layers: undefined, ...empty };
+		return { kind, art: false, model, sizes, sprite: undefined, image: undefined, layers: undefined, ...empty };
+	}
+
+	/** A pooled body of a look no longer drawn: its parts leave this frame's moves, then it is destroyed. */
+	private discard(body: DropBody): void {
+		const parts = new Array<BasePart>();
+		if (body.model !== undefined) for (const piece of body.model.pieces) parts.push(piece.part);
+		if (body.sprite !== undefined) parts.push(body.sprite.anchor);
+		if (body.image !== undefined) parts.push(body.image.anchor);
+		const layers = body.layers;
+		if (layers !== undefined) {
+			parts.push(layers.halo.part);
+			if (layers.beam !== undefined) parts.push(layers.beam.anchor);
+		}
+		for (const p of parts) this.moves.delete(p);
+		if (body.model !== undefined) destroyModel(body.model);
+		body.sprite?.destroy();
+		body.image?.anchor.Destroy();
+		if (layers !== undefined) {
+			layers.halo.part.Destroy();
+			layers.beam?.anchor.Destroy();
+		}
 	}
 
 	/** Halo, beam and glint for an art body whose prop billboard sits on `propAnchor`. */
@@ -723,18 +797,7 @@ export class BoostDropRenderController implements OnStart {
 	private destroyPools(): void {
 		this.releaseAll();
 		this.parkFlashes();
-		for (const [, list] of this.free) {
-			for (const body of list) {
-				if (body.model !== undefined) destroyModel(body.model);
-				body.sprite?.destroy();
-				body.image?.anchor.Destroy();
-				const layers = body.layers;
-				if (layers !== undefined) {
-					layers.halo.part.Destroy();
-					layers.beam?.anchor.Destroy();
-				}
-			}
-		}
+		for (const [, list] of this.free) for (const body of list) this.discard(body);
 		this.free.clear();
 		for (const f of this.freeFlashes) {
 			f.halo.part.Destroy();
@@ -752,13 +815,13 @@ function lookFor(theme: Boost): KindLook {
 	const art = theme.art;
 	if (art !== undefined && art.kind === "sprites") {
 		const layout = breakableArtLayout(art.set, BOOST_VIEW.maxHeightTiles);
-		return { theme, set: art.set, image: undefined, layout, board: spriteBillboard(layout) };
+		return { theme, art: true, set: art.set, image: undefined, layout, board: spriteBillboard(layout) };
 	}
 	if (art !== undefined && art.kind === "image") {
 		const layout = boostImageLayout(art.size.X, art.size.Y, art.pivot, art.pixelsPerTile);
-		return { theme, set: undefined, image: art, layout, board: spriteBillboard(layout) };
+		return { theme, art: true, set: undefined, image: art, layout, board: spriteBillboard(layout) };
 	}
-	return { theme, set: undefined, image: undefined, layout: undefined, board: undefined };
+	return { theme, art: false, set: undefined, image: undefined, layout: undefined, board: undefined };
 }
 
 /** An upright image billboard (like the pedestal beam): the region on an invisible anchor, its pivot on the anchor. */

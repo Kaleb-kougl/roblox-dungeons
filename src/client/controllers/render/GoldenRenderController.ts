@@ -31,6 +31,7 @@ import { FreezeFrameController } from "../fx/FreezeFrameController";
 import { FxSpriteController } from "../fx/FxSpriteController";
 import { FxTrackerController } from "../fx/FxTrackerController";
 import { ParticleController } from "../fx/ParticleController";
+import { PreloadController } from "../game/PreloadController";
 import { SimController } from "../game/SimController";
 import { ThemeController } from "../game/ThemeController";
 import { DashLayer } from "./DashLayer";
@@ -84,7 +85,10 @@ export class GoldenRenderController implements OnStart {
 	private readonly ringColors = new Array<Color3>();
 	private readonly look = newGoldenRingLook();
 	private coinColor = new Color3();
-	/** The pack has `fx.golden.coin` (the hit's coin burst is that sprite, not particles). */
+	/**
+	 * The pack has `fx.golden.coin` (the hit's coin burst is that sprite, not particles); coinArt() also needs it
+	 * downloaded (docs/STAGE_ASSETS.md SA18: until then the particle burst is the stand-in, so a hit always shows).
+	 */
 	private coinFx = false;
 	private folder: Folder | undefined;
 	private debug = false;
@@ -98,7 +102,13 @@ export class GoldenRenderController implements OnStart {
 		private readonly sprites: FxSpriteController,
 		private readonly combo: ComboController,
 		private readonly freeze: FreezeFrameController,
+		private readonly preload: PreloadController,
 	) {}
+
+	/** The coin burst is the sprite: the pack has it and it has downloaded (SA18). */
+	private coinArt(): boolean {
+		return this.coinFx && this.preload.isArtReady(GOLDEN_COIN_FX_ID);
+	}
 
 	onStart(): void {
 		const pack = this.theme.getPack();
@@ -188,13 +198,13 @@ export class GoldenRenderController implements OnStart {
 		}
 		for (let i = 0; i < ev.hits.size(); i++) {
 			const h = ev.hits[i];
-			if (this.coinFx) this.sprites.goldenCoin(h.x, h.z);
+			if (this.coinArt()) this.sprites.goldenCoin(h.x, h.z);
 			else this.particles.goldenBurst(h.x, h.z, V.coins, false, burstSeed(i, h.tick, V.coinSeedSalt));
 		}
 		const view = this.sim.getViewPlayerIndex();
 		for (const c of ev.caught) {
 			this.particles.goldenBurst(c.x, c.z, V.fountain, false, burstSeed(c.player, c.tick, V.fountainSeedSalt));
-			if (this.coinFx) this.sprites.goldenCoin(c.x, c.z, V.fountainFxScale);
+			if (this.coinArt()) this.sprites.goldenCoin(c.x, c.z, V.fountainFxScale);
 			const ms = goldenCatchFreezeMs(c.player, view, partySize(state), settings);
 			if (ms > 0) this.sim.hitstop.request(ms, settings);
 			if (goldenCatchNudges(c.player, view)) this.freeze.requestNudge("stamp");

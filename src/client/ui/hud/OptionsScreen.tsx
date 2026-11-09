@@ -15,7 +15,7 @@ import {
 	type OptionsState,
 } from "client/store";
 import { useFocusScope, useOpeningId } from "client/ui/focus";
-import { role, str, useHudFont, useLocale } from "client/ui/theme";
+import { role, str, useHudFont, useLocale, useUiArt } from "client/ui/theme";
 import {
 	KBM_ACTIONS,
 	PAD_ACTIONS,
@@ -481,6 +481,7 @@ function ControlsTab(props: {
  * label.
  */
 function VolumeLabel(props: { order: number; label: string; volume: number }) {
+	useUiArt();
 	const icon = panelIcon(screenSkin("options"), volumeIcon(props.volume));
 	const glyph = UI_ART.iconBox.glyph;
 	const flat = <Text order={props.order} width={HUD_VIEW.settingsLabelWidth} text={props.label} />;

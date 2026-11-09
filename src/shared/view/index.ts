@@ -67,6 +67,9 @@
  *                 (tunables: STAGE_ASSETS in stageAssetsConfig.ts; floor inputs: shared/run stageInput.ts)
  *   stageAudit.ts  the KV_StageAssetAudit recording's pure half (STAGE_AUDIT, StageAuditLog, SA11) and the merged
  *                 prefetch manifest (stageMergedAssets, SA7)
+ *   pieceStandIns.ts  stand-ins while art downloads (docs/STAGE_ASSETS.md SA18): ReadinessCursor (a renderer's flips),
+ *                 lookWhenReady, the solid decor stand-in boxes solidStandIns / solidStandInShown (tunables:
+ *                 SOLID_DECOR_STAND_IN in standInsConfig.ts)
  *   decor/        the decor plan (docs/DECOR.md R3 / R6 / R8): planDecor, decorProfile, fade selection, glow points
  *   voidDecor/    void decoration (docs/VOID_DECOR.md VD2-VD4, VD9): voidField, planVoid (shoulder / ledge / outcrop /
  *                 abyss per cell, greedy rects), VOID / VOID_DEPTH, the VoidController's columns (voidColumnOf,
@@ -130,3 +133,5 @@ export * from "./stageAssetsConfig";
 export * from "./stageGroups";
 export * from "./stageAssets";
 export * from "./stageAudit";
+export * from "./standInsConfig";
+export * from "./pieceStandIns";

@@ -8,7 +8,16 @@ import { keyDevice, RUN_ATTRIBUTES, shrineHint } from "shared/play";
 import { PACT_KIND_COUNT, PactKind, SIM_HZ, TILE_SIZE, type SimConfig, type SimState } from "shared/sim";
 import type { JuiceSettings } from "shared/settings";
 import type { ColorRole, PactAltar, StringVars, ThemePack, WorldVisual } from "shared/theme";
-import { BULLET_VIEW, SPRITE_VIEW, floorStudsY, spriteBillboard, studsX, studsZ } from "shared/view";
+import {
+	BULLET_VIEW,
+	ReadinessCursor,
+	SPRITE_VIEW,
+	floorStudsY,
+	lookWhenReady,
+	spriteBillboard,
+	studsX,
+	studsZ,
+} from "shared/view";
 import { FX_SPRITE_VIEW, effectiveParticles, motionScale } from "shared/view/fx";
 import {
 	COMBO_SHOUT_DRAW,
@@ -45,6 +54,7 @@ import {
 } from "shared/view/pacts";
 import { ComboController } from "../fx/ComboController";
 import { FxTrackerController } from "../fx/FxTrackerController";
+import { PreloadController } from "../game/PreloadController";
 import { SimController } from "../game/SimController";
 import { ThemeController } from "../game/ThemeController";
 import { restingAnimation, visualLayout } from "./decorParts";
@@ -80,11 +90,12 @@ interface AltarView {
 	readonly kind: number;
 	readonly x: number;
 	readonly z: number;
-	readonly body: PlaceholderModel | undefined;
-	readonly bodyImage: ImageLabel | undefined;
-	readonly bodyAnchor: Part | undefined;
+	/** The body (rebuilt when the altar art's readiness flips, docs/STAGE_ASSETS.md SA18). */
+	body: PlaceholderModel | undefined;
+	bodyImage: ImageLabel | undefined;
+	bodyAnchor: Part | undefined;
 	/** The body's top above the floor point, studs (the flame stands on it). */
-	readonly topStuds: number;
+	topStuds: number;
 	readonly flame: Part;
 	readonly cardPart: Part;
 	readonly cardSurface: SurfaceGui;
@@ -139,6 +150,9 @@ interface Disc {
  *             opacity climbs). The horn / wave sounds are the cue mapper's, the edges RoomEdgeController's, the pops
  *             ScorePopController's, the tally segment RoomClearController's.
  *
+ * Stand-ins (docs/STAGE_ASSETS.md SA18): the altar draws its placeholder plinth until `pact.altar` has downloaded,
+ * every altar's body rebuilt on the readiness flip (swapLooks).
+ *
  * Debug: KV_PactLabel (Workspace boolean, Studio or KV_Debug, off by default) labels each altar with its kind, the view
  * player's availability (and Greed's curse index) and the Horde's phase (pactDebugText, developer English). Every
  * instance is the Janitor's (per floor: floorJanitor). Read-only on the sim.
@@ -159,16 +173,22 @@ export class PactRenderController implements OnStart {
 	/** The cards' labels are rewritten on the next frame (a locale or binding change). */
 	private relabel = false;
 	private readonly str = (key: string, vars?: StringVars) => this.pack!.str(key, vars);
+	/** The current floor's altar folder (bodies rebuilt into it). */
+	private altarFolder: Folder | undefined;
+	/** The readiness flips this view has not handled yet (docs/STAGE_ASSETS.md SA18). */
+	private cursor: ReadinessCursor | undefined;
 
 	constructor(
 		private readonly sim: SimController,
 		private readonly theme: ThemeController,
 		private readonly fx: FxTrackerController,
 		private readonly combo: ComboController,
+		private readonly preload: PreloadController,
 	) {}
 
 	onStart(): void {
 		this.pack = this.theme.getPack();
+		this.cursor = new ReadinessCursor(this.preload.getReadiness());
 		const folder = new Instance("Folder");
 		folder.Name = PACTS_VIEW.folderName;
 		folder.Parent = Workspace;
@@ -208,6 +228,7 @@ export class PactRenderController implements OnStart {
 		debug.profilebegin(PACTS_VIEW.profileLabel);
 		const key = `${state.endless?.floor ?? 0}:${p.room}:${p.altarX[0]}:${p.altarZ[0]}`;
 		if (key !== this.builtKey) this.build(state, key);
+		this.swapLooks();
 		const view = this.sim.getViewPlayerIndex();
 		const motion = motionScale(settings);
 		const timeSec = (state.tick + this.sim.getAlpha()) / SIM_HZ;
@@ -245,7 +266,8 @@ export class PactRenderController implements OnStart {
 		const folder = this.floorJanitor.Add(new Instance("Folder"));
 		folder.Name = "Altars";
 		folder.Parent = this.folder;
-		const theme = pack.pactAltar();
+		this.altarFolder = folder;
+		const theme = this.altarLook(pack);
 		for (let k = 0; k < math.min(PACT_KIND_COUNT, p.altarX.size()); k++) {
 			const view = this.buildAltar(pack, theme, k, p.altarX[k], p.altarZ[k], folder);
 			this.altars.push(view);
@@ -261,22 +283,7 @@ export class PactRenderController implements OnStart {
 		folder: Folder,
 	): AltarView {
 		const V = PACTS_VIEW;
-		const base = new CFrame(studsX(x), floorStudsY() + V.liftStuds, studsZ(z));
-		let body: PlaceholderModel | undefined;
-		let bodyImage: ImageLabel | undefined;
-		let bodyAnchor: Part | undefined;
-		let topStuds = 0;
-		const art = theme.art;
-		const built = art !== undefined ? this.buildArt(art, base, folder) : undefined;
-		if (built !== undefined) {
-			bodyImage = built.label;
-			bodyAnchor = built.anchor;
-			topStuds = built.topTiles * STUDS_PER_TILE;
-		} else {
-			body = buildPlaceholder(pack, theme.id, theme.placeholder, 1, folder, false);
-			for (const piece of body.pieces) piece.part.CFrame = base.mul(piece.offset);
-			topStuds = theme.placeholder.size[1];
-		}
+		const { body, bodyImage, bodyAnchor, topStuds } = this.buildBody(pack, theme, x, z, folder);
 		const flame = renderPart("Part", false);
 		flame.Name = "Flame";
 		flame.Material = Enum.Material.Neon;
@@ -322,6 +329,61 @@ export class PactRenderController implements OnStart {
 			view.debug?.anchor.Destroy();
 		}, true);
 		return view;
+	}
+
+	/** The altar's body on its cell: its art (an upright billboard), else the placeholder plinth. */
+	private buildBody(
+		pack: ThemePack,
+		theme: PactAltar,
+		x: number,
+		z: number,
+		folder: Folder,
+	): {
+		body: PlaceholderModel | undefined;
+		bodyImage: ImageLabel | undefined;
+		bodyAnchor: Part | undefined;
+		topStuds: number;
+	} {
+		const base = new CFrame(studsX(x), floorStudsY() + PACTS_VIEW.liftStuds, studsZ(z));
+		const art = theme.art;
+		const built = art !== undefined ? this.buildArt(art, base, folder) : undefined;
+		if (built !== undefined) {
+			return {
+				body: undefined,
+				bodyImage: built.label,
+				bodyAnchor: built.anchor,
+				topStuds: built.topTiles * STUDS_PER_TILE,
+			};
+		}
+		const body = buildPlaceholder(pack, theme.id, theme.placeholder, 1, folder, false);
+		for (const piece of body.pieces) piece.part.CFrame = base.mul(piece.offset);
+		return { body, bodyImage: undefined, bodyAnchor: undefined, topStuds: theme.placeholder.size[1] };
+	}
+
+	/** The altar look: its art once downloaded, else the stand-in plinth (docs/STAGE_ASSETS.md SA18). */
+	private altarLook(pack: ThemePack): PactAltar {
+		const theme = pack.pactAltar();
+		return lookWhenReady(theme, this.preload.isArtReady(theme.id));
+	}
+
+	/** docs/STAGE_ASSETS.md SA18: the altar art's readiness flipped: every altar's body is rebuilt in the new look. */
+	private swapLooks(): void {
+		const flipped = this.cursor?.take();
+		const folder = this.altarFolder;
+		if (flipped === undefined || flipped.size() === 0 || folder === undefined) return;
+		const pack = this.pack!;
+		if (!flipped.includes(pack.pactAltar().id)) return;
+		const theme = this.altarLook(pack);
+		for (const a of this.altars) {
+			if (a.body !== undefined) destroyModel(a.body);
+			a.bodyAnchor?.Destroy();
+			const b = this.buildBody(pack, theme, a.x, a.z, folder);
+			a.body = b.body;
+			a.bodyImage = b.bodyImage;
+			a.bodyAnchor = b.bodyAnchor;
+			a.topStuds = b.topStuds;
+			a.dim = false; // the new body is undimmed: drawAltar dims it again if it should be
+		}
 	}
 
 	/**

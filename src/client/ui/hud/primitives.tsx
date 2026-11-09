@@ -1,6 +1,16 @@
 import React, { useContext, useEffect, useMemo, useRef, useState } from "@rbxts/react";
 import { FocusScopesContext } from "client/ui/focus";
-import { alignFor, fontFor, role, textSizeFor, themePack, useUiFonts, type FontRole } from "client/ui/theme";
+import {
+	UI_IMAGES,
+	alignFor,
+	fontFor,
+	role,
+	textSizeFor,
+	uiImage,
+	useUiArt,
+	useUiFonts,
+	type FontRole,
+} from "client/ui/theme";
 import type { ColorRole, ImageRef } from "shared/theme";
 import {
 	DRAFT_REVEAL_VIEW,
@@ -229,9 +239,8 @@ function panelBox(props: PanelProps): [UDim2, Vector2, UDim2, Enum.AutomaticSize
 /** The panel art id the pack draws for these props (skinFor "panel"), or undefined: the flat panel. */
 function panelSkinId(props: PanelProps): [string, SkinPanelContext] | undefined {
 	const context = panelSkinContext(props.skin, props.corner !== undefined, panelHidden(props.transparency));
-	const pack = themePack();
-	if (context === undefined || pack === undefined) return undefined;
-	const id = skinFor(skinHasOf(pack), "panel", context);
+	if (context === undefined) return undefined;
+	const id = skinFor(skinHasOf(UI_IMAGES), "panel", context);
 	return id !== undefined ? [id, context] : undefined;
 }
 
@@ -240,6 +249,8 @@ function panelSkinId(props: PanelProps): [string, SkinPanelContext] | undefined 
  * (docs/UI_ART.md UA7) the box is that art, 9-sliced (SkinnedPanel); without, exactly the flat box.
  */
 export function Panel(props: PanelProps) {
+	// docs/STAGE_ASSETS.md SA18: the flat box until the frame art has downloaded, then the art
+	useUiArt();
 	const skin = panelSkinId(props);
 	if (skin !== undefined) return <SkinnedPanel panel={props} skinId={skin[0]} context={skin[1]} />;
 	const pad = props.padding ?? HUD_VIEW.pad;
@@ -305,8 +316,7 @@ export function Panel(props: PanelProps) {
  * extras that belong to the art only (the spectate bar's ghost) when it is.
  */
 export function panelArt(skin: PanelSkin | undefined, corner = false): boolean {
-	const pack = themePack();
-	return pack !== undefined && panelHasArt(skinHasOf(pack), panelSkinContext(skin, corner));
+	return panelHasArt(skinHasOf(UI_IMAGES), panelSkinContext(skin, corner));
 }
 
 /**
@@ -314,9 +324,7 @@ export function panelArt(skin: PanelSkin | undefined, corner = false): boolean {
  * icon beside a label (the run-over header, the audio rows) that the flat look leaves out.
  */
 export function panelIcon(skin: PanelSkin | undefined, icon: string | undefined): string | undefined {
-	const pack = themePack();
-	if (pack === undefined) return undefined;
-	const has = skinHasOf(pack);
+	const has = skinHasOf(UI_IMAGES);
 	return iconShown(has, panelHasArt(has, panelSkinContext(skin, false)), icon);
 }
 
@@ -333,14 +341,13 @@ function SkinnedPanel(props: { panel: PanelProps; skinId: string; context: SkinP
 	const p = props.panel;
 	const uiScale = useArtScale();
 	const sliceScale = snappedSliceScale(uiScale, skinRefPerArt(props.context));
-	const pack = themePack();
-	const slice = pack?.image(props.skinId)?.slice;
+	const slice = uiImage(props.skinId)?.slice;
 	const pad = skinPadding(
 		uniformPadding(p.padding ?? HUD_VIEW.pad),
 		contentInsetsOf(props.skinId, slice),
 		sliceScale,
 	);
-	const ornament = pack !== undefined && ornamentShown(skinHasOf(pack), props.context, p.ornament === true);
+	const ornament = ornamentShown(skinHasOf(UI_IMAGES), props.context, p.ornament === true);
 	const corner = fadeSlotOf(p);
 	const [position, anchor, size, autoSize] = panelBox(p);
 	const transparency = p.transparency ?? HUD_VIEW.panelTransparency;
@@ -435,7 +442,8 @@ function SkinnedPanel(props: { panel: PanelProps; skinId: string; context: SkinP
  * (artDensityBox), centred horizontally, its anchorY fraction on the edge, drawn over the frame.
  */
 function PanelOrnament() {
-	const ref = themePack()?.image(UI_ART.ids.ornament);
+	useUiArt();
+	const ref = uiImage(UI_ART.ids.ornament);
 	const uiScale = useArtScale();
 	if (ref === undefined) return undefined;
 	const r = ref.rect;
@@ -459,13 +467,9 @@ function PanelOrnament() {
  * no divider.
  */
 export function Divider(props: { order: number; skin: PanelSkin }) {
-	const pack = themePack();
-	const ref = pack?.image(UI_ART.ids.divider);
-	if (
-		pack === undefined ||
-		ref === undefined ||
-		!dividerShown(skinHasOf(pack), panelSkinContext(props.skin, false))
-	) {
+	useUiArt();
+	const ref = uiImage(UI_ART.ids.divider);
+	if (ref === undefined || !dividerShown(skinHasOf(UI_IMAGES), panelSkinContext(props.skin, false))) {
 		return undefined;
 	}
 	return <DrawnDivider order={props.order} image={ref} />;
@@ -606,7 +610,9 @@ export interface SlicedImageProps {
  * pack does not have renders `fallback` (or nothing), so callers keep their flat look until the art is uploaded.
  */
 export function SlicedImage(props: SlicedImageProps) {
-	const ref = themePack()?.image(props.id);
+	// docs/STAGE_ASSETS.md SA18: `fallback` until the image has downloaded on this device, then the art
+	useUiArt();
+	const ref = uiImage(props.id);
 	if (ref === undefined) return props.fallback;
 	if (props.snap === true) return <SnappedSlicedImage image={ref} props={props} />;
 	return slicedLabel(props, ref, props.sliceScale ?? DRAFT_REVEAL_VIEW.artScale);
@@ -681,7 +687,9 @@ export interface ArtImageProps {
  * An id the pack does not have renders `fallback` (or nothing).
  */
 export function ArtImage(props: ArtImageProps) {
-	const ref = themePack()?.image(props.id);
+	// docs/STAGE_ASSETS.md SA18: `fallback` until the image has downloaded on this device, then the art
+	useUiArt();
+	const ref = uiImage(props.id);
 	if (ref === undefined) return props.fallback;
 	return <DrawnArtImage image={ref} props={props} />;
 }
@@ -737,7 +745,8 @@ function DrawnArtImage(p: { image: ImageRef; props: ArtImageProps }) {
  * whole screen-px density, drawn on top (`zIndex`) and never taking input. Nothing when the pack lacks the bracket.
  */
 export function FocusCorners(props: { zIndex?: number }) {
-	const ref = themePack()?.image(UI_ART.ids.focusCorner);
+	useUiArt();
+	const ref = uiImage(UI_ART.ids.focusCorner);
 	if (ref === undefined) return undefined;
 	return <DrawnFocusCorners image={ref} zIndex={props.zIndex ?? SKIN_Z.corners} />;
 }
@@ -876,11 +885,11 @@ export const MenuButton = React.forwardRef<TextButton, MenuButtonProps>((props, 
 	const size = props.size ?? new Vector2(HUD_VIEW.buttonSize.x, HUD_VIEW.buttonSize.y);
 	const active = props.active === true;
 	const disabled = props.disabled === true;
-	const pack = themePack();
-	const has = pack !== undefined ? skinHasOf(pack) : undefined;
-	const skinId =
-		has !== undefined ? menuButtonSkin(has, props.variant ?? "button", active, focused, disabled) : undefined;
-	if (has !== undefined && skinId !== undefined) {
+	// docs/STAGE_ASSETS.md SA18: the flat button until its art has downloaded (useUiArt re-renders on the flip)
+	useUiArt();
+	const has = skinHasOf(UI_IMAGES);
+	const skinId = menuButtonSkin(has, props.variant ?? "button", active, focused, disabled);
+	if (skinId !== undefined) {
 		const corners = has(UI_ART.ids.focusCorner);
 		const icon = iconShown(has, true, props.icon);
 		return (

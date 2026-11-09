@@ -13,7 +13,7 @@ import {
 	selectVerdict,
 } from "client/store";
 import { FocusScope, PAD_HOLD_UI } from "client/ui/focus";
-import { useHudFont, role, str, themePack } from "client/ui/theme";
+import { role, str, themePack, useHudFont, useUiArt } from "client/ui/theme";
 import type { ColorRole } from "shared/theme";
 import { DAILY_WORLD_KIND } from "shared/daily";
 import { restartHint } from "shared/play";
@@ -403,6 +403,7 @@ function Column(props: { order: number; width: number; gap: number; children?: R
  * (docs/UI_ART.md UA8); otherwise exactly the flat title line.
  */
 function RunOverHeader(props: { order: number; victory: boolean; icon: string | undefined; text: string }) {
+	useUiArt();
 	const color = props.victory ? "uiAccent" : "uiHealth";
 	const icon = panelIcon(screenSkin("runOver"), props.icon);
 	if (icon === undefined) {

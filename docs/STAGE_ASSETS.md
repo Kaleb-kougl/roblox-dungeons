@@ -515,6 +515,36 @@ smoke test lines, CLAUDE.md decision log. Fresh-phone playtest: a full solo run 
   Studio checks pending: `KV_StandInsForce` = "all" draws the whole run in stand-ins and is playable; clearing it swaps
   everything live; with `KV_FakeAssetLatency` the knight capsule turns into the knight mid-walk, a pack of enemies
   mid-fight, bullets in flight; no orphan parts (pool counts settle), Highlights under 31.
+- **SA18 (pieces, solid decor, UI, audio).** Pure helpers `shared/view/pieceStandIns.ts` (renamed from standIns.ts on the merge with SA17; its `ReadinessFeed` is SA17's) (`ReadinessCursor`: a renderer's
+  `take()` of the flips since its last call, either direction, re-read `isReady`; `lookWhenReady(look, ready)`: a theme
+  look with `art` dropped, so each renderer's existing placeholder branch builds the stand-in; `solidStandIns(pieces,
+  entries)` / `solidStandInShown`) with `SOLID_DECOR_STAND_IN` (`standInsConfig.ts`: height in tiles per
+  `SolidDecorKind`, 0.06 tile inset, the biome wall colour lightened 18 % toward `uiText`, `wall` off a matched biome; no
+  new colour role), and `shared/view/audio` `BedGate` + `AUDIO_VIEW.lateBedFadeSec` 1.2. Pieces
+  (Breakable / BoostDrop / Pellet / Treasure / Pact / RunMarker pedestals) inject PreloadController, build their looks
+  through `lookWhenReady` and, on a flip of their id, give every live piece a body in the new look (bodies carry their
+  look's `art` flag; pooled bodies of the other look are discarded on reuse, a breakable mid-shatter keeps its body);
+  the treasure column and the Goldling's coin burst pick art or stand-in every frame (`drawTreasureColumn`'s trailing
+  `artReady`). Solid decor (SAD15): DecorController matches each `Dungeon.solidDecor` piece to its plan entry (the
+  entry's first cell; a `bookcaseWide` also its second) and draws a render-only box (CanCollide / CanQuery off,
+  CastShadow on like walls, folder `KV_SolidStandIns`, fading with the entry's fade box) while the entry draws no piece
+  (no art, or art too large for its box) or the piece's id is not ready; under `KV_StandInsForce` the cached art is
+  hidden under the box. WorldController and the decor plan are unchanged. UI: `client/ui` `artReady.ts` (`uiImage(id)`,
+  `UI_IMAGES` for `skinHasOf` / `pipArt` / `touchArtId`, `useUiArt()` re-rendering on a flip of an id the UI asked
+  about, `onUiArtChanged`), bound by the new `UiArtController` (onInit; one subscription for the whole UI); every
+  `pack.image` / `skinHasOf(pack)` in client/ui (primitives `Panel` / `SlicedImage` / `ArtImage` / `FocusCorners` /
+  `Divider` / ornament / `MenuButton`, status / touch strip pips and hearts, boost / item / boon / duo icons, boss and
+  loading pill bars, draft card faces and chips, minimap / full-map frames, list rows) goes through it, so each takes
+  its flat path until its image is in; TouchControlsController rebuilds its controls when its art key changes, once no
+  finger is down. Audio (SAD14): `play` drops a cue whose resolved id is not ready (SFX_FALLBACK still covers SILENT ids;
+  Play is never called on a not-ready Sound); music / ambience beds wait in `LoopChannel`'s BedGate and start, faded
+  in, on the readiness change that brings them in, if still wanted; a playing bed is never stopped by readiness. Not
+  gated (cosmetic, an unloaded image draws nothing): decor, decor fx, the void, debris decals, loot / boost glints, the
+  boost halo / beam layers, the pedestal beam, tile textures (the Part keeps the biome colour). Studio checks pending:
+  `KV_StandInsForce` "all" (crypt tombs / bookcases / study tables as boxes, no invisible blocker, breakables / drops /
+  pellets / chests / altars as placeholders, the UI flat, silence), clearing it swaps live (pieces, boxes gone, UI art,
+  beds keep playing); with `KV_FakeAssetLatency` the first swing before its sfx lands is silent, not late, and the floor
+  music fades in when it lands; touch controls rebuild between touches.
 
 ## Out of scope
 

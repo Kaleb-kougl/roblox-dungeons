@@ -4,14 +4,24 @@ import { RunService, Workspace } from "@rbxts/services";
 import { createKvBillboardGui } from "client/ui";
 import { CAMERA_PITCH_DEG, CAMERA_YAW_DEG, STUDS_PER_TILE } from "shared/config";
 import { SIM_HZ, pactAltarsPlaced, partySize, pedestalOffered, type RunState, type SimState } from "shared/sim";
-import { TREASURE_CHEST_ID, TREASURE_CHEST_OPEN_ID, treasureFloorRole, type ImageRef } from "shared/theme";
+import {
+	TREASURE_CHEST_ID,
+	TREASURE_CHEST_OPEN_ID,
+	TREASURE_COLUMN_FX_ID,
+	treasureFloorRole,
+	type ImageRef,
+	type ThemePack,
+	type TreasurePiece,
+} from "shared/theme";
 import {
 	RENDER_ORDER,
+	ReadinessCursor,
 	SPRITE_VIEW,
 	animDtSec,
 	degToRad,
 	floorStudsY,
 	isoBasis,
+	lookWhenReady,
 	studsX,
 	studsZ,
 	uprightImageBillboard,
@@ -27,6 +37,7 @@ import {
 import { FreezeFrameController } from "../fx/FreezeFrameController";
 import { FxTrackerController } from "../fx/FxTrackerController";
 import { ParticleController } from "../fx/ParticleController";
+import { PreloadController } from "../game/PreloadController";
 import { SimController, type RunContext } from "../game/SimController";
 import { ThemeController } from "../game/ThemeController";
 import { renderPart } from "./placeholders";
@@ -58,8 +69,9 @@ interface Pedestal {
 	readonly z: number;
 	/** The chest's base on the floor, turned toward TREASURE_VIEW.pedestal's facing. */
 	readonly rest: CFrame;
-	readonly closed: PieceBody;
-	readonly opened: PieceBody;
+	/** Rebuilt when the chest art's readiness flips (docs/STAGE_ASSETS.md SA18). */
+	closed: PieceBody;
+	opened: PieceBody;
 	readonly column: TreasureColumn;
 	/** The `ui.marker.pedestal` beam over a live pedestal (when the pack has the image). */
 	readonly beam: BillboardGui | undefined;
@@ -69,6 +81,8 @@ interface Pedestal {
 	drawnOpen: boolean;
 	drawnLift: number;
 	columnOn: boolean;
+	/** Bodies rebuilt (SA18): placed on the next draw whatever was drawn. */
+	redraw: boolean;
 }
 
 /** The curse shrine's zone. */
@@ -92,6 +106,9 @@ interface Shrine {
  * nobody can take (every living player already owns every relic: shared/sim pedestalOffered) is not drawn at all, beam
  * included.
  *
+ * Stand-ins (docs/STAGE_ASSETS.md SA18): the chests draw their placeholder until `treasure.chest` / `.chestopen` have
+ * downloaded, rebuilt on the readiness flip (swapLooks); the column picks the Neon block or its art every frame.
+ *
  * The shrine is a placeholder Cylinder tinted SHRINE_COLOR_ROLE, dimmed to MARKER_USED_COLOR_ROLE once used (or on a
  * floor whose pact altars stand). Rebuilt on run start and every floor change from the floor's encounter rooms; their
  * state read from the sim's RunState every frame. Read-only on the sim.
@@ -105,6 +122,10 @@ export class RunMarkerController implements OnStart {
 	private readonly basis = isoBasis(degToRad(CAMERA_YAW_DEG), degToRad(CAMERA_PITCH_DEG));
 	private shrine: Shrine | undefined;
 	private lastSimSec: number | undefined;
+	/** The folder of the current floor's pedestals (bodies rebuilt into it). */
+	private folder: Folder | undefined;
+	/** The readiness flips this view has not handled yet (docs/STAGE_ASSETS.md SA18). */
+	private cursor: ReadinessCursor | undefined;
 
 	constructor(
 		private readonly sim: SimController,
@@ -112,9 +133,11 @@ export class RunMarkerController implements OnStart {
 		private readonly fx: FxTrackerController,
 		private readonly particles: ParticleController,
 		private readonly freeze: FreezeFrameController,
+		private readonly preload: PreloadController,
 	) {}
 
 	onStart(): void {
+		this.cursor = new ReadinessCursor(this.preload.getReadiness());
 		this.sim.onRunStarted((ctx) => this.build(ctx));
 		this.sim.onFloorChanged((ctx) => this.build(ctx));
 		RunService.BindToRenderStep(RENDER_STEP, Enum.RenderPriority.Camera.Value + RENDER_ORDER.viewsAfterCamera, () =>
@@ -134,10 +157,11 @@ export class RunMarkerController implements OnStart {
 		if (run === undefined || encounter === undefined) return;
 		const folder = this.floorJanitor.Add(new Instance("Folder"));
 		folder.Name = FOLDER_NAME;
+		this.folder = folder;
 		const pack = this.theme.getPack();
 		const beam = pack.image(PROGRESSION_VIEW.pedestalBeamVisualId);
-		const chest = run.pedestalRooms.size() > 0 ? pack.treasurePiece(TREASURE_CHEST_ID) : undefined;
-		const open = run.pedestalRooms.size() > 0 ? pack.treasurePiece(TREASURE_CHEST_OPEN_ID) : undefined;
+		const chest = run.pedestalRooms.size() > 0 ? this.lookOf(pack, TREASURE_CHEST_ID) : undefined;
+		const open = run.pedestalRooms.size() > 0 ? this.lookOf(pack, TREASURE_CHEST_OPEN_ID) : undefined;
 		for (let k = 0; k < run.pedestalRooms.size(); k++) {
 			const room = encounter.rooms[run.pedestalRooms[k]];
 			if (room === undefined || chest === undefined || open === undefined) continue;
@@ -145,10 +169,6 @@ export class RunMarkerController implements OnStart {
 			const opened = buildPieceBody(pack, open, folder, TREASURE_VIEW.openMaxHeightTiles);
 			hidePieceBody(closed);
 			hidePieceBody(opened);
-			this.floorJanitor.Add(() => {
-				destroyPieceBody(closed);
-				destroyPieceBody(opened);
-			}, true);
 			const base = new Vector3(studsX(room.cx), floorStudsY() + TREASURE_VIEW.liftStuds, studsZ(room.cz));
 			const beamTop = new Vector3(
 				base.X,
@@ -169,8 +189,16 @@ export class RunMarkerController implements OnStart {
 				drawnOpen: false,
 				drawnLift: 0,
 				columnOn: false,
+				redraw: false,
 			});
 		}
+		const pedestals = [...this.pedestals];
+		this.floorJanitor.Add(() => {
+			for (const p of pedestals) {
+				destroyPieceBody(p.closed);
+				destroyPieceBody(p.opened);
+			}
+		}, true);
 		this.tracker.reset(run.pedestalTaken);
 		const shrine = encounter.rooms[run.shrineRoom];
 		if (shrine !== undefined) this.shrine = { part: buildShrine(folder, shrine.cx, shrine.cz), used: undefined };
@@ -186,7 +214,10 @@ export class RunMarkerController implements OnStart {
 		const simSec = (state.tick + this.sim.getAlpha()) / SIM_HZ;
 		const dtSec = animDtSec(this.lastSimSec, simSec);
 		this.lastSimSec = simSec;
-		if (this.pedestals.size() > 0) this.drawPedestals(state, run, simSec, dtSec);
+		if (this.pedestals.size() > 0) {
+			this.swapLooks();
+			this.drawPedestals(state, run, simSec, dtSec);
+		}
 		if (this.shrine !== undefined) this.drawShrine(state, run, this.shrine);
 	}
 
@@ -204,7 +235,13 @@ export class RunMarkerController implements OnStart {
 				particles,
 				p.look,
 			);
-			if (look.shown !== p.drawnShown || look.open !== p.drawnOpen || look.liftStuds !== p.drawnLift) {
+			if (
+				p.redraw ||
+				look.shown !== p.drawnShown ||
+				look.open !== p.drawnOpen ||
+				look.liftStuds !== p.drawnLift
+			) {
+				p.redraw = false;
 				p.drawnShown = look.shown;
 				p.drawnOpen = look.open;
 				p.drawnLift = look.liftStuds;
@@ -229,8 +266,50 @@ export class RunMarkerController implements OnStart {
 			}
 			if (look.column.shown || p.columnOn) {
 				p.columnOn = look.column.shown;
-				drawTreasureColumn(p.column, look.column, p.rest.Position, color, look.openAge);
+				drawTreasureColumn(
+					p.column,
+					look.column,
+					p.rest.Position,
+					color,
+					look.openAge,
+					this.preload.isArtReady(TREASURE_COLUMN_FX_ID),
+				);
 			}
+		}
+	}
+
+	/** A chest look: its art once downloaded, else the stand-in placeholder (docs/STAGE_ASSETS.md SA18). */
+	private lookOf(pack: ThemePack, id: string): TreasurePiece {
+		return lookWhenReady(pack.treasurePiece(id), this.preload.isArtReady(id));
+	}
+
+	/**
+	 * docs/STAGE_ASSETS.md SA18: a chest id whose art readiness flipped gets every pedestal's body of it rebuilt in the
+	 * new look; the next draw places the right one (drawnShown reset).
+	 */
+	private swapLooks(): void {
+		const flipped = this.cursor?.take();
+		const folder = this.folder;
+		if (flipped === undefined || flipped.size() === 0 || folder === undefined) return;
+		const pack = this.theme.getPack();
+		const closed = flipped.includes(TREASURE_CHEST_ID);
+		const opened = flipped.includes(TREASURE_CHEST_OPEN_ID);
+		if (!closed && !opened) return;
+		const chest = this.lookOf(pack, TREASURE_CHEST_ID);
+		const open = this.lookOf(pack, TREASURE_CHEST_OPEN_ID);
+		for (const p of this.pedestals) {
+			if (closed) {
+				destroyPieceBody(p.closed);
+				p.closed = buildPieceBody(pack, chest, folder, TREASURE_VIEW.maxHeightTiles);
+				hidePieceBody(p.closed);
+			}
+			if (opened) {
+				destroyPieceBody(p.opened);
+				p.opened = buildPieceBody(pack, open, folder, TREASURE_VIEW.openMaxHeightTiles);
+				hidePieceBody(p.opened);
+			}
+			// redraw on the next frame: the new bodies start hidden
+			p.redraw = true;
 		}
 	}
 

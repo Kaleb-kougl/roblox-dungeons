@@ -9,7 +9,7 @@
  * actions (FocusController); GM9 the menu haptics (PadHapticsController); GM12 the console chat rule
  * (ConsoleController);
  * docs/ITEM_TOOLTIPS.md IT4 the item tooltips' hover / focus / tap (TooltipController); docs/CURSOR.md the pointer
- * hidden while on a gamepad (MouseIconController).
+ * hidden while on a gamepad (MouseIconController); docs/STAGE_ASSETS.md SA18 the UI's art readiness (UiArtController).
  */
 export * from "./SettingsController";
 export * from "./RebindController";
@@ -28,4 +28,5 @@ export * from "./FocusController";
 export * from "./PadHapticsController";
 export * from "./ConsoleController";
 export * from "./TooltipController";
+export * from "./UiArtController";
 export * from "./MouseIconController";

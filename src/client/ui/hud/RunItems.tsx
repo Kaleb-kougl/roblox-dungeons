@@ -1,5 +1,5 @@
 import React from "@rbxts/react";
-import { useHudFont, role, str, themePack } from "client/ui/theme";
+import { role, str, uiImage, useHudFont, useUiArt } from "client/ui/theme";
 import type { ColorRole } from "shared/theme";
 import {
 	BUILD_HUD_VIEW,
@@ -162,11 +162,11 @@ function ModelCell(props: {
 	curseArt?: string;
 	tooltips: boolean;
 }) {
+	useUiArt();
 	const c = props.cell;
 	const look = props.look;
 	const tipRef = useTooltipTarget(c.ref, "hud", { panel: HOST_CORNER, enabled: props.tooltips });
-	const pack = themePack();
-	const art = itemCellArt(c, (id) => pack?.image(id) !== undefined);
+	const art = itemCellArt(c, (id) => uiImage(id) !== undefined);
 	if (c.span <= 1) {
 		return (
 			<ItemCell
@@ -268,14 +268,14 @@ export function RunItems(props: {
 	const tooltips = props.tooltips === true;
 	const maxWidth = props.maxWidth ?? statusRowMaxWidth();
 	const gap = props.gap ?? HUD_VIEW.gap;
-	const pack = themePack();
+	useUiArt();
 	const cells = runItemCells(
 		props.boons,
 		props.levels ?? [],
 		props.duos ?? [],
 		props.relics,
 		props.curses,
-		(id) => pack?.image(id) !== undefined,
+		(id) => uiImage(id) !== undefined,
 	);
 	if (cells.size() === 0) return undefined;
 	const size = look.size;

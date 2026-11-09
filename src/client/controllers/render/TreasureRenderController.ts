@@ -11,6 +11,7 @@ import {
 	TREASURE_CAGE_ID,
 	TREASURE_CHEST_ID,
 	TREASURE_CHEST_OPEN_ID,
+	TREASURE_COLUMN_FX_ID,
 	decorFxId,
 	treasureFloorRole,
 	treasureUiRole,
@@ -26,8 +27,10 @@ import {
 	degToRad,
 	floorStudsY,
 	isoBasis,
+	lookWhenReady,
 	lootGlintBillboard,
 	lootGlintDucked,
+	ReadinessCursor,
 	studsX,
 	studsZ,
 	type SpriteAnimChoice,
@@ -72,6 +75,7 @@ import {
 	type TreasureLook,
 	type TreasureOpenedEvent,
 } from "shared/view/treasure";
+import { PreloadController } from "../game/PreloadController";
 import { SimController } from "../game/SimController";
 import { ThemeController } from "../game/ThemeController";
 import { FreezeFrameController } from "../fx/FreezeFrameController";
@@ -187,6 +191,10 @@ interface CardView {
  * (Workspace boolean, Studio or KV_Debug, off by default) labels the chest (treasureDebugText, developer English).
  * Bodies are built once and reused across floors and runs; nothing is built until a floor has a vault. Read-only on
  * the sim.
+ *
+ * Stand-ins (docs/STAGE_ASSETS.md SA18): the chest, open chest and cage draw their placeholders until their ids have
+ * downloaded (lookWhenReady), each body rebuilt on its readiness flip (swapLooks); the light column picks the Neon
+ * block or `fx.treasure.column` every frame by its readiness.
  */
 @Controller({})
 export class TreasureRenderController implements OnStart {
@@ -239,6 +247,8 @@ export class TreasureRenderController implements OnStart {
 	private readonly cardLook: CardLook = { alpha: 0, riseTiles: 0 };
 	private readonly countdown: CountdownLook = { warn: false, pulse: 1 };
 	private readonly shard: ComboShardLook = { xScale: 0, dxPx: 0, dyPx: 0, rotationDeg: 0, transparency: 0 };
+	/** The readiness flips this view has not handled yet (docs/STAGE_ASSETS.md SA18). */
+	private cursor: ReadinessCursor | undefined;
 
 	constructor(
 		private readonly sim: SimController,
@@ -246,6 +256,7 @@ export class TreasureRenderController implements OnStart {
 		private readonly fx: FxTrackerController,
 		private readonly particles: ParticleController,
 		private readonly freeze: FreezeFrameController,
+		private readonly preload: PreloadController,
 	) {}
 
 	onStart(): void {
@@ -256,6 +267,7 @@ export class TreasureRenderController implements OnStart {
 		folder.Parent = Workspace;
 		this.folder = this.janitor.Add(folder);
 		this.holder = attachmentHolder(folder, "Anchors");
+		this.cursor = new ReadinessCursor(this.preload.getReadiness());
 		const reset = () => this.tracker.reset();
 		this.sim.onRunStarted(reset);
 		this.sim.onFloorChanged(reset);
@@ -299,6 +311,7 @@ export class TreasureRenderController implements OnStart {
 			return;
 		}
 		this.build();
+		this.swapLooks();
 		if (look.fresh) this.hideTransients();
 		this.shown = true;
 		const rest = this.restFrame(look);
@@ -576,7 +589,14 @@ export class TreasureRenderController implements OnStart {
 	private drawColumn(look: TreasureLook, rest: CFrame): void {
 		const col = this.column;
 		if (col === undefined) return;
-		drawTreasureColumn(col, look.column, rest.Position, this.floorColors[look.tier], look.openAge);
+		drawTreasureColumn(
+			col,
+			look.column,
+			rest.Position,
+			this.floorColors[look.tier],
+			look.openAge,
+			this.preload.isArtReady(TREASURE_COLUMN_FX_ID),
+		);
 	}
 
 	private drawCards(look: TreasureLook, reduced: boolean): void {
@@ -765,9 +785,9 @@ export class TreasureRenderController implements OnStart {
 			this.floorColors.push(pack.color(treasureFloorRole(tier)));
 			this.uiColors.push(pack.color(treasureUiRole(tier)));
 		}
-		this.chestLook = pack.treasurePiece(TREASURE_CHEST_ID);
-		this.openLook = pack.treasurePiece(TREASURE_CHEST_OPEN_ID);
-		this.cageLook = pack.treasurePiece(TREASURE_CAGE_ID);
+		this.chestLook = this.lookOf(TREASURE_CHEST_ID);
+		this.openLook = this.lookOf(TREASURE_CHEST_OPEN_ID);
+		this.cageLook = this.lookOf(TREASURE_CAGE_ID);
 		this.closed = this.buildBody(this.chestLook, folder, V.maxHeightTiles);
 		this.opened = this.buildBody(this.openLook, folder, V.openMaxHeightTiles);
 		this.hideBody(this.closed);
@@ -779,6 +799,45 @@ export class TreasureRenderController implements OnStart {
 		this.column = buildTreasureColumn(pack, folder);
 		for (let i = 0; i < MAX_CARDS; i++) this.cards.push(this.buildCard(pack, `Card${i}`));
 		this.openLine = this.buildCard(pack, "Line");
+	}
+
+	/** A chest / cage look: its art once downloaded, else the stand-in placeholder (docs/STAGE_ASSETS.md SA18). */
+	private lookOf(id: string): TreasurePiece {
+		return lookWhenReady(this.pack!.treasurePiece(id), this.preload.isArtReady(id));
+	}
+
+	/**
+	 * docs/STAGE_ASSETS.md SA18: a chest or cage id whose art readiness flipped gets its body rebuilt in the new look
+	 * (hidden; this frame's draw shows the right one). A chest flip rebuilds the cage too (its bars stand round the
+	 * chest's placeholder size).
+	 */
+	private swapLooks(): void {
+		const flipped = this.cursor?.take();
+		if (flipped === undefined || flipped.size() === 0 || !this.built) return;
+		const folder = this.folder!;
+		const chest = flipped.includes(TREASURE_CHEST_ID);
+		if (chest) {
+			this.chestLook = this.lookOf(TREASURE_CHEST_ID);
+			if (this.closed !== undefined) destroyPieceBody(this.closed);
+			this.closed = this.buildBody(this.chestLook, folder, V.maxHeightTiles);
+			this.hideBody(this.closed);
+			this.glintBoardSize = -1; // the sparkle sits on the closed chest's drawn top
+		}
+		if (flipped.includes(TREASURE_CHEST_OPEN_ID)) {
+			this.openLook = this.lookOf(TREASURE_CHEST_OPEN_ID);
+			if (this.opened !== undefined) destroyPieceBody(this.opened);
+			this.opened = this.buildBody(this.openLook, folder, V.openMaxHeightTiles);
+			this.hideBody(this.opened);
+		}
+		if (chest || flipped.includes(TREASURE_CAGE_ID)) {
+			this.cageLook = this.lookOf(TREASURE_CAGE_ID);
+			if (this.cageArt !== undefined) destroyPieceBody(this.cageArt);
+			this.cageArt = undefined;
+			for (const bar of this.bars) destroyModel(bar);
+			this.bars.clear();
+			this.barsAt = undefined;
+			this.buildCage(this.pack!, folder);
+		}
 	}
 
 	private buildBody(look: TreasurePiece, folder: Folder, maxHeightTiles: number, extraDepthStuds = 0): PieceBody {

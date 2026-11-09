@@ -1,7 +1,7 @@
 import React from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
 import { selectSnapshot } from "client/store";
-import { str, themePack } from "client/ui/theme";
+import { str, uiImage, useUiArt } from "client/ui/theme";
 import { HUD_SKIN, HUD_STRINGS, HUD_VIEW } from "shared/view/hud";
 import { BestTargetRow, ScoreNumber } from "./BestTargetRow";
 import { ComboMeter } from "./ComboMeter";
@@ -31,11 +31,12 @@ import { HighlightRing } from "./TutorialFx";
  * its left: the two in a right-aligned Row, the number sized to its text; without the coin, the full-width line.
  */
 export function ScorePanel(props: { readonly highlight?: boolean }) {
+	useUiArt();
 	const s = useSelector(selectSnapshot);
 	if (!s.scoring) return undefined;
 	const width = HUD_VIEW.scoreWidth;
 	const inner = width - HUD_VIEW.pad * 2;
-	const coin = themePack()?.image(HUD_SKIN.ids.coin) !== undefined;
+	const coin = uiImage(HUD_SKIN.ids.coin) !== undefined;
 	return (
 		<Panel
 			corner="topRight"

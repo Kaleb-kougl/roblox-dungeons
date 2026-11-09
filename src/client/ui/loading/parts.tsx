@@ -1,6 +1,6 @@
 import React from "@rbxts/react";
 import { SlicedImage, useHudScale } from "client/ui/hud";
-import { role, themePack } from "client/ui/theme";
+import { UI_IMAGES, role, uiImage, useUiArt } from "client/ui/theme";
 import { UI_ART, pillBarHeight, pillBarSkin, skinHasOf } from "shared/view/hud";
 
 const HIDDEN = 1;
@@ -45,8 +45,8 @@ export interface ProgressBarProps {
  * (PillBar); without, exactly the flat bar: the `uiTextDim` track filled with `uiAccent` from the left.
  */
 export function ProgressBar(props: ProgressBarProps) {
-	const pack = themePack();
-	const skin = pack !== undefined ? pillBarSkin(skinHasOf(pack)) : undefined;
+	useUiArt();
+	const skin = pillBarSkin(skinHasOf(UI_IMAGES));
 	if (skin !== undefined) return <PillBar bar={props} track={skin.track} fill={skin.fill} />;
 	return (
 		<frame
@@ -75,9 +75,10 @@ export function ProgressBar(props: ProgressBarProps) {
  * fraction, so a small fraction shows the pill's rounded left end cut off rather than a squashed pill.
  */
 function PillBar(props: { bar: ProgressBarProps; track: string; fill: string }) {
+	useUiArt();
 	const bar = props.bar;
 	const uiScale = useHudScale();
-	const art = themePack()?.image(props.track);
+	const art = uiImage(props.track);
 	const height = art !== undefined ? pillBarHeight(art.h, uiScale) : bar.height;
 	return (
 		<frame

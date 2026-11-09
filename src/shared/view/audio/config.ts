@@ -40,6 +40,11 @@ export const AUDIO_VIEW = {
 	/** Ambience beds (amb.b<n>, through the sfx SoundGroup, X5): their volume times this, and their cross-fade. */
 	ambientVolume: 0.35,
 	ambientFadeSec: 1.5,
+	/**
+	 * docs/STAGE_ASSETS.md SAD14: a music or ambience bed whose sound had not downloaded when it was wanted starts the
+	 * moment it lands (if it is still the wanted bed), fading in over this many seconds instead of its cross-fade.
+	 */
+	lateBedFadeSec: 1.2,
 } as const;
 
 /**

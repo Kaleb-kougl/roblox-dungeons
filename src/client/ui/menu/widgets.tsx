@@ -1,6 +1,16 @@
 import React from "@rbxts/react";
 import { ListFocusStroke, SlicedImage, useArtScale } from "client/ui/hud";
-import { alignFor, fontFor, role, textSizeFor, themePack, useUiFonts, type FontRole } from "client/ui/theme";
+import {
+	UI_IMAGES,
+	alignFor,
+	fontFor,
+	role,
+	textSizeFor,
+	uiImage,
+	useUiArt,
+	useUiFonts,
+	type FontRole,
+} from "client/ui/theme";
 import type { ColorRole } from "shared/theme";
 import {
 	HUD_VIEW,
@@ -74,8 +84,8 @@ interface ListRowProps {
  * the strip is the row's frame (SkinnedListRow); without, exactly the flat strip.
  */
 export function ListRow(props: ListRowProps) {
-	const pack = themePack();
-	const skinId = pack !== undefined ? skinFor(skinHasOf(pack), "panel", UI_ART.rowContext) : undefined;
+	useUiArt();
+	const skinId = skinFor(skinHasOf(UI_IMAGES), "panel", UI_ART.rowContext);
 	if (skinId !== undefined) return <SkinnedListRow row={props} skinId={skinId} />;
 	return (
 		<frame
@@ -109,7 +119,7 @@ function SkinnedListRow(props: { row: ListRowProps; skinId: string }) {
 	const uiScale = useArtScale();
 	const sliceScale = snappedSliceScale(uiScale, skinRefPerArt(UI_ART.rowContext));
 	const flat = { left: HUD_VIEW.pad, top: 0, right: HUD_VIEW.pad, bottom: 0 };
-	const pad = skinPadding(flat, contentInsetsOf(props.skinId, themePack()?.image(props.skinId)?.slice), sliceScale);
+	const pad = skinPadding(flat, contentInsetsOf(props.skinId, uiImage(props.skinId)?.slice), sliceScale);
 	return (
 		<SlicedImage
 			id={props.skinId}

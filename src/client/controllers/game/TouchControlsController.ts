@@ -11,7 +11,16 @@ import {
 	selectRobloxMenuOpen,
 	selectSnapshot,
 } from "client/store";
-import { currentHudFont, onLocaleChanged, role, str, themePack, createKvScreenGui } from "client/ui";
+import {
+	currentHudFont,
+	onLocaleChanged,
+	role,
+	str,
+	createKvScreenGui,
+	UI_IMAGES,
+	uiImage,
+	onUiArtChanged,
+} from "client/ui";
 import { STUDS_PER_TILE, TOUCH } from "shared/config";
 import type { DisplaySettings } from "shared/settings";
 import type { ImageRef } from "shared/theme";
@@ -147,10 +156,9 @@ function makeKnob(parent: GuiObject): Frame {
 
 /** The theme image a control draws (shared/view/hud touchArtId), or undefined: the flat circle. */
 function artRef(control: TouchArtControl): ImageRef | undefined {
-	const pack = themePack();
-	if (pack === undefined) return undefined;
-	const id = touchArtId(skinHasOf(pack), control);
-	return id !== undefined ? pack.image(id) : undefined;
+	// docs/STAGE_ASSETS.md SA18: only art that has downloaded (else the flat circle; rebuilt on the flip)
+	const id = touchArtId(skinHasOf(UI_IMAGES), control);
+	return id !== undefined ? uiImage(id) : undefined;
 }
 
 /**
@@ -201,10 +209,21 @@ function makeLabel(button: TextButton, name: string): [TextLabel, UITextSizeCons
 
 /** The icon a Flask / Ember control shows with its count (touchCountIcon), or undefined: the word. */
 function countIconRef(id: TouchButtonId, skinned: boolean): ImageRef | undefined {
-	const pack = themePack();
-	if (pack === undefined) return undefined;
-	const iconId = touchCountIcon(skinHasOf(pack), id, skinned);
-	return iconId !== undefined ? pack.image(iconId) : undefined;
+	const iconId = touchCountIcon(skinHasOf(UI_IMAGES), id, skinned);
+	return iconId !== undefined ? uiImage(iconId) : undefined;
+}
+
+/**
+ * Which art the controls would draw now (docs/STAGE_ASSETS.md SA18): the move ring's and every control's ring and count
+ * icon. The controls are rebuilt when it changes (a sheet landed, or KV_StandInsForce flipped it).
+ */
+function touchArtKey(): string {
+	let key = artRef("move")?.assetId ?? "-";
+	for (const spec of [...TOUCH_LAYOUT.play, ...TOUCH_LAYOUT.spectate]) {
+		const ref = artRef(spec.id);
+		key += `|${ref?.assetId ?? "-"}:${countIconRef(spec.id, ref !== undefined)?.assetId ?? "-"}`;
+	}
+	return key;
 }
 
 function makeControl(id: TouchButtonId, gui: ScreenGui): Control {
@@ -319,7 +338,9 @@ function place(ui: Ui, layout: TouchLayoutResult): void {
  *
  * With the UI art (docs/UI_ART.md UA13) the sticks draw ui.stick.ring and the buttons ui.touch.button (the largest
  * whole multiple of the art inside the circle, shared/view/hud touchArtSize, at the flat fill's alpha; touchOpacity /
- * touchSize apply as before); without it, the flat circles. Either way each label sits in its box inside the control
+ * touchSize apply as before); without it, the flat circles. The art only once it has downloaded (client/ui uiImage, docs/STAGE_ASSETS.md
+ * SA18): the flat circles are the stand-in, and the controls are rebuilt when the art key changes, once no finger is
+ * down. Either way each label sits in its box inside the control
  * (touchFace: TextScaled, capped), Flask / Ember show their icon and count when skinned, and a stick shows its word at
  * rest and its knob while held (touchStickParts). The controls keep clear of the touch strip's boxes (docs/UI_ART.md
  * "Phones": KV_TouchStrip's Footprint frames, touchLayout `hudBoxes`) or, while it is not mounted, of the corner
@@ -340,16 +361,39 @@ export class TouchControlsController implements OnStart {
 	private layout: TouchLayoutResult | undefined;
 	private layoutKey = "";
 	private mode: TouchMode = "hidden";
+	/** The current controls' instances and their input connections (rebuilt when the art changes, SA18). */
+	private readonly uiJanitor = new Janitor();
+	/** touchArtKey() of the controls built; a change waits for every finger to lift, then rebuilds. */
+	private artKey = "";
+	private rebuildWanted = false;
 
 	constructor(private readonly input: InputController, private readonly sim: SimController) {}
 
 	onStart(): void {
 		if (!UserInputService.TouchEnabled) return;
-		const ui = this.build();
-		this.ui = ui;
+		this.janitor.Add(this.uiJanitor, "Cleanup");
+		this.ui = this.build();
+		this.artKey = touchArtKey();
+		// docs/STAGE_ASSETS.md SA18: the flat circles until the ring art has downloaded, then rebuilt with it (between
+		// touches: a held control is never torn down under a finger).
+		this.janitor.Add(
+			onUiArtChanged(() => {
+				if (touchArtKey() !== this.artKey) this.rebuildWanted = true;
+			}),
+		);
+		this.janitor.Add(
+			UserInputService.TouchMoved.Connect((io) => this.moved(io)),
+			"Disconnect",
+		);
+		this.janitor.Add(
+			UserInputService.TouchEnded.Connect((io) => this.ended(io)),
+			"Disconnect",
+		);
 		// A locale switch (docs/LOCALIZATION.md L6): every control's word and font; the frame writes the label again.
 		this.janitor.Add(
 			onLocaleChanged(() => {
+				const ui = this.ui;
+				if (ui === undefined) return;
 				const font = currentHudFont();
 				for (const [id, c] of ui.controls) {
 					c.name = str(touchButtonLabelKey(id));
@@ -410,7 +454,7 @@ export class TouchControlsController implements OnStart {
 		gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling;
 		gui.Enabled = false;
 		gui.Parent = playerGui;
-		this.janitor.Add(gui, "Destroy");
+		this.uiJanitor.Add(gui, "Destroy");
 
 		const moveZone = new Instance("TextButton");
 		moveZone.Name = "MoveZone";
@@ -445,7 +489,7 @@ export class TouchControlsController implements OnStart {
 
 		const markerFolder = new Instance("Folder");
 		markerFolder.Name = TARGET_NAME;
-		this.janitor.Add(markerFolder, "Destroy");
+		this.uiJanitor.Add(markerFolder, "Destroy");
 		const marker = new Instance("Part");
 		marker.Name = "Ring";
 		marker.Anchored = true;
@@ -463,24 +507,16 @@ export class TouchControlsController implements OnStart {
 		marker.Parent = markerFolder;
 
 		// Presses: a touch that starts on a control or the move zone becomes a finger.
-		this.janitor.Add(
+		this.uiJanitor.Add(
 			moveZone.InputBegan.Connect((io) => this.begin(io, "move")),
 			"Disconnect",
 		);
 		for (const [id, c] of controls) {
-			this.janitor.Add(
+			this.uiJanitor.Add(
 				c.button.InputBegan.Connect((io) => this.begin(io, id)),
 				"Disconnect",
 			);
 		}
-		this.janitor.Add(
-			UserInputService.TouchMoved.Connect((io) => this.moved(io)),
-			"Disconnect",
-		);
-		this.janitor.Add(
-			UserInputService.TouchEnded.Connect((io) => this.ended(io)),
-			"Disconnect",
-		);
 
 		return { gui, controls, moveZone, moveBase, moveRing, moveArt, moveKnob, markerFolder, marker };
 	}
@@ -545,7 +581,17 @@ export class TouchControlsController implements OnStart {
 
 	// --- per frame ---------------------------------------------------------------------------------------
 
+	/** The controls rebuilt with the art readiness now (SA18); the next frame lays them out again. */
+	private rebuild(): void {
+		this.rebuildWanted = false;
+		this.uiJanitor.Cleanup();
+		this.ui = this.build();
+		this.artKey = touchArtKey();
+		this.layoutKey = "";
+	}
+
 	private frame(): void {
+		if (this.rebuildWanted && this.fingerIds.size() === 0 && this.pending.size() === 0) this.rebuild();
 		const ui = this.ui;
 		const camera = Workspace.CurrentCamera;
 		if (ui === undefined || camera === undefined) return;
