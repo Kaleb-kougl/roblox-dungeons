@@ -523,3 +523,47 @@ Data and helpers only: no rule reads them yet, so every run plays, draws and has
   range.
 - **Ran:** typecheck, lint, build; `shared/characters` 11 / 11, `sim/progression` 52 / 52, `sim/hash` 6 / 6,
   `sim/constants` 7 / 7 (no hash moved: nothing reads the new data).
+
+## AR2 (as built)
+
+The swap rule and the masks. A player carrying both weapons draws exactly as before (rng state included): every
+golden fixture, `roomPool.lock`, the tutorial lock and every determinism spec pass unchanged; only a one-weapon
+loadout (no live world builds one until AR4; some specs arm `[bow]` on their floor worlds) behaves differently.
+
+- **Swap** (`sim/combat/weapons/weapons.ts` `stepWeapons` step 3): the press edge switches only when the next set holds
+  a weapon (`sets[target].weapon !== NO_WEAPON`); otherwise nothing: no `weaponSwapped`, no `buildsOnSwap`, the set in
+  hand stays and its step runs as if no swap was pressed (a guard keeps counting down); `prevButtons` still updates. An
+  empty set 0 with a weapon in set 1 still swaps to it (only an empty target is refused).
+- **Masks** (optional trailing `eligible?: ReadonlyArray<boolean>`, absent = every boon; `maskAllows` / `duoEligible`
+  from AR1):
+  - `sim/builds/cards.ts`: `drawCardOffers(rng, rules, levels, duos, floorCleared, guaranteeDuo, eligible?)` (the new
+    and upgrade pools skip boons the mask leaves out, the duo pool skips duos with such a boon: owned boons are not
+    assumed eligible, so a hand-built state cannot leak one); `legendaryPool(levels, duos, eligible?)`;
+    `drawLegendaryOffers(rng, levels, duos, count, eligible?)` (its pool and its fill). New
+    `playerBoonMask(state, i)`: `eligibleBoonMask` into one module scratch array (read before asking again);
+    `drawPlayerCardOffers` passes it, so `openDraft` and `redeal` (the boss double draft's second deal) are masked.
+  - `sim/progression/progression.ts`: `drawBoonOffers(rng, owned, floorCleared, eligible?)` (`openDraft` without builds
+    passes `playerBoonMask`); `unownedRelics(state, i)` filters by `relicEligible`, and the pedestal (stepRun step 4)
+    now draws through `unownedRelics` (it had its own unfiltered list), so the pedestal, `pedestalOffered` and the
+    vault's Rare share (`stepTreasure` `grantRelicShare`) all read the masked pool.
+  - `sim/pacts/stepPacts.ts`: `classicLegendaryPool` filters by `boonEligible`; `greedPool` (Greed's dim) and
+    `takeGreed`'s deal pass `playerBoonMask`.
+- **Harness** (`run/testing/buildOffers.ts`): `simulateOffers(policy, runs, checkpoints, rules?, eligible?)` passes the
+  mask to every draw; `OfferCheckpoint.boonDealt` / `duoDealt` count every card dealt per boon / duo (any kind, drafts
+  and Greed).
+- **Specs:** `sim/progression/eligibility.spec.ts` (9): both weapons vs unmasked over 10,000 seeded random builds each
+  for `drawCardOffers` (the guaranteed duo in a quarter of them), `drawBoonOffers`, `legendaryPool` +
+  `drawLegendaryOffers`, the relic pool and its pick, offers and rng state equal; the state paths
+  (`drawPlayerCardOffers` vs `drawCardOffers` on the state's rng, `openDraft` classic); sword-only / bow-only state draws
+  never deal the other weapon's boons or duos (with those boons force-owned); Mirror Cloak never in a bow-only relic
+  pool. `sim/oneWeapon.spec.ts` (7): `[sword, undefined]` / `[sword]` / `[bow]` SWAP: no event, set 0 kept,
+  `buildsOnSwap` not called (a `riposteCount` survives); a guard keeps running; two weapons swap as before (and back);
+  an empty set 0 swaps to set 1; co-op per player, deterministic. `run/characterOffers.spec.ts` (3): 2,000 simulated
+  builds runs per character and policy (greedy, random) to floor 21: a Knight never dealt Piercing Arrows / Ballista /
+  Fire Arrows / Conductor / Skewer / Dragon Bolt (nor owns them), an Archer never Riposte / Thunder Guard / Stillwater /
+  Rebuke, every other boon dealt; no mask deals every boon (printed: New cards per boon).
+- **Ran** (on this commit's build): typecheck, lint, build; the three new specs 9 / 7 / 3; `shared/characters` 11;
+  `sim/progression` 61, `sim/builds` 255, `sim/pacts` 33, `sim/treasure` 51, `sim/weapons` 20, `sim/hash` 6,
+  `sim/constants` 7, `sim/runPlayer` 10, `sim/runFull` 6, `sim/runBoss` 6, `sim/runBullets` 8, `sim/determinism` 12,
+  `sim/combat.determinism` 24, `sim/swordBow` 6, `sim/party` 19, `sim/recordingCodec` 19, `sim/player` 25,
+  `dungeon/roomPool` 15 (7.4 min), `run/tutorial` 22, `run/buildsOffers` 2: all passed.

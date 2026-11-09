@@ -23,6 +23,10 @@
  * runs that offered each boon as a New card, and Greed's deal (drawLegendaryOffers, PACT_LEGENDARY_CARDS cards, on a
  * third rng stream per run so neither the offers nor the policy draw differently) for the build at the checkpoint, by
  * card kind: new legendary, duo, evolution (a level-II boon), fill (an ordinary upgrade).
+ *
+ * docs/ARCHER.md AR2: an optional boon mask (`eligible`, sim eligibleBoonMask of a character's loadout) is passed to
+ * every drawCardOffers / drawLegendaryOffers call, and every card dealt is tallied per boon and per duo (any kind,
+ * drafts and Greed deals), so a spec can check what a character is never dealt.
  */
 import { isBossFloor } from "shared/dungeon";
 import {
@@ -123,6 +127,10 @@ export interface OfferCheckpoint {
 	greedWithNew: number;
 	/** Per boon: Greed deals that held it as a new legendary. */
 	greedBoon: number[];
+	/** docs/ARCHER.md AR2. Per boon: cards of it dealt so far (any kind: new, upgrade, evolution; drafts and Greed). */
+	boonDealt: number[];
+	/** Per duo: its cards dealt so far (drafts and Greed). */
+	duoDealt: number[];
 }
 
 /** Per boss floor (5, 10, ...): how often the double draft's first deal had a duo to guarantee. */
@@ -146,10 +154,17 @@ const POLICY_SEED_SALT = 0x5bd1e995;
 /** Greed's deal stream (LG7): its own per run, so the offers and the policy draw as before. */
 const GREED_SEED_SALT = 0x2c1b3c6d;
 
-function zeros(): number[] {
+function zeros(n: number = BOON_COUNT): number[] {
 	const out: number[] = [];
-	for (let b = 0; b < BOON_COUNT; b++) out.push(0);
+	for (let b = 0; b < n; b++) out.push(0);
 	return out;
+}
+
+/** Tallies one dealt card into per-boon / per-duo counts (AR2). */
+function tallyDealt(card: number, boonDealt: number[], duoDealt: number[]): void {
+	const duo = cardDuo(card);
+	if (duo >= 0) duoDealt[duo]++;
+	else if (cardBoon(card) >= 0) boonDealt[cardBoon(card)]++;
 }
 
 /** True for a legendary boon (Rarity.LEGENDARY). */
@@ -165,13 +180,15 @@ function countEvolved(levels: ReadonlyArray<number>): number {
 
 /**
  * `runs` simulated runs with `policy`, tallied "by floor N" for each N in `checkpoints` (ascending; the last one sets
- * how far a run goes: its drafts are those of floors 1 .. N - 1). `rules`: BUILD_RULES unless a spec compares.
+ * how far a run goes: its drafts are those of floors 1 .. N - 1). `rules`: BUILD_RULES unless a spec compares;
+ * `eligible`: a character's boon mask (absent: every boon).
  */
 export function simulateOffers(
 	policy: PickPolicy,
 	runs: number,
 	checkpoints: ReadonlyArray<number>,
 	rules: Readonly<BuildRules> = BUILD_RULES,
+	eligible?: ReadonlyArray<boolean>,
 ): OfferStats {
 	const noPity: BuildRules = { ...rules, upgradePityCards: math.huge };
 	const tallies: OfferCheckpoint[] = checkpoints.map((floor) => ({
@@ -200,6 +217,8 @@ export function simulateOffers(
 		greedFill: 0,
 		greedWithNew: 0,
 		greedBoon: zeros(),
+		boonDealt: zeros(),
+		duoDealt: zeros(DUO_COUNT),
 	}));
 	const bossDuo: BossDuoTally[] = [];
 	const lastFloor = checkpoints[checkpoints.size() - 1] - 1;
@@ -210,6 +229,8 @@ export function simulateOffers(
 		const policyRng = new Rng(bit32.bxor(run, POLICY_SEED_SALT));
 		const greedRng = new Rng(bit32.bxor(run, GREED_SEED_SALT));
 		const offeredBoon = zeros();
+		const boonDealt = zeros();
+		const duoDealt = zeros(DUO_COUNT);
 		const levels: number[] = [];
 		for (let b = 0; b < BOON_COUNT; b++) levels.push(0);
 		const duos: number[] = [];
@@ -235,9 +256,18 @@ export function simulateOffers(
 				let upgradable = false;
 				for (let b = 0; b < BOON_COUNT; b++)
 					if (levels[b] > 0 && levels[b] < boonMaxLevel(b)) upgradable = true;
-				const probe = drawCardOffers({ rngState: rng.rngState }, noPity, levels, duos, floorCleared, guarantee);
-				const offers = drawCardOffers(rng, rules, levels, duos, floorCleared, guarantee);
+				const probe = drawCardOffers(
+					{ rngState: rng.rngState },
+					noPity,
+					levels,
+					duos,
+					floorCleared,
+					guarantee,
+					eligible,
+				);
+				const offers = drawCardOffers(rng, rules, levels, duos, floorCleared, guarantee, eligible);
 				if (offers.size() === 0) continue;
+				for (const c of offers) tallyDealt(c, boonDealt, duoDealt);
 				drafts++;
 				const probeHasUpgrade = probe.some((c) => {
 					const k = offerKind(levels, c);
@@ -285,7 +315,10 @@ export function simulateOffers(
 					t.draftsOfferingBoon[b] += offeredBoon[b];
 					if (offeredBoon[b] > 0) t.runsOfferedBoon[b]++;
 				}
-				const deal = drawLegendaryOffers(greedRng, levels, duos, PACT_LEGENDARY_CARDS);
+				const deal = drawLegendaryOffers(greedRng, levels, duos, PACT_LEGENDARY_CARDS, eligible);
+				for (const c of deal) tallyDealt(c, boonDealt, duoDealt);
+				for (let b = 0; b < BOON_COUNT; b++) t.boonDealt[b] += boonDealt[b];
+				for (let d = 0; d < DUO_COUNT; d++) t.duoDealt[d] += duoDealt[d];
 				t.greedDeals++;
 				t.greedCards += deal.size();
 				let anyNew = false;
