@@ -1557,6 +1557,31 @@
 			"bytes": 2961
 		},
 		{
+			"path": "kaleb-vale/grave/grave_cracked.png",
+			"sha256": "3b56ac3ba1d8215553bc709459324a9c18920b4a0025ee35bbe44c3fdb75bfbe",
+			"bytes": 1145
+		},
+		{
+			"path": "kaleb-vale/grave/grave_cross.png",
+			"sha256": "fcb9d43ae4dd445931adfd10b296337af4149ab608a0fa1617bdeabf06cb7eed",
+			"bytes": 1591
+		},
+		{
+			"path": "kaleb-vale/grave/grave_obelisk.png",
+			"sha256": "453ff783eab6c568d15ae6c8d79b28a7fdc462b105d774aa306091c8b2202f03",
+			"bytes": 1232
+		},
+		{
+			"path": "kaleb-vale/grave/grave_rounded.png",
+			"sha256": "6286bc8efafb19833d7198bc4484a6a581ae1247db97def6549982ad97109cf2",
+			"bytes": 1486
+		},
+		{
+			"path": "kaleb-vale/grave/grave_skull.png",
+			"sha256": "c8c22d38323a978d26e28ce2966836dc2652afbae6cc0cb42c8bd8e497612f60",
+			"bytes": 1219
+		},
+		{
 			"path": "kaleb-vale/hazards/ember_burn.png",
 			"sha256": "de6ccd751964ec43273a098cc66fd894590dc044bb86bd4bcbbcd457e95f7c0e",
 			"bytes": 1582

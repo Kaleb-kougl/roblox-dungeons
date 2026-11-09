@@ -292,8 +292,9 @@ function valePatchPieces(): ValeDecorPiece[] {
 
 /**
  * The decor pieces (decor.delve.b<n>.<kind>[.<v>], every biome alike but a piece with a `biome`: the floor patches,
- * baked per biome). Kinds without art (grave, icicle, shardIce,
- * crack, ring, bossCrystal, shrineCrystal) stay undrawn; the scattered `chandelier` is the first trial 3D kit's candle
+ * baked per biome). Kinds without art (icicle, shardIce, crack,
+ * ring, bossCrystal, shrineCrystal) stay undrawn; `grave` is five original gravestones in the Lords of Pain props'
+ * style (scripts/art/gen-grave-art.js, docs/DECOR.md "Graves"), variants 1-5 by cell hash; the scattered `chandelier` is the first trial 3D kit's candle
  * chandelier lying fallen, and `sarco` / `candle` / `banner` the second kit's sarcophagus, candle stand and wall banner
  * (docs/DECOR.md "3D kits"). Round flat pieces take a few
  * of the pack's facings as variants, picked by cell hash. No gemstones (docs/BOOST_ART.md decision 2): a gem cluster on
@@ -304,6 +305,12 @@ export const VALE_DECOR_PIECES: ReadonlyArray<ValeDecorPiece> = [
 	{ kind: "brazier", art: "brazier", layer: "tall", glow: true },
 	{ kind: "sarco", art: "kit-sarcophagus", layer: "tall" }, // trial 3D kit 2 (docs/DECOR.md "3D kits")
 	{ kind: "candle", art: "kit-candle-stand", layer: "tall" }, // trial 3D kit 2
+	// graves (docs/DECOR.md "Graves"): original art, five looks picked by cell hash
+	{ kind: "grave", variant: 1, art: "grave-rounded", layer: "tall" },
+	{ kind: "grave", variant: 2, art: "grave-cross", layer: "tall" },
+	{ kind: "grave", variant: 3, art: "grave-cracked", layer: "tall" },
+	{ kind: "grave", variant: 4, art: "grave-obelisk", layer: "tall" },
+	{ kind: "grave", variant: 5, art: "grave-skull", layer: "tall" },
 	{ kind: "pillar", art: "column1", layer: "tall" },
 	{ kind: "column", art: "column1", layer: "tall" },
 	{ kind: "columnBroken", art: "column2", layer: "low" },

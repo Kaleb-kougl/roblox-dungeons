@@ -143,7 +143,7 @@ shadow included):
 | `vfx/flame`, `vfx/flames` (+ glow) | 8 | 60x61 / 60x157 | flame loops | on torches and braziers |
 | `environment/ground_variation1/2`, `ground_darken` | 1 | 256x256 | floor textures next to `ground_stone1` | floor variants (R1) |
 
-No piece for crack, banner, arch, grave, sarco, candle, icicle or shardIce: those stay undrawn.
+No piece for crack, banner, arch, grave, sarco, candle, icicle or shardIce: those stay undrawn. (Since then: sarco, candle and banner come from 3D kits, below, and grave from original art, "Graves".)
 
 **Facings.** A prop needs one facing (the camera's yaw never changes). Pieces that sit on the grid (walls, columns,
 tiles, crates) must use the facing whose edges run along the grid as this camera sees it: the world axes land at
@@ -222,6 +222,36 @@ for is on the main menu's Credits screen (shared/view/menu `CREDITS`, with every
 check (cages read at the camera and never cover a bullet; how many cages the void shows; chains read on every biome
 floor), then decide which biomes keep them and what else from the kit to render (hanging cage, statue, lectern,
 bookcase, wall torch).
+
+## Graves (2026-11-08, original art)
+
+Presentation only (no sim, dungeon, lockstep, hash, replay or fixture change; the decor plan already placed graves,
+DECOR_BOX.grave unchanged). The Forge's `grave` props (grim graveyard rooms, about 5 a floor, standing on far-wall tops
+under the footprint rule) had no art; they now draw five ORIGINAL gravestones in the style of the Lords of Pain props,
+made by `scripts/art/gen-grave-art.js` (run by `art:build` / `art:lock`) into `art/vendor/kaleb-vale/grave/`:
+
+| Variant | Look | Art (px) |
+|---|---|---|
+| 1 | `grave-rounded`: round-topped headstone on a plinth, a carved cross over three epitaph lines | 28 x 32 |
+| 2 | `grave-cross`: stone cross on a stepped base, a ring cut where the arms cross | 28 x 33 |
+| 3 | `grave-cracked`: slab sunk in a mound of earth, leaning, its corner broken off, a crack down it | 26 x 30 |
+| 4 | `grave-obelisk`: small obelisk with a pointed cap and a carved band, on a plinth | 26 x 34 |
+| 5 | `grave-skull`: pointed-arch headstone with a skull in relief, moss on its shoulders and foot | 26 x 29 |
+
+How they match Lords of Pain: each stone is a signed distance model rendered from the game camera (orthographic, 55
+degrees down, azimuth -45, 29.6 px a tile: render_kit.py's, gen-fortune-art.js's) the way render_kit.py renders a 3D
+kit, not as crisp pixel art: 6 x 6 rays a pixel averaged (soft edges), the kit sun from the camera's upper left with
+self-shadows and a dim ambient, a mottled warm-to-grey stone albedo, and the kits' grade (saturation 0.62, contrast
+1.15, the warm tint), so the bodies sit at a mean luminance of about 35-45 between the pack's columns (~28) and the
+kits graded toward them (43-57). No baked floor shadow (the pipeline clears Lords of Pain's too). Every stone is turned
+to face the camera, 28 degrees toward its sunlit side, so one image serves a far wall of either axis (the plan picks
+a tall piece's variant by cell hash, not by its wall); drawn 1.3 x their modelled size to stand with the pack's column
+stump. Each is its own PNG (worldArt `own`), so `decor-atlas.png` does not repack. Mapped as `decor.delve.b<n>.grave`
+variants 1-5 in every biome (vale `VALE_DECOR_PIECES`). Measured against DECOR_BOX.grave (18 x 26 render px, nothing
+below the pivot): the widest reaches 8.9 render px left of its pivot (the foot's front corner), the tallest 16.2 up
+(`gen-grave-art.test.js` checks it). Not used on the void's shoulder (`decor.void.b<n>.grave` stays empty).
+The five `grave-*.png` uploaded 2026-11-08 (IDs in `packs/vale/assetIds.ts`), so the bundled vale pack draws them;
+Studio check pending (grim graveyard rooms).
 
 ## Solid decor (2026-11-02, owner: "solid, anywhere")
 

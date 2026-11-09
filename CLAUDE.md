@@ -985,6 +985,15 @@ Decision log (deviations from `PLAN.md`):
   duo hint keeps the boons' labels. Without the art every cell and chip is exactly as before. No new strings, roles,
   sounds or settings; no Luau-locals change. Upload of `duo-icons.png` (its ID into `assetIds.ts`) and the Studio check
   pending.
+- **Graves (docs/DECOR.md "Graves", 2026-11-08).** Presentation only (no sim, dungeon, lockstep, hash, replay, fixture
+  or score change; DECOR_BOX.grave and the decor plan unchanged). The Forge's `grave` props (grim graveyard rooms, far-wall
+  tops) draw five ORIGINAL gravestones in the Lords of Pain props' style by `scripts/art/gen-grave-art.js` (SDF models
+  rendered from the game camera like render_kit.py's kits: 6 x 6 rays a pixel, the kit sun, the kits' grade; run by
+  `art:build` / `art:lock`) into `art/vendor/kaleb-vale/grave/`: rounded headstone, cross, cracked slab, obelisk, skull
+  headstone with moss, each facing the camera (28 degrees toward its lit side) so one image serves either far wall.
+  World art `grave-<look>` (own PNGs: `decor-atlas.png` does not repack), vale `decor.delve.b<n>.grave` variants 1-5 in
+  every biome; each fits DECOR_BOX.grave at full size (`gen-grave-art.test.js`). Not on the void's shoulder. The five
+  `grave-*.png` uploaded 2026-11-08 (`assetIds.ts`), so the bundled vale pack draws them; the Studio check pending.
 - **Co-op frame pacing (docs/FRAME_PACING.md).** Client timing and presentation only (no sim, dungeon, hash, replay,
   wire, fixture or score change; the server is unchanged: every client still steps exactly the merged log, only WHEN
   changes). shared/lockstep `pacer.ts` `PlayoutPacer`, a playout clock: merged frame k is stepped at local time k x

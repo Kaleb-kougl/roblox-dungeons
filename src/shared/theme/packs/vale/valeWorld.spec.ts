@@ -297,7 +297,8 @@ describe("vale world art (docs/DECOR.md R5)", () => {
 		for (const kind of ["debris", "bones", "moss", "roots"] as const) {
 			expect([kind, core.decorVariants("biome.3", kind).size()]).toEqual([kind, 4]);
 		}
-		expect(core.decorVariants("biome.4", "grave").size()).toBe(0); // no Lords of Pain art: not drawn
+		// graves (docs/DECOR.md "Graves"): five original looks, in every biome (the Forge places them in grim graveyards)
+		for (const b of BIOMES) expect([b.id, core.decorVariants(b.id, "grave").size()]).toEqual([b.id, 5]);
 		// the floor patches (docs/KENNEY_DECOR.md KN4): five looks in every biome, each biome its own bake, flat; the
 		// ancient biome adds the two Lords of Pain blotches ("LoP floor blotches")
 		const ids = worldIds();

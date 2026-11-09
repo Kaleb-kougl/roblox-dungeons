@@ -1398,6 +1398,37 @@
 				"outline": true,
 				"own": "kit-sarcophagus"
 			},
+			"$comment-grave": "Graves (docs/DECOR.md \"Graves\"): five original gravestones drawn by scripts/art/gen-grave-art.js (art:build and art:lock run it first) into kaleb-vale/grave/, rendered from the game camera in the style of the Lords of Pain props, each its own PNG so the decor atlas never repacks; decor kind `grave` variants 1-5 (packs/vale manifest.ts VALE_DECOR_PIECES).",
+			"grave-rounded": {
+				"file": "kaleb-vale/grave/grave_rounded.png",
+				"pivot": "bottom",
+				"outline": true,
+				"own": "grave-rounded"
+			},
+			"grave-cross": {
+				"file": "kaleb-vale/grave/grave_cross.png",
+				"pivot": "bottom",
+				"outline": true,
+				"own": "grave-cross"
+			},
+			"grave-cracked": {
+				"file": "kaleb-vale/grave/grave_cracked.png",
+				"pivot": "bottom",
+				"outline": true,
+				"own": "grave-cracked"
+			},
+			"grave-obelisk": {
+				"file": "kaleb-vale/grave/grave_obelisk.png",
+				"pivot": "bottom",
+				"outline": true,
+				"own": "grave-obelisk"
+			},
+			"grave-skull": {
+				"file": "kaleb-vale/grave/grave_skull.png",
+				"pivot": "bottom",
+				"outline": true,
+				"own": "grave-skull"
+			},
 			"$comment-solid": "Solid decor (docs/DECOR.md \"Solid decor\"): the tomb at world scale along X and along Z, pivot = its footprint's centre on the floor (render_kit.py pivotOut).",
 			"kit-tomb-x": {
 				"file": "dungeon-modular-set-v2/tomb/tomb_x.png",

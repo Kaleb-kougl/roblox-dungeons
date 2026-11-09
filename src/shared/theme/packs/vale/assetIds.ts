@@ -142,6 +142,8 @@ import type { RobloxAssetId } from "../../types";
  * sfx-boost-drop ("Retro Coin 4" by Driken Stan, Pixabay 236671) and sfx-boost-aegisbreak ("Plate Break 1" by
  * freesound_community, Pixabay 36468) uploaded 2026-11-08 by k9kbdev as built by audio:build, transcribed from an Asset
  * Manager screenshot.
+ * grave-<look>.png (the five gravestones, docs/DECOR.md "Graves"; original art, scripts/art/gen-grave-art.js, own
+ * world art PNGs) uploaded 2026-11-08 10:25 AM by k9kbdev, transcribed from an Asset Manager screenshot.
  * tile-biome2-floor.png / tile-biome2-wall.png (the molten biome's floor and wall textures, docs/ART.md "As built:
  * molten tiles"; original art, scripts/art/molten/gen_molten_tiles.py) uploaded 2026-11-08 1:21 PM by k9kbdev,
  * transcribed from an Asset Manager screenshot.
@@ -205,6 +207,11 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"golden-move-outline.png": "rbxassetid://85083036932400",
 	"golden-move.png": "rbxassetid://88829506171960",
 	"goo.png": "rbxassetid://82002931490706",
+	"grave-cracked.png": "rbxassetid://134206232347197",
+	"grave-cross.png": "rbxassetid://72764310358371",
+	"grave-obelisk.png": "rbxassetid://72332549557704",
+	"grave-rounded.png": "rbxassetid://105320544067356",
+	"grave-skull.png": "rbxassetid://113527738840348",
 	"hazards.png": "rbxassetid://121912104813388",
 	"item-icons.png": "rbxassetid://82172693899829",
 	"imp-attack-outline.png": "rbxassetid://87826495349638",
