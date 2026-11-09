@@ -85,6 +85,10 @@ export interface BreakableTunables {
 		readonly clusterMax: number;
 		readonly cornerTries: number;
 	};
+	/** Mess halls (Forge theme "mess", docs/KENNEY_DECOR.md KN7): count x countScale, rounded down (still at most maxPerRoom). */
+	readonly mess: {
+		readonly countScale: number;
+	};
 }
 
 export const BREAKABLE: BreakableTunables = table.freeze({
@@ -114,4 +118,5 @@ export const BREAKABLE: BreakableTunables = table.freeze({
 	seedTries: 12,
 	crateShare: 0.5,
 	store: table.freeze({ countScale: 2, countExtra: 3, clusterMin: 3, clusterMax: 5, cornerTries: 8 }),
+	mess: table.freeze({ countScale: 1.5 }),
 });

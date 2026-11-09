@@ -29,6 +29,8 @@
  *            + store.countExtra pieces (at most maxPerRoom), no lone piece, and clusters of store.clusterMin..Max
  *            seeded in its corners first (inCorner: a wall along X and along Z; store.cornerTries rejected corner
  *            seeds, then any wall-hugging cell).
+ *   mess     a mess hall (theme "mess", docs/KENNEY_DECOR.md KN7) gets count x mess.countScale pieces, rounded down
+ *            (at most maxPerRoom); otherwise as any room.
  *   kind     one draw per piece: crate with crateShare, else barrel.
  *
  * Output order is placement order (rooms by id). Tile coordinates (grid x, y; world x = x, z = y).
@@ -314,7 +316,13 @@ export function breakableCandidateFinder(input: BreakableFloorInput): (room: Enc
 function candidatesOf(input: BreakableFloorInput, room: EncounterRoom, prep: FloorPrep): TileXZ[] {
 	const d = input.dungeon;
 	const z: Zone[] = [...prep.zones];
-	for (const sp of input.roomSpawns[room.id] ?? []) z.push({ x: sp.x, z: sp.z, r: BREAKABLE.spawnClearTiles });
+	// every deferred spawn of the floor that could reach the room: its own, and a touching room's (two rooms may share
+	// open floor with no wall between them)
+	const sr = BREAKABLE.spawnClearTiles;
+	for (let rid = 0; rid < input.roomSpawns.size(); rid++)
+		for (const sp of input.roomSpawns[rid] ?? [])
+			if (sp.x >= room.minX - sr && sp.x <= room.maxX + sr && sp.z >= room.minZ - sr && sp.z <= room.maxZ + sr)
+				z.push({ x: sp.x, z: sp.z, r: sr });
 	const doors = prep.doors[room.id] ?? [];
 	const door2 = BREAKABLE.doorClearTiles * BREAKABLE.doorClearTiles;
 	const probe = new Placer(d, new EncounterRng(0));
@@ -364,9 +372,14 @@ function placeRoom(p: Placer, input: BreakableFloorInput, room: EncounterRoom, f
 	const rng = p.rng;
 	const band = breakableBand(floor);
 	const S = BREAKABLE.store;
-	const store = (input.dungeon.roomThemes ?? [])[room.id] === "store";
+	const theme = (input.dungeon.roomThemes ?? [])[room.id];
+	const store = theme === "store";
 	const drawn = breakableRoomCount(rng.int(band.min, band.max), room.floorTiles);
-	const count = store ? math.min(BREAKABLE.maxPerRoom, drawn * S.countScale + S.countExtra) : drawn;
+	const count = store
+		? math.min(BREAKABLE.maxPerRoom, drawn * S.countScale + S.countExtra)
+		: theme === "mess"
+		? math.min(BREAKABLE.maxPerRoom, math.floor(drawn * BREAKABLE.mess.countScale))
+		: drawn;
 	if (count <= 0) return;
 	const cands = candidatesOf(input, room, prep);
 	if (cands.size() === 0) return;

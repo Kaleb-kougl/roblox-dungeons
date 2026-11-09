@@ -376,7 +376,7 @@ describe("breakable placement: counts per depth band", () => {
 		expect(breakableRoomCount(0, 10000)).toBe(0);
 	});
 
-	it("no room gets more than its band's max x area (capped; a storeroom x countScale + countExtra); averages grow band by band", () => {
+	it("no room gets more than its band's max x area (capped; a storeroom x countScale + countExtra, a mess hall x mess.countScale); averages grow band by band", () => {
 		const perBand = new Map<string, { rooms: number; pieces: number }>();
 		let over = 0;
 		for (const l of ALL) {
@@ -392,8 +392,14 @@ describe("breakable placement: counts per depth band", () => {
 				const n = byRoom.get(room.id) ?? 0;
 				const most = breakableRoomCount(band.max, room.floorTiles);
 				const S = BREAKABLE.store;
-				const store = (l.dungeon.roomThemes ?? [])[room.id] === "store";
-				if (n > (store ? math.min(BREAKABLE.maxPerRoom, most * S.countScale + S.countExtra) : most)) over++;
+				const theme = (l.dungeon.roomThemes ?? [])[room.id];
+				const cap =
+					theme === "store"
+						? math.min(BREAKABLE.maxPerRoom, most * S.countScale + S.countExtra)
+						: theme === "mess"
+						? math.min(BREAKABLE.maxPerRoom, math.floor(most * BREAKABLE.mess.countScale))
+						: most;
+				if (n > cap) over++;
 				const e = perBand.get(band.name) ?? { rooms: 0, pieces: 0 };
 				e.rooms++;
 				e.pieces += n;

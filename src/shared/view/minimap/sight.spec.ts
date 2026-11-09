@@ -233,9 +233,13 @@ describe("shadowcast", () => {
 		expect(pieces.size() > 0).toBe(true);
 		for (const b of pieces) expect(t.tile[b.y * t.W + b.x]).toBe(MapTile.FLOOR);
 		const d = generateDungeon(endlessFloorParams(1337, 1));
+		// a pillar a free-standing piece cleared (Dungeon.clearedPillars: a study table's, a dining table's ring,
+		// docs/BOOKSHELVES.md / docs/KENNEY_DECOR.md) is floor again, or under the piece
+		const cleared = new Set<number>();
+		for (const c of d.clearedPillars ?? []) cleared.add(c.y * d.W + c.x);
 		let pillars = 0;
 		for (const p of d.props) {
-			if (p.kind !== "pillar") continue;
+			if (p.kind !== "pillar" || cleared.has(math.floor(p.y) * d.W + math.floor(p.x))) continue;
 			pillars++;
 			expect(blocksSight(t.tile[math.floor(p.y) * t.W + math.floor(p.x)])).toBe(true);
 		}

@@ -139,6 +139,8 @@
  *        node scripts/art/build-atlases.js --lock --only pipIcons  needs only the generated icons)
  *        node scripts/art/build-atlases.js --only duoIcons         the same for the duo icon sheet (docs/BUILDS.md BU11;
  *        node scripts/art/build-atlases.js --lock --only duoIcons  needs only the generated icons)
+ *        node scripts/art/build-atlases.js --only kenney           the same for the Kenney decor sheet
+ *        node scripts/art/build-atlases.js --lock --only kenney    (docs/KENNEY_DECOR.md KN9; needs only art/vendor/kenney/)
  * Plain Node plus pngjs. The pure helpers are exported for scripts/art/build-atlases.test.js (npm run test:art).
  */
 "use strict";
@@ -593,6 +595,7 @@ function sourceFiles(config) {
 	for (const f of boostIconSourceFiles(config.boostIcons)) files.add(f);
 	for (const f of pipIconSourceFiles(config.pipIcons)) files.add(f);
 	for (const f of duoIconSourceFiles(config.duoIcons)) files.add(f);
+	for (const f of kenneySourceFiles(config.kenney)) files.add(f);
 	return [...files].sort();
 }
 
@@ -4475,6 +4478,146 @@ function mainOnlyFortune(config) {
 }
 
 // ---------------------------------------------------------------------------------------------
+// Kenney decor sheet (docs/KENNEY_DECOR.md KN9, KND8; config key `kenney`)
+//
+// The reprojected Kenney pieces the decor plan stands on solid decor (study tables, display cases, lecterns, the
+// toppled case, dining tables, store stock, the library runner, the library's candle stands): PNGs written by
+// scripts/art/kenney/reproject.py into art/vendor/kenney/, packed into ONE sheet of their own (<atlas.name>.png, more
+// as <name>-2, ... if it overflows) so there is one upload and the decor atlas never repacks. `kenney`: { atlas: { name,
+// maxSize }, pixelsPerTile, pixelsPerTileFrom (optional, checked by a full build), pieces }. A piece is a world image
+// (worldArt's noiseAlpha / pad, buildWorldImage): `file` (art/vendor-relative), `pivot` [x, y] in the file's pixels
+// (reproject.py's <png>.pivot.json: the footprint's centre on the floor), `outline` (true: the convex hull of its
+// opaque pixels, for the footprint fit). Packed by packWorldAtlases' MaxRects (largest first). Outputs:
+// art/build/<atlas>.png (also copied to art/upload/), the contact sheet art/build/contact/<atlas>.png, and
+// src/shared/theme/packs/vale/kenneyLayout.ts (VALE_KENNEY_LAYOUTS: ValeWorldImageLayout by art name, rect cuts of the
+// sheet). Build just this group: node scripts/art/build-atlases.js --only kenney (and --lock --only kenney).
+
+const KENNEY_LAYOUT_FILE = path.join(LAYOUT_DIR, "kenneyLayout.ts");
+const KENNEY_GROUP_KEYS = new Set(["$comment", "atlas", "pixelsPerTile", "pixelsPerTileFrom", "pieces"]);
+const KENNEY_PIECE_KEYS = new Set(["$comment", "file", "pivot", "outline"]);
+const KENNEY_SHEETS_DECL = "export const VALE_KENNEY_SHEETS: ReadonlyArray<string> = ";
+
+/** The kenney group's piece names (no `$` comments), sorted. */
+function kenneyPieceNames(group) {
+	return Object.keys(group.pieces || {})
+		.filter((n) => !n.startsWith("$"))
+		.sort();
+}
+
+/** Every vendor file the kenney group reads, sorted ([] without a group). */
+function kenneySourceFiles(group) {
+	if (!group) return [];
+	const files = new Set();
+	for (const name of kenneyPieceNames(group)) {
+		const def = group.pieces[name];
+		if (typeof def.file !== "string" || def.file === "") throw new Error(`kenney.pieces.${name} needs a file`);
+		files.add(def.file);
+	}
+	return [...files].sort();
+}
+
+/** Builds and packs the kenney sheet: { pieces, atlases, layouts, pixelsPerTileFrom }. `sets`: built sprite sets, or undefined (--only). */
+function buildKenney(group, world, sets) {
+	for (const k of Object.keys(group)) if (!KENNEY_GROUP_KEYS.has(k)) throw new Error(`kenney: unknown key ${k}`);
+	if (!group.atlas || typeof group.atlas.name !== "string" || !(group.atlas.maxSize > 0)) throw new Error("kenney.atlas needs { name, maxSize }");
+	const ppt = group.pixelsPerTile;
+	if (typeof ppt !== "number" || !(ppt > 0)) throw new Error("kenney.pixelsPerTile must be a positive number");
+	if (!world) throw new Error("kenney: needs worldArt (its noiseAlpha / pad)");
+	const pixelsPerTileFrom = groupPixelsPerTileFrom("kenney", group, ppt, sets);
+	const names = kenneyPieceNames(group);
+	if (names.length === 0) throw new Error("kenney: no pieces");
+	const pieces = names.map((name) => {
+		const def = group.pieces[name];
+		for (const k of Object.keys(def)) if (!KENNEY_PIECE_KEYS.has(k)) throw new Error(`kenney.pieces.${name}: unknown key ${k}`);
+		if (!Array.isArray(def.pivot)) throw new Error(`kenney.pieces.${name}: pivot must be [x, y] (reproject.py's .pivot.json)`);
+		return buildWorldImage(world, name, { file: def.file, pivot: def.pivot, outline: def.outline === true }, ppt, world.pad);
+	});
+	const packed = packWorldAtlases({ atlas: group.atlas }, pieces);
+	const layouts = {};
+	for (const p of pieces) layouts[p.name] = worldLayout(p);
+	return { pieces, atlases: packed.atlases, layouts, pixelsPerTileFrom };
+}
+
+/** kenneyLayout.ts (docs/KENNEY_DECOR.md KN9). */
+function kenneyLayoutModule(k) {
+	const text = [
+		"// GENERATED by `npm run art:build` (scripts/art/build-atlases.js) from art/atlases.json. Do not edit.",
+		"",
+		"/**",
+		comment([
+			"Layout of the `vale` pack's Kenney decor sheet (docs/KENNEY_DECOR.md KN9): Kenney's Isometric Library / Dungeon",
+			"pieces (CC0) reprojected to the game camera by scripts/art/kenney/reproject.py, packed into one sheet of their own",
+			"(art/atlases.json `kenney`). Every piece is a world image (`rect` cut of the sheet, `pivot` the footprint's centre",
+			"on the floor, `outline` the convex hull of its opaque pixels for the footprint fit), by art name; packs/vale",
+			"manifest.ts maps the decor IDs onto them. No asset IDs: `file` names the PNG in art/build/ to upload.",
+		]),
+		" */",
+		"",
+		'import type { ValeWorldImageLayout } from "./layout";',
+		"",
+		`${KENNEY_SHEETS_DECL}${tsValue(k.atlases.map((a) => a.file), 0, KENNEY_SHEETS_DECL.length)};`,
+		"",
+		`export const VALE_KENNEY_LAYOUTS: Record<string, ValeWorldImageLayout> = ${tsValue(k.layouts, 0, PRINT_WIDTH)};`,
+		"",
+	].join("\n");
+	for (const line of text.split("\n")) {
+		if (line.replace(/\t/g, "    ").length > PRINT_WIDTH) throw new Error(`kenneyLayout.ts line over ${PRINT_WIDTH} columns: ${line}`);
+	}
+	return text;
+}
+
+/** Every output of the kenney group: [dir, name, img] (each sheet, and its contact sheet: every piece, pivot, outline). */
+function kenneyOutputs(k) {
+	const out = [];
+	for (const a of k.atlases) out.push(["build", a.file, a.img]);
+	for (const a of k.atlases) {
+		const parts = a.items.map((p) => worldContact(p));
+		const w = Math.max(...parts.map((c) => c.w));
+		const h = parts.reduce((n, c) => n + c.h, 0);
+		const img = raster(w, h);
+		fillRect(img, 0, 0, w, h, [CONTACT_BG, CONTACT_BG, CONTACT_BG]);
+		let y = 0;
+		for (const c of parts) {
+			blit(c, 0, 0, c.w, c.h, img, 0, y, 0);
+			y += c.h;
+		}
+		out.push(["contact", a.file, img]);
+	}
+	return out;
+}
+
+/** Log lines for the built kenney sheet. */
+function printKenney(k) {
+	const from = k.pixelsPerTileFrom ? ` (pixelsPerTileFrom ${k.pixelsPerTileFrom.id}: ${k.pixelsPerTileFrom.checked ? "equal" : "unchecked, its set is not built by --only"})` : "";
+	console.log(`kenney: ${k.pieces.length} pieces${from}`);
+	for (const a of k.atlases) console.log(`  ${a.file}: ${a.img.w}x${a.img.h}, ${a.items.length} piece(s)`);
+	for (const name of Object.keys(k.layouts)) {
+		const l = k.layouts[name];
+		console.log(`  ${name}: rect ${l.rect.x},${l.rect.y} ${l.rect.w}x${l.rect.h}, pivot (${l.pivot.x}, ${l.pivot.y})${l.outline ? `, outline ${l.outline.length} pts` : ""}`);
+	}
+}
+
+/**
+ * `--only kenney` (docs/KENNEY_DECOR.md KN9): checks the kenney group's files against the lock, then writes ONLY its
+ * sheet(s) (and their art/upload copies), their contact sheets and packs/vale/kenneyLayout.ts, byte for byte what a full
+ * build writes for them (pixelsPerTileFrom unchecked). Nothing else is read, written or removed.
+ */
+function mainOnlyKenney(config) {
+	if (!config.kenney) fail("art/atlases.json has no `kenney` group");
+	checkLock(config, kenneySourceFiles(config.kenney));
+	const k = buildKenney(config.kenney, config.worldArt, undefined);
+	let changed = 0;
+	for (const [dir, name, img] of kenneyOutputs(k)) {
+		const png = encodePng(img);
+		if (writeIfChanged(path.join(dir === "build" ? BUILD : CONTACT, name), png)) changed++;
+		if (dir === "build" && writeIfChanged(path.join(UPLOAD, name), png)) changed++;
+	}
+	if (writeIfChanged(KENNEY_LAYOUT_FILE, kenneyLayoutModule(k))) changed++;
+	printKenney(k);
+	console.log(`art:build --only kenney: ${changed} file(s) updated`);
+}
+
+// ---------------------------------------------------------------------------------------------
 // Fortune sheets (docs/FORTUNE.md FO10; config key `fortune`)
 //
 // The pact altar and the Goldling's coin burst: original pixel art drawn by scripts/art/gen-fortune-art.js (art:build and
@@ -4676,6 +4819,7 @@ const ONLY_GROUPS = [
 	"boostIcons",
 	"pipIcons",
 	"duoIcons",
+	"kenney",
 ];
 
 /** The vendor files `--lock --only <group>` re-hashes. */
@@ -4720,6 +4864,10 @@ function onlyGroupSourceFiles(config, group) {
 	if (group === "duoIcons") {
 		if (!config.duoIcons) fail("art/atlases.json has no `duoIcons` group");
 		return duoIconSourceFiles(config.duoIcons);
+	}
+	if (group === "kenney") {
+		if (!config.kenney) fail("art/atlases.json has no `kenney` group");
+		return kenneySourceFiles(config.kenney);
 	}
 	throw new Error(`no --only group ${group}`);
 }
@@ -4947,6 +5095,10 @@ function main() {
 		mainOnlyDuoIcons(config);
 		return;
 	}
+	if (only === "kenney") {
+		mainOnlyKenney(config);
+		return;
+	}
 	checkLock(config);
 
 	const sets = buildSpriteSets(config.spriteSets);
@@ -5046,6 +5198,11 @@ function main() {
 		emit(BUILD, duoIcons.file, duoIcons.img, builtFiles);
 		emit(CONTACT, duoIcons.file, uiIconContact(duoIcons), contactFiles);
 	}
+	let kenney;
+	if (config.kenney) {
+		kenney = buildKenney(config.kenney, config.worldArt, sets);
+		for (const [dir, name, img] of kenneyOutputs(kenney)) emit(dir === "build" ? BUILD : CONTACT, name, img, dir === "build" ? builtFiles : contactFiles);
+	}
 	removeStale(BUILD, builtFiles);
 	removeStale(CONTACT, contactFiles);
 
@@ -5069,6 +5226,7 @@ function main() {
 	if (boostIcons && writeIfChanged(BOOST_ICON_LAYOUT_FILE, boostIconLayoutModule(boostIcons))) changed++;
 	if (pipIcons && writeIfChanged(PIP_ICON_LAYOUT_FILE, pipIconLayoutModule(pipIcons))) changed++;
 	if (duoIcons && writeIfChanged(DUO_ICON_LAYOUT_FILE, duoIconLayoutModule(duoIcons))) changed++;
+	if (kenney && writeIfChanged(KENNEY_LAYOUT_FILE, kenneyLayoutModule(kenney))) changed++;
 
 	for (const s of sets) {
 		const l = s.layout;
@@ -5107,6 +5265,7 @@ function main() {
 	if (boostIcons) printBoostIcons(boostIcons);
 	if (pipIcons) printPipIcons(pipIcons);
 	if (duoIcons) printDuoIcons(duoIcons);
+	if (kenney) printKenney(kenney);
 	if (icons) {
 		console.log(`ui icons: ${icons.file} ${icons.w}x${icons.h}, ${icons.pieces.length} icons, ${icons.gutter} px extruded gutter (contact numbers in id order)`);
 		Object.keys(icons.layouts)
@@ -5186,6 +5345,9 @@ module.exports = {
 	duoIconLayoutModule,
 	duoIconSourceFiles,
 	buildWorldPieces,
+	buildKenney,
+	kenneyLayoutModule,
+	kenneySourceFiles,
 	chooseGrid,
 	contactSheet,
 	cutoutPixels,

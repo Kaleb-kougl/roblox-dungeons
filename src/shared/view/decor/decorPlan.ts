@@ -68,7 +68,12 @@
  *   solid      docs/DECOR.md "Solid decor", after the wall pieces (before the void): Dungeon.solidDecor's tombs (2 x 1) and candle
  *              stands stand on their own WALL cells at floor level (source "solid", layer low, a fade box like every
  *              standing piece); obstacles, so the footprint rule does not apply. A tomb's variant is its axis, and so
- *              is a reading area's table's (docs/BOOKSHELVES.md); a chair's is its facing (+X, +Z, -X, -Z).
+ *              is a reading area's table's (docs/BOOKSHELVES.md); a chair's is its facing (+X, +Z, -X, -Z). Kenney's
+ *              pieces (docs/KENNEY_DECOR.md KN9) take their axis or facing and a look by cell hash (kenneyVariant,
+ *              DECOR_KENNEY); a stockpile stands tall and keeps the far walls screen-up of it bare (behindShelf); a
+ *              library's candle stands draw as `libraryCandle` with its art. Then the carpets, flat: the throne's in 2 x
+ *              2 segments, a library's runner (1 wide, DECOR_RUNNER) as an end piece on each end, 2 x 1 segments
+ *              between, only with its art.
  *   scatter    docs/DECOR.md "3D kits", appended after the void (so no earlier entry or fade box index moves), only
  *              for a DECOR_SCATTER kind the pack has art for (input.variants; absent: nothing): per room in index
  *              order, never the boss room, at least minRoomTiles of floor, roomShare of them by room hash, one flat
@@ -96,6 +101,7 @@ import {
 	tileAt,
 	type Dungeon,
 	type EndlessFloorLayout,
+	type DecorCarpet,
 	type PropKind,
 	type SolidDecorPiece,
 	type WorldXZ,
@@ -122,7 +128,10 @@ import {
 	DECOR_BOOKCASES,
 	DECOR_CLEAR,
 	DECOR_DRESSING,
+	DECOR_KENNEY,
+	DECOR_LIBRARY_THEME,
 	DECOR_PLACE,
+	DECOR_RUNNER,
 	DECOR_PATCHES,
 	DECOR_SALT,
 	DECOR_SCATTER,
@@ -221,6 +230,21 @@ export const DECOR_BOX: Readonly<Record<StandingKind, DecorBoxPx>> = {
 	// pair (the run's outer edges), hulled (as the tomb's); the smallest box (w x h + below) holding the outlines of all
 	// six looks in both facings at full size is 11 / 19 / 2, kept with a pixel to spare
 	bookcaseWide: { w: 13, h: 21, below: 3 },
+	// Kenney solid pieces (docs/KENNEY_DECOR.md KN9), measured on the built outlines (art/build/kenney-decor.png, render
+	// px = art px / 1.85): the smallest box (w x (h + below)) holding every look's outline whole in every facing it is
+	// drawn in, at full size, around the piece's anchors (a 2 x 1 piece's box at both ends of its run, a 2 x 2 piece's at
+	// its four corners, hulled, as the tomb's and the throne's), then 2 px wider and a pixel taller and deeper to spare
+	studyTable: { w: 4, h: 5, below: 1 },
+	display: { w: 5, h: 17, below: 7 },
+	lectern: { w: 11, h: 15, below: 4 },
+	fallenShelf: { w: 10, h: 23, below: 14 },
+	diningTable: { w: 24, h: 21, below: 9 },
+	barrelStack: { w: 9, h: 23, below: 6 },
+	crateStack: { w: 21, h: 17, below: 6 },
+	lumber: { w: 27, h: 18, below: 9 },
+	barrelHeap: { w: 26, h: 18, below: 8 },
+	stockpile: { w: 4, h: 20, below: 2 },
+	libraryCandle: { w: 10, h: 18, below: 3 },
 };
 
 /** Tall Forge pieces in placement priority (highest first). */
@@ -272,7 +296,18 @@ export type StandingKind =
 	| "bookcase"
 	| "table"
 	| "chair"
-	| "bookcaseWide";
+	| "bookcaseWide"
+	| "studyTable"
+	| "display"
+	| "lectern"
+	| "fallenShelf"
+	| "diningTable"
+	| "barrelStack"
+	| "crateStack"
+	| "lumber"
+	| "barrelHeap"
+	| "stockpile"
+	| "libraryCandle";
 
 /**
  * Where an entry comes from: a Forge prop, a Forge torch, R6 far-wall dressing, a solid pillar's stump, or a void set
@@ -306,7 +341,10 @@ export type DecorDropReason =
 	| "hiddenFace"
 	/** a wall piece on a cell carrying a tall piece */
 	| "underTall"
-	/** on the wall cell right behind a bookcase (docs/BOOKSHELVES.md: the case's top rises over it) */
+	/**
+	 * on the wall cell right behind a bookcase (docs/BOOKSHELVES.md: the case's top rises over it), or on a wall cell
+	 * screen-up of a stockpile (docs/KENNEY_DECOR.md KN9: its scaffold rises over the far walls beside it)
+	 */
 	| "behindShelf";
 
 /** Every DecorDropReason, in report order. */
@@ -682,6 +720,23 @@ interface Placed {
 }
 
 const STANDING: ReadonlySet<string> = new Set<string>(TALL_PRIORITY);
+/** Solid kinds whose variant is their run's axis (1 along X, 2 along Z: w > 1 runs along X). */
+const RUN_AXIS: ReadonlySet<string> = new Set<string>(["tomb", "table", "display", "fallenShelf", "barrelStack"]);
+/**
+ * Solid kinds whose variant is the axis of their facing (1 for +-X, 2 for +-Z; a study table's fx / fz is its long
+ * axis, docs/KENNEY_DECOR.md KN9).
+ */
+const FACING_AXIS: ReadonlySet<string> = new Set<string>([
+	"bookcase",
+	"bookcaseWide",
+	"studyTable",
+	"crateStack",
+	"lumber",
+	"barrelHeap",
+	"stockpile",
+]);
+/** Solid stock that rises over the far walls beside it (docs/KENNEY_DECOR.md KN9): a drop like behind a bookcase. */
+const TALL_STOCK: ReadonlySet<string> = new Set<string>(["stockpile"]);
 const FLAT: ReadonlySet<string> = new Set<string>(FLAT_FORGE_KINDS);
 const LIGHTS: ReadonlySet<string> = new Set<string>(DECOR_LIGHT_KINDS);
 
@@ -732,9 +787,19 @@ export function planDecor(input: DecorPlanInput): DecorPlan {
 	zone(input.spawn ?? entranceSpawn(d), DECOR_CLEAR.entranceTiles, true);
 	const breakable = new Set<number>();
 	for (const b of input.breakables ?? []) breakable.add(cellKey(b.x, b.y));
-	/** The wall cell right behind every bookcase (docs/BOOKSHELVES.md): nothing stands or hangs there. */
+	/**
+	 * The wall cell right behind every bookcase (docs/BOOKSHELVES.md) and every non-floor cell screen-up of a tall stock
+	 * piece (a stockpile, docs/KENNEY_DECOR.md KN9: the -X / -Z neighbours of its rectangle, the corner between them
+	 * too): nothing stands or hangs there.
+	 */
 	const shelfBack = new Set<number>();
-	for (const p of d.solidDecor ?? []) if (p.kind === "bookcase") shelfBack.add(cellKey(p.x - p.fx, p.y - p.fz));
+	for (const p of d.solidDecor ?? []) {
+		if (p.kind === "bookcase") shelfBack.add(cellKey(p.x - p.fx, p.y - p.fz));
+		else if (TALL_STOCK.has(p.kind))
+			for (let yy = p.y - 1; yy < p.y + p.h; yy++)
+				for (let xx = p.x - 1; xx < p.x + p.w; xx++)
+					if ((xx < p.x || yy < p.y) && tileAt(d, xx, yy) !== TileType.FLOOR) shelfBack.add(cellKey(xx, yy));
+	}
 
 	/** Why (gx, gy) is kept clear, or undefined. */
 	const keptOut = (
@@ -1001,9 +1066,13 @@ export function planDecor(input: DecorPlanInput): DecorPlan {
 		readonly key: number;
 	}
 	const flatTaken = new Set<number>();
-	// a carpet's cells (docs/DECOR.md "Room themes", drawn with the solid decor) carry no Forge flat piece
-	if (input.variants !== undefined && input.variants("carpet") > 0)
-		for (const cp of d.carpets ?? [])
+	// a drawn carpet's cells (docs/DECOR.md "Room themes", drawn with the solid decor; a library's runner only with its
+	// art, DECOR_RUNNER) carry no Forge flat piece
+	const carpetCount = input.variants !== undefined ? input.variants("carpet") : 0;
+	const carpetDrawn = (cp: DecorCarpet) =>
+		isRunner(cp) ? carpetCount >= DECOR_RUNNER.firstVariant + DECOR_RUNNER.variants : carpetCount > 0;
+	for (const cp of d.carpets ?? [])
+		if (carpetDrawn(cp))
 			for (let yy = cp.y; yy < cp.y + cp.h; yy++)
 				for (let xx = cp.x; xx < cp.x + cp.w; xx++) flatTaken.add(yy * W + xx);
 	const groups = new Map<number, FlatPiece[]>();
@@ -1272,13 +1341,22 @@ export function planDecor(input: DecorPlanInput): DecorPlan {
 	// Two bookcases of a run may draw as one wide case (bookcasePairs, docs/KENNEY_DECOR.md KN3): the lower piece index
 	// of the pair plans one bookcaseWide entry over both cells, the other none.
 	const solidPieces = d.solidDecor ?? [];
+	const themes = d.roomThemes ?? [];
 	const widePairs = bookcasePairs(solidPieces, input.variants, seed);
 	solidPieces.forEach((piece, index) => {
 		const partner = widePairs.get(index);
 		if (partner !== undefined && partner < index) return;
 		const wide = partner !== undefined;
 		const other = wide ? solidPieces[partner] : piece;
-		const kind: StandingKind = wide ? "bookcaseWide" : piece.kind;
+		let kind: StandingKind = wide ? "bookcaseWide" : piece.kind;
+		// a library's candle stands: Kenney's, when the pack has them (DECOR_LIBRARY_THEME)
+		if (
+			kind === "candelabrum" &&
+			themes[piece.room] === DECOR_LIBRARY_THEME &&
+			input.variants !== undefined &&
+			input.variants("libraryCandle") > 0
+		)
+			kind = "libraryCandle";
 		const rect = piece.w > 1 && piece.h > 1;
 		const f: DecorFootprint = {
 			x0: math.min(piece.x, other.x),
@@ -1298,18 +1376,31 @@ export function planDecor(input: DecorPlanInput): DecorPlan {
 		});
 		const hash = decorHash(seed, cellKey(f.x0, f.y0), DECOR_SALT.variant);
 		const count = input.variants !== undefined ? input.variants(kind) : 0;
-		// a tomb's / table's variants: 1 along X, 2 along Z; a throne's / statue's / bookcase's: 1 facing +X, 2 facing +Z;
-		// a chair's: 1 facing +X, 2 +Z, 3 -X, 4 -Z (each only when the pack has them all)
+		// a tomb's / table's / display case's / toppled case's / barrel stack's variants: 1 along X, 2 along Z; a
+		// throne's / statue's / bookcase's: 1 facing +X, 2 facing +Z; a study table's: 1 along X, 2 along Z (its fx /
+		// fz); a crate stack's / lumber pile's / barrel heap's / stockpile's: 1 facing +-X, 2 facing +-Z; a chair's and a
+		// lectern's: 1 facing +X, 2 +Z, 3 -X, 4 -Z (each only when the pack has them all; Kenney looks: kenneyVariant)
 		let axisVariant = -1;
 		let axisVariants = 2;
-		if (kind === "tomb" || kind === "table") axisVariant = piece.w > 1 ? 0 : 1;
+		if (RUN_AXIS.has(kind)) axisVariant = piece.w > 1 ? 0 : 1;
 		else if (rect && (kind === "throne" || kind === "statue")) axisVariant = piece.fx !== 0 ? 0 : 1;
-		else if (kind === "bookcase" || kind === "bookcaseWide") axisVariant = piece.fx !== 0 ? 0 : 1;
-		else if (kind === "chair") {
+		else if (FACING_AXIS.has(kind)) axisVariant = piece.fx !== 0 ? 0 : 1;
+		else if (kind === "chair" || kind === "lectern") {
 			axisVariants = 4;
 			axisVariant = piece.fx > 0 ? 0 : piece.fz > 0 ? 1 : piece.fx < 0 ? 2 : 3;
 		}
 		let variant = axisVariant >= 0 && count >= axisVariants ? axisVariant : variantOf(input, kind, hash);
+		const looks = DECOR_KENNEY[kind];
+		if (looks !== undefined) {
+			const v = kenneyVariant(
+				count,
+				looks,
+				looks.per > 1 ? axisVariant : 0,
+				decorHash01(seed, cellKey(f.x0, f.y0), DECOR_SALT.kenneyLook),
+			);
+			if (v >= 0) variant = v;
+		} else if (kind === "libraryCandle")
+			variant = count > 1 ? decorHash(seed, cellKey(f.x0, f.y0), DECOR_SALT.libraryCandle) % count : 0;
 		if (kind === "bookcase") {
 			// facing pairs, one art set per room (docs/KENNEY_DECOR.md)
 			const v = bookcaseVariant(
@@ -1332,7 +1423,7 @@ export function planDecor(input: DecorPlanInput): DecorPlan {
 		entries.push({
 			kind,
 			id: decorId(biome, kind),
-			layer: "low",
+			layer: TALL_STOCK.has(kind) ? "tall" : "low",
 			x,
 			y: 0,
 			z,
@@ -1355,11 +1446,12 @@ export function planDecor(input: DecorPlanInput): DecorPlan {
 			scale: 1,
 		});
 	});
-	if (input.variants !== undefined && input.variants("carpet") > 0)
-		for (const cp of d.carpets ?? []) {
+	for (const cp of d.carpets ?? [])
+		if (carpetDrawn(cp) && isRunner(cp)) addRunner(cp, seed, biome, entries);
+		else if (carpetDrawn(cp)) {
 			// 2 x 2 segments from the throne outward; variants: 1 along X, 2 along Z, 3 / 4 the end along X / Z
 			const len = cp.fx !== 0 ? cp.w : cp.h;
-			const count = input.variants("carpet");
+			const count = carpetCount;
 			for (let k = 0; k < len; k += 2) {
 				// segment k's first cell along the run, counted from the throne
 				const along = cp.fx === -1 || cp.fz === -1 ? len - 2 - k : k;
@@ -1691,6 +1783,94 @@ export function bookcasePairs(
 		}
 	});
 	return partners;
+}
+
+/**
+ * A Kenney solid piece's variant (0-based) among the pack's `count` (docs/KENNEY_DECOR.md KN9, DECOR_KENNEY): `looks.per`
+ * variants per look (one per facing or axis; `facing` the one drawn), looks in order. The last `rareLooks` looks take
+ * the pieces whose hash `look01` (0..1) falls under `rareShare` (evenly among them), the others the rest (evenly). No
+ * whole look or no facing: -1 (the caller's pick). Only the looks the pack has count: the rare ones are the last of
+ * those, and at least one common look is kept (a pack with one look draws it at every hash).
+ */
+export function kenneyVariant(
+	count: number,
+	looks: { readonly per: number; readonly rareLooks: number; readonly rareShare: number },
+	facing: number,
+	look01: number,
+): number {
+	const per = math.max(1, looks.per);
+	const n = math.floor(count / per);
+	if (n < 1 || facing < 0 || facing >= per) return -1;
+	const rare = math.min(looks.rareLooks, n - 1);
+	const common = n - rare;
+	const share = rare > 0 ? looks.rareShare : 0;
+	let look: number;
+	if (look01 < share) look = common + math.min(rare - 1, math.floor((look01 / share) * rare));
+	else look = math.min(common - 1, math.floor(((look01 - share) / (1 - share)) * common));
+	return look * per + facing;
+}
+
+/** A carpet run 1 wide: a library's runner (docs/KENNEY_DECOR.md KN9, DECOR_RUNNER), not the throne's. */
+function isRunner(cp: DecorCarpet): boolean {
+	return math.min(cp.w, cp.h) === 1;
+}
+
+/**
+ * The runner `cp`'s entries (DECOR_RUNNER), from its head (by its lectern) along (fx, fz): an end piece on its first
+ * cell (its open side down the runner), 2 x 1 segments over the cells between, an end piece on its last cell (its open
+ * side back up it). Flat, source "solid"; a segment's anchor the centre of its two cells, `cellX` / `cellY` its lower
+ * cell. The caller checked the pack has every runner variant.
+ */
+function addRunner(cp: DecorCarpet, seed: number, biome: BiomeId, entries: DecorEntry[]): void {
+	const R = DECOR_RUNNER;
+	const len = math.max(cp.w, cp.h);
+	const alongX = cp.fx !== 0;
+	// the head: the run's end next to the lectern
+	const hx = cp.fx === -1 ? cp.x + cp.w - 1 : cp.x;
+	const hy = cp.fz === -1 ? cp.y + cp.h - 1 : cp.y;
+	/** The end variant of a runner running toward (dx, dz): +X, +Z, -X, -Z after the two segments. */
+	const endVariant = (dx: number, dz: number) =>
+		R.firstVariant + R.segmentVariants + (dx > 0 ? 0 : dz > 0 ? 1 : dx < 0 ? 2 : 3);
+	const push = (cx: number, cy: number, cells: number, variant: number) => {
+		const hash = decorHash(seed, cellKey(cx, cy), DECOR_SALT.variant);
+		const span = (cells - 1) * HALF;
+		entries.push({
+			kind: "carpet",
+			id: decorId(biome, "carpet"),
+			layer: "flat",
+			x: gridToWorld(cx) + (alongX ? span : 0),
+			y: 0,
+			z: gridToWorld(cy) + (alongX ? 0 : span),
+			cellX: cx,
+			cellY: cy,
+			cells,
+			runX: cells > 1 && alongX ? 1 : 0,
+			runZ: cells > 1 && !alongX ? 1 : 0,
+			faceX: cp.fx,
+			faceZ: cp.fz,
+			roomId: cp.room,
+			hash,
+			variant,
+			fade: -1,
+			light: false,
+			lit: false,
+			source: "solid",
+			forgeIndex: -1,
+			rot: 0,
+			scale: 1,
+		});
+	};
+	push(hx, hy, 1, endVariant(-cp.fx, -cp.fz));
+	const lastSeg = len - 1 - DECOR_RUNNER.segmentCells;
+	for (let k = 1; k <= lastSeg; k += DECOR_RUNNER.segmentCells) {
+		// cells k .. k + 1 from the head; the lower one first
+		const ax = hx + cp.fx * k;
+		const ay = hy + cp.fz * k;
+		const bx = ax + cp.fx;
+		const by = ay + cp.fz;
+		push(math.min(ax, bx), math.min(ay, by), R.segmentCells, R.firstVariant + (alongX ? 0 : 1));
+	}
+	if (len > 1) push(hx + cp.fx * (len - 1), hy + cp.fz * (len - 1), 1, endVariant(cp.fx, cp.fz));
 }
 
 function variantOf(input: DecorPlanInput, kind: DecorKind, hash: number): number {

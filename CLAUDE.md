@@ -65,7 +65,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/PROJECTILE_ART.md` | Projectile art (every flying bullet drawn with the Player Bullets pack: yellow / green bolts and the Hyper flame for the player, chevron / needle / teardrop recoloured into the danger pink for enemies, optional `fx.bullet.hit`; goo / strike / ember unchanged; presentation only): plan, measured pack, mapping, tasks PA0-PA10, decisions PAD1-PAD11 |
 | `docs/DUMMY_ART.md` | Training dummy art (`enemy.dummy` drawn with the Training Dummy 2D Pixel Art pack: one facing, idle / 7-frame hit wobble / 9-frame break, the wobble on a view-side 0.7 s hit clip; presentation only): plan, tasks DA1-DA7, decisions DD1-DD5 |
 | `docs/GOO_ART.md` | Goo art (the Ooze's goo puddles drawn with the heimlich3 Slime pack's last two frames: land then splat, recoloured into `enemyGoo`, flat on the floor sized to cover the hit; presentation only): plan, tasks GA0-GA7, decisions GAD1-GAD5 |
-| `docs/KENNEY_DECOR.md` | Kenney decor (Kenney's CC0 Isometric Dungeon / Library reprojected from their 30 degree camera to the game's 55 by `scripts/art/kenney/reproject.py`: flat / box / uniform warps; library v2, a `mess` theme, richer storerooms planned; the bookcase's alternative art set, its wide pairs and the floor patches wired): plan, as built, tasks KN0-KN13, decisions KND1-KND12 |
+| `docs/KENNEY_DECOR.md` | Kenney decor (Kenney's CC0 Isometric Dungeon / Library reprojected from their 30 degree camera to the game's 55 by `scripts/art/kenney/reproject.py`: flat / box / uniform warps; library v2, a `mess` theme, richer storerooms built as Forge pieces (KN5-KN9); the bookcase's alternative art set, its wide pairs and the floor patches wired): plan, as built, tasks KN0-KN13, decisions KND1-KND12 |
 | `docs/LEGENDARIES.md` | Legendaries (two legendary boons, Overkill: a kill's leftover damage streaks to the nearest enemy and chains; Bastion: a full-ring 27-tick guard, +1 pip and a brace that restores a pip when a guard or roll stops 8 bullets; four duos Supernova / Skewer / Citadel / Stone Heart; gameplay, opt-in `SimConfig.builds`): plan, LG0 findings, as built LG1-LG6, LG7 tuning, owner tuning, tasks LG0-LG9, decisions LGD1-LGD14 |
 | `docs/HAZARD_ART.md` | Hazard art (the Stormcaller's strike and the build embers as original greyscale pixel art tinted by their roles: a flash over the strike's 0.1 s life and a short scorch after it, the ember's burn loop; supersedes PAD3; presentation only): plan, as built, tasks HA0-HA8, decisions HAD1-HAD5 |
 | `docs/GAMEPAD_MENUS.md` | Gamepad menus (every menu usable with a controller: focus scopes with one owner, recovery and memory, one B path (hold B to exit on run over), LB/RB / LT/RT tabs, right-stick scroll, X / Y shortcuts, a hint bar with Roblox button icons, menu haptics, console TV-safe fit; client input and presentation only): census, plan, as built, tasks GM0-GM12, decisions GMD1-GMD16 |
@@ -1073,6 +1073,26 @@ Decision log (deviations from `PLAN.md`):
   wall joins, stone upright on side faces, telegraph rings readable on molten floors: the lava's hottest pixel is 31
   CIE76 from `telegraph`) pending; the biome.2 Kenney floor patches still bake toward the old `#2a1a16` (optional
   rebake).
+- **Kenney Forge pieces (docs/KENNEY_DECOR.md KN5-KN9, 2026-11-08).** Gameplay (dungeon), the `solidDecor` Forge
+  option (endless only). `SolidDecorKind` gains `studyTable` (2 x 2), `display` (2 x 1), `lectern` (1 x 1),
+  `fallenShelf` (2 x 1, low), `diningTable` (1 x 1), `barrelStack` (2 x 1, flush), `crateStack` / `lumber` /
+  `barrelHeap` (1 x 1, flush, corners first) and `stockpile` (2 x 2, tall, big storerooms); `table` / `chair` stay in the
+  union but are no longer placed. Library v2: the study table replaces the reading line (KND12, same `readingArea`
+  placement and pillar clearing), a 1-wide carpet runner (`Dungeon.carpets`, up to 12 tiles in 2-tile segments) from a
+  lectern (the statue roll removed), display cases and a toppled case. A new combat / elite theme `mess` (weights grim
+  0.08 / other 0.12; barrel stacks flush, then dining tables Chebyshev >= `tableSpacing` apart; breakables x1.5,
+  `BREAKABLE.mess.countScale`; a room where nothing fits is dressed as plain). Storerooms place 1-3 stock pieces before
+  their breakables. Free-standing pieces may clear solid pillars (`Dungeon.clearedPillars`). solidDecor.spec: the floor
+  stays one piece, no new one-tile pinch. Endless layouts, spawns, replays and scores changed (boards stay `_v1`; the
+  roomPool.lock digests, vault, charger and stormcaller pins re-recorded); `DAILY.ruleset` 12 -> 13. M1, every fixture
+  and the tutorial replay exactly as before. Presentation (KN9): the 51 new Kenney PNGs pack into ONE `kenney-decor.png`
+  (atlas group `kenney`, `--only kenney`, generated `packs/vale/kenneyLayout.ts`); decor kinds `studyTable` ..
+  `stockpile` and `libraryCandle` (a library's candle stand, presentation only) appended after `patch`; carpet runner
+  variants 5-10 (segments along X / Z, ends toward +X / +Z / -X / -Z); `DECOR_KENNEY` look picks by cell hash; a
+  stockpile's back cells join `behindShelf`. Without the sheet's ID the pieces block and draw nothing, and floors
+  without the new kinds plan exactly as before. Credits: Kenney Isometric Library / Dungeon (CC0). No Luau-locals
+  change. Upload of `kenney-decor.png` (KN12) and the Studio check (KN13: the toppled case's Z art and the 1 x 1 stock's
+  facings were picked by eye) pending.
 
 ## Commands
 

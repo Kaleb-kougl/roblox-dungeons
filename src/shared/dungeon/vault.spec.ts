@@ -193,6 +193,19 @@ function decorCells(d: Dungeon): Set<number> {
 
 // ---------------------------------------------------------------------------------------------
 
+/** The reading area's study table and the other Kenney Forge pieces (docs/KENNEY_DECOR.md KN5-KN8). */
+const KENNEY_KINDS = [
+	"studyTable",
+	"display",
+	"lectern",
+	"fallenShelf",
+	"diningTable",
+	"barrelStack",
+	"crateStack",
+	"lumber",
+	"barrelHeap",
+	"stockpile",
+];
 describe("vault: tunables, kinds and stream", () => {
 	it("tunables (TRD6): bands, weights, sizes, the Legendary share, the lock split", () => {
 		expect(VAULT.salt).toBe(0xb5297a4d);
@@ -466,7 +479,7 @@ describe("vault: rooms and cells (every vault floor)", () => {
 		);
 	});
 
-	it("reading areas (docs/BOOKSHELVES.md, second merge with main): no table or chair on, behind or beside a chest", () => {
+	it("reading areas and Kenney decor (docs/BOOKSHELVES.md, docs/KENNEY_DECOR.md): no such piece on, behind or beside a chest", () => {
 		let vaults = 0;
 		let reading = 0;
 		let onCleared = 0;
@@ -475,10 +488,11 @@ describe("vault: rooms and cells (every vault floor)", () => {
 			const d = on.dungeon;
 			const v = vaultOf(on);
 			vaults++;
-			const sets = d.solidDecor.filter((p) => p.kind === "table" || p.kind === "chair");
+			// the reading area's study table and every Kenney piece (docs/KENNEY_DECOR.md KN5-KN8)
+			const sets = d.solidDecor.filter((p) => KENNEY_KINDS.includes(p.kind));
 			let inRoom = false;
 			for (const p of sets) {
-				// footprint to cell (a table is 2 x 1): the chest's cell, its back row and its 8 neighbours never hold one
+				// footprint to cell (a study table is 2 x 2): the chest's cell, its back row and its 8 neighbours never hold one
 				const dx = math.max(p.x - v.x, v.x - (p.x + p.w - 1), 0);
 				const dy = math.max(p.y - v.y, v.y - (p.y + p.h - 1), 0);
 				const cheb = math.max(dx, dy);
@@ -488,7 +502,7 @@ describe("vault: rooms and cells (every vault floor)", () => {
 					nearest = math.min(nearest, cheb);
 				}
 			}
-			// the back row is still the room's real wall: never a table, a chair or a cleared pillar (now FLOOR)
+			// the back row is still the room's real wall: never a piece or a cleared pillar (now FLOOR)
 			const decor = decorCells(d);
 			const px = math.abs(v.fz);
 			const pz = math.abs(v.fx);
@@ -501,13 +515,11 @@ describe("vault: rooms and cells (every vault floor)", () => {
 			for (const c of d.clearedPillars ?? []) if (c.x === v.x && c.y === v.y) onCleared++;
 			if (inRoom) reading++;
 		}
-		// every library gets a reading area, and the sample holds library vaults, so the rule above is exercised
+		// libraries, mess halls and storerooms hold vaults in the sample, so the rule above is exercised
 		expect(reading > 0).toBe(true);
 		print(
-			`[vault x reading areas] ${vaults} vaults: ${reading} in a room with a reading area, ` +
-				`${onCleared} on a cleared pillar cell; nearest table / chair ${
-					reading > 0 ? nearest : "-"
-				} tiles (Chebyshev)`,
+			`[vault x Kenney decor] ${vaults} vaults: ${reading} in a room with a Kenney piece, ` +
+				`${onCleared} on a cleared pillar cell; nearest piece ${reading > 0 ? nearest : "-"} tiles (Chebyshev)`,
 		);
 	});
 

@@ -26,8 +26,24 @@ import {
 import { decorFxId } from "../../contract";
 import { ThemeCore, type DecorArt } from "../../core";
 import { sortedKeys } from "../../util";
+import { VALE_KENNEY_LAYOUTS } from "./kenneyLayout";
 import { VALE_WORLD_LAYOUTS } from "./layout";
 import { buildValeManifest } from "./manifest";
+
+/** The Kenney solid kinds (docs/KENNEY_DECOR.md KN9): these six floors draw every one of them. */
+const KENNEY_KINDS = [
+	"studyTable",
+	"display",
+	"lectern",
+	"fallenShelf",
+	"diningTable",
+	"barrelStack",
+	"crateStack",
+	"lumber",
+	"barrelHeap",
+	"stockpile",
+	"libraryCandle",
+];
 
 const dungeons = new Map<string, Dungeon>();
 function dungeonFor(params: ForgeParams): Dungeon {
@@ -56,6 +72,11 @@ function fakeIds(): Record<string, string> {
 		for (const f of l.kind === "image" ? [l.file] : l.sheets.map((s) => s.file)) {
 			if (ids[f] === undefined) ids[f] = `rbxassetid://${7000 + n++}`;
 		}
+	}
+	// the Kenney decor sheet (docs/KENNEY_DECOR.md KN9)
+	for (const name of sortedKeys(VALE_KENNEY_LAYOUTS)) {
+		const f = VALE_KENNEY_LAYOUTS[name].file;
+		if (ids[f] === undefined) ids[f] = `rbxassetid://${7000 + n++}`;
 	}
 	return ids;
 }
@@ -113,6 +134,11 @@ describe("vale decor art held to DECOR_BOX (docs/DECOR.md R5)", () => {
 		// docs/KENNEY_DECOR.md KN3: the wide cases (pairs of a run) and the narrow ones beside them, whole
 		for (const kind of ["bookcase", "bookcaseWide"])
 			expect([kind, (drawn.get(kind) ?? 0) > 0]).toEqual([kind, true]);
+		// docs/KENNEY_DECOR.md KN9: the Kenney solid pieces on these floors, whole inside their boxes
+		const kenney: string[] = [];
+		for (const kind of KENNEY_KINDS) kenney.push(`${kind} ${drawn.get(kind) ?? 0}`);
+		print(`[vale kenney art] ${kenney.join(", ")}`);
+		for (const kind of KENNEY_KINDS) expect([kind, (drawn.get(kind) ?? 0) > 0]).toEqual([kind, true]);
 	});
 
 	it("wall pieces take the render along their wall: segments run across their normal, torches point along it", () => {

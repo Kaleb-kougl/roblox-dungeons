@@ -7,7 +7,9 @@
  * Kept in this folder rather than in `shared/config` (where docs/DECOR.md Phase 2 names DECOR_DEPTH) so the decor
  * plan's data lives with the module that owns it; move it if a non-view module ever needs it.
  */
+import type { RoomTheme } from "shared/dungeon";
 import { PEDESTAL_RADIUS, SHRINE_RADIUS, STAIRWELL_RADIUS } from "shared/sim";
+import type { DecorKind } from "shared/theme";
 
 /** One depth band of DECOR_DEPTH (docs/DECOR.md Phase 2 part 1). Shares are fractions in [0, 1]. */
 export interface DecorDepthBand {
@@ -126,6 +128,8 @@ export const DECOR_SALT = {
 	bookcaseWideLook: 0x1f5e9a3d,
 	patchRoom: 0x3b9aca07,
 	patchBlock: 0x2a6bd1c7,
+	kenneyLook: 0x5f3759df,
+	libraryCandle: 0x6c8e9cf5,
 } as const;
 
 /**
@@ -195,3 +199,48 @@ export const DECOR_SCATTER = {
 	/** At most this many per floor (rooms in index order). */
 	maxPerFloor: 4,
 } as const;
+
+/** A Kenney solid kind's looks (docs/KENNEY_DECOR.md KN9): see decorPlan's kenneyVariant. */
+export interface DecorKenneyLooks {
+	/** Variants per look, one per facing (or axis) the piece is drawn in; 1: the look alone. */
+	readonly per: number;
+	/** The last `rareLooks` looks are drawn at `rareShare` of the pieces (cell hash), the others evenly. */
+	readonly rareLooks: number;
+	readonly rareShare: number;
+}
+
+/**
+ * Kenney solid pieces' looks (docs/KENNEY_DECOR.md KN9, the plan's tables), picked per piece by cell hash (salt
+ * DECOR_SALT.kenneyLook), presentation only: a study table's three looks evenly (axis pairs); a display case's sword 1
+ * in 4, the plain, books and open cases evenly (axis pairs); a lectern's empty stand 1 in 4 (four facings each); a
+ * dining table's broken set 1 in 4 (two looks), the six whole ones evenly. Kinds not listed take their facing or axis
+ * alone (decorPlan's solid step). A pack with fewer variants than one look's facings: the hash picks, as for any kind.
+ */
+export const DECOR_KENNEY: Readonly<Partial<Record<DecorKind, DecorKenneyLooks>>> = {
+	studyTable: { per: 2, rareLooks: 0, rareShare: 0 },
+	display: { per: 2, rareLooks: 1, rareShare: 0.25 },
+	lectern: { per: 4, rareLooks: 1, rareShare: 0.25 },
+	diningTable: { per: 1, rareLooks: 2, rareShare: 0.25 },
+};
+
+/**
+ * A library's runner (docs/KENNEY_DECOR.md KN9): a carpet run 1 wide (min(w, h) = 1 in Dungeon.carpets) draws as
+ * `carpet` variants from `firstVariant` (0-based, after the throne carpet's four): a 2 x 1 segment along X, along Z,
+ * then the end of a runner running toward +X, +Z, -X, -Z (`variants` in all). Each end cell takes an end piece (its
+ * open side toward the runner), the cells between them 2 x 1 segments (the Forge lays an even length, so they pair
+ * up). Only when the pack has every runner variant; else the runner is not drawn.
+ */
+export const DECOR_RUNNER = {
+	firstVariant: 4,
+	variants: 6,
+	/** The segment variants (along X, along Z), before the four ends. */
+	segmentVariants: 2,
+	segmentCells: 2,
+} as const;
+
+/**
+ * A library's candle stands (docs/KENNEY_DECOR.md, the library table's run ends): in a room of theme `library`, a
+ * `candelabrum` draws as decor kind `libraryCandle` (Kenney's candle stands, a variant by cell hash, salt
+ * DECOR_SALT.libraryCandle) when the pack has that kind; elsewhere, or without it, the candelabrum as before.
+ */
+export const DECOR_LIBRARY_THEME: RoomTheme = "library";

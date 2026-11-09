@@ -27,12 +27,16 @@ import {
 	DECOR_BANNERS,
 	DECOR_BOOKCASES,
 	DECOR_DROP_REASONS,
+	DECOR_KENNEY,
 	DECOR_PATCHES,
+	DECOR_RUNNER,
 	DECOR_SCATTER,
 	MAX_DECOR_SHARE,
 	MAX_TALL_PER_ROOM,
 	TALL_MIN_SPACING,
 	bookcaseVariant,
+	insideBy,
+	kenneyVariant,
 	wideBookcaseVariant,
 	decorInputOfLayout,
 	footprintClear,
@@ -640,7 +644,9 @@ describe('solid decor (docs/DECOR.md "Solid decor", "Room themes": set pieces on
 			expect(solid.size()).toBe(d.solidDecor.size());
 			d.solidDecor.forEach((p, i) => {
 				const e = solid[i];
-				expect([e.kind, e.layer, e.y, e.cellX, e.cellY]).toEqual([p.kind, "low", 0, p.x, p.y]);
+				// the stockpile stands tall (docs/KENNEY_DECOR.md KN9), every other set piece low
+				const layer = p.kind === "stockpile" ? "tall" : "low";
+				expect([e.kind, e.layer, e.y, e.cellX, e.cellY]).toEqual([p.kind, layer, 0, p.x, p.y]);
 				expect(e.cells).toBe(math.max(p.w, p.h));
 				expect([e.runX, e.runZ]).toEqual([p.w > 1 ? 1 : 0, p.h > 1 ? 1 : 0]);
 				expect(e.roomId).toBe(p.room);
@@ -868,53 +874,292 @@ describe('solid decor (docs/DECOR.md "Solid decor", "Room themes": set pieces on
 		expect(bossPatches).toBeGreaterThan(0);
 	});
 
-	it("takes a reading area's table axis and chair facing as their variants, low, with a fade box, and draws no pillar it cleared (docs/BOOKSHELVES.md)", () => {
+	it("takes a study table's long axis as its variant, low, with a fade box, and draws no pillar it cleared (docs/KENNEY_DECOR.md KN9)", () => {
 		let tables = 0;
-		let chairs = 0;
 		let cleared = 0;
-		const floors = CENSUS.filter((c) => c.layout.dungeon.solidDecor.some((p) => p.kind === "table"));
+		const floors = CENSUS.filter((c) => c.layout.dungeon.solidDecor.some((p) => p.kind === "studyTable"));
 		for (const f of floors) {
-			const plan = planDecor({
-				...decorInputOfLayout(f.layout),
-				variants: (k) => (k === "table" ? 2 : k === "chair" ? 4 : 0),
-			});
+			const d = f.layout.dungeon;
+			// the reading line (a table and two chairs) is gone: the study table took its cells (KND12)
+			for (const p of d.solidDecor) expect([p.kind === "table", p.kind === "chair"]).toEqual([false, false]);
+			const plan = planDecor({ ...decorInputOfLayout(f.layout), variants: (k) => (k === "studyTable" ? 6 : 0) });
 			const gone = new Set<number>();
-			for (const cp of f.layout.dungeon.clearedPillars ?? []) gone.add(cp.y * f.layout.dungeon.W + cp.x);
+			for (const cp of d.clearedPillars ?? []) gone.add(cp.y * d.W + cp.x);
 			cleared += gone.size();
 			for (const e of plan.entries) {
 				// a cleared pillar's prop draws nothing: no stump, no column moved to a far wall
 				if (e.forgeIndex >= 0 && (e.source === "pillar" || e.source === "forge")) {
-					const pr = f.layout.dungeon.props[e.forgeIndex];
+					const pr = d.props[e.forgeIndex];
 					if (pr.kind === "pillar")
-						expect([pr.x, pr.y, gone.has(pr.y * f.layout.dungeon.W + pr.x)]).toEqual([pr.x, pr.y, false]);
+						expect([pr.x, pr.y, gone.has(pr.y * d.W + pr.x)]).toEqual([pr.x, pr.y, false]);
 				}
-				if (e.source !== "solid" || (e.kind !== "table" && e.kind !== "chair")) continue;
-				expect([e.kind, e.layer, e.y]).toEqual([e.kind, "low", 0]);
+				if (e.source !== "solid" || e.kind !== "studyTable") continue;
+				expect([e.layer, e.y, e.cells, e.runX, e.runZ]).toEqual(["low", 0, 2, 1, 1]);
 				expect(e.fade >= 0 && plan.fadeBoxes[e.fade].entry === plan.entries.indexOf(e)).toBe(true);
-				if (e.kind === "table") {
-					// 2 x 1: one run axis, no facing; variant 1 along X, 2 along Z
-					expect([e.cells, e.runX + e.runZ, e.faceX, e.faceZ]).toEqual([2, 1, 0, 0]);
-					expect(e.variant).toBe(e.runX === 1 ? 0 : 1);
-					tables++;
-				} else {
-					// 1 x 1, facing its table: variant 1 +X, 2 +Z, 3 -X, 4 -Z
-					expect([e.cells, e.runX, e.runZ, math.abs(e.faceX) + math.abs(e.faceZ)]).toEqual([1, 0, 0, 1]);
-					const want = e.faceX === 1 ? 0 : e.faceZ === 1 ? 1 : e.faceX === -1 ? 2 : 3;
-					expect(e.variant).toBe(want);
-					chairs++;
-				}
+				// fx / fz is the long axis: variant 1 / 3 / 5 along X, 2 / 4 / 6 along Z
+				expect(e.variant % 2).toBe(e.faceX !== 0 ? 0 : 1);
+				tables++;
 			}
-			// a pack with fewer chair variants than facings: the hash picks, as for any kind
-			const few = planDecor({ ...decorInputOfLayout(f.layout), variants: (k) => (k === "chair" ? 2 : 0) });
-			for (const e of few.entries)
-				if (e.source === "solid" && e.kind === "chair") expect(e.variant >= 0 && e.variant < 2).toBe(true);
 		}
 		print(
-			`[decor reading area] ${floors.size()} of ${CENSUS.size()} floors: ${tables} tables, ${chairs} chairs, ` +
-				`${cleared} pillars cleared`,
+			`[decor study tables] ${floors.size()} of ${CENSUS.size()} floors: ${tables} tables, ${cleared} pillars cleared`,
 		);
 		expect(tables).toBeGreaterThan(0);
-		expect(chairs).toBe(tables * 2);
+	});
+
+	it("draws the Kenney pieces once each, their axis / facing / look as the variant, inside their boxes (docs/KENNEY_DECOR.md KN9)", () => {
+		// the pure pick: looks in facing groups, the last rareLooks at rareShare, the others evenly
+		const display = DECOR_KENNEY.display!;
+		const lectern = DECOR_KENNEY.lectern!;
+		const dining = DECOR_KENNEY.diningTable!;
+		expect(kenneyVariant(0, display, 0, 0.5)).toBe(-1);
+		expect(kenneyVariant(8, display, -1, 0.5)).toBe(-1);
+		expect(kenneyVariant(8, display, 1, 0)).toBe(7); // the sword, along Z
+		expect(kenneyVariant(8, display, 0, display.rareShare - 1e-9)).toBe(6);
+		expect(kenneyVariant(8, display, 0, display.rareShare)).toBe(0);
+		expect(kenneyVariant(8, display, 1, 1 - 1e-12)).toBe(5);
+		expect(kenneyVariant(2, display, 1, 0)).toBe(1); // one look: the axis alone
+		expect(kenneyVariant(8, lectern, 3, 0.1)).toBe(7); // empty, facing -Z
+		expect(kenneyVariant(8, lectern, 2, 0.9)).toBe(2); // open, facing -X
+		expect(kenneyVariant(8, dining, 0, 0.1)).toBe(6);
+		expect(kenneyVariant(8, dining, 0, 0.2)).toBe(7);
+		for (let i = 0; i < 200; i++) {
+			const v = kenneyVariant(8, dining, 0, i / 200);
+			expect(v >= 0 && v < 8).toBe(true);
+			expect(v >= 6).toBe(i / 200 < dining.rareShare);
+		}
+		// on real floors, with every variant the vale pack has
+		const COUNTS: Partial<Record<string, number>> = {
+			studyTable: 6,
+			display: 8,
+			lectern: 8,
+			fallenShelf: 2,
+			diningTable: 8,
+			barrelStack: 2,
+			crateStack: 2,
+			lumber: 2,
+			barrelHeap: 2,
+			stockpile: 2,
+		};
+		const variants = (k: string) => COUNTS[k] ?? 0;
+		const seen = new Map<string, number>();
+		const rare = new Map<string, number>();
+		const problems = new Problems();
+		for (const f of CENSUS) {
+			const d = f.layout.dungeon;
+			const plan = planDecor({ ...decorInputOfLayout(f.layout), variants });
+			const solid = plan.entries.filter((e) => e.source === "solid" && e.layer !== "flat");
+			expect(solid.size()).toBe(d.solidDecor.size());
+			d.solidDecor.forEach((p, i) => {
+				const e = solid[i];
+				if (COUNTS[p.kind] === undefined) return;
+				seen.set(p.kind, (seen.get(p.kind) ?? 0) + 1);
+				problems.check(
+					e.kind === p.kind && e.cellX === p.x && e.cellY === p.y,
+					() => `${at(plan, e)}: not its piece`,
+				);
+				// one entry over the whole footprint, anchored at its centre
+				problems.check(
+					e.cells === math.max(p.w, p.h) &&
+						math.abs(e.x - (p.x + (p.w - 1) / 2)) < 1e-9 &&
+						math.abs(e.z - (p.y + (p.h - 1) / 2)) < 1e-9,
+					() => `${at(plan, e)}: not centred on its ${p.w} x ${p.h} cells`,
+				);
+				const axis = p.w > 1 && p.h === 1 ? 0 : p.h > 1 && p.w === 1 ? 1 : p.fx !== 0 ? 0 : 1;
+				const facing = p.fx > 0 ? 0 : p.fz > 0 ? 1 : p.fx < 0 ? 2 : 3;
+				const v = e.variant;
+				const ok =
+					p.kind === "lectern"
+						? v % 4 === facing
+						: p.kind === "diningTable"
+						? v >= 0 && v < 8
+						: v % 2 === axis && v < (COUNTS[p.kind] ?? 0);
+				problems.check(ok, () => `${at(plan, e)}: variant ${v} for facing ${p.fx},${p.fz}`);
+				if (
+					(p.kind === "display" && v >= 6) ||
+					(p.kind === "lectern" && v >= 4) ||
+					(p.kind === "diningTable" && v >= 6)
+				)
+					rare.set(p.kind, (rare.get(p.kind) ?? 0) + 1);
+				// its own fade box (DECOR_BOX[kind], measured on the art: valeArt.spec holds the art inside it) holds its
+				// anchor, the art's pivot
+				problems.check(
+					e.fade >= 0 &&
+						plan.fadeBoxes[e.fade].entry === plan.entries.indexOf(e) &&
+						insideBy(
+							plan.fadeBoxes[e.fade].polygon,
+							screenX(DECOR_CAMERA, e.x, 0, e.z),
+							screenY(DECOR_CAMERA, e.x, 0, e.z),
+							-1e-9,
+						),
+					() => `${at(plan, e)}: its box misses its anchor`,
+				);
+				problems.check(
+					e.layer === (p.kind === "stockpile" ? "tall" : "low") &&
+						(DECOR_KIND_LAYERS[e.kind] as ReadonlyArray<string>).includes(e.layer),
+					() => `${at(plan, e)}: layer ${e.layer}`,
+				);
+			});
+		}
+		expect(problems.list).toEqual([]);
+		const line: string[] = [];
+		for (const k of [
+			"studyTable",
+			"display",
+			"lectern",
+			"fallenShelf",
+			"diningTable",
+			"barrelStack",
+			"crateStack",
+			"lumber",
+			"barrelHeap",
+			"stockpile",
+		])
+			line.push(`${k} ${seen.get(k) ?? 0}${rare.has(k) ? ` (${rare.get(k)} rare)` : ""}`);
+		print(`[decor kenney pieces] ${CENSUS.size()} floors: ${line.join(", ")}`);
+		for (const k of ["studyTable", "display", "lectern", "diningTable", "barrelStack"])
+			expect([k, (seen.get(k) ?? 0) > 0]).toEqual([k, true]);
+	});
+
+	it("draws a library's runner as Kenney's segments between two ends, only with its art; the throne's carpet as before (docs/KENNEY_DECOR.md KN9)", () => {
+		const R = DECOR_RUNNER;
+		const runnerCount = R.firstVariant + R.variants;
+		const dirIndex = (dx: number, dz: number) => (dx > 0 ? 0 : dz > 0 ? 1 : dx < 0 ? 2 : 3);
+		let runners = 0;
+		let segments = 0;
+		for (const f of CENSUS) {
+			const d = f.layout.dungeon;
+			const runs = (d.carpets ?? []).filter((cp) => math.min(cp.w, cp.h) === 1);
+			if (runs.size() === 0) continue;
+			const four = planDecor({ ...decorInputOfLayout(f.layout), variants: (k) => (k === "carpet" ? 4 : 0) });
+			const all = planDecor({
+				...decorInputOfLayout(f.layout),
+				variants: (k) => (k === "carpet" ? runnerCount : 0),
+			});
+			// the throne's carpet is the same with or without the runner's art
+			const throne = (p: DecorPlan) =>
+				p.entries
+					.filter((e) => e.kind === "carpet" && e.variant < R.firstVariant)
+					.map((e) => `${e.x},${e.z},${e.variant},${e.cellX},${e.cellY}`)
+					.join(";");
+			expect(throne(all)).toBe(throne(four));
+			const onRunner = (x: number, y: number) =>
+				runs.some((cp) => x >= cp.x && x < cp.x + cp.w && y >= cp.y && y < cp.y + cp.h);
+			// without the runner's art: no runner entry, and its cells are free for the Forge's flat pieces
+			for (const e of four.entries)
+				if (e.kind === "carpet")
+					expect([e.cellX, e.cellY, onRunner(e.cellX, e.cellY)]).toEqual([e.cellX, e.cellY, false]);
+			const pieces = all.entries.filter((e) => e.kind === "carpet" && e.variant >= R.firstVariant);
+			let k = 0;
+			for (const cp of runs) {
+				runners++;
+				const len = math.max(cp.w, cp.h);
+				const hx = cp.fx === -1 ? cp.x + cp.w - 1 : cp.x;
+				const hy = cp.fz === -1 ? cp.y + cp.h - 1 : cp.y;
+				const covered = new Map<string, number>();
+				const take = (e: DecorEntry) => {
+					expect([e.layer, e.source, e.roomId, e.fade]).toEqual(["flat", "solid", cp.room, -1]);
+					for (const [x, y] of cellsOf(e)) covered.set(`${x},${y}`, (covered.get(`${x},${y}`) ?? 0) + 1);
+				};
+				// the head's end piece, open down the runner
+				const head = pieces[k++];
+				take(head);
+				expect([head.cellX, head.cellY, head.cells]).toEqual([hx, hy, 1]);
+				expect(head.variant).toBe(R.firstVariant + R.segmentVariants + dirIndex(-cp.fx, -cp.fz));
+				// 2 x 1 segments along the run, anchored between their cells
+				for (let a = 1; a + R.segmentCells <= len - 1; a += R.segmentCells) {
+					const e = pieces[k++];
+					take(e);
+					expect([e.cells, e.runX, e.runZ, e.variant]).toEqual([
+						R.segmentCells,
+						cp.fx !== 0 ? 1 : 0,
+						cp.fx !== 0 ? 0 : 1,
+						R.firstVariant + (cp.fx !== 0 ? 0 : 1),
+					]);
+					const cx = hx + cp.fx * (a + 0.5);
+					const cz = hy + cp.fz * (a + 0.5);
+					expect(e.x).toBeCloseTo(cx, 9);
+					expect(e.z).toBeCloseTo(cz, 9);
+					segments++;
+				}
+				// the far end, open back up it
+				const tail = pieces[k++];
+				take(tail);
+				expect([tail.cellX, tail.cellY, tail.cells]).toEqual([
+					hx + cp.fx * (len - 1),
+					hy + cp.fz * (len - 1),
+					1,
+				]);
+				expect(tail.variant).toBe(R.firstVariant + R.segmentVariants + dirIndex(cp.fx, cp.fz));
+				// every cell once
+				expect(covered.size()).toBe(len);
+				for (const [, n] of covered) expect(n).toBe(1);
+			}
+			expect(k).toBe(pieces.size());
+			// no Forge flat piece lies on a drawn runner
+			for (const e of all.entries)
+				if (e.layer === "flat" && e.source === "forge")
+					expect([e.cellX, e.cellY, onRunner(e.cellX, e.cellY)]).toEqual([e.cellX, e.cellY, false]);
+		}
+		print(`[decor runners] ${runners} runners, ${segments} segments`);
+		expect(runners).toBeGreaterThan(0);
+	});
+
+	it("draws a library's candle stands as Kenney's only with their art; every other candle stand as before", () => {
+		let swapped = 0;
+		let kept = 0;
+		for (const f of CENSUS.filter((_, i) => i % 2 === 0)) {
+			const d = f.layout.dungeon;
+			const themes = d.roomThemes ?? [];
+			const without = planDecor({
+				...decorInputOfLayout(f.layout),
+				variants: (k) => (k === "candelabrum" ? 1 : 0),
+			});
+			const plan = planDecor({
+				...decorInputOfLayout(f.layout),
+				variants: (k) => (k === "candelabrum" ? 1 : k === "libraryCandle" ? 3 : 0),
+			});
+			const a = without.entries.filter((e) => e.source === "solid" && e.layer !== "flat");
+			const b = plan.entries.filter((e) => e.source === "solid" && e.layer !== "flat");
+			d.solidDecor.forEach((p, i) => {
+				expect(a[i].kind).toBe(p.kind);
+				if (p.kind !== "candelabrum") return;
+				if (themes[p.room] === "library") {
+					expect([b[i].kind, b[i].variant >= 0 && b[i].variant < 3]).toEqual(["libraryCandle", true]);
+					swapped++;
+				} else {
+					expect([b[i].kind, b[i].variant]).toEqual(["candelabrum", 0]);
+					expect(plan.fadeBoxes[b[i].fade].polygon).toEqual(without.fadeBoxes[a[i].fade].polygon);
+					kept++;
+				}
+			});
+		}
+		print(`[decor library candles] ${swapped} swapped, ${kept} kept`);
+		expect(swapped).toBeGreaterThan(0);
+		expect(kept).toBeGreaterThan(0);
+	});
+
+	it("stands and hangs nothing on the walls screen-up of a stockpile (docs/KENNEY_DECOR.md KN9)", () => {
+		let stockpiles = 0;
+		let dropped = 0;
+		for (const f of CENSUS) {
+			const d = f.layout.dungeon;
+			const behind = new Set<string>();
+			for (const p of d.solidDecor) {
+				if (p.kind !== "stockpile") continue;
+				stockpiles++;
+				for (let y = p.y - 1; y < p.y + p.h; y++)
+					for (let x = p.x - 1; x < p.x + p.w; x++)
+						if ((x < p.x || y < p.y) && tileAt(d, x, y) !== TileType.FLOOR) behind.add(`${x},${y}`);
+			}
+			if (behind.size() === 0) continue;
+			const plan = planDecor({ ...decorInputOfLayout(f.layout), variants: (k) => (k === "banner" ? 1 : 0) });
+			for (const e of plan.entries)
+				if (e.source !== "void" && e.source !== "solid" && e.layer !== "flat")
+					expect([e.kind, behind.has(`${e.cellX},${e.cellY}`)]).toEqual([e.kind, false]);
+			dropped += plan.dropped.get("behindShelf") ?? 0;
+		}
+		print(`[decor stockpiles] ${stockpiles} stockpiles, ${dropped} pieces dropped behind shelves or stock`);
 	});
 
 	it("lays the throne's carpet in 2 x 2 segments from the dais, its end last, only with the pack's art", () => {
@@ -926,6 +1171,9 @@ describe('solid decor (docs/DECOR.md "Solid decor", "Room themes": set pieces on
 			const segs = plan.entries.filter((e) => e.kind === "carpet");
 			let k = 0;
 			for (const cp of d.carpets ?? []) {
+				// a library's runner (1 wide) needs its own variants (docs/KENNEY_DECOR.md KN9): not drawn with the
+				// throne carpet's four
+				if (math.min(cp.w, cp.h) === 1) continue;
 				runs++;
 				const len = cp.fx !== 0 ? cp.w : cp.h;
 				for (let a = 0; a < len; a += 2) {
