@@ -46,7 +46,9 @@ export const DAILY: DailyConfig = table.freeze({
 	// 11: the player's wall slide (docs/WALL_SLIDE.md WSD1: the player moves differently in every world); main's brace
 	// threshold took 10.
 	// 12: builds v2 wave 1 (docs/BUILDS_V2.md BVD20): Riposte, Ballista, Wrecker and seven duos change endless drafts.
-	ruleset: 12,
+	// 13: Kenney decor's Forge pieces (docs/KENNEY_DECOR.md KN5-KN8): library v2, mess halls and solid store stock change
+	// endless layouts and spawns.
+	ruleset: 13,
 	labelOffset: 1,
 	yesterdayCacheSeconds: 600,
 	minEntrantsForPercentile: 20,

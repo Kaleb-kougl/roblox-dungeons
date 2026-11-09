@@ -1271,7 +1271,8 @@ export function tryGenerate(seed: number, params: ForgeParams): Dungeon | undefi
 		// torches and banners hang on wall cells: no bookcase stands in front of one (docs/BOOKSHELVES.md BKD6)
 		const hangs: Array<{ x: number; y: number }> = [...torches];
 		for (const pr of props) if (pr.kind === "banner") hangs.push({ x: pr.x, y: pr.y });
-		// a library's reading area may clear solid pillars (docs/BOOKSHELVES.md): the pillar props on WALL cells
+		// free-standing pieces (a library's, a mess hall's) may clear solid pillars (docs/BOOKSHELVES.md,
+		// docs/KENNEY_DECOR.md): the pillar props on WALL cells
 		const pillars: Array<{ x: number; y: number }> = [];
 		for (const pr of props) if (pr.kind === "pillar" && grid[idx(pr.x, pr.y)] === WALL) pillars.push(pr);
 		const laid = placeSolidDecor(

@@ -664,7 +664,7 @@ describe("charger: determinism", () => {
 	});
 });
 
-const PIN_COUNTS = [5, 4, 1, 5, 3];
+const PIN_COUNTS = [3, 0, 2, 3, 0];
 // Re-recorded for docs/NEW_ENEMIES.md NE7: the reshuffled roster moves floor 3's room spawns and so its breakables
 // (they keep clear of planned spawns); the counts did not move. Before: f77607dc.
 // Re-recorded for the merge of solid decor and docs/NEW_ENEMIES.md: floor 3's tombs / candle stands (WALL cells) move
@@ -681,6 +681,9 @@ const PIN_COUNTS = [5, 4, 1, 5, 3];
 // Re-recorded for the wall slide (docs/WALL_SLIDE.md WS4): the scene's player moves with the slide, so the pinned
 // charger meets it in other places: 5 lanes (5 draws) with 4 stuns and 1 clean recover, still 3 pieces broken; the
 // layout is unchanged. Before: e54ef63f, counts [4, 2, 2, 4, 3].
-const PIN_HASH = "3422aa24"; // check-asset-ids: allow (state hash)
+// Re-recorded for Kenney decor's Forge pieces (docs/KENNEY_DECOR.md KN5-KN8): floor 3 lays out differently (library v2,
+// mess halls, store stock; free-standing pieces clear solid pillars), so the pinned charger meets other walls: 3 lanes
+// (3 draws) with 2 clean recovers, no stun, no piece broken. Before: 3422aa24, counts [5, 4, 1, 5, 3].
+const PIN_HASH = "1a65fa83"; // check-asset-ids: allow (state hash)
 const PIN_ARENA = [12, STATE_RETURN, 11.062568325627446, 8, 3663131635];
 const PIN_ARENA_HASH = "80069968"; // check-asset-ids: allow (state hash)
