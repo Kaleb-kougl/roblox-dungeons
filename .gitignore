@@ -37,3 +37,6 @@ build/
 # upload to the Roblox cloud table (npm run l10n:export)
 /l10n/build
 /l10n/out
+
+# Rollback spike captures and probe rows pulled from Studio (scripts/rollback/receive-captures.js; docs/ROLLBACK_SPIKE.md R4)
+/captures
