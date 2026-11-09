@@ -189,7 +189,9 @@ describe("contribution feed over a scripted 2-player endless run", () => {
 	const sc = drv.state.score!;
 
 	it("per-player sums equal the team totals (damage, pops, hits taken)", () => {
-		expect(sum(t.damage)).toBe(t.teamDamage);
+		// Run totals add the same hits in a different grouping (per entry vs per tick), so they can differ in the last bit;
+		// the per-tick check in observe() is exact.
+		expect(sum(t.damage)).toBeCloseTo(t.teamDamage, 6);
 		expect(sum(t.kills)).toBe(t.teamPops);
 		expect(sum(t.hits)).toBe(sc.hitsTaken);
 		expect(sum(t.bossDamage) <= sum(t.damage)).toBe(true);
@@ -250,7 +252,7 @@ describe("contribution feed attribution", () => {
 		drv.walkAll(w1.stairX, w1.stairZ, 1500);
 		const t = drv.totals;
 		expect(t.damage.size()).toBe(1);
-		expect(t.damage[0]).toBe(t.teamDamage);
+		expect(t.damage[0]).toBeCloseTo(t.teamDamage, 6);
 		expect(t.teamDamage > 0).toBe(true);
 		expect(t.kills[0]).toBe(t.teamPops);
 		expect(t.hits[0]).toBe(drv.state.score!.hitsTaken);
