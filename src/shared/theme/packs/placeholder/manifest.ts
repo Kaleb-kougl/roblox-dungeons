@@ -756,8 +756,11 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"hud.debug.replayMatch": "replay match @ {ticks}",
 		"hud.debug.replayMismatch": "replay MISMATCH @ {ticks}",
 		"hud.debug.net":
-			"co-op lead {lead}t {leadMs}ms (net {net}t) · {pace} · press->step {last}ms avg {mean} max {max} n{count} · " +
+			"co-op lead {lead}t {leadMs}ms ({netPart}) · {pace} · press->step {last}ms avg {mean} max {max} n{count} · " +
 			"late {late} miss {misses}",
+		"hud.debug.lead": "net {net}t, trip p95 {p95}ms",
+		"hud.debug.leadLegacy": "net {net}t legacy",
+		"hud.debug.leadOff": "net {net}t, lead off (KV_LeadOff)",
 		"hud.debug.pace": "pace {depth}t {depthMs}ms · holds {holds} · backlog {backlog} · jitter p95 {jitter}ms",
 		"hud.debug.paceWait": "pace waiting · backlog {backlog}",
 		"hud.debug.paceOff": "pace off (KV_PacingOff)",

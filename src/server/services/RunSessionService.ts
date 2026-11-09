@@ -586,7 +586,10 @@ export class RunSessionService implements OnStart {
 		return out;
 	}
 
-	/** A party run's lockstep part is over: one input-timing line per player (inputStats), then forget the session. */
+	/**
+	 * A party run's lockstep part is over: one input-timing line per player (inputStats: batches recorded, late frames,
+	 * and each batch's slack, its first frame's, the one its echo would carry), then forget the session.
+	 */
 	private forgetLockstep(runId: string): void {
 		const entry = this.lockstep.get(runId);
 		if (entry === undefined) return;
@@ -596,7 +599,7 @@ export class RunSessionService implements OnStart {
 			const st = coop.inputStats(i);
 			log.info(
 				"LOCKSTEP_INPUT",
-				`run ${runId} player ${coop.members[i]}: inputs ${st.samples} lates ${st.lates} slack min ` +
+				`run ${runId} player ${coop.members[i]}: batches ${st.samples} lates ${st.lates} slack min ` +
 					`${string.format("%.2f", st.slackMin)}t mean ${string.format("%.2f", st.slackMean)}t`,
 			);
 		}

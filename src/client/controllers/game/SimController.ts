@@ -76,6 +76,7 @@ import {
 	formatListenerTimes,
 	latencyProbeView,
 	listenerLabel,
+	leadDebugView,
 	pacingDebugView,
 	spectateCommand,
 	type ListenerTime,
@@ -1119,7 +1120,8 @@ export class SimController implements OnStart {
 		const mismatchesBefore = coop.mismatches;
 		let sample: InputSampler = () => input;
 		if (probe !== undefined) {
-			probe.frame(input.buttons, os.clock());
+			// With the buttons latched from a fall's skipped tick: a tap carried into a later frame keeps its press time.
+			probe.frame(bit32.bor(input.buttons, coop.latchedButtons()), os.clock());
 			// Only a sample that is sent is a send (a fall's skipped tick latches its buttons into the next one sent).
 			sample = (sending) => {
 				if (sending) probe.sent(bit32.bor(input.buttons, coop.latchedButtons()), coop.nextInputTick());
@@ -1190,7 +1192,10 @@ export class SimController implements OnStart {
 		const probe = ctx.latencyProbe;
 		if (probe === undefined) return;
 		const pacing = pacingDebugView(coop.pacingStats(), coop.backlog(), ctx.pacingOff !== true);
-		clientStore.setLatencyProbe(latencyProbeView(probe, coop.inputLead(), coop.misses, coop.netLead(), pacing));
+		const lead = leadDebugView(coop.leadStats(), ctx.leadOff !== true);
+		clientStore.setLatencyProbe(
+			latencyProbeView(probe, coop.inputLead(), coop.misses, coop.netLead(), pacing, lead, coop.mismatches),
+		);
 	}
 
 	/**
@@ -1208,7 +1213,9 @@ export class SimController implements OnStart {
 				pacingOff: ctx.pacingOff === true,
 				lead: coop.inputLead(),
 				netLead: coop.netLead(),
-				misses: coop.misses,
+				misses: coop.mismatches,
+				leadStats: coop.leadStats(),
+				leadOff: ctx.leadOff === true,
 				backlog: coop.backlog(),
 			}),
 		);

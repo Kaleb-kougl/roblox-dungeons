@@ -7,6 +7,7 @@ import {
 	formatArrivalLine,
 	nearestRank,
 	type ArrivalLineInfo,
+	type LeadStats,
 	type PacingStats,
 } from "shared/lockstep";
 
@@ -19,6 +20,26 @@ const INFO_WAITING: ArrivalLineInfo = {
 	netLead: 3,
 	misses: 0,
 	backlog: 0,
+	leadStats: undefined,
+	leadOff: true,
+};
+
+/** The measured lead's stats: trips 7 / 9 / 11 ticks (117 / 150 / 183 ms). */
+const LEAD_STATS: LeadStats = {
+	lead: 11,
+	target: 11,
+	fallTarget: 12,
+	tripP50: 7,
+	tripP95: 9,
+	tripMax: 11,
+	samples: 150,
+	warmingUp: false,
+	lates: 9,
+	mismatches: 0,
+	bumps: 3,
+	raises: 4,
+	falls: 1,
+	echoing: true,
 };
 
 describe("nearestRank", () => {
@@ -159,12 +180,34 @@ describe("formatArrivalLine", () => {
 			netLead: 3,
 			misses: 2,
 			backlog: 3,
+			leadStats: LEAD_STATS,
+			leadOff: false,
 		});
 		expect(line).toBe(
 			"[Pace] 10.0s batches 3 ticks 7 · gap p50 33 p95 37 max 37 ms · sizes 2:2 3:1" +
 				" · pace 4t 58ms target 3.5t jitter p95 9ms holds 1 discarded 0 · lead 7t net 3t miss 2 backlog 3" +
-				" · fps 0.1 worst 17ms",
+				" · fps 0.1 worst 17ms · trip p50 117 p95 150 max 183 ms · lead 11t target 11t fall 12t" +
+				" · lates 9 bumps 3 falls 1",
 		);
+	});
+
+	it("says when the lead is not measured: the legacy counter, or KV_LeadOff", () => {
+		const legacy = formatArrivalLine(window(), {
+			...INFO_WAITING,
+			leadStats: { ...LEAD_STATS, echoing: false },
+			leadOff: false,
+		});
+		expect(legacy.sub(-"lead legacy".size())).toBe("lead legacy");
+		expect(legacy.find("trip p50", 1, true)[0]).toBe(undefined);
+		const off = formatArrivalLine(window(), INFO_WAITING);
+		expect(off.sub(-"lead off (KV_LeadOff)".size())).toBe("lead off (KV_LeadOff)");
+		// No trip measured yet while echoing: '-'.
+		const empty = formatArrivalLine(window(), {
+			...INFO_WAITING,
+			leadStats: { ...LEAD_STATS, tripP50: undefined, tripP95: undefined, tripMax: undefined },
+			leadOff: false,
+		});
+		expect(empty.find("trip p50 - p95 - max - ms", 1, true)[0]).never.toBe(undefined);
 	});
 
 	it("says when pacing is off or not started", () => {

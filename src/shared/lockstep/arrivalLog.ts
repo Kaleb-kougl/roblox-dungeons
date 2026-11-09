@@ -12,8 +12,9 @@
  * batch of the window before). Quantiles are nearest rank: the smallest gap with at least that share at or below it.
  * formatArrivalLine turns a window and the client's pacing numbers into the line SimController prints.
  */
-import { isFiniteNumber } from "shared/sim";
+import { SIM_DT, isFiniteNumber } from "shared/sim";
 import { ARRIVAL_LOG, type ArrivalLogTunables } from "./config";
+import type { LeadStats } from "./lead";
 import type { PacingStats } from "./pacer";
 
 const MS_PER_SEC = 1000;
@@ -142,10 +143,14 @@ export interface ArrivalLineInfo {
 	/** LockstepClient.inputLead() (effective) and netLead(), ticks. */
 	readonly lead: number;
 	readonly netLead: number;
-	/** LockstepClient.misses so far. */
+	/** LockstepClient.mismatches so far (the `miss` of the debug line). */
 	readonly misses: number;
 	/** Received ticks not stepped yet (LockstepClient.backlog()). */
 	readonly backlog: number;
+	/** LockstepClient.leadStats(): the measured lead's numbers (undefined without it). */
+	readonly leadStats: LeadStats | undefined;
+	/** KV_LeadOff: the client was built without the measured lead. */
+	readonly leadOff: boolean;
 }
 
 function ms(v: number | undefined): string {
@@ -173,10 +178,29 @@ function paceText(info: ArrivalLineInfo): string {
 	);
 }
 
+/** Ticks -> whole ms ('-' for none). */
+function tickMs(ticks: number | undefined): string {
+	return ticks === undefined ? NONE : ms(ticks * SIM_DT * MS_PER_SEC);
+}
+
+/** The measured lead's part (docs/FRAME_PACING.md Design 11): trips, the lead and its targets, lates / bumps / falls. */
+function leadText(info: ArrivalLineInfo): string {
+	const l = info.leadStats;
+	if (info.leadOff || l === undefined) return "lead off (KV_LeadOff)";
+	if (!l.echoing) return "lead legacy";
+	return (
+		`trip p50 ${tickMs(l.tripP50)} p95 ${tickMs(l.tripP95)} max ${tickMs(l.tripMax)} ms` +
+		` · lead ${l.lead}t target ${l.target}t fall ${l.fallTarget}t` +
+		` · lates ${l.lates} bumps ${l.bumps} falls ${l.falls}`
+	);
+}
+
 /**
  * The arrival log's line (developer text, English):
  * `[Pace] 10.0s batches 300 ticks 600 · gap p50 33 p95 41 max 87 ms · sizes 2:290 3:10 · pace 4t 58ms target 3.5t
- * jitter p95 9ms holds 0 discarded 0 · lead 7t net 3t miss 0 backlog 3 · fps 60.0 worst 21ms`.
+ * jitter p95 9ms holds 0 discarded 0 · lead 7t net 3t miss 0 backlog 3 · fps 60.0 worst 21ms · trip p50 117 p95 150
+ * max 183 ms · lead 11t target 11t fall 12t · lates 9 bumps 3 falls 1` (the last part `lead legacy` while the miss
+ * counter steers the lead, `lead off (KV_LeadOff)` without the measured lead).
  */
 export function formatArrivalLine(w: ArrivalWindow, info: ArrivalLineInfo, tunables = ARRIVAL_LOG): string {
 	const mid = math.round(tunables.midPercentile * PERCENT);
@@ -188,6 +212,7 @@ export function formatArrivalLine(w: ArrivalWindow, info: ArrivalLineInfo, tunab
 		` · sizes ${sizesText(w.sizes)}` +
 		` · ${paceText(info)}` +
 		` · lead ${info.lead}t net ${info.netLead}t miss ${info.misses} backlog ${info.backlog}` +
-		` · fps ${fps} worst ${ms(w.worstFrameMs)}ms`
+		` · fps ${fps} worst ${ms(w.worstFrameMs)}ms` +
+		` · ${leadText(info)}`
 	);
 }

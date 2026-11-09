@@ -3,7 +3,7 @@ import { useSelector } from "@rbxts/react-reflex";
 import { selectLatencyProbe, selectReplayCheck, selectRunInfo, selectSnapshot, selectVerdict } from "client/store";
 import { str } from "client/ui/theme";
 import { REPLAY_CHECK_KEYS } from "shared/play";
-import { latencyProbeVars, pacingDebugKey, pacingDebugVars } from "shared/view";
+import { latencyProbeVars, leadDebugKey, leadDebugVars, pacingDebugKey, pacingDebugVars } from "shared/view";
 import { HUD_HINTS, HUD_STRINGS, HUD_TRANSIENT, HUD_VIEW, VERDICT_BOX } from "shared/view/hud";
 import { Panel, Text } from "./primitives";
 import { noticeText, verdictColor, verdictLine } from "./RunInfoLine";
@@ -99,7 +99,11 @@ export function InfoPanel() {
 					align={Enum.TextXAlignment.Right}
 					text={str(
 						HUD_STRINGS.netProbe,
-						latencyProbeVars(probe, str(pacingDebugKey(probe.pacing), pacingDebugVars(probe.pacing))),
+						latencyProbeVars(
+							probe,
+							str(pacingDebugKey(probe.pacing), pacingDebugVars(probe.pacing)),
+							str(leadDebugKey(probe.lead), leadDebugVars(probe)),
+						),
 					)}
 				/>
 			) : undefined}

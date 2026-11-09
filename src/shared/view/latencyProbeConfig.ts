@@ -22,3 +22,14 @@ export const PACING_DEBUG_STRINGS = {
 	waiting: "hud.debug.paceWait",
 	off: "hud.debug.paceOff",
 } as const;
+
+/**
+ * The co-op debug line's lead part (docs/FRAME_PACING.md Design 11), one string per LeadDebugView mode: the measured
+ * lead (net lead and trip p95), the legacy miss counter (warm-up, no echo, or the echo timeout) and KV_LeadOff.
+ * Developer strings (`hud.debug*`): English in every locale, never exported for translation.
+ */
+export const LEAD_DEBUG_STRINGS = {
+	measured: "hud.debug.lead",
+	legacy: "hud.debug.leadLegacy",
+	off: "hud.debug.leadOff",
+} as const;

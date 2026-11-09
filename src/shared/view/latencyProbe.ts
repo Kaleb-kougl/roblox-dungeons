@@ -5,7 +5,10 @@
  * hashed or recorded.
  *
  * Per rendered frame of a co-op run, in this order:
- *   frame(buttons, now)            the frame's sampled input (what the client would send)
+ *   frame(buttons, now)            the frame's sampled input (what the client would send), OR-ed with the client's
+ *                                  latched buttons (LockstepClient.latchedButtons(): a tap sampled on a fall's skipped
+ *                                  tick and not sent yet), so a tap latched across a frame boundary keeps the time of
+ *                                  the frame that pressed it
  *   sent(buttons, tick)            inside LockstepClient.pump's sample when it is sent (`sample(true)`): that input
  *                                  (with any latched buttons) goes out for `tick` (LockstepClient.nextInputTick())
  *   stepped(nextTick, now, missed) after the pump: every tick below `nextTick` (state.tick) has been stepped. `missed`:
@@ -17,7 +20,7 @@
  * is not measured.
  */
 import { SIM_DT } from "shared/sim";
-import { LATENCY_PROBE, PACING_DEBUG_STRINGS } from "./latencyProbeConfig";
+import { LATENCY_PROBE, LEAD_DEBUG_STRINGS, PACING_DEBUG_STRINGS } from "./latencyProbeConfig";
 
 export interface LatencyProbeStats {
 	/** The last measured press, ms (undefined before the first). */
@@ -71,6 +74,31 @@ export const PACING_DEBUG_OFF: PacingDebugView = table.freeze({
 	jitterMs: 0,
 });
 
+/**
+ * The measured lead's numbers the debug line reads (docs/FRAME_PACING.md Design 11): a structural subset of
+ * shared/lockstep LeadStats (LockstepClient.leadStats()).
+ */
+export interface LeadStatsInput {
+	readonly echoing: boolean;
+	/** The window's trip p95, ticks (undefined while the window is empty). */
+	readonly tripP95: number | undefined;
+}
+
+/**
+ * The debug line's lead part: `measured` (the server's echoes steer the lead), `legacy` (the miss counter: before the
+ * first echo, or after the echo timeout), `off` (KV_LeadOff: the client was built without the measured lead). Whole ms.
+ */
+export interface LeadDebugView {
+	readonly mode: "measured" | "legacy" | "off";
+	/** The trip p95 in whole ms (undefined: not measured, or no trip in the window). */
+	readonly tripP95Ms: number | undefined;
+}
+
+/** The lead part of a client built without the measured lead (KV_LeadOff). */
+export const LEAD_DEBUG_OFF: LeadDebugView = table.freeze({ mode: "off", tripP95Ms: undefined });
+/** The lead part while the legacy miss counter steers the lead. */
+export const LEAD_DEBUG_LEGACY: LeadDebugView = table.freeze({ mode: "legacy", tripP95Ms: undefined });
+
 /** What the debug line shows (the SimController hands it to the HUD store). */
 export interface LatencyProbeView extends LatencyProbeStats {
 	/**
@@ -80,10 +108,17 @@ export interface LatencyProbeView extends LatencyProbeStats {
 	readonly leadTicks: number;
 	/** The network part of the lead, ticks (LockstepClient.netLead(): the lead that adapts to misses, no depth). */
 	readonly netLeadTicks: number;
-	/** Deadline misses of this client's own input so far (LockstepClient.misses). */
+	/**
+	 * This client's inputs known to have missed so far (LockstepClient.misses: the echoed lates while echoing, the
+	 * mismatches before): the line's `late`.
+	 */
 	readonly misses: number;
+	/** Deadline checks that found another frame finalized (LockstepClient.mismatches): the line's `miss`. */
+	readonly mismatches: number;
 	/** The pacing part (docs/FRAME_PACING.md Design 7). */
 	readonly pacing: PacingDebugView;
+	/** The lead part (docs/FRAME_PACING.md Design 11). */
+	readonly lead: LeadDebugView;
 }
 
 export class LatencyProbe {
@@ -181,8 +216,22 @@ export function pacingDebugView(
 }
 
 /**
+ * The debug line's lead part from the client's lead stats (undefined without the measured lead) and whether the client
+ * was built with it (false: KV_LeadOff). The trip p95 in whole ms, so the HUD store only changes with the line.
+ */
+export function leadDebugView(stats: LeadStatsInput | undefined, configured: boolean): LeadDebugView {
+	if (!configured || stats === undefined) return LEAD_DEBUG_OFF;
+	if (!stats.echoing) return LEAD_DEBUG_LEGACY;
+	const p95 = stats.tripP95;
+	return {
+		mode: "measured",
+		tripP95Ms: p95 === undefined ? undefined : math.round(p95 * SIM_DT * LATENCY_PROBE.msPerSecond),
+	};
+}
+
+/**
  * The probe's view for the debug line: its stats plus the client's effective lead, misses, net lead (default: the
- * effective lead) and pacing part (default: off).
+ * effective lead), pacing part (default: off), lead part (default: legacy) and mismatches (default: the misses).
  */
 export function latencyProbeView(
 	probe: LatencyProbe,
@@ -190,8 +239,10 @@ export function latencyProbeView(
 	misses: number,
 	netLeadTicks: number = leadTicks,
 	pacing: PacingDebugView = PACING_DEBUG_OFF,
+	lead: LeadDebugView = LEAD_DEBUG_LEGACY,
+	mismatches: number = misses,
 ): LatencyProbeView {
-	return { ...probe.stats(), leadTicks, netLeadTicks, misses, pacing };
+	return { ...probe.stats(), leadTicks, netLeadTicks, misses, mismatches, pacing, lead };
 }
 
 function pacingViewsEqual(a: PacingDebugView, b: PacingDebugView): boolean {
@@ -211,7 +262,10 @@ export function latencyProbeViewsEqual(a: LatencyProbeView | undefined, b: Laten
 		a.leadTicks === b.leadTicks &&
 		a.netLeadTicks === b.netLeadTicks &&
 		a.misses === b.misses &&
+		a.mismatches === b.mismatches &&
 		pacingViewsEqual(a.pacing, b.pacing) &&
+		a.lead.mode === b.lead.mode &&
+		a.lead.tripP95Ms === b.lead.tripP95Ms &&
 		a.lastMs === b.lastMs &&
 		a.meanMs === b.meanMs &&
 		a.maxMs === b.maxMs &&
@@ -225,23 +279,38 @@ function msText(ms: number | undefined): string | number {
 }
 
 /**
- * The vars of the `hud.debug.net` string: the effective lead in ticks and ms, the net lead in ticks, last / mean / max
- * press -> step in whole ms. Its `{pace}` is the pacing part's own string (pacingDebugKey / pacingDebugVars), which the
- * caller formats and passes as `pace`.
+ * The vars of the `hud.debug.net` string: the effective lead in ticks and ms, last / mean / max press -> step in whole
+ * ms, `late` = the client's misses (echoed lates), `misses` = its mismatches. Its `{netPart}` is the lead part's own
+ * string (leadDebugKey / leadDebugVars) and its `{pace}` the pacing part's (pacingDebugKey / pacingDebugVars), which
+ * the caller formats and passes in.
  */
-export function latencyProbeVars(view: LatencyProbeView, pace = ""): Readonly<Record<string, string | number>> {
+export function latencyProbeVars(
+	view: LatencyProbeView,
+	pace = "",
+	netPart = "",
+): Readonly<Record<string, string | number>> {
 	return {
 		lead: view.leadTicks,
 		leadMs: math.round(view.leadTicks * SIM_DT * LATENCY_PROBE.msPerSecond),
-		net: view.netLeadTicks,
+		netPart,
 		pace,
 		last: msText(view.lastMs),
 		mean: msText(view.meanMs),
 		max: msText(view.maxMs),
 		count: view.count,
-		late: view.late,
-		misses: view.misses,
+		late: view.misses,
+		misses: view.mismatches,
 	};
+}
+
+/** The lead part's string key by mode (LEAD_DEBUG_STRINGS; HUD_STRINGS leadProbe / leadProbeLegacy / leadProbeOff). */
+export function leadDebugKey(view: LeadDebugView): string {
+	return LEAD_DEBUG_STRINGS[view.mode];
+}
+
+/** The vars of the lead part's strings: the net lead in ticks, the trip p95 in whole ms ('-' while none). */
+export function leadDebugVars(view: LatencyProbeView): Readonly<Record<string, string | number>> {
+	return { net: view.netLeadTicks, p95: msText(view.lead.tripP95Ms) };
 }
 
 /** The pacing part's string key by mode (PACING_DEBUG_STRINGS; HUD_STRINGS paceProbe / paceProbeWait / paceProbeOff). */
