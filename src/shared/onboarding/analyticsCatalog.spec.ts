@@ -15,6 +15,18 @@ import {
 } from "shared/run";
 import { TUTORIAL_DEVICES, TUTORIAL_STEPS } from "shared/tutorial";
 import {
+	ROLLBACK_DEVICE_CLASSES,
+	ROLLBACK_GUESS_STRATEGIES,
+	ROLLBACK_LIVE_METRICS,
+	ROLLBACK_PROBE_CASES,
+	ROLLBACK_PROBE_MODES,
+	ROLLBACK_ANALYTICS_EVENT,
+	analyticsForLiveSummary,
+	analyticsForProbeSummary,
+	type LiveSummary,
+	type ProbeSummary,
+} from "shared/spikes";
+import {
 	ANALYTICS_CATALOG,
 	MAX_TUTORIAL_STEP_NAME_CHARS,
 	NEW_PLAYER_RUN_ENDS,
@@ -108,9 +120,11 @@ describe("analytics catalog limits", () => {
 		for (const [, n] of pairs(ANALYTICS_EVENT)) expect(names.has(n)).toBe(true);
 		for (const [, n] of pairs(LOBBY_ANALYTICS_EVENT)) expect(names.has(n)).toBe(true);
 		for (const [, n] of pairs(TUTORIAL_ANALYTICS_EVENT)) expect(names.has(n)).toBe(true);
+		for (const [, n] of pairs(ROLLBACK_ANALYTICS_EVENT)) expect(names.has(n)).toBe(true);
 		// 36 before the run-over recap's RunRecap (docs/RUN_RECAP.md RR9); its views row (docs/RUN_CONTRIBUTION.md CT8) is
-		// a row kind on that event, not a new name.
-		expect(custom.size()).toBe(37);
+		// a row kind on that event, not a new name. 39 with the rollback spike's RollbackCpu / RollbackProbe
+		// (docs/ROLLBACK_SPIKE.md Design 5, 7).
+		expect(custom.size()).toBe(39);
 		expect(custom.size() <= ROBLOX_MAX_CUSTOM_EVENT_NAMES).toBe(true);
 	});
 
@@ -228,6 +242,63 @@ describe("run-over recap events stay inside the catalog", () => {
 					}
 		// 7 field01 values (3 closes, 3 team rows, views) x (7 near-miss values + 3 tabs + absent) x (4 flags + absent).
 		expect(analyticsEntryCombinations(analyticsCatalogEntry("custom", ANALYTICS_EVENT.runRecap)!)).toBe(7 * 11 * 5);
+	});
+});
+
+describe("rollback spike events stay inside the catalog", () => {
+	it("every device class, mode, H, case, metric and strategy", () => {
+		const stat = { p50: 1, p95: 2, max: 3 };
+		for (const deviceClass of ROLLBACK_DEVICE_CLASSES)
+			for (const horizon of [1, 8, 9, 16, 24, 32, 33, 64]) {
+				for (const mode of ROLLBACK_PROBE_MODES)
+					for (const probeCase of ROLLBACK_PROBE_CASES) {
+						const s: ProbeSummary = {
+							sessionId: "s",
+							windowIndex: 0,
+							mode,
+							horizon,
+							case: probeCase,
+							partySize: 2,
+							actors: 1,
+							enemyBullets: 1,
+							clone: stat,
+							step: stat,
+							send: stat,
+							total: stat,
+							framesPerPrediction: stat,
+							samples: 1,
+							windowSeconds: 10,
+							renderFps: 60,
+							frameMsP95: 17,
+							gcKbPerSec: 0,
+							native: false,
+							deviceLabel: "",
+							deviceClass,
+						};
+						expectInCatalog(analyticsForProbeSummary(s));
+					}
+				for (const strategy of ROLLBACK_GUESS_STRATEGIES) {
+					const l: LiveSummary = {
+						sessionId: "s",
+						windowIndex: 0,
+						strategy,
+						horizon,
+						partySize: 2,
+						playerIndex: 0,
+						seconds: 60,
+						lead: { lMean: 1, lMax: 1, dMean: 1, dMax: 1 },
+						rooms: { combat: { seconds: 60, counts: { undoneKill: 1 } } },
+						deviceLabel: "",
+						deviceClass,
+					};
+					expectInCatalog(analyticsForLiveSummary(l));
+				}
+			}
+		// 4 device classes x (2 modes x 5 H buckets) x 4 cases; 20 metrics x 4 device classes x 5 H buckets.
+		expect(analyticsEntryCombinations(analyticsCatalogEntry("custom", ROLLBACK_ANALYTICS_EVENT.cpu)!)).toBe(160);
+		expect(analyticsEntryCombinations(analyticsCatalogEntry("custom", ROLLBACK_ANALYTICS_EVENT.probe)!)).toBe(
+			ROLLBACK_LIVE_METRICS.size() * 4 * 5,
+		);
 	});
 });
 
