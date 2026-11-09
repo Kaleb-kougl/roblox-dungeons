@@ -186,6 +186,14 @@ export class TelemetryService implements OnStart {
 		this.logAll(player, specs, undefined);
 	}
 
+	/**
+	 * Debug spike events (docs/ROLLBACK_SPIKE.md: `RollbackCpu` / `RollbackProbe`, shared/spikes), already re-read and
+	 * bounded by the caller (RollbackSpikeService, published places only). No funnel session.
+	 */
+	logSpike(player: Player, specs: ReadonlyArray<AnalyticsEventSpec>): void {
+		this.logAll(player, specs, undefined);
+	}
+
 	/** Logs specs in order; one failing call (bad field, throttling) never stops the rest. */
 	protected logAll(player: Player, specs: ReadonlyArray<AnalyticsEventSpec>, funnelSessionId: string | undefined) {
 		const echo = Workspace.GetAttribute(ANALYTICS_DEBUG_ATTRIBUTE) === true;
