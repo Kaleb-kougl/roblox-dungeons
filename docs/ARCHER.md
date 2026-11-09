@@ -683,6 +683,7 @@ unchanged. Paths under `src/shared/run/` unless noted.
   `sim/recordingCodec` 19, `dungeon/roomPool` 15 (7.6 min), `run/snagCensus` 2 (6.7 min). Not run: the full
   unfiltered suite (`npm run verify`), so specs outside these filters that build live endless worlds through
   `buildWorldSetup` (view specs use `recordEndlessRun`, unchanged) were not exercised.
+
 ## AR12 (as built)
 
 Presentation only (no sim, dungeon, lockstep, hash, replay, fixture or score change). Built on branch `archer-art`
@@ -1411,3 +1412,29 @@ after that pedestals stay inert and a Rare vault pays its 2-boost fallback.
 measure), relics, curses and boosts in the arena fights, human aiming and dodging (the bots' policies above), the melee
 characters' boss survival (see 6), Riposte's counter-waves in a fight that guards often (the arena Knight guards only
 when a bullet is near, so Counterstrike rows equal no build in bullet-free fights).
+
+## Integration (2026-11-09)
+
+The task branches were merged into `archer` in build order (AR0-AR4, AR12, AR6, AR5, AR9-AR11, AR7-AR8, AR13) with
+`main` @ `49a7485` (Stage assets: playable while loading; new floor tiles), then the branch was rebased onto that `main`
+as one linear series of task commits (no merge commits; the rebased tree is byte-identical to the merged one), and
+rebased again onto `main` @ `3f7ce65` (frame pacing: the measured input lead; no conflicts; typecheck, lint, the checks,
+build and shared/lockstep, run/runSessions, lobby, shared/theme, run/validate / segments / endless / party, sim/party,
+view/hud, view/menu, shared/play: 146 suites, 2182 tests pass). Conflicts resolved:
+`ActorRenderController` (main's lazily built player bodies and stand-ins now build each player's own visual:
+`PlayerView.visualId`, `usePlayerBody` and the per-frame art readiness per visual), `RunOverPanel` imports,
+`shared/run` barrel, CLAUDE.md. Main's stage manifest took a `characters` list with "the Archer planned": StageController
+now passes the run's visuals (`shared/view` `stageCharacters(ctx.characters)`; no roster = `STAGE_CHARACTERS`, the
+Knight's), and `run/stageInput.spec` no longer expects combat E's turret sniper on tutorial floor 1 (AR6).
+
+Checked on the merged tree: typecheck, lint, check:assets, check:autolocalize, test:art (273 pass, 5 skipped: vendor
+packs not in the cloud box), test:checks, test:l10n, build, l10n:check; headless Lune over shared/characters,
+sim/progression, sim/builds/cards, sim/oneWeapon, sim/player, sim/runPlayer, sim/runFull, sim/runBoss, sim/runBullets,
+sim/constants, sim/hash, sim/determinism, sim/combat.determinism, sim/swordBow, sim/weapons, sim/party,
+sim/recordingCodec, run/config, run/endless, run/dev, run/party, run/validate, run/segments, run/tutorial,
+run/runSessions, run/characterRuns, run/characterOffers, run/stage*, shared/tutorial, onboarding, lobby, settings,
+shared/theme, shared/view, shared/play, leaderboard, shared/daily: 293 suites, 4171 tests, one failure (the stage spec
+above, fixed and re-run with view/characters and view/stage*: 7 suites, 78 tests pass). Not run on the merged tree: the
+full unfiltered suite (about 16 hours on this 2-core box), the dungeon / sim censuses and AR13's tuning specs (each
+task ran its own before the merge); the known platform failure `dungeon/forge/forge.spec.ts` "EncounterRng is the
+sim's new Rng(seed)" (NaN sign bit) is unchanged.
