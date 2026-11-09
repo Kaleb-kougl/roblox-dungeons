@@ -188,6 +188,56 @@ export const ARRIVAL_LOG: ArrivalLogTunables = table.freeze({
 	highPercentile: 0.95,
 });
 
+/**
+ * The co-op input lead from measured trips (docs/FRAME_PACING.md Revision 2, Design 10; lead.ts LeadController): the
+ * net lead is the slowest `percentile` of the last `windowSec` of the server-echoed net trips plus `marginTicks`,
+ * raised at once (and by a late to that late's own trip), lowered a tick at a time once the fall target (with
+ * `fallSlackTicks` more) has been below it for `fallHoldSec`. Trips are in ticks of SIM_DT, without the pacing
+ * buffer's depth (the lead adds that separately, Design 5). All provisional until FP0 / FP6 measure a real session.
+ */
+export interface LeadTunables {
+	/** The trips of this many seconds are kept (~150 at 30 echoes a second): follows a changing network within seconds. */
+	readonly windowSec: number;
+	/** The target covers this quantile of the window's trips (nearest rank): one outlier is one late, not a lasting delay. */
+	readonly percentile: number;
+	/** Added to the quantile (ticks): the server's receipt and the client's send both fall on whole frames. */
+	readonly marginTicks: number;
+	/**
+	 * The lead falls only toward the quantile + margin + this (ticks): a quantile wobbling round a tick boundary sits
+	 * inside the band and never moves the lead.
+	 */
+	readonly fallSlackTicks: number;
+	/** The fall target must stay below the lead this long (seconds) before the first tick down; a late restarts it. */
+	readonly fallHoldSec: number;
+	/** Then one tick down per this many seconds while it holds (each fall skips one sample, FP1). */
+	readonly fallStepSec: number;
+	/**
+	 * Fewer trips than this in the window is the warm-up: the target is the window's max + margin, and nothing falls
+	 * (~0.7 s of echoes before the quantile is trusted).
+	 */
+	readonly minSamples: number;
+	/** No echo for this long (seconds of batches arriving, `received`): an old server; the legacy miss counter runs. */
+	readonly echoTimeoutSec: number;
+	/**
+	 * Send records (sentAt / depth per target tick, waiting for their echo) are kept for the newest this many targets
+	 * (a fixed ring). An echo comes one trip after its send (lead + depth stays under 42 ticks), so 2 s of sends is far
+	 * past any echo still useful; a server that never echoes cannot grow the store.
+	 */
+	readonly recordTicks: number;
+}
+
+export const LEAD: LeadTunables = table.freeze({
+	windowSec: 5,
+	percentile: 0.95,
+	marginTicks: 1.5,
+	fallSlackTicks: 0.75,
+	fallHoldSec: 1,
+	fallStepSec: 0.25,
+	minSamples: 20,
+	echoTimeoutSec: 2,
+	recordTicks: SIM_HZ * 2,
+});
+
 export interface LockstepTunables {
 	readonly inputDelay: number;
 	readonly maxInputLead: number;
@@ -219,6 +269,13 @@ export interface LockstepTunables {
 	 * The server ignores it.
 	 */
 	readonly pacing: PacingTunables | undefined;
+	/**
+	 * Client: the net input lead from measured trips (docs/FRAME_PACING.md Revision 2, Design 10; LeadController).
+	 * Defined: the lead follows the server's input echoes (and falls back to the miss counter while none arrive);
+	 * undefined: the legacy miss counter only (+1 per missed deadline, -1 after `leadDecayTicks` clean ticks), which
+	 * every spec that pins today's lead keeps. The server ignores it (it always echoes).
+	 */
+	readonly lead: LeadTunables | undefined;
 }
 
 export const DEFAULT_LOCKSTEP: LockstepTunables = table.freeze({
@@ -241,4 +298,5 @@ export const DEFAULT_LOCKSTEP: LockstepTunables = table.freeze({
 	maxHashBatch: MAX_HASH_BATCH,
 	allowDebugInput: false,
 	pacing: PACING,
+	lead: LEAD,
 });
