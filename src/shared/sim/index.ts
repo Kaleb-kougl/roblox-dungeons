@@ -23,6 +23,7 @@ export {
 	killPlayerState,
 	movePlayer,
 	newPlayerState,
+	playerTraits,
 	refillAtCheckpoint,
 	respawnPlayer,
 	runStartHalfHearts,

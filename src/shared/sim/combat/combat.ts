@@ -189,7 +189,10 @@ function createSims(enemyCapacity: number, playerCapacity: number, boundsLimit: 
  * Combat state for a new run from the run's config (stress, bullet culling, loadout), with an EMPTY actor pool:
  * createSimState then calls startCombat to spawn the encounter. Seals the archetype and weapon registries.
  */
-export function createCombatState(config: Readonly<SimConfig>): CombatState {
+export function createCombatState(
+	config: Readonly<SimConfig>,
+	loadout: ReadonlyArray<string | undefined> | undefined = config.loadout,
+): CombatState {
 	sealArchetypes();
 	sealWeapons();
 	const stress = config.stress !== undefined && config.stress.bullets > 0 ? config.stress : undefined;
@@ -209,7 +212,7 @@ export function createCombatState(config: Readonly<SimConfig>): CombatState {
 		nextActorId: 1,
 		enemyEmitters: 0,
 		actorsDropped: 0,
-		weapons: createWeaponsState(config.loadout ?? DEFAULT_LOADOUT, 1),
+		weapons: createWeaponsState(loadout ?? DEFAULT_LOADOUT, 1),
 		stressTarget,
 		stressX: stress !== undefined ? stress.x : 0,
 		stressZ: stress !== undefined ? stress.z : 0,

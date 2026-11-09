@@ -58,7 +58,8 @@ import {
 	SHRINE_RADIUS,
 } from "../progression/progressionData";
 import { buildPlayer } from "../builds/builds";
-import { drawLegendaryOffers, legendaryPool } from "../builds/cards";
+import { drawLegendaryOffers, legendaryPool, playerBoonMask } from "../builds/cards";
+import { boonEligible } from "../progression/eligibility";
 import {
 	HORDE_NONE,
 	HORDE_WAVE_PENDING,
@@ -85,20 +86,26 @@ function unusedCurses(state: Readonly<SimState>, playerIndex: number): number[] 
 	return out;
 }
 
-/** Without builds: the unowned legendary classic boons (Boon order), the only legendary cards there are. */
+/**
+ * Without builds: the unowned legendary classic boons the player may be dealt (Boon order; docs/ARCHER.md AR2
+ * boonEligible), the only legendary cards there are.
+ */
 function classicLegendaryPool(state: Readonly<SimState>, playerIndex: number): number[] {
 	const out: number[] = [];
 	const me = runPlayer(state, playerIndex);
 	if (me === undefined) return out;
 	for (let b = 0; b < CLASSIC_BOON_COUNT; b++)
-		if (BOONS[b].rarity === Rarity.LEGENDARY && !me.boons.includes(b)) out.push(b);
+		if (BOONS[b].rarity === Rarity.LEGENDARY && !me.boons.includes(b) && boonEligible(state, playerIndex, b))
+			out.push(b);
 	return out;
 }
 
-/** The cards Greed's deal could draw from for player `playerIndex` (legendaryPool with builds). */
+/** The cards Greed's deal could draw from for player `playerIndex` (legendaryPool with builds; their boon mask). */
 function greedPool(state: Readonly<SimState>, playerIndex: number): number[] {
 	const bp = buildPlayer(state, playerIndex);
-	return bp !== undefined ? legendaryPool(bp.levels, bp.duos) : classicLegendaryPool(state, playerIndex);
+	return bp !== undefined
+		? legendaryPool(bp.levels, bp.duos, playerBoonMask(state, playerIndex))
+		: classicLegendaryPool(state, playerIndex);
 }
 
 /**
@@ -275,7 +282,7 @@ function takeGreed(state: SimState, p: PactsState, i: number): void {
 	const bp = buildPlayer(state, i);
 	let offers: number[];
 	if (bp !== undefined) {
-		offers = drawLegendaryOffers(state, bp.levels, bp.duos, p.config.legendaryCards);
+		offers = drawLegendaryOffers(state, bp.levels, bp.duos, p.config.legendaryCards, playerBoonMask(state, i));
 	} else {
 		const pool = classicLegendaryPool(state, i);
 		offers = [];

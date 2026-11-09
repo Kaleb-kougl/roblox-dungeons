@@ -79,18 +79,26 @@ import {
 } from "shared/sim";
 import { ENDLESS_SCORING, endlessFloorWorld, type EndlessRunFloor, type EndlessRunSetup } from "./endless";
 import { playerMoverKind, type PlayerMoverKind } from "./playerMover";
-import { coverTiles, tutorialRoomTools, tutorialTour } from "./tutorialLayout";
+import { tutorialRoomTools, tutorialTour } from "./tutorialLayout";
+import { withCharacters } from "./characters";
+import type { CharacterId } from "shared/characters";
+
+/**
+ * The tutorial's character (docs/ARCHER.md owner answer 3, AR4): always the Knight (sword only, the neutral roll),
+ * whatever a run start passes. Floor 1 has no bow lesson (AR6, owner answer 5: combat E's room is gone).
+ */
+export const TUTORIAL_CHARACTER: CharacterId = "knight";
 
 /** The tutorial's world kind in the run world registry (worlds.ts). Never leaderboard-eligible. */
 export const TUTORIAL_WORLD_KIND = "tutorial";
 
-/** Turret archetype ids (the sim's registry; no populator places them, so there is no shared constant). */
-export const TURRET_SNIPER_KIND = "turret.sniper";
+/** The turret archetype id combat F places (the sim's registry; no populator places it, so no shared constant). */
 export const TURRET_SPRAYER_KIND = "turret.sprayer";
 
 /**
- * Floor 1's rooms in lesson order (docs/TUTORIAL.md "Floor 1" table: combat A-F are lessons 3-8; combat G, the pellet
- * lesson, follows F: docs/PELLETS.md PL11, PD13).
+ * Floor 1's rooms in lesson order (docs/TUTORIAL.md "Floor 1" table: combat A-D and F; combat G, the pellet lesson,
+ * follows F: docs/PELLETS.md PL11, PD13). There is no combat E: the bow lesson's room was removed with the bow
+ * (docs/ARCHER.md AR6, ARD16: the later lesson ids keep their names; room ids are places in the chain).
  */
 export type TutorialLessonId =
 	| "entrance"
@@ -98,7 +106,6 @@ export type TutorialLessonId =
 	| "combatB"
 	| "combatC"
 	| "combatD"
-	| "combatE"
 	| "combatF"
 	| "combatG"
 	| "treasure"
@@ -109,10 +116,8 @@ export type TutorialLessonId =
  * Where a lesson room's spawns stand (on the room's spawn tiles, enemyRooms roomSpawnTiles):
  *   cluster  around the tile nearest the room centre, each at least TUTORIAL.clusterSpacingTiles from the others
  *   far      each on the tile farthest from the door the player comes in by and from the spawns placed before it
- *   cover    "far" among the tiles behind a solid pillar as seen from that door (tutorialLayout coverTiles); "far"
- *            over every spawn tile when the room has none
  */
-export type TutorialPlacement = "cluster" | "far" | "cover";
+export type TutorialPlacement = "cluster" | "far";
 
 /** One floor-1 room of the tutorial, as data (TUTORIAL_ROOMS): a room of the floor's chain and its lesson. */
 export interface TutorialRoomPlan {
@@ -144,11 +149,11 @@ export interface TutorialRoomPlan {
 }
 
 /**
- * Floor 1's rooms in tour order: the entrance, combat A-G, the treasure room, the shrine and the boss room (the open
- * stairwell). Floor 1 IS this list: a Forge chain floor (ForgeParams.chain, tutorialChain) with one short corridor
- * from each room to the next and nothing else, laid out as a snake of three rows (entrance -> A -> B east, down to C,
- * C -> D -> E west, down to F, F -> G -> treasure -> shrine -> boss east). Combat G (docs/PELLETS.md PL11, PD13 / PD15):
- * one sniper over a ring of pellets, held by the sweep lock until every pellet is taken.
+ * Floor 1's rooms in tour order: the entrance, combat A-D, F and G, the treasure room, the shrine and the boss room
+ * (the open stairwell). Floor 1 IS this list: a Forge chain floor (ForgeParams.chain, tutorialChain) with one short
+ * corridor from each room to the next and nothing else, laid out as a snake of three rows (entrance -> A -> B east,
+ * down to C, C -> D west, down to F, F -> G -> treasure -> shrine -> boss east). Combat G (docs/PELLETS.md PL11, PD13 /
+ * PD15): one sniper over a ring of pellets, held by the sweep lock until every pellet is taken.
  */
 export const TUTORIAL_ROOMS: ReadonlyArray<TutorialRoomPlan> = table.freeze([
 	{
@@ -202,24 +207,13 @@ export const TUTORIAL_ROOMS: ReadonlyArray<TutorialRoomPlan> = table.freeze([
 		w: 9,
 		h: 9,
 		shape: "oct",
-		next: "w",
+		next: "s",
 		kinds: [BRUISER_KIND],
 		placement: "far",
 	},
 	{
-		lesson: "combatE",
-		roomId: 5,
-		roomType: "combat",
-		w: 9,
-		h: 9,
-		shape: "rect",
-		next: "s",
-		kinds: [TURRET_SNIPER_KIND],
-		placement: "cover",
-	},
-	{
 		lesson: "combatF",
-		roomId: 6,
+		roomId: 5,
 		roomType: "combat",
 		w: 9,
 		h: 8,
@@ -230,7 +224,7 @@ export const TUTORIAL_ROOMS: ReadonlyArray<TutorialRoomPlan> = table.freeze([
 	},
 	{
 		lesson: "combatG",
-		roomId: 7,
+		roomId: 6,
 		roomType: "combat",
 		w: 9,
 		h: 9,
@@ -242,7 +236,7 @@ export const TUTORIAL_ROOMS: ReadonlyArray<TutorialRoomPlan> = table.freeze([
 	},
 	{
 		lesson: "treasure",
-		roomId: 8,
+		roomId: 7,
 		roomType: "treasure",
 		w: 6,
 		h: 6,
@@ -253,7 +247,7 @@ export const TUTORIAL_ROOMS: ReadonlyArray<TutorialRoomPlan> = table.freeze([
 	},
 	{
 		lesson: "shrine",
-		roomId: 9,
+		roomId: 8,
 		roomType: "shrine",
 		w: 6,
 		h: 6,
@@ -262,7 +256,7 @@ export const TUTORIAL_ROOMS: ReadonlyArray<TutorialRoomPlan> = table.freeze([
 		kinds: [],
 		placement: "far",
 	},
-	{ lesson: "stairwell", roomId: 10, roomType: "boss", w: 9, h: 9, shape: "rect", kinds: [], placement: "far" },
+	{ lesson: "stairwell", roomId: 9, roomType: "boss", w: 9, h: 9, shape: "rect", kinds: [], placement: "far" },
 ]);
 
 function planOf(lesson: TutorialLessonId): TutorialRoomPlan {
@@ -490,9 +484,7 @@ function buildFloor1Plan(): Floor1Plan {
 		let spawns: ActorSpawn[] = [];
 		if (plan.kinds.size() > 0) {
 			const open = roomSpawnTiles(d, room, tutorialRoomTools(d, room));
-			// "cover": the far rule over the tiles behind a pillar from the door (all spawn tiles when there are none).
-			const cover = plan.placement === "cover" ? coverTiles(d, plan.roomId, door) : [];
-			spawns = placeLesson(plan, room, cover.size() > 0 ? cover : open, door);
+			spawns = placeLesson(plan, room, open, door);
 			if (spawns.size() !== plan.kinds.size()) error(`tutorial: room ${plan.roomId} has too few spawn tiles`, 0);
 			roomSpawns[plan.roomId] = spawns;
 			spawnTiles[plan.roomId] = open;
@@ -616,7 +608,8 @@ function tutorialFloorCache(): (floor: number) => EndlessRunFloor {
 
 /**
  * The tutorial run's SimConfig and spawn (see the file comment); hands out each floor like an endless setup. Pure:
- * every call builds an identical world (the dungeons are shared, the floor cache is per setup). Throws for a party.
+ * every call builds an identical world (the dungeons are shared, the floor cache is per setup). Throws for a party. The
+ * player is TUTORIAL_CHARACTER (the Knight's loadout and traits; docs/ARCHER.md AR4).
  */
 export function buildTutorialRunConfig(partySize: number = DEFAULT_PARTY_SIZE): EndlessRunSetup {
 	if (partySize !== DEFAULT_PARTY_SIZE) {
@@ -624,7 +617,7 @@ export function buildTutorialRunConfig(partySize: number = DEFAULT_PARTY_SIZE): 
 	}
 	const worldForFloor = tutorialFloorCache();
 	const first = worldForFloor(ENDLESS_FIRST_FLOOR);
-	const config: SimConfig = {
+	const base: SimConfig = {
 		endless: { runSeed: TUTORIAL.runSeed, worldForFloor },
 		scoring: ENDLESS_SCORING,
 		tutorial: {
@@ -637,10 +630,12 @@ export function buildTutorialRunConfig(partySize: number = DEFAULT_PARTY_SIZE): 
 		drops: TUTORIAL_DROPS_CONFIG,
 		pellets: PELLETS_CONFIG,
 	};
+	const characters = [TUTORIAL_CHARACTER];
 	return {
-		config,
+		config: withCharacters(base, characters),
 		spawn: { x: first.spawnX, z: first.spawnZ },
 		dungeon: first.dungeon,
 		endlessFloor: worldForFloor,
+		characters,
 	};
 }

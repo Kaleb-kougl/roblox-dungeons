@@ -4,8 +4,10 @@
  * (docs/ROOM_EDGES.md RE6), the corner panels' occlusion fade (docs/HUD_LAYOUT.md H7), the live HUD's item tooltips (docs/ITEM_TOOLTIPS.md ITD8), the corner minimap
  * (docs/MINIMAP.md M10), the player outline (docs/PLAYER_OUTLINE.md P4), the build effects (docs/BUILDS.md BUD13), the touch controls (docs/MOBILE.md MB7: size,
  * opacity, auto-target, left-handed), the language (docs/LOCALIZATION.md L6) and the gamepad menus' vibration
- * (docs/GAMEPAD_MENUS.md GM9). Presentation only; stored overrides-only (a new optional field needs no migration).
+ * (docs/GAMEPAD_MENUS.md GM9) and the remembered character pick (docs/ARCHER.md ARD12: the character screen's focus
+ * and the run a start plays). Presentation only; stored overrides-only (a new optional field needs no migration).
  */
+import { DEFAULT_CHARACTER, isCharacterId, type CharacterId } from "shared/characters";
 import { localeDef } from "shared/l10n";
 import {
 	BUILD_FX_LEVELS,
@@ -62,6 +64,12 @@ export interface DisplaySettings {
 	 * Default true: only Off (false) is ever stored.
 	 */
 	padVibration: boolean;
+	/**
+	 * The last character picked (docs/ARCHER.md ARD12, AR5): a shared/characters CharacterId, the next run's and the
+	 * character screen's focus. Default DEFAULT_CHARACTER (the Knight): only another pick is ever stored. Shown on the
+	 * character screen, not the Display tab (DISPLAY_RESET_KEEPS).
+	 */
+	character: CharacterId;
 }
 
 export type DisplayOverrides = Partial<DisplaySettings>;
@@ -80,6 +88,7 @@ export const DISPLAY_SETTING_KEYS: ReadonlyArray<keyof DisplaySettings> = [
 	"touchLeftHanded",
 	"language",
 	"padVibration",
+	"character",
 ];
 
 export function defaultDisplaySettings(): DisplaySettings {
@@ -97,6 +106,7 @@ export function defaultDisplaySettings(): DisplaySettings {
 		touchLeftHanded: DEFAULT_TOUCH_LEFT_HANDED,
 		language: DEFAULT_LANGUAGE,
 		padVibration: DEFAULT_PAD_VIBRATION,
+		character: DEFAULT_CHARACTER,
 	};
 }
 
@@ -106,7 +116,8 @@ export function defaultDisplaySettings(): DisplaySettings {
  * BUILD_FX_LEVELS other than the default (so only "reduced"); a touchSize / touchOpacity
  * from its list and not the default; a touchAutoTarget / touchLeftHanded that is a boolean other than the default; a
  * language that is a known locale code (stored as LOCALES spells it; "auto" and unknown codes are dropped); a
- * padVibration that is a boolean other than the default (so only `false`). Never throws.
+ * padVibration that is a boolean other than the default (so only `false`); a character that is a character id other
+ * than DEFAULT_CHARACTER. Never throws.
  */
 export function sanitizeDisplayOverrides(raw: unknown): DisplayOverrides {
 	const out: DisplayOverrides = {};
@@ -159,14 +170,16 @@ export function sanitizeDisplayOverrides(raw: unknown): DisplayOverrides {
 	}
 	const vibration = t.padVibration;
 	if (typeIs(vibration, "boolean") && vibration !== DEFAULT_PAD_VIBRATION) out.padVibration = vibration;
+	const character = t.character;
+	if (isCharacterId(character) && character !== DEFAULT_CHARACTER) out.character = character;
 	return out;
 }
 
 /**
- * Display settings shown on another Options tab, which the Display tab's Reset (and Options X there) keeps:
- * `padVibration` sits on Controls > Gamepad (docs/GAMEPAD_MENUS.md GM9).
+ * Display settings shown elsewhere, which the Display tab's Reset (and Options X there) keeps: `padVibration` sits on
+ * Controls > Gamepad (docs/GAMEPAD_MENUS.md GM9), `character` is the character screen's pick (docs/ARCHER.md AR5).
  */
-export const DISPLAY_RESET_KEEPS: ReadonlyArray<keyof DisplaySettings> = ["padVibration"];
+export const DISPLAY_RESET_KEEPS: ReadonlyArray<keyof DisplaySettings> = ["padVibration", "character"];
 
 /** The display group after the Display tab's Reset: every override dropped but DISPLAY_RESET_KEEPS' (sanitized). */
 export function displayResetOverrides(current: unknown): DisplayOverrides {

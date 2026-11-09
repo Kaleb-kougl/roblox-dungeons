@@ -5,14 +5,15 @@
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { ThemePack } from "shared/theme";
 import { VALE_MANIFEST } from "shared/theme/packs/vale";
+import { CHARACTER_IDS } from "shared/characters";
 import { archetypeIds } from "shared/sim";
 import {
 	ALL_STAGE_FEATURES,
 	PRELOAD_BIOME_PREFIX,
 	PRELOAD_BOSS_IDS,
 	STAGE_ASSETS,
-	STAGE_CHARACTERS,
 	stageAssets,
+	stageCharacters,
 	stageEntriesMatch,
 	type PreloadSource,
 	type StageAssetsConfig,
@@ -39,7 +40,8 @@ function reachable(pack: PreloadSource, cfg: StageAssetsConfig = STAGE_ASSETS): 
 						world,
 						floor: 1,
 						biome,
-						characters: STAGE_CHARACTERS,
+						// every character (docs/ARCHER.md): a run's roster loads its own visuals (stageCharacters)
+						characters: stageCharacters(CHARACTER_IDS),
 						actorKinds: archetypeIds(),
 						bossKind,
 						features: ALL_STAGE_FEATURES,

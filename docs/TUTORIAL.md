@@ -17,6 +17,10 @@ the full map), was added and the funnel renumbered again (§6); see "Decisions" 
 2026-11-02 (headless only; Studio check and playtest pending): a pellet lesson, **combat G** (room 7, after combat F),
 step `pellets` (funnel step 12 of 18), held by a sweep lock until every pellet is taken; floor 1's seed 7500 -> 7574 and
 the funnel renumbered again (§6); see "Decisions" 11 and docs/PELLETS.md "Tutorial lesson".
+2026-11-09 (headless only; Studio check pending, docs/ARCHER.md AR6): the tutorial is the **Knight's** (sword only) and
+the bow lesson is gone with its room: combat E left the chain (10 rooms; F, G, treasure, shrine, stairwell are rooms
+5-9), step `bow` and the `cover` placement were removed, floor 1's seed 7574 -> 7511 and the funnel renumbered again
+(17 lessons, revision 4, §6); see "Decisions" 12.
 
 ## Goal
 
@@ -68,7 +72,6 @@ up even if the player wanders off. A world marker (beam or arrow) always points 
 | 4 | Combat B | 3 swarmers | "They rush you. Getting hit flashes you red. **In a real run that costs half a heart.**" (first harmless hit: ghost half-heart flash + toast) | Room cleared |
 | 5 | Combat C | 1 sniper | "The orange line is its aim. **Roll through the shot**: Space / LB. You can't be hit mid-roll." | Room cleared and >= 1 roll (praise toast on a graze) |
 | 6 | Combat D | 1 bruiser | "**Block** with the sword: **Right click** / LT as a shot reaches you. It deletes bullets, and shockwaves too." (the guard is a press, 0.3 s). While the bruiser waits at 1 hp: "It won't go down until you block one of its shots" | >= 1 guard cancel (score `guard` source) and room cleared. **Never waived** (Decisions 9): the sim holds the bruiser at 1 hp until the first block (`guardLock`), so the room cannot be cleared without one |
-| 7 | Combat E | 1 turretSniper behind cover | "Swap to the bow: **E** / Y. Hold Right click / LT to charge a heavy arrow, then release." (pulse on WeaponPanel) | Weapon swapped, a heavy arrow fired, room cleared |
 | 8 | Combat F | turretSprayer x2 (a bullet storm) | "Too many bullets? **Q** / RB burns an Ember and clears every enemy bullet. 2 per floor." | `emberUsed`, room cleared (the Ember waived if none is left) |
 | (M) | Combat F's exit, then the walks to the treasure, shrine and stairwell rooms | none | Step `map` (funnel step 11, docs/TUTORIAL_MAP.md): "The map in the corner fills in as you explore. Open the full map: **M** / D-pad left. Press it again to close." (touch: "Tap the pause button to see the whole floor."). Rings the corner minimap; the marker keeps leading to the treasure room; inside a lesson room that room's prompt wins | The full map open (touch: the pause overlay's map shown; an earlier open counts); waived (done, not skipped) when floor 1 is left unopened or the map is unavailable |
 | (G) | Combat G (docs/PELLETS.md) | 1 sniper over a ring of 12 pellets | "Grab the pellets while enemies are alive. Get them all for a Sweep!" While the sniper waits at 1 hp: "Grab the last pellets to finish the fight." | Room cleared with a Sweep (skill `sweep`). **Never waived**: the sweep lock (`pelletLock`) holds the sniper at 1 hp until the last pellet |
@@ -77,6 +80,10 @@ up even if the player wanders off. A world marker (beam or arrow) always points 
 | 11 | (any time, first kill) | | Callout on ScorePanel: "Kills, grazes and guard cancels score. Chain them for combo." | Shown once |
 | (B) | Combat B, its last kill (wherever that swarmer died) | the guaranteed Fury (docs/BOOSTS.md B9) | Step `boost` (funnel step 6): "A boost! Walk over it before it fades: it powers you up for a few seconds." The marker points at the drop while it lies there; the pickup rings the boost row | Picked up (on its landing frame too); waived (done, not skipped) when it fades untaken |
 | 12 | Boss room (stairwell, open) | none | "The **stairwell** takes you down. Every floor is more dangerous than the last." (shown on the way there; marker on the stairwell. Depth only grows per boss kill, so the plan's "raises the Depth" was dropped) | Floor changes |
+
+Lesson 7 (combat E: swap to the bow and fire a heavy arrow at a turret sniper behind cover) was removed with its room on
+2026-11-09 (docs/ARCHER.md AR6, owner answers 3 and 5: the tutorial is the Knight's; the Archer is learned in play). The
+lesson numbers above are the plan's and were not renumbered.
 
 Then the real **boon draft** opens. Prompt: "Pick a boon: **A / D** / stick, then click / RT." It is done when a boon
 is confirmed.
@@ -164,13 +171,15 @@ registerRunWorld("tutorial", (_seed, o) => buildTutorialRunConfig(o.partySize));
   pieces, `encounterRooms`, the populator tiles, the boss seal) reads it like any floor. The chain is `tutorialChain()`:
   `TUTORIAL_ROOMS` (each row now carries the room's `w` / `h` before the endless room scale, `shape` and `next` side)
   with `TUTORIAL.floor1.corridorTiles` = 4 tiles between neighbours, laid out as a three-row snake (entrance -> A -> B
-  east, down to C, C -> D -> E west, down to F, F -> G -> treasure -> shrine -> boss east). The seed
-  (`TUTORIAL.floor1.seed` = **7574** since room G; it was 7500, which with the longer chain left lesson E's turret
-  without cover) only picks the theme (frost, as before) and the decoration: its frozen lakes are in combat D / F, so
-  lesson E keeps its solid pillars (`node scripts/find-tutorial-seed.js --floor 1 --from 7500 --to 7700` lists working seeds:
-  40 of the first 48; a lake or graveyard on room 5 is what rules a seed out). Room id = place in the chain. The
-  **tour is 225 tiles** with room G (198 before it; centre to centre round the pillars), corridors 4 tiles
-  (5 where they meet the ellipse treasure room's rim). `bossFloor: false`, so the stairwell is open from the start.
+  east, down to C, C -> D west, down to F, F -> G -> treasure -> shrine -> boss east). The seed
+  (`TUTORIAL.floor1.seed` = **7511** since combat E left the chain, docs/ARCHER.md AR6; 7574 since room G before that;
+  7500 before room G) only picks the theme (frost, as before) and the decoration: its frozen lakes are in combat D / F
+  (rooms 4 / 5), so combat G keeps its open floor for the pellets. `node scripts/find-tutorial-seed.js --floor 1 --from
+  7500 --to 7700 --theme frost` lists the frost seeds (40; every one of the 201 seeds passes the chain check now that no
+  room needs cover); 7511 is the first with its lakes in D and F (then 7615, 7677, 7683). Room id = place in the chain.
+  The **tour is 198 tiles** (225 with combat E, 198 before room G too; centre to centre round the pillars), corridors
+  4 tiles (5 where they meet the ellipse treasure room's rim). `bossFloor: false`, so the stairwell is open from the
+  start.
   Room order (`TUTORIAL_ROOMS`, lesson -> room id / type / size x2 / shape -> deferred spawns):
 
   | Lesson | Room | Spawns |
@@ -180,23 +189,24 @@ registerRunWorld("tutorial", (_seed, o) => buildTutorialRunConfig(o.partySize));
   | combatB | 2 combat, 16x16 oct | 3 `swarmer` (cluster) |
   | combatC | 3 combat, 18x16 rect | 1 `sniper` (far from the door) |
   | combatD | 4 elite, 18x18 oct (frozen lake) | 1 `bruiser` (far) |
-  | combatE | 5 combat, 18x18 rect | 1 `turret.sniper` (`cover`: behind a solid pillar, out of sight of the door the player comes in by; the farthest such tile) |
-  | combatF | 6 combat, 18x16 rect (frozen lake) | 2 `turret.sprayer` (far, spread) |
-  | combatG | 7 combat, 9x9 rect | 1 `sniper` (far) over a `ring` of pellets (`tutorialPellets`: `TUTORIAL.pellets` inset 2, max 12; no power pellet) |
-  | treasure | 8 treasure, 12x12 ellipse | the normal relic pedestal |
-  | shrine | 9 shrine, 12x12 oct | the normal curse shrine |
-  | stairwell | 10 boss, 18x18 rect | none (the open stairwell at its centre) |
+  | combatF | 5 combat, 18x16 rect (frozen lake) | 2 `turret.sprayer` (far, spread) |
+  | combatG | 6 combat, 9x9 rect | 1 `sniper` (far) over a `ring` of pellets (`tutorialPellets`: `TUTORIAL.pellets` inset 2, max 12; no power pellet) |
+  | treasure | 7 treasure, 12x12 ellipse | the normal relic pedestal |
+  | shrine | 8 shrine, 12x12 oct | the normal curse shrine |
+  | stairwell | 9 boss, 18x18 rect | none (the open stairwell at its centre) |
+
+  There is no combatE (docs/ARCHER.md AR6: the bow lesson's 18x18 room 5 with its `turret.sniper` behind a pillar
+  went with the bow; the lesson ids after it keep their names, ARD16).
 
   **Contiguity** is guaranteed by construction and checked: solid pillars (and lava pits) are each placed with all 8
   neighbours FLOOR, so none touches another or a wall and none can split a room (a path through one goes round its
   ring), and the chain's pieces keep apart. `checkTutorialChain(d, order)` (`tutorialLayout.ts`, run by the lock spec)
-  proves it on the built floor: exactly the 11 rooms, no room's floor 4-touching another's, exactly one corridor region
+  proves it on the built floor: exactly the 10 rooms, no room's floor 4-touching another's, exactly one corridor region
   per consecutive pair and none touching a third room (no loops, side corridors or dead ends; the Forge edges agree),
   every room's walkable floor ONE 4-connected region holding its centre, every spawn tile (`roomSpawnTiles`) and both
   doors (in from the previous room, out to the next), and no leg walking through a later room.
-  Placement `cover` (lesson E, "behind cover"): `coverTiles(d, room, door)` are the room's spawn tiles with no line of
-  sight from the door and a solid pillar within `COVER_PILLAR_TILES` (2: spawn tiles keep 8 floor neighbours, so one
-  free tile separates it from the pillar); the farthest of them from the door. With none it falls back to `far`.
+  (Placement `cover`, `coverTiles` and `COVER_PILLAR_TILES`, lesson E's turret behind a pillar, were removed with
+  combat E: docs/ARCHER.md AR6. The placements are `cluster` and `far`.)
   Spawns stand on the populator's spawn tiles (`roomSpawnTiles`), which are also the floor's `roomSpawnTiles` for the
   safe-spawn rule. `tutorialRooms()` / `tutorialRoom(lesson)` add each room's `center`, `door` (the last corridor tile
   of the walk from the previous lesson room: the marker's target) and `spawns`. Also exported:
@@ -232,18 +242,18 @@ registerRunWorld("tutorial", (_seed, o) => buildTutorialRunConfig(o.partySize));
   tutorial run's state hash changed by the appended fields. The bot's tour run is unchanged (it guards before it
   swings, so the lock releases before any hold); `guardLate` (swing first) shows the hold.
 - **Sweep lock** (the pellet lesson, "Decisions" 11, docs/PELLETS.md PL12): `TutorialSimConfig.pelletLock` =
-  `TUTORIAL_PELLET_LOCK` (floor 1, combat G's room 7) is the guard lock's twin: armed on room G's spawned ids, the same
+  `TUTORIAL_PELLET_LOCK` (floor 1, combat G's room 6; 7 before docs/ARCHER.md AR6) is the guard lock's twin: armed on room G's spawned ids, the same
   hold (`tutorialHeldDamage`, `TUTORIAL_GUARD_HOLD_HP`), released by `stepPellets` on the room's last pickup
   (`tutorialOnPelletsSwept`), at once when the room spawned nothing or has no pellet. Five fields appended to the
   `tutorial` group (`pelletLockFloor`, `pelletLockRoom`, `pelletLock`, `pelletLockFirstId`, `pelletLockEndId`);
   `isTutorialPelletHolding` / `isTutorialPelletReleased`. The tutorial's run config sets `pellets: PELLETS_CONFIG`, so
   its score gains the `PELLETS` / `SWEEP` sources; tutorial replays changed, no fixture did.
 - **Lock spec** (`tutorial.spec.ts`): the Forge params and floor-world SimConfig fields are an endless floor's (floor 1
-  `chain` = `tutorialChain()`), both layout digests (floor 1 `fc231be9` since room G, floor 2 `c0fd5b19`), the lesson table's room
-  ids / types / order and the chain built from it, `checkTutorialChain` with no problem (10 corridors of 4-5 tiles, the
-  225-tile tour, the lesson doors are the tour's) and that it does catch a rolled floor and a wrong order, solid
-  pillars in lesson E's room and decor on every layer (`planDecor`), lesson E's turret behind a pillar out of the
-  door's sight, every spawn on a floor tile of its room, pedestal / shrine / stairwell rooms, determinism, a harmless
+  `chain` = `tutorialChain()`), both layout digests (floor 1 `e526f3cb` since docs/ARCHER.md AR6, `fc231be9` with
+  combat E; floor 2 `c0fd5b19`), the lesson table's room ids / types / order and the chain built from it,
+  `checkTutorialChain` with no problem (9 corridors of 4-5 tiles, the 198-tile tour, the lesson doors are the tour's)
+  and that it does catch a rolled floor and a wrong order, solid pillars and decor on every layer (`planDecor`), every
+  spawn on a floor tile of its room, pedestal / shrine / stairwell rooms, determinism, a harmless
   smoke run, the debug floor skip 1 -> 2 (boss at 20 % hp, draft) -> 3, the dummy's 8 hp, the registry, solo only.
 - Server: `tutorial` is not in `LEADERBOARD_ELIGIBLE_WORLDS`, and the server never runs it: it is in
   `SERVER_REFUSED_WORLDS` (`shared/run/worlds.ts`, `isServerRunWorld`), so `RunSessionRegistry.start` (every session
@@ -256,10 +266,11 @@ registerRunWorld("tutorial", (_seed, o) => buildTutorialRunConfig(o.partySize));
 
 ### 3. Tutorial script: `shared/tutorial/` (pure, headless-tested) (built, T4)
 
-- `steps.ts` `TUTORIAL_STEPS` (18 steps since the pellet lesson, funnel numbers 1..18; `TUTORIAL_STEP_COUNT`, `tutorialStepName(n)`): per step
+- `steps.ts` `TUTORIAL_STEPS` (17 steps since the bow step went, docs/ARCHER.md AR6; 18 with it; funnel numbers 1..17; `TUTORIAL_STEP_COUNT`, `tutorialStepName(n)`): per step
   a stable `id` (= funnel step name), `number`, `floor`, the floor-1 `lesson` room, a `prompt` id (theme keys
   `tutorial.prompt.<prompt>.<keyboard|gamepad|touch>`, `tutorialPromptKey(step | promptId, device)`; touch holds the
-  keyboard text for now), an optional `highlight` (`flask | weapons | score | bossBar | hearts | boosts | minimap`),
+  keyboard text for now), an optional `highlight` (`flask | score | bossBar | hearts | boosts | minimap`; `weapons`
+  went with the bow step),
   the `marker` target and the completion `rule`:
 
   | # | id | Room / floor | Done when |
@@ -272,16 +283,19 @@ registerRunWorld("tutorial", (_seed, o) => buildTutorialRunConfig(o.partySize));
   | 6 | `boost` | floor 1, no room (marker: the drop; no highlight) | a boost runs on the player (combat B's Fury taken, on its landing frame too); waived when a drop was seen on floor 1 and none lies any more with no boost run (it faded) |
   | 7 | `roll` | combatC | room cleared and >= 1 roll since entering |
   | 8 | `guard` | combatD (hold prompt `guardHold`) | room cleared and >= 1 guard cancel since entering (or the sim's guard lock released); never waived: the room cannot clear without a block (§2 "Guard lock") |
-  | 9 | `bow` | combatE (highlight: weapons) | room cleared, the bow in hand and a heavy arrow released since entering |
-  | 10 | `ember` | combatF | room cleared and an Ember burnt since entering (waived when cleared with none left) |
-  | 11 | `map` | floor 1, no room (highlight: minimap; marker `next`: the next open lesson's) | the full map seen (`TutorialFrame.mapSeen`; touch: the pause overlay's map too); waived (done, not skipped, `waived`) when floor 1 is left unopened, or while current with `mapAvailable` false (docs/TUTORIAL_MAP.md) |
-  | 12 | `pellets` | combatG (hold prompt `pelletsHold`) | room cleared and the score's SWEEP count rose since entering (or the sim's sweep lock released); never waived (skill `sweep`, docs/PELLETS.md PL13) |
-  | 13 | `relic` | treasure | a relic taken |
-  | 14 | `curse` | shrine (highlight: score) | a curse accepted, or the shrine zone left after standing in it |
-  | 15 | `stairwell` | stairwell room (prompt shown on the way) | floor >= 2 |
-  | 16 | `draft` | floor 2 | a boon confirmed |
-  | 17 | `boss` | floor 2 (highlight: boss bar; marker: the boss) | Mother Mayhem dead (Depth grew) |
-  | 18 | `finish` | floor 2 (marker: its stairwell) | floor >= 3: `finished` |
+  | 9 | `ember` | combatF | room cleared and an Ember burnt since entering (waived when cleared with none left) |
+  | 10 | `map` | floor 1, no room (highlight: minimap; marker `next`: the next open lesson's) | the full map seen (`TutorialFrame.mapSeen`; touch: the pause overlay's map too); waived (done, not skipped, `waived`) when floor 1 is left unopened, or while current with `mapAvailable` false (docs/TUTORIAL_MAP.md) |
+  | 11 | `pellets` | combatG (hold prompt `pelletsHold`) | room cleared and the score's SWEEP count rose since entering (or the sim's sweep lock released); never waived (skill `sweep`, docs/PELLETS.md PL13) |
+  | 12 | `relic` | treasure | a relic taken |
+  | 13 | `curse` | shrine (highlight: score) | a curse accepted, or the shrine zone left after standing in it |
+  | 14 | `stairwell` | stairwell room (prompt shown on the way) | floor >= 2 |
+  | 15 | `draft` | floor 2 | a boon confirmed |
+  | 16 | `boss` | floor 2 (highlight: boss bar; marker: the boss) | Mother Mayhem dead (Depth grew) |
+  | 17 | `finish` | floor 2 (marker: its stairwell) | floor >= 3: `finished` |
+
+  (Step 9 was `bow`, combat E, until docs/ARCHER.md AR6: the bow in hand and a heavy arrow released, highlight
+  `weapons`; removed with its room and its skills `bow` / `heavyArrow`, so `ember` .. `finish` moved from 10..18 to
+  9..17, funnel revision 4.)
 
   Callouts (`TUTORIAL_CALLOUTS`, one-shot toasts `tutorial.callout.<id>`, not funnel steps): `score` on the first kill
   (rings the score panel for `TUTORIAL.calloutHighlightSeconds`; this is lesson 11), `harmlessHit` on the first harmless
@@ -313,7 +327,7 @@ registerRunWorld("tutorial", (_seed, o) => buildTutorialRunConfig(o.partySize));
   `prompt`, `card`, `highlight`, `marker { kind, x, z }`, `done[]` / `skipped[]` / `waived[]` / `stepsDone`,
   `callouts[]`, `ghostHeart`, `funnelStepReached` / `newFunnelSteps[]`, `revision`). It reads facts from the state
   wherever the state keeps them (rooms entered, score room clears and source counts, relics / curses / boons, the shrine
-  zone, harmlessHits, the weapon in hand and the bow's heavy-arrow tick, the boss, floor and Depth), events only for
+  zone, harmlessHits, the boss, floor and Depth), events only for
   flask / roll / Ember. Never writes the sim; deterministic for a frame sequence.
 - Lessons latch done in any order (a room lesson only once its room is entered; its skills count from then). The current
   step is the lowest unfinished one: the marker points at it (a room's door until entered, then nothing while inside /
@@ -332,7 +346,8 @@ registerRunWorld("tutorial", (_seed, o) => buildTutorialRunConfig(o.partySize));
 - Bot: `shared/run/testing` `playTutorial(options)` plays the world through `LiveRun` and the director (in tour order,
   or `order` / `flaskAfter` for an out-of-order run; `bossDebugEvery` presses J, unused by the spec). It walks straight
   only along a clear line in the same room (three parallel lines of sight a player radius apart), else the tile-grid
-  BFS field (round solid pillars, through corridors), and shoots the bow only with a line of sight. After combat A / B
+  BFS field (round solid pillars, through corridors); it is the Knight (sword only since docs/ARCHER.md AR6, no bow
+  branch). After combat A / B
   it walks over any boost drop lying on the floor (docs/BOOSTS.md B9: it takes combat B's Fury 6 ticks after it lands;
   with Fury the sniper lesson is shorter). Bot time with boosts: **70.8 s** (4246 ticks; 71.4 s / 4283 ticks before
   B9 on the same build), out of order 78.2 s (78.0 s). With `boost` as a step (2026-10-26) the bot times are
@@ -344,6 +359,9 @@ registerRunWorld("tutorial", (_seed, o) => buildTutorialRunConfig(o.partySize));
   With room G (2026-11-02) the runs report 1..18 and take 82.6 s of sim (about 13 s more; room G about 11 s: 12
   pellets in 9.4 s, the sniper 1.7 s); option `pellets` (`first`: the pellets, then the sniper; `late`: the sniper until
   the sweep lock holds it, then the pellets, about 15 s) picks the order (docs/PELLETS.md PL13).
+  Without combat E (2026-11-09, docs/ARCHER.md AR6, seed 7511) the runs report 1..17: in order 4114 ticks (68.6 s),
+  out of order 4554 (75.9 s), guide-steered 4133 (68.9 s), guard late 4077, pellets late 4333; the boss fight 12.9 s
+  at 54 hp.
   Bot time (on `tutorial-linear`): **69.8 s** of sim (4187 ticks;
   was 151 s): floor 1 ~45 s on the chain, the Mother Mayhem fight
   **21.3 s** from engage to death at 20 % hp (was ~100 s); the out-of-order run (combat C before B, walking through B)
@@ -455,6 +473,9 @@ Funnel data recorded before 2026-11-01 is **not comparable past step 10** (`embe
 **Renumbered again on 2026-11-02**: the `pellets` step was inserted as step 12 (docs/PELLETS.md PL13), so `relic` ..
 `finish` moved from 12..17 to 13..18 (`TutorialAttempt`: lessons 2..19, `completed` 20). Revision `t1r3`
 (`TUTORIAL_FUNNEL_REVISION` 3): data before it is not comparable past step 11 (`map`).
+**Renumbered again on 2026-11-09**: the `bow` step (9, combat E) was removed (docs/ARCHER.md AR6), so `ember` ..
+`finish` moved from 10..18 to 9..17 (`TutorialAttempt`: lessons 2..18, `completed` 19; onboarding `Completed` 21).
+Revision `t1r4` (`TUTORIAL_FUNNEL_REVISION` 4): data before it is not comparable past step 8 (`guard`).
 It logs only increasing steps per attempt (each `tutorialStarted` is a new funnel session), plus `completed` as the
 last step. The client reports only the leading lessons practised (§3: the funnel stops at the first skipped one), so a
 player who took the stairwell early drops off at the first lesson they left behind. As built (T7), a skip is the custom event `TutorialSkipped` instead of a funnel step, because Roblox counts
@@ -499,7 +520,8 @@ Critical path: T1 -> T2 -> T4 -> T6. T5 can run alongside T2-T4.
    in Options > Controls first: the flask prompt says G), the marker leads on, and harmless hits blink and play the
    hurt sound but hearts stay put. Between rooms the floor chevron beside the player points along the corridor (round
    the snake's turns) and fades out inside a lesson room (docs/TUTORIAL_ARROW.md, Studio check).
-3. Flask: F fills the hearts. Ember, guard, bow charge, roll: each one ticks its step.
+3. Flask: F fills the hearts. Ember, guard, roll: each one ticks its step (no bow lesson: combat D's corridor leads
+   straight to combat F, docs/ARCHER.md AR6).
 4. Pedestal and shrine work as in a real run. The stairwell leads to the draft, then the floor 2 boss with
    previews and phase callouts.
 5. Boss dies, step into the stairwell: the outro shows and the verdict line reads `Practice: not submitted
@@ -577,4 +599,9 @@ Critical path: T1 -> T2 -> T4 -> T6. T5 can run alongside T2-T4.
 11. **A pellet lesson, combat G** (owner, 2026-11-02; docs/PELLETS.md PD13-PD15): a new room after combat F with one
    sniper over a ring of pellets, step `pellets` (12 of 18), held by a sweep lock (the sniper stays at 1 hp until the
    last pellet) so every new player sees a Sweep. Room ids 7-10 (G, treasure, shrine, stairwell), floor-1 seed 7574,
-   funnel revision 3. No power pellet in the tutorial (PD16).
+   funnel revision 3. No power pellet in the tutorial (PD16). (Since decision 12: room ids 6-9, seed 7511, revision 4.)
+12. **The tutorial is the Knight's, without the bow room** (owner, 2026-11-09, docs/ARCHER.md answers 3 and 5): the
+   tutorial always plays the Knight (sword only); combat E (the bow lesson) left floor 1's chain, so its 10 rooms are
+   the entrance, combat A-D (1-4), F (5), G (6), treasure 7, shrine 8, stairwell 9; lesson ids keep their names
+   (ARD16). Step `bow`, its skills and the `cover` placement are gone; floor-1 seed 7574 -> 7511; funnel revision 4
+   (17 lessons). The outro's Start my first run is to open the character screen (docs/ARCHER.md AR7).

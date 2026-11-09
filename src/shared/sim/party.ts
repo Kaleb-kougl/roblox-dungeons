@@ -31,6 +31,7 @@ import type { WeaponsState } from "./combat/weapons/types";
 import { DEFAULT_LOADOUT } from "./combat/weapons/loadout";
 import { MAX_PARTY_SIZE, PARTY_LEFT_BUTTON, SOLO_PARTY_SIZE, isValidPartySize } from "./partyData";
 import { boostsOnPlayerDied } from "./drops/boostMods";
+import type { PlayerTraits } from "./playerData";
 
 /** SimConfig.party. */
 export interface PartyConfig {
@@ -38,9 +39,14 @@ export interface PartyConfig {
 	readonly size: number;
 	/**
 	 * Per player index: that player's loadout (weapon id per set). Missing entries: the run's loadout (SimConfig.loadout
-	 * of the first world, else DEFAULT_LOADOUT). Index 0 overrides player 0's too.
+	 * of the run config, else of the first world, else DEFAULT_LOADOUT). Index 0 overrides player 0's too.
 	 */
 	readonly loadouts?: ReadonlyArray<ReadonlyArray<string | undefined> | undefined>;
+	/**
+	 * Per player index: that player's roll traits (docs/ARCHER.md AR3; player.ts playerTraits). Missing entries:
+	 * SimConfig.traits, else NEUTRAL_TRAITS. Index 0 overrides player 0's too. Config, not hashed.
+	 */
+	readonly traits?: ReadonlyArray<PlayerTraits | undefined>;
 }
 
 /** SimState.party (only for size > 1). Plain numbers; hashed in the "party" group (writePartyHash). */

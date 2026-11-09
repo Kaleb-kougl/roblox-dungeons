@@ -2,7 +2,8 @@ import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { Players, RunService, SocialService } from "@rbxts/services";
 import { Events } from "client/network";
-import { clientStore } from "client/store";
+import { clientStore, selectSelectedCharacter } from "client/store";
+import { isCharacterId, type CharacterId } from "shared/characters";
 import { INVITE } from "shared/invite";
 import { LOBBY, type LobbyVisibility, type LobbyWorld } from "shared/lobby";
 import type { InvitePromptOptions, LobbyNotice } from "shared/network";
@@ -94,7 +95,9 @@ export class LobbyController implements OnStart {
 					return;
 				}
 				print(`[Lobby] lobby ${start.lobbyId}: starting a ranked solo run (world ${start.worldKind})`);
-				this.sim.startSolo(start.lobbyId, start.worldKind);
+				// docs/ARCHER.md AR5: as the character this member readied with (the selected one if the pick is odd).
+				const character = isCharacterId(start.characterId) ? start.characterId : undefined;
+				this.sim.startSolo(start.lobbyId, start.worldKind, character);
 			}),
 		);
 
@@ -247,8 +250,15 @@ export class LobbyController implements OnStart {
 		);
 	}
 
-	setReady(ready: boolean): void {
-		Events.lobbySetReady.fire(ready);
+	/**
+	 * Ready on / off with a character pick (docs/ARCHER.md AR5): `characterId`, default the selected character
+	 * (client/store selectSelectedCharacter). The server stores the pick either way (shown on this member's row); a pick
+	 * change while ready un-readies. This does not change the selected character (SettingsController
+	 * .setSelectedCharacter does).
+	 */
+	setReady(ready: boolean, characterId?: CharacterId): void {
+		const pick = characterId ?? selectSelectedCharacter(clientStore.getState());
+		Events.lobbySetReady.fire(ready, pick);
 	}
 
 	start(): void {

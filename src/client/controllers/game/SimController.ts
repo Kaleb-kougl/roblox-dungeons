@@ -1,7 +1,8 @@
 import { Controller, OnStart } from "@flamework/core";
 import { GuiService, Players, RunService, Workspace } from "@rbxts/services";
 import { Events } from "client/network";
-import { clientStore, selectDailyStatus, type RunInfo, type VerdictView } from "client/store";
+import { clientStore, selectDailyStatus, selectSelectedCharacter, type RunInfo, type VerdictView } from "client/store";
+import { isCharacterId, type CharacterId } from "shared/characters";
 import type { PartyRunStart, RunFinishVerdict, RunVerdict } from "shared/network";
 import {
 	ArrivalLog,
@@ -75,6 +76,7 @@ import {
 	SpectateTracker,
 	floorChangeStaged,
 	formatListenerTimes,
+	playerCharacterOf,
 	latencyProbeView,
 	listenerLabel,
 	leadDebugView,
@@ -153,6 +155,13 @@ export interface RunContext {
 	readonly endlessFloor: ((floor: number) => EndlessRunFloor) | undefined;
 	/** The lobby whose start began this run (a party run, or a one-player lobby's solo run); "" otherwise. */
 	readonly lobbyId: string;
+	/**
+	 * docs/ARCHER.md AR5: every player's character, in player index order, as the run was built (RunSetup.characters);
+	 * undefined for a world without characters (M1's `game`, `dungeonNoEncounter`, `greybox`).
+	 */
+	readonly characters: ReadonlyArray<CharacterId> | undefined;
+	/** This client's player's character (`characters[localIndex]`), or undefined (a world without characters). */
+	readonly character: CharacterId | undefined;
 	/**
 	 * A first-run tutorial run (world `tutorial`, docs/TUTORIAL.md): local, never submitted (verdict `tutorial`), no
 	 * segments, no R / pad restart (the pause overlay has Restart tutorial and Skip tutorial).
@@ -235,6 +244,8 @@ interface MadeRun {
 	readonly config: Readonly<SimConfig>;
 	readonly dungeon: Dungeon | undefined;
 	readonly endlessFloor: ((floor: number) => EndlessRunFloor) | undefined;
+	/** RunSetup.characters (docs/ARCHER.md AR4 / AR5 / AR9). */
+	readonly characters: ReadonlyArray<CharacterId> | undefined;
 }
 
 /**
@@ -402,6 +413,13 @@ export class SimController implements OnStart {
 	 * keeps it, so retrying a Daily is another Daily run.
 	 */
 	private rankedWorld: RunWorldKind = RANKED_WORLD_KIND;
+	/**
+	 * docs/ARCHER.md AR5: the character solo runs are built with (ranked starts ask for it, `startRun.characterId`).
+	 * Set by startSolo / startDev from the request or client/store selectSelectedCharacter; a restart (R, Again, a dev
+	 * run's R) keeps it, so the retry plays the run's own character (owner answer 8). A ranked start takes the
+	 * server's echo (StartRunReply.characterId).
+	 */
+	private runCharacter: CharacterId = selectSelectedCharacter(clientStore.getState());
 	private readonly exitListeners = new Array<RunExitListener>();
 
 	/** Co-op: neutral input while a menu owns the controls (a party run never pauses under one). */
@@ -530,6 +548,20 @@ export class SimController implements OnStart {
 	/** This client's player index in the run (co-op: its place in the party; 0 solo). */
 	getLocalPlayerIndex(): number {
 		return this.ctx?.localIndex ?? 0;
+	}
+
+	/** docs/ARCHER.md AR9: the characters the run was built with (RunSetup.characters), or undefined (M1, no run). */
+	getRunCharacters(): ReadonlyArray<CharacterId> | undefined {
+		return this.ctx?.characters;
+	}
+
+	/**
+	 * docs/ARCHER.md AR9 / AR10: player `index`'s character (shared/view playerCharacterOf: the run's pick, else the
+	 * character their weapons are), undefined for no run or a player who is no character (M1's two weapons).
+	 */
+	getPlayerCharacter(index: number): CharacterId | undefined {
+		const ctx = this.ctx;
+		return ctx !== undefined ? playerCharacterOf(ctx.characters, ctx.run.state, index) : undefined;
 	}
 
 	/**
@@ -669,18 +701,21 @@ export class SimController implements OnStart {
 	 * Starts a developer mode run now (world `dev`, local): `options.startFloor` (clamped to the panel's range) of the
 	 * endless run on `seed`, god mode per `options.invulnerable`. The current solo run is left as by Play solo
 	 * (submitted as abandoned when it qualifies). Ignored while a party run is on. The caller (DevModeController) is
-	 * only reachable for players the server allowed (shared/config DEV_MODE).
+	 * only reachable for players the server allowed (shared/config DEV_MODE). `character` (docs/ARCHER.md AR5): default
+	 * the selected one; `options.bothWeapons` arms both weapons with its roll. R keeps both.
 	 */
-	startDev(options: DevRunOptions, seed: number): void {
+	startDev(options: DevRunOptions, seed: number, character?: CharacterId): void {
 		if (this.ctx?.coop !== undefined && !this.ctx.coop.isOver()) return;
 		if (!isValidRunSeed(seed)) return;
 		this.clearExits();
 		if (this.ctx?.live !== undefined) this.submit("abandoned");
 		this.nextRunLobbyId = "";
+		this.runCharacter = this.pickCharacter(character);
 		this.devRun = {
 			startFloor: clampDevFloor(options.startFloor),
 			invulnerable: options.invulnerable,
 			vault: options.vault,
+			bothWeapons: options.bothWeapons,
 		};
 		this.devSeed = seed;
 		this.beginDev();
@@ -760,18 +795,43 @@ export class SimController implements OnStart {
 	}
 
 	/**
+	 * The run-over panel's Character (docs/ARCHER.md AR7, owner answer 8): the finished solo run again as `character`,
+	 * exactly Again's restart otherwise (the run's world, a dev run's options and seed; R and Again keep the new pick).
+	 * Ignored for a party run or an id that is no character.
+	 */
+	restartAs(character: CharacterId): void {
+		if (this.ctx?.coop !== undefined || !isCharacterId(character)) return;
+		this.runCharacter = character;
+		this.requestRestart();
+	}
+
+	/**
 	 * Starts a solo run now (the menu's Play solo; `lobbyId` for a one-player lobby's `lobbyRunStart`): ranked unless
 	 * a debug attribute says otherwise (beginRun). `worldKind`: the world the ranked start asks for (default
-	 * RANKED_WORLD_KIND; the Daily: shared/daily DAILY_WORLD_KIND, whose seed the server picks for the day). Ignored
-	 * while a party run is on.
+	 * RANKED_WORLD_KIND; the Daily: shared/daily DAILY_WORLD_KIND, whose seed the server picks for the day).
+	 * `character` (docs/ARCHER.md AR5): the character to play (a lobby's pick); default the selected one (client/store
+	 * selectSelectedCharacter). Ignored while a party run is on.
 	 */
-	startSolo(lobbyId?: string, worldKind: RunWorldKind = RANKED_WORLD_KIND): void {
+	startSolo(lobbyId?: string, worldKind: RunWorldKind = RANKED_WORLD_KIND, character?: CharacterId): void {
 		if (this.ctx?.coop !== undefined && !this.ctx.coop.isOver()) return;
 		this.clearExits();
 		if (this.ctx?.live !== undefined) this.submit("abandoned"); // (only if not submitted yet, as R does)
 		this.nextRunLobbyId = lobbyId ?? "";
 		this.rankedWorld = worldKind;
+		this.runCharacter = this.pickCharacter(character);
 		this.beginRun();
+	}
+
+	/** `character` when it is a character id, else the selected one (client/store selectSelectedCharacter). */
+	private pickCharacter(character: CharacterId | undefined): CharacterId {
+		return character !== undefined && isCharacterId(character)
+			? character
+			: selectSelectedCharacter(clientStore.getState());
+	}
+
+	/** The character the current or next solo run plays (docs/ARCHER.md AR5: Again / R keep it). */
+	getRunCharacter(): CharacterId {
+		return this.runCharacter;
 	}
 
 	/**
@@ -922,6 +982,7 @@ export class SimController implements OnStart {
 			requestId: this.startRequests,
 			worldKind: rankedWorld,
 			atBossDoor: atBossDoor && !isEndlessWorld(rankedWorld) ? true : undefined,
+			characterId: this.runCharacter,
 		};
 		this.awaitingStart = {
 			requestId: this.startRequests,
@@ -998,8 +1059,15 @@ export class SimController implements OnStart {
 		// The owner's own `runStarted` reply follows; it must not start a solo run on top of this one.
 		this.awaitingStart = undefined;
 		this.startReply = undefined;
+		// docs/ARCHER.md AR5: every member's character from the payload, so every client builds the server's config (a
+		// malformed list throws here: the run is not joined).
+		const characters = start.characters;
 		const [ok, result] = pcall(() =>
-			buildWorldSetup(start.worldKind, start.seed, { atBossDoor: false, partySize: start.members.size() }),
+			buildWorldSetup(start.worldKind, start.seed, {
+				atBossDoor: false,
+				partySize: start.members.size(),
+				characters,
+			}),
 		);
 		if (!ok) {
 			warn(`[Sim] co-op run ${start.runId} could not start: ${errorMessage(result)}`);
@@ -1053,6 +1121,8 @@ export class SimController implements OnStart {
 			scoring: false,
 			config: setup.endlessFloor !== undefined ? setup.endlessFloor(floor).config : setup.config,
 			dungeon: setup.dungeon,
+			characters: setup.characters,
+			character: setup.characters?.[localIndex],
 			counter: this.counter,
 			floor,
 			endlessFloor: setup.endlessFloor,
@@ -1266,6 +1336,10 @@ export class SimController implements OnStart {
 			this.startReply = undefined;
 			if (reply.ok && reply.runId !== undefined && reply.seed !== undefined && isValidRunSeed(reply.seed)) {
 				const world = reply.worldKind ?? waiting.request.worldKind;
+				// The character the session validates (the server's echo; the request's when absent).
+				if (reply.characterId !== undefined && isCharacterId(reply.characterId)) {
+					this.runCharacter = reply.characterId;
+				}
 				this.startRun(reply.seed, reply.atBossDoor === true, 0, world, reply.runId, "", false);
 			} else {
 				warn(`[Sim] ranked run refused (${reply.code ?? "?"}: ${reply.reason ?? ""}); playing unranked`);
@@ -1364,7 +1438,7 @@ export class SimController implements OnStart {
 		if (typeIs(made, "string")) {
 			error(`[Sim] could not start a run: ${made}`);
 		}
-		const { run, config, dungeon, endlessFloor } = made;
+		const { run, config, dungeon, endlessFloor, characters } = made;
 		this.counter++;
 		this.submitted = false;
 		this.hudTimer = 0;
@@ -1392,6 +1466,8 @@ export class SimController implements OnStart {
 			floor,
 			endlessFloor,
 			lobbyId: tutorial ? "" : this.nextRunLobbyId,
+			characters,
+			character: characters?.[0],
 			tutorial,
 			dev: world === DEV_WORLD_KIND,
 		};
@@ -1465,6 +1541,7 @@ export class SimController implements OnStart {
 			biome: biomeIndexOf(ctx.dungeon),
 			coop: ctx.coop !== undefined,
 			lobbyId: ctx.lobbyId,
+			character: playerCharacterOf(ctx.characters, ctx.run.state, ctx.localIndex) ?? "",
 		};
 	}
 
@@ -1506,7 +1583,8 @@ export class SimController implements OnStart {
 	): MadeRun | string {
 		const [ok, result] = pcall(() => {
 			const dev = world === DEV_WORLD_KIND ? this.devRun : undefined;
-			const setup = buildWorldSetup(world, seed, { atBossDoor, dev });
+			// docs/ARCHER.md AR5: the run's character (worlds without characters ignore it; the tutorial is the Knight's).
+			const setup = buildWorldSetup(world, seed, { atBossDoor, dev, characters: [this.runCharacter] });
 			const spawn = setup.spawn ?? { x: 0, z: 0 };
 			const stressCfg = stressConfig(stress, spawn.x, spawn.z);
 			const config: Readonly<SimConfig> =
@@ -1527,6 +1605,7 @@ export class SimController implements OnStart {
 				config: scored,
 				dungeon: setup.dungeon,
 				endlessFloor: setup.endlessFloor,
+				characters: setup.characters,
 			};
 		});
 		return ok ? (result as MadeRun) : errorMessage(result);
@@ -1747,7 +1826,10 @@ export class SimController implements OnStart {
 			clientStore.setVerdict({ status: "skipped", run: ctx.counter, ending, code: "error" });
 			return;
 		}
-		const submission = result as RunSubmission;
+		// docs/ARCHER.md AR5: the server's replay builds the world with the run's character (absent: none, M1).
+		const built = result as RunSubmission;
+		const submission: RunSubmission =
+			ctx.character !== undefined ? { ...built, characterId: ctx.character } : built;
 		const kept = oversizeSubmission(submission);
 		if (kept !== undefined) {
 			warn(

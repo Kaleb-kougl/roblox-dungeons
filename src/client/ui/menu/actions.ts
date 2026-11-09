@@ -1,4 +1,5 @@
 import React, { useContext } from "@rbxts/react";
+import type { CharacterId } from "shared/characters";
 import type { LobbyVisibility, LobbyWorld } from "shared/lobby";
 
 /**
@@ -7,9 +8,12 @@ import type { LobbyVisibility, LobbyWorld } from "shared/lobby";
  * import controllers.
  */
 export interface MenuActions {
-	/** Main menu. */
+	/** Main menu: the character screen, then a solo run (docs/ARCHER.md AR7). */
 	readonly playSolo: () => void;
-	/** The Daily (docs/DAILY.md): a ranked solo run in world "daily" on the server's seed of the day. */
+	/**
+	 * The Daily (docs/DAILY.md): the character screen, then a ranked solo run in world "daily" on the server's seed of
+	 * the day.
+	 */
 	readonly playDaily: () => void;
 	/**
 	 * "Daily with friends" (docs/DAILY.md DS9): a lobby on the daily world. In a lobby: its room (the host's forming
@@ -38,6 +42,17 @@ export interface MenuActions {
 	/** Lobby room. */
 	readonly leaveLobby: () => void;
 	readonly setReady: (ready: boolean) => void;
+	/**
+	 * The lobby room's Ready toggle (docs/ARCHER.md AR8): ready -> un-ready at once; not ready -> the character screen,
+	 * whose Confirm readies with the pick (Back: still not ready).
+	 */
+	readonly toggleReady: () => void;
+	/** The character screen (docs/ARCHER.md AR7): focus a card (a tap, a click, the pad's selection). */
+	readonly focusCharacter: (id: CharacterId) => void;
+	/** Confirm with a card (the pad's A on it), or the focused one (Start). */
+	readonly confirmCharacter: (id?: CharacterId) => void;
+	/** Back: the screen under it, or the menu closes (the run-over panel, the outro, a dev run show again). */
+	readonly characterBack: () => void;
 	readonly startLobby: () => void;
 	readonly kick: (userId: number) => void;
 	readonly makeHost: (userId: number) => void;
@@ -75,6 +90,10 @@ const NOOP: MenuActions = {
 	joinLobby: nothing,
 	leaveLobby: nothing,
 	setReady: nothing,
+	toggleReady: nothing,
+	focusCharacter: nothing,
+	confirmCharacter: nothing,
+	characterBack: nothing,
 	startLobby: nothing,
 	kick: nothing,
 	makeHost: nothing,

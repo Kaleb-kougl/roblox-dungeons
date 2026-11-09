@@ -448,6 +448,32 @@ export function touchLayout(
 	};
 }
 
+/** What decides whether a placed button shows this frame. */
+export interface TouchButtonFacts {
+	/** The local player stands on the shrine / a pact altar (the snapshot's atShrine): Accept shows. */
+	readonly atShrine: boolean;
+	/** There is a weapon set to swap to (weaponSets hasSwapTarget on the snapshot's weapons): Swap shows. */
+	readonly swapTarget: boolean;
+}
+
+/**
+ * Whether placed button `id` shows (docs/MOBILE.md: Accept only at a shrine; docs/ARCHER.md AR9: Swap only with a set to
+ * swap to, never for a Knight or an Archer). A hidden button keeps its place: touchLayout places every button of the
+ * cluster whatever shows, so hiding one never moves or resizes another (and a hidden button takes no touch).
+ */
+export function touchButtonShown(id: TouchButtonId, facts: TouchButtonFacts): boolean {
+	if (id === "shrine") return facts.atShrine;
+	if (id === "swap") return facts.swapTarget;
+	return true;
+}
+
+/** The layout's buttons that show (touchButtonShown), each exactly where the layout placed it. */
+export function shownTouchButtons(layout: TouchLayoutResult, facts: TouchButtonFacts): TouchCircle[] {
+	const out: TouchCircle[] = [];
+	for (const b of layout.buttons) if (touchButtonShown(b.id, facts)) out.push(b);
+	return out;
+}
+
 /** What a touch can begin on: a button or the move zone. */
 export type TouchTargetId = TouchButtonId | "move";
 

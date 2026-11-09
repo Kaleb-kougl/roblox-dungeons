@@ -8,6 +8,7 @@ import {
 	selectInputDevice,
 	selectLeaveConfirm,
 	selectMapView,
+	selectMenuScreen,
 	selectRobloxMenuOpen,
 	selectRunBaseline,
 	selectRunInfo,
@@ -29,6 +30,7 @@ import {
 	baselineRecord,
 	bestTargetKey,
 	bestText,
+	hasSwapTarget,
 	isDailyBaseline,
 } from "shared/view/hud";
 import {
@@ -131,6 +133,8 @@ export function PauseOverlay() {
 	const bindings = useSelector(selectBindings);
 	const tutorial = useSelector(selectTutorial);
 	const robloxMenuOpen = useSelector(selectRobloxMenuOpen);
+	// docs/ARCHER.md AR7: the character screen (the dev panel's Go over a paused run) hides the overlay.
+	const menuScreen = useSelector(selectMenuScreen) !== "none";
 	const baseline = useSelector(selectRunBaseline);
 	const baselineRun = useSelector(selectBaselineRun);
 	const actions = useHudActions();
@@ -149,7 +153,7 @@ export function PauseOverlay() {
 		paused: s.paused,
 		coopOverlay,
 		panelOpen,
-		menuScreen: false,
+		menuScreen,
 		robloxMenuOpen,
 		tutorialEnded: tutorial.ended,
 	};
@@ -323,7 +327,7 @@ export function PauseOverlay() {
 							text={best}
 						/>
 					) : undefined}
-					{s.weapons.size() > 0 && !touch ? (
+					{hasSwapTarget(s.weapons) && !touch ? (
 						<Text
 							fill={true}
 							order={19}

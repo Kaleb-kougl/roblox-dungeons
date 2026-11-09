@@ -39,6 +39,8 @@ describe("pause overlay", () => {
 		expect(pauseOverlayShown(view({ coop: true, coopOverlay: true, robloxMenuOpen: true }))).toBe(false);
 		expect(pauseOverlayShown(view({ paused: true, panelOpen: true }))).toBe(false);
 		expect(pauseOverlayShown(view({ paused: true, playing: false }))).toBe(false);
+		// docs/ARCHER.md AR7: a menu screen over a paused run (the dev panel's character screen) hides it too.
+		expect(pauseOverlayShown(view({ paused: true, menuScreen: true }))).toBe(false);
 	});
 });
 

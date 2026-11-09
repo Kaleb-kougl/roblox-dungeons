@@ -9,6 +9,7 @@ import { isBossFloor } from "shared/dungeon";
 import { RUN_ATTRIBUTES } from "shared/play";
 import { TREASURE_DEBUG_ATTRIBUTE, clampDevFloor, isValidRunSeed, parseTreasureDebug } from "shared/run";
 import { SimController } from "../game/SimController";
+import { MenuController } from "./MenuController";
 
 const GUI_NAME = "KV_DevMode";
 
@@ -19,6 +20,7 @@ interface Shown {
 	seed: number;
 	god: boolean;
 	godPending: boolean;
+	bothWeapons: boolean;
 	runFloor: number | undefined;
 }
 
@@ -30,6 +32,9 @@ interface Shown {
  * seed, local, never submitted); in a dev run R / Restart restart it at once (SimController.handleReset) and the god
  * toggle goes through the sim (DEV_GOD_BUTTON). Nothing exists for other players: no GUI, no input connection.
  * Seed: KV_Seed when set, else a random one (New draws another). The run is not paused while the panel is open.
+ * Characters (docs/ARCHER.md AR7): Go opens the character screen first (MenuController.devStart; its Confirm starts
+ * the dev run as the pick), and "Both weapons" (AR4, `DevRunOptions.bothWeapons`) arms the sword and the bow with the
+ * pick's roll; R / Restart keep both.
  * Treasure rooms (docs/TREASURE.md TR5): Go reads the Workspace string KV_TreasureDebug ("every,legendary,untouched",
  * shared/run parseTreasureDebug) into the dev run's vault override; R / Restart keep it. Dev runs are never counted.
  */
@@ -41,11 +46,13 @@ export class DevModeController implements OnStart {
 	private floor: number = clampDevFloor(DEV_MODE.defaultFloor);
 	private seed = 0;
 	private god: boolean = DEV_MODE.defaultInvulnerable;
+	/** The next Go's "Both weapons" (docs/ARCHER.md AR4: DEFAULT_LOADOUT with the picked character's roll). */
+	private bothWeapons = false;
 	private readonly random = new Random();
 	private shown: Shown | undefined;
 	private pollTimer = 0;
 
-	constructor(private readonly sim: SimController) {}
+	constructor(private readonly sim: SimController, private readonly menu: MenuController) {}
 
 	onStart(): void {
 		if (!DEV_MODE.enabled) return;
@@ -117,7 +124,10 @@ export class DevModeController implements OnStart {
 		this.god = god;
 		const raw = Workspace.GetAttribute(TREASURE_DEBUG_ATTRIBUTE);
 		const vault = parseTreasureDebug(typeIs(raw, "string") ? raw : undefined);
-		this.sim.startDev({ startFloor: this.floor, invulnerable: god, vault }, this.seed);
+		const options = { startFloor: this.floor, invulnerable: god, vault, bothWeapons: this.bothWeapons };
+		const seed = this.seed;
+		// docs/ARCHER.md AR7: the character screen first; its Confirm starts the run as the pick.
+		this.menu.devStart((character) => this.sim.startDev(options, seed, character));
 		this.render();
 	}
 
@@ -152,6 +162,7 @@ export class DevModeController implements OnStart {
 			seed: this.seed,
 			god: running ?? this.god,
 			godPending: this.sim.isGodTogglePending(),
+			bothWeapons: this.bothWeapons,
 			runFloor,
 		};
 		const last = this.shown;
@@ -163,6 +174,7 @@ export class DevModeController implements OnStart {
 			last.seed === view.seed &&
 			last.god === view.god &&
 			last.godPending === view.godPending &&
+			last.bothWeapons === view.bothWeapons &&
 			last.runFloor === view.runFloor
 		) {
 			return;
@@ -180,6 +192,10 @@ export class DevModeController implements OnStart {
 				this.render();
 			},
 			onToggleGod: () => this.toggleGod(),
+			onToggleBothWeapons: () => {
+				this.bothWeapons = !this.bothWeapons;
+				this.render();
+			},
 			onGo: () => this.go(),
 			onRestart: () => this.sim.requestRestart(),
 		};

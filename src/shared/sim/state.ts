@@ -387,11 +387,12 @@ export function createSimState(
 		// Faces the camera (screen-down) until there is input.
 		player: newPlayerState(spawnX, spawnZ),
 		events: emptyEvents(),
-		combat: createCombatState(world),
+		// docs/ARCHER.md AR3: the run config's loadout first (an endless run's character), else the world's.
+		combat: createCombatState(world, config.loadout ?? world.loadout),
 		endless: firstFloor !== undefined ? createEndlessState(firstFloor, endless?.startDepth) : undefined,
 	};
 	// Co-op: the other players (and their player bullet emitter ids) exist before anything spawns. No rng.
-	state.party = createPartyState(state, config.party, world.loadout, spawnX, spawnZ);
+	state.party = createPartyState(state, config.party, config.loadout ?? world.loadout, spawnX, spawnZ);
 	// Tutorial: harmless hits and the wounded start (every player, max hearts unchanged). No rng.
 	const tutorial = config.tutorial;
 	if (tutorial !== undefined) {

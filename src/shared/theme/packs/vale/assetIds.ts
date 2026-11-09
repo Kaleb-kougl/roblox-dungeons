@@ -13,8 +13,12 @@
  * (class.vanguard: idle, run, roll, hit, death; enemy.swarmer: swarmer-move.png and swarmer-death.png); optional ones
  * (vanguard-attack1..3.png) join when their IDs are added. boss.demonlord (docs/BOSS_DEMONLORD.md D7): required
  * demonlord-idle / -move / -attack / -death.png (hit reuses idle's cells), optional demonlord-attack2 / -intro /
- * -taunt.png, plus one -outline.png per sheet (14 files). An enemy sheet's outline (swarmer-move-outline.png,
- * swarmer-death-outline.png) adds the baked rim once its ID is here; without it the set still switches, rimless.
+ * -taunt.png, plus one -outline.png per sheet (14 files). class.ranger (the Archer, docs/ARCHER.md AR12; built alone by
+ * `node scripts/art/build-atlases.js --only class.ranger`): required ranger-idle / -run / -roll / -hit / -death.png,
+ * optional ranger-attack1 / -attack2.png (the bow's stream and charged shot), plus one -outline.png per sheet (14
+ * files; all 14 uploaded 2026-11-09); until the five required ones have IDs the Archer is the placeholder capsule. An enemy sheet's outline
+ * (swarmer-move-outline.png, swarmer-death-outline.png) adds the baked rim once its ID is here; without it the set still
+ * switches, rimless.
  * An image switches once its file has one. Re-upload (and paste the new ID) whenever `art:build` changes a PNG.
  *
  * Audio (art/README.md, "Audio"): `npm run audio:build` writes art/build/audio/*.ogg; paste each file's ID here the same
@@ -320,6 +324,20 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"pellet-power.png": "rbxassetid://135982735087293",
 	"pellet.png": "rbxassetid://104506728931703",
 	"pip-icons.png": "rbxassetid://71522432232413",
+	"ranger-attack1-outline.png": "rbxassetid://115346256665198",
+	"ranger-attack1.png": "rbxassetid://97643800844303",
+	"ranger-attack2-outline.png": "rbxassetid://98739153490049",
+	"ranger-attack2.png": "rbxassetid://138730558586678",
+	"ranger-death-outline.png": "rbxassetid://138896071792664",
+	"ranger-death.png": "rbxassetid://82801610363541",
+	"ranger-hit-outline.png": "rbxassetid://121971475424531",
+	"ranger-hit.png": "rbxassetid://136370905401367",
+	"ranger-idle-outline.png": "rbxassetid://86239102477732",
+	"ranger-idle.png": "rbxassetid://119848240370322",
+	"ranger-roll-outline.png": "rbxassetid://130538671597003",
+	"ranger-roll.png": "rbxassetid://128683520092482",
+	"ranger-run-outline.png": "rbxassetid://71973016283729",
+	"ranger-run.png": "rbxassetid://86548765714980",
 	"reaper-attack-outline.png": "rbxassetid://95992799302634",
 	"reaper-attack.png": "rbxassetid://81078161742843",
 	"reaper-body-outline.png": "rbxassetid://130853749528261",

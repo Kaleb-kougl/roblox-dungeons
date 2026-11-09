@@ -171,7 +171,8 @@ export function localeAnalyticsValues(): { shown: string[]; language: string[] }
 
 /**
  * Every analytics event for one accepted run, in logging order. With `locale`, the RunStarted funnel step carries
- * field01 = locale.shown and field02 = locale.language (LocaleAnalytics).
+ * field01 = locale.shown and field02 = locale.language (LocaleAnalytics). RunDuration's field01 is the record's
+ * character (docs/ARCHER.md AR5), left out for a run without one.
  */
 export function analyticsForRun(
 	r: Readonly<RunTelemetryRecord>,
@@ -206,7 +207,10 @@ export function analyticsForRun(
 		value: seconds(r.aliveTicks),
 		fields: { field01: r.endReason, field02: `phase${r.bossPhaseReached}`, field03: cause },
 	});
-	out.push({ kind: "custom", name: ANALYTICS_EVENT.runDuration, value: seconds(r.ticks) });
+	// docs/ARCHER.md AR5: RunDuration carries the replayed player's character (field01; absent without one: M1).
+	const duration: AnalyticsEventSpec = { kind: "custom", name: ANALYTICS_EVENT.runDuration, value: seconds(r.ticks) };
+	if (r.character !== undefined) duration.fields = { field01: r.character };
+	out.push(duration);
 	if (r.deathTick !== undefined) {
 		const atBoss = r.bossEngagedTick !== undefined && r.bossEngagedTick <= r.deathTick;
 		out.push({

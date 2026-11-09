@@ -105,6 +105,60 @@
 				{ "name": "vanguard-attack3", "animations": ["attack.3"] }
 			]
 		},
+		"class.ranger": {
+			"$comment": [
+				"The Archer (docs/ARCHER.md AR12): SmallScaleInt's HD 8-Directional Top-Down Character Pack 1, paid edition, folder",
+				"2Archer, 'individual sprites' with baked shadows, copied to art/vendor/smallscale-archer/ (raw files never committed:",
+				"THIRD_PARTY_NOTICES.md). One 128x128 PNG per frame, <Anim>/<facing>/<Anim>_<angle>_<2 f + 1, 3 digits>.png: source",
+				"naming 'smallscale', so `frames` are the knight's grid indices 0..14. The knight's format and scale: same 128 cell",
+				"(the union box is the whole cell, so pad 0 and 8 x 8 = 64 cells fill a 1024 atlas: one atlas per animation, 8 of",
+				"15 frames), the same pivot cut, pixelsPerTileFrom the knight (one pack, one on-screen scale), the knight's 1 px",
+				"outline sheets cut at the cell edge.",
+				"Kept frames: idle / run / roll / hit / death exactly the knight's. attack.1 = QuickShot (the bow's stream): the clip",
+				"is a 4-frame draw-and-loose cycle repeated (f0 = f4 = f8 = f12, the bow straight at the loose, bent at f1-f3),",
+				"so frames 0-7 are two whole cycles; the view plays one cycle per stream arrow (SPRITE_ANIM_MARKS.archer.streamCycle).",
+				"attack.2 = Attack1 (the charged shot, standing): f1-f6 reach for the quiver and nock, f7 turns into the draw, f9 the",
+				"anchor at full draw, f10 the loose (the draw hand flies back off the string), f11 the follow-through, f12-14 the bow",
+				"lowered back to the stance. Kept 1, 3, 5, 7, 9 (the draw, held on 9 while fully charged) and 10, 11, 13 (the",
+				"release): SPRITE_ANIM_MARKS.archer.release = 5 / 8. Rejected: AttackRun (one lunge-and-shoot, not a loop), Attack2",
+				"(the same draw kneeling, which slides under the charge's half-speed walk), Special1 (shot into the sky)."
+			],
+			"source": { "type": "frames", "dir": "smallscale-archer", "naming": "smallscale", "frameW": 128, "frameH": 128 },
+			"facingCount": 8,
+			"facingDirs": ["E", "NE", "N", "NW", "W", "SW", "S", "SE"],
+			"facingEvidence": [
+				"The folder angles are screen angles (E = 0, counter-clockwise), the output convention already; the script rebuilds",
+				"every file name from d * 45 and fails if one is missing. By eye against the knight (Run frame 4, 2x): E / W stride",
+				"right / left, N and NE / NW show the back going up, S and SE / SW the front coming down, matching the knight's rows",
+				"(8 - d) % 8 facing for facing."
+			],
+			"noiseAlpha": 0,
+			"pad": 0,
+			"pivot": { "measure": { "animation": "idle", "facing": 6, "frame": 0 }, "bodyAlpha": 240, "bodyMinRgb": 8, "footBand": 4 },
+			"pivotNote": "The knight's cut: the Archer's baked shadow is black at alpha <= ~207 and the body at 248+, so the body is alpha > 240 (and lit).",
+			"outline": { "widthPx": 1, "clipAtCellEdge": true },
+			"outlineNote": "Player outline (docs/PLAYER_OUTLINE.md): 1 art px like the knight's; the 128 cells fill the atlas, so the rim stops at the cell edge (the build prints the clip).",
+			"pixelsPerTileFrom": "class.vanguard",
+			"resample": "Default",
+			"animations": {
+				"idle": { "folder": "Idle", "frames": [0, 1, 3, 5, 7, 9, 11, 13], "fps": 7, "loop": true },
+				"run": { "folder": "Run", "frames": [0, 1, 3, 5, 7, 9, 11, 13], "fps": 12, "loop": true },
+				"roll": { "folder": "Rolling", "frames": [0, 2, 4, 6, 8, 10, 12, 14], "fps": 14, "loop": false },
+				"hit": { "folder": "TakeDamage", "frames": [0, 2, 4, 6, 8, 10, 12, 14], "fps": 14, "loop": false },
+				"death": { "folder": "Die", "frames": [0, 2, 4, 6, 8, 10, 12, 14], "fps": 10, "loop": false },
+				"attack.1": { "folder": "QuickShot", "frames": [0, 1, 2, 3, 4, 5, 6, 7], "fps": 20, "loop": false },
+				"attack.2": { "folder": "Attack1", "frames": [1, 3, 5, 7, 9, 10, 11, 13], "fps": 14, "loop": false }
+			},
+			"sheets": [
+				{ "name": "ranger-idle", "animations": ["idle"] },
+				{ "name": "ranger-run", "animations": ["run"] },
+				{ "name": "ranger-roll", "animations": ["roll"] },
+				{ "name": "ranger-hit", "animations": ["hit"] },
+				{ "name": "ranger-death", "animations": ["death"] },
+				{ "name": "ranger-attack1", "animations": ["attack.1"] },
+				{ "name": "ranger-attack2", "animations": ["attack.2"] }
+			]
+		},
 		"enemy.swarmer": {
 			"$comment": [
 				"Lords of Pain skeleton: one 256x256 PNG per frame, <folder>/<facing>/<folder>_<facing>_<angle>_<frame>.png.",

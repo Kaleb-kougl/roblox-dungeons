@@ -75,6 +75,8 @@ export const DEV_PANEL_VIEW = {
 		godOn: "God mode: ON",
 		godOff: "God mode: OFF",
 		godPending: "God mode: switching...",
+		bothOn: "Both weapons: ON",
+		bothOff: "Both weapons: OFF",
 		go: "Go to floor %d",
 		restart: "Restart (R)",
 		bossFloor: "boss floor",

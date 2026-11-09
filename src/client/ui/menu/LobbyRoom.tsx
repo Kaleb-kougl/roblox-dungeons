@@ -4,11 +4,11 @@ import { useSelector } from "@rbxts/react-reflex";
 import { Players } from "@rbxts/services";
 import { selectInputDevice, selectLobby } from "client/store";
 import { FocusScope } from "client/ui/focus";
-import { MenuButton, MenuFit, PadHintBar, Panel, Row, Text } from "client/ui/hud";
+import { CharacterIcon, MenuButton, MenuFit, PadHintBar, Panel, Row, Text } from "client/ui/hud";
 import { str } from "client/ui/theme";
 import { LOBBY_VISIBILITIES, LOBBY_WORLDS, isLobbyWorld } from "shared/lobby";
 import { SFX } from "shared/view/audio";
-import { HUD_VIEW } from "shared/view/hud";
+import { HUD_VIEW, characterIconSize } from "shared/view/hud";
 import {
 	LOBBY_STRINGS,
 	MENU_BACK_HINT,
@@ -67,11 +67,16 @@ export function LobbyRoom() {
 	const candidates = inviting ? inviteCandidates(lobby.players, view, me, m.canInvite, nameOf) : [];
 	const platform = platformInviteButton(lobby.inviteEligible, m.canInvite);
 
+	// docs/ARCHER.md AR8: each member's pick as a CharacterIcon before the name (the name gives up its width).
+	const iconSize = characterIconSize(MENU_VIEW.rowHeight);
 	const memberRows = m.members.map((r, i) => (
 		<ListRow key={`m${r.userId}`} order={i + 1}>
+			{r.character !== undefined ? (
+				<CharacterIcon order={0} character={r.character} size={iconSize} />
+			) : undefined}
 			<Cell
 				order={1}
-				width={MENU_VIEW.nameWidth}
+				width={r.character !== undefined ? MENU_VIEW.nameWidth - iconSize - HUD_VIEW.gap : MENU_VIEW.nameWidth}
 				color={r.me ? "uiAccent" : "uiText"}
 				font="name"
 				text={r.me ? str(LOBBY_STRINGS.you, { name: r.name }) : r.name}
@@ -179,9 +184,11 @@ export function LobbyRoom() {
 		<Text key="World" order={2} size={HUD_VIEW.smallText} color="uiTextDim" text={world.line} />
 	);
 
+	// docs/ARCHER.md AR8: Ready opens the character screen (its Confirm readies with the pick); a ready member's
+	// Unready is at once.
 	const toggleReady = () => {
 		actions.playUi(SFX.uiClick);
-		actions.setReady(!m.meReady);
+		actions.toggleReady();
 	};
 	const invitePlatform = () => {
 		actions.playUi(SFX.uiConfirm);

@@ -16,7 +16,14 @@
  */
 import type { LobbyInviteView, LobbyNotice, LobbyView } from "shared/network";
 import type { LobbyInviteSource } from "./config";
-import type { Lobby, LobbyDeparture, LobbyInvite, LobbyRefused, LobbyTickResult } from "./lobbies";
+import {
+	memberCharacters,
+	type Lobby,
+	type LobbyDeparture,
+	type LobbyInvite,
+	type LobbyRefused,
+	type LobbyTickResult,
+} from "./lobbies";
 
 /** Countdown-cancel reason when a member left or un-readied. */
 export const COUNTDOWN_CANCELLED_MEMBER_LEFT = "a member left";
@@ -24,7 +31,8 @@ export const COUNTDOWN_CANCELLED_UNREADY = "a member is not ready";
 
 /**
  * A member's view of their lobby. `invites`: the live invites to it (`Lobbies.invitesTo`); `invitedSources[i]` is
- * the source of `invited[i]` (the first invite's, if a player somehow has two).
+ * the source of `invited[i]` (the first invite's, if a player somehow has two); `characters[i]` is `members[i]`'s pick
+ * (docs/ARCHER.md AR5).
  */
 export function lobbyViewOf(lobby: Lobby, invites: ReadonlyArray<LobbyInvite>, now: number): LobbyView {
 	const invited: number[] = [];
@@ -43,6 +51,7 @@ export function lobbyViewOf(lobby: Lobby, invites: ReadonlyArray<LobbyInvite>, n
 		phase: lobby.phase,
 		members: [...lobby.members],
 		ready: [...lobby.ready],
+		characters: memberCharacters(lobby),
 		countdownIn:
 			lobby.phase === "countdown" && lobby.countdownEndsAt !== undefined
 				? math.max(0, lobby.countdownEndsAt - now)

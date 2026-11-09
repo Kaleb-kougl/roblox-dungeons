@@ -21,8 +21,8 @@
  *   3. a room's enemies spawned this tick (events.roomEntered, a room with deferred spawns): Warding refills the armor
  *      of every living player who owns it
  *   4. pedestals, in room id order: the first living player (index order) whose centre is within PEDESTAL_RADIUS of
- *      an untaken one and who has a relic left to get collects one drawn from THEIR unowned set (one rngInt draw);
- *      with nobody able to take it the pedestal stays (inert)
+ *      an untaken one and who has a relic left to get collects one drawn from THEIR unowned eligible set (unownedRelics;
+ *      one rngInt draw); with nobody able to take it the pedestal stays (inert)
  *   5. the shrine: unused, the first living player (index order) whose centre is within SHRINE_RADIUS of it with a
  *      SHRINE_BUTTON (SKILL1) press edge and a curse left: a curse drawn from THEIR unused set (one rngInt draw),
  *      applied to them, plus addCurse (the team score x +0.25); the shrine is then used for everyone. Pacts
@@ -60,7 +60,8 @@ import { addCurse } from "../score/score";
 import { hasLeft, partySize, playerAt, weaponsAt } from "../party";
 import { buildPlayer } from "../builds/builds";
 import { buildsBraceRearm } from "../builds/hooks";
-import { drawPlayerCardOffers, grantCard } from "../builds/cards";
+import { drawPlayerCardOffers, grantCard, playerBoonMask } from "../builds/cards";
+import { maskAllows, relicEligible } from "./eligibility";
 import { takeTreasureBonusDeals } from "../treasure/bonus";
 import { rarityForRoll } from "./rarity";
 import {
@@ -206,11 +207,17 @@ export { rarityForRoll, rarityPercents } from "./rarity";
 /**
  * The boons a draft after `floorCleared` offers a player owning `owned` (see the file comment), without builds: only
  * the classic boons (CLASSIC_BOON_COUNT; the on-kill boons are builds-only, docs/BUILDS.md), so it draws exactly as
- * before they were appended.
+ * before they were appended. `eligible`: the player's boon mask (docs/ARCHER.md AR2; absent: every boon): boons it leaves
+ * out are not offered (with every boon allowed, the same list and the same draws).
  */
-export function drawBoonOffers(rng: RngHolder, owned: ReadonlyArray<number>, floorCleared: number): number[] {
+export function drawBoonOffers(
+	rng: RngHolder,
+	owned: ReadonlyArray<number>,
+	floorCleared: number,
+	eligible?: ReadonlyArray<boolean>,
+): number[] {
 	const left: number[] = [];
-	for (let b = 0; b < CLASSIC_BOON_COUNT; b++) if (!owned.includes(b)) left.push(b);
+	for (let b = 0; b < CLASSIC_BOON_COUNT; b++) if (!owned.includes(b) && maskAllows(eligible, b)) left.push(b);
 	if (left.size() <= DRAFT_OFFER_COUNT) return left;
 	const out: number[] = [];
 	while (out.size() < DRAFT_OFFER_COUNT) {
@@ -236,7 +243,7 @@ export function openDraft(state: SimState, playerIndex: number, floorCleared: nu
 	const offers =
 		bp !== undefined
 			? drawPlayerCardOffers(state, playerIndex, floorCleared, deals > 1)
-			: drawBoonOffers(state, p.boons, floorCleared);
+			: drawBoonOffers(state, p.boons, floorCleared, playerBoonMask(state, playerIndex));
 	if (bp !== undefined) bp.draftsLeft = offers.size() > 0 ? deals : 0;
 	if (offers.size() === 0) return false;
 	dealOffers(state, p, offers);
@@ -424,13 +431,17 @@ function unowned(owned: ReadonlyArray<number>, count: number): number[] {
 }
 
 /**
- * The relics player `playerIndex` does not own yet, in relic index order (the pedestal's pool; a Rare chest draws from
- * it too, docs/TREASURE.md TR4). Empty without run state.
+ * The relics player `playerIndex` does not own yet and may be offered (docs/ARCHER.md AR2: relicEligible, the weapons
+ * they carry; a player with both weapons, every relic), in relic index order (the pedestal's pool; a Rare chest draws
+ * from it too, docs/TREASURE.md TR4). Empty without run state.
  */
 export function unownedRelics(state: Readonly<SimState>, playerIndex: number): number[] {
 	const me = state.run?.players[playerIndex];
 	if (me === undefined) return [];
-	return unowned(me.relics, RELIC_COUNT);
+	const out: number[] = [];
+	for (let r = 0; r < RELIC_COUNT; r++)
+		if (!me.relics.includes(r) && relicEligible(state, playerIndex, r)) out.push(r);
+	return out;
 }
 
 /**
@@ -527,7 +538,7 @@ export function stepRun(
 			const pl = playerAt(state, i);
 			const me = r.players[i];
 			if (pl.dead !== 0 || me === undefined || !within(pl.x, pl.z, room.cx, room.cz, PEDESTAL_RADIUS)) continue;
-			const left = unowned(me.relics, RELIC_COUNT);
+			const left = unownedRelics(state, i);
 			if (left.size() === 0) continue;
 			const relic = left[rngInt(state, 0, left.size() - 1)];
 			r.pedestalTaken[k] = 1;

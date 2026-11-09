@@ -29,6 +29,11 @@ import { ALLTIME_SCOPE, alltimeBoard, dailyBoard, type BoardRef } from "./scope"
 export interface LeaderboardMember {
 	userId: number;
 	name: string;
+	/**
+	 * The character this member played (a shared/characters CharacterId; docs/ARCHER.md AR5, owner answer 4: one
+	 * board, the character shown). Every member of a party entry carries their own; absent for a run without
+	 * characters (M1) and older entries.
+	 */
 	classId?: string;
 }
 

@@ -38,6 +38,8 @@ import {
 	START_ARMOR,
 	START_ARMOR_MAX,
 	START_HALF_HEARTS,
+	NEUTRAL_TRAITS,
+	type PlayerTraits,
 } from "./playerData";
 import type { PlayerState, SimState } from "./state";
 import type { SimConfig } from "./step";
@@ -136,9 +138,19 @@ export function movePlayer(
 }
 
 /**
+ * Player `playerIndex`'s roll traits in a run of `config` (docs/ARCHER.md AR3), exactly like the loadout's lookup:
+ * `config.party.traits[i]`, else `config.traits`, else NEUTRAL_TRAITS. Read from the RUN config (step() / stepParty pass
+ * their top-level config, never the floor's world). No allocation.
+ */
+export function playerTraits(config: Readonly<SimConfig>, playerIndex: number): Readonly<PlayerTraits> {
+	return config.party?.traits?.[playerIndex] ?? config.traits ?? NEUTRAL_TRAITS;
+}
+
+/**
  * One tick of player logic. Called by step() before stepCombat(). `p` / `weapons` default to player 0's (state.player,
  * state.combat.weapons); a co-op step (stepParty) calls it once per player, in player index order, with that player's
- * `playerIndex` (their M2 run modifiers: Slippery's i-frames, the Hourglass / Second Wind of a debug hit).
+ * `playerIndex` (their M2 run modifiers: Slippery's i-frames, the Hourglass / Second Wind of a debug hit). `traits`:
+ * the player's roll traits from the run config (playerTraits; docs/ARCHER.md AR3), NEUTRAL_TRAITS by default.
  */
 export function stepPlayer(
 	state: SimState,
@@ -147,6 +159,7 @@ export function stepPlayer(
 	p: PlayerState = state.player,
 	weapons: Readonly<WeaponsState> = state.combat.weapons,
 	playerIndex: number = SOLO_PLAYER,
+	traits: Readonly<PlayerTraits> = NEUTRAL_TRAITS,
 ): void {
 	p.prevX = p.x;
 	p.prevZ = p.z;
@@ -185,8 +198,9 @@ export function stepPlayer(
 			p.rollDirZ = p.faceZ;
 		}
 		p.rollTicks = ROLL_TICKS;
-		// M2 Slippery (endless runs): longer i-frames; ROLL_IFRAME_TICKS itself otherwise.
-		const iframes = rollIframeTicks(state, playerIndex, ROLL_IFRAME_TICKS);
+		// M2 Slippery (endless runs) and the player's trait (docs/ARCHER.md AR3, the Archer's 125 %): longer i-frames, one
+		// rounding; ROLL_IFRAME_TICKS itself with neither.
+		const iframes = rollIframeTicks(state, playerIndex, ROLL_IFRAME_TICKS, traits.rollIframePercent);
 		if (p.iframeTicks < iframes) p.iframeTicks = iframes;
 		state.events.rollStarted = 1;
 	}
@@ -209,7 +223,10 @@ export function stepPlayer(
 	// Movement.
 	if (p.rollTicks > 0) {
 		const elapsed = ROLL_TICKS - p.rollTicks; // 0 on the tick the roll starts
-		const dist = elapsed < ROLL_DASH_TICKS ? ROLL_DASH_STEP : ROLL_RECOVERY_STEP;
+		// docs/ARCHER.md AR3: the dash step x the player's trait (the Archer's 140 %; exactly ROLL_DASH_STEP at 100).
+		// movePlayer splits a longer tick into more MAX_MOVE_STEP sub-steps.
+		const dist =
+			elapsed < ROLL_DASH_TICKS ? scalePercent(ROLL_DASH_STEP, traits.rollDashPercent) : ROLL_RECOVERY_STEP;
 		// Builds v2 (BV5): Wrecker's roll smash breaks the pieces this step touches before the move (a leaf hook).
 		if (state.builds !== undefined)
 			buildsRollSmash(state, playerIndex, p.x, p.z, p.rollDirX * dist, p.rollDirZ * dist);

@@ -16,6 +16,9 @@
  *   2. upgrade pity: with an upgradable boon owned, at least upgradePityCards cards and none of them an upgrade, the
  *      last card is replaced by an upgrade pick (one more rngInt).
  *   Picked cards leave their pool (no duplicates); maxed boons and taken duos are never in one.
+ *   Eligibility (docs/ARCHER.md AR2, optional `eligible`: a per-boon mask, progression/eligibility.ts): the new and
+ *   upgrade pools skip boons the mask leaves out and the duo pool duos with such a boon. With every boon allowed (a
+ *   player carrying both weapons) or no mask the pools are the same lists, so every draw is the same draw.
  *
  * Taking a card (grantCard): a boon card raises its level by one (level I also appends it to RunPlayerState.boons) and
  * applies Hearty / Deep Flask / Warding's one-off step for the level gained; a duo card appends the duo. Then the
@@ -54,6 +57,7 @@ import {
 	type CardKindId,
 } from "./buildsData";
 import { buildPlayer } from "./builds";
+import { duoEligible, eligibleBoonMask, maskAllows } from "../progression/eligibility";
 
 /** The duo band of the type roll after `floorCleared` floors: base + perFloor x floorCleared, at most max (BUD3). */
 export function duoPercent(rules: Readonly<BuildRules>, floorCleared: number): number {
@@ -73,7 +77,8 @@ const KIND_CYCLE: ReadonlyArray<CardKindId> = [CardKind.DUO, CardKind.UPGRADE, C
 
 /**
  * The cards a draft after `floorCleared` offers a player with builds `levels` / `duos` (see the file comment).
- * `guaranteeDuo`: the first deal of a boss double draft. Card ids (buildsData DUO_CARD_BASE), card order.
+ * `guaranteeDuo`: the first deal of a boss double draft; `eligible`: the player's boon mask (absent: every boon). Card
+ * ids (buildsData DUO_CARD_BASE), card order.
  */
 export function drawCardOffers(
 	rng: RngHolder,
@@ -82,16 +87,18 @@ export function drawCardOffers(
 	duos: ReadonlyArray<number>,
 	floorCleared: number,
 	guaranteeDuo = false,
+	eligible?: ReadonlyArray<boolean>,
 ): number[] {
 	const fresh: number[] = [];
 	const upgrades: number[] = [];
 	for (let b = 0; b < BOON_COUNT; b++) {
+		if (!maskAllows(eligible, b)) continue;
 		const level = levels[b] ?? 0;
 		if (level <= 0) fresh.push(b);
 		else if (level < boonMaxLevel(b)) upgrades.push(b);
 	}
 	const duoPool: number[] = [];
-	for (let d = 0; d < DUO_COUNT; d++) if (duoAvailable(levels, duos, d)) duoPool.push(d);
+	for (let d = 0; d < DUO_COUNT; d++) if (duoAvailable(levels, duos, d) && duoEligible(eligible, d)) duoPool.push(d);
 	const upgradable = upgrades.size() > 0;
 
 	const out: number[] = [];
@@ -162,15 +169,23 @@ export function drawCardOffers(
 /**
  * Pacts' Greed (docs/FORTUNE.md PS3, FD4): the legendary cards a player with builds `levels` / `duos` can be dealt, in
  * pool order: unowned legendary boons (Boon order: new, level I is their only level), available duos (Duo order), owned
- * common / rare boons at level II (Boon order: the card is their evolution, level III). Pure.
+ * common / rare boons at level II (Boon order: the card is their evolution, level III). `eligible`: the player's boon
+ * mask (docs/ARCHER.md AR2; absent: every boon): boons it leaves out and duos with one are not in the pool. Pure.
  */
-export function legendaryPool(levels: ReadonlyArray<number>, duos: ReadonlyArray<number>): number[] {
+export function legendaryPool(
+	levels: ReadonlyArray<number>,
+	duos: ReadonlyArray<number>,
+	eligible?: ReadonlyArray<boolean>,
+): number[] {
 	const out: number[] = [];
 	for (let b = 0; b < BOON_COUNT; b++)
-		if (BOONS[b].rarity === Rarity.LEGENDARY && (levels[b] ?? 0) <= 0) out.push(boonCard(b));
-	for (let d = 0; d < DUO_COUNT; d++) if (duoAvailable(levels, duos, d)) out.push(duoCard(d));
+		if (BOONS[b].rarity === Rarity.LEGENDARY && (levels[b] ?? 0) <= 0 && maskAllows(eligible, b))
+			out.push(boonCard(b));
+	for (let d = 0; d < DUO_COUNT; d++)
+		if (duoAvailable(levels, duos, d) && duoEligible(eligible, d)) out.push(duoCard(d));
 	for (let b = 0; b < BOON_COUNT; b++)
-		if (boonMaxLevel(b) === BOON_MAX_LEVEL && (levels[b] ?? 0) === BOON_MAX_LEVEL - 1) out.push(boonCard(b));
+		if (boonMaxLevel(b) === BOON_MAX_LEVEL && (levels[b] ?? 0) === BOON_MAX_LEVEL - 1 && maskAllows(eligible, b))
+			out.push(boonCard(b));
 	return out;
 }
 
@@ -179,18 +194,24 @@ export function legendaryPool(levels: ReadonlyArray<number>, duos: ReadonlyArray
  * pool's cards not dealt yet (legendaryPool); once that pool is empty, one rngInt pick among the ordinary upgrades not
  * dealt yet (owned common / rare boons at level I, Boon order: level II), so the deal holds `count` cards whenever
  * enough is upgradable. Fewer when both run out (an empty legendary pool: Greed is not offered, pacts/stepPacts.ts).
- * Card ids, card order.
+ * `eligible`: the player's boon mask (absent: every boon), applied to both pools. Card ids, card order.
  */
 export function drawLegendaryOffers(
 	rng: RngHolder,
 	levels: ReadonlyArray<number>,
 	duos: ReadonlyArray<number>,
 	count: number,
+	eligible?: ReadonlyArray<boolean>,
 ): number[] {
-	const pool = legendaryPool(levels, duos);
+	const pool = legendaryPool(levels, duos, eligible);
 	const fill: number[] = [];
 	for (let b = 0; b < BOON_COUNT; b++)
-		if (boonMaxLevel(b) === BOON_MAX_LEVEL && (levels[b] ?? 0) > 0 && (levels[b] ?? 0) < BOON_MAX_LEVEL - 1)
+		if (
+			boonMaxLevel(b) === BOON_MAX_LEVEL &&
+			(levels[b] ?? 0) > 0 &&
+			(levels[b] ?? 0) < BOON_MAX_LEVEL - 1 &&
+			maskAllows(eligible, b)
+		)
 			fill.push(boonCard(b));
 	const out: number[] = [];
 	while (out.size() < count) {
@@ -201,9 +222,20 @@ export function drawLegendaryOffers(
 	return out;
 }
 
+/** Scratch: a player's boon mask (eligibleBoonMask overwrites every entry; never re-entered). */
+const maskScratch: boolean[] = [];
+
 /**
- * Player `playerIndex`'s offers for a draft after `floorCleared` (drawCardOffers on their build, the sim rng). Empty
- * without builds or for a player who is not there.
+ * Player `playerIndex`'s boon mask (progression/eligibility.ts eligibleBoonMask, from the weapons they carry) in a
+ * scratch array that the next call overwrites: read it before asking again.
+ */
+export function playerBoonMask(state: Readonly<SimState>, playerIndex: number): ReadonlyArray<boolean> {
+	return eligibleBoonMask(state, playerIndex, maskScratch);
+}
+
+/**
+ * Player `playerIndex`'s offers for a draft after `floorCleared` (drawCardOffers on their build and their boon mask,
+ * the sim rng). Empty without builds or for a player who is not there.
  */
 export function drawPlayerCardOffers(
 	state: SimState,
@@ -214,7 +246,8 @@ export function drawPlayerCardOffers(
 	const s = state.builds;
 	const bp = buildPlayer(state, playerIndex);
 	if (s === undefined || bp === undefined) return [];
-	return drawCardOffers(state, s.config, bp.levels, bp.duos, floorCleared, guaranteeDuo);
+	const eligible = playerBoonMask(state, playerIndex);
+	return drawCardOffers(state, s.config, bp.levels, bp.duos, floorCleared, guaranteeDuo, eligible);
 }
 
 /** Hearty / Deep Flask / Warding: the one-off step of reaching `level` (the table's total minus the level below's). */

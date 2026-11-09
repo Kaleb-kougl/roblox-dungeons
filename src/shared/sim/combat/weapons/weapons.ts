@@ -8,7 +8,9 @@
  *      M2 Ember Wake (endless runs): a roll the acting player started this tick (rollTicks === ROLL_TICKS: only on
  *      the start tick, after stepPlayer's countdown) fires a ring of player bullets; builds (docs/LEGENDARIES.md LG3):
  *      that moment restarts Bastion's brace count, and a swap (3.) ends a guard's
- *   3. SWAP press edge -> activeSet = next set, events.weaponSwapped = 1 (instant; allowed while rolling)
+ *   3. SWAP press edge -> activeSet = next set, events.weaponSwapped = 1 (instant; allowed while rolling) when the
+ *      next set holds a weapon; onto an empty set nothing happens (docs/ARCHER.md ARD3: no event, no buildsOnSwap; a
+ *      one-weapon character's SWAP is dead). Every two-weapon loadout swaps exactly as before.
  *   4. the active set's weapon: def.step?(ctx, slot)
  *   5. trigger ('hold': FIRE held / 'press': FIRE edge / 'custom': never), not rolling, cooldown 0
  *        -> def.fire(ctx, slot); true -> slot.cooldown = data.cooldownTicks (M2 Swift Strikes: x 80 %, rounded)
@@ -105,10 +107,14 @@ export function stepWeapons(ctx: SimCtx): void {
 		// Builds (docs/LEGENDARIES.md LG3, opt-in): Bastion's brace count restarts with a roll.
 		if (p.rollTicks === ROLL_TICKS && ctx.state.builds !== undefined) buildsOnRollStart(ctx.state, ctx.playerIndex);
 		if (bit32.band(buttons, Button.SWAP) !== 0 && bit32.band(w.prevButtons, Button.SWAP) === 0 && sets.size() > 1) {
-			w.activeSet = (w.activeSet + 1) % sets.size();
-			ctx.events.weaponSwapped = 1;
-			// Builds (LG3): a swap ends a guard, and its brace count with it.
-			if (ctx.state.builds !== undefined) buildsOnSwap(ctx.state, ctx.playerIndex);
+			const target = (w.activeSet + 1) % sets.size();
+			// docs/ARCHER.md ARD3: a swap onto an empty set does nothing.
+			if (sets[target].weapon !== NO_WEAPON) {
+				w.activeSet = target;
+				ctx.events.weaponSwapped = 1;
+				// Builds (LG3): a swap ends a guard, and its brace count with it.
+				if (ctx.state.builds !== undefined) buildsOnSwap(ctx.state, ctx.playerIndex);
+			}
 		}
 		const slot = sets[w.activeSet];
 		if (slot.weapon !== NO_WEAPON) {

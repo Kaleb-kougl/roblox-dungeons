@@ -11,6 +11,10 @@
  *            server's, the world is refused there)
  *   Depth    as if every boss before `startFloor` had been killed (devStartDepth); no boons, relics or curses
  *
+ * Characters (docs/ARCHER.md AR4): the picked character's loadout and traits like an endless run (the Knight when none is
+ * passed); `bothWeapons` (the dev panel's "Both weapons") gives DEFAULT_LOADOUT (sword and bow) with the character's
+ * traits, for testing.
+ *
  * Played only on the client: the world is in SERVER_REFUSED_WORLDS (worlds.ts), never leaderboard-eligible, and the
  * client never submits it. Solo only: a party throws.
  */
@@ -19,6 +23,7 @@ import { ENDLESS_FIRST_FLOOR, VaultLock, VaultTier, isBossFloor, type VaultOverr
 import { DEFAULT_PARTY_SIZE, ENDLESS_FIRST_DEPTH, isIntegerNumber } from "shared/sim";
 import type { RunSetup } from "./config";
 import { buildEndlessRunConfig } from "./endless";
+import type { CharacterId } from "shared/characters";
 
 /** The developer mode world's registry kind. */
 export const DEV_WORLD_KIND = "dev";
@@ -31,6 +36,11 @@ export interface DevRunOptions {
 	readonly invulnerable: boolean;
 	/** Treasure rooms (docs/TREASURE.md TR5): force / fix every floor's vault (KV_TreasureDebug). Absent: as endless. */
 	readonly vault?: VaultOverride;
+	/**
+	 * docs/ARCHER.md AR4: "Both weapons": the sword and the bow (DEFAULT_LOADOUT) with the picked character's roll
+	 * traits. Absent / false: the character's own loadout.
+	 */
+	readonly bothWeapons?: boolean;
 }
 
 /** Workspace string attribute read when a dev run starts (DevModeController): parseTreasureDebug's words. */
@@ -77,18 +87,26 @@ export function devStartDepth(floor: number): number {
 	return depth;
 }
 
-/** The dev world's RunSetup for `runSeed` (see the file comment). Throws on an invalid seed or a party. */
+/**
+ * The dev world's RunSetup for `runSeed` (see the file comment) as `characters[0]` (absent: DEFAULT_CHARACTER). Throws on
+ * an invalid seed or a party.
+ */
 export function buildDevRunConfig(
 	runSeed: number,
 	options: Readonly<DevRunOptions> = DEFAULT_DEV_RUN,
 	partySize?: number,
+	characters: ReadonlyArray<CharacterId> = [],
 ): RunSetup {
 	if (partySize !== undefined && partySize !== 1) error(`dev world: solo only, got a party of ${partySize}`, 0);
 	if (!isIntegerNumber(options.startFloor)) {
 		error(`dev world: startFloor must be an integer, got ${tostring(options.startFloor)}`, 0);
 	}
 	const startFloor = clampDevFloor(options.startFloor);
-	const base = buildEndlessRunConfig(runSeed, DEFAULT_PARTY_SIZE, { vaultOverride: options.vault });
+	const base = buildEndlessRunConfig(runSeed, DEFAULT_PARTY_SIZE, {
+		vaultOverride: options.vault,
+		characters,
+		bothWeapons: options.bothWeapons,
+	});
 	const endless = base.config.endless;
 	const endlessFloor = base.endlessFloor;
 	if (endless === undefined) error("dev world: the endless config has no floors", 0);
@@ -102,5 +120,6 @@ export function buildDevRunConfig(
 		spawn: { x: first.spawnX, z: first.spawnZ },
 		dungeon: first.dungeon,
 		endlessFloor,
+		characters: base.characters,
 	};
 }

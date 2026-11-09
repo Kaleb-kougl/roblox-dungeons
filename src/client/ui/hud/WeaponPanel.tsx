@@ -3,7 +3,7 @@ import { useSelector } from "@rbxts/react-reflex";
 import { selectBindings, selectGameActive, selectInputDevice, selectRunInfo, selectSnapshot } from "client/store";
 import { role, str, themePack, uiImage, useHudFont, useUiArt } from "client/ui/theme";
 import { swapHint, keyDevice } from "shared/play";
-import { HUD_HINTS, HUD_SKIN, HUD_STRINGS, HUD_VIEW } from "shared/view/hud";
+import { HUD_HINTS, HUD_SKIN, HUD_STRINGS, HUD_VIEW, hasSwapTarget, shownWeaponSets } from "shared/view/hud";
 import { Panel, Row, SlicedImage, Text } from "./primitives";
 import { useTimedHint } from "./useTimedHint";
 import { HighlightRing } from "./TutorialFx";
@@ -114,6 +114,8 @@ function SwapHint(props: { order: number; text: string; forced: boolean }) {
  * highlighted, and the timed SWAP hint (SwapHint) ABOVE the slots, so the bottom-anchored slots never move when it
  * hides. `highlight`: the tutorial's ring (the bow lesson), which also keeps
  * the hint on. Not on touch (docs/MOBILE.md MBD8): the screen's Swap button does the job and the thumbs own the corner.
+ * A Knight or an Archer (docs/ARCHER.md AR9: one weapon, set 1 empty) sees their one slot and no swap hint
+ * (shared/view/hud shownWeaponSets / hasSwapTarget); a two-weapon player both slots and the hint, as before.
  */
 export function WeaponPanel(props: { readonly highlight?: boolean }) {
 	const s = useSelector(selectSnapshot);
@@ -121,16 +123,18 @@ export function WeaponPanel(props: { readonly highlight?: boolean }) {
 	const bindings = useSelector(selectBindings);
 	if (device === "touch") return undefined;
 	if (s.weapons.size() === 0) return undefined;
-	const slots = s.weapons.map((id, i) => (
-		<WeaponSlot key={`w${i}`} order={i + 1} index={i} id={id} active={i === s.activeSet} />
+	const slots = shownWeaponSets(s.weapons).map((i) => (
+		<WeaponSlot key={`w${i}`} order={i + 1} index={i} id={s.weapons[i]} active={i === s.activeSet} />
 	));
 	return (
 		<Panel corner="bottomLeft" name="Weapons" overlay={props.highlight === true ? <HighlightRing /> : undefined}>
-			<SwapHint
-				order={1}
-				forced={props.highlight === true}
-				text={str(HUD_STRINGS.weaponSwap, { key: swapHint(bindings, str)[keyDevice(device)] })}
-			/>
+			{hasSwapTarget(s.weapons) ? (
+				<SwapHint
+					order={1}
+					forced={props.highlight === true}
+					text={str(HUD_STRINGS.weaponSwap, { key: swapHint(bindings, str)[keyDevice(device)] })}
+				/>
+			) : undefined}
 			<Row order={2}>{slots}</Row>
 		</Panel>
 	);

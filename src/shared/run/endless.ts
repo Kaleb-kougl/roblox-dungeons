@@ -22,7 +22,10 @@
  *            keyed by seed and room count
  *   spawn    floor 1's entrance spawn (the recording must start there)
  *
- * `loadout` stays absent (DEFAULT_LOADOUT), `stress` is never set.
+ * `stress` is never set. Characters (docs/ARCHER.md AR4, `options.characters`): each player's loadout and roll traits
+ * (run/characters.ts withCharacters: solo `loadout` / `traits`, co-op `party.loadouts` / `traits`; missing entries the
+ * Knight's); the world registry's endless / daily / dev builders always pass them. Without (tools, bots, censuses):
+ * `loadout` stays absent (DEFAULT_LOADOUT, both weapons) and no traits, exactly as before.
  *
  * Co-op (M4): buildEndlessRunConfig(seed, partySize) with partySize 2..8 adds `party: { size }`, scores with that
  * partySize, and builds every floor's room spawns with the party's budget multiplier (dungeons are shared: the
@@ -62,6 +65,8 @@ import { ENDLESS_DUNGEON_CACHE_SIZE, ENDLESS_FLOOR_CACHE_SIZE } from "./limits";
 import { isValidRunSeed } from "./seed";
 import type { RunSetup } from "./config";
 import { playerMover, playerMoverKind, type PlayerMoverKind } from "./playerMover";
+import { partyCharacters, withCharacters } from "./characters";
+import type { CharacterId } from "shared/characters";
 
 // ---------------------------------------------------------------------------------------------
 // Dungeon cache (least recently used out first). Dungeons are never mutated.
@@ -222,6 +227,13 @@ export interface EndlessRunOptions {
 	 * and specs only. Absent: placeVault's own draws.
 	 */
 	readonly vaultOverride?: VaultOverride;
+	/**
+	 * docs/ARCHER.md AR4: the players' characters (index order; missing entries DEFAULT_CHARACTER's). Absent: no
+	 * characters at all (both weapons, no traits; tools and specs), not the Knight.
+	 */
+	readonly characters?: ReadonlyArray<CharacterId>;
+	/** With `characters`: every player carries both weapons with their character's traits (the dev world's option). */
+	readonly bothWeapons?: boolean;
 }
 
 /**
@@ -241,7 +253,7 @@ export function buildEndlessRunConfig(
 	}
 	const worldForFloor = floorCache(runSeed, partySize, options.vaultOverride);
 	const first = worldForFloor(ENDLESS_FIRST_FLOOR);
-	const config: SimConfig =
+	const base: SimConfig =
 		partySize === DEFAULT_PARTY_SIZE
 			? {
 					endless: { runSeed, worldForFloor },
@@ -268,10 +280,14 @@ export function buildEndlessRunConfig(
 					pacts: ENDLESS_PACTS_CONFIG,
 					golden: ENDLESS_GOLDEN_CONFIG,
 			  };
+	const characters = options.characters !== undefined ? partyCharacters(options.characters, partySize) : undefined;
+	const config =
+		characters !== undefined ? withCharacters(base, characters, { bothWeapons: options.bothWeapons }) : base;
 	return {
 		config,
 		spawn: { x: first.spawnX, z: first.spawnZ },
 		dungeon: first.dungeon,
 		endlessFloor: worldForFloor,
+		characters,
 	};
 }

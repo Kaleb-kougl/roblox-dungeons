@@ -112,6 +112,9 @@
 	"boon.bastion.desc": {
 		"note": "Effect line of the boon \"Bastion\" on its draft card (wraps over two or three lines of a 240 px card) and in the build list. Terse game-rules style: keep numbers, % and units (\"s\" = seconds) exactly. A \"heart\" is one unit of health; \"combo\" the kill-streak multiplier; \"graze\" a bullet skimming past without hitting. An armor \"pip\" is one unit of armor that absorbs a whole hit; the \"guard\" is the sword's block; a \"brace\" is Bastion restoring a pip after a guard or roll stops 8 bullets."
 	},
+	"boon.bastion.desc.archer": {
+		"note": "Per-character version of \"boon.bastion.desc\": shown instead of it when the local player plays the Archer (the character with the bow (a stream of arrows and a charged shot) and a longer roll). Same style and terms as \"boon.bastion.desc\"; keep numbers exactly. Base line's note: Effect line of the boon \"Bastion\" on its draft card (wraps over two or three lines of a 240 px card) and in the build list. Terse game-rules style: keep numbers, % and units (\"s\" = seconds) exactly. A \"heart\" is one unit of health; \"combo\" the kill-streak multiplier; \"graze\" a bullet skimming past without hitting. An armor \"pip\" is one unit of armor that absorbs a whole hit; the \"guard\" is the sword's block; a \"brace\" is Bastion restoring a pip after a guard or roll stops 8 bullets."
+	},
 	"boon.bastion.icon": {
 		"note": "Icon label of the boon \"Bastion\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
 		"max": 3
@@ -405,6 +408,9 @@
 	"boon.swiftStrikes.evo.desc": {
 		"note": "Effect line of \"Flurry\", the evolved form of the boon \"Swift Strikes\" (Evolution draft card, build list). Terse game-rules style; keep numbers exactly. A \"nova\" is a burst that wipes nearby enemy bullets; \"bolts\", \"shards\" and \"sparks\" are small projectiles."
 	},
+	"boon.swiftStrikes.evo.desc.archer": {
+		"note": "Per-character version of \"boon.swiftStrikes.evo.desc\": shown instead of it when the local player plays the Archer (the character with the bow (a stream of arrows and a charged shot) and a longer roll). Same style and terms as \"boon.swiftStrikes.evo.desc\"; keep numbers exactly. Base line's note: Effect line of \"Flurry\", the evolved form of the boon \"Swift Strikes\" (Evolution draft card, build list). Terse game-rules style; keep numbers exactly. A \"nova\" is a burst that wipes nearby enemy bullets; \"bolts\", \"shards\" and \"sparks\" are small projectiles."
+	},
 	"boon.swiftStrikes.evo.name": {
 		"note": "Name of the evolved form of the boon \"Swift Strikes\" (at level III it turns into this stronger version; effect: \"40% faster; finishers release a crescent of bolts\"). Shown on the Evolution draft card and in toasts. Short and dramatic, title case; glossary term.",
 		"max": 20
@@ -554,6 +560,30 @@
 	"breakable.crate.name": {
 		"note": "Name of a breakable decor object (a wooden crate the player can smash for a few points). Reserved: required by the theme contract inherited from the original web build, but not shown in the current Roblox build; translate it as a plain name anyway."
 	},
+	"character.archer.line.1": {
+		"note": "Character screen: the first of two summary lines on the Archer's card, under the name. The Archer fires a stream of arrows with a bow, and holding the alternate attack charges a stronger shot; keep \"Bow\" as the weapon's name. One short sentence.",
+		"max": 48
+	},
+	"character.archer.line.2": {
+		"note": "Character screen: the second summary line on the Archer's card. The Archer's dodge roll goes farther and protects a little longer than the Knight's. One short sentence.",
+		"max": 40
+	},
+	"character.knight.line.1": {
+		"note": "Character screen: the first of two summary lines on the Knight's card, under the name. The Knight fights with a sword whose combo is three swings; keep \"Sword\" as the weapon's name. One short sentence.",
+		"max": 40
+	},
+	"character.knight.line.2": {
+		"note": "Character screen: the second summary line on the Knight's card. The \"guard\" is the sword's block, which stops enemy bullets. One short sentence.",
+		"max": 40
+	},
+	"character.start": {
+		"note": "Character screen: the button that starts the run with the picked character. One short word.",
+		"max": 12
+	},
+	"character.title": {
+		"note": "Title of the character screen shown before every run: the player picks which character to play (the Knight or the Archer). Short imperative heading.",
+		"max": 28
+	},
 	"class.hexblade.name": {
 		"note": "Character class name: a sword-fighter who uses curses. Title case. Reserved: required by the theme contract inherited from the original web build, but not shown in the current Roblox build; translate it as a plain name anyway."
 	},
@@ -561,13 +591,13 @@
 		"note": "Character class name: a fire mage. Title case. Reserved: required by the theme contract inherited from the original web build, but not shown in the current Roblox build; translate it as a plain name anyway."
 	},
 	"class.ranger.name": {
-		"note": "Character class name: a bow-wielding scout. Title case. Reserved: required by the theme contract inherited from the original web build, but not shown in the current Roblox build; translate it as a plain name anyway."
+		"note": "Name of the Archer, a playable character: a scout with a bow and a longer dodge roll. Shown on the character screen's card, in the lobby and on the run-over panel. Title case; one word."
 	},
 	"class.tinkerer.name": {
 		"note": "Character class name: a gadget-building inventor. Title case. Reserved: required by the theme contract inherited from the original web build, but not shown in the current Roblox build; translate it as a plain name anyway."
 	},
 	"class.vanguard.name": {
-		"note": "Character class name: a armored front-line fighter. Title case. Reserved: required by the theme contract inherited from the original web build, but not shown in the current Roblox build; translate it as a plain name anyway."
+		"note": "Name of the Knight, a playable character: an armored fighter with a sword and a guard that blocks bullets. Shown on the character screen's card, in the lobby and on the run-over panel. Title case; one word."
 	},
 	"credits.by": {
 		"note": "Credits screen: the author of a credited work, shown after the work's title. {author} is a person's or studio's name (never translated), sometimes with the store in brackets, e.g. \"Rakshaan (Sketchfab)\".",
@@ -981,6 +1011,9 @@
 	"duo.citadel.desc": {
 		"note": "Effect line of the Duo boon \"Citadel\" on its draft card (wraps) and in the build list. Terse game-rules style; keep numbers exactly. \"Embers\" here are burning patches on the floor; a \"spark\" jumps between enemies; a \"burst\" is a ring of bolts. An armor \"pip\" is one unit of armor that absorbs a whole hit; the \"guard\" is the sword's block; a \"brace\" is Bastion restoring a pip after a guard or roll stops 8 bullets."
 	},
+	"duo.citadel.desc.archer": {
+		"note": "Per-character version of \"duo.citadel.desc\": shown instead of it when the local player plays the Archer (the character with the bow (a stream of arrows and a charged shot) and a longer roll). Same style and terms as \"duo.citadel.desc\"; keep numbers exactly. Base line's note: Effect line of the Duo boon \"Citadel\" on its draft card (wraps) and in the build list. Terse game-rules style; keep numbers exactly. \"Embers\" here are burning patches on the floor; a \"spark\" jumps between enemies; a \"burst\" is a ring of bolts. An armor \"pip\" is one unit of armor that absorbs a whole hit; the \"guard\" is the sword's block; a \"brace\" is Bastion restoring a pip after a guard or roll stops 8 bullets."
+	},
 	"duo.citadel.icon": {
 		"note": "Icon label of the Duo boon \"Citadel\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
 		"max": 3
@@ -1035,6 +1068,12 @@
 	},
 	"duo.fullHeart.desc": {
 		"note": "Effect line of the Duo boon \"Full Heart\" on its draft card (wraps) and in the build list. Terse game-rules style; keep numbers exactly. \"Embers\" here are burning patches on the floor; a \"spark\" jumps between enemies; a \"burst\" is a ring of bolts. An armor \"pip\" is one unit of armor; the \"guard\" is the sword's block; a \"brace\" is Bastion restoring a pip after a guard or roll stops 8 bullets; a \"charged arrow\" is the bow's heavy shot; \"pieces\" are breakable crates and barrels; a \"finisher\" is the sword combo's third, strongest swing; \"combo\" the kill-streak multiplier."
+	},
+	"duo.fullHeart.desc.archer": {
+		"note": "Per-character version of \"duo.fullHeart.desc\": shown instead of it when the local player plays the Archer (the character with the bow (a stream of arrows and a charged shot) and a longer roll). Same style and terms as \"duo.fullHeart.desc\"; keep numbers exactly. Base line's note: Effect line of the Duo boon \"Full Heart\" on its draft card (wraps) and in the build list. Terse game-rules style; keep numbers exactly. \"Embers\" here are burning patches on the floor; a \"spark\" jumps between enemies; a \"burst\" is a ring of bolts. An armor \"pip\" is one unit of armor; the \"guard\" is the sword's block; a \"brace\" is Bastion restoring a pip after a guard or roll stops 8 bullets; a \"charged arrow\" is the bow's heavy shot; \"pieces\" are breakable crates and barrels; a \"finisher\" is the sword combo's third, strongest swing; \"combo\" the kill-streak multiplier."
+	},
+	"duo.fullHeart.desc.knight": {
+		"note": "Per-character version of \"duo.fullHeart.desc\": shown instead of it when the local player plays the Knight (the character with the sword (combo, finishers, the guard that blocks bullets)). Same style and terms as \"duo.fullHeart.desc\"; keep numbers exactly. Base line's note: Effect line of the Duo boon \"Full Heart\" on its draft card (wraps) and in the build list. Terse game-rules style; keep numbers exactly. \"Embers\" here are burning patches on the floor; a \"spark\" jumps between enemies; a \"burst\" is a ring of bolts. An armor \"pip\" is one unit of armor; the \"guard\" is the sword's block; a \"brace\" is Bastion restoring a pip after a guard or roll stops 8 bullets; a \"charged arrow\" is the bow's heavy shot; \"pieces\" are breakable crates and barrels; a \"finisher\" is the sword combo's third, strongest swing; \"combo\" the kill-streak multiplier."
 	},
 	"duo.fullHeart.icon": {
 		"note": "Icon label of the Duo boon \"Full Heart\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
@@ -1134,6 +1173,12 @@
 	},
 	"duo.stormBlade.desc": {
 		"note": "Effect line of the Duo boon \"Storm Blade\" on its draft card (wraps) and in the build list. Terse game-rules style; keep numbers exactly. \"Embers\" here are burning patches on the floor; a \"spark\" jumps between enemies; a \"burst\" is a ring of bolts."
+	},
+	"duo.stormBlade.desc.archer": {
+		"note": "Per-character version of \"duo.stormBlade.desc\": shown instead of it when the local player plays the Archer (the character with the bow (a stream of arrows and a charged shot) and a longer roll). Same style and terms as \"duo.stormBlade.desc\"; keep numbers exactly. Base line's note: Effect line of the Duo boon \"Storm Blade\" on its draft card (wraps) and in the build list. Terse game-rules style; keep numbers exactly. \"Embers\" here are burning patches on the floor; a \"spark\" jumps between enemies; a \"burst\" is a ring of bolts."
+	},
+	"duo.stormBlade.desc.knight": {
+		"note": "Per-character version of \"duo.stormBlade.desc\": shown instead of it when the local player plays the Knight (the character with the sword (combo, finishers, the guard that blocks bullets)). Same style and terms as \"duo.stormBlade.desc\"; keep numbers exactly. Base line's note: Effect line of the Duo boon \"Storm Blade\" on its draft card (wraps) and in the build list. Terse game-rules style; keep numbers exactly. \"Embers\" here are burning patches on the floor; a \"spark\" jumps between enemies; a \"burst\" is a ring of bolts."
 	},
 	"duo.stormBlade.icon": {
 		"note": "Icon label of the Duo boon \"Storm Blade\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
@@ -3458,6 +3503,10 @@
 			"score": "12,040"
 		}
 	},
+	"run.over.character": {
+		"note": "Run-over panel button beside Again: opens the character screen to pick another character for the next run. One short word (\"Character\").",
+		"max": 12
+	},
 	"run.recap.details": {
 		"note": "Run-over panel (after death), button that opens the detailed score breakdown and the build list in place of the highlights.",
 		"max": 14
@@ -4155,23 +4204,6 @@
 	},
 	"tutorial.prompt.boss.touch": {
 		"note": "First-run tutorial prompt for phone / tablet players; on-screen button names (Attack, Alt, Roll, Flask, Swap, Ember, Accept) must use exactly the words of the touch.* button labels, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: the practice boss (Mother Mayhem, referred to as \"her\"); orange previews show where her bullets will go. Friendly, short instructional sentences in second person."
-	},
-	"tutorial.prompt.bow.gamepad": {
-		"note": "First-run tutorial prompt for gamepad players, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: swapping to the bow and holding the secondary action to charge a heavy arrow. Friendly, short instructional sentences in second person. Placeholders {swap}, {alt} are the player's bound key or button names (e.g. \"Y\", \"LT\"; currently English).",
-		"example": {
-			"swap": "Y",
-			"alt": "LT"
-		}
-	},
-	"tutorial.prompt.bow.keyboard": {
-		"note": "First-run tutorial prompt for keyboard and mouse players, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: swapping to the bow and holding the secondary action to charge a heavy arrow. Friendly, short instructional sentences in second person. Placeholders {swap}, {alt} are the player's bound key or button names (e.g. \"E\", \"Right click\"; currently English).",
-		"example": {
-			"swap": "E",
-			"alt": "Right click"
-		}
-	},
-	"tutorial.prompt.bow.touch": {
-		"note": "First-run tutorial prompt for phone / tablet players; on-screen button names (Attack, Alt, Roll, Flask, Swap, Ember, Accept) must use exactly the words of the touch.* button labels, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: swapping to the bow and holding the secondary action to charge a heavy arrow. Friendly, short instructional sentences in second person."
 	},
 	"tutorial.prompt.curse.gamepad": {
 		"note": "First-run tutorial prompt for gamepad players, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: a curse shrine: accepting a curse makes the run harder and the score multiplier bigger; the player may also walk away. Friendly, short instructional sentences in second person. Placeholders {skill1} are the player's bound key or button names (e.g. \"A\"; currently English).",

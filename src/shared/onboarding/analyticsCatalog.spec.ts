@@ -2,6 +2,7 @@
 // value sets, the combination total under 8,000 (counting rule in analyticsCatalog.ts), the tutorial attempt's event
 // bound under maxEventsPerAttempt, and the tutorial builders' output inside the catalog's sets.
 import { describe, expect, it } from "@rbxts/jest-globals";
+import { CHARACTER_IDS, type CharacterId } from "shared/characters";
 import { LOBBY_ANALYTICS_EVENT } from "shared/lobby";
 import {
 	ANALYTICS_EVENT,
@@ -9,6 +10,8 @@ import {
 	RUN_RECAP_NEAR_MISS_KINDS,
 	RUN_RECAP_NO_NEAR_MISS,
 	RUN_RECAP_TABS,
+	RunTelemetry,
+	analyticsForRun,
 	analyticsForRunRecap,
 	type AnalyticsEventSpec,
 	type RunRecapNearMiss,
@@ -183,16 +186,16 @@ describe("analytics catalog limits", () => {
 		);
 		expect(firstAttemptEventBound()).toBe(tutorialAttemptEventBound() + lessons + 4 + 1);
 		expect(firstAttemptEventBound() <= TUTORIAL_TELEMETRY.maxEventsPerAttempt).toBe(true);
-		// Pinned for the 18-lesson tutorial (docs/PELLETS.md PL13): 63 per attempt, 86 for a first one, cap 88.
-		expect(lessons).toBe(18);
-		expect(tutorialAttemptEventBound()).toBe(63);
-		expect(firstAttemptEventBound()).toBe(86);
-		expect(TUTORIAL_TELEMETRY.maxEventsPerAttempt).toBe(88);
+		// Pinned for the 17-lesson tutorial (docs/ARCHER.md AR6, revision 4): 60 per attempt, 82 for a first one, cap 84.
+		expect(lessons).toBe(17);
+		expect(tutorialAttemptEventBound()).toBe(60);
+		expect(firstAttemptEventBound()).toBe(82);
+		expect(TUTORIAL_TELEMETRY.maxEventsPerAttempt).toBe(84);
 		// The session backstop is the attempt cap's worth of full attempts.
 		expect(TUTORIAL_TELEMETRY.maxEventsPerSession).toBe(
 			TUTORIAL_TELEMETRY.maxAttemptsLoggedPerSession * TUTORIAL_TELEMETRY.maxEventsPerAttempt,
 		);
-		expect(TUTORIAL_TELEMETRY.maxEventsPerSession).toBe(264);
+		expect(TUTORIAL_TELEMETRY.maxEventsPerSession).toBe(252);
 		print(
 			`[analyticsCatalog] events per attempt: ${tutorialAttemptEventBound()}, first attempt ${firstAttemptEventBound()} of ${
 				TUTORIAL_TELEMETRY.maxEventsPerAttempt
@@ -202,32 +205,64 @@ describe("analytics catalog limits", () => {
 });
 
 describe("run-over recap events stay inside the catalog", () => {
-	it("every close, near-miss kind, flag pair and a party run's team rows", () => {
+	it("every close, near-miss kind, flag pair, character and a party run's team rows", () => {
 		const kinds: RunRecapNearMiss[] = [...RUN_RECAP_NEAR_MISS_KINDS, RUN_RECAP_NO_NEAR_MISS];
+		// docs/ARCHER.md AR5: no character (M1) and every character.
+		const characters: Array<CharacterId | undefined> = [undefined, ...CHARACTER_IDS];
 		for (const close of RUN_RECAP_CLOSES)
 			for (const nearMiss of kinds)
 				for (const record of [false, true])
-					for (const skipped of [false, true]) {
-						const team = { teamPerfects: 3, bestTeamStreak: 2, syncParries: 1 };
-						for (const last of RUN_RECAP_TABS) {
-							// docs/RUN_CONTRIBUTION.md CT8: a party run's views row, every last tab.
-							const views = { you: 3, party: 1, last };
-							const specs = analyticsForRunRecap({
-								runId: "r",
-								close,
-								seconds: 2,
-								nearMiss,
-								record,
-								skipped,
-								team,
-								views,
-							});
-							expect(specs.size()).toBe(close === "lobby" ? 5 : 1);
-							expectInCatalog(specs);
+					for (const skipped of [false, true])
+						for (const character of characters) {
+							const team = { teamPerfects: 3, bestTeamStreak: 2, syncParries: 1 };
+							for (const last of RUN_RECAP_TABS) {
+								// docs/RUN_CONTRIBUTION.md CT8: a party run's views row, every last tab.
+								const views = { you: 3, party: 1, last };
+								const specs = analyticsForRunRecap({
+									runId: "r",
+									close,
+									seconds: 2,
+									nearMiss,
+									record,
+									skipped,
+									team,
+									views,
+									character,
+								});
+								expect(specs.size()).toBe(close === "lobby" ? 5 : 1);
+								expectInCatalog(specs);
+							}
 						}
-					}
-		// 7 field01 values (3 closes, 3 team rows, views) x (7 near-miss values + 3 tabs + absent) x (4 flags + absent).
-		expect(analyticsEntryCombinations(analyticsCatalogEntry("custom", ANALYTICS_EVENT.runRecap)!)).toBe(7 * 11 * 5);
+		// 7 field01 values (3 closes, 3 team rows, views) x (7 near-miss values + 3 tabs + absent) x (4 flags, each alone
+		// and with each of the 2 characters, + absent).
+		expect(CHARACTER_IDS.size()).toBe(2);
+		expect(analyticsEntryCombinations(analyticsCatalogEntry("custom", ANALYTICS_EVENT.runRecap)!)).toBe(
+			7 * 11 * 13,
+		);
+		const close = analyticsForRunRecap({
+			runId: "r",
+			close: "retry",
+			seconds: 2,
+			nearMiss: "boss",
+			record: true,
+			skipped: false,
+			character: "archer",
+		})[0];
+		expect(close.kind === "custom" && close.fields?.field03).toBe("record/archer");
+	});
+
+	it("RunDuration carries the run's character (docs/ARCHER.md AR5), none for a run without one", () => {
+		for (const character of [undefined, ...CHARACTER_IDS]) {
+			const rec = new RunTelemetry(6, undefined, character).finish();
+			expect(rec.character).toBe(character);
+			const specs = analyticsForRun(rec);
+			expectInCatalog(specs);
+			const duration = specs.find((e) => e.kind === "custom" && e.name === ANALYTICS_EVENT.runDuration);
+			expect(duration === undefined || duration.kind !== "custom" ? "missing" : duration.fields?.field01).toBe(
+				character,
+			);
+		}
+		expect(analyticsEntryCombinations(analyticsCatalogEntry("custom", ANALYTICS_EVENT.runDuration)!)).toBe(3);
 	});
 });
 

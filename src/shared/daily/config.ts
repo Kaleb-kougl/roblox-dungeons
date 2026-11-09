@@ -48,7 +48,9 @@ export const DAILY: DailyConfig = table.freeze({
 	// 12: builds v2 wave 1 (docs/BUILDS_V2.md BVD20): Riposte, Ballista, Wrecker and seven duos change endless drafts.
 	// 13: Kenney decor's Forge pieces (docs/KENNEY_DECOR.md KN5-KN8): library v2, mess halls and solid store stock change
 	// endless layouts and spawns.
-	ruleset: 13,
+	// 14: the Archer (docs/ARCHER.md ARD11): a character per run (the Knight sword only, the Archer bow only with a
+	// longer roll), weapon-tagged drafts; every endless run plays and draws differently.
+	ruleset: 14,
 	labelOffset: 1,
 	yesterdayCacheSeconds: 600,
 	minEntrantsForPercentile: 20,

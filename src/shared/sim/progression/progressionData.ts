@@ -11,6 +11,7 @@ import { secondsToTicks } from "../playerData";
 import { TILE_SIZE } from "../units";
 import { AXIS_MAX, Button } from "../input";
 import { COMBO_WINDOW_SECONDS } from "../score/scoreData";
+import { BOW_WEAPON_ID, SWORD_WEAPON_ID } from "../combat/weapons/loadout";
 
 // --- Rarities ------------------------------------------------------------------------------------------
 
@@ -99,13 +100,19 @@ export interface BoonDef {
 	readonly id: string;
 	readonly rarity: RarityId;
 	readonly category: BoonCategory;
+	/**
+	 * The weapon id a player must carry (in any set) to be dealt this boon (docs/ARCHER.md ARD4: Piercing Arrows and
+	 * Ballista the bow, Riposte the sword); absent: every player. Read only where the pools are built (./eligibility.ts);
+	 * a duo is eligible when both its boons are. A player carrying both weapons is dealt everything, as before.
+	 */
+	readonly requires?: string;
 }
 
 /** Every boon, by Boon index. */
 export const BOONS: ReadonlyArray<BoonDef> = [
 	{ id: "boon.sharpened", rarity: Rarity.RARE, category: "offense" },
 	{ id: "boon.swiftStrikes", rarity: Rarity.COMMON, category: "offense" },
-	{ id: "boon.piercingArrows", rarity: Rarity.COMMON, category: "offense" },
+	{ id: "boon.piercingArrows", rarity: Rarity.COMMON, category: "offense", requires: BOW_WEAPON_ID },
 	{ id: "boon.emberWake", rarity: Rarity.LEGENDARY, category: "offense" },
 	{ id: "boon.hearty", rarity: Rarity.RARE, category: "defense" },
 	{ id: "boon.slippery", rarity: Rarity.COMMON, category: "defense" },
@@ -120,8 +127,8 @@ export const BOONS: ReadonlyArray<BoonDef> = [
 	{ id: "boon.soulShards", rarity: Rarity.RARE, category: "offense" },
 	{ id: "boon.overkill", rarity: Rarity.LEGENDARY, category: "offense" },
 	{ id: "boon.bastion", rarity: Rarity.LEGENDARY, category: "defense" },
-	{ id: "boon.riposte", rarity: Rarity.RARE, category: "offense" },
-	{ id: "boon.ballista", rarity: Rarity.RARE, category: "offense" },
+	{ id: "boon.riposte", rarity: Rarity.RARE, category: "offense", requires: SWORD_WEAPON_ID },
+	{ id: "boon.ballista", rarity: Rarity.RARE, category: "offense", requires: BOW_WEAPON_ID },
 	{ id: "boon.wrecker", rarity: Rarity.COMMON, category: "offense" },
 ];
 export const BOON_COUNT = BOONS.size();
@@ -250,10 +257,12 @@ export type RelicId = (typeof Relic)[keyof typeof Relic];
 export interface RelicDef {
 	/** Theme string keys `<id>.name`, `<id>.desc`, `<id>.icon`. */
 	readonly id: string;
+	/** The weapon id a player must carry to be offered this relic (BoonDef.requires; Mirror Cloak the sword). */
+	readonly requires?: string;
 }
 
 export const RELICS: ReadonlyArray<RelicDef> = [
-	{ id: "relic.mirrorCloak" },
+	{ id: "relic.mirrorCloak", requires: SWORD_WEAPON_ID },
 	{ id: "relic.hourglass" },
 	{ id: "relic.vampireFang" },
 	{ id: "relic.secondWind" },

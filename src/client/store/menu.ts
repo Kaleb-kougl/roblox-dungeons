@@ -1,11 +1,23 @@
 import { createProducer } from "@rbxts/reflex";
-import { NO_MENU, menuNavReduce, type MenuNav, type MenuNavAction } from "shared/view/menu";
+import type { CharacterId } from "shared/characters";
+import { NO_MENU, menuNavReduce, type CharacterScreenOrigin, type MenuNav, type MenuNavAction } from "shared/view/menu";
+
+/**
+ * The character screen while it is up (docs/ARCHER.md AR7): what opened it (shared/view/menu CharacterScreenOrigin:
+ * what Confirm starts) and the focused card (the last pick when it opened; arrows, taps and the pad's selection move
+ * it; Confirm takes it).
+ */
+export interface CharacterScreenState {
+	readonly origin: CharacterScreenOrigin;
+	readonly focus: CharacterId;
+}
 
 /**
  * Client-local Reflex slice for the menu shell (task L3) and the pause overlay's Leave run (task L6): the current
  * menu screen with its back stack (the pure reducer is shared/view/menu `menuNavReduce`), whether the Leave run
  * confirm is showing, whether the co-op (non-pausing) overlay is open, whether the join still waits for the
- * first-run gate, and whether the Roblox menu is open. MenuController dispatches; the views read.
+ * first-run gate, whether the Roblox menu is open, and the character screen's origin and focused card (docs/ARCHER.md
+ * AR7). MenuController dispatches; the views read.
  */
 export interface MenuState {
 	readonly nav: MenuNav;
@@ -23,6 +35,8 @@ export interface MenuState {
 	 * and the pause button hide under it (shared/view/menu pause.ts).
 	 */
 	readonly robloxMenuOpen: boolean;
+	/** The character screen's origin and focused card; undefined while it is not up (MenuController sets it). */
+	readonly character: CharacterScreenState | undefined;
 }
 
 const initialState: MenuState = {
@@ -31,6 +45,7 @@ const initialState: MenuState = {
 	coopOverlay: false,
 	awaitingFirstRun: true,
 	robloxMenuOpen: false,
+	character: undefined,
 };
 
 export const menuSlice = createProducer(initialState, {
@@ -44,6 +59,12 @@ export const menuSlice = createProducer(initialState, {
 		state.awaitingFirstRun === awaitingFirstRun ? state : { ...state, awaitingFirstRun },
 	setRobloxMenuOpen: (state, robloxMenuOpen: boolean) =>
 		state.robloxMenuOpen === robloxMenuOpen ? state : { ...state, robloxMenuOpen },
+	setCharacterScreen: (state, character: CharacterScreenState | undefined) =>
+		state.character === character ? state : { ...state, character },
+	setCharacterFocus: (state, focus: CharacterId) =>
+		state.character === undefined || state.character.focus === focus
+			? state
+			: { ...state, character: { ...state.character, focus } },
 	/** Closing the party overlay also drops its Leave run confirm. */
 	setCoopOverlay: (state, coopOverlay: boolean) => {
 		const leaveConfirm = coopOverlay && state.leaveConfirm;
@@ -58,4 +79,5 @@ export const selectMenuScreen = (state: { menu: MenuState }) => state.menu.nav.s
 export const selectLeaveConfirm = (state: { menu: MenuState }) => state.menu.leaveConfirm;
 export const selectCoopOverlay = (state: { menu: MenuState }) => state.menu.coopOverlay;
 export const selectAwaitingFirstRun = (state: { menu: MenuState }) => state.menu.awaitingFirstRun;
+export const selectCharacterScreen = (state: { menu: MenuState }) => state.menu.character;
 export const selectRobloxMenuOpen = (state: { menu: MenuState }) => state.menu.robloxMenuOpen;

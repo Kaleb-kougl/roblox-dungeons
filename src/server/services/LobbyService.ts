@@ -209,9 +209,10 @@ export class LobbyService implements OnStart {
 			),
 		);
 		this.janitor.Add(
-			Events.lobbySetReady.connect((player, ready) =>
+			Events.lobbySetReady.connect((player, ready, characterId) =>
 				this.request(player, "lobbySetReady", this.requestLimiter, () => {
-					const r = this.lobbies.setReady(player.UserId, ready);
+					// The pick is checked by Lobbies (an unknown id is a badRequest refusal); docs/ARCHER.md AR5.
+					const r = this.lobbies.setReady(player.UserId, ready, characterId);
 					if (!r.ok) return this.outbox.refused(player.UserId, "lobbySetReady", r);
 					this.outbox.lobby(r.lobby);
 					if (r.countdownCancelled) this.outbox.countdownCancelled(r.lobby, COUNTDOWN_CANCELLED_UNREADY);

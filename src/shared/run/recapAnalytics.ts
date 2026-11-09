@@ -14,13 +14,16 @@
  * Event `RunRecap` (ANALYTICS_EVENT.runRecap). field01 says what the value is:
  *   field01 `retry` / `exit` / `lobby`     value = seconds the panel was open (0..maxSeconds, 0.1 s); field02 the
  *                                          near-miss kind shown (`RUN_RECAP_NEAR_MISS_KINDS` or `none`); field03
- *                                          `plain` / `plainSkipped` / `record` / `recordSkipped`
+ *                                          `plain` / `plainSkipped` / `record` / `recordSkipped`, followed by
+ *                                          `/<character>` when the report names the player's character
+ *                                          (docs/ARCHER.md AR5: `record/archer`; M1 runs have none)
  *   field01 `teamPerfects` / `bestTeamStreak` / `syncParries`   value = that team total (party runs, `lobby` only)
  *   field01 `views`                        (docs/RUN_CONTRIBUTION.md CT8) value = seconds the You and Party tabs showed
  *                                          (0..2 x maxSeconds, 0.1 s); field02 the tab showing when the panel was left
  *                                          (`you` / `team` / `party`); party runs with the tabs (`lobby`) only
  * Pure and Roblox-API-free.
  */
+import { isCharacterId, type CharacterId } from "shared/characters";
 import type { RecapNearMissKind, RecapTab } from "shared/view/hud";
 import { ANALYTICS_EVENT, type AnalyticsEventSpec } from "./analytics";
 import { isFiniteValue } from "./validate";
@@ -63,6 +66,9 @@ export const RUN_RECAP_FLAGS = {
 	record: "record",
 	recordSkipped: "recordSkipped",
 } as const;
+
+/** Between a close row's flags and the character in its field03 (docs/ARCHER.md AR5; the Daily's combo separator). */
+export const RUN_RECAP_CHARACTER_SEPARATOR = "/";
 
 /** The party rows' field01 (one row per team total). */
 export const RUN_RECAP_TEAM_ROWS = ["teamPerfects", "bestTeamStreak", "syncParries"] as const;
@@ -125,6 +131,11 @@ export interface RunRecapReport {
 	readonly team?: RunRecapTeam;
 	/** Party runs with the tabs (`lobby`) only; ignored on other closes. */
 	readonly views?: RunRecapViews;
+	/**
+	 * docs/ARCHER.md AR5: the reporting player's character in that run (RunContext.character), absent for a run
+	 * without one (M1). A client fact like the rest: analytics only.
+	 */
+	readonly character?: CharacterId;
 }
 
 function asTable(v: unknown): Record<string, unknown> | undefined {
@@ -182,7 +193,7 @@ export function runRecapSeconds(v: unknown): number | undefined {
  * `runRecap`'s payload re-read on the server, or undefined (dropped). Rejects: not a table, a run id that is not a
  * 1..maxRunIdChars string, an unknown close or near-miss kind, a non-finite `seconds`, non-boolean flags, a `team`
  * that is present but malformed (counts must be non-negative integers), a `views` that is present but malformed
- * (seconds not finite, an unknown tab). Clamps seconds and counts; a team or views on a solo close (`retry` / `exit`)
+ * (seconds not finite, an unknown tab), a `character` that is present but no character id. Clamps seconds and counts; a team or views on a solo close (`retry` / `exit`)
  * is dropped, a `lobby` close without them stays valid (no team / views rows).
  */
 export function readRunRecapReport(v: unknown): RunRecapReport | undefined {
@@ -206,6 +217,8 @@ export function readRunRecapReport(v: unknown): RunRecapReport | undefined {
 		views = readViews(t.views);
 		if (views === undefined) return undefined;
 	}
+	const character = t.character;
+	if (character !== undefined && !isCharacterId(character)) return undefined;
 	const out: RunRecapReport = {
 		runId,
 		close: t.close,
@@ -213,15 +226,18 @@ export function readRunRecapReport(v: unknown): RunRecapReport | undefined {
 		nearMiss: t.nearMiss,
 		record: t.record,
 		skipped: t.skipped,
+		character,
 	};
 	if (t.close !== "lobby") return out;
 	return { ...out, team, views };
 }
 
-/** field03 of a close row. */
-export function runRecapFlags(record: boolean, skipped: boolean): string {
-	if (record) return skipped ? RUN_RECAP_FLAGS.recordSkipped : RUN_RECAP_FLAGS.record;
-	return skipped ? RUN_RECAP_FLAGS.plainSkipped : RUN_RECAP_FLAGS.plain;
+/** field03 of a close row: the flags, then `/<character>` when there is one (docs/ARCHER.md AR5). */
+export function runRecapFlags(record: boolean, skipped: boolean, character?: CharacterId): string {
+	let flags: string;
+	if (record) flags = skipped ? RUN_RECAP_FLAGS.recordSkipped : RUN_RECAP_FLAGS.record;
+	else flags = skipped ? RUN_RECAP_FLAGS.plainSkipped : RUN_RECAP_FLAGS.plain;
+	return character !== undefined ? `${flags}${RUN_RECAP_CHARACTER_SEPARATOR}${character}` : flags;
 }
 
 /** A views row's value: seconds on You + Party, rounded to tenths. */
@@ -240,7 +256,7 @@ export function analyticsForRunRecap(r: Readonly<RunRecapReport>): AnalyticsEven
 			kind: "custom",
 			name: ANALYTICS_EVENT.runRecap,
 			value: r.seconds,
-			fields: { field01: r.close, field02: r.nearMiss, field03: runRecapFlags(r.record, r.skipped) },
+			fields: { field01: r.close, field02: r.nearMiss, field03: runRecapFlags(r.record, r.skipped, r.character) },
 		},
 	];
 	const team = r.close === "lobby" ? r.team : undefined;

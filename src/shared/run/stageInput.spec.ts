@@ -108,7 +108,9 @@ describe("stage floor inputs (docs/STAGE_ASSETS.md SA3)", () => {
 		};
 		const first = stageInputOf(src, ENDLESS_FIRST_FLOOR, STAGE_CHARACTERS, true);
 		expect(first.actorKinds.includes("dummy")).toBe(true);
-		expect(first.actorKinds.includes("turret.sniper")).toBe(true);
+		// docs/ARCHER.md AR6: combat E (the turret sniper) left floor 1; combat G keeps its ordinary sniper.
+		expect(first.actorKinds.includes("turret.sniper")).toBe(false);
+		expect(first.actorKinds.includes("sniper")).toBe(true);
 		expect(first.features.pellets).toBe(true);
 		expect(first.features.breakables).toBe(false);
 		expect(first.bossKind).toBeUndefined();

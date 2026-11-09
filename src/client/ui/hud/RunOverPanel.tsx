@@ -5,6 +5,7 @@ import {
 	selectInputDevice,
 	selectBaselineRun,
 	selectLastBossId,
+	selectMenuScreen,
 	selectMyLobbyId,
 	selectRunBaseline,
 	selectRecap,
@@ -14,7 +15,6 @@ import {
 } from "client/store";
 import { FocusScope, PAD_HOLD_UI } from "client/ui/focus";
 import { role, str, themePack, useHudFont, useUiArt } from "client/ui/theme";
-import type { ColorRole } from "shared/theme";
 import { DAILY_WORLD_KIND } from "shared/daily";
 import { restartHint } from "shared/play";
 import { SIM_HZ } from "shared/sim";
@@ -51,12 +51,17 @@ import {
 	MENU_STRINGS,
 	PAD_CONFIRM_LABEL,
 	partyRunOverLine,
+	runOverCharacterShown,
+	runOverExitButtons,
 	runOverExitIcon,
+	runOverExitLayout,
 	runOverExits,
 	runOverIcon,
 	screenSkin,
 	tabStep,
+	type RunOverExitButton,
 } from "shared/view/menu";
+import { CHARACTER_SCREEN_STRINGS, type ColorRole } from "shared/theme";
 import { useHudActions } from "./actions";
 import { DailyResultBlock } from "./DailyResultBlock";
 import { MenuFit } from "./MenuFit";
@@ -482,12 +487,15 @@ export function RunOverPanel() {
 	const baseline = useSelector(selectRunBaseline);
 	const baselineRun = useSelector(selectBaselineRun);
 	const recap = useSelector(selectRecap);
+	const menuScreen = useSelector(selectMenuScreen);
 	const actions = useHudActions();
 	const firstRef = useRef<TextButton>();
 	const partyListRef = useRef<ScrollingFrame>();
 	const over = s.outcome !== "playing";
 
-	if (!over) return undefined;
+	// docs/ARCHER.md AR7: the character screen (the Character button) hides the panel and takes the pad; its Back shows
+	// the panel again (Again focused, its retry gate and arm untouched: RecapController keeps them).
+	if (!over || menuScreen !== "none") return undefined;
 	const victory = s.outcome === "victory";
 	const padKey = PAD_CONFIRM_LABEL;
 	const hint = restartHint(bindings, str);
@@ -509,6 +517,8 @@ export function RunOverPanel() {
 		: str(HUD_STRINGS.dead, { key });
 	// docs/RUN_RECAP.md RR5: this run's recap (none: the old panel exactly).
 	const recapOn = recap.run !== 0 && recap.run === info.run;
+	// docs/ARCHER.md AR7: Character beside Again (solo runs played as a character; never a party run's Back to lobby).
+	const characterShown = runOverCharacterShown(info.coop, exits.again, recapOn, info.character);
 	const nearMiss = recapOn ? recap.nearMiss : undefined;
 	const highlightsOn = recapOn && recap.highlights.size() > 0;
 	// The breakdown and the Build list: behind Details while there are highlights (RRD5), else as before.
@@ -605,15 +615,25 @@ export function RunOverPanel() {
 	 * highlights, Again's keyboard focus brightening once armed (the gamepad's selection is the ring otherwise), Again
 	 * through the retry gate. Without: exactly the old row (`legacy`: the layout's old button size).
 	 */
+	// docs/ARCHER.md AR7: the exits' rows per layout (Details aside only where the right column exists).
+	const exitLayout = (layout: RecapLayout) =>
+		runOverExitLayout(
+			runOverExitButtons(exits.again, characterShown, highlightsOn),
+			layout,
+			HUD_VIEW.gap,
+			s.scoring,
+		);
+	const detailsAside = exitLayout("compact").detailsAside;
 	const exitButtons = (layout: RecapLayout, legacy?: Vector2) => {
 		const sizes = recapExitSizes(layout);
 		const againSize = recapOn ? new Vector2(sizes.again.x, sizes.again.y) : legacy;
 		const otherSize = recapOn ? new Vector2(sizes.other.x, sizes.other.y) : legacy;
 		const otherText = recapOn ? sizes.otherTextSize : undefined;
-		return (
-			<Row key="Exits" order={ROW.exits} align={Enum.HorizontalAlignment.Center}>
-				{exits.again ? (
+		const button = (b: RunOverExitButton) => {
+			if (b === "again") {
+				return (
 					<MenuButton
+						key="Again"
 						ref={firstRef}
 						order={1}
 						name="Again"
@@ -622,30 +642,85 @@ export function RunOverPanel() {
 						text={againText}
 						onActivated={() => actions.again()}
 					/>
-				) : undefined}
-				<MenuButton
-					ref={exits.again ? undefined : firstRef}
-					order={2}
-					name="Exit"
-					size={otherSize}
-					textSize={otherText}
-					text={str(exits.exitKey)}
-					icon={runOverExitIcon(exits.exitKey)}
-					fill={PAD_HOLD_UI.progress}
-					onActivated={() => {
-						actions.playUi(SFX.uiClick);
-						actions.exitRun();
-					}}
-				/>
-				{highlightsOn ? (
-					<DetailsToggle
-						order={3}
-						details={recap.details}
-						size={sizes.other}
-						textSize={sizes.otherTextSize}
+				);
+			}
+			if (b === "character") {
+				// docs/ARCHER.md AR7 (owner answer 8): beside Again, never through the retry gate.
+				return (
+					<MenuButton
+						key="Character"
+						order={2}
+						name="Character"
+						size={otherSize}
+						textSize={otherText}
+						text={str(CHARACTER_SCREEN_STRINGS.runOverCharacter)}
+						onActivated={() => {
+							actions.playUi(SFX.uiClick);
+							actions.runOverCharacter();
+						}}
 					/>
-				) : undefined}
-			</Row>
+				);
+			}
+			if (b === "exit") {
+				return (
+					<MenuButton
+						key="Exit"
+						ref={exits.again ? undefined : firstRef}
+						order={3}
+						name="Exit"
+						size={otherSize}
+						textSize={otherText}
+						text={str(exits.exitKey)}
+						icon={runOverExitIcon(exits.exitKey)}
+						fill={PAD_HOLD_UI.progress}
+						onActivated={() => {
+							actions.playUi(SFX.uiClick);
+							actions.exitRun();
+						}}
+					/>
+				);
+			}
+			return (
+				<DetailsToggle
+					key="Details"
+					order={4}
+					details={recap.details}
+					size={sizes.other}
+					textSize={sizes.otherTextSize}
+				/>
+			);
+		};
+		// Every run without the Character button: exactly the old single row. With it, Again and Character share the
+		// first row and the rest go under them when the four do not fit; compact, Details stands aside atop the right
+		// column instead (runOverExitLayout; detailsAside below).
+		const rows = exitLayout(layout).rows;
+		if (rows.size() === 1) {
+			return (
+				<Row key="Exits" order={ROW.exits} align={Enum.HorizontalAlignment.Center}>
+					{rows[0].map((b) => button(b))}
+				</Row>
+			);
+		}
+		return (
+			<frame
+				key="Exits"
+				LayoutOrder={ROW.exits}
+				Size={new UDim2()}
+				AutomaticSize={Enum.AutomaticSize.XY}
+				BackgroundTransparency={HIDDEN}
+			>
+				<uilistlayout
+					FillDirection={Enum.FillDirection.Vertical}
+					HorizontalAlignment={Enum.HorizontalAlignment.Center}
+					SortOrder={Enum.SortOrder.LayoutOrder}
+					Padding={new UDim(0, HUD_VIEW.gap)}
+				/>
+				{rows.map((row, i) => (
+					<Row key={`ExitRow${i}`} order={i + 1} align={Enum.HorizontalAlignment.Center}>
+						{row.map((b) => button(b))}
+					</Row>
+				))}
+			</frame>
 		);
 	};
 	const breakdown = { order: ROW.breakdown, score: s.score, points: s.scorePoints, maxCombo: s.maxCombo };
@@ -740,6 +815,15 @@ export function RunOverPanel() {
 											<DailyPassedRow key="DailyPassed" order={-3} />
 											{best.ranked ? (
 												<BestBlock key="Best" order={-2} best={best} hideTarget={hideTarget} />
+											) : undefined}
+											{detailsAside ? (
+												<DetailsToggle
+													key="DetailsAside"
+													order={-5}
+													details={recap.details}
+													size={recapExitSizes("compact").other}
+													textSize={recapExitSizes("compact").otherTextSize}
+												/>
 											) : undefined}
 											{nearMissDim(-1)}
 											{grid(0, "compact", MENU_FIT.runOverLineGap)}

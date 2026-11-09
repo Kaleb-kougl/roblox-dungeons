@@ -31,9 +31,12 @@ export interface PauseView {
 	readonly tutorialEnded: boolean;
 }
 
-/** The pause / party overlay shows: hidden under a panel, under the Roblox menu and once the run is over. */
+/**
+ * The pause / party overlay shows: hidden under a panel, under the Roblox menu, under a menu screen (the character
+ * screen a dev panel's Go opens over a paused run, docs/ARCHER.md AR7) and once the run is over.
+ */
 export function pauseOverlayShown(v: PauseView): boolean {
-	return v.playing && !v.panelOpen && !v.robloxMenuOpen && (v.coop ? v.coopOverlay : v.paused);
+	return v.playing && !v.panelOpen && !v.robloxMenuOpen && !v.menuScreen && (v.coop ? v.coopOverlay : v.paused);
 }
 
 /** The on-screen pause button shows while the run is being played and nothing that pauses or covers it is open. */

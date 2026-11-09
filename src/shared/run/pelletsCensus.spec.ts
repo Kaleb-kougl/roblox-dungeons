@@ -47,7 +47,6 @@ import {
 	DEFAULT_SEGMENT_LIMITS,
 	SegmentedValidator,
 	buildEndlessRunConfig,
-	buildWorldSetup,
 	type EndlessRunSetup,
 	type RunSegment,
 	type SegmentVerdict,
@@ -571,7 +570,9 @@ describe("an endless run that takes a power pellet replays and validates segment
 	});
 
 	it("a ranked LiveRun cutting segments every HONEST_SEGMENT_TICKS validates segment by segment, same hash", () => {
-		const world = buildWorldSetup(RANKED_WORLD_KIND, seed, { atBossDoor: false });
+		// docs/ARCHER.md AR4: the recorded run was played without characters (both weapons, buildEndlessRunConfig); the
+		// registry now builds a character's run, so the live run and the validator get the recording's own config.
+		const world = buildEndlessRunConfig(seed);
 		const run = new LiveRun({
 			seed,
 			spawnX: world.spawn!.x,
@@ -585,7 +586,7 @@ describe("an endless run that takes a power pellet replays and validates segment
 			runId: "pellets-run",
 			seed,
 			worldKind: RANKED_WORLD_KIND,
-			setup: buildWorldSetup(RANKED_WORLD_KIND, seed, { atBossDoor: false }),
+			setup: buildEndlessRunConfig(seed),
 			createdAt: 0,
 			limits: DEFAULT_SEGMENT_LIMITS,
 		});

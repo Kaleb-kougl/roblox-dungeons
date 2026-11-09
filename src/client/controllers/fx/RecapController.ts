@@ -11,6 +11,7 @@ import {
 	type VerdictView,
 } from "client/store";
 import { RECAP_BINDINGS, onLocaleChanged, resetRecapBindings, runOverBest } from "client/ui";
+import type { CharacterId } from "shared/characters";
 import { DAILY_WORLD_KIND } from "shared/daily";
 import { bossKindFor, floorSeed, isBossFloor } from "shared/dungeon";
 import { RunOverRetryGate, inputsFor, type RunOverPressSource } from "shared/play";
@@ -111,6 +112,8 @@ interface ReportFacts {
 	sent: boolean;
 	/** docs/RUN_CONTRIBUTION.md CT8: a party run's tab views (undefined: no tabs). */
 	readonly views: RunRecapViewClock | undefined;
+	/** docs/ARCHER.md AR5: this client's character in the run (RunContext.character; undefined: none, M1). */
+	readonly character: CharacterId | undefined;
 }
 
 /** What decides a re-derive (docs/RUN_RECAP.md "Rules": a verdict with other numbers re-derives silently). */
@@ -354,6 +357,7 @@ export class RecapController implements OnStart {
 			team: input.team ?? NO_TEAM_MOMENTS,
 			sent: false,
 			views: this.views.tabbed ? new RunRecapViewClock() : undefined,
+			character: ctx.character,
 		};
 	}
 
@@ -436,11 +440,15 @@ export class RecapController implements OnStart {
 	 * view player), the party's display names by index. Solo runs: undefined (contributionOf's rule).
 	 */
 	private contributionOf(ctx: RunContext, input: RunRecapInput): RunContribution | undefined {
+		// docs/ARCHER.md AR9: each player's character (the rows' icons).
+		const characters: string[] = [];
+		for (let i = 0; i < input.partySize; i++) characters.push(this.sim.getPlayerCharacter(i) ?? "");
 		return contributionOf({
 			tally: input.tally,
 			partySize: input.partySize,
 			localIndex: input.localIndex,
 			names: ctx.memberNames,
+			characters,
 		});
 	}
 
@@ -496,6 +504,7 @@ export class RecapController implements OnStart {
 			nearMiss: this.nearMiss?.kind ?? RUN_RECAP_NO_NEAR_MISS,
 			record: f.record,
 			skipped: f.skipped,
+			character: f.character,
 		};
 		Events.runRecap.fire(
 			how === "lobby"

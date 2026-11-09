@@ -23,6 +23,8 @@ export type Meta = {
 	kind: string?,
 	-- extra properties (services put their methods here)
 	props: { [string]: any },
+	-- attributes GetAttribute answers (the runner's --census flag on Workspace); nil: none
+	attributes: { [string]: any }?,
 	-- deferred child loader for filesystem-backed folders. Lune's fs calls yield, and a yield
 	-- cannot cross the __index metamethod, so RojoTree.build expands every folder eagerly by
 	-- calling Instance.expandAll() before handing the tree out.
@@ -259,8 +261,10 @@ function methods.IsAncestorOf(self: Instance, descendant: Instance): boolean
 	return methods.IsDescendantOf(descendant, self)
 end
 
-function methods.GetAttribute(_self: Instance, _name: string): any
-	return nil
+function methods.GetAttribute(self: Instance, name: string): any
+	-- Attributes the runner sets (run-tests.luau --census: Workspace KV_Census); none otherwise.
+	local attributes = meta(self).attributes
+	return if attributes ~= nil then attributes[name] else nil
 end
 
 function methods.Clone(_self: Instance): Instance

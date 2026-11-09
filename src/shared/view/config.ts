@@ -98,9 +98,30 @@ export const BULLET_VIEW = {
 	profileLabel: "KV Bullets",
 } as const;
 
+/**
+ * The Archer's sprite (docs/ARCHER.md AR12): the player visual that draws the bow's own animations (playerSpriteInputFor).
+ * Every other player visual (the Knight, class.vanguard) chooses exactly as before: the sword's swings, nothing for the bow.
+ */
+export const ARCHER_SPRITE = {
+	/** The player visual id (theme class slot) whose sprite plays the bow's animations. */
+	visualId: "class.ranger",
+	/** The stream (FIRE held): one draw-and-loose cycle per arrow (SPRITE_ANIM_MARKS.archer.streamCycle). */
+	streamAnim: "attack.1",
+	/** The charged shot (ALT): the draw over the charge, then the release (SPRITE_ANIM_MARKS.archer.release). */
+	chargeAnim: "attack.2",
+	/**
+	 * Moving at run speed while streaming plays `run` instead of the planted stream pose (the stance's feet would slide
+	 * while the archer kites); the draw and the release play whatever the speed (the charge walks at half speed).
+	 */
+	streamYieldsToRun: true,
+} as const;
+
 /** Actors and the player (web src/sim/PlayerView.tsx, src/bullets/ActorsView.tsx). */
 export const ACTOR_VIEW = {
-	/** Theme asset shown for the player until class selection exists (web PLAYER_SPRITE_ID). */
+	/**
+	 * Theme asset of a player who is no character (web PLAYER_SPRITE_ID; M1's sword + bow, test loadouts): the Knight's.
+	 * A character's player draws its own (docs/ARCHER.md AR9, characters.ts playerVisualIdOf).
+	 */
 	playerVisualId: "class.vanguard",
 	/**
 	 * The ring under each player (a logical image ID): drawn instead of the facing pip when the pack has it as an image
@@ -342,6 +363,21 @@ export const SPRITE_ANIM_MARKS = {
 		 * from the RECOVER timer, so a longer one could replay a stale strike after that wait.
 		 */
 		ringReleaseTicks: 12,
+	},
+	/**
+	 * The Archer (class.ranger, SmallScaleInt's Archer; docs/ARCHER.md AR12). `attack.2` (the charged shot, Attack1's
+	 * kept frames 1, 3, 5, 7, 9 | 10, 11, 13): the draw [0, release) (quiver, nock, turn, the anchor at full draw held
+	 * while charged) over the charge, the release [release, end) (the loose, follow-through, the bow lowered) over the
+	 * stream's wait after the heavy arrow.
+	 */
+	archer: {
+		/** The loose, index 5 [f10]: the draw hand flies back off the string. */
+		release: 5 / 8,
+		/**
+		 * `attack.1` (the stream, QuickShot frames 0-7): two whole 4-frame draw-and-loose cycles (f0 = f4, the bow straight
+		 * at the loose); one cycle [0, streamCycle) or [streamCycle, end) plays over each arrow's cooldown, alternating.
+		 */
+		streamCycle: 4 / 8,
 	},
 	/** The bruiser (enemy.bruiser, Demon Beast 3; its `attack` is Attack 4, a leap and ground slam, 8 frames). */
 	bruiser: {

@@ -4,10 +4,11 @@
 	unless --no-build), or directly after `npm run build`:
 
 	  lune run scripts/lune/find-tutorial-seed.luau [--floor 1|2] [--from N] [--to N] [--rooms 10,11] [--top N]
-	                                               [--treasure-cap N]
+	                                               [--treasure-cap N] [--theme KEY]
 
-	Floor 1: scores every seed with shared/run analyzeTutorialLayout (lower is better; see tutorialLayout.ts) and
-	prints the best `--top` layouts that meet the hard criteria. Floor 2: a small boss floor, scored by the walk from
+	Floor 1: builds the lesson chain (shared/run tutorialChain) on every seed and lists, in seed order, the first `--top`
+	seeds whose floor passes checkTutorialChain (only theme KEY with `--theme`, e.g. frost), each with its theme, its
+	tour and the rooms the theme marked (frozen lakes, graveyards: room ids are places in the chain). Floor 2: a small boss floor, scored by the walk from
 	the entrance to the boss room (fewer tiles is better) plus a penalty per room that is not the entrance or the boss.
 
 	It requires the compiled modules (out/shared) through the same fake DataModel the spec runner uses.
@@ -19,7 +20,7 @@ local RojoTree = require("./lib/rojoTree")
 local Realm = require("./lib/realm")
 local Services = require("./lib/services")
 
-local args = { floor = 1, from = 0, to = 2000, rooms = { 10, 11 }, top = 10, treasureCap = nil }
+local args = { floor = 1, from = 0, to = 2000, rooms = { 10, 11 }, top = 10, treasureCap = nil, theme = nil }
 do
 	local i = 1
 	local a = process.args
@@ -33,6 +34,8 @@ do
 			args.to = tonumber(v)
 		elseif k == "--top" then
 			args.top = tonumber(v)
+		elseif k == "--theme" then
+			args.theme = v
 		elseif k == "--treasure-cap" then
 			args.treasureCap = tonumber(v)
 		elseif k == "--rooms" then
@@ -80,20 +83,13 @@ if args.floor == 1 then
 	for i = 0, #chain - 1 do
 		table.insert(order, i)
 	end
-	local coverRoom
-	for _, plan in run.TUTORIAL_ROOMS do
-		if plan.lesson == "combatE" then
-			coverRoom = plan.roomId
-		end
-	end
 	local shown = 0
 	for seed = args.from, args.to do
 		local ok, d = pcall(dungeon.generateDungeon, run.tutorialForgeParams(seed, #chain, chain))
 		scanned += 1
-		if ok and d.valid then
+		if ok and d.valid and (args.theme == nil or d.params.themeKey == args.theme) then
 			local report = run.checkTutorialChain(d, order)
-			local cover = run.coverTiles(d, coverRoom, report.tour.legs[coverRoom].door)
-			if #report.problems == 0 and #cover > 0 then
+			if #report.problems == 0 then
 				local marked = {}
 				for _, r in d.rooms do
 					if r.lake then
@@ -105,12 +101,11 @@ if args.floor == 1 then
 				shown += 1
 				print(
 					string.format(
-						"#%d seed %d | %s | tour %d tiles | cover %d | %s",
+						"#%d seed %d | %s | tour %d tiles | %s",
 						shown,
 						seed,
 						d.params.themeKey,
 						report.tour.tiles,
-						#cover,
 						table.concat(marked, ", ")
 					)
 				)

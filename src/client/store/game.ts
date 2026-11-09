@@ -66,6 +66,11 @@ export interface RunInfo {
 	readonly coop: boolean;
 	/** The lobby whose start began this run ("" for a run started from the main menu or by R). */
 	readonly lobbyId: string;
+	/**
+	 * docs/ARCHER.md AR10: the local player's character id (SimController.getPlayerCharacter: the run's pick, else the
+	 * one their weapons are), "" for none (M1's two weapons, no run): the per-character string overrides' reader.
+	 */
+	readonly character: string;
 }
 
 /** One HUD toast (M2: boon taken, relic found, curse accepted, Second Wind, Fang heal); text from the theme. */
@@ -142,6 +147,7 @@ const initialState: GameState = {
 		biome: 0,
 		coop: false,
 		lobbyId: "",
+		character: "",
 	},
 	active: false,
 	toasts: [],

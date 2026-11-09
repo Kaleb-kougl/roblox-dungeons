@@ -38,6 +38,8 @@ import {
 	menuNarrow,
 	pausePanelArea,
 	ornamentOverhang,
+	runOverExitButtons,
+	runOverExitLayout,
 	stepMenuFit,
 	type MenuFitInput,
 	type MenuFitResult,
@@ -706,7 +708,8 @@ describe("the upright pause (docs/PORTRAIT.md PT6)", () => {
 /**
  * docs/RUN_RECAP.md RR5: the run-over recap's worst case, a record daily run with highlights (the ribbon, the main line
  * on two lines, the stats, the record row and the dim near-miss sub-line under it, four highlights, the daily block and
- * the friends passed, the verdict and info lines, the exits with Again, Main menu and Details), still fits the smallest
+ * the friends passed, the verdict and info lines, the exits with Again, Character, Main menu and Details: two rows since
+ * docs/ARCHER.md AR7, compact one row with Details atop the right column), still fits the smallest
  * landscape phone, every portrait phone and the HUD 70 % step (Details shows the breakdown and Build list in the
  * highlights' place: the panel as before). A run without a record draws the plain near-miss line under the main line
  * instead of the ribbon (compact: the taller of the two is counted in the left column).
@@ -728,13 +731,23 @@ function recapWorst(uiScale: number, layout: "compact" | "narrow" | "wide", part
 	const passed = small + DAILY_RANK.passedHeadshotPx + small;
 	const stats = 3 * lineH + 2 * HUD_VIEW.gap;
 	const main = 2 * HUD_VIEW.titleText + 4;
-	const button = RECAP_UI.exits[layout].again.y;
+	// docs/ARCHER.md AR7: a solo run's exits are Again, Character, the exit and Details, in two rows (runOverExitRows):
+	// the second row and its gap count as one more row; a party run's stay one row (no Again, no Character).
+	// Compact: Details stands aside atop the right column instead (runOverExitLayout `detailsAside`).
+	const exits = runOverExitLayout(
+		runOverExitButtons(party === undefined, party === undefined, true),
+		layout,
+		HUD_VIEW.gap,
+	);
+	const exitRows = exits.rows.size();
+	const button = RECAP_UI.exits[layout].again.y * exitRows + HUD_VIEW.gap * (exitRows - 1);
 	if (layout === "compact") {
 		const leftRows = [header, math.max(title, nearMiss), main, stats, button, small, TWO_SMALL_LINES];
 		let left = 0;
 		for (const r of leftRows) left += r;
 		left += (leftRows.size() - 1) * HUD_VIEW.gap;
 		const rightRows = [...dailyRows, passed, lineH, dim, grid];
+		if (exits.detailsAside) rightRows.push(RECAP_UI.exits.compact.other.y);
 		let right = 0;
 		for (const r of rightRows) right += r;
 		right += (rightRows.size() - 1) * MENU_FIT.runOverLineGap;
@@ -824,6 +837,8 @@ describe("run-over recap fit (docs/RUN_RECAP.md RR5)", () => {
 				recapGridSize(4, HUD_VIEW.gap).h,
 				LINE(HUD_VIEW.smallText),
 				TWO_SMALL_LINES,
+				RECAP_UI.exits.wide.again.y,
+				// docs/ARCHER.md AR7: the exits' second row (Again and Character above Main menu and Details).
 				RECAP_UI.exits.wide.again.y,
 			];
 			const room = menuArea(s.x, s.y, s.insets, u).h - 2 * MENU_FIT.margin;

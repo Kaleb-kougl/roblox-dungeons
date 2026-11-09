@@ -77,6 +77,17 @@ export { CURSE_ICON_PREFIX, RELIC_ICON_PREFIX, curseIconId, relicIconId } from "
 export { BOOST_ICON_PREFIX, boostIconId } from "./boostIcons";
 export { PIP_ICON_IDS, PIP_ICON_PREFIX } from "./pipIcons";
 export {
+	CHARACTER_ICON_PREFIX,
+	CHARACTER_OVERRIDE_KEYS,
+	CHARACTER_SCREEN_STRINGS,
+	CHARACTER_SUMMARY_LINES,
+	THEME_CHARACTER_IDS,
+	characterIconId,
+	characterLineKey,
+	characterOverrideKey,
+	characterStringKeys,
+} from "./characters";
+export {
 	AFFIX_COLOR_RULES,
 	AURA_COLOR_RULES,
 	GOO_COLOR_RULES,

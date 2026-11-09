@@ -50,6 +50,7 @@ function view(over: Partial<LobbyView>): LobbyView {
 		phase: "forming",
 		members: [1],
 		ready: [],
+		characters: [],
 		invited: [],
 		invitedSources: [],
 		...over,

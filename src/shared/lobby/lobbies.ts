@@ -26,14 +26,19 @@
  *   ready / start / tick    start needs every member ready (one member is enough) and begins a countdown; a member
  *                           un-readying or leaving cancels it. tick(ctx) ends due countdowns: the lobby goes
  *                           `inRun` and the result says to start a solo or party run (members in join order) in the
- *                           lobby's world.
+ *                           lobby's world, with each member's character (docs/ARCHER.md AR5).
  *                           runEnded returns it to `forming` with Ready cleared.
+ *   characters              each member's pick (`characters`, DEFAULT_CHARACTER until they choose) is set with the
+ *                           Ready (`setReady(userId, ready, characterId)`) and kept while they stay: un-readying, a
+ *                           world change and a run's end clear Ready, never the pick. A pick change while ready
+ *                           un-readies (and cancels a countdown): the run starts only with picks readied as they are.
  *   playerRemoving          leaves the lobby and drops the invites the player received (their sent ones stay).
  *   summariesFor            the browse list: lobbies the viewer canAccess (never closed), sorted.
  *
  * Pure and Roblox-API-free: ids, the clock, friendship and busy state are injected. The server passes client
  * values straight in, so every client-supplied argument is shape-checked (`badRequest`).
  */
+import { DEFAULT_CHARACTER, isCharacterId, type CharacterId } from "shared/characters";
 import {
 	DEFAULT_LOBBY_NAME,
 	LOBBY,
@@ -66,6 +71,11 @@ export interface Lobby {
 	readonly members: ReadonlyArray<number>;
 	/** Members who are ready (any order). */
 	readonly ready: ReadonlyArray<number>;
+	/**
+	 * docs/ARCHER.md AR5: member -> their character pick, set with their Ready (`setReady`) and kept until they leave;
+	 * a member who never picked has no entry (DEFAULT_CHARACTER: `memberCharacter`).
+	 */
+	readonly characters: ReadonlyMap<number, CharacterId>;
 	/** When the countdown ends (phase `countdown` only). */
 	readonly countdownEndsAt?: number;
 	/** Kicked UserId -> when their cooldown ends. */
@@ -83,6 +93,7 @@ interface MutableLobby {
 	phase: LobbyPhase;
 	readonly members: number[];
 	readonly ready: number[];
+	readonly characters: Map<number, CharacterId>;
 	countdownEndsAt?: number;
 	readonly kickedUntil: Map<number, number>;
 }
@@ -172,14 +183,24 @@ export interface LobbyDeparture {
 	readonly droppedInvites: ReadonlyArray<LobbyInvite>;
 }
 
-/** tick: start this run now, in the lobby's world. Party members are in join order. */
+/**
+ * tick: start this run now, in the lobby's world. Party members are in join order, `characters` their picks in the
+ * same order (docs/ARCHER.md AR5); a solo start carries the member's pick.
+ */
 export type LobbyRunStart =
-	| { readonly kind: "solo"; readonly lobbyId: string; readonly userId: number; readonly worldKind: LobbyWorld }
+	| {
+			readonly kind: "solo";
+			readonly lobbyId: string;
+			readonly userId: number;
+			readonly worldKind: LobbyWorld;
+			readonly characterId: CharacterId;
+	  }
 	| {
 			readonly kind: "party";
 			readonly lobbyId: string;
 			readonly members: ReadonlyArray<number>;
 			readonly worldKind: LobbyWorld;
+			readonly characters: ReadonlyArray<CharacterId>;
 	  };
 
 export interface LobbyTickResult {
@@ -220,6 +241,16 @@ function refuse(code: LobbyRefusal, reason: string): LobbyRefused {
 /** A UserId as the wire carries it (config.ts isWireUserId: Studio test players are negative, |id| is bounded). */
 function isUserId(v: unknown): v is number {
 	return isWireUserId(v);
+}
+
+/** A member's character pick (docs/ARCHER.md AR5): their stored one, else DEFAULT_CHARACTER. */
+export function memberCharacter(lobby: Lobby, userId: number): CharacterId {
+	return lobby.characters.get(userId) ?? DEFAULT_CHARACTER;
+}
+
+/** Every member's pick, in member (join) order: a party run's characters, the lobby view's `characters`. */
+export function memberCharacters(lobby: Lobby): CharacterId[] {
+	return lobby.members.map((id) => memberCharacter(lobby, id));
 }
 
 function removeValue(arr: number[], value: number): boolean {
@@ -272,6 +303,7 @@ export class Lobbies {
 			phase: "forming",
 			members: [hostId],
 			ready: [],
+			characters: new Map(),
 			kickedUntil: new Map(),
 		};
 		this.byId.set(lobby.lobbyId, lobby);
@@ -529,20 +561,37 @@ export class Lobbies {
 	// ---------------------------------------------------------------------------------------------
 	// Ready, countdown, run
 
-	/** A member's Ready toggle (forming or countdown). Un-readying during the countdown cancels it. */
-	setReady(userId: number, ready: boolean): LobbyResult<{ lobby: Lobby; countdownCancelled: boolean }> {
+	/**
+	 * A member's Ready toggle (forming or countdown), with their character pick (docs/ARCHER.md AR5: a CharacterId;
+	 * absent keeps the stored pick, an unknown one is `badRequest`). The pick is stored whatever `ready` says (an
+	 * un-ready with a pick only changes the pick). Readying stores the pick and readies; a member who is already ready
+	 * and sends ANOTHER pick (ready or not) is un-readied instead: a pick change after Ready un-readies, so the run
+	 * only starts with picks readied as they stand. Un-readying during the countdown cancels it. `pickChanged`: the
+	 * stored pick moved.
+	 */
+	setReady(
+		userId: number,
+		ready: boolean,
+		characterId?: unknown,
+	): LobbyResult<{ lobby: Lobby; countdownCancelled: boolean; pickChanged: boolean }> {
 		if (!typeIs(ready, "boolean")) return refuse("badRequest", "ready must be a boolean");
+		if (characterId !== undefined && !isCharacterId(characterId)) return refuse("badRequest", "unknown character");
 		const lobby = this.byUser.get(userId);
 		if (lobby === undefined) return refuse("notMember", "not in a lobby");
 		if (lobby.phase === "inRun") return refuse("inRun", "the lobby is in a run");
+		const before = memberCharacter(lobby, userId);
+		const pick = characterId ?? before;
+		const pickChanged = pick !== before;
+		if (characterId !== undefined) lobby.characters.set(userId, pick);
+		const wasReady = lobby.ready.includes(userId);
 		let countdownCancelled = false;
-		if (ready) {
-			if (!lobby.ready.includes(userId)) lobby.ready.push(userId);
+		if (ready && !(wasReady && pickChanged)) {
+			if (!wasReady) lobby.ready.push(userId);
 		} else if (removeValue(lobby.ready, userId) && lobby.phase === "countdown") {
 			this.cancelCountdown(lobby);
 			countdownCancelled = true;
 		}
-		return { ok: true, lobby, countdownCancelled };
+		return { ok: true, lobby, countdownCancelled, pickChanged };
 	}
 
 	/**
@@ -579,10 +628,17 @@ export class Lobbies {
 			lobby.countdownEndsAt = undefined;
 			const members = [...lobby.members];
 			const worldKind = lobby.worldKind;
+			const characters = memberCharacters(lobby);
 			starts.push(
 				members.size() === 1
-					? { kind: "solo", lobbyId: lobby.lobbyId, userId: members[0], worldKind }
-					: { kind: "party", lobbyId: lobby.lobbyId, members, worldKind },
+					? {
+							kind: "solo",
+							lobbyId: lobby.lobbyId,
+							userId: members[0],
+							worldKind,
+							characterId: characters[0],
+					  }
+					: { kind: "party", lobbyId: lobby.lobbyId, members, worldKind, characters },
 			);
 		}
 		const expiredInvites = this.dropInvites((inv) => ctx.now >= inv.expiresAt);
@@ -786,6 +842,7 @@ export class Lobbies {
 	private depart(lobby: MutableLobby, userId: number, kicked: boolean): LobbyDeparture {
 		removeValue(lobby.members, userId);
 		removeValue(lobby.ready, userId);
+		lobby.characters.delete(userId);
 		this.byUser.delete(userId);
 		let countdownCancelled = false;
 		if (lobby.phase === "countdown") {

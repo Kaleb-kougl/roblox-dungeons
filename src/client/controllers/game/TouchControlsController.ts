@@ -31,18 +31,21 @@ import {
 	HUD_SKIN,
 	TOUCH_LAYOUT,
 	TOUCH_STRIP_GUI,
+	hasSwapTarget,
 	pickTouchTarget,
 	skinHasOf,
 	touchArtId,
 	touchArtSize,
 	touchArtTransparency,
 	touchButtonLabelKey,
+	touchButtonShown,
 	touchCountIcon,
 	touchFace,
 	touchLayout,
 	touchStickParts,
 	type ScreenRect,
 	type TouchArtControl,
+	type TouchButtonFacts,
 	type TouchFace,
 	type TouchButtonId,
 	type TouchLayoutResult,
@@ -669,6 +672,7 @@ export class TouchControlsController implements OnStart {
 	): void {
 		const opacity = display.touchOpacity / PERCENT;
 		const fill = opacity * TOUCH_LAYOUT.fillAlpha;
+		const facts: TouchButtonFacts = { atShrine: snapshot.atShrine, swapTarget: hasSwapTarget(snapshot.weapons) };
 		const textT = 1 - opacity;
 		for (const [, c] of ui.controls) {
 			const held = touch.isHeld(c.id);
@@ -692,7 +696,9 @@ export class TouchControlsController implements OnStart {
 				if (c.icon !== undefined) c.icon.image.ImageTransparency = textT;
 			}
 
-			const visible = c.placed && (c.id !== "shrine" || snapshot.atShrine);
+			// The Accept button only at a shrine; Swap only with a set to swap to (docs/ARCHER.md AR9: never for a Knight or
+			// an Archer). Hidden buttons keep their place (touchButtonShown): no other button moves.
+			const visible = c.placed && touchButtonShown(c.id, facts);
 			if (c.button.Visible !== visible) c.button.Visible = visible;
 			// On a pact altar the Accept button's word takes the pact's colour (docs/FORTUNE.md FO7).
 			if (c.id === "shrine" && visible) {

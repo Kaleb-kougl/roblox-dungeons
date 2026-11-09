@@ -1065,6 +1065,15 @@ export const REQUIRED_STRING_KEYS: ReadonlyArray<string> = ((): string[] => [
 	"game.title",
 	"ember.name",
 	...CLASS_IDS.map((c) => `class.${c}.name`),
+	// docs/ARCHER.md AR11: characters.ts characterStringKeys(), written out (an import would be one more top-level
+	// local): the character screen's title and Start, the run-over Character button, two summary lines per character
+	"character.title",
+	"character.start",
+	"run.over.character",
+	"character.knight.line.1",
+	"character.knight.line.2",
+	"character.archer.line.1",
+	"character.archer.line.2",
 	...ENEMY_ARCHETYPES.map((e) => `enemy.${e}.name`),
 	...BOSS_IDS.map((b) => `${b}.name`),
 	...RARITIES.map((r) => `rarity.${r}.name`),

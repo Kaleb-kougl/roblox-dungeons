@@ -270,12 +270,15 @@ describe("an endless run is scored", () => {
 
 const TEST_LIMITS = { ...DEFAULT_SEGMENT_LIMITS, allowDebugInput: true };
 
+// docs/ARCHER.md AR4: the recorded run (recordEndlessRun) was played without characters (both weapons), as every tool's
+// buildEndlessRunConfig is; the world registry now builds a character's run (the Knight by default), so the live run
+// and the validator get the recording's own config. The registry's character configs are checked in characterRuns.spec.
 function validator(runId: string): SegmentedValidator {
 	return new SegmentedValidator({
 		runId,
 		seed,
 		worldKind: RANKED_WORLD_KIND,
-		setup: buildWorldSetup(RANKED_WORLD_KIND, seed, { atBossDoor: false }),
+		setup: buildEndlessRunConfig(seed),
 		createdAt: 0,
 		limits: TEST_LIMITS,
 	});
@@ -300,7 +303,7 @@ function segmentEnd(s: RunSegment): number {
 }
 
 describe("the endless run, segmented per floor, validates on the server", () => {
-	const setup = buildWorldSetup(RANKED_WORLD_KIND, seed, { atBossDoor: false });
+	const setup = buildEndlessRunConfig(seed); // the recording's config (see validator above)
 	const run = new LiveRun({
 		seed,
 		spawnX: setup.spawn!.x,

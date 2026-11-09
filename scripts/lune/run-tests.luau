@@ -3,11 +3,13 @@
 	Headless spec runner: runs every compiled `*.spec` module under ReplicatedStorage.TS
 	(`out/shared/**`) with real JestCircus + Expect, inside Lune. No Roblox Studio needed.
 
-	  lune run scripts/lune/run-tests.luau [filter ...] [--project default.project.json]
+	  lune run scripts/lune/run-tests.luau [filter ...] [--project default.project.json] [--census]
 
 	`npm test` builds first (gen fixtures -> rbxtsc) and then runs this. A filter keeps the spec
 	files whose source path contains it (e.g. `sim/rng`). Exit code is 1 when any test or suite
-	fails, or when no spec matched.
+	fails, or when no spec matched. `--census` sets the Workspace attribute `KV_Census` (true), which
+	opt-in census specs read (shared/run/testing censusRequested) to run their full sample instead of
+	the small default one (docs/ARCHER.md AR13).
 
 	How it works (details in the lib/ headers):
 	  1. lib/rojoTree   builds a fake DataModel from default.project.json, mirroring the filesystem
@@ -41,6 +43,7 @@ end
 -- args
 local projectPath = "default.project.json"
 local filters: { string } = {}
+local census = false
 do
 	local i = 1
 	local args = process.args
@@ -49,6 +52,9 @@ do
 		if arg == "--project" then
 			projectPath = args[i + 1]
 			i += 2
+		elseif arg == "--census" then
+			census = true
+			i += 1
 		else
 			table.insert(filters, arg)
 			i += 1
@@ -105,6 +111,9 @@ if not fs.isDir("out/shared") then
 end
 
 local game = Services.install(RojoTree.build(projectPath))
+if census then
+	Instance.meta(game:GetService("Workspace")).attributes = { KV_Census = true }
+end
 local sharedRoot = game:GetService("ReplicatedStorage"):FindFirstChild("TS")
 assert(sharedRoot, "ReplicatedStorage.TS missing from " .. projectPath)
 

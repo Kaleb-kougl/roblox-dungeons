@@ -101,7 +101,7 @@ export function GameHud() {
 								boostsHighlight={isBoostsHighlight(highlight)}
 							/>
 						)}
-						<WeaponPanel key="Weapons" highlight={highlight === "weapons"} />
+						<WeaponPanel key="Weapons" />
 						<BossBar key="Boss" highlight={highlight === "bossBar"} />
 						{touch ? undefined : <ScorePanel key="Score" highlight={highlight === "score"} />}
 						<RoomClearStamp key="RoomClearStamp" />

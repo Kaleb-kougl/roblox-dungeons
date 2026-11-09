@@ -1,8 +1,8 @@
 import React, { useState } from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
 import { Workspace } from "@rbxts/services";
-import { selectInputDevice, selectSnapshot } from "client/store";
-import { useHudFont, hudText, role, str } from "client/ui/theme";
+import { selectInputDevice, selectRunInfo, selectSnapshot } from "client/store";
+import { useHudFont, hudText, role, str, themePack } from "client/ui/theme";
 import type { GameSnapshot } from "shared/play";
 import { PORTRAIT } from "shared/view";
 import {
@@ -11,6 +11,7 @@ import {
 	OPTIONS_VIEW,
 	PROGRESSION_STRINGS,
 	buildListSections,
+	characterBuildSections,
 	pauseBuildWidth,
 	type BuildListRow,
 } from "shared/view/hud";
@@ -23,6 +24,11 @@ const HIDDEN = 1;
 const HALF = 0.5;
 /** A text row's box over its text size (primitives Text's line slack). */
 const LINE_SLACK = 4;
+
+/** Whether the active pack has a string key (the per-character overrides' lookup, docs/ARCHER.md AR10). */
+function hasString(key: string): boolean {
+	return themePack()?.hasString(key) === true;
+}
 
 /** One line of the list (a row or a section title), reference px. */
 function lineHeight(): number {
@@ -104,7 +110,9 @@ export function hasBuildItems(s: GameSnapshot, withBoosts: boolean): boolean {
 export function BuildList(props: { order: number; width: number; maxRows: number; withBoosts: boolean }) {
 	const s = useSelector(selectSnapshot);
 	const [scroll, setScroll] = useState<ScrollingFrame | undefined>(undefined);
-	const sections = buildListSections(s, props.withBoosts);
+	// docs/ARCHER.md AR10: the rows read the local player's character's overrides (characterBuildSections).
+	const character = useSelector(selectRunInfo).character;
+	const sections = characterBuildSections(buildListSections(s, props.withBoosts), character, hasString);
 	if (sections.size() === 0) return undefined;
 	let lines = 0;
 	for (const sec of sections) lines += 1 + sec.rows.size();

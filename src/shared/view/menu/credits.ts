@@ -27,7 +27,7 @@ export interface CreditEntry {
 export const CREDITS: ReadonlyArray<CreditEntry> = [
 	{ section: "art", work: "Lords of Pain - Old School Isometric Assets", author: "Pupkin Assets" },
 	{ section: "art", work: "2D Demons - TopDown", author: "SmallScaleInt" },
-	{ section: "art", work: "HD 8-Directional Top-Down Character Pack 1", author: "SmallScaleInt" },
+	{ section: "art", work: "HD 8-Directional Top-Down Character Pack 1 (Knight, Archer)", author: "SmallScaleInt" },
 	{ section: "art", work: "UI User Interface Pack - Horror", author: "ToffeeCraft" },
 	{ section: "art", work: "Ninja Adventure (effects)", author: "Pixel-boy", license: "CC0" },
 	{ section: "art", work: "16Bit Bullets Asset Pack", author: "J i m", modified: true },

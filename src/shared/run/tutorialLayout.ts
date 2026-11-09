@@ -3,30 +3,26 @@
  * source). Pure graph and tile walks over a Dungeon Forge floor:
  *
  *   - shared/run tutorial.ts walks the lesson order with tutorialTour, which gives every lesson room the door the
- *     player arrives through (the world marker's target, and what the spawns are placed away from), and places
- *     lesson E's turret on coverTiles;
+ *     player arrives through (the world marker's target, and what the spawns are placed away from);
  *   - checkTutorialChain proves the chain floor is what the lessons need: one corridor between each lesson room and
  *     the next and nothing else, every room's floor one region with its door, centre and spawn tiles on it. The lock
  *     spec (tutorial.spec.ts) asserts it finds no problem, so a Forge change that breaks the lessons fails loudly;
  *   - scripts/find-tutorial-seed.js (via scripts/lune/find-tutorial-seed.luau) lists the seeds (theme and
  *     decoration) the chain works with, and scores small floor-2 boss floors with tutorialTour.
  *
- * The tour is the order the player is led through: the entrance, the six combat lessons, the treasure room, the
+ * The tour is the order the player is led through: the entrance, the six combat lessons (A-D, F, G), the treasure room, the
  * shrine, then the boss room (which holds the open stairwell on a non-boss floor). Each leg is the shortest walk over
  * FLOOR tiles (4-neighbour BFS) from one room's centre floor tile to the next; a leg that walks through a later tour
  * room would spawn that room's enemies (and show its prompt) early ("early" rooms; a chain floor has none).
  *
- * Tutorial floors are endless floors (tutorialForgeParams): pillars are solid WALL cells, so the walks go round them,
- * and lesson E's turret sniper stands behind one (coverTiles).
+ * Tutorial floors are endless floors (tutorialForgeParams): pillars are solid WALL cells, so the walks go round them.
  */
 import {
 	EncounterRng,
 	TileType,
-	bulletBlocker,
 	encounterRoomSeed,
 	encounterRooms,
 	gridToWorld,
-	lineOfSight,
 	roomFloorTiles,
 	roomSpawnTiles,
 	tileAt,
@@ -36,12 +32,6 @@ import {
 	type RoomTools,
 	type TileXZ,
 } from "shared/dungeon";
-
-/**
- * A cover tile has a solid pillar at most this many tiles away (Chebyshev). Spawn tiles keep 8 FLOOR neighbours
- * (roomSpawnTiles), so the nearest a spawn can stand to a pillar is 2: one free tile between them.
- */
-export const COVER_PILLAR_TILES = 2;
 
 /** One walk of the tour: from rooms[i] to rooms[i + 1]. */
 export interface TutorialLeg {
@@ -80,36 +70,6 @@ export function tutorialRoomTools(d: Dungeon, room: EncounterRoom): RoomTools {
 			return { x: room.cx, z: room.cz };
 		},
 	};
-}
-
-/** Grid cells of the solid pillars standing in room `roomId` (pillar props whose cell is WALL), as [gx, gy]. */
-function roomPillars(d: Dungeon, roomId: number): Array<[number, number]> {
-	const out: Array<[number, number]> = [];
-	for (const pr of d.props) {
-		if (pr.kind !== "pillar") continue;
-		if (tileAt(d, pr.x, pr.y) !== TileType.WALL || d.roomId[pr.y * d.W + pr.x] !== roomId) continue;
-		out.push([pr.x, pr.y]);
-	}
-	return out;
-}
-
-/**
- * Room `roomId`'s spawn tiles (roomSpawnTiles, row order) that are behind cover as seen from `door`: no line of sight
- * from the door (a solid pillar is in the way) and a pillar within COVER_PILLAR_TILES. Empty without solid pillars.
- */
-export function coverTiles(d: Dungeon, roomId: number, door: TileXZ): TileXZ[] {
-	const room = encounterRooms(d)[roomId];
-	const pillars = roomPillars(d, roomId);
-	if (room === undefined || pillars.size() === 0) return [];
-	const blocked = bulletBlocker(d);
-	return roomSpawnTiles(d, room, tutorialRoomTools(d, room)).filter((t) => {
-		const gx = worldToGrid(t.x);
-		const gy = worldToGrid(t.z);
-		let near = false;
-		for (const [px, py] of pillars)
-			if (math.max(math.abs(px - gx), math.abs(py - gy)) <= COVER_PILLAR_TILES) near = true;
-		return near && !lineOfSight(blocked, door.x, door.z, t.x, t.z);
-	});
 }
 
 interface Bfs {

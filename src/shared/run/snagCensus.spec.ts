@@ -16,6 +16,13 @@
  * A log with that gate, not a tuning tool (WS8 tunes in play). A walk stops early once it has gone STALL_SHARE of the
  * open distance along the input (both movers never move against it, so it can no longer stall) or once it stands still
  * for a tick (both movers are pure: it would stand there for good).
+ *
+ * docs/ARCHER.md AR4: the same floors walked as ROLLS too, in the 8 key directions: ROLL_TICKS ticks of the roll's steps
+ * (the dash ROLL_DASH_TICKS ticks at the character's `rollDashPercent`, then the recovery), each tick cut into equal
+ * sub-steps of at most MAX_MOVE_STEP as movePlayer cuts it, for the Knight (100 %, 2.5 tiles) and the Archer (140 %,
+ * 3.38 tiles). A roll stalls when it ends less than STALL_SHARE of its open-floor distance from its start; the same
+ * excuses and classes. Gate for the Archer's roll: zero unexcused pillar stalls with the slide, never more than the web
+ * mover in any class (WS5's gate); the Knight's is printed beside it.
  */
 import { describe, expect, it } from "@rbxts/jest-globals";
 import {
@@ -34,7 +41,21 @@ import {
 	type SolidCells,
 } from "shared/dungeon";
 import { applyRadialDeadzone, screenToWorld } from "shared/play";
-import { AXIS_MAX, PLAYER_RADIUS, SQRT1_2, WALK_STEP, quantizeAxis } from "shared/sim";
+import {
+	AXIS_MAX,
+	MAX_MOVE_STEP,
+	PLAYER_RADIUS,
+	ROLL_DASH_STEP,
+	ROLL_DASH_TICKS,
+	ROLL_RECOVERY_STEP,
+	ROLL_TICKS,
+	SQRT1_2,
+	STEP_TOLERANCE,
+	WALK_STEP,
+	quantizeAxis,
+	scalePercent,
+} from "shared/sim";
+import { characterTraits, type CharacterId } from "shared/characters";
 
 /**
  * Run seeds 1..SEEDS, one floor each, cycling through floors 1..FLOORS (seed s walks floor 1 + (s - 1) % FLOORS), so
@@ -119,12 +140,14 @@ interface Tally {
 	excusedDeadEnd: number;
 	byClass: Map<StallClass, number>;
 	byDecor: Map<string, number>;
+	/** Summed distance every walk / roll ended from its start (AR4's sanity check: the Archer's rolls go farther). */
+	moved: number;
 }
 
 function newTally(): Tally {
 	const byClass = new Map<StallClass, number>();
 	for (const c of CLASSES) byClass.set(c, 0);
-	return { walks: 0, stalls: 0, excusedFace: 0, excusedDeadEnd: 0, byClass, byDecor: new Map() };
+	return { walks: 0, stalls: 0, excusedFace: 0, excusedDeadEnd: 0, byClass, byDecor: new Map(), moved: 0 };
 }
 
 interface CensusFloor {
@@ -256,8 +279,24 @@ function walkOne(f: CensusFloor, mover: Mover, gx: number, gy: number, dir: Dir,
 		z = p.z;
 		if (still || (x - gx) * ux + (z - gy) * uz >= enough) break;
 	}
+	judge(f, gx, gy, x, z, ux, uz, enough, t);
+}
+
+/** A walk (or roll) from (gx, gy) along unit (ux, uz) ended at (x, z): tallies it (a stall, its excuse or class). */
+function judge(
+	f: CensusFloor,
+	gx: number,
+	gy: number,
+	x: number,
+	z: number,
+	ux: number,
+	uz: number,
+	enough: number,
+	t: Tally,
+): void {
 	t.walks++;
 	const moved = math.sqrt((x - gx) * (x - gx) + (z - gy) * (z - gy));
+	t.moved += moved;
 	if (moved >= enough) return;
 	t.stalls++;
 	const contacts = contactsAt(f, x, z);
@@ -273,6 +312,46 @@ function walkOne(f: CensusFloor, mover: Mover, gx: number, gy: number, dir: Dir,
 	const [cls, kind] = classify(f, contacts, x, z);
 	t.byClass.set(cls, t.byClass.get(cls)! + 1);
 	if (kind !== undefined) t.byDecor.set(kind, (t.byDecor.get(kind) ?? 0) + 1);
+}
+
+/**
+ * One roll (AR4) from the centre of (gx, gy) along the key direction `dir` at `dashPercent`: the roll's per-tick steps,
+ * each cut like movePlayer cuts it; stops once a tick moves nothing (a pure mover would stand there for good).
+ */
+function rollOne(f: CensusFloor, mover: Mover, gx: number, gy: number, dir: Dir, dashPercent: number, t: Tally): void {
+	const len = math.sqrt(dir.dx * dir.dx + dir.dz * dir.dz);
+	if (len === 0) return;
+	const ux = dir.dx / len,
+		uz = dir.dz / len;
+	const dash = scalePercent(ROLL_DASH_STEP, dashPercent);
+	const free = ROLL_DASH_TICKS * dash + (ROLL_TICKS - ROLL_DASH_TICKS) * ROLL_RECOVERY_STEP;
+	let x = gx,
+		z = gy;
+	for (let i = 0; i < ROLL_TICKS; i++) {
+		const dist = i < ROLL_DASH_TICKS ? dash : ROLL_RECOVERY_STEP;
+		const n = dist <= STEP_TOLERANCE ? 1 : math.ceil(dist / MAX_MOVE_STEP);
+		const sx = (ux * dist) / n,
+			sz = (uz * dist) / n;
+		const x0 = x,
+			z0 = z;
+		for (let k = 0; k < n; k++) {
+			const p = mover(f.d, x, z, sx, sz, f.solid);
+			x = p.x;
+			z = p.z;
+		}
+		if (x === x0 && z === z0) break;
+	}
+	judge(f, gx, gy, x, z, ux, uz, STALL_SHARE * free, t);
+}
+
+/** The census floors, built once for both tests (about 6 s a floor). */
+let floorsCache: CensusFloor[] | undefined;
+function censusFloors(): CensusFloor[] {
+	if (floorsCache === undefined) {
+		floorsCache = [];
+		for (let seed = 1; seed <= SEEDS; seed++) floorsCache.push(censusFloor(seed, 1 + ((seed - 1) % FLOORS)));
+	}
+	return floorsCache;
 }
 
 function row(name: string, t: Tally): string {
@@ -294,8 +373,7 @@ describe("snag census (WALL_SLIDE.md WS5)", () => {
 			for (const [moverName] of MOVERS) tallies.set(`${inputName}/${moverName}`, newTally());
 		let floors = 0,
 			starts = 0;
-		for (let seed = 1; seed <= SEEDS; seed++) {
-			const f = censusFloor(seed, 1 + ((seed - 1) % FLOORS));
+		for (const f of censusFloors()) {
 			floors++;
 			starts += f.starts.size();
 			for (const [inputName, dirs] of INPUTS)
@@ -318,5 +396,46 @@ describe("snag census (WALL_SLIDE.md WS5)", () => {
 				expect([inputName, c, ok]).toEqual([inputName, c, true]);
 			}
 		}
+	});
+
+	it(`rolls (docs/ARCHER.md AR4): the Archer's 140 % roll, no unexcused pillar stall with the slide, never more than the web mover`, () => {
+		const who: ReadonlyArray<CharacterId> = ["knight", "archer"];
+		const tallies = new Map<string, Tally>();
+		for (const c of who) for (const [moverName] of MOVERS) tallies.set(`${c}/${moverName}`, newTally());
+		let floors = 0,
+			starts = 0;
+		for (const f of censusFloors()) {
+			floors++;
+			starts += f.starts.size();
+			for (const c of who) {
+				const pct = characterTraits(c).rollDashPercent;
+				for (const [moverName, mover] of MOVERS) {
+					const t = tallies.get(`${c}/${moverName}`)!;
+					for (const [gx, gy] of f.starts) for (const dir of KEYS) rollOne(f, mover, gx, gy, dir, pct, t);
+				}
+			}
+		}
+		const lines = [`[snag census] rolls: ${floors} floors, ${starts} start cells, 8 key directions`];
+		for (const c of who)
+			for (const [moverName] of MOVERS)
+				lines.push(row(`roll ${c} ${moverName}`, tallies.get(`${c}/${moverName}`)!));
+		for (const c of who)
+			lines.push(
+				`roll ${c} slide: mean distance ${string.format(
+					"%.3f",
+					tallies.get(`${c}/slide`)!.moved / tallies.get(`${c}/slide`)!.walks,
+				)}`,
+			);
+		print(lines.join("\n"));
+		// The Archer's rolls do go farther (the census is not rolling the Knight's roll twice).
+		expect(tallies.get("archer/slide")!.moved > tallies.get("knight/slide")!.moved).toBe(true);
+		const web = tallies.get("archer/web")!;
+		const slide = tallies.get("archer/slide")!;
+		expect(["archer", "pillar", slide.byClass.get("pillar")]).toEqual(["archer", "pillar", 0]);
+		for (const c of CLASSES) {
+			const ok = slide.byClass.get(c)! <= web.byClass.get(c)!;
+			expect(["archer", c, ok]).toEqual(["archer", c, true]);
+		}
+		expect(slide.walks).toBe(tallies.get("knight/slide")!.walks);
 	});
 });

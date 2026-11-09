@@ -97,7 +97,7 @@ export interface StageAssetWaitConfig {
 	readonly hardCapSec: number;
 }
 
-/** The present players' characters when the caller has no roster (today: the knight only; the Archer is planned). */
+/** The players' visuals when the caller has no roster (the Knight's; a run's own roster: shared/view stageCharacters). */
 export const STAGE_CHARACTERS: ReadonlyArray<string> = [ACTOR_VIEW.playerVisualId];
 
 export const STAGE_ASSETS: StageAssetsConfig = {

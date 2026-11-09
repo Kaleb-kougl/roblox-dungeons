@@ -8,6 +8,7 @@
  * the sim (e.g. a path still marked `TODO(task N)`), comes back as `{ ok: false, reason }`; validateRun never throws.
  * docs/SERVER.md has the flow, the limits and what this does NOT prevent.
  */
+import { isCharacterId } from "shared/characters";
 import {
 	Button,
 	PORT_BUTTONS,
@@ -19,7 +20,7 @@ import {
 	runStartHalfHearts,
 } from "shared/sim";
 import { buildRunConfig, isValidRunSeed, type RunSetup } from "./config";
-import { DEFAULT_RUN_LIMITS, MAX_REJECT_REASON_CHARS, type RunLimits } from "./limits";
+import { DEFAULT_RUN_LIMITS, MAX_CHARACTER_ID_CHARS, MAX_REJECT_REASON_CHARS, type RunLimits } from "./limits";
 import { replayObserved, type ReplayHooks } from "./replay";
 import { RunTelemetry, type RunTelemetryRecord } from "./telemetry";
 
@@ -48,6 +49,13 @@ export interface RunSubmission {
 	/** hashState() of the client's final state (8 lowercase hex digits). */
 	claimedHash: string;
 	claimed: RunSummary;
+	/**
+	 * docs/ARCHER.md AR5: the character the run was built with (shared/characters CharacterId; the client sends its
+	 * run's RunSetup.characters[0]). The replay's world is built with it (worlds with characters: endless). Absent: the
+	 * world as built without characters (endless: both weapons, every recording tool's config). Unknown:
+	 * `bad_submission`.
+	 */
+	characterId?: string;
 }
 
 /** Why a run was rejected: a small, fixed set (analytics breakdowns need bounded values). */
@@ -139,6 +147,11 @@ function checkShape(s: RunSubmission): string | undefined {
 	if (!typeIs(c, "table")) return "claimed summary missing";
 	if (!isFiniteValue(c.ticks) || !isFiniteValue(c.kills)) return "claimed ticks / kills must be numbers";
 	if (!typeIs(c.bossDefeated, "boolean") || !typeIs(c.died, "boolean")) return "claimed flags must be booleans";
+	const id = s.characterId;
+	if (id !== undefined && (!typeIs(id, "string") || id.size() > MAX_CHARACTER_ID_CHARS)) {
+		return "characterId must be a short string";
+	}
+	if (id !== undefined && !isCharacterId(id)) return `unknown character ${id}`;
 	return undefined;
 }
 
@@ -235,8 +248,13 @@ export function validateRun(
 		return reject("debug_spawn", "debug spawn: runs from the boss door are not accepted");
 	}
 
+	const characterId = submission.characterId;
 	const [setupOk, setupOrErr] = pcall(() =>
-		buildRunConfig(submission.seed, { atBossDoor: submission.atBossDoor, world: limits.world }),
+		buildRunConfig(submission.seed, {
+			atBossDoor: submission.atBossDoor,
+			world: limits.world,
+			characters: characterId !== undefined && isCharacterId(characterId) ? [characterId] : undefined,
+		}),
 	);
 	if (!setupOk) return reject("config_error", `config error: ${errorMessage(setupOrErr)}`);
 	const setup = setupOrErr as RunSetup;
@@ -244,7 +262,11 @@ export function validateRun(
 	if (badSpawn !== undefined) return reject("spawn_mismatch", `spawn mismatch: ${badSpawn}`);
 
 	const [replayOk, replayed] = pcall(() => {
-		const telemetry = new RunTelemetry(runStartHalfHearts(setup.config), options.archetypeNames);
+		const telemetry = new RunTelemetry(
+			runStartHalfHearts(setup.config),
+			options.archetypeNames,
+			setup.characters?.[0],
+		);
 		const state = replayObserved(recording, setup.config, (s) => telemetry.observe(s), options.hooks);
 		return { state, telemetry: telemetry.finish() };
 	});

@@ -2,6 +2,7 @@
 // v2 (every group, v1 migration, sanitize, patches) and the mockable persistence layer: retries, session cache,
 // dirty tracking, save on release.
 import { describe, expect, it } from "@rbxts/jest-globals";
+import { DEFAULT_CHARACTER } from "shared/characters";
 import {
 	DEFAULT_HUD_SCALE_PERCENT,
 	DEFAULT_ROOM_EDGES,
@@ -298,6 +299,7 @@ describe("display: room edges (docs/ROOM_EDGES.md RE6)", () => {
 			touchLeftHanded: DEFAULT_TOUCH_LEFT_HANDED,
 			language: DEFAULT_LANGUAGE,
 			padVibration: DEFAULT_PAD_VIBRATION,
+			character: DEFAULT_CHARACTER,
 		});
 	});
 
@@ -342,6 +344,7 @@ describe("display: room edges (docs/ROOM_EDGES.md RE6)", () => {
 			touchLeftHanded: DEFAULT_TOUCH_LEFT_HANDED,
 			language: DEFAULT_LANGUAGE,
 			padVibration: DEFAULT_PAD_VIBRATION,
+			character: DEFAULT_CHARACTER,
 		});
 		expect(resolveDisplaySettings(decodeSettingsDoc({ v: 2 }).display).roomEdges).toBe(true);
 		expect(resolveDisplaySettings(decodeSettingsDoc({ v: SETTINGS_DOC_V1, juice: {} }).display).roomEdges).toBe(
@@ -449,6 +452,7 @@ describe("display: minimap (docs/MINIMAP.md M10)", () => {
 			touchLeftHanded: DEFAULT_TOUCH_LEFT_HANDED,
 			language: DEFAULT_LANGUAGE,
 			padVibration: DEFAULT_PAD_VIBRATION,
+			character: DEFAULT_CHARACTER,
 		});
 	});
 
@@ -494,6 +498,7 @@ describe("display: minimap (docs/MINIMAP.md M10)", () => {
 			touchLeftHanded: DEFAULT_TOUCH_LEFT_HANDED,
 			language: DEFAULT_LANGUAGE,
 			padVibration: DEFAULT_PAD_VIBRATION,
+			character: DEFAULT_CHARACTER,
 		});
 		expect(resolveDisplaySettings(decodeSettingsDoc({ v: 2 }).display).minimap).toBe(true);
 		expect(resolveDisplaySettings(decodeSettingsDoc({ v: SETTINGS_DOC_V1, juice: {} }).display).minimap).toBe(true);
@@ -729,6 +734,7 @@ describe("display: player outline (docs/PLAYER_OUTLINE.md P4)", () => {
 			touchLeftHanded: DEFAULT_TOUCH_LEFT_HANDED,
 			language: DEFAULT_LANGUAGE,
 			padVibration: DEFAULT_PAD_VIBRATION,
+			character: DEFAULT_CHARACTER,
 		});
 	});
 
@@ -810,6 +816,7 @@ describe("display: touch controls (docs/MOBILE.md MB7)", () => {
 			touchLeftHanded: DEFAULT_TOUCH_LEFT_HANDED,
 			language: DEFAULT_LANGUAGE,
 			padVibration: DEFAULT_PAD_VIBRATION,
+			character: DEFAULT_CHARACTER,
 		});
 	});
 
@@ -928,6 +935,7 @@ describe("display: gamepad menu vibration (docs/GAMEPAD_MENUS.md GM9)", () => {
 			touchLeftHanded: DEFAULT_TOUCH_LEFT_HANDED,
 			language: DEFAULT_LANGUAGE,
 			padVibration: false,
+			character: DEFAULT_CHARACTER,
 		});
 	});
 
@@ -967,5 +975,26 @@ describe("display: the Display tab's Reset keeps the gamepad vibration (Controls
 		expect(displayResetOverrides({})).toEqual({});
 		expect(displayResetOverrides(undefined)).toEqual({});
 		expect(displayResetOverrides({ padVibration: "off" })).toEqual({});
+	});
+});
+
+describe("display: the remembered character pick (docs/ARCHER.md ARD12, AR5)", () => {
+	it("defaults to the Knight; only another character id is stored, in the v2 document", () => {
+		expect(defaultDisplaySettings().character).toBe(DEFAULT_CHARACTER);
+		expect(resolveDisplaySettings(undefined).character).toBe("knight");
+		expect(sanitizeDisplayOverrides({ character: "archer" })).toEqual({ character: "archer" });
+		expect(sanitizeDisplayOverrides({ character: "knight" })).toEqual({});
+		for (const junk of ["ranger", "", 1, true, {}])
+			expect(sanitizeDisplayOverrides({ character: junk })).toEqual({});
+		expect(resolveDisplaySettings({ character: "archer" }).character).toBe("archer");
+		expect(DISPLAY_SETTING_KEYS.includes("character")).toBe(true);
+		const doc = encodeSettingsDoc({ display: { character: "archer" } });
+		expect(doc).toEqual({ ...EMPTY_DOC, display: { character: "archer" } });
+		expect(decodeSettingsDoc(doc).display).toEqual({ character: "archer" });
+	});
+
+	it("the Display tab's Reset keeps it (it is the character screen's)", () => {
+		expect(displayResetOverrides({ hudScale: 110, character: "archer" })).toEqual({ character: "archer" });
+		expect(displayResetOverrides({ hudScale: 110, character: "knight" })).toEqual({});
 	});
 });

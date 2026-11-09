@@ -103,6 +103,10 @@
  * luminances integers strictly increasing from 0 to 255 (positions in the SOURCE's luminance, tuned per set). Absent:
  * the source pixels as they are.
  *
+ * Per-frame sources (`source.type: "frames"`): one PNG per frame, <dir>/<folder>/<facing dir>/<file>, the facing dirs
+ * in output order (`facingDirs`), named by `source.naming` (FRAME_NAMINGS: "lordsOfPain", the default, or "smallscale"
+ * for SmallScaleInt's individual sprites, whose frame numbers are 2 f + 1).
+ *
  * Downscale (set `downscale: k`, an integer; docs/BOSS_DEMONLORD.md D1): every kept frame is noise-cut at full
  * resolution, then box-filtered by k (the world-art `downscale`, premultiplied alpha). The union box is measured at
  * full resolution and grown to whole k-blocks, then / k; `pad`, the cell, the outline (and its pad rule) are in
@@ -141,6 +145,11 @@
  *        node scripts/art/build-atlases.js --lock --only duoIcons  needs only the generated icons)
  *        node scripts/art/build-atlases.js --only kenney           the same for the Kenney decor sheet
  *        node scripts/art/build-atlases.js --lock --only kenney    (docs/KENNEY_DECOR.md KN9; needs only art/vendor/kenney/)
+ *        node scripts/art/build-atlases.js --only class.ranger     build just one sprite set (any `spriteSets` id): its
+ *                                                                  sheets, outline sheets, contact sheet and its entry
+ *                                                                  in layout.ts (merged, every other entry unchanged);
+ *                                                                  needs only its packs and its pixelsPerTileFrom set's
+ *        node scripts/art/build-atlases.js --lock --only class.ranger  re-hash just that set's files into the lock
  * Plain Node plus pngjs. The pure helpers are exported for scripts/art/build-atlases.test.js (npm run test:art).
  */
 "use strict";
@@ -460,11 +469,34 @@ function outlineSheet(img, frameW, frameH, widthPx, bodyAlpha, bodyMinRgb) {
 // ---------------------------------------------------------------------------------------------
 // Sources and the lock
 
+/**
+ * Per-frame file naming schemes of a `frames` source (`source.naming`; absent = "lordsOfPain"). In both the folder is
+ * <animation folder>/<facing dir>/ and the angle the facing's screen angle (d * 360 / count, E = 0, counter-clockwise):
+ *   lordsOfPain  <folder>_<dir>_<angle, 1 decimal>_<frame>.png       (the Lords of Pain packs: skeleton_E_0.0_3.png)
+ *   smallscale   <folder>_<angle, integer>_<2 frame + 1, 3 digits>.png (SmallScaleInt's individual sprites, the paid
+ *                edition's Archer: Idle_45_007.png is frame 3; the export numbers every other frame of a 30-frame
+ *                render, 001..029, so `frames` stay the knight's grid indices 0..14). The angle must be a whole number.
+ */
+const FRAME_NAMINGS = ["lordsOfPain", "smallscale"];
+
+/** The naming scheme of a `frames` source (FRAME_NAMINGS); throws on an unknown one. */
+function frameNaming(source) {
+	const naming = source.naming === undefined ? "lordsOfPain" : source.naming;
+	if (!FRAME_NAMINGS.includes(naming)) throw new Error(`${source.dir}: source.naming must be one of ${FRAME_NAMINGS.join(", ")} (or absent), got ${JSON.stringify(source.naming)}`);
+	return naming;
+}
+
 function frameFileName(set, anim, d) {
-	// Lords of Pain: <folder>/<dir>/<folder>_<dir>_<angle>_<frame>.png, angle = the facing's screen angle.
 	const dir = set.facingDirs[d];
-	const angle = ((d * 360) / set.facingCount).toFixed(1);
-	return (frame) => `${set.source.dir}/${anim.folder}/${dir}/${anim.folder}_${dir}_${angle}_${frame}.png`;
+	const deg = (d * 360) / set.facingCount;
+	const base = `${set.source.dir}/${anim.folder}/${dir}/${anim.folder}`;
+	if (frameNaming(set.source) === "smallscale") {
+		if (!Number.isInteger(deg)) throw new Error(`${set.source.dir}: naming "smallscale" needs whole-degree facings, facing ${d} of ${set.facingCount} is ${deg}`);
+		return (frame) => `${base}_${deg}_${String(2 * frame + 1).padStart(3, "0")}.png`;
+	}
+	// Lords of Pain: <folder>/<dir>/<folder>_<dir>_<angle>_<frame>.png, angle = the facing's screen angle.
+	const angle = deg.toFixed(1);
+	return (frame) => `${base}_${dir}_${angle}_${frame}.png`;
 }
 
 /**
@@ -562,23 +594,32 @@ function cellsMode(id, set) {
 	throw new Error(`${id}: cells must be "perSheet" (each sheet trimmed to its own animations) or absent (one cell for the set), got ${JSON.stringify(set.cells)}`);
 }
 
+/** Every source file sprite set `id` reads (its real animations and `lockAlso`), added to `files` (a Set). */
+function addSpriteSetFiles(files, id, set) {
+	for (const name of Object.keys(set.animations).sort()) {
+		const anim = set.animations[name];
+		if (anim.cellsOf) continue;
+		if (set.source.type === "grid") for (const f of gridFiles(id, set.source, anim.file)) files.add(f);
+		else for (let d = 0; d < set.facingCount; d++) for (const f of anim.frames) files.add(frameFileName(set, anim, d)(f));
+	}
+	for (const name of Object.keys(set.lockAlso || {}).sort()) {
+		const anim = set.lockAlso[name];
+		if (set.source.type !== "frames" || !anim.folder || !Array.isArray(anim.frames)) throw new Error(`${id}: lockAlso.${name} needs a frames source, a folder and frames`);
+		for (let d = 0; d < set.facingCount; d++) for (const f of anim.frames) files.add(frameFileName(set, anim, d)(f));
+	}
+	return files;
+}
+
+/** Every source file sprite set `id` of `spriteSets` reads, sorted (`--lock --only <set id>`). */
+function spriteSetSourceFiles(spriteSets, id) {
+	if (!Object.prototype.hasOwnProperty.call(spriteSets, id)) throw new Error(`no sprite set ${id}`);
+	return [...addSpriteSetFiles(new Set(), id, spriteSets[id])].sort();
+}
+
 /** Every source file the config reads, sorted. */
 function sourceFiles(config) {
 	const files = new Set();
-	for (const id of Object.keys(config.spriteSets).sort()) {
-		const set = config.spriteSets[id];
-		for (const name of Object.keys(set.animations).sort()) {
-			const anim = set.animations[name];
-			if (anim.cellsOf) continue;
-			if (set.source.type === "grid") for (const f of gridFiles(id, set.source, anim.file)) files.add(f);
-			else for (let d = 0; d < set.facingCount; d++) for (const f of anim.frames) files.add(frameFileName(set, anim, d)(f));
-		}
-		for (const name of Object.keys(set.lockAlso || {}).sort()) {
-			const anim = set.lockAlso[name];
-			if (set.source.type !== "frames" || !anim.folder || !Array.isArray(anim.frames)) throw new Error(`${id}: lockAlso.${name} needs a frames source, a folder and frames`);
-			for (let d = 0; d < set.facingCount; d++) for (const f of anim.frames) files.add(frameFileName(set, anim, d)(f));
-		}
-	}
+	for (const id of Object.keys(config.spriteSets).sort()) addSpriteSetFiles(files, id, config.spriteSets[id]);
 	for (const id of Object.keys(config.images).sort()) files.add(config.images[id].file);
 	for (const f of worldSourceFiles(config.worldArt)) files.add(f);
 	for (const id of fxIds(config)) files.add(config.fx.sets[id].file);
@@ -680,7 +721,7 @@ function sourceRegion(set, anim, d, frame) {
 	}
 	if (source.type === "frames") {
 		const rel = frameFileName(set, anim, d)(frame);
-		if (!fs.existsSync(path.join(VENDOR, rel))) fail(`${missingHint(rel)} (or facingDirs does not match the folder angles)`);
+		if (!pngCache.has(rel) && !fs.existsSync(path.join(VENDOR, rel))) fail(`${missingHint(rel)} (or facingDirs does not match the folder angles)`);
 		const img = readPng(rel);
 		if (img.w !== source.frameW || img.h !== source.frameH) throw new Error(`${rel}: ${img.w}x${img.h}, expected ${source.frameW}x${source.frameH}`);
 		return { img, x: 0, y: 0, w: img.w, h: img.h };
@@ -811,6 +852,15 @@ function spriteSetOrder(spriteSets) {
 	};
 	for (const id of Object.keys(spriteSets).sort()) visit(id, []);
 	return order;
+}
+
+/** Sprite set `id` and the sets its `pixelsPerTileFrom` chain names, in build order (each named set before its user). */
+function spriteSetChain(spriteSets, id) {
+	if (!Object.prototype.hasOwnProperty.call(spriteSets, id)) throw new Error(`no sprite set ${id}`);
+	const order = spriteSetOrder(spriteSets); // fails on a missing or cyclic reference first
+	const need = new Set();
+	for (let cur = id; cur !== undefined; cur = spriteSets[cur].pixelsPerTileFrom) need.add(cur);
+	return order.filter((x) => need.has(x));
 }
 
 /** Builds every sprite set in dependency order; returns the results sorted by id (the output order). */
@@ -2155,6 +2205,52 @@ function comment(lines) {
 	return lines.map((l) => (l ? ` * ${l}` : " *")).join("\n");
 }
 
+const SPRITE_LAYOUTS_DECL = "export const VALE_SPRITE_LAYOUTS: Record<string, ValeSpriteLayout> = ";
+const TOP_KEY = /^\t(?:("(?:[^"\\]|\\.)*")|([A-Za-z_$][A-Za-z0-9_$]*)): /;
+
+/**
+ * layout.ts `text` (as layoutModule wrote it) with sprite set `id`'s VALE_SPRITE_LAYOUTS entry set to `layout` (replaced,
+ * or inserted at its sorted place), every other byte unchanged: exactly what layoutModule writes for the same sets with
+ * this one rebuilt (`--only <set id>`). Throws when the text is not layoutModule's (no sorted VALE_SPRITE_LAYOUTS block),
+ * or when the entry needs per-sheet cell fields the file does not declare (a full build adds them).
+ */
+function mergeSpriteLayout(text, id, layout) {
+	const start = text.indexOf(`\n${SPRITE_LAYOUTS_DECL}`);
+	if (start < 0) throw new Error("layout.ts has no VALE_SPRITE_LAYOUTS (run a full art:build)");
+	const open = start + 1 + SPRITE_LAYOUTS_DECL.length;
+	// layoutModule always expands it (an empty one is "{\n};"), one top-level entry per sprite set
+	if (!text.startsWith("{\n", open)) throw new Error("layout.ts: VALE_SPRITE_LAYOUTS is not an expanded object (run a full art:build)");
+	const close = text.indexOf("\n};\n", open);
+	if (close < 0) throw new Error("layout.ts: VALE_SPRITE_LAYOUTS has no closing `};`");
+	const body = text.slice(open + 2, close + 1);
+	const end = close + "\n};\n".length;
+	const entries = new Map();
+	let key;
+	for (const line of body.split("\n").slice(0, -1)) {
+		const m = TOP_KEY.exec(line);
+		if (m) {
+			key = m[1] !== undefined ? JSON.parse(m[1]) : m[2];
+			if (entries.has(key)) throw new Error(`layout.ts: VALE_SPRITE_LAYOUTS lists ${key} twice`);
+			entries.set(key, "");
+		} else if (key === undefined || (!line.startsWith("\t\t") && line !== "\t},")) {
+			throw new Error(`layout.ts: unexpected line in VALE_SPRITE_LAYOUTS: ${line}`);
+		}
+		entries.set(key, `${entries.get(key)}${line}\n`);
+	}
+	const keys = [...entries.keys()];
+	if (keys.join("\n") !== [...keys].sort().join("\n")) throw new Error("layout.ts: VALE_SPRITE_LAYOUTS is not sorted by id (run a full art:build)");
+	const perSheet = layout.sheets.some((sh) => sh.frameW !== undefined);
+	if (perSheet && !text.includes("\n\tframeW?: number;\n")) throw new Error(`${id}: per-sheet cells need the ValeSpriteSheetFile fields a full art:build declares`);
+	const k = tsKey(id);
+	entries.set(id, `\t${k}: ${tsValue(layout, 1, TAB_WIDTH + k.length + 2)},\n`);
+	const merged = [...entries.keys()].sort().map((n) => entries.get(n));
+	const out = `${text.slice(0, open)}{\n${merged.join("")}};\n${text.slice(end)}`;
+	for (const line of out.split("\n")) {
+		if (line.replace(/\t/g, "    ").length > PRINT_WIDTH) throw new Error(`layout.ts line over ${PRINT_WIDTH} columns: ${line}`);
+	}
+	return out;
+}
+
 /** The image whose mean colour is layout.ts's VALE_FLOOR_HEX (the biome.1 floor colour). */
 const FLOOR_IMAGE_ID = "tile.biome.1.floor";
 
@@ -2240,7 +2336,7 @@ function layoutModule(sets, images, floorHex, world) {
 		"\tslice?: SliceInsets;",
 		"}",
 		"",
-		`export const VALE_SPRITE_LAYOUTS: Record<string, ValeSpriteLayout> = ${tsValue(spriteLayouts, 0, PRINT_WIDTH)};`,
+		`${SPRITE_LAYOUTS_DECL}${tsValue(spriteLayouts, 0, PRINT_WIDTH)};`,
 		"",
 		`export const VALE_IMAGE_LAYOUTS: Record<string, ValeImageLayout> = ${tsValue(imageLayouts, 0, PRINT_WIDTH)};`,
 		"",
@@ -4797,13 +4893,22 @@ function buildOutputs(sets, images) {
 	return out;
 }
 
-/** `--only <group>` from argv: undefined (a full build), or a group the scoped build knows (ONLY_GROUPS). */
-function onlyGroup(argv) {
+/**
+ * `--only <group>` from argv: undefined (a full build), a group the scoped build knows (ONLY_GROUPS), or the id of one
+ * sprite set in `spriteSets` (art/atlases.json `spriteSets`; e.g. `--only class.ranger`, mainOnlySpriteSet).
+ */
+function onlyGroup(argv, spriteSets) {
 	const i = argv.indexOf("--only");
 	if (i < 0) return undefined;
 	const g = argv[i + 1];
-	if (!ONLY_GROUPS.includes(g)) fail(`--only takes one of ${ONLY_GROUPS.join(", ")}, got ${JSON.stringify(g)}`);
-	return g;
+	if (ONLY_GROUPS.includes(g)) return g;
+	if (spriteSets && typeof g === "string" && Object.prototype.hasOwnProperty.call(spriteSets, g)) return g;
+	fail(`--only takes one of ${ONLY_GROUPS.join(", ")} or a sprite set id, got ${JSON.stringify(g)}`);
+}
+
+/** True when `only` (onlyGroup's result) names a sprite set rather than a group. */
+function isOnlySpriteSet(only) {
+	return only !== undefined && !ONLY_GROUPS.includes(only);
 }
 
 /** Groups `--only` can build on their own (their sources need no other pack). */
@@ -4822,8 +4927,9 @@ const ONLY_GROUPS = [
 	"kenney",
 ];
 
-/** The vendor files `--lock --only <group>` re-hashes. */
+/** The vendor files `--lock --only <group>` re-hashes (a sprite set id: that set's own files, not its pixelsPerTileFrom's). */
 function onlyGroupSourceFiles(config, group) {
+	if (isOnlySpriteSet(group)) return spriteSetSourceFiles(config.spriteSets, group);
 	if (group === "bullets") return bulletSourceFiles(config.bullets);
 	if (group === "goo") {
 		if (!config.goo) fail("art/atlases.json has no `goo` group");
@@ -5044,11 +5150,81 @@ function mainOnlyDuoIcons(config) {
 	console.log(`art:build --only duoIcons: ${changed} file(s) updated`);
 }
 
+/** Log lines for a built sprite set (cell, pivot, density, sheets, outline clip). */
+function printSpriteSet(s) {
+	const l = s.layout;
+	console.log(`${s.id}: cell ${l.frameW}x${l.frameH} (source box ${s.box.join(",")}${s.downscale > 1 ? `, downscale ${s.downscale}` : ""}), pivot (${l.pivot.x}, ${l.pivot.y}), body ${s.bodyHeight} px -> ${l.pixelsPerTile} px/tile${s.pixelsPerTileFrom ? ` (from ${s.pixelsPerTileFrom})` : ""}${s.recolorStops ? `, recoloured (${s.recolorStops}-stop ramp)` : ""}`);
+	console.log(`  pivot per facing (cell coords) on the measured frame: ${s.sanity.join(" ")}`);
+	for (const sh of s.sheets) {
+		const own = sh.cell ? `, cell ${sh.cell.frameW}x${sh.cell.frameH} pivot (${sh.cell.pivot.x}, ${sh.cell.pivot.y})` : "";
+		console.log(`  ${sh.file}: ${sh.img.w}x${sh.img.h}, ${sh.cells} cells${own}${sh.outlineFile ? ` + ${sh.outlineFile} (outline ${s.outline.widthPx} px)` : ""}${
+			sh.rimClip ? `, rim clipped at the cell edge in ${sh.rimClip.cells} cells (${sh.rimClip.pixels} body px)` : ""
+		}`);
+	}
+}
+
+/**
+ * Builds sprite set `id` of `spriteSets` alone: the set and the sets its pixelsPerTileFrom chain names (built to read
+ * their pixelsPerTile, never written), in build order. Returns { set: the result for `id`, chain: every id built }.
+ */
+function buildOneSpriteSet(spriteSets, id) {
+	const chain = spriteSetChain(spriteSets, id);
+	const built = new Map();
+	for (const sid of chain) built.set(sid, buildSpriteSet(sid, spriteSets[sid], built));
+	return { set: built.get(id), chain };
+}
+
+/**
+ * Every PNG `--only <set id>` writes for a built sprite set, as buildOutputs does for it in a full build: each sheet
+ * (followed by its outline sheet) into art/build (and art/upload), and its contact sheet. [{ dir, name, img }].
+ */
+function spriteSetOutputs(s) {
+	return buildOutputs([s], []);
+}
+
+/**
+ * `--only <sprite set id>` (docs/ARCHER.md AR12: `--only class.ranger`): checks the files of the set and of its
+ * pixelsPerTileFrom chain against the lock, builds them, then writes ONLY the set's sheets and outline sheets (and their
+ * art/upload copies), its contact sheet art/build/contact/<id>.png and its entry in packs/vale/layout.ts (merged:
+ * mergeSpriteLayout, every other byte of the file unchanged), byte for byte what a full build writes for them. The sets
+ * of the chain (class.ranger's class.vanguard) are built to read their pixelsPerTile but not written; nothing else is
+ * read, written or removed (no stale-file sweep).
+ */
+function mainOnlySpriteSet(config, id) {
+	const chain = spriteSetChain(config.spriteSets, id);
+	const files = new Set();
+	for (const sid of chain) addSpriteSetFiles(files, sid, config.spriteSets[sid]);
+	checkLock(config, [...files].sort());
+	const { set } = buildOneSpriteSet(config.spriteSets, id);
+	if (!fs.existsSync(LAYOUT_FILE)) fail(`--only ${id} merges into an existing ${path.relative(ROOT, LAYOUT_FILE)}; run a full art:build first`);
+	let changed = 0;
+	const written = [];
+	for (const o of spriteSetOutputs(set)) {
+		const png = encodePng(o.img);
+		if (writeIfChanged(path.join(o.dir === "build" ? BUILD : CONTACT, o.name), png)) changed++;
+		if (o.dir === "build") {
+			written.push(o.name);
+			if (writeIfChanged(path.join(UPLOAD, o.name), png)) changed++;
+		}
+	}
+	if (writeIfChanged(LAYOUT_FILE, mergeSpriteLayout(fs.readFileSync(LAYOUT_FILE, "utf8"), id, set.layout))) changed++;
+	printSpriteSet(set);
+	console.log(`art:build --only ${id}: ${changed} file(s) updated${chain.length > 1 ? ` (built ${chain.filter((c) => c !== id).join(", ")} for pixelsPerTileFrom, not written)` : ""}`);
+	const uploaded = uploadedFiles();
+	const pending = written.filter((f) => !uploaded.has(f));
+	console.log(`art:build --only ${id}: ${pending.length} of its ${written.length} PNG(s) still need an ID in packs/vale/assetIds.ts${pending.length > 0 ? ":" : ""}`);
+	for (const f of pending) console.log(`  ${f}  (${fs.statSync(path.join(BUILD, f)).size} bytes)`);
+}
+
 function main() {
 	const config = JSON.parse(fs.readFileSync(CONFIG_FILE, "utf8"));
-	const only = onlyGroup(process.argv);
+	const only = onlyGroup(process.argv, config.spriteSets);
 	if (process.argv.includes("--lock")) {
 		writeLock(config, only ? onlyGroupSourceFiles(config, only) : undefined);
+		return;
+	}
+	if (isOnlySpriteSet(only)) {
+		mainOnlySpriteSet(config, only);
 		return;
 	}
 	if (only === "bullets") {
@@ -5228,17 +5404,7 @@ function main() {
 	if (duoIcons && writeIfChanged(DUO_ICON_LAYOUT_FILE, duoIconLayoutModule(duoIcons))) changed++;
 	if (kenney && writeIfChanged(KENNEY_LAYOUT_FILE, kenneyLayoutModule(kenney))) changed++;
 
-	for (const s of sets) {
-		const l = s.layout;
-		console.log(`${s.id}: cell ${l.frameW}x${l.frameH} (source box ${s.box.join(",")}${s.downscale > 1 ? `, downscale ${s.downscale}` : ""}), pivot (${l.pivot.x}, ${l.pivot.y}), body ${s.bodyHeight} px -> ${l.pixelsPerTile} px/tile${s.pixelsPerTileFrom ? ` (from ${s.pixelsPerTileFrom})` : ""}${s.recolorStops ? `, recoloured (${s.recolorStops}-stop ramp)` : ""}`);
-		console.log(`  pivot per facing (cell coords) on the measured frame: ${s.sanity.join(" ")}`);
-		for (const sh of s.sheets) {
-			const own = sh.cell ? `, cell ${sh.cell.frameW}x${sh.cell.frameH} pivot (${sh.cell.pivot.x}, ${sh.cell.pivot.y})` : "";
-			console.log(`  ${sh.file}: ${sh.img.w}x${sh.img.h}, ${sh.cells} cells${own}${sh.outlineFile ? ` + ${sh.outlineFile} (outline ${s.outline.widthPx} px)` : ""}${
-				sh.rimClip ? `, rim clipped at the cell edge in ${sh.rimClip.cells} cells (${sh.rimClip.pixels} body px)` : ""
-			}`);
-		}
-	}
+	for (const s of sets) printSpriteSet(s);
 	for (const i of images) {
 		const sl = i.layout.slice;
 		const slice = sl ? `, slice ${sl.left} ${sl.top} ${sl.right} ${sl.bottom}` : "";
@@ -5305,6 +5471,13 @@ module.exports = {
 	buildOutputs,
 	buildSpriteSet,
 	buildSpriteSets,
+	buildOneSpriteSet,
+	frameNaming,
+	isOnlySpriteSet,
+	mergeSpriteLayout,
+	spriteSetChain,
+	spriteSetOutputs,
+	spriteSetSourceFiles,
 	buildBullets,
 	buildBulletFxSet,
 	buildBulletSet,

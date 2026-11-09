@@ -21,6 +21,7 @@ export type PadSurface =
 	| "lobbies"
 	| "lobby"
 	| "credits"
+	| "character"
 	| "invites"
 	| "options"
 	| "rebind"
@@ -217,6 +218,8 @@ export const PAD_SURFACES: { readonly [K in PadSurface]: PadSurfaceDef } = {
 		rows: [shortcutX("ready", "canReady"), shortcutY("invite", "canInvite"), SCROLL],
 	},
 	credits: { layer: "screen", select: true, back: "back", rows: [SCROLL] },
+	// docs/ARCHER.md AR7: the D-pad / stick move between the cards (the engine), A confirms the selected card, B back.
+	character: { layer: "screen", select: true, back: "back", rows: [] },
 	invites: { layer: "invites", select: true, back: "back", rows: [] },
 	options: { layer: "panel", select: true, back: "close", rows: [TABS, SUB_TABS, shortcutX("reset"), SCROLL] },
 	// A rebind capture listens to every input (navigation off): no pad meaning while it runs.
@@ -258,6 +261,7 @@ export const PAD_SURFACE_IDS: ReadonlyArray<PadSurface> = [
 	"lobbies",
 	"lobby",
 	"credits",
+	"character",
 	"invites",
 	"options",
 	"rebind",

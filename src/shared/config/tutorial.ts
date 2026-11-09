@@ -41,14 +41,16 @@ export interface TutorialTunables {
 	 */
 	readonly runSeed: number;
 	/**
-	 * Floor 1, "The Training Halls" (the lesson rooms): a strict chain, entrance -> combat A-G -> treasure -> shrine ->
-	 * boss room (the open stairwell), each joined to the next by one short straight corridor and to nothing else
-	 * (shared/run TUTORIAL_ROOMS has the rooms; tutorial.spec.ts checks the chain with checkTutorialChain). The seed
-	 * only picks the theme and the decoration: 7574 is frost (the floor-1 biome of the old seed-searched layout) with
-	 * its two frozen lakes in rooms 4 and 6 (combat D and F), so lesson E keeps its solid pillars and combat G (room 7,
-	 * the pellet lesson) its open floor (`node scripts/find-tutorial-seed.js --floor 1 --from 7500 --to 7700` lists the
-	 * seeds that work: 176 of 201 with combat G; 7500, the seed before combat G, lost lesson E's cover, docs/PELLETS.md
-	 * PL11). Corridors are corridorTiles long (5 by the ellipse treasure room's rim); the tour is 225 tiles.
+	 * Floor 1, "The Training Halls" (the lesson rooms): a strict chain, entrance -> combat A-D, F, G -> treasure ->
+	 * shrine -> boss room (the open stairwell), each joined to the next by one short straight corridor and to nothing
+	 * else (shared/run TUTORIAL_ROOMS has the rooms; tutorial.spec.ts checks the chain with checkTutorialChain). The
+	 * seed only picks the theme and the decoration: 7511 is frost (the floor-1 biome of the old seed-searched layout)
+	 * with its two frozen lakes in rooms 4 and 5 (combat D and F), so combat G (room 6, the pellet lesson) keeps its open
+	 * floor: the first such seed from 7500 (`node scripts/find-tutorial-seed.js --floor 1 --from 7500 --to 7700 --theme
+	 * frost` lists 40 frost seeds, every one of the 201 passes the chain; lakes in D and F: 7511, 7615, 7677, 7683).
+	 * It was 7574 until combat E (the bow lesson) left the chain (docs/ARCHER.md AR6), and 7500 before combat G (7500
+	 * lost lesson E's cover, docs/PELLETS.md PL11). Corridors are corridorTiles long (5 by the ellipse treasure room's
+	 * rim); the tour is 198 tiles.
 	 */
 	readonly floor1: TutorialChainLayout;
 	/**
@@ -112,7 +114,7 @@ export interface TutorialTunables {
 
 export const TUTORIAL: TutorialTunables = table.freeze({
 	runSeed: 4242,
-	floor1: table.freeze({ seed: 7574, corridorTiles: 4 }),
+	floor1: table.freeze({ seed: 7511, corridorTiles: 4 }),
 	floor2: table.freeze({ seed: 905, roomCount: 2 }),
 	lastFloor: 2,
 	bossHpPercent: 20,

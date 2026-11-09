@@ -15,6 +15,7 @@
  * A field set lists the CURRENT values: a value retired by a later build (an old revision string) still sits in
  * Roblox's table, so the total keeps headroom for that.
  */
+import { CHARACTER_IDS } from "shared/characters";
 import { LOBBY_VISIBILITIES } from "shared/lobby";
 import type { InviteArrivalKind, InviteArrivalOutcome, LobbyInviteAnswer, PartyGroupedHow } from "shared/lobby";
 import { LOBBY_ANALYTICS_EVENT } from "shared/lobby";
@@ -26,6 +27,7 @@ import {
 	FORFEIT_DEATH_CAUSE,
 	RUN_FUNNEL,
 	RUN_FUNNEL_STEPS,
+	RUN_RECAP_CHARACTER_SEPARATOR,
 	RUN_RECAP_CLOSES,
 	RUN_RECAP_FLAGS,
 	RUN_RECAP_NEAR_MISS_KINDS,
@@ -189,11 +191,16 @@ function bossPhases(): string[] {
 	return out;
 }
 
-/** RunRecap's field03 values (RUN_RECAP_FLAGS). */
+/**
+ * RunRecap's field03 values: the RUN_RECAP_FLAGS alone (a run without a character: M1) and each with every character
+ * (docs/ARCHER.md AR5: `record/archer`).
+ */
 function flagValues(): string[] {
-	const out: string[] = [];
-	for (const [, v] of pairs(RUN_RECAP_FLAGS)) out.push(v);
-	out.sort((a, b) => a < b);
+	const flags: string[] = [];
+	for (const [, v] of pairs(RUN_RECAP_FLAGS)) flags.push(v);
+	flags.sort((a, b) => a < b);
+	const out = [...flags];
+	for (const f of flags) for (const c of CHARACTER_IDS) out.push(`${f}${RUN_RECAP_CHARACTER_SEPARATOR}${c}`);
 	return out;
 }
 
@@ -233,7 +240,8 @@ function buildCatalog(): ReadonlyArray<AnalyticsCatalogEntry> {
 			field02: set(bossPhases()),
 			field03: set([...causes, "none"]),
 		}),
-		custom(ANALYTICS_EVENT.runDuration, run),
+		// docs/ARCHER.md AR5: the replayed player's character (absent: a run without one, M1)
+		custom(ANALYTICS_EVENT.runDuration, run, { field01: set(CHARACTER_IDS, true) }),
 		custom(ANALYTICS_EVENT.playerDeath, run, { field01: set(causes), field02: set(["boss", "rooms"]) }),
 		custom(ANALYTICS_EVENT.runKills, run),
 		custom(ANALYTICS_EVENT.hitsTaken, run, { field01: set(hitSources()) }),

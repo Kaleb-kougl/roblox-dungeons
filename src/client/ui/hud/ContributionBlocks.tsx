@@ -5,7 +5,9 @@ import {
 	CONTRIB_PARTY_COLUMNS,
 	CONTRIB_UI,
 	HUD_VIEW,
+	CHARACTER_ICON_VIEW,
 	RECAP_TABS,
+	characterIconSize,
 	contribBoxHeight,
 	contribBoxWidth,
 	contribCardHeight,
@@ -28,6 +30,7 @@ import {
 	type RunContribution,
 } from "shared/view/hud";
 import { useHudActions } from "./actions";
+import { CharacterIcon, hasCharacterIcon } from "./CharacterIcon";
 import { MenuButton } from "./primitives";
 import { HighlightGrid, RecapCell } from "./RecapBlocks";
 import { RECAP_BINDINGS } from "./recapBindings";
@@ -179,7 +182,11 @@ export function YouCard(props: { order: number; layout: RecapLayout; c: RunContr
 	const gridRows = math.ceil(split.gridCells / split.columns);
 	const gridH = gridRows > 0 ? gridRows * M.height + (gridRows - 1) * L.gap : 0;
 	const barInHeader = shareBar && L.shareInHeader;
-	const headerW = barInHeader ? boxW - L.barWidth - HUD_VIEW.gap : boxW;
+	// docs/ARCHER.md AR9: the local player's character icon leads the header (the line gives up its width).
+	const iconOn = hasCharacterIcon(c.local.character);
+	const icon = characterIconSize(L.headerHeight);
+	const iconW = iconOn ? icon + CHARACTER_ICON_VIEW.gap : 0;
+	const headerW = (barInHeader ? boxW - L.barWidth - HUD_VIEW.gap : boxW) - iconW;
 	const cell = (i: number, width?: number) => (
 		<RecapCell
 			key={`Cell${i}`}
@@ -212,8 +219,17 @@ export function YouCard(props: { order: number; layout: RecapLayout; c: RunContr
 				Size={UDim2.fromOffset(boxW, L.headerHeight)}
 				BackgroundTransparency={HIDDEN}
 			>
+				{iconOn ? (
+					<CharacterIcon
+						character={c.local.character}
+						size={icon}
+						position={UDim2.fromScale(0, HALF)}
+						anchor={new Vector2(0, HALF)}
+					/>
+				) : undefined}
 				<Line
 					name="Header"
+					position={UDim2.fromOffset(iconW, 0)}
 					size={UDim2.fromOffset(headerW, L.headerHeight)}
 					text={contribHeaderText(c, str)}
 					textSize={L.headerText}
@@ -282,6 +298,10 @@ function PartyRow(props: { layout: RecapLayout; row: ContributionRow }) {
 	const gridW = contribBoxWidth(props.layout);
 	const numbers = [t.damage, t.kills, t.parries, t.hits];
 	const chipH = P.rowHeight - 2 * P.gap;
+	// docs/ARCHER.md AR9: the player's character icon leads the name (the name gives up its width).
+	const iconOn = hasCharacterIcon(r.character);
+	const icon = characterIconSize(P.rowHeight);
+	const iconW = iconOn ? icon + CHARACTER_ICON_VIEW.gap : 0;
 	return (
 		<frame
 			key={`Row${r.index}`}
@@ -299,10 +319,19 @@ function PartyRow(props: { layout: RecapLayout; row: ContributionRow }) {
 					Color={role("playerOutline")}
 				/>
 			) : undefined}
+			{iconOn ? (
+				<CharacterIcon
+					character={r.character}
+					size={icon}
+					position={UDim2.fromOffset(cols.name.x, P.rowHeight / 2)}
+					anchor={new Vector2(0, HALF)}
+					transparency={dim}
+				/>
+			) : undefined}
 			<Line
 				name="Name"
-				position={UDim2.fromOffset(cols.name.x, 0)}
-				size={UDim2.fromOffset(cols.name.w, P.rowHeight)}
+				position={UDim2.fromOffset(cols.name.x + iconW, 0)}
+				size={UDim2.fromOffset(math.max(0, cols.name.w - iconW), P.rowHeight)}
 				text={t.name}
 				textSize={P.text}
 				minText={P.minText}

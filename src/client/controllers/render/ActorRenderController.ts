@@ -9,6 +9,7 @@ import {
 	MAX_ACTORS,
 	NO_KIND,
 	NO_WEAPON,
+	BOW_WEAPON_ID,
 	ROLL_TICKS,
 	SIM_HZ,
 	SWORD,
@@ -16,7 +17,6 @@ import {
 	partySize,
 	playerAt,
 	weaponIndex,
-	weaponsAt,
 	type ActorState,
 	type PlayerState,
 	type SimState,
@@ -59,11 +59,11 @@ import {
 	playerBlinkVisible,
 	playerLook,
 	playerOutlined,
-	playerSpriteInput,
+	playerSpriteInputFor,
+	playerVisualIdOf,
 	scaledSpriteLayout,
 	studsX,
 	studsZ,
-	swordTimingOf,
 	variantLook,
 	vengefulArmed,
 	vengefulCorpseView,
@@ -128,11 +128,14 @@ interface Ring {
 }
 
 /**
- * One player's view (co-op: one per party member, built on first use): the sprite set, or the placeholder capsule
- * while the pack has no set or its art is not ready (the stand-in, docs/STAGE_ASSETS.md SA17). Each body is built the
- * first time it is drawn and kept for the run; the one not drawn is parked.
+ * One player's view (co-op: one per party member, built on first use): the sprite set of the player's visual
+ * (docs/ARCHER.md AR9: their character's), or the placeholder capsule while the pack has no set or its art is not ready
+ * (the stand-in, docs/STAGE_ASSETS.md SA17). Each body is built the first time it is drawn and kept until the player's
+ * visual changes (a new run as another character); the one not drawn is parked.
  */
 interface PlayerView {
+	/** The theme visual it draws (shared/view playerVisualIdOf: class.vanguard for the Knight, class.ranger the Archer). */
+	readonly visualId: string;
 	model: PlaceholderModel | undefined;
 	sprite: SpriteView | undefined;
 	readonly pip: BasePart;
@@ -203,8 +206,9 @@ interface ActorView {
  * bruiser block, turret drums, the boss's large block), at data.spriteScale (bosses at least ACTOR_VIEW.bossMinDrawPx
  * wide). Interpolated by the sim's alpha, turned to the actor's facing, tinted while the hit flash runs or while
  * winding up a telegraphed attack (pulsing), fading out as a corpse, removed when the slot is freed (models go back
- * to a per-visual pool). The player: the `class.vanguard` capsule with a facing pip on the floor (`ui.cursor`), a
- * tumble while rolling, the i-frame tint, the post-hit blink and lying down greyed when dead.
+ * to a per-visual pool). The player: their visual's capsule (docs/ARCHER.md AR9: their character's, shared/view
+ * playerVisualIdOf) with a facing pip on the floor (`ui.cursor`), a tumble while rolling, the i-frame tint, the
+ * post-hit blink and lying down greyed when dead.
  *
  * Looks and fades come from the same pure rules on both paths (shared/view actorLook, playerLook, playerBlinkVisible,
  * corpseTransparency; roles in ACTOR_VIEW.lookRoles). Every part moves in ONE workspace:BulkMoveTo per frame.
@@ -221,9 +225,10 @@ interface ActorView {
  * Player outline (docs/PLAYER_OUTLINE.md, shared/view PLAYER_OUTLINE): the watched player only (getViewPlayerIndex, so a
  * spectator sees it on the teammate they watch), alive, while Options > Display > Player outline and Workspace
  * KV_PlayerOutline are on (shared/view playerOutlined). Every player's SpriteView is built with the `playerOutline`
- * rim (the knight's baked 1 px outline sheets) and shows it while playerOutlined. A placeholder capsule moves into
- * `Players/Outlined`, a Model with ONE Highlight (rim only, Occluded), while playerOutlined (reparented only on a
- * change); the Highlight is Enabled while that player is also visible, so the post-hit blink blinks the rim too.
+ * rim (its set's baked 1 px outline sheets: the knight's, the Archer's) and shows it while playerOutlined. A
+ * placeholder capsule moves into `Players/Outlined`, a Model with ONE Highlight (rim only, Occluded), while
+ * playerOutlined (reparented only on a change); the Highlight is Enabled while that player is also visible, so the
+ * post-hit blink blinks the rim too.
  *
  * Enemy variants (docs/ENEMY_VARIANTS.md EV9; rules in shared/view variants.ts): the imp / Ooze / summoner draw through
  * the same two paths (Cone / Dome placeholders; ACTOR_SPRITE_INPUTS once their sets land; `slime.small` wears the
@@ -287,6 +292,10 @@ export class ActorRenderController implements OnStart {
 	private lastState: SimState | undefined;
 	private dtSec = 0;
 	private swordIndex: number | undefined;
+	private bowIndex: number | undefined;
+	/** Each player's visual id (shared/view playerVisualIdOf), worked out once per run state (a run's loadouts never change). */
+	private visualIds = new Array<string>();
+	private visualState: SimState | undefined;
 	/** The KV_EnemyOutline debug switch (outlineSwitchOn), read on change: the Highlight's Enabled and sprite rims. */
 	private outlineOn = true;
 	/** Player outline (docs/PLAYER_OUTLINE.md): DisplaySettings.playerOutline and KV_PlayerOutline, read on change. */
@@ -328,7 +337,8 @@ export class ActorRenderController implements OnStart {
 	/** This frame's readiness flips (polled once per frame). */
 	private readonly flips = new FlipTracker();
 	/** This frame: the players' set is drawn (the pack has it and it is ready), and the ring image is ready. */
-	private playerArt = false;
+	/** This frame's art readiness (docs/STAGE_ASSETS.md SA17): each player's body by their own visual (ARCHER AR9). */
+	private readiness: ReturnType<PreloadController["getReadiness"]> | undefined;
 	private ringReady = false;
 
 	constructor(
@@ -367,7 +377,7 @@ export class ActorRenderController implements OnStart {
 		syncSwitch();
 		this.janitor.Add(Workspace.GetAttributeChangedSignal(ACTOR_OUTLINE.enabledAttribute).Connect(syncSwitch));
 		this.startPlayerOutline(pack, players);
-		this.players.push(this.buildPlayerView(pack, players));
+		this.players.push(this.buildPlayerView(pack, players, ACTOR_VIEW.playerVisualId));
 		this.startHitReact(pack, folder);
 		this.startMotion(folder);
 
@@ -389,8 +399,7 @@ export class ActorRenderController implements OnStart {
 		// Stand-ins (SA17): which ids flipped since last frame; the players' art and ring, read once per frame.
 		const readiness = this.preload.getReadiness();
 		const flipped = this.flips.poll(readiness);
-		this.playerArt =
-			this.spriteSet(ACTOR_VIEW.playerVisualId) !== undefined && readiness.isReady(ACTOR_VIEW.playerVisualId);
+		this.readiness = readiness;
 		this.ringReady = readiness.isReady(ACTOR_VIEW.ringVisualId);
 		this.motion?.beginFrame(state, this.dtSec, this.fx.settings());
 		this.drawPlayers(state, alpha);
@@ -700,7 +709,7 @@ export class ActorRenderController implements OnStart {
 	}
 
 	/** A player's view: the facing pip now; the body (sprite or capsule) on its first draw (usePlayerBody). */
-	private buildPlayerView(pack: ThemePack, folder: Instance): PlayerView {
+	private buildPlayerView(pack: ThemePack, folder: Instance, visualId: string): PlayerView {
 		const pipVisual = pack.placeholder(ACTOR_VIEW.facingPipVisualId);
 		const pip = renderPart("Part", false);
 		pip.Name = "FacingPip";
@@ -709,6 +718,7 @@ export class ActorRenderController implements OnStart {
 		pip.Material = Enum.Material[pipVisual.material];
 		pip.Parent = folder;
 		return {
+			visualId,
 			model: undefined,
 			sprite: undefined,
 			pip,
@@ -730,7 +740,7 @@ export class ActorRenderController implements OnStart {
 		if (view.drawn === mode) return;
 		const folder = this.groups!.players;
 		if (mode === "art") {
-			const set = this.spriteSet(ACTOR_VIEW.playerVisualId)!;
+			const set = this.spriteSet(view.visualId)!;
 			if (view.sprite === undefined) {
 				// Every player's view carries the player-outline rim; drawPlayer shows it on the watched player only.
 				view.sprite = new SpriteView(set, folder, set, 0, pack.color(PLAYER_OUTLINE.role));
@@ -743,14 +753,7 @@ export class ActorRenderController implements OnStart {
 			}
 		} else {
 			if (view.model === undefined) {
-				view.model = buildPlaceholder(
-					pack,
-					ACTOR_VIEW.playerVisualId,
-					pack.placeholder(ACTOR_VIEW.playerVisualId),
-					1,
-					folder,
-					true,
-				);
+				view.model = buildPlaceholder(pack, view.visualId, pack.placeholder(view.visualId), 1, folder, true);
 			}
 			const sprite = view.sprite;
 			if (sprite !== undefined && view.drawn !== undefined) {
@@ -774,12 +777,25 @@ export class ActorRenderController implements OnStart {
 		const folder = this.groups?.players;
 		if (pack === undefined || folder === undefined) return;
 		const n = partySize(state);
-		while (this.players.size() < n) this.players.push(this.buildPlayerView(pack, folder));
+		if (state !== this.visualState) {
+			this.visualState = state;
+			this.visualIds = [];
+		}
+		while (this.players.size() < n) {
+			this.players.push(this.buildPlayerView(pack, folder, this.playerVisualId(state, this.players.size())));
+		}
 		const localIndex = this.sim.getViewPlayerIndex(); // co-op spectating: the watched player gets the local ring
 		let rimDrawn = false; // the player-outline Highlight: an outlined capsule is drawn this frame
 		for (let i = 0; i < this.players.size(); i++) {
-			const view = this.players[i];
+			let view = this.players[i];
 			if (i < n) {
+				const visualId = this.playerVisualId(state, i);
+				if (view.visualId !== visualId) {
+					// docs/ARCHER.md AR9: this player is another character now (a new run): their own sprite or capsule.
+					destroyPlayerView(view);
+					view = this.buildPlayerView(pack, folder, visualId);
+					this.players[i] = view;
+				}
 				if (this.drawPlayer(view, state, i, alpha, pack, i === localIndex)) rimDrawn = true;
 				continue;
 			}
@@ -825,21 +841,16 @@ export class ActorRenderController implements OnStart {
 		const visible = playerBlinkVisible(p.dead, p.hurtTicks);
 		// Player outline (docs/PLAYER_OUTLINE.md): the watched, living player while the setting and the switch are on.
 		const outlined = playerOutlined(isLocal, dead, this.playerOutlineSetting, this.playerOutlineOn);
-		const art = this.playerArt;
+		// Stand-ins (SA17) per player: their own visual's set, once its art is ready (docs/ARCHER.md AR9).
+		const art = this.spriteSet(view.visualId) !== undefined && this.readiness?.isReady(view.visualId) === true;
 		this.usePlayerBody(view, art ? "art" : "standIn", pack);
 
 		const sprite = art ? view.sprite : undefined;
 		if (sprite !== undefined) {
 			this.moveParts.push(sprite.anchor);
 			this.moveCFrames.push(new CFrame(at));
-			const input = playerSpriteInput(
-				p,
-				weaponsAt(state, index),
-				state.tick,
-				alpha,
-				this.sword(),
-				swordTimingOf(state, index),
-			);
+			// docs/ARCHER.md AR12 / AR9: the Archer's set plays the bow's draw / release / stream, every other visual the sword.
+			const input = playerSpriteInputFor(view.visualId, state, index, alpha, this.sword(), this.bow());
 			sprite.update(choosePlayerAnim(input, sprite.set), dirX, dirZ, this.basis, this.dtSec);
 			if (look !== view.look) {
 				view.look = look;
@@ -1008,6 +1019,26 @@ export class ActorRenderController implements OnStart {
 		return this.swordIndex;
 	}
 
+	private bow(): number {
+		if (this.bowIndex === undefined) {
+			const [ok, index] = pcall(() => weaponIndex(BOW_WEAPON_ID));
+			this.bowIndex = ok ? (index as number) : NO_WEAPON;
+		}
+		return this.bowIndex;
+	}
+
+	/**
+	 * Player `index`'s visual (docs/ARCHER.md AR9): their character's (the run's pick, SimController.getRunCharacters,
+	 * else the character their weapons are), the Knight's for anyone else. Cached per run state.
+	 */
+	private playerVisualId(state: SimState, index: number): string {
+		const ids = this.visualIds;
+		if (index < ids.size()) return ids[index];
+		const characters = this.sim.getRunCharacters();
+		while (ids.size() <= index) ids.push(playerVisualIdOf(characters, state, ids.size()));
+		return ids[index];
+	}
+
 	// --- hit reaction (docs/FEEL.md J4 / J5) ---------------------------------------------------
 
 	/**
@@ -1110,6 +1141,14 @@ export class ActorRenderController implements OnStart {
 		this.freeSprites.clear();
 		this.janitor.Cleanup();
 	}
+}
+
+/** Destroys a player's view (its sprite or capsule, facing pip and ring). */
+function destroyPlayerView(view: PlayerView): void {
+	view.sprite?.destroy();
+	if (view.model !== undefined) destroyModel(view.model);
+	view.pip.Destroy();
+	view.ring?.part.Destroy();
 }
 
 function pushFree<T extends defined>(free: Map<string, T[]>, key: string, item: T): void {

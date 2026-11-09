@@ -20,6 +20,8 @@ import {
 	LEADERBOARD_SCOPE_TABS,
 	LEADERBOARD_STRINGS,
 	LEADERBOARD_VIEW,
+	characterIconSize,
+	characterOfEntry,
 	dailyBoardLines,
 	leaderboardFilterShown,
 	leaderboardTabRequest,
@@ -28,6 +30,7 @@ import {
 	type LeaderboardTabs,
 } from "shared/view/hud";
 import { useHudActions } from "./actions";
+import { CharacterIcon } from "./CharacterIcon";
 import { MenuFit } from "./MenuFit";
 import { PadHintBar } from "./PadHintBar";
 import { ListFocusStroke, MenuButton, Panel, Row, Text } from "./primitives";
@@ -49,9 +52,16 @@ function nameWidth(): number {
 	return v.width - v.rankWidth - v.scoreWidth - v.floorWidth - HUD_VIEW.pad * 4 - v.scrollBarThickness;
 }
 
+/**
+ * One board row: rank, the character icon of the entry when it carries one (docs/ARCHER.md AR9, owner answer 4: the
+ * row's `classId` when it is a character id; the name gives up the icon's width), name, score, floor.
+ */
 function BoardRow(props: { row: LeaderboardRow; highlight: boolean }) {
 	const r = props.row;
 	const color = props.highlight ? "uiAccent" : "uiText";
+	const character = characterOfEntry(r);
+	const icon = characterIconSize(LEADERBOARD_VIEW.rowHeight);
+	const nameW = character !== undefined ? nameWidth() - icon - HUD_VIEW.gap : nameWidth();
 	return (
 		<Row order={r.rank}>
 			<Text
@@ -61,9 +71,10 @@ function BoardRow(props: { row: LeaderboardRow; highlight: boolean }) {
 				color="uiTextDim"
 				text={str(LEADERBOARD_STRINGS.rank, { rank: r.rank })}
 			/>
-			<Text order={2} width={nameWidth()} size={HUD_VIEW.smallText} color={color} font="name" text={r.name} />
+			{character !== undefined ? <CharacterIcon order={2} character={character} size={icon} /> : undefined}
+			<Text order={3} width={nameW} size={HUD_VIEW.smallText} color={color} font="name" text={r.name} />
 			<Text
-				order={3}
+				order={4}
 				width={LEADERBOARD_VIEW.scoreWidth}
 				size={HUD_VIEW.smallText}
 				color={color}
@@ -71,7 +82,7 @@ function BoardRow(props: { row: LeaderboardRow; highlight: boolean }) {
 				text={tostring(r.score)}
 			/>
 			<Text
-				order={4}
+				order={5}
 				width={LEADERBOARD_VIEW.floorWidth}
 				size={HUD_VIEW.smallText}
 				color="uiTextDim"

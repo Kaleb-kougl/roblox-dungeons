@@ -1042,6 +1042,13 @@ describe("audio: music and ambience", () => {
 			"menu",
 		]);
 		expect([musicPlace(false, "lobby"), musicPlace(false, "none")]).toEqual(["lobby", "none"]);
+		// docs/ARCHER.md AR8: the character screen keeps the lobby's music over the lobby room, the menu's elsewhere.
+		expect([
+			musicPlace(false, "character", "lobby"),
+			musicPlace(false, "character", "main"),
+			musicPlace(false, "character"),
+			musicPlace(true, "character"),
+		]).toEqual(["lobby", "menu", "menu", "run"]);
 	});
 
 	it("ambience: the floor's amb.b<n> during a run, none in menus or after a death", () => {
