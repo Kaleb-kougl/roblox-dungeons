@@ -71,7 +71,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/HAZARD_ART.md` | Hazard art (the Stormcaller's strike and the build embers as original greyscale pixel art tinted by their roles: a flash over the strike's 0.1 s life and a short scorch after it, the ember's burn loop; supersedes PAD3; presentation only): plan, as built, tasks HA0-HA8, decisions HAD1-HAD5 |
 | `docs/GAMEPAD_MENUS.md` | Gamepad menus (every menu usable with a controller: focus scopes with one owner, recovery and memory, one B path (hold B to exit on run over), LB/RB / LT/RT tabs, right-stick scroll, X / Y shortcuts, a hint bar with Roblox button icons, menu haptics, console TV-safe fit; client input and presentation only): census, plan, as built, tasks GM0-GM12, decisions GMD1-GMD16 |
 | `docs/WALL_SLIDE.md` | Wall slide (the player's body slides round corners instead of stopping: `slideCircle` collide and slide, a corner tie-break, a face assist within 0.35 tiles of a wall's end, a full pillar slip on isolated 1 x 1 blockers; every world, M1 included; snag census; gameplay): findings, plan, as built, tasks WS0-WS10, decisions WSD1-WSD7 |
-| `docs/FRAME_PACING.md` | Co-op frame pacing (a playout clock: received merged frames stepped at a steady 60 Hz from a small jitter buffer, holds on underflow, the input lead covers the buffer; the lead-never-decays fix; client timing only): findings, plan, tasks FP0-FP8, decisions FPD1-FPD8 |
+| `docs/FRAME_PACING.md` | Co-op frame pacing (a playout clock: received merged frames stepped at a steady 60 Hz from a small jitter buffer, holds on underflow, the input lead covers the buffer; the lead-never-decays fix; client timing only; revision 2: the net lead from measured input trips, a per-member input echo on `lockstepFrames`): findings, plan, tasks FP0-FP16, decisions FPD1-FPD14 |
 | `docs/BUILDS_V2.md` | Builds v2, wave 1 (Riposte: a guard that erases bullets answers with a counter-wave, Counterstrike ring and returns; Ballista: the heavy arrow bursts into bolts, Siege Bolt pins and drags an enemy into a wall; Wrecker: rolls smash breakables, every piece you break fires splinters, Demolition chains them; duos Thunder Guard / Stillwater / Rebuke (Bastion + Riposte) / Dragon Bolt / Powder Keg / Full Heart / Happy Hour; the duo hint on New cards; overcap boss points `ScoreSource.OVERCAP`; gameplay, opt-in `SimConfig.builds`; wave 2 and the proposal in its appendix): plan, tasks BV0-BV13, decisions BVD1-BVD20 |
 
 Decision log (deviations from `PLAN.md`):
@@ -1030,6 +1030,19 @@ Decision log (deviations from `PLAN.md`):
   `[Pace]` line every `ARRIVAL_LOG.windowSec` (10 s): batch gaps p50 / p95 / max, sizes, the pacer's numbers, the leads
   and misses, render fps. Spec harness: paced at 60 fps over 20-120 ms, 99.7 % of frames step one tick (unpaced 0 %).
   Studio check, FP0 (a measured real session) and FP6 (playtest) pending; FP7 optional.
+  **Revision 2 (2026-11-09): the lead from measured trips** (FP9-FP13). Client timing plus one wire field (no sim,
+  dungeon, hash, replay, log, validator, fixture or score change). `lockstepFrames` gains a trailing `echo` (8 bytes,
+  `wire.ts` `encodeInputEcho` / `decodeInputEcho`): the recipient's own worst input since the last broadcast (lowest
+  slack, `session.ts` `submitInput(..., now)`), its lates and a `catchingUp` flag; the service fires once per member
+  (FPD14: no client sees a teammate's slack) and logs `LOCKSTEP_INPUT` per player once per run. Pure `lead.ts`
+  `LeadController` (tunables `LEAD`, `LockstepTunables.lead`; undefined = the old miss counter exactly): net lead =
+  `ceil(p95 of 5 s of net trips + 1.5)`, up at once, a late bumps to its own trip, down a tick per 0.25 s after 1 s
+  below a target 0.75 higher; hitch / server catch-up / over-cap-depth lates excused; old rule without echoes (2 s
+  timeout). `LockstepClient` `receive(..., echo?)`, `InputSampler = (sending) => InputFrame` (a fall's skipped sample's
+  buttons are OR-ed into the next frame sent), `mismatches`, `leadStats()`. `KV_LeadOff` (`RUN_ATTRIBUTES.leadOff`).
+  Debug strings `hud.debug.lead` / `.leadLegacy` / `.leadOff`, trip columns on the `[Pace]` line. Spec networks: lead
+  11-12 / 15-17 ticks (old rule ~16 / ~22-25), no lates after the warm-up, back within seconds after a spike. FP14 /
+  FP15 (owner) and the Studio checks pending.
 - **Builds v2, wave 1 (docs/BUILDS_V2.md).** Gameplay, opt-in `SimConfig.builds` (endless only). Three boons appended
   to `BOONS` (`Boon.RIPOSTE` 17 rare, `BALLISTA` 18 rare, `WRECKER` 19 common; `BOON_COUNT` 20, `CLASSIC_BOON_COUNT`
   stays 12, so the tutorial's draft is unchanged; evolutions Counterstrike / Siege Bolt / Demolition) and seven duos

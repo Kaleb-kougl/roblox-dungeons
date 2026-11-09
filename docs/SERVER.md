@@ -393,11 +393,24 @@ half a tick behind the newest state) when a due frame has not arrived and fast-f
 merged log. After stepping tick T a client samples its input once and sends it for T + lead (`lockstepInput`, 10
 bytes per frame), where the lead covers the round trip AND the buffer: `nextInputTick()` = tick + `netLead()` + the
 buffer's depth in ticks (with hysteresis, and capped at `PACING.maxDepthTicks` so the target never passes
-`MAX_INPUT_AHEAD_TICKS`). The net lead starts at `INPUT_DELAY_TICKS` = 3, grows by one on every missed deadline (seen
-as its own frame not being what the server finalized) and shrinks again after 10 s without misses; a step whose
-target was already sent sends nothing, so the effective lead (`inputLead()`) really falls back after a lag spike
-(FP1: before it, it stayed at the run's highest lead), and a target that jumps leaves the skipped ticks to the
-server's repeat-last. Measured in the specs: a net lead of ~15 ticks at 20-120 ms one-way, ~25 at 0-200 ms. No pause,
+`MAX_INPUT_AHEAD_TICKS`). The net lead is MEASURED (docs/FRAME_PACING.md "Revision 2", `lead.ts` `LeadController`):
+every `lockstepFrames` call carries a fifth argument, `echo` (8 bytes, `wire.ts` `encodeInputEcho`), the recipient's
+OWN worst input since the last broadcast (the lowest slack: how many ticks before its deadline it reached the server,
+`session.ts` `submitInput(..., now)`; plus the late frames and a flag while the server was catching up), so the service
+fires `lockstepFrames` once per member instead of once to the party and no client sees a teammate's numbers. The echo
+never enters the merged log, the validator or a hash. From it the client computes each input's net trip (the ticks it
+needed, without the buffer) and sets the net lead to `ceil(p95 of the last 5 s of trips + 1.5)` (`LEAD`), raised at
+once (a late input bumps it to its own trip), lowered one tick every 0.25 s once a target 0.75 tick higher has been
+below it for 1 s; lates from the client's own hitches, the server's catch-up or a buffer deeper than the lead covers are
+counted but excused. Without echoes (warm-up, an old server, more than 2 s without one) it runs the old rule: start at
+`INPUT_DELAY_TICKS` = 3, +1 on every missed deadline (seen as its own frame not being what the server finalized), -1
+after 10 s without misses. A step whose target was already sent sends nothing, so the effective lead (`inputLead()`)
+really falls back after a lag spike (FP1: before it, it stayed at the run's highest lead), and its skipped sample's
+buttons are OR-ed into the next frame sent (a tap is never lost); a target that jumps leaves the skipped ticks to the
+server's repeat-last. `KV_LeadOff` (Workspace attribute) runs the old rule for an A/B. Measured in the specs: a net lead
+of ~11-12 ticks at 20-120 ms one way (old rule ~16), ~15-17 at 0-200 ms (old rule ~22-25), no late inputs after the
+warm-up; after a spike back within seconds (old rule: 10 s a tick). The server logs `LOCKSTEP_INPUT` (per player: batches,
+lates, slack min / mean) once per run. No pause,
 no hitstop pacing (`simPacerFor`: hitstop is view-only in co-op; the playout clock is not hitstop), no restart until
 the party is down. Not done: visual prediction of the local character (it is drawn at the merged state).
 

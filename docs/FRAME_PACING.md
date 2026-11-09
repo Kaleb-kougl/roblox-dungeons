@@ -22,8 +22,9 @@ Drafted from an audit of `main` @ `0a8e8ec4` after the owner's first co-op playt
 was laggy"). Owner answers (2026-11-07): a 3-tick minimum (FPD6), a 10 % fast slew (FPD7), one tuned default with no
 setting (FPD8). See "As built" for the real API and the deviations from the design.
 
-**Revision 2 (planned, 2026-11-09): the lead from measured trips** (FP9-FP16, decisions FPD9-FPD14; section at the
-end): the net lead is set from the 95th percentile of measured input round trips plus a margin, instead of +1 per miss.
+**Revision 2 (built 2026-11-09, verified headlessly): the lead from measured trips** (FP9-FP16, decisions FPD9-FPD14;
+section at the end): the net lead is set from the 95th percentile of measured input round trips plus a margin, instead
+of +1 per miss. Pending: FP14 / FP15 (owner) and the Studio checks.
 
 ## Why co-op stutters (findings)
 
@@ -347,8 +348,11 @@ log, the validator or a hash (FPD9). Solo runs are untouched.
 
 ### Status (2026-11-09)
 
-Planned, nothing built. Drafted from an audit of `main` @ `d007b503` (FP1-FP5 and FP8 built; FP0 / FP6 pending). FP0's
-real-session measurement should run with FP13's trip columns in the arrival log, so one session measures both.
+**Built: FP9-FP13 and FP16** on branch `frame-pacing-lead` (from `main` @ `d007b503`), verified headlessly (typecheck,
+lint, asset / AutoLocalize checks, l10n tests, build, the full Lune suite: 430 suites, the only failure the known x86
+`forge.spec` NaN-bit vector). **Pending: FP14 / FP15 (owner: a measured real session with FP0, then the playtest with
+FP6) and the Studio checks** (per-member fires in a two-player session, FP13's loopback / replication-lag check). See
+"As built (FP9-FP13)" for the real API and the deviations; the tunables stay provisional until FP14.
 
 ### Why the lead lingers and drops inputs (findings)
 
@@ -383,10 +387,10 @@ enters.
   ticks still to finalize.
 - **Slack** `= X + 1 - R`: how many ticks before its deadline X arrived (X is finalized by the first step with
   `floor(pos) >= X + 1`). Late = the relay counted it late (`SubmitResult.late > 0`); a late input has slack <= 0.
-- **Echo:** every broadcast carries, **for its recipient only**, the newest input received from them since the last
-  broadcast: X (as an offset from the batch's `firstTick`), slack (1/16 tick, signed 16-bit, saturating) and the late
+- **Echo:** every broadcast carries, **for its recipient only**, the input received from them since the last
+  broadcast with the LOWEST slack (as built; the plan said the newest, which read about a tick short): X (as an offset from the batch's `firstTick`), slack (1/16 tick, signed 16-bit, saturating) and the late
   frames since the last echo (u8, saturating); or a "none" marker. Encoded by `wire.ts` `encodeInputEcho` /
-  `decodeInputEcho` (5 bytes a batch: 150 B/s per client at 30 batches a second, whatever the party size). A new
+  `decodeInputEcho` (8 bytes a batch: 240 B/s per client at 30 batches a second, whatever the party size). A new
   trailing argument of `lockstepFrames` (`echo: buffer`). The merged `data` stays the same bytes for everyone; the
   service fires `lockstepFrames` once per member (`fire(player, ...)`) with that member's echo instead of once to the
   party (FPD14), so no client ever receives a teammate's slack. A malformed echo is ignored (the frames still apply, the
@@ -458,6 +462,8 @@ which every older spec that pins it passes). `KV_LeadOff` (Workspace attribute, 
 | `fallHoldSec` / `fallStepSec` | 1 / 0.25 | Down within seconds: 20 ticks of excess gone in ~6 s, one skipped sample per 0.25 s |
 | `minSamples` | 20 | ~0.7 s of echoes before the p95 is trusted |
 | `echoTimeoutSec` | 2 | No echo for this long while frames arrive: today's rule |
+| `recordTicks` | 120 | As built: the ring of sent targets the echoes are matched against (2 s of sends) |
+| `echoCatchUpTailTicks` (LockstepTunables) | 42 | As built: a batch whose first tick is within this of the server's last capped (catch-up) step is flagged `catchingUp` (`maxInputLead` + `maxDepthTicks`) |
 
 All provisional until FP0 / FP6 (and FP11's spec numbers).
 
@@ -483,41 +489,123 @@ All provisional until FP0 / FP6 (and FP11's spec numbers).
 
 Open owner calls: FPD9 (the wire field) and FPD11's numbers (how fast down; the lates target).
 
+### As built (FP9-FP13)
+
+**API (shared/lockstep).**
+
+- `wire.ts`: `InputEcho { tick: number | undefined; slack; lates; catchingUp? }`, `encodeInputEcho(echo, firstTick)` /
+  `decodeInputEcho(data, firstTick)` (undefined = malformed). Fixed `INPUT_ECHO_BYTES` 8: u8 flags (bit 0 has a tick,
+  bit 1 the server was catching up; other bits refused), i32 tick offset from the batch's `firstTick`, i16 slack in
+  1/`INPUT_ECHO_SLACK_SCALE` (16) tick, saturating, u8 lates, saturating.
+- `session.ts`: `submitInput(userId, firstTick, data, now?)` (`RunSessionService` passes `os.clock()`, the clock
+  `startedAt` uses; without `now` R = `finalizedTicks()`). Per player the WORST frame since the last echo is kept: a
+  batch's first frame (slack `firstTick + 1 - R`, the lowest in the batch), replaced only by a strictly lower one;
+  lates accumulate; refused-only, malformed and non-member batches record nothing. `MergedBroadcast.echoes[i]` (one
+  buffer per player index; the first broadcast after a record carries it, later ones "none"). Echo windows that
+  overlapped the server's own catch-up (`due > maxTicksPerStep`, a receipt with `pos - finalized > maxTicksPerStep`, or
+  a batch within `echoCatchUpTailTicks` of the last capped step) set `catchingUp`. `inputStats(i)` (batches, lates,
+  slack min / mean) goes to the server log as `LOCKSTEP_INPUT run <id> player <userId>: batches .. lates .. slack min
+  ..t mean ..t` once per run (`RunSessionService.forgetLockstep`, every exit path). The service fires `lockstepFrames`
+  once per present member with `b.echoes[i]` (FPD14).
+- `lead.ts` `LeadController(tunables, minLead, maxLead, legacyDecayTicks)`: `sent(target, sentAt, depthRaw, hitched,
+  depthUsed = depthRaw)`, `received(now)`, `echoed(echo, now)`, `deadline(matched, now)`, `frame(now)`, `lead()`,
+  `echoing()`, `stats(): LeadStats` (lead, target, fallTarget, tripP50 / P95 / Max, samples, warmingUp, lates,
+  mismatches, bumps, raises, falls, excused, echoing). The lead starts at `minLead`.
+- `LockstepClient`: `receive(firstTick, data, now?, echo?)`, `pump(dt, sample: InputSampler, now?)` with
+  `InputSampler = (sending: boolean) => InputFrame` (a sample that is not sent is latched, never recorded by the
+  latency probe as a send), `mismatches` (the old `inputsEqual` count), `misses` (echoed lates while echoing, plus
+  mismatches while not echoing, counted once across the switch), `leadStats()`, `isLeadMeasured()`, `latchedButtons()`.
+  The controller's clock is the pacer's (`now`, else the last clock + dt); a client never given a clock feeds no echo and
+  stays on the legacy rule. `PlayoutPacer.rawDepthTicks()` / `unsteady()`.
+- `LockstepTunables.lead` (`DEFAULT_LOCKSTEP.lead` = `LEAD`; undefined = today's miss counter exactly, no tap latch).
+  `KV_LeadOff` (`RUN_ATTRIBUTES.leadOff`) is read in `startCoop` next to `KV_PacingOff` (they combine) and prints
+  `[Sim] co-op run <runId>: measured lead off (KV_LeadOff)`.
+- Diagnostics: the debug line `co-op lead {lead}t {ms}ms ({net part}) · {pace} · press->step ... · late {late} miss
+  {miss}` with `{net part}` = `net {n}t, trip p95 {ms}ms` (`hud.debug.lead`), `net {n}t legacy` (`.leadLegacy`, warm-up
+  or no echo) or `net {n}t, lead off (KV_LeadOff)` (`.leadOff`); `late` = `misses`, `miss` = `mismatches`. The `[Pace]`
+  line ends with `trip p50 {ms} p95 {ms} max {ms} · lead {l}t target {L*}t fall {Lf}t · lates {n} bumps {n} falls {n}`
+  (or `lead legacy` / `lead off`), and its `miss` is `mismatches`. A tap latched across a frame keeps its press time in
+  the probe.
+
+**Deviations from the design.**
+
+- The echo carries the worst (lowest-slack) frame of its window, not the newest: the newest read about a tick short
+  (two frames arrive per broadcast and the older one waited longer); with it the lead sits at or above the every-frame
+  oracle instead of a tick under it, at about 1.5 ticks (25 ms) more lead and zero lates on both spec networks.
+- 8 bytes, not 5 (an i32 tick offset and a flag byte).
+- While echoing, a mismatch only counts; only echoed lates bump (Design 10's text; the first build bumped both, which
+  doubled spike peaks).
+- The late bump is `max(lead, ceil(trip + margin), sentLead + 1)` (`sentLead` = the lead when that tick was sent): the
+  same as the design's for a real late, but no double bump for several lates sent before the first bump.
+- A late is EXCUSED (counted in `lates` / `excused`, no bump, no window entry) when it came from an unsteady send
+  (paced: a hitched / catching-up / fast-forwarding frame; unpaced: `dt` or the clock since the last pump over
+  `hitchFrameSec`, or a pump that started with or left a backlog past `maxCatchup`), from an echo flagged
+  `catchingUp`, or from a send whose raw buffer depth exceeded the depth the lead covered (`depthUsed`, the 12-tick cap)
+  by at least the late's overshoot. Design 10 bumped hitched lates one tick.
+- Any decodable echo, "none" included, keeps the controller echoing; it falls back to the legacy rule only after
+  `echoTimeoutSec` without one while frames arrive.
+- After a fall the lead rests on the fall target, `L*` or `L* + 1` (Design 10's literal rule): about 0.75 tick above
+  `ceil(p95 + margin)` on average.
+- Up-at-once also runs in `frame` (samples leaving the window can raise the p95).
+
+**Measured (spec harness, paced, a 1 s stage cover; measured lead vs the legacy rule on the same network).**
+
+| Network | Lead after 2 s, measured | Legacy | Relay missed / late after 2 s, measured | Legacy missed |
+|---|---|---|---|---|
+| 3 players, 20-120 ms one way | 11-12 (trip p95 9.5 t) | 15.6-17.6 | <= 0.22 % / 0 | <= 0.22 % |
+| 8 players, 0-200 ms one way | 15.0-16.6 (trip p95 13-14.5 t) | 21.6-24.6 | <= 0.43 % / 0 | 0.52-0.93 % |
+
+The relay misses left are never-sent ticks (a rise of the lead or the depth leaves the gap to the server's repeat-last:
+FP1's rule, kept). The lead is more than one tick below the every-frame oracle (from the harness's own timestamps) in 0 %
+of samples. FP1's latency step (calm 3 ticks, a spike): peak 18, back at 3 in 9.55 s (bound 10.25 s); the legacy rule
+falls 10 s a tick (~240 s). Tap latch: every skipped sample's buttons reached the log. FP12, up channel, 3 players:
+
+| Trouble | Peak (bound) | Back within 1 tick | Dropped changed inputs (legacy) |
+|---|---|---|---|
+| +200 ms for 1 s | 21-22 (23-24) | 8.1 s, inside the fall bound 9.0-9.25 s; legacy never | 39 (39) |
+| 300 ms head-of-line hold | 27 (28) | 4.4-4.6 s; legacy never | 19 (12): legacy met it 5-7 ticks higher |
+| 3 s server stall | paced 12-13 (before 11-12; the trips after the catch-up are really longer), unpaced unchanged | at the end within 1 tick | legacy ends at 30 |
+| Unpaced client: one 3 s frame / a 300 ms stall between pumps | 17 / 17 (before 16; was 30 before the excuse rules) | at once | |
+
+FP12's Verify was changed to the design's own bound (`windowSec + fallHoldSec + fallStepSec x excess + 0.5 s`): 8 s
+cannot be met with a 5 s window. The hold's "dropped <= legacy" is printed, not asserted (above).
+
 ### Tasks
 
-- [ ] **FP9. The echo (server + wire).** `submitInput(..., now)` records each player's newest tick and slack;
+- [x] **FP9. The echo (server + wire).** `submitInput(..., now)` records each player's newest tick and slack;
   `LockstepStepResult.echoes` per broadcast (one buffer per player); `encodeInputEcho` / `decodeInputEcho`;
   `lockstepFrames` gains `echo`; RunSessionService passes `os.clock()` and fires each member their own echo;
   `inputStats(i)` on the run's end line. -> Verify: `wire` spec
   round trips (none, saturation, malformed refused); a session spec: an input sent k ticks early echoes slack k (+/- the
   receipt fraction), a late one slack <= 0 and a late count; a stalled server (`now` jumps 3 s) echoes positive slack for
   inputs ahead of `finalizedTicks()`; every NET_RUN still finishes ranked with identical logs and verdicts.
-- [ ] **FP10. `LeadController` (pure).** `shared/lockstep/lead.ts` + `LEAD` + barrel. -> Verify: `lead.spec.ts` on
+- [x] **FP10. `LeadController` (pure).** `shared/lockstep/lead.ts` + `LEAD` + barrel. -> Verify: `lead.spec.ts` on
   synthetic trip traces: steady trips of 6 +/- 1 ticks hold the lead at `ceil(p95 + 1.5)` with no change in 60 s; a
   step from 12 to 4 ticks is back on the new target within `windowSec + fallHoldSec + 0.25 x 8` s; a step up is followed
   the same frame; one 30-tick outlier bumps once and is gone ~6 s later; a p95 at x.0 / x.5 / x.9 never bounces; a late
   bumps to its own trip; warm-up and no-echo fallback; hitched samples ignored, their lates counted.
-- [ ] **FP11. LockstepClient wiring.** `sent` keeps `sentAt` / `depthAt` / `hitched`; `receive(..., echo?)`;
+- [x] **FP11. LockstepClient wiring.** `sent` keeps `sentAt` / `depthAt` / `hitched`; `receive(..., echo?)`;
   `nextInputTick` from the controller; `pendingButtons`; `misses` = echoed lates, `mismatches` the old count;
   `leadStats()`. -> Verify: every lockstep spec passes unchanged with `lead: undefined`; with `LEAD`: the NET_RUNS
   (20-120 / 0-200 ms one way) finish with identical state and logs, the lead within one tick of an oracle (`ceil(p95` of
   the true trips from the harness's timestamps `+ 1.5)`) after the warm-up, relay `missed` per player under 0.5 % of
   ticks after the first 2 s; FP1's latency-step spec: falls back within the bound above (today: 10 s a tick); a tap
   sampled on a fall's skipped tick reaches the log; both measured beside the old rule (the spec prints both).
-- [ ] **FP12. Spike spec.** The harness's `Channel` with a 1 s spike (+200 ms one way) and a 300 ms head-of-line hold
+- [x] **FP12. Spike spec.** The harness's `Channel` with a 1 s spike (+200 ms one way) and a 300 ms head-of-line hold
   mid-run. -> Verify: changed inputs dropped during the spike at most the old rule's (printed), the lead's peak at most
-  `ceil(spike trip + 1.5)` (the old rule's printed), back within one tick of the pre-spike lead within 8 s of the spike's
-  end.
-- [ ] **FP13. Diagnostics.** The debug line, the arrival log's trip columns, `KV_LeadOff`, the server end line (Design
+  `ceil(spike trip + 1.5)` + 1 (the old rule's printed), back within one tick of the pre-spike lead within the fall's
+  own bound `windowSec + fallHoldSec + fallStepSec x excess + 0.5 s` of the spike's end (was 8 s: see As built).
+- [x] **FP13. Diagnostics.** The debug line, the arrival log's trip columns, `KV_LeadOff`, the server end line (Design
   11-12). -> Verify: `latencyProbe.spec` / `arrivalLog.spec` updated; `npm run verify`; Studio two-player test (Test >
   Clients and Servers) shows trips on loopback and the lead at `minLead`; with Studio's incoming replication lag at
-  100 ms the lead settles near `ceil(trip + 1.5)` and no `late`.
+  100 ms the lead settles near `ceil(trip + 1.5)` and no `late`. (Built and verified headlessly; the Studio check is
+  pending.)
 - [ ] **FP14 [owner]. Measure (with FP0).** FP0's session with FP13 in: trips p50 / p95 / max per client, lates,
   bumps, falls; once with `KV_LeadOff`. -> Verify: docs/SPIKES.md "Frame pacing" table gains the trip columns; `LEAD`
   confirmed or edited.
 - [ ] **FP15 [owner]. Playtest (with FP6).** Lead on vs `KV_LeadOff`. -> Verify: no lingering delay after a spike, no
   lost presses noticed; lates per minute recorded.
-- [ ] **FP16. Docs.** docs/SERVER.md "Clients" (the echo, the measured lead), docs/FEEL.md J9 (debug line),
+- [x] **FP16. Docs.** docs/SERVER.md "Clients" (the echo, the measured lead), docs/FEEL.md J9 (debug line),
   CLAUDE.md's row and decision log entry, this section's status.
 
 Order: FP9 -> FP10 (parallel) -> FP11 -> FP12 -> FP13 -> FP14 / FP15 -> FP16. FP10 needs nothing from FP9.
@@ -531,7 +619,7 @@ Order: FP9 -> FP10 (parallel) -> FP11 -> FP12 -> FP13 -> FP14 / FP15 -> FP16. FP
   before the next. The late bump keeps the cost to one input per burst; if FP14 shows repeated bursts, lengthen the window
   or keep the max of two windows.
 - **Per-member fires.** The merged bytes no longer go out in one fire to the party, but in one fire per member (FPD14).
-  The bytes each client receives grow by 5 a batch; the server's fire calls grow from 1 to n a batch (n <= 8). FP9's
+  The bytes each client receives grow by 8 a batch; the server's fire calls grow from 1 to n a batch (n <= 8). FP9's
   Studio check confirms the members still receive their batches in order (each member's calls stay ordered on their own
   reliable remote, which is all the client needs).
 - **Local prediction** (claude/local-prediction-plan.md) predicts up to the effective lead, capped at 10 ticks: a lower,

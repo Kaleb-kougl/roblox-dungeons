@@ -236,7 +236,11 @@ As built (differences from the design above):
   what a press really waits), `net` the network part (`netLead()`). `{pace}` is `pace {depth}t {depthMs}ms · holds
   {holds} · backlog {backlog} · jitter p95 {jitter}ms` (`hud.debug.pace`), `pace waiting · backlog {backlog}` before
   the first batch placed the playout clock (`hud.debug.paceWait`), or `pace off (KV_PacingOff)` (`hud.debug.paceOff`);
-  formatted by shared/view `pacingDebugView` / `pacingDebugKey` / `pacingDebugVars`. The headless floor is now
+  formatted by shared/view `pacingDebugView` / `pacingDebugKey` / `pacingDebugVars`. Since the measured lead
+  (docs/FRAME_PACING.md Revision 2, FP13) the brackets read `(net {net}t, trip p95 {ms}ms)` (`hud.debug.lead`),
+  `(net {net}t legacy)` (`.leadLegacy`: warm-up or no echo) or `(net {net}t, lead off (KV_LeadOff))` (`.leadOff`), and
+  `late` / `miss` are the client's echoed lates / `inputsEqual` mismatches (`leadDebugView` / `leadDebugKey` /
+  `leadDebugVars`). The headless floor is now
   (net lead + depth + 1) ticks: 7 ticks = 117 ms at the minimum depth of 3. KV_Debug co-op also prints the `[Pace]`
   arrival log every 10 s (docs/FRAME_PACING.md "As built").
 
