@@ -1278,7 +1278,9 @@ export function planDecor(input: DecorPlanInput): DecorPlan {
 		if (partner !== undefined && partner < index) return;
 		const wide = partner !== undefined;
 		const other = wide ? solidPieces[partner] : piece;
-		const kind: StandingKind = wide ? "bookcaseWide" : piece.kind;
+		// kenney-forge bridge (dropped for the view branch's KN9): the Forge's new Kenney kinds have no box here yet
+		const kind = (wide ? "bookcaseWide" : piece.kind) as StandingKind;
+		if (DECOR_BOX[kind] === undefined) return;
 		const rect = piece.w > 1 && piece.h > 1;
 		const f: DecorFootprint = {
 			x0: math.min(piece.x, other.x),
