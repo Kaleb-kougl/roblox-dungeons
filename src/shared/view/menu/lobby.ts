@@ -13,6 +13,7 @@ import {
 	type LobbySummary,
 	type LobbyVisibility,
 } from "shared/lobby";
+import { isCharacterId, type CharacterId } from "shared/characters";
 import type { LobbyInviteView, LobbyNotice, LobbyView } from "shared/network";
 import type { StringVars } from "shared/theme";
 import { LOBBY_BROWSER_PATH, LOBBY_ROOM_PATH, MAIN_MENU_PATH, type MenuScreen } from "./nav";
@@ -100,6 +101,11 @@ export interface RoomMember {
 	readonly host: boolean;
 	readonly ready: boolean;
 	readonly me: boolean;
+	/**
+	 * docs/ARCHER.md AR8: the member's character pick (LobbyView.characters, same index as `members`; the server shows
+	 * the Knight until their first pick), drawn as a CharacterIcon on the row; undefined for a value that is no id.
+	 */
+	readonly character: CharacterId | undefined;
 	/** Host-only row buttons (never on the host's own row; only while forming). */
 	readonly canKick: boolean;
 	readonly canMakeHost: boolean;
@@ -129,6 +135,26 @@ export interface LobbyRoomModel {
 	readonly members: ReadonlyArray<RoomMember>;
 }
 
+/** Member `i`'s pick in `view` (LobbyView.characters), or undefined when missing or no character id. */
+function memberPick(view: LobbyView, i: number): CharacterId | undefined {
+	const c = view.characters[i];
+	return isCharacterId(c) ? c : undefined;
+}
+
+/**
+ * docs/ARCHER.md AR8 (AR5's note): the pick to send with an un-ready (`lobbySetReady(false, pick)`) when the lobby
+ * room opens, so the other members see this player's last pick before they ready: the remembered `selected` when it
+ * differs from the pick the view shows for `me`, `me` is a member, not ready (an un-ready never un-readies anyone:
+ * a ready member keeps the pick they readied with) and the lobby is forming. Undefined: nothing to send.
+ */
+export function lobbyPickToSend(view: LobbyView, me: number, selected: CharacterId): CharacterId | undefined {
+	if (view.phase !== "forming") return undefined;
+	const i = view.members.indexOf(me);
+	if (i < 0 || view.ready.includes(me)) return undefined;
+	const shown = view.characters[i];
+	return shown === selected ? undefined : selected;
+}
+
 /** Whole seconds left on a countdown `countdownIn` seconds long when it arrived, `elapsed` seconds ago. */
 export function countdownLeft(countdownIn: number | undefined, elapsed: number): number {
 	if (countdownIn === undefined) return 0;
@@ -140,12 +166,13 @@ export function lobbyRoomModel(view: LobbyView, me: number, nameOf: NameOf, coun
 	const forming = view.phase === "forming";
 	let allReady = view.members.size() > 0;
 	for (const id of view.members) if (!view.ready.includes(id)) allReady = false;
-	const members: RoomMember[] = view.members.map((id) => ({
+	const members: RoomMember[] = view.members.map((id, i) => ({
 		userId: id,
 		name: nameOf(id),
 		host: id === view.hostId,
 		ready: view.ready.includes(id),
 		me: id === me,
+		character: memberPick(view, i),
 		canKick: isHost && forming && id !== me,
 		canMakeHost: isHost && forming && id !== me,
 	}));

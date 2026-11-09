@@ -2,6 +2,7 @@
 // the lobby room's member picks and the pick sent when the room opens (lobby.ts).
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { CHARACTER_IDS, DEFAULT_CHARACTER } from "shared/characters";
+import type { LobbyView } from "shared/network";
 import { CHARACTER_SCREEN_STRINGS, PLACEHOLDER_MANIFEST, characterLineKey, type SpriteFacings } from "shared/theme";
 import {
 	HUD_VIEW,
@@ -40,6 +41,8 @@ import {
 	characterPreviewSize,
 	fitMenu,
 	lobbyChangePath,
+	lobbyPickToSend,
+	lobbyRoomModel,
 	menuArea,
 	menuCompact,
 	menuFitOn,
@@ -185,6 +188,53 @@ describe("what opens it, what Confirm starts and where Back goes (AR7 / AR8)", (
 		// Over a finished run / the outro / a dev run: nothing moves, like the run under it.
 		expect(lobbyChangePath("character", "L1", undefined, [])).toBe(undefined);
 		expect(lobbyChangePath("character", undefined, "L1")).toBe(undefined);
+	});
+});
+
+function lobby(over: Partial<LobbyView>): LobbyView {
+	return {
+		lobbyId: "L1",
+		nameId: "hostDescent",
+		hostId: 1,
+		visibility: "open",
+		worldKind: "endless",
+		phase: "forming",
+		members: [1, 2, 3],
+		ready: [],
+		characters: ["knight", "archer", "knight"],
+		invited: [],
+		invitedSources: [],
+		...over,
+	};
+}
+
+describe("the lobby room's picks (AR8)", () => {
+	it("each member row carries the member's pick from LobbyView.characters, by index", () => {
+		const m = lobbyRoomModel(lobby({}), 2, (id) => `P${id}`, 0);
+		expect(m.members.map((r) => [r.userId, r.character])).toEqual([
+			[1, "knight"],
+			[2, "archer"],
+			[3, "knight"],
+		]);
+		// A missing or unknown entry draws no icon.
+		const short = lobbyRoomModel(lobby({ characters: ["archer", "wizard" as never] }), 1, (id) => `P${id}`, 0);
+		expect(short.members.map((r) => r.character)).toEqual(["archer", undefined, undefined]);
+	});
+
+	it("the room opening sends the remembered pick with an un-ready only when it differs and the member is not ready", () => {
+		// Shown as the Knight (the server's default until a first pick), remembered the Archer: send it.
+		expect(lobbyPickToSend(lobby({}), 1, "archer")).toBe("archer");
+		// Already shown: nothing.
+		expect(lobbyPickToSend(lobby({}), 2, "archer")).toBe(undefined);
+		expect(lobbyPickToSend(lobby({}), 1, "knight")).toBe(undefined);
+		// A ready member keeps the pick they readied with (an un-ready would un-ready them).
+		expect(lobbyPickToSend(lobby({ ready: [1] }), 1, "archer")).toBe(undefined);
+		// Not forming (counting down, in a run), or not a member: nothing.
+		expect(lobbyPickToSend(lobby({ phase: "countdown" }), 1, "archer")).toBe(undefined);
+		expect(lobbyPickToSend(lobby({ phase: "inRun" }), 1, "archer")).toBe(undefined);
+		expect(lobbyPickToSend(lobby({}), 9, "archer")).toBe(undefined);
+		// No entry for me yet (an older view): send.
+		expect(lobbyPickToSend(lobby({ characters: [] }), 1, "knight")).toBe("knight");
 	});
 });
 

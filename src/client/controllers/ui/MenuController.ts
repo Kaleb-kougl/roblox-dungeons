@@ -5,6 +5,7 @@ import {
 	clientStore,
 	selectAnyPanelOpen,
 	selectMenuScreen,
+	selectMyLobby,
 	selectMyLobbyId,
 	selectSelectedCharacter,
 	selectSnapshot,
@@ -28,6 +29,7 @@ import {
 	characterInitialFocus,
 	characterKeyAction,
 	lobbyChangePath,
+	lobbyPickToSend,
 	type CharacterScreenOrigin,
 } from "shared/view/menu";
 import { SFX } from "shared/view/audio";
@@ -74,7 +76,9 @@ function typing(): boolean {
  *              arrows / A-D move it, Enter / Space confirm (here), taps and the pad's selection too (the screen).
  *              Confirm remembers the pick (SettingsController.setSelectedCharacter) and does the origin's start
  *              (characterConfirmPlan); Back (and Backspace / pad B) goes one screen back, or closes the menu when the
- *              screen opened over none (characterBackAction): the panel, the outro or the run under it show again.
+ *              screen opened over none (characterBackAction): the panel, the outro or the run under it show again. When
+ *              the lobby room opens, a member who is not ready sends their remembered pick with an un-ready
+ *              (lobbyPickToSend), so the others see it before they ready.
  */
 @Controller({ loadOrder: 900 })
 export class MenuController implements OnStart {
@@ -86,6 +90,8 @@ export class MenuController implements OnStart {
 	private panelOpenLastFrame = false;
 	/** The dev panel's start waiting for the character screen's Confirm (origin `dev`). */
 	private pendingDev: ((character: CharacterId) => void) | undefined;
+	/** The last lobby pick sent by syncLobbyPick (`<lobbyId>|<pick>`): never sent twice for the same lobby. */
+	private pickSent = "";
 
 	constructor(
 		private readonly sim: SimController,
@@ -115,9 +121,10 @@ export class MenuController implements OnStart {
 				if (prev === "none" && screen !== "none") this.lobby.refreshEligibility();
 				// The character screen went away (Back, Confirm, a run start, a lobby move): its request goes with it.
 				if (prev === "character" && screen !== "character") this.dropCharacter();
+				if (screen === "lobby") this.syncLobbyPick();
 			}),
 		);
-
+		this.janitor.Add(clientStore.subscribe(selectMyLobby, () => this.syncLobbyPick()));
 		this.janitor.Add(
 			clientStore.subscribe(selectSnapshot, (s) => {
 				const menu = clientStore.getState().menu;
@@ -197,6 +204,21 @@ export class MenuController implements OnStart {
 	}
 
 	/**
+	 * The lobby room's Ready toggle (docs/ARCHER.md AR8): a ready member un-readies at once (keeping the pick); one who
+	 * is not ready picks first (the character screen; its Confirm readies with the pick, Back stays unready).
+	 */
+	toggleReady(): void {
+		const mine = clientStore.getState().lobby.mine;
+		if (mine === undefined) return;
+		if (mine.ready.includes(Players.LocalPlayer.UserId)) {
+			this.lobby.setReady(false);
+			return;
+		}
+		if (mine.phase !== "forming") return;
+		this.openCharacter("lobby");
+	}
+
+	/**
 	 * The character screen (docs/ARCHER.md AR7): a card focused (a tap, a click, the pad's selection, a key). Silent:
 	 * the screen clicks on a tap, the keys here, and the pad's selection has its own tick (AudioController).
 	 */
@@ -222,6 +244,9 @@ export class MenuController implements OnStart {
 		this.settings.setSelectedCharacter(pick);
 		clientStore.setCharacterFocus(pick);
 		print(`[Menu] character ${pick} (${cs.origin})`);
+		// The lobby room opening again must not send this pick with an un-ready after the Ready (syncLobbyPick).
+		const mine = st.lobby.mine;
+		if (plan.start === "ready" && mine !== undefined) this.pickSent = `${mine.lobbyId}|${pick}`;
 		clientStore.menuNav({ kind: plan.after === "back" ? "back" : "close" });
 		if (plan.closeOutro) this.tutorial.closeOutro();
 		if (plan.start === "solo") {
@@ -377,6 +402,26 @@ export class MenuController implements OnStart {
 	private dropCharacter(): void {
 		this.pendingDev = undefined;
 		clientStore.setCharacterScreen(undefined);
+	}
+
+	/**
+	 * docs/ARCHER.md AR8: on the lobby room, a member who is not ready sends their remembered pick with an un-ready
+	 * (lobbyPickToSend), once per lobby and pick, so the others see it on their row.
+	 */
+	private syncLobbyPick(): void {
+		const st = clientStore.getState();
+		const view = st.lobby.mine;
+		if (view === undefined) {
+			this.pickSent = "";
+			return;
+		}
+		if (st.menu.nav.screen !== "lobby") return;
+		const pick = lobbyPickToSend(view, Players.LocalPlayer.UserId, selectSelectedCharacter(st));
+		if (pick === undefined) return;
+		const key = `${view.lobbyId}|${pick}`;
+		if (this.pickSent === key) return;
+		this.pickSent = key;
+		this.lobby.setReady(false, pick);
 	}
 
 	/**

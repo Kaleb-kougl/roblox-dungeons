@@ -27,10 +27,14 @@ export interface MusicView {
 	readonly tutorial?: boolean;
 }
 
-/** Where the player is, from the store's facts: a run is active, else the menu screen (lobby room, other, none). */
-export function musicPlace(runActive: boolean, menuScreen: string): MusicPlace {
+/**
+ * Where the player is, from the store's facts: a run is active, else the menu screen (lobby room, other, none).
+ * `under`: the screen under the current one (MenuNav.stack's last): the character screen over the lobby room keeps the
+ * lobby's music (docs/ARCHER.md AR8: a member's Ready opens it).
+ */
+export function musicPlace(runActive: boolean, menuScreen: string, under?: string): MusicPlace {
 	if (runActive) return "run";
-	if (menuScreen === "lobby") return "lobby";
+	if (menuScreen === "lobby" || (menuScreen === "character" && under === "lobby")) return "lobby";
 	return menuScreen === "none" ? "none" : "menu";
 }
 

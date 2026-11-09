@@ -148,6 +148,7 @@ export class HudController implements OnStart {
 			joinLobby: click((id: string) => this.lobby.join(id)),
 			leaveLobby: click(() => this.lobby.leave()),
 			setReady: click((ready: boolean) => this.lobby.setReady(ready)),
+			toggleReady: click(() => this.menu.toggleReady()),
 			focusCharacter: (id: CharacterId) => this.menu.focusCharacter(id),
 			confirmCharacter: click((id?: CharacterId) => this.menu.confirmCharacter(id)),
 			characterBack: click(() => this.menu.characterBack()),

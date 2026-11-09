@@ -1107,8 +1107,53 @@ started from the menu now goes through the character screen; Again does not (own
   Details aside compact) and still fits every phone, portrait phone and desktop. `pause.spec.ts` (the overlay under a
   menu screen), `skin.spec.ts` (the screen listed).
 - **Ran** (this tree, Linux, 2 cores): typecheck, lint, build, check:assets, check:autolocalize, l10n:check (0 / 0),
-  test:l10n (36); `view/menu` 12 suites / 216 (character 20), `view/audio` + `view/hud` 56 / 814. Client code: typecheck,
+  test:l10n (36); `view/menu` 12 suites / 214 (character 23) on the AR7 commit, `view/audio` + `view/hud` 56 / 814. Client code: typecheck,
   lint and build only. Not run: the full suite, Studio.
 - **Decisions / deviations:** Back from the outro's screen returns to the outro card (AR6 left the choice to AR7): the
   card stays open under the screen and its `outro` report fires only on Confirm. Compact run over moves Details (above). `R` on the character screen over
   a run-over still restarts at once as the run's character (the driver key is SimController's; the menu then closes).
+
+## AR8 (as built)
+
+Client only (AR5 built the server side). Paths under `src/`.
+
+- **Ready opens the screen:** the lobby room's Ready button and its pad X shortcut call `MenuActions.toggleReady`
+  (`MenuController.toggleReady`): a ready member un-readies at once (the pick kept); a member who is not ready and the
+  lobby forming gets the character screen over the room (origin `lobby`, confirm label Ready). Confirm =
+  `setReady(true, pick)` and back to the room; Back = the room, still unready.
+- **Member rows** (`shared/view/menu/lobby.ts`): `RoomMember.character` from `LobbyView.characters[i]` (undefined for a
+  missing entry or no character id); `client/ui/menu/LobbyRoom.tsx` draws it as a `CharacterIcon` (now exported from
+  the `client/ui/hud` barrel) before the name, the name cell giving up the icon's width (the leaderboard's rule).
+- **The pick shown before a Ready:** `lobbyPickToSend(view, me, selected)` (forming, a member, not ready, the view's
+  pick for me differs from the remembered one) -> `MenuController.syncLobbyPick` sends `setReady(false, pick)` when the
+  lobby room opens and on lobby view changes while it is up, once per lobby and pick (`pickSent`). A Confirm from the
+  screen marks its pick as sent, so the room reopening never follows the Ready with an un-ready.
+- **Lobby moves under the screen:** `lobbyChangePath(screen, id, prev, stack)` (new optional `stack`): over the lobby
+  room a lost lobby (left, kicked) goes to the browser, another lobby to its room; over no menu (run over, outro, a dev
+  run) nothing moves.
+- **Music:** `musicPlace(runActive, screen, under)`: the character screen over the lobby room keeps the lobby's music
+  (AudioController passes the nav stack's top).
+- **The host's Start** uses the picks: nothing new on the client (AR5's `partyRunStarted.characters` /
+  `lobbyRunStart.characterId` carry what each member readied with).
+- **Specs** (`character.spec.ts`, "the lobby room's picks"): member rows carry each pick by index (missing / unknown
+  -> none); `lobbyPickToSend` sends only when it differs and the member is not ready, forming, a member (and with no
+  entry yet). The lobby path cases under the screen (see AR7). `audio.spec.ts`: the lobby music under the screen.
+- **Ran** (final tree): typecheck, lint, build, check:assets, check:autolocalize; `view/menu` + `view/audio` +
+  `view/hud` 68 suites / 1,030 (character 25). l10n unchanged (no new string). Not run: the full suite, Studio.
+
+Studio checklist (AR7 / AR8, not verifiable headlessly; items 1-4 of the plan's list):
+1. Main menu Play solo, the Daily card's start, the tutorial outro's Start my first run and the dev panel's Go each open
+   the screen with the last pick focused; mouse (click a card, Start), keyboard (arrows / A-D, Enter / Space,
+   Backspace), gamepad (the D-pad moves between the cards and focuses each, A on a card starts, B back, the hint bar),
+   touch (tap a card, Start) and a portrait phone (the column) and the smallest landscape phone (compact previews).
+2. Back returns to the main menu / the lobby room; from the outro the card shows again (and its `outro` report fires only
+   on Confirm); from run over the panel shows again with Again focused, its arm and recap untouched; from a dev Go in a
+   run the pause overlay shows (the run paused).
+3. Again restarts at once as the run's character (and armed at 0.6 s as before); Character opens the screen and Start
+   restarts the same world as the pick; Retry Daily likewise; a party run's run over has no Character. Wide / narrow
+   run over with highlights: Again + Character over the exit + Details; landscape phone: Details atop the right column.
+4. Two clients in a lobby: each member's row shows their pick (the remembered one as soon as the room opens, before
+   any Ready); Ready opens the screen and readies with the pick; Back stays unready; the host's Start runs each member
+   as their pick (a mixed party); a kick or a leave while on the screen goes to the browser.
+5. The idle preview: the Knight's sprite facing the camera and looping (reduced motion: still); the Archer's capsule
+   until AR12's upload, then its sprite at a sensible size in the 128 / 72 / 96 squares; the console TV-safe fit.

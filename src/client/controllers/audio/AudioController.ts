@@ -7,7 +7,7 @@ import {
 	selectAudio,
 	selectGameActive,
 	selectInputDevice,
-	selectMenuScreen,
+	selectMenuNav,
 	selectRunInfo,
 	selectSnapshot,
 } from "client/store";
@@ -297,12 +297,12 @@ export class AudioController implements OnStart {
 		});
 		const playable = this.playable;
 		const selectView = createSelector(
-			[selectSnapshot, selectRunInfo, selectGameActive, selectMenuScreen] as const,
-			(snapshot, run, active, screen): MusicView => ({
+			[selectSnapshot, selectRunInfo, selectGameActive, selectMenuNav] as const,
+			(snapshot, run, active, nav): MusicView => ({
 				outcome: snapshot.outcome,
 				bossVisible: snapshot.bossVisible,
 				biome: run.biome,
-				place: musicPlace(active, screen),
+				place: musicPlace(active, nav.screen, nav.stack[nav.stack.size() - 1]),
 				tutorial: run.world === TUTORIAL_WORLD_KIND,
 			}),
 		);

@@ -12,10 +12,12 @@
  * RecapController (docs/RUN_RECAP.md RR5 / RR6); the armor row pulse (braceUi BRACE_UI) for BraceFxController
  * (docs/LEGENDARIES.md LG6); the gamepad hint bar (PadHintBar, docs/GAMEPAD_MENUS.md GM7) for the menu screens;
  * the item tooltips' target registry (tooltipTargets) for TooltipController
- * (docs/ITEM_TOOLTIPS.md IT4).
+ * (docs/ITEM_TOOLTIPS.md IT4); the character icon (CharacterIcon, docs/ARCHER.md AR9) for the lobby room's member rows
+ * (AR8).
  */
 export * from "./actions";
 export * from "./braceUi";
+export * from "./CharacterIcon";
 export * from "./cornerFade";
 export * from "./dailyHooks";
 export * from "./DailyResultBlock";

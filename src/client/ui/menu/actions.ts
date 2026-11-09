@@ -42,6 +42,11 @@ export interface MenuActions {
 	/** Lobby room. */
 	readonly leaveLobby: () => void;
 	readonly setReady: (ready: boolean) => void;
+	/**
+	 * The lobby room's Ready toggle (docs/ARCHER.md AR8): ready -> un-ready at once; not ready -> the character screen,
+	 * whose Confirm readies with the pick (Back: still not ready).
+	 */
+	readonly toggleReady: () => void;
 	/** The character screen (docs/ARCHER.md AR7): focus a card (a tap, a click, the pad's selection). */
 	readonly focusCharacter: (id: CharacterId) => void;
 	/** Confirm with a card (the pad's A on it), or the focused one (Start). */
@@ -85,6 +90,7 @@ const NOOP: MenuActions = {
 	joinLobby: nothing,
 	leaveLobby: nothing,
 	setReady: nothing,
+	toggleReady: nothing,
 	focusCharacter: nothing,
 	confirmCharacter: nothing,
 	characterBack: nothing,
