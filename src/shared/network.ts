@@ -457,9 +457,12 @@ export interface ServerToClientEvents {
 	/**
 	 * Co-op lockstep: merged frames for ticks firstTick.. (shared/lockstep wire.ts merged batch). The ONLY input a party
 	 * client's sim ever steps with. `hashAck`: the highest tick whose hash reports the server decided (the client stops
-	 * resending those). The verdict comes as `runFinished` to every member (code "desync" on a desync).
+	 * resending those). The verdict comes as `runFinished` to every member (code "desync" on a desync). `echo`: how early
+	 * this member's own newest input reached the server (wire.ts `encodeInputEcho`, against `firstTick`;
+	 * docs/FRAME_PACING.md Design 9). Each member gets only its own echo (one fire per member, FPD14); the merged `data`
+	 * is the same for everyone. A malformed echo is ignored, never fatal.
 	 */
-	lockstepFrames(runId: string, firstTick: number, data: buffer, hashAck: number): void;
+	lockstepFrames(runId: string, firstTick: number, data: buffer, hashAck: number, echo: buffer): void;
 }
 
 export const GlobalEvents = Networking.createEvent<ClientToServerEvents, ServerToClientEvents>();

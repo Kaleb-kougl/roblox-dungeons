@@ -5,7 +5,9 @@
  *   clock        step(now) finalizes the ticks real time has reached since the start (at most maxTicksPerStep per
  *                call), through the relay (relay.ts: deadlines, repeat-last, leavers), into the merged log (log.ts),
  *                and returns merged batches to broadcast (wire.ts) every `broadcastEvery` ticks
- *   inputs       submitInput(userId, firstTick, data): the player's raw input batch for future ticks
+ *   inputs       submitInput(userId, firstTick, data, now?): the player's raw input batch for future ticks. Its
+ *                newest tick's slack (how early it arrived, docs/FRAME_PACING.md Design 9) goes back to that player
+ *                only, as the input echo of the next broadcast (`MergedBroadcast.echoes`); inputStats(i) totals it
  *   hashes       reportHashes(userId, ticks, hashes): batched reports (every `hashEvery` ticks), resent by the client
  *                until acknowledged (`ackTick`, the highest decided tick, goes out with every broadcast); the ledger
  *                (ledger.ts) agrees them in order. A disagreement is a DESYNC: logged with its tick and the hashes by
@@ -36,13 +38,31 @@ import { DEFAULT_LOCKSTEP, type LockstepTunables } from "./config";
 import { HashLedger, type HashDesync, type ReportProblem } from "./ledger";
 import { PartyRunLog } from "./log";
 import { LockstepRelay, type SubmitResult } from "./relay";
-import { MergedEncoder, decodeInputBatch } from "./wire";
+import { MergedEncoder, decodeInputBatch, encodeInputEcho, type InputEcho } from "./wire";
 
 export type LockstepStatus = "running" | "finishing" | "submitted" | "ended";
 
 export interface MergedBroadcast {
 	readonly firstTick: number;
 	readonly data: buffer;
+	/**
+	 * Per player index: that player's input echo (wire.ts `encodeInputEcho`, against this broadcast's firstTick): the
+	 * newest input received from them since the previous broadcast, or "none" (with the lates since, if any). Each goes
+	 * to its own player only (docs/FRAME_PACING.md FPD14).
+	 */
+	readonly echoes: ReadonlyArray<buffer>;
+}
+
+/** A player's input timing over the whole run (ticks), for the server's end-of-run log line. */
+export interface InputStats {
+	/** Batches recorded (accepted or late). */
+	readonly samples: number;
+	/** Late frames. */
+	readonly lates: number;
+	/** The smallest slack (0 without samples). */
+	readonly slackMin: number;
+	/** The mean slack (0 without samples). */
+	readonly slackMean: number;
 }
 
 export interface LockstepEnd {
@@ -108,6 +128,16 @@ export class LockstepSession {
 	private firstClaimTick: number | undefined;
 	private claimedFinalTick: number | undefined;
 	private endInfo: LockstepEnd | undefined;
+	/** Per player: the newest batch since the last echo (its tick and slack), and the late frames since. */
+	private readonly echoPending: boolean[] = [];
+	private readonly echoTick: number[] = [];
+	private readonly echoSlack: number[] = [];
+	private readonly echoLates: number[] = [];
+	/** Per player, the whole run: recorded batches, late frames, smallest and summed slack. */
+	private readonly statSamples: number[] = [];
+	private readonly statLates: number[] = [];
+	private readonly statSlackMin: number[] = [];
+	private readonly statSlackSum: number[] = [];
 
 	constructor(params: LockstepSessionParams) {
 		this.runId = params.runId;
@@ -124,6 +154,16 @@ export class LockstepSession {
 		this.log = new PartyRunLog(params.seed, params.spawn, this.size);
 		this.ledger = new HashLedger(this.size, t.hashEvery, t.reportTimeoutTicks);
 		this.encoder = new MergedEncoder(this.size);
+		for (let i = 0; i < this.size; i++) {
+			this.echoPending.push(false);
+			this.echoTick.push(0);
+			this.echoSlack.push(0);
+			this.echoLates.push(0);
+			this.statSamples.push(0);
+			this.statLates.push(0);
+			this.statSlackMin.push(0);
+			this.statSlackSum.push(0);
+		}
 	}
 
 	getStatus(): LockstepStatus {
@@ -165,14 +205,53 @@ export class LockstepSession {
 
 	// --- client messages ---------------------------------------------------------------------------
 
-	/** A player's input batch for ticks firstTick.. (wire.ts input batch). Undefined result: not a member / not running. */
-	submitInput(userId: number, firstTick: number, data: unknown): SubmitResult | undefined {
+	/**
+	 * A player's input batch for ticks firstTick.. (wire.ts input batch). Undefined result: not a member / not running.
+	 * `now` (the clock `startedAt` uses) places the receipt within the tick being finalized: without it the receipt is
+	 * at finalizedTicks(). A batch with any frame accepted or late is recorded for the player's next echo (its newest
+	 * tick X and slack X + 1 - R, R = finalizedTicks() + clamp(pos - finalizedTicks(), 0, 1) with pos the real-time
+	 * tick position: a stalled server's backlog never counts against the client), replacing an earlier one since the
+	 * last echo; its late frames add up until the echo goes out. docs/FRAME_PACING.md Design 9.
+	 */
+	submitInput(userId: number, firstTick: number, data: unknown, now?: number): SubmitResult | undefined {
 		const i = this.indexOf(userId);
 		if (i < 0 || this.status === "ended" || this.status === "submitted") return undefined;
 		if (!typeIs(firstTick, "number") || firstTick < 0 || firstTick % 1 !== 0) return undefined;
 		const frames = decodeInputBatch(data, this.tunables.maxBatchFrames);
 		if (frames === undefined) return { accepted: 0, late: 0, refused: 1 };
-		return this.relay.submit(i, firstTick, frames);
+		const finalized = this.relay.finalizedTicks();
+		const result = this.relay.submit(i, firstTick, frames);
+		if (result.accepted + result.late > 0) {
+			let receipt = finalized;
+			if (now !== undefined) {
+				const pos = (now - this.startedAt) * SIM_HZ;
+				const into = pos - finalized;
+				if (into === into) receipt = finalized + math.clamp(into, 0, 1);
+			}
+			const slack = firstTick + frames.size() - receipt;
+			this.echoPending[i] = true;
+			this.echoTick[i] = firstTick + frames.size() - 1;
+			this.echoSlack[i] = slack;
+			this.echoLates[i] += result.late;
+			const n = this.statSamples[i];
+			this.statSlackMin[i] = n === 0 ? slack : math.min(this.statSlackMin[i], slack);
+			this.statSlackSum[i] += slack;
+			this.statSamples[i] = n + 1;
+			this.statLates[i] += result.late;
+		}
+		return result;
+	}
+
+	/** Player `i`'s input timing over the whole run so far (zeros for a player with no samples or a bad index). */
+	inputStats(i: number): InputStats {
+		const n = this.statSamples[i] ?? 0;
+		if (n === 0) return { samples: 0, lates: this.statLates[i] ?? 0, slackMin: 0, slackMean: 0 };
+		return {
+			samples: n,
+			lates: this.statLates[i],
+			slackMin: this.statSlackMin[i],
+			slackMean: this.statSlackSum[i] / n,
+		};
 	}
 
 	/** A player's hashState after `tick`. */
@@ -320,9 +399,21 @@ export class LockstepSession {
 		return { broadcasts, segmentsOffered, submitted, dropped, ackTick: this.ackTick() };
 	}
 
-	/** Flushes the unsent merged frames as one broadcast. */
+	/** Flushes the unsent merged frames as one broadcast, with every player's pending echo (then cleared). */
 	private flush(): MergedBroadcast {
-		const b = { firstTick: this.unsentFirst, data: this.encoder.encode(this.unsent) };
+		const firstTick = this.unsentFirst;
+		const echoes: buffer[] = [];
+		for (let i = 0; i < this.size; i++) {
+			const echo: InputEcho = {
+				tick: this.echoPending[i] ? this.echoTick[i] : undefined,
+				slack: this.echoPending[i] ? this.echoSlack[i] : 0,
+				lates: this.echoLates[i],
+			};
+			echoes.push(encodeInputEcho(echo, firstTick));
+			this.echoPending[i] = false;
+			this.echoLates[i] = 0;
+		}
+		const b = { firstTick, data: this.encoder.encode(this.unsent), echoes };
 		this.unsent = [];
 		return b;
 	}
