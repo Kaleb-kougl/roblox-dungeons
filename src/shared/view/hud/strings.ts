@@ -12,7 +12,7 @@ import {
 	SCORE_SOURCE_NAMES,
 	TREASURE_SCORE_SOURCE_NAMES,
 } from "shared/sim";
-import { PACING_DEBUG_STRINGS } from "../latencyProbeConfig";
+import { LEAD_DEBUG_STRINGS, PACING_DEBUG_STRINGS } from "../latencyProbeConfig";
 export const HUD_STRINGS = {
 	title: "game.title",
 	health: "hud.health",
@@ -53,6 +53,10 @@ export const HUD_STRINGS = {
 	paceProbe: PACING_DEBUG_STRINGS.on,
 	paceProbeWait: PACING_DEBUG_STRINGS.waiting,
 	paceProbeOff: PACING_DEBUG_STRINGS.off,
+	/** Its `{netPart}` (docs/FRAME_PACING.md Design 11): the measured lead, the legacy counter, KV_LeadOff. */
+	leadProbe: LEAD_DEBUG_STRINGS.measured,
+	leadProbeLegacy: LEAD_DEBUG_STRINGS.legacy,
+	leadProbeOff: LEAD_DEBUG_STRINGS.off,
 	cap: "fx.cap",
 	score: "hud.score",
 	combo: "hud.score.combo",

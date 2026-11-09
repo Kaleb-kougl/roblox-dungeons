@@ -8,9 +8,14 @@ import { DEFAULT_LOCKSTEP, LockstepClient, MergedEncoder, decodeInputBatch } fro
 import { PLACEHOLDER_MANIFEST, ThemePack } from "shared/theme";
 import {
 	LATENCY_PROBE,
+	LEAD_DEBUG_LEGACY,
+	LEAD_DEBUG_OFF,
 	LatencyProbe,
 	PACING_DEBUG_OFF,
 	latencyProbeVars,
+	leadDebugKey,
+	leadDebugVars,
+	leadDebugView,
 	latencyProbeView,
 	latencyProbeViewsEqual,
 	pacingDebugKey,
@@ -77,6 +82,20 @@ describe("LatencyProbe", () => {
 		expect(p.pending()).toBe(3);
 		p.stepped(5, 0.4, false);
 		expect(p.stats().count).toBe(3);
+	});
+
+	it("a tap latched across a frame boundary (a fall's skipped tick) is measured from the frame that pressed it", () => {
+		const p = new LatencyProbe();
+		// Frame 1 samples the tap; its step's target was already sent, so the client latches it (no send).
+		p.frame(FIRE, 1);
+		// Frame 2: released, but the caller passes the latched buttons too (input | latchedButtons()).
+		const released = 0;
+		p.frame(bit32.bor(released, FIRE), 1.02);
+		p.sent(FIRE, 20);
+		p.stepped(21, 1.1, false);
+		const s = p.stats();
+		expect(s.count).toBe(1);
+		expect(s.lastMs).toBeCloseTo(100, 6);
 	});
 
 	it("a press resolved in a pump with a deadline miss is late, not measured", () => {
@@ -172,9 +191,12 @@ describe("LatencyProbe on a LockstepClient (loopback server, one tick per frame)
 			probe.frame(input.buttons, now);
 			const targets: number[] = [];
 			const missesBefore = c.misses;
-			const res = c.pump(DT, () => {
-				targets.push(c.nextInputTick());
-				probe.sent(input.buttons, c.nextInputTick());
+			const res = c.pump(DT, (sending) => {
+				// Only a sample that is sent is a send (a fall's skipped tick only latches its buttons).
+				if (sending) {
+					targets.push(c.nextInputTick());
+					probe.sent(bit32.bor(input.buttons, c.latchedButtons()), c.nextInputTick());
+				}
 				return input;
 			});
 			probe.stepped(c.state.tick, now, c.misses > missesBefore);
@@ -206,7 +228,11 @@ describe("the debug line's pacing part (docs/FRAME_PACING.md Design 7)", () => {
 	const line = (v: LatencyProbeView) =>
 		pack.str(
 			HUD_STRINGS.netProbe,
-			latencyProbeVars(v, pack.str(pacingDebugKey(v.pacing), pacingDebugVars(v.pacing))),
+			latencyProbeVars(
+				v,
+				pack.str(pacingDebugKey(v.pacing), pacingDebugVars(v.pacing)),
+				pack.str(leadDebugKey(v.lead), leadDebugVars(v)),
+			),
 		);
 
 	it("off without pacing (KV_PacingOff), waiting before the playout clock starts, else the pacer's numbers", () => {
@@ -232,16 +258,59 @@ describe("the debug line's pacing part (docs/FRAME_PACING.md Design 7)", () => {
 		const p = new LatencyProbe();
 		const paced = latencyProbeView(p, 7, 1, 3, pacingDebugView(stats, 3, true));
 		expect(line(paced)).toBe(
-			"co-op lead 7t 117ms (net 3t) · pace 4t 58ms · holds 2 · backlog 3 · jitter p95 10ms · " +
-				"press->step -ms avg - max - n0 · late 0 miss 1",
+			"co-op lead 7t 117ms (net 3t legacy) · pace 4t 58ms · holds 2 · backlog 3 · jitter p95 10ms · " +
+				"press->step -ms avg - max - n0 · late 1 miss 1",
 		);
-		const off = latencyProbeView(p, 3, 0, 3, pacingDebugView(undefined, 2, false));
+		const off = latencyProbeView(p, 3, 0, 3, pacingDebugView(undefined, 2, false), LEAD_DEBUG_OFF);
 		expect(line(off)).toBe(
-			"co-op lead 3t 50ms (net 3t) · pace off (KV_PacingOff) · press->step -ms avg - max - n0 · late 0 miss 0",
+			"co-op lead 3t 50ms (net 3t, lead off (KV_LeadOff)) · pace off (KV_PacingOff) · press->step -ms avg - max - " +
+				"n0 · late 0 miss 0",
+		);
+		// The measured lead (docs/FRAME_PACING.md Design 11): trip p95 9.4 ticks = 157 ms; late = echoed lates, miss =
+		// mismatches.
+		const measured = latencyProbeView(
+			p,
+			18,
+			4,
+			11,
+			pacingDebugView(stats, 3, true),
+			leadDebugView({ echoing: true, tripP95: 9.4 }, true),
+			1,
+		);
+		expect(line(measured)).toBe(
+			"co-op lead 18t 300ms (net 11t, trip p95 157ms) · pace 4t 58ms · holds 2 · backlog 3 · jitter p95 10ms · " +
+				"press->step -ms avg - max - n0 · late 4 miss 1",
 		);
 		const waiting = latencyProbeView(p, 3, 0, 3, pacingDebugView(undefined, 2, true));
 		expect(line(waiting).find("· pace waiting · backlog 2 ·", 1, true)[0]).never.toBe(undefined);
 		expect(warnings).toEqual([]);
+	});
+
+	it("the lead part: off without the measured lead, legacy while not echoing, whole ms while measured", () => {
+		expect(leadDebugView(undefined, true)).toEqual(LEAD_DEBUG_OFF);
+		expect(leadDebugView({ echoing: true, tripP95: 5 }, false)).toEqual(LEAD_DEBUG_OFF);
+		expect(leadDebugView({ echoing: false, tripP95: 5 }, true)).toEqual(LEAD_DEBUG_LEGACY);
+		expect(leadDebugView({ echoing: true, tripP95: undefined }, true)).toEqual({
+			mode: "measured",
+			tripP95Ms: undefined,
+		});
+		const v = leadDebugView({ echoing: true, tripP95: 9.4 }, true);
+		expect(v).toEqual({ mode: "measured", tripP95Ms: 157 });
+		expect([leadDebugKey(LEAD_DEBUG_OFF), leadDebugKey(LEAD_DEBUG_LEGACY), leadDebugKey(v)]).toEqual([
+			HUD_STRINGS.leadProbeOff,
+			HUD_STRINGS.leadProbeLegacy,
+			HUD_STRINGS.leadProbe,
+		]);
+		// Sub-millisecond trip changes round away: the HUD store keeps its view.
+		const p = new LatencyProbe();
+		const a = latencyProbeView(p, 12, 0, 9, PACING_DEBUG_OFF, v, 0);
+		const near = leadDebugView({ echoing: true, tripP95: 9.41 }, true);
+		expect(latencyProbeViewsEqual(a, latencyProbeView(p, 12, 0, 9, PACING_DEBUG_OFF, near, 0))).toBe(true);
+		expect(latencyProbeViewsEqual(a, latencyProbeView(p, 12, 0, 9, PACING_DEBUG_OFF, LEAD_DEBUG_LEGACY, 0))).toBe(
+			false,
+		);
+		expect(latencyProbeViewsEqual(a, latencyProbeView(p, 12, 0, 9, PACING_DEBUG_OFF, v, 1))).toBe(false);
+		expect(leadDebugVars(a)).toEqual({ net: 9, p95: 157 });
 	});
 
 	it("a change in the net lead or the pacing part is a new view (the HUD store updates)", () => {
