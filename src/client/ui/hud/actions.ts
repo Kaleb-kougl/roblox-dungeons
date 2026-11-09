@@ -51,6 +51,11 @@ export interface HudActions {
 	 * before the arm it skips the recap's timeline, after it it restarts (as `restart`).
 	 */
 	readonly again: () => void;
+	/**
+	 * Run-over "Character" beside Again (docs/ARCHER.md AR7, owner answer 8): the character screen over the finished
+	 * run; its Confirm restarts the run as the pick, Back returns to the panel. Never through the retry gate.
+	 */
+	readonly runOverCharacter: () => void;
 	/** Run-over "Details" / "Highlights" (RRD5): the score breakdown and Build list in the highlights' place, and back. */
 	readonly toggleRecapDetails: () => void;
 	/**
@@ -61,7 +66,7 @@ export interface HudActions {
 	/**
 	 * First-run tutorial (TutorialController): a new tutorial run (`playTutorial`: the outro's Play the tutorial again;
 	 * `restartTutorial`: the pause overlay's Restart tutorial; two actions so the funnel's attempt entry tells them
-	 * apart), the outro's Start my first run (the main menu's Play solo), the pause overlay's skip question and the
+	 * apart), the outro's Start my first run (the character screen, then a solo run: docs/ARCHER.md AR7), the pause overlay's skip question and the
 	 * skip itself (back to the menu, like Leave run).
 	 */
 	readonly playTutorial: () => void;
@@ -100,6 +105,7 @@ const NOOP: HudActions = {
 	leaveRun: () => undefined,
 	exitRun: () => undefined,
 	again: () => undefined,
+	runOverCharacter: () => undefined,
 	toggleRecapDetails: () => undefined,
 	setRecapTab: () => undefined,
 	playTutorial: () => undefined,

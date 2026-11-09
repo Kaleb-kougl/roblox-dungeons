@@ -14,6 +14,7 @@ import {
 	type HudActions,
 	type MenuActions,
 } from "client/ui";
+import type { CharacterId } from "shared/characters";
 import type { LobbyVisibility, LobbyWorld } from "shared/lobby";
 import { draftColumnForCard } from "shared/play";
 import type { RecapTab } from "shared/view/hud";
@@ -106,15 +107,14 @@ export class HudController implements OnStart {
 			leaveRun: click(() => this.menu.leaveRun()),
 			exitRun: click(() => this.menu.exitRun()),
 			again: click(() => this.recap.again()),
+			runOverCharacter: click(() => this.menu.runOverCharacter()),
 			toggleRecapDetails: click(() => this.recap.toggleDetails()),
 			setRecapTab: click((tab: RecapTab) => this.recap.setTab(tab)),
 			playTutorial: click(() => this.tutorial.playTutorial("again")),
 			restartTutorial: click(() => this.tutorial.playTutorial("restart")),
-			// The outro's "Start my first run" is the main menu's Play solo.
-			startFirstRun: click(() => {
-				this.tutorial.closeOutro();
-				this.menu.playSolo();
-			}),
+			// The outro's "Start my first run": the character screen over the outro (docs/ARCHER.md AR7); its Confirm closes
+			// the outro (TutorialController.closeOutro) and starts the solo run, Back shows the outro again.
+			startFirstRun: click(() => this.menu.startFirstRun()),
 			setTutorialSkipConfirm: click((open: boolean) => this.tutorial.setSkipConfirm(open)),
 			skipTutorial: click(() => this.tutorial.skipTutorial()),
 			// Touch (docs/MOBILE.md MB10) and mouse: a tapped / clicked card is picked by its column, as the stick would push it.
@@ -148,6 +148,9 @@ export class HudController implements OnStart {
 			joinLobby: click((id: string) => this.lobby.join(id)),
 			leaveLobby: click(() => this.lobby.leave()),
 			setReady: click((ready: boolean) => this.lobby.setReady(ready)),
+			focusCharacter: (id: CharacterId) => this.menu.focusCharacter(id),
+			confirmCharacter: click((id?: CharacterId) => this.menu.confirmCharacter(id)),
+			characterBack: click(() => this.menu.characterBack()),
 			startLobby: click(() => this.lobby.start()),
 			kick: click((id: number) => this.lobby.kick(id)),
 			makeHost: click((id: number) => this.lobby.transferHost(id)),

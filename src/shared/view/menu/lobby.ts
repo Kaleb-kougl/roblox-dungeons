@@ -389,13 +389,22 @@ export function lobbyStartAccepted(startLobbyId: string, myLobbyId: string | und
  * for, docs/INVITES.md): its room. Out of it (left, kicked) while in its room: the browser. With no menu screen up (a
  * run, the tutorial, the first-run wait, "Starting run...") nothing moves; the menu after a run / the join opens the
  * room then (afterRunPath). A panel over the menu (Options, Leaderboard) stays open: only the screen under it changes.
+ * `stack`: the screens under `screen` (MenuNav.stack; read for the character screen only).
  */
 export function lobbyChangePath(
 	screen: MenuScreen,
 	lobbyId: string | undefined,
 	prevLobbyId: string | undefined,
+	stack: ReadonlyArray<MenuScreen> = [],
 ): ReadonlyArray<MenuScreen> | undefined {
 	if (screen === "none" || lobbyId === prevLobbyId) return undefined;
+	// docs/ARCHER.md AR7 / AR8: the character screen over no menu (the run-over panel, the outro, a dev run) moves
+	// nothing, like the run under it; over the lobby room (a member's Ready) a lost lobby goes to the browser.
+	if (screen === "character") {
+		if (stack.size() === 0) return undefined;
+		if (lobbyId !== undefined) return LOBBY_ROOM_PATH;
+		return stack.includes("lobby") ? LOBBY_BROWSER_PATH : undefined;
+	}
 	if (lobbyId !== undefined) return LOBBY_ROOM_PATH;
 	return screen === "lobby" ? LOBBY_BROWSER_PATH : undefined;
 }

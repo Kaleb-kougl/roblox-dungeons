@@ -795,6 +795,17 @@ export class SimController implements OnStart {
 	}
 
 	/**
+	 * The run-over panel's Character (docs/ARCHER.md AR7, owner answer 8): the finished solo run again as `character`,
+	 * exactly Again's restart otherwise (the run's world, a dev run's options and seed; R and Again keep the new pick).
+	 * Ignored for a party run or an id that is no character.
+	 */
+	restartAs(character: CharacterId): void {
+		if (this.ctx?.coop !== undefined || !isCharacterId(character)) return;
+		this.runCharacter = character;
+		this.requestRestart();
+	}
+
+	/**
 	 * Starts a solo run now (the menu's Play solo; `lobbyId` for a one-player lobby's `lobbyRunStart`): ranked unless
 	 * a debug attribute says otherwise (beginRun). `worldKind`: the world the ranked start asks for (default
 	 * RANKED_WORLD_KIND; the Daily: shared/daily DAILY_WORLD_KIND, whose seed the server picks for the day).

@@ -1026,3 +1026,89 @@ Theme strings only (no new colour role, sound or asset; no contract constant).
   `view/archerSprite` + `view/sprites` + `view/characters` 55 / 925, `shared/play` + `view/fx` 46 / 652. Client code
   is checked by typecheck / lint / build only; Studio items 5, 6 and 8 wait for AR5 / AR7 (the picks reach the run
   configs) and AR12's upload.
+
+## AR7 (as built)
+
+Client input and presentation only (no sim, dungeon, lockstep, hash, replay, fixture, score or server change). Every run
+started from the menu now goes through the character screen; Again does not (owner answers 2 and 8). Paths under
+`src/` unless noted.
+
+- **Pure model** (`shared/view/menu/character.ts`, in the menu barrel): `CharacterScreenOrigin` (`solo` / `daily` /
+  `outro` / `dev` / `lobby` / `runOver`); `characterCards()` (CHARACTER_IDS order: id, `visualId`, the placeholder
+  colour `role`, `nameKey` = `class.<visual>.name`, `lineKeys` = `character.<id>.line.1` / `.2`);
+  `characterInitialFocus(lastPick)` (the remembered pick, junk -> the Knight), `characterFocusIndex`,
+  `characterFocusStep` (one card per press, held at the ends, no wrap); `CHARACTER_SCREEN_KEYS` /
+  `characterKeyAction` (Left / Up / A / W prev, Right / Down / D / S next, Return / KeypadEnter / Space confirm);
+  `characterConfirmPlan(origin)` (start `solo` / `daily` / `dev` / `restart` / `ready`, whether the outro reports
+  first, then `close` or `back`); `characterBackAction(nav)` (`back` when the screen sits over another menu screen,
+  else `close`); `characterConfirmKey` (Ready in a lobby, else Start); `CHARACTER_VIEW` (cards 232 wide, 280 in the
+  portrait column; previews 128 / 72 compact / 96 column; Start 160 x 40, Back the menus' small button) with
+  `characterArrangement(compact, narrow)` (`row` / `compact` / `column`), `characterLayout`, `characterCardHeight`,
+  `characterContentHeight`; the preview's `characterPreviewFacing` (screen angle 270: the S row of the pipeline's 8
+  facings), `characterPreviewFrame` (the idle loop at its fps; reduced motion holds frame 0) and `characterPreviewSize`
+  (the cell fitted into the square, whole px). The run-over button: `runOverCharacterShown(coop, again, recapOn,
+  character)`, `runOverExitButtons`, `runOverExitRowWidth`, `runOverExitsRowWidth`, `runOverExitLayout(buttons, layout,
+  gap, asideAllowed)`.
+- **Nav, pad, skin, music, pause:** `MenuScreen` gains `character`; `PAD_SURFACES.character` (`screen` layer, A select,
+  B back, no shortcuts; `PAD_SURFACE_IDS`); `UI_SCREEN_SKINS.character` = the menus' red frame; `pauseOverlayShown`
+  also hides under a menu screen (`PauseView.menuScreen`, which PauseOverlay now fills: only the dev panel's Go over a
+  paused run puts one there).
+- **Store** (`client/store` menu slice): `menu.character` (`CharacterScreenState { origin, focus }`,
+  `setCharacterScreen`, `setCharacterFocus`, `selectCharacterScreen`).
+- **Routing** (`client/controllers/ui/MenuController.ts`; HudController wires the actions):
+
+  | Start | Opens over | Confirm | Back |
+  |---|---|---|---|
+  | Play solo (main menu) | the main menu | `startSolo(_, _, pick)` (KV_Daily: the Daily), menu closes | the main menu |
+  | the Daily card's start | the main menu | `startSolo(_, DAILY_WORLD_KIND, pick)` | the main menu |
+  | the outro's Start my first run (`startFirstRun`, replaces AR6's `closeOutro(); playSolo()`) | no menu (the outro card hides under it, still open) | `TutorialController.closeOutro()` (reports `firstRun`), then the solo start | the outro card again |
+  | the dev panel's Go (`DevModeController` -> `devStart`) | the menu it was on, or no menu (a solo run still being played pauses first) | `startDev(panel options incl. "Both weapons", seed, pick)` | the menu, or no menu (the pause overlay) |
+  | run over: Character | no menu (the run-over panel hides under it) | `SimController.restartAs(pick)` | the run-over panel |
+  | a lobby member's Ready (AR8) | the lobby room | `LobbyController.setReady(true, pick)`, back to the room | the lobby room, still unready |
+
+  Every Confirm first calls `SettingsController.setSelectedCharacter(pick)` (the remembered pick, ARD12). Backspace and
+  pad B on the screen are `characterBack` (`screenBack` routes it), so the screen closes at the root instead of doing
+  nothing. Arrows / A-D and Enter / Space are read in `MenuController.onInput` (not under a panel). Leaving the screen
+  any way (Back, Confirm, a run start, a lobby move) drops its request (`dropCharacter`). `KV_SkipMenu` (debug) still
+  starts its solo run at once as the selected character.
+- **Again** keeps the run's character, verified on AR5's code: R, Again and the pause overlay's Restart all go
+  `requestRestart` -> `handleReset` -> `beginRun` / `beginDev`, whose `makeRun` builds `characters: [runCharacter]`;
+  only `startSolo` / `startDev` / the new `restartAs` (and a ranked reply echoing it) set `runCharacter`.
+  `SimController.restartAs(character)`: sets it and requests Again's restart (the same world, a dev run's options and
+  seed); ignored in a party run.
+- **Screen** (`client/ui/menu/CharacterScreen.tsx`, mounted by MenuLayer): a `screen` focus scope whose default is the
+  card focused when it opened; the title, the cards (a horizontal row; a column in portrait; smaller previews on a
+  landscape phone), Start (Ready in a lobby) and Back, then the back-key hint (keyboard) or the pad hint bar. A card is a
+  selectable TextButton: the focused one outlined in uiAccent (3 px), the other dimmed; a tap / click focuses it (a
+  click sound), the pad's selection focuses it as it moves (`SelectionGained`), and the pad's A on it confirms it.
+  `CharacterPreview` draws the visual's sprite set (`ThemePack.sprites(visualId)`) idle animation facing the camera,
+  frame by frame through a binding on Heartbeat, `ResampleMode` from the set; without a set with `idle` (the Archer
+  until AR12's upload, the placeholder pack) a capsule in the class colour role. No timer. Fitted by MenuFit (touch,
+  console TV-safe).
+- **Run over** (`client/ui/hud/RunOverPanel.tsx`): **Character** (`run.over.character`) beside Again for a solo run
+  played as a character with the recap's exits (`runOverCharacterShown`; never a party run's Back to lobby). The exits
+  stay today's single row when they fit; with Character and Details: wide / narrow put Again + Character on the first
+  row and the exit + Details under them; compact (a landscape phone) keeps Again, Character and the exit in one row
+  (exactly the left column's 400) and moves Details atop the right column (`detailsAside`, scored runs only: an extra
+  left-column row overflowed the 693 x 320 phone's floor). Again keeps order 1, its size, the `firstRef` focus and its
+  retry gate; Character never goes through `RunOverRetryGate` (it calls `HudActions.runOverCharacter`). While a menu
+  screen is up the panel is not drawn (RecapController's `pressAllowed` already ignored presses under one), so its
+  scope gives the pad to the character screen; Back remounts it with Again selected and `recap.armed` untouched.
+  TutorialOutro likewise hides (and goes inactive) under a menu screen.
+- **Dev panel** (`client/ui/dev/DevPanel.tsx`, `DevModeController`): a **Both weapons** toggle (`DEV_PANEL_VIEW.strings`
+  `bothOn` / `bothOff`, developer English like the rest of the panel) passed as `DevRunOptions.bothWeapons` (AR4's flag
+  had no button); Go asks for the character first.
+- **Specs:** `shared/view/menu/character.spec.ts` (cards, strings in the placeholder pack, focus order / last pick /
+  keys, the pad surface, Confirm plans, Back targets for every origin through `menuNavReduce`, the lobby path under the
+  screen, run-over Character rules and exits layout, the preview's facing / frame / size, fit: the three landscape
+  phones at 70-125 % compact without overflow and above the floor (the two reference phones at full size), three
+  portrait phones in the column, three console sizes at full size inside the TV-safe area with the hint bar, desktops
+  never fitted). `fit.spec.ts`: the run-over recap's worst case now carries Character (two exit rows wide / narrow,
+  Details aside compact) and still fits every phone, portrait phone and desktop. `pause.spec.ts` (the overlay under a
+  menu screen), `skin.spec.ts` (the screen listed).
+- **Ran** (this tree, Linux, 2 cores): typecheck, lint, build, check:assets, check:autolocalize, l10n:check (0 / 0),
+  test:l10n (36); `view/menu` 12 suites / 216 (character 20), `view/audio` + `view/hud` 56 / 814. Client code: typecheck,
+  lint and build only. Not run: the full suite, Studio.
+- **Decisions / deviations:** Back from the outro's screen returns to the outro card (AR6 left the choice to AR7): the
+  card stays open under the screen and its `outro` report fires only on Confirm. Compact run over moves Details (above). `R` on the character screen over
+  a run-over still restarts at once as the run's character (the driver key is SimController's; the menu then closes).

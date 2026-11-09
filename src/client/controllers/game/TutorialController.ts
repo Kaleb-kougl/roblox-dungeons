@@ -170,7 +170,11 @@ export class TutorialController implements OnStart {
 
 	// --- menu actions (HudController) ------------------------------------------------------------
 
-	/** The outro's "Start my first run": closes the card (HudController then does the main menu's Play solo). */
+	/**
+	 * The outro's "Start my first run", once the character screen it opens is confirmed (docs/ARCHER.md AR7:
+	 * MenuController then starts the solo run): closes the card. The card stays open (hidden under the screen) until
+	 * then, so the screen's Back shows it again.
+	 */
 	closeOutro(): void {
 		this.reportOutro("firstRun");
 		clientStore.setTutorialOutroOpen(false);

@@ -6,15 +6,30 @@ import {
 	selectAnyPanelOpen,
 	selectMenuScreen,
 	selectMyLobbyId,
+	selectSelectedCharacter,
 	selectSnapshot,
 	selectStageCovered,
 	type ClientState,
 } from "client/store";
+import { isCharacterId, type CharacterId } from "shared/characters";
 import { DAILY_WORLD_KIND } from "shared/daily";
 import type { LobbyVisibility } from "shared/lobby";
 import type { FirstRunDecision } from "shared/tutorial";
 import { FIXED_INPUTS, RUN_ATTRIBUTES } from "shared/play";
-import { DAILY_MENU, LOBBY_ROOM_PATH, MENU_BACK_KEYS, PAD_KEYS, afterRunPath, lobbyChangePath } from "shared/view/menu";
+import {
+	DAILY_MENU,
+	LOBBY_ROOM_PATH,
+	MENU_BACK_KEYS,
+	PAD_KEYS,
+	afterRunPath,
+	characterBackAction,
+	characterConfirmPlan,
+	characterFocusStep,
+	characterInitialFocus,
+	characterKeyAction,
+	lobbyChangePath,
+	type CharacterScreenOrigin,
+} from "shared/view/menu";
 import { SFX } from "shared/view/audio";
 import { AudioController } from "../audio/AudioController";
 import { SimController } from "../game/SimController";
@@ -51,6 +66,15 @@ function typing(): boolean {
  *   co-op      party runs never pause, so the pause key (P / Start) opens the non-pausing party overlay instead
  *              (Resume / Leave run / settings / leaderboards; Leave run -> lockstepLeave, then the lobby room, which
  *              shows "Run in progress" until the lobby is back to forming)
+ *   character  (docs/ARCHER.md AR7 / AR8, owner answers 2 and 8) every run start from the menu opens the character
+ *              screen first (MenuScreen `character`, shared/view/menu character.ts): Play solo and the Daily card over
+ *              the main menu, the tutorial outro's Start my first run, the dev panel's Go (DevModeController; over the
+ *              menu, or over no menu: a run under it pauses), a lobby member's Ready over the lobby room, and the
+ *              run-over panel's Character (Again never: it keeps the run's character). The last pick is focused;
+ *              arrows / A-D move it, Enter / Space confirm (here), taps and the pad's selection too (the screen).
+ *              Confirm remembers the pick (SettingsController.setSelectedCharacter) and does the origin's start
+ *              (characterConfirmPlan); Back (and Backspace / pad B) goes one screen back, or closes the menu when the
+ *              screen opened over none (characterBackAction): the panel, the outro or the run under it show again.
  */
 @Controller({ loadOrder: 900 })
 export class MenuController implements OnStart {
@@ -60,6 +84,8 @@ export class MenuController implements OnStart {
 	 * O, the leaderboard key) must not also go back a screen.
 	 */
 	private panelOpenLastFrame = false;
+	/** The dev panel's start waiting for the character screen's Confirm (origin `dev`). */
+	private pendingDev: ((character: CharacterId) => void) | undefined;
 
 	constructor(
 		private readonly sim: SimController,
@@ -87,8 +113,11 @@ export class MenuController implements OnStart {
 			clientStore.subscribe(selectMenuScreen, (screen, prev) => {
 				if (screen === "lobbies") this.lobby.requestList();
 				if (prev === "none" && screen !== "none") this.lobby.refreshEligibility();
+				// The character screen went away (Back, Confirm, a run start, a lobby move): its request goes with it.
+				if (prev === "character" && screen !== "character") this.dropCharacter();
 			}),
 		);
+
 		this.janitor.Add(
 			clientStore.subscribe(selectSnapshot, (s) => {
 				const menu = clientStore.getState().menu;
@@ -133,20 +162,83 @@ export class MenuController implements OnStart {
 
 	// --- actions (client/ui/menu MenuActions, the pause overlay, the run-over panel) -------------
 
+	/** Play solo: the character screen, then a solo run (KV_Daily: the Daily). */
 	playSolo(): void {
-		if (Workspace.GetAttribute(RUN_ATTRIBUTES.daily) === true) {
-			print(`[Menu] ${RUN_ATTRIBUTES.daily}: Play solo starts the Daily`);
-			this.playDaily();
-			return;
-		}
-		this.sim.startSolo();
-		clientStore.menuNav({ kind: "close" }); // "Starting run..." shows while the server answers
+		this.openCharacter(this.soloOrigin());
 	}
 
-	/** The Daily (docs/DAILY.md): a ranked solo run in world "daily"; the server picks the day's seed. */
+	/** The Daily (docs/DAILY.md): the character screen, then a ranked solo run in world "daily" (the server's seed). */
 	playDaily(): void {
-		this.sim.startSolo(undefined, DAILY_WORLD_KIND);
-		clientStore.menuNav({ kind: "close" });
+		this.openCharacter("daily");
+	}
+
+	/** The tutorial outro's Start my first run (docs/ARCHER.md AR6 / AR7): the character screen over the outro. */
+	startFirstRun(): void {
+		this.openCharacter("outro");
+	}
+
+	/** The run-over panel's Character (owner answer 8): the character screen over the finished run. */
+	runOverCharacter(): void {
+		const g = clientStore.getState().game;
+		if (!g.active || g.run.coop || g.snapshot.outcome === "playing") return;
+		this.openCharacter("runOver");
+	}
+
+	/**
+	 * The dev panel's Go (DevModeController): the character screen, then `start` with the pick (its options, seed and
+	 * "Both weapons" are the panel's). Over a solo run still being played the run pauses first (Back leaves it paused:
+	 * the pause overlay). Nothing while a party run is on (startDev ignores it too).
+	 */
+	devStart(start: (character: CharacterId) => void): void {
+		const g = clientStore.getState().game;
+		if (g.active && g.run.coop && g.snapshot.outcome === "playing") return;
+		if (g.active && g.snapshot.outcome === "playing") this.sim.pause();
+		this.openCharacter("dev", start);
+	}
+
+	/**
+	 * The character screen (docs/ARCHER.md AR7): a card focused (a tap, a click, the pad's selection, a key). Silent:
+	 * the screen clicks on a tap, the keys here, and the pad's selection has its own tick (AudioController).
+	 */
+	focusCharacter(id: CharacterId): void {
+		if (!isCharacterId(id)) return;
+		const cs = clientStore.getState().menu.character;
+		if (cs === undefined || cs.focus === id) return;
+		clientStore.setCharacterFocus(id);
+	}
+
+	/**
+	 * The character screen's Confirm (Start / Ready, Enter / Space, the pad's A on a card): remembers the pick, leaves
+	 * the screen (characterConfirmPlan: closed, or back to the lobby room) and starts what opened it.
+	 */
+	confirmCharacter(id?: CharacterId): void {
+		const st = clientStore.getState();
+		const cs = st.menu.character;
+		if (cs === undefined || st.menu.nav.screen !== "character") return;
+		const pick = id !== undefined && isCharacterId(id) ? id : cs.focus;
+		const plan = characterConfirmPlan(cs.origin);
+		const dev = this.pendingDev;
+		this.audio.playUi(SFX.uiConfirm);
+		this.settings.setSelectedCharacter(pick);
+		clientStore.setCharacterFocus(pick);
+		print(`[Menu] character ${pick} (${cs.origin})`);
+		clientStore.menuNav({ kind: plan.after === "back" ? "back" : "close" });
+		if (plan.closeOutro) this.tutorial.closeOutro();
+		if (plan.start === "solo") {
+			// KV_Daily (Studio): Play solo, and so the outro's first run, is the Daily.
+			this.sim.startSolo(undefined, this.dailyAttribute() ? DAILY_WORLD_KIND : undefined, pick);
+		} else if (plan.start === "daily") this.sim.startSolo(undefined, DAILY_WORLD_KIND, pick);
+		else if (plan.start === "dev") dev?.(pick);
+		else if (plan.start === "restart") this.sim.restartAs(pick);
+		else this.lobby.setReady(true, pick);
+	}
+
+	/** The character screen's Back (and Backspace / pad B there): characterBackAction. */
+	characterBack(): void {
+		const nav = clientStore.getState().menu.nav;
+		if (nav.screen !== "character") return;
+		this.audio.playUi(SFX.uiBack);
+		clientStore.menuNav({ kind: characterBackAction(nav) === "back" ? "back" : "close" });
 	}
 
 	/**
@@ -203,6 +295,10 @@ export class MenuController implements OnStart {
 	 */
 	screenBack(): void {
 		if (clientStore.getState().menu.nav.screen === "none") return;
+		if (clientStore.getState().menu.nav.screen === "character") {
+			this.characterBack();
+			return;
+		}
 		if (clientStore.getState().menu.nav.stack.size() > 0) this.audio.playUi(SFX.uiBack);
 		this.back();
 	}
@@ -253,12 +349,43 @@ export class MenuController implements OnStart {
 		return clientStore.getState().lobby.mine !== undefined;
 	}
 
+	/** KV_Daily (Studio): Play solo starts the Daily. */
+	private dailyAttribute(): boolean {
+		return Workspace.GetAttribute(RUN_ATTRIBUTES.daily) === true;
+	}
+
+	private soloOrigin(): CharacterScreenOrigin {
+		if (!this.dailyAttribute()) return "solo";
+		print(`[Menu] ${RUN_ATTRIBUTES.daily}: Play solo starts the Daily`);
+		return "daily";
+	}
+
+	/** Opens the character screen for `origin`, the last pick focused (`dev`: the panel's start waits for Confirm). */
+	private openCharacter(origin: CharacterScreenOrigin, dev?: (character: CharacterId) => void): void {
+		const st = clientStore.getState();
+		this.pendingDev = origin === "dev" ? dev : undefined;
+		const cs = st.menu.character;
+		if (st.menu.nav.screen === "character" && cs !== undefined) {
+			// Already up (the dev panel's Go over Play solo's screen): the newer request, the focus kept.
+			clientStore.setCharacterScreen({ origin, focus: cs.focus });
+			return;
+		}
+		clientStore.setCharacterScreen({ origin, focus: characterInitialFocus(selectSelectedCharacter(st)) });
+		clientStore.menuNav({ kind: "open", screen: "character" });
+	}
+
+	private dropCharacter(): void {
+		this.pendingDev = undefined;
+		clientStore.setCharacterScreen(undefined);
+	}
+
 	/**
 	 * Joined / created a lobby, or put in one by an arrival: its room. Left or kicked: back to the browser. Only while
 	 * a menu screen is up (lobbyChangePath); a panel over it (Options, Leaderboard) stays open.
 	 */
 	private onLobbyChanged(id: string | undefined, prev: string | undefined): void {
-		const path = lobbyChangePath(clientStore.getState().menu.nav.screen, id, prev);
+		const nav = clientStore.getState().menu.nav;
+		const path = lobbyChangePath(nav.screen, id, prev, nav.stack);
 		if (path === undefined) return;
 		if (id !== undefined) print(`[Menu] in lobby ${id}: its room`);
 		clientStore.menuNav({ kind: "reset", path });
@@ -272,6 +399,20 @@ export class MenuController implements OnStart {
 		if (name === FIXED_INPUTS.pause || name === FIXED_INPUTS.padPause) {
 			this.toggleCoopOverlay(state);
 			return;
+		}
+		if (state.menu.nav.screen === "character" && !this.panelOpenLastFrame && !selectAnyPanelOpen(state)) {
+			// docs/ARCHER.md AR7: arrows / A-D move the focused card, Enter / Space confirm it (the pad: its selection).
+			const key = characterKeyAction(name);
+			const cs = state.menu.character;
+			if (key !== undefined && cs !== undefined) {
+				if (key === "confirm") this.confirmCharacter();
+				else {
+					const step = characterFocusStep(cs.focus, key === "prev" ? -1 : 1);
+					if (step !== cs.focus) this.audio.playUi(SFX.uiClick);
+					this.focusCharacter(step);
+				}
+				return;
+			}
 		}
 		// Pad B is FocusController's (the owning scope's back, docs/GAMEPAD_MENUS.md GM3): only the keyboard's here.
 		if (!MENU_BACK_KEYS.includes(name) || name === PAD_KEYS.b) return;

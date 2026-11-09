@@ -17,6 +17,8 @@ export interface DevPanelProps {
 	/** God mode as shown: the running dev run's (sim state), else the option Go will use. */
 	readonly god: boolean;
 	readonly godPending: boolean;
+	/** The next Go arms both weapons with the picked character's roll (docs/ARCHER.md AR4). */
+	readonly bothWeapons: boolean;
 	/** The current run is a dev run, on this floor (undefined outside one). */
 	readonly runFloor: number | undefined;
 	readonly onToggleOpen: () => void;
@@ -25,6 +27,7 @@ export interface DevPanelProps {
 	readonly onSeedText: (text: string) => void;
 	readonly onReroll: () => void;
 	readonly onToggleGod: () => void;
+	readonly onToggleBothWeapons: () => void;
 	readonly onGo: () => void;
 	readonly onRestart: () => void;
 }
@@ -114,8 +117,8 @@ function rest(n: number, w: number): number {
 
 /**
  * Developer mode's chip and panel (docs/DEV_MODE.md): a small "DEV" chip on the left edge (tap / click or F2 opens the
- * panel; during a dev run it shows the floor and GOD), and the panel under it: floor stepper, seed, god mode, Go and
- * Restart. Only mounted for players the server allowed (DevModeController).
+ * panel; during a dev run it shows the floor and GOD), and the panel under it: floor stepper, seed, god mode, Both
+ * weapons, Go (the character screen first) and Restart. Only mounted for players the server allowed (DevModeController).
  */
 export function DevPanel(props: DevPanelProps) {
 	const chipText =
@@ -204,12 +207,18 @@ export function DevPanel(props: DevPanelProps) {
 					<Button order={2} width={stepW * 2} text={S.reroll} onClick={props.onReroll} />
 				</Row>
 				<Button order={7} text={godText} accent={props.god} onClick={props.onToggleGod} />
-				<Button order={8} text={string.format(S.go, props.floor)} accent={true} onClick={props.onGo} />
+				<Button
+					order={8}
+					text={props.bothWeapons ? S.bothOn : S.bothOff}
+					accent={props.bothWeapons}
+					onClick={props.onToggleBothWeapons}
+				/>
+				<Button order={9} text={string.format(S.go, props.floor)} accent={true} onClick={props.onGo} />
 				{props.runFloor !== undefined ? (
-					<Button order={9} text={S.restart} onClick={props.onRestart} />
+					<Button order={10} text={S.restart} onClick={props.onRestart} />
 				) : undefined}
 				<Label
-					order={10}
+					order={11}
 					dim={true}
 					text={props.runFloor !== undefined ? string.format(S.inDevRun, props.runFloor) : S.notInDevRun}
 				/>

@@ -1,7 +1,7 @@
 import { keyDevice } from "shared/play";
 import React, { useRef } from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
-import { selectBindings, selectInputDevice, selectTutorialOutroOpen } from "client/store";
+import { selectBindings, selectInputDevice, selectMenuScreen, selectTutorialOutroOpen } from "client/store";
 import { useFocusScope } from "client/ui/focus";
 import { str } from "client/ui/theme";
 import { TUTORIAL_STRINGS } from "shared/tutorial";
@@ -19,12 +19,16 @@ const BUTTON = new Vector2(TUTORIAL_VIEW.outroButtonSize.x, TUTORIAL_VIEW.outroB
 /**
  * The tutorial's outro card (menu layer; docs/TUTORIAL.md "Outro card"), a beat after the tutorial ended: what a real
  * run is (no respawns, harder floors, the leaderboard and where it opens: the bound key), then Start my first run
- * (the main menu's Play solo) or Play the tutorial again. A menu like the pause overlay: the scene dimmed, gamepad
+ * (the character screen, then a solo run: docs/ARCHER.md AR7) or Play the tutorial again. A menu like the pause overlay: the scene dimmed, gamepad
  * selection on its first button (an `overlay` focus scope, no memory; B does nothing: docs/GAMEPAD_MENUS.md GM2 / GM3;
  * HudController lets the pad's navigation keys through while it is open), mouse buttons read released after a click.
  */
 export function TutorialOutro() {
-	const open = useSelector(selectTutorialOutroOpen);
+	// docs/ARCHER.md AR7: Start my first run opens the character screen over the card, which hides (and gives up the
+	// pad) until the screen's Back shows it again or its Confirm closes it.
+	const outroOpen = useSelector(selectTutorialOutroOpen);
+	const screen = useSelector(selectMenuScreen);
+	const open = outroOpen && screen === "none";
 	const device = useSelector(selectInputDevice);
 	const bindings = useSelector(selectBindings);
 	const actions = useHudActions();
