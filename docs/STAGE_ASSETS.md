@@ -440,6 +440,54 @@ smoke test lines, CLAUDE.md decision log. Fresh-phone playtest: a full solo run 
   `parseStandInsForce`: "all" or a comma list of prefixes). Logs: `[Ready] <id> ready (<n> content ids)` per flip
   under `KV_Debug`, one `[Ready] all <n> ids ready in <t> s (...)` summary always. The join screen is unchanged
   (same tiers, same chunk size; the pre-check only resolves ids the engine already has).
+- **SA5 + SA19 (the stage wait, soft).** StageController's `waitAssets` (after the listeners) builds the floor's
+  manifest, `stageAssets(pack, stageInputOf(ctx, ctx.floor, STAGE_CHARACTERS, kind !== "floorChange"))` (RunContext does
+  not expose the party's characters yet, so every cover uses `STAGE_CHARACTERS`; co-op starts count as run starts for
+  the run kit), and pushes `must` to the front lane in manifest order through `PreloadController.whenLoaded`, `soon` to
+  next; AudioController's own requests and PreloadController's boss push are untouched (`AudioController.floorBeds` and
+  `bossContentIds` are no longer read here). StageLoad (`stageLoader.ts`): only a solo run start waits
+  (`waitsForAssets()` = kind `runStart`; floor changes and co-op pass the phase at once, `assetWait` `"none"`, the
+  card keeps `minCardSec`, no draft hold). `STAGE_LOADER.assets` = `STAGE_ASSETS.wait`, which gained `standIns` (true):
+  with it the wait lifts at `softWaitSec` (`"soft"`); without it at `hardCapSec` (`"capped"`) or a `skipAssets()` from
+  `skipAfterSec` (`"skipped"`; `canSkipAssets()`) — the pure path is built and spec'd, **no Skip button is drawn**
+  (the stage cover owns no focus scope; not cheap, not needed with stand-ins). `setAssetProgress(done, total)` (fed
+  every frame from the LoadHandle; monotonic, clamped), `assetProgress()`, `showAssetProgress()` (assets phase, past
+  `showProgressAfterSec`, something missing); the bar's `assets` weight fills with the progress. `maxCoverSec` no
+  longer counts the assets phase. `STAGE_LOADER.assetCapSec` is gone. The card shows the join screen's
+  `loading.progress` ("Loading {done} / {total}") under the run-start bar (store `stage.assets`, `setStageAssets`): no
+  new string. Logs at each reveal: `[Stage] floor N: M ids, ready in T s` or `..., K of C content ids missing at reveal
+  (soft: enemy.imp, ... +n)` (names from `isArtReady`, `STAGE_LOADER.logMissingIds` 5) and later `floor N: ready in T
+  s, after the reveal`. Specs: soft lift at exactly 1.5 s with refs missing, no line under 0.375 s, floor change / co-op
+  ignore assets, the full wait's Skip at 6 s and cap at 30 s, `maxCoverSec` without the assets phase.
+- **SA7 (prefetch).** At every reveal, floor n + 1's manifest goes to the next lane (once per run and floor; the
+  exact input when that floor was already built: a run start's pre-generation, every tutorial floor; else
+  `forecastStageInput(ctx.seed, n + 1, STAGE_CHARACTERS, ctx.world)`; never past `TUTORIAL.lastFloor`); log `[Stage]
+  prefetch floor N (k ids, exact | forecast, next lane)`. Menu / lobby: StageController subscribes (after the join
+  screen's release) to the menu screen and the joined lobby id, no MenuController edit; with no run up it pushes the
+  first-floor guess once per key ("menu" / lobby id) to next. Biome choice: all five biomes on `next`, biome 1's
+  full forecast first, then biomes 2..5's new ids (`stageMergedAssets` in `stageAudit.ts`; floor 1's biome is the
+  seed's auto theme, so a single guess is right one time in five, and the extra biomes are only tiles and decor);
+  the refs are computed once per session.
+- **SA8 (join tier).** `PRELOAD.core` = `ui.`, `sfx.ui.`, `music.menu`, `music.lobby` (the menu draws no class or
+  enemy art; every `ui.` id stays core because menu and HUD icons share sheets). Everything else moved to `later`
+  (back lane), in first-run order: class, bullets, enemies, sfx, pieces, fx, decor, biome 1 and its track, the
+  tutorial's track, treasure, pact, bosses, other music, ambience, biomes. The join screen's release rules are
+  unchanged; the first-run tutorial's run start is covered by its own soft wait. preload.spec updated.
+- **SA11 (audit).** `KV_StageAssetAudit` (`RUN_ATTRIBUTES.stageAssetAudit`, read at each cut). Pure half in
+  `shared/view/stageAudit.ts`: `STAGE_AUDIT.methods` (17 ThemePack lookups: id by argument, by the result's `id`, or
+  `biome:<key>`; a spec checks each is a ThemePack method), `stageAuditIdsOf`, `StageAuditLog` (begin at the cut, the
+  manifest set in `waitAssets`, `close(hasContent)` -> sorted misses). Recording: `ThemeController.setAuditRecorder(cb |
+  undefined)` shadows those methods on the ONE pack instance (instance fields over the class methods, removed again
+  when off), so ThemePack stays unchanged and references taken earlier are covered; internal calls (`bullet` ->
+  `sprites`) are seen too. Closed at the next cut, run over (`isRunOver`, polled per frame) and exit: `[StageAudit]
+  floor N used <id>, not in its manifest` per miss (at most `maxMissLines` 40, then a count), or `floor N: k ids used,
+  all in its manifest`. Ids without content are never misses. Limit: a renderer that cached a lookup on an earlier
+  floor (outside the pack) is not seen on later floors.
+- **Studio checks still needed (SA5 / SA7 / SA8 / SA11):** with `KV_FakeAssetLatency` 2, Play solo reveals at about
+  1.5 s after the build with "Loading n / m" from 0.4 s and the missing-ids log line; floor changes never wait; the
+  prefetch lines at each reveal and on the menu / a lobby; a fresh join lifts on the menu kit; the tutorial's start
+  covered by its soft wait; `KV_StageAssetAudit` over floors 1-10 (expect misses only from ids the manifest truly
+  lacks).
 
 ## Out of scope
 

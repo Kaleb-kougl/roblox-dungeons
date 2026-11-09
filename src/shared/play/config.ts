@@ -69,6 +69,13 @@ export const RUN_ATTRIBUTES = {
 	 * Feeds ArtReadiness.setForced (shared/view parseStandInsForce).
 	 */
 	standInsForce: "KV_StandInsForce",
+	/**
+	 * Boolean, debug, read at each stage (run start, floor change; docs/STAGE_ASSETS.md SA11): while on, every logical
+	 * id the views resolve through the theme pack during a floor is recorded (ThemeController's recording wrapper) and
+	 * diffed against that floor's stage manifest at the next floor change, run over or exit, printing
+	 * `[StageAudit] floor N used <id>, not in its manifest`. Off by default.
+	 */
+	stageAssetAudit: "KV_StageAssetAudit",
 } as const;
 
 /** The web build's DEFAULT_SEED (`?seed=` absent). */

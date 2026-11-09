@@ -72,17 +72,29 @@ export interface StageAssetsConfig {
 	 * first, every id starts in `must`).
 	 */
 	readonly soon: ReadonlyArray<string>;
-	/** The stage wait's tunables (SA5 / SA19; decisions SAD3 / SAD4). */
-	readonly wait: {
-		/** Revision 2 (SAD3): a run start waits at most this long for its manifest, then reveals with stand-ins. */
-		readonly softWaitSec: number;
-		/** The card shows the bar and "Loading n / m" only once the wait has run this long (a cached floor: no bar). */
-		readonly showProgressAfterSec: number;
-		/** Without stand-ins (a pack with `standIns: false`): Skip shows after this long. */
-		readonly skipAfterSec: number;
-		/** Without stand-ins: the wait lifts on its own after this long. */
-		readonly hardCapSec: number;
-	};
+	/** The stage wait's tunables (SA5 / SA19; decisions SAD3 / SAD4; read by shared/view StageLoad). */
+	readonly wait: StageAssetWaitConfig;
+}
+
+/**
+ * The run start's asset wait (docs/STAGE_ASSETS.md SA5 / SA19, StageLoad's `assets` phase). Floor changes and co-op
+ * covers never wait for assets (SAD4 / SAD8); only a solo run start (Play solo, a restart, the tutorial, a dev run) does.
+ */
+export interface StageAssetWaitConfig {
+	/**
+	 * Revision 2 (SAD3, SAD16): renderers draw a stand-in (the placeholder) for art not downloaded yet, so a run start
+	 * waits at most `softWaitSec`. False (a pack or build without stand-ins): the old full wait, lifting on `hardCapSec`
+	 * (or a Skip, StageLoad.skipAssets, offered after `skipAfterSec`; no Skip button is drawn yet).
+	 */
+	readonly standIns: boolean;
+	/** With stand-ins: a run start waits at most this long for its manifest, then reveals with stand-ins. */
+	readonly softWaitSec: number;
+	/** The cover shows "Loading n / m" only once the wait has run this long and something is missing (cached: none). */
+	readonly showProgressAfterSec: number;
+	/** Without stand-ins: Skip may end the wait after this long (StageLoad.canSkipAssets). */
+	readonly skipAfterSec: number;
+	/** Without stand-ins: the wait lifts on its own after this long. */
+	readonly hardCapSec: number;
 }
 
 /** The present players' characters when the caller has no roster (today: the knight only; the Archer is planned). */
@@ -124,5 +136,5 @@ export const STAGE_ASSETS: StageAssetsConfig = {
 	decorPrefix: "decor.",
 	notStaged: ["music.menu", "music.lobby"],
 	soon: [],
-	wait: { softWaitSec: 1.5, showProgressAfterSec: 0.4, skipAfterSec: 6, hardCapSec: 30 },
+	wait: { standIns: true, softWaitSec: 1.5, showProgressAfterSec: 0.4, skipAfterSec: 6, hardCapSec: 30 },
 };

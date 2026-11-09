@@ -63,6 +63,8 @@
  *                 in front-lane order (stageAssetGroups / stageAssets / stageContentRefs), the audit diff; its theme
  *                 groups (actor kind, character, biome, free decor, feature) in stageGroups.ts (SA1)
  *                 (tunables: STAGE_ASSETS in stageAssetsConfig.ts; floor inputs: shared/run stageInput.ts)
+ *   stageAudit.ts  the KV_StageAssetAudit recording's pure half (STAGE_AUDIT, StageAuditLog, SA11) and the merged
+ *                 prefetch manifest (stageMergedAssets, SA7)
  *   decor/        the decor plan (docs/DECOR.md R3 / R6 / R8): planDecor, decorProfile, fade selection, glow points
  *   voidDecor/    void decoration (docs/VOID_DECOR.md VD2-VD4, VD9): voidField, planVoid (shoulder / ledge / outcrop /
  *                 abyss per cell, greedy rects), VOID / VOID_DEPTH, the VoidController's columns (voidColumnOf,
@@ -124,3 +126,4 @@ export * from "./stageLoader";
 export * from "./stageAssetsConfig";
 export * from "./stageGroups";
 export * from "./stageAssets";
+export * from "./stageAudit";

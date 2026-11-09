@@ -11,18 +11,24 @@
  *                      forging        solo run start: the run (floor 1) is built under the cover ("forge" work)
  *                      building       the run-start / floor-change listeners rebuild the views ("notify" work), then
  *                                     on a run start the next floor(s) are pre-generated ("pregen" work)
- *                      assets         the floor's front-lane assets (`assetsDone()`), at most `assetCapSec`
+ *                      assets         a solo run start's stage manifest (docs/STAGE_ASSETS.md SA5 / SA19:
+ *                                     `assetsDone()`, progress through `setAssetProgress`): with stand-ins
+ *                                     (`assets.standIns`, revision 2) at most `softWaitSec` ("soft": the rest draws
+ *                                     as stand-ins until it lands); without, until `hardCapSec` or a Skip
+ *                                     (`skipAssets`, offered after `skipAfterSec`). Floor changes and co-op covers
+ *                                     pass it at once ("none": SAD4 / SAD8, the manifest still goes to the front)
  *                      settling       `settleFrames` rendered frames, and the card's / start's minimum time (or
  *                                     longer: `holdAtLeast`, a run start's roster line, docs/DAILY.md DS2)
  *                      revealing      the fade (`fadeSec`; a cut under reduced motion): the sim runs again, the
  *                                     input stays blocked until the cover is gone
  *                      done
  *                    A floor change whose world is live under the card (`worldLive`: no local draft opened) skips the
- *                    assets wait and the card's minimum: the cover lasts the rebuild and the settle frames only.
+ *                    card's minimum: the cover lasts the rebuild and the settle frames only.
  *                    Covered work (`due()`) runs one item per frame, and only once the cover was drawn: its commit
  *                    reported (`coverShown()`) and `coverDrawFrames` frames passed since (or `coverAckCapSec` without
- *                    a report). `maxCoverSec` counts from the server's answer (from the cut without one): past it the
- *                    waits are skipped (work still runs, one item per frame) and the cover lifts.
+ *                    a report). `maxCoverSec` counts from the server's answer (from the cut without one), the assets
+ *                    phase excluded: past it the waits are skipped (work still runs, one item per frame) and the
+ *                    cover lifts.
  *   stageMerge       what a new cover request does to the current one: "new", "continue" (the server answered the
  *                    waiting run start) or "absorb" (a floor change while the run-start listeners are still pending:
  *                    they read the newest context when they run, so the floor change needs nothing of its own)
@@ -39,8 +45,12 @@ export type StageKind = "runStart" | "coopStart" | "floorChange";
 export type StagePhase = "waitingServer" | "forging" | "building" | "assets" | "settling" | "revealing" | "done";
 /** Covered work the driver runs when `due()` says so, then reports (forged / built / pregenerated). */
 export type StageWorkItem = "forge" | "notify" | "pregen";
-/** How the assets wait ended: still waiting (or not reached yet), every asset resolved, the cap, or not waited for. */
-export type StageAssetWait = "pending" | "ready" | "capped" | "skipped";
+/**
+ * How the assets wait ended: still waiting (or not reached yet); every asset resolved; the soft wait ran out (stand-ins
+ * draw the rest); the player skipped it or a cap lifted it (no stand-ins; or maxCoverSec tripped before it); not waited
+ * for (floor changes, co-op).
+ */
+export type StageAssetWait = "pending" | "ready" | "soft" | "skipped" | "capped" | "none";
 
 /** A theme string key and its vars (`{floor}`). */
 export interface StageLabel {
@@ -59,8 +69,8 @@ export interface StageLoadOptions {
 	readonly floor?: number;
 	/**
 	 * Floor change only: the world is live under the card (the local player's draft did not open: nothing to offer), so
-	 * the cover lasts the view rebuild and the settle frames only: no assets wait, no minimum card time (SD5 kept: no
-	 * hold on floor changes).
+	 * the cover lasts the view rebuild and the settle frames only: no minimum card time (SD5 kept: no hold on floor
+	 * changes; no floor change waits for assets anyway).
 	 */
 	readonly worldLive?: boolean;
 }
@@ -81,12 +91,17 @@ export class StageLoad {
 	private drawnFrames = 0;
 	private sinceStartSec = 0;
 	private coverSec = 0;
+	/** coverSec without the assets phase: what maxCoverSec caps. */
+	private capSec = 0;
 	private phaseSec = 0;
 	private settledFrames = 0;
 	private notified = false;
 	private pregenDone = false;
 	private assetsReady = false;
 	private assetWaitEnd: StageAssetWait = "pending";
+	private assetsDoneCount = 0;
+	private assetsTotal = 0;
+	private skipAsked = false;
 	private overCap = false;
 	private workedThisFrame = false;
 	private heldSec = 0;
@@ -115,9 +130,10 @@ export class StageLoad {
 		this.sinceStartSec += d;
 		this.phaseSec += d;
 		if (this.current !== "waitingServer") this.coverSec += d;
+		if (this.current !== "waitingServer" && this.current !== "assets") this.capSec += d;
 		if (this.acked) this.drawnFrames += 1;
 		if (this.current === "settling") this.settledFrames += 1;
-		if (this.current !== "waitingServer" && this.coverSec >= this.cfg.maxCoverSec) this.overCap = true;
+		if (this.current !== "waitingServer" && this.capSec >= this.cfg.maxCoverSec) this.overCap = true;
 		this.advance();
 	}
 
@@ -138,6 +154,7 @@ export class StageLoad {
 		if (floor !== undefined) this.floorNo = floor;
 		this.steps.add("server");
 		this.coverSec = 0;
+		this.capSec = 0;
 		this.enter(this.forgeWanted ? "forging" : "building");
 	}
 
@@ -181,6 +198,24 @@ export class StageLoad {
 	/** Every asset the floor waits for resolved (may arrive before the assets phase: it then passes at once). */
 	assetsDone(): void {
 		this.assetsReady = true;
+		if (this.assetsTotal > 0) this.assetsDoneCount = this.assetsTotal;
+		this.advance();
+	}
+
+	/**
+	 * The manifest's progress (content ids resolved, distinct content ids waited for; PreloadController's LoadHandle).
+	 * `done` never goes back (a re-fetch under the fake latency) and is clamped to `total`.
+	 */
+	setAssetProgress(done: number, total: number): void {
+		const t = math.max(total, 0);
+		this.assetsTotal = t;
+		this.assetsDoneCount = math.clamp(math.max(this.assetsDoneCount, done), 0, t);
+	}
+
+	/** Without stand-ins: the player asks to stop waiting (honoured once canSkipAssets). */
+	skipAssets(): void {
+		if (!this.canSkipAssets()) return;
+		this.skipAsked = true;
 		this.advance();
 	}
 
@@ -235,16 +270,47 @@ export class StageLoad {
 		return this.current !== "done";
 	}
 
-	/** The assets wait applies (not a floor change whose world is live under the card). */
+	/** The assets wait applies: a solo run start only (docs/STAGE_ASSETS.md SAD4 / SAD8: never a floor change or co-op). */
 	waitsForAssets(): boolean {
-		return !this.worldLive;
+		return this.kind === "runStart";
 	}
 
-	/** The run-start bar in [0, 1]: the weights of the steps done (or not applying); 1 from the reveal on. Monotonic. */
+	/** [done, total] of the manifest as last reported (setAssetProgress; [total, total] once assetsDone). */
+	assetProgress(): [done: number, total: number] {
+		return [this.assetsDoneCount, this.assetsTotal];
+	}
+
+	/**
+	 * The cover shows "Loading {done} / {total}": the assets wait has run `showProgressAfterSec` and something is still
+	 * missing (a cached floor never flashes it).
+	 */
+	showAssetProgress(): boolean {
+		return (
+			this.current === "assets" &&
+			this.waitsForAssets() &&
+			!this.assetsReady &&
+			this.assetsDoneCount < this.assetsTotal &&
+			this.phaseSec >= this.cfg.assets.showProgressAfterSec
+		);
+	}
+
+	/** Without stand-ins, the wait may be skipped now (it has run `skipAfterSec`). Never with stand-ins (1.5 s cap). */
+	canSkipAssets(): boolean {
+		const a = this.cfg.assets;
+		return !a.standIns && this.current === "assets" && this.waitsForAssets() && this.phaseSec >= a.skipAfterSec;
+	}
+
+	/**
+	 * The run-start bar in [0, 1]: the weights of the steps done (or not applying), the assets step's share filling with
+	 * the manifest's progress while it waits; 1 from the reveal on. Monotonic.
+	 */
 	fraction(): number {
 		if (!this.covering()) return 1;
 		let f = 0;
 		for (const step of ALL_STEPS) if (this.steps.has(step)) f += this.cfg.weights[step];
+		if (this.current === "assets" && this.assetsTotal > 0) {
+			f += (this.cfg.weights.assets * this.assetsDoneCount) / this.assetsTotal;
+		}
 		return math.clamp(f, 0, 1);
 	}
 
@@ -294,6 +360,17 @@ export class StageLoad {
 		return this.sinceStartSec >= this.cfg.coverAckCapSec;
 	}
 
+	/** How the assets phase ends now, or undefined while it waits (see the file comment). */
+	private assetsEnd(): StageAssetWait | undefined {
+		const a = this.cfg.assets;
+		if (!this.waitsForAssets()) return "none";
+		if (this.assetsReady) return "ready";
+		if (this.overCap) return "capped";
+		if (a.standIns) return this.phaseSec >= a.softWaitSec ? "soft" : undefined;
+		if (this.skipAsked) return "skipped";
+		return this.phaseSec >= a.hardCapSec ? "capped" : undefined;
+	}
+
 	private enter(phase: StagePhase): void {
 		this.current = phase;
 		this.phaseSec = 0;
@@ -308,16 +385,9 @@ export class StageLoad {
 		if (c === "building") {
 			if (this.notified && (this.pregenDone || !this.pregenWanted)) this.enter("assets");
 		} else if (c === "assets") {
-			if (this.worldLive) {
-				this.assetWaitEnd = "skipped";
-				this.steps.add("assets");
-				this.enter("settling");
-			} else if (this.assetsReady) {
-				this.assetWaitEnd = "ready";
-				this.steps.add("assets");
-				this.enter("settling");
-			} else if (this.overCap || this.phaseSec >= cfg.assetCapSec) {
-				this.assetWaitEnd = "capped";
+			const ending = this.assetsEnd();
+			if (ending !== undefined) {
+				this.assetWaitEnd = ending;
 				this.steps.add("assets");
 				this.enter("settling");
 			}

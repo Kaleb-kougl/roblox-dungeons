@@ -1,13 +1,15 @@
 // The stage loader's pure core (docs/STAGE_LOADER.md SL1, SL4, SL0): StageLoad's phase orders (solo start ranked and
 // unranked, co-op start, floor change), one covered work item per frame behind a drawn cover, holdSim / blocksInput,
-// the minCardSec / assetCapSec / maxCoverSec / coverAckCapSec boundaries, reduced-motion opacity, a monotonic bar,
-// stageMerge, floorChangeStaged, pregenTarget / PregenTracker (incl. a missed pre-generation), the SL0 helpers and the
+// the minCardSec / maxCoverSec / coverAckCapSec boundaries, the run start's asset wait (docs/STAGE_ASSETS.md SA5 /
+// SA19: the soft wait with stand-ins, the progress line, the full wait's Skip and hard cap without; floor changes and
+// co-op never wait), reduced-motion opacity, a monotonic bar, stageMerge, floorChangeStaged, pregenTarget / PregenTracker (incl. a missed pre-generation), the SL0 helpers and the
 // cover's string keys.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { PLACEHOLDER_MANIFEST, REQUIRED_STRING_KEYS, STAGE_STRING_KEYS, ThemePack } from "shared/theme";
 import { VALE_MANIFEST } from "shared/theme/packs/vale";
 import {
 	PregenTracker,
+	STAGE_ASSETS,
 	STAGE_LOADER,
 	STAGE_STRINGS,
 	StageLoad,
@@ -28,16 +30,21 @@ const CFG: StageLoaderConfig = {
 	...STAGE_LOADER,
 	minCardSec: 0.5,
 	minStartSec: 0,
-	assetCapSec: 2,
 	maxCoverSec: 4,
 	fadeSec: 0.25,
 	coverAckCapSec: 0.5,
+	assets: { standIns: true, softWaitSec: 1.5, showProgressAfterSec: 0.375, skipAfterSec: 6, hardCapSec: 30 },
 };
 
-/** Reports the cover drawn and runs frames of dt 0 until covered work is due (at most `limit`). */
+/** CFG without stand-ins: the full wait (Skip after skipAfterSec, the hard cap). */
+const FULL_WAIT: StageLoaderConfig = { ...CFG, assets: { ...CFG.assets, standIns: false } };
+
+/** Runs frames of dt 0 until covered work is due (at most `limit`); none once the work phases are over. */
 function untilDue(load: StageLoad, limit = 10): void {
 	for (let i = 0; i < limit; i++) {
 		if (load.due() !== undefined) return;
+		const p = load.phase();
+		if (p !== "waitingServer" && p !== "forging" && p !== "building") return;
 		load.frame(0);
 	}
 }
@@ -217,7 +224,7 @@ describe("StageLoad: co-op start and floor change", () => {
 		expect(load.label().key).toBe(STAGE_STRINGS.floorCard);
 	});
 
-	it("floor change with the world live (no local draft): rebuild and settle only, no assets wait, no minimum", () => {
+	it("floor change with the world live (no local draft): rebuild and settle only, no minimum", () => {
 		const load = new StageLoad("floorChange", { floor: 3, worldLive: true }, CFG);
 		expect(load.waitsForAssets()).toBe(false);
 		load.coverShown();
@@ -225,16 +232,32 @@ describe("StageLoad: co-op start and floor change", () => {
 		expect(load.due()).toBe("notify");
 		load.built();
 		expect(load.phase()).toBe("settling"); // never waited for assets
-		expect(load.assetWait()).toBe("skipped");
+		expect(load.assetWait()).toBe("none");
 		load.frame(0);
 		expect(load.phase()).toBe("settling");
 		load.frame(0);
 		expect(load.phase()).toBe("revealing"); // 0 s of card: no minCardSec
 		expect(load.coverSeconds()).toBe(0);
-		expect(new StageLoad("floorChange", { floor: 3 }, CFG).waitsForAssets()).toBe(true);
-		// only a floor change can be live
+		// only a solo run start waits for assets (SAD4 / SAD8), live world or not
+		expect(new StageLoad("floorChange", { floor: 3 }, CFG).waitsForAssets()).toBe(false);
+		expect(new StageLoad("coopStart", { floor: 1 }, CFG).waitsForAssets()).toBe(false);
 		const start = new StageLoad("runStart", { forge: true, worldLive: true }, CFG);
 		expect(start.waitsForAssets()).toBe(true);
+	});
+
+	it("floor change and co-op start ignore the assets: the manifest never holds them, no progress line", () => {
+		for (const kind of ["floorChange", "coopStart"] as const) {
+			const load = new StageLoad(kind, { floor: 2 }, CFG);
+			load.frame(1); // the card's minimum served
+			runWork(load);
+			load.setAssetProgress(0, 40); // nothing in
+			expect(load.phase()).toBe("settling");
+			expect(load.assetWait()).toBe("none");
+			expect(load.showAssetProgress()).toBe(false);
+			load.frame(0);
+			load.frame(0);
+			expect([kind, load.phase()]).toEqual([kind, "revealing"]);
+		}
 	});
 
 	it("floor change: the settle frames still count after the card's minimum", () => {
@@ -251,25 +274,92 @@ describe("StageLoad: co-op start and floor change", () => {
 });
 
 describe("StageLoad: caps", () => {
-	it("assetCapSec: the wait ends at the cap, marked capped", () => {
-		const load = new StageLoad("floorChange", { floor: 5 }, CFG);
+	it("soft wait (stand-ins): a run start lifts at softWaitSec with refs still missing, marked soft", () => {
+		const load = new StageLoad("runStart", { forge: true, floor: 5 }, CFG);
 		load.coverShown();
 		runWork(load);
 		expect(load.phase()).toBe("assets");
+		load.setAssetProgress(3, 31);
 		load.frame(1);
-		load.frame(0.5);
 		load.frame(0.25);
 		load.frame(0.125);
-		expect(load.phase()).toBe("assets"); // 1.875 s
+		expect(load.phase()).toBe("assets"); // 1.375 s
 		load.frame(0.125);
-		expect(load.phase()).toBe("settling"); // exactly assetCapSec
-		expect(load.assetWait()).toBe("capped");
+		expect(load.phase()).toBe("settling"); // exactly softWaitSec
+		expect(load.assetWait()).toBe("soft");
+		expect(load.assetProgress()).toEqual([3, 31]);
 		load.assetsDone(); // late: changes nothing
-		expect(load.assetWait()).toBe("capped");
+		expect(load.assetWait()).toBe("soft");
+		expect(load.canSkipAssets()).toBe(false);
+	});
+
+	it("the progress line shows only once the wait has run showProgressAfterSec with something missing", () => {
+		const load = new StageLoad("runStart", { forge: true, floor: 1 }, CFG);
+		load.coverShown();
+		runWork(load);
+		load.setAssetProgress(0, 12);
+		expect(load.showAssetProgress()).toBe(false);
+		load.frame(0.25);
+		load.frame(0.0625);
+		load.frame(0.03125);
+		expect(load.phaseSeconds()).toBe(0.34375);
+		expect(load.showAssetProgress()).toBe(false); // under 0.375 s: no flash of a bar on a cached floor
+		load.frame(0.03125);
+		expect(load.showAssetProgress()).toBe(true); // exactly showProgressAfterSec
+		load.setAssetProgress(12, 12);
+		expect(load.showAssetProgress()).toBe(false); // nothing missing
+		const cached = new StageLoad("runStart", { forge: true, floor: 1 }, CFG);
+		cached.coverShown();
+		runWork(cached);
+		cached.setAssetProgress(4, 4);
+		cached.assetsDone();
+		expect(cached.phase()).toBe("settling");
+		expect(cached.showAssetProgress()).toBe(false);
+	});
+
+	it("progress never goes back and is clamped to the total; assetsDone fills it", () => {
+		const load = new StageLoad("runStart", { forge: true, floor: 1 }, CFG);
+		load.setAssetProgress(5, 10);
+		load.setAssetProgress(2, 10); // a re-fetch: not shown as a step back
+		expect(load.assetProgress()).toEqual([5, 10]);
+		load.setAssetProgress(14, 10);
+		expect(load.assetProgress()).toEqual([10, 10]);
+		const other = new StageLoad("runStart", { forge: true, floor: 1 }, CFG);
+		other.setAssetProgress(1, 8);
+		other.assetsDone();
+		expect(other.assetProgress()).toEqual([8, 8]);
+	});
+
+	it("without stand-ins: Skip from skipAfterSec, the hard cap at hardCapSec", () => {
+		const load = new StageLoad("runStart", { forge: true, floor: 1 }, FULL_WAIT);
+		load.coverShown();
+		runWork(load);
+		load.frame(4); // past maxCoverSec: the assets phase does not count for it
+		load.frame(1.5);
+		load.frame(0.375);
+		expect(load.capped()).toBe(false);
+		expect(load.phase()).toBe("assets"); // 5.875 s, past the soft wait: stand-ins are off
+		expect(load.canSkipAssets()).toBe(false);
+		load.skipAssets(); // too early: ignored
+		expect(load.phase()).toBe("assets");
+		load.frame(0.125);
+		expect(load.canSkipAssets()).toBe(true); // exactly skipAfterSec
+		load.skipAssets();
+		expect(load.phase()).toBe("settling");
+		expect(load.assetWait()).toBe("skipped");
+		const capped = new StageLoad("runStart", { forge: true, floor: 1 }, FULL_WAIT);
+		capped.coverShown();
+		runWork(capped);
+		for (let i = 0; i < 29; i++) capped.frame(1);
+		expect(capped.phase()).toBe("assets");
+		capped.frame(1);
+		expect(capped.phase()).toBe("settling"); // exactly hardCapSec
+		expect(capped.assetWait()).toBe("capped");
+		expect(capped.capped()).toBe(false); // the asset cap, not maxCoverSec
 	});
 
 	it("assets ready before the assets phase: it passes at once", () => {
-		const load = new StageLoad("floorChange", { floor: 3 }, CFG);
+		const load = new StageLoad("runStart", { forge: true, floor: 3 }, CFG);
 		load.assetsDone();
 		load.coverShown();
 		runWork(load);
@@ -277,21 +367,35 @@ describe("StageLoad: caps", () => {
 		expect(load.assetWait()).toBe("ready");
 	});
 
-	it("maxCoverSec: counted from the server's answer, then every wait is skipped", () => {
-		const cfg: StageLoaderConfig = { ...CFG, assetCapSec: 100, minCardSec: 100 };
+	it("maxCoverSec: counted from the server's answer without the assets phase, then every wait is skipped", () => {
+		const cfg: StageLoaderConfig = { ...CFG, minStartSec: 100, assets: { ...CFG.assets, softWaitSec: 100 } };
 		const load = new StageLoad("runStart", { waitServer: true, forge: true, floor: 1 }, cfg);
 		load.coverShown();
 		load.frame(10); // 10 s of server wait: not counted
 		load.serverAnswered();
 		runWork(load);
 		expect(load.phase()).toBe("assets");
+		load.frame(50); // the asset wait has its own caps
+		expect(load.capped()).toBe(false);
+		load.assetsDone();
+		expect(load.phase()).toBe("settling");
 		load.frame(2);
 		load.frame(1.5);
-		expect(load.phase()).toBe("assets");
-		expect(load.coverSeconds()).toBe(3.5);
+		expect(load.phase()).toBe("settling");
+		expect(load.coverSeconds()).toBe(53.5);
 		load.frame(0.5);
 		expect(load.capped()).toBe(true);
-		expect(load.phase()).toBe("revealing"); // assets and settle skipped at exactly maxCoverSec
+		expect(load.phase()).toBe("revealing"); // the settle minimum skipped at exactly maxCoverSec
+	});
+
+	it("maxCoverSec reached before the assets phase: the asset wait is skipped, marked capped", () => {
+		const load = new StageLoad("runStart", { forge: true, floor: 1 }, CFG);
+		load.frame(5); // never reported, past the cap
+		load.forged();
+		load.frame(0);
+		load.built();
+		expect(load.assetWait()).toBe("capped");
+		expect(load.phase()).toBe("revealing");
 	});
 
 	it("maxCoverSec: pending work still runs (one item per frame), then the cover lifts", () => {
@@ -350,9 +454,12 @@ describe("StageLoad: opacity and the bar", () => {
 			else if (item === "pregen") load.pregenerated();
 			note();
 		}
-		load.frame(1);
+		load.setAssetProgress(1, 4);
 		note();
 		load.frame(1);
+		load.setAssetProgress(3, 4);
+		note();
+		load.frame(1); // the soft wait ran out
 		note();
 		while (!load.isDone()) {
 			load.frame(0.125);
@@ -370,7 +477,14 @@ describe("StageLoad: opacity and the bar", () => {
 		expect(STAGE_LOADER.minCardSec).toBe(0.6);
 		expect(STAGE_LOADER.minStartSec).toBe(0);
 		expect(STAGE_LOADER.rosterStartSec).toBe(1);
-		expect(STAGE_LOADER.assetCapSec).toBe(3);
+		expect(STAGE_LOADER.assets).toBe(STAGE_ASSETS.wait);
+		expect(STAGE_ASSETS.wait).toEqual({
+			standIns: true,
+			softWaitSec: 1.5,
+			showProgressAfterSec: 0.4,
+			skipAfterSec: 6,
+			hardCapSec: 30,
+		});
 		expect(STAGE_LOADER.maxCoverSec).toBe(8);
 		expect(STAGE_LOADER.settleFrames).toBe(2);
 		expect(STAGE_LOADER.fadeSec).toBe(0.25);

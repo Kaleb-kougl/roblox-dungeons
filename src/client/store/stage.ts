@@ -35,6 +35,18 @@ export interface StageCoverState {
 	readonly line: NewBestLineText | undefined;
 	/** The run-start bar in [0, 1] (StageLoad.fraction). */
 	readonly fraction: number;
+	/**
+	 * docs/STAGE_ASSETS.md SA5 / SA19: the run start's "Loading {done} / {total}" line under the bar (content ids of the
+	 * floor's manifest), only once the soft wait has run STAGE_ASSETS.wait.showProgressAfterSec with something missing
+	 * (StageLoad.showAssetProgress). Undefined: no line.
+	 */
+	readonly assets: StageAssetsLine | undefined;
+}
+
+/** The cover's asset progress line. */
+export interface StageAssetsLine {
+	readonly done: number;
+	readonly total: number;
 }
 
 /** What StageController shows at the cut. */
@@ -60,10 +72,20 @@ const initialState: StageCoverState = {
 	boss: false,
 	line: undefined,
 	fraction: 0,
+	assets: undefined,
 };
 
 export const stageSlice = createProducer(initialState, {
-	showStage: (_state, v: StageCoverView) => ({ ...v, shown: true, revealing: false }),
+	showStage: (_state, v: StageCoverView) => ({ ...v, shown: true, revealing: false, assets: undefined }),
+	/** The asset progress line changed (StageController: only on a change; undefined hides it). */
+	setStageAssets: (state, assets: StageAssetsLine | undefined) => {
+		const was = state.assets;
+		if (was === assets) return state;
+		if (was !== undefined && assets !== undefined && was.done === assets.done && was.total === assets.total) {
+			return state;
+		}
+		return state.shown ? { ...state, assets } : state;
+	},
 	/** The label or bar changed (only on a change: the run start's steps). */
 	setStageProgress: (state, labelKey: string, floor: number, fraction: number) =>
 		state.labelKey === labelKey && state.floor === floor && state.fraction === fraction
