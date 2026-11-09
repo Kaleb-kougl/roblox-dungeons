@@ -6,22 +6,28 @@
  *
  * ## Per client frame (the caller's loop)
  *
- *   putTruth(tick, frames)   a merged frame (everyone) as soon as it is known: stepped, or waiting in the playout
- *                            buffer (ticks T .. T + D - 1 for a confirmed state at T); in tick order
+ *   reset(state)             (re)start on a confirmed state: a run start, or the harness's window start
+ *   putTruth(tick, frames)   a merged frame (everyone, index order) as soon as it is known: stepped, or waiting in the
+ *                            playout buffer (ticks T .. T + D - 1 for a confirmed state at T); in tick order
  *   putOwn(tick, frame)      player i's own input for a tick past the merged ones (T + D .. T + D + L - 1: the
  *                            client's `sent` frames)
- *   predict(state)           once per rendered frame, with the confirmed state at T (`state.tick`): copies it, steps
- *                            the copy to the DRAWN tick K = T + min(D + L, H) (truth frames, then i's own frames with
- *                            the teammates' inputs guessed), and records K's view digest (and, re-predicted on the
- *                            way, the previous frame's drawn tick: the corrections). Returns K.
+ *   predict(state)           once per rendered frame, with the confirmed state at T (`state.tick`): copies it (the
+ *                            injected copy), steps the copy to the DRAWN tick K = T + min(D + L, H) (truth frames, then
+ *                            i's own frames with the teammates' inputs guessed), records K's view digest (and, re-
+ *                            predicted on the way, the previous frame's drawn tick: the corrections). Returns K.
+ *                            Sliced, the same work is beginPredict(state) -> stepPredict(sliceTicks) until it returns
+ *                            true (the worker yields between calls) -> finishPredict(); in flight, the caller must not
+ *                            step `state` nor call confirm / reset (both refuse); putTruth / putOwn are fine (the
+ *                            prediction froze its frame ends at the begin)
  *   confirm(state)           after the caller stepped its confirmed state one tick (with the frame it put): digests
  *                            the truth and compares every prediction of that tick (truth errors, the cheap plan) and,
- *                            `eventSlackTicks` later, its events.
- *   reset(state)             (re)start on a confirmed state: a run start, or the harness's window start.
+ *                            `eventSlackTicks` later, its events
  *
- * D = (truth frames put) - T, L = (own frames put past them); the caller decides both by what it puts (the harness:
- * fixed L and D; live: the real playout buffer and lead). `metrics` (a RollbackMetrics) accumulates; its
- * `toLiveSummaryCounts()` / `leadSeen()` are a LiveSummary's parts.
+ * D = (truth frames put) - T, L = (own frames put past them), both read at each begin; the caller decides them by what
+ * it puts (the harness: fixed L and D; live: the real playout buffer and lead). The model never writes `state` (it
+ * steps its copy; model.spec checks the hash). `metrics` (a RollbackMetrics) accumulates; `toLiveSummaryCounts()` /
+ * `leadSeen()` are a LiveSummary's parts. `times` sums each prediction's copy / step / other seconds, `lastTimes()`
+ * is the last one's (the probe's p50 / p95 samples).
  *
  * ## Guesses (Design 2)
  *
@@ -33,8 +39,10 @@
  *
  * ## What is counted when (metrics.ts has the definitions)
  *
- * predict: corrections (enemies, teammates by position; bullets as phantoms: the previous frame's digest of its drawn
- * tick against this frame's re-prediction of it, BulletMatcher), in the room type of the confirmed tick.
+ * predict: corrections (enemies by id, teammates by index: living and on screen, within viewRadiusTiles of the
+ * observer; bullets as phantoms: the previous frame's digest of its drawn tick against this frame's re-prediction of it,
+ * BulletMatcher; a bullet only the new one shows counts when older than appearAgeTicks), in the room type of the
+ * confirmed tick at the frame's begin.
  * confirm(C): truth errors of the drawn prediction for C (enemyErr*, distributions) and the cheap plan's bullets for C;
  * then the events of tick E = C - slack: a drawn event with no true one within E +- slack is undone (kill / death /
  * pickup / erase; a hit on player i: heartPhantom); a true event with no drawn one within E +- slack, drawn before E was
@@ -64,8 +72,8 @@ import {
 	type Vec3,
 } from "shared/sim";
 import type { RollbackGuessStrategy } from "shared/spikes";
-import { cloneSimState } from "./clone";
 import { ROLLBACK_SPIKE } from "./config";
+import { pooledCopyFn, type StateCopyFn } from "./pooledCopy";
 import {
 	BulletMatcher,
 	BulletTracker,
@@ -73,6 +81,7 @@ import {
 	PreSnap,
 	RoomKind,
 	ViewDigest,
+	bulletKeyTag,
 	fillDigest,
 	roomTypeOf,
 } from "./digest";
@@ -80,8 +89,12 @@ import { ErrorEntity, RollbackMetrics, metricIndex } from "./metrics";
 
 const MODEL = ROLLBACK_SPIKE.model;
 
-/** The state copy a model uses (default: R1's generic `cloneSimState`; a pooled copy can be swapped in). */
-export type RollbackCopy = (state: Readonly<SimState>) => SimState;
+/**
+ * The state copy a model uses: pooledCopy.ts's StateCopyFn. Default: a `pooledCopyFn()` of the model's own (R1b, one
+ * scratch overwritten by every prediction: the model uses a copy only until its next beginPredict); R1's
+ * `cloneSimState` (a fresh state each call, ~25x slower) also fits.
+ */
+export type RollbackCopy = StateCopyFn;
 
 /** Test hook: the true input of `player` at `tick` (a perfect guess), or undefined (guess as the strategy says). */
 export type RollbackGuessOracle = (tick: number, player: number) => Readonly<InputFrame> | undefined;
@@ -95,7 +108,7 @@ export interface RollbackModelOptions {
 	readonly strategy?: RollbackGuessStrategy;
 	/** H: the drawn tick is at most this many ticks past the confirmed one (default ROLLBACK_SPIKE.model.horizonCap). */
 	readonly horizonCap?: number;
-	/** The state copy (default cloneSimState from shared/lockstep). */
+	/** The state copy (default: a new pooledCopyFn() per model). Never shared between two models in flight. */
 	readonly copy?: RollbackCopy;
 	readonly oracle?: RollbackGuessOracle;
 	/** Also measure the cheap plan (default true). */
@@ -226,6 +239,14 @@ function dist(ax: number, az: number, bx: number, bz: number): number {
 	return math.sqrt(dx * dx + dz * dz);
 }
 
+/** (x, z) is on the observer's screen in digest `d` (within viewRadiusTiles of its observer). */
+function inView(d: ViewDigest, x: number, z: number): boolean {
+	const r = MODEL.viewRadiusTiles;
+	const dx = x - d.observerX;
+	const dz = z - d.observerZ;
+	return dx * dx + dz * dz <= r * r;
+}
+
 /** One observing player's rollback model (see the file comment). */
 export class RollbackModel {
 	readonly metrics = new RollbackMetrics();
@@ -276,12 +297,29 @@ export class RollbackModel {
 	private readonly inputs: Array<Readonly<InputFrame>> = [];
 	private readonly guessed: InputFrame[] = [];
 
+	// The prediction in flight (beginPredict .. finishPredict).
+	private pending = false;
+	private pT = 0;
+	private pK = 0;
+	/** The copy's tick (the next step goes from pAt to pAt + 1). */
+	private pAt = 0;
+	/** The frame ends frozen at the begin (inputAt reads these). */
+	private pTruthEnd = 0;
+	private pOwnEnd = 0;
+	private pRedoTick = -1;
+	private pOld: ViewDigest | undefined;
+	private pRoom: number = RoomKind.WALK;
+	private pState: SimState | undefined;
+	private pCopy: SimState | undefined;
+	/** The last prediction's own costs (copy / step / other, seconds); `times` sums them. */
+	private readonly last: RollbackModelTimes = { copy: 0, step: 0, other: 0 };
+
 	constructor(options: RollbackModelOptions) {
 		this.playerIndex = options.playerIndex;
 		this.config = options.config;
 		this.strategy = options.strategy ?? "repeatLast";
 		this.horizonCap = math.max(0, options.horizonCap ?? MODEL.horizonCap);
-		this.copy = options.copy ?? cloneSimState;
+		this.copy = options.copy ?? pooledCopyFn();
 		this.oracle = options.oracle;
 		this.cheapOn = options.cheapPlan !== false;
 		this.confirmedWorld = options.config;
@@ -303,6 +341,7 @@ export class RollbackModel {
 
 	/** (Re)starts on the confirmed state `state` (the frames put so far are kept). */
 	reset(state: SimState): void {
+		if (this.pending) error("RollbackModel.reset: a prediction is in flight (finishPredict first)", 0);
 		const n = partySize(state);
 		if (this.truth === undefined || this.truth.width !== n) this.truth = new FrameRing(MODEL.frameRingTicks, n);
 		this.n = n;
@@ -352,6 +391,11 @@ export class RollbackModel {
 		if (tick + 1 > this.ownEnd) this.ownEnd = tick + 1;
 	}
 
+	/** The last prediction's costs, seconds (zeros after a frame with nothing to predict). Overwritten per frame. */
+	lastTimes(): Readonly<RollbackModelTimes> {
+		return this.last;
+	}
+
 	/** The last drawn digest (a prediction of the drawn tick), or undefined. */
 	drawn(): ViewDigest | undefined {
 		if (this.lastDrawn < 0) return undefined;
@@ -364,7 +408,7 @@ export class RollbackModel {
 	/** The input of player k at tick t of a prediction (the file comment's rules). */
 	private inputAt(t: number, k: number): Readonly<InputFrame> {
 		const truth = this.truth!;
-		if (t < this.truthEnd) return truth.get(t, k) ?? EMPTY_INPUT;
+		if (t < this.pTruthEnd) return truth.get(t, k) ?? EMPTY_INPUT;
 		if (k === this.playerIndex) return this.own.get(t, 0) ?? this.lastKnown(k);
 		const o = this.oracle?.(t, k);
 		if (o !== undefined) return o;
@@ -380,15 +424,40 @@ export class RollbackModel {
 		return g;
 	}
 
-	/** Player k's last merged frame known (the newest one put), else EMPTY_INPUT. */
+	/** Player k's last merged frame known when the prediction began (the newest one put), else EMPTY_INPUT. */
 	private lastKnown(k: number): Readonly<InputFrame> {
-		return this.truth!.get(this.truthEnd - 1, k) ?? EMPTY_INPUT;
+		return this.truth!.get(this.pTruthEnd - 1, k) ?? EMPTY_INPUT;
 	}
 
 	// ---- per frame -------------------------------------------------------------------------------
 
-	/** One client frame on the confirmed state `state` (see the file comment). Returns the drawn tick. */
+	/** True between beginPredict and finishPredict (a sliced prediction in flight). */
+	isPredicting(): boolean {
+		return this.pending;
+	}
+
+	/**
+	 * One client frame on the confirmed state `state` (see the file comment), all at once: beginPredict, stepPredict
+	 * until done, finishPredict. Returns the drawn tick (T when there was nothing to predict).
+	 */
 	predict(state: SimState): number {
+		const K = this.beginPredict(state);
+		if (!this.pending) return K;
+		while (!this.stepPredict()) {
+			// stepPredict() with no limit steps to the drawn tick in one call; the loop is only a guard.
+		}
+		return this.finishPredict();
+	}
+
+	/**
+	 * Starts one frame's prediction on the confirmed state `state` (at T = state.tick): copies it with the injected copy
+	 * and freezes the frame ends known now (D and L of this frame; frames put later do not change it). Returns the drawn
+	 * tick K = T + min(D + L, H); when that is T (nothing guessed or buffered) nothing is pending and no prediction is
+	 * recorded. Until finishPredict: `state` must not be stepped or changed (the cheap plan reads it at the finish) and
+	 * confirm / reset are refused; putTruth / putOwn are fine.
+	 */
+	beginPredict(state: SimState): number {
+		if (this.pending) error("RollbackModel.beginPredict: a prediction is in flight (finishPredict first)", 0);
 		const tStart = os.clock();
 		const m = this.metrics;
 		const T = state.tick;
@@ -397,26 +466,53 @@ export class RollbackModel {
 		m.frames++;
 		m.sampleLead(l, d);
 		const span = math.min(d + l, this.horizonCap);
+		const last = this.last;
+		last.copy = 0;
+		last.step = 0;
+		last.other = 0;
 		if (span <= 0 || this.tracker === undefined) {
 			this.lastDrawn = -1;
 			return T;
 		}
 		const K = T + span;
-		const R = this.ringSize;
 		const kp = this.lastDrawn;
-		const oldDrawn = kp > T && kp <= K ? this.predRing[kp % R] : undefined;
-		const redoTick = oldDrawn !== undefined && oldDrawn.valid && oldDrawn.tick === kp ? kp : -1;
-
+		const oldDrawn = kp > T && kp <= K ? this.predRing[kp % this.ringSize] : undefined;
+		this.pRedoTick = oldDrawn !== undefined && oldDrawn.valid && oldDrawn.tick === kp ? kp : -1;
+		this.pOld = this.pRedoTick >= 0 ? oldDrawn : undefined;
+		this.pT = T;
+		this.pK = K;
+		this.pAt = T;
+		this.pTruthEnd = this.truthEnd;
+		this.pOwnEnd = this.ownEnd;
+		this.pRoom = this.confirmedRoom;
+		this.pState = state;
 		const c0 = os.clock();
-		const copy = this.copy(state);
+		this.pCopy = this.copy(state);
 		const c1 = os.clock();
-		this.times.copy += c1 - c0;
+		this.predTracker!.copyFrom(this.tracker);
+		this.pending = true;
+		last.copy = c1 - c0;
+		last.other = os.clock() - tStart - last.copy;
+		return K;
+	}
+
+	/**
+	 * Steps the pending prediction at most `maxTicks` ticks (default: to the drawn tick; the worker passes
+	 * ROLLBACK_SPIKE.sliceTicks and yields between calls). True when the copy reached the drawn tick (finishPredict
+	 * next).
+	 */
+	stepPredict(maxTicks = math.huge): boolean {
+		if (!this.pending) error("RollbackModel.stepPredict: no prediction in flight", 0);
+		const tStart = os.clock();
+		const copy = this.pCopy!;
 		const tracker = this.predTracker!;
-		tracker.copyFrom(this.tracker);
-		const fresh = this.spare;
 		const inputs = this.inputs;
+		const K = this.pK;
+		const redoTick = this.pRedoTick;
+		const stop = math.min(K, this.pAt + math.max(1, maxTicks));
 		let stepSec = 0;
-		for (let t = T; t < K; t++) {
+		while (this.pAt < stop) {
+			const t = this.pAt;
 			for (let k = 0; k < this.n; k++) inputs[k] = this.inputAt(t, k);
 			const want = t + 1 === redoTick || t + 1 === K;
 			if (want) this.prePred.take(copy);
@@ -425,35 +521,57 @@ export class RollbackModel {
 			stepParty(copy, inputs, this.config);
 			stepSec += os.clock() - s0;
 			tracker.observe(copy, world);
-			if (t + 1 === K) fillDigest(fresh, copy, this.prePred, tracker, this.playerIndex, T);
-			else if (t + 1 === redoTick) fillDigest(this.redo, copy, this.prePred, tracker, this.playerIndex, T);
+			if (t + 1 === K) fillDigest(this.spare, copy, this.prePred, tracker, this.playerIndex, this.pT);
+			else if (t + 1 === redoTick) fillDigest(this.redo, copy, this.prePred, tracker, this.playerIndex, this.pT);
+			this.pAt = t + 1;
 		}
-		this.times.step += stepSec;
+		this.last.step += stepSec;
+		this.last.other += os.clock() - tStart - stepSec;
+		return this.pAt >= K;
+	}
+
+	/** Ends the pending prediction (stepped to its drawn tick): records its digest and its corrections. Returns K. */
+	finishPredict(): number {
+		if (!this.pending) error("RollbackModel.finishPredict: no prediction in flight", 0);
+		if (this.pAt < this.pK) error("RollbackModel.finishPredict: the prediction has not reached its drawn tick", 0);
+		const tStart = os.clock();
+		const m = this.metrics;
+		const T = this.pT;
+		const K = this.pK;
+		const fresh = this.spare;
 		m.predictions++;
 		m.predictedTicks += K - T;
 		m.bulletOverflow += fresh.bulletOverflow;
 		m.eventOverflow += fresh.eventOverflow;
 		for (let k = 0; k < fresh.eventCount; k++) m.drawnEvents[kindSlot(fresh.eventKind[k])] += 1;
-
-		if (redoTick >= 0) this.corrections(oldDrawn!, redoTick === K ? fresh : this.redo);
+		const old = this.pOld;
+		if (old !== undefined) this.corrections(old, this.pRedoTick === K ? fresh : this.redo, K, this.pRoom);
 		// The new drawn digest takes its ring slot; the old object becomes the spare.
-		const slot = K % R;
+		const slot = K % this.ringSize;
 		this.spare = this.predRing[slot];
 		this.predRing[slot] = fresh;
-		if (this.cheapOn) this.cheapView(this.cheapRing[slot], state, K, fresh);
+		if (this.cheapOn) this.cheapView(this.cheapRing[slot], this.pState!, K, fresh);
 		this.lastDrawn = K;
-		this.times.other += os.clock() - tStart - (c1 - c0) - stepSec;
+		this.pending = false;
+		this.pOld = undefined;
+		this.pState = undefined;
+		this.pCopy = undefined;
+		const last = this.last;
+		last.other += os.clock() - tStart;
+		this.times.copy += last.copy;
+		this.times.step += last.step;
+		this.times.other += last.other;
 		return K;
 	}
 
 	/** Consecutive frames' predictions of the same tick: corrections and phantom bullets. */
-	private corrections(old: ViewDigest, now: ViewDigest): void {
+	private corrections(old: ViewDigest, now: ViewDigest, drawnTick: number, room: number): void {
 		const m = this.metrics;
-		const room = this.confirmedRoom;
 		const cuts = MODEL.correctionTiles;
 		for (let j = 0; j < now.actorCount; j++) {
+			if (!now.actorAlive[j] || !inView(now, now.actorX[j], now.actorZ[j])) continue;
 			const k = old.actorIndexOf(now.actorId[j], j);
-			if (k < 0) continue;
+			if (k < 0 || !old.actorAlive[k]) continue;
 			const e = dist(now.actorX[j], now.actorZ[j], old.actorX[k], old.actorZ[k]);
 			m.correction[ErrorEntity.ENEMY].add(e);
 			for (let b = 0; b < cuts.size(); b++) if (e >= cuts[b]) m.count(room, M_ENEMY_CORR[b]);
@@ -465,6 +583,7 @@ export class RollbackModel {
 				m.correction[ErrorEntity.SELF].add(e);
 				continue;
 			}
+			if (now.dead[k] || old.dead[k] || !inView(now, now.playerX[k], now.playerZ[k])) continue;
 			m.correction[ErrorEntity.MATE].add(e);
 			for (let b = 0; b < cuts.size(); b++) if (e >= cuts[b]) m.count(room, M_MATE_CORR[b]);
 		}
@@ -481,10 +600,14 @@ export class RollbackModel {
 				m.count(room, M_PHANTOM);
 			}
 		}
+		// A bullet only this frame shows is a phantom when it first appears already along its path: older than
+		// appearAgeTicks at the drawn tick (by its tracker tag, the spike-side spawn tick). A younger one is a shot drawn
+		// at its muzzle, a tick later than the last frame guessed.
+		const appear = MODEL.appearAgeTicks;
 		for (let j = 0; j < now.bulletCount; j++) {
-			if (!mt.takenB[j] && now.bulletInner[j] && this.phantom.take(now.bulletKey[j], tick)) {
-				m.count(room, M_PHANTOM);
-			}
+			if (mt.takenB[j] || !now.bulletInner[j]) continue;
+			if (drawnTick - bulletKeyTag(now.bulletKey[j]) <= appear) continue;
+			if (this.phantom.take(now.bulletKey[j], tick)) m.count(room, M_PHANTOM);
 		}
 	}
 
@@ -593,6 +716,7 @@ export class RollbackModel {
 		const tStart = os.clock();
 		const tracker = this.tracker;
 		if (tracker === undefined) error("RollbackModel.confirm before reset", 0);
+		if (this.pending) error("RollbackModel.confirm: a prediction is in flight (finishPredict first)", 0);
 		const C = state.tick;
 		const m = this.metrics;
 		tracker.observe(state, this.confirmedWorld);
@@ -635,16 +759,19 @@ export class RollbackModel {
 		const m = this.metrics;
 		const cuts = MODEL.truthErrorTiles;
 		for (let j = 0; j < truth.actorCount; j++) {
+			if (!truth.actorAlive[j] || !inView(truth, truth.actorX[j], truth.actorZ[j])) continue;
 			const k = pred.actorIndexOf(truth.actorId[j], j);
-			if (k < 0) continue;
+			if (k < 0 || !pred.actorAlive[k]) continue;
 			const e = dist(truth.actorX[j], truth.actorZ[j], pred.actorX[k], pred.actorZ[k]);
 			m.truthError[ErrorEntity.ENEMY].add(e);
 			for (let b = 0; b < cuts.size(); b++) if (e >= cuts[b]) m.count(room, M_ENEMY_ERR[b]);
 		}
 		const np = math.min(truth.playerCount, pred.playerCount);
 		for (let k = 0; k < np; k++) {
+			const mine = k === this.playerIndex;
+			if (!mine && (truth.dead[k] || !inView(truth, truth.playerX[k], truth.playerZ[k]))) continue;
 			const e = dist(truth.playerX[k], truth.playerZ[k], pred.playerX[k], pred.playerZ[k]);
-			m.truthError[k === this.playerIndex ? ErrorEntity.SELF : ErrorEntity.MATE].add(e);
+			m.truthError[mine ? ErrorEntity.SELF : ErrorEntity.MATE].add(e);
 		}
 		const mt = this.matcher;
 		mt.match(pred, truth);
@@ -660,16 +787,19 @@ export class RollbackModel {
 	private cheapErrors(cheap: ViewDigest, truth: ViewDigest, room: number): void {
 		const m = this.metrics;
 		for (let j = 0; j < truth.actorCount; j++) {
+			if (!truth.actorAlive[j] || !inView(truth, truth.actorX[j], truth.actorZ[j])) continue;
 			const k = cheap.actorIndexOf(truth.actorId[j], j);
-			if (k < 0) continue;
+			if (k < 0 || !cheap.actorAlive[k]) continue;
 			m.cheapError[ErrorEntity.ENEMY].add(
 				dist(truth.actorX[j], truth.actorZ[j], cheap.actorX[k], cheap.actorZ[k]),
 			);
 		}
 		const np = math.min(truth.playerCount, cheap.playerCount);
 		for (let k = 0; k < np; k++) {
+			const mine = k === this.playerIndex;
+			if (!mine && (truth.dead[k] || !inView(truth, truth.playerX[k], truth.playerZ[k]))) continue;
 			const e = dist(truth.playerX[k], truth.playerZ[k], cheap.playerX[k], cheap.playerZ[k]);
-			m.cheapError[k === this.playerIndex ? ErrorEntity.SELF : ErrorEntity.MATE].add(e);
+			m.cheapError[mine ? ErrorEntity.SELF : ErrorEntity.MATE].add(e);
 		}
 		const mt = this.matcher;
 		mt.match(cheap, truth);

@@ -7,9 +7,11 @@
  *
  * What each metric counts (one count per entity and event; the model decides, see model.ts):
  *   enemyCorr010..100   an enemy's drawn position moved >= 0.1 / 0.25 / 0.5 / 1.0 tiles between two consecutive frames'
- *                       predictions of the same tick (one count per enemy per frame, cumulative buckets)
- *   mateCorr010..100    the same for teammates
- *   enemyErr050 / 100   an enemy drawn >= 0.5 / 1.0 tiles from where the truth has it, per enemy per drawn tick
+ *                       predictions of the same tick (one count per enemy per frame, cumulative buckets); only living
+ *                       enemies on screen (within viewRadiusTiles of the observer), as the distributions
+ *   mateCorr010..100    the same for living teammates on screen
+ *   enemyErr050 / 100   a living enemy on screen drawn >= 0.5 / 1.0 tiles from where the truth has it, per enemy per
+ *                       drawn tick
  *   undoneKill / Death / Pickup / Erase   shown in the drawn prediction, absent from the truth (within the event slack)
  *   lateEvent           in the truth, never drawn before it was confirmed (today's behaviour; NOT a glitch)
  *   phantomBullet       a bullet one frame shows and the next frame's prediction of the same tick does not (it blinks
@@ -343,6 +345,26 @@ export function formatResultsRow(input: string, l: number, d: number, strategy: 
 	)} | ${fmt(m.perMinute("phantomBullet"))} | ${fmt(m.perMinute("mateCorr100"))} | ${fmt(
 		m.perMinute("cheapPhantomBullet"),
 	)} / ${fmt(m.perMinute("cheapLateBullet"))} |`;
+}
+
+/** A table header with one column per ROLLBACK_LIVE_METRICS name (per minute) after `lead` (e.g. "Input | L"). */
+export function metricsTableHeader(lead: string): string {
+	const cols = lead.split("|").size();
+	let head = `| ${lead} | play s |`;
+	let rule = "|";
+	for (let k = 0; k <= cols; k++) rule += "---|";
+	for (const metric of ROLLBACK_LIVE_METRICS) {
+		head += ` ${metric} |`;
+		rule += "---|";
+	}
+	return `${head}\n${rule}`;
+}
+
+/** One row of metricsTableHeader's table: every metric per minute of play (all room types). */
+export function formatMetricsRow(lead: string, m: RollbackMetrics): string {
+	let row = `| ${lead} | ${string.format("%.0f", m.totalSeconds())} |`;
+	for (const metric of ROLLBACK_LIVE_METRICS) row += ` ${fmt(m.perMinute(metric))} |`;
+	return row;
 }
 
 /** Every metric per minute, by room type, then the distributions and the model's counters (the offline report). */

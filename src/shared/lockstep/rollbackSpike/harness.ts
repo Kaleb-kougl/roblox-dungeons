@@ -10,6 +10,7 @@
  */
 import {
 	createSimState,
+	hashState,
 	partyFrameAt,
 	recordingPartySize,
 	stepRecorded,
@@ -18,7 +19,13 @@ import {
 	type SimConfig,
 	type SimState,
 } from "shared/sim";
-import { ROLLBACK_LIVE_METRICS, type RollbackGuessStrategy, type RollbackLiveMetric } from "shared/spikes";
+import { buildWorldSetup, isRunWorldKind } from "shared/run";
+import {
+	ROLLBACK_LIVE_METRICS,
+	type DecodedCapture,
+	type RollbackGuessStrategy,
+	type RollbackLiveMetric,
+} from "shared/spikes";
 import type { RollbackMetrics } from "./metrics";
 import { RollbackModel, type RollbackCopy, type RollbackModelTimes } from "./model";
 
@@ -32,8 +39,13 @@ export interface ModelRunOptions {
 	readonly strategy?: RollbackGuessStrategy;
 	/** The horizon cap (default ROLLBACK_SPIKE.model.horizonCap). */
 	readonly H?: number;
-	/** The state copy (default cloneSimState). */
+	/** The state copy (default: the model's own pooledCopyFn()). */
 	readonly copy?: RollbackCopy;
+	/**
+	 * Step each prediction in slices of this many ticks (beginPredict / stepPredict / finishPredict, as the client's
+	 * worker does; ROLLBACK_SPIKE.sliceTicks). Default: predict() in one go. The metrics are the same either way.
+	 */
+	readonly sliceTicks?: number;
 	/** Feed the teammates' true future inputs as the guess (the perfect-guess sanity rule). */
 	readonly perfect?: boolean;
 	/** Frames are drawn for confirmed ticks [fromTick, toTick) (default the whole recording, less D + L at its end). */
@@ -109,6 +121,7 @@ export function runModelOverRecording(
 	});
 	model.reset(state);
 	const merged: Array<Readonly<InputFrame>> = [];
+	const slice = options.sliceTicks;
 	let truthPut = state.tick;
 	let ownPut = state.tick;
 	for (let T = state.tick; T < last; T++) {
@@ -121,7 +134,14 @@ export function runModelOverRecording(
 			model.putOwn(ownPut, recordedFrame(recording, i, ownPut));
 			ownPut++;
 		}
-		model.predict(state);
+		if (slice === undefined) {
+			model.predict(state);
+		} else if (model.beginPredict(state) !== T) {
+			while (!model.stepPredict(slice)) {
+				// one slice per resume in the worker
+			}
+			model.finishPredict();
+		}
 		if (truthPut <= T) {
 			model.putTruth(T, partyFrameAt(recording, T, merged));
 			truthPut = T + 1;
@@ -142,4 +162,35 @@ export function runModelOverRecording(
 		times: model.times,
 		state,
 	};
+}
+
+/** A decoded capture made ready for runModelOverRecording, or why not. */
+export interface CaptureModelInput {
+	readonly config: Readonly<SimConfig>;
+	readonly recording: Recording;
+	/** Ticks the server verified (the replayable span; the recording's length without an end record). */
+	readonly ticks: number;
+	/** The recording replayed to the server's hash at `ticks` (undefined: no end record to compare with). */
+	readonly hashOk: boolean | undefined;
+}
+
+/**
+ * Rebuilds a capture's run config the way the server and the client do (shared/run buildWorldSetup(worldKind, seed,
+ * { atBossDoor, partySize })) and, when it carries an end record, replays it to the server's hash
+ * (docs/ROLLBACK_SPIKE.md R4: the capture is whole). Undefined for a world kind this build does not know.
+ */
+export function captureModelInput(capture: DecodedCapture, checkHash = true): CaptureModelInput | undefined {
+	const s = capture.setup;
+	if (!isRunWorldKind(s.worldKind)) return undefined;
+	const setup = buildWorldSetup(s.worldKind, s.seed, { atBossDoor: s.atBossDoor, partySize: s.partySize });
+	const recording = capture.recording;
+	const ending = capture.info.end;
+	const ticks = math.min(recording.frames.size(), ending?.verifiedTicks ?? math.huge);
+	let hashOk: boolean | undefined;
+	if (checkHash && ending !== undefined) {
+		const state = createSimState(recording.seed, recording.spawn.x, recording.spawn.z, setup.config);
+		while (state.tick < ticks) stepRecorded(state, recording, state.tick, setup.config);
+		hashOk = hashState(state) === ending.serverHash;
+	}
+	return { config: setup.config, recording, ticks, hashOk };
 }

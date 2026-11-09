@@ -9,7 +9,9 @@
  *               BulletMatcher, roomTypeOf
  *   metrics.ts  RollbackMetrics (the 20 ROLLBACK_LIVE_METRICS per room type, error distributions), the report table
  *   model.ts    RollbackModel: one observing player's prediction model, fed frame by frame (R2 offline, R4b live)
- *   harness.ts  runModelOverRecording: a recorded party run replayed through a model at a fixed (L, D) (spec support)
+ *   harness.ts  runModelOverRecording: a recorded party run replayed through a model at a fixed (L, D) (spec support),
+ *               captureModelInput (a decoded capture's config, replayed to the server's hash)
+ *   captureModules.ts  loadCaptureModules: the gitignored capture modules gen-fixtures writes (spec support)
  *
  * Spike only (RBD1): nothing here reaches the sim, a hash or a recording.
  */
@@ -20,3 +22,4 @@ export * from "./digest";
 export * from "./metrics";
 export * from "./model";
 export * from "./harness";
+export * from "./captureModules";

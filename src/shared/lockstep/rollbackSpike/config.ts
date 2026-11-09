@@ -63,6 +63,12 @@ export interface RollbackModelConfig {
 	 * not an erase (digest.ts "Events"): PLAYER_RADIUS 0.35 + the goo's 0.35 hit radius + slack.
 	 */
 	readonly hitRadiusTiles: number;
+	/**
+	 * A bullet only the newer of two predictions of a tick shows is a phantom (it "first appears already along its
+	 * path") when it is older than this at the drawn tick, by its spike-side spawn tag; a younger one is drawn at its
+	 * muzzle (a shot the last frame guessed a tick later).
+	 */
+	readonly appearAgeTicks: number;
 	/** An event (kill, death, pickup, erase, hit) shown this many ticks early or late is the same event. */
 	readonly eventSlackTicks: number;
 	/** Correction buckets, tiles (Design 3): enemyCorr010 / 025 / 050 / 100 and mateCorr*. */
@@ -77,8 +83,9 @@ export interface RollbackModelConfig {
 	/** An entity counted once (undone, late, phantom) is not counted again for this many ticks. */
 	readonly dedupTicks: number;
 	/**
-	 * The opt-in sweep (model.sweep.spec.ts): off by default, so `npm test` runs one trivial test there. Turn it on here
-	 * (`enabled: true`), `npm run build`, then `npm run test:only -- lockstep/rollbackSpike/model.sweep`.
+	 * The opt-in sweep (model.sweep.spec.ts): off by default, so `npm test` runs one trivial test there. Turn it on with
+	 * the runner flag (`npm run test:only -- lockstep/rollbackSpike/model.sweep --flag rollbackSweep`, after a build) or
+	 * here (`enabled: true`, e.g. for Studio).
 	 */
 	readonly sweep: RollbackSweepConfig;
 }
@@ -91,8 +98,13 @@ export interface RollbackSweepConfig {
 	/** Party size and seed of the two bot runs. */
 	readonly partySize: number;
 	readonly seed: number;
-	/** Frames predicted per window: the floor 1 fight window and the boss window of each bot run. */
+	/**
+	 * Frames predicted per bot window: 0 = each bot run whole (one window from tick 0, every room type); else two
+	 * windows of this many frames, the first floor 1 fight and the boss fight.
+	 */
 	readonly windowFrames: number;
+	/** Observing players swept per input (indices 0 .. n - 1, capped at the party size). */
+	readonly players: number;
 	/** Frames predicted per capture (from its start; a capture is one window). */
 	readonly captureFrames: number;
 }
@@ -114,6 +126,7 @@ export const ROLLBACK_SPIKE: RollbackSpikeConfig = {
 		viewMarginTiles: 1.5,
 		bulletMatchTiles: 0.35,
 		hitRadiusTiles: 0.8,
+		appearAgeTicks: 1,
 		eventSlackTicks: 6,
 		correctionTiles: [0.1, 0.25, 0.5, 1.0],
 		truthErrorTiles: [0.5, 1.0],
@@ -127,7 +140,8 @@ export const ROLLBACK_SPIKE: RollbackSpikeConfig = {
 			depths: [0, 4],
 			partySize: 3,
 			seed: 4242,
-			windowFrames: 250,
+			windowFrames: 0,
+			players: 1,
 			captureFrames: 1200,
 		},
 	},
