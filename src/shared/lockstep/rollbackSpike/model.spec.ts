@@ -51,7 +51,7 @@ const SEED = 4242;
 const PLAYERS = 3;
 /** Frames of the real pass (the first fight), of each sanity window, of the equality checks. */
 const REAL_FRAMES = 300;
-const SANITY_FRAMES = 150;
+const SANITY_FRAMES = 400;
 const SAME_FRAMES = 90;
 /** Into the boss fight before its window starts (the boss's first volleys are in flight). */
 const WINDOW_LEAD_IN = 60;
@@ -150,7 +150,10 @@ describe("rollback spike model (R2)", () => {
 		print(`[R2] perfect guesses: ${m.frames} frames; ${material(m)}; glitches: ${glitches(m)}`);
 		expect(m.predictions).toBe(SANITY_WINDOWS * SANITY_FRAMES);
 		expect(m.truthTicks).toBe(SANITY_WINDOWS * SANITY_FRAMES);
+		// Not vacuous: kills, erased bullets, hits on players and bullets in view to get wrong.
 		expect(m.truthEvents[0]).toBeGreaterThan(0);
+		expect(m.truthEvents[3]).toBeGreaterThan(0);
+		expect(m.truthEvents[4]).toBeGreaterThan(0);
 		expect(m.truthBullets).toBeGreaterThan(0);
 		expect(glitches(m)).toBe("");
 		expect(m.glitchTotal()).toBe(0);

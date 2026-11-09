@@ -46,7 +46,7 @@
  *
  * ## Events (one tick's: the step into `tick`)
  *
- * kill (actor id, alive before and gone or dead after), death (player index), pickup (a ground boost by its spawn tick
+ * kill (actor id, alive before and gone or dead after, not across a floor change), death (player index), pickup (a ground boost by its spawn tick
  * and kind; a pellet by floor and index, negative), hit (player index; score runs' `hurtPlayer`, else the solo
  * `playerHits`), erase (bullet key): an enemy bullet removed with life left that neither a wall nor an intact piece
  * nor a player's hit circle (`hitRadiusTiles`) explains: a sword guard / swing, an Ember, a power pellet, Phantom Step
@@ -377,6 +377,8 @@ export class BulletTracker {
 
 /** What a tick's events need from the state before the step (see fillDigest). */
 export class PreSnap {
+	/** The endless floor before the step (0 outside endless): a floor change clears the actors, which is no kill. */
+	floor = 0;
 	actorCount = 0;
 	readonly id: number[];
 	readonly alive: boolean[];
@@ -395,6 +397,7 @@ export class PreSnap {
 	}
 
 	take(state: Readonly<SimState>): void {
+		this.floor = state.endless !== undefined ? state.endless.floor : 0;
 		const actors = state.combat.actors;
 		const na = math.min(actors.size(), this.id.size());
 		for (let k = 0; k < na; k++) {
@@ -609,8 +612,10 @@ export function fillDigest(
 	out.eventOverflow = 0;
 	out.eventIndex.clear();
 	if (pre === undefined) return;
-	// Kills: alive before, gone or dead now (by slot: the snapshot is by slot).
-	for (let k = 0; k < pre.actorCount; k++) {
+	// Kills: alive before, gone or dead now (by slot: the snapshot is by slot). Not across a floor change: the new
+	// floor's actors replace the old ones (the floor change itself is no event here).
+	const killsAt = pre.floor === out.floor ? pre.actorCount : 0;
+	for (let k = 0; k < killsAt; k++) {
 		if (!pre.alive[k]) continue;
 		const a = actors[k];
 		if (a === undefined || a.kind === NO_KIND || a.id !== pre.id[k] || a.alive === 0) {
