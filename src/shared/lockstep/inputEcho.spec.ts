@@ -65,6 +65,22 @@ describe("input echo wire format", () => {
 		expect(roundTrip({ tick: undefined, slack: 0, lates: 1000 }, 8)!.lates).toBe(255);
 	});
 
+	it("carries the server's catching-up flag (bit 1), with or without a tick", () => {
+		const e = decodeInputEcho(encodeInputEcho({ tick: 12, slack: -2, lates: 3, catchingUp: true }, 10), 10);
+		expect(e).toEqual({ tick: 12, slack: -2, lates: 3, catchingUp: true });
+		const none = decodeInputEcho(
+			encodeInputEcho({ tick: undefined, slack: 0, lates: 0, catchingUp: true }, 10),
+			10,
+		);
+		expect(none).toEqual({ tick: undefined, slack: 0, lates: 0, catchingUp: true });
+		// Without the flag the field is absent (older echoes decode as before).
+		expect(decodeInputEcho(encodeInputEcho({ tick: 12, slack: 1, lates: 0, catchingUp: false }, 10), 10)).toEqual({
+			tick: 12,
+			slack: 1,
+			lates: 0,
+		});
+	});
+
 	it("refuses a wrong size, a non-buffer, unknown flags, a none echo with offset or slack, a bad firstTick", () => {
 		expect(decodeInputEcho(buffer.create(INPUT_ECHO_BYTES - 1), 0)).toBe(undefined);
 		expect(decodeInputEcho(buffer.create(INPUT_ECHO_BYTES + 1), 0)).toBe(undefined);
@@ -74,9 +90,11 @@ describe("input echo wire format", () => {
 		expect(decodeInputEcho(8, 0)).toBe(undefined);
 		expect(decodeInputEcho(buffer.create(INPUT_ECHO_BYTES), 0)).toEqual({ tick: undefined, slack: 0, lates: 0 });
 		const flags = buffer.create(INPUT_ECHO_BYTES);
-		buffer.writeu8(flags, 0, 2);
+		buffer.writeu8(flags, 0, 4);
 		expect(decodeInputEcho(flags, 0)).toBe(undefined);
-		buffer.writeu8(flags, 0, 3);
+		buffer.writeu8(flags, 0, 7);
+		expect(decodeInputEcho(flags, 0)).toBe(undefined);
+		buffer.writeu8(flags, 0, 0x80);
 		expect(decodeInputEcho(flags, 0)).toBe(undefined);
 		const offset = buffer.create(INPUT_ECHO_BYTES);
 		buffer.writei32(offset, 1, 4);
@@ -247,6 +265,7 @@ describe("LockstepSession input echo", () => {
 		expect(e.tick).toBe(15);
 		expect(e.slack).toBe(5); // 15 + 1 - (10 + 1)
 		expect(e.lates).toBe(0);
+		expect(e.catchingUp).toBe(true); // the step was capped: the window overlapped the catch-up
 		// And after that step, an input ahead of the new finalizedTicks() (15) is still early.
 		s.submitInput(P0, 20, encodeInputBatch(frames(1)), later);
 		const out2 = s.step(later);
@@ -254,6 +273,33 @@ describe("LockstepSession input echo", () => {
 		const e2 = decodeInputEcho(b2.echoes[0], b2.firstTick)!;
 		expect(e2.tick).toBe(20);
 		expect(e2.slack).toBe(5); // 20 + 1 - (15 + 1)
+	});
+
+	it("flags catching up: a capped step's window, a receipt far behind real time, a batch from the backlog's tail", () => {
+		const s = echoSession();
+		// Real time one tick a step (no capped step yet).
+		for (let p = 1; p <= 10; p++) s.step(at(p + 0.5));
+		expect(s.finalizedTicks()).toBe(10);
+		// An ordinary window: no flag.
+		s.submitInput(P0, 14, encodeInputBatch(frames(1)), at(10.5));
+		expect(nextEcho(s, 0).catchingUp).toBe(undefined);
+		// The server stalls 1 s and catches up at maxTicksPerStep a step.
+		const pos = s.finalizedTicks() + SIM_HZ;
+		const later = at(pos);
+		let through = s.finalizedTicks();
+		for (let guard = 0; guard < 100 && s.finalizedTicks() < pos; guard++) {
+			// A capped step: more due than maxTicksPerStep.
+			const capped = pos - s.finalizedTicks() > DEFAULT_LOCKSTEP.maxTicksPerStep;
+			s.step(later);
+			if (capped) through = s.finalizedTicks();
+		}
+		// Caught up; a batch sent from the backlog (first tick within the tail of the last capped step's tick): flagged.
+		s.submitInput(P0, through + DEFAULT_LOCKSTEP.echoCatchUpTailTicks, encodeInputBatch(frames(1)), later);
+		expect(nextEcho(s, 0).catchingUp).toBe(true);
+		// Past the tail: an ordinary echo again.
+		s.submitInput(P0, through + DEFAULT_LOCKSTEP.echoCatchUpTailTicks + 1, encodeInputBatch(frames(1)), later);
+		const e = nextEcho(s, 0);
+		expect(e.catchingUp).toBe(undefined);
 	});
 
 	it("a malformed, refused or non-member batch records nothing", () => {

@@ -3,11 +3,15 @@
  * Roblox API, clock or randomness; the caller passes its monotonic clock `now` (seconds). Nothing here reaches the sim:
  * it only decides how far ahead the client's inputs are sent (LockstepClient adds the pacing buffer's depth, Design 5).
  *
- *   sent(target, sentAt, depthRaw, hitched)  a frame was sent for `target` at state.tick `sentAt` (a fixed ring of
- *                                            records, the newest `recordTicks` targets)
+ *   sent(target, sentAt, depthRaw, hitched, depthUsed)  a frame was sent for `target` at state.tick `sentAt` (a
+ *                                            fixed ring of records, the newest `recordTicks` targets)
  *   received(now)                            a merged batch arrived (echo or not): times the echo timeout
  *   echoed(echo, now)                        the server's echo: the trip of its tick X joins the window; the lead jumps
- *                                            up to the target at once; a late bumps it to that late's own trip
+ *                                            up to the target at once; a late bumps it to that late's own trip, unless
+ *                                            excused: the server was catching up (the echo's flag), the late was sent
+ *                                            in an unsteady frame, or the buffer depth over the lead's cap (depthRaw -
+ *                                            depthUsed) covers its overshoot. Excused lates are counted, never bumped;
+ *                                            the catching-up echo's and the unsteady send's trips stay out
  *   deadline(matched, now)                   checkDeadline's per-tick result: today's miss counter while not echoing;
  *                                            while echoing a mismatch is only counted (its late is the echo's:
  *                                            only echoed lates bump, Design 10)
@@ -22,7 +26,8 @@
  * `fallStepSec` while it stays below, so after a fall the lead rests at Lf (L* or L* + 1: the slack band).
  *
  * Echoing: off before the first echo with a tick, and again once batches keep arriving (`received`) for
- * `echoTimeoutSec` without one (an old server). While off, `deadline` runs the legacy rule exactly as
+ * `echoTimeoutSec` without any decodable echo (an old server; a "none" echo proves the server echoes, so an up-link
+ * outage keeps echoing). While off, `deadline` runs the legacy rule exactly as
  * LockstepClient.checkDeadline: matched -> one clean tick, `legacyDecayTicks` of them lower the lead by one (never below
  * minLead); a mismatch raises it by one (never above maxLead) and restarts the clean count.
  */
@@ -50,6 +55,11 @@ export interface LeadEcho {
 	readonly slack: number;
 	/** Frames from this client the server counted late since the last echo. */
 	readonly lates: number;
+	/**
+	 * The server was catching up (a stall's backlog finalized at maxTicksPerStep a step) during this echo's window: its
+	 * trip and lates measure the server, not the network. Absent: no.
+	 */
+	readonly catchingUp?: boolean;
 }
 
 export interface LeadStats {
@@ -73,6 +83,11 @@ export interface LeadStats {
 	readonly mismatches: number;
 	/** Bumps while echoing: echoes with lates. */
 	readonly bumps: number;
+	/**
+	 * Echoes with lates that did not bump: the server was catching up, the late was sent in an unsteady (hitched /
+	 * catching-up) frame, or the pacing depth over its lead cap explains it.
+	 */
+	readonly excused: number;
 	/** Jumps up to the target (L* above the lead). */
 	readonly raises: number;
 	/** Ticks the lead fell (one per fall step). */
@@ -106,6 +121,8 @@ export class LeadController {
 	private readonly recSentAt: number[] = [];
 	private readonly recDepth: number[] = [];
 	private readonly recHitched: boolean[] = [];
+	/** The pacing depth the lead actually added for the target (whole ticks, capped): depthRaw above it went uncovered. */
+	private readonly recDepthUsed: number[] = [];
 	/** The net lead when the target was sent (a late bumps past it, not past a lead already raised since). */
 	private readonly recLead: number[] = [];
 	private newestSent: number | undefined;
@@ -136,6 +153,7 @@ export class LeadController {
 	private lateCount = 0;
 	private mismatchCount = 0;
 	private bumpCount = 0;
+	private excusedCount = 0;
 	private raiseCount = 0;
 	private fallCount = 0;
 
@@ -152,16 +170,18 @@ export class LeadController {
 			this.recSentAt.push(0);
 			this.recDepth.push(0);
 			this.recHitched.push(false);
+			this.recDepthUsed.push(0);
 			this.recLead.push(minLead);
 		}
 	}
 
 	/**
 	 * A frame was sent for `target` while the client's state.tick was `sentAt`; depthRaw = the pacer's raw buffer depth
-	 * in ticks then (0 unpaced); hitched = the send happened in a hitched / catching-up frame. Targets only increase (a
-	 * target at or below the newest sent, or not a whole tick, is ignored).
+	 * in ticks then (0 unpaced); hitched = the send happened in a hitched / catching-up frame; depthUsed = the depth the
+	 * lead added for it (the pacer's whole-tick, capped depthTicks(); default depthRaw: none uncovered). Targets only
+	 * increase (a target at or below the newest sent, or not a whole tick, is ignored).
 	 */
-	sent(target: number, sentAt: number, depthRaw: number, hitched: boolean): void {
+	sent(target: number, sentAt: number, depthRaw: number, hitched: boolean, depthUsed: number = depthRaw): void {
 		if (!isFiniteNumber(target) || !isFiniteNumber(sentAt) || target < 0 || target !== math.floor(target)) return;
 		if (this.newestSent !== undefined && target <= this.newestSent) return;
 		const slot = target % this.ringSize;
@@ -169,11 +189,15 @@ export class LeadController {
 		this.recSentAt[slot] = sentAt;
 		this.recDepth[slot] = isFiniteNumber(depthRaw) ? depthRaw : 0;
 		this.recHitched[slot] = hitched;
+		this.recDepthUsed[slot] = isFiniteNumber(depthUsed) ? depthUsed : this.recDepth[slot];
 		this.recLead[slot] = this.leadValue;
 		this.newestSent = target;
 	}
 
-	/** A merged batch arrived (any batch, echo or not) at local time now: no echo for echoTimeoutSec ends echoing. */
+	/**
+	 * A merged batch arrived (any batch, echo or not) at local time now: no decodable echo (with a tick or "none") for
+	 * echoTimeoutSec while batches arrive ends echoing.
+	 */
 	received(now: number): void {
 		const clock = this.clock(now);
 		if (clock === undefined || !this.isEchoing || this.lastEchoAt === undefined) return;
@@ -191,24 +215,31 @@ export class LeadController {
 		const lates = sanitizeCount(echo.lates);
 		this.lateCount += lates;
 		const tick = echo.tick;
+		const serverCatchUp = echo.catchingUp === true;
 		/** The late's own trip (undefined: not measured, or from a hitched send). */
 		let trip: number | undefined;
 		/** The lead the echoed tick was sent with. */
 		let sentLead: number | undefined;
+		/** The echo's lates are not the network's: the server catching up, an unsteady send, the depth cap. */
+		let excused = serverCatchUp;
 		if (tick !== undefined && isFiniteNumber(tick)) {
 			if (!this.isEchoing) {
 				this.isEchoing = true;
 				this.cleanTicks = 0;
 				this.resetHold();
 			}
-			this.lastEchoAt = clock;
 			if (this.echoedThrough === undefined || tick > this.echoedThrough) {
 				this.echoedThrough = tick;
 				const slot = this.slotOf(tick);
 				if (slot !== undefined) {
 					sentLead = this.recLead[slot];
-					const t = tick - this.recSentAt[slot] - echo.slack - this.recDepth[slot];
-					if (!this.recHitched[slot] && isFiniteNumber(t)) {
+					const depth = this.recDepth[slot];
+					const t = tick - this.recSentAt[slot] - echo.slack - depth;
+					if (this.recHitched[slot]) excused = true;
+					// Sent short by the buffer's lead cap: the depth the lead did not cover explains the overshoot.
+					const uncovered = depth - this.recDepthUsed[slot];
+					if (uncovered > EPSILON && uncovered + EPSILON >= -echo.slack) excused = true;
+					if (!this.recHitched[slot] && !serverCatchUp && isFiniteNumber(t)) {
 						trip = t;
 						this.winAt.push(clock);
 						this.winTrip.push(t);
@@ -217,6 +248,8 @@ export class LeadController {
 				}
 			}
 		}
+		// Any decodable echo (a "none" one too) proves the server echoes: the timeout restarts.
+		if (this.isEchoing) this.lastEchoAt = clock;
 		this.refresh(clock);
 		if (!this.isEchoing) return;
 		let raised = this.leadValue;
@@ -225,7 +258,9 @@ export class LeadController {
 			raised = target;
 			this.raiseCount++;
 		}
-		if (lates > 0) {
+		if (lates > 0 && excused) {
+			this.excusedCount++;
+		} else if (lates > 0) {
 			let bump = (sentLead ?? this.leadValue) + 1;
 			if (trip !== undefined) bump = math.max(bump, ceilTicks(trip + this.tunables.marginTicks));
 			bump = this.clampLead(bump);
@@ -315,6 +350,7 @@ export class LeadController {
 			lates: this.lateCount,
 			mismatches: this.mismatchCount,
 			bumps: this.bumpCount,
+			excused: this.excusedCount,
 			raises: this.raiseCount,
 			falls: this.fallCount,
 			echoing: this.isEchoing,

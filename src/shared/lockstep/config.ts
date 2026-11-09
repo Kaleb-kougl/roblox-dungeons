@@ -276,6 +276,13 @@ export interface LockstepTunables {
 	 * every spec that pins today's lead keeps. The server ignores it (it always echoes).
 	 */
 	readonly lead: LeadTunables | undefined;
+	/**
+	 * Server: after a catch-up (a step capped at maxTicksPerStep), an input batch whose first tick is at most this many
+	 * ticks past the last tick a capped step finalized is flagged in its echo as the server catching up: it was sent
+	 * from a client still stepping the backlog (behind real time), so its slack and lateness measure the catch-up, not
+	 * the network. The most an input reaches past the tick it was sent from: the largest lead plus the largest depth.
+	 */
+	readonly echoCatchUpTailTicks: number;
 }
 
 export const DEFAULT_LOCKSTEP: LockstepTunables = table.freeze({
@@ -299,4 +306,5 @@ export const DEFAULT_LOCKSTEP: LockstepTunables = table.freeze({
 	allowDebugInput: false,
 	pacing: PACING,
 	lead: LEAD,
+	echoCatchUpTailTicks: MAX_INPUT_LEAD_TICKS + PACING.maxDepthTicks,
 });

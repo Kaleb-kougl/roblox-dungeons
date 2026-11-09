@@ -37,6 +37,7 @@ const LEAD_STATS: LeadStats = {
 	lates: 9,
 	mismatches: 0,
 	bumps: 3,
+	excused: 0,
 	raises: 4,
 	falls: 1,
 	echoing: true,

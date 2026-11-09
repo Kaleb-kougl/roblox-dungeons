@@ -135,6 +135,13 @@ export class LockstepSession {
 	private readonly echoTick: number[] = [];
 	private readonly echoSlack: number[] = [];
 	private readonly echoLates: number[] = [];
+	/**
+	 * Per player: the echo window overlapped the server catching up a backlog (a step with more than maxTicksPerStep
+	 * due, or a receipt more than that behind real time): the echo is flagged, its slack and lates measure the server.
+	 */
+	private readonly echoCatchUp: boolean[] = [];
+	/** The last tick a capped (catch-up) step finalized; inputs sent from the backlog reach up to its tail. */
+	private catchUpThrough: number | undefined;
 	/** Per player, the whole run: recorded batches, late frames, smallest and summed slack. */
 	private readonly statSamples: number[] = [];
 	private readonly statLates: number[] = [];
@@ -161,6 +168,7 @@ export class LockstepSession {
 			this.echoTick.push(0);
 			this.echoSlack.push(0);
 			this.echoLates.push(0);
+			this.echoCatchUp.push(false);
 			this.statSamples.push(0);
 			this.statLates.push(0);
 			this.statSlackMin.push(0);
@@ -212,7 +220,9 @@ export class LockstepSession {
 	 * `now` (the clock `startedAt` uses) places the receipt within the tick being finalized: without it the receipt is
 	 * at finalizedTicks(). A batch with any frame accepted or late is recorded for the player's next echo: its lowest
 	 * slack is its first frame's, X + 1 - R for X = firstTick, R = finalizedTicks() + clamp(pos - finalizedTicks(), 0,
-	 * 1) with pos the real-time tick position (a stalled server's backlog never counts against the client); it
+	 * 1) with pos the real-time tick position (a stalled server's backlog never counts against the client, and a receipt
+	 * more than maxTicksPerStep behind real time flags the echo as catching up, InputEcho.catchingUp, as does a batch
+	 * for ticks within echoCatchUpTailTicks of the last capped step's: sent from the backlog); it
 	 * replaces the pending frame since the last echo only when its slack is lower (the input that waited longest is
 	 * the one the client's lead must cover; later batches carry later ticks, so the echoed ticks still increase from
 	 * one echo to the next). Its late frames add up until the echo goes out. docs/FRAME_PACING.md Design 9.
@@ -231,6 +241,11 @@ export class LockstepSession {
 				const pos = (now - this.startedAt) * SIM_HZ;
 				const into = pos - finalized;
 				if (into === into) receipt = finalized + math.clamp(into, 0, 1);
+				if (into > this.tunables.maxTicksPerStep) this.echoCatchUp[i] = true;
+			}
+			const through = this.catchUpThrough;
+			if (through !== undefined && firstTick <= through + this.tunables.echoCatchUpTailTicks) {
+				this.echoCatchUp[i] = true;
 			}
 			const slack = firstTick + 1 - receipt;
 			if (!this.echoPending[i] || slack < this.echoSlack[i]) {
@@ -337,12 +352,16 @@ export class LockstepSession {
 		// 1. Finalize the ticks real time has reached.
 		const due = math.floor((now - this.startedAt) * SIM_HZ) - this.relay.finalizedTicks();
 		const n = math.min(due, t.maxTicksPerStep);
+		// A backlog (a stall, a long Heartbeat) is finalized at the cap: every pending echo window says so.
+		const capped = due > t.maxTicksPerStep;
+		if (capped) for (let i = 0; i < this.size; i++) this.echoCatchUp[i] = true;
 		for (let k = 0; k < n; k++) {
 			if (this.unsent.size() === 0) this.unsentFirst = this.relay.finalizedTicks();
 			const merged = this.relay.finalizeNext();
 			this.log.append(merged);
 			this.unsent.push(merged);
 		}
+		if (capped) this.catchUpThrough = this.relay.finalizedTicks();
 		if (this.unsent.size() >= t.broadcastEvery) broadcasts.push(this.flush());
 
 		// 2. Agree hashes in order, up to a claimed final (nobody reports past it); drop stalled players. Stall
@@ -414,10 +433,12 @@ export class LockstepSession {
 				tick: this.echoPending[i] ? this.echoTick[i] : undefined,
 				slack: this.echoPending[i] ? this.echoSlack[i] : 0,
 				lates: this.echoLates[i],
+				catchingUp: this.echoCatchUp[i],
 			};
 			echoes.push(encodeInputEcho(echo, firstTick));
 			this.echoPending[i] = false;
 			this.echoLates[i] = 0;
+			this.echoCatchUp[i] = false;
 		}
 		const b = { firstTick, data: this.encoder.encode(this.unsent), echoes };
 		this.unsent = [];

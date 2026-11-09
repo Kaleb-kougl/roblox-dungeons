@@ -45,8 +45,10 @@
  * The clock is the pacer's: `receive`'s / `pump`'s `now`, and a pump without one runs on the last clock + dt. Until a
  * clock was ever given nothing is timed: no echo is fed, so the controller stays on its legacy rule (exactly
  * `checkDeadline`'s miss counter below) and the run behaves as before. A send is "unsteady" (its trip is left out of
- * the window, its late still counts) when the pacer's frame was hitched, catching up or fast-forwarding, or, unpaced,
- * when dt is over PACING.hitchFrameSec. The tap latch (FPD13): a step whose target was already sent still samples
+ * the window, its late never bumps) when the pacer's frame was hitched, catching up or fast-forwarding, or, unpaced,
+ * when dt or the clock since the last pump is over PACING.hitchFrameSec, or the pump (or the one before) started with
+ * more frames queued than maxCatchup (catch-up after a hitch). Each send also records the depth the lead added
+ * (`depthTicks()`), so a late caused by the buffer's lead cap is not bumped. The tap latch (FPD13): a step whose target was already sent still samples
  * (`sample(false)`), and that sample's buttons are OR-ed into the next frame actually sent (axes from the newer sample),
  * so a one-frame tap on a fall's skipped tick becomes a one-tick hold one tick later instead of nothing. `misses`
  * counts every input known to have missed: echoed lates while echoing, plus `inputsEqual` mismatches while not (no
@@ -220,6 +222,10 @@ export class LockstepClient implements RunView {
 	 * on reports lates of inputs whose mismatches may already be counted, so it adds only its lates beyond these.
 	 */
 	private unmatchedMisses = 0;
+	/** The clock of the last pump given one (an unpaced pump's hitch test: a stall between pumps). */
+	private lastPumpClock: number | undefined;
+	/** The last pump started with more queued than one pump steps (unpaced catch-up). */
+	private wasCatchingUp = false;
 	/** The playout clock (docs/FRAME_PACING.md), when `tunables.pacing` is defined. */
 	private readonly pacer: PlayoutPacer | undefined;
 	/** A pump passed `now` with a pacer: pacing is on for the rest of the run. */
@@ -484,8 +490,11 @@ export class LockstepClient implements RunView {
 		const budget = this.stepBudget(dt, now);
 		const ctl = this.leadCtl;
 		let depthRaw = 0;
+		let depthUsed = 0;
 		let unsteady = false;
 		if (ctl !== undefined) {
+			const hitchSec = (this.tunables.pacing ?? PACING).hitchFrameSec;
+			const pumpClock = now !== undefined && isFiniteNumber(now) ? now : undefined;
 			if (now !== undefined && isFiniteNumber(now)) {
 				const last = this.leadClock;
 				this.leadClock = last === undefined ? now : math.max(last, now);
@@ -494,12 +503,21 @@ export class LockstepClient implements RunView {
 			}
 			if (this.leadClock !== undefined) ctl.frame(this.leadClock);
 			const pacer = this.pacer;
+			// Unpaced catch-up: more queued than one pump steps (the frames that piled up in a hitch), and the pump
+			// right after one (its first steps are still behind).
+			const catchingUp = this.backlog() > this.tunables.maxCatchup;
 			if (this.pacing && pacer !== undefined) {
 				depthRaw = pacer.rawDepthTicks();
+				depthUsed = pacer.depthTicks();
 				unsteady = pacer.unsteady();
 			} else {
-				unsteady = dt > (this.tunables.pacing ?? PACING).hitchFrameSec;
+				// A long frame, a stall inside the render step before the pump (in the clock, not in dt), or catch-up.
+				const elapsed =
+					pumpClock !== undefined && this.lastPumpClock !== undefined ? pumpClock - this.lastPumpClock : dt;
+				unsteady = dt > hitchSec || elapsed > hitchSec || catchingUp || this.wasCatchingUp;
 			}
+			this.wasCatchingUp = catchingUp;
+			if (pumpClock !== undefined) this.lastPumpClock = pumpClock;
 		}
 		while (
 			this.broken === undefined &&
@@ -565,7 +583,7 @@ export class LockstepClient implements RunView {
 			outgoing.push(f);
 			this.sent.set(target, f);
 			this.lastSentTick = target;
-			ctl?.sent(target, state.tick, depthRaw, unsteady);
+			ctl?.sent(target, state.tick, depthRaw, unsteady, depthUsed);
 		}
 		flushInputs();
 		this.collectHashes(dt, hashes);

@@ -520,7 +520,7 @@ describe("LeadController", () => {
 		expect(waited <= LEAD.fallStepSec + 2 / SIM_HZ).toBe(true);
 	});
 
-	it("ignores hitched sends' trips but counts their lates (a tick past the lead they were sent with)", () => {
+	it("ignores hitched sends' trips and counts their lates without a bump (the client's stall, not the network)", () => {
 		const trace = new Trace();
 		trace.run({ seconds: 5, trip: () => 6 });
 		const lead = trace.ctl.lead();
@@ -531,13 +531,15 @@ describe("LeadController", () => {
 		expect(s.tripMax).toBe(6);
 		expect(s.lead).toBe(lead);
 		expect(s.samples <= samplesBefore).toBe(true);
-		// One hitched late: counted, one tick up, not to its 40-tick trip.
+		// One hitched late: counted and excused, the lead unchanged.
 		trace.run({ seconds: 5, trip: () => 6 });
-		const latesBefore = trace.ctl.stats().lates;
+		const before = trace.ctl.stats();
 		trace.run({ seconds: 2 / SIM_HZ, trip: () => 40, hitched: () => true });
 		s = trace.ctl.stats();
-		expect(s.lates).toBe(latesBefore + 1);
-		expect(s.lead).toBe(lead + 1);
+		expect(s.lates).toBe(before.lates + 1);
+		expect(s.excused).toBe(before.excused + 1);
+		expect(s.bumps).toBe(before.bumps);
+		expect(s.lead).toBe(lead);
 		expect(s.tripMax).toBe(6);
 	});
 
@@ -580,5 +582,79 @@ describe("LeadController", () => {
 		const s = ctl.stats();
 		expect(s.samples).toBe(2);
 		expect(s.lead).toBe(expectedTarget(9));
+	});
+});
+
+describe("LeadController: echoes that do not measure the network (review fixes)", () => {
+	/** A controller echoing steady 6-tick trips for 10 s at 60 fps (one echo per broadcast). */
+	function steady(): Trace {
+		const trace = new Trace();
+		trace.run({ seconds: 10, trip: () => 6 });
+		expect(trace.ctl.echoing()).toBe(true);
+		return trace;
+	}
+
+	it("an echo flagged catchingUp (the server's backlog) is counted, never windowed or bumped", () => {
+		const trace = steady();
+		const ctl = trace.ctl;
+		const before = ctl.stats();
+		const target = trace.lastTarget + 1;
+		const now = trace.now();
+		ctl.sent(target, trace.tick, 0, false);
+		// 30 ticks late against the server's catch-up pace.
+		ctl.echoed({ tick: target, slack: -30, lates: 4, catchingUp: true }, now);
+		const s = ctl.stats();
+		expect(s.lates).toBe(before.lates + 4);
+		expect(s.excused).toBe(before.excused + 1);
+		expect(s.bumps).toBe(before.bumps);
+		expect(s.samples).toBe(before.samples);
+		expect(s.tripMax).toBe(before.tripMax);
+		expect(s.lead).toBe(before.lead);
+	});
+
+	it("a late the buffer's lead cap explains (raw depth over the depth added) does not bump; a longer one does", () => {
+		const trace = steady();
+		const ctl = trace.ctl;
+		const before = ctl.stats();
+		const now = trace.now();
+		// Sent with a raw depth of 14.5 ticks but only 12 added to the lead: 2.5 ticks went uncovered.
+		const a = trace.lastTarget + 1;
+		ctl.sent(a, trace.tick, 14.5, false, 12);
+		ctl.echoed({ tick: a, slack: -2, lates: 1 }, now);
+		let s = ctl.stats();
+		expect([s.excused, s.bumps, s.lead]).toEqual([before.excused + 1, before.bumps, before.lead]);
+		// 3 ticks late: more than the uncovered depth, a real late.
+		const b = a + 1;
+		ctl.sent(b, trace.tick, 14.5, false, 12);
+		ctl.echoed({ tick: b, slack: -3, lates: 1 }, now);
+		s = ctl.stats();
+		expect(s.bumps).toBe(before.bumps + 1);
+		expect(s.lead > before.lead).toBe(true);
+	});
+
+	it("an up-link outage ('none' echoes only) keeps echoing; no decodable echo at all times out", () => {
+		const trace = steady();
+		const ctl = trace.ctl;
+		let now = trace.now();
+		const step = 1 / SIM_HZ;
+		const seconds = LEAD.echoTimeoutSec * 2;
+		for (let k = 0; k < seconds * SIM_HZ; k++) {
+			now += step;
+			ctl.received(now);
+			ctl.echoed({ tick: undefined, slack: 0, lates: 0 }, now);
+			ctl.frame(now);
+		}
+		expect(ctl.echoing()).toBe(true);
+		// Batches without any echo (an old server, or echoes stripped): the timeout.
+		let offAfter: number | undefined;
+		const quietFrom = now;
+		for (let k = 0; k < seconds * SIM_HZ && offAfter === undefined; k++) {
+			now += step;
+			ctl.received(now);
+			ctl.frame(now);
+			if (!ctl.echoing()) offAfter = now - quietFrom;
+		}
+		expect(offAfter).toBeDefined();
+		expect(math.abs(offAfter! - LEAD.echoTimeoutSec) <= 2 * step).toBe(true);
 	});
 });

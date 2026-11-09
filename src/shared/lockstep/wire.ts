@@ -14,8 +14,9 @@
  *   2-4 per moving one per tick (8 players moving: ~25 bytes per tick, ~1.5 KB/s).
  *
  * Input echo (server -> one client, the trailing `echo` of `lockstepFrames`; docs/FRAME_PACING.md Design 9): how early
- * that member's own input that waited longest since the last echo (lowest slack) reached the server, INPUT_ECHO_BYTES: u8 flags (bit 0: has a tick), i32 the tick as
- * an offset from the batch's firstTick, i16 slack in 1 / INPUT_ECHO_SLACK_SCALE tick (rounded, saturating), u8 late
+ * that member's own input that waited longest since the last echo (lowest slack) reached the server, INPUT_ECHO_BYTES:
+ * u8 flags (bit 0: has a tick; bit 1: the server was catching up a backlog during the echo's window, so its slack and
+ * lates measure the server, not the network), i32 the tick as an offset from the batch's firstTick, i16 slack in 1 / INPUT_ECHO_SLACK_SCALE tick (rounded, saturating), u8 late
  * frames since the last echo (saturating). Without a tick (no input received since the last echo) the offset and
  * slack are 0; the lates may still be counted. Never enters the log, the validator or a hash.
  *
@@ -43,7 +44,8 @@ const I16_MAX = 32767;
 const I32_MIN = -2147483648;
 const I32_MAX = 2147483647;
 const ECHO_HAS_TICK = 1;
-const ECHO_FLAGS_ALL = ECHO_HAS_TICK;
+const ECHO_CATCHING_UP = 2;
+const ECHO_FLAGS_ALL = bit32.bor(ECHO_HAS_TICK, ECHO_CATCHING_UP);
 const ECHO_OFFSET_AT = 1;
 const ECHO_SLACK_AT = 5;
 const ECHO_LATES_AT = 7;
@@ -273,6 +275,11 @@ export interface InputEcho {
 	readonly slack: number;
 	/** Frames of this player's that arrived late since the last echo. */
 	readonly lates: number;
+	/**
+	 * The server was catching up a backlog (finalizing maxTicksPerStep a step) during this echo's window. Absent on a
+	 * decoded echo without the flag.
+	 */
+	readonly catchingUp?: boolean;
 }
 
 function finite(v: number): boolean {
@@ -284,9 +291,11 @@ export function encodeInputEcho(echo: InputEcho | undefined, firstTick: number):
 	const b = buffer.create(INPUT_ECHO_BYTES);
 	const lates = echo === undefined || !finite(echo.lates) ? 0 : math.clamp(math.floor(echo.lates), 0, U8_MAX);
 	buffer.writeu8(b, ECHO_LATES_AT, lates);
+	const catchUp = echo?.catchingUp === true ? ECHO_CATCHING_UP : 0;
+	buffer.writeu8(b, 0, catchUp);
 	const tick = echo?.tick;
 	if (echo === undefined || tick === undefined) return b;
-	buffer.writeu8(b, 0, ECHO_HAS_TICK);
+	buffer.writeu8(b, 0, bit32.bor(ECHO_HAS_TICK, catchUp));
 	const offset = math.floor(tick - firstTick);
 	buffer.writei32(b, ECHO_OFFSET_AT, finite(offset) ? math.clamp(offset, I32_MIN, I32_MAX) : 0);
 	const raw = echo.slack * INPUT_ECHO_SLACK_SCALE;
@@ -306,12 +315,13 @@ export function decodeInputEcho(data: unknown, firstTick: number): InputEcho | u
 	const offset = buffer.readi32(data, ECHO_OFFSET_AT);
 	const slack = buffer.readi16(data, ECHO_SLACK_AT) / INPUT_ECHO_SLACK_SCALE;
 	const lates = buffer.readu8(data, ECHO_LATES_AT);
-	if (flags === 0) {
+	const catchingUp = bit32.band(flags, ECHO_CATCHING_UP) !== 0;
+	if (bit32.band(flags, ECHO_HAS_TICK) === 0) {
 		if (offset !== 0 || slack !== 0) return undefined;
-		return { tick: undefined, slack: 0, lates };
+		return catchingUp ? { tick: undefined, slack: 0, lates, catchingUp } : { tick: undefined, slack: 0, lates };
 	}
 	if (!typeIs(firstTick, "number")) return undefined;
 	const tick = firstTick + offset;
 	if (!finite(tick) || !finite(slack)) return undefined;
-	return { tick, slack, lates };
+	return catchingUp ? { tick, slack, lates, catchingUp } : { tick, slack, lates };
 }

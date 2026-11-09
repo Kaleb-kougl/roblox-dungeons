@@ -349,6 +349,8 @@ interface NetOptions {
 	readonly coverSec?: number;
 	/** The bots never press the debug hit (K): the party lives until maxFrames (FP12's spikes). */
 	readonly harmless?: boolean;
+	/** Client `client`'s echoes are not delivered from `at` for `sec` seconds (an old server's silence; review fix 5c). */
+	readonly echoOff?: { readonly client: number; readonly at: number; readonly sec: number };
 }
 
 /** The first ticks of a run are its warm-up for the lead's numbers (FP11): no trip is measured yet. */
@@ -409,6 +411,8 @@ interface FrameTrace {
 	readonly holds: number[];
 	/** netLead() after the pump. */
 	readonly lead: number[];
+	/** isLeadMeasured() after the pump. */
+	readonly measured: boolean[];
 }
 
 /**
@@ -469,6 +473,10 @@ class Net {
 	readonly finals = new Map<number, RunFinal>();
 	readonly frozen = new Set<number>();
 	readonly gone = new Set<number>();
+	/** The dt of a client's next pump (a hitch: the frame that took that long), consumed by that pump. */
+	readonly nextDt = new Map<number, number>();
+	/** Per player: the server clock of every broadcast whose echo for them carried a tick. */
+	readonly echoTickAt: number[][] = [];
 	/** The service's per-player limiters, on the simulated clock (RunSessionService applies the same rates). */
 	readonly hashLimiter = new SlidingWindowLimiter<number>(LOCKSTEP_HASH_RATE.count, LOCKSTEP_HASH_RATE.windowSeconds);
 	readonly inputLimiter = new SlidingWindowLimiter<number>(
@@ -520,7 +528,8 @@ class Net {
 		this.tunables = opts.measured === true ? { ...paced, lead: paced.lead ?? LEAD } : paced;
 		this.frameDt = 1 / (opts.fps ?? NET_FPS);
 		for (let i = 0; i < n; i++) {
-			this.traces.push({ at: [], stepped: [], alpha: [], holds: [], lead: [] });
+			this.traces.push({ at: [], stepped: [], alpha: [], holds: [], lead: [], measured: [] });
+			this.echoTickAt.push([]);
 			this.truth.push(new TripWindow());
 			this.echoedTruth.push(new TripWindow());
 			this.sentFrames.push(new Map());
@@ -603,13 +612,23 @@ class Net {
 				expect(b.firstTick).toBe(this.log.size());
 				// One input echo per player, each well-formed; each client gets its own (ignored on the legacy lead).
 				expect(b.echoes.size()).toBe(this.clients.size());
-				for (const e of b.echoes) expect(decodeInputEcho(e, b.firstTick)).toBeDefined();
+				for (let i = 0; i < b.echoes.size(); i++) {
+					const e = decodeInputEcho(b.echoes[i], b.firstTick);
+					expect(e).toBeDefined();
+					if (e?.tick !== undefined) this.echoTickAt[i].push(this.now);
+				}
+				const echoOff = this.opts.echoOff;
 				for (const t of ticks) this.log.push(t);
 				const ack = out.ackTick;
 				for (let i = 0; i < this.clients.size(); i++) {
 					if (this.gone.has(i)) continue;
 					const c = this.clients[i];
-					const echo = b.echoes[i];
+					const silent =
+						echoOff !== undefined &&
+						echoOff.client === i &&
+						this.now >= echoOff.at &&
+						this.now < echoOff.at + echoOff.sec;
+					const echo = silent ? undefined : b.echoes[i];
 					this.down[i].send(this.now, () => {
 						c.receive(b.firstTick, b.data, clocked ? this.now : undefined, echo);
 						c.acknowledge(ack);
@@ -642,8 +661,10 @@ class Net {
 				const live = !c.isOver();
 				const sendTick = this.sendTick[i];
 				const sendDepth = this.sendDepth[i];
+				const pumpDt = this.nextDt.get(i) ?? frameDt;
+				this.nextDt.delete(i);
 				const res = c.pump(
-					frameDt,
+					pumpDt,
 					(sending) => {
 						if (sending) {
 							// The ground truth's send record: the target, the tick it was computed from, the raw depth.
@@ -664,6 +685,7 @@ class Net {
 					tr.alpha.push(c.getAlpha());
 					tr.holds.push(c.pacingStats()?.holds ?? 0);
 					tr.lead.push(c.netLead());
+					tr.measured.push(c.isLeadMeasured());
 					if (measured && frame % ORACLE_EVERY_FRAMES === 0) {
 						const o = this.oracles[i];
 						o.at.push(this.now);
@@ -913,6 +935,12 @@ const MEASURED_MISSED_SHARE = 0.01;
  */
 const ORACLE_BAND_SHARE = 0.8;
 const ORACLE_BELOW_SHARE = 0.02;
+/**
+ * The independent check (review fix 5a): against the oracle of EVERY frame the server received (not only the ones it
+ * echoed), at most this share of a client's samples after the warm-up has the lead more than a tick below it. Measured
+ * 0 % on both networks; 2 % leaves room for a single sample burst without hiding a systematic shortfall.
+ */
+const ORACLE_FAR_BELOW_SHARE = 0.02;
 
 const coveredNets = new Map<string, Net>();
 /** NET_RUNS[run] paced, with the stage cover, measured or legacy (built and run once on first use). */
@@ -953,6 +981,8 @@ interface Band {
 	readonly inBand: number;
 	readonly below: number;
 	readonly above: number;
+	/** The lead more than a tick below the oracle. */
+	readonly farBelow: number;
 	readonly samples: number;
 }
 
@@ -962,18 +992,20 @@ function oracleBand(net: Net, echoed: boolean): Band[] {
 		let inBand = 0;
 		let below = 0;
 		let above = 0;
+		let farBelow = 0;
 		let samples = 0;
 		for (let k = 0; k < o.at.size(); k++) {
 			const want = echoed ? o.echoed[k] : o.all[k];
 			if (o.at[k] < LEAD_WARMUP_SEC || want === NO_ORACLE) continue;
 			samples++;
 			const lead = o.lead[k];
+			if (lead < want - 1) farBelow++;
 			if (lead < want) below++;
 			else if (lead > want + 1) above++;
 			else inBand++;
 		}
 		const d = math.max(samples, 1);
-		return { inBand: inBand / d, below: below / d, above: above / d, samples };
+		return { inBand: inBand / d, below: below / d, above: above / d, farBelow: farBelow / d, samples };
 	});
 }
 
@@ -984,7 +1016,7 @@ function pct(x: number): string {
 function bandText(b: Band[]): string {
 	return (
 		`in ${b.map((x) => pct(x.inBand)).join(",")} below ${b.map((x) => pct(x.below)).join(",")} above ` +
-		`${b.map((x) => pct(x.above)).join(",")}`
+		`${b.map((x) => pct(x.above)).join(",")} more than a tick below ${b.map((x) => pct(x.farBelow)).join(",")}`
 	);
 }
 
@@ -1012,7 +1044,9 @@ function leadStatsText(net: Net): string {
 			.join(",");
 	return (
 		`trip p95 ${each((st) => st.tripP95 ?? -1, "%.1f")} t; lates ${each((st) => st.lates)} bumps ` +
-		`${each((st) => st.bumps)} raises ${each((st) => st.raises)} falls ${each((st) => st.falls)}`
+		`${each((st) => st.bumps)} excused ${each((st) => st.excused)} raises ${each((st) => st.raises)} falls ${each(
+			(st) => st.falls,
+		)}`
 	);
 }
 
@@ -1050,13 +1084,23 @@ for (let run = 0; run < NET_RUNS.size(); run++) {
 			}
 		});
 
-		it("after the warm-up the lead sits within [L*, L* + 1] of the ground-truth oracle of the echoed trips", () => {
-			// The echo reports the lowest-slack frame of each broadcast window (the one that waited longest); the oracle
-			// of every frame is printed beside it.
+		it("plumbing: the lead follows its rule on the echoed trips ([L*, L* + 1] of their oracle)", () => {
+			// A plumbing check, not an independent one: this oracle takes the same frames the session echoes with the
+			// session's own receipt formula, so it checks that the echoes reach the controller and the rule is applied
+			// (the shares above the band are the fall hold after a drop or a bump).
 			for (const b of echoedBand) {
 				expect(b.samples > 0).toBe(true);
 				expect(b.inBand >= ORACLE_BAND_SHARE).toBe(true);
 				expect(b.below <= ORACLE_BELOW_SHARE).toBe(true);
+			}
+		});
+
+		it("independent: never more than a tick below the oracle of every frame the server received", () => {
+			// The independent checks are this one (every frame, not only the echoed ones) and the relay's own lates
+			// below (the server's deadline, nothing of the client's model).
+			for (const b of allBand) {
+				expect(b.samples > 0).toBe(true);
+				expect(b.farBelow <= ORACLE_FAR_BELOW_SHARE).toBe(true);
 			}
 		});
 
@@ -1267,6 +1311,337 @@ for (const kind of ["spike", "hold"] as const) {
 		});
 	});
 }
+
+// Review fixes (frame-pacing-lead review): an unpaced client's own hitch, the server's catch-up after a stall, an old
+// server's silence and back, a player leaving. NET_RUNS' first network, with the stage cover and harmless bots.
+
+/** The lead after a disturbance: its value just before `at`, its peak after, and seconds it stayed above before + 1. */
+interface Disturbance {
+	readonly before: number;
+	readonly target: number;
+	readonly peak: number;
+	readonly upSec: number;
+	readonly after: number;
+}
+
+/** Client `i`'s lead around a disturbance from `at` to `ends` (watched to the run's end). */
+function disturbance(net: Net, i: number, at: number, ends: number, target: number): Disturbance {
+	const tr = net.traces[i];
+	let before = 0;
+	let peak = 0;
+	let up = 0;
+	let after = 0;
+	for (let k = 0; k < tr.at.size(); k++) {
+		const t = tr.at[k];
+		const lead = tr.lead[k];
+		if (t < at) {
+			before = lead;
+			continue;
+		}
+		peak = math.max(peak, lead);
+		after = lead;
+		if (t >= ends && lead > before + 1) up += DT;
+	}
+	return { before, target, peak, upSec: up, after };
+}
+
+function disturbanceText(d: ReadonlyArray<Disturbance>): string {
+	return (
+		`lead before ${d.map((x) => x.before).join(",")} (target ${d.map((x) => x.target).join(",")}) peak ` +
+		`${d.map((x) => x.peak).join(",")} above before + 1 for ${d
+			.map((x) => string.format("%.2f s", x.upSec))
+			.join(",")} after the end, at the end ${d.map((x) => x.after).join(",")}`
+	);
+}
+
+const HITCH_AT = 7;
+const HITCH_CLIENT = 1;
+/** Seconds the run goes on after the disturbance. */
+const HITCH_WATCH_SEC = 8;
+/** An unsteady catch-up excused, the lead stays put: at most this far above its pre-hitch value, at most this long. */
+const HITCH_PEAK_TICKS = 1;
+
+for (const [kind, sec] of [
+	["3 s hitch (one 3 s frame)", 3],
+	["300 ms stall between pumps (dt normal)", 0.3],
+] as const) {
+	describe(`an unpaced measured client's ${kind}: catch-up is not a trip (review fix 1)`, () => {
+		const [players, lo, hi] = NET_RUNS[0];
+		const start = math.floor(HITCH_AT * NET_FPS + 0.5);
+		const endFrame = start + math.floor(sec * NET_FPS + 0.5);
+		const longFrame = sec > PACING.hitchFrameSec * 10;
+		const nets: Net[] = [];
+		const targets: number[] = [];
+		for (const measured of [true, false]) {
+			const net = new Net({
+				players,
+				latency: [lo, hi],
+				pacing: false,
+				measured,
+				coverSec: STAGE_COVER_SEC,
+				harmless: true,
+				maxFrames: NET_FPS * (HITCH_AT + sec + HITCH_WATCH_SEC),
+				onFrame: (n, frame) => {
+					if (frame === start) {
+						if (measured) targets.push(n.clients[HITCH_CLIENT].leadStats()!.target);
+						n.frozen.add(HITCH_CLIENT);
+					}
+					if (frame === endFrame) {
+						n.frozen.delete(HITCH_CLIENT);
+						// A long frame (dt = the hitch) or a stall the frame's dt does not show (the clock moved on).
+						n.nextDt.set(HITCH_CLIENT, longFrame ? sec + DT : DT);
+					}
+				},
+			});
+			net.run();
+			nets.push(net);
+		}
+		const [measured, legacy] = nets;
+		const m = disturbance(measured, HITCH_CLIENT, HITCH_AT, HITCH_AT + sec, targets[0] ?? 0);
+		const l = disturbance(legacy, HITCH_CLIENT, HITCH_AT, HITCH_AT + sec, 0);
+		const st = measured.clients[HITCH_CLIENT].leadStats()!;
+		print(
+			`[lockstep client ${kind}] measured ${disturbanceText([m])}; lates ${st.lates} excused ${
+				st.excused
+			} bumps ` + `${st.bumps}; legacy ${disturbanceText([l])}`,
+		);
+
+		it("both runs play through and step exactly the server's log", () => {
+			for (const net of nets) {
+				expect(net.session.finalizedTicks() > (HITCH_AT + sec + HITCH_WATCH_SEC - 1) * SIM_HZ).toBe(true);
+				for (const c of net.clients) {
+					expect(c.brokenReason()).toBe(undefined);
+					expect(hashState(c.state)).toBe(hashState(net.replayLog(c.state.tick)));
+				}
+			}
+		});
+
+		it("the hitch's late inputs are excused: the lead does not jump past ceil(pre-hitch target) + 1", () => {
+			expect(measured.clients[HITCH_CLIENT].isLeadMeasured()).toBe(true);
+			expect(m.peak <= math.max(m.before, m.target) + HITCH_PEAK_TICKS).toBe(true);
+		});
+	});
+}
+
+describe("co-op over a simulated network with a 3 s server stall, measured lead (review fix 2)", () => {
+	const [players, lo, hi] = NET_RUNS[0];
+	const STALL_AT = 7;
+	const STALL_SEC = 3;
+	const WATCH_SEC = 8;
+	/** The trips right after the catch-up are really about 2 ticks longer for ~2 s (printed): the lead may follow. */
+	const AFTER_STALL_TICKS = 2;
+	const nets: Net[] = [];
+	/** Per net (measured paced, legacy paced, measured unpaced): each client's bumps when the stall began. */
+	const bumpsBefore: number[][] = [];
+	for (const [measured, pacing] of [
+		[true, true],
+		[false, true],
+		[true, false],
+	]) {
+		const before: number[] = [];
+		bumpsBefore.push(before);
+		const net = new Net({
+			players,
+			latency: [lo, hi],
+			pacing,
+			measured,
+			coverSec: STAGE_COVER_SEC,
+			harmless: true,
+			maxFrames: NET_FPS * (STALL_AT + STALL_SEC + WATCH_SEC),
+			serverStall: { at: STALL_AT, sec: STALL_SEC },
+			onFrame: (n, frame) => {
+				if (!measured || frame !== math.floor(STALL_AT * NET_FPS + 0.5)) return;
+				for (const c of n.clients) before.push(c.leadStats()!.bumps);
+			},
+		});
+		net.run();
+		nets.push(net);
+	}
+	const [measured, legacy, unpaced] = nets;
+	/** Client 0's ground-truth trips (every frame the server received) before the stall and after its catch-up. */
+	const truthText = (from: number, to: number) => {
+		const w = measured.truth[0];
+		const xs: number[] = [];
+		for (let k = 0; k < w.at.size(); k++) if (w.at[k] >= from && w.at[k] < to) xs.push(w.trip[k]);
+		xs.sort((p, q) => p < q);
+		return `${from}-${to} s p50 ${string.format("%.1f", nearestRank(xs, 0.5) ?? -1)} p95 ${string.format(
+			"%.1f",
+			nearestRank(xs, 0.95) ?? -1,
+		)}`;
+	};
+	print(
+		`[lockstep server stall, measured] client 0 true trips: ${truthText(STALL_AT - 2, STALL_AT)}, ` +
+			`${truthText(STALL_AT + STALL_SEC + 1, STALL_AT + STALL_SEC + 2)}, ${truthText(
+				STALL_AT + STALL_SEC + 2,
+				STALL_AT + STALL_SEC + 3,
+			)}, ${truthText(STALL_AT + STALL_SEC + 3, STALL_AT + STALL_SEC + 5)} (the catch-up itself excused)`,
+	);
+	const m: Disturbance[] = [];
+	const l: Disturbance[] = [];
+	const u: Disturbance[] = [];
+	for (let i = 0; i < players; i++) {
+		m.push(disturbance(measured, i, STALL_AT, STALL_AT + STALL_SEC, 0));
+		l.push(disturbance(legacy, i, STALL_AT, STALL_AT + STALL_SEC, 0));
+		u.push(disturbance(unpaced, i, STALL_AT, STALL_AT + STALL_SEC, 0));
+	}
+	print(
+		`[lockstep server stall, measured] ${disturbanceText(m)}; ${leadStatsText(
+			measured,
+		)}; bumps before the stall ${bumpsBefore[0].join(",")}; refused ${refusedInputs(measured)}`,
+	);
+	print(`[lockstep server stall, legacy]   ${disturbanceText(l)}; refused ${refusedInputs(legacy)}`);
+	print(
+		`[lockstep server stall, measured unpaced] ${disturbanceText(u)}; ${leadStatsText(
+			unpaced,
+		)}; bumps before the ` +
+			`stall ${bumpsBefore[2].join(",")} (no pacer fast-forward: only the server's catching-up flag excuses)`,
+	);
+
+	it("the catch-up's lates are counted and excused (no bump); the lead ends within a tick of its pre-stall value", () => {
+		for (const [net, d, before] of [
+			[measured, m, bumpsBefore[0]],
+			[unpaced, u, bumpsBefore[2]],
+		] as const) {
+			for (let i = 0; i < players; i++) {
+				const st = net.clients[i].leadStats()!;
+				expect(st.echoing).toBe(true);
+				expect(st.lates > 0).toBe(true);
+				expect(st.excused > 0).toBe(true);
+				expect(st.bumps).toBe(before[i]);
+				expect(d[i].peak <= d[i].before + AFTER_STALL_TICKS).toBe(true);
+				expect(math.abs(d[i].after - d[i].before) <= 1).toBe(true);
+			}
+			expect(refusedInputs(net)).toBe(0);
+		}
+	});
+
+	it("every client still steps exactly the server's log", () => {
+		for (const net of nets) {
+			for (const c of net.clients) expect(hashState(c.state)).toBe(hashState(net.replayLog(c.state.tick)));
+		}
+	});
+});
+
+describe("the measured lead switches legacy -> measured -> legacy -> measured with the echoes (review fix 5c)", () => {
+	const [players, lo, hi] = NET_RUNS[0];
+	const OFF_AT = 6;
+	const OFF_SEC = 4;
+	const RUN_SEC = 14;
+	const who = 0;
+	const net = new Net({
+		players,
+		latency: [lo, hi],
+		pacing: true,
+		measured: true,
+		coverSec: STAGE_COVER_SEC,
+		harmless: true,
+		maxFrames: NET_FPS * RUN_SEC,
+		echoOff: { client: who, at: OFF_AT, sec: OFF_SEC },
+	});
+	net.run();
+	const tr = net.traces[who];
+	/** The clock of every switch of isLeadMeasured(), and the state after it. */
+	const switches: Array<{ at: number; on: boolean }> = [];
+	let state = false;
+	for (let k = 0; k < tr.at.size(); k++) {
+		if (tr.measured[k] === state) continue;
+		state = tr.measured[k];
+		switches.push({ at: tr.at[k], on: state });
+	}
+	print(
+		`[lockstep echo switch] client ${who}: ${switches
+			.map((s) => `${s.on ? "measured" : "legacy"} at ${string.format("%.2f", s.at)} s`)
+			.join(", ")}; echoes withheld ${OFF_AT}-${OFF_AT + OFF_SEC} s (timeout ${LEAD.echoTimeoutSec} s)`,
+	);
+
+	it("on with the first echo, off echoTimeoutSec after the last, on again with the next", () => {
+		expect(switches.size()).toBe(3);
+		expect(switches[0].on).toBe(true);
+		expect(switches[0].at < OFF_AT).toBe(true);
+		expect(switches[1].on).toBe(false);
+		// The last echo delivered left before OFF_AT and arrived up to a down trip later.
+		expect(switches[1].at >= OFF_AT + LEAD.echoTimeoutSec - hi - DT).toBe(true);
+		expect(switches[1].at <= OFF_AT + LEAD.echoTimeoutSec + hi + DT).toBe(true);
+		expect(switches[2].on).toBe(true);
+		expect(switches[2].at >= OFF_AT + OFF_SEC).toBe(true);
+		expect(switches[2].at <= OFF_AT + OFF_SEC + 2 * hi + 2 * DT).toBe(true);
+	});
+
+	it("the run plays through on every client; the others never stop measuring", () => {
+		expect(net.session.finalizedTicks() > (RUN_SEC - 1) * SIM_HZ).toBe(true);
+		for (let i = 0; i < players; i++) {
+			const c = net.clients[i];
+			expect(hashState(c.state)).toBe(hashState(net.replayLog(c.state.tick)));
+			if (i === who) continue;
+			const t = net.traces[i];
+			let off = 0;
+			for (let k = 0; k < t.at.size(); k++) if (t.at[k] >= OFF_AT - 1 && !t.measured[k]) off++;
+			expect(off).toBe(0);
+		}
+	});
+});
+
+describe("a player who leaves a measured-lead run (review fix 5c)", () => {
+	const [players, lo, hi] = NET_RUNS[0];
+	const LEAVE_AT = 6;
+	const RUN_SEC = 14;
+	const who = 1;
+	const leaveFrame = math.floor(LEAVE_AT * NET_FPS + 0.5);
+	const base = { players, latency: [lo, hi] as const, pacing: true, measured: true, coverSec: STAGE_COVER_SEC };
+	const net = new Net({
+		...base,
+		harmless: true,
+		maxFrames: NET_FPS * RUN_SEC,
+		onFrame: (n, frame) => {
+			if (frame !== leaveFrame) return;
+			n.session.leave(n.members[who]);
+			n.gone.add(who);
+		},
+	});
+	net.run();
+	const stay = new Net({ ...base, harmless: true, maxFrames: NET_FPS * RUN_SEC });
+	stay.run();
+	/** Per remaining client: the mean lead after the leave, with and without it. */
+	const means: Array<{ left: number; stayed: number }> = [];
+	for (let i = 0; i < players; i++) {
+		if (i === who) continue;
+		const mean = (n: Net) => {
+			const t = n.traces[i];
+			let sum = 0;
+			let count = 0;
+			for (let k = 0; k < t.at.size(); k++) {
+				if (t.at[k] < LEAVE_AT) continue;
+				sum += t.lead[k];
+				count++;
+			}
+			return count > 0 ? sum / count : 0;
+		};
+		means.push({ left: mean(net), stayed: mean(stay) });
+	}
+	const lastEcho = net.echoTickAt[who].size() > 0 ? net.echoTickAt[who][net.echoTickAt[who].size() - 1] : 0;
+	print(
+		`[lockstep leave] player ${who} left at ${LEAVE_AT} s, last echo with a tick at ${string.format(
+			"%.2f",
+			lastEcho,
+		)} s; remaining clients' mean lead after it ${means
+			.map((x) => string.format("%.2f (without the leave %.2f)", x.left, x.stayed))
+			.join(", ")}`,
+	);
+
+	it("the left player's echoes carry no tick once its last inputs are in", () => {
+		// Its inputs already on the way land within one up trip.
+		expect(lastEcho <= LEAVE_AT + hi + DT).toBe(true);
+	});
+
+	it("the remaining clients keep measuring, their leads within a tick of the same run without the leave", () => {
+		for (let i = 0; i < players; i++) {
+			if (i === who) continue;
+			expect(net.clients[i].isLeadMeasured()).toBe(true);
+		}
+		for (const x of means) expect(math.abs(x.left - x.stayed) <= 1).toBe(true);
+		expect(net.result === undefined || net.result.ok).toBe(true);
+	});
+});
 
 describe("co-op over a simulated network with a 3 s server stall: 3 players, 20-120 ms each way", () => {
 	const [players, lo, hi] = NET_RUNS[0];
@@ -2005,11 +2380,16 @@ describe("LockstepClient measured lead wiring (docs/FRAME_PACING.md FP11)", () =
 		const st = c.leadStats()!;
 		expect(st.samples).toBe(1);
 		expect(st.tripMax).toBe(target - 1 - 2); // sent at state.tick 1, 2 ticks to spare, no buffer
-		// A "none" echo with late frames: counted as misses (no mismatch is counted for them again).
+		// The next input arrives a tick late (as the session echoes it: its tick, slack <= 0, the late frame counted):
+		// a miss (no mismatch is counted for it again) and a bump.
+		const res = c.pump(DT, () => EMPTY_INPUT, DT);
+		expect(res.stepped).toBe(1);
+		expect(res.inputs.size()).toBe(1);
+		const late = res.inputs[0].firstTick;
 		expect(
-			c.receive(2, enc.encode(ONE_IDLE), 2 * DT, encodeInputEcho({ tick: undefined, slack: 0, lates: 2 }, 2)),
+			c.receive(2, enc.encode(ONE_IDLE), 2 * DT, encodeInputEcho({ tick: late, slack: -1, lates: 1 }, 2)),
 		).toBe(true);
-		expect([c.misses, c.mismatches, c.leadStats()!.lates]).toEqual([2, 0, 2]);
+		expect([c.misses, c.mismatches, c.leadStats()!.lates, c.leadStats()!.bumps]).toEqual([1, 0, 1, 1]);
 	});
 
 	it("a malformed echo is ignored: the stream goes on, the lead stays on the legacy rule", () => {
