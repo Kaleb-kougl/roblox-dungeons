@@ -31,6 +31,7 @@ import {
 	TUTORIAL_WORLD_KIND,
 	buildWorldSetup,
 	clampDevFloor,
+	biomeIndexOf,
 	errorMessage,
 	isEndlessWorld,
 	isValidRunSeed,
@@ -269,13 +270,6 @@ function placeKeyFor(pack: ThemePack, dungeon: Dungeon | undefined): string {
  */
 function memberName(userId: number): string {
 	return Players.GetPlayerByUserId(userId)?.DisplayName ?? `#${userId}`;
-}
-
-/** The floor's biome as 1..5 (theme BIOMES order), 0 without a floor. */
-function biomeIndexFor(dungeon: Dungeon | undefined): number {
-	if (dungeon === undefined) return 0;
-	const i = BIOMES.findIndex((b) => b.forgeTheme === dungeon.params.themeKey);
-	return i >= 0 ? i + 1 : 0;
 }
 
 /**
@@ -1437,7 +1431,7 @@ export class SimController implements OnStart {
 			debug: this.debug,
 			run: ctx.counter,
 			notice,
-			biome: biomeIndexFor(ctx.dungeon),
+			biome: biomeIndexOf(ctx.dungeon),
 			coop: ctx.coop !== undefined,
 			lobbyId: ctx.lobbyId,
 		};

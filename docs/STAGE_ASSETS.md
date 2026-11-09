@@ -379,6 +379,39 @@ smoke test lines, CLAUDE.md decision log. Fresh-phone playtest: a full solo run 
 - **SAD16 Stand-ins are the existing placeholders, unchanged.** *Alternative:* a dedicated "loading" look (a shimmer on
   stand-ins), more work and more Highlights.
 
+## As built
+
+- **SA1 (theme groups):** `shared/view/stageGroups.ts`, pure, over `PreloadSource` (no ThemePack change). Entries match
+  as a prefix when they end in "." and exactly otherwise (not preload.ts's plain `startsWith`, which would let
+  `music.biome.1` match `music.biome.10`; preload.ts's matcher is not exported). Actor kind -> the archetype's own
+  `data.spriteId`, the id ActorRenderController draws (`turret.sniper` -> `enemy.sniper`, `slime.small` ->
+  `enemy.slime`); unregistered kinds `PRELOAD_BOSS_IDS`, else `enemy.<kind>`. Biome n = `biome:biome.<n>` (its
+  `biomeContentIds`), `tile.biome.<n>.*` and every `decor.*` id with a `b<n>` segment (delve, void, `decor.fx.ambient.b<n>`);
+  beds `music.biome.<n>` / `amb.b<n>`; biome-free decor = decor ids with no `b<n>` segment that no feature claims.
+  Groups list only ids the pack has content for, so every placeholder group is empty. The music ids are config strings
+  checked against shared/view/audio by spec (importing the audio barrel from shared/view would be a require cycle
+  through `boosts/art.ts`).
+- **SA2 (manifest):** `stageAssetsConfig.ts` (`STAGE_ASSETS`, `STAGE_GROUPS`, `STAGE_FEATURES`, `STAGE_CHARACTERS`) and
+  `stageAssets.ts`. `stageAssetGroups` returns the groups in front-lane order (characters, bullets, actors, biome,
+  features, run kit, audio; each id once at its first group), `stageAssetsInOrder` flattens it, `stageAssets` splits it
+  by `STAGE_ASSETS.soon` (empty, SAD5), `stageContentRefs` resolves (`biome:<key>` through `biomeContentIds`), and
+  `stageAuditMisses` is SA11's diff. Run kit (run start only): `ui.`, `sfx.`, `bullet.`, `fx.`, `boost.`,
+  `breakable.`, `pellet.` (all of `ui.`: no menu-only ui id exists yet); bullets are also their own group on every stage.
+  Children: summoner / both bosses -> swarmer, slime -> slime.small (pinned against the sim's `summonKind` /
+  `splitKind`). World extras table `worlds.tutorial` (dummy, `music.tutorial`); boss floors add `music.boss`. Features
+  include `pedestals` (every treasure room's relic pedestal draws the vault chest). `notStaged`: `music.menu`,
+  `music.lobby`. The gate's tunables are `STAGE_ASSETS.wait` (unused until SA5 / SA19). Coverage guard
+  `stageAssets.coverage.spec.ts` passes on vale (and checks itself is live).
+- **SA3 (floor inputs):** `shared/run/stageInput.ts`: `stageInputOf(src, floor, characters, runStart)` (RunContext
+  fits `StageRunSource`), `stageInputOfLayout`, `stageInputOfEncounter` (M1), `forecastStageInput(runSeed, floor,
+  characters, world, runStart)`, `forecastFirstFloor(characters, biome = 1)`, and the biome rule `biomeIndexForTheme` /
+  `biomeIndexOf` (SimController now imports it). Exact kinds are ordered nearest the player's spawn first. Endless floors
+  are themed by the Forge's `"auto"` rule on the floor seed (`resolveParams`; a reroll keeps the theme), so floor 1's
+  biome is any of five: `forecastFirstFloor`'s biome 1 is a guess. Only type imports from shared/view and `BIOMES` by
+  file, so the server's shared/run never loads the theme packs. Spec: seeds 1-12 x floors 1-10 plus floors 15 / 20 on
+  two seeds (not 1-60 x 1-20: ~200 ms a floor under Lune, the spec already takes ~27 s), the tutorial's floors, M1, no
+  forging (the endless dungeon cache is unchanged), every floor-1 roster of seeds 1-60 inside the first-floor guess.
+
 ## Out of scope
 
 Faster downloads (compression, smaller atlases), unloading assets, Parallel Luau generation, a server "all clients

@@ -55,6 +55,10 @@
  *                 rebuild, assets, settle, reveal), stageMerge, floorChangeStaged, pregenTarget / PregenTracker (floor
  *                 n + 1 during floor n's draft), the KV_Debug listener timing line (tunables: STAGE_LOADER and the
  *                 cover's layout STAGE_VIEW in stageLoaderConfig.ts; string keys: STAGE_STRINGS in stageStrings.ts)
+ *   stageAssets.ts  the stage asset manifest (docs/STAGE_ASSETS.md SA2): every logical id a floor can show or play,
+ *                 in front-lane order (stageAssetGroups / stageAssets / stageContentRefs), the audit diff; its theme
+ *                 groups (actor kind, character, biome, free decor, feature) in stageGroups.ts (SA1)
+ *                 (tunables: STAGE_ASSETS in stageAssetsConfig.ts; floor inputs: shared/run stageInput.ts)
  *   decor/        the decor plan (docs/DECOR.md R3 / R6 / R8): planDecor, decorProfile, fade selection, glow points
  *   voidDecor/    void decoration (docs/VOID_DECOR.md VD2-VD4, VD9): voidField, planVoid (shoulder / ledge / outcrop /
  *                 abyss per cell, greedy rects), VOID / VOID_DEPTH, the VoidController's columns (voidColumnOf,
@@ -111,3 +115,6 @@ export * from "./preloadStrings";
 export * from "./stageLoaderConfig";
 export * from "./stageStrings";
 export * from "./stageLoader";
+export * from "./stageAssetsConfig";
+export * from "./stageGroups";
+export * from "./stageAssets";
