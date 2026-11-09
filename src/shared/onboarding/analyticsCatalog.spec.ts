@@ -183,16 +183,16 @@ describe("analytics catalog limits", () => {
 		);
 		expect(firstAttemptEventBound()).toBe(tutorialAttemptEventBound() + lessons + 4 + 1);
 		expect(firstAttemptEventBound() <= TUTORIAL_TELEMETRY.maxEventsPerAttempt).toBe(true);
-		// Pinned for the 18-lesson tutorial (docs/PELLETS.md PL13): 63 per attempt, 86 for a first one, cap 88.
-		expect(lessons).toBe(18);
-		expect(tutorialAttemptEventBound()).toBe(63);
-		expect(firstAttemptEventBound()).toBe(86);
-		expect(TUTORIAL_TELEMETRY.maxEventsPerAttempt).toBe(88);
+		// Pinned for the 17-lesson tutorial (docs/ARCHER.md AR6, revision 4): 60 per attempt, 82 for a first one, cap 84.
+		expect(lessons).toBe(17);
+		expect(tutorialAttemptEventBound()).toBe(60);
+		expect(firstAttemptEventBound()).toBe(82);
+		expect(TUTORIAL_TELEMETRY.maxEventsPerAttempt).toBe(84);
 		// The session backstop is the attempt cap's worth of full attempts.
 		expect(TUTORIAL_TELEMETRY.maxEventsPerSession).toBe(
 			TUTORIAL_TELEMETRY.maxAttemptsLoggedPerSession * TUTORIAL_TELEMETRY.maxEventsPerAttempt,
 		);
-		expect(TUTORIAL_TELEMETRY.maxEventsPerSession).toBe(264);
+		expect(TUTORIAL_TELEMETRY.maxEventsPerSession).toBe(252);
 		print(
 			`[analyticsCatalog] events per attempt: ${tutorialAttemptEventBound()}, first attempt ${firstAttemptEventBound()} of ${
 				TUTORIAL_TELEMETRY.maxEventsPerAttempt

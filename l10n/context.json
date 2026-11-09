@@ -4156,23 +4156,6 @@
 	"tutorial.prompt.boss.touch": {
 		"note": "First-run tutorial prompt for phone / tablet players; on-screen button names (Attack, Alt, Roll, Flask, Swap, Ember, Accept) must use exactly the words of the touch.* button labels, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: the practice boss (Mother Mayhem, referred to as \"her\"); orange previews show where her bullets will go. Friendly, short instructional sentences in second person."
 	},
-	"tutorial.prompt.bow.gamepad": {
-		"note": "First-run tutorial prompt for gamepad players, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: swapping to the bow and holding the secondary action to charge a heavy arrow. Friendly, short instructional sentences in second person. Placeholders {swap}, {alt} are the player's bound key or button names (e.g. \"Y\", \"LT\"; currently English).",
-		"example": {
-			"swap": "Y",
-			"alt": "LT"
-		}
-	},
-	"tutorial.prompt.bow.keyboard": {
-		"note": "First-run tutorial prompt for keyboard and mouse players, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: swapping to the bow and holding the secondary action to charge a heavy arrow. Friendly, short instructional sentences in second person. Placeholders {swap}, {alt} are the player's bound key or button names (e.g. \"E\", \"Right click\"; currently English).",
-		"example": {
-			"swap": "E",
-			"alt": "Right click"
-		}
-	},
-	"tutorial.prompt.bow.touch": {
-		"note": "First-run tutorial prompt for phone / tablet players; on-screen button names (Attack, Alt, Roll, Flask, Swap, Ember, Accept) must use exactly the words of the touch.* button labels, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: swapping to the bow and holding the secondary action to charge a heavy arrow. Friendly, short instructional sentences in second person."
-	},
 	"tutorial.prompt.curse.gamepad": {
 		"note": "First-run tutorial prompt for gamepad players, in the prompt panel (lower centre, 480 px wide; on touch at the top centre, 360 px; text wraps). Step: a curse shrine: accepting a curse makes the run harder and the score multiplier bigger; the player may also walk away. Friendly, short instructional sentences in second person. Placeholders {skill1} are the player's bound key or button names (e.g. \"A\"; currently English).",
 		"example": {

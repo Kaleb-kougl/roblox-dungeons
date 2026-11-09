@@ -12,9 +12,10 @@
  * `finish` moved from 6..15 to 7..16 (docs/TUTORIAL.md §6). The `map` step (11, docs/TUTORIAL_MAP.md TMD1) was inserted
  * after `ember` on 2026-11-01, so `relic` .. `finish` moved from 11..16 to 12..17 (shared/onboarding
  * TUTORIAL_FUNNEL_REVISION marks the change). The `pellets` step (12, combat G, docs/PELLETS.md PL13 / PD13) was
- * inserted after `map` on 2026-11-02, so `relic` .. `finish` moved from 12..17 to 13..18 (revision 3). Never insert or
- * reorder steps lightly: every number after the change point moves, and the dashboard funnel is not comparable across
- * the change.
+ * inserted after `map` on 2026-11-02, so `relic` .. `finish` moved from 12..17 to 13..18 (revision 3). The `bow` step
+ * (9, combat E) was removed with its room on 2026-11-09 (docs/ARCHER.md AR6: the tutorial is the Knight's), so `ember`
+ * .. `finish` moved from 10..18 to 9..17 (revision 4). Never insert, remove or reorder steps lightly: every number
+ * after the change point moves, and the dashboard funnel is not comparable across the change.
  */
 import type { TutorialLessonId } from "shared/run";
 
@@ -25,12 +26,14 @@ import type { TutorialLessonId } from "shared/run";
  * step, docs/TUTORIAL_MAP.md TMD6): nothing is rung where there is no corner panel (touch, Minimap Off, the full map
  * open).
  */
-export type TutorialHighlight = "flask" | "weapons" | "score" | "bossBar" | "hearts" | "boosts" | "minimap";
+export type TutorialHighlight = "flask" | "score" | "bossBar" | "hearts" | "boosts" | "minimap";
 
-/** Every highlight target (the client's ring wiring covers each). */
+/**
+ * Every highlight target (the client's ring wiring covers each). The weapons panel's `weapons` ring went with the bow
+ * lesson (docs/ARCHER.md AR6: no other step rang it).
+ */
 export const TUTORIAL_HIGHLIGHTS: ReadonlyArray<TutorialHighlight> = [
 	"flask",
-	"weapons",
 	"score",
 	"bossBar",
 	"hearts",
@@ -78,10 +81,6 @@ export type TutorialSkill =
 	 * the room cannot be cleared without one (the sim holds the lesson's enemies at 1 hp: TutorialSimConfig.guardLock).
 	 */
 	| "guard"
-	/** The bow in hand (the active weapon set holds weapon.bow). */
-	| "bow"
-	/** A heavy arrow released (the bow slot's BOW_V_HEAVY_TICK moved). */
-	| "heavyArrow"
 	/** An Ember burnt (events.emberUsed). Waived once the room is cleared with no Ember left to burn. */
 	| "ember"
 	/**
@@ -179,7 +178,8 @@ const STEP_DEFS: ReadonlyArray<StepDef> = [
 	},
 	{ id: "move", floor: 1, prompt: "move", marker: NO_MARKER, rule: { kind: "move" } },
 	{ id: "flask", floor: 1, prompt: "flask", highlight: "flask", marker: NO_MARKER, rule: { kind: "flask" } },
-	// --- Floor 1, combat A-F (lessons 3-8), and the boost combat B drops (combat G follows the map step)
+	// --- Floor 1, combat A-D and F (lessons 3-6, 8; no combat E since docs/ARCHER.md AR6), and the boost combat B drops
+	// (combat G follows the map step)
 	{
 		id: "attack",
 		floor: 1,
@@ -217,15 +217,6 @@ const STEP_DEFS: ReadonlyArray<StepDef> = [
 		holdPrompt: "guardHold",
 		marker: { kind: "door", lesson: "combatD" },
 		rule: { kind: "clear", skills: ["guard"] },
-	},
-	{
-		id: "bow",
-		floor: 1,
-		lesson: "combatE",
-		prompt: "bow",
-		highlight: "weapons",
-		marker: { kind: "door", lesson: "combatE" },
-		rule: { kind: "clear", skills: ["bow", "heavyArrow"] },
 	},
 	{
 		id: "ember",

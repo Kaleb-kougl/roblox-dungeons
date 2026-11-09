@@ -1,8 +1,8 @@
 // The tutorial world (docs/TUTORIAL.md T2): the LOCK spec on both layouts and the lesson table, the floor-1 spawns,
 // determinism, a harmless smoke run, the debug floor skip through the boss floor, scaling, the registry and the
 // telemetry start-hearts baseline. The pellet lesson (docs/PELLETS.md PL11 / PL12): combat G's pellets (floor cells
-// only, reachable, none elsewhere), the sweep lock in the real world (held under sword, arrows and a heavy arrow while
-// pellets remain, released on the last pickup, the last pickup and a lethal hit on one tick), and its Sweep.
+// only, reachable, none elsewhere), the sweep lock in the real world (held under the Knight's sword while pellets
+// remain, released on the last pickup, the last pickup and a lethal hit on one tick), and its Sweep.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { TUTORIAL } from "shared/config";
 import {
@@ -15,10 +15,8 @@ import {
 	SNIPER_KIND,
 	SWARMER_KIND,
 	cellKey,
-	bulletBlocker,
 	endlessFloorParams,
 	generateDungeon,
-	lineOfSight,
 	roomIdAt,
 	tileAt,
 	worldToGrid,
@@ -33,7 +31,6 @@ import {
 	Boost,
 	Button,
 	DEBUG_FLOOR_BUTTON,
-	DEFAULT_LOADOUT,
 	DROPS_CONFIG,
 	DUMMY_KIND,
 	EMPTY_INPUT,
@@ -45,11 +42,8 @@ import {
 	ScoreSource,
 	TUTORIAL_GUARD_HOLD_HP,
 	TUTORIAL_START_HALF_HEARTS,
-	BOW,
-	BOW_DATA,
 	archetypeAt,
 	archetypeIndex,
-	weaponIndex,
 	createSimState,
 	guaranteedDropsConfig,
 	hashNumbers,
@@ -82,7 +76,6 @@ import {
 	TUTORIAL_STAIRWELL_ROOM,
 	TUTORIAL_TREASURE_ROOM,
 	TUTORIAL_WORLD_KIND,
-	COVER_PILLAR_TILES,
 	buildEndlessRunConfig,
 	buildTutorialRunConfig,
 	buildWorldSetup,
@@ -111,9 +104,9 @@ function layoutDigest(d: Dungeon): string {
 	return hashNumbers(v);
 }
 
-const FLOOR1_DIGEST = "fc231be9";
+const FLOOR1_DIGEST = "e526f3cb";
 /** Floor 1's tour (tutorialTour over TUTORIAL_ROOMS: centre to centre, round the solid pillars), in tiles. */
-const FLOOR1_TOUR_TILES = 225;
+const FLOOR1_TOUR_TILES = 198;
 const FLOOR2_DIGEST = "c0fd5b19";
 
 const press = (buttons: number): InputFrame => ({ ...EMPTY_INPUT, buttons });
@@ -279,7 +272,6 @@ describe("tutorial world: the lock", () => {
 			"combatB",
 			"combatC",
 			"combatD",
-			"combatE",
 			"combatF",
 			"combatG",
 			"treasure",
@@ -295,10 +287,9 @@ describe("tutorial world: the lock", () => {
 			"4:elite",
 			"5:combat",
 			"6:combat",
-			"7:combat",
-			"8:treasure",
-			"9:shrine",
-			"10:boss",
+			"7:treasure",
+			"8:shrine",
+			"9:boss",
 		]);
 		// Only combat G lays pellets (a ring).
 		expect(TUTORIAL_ROOMS.filter((r) => r.pellets !== undefined).map((r) => [r.lesson, r.pellets])).toEqual([
@@ -342,7 +333,7 @@ describe("tutorial world: the lock", () => {
 			)}; ` + `corridors ${report.legCorridors.join(",")}`,
 		);
 		expect(report.problems).toEqual([]);
-		// Ten corridors, one per pair, each TUTORIAL.floor1.corridorTiles long (one more where it meets the ellipse
+		// Nine corridors, one per pair, each TUTORIAL.floor1.corridorTiles long (one more where it meets the ellipse
 		// treasure room's rim off its centre row); no loop edge, no extra room.
 		expect(report.corridors.size()).toBe(TUTORIAL_ROOMS.size() - 1);
 		for (const c of report.corridors) expect(c.rooms.size()).toBe(2);
@@ -383,7 +374,6 @@ describe("tutorial world: the lock", () => {
 			pillarRooms.add(d.roomId[pr.y * d.W + pr.x]);
 		}
 		expect(solid > 0).toBe(true);
-		expect(pillarRooms.has(tutorialRoom("combatE").roomId)).toBe(true);
 		expect(d.torches.size() > 0).toBe(true);
 		expect(d.arches.size() >= TUTORIAL_ROOMS.size() - 1).toBe(true);
 		// The client's decor plan (DecorController: decorInputOfLayout on the floor's layout) has every layer.
@@ -398,24 +388,6 @@ describe("tutorial world: the lock", () => {
 		expect(plan.counts.tall + plan.counts.low > 0).toBe(true);
 	});
 
-	it("lesson E: the turret sniper stands behind a solid pillar, out of sight of the door the player comes in by", () => {
-		const d = tutorialDungeon(1);
-		const room = tutorialRoom("combatE");
-		expect(room.placement).toBe("cover");
-		const turret = room.spawns[0];
-		expect(lineOfSight(bulletBlocker(d), room.door.x, room.door.z, turret.x, turret.z)).toBe(false);
-		const gx = worldToGrid(turret.x);
-		const gy = worldToGrid(turret.z);
-		let pillars = 0;
-		for (const pr of d.props) {
-			if (pr.kind !== "pillar" || tileAt(d, pr.x, pr.y) !== TileType.WALL) continue;
-			if (math.max(math.abs(pr.x - gx), math.abs(pr.y - gy)) > COVER_PILLAR_TILES) continue;
-			expect(d.roomId[pr.y * d.W + pr.x]).toBe(room.roomId); // a pillar of this room (it keeps its roomId)
-			pillars++;
-		}
-		expect(pillars > 0).toBe(true);
-	});
-
 	it("lesson spawns: the planned kinds, each on a distinct floor tile of its own room and among its spawn tiles", () => {
 		const d = tutorialDungeon(1);
 		const setup = buildTutorialRunConfig();
@@ -427,7 +399,6 @@ describe("tutorial world: the lock", () => {
 			combatB: ["swarmer", "swarmer", "swarmer"],
 			combatC: ["sniper"],
 			combatD: ["bruiser"],
-			combatE: ["turret.sniper"],
 			combatF: ["turret.sprayer", "turret.sprayer"],
 			combatG: ["sniper"],
 		};
@@ -454,7 +425,7 @@ describe("tutorial world: the lock", () => {
 		// Only lesson rooms have deferred spawns.
 		let spawning = 0;
 		for (let id = 0; id < w.roomSpawns.size(); id++) if (w.roomSpawns[id].size() > 0) spawning++;
-		expect(spawning).toBe(7);
+		expect(spawning).toBe(6); // combat A-D, F, G (no combat E since docs/ARCHER.md AR6)
 		expect(rooms).toBe(tutorialRooms()); // cached
 	});
 
@@ -530,9 +501,9 @@ function aimAt(s: SimState, a: ActorState, buttons: number): InputFrame {
 }
 
 describe("tutorial world: the pellet lesson (combat G, docs/PELLETS.md PL11 / PL12)", () => {
-	it("combat G (floor 1, room 7: one sniper) is the pellet lesson; the guard lock stays on combat D (room 4)", () => {
+	it("combat G (floor 1, room 6: one sniper) is the pellet lesson; the guard lock stays on combat D (room 4)", () => {
 		expect(TUTORIAL_PELLET_LESSON).toBe("combatG");
-		expect(TUTORIAL_PELLET_ROOM).toBe(7);
+		expect(TUTORIAL_PELLET_ROOM).toBe(6);
 		expect(TUTORIAL_PELLET_LOCK).toEqual({ floor: ENDLESS_FIRST_FLOOR, room: TUTORIAL_PELLET_ROOM });
 		const plan = TUTORIAL_ROOMS.find((r) => r.roomId === TUTORIAL_PELLET_ROOM)!;
 		expect([plan.lesson, plan.roomType, plan.kinds, plan.placement, plan.pellets]).toEqual([
@@ -546,7 +517,7 @@ describe("tutorial world: the pellet lesson (combat G, docs/PELLETS.md PL11 / PL
 		const setup = buildTutorialRunConfig();
 		expect(setup.config.tutorial!.pelletLock).toBe(TUTORIAL_PELLET_LOCK);
 		const st = runOf(setup);
-		expect([st.tutorial!.pelletLockFloor, st.tutorial!.pelletLockRoom]).toEqual([1, 7]);
+		expect([st.tutorial!.pelletLockFloor, st.tutorial!.pelletLockRoom]).toEqual([1, 6]);
 		expect([st.tutorial!.guardLockFloor, st.tutorial!.guardLockRoom]).toEqual([1, 4]);
 	});
 
@@ -592,16 +563,14 @@ describe("tutorial world: the pellet lesson (combat G, docs/PELLETS.md PL11 / PL
 		);
 	});
 
-	it("the sweep lock: sword, arrows and a heavy arrow stop at 1 hp while pellets remain; the last pickup releases it", () => {
+	it("the sweep lock: the sword stops at 1 hp while pellets remain; the last pickup releases it", () => {
 		/**
-		 * The scripted run up to the lethal arrow (every step deterministic, the surgery too): enter combat G, hold the
-		 * sniper with each weapon, take every pellet but the last. Run twice: BulletSimulations cannot be cloned.
+		 * The scripted run up to the lethal swing (every step deterministic, the surgery too): enter combat G, hold the
+		 * sniper with the Knight's sword (the tutorial's only weapon, docs/ARCHER.md AR6), take every pellet but the last.
+		 * Run twice: BulletSimulations cannot be cloned.
 		 */
 		const scenario = () => {
-			// docs/ARCHER.md AR4: the tutorial is the Knight (sword only); this sim rule is checked with both weapons armed
-			// (the lock holds arrows too) until AR6 rebuilds floor 1 without the bow lesson.
-			const knight = buildTutorialRunConfig();
-			const setup: EndlessRunSetup = { ...knight, config: { ...knight.config, loadout: DEFAULT_LOADOUT } };
+			const setup = buildTutorialRunConfig();
 			const config = setup.config;
 			const s = runOf(setup);
 			const room = tutorialRoom("combatG");
@@ -618,7 +587,7 @@ describe("tutorial world: the pellet lesson (combat G, docs/PELLETS.md PL11 / PL
 			const rec = recordOf(s, TUTORIAL_PELLET_ROOM);
 			expect(s.pellets!.rooms[rec].phase).toBe(PelletPhase.LIVE);
 
-			// Each weapon: hits land (enemyHits) but the sniper never falls below the hold.
+			// The sword: hits land (enemyHits) but the sniper never falls below the hold.
 			const hitsWith = (ticks: number, dist: number, buttons: (n: number) => number): number => {
 				let hits = 0;
 				for (let n = 0; n < ticks; n++) {
@@ -633,18 +602,6 @@ describe("tutorial world: the pellet lesson (combat G, docs/PELLETS.md PL11 / PL
 			expect(swordHits > 0).toBe(true);
 			expect(sniper.hp).toBe(TUTORIAL_GUARD_HOLD_HP);
 			expect([isTutorialPelletHolding(s), isTutorialPelletReleased(s)]).toEqual([true, false]);
-			// The bow: a stream of arrows, then a heavy arrow (ALT held past chargeTicks, released).
-			const bow = weaponIndex(BOW.id);
-			for (let n = 0; n < 4 && s.combat.weapons.sets[s.combat.weapons.activeSet].weapon !== bow; n++) {
-				step(s, { ...EMPTY_INPUT, buttons: Button.SWAP }, config);
-				step(s, EMPTY_INPUT, config);
-			}
-			expect(s.combat.weapons.sets[s.combat.weapons.activeSet].weapon).toBe(bow);
-			const arrowHits = hitsWith(180, 3, () => Button.FIRE);
-			expect(arrowHits > 0).toBe(true);
-			const charge = BOW_DATA.chargeTicks + 6;
-			const heavyHits = hitsWith(charge + 60, 3, (n) => (n < charge ? Button.ALT : 0));
-			expect(heavyHits > 0).toBe(true);
 			expect([sniper.alive, sniper.hp]).toEqual([1, TUTORIAL_GUARD_HOLD_HP]);
 			const left = untaken(s, rec);
 			expect(left.size() > 1).toBe(true);
@@ -658,37 +615,34 @@ describe("tutorial world: the pellet lesson (combat G, docs/PELLETS.md PL11 / PL
 			}
 			const last = left[left.size() - 1];
 
-			// Ready to fire the lethal arrow from 3 tiles (the player stays put until it lands).
-			standOff(s, sniper, 3, "combatG");
+			// Ready to swing the lethal blow from 1 tile (the player stays put until it lands).
+			standOff(s, sniper, 1, "combatG");
 			const fire = aimAt(s, sniper, Button.FIRE);
-			return { s, setup, config, sniper, t, rec, last, fire, swordHits, arrowHits, heavyHits, left };
+			return { s, setup, config, sniper, t, rec, last, fire, swordHits, left };
 		};
-		const { s, config, sniper, t, rec, last, fire, swordHits, arrowHits, heavyHits, left } = scenario();
-		print(
-			`[pellet lock] sword ${swordHits}, arrows ${arrowHits}, heavy ${heavyHits} hits held; ${left.size()} pellets left`,
-		);
+		const { s, config, sniper, t, rec, last, fire, swordHits, left } = scenario();
+		print(`[pellet lock] sword ${swordHits} hits held; ${left.size()} pellets left`);
 
-		// The last pickup and a lethal arrow on ONE tick: a dry run of the same scenario finds the tick the arrow lands,
-		// then the real run moves the last pellet under the player for exactly that tick (test-only surgery: pellets
-		// never affect combat, so the hit lands on the same tick).
+		// The last pickup and a lethal swing on ONE tick: a dry run of the same scenario (FIRE held) finds the tick the
+		// swing lands, then the real run moves the last pellet under the player for exactly that tick (test-only surgery:
+		// pellets never affect combat, so the hit lands on the same tick).
 		const dry = scenario();
 		let hitTick = -1;
-		step(dry.s, dry.fire, dry.config);
-		for (let n = 1; n < 60 && hitTick < 0; n++) {
-			step(dry.s, EMPTY_INPUT, dry.config);
+		for (let n = 0; n < 60 && hitTick < 0; n++) {
+			step(dry.s, dry.fire, dry.config);
 			if (dry.s.events.enemyHits > 0) hitTick = n;
 		}
 		expect(hitTick > 0).toBe(true);
-		step(s, fire, config);
-		for (let n = 1; n < hitTick; n++) step(s, EMPTY_INPUT, config);
+		for (let n = 0; n < hitTick; n++) step(s, fire, config);
+		expect(s.events.enemyHits).toBe(0);
 		expect(s.pellets!.taken[last]).toBe(0);
 		const p = s.pellets!;
 		p.byCell.delete(cellKey(worldToGrid(p.x[last]), worldToGrid(p.z[last])));
 		p.x[last] = s.player.x;
 		p.z[last] = s.player.z;
 		p.byCell.set(cellKey(worldToGrid(s.player.x), worldToGrid(s.player.z)), last);
-		step(s, EMPTY_INPUT, config);
-		expect(s.events.enemyHits > 0).toBe(true); // the arrow landed this tick ...
+		step(s, fire, config);
+		expect(s.events.enemyHits > 0).toBe(true); // the swing landed this tick ...
 		expect([p.taken[last], p.rooms[rec].left]).toEqual([1, 0]); // ... with the last pickup ...
 		expect([t.pelletLock, isTutorialPelletReleased(s), isTutorialPelletHolding(s)]).toEqual([
 			PELLET_LOCK_RELEASED,
@@ -701,7 +655,7 @@ describe("tutorial world: the pellet lesson (combat G, docs/PELLETS.md PL11 / PL
 		// Released: the next hit kills; the room clears with its Sweep.
 		const sweepsBefore = s.score!.counts[ScoreSource.SWEEP];
 		for (let n = 0; n < 240 && s.score!.rooms[rec].cleared === 0; n++) {
-			standOff(s, sniper, 3, "combatG");
+			standOff(s, sniper, 1, "combatG");
 			step(s, aimAt(s, sniper, Button.FIRE), config);
 		}
 		expect([sniper.alive, s.score!.rooms[rec].cleared]).toEqual([0, 1]);

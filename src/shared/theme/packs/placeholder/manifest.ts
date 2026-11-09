@@ -1243,10 +1243,6 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 			"It won't go down until you block one of its shots: {alt} with the sword as a shot reaches you.",
 		"tutorial.prompt.guardHold.touch":
 			"It won't go down until you block one of its shots: hold Alt with the sword as a shot reaches you.",
-		"tutorial.prompt.bow.keyboard": "Swap to the bow: {swap}. Hold {alt} to charge a heavy arrow, then release.",
-		"tutorial.prompt.bow.gamepad": "Swap to the bow: {swap}. Hold {alt} to charge a heavy arrow, then release.",
-		"tutorial.prompt.bow.touch":
-			"Swap to the bow: tap Swap. Drag the Alt stick to charge a heavy arrow, then let go.",
 		"tutorial.prompt.ember.keyboard":
 			"Too many bullets? {ember} burns an Ember and clears every enemy bullet. 2 per floor.",
 		"tutorial.prompt.ember.gamepad":

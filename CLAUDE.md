@@ -609,10 +609,11 @@ Decision log (deviations from `PLAN.md`):
   0.45 tiles. Score sources `PELLETS` (10, x the kills' floor scale) and `SWEEP` (11, flat: every regular pellet of the
   room taken before its clear) exist only with the flag (`addPelletScoreSources` pads JACKPOT); neither feeds the combo.
   The power pellet (not a Sweep pellet) erases every enemy bullet on the floor but goo and strikes and pays per bullet
-  (cap `powerMaxBullets` 100). Tutorial: combat G (room 7; treasure / shrine / stairwell 8-10) with one sniper over a
-  ring, `tutorialPellets` (no power pellet), the sweep lock `TutorialSimConfig.pelletLock` (five hashed fields appended
-  to the `tutorial` group; the guard lock's hold), floor-1 seed 7500 -> 7574, step `pellets` 12, funnel revision 3
-  (`t1r3`, caps 88 / 264). Theme: `pellet.normal` / `pellet.power` (assets and colour roles, placeholder `Block`,
+  (cap `powerMaxBullets` 100). Tutorial: combat G (room 6 since docs/ARCHER.md AR6 removed combat E, was 7; treasure /
+  shrine / stairwell 7-9, were 8-10) with one sniper over a ring, `tutorialPellets` (no power pellet), the sweep lock
+  `TutorialSimConfig.pelletLock` (five hashed fields appended to the `tutorial` group; the guard lock's hold), floor-1
+  seed 7500 -> 7574 (7511 since AR6), step `pellets` 12 (11 since AR6), funnel revision 3 (`t1r3`, caps 88 / 264; AR6:
+  revision 4, `t1r4`, caps 84 / 252). Theme: `pellet.normal` / `pellet.power` (assets and colour roles, placeholder `Block`,
   `pelletReport`: yellow `#ffff00`, >= 40 CIE76 from danger / build / player-outline roles, >= 30 from boosts), strings `score.source.pellets` / `.sweep`, `room.clear.line.pellets` / `.sweep`,
   `bestiary.pellet.power`, `tutorial.prompt.pellets*`, port audio IDs `sfx.pellet.eat` / `.sweep` / `.power` (SILENT in
   the placeholder; vale: the owner's Pixabay clips (Barnaby 155392, Stereogenic Studio 357164, EdR 484722) in

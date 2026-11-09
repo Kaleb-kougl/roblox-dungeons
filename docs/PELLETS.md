@@ -416,7 +416,8 @@ pellets only keep off WALL (pillars included), pieces and spawn cells.
 ### Tutorial (PL11-PL13)
 
 - Room G = room 7 (9 x 9 rect before the room scale, one sniper, `far`, a `ring`); treasure / shrine / stairwell
-  8 / 9 / 10. `TUTORIAL_PELLET_LESSON` / `_ROOM` / `_LOCK`; `tutorialPellets(d, rooms, roomSpawns)` with
+  8 / 9 / 10. (Since docs/ARCHER.md AR6 removed combat E: room 6, treasure / shrine / stairwell 7 / 8 / 9, step
+  `pellets` 11, floor-1 seed 7511, funnel revision 4.) `TUTORIAL_PELLET_LESSON` / `_ROOM` / `_LOCK`; `tutorialPellets(d, rooms, roomSpawns)` with
   `TUTORIAL.pellets` { insetTiles 2, max 12 }; tutorial layouts never call `placePellets`.
 - **Floor-1 seed 7500 -> 7574:** with the longer chain, 7500 left lesson E's turret without cover; 7574 is still frost
   with its lakes in combat D / F. Lock digest `fc231be9`, tour 225 tiles.

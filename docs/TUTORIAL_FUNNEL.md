@@ -30,6 +30,12 @@ bound 82, was 78 of 80), `maxEventsPerSession` 252.
 attempt lessons 2-19, `completed` 20; `maxEventsPerAttempt` 88, `maxEventsPerSession` 264 (3 x 88), measured by the
 `analyticsCatalog` budget spec. Data before `t1r3` is not comparable past lesson 11 (`map`).
 
+2026-11-09 (headless, docs/ARCHER.md AR6): the `bow` lesson (step 9, combat E) is removed: 17 lessons.
+`TUTORIAL_FUNNEL_REVISION` 4 (`t1r4`); `ember` .. `finish` 10..18 -> 9..17; onboarding lessons 4-20, `Completed` 21;
+attempt lessons 2-18, `completed` 19; `maxEventsPerAttempt` 84 (first-attempt bound 82, attempt bound 60),
+`maxEventsPerSession` 252 (3 x 84), the `analyticsCatalog` budget spec re-pinned (2703 of 8,000 field combinations).
+Data before `t1r4` is not comparable past lesson 8 (`guard`).
+
 ## What the code gives us today (read on `main` @ `62b5263`)
 
 | Fact | Where | Consequence |

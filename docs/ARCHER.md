@@ -752,3 +752,72 @@ yield, fallbacks, a real sim run with the bow alone: 36 draw ticks to the anchor
 sprites with both bow animations and the rim, at the knight's scale, and the pack validates; every `class.*` set
 carries outline sheets). Studio item 5 (the Archer draws its own sprite and outline, the roll fills the longer roll)
 waits for the upload and AR9.
+
+## AR6 (as built)
+
+The tutorial is the Knight's and one room shorter (owner answers 3 and 5, ARD7 / ARD16). No sim rule changed; the
+tutorial's floor 1 is a new layout, so tutorial replays changed (no golden fixture, no endless, M1 or daily replay
+moved; floor 2, seed 905, digest `c0fd5b19`, is untouched). Paths under `src/shared/` unless noted.
+
+- **Rooms** (`run/tutorial.ts`): combat E left `TUTORIAL_ROOMS`: 10 rooms, the entrance 0, combat A-D 1-4, F 5, G 6,
+  treasure 7, shrine 8, stairwell / boss 9 (`TutorialLessonId` loses `combatE`; `combatF` / `combatG` keep their names).
+  Combat D's `next` is now `s` (the snake: entrance -> A -> B east, down to C, C -> D west, down to F, F -> G ->
+  treasure -> shrine -> boss east). Every id is read through `planOf`, so `TUTORIAL_GUARD_ROOM` stays 4,
+  `TUTORIAL_PELLET_ROOM` is 6, treasure / shrine / stairwell 7 / 8 / 9. Removed with the room: `TURRET_SNIPER_KIND`,
+  placement `cover` (`TutorialPlacement` is `cluster | far`), `coverTiles`, `COVER_PILLAR_TILES` and the room-pillar
+  walk in `run/tutorialLayout.ts` (no other user, AR0).
+- **Seed** (`config/tutorial.ts`): `TUTORIAL.floor1.seed` 7574 -> **7511**. 7574 was the first seed from 7500 that is
+  frost with its two frozen lakes in combat D and F and gave lesson E its cover; the same rule without the cover: frost,
+  lakes in D and F (rooms 4 and 5), so combat G (room 6) keeps its open floor for the pellet ring. `node
+  scripts/find-tutorial-seed.js --no-build --floor 1 --from 7500 --to 7700 --top 300 --theme frost`: 201 seeds scanned,
+  all 201 pass `checkTutorialChain` (nothing needs cover now), 40 frost, 4 with lakes in exactly D and F (7511, 7615,
+  7677, 7683): the first. The scan took 4-8 s (the build before it about 1.5 min). The script lost its cover column and
+  gained `--theme KEY` (`scripts/lune/find-tutorial-seed.luau`, `scripts/find-tutorial-seed.js`). The floor is frost
+  123 x 71, tour 198 tiles (legs 21, 23, 23, 25, 22, 25, 22, 17, 20), corridors 4, 4, 4, 4, 4, 4, 5, 5, 4 (the ellipse
+  treasure room's rim), 136 decor pieces; combat G's ring keeps its 12 pellets.
+- **Script** (`tutorial/steps.ts`, `director.ts`): step `bow` removed (17 steps); skills `bow` / `heavyArrow` and the
+  director's bow reads (`bowIndex`, `heavyTick`, `bowInHand`, `sawBow` / `heavyBase` / `heavy`, the BOW imports) gone,
+  and with them AR4's `carriesBow` bridge. The `weapons` highlight had no other user: removed from `TutorialHighlight` /
+  `TUTORIAL_HIGHLIGHTS` and from GameHud's WeaponPanel line (`client/ui/hud/GameHud.tsx`). **For AR9:**
+  `WeaponPanel`'s optional `highlight` prop (and its `forced` swap hint, client/ui/hud/WeaponPanel.tsx) is now never
+  passed; it was left in place to keep AR9's file free of conflicts, so AR9 can drop it.
+- **Strings:** `tutorial.prompt.bow.keyboard` / `.gamepad` / `.touch` removed from the placeholder manifest and
+  `l10n/context.json` (no generated locale table held them). No other tutorial prompt names the bow or the swap, so the
+  prompt var `{swap}` went from `view/hud/tutorial.ts` `tutorialPromptVars` (and `tutorialHud.spec`'s rows).
+- **Funnel** (`onboarding/config.ts`): `TUTORIAL_FUNNEL_REVISION` 3 -> **4** (`t1r4`); `ember` .. `finish` 10..18 ->
+  9..17 (`map` 10, `pellets` 11, `relic` 12, ..., `finish` 17); attempt funnel lessons 2-18, `completed` 19; onboarding
+  lessons 4-20, `Completed` 21. Caps per docs/TUTORIAL_FUNNEL.md (`analyticsCatalog` budget spec): attempt bound 60,
+  first attempt 82, `maxEventsPerAttempt` 88 -> **84** (bound + `exitEventReserve` 2, as in revisions 2 and 3),
+  `maxEventsPerSession` 264 -> **252** (3 x 84); field combinations 2703 of 8,000.
+- **Bot** (`run/testing/tutorialBot.ts`): the combat E branch, `wield`, `bowInHand`, `sees`, the bow stand-off in
+  `fight`, `CHARGE_TICKS` / `BOW_RANGE` gone (every `wield(false)` was a no-op for the Knight). It completes floors 1
+  and 2: in order 4114 ticks (68.6 s of sim), out of order 4554 (75.9 s), guide-steered 4133 (68.9 s, 0.990x the bot's
+  walk), guard late 4077, pellets late 4333, map early / never / unavailable 4114; the boss fight 12.9 s; funnel 1..17.
+- **Re-recorded pins** (every one moved by the new layout or the renumbering, nothing else):
+  - `run/tutorial.spec.ts`: floor-1 digest `fc231be9` -> `e526f3cb`, tour 225 -> 198, nine corridors, the lesson and
+    room-type tables (10 rows), six spawning rooms (was 7), `TUTORIAL_PELLET_ROOM` / the state's pellet lock room 7 -> 6;
+    "lesson E" (cover) test and its pillar check removed. The sweep-lock scenario is the Knight's (AR4 armed
+    `DEFAULT_LOADOUT`): 12 sword hits held, the lethal blow a held swing from 1 tile (the dry run holds FIRE to find
+    its tick) instead of an arrow from 3.
+  - `tutorial/tutorial.spec.ts`: 17 steps and the step lists without `bow`; `map` 10, `pellets` 11, names
+    `[9, 10, 11, 12, 17]` = ember, map, pellets, relic, finish; marker targets 2 x 9 + 1; metrics rows in order
+    attack 4 -> 3.9 s, guard 5.6 -> 5.7, ember 9.6 -> 9.2 (steps 9..17 renumbered), out of order flask 3.5 -> 3.4,
+    guard 8.3 -> 8.5, ember 9.2; guard late: the hold 8 -> 16 ticks (shadows `[0.1, 0.2]` -> `[0.2, 0.3]`, the report
+    0.3 s), its guard row 5 -> 5.1 s; the 25 s delay: 1604 -> 1612 ticks, 26.7 -> 26.9 s, guard row 31.6 -> 31.7 s.
+  - `view/roomEdgeState.spec.ts`: 6 lesson rooms with enemies (was 7).
+  - onboarding specs: `analyticsCatalog` (17 lessons, 60 / 82 / 84 / 252), `onboardingFunnel` (17, `Completed` 21,
+    `t1r4`), `onboarding` (17, `completed` 19), `funnelReports` (`t1r4`).
+- **Outro, for AR7:** behaviour unchanged (Start my first run is still the main menu's Play solo). The call site AR7
+  changes is `src/client/controllers/ui/HudController.tsx`, the `startFirstRun` action: `click(() => {
+  this.tutorial.closeOutro(); this.menu.playSolo(); })`: replace `this.menu.playSolo()` with opening the character
+  screen (its Confirm then starts the solo run; Back returns to the outro or the menu, AR7 decides). The button itself is
+  `client/ui/hud/TutorialOutro.tsx` (`actions.startFirstRun()`); `TutorialController.closeOutro`'s comment names Play
+  solo.
+- **Docs:** docs/TUTORIAL.md (status, the floor-1 tables, the seed, the lock spec, the step table, the funnel
+  renumbering, decision 12), docs/TUTORIAL_FUNNEL.md (revision 4), docs/PELLETS.md / docs/TUTORIAL_MAP.md (one note
+  each), CLAUDE.md (the pellets entry's tutorial room ids, seed, step and revision only).
+- **Ran** (Linux cloud box, 2 cores shared): typecheck, lint, build; `l10n:check` (0 errors, 0 warnings), `test:l10n`
+  (36 / 36), `check:autolocalize`; filtered suites, all passed: `run/tutorial` 21, `shared/tutorial` (tutorial 66
+  incl. flow and guide), `onboarding` (7 suites), `sim/tutorial`, `run/playerMover`, `run/characterRuns` 11,
+  `sim/builds/builds`, `view/roomEdgeState`, `view/hud/tutorialHud`, `view/hud/hud`, `shared/theme`, `shared/l10n`.
+  Not run: the full unfiltered suite (`npm run verify`). Studio item 9 pending.

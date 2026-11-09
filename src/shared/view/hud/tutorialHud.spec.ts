@@ -216,26 +216,24 @@ describe("tutorialPromptVars", () => {
 
 	it("default bindings give the old static prompts' key names", () => {
 		const kb = tutorialPromptVars("keyboard");
-		expect([kb.move, kb.fire, kb.alt, kb.roll, kb.flask, kb.swap, kb.ember, kb.skill1, kb.left, kb.right]).toEqual([
+		expect([kb.move, kb.fire, kb.alt, kb.roll, kb.flask, kb.ember, kb.skill1, kb.left, kb.right]).toEqual([
 			"WASD",
 			"Click",
 			"Right click",
 			"Space",
 			"F",
-			"E",
 			"Q",
 			"1",
 			"A",
 			"D",
 		]);
 		const pad = tutorialPromptVars("gamepad");
-		expect([pad.move, pad.fire, pad.alt, pad.roll, pad.flask, pad.swap, pad.ember, pad.skill1]).toEqual([
+		expect([pad.move, pad.fire, pad.alt, pad.roll, pad.flask, pad.ember, pad.skill1]).toEqual([
 			"Left stick",
 			"RT",
 			"LT",
 			"LB",
 			"D-pad up",
-			"Y",
 			"RB",
 			"A",
 		]);

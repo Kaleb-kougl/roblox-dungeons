@@ -7,8 +7,7 @@
  * flask, then each floor-1 lesson room in `order` (default: the tour, TUTORIAL_ROOMS): attack the dummies / swarmers
  * with the sword (and after each fight walk over any boost drop lying on the floor: combat B's guaranteed Fury, the
  * `boost` step, docs/BOOSTS.md B9), roll once for the sniper, guard the bruiser's ring (ALT when a bullet comes close; with `guardLate`
- * only once the sim holds it at 1 hp), swap to the bow
- * and release a heavy arrow at the turret sniper, burn an Ember in the sprayer storm, sweep combat G's pellets (option
+ * only once the sim holds it at 1 hp), burn an Ember in the sprayer storm, sweep combat G's pellets (option
  * `pellets`) and cut down its sniper, take the relic, accept the curse
  * (SHRINE_BUTTON), take the stairwell, confirm the centre draft card, then melee Mother Mayhem on floor 2 (the player
  * is harmless, so it tanks; optionally with the debug boss damage, J) and take the stairwell she opens. It records the
@@ -16,9 +15,9 @@
  *
  * Walking: straight at the target when it is in the same room with a clear line (three parallel lines of sight, a
  * player radius apart: tutorial floors have solid pillars), else a BFS distance field over FLOOR tiles to the target
- * (endlessBot's, which walks round pillars), avoiding the open floor-1 stairwell until it is the target. The bow
- * only shoots with a line of sight (else it walks the field round the pillar). Every tick checks the harmless rule: hearts never fall below the start, and never fall at
- * all except when the max falls (a curse).
+ * (endlessBot's, which walks round pillars), avoiding the open floor-1 stairwell until it is the target. The player is
+ * the tutorial's Knight (sword only: docs/ARCHER.md AR6, no bow lesson). Every tick checks the harmless rule: hearts
+ * never fall below the start, and never fall at all except when the max falls (a curse).
  *
  * The map lesson (docs/TUTORIAL_MAP.md §8): the frames carry `mapSeen` / `mapAvailable` as the client's would; `map`
  * picks when the bot "opens the full map" (one frame of mapSeen): "current" (default) on the first frame the `map`
@@ -34,11 +33,10 @@
  * instead, while the arrow shows: the proof that the arrow never sends a player into a wall.
  */
 import { TUTORIAL } from "shared/config";
-import { bulletBlocker, clearWalk, gridToWorld, lineOfSight, worldToGrid } from "shared/dungeon";
+import { bulletBlocker, clearWalk, gridToWorld, worldToGrid } from "shared/dungeon";
 import { LiveRun, findBoss, takeSnapshot } from "shared/play";
 import {
 	BOOST_COUNT,
-	BOW,
 	Button,
 	DRAFT_CONFIRM_BUTTON,
 	DRAFT_MIN_OPEN_TICKS,
@@ -58,7 +56,6 @@ import {
 	isDraftOpen,
 	isTutorialGuardHolding,
 	isTutorialPelletHolding,
-	weaponIndex,
 	type ActorState,
 	type InputFrame,
 	type SimState,
@@ -215,10 +212,6 @@ const MELEE_RANGE = 1.2;
 const CHASE_RANGE = 4;
 /** Guard when an enemy bullet is this close (SWORD_DATA.guardReach 1.9). */
 const GUARD_TRIGGER = 1.8;
-/** Hold ALT this many ticks for a heavy arrow (BOW_DATA.chargeTicks 36, plus a margin). */
-const CHARGE_TICKS = 42;
-/** Stand-off distance with the bow. */
-const BOW_RANGE = 5;
 /** Ticks to wait for enemy bullets before burning the Ember anyway. */
 const EMBER_WAIT = 4 * SIM_HZ;
 /** "Arrived" at a walk target, world units. */
@@ -287,7 +280,6 @@ class TutorialBot {
 	private prevHearts: number;
 	private prevMax: number;
 	private readonly fields = new Map<string, Field>();
-	private readonly bowIndex = weaponIndex(BOW.id);
 	mapMode: TutorialBotMapMode = "current";
 	mapSeenTick = -1;
 	onFrame: ((view: Readonly<TutorialView>, run: LiveRun) => void) | undefined;
@@ -562,12 +554,6 @@ class TutorialBot {
 		return f;
 	}
 
-	/** A bullet's line of sight from the player to (tx, tz) (solid pillars and walls block it). */
-	sees(tx: number, tz: number): boolean {
-		const p = this.state.player;
-		return lineOfSight(bulletBlocker(this.world().dungeon), p.x, p.z, tx, tz);
-	}
-
 	/** The player's body fits along the straight line to (tx, tz): the centre line and both sides are clear. */
 	private clearPath(tx: number, tz: number): boolean {
 		const p = this.state.player;
@@ -647,20 +633,6 @@ class TutorialBot {
 		return best;
 	}
 
-	bowInHand(): boolean {
-		const w = this.state.combat.weapons;
-		return w.sets[w.activeSet].weapon === this.bowIndex;
-	}
-
-	/** Swaps until the bow is (true) or is not (false) in hand. */
-	wield(bow: boolean): void {
-		let n = 0;
-		while (this.bowInHand() !== bow && n < 4 && !this.out()) {
-			this.press(Button.SWAP);
-			n++;
-		}
-	}
-
 	/** The nearest enemy bullet's distance from the player (math.huge for none). */
 	nearestBullet(): number {
 		const p = this.state.player;
@@ -673,8 +645,8 @@ class TutorialBot {
 	}
 
 	/**
-	 * Fights the room's enemies until its scoring record clears (or the budget runs out). Sword: close in and hold
-	 * FIRE; bow: hold BOW_RANGE and hold FIRE. `extra(target, n)` may return buttons to add this tick (guard, ...),
+	 * Fights the room's enemies until its scoring record clears (or the budget runs out) with the sword: close in and
+	 * hold FIRE. `extra(target, n)` may return buttons to add this tick (guard, ...),
 	 * or undefined to fight normally.
 	 */
 	fight(
@@ -701,10 +673,7 @@ class TutorialBot {
 			const special = extra !== undefined ? extra(a, n) : undefined;
 			let mx = 0;
 			let mz = 0;
-			if (this.bowInHand()) {
-				if (d > BOW_RANGE || !this.sees(a.x, a.z)) [mx, mz] = this.dirTo(a.x, a.z);
-				else if (d < BOW_RANGE - 1.5) [mx, mz] = [-ax, -az];
-			} else if (d > MELEE_RANGE) {
+			if (d > MELEE_RANGE) {
 				[mx, mz] = this.dirTo(a.x, a.z);
 			}
 			this.tick(frame(mx, mz, special ?? Button.FIRE, ax, az));
@@ -794,18 +763,15 @@ class TutorialBot {
 		}
 		this.enter(lesson);
 		if (lesson === "combatA" || lesson === "combatB") {
-			this.wield(false);
 			this.fight(lesson);
 			this.collectDrops();
 		} else if (lesson === "combatC") {
-			this.wield(false);
 			const p = this.state.player;
 			const a = this.target(tutorialRoom(lesson).roomId);
 			const [ax, az] = a !== undefined ? unit(a.x - p.x, a.z - p.z) : [1, 0];
 			this.press(Button.ROLL, ax, az, ax, az);
 			this.fight(lesson);
 		} else if (lesson === "combatD") {
-			this.wield(false);
 			const guardBase = this.state.score!.counts[ScoreSource.GUARD];
 			let lastAlt = false;
 			let heldTicks = 0;
@@ -820,32 +786,7 @@ class TutorialBot {
 				lastAlt = want;
 				return want ? Button.ALT : 0;
 			});
-		} else if (lesson === "combatE") {
-			this.wield(true);
-			const roomId = tutorialRoom(lesson).roomId;
-			// Close to bow range with a line of sight (it may stand behind a pillar), charge, release at the turret.
-			let n = 0;
-			for (;;) {
-				const a = this.target(roomId);
-				const p = this.state.player;
-				if (a === undefined || n > WALK_BUDGET || this.out()) break;
-				if (dist2(a.x, a.z, p.x, p.z) <= BOW_RANGE * BOW_RANGE && this.sees(a.x, a.z)) break;
-				const [mx, mz] = this.dirTo(a.x, a.z);
-				this.tick(frame(mx, mz));
-				n++;
-			}
-			for (let i = 0; i < CHARGE_TICKS && !this.out(); i++) {
-				const a = this.target(roomId);
-				const p = this.state.player;
-				const [ax, az] = a !== undefined ? unit(a.x - p.x, a.z - p.z) : [0, 0];
-				this.tick(frame(0, 0, Button.ALT, ax, az));
-			}
-			this.tick(frame(0, 0));
-			this.note("heavy arrow");
-			this.fight(lesson);
-			this.wield(false);
 		} else if (lesson === "combatG") {
-			this.wield(false);
 			if (this.pelletMode === "late") {
 				// Fight until the sim holds the sniper at 1 hp for the last pellets, then sweep, then finish it.
 				this.fight(lesson, undefined, () => isTutorialPelletHolding(this.state));
@@ -853,7 +794,6 @@ class TutorialBot {
 			this.collectPellets(lesson);
 			this.fight(lesson);
 		} else if (lesson === "combatF") {
-			this.wield(false);
 			let embered = false;
 			this.fight(lesson, (_a, n) => {
 				if (embered || this.state.player.embers === 0) return undefined;

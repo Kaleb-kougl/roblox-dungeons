@@ -7,7 +7,7 @@
 // dt-0 frames, scripted stuck episodes, and the guard-late guardHold episode under thresholds around its length. The
 // map lesson (docs/TUTORIAL_MAP.md TM1 / TM2): opened when current, early, never (waived on the floor change) or
 // unavailable (waived when current), its `next` marker and its prompt around the treasure room. The pellet lesson
-// (docs/PELLETS.md PL13): step 12 in combat G, the sweep lock's hold prompt when the bot fights first, the Sweep, the
+// (docs/PELLETS.md PL13): step 11 in combat G, the sweep lock's hold prompt when the bot fights first, the Sweep, the
 // map's `next` marker on G's door, and the bot's recording replaying to the same hash.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { TUTORIAL } from "shared/config";
@@ -137,7 +137,7 @@ function describeRun(name: string, r: TutorialBotResult): void {
 /** The boost step's index (funnel number 6: docs/BOOSTS.md B9, after `hits`). */
 const BOOST = tutorialStepIndex("boost");
 
-/** The map step's index (funnel number 11: docs/TUTORIAL_MAP.md TMD1, after `ember`). */
+/** The map step's index (funnel number 10 since docs/ARCHER.md AR6: docs/TUTORIAL_MAP.md TMD1, after `ember`). */
 const MAP = tutorialStepIndex("map");
 
 /** The callout key the boost lesson used before it became a step: gone from the callouts and the pack. */
@@ -188,10 +188,10 @@ function outOfOrderRun(): TutorialBotResult {
 }
 
 /**
- * Metrics shadows of the guard-late run (TutorialBotOptions.shadowStuckSeconds): its guardHold episode lasts 8 ticks
- * (0.133 s), so a 0.1 s threshold reports it and a 0.2 s one does not.
+ * Metrics shadows of the guard-late run (TutorialBotOptions.shadowStuckSeconds): its guardHold episode lasts 16 ticks
+ * (0.267 s; 8 on floor-1 seed 7574, before docs/ARCHER.md AR6), so a 0.2 s threshold reports it and a 0.3 s one does not.
  */
-const LATE_STUCK_SHADOWS = [0.1, 0.2];
+const LATE_STUCK_SHADOWS = [0.2, 0.3];
 
 let late: TutorialBotResult | undefined;
 /** Combat D swung first (guardLate): the bruiser held at 1 hp until the block. */
@@ -229,7 +229,7 @@ describe("tutorial steps and strings", () => {
 			expect(tutorialStepName(s.number)).toBe(s.id);
 			expect(tutorialStepIndex(s.id)).toBe(i);
 		}
-		expect(TUTORIAL_STEP_COUNT).toBe(18);
+		expect(TUTORIAL_STEP_COUNT).toBe(17);
 		expect(TUTORIAL_FUNNEL_MAX_STEP).toBe(TUTORIAL_STEP_COUNT);
 		expect(MAX_TUTORIAL_STEP_ID_CHARS).toBe(MAX_TUTORIAL_STEP_NAME_CHARS);
 		expect([tutorialStepName(0), tutorialStepName(TUTORIAL_STEP_COUNT + 1), tutorialStepName(1.5)]).toEqual([
@@ -253,7 +253,6 @@ describe("tutorial steps and strings", () => {
 			"boost",
 			"roll",
 			"guard",
-			"bow",
 			"ember",
 			"map",
 			"pellets",
@@ -281,7 +280,7 @@ describe("tutorial steps and strings", () => {
 		expect(s.rule).toEqual({ kind: "boost" });
 		// The funnel numbers before it are the old ones; everything after moved up by one (6..15 -> 7..16; then the map
 		// step, docs/TUTORIAL_MAP.md, moved relic .. finish on to 12..17; then the pellets step, docs/PELLETS.md PL13, on
-		// to 13..18).
+		// to 13..18; then the bow step's removal, docs/ARCHER.md AR6, moved ember .. finish back to 9..17).
 		expect([1, 2, 3, 4, 5].map((n) => tutorialStepName(n))).toEqual([
 			"objective",
 			"move",
@@ -289,7 +288,7 @@ describe("tutorial steps and strings", () => {
 			"attack",
 			"hits",
 		]);
-		expect([7, 18].map((n) => tutorialStepName(n))).toEqual(["roll", "finish"]);
+		expect([7, 17].map((n) => tutorialStepName(n))).toEqual(["roll", "finish"]);
 	});
 
 	it("every prompt (each device), callout and UI string key exists in the placeholder pack", () => {
@@ -313,7 +312,6 @@ describe("tutorial steps and strings", () => {
 			"roll",
 			"guard",
 			"guardHold",
-			"bow",
 			"ember",
 			"map",
 			"curse",
@@ -410,7 +408,6 @@ describe("tutorial director", () => {
 			"boost",
 			"roll",
 			"guard",
-			"bow",
 			"ember",
 			"pellets",
 			"relic",
@@ -707,10 +704,10 @@ describe("the block lesson (combat D, the sim's guard lock)", () => {
 describe("the pellet lesson (combat G, the sim's sweep lock; docs/PELLETS.md PL13)", () => {
 	const PELLETS = tutorialStepIndex("pellets");
 
-	it("the step: number 12, between map and relic, floor 1, combat G, the hold prompt, G's door, clear + sweep", () => {
+	it("the step: number 11, between map and relic, floor 1, combat G, the hold prompt, G's door, clear + sweep", () => {
 		const s = TUTORIAL_STEPS[PELLETS];
 		expect([s.number, TUTORIAL_STEPS[PELLETS - 1].id, TUTORIAL_STEPS[PELLETS + 1].id, s.floor, s.lesson]).toEqual([
-			12,
+			11,
 			"map",
 			"relic",
 			1,
@@ -785,10 +782,10 @@ describe("the map lesson (docs/TUTORIAL_MAP.md TM1 / TM2)", () => {
 		expect(r.heartProblems).toEqual([]);
 	}
 
-	it("the step: number 11, between ember and pellets, floor 1, no room, the minimap ring, the next marker", () => {
+	it("the step: number 10, between ember and pellets, floor 1, no room, the minimap ring, the next marker", () => {
 		const s = TUTORIAL_STEPS[MAP];
 		expect([s.number, TUTORIAL_STEPS[MAP - 1].id, TUTORIAL_STEPS[MAP + 1].id, s.floor, s.lesson]).toEqual([
-			11,
+			10,
 			"ember",
 			"pellets",
 			1,
@@ -798,7 +795,14 @@ describe("the map lesson (docs/TUTORIAL_MAP.md TM1 / TM2)", () => {
 		expect(s.marker).toEqual({ kind: "next" });
 		expect(s.rule).toEqual({ kind: "map" });
 		expect(TUTORIAL_HIGHLIGHTS.includes("minimap")).toBe(true);
-		expect([11, 12, 13, 18].map((n) => tutorialStepName(n))).toEqual(["map", "pellets", "relic", "finish"]);
+		// docs/ARCHER.md AR6 (revision 4): the bow step (9) is gone, so ember .. finish moved from 10..18 to 9..17.
+		expect([9, 10, 11, 12, 17].map((n) => tutorialStepName(n))).toEqual([
+			"ember",
+			"map",
+			"pellets",
+			"relic",
+			"finish",
+		]);
 		expect(TUTORIAL_PROMPT_IDS.includes("map")).toBe(true);
 	});
 
@@ -958,7 +962,7 @@ describe("guidance arrow on the tutorial floors (docs/TUTORIAL_ARROW.md A3)", ()
 				checked++;
 			}
 		}
-		expect(checked).toBe(2 * 10 + 1); // ten lesson steps (combat A-G, relic, curse, stairwell) + the stairwell
+		expect(checked).toBe(2 * 9 + 1); // nine lesson steps (combat A-D, F, G, relic, curse, stairwell) + the stairwell
 	});
 
 	it("floor 2's stairwell (the boss step's fallback, the finish) is reachable from every FLOOR tile of every room", () => {
@@ -1052,21 +1056,21 @@ describe("tutorial metrics (docs/TUTORIAL_FUNNEL.md TF4)", () => {
 			[1, 0.8, 0], // objective: the card up 47 frames
 			[2, 0.5, 0], // move
 			[3, 0, 0], // flask: drunk on the first frames it is current (under 0.05 s)
-			[4, 4, 0], // attack
+			[4, 3.9, 0], // attack (4 on floor-1 seed 7574, before docs/ARCHER.md AR6)
 			[5, 2.8, 0], // hits
 			[6, 0.1, 0], // boost: the bot stands next to combat B's last swarmer
 			[7, 5.2, 0], // roll
-			[8, 5.6, 1], // guard
-			[9, 5.5, 2], // bow: the Knight's sword clears it, skills waived (docs/ARCHER.md AR4; 5.3 with the bow)
-			[10, 9.6, 1], // ember (9.3 before AR4: the Knight leaves combat E from another spot)
-			[11, 0, 0], // map: opened on the first frame it is current (docs/TUTORIAL_MAP.md)
-			[12, 15.1, 1], // pellets: the walk F -> G, the ring, then the sniper (docs/PELLETS.md PL13)
-			[13, 2.9, 0], // relic
-			[14, 2.8, 0], // curse
-			[15, 3.3, 0], // stairwell
-			[16, 0.5, 0], // draft
-			[17, 15.6, 14], // boss (54 hp since the half-hp boss retune; was 24.1 s, 26 hits at 108)
-			[18, 0, 0], // finish: done on the boss kill's tick (the stairwell opens under the bot)
+			[8, 5.7, 1], // guard (5.6 on 7574)
+			// AR6: no bow step (9 was 5.5 s, 2 hits); ember .. finish are 9..17 (revision 4)
+			[9, 9.2, 1], // ember: the walk D -> F, then the storm (9.6 on 7574 from combat E)
+			[10, 0, 0], // map: opened on the first frame it is current (docs/TUTORIAL_MAP.md)
+			[11, 15.1, 1], // pellets: the walk F -> G, the ring, then the sniper (docs/PELLETS.md PL13)
+			[12, 2.9, 0], // relic
+			[13, 2.8, 0], // curse
+			[14, 3.3, 0], // stairwell
+			[15, 0.5, 0], // draft
+			[16, 15.6, 14], // boss (54 hp since the half-hp boss retune; was 24.1 s, 26 hits at 108)
+			[17, 0, 0], // finish: done on the boss kill's tick (the stairwell opens under the bot)
 		]);
 		expect(r.sharedClockFrames).toBe(0);
 		checkRelations(r);
@@ -1079,21 +1083,20 @@ describe("tutorial metrics (docs/TUTORIAL_FUNNEL.md TF4)", () => {
 			[1, 0.8, 0],
 			[2, 0.5, 0],
 			[4, 2.1, 0], // attack before the flask (the flask's clock runs meanwhile: current, attack's prompt shown)
-			[3, 3.5, 0],
+			[3, 3.4, 0], // 3.5 on floor-1 seed 7574 (before docs/ARCHER.md AR6)
 			[7, 3.1, 1], // roll (combat C) before hits (combat B)
 			[5, 13.2, 1], // hits: current from the flask on, so it runs through the walk to and the fight in combat C
 			[6, 0.1, 0],
-			[8, 8.3, 1], // guard; wall slide (docs/WALL_SLIDE.md WS4): 8.4 before
-			[9, 5.5, 2], // docs/ARCHER.md AR4, the Knight: 5.3 before
-			[10, 9.6, 1], // 9.3 before
-			[11, 0, 0],
-			[12, 15.1, 1], // pellets: the sweep's path takes one (harmless) hit now; 0 before
-			[13, 2.9, 0], // relic: 2.8 before
-			[14, 2.8, 0],
-			[15, 3.3, 0],
-			[16, 0.5, 0],
-			[17, 15.6, 14],
-			[18, 0, 0],
+			[8, 8.5, 1], // guard (8.3 on 7574)
+			[9, 9.2, 1], // ember (AR6: no bow step; 9.6 on 7574)
+			[10, 0, 0],
+			[11, 15.1, 1], // pellets: the sweep's path takes one (harmless) hit
+			[12, 2.9, 0], // relic
+			[13, 2.8, 0],
+			[14, 3.3, 0],
+			[15, 0.5, 0],
+			[16, 15.6, 14],
+			[17, 0, 0],
 		]);
 		const steps = r.lessonReports.map((l) => l.step);
 		expect(new Set(steps).size()).toBe(TUTORIAL_STEP_COUNT);
@@ -1231,16 +1234,16 @@ describe("tutorial metrics (docs/TUTORIAL_FUNNEL.md TF4)", () => {
 		expect([...feed(Button.FIRE).newStuckReports]).toEqual([]);
 	});
 
-	it("guard late (sword first): its 8-tick guardHold reports only under a threshold it outlasts", () => {
+	it("guard late (sword first): its 16-tick guardHold reports only under a threshold it outlasts", () => {
 		const r = lateRun();
-		expect(r.guardHeldTicks).toBe(8);
+		expect(r.guardHeldTicks).toBe(16);
 		expect(r.stuckReports).toEqual([]); // the game's 20 s
 		const hold = (k: number) => r.shadowStuckReports[k].filter((x) => x.prompt === "guardHold");
-		expect(LATE_STUCK_SHADOWS).toEqual([0.1, 0.2]);
-		expect(hold(0)).toEqual([{ prompt: "guardHold", seconds: 0.1 }]); // 8 / 60 s >= 0.1
-		expect(hold(1)).toEqual([]); // 8 / 60 s < 0.2
+		expect(LATE_STUCK_SHADOWS).toEqual([0.2, 0.3]);
+		expect(hold(0)).toEqual([{ prompt: "guardHold", seconds: 0.3 }]); // 16 / 60 s >= 0.2 (rounded to 0.1 s)
+		expect(hold(1)).toEqual([]); // 16 / 60 s < 0.3
 		// The guard lesson took 0.6 s less than the tour's (sword first, then the block), same hits.
-		expect(rows(r)[tutorialStepIndex("guard")]).toEqual([8, 5, 1]);
+		expect(rows(r)[tutorialStepIndex("guard")]).toEqual([8, 5.1, 1]); // 5 on floor-1 seed 7574 (docs/ARCHER.md AR6)
 		checkRelations(r);
 	});
 
@@ -1248,11 +1251,11 @@ describe("tutorial metrics (docs/TUTORIAL_FUNNEL.md TF4)", () => {
 		const delay = 25 * SIM_HZ;
 		const r = playTutorial({ guardLate: true, guardHoldDelayTicks: delay, shadowStuckSeconds: [30] });
 		expect(r.view.finished).toBe(true);
-		expect(r.guardHeldTicks).toBe(1604); // the delay plus the wait for a bullet to block
-		expect(r.stuckReports).toEqual([{ prompt: "guardHold", seconds: roundTutorialSeconds(1604 * SIM_DT) }]);
-		expect(r.stuckReports[0].seconds).toBe(26.7);
+		expect(r.guardHeldTicks).toBe(1612); // the delay plus the wait for a bullet to block (1604 on seed 7574)
+		expect(r.stuckReports).toEqual([{ prompt: "guardHold", seconds: roundTutorialSeconds(1612 * SIM_DT) }]);
+		expect(r.stuckReports[0].seconds).toBe(26.9);
 		expect(r.shadowStuckReports[0]).toEqual([]);
-		expect(rows(r)[tutorialStepIndex("guard")]).toEqual([8, 31.6, 37]);
+		expect(rows(r)[tutorialStepIndex("guard")]).toEqual([8, 31.7, 37]); // 31.6 on seed 7574
 		checkRelations(r);
 	});
 });

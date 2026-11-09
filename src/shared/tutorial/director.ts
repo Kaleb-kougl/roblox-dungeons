@@ -14,7 +14,7 @@
  *                     lesson's hold prompt while its bruiser waits at 1 hp, and the `guard` skill once released); the
  *                     pellet lock (the pellet lesson's hold prompt while its sniper waits at 1 hp for the last pellets,
  *                     and the `sweep` skill once released; docs/PELLETS.md PL13)
- *   state.combat      the weapon set in hand (the bow), the bow slot's heavy-arrow tick, the boss actor
+ *   state.combat      the boss actor
  *   state.drops       the ground drops and the player's running boosts (docs/BOOSTS.md B9: the `boost` step, done
  *                     when combat B's guaranteed Fury is picked up or waived when it fades, its `drop` marker, and the
  *                     boost row's ring on the pickup)
@@ -50,8 +50,6 @@ import { TUTORIAL } from "shared/config";
 import { tutorialRoom, type TutorialRoom } from "shared/run";
 import {
 	BOOST_COUNT,
-	BOW,
-	BOW_V_HEAVY_TICK,
 	Button,
 	ENDLESS_FIRST_DEPTH,
 	NO_BOOST,
@@ -66,8 +64,6 @@ import {
 	isTutorialGuardReleased,
 	isTutorialPelletHolding,
 	isTutorialPelletReleased,
-	weaponIndex,
-	weaponsAt,
 	type ActorState,
 	type EndlessFloorWorld,
 	type SimConfig,
@@ -190,9 +186,6 @@ interface StepProgress {
 	rolled: boolean;
 	guardBase: number;
 	guarded: boolean;
-	sawBow: boolean;
-	heavyBase: number;
-	heavy: boolean;
 	embered: boolean;
 	/** Skill `sweep`: the score's SWEEP count when the room was entered, and a Sweep counted since. */
 	sweepBase: number;
@@ -210,9 +203,6 @@ function newProgress(): StepProgress {
 		rolled: false,
 		guardBase: 0,
 		guarded: false,
-		sawBow: false,
-		heavyBase: 0,
-		heavy: false,
 		embered: false,
 		sweepBase: 0,
 		swept: false,
@@ -265,7 +255,6 @@ export class TutorialDirector {
 	/** Each step's floor-1 room (undefined for steps without a lesson room). */
 	private readonly rooms = new Map<number, TutorialRoom>();
 	private readonly firedCallouts = new Set<string>();
-	private readonly bowIndex = weaponIndex(BOW.id);
 	private prevButtons = 0;
 	private cardSeconds = 0;
 	private walked = 0;
@@ -398,28 +387,6 @@ export class TutorialDirector {
 		return false;
 	}
 
-	/** The bow slot's heavy-arrow tick (0 none), or 0 without a bow. */
-	private heavyTick(state: Readonly<SimState>): number {
-		for (const set of weaponsAt(state, SOLO_PLAYER).sets) {
-			if (set.weapon === this.bowIndex) return set.v[BOW_V_HEAVY_TICK];
-		}
-		return 0;
-	}
-
-	/**
-	 * docs/ARCHER.md AR4 (a bridge until AR6 removes the bow lesson): the tutorial is the Knight, who carries no bow, so
-	 * the `bow` / `heavyArrow` skills are waived (done) for a player without one. With a bow carried, as before.
-	 */
-	private carriesBow(state: Readonly<SimState>): boolean {
-		for (const set of weaponsAt(state, SOLO_PLAYER).sets) if (set.weapon === this.bowIndex) return true;
-		return false;
-	}
-
-	private bowInHand(state: Readonly<SimState>): boolean {
-		const w = weaponsAt(state, SOLO_PLAYER);
-		return w.sets[w.activeSet]?.weapon === this.bowIndex;
-	}
-
 	/** Lesson baselines on the frame the room is first seen entered, then per-frame skill tracking. */
 	private trackLesson(i: number, frame: TutorialFrame): void {
 		const pr = this.progress[i];
@@ -429,7 +396,6 @@ export class TutorialDirector {
 			pr.entered = true;
 			pr.guardBase = scoreCount(state, ScoreSource.GUARD);
 			pr.sweepBase = scoreCount(state, ScoreSource.SWEEP);
-			pr.heavyBase = this.heavyTick(state);
 			pr.relicsBase = me?.relics.size() ?? 0;
 			pr.cursesBase = me?.curses.size() ?? 0;
 		}
@@ -438,8 +404,6 @@ export class TutorialDirector {
 		if (e.emberUsed > 0) pr.embered = true;
 		if (scoreCount(state, ScoreSource.GUARD) > pr.guardBase) pr.guarded = true;
 		if (scoreCount(state, ScoreSource.SWEEP) > pr.sweepBase) pr.swept = true;
-		if (this.bowInHand(state)) pr.sawBow = true;
-		if (this.heavyTick(state) !== pr.heavyBase) pr.heavy = true;
 	}
 
 	private skillDone(pr: StepProgress, skill: TutorialSkill, state: Readonly<SimState>, cleared: boolean): boolean {
@@ -449,10 +413,6 @@ export class TutorialDirector {
 			case "guard":
 				// Never waived: the sim holds the room's enemies until a block (guard lock), so it cannot clear without.
 				return pr.guarded || isTutorialGuardReleased(state);
-			case "bow":
-				return pr.sawBow || !this.carriesBow(state);
-			case "heavyArrow":
-				return pr.heavy || !this.carriesBow(state);
 			case "ember":
 				return pr.embered || (cleared && state.player.embers === 0); // none left to burn
 			case "sweep":

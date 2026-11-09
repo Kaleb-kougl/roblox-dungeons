@@ -69,7 +69,8 @@ rings when `highlight === "minimap"`.
 
 ## Player experience
 
-- **Where:** step `map`, funnel step **11 of 17**, right after `ember` (combat F) and before `relic` (TMD1). By then
+- **Where:** step `map`, funnel step **11 of 17**, right after `ember` (combat F) and before `relic` (TMD1; since
+  docs/PELLETS.md `pellets` follows it, and since docs/ARCHER.md AR6 removed the `bow` step it is 10 of 17). By then
   seven rooms of the snake are revealed, so the map has something to show.
 - **When it shows:** the moment combat F is done (and the step is still open), on the walk out of combat F. The
   lower-centre panel reads:
