@@ -1172,6 +1172,29 @@ Decision log (deviations from `PLAN.md`):
   (`RUN_ATTRIBUTES`): `KV_StandInsForce` ("all" or prefixes), `KV_FakeAssetLatency` (Studio), `KV_StageAssetAudit`.
   No new strings, roles or sounds; no Luau-locals change. Studio checks, SA0 / SA20 device measurements and the
   playtest pending; SA9 warm draw and SA12 telemetry not built.
+- **The Archer (docs/ARCHER.md, 2026-11-09).** Gameplay plus a client screen, server fields and art. Two characters,
+  `shared/characters` (`CharacterId` knight / archer, `CHARACTERS`, `DEFAULT_CHARACTER` knight; theme slots
+  `class.vanguard` "Knight" and `class.ranger` "Archer", ARD1): a character is a loadout (Knight `[weapon.sword]`, Archer
+  `[weapon.bow]`; set 1 empty) plus `PlayerTraits` (`SimConfig.traits` / `PartyConfig.traits[i]`, unhashed config like
+  the loadout's source; Archer `rollDashPercent` 140: 2.5 -> 3.38 tiles, `rollIframePercent` 125 folded with Slippery
+  into one `scaleTicks`). The sim never imports `shared/characters`. A SWAP onto an empty set does nothing. Boons /
+  relics carry `requires` (Piercing Arrows, Ballista: bow; Riposte, Mirror Cloak: sword); every pool (`drawCardOffers`,
+  `drawBoonOffers`, `legendaryPool` / `drawLegendaryOffers`, `classicLegendaryPool`, `unownedRelics`) takes the
+  player's eligibility mask, derived from their hashed weapons; duos follow their boons; a two-weapon player draws
+  exactly as before (rng included). Run configs: `WorldBuildOptions.characters` / `RunSetup.characters` (endless,
+  daily, dev; dev "Both weapons"); M1 `game` / `dungeonNoEncounter` / `greybox` and every fixture keep
+  `DEFAULT_LOADOUT` and no traits, so every golden fixture matches; endless / daily / dev / tutorial replays and scores
+  changed (boards stay `_v1`, `DAILY.ruleset` 13 -> 14). Server: `StartRunRequest.characterId` (replaces `classId`),
+  `Lobby.characters` with the Ready, `RunSession.characters`, `PartyRunStart.characters`, `RunSubmission.characterId`,
+  leaderboard `classId` = each member's character, telemetry fields. Tutorial: the Knight's, combat E removed (10
+  rooms, floor-1 seed 7574 -> 7511, the `cover` placement and the `bow` step gone, funnel revision 4 `t1r4`, caps 84 /
+  252). Client: the character screen (`MenuScreen` `character`) before every run started from the menu, the tutorial
+  outro, the dev panel and a lobby Ready; Again keeps the run's character, the run-over Character button changes it;
+  the pick persists as `DisplaySettings.character` (only non-Knight stored, doc stays v2). View: per-player visuals,
+  swap prompts only with a swap target (`hasSwapTarget`), character icons, per-character text overrides
+  `<key>.<characterId>`. Art: the SmallScaleInt Archer (paid edition, Standard Commercial License), sprite set
+  `class.ranger` built by `build-atlases.js --only class.ranger` (14 PNGs to upload). Tuning measured (AR13; census
+  `npm run test:only -- --census run/archer.survival`); owner calls, the upload and the Studio check (AR14) pending.
 
 ## Commands
 

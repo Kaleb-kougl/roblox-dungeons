@@ -17,8 +17,11 @@ the web roll, and replay exactly as before. Endless (solo, co-op, daily, dev) an
 
 ## Status (2026-11-09)
 
-AR0-AR4 built (below: AR0 findings, AR1-AR4 as built); AR5-AR14 planned. Eleven owner answers (2026-11-09, below) settle every call but one (after tuning); decisions
-ARD1-ARD17 are defaults for review except where they cite an answer. Tasks AR0-AR14.
+**AR0-AR13 built** on branch `archer` (2026-11-09; each task's "(as built)" section below, in build order). Open:
+**AR14** (Studio check and playtest, the checklists in AR7 / AR8 / AR9 and "Tasks"), the upload of the 14 Archer
+PNGs (AR12: until their ids are in `assetIds.ts` the vale Archer is the placeholder capsule), and the owner calls AR13
+raises (below, "Open owner calls"). Eleven owner answers (2026-11-09, below); decisions ARD1-ARD17 are defaults for
+review except where they cite an answer.
 
 ## Owner answers (2026-11-09)
 
@@ -463,8 +466,18 @@ Knight, combat D's corridor leads straight to combat F, no bow prompt.
 
 ## Open owner calls
 
-1. **After AR13:** more per-character stats or tools if one character falls behind (for example the Archer in bullet
-   rooms without a guard, the Knight against snipers and turrets without range).
+1. **After AR13** (tables and options in "AR13 (as built): tuning"):
+   - **Archer clear speed:** the bow-only bot clears mixed rooms 1.9-2.5x slower than the old two-weapon player from
+     floor 6 (bosses 1.13-1.32x) but takes far fewer hits and survives deepest. Options: accept, a faster stream
+     (`streamTicks` 12 -> 10, also M1's bow), an Archer damage trait, or teach the charged shot. AR13 suggests accept +
+     teach, then judge in the AR14 playtest.
+   - **Knight in ranged rooms:** 5-36 % slower against snipers, imps, summoners and stormcallers (worse on floor 2).
+     AR13 suggests accept.
+   - **Archer + Slippery:** 125 % x Slippery I = 23 i-frame ticks, longer than the 21-tick roll: a rolling Archer
+     cannot be hit. Options: cap `rollIframeTicks` at 20 for everyone, take the larger of the two percents instead of
+     their product (18 / 21 / 24 like the Knight), or accept. AR13 suggests the larger percent, or the cap.
+   - **Melee survival** could not be measured (the bot cannot read boss telegraphs): check the Knight's first boss in
+     AR14 before any Knight change.
 
 ## Risks
 
