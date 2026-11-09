@@ -36,7 +36,6 @@ import {
 	DEFAULT_SEGMENT_LIMITS,
 	SegmentedValidator,
 	buildEndlessRunConfig,
-	buildWorldSetup,
 	type RunSegment,
 	type SegmentVerdict,
 	type SegmentedRunResult,
@@ -245,7 +244,9 @@ describe("an honest endless run through an affixed elite room", () => {
 	});
 
 	it("validates segment by segment (SegmentedValidator, debug input allowed for the floor skips)", () => {
-		const world = buildWorldSetup(RANKED_WORLD_KIND, run.seed, { atBossDoor: false });
+		// docs/ARCHER.md AR4: the recording was played without characters (both weapons, buildEndlessRunConfig); the
+		// registry now builds a character's run, so the live run and the validator get the recording's own config.
+		const world = buildEndlessRunConfig(run.seed);
 		const live = new LiveRun({
 			seed: run.seed,
 			spawnX: world.spawn!.x,
@@ -259,7 +260,7 @@ describe("an honest endless run through an affixed elite room", () => {
 			runId: "affix-run",
 			seed: run.seed,
 			worldKind: RANKED_WORLD_KIND,
-			setup: buildWorldSetup(RANKED_WORLD_KIND, run.seed, { atBossDoor: false }),
+			setup: buildEndlessRunConfig(run.seed),
 			createdAt: 0,
 			limits: { ...DEFAULT_SEGMENT_LIMITS, allowDebugInput: true },
 		});

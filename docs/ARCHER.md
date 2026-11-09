@@ -17,7 +17,7 @@ the web roll, and replay exactly as before. Endless (solo, co-op, daily, dev) an
 
 ## Status (2026-11-09)
 
-AR0 audited (below); the rest planned. Eleven owner answers (2026-11-09, below) settle every call but one (after tuning); decisions
+AR0-AR4 built (below: AR0 findings, AR1-AR4 as built); AR5-AR14 planned. Eleven owner answers (2026-11-09, below) settle every call but one (after tuning); decisions
 ARD1-ARD17 are defaults for review except where they cite an answer. Tasks AR0-AR14.
 
 ## Owner answers (2026-11-09)
@@ -605,3 +605,68 @@ exactly today's: `scalePercent` / `combinedPercent` return their input unchanged
 - **Ran:** see AR4 (this commit was verified on the AR4 tree: AR4 changes only shared/run, shared/daily and the
   tutorial's config; the sim suites below do not read them): `shared/characters` (archerRoll 10), `sim/player` 25,
   `sim/runPlayer` 10, the golden runs, determinism and builds suites listed under AR4.
+
+## AR4 (as built)
+
+Characters in the run configs. The world registry's `endless`, `daily` and `dev` builders always build characters (the
+Knight for a missing pick), so every live endless run now carries one weapon: endless, daily and dev replays and scores
+changed (`DAILY.ruleset` 13 -> 14); M1 (`game`, `dungeonNoEncounter`, `greybox`) and every golden fixture are
+unchanged. Paths under `src/shared/run/` unless noted.
+
+- **Options and echo:** `WorldBuildOptions.characters?: ReadonlyArray<CharacterId>` (per player, index order);
+  `RunSetup.characters?` (config.ts: the characters the run was built with, defaults filled in; undefined for a run
+  built without them); `RunConfigOptions.characters?` (passed to `buildEndlessRunConfig` for world "endless" only);
+  `EndlessRunOptions.characters?` / `bothWeapons?` (endless.ts); `DevRunOptions.bothWeapons?: boolean` (dev.ts, the dev
+  panel's "Both weapons" flag) and `buildDevRunConfig(seed, options, partySize?, characters = [])`.
+- **Helpers** (`characters.ts`, new, in the run barrel): `partyCharacters(characters, partySize)` (each player's pick,
+  else `DEFAULT_CHARACTER`; an entry that is not a character id throws, so a session start answers `config_error`;
+  entries past the party ignored) and `withCharacters(config, characters, { bothWeapons? })` (solo: `loadout` /
+  `traits`; co-op: `party.loadouts` / `party.traits` for every player; `bothWeapons`: `DEFAULT_LOADOUT` with the
+  character's traits; returns a new config). `TUTORIAL_CHARACTER` "knight" (tutorial.ts).
+- **Worlds** (worlds.ts): `endless` / `daily`: `buildEndlessRunConfig(seed, partySize, { characters: o.characters ??
+  [] })`; `dev`: `buildDevRunConfig(seed, o.dev, partySize, o.characters ?? [])` (solo only, as before); `tutorial`:
+  `buildTutorialRunConfig` always applies `TUTORIAL_CHARACTER` (whatever is passed); `game` / `dungeonNoEncounter` /
+  `greybox`: unchanged (characters ignored). `SimController` (client) and `runSessions` (server) call
+  `buildWorldSetup` without characters today, so both build the Knight and still agree (AR5 / AR7 pass the picks).
+- **Kept without characters:** `buildEndlessRunConfig(seed, n)` with no `characters` option is exactly today's config
+  (both weapons, no traits), so every bot, harness and census (`endlessBot`, `partyBot`, `pactsBot`, `vaultRun`,
+  `buildTune`, `recordEndlessRun`) records as before; so does `buildRunConfig(seed, { world: "endless" })`, the legacy
+  `validateRun` path (`LIVE_RUN_LIMITS`). **For AR5:** a sessionless endless submission (`submitRun`, no `runId`) of a
+  live (Knight) run would fail that path's replay; the submission carries no character today.
+- **Tutorial bridge (deviation, until AR6):** with the Knight's loadout the bow lesson (combat E) cannot be practised, so
+  the director waives its `bow` / `heavyArrow` skills for a player who carries no bow (`TutorialDirector.carriesBow`,
+  shared/tutorial/director.ts; with a bow, as before). The room still has to be cleared (the bot kills the turret with
+  the sword). AR6 removes the step, the skills and this bridge.
+- **`DAILY.ruleset`** 13 -> 14 (shared/daily/config.ts, ARD11), `daily.spec` 14.
+- **Specs added:** `characterRuns.spec.ts` (11): endless / daily / dev solo per character (and no pick = the Knight);
+  endless / daily co-op [Archer, Knight, missing] per player; dev "Both weapons"; the tutorial the Knight whatever is
+  passed; the M1 worlds ignore characters (same state hash solo and co-op); tools without characters; the helpers and
+  an unknown id; a Knight, an Archer and a mixed party of three replayed from a fresh setup hash the same every tick
+  (and through `runReplay`), the Knight and the Archer differ. `snagCensus.spec.ts` gained a roll census (the same 30
+  floors, cached for both tests; 8 key directions from every contact cell; the roll's per-tick steps cut as movePlayer
+  cuts them): the Archer's roll has zero unexcused stalls with the slide in every class (the gate: pillars 0, never
+  more than the web mover). Measured (30 floors, 55,871 start cells, 446,968 rolls each): slide 0 unexcused in every
+  class for both characters (the web mover 8,912 pillar / 14,246 corner / ...); the stall counts are the same for
+  both (42,544 slide, every one excused: a roll that stalls does so within its first 0.6 tile, before the dash
+  lengths differ), and the Archer's rolls end 2.727 tiles out on average against the Knight's 2.065 (asserted
+  farther). The census takes about 7 minutes headless now (the walks 3.8, the rolls 2.9).
+- **Specs changed (re-recorded or adapted only for the loadout):**
+  - `tutorial/tutorial.spec.ts` metrics pins (in order and out of order): bow lesson 5.3 -> 5.5 s, ember 9.3 -> 9.6 s
+    (the Knight clears combat E with the sword).
+  - `run/tutorial.spec.ts`: the run config's keys gain `loadout` / `traits`; the sweep-lock scenario arms
+    `DEFAULT_LOADOUT` on the tutorial config (it checks that arrows are held too) until AR6.
+  - `run/slice.spec`, `run/affixes.spec`, `run/pelletsCensus.spec`, `run/dropsCensus.spec`, `run/treasureCensus.spec`:
+    their segmented LiveRun and validator take the recording's own config (`buildEndlessRunConfig(seed)`, both weapons)
+    instead of the registry's (now the Knight's); no pinned value moved.
+  - No layout digest, `roomPool.lock` digest, golden fixture or determinism pin moved.
+- **Ran** (final build, Linux cloud box, 2 cores): typecheck, lint, build, check:assets; filtered suites, all passed:
+  `shared/characters` 21, `sim/oneWeapon` 7, `run/characterOffers` 3, `run/characterRuns` 11, `shared/daily` 15,
+  `run/config` 6, `run/endless` 41, `run/dev` 16, `run/party` 23, `run/validate` 31, `run/segments` 22, `run/tutorial`
+  22, `shared/tutorial` 66, `run/buildsOffers` 2, `run/runSessions` 19, `run/partyProgression` 5, `run/playerMover` 5,
+  `run/slice` 9, `run/affixes` 6, `run/pelletsCensus` 5, `run/dropsCensus` 4, `run/treasureCensus` 4, `play/liveRun`
+  19, `sim/golden/payouts` 7, `sim/progression` 61, `sim/pacts` 33, `sim/treasure` 51, `sim/builds` 255, `sim/player`
+  25, `sim/runPlayer` 10, `sim/runFull` 6, `sim/runBoss` 6, `sim/runBullets` 8, `sim/constants` 7, `sim/hash` 6,
+  `sim/determinism` 12, `sim/combat.determinism` 24, `sim/swordBow` 6, `sim/weapons` 20, `sim/party` 19,
+  `sim/recordingCodec` 19, `dungeon/roomPool` 15 (7.6 min), `run/snagCensus` 2 (6.7 min). Not run: the full
+  unfiltered suite (`npm run verify`), so specs outside these filters that build live endless worlds through
+  `buildWorldSetup` (view specs use `recordEndlessRun`, unchanged) were not exercised.

@@ -30,6 +30,7 @@ import { DUNGEON_CACHE_SIZE, type RunWorld } from "./limits";
 import { isValidRunSeed } from "./seed";
 import { buildEndlessRunConfig, type EndlessRunFloor } from "./endless";
 import { playerMover } from "./playerMover";
+import type { CharacterId } from "shared/characters";
 
 export { isValidRunSeed };
 
@@ -50,6 +51,13 @@ export interface RunConfigOptions {
 	 * World "endless" also scales enemy hp and room budgets with it (buildEndlessRunConfig).
 	 */
 	partySize?: number;
+	/**
+	 * docs/ARCHER.md AR4: passed through to world "endless" only (buildEndlessRunConfig's `characters`); absent there
+	 * (the legacy `validateRun` path, which has no character to pass) the config keeps both weapons and no traits, as
+	 * before. The M1 worlds ignore it (ARD9). The world registry's builders (worlds.ts) are where a live run's
+	 * characters come in.
+	 */
+	characters?: ReadonlyArray<CharacterId>;
 }
 
 export interface RunSetup {
@@ -60,6 +68,12 @@ export interface RunSetup {
 	dungeon: Dungeon | undefined;
 	/** Endless runs only (buildEndlessRunConfig): each floor's world and layout, the cached objects the sim steps with. */
 	endlessFloor?: (floor: number) => EndlessRunFloor;
+	/**
+	 * docs/ARCHER.md AR4: the characters the run was built with, one per player in index order (defaults filled in), for
+	 * the view. Undefined for a run built without characters (M1's `game`, `dungeonNoEncounter`, `greybox`, and tools
+	 * calling buildEndlessRunConfig without them: both weapons, no traits).
+	 */
+	characters?: ReadonlyArray<CharacterId>;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -101,7 +115,7 @@ export function buildRunConfig(seed: number, options: RunConfigOptions = {}): Ru
 	const world = options.world ?? "game";
 	const partySize = options.partySize ?? 1;
 	// Always scored; the boss door has no meaning there.
-	if (world === "endless") return buildEndlessRunConfig(seed, partySize);
+	if (world === "endless") return buildEndlessRunConfig(seed, partySize, { characters: options.characters });
 	if (world === "greybox") {
 		const grey: SimConfig =
 			options.scoring !== undefined ? { ...DEFAULT_SIM_CONFIG, scoring: options.scoring } : DEFAULT_SIM_CONFIG;

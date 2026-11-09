@@ -406,6 +406,15 @@ export class TutorialDirector {
 		return 0;
 	}
 
+	/**
+	 * docs/ARCHER.md AR4 (a bridge until AR6 removes the bow lesson): the tutorial is the Knight, who carries no bow, so
+	 * the `bow` / `heavyArrow` skills are waived (done) for a player without one. With a bow carried, as before.
+	 */
+	private carriesBow(state: Readonly<SimState>): boolean {
+		for (const set of weaponsAt(state, SOLO_PLAYER).sets) if (set.weapon === this.bowIndex) return true;
+		return false;
+	}
+
 	private bowInHand(state: Readonly<SimState>): boolean {
 		const w = weaponsAt(state, SOLO_PLAYER);
 		return w.sets[w.activeSet]?.weapon === this.bowIndex;
@@ -441,9 +450,9 @@ export class TutorialDirector {
 				// Never waived: the sim holds the room's enemies until a block (guard lock), so it cannot clear without.
 				return pr.guarded || isTutorialGuardReleased(state);
 			case "bow":
-				return pr.sawBow;
+				return pr.sawBow || !this.carriesBow(state);
 			case "heavyArrow":
-				return pr.heavy;
+				return pr.heavy || !this.carriesBow(state);
 			case "ember":
 				return pr.embered || (cleared && state.player.embers === 0); // none left to burn
 			case "sweep":

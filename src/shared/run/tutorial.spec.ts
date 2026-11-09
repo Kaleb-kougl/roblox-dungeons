@@ -33,6 +33,7 @@ import {
 	Boost,
 	Button,
 	DEBUG_FLOOR_BUTTON,
+	DEFAULT_LOADOUT,
 	DROPS_CONFIG,
 	DUMMY_KIND,
 	EMPTY_INPUT,
@@ -191,6 +192,9 @@ describe("tutorial world: the lock", () => {
 				k !== "golden",
 		);
 		keys.push("tutorial");
+		// docs/ARCHER.md AR4: the tutorial is the Knight: his loadout and (neutral) traits are set; a tool's
+		// buildEndlessRunConfig without characters sets neither.
+		keys.push("loadout", "traits");
 		keys.sort();
 		expect(configKeys(setup.config)).toEqual(keys);
 		expect(setup.config.breakables).toBe(undefined);
@@ -594,7 +598,10 @@ describe("tutorial world: the pellet lesson (combat G, docs/PELLETS.md PL11 / PL
 		 * sniper with each weapon, take every pellet but the last. Run twice: BulletSimulations cannot be cloned.
 		 */
 		const scenario = () => {
-			const setup = buildTutorialRunConfig();
+			// docs/ARCHER.md AR4: the tutorial is the Knight (sword only); this sim rule is checked with both weapons armed
+			// (the lock holds arrows too) until AR6 rebuilds floor 1 without the bow lesson.
+			const knight = buildTutorialRunConfig();
+			const setup: EndlessRunSetup = { ...knight, config: { ...knight.config, loadout: DEFAULT_LOADOUT } };
 			const config = setup.config;
 			const s = runOf(setup);
 			const room = tutorialRoom("combatG");

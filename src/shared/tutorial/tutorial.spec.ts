@@ -1057,8 +1057,8 @@ describe("tutorial metrics (docs/TUTORIAL_FUNNEL.md TF4)", () => {
 			[6, 0.1, 0], // boost: the bot stands next to combat B's last swarmer
 			[7, 5.2, 0], // roll
 			[8, 5.6, 1], // guard
-			[9, 5.3, 2], // bow: the port's heavier arrow (BOW_HEAVY_DAMAGE)
-			[10, 9.3, 1], // ember
+			[9, 5.5, 2], // bow: the Knight's sword clears it, skills waived (docs/ARCHER.md AR4; 5.3 with the bow)
+			[10, 9.6, 1], // ember (9.3 before AR4: the Knight leaves combat E from another spot)
 			[11, 0, 0], // map: opened on the first frame it is current (docs/TUTORIAL_MAP.md)
 			[12, 15.1, 1], // pellets: the walk F -> G, the ring, then the sniper (docs/PELLETS.md PL13)
 			[13, 2.9, 0], // relic
@@ -1084,8 +1084,8 @@ describe("tutorial metrics (docs/TUTORIAL_FUNNEL.md TF4)", () => {
 			[5, 13.2, 1], // hits: current from the flask on, so it runs through the walk to and the fight in combat C
 			[6, 0.1, 0],
 			[8, 8.3, 1], // guard; wall slide (docs/WALL_SLIDE.md WS4): 8.4 before
-			[9, 5.3, 2],
-			[10, 9.3, 1],
+			[9, 5.5, 2], // docs/ARCHER.md AR4, the Knight: 5.3 before
+			[10, 9.6, 1], // 9.3 before
 			[11, 0, 0],
 			[12, 15.1, 1], // pellets: the sweep's path takes one (harmless) hit now; 0 before
 			[13, 2.9, 0], // relic: 2.8 before

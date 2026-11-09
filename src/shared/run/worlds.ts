@@ -19,6 +19,7 @@ import { buildEndlessRunConfig } from "./endless";
 import { TUTORIAL_WORLD_KIND, buildTutorialRunConfig } from "./tutorial";
 import { DEV_WORLD_KIND, buildDevRunConfig, type DevRunOptions } from "./dev";
 import type { RunWorld } from "./limits";
+import type { CharacterId } from "shared/characters";
 
 /** A registered world's name ("game", "dungeonNoEncounter", "greybox", "endless", "daily", "tutorial", "dev"). */
 export type RunWorldKind = string;
@@ -40,8 +41,17 @@ export interface WorldBuildOptions {
 	readonly atBossDoor: boolean;
 	/** Co-op (M4): players in the run (default 1); a builder that cannot host a party throws (`config_error`). */
 	readonly partySize?: number;
-	/** The `dev` world only (docs/DEV_MODE.md): start floor and god mode. Absent: DEFAULT_DEV_RUN. Others ignore it. */
+	/**
+	 * The `dev` world only (docs/DEV_MODE.md): start floor, god mode and (docs/ARCHER.md AR4) "Both weapons"
+	 * (`DevRunOptions.bothWeapons`). Absent: DEFAULT_DEV_RUN. Others ignore it.
+	 */
 	readonly dev?: DevRunOptions;
+	/**
+	 * docs/ARCHER.md AR4: each player's character, index order. `endless`, `daily` and `dev`: their loadouts and roll
+	 * traits (missing entries, or none passed: DEFAULT_CHARACTER, the Knight); `tutorial`: always the Knight; `game`,
+	 * `dungeonNoEncounter`, `greybox`: ignored (both weapons, no traits; ARD9). Echoed as RunSetup.characters.
+	 */
+	readonly characters?: ReadonlyArray<CharacterId>;
 }
 
 /** Builds a run's world from its seed. Pure and deterministic; may throw (a session start answers `config_error`). */
@@ -94,16 +104,22 @@ function registerBuiltinWorlds(): void {
 	registerRunWorld("dungeonNoEncounter", legacyWorld("dungeonNoEncounter"));
 	registerRunWorld("greybox", legacyWorld("greybox"));
 	// Endless mode (always scored; the boss door has no meaning there). One line per new world.
-	registerRunWorld(ENDLESS_WORLD_KIND, (seed, o) => buildEndlessRunConfig(seed, o.partySize));
+	// docs/ARCHER.md AR4: endless / daily / dev build every player's character (the Knight for a missing pick).
+	registerRunWorld(ENDLESS_WORLD_KIND, (seed, o) =>
+		buildEndlessRunConfig(seed, o.partySize, { characters: o.characters ?? [] }),
+	);
 	// The Daily (docs/DAILY.md): the endless descent, identical setup for the same seed. The server picks its seed of
 	// the day (RunSessionDeps.dailySeed, a server-only secret); a server world (not SERVER_REFUSED_WORLDS).
-	registerRunWorld(DAILY_WORLD_KIND, (seed, o) => buildEndlessRunConfig(seed, o.partySize));
-	// The first-run tutorial (docs/TUTORIAL.md): a fixed world whatever the seed, solo only, never leaderboard-eligible
+	registerRunWorld(DAILY_WORLD_KIND, (seed, o) =>
+		buildEndlessRunConfig(seed, o.partySize, { characters: o.characters ?? [] }),
+	);
+	// The first-run tutorial (docs/TUTORIAL.md): a fixed world whatever the seed (and whatever `characters`: the Knight,
+	// docs/ARCHER.md owner answer 3), solo only, never leaderboard-eligible
 	// (shared/leaderboard LEADERBOARD_ELIGIBLE_WORLDS), played locally and refused by the server (SERVER_REFUSED_WORLDS).
 	registerRunWorld(TUTORIAL_WORLD_KIND, (_seed, o) => buildTutorialRunConfig(o.partySize));
 	// Developer mode (docs/DEV_MODE.md): an endless run started on any floor, optional god mode. Solo, client-only
 	// (SERVER_REFUSED_WORLDS), never leaderboard-eligible.
-	registerRunWorld(DEV_WORLD_KIND, (seed, o) => buildDevRunConfig(seed, o.dev, o.partySize));
+	registerRunWorld(DEV_WORLD_KIND, (seed, o) => buildDevRunConfig(seed, o.dev, o.partySize, o.characters ?? []));
 }
 
 registerBuiltinWorlds();

@@ -80,6 +80,14 @@ import {
 import { ENDLESS_SCORING, endlessFloorWorld, type EndlessRunFloor, type EndlessRunSetup } from "./endless";
 import { playerMoverKind, type PlayerMoverKind } from "./playerMover";
 import { coverTiles, tutorialRoomTools, tutorialTour } from "./tutorialLayout";
+import { withCharacters } from "./characters";
+import type { CharacterId } from "shared/characters";
+
+/**
+ * The tutorial's character (docs/ARCHER.md owner answer 3, AR4): always the Knight (sword only, the neutral roll),
+ * whatever a run start passes. AR6 rebuilds floor 1 without the bow lesson.
+ */
+export const TUTORIAL_CHARACTER: CharacterId = "knight";
 
 /** The tutorial's world kind in the run world registry (worlds.ts). Never leaderboard-eligible. */
 export const TUTORIAL_WORLD_KIND = "tutorial";
@@ -616,7 +624,8 @@ function tutorialFloorCache(): (floor: number) => EndlessRunFloor {
 
 /**
  * The tutorial run's SimConfig and spawn (see the file comment); hands out each floor like an endless setup. Pure:
- * every call builds an identical world (the dungeons are shared, the floor cache is per setup). Throws for a party.
+ * every call builds an identical world (the dungeons are shared, the floor cache is per setup). Throws for a party. The
+ * player is TUTORIAL_CHARACTER (the Knight's loadout and traits; docs/ARCHER.md AR4).
  */
 export function buildTutorialRunConfig(partySize: number = DEFAULT_PARTY_SIZE): EndlessRunSetup {
 	if (partySize !== DEFAULT_PARTY_SIZE) {
@@ -624,7 +633,7 @@ export function buildTutorialRunConfig(partySize: number = DEFAULT_PARTY_SIZE): 
 	}
 	const worldForFloor = tutorialFloorCache();
 	const first = worldForFloor(ENDLESS_FIRST_FLOOR);
-	const config: SimConfig = {
+	const base: SimConfig = {
 		endless: { runSeed: TUTORIAL.runSeed, worldForFloor },
 		scoring: ENDLESS_SCORING,
 		tutorial: {
@@ -637,10 +646,12 @@ export function buildTutorialRunConfig(partySize: number = DEFAULT_PARTY_SIZE): 
 		drops: TUTORIAL_DROPS_CONFIG,
 		pellets: PELLETS_CONFIG,
 	};
+	const characters = [TUTORIAL_CHARACTER];
 	return {
-		config,
+		config: withCharacters(base, characters),
 		spawn: { x: first.spawnX, z: first.spawnZ },
 		dungeon: first.dungeon,
 		endlessFloor: worldForFloor,
+		characters,
 	};
 }

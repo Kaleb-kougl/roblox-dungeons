@@ -30,4 +30,5 @@ export * from "./runSessions";
 export * from "./tutorialLayout";
 export * from "./tutorial";
 export * from "./dev";
+export * from "./characters";
 export * from "./stageInput";
