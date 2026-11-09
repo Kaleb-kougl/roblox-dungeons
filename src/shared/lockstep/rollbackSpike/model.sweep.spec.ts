@@ -1,31 +1,49 @@
 /**
  * The rollback spike's opt-in sweep (docs/ROLLBACK_SPIKE.md Design 2, 4, task R2): L x D x guess strategy over a
  * recordPartyRun bot run, the noisy bot's run and every capture present, printing docs/ROLLBACK_SPIKE.md's Results rows.
- * Off by default (one trivial test): turn on `ROLLBACK_SPIKE.model.sweep.enabled` (config.ts), `npm run build`, then
- * `npm run test:only -- lockstep/rollbackSpike/model.sweep`. It takes minutes (the generic copy costs ~25 ms a frame
- * here): sizes in `ROLLBACK_SPIKE.model.sweep`.
+ * Off by default (one trivial test). Turn it on with the runner flag (no rebuild needed after the first build):
  *
- * Windows: each bot run contributes two (its first floor 1 fight and its boss fight, `windowFrames` each, merged);
- * a capture one from its start (`captureFrames`). Captures are the gitignored modules scripts/gen-fixtures.js writes
- * from `captures/*.json` (shared/fixtures-generated/captures/<runId>), found at run time: none, none swept.
+ *   npm run build && npm run test:only -- lockstep/rollbackSpike/model.sweep --flag rollbackSweep
+ *
+ * (scripts/lune/run-tests.luau puts `--flag` names in `_G.KV_SPEC_FLAGS`), or set `ROLLBACK_SPIKE.model.sweep.enabled`
+ * (config.ts) for Studio. It takes minutes: sizes in `ROLLBACK_SPIKE.model.sweep`.
+ *
+ * Windows: each bot run whole (`windowFrames` 0, the default: floor 1 walked and fought, the drafts, floor 5's rooms
+ * and boss), or two of `windowFrames` (its first floor 1 fight and its boss fight), merged, for observing players
+ * 0 .. `players` - 1;
+ * a capture one from its start (`captureFrames`), after its replay matched the server's hash. Captures are the
+ * gitignored modules scripts/gen-fixtures.js writes from `captures/*.json` (captureModules.ts): none, none swept.
  */
 import { describe, expect, it } from "@rbxts/jest-globals";
-import { ROLLBACK_GUESS_STRATEGIES, decodeCapture, type DecodedCapture } from "shared/spikes";
-import { buildWorldSetup, isRunWorldKind } from "shared/run";
+import { ROLLBACK_GUESS_STRATEGIES } from "shared/spikes";
 import { recordNoisyPartyRun, recordPartyRun } from "shared/run/testing";
-import type { Recording, SimConfig } from "shared/sim";
+import { recordingPartySize, type Recording, type SimConfig } from "shared/sim";
 import {
 	RESULTS_TABLE_HEADER,
 	ROLLBACK_SPIKE,
 	RollbackMetrics,
 	RoomKind,
+	captureModelInput,
 	firstTickWhere,
+	formatMetricsRow,
 	formatResultsRow,
+	loadCaptureModules,
+	metricsTableHeader,
 	roomTypeOf,
 	runModelOverRecording,
+	sharedRootOf,
 } from ".";
 
 const SWEEP = ROLLBACK_SPIKE.model.sweep;
+/** The runner flag that turns the sweep on (scripts/lune/run-tests.luau `--flag`). */
+const SWEEP_FLAG = "rollbackSweep";
+
+function specFlag(name: string): boolean {
+	const flags = (_G as unknown as { KV_SPEC_FLAGS?: { readonly [k: string]: boolean } }).KV_SPEC_FLAGS;
+	return flags !== undefined && flags[name] === true;
+}
+
+const ENABLED = SWEEP.enabled || specFlag(SWEEP_FLAG);
 
 interface SweepInput {
 	readonly name: string;
@@ -35,28 +53,13 @@ interface SweepInput {
 	readonly log: ReadonlyArray<string>;
 }
 
-/** The capture modules gen-fixtures wrote (shared/fixtures-generated/captures), decoded. */
-function loadCaptures(): Array<{ readonly name: string; readonly capture: DecodedCapture }> {
-	const out: Array<{ readonly name: string; readonly capture: DecodedCapture }> = [];
-	const root = script.Parent?.Parent?.Parent;
-	const folder = root?.FindFirstChild("fixtures-generated")?.FindFirstChild("captures");
-	if (folder === undefined) return out;
-	for (const child of folder.GetChildren()) {
-		if (child.ClassName !== "ModuleScript") continue;
-		const mod = require(child as ModuleScript) as { default: { meta: unknown; chunks: unknown } };
-		const capture = decodeCapture(mod.default.meta, mod.default.chunks);
-		if (capture === undefined) {
-			print(`[R2 sweep] capture ${child.Name}: does not decode, skipped`);
-			continue;
-		}
-		out.push({ name: child.Name, capture });
-	}
-	return out;
-}
-
-/** The bot run's two windows: its first floor 1 fight and its boss fight. */
+/** A bot run's windows: the whole run (windowFrames 0), else its first floor 1 fight and its boss fight. */
 function botWindows(config: Readonly<SimConfig>, recording: Recording): Array<readonly [number, number]> {
 	const out: Array<readonly [number, number]> = [];
+	if (SWEEP.windowFrames <= 0) {
+		out.push([0, recording.frames.size()]);
+		return out;
+	}
 	const fight = firstTickWhere(config, recording, (s) => roomTypeOf(s, 0) === RoomKind.COMBAT);
 	if (fight !== undefined) out.push([fight, fight + SWEEP.windowFrames]);
 	const boss = firstTickWhere(config, recording, (s) => roomTypeOf(s, 0) === RoomKind.BOSS);
@@ -82,26 +85,32 @@ function inputs(): SweepInput[] {
 		windows: botWindows(nz.setup.config, nz.recording),
 		log: nz.log,
 	});
-	for (const { name, capture } of loadCaptures()) {
+	for (const { name, capture } of loadCaptureModules(sharedRootOf(script as LuaSourceContainer), print)) {
+		const input = captureModelInput(capture);
+		if (input === undefined) {
+			print(`[R2 sweep] capture ${name}: unknown world ${capture.setup.worldKind}, skipped`);
+			continue;
+		}
+		if (input.hashOk === false) {
+			print(`[R2 sweep] capture ${name}: replay does not match the server's hash, skipped`);
+			continue;
+		}
 		const s = capture.setup;
-		if (!isRunWorldKind(s.worldKind)) continue;
-		const setup = buildWorldSetup(s.worldKind, s.seed, { atBossDoor: s.atBossDoor, partySize: s.partySize });
-		const ticks = math.min(capture.recording.frames.size(), capture.info.end?.verifiedTicks ?? math.huge);
 		out.push({
 			name: `capture ${name}`,
-			config: setup.config,
-			recording: capture.recording,
-			windows: [[0, math.min(ticks, SWEEP.captureFrames)]],
-			log: [`${s.worldKind} seed ${s.seed}, ${s.partySize} players, ${capture.recording.frames.size()} ticks`],
+			config: input.config,
+			recording: input.recording,
+			windows: [[0, math.min(input.ticks, SWEEP.captureFrames)]],
+			log: [`${s.worldKind} seed ${s.seed}, ${s.partySize} players, ${input.ticks} ticks, hash ${input.hashOk}`],
 		});
 	}
 	return out;
 }
 
 describe("rollback spike sweep (R2, opt-in)", () => {
-	if (!SWEEP.enabled) {
-		it("is off (ROLLBACK_SPIKE.model.sweep.enabled)", () => {
-			expect(SWEEP.enabled).toBe(false);
+	if (!ENABLED) {
+		it(`is off (runner --flag ${SWEEP_FLAG}, or ROLLBACK_SPIKE.model.sweep.enabled)`, () => {
+			expect(ENABLED).toBe(false);
 		});
 		return;
 	}
@@ -109,7 +118,9 @@ describe("rollback spike sweep (R2, opt-in)", () => {
 	it("prints the Results rows: L x D x strategy over the bot runs and captures", () => {
 		const t0 = os.clock();
 		const rows: string[] = [];
+		const wide: string[] = [];
 		for (const input of inputs()) {
+			const players = math.min(SWEEP.players, recordingPartySize(input.recording));
 			print(
 				`[R2 sweep] ${input.name} (${input.recording.frames.size()} ticks; ${input.log.join(
 					"; ",
@@ -120,20 +131,23 @@ describe("rollback spike sweep (R2, opt-in)", () => {
 					for (const strategy of ROLLBACK_GUESS_STRATEGIES) {
 						const merged = new RollbackMetrics();
 						let sec = 0;
-						for (const [from, to] of input.windows) {
-							const r = runModelOverRecording(input.config, input.recording, {
-								playerIndex: 0,
-								L: l,
-								D: d,
-								strategy,
-								fromTick: from,
-								toTick: to,
-							});
-							merged.merge(r.metrics);
-							sec += r.runtimeSec;
+						for (let p = 0; p < players; p++) {
+							for (const [from, to] of input.windows) {
+								const r = runModelOverRecording(input.config, input.recording, {
+									playerIndex: p,
+									L: l,
+									D: d,
+									strategy,
+									fromTick: from,
+									toTick: to,
+								});
+								merged.merge(r.metrics);
+								sec += r.runtimeSec;
+							}
 						}
 						const row = formatResultsRow(input.name, l, d, strategy, merged);
 						rows.push(row);
+						wide.push(formatMetricsRow(`${input.name} | ${l} | ${d} | ${strategy}`, merged));
 						print(
 							`${row}  (${string.format("%.0f", sec)} s, ${string.format(
 								"%.0f",
@@ -144,7 +158,18 @@ describe("rollback spike sweep (R2, opt-in)", () => {
 				}
 			}
 		}
-		print(["", RESULTS_TABLE_HEADER, ...rows, "", string.format("[R2 sweep] %.0f s", os.clock() - t0)].join("\n"));
+		print(
+			[
+				"",
+				RESULTS_TABLE_HEADER,
+				...rows,
+				"",
+				metricsTableHeader("Input | L | D | Strategy"),
+				...wide,
+				"",
+				string.format("[R2 sweep] %.0f s", os.clock() - t0),
+			].join("\n"),
+		);
 		expect(rows.size()).toBeGreaterThan(0);
 	});
 });

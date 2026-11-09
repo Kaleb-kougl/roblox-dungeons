@@ -3,11 +3,13 @@
 	Headless spec runner: runs every compiled `*.spec` module under ReplicatedStorage.TS
 	(`out/shared/**`) with real JestCircus + Expect, inside Lune. No Roblox Studio needed.
 
-	  lune run scripts/lune/run-tests.luau [filter ...] [--project default.project.json]
+	  lune run scripts/lune/run-tests.luau [filter ...] [--project default.project.json] [--flag name ...]
 
 	`npm test` builds first (gen fixtures -> rbxtsc) and then runs this. A filter keeps the spec
 	files whose source path contains it (e.g. `sim/rng`). Exit code is 1 when any test or suite
-	fails, or when no spec matched.
+	fails, or when no spec matched. `--flag name` (repeatable) turns on an opt-in spec switch: every
+	spec realm gets `_G.KV_SPEC_FLAGS[name] = true` (absent in Studio and without the flag), e.g.
+	`npm run test:only -- lockstep/rollbackSpike/model.sweep --flag rollbackSweep`.
 
 	How it works (details in the lib/ headers):
 	  1. lib/rojoTree   builds a fake DataModel from default.project.json, mirroring the filesystem
@@ -41,6 +43,7 @@ end
 -- args
 local projectPath = "default.project.json"
 local filters: { string } = {}
+local specFlags: { [string]: boolean } = {}
 do
 	local i = 1
 	local args = process.args
@@ -48,6 +51,9 @@ do
 		local arg = args[i]
 		if arg == "--project" then
 			projectPath = args[i + 1]
+			i += 2
+		elseif arg == "--flag" then
+			specFlags[args[i + 1]] = true
 			i += 2
 		else
 			table.insert(filters, arg)
@@ -134,6 +140,7 @@ local startedAt = os.clock()
 for _, spec in specs do
 	local suiteStart = os.clock()
 	local realm = Realm.new(game)
+	realm.G.KV_SPEC_FLAGS = table.freeze(table.clone(specFlags))
 	local lines: { string } = {}
 	local suiteFailed = false
 
