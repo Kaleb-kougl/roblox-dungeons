@@ -160,12 +160,13 @@ describe("vale pack", () => {
 	it("every enemy, boss and player sprite set has an outline sheet per sheet; no other set has one", () => {
 		// art/atlases.json: each enemy / boss set needs `outline` (enemy outline plan O3), or its sprites draw without a
 		// rim (bosses take the enemy rim too: their placeholder has the outline role). The knight carries the player
-		// outline's sheets (player outline: 1 px, clipAtCellEdge); the renderer tints each rim its own role.
+		// outline's sheets (player outline: 1 px, clipAtCellEdge), and so does the Archer (docs/ARCHER.md AR12): every
+		// class.* set; the renderer tints each rim its own role.
 		let enemies = 0;
 		let bosses = 0;
 		for (const id of sortedKeys(VALE_SPRITE_LAYOUTS)) {
 			const enemy = id.sub(1, 6) === "enemy." || id.sub(1, 5) === "boss.";
-			const outlined = enemy || id === "class.vanguard";
+			const outlined = enemy || id.sub(1, 6) === "class.";
 			if (enemy) {
 				enemies += 1;
 			}
@@ -316,6 +317,51 @@ describe("vale pack", () => {
 		for (const sheet of rimless.sheets) {
 			expect(sheet.outlineAssetId).toBe(undefined);
 		}
+	});
+
+	it("class.ranger (the Archer, docs/ARCHER.md AR12) stays the placeholder capsule until its five core sheets have IDs", () => {
+		const ranger = VALE_SPRITE_LAYOUTS["class.ranger"];
+		expect(ranger.sheets.map((sheet) => sheet.file)).toEqual([
+			"ranger-idle.png",
+			"ranger-run.png",
+			"ranger-roll.png",
+			"ranger-hit.png",
+			"ranger-death.png",
+			"ranger-attack1.png",
+			"ranger-attack2.png",
+		]);
+		// as bundled: no ID yet, so the placeholder pack's capsule
+		for (const sheet of ranger.sheets) {
+			expect([sheet.file, VALE_ASSET_IDS[sheet.file]]).toEqual([sheet.file, undefined]);
+		}
+		expect(VALE_MANIFEST.assets["class.ranger"]).toEqual(PLACEHOLDER_MANIFEST.assets["class.ranger"]);
+		// any core sheet missing: still the placeholder
+		for (const file of [
+			"ranger-idle.png",
+			"ranger-run.png",
+			"ranger-roll.png",
+			"ranger-hit.png",
+			"ranger-death.png",
+		]) {
+			expect([file, buildValeManifest(fakeIds(file)).assets["class.ranger"]]).toEqual([
+				file,
+				{ kind: "placeholder" },
+			]);
+		}
+		// every file uploaded: the Archer's sprites with both bow animations and the player rim; the pack validates
+		const ids = fakeIds();
+		const m = buildValeManifest(ids);
+		const set = m.assets["class.ranger"] as SpriteSetAsset;
+		expect(set.kind).toBe("sprites");
+		expect(sortedKeys(set.animations)).toEqual(["attack.1", "attack.2", "death", "hit", "idle", "roll", "run"]);
+		expect(set.pixelsPerTile).toBe(VALE_SPRITE_LAYOUTS["class.vanguard"].pixelsPerTile);
+		for (const sheet of set.sheets) {
+			expect(sheet.outlineAssetId).never.toBe(undefined);
+		}
+		expect(validateManifest(m, { packId: "vale" })).toEqual([]);
+		// the bow's sheets are optional: without them the core five still switch on
+		const core = buildValeManifest(fakeIds("ranger-attack1.png", "ranger-attack2.png")).assets["class.ranger"];
+		expect(sortedKeys((core as SpriteSetAsset).animations)).toEqual(["death", "hit", "idle", "roll", "run"]);
 	});
 
 	it("a set whose outline sheets are not uploaded still switches on, rimless", () => {

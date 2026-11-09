@@ -46,6 +46,20 @@ SOFTWARE.
   resell, redistribute or sublicense the raw asset files themselves; not for use on stock-asset or asset-pack resale
   platforms. The author confirms in the page comments that shipping the art in a compiled game is allowed.
 
+## HD 8-Directional Top-Down Character Pack 1 (paid edition: Archer)
+
+- Author: SmallScaleInt. Source: https://smallscaleint.itch.io/hd-8-directional-top-down-character-pack-1 (the paid
+  edition, "2D HD Character pack 1 V1.2": all 9 characters, with-shadows and shadowless sheets, individual sprites;
+  bought by the owner, docs/ARCHER.md owner answers 7 and 10)
+- Used for: `class.ranger` sprites, the Archer (folder `2Archer`, the individual with-shadow sprites: idle, run, roll,
+  hit, death, the bow's stream and charged shot; docs/ARCHER.md AR12), repacked into atlases with a 1 px outline sheet
+  each by `scripts/art/build-atlases.js` (`--only class.ranger`), to be uploaded to Roblox
+- Raw files: `art/vendor/smallscale-archer/` (gitignored, not redistributed)
+- License: SmallScaleInt's "Standard Commercial License" (owner answer 10, 2026-11-09): use in unlimited commercial or
+  personal game projects; no attribution or credit required; modify, recolor and re-export freely for your own
+  project; cannot resell, redistribute or sublicense the raw asset files themselves; not for use on stock-asset or
+  asset-pack resale platforms. The store asks for a rating and review.
+
 ## Lords Of Pain - Old School Isometric Assets (full pack, and its DEMO)
 
 - Author: Pupkin Assets (Trevor Pupkin). Source: https://trevor-pupkin.itch.io/lords-of-pain

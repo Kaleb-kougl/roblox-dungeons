@@ -15,7 +15,7 @@
  * the perspective error negligible next to that.
  *
  * Animation. Choices follow a fixed priority, each rule skipped when the set lacks its animation (ending at idle):
- *   player: death > roll > attack (sword swings attack.1/2/3, else attack) > hit > run > idle
+ *   player: death > roll > attack (sword swings attack.1/2/3, else attack; the Archer's bow, below) > hit > run > idle
  *   actor:  death > special (a boss's intro / taunt roar, the Demon Lord's summon) > attack (a named one, else
  *           `attack`) > hit (multi-frame only; a 1-frame stand-in leaves it to the tint; over the view-side hit clip
  *           when the renderer gives one, docs/DUMMY_ART.md DD1) > move > idle
@@ -31,6 +31,14 @@
  * hit, corpse, a boss's roar and attacks) are STRETCHED over that timer:
  * frame = floor(progress * frames), clamped (last frame held). Loops (idle, run / move) and one-shots without a timer
  * (the player's death) advance a per-view clock at the animation's fps; run / move scale it by speed / reference speed.
+ *
+ * The Archer (docs/ARCHER.md AR12; player visual ARCHER_SPRITE.visualId, class.ranger, through playerSpriteInputFor):
+ * the bow's state takes the attack's place. The charge (V_CHARGE > 0) plays `attack.2`'s draw [0, release) stretched
+ * over the charge and holds the anchor while fully charged; the heavy arrow (V_HEAVY_TICK) its release [release, end)
+ * over the stream's wait after it (BOW_DATA.heavyRecoverTicks); a stream arrow (the bow's cooldown running) one of
+ * `attack.1`'s two draw-and-loose cycles over its cooldown, alternating by V_SHOT; while moving at run speed the
+ * stream yields to `run` (ARCHER_SPRITE.streamYieldsToRun). Every other visual (the Knight) never reads the bow, so
+ * its choices are exactly as before.
  *
  * Boss machinery (docs/BRAMBLE_ART.md BR4, BD7; shared with docs/BOSS_DEMONLORD.md D6). An actor attack may name its
  * animation (`attack.2`; `attack` when the set lacks it) and play only a SEGMENT of it (AnimSegment, fractions of its
@@ -48,6 +56,10 @@ import {
 	BOSS_ACT1_ID,
 	BOSS_DEMONLORD_ID,
 	BOSS_TELEGRAPH_TICKS,
+	BOW_DATA,
+	BOW_V_CHARGE,
+	BOW_V_HEAVY_TICK,
+	BOW_V_SHOT,
 	BRUISER,
 	BRUISER_RECOVER,
 	BossAttack,
@@ -100,6 +112,9 @@ import {
 	V_LAST,
 	V_MARK,
 	attackTicks,
+	bowChargeTicks,
+	playerAt,
+	weaponsAt,
 	type ActorState,
 	type ArchetypeData,
 	type PlayerState,
@@ -107,7 +122,7 @@ import {
 	type WeaponsState,
 } from "shared/sim";
 import type { Pivot, SpriteAnimationDef, SpriteFacings } from "shared/theme";
-import { ACTOR_VIEW, SPRITE_ANIM_MARKS, SPRITE_VIEW } from "./config";
+import { ACTOR_VIEW, ARCHER_SPRITE, SPRITE_ANIM_MARKS, SPRITE_VIEW } from "./config";
 import { VARIANT_ANIM_MARKS, VARIANT_SPRITE_VIEW } from "./variantsConfig";
 import {
 	bomberSpriteInput,
@@ -349,6 +364,8 @@ export interface PlayerSpriteInput {
 	readonly hurtTicks: number;
 	/** swordSwingOf(...): the sword swing in progress, if any (the bow has no knight animation). */
 	readonly swing: SwordSwing | undefined;
+	/** The Archer only (archerSpriteInput): bowShotOf(...), the bow's shot in progress. Absent on every other visual. */
+	readonly bow?: BowShot;
 	/** Ground speed, world units / s (tickSpeed of prevX, prevZ, x, z). */
 	readonly speed: number;
 	/** The sim's render alpha. */
@@ -374,6 +391,170 @@ export function playerSpriteInput(
 	};
 }
 
+// ---------------------------------------------------------------------------------------------
+// The Archer's bow (docs/ARCHER.md AR12)
+
+/** The bow's timings for the Archer's sprite, ticks. */
+export interface BowTiming {
+	/** A stream arrow's cooldown: BOW_DATA.cooldownTicks through attackTicks (Swift Strikes). */
+	readonly streamTicks: number;
+	/** A full charge: bowChargeTicks (Ballista II / III). */
+	readonly chargeTicks: number;
+	/** The stream's wait after a heavy arrow (BOW_DATA.heavyRecoverTicks): the release plays over it. */
+	readonly recoverTicks: number;
+}
+
+export const BOW_TIMING: BowTiming = {
+	streamTicks: BOW_DATA.cooldownTicks,
+	chargeTicks: BOW_DATA.chargeTicks,
+	recoverTicks: BOW_DATA.heavyRecoverTicks,
+};
+
+/** The bow's timings for player `playerIndex` through their run modifiers; BOW_TIMING itself when unmodified. */
+export function bowTimingOf(state: Readonly<SimState>, playerIndex: number): BowTiming {
+	const streamTicks = attackTicks(state, playerIndex, BOW_DATA.cooldownTicks);
+	const chargeTicks = bowChargeTicks(state, playerIndex);
+	if (streamTicks === BOW_TIMING.streamTicks && chargeTicks === BOW_TIMING.chargeTicks) return BOW_TIMING;
+	return { streamTicks, chargeTicks, recoverTicks: BOW_DATA.heavyRecoverTicks };
+}
+
+/** What the bow is doing: a stream arrow, the charge's draw, or the heavy arrow's release. */
+export type BowShotKind = "stream" | "draw" | "release";
+
+/** The bow's shot to animate: progress 0..1 through `segment` of its animation (ARCHER_SPRITE.streamAnim / chargeAnim). */
+export interface BowShot {
+	readonly kind: BowShotKind;
+	readonly progress: number;
+	readonly segment: AnimSegment;
+}
+
+const ARCHER_MARKS = SPRITE_ANIM_MARKS.archer;
+const DRAW_SEGMENT: AnimSegment = { from: 0, to: ARCHER_MARKS.release };
+const RELEASE_SEGMENT: AnimSegment = { from: ARCHER_MARKS.release, to: 1 };
+const STREAM_SEGMENTS: ReadonlyArray<AnimSegment> = [
+	{ from: 0, to: ARCHER_MARKS.streamCycle },
+	{ from: ARCHER_MARKS.streamCycle, to: 1 },
+];
+
+/**
+ * The bow's shot to animate, from raw sim numbers of the ACTIVE set's bow slot:
+ *   tick       SimState.tick (one past the tick the sim just stepped)
+ *   charge     v[BOW_V_CHARGE]: ticks charged (0 = not charging)
+ *   heavyTick  v[BOW_V_HEAVY_TICK]: the tick after the last heavy arrow (0 = none)
+ *   cooldown   the slot's cooldown: set on a stream arrow to the stream's cooldown, on a heavy arrow to its wait
+ *   shotStep   v[BOW_V_SHOT]: the stream pattern step, advanced after every stream arrow
+ * The draw (charging) beats the release (age tick - heavyTick in [0, recoverTicks)) beats a stream arrow (cooldown > 0,
+ * age streamTicks - cooldown): the stream cannot fire while drawing and waits recoverTicks after a heavy arrow. The
+ * draw's progress is the charge's (1 once full: the anchor holds); a stream arrow plays cycle 0 when shotStep is odd
+ * (the arrow just fired took the even step), cycle 1 otherwise. Undefined when the bow is idle.
+ */
+export function bowShot(
+	tick: number,
+	alpha: number,
+	charge: number,
+	heavyTick: number,
+	cooldown: number,
+	shotStep: number,
+	timing: BowTiming = BOW_TIMING,
+): BowShot | undefined {
+	if (charge > 0) {
+		const progress = charge >= timing.chargeTicks ? 1 : math.min(1, (charge + alpha) / timing.chargeTicks);
+		return { kind: "draw", progress, segment: DRAW_SEGMENT };
+	}
+	if (heavyTick > 0) {
+		const age = tick - heavyTick + alpha;
+		if (age >= 0 && age < timing.recoverTicks) {
+			return { kind: "release", progress: age / timing.recoverTicks, segment: RELEASE_SEGMENT };
+		}
+	}
+	if (cooldown > 0 && timing.streamTicks > 0) {
+		const age = timing.streamTicks - math.min(cooldown, timing.streamTicks) + alpha;
+		if (age < timing.streamTicks) {
+			const cycle = shotStep % 2 === 1 ? 0 : 1;
+			return { kind: "stream", progress: age / timing.streamTicks, segment: STREAM_SEGMENTS[cycle] };
+		}
+	}
+	return undefined;
+}
+
+/**
+ * bowShot read from a player's weapon sets: only the ACTIVE set's bow (`bowIndex` = weaponIndex(BOW.id)) animates
+ * (a swapped-away bow's cooldown still runs down). Undefined when the active set holds no bow (or bowIndex is
+ * NO_WEAPON).
+ */
+export function bowShotOf(
+	tick: number,
+	alpha: number,
+	w: Readonly<WeaponsState>,
+	bowIndex: number,
+	timing: BowTiming = BOW_TIMING,
+): BowShot | undefined {
+	if (bowIndex < 0) return undefined; // NO_WEAPON: never match an empty slot
+	const active = w.sets[w.activeSet];
+	if (active === undefined || active.weapon !== bowIndex) return undefined;
+	const v = active.v;
+	return bowShot(tick, alpha, v[BOW_V_CHARGE], v[BOW_V_HEAVY_TICK], active.cooldown, v[BOW_V_SHOT], timing);
+}
+
+/** PlayerSpriteInput of the Archer: no sword swing, the bow's shot (bowShotOf). */
+export function archerSpriteInput(
+	p: Readonly<PlayerState>,
+	w: Readonly<WeaponsState>,
+	tick: number,
+	alpha: number,
+	bowIndex: number,
+	timing: BowTiming = BOW_TIMING,
+): PlayerSpriteInput {
+	return {
+		dead: p.dead !== 0,
+		rollTicks: p.rollTicks,
+		hurtTicks: p.hurtTicks,
+		swing: undefined,
+		bow: bowShotOf(tick, alpha, w, bowIndex, timing),
+		speed: tickSpeed(p.prevX, p.prevZ, p.x, p.z),
+		alpha,
+	};
+}
+
+/**
+ * The sprite input of player `playerIndex` drawn as `visualId` (their class.* theme id): the Archer's
+ * (ARCHER_SPRITE.visualId) reads the bow (archerSpriteInput); every other visual exactly playerSpriteInput with the
+ * sword (the Knight's choices unchanged). `swordIndex` / `bowIndex`: weaponIndex of the sword / bow (NO_WEAPON if none).
+ */
+export function playerSpriteInputFor(
+	visualId: string,
+	state: Readonly<SimState>,
+	playerIndex: number,
+	alpha: number,
+	swordIndex: number,
+	bowIndex: number,
+): PlayerSpriteInput {
+	const p = playerAt(state, playerIndex);
+	const w = weaponsAt(state, playerIndex);
+	if (visualId === ARCHER_SPRITE.visualId) {
+		return archerSpriteInput(p, w, state.tick, alpha, bowIndex, bowTimingOf(state, playerIndex));
+	}
+	return playerSpriteInput(p, w, state.tick, alpha, swordIndex, swordTimingOf(state, playerIndex));
+}
+
+/**
+ * The Archer's bow animation (choosePlayerAnim's attack step), or undefined: the set lacks the animation, or a stream
+ * arrow while moving at run speed (ARCHER_SPRITE.streamYieldsToRun, when the set has `run`).
+ */
+function bowChoice(bow: BowShot, speed: number, anims: SpriteAnimSource): SpriteAnimChoice | undefined {
+	const anim = bow.kind === "stream" ? ARCHER_SPRITE.streamAnim : ARCHER_SPRITE.chargeAnim;
+	if (anims.animation(anim) === undefined) return undefined;
+	if (
+		bow.kind === "stream" &&
+		ARCHER_SPRITE.streamYieldsToRun &&
+		anims.animation("run") !== undefined &&
+		moveChoice("run", speed, SPRITE_VIEW.playerRunRefSpeed) !== undefined
+	) {
+		return undefined;
+	}
+	return { anim, progress: bow.progress, rate: 1, segment: bow.segment };
+}
+
 function attackAnim(anims: SpriteAnimSource, index: number): string | undefined {
 	const named = `attack.${index}`;
 	if (anims.animation(named) !== undefined) return named;
@@ -393,6 +574,11 @@ export function choosePlayerAnim(input: PlayerSpriteInput, anims: SpriteAnimSour
 		if (swing !== undefined) {
 			const anim = attackAnim(anims, swing.index);
 			if (anim !== undefined) return { anim, progress: swing.progress, rate: 1 };
+		}
+		const bow = input.bow;
+		if (bow !== undefined) {
+			const choice = bowChoice(bow, input.speed, anims);
+			if (choice !== undefined) return choice;
 		}
 		if (input.hurtTicks > 0 && anims.animation("hit") !== undefined) {
 			const elapsed = elapsedOf(HURT_INVULN_TICKS, input.hurtTicks, input.alpha);

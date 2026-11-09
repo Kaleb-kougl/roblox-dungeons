@@ -670,3 +670,85 @@ unchanged. Paths under `src/shared/run/` unless noted.
   `sim/recordingCodec` 19, `dungeon/roomPool` 15 (7.6 min), `run/snagCensus` 2 (6.7 min). Not run: the full
   unfiltered suite (`npm run verify`), so specs outside these filters that build live endless worlds through
   `buildWorldSetup` (view specs use `recordEndlessRun`, unchanged) were not exercised.
+## AR12 (as built)
+
+Presentation only (no sim, dungeon, lockstep, hash, replay, fixture or score change). Built on branch `archer-art`
+from the owner's `2Archer` folder in `art/vendor/smallscale-archer/` (3,592 PNGs, gitignored). Not uploaded: the vale
+pack draws the placeholder capsule for `class.ranger` until the files below have IDs in `packs/vale/assetIds.ts`.
+
+**The set** (`art/atlases.json` `spriteSets["class.ranger"]`). A `frames` source with the new `source.naming:
+"smallscale"` (`<Anim>/<facing>/<Anim>_<angle>_<2 f + 1, 3 digits>.png`: the export numbers every other frame of a
+30-frame render, 001..029, so `frames` stay the knight's grid indices 0..14), facings `E NE N NW W SW S SE` at d x 45
+degrees counter-clockwise from screen right, the output convention already. Checked by eye against the knight (Run
+frame 4 at 2x, the knight's row (8 - d) % 8 under each): E / W stride right / left, N, NE and NW show the back, S, SE
+and SW the front, facing for facing. `pixelsPerTileFrom: "class.vanguard"` (38 px a tile, the knight's on-screen
+scale), the knight's pivot cut (body alpha > 240, lit; the shadow is black at alpha <= ~207), `noiseAlpha` 0, `pad` 0,
+the 1 px outline sheets with `clipAtCellEdge`. The union box is 121 x 97 (source 5..125 x 31..127), smaller than the
+knight's full 128 cell, so each animation is one 968 x 776 atlas (8 x 8 cells of 121 x 97; pivot (62, 72), the feet
+of Idle S frame 0; body 52 px, the knight's 57). Rim clipped at the cell edge: `ranger-death` 2 cells (5 body px),
+`ranger-attack2` 1 cell (1 px).
+
+**Mapping and frames kept** (8 of 15, one atlas per animation, like the knight):
+
+| Animation | Source | Kept frames | Why |
+|---|---|---|---|
+| `idle` | Idle | 0 1 3 5 7 9 11 13 (loop, 7 fps) | the knight's loop spacing |
+| `run` | Run | 0 1 3 5 7 9 11 13 (loop, 12 fps) | the knight's |
+| `roll` | Rolling | 0 2 .. 14 | stretched over the roll's 21 ticks (the Archer's longer roll keeps its time) |
+| `hit` | TakeDamage | 0 2 .. 14 | the knight's |
+| `death` | Die | 0 2 .. 14 (holds 14) | the knight's |
+| `attack.1` (stream) | QuickShot | 0 1 2 3 4 5 6 7 | QuickShot is a 4-frame draw-and-loose cycle repeated (f0 = f4 = f8 = f12, measured: 0 px differ; the bow straight at the loose f0, bent f1-f3): frames 0-7 are two whole cycles |
+| `attack.2` (charged shot) | Attack1 | 1 3 5 7 9 / 10 11 13 | f1-f6 reach for the quiver and nock, f7 turns into the draw, f9 the anchor at full draw, f10 the loose (the draw hand flies back off the string, checked in all 8 facings), f11 the follow-through, f12-14 the bow lowered |
+
+Rejected: AttackRun (one crouch-lunge-and-shoot, 15 frames, not a loop: wrong for 5 arrows a second), Attack2 (the same
+draw kneeling: it would slide under the charge's half-speed walk), Special1 (a shot into the sky), Attack3 (a jumping
+shot).
+
+**Segment marks** (`shared/view/config.ts` `SPRITE_ANIM_MARKS.archer`, the docs/DEMON_ART.md pattern): `release` 5 / 8
+(`attack.2`: draw = kept 0-4, release = kept 5-7), `streamCycle` 4 / 8 (`attack.1`: cycle 0 = kept 0-3, cycle 1 = 4-7).
+
+**View mapping** (`shared/view/sprites.ts`, pure; behind `ARCHER_SPRITE.visualId` = `class.ranger`, config.ts
+`ARCHER_SPRITE`). `bowShot` / `bowShotOf` read the ACTIVE set's bow slot: `V_CHARGE > 0` -> the draw (`attack.2`
+[0, release)) stretched over the charge (`bowChargeTicks`, Ballista II / III shorten it), the anchor held once full;
+the tick after a heavy arrow (`V_HEAVY_TICK`) -> the release ([release, end)) over the stream's wait
+(`BOW_DATA.heavyRecoverTicks`, 18 ticks); a running stream cooldown -> one `attack.1` cycle over that arrow's cooldown
+(`attackTicks` of `BOW_DATA.cooldownTicks`: Swift Strikes), cycle 0 / 1 alternating by `V_SHOT`'s parity (so the two
+slightly different loose frames alternate). Priority as the knight's: death > roll > bow > hit > run > idle. Moving
+at run speed while streaming plays `run` instead (`ARCHER_SPRITE.streamYieldsToRun`: QuickShot is a planted stance and
+the Archer kites); the draw and the release play whatever the speed. `archerSpriteInput` (no swing, the bow) and
+`playerSpriteInputFor(visualId, state, i, alpha, swordIndex, bowIndex)`: the Archer's for `class.ranger`, exactly
+`playerSpriteInput` with the sword for every other visual, so the Knight's choices are unchanged (a Knight with the
+bow in hand, M1, still plays idle / run). A set without `attack.1` / `attack.2` (the placeholder; the core five
+uploaded alone) falls through to what plays without them. **Not wired yet:** `ActorRenderController` still calls
+`playerSpriteInput` for `ACTOR_VIEW.playerVisualId`; AR9 (the per-player visual) switches it to
+`playerSpriteInputFor(visualId, ...)` with `weaponIndex("weapon.bow")`.
+
+**Pipeline** (`scripts/art/build-atlases.js`). `--only <sprite set id>` builds one set alone: it checks the lock for the
+set and its `pixelsPerTileFrom` chain (here the knight, built only to read its pixelsPerTile, never written), writes
+the set's sheets, outline sheets (and their `art/upload/` copies) and `art/build/contact/<id>.png`, and merges its entry
+into `layout.ts` (`mergeSpriteLayout`: replaced or inserted at its sorted place, every other byte unchanged: exactly
+what `layoutModule` writes for all the sets); no stale sweep. `--lock --only <set id>` re-hashes the set's own files
+into the lock. `source.naming` (`FRAME_NAMINGS`: `lordsOfPain`, the default, or `smallscale`). Run here:
+`node scripts/art/build-atlases.js --lock --only class.ranger` (448 files added to `art/vendor.lock.json`, no entry
+changed) then `--only class.ranger`. Every other output is unchanged: `layout.ts` gained only the `class.ranger` entry;
+the knight's 16 sheets and contact sheet built by this script are byte-identical to the previous script's (compared
+PNG by PNG); no other set or group was built.
+
+**Files to upload** (14, `art/upload/`; required for the switch: the first five sheets): `ranger-idle.png`,
+`ranger-run.png`, `ranger-roll.png`, `ranger-hit.png`, `ranger-death.png`, optional `ranger-attack1.png` (stream),
+`ranger-attack2.png` (charged shot), and each one's `-outline.png` (the player rim; never holds the set back).
+
+**Notices.** `THIRD_PARTY_NOTICES.md` "HD 8-Directional Top-Down Character Pack 1 (paid edition: Archer)" with owner
+answer 10's terms; the Credits screen already listed the Knight's pack, so its line reads "HD 8-Directional Top-Down
+Character Pack 1 (Knight, Archer)" (one line, not two of the same title). `art/README.md` names the folder.
+
+**Specs.** `scripts/art/sprite-set-only.test.js` (naming, `--only` argv and scoped lock, the chain, outputs byte-equal to
+a full build's, `mergeSpriteLayout` byte-equal to `layoutModule` inserted / replaced / first / last / alone, refusals,
+and with the packs on disk the committed `class.ranger` and `class.vanguard` entries rebuild exactly);
+`src/shared/view/archerSprite.spec.ts` (timings, `bowShot` draw / release / stream, active set only, priority, the run
+yield, fallbacks, a real sim run with the bow alone: 36 draw ticks to the anchor, 18 release ticks, stream cycles 0 / 1 /
+0 one per arrow; the Knight's input identical; the marks on the built set land on kept frames 0-4 / 5-7 and 0-3 / 4-7);
+`vale.spec.ts` (`class.ranger` stays the placeholder as bundled and with any core sheet missing; with every id it is
+sprites with both bow animations and the rim, at the knight's scale, and the pack validates; every `class.*` set
+carries outline sheets). Studio item 5 (the Archer draws its own sprite and outline, the roll fills the longer roll)
+waits for the upload and AR9.

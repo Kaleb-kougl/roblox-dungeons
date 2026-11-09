@@ -13,8 +13,12 @@
  * (class.vanguard: idle, run, roll, hit, death; enemy.swarmer: swarmer-move.png and swarmer-death.png); optional ones
  * (vanguard-attack1..3.png) join when their IDs are added. boss.demonlord (docs/BOSS_DEMONLORD.md D7): required
  * demonlord-idle / -move / -attack / -death.png (hit reuses idle's cells), optional demonlord-attack2 / -intro /
- * -taunt.png, plus one -outline.png per sheet (14 files). An enemy sheet's outline (swarmer-move-outline.png,
- * swarmer-death-outline.png) adds the baked rim once its ID is here; without it the set still switches, rimless.
+ * -taunt.png, plus one -outline.png per sheet (14 files). class.ranger (the Archer, docs/ARCHER.md AR12; built alone by
+ * `node scripts/art/build-atlases.js --only class.ranger`): required ranger-idle / -run / -roll / -hit / -death.png,
+ * optional ranger-attack1 / -attack2.png (the bow's stream and charged shot), plus one -outline.png per sheet (14
+ * files); until the five required ones have IDs the Archer is the placeholder capsule. An enemy sheet's outline
+ * (swarmer-move-outline.png, swarmer-death-outline.png) adds the baked rim once its ID is here; without it the set still
+ * switches, rimless.
  * An image switches once its file has one. Re-upload (and paste the new ID) whenever `art:build` changes a PNG.
  *
  * Audio (art/README.md, "Audio"): `npm run audio:build` writes art/build/audio/*.ogg; paste each file's ID here the same
