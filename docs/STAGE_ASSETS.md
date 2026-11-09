@@ -13,9 +13,12 @@ or a later tick.
 
 ## Status (2026-11-09)
 
-Plan only; nothing built. Revision 2 (owner, 2026-11-09, below): the game is **playable while loading** on every
-device, with stand-ins (the placeholder 3D objects) for any art not in yet. Decisions SAD1-SAD16 are defaults for
-review. Tasks SA0-SA20.
+**Built on branch `stage-assets` (2026-11-09): SA1-SA5, SA7, SA8, SA11 and SA15-SA19; not run in Studio yet.**
+Revision 2 (owner, 2026-11-09, below): the game is **playable while loading** on every device, with stand-ins (the
+placeholder 3D objects) for any art not in yet. Decisions SAD1-SAD16 are the defaults as built (owner: "proceed with
+implementation"). Dropped by revision 2: SA6 (the draft gate) and SA10's co-op waits. Not built: SA0 / SA20 (device
+measurements, owner), SA9 (warm draw, waits for SA0), SA12 (telemetry, optional), SA13's playtest. See "As built" and
+"Review fixes" below; the Studio checks listed under each task are the next step.
 
 ## Revision 2: playable while loading (owner, 2026-11-09)
 
@@ -545,6 +548,19 @@ smoke test lines, CLAUDE.md decision log. Fresh-phone playtest: a full solo run 
   pellets / chests / altars as placeholders, the UI flat, silence), clearing it swaps live (pieces, boxes gone, UI art,
   beds keep playing); with `KV_FakeAssetLatency` the first swing before its sfx lands is silent, not late, and the floor
   music fades in when it lands; touch controls rebuild between touches.
+
+### Review fixes (lead, after the merge)
+
+- **A final fetch failure is not ready** (`ArtReadiness`): it counts as resolved (waits and logs stop waiting) but a
+  logical id with a content id that never loaded stays a stand-in for the session (SAD13). Before the fix, a sheet
+  that failed twice drew art from a blank sheet: an invisible enemy, or a solid decor box hidden over a blocker.
+- **The menu kit is on the front lane** (`PreloadController.onInit`): after a Skip / timeout release, the menu / lobby
+  first-floor prefetch (`next`) no longer jumps the core UI ids still waiting.
+- **Leave run cancels the stage's asset wait** (`StageController.cancel`): no stale "ready after the reveal" line.
+- **Known gap, not fixed:** a UI frame art flip swaps `Panel` between its flat frame and `SkinnedPanel`, so the panel's
+  children remount once (focus, scroll and local state reset). It only happens when ui art lands while a menu is open
+  (a Skip / timeout join, a retry, `KV_StandInsForce`); with the menu kit on the front lane the join screen normally
+  holds until the ui art is in. A fix keeps one root element and toggles the skin inside it.
 
 ## Out of scope
 

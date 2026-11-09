@@ -6,11 +6,13 @@
  *
  *   content ids   pending -> ready (markReady) or failed (markFailed). The first failure schedules ONE retry
  *                 (`retryAfterSec` later; `retryDue(now)` hands it out once); the `maxFailures`-th failure is final.
- *                 A final failure counts as resolved, so one broken optional sheet never keeps a whole set a stand-in
- *                 forever. Ready wins: a failure reported after a success is ignored. Resolved is monotonic.
- *   logical ids   ready when every content id of `source.contentIds(id)` is ready or finally failed; an id with NO
- *                 content ids (the placeholder pack, an id not uploaded) is ready at once: nothing to wait for.
- *                 Per logical id the core keeps the count of its unresolved content ids (built on first use, kept
+ *                 A final failure counts as resolved (waits and logs stop waiting for it) but NOT as ready: a set
+ *                 with a sheet that never loaded stays a stand-in for the session (SAD13), never art drawn from a
+ *                 blank sheet (an invisible enemy, an invisible solid decor blocker). Ready wins: a failure reported
+ *                 after a success is ignored. Resolved is monotonic.
+ *   logical ids   ready when every content id of `source.contentIds(id)` is ready; an id with NO content ids (the
+ *                 placeholder pack, an id not uploaded) is ready at once: nothing to wait for.
+ *                 Per logical id the core keeps the count of its content ids not ready yet (built on first use, kept
  *                 current by every status change), so `isReady` is a map read.
  *   tracking      a logical id is tracked once `isReady(id)` or `track(id)` saw it; only tracked ids are listed by
  *                 `flippedSince`. PreloadController tracks every `assetIdList()` id of the pack at start, so in the
@@ -109,11 +111,10 @@ export class ArtReadiness {
 	markReady(contentId: string): void {
 		const e = this.entry(contentId);
 		if (e.status === "ready") return;
-		const wasResolved = e.resolved;
 		e.status = "ready";
 		e.resolved = true;
 		this.removeRetry(contentId);
-		this.changed(contentId, wasResolved);
+		this.changed(contentId, true);
 	}
 
 	/**
@@ -178,7 +179,8 @@ export class ArtReadiness {
 	// --- logical ids -----------------------------------------------------------------------------
 
 	/**
-	 * Every content id of `logicalId` is ready or finally failed (none: ready), and no debug force matches it. Tracks
+	 * Every content id of `logicalId` is ready (none: ready; a finally failed one keeps it a stand-in), and no debug
+	 * force matches it. Tracks
 	 * the id (see the module comment).
 	 */
 	isReady(logicalId: string): boolean {
@@ -299,17 +301,17 @@ export class ArtReadiness {
 				this.logicalOf.set(c, users);
 			}
 			users.push(logicalId);
-			if (!this.isResolved(c)) unresolved += 1;
+			if (this.status(c) !== "ready") unresolved += 1;
 		}
 		this.contentsOf.set(logicalId, ids);
 		this.left.set(logicalId, unresolved);
 		return ids;
 	}
 
-	/** A content status changed: bump the epoch; if it just resolved, count it down and record the flips. */
-	private changed(contentId: string, wasResolved: boolean): void {
+	/** A content status changed: bump the epoch; if it just became ready, count it down and record the flips. */
+	private changed(contentId: string, becameReady: boolean): void {
 		this.epochCount += 1;
-		if (wasResolved || !this.isResolved(contentId)) return;
+		if (!becameReady) return;
 		const users = this.logicalOf.get(contentId);
 		if (users === undefined) return;
 		for (const id of users) {

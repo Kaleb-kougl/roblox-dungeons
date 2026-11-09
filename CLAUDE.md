@@ -1109,6 +1109,28 @@ Decision log (deviations from `PLAN.md`):
   without the new kinds plan exactly as before. Credits: Kenney Isometric Library / Dungeon (CC0). No Luau-locals
   change. Upload of `kenney-decor.png` (KN12) and the Studio check (KN13: the toppled case's Z art and the 1 x 1 stock's
   facings were picked by eye) pending.
+- **Stage assets (docs/STAGE_ASSETS.md, 2026-11-09).** Presentation and client input only (no sim, dungeon, lockstep,
+  hash, replay, fixture or score change). Playable while loading (revision 2, owner): every renderer draws its
+  placeholder (a stand-in) until the logical id's content has downloaded on this device, then swaps live. Pure core in
+  shared/view: `ArtReadiness` (content id pending / ready / failed, one retry after `ART_READINESS.retryAfterSec`, a
+  final failure stays a stand-in; logical id ready when every content id is ready, none = ready; `epoch` /
+  `flippedSince`: flips in either direction), `standIns.ts` (`drawsArt`, `FlipTracker`, `ReadyIds`),
+  `pieceStandIns.ts` (`ReadinessCursor`, `lookWhenReady`, the solid decor stand-in boxes `SOLID_DECOR_STAND_IN`: a box
+  over every solid decor piece whose art is missing or not ready, so no blocker is invisible), the stage manifest
+  (`stageGroups.ts` / `stageAssets.ts` / `STAGE_ASSETS`: characters, bullets, actor kinds with runtime children, biome,
+  features, run kit, audio, in front-lane order; coverage spec over the vale pack), `stageAudit.ts`; shared/run
+  `stageInput.ts` (`stageInputOf`, `forecastStageInput` with no generation, `forecastFirstFloor`, `biomeIndexOf`).
+  `PreloadQueue` lanes front / next / back, `LoadWaiters` progress, `PRELOAD.chunkSizeByDevice`; `PRELOAD.core` is the
+  menu kit (`ui.`, `sfx.ui.`, menu / lobby music, front lane). PreloadController owns the readiness
+  (`getReadiness` / `isArtReady` / `onReadinessChanged`; `GetAssetFetchStatus` pre-check under pcall). StageController:
+  each cover pushes the floor's manifest to the front lane; a solo run start waits at most
+  `STAGE_ASSETS.wait.softWaitSec` 1.5 s (bar after 0.4 s), floor changes and co-op never wait (`assetCapSec` gone);
+  floor n + 1 prefetched to `next` at each reveal, the first floor's guess on the menu / in a lobby. AudioController
+  drops a cue not loaded (never late) and fades a bed in when it lands (`BedGate`, `AUDIO_VIEW.lateBedFadeSec`). UI:
+  `client/ui` `uiImage` / `UI_IMAGES` / `useUiArt` (`UiArtController`), the flat UI until an image is in. Debug
+  (`RUN_ATTRIBUTES`): `KV_StandInsForce` ("all" or prefixes), `KV_FakeAssetLatency` (Studio), `KV_StageAssetAudit`.
+  No new strings, roles or sounds; no Luau-locals change. Studio checks, SA0 / SA20 device measurements and the
+  playtest pending; SA9 warm draw and SA12 telemetry not built.
 
 ## Commands
 

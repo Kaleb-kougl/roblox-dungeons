@@ -230,6 +230,11 @@ export class StageController implements OnStart, StageDriver {
 
 	cancel(): void {
 		this.endAudit(); // Leave run / exit: the floor's audit ends here
+		this.assetHandle?.cancel(); // the left run's wait: no stale "ready after the reveal" line (its ids stay queued)
+		this.assetHandle = undefined;
+		this.assetSet = undefined;
+		this.assetSerial = -1;
+		this.assetsLateLog = false;
 		if (this.load === undefined) return;
 		this.load = undefined;
 		this.work = undefined;

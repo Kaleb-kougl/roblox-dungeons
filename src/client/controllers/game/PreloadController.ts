@@ -84,8 +84,9 @@ function readPreloadDevice(): PreloadDevice {
  * the theme pack names, never touches the sim, the lockstep wire or a hash.
  *
  *   plan       onInit (right after ThemeController, loadOrder 1): shared/view preloadPlan(pack) -> the core tier
- *              (what the main menu, the tutorial and floor 1 can show or play), then the later tier (bosses, other
- *              music, ambience, biomes 2-5), both queued on the back lane in download order.
+ *              (the menu kit since docs/STAGE_ASSETS.md SA8: ui, UI sounds, menu / lobby music) on the front lane,
+ *              then the later tier (everything else, in first-run order) on the back lane; each floor's own needs
+ *              come from the stage manifest (StageController) and the renderers draw stand-ins until they land.
  *   queue      shared/view PreloadQueue: three FIFO lanes (front, next, back: docs/STAGE_ASSETS.md SA4) and a
  *              session-wide seen set, so a content id is requested once per session (a push to a higher lane moves an
  *              id still waiting in a lower one). ONE worker thread takes up to `chunkSizeByDevice[device]` entries at a
@@ -204,7 +205,9 @@ export class PreloadController implements OnInit, OnStart {
 		this.laterTotal = plan.later.size();
 		this.laterLeft = this.laterTotal;
 		this.core = new PreloadProgress(plan.core.size());
-		this.queue.push(plan.core, "back");
+		// The menu kit on the FRONT lane: after a Skip / timeout release the menu and lobby prefetch push the first
+		// floor's guess to `next`, which must not jump the core ids still waiting (the menu would stay flat).
+		this.queue.push(plan.core, "front");
 		this.queue.push(plan.later, "back");
 		const device = readPreloadDevice();
 		this.chunkSize = preloadChunkSize(device);

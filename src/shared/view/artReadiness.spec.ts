@@ -111,8 +111,8 @@ describe("ArtReadiness: failures", () => {
 		expect(r.isFinalFailure("c2")).toBe(true);
 		expect(r.isResolved("c2")).toBe(true);
 		expect(r.retriesPending()).toBe(0);
-		// the set draws without the broken sheet, never a stand-in forever
-		expect(r.isReady("enemy.imp")).toBe(true);
+		// resolved for waits, but the set stays a stand-in: never art from a sheet that did not load (SAD13)
+		expect(r.isReady("enemy.imp")).toBe(false);
 		// later reports change nothing
 		const e = r.epoch();
 		r.markFailed("c2", 300);
