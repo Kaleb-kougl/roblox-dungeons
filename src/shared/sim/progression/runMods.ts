@@ -340,9 +340,17 @@ export function attackTicks(state: Readonly<SimState>, playerIndex: number, tick
 	return scaleTicks(ticks, combinedPercent(boon, boostAttackTicksPercent(state, playerIndex)));
 }
 
-/** Roll i-frame ticks (Slippery). */
-export function rollIframeTicks(state: Readonly<SimState>, playerIndex: number, ticks: number): number {
-	return scaleTicks(ticks, runMods(state, playerIndex).rollIframePercent);
+/**
+ * Roll i-frame ticks: Slippery and (docs/ARCHER.md AR3) the player's trait percent `traitPercent` (the Archer's 125),
+ * as one combined percent in ONE scaleTicks rounding; `ticks` itself with neither (exactly today's at 100).
+ */
+export function rollIframeTicks(
+	state: Readonly<SimState>,
+	playerIndex: number,
+	ticks: number,
+	traitPercent: number = PERCENT,
+): number {
+	return scaleTicks(ticks, combinedPercent(runMods(state, playerIndex).rollIframePercent, traitPercent));
 }
 
 // ---------------------------------------------------------------------------------------------

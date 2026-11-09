@@ -567,3 +567,41 @@ loadout (no live world builds one until AR4; some specs arm `[bow]` on their flo
   `sim/constants` 7, `sim/runPlayer` 10, `sim/runFull` 6, `sim/runBoss` 6, `sim/runBullets` 8, `sim/determinism` 12,
   `sim/combat.determinism` 24, `sim/swordBow` 6, `sim/party` 19, `sim/recordingCodec` 19, `sim/player` 25,
   `dungeon/roomPool` 15 (7.4 min), `run/tutorial` 22, `run/buildsOffers` 2: all passed.
+
+## AR3 (as built)
+
+The Archer's dodge as per-player traits. Without traits (every golden fixture, M1, every spec and tool) the roll is
+exactly today's: `scalePercent` / `combinedPercent` return their input unchanged at 100, so no hash moves.
+
+- **Types** (AR1, `sim/playerData.ts`): `PlayerTraits { rollDashPercent, rollIframePercent }`, `NEUTRAL_TRAITS`.
+- **Config**: `SimConfig.traits?: PlayerTraits` (player 0's; every player's fallback) and `PartyConfig.traits?:
+  ReadonlyArray<PlayerTraits | undefined>` (per player, index 0 included), exactly like `loadout` / `loadouts`.
+  `playerTraits(config, i)` (`sim/player.ts`, exported): `config.party.traits[i] ?? config.traits ?? NEUTRAL_TRAITS`, no
+  allocation. Read from the RUN config: `step` / `stepParty` pass `playerTraits(config, i)` to `stepPlayer`'s new
+  trailing `traits` parameter (default `NEUTRAL_TRAITS`), since `stepPlayer` gets the floor's world config. Not hashed.
+- **Distance**: the dash tick's `dist` is `scalePercent(ROLL_DASH_STEP, traits.rollDashPercent)` (player.ts, the one
+  line; Wrecker's roll smash reads the same `dist`). At 140: 0.25667 a tick, 3 `MAX_MOVE_STEP` sub-steps instead of 2,
+  3.38 tiles in the same 21 ticks.
+- **I-frames**: `rollIframeTicks(state, i, ticks, traitPercent = PERCENT)` (runMods.ts) =
+  `scaleTicks(ticks, combinedPercent(Slippery's percent, traitPercent))`: one rounding. Archer 15 / 23 / 26 / 30,
+  Knight 12 / 18 / 21 / 24 (AR0: the combined percents 187.5 / 218.75 / 250 are exact binary fractions).
+- **Loadout precedence** (AR0's finding, needed by AR4): `createSimState` builds the weapons from
+  `config.loadout ?? world.loadout` (`createCombatState(config, loadout = config.loadout)` takes it as a new optional
+  argument) and passes the same to `createPartyState` as the run loadout. Identical for every non-endless config
+  (config is the world) and for every endless config today (none sets a run-level loadout).
+- The sim imports nothing from shared/characters.
+- **Spec** `characters/archerRoll.spec.ts` (10): no traits / `NEUTRAL_TRAITS` / the Knight's / {100, 100} hash the same
+  every tick; 140 %: 21 rolling ticks, every tick's step, 3.38 tiles to 1e-9 (the summed sub-steps; 45 resolver
+  calls, the Knight's 33); i-frames 15 / 23 / 26 / 30 and 12 / 18 / 21 / 24 through `stepPlayer` (Slippery I-III by
+  `grantCard`); a still enemy bullet on the player at roll tick 14 misses the Archer and hits the Knight; a roll into
+  a wall stops flush at the wall's face for both, a diagonal roll slides along it, never overlapping a wall; a roll at
+  an isolated pillar 0.2 off its line: the Archer slips round it (ends at (5.75, 3.85), past the 5.15 contact and
+  fully clear in z), the Knight's shorter roll ends on its face (5.15, 3.56); co-op `PartyConfig.traits` (3.38 / 2.5 /
+  2.5 for [Archer, Knight, none]) and the `SimConfig.traits` fallback; Wrecker; two Archer + Knight runs hash alike
+  every tick.
+- **Deviation:** the plan's "Wrecker's smash reaches a crate 3 tiles away" does not tell the characters apart: the
+  smash reaches `PLAYER_RADIUS + hitRadius` (0.85) past the step, so the Knight's 2.5-tile roll breaks a crate 3 tiles
+  ahead too. The spec checks 4 tiles (the Archer breaks it, the Knight does not) and 3 (both).
+- **Ran:** see AR4 (this commit was verified on the AR4 tree: AR4 changes only shared/run, shared/daily and the
+  tutorial's config; the sim suites below do not read them): `shared/characters` (archerRoll 10), `sim/player` 25,
+  `sim/runPlayer` 10, the golden runs, determinism and builds suites listed under AR4.

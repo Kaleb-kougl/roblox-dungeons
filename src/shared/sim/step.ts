@@ -10,7 +10,7 @@
 
 import { EMPTY_INPUT, type InputFrame } from "./input";
 import { clearEvents, type SimState } from "./state";
-import { killPlayerState, stepPlayer } from "./player";
+import { killPlayerState, playerTraits, stepPlayer } from "./player";
 import { stepCombat } from "./combat/combat";
 import { simWorldConfig, stepEndless, type EndlessConfig } from "./endless";
 import type { EncounterConfig } from "./combat/actors/encounter";
@@ -37,6 +37,7 @@ import { holdAbsoluteTimers } from "./pacts/holdTimers";
 import { clearGoldenEvents, type GoldenConfig } from "./golden/golden";
 import { stepGolden } from "./golden/stepGolden";
 import type { SolidCells } from "shared/dungeon";
+import type { PlayerTraits } from "./playerData";
 
 export { PLAYER_RADIUS, PLAYER_SPEED } from "./playerData";
 
@@ -123,8 +124,18 @@ export interface SimConfig {
 	actorSteerMover?: ActorMover;
 	/** What stands where at run start, plus room geometry for AI (E1.8). Absent: no actors. */
 	encounter?: EncounterConfig;
-	/** Weapon id per weapon set (E1.8; undefined / "" = empty set). Absent: DEFAULT_LOADOUT. */
+	/**
+	 * Weapon id per weapon set (E1.8; undefined / "" = empty set). Absent: DEFAULT_LOADOUT. With `endless`, the run
+	 * config's own loadout wins over floor 1's world's (docs/ARCHER.md AR0 / AR3: createSimState reads
+	 * `config.loadout ?? world.loadout`; for every other config the two are the same object).
+	 */
 	loadout?: ReadonlyArray<string | undefined>;
+	/**
+	 * Player 0's roll traits (docs/ARCHER.md AR3: the Archer's longer roll; player.ts playerTraits). Absent:
+	 * NEUTRAL_TRAITS, today's roll exactly. Read from the run config (never a floor's world config, like `scoring`); co-op
+	 * players read `party.traits[i]` first. Config, not hashed.
+	 */
+	traits?: PlayerTraits;
 	/** Stress mode: keeps about `stress.bullets` enemy bullets alive (harmless to the player). */
 	stress?: StressConfig;
 	/**
@@ -313,7 +324,7 @@ export function step(
 			return;
 		}
 	}
-	stepPlayer(state, input, world);
+	stepPlayer(state, input, world, state.player, state.combat.weapons, SOLO_PLAYER, playerTraits(config, SOLO_PLAYER));
 	stepCombat(state, input, world);
 	if (state.endless !== undefined) stepEndless(state, soloInputs, config, soloPrev);
 	if (run !== undefined) stepRun(state, soloInputs, config, soloPrev);
@@ -406,7 +417,8 @@ export function stepParty(
 			return;
 		}
 	}
-	for (let i = 0; i < n; i++) stepPlayer(state, inputs[i], world, playerAt(state, i), weaponsAt(state, i), i);
+	for (let i = 0; i < n; i++)
+		stepPlayer(state, inputs[i], world, playerAt(state, i), weaponsAt(state, i), i, playerTraits(config, i));
 	stepCombat(state, inputs[0], world, inputs);
 	if (state.endless !== undefined) stepEndless(state, inputs, config, partyPrev);
 	if (run !== undefined) stepRun(state, inputs, config, partyPrev);
