@@ -17,7 +17,7 @@ the web roll, and replay exactly as before. Endless (solo, co-op, daily, dev) an
 
 ## Status (2026-11-09)
 
-Plan only; nothing built. Eleven owner answers (2026-11-09, below) settle every call but one (after tuning); decisions
+AR0 audited (below); the rest planned. Eleven owner answers (2026-11-09, below) settle every call but one (after tuning); decisions
 ARD1-ARD17 are defaults for review except where they cite an answer. Tasks AR0-AR14.
 
 ## Owner answers (2026-11-09)
@@ -41,6 +41,82 @@ ARD1-ARD17 are defaults for review except where they cite an answer. Tasks AR0-A
 11. **Names:** "Knight" and "Archer". The screen's summary lines and the per-character overrides below are the working
     text.
 
+## AR0 findings (2026-11-09, on `cc22c8f`)
+
+Read on the branch's base. The tables above are corrected in place where the code disagreed (marked "AR0").
+
+**Weapon set 1, `DEFAULT_LOADOUT`, SWAP and `weaponSwapped`.**
+- Sim: `DEFAULT_LOADOUT` is the fallback in `createCombatState` (`config.loadout ?? DEFAULT_LOADOUT`, combat.ts 212)
+  and `createPartyState` (party.ts 90). SWAP is read only in `stepWeapons` (weapons.ts 107: flips whenever
+  `sets.size() > 1`, i.e. always). `weaponSwapped` is read by the sword (swap-in resets combo and guard, sword.ts 235),
+  the bow (cancels a charge, bow.ts 248), the co-op weapons phase (combat.ts 595-605, per player then OR-ed), the audio
+  cue (`sfx.player.swap`, view/audio/cues.ts 685) and telemetry (`weaponSwaps`, run/telemetry.ts 271). Builds:
+  `buildsOnSwap` (a swap ends a guard and its brace count).
+- View: `WeaponPanel` draws both sets (client/ui/hud/WeaponPanel.tsx 124); `view/watch.ts` `swapEdge` (an
+  `activeSet` change); sprites.ts / fxCues.ts / WeaponViewController read the set in hand only; the touch Swap button
+  (`play/touch/controls.ts` 29) and the binding `swap` (`play/bindings.ts` 110); the snapshot's `activeSet`.
+- Tutorial: the director's `bowInHand` / `heavyTick` (director.ts 401-411, the `bow` / `heavyArrow` skills); the bot's
+  `wield` (presses SWAP up to 4 times) and its combat E branch (tutorialBot.ts 640-660, 823); `run/tutorial.spec`'s
+  sweep-lock scenario swaps to the bow.
+- Harnesses / specs: `enemies.determinism.spec` presses SWAP at random (its one-weapon walkers already carry the weapon
+  in both sets), `variantTtk` (`[weapon, undefined]`), `buildTune` / `legendaryTune` (their bots swap or hold one
+  weapon), `weapons.spec` / `combat.determinism.spec` / `swordBow.determinism.spec` / `goldenCensus.spec`
+  (`DEFAULT_LOADOUT`), many builds specs arm `loadout: ["weapon.bow"]` on the floor world (one set: SWAP lands on an
+  empty hand today).
+- **The endless loadout is read from floor 1's world**, not the run config: `createSimState` passes `world.loadout` to
+  `createCombatState` / `createPartyState` (state.ts 389-394), so an endless `SimConfig.loadout` is ignored today. No
+  endless config sets one, and the specs set it on their floor worlds. AR3 makes the run config's win
+  (`config.loadout ?? world.loadout`; identical for every non-endless config, where config is the world).
+- `stepPlayer` receives the floor's world config (`simWorldConfig`, step.ts 287 / 383): traits must be read from the
+  run config and handed to it (AR3).
+
+**`ROLL_DASH_STEP` / `ROLL_DISTANCE`.** Only the sim reads them: `stepPlayer`'s one line (player.ts 212) and Wrecker's
+roll smash (the same `dist`); `ROLL_DISTANCE` only in player.spec, `ROLL_DASH_STEP`'s hex in constants.spec. The view
+reads `ROLL_TICKS` (the roll animation `stretched` over 21 ticks, sprites.ts 390) and `rollTicks` edges (dust,
+afterimages, squash, the audio watch): nothing assumes 2.5 tiles. Bots roll on timers (`TUNE_POOL_ROLL_TICKS`) or into
+volleys (`legendaryTune` `DEFENSE_ROLL_*`); none measures the roll's length.
+
+**Where a run config is rebuilt from world + seed + party.** Client: `SimController.makeRun` (solo, daily, dev, the
+tutorial, R and Again restarts all go through it: `buildWorldSetup(world, seed, { atBossDoor, dev })`) and
+`startCoop` (`partyRunStarted`: `buildWorldSetup(kind, seed, { atBossDoor: false, partySize })`): two call sites, not
+three. Server: `RunSessionRegistry.start` (runSessions.ts 253, the session's setup that segments validate against)
+and the legacy `validateRun` (validate.ts 239: `buildRunConfig(seed, { world: limits.world })`, `LIVE_RUN_LIMITS`
+world "endless", RunValidationService). Tools: `run/testing` bots (`endlessBot`, `partyBot`, `pactsBot`, `vaultRun`,
+`buildTune`, `tutorialBot`) and the censuses call `buildEndlessRunConfig` / `buildTutorialRunConfig` directly; the
+replay specs rebuild with the same functions. AR4 keeps `buildEndlessRunConfig` without characters exactly as today
+(both weapons), so every tool, census and `endlessSpawn.spec`'s `validateRun(LIVE_RUN_LIMITS)` round trip are
+unchanged; only the world registry's builders (`buildWorldSetup`) apply characters.
+
+**Who gets what, against the code.** The table holds, with three corrections in what an item reads (the character
+column is unchanged): Skewer reads Overkill's streak line (onKill.ts 245), not arrows, and is the Archer's only
+because Piercing Arrows is; Rebuke also fires on roll braces (`rebukeRolls`, riposte.ts 268), the Knight's only
+because Riposte is; Full Heart's beam deals the sword's `finisherDamage` read through the weapon registry
+(`FULL_HEART_WEAPON_ID`), so the Archer's charged-arrow beam works without the sword in the loadout. Confirmed: Swift
+Strikes scales every weapon's cooldown (`attackTicks` in weapons.ts 126) and the sword's recoveries (sword.ts 205 /
+222); Piercing Arrows is `bowPierce` (bow.ts 168); Mirror Cloak is read only by the sword's guard (sword.ts 278);
+Ballista only by the bow's charge and heavy arrow; Riposte, Thunder Guard and Stillwater only by the guard
+(riposte.ts); Ember Wake fires from the slot in hand (weapons.ts 103); Wrecker's roll smash and piece breaks, Bastion's
+roll brace, Citadel and Stone Heart read any brace; Storm Blade both the finisher (duos.ts 205) and the 5th arrow hit
+(duos.ts 227). Pools: Knight 18 / 11 classic / 16 duos / 4 relics, Archer 19 / 12 / 17 / 3 (AR1's spec counts them).
+
+**Empty pools.** A pedestal nobody can take stays inert and is not drawn (`pedestalOffered`); the vault's Rare share
+with no relic left gives `relicFallbackBoosts` (2) boost draws (stepTreasure.ts 206); Greed with an empty pool is
+dimmed `PactDim.NO_LEGENDARY` (stepPacts.ts 138). All three read the masked pools after AR2, unchanged.
+
+**Slippery with the Archer's i-frames.** `combinedPercent(Slippery, 125)` is 187.5 / 218.75 / 250, not an integer
+(Warbanner's Swift aura, 168.75, is the precedent); `scaleTicks` stays exact (12 x 187.5 + 50 = 2300, etc.):
+23 / 26 / 30 ticks as planned.
+
+**Combat E's users.** `placement: "cover"` / `coverTiles` (tutorial.ts 218 / 494, tutorialLayout.ts 100) only combat
+E; the `weapons` highlight only the `bow` step (steps.ts 226 -> GameHud's WeaponPanel); prompts
+`tutorial.prompt.bow.*` (placeholder manifest); the director's bow reads; the bot's combat E branch; specs
+`run/tutorial.spec` "lesson E", the sweep lock's arrows, `tutorial/tutorial.spec`'s step lists and the pinned metrics
+row `[9, 5.3, 2]`.
+
+**The remembered pick (ARD12).** The settings document (v2, overrides-only groups `juice` / `controls` / `audio` /
+`display`, shared/settings doc.ts): `display` (`DisplayOverrides`, its keys in `DISPLAY_SETTING_KEYS`) takes a
+`character` key (only a non-default pick stored), so the document stays v2 like every display key before it.
+
 ## What the code gives us (read on `main` @ `d007b503`)
 
 Paths under `src/shared/` unless noted.
@@ -51,7 +127,8 @@ Paths under `src/shared/` unless noted.
 | The weapon sets (weapon index, cooldown, scratch) are hashed per player (`writeWeaponsHash`, party weapons in the party group) | `weapons.ts`, `party.ts` | A loadout change moves the state hash but needs no new hashed field; eligibility can be read from hashed state |
 | SWAP flips `activeSet` whenever `sets.size() > 1`, which is always true (2 sets, even empty): a `[sword, undefined]` player can swap to an empty hand | `weapons.ts` `stepWeapons` | AR2: a swap onto an empty set does nothing (no event, no `buildsOnSwap`). Unchanged for every two-weapon loadout |
 | The roll: `ROLL_TICKS` 21 (0.35 s), i-frames `ROLL_IFRAME_TICKS` 12 (Slippery scales them), a dash of `ROLL_DASH_TICKS` 12 at `ROLL_SPEED` 11 then 9 ticks at `ROLL_RECOVERY_SPEED` 2: `ROLL_DISTANCE` 2.5 tiles. The dash step `ROLL_DASH_STEP` (0.1833) is one constant read in `stepPlayer`; `movePlayer` splits it into `MAX_MOVE_STEP` (0.1) sub-steps; Wrecker's roll smash sweeps the same step | `sim/playerData.ts` 63-80, `sim/player.ts` 178-216 | The Archer's larger dodge is one scaled step at one line and one more percent in `rollIframeTicks` (AR3); the roll's timing, animation and every roll-timed rule stay as they are |
-| No live world sets a loadout: `buildRunConfig` / `buildEndlessRunConfig` take seed + party size (+ dev options) | `run/config.ts`, `run/endless.ts`, `run/worlds.ts` | The character has to reach `buildWorldSetup` on the client (3 call sites in `SimController`) and the server (`runSessions.ts` 253) |
+| No live world sets a loadout: `buildRunConfig` / `buildEndlessRunConfig` take seed + party size (+ dev options) | `run/config.ts`, `run/endless.ts`, `run/worlds.ts` | The character has to reach `buildWorldSetup` on the client (2 call sites in `SimController`: `makeRun` for solo / daily / dev / tutorial / R / Again, `startCoop` for `partyRunStarted`; AR0) and the server (`runSessions.ts` 253; the legacy `validateRun` builds with `buildRunConfig` and `LIVE_RUN_LIMITS`) |
+| An endless config's own `SimConfig.loadout` is never read: `createSimState` builds the weapons (and `createPartyState` the run loadout) from floor 1's world config, and `stepPlayer` gets `simWorldConfig` (the floor's) (AR0) | `sim/state.ts` 389-394, `sim/step.ts` 287 / 383 | AR3 / AR4: the run config's `loadout` wins over the world's (`config.loadout ?? world.loadout`, identical where config is the world); traits are read from the run config, never the floor's |
 | `StartRunRequest.classId` ("the owner's class id, stored with leaderboard entries, display only", max `MAX_CLASS_ID_CHARS`) is accepted and stored on the session and leaderboard posting; **no client sends it** | `run/runSessions.ts` 45 / 80 / 183 / 273, `server/services/RunSessionService.ts` 333, `leaderboard/posting.ts` 32 | Becomes the validated character id (AR5); the board field already exists (owner answer 4) |
 | The theme already reserves five classes, `CLASS_IDS` = vanguard, ranger, pyromancer, tinkerer, hexblade (web contract): every pack fills `class.<id>` (asset, colour role, `.name`); vale draws `class.vanguard` with the SmallScaleInt knight (free edition, grid sheets in `art/vendor/smallscale-knight/`); `class.ranger` is a placeholder capsule (`#7fae6a`, "Ranger") | `theme/contract.ts` 475, `theme/packs/placeholder/manifest.ts`, `theme/packs/vale/layout.ts`, `art/atlases.json` | The Knight is `class.vanguard`, the Archer `class.ranger` (ARD1): no contract change, only the `.name` strings |
 | The view draws every player as one visual, `ACTOR_VIEW.playerVisualId` = `class.vanguard` | `view/config.ts` 104, `client/controllers/render/ActorRenderController.ts` 648 | AR9: the visual per player from their character |
@@ -83,8 +160,10 @@ Read from the rules (the boon / duo files and the descriptions). **K** Knight on
 | Riposte (Counterstrike) | the guard | **K** |
 | Ballista (Siege Bolt) | the heavy arrow, the charge | **A** |
 | Wrecker (Demolition) | roll smash, every piece the owner breaks | both |
-| Fire Arrows (Ember Wake + Piercing Arrows), Conductor (Chain Spark + Piercing Arrows), Skewer (Overkill + Piercing Arrows), Dragon Bolt (Ballista + Ember Wake) | arrows | **A** (derived) |
-| Thunder Guard, Stillwater, Rebuke (each with Riposte) | the guard | **K** (derived) |
+| Fire Arrows (Ember Wake + Piercing Arrows), Conductor (Chain Spark + Piercing Arrows), Dragon Bolt (Ballista + Ember Wake) | arrows | **A** (derived) |
+| Skewer (Overkill + Piercing Arrows) | Overkill's streak line (weapon-free; AR0) | **A** (derived from Piercing Arrows) |
+| Thunder Guard, Stillwater (each with Riposte) | the guard | **K** (derived) |
+| Rebuke (Bastion + Riposte) | guard braces and roll braces (`rebukeRolls`; AR0) | **K** (derived from Riposte) |
 | Storm Blade (finishers and every 5th arrow hit), Full Heart (finishers and charged arrows), Citadel (every brace) | both weapons / any brace | both, own text |
 | Blazing Trail, Shrapnel, Chain Reaction, Close Call, Gold Rush, Unshaken, Supernova, Stone Heart, Powder Keg, Happy Hour | weapon-free | both |
 | Mirror Cloak (relic) | the guard's erases | **K** |
