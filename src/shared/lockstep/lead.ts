@@ -9,7 +9,8 @@
  *   echoed(echo, now)                        the server's echo: the trip of its tick X joins the window; the lead jumps
  *                                            up to the target at once; a late bumps it to that late's own trip
  *   deadline(matched, now)                   checkDeadline's per-tick result: today's miss counter while not echoing;
- *                                            while echoing a mismatch bumps like a late of unknown trip
+ *                                            while echoing a mismatch is only counted (its late is the echo's:
+ *                                            only echoed lates bump, Design 10)
  *   frame(now)                               once per pump: the fall (after a hold, a tick per step)
  *   lead()                                   the net lead, an integer in [minLead, maxLead]
  *
@@ -40,7 +41,10 @@ const ascending = (a: number, b: number) => a < b;
 
 /** The server's echo for this client (docs/FRAME_PACING.md Design 9): tick undefined = none since the last batch. */
 export interface LeadEcho {
-	/** The newest tick the server received from this client since its last broadcast (undefined: none). */
+	/**
+	 * The tick of the frame the server received from this client with the lowest slack since its last broadcast
+	 * (undefined: none). Echoed ticks increase from one echo to the next (each window's frames arrived after the last).
+	 */
 	readonly tick: number | undefined;
 	/** How many ticks before its deadline that tick arrived (<= 0: late). */
 	readonly slack: number;
@@ -67,7 +71,7 @@ export interface LeadStats {
 	readonly lates: number;
 	/** checkDeadline mismatches (the finalized frame differs from the one sent), echoing or not. */
 	readonly mismatches: number;
-	/** Bumps while echoing: echoes with lates, and mismatches. */
+	/** Bumps while echoing: echoes with lates. */
 	readonly bumps: number;
 	/** Jumps up to the target (L* above the lead). */
 	readonly raises: number;
@@ -105,7 +109,10 @@ export class LeadController {
 	/** The net lead when the target was sent (a late bumps past it, not past a lead already raised since). */
 	private readonly recLead: number[] = [];
 	private newestSent: number | undefined;
-	/** The newest tick echoed: records at or below it are spent (only the newest tick of a batch is ever echoed). */
+	/**
+	 * The newest tick echoed: records at or below it are spent (every later echo names a frame received after this one,
+	 * so a later tick: the frames of one echo window all arrive after the previous window's).
+	 */
 	private echoedThrough: number | undefined;
 
 	/** The trip window, oldest first: the local time each echo arrived and its net trip (ticks). */
@@ -246,13 +253,10 @@ export class LeadController {
 			if (this.leadValue < this.maxLead) this.leadValue++;
 			return;
 		}
-		if (matched) return;
-		// The input definitely missed: a late of unknown trip.
-		this.mismatchCount++;
-		this.bumpCount++;
-		if (this.leadValue < this.maxLead) this.leadValue++;
-		const clock = this.clock(now);
-		if (clock !== undefined) this.restartHold(clock);
+		// While echoing a mismatch is only counted: the input was late, and the echo's lates already bump the lead to
+		// that late's own trip (Design 10: a mismatch bumps only without an echo). Bumping here too raised the lead a
+		// tick per late input on top of the echo's bump (FP12's spike overshoot).
+		if (!matched) this.mismatchCount++;
 	}
 
 	/** Once per pump: expires the window, raises to the target, steps the fall. */

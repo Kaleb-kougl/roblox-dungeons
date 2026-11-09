@@ -50,7 +50,8 @@
  * (`sample(false)`), and that sample's buttons are OR-ed into the next frame actually sent (axes from the newer sample),
  * so a one-frame tap on a fall's skipped tick becomes a one-tick hold one tick later instead of nothing. `misses`
  * counts every input known to have missed: echoed lates while echoing, plus `inputsEqual` mismatches while not (no
- * double count); `mismatches` counts every mismatch. Nothing here reaches the sim: only which tick an input is sent for
+ * double count: the echo that turns echoing on adds only its lates beyond the mismatches already counted);
+ * `mismatches` counts every mismatch. Nothing here reaches the sim: only which tick an input is sent for
  * (and a latched button) changes. With `tunables.lead` undefined: the legacy miss counter only, exactly as before
  * (`sample` is called only when sending; an echo is ignored).
  *
@@ -214,6 +215,11 @@ export class LockstepClient implements RunView {
 	private leadClock: number | undefined;
 	/** Buttons of samples not sent (a fall's skipped tick), OR-ed into the next frame sent (the tap latch). */
 	private latched = 0;
+	/**
+	 * Mismatches counted as misses while not echoing that no echoed late has matched yet: the echo that turns echoing
+	 * on reports lates of inputs whose mismatches may already be counted, so it adds only its lates beyond these.
+	 */
+	private unmatchedMisses = 0;
 	/** The playout clock (docs/FRAME_PACING.md), when `tunables.pacing` is defined. */
 	private readonly pacer: PlayoutPacer | undefined;
 	/** A pump passed `now` with a pacer: pacing is on for the rest of the run. */
@@ -425,9 +431,17 @@ export class LockstepClient implements RunView {
 			if (clock !== undefined) {
 				const e = echo !== undefined ? decodeInputEcho(echo, firstTick) : undefined;
 				if (e !== undefined) {
+					const was = ctl.echoing();
 					ctl.echoed(e, clock);
-					// While echoing the echo's lates are the misses (their mismatches are not counted again).
-					if (ctl.echoing()) this.misses += e.lates;
+					if (ctl.echoing()) {
+						// While echoing the echo's lates are the misses (their mismatches are not counted again); the
+						// echo that turns it on skips the lates already counted as mismatches.
+						this.misses += was ? e.lates : math.max(0, e.lates - this.unmatchedMisses);
+						this.unmatchedMisses = 0;
+					} else {
+						// Not echoing (a "none" echo): its lates match mismatches counted, or still to come.
+						this.unmatchedMisses = math.max(0, this.unmatchedMisses - e.lates);
+					}
 				}
 				ctl.received(clock);
 			}
@@ -621,7 +635,10 @@ export class LockstepClient implements RunView {
 		const ctl = this.leadCtl;
 		if (ctl !== undefined) {
 			// While echoing the echo's lates are the misses: a mismatch then is not counted again.
-			if (!matched && !ctl.echoing()) this.misses++;
+			if (!matched && !ctl.echoing()) {
+				this.misses++;
+				this.unmatchedMisses++;
+			}
 			ctl.deadline(matched, this.leadClock ?? NO_CLOCK);
 			return;
 		}

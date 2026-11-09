@@ -5,9 +5,10 @@
  *   clock        step(now) finalizes the ticks real time has reached since the start (at most maxTicksPerStep per
  *                call), through the relay (relay.ts: deadlines, repeat-last, leavers), into the merged log (log.ts),
  *                and returns merged batches to broadcast (wire.ts) every `broadcastEvery` ticks
- *   inputs       submitInput(userId, firstTick, data, now?): the player's raw input batch for future ticks. Its
- *                newest tick's slack (how early it arrived, docs/FRAME_PACING.md Design 9) goes back to that player
- *                only, as the input echo of the next broadcast (`MergedBroadcast.echoes`); inputStats(i) totals it
+ *   inputs       submitInput(userId, firstTick, data, now?): the player's raw input batch for future ticks. The
+ *                frame with the lowest slack (how early it arrived, docs/FRAME_PACING.md Design 9) of all the
+ *                player's batches since the last broadcast goes back to that player only, as the input echo of the
+ *                next broadcast (`MergedBroadcast.echoes`); inputStats(i) totals each batch's
  *   hashes       reportHashes(userId, ticks, hashes): batched reports (every `hashEvery` ticks), resent by the client
  *                until acknowledged (`ackTick`, the highest decided tick, goes out with every broadcast); the ledger
  *                (ledger.ts) agrees them in order. A disagreement is a DESYNC: logged with its tick and the hashes by
@@ -47,8 +48,9 @@ export interface MergedBroadcast {
 	readonly data: buffer;
 	/**
 	 * Per player index: that player's input echo (wire.ts `encodeInputEcho`, against this broadcast's firstTick): the
-	 * newest input received from them since the previous broadcast, or "none" (with the lates since, if any). Each goes
-	 * to its own player only (docs/FRAME_PACING.md FPD14).
+	 * input frame received from them since the previous broadcast that arrived with the lowest slack (the first frame
+	 * of the latest-arriving batch, as a rule), or "none" (with the lates since, if any). Each goes to its own player
+	 * only (docs/FRAME_PACING.md FPD14).
 	 */
 	readonly echoes: ReadonlyArray<buffer>;
 }
@@ -59,9 +61,9 @@ export interface InputStats {
 	readonly samples: number;
 	/** Late frames. */
 	readonly lates: number;
-	/** The smallest slack (0 without samples). */
+	/** The smallest batch slack (each batch's lowest: its first frame's; 0 without samples). */
 	readonly slackMin: number;
-	/** The mean slack (0 without samples). */
+	/** The mean batch slack (0 without samples). */
 	readonly slackMean: number;
 }
 
@@ -128,7 +130,7 @@ export class LockstepSession {
 	private firstClaimTick: number | undefined;
 	private claimedFinalTick: number | undefined;
 	private endInfo: LockstepEnd | undefined;
-	/** Per player: the newest batch since the last echo (its tick and slack), and the late frames since. */
+	/** Per player: the lowest-slack frame received since the last echo (its tick and slack), and the late frames since. */
 	private readonly echoPending: boolean[] = [];
 	private readonly echoTick: number[] = [];
 	private readonly echoSlack: number[] = [];
@@ -208,10 +210,12 @@ export class LockstepSession {
 	/**
 	 * A player's input batch for ticks firstTick.. (wire.ts input batch). Undefined result: not a member / not running.
 	 * `now` (the clock `startedAt` uses) places the receipt within the tick being finalized: without it the receipt is
-	 * at finalizedTicks(). A batch with any frame accepted or late is recorded for the player's next echo (its newest
-	 * tick X and slack X + 1 - R, R = finalizedTicks() + clamp(pos - finalizedTicks(), 0, 1) with pos the real-time
-	 * tick position: a stalled server's backlog never counts against the client), replacing an earlier one since the
-	 * last echo; its late frames add up until the echo goes out. docs/FRAME_PACING.md Design 9.
+	 * at finalizedTicks(). A batch with any frame accepted or late is recorded for the player's next echo: its lowest
+	 * slack is its first frame's, X + 1 - R for X = firstTick, R = finalizedTicks() + clamp(pos - finalizedTicks(), 0,
+	 * 1) with pos the real-time tick position (a stalled server's backlog never counts against the client); it
+	 * replaces the pending frame since the last echo only when its slack is lower (the input that waited longest is
+	 * the one the client's lead must cover; later batches carry later ticks, so the echoed ticks still increase from
+	 * one echo to the next). Its late frames add up until the echo goes out. docs/FRAME_PACING.md Design 9.
 	 */
 	submitInput(userId: number, firstTick: number, data: unknown, now?: number): SubmitResult | undefined {
 		const i = this.indexOf(userId);
@@ -228,10 +232,12 @@ export class LockstepSession {
 				const into = pos - finalized;
 				if (into === into) receipt = finalized + math.clamp(into, 0, 1);
 			}
-			const slack = firstTick + frames.size() - receipt;
-			this.echoPending[i] = true;
-			this.echoTick[i] = firstTick + frames.size() - 1;
-			this.echoSlack[i] = slack;
+			const slack = firstTick + 1 - receipt;
+			if (!this.echoPending[i] || slack < this.echoSlack[i]) {
+				this.echoPending[i] = true;
+				this.echoTick[i] = firstTick;
+				this.echoSlack[i] = slack;
+			}
 			this.echoLates[i] += result.late;
 			const n = this.statSamples[i];
 			this.statSlackMin[i] = n === 0 ? slack : math.min(this.statSlackMin[i], slack);

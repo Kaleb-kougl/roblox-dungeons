@@ -55,7 +55,7 @@ export const MAX_HASH_BATCH = 32;
 
 /**
  * The input echo (docs/FRAME_PACING.md Design 9, wire.ts `encodeInputEcho`): every `lockstepFrames` carries, for its
- * recipient only, how early that member's newest input reached the server. Its slack is sent in 1/this of a tick.
+ * recipient only, how early that member's input with the lowest slack since the last echo reached the server. Its slack is sent in 1/this of a tick.
  */
 export const INPUT_ECHO_SLACK_SCALE = 16;
 /** Bytes of one input echo: u8 flags, i32 tick offset, i16 slack, u8 lates. */

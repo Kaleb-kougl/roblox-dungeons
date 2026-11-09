@@ -14,7 +14,7 @@
  *   2-4 per moving one per tick (8 players moving: ~25 bytes per tick, ~1.5 KB/s).
  *
  * Input echo (server -> one client, the trailing `echo` of `lockstepFrames`; docs/FRAME_PACING.md Design 9): how early
- * that member's own newest input reached the server, INPUT_ECHO_BYTES: u8 flags (bit 0: has a tick), i32 the tick as
+ * that member's own input that waited longest since the last echo (lowest slack) reached the server, INPUT_ECHO_BYTES: u8 flags (bit 0: has a tick), i32 the tick as
  * an offset from the batch's firstTick, i16 slack in 1 / INPUT_ECHO_SLACK_SCALE tick (rounded, saturating), u8 late
  * frames since the last echo (saturating). Without a tick (no input received since the last echo) the offset and
  * slack are 0; the lates may still be counted. Never enters the log, the validator or a hash.
@@ -265,9 +265,9 @@ export class MergedDecoder {
 // ---------------------------------------------------------------------------------------------
 // Input echo
 
-/** How early a player's newest input reached the server (docs/FRAME_PACING.md Design 9). */
+/** How early a player's input reached the server (docs/FRAME_PACING.md Design 9): the lowest-slack one since the last echo. */
 export interface InputEcho {
-	/** The newest tick received from this player since the last echo; undefined: nothing received since. */
+	/** The tick of the frame received with the lowest slack since the last echo; undefined: nothing received since. */
 	readonly tick: number | undefined;
 	/** Ticks before its deadline it arrived (X + 1 - the receipt position); <= 0 when late. 0 without a tick. */
 	readonly slack: number;

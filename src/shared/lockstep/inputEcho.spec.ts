@@ -1,6 +1,6 @@
 // The input echo (docs/FRAME_PACING.md Design 9, FP9): the wire format (round trips, quantization, saturation,
-// malformed buffers refused) and the server session's side: each player's newest input since the last broadcast, its
-// slack (how many ticks before its deadline it arrived, the receipt placed inside the tick being finalized), late
+// malformed buffers refused) and the server session's side: each player's lowest-slack input frame since the last
+// broadcast (a batch's first frame; across batches the worse one), its slack (how many ticks before its deadline it arrived, the receipt placed inside the tick being finalized), late
 // counts, once per broadcast, a stalled server's backlog never counted against the client, and inputStats totals.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { EMPTY_INPUT, SIM_HZ, type InputFrame } from "shared/sim";
@@ -161,9 +161,10 @@ describe("LockstepSession input echo", () => {
 		for (const k of [1, 3, 6, 12]) {
 			const base = s.finalizedTicks();
 			const pos = base + 0.3;
-			// A two-frame batch whose newest tick X is k ticks past the tick being finalized: X + 1 - pos = k + 0.7.
+			// A two-frame batch whose first tick X (its lowest slack) is k ticks past the tick being finalized:
+			// X + 1 - pos = k + 0.7.
 			const x = base + k;
-			expect(s.submitInput(P0, x - 1, encodeInputBatch(frames(2)), at(pos))?.accepted).toBe(2);
+			expect(s.submitInput(P0, x, encodeInputBatch(frames(2)), at(pos))?.accepted).toBe(2);
 			const e = nextEcho(s, 0);
 			expect(e.tick).toBe(x);
 			expect(math.abs(e.slack - (x + 1 - pos)) <= SLACK_TOLERANCE).toBe(true);
@@ -181,23 +182,43 @@ describe("LockstepSession input echo", () => {
 		expect(nextEcho(s, 0)).toEqual({ tick: undefined, slack: 0, lates: 0 });
 	});
 
-	it("a late input echoes slack <= 0 and its late frames; a later batch replaces the tick, the lates add up", () => {
+	it("a late input echoes slack <= 0 and its late frames; the window keeps the lowest slack, the lates add up", () => {
 		const s = echoSession();
 		advanceTo(s, 10.5);
 		const late = s.submitInput(P0, 8, encodeInputBatch(frames(2)), at(10.5));
 		expect(late).toEqual({ accepted: 0, late: 2, refused: 0 });
 		const e = nextEcho(s, 0);
-		expect(e.tick).toBe(9);
-		expect(e.slack <= 0).toBe(true);
+		expect(e.tick).toBe(8);
+		expect(math.abs(e.slack - (8 + 1 - 10.5)) <= SLACK_TOLERANCE).toBe(true);
 		expect(e.lates).toBe(2);
 
 		const base = s.finalizedTicks();
-		s.submitInput(P0, base - 1, encodeInputBatch(frames(1)), at(base + 0.5)); // late
-		s.submitInput(P0, base - 1, encodeInputBatch(frames(3)), at(base + 0.5)); // 1 late, 2 on time
+		s.submitInput(P0, base - 2, encodeInputBatch(frames(1)), at(base + 0.5)); // late, slack -1.5
+		s.submitInput(P0, base - 1, encodeInputBatch(frames(3)), at(base + 0.5)); // 1 late, 2 on time, slack -0.5
 		const e2 = nextEcho(s, 0);
-		expect(e2.tick).toBe(base + 1);
-		expect(math.abs(e2.slack - 1.5) <= SLACK_TOLERANCE).toBe(true);
+		expect(e2.tick).toBe(base - 2);
+		expect(math.abs(e2.slack + 1.5) <= SLACK_TOLERANCE).toBe(true);
 		expect(e2.lates).toBe(2);
+	});
+
+	it("two batches in one echo window echo the worse one, whichever arrived first", () => {
+		const s = echoSession();
+		advanceTo(s, 10.5);
+		const base = s.finalizedTicks();
+		// Sent at a lead that fell: the later batch has the lower slack (base + 3 + 1 - (base + 0.8) = 3.2 < 4.7).
+		s.submitInput(P0, base + 4, encodeInputBatch(frames(1)), at(base + 0.3)); // slack 4.7
+		s.submitInput(P0, base + 3, encodeInputBatch(frames(2)), at(base + 0.8)); // slack 3.2
+		const e = nextEcho(s, 0);
+		expect(e.tick).toBe(base + 3);
+		expect(math.abs(e.slack - 3.2) <= SLACK_TOLERANCE).toBe(true);
+		// The worse one first: a later, better batch does not replace it.
+		const b2 = s.finalizedTicks();
+		s.submitInput(P0, b2 + 2, encodeInputBatch(frames(1)), at(b2 + 0.5)); // slack 2.5
+		s.submitInput(P0, b2 + 6, encodeInputBatch(frames(1)), at(b2 + 0.6)); // slack 6.4
+		const e2 = nextEcho(s, 0);
+		expect(e2.tick).toBe(b2 + 2);
+		expect(math.abs(e2.slack - 2.5) <= SLACK_TOLERANCE).toBe(true);
+		expect(e2.lates).toBe(0);
 	});
 
 	it("goes into the next broadcast only once; a player with nothing new gets none", () => {
@@ -258,14 +279,14 @@ describe("LockstepSession input echo", () => {
 		advanceTo(s, 10);
 		s.submitInput(P1, 13, encodeInputBatch(frames(1))); // slack 4
 		s.submitInput(P1, 11, encodeInputBatch(frames(1))); // slack 2 (replaces the echo, both counted)
-		s.submitInput(P1, 8, encodeInputBatch(frames(2))); // late 2, slack 0
+		s.submitInput(P1, 8, encodeInputBatch(frames(2))); // late 2, slack -1 (its first frame's)
 		advanceTo(s, 20);
 		s.submitInput(P1, 25, encodeInputBatch(frames(1))); // slack 6
 		const st = s.inputStats(1);
 		expect(st.samples).toBe(4);
 		expect(st.lates).toBe(2);
-		expect(st.slackMin).toBe(0);
-		expect(st.slackMean).toBe(3);
+		expect(st.slackMin).toBe(-1);
+		expect(st.slackMean).toBe(2.75);
 		expect(s.inputStats(0).samples).toBe(0);
 	});
 });

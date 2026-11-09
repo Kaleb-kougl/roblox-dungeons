@@ -458,7 +458,7 @@ export interface ServerToClientEvents {
 	 * Co-op lockstep: merged frames for ticks firstTick.. (shared/lockstep wire.ts merged batch). The ONLY input a party
 	 * client's sim ever steps with. `hashAck`: the highest tick whose hash reports the server decided (the client stops
 	 * resending those). The verdict comes as `runFinished` to every member (code "desync" on a desync). `echo`: how early
-	 * this member's own newest input reached the server (wire.ts `encodeInputEcho`, against `firstTick`;
+	 * this member's own lowest-slack input since the last echo reached the server (wire.ts `encodeInputEcho`, against `firstTick`;
 	 * docs/FRAME_PACING.md Design 9). Each member gets only its own echo (one fire per member, FPD14); the merged `data`
 	 * is the same for everyone. A malformed echo is ignored, never fatal.
 	 */

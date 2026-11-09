@@ -484,7 +484,7 @@ describe("LeadController", () => {
 		expect(s.lead <= lead + 1).toBe(true);
 	});
 
-	it("a mismatch while echoing bumps one tick and restarts the fall hold", () => {
+	it("a mismatch while echoing is only counted: no bump, the fall goes on (Design 10)", () => {
 		const trace = new Trace();
 		trace.run({ seconds: 10, trip: () => 12 });
 		const high = trace.ctl.lead();
@@ -501,10 +501,12 @@ describe("LeadController", () => {
 		const ctl = trace.ctl;
 		const before = ctl.lead();
 		const fallsBefore = ctl.stats().falls;
+		const bumpsBefore = ctl.stats().bumps;
 		const at = trace.now();
 		ctl.deadline(false, at);
-		expect(ctl.lead()).toBe(before + 1);
+		expect(ctl.lead()).toBe(before);
 		expect(ctl.stats().mismatches).toBe(1);
+		expect(ctl.stats().bumps).toBe(bumpsBefore);
 		let nextFallAt: number | undefined;
 		trace.run({
 			seconds: 2,
@@ -513,8 +515,9 @@ describe("LeadController", () => {
 				if (nextFallAt === undefined && t.ctl.stats().falls > fallsBefore) nextFallAt = t.now();
 			},
 		});
+		// The fall's hold was not restarted: the next step comes within one fall step.
 		const waited = (nextFallAt ?? math.huge) - at;
-		expect(waited >= LEAD.fallHoldSec - 1e-6 && waited <= LEAD.fallHoldSec + 2 / SIM_HZ).toBe(true);
+		expect(waited <= LEAD.fallStepSec + 2 / SIM_HZ).toBe(true);
 	});
 
 	it("ignores hitched sends' trips but counts their lates (a tick past the lead they were sent with)", () => {
