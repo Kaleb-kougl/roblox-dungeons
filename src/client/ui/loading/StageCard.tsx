@@ -3,7 +3,7 @@ import { useSelector } from "@rbxts/react-reflex";
 import { selectStageCover } from "client/store";
 import { Text, useHudScale } from "client/ui/hud";
 import { str } from "client/ui/theme";
-import { LOADING_VIEW, STAGE_STRINGS, STAGE_VIEW } from "shared/view";
+import { LOADING_STRINGS, LOADING_VIEW, STAGE_STRINGS, STAGE_VIEW } from "shared/view";
 import { HUD_VIEW, NEW_BEST_ROLE } from "shared/view/hud";
 import { Cover, ProgressBar } from "./parts";
 
@@ -33,8 +33,10 @@ export interface StageCardProps {
  * Enabled while a cover is up (the `visible` binding). Centre column under the HUD's UIScale (useHudScale):
  *
  *   run start    the label (`stage.starting` "Starting run...", `stage.forging` "Forging floor {floor}...",
- *                `stage.building` "Building...") over a slim bar (STAGE_VIEW.barHeight, StageLoad.fraction) and, once
- *                the run is built, floor 1's seeded roster under it (docs/DAILY.md DS2: `Swarmer · Bruiser`)
+ *                `stage.building` "Building...") over a slim bar (STAGE_VIEW.barHeight, StageLoad.fraction), during the
+ *                asset soft wait (docs/STAGE_ASSETS.md SA5 / SA19, only past showProgressAfterSec with something
+ *                missing) the join screen's `loading.progress` "Loading {done} / {total}" and, once the run is built,
+ *                floor 1's seeded roster under it (docs/DAILY.md DS2: `Swarmer · Bruiser`)
  *   floor change the card: `stage.floorCard` ("Floor 4") in big text, the biome line (`biome.<n>.name`, "Ancient
  *                Halls"), on a boss floor `stage.bossFloor` ("Boss floor") and one second line (shared/view/hud
  *                stageCardLine, docs/DAILY.md DSD13): the roster's `New: Imp` on a floor where kinds join, else, on a
@@ -145,12 +147,26 @@ export function StageCard(props: StageCardProps) {
 				transparency={fade}
 			/>,
 		);
+		const assets = stage.assets;
+		if (assets !== undefined) {
+			rows.push(
+				<Text
+					key="Assets"
+					order={3}
+					width={width}
+					color="uiTextDim"
+					align={Enum.TextXAlignment.Center}
+					transparency={fade}
+					text={str(LOADING_STRINGS.progress, { done: assets.done, total: assets.total })}
+				/>,
+			);
+		}
 		const line = stage.line;
 		if (line !== undefined) {
 			rows.push(
 				<Text
 					key="Line"
-					order={3}
+					order={4}
 					width={width}
 					color={line.gold ? NEW_BEST_ROLE : "uiTextDim"}
 					align={Enum.TextXAlignment.Center}

@@ -2,7 +2,7 @@ import React, { joinBindings, useMemo } from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
 import { selectBindings, selectInputDevice, selectTutorialEnded, type GameState } from "client/store";
 import { draftHint, keyDevice } from "shared/play";
-import { useHudFont, hudText, role, str, themePack } from "client/ui/theme";
+import { hudText, role, str, uiImage, useHudFont, useUiArt } from "client/ui/theme";
 import { BOON_MAX_LEVEL, CardKind, DRAFT_OFFER_COUNT } from "shared/sim";
 import type { ColorRole } from "shared/theme";
 import {
@@ -138,10 +138,10 @@ function FlatLayer(props: {
 
 /** One legendary skull on the face's top corner (only with the rare face art and the skull's own image). */
 function Skull(props: { side: "left" | "right"; ui: DraftCardUi; visible: React.Binding<boolean> }) {
-	const pack = themePack();
-	const face = pack?.image(DRAFT_SKIN.rare);
+	useUiArt();
+	const face = uiImage(DRAFT_SKIN.rare);
 	const id = props.side === "left" ? DRAFT_SKIN.skullLeft : DRAFT_SKIN.skullRight;
-	const skull = pack?.image(id);
+	const skull = uiImage(id);
 	if (face === undefined || skull === undefined) return undefined;
 	const p = draftSkullPlacement(props.side, skull, face.w);
 	return (
@@ -340,13 +340,13 @@ function HintRow(props: { ui: DraftCardUi }) {
  * chip; without it the row is exactly as before.
  */
 function BannerRow(props: { ui: DraftCardUi; nudge: React.Binding<number> }) {
+	const artRevision = useUiArt();
 	const hudFont = useHudFont();
 	const uiScale = useArtScale();
 	const ui = props.ui;
 	const look = useMemo(() => {
 		const m = ui.model.binding;
-		const pack = themePack();
-		const has = (id: string) => pack?.image(id) !== undefined;
+		const has = (id: string) => uiImage(id) !== undefined;
 		const art = m.map((x) => draftChipArt(x, has));
 		const cells = m.map((x) => draftChipCells(x, draftChipArt(x, has)));
 		const textT = ui.textT.binding;
@@ -367,7 +367,7 @@ function BannerRow(props: { ui: DraftCardUi; nudge: React.Binding<number> }) {
 			imageSize: React.Binding<UDim2>;
 		}[] = [];
 		for (let k = 0; k < DUO_CHIP_SPAN; k++) {
-			const ref = art.map((a) => (a[k] !== undefined ? pack?.image(a[k]) : undefined));
+			const ref = art.map((a) => (a[k] !== undefined ? uiImage(a[k]) : undefined));
 			chip.push({
 				text: m.map((x) =>
 					x !== undefined && draftChipArt(x, has).size() === 0 && x.chipIcons[k] !== undefined
@@ -408,7 +408,7 @@ function BannerRow(props: { ui: DraftCardUi; nudge: React.Binding<number> }) {
 			emptyT: textT.map(emptyPipT),
 			textT,
 		};
-	}, [ui, uiScale]);
+	}, [ui, uiScale, artRevision]);
 	const V = DRAFT_CARD_VIEW;
 	const rowH = math.max(V.chipCell, HUD_VIEW.smallText + 4);
 	return (
@@ -559,14 +559,14 @@ function BannerRow(props: { ui: DraftCardUi; nudge: React.Binding<number> }) {
  *     skips: InputController); a click's mouse press never reaches the sim as the confirm (InputController.sample).
  */
 function DraftCard(props: { index: number; onTap?: () => void }) {
+	const artRevision = useUiArt();
 	const ui = DRAFT_UI.cards[props.index];
 	const look = useMemo(() => {
 		const beat = ui.beat.binding;
 		const tone = ui.tone.binding;
 		const model = ui.model.binding;
 		const panelText = role("uiText");
-		const pack = themePack();
-		const hasArt = (s: DraftSurface) => pack?.image(draftSurfaceImageId(s)) !== undefined;
+		const hasArt = (s: DraftSurface) => uiImage(draftSurfaceImageId(s)) !== undefined;
 		const rareArt = hasArt("rare");
 		const box = ui.surface.binding.map((s): DraftBodyBox => draftBodyBox(s, hasArt(s)));
 		const isSurface = new Map<DraftSurface, React.Binding<boolean>>();
@@ -606,7 +606,7 @@ function DraftCard(props: { index: number; onTap?: () => void }) {
 			band: shineBand(),
 			eyes: eyeColor(),
 		};
-	}, [ui]);
+	}, [ui, artRevision]);
 	const v = PROGRESSION_VIEW;
 	const dim = role("uiTextDim");
 	return (
@@ -642,7 +642,7 @@ function DraftCard(props: { index: number; onTap?: () => void }) {
 					}
 				/>
 				{/* The eyes light the back's skull sockets: only over the back art (never red sockets on the flat card). */}
-				{themePack()?.image(DRAFT_SKIN.back) !== undefined ? (
+				{uiImage(DRAFT_SKIN.back) !== undefined ? (
 					<SlicedImage
 						id={DRAFT_SKIN.backEyes}
 						name="Eyes"

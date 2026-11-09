@@ -20,6 +20,7 @@ import {
 	AudioCueList,
 	AudioCueMapper,
 	BIOME_MUSIC_COUNT,
+	BedGate,
 	DUCKING_SFX,
 	MUSIC,
 	MusicDuck,
@@ -60,35 +61,55 @@ interface Voices {
 	readonly pitch: Readonly<PitchRange> | undefined;
 }
 
-/** A looped bed (music or ambience): one Sound at a time, cross-faded on change. */
+/**
+ * A looped bed (music or ambience): one Sound at a time, cross-faded on change. A bed whose sound has not downloaded yet
+ * (docs/STAGE_ASSETS.md SAD14, shared/view/audio BedGate) is not started (a Sound played before it loads would start
+ * whenever it lands): it starts in `poll` the first time it is ready, if still wanted, faded in over lateFadeSec.
+ */
 class LoopChannel {
 	private id: string | undefined;
 	private sound: Sound | undefined;
+	private readonly gate = new BedGate();
 
 	constructor(
 		private readonly make: (id: string) => Sound | undefined,
 		private readonly fadeSec: number,
 		private readonly scale: number,
+		private readonly isReady: (id: string) => boolean,
 	) {}
 
 	set(id: string | undefined): void {
-		if (id === this.id) return;
+		if (id === this.id) {
+			// the same bed: started now only if it was waiting for its sound and it is in
+			if (id !== undefined && this.gate.isWaiting() && this.gate.want(id, this.isReady(id)) === "play")
+				this.start(id, AUDIO_VIEW.lateBedFadeSec);
+			return;
+		}
 		this.id = id;
 		const old = this.sound;
 		this.sound = undefined;
-		const fade = new TweenInfo(this.fadeSec);
 		if (old !== undefined) {
-			const t = TweenService.Create(old, fade, { Volume: 0 });
+			const t = TweenService.Create(old, new TweenInfo(this.fadeSec), { Volume: 0 });
 			t.Completed.Connect(() => old.Destroy());
 			t.Play();
 		}
-		if (id === undefined) return;
+		const action = this.gate.want(id, id !== undefined && this.isReady(id));
+		if (id !== undefined && action === "play") this.start(id, this.fadeSec);
+	}
+
+	/** Readiness moved: the waiting bed starts now, faded in, if its sound landed and it is still wanted. */
+	poll(): void {
+		const id = this.gate.poll(this.isReady);
+		if (id !== undefined && id === this.id && this.sound === undefined) this.start(id, AUDIO_VIEW.lateBedFadeSec);
+	}
+
+	private start(id: string, fadeSec: number): void {
 		const sound = this.make(id);
 		if (sound === undefined) return;
 		const target = sound.Volume * this.scale;
 		sound.Volume = 0;
 		sound.Play();
-		TweenService.Create(sound, fade, { Volume: target }).Play();
+		TweenService.Create(sound, new TweenInfo(fadeSec), { Volume: target }).Play();
 		this.sound = sound;
 	}
 
@@ -146,6 +167,11 @@ class LoopChannel {
  *                plus the boss track on the back lane (so it never jumps unfinished core art); the queue skips what it
  *                already fetched, so this is usually nothing after the join's core tier. Nothing when all of it is
  *                silent.
+ *   readiness    docs/STAGE_ASSETS.md SAD14: a cue whose sound has not downloaded on this device
+ *                (PreloadController.isArtReady, all of its clips) is dropped in `play`, never played late; Play is
+ *                never called on a Sound whose id is not ready. Music and ambience wait the same way (LoopChannel's
+ *                BedGate) and start, faded in over AUDIO_VIEW.lateBedFadeSec, on the readiness change that brings
+ *                them in, if still wanted. SFX_FALLBACK still applies to SILENT ids (no clip at all).
  *   ui           playUi(id): sfx.ui.click / confirm / back from the HUD's and menus' buttons (MenuController's B /
  *                Backspace back too), through the same fallback (no back clip: the click); a gamepad focus move
  *                (GuiService.SelectedObject) plays sfx.ui.move, rate-limited by the mapper (silent while it has no
@@ -250,11 +276,20 @@ export class AudioController implements OnStart {
 		});
 
 		// Music and ambience follow the HUD snapshot (outcome, boss engaged), the run (biome, tutorial) and the menu.
-		this.music = new LoopChannel((id) => this.makeSound(id, true), AUDIO_VIEW.musicFadeSec, 1);
+		const ready = (id: string) => this.preloader.isArtReady(id);
+		this.music = new LoopChannel((id) => this.makeSound(id, true), AUDIO_VIEW.musicFadeSec, 1, ready);
 		this.ambience = new LoopChannel(
 			(id) => this.makeSound(id, true),
 			AUDIO_VIEW.ambientFadeSec,
 			AUDIO_VIEW.ambientVolume,
+			ready,
+		);
+		// A bed wanted before its sound landed starts the moment it does (docs/STAGE_ASSETS.md SAD14).
+		this.janitor.Add(
+			this.preloader.onReadinessChanged(() => {
+				this.music?.poll();
+				this.ambience?.poll();
+			}),
 		);
 		this.janitor.Add(() => {
 			this.music?.destroy();
@@ -361,6 +396,9 @@ export class AudioController implements OnStart {
 	play(id: string, scale: number, speed = 0): void {
 		const playId = this.mapper.resolve(id);
 		if (playId === undefined) return;
+		// Not downloaded yet (docs/STAGE_ASSETS.md SAD14): dropped, never played late (a Sound played before it loads
+		// would start whenever it lands). A silent id already resolved to its SFX_FALLBACK above.
+		if (!this.preloader.isArtReady(playId)) return;
 		const v = this.voicesFor(playId);
 		if (v === undefined) return;
 		const clip = v.clips[this.picker.pick(playId, v.clips.size())];

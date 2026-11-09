@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
 import { GuiService, RunService, UserInputService, Workspace } from "@rbxts/services";
 import { selectInputDevice } from "client/store";
-import { role, themePack } from "client/ui/theme";
+import { UI_IMAGES, role, uiImage, useUiArt } from "client/ui/theme";
 import { UI_ART, ornamentShown, skinHasOf } from "shared/view/hud";
 import {
 	MENU_FIT,
@@ -101,9 +101,9 @@ export function MenuFit(props: MenuFitProps) {
 	const pendingRef = useRef<RBXScriptConnection>();
 	const [area, setArea] = useState<MenuSize>(() => guessArea(hud));
 	const [content, setContent] = useState<number | undefined>(undefined);
-	const pack = themePack();
-	const ornamentArt = pack?.image(UI_ART.ids.ornament);
-	const wantsOrnament = pack !== undefined && ornamentShown(skinHasOf(pack), "menu", props.ornament === true);
+	useUiArt();
+	const ornamentArt = uiImage(UI_ART.ids.ornament);
+	const wantsOrnament = ornamentShown(skinHasOf(UI_IMAGES), "menu", props.ornament === true);
 	const compact = menuCompact(area.h, touch);
 	const narrow = menuNarrow(area.w, area.h, touch);
 	// The compact body's content height belongs to the compact layout only.

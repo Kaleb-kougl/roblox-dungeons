@@ -23,6 +23,8 @@ import {
 	PreloadProgress,
 	PreloadQueue,
 	bossContentIds,
+	preloadChunkSize,
+	preloadDeviceOf,
 	loadingReleased,
 	preloadPlan,
 	skipVisible,
@@ -94,34 +96,40 @@ describe("preloadPlan (docs/PRELOAD.md P2)", () => {
 		expect(plan.later.size()).toBeGreaterThan(0);
 	});
 
-	it("vale: ui sfx and the knight come before the enemies in core; the bosses are later", () => {
+	it("vale: core is the menu kit (docs/STAGE_ASSETS.md SA8); the knight, enemies and bosses are later, in that order", () => {
 		const pack = new ThemePack(VALE_MANIFEST, { warn: quiet });
 		const plan = preloadPlan(pack);
+		expect(PRELOAD.core).toEqual(["ui.", "sfx.ui.", "music.menu", "music.lobby"]);
+		for (const id of ["sfx.ui.click", "sfx.ui.back", "sfx.ui.confirm", "sfx.ui.move"]) {
+			const refs = pack.contentIds(id);
+			expect([id, refs.size() > 0, firstIndex(plan.core, refs) >= 0]).toEqual([id, true, true]);
+		}
+		// every core content id is a ui. id's, a ui sound's or a menu / lobby track's
+		const menuKit = new Set<string>();
+		for (const id of pack.assetIdList()) {
+			const kit =
+				id.sub(1, 3) === "ui." || id.sub(1, 7) === "sfx.ui." || id === "music.menu" || id === "music.lobby";
+			if (kit) for (const r of pack.contentIds(id)) menuKit.add(r.contentId);
+		}
+		for (const r of plan.core) expect([r.contentId, menuKit.has(r.contentId)]).toEqual([r.contentId, true]);
+		const knight = pack.contentIds("class.vanguard");
 		const enemies = [
 			...pack.contentIds("enemy.swarmer"),
 			...pack.contentIds("enemy.sniper"),
 			...pack.contentIds("enemy.bruiser"),
 		];
-		const firstEnemy = firstIndex(plan.core, enemies);
-		expect(firstEnemy).toBeGreaterThanOrEqual(0);
-		for (const id of ["sfx.ui.click", "sfx.ui.back", "sfx.ui.confirm", "sfx.ui.move", "class.vanguard"]) {
-			const refs = pack.contentIds(id);
-			expect([id, refs.size() > 0]).toEqual([id, true]);
-			const last = lastIndex(plan.core, refs);
-			expect([id, last >= 0 && last < firstEnemy]).toEqual([id, true]);
-		}
-		// the ui sfx (a longer prefix than sfx.) are core, ahead of every other sfx
-		expect(lastIndex(plan.core, pack.contentIds("sfx.ui.move"))).toBeLessThan(
-			firstIndex(plan.core, pack.contentIds("sfx.player.swing")),
-		);
 		const bramble = pack.contentIds("boss.act1");
 		expect(bramble.size()).toBeGreaterThan(0);
-		expect(firstIndex(plan.core, bramble)).toBe(-1);
-		expect(lastIndex(plan.later, bramble) - firstIndex(plan.later, bramble) + 1).toBe(bramble.size());
-		// biome 1's floor texture is core
-		const floor = pack.biomeContentIds("biome.1");
-		expect(floor.size()).toBeGreaterThan(0);
-		expect(firstIndex(plan.core, floor)).toBeGreaterThanOrEqual(0);
+		for (const refs of [knight, enemies, bramble]) expect(firstIndex(plan.core, refs)).toBe(-1);
+		expect(lastIndex(plan.later, knight)).toBeLessThan(firstIndex(plan.later, enemies));
+		expect(lastIndex(plan.later, enemies)).toBeLessThan(firstIndex(plan.later, bramble));
+		// the ui sfx are core, every other sfx later
+		expect(firstIndex(plan.later, pack.contentIds("sfx.player.swing"))).toBeGreaterThanOrEqual(0);
+		// biome 1's floor texture is later, ahead of biome 2's
+		const floor1 = pack.biomeContentIds("biome.1");
+		expect(floor1.size()).toBeGreaterThan(0);
+		expect(firstIndex(plan.core, floor1)).toBe(-1);
+		expect(lastIndex(plan.later, floor1)).toBeLessThan(firstIndex(plan.later, pack.biomeContentIds("biome.2")));
 	});
 
 	it("longest prefix wins; core keeps an id both tiers share; unmatched ids go last in later", () => {
@@ -143,18 +151,44 @@ describe("preloadPlan (docs/PRELOAD.md P2)", () => {
 			{ "biome.1": [image(11)], "biome.2": [image(14)], "biome.10": [image(15)] },
 		);
 		const plan = preloadPlan(src);
-		// core: ui., class., sfx.ui., music.menu, enemy., sfx., biome:biome.1 (its tile is the unmatched tile id's),
-		// then music.biome.1 (floor 1's track, after the art)
-		expect(numbers(plan.core)).toEqual(
-			numbers([image(12), image(4), sound(10), sound(8), image(5), image(3), sound(9), image(11), sound(6)]),
+		// core (the menu kit): ui., sfx.ui., music.menu
+		expect(numbers(plan.core)).toEqual(numbers([image(12), sound(10), sound(8)]));
+		// later: class., enemy., sfx., biome:biome.1 (its tile is the unmatched tile id's), music.biome.1, boss.,
+		// music. (biome 2+), amb., biome: (sorted keys), then the unmatched ids sorted
+		expect(numbers(plan.later)).toEqual(
+			numbers([
+				image(4),
+				image(5),
+				image(3),
+				sound(9),
+				image(11),
+				sound(6),
+				image(2),
+				sound(7),
+				sound(1),
+				image(15),
+				image(14),
+				image(13),
+			]),
 		);
-		// later: boss., music. (biome 2+), amb., biome: (sorted keys), then the unmatched ids sorted
-		expect(numbers(plan.later)).toEqual(numbers([image(2), sound(7), sound(1), image(15), image(14), image(13)]));
-		// boss.act1's image 3 is already core (enemy.swarmer): first occurrence wins
-		expect(plan.later.map((r) => r.media)).toEqual(["image", "sound", "sound", "image", "image", "image"]);
+		// boss.act1's image 3 is already planned (enemy.swarmer): first occurrence wins
+		expect(plan.later.map((r) => r.media)).toEqual([
+			"image",
+			"image",
+			"image",
+			"sound",
+			"image",
+			"sound",
+			"image",
+			"sound",
+			"sound",
+			"image",
+			"image",
+			"image",
+		]);
 	});
 
-	it("the bullet atlas is core (docs/PROJECTILE_ART.md): bullet sprites and the impact effect share it, planned once", () => {
+	it("the bullet atlas (docs/PROJECTILE_ART.md): bullet sprites and the impact effect share it, planned once, before the bosses", () => {
 		const plan = preloadPlan(
 			fakeSource(
 				{
@@ -166,9 +200,9 @@ describe("preloadPlan (docs/PRELOAD.md P2)", () => {
 				{},
 			),
 		);
-		expect(PRELOAD.core.includes("bullet.")).toBe(true);
-		expect(numbers(plan.core)).toEqual([fakeId(21)]);
-		expect(numbers(plan.later)).toEqual([fakeId(22)]);
+		expect(PRELOAD.later.includes("bullet.")).toBe(true);
+		expect(numbers(plan.core)).toEqual([]);
+		expect(numbers(plan.later)).toEqual([fakeId(21), fakeId(22)]);
 	});
 
 	it("every UI skin id (docs/UI_ART.md UA4) is core: one shared icon atlas is planned once", () => {
@@ -247,33 +281,39 @@ describe("bossContentIds", () => {
 });
 
 describe("the music tiers", () => {
-	it("vale: floor 1's and the tutorial's music are core, biome 2+ and the boss track later", () => {
+	it("vale: the menu and lobby tracks are core; floor 1's and the tutorial's lead the later music", () => {
 		const pack = new ThemePack(VALE_MANIFEST, { warn: quiet });
 		const plan = preloadPlan(pack);
-		for (const id of ["music.menu", "music.biome.1", "music.tutorial"]) {
+		for (const id of ["music.menu", "music.lobby"]) {
 			const refs = pack.contentIds(id);
 			if (refs.size() === 0) continue; // not uploaded yet: nothing to place
 			expect([id, firstIndex(plan.core, refs) >= 0, firstIndex(plan.later, refs)]).toEqual([id, true, -1]);
 		}
-		for (const id of ["music.biome.2", "music.biome.5", "music.boss"]) {
+		const boss = pack.contentIds("music.boss");
+		for (const id of ["music.biome.1", "music.tutorial", "music.biome.2", "music.biome.5", "music.boss"]) {
 			const refs = pack.contentIds(id);
 			if (refs.size() === 0) continue;
 			expect([id, firstIndex(plan.core, refs)]).toEqual([id, -1]);
 		}
-		expect(PRELOAD.core.includes("music.biome.1")).toBe(true);
-		expect(PRELOAD.core.includes("music.tutorial")).toBe(true);
+		for (const id of ["music.biome.1", "music.tutorial"]) {
+			const refs = pack.contentIds(id);
+			if (refs.size() === 0 || boss.size() === 0) continue;
+			expect([id, lastIndex(plan.later, refs) < firstIndex(plan.later, boss)]).toEqual([id, true]);
+		}
 	});
 });
 
-describe("PreloadQueue (docs/PRELOAD.md P3)", () => {
-	it("serves the front lane first, each lane first in first out, in chunks", () => {
+describe("PreloadQueue (docs/PRELOAD.md P3, docs/STAGE_ASSETS.md SA4)", () => {
+	it("serves front, then next, then back, each lane first in first out, in chunks", () => {
 		const q = new PreloadQueue();
 		expect(q.push([image(1), image(2), image(3)], "back")).toBe(3);
+		expect(q.push([image(7), image(8)], "next")).toBe(2);
 		expect(q.push([sound(4), sound(5)], "front")).toBe(2);
-		expect(q.pending()).toBe(5);
-		expect(numbers(q.take(3))).toEqual(numbers([sound(4), sound(5), image(1)]));
+		expect([q.pending(), q.pending("front"), q.pending("next"), q.pending("back")]).toEqual([7, 2, 2, 3]);
+		expect(numbers(q.take(3))).toEqual(numbers([sound(4), sound(5), image(7)]));
 		expect(q.push([sound(6)], "front")).toBe(1);
-		expect(numbers(q.take(3))).toEqual(numbers([sound(6), image(2), image(3)]));
+		expect(numbers(q.take(3))).toEqual(numbers([sound(6), image(8), image(1)]));
+		expect(numbers(q.take(3))).toEqual(numbers([image(2), image(3)]));
 		expect(q.take(3)).toEqual([]);
 		expect(q.pending()).toBe(0);
 	});
@@ -289,10 +329,60 @@ describe("PreloadQueue (docs/PRELOAD.md P3)", () => {
 		expect(numbers(q.take(1))).toEqual(numbers([image(2)]));
 		// taken: never queued again, whatever the lane
 		expect(q.push([image(2)], "front")).toBe(0);
+		expect(q.push([image(2)], "next")).toBe(0);
 		expect(q.push([image(2)], "back")).toBe(0);
 		expect(q.seen(fakeId(2))).toBe(true);
 		expect(q.seen(fakeId(9))).toBe(false);
 		expect(numbers(q.take(4))).toEqual(numbers([sound(3), image(1)]));
+	});
+
+	it("a next push jumps back, a front push jumps next; a lower push never moves an id down", () => {
+		const q = new PreloadQueue();
+		q.push([image(1), image(2), image(3)], "back");
+		expect(q.push([image(3)], "next")).toBe(1);
+		expect(q.laneOf(fakeId(3))).toBe("next");
+		expect(q.push([image(3)], "back")).toBe(0);
+		expect(q.laneOf(fakeId(3))).toBe("next");
+		q.push([image(4)], "next");
+		expect(q.push([image(4)], "front")).toBe(1);
+		expect(q.push([image(4)], "next")).toBe(0);
+		expect([q.laneOf(fakeId(4)), q.laneOf(fakeId(9))]).toEqual(["front", undefined]);
+		expect(numbers(q.take(10))).toEqual(numbers([image(4), image(3), image(1), image(2)]));
+		expect(q.laneOf(fakeId(4))).toBe("taken");
+	});
+
+	it("retry re-queues a taken id once, bypassing the seen set", () => {
+		const q = new PreloadQueue();
+		q.push([image(1), image(2)], "front");
+		q.take(1);
+		expect(q.retry(image(1), "back")).toBe(true);
+		expect(q.retry(image(1), "back")).toBe(false); // waiting already
+		expect(q.laneOf(fakeId(1))).toBe("back");
+		expect(numbers(q.take(10))).toEqual(numbers([image(2), image(1)]));
+		// a retry of an id still waiting moves it up like a push
+		q.retry(image(1), "back");
+		q.push([image(5)], "next");
+		expect(q.retry(image(1), "front")).toBe(true);
+		expect(numbers(q.take(10))).toEqual(numbers([image(1), image(5)]));
+		expect(q.retry(image(9), "next")).toBe(true); // never accepted: queued like a push
+		expect(numbers(q.take(10))).toEqual(numbers([image(9)]));
+	});
+});
+
+describe("the chunk size per device (docs/STAGE_ASSETS.md SAD11)", () => {
+	it("classes a device and reads its chunk size", () => {
+		const base = { tenFoot: false, touchEnabled: false, keyboardEnabled: true, gamepadEnabled: false };
+		expect(preloadDeviceOf(base)).toBe("desktop");
+		expect(preloadDeviceOf({ ...base, tenFoot: true, gamepadEnabled: true })).toBe("console");
+		expect(preloadDeviceOf({ ...base, touchEnabled: true, keyboardEnabled: false })).toBe("touch");
+		// a touch laptop with a keyboard is a desktop
+		expect(preloadDeviceOf({ ...base, touchEnabled: true })).toBe("desktop");
+		for (const d of ["desktop", "touch", "console"] as const) {
+			expect(preloadChunkSize(d)).toBe(PRELOAD.chunkSizeByDevice[d]);
+			expect(preloadChunkSize(d)).toBeGreaterThan(0);
+		}
+		const zero = { ...PRELOAD, chunkSizeByDevice: { desktop: 4, touch: 0, console: 4 } };
+		expect(preloadChunkSize("touch", zero)).toBe(1);
 	});
 });
 
@@ -356,6 +446,33 @@ describe("LoadWaiters", () => {
 	it("a repeated id waits once", () => {
 		const w = new LoadWaiters<number>();
 		expect(w.wait(["x", "x"], 1)).toBe(false);
+		expect(w.progress(1)).toEqual([0, 1]);
 		expect(w.resolve("x")).toEqual([1]);
+	});
+
+	it("reads an open wait's progress (docs/STAGE_ASSETS.md SA4)", () => {
+		const w = new LoadWaiters<string>();
+		w.resolve("a");
+		expect(w.wait(["a", "b", "c", "d"], "stage")).toBe(false);
+		expect(w.progress("stage")).toEqual([1, 4]);
+		w.resolve("c");
+		expect(w.progress("stage")).toEqual([2, 4]);
+		w.resolve("b");
+		w.resolve("d");
+		expect(w.progress("stage")).toBe(undefined); // fired
+		expect(w.progress("never")).toBe(undefined);
+	});
+
+	it("cancels a wait; forget makes a resolved id wait again", () => {
+		const w = new LoadWaiters<string>();
+		expect(w.wait(["a"], "gone")).toBe(false);
+		expect(w.cancel("gone")).toBe(true);
+		expect(w.cancel("gone")).toBe(false);
+		expect(w.resolve("a")).toEqual([]);
+		expect(w.wait(["a"], "now")).toBe(true);
+		w.forget("a");
+		expect(w.isResolved("a")).toBe(false);
+		expect(w.wait(["a"], "again")).toBe(false);
+		expect(w.resolve("a")).toEqual(["again"]);
 	});
 });

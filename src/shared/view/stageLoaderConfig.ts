@@ -4,6 +4,7 @@
  * StageCard). Presentation only: nothing here reaches the sim, the lockstep wire or a hash. Roblox-port choices, no web
  * source.
  */
+import { STAGE_ASSETS, type StageAssetWaitConfig } from "./stageAssetsConfig";
 
 /** One step of a stage load, for the run-start bar's weights (StageLoad.fraction). */
 export type StageStep = "server" | "forge" | "build" | "pregen" | "assets" | "settle";
@@ -19,12 +20,16 @@ export interface StageLoaderConfig {
 	 * already has minCardSec).
 	 */
 	readonly rosterStartSec: number;
-	/** Wait at most this long for the floor's front-lane assets (its music / ambience, a boss floor's sheets), seconds (SD4). */
-	readonly assetCapSec: number;
+	/**
+	 * A solo run start's wait for its stage manifest (docs/STAGE_ASSETS.md SA5 / SA19: the soft wait; STAGE_ASSETS.wait).
+	 * Floor changes and co-op covers never wait for assets (SAD4 / SAD8). Replaces STAGE_LOADER.md's `assetCapSec`.
+	 */
+	readonly assets: StageAssetWaitConfig;
 	/**
 	 * Hard cap on any cover, seconds (SD5 edge cases), counted from the server's answer on a ranked run start (a slow
-	 * server never trips it early) and from the cut otherwise: past it every wait is skipped and the cover lifts once
-	 * the work that must run (forge, view rebuild) has run.
+	 * server never trips it early) and from the cut otherwise, NOT counting the assets phase (docs/STAGE_ASSETS.md SA5:
+	 * it bounds forge, build and settle; the asset wait has its own caps): past it every wait is skipped and the cover
+	 * lifts once the work that must run (forge, view rebuild) has run.
 	 */
 	readonly maxCoverSec: number;
 	/** Rendered frames under the cover after the views were rebuilt (textures drawn once, the camera snapped). */
@@ -41,6 +46,8 @@ export interface StageLoaderConfig {
 	readonly coverAckCapSec: number;
 	/** Pre-generation during a floor's draft starts once the draft has been open this many rendered frames (SD1). */
 	readonly pregenAfterDraftFrames: number;
+	/** The reveal's `[Stage]` line names at most this many of the floor's missing logical ids (the rest counted). */
+	readonly logMissingIds: number;
 	/** The run-start bar: each step's share of the bar (sum 1); a step that does not apply counts as done. */
 	readonly weights: Readonly<Record<StageStep, number>>;
 }
@@ -49,13 +56,14 @@ export const STAGE_LOADER: StageLoaderConfig = {
 	minCardSec: 0.6,
 	minStartSec: 0,
 	rosterStartSec: 1,
-	assetCapSec: 3,
+	assets: STAGE_ASSETS.wait,
 	maxCoverSec: 8,
 	settleFrames: 2,
 	fadeSec: 0.25,
 	coverDrawFrames: 1,
 	coverAckCapSec: 0.5,
 	pregenAfterDraftFrames: 1,
+	logMissingIds: 5,
 	weights: { server: 0.1, forge: 0.4, build: 0.25, pregen: 0.1, assets: 0.1, settle: 0.05 },
 };
 

@@ -3,7 +3,7 @@ import { useSelector } from "@rbxts/react-reflex";
 import { RunService } from "@rbxts/services";
 import { selectBindings, selectInputDevice, selectJuice, selectSnapshot } from "client/store";
 import { spectateHint, keyDevice } from "shared/play";
-import { str } from "client/ui/theme";
+import { str, useUiArt } from "client/ui/theme";
 import { motionScale } from "shared/view/fx";
 import {
 	HUD_VIEW,
@@ -37,6 +37,7 @@ export function SpectateBar() {
 }
 
 function SpectateBarBody(props: { name: string; position: number; count: number }) {
+	useUiArt();
 	const device = useSelector(selectInputDevice);
 	const bindings = useSelector(selectBindings);
 	const motion = motionScale(useSelector(selectJuice));

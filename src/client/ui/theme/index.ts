@@ -6,6 +6,7 @@ import type { StringVars } from "shared/theme";
 import { HUD_FONTS, type HudText } from "shared/view/hud";
 
 export * from "./LocaleRoot";
+export * from "./artReady";
 
 /**
  * The UI's access to the theme: the active pack (loaded by ThemeController before anything mounts), strings, colour

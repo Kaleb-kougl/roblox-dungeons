@@ -4,7 +4,7 @@ import { RunService, Workspace } from "@rbxts/services";
 import { STUDS_PER_TILE } from "shared/config";
 import { SIM_HZ, activeBoosts, partySize, playerAt, type ActiveBoost } from "shared/sim";
 import { BOOST_KINDS, boostAuraFxId } from "shared/theme";
-import { BULLET_ART_VIEW, BULLET_VIEW, RENDER_ORDER, floorStudsY, lerp, studsX, studsZ } from "shared/view";
+import { BULLET_ART_VIEW, BULLET_VIEW, RENDER_ORDER, ReadyIds, floorStudsY, lerp, studsX, studsZ } from "shared/view";
 import {
 	BOOST_VIEW,
 	auraArtFrame,
@@ -15,6 +15,7 @@ import {
 	auraTransparency,
 } from "shared/view/boosts";
 import { motionScale } from "shared/view/fx";
+import { PreloadController } from "../game/PreloadController";
 import { SimController } from "../game/SimController";
 import { ThemeController } from "../game/ThemeController";
 import { FxTrackerController } from "../fx/FxTrackerController";
@@ -78,6 +79,11 @@ interface Ring {
  * pooled per (player, kind), built on first use, parked far below (the sprite's surface disabled) when unused, and
  * moved in one workspace:BulkMoveTo per frame; Size, the cell and transparency are written only when they change. The
  * sim clears a player's boosts at death, so a dead player has none. Read-only on the sim.
+ *
+ * Stand-ins (docs/STAGE_ASSETS.md "Revision 2", SA17): a kind's art is drawn only once its `fx.boost.aura.<kind>` is
+ * READY on this device (PreloadController's readiness, shared/view ReadyIds re-read when its epoch moves); until then
+ * its Neon disc. The choice is per frame, and the piece not drawn is parked by the shown / seen swap, so a running aura
+ * turns into its art on the frame it lands (and back under KV_StandInsForce).
  */
 @Controller({})
 export class BoostAuraController implements OnStart {
@@ -88,6 +94,8 @@ export class BoostAuraController implements OnStart {
 	private readonly colors = new Array<Color3>();
 	/** art[kind]: the kind's aura art, or undefined (discs only). */
 	private readonly art = new Array<KindArt | undefined>();
+	/** artReady[kind] (SA17): built in onStart over the kinds with art. */
+	private artReady: ReadyIds | undefined;
 	private readonly active = new Array<ActiveBoost>();
 	/** Pieces placed last frame and this frame (swapped every frame). */
 	private shown = new Set<Ring>();
@@ -100,6 +108,7 @@ export class BoostAuraController implements OnStart {
 		private readonly sim: SimController,
 		private readonly theme: ThemeController,
 		private readonly fx: FxTrackerController,
+		private readonly preload: PreloadController,
 	) {}
 
 	onStart(): void {
@@ -131,6 +140,9 @@ export class BoostAuraController implements OnStart {
 				ranks: resolved,
 			};
 		});
+		this.artReady = new ReadyIds(
+			BOOST_KINDS.map((k, kind) => (this.art[kind] !== undefined ? boostAuraFxId(k) : undefined)),
+		);
 		const folder = new Instance("Folder");
 		folder.Name = BOOST_VIEW.auraFolderName;
 		folder.Parent = Workspace;
@@ -149,6 +161,8 @@ export class BoostAuraController implements OnStart {
 		const state = this.sim.getState();
 		const seen = this.seen;
 		seen.clear();
+		const artReady = this.artReady;
+		artReady?.refresh(this.preload.getReadiness());
 		if (state !== undefined && state.drops !== undefined) {
 			const alpha = this.sim.getAlpha();
 			const simSec = (state.tick + alpha) / SIM_HZ;
@@ -167,7 +181,8 @@ export class BoostAuraController implements OnStart {
 				for (let rank = 0; rank < count; rank++) {
 					const kind = this.active[rank].kind;
 					const d = auraDisc(rank, count);
-					const art = this.art[kind];
+					// SA17: the art only once it is ready; until then the disc (the stand-in)
+					const art = artReady?.isReady(kind) === true ? this.art[kind] : undefined;
 					const rankArt = art !== undefined ? art.ranks[rank] : undefined;
 					let ring: Ring | undefined;
 					let at: CFrame;

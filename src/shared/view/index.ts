@@ -48,13 +48,28 @@
  *                 swing, ...) for the audio mapper and the feel controllers (docs/FEEL.md J1)
  *   preload.ts    asset preloading (docs/PRELOAD.md): the core / later tiers of a pack's content ids, the loading
  *                 screen's release and Skip rules, PreloadProgress, a boss floor's push (tunables: PRELOAD in
- *                 preloadConfig.ts), PreloadQueue (the client's two-lane download queue) and JoinGate (the join
- *                 flow fires once the first-run gate decided and the screen released); preloadStrings.ts: the
- *                 loading screen's string keys (LOADING_STRINGS; its layout: LOADING_VIEW in preloadConfig.ts)
+ *                 preloadConfig.ts), PreloadQueue (the client's three-lane download queue: front / next / back) and
+ *                 JoinGate (the join flow fires once the first-run gate decided and the screen released);
+ *                 preloadStrings.ts: the loading screen's string keys (LOADING_STRINGS; its layout: LOADING_VIEW in
+ *                 preloadConfig.ts)
+ *   artReadiness.ts  ArtReadiness (docs/STAGE_ASSETS.md SA15): per content id pending / ready / failed (one retry),
+ *                 logical ids ready once every content id resolved, epoch + flippedSince for the stand-in swaps,
+ *                 the KV_StandInsForce force (tunables: ART_READINESS in artReadinessConfig.ts)
+ *   standIns.ts   the renderers' stand-in swaps (docs/STAGE_ASSETS.md SA17): drawsArt, FlipTracker (per-frame flips),
+ *                 ReadyIds (a fixed id list's readiness, re-read per epoch)
  *   stageLoader.ts  the stage loader (docs/STAGE_LOADER.md): StageLoad (one cover's phases: server wait, forge, view
  *                 rebuild, assets, settle, reveal), stageMerge, floorChangeStaged, pregenTarget / PregenTracker (floor
  *                 n + 1 during floor n's draft), the KV_Debug listener timing line (tunables: STAGE_LOADER and the
  *                 cover's layout STAGE_VIEW in stageLoaderConfig.ts; string keys: STAGE_STRINGS in stageStrings.ts)
+ *   stageAssets.ts  the stage asset manifest (docs/STAGE_ASSETS.md SA2): every logical id a floor can show or play,
+ *                 in front-lane order (stageAssetGroups / stageAssets / stageContentRefs), the audit diff; its theme
+ *                 groups (actor kind, character, biome, free decor, feature) in stageGroups.ts (SA1)
+ *                 (tunables: STAGE_ASSETS in stageAssetsConfig.ts; floor inputs: shared/run stageInput.ts)
+ *   stageAudit.ts  the KV_StageAssetAudit recording's pure half (STAGE_AUDIT, StageAuditLog, SA11) and the merged
+ *                 prefetch manifest (stageMergedAssets, SA7)
+ *   pieceStandIns.ts  stand-ins while art downloads (docs/STAGE_ASSETS.md SA18): ReadinessCursor (a renderer's flips),
+ *                 lookWhenReady, the solid decor stand-in boxes solidStandIns / solidStandInShown (tunables:
+ *                 SOLID_DECOR_STAND_IN in standInsConfig.ts)
  *   decor/        the decor plan (docs/DECOR.md R3 / R6 / R8): planDecor, decorProfile, fade selection, glow points
  *   voidDecor/    void decoration (docs/VOID_DECOR.md VD2-VD4, VD9): voidField, planVoid (shoulder / ledge / outcrop /
  *                 abyss per cell, greedy rects), VOID / VOID_DEPTH, the VoidController's columns (voidColumnOf,
@@ -106,8 +121,17 @@ export * from "./watch";
 export * from "./latencyProbeConfig";
 export * from "./latencyProbe";
 export * from "./preloadConfig";
+export * from "./artReadinessConfig";
+export * from "./artReadiness";
+export * from "./standIns";
 export * from "./preload";
 export * from "./preloadStrings";
 export * from "./stageLoaderConfig";
 export * from "./stageStrings";
 export * from "./stageLoader";
+export * from "./stageAssetsConfig";
+export * from "./stageGroups";
+export * from "./stageAssets";
+export * from "./stageAudit";
+export * from "./standInsConfig";
+export * from "./pieceStandIns";

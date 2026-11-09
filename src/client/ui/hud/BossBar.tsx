@@ -1,7 +1,7 @@
 import React from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
 import { selectSnapshot } from "client/store";
-import { useHudFont, role, str, themePack } from "client/ui/theme";
+import { UI_IMAGES, role, str, uiImage, useHudFont, useUiArt } from "client/ui/theme";
 import {
 	HUD_SKIN,
 	HUD_STRINGS,
@@ -72,7 +72,8 @@ function FlatBar(props: { frac: number; marks: ReadonlyArray<number> }) {
  */
 function PillBar(props: { frac: number; marks: ReadonlyArray<number>; trackId: string; fillId: string | undefined }) {
 	const uiScale = useHudScale();
-	const track = themePack()?.image(props.trackId);
+	useUiArt();
+	const track = uiImage(props.trackId);
 	const pill = pillFit(track?.h ?? HUD_VIEW.bossBarHeight, HUD_SKIN.bossBarBox, uiScale);
 	const clip = fillClip(props.frac);
 	const fillSize = UDim2.fromScale(clip.inner, 1);
@@ -228,6 +229,7 @@ function SlimBossBar(props: {
  * under the touch strip (SlimBossBar).
  */
 export function BossBar(props: { readonly highlight?: boolean }) {
+	useUiArt();
 	const s = useSelector(selectSnapshot);
 	const strip = useTouchStrip();
 	if (!s.bossVisible) return undefined;
@@ -246,10 +248,9 @@ export function BossBar(props: { readonly highlight?: boolean }) {
 	}
 	const width = HUD_VIEW.bossWidth;
 	const nameWidth = math.floor((width - HUD_VIEW.pad * 2) * NAME_WIDTH_SHARE);
-	const pack = themePack();
-	const has = pack !== undefined ? skinHasOf(pack) : undefined;
-	const trackId = has !== undefined ? skinFor(has, "bar", "track") : undefined;
-	const fillId = has !== undefined ? skinFor(has, "bar", "fill") : undefined;
+	const has = skinHasOf(UI_IMAGES);
+	const trackId = skinFor(has, "bar", "track");
+	const fillId = skinFor(has, "bar", "fill");
 	return (
 		<Panel
 			position={new UDim2(HALF, 0, 0, HUD_VIEW.margin)}

@@ -1,7 +1,7 @@
 import React from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
 import { selectBindings, selectInputDevice, selectMapView, selectRunInfo, selectSnapshot } from "client/store";
-import { role, str, themePack } from "client/ui/theme";
+import { UI_IMAGES, role, str, uiImage, useUiArt } from "client/ui/theme";
 import { mapHint, keyDevice } from "shared/play";
 import {
 	HUD_SKIN,
@@ -35,9 +35,9 @@ const FRAME_Z = 0;
  */
 function MapHost(props: { host: MinimapHost; position: UDim2; anchor: Vector2; size: UDim2; square?: boolean }) {
 	const uiScale = useHudScale();
-	const pack = themePack();
-	const skinId = pack !== undefined ? skinFor(skinHasOf(pack), "panel", "hud") : undefined;
-	const slice = skinId !== undefined ? pack?.image(skinId)?.slice : undefined;
+	useUiArt();
+	const skinId = skinFor(skinHasOf(UI_IMAGES), "panel", "hud");
+	const slice = skinId !== undefined ? uiImage(skinId)?.slice : undefined;
 	const sliceScale = snappedSliceScale(uiScale, HUD_SKIN.fullMapRefPerArt);
 	const border = sliceBorder(skinId !== undefined ? contentInsetsOf(skinId, slice) : slice, sliceScale);
 	return (

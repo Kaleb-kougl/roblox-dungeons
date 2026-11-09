@@ -1,7 +1,7 @@
 import React from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
 import { selectJuice } from "client/store";
-import { useHudFont, role, str, themePack } from "client/ui/theme";
+import { role, str, uiImage, useHudFont, useUiArt } from "client/ui/theme";
 import {
 	BOOST_VIEW,
 	boostBlinkTransparency,
@@ -52,6 +52,7 @@ function BoostEntry(props: {
 	look: BoostLook;
 	tooltips: boolean;
 }) {
+	useUiArt();
 	const hudFont = useHudFont();
 	const e = props.entry;
 	const tipRef = useTooltipTarget({ kind: "boost", index: e.kind }, "hud", {
@@ -63,7 +64,7 @@ function BoostEntry(props: {
 	const color = boostColorRole(e.kind);
 	const fade = boostBlinkTransparency(e.secondsLeft, props.motion);
 	const artId = boostIconArtId(e.kind);
-	const art = themePack()?.image(artId) !== undefined;
+	const art = uiImage(artId) !== undefined;
 	return (
 		<frame
 			ref={tipRef}

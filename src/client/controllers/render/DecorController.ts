@@ -2,8 +2,16 @@ import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { RunService, Workspace } from "@rbxts/services";
 import { CAMERA_PITCH_DEG, CAMERA_YAW_DEG, STUDS_PER_TILE } from "shared/config";
+import type { Dungeon } from "shared/dungeon";
 import { isDraftOpen, type SimState } from "shared/sim";
-import type { DecorKind, DecorPiece, VoidDecorKind } from "shared/theme";
+import {
+	BIOMES,
+	MISSING_COLOR,
+	type DecorKind,
+	type DecorPiece,
+	type ThemePack,
+	type VoidDecorKind,
+} from "shared/theme";
 import {
 	BULLET_Y,
 	BULLET_VIEW,
@@ -14,6 +22,8 @@ import {
 	DECOR_RENDER_ORDER,
 	DECOR_VIEW,
 	DecorDirector,
+	ReadinessCursor,
+	SOLID_DECOR_STAND_IN,
 	VOID_VIEW,
 	WALL_DEPTH_BIAS,
 	decorEntryFootprint,
@@ -32,6 +42,8 @@ import {
 	planDecor,
 	planVoidCached,
 	selectDecorFades,
+	solidStandIns,
+	solidStandInShown,
 	spriteFacing,
 	studsX,
 	studsY,
@@ -42,6 +54,7 @@ import {
 	type DecorBody,
 	type DecorEntry,
 	type DecorFrame,
+	type DecorPlan,
 	type DecorPlanInput,
 	type DecorScene,
 	type DecorView,
@@ -52,6 +65,7 @@ import {
 } from "shared/view";
 import { motionScale } from "shared/view/fx";
 import { FxTrackerController } from "../fx/FxTrackerController";
+import { PreloadController } from "../game/PreloadController";
 import { SimController, type RunContext } from "../game/SimController";
 import { ThemeController } from "../game/ThemeController";
 import { ArtBillboard, buildFloorArt, restingAnimation, visualLayout, type FloorArt } from "./decorParts";
@@ -89,6 +103,19 @@ interface PieceView {
 	/** Fade share 0..1 (x DECOR_VIEW.fadeTransparency), and the dim shown. */
 	fade: number;
 	dim: number;
+	/** A solid piece's art hidden under its stand-in box (docs/STAGE_ASSETS.md SA18: KV_StandInsForce). */
+	hidden: boolean;
+}
+
+/** A solid decor piece's stand-in box (docs/STAGE_ASSETS.md SAD15): shown while its art is not drawn. */
+interface StandInBox {
+	readonly part: Part;
+	/** The decor plan entry drawing its art (-1: none) and that entry's piece id (undefined: no art drawn). */
+	readonly entry: number;
+	readonly pieceId: string | undefined;
+	shown: boolean;
+	/** Fade share 0..1 (its entry's fade box, like the art's). */
+	fade: number;
 }
 
 /**
@@ -119,6 +146,11 @@ interface PieceView {
  *                 shrine crystal here, and drives DecorFxController (flames, lights, glints, particles).
  *   debug         Workspace KV_DecorDebug (boolean): the fade boxes (outlines in their billboard planes), each standing
  *                 piece's footprint stencil (the cells its art could hide, at bullet height) and the breakable cells.
+ *
+ * Solid decor stand-ins (docs/STAGE_ASSETS.md SAD15): a solid piece (Dungeon.solidDecor: WALL cells for the sim drawn
+ * as floor) gets a render-only box (SOLID_DECOR_STAND_IN) over its footprint while its art is not drawn: no art in the
+ * pack, art too large for its box, or its id not downloaded yet (PreloadController.isArtReady; under KV_StandInsForce
+ * the art itself is hidden under the box). The box goes on the readiness flip, fades like the art, and is the floor's.
  *
  * Bodies are pooled across floors (parked when unused); flat pieces and debug parts belong to the floor's Janitor.
  */
@@ -151,11 +183,18 @@ export class DecorController implements OnStart {
 	private frameDt = 0;
 	private clock = 0;
 	private frozen = true;
+	/** The floor's solid decor stand-in boxes, and the drawn view of each plan entry that has one. */
+	private readonly standIns = new Array<StandInBox>();
+	private readonly solidViews = new Map<number, PieceView>();
+	private standInFolder: Folder | undefined;
+	/** The readiness flips this view has not handled yet (docs/STAGE_ASSETS.md SA18). */
+	private cursor: ReadinessCursor | undefined;
 
 	constructor(
 		private readonly sim: SimController,
 		private readonly theme: ThemeController,
 		private readonly fx: FxTrackerController,
+		private readonly preload: PreloadController,
 	) {}
 
 	onStart(): void {
@@ -163,6 +202,11 @@ export class DecorController implements OnStart {
 		folder.Name = DECOR_VIEW.folderName;
 		folder.Parent = Workspace;
 		this.folder = this.janitor.Add(folder);
+		const standIns = new Instance("Folder");
+		standIns.Name = SOLID_DECOR_STAND_IN.folderName;
+		standIns.Parent = Workspace;
+		this.standInFolder = this.janitor.Add(standIns);
+		this.cursor = new ReadinessCursor(this.preload.getReadiness());
 		this.sim.onRunStarted((ctx) => this.build(ctx));
 		this.sim.onFloorChanged((ctx) => this.build(ctx));
 		this.sim.onRunExited(() => this.clear());
@@ -302,10 +346,12 @@ export class DecorController implements OnStart {
 			const view = this.draw(i, e, piece, layout);
 			if (view === undefined) return;
 			this.drawn.push(view);
+			if (e.source === "solid") this.solidViews.set(i, view);
 			instances += DECOR_VIEW.instancesPerPiece;
 			if (e.fade >= 0) this.fadeViews.set(e.fade, view);
 		});
 		this.flushMoves();
+		this.buildStandIns(pack, dungeon, plan.entries);
 		this.buildDebug();
 		const c = plan.counts;
 		const v = plan.voidCounts;
@@ -339,7 +385,19 @@ export class DecorController implements OnStart {
 			);
 			if (flat === undefined) return undefined;
 			this.floorJanitor.Add(flat.part);
-			return { entry: i, piece, body: undefined, flat, dirX, dirZ, anim: "", animated: false, fade: 0, dim: 0 };
+			return {
+				entry: i,
+				piece,
+				body: undefined,
+				flat,
+				dirX,
+				dirZ,
+				anim: "",
+				animated: false,
+				fade: 0,
+				dim: 0,
+				hidden: false,
+			};
 		}
 		const body = this.acquire(piece, e.layer === "wall", layout);
 		const anchorAt = new CFrame(studsX(e.x), studsY(e.y), studsZ(e.z));
@@ -356,6 +414,7 @@ export class DecorController implements OnStart {
 			animated: false,
 			fade: 0,
 			dim: 0,
+			hidden: false,
 		};
 		if (body.sprite !== undefined) this.showAnim(view, DECOR_VIEW.idleAnimation, 0);
 		return view;
@@ -420,6 +479,8 @@ export class DecorController implements OnStart {
 		this.fadeViews.clear();
 		this.pieces.clear();
 		this.layouts.clear();
+		this.standIns.clear();
+		this.solidViews.clear();
 		this.floorJanitor.Cleanup();
 		this.debugJanitor.Cleanup();
 		this.flushMoves();
@@ -474,8 +535,83 @@ export class DecorController implements OnStart {
 		this.frameDt = this.frozen ? 0 : math.min(math.max(dt, 0), DECOR_REACT.maxDtSeconds);
 		this.clock += this.frameDt;
 		this.apply(view, scene);
+		this.syncStandIns();
 		this.applyFades(dt, state);
 		debug.profileend();
+	}
+
+	// --- solid decor stand-ins (docs/STAGE_ASSETS.md SAD15) ----------------------------------------------
+
+	/**
+	 * One render-only box per Forge solid decor piece (WALL for the sim, drawn as floor by WorldController): its
+	 * footprint inset by SOLID_DECOR_STAND_IN.insetTiles, the kind's height, in the floor's biome wall colour lightened
+	 * toward lightenRole (fallbackRole off a matched biome) and the biome's wall material. Shown while its plan entry
+	 * draws no piece (no art in the pack, or art too large for its box) or the piece's id has not downloaded, so a solid
+	 * piece is never an invisible blocker; parts belong to the floor's Janitor.
+	 */
+	private buildStandIns(pack: ThemePack, dungeon: Dungeon, entries: DecorPlan["entries"]): void {
+		const pieces = dungeon.solidDecor ?? [];
+		if (pieces.size() === 0) return;
+		const cfg = SOLID_DECOR_STAND_IN;
+		const biome = BIOMES.find((b) => b.forgeTheme === dungeon.params.themeKey);
+		const wall = biome !== undefined ? pack.placeholder(`tile.${biome.id}.wall`) : undefined;
+		const usable = wall !== undefined && pack.visualHex(wall.color).lower() !== MISSING_COLOR;
+		const base = usable && wall !== undefined ? pack.visualColor(wall.color) : pack.color(cfg.fallbackRole);
+		const color = base.Lerp(pack.color(cfg.lightenRole), cfg.lightenShare);
+		const material =
+			biome !== undefined
+				? Enum.Material[pack.biome(biome.id).materials.wall]
+				: Enum.Material[wall?.material ?? "SmoothPlastic"];
+		const S = STUDS_PER_TILE;
+		for (const b of solidStandIns(pieces, entries)) {
+			const part = renderPart("Part", true);
+			part.Name = `StandIn_${b.kind}`;
+			const h = b.heightTiles * S;
+			part.Size = new Vector3((b.w - 2 * cfg.insetTiles) * S, h, (b.h - 2 * cfg.insetTiles) * S);
+			part.CFrame = new CFrame(
+				studsX(b.x + (b.w - 1) * HALF),
+				floorStudsY() + h * HALF,
+				studsZ(b.y + (b.h - 1) * HALF),
+			);
+			part.Color = color;
+			part.Material = material;
+			part.Transparency = 1;
+			part.Parent = this.standInFolder;
+			this.floorJanitor.Add(part);
+			const piece = b.entry >= 0 ? this.pieces.get(b.entry) : undefined;
+			this.standIns.push({ part, entry: b.entry, pieceId: piece?.id, shown: false, fade: 0 });
+		}
+		this.refreshStandIns();
+	}
+
+	/** Re-reads every box on a readiness flip (a floor has a few dozen at most). */
+	private syncStandIns(): void {
+		const flipped = this.cursor?.take();
+		if (flipped === undefined || flipped.size() === 0 || this.standIns.size() === 0) return;
+		this.refreshStandIns();
+	}
+
+	/** Each box shown or hidden by its piece's readiness; the piece's art hidden while its box shows. */
+	private refreshStandIns(): void {
+		const ready = (id: string) => this.preload.isArtReady(id);
+		for (const box of this.standIns) {
+			const shown = solidStandInShown(box.pieceId, ready);
+			if (shown === box.shown) continue;
+			box.shown = shown;
+			box.part.Transparency = shown ? box.fade * DECOR_VIEW.fadeTransparency : 1;
+			const view = box.entry >= 0 ? this.solidViews.get(box.entry) : undefined;
+			if (view === undefined) continue;
+			view.hidden = shown;
+			this.setViewTransparency(view);
+		}
+	}
+
+	/** A drawn piece's transparency: hidden under its stand-in, else its fade. */
+	private setViewTransparency(pv: PieceView): void {
+		const t = pv.hidden ? 1 : pv.fade * DECOR_VIEW.fadeTransparency;
+		pv.body?.sprite?.setTransparency(t);
+		pv.body?.image?.setTransparency(t);
+		if (pv.flat !== undefined) pv.flat.label.ImageTransparency = pv.hidden ? 1 : 0;
 	}
 
 	/** The director's view on the pieces: lit braziers, the dimmed shrine crystal, animated loops. */
@@ -505,15 +641,22 @@ export class DecorController implements OnStart {
 	/** Tall / low pieces with a player or the boss behind them fade (tweened on real time). */
 	private applyFades(dt: number, state: Readonly<SimState>): void {
 		const plan = this.scene?.plan;
-		if (plan === undefined || this.drawn.size() === 0) return;
+		if (plan === undefined || (this.drawn.size() === 0 && this.standIns.size() === 0)) return;
 		selectDecorFades(plan, decorFadeBodies(state, this.bodies), this.fades);
 		for (const [b, pv] of this.fadeViews) {
 			const target = this.fades[b] ? 1 : 0;
 			if (pv.fade === target) continue;
 			pv.fade = decorFadeStep(pv.fade, target, dt, DECOR_VIEW.fadeSeconds);
-			const t = pv.fade * DECOR_VIEW.fadeTransparency;
-			pv.body?.sprite?.setTransparency(t);
-			pv.body?.image?.setTransparency(t);
+			this.setViewTransparency(pv);
+		}
+		// the stand-in boxes fade with their piece's fade box, like the art
+		for (const box of this.standIns) {
+			if (!box.shown || box.entry < 0) continue;
+			const b = plan.entries[box.entry].fade;
+			const target = b >= 0 && this.fades[b] ? 1 : 0;
+			if (box.fade === target) continue;
+			box.fade = decorFadeStep(box.fade, target, dt, DECOR_VIEW.fadeSeconds);
+			box.part.Transparency = box.fade * DECOR_VIEW.fadeTransparency;
 		}
 	}
 

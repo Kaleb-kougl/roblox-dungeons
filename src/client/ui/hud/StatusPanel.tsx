@@ -1,7 +1,7 @@
 import React from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
 import { selectSnapshot } from "client/store";
-import { role, str, themePack } from "client/ui/theme";
+import { UI_IMAGES, role, str, useUiArt } from "client/ui/theme";
 import type { ThemePack } from "shared/theme";
 import { HORDE_CHIP, hordeChipWidth } from "shared/view/pacts";
 import { BOOST_VIEW, type BoostHudEntry } from "shared/view/boosts";
@@ -34,7 +34,8 @@ const HALVES = 2;
 
 /** The pack's art lookups for one render (docs/UI_ART.md UA10); undefined without a pack: every piece flat. */
 export interface StatusSkin {
-	readonly pack: ThemePack;
+	/** The ui image lookup (client/ui UI_IMAGES: the pack's images that have downloaded, docs/STAGE_ASSETS.md SA18). */
+	readonly pack: Pick<ThemePack, "image">;
 	readonly has: SkinHas;
 	readonly uiScale: number;
 }
@@ -202,8 +203,8 @@ export interface StatusPanelProps {
 export function StatusPanel(props: StatusPanelProps) {
 	const s = useSelector(selectSnapshot);
 	const uiScale = useHudScale();
-	const pack = themePack();
-	const skin: StatusSkin | undefined = pack !== undefined ? { pack, has: skinHasOf(pack), uiScale } : undefined;
+	useUiArt();
+	const skin: StatusSkin = { pack: UI_IMAGES, has: skinHasOf(UI_IMAGES), uiScale };
 	const hearts = heartFills(s.hearts, s.heartsMax).map((fill, i) => (
 		<Heart key={`h${i}`} order={i + 1} fill={fill} skin={skin} />
 	));

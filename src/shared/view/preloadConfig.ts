@@ -18,6 +18,9 @@ export type PreloadEntryMode = "instance" | "string";
  */
 export const PRELOAD_BIOME_PREFIX = "biome:";
 
+/** The device classes with their own chunk size (docs/STAGE_ASSETS.md SAD11: the one per-device difference). */
+export type PreloadDevice = "desktop" | "touch" | "console";
+
 export interface PreloadConfig {
 	/** Logical-id prefixes (and biome entries) of the core tier, in download order (first = first on screen). */
 	readonly core: ReadonlyArray<string>;
@@ -29,8 +32,17 @@ export interface PreloadConfig {
 	readonly timeoutSec: number;
 	/** The screen's fade-out on release, seconds (instant under reduced motion). */
 	readonly fadeSec: number;
-	/** Entries per PreloadAsync call: small, so a run start's request gets in between chunks. */
-	readonly chunkSize: number;
+	/**
+	 * Entries per PreloadAsync call, per device class (docs/STAGE_ASSETS.md SAD11; shared/view preloadDeviceOf): small,
+	 * so a run start's request gets in between chunks. Equal until SA0 / SA20 measure each device.
+	 */
+	readonly chunkSizeByDevice: Readonly<Record<PreloadDevice, number>>;
+	/**
+	 * Before fetching a chunk, ask `ContentProvider:GetAssetFetchStatus` (behind pcall) and resolve an id already
+	 * `Success` in the engine without a fetch (docs/STAGE_ASSETS.md SA16). Skipped under the Studio fake latency.
+	 * Provisional until SA0 (e) says the status is reliable.
+	 */
+	readonly fetchStatusPrecheck: boolean;
 	/** P6 (D5): draw each core image once under the cover before release. Off unless the P0 spike finds a hitch. */
 	readonly warmCoreImages: boolean;
 	/** D4: hidden instances (default) or bare content id strings. */
@@ -38,40 +50,43 @@ export interface PreloadConfig {
 }
 
 /**
- * The preload tiers (D1): core = what the main menu, the tutorial and floor 1 can show or play; later = bosses, other
- * music, ambience and biomes 2-5. Each id goes to the tier of its LONGEST matching entry (`sfx.ui.` beats `sfx.`,
- * `music.menu` beats `music.`, `biome:biome.1` beats `biome:`).
+ * The preload tiers. Since docs/STAGE_ASSETS.md SA8 (SAD2) core is the MENU KIT only: what the join screen waits for
+ * before the menu (every `ui.` id: menu skins and icons share their sheets with the in-run HUD; the menu's ui sounds;
+ * the menu and lobby tracks). Floor art is the stage manifest's: each run start pushes its floor's manifest to the
+ * front lane (a soft wait, stand-ins for the rest), each reveal prefetches the next floor on `next`, and the menu /
+ * lobby prefetch floor 1's guess on `next` (StageController). Later = everything else on the back lane, roughly in the
+ * order a first run meets it (the knight, bullets, regular enemies, the run's sfx and pieces, biome 1 and its track,
+ * the tutorial's track, then bosses, other music, ambience and biomes 2-5). Each id goes to the tier of its LONGEST
+ * matching entry (`sfx.ui.` beats `sfx.`, `music.menu` beats `music.`, `biome:biome.1` beats `biome:`).
  */
 export const PRELOAD: PreloadConfig = {
-	core: [
-		"ui.",
+	core: ["ui.", "sfx.ui.", "music.menu", "music.lobby"],
+	later: [
 		"class.",
-		"sfx.ui.",
-		"music.menu",
+		// docs/PROJECTILE_ART.md: the bullet atlas (every flying bullet's sprite and fx.bullet.hit)
+		"bullet.",
 		"enemy.",
 		"sfx.",
 		"breakable.",
 		"boost.",
 		"pellet.",
-		"pact.",
-		// docs/PROJECTILE_ART.md: the bullet atlas (bullets.png, every flying bullet's sprite and fx.bullet.hit) shows
-		// from the first shot
-		"bullet.",
 		"fx.",
 		"decor.",
 		`${PRELOAD_BIOME_PREFIX}biome.1`,
-		// last: the lobby's, floor 1's and the first-join tutorial's tracks (docs/PRELOAD.md D1: core = what the menu,
-		// the tutorial and floor 1 can play). Long files, so after the art and sfx inside the timeout budget; every
-		// other music.* is later
-		"music.lobby",
 		"music.biome.1",
 		"music.tutorial",
+		"treasure.",
+		"pact.",
+		"boss.",
+		"music.",
+		"amb.",
+		PRELOAD_BIOME_PREFIX,
 	],
-	later: ["boss.", "music.", "amb.", PRELOAD_BIOME_PREFIX],
 	skipAfterSec: 3,
 	timeoutSec: 15,
 	fadeSec: 0.25,
-	chunkSize: 4,
+	chunkSizeByDevice: { desktop: 4, touch: 4, console: 4 },
+	fetchStatusPrecheck: true,
 	warmCoreImages: false,
 	entryMode: "instance",
 };

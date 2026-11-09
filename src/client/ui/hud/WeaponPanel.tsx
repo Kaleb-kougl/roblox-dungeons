@@ -1,7 +1,7 @@
 import React from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
 import { selectBindings, selectGameActive, selectInputDevice, selectRunInfo, selectSnapshot } from "client/store";
-import { useHudFont, role, str, themePack } from "client/ui/theme";
+import { role, str, themePack, uiImage, useHudFont, useUiArt } from "client/ui/theme";
 import { swapHint, keyDevice } from "shared/play";
 import { HUD_HINTS, HUD_SKIN, HUD_STRINGS, HUD_VIEW } from "shared/view/hud";
 import { Panel, Row, SlicedImage, Text } from "./primitives";
@@ -30,10 +30,11 @@ function weaponName(id: string): string {
  * the flat slot.
  */
 function WeaponSlot(props: { order: number; index: number; id: string; active: boolean }) {
+	useUiArt();
 	const hudFont = useHudFont();
 	const size = HUD_VIEW.weaponSlotSize;
 	const slotT = props.active ? 0 : HUD_VIEW.weaponInactiveTransparency;
-	const art = themePack()?.image(HUD_SKIN.ids.slot) !== undefined;
+	const art = uiImage(HUD_SKIN.ids.slot) !== undefined;
 	return (
 		<frame
 			LayoutOrder={props.order}

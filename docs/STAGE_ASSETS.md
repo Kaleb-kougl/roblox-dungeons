@@ -13,9 +13,12 @@ or a later tick.
 
 ## Status (2026-11-09)
 
-Plan only; nothing built. Revision 2 (owner, 2026-11-09, below): the game is **playable while loading** on every
-device, with stand-ins (the placeholder 3D objects) for any art not in yet. Decisions SAD1-SAD16 are defaults for
-review. Tasks SA0-SA20.
+**Built on branch `stage-assets` (2026-11-09): SA1-SA5, SA7, SA8, SA11 and SA15-SA19; not run in Studio yet.**
+Revision 2 (owner, 2026-11-09, below): the game is **playable while loading** on every device, with stand-ins (the
+placeholder 3D objects) for any art not in yet. Decisions SAD1-SAD16 are the defaults as built (owner: "proceed with
+implementation"). Dropped by revision 2: SA6 (the draft gate) and SA10's co-op waits. Not built: SA0 / SA20 (device
+measurements, owner), SA9 (warm draw, waits for SA0), SA12 (telemetry, optional), SA13's playtest. See "As built" and
+"Review fixes" below; the Studio checks listed under each task are the next step.
 
 ## Revision 2: playable while loading (owner, 2026-11-09)
 
@@ -378,6 +381,186 @@ smoke test lines, CLAUDE.md decision log. Fresh-phone playtest: a full solo run 
   *Alternative:* draw solid decor cells as wall until the art is in (reads as wall, not as furniture).
 - **SAD16 Stand-ins are the existing placeholders, unchanged.** *Alternative:* a dedicated "loading" look (a shimmer on
   stand-ins), more work and more Highlights.
+
+## As built
+
+- **SA1 (theme groups):** `shared/view/stageGroups.ts`, pure, over `PreloadSource` (no ThemePack change). Entries match
+  as a prefix when they end in "." and exactly otherwise (not preload.ts's plain `startsWith`, which would let
+  `music.biome.1` match `music.biome.10`; preload.ts's matcher is not exported). Actor kind -> the archetype's own
+  `data.spriteId`, the id ActorRenderController draws (`turret.sniper` -> `enemy.sniper`, `slime.small` ->
+  `enemy.slime`); unregistered kinds `PRELOAD_BOSS_IDS`, else `enemy.<kind>`. Biome n = `biome:biome.<n>` (its
+  `biomeContentIds`), `tile.biome.<n>.*` and every `decor.*` id with a `b<n>` segment (delve, void, `decor.fx.ambient.b<n>`);
+  beds `music.biome.<n>` / `amb.b<n>`; biome-free decor = decor ids with no `b<n>` segment that no feature claims.
+  Groups list only ids the pack has content for, so every placeholder group is empty. The music ids are config strings
+  checked against shared/view/audio by spec (importing the audio barrel from shared/view would be a require cycle
+  through `boosts/art.ts`).
+- **SA2 (manifest):** `stageAssetsConfig.ts` (`STAGE_ASSETS`, `STAGE_GROUPS`, `STAGE_FEATURES`, `STAGE_CHARACTERS`) and
+  `stageAssets.ts`. `stageAssetGroups` returns the groups in front-lane order (characters, bullets, actors, biome,
+  features, run kit, audio; each id once at its first group), `stageAssetsInOrder` flattens it, `stageAssets` splits it
+  by `STAGE_ASSETS.soon` (empty, SAD5), `stageContentRefs` resolves (`biome:<key>` through `biomeContentIds`), and
+  `stageAuditMisses` is SA11's diff. Run kit (run start only): `ui.`, `sfx.`, `bullet.`, `fx.`, `boost.`,
+  `breakable.`, `pellet.` (all of `ui.`: no menu-only ui id exists yet); bullets are also their own group on every stage.
+  Children: summoner / both bosses -> swarmer, slime -> slime.small (pinned against the sim's `summonKind` /
+  `splitKind`). World extras table `worlds.tutorial` (dummy, `music.tutorial`); boss floors add `music.boss`. Features
+  include `pedestals` (every treasure room's relic pedestal draws the vault chest). `notStaged`: `music.menu`,
+  `music.lobby`. The gate's tunables are `STAGE_ASSETS.wait` (unused until SA5 / SA19). Coverage guard
+  `stageAssets.coverage.spec.ts` passes on vale (and checks itself is live).
+- **SA3 (floor inputs):** `shared/run/stageInput.ts`: `stageInputOf(src, floor, characters, runStart)` (RunContext
+  fits `StageRunSource`), `stageInputOfLayout`, `stageInputOfEncounter` (M1), `forecastStageInput(runSeed, floor,
+  characters, world, runStart)`, `forecastFirstFloor(characters, biome = 1)`, and the biome rule `biomeIndexForTheme` /
+  `biomeIndexOf` (SimController now imports it). Exact kinds are ordered nearest the player's spawn first. Endless floors
+  are themed by the Forge's `"auto"` rule on the floor seed (`resolveParams`; a reroll keeps the theme), so floor 1's
+  biome is any of five: `forecastFirstFloor`'s biome 1 is a guess. Only type imports from shared/view and `BIOMES` by
+  file, so the server's shared/run never loads the theme packs. Spec: seeds 1-12 x floors 1-10 plus floors 15 / 20 on
+  two seeds (not 1-60 x 1-20: ~200 ms a floor under Lune, the spec already takes ~27 s), the tutorial's floors, M1, no
+  forging (the endless dungeon cache is unchanged), every floor-1 roster of seeds 1-60 inside the first-floor guess.
+- **SA4 (queue).** `PreloadLane` = `"front" | "next" | "back"` (`PRELOAD_LANES`); `PreloadQueue.take` serves them in
+  that order, a push to a higher lane moves an id still waiting in a lower one, `retry(ref, lane)` re-queues a taken id
+  past the seen set (the readiness retry, the fake-latency re-fetch), `pending(lane?)`, `laneOf(id)`. `LoadWaiters`
+  gained `progress(payload)` ([resolved, total], undefined once fired), `cancel(payload)` and `forget(id)`; payloads
+  match by identity. `PreloadController.whenLoaded` now returns a `LoadHandle` (`progress()`, `isDone()`, `cancel()`;
+  callers that ignore it compile unchanged) and `request` logs `next` pushes like `front`. Per-device chunk size
+  `PRELOAD.chunkSizeByDevice` (4 / 4 / 4 until SA0 / SA20), `preloadDeviceOf` (ten-foot = console; touch without
+  keyboard or gamepad = touch, InputController's rule) and `preloadChunkSize`. `KV_FakeAssetLatency`
+  (`RUN_ATTRIBUTES.fakeAssetLatency`, Studio only, read live): the worker waits before each chunk and skips the
+  fetch-status pre-check; `whenLoaded` re-fetches each of its already-resolved refs once per id per session.
+  ArtReadiness is NOT reset by it (a ready id stays ready; stand-ins are `KV_StandInsForce`'s job).
+- **SA15 (readiness core).** `shared/view/artReadiness.ts` `ArtReadiness` (tunables `ART_READINESS`: `retryAfterSec`
+  10, `maxFailures` 2) as specified in section 11. Logical ids are ready when every content id is ready or finally
+  failed; no content ids = ready. `flippedSince(epoch)` lists tracked ids whose `isReady` CHANGED (pending -> ready in
+  play; `setForced` also flips ids back to not ready), each once, in flip order: renderers re-read `isReady`. Tracked =
+  asked through `isReady` or `track`. The per-sheet split ("optional sheets count on their own") is the caller's: a
+  logical id is all of its `contentIds`, so a set's optional sheet flips on its own only if asked by its own id
+  (ThemePack's `contentIds` lists a set's sheets under the set id today; SA17 decides). No warm stage (SAD7);
+  the module comment names the extension point. The front lane's order (characters, bullets, first room) is SA5 /
+  SA2's push order, not built here.
+- **SA16 (feed and debug).** PreloadController owns the one `ArtReadiness` (every `assetIdList()` id tracked at
+  start), marks Success ready and failures failed, re-queues a first failure on the back lane once `retryDue` hands it
+  out (Heartbeat), and pre-checks `ContentProvider:GetAssetFetchStatus` per id before a chunk
+  (`PRELOAD.fetchStatusPrecheck`, pcall; a failing call turns it off; provisional until SA0 (e)). API:
+  `getReadiness()`, `isArtReady(id)`, `onReadinessChanged(cb(epoch)) -> unsubscribe` (Heartbeat, at most once per
+  frame, each listener in its own thread). `KV_StandInsForce` (`RUN_ATTRIBUTES.standInsForce`, read live,
+  `parseStandInsForce`: "all" or a comma list of prefixes). Logs: `[Ready] <id> ready (<n> content ids)` per flip
+  under `KV_Debug`, one `[Ready] all <n> ids ready in <t> s (...)` summary always. The join screen is unchanged
+  (same tiers, same chunk size; the pre-check only resolves ids the engine already has).
+- **SA5 + SA19 (the stage wait, soft).** StageController's `waitAssets` (after the listeners) builds the floor's
+  manifest, `stageAssets(pack, stageInputOf(ctx, ctx.floor, STAGE_CHARACTERS, kind !== "floorChange"))` (RunContext does
+  not expose the party's characters yet, so every cover uses `STAGE_CHARACTERS`; co-op starts count as run starts for
+  the run kit), and pushes `must` to the front lane in manifest order through `PreloadController.whenLoaded`, `soon` to
+  next; AudioController's own requests and PreloadController's boss push are untouched (`AudioController.floorBeds` and
+  `bossContentIds` are no longer read here). StageLoad (`stageLoader.ts`): only a solo run start waits
+  (`waitsForAssets()` = kind `runStart`; floor changes and co-op pass the phase at once, `assetWait` `"none"`, the
+  card keeps `minCardSec`, no draft hold). `STAGE_LOADER.assets` = `STAGE_ASSETS.wait`, which gained `standIns` (true):
+  with it the wait lifts at `softWaitSec` (`"soft"`); without it at `hardCapSec` (`"capped"`) or a `skipAssets()` from
+  `skipAfterSec` (`"skipped"`; `canSkipAssets()`) — the pure path is built and spec'd, **no Skip button is drawn**
+  (the stage cover owns no focus scope; not cheap, not needed with stand-ins). `setAssetProgress(done, total)` (fed
+  every frame from the LoadHandle; monotonic, clamped), `assetProgress()`, `showAssetProgress()` (assets phase, past
+  `showProgressAfterSec`, something missing); the bar's `assets` weight fills with the progress. `maxCoverSec` no
+  longer counts the assets phase. `STAGE_LOADER.assetCapSec` is gone. The card shows the join screen's
+  `loading.progress` ("Loading {done} / {total}") under the run-start bar (store `stage.assets`, `setStageAssets`): no
+  new string. Logs at each reveal: `[Stage] floor N: M ids, ready in T s` or `..., K of C content ids missing at reveal
+  (soft: enemy.imp, ... +n)` (names from `isArtReady`, `STAGE_LOADER.logMissingIds` 5) and later `floor N: ready in T
+  s, after the reveal`. Specs: soft lift at exactly 1.5 s with refs missing, no line under 0.375 s, floor change / co-op
+  ignore assets, the full wait's Skip at 6 s and cap at 30 s, `maxCoverSec` without the assets phase.
+- **SA7 (prefetch).** At every reveal, floor n + 1's manifest goes to the next lane (once per run and floor; the
+  exact input when that floor was already built: a run start's pre-generation, every tutorial floor; else
+  `forecastStageInput(ctx.seed, n + 1, STAGE_CHARACTERS, ctx.world)`; never past `TUTORIAL.lastFloor`); log `[Stage]
+  prefetch floor N (k ids, exact | forecast, next lane)`. Menu / lobby: StageController subscribes (after the join
+  screen's release) to the menu screen and the joined lobby id, no MenuController edit; with no run up it pushes the
+  first-floor guess once per key ("menu" / lobby id) to next. Biome choice: all five biomes on `next`, biome 1's
+  full forecast first, then biomes 2..5's new ids (`stageMergedAssets` in `stageAudit.ts`; floor 1's biome is the
+  seed's auto theme, so a single guess is right one time in five, and the extra biomes are only tiles and decor);
+  the refs are computed once per session.
+- **SA8 (join tier).** `PRELOAD.core` = `ui.`, `sfx.ui.`, `music.menu`, `music.lobby` (the menu draws no class or
+  enemy art; every `ui.` id stays core because menu and HUD icons share sheets). Everything else moved to `later`
+  (back lane), in first-run order: class, bullets, enemies, sfx, pieces, fx, decor, biome 1 and its track, the
+  tutorial's track, treasure, pact, bosses, other music, ambience, biomes. The join screen's release rules are
+  unchanged; the first-run tutorial's run start is covered by its own soft wait. preload.spec updated.
+- **SA11 (audit).** `KV_StageAssetAudit` (`RUN_ATTRIBUTES.stageAssetAudit`, read at each cut). Pure half in
+  `shared/view/stageAudit.ts`: `STAGE_AUDIT.methods` (17 ThemePack lookups: id by argument, by the result's `id`, or
+  `biome:<key>`; a spec checks each is a ThemePack method), `stageAuditIdsOf`, `StageAuditLog` (begin at the cut, the
+  manifest set in `waitAssets`, `close(hasContent)` -> sorted misses). Recording: `ThemeController.setAuditRecorder(cb |
+  undefined)` shadows those methods on the ONE pack instance (instance fields over the class methods, removed again
+  when off), so ThemePack stays unchanged and references taken earlier are covered; internal calls (`bullet` ->
+  `sprites`) are seen too. Closed at the next cut, run over (`isRunOver`, polled per frame) and exit: `[StageAudit]
+  floor N used <id>, not in its manifest` per miss (at most `maxMissLines` 40, then a count), or `floor N: k ids used,
+  all in its manifest`. Ids without content are never misses. Limit: a renderer that cached a lookup on an earlier
+  floor (outside the pack) is not seen on later floors.
+- **Studio checks still needed (SA5 / SA7 / SA8 / SA11):** with `KV_FakeAssetLatency` 2, Play solo reveals at about
+  1.5 s after the build with "Loading n / m" from 0.4 s and the missing-ids log line; floor changes never wait; the
+  prefetch lines at each reveal and on the menu / a lobby; a fresh join lifts on the menu kit; the tutorial's start
+  covered by its soft wait; `KV_StageAssetAudit` over floors 1-10 (expect misses only from ids the manifest truly
+  lacks).
+- **SA17 (actors, bullets, hazards, auras).** Pure helpers `shared/view/standIns.ts`: `drawsArt(hasArt, ready)`,
+  `FlipTracker` (`poll(feed)` once per frame -> moved?; `has(id)` for this frame's flips, either direction; the first
+  poll syncs, a new feed object counts as all flipped) and `ReadyIds` (a fixed index -> logical id list, re-read only
+  when the epoch moves; `isReady(i)`), over `ReadinessFeed` (ArtReadiness satisfies it). The renderers poll
+  `PreloadController.getReadiness()` per frame (no `onReadinessChanged` listener needed: they run every frame).
+  **ActorRenderController:** `spriteSets` still caches the pack's answer; `acquire` draws the set only while
+  `isArtReady(spriteId)`. `ActorView.visualId` / `artCapable`; when the epoch moved, a LIVE actor whose id flipped and is
+  drawn the wrong way is released and re-acquired in the same frame (`swapDue`; pool keys already split `sprite:` from
+  placeholder keys; the stand-in goes under the one Enemies Highlight, Highlight count unchanged). Corpses keep the view
+  they died with until the slot frees (no swap mid-death). A set is all-or-nothing: ready only when every sheet of it
+  (rims and optional sheets included) is in, so a sprite never draws a blank frame (decided here: no per-sheet ids).
+  Players: `PlayerView` builds its pip only; `usePlayerBody` builds the sprite (+ ring) or the capsule on first draw,
+  parks the other (the capsule leaves `Players/Outlined`), resets the cached look / transparency; the player-outline
+  Highlight follows the drawn body; the ring (`ui.ring.player`) replaces the pip only once its image is ready too.
+  **Bullets:** the sprite pools are built up front whenever the pack has bullet art (anchors grow lazily) and carry
+  `SpriteBulletPool.ready` (ReadyIds by look); a look not ready is not drawn there, so the neon pool after it draws it:
+  bullets in flight change pool on the frame. **Goo / strike / ember:** `DecalPool.frame(sim, clock, artReady)` draws
+  the discs until ready, then the sprite drawer; a mode change parks the other side (`FloorSpriteDrawer.parkAll`, new:
+  FloorSpritePool, StrikeSpritePool (drops its scorches), EmberSpritePool). The discs now always live in their plain
+  folders (`Goo`, `Strike`, `Ember`) and the art anchors in the art folders; `DecalPool.poolSize` is discs + anchors.
+  **BoostAuraController:** per kind `ReadyIds` over `fx.boost.aura.<kind>`; the disc until ready (the shown / seen swap
+  parks the unused piece). WeaponViewController, motionFx (ghosts copy drawn sprites only) and bulletTrails draw no art
+  by id: unchanged. Not in SA17's files and left as is (cosmetic, nothing gameplay-relevant goes invisible):
+  FxSpriteController and GoldenRenderController's coin burst (`pack.fx`).
+  Studio checks pending: `KV_StandInsForce` = "all" draws the whole run in stand-ins and is playable; clearing it swaps
+  everything live; with `KV_FakeAssetLatency` the knight capsule turns into the knight mid-walk, a pack of enemies
+  mid-fight, bullets in flight; no orphan parts (pool counts settle), Highlights under 31.
+- **SA18 (pieces, solid decor, UI, audio).** Pure helpers `shared/view/pieceStandIns.ts` (renamed from standIns.ts on the merge with SA17; its `ReadinessFeed` is SA17's) (`ReadinessCursor`: a renderer's
+  `take()` of the flips since its last call, either direction, re-read `isReady`; `lookWhenReady(look, ready)`: a theme
+  look with `art` dropped, so each renderer's existing placeholder branch builds the stand-in; `solidStandIns(pieces,
+  entries)` / `solidStandInShown`) with `SOLID_DECOR_STAND_IN` (`standInsConfig.ts`: height in tiles per
+  `SolidDecorKind`, 0.06 tile inset, the biome wall colour lightened 18 % toward `uiText`, `wall` off a matched biome; no
+  new colour role), and `shared/view/audio` `BedGate` + `AUDIO_VIEW.lateBedFadeSec` 1.2. Pieces
+  (Breakable / BoostDrop / Pellet / Treasure / Pact / RunMarker pedestals) inject PreloadController, build their looks
+  through `lookWhenReady` and, on a flip of their id, give every live piece a body in the new look (bodies carry their
+  look's `art` flag; pooled bodies of the other look are discarded on reuse, a breakable mid-shatter keeps its body);
+  the treasure column and the Goldling's coin burst pick art or stand-in every frame (`drawTreasureColumn`'s trailing
+  `artReady`). Solid decor (SAD15): DecorController matches each `Dungeon.solidDecor` piece to its plan entry (the
+  entry's first cell; a `bookcaseWide` also its second) and draws a render-only box (CanCollide / CanQuery off,
+  CastShadow on like walls, folder `KV_SolidStandIns`, fading with the entry's fade box) while the entry draws no piece
+  (no art, or art too large for its box) or the piece's id is not ready; under `KV_StandInsForce` the cached art is
+  hidden under the box. WorldController and the decor plan are unchanged. UI: `client/ui` `artReady.ts` (`uiImage(id)`,
+  `UI_IMAGES` for `skinHasOf` / `pipArt` / `touchArtId`, `useUiArt()` re-rendering on a flip of an id the UI asked
+  about, `onUiArtChanged`), bound by the new `UiArtController` (onInit; one subscription for the whole UI); every
+  `pack.image` / `skinHasOf(pack)` in client/ui (primitives `Panel` / `SlicedImage` / `ArtImage` / `FocusCorners` /
+  `Divider` / ornament / `MenuButton`, status / touch strip pips and hearts, boost / item / boon / duo icons, boss and
+  loading pill bars, draft card faces and chips, minimap / full-map frames, list rows) goes through it, so each takes
+  its flat path until its image is in; TouchControlsController rebuilds its controls when its art key changes, once no
+  finger is down. Audio (SAD14): `play` drops a cue whose resolved id is not ready (SFX_FALLBACK still covers SILENT ids;
+  Play is never called on a not-ready Sound); music / ambience beds wait in `LoopChannel`'s BedGate and start, faded
+  in, on the readiness change that brings them in, if still wanted; a playing bed is never stopped by readiness. Not
+  gated (cosmetic, an unloaded image draws nothing): decor, decor fx, the void, debris decals, loot / boost glints, the
+  boost halo / beam layers, the pedestal beam, tile textures (the Part keeps the biome colour). Studio checks pending:
+  `KV_StandInsForce` "all" (crypt tombs / bookcases / study tables as boxes, no invisible blocker, breakables / drops /
+  pellets / chests / altars as placeholders, the UI flat, silence), clearing it swaps live (pieces, boxes gone, UI art,
+  beds keep playing); with `KV_FakeAssetLatency` the first swing before its sfx lands is silent, not late, and the floor
+  music fades in when it lands; touch controls rebuild between touches.
+
+### Review fixes (lead, after the merge)
+
+- **A final fetch failure is not ready** (`ArtReadiness`): it counts as resolved (waits and logs stop waiting) but a
+  logical id with a content id that never loaded stays a stand-in for the session (SAD13). Before the fix, a sheet
+  that failed twice drew art from a blank sheet: an invisible enemy, or a solid decor box hidden over a blocker.
+- **The menu kit is on the front lane** (`PreloadController.onInit`): after a Skip / timeout release, the menu / lobby
+  first-floor prefetch (`next`) no longer jumps the core UI ids still waiting.
+- **Leave run cancels the stage's asset wait** (`StageController.cancel`): no stale "ready after the reveal" line.
+- **Known gap, not fixed:** a UI frame art flip swaps `Panel` between its flat frame and `SkinnedPanel`, so the panel's
+  children remount once (focus, scroll and local state reset). It only happens when ui art lands while a menu is open
+  (a Skip / timeout join, a retry, `KV_StandInsForce`); with the menu kit on the front lane the join screen normally
+  holds until the ui art is in. A fix keeps one root element and toggles the skin inside it.
 
 ## Out of scope
 

@@ -35,7 +35,9 @@ import { SPRITE_TINT_NONE, SpriteView } from "./SpriteView";
  * The treasure chest's drawn pieces, shared by the vault (TreasureRenderController: the closed / open chest, the art
  * cage, the light column) and the relic pedestals (RunMarkerController: the same chest and column, docs/TREASURE.md
  * "Relic pedestals"). A body is a theme TreasurePiece drawn as art (a sprite set's idle or an image billboard, capped at
- * a height above its pivot: breakableArtLayout) or as its placeholder model. Presentation only.
+ * a height above its pivot: breakableArtLayout) or as its placeholder model. Callers pass a look whose art is dropped
+ * while its id has not downloaded (shared/view lookWhenReady, docs/STAGE_ASSETS.md SA18) and rebuild the body on the
+ * flip. Presentation only.
  */
 
 const HIDDEN = 1;
@@ -222,6 +224,8 @@ export function buildTreasureColumn(pack: ThemePack, folder: Folder): TreasureCo
 /**
  * Draws the column `c` (shared/view/treasure columnAt) standing on `base` in `color` (the tier's floor role), `openAge`
  * sim seconds after the opening began (the art's frame: from TREASURE_VIEW.open.popSec); hidden when `c` is not shown.
+ * `artReady` false (`fx.treasure.column` not downloaded yet, docs/STAGE_ASSETS.md SA18) draws the Neon block, the
+ * stand-in, even when the pack has the art; the choice is made every frame, so the swap is live.
  */
 export function drawTreasureColumn(
 	col: TreasureColumn,
@@ -229,6 +233,7 @@ export function drawTreasureColumn(
 	base: Vector3,
 	color: Color3,
 	openAge: number,
+	artReady = true,
 ): void {
 	if (!c.shown) {
 		hideTreasureColumn(col);
@@ -238,7 +243,11 @@ export function drawTreasureColumn(
 	const h = C.heightTiles * STUDS_PER_TILE * c.height;
 	const w = C.widthTiles * STUDS_PER_TILE;
 	const fxArt = col.fx;
-	if (fxArt !== undefined && col.gui !== undefined && col.label !== undefined) {
+	if (artReady && fxArt !== undefined && col.gui !== undefined && col.label !== undefined) {
+		if (col.part.CFrame !== TREASURE_PARKED) {
+			col.part.Transparency = HIDDEN;
+			col.part.CFrame = TREASURE_PARKED;
+		}
 		col.anchor.CFrame = new CFrame(base);
 		col.gui.Size = new UDim2(w, 0, h, 0);
 		col.gui.StudsOffset = new Vector3(0, h / 2, 0);
@@ -252,6 +261,7 @@ export function drawTreasureColumn(
 		col.label.ImageTransparency = HIDDEN - c.opacity;
 		return;
 	}
+	if (col.gui !== undefined && col.gui.Enabled) col.gui.Enabled = false;
 	col.part.Size = new Vector3(w, math.max(h, FX_SPRITE_VIEW.thicknessStuds), w);
 	col.part.Color = color.Lerp(WHITE, TREASURE_VIEW.columnCoreMix);
 	col.part.CFrame = new CFrame(base.add(new Vector3(0, h / 2, 0)));

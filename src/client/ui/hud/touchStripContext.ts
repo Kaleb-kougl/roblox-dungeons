@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from "@rbxts/
 import { useSelector } from "@rbxts/react-reflex";
 import { GuiService, Workspace } from "@rbxts/services";
 import { selectDisplay, selectGhostHeart, selectSnapshot, type ClientState } from "client/store";
-import { themePack } from "client/ui/theme";
+import { UI_IMAGES, uiImage, useUiArt } from "client/ui/theme";
 import {
 	HUD_SKIN,
 	TOUCH_STRIP,
@@ -27,16 +27,14 @@ export const TouchStripGeometryContext = createContext<TouchStripGeometry | unde
 /** The art sizes (art px) of an image, or undefined when the pack lacks it. */
 function artSize(id: string | undefined): { w: number; h: number } | undefined {
 	if (id === undefined) return undefined;
-	const ref = themePack()?.image(id);
+	const ref = uiImage(id);
 	if (ref === undefined) return undefined;
 	return { w: ref.rect?.w ?? ref.w, h: ref.rect?.h ?? ref.h };
 }
 
 /** The pack's icon sizes the strip fits (the flat look: none). */
 function stripArt(): TouchStripArt | undefined {
-	const pack = themePack();
-	if (pack === undefined) return undefined;
-	const has = skinHasOf(pack);
+	const has = skinHasOf(UI_IMAGES);
 	const pip = pipArt(has, "armor", true);
 	return {
 		heart: artSize(skinFor(has, "heart", "full")),
@@ -65,11 +63,13 @@ function useStripContent(): TouchStripContent {
 		math.max(TOUCH_STRIP.minScoreDigits, digitCount(selectSnapshot(st).score)),
 	);
 	const ghost = useSelector(selectGhostHeart) > 0;
+	// docs/STAGE_ASSETS.md SA18: the icon sizes follow the art as it downloads
+	const artRevision = useUiArt();
 	return useMemo(() => {
 		// The widest score with this many digits stands in for the score (only its digit count matters).
 		const score = 10 ** digits - 1;
 		return { heartsMax, ghost, pips, flaskMax, emberMax, scoring, score, art: stripArt() };
-	}, [heartsMax, ghost, pips, flaskMax, emberMax, scoring, digits]);
+	}, [heartsMax, ghost, pips, flaskMax, emberMax, scoring, digits, artRevision]);
 }
 
 /** The touch strip's layout (shared/view/hud touchStrip), or undefined off touch. */

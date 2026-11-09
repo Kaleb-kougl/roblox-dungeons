@@ -12,6 +12,7 @@ import {
 	type GooSpriteLook,
 } from "shared/view";
 import { FLOOR_CANVAS_YAW, floorCanvasPartSize } from "./floorCanvas";
+import type { FloorSpriteDrawer } from "./HazardSpritePool";
 import { createSpriteAnchor } from "./SpriteBulletPool";
 
 /** The land cell's frame key (hold variants are 0..), and a new anchor's (no cell written yet). */
@@ -74,7 +75,7 @@ export function floorSpriteLook(sprite: FloorSprite, studsPerTile: number, thick
  * on the `quantum` (the disc's fade). A slot without a visible accepted bullet, or fully faded, parks (its surface
  * disabled); a new simulation (a new run) parks everything, and a floor change clears the bullets, so their slots park.
  */
-export class FloorSpritePool {
+export class FloorSpritePool implements FloorSpriteDrawer {
 	private readonly parts = new Array<Part>();
 	private readonly surfaces = new Array<SurfaceGui>();
 	private readonly labels = new Array<ImageLabel>();
@@ -188,7 +189,8 @@ export class FloorSpritePool {
 		this.moveCFrames.push(this.parked);
 	}
 
-	private parkAll(): void {
+	/** Parks every anchor (surfaces disabled) in one BulkMoveTo (DecalPool's stand-in discs draw meanwhile, SA17). */
+	parkAll(): void {
 		this.moveParts.clear();
 		this.moveCFrames.clear();
 		for (let i = 0; i < this.parts.size(); i++) this.park(i);

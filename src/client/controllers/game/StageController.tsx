@@ -3,25 +3,42 @@ import { Janitor } from "@rbxts/janitor";
 import React, { createBinding } from "@rbxts/react";
 import { ReflexProvider } from "@rbxts/react-reflex";
 import { createPortal, createRoot } from "@rbxts/react-roblox";
-import { GuiService, Players, RunService } from "@rbxts/services";
-import { clientStore, selectBaselineRun, selectJuice, selectRunBaseline } from "client/store";
+import { GuiService, Players, RunService, Workspace } from "@rbxts/services";
+import {
+	clientStore,
+	selectBaselineRun,
+	selectJuice,
+	selectMenuScreen,
+	selectMyLobbyId,
+	selectRunBaseline,
+	type StageAssetsLine,
+} from "client/store";
 import { LocaleRoot, StageCard } from "client/ui";
 import { TUTORIAL } from "shared/config";
 import { ENDLESS_FIRST_FLOOR, endlessRoster } from "shared/dungeon";
-import type { ContentRef } from "shared/theme";
+import { RUN_ATTRIBUTES } from "shared/play";
+import { forecastFirstFloor, forecastStageInput, stageInputOf } from "shared/run";
+import { BIOMES, type ContentRef } from "shared/theme";
 import { floorTarget, stageBestLine, stageCardLine, stageRosterLine, type NewBestLineText } from "shared/view/hud";
 import {
+	PRELOAD_BIOME_PREFIX,
 	PregenTracker,
+	STAGE_AUDIT,
+	STAGE_CHARACTERS,
 	STAGE_LOADER,
+	StageAuditLog,
 	StageLoad,
-	bossContentIds,
+	stageAssets,
+	stageContentRefs,
+	stageMergedAssets,
 	stageMerge,
+	type StageAssetInput,
+	type StageAssetSet,
 	type StageKind,
 	type StagePhase,
 	type StageWorkItem,
 } from "shared/view";
-import { AudioController } from "../audio/AudioController";
-import { PreloadController } from "./PreloadController";
+import { PreloadController, type LoadHandle } from "./PreloadController";
 import { SimController, type RunContext, type StageDriver, type StageWork } from "./SimController";
 import { ThemeController } from "./ThemeController";
 
@@ -69,10 +86,26 @@ function seconds(sec: number): string {
  *              R ignored); co-op never holds (the lockstep keeps stepping; only the views wait). Until the reveal the
  *              cover owns the input (blocksInput: SimController sends neutral input, client/store selectMenuOpen
  *              treats it as a menu), so a floor change's draft cannot be confirmed blind.
- *   assets     after the listeners (AudioController and the boss push have requested them): the floor's beds
- *              (AudioController.floorBeds) and, on a boss floor, shared/view bossContentIds, through
- *              PreloadController.whenLoaded, up to STAGE_LOADER.assetCapSec. Co-op covers skip this wait (SL7: the
- *              cover lasts the build and settle only, plus the floor card, so nobody waits on one client's downloads).
+ *   assets     (docs/STAGE_ASSETS.md SA5 / SA19) after the listeners: the floor's stage manifest, shared/view
+ *              stageAssets(pack, shared/run stageInputOf(ctx, floor, STAGE_CHARACTERS, run start)) through
+ *              stageContentRefs: `must` to the FRONT lane in manifest order (PreloadController.whenLoaded), `soon` to
+ *              `next`. AudioController's and the boss push's own requests are untouched. Only a solo run start waits
+ *              (StageLoad.waitsForAssets): at most STAGE_ASSETS.wait.softWaitSec, then the reveal with stand-ins for
+ *              whatever is missing (revision 2: renderers draw the placeholder until an id's art lands); the cover's
+ *              "Loading {done} / {total}" line (the join screen's `loading.progress`) shows once the wait has run
+ *              showProgressAfterSec with something missing. Floor changes and co-op covers never wait (SAD4 / SAD8):
+ *              the manifest still goes to the front lane, only the log reads it. Without stand-ins
+ *              (`wait.standIns` false) StageLoad waits to hardCapSec; no Skip button is drawn (not built).
+ *   prefetch   (SA7) at every reveal, floor n + 1's manifest to the NEXT lane: exact when that floor was already
+ *              built (a run start pre-generates it; the tutorial builds every floor), else shared/run
+ *              forecastStageInput (no generation); once per run and floor, never past the tutorial's last floor.
+ *              On the menu (once the join screen released) and on joining a lobby: the first-floor guess,
+ *              forecastFirstFloor for biome 1 then biomes 2..5 (floor 1's biome is the seed's auto theme, any of
+ *              the five), merged in that order (stageMergedAssets), all on `next`; computed once per session.
+ *   audit      (SA11) Workspace `KV_StageAssetAudit` (RUN_ATTRIBUTES.stageAssetAudit, read at each cut): from the cut
+ *              every logical id the views resolve through the pack is recorded (ThemeController.setAuditRecorder,
+ *              shared/view StageAuditLog); at the next cut, the run's end (run over) or an exit it is diffed against
+ *              the floor's manifest and each miss printed `[StageAudit] floor N used <id>, not in its manifest`.
  *   pregen     shared/view PregenTracker per run (lastFloor: TUTORIAL.lastFloor in a tutorial run): at a solo run start
  *              under the cover (`pregen` work), and every frame outside covered work and the fade, floor n + 1 once
  *              the local player's draft on floor n has been open a rendered frame (solo and co-op, SD1). A floor
@@ -88,7 +121,8 @@ function seconds(sec: number): string {
  *
  * Log lines start with `[Stage]`: `run N: forged in t ms, built in t ms, revealed at t s`, `floor N: built in t ms,
  * revealed at t s`, `floor X pre-generated in T ms (run start | during floor N's draft)`, `floor N: built mid-tick (not
- * pre-generated)`, `floor N: assets ready in T s (k ids)` / `asset wait capped at T s`, and failures (warn).
+ * pre-generated)`, `floor N: M ids, ready in T s` / `floor N: M ids, K of C content ids missing at reveal (<ids>)` (and
+ * `floor N: ready in T s, after the reveal` once they land), `prefetch floor N (k ids, next lane)`, and failures (warn).
  */
 @Controller({ loadOrder: 2 })
 export class StageController implements OnStart, StageDriver {
@@ -112,10 +146,21 @@ export class StageController implements OnStart, StageDriver {
 	private lastFloor = -1;
 	private lastFraction = -1;
 	private revealedSerial = -1;
-	private assetsLogged = false;
+	/** The current floor's manifest wait (one per load; its listener checks the serial). */
+	private assetHandle: LoadHandle | undefined;
+	private assetSet: StageAssetSet | undefined;
+	private assetSerial = -1;
 	private assetsStartedAt = 0;
 	private assetsReadyIn = -1;
-	private assetCount = 0;
+	/** The reveal was logged with ids missing: the late "ready" line is due. */
+	private assetsLateLog = false;
+	private lastAssetsLine: StageAssetsLine | undefined;
+	/** `<run counter>:<floor>` of the last floor n + 1 prefetch. */
+	private prefetchKey = "";
+	/** The menu / lobby key of the last first-floor prefetch ("menu" or the lobby id). */
+	private menuPrefetchKey = "";
+	private menuPrefetchRefs: ReadonlyArray<ContentRef> | undefined;
+	private readonly audit = new StageAuditLog();
 	private forgeSec = 0;
 	private buildSec = 0;
 	private runCounter = 0;
@@ -125,7 +170,6 @@ export class StageController implements OnStart, StageDriver {
 	constructor(
 		private readonly sim: SimController,
 		private readonly preload: PreloadController,
-		private readonly audio: AudioController,
 		private readonly theme: ThemeController,
 	) {}
 
@@ -160,6 +204,8 @@ export class StageController implements OnStart, StageDriver {
 		RunService.BindToRenderStep(RENDER_END_STEP, Enum.RenderPriority.Last.Value, () => (this.inRender = false));
 		this.janitor.Add(() => RunService.UnbindFromRenderStep(RENDER_END_STEP), true);
 		this.sim.setStageDriver(this);
+		this.preload.whenReleased(() => this.watchMenu());
+		this.janitor.Add(() => this.endAudit(), true);
 	}
 
 	// --- StageDriver ---------------------------------------------------------------------------
@@ -174,6 +220,7 @@ export class StageController implements OnStart, StageDriver {
 		if (merge === "absorb") return; // the pending run-start listeners will read this floor's context
 		if (merge === "continue" && current !== undefined) {
 			this.work = work;
+			if (this.audit.isOpen()) this.audit.begin(work.floor); // the answer names the floor; nothing drawn yet
 			current.serverAnswered(work.floor);
 			this.publish(current);
 			return;
@@ -182,6 +229,12 @@ export class StageController implements OnStart, StageDriver {
 	}
 
 	cancel(): void {
+		this.endAudit(); // Leave run / exit: the floor's audit ends here
+		this.assetHandle?.cancel(); // the left run's wait: no stale "ready after the reveal" line (its ids stay queued)
+		this.assetHandle = undefined;
+		this.assetSet = undefined;
+		this.assetSerial = -1;
+		this.assetsLateLog = false;
 		if (this.load === undefined) return;
 		this.load = undefined;
 		this.work = undefined;
@@ -205,7 +258,13 @@ export class StageController implements OnStart, StageDriver {
 				worked = true;
 				this.runWork(load, item);
 			}
+			const handle = this.assetHandle;
+			if (this.load === load && handle !== undefined && load.phase() === "assets") {
+				const [done, total] = handle.progress();
+				load.setAssetProgress(done, total);
+			}
 		}
+		if (this.audit.isOpen() && this.sim.isRunOver()) this.endAudit(); // run over: the last floor's audit
 		const now = this.load;
 		// One stall per frame: no draft pre-generation in a frame that already ran covered work.
 		if (!worked) this.pregenFrame(now?.phase());
@@ -254,9 +313,15 @@ export class StageController implements OnStart, StageDriver {
 		this.work = work;
 		this.serial += 1;
 		this.revealedSerial = -1;
-		this.assetsLogged = false;
+		this.assetHandle?.cancel(); // the previous floor's wait (its ids stay queued)
+		this.assetHandle = undefined;
+		this.assetSet = undefined;
+		this.assetSerial = -1;
 		this.assetsReadyIn = -1;
-		this.assetCount = 0;
+		this.assetsLateLog = false;
+		this.lastAssetsLine = undefined;
+		this.endAudit();
+		this.beginAudit(load.floor());
 		this.forgeSec = 0;
 		this.buildSec = 0;
 		this.lastLabelKey = "";
@@ -403,36 +468,42 @@ export class StageController implements OnStart, StageDriver {
 	}
 
 	/**
-	 * After the listeners: wait for the floor's beds (and a boss floor's sheets), up to assetCapSec. Co-op never waits,
-	 * nor a floor change whose world is live (StageLoad.waitsForAssets).
+	 * After the listeners: the floor's stage manifest to the front lane (`soon` to next) and, on a solo run start, the
+	 * soft wait for it (StageLoad's assets phase; see the class comment). Every other cover passes the phase at once.
 	 */
 	private waitAssets(load: StageLoad): void {
 		const ctx = this.sim.getContext();
-		if (ctx === undefined || ctx.coop !== undefined || !load.waitsForAssets()) {
-			this.assetsLogged = true;
+		if (ctx === undefined) {
 			load.assetsDone();
 			return;
 		}
-		const refs: ContentRef[] = this.audio.floorBeds(ctx);
-		if (ctx.endlessFloor !== undefined && ctx.floor > 0) {
-			const kind = ctx.endlessFloor(ctx.floor).layout.bossKind;
-			if (kind !== undefined) for (const ref of bossContentIds(this.theme.getPack(), kind)) refs.push(ref);
+		const pack = this.theme.getPack();
+		const input = stageInputOf(ctx, ctx.floor, STAGE_CHARACTERS, load.kind !== "floorChange");
+		const set = stageAssets(pack, input);
+		this.audit.setManifest(set);
+		const refs = stageContentRefs(pack, set);
+		const label = `stage floor ${ctx.floor}`;
+		if (refs.soon.size() > 0) this.preload.request(refs.soon, "next", label);
+		this.assetSet = set;
+		if (refs.must.size() === 0) {
+			load.assetsDone(); // nothing to download (the placeholder pack): no line
+			return;
 		}
-		this.assetCount = refs.size();
+		const serial = this.serial;
+		this.assetSerial = serial;
 		this.assetsStartedAt = os.clock();
-		if (refs.size() === 0) {
-			this.assetsLogged = true; // nothing to wait for: no line
-			load.assetsDone();
-			return;
-		}
-		this.preload.whenLoaded(
-			refs,
+		this.assetHandle = this.preload.whenLoaded(
+			refs.must,
 			() => {
-				if (this.load !== load) return;
+				if (this.assetSerial !== serial) return;
 				this.assetsReadyIn = os.clock() - this.assetsStartedAt;
-				load.assetsDone();
+				if (this.load === load && load.waitsForAssets()) load.assetsDone();
+				if (this.assetsLateLog) {
+					this.assetsLateLog = false;
+					print(`${LOG} floor ${load.floor()}: ready in ${seconds(this.assetsReadyIn)} s, after the reveal`);
+				}
 			},
-			`stage floor ${ctx.floor}`,
+			label,
 		);
 	}
 
@@ -447,22 +518,148 @@ export class StageController implements OnStart, StageDriver {
 			this.lastFraction = fraction;
 			clientStore.setStageProgress(label.key, label.vars.floor, fraction);
 		}
-		if (!this.assetsLogged && load.assetWait() !== "pending" && load.assetWait() !== "skipped") {
-			this.assetsLogged = true;
-			const where = `floor ${load.floor()}`;
-			if (load.assetWait() === "ready") {
-				const t = this.assetsReadyIn >= 0 ? this.assetsReadyIn : 0;
-				print(`${LOG} ${where}: assets ready in ${seconds(t)} s (${this.assetCount} ids)`);
-			} else {
-				print(`${LOG} ${where}: asset wait capped at ${seconds(os.clock() - this.assetsStartedAt)} s`);
-			}
+		const shown = load.showAssetProgress();
+		const [done, total] = load.assetProgress();
+		const was = this.lastAssetsLine;
+		if (shown ? was === undefined || was.done !== done || was.total !== total : was !== undefined) {
+			const line = shown ? { done, total } : undefined;
+			this.lastAssetsLine = line;
+			clientStore.setStageAssets(line);
 		}
 		const phase = load.phase();
 		if ((phase === "revealing" || phase === "done") && this.revealedSerial !== this.serial) {
 			this.revealedSerial = this.serial;
 			clientStore.setStageRevealing();
 			this.logReveal(load);
+			this.logAssetsAtReveal(load);
+			this.prefetchNext();
 		}
+	}
+
+	/** `[Stage] floor N: M ids, ready in T s` or `..., K of C content ids missing at reveal (<first ids>)`. */
+	private logAssetsAtReveal(load: StageLoad): void {
+		const set = this.assetSet;
+		const handle = this.assetHandle;
+		if (set === undefined || handle === undefined) return;
+		const where = `${LOG} floor ${load.floor()}: ${set.must.size()} ids`;
+		const [done, total] = handle.progress();
+		if (handle.isDone() || done >= total) {
+			const t = this.assetsReadyIn >= 0 ? this.assetsReadyIn : os.clock() - this.assetsStartedAt;
+			print(`${where}, ready in ${seconds(t)} s`);
+			return;
+		}
+		const missing = new Array<string>();
+		let more = 0;
+		for (const id of set.must) {
+			if (id.sub(1, PRELOAD_BIOME_PREFIX.size()) === PRELOAD_BIOME_PREFIX) continue;
+			if (this.preload.isArtReady(id)) continue;
+			if (missing.size() < STAGE_LOADER.logMissingIds) missing.push(id);
+			else more += 1;
+		}
+		const tail = more > 0 ? ` +${more}` : "";
+		const wait = load.assetWait();
+		const names = missing.join(", ");
+		print(`${where}, ${total - done} of ${total} content ids missing at reveal (${wait}: ${names}${tail})`);
+		this.assetsLateLog = true;
+	}
+
+	// --- prefetch (docs/STAGE_ASSETS.md SA7) -------------------------------------------------------
+
+	/** At a reveal of floor n: floor n + 1's manifest to the next lane (once per run and floor). */
+	private prefetchNext(): void {
+		const ctx = this.sim.getContext();
+		if (ctx === undefined || ctx.endlessFloor === undefined || ctx.floor <= 0) return;
+		const target = ctx.floor + 1;
+		if (ctx.tutorial && target > TUTORIAL.lastFloor) return;
+		const key = `${ctx.counter}:${target}`;
+		if (key === this.prefetchKey) return;
+		this.prefetchKey = key;
+		const [ok, err] = pcall(() => {
+			const built = ctx.tutorial || this.trackerFor(ctx).wasBuilt(target);
+			const input: StageAssetInput = built
+				? stageInputOf(ctx, target, STAGE_CHARACTERS)
+				: forecastStageInput(ctx.seed, target, STAGE_CHARACTERS, ctx.world);
+			const pack = this.theme.getPack();
+			const set = stageAssets(pack, input);
+			const refs = stageContentRefs(pack, set);
+			const label = `prefetch floor ${target}`;
+			this.preload.request(refs.must, "next", label);
+			if (refs.soon.size() > 0) this.preload.request(refs.soon, "next", label);
+			const how = built ? "exact" : "forecast";
+			print(`${LOG} prefetch floor ${target} (${set.must.size() + set.soon.size()} ids, ${how}, next lane)`);
+		});
+		if (!ok) warn(`${LOG} floor ${target} could not be prefetched: ${tostring(err)}`);
+	}
+
+	/** Once the join screen released: the first-floor prefetch on the menu and on joining a lobby. */
+	private watchMenu(): void {
+		this.janitor.Add(clientStore.subscribe(selectMenuScreen, () => this.menuPrefetch()));
+		this.janitor.Add(clientStore.subscribe(selectMyLobbyId, () => this.menuPrefetch()));
+		this.menuPrefetch();
+	}
+
+	/**
+	 * The menu or a lobby is up (no run): the first floor's guess to the next lane, every biome (biome 1 first), once
+	 * per menu visit key ("menu", or the joined lobby's id); the refs are built once per session.
+	 */
+	private menuPrefetch(): void {
+		if (this.sim.getContext() !== undefined) return;
+		const state = clientStore.getState();
+		if (selectMenuScreen(state) === undefined) return;
+		const key = selectMyLobbyId(state) ?? "menu";
+		if (key === this.menuPrefetchKey) return;
+		this.menuPrefetchKey = key;
+		const [ok, err] = pcall(() => {
+			let refs = this.menuPrefetchRefs;
+			let ids = -1;
+			if (refs === undefined) {
+				const pack = this.theme.getPack();
+				const inputs = new Array<StageAssetInput>();
+				for (let b = 1; b <= BIOMES.size(); b++) inputs.push(forecastFirstFloor(STAGE_CHARACTERS, b));
+				const set = stageMergedAssets(pack, inputs);
+				const both = stageContentRefs(pack, set);
+				const all = [...both.must];
+				for (const r of both.soon) all.push(r);
+				refs = all;
+				ids = set.must.size() + set.soon.size();
+				this.menuPrefetchRefs = refs;
+			}
+			if (refs.size() === 0) return;
+			this.preload.request(refs, "next", `prefetch floor 1 (${key})`);
+			if (ids >= 0) print(`${LOG} prefetch floor 1 (${ids} ids, every biome, next lane)`);
+		});
+		if (!ok) warn(`${LOG} the first floor could not be prefetched: ${tostring(err)}`);
+	}
+
+	// --- audit (docs/STAGE_ASSETS.md SA11) ---------------------------------------------------------
+
+	/** At a cut: records the floor's lookups while KV_StageAssetAudit is on (read now). */
+	private beginAudit(floor: number): void {
+		if (Workspace.GetAttribute(RUN_ATTRIBUTES.stageAssetAudit) !== true) return;
+		this.audit.begin(floor);
+		this.theme.setAuditRecorder((id) => this.audit.record(id));
+	}
+
+	/** Closes the open floor's audit (next cut, run over, exit) and prints its misses. */
+	private endAudit(): void {
+		if (!this.audit.isOpen()) return;
+		this.theme.setAuditRecorder(undefined);
+		const pack = this.theme.getPack();
+		const result = this.audit.close((id) =>
+			id.sub(1, PRELOAD_BIOME_PREFIX.size()) === PRELOAD_BIOME_PREFIX
+				? pack.biomeContentIds(id.sub(PRELOAD_BIOME_PREFIX.size() + 1)).size() > 0
+				: pack.contentIds(id).size() > 0,
+		);
+		if (result === undefined) return;
+		const where = `[StageAudit] floor ${result.floor}`;
+		const misses = result.misses;
+		if (misses.size() === 0) {
+			print(`${where}: ${result.used} ids used, all in its manifest (${result.listed} ids)`);
+			return;
+		}
+		const shown = math.min(misses.size(), STAGE_AUDIT.maxMissLines);
+		for (let i = 0; i < shown; i++) print(`${where} used ${misses[i]}, not in its manifest`);
+		if (misses.size() > shown) print(`${where}: ${misses.size() - shown} more not in its manifest`);
 	}
 
 	private logReveal(load: StageLoad): void {

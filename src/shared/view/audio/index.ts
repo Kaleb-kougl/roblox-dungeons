@@ -4,6 +4,7 @@
  * pitch, duck), the run-over recap's tick / land rule (recapCues.ts, docs/RUN_RECAP.md RR4) and the mixing tunables.
  * The client's AudioController plays the cues through ThemePack.sound(id).
  */
+export * from "./bedGate";
 export * from "./cues";
 export * from "./config";
 export * from "./music";
