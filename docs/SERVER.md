@@ -138,20 +138,20 @@ Event pairs, like the user's other Flamework project. Flamework generates a runt
 
 | Direction | Event | Payload | Reply |
 | --- | --- | --- | --- |
-| client -> server | `submitRun` | `RunSubmission { seed, atBossDoor, recording: buffer, claimedHash, claimed: RunSummary }` | `runVerdict` (none if the player already left) |
+| client -> server | `submitRun` | `RunSubmission { seed, atBossDoor, recording: buffer, claimedHash, claimed: RunSummary, characterId? }` (the run's character, docs/ARCHER.md AR5: the replay's world is built with it; absent = the world without characters, endless with both weapons; unknown = `bad_submission`) | `runVerdict` (none if the player already left) |
 | client -> server | `requestSettings` | none | `settingsChanged` (every group) |
 | client -> server | `updateSettings` | `SettingsOverrides { juice?, controls?, audio?, display? }`: each group present REPLACES the stored one (`{}` clears it), sanitized by `applySettingsPatch` | `settingsChanged` (also when rate limited: the stored overrides) |
 | client -> server | `resetSettings` | none (every group back to the defaults) | `settingsChanged` (also when rate limited: the stored overrides) |
 | server -> client | `runVerdict` | `RunVerdict { ok, claimedHash, code?, reason?, serverHash, summary, runId? }` | |
 | server -> client | `settingsChanged` | `SettingsOverrides` (only what the player changed; sent once after join too) | |
-| client -> server | `startRun` | `StartRunRequest { requestId, worldKind, party?, atBossDoor?, classId? }` | `runStarted` (`StartRunReply`) |
+| client -> server | `startRun` | `StartRunRequest { requestId, worldKind, party?, atBossDoor?, characterId? }` (docs/ARCHER.md AR5: the owner's character, default the Knight, unknown = `bad_request`; a party plays the lobby's picks) | `runStarted` (`StartRunReply`, `characterId` = the session's) |
 | client -> server | `submitSegment` | `RunSegment { runId, index, startTick, recording: buffer, claimedEndHash, checkpointHashes }` | `segmentVerdict` (`SegmentVerdict`) once replayed |
 | client -> server | `finishRun` | `RunFinal { runId, finalTick, claimedHash, claimed: FinalRunSummary }` | `runFinished` (`RunFinishVerdict`) |
 | client -> server | `getLeaderboard` | `"solo" \| "coop"` | `leaderboard` (`LeaderboardView`) |
 | client -> server | `lobbyCreate` / `lobbyJoin` / `lobbyLeave` / `lobbyKick` / `lobbySetVisibility` / `lobbySetName` / `lobbyTransferHost` / `lobbyInvite` / `lobbyAnswerInvite` / `lobbySetReady` / `lobbyStart` | see "Lobbies" | the state they change (`lobbyState`, `lobbyInvites`, `lobbyList`) or `lobbyNotice { kind: "refused", requestKind, code, reason }` |
 | client -> server | `lobbyRequestList` | none | `lobbyList`, `lobbyState`, `lobbyInvites` (the current state) |
-| server -> client | `lobbyRunStart` | `LobbySoloRunStart { lobbyId, kind: "solo" }` | the client starts a ranked solo run (`startRun`) |
-| server -> client | `partyRunStarted` | `PartyRunStart { runId, seed, worldKind, members, lobbyId }` | |
+| server -> client | `lobbyRunStart` | `LobbySoloRunStart { lobbyId, kind: "solo", worldKind, characterId }` | the client starts a ranked solo run (`startRun` with that `characterId`) |
+| server -> client | `partyRunStarted` | `PartyRunStart { runId, seed, worldKind, members, characters, lobbyId }` (`characters`: each member's, member order; every client builds `buildWorldSetup(kind, seed, { partySize, characters })`) | |
 | client -> server | `lockstepInput` / `lockstepHash` / `lockstepFinal` | inputs; `runId, ticks[], hashes[]` (batched, resent until acknowledged); `RunFinal` | `lockstepFrames(runId, firstTick, data, hashAck)` |
 | client -> server | `lockstepLeave` | `runId` | none (the leaver's frames carry the leave bit from the next tick; `runFinished` still comes) |
 | client -> server | `requestOnboarding` / `tutorialStarted` / `tutorialStep` / `tutorialFinished` / `tutorialLesson` / `tutorialStuck` / `onboardingReport` | see "Onboarding (tutorial)" | `onboardingStatus` (request, finished) |
@@ -258,11 +258,11 @@ it forward (`cloneSimState` throws once bullets exist, so it can never rewind).
 ```
 client                                                server (RunSessionService)
   run start: startRun({ requestId, worldKind,  ───────►  rate limit (RUN_START_RATE) -> RunSessionRegistry.start:
-             party?, atBossDoor?, classId? })            shape, world kind (registry), debug spawn, party, busy,
+             party?, atBossDoor?, characterId? })        shape, world kind (registry), debug spawn, party, busy,
                                                          SEED PICKED BY THE SERVER, world built (worlds.ts),
                                                          the player's open session replaced ("abandoned")
   runStarted({ requestId, ok, runId, seed,     ◄───────
-               worldKind, members, code? })
+               worldKind, members, characterId?, code? })
   (no answer in RUN_START_TIMEOUT_SECONDS or refused: an unranked run on the local seed, old submitRun path)
   play; LiveRun cuts a segment on a floor change (hook) or every SEGMENT_FALLBACK_TICKS
   submitSegment({ runId, index, startTick,     ───────►  owner check -> rate limit (SEGMENT_SUBMIT_RATE) ->
@@ -359,9 +359,11 @@ first member (join order) with `partyConsent` = the lobby's members, in the rank
 registry refuses any party (2+ members) whose resolved party is not exactly that list, so a client's `startRun` can
 never name a party on its own (members in this server, at most 8, nobody `busy`). Each member's open SOLO session is
 then concluded (`abandoned`, they chose to leave it), the registry builds the world for the party
-(`buildWorldSetup(kind, seed, { partySize })`: endless scales enemy hp and room budgets with it), the service creates
-a `LockstepSession` and fires `partyRunStarted { runId, seed, worldKind, members, lobbyId }` to
-every member. A client switches to a party run only when `lobbyId` is the lobby it is in: an unsolicited
+(`buildWorldSetup(kind, seed, { partySize, characters })`: endless scales enemy hp and room budgets with it, and each
+player gets their character's loadout and roll: `characters` = the lobby's member picks in member order,
+`StartContext.partyCharacters`, docs/ARCHER.md AR5), the service creates a `LockstepSession` and fires
+`partyRunStarted { runId, seed, worldKind, members, characters, lobbyId }` to every member, who build the same config.
+Leaderboard entries carry every member's character (`LeaderboardMember.classId`). A client switches to a party run only when `lobbyId` is the lobby it is in: an unsolicited
 `partyRunStarted` is ignored. A client's player index is its place in `members` (owner = 0). No drop-in mid-run.
 (The M4 invite flow, `partyInvite` / `partyRespond`, was removed in task L7.)
 
@@ -492,7 +494,10 @@ invites, host-only kick / visibility / name / transfer / start, ready + countdow
   `lobbyRequestList` (`LOBBY_LIST_REQUEST_RATE`, extra calls dropped quietly). A refusal (or a spent budget, code
   `rateLimited`) is a `lobbyNotice { kind: "refused", requestKind: "<remote name>", code, reason }` to the requester.
   `lobbyInvite` also refuses a player who is not in this server (`badRequest`). `lobbyAnswerInvite(id, true)` joins
-  the invite's lobby (the join consumes it); `false` declines.
+  the invite's lobby (the join consumes it); `false` declines. `lobbySetReady(ready, characterId)` carries the
+  member's character pick (docs/ARCHER.md AR5): stored either way and kept while they stay (un-ready, a world change
+  and a run's end clear Ready, never the pick; an unknown id is `badRequest`); a pick change while ready un-readies
+  (a countdown is cancelled). `LobbyView.characters` (member order) shows every pick; a run starts with them.
 - **Pushes** (`src/shared/lobby/outbox.ts` `LobbyOutbox`, specced: who hears what). After every request, tick and run
   end the service flushes: `lobbyState` (a `LobbyView`: `countdownIn` = seconds left, `invited` = the live invites to
   the lobby) to every member of a changed lobby and `{}` to a leaver; `lobbyInvites` (the full list) to each player

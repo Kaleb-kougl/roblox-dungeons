@@ -1,6 +1,7 @@
 // Same-server lobbies: visibility (canAccess), joins and invites, host-only actions, ready / countdown / run start,
 // kicks with their cooldown, host migration, server leaves and the browse list.
 import { describe, expect, it } from "@rbxts/jest-globals";
+import { DEFAULT_CHARACTER } from "shared/characters";
 import { DEFAULT_RUN_SESSION_LIMITS } from "shared/run";
 import {
 	DEFAULT_LOBBY_NAME,
@@ -11,6 +12,9 @@ import {
 	MAX_USER_ID_MAGNITUDE,
 	canAccess,
 	isWireUserId,
+	lobbyViewOf,
+	memberCharacter,
+	memberCharacters,
 	type AreFriends,
 	type Lobby,
 	type LobbyContext,
@@ -24,6 +28,8 @@ const B = 33;
 const C = 44;
 const D = 55;
 const STRANGER = 99;
+/** The default pick (docs/ARCHER.md AR5). */
+const KN = DEFAULT_CHARACTER;
 
 /** Friend pairs (symmetric). */
 function friendsOf(friendPairs: ReadonlyArray<[number, number]>): AreFriends {
@@ -76,6 +82,7 @@ function fakeLobby(visibility: Lobby["visibility"]): Lobby {
 		phase: "forming",
 		members: [HOST],
 		ready: [],
+		characters: new Map(),
 		kickedUntil: new Map(),
 	};
 }
@@ -372,14 +379,14 @@ describe("Lobbies: host-only actions", () => {
 		expect(code(l.start(HOST, ctx(0)))).toBe("ok");
 		expect(code(l.setWorld(HOST, "endless"))).toBe("starting");
 		expect(l.tick(ctx(LOBBY.countdownSeconds)).starts).toEqual([
-			{ kind: "party", lobbyId: lobby.lobbyId, members: [HOST, B], worldKind: "daily" },
+			{ kind: "party", lobbyId: lobby.lobbyId, members: [HOST, B], worldKind: "daily", characters: [KN, KN] },
 		]);
 		expect(code(l.setWorld(HOST, "endless"))).toBe("inRun");
 		// A one-member daily lobby starts a solo daily run.
 		l.setReady(A, true);
 		expect(code(l.start(A, ctx(10)))).toBe("ok");
 		expect(l.tick(ctx(10 + LOBBY.countdownSeconds)).starts).toEqual([
-			{ kind: "solo", lobbyId: daily.lobbyId, userId: A, worldKind: "daily" },
+			{ kind: "solo", lobbyId: daily.lobbyId, userId: A, worldKind: "daily", characterId: KN },
 		]);
 	});
 
@@ -410,7 +417,7 @@ describe("Lobbies: ready, countdown and run", () => {
 		expect(code(l.start(HOST, ctx(101)))).toBe("starting");
 		expect(l.tick(ctx(100 + LOBBY.countdownSeconds - 1)).starts).toEqual([]);
 		expect(l.tick(ctx(100 + LOBBY.countdownSeconds)).starts).toEqual([
-			{ kind: "solo", lobbyId: lobby.lobbyId, userId: HOST, worldKind: "endless" },
+			{ kind: "solo", lobbyId: lobby.lobbyId, userId: HOST, worldKind: "endless", characterId: KN },
 		]);
 		expect(lobby.phase).toBe("inRun");
 		expect(lobby.countdownEndsAt).toBe(undefined);
@@ -429,7 +436,13 @@ describe("Lobbies: ready, countdown and run", () => {
 		l.setReady(B, true);
 		expect(code(l.start(B, ctx()))).toBe("ok");
 		expect(l.tick(ctx(LOBBY.countdownSeconds)).starts).toEqual([
-			{ kind: "party", lobbyId: lobby.lobbyId, members: [HOST, A, B], worldKind: "endless" },
+			{
+				kind: "party",
+				lobbyId: lobby.lobbyId,
+				members: [HOST, A, B],
+				worldKind: "endless",
+				characters: [KN, KN, KN],
+			},
 		]);
 	});
 
@@ -938,5 +951,109 @@ describe("UserId bounds (isWireUserId)", () => {
 			expect(code(l.transferHost(HOST, bad))).toBe("badRequest");
 		}
 		expect(code(l.invite(HOST, -2, ctx()))).toBe("ok"); // a Studio test player
+	});
+});
+
+describe("Lobbies: character picks (docs/ARCHER.md AR5)", () => {
+	it("the pick comes with the Ready, is kept when un-readying and shown in the view in member order", () => {
+		const l = lobbies();
+		const lobby = create(l, HOST);
+		join(l, A, lobby);
+		join(l, B, lobby);
+		// Nobody picked yet: the default, everywhere.
+		expect(memberCharacters(lobby)).toEqual([KN, KN, KN]);
+		expect(lobbyViewOf(lobby, [], 0).characters).toEqual([KN, KN, KN]);
+		const r = l.setReady(A, true, "archer");
+		expect(r.ok && r.pickChanged).toBe(true);
+		expect(memberCharacter(lobby, A)).toBe("archer");
+		// Un-readying keeps the last pick; Ready without a pick readies with it.
+		l.setReady(A, false);
+		expect([lobby.ready.includes(A), memberCharacter(lobby, A)]).toEqual([false, "archer"]);
+		l.setReady(A, true);
+		expect([lobby.ready.includes(A), memberCharacter(lobby, A)]).toEqual([true, "archer"]);
+		// A pick without Ready changes the pick only.
+		const p = l.setReady(B, false, "archer");
+		expect(p.ok && p.pickChanged).toBe(true);
+		expect([lobby.ready.includes(B), memberCharacter(lobby, B)]).toEqual([false, "archer"]);
+		expect(lobbyViewOf(lobby, [], 0).characters).toEqual([KN, "archer", "archer"]);
+		// The same pick again changes nothing.
+		const same = l.setReady(A, true, "archer");
+		expect(same.ok && same.pickChanged).toBe(false);
+		expect(lobby.ready.includes(A)).toBe(true);
+	});
+
+	it("unknown picks are refused and change nothing", () => {
+		const l = lobbies();
+		const lobby = create(l, HOST);
+		for (const bad of ["ranger", "Knight", "", 7, true, {}]) {
+			expect(code(l.setReady(HOST, true, bad))).toBe("badRequest");
+		}
+		expect([lobby.ready.size(), memberCharacter(lobby, HOST)]).toEqual([0, KN]);
+		expect(code(l.setReady(STRANGER, true, "archer"))).toBe("notMember");
+	});
+
+	it("a pick change after Ready un-readies (and cancels a countdown)", () => {
+		const l = lobbies();
+		const lobby = create(l, HOST);
+		join(l, A, lobby);
+		l.setReady(HOST, true, "knight");
+		l.setReady(A, true, "knight");
+		// Ready with another pick: un-ready, the new pick stored.
+		const r = l.setReady(A, true, "archer");
+		expect(r.ok && [r.pickChanged, r.countdownCancelled]).toEqual([true, false]);
+		expect([lobby.ready.includes(A), memberCharacter(lobby, A)]).toEqual([false, "archer"]);
+		expect(code(l.start(HOST, ctx()))).toBe("notReady");
+		// Readied again as the Archer; during the countdown a change cancels it.
+		l.setReady(A, true);
+		expect(code(l.start(HOST, ctx(0)))).toBe("ok");
+		const c = l.setReady(HOST, true, "archer");
+		expect(c.ok && [c.pickChanged, c.countdownCancelled]).toEqual([true, true]);
+		expect([lobby.phase, lobby.ready.includes(HOST), memberCharacter(lobby, HOST)]).toEqual([
+			"forming",
+			false,
+			"archer",
+		]);
+		expect(l.tick(ctx(LOBBY.countdownSeconds)).starts).toEqual([]);
+	});
+
+	it("the run starts with the picks in member order; a world change and the run's end keep them", () => {
+		const l = lobbies();
+		const lobby = create(l, HOST);
+		join(l, A, lobby);
+		join(l, B, lobby);
+		l.setReady(HOST, true, "archer");
+		l.setReady(A, true, "knight");
+		l.setReady(B, true, "archer");
+		// A world change clears every Ready, never a pick.
+		l.setWorld(HOST, "daily");
+		expect([lobby.ready.size(), memberCharacters(lobby)]).toEqual([0, ["archer", KN, "archer"]]);
+		for (const id of [HOST, A, B]) l.setReady(id, true);
+		l.start(HOST, ctx());
+		expect(l.tick(ctx(LOBBY.countdownSeconds)).starts).toEqual([
+			{
+				kind: "party",
+				lobbyId: lobby.lobbyId,
+				members: [HOST, A, B],
+				worldKind: "daily",
+				characters: ["archer", KN, "archer"],
+			},
+		]);
+		expect(code(l.setReady(A, true, "archer"))).toBe("inRun");
+		l.runEnded(lobby.lobbyId);
+		expect([lobby.ready.size(), memberCharacters(lobby)]).toEqual([0, ["archer", KN, "archer"]]);
+		// A member who leaves loses their pick (a rejoin starts from the default).
+		l.leave(A);
+		join(l, A, lobby);
+		expect(memberCharacters(lobby)).toEqual(["archer", "archer", KN]);
+	});
+
+	it("a one-member lobby's solo start carries the member's pick", () => {
+		const l = lobbies();
+		const lobby = create(l, HOST);
+		l.setReady(HOST, true, "archer");
+		l.start(HOST, ctx());
+		expect(l.tick(ctx(LOBBY.countdownSeconds)).starts).toEqual([
+			{ kind: "solo", lobbyId: lobby.lobbyId, userId: HOST, worldKind: "endless", characterId: "archer" },
+		]);
 	});
 });

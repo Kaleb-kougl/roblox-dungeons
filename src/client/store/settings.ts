@@ -1,4 +1,5 @@
 import { createProducer, createSelector } from "@rbxts/reflex";
+import { DEFAULT_CHARACTER, isCharacterId, type CharacterId } from "shared/characters";
 import { DEFAULT_BINDINGS, applyControlsOverrides } from "shared/play";
 import {
 	applySettingsPatch,
@@ -78,6 +79,18 @@ export const selectAudio = createSelector(
 	[(state: { settings: SettingsState }) => state.settings.overrides.audio] as const,
 	(audio) => resolveAudioSettings(audio),
 );
+
+/**
+ * The selected character (docs/ARCHER.md AR5, ARD12): the character the next run started from the menu or a lobby
+ * Ready plays, and the character screen's focus. Stored in the display group (`display.character`, only a non-default
+ * pick), so it is remembered across sessions; DEFAULT_CHARACTER (the Knight) until the player picks. Change it with
+ * SettingsController.setSelectedCharacter (applied locally at once, then saved). A running run keeps the character it
+ * was started with (Again / R / dev restart replay it), whatever this says now.
+ */
+export const selectSelectedCharacter = (state: { settings: SettingsState }): CharacterId => {
+	const c = state.settings.overrides.display?.character;
+	return c !== undefined && isCharacterId(c) ? c : DEFAULT_CHARACTER;
+};
 
 /** The effective display settings (HUD scale percent). */
 export const selectDisplay = createSelector(

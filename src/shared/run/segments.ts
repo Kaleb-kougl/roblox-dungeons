@@ -546,7 +546,11 @@ export class SegmentedValidator {
 			const spawn = this.spawn ?? { x: 0, z: 0 };
 			const [ok, err] = pcall(() => {
 				this.state = createSimState(this.seed, spawn.x, spawn.z, this.setup.config);
-				this.telemetry = new RunTelemetry(runStartHalfHearts(this.setup.config), this.archetypeNames);
+				this.telemetry = new RunTelemetry(
+					runStartHalfHearts(this.setup.config),
+					this.archetypeNames,
+					this.setup.characters?.[0],
+				);
 			});
 			if (!ok) {
 				const result = this.rejectSegment(seg, "replay_error", `replay error: ${errorMessage(err)}`, verdicts);

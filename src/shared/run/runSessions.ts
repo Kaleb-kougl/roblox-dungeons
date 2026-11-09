@@ -12,16 +12,21 @@
  * holds the server-only secret, DSD8). The session keeps that day and the ruleset (`daily`), so a run started at
  * 23:59:59 belongs to its start day whenever it finishes (DSD5).
  *
+ * Characters (docs/ARCHER.md AR5): a solo run is played as the request's `characterId` (default DEFAULT_CHARACTER), a
+ * party run as the lobby's member picks in member order (`StartContext.partyCharacters`); the session's setup (what
+ * every segment is replayed against) is built with them, so a run uploaded as another character fails validation.
+ *
  * Pure and Roblox-API-free: the runId generator, the seed pickers and the clocks are injected (HttpService GUIDs,
  * Random, the secret daily seed, os.clock and os.time on the server; counters in tests). The world comes from the
  * registry (worlds.ts).
  */
+import { DEFAULT_CHARACTER, isCharacterId, type CharacterId } from "shared/characters";
 import { DAILY, DAILY_WORLD_KIND, dailyDay, type DailyRunKey } from "shared/daily";
 import { isValidRunSeed, type RunSetup } from "./config";
 import {
 	DEFAULT_RUN_SESSION_LIMITS,
 	DEFAULT_SEGMENT_LIMITS,
-	MAX_CLASS_ID_CHARS,
+	MAX_CHARACTER_ID_CHARS,
 	MAX_WORLD_KIND_CHARS,
 	type RunSessionLimits,
 	type SegmentLimits,
@@ -41,8 +46,12 @@ export interface StartRunRequest {
 	party?: number[];
 	/** Debug start at the boss door (refused unless the limits allow it). */
 	atBossDoor?: boolean;
-	/** The owner's class id, stored with leaderboard entries (optional, display only). */
-	classId?: string;
+	/**
+	 * The character the owner plays (shared/characters CharacterId; docs/ARCHER.md AR5). Optional: absent is
+	 * DEFAULT_CHARACTER; an unknown id is `bad_request`. Solo runs only: a party run is played as the lobby's picks
+	 * (StartContext.partyCharacters). Stored with leaderboard entries (`classId`).
+	 */
+	characterId?: string;
 }
 
 export type StartRunRejectCode =
@@ -66,6 +75,11 @@ export interface StartRunReply {
 	members?: number[];
 	/** Daily runs (world "daily"): the day (shared/daily dailyDay) and ruleset the run belongs to (DSD5 / DSD11). */
 	daily?: DailyRunKey;
+	/**
+	 * The owner's character the session was built with (RunSession.characters[0]); the client builds its run with it.
+	 * Absent for a world without characters (M1's `game`).
+	 */
+	characterId?: CharacterId;
 	code?: StartRunRejectCode;
 	reason?: string;
 }
@@ -77,7 +91,12 @@ export interface RunSession {
 	readonly ownerId: number;
 	/** Owner first; size 1 = solo. */
 	readonly members: ReadonlyArray<number>;
-	readonly classId: string | undefined;
+	/**
+	 * docs/ARCHER.md AR5: each member's character, in member order (setup.characters: defaults filled in), what the
+	 * run is validated with. Undefined for a world that plays without characters (M1's `game`): every player carries
+	 * both weapons there. A member who leaves keeps their slot and character.
+	 */
+	readonly characters: ReadonlyArray<CharacterId> | undefined;
 	readonly atBossDoor: boolean;
 	/** Debug limits were in force (debug input or boss door allowed): never posts to a leaderboard. */
 	readonly debug: boolean;
@@ -116,6 +135,12 @@ export interface StartContext {
 	 * never name a party on its own.
 	 */
 	readonly partyConsent?: ReadonlyArray<number>;
+	/**
+	 * docs/ARCHER.md AR5: a lobby party start's member picks, in member order (the lobby's `characters`): the party
+	 * run's characters (the request's `characterId` is ignored for a party). Absent: every member DEFAULT_CHARACTER but
+	 * the owner, who plays the request's. Each entry must be a character id (else `bad_party`).
+	 */
+	readonly partyCharacters?: ReadonlyArray<string>;
 }
 
 export type StartRunResult =
@@ -180,10 +205,39 @@ function requestShape(r: StartRunRequest): string | undefined {
 		return "worldKind must be a short string";
 	}
 	if (r.atBossDoor !== undefined && !typeIs(r.atBossDoor, "boolean")) return "atBossDoor must be a boolean";
-	if (r.classId !== undefined && (!typeIs(r.classId, "string") || r.classId.size() > MAX_CLASS_ID_CHARS)) {
-		return "classId must be a short string";
+	const c = r.characterId;
+	if (c !== undefined && (!typeIs(c, "string") || c.size() > MAX_CHARACTER_ID_CHARS)) {
+		return "characterId must be a short string";
 	}
+	if (c !== undefined && !isCharacterId(c)) return `unknown character ${c}`;
 	return undefined;
+}
+
+/**
+ * The run's characters, one per member (docs/ARCHER.md AR5): solo the request's (default DEFAULT_CHARACTER); a party
+ * the lobby's picks (`partyCharacters`, each checked; missing entries DEFAULT_CHARACTER), or without them the owner's
+ * request and DEFAULT_CHARACTER for the others. A message when a pick is not a character id.
+ */
+export function sessionCharacters(
+	request: Readonly<StartRunRequest>,
+	partySize: number,
+	partyCharacters: ReadonlyArray<string> | undefined,
+): CharacterId[] | string {
+	const owner =
+		request.characterId !== undefined && isCharacterId(request.characterId)
+			? request.characterId
+			: DEFAULT_CHARACTER;
+	const out: CharacterId[] = [];
+	for (let i = 0; i < partySize; i++) {
+		if (partySize > 1 && partyCharacters !== undefined) {
+			const c = partyCharacters[i];
+			if (c !== undefined && !isCharacterId(c)) return `unknown character for party member ${i}`;
+			out.push(c ?? DEFAULT_CHARACTER);
+		} else {
+			out.push(i === 0 ? owner : DEFAULT_CHARACTER);
+		}
+	}
+	return out;
 }
 
 /** A party run (2+ members) still being played or decided: never replaced by its owner's new start. */
@@ -243,14 +297,17 @@ export class RunSessionRegistry {
 		if (this.finishingCount(ownerId) >= this.limits.maxFinishingPerPlayer) {
 			return { ok: false, code: "busy", reason: "previous runs are still being checked" };
 		}
+		const characters = sessionCharacters(request, party.size(), ctx.partyCharacters);
+		if (typeIs(characters, "string")) return { ok: false, code: "bad_party", reason: `bad party: ${characters}` };
 
 		const picked = this.pickSeed(request.worldKind, ctx.unixNow);
 		if (typeIs(picked, "string")) return { ok: false, code: "config_error", reason: `config error: ${picked}` };
 		const { seed, daily } = picked;
 		if (!isValidRunSeed(seed)) return { ok: false, code: "config_error", reason: "config error: bad seed picked" };
-		// Co-op (M4): the world is built for the whole party (enemy hp / room budgets scale with its size).
+		// Co-op (M4): the world is built for the whole party (enemy hp / room budgets scale with its size), each player
+		// with their character's loadout and roll (docs/ARCHER.md AR5; worlds without characters ignore them).
 		const [built, setupOrErr] = pcall(() =>
-			buildWorldSetup(request.worldKind, seed, { atBossDoor, partySize: party.size() }),
+			buildWorldSetup(request.worldKind, seed, { atBossDoor, partySize: party.size(), characters }),
 		);
 		if (!built) {
 			return {
@@ -270,7 +327,7 @@ export class RunSessionRegistry {
 			worldKind: request.worldKind,
 			ownerId,
 			members: party,
-			classId: request.classId,
+			characters: setup.characters,
 			atBossDoor,
 			debug: ctx.allowDebugInput || atBossDoor,
 			daily,

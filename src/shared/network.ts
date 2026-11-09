@@ -1,4 +1,5 @@
 import { Networking } from "@flamework/networking";
+import type { CharacterId } from "shared/characters";
 import type { DailyRunResult, DailyStatus } from "shared/daily";
 import type { LeaderboardRequest, LeaderboardView } from "shared/leaderboard";
 import type { ArrivalJoinIntent, ArrivalToastKey } from "shared/invite";
@@ -84,6 +85,12 @@ export interface PartyRunStart {
 	/** UserIds in player index order (owner first). */
 	members: number[];
 	/**
+	 * docs/ARCHER.md AR5: each member's character in the same order (the session's RunSession.characters, the lobby's
+	 * picks): every client builds the run with `buildWorldSetup(worldKind, seed, { partySize, characters })`, exactly
+	 * the server's validator setup. Empty for a world without characters.
+	 */
+	characters: CharacterId[];
+	/**
 	 * The lobby whose Start began this run (shared/lobby). A client switches to the run only when this is the lobby it
 	 * is in.
 	 */
@@ -102,6 +109,11 @@ export interface LobbyView {
 	/** Join order (the run's player order). */
 	members: number[];
 	ready: number[];
+	/**
+	 * docs/ARCHER.md AR5: each member's character pick, same index as `members` (DEFAULT_CHARACTER until they pick;
+	 * kept when they un-ready, the world changes or a run ends). The party run starts with these.
+	 */
+	characters: CharacterId[];
 	/** Seconds left on the start countdown (phase "countdown" only). */
 	countdownIn?: number;
 	/** Players with a live invite to this lobby (shown as "Invited"; no duplicate invites). */
@@ -130,6 +142,8 @@ export interface LobbySoloRunStart {
 	kind: "solo";
 	/** The lobby's world: the `startRun` world kind. */
 	worldKind: LobbyWorld;
+	/** docs/ARCHER.md AR5: the member's lobby pick, the `startRun` request's `characterId`. */
+	characterId: CharacterId;
 }
 
 /** One live invite this player received (`lobbyInvites` carries the whole current list). */
@@ -324,7 +338,11 @@ export interface ClientToServerEvents {
 	/** Any member. */
 	lobbyInvite(userId: number): void;
 	lobbyAnswerInvite(inviteId: string, accept: boolean): void;
-	lobbySetReady(ready: boolean): void;
+	/**
+	 * Any member: Ready on / off with their character pick (a shared/characters CharacterId; docs/ARCHER.md AR5). The
+	 * pick is stored either way and shown on their row (`LobbyView.characters`); a pick change while ready un-readies.
+	 */
+	lobbySetReady(ready: boolean, characterId: string): void;
 	/** Host only: begins the start countdown (every member ready; one member is enough). */
 	lobbyStart(): void;
 	/** Asks for `lobbyList` now (the browser opened); the server also pushes it while lobbies change. */

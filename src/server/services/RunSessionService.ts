@@ -283,7 +283,7 @@ export class RunSessionService implements OnStart {
 		if (!this.startLimiter.tryAcquire(player, os.clock())) {
 			return { requestId, ok: false, code: "rate_limited", reason: "too many runs started; try again later" };
 		}
-		const r = this.createSession(player, request, undefined);
+		const r = this.createSession(player, request, undefined, undefined);
 		if (!r.ok) return { requestId, ok: false, code: r.code, reason: r.reason };
 		const s = r.session;
 		return {
@@ -295,10 +295,15 @@ export class RunSessionService implements OnStart {
 			atBossDoor: s.atBossDoor,
 			members: [...s.members],
 			daily: s.daily !== undefined ? { day: s.daily.day, ruleset: s.daily.ruleset } : undefined,
+			// docs/ARCHER.md AR5: the client builds its run with the character the session validates.
+			characterId: s.characters?.[0],
 		};
 	}
 
-	private startContext(partyConsent: ReadonlyArray<number> | undefined): StartContext {
+	private startContext(
+		partyConsent: ReadonlyArray<number> | undefined,
+		partyCharacters: ReadonlyArray<string> | undefined,
+	): StartContext {
 		const limits = this.runs.limits();
 		return {
 			now: os.clock(),
@@ -307,18 +312,23 @@ export class RunSessionService implements OnStart {
 			allowBossDoorSpawn: limits.allowBossDoorSpawn,
 			allowDebugInput: limits.allowDebugInput,
 			partyConsent,
+			partyCharacters,
 		};
 	}
 
-	/** registry.start + the service's bookkeeping (meta, the replaced session concluded as abandoned). */
+	/**
+	 * registry.start + the service's bookkeeping (meta, the replaced session concluded as abandoned). `partyCharacters`:
+	 * a lobby party start's member picks (StartContext.partyCharacters).
+	 */
 	private createSession(
 		player: Player,
 		request: StartRunRequest,
 		partyConsent: ReadonlyArray<number> | undefined,
+		partyCharacters: ReadonlyArray<string> | undefined,
 	):
 		| { readonly ok: true; readonly session: RunSession }
 		| { readonly ok: false; readonly code: StartRunReply["code"]; readonly reason: string } {
-		const r = this.registry.start(player.UserId, request, this.startContext(partyConsent));
+		const r = this.registry.start(player.UserId, request, this.startContext(partyConsent, partyCharacters));
 		if (!r.ok) {
 			log.warn("START_REFUSED", `${player.UserId} ${r.code}: ${r.reason}`);
 			return r;
@@ -328,10 +338,12 @@ export class RunSessionService implements OnStart {
 		// for it. A party run is never replaced (start answers busy, or, for an owner who left it, only detaches it:
 		// its lockstep session goes on and concludes it for the others).
 		if (r.replaced !== undefined) this.conclude(player, r.replaced, r.replaced.validator.getResult()!);
-		const members: LeaderboardMember[] = s.members.map((id) => {
+		// docs/ARCHER.md AR5: every member's entry carries the character they played (`classId`, owner answer 4).
+		const members: LeaderboardMember[] = s.members.map((id, i) => {
 			const p = Players.GetPlayerByUserId(id);
 			const m: LeaderboardMember = { userId: id, name: p !== undefined ? p.DisplayName : `#${id}` };
-			if (id === s.ownerId && s.classId !== undefined) m.classId = s.classId;
+			const character = s.characters?.[i];
+			if (character !== undefined) m.classId = character;
 			return m;
 		});
 		this.meta.set(s, { members, pumping: false });
@@ -411,7 +423,12 @@ export class RunSessionService implements OnStart {
 			if (player === undefined) return { ok: false, reason: "the player left" };
 			const replaced = this.lobbyRuns.expectSolo(start.userId, start.lobbyId, os.clock(), start.worldKind);
 			if (replaced !== undefined) this.lobbyRunEnded(replaced, "another lobby run was requested");
-			Events.lobbyRunStart.fire(player, { lobbyId: start.lobbyId, kind: "solo", worldKind: start.worldKind });
+			Events.lobbyRunStart.fire(player, {
+				lobbyId: start.lobbyId,
+				kind: "solo",
+				worldKind: start.worldKind,
+				characterId: start.characterId,
+			});
 			log.info(
 				"LOBBY_SOLO",
 				`${start.userId} lobby ${start.lobbyId}: solo run requested (world ${start.worldKind})`,
@@ -423,7 +440,12 @@ export class RunSessionService implements OnStart {
 		if (owner === undefined) return { ok: false, reason: "a member left" };
 		const others: number[] = [];
 		for (let i = 1; i < members.size(); i++) others.push(members[i]);
-		const r = this.createSession(owner, { requestId: 0, worldKind: start.worldKind, party: others }, members);
+		const r = this.createSession(
+			owner,
+			{ requestId: 0, worldKind: start.worldKind, party: others },
+			members,
+			start.characters,
+		);
 		if (!r.ok) return { ok: false, reason: `could not start: ${r.reason}` };
 		const s = r.session;
 		this.lobbyRuns.party(s.runId, start.lobbyId);
@@ -484,6 +506,8 @@ export class RunSessionService implements OnStart {
 			seed: s.seed,
 			worldKind: s.worldKind,
 			members: [...s.members],
+			// docs/ARCHER.md AR5: every client builds the run with these (the validator's setup was built with them).
+			characters: s.characters !== undefined ? [...s.characters] : [],
 			// The old invite flow's field (removed with it, task L7): the lobby id, so it is never a stale invite's.
 			lobbyId,
 		};

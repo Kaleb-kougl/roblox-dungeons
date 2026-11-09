@@ -189,8 +189,11 @@ export const MAX_PARTY_SIZE = SIM_MAX_PARTY_SIZE;
 /** Longest world kind name accepted on the wire. */
 export const MAX_WORLD_KIND_CHARS = 32;
 
-/** Longest class id accepted on the wire (stored with leaderboard entries). */
-export const MAX_CLASS_ID_CHARS = 48;
+/**
+ * Longest character id accepted on the wire (`StartRunRequest.characterId`, `RunSubmission.characterId`; stored with
+ * leaderboard entries as `classId`). docs/ARCHER.md AR5: the old class id's limit.
+ */
+export const MAX_CHARACTER_ID_CHARS = 48;
 
 /** Longest runId accepted on the wire (server GUIDs are 36). */
 export const MAX_RUN_ID_CHARS = 64;

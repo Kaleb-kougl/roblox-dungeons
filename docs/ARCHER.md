@@ -821,3 +821,96 @@ moved; floor 2, seed 905, digest `c0fd5b19`, is untouched). Paths under `src/sha
   incl. flow and guide), `onboarding` (7 suites), `sim/tutorial`, `run/playerMover`, `run/characterRuns` 11,
   `sim/builds/builds`, `view/roomEdgeState`, `view/hud/tutorialHud`, `view/hud/hud`, `shared/theme`, `shared/l10n`.
   Not run: the full unfiltered suite (`npm run verify`). Studio item 9 pending.
+
+## AR5 (as built)
+
+Server, lobbies and the client plumbing for the pick (no picker UI: AR7 / AR8). Every live run is now validated as the
+character it was started with; M1, fixtures and tools are unchanged. Paths under `src/` unless noted.
+
+- **Run sessions** (`shared/run/runSessions.ts`): `StartRunRequest.characterId?` replaces `classId` (limit
+  `MAX_CHARACTER_ID_CHARS` 48, the renamed `MAX_CLASS_ID_CHARS`, `shared/run/limits.ts`): absent = `DEFAULT_CHARACTER`,
+  not a string / too long / not a character id = `bad_request`. `StartContext.partyCharacters?` (a lobby party start's
+  member picks, member order; an entry that is no character id = `bad_party`). `sessionCharacters(request, partySize,
+  partyCharacters)` (exported): solo the request's; a party the lobby's picks (missing entries the Knight), or without
+  them the owner's request and the Knight for the others; a party ignores the request's own `characterId`. The setup
+  (what the validator replays) is `buildWorldSetup(kind, seed, { atBossDoor, partySize, characters })`.
+  `RunSession.characters` = `setup.characters` (member order, defaults filled in; undefined for a world without
+  characters: M1's `game`, `dungeonNoEncounter`, `greybox`). `StartRunReply.characterId?` echoes the owner's.
+- **Legacy `submitRun`** (`shared/run/validate.ts`): `RunSubmission.characterId?`; checked in `checkShape` (unknown =
+  `bad_submission`) and passed to `buildRunConfig(..., { characters: [id] })`. Absent = the world without characters
+  (endless: both weapons, exactly as before), so every tool, census and `endless.spec`'s `validateRun(LIVE_RUN_LIMITS)`
+  round trip are unchanged. The client always sends its run's character when it has one (SimController.submit), so an
+  unranked endless fallback agrees with what it built.
+- **Telemetry:** `RunTelemetryRecord.character?` (the replayed player 0's, `setup.characters[0]`; `RunTelemetry`'s new
+  third constructor argument, set by `validateRun` and `SegmentedValidator`). Analytics: `RunDuration` gains field01 =
+  the character (left out without one; catalog `set(CHARACTER_IDS, optional)`: 3 combinations). `RunRecapReport
+  .character?` (the client's `RunContext.character`; `readRunRecapReport` drops a report whose character is present but
+  no character id); the close row's field03 is `<flags>/<character>` (`RUN_RECAP_CHARACTER_SEPARATOR` "/", the Daily's
+  combo separator), the flags alone without one: RunRecap 7 x 11 x 13 = 1,001 combinations (was 385). Catalog total
+  3,378 of 8,000.
+- **Leaderboard posting** (`server/services/RunSessionService.ts`): every member's `LeaderboardMember.classId` = their
+  `RunSession.characters[i]` (was the owner's only, and never sent); absent for a run without characters. Field and
+  details doc (`LB_Details_v1`) unchanged; records and daily boards unchanged.
+- **Lobbies** (`shared/lobby/lobbies.ts`): `Lobby.characters` (member -> CharacterId; no entry = the Knight),
+  `memberCharacter(lobby, id)`, `memberCharacters(lobby)` (member order). `setReady(userId, ready, characterId?:
+  unknown)` (result gains `pickChanged`): an unknown pick is `badRequest`; a pick is stored whatever `ready` says (an
+  un-ready with a pick changes the pick only); readying with the stored or the same pick readies; **a member already
+  ready who sends another pick (ready or not) is un-readied** (a countdown is cancelled: the existing
+  `countdownCancelled` notice). Un-ready, a world change and `runEnded` clear Ready and keep picks; leaving (or a kick)
+  drops the pick. `LobbyRunStart` solo gains `characterId`, party `characters` (member order).
+- **Remotes** (`shared/network.ts`): `lobbySetReady(ready: boolean, characterId: string)`; `LobbyView.characters:
+  CharacterId[]` (same index as `members`, `lobbyViewOf`); `PartyRunStart.characters: CharacterId[]` (the session's,
+  empty for a world without characters); `LobbySoloRunStart.characterId`. docs/SERVER.md's remote table, run-session
+  diagram, co-op start and Lobbies notes follow.
+- **Server services:** LobbyService passes the remote's pick to `setReady`; RunSessionService: `startLobbyRun` passes
+  `start.characters` as `partyCharacters` and fires `lobbyRunStart` with the solo pick; `startLockstep`'s payload
+  carries `characters`; `start()`'s reply carries `characterId`. The server does not force a solo lobby run's
+  `startRun` to use the lobby pick (the client sends the pick it got in `lobbyRunStart`); the session validates
+  whatever the request named.
+- **The remembered pick (ARD12, done here: small):** `DisplaySettings.character` (shared/settings display.ts;
+  default `DEFAULT_CHARACTER`, only another character id stored; settings document stays v2; in `DISPLAY_RESET_KEEPS`,
+  so the Display tab's Reset keeps it; the all-groups reset clears it).
+- **Client API for the picker (AR7 / AR8 build on this):**
+  - `selectSelectedCharacter(state): CharacterId` (client/store settings.ts): the selected character, from the
+    settings' display group (Knight until picked).
+  - `SettingsController.setSelectedCharacter(id: CharacterId)`: sets it (applied locally at once, saved through
+    `updateSettings`; the same pick sends nothing; an unknown id is ignored).
+  - `SimController.startSolo(lobbyId?, worldKind?, character?)` / `startDev(options, seed, character?)`: the run's
+    character, default the selected one; `startDev` now also passes `options.bothWeapons`. `SimController
+    .getRunCharacter()`: the current / next solo run's. R, Again and a dev run's R keep the run's character
+    (`runCharacter`), whatever is selected later; a ranked start adopts the reply's `characterId`.
+  - `LobbyController.setReady(ready, characterId?)`: sends the pick (default the selected one); it does not change the
+    selected character (the picker should call `setSelectedCharacter` on confirm). A solo lobby run plays the
+    `lobbyRunStart` pick.
+  - `RunContext.characters` / `.character` (the local player's) and `RunInfo.character` (client/store game.ts) for the
+    view (AR9) and the run-over screen.
+  - `SimController.startCoop` builds `buildWorldSetup(kind, seed, { partySize, characters: start.characters })`;
+    `makeRun` builds every solo world with `characters: [runCharacter]` (the tutorial stays the Knight's).
+- **Specs:** `run/runSessions.spec.ts` "characters" (6): `characterId` optional (Knight), the setup's loadout / traits
+  per pick and the client's build equal to it, a world without characters records none, unknown / malformed ids
+  `bad_request` with nothing created; `sessionCharacters` rules and a party of three [Archer, Knight, Archer] in member
+  order (loadouts and traits per player), an unknown pick `bad_party`; a lobby's readied picks reach the session through
+  its start; a party run of three picks validates segment by segment when every client builds the payload's
+  characters, and a client that built three Knights is rejected `hash_mismatch` at the first checkpoint (tick 600); a
+  solo run built as the Archer validates in an Archer session (telemetry `archer`) and fails `hash_mismatch` in a
+  Knight session (named or default); the sessionless path validates with `characterId` "archer", fails as "knight" or
+  absent (both weapons), `bad_submission` for unknown / too long. `lobby/lobbies.spec.ts` "character picks" (5): pick
+  with Ready, kept on un-ready, shown in the view in member order, a pick without Ready; unknown picks refused; a pick
+  change after Ready un-readies and cancels a countdown; the party start carries the picks in member order, a world
+  change and `runEnded` keep them, leaving drops them; a solo start carries the pick (and the four existing start
+  expectations gained the default picks). `settings.spec.ts` (2): the character key (default, stored only when not the
+  Knight, junk dropped, v2 round trip, kept by the Display Reset); six full-settings expectations gained `character`.
+  `analyticsCatalog.spec.ts`: the recap loop over no character and both, 7 x 11 x 13, `record/archer`; RunDuration's
+  field per character, in the catalog, 3 combinations. `recapAnalytics.spec.ts` (1): reading and field03.
+  `view/menu/menu.spec.ts`'s base `LobbyView` gained `characters: []`.
+- **Ran** (this tree, Linux, 2 cores): typecheck, eslint on every changed file, build, check:assets,
+  check:autolocalize; `shared/lobby` 84, `run/runSessions` 25, `shared/onboarding` 104 (catalog 3,378 / 8,000),
+  `shared/settings` 63, `run/recapAnalytics` 21, `run/telemetry` 20, `run/validate` 31, `run/segments` 22,
+  `run/characterRuns` 11, `shared/characters` 21, `play/liveRun` 19, `view/menu` 191, `shared/leaderboard` 85,
+  `shared/daily` 15, `run/endless.spec` 14, `run/endlessSpawn` 22: all passed. Client / server code: typecheck, lint
+  and build only (no engine here). Not run: the full suite, Studio.
+- **Deviations / notes for later tasks:** the plan's "three different picks" is three members with picks (there are
+  two characters): [Archer, Knight, Archer]. A member's lobby pick is the Knight until their first `lobbySetReady`; the
+  client does not push its remembered pick on join (AR8 can send `setReady(false, pick)` when the lobby room opens).
+  `lobbyRoomModel` member rows do not carry the pick yet (AR8). Older replays without a character cannot be validated
+  as anything but the Knight in a session (the plan's edge case).

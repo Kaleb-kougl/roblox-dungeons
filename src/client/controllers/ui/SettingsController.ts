@@ -3,6 +3,7 @@ import { Janitor } from "@rbxts/janitor";
 import { GuiService, UserInputService, Workspace } from "@rbxts/services";
 import { Events } from "client/network";
 import { clientStore, selectAnyPanelOpen, selectOverrides, selectPanelOpen } from "client/store";
+import { DEFAULT_CHARACTER, isCharacterId, type CharacterId } from "shared/characters";
 import { diffControlsOverrides, type Bindings } from "shared/play";
 import {
 	SETTINGS_ATTRIBUTES,
@@ -108,6 +109,18 @@ export class SettingsController implements OnStart {
 	updateDisplay(patch: DisplayOverrides): void {
 		const current = selectOverrides(clientStore.getState()).display ?? {};
 		this.patch({ display: sanitizeDisplayOverrides({ ...current, ...patch }) });
+	}
+
+	/**
+	 * docs/ARCHER.md AR5: the selected character (client/store `selectSelectedCharacter`): the next menu run start and
+	 * lobby Ready play it; remembered in the display group (only a non-default pick is stored). An unknown id is
+	 * ignored; the same pick sends nothing.
+	 */
+	setSelectedCharacter(characterId: CharacterId): void {
+		if (!isCharacterId(characterId)) return;
+		const current = selectOverrides(clientStore.getState()).display ?? {};
+		if ((current.character ?? DEFAULT_CHARACTER) === characterId) return;
+		this.updateDisplay({ character: characterId });
 	}
 
 	/** Store a whole key layout (as its overrides: the actions that differ from the defaults). */

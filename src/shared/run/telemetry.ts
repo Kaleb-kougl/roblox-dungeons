@@ -15,6 +15,7 @@
  *  - Explicit stats the web build left in counters: weapon swaps, first kill tick, boss engage tick, highest boss
  *    phase, and the death cause (the archetype of the hit that killed the player).
  */
+import type { CharacterId } from "shared/characters";
 import { FORFEIT_BUTTON, SIM_EVENT_FIELDS, archetypeAt, archetypeIds, type SimEvents } from "shared/sim";
 
 export type RunEndReason = "death" | "victory" | "abandoned";
@@ -69,6 +70,11 @@ export interface RunTelemetryRecord {
 	/** The web build's free-form counters: `hitBy.<id>`, `boss.attempt`, `event.<field>` for unmapped SimEvents. */
 	counters: Map<string, number>;
 	markers: RunMarker[];
+	/**
+	 * docs/ARCHER.md AR5: the replayed player's character (player 0: the owner; the run setup's `characters[0]`), or
+	 * undefined for a run built without characters (M1's `game`, fixtures, tools).
+	 */
+	character?: CharacterId;
 }
 
 /** SimEvents fields mapped to fixed stats (the web build's KNOWN_EVENT_FIELDS). */
@@ -172,7 +178,12 @@ export class RunTelemetry {
 	private readonly markers: RunMarker[] = [];
 	private markersDropped = 0;
 
-	constructor(startHearts: number, names: ReadonlyArray<string> = archetypeIds()) {
+	/** `character`: the replayed player's (RunTelemetryRecord.character), copied to the record as is. */
+	constructor(
+		startHearts: number,
+		names: ReadonlyArray<string> = archetypeIds(),
+		private readonly character?: CharacterId,
+	) {
 		this.prevHearts = startHearts;
 		this.names = names;
 	}
@@ -279,6 +290,7 @@ export class RunTelemetry {
 			hitsBySource,
 			counters,
 			markers: [...this.markers],
+			character: this.character,
 		};
 	}
 

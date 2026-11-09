@@ -3,21 +3,32 @@
 import { describe, expect, it } from "@rbxts/jest-globals";
 import runPlayerDungeon from "shared/fixtures-generated/run-player-dungeon-1337";
 import {
+	Button,
 	DEBUG_FLOOR_BUTTON,
 	EMPTY_INPUT,
+	NEUTRAL_TRAITS,
+	Recorder,
 	SIM_DT,
+	createSimState,
 	deserializeRecording,
 	encodeRecording,
+	hashState,
 	quantizeInput,
+	stepParty,
 	type InputFrame,
 } from "shared/sim";
+import { characterLoadout, characterTraits, type CharacterId } from "shared/characters";
 import { bytesOfHex } from "shared/crypto";
 import { DAILY, DAILY_WORLD_KIND, dailyDay, dailySeedFrom } from "shared/daily";
 import { LOBBY, Lobbies } from "shared/lobby";
 import { LiveRun } from "shared/play";
 import {
 	DEFAULT_RUN_SESSION_LIMITS,
+	DEFAULT_SEGMENT_LIMITS,
+	LIVE_RUN_LIMITS,
 	RunSessionRegistry,
+	sessionCharacters,
+	validateRun,
 	buildEndlessRunConfig,
 	buildRunConfig,
 	buildWorldSetup,
@@ -25,7 +36,10 @@ import {
 	registerRunWorld,
 	resolveParty,
 	runWorldKinds,
+	type RunSegment,
 	type RunSession,
+	type RunSetup,
+	type SegmentedRunResult,
 	type StartContext,
 	type StartRunRequest,
 } from "shared/run";
@@ -127,7 +141,8 @@ describe("RunSessionRegistry", () => {
 		};
 		expect(code("x")).toBe("bad_request");
 		expect(code({ requestId: 1, worldKind: "" })).toBe("bad_request");
-		expect(code({ requestId: 1, worldKind: "game", classId: string.rep("a", 100) })).toBe("bad_request");
+		expect(code({ requestId: 1, worldKind: "game", characterId: string.rep("a", 100) })).toBe("bad_request");
+		expect(code({ requestId: 1, worldKind: "game", characterId: "ranger" })).toBe("bad_request");
 		expect(code({ requestId: 1, worldKind: "nowhere" })).toBe("unknown_world");
 		// The tutorial world is registered (the client builds it) but played locally only: never a server session.
 		expect(code({ requestId: 1, worldKind: "tutorial" })).toBe("unknown_world");
@@ -460,5 +475,227 @@ describe("daily runs (docs/DAILY.md DS4)", () => {
 		expect(result?.serverHash).toBe(final.claimedHash);
 		expect(result?.score.floor).toBe(2);
 		expect(result?.score.score).toBe(final.claimed.score);
+	});
+});
+
+describe("characters (docs/ARCHER.md AR5)", () => {
+	const THIRD = 404;
+	const ENDLESS: StartRunRequest = { requestId: 1, worldKind: "endless" };
+	const inServer = (id: number) => id === OWNER || id === FRIEND || id === THIRD;
+	const partyCtx = (picks?: ReadonlyArray<string>) =>
+		ctx(0, { isInServer: inServer, partyConsent: [OWNER, FRIEND, THIRD], partyCharacters: picks });
+	const PARTY: StartRunRequest = { ...ENDLESS, party: [FRIEND, THIRD] };
+	/** Ticks each run below plays (two checkpoints and a bit; several rolls each). */
+	const TICKS = DEFAULT_SEGMENT_LIMITS.checkpointEvery * 2 + 37;
+	const ROLL_EVERY = 45;
+
+	function started(reg: RunSessionRegistry, owner: number, req: StartRunRequest, c: StartContext): RunSession {
+		const r = reg.start(owner, req, c);
+		if (!r.ok) error(`start refused: ${r.code} ${r.reason}`);
+		return r.session;
+	}
+
+	/** Player `i`'s input at tick `t`: a slow turn (its own phase), aim along it, a roll press every ROLL_EVERY ticks. */
+	function botInput(i: number, t: number, out: InputFrame): InputFrame {
+		const a = t * 0.015 + i * 2.1;
+		const roll = (t + i * 11) % ROLL_EVERY === 0 ? Button.ROLL : 0;
+		return quantizeInput(math.cos(a), math.sin(a), math.cos(a), math.sin(a), roll, out);
+	}
+
+	/** Drains a validator, returning its verdict (undefined while still open). */
+	function drain(s: RunSession): SegmentedRunResult | undefined {
+		let result = s.validator.getResult();
+		while (s.validator.hasWork()) result = s.validator.advance(97).result ?? result;
+		return result;
+	}
+
+	/**
+	 * A party client's run as one segment: the world built from `setup` (what the client built from the party start's
+	 * payload), every player on botInput, checkpoint hashes where the server compares them.
+	 */
+	function partySegment(session: RunSession, setup: RunSetup): RunSegment {
+		const spawn = setup.spawn!;
+		const state = createSimState(session.seed, spawn.x, spawn.z, setup.config);
+		const recorder = new Recorder(session.seed, spawn.x, spawn.z);
+		const n = session.members.size();
+		const frames: InputFrame[] = [];
+		for (let i = 0; i < n; i++) frames.push({ ...EMPTY_INPUT });
+		const every = DEFAULT_SEGMENT_LIMITS.checkpointEvery;
+		const checkpointHashes: string[] = [];
+		for (let t = 0; t < TICKS; t++) {
+			for (let i = 0; i < n; i++) botInput(i, t, frames[i]);
+			recorder.recordParty(frames);
+			stepParty(state, frames, setup.config);
+			if (state.tick % every === 0 && state.tick < TICKS) checkpointHashes.push(hashState(state));
+		}
+		return {
+			runId: session.runId,
+			index: 0,
+			startTick: 0,
+			recording: encodeRecording(recorder.getRecording()),
+			claimedEndHash: hashState(state),
+			checkpointHashes,
+		};
+	}
+
+	/** A solo client's ranked run (LiveRun, segmented) built as `character`, offered to `session` and drained. */
+	function soloRun(session: RunSession, character: CharacterId): SegmentedRunResult | undefined {
+		const setup = buildWorldSetup("endless", session.seed, { atBossDoor: false, characters: [character] });
+		const run = new LiveRun({
+			seed: session.seed,
+			spawnX: setup.spawn!.x,
+			spawnZ: setup.spawn!.z,
+			config: setup.config,
+			atBossDoor: false,
+			runId: session.runId,
+			segmentCutAfterTick: (state) => state.events.floorChanged !== 0,
+		});
+		const input: InputFrame = { ...EMPTY_INPUT };
+		for (let t = 0; t < TICKS; t++) run.frame(SIM_DT, botInput(0, t, input));
+		const final = run.final()!;
+		for (const seg of run.takeSegments()) session.validator.offer(seg, LATE);
+		session.validator.finish(final, LATE);
+		return drain(session);
+	}
+
+	it("startRun.characterId: optional (the Knight), checked, and the session's setup is built with it", () => {
+		const reg = registry();
+		const knight = started(reg, OWNER, ENDLESS, ctx());
+		expect(knight.characters).toEqual(["knight"]);
+		expect(knight.setup.config.loadout).toEqual(characterLoadout("knight"));
+		expect(knight.setup.config.traits).toEqual(NEUTRAL_TRAITS);
+		const archer = started(reg, FRIEND, { ...ENDLESS, characterId: "archer" }, ctx());
+		expect(archer.characters).toEqual(["archer"]);
+		expect(archer.setup.config.loadout).toEqual(characterLoadout("archer"));
+		expect(archer.setup.config.traits).toEqual(characterTraits("archer"));
+		// What the client builds from the reply's seed and character is the session's setup.
+		const client = buildWorldSetup("endless", archer.seed, { atBossDoor: false, characters: ["archer"] });
+		expect(client.config.loadout).toEqual(archer.setup.config.loadout);
+		expect(client.config.traits).toEqual(archer.setup.config.traits);
+		// A world without characters (M1's) records none.
+		expect(started(reg, OWNER, { ...REQUEST, characterId: "archer" }, ctx()).characters).toBe(undefined);
+		// Unknown or malformed ids: bad_request, nothing created.
+		const size = reg.size();
+		for (const bad of ["ranger", "Archer", "", 3, true, string.rep("k", 49)]) {
+			const r = reg.start(OWNER, { ...ENDLESS, characterId: bad } as unknown as StartRunRequest, ctx());
+			expect(r.ok ? "ok" : r.code).toBe("bad_request");
+		}
+		expect(reg.size()).toBe(size);
+	});
+
+	it("a party plays the lobby's picks in member order (the request's own pick is the solo one)", () => {
+		expect(sessionCharacters({ ...PARTY, characterId: "archer" }, 3, ["knight", "archer", "archer"])).toEqual([
+			"knight",
+			"archer",
+			"archer",
+		]);
+		// Without the lobby's picks: the owner's request, the others the default.
+		expect(sessionCharacters({ ...PARTY, characterId: "archer" }, 3, undefined)).toEqual([
+			"archer",
+			"knight",
+			"knight",
+		]);
+		// Missing entries: the default; a solo start ignores partyCharacters.
+		expect(sessionCharacters(PARTY, 3, ["archer"])).toEqual(["archer", "knight", "knight"]);
+		expect(sessionCharacters({ ...ENDLESS, characterId: "archer" }, 1, ["knight"])).toEqual(["archer"]);
+		const reg = registry();
+		const s = started(reg, OWNER, PARTY, partyCtx(["archer", "knight", "archer"]));
+		expect(s.members).toEqual([OWNER, FRIEND, THIRD]);
+		expect(s.characters).toEqual(["archer", "knight", "archer"]);
+		const party = s.setup.config.party!;
+		expect(party.loadouts).toEqual([
+			characterLoadout("archer"),
+			characterLoadout("knight"),
+			characterLoadout("archer"),
+		]);
+		expect(party.traits).toEqual([characterTraits("archer"), NEUTRAL_TRAITS, characterTraits("archer")]);
+		// An unknown pick: bad_party, nothing created.
+		const bad = registry().start(OWNER, PARTY, partyCtx(["archer", "wizard", "knight"]));
+		expect(bad.ok ? "ok" : bad.code).toBe("bad_party");
+	});
+
+	it("a lobby's picks reach the party session through its start (the RunSessionService handoff)", () => {
+		let ids = 0;
+		const lobbies = new Lobbies({ newId: () => `L${++ids}` });
+		const lctx = (now: number) => ({ now, busyReason: () => undefined, areFriends: () => true });
+		const made = lobbies.create(OWNER, undefined, lctx(0));
+		if (!made.ok) error(made.reason);
+		lobbies.join(FRIEND, made.lobby.lobbyId, lctx(0));
+		lobbies.join(THIRD, made.lobby.lobbyId, lctx(0));
+		lobbies.setReady(OWNER, true, "knight");
+		lobbies.setReady(FRIEND, true, "archer");
+		lobbies.setReady(THIRD, true, "archer");
+		lobbies.start(OWNER, lctx(0));
+		const [start] = lobbies.tick(lctx(LOBBY.countdownSeconds)).starts;
+		if (start === undefined || start.kind !== "party") error("no party start");
+		const others: number[] = [];
+		for (let i = 1; i < start.members.size(); i++) others.push(start.members[i]);
+		const s = started(
+			registry(),
+			start.members[0],
+			{ requestId: 0, worldKind: start.worldKind, party: others },
+			ctx(0, { isInServer: inServer, partyConsent: start.members, partyCharacters: start.characters }),
+		);
+		expect(s.characters).toEqual(["knight", "archer", "archer"]);
+	});
+
+	it("a party run of three picks validates when every client builds the start payload's characters", () => {
+		const s = started(registry(), OWNER, PARTY, partyCtx(["archer", "knight", "archer"]));
+		// partyRunStarted carries s.characters; each client: buildWorldSetup(kind, seed, { partySize, characters }).
+		const client = buildWorldSetup("endless", s.seed, {
+			atBossDoor: false,
+			partySize: 3,
+			characters: [...s.characters!],
+		});
+		const seg = partySegment(s, client);
+		expect(s.validator.offer(seg, LATE).ok).toBe(true);
+		const result = drain(s);
+		expect(result).toBe(undefined); // still open: every tick verified, no rejection
+		expect(s.validator.getStatus()).toBe("open");
+		expect(s.validator.getResult()).toBe(undefined);
+		// A client that built other characters (here: everyone the Knight) is caught at the first checkpoint.
+		const wrong = started(registry(), OWNER, PARTY, partyCtx(["archer", "knight", "archer"]));
+		const knights = buildWorldSetup("endless", wrong.seed, { atBossDoor: false, partySize: 3 });
+		expect(wrong.validator.offer(partySegment(wrong, knights), LATE).ok).toBe(true);
+		const rejected = drain(wrong);
+		expect([rejected?.ok, rejected?.code]).toEqual([false, "hash_mismatch"]);
+		expect(rejected?.mismatchAtTick).toBe(DEFAULT_SEGMENT_LIMITS.checkpointEvery);
+	});
+
+	it("a solo run built as the Archer but started as the Knight fails validation (loadout and roll differ)", () => {
+		const reg = registry();
+		const honest = soloRun(started(reg, OWNER, { ...ENDLESS, characterId: "archer" }, ctx()), "archer");
+		expect([honest?.ok, honest?.reason]).toEqual([true, undefined]);
+		expect(honest?.telemetry?.character).toBe("archer");
+		const knight = started(reg, FRIEND, { ...ENDLESS, characterId: "knight" }, ctx());
+		expect(knight.setup.config.loadout).never.toEqual(characterLoadout("archer"));
+		const forged = soloRun(knight, "archer");
+		expect([forged?.ok, forged?.code]).toEqual([false, "hash_mismatch"]);
+		// The default (no characterId) is the Knight's session too.
+		const unnamed = soloRun(started(reg, THIRD, ENDLESS, ctx(0, { isInServer: inServer })), "archer");
+		expect(unnamed?.ok).toBe(false);
+	});
+
+	it("the sessionless submitRun path builds the submission's character (absent: both weapons, as before)", () => {
+		const limits = { ...LIVE_RUN_LIMITS, world: "endless" as const };
+		const seed = 1337;
+		const setup = buildWorldSetup("endless", seed, { atBossDoor: false, characters: ["archer"] });
+		const run = new LiveRun({
+			seed,
+			spawnX: setup.spawn!.x,
+			spawnZ: setup.spawn!.z,
+			config: setup.config,
+			atBossDoor: false,
+		});
+		const input: InputFrame = { ...EMPTY_INPUT };
+		for (let t = 0; t < TICKS; t++) run.frame(SIM_DT, botInput(0, t, input));
+		const sub = run.submission();
+		const archer = validateRun({ ...sub, characterId: "archer" }, limits);
+		expect([archer.ok, archer.reason]).toEqual([true, undefined]);
+		expect(archer.telemetry?.character).toBe("archer");
+		expect(validateRun({ ...sub, characterId: "knight" }, limits).code).toBe("hash_mismatch");
+		expect(validateRun(sub, limits).code).toBe("hash_mismatch");
+		expect(validateRun({ ...sub, characterId: "ranger" }, limits).code).toBe("bad_submission");
+		expect(validateRun({ ...sub, characterId: string.rep("a", 49) }, limits).code).toBe("bad_submission");
 	});
 });

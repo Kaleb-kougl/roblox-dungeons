@@ -277,3 +277,19 @@ describe("RunRecapGate", () => {
 		expect(g.take("a", "r1")).toBe(false);
 	});
 });
+
+describe("the reporting player's character (docs/ARCHER.md AR5)", () => {
+	it("is read when it is a character id, refused otherwise; the close row's field03 carries it", () => {
+		expect(readRunRecapReport(withField("character", "archer"))?.character).toBe("archer");
+		expect(readRunRecapReport(withField("character", "knight"))?.character).toBe("knight");
+		expect(readRunRecapReport(SOLO)?.character).toBe(undefined);
+		for (const bad of ["ranger", "", 1, true])
+			expect(readRunRecapReport(withField("character", bad))).toBe(undefined);
+		const lobby = readRunRecapReport({ ...SOLO, close: "lobby", team: TEAM, character: "archer" })!;
+		expect(lobby.character).toBe("archer");
+		const [row] = analyticsForRunRecap(lobby);
+		expect(row.kind === "custom" && row.fields?.field03).toBe("plainSkipped/archer");
+		const [plain] = analyticsForRunRecap(readRunRecapReport(SOLO)!);
+		expect(plain.kind === "custom" && plain.fields?.field03).toBe("plainSkipped");
+	});
+});

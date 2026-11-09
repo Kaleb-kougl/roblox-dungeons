@@ -66,6 +66,11 @@ export interface RunInfo {
 	readonly coop: boolean;
 	/** The lobby whose start began this run ("" for a run started from the main menu or by R). */
 	readonly lobbyId: string;
+	/**
+	 * docs/ARCHER.md AR5: this client's character in the run (a shared/characters CharacterId), or undefined for a
+	 * world without characters (M1) and before the first run. Again / R replay it.
+	 */
+	readonly character?: string;
 }
 
 /** One HUD toast (M2: boon taken, relic found, curse accepted, Second Wind, Fang heal); text from the theme. */
