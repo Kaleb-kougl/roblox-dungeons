@@ -319,7 +319,7 @@ describe("vale pack", () => {
 		}
 	});
 
-	it("class.ranger (the Archer, docs/ARCHER.md AR12) stays the placeholder capsule until its five core sheets have IDs", () => {
+	it("class.ranger (the Archer, docs/ARCHER.md AR12): the bundled IDs draw it; the placeholder capsule until its five core sheets have IDs", () => {
 		const ranger = VALE_SPRITE_LAYOUTS["class.ranger"];
 		expect(ranger.sheets.map((sheet) => sheet.file)).toEqual([
 			"ranger-idle.png",
@@ -330,11 +330,17 @@ describe("vale pack", () => {
 			"ranger-attack1.png",
 			"ranger-attack2.png",
 		]);
-		// as bundled: no ID yet, so the placeholder pack's capsule
+		// as bundled (uploaded 2026-11-09): every sheet and rim has an ID, so the Archer's sprites with both bow animations
 		for (const sheet of ranger.sheets) {
-			expect([sheet.file, VALE_ASSET_IDS[sheet.file]]).toEqual([sheet.file, undefined]);
+			expect([sheet.file, VALE_ASSET_IDS[sheet.file] !== undefined]).toEqual([sheet.file, true]);
+			expect([sheet.outlineFile, VALE_ASSET_IDS[sheet.outlineFile!] !== undefined]).toEqual([
+				sheet.outlineFile,
+				true,
+			]);
 		}
-		expect(VALE_MANIFEST.assets["class.ranger"]).toEqual(PLACEHOLDER_MANIFEST.assets["class.ranger"]);
+		const bundled = VALE_MANIFEST.assets["class.ranger"] as SpriteSetAsset;
+		expect(bundled.kind).toBe("sprites");
+		expect(sortedKeys(bundled.animations)).toEqual(["attack.1", "attack.2", "death", "hit", "idle", "roll", "run"]);
 		// any core sheet missing: still the placeholder
 		for (const file of [
 			"ranger-idle.png",

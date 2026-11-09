@@ -18,9 +18,9 @@ the web roll, and replay exactly as before. Endless (solo, co-op, daily, dev) an
 ## Status (2026-11-09)
 
 **AR0-AR13 built** on branch `archer` (2026-11-09; each task's "(as built)" section below, in build order). Open:
-**AR14** (Studio check and playtest, the checklists in AR7 / AR8 / AR9 and "Tasks"), the upload of the 14 Archer
-PNGs (AR12: until their ids are in `assetIds.ts` the vale Archer is the placeholder capsule), and the owner calls AR13
-raises (below, "Open owner calls"). Eleven owner answers (2026-11-09, below); decisions ARD1-ARD17 are defaults for
+**AR14** (Studio check and playtest, the checklists in AR7 / AR8 / AR9 and "Tasks") and the owner calls AR13 raises
+(below, "Open owner calls"). The 14 Archer PNGs were uploaded 2026-11-09 and their IDs are in `assetIds.ts`, so the
+bundled vale pack draws the Archer (AR12). Eleven owner answers (2026-11-09, below); decisions ARD1-ARD17 are defaults for
 review except where they cite an answer.
 
 ## Owner answers (2026-11-09)
@@ -1438,3 +1438,13 @@ above, fixed and re-run with view/characters and view/stage*: 7 suites, 78 tests
 full unfiltered suite (about 16 hours on this 2-core box), the dungeon / sim censuses and AR13's tuning specs (each
 task ran its own before the merge); the known platform failure `dungeon/forge/forge.spec.ts` "EncounterRng is the
 sim's new Rng(seed)" (NaN sign bit) is unchanged.
+
+## AR12 upload (2026-11-09)
+
+The owner uploaded the 14 `art/upload/ranger-*.png` (the seven sheets and their `-outline.png` rims, built by
+`build-atlases.js --only class.ranger` and checked byte-identical to the lock) and their IDs are in
+`packs/vale/assetIds.ts`: the bundled vale pack now draws `class.ranger` as the Archer's sprite set with both bow
+animations (`attack.1` stream, `attack.2` charged shot) and the player rim. `vale.spec` now pins the bundled set (every
+sheet and rim has an ID; animations `attack.1`, `attack.2`, `death`, `hit`, `idle`, `roll`, `run`) and still checks that
+a missing core sheet falls back to the placeholder. Studio item 5 (the Archer's own sprite and outline, the roll
+animation over the longer roll) is the next check.

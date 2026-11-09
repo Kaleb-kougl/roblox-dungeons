@@ -1193,8 +1193,9 @@ Decision log (deviations from `PLAN.md`):
   the pick persists as `DisplaySettings.character` (only non-Knight stored, doc stays v2). View: per-player visuals,
   swap prompts only with a swap target (`hasSwapTarget`), character icons, per-character text overrides
   `<key>.<characterId>`. Art: the SmallScaleInt Archer (paid edition, Standard Commercial License), sprite set
-  `class.ranger` built by `build-atlases.js --only class.ranger` (14 PNGs to upload). Tuning measured (AR13; census
-  `npm run test:only -- --census run/archer.survival`); owner calls, the upload and the Studio check (AR14) pending.
+  `class.ranger` built by `build-atlases.js --only class.ranger`; its 14 PNGs uploaded 2026-11-09 (`assetIds.ts`), so the
+  bundled vale pack draws the Archer. Tuning measured (AR13; census `npm run test:only -- --census run/archer.survival`);
+  owner calls and the Studio check (AR14) pending.
 
 ## Commands
 
