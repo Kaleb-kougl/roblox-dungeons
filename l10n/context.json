@@ -3594,13 +3594,230 @@
 			"next": 5
 		}
 	},
+	"run.recap.party.damage": {
+		"note": "Run-over panel (after a party run), the Party tab, a column header above one row per player (narrow column, about 80 px; numbers under it): each player's share of the party's damage (a percent).",
+		"max": 9
+	},
+	"run.recap.party.hits": {
+		"note": "Run-over panel (after a party run), the Party tab, a column header above one row per player (narrow column, about 80 px; numbers under it): how many hits each player took.",
+		"max": 9
+	},
+	"run.recap.party.kills": {
+		"note": "Run-over panel (after a party run), the Party tab, a column header above one row per player (narrow column, about 80 px; numbers under it): each player's kills.",
+		"max": 9
+	},
+	"run.recap.party.parries": {
+		"note": "Run-over panel (after a party run), the Party tab, a column header above one row per player (narrow column, about 80 px; numbers under it): each player's parries (fx.parry.text).",
+		"max": 9
+	},
+	"run.recap.party.share": {
+		"note": "Run-over panel (after a party run), the Party tab, one player's row: their whole-percent share of the party's damage, under the Damage column header (narrow column, about 40 px). {pct} is a whole percent; keep the % sign where your language puts it.",
+		"max": 5,
+		"example": {
+			"pct": 41
+		}
+	},
+	"run.recap.tab.party": {
+		"note": "Run-over panel (after a party run), the tab strip above the highlights (three short tabs side by side, about 120 px each; switched with LB / RB): one row per party member (the group of players). One short word.",
+		"max": 10
+	},
+	"run.recap.tab.team": {
+		"note": "Run-over panel (after a party run), the tab strip above the highlights (three short tabs side by side, about 120 px each; switched with LB / RB): the whole party's highlights. One short word.",
+		"max": 10
+	},
+	"run.recap.tab.you": {
+		"note": "Run-over panel (after a party run), the tab strip above the highlights (three short tabs side by side, about 120 px each; switched with LB / RB): this player's own contribution (second person, the player). One short word.",
+		"max": 10
+	},
 	"run.recap.team": {
 		"note": "Run-over panel (after death), co-op: small tag on a highlight cell whose value is the whole party's. One short word.",
 		"max": 8
 	},
+	"run.recap.title.bossBreaker": {
+		"note": "Run-over panel (after a party run), a player's title: one positive title each player earns for where they led the party (shown as a small chip beside their name and in \"You · {title}\"). A short name for a person, Title Case in English; must not read as blame. Earned for: most damage to bosses.",
+		"max": 16
+	},
+	"run.recap.title.collector": {
+		"note": "Run-over panel (after a party run), a player's title: one positive title each player earns for where they led the party (shown as a small chip beside their name and in \"You · {title}\"). A short name for a person, Title Case in English; must not read as blame. Earned for: most pickups (boosts and pellets).",
+		"max": 16
+	},
+	"run.recap.title.daredevil": {
+		"note": "Run-over panel (after a party run), a player's title: one positive title each player earns for where they led the party (shown as a small chip beside their name and in \"You · {title}\"). A short name for a person, Title Case in English; must not read as blame. Earned for: most grazes (bullets dodged very closely). Not the boon name boon.daredevil.name: a different word, e.g. a dancer among bullets.",
+		"max": 16
+	},
+	"run.recap.title.finisher": {
+		"note": "Run-over panel (after a party run), a player's title: one positive title each player earns for where they led the party (shown as a small chip beside their name and in \"You · {title}\"). A short name for a person, Title Case in English; must not read as blame. Earned for: most kills.",
+		"max": 16
+	},
+	"run.recap.title.guardian": {
+		"note": "Run-over panel (after a party run), a player's title: one positive title each player earns for where they led the party (shown as a small chip beside their name and in \"You · {title}\"). A short name for a person, Title Case in English; must not read as blame. Earned for: most parries (sword guards that erased bullets).",
+		"max": 16
+	},
+	"run.recap.title.heavyHitter": {
+		"note": "Run-over panel (after a party run), a player's title: one positive title each player earns for where they led the party (shown as a small chip beside their name and in \"You · {title}\"). A short name for a person, Title Case in English; must not read as blame. Earned for: most damage dealt.",
+		"max": 16
+	},
+	"run.recap.title.lastStand": {
+		"note": "Run-over panel (after a party run), a player's title: one positive title each player earns for where they led the party (shown as a small chip beside their name and in \"You · {title}\"). A short name for a person, Title Case in English; must not read as blame. Earned for: last to fall, or the longest standing.",
+		"max": 16
+	},
+	"run.recap.title.teammate": {
+		"note": "Run-over panel (after a party run), a player's title: one positive title each player earns for where they led the party (shown as a small chip beside their name and in \"You · {title}\"). A short name for a person, Title Case in English; must not read as blame. Earned for: the fallback for anyone who led nothing: a warm, positive word for a member of the team.",
+		"max": 16
+	},
+	"run.recap.title.untouchable": {
+		"note": "Run-over panel (after a party run), a player's title: one positive title each player earns for where they led the party (shown as a small chip beside their name and in \"You · {title}\"). A short name for a person, Title Case in English; must not read as blame. Earned for: fewest hits taken.",
+		"max": 16
+	},
+	"run.recap.titleDesc.bossBreaker": {
+		"note": "Run-over panel (after a party run), the one-line description under a player's title (run.recap.title.*), what the title was earned for. For run.recap.title.bossBreaker (most damage to bosses).",
+		"max": 28
+	},
+	"run.recap.titleDesc.collector": {
+		"note": "Run-over panel (after a party run), the one-line description under a player's title (run.recap.title.*), what the title was earned for. For run.recap.title.collector (most pickups (boosts and pellets)).",
+		"max": 28
+	},
+	"run.recap.titleDesc.daredevil": {
+		"note": "Run-over panel (after a party run), the one-line description under a player's title (run.recap.title.*), what the title was earned for. For run.recap.title.daredevil (most grazes (bullets dodged very closely)).",
+		"max": 28
+	},
+	"run.recap.titleDesc.finisher": {
+		"note": "Run-over panel (after a party run), the one-line description under a player's title (run.recap.title.*), what the title was earned for. For run.recap.title.finisher (most kills).",
+		"max": 28
+	},
+	"run.recap.titleDesc.guardian": {
+		"note": "Run-over panel (after a party run), the one-line description under a player's title (run.recap.title.*), what the title was earned for. For run.recap.title.guardian (most parries (sword guards that erased bullets)).",
+		"max": 28
+	},
+	"run.recap.titleDesc.heavyHitter": {
+		"note": "Run-over panel (after a party run), the one-line description under a player's title (run.recap.title.*), what the title was earned for. For run.recap.title.heavyHitter (most damage dealt).",
+		"max": 28
+	},
+	"run.recap.titleDesc.lastStand": {
+		"note": "Run-over panel (after a party run), the one-line description under a player's title (run.recap.title.*), what the title was earned for. For run.recap.title.lastStand (last to fall, or the longest standing).",
+		"max": 28
+	},
+	"run.recap.titleDesc.teammate": {
+		"note": "Run-over panel (after a party run), the one-line description under a player's title (run.recap.title.*), what the title was earned for. For run.recap.title.teammate (the fallback for anyone who led nothing: a warm, positive word for a member of the team).",
+		"max": 28
+	},
+	"run.recap.titleDesc.untouchable": {
+		"note": "Run-over panel (after a party run), the one-line description under a player's title (run.recap.title.*), what the title was earned for. For run.recap.title.untouchable (fewest hits taken).",
+		"max": 28
+	},
 	"run.recap.you": {
 		"note": "Run-over panel (after death), co-op: small tag on a highlight cell whose value is only this player's own. One short word (the player, second person).",
 		"max": 8
+	},
+	"run.recap.you.boostOne": {
+		"note": "Run-over panel (after a party run), the You tab, part of the Pickups value: exactly one boost picked up (singular of run.recap.you.boosts).",
+		"max": 12
+	},
+	"run.recap.you.boosts": {
+		"note": "Run-over panel (after a party run), the You tab, part of the Pickups value: how many boosts (temporary power-ups dropped by enemies; boost.*) this player picked up. {n} is a number other than 1 (0 included); 1 uses run.recap.you.boostOne.",
+		"max": 12,
+		"example": {
+			"n": 4
+		}
+	},
+	"run.recap.you.bossDamage": {
+		"note": "Run-over panel (after a party run), the You tab, a cell label in this player's contribution card (2 columns of cells about 200 px wide; the value is drawn beside it, text shrinks): damage this player dealt to bosses (\"dmg\" = damage, abbreviated to fit).",
+		"max": 14
+	},
+	"run.recap.you.damage": {
+		"note": "Run-over panel (after a party run), the You tab, a cell label in this player's contribution card (2 columns of cells about 200 px wide; the value is drawn beside it, text shrinks): damage this player dealt to enemies over the whole run.",
+		"max": 14
+	},
+	"run.recap.you.fell": {
+		"note": "Run-over panel (after a party run), the You tab's standing line: this player died on a floor (dungeon level) before the run ended. {floor} is the floor number, {time} the run time when they fell as minutes:seconds (\"12:40\"). Neutral, never blame.",
+		"max": 34,
+		"example": {
+			"floor": 7,
+			"time": "12:40"
+		}
+	},
+	"run.recap.you.grazes": {
+		"note": "Run-over panel (after a party run), the You tab, a cell label in this player's contribution card (2 columns of cells about 200 px wide; the value is drawn beside it, text shrinks): how many grazes (enemy bullets that passed very close without hitting) this player had. Same word as run.recap.hl.grazes.",
+		"max": 14
+	},
+	"run.recap.you.header": {
+		"note": "Run-over panel (after a party run), the You tab's header line: this player (\"You\", second person) and the title they earned. {title} is the title's name (run.recap.title.*, e.g. \"Guardian\"). The dot is a separator.",
+		"max": 28,
+		"example": {
+			"title": "Guardian"
+		}
+	},
+	"run.recap.you.hits": {
+		"note": "Run-over panel (after a party run), the You tab, a cell label in this player's contribution card (2 columns of cells about 200 px wide; the value is drawn beside it, text shrinks): how many hits this player took from enemies.",
+		"max": 14
+	},
+	"run.recap.you.kills": {
+		"note": "Run-over panel (after a party run), the You tab, a cell label in this player's contribution card (2 columns of cells about 200 px wide; the value is drawn beside it, text shrinks): enemies this player killed (scored kills).",
+		"max": 14
+	},
+	"run.recap.you.lastToFall": {
+		"note": "Run-over panel (after a party run), the You tab's standing line: the party was wiped out and this player was the last one to die. {floor} is the floor (dungeon level) number, {time} the run time at that moment as minutes:seconds (\"14:20\"). The dots are separators. Positive, never blame.",
+		"max": 40,
+		"example": {
+			"floor": 9,
+			"time": "14:20"
+		}
+	},
+	"run.recap.you.left": {
+		"note": "Run-over panel (after a party run), the You tab's standing line and the Party tab's dimmed row: this player left the party run (quit or disconnected) on a floor (dungeon level). {floor} is the floor number. Neutral.",
+		"max": 26,
+		"example": {
+			"floor": 2
+		}
+	},
+	"run.recap.you.parries": {
+		"note": "Run-over panel (after a party run), the You tab, a cell label in this player's contribution card (2 columns of cells about 200 px wide; the value is drawn beside it, text shrinks): how many parries (well-timed sword guards that erased enemy bullets; fx.parry.text) this player made. Same word as run.recap.hl.parries.",
+		"max": 14
+	},
+	"run.recap.you.pelletOne": {
+		"note": "Run-over panel (after a party run), the You tab, part of the Pickups value: exactly one pellet taken (singular of run.recap.you.pellets).",
+		"max": 13
+	},
+	"run.recap.you.pellets": {
+		"note": "Run-over panel (after a party run), the You tab, part of the Pickups value: how many pellets (small cubes on a room's floor, collected for points) this player took. {n} is a number other than 1 (0 included); 1 uses run.recap.you.pelletOne.",
+		"max": 13,
+		"example": {
+			"n": 22
+		}
+	},
+	"run.recap.you.pickups": {
+		"note": "Run-over panel (after a party run), the You tab, a cell label in this player's contribution card (2 columns of cells about 200 px wide; the value is drawn beside it, text shrinks): items this player picked up off the floor (boosts and pellets).",
+		"max": 14
+	},
+	"run.recap.you.pickupsValue": {
+		"note": "Run-over panel (after a party run), the You tab, the Pickups cell's value: two counted parts joined. {boosts} is run.recap.you.boosts or .boostOne already filled (\"4 boosts\"), {pellets} is run.recap.you.pellets or .pelletOne (\"22 pellets\"). Usually only the separator changes.",
+		"max": 28,
+		"example": {
+			"boosts": "4 boosts",
+			"pellets": "22 pellets"
+		}
+	},
+	"run.recap.you.share": {
+		"note": "Run-over panel (after a party run), the You tab, a cell's value: this player's number and their whole-percent share of the party's total. {value} is a formatted number, {pct} a whole percent (the % sign follows). The dot is a separator.",
+		"max": 18,
+		"example": {
+			"value": "12,480",
+			"pct": 41
+		}
+	},
+	"run.recap.you.shareBar": {
+		"note": "Run-over panel (after a party run), the You tab, the line beside a bar split into each player's share of the party's damage: this player's share. {pct} is a whole percent (the % sign follows).",
+		"max": 32,
+		"example": {
+			"pct": 41
+		}
+	},
+	"run.recap.you.stood": {
+		"note": "Run-over panel (after a party run), the You tab's standing line: this player was still alive when the run ended. {time} is the run's length as minutes:seconds (\"14:20\"). The dot is a separator.",
+		"max": 34,
+		"example": {
+			"time": "14:20"
+		}
 	},
 	"score.source.boss": {
 		"note": "Run-over panel: score breakdown row label (200 px label column, the points sit to the right) for points from defeating bosses.",

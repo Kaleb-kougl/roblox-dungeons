@@ -606,6 +606,14 @@ Again at 0.6 s and reports how the panel was left (`runRecap` -> the server's `R
 gold pulse rings and `sfx.room.teamperfect`) and two players' parry groups starting within 0.2 s into SYNC!
 (`SyncCalloutController`'s floor text and tether, the mapper's `sfx.player.syncparry`).
 
+
+Co-op contribution (docs/RUN_CONTRIBUTION.md): in a party run the highlights' slot becomes a You / Team / Party tab
+strip, opening on You (your damage share bar, damage / kills / boss damage with your share, parries, grazes, hits,
+pickups, how you stood), Team (the highlights), Party (one row per player in index order with one positive title).
+RecapController builds `contributionOf` once at run over from `RunView.recapTally` (the unhashed `ScoreEvents`
+contribution feed) and `RunContext.memberNames`, with the local player (`getLocalPlayerIndex`) as You; `RecapViews`
+counts up each tab on its first open; LB / RB, Q / E / Tab and taps switch tabs (never through `RunOverRetryGate`);
+`runRecap` reports the seconds on You / Party.
 ### Sprite effects (docs/FX_AUDIO.md F3 / F4; Roblox port, no web source)
 
 `FxSpriteController` (render step `KV_FxSprites` at Camera + 2) draws the cues of the pure `FxCueMapper`

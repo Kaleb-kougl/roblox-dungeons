@@ -221,7 +221,8 @@ describe("required IDs and strings", () => {
 		// + docs/GAMEPAD_MENUS.md GM7 / GM9: GAMEPAD_MENU_STRING_KEYS (16 pad.hint.*, options.controls.vibration)
 		// + docs/BUILDS_V2.md BV10: 5 BUILD_STRING_KEYS (hud.draft.duoHint, fx.counter / .pinned / .slam.text,
 		// hud.toast.happyHour)
-		expect(REQUIRED_STRING_KEYS.size()).toBe(before + 28 + 1 + 1 + 4 + 16 + 1 + 19 + 1 + 1 + 3 + 18 + 17 + 5);
+		// + docs/RUN_CONTRIBUTION.md CT4: CONTRIB_STRING_KEYS (44; CT5's `run.recap.party.share`: 45)
+		expect(REQUIRED_STRING_KEYS.size()).toBe(before + 28 + 1 + 1 + 4 + 16 + 1 + 19 + 1 + 1 + 3 + 18 + 17 + 5 + 45);
 		expect(new Set(REQUIRED_STRING_KEYS).size()).toBe(REQUIRED_STRING_KEYS.size());
 		expect(BIOMES.map((b) => b.forgeTheme)).toEqual(["ancient", "molten", "frost", "grim", "verdant"]);
 	});

@@ -14,7 +14,8 @@
  *                      and other worlds (tutorial, M1): none.
  *   - `pickHighlights` RECAP_HIGHLIGHTS in priority order, notable ones only (entries sharing a priority are one slot),
  *                      at most RECAP.maxHighlights, filled to RECAP.minHighlights with Kills / Rooms cleared (RRD4).
- *                      Co-op labels the party's values `team` and the view player's own `you`. Other worlds: none.
+ *                      Co-op labels the party's values `team` and the local player's own `you` (never the view
+ *                      player's, CT1). Other worlds: none.
  *   - `stairsPathTiles` the walking distance (4-neighbour BFS steps over FLOOR, shared/dungeon pathField) from the death
  *                      position to the open stairwell; undefined when closed (a boss floor's before the kill) or
  *                      unreachable. Run over only (one field per call).
@@ -66,7 +67,7 @@ export interface RecapBossInput {
 	readonly bossId: string;
 }
 
-/** The view player's build (docs/BUILDS.md): duos taken, boons evolved (level III). Zeros without builds. */
+/** The local player's build (docs/BUILDS.md): duos taken, boons evolved (level III). Zeros without builds. */
 export interface RecapBuildsInput {
 	readonly duos: number;
 	readonly evolutions: number;
@@ -94,8 +95,12 @@ export interface RunRecapInput {
 	readonly world: RecapWorld;
 	/** Players in the run (>= 2: a party run, co-op labels and rows). */
 	readonly partySize: number;
-	/** The view player (getViewPlayerIndex; solo 0): the tally's and the builds' player. */
-	readonly viewIndex: number;
+	/**
+	 * The local player (SimController.getLocalPlayerIndex; solo 0): the `You` rows' player (the tally's parries / grazes
+	 * and the builds). Never the view player: at a wipe the spectate view stays on the last watched teammate
+	 * (docs/RUN_CONTRIBUTION.md CT1).
+	 */
+	readonly localIndex: number;
 	readonly score: RecapScoreInput;
 	/** Kills (the snapshot's `kills`). */
 	readonly kills: number;
@@ -299,7 +304,7 @@ export interface RecapHighlight {
 	/** The value's text template (`{n} of {total}`: {n} = the counted value), with `vars`; undefined: the number alone. */
 	readonly valueKey?: string;
 	readonly vars?: Readonly<Record<string, number>>;
-	/** Co-op: `team` (the party's value) / `you` (the view player's own); undefined: no label (solo, or the label says). */
+	/** Co-op: `team` (the party's value) / `you` (the local player's own); undefined: no label (solo, or the label says). */
 	readonly scope: "team" | "you" | undefined;
 	/** Combo: the tier's colour role (COMBO_TIERS role). */
 	readonly colourRole?: string;
@@ -357,7 +362,7 @@ function evaluate(def: RecapHighlightDef, input: RunRecapInput, coop: boolean): 
 		case "evolved":
 			return plain(input.builds.evolutions, def.min);
 		case "parries":
-			return plain(input.tally.parries[input.viewIndex] ?? 0, def.min);
+			return plain(input.tally.parries[input.localIndex] ?? 0, def.min);
 		case "syncParries":
 			return plain(team.syncParries, def.min);
 		case "sweeps":
@@ -365,7 +370,7 @@ function evaluate(def: RecapHighlightDef, input: RunRecapInput, coop: boolean): 
 		case "chests":
 			return input.chests !== undefined ? plain(input.chests.opened, def.min) : undefined;
 		case "grazes":
-			return plain(coop ? input.tally.grazes[input.viewIndex] ?? 0 : countOf(s, ScoreSource.GRAZES), def.min);
+			return plain(coop ? input.tally.grazes[input.localIndex] ?? 0 : countOf(s, ScoreSource.GRAZES), def.min);
 		case "jackpots":
 			return hasSource(s, ScoreSource.JACKPOT) ? plain(countOf(s, ScoreSource.JACKPOT), def.min) : undefined;
 		case "speed":
@@ -474,6 +479,11 @@ export interface RecapTimelineOptions {
 	readonly reducedMotion: boolean;
 	/** Start at this clock (a verdict's silent re-derive): rows already due show final, with no sound. Default 0. */
 	readonly atSec?: number;
+	/**
+	 * The first highlight's start (s) instead of RECAP.highlightsStartSec / after NB's rows: a party run's Team tab counts
+	 * its highlights from its first open (docs/RUN_CONTRIBUTION.md CT7, recapViews.ts). Default: as above.
+	 */
+	readonly highlightsAtSec?: number;
 }
 
 /** One row's state (read after step). */
@@ -531,8 +541,9 @@ export class RecapTimeline {
 		this.nearMissRow = nm !== undefined ? 0 : -1;
 		if (nm !== undefined) this.addRow(nm, record ? base : cfg.nearMissDelaySec, cfg.countSec);
 		this.firstHighlightRow = this.rows.size();
+		const first = options.highlightsAtSec ?? base;
 		for (let i = 0; i < options.highlights.size(); i++) {
-			this.addRow(options.highlights[i], base + i * cfg.highlightGapSec, cfg.highlightCountSec);
+			this.addRow(options.highlights[i], first + i * cfg.highlightGapSec, cfg.highlightCountSec);
 		}
 		let settle = 0;
 		for (const r of this.rows) settle = math.max(settle, r.endSec);

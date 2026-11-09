@@ -25,7 +25,7 @@ import { partyHpMultiplier } from "../../partyData";
 import { partySize, playerAt } from "../../party";
 import type { SimCtx } from "../ctx";
 import { archetypeAt } from "./registry";
-import { scoreKill } from "../../score/score";
+import { scoreDamageDealt, scoreKill } from "../../score/score";
 import { runOnKill } from "../../progression/runMods";
 import { dropsOnKill } from "../../drops/drops";
 import { affixAbsorb, affixHoldsCorpse, affixesOnFree, affixesOnKill, affixesOnSpawn } from "../../affixes/affixes";
@@ -224,6 +224,10 @@ export function damageActor(ctx: SimCtx, a: ActorState, amount: number): number 
 		if (ctx.state.tutorial !== undefined) dmg = tutorialHeldDamage(ctx.state, a, dmg);
 		a.hp -= dmg;
 		ev.damageDealt += dmg;
+		// Run contribution (docs/RUN_CONTRIBUTION.md CT2, scored runs): the same dmg, credited to the bound player (CT0:
+		// every damageActor caller binds the damaging player). Unhashed feed, never read back; a tutorial hold that removed
+		// nothing records nothing.
+		if (dmg > 0) scoreDamageDealt(ctx.state, ctx.playerIndex, dmg, def.data.boss === true ? 1 : 0);
 		if (a.hp > 0) a.flashTicks = HIT_FLASH_TICKS;
 	}
 	if (def.onHit !== undefined) def.onHit(ctx, a, dmg);

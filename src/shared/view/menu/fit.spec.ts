@@ -1,6 +1,8 @@
 // Fitting the menu screens into the safe area on phones (shared/view/menu fit.ts, docs/UI_ART.md "Phones").
 import { describe, expect, it } from "@rbxts/jest-globals";
+import { SIM_HZ } from "shared/sim";
 import { PORTRAIT } from "shared/view";
+import { NO_RECAP_TALLY, type RecapTallySource } from "shared/view/fx";
 import {
 	DAILY_RANK,
 	HUD_VIEW,
@@ -11,11 +13,16 @@ import {
 	UI_ART,
 	artDensityBox,
 	computeHudScale,
+	contribBoxHeight,
+	contribPartyHeight,
+	contribTabBodyHeight,
+	contributionOf,
 	recapExitsWidth,
 	recapGridSize,
 	skinPadding,
 	snappedSliceScale,
 	uniformPadding,
+	type RunContribution,
 } from "shared/view/hud";
 import {
 	DAILY_MENU,
@@ -704,14 +711,17 @@ describe("the upright pause (docs/PORTRAIT.md PT6)", () => {
  * highlights' place: the panel as before). A run without a record draws the plain near-miss line under the main line
  * instead of the ribbon (compact: the taller of the two is counted in the left column).
  */
-function recapWorst(uiScale: number, layout: "compact" | "narrow" | "wide"): Estimate {
+function recapWorst(uiScale: number, layout: "compact" | "narrow" | "wide", party?: RunContribution): Estimate {
 	const title = LINE(HUD_VIEW.titleText);
 	const small = LINE(HUD_VIEW.smallText);
 	const lineH = LINE(HUD_VIEW.textSize);
 	const header = UI_ART.iconBox.header;
 	const nearMiss = RECAP_UI.nearMiss.height;
 	const dim = RECAP_UI.nearMiss.dimHeight;
-	const grid = recapGridSize(4, HUD_VIEW.gap).h;
+	// docs/RUN_CONTRIBUTION.md CT5: a party run's tab strip and box (the taller of the You card and the Team grid; the
+	// Party list scrolls inside it) in the highlights' place.
+	const gap = layout === "compact" ? MENU_FIT.runOverLineGap : HUD_VIEW.gap;
+	const grid = party !== undefined ? contribTabBodyHeight(party, 4, layout, gap) : recapGridSize(4, HUD_VIEW.gap).h;
 	// DailyResultBlock: its title / countdown row, the standing, best today, the save chip; DailyPassedRow: the label
 	// and the headshot cells.
 	const dailyRows = [small, title, small, small];
@@ -812,6 +822,118 @@ describe("run-over recap fit (docs/RUN_RECAP.md RR5)", () => {
 				RECAP_UI.nearMiss.height,
 				HUD_VIEW.pad * 2 + LINE(HUD_VIEW.smallText) + HUD_VIEW.gap + LINE(HUD_VIEW.titleText),
 				recapGridSize(4, HUD_VIEW.gap).h,
+				LINE(HUD_VIEW.smallText),
+				TWO_SMALL_LINES,
+				RECAP_UI.exits.wide.again.y,
+			];
+			const room = menuArea(s.x, s.y, s.insets, u).h - 2 * MENU_FIT.margin;
+			expect([s.name, column(rows, HUD_VIEW.pad, u) <= room]).toEqual([s.name, true]);
+		}
+	});
+});
+
+/**
+ * docs/RUN_CONTRIBUTION.md CT5: a finished party run of `n` players with every You cell (damage, kills, boss damage,
+ * parries, grazes, hits, pickups: seven, the most the card draws), long display names.
+ */
+function partyRun(n: number): RunContribution {
+	const names: string[] = [];
+	const filled = (v: number) => {
+		const out: number[] = [];
+		for (let i = 0; i < n; i++) out.push(v);
+		return out;
+	};
+	for (let i = 0; i < n; i++) names.push(`AVeryLongDisplayName${i}`);
+	const tally: RecapTallySource = {
+		...NO_RECAP_TALLY,
+		parries: filled(14),
+		grazes: filled(63),
+		kills: filled(86),
+		damage: filled(12480),
+		bossDamage: filled(1120),
+		hits: filled(5),
+		pellets: filled(22),
+		boosts: filled(4),
+		deathTick: filled(800 * SIM_HZ),
+		deathFloor: filled(9),
+		leftFloor: filled(0),
+		lastTick: 800 * SIM_HZ,
+	};
+	return contributionOf({ tally, partySize: n, localIndex: 0, names })!;
+}
+
+describe("run-over contribution fit (docs/RUN_CONTRIBUTION.md CT5)", () => {
+	const eight = partyRun(8);
+	const four = partyRun(4);
+	const two = partyRun(2);
+
+	it("the party runs carry the full You card (seven cells); an 8-player Party list scrolls on a phone, 4 fit", () => {
+		expect(eight.youCells.size()).toBe(7);
+		for (const layout of ["compact", "narrow"] as const) {
+			expect([layout, contribPartyHeight(8, layout) > contribBoxHeight(eight, 4, layout)]).toEqual([
+				layout,
+				true,
+			]);
+			expect([layout, contribPartyHeight(4, layout) <= contribBoxHeight(four, 4, layout)]).toEqual([
+				layout,
+				true,
+			]);
+		}
+		// The tab body does not grow with the party (the Party list scrolls in the box): 2, 4 and 8 players alike.
+		for (const layout of ["wide", "compact", "narrow"] as const) {
+			const h = contribTabBodyHeight(eight, 4, layout, HUD_VIEW.gap);
+			expect([layout, contribTabBodyHeight(four, 4, layout, HUD_VIEW.gap)]).toEqual([layout, h]);
+			expect([layout, contribTabBodyHeight(two, 4, layout, HUD_VIEW.gap)]).toEqual([layout, h]);
+		}
+	});
+
+	it("a record daily party run (You tab, 8 players) fits the landscape phones (compact) at 100 % and 70 %", () => {
+		for (const s of PHONES) {
+			for (const percent of [70, 100]) {
+				const u = touchScale(s, percent);
+				const e = recapWorst(u, "compact", eight);
+				const fit = fitOn(s, e, u, true);
+				expect([s.name, percent, fit.overflow]).toEqual([s.name, percent, false]);
+				expect(u * fit.factor).toBeGreaterThanOrEqual(math.min(u, MENU_FIT.minScale) - 1e-9);
+				expectInside(s, e, fit, u);
+			}
+		}
+	});
+
+	it("... and every portrait phone (narrow) at 100 % and 70 %, at no less than the full floor", () => {
+		for (const s of PORTRAITS) {
+			for (const percent of [70, 100]) {
+				const u = computeHudScale(s.x, s.y, false, percent, true);
+				const e = recapWorst(u, "narrow", eight);
+				const fit = narrowFit(s, e, u);
+				expect([s.name, percent, fit.overflow]).toEqual([s.name, percent, false]);
+				expect(u * fit.factor).toBeGreaterThanOrEqual(math.min(u, MENU_FIT.minScale) - 1e-9);
+				expectInside(s, e, fit, u);
+			}
+		}
+	});
+
+	it("... and on desktop is no taller than today's record daily run with its breakdown (never fitted there)", () => {
+		for (const s of DESKTOPS) {
+			const u = computeHudScale(s.x, s.y, false);
+			const worst = recapWorst(u, "wide", eight);
+			const small = LINE(HUD_VIEW.smallText);
+			const daily = small + LINE(HUD_VIEW.titleText) + 2 * small + small + DAILY_RANK.passedHeadshotPx + small;
+			const today = estimates(u, false).get("runOver")!.h + LINE(HUD_VIEW.textSize) + daily + 3 * HUD_VIEW.gap;
+			expect([s.name, worst.h <= today]).toEqual([s.name, true]);
+		}
+	});
+
+	it("a plain endless party run (near-miss line, the You tab) fits every desktop at full size", () => {
+		for (const s of DESKTOPS) {
+			const u = computeHudScale(s.x, s.y, false);
+			const rows = [
+				UI_ART.iconBox.header,
+				2 * HUD_VIEW.titleText + 4,
+				LINE(HUD_VIEW.smallText),
+				RECAP_UI.nearMiss.height,
+				HUD_VIEW.pad * 2 + LINE(HUD_VIEW.smallText) + HUD_VIEW.gap + LINE(HUD_VIEW.titleText),
+				contribTabBodyHeight(eight, 4, "wide", HUD_VIEW.gap),
 				LINE(HUD_VIEW.smallText),
 				TWO_SMALL_LINES,
 				RECAP_UI.exits.wide.again.y,

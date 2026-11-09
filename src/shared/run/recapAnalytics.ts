@@ -16,9 +16,12 @@
  *                                          near-miss kind shown (`RUN_RECAP_NEAR_MISS_KINDS` or `none`); field03
  *                                          `plain` / `plainSkipped` / `record` / `recordSkipped`
  *   field01 `teamPerfects` / `bestTeamStreak` / `syncParries`   value = that team total (party runs, `lobby` only)
+ *   field01 `views`                        (docs/RUN_CONTRIBUTION.md CT8) value = seconds the You and Party tabs showed
+ *                                          (0..2 x maxSeconds, 0.1 s); field02 the tab showing when the panel was left
+ *                                          (`you` / `team` / `party`); party runs with the tabs (`lobby`) only
  * Pure and Roblox-API-free.
  */
-import type { RecapNearMissKind } from "shared/view/hud";
+import type { RecapNearMissKind, RecapTab } from "shared/view/hud";
 import { ANALYTICS_EVENT, type AnalyticsEventSpec } from "./analytics";
 import { isFiniteValue } from "./validate";
 
@@ -64,6 +67,15 @@ export const RUN_RECAP_FLAGS = {
 /** The party rows' field01 (one row per team total). */
 export const RUN_RECAP_TEAM_ROWS = ["teamPerfects", "bestTeamStreak", "syncParries"] as const;
 
+/** A party run's run-over tab (shared/view/hud RecapTab; mirrored, recapAnalytics.spec pins it to RECAP_TABS). */
+export type RunRecapTab = RecapTab;
+
+const TAB_SET: { readonly [K in RecapTab]: true } = { you: true, team: true, party: true };
+export const RUN_RECAP_TABS: ReadonlyArray<RecapTab> = ["you", "team", "party"];
+
+/** The views row's field01 (docs/RUN_CONTRIBUTION.md CT8). */
+export const RUN_RECAP_VIEWS_ROW = "views";
+
 export const RUN_RECAP_TELEMETRY = table.freeze({
 	/** Seconds on the panel are clamped to this (a panel left open is still one report). */
 	maxSeconds: 600,
@@ -87,6 +99,16 @@ export interface RunRecapTeam {
 	readonly syncParries: number;
 }
 
+/**
+ * What a party run's run-over tabs showed (docs/RUN_CONTRIBUTION.md CT8): real seconds the You and the Party tab were
+ * on screen (Details over them counts for neither), and the tab showing when the panel was left.
+ */
+export interface RunRecapViews {
+	readonly you: number;
+	readonly party: number;
+	readonly last: RunRecapTab;
+}
+
 /** `runRecap`'s payload (shared/network). */
 export interface RunRecapReport {
 	/** The run session the recap was for (StartRunReply / partyRunStarted runId). */
@@ -101,6 +123,8 @@ export interface RunRecapReport {
 	readonly skipped: boolean;
 	/** Party runs (`lobby`) only; ignored on other closes. */
 	readonly team?: RunRecapTeam;
+	/** Party runs with the tabs (`lobby`) only; ignored on other closes. */
+	readonly views?: RunRecapViews;
 }
 
 function asTable(v: unknown): Record<string, unknown> | undefined {
@@ -133,6 +157,20 @@ function readTeam(v: unknown): RunRecapTeam | undefined {
 	return { teamPerfects: perfects, bestTeamStreak: math.min(streak, perfects), syncParries: syncs };
 }
 
+function isTab(v: unknown): v is RunRecapTab {
+	return typeIs(v, "string") && (TAB_SET as unknown as Record<string, true | undefined>)[v] === true;
+}
+
+/** A views table: both seconds read as runRecapSeconds (clamped, tenths), the last tab from RUN_RECAP_TABS. */
+function readViews(v: unknown): RunRecapViews | undefined {
+	const t = asTable(v);
+	if (t === undefined) return undefined;
+	const you = runRecapSeconds(t.you);
+	const party = runRecapSeconds(t.party);
+	if (you === undefined || party === undefined || !isTab(t.last)) return undefined;
+	return { you, party, last: t.last };
+}
+
 /** Seconds clamped to 0..maxSeconds and rounded to tenths; undefined when not finite. */
 export function runRecapSeconds(v: unknown): number | undefined {
 	if (!isFiniteValue(v)) return undefined;
@@ -143,8 +181,9 @@ export function runRecapSeconds(v: unknown): number | undefined {
 /**
  * `runRecap`'s payload re-read on the server, or undefined (dropped). Rejects: not a table, a run id that is not a
  * 1..maxRunIdChars string, an unknown close or near-miss kind, a non-finite `seconds`, non-boolean flags, a `team`
- * that is present but malformed (counts must be non-negative integers). Clamps seconds and counts; a team on a solo
- * close (`retry` / `exit`) is dropped, a `lobby` close without one stays valid (no team rows).
+ * that is present but malformed (counts must be non-negative integers), a `views` that is present but malformed
+ * (seconds not finite, an unknown tab). Clamps seconds and counts; a team or views on a solo close (`retry` / `exit`)
+ * is dropped, a `lobby` close without them stays valid (no team / views rows).
  */
 export function readRunRecapReport(v: unknown): RunRecapReport | undefined {
 	const t = asTable(v);
@@ -162,6 +201,11 @@ export function readRunRecapReport(v: unknown): RunRecapReport | undefined {
 		team = readTeam(t.team);
 		if (team === undefined) return undefined;
 	}
+	let views: RunRecapViews | undefined;
+	if (t.views !== undefined) {
+		views = readViews(t.views);
+		if (views === undefined) return undefined;
+	}
 	const out: RunRecapReport = {
 		runId,
 		close: t.close,
@@ -170,7 +214,8 @@ export function readRunRecapReport(v: unknown): RunRecapReport | undefined {
 		record: t.record,
 		skipped: t.skipped,
 	};
-	return t.close === "lobby" && team !== undefined ? { ...out, team } : out;
+	if (t.close !== "lobby") return out;
+	return { ...out, team, views };
 }
 
 /** field03 of a close row. */
@@ -179,7 +224,16 @@ export function runRecapFlags(record: boolean, skipped: boolean): string {
 	return skipped ? RUN_RECAP_FLAGS.plainSkipped : RUN_RECAP_FLAGS.plain;
 }
 
-/** The events of one accepted report (see the file comment): the close row, then a party run's three team rows. */
+/** A views row's value: seconds on You + Party, rounded to tenths. */
+export function runRecapViewSeconds(v: Readonly<RunRecapViews>): number {
+	const steps = RUN_RECAP_TELEMETRY.secondsPerStep;
+	return math.round((v.you + v.party) * steps) / steps;
+}
+
+/**
+ * The events of one accepted report (see the file comment): the close row, then a party run's three team rows and its
+ * views row.
+ */
 export function analyticsForRunRecap(r: Readonly<RunRecapReport>): AnalyticsEventSpec[] {
 	const out: AnalyticsEventSpec[] = [
 		{
@@ -194,6 +248,15 @@ export function analyticsForRunRecap(r: Readonly<RunRecapReport>): AnalyticsEven
 		for (const row of RUN_RECAP_TEAM_ROWS) {
 			out.push({ kind: "custom", name: ANALYTICS_EVENT.runRecap, value: team[row], fields: { field01: row } });
 		}
+	}
+	const views = r.close === "lobby" ? r.views : undefined;
+	if (views !== undefined) {
+		out.push({
+			kind: "custom",
+			name: ANALYTICS_EVENT.runRecap,
+			value: runRecapViewSeconds(views),
+			fields: { field01: RUN_RECAP_VIEWS_ROW, field02: views.last },
+		});
 	}
 	return out;
 }
@@ -241,5 +304,28 @@ export class RunRecapGate<K> {
 	/** Keys tracked (specs / leak checks). */
 	size(): number {
 		return this.runs.size();
+	}
+}
+
+/**
+ * The client's tally of a party run's tab views (docs/RUN_CONTRIBUTION.md CT8; client RecapController): real seconds
+ * each tab's content showed (`showing` undefined: Details over the tabs, or no tabs) and the tab selected last. Pure.
+ */
+export class RunRecapViewClock {
+	private you = 0;
+	private party = 0;
+	private last: RunRecapTab = "you";
+
+	/** One frame of `dt` real seconds; `selected` the tab chosen (even under Details); `showing` the one on screen. */
+	step(dt: number, selected: RunRecapTab, showing: RunRecapTab | undefined): void {
+		this.last = selected;
+		const d = math.max(0, dt);
+		if (showing === "you") this.you += d;
+		else if (showing === "party") this.party += d;
+	}
+
+	/** The report's views (seconds as the server will read them: clamped, tenths). */
+	views(): RunRecapViews {
+		return { you: runRecapSeconds(this.you) ?? 0, party: runRecapSeconds(this.party) ?? 0, last: this.last };
 	}
 }

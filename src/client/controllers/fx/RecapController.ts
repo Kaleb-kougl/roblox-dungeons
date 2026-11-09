@@ -1,6 +1,6 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
-import { ContextActionService, Workspace } from "@rbxts/services";
+import { ContextActionService, UserInputService, Workspace } from "@rbxts/services";
 import { Events } from "client/network";
 import {
 	clientStore,
@@ -18,6 +18,7 @@ import {
 	DEV_WORLD_KIND,
 	ENDLESS_WORLD_KIND,
 	RUN_RECAP_NO_NEAR_MISS,
+	RunRecapViewClock,
 	type RunRecapClose,
 	type RunRecapReport,
 } from "shared/run";
@@ -30,8 +31,10 @@ import {
 	NO_TEAM_MOMENTS,
 	RECAP_DEBUG,
 	RECAP_UI,
-	RecapTimeline,
+	RecapViews,
 	bossFraction,
+	contribCellText,
+	contributionOf,
 	nearMissFor,
 	pickHighlights,
 	recapHighlightRow,
@@ -40,15 +43,19 @@ import {
 	recapNearMissText,
 	recapRecordRowsSec,
 	recapRowTransparency,
+	recapTabStep,
+	recapTabsShown,
 	stairsPathTiles,
+	type RecapTab,
 	type RecapBossInput,
 	type RecapBuildsInput,
 	type RecapHighlight,
 	type RecapNearMiss,
 	type RecapTeamInput,
-	type RecapTimelineOptions,
+	type RecapViewsOptions,
 	type RecapWorld,
 	type RunBaseline,
+	type RunContribution,
 	type RunRecapInput,
 } from "shared/view/hud";
 import { runOverExits } from "shared/view/menu";
@@ -70,6 +77,14 @@ const CONFIRM_ACTION = "KV_RecapConfirm";
 /** Enter / Space press the focused Again on a keyboard (RR7); above the input sink's High priority (Space is roll). */
 const CONFIRM_KEYS = [Enum.KeyCode.Return, Enum.KeyCode.KeypadEnter, Enum.KeyCode.Space];
 const CONFIRM_PRIORITY = Enum.ContextActionPriority.High.Value + 1;
+const TABS_ACTION = "KV_RecapTabs";
+/**
+ * docs/RUN_CONTRIBUTION.md CT6: a party run's tabs on the keyboard (Q previous, E next, Tab next / Shift+Tab previous),
+ * bound like the confirm keys (above the input sink, only while the tabs show with nothing over the panel; a key bound
+ * to `restart` is left to it). Q / E are Ember / Swap in a run: idle on the run-over panel.
+ */
+const TAB_PREV_KEYS: ReadonlyArray<Enum.KeyCode> = [Enum.KeyCode.Q];
+const TAB_NEXT_KEYS: ReadonlyArray<Enum.KeyCode> = [Enum.KeyCode.E, Enum.KeyCode.Tab];
 const UNRANKED: RunBaseline = { kind: "unranked" };
 
 /** The recap's world from the run's world kind (shared/run, shared/daily): the tutorial and every other world: none. */
@@ -94,6 +109,8 @@ interface ReportFacts {
 	record: boolean;
 	team: RecapTeamInput;
 	sent: boolean;
+	/** docs/RUN_CONTRIBUTION.md CT8: a party run's tab views (undefined: no tabs). */
+	readonly views: RunRecapViewClock | undefined;
 }
 
 /** What decides a re-derive (docs/RUN_RECAP.md "Rules": a verdict with other numbers re-derives silently). */
@@ -104,14 +121,27 @@ interface DeriveKey {
 	readonly baselineRun: number;
 }
 
-/** A compact fingerprint of the recap's content (near-miss line and cells): a re-derive swaps only when it differs. */
-function recapSignature(nearMiss: RecapNearMiss | undefined, highlights: ReadonlyArray<RecapHighlight>): string {
+/**
+ * A compact fingerprint of the recap's content (near-miss line, cells and a party run's contribution: its You cells,
+ * every row's numbers and title): a re-derive swaps only when it differs.
+ */
+function recapSignature(
+	nearMiss: RecapNearMiss | undefined,
+	highlights: ReadonlyArray<RecapHighlight>,
+	contribution?: RunContribution,
+): string {
 	const parts = new Array<string>();
 	if (nearMiss !== undefined) {
 		parts.push(nearMiss.key, nearMiss.dim ? "d" : "-");
 		for (const [k, v] of pairs(nearMiss.vars as unknown as ReadonlyMap<string, number>)) parts.push(`${k}=${v}`);
 	}
 	for (const h of highlights) parts.push(`${h.id}:${h.value}:${h.from}:${h.key}:${h.scope ?? ""}`);
+	if (contribution !== undefined) {
+		for (const c of contribution.youCells) parts.push(`y${c.kind}:${c.value}:${c.share ?? ""}`);
+		for (const r of contribution.rows) {
+			parts.push(`p${r.index}:${r.title}:${r.damageShare}:${r.kills}:${r.parries}:${r.hits}:${r.standing.kind}`);
+		}
+	}
 	return parts.join("|");
 }
 
@@ -122,8 +152,9 @@ function recapSignature(nearMiss: RecapNearMiss | undefined, highlights: Readonl
  *   open       the frame the run-over panel opens (the snapshot's outcome is no longer "playing", as RunOverPanel reads
  *              it) the recap's input is built once (inputOf: world from the run's world kind; the boss from the
  *              snapshot's bossVisible / bossId / bossHp / bossHpMax; the stairs' walking distance from the death floor's
- *              world and the view player's position, once; room counts from floorRoomTally; the view player's duos and
- *              evolved boons (level III); new best's baseline and the panel's own record (runOverBest); a daily run's
+ *              world and the view player's position, once; room counts from floorRoomTally; the LOCAL player's duos
+ *              and evolved boons (level III; `You` is the local player, never the view, docs/RUN_CONTRIBUTION.md CT1); new
+ *              best's baseline and the panel's own record (runOverBest); a daily run's
  *              best today from an accepted verdict; RunView.recapTally; Part B's team moments through the provider
  *              seam) and nearMissFor / pickHighlights / a RecapTimeline (a record run's highlights after NB's rows:
  *              recapRecordRowsSec) are made. Dev runs: highlights only (the core gives them no near-miss). Other worlds
@@ -142,12 +173,19 @@ function recapSignature(nearMiss: RecapNearMiss | undefined, highlights: Readonl
  *              and FIRE press edges that did not begin over a GUI (SimController.getFrameButtons) skip the timeline
  *              before RECAP.retryArmSec and restart after it (SimController.requestRestart); the bound `restart` key
  *              is SimController's own driver action and restarts at once. Party runs: a press only skips.
- *   reset      a run start or exit drops everything (store, bindings, the confirm binding).
+ *   tabs       (docs/RUN_CONTRIBUTION.md CT6 / CT7) a party run's contribution is built at the open with the highlights
+ *              (contributionOf: the run's tally, the LOCAL player, ctx.memberNames) and stored for the panel; the clocks are
+ *              one shared/view/hud RecapViews (the near-miss line and the arm; the You cells counting where the
+ *              highlights did; Team's highlights on its first open; Party final), setTab switches them (HudActions
+ *              .setRecapTab from a tap or LB / RB, and Q / E / Tab bound here like the confirm keys), never a retry or a
+ *              skip; a re-derive renews every clock at its old time.
+ *   reset      a run start or exit drops everything (store, bindings, the confirm and tab bindings).
  *   telemetry  (RR9) once per run over with a recap, when the panel is left: `runRecap` (shared/run RunRecapReport) with
  *              the close (`retry`: Again / Retry Daily / the restart key, seen as our own retry, the run context going
  *              away under a ranked restart, or the next run starting; `exit`: the run left for the menu; `lobby`: any
  *              close of a party run), the seconds since the open (os.clock), the near-miss kind shown (or `none`), the
- *              record flag, whether a press skipped the timeline first, and a party run's team moments. Ranked runs
+ *              record flag, whether a press skipped the timeline first, and a party run's team moments and tab views
+ *              (CT8: RunRecapViewClock, seconds on You / Party and the last tab). Ranked runs
  *              only (the server takes one per run session it issued); the server logs it as `RunRecap`.
  *   timing     (RR8 aid) with the Workspace attribute RECAP_DEBUG.retryTimingAttribute (`KV_RetryTiming`, off by
  *              default, read at the press) a retry prints `[Recap] retry: press -> control <s> s` once the next run takes
@@ -161,9 +199,12 @@ export class RecapController implements OnStart {
 	private teamProvider: RecapTeamMomentsProvider | undefined;
 	/** The run over the recap belongs to (RunInfo.run); 0: no panel. */
 	private openRun = 0;
-	private timeline: RecapTimeline | undefined;
+	/** The recap's clocks: the near-miss line and the arm, the highlights, a party run's tabs (shared/view/hud RecapViews). */
+	private views: RecapViews | undefined;
 	private nearMiss: RecapNearMiss | undefined;
 	private highlights: ReadonlyArray<RecapHighlight> = [];
+	/** docs/RUN_CONTRIBUTION.md CT7: a party run's contribution, built once at the open (re-derived with the recap). */
+	private contribution: RunContribution | undefined;
 	private signature = "";
 	private key: DeriveKey | undefined;
 	/** The stairs' walking distance, computed once per run over (a BFS over the floor). */
@@ -172,12 +213,14 @@ export class RecapController implements OnStart {
 	/** The panel's first frame: the run-over jingle's (no recap sound). */
 	private firstFrame = true;
 	private confirmBound = false;
+	private tabsBound = false;
 	private facts: ReportFacts | undefined;
 	/** RR8 aid: a retry press waiting for the next run's first controllable frame (KV_RetryTiming). */
 	private retryTiming: { readonly at: number; readonly run: number } | undefined;
 	// --- what the bindings were last written from (NaN: rewrite, e.g. after a locale switch) ---
 	private shownNearMiss = 0 / 0;
 	private readonly shownCells: number[] = [];
+	private readonly shownYou: number[] = [];
 
 	constructor(
 		private readonly sim: SimController,
@@ -203,6 +246,7 @@ export class RecapController implements OnStart {
 		});
 		this.janitor.Add(onLocaleChanged(() => this.invalidateTexts()));
 		this.janitor.Add(() => this.unbindConfirm());
+		this.janitor.Add(() => this.unbindTabs());
 	}
 
 	/**
@@ -222,6 +266,21 @@ export class RecapController implements OnStart {
 	toggleDetails(): void {
 		this.audio.playUi(SFX.uiClick);
 		clientStore.toggleRecapDetails();
+	}
+
+	/**
+	 * A party run's run-over tab (docs/RUN_CONTRIBUTION.md CT6 / CT7: a tap, the pad's LB / RB, Q / E / Tab): the views
+	 * switch (the tab left settles, Team's first open starts its count-up) and the store follows. Never a press for
+	 * RunOverRetryGate: a tab neither retries nor skips.
+	 */
+	setTab(tab: RecapTab): void {
+		const v = this.views;
+		if (v === undefined || !v.tabbed || this.openRun === 0 || v.tab() === tab) return;
+		if (clientStore.getState().recap.details) return;
+		this.audio.playUi(SFX.uiClick);
+		v.setTab(tab);
+		this.invalidateTexts();
+		clientStore.setRecapTab(tab);
 	}
 
 	// --- the frame --------------------------------------------------------------------------------------
@@ -246,12 +305,16 @@ export class RecapController implements OnStart {
 		if (this.openRun !== run) this.open(ctx, st, settings.reducedMotion);
 		else this.rederive(ctx, st);
 		this.syncConfirm(st);
+		this.syncTabs(st);
 		if (this.gate.fireEdge(this.sim.getFrameButtons(), this.input.mousePressOnGui()) && this.pressAllowed(st)) {
 			this.press("fire");
 		}
-		const t = this.timeline;
+		const t = this.views;
 		if (t === undefined) return;
-		const f = t.step(selectStageCovered(st) ? 0 : dt);
+		const step = selectStageCovered(st) ? 0 : dt;
+		// CT8: the seconds each tab's content showed (Details over the tabs counts for none).
+		this.facts?.views?.step(step, t.tab(), st.recap.details ? undefined : t.tab());
+		const f = t.step(step);
 		const cue = recapCue(f, this.firstFrame, this.cue);
 		this.firstFrame = false;
 		if (cue !== undefined) this.audio.play(cue.id, cue.volume);
@@ -278,9 +341,10 @@ export class RecapController implements OnStart {
 		}
 		this.nearMiss = nearMissFor(input);
 		this.highlights = pickHighlights(input);
-		this.signature = recapSignature(this.nearMiss, this.highlights);
-		this.timeline = new RecapTimeline(this.timelineOptions(st));
-		clientStore.showRecap(run, this.nearMiss, this.highlights, this.timeline.isArmed());
+		this.contribution = this.contributionOf(ctx, input);
+		this.signature = recapSignature(this.nearMiss, this.highlights, this.contribution);
+		this.views = new RecapViews(this.viewsOptions(st));
+		clientStore.showRecap(run, this.nearMiss, this.highlights, this.views.isArmed(), this.contribution);
 		this.facts = {
 			runId: ctx.runId,
 			openedAt: os.clock(),
@@ -289,12 +353,13 @@ export class RecapController implements OnStart {
 			record: this.runOverBestOf(st).records.record,
 			team: input.team ?? NO_TEAM_MOMENTS,
 			sent: false,
+			views: this.views.tabbed ? new RunRecapViewClock() : undefined,
 		};
 	}
 
 	/** A new verdict / other final numbers: rebuild, and swap the content silently when it differs. */
 	private rederive(ctx: RunContext, st: ClientState): void {
-		const old = this.timeline;
+		const old = this.views;
 		if (old === undefined) return;
 		const key = this.deriveKeyOf(st);
 		const k = this.key;
@@ -317,29 +382,28 @@ export class RecapController implements OnStart {
 		}
 		const nearMiss = nearMissFor(input);
 		const highlights = pickHighlights(input);
-		const signature = recapSignature(nearMiss, highlights);
+		const contribution = this.contributionOf(ctx, input);
+		const signature = recapSignature(nearMiss, highlights, contribution);
 		if (signature === this.signature) return;
 		this.nearMiss = nearMiss;
 		this.highlights = highlights;
+		this.contribution = contribution;
 		this.signature = signature;
-		const base = this.timelineOptions(st);
-		let renewed = new RecapTimeline({ ...base, atSec: old.elapsed() });
-		// A settled (or skipped) recap stays settled: the new rows show final, with no sound.
-		if (old.isSettled() && !renewed.isSettled()) {
-			renewed = new RecapTimeline({ ...base, atSec: math.max(old.elapsed(), renewed.settleSec) });
-		}
-		this.timeline = renewed;
+		// Every clock at its old time; a settled (or skipped) one stays settled: new rows show final, with no sound.
+		this.views = old.renewed(this.viewsOptions(st));
 		this.invalidateTexts();
-		clientStore.updateRecap(nearMiss, highlights);
+		clientStore.updateRecap(nearMiss, highlights, contribution);
 	}
 
 	/** Drops the recap (a run start / exit, or the panel closed). */
 	private close(): void {
 		this.unbindConfirm();
+		this.unbindTabs();
 		this.openRun = 0;
-		this.timeline = undefined;
+		this.views = undefined;
 		this.nearMiss = undefined;
 		this.highlights = [];
+		this.contribution = undefined;
 		this.signature = "";
 		this.key = undefined;
 		this.stairsTiles = undefined;
@@ -349,18 +413,35 @@ export class RecapController implements OnStart {
 		clientStore.clearRecap();
 	}
 
-	private timelineOptions(st: ClientState): RecapTimelineOptions {
+	private viewsOptions(st: ClientState): RecapViewsOptions {
 		const best = this.runOverBestOf(st);
 		const records = best.records;
-		// A record run (docs/RUN_RECAP.md RRD3): the highlights (and the dim sub-line) after NB's rows have rolled.
+		// A record run (docs/RUN_RECAP.md RRD3): the highlights (and the dim sub-line) after NB's rows have rolled; a
+		// party run's You cells count there in their place (docs/RUN_CONTRIBUTION.md CT7).
 		const rows = records.first ? 0 : math.min(records.rows.size(), NEW_BEST_DRAW.maxRecordRows);
 		const nm = this.nearMiss;
+		const c = this.contribution;
 		return {
+			tabbed: recapTabsShown(c, this.highlights.size()),
 			nearMiss: nm !== undefined ? recapNearMissRow(nm) : undefined,
 			highlights: this.highlights.map((h) => recapHighlightRow(h)),
+			you: c !== undefined ? c.youCells.map((cell) => ({ from: 0, to: cell.value, counted: true })) : [],
 			recordRowsSec: records.record ? recapRecordRowsSec(rows) : undefined,
 			reducedMotion: this.reducedMotion,
 		};
+	}
+
+	/**
+	 * A party run's contribution (docs/RUN_CONTRIBUTION.md CT7), from the run's tally: the local player (CT1, never the
+	 * view player), the party's display names by index. Solo runs: undefined (contributionOf's rule).
+	 */
+	private contributionOf(ctx: RunContext, input: RunRecapInput): RunContribution | undefined {
+		return contributionOf({
+			tally: input.tally,
+			partySize: input.partySize,
+			localIndex: input.localIndex,
+			names: ctx.memberNames,
+		});
 	}
 
 	// --- presses (RR7) ----------------------------------------------------------------------------------
@@ -384,7 +465,8 @@ export class RecapController implements OnStart {
 			return;
 		}
 		const exits = runOverExits(st.game.run.coop, st.lobby.mine !== undefined);
-		const result = this.gate.press(source, this.timeline, exits.again);
+		// A skip settles the near-miss line and the tab showing (RecapViews.skip).
+		const result = this.gate.press(source, this.views, exits.again);
 		if (result === "skip" && this.facts !== undefined) this.facts.skipped = true;
 		if (result === "retry") this.retry();
 	}
@@ -424,6 +506,8 @@ export class RecapController implements OnStart {
 							bestTeamStreak: f.team.bestTeamStreak,
 							syncParries: f.team.syncParries,
 						},
+						// docs/RUN_CONTRIBUTION.md CT8: seconds on You and Party, the last tab (runs with the tabs).
+						views: f.views?.views(),
 				  }
 				: report,
 		);
@@ -440,7 +524,7 @@ export class RecapController implements OnStart {
 
 	/** Enter / Space on a keyboard press the focused Again while the panel is up and nothing is over it (RR7). */
 	private syncConfirm(st: ClientState): void {
-		const want = this.timeline !== undefined && st.game.inputDevice === "keyboard" && this.pressAllowed(st);
+		const want = this.views !== undefined && st.game.inputDevice === "keyboard" && this.pressAllowed(st);
 		if (want === this.confirmBound) return;
 		if (want) {
 			// A confirm key the player bound to `restart` stays the restart key (it retries at once, SimController).
@@ -468,38 +552,95 @@ export class RecapController implements OnStart {
 		this.confirmBound = false;
 	}
 
+	/**
+	 * docs/RUN_CONTRIBUTION.md CT6: Q / E / Tab (Shift+Tab: back) step a party run's tabs while they show (Details closed)
+	 * and nothing is over the panel, on any device (a keyboard press must work on the first try); a key bound to
+	 * `restart` is left to it. A tab key is never a press for the retry gate.
+	 */
+	private syncTabs(st: ClientState): void {
+		const v = this.views;
+		const want = v !== undefined && v.tabbed && !st.recap.details && this.pressAllowed(st);
+		if (want === this.tabsBound) return;
+		if (want) {
+			const restart = inputsFor(this.input.getBindings(), "kbm", "restart");
+			const keys = [...TAB_PREV_KEYS, ...TAB_NEXT_KEYS].filter((k) => !restart.includes(k.Name));
+			ContextActionService.BindActionAtPriority(
+				TABS_ACTION,
+				(_, state, input) => {
+					if (state !== Enum.UserInputState.Begin) return Enum.ContextActionResult.Sink;
+					const now = this.views;
+					if (now === undefined || !this.pressAllowed(clientStore.getState())) {
+						return Enum.ContextActionResult.Pass;
+					}
+					const shift =
+						UserInputService.IsKeyDown(Enum.KeyCode.LeftShift) ||
+						UserInputService.IsKeyDown(Enum.KeyCode.RightShift);
+					const back = TAB_PREV_KEYS.includes(input.KeyCode) || (input.KeyCode === Enum.KeyCode.Tab && shift);
+					this.setTab(recapTabStep(now.tab(), back ? -1 : 1));
+					return Enum.ContextActionResult.Sink;
+				},
+				false,
+				CONFIRM_PRIORITY,
+				...keys,
+			);
+			this.tabsBound = true;
+		} else this.unbindTabs();
+	}
+
+	private unbindTabs(): void {
+		if (!this.tabsBound) return;
+		ContextActionService.UnbindAction(TABS_ACTION);
+		this.tabsBound = false;
+	}
+
 	// --- bindings ---------------------------------------------------------------------------------------
 
 	private invalidateTexts(): void {
 		this.shownNearMiss = 0 / 0;
 		this.shownCells.clear();
+		this.shownYou.clear();
 	}
 
-	private writeBindings(t: RecapTimeline): void {
+	private writeBindings(t: RecapViews): void {
 		const B = RECAP_BINDINGS;
 		const pack = this.theme.getPack();
 		const s = (key: string, vars?: StringVars) => pack.str(key, vars);
-		const now = t.elapsed();
 		const nm = this.nearMiss;
-		if (nm !== undefined && t.nearMissRow >= 0) {
-			const row = t.rows[t.nearMissRow];
-			if (row.value !== this.shownNearMiss) {
-				this.shownNearMiss = row.value;
-				B.nearMissText.write(recapNearMissText(nm, row.value, s));
+		const nmRow = t.nearMissRow();
+		if (nm !== undefined && nmRow !== undefined) {
+			if (nmRow.value !== this.shownNearMiss) {
+				this.shownNearMiss = nmRow.value;
+				B.nearMissText.write(recapNearMissText(nm, nmRow.value, s));
 			}
-			const fade = recapRowTransparency(row, now);
+			const fade = recapRowTransparency(nmRow, t.elapsed());
 			B.nearMissTransparency.write(nm.dim ? 1 - (1 - fade) * (1 - RECAP_UI.dimTransparency) : fade);
 		}
+		// The highlights (a party run's Team tab: once opened, on its own clock).
+		const teamNow = t.tabElapsed("team");
 		for (let i = 0; i < B.cellValue.size(); i++) {
 			const h = this.highlights[i];
-			const row = t.rows[t.firstHighlightRow + i];
+			const row = t.cellRow("team", i);
 			if (h === undefined || row === undefined) continue;
 			if (this.shownCells[i] !== row.value) {
 				this.shownCells[i] = row.value;
 				const hex = h.colourRole !== undefined ? pack.hex(h.colourRole as ColorRole) : "";
 				B.cellValue[i].write(recapHighlightValue(h, row.value, s, hex));
 			}
-			B.cellTransparency[i].write(recapRowTransparency(row, now));
+			B.cellTransparency[i].write(recapRowTransparency(row, teamNow));
+		}
+		// docs/RUN_CONTRIBUTION.md CT7: the You cells (a party run's).
+		const c = this.contribution;
+		if (c === undefined || !t.tabbed) return;
+		const youNow = t.tabElapsed("you");
+		for (let i = 0; i < B.youValue.size(); i++) {
+			const cell = c.youCells[i];
+			const row = t.cellRow("you", i);
+			if (cell === undefined || row === undefined) continue;
+			if (this.shownYou[i] !== row.value) {
+				this.shownYou[i] = row.value;
+				B.youValue[i].write(contribCellText(cell, row.value, s));
+			}
+			B.youTransparency[i].write(recapRowTransparency(row, youNow));
 		}
 	}
 
@@ -538,11 +679,11 @@ export class RecapController implements OnStart {
 		);
 	}
 
-	/** The view player's duos and evolved boons (level III, BOON_MAX_LEVEL); zeros without builds. */
-	private buildsOf(ctx: RunContext, view: number): RecapBuildsInput {
+	/** Player `me`'s duos and evolved boons (level III, BOON_MAX_LEVEL); zeros without builds. */
+	private buildsOf(ctx: RunContext, me: number): RecapBuildsInput {
 		const state = ctx.run.state;
-		const build = state.builds?.players[view];
-		const owned = state.run?.players[view];
+		const build = state.builds?.players[me];
+		const owned = state.run?.players[me];
 		if (build === undefined) return { duos: 0, evolutions: 0 };
 		let evolutions = 0;
 		if (owned !== undefined)
@@ -557,7 +698,8 @@ export class RecapController implements OnStart {
 		const score = state.score;
 		if (world === "other" || score === undefined) return undefined;
 		const snap = st.game.snapshot;
-		const view = this.sim.getViewPlayerIndex();
+		// `You` rows are the local player's (CT1): at a wipe the view stays on the last watched teammate.
+		const me = this.sim.getLocalPlayerIndex();
 		const floor = state.endless?.floor ?? snap.floor;
 		const depth = state.endless?.depth ?? snap.depth;
 		const bossFloor = floor > 0 && isBossFloor(floor);
@@ -582,13 +724,13 @@ export class RecapController implements OnStart {
 		return {
 			world,
 			partySize: partySize(state),
-			viewIndex: view,
+			localIndex: me,
 			score,
 			kills: snap.kills,
 			floor,
 			depth,
 			startDepth: ctx.config.endless?.startDepth,
-			builds: this.buildsOf(ctx, view),
+			builds: this.buildsOf(ctx, me),
 			bossFloor,
 			boss,
 			nextBossId,

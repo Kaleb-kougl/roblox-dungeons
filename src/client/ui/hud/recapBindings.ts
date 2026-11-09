@@ -1,4 +1,4 @@
-import { RECAP } from "shared/view/hud";
+import { CONTRIB, RECAP } from "shared/view/hud";
 import { ComboUiValue } from "./comboUi";
 
 /**
@@ -10,9 +10,9 @@ import { ComboUiValue } from "./comboUi";
  */
 export class RecapUiValue<T> extends ComboUiValue<T> {}
 
-function perCell<T>(initial: T): RecapUiValue<T>[] {
+function perCell<T>(initial: T, n: number = RECAP.maxHighlights): RecapUiValue<T>[] {
 	const out: RecapUiValue<T>[] = [];
-	for (let i = 0; i < RECAP.maxHighlights; i++) out.push(new RecapUiValue(initial));
+	for (let i = 0; i < n; i++) out.push(new RecapUiValue(initial));
 	return out;
 }
 
@@ -25,6 +25,9 @@ export const RECAP_BINDINGS = {
 	cellValue: perCell(""),
 	/** Each cell's transparency (label, value, chip and tile fade together). */
 	cellTransparency: perCell(1),
+	/** docs/RUN_CONTRIBUTION.md CT5 / CT7: each You cell's value text (contribCellText: RichText) and transparency. */
+	youValue: perCell("", CONTRIB.cellOrder.size()),
+	youTransparency: perCell(1, CONTRIB.cellOrder.size()),
 };
 
 /** Every RECAP_BINDINGS value back to its initial value (a new run, an exit). */
@@ -34,4 +37,6 @@ export function resetRecapBindings(): void {
 	B.nearMissTransparency.reset();
 	for (const v of B.cellValue) v.reset();
 	for (const v of B.cellTransparency) v.reset();
+	for (const v of B.youValue) v.reset();
+	for (const v of B.youTransparency) v.reset();
 }

@@ -214,6 +214,26 @@ export interface ScoreEvents {
 	guardX: number[];
 	guardZ: number[];
 	guardPlayer: number[];
+	/**
+	 * Kill credit (docs/RUN_CONTRIBUTION.md CT2, presentation only): per score pop, the killer's player index (scoreKill's
+	 * `killer`: SimCtx.playerIndex, the bullet's owner, the swinging player or a build proc's owner; solo 0). Parallel to
+	 * popX; size() === kills.
+	 */
+	popPlayer: number[];
+	/**
+	 * Damage dealt (CT2): one entry per damageActor call that removed hp (dmg > 0, the amount added to
+	 * events.damageDealt: after filters, shields, caps and Executioner, never overkill), crediting SimCtx.playerIndex;
+	 * `dealtBoss` 1 when the damaged actor's archetype is a boss (data.boss), else 0. Parallel arrays; their amounts sum
+	 * to events.damageDealt.
+	 */
+	dealtPlayer: number[];
+	dealtAmount: number[];
+	dealtBoss: number[];
+	/**
+	 * Landed hits (CT2): one entry per hit damagePlayer landed this tick (each events.playerHits += 1, the tutorial's
+	 * harmless hits and Aegis / armor absorbs included), the hit player's index. size() === events.playerHits.
+	 */
+	hurtPlayer: number[];
 	/** Internal: the combo at the start of the tick, and 1 once a kill / graze fed it this tick. */
 	comboStart: number;
 	comboFed: number;
@@ -309,6 +329,11 @@ function emptyScoreEvents(): ScoreEvents {
 		guardX: [],
 		guardZ: [],
 		guardPlayer: [],
+		popPlayer: [],
+		dealtPlayer: [],
+		dealtAmount: [],
+		dealtBoss: [],
+		hurtPlayer: [],
 		comboStart: COMBO_MIN,
 		comboFed: 0,
 	};
@@ -569,6 +594,11 @@ export function cloneScoreState(s: Readonly<ScoreState>): ScoreState {
 			guardX: [...e.guardX],
 			guardZ: [...e.guardZ],
 			guardPlayer: [...e.guardPlayer],
+			popPlayer: [...e.popPlayer],
+			dealtPlayer: [...e.dealtPlayer],
+			dealtAmount: [...e.dealtAmount],
+			dealtBoss: [...e.dealtBoss],
+			hurtPlayer: [...e.hurtPlayer],
 		},
 	};
 }
@@ -595,6 +625,11 @@ export function clearScoreEvents(s: ScoreState): void {
 	e.guardX.clear();
 	e.guardZ.clear();
 	e.guardPlayer.clear();
+	e.popPlayer.clear();
+	e.dealtPlayer.clear();
+	e.dealtAmount.clear();
+	e.dealtBoss.clear();
+	e.hurtPlayer.clear();
 	e.comboStart = s.combo;
 	e.comboFed = 0;
 }
@@ -800,7 +835,22 @@ export function scoreKill(state: SimState, a: Readonly<ActorState>, killer = 0):
 	e.popX.push(a.x);
 	e.popZ.push(a.z);
 	e.popPoints.push(pts);
+	e.popPlayer.push(killer);
 	feedCombo(state, s);
+}
+
+/**
+ * damageActor hook (docs/RUN_CONTRIBUTION.md CT2): `dmg` (> 0) hp removed from an actor, credited to player `player`
+ * (SimCtx.playerIndex); `boss` 1 for a boss archetype. Feeds ScoreEvents.dealtPlayer / dealtAmount / dealtBoss only:
+ * presentation, never hashed or read back. No-op without scoring.
+ */
+export function scoreDamageDealt(state: SimState, player: number, dmg: number, boss: number): void {
+	const s = state.score;
+	if (s === undefined) return;
+	const e = s.events;
+	e.dealtPlayer.push(player);
+	e.dealtAmount.push(dmg);
+	e.dealtBoss.push(boss);
 }
 
 /**

@@ -3,12 +3,14 @@
 //     rooms left, the pre-boss floor), RRD2's order, record-run drops and the dim line, FIRST RECORD none, unknown /
 //     unranked / none baselines, daily best today, dev and other worlds
 //   - pickHighlights: priority, one slot per priority, cap 4, fill to 2, every notable edge, source guards, Team / You
+//     (You = the local player, never the spectate view: docs/RUN_CONTRIBUTION.md CT1)
 //   - stairsPathTiles on small grids; the no-hit / boss-kill split (RR0 2)
 //   - RecapTimeline: row order and start times, count-up and sound edges, the arm, skip before the arm, reduced motion,
 //     the record offset, the verdict's silent re-derive
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { TileType, type Dungeon } from "shared/dungeon";
 import { SCORE_SOURCE_COUNT, ScoreSource } from "shared/sim";
+import { NO_RECAP_TALLY } from "shared/view/fx";
 import {
 	RECAP,
 	RECAP_HIGHLIGHTS,
@@ -45,7 +47,7 @@ function input(patch: Partial<RunRecapInput> = {}): RunRecapInput {
 	return {
 		world: "endless",
 		partySize: 1,
-		viewIndex: 0,
+		localIndex: 0,
 		score: { total: 1000, maxCombo: 10, points: sources({}), counts: sources({}) },
 		kills: 20,
 		floor: 3,
@@ -59,7 +61,7 @@ function input(patch: Partial<RunRecapInput> = {}): RunRecapInput {
 		roomsUncleared: 0,
 		baseline: KNOWN,
 		records: NO_RECORD,
-		tally: { parries: [], grazes: [] },
+		tally: { ...NO_RECAP_TALLY, parries: [], grazes: [] },
 		...patch,
 	};
 }
@@ -258,7 +260,7 @@ describe("pickHighlights", () => {
 					counts: sources({ [ScoreSource.BOSS]: 3, [ScoreSource.PERFECT]: 7, [ScoreSource.ROOMS]: 11 }),
 				},
 				builds: { duos: 2, evolutions: 3 },
-				tally: { parries: [14], grazes: [0] },
+				tally: { ...NO_RECAP_TALLY, parries: [14], grazes: [0] },
 			}),
 		);
 		expect(ids(h)).toEqual(["bossNoHit", "combo", "perfect", "duos"]);
@@ -315,10 +317,10 @@ describe("pickHighlights", () => {
 		expect(one(sc(10, { [ScoreSource.PERFECT]: 2, [ScoreSource.ROOMS]: 10 }))).toBe("kills");
 		expect(one(sc(10, { [ScoreSource.PERFECT]: 2, [ScoreSource.ROOMS]: 4 }))).toBe("perfect");
 		expect(one(sc(10, { [ScoreSource.PERFECT]: 1, [ScoreSource.ROOMS]: 3 }))).toBe("kills");
-		expect([one({ tally: { parries: [4], grazes: [] } }), one({ tally: { parries: [5], grazes: [] } })]).toEqual([
-			"kills",
-			"parries",
-		]);
+		expect([
+			one({ tally: { ...NO_RECAP_TALLY, parries: [4], grazes: [] } }),
+			one({ tally: { ...NO_RECAP_TALLY, parries: [5], grazes: [] } }),
+		]).toEqual(["kills", "parries"]);
 		expect([one(sc(10, { [ScoreSource.GRAZES]: 49 })), one(sc(10, { [ScoreSource.GRAZES]: 50 }))]).toEqual([
 			"kills",
 			"grazes",
@@ -356,18 +358,18 @@ describe("pickHighlights", () => {
 		expect([coop[0].id, coop[0].scope]).toEqual(["chests", "team"]);
 	});
 
-	it("co-op: Team and You labels, the view player's tally, TEAM PERFECT, the team rows", () => {
+	it("co-op: Team and You labels, the local player's tally, TEAM PERFECT, the team rows", () => {
 		const h = pickHighlights(
 			input({
 				partySize: 2,
-				viewIndex: 1,
+				localIndex: 1,
 				score: {
 					total: 1,
 					maxCombo: 20,
 					points: sources({}),
 					counts: sources({ [ScoreSource.PERFECT]: 4, [ScoreSource.ROOMS]: 5, [ScoreSource.GRAZES]: 500 }),
 				},
-				tally: { parries: [40, 6], grazes: [450, 50] },
+				tally: { ...NO_RECAP_TALLY, parries: [40, 6], grazes: [450, 50] },
 				team: { teamPerfects: 4, bestTeamStreak: 3, syncParries: 2 },
 			}),
 		);
@@ -375,7 +377,12 @@ describe("pickHighlights", () => {
 		expect([h[0].scope, h[1].scope, h[2].scope, h[3].scope]).toEqual(["team", undefined, undefined, "you"]);
 		expect([h[1].key, h[3].value]).toEqual([RECAP_STRINGS.hlTeamPerfect, 6]);
 		const g = pickHighlights(
-			input({ partySize: 2, viewIndex: 1, tally: { parries: [], grazes: [450, 50] }, team: undefined }),
+			input({
+				partySize: 2,
+				localIndex: 1,
+				tally: { ...NO_RECAP_TALLY, parries: [], grazes: [450, 50] },
+				team: undefined,
+			}),
 		);
 		expect(ids(g)).toEqual(["grazes", "kills"]);
 		expect([g[0].value, g[0].scope, g[1].scope]).toEqual([50, "you", "team"]);
@@ -383,6 +390,17 @@ describe("pickHighlights", () => {
 			input({ partySize: 3, team: { teamPerfects: 0, bestTeamStreak: 0, syncParries: 1 } }),
 		);
 		expect(ids(sync)).toEqual(["syncParries", "kills"]);
+	});
+
+	it("CT1: You is the local player, not the view: player 0 died first and spectated player 1 at the wipe", () => {
+		// The spectate view stays on player 1 at the wipe; the local client is player 0: its own parries and grazes show.
+		const tally = { ...NO_RECAP_TALLY, parries: [7, 30], grazes: [60, 300] };
+		const h = pickHighlights(input({ partySize: 2, localIndex: 0, tally }));
+		expect(ids(h)).toEqual(["parries", "grazes"]);
+		expect([h[0].value, h[0].scope, h[1].value, h[1].scope]).toEqual([7, "you", 60, "you"]);
+		// player 1's own client shows player 1's
+		const other = pickHighlights(input({ partySize: 2, localIndex: 1, tally }));
+		expect([other[0].value, other[1].value]).toEqual([30, 300]);
 	});
 
 	it("solo runs never show the team rows; other worlds show nothing", () => {

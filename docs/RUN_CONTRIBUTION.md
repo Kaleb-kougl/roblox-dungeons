@@ -1,0 +1,351 @@
+# Co-op contribution on the run-over screen
+
+Status (2026-11-08): **built** (branch `run-contribution`: CT0-CT9; headless checks only, nothing has run in Studio).
+Pending: **CT10** (the owner's Studio check and tuning). Checked against the code at `fb765ae5`. Owner answers (2026-11-08):
+CTD1 (open on **You**) and CTD4 (the Party tab stays) confirmed; the rest are proposed. Builds on docs/RUN_RECAP.md
+(the recap, its highlights, Details and `RecapTally`) and fills its "Later" line *co-op MVP rows*, without the MVP.
+
+Goal: after a party run, each player can see **what they did for the team** (their share of the damage, kills and
+boss damage, their parries, grazes, pickups and how long they stood) and, one press further, **the whole party's
+lines**, each player with one positive title. In a party run the run-over screen **opens on You**; a `You | Team | Party`
+tab strip switches to today's team highlights or the whole party. Solo runs are unchanged (the run is already yours).
+
+**Sim impact: one unhashed feed, otherwise presentation only** (the GRAZE_PARRY.md GP1 pattern). `ScoreEvents`
+(per tick, never hashed, cleared by `clearScoreEvents` at the start of every tick) gains per-player attribution for
+what it does not carry today: the killer of each score pop, damage dealt (all / boss) and landed hits taken. No hash
+group, replay, fixture, rng, score, leaderboard or lockstep change. Every number is derived by view collectors on the
+same merged log, so **every client shows the same numbers and the same titles** without a server message.
+
+## What the code says (checked 2026-11-08)
+
+| Fact | Where | Consequence |
+|---|---|---|
+| Score is a team pool: one `ScoreState` (`total`, `points` / `counts` per source, `combo`, `hitsTaken` summed over the party) | sim/score/score.ts `ScoreState` | No per-player score exists; "your points" would need a split the sim never makes (CTD3: we do not show one) |
+| The sim already credits each kill: `killActor` -> `scoreKill(state, a, ctx.playerIndex)` (Bounty, Vampire Fang, Gold Rush, Happy Hour read the killer) | combat/actors/actors.ts 262, score.ts 749 | Kill credit is a fact the sim already uses; we only report it: push the killer beside `popX` |
+| `damageActor` adds `ev.damageDealt += dmg` (after filters, shields, caps and Executioner; overkill not counted) with `ctx.playerIndex` bound to the hitter: the bullet's owner, the swinging player, and in builds `ctx.actingPlayer(owner)` (procs.ts, duos.ts, riposte.ts, overcap) | actors.ts 199-228, combat/ctx.ts header, builds/*.ts | Per-player damage = the same `dmg`, keyed by `ctx.playerIndex`. 19 call sites to audit (CT0) |
+| `damagePlayer(state, halfHearts, p, playerIndex)` counts `events.playerHits` (a sum); an Aegis / armor absorb is a hit (as PERFECT counts it) | sim/player.ts 273 | Per-player hits = one push of `playerIndex` where a hit lands |
+| `ScoreEvents.grazePlayer` / `guardPlayer` per graze / erased bullet; `RecapTally` already tallies **parries and grazes per player** for the whole run | score.ts 205-216, shared/view/fx/recapTally.ts | The tally is the home for every new per-player counter |
+| Pellets: `events.eaten` entries carry `player`; boost pickups: `DropsEvents` pickups carry the player | pellets/stepPellets.ts 119, drops/drops.ts 197 | Pellets and boosts per player need no sim change |
+| Death / leave: `PlayerState.dead` per player, `hasLeft(state, i)` | sim/state.ts, sim/party.ts | Time alive, floor of death, "last standing", "left on floor N" from a collector watching the flags |
+| **`You` rows use the view player.** `RecapController` passes `viewIndex: getViewPlayerIndex()`; at a wipe the spectate rule keeps **the last watched teammate** (spectate.ts: "wipe: the last watched player stays") | RecapController.ts 560-585, recap.ts 360-368, shared/view/spectate.ts 18 | **Latent bug:** a player who died first sees the teammate's parries / grazes / duos labelled `You`. Fixed in CT1 with `getLocalPlayerIndex()` |
+| Names: `RunContext.memberNames` (index -> display name, set at the party start) | client SimController.ts 121 / 1031 | The Party view's names; nothing new from the server |
+| Parties go up to `MAX_PARTY_SIZE` 8 (lobby `maxSize`) | sim/partyData.ts, shared/lobby/config.ts | The Party view is rows (one per player), not columns, and scrolls on a phone |
+| Run-over pad surface: X toggles Details, B held exits; tabs (LB / RB) are already a menu primitive | shared/view/menu padActions.ts `runOver`, docs/GAMEPAD_MENUS.md | LB / RB switch `You / Team / Party`; X keeps Details |
+| Party runs end on Back to lobby (no Again) and wait for the verdict | RunOverPanel `runOverExits` | Players sit on the panel for a few seconds anyway: the natural moment to look at the You tab |
+
+### CT0 findings (2026-11-08)
+
+Every `damageActor` deals a player's damage with that player bound as `ctx.playerIndex`, so **no `creditPlayer` was
+needed** (CTD6 holds as written). Solo runs bind 0 throughout (`bind()`; `targetNearest` can only pick 0).
+
+| Call site | What hits | `ctx.playerIndex` is |
+|---|---|---|
+| combat/combat.ts 505 `piercingBulletHit`, 581 `playerBulletHit` | Player bullets (arrows, test gun, every build bolt / shard / ember / reflected bullet: all carry the owner's emitter) | The bullet's owner: `playerBulletHitParty` -> `actingPlayer(playerBulletOwner(emitter))` |
+| weapons/defs/sword.ts 160 / 166 (`hitSwing`, `hitFinisher`), testMelee.ts 29 | Swings through `sweepArc` | The swinging player (`stepPartyWeapons` -> `bindPlayer(i)`) |
+| builds/fullHeart.ts 61 | Full Heart's beam (sword finisher via `buildsOnFinisher`, bow release in bow.ts) | The swinging / releasing player (weapons phase); `owner = ctx.playerIndex` |
+| builds/siege.ts 251 / 263 | Siege Bolt slam + shockwave (`siegeArrowEnd` from `buildsOnHeavyEnd`) | The arrow's owner (the bullet walk's binding; `pin.owner` is that arrow's owner) |
+| builds/onKill.ts 124 / 141 (Chain Spark, fork), 217 (Overkill streak); builds/smash.ts 63 (Demolition) | Proc drain | `resolveProc` -> `actingPlayer(q.owner)`; Storm Blade's pseudo proc via `releaseSparks` -> `actingPlayer(owner)`; smash procs are only queued for `owner >= 0` (breakables.ts 240) |
+| builds/duos.ts 270 (Conductor), 295 (Thunder Guard) | Duo sparks | `releaseSparks` -> `actingPlayer(owner)` (queued by the arrow's owner / the guarding player) |
+| builds/riposte.ts 314 | Counter-waves | `stepWave` -> `actingPlayer(w.owner)` |
+| combat/ctx.ts 211 | `SimCtx.damageActor`, the wrapper all of the above but combat.ts use | Whatever the caller bound |
+
+Kills without damage: a summoner's withering summons and a boss's withering adds die in `onDeath` inside the killing
+hit, so their pops go to that hit's player; the debug boss key (J, `debugHit`, actor phase) credits the nearest living
+player and is no `damageActor` (debug only). The Bomber's own blast is a quiet death (no pop). Builds v2 overcap points
+(`buildsOnOvercap`) already read the same `ctx.playerIndex`.
+
+`damagePlayer(state, n, p, playerIndex)`: every caller passes `p` and its own index: `ctx.hurtPlayer` (solo enemy
+bullets, combat.ts 406: player 0), `ctx.hurtPlayerAt(k, ...)` for co-op enemy bullets (combat.ts 456: strikes,
+Vengeful rings and the Bomber's blast are enemy bullets on this path), contact damage (actors.ts 357) and the Charger
+(charger.ts 303); the debug hit K in `stepPlayer` (step.ts 316 solo default 0, 409 index `i`). `playerHits` is
+incremented only in `damagePlayer` (twice: the tutorial's harmless path and the normal path) and `stepScore` adds it to
+`hitsTaken` on every stepped tick, so hurt entries sum to `hitsTaken`.
+
+Pops: `scoreKill` pushes one pop per scored kill (`events.kills` = pops). Per tick, pops = Δ`counts[KILLS]` + boss
+kills (a `BOSS` award; the no-hit bonus is a second `BOSS` count with no pop) + Goldling jackpots (`GOLDEN`, whose count
+also takes per-hit awards). With no boss or Goldling dying that tick, pops = Δ`counts[KILLS]` exactly (Horde's x2 adds a
+`HORDE` count, never a pop; revived turrets pop once). So "kills" in the recap = pops, as Rules says. Checked per tick
+in `sim/score/contributionFeed.spec.ts`.
+
+## The views
+
+A tab strip above the highlight grid (the near-miss line stays above the tabs on every tab), **party runs only** (`partySize >= 2`), in every world that has a recap
+(endless, daily; dev runs highlights only, as today):
+
+| Tab | Shows |
+|---|---|
+| **You** (opens here, CTD1) | Your contribution card (below), in the highlights' slot |
+| **Team** | Today's 2 x 2 highlights (TEAM PERFECT rooms, best team streak, sync parries, ...) |
+| **Party** | One row per player in index order: name, title, damage share, kills, parries, hits taken; your row outlined |
+| Details (X, unchanged) | The score breakdown and the Build list (RRD5) |
+
+### You
+
+```
+ YOU · Guardian                               (your title, CT3)
+ [■■■■■■■■■■■■□□□□□□□□□□□□]  41% of the team's damage
+ Damage      12,480  41%     Kills        86  38%
+ Boss dmg     1,120  52%     Parries      14
+ Grazes          63          Hits taken    5
+ Pickups   4 boosts · 22 pellets
+ Last to fall · floor 9 · 14:20   (or: Fell on floor 7 · 12:40)
+```
+
+- **Share bar:** one bar split into every player's damage share, yours bright (`playerOutline`), the others dim in
+  index order; no names on it (the Party tab has them).
+- **Cells:** the highlight grid's cell (`HighlightGrid`, 2 columns), so the layouts and fit rules carry over. A cell
+  whose team total is 0 is dropped (no boss: no Boss dmg; no pellets world: pellets dropped from the pickups line).
+  Shares are whole percent, largest-remainder rounded so the party's shares sum to 100.
+- **Standing line:** `Last to fall · floor {n} · {time}` (the wipe's final death), `Stood to the end` (alive at run
+  over: a run that ended without a wipe), else `Fell on floor {n} · {time}`; a leaver `Left on floor {n}`.
+- Count-up: You plays on the run-over timeline where the highlights did (from 0.7 s, or after NB's rows on a record
+  run): cells count on `RecapTimeline` rows (0.15 s apart, the tally's tick / land sounds, at most one sound a frame).
+  Team's highlights count up the first time Team opens; later opens of any tab show final values. A skip press settles
+  whichever tab is showing. Reduced motion: final values,
+  one land.
+
+### Party
+
+- Rows in **index order, never sorted** (CTD4). Columns: name (the `name` font), title chip, damage share, kills,
+  parries, hits taken. Your row carries the focus-corner outline. A leaver's row is dim with `Left on floor {n}`.
+- 2-4 players: all rows fit; 5-8: the list scrolls (right stick, wheel, drag) inside the highlights' box.
+- No crown, no "MVP", no colour for a low number.
+
+### Titles (one positive title per player)
+
+Every player gets exactly one title, the same on every screen. A title names where a player **led** the party, never
+where they trailed.
+
+| Title | Leads in | Needs |
+|---|---|---|
+| Heavy Hitter | damage dealt | share >= 1.2 x even share |
+| Boss Breaker | boss damage | a boss was damaged |
+| Finisher | kills | >= 10 kills |
+| Guardian | parries | >= 5 |
+| Daredevil | grazes | >= 30 |
+| Untouchable | fewest hits taken | the party took >= 3 hits; ties: none |
+| Last Stand | fell last (the wipe's final death) | always one |
+| Collector | pellets + boosts picked | >= 10 |
+| Teammate (fallback) | - | anyone left without a title |
+
+Assignment (pure, deterministic): score each (player, title) by the player's lead over the next player in that stat
+(relative, so a big lead wins), then greedy: the largest lead takes its title, that player and title leave the pool,
+repeat; ties break by title order, then lower index. Names avoid boon / enemy names (no Bastion, Bulwark, Reaper,
+Executioner). Thresholds are `CONTRIB_TITLES` tunables (CT10).
+
+## Rules
+
+- Party runs only; the local player is `getLocalPlayerIndex()`, never the view player (CT1).
+- Numbers are whole-run (every floor), from tick 0 to the wipe tick; a leaver's numbers stay in the team totals.
+- Kills here are **scored kills** (score pops), so the shares sum to the team's pops; revived turrets count once, as
+  the score does.
+- Damage is what the sim removed (after caps, shields, Executioner, never overkill), so a boss's damage cap is the same
+  ceiling for everyone.
+- Tabs never retry: switching tabs is not a press for `RunOverRetryGate`; Back to lobby is unchanged.
+- Every party run over opens on You (CTD1); the tab is not remembered between runs.
+- Verdict pending: drawn at once from the client's final state; an accepted verdict changes nothing here (the server
+  holds no per-player numbers).
+- Strings: every label a theme string with variables, sized for translation.
+
+## Design
+
+| Piece | Where | Step |
+|---|---|---|
+| Feed: `ScoreEvents.popPlayer` (killer per pop, beside `popX`), `dealtPlayer` / `dealtAmount` / `dealtBoss` (one entry per damaging `damageActor` with `dmg > 0`), `hurtPlayer` (one per landed hit); cleared in `clearScoreEvents`; scored runs only; parallel arrays, no allocation per tick | shared/sim score.ts, combat/actors/actors.ts, player.ts | CT2 |
+| `RecapTally` grows: kills, damage, boss damage, hits, pellets, boosts per player; `deathTick` / `deathFloor` / `leftFloor` per player, the last death's index | shared/view/fx/recapTally.ts | CT2 |
+| `RunContribution` (pure): `contributionOf(tally, partySize, local, names)` -> rows, shares (largest remainder), dropped cells, standing line; `assignTitles` | shared/view/hud contribution.ts, contributionConfig.ts (`CONTRIB`, `CONTRIB_TITLES`) | CT3 |
+| Strings `CONTRIB_STRING_KEYS` (`run.recap.tab.*`, `run.recap.you.*`, `run.recap.title.*`, `.titleDesc.*`), built inside `REQUIRED_STRING_KEYS` (contract.luau / validate.luau near Luau's 200 locals), `l10n/context.json` entries | shared/theme runRecap.ts, packs, l10n | CT4 |
+| `RecapTabs`, `ContributionCard`, `PartyRows` in three layouts (wide, compact, narrow); store slice `recap.tab`; `actions.setRecapTab` | client/ui/hud RecapBlocks.tsx (+ new file), store/recap.ts | CT5 |
+| Pad: LB / RB cycle tabs on `runOver` (row `when: "party"`), hint bar; keyboard Q / E and Tab; touch taps | shared/view/menu padActions.ts / padHints.ts, RunOverPanel | CT6 |
+| RecapController: builds the contribution once at run over (party runs), its own count-up timeline per first open | client/controllers/fx RecapController.ts | CT7 |
+| Telemetry: `RunRecap` close rows gain one row kind `views` (value = seconds on You + Party, field02 the last tab) | shared/run recapAnalytics.ts, analyticsCatalog.spec | CT8 |
+
+## Tasks
+
+Each step is a commit; `npm run verify` before each.
+
+- [x] **CT0. Findings.** List all 19 `damageActor` call sites and what `ctx.playerIndex` is bound to at each (player
+  hits, swings, builds procs, duos, riposte, siege, smash, full heart, ctx wrappers); any site whose damage is not a
+  player's gets a transient `SimCtx.creditPlayer` (-1 = nobody), reset in `bind()`, set beside `procGen`, never hashed.
+  Confirm `damagePlayer`'s `playerIndex` at every caller (`hurtPlayerAt`, contact, strikes, Vengeful, bomber blast).
+  Confirm the pop count equals `counts[KILLS]` in scored runs. -> Verify: each written here.
+- [x] **CT1. `You` is the local player.** `RunRecapInput.localIndex` from `SimController.getLocalPlayerIndex()`;
+  `pickHighlights`' `You` rows (parries, grazes, duos / evolutions via `buildsOf`) read it. Spec: a party where player 0
+  died first and spectates player 1 at the wipe shows player 0's parries. Ship this alone first (a bug fix today).
+  As built: `RunRecapInput.viewIndex` is gone (nothing in the recap core needed the view) and replaced by `localIndex`;
+  RecapController passes `getLocalPlayerIndex()` and `buildsOf(ctx, me)` reads the local player's build. The stairs'
+  near-miss distance (`stairsOf`) still measures from the view player's position (the camera's player at the wipe,
+  the run's last stand), unchanged. Spec: recap.spec "CT1: You is the local player".
+- [x] **CT2. Feed + tally.** The four parallel arrays, the collector's new counters and death / leave watch. Specs:
+  per-player sums equal the team totals (`damageDealt`, pops, `hitsTaken`) over a scripted 2-player run; solo runs
+  unchanged; **every golden / replay / hash / determinism spec unchanged** (nothing new is hashed); bench.spec within
+  noise. As built: `ScoreEvents.popPlayer` / `dealtPlayer` / `dealtAmount` / `dealtBoss` / `hurtPlayer` (created, cleared
+  and cloned with the others, never hashed; `scoreDamageDealt` from `damageActor`'s `damageDealt` line, the boss flag
+  `ArchetypeData.boss`); `RecapTally` adds `kills` / `damage` / `bossDamage` / `hits` / `pellets` (eaten + the power
+  pellet) / `boosts` (ground pickups only, not `GIVEN_DROP_SLOT`) and `deathTick` / `deathFloor` / `leftFloor` /
+  `lastDeath` / `lastTick` (a floor change's revive clears a death; leaving is not a death). Specs
+  contributionFeed.spec (per-tick sums against `damageDealt`, `playerHits`, `counts[KILLS]` on plain-kill ticks) and
+  recapTally.spec; every golden / replay / hash / determinism subset unchanged.
+- [x] **CT3. Contribution core.** Shares (largest remainder, sum 100, a zero team total drops the cell), standing
+  line, leaver, titles: greedy by lead, one per player, distinct, fallback, ties, thresholds, identical output for
+  identical tallies (two "clients").
+  As built: shared/view/hud `contribution.ts` / `contributionConfig.ts` (`CONTRIB`: `minPartySize` 2, `shareTotal`
+  100, `cellOrder`; `CONTRIB_TITLES` per-title rules `min` / `above` / `evenSharePercent` 120 / `minPartyHits` 3,
+  `CONTRIB_TITLE_ORDER`, `CONTRIB_STRINGS`). `contributionOf({ tally, partySize, localIndex, names, endedInWipe? })`
+  (solo: undefined) gives rows in index order, `local`, `youCells` (zero team totals dropped; pickups' `boosts` /
+  `pellets` undefined when that part's team total is 0; `contribPickupParts` for the line) and `damageShares`.
+  Standing: a wipe (default: everyone who has not left has a death) makes `tally.lastDeath` (else the latest death,
+  lower index) `lastToFall`; any other death `fell`; left without dying `left` (seconds 0: the tally has no leave
+  tick; a player who died and then left keeps `fell` and a dim row); else `stood` (`lastTick`). Seconds are whole
+  (ticks / `SIM_HZ`); `contribStandingText` passes `{time}` as m:ss (`formatClock`, the run-over Time). Titles
+  (`assignTitles(stats)`): per title only its strict leader is a candidate (Last Stand: the wipe's last to fall
+  outright, else the strict longest standing; a tie for a lead gives nobody that title), score (lead - second) /
+  max(lead, 1) (Untouchable (second - lead) / max(second, 1)), greedy by score, then title order, then index; a
+  title its leader cannot take (they hold a better one) goes to nobody. English: Daredevil is a boon's name, so the
+  `daredevil` title reads **Bullet Dancer** (CT4). Spec: contribution.spec.ts. Review fixes: Untouchable only goes to
+  a player who never left and stood `CONTRIB_TITLES.untouchable.minStandPercent` (75) % of the run (the death tick, else
+  the last tick, over the last tick; a leaver or an early death takes few hits) and needs a second eligible player to
+  lead; Last Stand scores its lead in seconds over `CONTRIB_TITLES.lastStand.fullLeadSec` (60), capped at 1 (the
+  relative death-tick lead was near 0, so the last to fall almost never got it).
+- [x] **CT4. Strings** (contract, placeholder, vale, l10n context); Luau locals counted on out/.
+  As built: shared/theme runRecap.ts `CONTRIB_STRING_KEYS` (44), written out in `REQUIRED_STRING_KEYS` right after
+  `TEAM_MOMENT_STRING_KEYS` (no new top-level local): tabs `run.recap.tab.you` / `.team` / `.party`; You card
+  `run.recap.you.header` (`{title}`: the title's name), `.shareBar` (`{pct}`), labels `.damage` / `.kills` /
+  `.bossDamage` / `.parries` / `.grazes` / `.hits` / `.pickups`, `.share` (`{value}` formatted, `{pct}`); pickups as
+  parts, the repo's plural style (a separate singular string, as `near.fullClearOne`): `.pickupsValue`
+  "{boosts} · {pellets}" (both string vars) over `.boosts` "{n} boosts" / `.boostOne` "1 boost" / `.pellets`
+  "{n} pellets" / `.pelletOne` "1 pellet" (a part whose team total is 0 is left out, `contribPickupParts`); standing
+  `.lastToFall` / `.stood` / `.fell` / `.left` (`{floor}`, `{time}` a string, m:ss by `formatClock` as the run-over
+  Time); Party header `run.recap.party.damage` / `.kills` / `.parries` / `.hits`; nine titles `run.recap.title.*` and
+  descriptions `run.recap.titleDesc.*` (Daredevil reads "Bullet Dancer": `boon.daredevil` and its evolution Thrill
+  Seeker took the obvious words). Placeholder English (vale clones it), one `l10n/context.json` entry each (with
+  `max` and examples). `contract.luau` / `validate.luau` stay 186 / 197 top-level locals (counted on out/).
+- [x] **CT5. Panel.** Tabs, You card, Party rows; fit.spec: 2, 4 and 8 players, record daily party run (the worst
+  case), phone landscape / portrait, HUD 70 %; `npm run build:place`.
+  As built: client/ui/hud ContributionBlocks.tsx `RecapTabBody` (in the highlights' slot of every layout, after the
+  near-miss line, which stays above it on every tab): `RecapTabStrip` (three MenuButtons, the shown one `active`,
+  `selectable` false: the pad steps them with LB / RB and its selection stays on the exits row), then a box as tall as
+  the taller of the You card and the Team grid (`contribBoxHeight`: a tab switch never resizes the panel) holding
+  `YouCard`, today's `HighlightGrid` or `PartyRows`. Shown when the recap has highlights and a contribution
+  (`recapTabsShown`: party runs in endless / daily / dev; solo, tutorial, M1 and unscored runs draw exactly the old
+  panel). You: `You · {title}` (uiAccent), the share bar (`contribShareSegments`: a segment per player with a share,
+  index order, whole px summing to the bar; the local one `playerOutline`, the others uiTextDim at
+  `barOtherTransparency`, no names) with `{pct}% of the team's damage` beside it, the cells (`RecapCell`, RecapBlocks'
+  highlight cell made generic: label over value, or `inline` label left / value right; values `contribCellText`:
+  `run.recap.you.share`, the pickups parts through `contribPickupParts` + `.pickupsValue`, filling boosts first while
+  counting) and the standing line (`contribStandingText`). Party: a header row (`run.recap.party.*`), then one row per
+  player in index order in a ScrollingFrame inside the box (wheel, drag, the pad's right stick via the run-over scope's
+  `scrollRef`): name in the theme's `name` font, title chip (the scope chip's look), damage share (new string
+  `run.recap.party.share` `{pct}%`: CONTRIB_STRING_KEYS 45, contract, placeholder, l10n context), kills, parries, hits;
+  the local row a `playerOutline` stroke over a faint tile, a leaver's row at `leftTransparency` with its standing line
+  (`Left on floor {n}`, contribStandingText) in the title's place. Header and rows place every cell at
+  `contribPartyColumns` (the name column takes the slack, so the last column ends at the box's edge and the header's
+  labels sit over their numbers); the scroll bar follows `contribPartyScrolls`. Details still swaps the
+  whole tab body (strip included) for the breakdown + Build list; closing returns to the tab shown. Layout numbers
+  `CONTRIB_UI` (shared/view/hud contributionUi.ts): **wide** the highlight cell itself, four a row (box 638 of the 840
+  panel; the tab strip and Team grid 316, centred), the share row with its label; **narrow** one-line cells (22) two a
+  row (316), the share row; **compact** one-line cells (20) two a row, the bar at the header row's right end and no share
+  label (the Damage cell already reads `{value} · {pct}%`); a lone last cell (seven cells in two columns: pickups) is a
+  full-width row. Store: `recap.tab` / `recap.contribution` (`showRecap` resets the tab to `you`, `updateRecap` keeps
+  it, `setRecapTab`); bindings `RECAP_BINDINGS.youValue` / `youTransparency` (7). Fit (fit.spec.ts, an 8-player record
+  daily party run with all seven You cells, the Party tab's height is the box's whatever the party size): fits every
+  landscape phone (compact) and portrait phone (narrow) at 100 % and 70 %; the 693 x 320 phone is the tight one (412 of
+  the 416 reference px the 0.6 effective floor allows); on desktop no taller than today's record daily run with its
+  breakdown (842 vs 856), and a plain endless party run fits every desktop at full size. Stacked 48 px cells two a row
+  (the first draft) overflowed the 693 x 320 phone and the desktop rule, hence the four-column wide card and the
+  one-line phone cells. Studio check: the share bar and the Party list's scroll on a phone; a long display name in the
+  name font (TextScaled down to `minText`); `en-XA`.
+- [x] **CT6. Input.** LB / RB, Q / E / Tab, taps; hint bar; tab presses never reach `RunOverRetryGate`; focus memory
+  keeps Back to lobby reachable.
+  As built: shared/view/menu padActions `PadCondition` `partyTabs` (the tabs show: Details closed) and a `runOver` row
+  `{ ...TABS, when: "partyTabs", yieldsToRestart: true }` before X (hint `pad.hint.tabs`, the existing key; no new
+  string): LB / RB cycle the tabs (`recapTabStep`, wrapping). New `PadRow.yieldsToRestart` / `padKeyYields`: the run-over
+  tabs yield a bumper bound to the pad restart (that key is live on the panel), the other bumper still steps; Options'
+  and the leaderboard's tabs still never yield. RunOverPanel's `onPadAction` maps tabPrev / tabNext to
+  `HudActions.setRecapTab`; the hint bar names the right stick (`scrollList`) while a Party list taller than its box
+  shows (measured in the wide layout). Keyboard: RecapController binds Q (previous), E and Tab (next; Shift+Tab
+  previous) through ContextActionService at the confirm keys' priority while the tabs show and nothing is over the
+  panel (`pressAllowed`), any device, a key bound to `restart` left to it. Mouse / touch: the tab buttons
+  (`HudActions.setRecapTab`, the menu-click wrapper so no FIRE follows). Every path ends in
+  `RecapController.setTab` (a click sound, `RecapViews.setTab`, `clientStore.setRecapTab`), never in
+  `RunOverRetryGate`; the tab buttons are not pad-selectable, so the pad's selection stays on the exits row (Back to
+  lobby the default, as before). Specs: padActions.spec (LB / RB only with `partyTabs`, the yield, the hint order with
+  and without Details / the stick, every hinted key acts in all 256 condition combinations). Studio check: Tab also
+  toggles Roblox's player list (CoreGui; a sink cannot stop it), so Q / E are the hinted keys; the pad's bumpers sunk
+  by InputController.onMenuPadInput.
+- [x] **CT7. Controller.** Builds once, opens on You, count-up per first open, re-derive on a new final state only.
+  As built: RecapController builds the contribution once at the open beside the highlights (`contributionOf({ tally:
+  RunView.recapTally, partySize, localIndex: getLocalPlayerIndex(), names: ctx.memberNames })`, the wipe derived from
+  the tally) and steps one shared/view/hud `RecapViews` (recapViews.ts, spec) instead of the bare RecapTimeline:
+  untabbed it is exactly the old timeline; tabbed, the main clock carries the near-miss line and the arm, the You cells
+  count on their own clock from `RECAP.highlightsStartSec` (or after new best's rows on a record run), Team's
+  highlights count the first time Team opens (`RecapTimelineOptions.highlightsAtSec` = `CONTRIB_UI.teamOpenDelaySec`
+  0.1 s), Party never counts; leaving a tab settles it silently, so later opens show finals; a skip press (the gate's
+  `skip` / an early `press`) settles the near-miss line and the tab showing (each clock lands once; `recapCue` still
+  plays one sound a frame); reduced motion: finals, one land per clock. Its frames merge every clock's tick / lands
+  into the one recapCue call. A re-derive (same verdict signature rule, now including the You cells and every Party
+  row) is `RecapViews.renewed`: tab kept, each clock at its old time, settled stays settled. Bindings: the Team cells
+  from the Team clock (none until opened), the You cells (`contribCellText`) from the You clock.
+- [x] **CT8. Telemetry.** The `views` row; catalog spec (still 37 names; field combinations under 8,000).
+  As built: `RunRecapReport.views?` (`{ you, party, last }`: real seconds the You and the Party tab's content showed,
+  Details over them counting for neither, and the tab selected when the panel was left), filled by the client's
+  `RunRecapViewClock` (shared/run, stepped with the recap's frame seconds) on a party run with the tabs.
+  `readRunRecapReport` reads both seconds like `seconds` (clamped 0..600, tenths), `last` from `RUN_RECAP_TABS` (pinned
+  by spec to RECAP_TABS); a malformed views rejects the report, views on a solo close are dropped. A `lobby` report
+  with views adds one row on the same `RunRecap` event: field01 `views`, value = You + Party seconds (tenths), field02 the
+  last tab. Catalog: field01 gains `views`, field02 the three tabs: the entry is 7 x 11 x 5 = 385 combinations (was
+  240); still 37 event names. Specs: recapAnalytics.spec (accept / clamp / reject / drop, the row, the clock),
+  analyticsCatalog.spec (every close x near-miss x flags x last tab in the catalog, the entry's 385).
+- [x] **CT9. Docs.** As-built here, RUN_RECAP.md cross-link (its "co-op MVP rows" Later line points here),
+  docs/CLIENT.md, the CLAUDE.md docs row and decision log entry.
+- [ ] **CT10. [owner] Studio check and tuning** (below): title thresholds and wording from three co-op runs.
+
+## Studio check
+
+1. Two clients, die on floor 3: both open on You with the same team totals on both screens and each client's own
+   numbers; LB / RB (or Q / E) shows Team; Party shows the same titles on both.
+2. Die first and spectate: your You tab is yours (CT1), not the teammate's.
+3. A boss floor wipe: Boss dmg shares sum to 100 %; no boss: the cell is gone.
+4. Four players, one leaves on floor 2: dim row `Left on floor 2`, its damage still in the bar.
+5. Eight players (`KV_Debug` fake party if available): the Party list scrolls on a phone.
+6. Tabs never retry or exit; Back to lobby still one press; reduced motion; `en-XA`.
+7. Feel: does any line read as blame? (Risk 1.)
+8. CT5-CT8 as built: the You cells count from 0.7 s (after NB's rows on a record run) with ticks / one land a frame; Team
+   counts on its first open only; a skip press settles the tab shown; Q / E / Tab (Tab also opens Roblox's player
+   list) and LB / RB cycle the tabs, a restart bound to a bumper still restarts; taps on the tabs never swing or skip;
+   the pad's selection never lands on a tab and Back to lobby stays one move away; the Party list scrolls with the
+   wheel, a drag and the right stick (hinted only when it overflows); the wide card's four cells a row, the compact
+   card's bar in its header row; the `KV_AnalyticsDebug` echo shows the `views` row on a party run's close.
+
+## Decisions
+
+CTD1 and CTD4 are the owner's (2026-11-08); the rest are proposed, recommendation first.
+
+- **CTD1. Open on You** (owner, 2026-11-08), Team and Party one press away; not remembered between runs.
+- **CTD2. Damage share is the headline**, with kills and boss damage beside it; it is the one number that reflects
+  everything a player did to enemies (swings, arrows, procs).
+- **CTD3. No per-player points.** The score is a shared pool with team multipliers (combo, Depth, curses, rooms,
+  PERFECT, floors); a split would be partial and invite blame. The You tab shows no points at all.
+- **CTD4. Party rows in index order, never sorted**, no MVP, no low-number colouring; everyone gets one positive
+  title. The Party tab stays (owner, 2026-11-08).
+- **CTD5. One unhashed feed** (GP1's pattern), not hashed per-player stats: nothing gameplay reads them, so they stay
+  out of the hash and every replay.
+- **CTD6. Credit follows `ctx.playerIndex`**, the same credit Bounty and Vampire Fang already use, so the recap never
+  disagrees with the sim about who killed what.
+- **CTD7. Client-derived, no server message:** lockstep makes every client's numbers equal; the server validates the
+  run as today and stores nothing new.
+
+## Risks
+
+- **Blame.** Co-op stat screens can sour a party. Mitigations: no points, no sorting, titles only for leads, a
+  fallback title for everyone; the Party tab is one press away, not the first thing shown. If playtests still read it
+  as blame, revisit with the owner (the tab is the owner's call, CTD4).
+- **Attribution gaps.** A damage source bound to the wrong player (CT0); the audit and `creditPlayer` cover it.
+- **Panel height** on a record daily party run with 8 rows; the Party list scrolls inside the highlights' box.
+- **Hot path.** `damageActor` gains a push per damaging hit (scored runs); CT2's bench check.
+
+## Later
+
+- The last run's contribution card in the lobby (a "last run" chip on each member).
+- Stat bests per player in `KV_Records_v1` (most damage in a party run).
+- Revives (docs/RUN_RECAP.md CMD7) as a contribution row once they exist.

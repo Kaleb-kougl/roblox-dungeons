@@ -69,6 +69,11 @@ export type PadCondition =
 	| "canInvite"
 	/** Run over: the recap is on screen (its Details toggle exists). */
 	| "recap"
+	/**
+	 * Run over: a party run's `You | Team | Party` tabs are on screen (Details closed; docs/RUN_CONTRIBUTION.md CT6):
+	 * LB / RB cycle them.
+	 */
+	| "partyTabs"
 	/** The scope's main list is shown (and can overflow). */
 	| "scrollList";
 
@@ -106,6 +111,11 @@ export interface PadRow {
 	/** The label while `PadContext.detailsOpen` (run over's X: Highlights). */
 	readonly hintDetailsOpen?: string;
 	readonly when?: PadCondition;
+	/**
+	 * The row yields to the player's pad restart like a shortcut does (padShortcutYields): the run-over tabs (the
+	 * restart key is live on that panel), so a restart on LB / RB is never stolen.
+	 */
+	readonly yieldsToRestart?: boolean;
 }
 
 /** A surface's census entry. */
@@ -225,6 +235,8 @@ export const PAD_SURFACES: { readonly [K in PadSurface]: PadSurfaceDef } = {
 		select: true,
 		back: "holdExit",
 		rows: [
+			// docs/RUN_CONTRIBUTION.md CT6: a party run's tabs cycle (never a retry, never through RunOverRetryGate).
+			{ ...TABS, when: "partyTabs", yieldsToRestart: true },
 			{
 				keys: [PAD_KEYS.x],
 				actions: [{ kind: "shortcutX", meaning: "details" }],
@@ -293,16 +305,24 @@ export function padBackMeaning(surface: PadSurface): PadBackMeaning {
 /**
  * A shortcut (X / Y, 4.3) on `keyName` yields to the player's pad restart: the key is `ctx.restartPad`, so the restart
  * (InputController's driver keys, gated by the RestartWindow) wins and the shortcut neither acts nor shows a hint.
- * Only shortcuts yield: tabs, scrolling, A, B and Start keep their menu meaning.
+ * Only shortcuts yield here (tabs, scrolling, A, B and Start keep their menu meaning); a row may opt in with
+ * `yieldsToRestart` (padKeyYields: the run-over tabs).
  */
 export function padShortcutYields(action: MenuPadAction, keyName: string, ctx: PadContext): boolean {
 	if (action.kind !== "shortcutX" && action.kind !== "shortcutY") return false;
 	return ctx.restartPad !== undefined && ctx.restartPad === keyName;
 }
 
-/** Every key of `row` yields to the pad restart (padShortcutYields): the row neither acts nor is hinted. */
+/** Key `i` of `row` yields to the pad restart: a shortcut on it (padShortcutYields), or a `yieldsToRestart` row's key. */
+export function padKeyYields(row: PadRow, i: number, ctx: PadContext): boolean {
+	const key = row.keys[i];
+	if (row.yieldsToRestart === true) return ctx.restartPad !== undefined && ctx.restartPad === key;
+	return padShortcutYields(row.actions[i], key, ctx);
+}
+
+/** Every key of `row` yields to the pad restart (padKeyYields): the row neither acts nor is hinted. */
 export function padRowYields(row: PadRow, ctx: PadContext): boolean {
-	for (let i = 0; i < row.keys.size(); i++) if (!padShortcutYields(row.actions[i], row.keys[i], ctx)) return false;
+	for (let i = 0; i < row.keys.size(); i++) if (!padKeyYields(row, i, ctx)) return false;
 	return row.keys.size() > 0;
 }
 
@@ -312,7 +332,7 @@ export function menuPadAction(surface: PadSurface, keyName: string, ctx: PadCont
 		if (!padConditionHolds(row.when, ctx)) continue;
 		const i = row.keys.indexOf(keyName);
 		if (i < 0) continue;
-		return padShortcutYields(row.actions[i], keyName, ctx) ? NONE : row.actions[i];
+		return padKeyYields(row, i, ctx) ? NONE : row.actions[i];
 	}
 	return NONE;
 }

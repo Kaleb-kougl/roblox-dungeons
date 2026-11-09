@@ -2,7 +2,7 @@ import React, { useContext } from "@rbxts/react";
 import type { LeaderboardBoard } from "shared/leaderboard";
 import type { BindingDevice, CaptureTarget, GameAction } from "shared/play";
 import type { AudioOverrides, DisplayOverrides, JuiceOverrides, SettingsGroup } from "shared/settings";
-import type { LeaderboardTabs, OptionsTab } from "shared/view/hud";
+import type { LeaderboardTabs, OptionsTab, RecapTab } from "shared/view/hud";
 
 /**
  * What the HUD's menus can do. HudController builds it from the controllers (SimController, SettingsController,
@@ -54,6 +54,11 @@ export interface HudActions {
 	/** Run-over "Details" / "Highlights" (RRD5): the score breakdown and Build list in the highlights' place, and back. */
 	readonly toggleRecapDetails: () => void;
 	/**
+	 * A party run's run-over tab (docs/RUN_CONTRIBUTION.md CT5 / CT6: a tap on You / Team / Party, the pad's LB / RB):
+	 * RecapController switches it (the Team tab's first open starts its count-up); never a retry or a skip.
+	 */
+	readonly setRecapTab: (tab: RecapTab) => void;
+	/**
 	 * First-run tutorial (TutorialController): a new tutorial run (`playTutorial`: the outro's Play the tutorial again;
 	 * `restartTutorial`: the pause overlay's Restart tutorial; two actions so the funnel's attempt entry tells them
 	 * apart), the outro's Start my first run (the main menu's Play solo), the pause overlay's skip question and the
@@ -96,6 +101,7 @@ const NOOP: HudActions = {
 	exitRun: () => undefined,
 	again: () => undefined,
 	toggleRecapDetails: () => undefined,
+	setRecapTab: () => undefined,
 	playTutorial: () => undefined,
 	restartTutorial: () => undefined,
 	startFirstRun: () => undefined,

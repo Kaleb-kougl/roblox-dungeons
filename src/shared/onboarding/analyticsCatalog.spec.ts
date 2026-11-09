@@ -8,6 +8,7 @@ import {
 	RUN_RECAP_CLOSES,
 	RUN_RECAP_NEAR_MISS_KINDS,
 	RUN_RECAP_NO_NEAR_MISS,
+	RUN_RECAP_TABS,
 	analyticsForRunRecap,
 	type AnalyticsEventSpec,
 	type RunRecapNearMiss,
@@ -107,7 +108,8 @@ describe("analytics catalog limits", () => {
 		for (const [, n] of pairs(ANALYTICS_EVENT)) expect(names.has(n)).toBe(true);
 		for (const [, n] of pairs(LOBBY_ANALYTICS_EVENT)) expect(names.has(n)).toBe(true);
 		for (const [, n] of pairs(TUTORIAL_ANALYTICS_EVENT)) expect(names.has(n)).toBe(true);
-		// 36 before the run-over recap's RunRecap (docs/RUN_RECAP.md RR9).
+		// 36 before the run-over recap's RunRecap (docs/RUN_RECAP.md RR9); its views row (docs/RUN_CONTRIBUTION.md CT8) is
+		// a row kind on that event, not a new name.
 		expect(custom.size()).toBe(37);
 		expect(custom.size() <= ROBLOX_MAX_CUSTOM_EVENT_NAMES).toBe(true);
 	});
@@ -207,20 +209,25 @@ describe("run-over recap events stay inside the catalog", () => {
 				for (const record of [false, true])
 					for (const skipped of [false, true]) {
 						const team = { teamPerfects: 3, bestTeamStreak: 2, syncParries: 1 };
-						const specs = analyticsForRunRecap({
-							runId: "r",
-							close,
-							seconds: 2,
-							nearMiss,
-							record,
-							skipped,
-							team,
-						});
-						expect(specs.size()).toBe(close === "lobby" ? 4 : 1);
-						expectInCatalog(specs);
+						for (const last of RUN_RECAP_TABS) {
+							// docs/RUN_CONTRIBUTION.md CT8: a party run's views row, every last tab.
+							const views = { you: 3, party: 1, last };
+							const specs = analyticsForRunRecap({
+								runId: "r",
+								close,
+								seconds: 2,
+								nearMiss,
+								record,
+								skipped,
+								team,
+								views,
+							});
+							expect(specs.size()).toBe(close === "lobby" ? 5 : 1);
+							expectInCatalog(specs);
+						}
 					}
-		// 6 field01 values x (7 kinds + absent) x (4 flags + absent).
-		expect(analyticsEntryCombinations(analyticsCatalogEntry("custom", ANALYTICS_EVENT.runRecap)!)).toBe(6 * 8 * 5);
+		// 7 field01 values (3 closes, 3 team rows, views) x (7 near-miss values + 3 tabs + absent) x (4 flags + absent).
+		expect(analyticsEntryCombinations(analyticsCatalogEntry("custom", ANALYTICS_EVENT.runRecap)!)).toBe(7 * 11 * 5);
 	});
 });
 

@@ -63,8 +63,9 @@ const log = serverLogger("Telemetry");
  *
  * The run-over recap (docs/RUN_RECAP.md RR9, shared/run recapAnalytics.ts), the second client fact: `runRecap(report)`
  * says how the player left a run-over panel (retry / exit / lobby, seconds open, the near-miss shown, record /
- * skipped, a party run's team moments). Rate limited (RUN_RECAP_RATE), re-read (readRunRecapReport) and taken at most
- * once per run session RunSessionService issued to the player (`runIssued` -> RunRecapGate), then logged as `RunRecap`.
+ * skipped, a party run's team moments and, docs/RUN_CONTRIBUTION.md CT8, its tab views). Rate limited
+ * (RUN_RECAP_RATE), re-read (readRunRecapReport) and taken at most once per run session RunSessionService issued to the
+ * player (`runIssued` -> RunRecapGate), then logged as `RunRecap`.
  * Analytics only: nothing else reads it.
  */
 @Service({})

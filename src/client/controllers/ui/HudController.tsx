@@ -16,6 +16,7 @@ import {
 } from "client/ui";
 import type { LobbyVisibility, LobbyWorld } from "shared/lobby";
 import { draftColumnForCard } from "shared/play";
+import type { RecapTab } from "shared/view/hud";
 import { AudioController } from "../audio/AudioController";
 import { RecapController } from "../fx/RecapController";
 import { InputController } from "../game/InputController";
@@ -106,6 +107,7 @@ export class HudController implements OnStart {
 			exitRun: click(() => this.menu.exitRun()),
 			again: click(() => this.recap.again()),
 			toggleRecapDetails: click(() => this.recap.toggleDetails()),
+			setRecapTab: click((tab: RecapTab) => this.recap.setTab(tab)),
 			playTutorial: click(() => this.tutorial.playTutorial("again")),
 			restartTutorial: click(() => this.tutorial.playTutorial("restart")),
 			// The outro's "Start my first run" is the main menu's Play solo.

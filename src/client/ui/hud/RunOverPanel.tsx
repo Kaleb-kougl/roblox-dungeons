@@ -31,6 +31,7 @@ import {
 	NEW_BEST_STRINGS,
 	UI_ART,
 	bestBlockDrawsBestLine,
+	contribPartyScrolls,
 	bestTargetKey,
 	bestText,
 	comboBestRichText,
@@ -39,6 +40,8 @@ import {
 	formatCombo,
 	recapExitSizes,
 	recapHidesBestLine,
+	recapTabStep,
+	recapTabsShown,
 	runOverRibbonKey,
 	scoreBreakdownRows,
 	type RecapLayout,
@@ -52,6 +55,7 @@ import {
 	runOverExits,
 	runOverIcon,
 	screenSkin,
+	tabStep,
 } from "shared/view/menu";
 import { useHudActions } from "./actions";
 import { DailyResultBlock } from "./DailyResultBlock";
@@ -64,6 +68,7 @@ import { BuildList, hasBuildItems } from "./BuildList";
 import { DailyPassedRow } from "./DailyPassedRow";
 import { RunInfoLine, verdictColor, verdictLine } from "./RunInfoLine";
 import { DetailsToggle, HighlightGrid, NearMissLine } from "./RecapBlocks";
+import { RecapTabBody } from "./ContributionBlocks";
 
 const HIDDEN = 1;
 const STAT_WIDTH = 150;
@@ -458,6 +463,12 @@ function RunOverHeader(props: { order: number; victory: boolean; icon: string | 
  * (recapExitSizes), the gamepad's selection starts on it, a keyboard's Enter / Space press it (RecapController) and its
  * focus brightens once armed; it goes through the recap's retry gate (HudActions.again: before the 0.6 s arm a press
  * skips the timeline). Runs without a recap keep exactly the old panel.
+ *
+ * A party run's contribution (docs/RUN_CONTRIBUTION.md CT5 / CT6, the store's `recap.contribution` / `recap.tab`): in
+ * the highlights' place the `You | Team | Party` tabs and their box (ContributionBlocks RecapTabBody; the near-miss line
+ * stays above them on every tab), opening on You; Details swaps the whole tab body for the breakdown and the Build list
+ * and closing it returns to the tab shown. LB / RB (the `partyTabs` pad row), Q / E / Tab (RecapController) and taps
+ * switch tabs through HudActions.setRecapTab, never through the retry gate; the right stick scrolls a long Party list.
  */
 export function RunOverPanel() {
 	const s = useSelector(selectSnapshot);
@@ -472,6 +483,7 @@ export function RunOverPanel() {
 	const recap = useSelector(selectRecap);
 	const actions = useHudActions();
 	const firstRef = useRef<TextButton>();
+	const partyListRef = useRef<ScrollingFrame>();
 	const over = s.outcome !== "playing";
 
 	if (!over) return undefined;
@@ -500,6 +512,11 @@ export function RunOverPanel() {
 	const highlightsOn = recapOn && recap.highlights.size() > 0;
 	// The breakdown and the Build list: behind Details while there are highlights (RRD5), else as before.
 	const details = !highlightsOn || recap.details;
+	// docs/RUN_CONTRIBUTION.md CT5: a party run's You | Team | Party tabs in the highlights' slot (Details swaps them out
+	// as it swaps the highlights; closing it returns to the tab shown).
+	const contribution = recap.contribution;
+	const tabsOn = highlightsOn && recapTabsShown(contribution, recap.highlights.size());
+	const tabsShown = tabsOn && !details;
 	const best = runOverBest(baseline, baselineRun, info.run, verdict, s.score, s.floor);
 	const ribbonKey = runOverRibbonKey(best.records, best.daily);
 	const ribbon =
@@ -548,9 +565,22 @@ export function RunOverPanel() {
 		nearMiss !== undefined && nearMiss.dim ? (
 			<NearMissLine key="NearMissDim" order={order} dim={true} />
 		) : undefined;
-	const grid = (order: number) =>
+	const grid = (order: number, layout: RecapLayout, gap: number) =>
 		highlightsOn && !details ? (
-			<HighlightGrid key="Highlights" order={order} cells={recap.highlights} />
+			tabsOn && contribution !== undefined ? (
+				<RecapTabBody
+					key="RecapTabBody"
+					order={order}
+					layout={layout}
+					tab={recap.tab}
+					c={contribution}
+					highlights={recap.highlights}
+					gap={gap}
+					listRef={partyListRef}
+				/>
+			) : (
+				<HighlightGrid key="Highlights" order={order} cells={recap.highlights} />
+			)
 		) : undefined;
 	const stats = [
 		{ label: str(victory ? HUD_STRINGS.timeVictory : HUD_STRINGS.time), value: formatClock(s.endTick / SIM_HZ) },
@@ -625,7 +655,18 @@ export function RunOverPanel() {
 	// An `overlay` focus scope with no memory (docs/GAMEPAD_MENUS.md GM2): a gamepad always starts on Again (Exit
 	// without it), whose retry gate is unchanged. A tap of B does nothing; holding B fills the Exit button and then does
 	// what Exit does (GM9, FocusController's hold); X toggles Details while there are highlights (GM6).
-	const padContext = { recap: highlightsOn, detailsOpen: recap.details };
+	// docs/RUN_CONTRIBUTION.md CT6: LB / RB cycle a party run's tabs while they show; the right stick scrolls a Party list
+	// taller than its box (measured in the wide layout: the pad's hint bar is a desktop / console one).
+	const partyScrolls =
+		tabsShown && recap.tab === "party" && contribution !== undefined
+			? contribPartyScrolls(contribution, recap.highlights.size(), "wide")
+			: false;
+	const padContext = {
+		recap: highlightsOn,
+		detailsOpen: recap.details,
+		partyTabs: tabsShown,
+		scrollList: partyScrolls,
+	};
 	const hints = <PadHintBar key="PadHints" order={ROW.padHints} surface="runOver" context={padContext} />;
 	return (
 		<FocusScope
@@ -635,12 +676,16 @@ export function RunOverPanel() {
 			surface="runOver"
 			defaultRef={firstRef}
 			padContext={padContext}
+			scrollRef={partyListRef}
 			onPadAction={(action) => {
 				if (action.kind === "holdExit") {
 					actions.playUi(SFX.uiBack);
 					actions.exitRun();
 				} else if (action.kind === "shortcutX" && action.meaning === "details" && highlightsOn) {
 					actions.toggleRecapDetails();
+				} else if ((action.kind === "tabPrev" || action.kind === "tabNext") && tabsShown) {
+					// A tab press is never a retry or a skip (it never reaches RunOverRetryGate).
+					actions.setRecapTab(recapTabStep(recap.tab, tabStep(action)));
 				}
 			}}
 		>
@@ -696,7 +741,7 @@ export function RunOverPanel() {
 												<BestBlock key="Best" order={-2} best={best} hideTarget={hideTarget} />
 											) : undefined}
 											{nearMissDim(-1)}
-											{grid(0)}
+											{grid(0, "compact", MENU_FIT.runOverLineGap)}
 											{details ? breakdownLines(breakdown) : undefined}
 										</Column>
 									) : undefined}
@@ -745,7 +790,7 @@ export function RunOverPanel() {
 							{nearMissDim(ROW.nearMissDim)}
 							{dailyBlock}
 							<DailyPassedRow key="DailyPassed" order={ROW.dailyPassed} />
-							{grid(ROW.breakdown)}
+							{grid(ROW.breakdown, narrow ? "narrow" : "wide", HUD_VIEW.gap)}
 							{/* docs/BUILDS.md BU10: the score breakdown and the Build list side by side (narrow: stacked). */}
 							{details ? (
 								<Row order={ROW.breakdown} align={Enum.HorizontalAlignment.Center}>
