@@ -5,7 +5,8 @@
  * tuning harnesses (buildTune.ts: build TTK, kill probe, player bullet high-water; buildOffers.ts: offer statistics),
  * docs/TREASURE.md's vault runs (vaultRun.ts: the endless world with a forced VaultOverride, a start floor and an
  * optional treasure config), docs/FORTUNE.md's pact helpers (pactsBot.ts) and docs/LEGENDARIES.md LG7's legendary
- * tuning (legendaryTune.ts: Overkill TTK and chains, Bastion's defence rooms; the offer tallies in buildOffers.ts).
+ * tuning (legendaryTune.ts: Overkill TTK and chains, Bastion's defence rooms; the offer tallies in buildOffers.ts), and
+ * the dense fight setup of the replay bench and the rollback spike's state copy spec (denseFight.ts).
  */
 export * from "./endlessBot";
 export * from "./partyBot";
@@ -17,3 +18,4 @@ export * from "./buildOffers";
 export * from "./vaultRun";
 export * from "./pactsBot";
 export * from "./legendaryTune";
+export * from "./denseFight";

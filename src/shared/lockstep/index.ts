@@ -13,6 +13,7 @@
  *   arrivalLog.ts  ArrivalLog: the KV_Debug co-op arrival log (batch gaps and sizes, pacing, fps; FP0)
  *   client.ts   LockstepClient: steps the sim with merged frames only, sends inputs / hashes / the final claim
  *   menuInput.ts  CoopMenuInputGate: neutral local input while a menu owns the controls (a party run never pauses)
+ *   rollbackSpike/  the rollback measurement spike (docs/ROLLBACK_SPIKE.md): the state copy, its tunables
  *
  * The server's RunSessionService and the client's SimController wrap these with remotes and clocks.
  */
@@ -27,3 +28,4 @@ export * from "./lead";
 export * from "./arrivalLog";
 export * from "./client";
 export * from "./menuInput";
+export * from "./rollbackSpike";
