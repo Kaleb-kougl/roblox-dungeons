@@ -440,11 +440,15 @@ export class RecapController implements OnStart {
 	 * view player), the party's display names by index. Solo runs: undefined (contributionOf's rule).
 	 */
 	private contributionOf(ctx: RunContext, input: RunRecapInput): RunContribution | undefined {
+		// docs/ARCHER.md AR9: each player's character (the rows' icons).
+		const characters: string[] = [];
+		for (let i = 0; i < input.partySize; i++) characters.push(this.sim.getPlayerCharacter(i) ?? "");
 		return contributionOf({
 			tally: input.tally,
 			partySize: input.partySize,
 			localIndex: input.localIndex,
 			names: ctx.memberNames,
+			characters,
 		});
 	}
 

@@ -61,6 +61,11 @@ export interface ContributionRow {
 	readonly index: number;
 	/** Display name (names[index], "" when missing). */
 	readonly name: string;
+	/**
+	 * The player's character id (characters[index]; docs/ARCHER.md AR9: the row's icon, characterIcon), undefined when
+	 * the input has none for them.
+	 */
+	readonly character?: string;
 	/** The local player's row. */
 	readonly local: boolean;
 	/** Left the run (tally.leftFloor set; the row is dim). */
@@ -111,6 +116,8 @@ export interface ContributionInput {
 	readonly localIndex: number;
 	/** Display names by index (RunContext.memberNames). */
 	readonly names: ReadonlyArray<string>;
+	/** Each player's character id by index (SimController.getPlayerCharacter; docs/ARCHER.md AR9); default none. */
+	readonly characters?: ReadonlyArray<string | undefined>;
 	/** The run ended in a party wipe; default: every player who has not left has a death. */
 	readonly endedInWipe?: boolean;
 }
@@ -549,6 +556,7 @@ export function contributionOf(input: ContributionInput, cfg: ContribConfig = CO
 		rows.push({
 			index: i,
 			name: input.names[i] ?? "",
+			character: input.characters?.[i],
 			local: i === mine,
 			left: hasLeftRun(t, i),
 			title: titles[i],

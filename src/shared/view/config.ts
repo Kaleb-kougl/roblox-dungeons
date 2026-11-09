@@ -118,7 +118,10 @@ export const ARCHER_SPRITE = {
 
 /** Actors and the player (web src/sim/PlayerView.tsx, src/bullets/ActorsView.tsx). */
 export const ACTOR_VIEW = {
-	/** Theme asset shown for the player until class selection exists (web PLAYER_SPRITE_ID). */
+	/**
+	 * Theme asset of a player who is no character (web PLAYER_SPRITE_ID; M1's sword + bow, test loadouts): the Knight's.
+	 * A character's player draws its own (docs/ARCHER.md AR9, characters.ts playerVisualIdOf).
+	 */
 	playerVisualId: "class.vanguard",
 	/**
 	 * The ring under each player (a logical image ID): drawn instead of the facing pip when the pack has it as an image

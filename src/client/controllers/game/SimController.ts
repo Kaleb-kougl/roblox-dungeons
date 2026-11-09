@@ -76,6 +76,7 @@ import {
 	SpectateTracker,
 	floorChangeStaged,
 	formatListenerTimes,
+	playerCharacterOf,
 	latencyProbeView,
 	listenerLabel,
 	leadDebugView,
@@ -243,7 +244,7 @@ interface MadeRun {
 	readonly config: Readonly<SimConfig>;
 	readonly dungeon: Dungeon | undefined;
 	readonly endlessFloor: ((floor: number) => EndlessRunFloor) | undefined;
-	/** RunSetup.characters (docs/ARCHER.md AR5). */
+	/** RunSetup.characters (docs/ARCHER.md AR4 / AR5 / AR9). */
 	readonly characters: ReadonlyArray<CharacterId> | undefined;
 }
 
@@ -547,6 +548,20 @@ export class SimController implements OnStart {
 	/** This client's player index in the run (co-op: its place in the party; 0 solo). */
 	getLocalPlayerIndex(): number {
 		return this.ctx?.localIndex ?? 0;
+	}
+
+	/** docs/ARCHER.md AR9: the characters the run was built with (RunSetup.characters), or undefined (M1, no run). */
+	getRunCharacters(): ReadonlyArray<CharacterId> | undefined {
+		return this.ctx?.characters;
+	}
+
+	/**
+	 * docs/ARCHER.md AR9 / AR10: player `index`'s character (shared/view playerCharacterOf: the run's pick, else the
+	 * character their weapons are), undefined for no run or a player who is no character (M1's two weapons).
+	 */
+	getPlayerCharacter(index: number): CharacterId | undefined {
+		const ctx = this.ctx;
+		return ctx !== undefined ? playerCharacterOf(ctx.characters, ctx.run.state, index) : undefined;
 	}
 
 	/**
@@ -1515,7 +1530,7 @@ export class SimController implements OnStart {
 			biome: biomeIndexOf(ctx.dungeon),
 			coop: ctx.coop !== undefined,
 			lobbyId: ctx.lobbyId,
-			character: ctx.character,
+			character: playerCharacterOf(ctx.characters, ctx.run.state, ctx.localIndex) ?? "",
 		};
 	}
 

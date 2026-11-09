@@ -29,6 +29,7 @@ import {
 	baselineRecord,
 	bestTargetKey,
 	bestText,
+	hasSwapTarget,
 	isDailyBaseline,
 } from "shared/view/hud";
 import {
@@ -323,7 +324,7 @@ export function PauseOverlay() {
 							text={best}
 						/>
 					) : undefined}
-					{s.weapons.size() > 0 && !touch ? (
+					{hasSwapTarget(s.weapons) && !touch ? (
 						<Text
 							fill={true}
 							order={19}

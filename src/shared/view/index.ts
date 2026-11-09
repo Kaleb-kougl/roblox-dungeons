@@ -15,6 +15,7 @@
  *   floorTexture.ts  world-anchored Texture offsets so merged floor slabs show one continuous pattern
  *   wallTexture.ts   the same for wall Parts' Top and side faces (a biome with a repeating wall image)
  *   sprites.ts    sprite renderer logic: world facing -> screen facing, animation + frame from sim state, billboard
+ *   characters.ts each player's character and theme visual (docs/ARCHER.md AR9: the run's pick, else the weapons')
  *   variants.ts   enemy variants on screen (docs/ENEMY_VARIANTS.md EV9): affix reads / looks (ring, chip, shield row,
  *                 shield flash, Hulking scale, elite), the Vengeful corpse, the goo pool split and decal look, imp
  *                 landings (BlinkWatch), the summoner's ring filter (tunables: variantsConfig.ts)
@@ -91,6 +92,7 @@ export * from "./spectateConfig";
 export * from "./spectate";
 export * from "./portrait";
 export * from "./sprites";
+export * from "./characters";
 export * from "./variantsConfig";
 export * from "./buildBulletsConfig";
 export * from "./buildBullets";

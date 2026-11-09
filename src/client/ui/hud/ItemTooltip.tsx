@@ -1,14 +1,25 @@
 import React, { useBinding, useEffect, useMemo, useRef } from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
 import { RunService, TextService } from "@rbxts/services";
-import { selectGameActive, selectJuice, selectSnapshot, selectTooltipShown } from "client/store";
-import { alignFor, fontFor, hudText, role, str, textSizeFor, useUiFonts, type UiFonts } from "client/ui/theme";
+import { selectGameActive, selectJuice, selectRunInfo, selectSnapshot, selectTooltipShown } from "client/store";
+import {
+	alignFor,
+	fontFor,
+	hudText,
+	role,
+	str,
+	textSizeFor,
+	themePack,
+	useUiFonts,
+	type UiFonts,
+} from "client/ui/theme";
 import type { GameSnapshot } from "shared/play";
 import type { ColorRole, StringVars } from "shared/theme";
 import {
 	DRAFT_CARD_VIEW,
 	HUD_VIEW,
 	ITEM_TOOLTIP,
+	characterTooltip,
 	itemTooltip,
 	moreTooltip,
 	tooltipPlacement,
@@ -32,11 +43,23 @@ const RICH_CLOSE = string.char(2);
 /** Frames the tooltip's measured size must hold before it shows (a fresh model lays out the frame after its commit). */
 const STABLE_FRAMES = 1;
 
-/** The model of what the tracker shows: an item's tooltip, or the "+N" cell's list of hidden names. */
-function modelOf(shown: HoverShown | undefined, s: GameSnapshot): TooltipModel | undefined {
+/** Whether the active pack has a string key (the per-character overrides' lookup). */
+function hasString(key: string): boolean {
+	return themePack()?.hasString(key) === true;
+}
+
+/**
+ * The model of what the tracker shows: an item's tooltip, or the "+N" cell's list of hidden names, read as the local
+ * player's `character` (docs/ARCHER.md AR10: characterTooltip; "" none).
+ */
+function modelOf(shown: HoverShown | undefined, s: GameSnapshot, character: string): TooltipModel | undefined {
 	if (shown === undefined) return undefined;
 	const t = shown.target;
-	return t.more !== undefined ? moreTooltip(t.more, s) : itemTooltip(t.ref, s);
+	return characterTooltip(
+		t.more !== undefined ? moreTooltip(t.more, s) : itemTooltip(t.ref, s),
+		character,
+		hasString,
+	);
 }
 
 function escapeRich(text: string): string {
@@ -161,7 +184,8 @@ function ItemTooltip(props: { scale: number }) {
 	const s = useSelector(selectSnapshot);
 	const reduced = useSelector(selectJuice).reducedMotion;
 	const fonts = useUiFonts();
-	const model = useMemo(() => modelOf(shown, s), [shown, s]);
+	const character = useSelector(selectRunInfo).character;
+	const model = useMemo(() => modelOf(shown, s, character), [shown, s, character]);
 	const [position, setPosition] = useBinding(new UDim2());
 	const [fade, setFade] = useBinding(HIDDEN);
 	const rootRef = useRef<CanvasGroup>();

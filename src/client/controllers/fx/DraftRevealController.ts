@@ -7,11 +7,13 @@ import { draftConfirmHeld, draftNeverRevealed } from "shared/play";
 import { isPortrait } from "shared/view";
 import { DRAFT_MIN_OPEN_TICKS, DRAFT_OFFER_COUNT, PactKind, pactDraftKind } from "shared/sim";
 import { GreedDealGap, draftTitleKey } from "shared/view/pacts";
+import { getActiveThemePack } from "shared/theme";
 import type { JuiceSettings } from "shared/settings";
 import {
 	DRAFT_REVEAL_VIEW,
 	DraftBeat,
 	DraftReveal,
+	characterDraftCard,
 	draftCardKinds,
 	draftCardLook,
 	draftCardModel,
@@ -230,10 +232,15 @@ export class DraftRevealController implements OnStart, DraftRevealDriver {
 		const kinds = draftCardKinds(ctx.run.state, ctx.localIndex, offers);
 		// docs/BUILDS_V2.md BV8: the local build at the deal, for the New cards' duo hints (none without builds).
 		const build = ctx.run.state.builds?.players[ctx.localIndex];
+		// docs/ARCHER.md AR10: the cards' texts read the local player's character's overrides (characterDraftCard).
+		const character = this.sim.getPlayerCharacter(ctx.localIndex);
+		const pack = getActiveThemePack();
+		const has = (key: string) => pack?.hasString(key) === true;
 		const beats: DraftBeatId[] = [];
 		const tones: DraftTone[] = [];
 		for (let i = 0; i < this.count; i++) {
-			const model = draftCardModel(offers[i], kinds[i], build?.levels, build?.duos);
+			const dealt = draftCardModel(offers[i], kinds[i], build?.levels, build?.duos);
+			const model = dealt !== undefined ? characterDraftCard(dealt, character, has) : undefined;
 			const override = debug !== undefined && i < debug.size() ? debug[i] : undefined;
 			beats.push(override ?? model?.beat ?? DraftBeat.COMMON);
 			tones.push(override !== undefined ? rarityTone(override) : model?.tone ?? "common");

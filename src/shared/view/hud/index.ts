@@ -22,7 +22,9 @@
  * stairs distance and timeline (recapConfig.ts, recap.ts; docs/RUN_RECAP.md RR2) and how the recap is drawn (recapUi.ts,
  * RR5), and the co-op contribution's rows, shares, standing and titles (contributionConfig.ts, contribution.ts;
  * docs/RUN_CONTRIBUTION.md CT3), how its tabs, You card and Party rows are drawn (contributionUi.ts, CT5) and the
- * recap's clocks per tab (recapViews.ts, CT7).
+ * recap's clocks per tab (recapViews.ts, CT7), and the characters on the HUD (docs/ARCHER.md AR9 / AR10): the weapon
+ * sets shown and the swap target (weaponSets.ts), the per-character string overrides of the progression texts
+ * (characterText.ts) and the character icons (characterIcon.ts).
  */
 export * from "./layout";
 export * from "./strings";
@@ -38,6 +40,9 @@ export * from "./minimapHud";
 export * from "./wrap";
 export * from "./occlusion";
 export * from "./touchLayout";
+export * from "./weaponSets";
+export * from "./characterText";
+export * from "./characterIcon";
 export * from "./touchStrip";
 export * from "./touch";
 export * from "./roomClear";

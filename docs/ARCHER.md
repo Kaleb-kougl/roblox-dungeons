@@ -914,3 +914,115 @@ character it was started with; M1, fixtures and tools are unchanged. Paths under
   client does not push its remembered pick on join (AR8 can send `setReady(false, pick)` when the lobby room opens).
   `lobbyRoomModel` member rows do not carry the pick yet (AR8). Older replays without a character cannot be validated
   as anything but the Knight in a session (the plan's edge case).
+
+## AR9 (as built)
+
+Presentation only (no sim, dungeon, lockstep, hash, replay, fixture or score change). Paths under `src/` unless noted.
+
+- **The visual pick** (`shared/view/characters.ts`, new, in the shared/view barrel): `playerCharacterOf(characters,
+  state, index)` (the run's pick `characters[index]` when it is a character id, else `characterOfWeapons` of the
+  player's sets, else undefined: no state, outside the party, M1's two weapons), `characterVisualId(character)` (the
+  def's `visualId`; none: `ACTOR_VIEW.playerVisualId`, the Knight's, as before) and `playerVisualIdOf` (both). A dev
+  "Both weapons" run picked as the Archer draws the Archer (the pick wins over the weapons).
+- **Client run characters** (`client/controllers/game/SimController.ts`): `RunContext.characters` (RunSetup.characters,
+  through `MadeRun.characters` for `makeRun` and `setup.characters` in `startCoop`), `getRunCharacters()` and
+  `getPlayerCharacter(i)` (playerCharacterOf on the run's state). `RunInfo.character` (`client/store/game.ts`): the
+  local player's character id, "" for none (AR10's reader). AR5 / AR7 pass the picks into `buildWorldSetup`; until
+  then every endless run is the Knight and draws the knight, M1 the knight, a hand-built one-weapon config its weapons'.
+- **ActorRenderController**: each `PlayerView` carries its `visualId`; views are built per player from
+  `playerVisualIdOf(sim.getRunCharacters(), state, i)` (cached per run state: loadouts never change in a run) and
+  rebuilt (destroyed: sprite, capsule, pip, ring) when a player's visual changes at a new run. Sprites, the player
+  outline's 1 px sheets and the ring's texel density are the set's own (the Archer's `ranger-*-outline.png` once
+  uploaded); the placeholder capsule is the visual's (`class.ranger`'s green capsule). The animation input is AR12's
+  `playerSpriteInputFor(view.visualId, state, i, alpha, sword, bow)` (`weaponIndex(BOW_WEAPON_ID)`, cached like the
+  sword's), so the Archer's set plays the draw / release / stream and the Knight's exactly as before. Feel (squash,
+  roll afterimages: MotionFx snapshots whatever sprite the view has) and spectate (the view index only) needed no
+  change: nothing else read `ACTOR_VIEW.playerVisualId`.
+- **Swap prompts** (`shared/view/hud/weaponSets.ts`, new): `hasSwapTarget(weapons)` (at least two sets hold a weapon;
+  `weapons` is the snapshot's id per set, "" empty) and `shownWeaponSets(weapons)` (every set with a swap target or
+  with no weapon at all, else only the held set). WeaponPanel draws `shownWeaponSets` (a Knight's or an Archer's one
+  slot, numbered by its set) and the timed SwapHint only with `hasSwapTarget`; the pause overlay's swap key line (the
+  "pad hint's swap glyph": `E swap` / `Y swap`, `HUD_STRINGS.weaponSwap`) likewise. Touch
+  (`shared/view/hud/touchLayout.ts`): `TouchButtonFacts { atShrine, swapTarget }`, `touchButtonShown(id, facts)` (Accept
+  at a shrine, Swap with a swap target, everything else always) and `shownTouchButtons(layout, facts)`;
+  TouchControlsController's visibility uses `touchButtonShown` (a hidden GuiButton takes no touch). The layout itself
+  is unchanged and places every button whatever shows, so hiding Swap moves or resizes nothing.
+- **Character icons** (`shared/view/hud/characterIcon.ts`, new): `characterIcon(character, hasImage)` (an untrusted
+  value; `{ character, art, role }`: `ui.character.<id>` when the pack has it, else the square in the visual's colour
+  role `class.vanguard` / `class.ranger`; undefined for anything not a character id), `characterIconSize(rowHeight)`
+  (0.6 of the row, whole px), `CHARACTER_ICON_VIEW`, `CharacterTagged` / `characterOfEntry(entry)` (an entry's
+  `classId` when it is a character id: `LeaderboardRow` has no `classId` field yet, so the panel reads it structurally;
+  AR5's entries render once they carry it). Client `client/ui/hud/CharacterIcon.tsx` (`CharacterIcon`, ArtImage with
+  the square as its fallback; `hasCharacterIcon`). Drawn on the leaderboard's rows (before the name, the name column
+  gives up the icon's width), the run-over contribution's Party rows (at the name column, dimmed with a leaver's row)
+  and the You card's header. `ContributionInput.characters?` / `ContributionRow.character?`
+  (`shared/view/hud/contribution.ts`), filled by RecapController from `sim.getPlayerCharacter(i)`.
+- **Spec** `shared/view/characters.spec.ts` (5): the visual per character and the fallback, the pick over the weapons
+  (dev Both weapons as the Archer through `buildWorldSetup`), co-op per player and out of range, an endless setup's
+  echo. `shared/view/hud/archerHud.spec.ts` (13, with AR10's): `hasSwapTarget` / `shownWeaponSets`;
+  `touchButtonShown`; hiding Swap keeps every other button's box (every `TOUCH_TEST_VIEWPORTS` entry, both hands, HUD
+  100 / 130 %: `shownTouchButtons` equals the layout's buttons minus Swap, circle for circle); `characterIcon` /
+  `characterOfEntry`; contribution rows carry characters.
+- **Deviations:** the recap's icons are the party run-over's (the You card and the Party rows); a solo run-over shows
+  none (the panel has no player row; RunOverPanel is left to AR7). `hasSwapTarget` reads only the snapshot's weapon
+  list (two held sets), not the active set: an empty set 0 with a weapon in set 1 (no live loadout) shows no prompt.
+  The tutorial's forced swap hint (the bow lesson's `weapons` highlight) is hidden for the tutorial's Knight too; AR6
+  removes that step.
+
+## AR10 (as built)
+
+Presentation only. Optional overrides `<key>.<characterId>` read for the LOCAL player's character.
+
+- **Lookup** (`shared/view/hud/characterText.ts`, new): `HasString`, `characterStringKey(key, character, has)` (the
+  override `characterOverrideKey(key, character)` when the pack has it, else `key`; no character or "" -> `key`),
+  `characterHudText(t, character, has)` (the key and every varKey; the same object when nothing changes),
+  `characterDraftCard(model, ...)` (name, banner, line, an Upgrade's "was" line, the duo hint),
+  `characterTooltip(model, ...)` (title, kind line, body lines: the level-II "Evolves into {evo}: {desc}" reads the
+  evolution's override through its varKey), `characterBuildRow` / `characterBuildSections`. The models
+  (`draftCardModel`, `itemTooltip`, `buildListSections`) stay character-free; the client wraps what it shows:
+  DraftRevealController (`sim.getPlayerCharacter(ctx.localIndex)` at the deal), ItemTooltip and BuildList
+  (`RunInfo.character`), each with the active pack's `hasString`. No codex exists yet (nothing to wire). Greed's deal
+  goes through the same draft cards.
+- **The overrides** (placeholder manifest; vale's `strings` are the placeholder's, `vale.spec` checks it): the plan's
+  five items in seven strings (`CHARACTER_OVERRIDE_KEYS`, theme characters.ts): `boon.swiftStrikes.evo.desc.archer`,
+  `boon.bastion.desc.archer`, `duo.stormBlade.desc.knight` / `.archer`, `duo.fullHeart.desc.knight` / `.archer`,
+  `duo.citadel.desc.archer`, the table's text as written. The Knight's "(unchanged)" cells and the Knight's Swift
+  Strikes line (the base text already) have no override. Not required (no pack must define any); M1's two-weapon
+  player (no character) reads the base lines.
+- **Spec** `shared/view/hud/archerHud.spec.ts` (per-character text): `characterStringKey` (override, base for the
+  Knight, no / "" / unknown character, a key without an override, a pack without overrides); the Archer's Bastion card
+  reads "+1 armor pip; roll through 8 bullets: +1 pip", the Knight's the base line, no character the model itself;
+  Storm Blade / Full Heart / Citadel per character; Swift Strikes' Evolution card and the level-II tooltip's varKey;
+  Bastion's tooltip and the Build list (boon and duo rows) per character. `shared/theme/characters.spec.ts`: the seven
+  overrides' text, each with its base key, none required, present in both packs.
+
+## AR11 (as built)
+
+Theme strings only (no new colour role, sound or asset; no contract constant).
+
+- **Names** (owner answer 11): `class.vanguard.name` "Knight", `class.ranger.name` "Archer" (were "Vanguard" /
+  "Ranger"; ARD1).
+- **Character screen** (`shared/theme/characters.ts`, new, in the theme barrel): `CHARACTER_SCREEN_STRINGS` { `title`
+  `character.title` "Choose your character", `start` `character.start` "Start", `runOverCharacter`
+  `run.over.character` "Character" }, `CHARACTER_SUMMARY_LINES` 2, `characterLineKey(id, n)` (`character.<id>.line.<n>`:
+  Knight "Sword: a three-hit combo." / "Guard blocks bullets.", Archer "Bow: a stream of arrows, hold to charge." / "A
+  longer, safer roll."), `THEME_CHARACTER_IDS` (["knight", "archer"], written out: the theme imports no gameplay
+  module; the spec keeps it equal to `CHARACTER_IDS`), `characterStringKeys()` (the seven), `characterOverrideKey`,
+  `CHARACTER_OVERRIDE_KEYS`, `CHARACTER_ICON_PREFIX` "ui.character." / `characterIconId(id)` (optional free-form ui
+  images like the boon icons; neither bundled pack has one). The seven screen strings are REQUIRED: written out inside
+  `REQUIRED_STRING_KEYS`' function after the class names (no import, no top-level local); `contract.spec`'s count +7.
+  A character's name is its visual's `class.<id>.name`.
+- **Deviation:** the plan's `runOver.character` is `run.over.character`: the validator's first key segment is
+  lowercase only (`STRING_KEY_FIRST`), so `runOver.*` is a bad string key.
+- **l10n** (`l10n/context.json`): entries for the seven screen strings (with `max` budgets) and the seven overrides
+  (each pointing at its base line's note); `class.vanguard.name` / `class.ranger.name` reworded (no longer
+  "Reserved"). The two renamed classes' locale entries are stale until re-translated (English shown, as for any
+  rewording).
+- **Luau locals** (counted on `out/`, top-level `local` names): `contract.luau` 186, `validate.luau` 197 (unchanged).
+- **Spec** `shared/theme/characters.spec.ts` (7): ids equal `CHARACTER_IDS`; the two names; the screen's keys equal the
+  list, required, in both packs; the working text; the overrides; icons optional and absent; both packs validate.
+- **Ran** (this tree, Linux cloud box): typecheck, lint, build, check:assets, check:autolocalize, l10n:check (0 errors, 0
+  warnings), test:l10n (36); filtered suites, all passed: `shared/theme` 54 suites / 691, `view/hud` + `view/menu` +
+  `view/archerSprite` + `view/sprites` + `view/characters` 55 / 925, `shared/play` + `view/fx` 46 / 652. Client code
+  is checked by typecheck / lint / build only; Studio items 5, 6 and 8 wait for AR5 / AR7 (the picks reach the run
+  configs) and AR12's upload.
