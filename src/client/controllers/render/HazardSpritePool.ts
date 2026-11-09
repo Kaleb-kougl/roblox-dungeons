@@ -35,6 +35,11 @@ export interface HazardClock {
 export interface FloorSpriteDrawer {
 	frame(sim: BulletSimulation, clock: HazardClock): void;
 	poolSize(): number;
+	/**
+	 * Parks every anchor (surfaces disabled), in one BulkMoveTo: the DecalPool draws its discs (the stand-in) instead
+	 * while the art is not ready (docs/STAGE_ASSETS.md SA17).
+	 */
+	parkAll(): void;
 }
 
 /** No cell written yet. */
@@ -131,6 +136,12 @@ class FloorAnchors {
 
 	parkFrom(n: number): void {
 		for (let i = n; i < this.parts.size(); i++) this.park(i);
+	}
+
+	/** Parks every anchor and flushes. */
+	parkAll(): void {
+		this.parkFrom(0);
+		this.flush();
 	}
 
 	flush(): void {
@@ -310,6 +321,13 @@ export class StrikeSpritePool implements FloorSpriteDrawer {
 		return this.flashes.count() + this.scorchAnchors.count();
 	}
 
+	/** Parks every flash and scorch and drops the scorches (the discs draw meanwhile: no scorch of theirs to keep). */
+	parkAll(): void {
+		this.scorches.reset();
+		this.flashes.parkAll();
+		this.scorchAnchors.parkAll();
+	}
+
 	/** Live scorches (debug / specs in Studio). */
 	scorchCount(nowSec: number): number {
 		return this.scorches.liveCount(nowSec);
@@ -406,5 +424,9 @@ export class EmberSpritePool implements FloorSpriteDrawer {
 
 	poolSize(): number {
 		return this.anchors.count();
+	}
+
+	parkAll(): void {
+		this.anchors.parkAll();
 	}
 }

@@ -33,6 +33,7 @@ import {
 	type EmberLook,
 	type PlayerBulletLookId,
 	RENDER_ORDER,
+	ReadyIds,
 	floorStudsY,
 	gooDecalLook,
 	isGooPayload,
@@ -46,6 +47,7 @@ import {
 	type GooLook,
 } from "shared/view";
 import { buildTrailsOn, isEmberPayload } from "shared/view/fx";
+import { PreloadController } from "../game/PreloadController";
 import { SimController } from "../game/SimController";
 import { ThemeController } from "../game/ThemeController";
 import { BulletTrails, type TrailLook } from "./bulletTrails";
@@ -56,6 +58,10 @@ import { EmberSpritePool, StrikeSpritePool, type FloorSpriteDrawer, type HazardC
 
 const RENDER_STEP = "KV_Bullets";
 const PARKED = new CFrame(BULLET_VIEW.parkedStuds[0], BULLET_VIEW.parkedStuds[1], BULLET_VIEW.parkedStuds[2]);
+/** The hazards' indices in the controller's ReadyIds (docs/STAGE_ASSETS.md SA17). */
+const HAZARD_GOO = 0;
+const HAZARD_STRIKE = 1;
+const HAZARD_EMBER = 2;
 /** A Cylinder's axis is X: turned to Y, it lies flat on the floor (the goo disc). */
 const FLAT = CFrame.Angles(0, 0, math.pi / 2);
 
@@ -299,8 +305,10 @@ const EMBER_DECAL: DecalSpec = {
  * frame.
  * Sprite mode (docs/GOO_ART.md GA4): given a floor sprite drawer (the goo's FloorSpritePool, when the pack's
  * `bullet.enemy.goo` has floor sprite art; docs/HAZARD_ART.md HA5: the strike's StrikeSpritePool and the embers'
- * EmberSpritePool, when theirs have hazard art), the pool hands its frames to it instead and builds no disc; without
- * one, exactly the discs.
+ * EmberSpritePool, when theirs have hazard art), the pool hands its frames to it instead; without one, exactly the
+ * discs. Stand-ins (docs/STAGE_ASSETS.md SA17): per frame `artReady` (the id's art downloaded on this device) picks
+ * the drawer or the discs; a change parks the other side first, so a puddle / strike / ember on the floor turns into
+ * its art (or back, under KV_StandInsForce) on the frame.
  */
 class DecalPool {
 	private readonly parts = new Array<BasePart>();
@@ -312,6 +320,8 @@ class DecalPool {
 	private readonly look: GooLook = { scale: 0, transparency: 0 };
 	private readonly y: number;
 	private readonly sprites: FloorSpriteDrawer | undefined;
+	/** The sprite drawer drew last frame (the discs are parked), SA17. */
+	private spriteMode = false;
 	private sim: BulletSimulation | undefined;
 
 	constructor(
@@ -330,10 +340,20 @@ class DecalPool {
 		this.sprites = sprites;
 	}
 
-	frame(sim: BulletSimulation, clock: HazardClock): void {
-		if (this.sprites !== undefined) {
-			this.sprites.frame(sim, clock);
+	/** `artReady`: the sprite drawer's art is ready (SA17); ignored without a drawer. */
+	frame(sim: BulletSimulation, clock: HazardClock, artReady: boolean): void {
+		const sprites = this.sprites;
+		if (sprites !== undefined && artReady) {
+			if (!this.spriteMode) {
+				this.spriteMode = true;
+				this.parkAll();
+			}
+			sprites.frame(sim, clock);
 			return;
+		}
+		if (sprites !== undefined && this.spriteMode) {
+			this.spriteMode = false;
+			sprites.parkAll();
 		}
 		if (sim !== this.sim) {
 			this.sim = sim;
@@ -378,9 +398,9 @@ class DecalPool {
 		}
 	}
 
-	/** Pooled discs, or sprite anchors in sprite mode. */
+	/** Pooled discs plus sprite anchors (the discs are the stand-in while the art loads, SA17). */
 	poolSize(): number {
-		return this.sprites !== undefined ? this.sprites.poolSize() : this.parts.size();
+		return this.parts.size() + (this.sprites?.poolSize() ?? 0);
 	}
 
 	private park(i: number): void {
@@ -467,6 +487,12 @@ function trailLook(look: BulletLook): TrailLook {
  * has hazard sprite art (pack.hazardSprite), their DecalPools run in sprite mode: StrikeSpritePool (the flash over the
  * strike's life, then a scorch after it, tinted enemyBullet) and EmberSpritePool (the burn loop, tinted build.ember);
  * without it the discs exactly as before.
+ * Stand-ins (docs/STAGE_ASSETS.md "Revision 2", SA17): art is drawn only once its id is READY on this device
+ * (PreloadController's readiness, shared/view ReadyIds re-read when its epoch moves). The sprite pools are built up
+ * front whenever the pack has art (their anchors grow lazily, so an unready pool costs nothing) and skip a look that is
+ * not ready, which the neon pool after them then draws: bullets in flight change pool on the frame the look flips
+ * (either way). The goo / strike / ember DecalPools draw their discs until their art is ready (`artReady`), then the
+ * sprites. Nothing is ever drawn from an image that has not downloaded.
  */
 @Controller({})
 export class BulletRenderController implements OnStart {
@@ -479,7 +505,11 @@ export class BulletRenderController implements OnStart {
 	private strike: DecalPool | undefined;
 	private ember: DecalPool | undefined;
 
-	constructor(private readonly sim: SimController, private readonly theme: ThemeController) {}
+	constructor(
+		private readonly sim: SimController,
+		private readonly theme: ThemeController,
+		private readonly preload: PreloadController,
+	) {}
 
 	onStart(): void {
 		const pack = this.theme.getPack();
@@ -499,6 +529,7 @@ export class BulletRenderController implements OnStart {
 		// one shared look object, so a part never rewrites its props when its bullet's look index changes.
 		const small = bulletLook(pack, BULLET_VIEW.enemyVisualId, enemyDiameter, 0);
 		const enemyArt = artLooks(pack, ENEMY_BULLET_LOOK_IDS, "enemy");
+		const enemyReady = artReadyIds(ENEMY_BULLET_LOOK_IDS, enemyArt);
 		const enemySprites =
 			enemyArt.size() > 0
 				? new SpriteBulletPool(
@@ -512,6 +543,7 @@ export class BulletRenderController implements OnStart {
 						BULLET_ART_VIEW.liftStuds.enemy,
 				  )
 				: undefined;
+		if (enemySprites !== undefined) enemySprites.ready = enemyReady;
 		this.enemySprites = enemySprites;
 		const enemy = new BulletPool(
 			folder,
@@ -527,10 +559,8 @@ export class BulletRenderController implements OnStart {
 			// docs/HAZARD_ART.md HA5: the pack's strike hazard sprite (flash + scorch), when it has one, instead of the disc
 			const strikeArt = pack.hazardSprite(STRIKE_BULLET_ID);
 			const life = STORMCALLER.data.strike.life;
-			const strikeFolder = subFolder(
-				folder,
-				strikeArt !== undefined ? HAZARD_ART_VIEW.strike.folderName : STRIKE_VIEW.folderName,
-			);
+			// SA17: the discs (the stand-in) in their own folder, the art's anchors in theirs
+			const strikeFolder = subFolder(folder, STRIKE_VIEW.folderName);
 			strike = new DecalPool(
 				strikeFolder,
 				STRIKE_DECAL,
@@ -540,7 +570,7 @@ export class BulletRenderController implements OnStart {
 				life,
 				strikeArt !== undefined
 					? new StrikeSpritePool(
-							strikeFolder,
+							subFolder(folder, HAZARD_ART_VIEW.strike.folderName),
 							subFolder(folder, HAZARD_ART_VIEW.scorch.folderName),
 							PARKED,
 							strikeArt,
@@ -561,9 +591,8 @@ export class BulletRenderController implements OnStart {
 			const visual = pack.placeholder(GOO_BULLET_ID);
 			// docs/GOO_ART.md GA4: the pack's goo floor sprite, when it has one, instead of the disc
 			const gooArt = pack.floorSprite(GOO_BULLET_ID);
-			const gooFolder = subFolder(folder, gooArt !== undefined ? GOO_ART_VIEW.folderName : GOO_VIEW.folderName);
 			goo = new DecalPool(
-				gooFolder,
+				subFolder(folder, GOO_VIEW.folderName),
 				GOO_DECAL,
 				pack.visualColor(visual.color),
 				Enum.Material[visual.material],
@@ -571,7 +600,7 @@ export class BulletRenderController implements OnStart {
 				SLIME.data.goo.life,
 				gooArt !== undefined
 					? new FloorSpritePool(
-							gooFolder,
+							subFolder(folder, GOO_ART_VIEW.folderName),
 							`${GOO_DECAL.name}Sprite`,
 							PARKED,
 							floorSpriteLook(gooArt, S, GOO_VIEW.thicknessStuds),
@@ -591,12 +620,8 @@ export class BulletRenderController implements OnStart {
 			const visual = pack.placeholder(emberId);
 			// docs/HAZARD_ART.md HA5: the pack's ember hazard sprite (the burn loop), when it has one, instead of the disc
 			const emberArt = pack.hazardSprite(emberId);
-			const emberFolder = subFolder(
-				folder,
-				emberArt !== undefined ? HAZARD_ART_VIEW.ember.folderName : BUILD_BULLET_VIEW.ember.folderName,
-			);
 			ember = new DecalPool(
-				emberFolder,
+				subFolder(folder, BUILD_BULLET_VIEW.ember.folderName),
 				EMBER_DECAL,
 				pack.visualColor(visual.color),
 				Enum.Material[visual.material],
@@ -604,7 +629,7 @@ export class BulletRenderController implements OnStart {
 				EMBER_BURST.life,
 				emberArt !== undefined
 					? new EmberSpritePool(
-							emberFolder,
+							subFolder(folder, HAZARD_ART_VIEW.ember.folderName),
 							PARKED,
 							emberArt,
 							pack.color(HAZARD_ART_VIEW.ember.role),
@@ -618,10 +643,18 @@ export class BulletRenderController implements OnStart {
 			);
 		}
 		this.ember = ember;
+		// SA17: the hazards' art readiness by HAZARD_* index (undefined: no art, discs only)
+		const emberHazardId = PLAYER_BULLET_LOOK_IDS[PlayerBulletLook.EMBER];
+		const hazardReady = new ReadyIds([
+			decal && pack.floorSprite(GOO_BULLET_ID) !== undefined ? GOO_BULLET_ID : undefined,
+			strikeDecal && pack.hazardSprite(STRIKE_BULLET_ID) !== undefined ? STRIKE_BULLET_ID : undefined,
+			emberDecal && pack.hazardSprite(emberHazardId) !== undefined ? emberHazardId : undefined,
+		]);
 		const looks = PLAYER_BULLET_LOOK_IDS.map((id) => bulletLook(pack, id, playerLength, 2));
 		const trails = looks.map((look, i) => (lookHasTrail(i as PlayerBulletLookId) ? trailLook(look) : undefined));
 		const playerSkip = emberDecal ? isEmberPayload : undefined;
 		const playerArt = artLooks(pack, PLAYER_BULLET_LOOK_IDS, "player");
+		const playerReady = artReadyIds(PLAYER_BULLET_LOOK_IDS, playerArt);
 		let playerSprites: SpriteBulletPool | undefined;
 		if (playerArt.size() > 0) {
 			const spriteTrails = new Map<number, TrailLook>();
@@ -639,6 +672,7 @@ export class BulletRenderController implements OnStart {
 				spriteTrails,
 				BULLET_ART_VIEW.liftStuds.player,
 			);
+			playerSprites.ready = playerReady;
 		}
 		this.playerSprites = playerSprites;
 		const player = new BulletPool(
@@ -663,6 +697,11 @@ export class BulletRenderController implements OnStart {
 				const alpha = this.sim.getAlpha();
 				const store = clientStore.getState();
 				const reducedMotion = selectJuice(store).reducedMotion;
+				// SA17: art only once ready (re-read when the readiness epoch moved)
+				const readiness = this.preload.getReadiness();
+				enemyReady.refresh(readiness);
+				playerReady.refresh(readiness);
+				hazardReady.refresh(readiness);
 				// Sprite pools first: each neon pool then skips the slots its sprite pool drew (withSprites).
 				if (enemySprites !== undefined) {
 					enemySprites.reducedMotion = reducedMotion;
@@ -675,9 +714,9 @@ export class BulletRenderController implements OnStart {
 					floorKey: state.endless?.floor ?? 0,
 					motion: !reducedMotion,
 				};
-				goo?.frame(state.combat.enemyBullets, clock);
-				strike?.frame(state.combat.enemyBullets, clock);
-				ember?.frame(state.combat.playerBullets, clock);
+				goo?.frame(state.combat.enemyBullets, clock, hazardReady.isReady(HAZARD_GOO));
+				strike?.frame(state.combat.enemyBullets, clock, hazardReady.isReady(HAZARD_STRIKE));
+				ember?.frame(state.combat.playerBullets, clock, hazardReady.isReady(HAZARD_EMBER));
 				const n = partySize(state);
 				const me = this.sim.getViewPlayerIndex(); // spectating: the watched teammate's bullets stay opaque
 				const trailsOn = buildTrailsOn(selectDisplay(store).buildFx, reducedMotion);
@@ -740,6 +779,11 @@ function artLooks(
 		}
 	}
 	return out;
+}
+
+/** By look index, the look's logical id when it has art (`art`), else undefined: the sprite pool's readiness gate. */
+function artReadyIds(ids: ReadonlyArray<string>, art: ReadonlyMap<number, SpriteBulletLook>): ReadyIds {
+	return new ReadyIds(ids.map((id, i) => (art.has(i) ? id : undefined)));
 }
 
 /**

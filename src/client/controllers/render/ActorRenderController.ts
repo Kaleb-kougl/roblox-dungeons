@@ -69,6 +69,7 @@ import {
 	vengefulCorpseView,
 	vengefulPulseOn,
 	viewAffix,
+	FlipTracker,
 	ShieldFlashWatch,
 	type ActorGroup,
 	type ActorLook,
@@ -90,6 +91,7 @@ import type { JuiceSettings } from "shared/settings";
 import { VIEW_HIT_CLIP_SEC } from "shared/view/dummy";
 import { goldenFlickerTransparency, goldenTicksLeft, isGoldenKind } from "shared/view/golden";
 import { FxTrackerController } from "../fx/FxTrackerController";
+import { PreloadController } from "../game/PreloadController";
 import { SimController } from "../game/SimController";
 import { ThemeController } from "../game/ThemeController";
 import {
@@ -125,13 +127,21 @@ interface Ring {
 	color: Color3 | undefined;
 }
 
-/** One player's view (co-op: one per party member, built on first use): a sprite set or the placeholder capsule. */
+/**
+ * One player's view (co-op: one per party member, built on first use): the sprite set, or the placeholder capsule
+ * while the pack has no set or its art is not ready (the stand-in, docs/STAGE_ASSETS.md SA17). Each body is built the
+ * first time it is drawn and kept for the run; the one not drawn is parked.
+ */
 interface PlayerView {
-	readonly model: PlaceholderModel | undefined;
-	readonly sprite: SpriteView | undefined;
+	model: PlaceholderModel | undefined;
+	sprite: SpriteView | undefined;
 	readonly pip: BasePart;
-	readonly ring: Ring | undefined;
-	look: ActorLook;
+	/** Built with the sprite (undefined: the pack has no ring image). */
+	ring: Ring | undefined;
+	/** The body drawn last frame (undefined: none yet). */
+	drawn: "art" | "standIn" | undefined;
+	/** As last written (undefined: rewrite, after a swap). */
+	look: ActorLook | undefined;
 	transparency: number;
 	/** The placeholder capsule sits under the player-outline Model (shared/view playerOutlined; changes reparent). */
 	outlined: boolean;
@@ -140,6 +150,10 @@ interface PlayerView {
 interface ActorView {
 	kind: number;
 	id: number;
+	/** The archetype's visual id (data.spriteId): the logical id whose readiness picks art or stand-in. */
+	visualId: string;
+	/** The view could be drawn as art (a sprite input and a pack set); art then follows the id's readiness (SA17). */
+	artCapable: boolean;
 	/** Exactly one of model / sprite is set. */
 	model: PlaceholderModel | undefined;
 	sprite: SpriteView | undefined;
@@ -231,6 +245,18 @@ interface ActorView {
  * The Goldling (docs/FORTUNE.md FO8): through the same two paths (its placeholder gold block; ACTOR_SPRITE_INPUTS'
  * `golden` once the pack has an `enemy.golden` set: idle / move / hit / death), flickering in its last seconds
  * (goldenFlicker; never under reduced motion). Its timer ring is GoldenRenderController's.
+ *
+ * Stand-ins (docs/STAGE_ASSETS.md "Revision 2", SA17): a set is drawn only once its art is READY on this device
+ * (PreloadController.isArtReady: every sheet of the set, rims included, downloaded; no optional sheet joins on its
+ * own, so a set never draws a blank frame); until then the actor takes the placeholder path above (the stand-in:
+ * under the one Enemies Highlight like any placeholder enemy, never a Highlight per actor). The sprite-set cache
+ * keeps the pack's answer; readiness is asked at acquire. Each frame polls the readiness (shared/view FlipTracker):
+ * when the epoch moved, every LIVE actor whose visual id flipped and is drawn the wrong way is released and
+ * re-acquired (the pools' keys already keep sprites and placeholders apart), so a pack turns into its art mid-fight,
+ * and back under KV_StandInsForce. A corpse keeps the view it died with until its slot frees (no swap mid-death).
+ * Players: the capsule until the players' set is ready, then the sprite (usePlayerBody: each body built on first draw,
+ * the other parked, the capsule out of the player-outline Model); the ring replaces the pip only once its image is
+ * ready too.
  */
 @Controller({})
 export class ActorRenderController implements OnStart {
@@ -298,10 +324,18 @@ export class ActorRenderController implements OnStart {
 	private readonly aura = new AuraView();
 	private auraColor = SPRITE_TINT_NONE;
 
+	// --- stand-ins (docs/STAGE_ASSETS.md SA17) ---------------------------------------------------
+	/** This frame's readiness flips (polled once per frame). */
+	private readonly flips = new FlipTracker();
+	/** This frame: the players' set is drawn (the pack has it and it is ready), and the ring image is ready. */
+	private playerArt = false;
+	private ringReady = false;
+
 	constructor(
 		private readonly sim: SimController,
 		private readonly theme: ThemeController,
 		private readonly fx: FxTrackerController,
+		private readonly preload: PreloadController,
 	) {}
 
 	onStart(): void {
@@ -352,6 +386,12 @@ export class ActorRenderController implements OnStart {
 		this.lastState = state;
 		this.moveParts.clear();
 		this.moveCFrames.clear();
+		// Stand-ins (SA17): which ids flipped since last frame; the players' art and ring, read once per frame.
+		const readiness = this.preload.getReadiness();
+		const flipped = this.flips.poll(readiness);
+		this.playerArt =
+			this.spriteSet(ACTOR_VIEW.playerVisualId) !== undefined && readiness.isReady(ACTOR_VIEW.playerVisualId);
+		this.ringReady = readiness.isReady(ACTOR_VIEW.ringVisualId);
 		this.motion?.beginFrame(state, this.dtSec, this.fx.settings());
 		this.drawPlayers(state, alpha);
 		this.shieldWatch.update(state);
@@ -366,7 +406,7 @@ export class ActorRenderController implements OnStart {
 				if (view !== undefined) this.release(slot, view);
 				continue;
 			}
-			if (view === undefined || view.kind !== a.kind || view.id !== a.id) {
+			if (view === undefined || view.kind !== a.kind || view.id !== a.id || (flipped && this.swapDue(view, a))) {
 				if (view !== undefined) this.release(slot, view);
 				view = this.acquire(slot, a, state);
 			}
@@ -400,6 +440,15 @@ export class ActorRenderController implements OnStart {
 		}
 	}
 
+	/**
+	 * A live view whose visual id flipped this frame and is now drawn the wrong way (art while not ready, a stand-in
+	 * while ready): released and re-acquired. Corpses keep the view they died with until the slot frees (SA17).
+	 */
+	private swapDue(view: ActorView, a: Readonly<ActorState>): boolean {
+		if (a.alive === 0 || !view.artCapable || !this.flips.has(view.visualId)) return false;
+		return this.preload.isArtReady(view.visualId) !== (view.sprite !== undefined);
+	}
+
 	/** The pack's sprite set for a visual ID (cached), undefined for the placeholder path. */
 	private spriteSet(id: string): SpriteSet | undefined {
 		let set = this.spriteSets.get(id);
@@ -423,7 +472,9 @@ export class ActorRenderController implements OnStart {
 		const id = def.data.spriteId;
 		const corpseTicks = def.data.corpseTicks ?? CORPSE_TICKS;
 		const spriteInput = ACTOR_SPRITE_INPUTS.get(def.id);
-		const set = spriteInput !== undefined ? this.spriteSet(id) : undefined;
+		const artSet = spriteInput !== undefined ? this.spriteSet(id) : undefined;
+		// SA17: the set's art only once its content is ready on this device; until then the placeholder (stand-in)
+		const set = artSet !== undefined && this.preload.isArtReady(id) ? artSet : undefined;
 		// Hulking (docs/ENEMY_VARIANTS.md EV9): drawn radius / data radius; it is stamped before init, so final here.
 		const affixScale =
 			viewAffix(state, slot, a.id) === AffixKind.HULKING ? affixDrawScale(a.radius, def.data.radius) : 1;
@@ -449,6 +500,8 @@ export class ActorRenderController implements OnStart {
 			view = {
 				kind: a.kind,
 				id: a.id,
+				visualId: id,
+				artCapable: true,
 				model: undefined,
 				sprite,
 				spriteInput,
@@ -484,6 +537,8 @@ export class ActorRenderController implements OnStart {
 			view = {
 				kind: a.kind,
 				id: a.id,
+				visualId: id,
+				artCapable: artSet !== undefined,
 				model,
 				sprite: undefined,
 				spriteInput: undefined,
@@ -644,22 +699,8 @@ export class ActorRenderController implements OnStart {
 		return goldenFlickerTransparency(goldenTicksLeft(state, slot), simSec, this.fx.settings().reducedMotion);
 	}
 
+	/** A player's view: the facing pip now; the body (sprite or capsule) on its first draw (usePlayerBody). */
 	private buildPlayerView(pack: ThemePack, folder: Instance): PlayerView {
-		const set = this.spriteSet(ACTOR_VIEW.playerVisualId);
-		// Every player's view carries the player-outline rim; drawPlayer shows it on the watched player only.
-		const sprite =
-			set !== undefined ? new SpriteView(set, folder, set, 0, pack.color(PLAYER_OUTLINE.role)) : undefined;
-		const model =
-			set === undefined
-				? buildPlaceholder(
-						pack,
-						ACTOR_VIEW.playerVisualId,
-						pack.placeholder(ACTOR_VIEW.playerVisualId),
-						1,
-						folder,
-						true,
-				  )
-				: undefined;
 		const pipVisual = pack.placeholder(ACTOR_VIEW.facingPipVisualId);
 		const pip = renderPart("Part", false);
 		pip.Name = "FacingPip";
@@ -668,14 +709,63 @@ export class ActorRenderController implements OnStart {
 		pip.Material = Enum.Material[pipVisual.material];
 		pip.Parent = folder;
 		return {
-			model,
-			sprite,
+			model: undefined,
+			sprite: undefined,
 			pip,
-			ring: set !== undefined ? buildRing(pack, set, folder) : undefined,
-			look: "normal",
-			transparency: 0,
+			ring: undefined,
+			drawn: undefined,
+			look: undefined,
+			transparency: -1,
 			outlined: false,
 		};
+	}
+
+	/**
+	 * Stand-ins (docs/STAGE_ASSETS.md SA17): makes `mode` the drawn body of `view`, building it on first use (the sprite
+	 * with its ring and the player-outline rim; the capsule under the players group) and parking the other one (a
+	 * parked capsule leaves the player-outline Model). The cached look / transparency are reset so the new body is
+	 * written in full this frame.
+	 */
+	private usePlayerBody(view: PlayerView, mode: "art" | "standIn", pack: ThemePack): void {
+		if (view.drawn === mode) return;
+		const folder = this.groups!.players;
+		if (mode === "art") {
+			const set = this.spriteSet(ACTOR_VIEW.playerVisualId)!;
+			if (view.sprite === undefined) {
+				// Every player's view carries the player-outline rim; drawPlayer shows it on the watched player only.
+				view.sprite = new SpriteView(set, folder, set, 0, pack.color(PLAYER_OUTLINE.role));
+				view.ring = buildRing(pack, set, folder);
+			}
+			view.sprite.reset();
+			if (view.model !== undefined && view.drawn !== undefined) {
+				this.setPlayerOutlined(view, false);
+				this.place(view.model, PARKED);
+			}
+		} else {
+			if (view.model === undefined) {
+				view.model = buildPlaceholder(
+					pack,
+					ACTOR_VIEW.playerVisualId,
+					pack.placeholder(ACTOR_VIEW.playerVisualId),
+					1,
+					folder,
+					true,
+				);
+			}
+			const sprite = view.sprite;
+			if (sprite !== undefined && view.drawn !== undefined) {
+				sprite.park();
+				this.moveParts.push(sprite.anchor);
+				this.moveCFrames.push(PARKED);
+				if (view.ring !== undefined) {
+					this.moveParts.push(view.ring.part);
+					this.moveCFrames.push(PARKED);
+				}
+			}
+		}
+		view.drawn = mode;
+		view.look = undefined;
+		view.transparency = -1;
 	}
 
 	/** Every player (co-op: each party member, index order); views beyond the party are parked. */
@@ -735,8 +825,10 @@ export class ActorRenderController implements OnStart {
 		const visible = playerBlinkVisible(p.dead, p.hurtTicks);
 		// Player outline (docs/PLAYER_OUTLINE.md): the watched, living player while the setting and the switch are on.
 		const outlined = playerOutlined(isLocal, dead, this.playerOutlineSetting, this.playerOutlineOn);
+		const art = this.playerArt;
+		this.usePlayerBody(view, art ? "art" : "standIn", pack);
 
-		const sprite = view.sprite;
+		const sprite = art ? view.sprite : undefined;
 		if (sprite !== undefined) {
 			this.moveParts.push(sprite.anchor);
 			this.moveCFrames.push(new CFrame(at));
@@ -761,9 +853,14 @@ export class ActorRenderController implements OnStart {
 			this.drawPlayerModel(view, p, at, dirX, dirZ, dead, rolling, alpha, pack, look, visible);
 			this.setPlayerOutlined(view, outlined);
 		}
-		const rimDrawn = view.model !== undefined && outlined && visible;
+		const rimDrawn = !art && outlined && visible;
 
-		const ring = view.ring;
+		// The ring only on the sprite and once its image is ready; else the facing pip (and the ring part parked).
+		const ring = sprite !== undefined && this.ringReady ? view.ring : undefined;
+		if (ring === undefined && sprite !== undefined && view.ring !== undefined) {
+			this.moveParts.push(view.ring.part);
+			this.moveCFrames.push(PARKED);
+		}
 		if (ring !== undefined) {
 			// The ring replaces the facing pip (the sprite shows the facing); hidden when dead, like the pip.
 			this.moveParts.push(view.pip);

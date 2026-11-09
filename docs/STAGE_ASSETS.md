@@ -488,6 +488,33 @@ smoke test lines, CLAUDE.md decision log. Fresh-phone playtest: a full solo run 
   prefetch lines at each reveal and on the menu / a lobby; a fresh join lifts on the menu kit; the tutorial's start
   covered by its soft wait; `KV_StageAssetAudit` over floors 1-10 (expect misses only from ids the manifest truly
   lacks).
+- **SA17 (actors, bullets, hazards, auras).** Pure helpers `shared/view/standIns.ts`: `drawsArt(hasArt, ready)`,
+  `FlipTracker` (`poll(feed)` once per frame -> moved?; `has(id)` for this frame's flips, either direction; the first
+  poll syncs, a new feed object counts as all flipped) and `ReadyIds` (a fixed index -> logical id list, re-read only
+  when the epoch moves; `isReady(i)`), over `ReadinessFeed` (ArtReadiness satisfies it). The renderers poll
+  `PreloadController.getReadiness()` per frame (no `onReadinessChanged` listener needed: they run every frame).
+  **ActorRenderController:** `spriteSets` still caches the pack's answer; `acquire` draws the set only while
+  `isArtReady(spriteId)`. `ActorView.visualId` / `artCapable`; when the epoch moved, a LIVE actor whose id flipped and is
+  drawn the wrong way is released and re-acquired in the same frame (`swapDue`; pool keys already split `sprite:` from
+  placeholder keys; the stand-in goes under the one Enemies Highlight, Highlight count unchanged). Corpses keep the view
+  they died with until the slot frees (no swap mid-death). A set is all-or-nothing: ready only when every sheet of it
+  (rims and optional sheets included) is in, so a sprite never draws a blank frame (decided here: no per-sheet ids).
+  Players: `PlayerView` builds its pip only; `usePlayerBody` builds the sprite (+ ring) or the capsule on first draw,
+  parks the other (the capsule leaves `Players/Outlined`), resets the cached look / transparency; the player-outline
+  Highlight follows the drawn body; the ring (`ui.ring.player`) replaces the pip only once its image is ready too.
+  **Bullets:** the sprite pools are built up front whenever the pack has bullet art (anchors grow lazily) and carry
+  `SpriteBulletPool.ready` (ReadyIds by look); a look not ready is not drawn there, so the neon pool after it draws it:
+  bullets in flight change pool on the frame. **Goo / strike / ember:** `DecalPool.frame(sim, clock, artReady)` draws
+  the discs until ready, then the sprite drawer; a mode change parks the other side (`FloorSpriteDrawer.parkAll`, new:
+  FloorSpritePool, StrikeSpritePool (drops its scorches), EmberSpritePool). The discs now always live in their plain
+  folders (`Goo`, `Strike`, `Ember`) and the art anchors in the art folders; `DecalPool.poolSize` is discs + anchors.
+  **BoostAuraController:** per kind `ReadyIds` over `fx.boost.aura.<kind>`; the disc until ready (the shown / seen swap
+  parks the unused piece). WeaponViewController, motionFx (ghosts copy drawn sprites only) and bulletTrails draw no art
+  by id: unchanged. Not in SA17's files and left as is (cosmetic, nothing gameplay-relevant goes invisible):
+  FxSpriteController and GoldenRenderController's coin burst (`pack.fx`).
+  Studio checks pending: `KV_StandInsForce` = "all" draws the whole run in stand-ins and is playable; clearing it swaps
+  everything live; with `KV_FakeAssetLatency` the knight capsule turns into the knight mid-walk, a pack of enemies
+  mid-fight, bullets in flight; no orphan parts (pool counts settle), Highlights under 31.
 
 ## Out of scope
 

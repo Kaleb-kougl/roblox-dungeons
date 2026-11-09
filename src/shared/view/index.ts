@@ -55,6 +55,8 @@
  *   artReadiness.ts  ArtReadiness (docs/STAGE_ASSETS.md SA15): per content id pending / ready / failed (one retry),
  *                 logical ids ready once every content id resolved, epoch + flippedSince for the stand-in swaps,
  *                 the KV_StandInsForce force (tunables: ART_READINESS in artReadinessConfig.ts)
+ *   standIns.ts   the renderers' stand-in swaps (docs/STAGE_ASSETS.md SA17): drawsArt, FlipTracker (per-frame flips),
+ *                 ReadyIds (a fixed id list's readiness, re-read per epoch)
  *   stageLoader.ts  the stage loader (docs/STAGE_LOADER.md): StageLoad (one cover's phases: server wait, forge, view
  *                 rebuild, assets, settle, reveal), stageMerge, floorChangeStaged, pregenTarget / PregenTracker (floor
  *                 n + 1 during floor n's draft), the KV_Debug listener timing line (tunables: STAGE_LOADER and the
@@ -118,6 +120,7 @@ export * from "./latencyProbe";
 export * from "./preloadConfig";
 export * from "./artReadinessConfig";
 export * from "./artReadiness";
+export * from "./standIns";
 export * from "./preload";
 export * from "./preloadStrings";
 export * from "./stageLoaderConfig";

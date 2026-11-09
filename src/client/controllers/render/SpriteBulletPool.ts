@@ -4,6 +4,7 @@ import { SIM_DT, type BulletSimulation, type Vec3 as SimVec3 } from "shared/sim"
 import type { BulletSprite, SpriteFrame } from "shared/theme";
 import {
 	BULLET_ART_VIEW,
+	type ReadyIds,
 	bulletArtSizeKey,
 	bulletFrame,
 	bulletPartSize,
@@ -186,6 +187,12 @@ export class SpriteBulletPool {
 	trailsOn = false;
 	/** Reduced motion: every sprite holds BULLET_ART_VIEW.reducedMotionFrame (set every frame). */
 	reducedMotion = false;
+	/**
+	 * Stand-ins (docs/STAGE_ASSETS.md SA17): by look index, whether that look's art is ready on this device (the owner
+	 * refreshes it every frame). A look not ready is not drawn here, so the neon pool after it draws it (its placeholder
+	 * ball / bolt) until it flips: in-flight bullets change pool on the frame. Undefined: every look with art is drawn.
+	 */
+	ready: ReadyIds | undefined;
 
 	constructor(
 		private readonly folder: Folder,
@@ -235,6 +242,8 @@ export class SpriteBulletPool {
 					scale = sim.scaleAt(i);
 					lookIndex = this.lookOf(payload, scale);
 					look = this.looks.get(lookIndex);
+					if (look !== undefined && this.ready !== undefined && !this.ready.isReady(lookIndex))
+						look = undefined;
 				}
 			}
 			if (look === undefined) {
