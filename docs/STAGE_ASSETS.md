@@ -411,6 +411,35 @@ smoke test lines, CLAUDE.md decision log. Fresh-phone playtest: a full solo run 
   file, so the server's shared/run never loads the theme packs. Spec: seeds 1-12 x floors 1-10 plus floors 15 / 20 on
   two seeds (not 1-60 x 1-20: ~200 ms a floor under Lune, the spec already takes ~27 s), the tutorial's floors, M1, no
   forging (the endless dungeon cache is unchanged), every floor-1 roster of seeds 1-60 inside the first-floor guess.
+- **SA4 (queue).** `PreloadLane` = `"front" | "next" | "back"` (`PRELOAD_LANES`); `PreloadQueue.take` serves them in
+  that order, a push to a higher lane moves an id still waiting in a lower one, `retry(ref, lane)` re-queues a taken id
+  past the seen set (the readiness retry, the fake-latency re-fetch), `pending(lane?)`, `laneOf(id)`. `LoadWaiters`
+  gained `progress(payload)` ([resolved, total], undefined once fired), `cancel(payload)` and `forget(id)`; payloads
+  match by identity. `PreloadController.whenLoaded` now returns a `LoadHandle` (`progress()`, `isDone()`, `cancel()`;
+  callers that ignore it compile unchanged) and `request` logs `next` pushes like `front`. Per-device chunk size
+  `PRELOAD.chunkSizeByDevice` (4 / 4 / 4 until SA0 / SA20), `preloadDeviceOf` (ten-foot = console; touch without
+  keyboard or gamepad = touch, InputController's rule) and `preloadChunkSize`. `KV_FakeAssetLatency`
+  (`RUN_ATTRIBUTES.fakeAssetLatency`, Studio only, read live): the worker waits before each chunk and skips the
+  fetch-status pre-check; `whenLoaded` re-fetches each of its already-resolved refs once per id per session.
+  ArtReadiness is NOT reset by it (a ready id stays ready; stand-ins are `KV_StandInsForce`'s job).
+- **SA15 (readiness core).** `shared/view/artReadiness.ts` `ArtReadiness` (tunables `ART_READINESS`: `retryAfterSec`
+  10, `maxFailures` 2) as specified in section 11. Logical ids are ready when every content id is ready or finally
+  failed; no content ids = ready. `flippedSince(epoch)` lists tracked ids whose `isReady` CHANGED (pending -> ready in
+  play; `setForced` also flips ids back to not ready), each once, in flip order: renderers re-read `isReady`. Tracked =
+  asked through `isReady` or `track`. The per-sheet split ("optional sheets count on their own") is the caller's: a
+  logical id is all of its `contentIds`, so a set's optional sheet flips on its own only if asked by its own id
+  (ThemePack's `contentIds` lists a set's sheets under the set id today; SA17 decides). No warm stage (SAD7);
+  the module comment names the extension point. The front lane's order (characters, bullets, first room) is SA5 /
+  SA2's push order, not built here.
+- **SA16 (feed and debug).** PreloadController owns the one `ArtReadiness` (every `assetIdList()` id tracked at
+  start), marks Success ready and failures failed, re-queues a first failure on the back lane once `retryDue` hands it
+  out (Heartbeat), and pre-checks `ContentProvider:GetAssetFetchStatus` per id before a chunk
+  (`PRELOAD.fetchStatusPrecheck`, pcall; a failing call turns it off; provisional until SA0 (e)). API:
+  `getReadiness()`, `isArtReady(id)`, `onReadinessChanged(cb(epoch)) -> unsubscribe` (Heartbeat, at most once per
+  frame, each listener in its own thread). `KV_StandInsForce` (`RUN_ATTRIBUTES.standInsForce`, read live,
+  `parseStandInsForce`: "all" or a comma list of prefixes). Logs: `[Ready] <id> ready (<n> content ids)` per flip
+  under `KV_Debug`, one `[Ready] all <n> ids ready in <t> s (...)` summary always. The join screen is unchanged
+  (same tiers, same chunk size; the pre-check only resolves ids the engine already has).
 
 ## Out of scope
 

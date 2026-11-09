@@ -18,6 +18,9 @@ export type PreloadEntryMode = "instance" | "string";
  */
 export const PRELOAD_BIOME_PREFIX = "biome:";
 
+/** The device classes with their own chunk size (docs/STAGE_ASSETS.md SAD11: the one per-device difference). */
+export type PreloadDevice = "desktop" | "touch" | "console";
+
 export interface PreloadConfig {
 	/** Logical-id prefixes (and biome entries) of the core tier, in download order (first = first on screen). */
 	readonly core: ReadonlyArray<string>;
@@ -29,8 +32,17 @@ export interface PreloadConfig {
 	readonly timeoutSec: number;
 	/** The screen's fade-out on release, seconds (instant under reduced motion). */
 	readonly fadeSec: number;
-	/** Entries per PreloadAsync call: small, so a run start's request gets in between chunks. */
-	readonly chunkSize: number;
+	/**
+	 * Entries per PreloadAsync call, per device class (docs/STAGE_ASSETS.md SAD11; shared/view preloadDeviceOf): small,
+	 * so a run start's request gets in between chunks. Equal until SA0 / SA20 measure each device.
+	 */
+	readonly chunkSizeByDevice: Readonly<Record<PreloadDevice, number>>;
+	/**
+	 * Before fetching a chunk, ask `ContentProvider:GetAssetFetchStatus` (behind pcall) and resolve an id already
+	 * `Success` in the engine without a fetch (docs/STAGE_ASSETS.md SA16). Skipped under the Studio fake latency.
+	 * Provisional until SA0 (e) says the status is reliable.
+	 */
+	readonly fetchStatusPrecheck: boolean;
 	/** P6 (D5): draw each core image once under the cover before release. Off unless the P0 spike finds a hitch. */
 	readonly warmCoreImages: boolean;
 	/** D4: hidden instances (default) or bare content id strings. */
@@ -71,7 +83,8 @@ export const PRELOAD: PreloadConfig = {
 	skipAfterSec: 3,
 	timeoutSec: 15,
 	fadeSec: 0.25,
-	chunkSize: 4,
+	chunkSizeByDevice: { desktop: 4, touch: 4, console: 4 },
+	fetchStatusPrecheck: true,
 	warmCoreImages: false,
 	entryMode: "instance",
 };

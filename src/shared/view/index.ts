@@ -48,9 +48,13 @@
  *                 swing, ...) for the audio mapper and the feel controllers (docs/FEEL.md J1)
  *   preload.ts    asset preloading (docs/PRELOAD.md): the core / later tiers of a pack's content ids, the loading
  *                 screen's release and Skip rules, PreloadProgress, a boss floor's push (tunables: PRELOAD in
- *                 preloadConfig.ts), PreloadQueue (the client's two-lane download queue) and JoinGate (the join
- *                 flow fires once the first-run gate decided and the screen released); preloadStrings.ts: the
- *                 loading screen's string keys (LOADING_STRINGS; its layout: LOADING_VIEW in preloadConfig.ts)
+ *                 preloadConfig.ts), PreloadQueue (the client's three-lane download queue: front / next / back) and
+ *                 JoinGate (the join flow fires once the first-run gate decided and the screen released);
+ *                 preloadStrings.ts: the loading screen's string keys (LOADING_STRINGS; its layout: LOADING_VIEW in
+ *                 preloadConfig.ts)
+ *   artReadiness.ts  ArtReadiness (docs/STAGE_ASSETS.md SA15): per content id pending / ready / failed (one retry),
+ *                 logical ids ready once every content id resolved, epoch + flippedSince for the stand-in swaps,
+ *                 the KV_StandInsForce force (tunables: ART_READINESS in artReadinessConfig.ts)
  *   stageLoader.ts  the stage loader (docs/STAGE_LOADER.md): StageLoad (one cover's phases: server wait, forge, view
  *                 rebuild, assets, settle, reveal), stageMerge, floorChangeStaged, pregenTarget / PregenTracker (floor
  *                 n + 1 during floor n's draft), the KV_Debug listener timing line (tunables: STAGE_LOADER and the
@@ -110,6 +114,8 @@ export * from "./watch";
 export * from "./latencyProbeConfig";
 export * from "./latencyProbe";
 export * from "./preloadConfig";
+export * from "./artReadinessConfig";
+export * from "./artReadiness";
 export * from "./preload";
 export * from "./preloadStrings";
 export * from "./stageLoaderConfig";

@@ -56,6 +56,19 @@ export const RUN_ATTRIBUTES = {
 	 * playtest. Off by default.
 	 */
 	pacingOff: "KV_PacingOff",
+	/**
+	 * Number of seconds, Studio only (ignored outside Studio), read live (docs/STAGE_ASSETS.md SA4): the preload worker
+	 * waits that long before each PreloadAsync chunk, the engine fetch-status pre-check is skipped, and the content ids
+	 * passed to PreloadController.whenLoaded that already resolved are fetched once more (once per id per session), so
+	 * the stage gates and the stand-in swaps can be exercised against Studio's cache. Unset or 0: off.
+	 */
+	fakeAssetLatency: "KV_FakeAssetLatency",
+	/**
+	 * String, debug, read live (docs/STAGE_ASSETS.md SA16): "all" draws every logical id as its stand-in (the pack's
+	 * placeholder), or a comma list of logical-id prefixes ("enemy., bullet.") draws those; unset or empty: off.
+	 * Feeds ArtReadiness.setForced (shared/view parseStandInsForce).
+	 */
+	standInsForce: "KV_StandInsForce",
 } as const;
 
 /** The web build's DEFAULT_SEED (`?seed=` absent). */

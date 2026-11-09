@@ -23,6 +23,8 @@ import {
 	PreloadProgress,
 	PreloadQueue,
 	bossContentIds,
+	preloadChunkSize,
+	preloadDeviceOf,
 	loadingReleased,
 	preloadPlan,
 	skipVisible,
@@ -265,15 +267,17 @@ describe("the music tiers", () => {
 	});
 });
 
-describe("PreloadQueue (docs/PRELOAD.md P3)", () => {
-	it("serves the front lane first, each lane first in first out, in chunks", () => {
+describe("PreloadQueue (docs/PRELOAD.md P3, docs/STAGE_ASSETS.md SA4)", () => {
+	it("serves front, then next, then back, each lane first in first out, in chunks", () => {
 		const q = new PreloadQueue();
 		expect(q.push([image(1), image(2), image(3)], "back")).toBe(3);
+		expect(q.push([image(7), image(8)], "next")).toBe(2);
 		expect(q.push([sound(4), sound(5)], "front")).toBe(2);
-		expect(q.pending()).toBe(5);
-		expect(numbers(q.take(3))).toEqual(numbers([sound(4), sound(5), image(1)]));
+		expect([q.pending(), q.pending("front"), q.pending("next"), q.pending("back")]).toEqual([7, 2, 2, 3]);
+		expect(numbers(q.take(3))).toEqual(numbers([sound(4), sound(5), image(7)]));
 		expect(q.push([sound(6)], "front")).toBe(1);
-		expect(numbers(q.take(3))).toEqual(numbers([sound(6), image(2), image(3)]));
+		expect(numbers(q.take(3))).toEqual(numbers([sound(6), image(8), image(1)]));
+		expect(numbers(q.take(3))).toEqual(numbers([image(2), image(3)]));
 		expect(q.take(3)).toEqual([]);
 		expect(q.pending()).toBe(0);
 	});
@@ -289,10 +293,60 @@ describe("PreloadQueue (docs/PRELOAD.md P3)", () => {
 		expect(numbers(q.take(1))).toEqual(numbers([image(2)]));
 		// taken: never queued again, whatever the lane
 		expect(q.push([image(2)], "front")).toBe(0);
+		expect(q.push([image(2)], "next")).toBe(0);
 		expect(q.push([image(2)], "back")).toBe(0);
 		expect(q.seen(fakeId(2))).toBe(true);
 		expect(q.seen(fakeId(9))).toBe(false);
 		expect(numbers(q.take(4))).toEqual(numbers([sound(3), image(1)]));
+	});
+
+	it("a next push jumps back, a front push jumps next; a lower push never moves an id down", () => {
+		const q = new PreloadQueue();
+		q.push([image(1), image(2), image(3)], "back");
+		expect(q.push([image(3)], "next")).toBe(1);
+		expect(q.laneOf(fakeId(3))).toBe("next");
+		expect(q.push([image(3)], "back")).toBe(0);
+		expect(q.laneOf(fakeId(3))).toBe("next");
+		q.push([image(4)], "next");
+		expect(q.push([image(4)], "front")).toBe(1);
+		expect(q.push([image(4)], "next")).toBe(0);
+		expect([q.laneOf(fakeId(4)), q.laneOf(fakeId(9))]).toEqual(["front", undefined]);
+		expect(numbers(q.take(10))).toEqual(numbers([image(4), image(3), image(1), image(2)]));
+		expect(q.laneOf(fakeId(4))).toBe("taken");
+	});
+
+	it("retry re-queues a taken id once, bypassing the seen set", () => {
+		const q = new PreloadQueue();
+		q.push([image(1), image(2)], "front");
+		q.take(1);
+		expect(q.retry(image(1), "back")).toBe(true);
+		expect(q.retry(image(1), "back")).toBe(false); // waiting already
+		expect(q.laneOf(fakeId(1))).toBe("back");
+		expect(numbers(q.take(10))).toEqual(numbers([image(2), image(1)]));
+		// a retry of an id still waiting moves it up like a push
+		q.retry(image(1), "back");
+		q.push([image(5)], "next");
+		expect(q.retry(image(1), "front")).toBe(true);
+		expect(numbers(q.take(10))).toEqual(numbers([image(1), image(5)]));
+		expect(q.retry(image(9), "next")).toBe(true); // never accepted: queued like a push
+		expect(numbers(q.take(10))).toEqual(numbers([image(9)]));
+	});
+});
+
+describe("the chunk size per device (docs/STAGE_ASSETS.md SAD11)", () => {
+	it("classes a device and reads its chunk size", () => {
+		const base = { tenFoot: false, touchEnabled: false, keyboardEnabled: true, gamepadEnabled: false };
+		expect(preloadDeviceOf(base)).toBe("desktop");
+		expect(preloadDeviceOf({ ...base, tenFoot: true, gamepadEnabled: true })).toBe("console");
+		expect(preloadDeviceOf({ ...base, touchEnabled: true, keyboardEnabled: false })).toBe("touch");
+		// a touch laptop with a keyboard is a desktop
+		expect(preloadDeviceOf({ ...base, touchEnabled: true })).toBe("desktop");
+		for (const d of ["desktop", "touch", "console"] as const) {
+			expect(preloadChunkSize(d)).toBe(PRELOAD.chunkSizeByDevice[d]);
+			expect(preloadChunkSize(d)).toBeGreaterThan(0);
+		}
+		const zero = { ...PRELOAD, chunkSizeByDevice: { desktop: 4, touch: 0, console: 4 } };
+		expect(preloadChunkSize("touch", zero)).toBe(1);
 	});
 });
 
@@ -356,6 +410,33 @@ describe("LoadWaiters", () => {
 	it("a repeated id waits once", () => {
 		const w = new LoadWaiters<number>();
 		expect(w.wait(["x", "x"], 1)).toBe(false);
+		expect(w.progress(1)).toEqual([0, 1]);
 		expect(w.resolve("x")).toEqual([1]);
+	});
+
+	it("reads an open wait's progress (docs/STAGE_ASSETS.md SA4)", () => {
+		const w = new LoadWaiters<string>();
+		w.resolve("a");
+		expect(w.wait(["a", "b", "c", "d"], "stage")).toBe(false);
+		expect(w.progress("stage")).toEqual([1, 4]);
+		w.resolve("c");
+		expect(w.progress("stage")).toEqual([2, 4]);
+		w.resolve("b");
+		w.resolve("d");
+		expect(w.progress("stage")).toBe(undefined); // fired
+		expect(w.progress("never")).toBe(undefined);
+	});
+
+	it("cancels a wait; forget makes a resolved id wait again", () => {
+		const w = new LoadWaiters<string>();
+		expect(w.wait(["a"], "gone")).toBe(false);
+		expect(w.cancel("gone")).toBe(true);
+		expect(w.cancel("gone")).toBe(false);
+		expect(w.resolve("a")).toEqual([]);
+		expect(w.wait(["a"], "now")).toBe(true);
+		w.forget("a");
+		expect(w.isResolved("a")).toBe(false);
+		expect(w.wait(["a"], "again")).toBe(false);
+		expect(w.resolve("a")).toEqual(["again"]);
 	});
 });

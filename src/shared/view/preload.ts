@@ -5,7 +5,13 @@
  * No Roblox APIs: the client's PreloadController runs the queue. Tunables: PRELOAD in preloadConfig.ts.
  */
 import type { ContentRef } from "shared/theme";
-import { PRELOAD, PRELOAD_BIOME_PREFIX, PRELOAD_BOSS_IDS, type PreloadConfig } from "./preloadConfig";
+import {
+	PRELOAD,
+	PRELOAD_BIOME_PREFIX,
+	PRELOAD_BOSS_IDS,
+	type PreloadConfig,
+	type PreloadDevice,
+} from "./preloadConfig";
 
 /** What the plan reads from a theme pack (ThemePack satisfies it). */
 export interface PreloadSource {
@@ -172,55 +178,92 @@ export class PreloadProgress {
 	}
 }
 
-/** A queue lane: `front` for needs that are about to show (a run start, a boss floor), `back` for the plan's tiers. */
-export type PreloadLane = "front" | "back";
+/**
+ * A queue lane, served in this order: `front` for needs that are about to show (the stage being waited for: a run
+ * start, a boss floor), `next` for the stage after it (docs/STAGE_ASSETS.md SA4: the prefetch of floor n + 1, the
+ * menu's first-floor guess), `back` for the plan's tiers and everything else.
+ */
+export type PreloadLane = "front" | "next" | "back";
+
+/** The lanes, highest priority first (`take` serves them in this order). */
+export const PRELOAD_LANES: ReadonlyArray<PreloadLane> = ["front", "next", "back"];
+
+/** A lane's rank: 0 = served first. */
+function laneRank(lane: PreloadLane): number {
+	return lane === "front" ? 0 : lane === "next" ? 1 : 2;
+}
 
 /**
- * The client's download queue, pure (docs/PRELOAD.md P3; PreloadController runs it): two FIFO lanes of content ids,
- * `take` serving the front lane first. Each content id is accepted ONCE per queue (queued, taken or resolved: the
- * session's `seen` set), with one exception: a front push of an id still waiting in the back lane moves it to the
- * end of the front lane (a run start's sounds jump the later tier). An id already taken is never queued again.
+ * The client's download queue, pure (docs/PRELOAD.md P3, docs/STAGE_ASSETS.md SA4; PreloadController runs it): three
+ * FIFO lanes of content ids, `take` serving front, then next, then back. Each content id is accepted ONCE per queue
+ * (queued, taken or resolved: the session's `seen` set), with one exception: a push to a higher lane of an id still
+ * waiting in a lower one moves it to the end of the higher lane (a run start's sounds jump the later tier; a front
+ * push jumps the prefetch). An id already taken is never queued again by `push`; only `retry` re-queues it (the
+ * readiness feed's one retry of a failed fetch, the Studio fake-latency gate check).
  */
 export class PreloadQueue {
-	private readonly front = new Array<ContentRef>();
-	private readonly back = new Array<ContentRef>();
+	private readonly lanes: ReadonlyArray<Array<ContentRef>> = [
+		new Array<ContentRef>(),
+		new Array<ContentRef>(),
+		new Array<ContentRef>(),
+	];
 	/** Content id -> where it is: still waiting in a lane, or taken (in flight or resolved). */
 	private readonly where = new Map<string, PreloadLane | "taken">();
 
 	/**
-	 * Queues each of `refs` not seen before at the end of `lane` (in order; a ref repeated within `refs` once). A front
-	 * push also moves ids waiting in the back lane. Returns how many refs were queued or moved.
+	 * Queues each of `refs` not seen before at the end of `lane` (in order; a ref repeated within `refs` once). A push
+	 * also moves ids waiting in a lower lane up to `lane`. Returns how many refs were queued or moved.
 	 */
 	push(refs: ReadonlyArray<ContentRef>, lane: PreloadLane): number {
 		let count = 0;
+		const rank = laneRank(lane);
 		for (const ref of refs) {
 			const at = this.where.get(ref.contentId);
 			if (at === undefined) {
 				this.where.set(ref.contentId, lane);
-				(lane === "front" ? this.front : this.back).push(ref);
+				this.lanes[rank].push(ref);
 				count += 1;
-			} else if (at === "back" && lane === "front") {
-				this.removeFromBack(ref.contentId);
-				this.where.set(ref.contentId, "front");
-				this.front.push(ref);
+			} else if (at !== "taken" && laneRank(at) > rank) {
+				this.removeFrom(this.lanes[laneRank(at)], ref.contentId);
+				this.where.set(ref.contentId, lane);
+				this.lanes[rank].push(ref);
 				count += 1;
 			}
 		}
 		return count;
 	}
 
-	/** Takes up to `max` waiting refs, the front lane first, each lane first in first out. Taken ids stay seen. */
+	/**
+	 * Re-queues `ref` at the end of `lane` once it was taken (in flight or resolved), bypassing the seen set. An id
+	 * still waiting moves up as `push` would (never down); an id never accepted is queued. Returns whether it is now
+	 * waiting in a lane it was not waiting in before.
+	 */
+	retry(ref: ContentRef, lane: PreloadLane): boolean {
+		const at = this.where.get(ref.contentId);
+		if (at === "taken") {
+			this.where.set(ref.contentId, lane);
+			this.lanes[laneRank(lane)].push(ref);
+			return true;
+		}
+		return this.push([ref], lane) > 0;
+	}
+
+	/** Takes up to `max` waiting refs, front lane first, then next, then back, each first in first out. */
 	take(max: number): Array<ContentRef> {
 		const out = new Array<ContentRef>();
-		while (out.size() < max && this.front.size() > 0) out.push(this.front.shift()!);
-		while (out.size() < max && this.back.size() > 0) out.push(this.back.shift()!);
+		for (const lane of this.lanes) {
+			while (out.size() < max && lane.size() > 0) out.push(lane.shift()!);
+		}
 		for (const ref of out) this.where.set(ref.contentId, "taken");
 		return out;
 	}
 
-	/** Refs waiting in both lanes. */
-	pending(): number {
-		return this.front.size() + this.back.size();
+	/** Refs waiting in every lane (or in `lane` alone). */
+	pending(lane?: PreloadLane): number {
+		if (lane !== undefined) return this.lanes[laneRank(lane)].size();
+		let n = 0;
+		for (const l of this.lanes) n += l.size();
+		return n;
 	}
 
 	/** The id was ever accepted (waiting, in flight or resolved). */
@@ -228,11 +271,16 @@ export class PreloadQueue {
 		return this.where.has(contentId);
 	}
 
-	private removeFromBack(contentId: string): void {
+	/** Where the id is: the lane it waits in, "taken" (in flight or resolved), or undefined (never accepted). */
+	laneOf(contentId: string): PreloadLane | "taken" | undefined {
+		return this.where.get(contentId);
+	}
+
+	private removeFrom(lane: Array<ContentRef>, contentId: string): void {
 		let i = 0;
-		while (i < this.back.size()) {
-			if (this.back[i].contentId === contentId) {
-				this.back.remove(i);
+		while (i < lane.size()) {
+			if (lane[i].contentId === contentId) {
+				lane.remove(i);
 				return;
 			}
 			i += 1;
@@ -242,20 +290,27 @@ export class PreloadQueue {
 
 /**
  * Who waits for which content ids (docs/STAGE_LOADER.md SL6; PreloadController.whenLoaded runs it): the session's set
- * of resolved ids (ok or failed: both count, a failed id is never retried) and the open waits, each a set of ids still
- * unresolved and its payload (the callback). `wait` returns true when every id already resolved (the caller fires at
+ * of resolved ids (ok or failed: both count) and the open waits, each a set of ids still unresolved, its size at the
+ * start and its payload (the callback). `wait` returns true when every id already resolved (the caller fires at
  * once; nothing is stored); `resolve` returns the payloads whose last id that was, in the order they waited.
+ * `progress(payload)` reads an open wait's [resolved, total] (docs/STAGE_ASSETS.md SA4: the stage bars), `cancel`
+ * drops one, `forget` makes a resolved id unresolved again (the Studio fake-latency gate check re-fetches it).
+ * Payloads are compared by identity: give each wait its own (a fresh closure).
  */
 export class LoadWaiters<T extends defined> {
 	private readonly resolvedIds = new Set<string>();
-	private readonly waits = new Array<{ left: Set<string>; payload: T }>();
+	private readonly waits = new Array<{ left: Set<string>; total: number; payload: T }>();
 
 	/** `ids` resolved already: true (fire now). Else the wait is stored until its last id resolves. */
 	wait(ids: ReadonlyArray<string>, payload: T): boolean {
 		const left = new Set<string>();
-		for (const id of ids) if (!this.resolvedIds.has(id)) left.add(id);
+		const all = new Set<string>();
+		for (const id of ids) {
+			all.add(id);
+			if (!this.resolvedIds.has(id)) left.add(id);
+		}
 		if (left.size() === 0) return true;
-		this.waits.push({ left, payload });
+		this.waits.push({ left, total: all.size(), payload });
 		return false;
 	}
 
@@ -277,6 +332,35 @@ export class LoadWaiters<T extends defined> {
 		return out;
 	}
 
+	/**
+	 * An open wait's progress: [ids resolved, distinct ids waited for]. Undefined when `payload` has no open wait
+	 * (it fired, was cancelled, or never waited).
+	 */
+	progress(payload: T): [resolved: number, total: number] | undefined {
+		for (const w of this.waits) {
+			if (w.payload === payload) return [w.total - w.left.size(), w.total];
+		}
+		return undefined;
+	}
+
+	/** Drops the open wait of `payload` (it never fires). Returns whether one was open. */
+	cancel(payload: T): boolean {
+		let i = 0;
+		while (i < this.waits.size()) {
+			if (this.waits[i].payload === payload) {
+				this.waits.remove(i);
+				return true;
+			}
+			i += 1;
+		}
+		return false;
+	}
+
+	/** Makes a resolved id unresolved again: later waits include it until it resolves once more. Open waits keep theirs. */
+	forget(contentId: string): void {
+		this.resolvedIds.delete(contentId);
+	}
+
 	isResolved(contentId: string): boolean {
 		return this.resolvedIds.has(contentId);
 	}
@@ -285,6 +369,30 @@ export class LoadWaiters<T extends defined> {
 	open(): number {
 		return this.waits.size();
 	}
+}
+
+/** What the client reads to pick its PreloadDevice (GuiService / UserInputService, once at start). */
+export interface PreloadDeviceInput {
+	/** GuiService:IsTenFootInterface() (a console on a TV). */
+	readonly tenFoot: boolean;
+	readonly touchEnabled: boolean;
+	readonly keyboardEnabled: boolean;
+	readonly gamepadEnabled: boolean;
+}
+
+/**
+ * The device class: a ten-foot interface is a console; touch with no keyboard and no gamepad is a touch device (the
+ * rule InputController uses for a phone's first device); anything else is a desktop.
+ */
+export function preloadDeviceOf(i: PreloadDeviceInput): PreloadDevice {
+	if (i.tenFoot) return "console";
+	if (i.touchEnabled && !i.keyboardEnabled && !i.gamepadEnabled) return "touch";
+	return "desktop";
+}
+
+/** Entries per PreloadAsync call on `device` (PRELOAD.chunkSizeByDevice), at least 1. */
+export function preloadChunkSize(device: PreloadDevice, cfg: PreloadConfig = PRELOAD): number {
+	return math.max(1, cfg.chunkSizeByDevice[device]);
 }
 
 /**
