@@ -22,6 +22,9 @@ Drafted from an audit of `main` @ `0a8e8ec4` after the owner's first co-op playt
 was laggy"). Owner answers (2026-11-07): a 3-tick minimum (FPD6), a 10 % fast slew (FPD7), one tuned default with no
 setting (FPD8). See "As built" for the real API and the deviations from the design.
 
+**Revision 2 (planned, 2026-11-09): the lead from measured trips** (FP9-FP16, decisions FPD9-FPD14; section at the
+end): the net lead is set from the 95th percentile of measured input round trips plus a margin, instead of +1 per miss.
+
 ## Why co-op stutters (findings)
 
 | Fact | Where | Consequence |
@@ -328,3 +331,208 @@ before FP0's numbers; only the tunables wait for them.
   (FPD8), so if they do not, the fix is the tunables (or local prediction sooner).
 - **Drafts and the stage cover.** Both keep stepping as today (the draft freezes the world inside the sim); a draft
   confirm reaches the server D ticks later, which only matters to the "waiting for N teammates" line.
+
+## Revision 2: the lead from measured trips (FP9-FP16, planned)
+
+The net lead is still today's miss counter: +1 tick per missed deadline, -1 after 10 clean seconds. Revision 2 sets it
+from **measured round trips** instead: the slowest 5 % of the last few seconds' trips plus a margin, raised at once,
+brought back down within seconds with a little slack so it does not bounce. It ends the two things the playtest felt:
+**a delay that lingers** (up to 500 ms for minutes after one spike) and **dropped inputs** (presses lost to the server's
+repeat-last while the lead climbs, or after it decayed below what the network needs).
+
+**Client timing plus one small wire field.** No sim, dungeon, hash, replay, fixture, score or log change: the client
+still steps exactly the merged log; what changes is which future tick its inputs are sent for. The server gains a
+per-player **input echo** on `lockstepFrames` (how early each player's newest input reached it), which never enters the
+log, the validator or a hash (FPD9). Solo runs are untouched.
+
+### Status (2026-11-09)
+
+Planned, nothing built. Drafted from an audit of `main` @ `d007b503` (FP1-FP5 and FP8 built; FP0 / FP6 pending). FP0's
+real-session measurement should run with FP13's trip columns in the arrival log, so one session measures both.
+
+### Why the lead lingers and drops inputs (findings)
+
+| Fact | Where | Consequence |
+|---|---|---|
+| A miss is seen only when the finalized frame **differs** from the frame sent (`inputsEqual(mine, finalized)`) | client.ts `checkDeadline` | A late input that repeats the previous one counts as **clean**. The client cannot see it is late until the input changes, and that changed input (a press, a turn) is the one dropped |
+| The lead decays by one after `INPUT_LEAD_DECAY_TICKS` (600) "clean" ticks, never below `INPUT_DELAY_TICKS` 3 | client.ts `checkDeadline`, config.ts | With invisible lates counted as clean, it can decay below what the network needs: the next press misses, the lead climbs back, and the cycle repeats every 10 s of steady input |
+| One tick down per 10 s | same | After a spike to `MAX_INPUT_LEAD_TICKS` 30 (500 ms), getting back to 10 ticks takes 200 s: **the lingering delay** (FP1 made the effective lead actually fall; it still falls this slowly) |
+| One tick up per miss | same | A spike that needs 10 more ticks costs at least 10 dropped inputs on the way up; every changed input during a head-of-line hold (one lost packet holds every later batch) is one more miss and one more tick, so the lead overshoots what the spike needed |
+| Nothing measures the round trip | client.ts, session.ts | The lead learns the network only by losing inputs to it |
+| The server knows exactly how early every input arrived: `relay.submit` sees the target tick and `finalizedTicks()` | relay.ts `submit` (`late` stats per player) | The measurement exists on the server; the client is never told |
+| The deadline needs: finalize T -> batch wait -> down -> the client's buffer (depth) -> the client's frame -> up -> before the server finalizes T + lead | session.ts `step`, client.ts `pump`, Design 5 | The lead must cover the whole loop, not only the network ping |
+| Inputs are neutral under the stage cover and through its fade | docs/STAGE_LOADER.md | Lates in a run's first second (before any trip is measured) repeat a neutral input: they cost nothing |
+
+`Player:GetNetworkPing()` was considered (FPD10): it is a smoothed network-only estimate, without the server's batch
+wait, its Heartbeat, the remote queues, the client's frame or the buffer. The lead would have to model those; the echo
+measures the actual path.
+
+### Design 9. A trip
+
+A **trip** is one input's round trip on the real path, in ticks: from the client stepping the frame after which it sent
+the input, to the server receiving it. Both ends are counted in ticks, so the server-client clock difference never
+enters.
+
+- **Client, at send** (`pump`, per target tick X): `sentAt[X]` = `state.tick` when X was sent, and `depthAt[X]` = the
+  pacer's raw depth then (`P - base`, ticks, not the whole-tick `depthTicks()`); `hitched[X]` when the send happened in a
+  hitched or catching-up frame (`PacingStats.hitched` / `catchingUp`, or `dt > PACING.hitchFrameSec` without pacing).
+  Kept in `sent` beside the frame (already a map tick -> frame), dropped at `checkDeadline` as today.
+- **Server, at receipt** (`submitInput(userId, firstTick, data, now)`): for the batch's newest tick X, the receipt
+  position `R` = `finalizedTicks() + clamp(pos - finalizedTicks(), 0, 1)`, `pos = (now - startedAt) x SIM_HZ`. A stalled
+  server's backlog (pos far past finalized) does not count against the client: the input really is early against the
+  ticks still to finalize.
+- **Slack** `= X + 1 - R`: how many ticks before its deadline X arrived (X is finalized by the first step with
+  `floor(pos) >= X + 1`). Late = the relay counted it late (`SubmitResult.late > 0`); a late input has slack <= 0.
+- **Echo:** every broadcast carries, **for its recipient only**, the newest input received from them since the last
+  broadcast: X (as an offset from the batch's `firstTick`), slack (1/16 tick, signed 16-bit, saturating) and the late
+  frames since the last echo (u8, saturating); or a "none" marker. Encoded by `wire.ts` `encodeInputEcho` /
+  `decodeInputEcho` (5 bytes a batch: 150 B/s per client at 30 batches a second, whatever the party size). A new
+  trailing argument of `lockstepFrames` (`echo: buffer`). The merged `data` stays the same bytes for everyone; the
+  service fires `lockstepFrames` once per member (`fire(player, ...)`) with that member's echo instead of once to the
+  party (FPD14), so no client ever receives a teammate's slack. A malformed echo is ignored (the frames still apply, the
+  client falls back to `inputsEqual` misses), never fatal like a broken merged batch.
+- **Client, on the echo:** `netTrip(X) = (X - sentAt[X]) - slack - depthAt[X]`: the lead X was sent with, minus what
+  it had to spare, minus the buffer. An input is in time exactly when its lead (without the buffer) is above its net
+  trip; the buffer is the pacer's and is added separately as today (Design 5, FPD12). A sample from a hitched send is
+  dropped from the window (the client's own stall is not the network's), but its late still counts (below).
+
+### Design 10. The lead from the trips (pure, `shared/lockstep/lead.ts`)
+
+A `LeadController` owns the net lead; LockstepClient asks it instead of `checkDeadline`'s counter. `nextInputTick()`
+stays `state.tick + netLead + depthTicks()` (Design 5), and FP1's send rules are unchanged (a target already sent sends
+nothing; a target that jumps leaves the gap to the server's repeat-last).
+
+- **Window:** the net trips of the last `LEAD.windowSec` (5 s; ~150 samples at 30 echoes a second).
+- **Target** `L* = clamp(ceil(p95(netTrip) + LEAD.marginTicks), minLead, maxLead)`: the slowest 5 % of recent trips
+  (`LEAD.percentile` 0.95, nearest rank like `ArrivalLog`) plus `marginTicks` (1.5: the receipt and the client's send are
+  both on whole frames). `minLead` = `INPUT_DELAY_TICKS` 3, `maxLead` = `MAX_INPUT_LEAD_TICKS` 30 (lead + depth 42 stays
+  inside `MAX_INPUT_AHEAD_TICKS` 120).
+- **Up at once.** When `L*` passes the lead, the lead jumps to it the same frame: no input is lost to a lead climbing one
+  miss at a time.
+- **A late bumps to what it measured.** An echoed late (or, without an echo, an `inputsEqual` mismatch) raises the lead
+  to `max(lead + 1, ceil(netTrip(X) + marginTicks))` at once and restarts the fall hold. A late is a trip past the
+  window's p95; the bump keeps the next inputs from following it.
+- **Down within seconds, with slack.** The lead falls only while the **fall target**
+  `ceil(p95(netTrip) + marginTicks + LEAD.fallSlackTicks)` (0.75 more) is below it continuously for `LEAD.fallHoldSec`
+  (1 s), then by one tick every `LEAD.fallStepSec` (0.25 s) while that holds. A trip p95 sitting at a tick boundary sits
+  inside the 0.75 band and changes nothing; a spike that left the window (5 s) is gone from the lead about 1 + 0.25 x
+  ticks later: 30 -> 10 ticks in ~6 s (today 200 s).
+- **Warm-up.** Before `LEAD.minSamples` (20) trips are in the window the target is `ceil(max(netTrip so far) +
+  marginTicks)` and nothing falls; before the first echo, `INPUT_DELAY_TICKS` (the warm-up's lates are under the stage
+  cover: neutral repeats).
+- **Old servers / no echo.** No echo for `LEAD.echoTimeoutSec` (2 s) while frames arrive: today's rule
+  (`inputsEqual` +1, -1 after `leadDecayTicks`), so a client never runs blind on a server that does not echo.
+- **The drop on a fall.** A fall of one tick skips one sample (FP1). A press held for one frame only would vanish with
+  it: the skipped sample's buttons are OR-ed into the next frame sent (`pendingButtons`), so a tap becomes a one-tick
+  hold one tick later, never nothing. Axes take the newer sample.
+
+`LeadController` API: `sent(target, sentAt, depthRaw, hitched)`, `echoed(target, slack, lates, now)`,
+`mismatch(now)` (the `inputsEqual` fallback), `frame(now)` (holds / steps the fall), `lead()`, `stats(): LeadStats`
+(`lead`, `target`, `fallTarget`, `tripP50`, `tripP95`, `tripMax`, `samples`, `lates`, `bumps`, `falls`, `echoing`).
+Pure numbers; nothing reaches the sim.
+
+### Design 11. Diagnostics (KV_Debug)
+
+- **Debug line** (docs/FEEL.md J9): `co-op lead {lead}t {ms}ms (net {net}t, trip p95 {p95}ms) · ...`; `late {n}` now
+  counts echoed lates (the truth), `miss` keeps the `inputsEqual` mismatches. Only the local player's own numbers:
+  clients never see a teammate's (FPD14); who lagged is on the server's end line.
+- **Arrival log** (FP0's instrument): each `[Pace]` line gains `trip p50 {ms} p95 {ms} max {ms} · lead {lead}t target
+  {L*}t fall {Lf}t · lates {n} bumps {n} falls {n}`.
+- **Server:** `LockstepSession.inputStats(i)` (slack p50 / p95, lates) for the run's end log line (`LOCKSTEP_DONE`), one
+  line per player, so a playtest's lates are on the server log too.
+
+### Design 12. A/B switch
+
+`LockstepTunables.lead: LeadTunables | undefined` (`DEFAULT_LOCKSTEP.lead` = `LEAD`; undefined = today's miss counter,
+which every older spec that pins it passes). `KV_LeadOff` (Workspace attribute, read at each co-op start like
+`KV_PacingOff`) builds the client with `lead: undefined`, for FP6's playtest. The server always echoes.
+
+### Tunables (`LEAD`, shared/lockstep/config.ts)
+
+| Name | Value | Why |
+|---|---|---|
+| `windowSec` | 5 | Follows a changing network within seconds; ~150 samples for a stable p95 |
+| `percentile` | 0.95 | The owner's "slowest 5 %": one outlier is one late (bumped at once), not a lasting delay |
+| `marginTicks` | 1.5 | The receipt and the send are on whole frames (the pacer's `marginTicks` reasoning); FP11 retunes it to the lates target |
+| `fallSlackTicks` | 0.75 | Hysteresis: a p95 wobbling round a tick boundary never moves the lead |
+| `fallHoldSec` / `fallStepSec` | 1 / 0.25 | Down within seconds: 20 ticks of excess gone in ~6 s, one skipped sample per 0.25 s |
+| `minSamples` | 20 | ~0.7 s of echoes before the p95 is trusted |
+| `echoTimeoutSec` | 2 | No echo for this long while frames arrive: today's rule |
+
+All provisional until FP0 / FP6 (and FP11's spec numbers).
+
+### Decisions (FPD9-FPD13 proposed; FPD14 the owner's answer, 2026-11-09)
+
+- **FPD9. The server echoes; a small wire change.** One trailing `lockstepFrames` argument, server -> client only,
+  outside the log, the validator and every hash. Revises FPD1 (client only) for the lead: the server is the only place
+  that sees how early an input arrived. Considered: client-only estimates (below).
+- **FPD10. Trips of the real inputs, not a ping.** `GetNetworkPing` or a separate ping remote measure the network only;
+  the deadline also waits on the server's batch, its Heartbeat, the client's frame and the buffer. The echo includes all
+  of them and needs no model. A ping can still be printed beside it under KV_Debug.
+- **FPD11. p95 + 1.5 ticks, raised at once, lowered after 1 s by a tick per 0.25 s.** The owner's brief. The lates
+  target (FP11) is under 0.5 % of ticks after the warm-up on the spec networks.
+- **FPD12. The buffer stays a separate part** (Design 5): trips are measured without it, so a deeper buffer still raises
+  the lead the same frame and a shallower one lowers it without waiting on the trip window.
+- **FPD13. A tap is never lost to a fall** (`pendingButtons`). A sim input change only in what the client sends: the
+  log is still the log.
+- **FPD14. Each client gets only its own echo** (owner, 2026-11-09). One `fire` per member per batch, each carrying
+  that member's echo beside the shared merged bytes. The number of calls each client receives is unchanged (one per
+  batch); the server makes n fires a batch instead of one fire to a list. Teammates' latency stays server-side
+  (`inputStats(i)` on the run's end line). Considered: everyone's echo in one shared fire (a "who lags" debug view, but
+  every client would receive every teammate's slack); a separate echo remote (twice the calls each client receives).
+
+Open owner calls: FPD9 (the wire field) and FPD11's numbers (how fast down; the lates target).
+
+### Tasks
+
+- [ ] **FP9. The echo (server + wire).** `submitInput(..., now)` records each player's newest tick and slack;
+  `LockstepStepResult.echoes` per broadcast (one buffer per player); `encodeInputEcho` / `decodeInputEcho`;
+  `lockstepFrames` gains `echo`; RunSessionService passes `os.clock()` and fires each member their own echo;
+  `inputStats(i)` on the run's end line. -> Verify: `wire` spec
+  round trips (none, saturation, malformed refused); a session spec: an input sent k ticks early echoes slack k (+/- the
+  receipt fraction), a late one slack <= 0 and a late count; a stalled server (`now` jumps 3 s) echoes positive slack for
+  inputs ahead of `finalizedTicks()`; every NET_RUN still finishes ranked with identical logs and verdicts.
+- [ ] **FP10. `LeadController` (pure).** `shared/lockstep/lead.ts` + `LEAD` + barrel. -> Verify: `lead.spec.ts` on
+  synthetic trip traces: steady trips of 6 +/- 1 ticks hold the lead at `ceil(p95 + 1.5)` with no change in 60 s; a
+  step from 12 to 4 ticks is back on the new target within `windowSec + fallHoldSec + 0.25 x 8` s; a step up is followed
+  the same frame; one 30-tick outlier bumps once and is gone ~6 s later; a p95 at x.0 / x.5 / x.9 never bounces; a late
+  bumps to its own trip; warm-up and no-echo fallback; hitched samples ignored, their lates counted.
+- [ ] **FP11. LockstepClient wiring.** `sent` keeps `sentAt` / `depthAt` / `hitched`; `receive(..., echo?)`;
+  `nextInputTick` from the controller; `pendingButtons`; `misses` = echoed lates, `mismatches` the old count;
+  `leadStats()`. -> Verify: every lockstep spec passes unchanged with `lead: undefined`; with `LEAD`: the NET_RUNS
+  (20-120 / 0-200 ms one way) finish with identical state and logs, the lead within one tick of an oracle (`ceil(p95` of
+  the true trips from the harness's timestamps `+ 1.5)`) after the warm-up, relay `missed` per player under 0.5 % of
+  ticks after the first 2 s; FP1's latency-step spec: falls back within the bound above (today: 10 s a tick); a tap
+  sampled on a fall's skipped tick reaches the log; both measured beside the old rule (the spec prints both).
+- [ ] **FP12. Spike spec.** The harness's `Channel` with a 1 s spike (+200 ms one way) and a 300 ms head-of-line hold
+  mid-run. -> Verify: changed inputs dropped during the spike at most the old rule's (printed), the lead's peak at most
+  `ceil(spike trip + 1.5)` (the old rule's printed), back within one tick of the pre-spike lead within 8 s of the spike's
+  end.
+- [ ] **FP13. Diagnostics.** The debug line, the arrival log's trip columns, `KV_LeadOff`, the server end line (Design
+  11-12). -> Verify: `latencyProbe.spec` / `arrivalLog.spec` updated; `npm run verify`; Studio two-player test (Test >
+  Clients and Servers) shows trips on loopback and the lead at `minLead`; with Studio's incoming replication lag at
+  100 ms the lead settles near `ceil(trip + 1.5)` and no `late`.
+- [ ] **FP14 [owner]. Measure (with FP0).** FP0's session with FP13 in: trips p50 / p95 / max per client, lates,
+  bumps, falls; once with `KV_LeadOff`. -> Verify: docs/SPIKES.md "Frame pacing" table gains the trip columns; `LEAD`
+  confirmed or edited.
+- [ ] **FP15 [owner]. Playtest (with FP6).** Lead on vs `KV_LeadOff`. -> Verify: no lingering delay after a spike, no
+  lost presses noticed; lates per minute recorded.
+- [ ] **FP16. Docs.** docs/SERVER.md "Clients" (the echo, the measured lead), docs/FEEL.md J9 (debug line),
+  CLAUDE.md's row and decision log entry, this section's status.
+
+Order: FP9 -> FP10 (parallel) -> FP11 -> FP12 -> FP13 -> FP14 / FP15 -> FP16. FP10 needs nothing from FP9.
+
+### Risks
+
+- **The margin trades delay for lates.** 1.5 ticks on top of the p95 may still leave ~1-3 % of trips late on a very
+  jittery network; each is bumped at once, but the input that was late is lost (repeat-last). FP11's oracle and lates
+  numbers, then FP14, set the margin; raising it to 2 costs 17 ms.
+- **A falling lead on a lossy link.** Head-of-line holds come in bursts; a 5 s window can forget the last one just
+  before the next. The late bump keeps the cost to one input per burst; if FP14 shows repeated bursts, lengthen the window
+  or keep the max of two windows.
+- **Per-member fires.** The merged bytes no longer go out in one fire to the party, but in one fire per member (FPD14).
+  The bytes each client receives grow by 5 a batch; the server's fire calls grow from 1 to n a batch (n <= 8). FP9's
+  Studio check confirms the members still receive their batches in order (each member's calls stay ordered on their own
+  reliable remote, which is all the client needs).
+- **Local prediction** (claude/local-prediction-plan.md) predicts up to the effective lead, capped at 10 ticks: a lower,
+  steadier lead helps it directly; nothing there changes.
