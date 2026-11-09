@@ -15,6 +15,8 @@
  *                              `fastForwardTicks` past it (a long hold: a server stall, a long network hiccup)
  *   alpha()                    the interpolation alpha, in [0, 1), once the caller stepped what frame() returned
  *   depthTicks()               the buffer depth the input lead adds (Design 5): whole ticks, with hysteresis, capped
+ *   rawDepthTicks(), unsteady()  P - base in ticks, and "the last frame was hitched / catching up / fast-forwarding":
+ *                              what LockstepClient records per sent input for its measured lead (Revision 2, Design 9)
  *
  * Target: base = the smallest offset over `floorWindowSec`; jitter = the `jitterPercentile` offset over
  * `jitterWindowSec` minus base; P* = base + clamp(jitter / dt + marginTicks, minDepthTicks, maxDepthTicks) x dt.
@@ -281,6 +283,22 @@ export class PlayoutPacer {
 	 */
 	depthTicks(): number {
 		return this.started ? this.leadDepth : 0;
+	}
+
+	/**
+	 * The raw buffer depth P - base in ticks (0 before the first arrival): what a sent input's trip excludes
+	 * (docs/FRAME_PACING.md Design 9; stats().depthMs in ticks, without allocating).
+	 */
+	rawDepthTicks(): number {
+		return this.started ? (this.offset - this.base) / this.dt : 0;
+	}
+
+	/**
+	 * The last frame() was not a steady playout frame: hitched, catching up or fast-forwarding (stats().hitched /
+	 * catchingUp / fastForwarding). Inputs sent in it carry the client's own stall, not the network's (Design 9).
+	 */
+	unsteady(): boolean {
+		return this.isHitched || this.isCatchingUp || this.isFastForward;
 	}
 
 	/** The target playout offset P* (seconds, before the phase shift). */

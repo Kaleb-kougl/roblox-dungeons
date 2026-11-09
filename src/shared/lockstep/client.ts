@@ -9,8 +9,8 @@
  *                              the pacing below; today's rule without it is "every queued frame, up to the cap". After
  *                              each stepped tick it samples the local input once and sends it for tick state.tick +
  *                              lead + depth (`nextInputTick`; lead starts at INPUT_DELAY_TICKS, +1 each time its own
- *                              input missed the deadline, -1 after `leadDecayTicks` clean ticks; depth is the pacing
- *                              buffer's, 0 without pacing), reports hashState every
+ *                              input missed the deadline, -1 after `leadDecayTicks` clean ticks, or the measured lead
+ *                              below; depth is the pacing buffer's, 0 without pacing), reports hashState every
  *                              `hashEvery` ticks (batched: one call per pump at most, throttled; resent until the
  *                              server's ack covers them, `acknowledge`), and once the whole party is down returns the
  *                              RunFinal claim and stops stepping. Sends follow the lead both ways: a step whose target
@@ -36,6 +36,23 @@
  * can only deepen the buffer). Pacing changes WHEN frames are stepped, never which: the sim still steps exactly the
  * merged log, and the inputs it sends are the only thing the client influences. Without pacing configured, or until a
  * pump passes `now`, everything behaves exactly as before.
+ *
+ * The measured lead (docs/FRAME_PACING.md Revision 2, Design 9-10). With `tunables.lead` defined the client owns a
+ * LeadController (lead.ts) and the net lead (`netLead()`, so `nextInputTick()` and `inputLead()`) is its `lead()`:
+ * every send is recorded (`sent(target, state.tick, the pacer's raw depth, unsteady frame)`), every batch is
+ * `received`, the server's echo (`receive`'s trailing `echo`, wire.ts `decodeInputEcho`; a malformed one is ignored,
+ * never fatal) is `echoed`, every deadline check goes to `deadline(matched, now)` and every pump calls `frame(now)`.
+ * The clock is the pacer's: `receive`'s / `pump`'s `now`, and a pump without one runs on the last clock + dt. Until a
+ * clock was ever given nothing is timed: no echo is fed, so the controller stays on its legacy rule (exactly
+ * `checkDeadline`'s miss counter below) and the run behaves as before. A send is "unsteady" (its trip is left out of
+ * the window, its late still counts) when the pacer's frame was hitched, catching up or fast-forwarding, or, unpaced,
+ * when dt is over PACING.hitchFrameSec. The tap latch (FPD13): a step whose target was already sent still samples
+ * (`sample(false)`), and that sample's buttons are OR-ed into the next frame actually sent (axes from the newer sample),
+ * so a one-frame tap on a fall's skipped tick becomes a one-tick hold one tick later instead of nothing. `misses`
+ * counts every input known to have missed: echoed lates while echoing, plus `inputsEqual` mismatches while not (no
+ * double count); `mismatches` counts every mismatch. Nothing here reaches the sim: only which tick an input is sent for
+ * (and a latched button) changes. With `tunables.lead` undefined: the legacy miss counter only, exactly as before
+ * (`sample` is called only when sending; an echo is ignored).
  *
  * Hitstop is never applied here: a co-op sim is paced by the server's frames alone (shared/view/fx freezeRules
  * `simPacerFor`); presentation may freeze sprites or the camera instead. The local player's character may be drawn
@@ -79,9 +96,20 @@ import {
 	RoomClearEvents,
 	VariantCueEvents,
 } from "shared/view/fx";
-import { DEFAULT_LOCKSTEP, type LockstepTunables } from "./config";
+import { DEFAULT_LOCKSTEP, PACING, type LockstepTunables } from "./config";
+import { LeadController, type LeadStats } from "./lead";
 import { PlayoutPacer, type PacingStats } from "./pacer";
-import { MergedDecoder, encodeInputBatch } from "./wire";
+import { MergedDecoder, decodeInputEcho, encodeInputBatch } from "./wire";
+
+/** Not a clock: what the lead controller gets before any was given (its legacy rule needs none). */
+const NO_CLOCK = 0 / 0;
+
+/**
+ * pump's input callback: the local input now, read once per stepped tick. `sending`: false when that tick's target
+ * was already sent (the lead just fell; only with the measured lead, for the tap latch): the sample is not sent itself,
+ * only its buttons are carried into the next frame sent.
+ */
+export type InputSampler = (sending: boolean) => Readonly<InputFrame>;
 
 export interface LockstepClientParams {
 	readonly runId: string;
@@ -173,8 +201,19 @@ export class LockstepClient implements RunView {
 	private freshHashes = false;
 	private stopped = false;
 	private endedReason: string | undefined;
-	/** Deadline misses of this client's own input (diagnostics). */
+	/**
+	 * Inputs of this client's own known to have missed the deadline (diagnostics): with the measured lead, the echoed
+	 * lates while echoing plus the `inputsEqual` mismatches while not; otherwise the mismatches.
+	 */
 	misses = 0;
+	/** Deadline checks where the server finalized a frame other than the one this client sent (`inputsEqual`). */
+	mismatches = 0;
+	/** The measured net lead (docs/FRAME_PACING.md Revision 2), when `tunables.lead` is defined. */
+	private readonly leadCtl: LeadController | undefined;
+	/** The lead controller's clock: the last `now` given to receive / pump, a clockless pump adding its dt. */
+	private leadClock: number | undefined;
+	/** Buttons of samples not sent (a fall's skipped tick), OR-ed into the next frame sent (the tap latch). */
+	private latched = 0;
 	/** The playout clock (docs/FRAME_PACING.md), when `tunables.pacing` is defined. */
 	private readonly pacer: PlayoutPacer | undefined;
 	/** A pump passed `now` with a pacer: pacing is on for the rest of the run. */
@@ -199,6 +238,11 @@ export class LockstepClient implements RunView {
 		this.lead = this.tunables.inputDelay;
 		const pacing = this.tunables.pacing;
 		this.pacer = pacing !== undefined ? new PlayoutPacer(pacing) : undefined;
+		const t = this.tunables;
+		this.leadCtl =
+			t.lead !== undefined
+				? new LeadController(t.lead, t.inputDelay, t.maxInputLead, t.leadDecayTicks)
+				: undefined;
 		this.decoder = new MergedDecoder(params.players);
 		this.state = createSimState(params.seed, params.spawn.x, params.spawn.z, params.config);
 		this.telemetry = new RunTelemetry(runStartHalfHearts(params.config));
@@ -222,15 +266,36 @@ export class LockstepClient implements RunView {
 	 * whenever a send happens.
 	 */
 	inputLead(): number {
-		return math.max(this.lead + this.depthTicks(), this.lastSentTick - this.state.tick);
+		return math.max(this.netLead() + this.depthTicks(), this.lastSentTick - this.state.tick);
 	}
 
 	/**
-	 * The network part of the lead ("netLead", docs/FRAME_PACING.md Design 5): the internal lead that adapts to misses
-	 * (+1 per miss, -1 after `leadDecayTicks` clean ticks), without the pacing buffer's depth. The KV_Debug line.
+	 * The network part of the lead ("netLead", docs/FRAME_PACING.md Design 5), without the pacing buffer's depth: the
+	 * measured lead's (LeadController.lead()) with `tunables.lead`, else the internal lead that adapts to misses (+1 per
+	 * miss, -1 after `leadDecayTicks` clean ticks). The KV_Debug line.
 	 */
 	netLead(): number {
-		return this.lead;
+		const ctl = this.leadCtl;
+		return ctl !== undefined ? ctl.lead() : this.lead;
+	}
+
+	/** The measured lead's numbers (trips, target, lates, bumps, falls); undefined without `tunables.lead`. */
+	leadStats(): LeadStats | undefined {
+		return this.leadCtl?.stats();
+	}
+
+	/** The server's echoes are steering the lead (LeadController.echoing()); false without `tunables.lead`. */
+	isLeadMeasured(): boolean {
+		return this.leadCtl?.echoing() === true;
+	}
+
+	/**
+	 * Buttons latched from samples not sent (a fall's skipped tick), going out with the next frame sent: inside pump's
+	 * `sample(true)` the frame sent is that sample's buttons OR these (the KV_Debug latency probe). 0 without the measured
+	 * lead.
+	 */
+	latchedButtons(): number {
+		return this.latched;
 	}
 
 	/**
@@ -240,7 +305,7 @@ export class LockstepClient implements RunView {
 	 * ticks strictly increase.
 	 */
 	nextInputTick(): number {
-		return this.state.tick + this.lead + this.depthTicks();
+		return this.state.tick + this.netLead() + this.depthTicks();
 	}
 
 	/** Pacing is on (see the file comment): a pacer is configured and a pump passed `now`. Stays on for the run. */
@@ -322,10 +387,12 @@ export class LockstepClient implements RunView {
 	}
 
 	/**
-	 * A merged batch (see the file comment). `now`: the local clock at arrival (the pacer's timestamp; ignored without
-	 * pacing configured). Returns false when it broke the stream.
+	 * A merged batch (see the file comment). `now`: the local clock at arrival (the pacer's timestamp and the measured
+	 * lead's; ignored without either configured). `echo`: the server's input echo for this client (wire.ts
+	 * `encodeInputEcho`; ignored without `tunables.lead`, when malformed, or before any clock was given). Returns false
+	 * when it broke the stream.
 	 */
-	receive(firstTick: number, data: unknown, now?: number): boolean {
+	receive(firstTick: number, data: unknown, now?: number, echo?: unknown): boolean {
 		if (this.broken !== undefined) return false;
 		if (firstTick !== this.received) {
 			this.broken = `merged batch for tick ${firstTick}, expected ${this.received}`;
@@ -348,14 +415,32 @@ export class LockstepClient implements RunView {
 				this.earlyNewest = newest;
 			}
 		}
+		const ctl = this.leadCtl;
+		if (ctl !== undefined && !this.steppingDone()) {
+			if (now !== undefined && isFiniteNumber(now)) {
+				const last = this.leadClock;
+				this.leadClock = last === undefined ? now : math.max(last, now);
+			}
+			const clock = this.leadClock;
+			if (clock !== undefined) {
+				const e = echo !== undefined ? decodeInputEcho(echo, firstTick) : undefined;
+				if (e !== undefined) {
+					ctl.echoed(e, clock);
+					// While echoing the echo's lates are the misses (their mismatches are not counted again).
+					if (ctl.echoing()) this.misses += e.lates;
+				}
+				ctl.received(clock);
+			}
+		}
 		return true;
 	}
 
 	/**
-	 * Steps queued merged frames (see the file comment). `sample()` is the local input now (read once per tick). `now`:
-	 * the local clock (the same one `receive` is given); with pacing configured, passing it turns pacing on.
+	 * Steps queued merged frames (see the file comment). `sample(sending)` is the local input now (read once per tick
+	 * that sends; with the measured lead also on a tick that does not, `sending` false). `now`: the local clock (the same
+	 * one `receive` is given); with pacing configured, passing it turns pacing on.
 	 */
-	pump(dt: number, sample: () => Readonly<InputFrame>, now?: number): PumpResult {
+	pump(dt: number, sample: InputSampler, now?: number): PumpResult {
 		resetFrameEvents(this.frameEvents);
 		this.scorePops.clear();
 		this.runEvents.clear();
@@ -383,6 +468,25 @@ export class LockstepClient implements RunView {
 		};
 		const state = this.state;
 		const budget = this.stepBudget(dt, now);
+		const ctl = this.leadCtl;
+		let depthRaw = 0;
+		let unsteady = false;
+		if (ctl !== undefined) {
+			if (now !== undefined && isFiniteNumber(now)) {
+				const last = this.leadClock;
+				this.leadClock = last === undefined ? now : math.max(last, now);
+			} else if (this.leadClock !== undefined) {
+				this.leadClock += math.max(dt, 0);
+			}
+			if (this.leadClock !== undefined) ctl.frame(this.leadClock);
+			const pacer = this.pacer;
+			if (this.pacing && pacer !== undefined) {
+				depthRaw = pacer.rawDepthTicks();
+				unsteady = pacer.unsteady();
+			} else {
+				unsteady = dt > (this.tunables.pacing ?? PACING).hitchFrameSec;
+			}
+		}
 		while (
 			this.broken === undefined &&
 			this.endedReason === undefined &&
@@ -429,16 +533,25 @@ export class LockstepClient implements RunView {
 				break;
 			}
 			// The local input for tick (next tick + lead). At or below the last tick sent (the lead just fell): already
-			// covered, nothing is sampled or sent. Past it by more than one (the lead just rose): the ticks between
-			// repeat the last input on the server.
+			// covered, nothing is sent (legacy: nothing sampled; measured: the sample's buttons are latched into the next
+			// frame sent). Past it by more than one (the lead just rose): the ticks between repeat the last input on the
+			// server.
 			const target = this.nextInputTick();
-			if (target <= this.lastSentTick) continue;
+			if (target <= this.lastSentTick) {
+				if (ctl !== undefined) this.latched = bit32.bor(this.latched, sample(false).buttons);
+				continue;
+			}
 			if (outgoing.size() > 0 && target !== outgoingFirst + outgoing.size()) flushInputs();
 			if (outgoing.size() === 0) outgoingFirst = target;
-			const f = copyInput(sample());
+			const f = copyInput(sample(true));
+			if (this.latched !== 0) {
+				f.buttons = bit32.bor(f.buttons, this.latched);
+				this.latched = 0;
+			}
 			outgoing.push(f);
 			this.sent.set(target, f);
 			this.lastSentTick = target;
+			ctl?.sent(target, state.tick, depthRaw, unsteady);
 		}
 		flushInputs();
 		this.collectHashes(dt, hashes);
@@ -495,12 +608,24 @@ export class LockstepClient implements RunView {
 		this.sinceResend = 0;
 	}
 
-	/** Lead adaptation: was the input this client sent for `tick` the one the server finalized? */
+	/**
+	 * Lead adaptation: was the input this client sent for `tick` the one the server finalized? The measured lead's
+	 * `deadline` (its legacy rule while not echoing is exactly the counter below), else the counter.
+	 */
 	private checkDeadline(tick: number, finalized: Readonly<InputFrame>): void {
 		const mine = this.sent.get(tick);
 		if (mine === undefined) return;
 		this.sent.delete(tick);
-		if (inputsEqual(mine, finalized)) {
+		const matched = inputsEqual(mine, finalized);
+		if (!matched) this.mismatches++;
+		const ctl = this.leadCtl;
+		if (ctl !== undefined) {
+			// While echoing the echo's lates are the misses: a mismatch then is not counted again.
+			if (!matched && !ctl.echoing()) this.misses++;
+			ctl.deadline(matched, this.leadClock ?? NO_CLOCK);
+			return;
+		}
+		if (matched) {
 			this.cleanTicks++;
 			if (this.cleanTicks >= this.tunables.leadDecayTicks && this.lead > this.tunables.inputDelay) {
 				this.lead--;

@@ -6,8 +6,8 @@
  *
  * Per rendered frame of a co-op run, in this order:
  *   frame(buttons, now)            the frame's sampled input (what the client would send)
- *   sent(buttons, tick)            inside LockstepClient.pump's sample: that input goes out for `tick`
- *                                  (LockstepClient.nextInputTick())
+ *   sent(buttons, tick)            inside LockstepClient.pump's sample when it is sent (`sample(true)`): that input
+ *                                  (with any latched buttons) goes out for `tick` (LockstepClient.nextInputTick())
  *   stepped(nextTick, now, missed) after the pump: every tick below `nextTick` (state.tick) has been stepped. `missed`:
  *                                  the pump saw one of this client's inputs miss the server's deadline, so a press
  *                                  resolved in it may have landed later than its tick: counted as `late`, not measured.

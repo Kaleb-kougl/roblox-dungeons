@@ -14,6 +14,7 @@ import {
 	SIM_HZ,
 	createSimState,
 	hashState,
+	inputsEqual,
 	isPartyWiped,
 	playerAt,
 	stepParty,
@@ -35,6 +36,7 @@ import {
 	HashLedger,
 	INPUT_FRAME_BYTES,
 	LEFT_FRAME,
+	LEAD,
 	LOCKSTEP_HASH_RATE,
 	LOCKSTEP_INPUT_RATE,
 	LockstepClient,
@@ -46,7 +48,10 @@ import {
 	decodeInputBatch,
 	decodeInputEcho,
 	encodeInputBatch,
+	encodeInputEcho,
+	nearestRank,
 	outliersOf,
+	type LeadStats,
 	type LockstepStepResult,
 	type LockstepTunables,
 } from "shared/lockstep";
@@ -273,7 +278,8 @@ class Channel {
 
 /** Frames per second the Net harness renders at by default (DT). */
 const NET_FPS = 60;
-// No pacing: these specs assert today's stepping (every received frame at once); Net's `pacing` option turns it on.
+// No pacing and the legacy lead: these specs assert today's stepping (every received frame at once) and today's miss
+// counter; Net's `pacing` and `measured` options turn them on.
 const TUNABLES: LockstepTunables = {
 	...DEFAULT_LOCKSTEP,
 	segmentTicks: 240,
@@ -282,6 +288,7 @@ const TUNABLES: LockstepTunables = {
 	finalTimeoutTicks: 600,
 	allowDebugInput: true,
 	pacing: undefined,
+	lead: undefined,
 };
 const SEG_LIMITS: SegmentLimits = { ...DEFAULT_SEGMENT_LIMITS, checkpointEvery: 120, allowDebugInput: true };
 
@@ -306,6 +313,56 @@ interface NetOptions {
 	 * handles remotes (inputs and hashes queue up on the way); it then catches up at maxTicksPerStep per step.
 	 */
 	readonly serverStall?: { readonly at: number; readonly sec: number };
+	/**
+	 * The measured lead (docs/FRAME_PACING.md Revision 2, FP11): the clients get `LEAD` (unless `tunables.lead` sets
+	 * other values), their own input echo and the simulated clock on `receive` and `pump`. Off by default: the legacy
+	 * miss counter (TUNABLES' lead: undefined), as before.
+	 */
+	readonly measured?: boolean;
+	/**
+	 * The stage cover (docs/STAGE_LOADER.md SL7): the bots send neutral input while their client's state.tick is below
+	 * this many seconds of ticks, as the real client does under the run start's cover. 0 by default (as before).
+	 */
+	readonly coverSec?: number;
+}
+
+/** The first ticks of a run are its warm-up for the lead's numbers (FP11): no trip is measured yet. */
+const LEAD_WARMUP_SEC = 2;
+const LEAD_WARMUP_TICKS = LEAD_WARMUP_SEC * SIM_HZ;
+/** The measured lead and its oracle are sampled every this many frames. */
+const ORACLE_EVERY_FRAMES = 6;
+/** Absorbs float rounding in the oracle's ceil (as lead.ts). */
+const ORACLE_EPSILON = 1e-9;
+const MS_PER_SEC = 1000;
+/** An OracleTrace sample with no trip in the window (a lead is never negative). */
+const NO_ORACLE = -1;
+
+/**
+ * Ground-truth net trips (ticks) by the server clock at receipt, oldest first, and the oracle lead over the last
+ * `windowSec` of them: clamp(ceil(nearest-rank `percentile` + marginTicks)), the LeadController's target rule.
+ */
+class TripWindow {
+	readonly at: number[] = [];
+	readonly trip: number[] = [];
+	private from = 0;
+	private readonly scratch: number[] = [];
+
+	push(at: number, trip: number): void {
+		this.at.push(at);
+		this.trip.push(trip);
+	}
+
+	oracle(now: number, t: LockstepTunables): number {
+		const lead = t.lead ?? LEAD;
+		while (this.from < this.at.size() && this.at[this.from] <= now - lead.windowSec) this.from++;
+		const scratch = this.scratch;
+		scratch.clear();
+		for (let k = this.from; k < this.trip.size(); k++) scratch.push(this.trip[k]);
+		if (scratch.size() === 0) return NO_ORACLE;
+		scratch.sort((a, b) => a < b);
+		const p = nearestRank(scratch, lead.percentile)!;
+		return math.clamp(math.ceil(p + lead.marginTicks - ORACLE_EPSILON), t.inputDelay, t.maxInputLead);
+	}
 }
 
 /** One client's rendered frames while its run was on (docs/FRAME_PACING.md FP4): per frame, ticks stepped and more. */
@@ -317,10 +374,37 @@ interface FrameTrace {
 	readonly alpha: number[];
 	/** pacingStats().holds after the pump (0 unpaced). */
 	readonly holds: number[];
+	/** netLead() after the pump. */
+	readonly lead: number[];
 }
 
-/** A client's scripted player: small left / right walks, rolls, swings, and a debug hit (K) every 120 ticks. */
-function botInput(s: SimState, i: number): InputFrame {
+/**
+ * One client's measured lead next to its oracles (FP11), every ORACLE_EVERY_FRAMES frames: the simulated clock, the
+ * net lead, and the oracle lead (TripWindow.oracle; NO_ORACLE while no trip is in the window) over every input frame the
+ * server received (`all`), and over the frames the server echoed (`echoed`: per broadcast, the newest frame received
+ * since the previous one, the one LockstepSession's echo reports).
+ */
+interface OracleTrace {
+	readonly at: number[];
+	readonly lead: number[];
+	readonly all: number[];
+	readonly echoed: number[];
+}
+
+/** Per player, after the warm-up: ticks the client never sent an input for (target jumps), and their causes. */
+interface GapCount {
+	readonly gaps: number;
+	/** Gap ticks of a net lead rise, and of a pacing depth rise (the rest). */
+	readonly leadRise: number;
+	readonly depthRise: number;
+}
+
+/**
+ * A client's scripted player: small left / right walks, rolls, swings, and a debug hit (K) every 120 ticks; neutral
+ * while state.tick is below `coverTicks` (the stage cover).
+ */
+function botInput(s: SimState, i: number, coverTicks = 0): InputFrame {
+	if (s.tick < coverTicks) return { ...EMPTY_INPUT };
 	const p = playerAt(s, i);
 	const t = s.tick + i * 23;
 	const dir = math.floor(t / 40) % 2 === 0 ? 1 : -1;
@@ -366,6 +450,29 @@ class Net {
 	readonly hashTicksSent: number[][] = [];
 	/** Per client, every frame it pumped while its run was on (not over before the pump). */
 	readonly traces: FrameTrace[] = [];
+	/**
+	 * Ground truth for the measured lead (FP11), from the harness's own records: per client, every input frame the
+	 * server received (the server clock at receipt) and its true net trip in ticks: the receipt position R (as the
+	 * session computes it: finalizedTicks() + clamp(pos - finalizedTicks(), 0, 1)) - 1 - the client's state.tick when
+	 * it sampled that frame for sending - the pacer's raw depth then (Design 9's netTrip, for every frame). `echoed`
+	 * keeps only the frames the session's echo reports (the newest received before each broadcast).
+	 */
+	readonly truth: TripWindow[] = [];
+	readonly echoedTruth: TripWindow[] = [];
+	/** Per client: every frame it sent, by target tick, and the net lead it was sent with. */
+	readonly sentFrames: Array<Map<number, InputFrame>> = [];
+	readonly sentNet: Array<Map<number, number>> = [];
+	/** Per client (measured runs): the lead next to the oracle. */
+	readonly oracles: OracleTrace[] = [];
+	/** The relay's missed / late per player, and finalizedTicks(), once LEAD_WARMUP_TICKS were finalized. */
+	missedAtWarmup: number[] | undefined;
+	lateAtWarmup: number[] = [];
+	warmupTick = 0;
+	private readonly sendTick: Array<Map<number, number>> = [];
+	private readonly sendDepth: Array<Map<number, number>> = [];
+	/** Per client: the newest frame's true trip received since the last broadcast (what its echo will report). */
+	private readonly newestPending: boolean[] = [];
+	private readonly newestTrip: number[] = [];
 	result: SegmentedRunResult | undefined;
 	now = 0;
 	private readonly logDecoder: MergedDecoder;
@@ -375,10 +482,20 @@ class Net {
 	constructor(readonly opts: NetOptions) {
 		const n = opts.players;
 		const base = opts.tunables ?? TUNABLES;
-		this.tunables = opts.pacing === true ? { ...base, pacing: base.pacing ?? PACING } : base;
+		const paced = opts.pacing === true ? { ...base, pacing: base.pacing ?? PACING } : base;
+		this.tunables = opts.measured === true ? { ...paced, lead: paced.lead ?? LEAD } : paced;
 		this.frameDt = 1 / (opts.fps ?? NET_FPS);
 		for (let i = 0; i < n; i++) {
-			this.traces.push({ at: [], stepped: [], alpha: [], holds: [] });
+			this.traces.push({ at: [], stepped: [], alpha: [], holds: [], lead: [] });
+			this.truth.push(new TripWindow());
+			this.echoedTruth.push(new TripWindow());
+			this.sentFrames.push(new Map());
+			this.sentNet.push(new Map());
+			this.oracles.push({ at: [], lead: [], all: [], echoed: [] });
+			this.sendTick.push(new Map());
+			this.sendDepth.push(new Map());
+			this.newestPending.push(false);
+			this.newestTrip.push(0);
 			this.hashCalls.push(0);
 			this.hashCallsLimited.push(0);
 			this.hashCallsLost.push(0);
@@ -429,7 +546,11 @@ class Net {
 		const fps = this.opts.fps ?? NET_FPS;
 		const maxFrames = this.opts.maxFrames ?? fps * 120;
 		const paced = this.opts.pacing === true;
+		const measured = this.opts.measured === true;
+		// The clock reaches the clients when they pace or measure the lead (unpaced legacy runs: as before, none).
+		const clocked = paced || measured;
 		const frameDt = this.frameDt;
+		const coverTicks = math.floor((this.opts.coverSec ?? 0) * SIM_HZ + 0.5);
 		for (let frame = 0; frame < maxFrames && this.result === undefined; frame++) {
 			this.now += frameDt;
 			const stall = this.opts.serverStall;
@@ -437,9 +558,14 @@ class Net {
 			if (serverRuns) for (const c of this.up) c.pump(this.now);
 			const out = serverRuns ? this.session.step(this.now) : SERVER_STALLED;
 			for (const b of out.broadcasts) {
+				for (let i = 0; i < this.clients.size(); i++) {
+					if (!this.newestPending[i]) continue;
+					this.newestPending[i] = false;
+					this.echoedTruth[i].push(this.now, this.newestTrip[i]);
+				}
 				const ticks = this.logDecoder.decode(b.data)!;
 				expect(b.firstTick).toBe(this.log.size());
-				// One input echo per player, each well-formed (the clients do not read them yet: FP11).
+				// One input echo per player, each well-formed; each client gets its own (ignored on the legacy lead).
 				expect(b.echoes.size()).toBe(this.clients.size());
 				for (const e of b.echoes) expect(decodeInputEcho(e, b.firstTick)).toBeDefined();
 				for (const t of ticks) this.log.push(t);
@@ -447,8 +573,9 @@ class Net {
 				for (let i = 0; i < this.clients.size(); i++) {
 					if (this.gone.has(i)) continue;
 					const c = this.clients[i];
+					const echo = b.echoes[i];
 					this.down[i].send(this.now, () => {
-						c.receive(b.firstTick, b.data, paced ? this.now : undefined);
+						c.receive(b.firstTick, b.data, clocked ? this.now : undefined, echo);
 						c.acknowledge(ack);
 					});
 				}
@@ -461,6 +588,12 @@ class Net {
 				const r = this.validator.advance(1000);
 				if (r.result !== undefined) this.result = r.result;
 			}
+			if (this.missedAtWarmup === undefined && this.session.finalizedTicks() >= LEAD_WARMUP_TICKS) {
+				const st = this.session.getRelay().getStats();
+				this.missedAtWarmup = [...st.missed];
+				this.lateAtWarmup = [...st.late];
+				this.warmupTick = this.session.finalizedTicks();
+			}
 			if (this.result === undefined && this.session.getStatus() === "submitted") {
 				this.result = this.validator.getResult();
 			}
@@ -471,18 +604,48 @@ class Net {
 				const c = this.clients[i];
 				const user = this.members[i];
 				const live = !c.isOver();
-				const res = c.pump(frameDt, () => botInput(c.state, i), paced ? this.now : undefined);
+				const sendTick = this.sendTick[i];
+				const sendDepth = this.sendDepth[i];
+				const res = c.pump(
+					frameDt,
+					(sending) => {
+						if (sending) {
+							// The ground truth's send record: the target, the tick it was computed from, the raw depth.
+							const target = c.nextInputTick();
+							const pace = c.pacingStats();
+							sendTick.set(target, c.state.tick);
+							sendDepth.set(target, (pace?.depthMs ?? 0) / MS_PER_SEC / DT);
+							this.sentNet[i].set(target, c.netLead());
+						}
+						return botInput(c.state, i, coverTicks);
+					},
+					clocked ? this.now : undefined,
+				);
 				if (live) {
 					const tr = this.traces[i];
 					tr.at.push(this.now);
 					tr.stepped.push(res.stepped);
 					tr.alpha.push(c.getAlpha());
 					tr.holds.push(c.pacingStats()?.holds ?? 0);
+					tr.lead.push(c.netLead());
+					if (measured && frame % ORACLE_EVERY_FRAMES === 0) {
+						const o = this.oracles[i];
+						o.at.push(this.now);
+						o.lead.push(c.netLead());
+						o.all.push(this.truth[i].oracle(this.now, this.tunables));
+						o.echoed.push(this.echoedTruth[i].oracle(this.now, this.tunables));
+					}
 				}
 				for (const inp of res.inputs) {
+					const frames = decodeInputBatch(inp.data, this.tunables.maxBatchFrames)!;
+					for (let j = 0; j < frames.size(); j++) this.sentFrames[i].set(inp.firstTick + j, frames[j]);
 					this.up[i].send(this.now, () => {
-						if (!this.inputLimiter.tryAcquire(user, this.now)) this.inputCallsLimited[i]++;
-						else this.session.submitInput(user, inp.firstTick, inp.data, this.now);
+						if (!this.inputLimiter.tryAcquire(user, this.now)) {
+							this.inputCallsLimited[i]++;
+							return;
+						}
+						this.recordReceipt(i, inp.firstTick, frames.size());
+						this.session.submitInput(user, inp.firstTick, inp.data, this.now);
 					});
 				}
 				if (res.hashes.size() > 0) {
@@ -508,6 +671,63 @@ class Net {
 				}
 			}
 		}
+	}
+
+	/** The ground-truth trips of client i's batch, received now (before the session handles it, as it does). */
+	private recordReceipt(i: number, firstTick: number, count: number): void {
+		const fin = this.session.finalizedTicks();
+		const receipt = fin + math.clamp(this.now * SIM_HZ - fin, 0, 1);
+		for (let j = 0; j < count; j++) {
+			const target = firstTick + j;
+			const sentAt = this.sendTick[i].get(target);
+			if (sentAt === undefined) continue;
+			const depth = this.sendDepth[i].get(target) ?? 0;
+			this.sendTick[i].delete(target);
+			this.sendDepth[i].delete(target);
+			const trip = receipt - 1 - sentAt - depth;
+			this.truth[i].push(this.now, trip);
+			this.newestPending[i] = true;
+			this.newestTrip[i] = trip;
+		}
+	}
+
+	/** Per player, the ticks after the warm-up (through the last finalized) the client sent no input for. */
+	gapsAfterWarmup(): GapCount[] {
+		const out: GapCount[] = [];
+		const last = this.session.finalizedTicks() - 1;
+		for (let i = 0; i < this.clients.size(); i++) {
+			const sent = this.sentFrames[i];
+			let gaps = 0;
+			let leadRise = 0;
+			let prev: number | undefined;
+			for (let t = this.warmupTick; t <= last; t++) {
+				if (sent.has(t)) {
+					if (prev !== undefined && t - prev > 1) {
+						// A target jump: as much of it as the net lead rose is the lead's, the rest the depth's.
+						const rise = (this.sentNet[i].get(t) ?? 0) - (this.sentNet[i].get(prev) ?? 0);
+						leadRise += math.clamp(rise, 0, t - prev - 1);
+					}
+					prev = t;
+					continue;
+				}
+				gaps++;
+			}
+			out.push({ gaps, leadRise, depthRise: gaps - leadRise });
+		}
+		return out;
+	}
+
+	/** Per player: the relay's missed and late after the warm-up, and the ticks finalized since. */
+	afterWarmup(): { missed: number[]; late: number[]; ticks: number } {
+		const st = this.session.getRelay().getStats();
+		const m0 = this.missedAtWarmup ?? st.missed.map(() => 0);
+		const missed: number[] = [];
+		const late: number[] = [];
+		for (let i = 0; i < st.missed.size(); i++) {
+			missed.push(st.missed[i] - m0[i]);
+			late.push(st.late[i] - (this.lateAtWarmup[i] ?? 0));
+		}
+		return { missed, late, ticks: this.session.finalizedTicks() - this.warmupTick };
 	}
 
 	/** Replays the broadcast log's first `ticks` ticks from scratch. */
@@ -623,6 +843,189 @@ for (let run = 0; run < NET_RUNS.size(); run++) {
 			for (let i = 0; i < players; i++) expect(net.clients[i].misses <= unpaced.clients[i].misses).toBe(true);
 			expect(refusedInputs(net)).toBe(0);
 			expect(refusedInputs(unpaced)).toBe(0);
+		});
+	});
+}
+
+// The measured lead (docs/FRAME_PACING.md Revision 2, FP11) on the NET_RUNS networks, paced (the shipped default) and
+// with the stage cover's neutral first second (a real run starts under it), next to the legacy miss counter on the
+// same network, seeds and cover. The oracle is computed from the harness's own timestamps (Net.truth): the lead should
+// sit at ceil(p95 + margin) of the trips over the last window, or one above (the fall's slack band).
+
+/** The bots' neutral start (the stage cover) in the measured-lead runs and their legacy comparison. */
+const STAGE_COVER_SEC = 1;
+/**
+ * After the warm-up, the relay's late frames per player stay under this share of the ticks finalized (FPD11's lates
+ * target; met at LEAD.marginTicks 1.5: 0-2 lates of ~930 ticks).
+ */
+const MEASURED_LATE_SHARE = 0.005;
+/**
+ * After the warm-up, the relay's missed ticks per player (lates plus the ticks never sent: target jumps when the lead or
+ * the pacing depth rises) stay under this share. The plan's target is 0.5 %; one 8-player client measures 0.75 % (2
+ * lates + 5 never sent) at every margin from 1.5 to 3, the legacy rule 0.52-0.93 % (all never sent) on the same network.
+ */
+const MEASURED_MISSED_SHARE = 0.01;
+/**
+ * After the warm-up, at least this share of a client's samples has the lead in [oracle, oracle + 1], and at most
+ * ORACLE_BELOW_SHARE below it. Above the band: the lead's fall hold (fallHoldSec, then fallStepSec a tick) after the
+ * oracle dropped or after a late's bump, by design.
+ */
+const ORACLE_BAND_SHARE = 0.8;
+const ORACLE_BELOW_SHARE = 0.02;
+
+const coveredNets = new Map<string, Net>();
+/** NET_RUNS[run] paced, with the stage cover, measured or legacy (built and run once on first use). */
+function coveredNet(run: number, measured: boolean): Net {
+	const key = `${run}:${measured}`;
+	const cached = coveredNets.get(key);
+	if (cached !== undefined) return cached;
+	const [players, lo, hi] = NET_RUNS[run];
+	const net = new Net({ players, latency: [lo, hi], pacing: true, measured, coverSec: STAGE_COVER_SEC });
+	net.run();
+	coveredNets.set(key, net);
+	return net;
+}
+
+/** Per client after `from` seconds: the net lead's mean, min and max over its frames. */
+function leadSummary(net: Net, from = LEAD_WARMUP_SEC): string {
+	const parts: string[] = [];
+	for (const tr of net.traces) {
+		let sum = 0;
+		let n = 0;
+		let lo = math.huge;
+		let hi = -math.huge;
+		for (let k = 0; k < tr.at.size(); k++) {
+			if (tr.at[k] < from) continue;
+			const v = tr.lead[k];
+			sum += v;
+			n++;
+			lo = math.min(lo, v);
+			hi = math.max(hi, v);
+		}
+		parts.push(n > 0 ? string.format("%.1f [%d-%d]", sum / n, lo, hi) : "-");
+	}
+	return parts.join(", ");
+}
+
+interface Band {
+	/** Shares of the samples after the warm-up: the lead in [oracle, oracle + 1], below it, above oracle + 1. */
+	readonly inBand: number;
+	readonly below: number;
+	readonly above: number;
+	readonly samples: number;
+}
+
+/** Per client: the lead against its oracle over every received frame, or over the echoed ones only. */
+function oracleBand(net: Net, echoed: boolean): Band[] {
+	return net.oracles.map((o) => {
+		let inBand = 0;
+		let below = 0;
+		let above = 0;
+		let samples = 0;
+		for (let k = 0; k < o.at.size(); k++) {
+			const want = echoed ? o.echoed[k] : o.all[k];
+			if (o.at[k] < LEAD_WARMUP_SEC || want === NO_ORACLE) continue;
+			samples++;
+			const lead = o.lead[k];
+			if (lead < want) below++;
+			else if (lead > want + 1) above++;
+			else inBand++;
+		}
+		const d = math.max(samples, 1);
+		return { inBand: inBand / d, below: below / d, above: above / d, samples };
+	});
+}
+
+function pct(x: number): string {
+	return string.format("%.2f%%", x * 100);
+}
+
+function bandText(b: Band[]): string {
+	return (
+		`in ${b.map((x) => pct(x.inBand)).join(",")} below ${b.map((x) => pct(x.below)).join(",")} above ` +
+		`${b.map((x) => pct(x.above)).join(",")}`
+	);
+}
+
+/** The relay's missed (and late) per player after the warm-up, as shares of the ticks finalized since, and the gaps. */
+function missedText(net: Net): string {
+	const w = net.afterWarmup();
+	const g = net.gapsAfterWarmup();
+	return (
+		`missed ${w.missed.join(",")} (${w.missed.map((m) => pct(m / math.max(w.ticks, 1))).join(",")}) = late ` +
+		`${w.late.join(",")} + never sent ${g.map((x) => x.gaps).join(",")} (lead rise ${g
+			.map((x) => x.leadRise)
+			.join(",")}, depth rise ${g.map((x) => x.depthRise).join(",")}) of ${
+			w.ticks
+		} ticks after ${LEAD_WARMUP_SEC} s`
+	);
+}
+
+function leadStatsText(net: Net): string {
+	const each = (f: (st: LeadStats) => number, fmt = "%d") =>
+		net.clients
+			.map((c) => {
+				const st = c.leadStats();
+				return st !== undefined ? string.format(fmt, f(st)) : "-";
+			})
+			.join(",");
+	return (
+		`trip p95 ${each((st) => st.tripP95 ?? -1, "%.1f")} t; lates ${each((st) => st.lates)} bumps ` +
+		`${each((st) => st.bumps)} raises ${each((st) => st.raises)} falls ${each((st) => st.falls)}`
+	);
+}
+
+for (let run = 0; run < NET_RUNS.size(); run++) {
+	const [players, lo, hi] = NET_RUNS[run];
+	describe(`co-op over a simulated network, paced, measured lead: ${players} players, ${lo * 1000}-${
+		hi * 1000
+	} ms each way`, () => {
+		const net = coveredNet(run, true);
+		const legacy = coveredNet(run, false);
+		const echoedBand = oracleBand(net, true);
+		const allBand = oracleBand(net, false);
+		const tag = `[lockstep ${players}p lead]`;
+		itRanAndValidated(net, `${players}p measured`);
+		print(`${tag} measured lead after ${LEAD_WARMUP_SEC} s, mean [min-max]: ${leadSummary(net)}`);
+		print(`${tag} legacy   lead after ${LEAD_WARMUP_SEC} s, mean [min-max]: ${leadSummary(legacy)}`);
+		print(`${tag} measured relay ${missedText(net)}`);
+		print(`${tag} legacy   relay ${missedText(legacy)}`);
+		print(
+			`${tag} client misses measured ${net.clients.map((c) => c.misses).join(",")} (mismatches ${net.clients
+				.map((c) => c.mismatches)
+				.join(",")}) legacy ${legacy.clients.map((c) => c.misses).join(",")}; measured ${leadStatsText(net)}`,
+		);
+		print(`${tag} oracle of the echoed frames: lead ${bandText(echoedBand)}`);
+		print(`${tag} oracle of every frame:       lead ${bandText(allBand)}`);
+		it("every client measures its lead from the echoes; the legacy clients do not", () => {
+			for (const c of net.clients) {
+				expect(c.isLeadMeasured()).toBe(true);
+				expect(c.leadStats()!.echoing).toBe(true);
+				expect(c.leadStats()!.samples > 0).toBe(true);
+			}
+			for (const c of legacy.clients) {
+				expect(c.isLeadMeasured()).toBe(false);
+				expect(c.leadStats()).toBe(undefined);
+			}
+		});
+
+		it("after the warm-up the lead sits within [L*, L* + 1] of the ground-truth oracle of the echoed trips", () => {
+			// The oracle of every frame sits about a tick above: the echo reports the newest frame received before each
+			// broadcast, which waited least (two frames per broadcast; the older one, received in the same server frame,
+			// has a trip one tick longer). Printed above; the margin covers it (the lates below).
+			for (const b of echoedBand) {
+				expect(b.samples > 0).toBe(true);
+				expect(b.inBand >= ORACLE_BAND_SHARE).toBe(true);
+				expect(b.below <= ORACLE_BELOW_SHARE).toBe(true);
+			}
+		});
+
+		it("after the first 2 s the relay counts under 0.5 % of each player's ticks late (missed: under 1 %)", () => {
+			const w = net.afterWarmup();
+			expect(w.ticks > 0).toBe(true);
+			for (const l of w.late) expect(l < MEASURED_LATE_SHARE * w.ticks).toBe(true);
+			for (const m of w.missed) expect(m < MEASURED_MISSED_SHARE * w.ticks).toBe(true);
+			expect(refusedInputs(net)).toBe(0);
 		});
 	});
 }
@@ -850,6 +1253,20 @@ interface LeadSend {
 	readonly tick: number;
 	/** client.misses when it was sampled (this step's deadline check included). */
 	readonly misses: number;
+	/** The buttons the batch carried for it (a latched tap included). */
+	readonly buttons: number;
+}
+
+interface LeadNetOptions {
+	/**
+	 * The server echoes (docs/FRAME_PACING.md FP11's measured variant): each frame's broadcast carries the client's input
+	 * echo computed as LockstepSession does (the newest tick received since the last broadcast, its slack X + 1 - R with
+	 * the receipt R at finalizedTicks(), the late frames since), and the client gets the clock on receive and pump.
+	 * Off: no clock and no echo reach the client, as before.
+	 */
+	readonly echo?: boolean;
+	/** A sample on a step that sends nothing (sample(false): a fall's skipped tick) presses FIRE: a one-frame tap. */
+	readonly tapOnSkip?: boolean;
 }
 
 class LeadNet {
@@ -859,15 +1276,32 @@ class LeadNet {
 	readonly sends: LeadSend[] = [];
 	/** Per pump that stepped: state.tick, inputLead() and the last tick sent so far. */
 	readonly reports: Array<{ readonly next: number; readonly lead: number; readonly lastSent: number }> = [];
-	/** nextInputTick() as seen inside each sample() (must be the tick that input was sent for). */
+	/** nextInputTick() as seen inside each sample() that sends (must be the tick that input was sent for). */
 	readonly sampledTargets: number[] = [];
+	/** Per frame: netLead() and client.misses after the pump. */
+	readonly leads: number[] = [];
+	readonly missesAt: number[] = [];
+	/** The frames of the samples not sent (sample(false)), in order. */
+	readonly skippedAt: number[] = [];
+	/** Every merged frame the relay finalized (the log). */
+	readonly log: InputFrame[] = [];
 	steps = 0;
 	private readonly enc = new MergedEncoder(1);
 	private readonly down = new DelayQueue();
 	private readonly up = new DelayQueue();
 	private samples = 0;
+	/** The echo pending for the next broadcast (as LockstepSession keeps it). */
+	private echoTick: number | undefined;
+	private echoSlack = 0;
+	private echoLates = 0;
+	/** The frame's clock while the down queue delivers. */
+	private clock = 0;
 
-	constructor(private readonly tunables: LockstepTunables, private readonly latencyAt: (frame: number) => number) {
+	constructor(
+		private readonly tunables: LockstepTunables,
+		private readonly latencyAt: (frame: number) => number,
+		private readonly opts: LeadNetOptions = {},
+	) {
 		const setup = buildEndlessRunConfig(SEED, 1);
 		this.client = new LockstepClient({
 			runId: "lead",
@@ -883,32 +1317,75 @@ class LeadNet {
 
 	run(frames: number): void {
 		const c = this.client;
+		const echoing = this.opts.echo === true;
 		for (let frame = 0; frame < frames; frame++) {
 			const now = frame * DT;
 			const latency = this.latencyAt(frame);
 			this.up.pump(now);
 			const tick = this.relay.finalizedTicks();
-			const data = this.enc.encode([this.relay.finalizeNext()]);
-			this.down.send(now + latency, () => c.receive(tick, data));
+			const row = this.relay.finalizeNext();
+			this.log.push(row[0]);
+			const data = this.enc.encode([row]);
+			if (echoing) {
+				const echo = encodeInputEcho(
+					{
+						tick: this.echoTick,
+						slack: this.echoTick !== undefined ? this.echoSlack : 0,
+						lates: this.echoLates,
+					},
+					tick,
+				);
+				this.echoTick = undefined;
+				this.echoLates = 0;
+				// Delivered at the frame's clock (the down queue is pumped once per frame, below).
+				this.down.send(now + latency, () => c.receive(tick, data, this.clock, echo));
+			} else {
+				this.down.send(now + latency, () => c.receive(tick, data));
+			}
+			this.clock = now;
 			this.down.pump(now);
 			const pending: Array<{ next: number; misses: number }> = [];
-			const res = c.pump(DT, () => {
-				pending.push({ next: c.state.tick, misses: c.misses });
-				this.sampledTargets.push(c.nextInputTick());
-				this.samples++;
-				// Aim only (the player stands still); every sample differs, so a repeat-last is a visible miss.
-				return { ...EMPTY_INPUT, aimX: 1 + (this.samples % AXIS_MAX) };
-			});
+			const res = c.pump(
+				DT,
+				(sending) => {
+					if (!sending) {
+						this.skippedAt.push(frame);
+						return { ...EMPTY_INPUT, buttons: this.opts.tapOnSkip === true ? Button.FIRE : 0 };
+					}
+					pending.push({ next: c.state.tick, misses: c.misses });
+					this.sampledTargets.push(c.nextInputTick());
+					this.samples++;
+					// Aim only (the player stands still); every sample differs, so a repeat-last is a visible miss.
+					return { ...EMPTY_INPUT, aimX: 1 + (this.samples % AXIS_MAX) };
+				},
+				echoing ? now : undefined,
+			);
 			this.steps += res.stepped;
+			this.leads.push(c.netLead());
+			this.missesAt.push(c.misses);
 			let k = 0;
 			for (const b of res.inputs) {
 				const batch = decodeInputBatch(b.data, this.tunables.maxBatchFrames)!;
 				for (let j = 0; j < batch.size(); j++) {
 					const p = pending[k];
-					this.sends.push({ frame, next: p.next, tick: b.firstTick + j, misses: p.misses });
+					this.sends.push({
+						frame,
+						next: p.next,
+						tick: b.firstTick + j,
+						misses: p.misses,
+						buttons: batch[j].buttons,
+					});
 					k++;
 				}
-				this.up.send(now + latency, () => this.relay.submit(0, b.firstTick, batch));
+				this.up.send(now + latency, () => {
+					// The receipt R: one tick finalized per frame at the frame's start, so R = finalizedTicks().
+					const receipt = this.relay.finalizedTicks();
+					const r = this.relay.submit(0, b.firstTick, batch);
+					if (r.accepted + r.late === 0) return;
+					this.echoTick = b.firstTick + batch.size() - 1;
+					this.echoSlack = b.firstTick + batch.size() - receipt;
+					this.echoLates += r.late;
+				});
 			}
 			expect(k).toBe(pending.size());
 			if (res.stepped > 0) {
@@ -925,7 +1402,8 @@ function leadOf(s: LeadSend): number {
 }
 
 describe("the input lead follows the latency both ways (FP1)", () => {
-	const tunables: LockstepTunables = { ...DEFAULT_LOCKSTEP, leadDecayTicks: 15 };
+	// The legacy lead (the miss counter this describe pins) and no pacing (no clock is passed).
+	const tunables: LockstepTunables = { ...DEFAULT_LOCKSTEP, leadDecayTicks: 15, pacing: undefined, lead: undefined };
 	const floor = tunables.inputDelay;
 	const CALM_LATENCY = 0.005;
 	const SPIKE_LATENCY = 0.15;
@@ -1024,6 +1502,115 @@ describe("the input lead follows the latency both ways (FP1)", () => {
 		expect(skipped > 0).toBe(true);
 		expect(skipped).toBe(net.client.misses - (leadOf(sends[sends.size() - 1]) - floor));
 		expect(net.steps).toBe(sends.size() + skipped);
+	});
+});
+
+describe("the measured input lead follows the latency both ways (FP1's scenario with echoes, FP11)", () => {
+	// FP1's one-client relay, now echoing like LockstepSession; a longer calm so the fall is measured end to end. The
+	// legacy rule (lead undefined, its real leadDecayTicks) on the same schedule for comparison.
+	const CALM_LATENCY = 0.005;
+	const SPIKE_LATENCY = 0.15;
+	const SPIKE1_START = 60;
+	const SPIKE1_END = 240;
+	const SPIKE2_START = 1500;
+	const SPIKE2_END = 1620;
+	const FRAMES = 1700;
+	/** Slack on the fall bound (seconds): the down trip and the frames between the window's expiry and the next echo. */
+	const FALL_SLACK_SEC = 0.5;
+	const latency = (frame: number) =>
+		(frame >= SPIKE1_START && frame < SPIKE1_END) || (frame >= SPIKE2_START && frame < SPIKE2_END)
+			? SPIKE_LATENCY
+			: CALM_LATENCY;
+	const measured = new LeadNet({ ...DEFAULT_LOCKSTEP, pacing: undefined, lead: LEAD }, latency, {
+		echo: true,
+		tapOnSkip: true,
+	});
+	measured.run(FRAMES);
+	const legacyTunables: LockstepTunables = { ...DEFAULT_LOCKSTEP, pacing: undefined, lead: undefined };
+	const legacy = new LeadNet(legacyTunables, latency, { tapOnSkip: true });
+	legacy.run(FRAMES);
+
+	/** Spike 1's peak net lead, the calm lead just before spike 2, and the frame it fell to that for good. */
+	function fallOf(net: LeadNet): { peak: number; calm: number; at: number } {
+		const calm = net.leads[SPIKE2_START - 1];
+		let peak = 0;
+		for (let f = SPIKE1_START; f < SPIKE2_START; f++) peak = math.max(peak, net.leads[f]);
+		let at = SPIKE2_START - 1;
+		while (at > SPIKE1_END && net.leads[at - 1] <= calm) at--;
+		return { peak, calm, at };
+	}
+	const m = fallOf(measured);
+	const l = fallOf(legacy);
+	const fallSec = (m.at - SPIKE1_END) * DT;
+	const bound = LEAD.windowSec + LEAD.fallHoldSec + LEAD.fallStepSec * (m.peak - m.calm) + FALL_SLACK_SEC;
+	const legacyPerTick = legacyTunables.leadDecayTicks / SIM_HZ;
+	const spikeMisses = (net: LeadNet) =>
+		`spike 1 ${net.missesAt[SPIKE2_START - 1]}, spike 2 ${
+			net.missesAt[FRAMES - 1] - net.missesAt[SPIKE2_START - 1]
+		}`;
+	print(`[lockstep lead] misses measured ${spikeMisses(measured)}; legacy ${spikeMisses(legacy)}`);
+	print(
+		`[lockstep lead measured] spike 1 peak ${m.peak}, calm ${m.calm}: back ${string.format("%.2f", fallSec)} s ` +
+			`after the latency dropped (bound ${string.format("%.2f", bound)} s); falls ${
+				measured.client.leadStats()!.falls
+			} skipped samples ${measured.skippedAt.size()}; misses ${measured.client.misses} (spike 2 lead ${
+				measured.leads[SPIKE2_END - 1]
+			})`,
+	);
+	print(
+		`[lockstep lead legacy]   spike 1 peak ${l.peak}: ${l.peak - legacy.leads[SPIKE2_START - 1]} ticks down in ` +
+			`${string.format("%.1f", (SPIKE2_START - SPIKE1_END) * DT)} s, ${string.format(
+				"%.0f",
+				legacyPerTick,
+			)} s a tick: ` +
+			`back to ${legacyTunables.inputDelay} after ~${string.format(
+				"%.0f",
+				(l.peak - legacyTunables.inputDelay) * legacyPerTick,
+			)} s; misses ${legacy.client.misses}`,
+	);
+
+	it("is measured, and falls back within windowSec + fallHoldSec + fallStepSec x excess + 0.5 s", () => {
+		expect(measured.client.brokenReason()).toBe(undefined);
+		expect(isPartyWiped(measured.client.state)).toBe(false);
+		expect(measured.client.isLeadMeasured()).toBe(true);
+		expect(m.peak >= m.calm + 10).toBe(true); // the spike raised it well above the calm lead
+		expect(m.calm <= LEAD.marginTicks + 2 + DEFAULT_LOCKSTEP.inputDelay).toBe(true);
+		expect(fallSec <= bound).toBe(true);
+		// The legacy rule has barely started down by then.
+		expect(legacy.leads[SPIKE2_START - 1] > m.calm).toBe(true);
+	});
+
+	it("a tap sampled on a fall's skipped tick reaches the log (the next frame sent carries it)", () => {
+		const sends = measured.sends;
+		let latched = 0;
+		let logged = 0;
+		for (let k = 1; k < sends.size(); k++) {
+			const skipped = sends[k].next - sends[k - 1].next - 1;
+			if (skipped === 0) {
+				expect(sends[k].buttons).toBe(0);
+				continue;
+			}
+			expect(bit32.band(sends[k].buttons, Button.FIRE)).toBe(Button.FIRE);
+			latched++;
+			// Finalized before the run's end: the server's log has the tap at the tick it was sent for.
+			if (sends[k].tick >= measured.log.size()) continue;
+			expect(bit32.band(measured.log[sends[k].tick].buttons, Button.FIRE)).toBe(Button.FIRE);
+			logged++;
+		}
+		print(
+			`[lockstep lead measured] taps on skipped ticks: ${latched} sent with the next frame, ${logged} in the log`,
+		);
+		expect(logged > 0).toBe(true);
+		expect(latched).toBe(measured.skippedAt.size());
+		// The legacy rule never samples a skipped tick: the tap is never seen.
+		expect(legacy.skippedAt.size()).toBe(0);
+	});
+
+	it("no tick is ever sent twice; every sample that is sent goes out for nextInputTick()", () => {
+		const sends = measured.sends;
+		expect(measured.sampledTargets.size()).toBe(sends.size());
+		for (let k = 0; k < sends.size(); k++) expect(sends[k].tick).toBe(measured.sampledTargets[k]);
+		for (let k = 1; k < sends.size(); k++) expect(sends[k].tick > sends[k - 1].tick).toBe(true);
 	});
 });
 
@@ -1138,6 +1725,91 @@ describe("LockstepClient pacing activation (docs/FRAME_PACING.md FP3)", () => {
 			expect(c.nextInputTick()).toBe(c.state.tick + c.netLead() + stats.depthTicks);
 			if (c.state.tick > 0) expect(c.inputLead()).toBe(c.netLead() + stats.depthTicks);
 		}
+	});
+});
+
+describe("LockstepClient measured lead wiring (docs/FRAME_PACING.md FP11)", () => {
+	const ONE_IDLE: InputFrame[][] = [[{ ...EMPTY_INPUT }]];
+	const MEASURED: LockstepTunables = { ...TUNABLES, lead: LEAD };
+	function client(tunables: LockstepTunables): { c: LockstepClient; enc: MergedEncoder } {
+		const setup = buildEndlessRunConfig(SEED, 1);
+		const c = new LockstepClient({
+			runId: "lead-wiring",
+			seed: SEED,
+			spawn: setup.spawn!,
+			config: setup.config,
+			players: 1,
+			localIndex: 0,
+			tunables,
+		});
+		return { c, enc: new MergedEncoder(1) };
+	}
+	/** Tick 0 arrives at `now` and is stepped: the first input goes out for 1 + inputDelay. */
+	function firstStep(c: LockstepClient, enc: MergedEncoder, now: number | undefined): number {
+		expect(c.receive(0, enc.encode(ONE_IDLE), now)).toBe(true);
+		expect(c.pump(DT, () => EMPTY_INPUT, now).stepped).toBe(1);
+		return 1 + TUNABLES.inputDelay;
+	}
+
+	it("an echo with a clock turns the measured lead on; its lates are the misses", () => {
+		const { c, enc } = client(MEASURED);
+		const target = firstStep(c, enc, 0);
+		expect(c.isLeadMeasured()).toBe(false);
+		expect(c.netLead()).toBe(TUNABLES.inputDelay);
+		expect(c.receive(1, enc.encode(ONE_IDLE), DT, encodeInputEcho({ tick: target, slack: 2, lates: 0 }, 1))).toBe(
+			true,
+		);
+		expect(c.isLeadMeasured()).toBe(true);
+		const st = c.leadStats()!;
+		expect(st.samples).toBe(1);
+		expect(st.tripMax).toBe(target - 1 - 2); // sent at state.tick 1, 2 ticks to spare, no buffer
+		// A "none" echo with late frames: counted as misses (no mismatch is counted for them again).
+		expect(
+			c.receive(2, enc.encode(ONE_IDLE), 2 * DT, encodeInputEcho({ tick: undefined, slack: 0, lates: 2 }, 2)),
+		).toBe(true);
+		expect([c.misses, c.mismatches, c.leadStats()!.lates]).toEqual([2, 0, 2]);
+	});
+
+	it("a malformed echo is ignored: the stream goes on, the lead stays on the legacy rule", () => {
+		const { c, enc } = client(MEASURED);
+		firstStep(c, enc, 0);
+		expect(c.receive(1, enc.encode(ONE_IDLE), DT, buffer.create(3))).toBe(true);
+		expect(c.receive(2, enc.encode(ONE_IDLE), 2 * DT, "junk")).toBe(true);
+		expect(c.brokenReason()).toBe(undefined);
+		expect(c.isLeadMeasured()).toBe(false);
+		expect(c.pump(DT, () => EMPTY_INPUT, 3 * DT).stepped).toBe(2);
+	});
+
+	it("without any clock no echo is fed: the legacy rule, as before", () => {
+		const { c, enc } = client(MEASURED);
+		const target = firstStep(c, enc, undefined);
+		const echo = encodeInputEcho({ tick: target, slack: 2, lates: 1 }, 1);
+		expect(c.receive(1, enc.encode(ONE_IDLE), undefined, echo)).toBe(true);
+		expect(c.isLeadMeasured()).toBe(false);
+		expect(c.leadStats()!.samples).toBe(0);
+		expect(c.misses).toBe(0);
+	});
+
+	it("with lead undefined an echo changes nothing (no controller)", () => {
+		const { c, enc } = client(TUNABLES);
+		const target = firstStep(c, enc, 0);
+		expect(c.receive(1, enc.encode(ONE_IDLE), DT, encodeInputEcho({ tick: target, slack: -1, lates: 3 }, 1))).toBe(
+			true,
+		);
+		expect(c.leadStats()).toBe(undefined);
+		expect(c.isLeadMeasured()).toBe(false);
+		expect([c.misses, c.netLead(), c.latchedButtons()]).toEqual([0, TUNABLES.inputDelay, 0]);
+	});
+
+	it("once the run is over (end) echoes no longer reach the controller", () => {
+		const { c, enc } = client(MEASURED);
+		const target = firstStep(c, enc, 0);
+		c.end("desync");
+		expect(c.receive(1, enc.encode(ONE_IDLE), DT, encodeInputEcho({ tick: target, slack: 2, lates: 4 }, 1))).toBe(
+			true,
+		);
+		expect(c.leadStats()!.lates).toBe(0);
+		expect(c.misses).toBe(0);
 	});
 });
 

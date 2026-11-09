@@ -56,6 +56,12 @@ export const RUN_ATTRIBUTES = {
 	 * playtest. Off by default.
 	 */
 	pacingOff: "KV_PacingOff",
+	/**
+	 * Boolean, debug (docs/FRAME_PACING.md Design 12), read at every co-op run start: true builds the co-op client
+	 * without the measured lead (the legacy miss counter: +1 per missed deadline, -1 after 10 clean seconds), for an A/B
+	 * in a playtest; combinable with KV_PacingOff. Off by default.
+	 */
+	leadOff: "KV_LeadOff",
 } as const;
 
 /** The web build's DEFAULT_SEED (`?seed=` absent). */

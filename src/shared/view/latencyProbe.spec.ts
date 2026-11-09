@@ -172,9 +172,12 @@ describe("LatencyProbe on a LockstepClient (loopback server, one tick per frame)
 			probe.frame(input.buttons, now);
 			const targets: number[] = [];
 			const missesBefore = c.misses;
-			const res = c.pump(DT, () => {
-				targets.push(c.nextInputTick());
-				probe.sent(input.buttons, c.nextInputTick());
+			const res = c.pump(DT, (sending) => {
+				// Only a sample that is sent is a send (a fall's skipped tick only latches its buttons).
+				if (sending) {
+					targets.push(c.nextInputTick());
+					probe.sent(bit32.bor(input.buttons, c.latchedButtons()), c.nextInputTick());
+				}
 				return input;
 			});
 			probe.stepped(c.state.tick, now, c.misses > missesBefore);
