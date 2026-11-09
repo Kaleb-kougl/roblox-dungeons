@@ -1,0 +1,6 @@
+{
+	"name": "KalebValeRollbackCapture",
+	"tree": {
+		"$path": "plugin/RollbackCapturePlugin.server.lua"
+	}
+}

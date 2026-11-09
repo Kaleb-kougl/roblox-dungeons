@@ -11,6 +11,8 @@
  *   workspace:SetAttribute("KV_UiArtSpike", true)     (client; docs/UI_ART.md UA1)
  *   workspace:SetAttribute("KV_L10nSpike", true)      (client; docs/LOCALIZATION.md L0)
  *   workspace:SetAttribute("KV_PadSpike", true)       (client; docs/GAMEPAD_MENUS.md GM0)
+ *   workspace:SetAttribute("KV_RollbackCapture", true) (server; docs/ROLLBACK_SPIKE.md Design 5-7: probe summaries
+ *                                                      and co-op run captures; shared/spikes ROLLBACK_CAPTURE)
  * An attribute, when present, overrides the default below; setting it to false stops the spike
  * and cleans up everything it made.
  */
@@ -25,6 +27,7 @@ export const SPIKE_DEFAULTS = {
 	uiArt: false,
 	l10n: false,
 	pad: false,
+	rollbackCapture: false,
 } as const;
 
 /** Workspace attribute names that override SPIKE_DEFAULTS. */
@@ -37,6 +40,7 @@ export const SPIKE_ATTRIBUTES = {
 	uiArt: "KV_UiArtSpike",
 	l10n: "KV_L10nSpike",
 	pad: "KV_PadSpike",
+	rollbackCapture: "KV_RollbackCapture",
 } as const;
 
 export type SpikeName = keyof typeof SPIKE_DEFAULTS;
