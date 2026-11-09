@@ -1179,6 +1179,7 @@ Decision log (deviations from `PLAN.md`):
 npm run verify      # typecheck -> lint -> build -> headless tests. Run before you finish
 npm test            # gen fixtures -> rbxtsc -> Lune runs every out/shared/**/*.spec
 npm run test:only -- sim/rng   # rerun specs without rebuilding; args filter by source path
+npm run test:only -- --census run/archer.survival   # opt-in census specs: their full sample (docs/ARCHER.md AR13)
 npm run build       # gen fixtures -> rbxtsc -> out/
 npm run dev         # rbxtsc -w + rojo serve
 npm run build:place # publishable place: build/kaleb-vale.rbxl from publish.project.json (no specs, fixtures or Jest)

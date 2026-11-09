@@ -81,6 +81,8 @@ import {
 	type TuneWeapon,
 } from "./buildTune";
 import { frame } from "./endlessBot";
+import { withCharacters } from "../characters";
+import type { CharacterId } from "shared/characters";
 
 // ---------------------------------------------------------------------------------------------
 // 1. Overkill
@@ -583,7 +585,11 @@ function bulletsNear(s: SimState, x: number, z: number, r: number): [number, num
 	return [n, bx, bz];
 }
 
-/** One defence fight (file comment, item 2). */
+/**
+ * One defence fight (file comment, item 2). docs/ARCHER.md AR13: with `character` the run config is that character's
+ * (shared/run withCharacters: its loadout and roll traits, over the arena world's weapon), so a "-hold" bot measures
+ * the character's own defence (the Archer's longer roll, the Knight's guard) under the same movement.
+ */
 export function defenseFight(
 	r: DefenseRoom,
 	build: DefenseCase,
@@ -591,6 +597,7 @@ export function defenseFight(
 	f: TuneFloor,
 	seed: number,
 	seconds = DEFENSE_SECONDS,
+	character?: CharacterId,
 ): DefenseResult {
 	const weapon: TuneWeapon = guardBot(bot) ? "weapon.sword" : "weapon.bow";
 	const hold = holdBot(bot);
@@ -602,7 +609,8 @@ export function defenseFight(
 	if (build.guardCos !== undefined) SWORD_DATA.guardHalfAngleCos = build.guardCos;
 	const out = emptyDefense();
 	try {
-		const config = arenaConfig(seed, weapon, fight);
+		const arena = arenaConfig(seed, weapon, fight);
+		const config = character !== undefined ? withCharacters(arena, [character]) : arena;
 		const s = createSimState(seed, fight.startX, fight.startZ, config);
 		s.endless!.floor = f.floor;
 		s.endless!.depth = f.depth;
@@ -719,6 +727,7 @@ export function defenseRows(
 	bot: DefenseBot,
 	f: TuneFloor,
 	seeds: ReadonlyArray<number>,
+	character?: CharacterId,
 ): DefenseRow[] {
 	const rows: DefenseRow[] = [];
 	for (const r of rooms) {
@@ -726,7 +735,7 @@ export function defenseRows(
 			const sum = emptyDefense();
 			let cleared = 0;
 			for (const seed of seeds) {
-				const x = defenseFight(r, build, bot, f, seed);
+				const x = defenseFight(r, build, bot, f, seed, DEFENSE_SECONDS, character);
 				if (x.cleared) cleared++;
 				sum.seconds += x.seconds;
 				sum.hits += x.hits;

@@ -24,6 +24,8 @@
  * third rng stream per run so neither the offers nor the policy draw differently) for the build at the checkpoint, by
  * card kind: new legendary, duo, evolution (a level-II boon), fill (an ordinary upgrade).
  *
+ * docs/ARCHER.md AR13: per checkpoint, the runs whose Greed pool (legendaryPool) is empty and the pool's mean size.
+ *
  * docs/ARCHER.md AR2: an optional boon mask (`eligible`, sim eligibleBoonMask of a character's loadout) is passed to
  * every drawCardOffers / drawLegendaryOffers call, and every card dealt is tallied per boon and per duo (any kind,
  * drafts and Greed deals), so a spec can check what a character is never dealt.
@@ -46,6 +48,7 @@ import {
 	drawCardOffers,
 	drawLegendaryOffers,
 	duoAvailable,
+	legendaryPool,
 	rngInt,
 	type BuildRules,
 	type CardKindId,
@@ -131,6 +134,12 @@ export interface OfferCheckpoint {
 	boonDealt: number[];
 	/** Per duo: its cards dealt so far (drafts and Greed). */
 	duoDealt: number[];
+	/**
+	 * docs/ARCHER.md AR13: runs whose Greed pool (legendaryPool with the mask) is empty at the checkpoint (the Pact of
+	 * Greed dimmed NO_LEGENDARY), and the pool's size summed over runs.
+	 */
+	greedPoolEmpty: number;
+	greedPoolSize: number;
 }
 
 /** Per boss floor (5, 10, ...): how often the double draft's first deal had a duo to guarantee. */
@@ -219,6 +228,8 @@ export function simulateOffers(
 		greedBoon: zeros(),
 		boonDealt: zeros(),
 		duoDealt: zeros(DUO_COUNT),
+		greedPoolEmpty: 0,
+		greedPoolSize: 0,
 	}));
 	const bossDuo: BossDuoTally[] = [];
 	const lastFloor = checkpoints[checkpoints.size() - 1] - 1;
@@ -315,6 +326,9 @@ export function simulateOffers(
 					t.draftsOfferingBoon[b] += offeredBoon[b];
 					if (offeredBoon[b] > 0) t.runsOfferedBoon[b]++;
 				}
+				const pool = legendaryPool(levels, duos, eligible).size();
+				t.greedPoolSize += pool;
+				if (pool === 0) t.greedPoolEmpty++;
 				const deal = drawLegendaryOffers(greedRng, levels, duos, PACT_LEGENDARY_CARDS, eligible);
 				for (const c of deal) tallyDealt(c, boonDealt, duoDealt);
 				for (let b = 0; b < BOON_COUNT; b++) t.boonDealt[b] += boonDealt[b];

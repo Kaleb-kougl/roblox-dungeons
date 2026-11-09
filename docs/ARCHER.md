@@ -1157,3 +1157,244 @@ Studio checklist (AR7 / AR8, not verifiable headlessly; items 1-4 of the plan's 
    as their pick (a mixed party); a kick or a leave while on the screen goes to the browser.
 5. The idle preview: the Knight's sprite facing the camera and looping (reduced motion: still); the Archer's capsule
    until AR12's upload, then its sprite at a sensible size in the 128 / 72 / 96 squares; the console TV-safe fit.
+
+## AR13 (as built): tuning
+
+Branch `archer-tuning`. **Measurements only: no gameplay number or rule changed**; the recommendations at the end are
+owner calls (they feed "Open owner calls" 1). Test support and specs only, plus one test-runner flag.
+
+**Harness changes** (paths under `src/shared/run/testing/` unless noted):
+- `characterTune.ts` (new): the character dimension on BU13's / LG7's harnesses. `TuneCharacter` = `knight` /
+  `archer` (built through the real path: `characterConfig` = shared/run `withCharacters`, the character's loadout and
+  roll traits on the run config, which wins over the arena world's weapon) or `both` (the old two-weapon player:
+  `DEFAULT_LOADOUT`, no traits). **The fighter** (`fighterFrame`), one policy per character shared by the arena fights
+  and the survival bot: every mode rolls by the same volley rule (2+ enemy bullets, goo not counted, within 1.6: a roll
+  toward the nearest, LG7's roll bot); `knight` walks in and holds FIRE in reach, guards (ALT) when a bullet is within
+  the guard's trigger and the guard is ready, rolls only while the guard cools down; **`archer` is the bow mode**: kites
+  at 5 tiles in sight, strafing, leading its target, **charges heavy shots back to back** (the charge may start during
+  the stream's heavy recovery) while the target has more than 2 hp, no enemy is within 3 and no enemy bullet within 2.5,
+  else streams; drops a charge when an enemy closes to 2; also rolls straight away from a body within 1;
+  `archer-stream` the same without charged shots (BU13's bow); `both` walks in like the knight with the bow in hand
+  beyond 4.5 tiles (streaming as it closes) and the sword inside 3 (one SWAP press per change), guards with the sword.
+  Out of sight (a real floor) every mode walks the BFS path and holds fire. Arena fights (`characterFight`,
+  `characterTtkRows`): BU13's open endless arena, god mode, builds and affixes on; `KIND_ROOMS` (one room per endless
+  room kind plus LG7's two turret pairs), `TUNE_MAYHEM` / `TUNE_DEMONLORD`, `CHARACTER_BUILD_CASES` (a build a
+  character is never dealt prints n/a). `rollReach` (Blazing Trail's embers along one roll) and `wreckerReach` (Wrecker I
+  into crates on a real floor patch). `censusRequested()`.
+- `survivalBot.ts` (new): the endless survival census (an honest solo descent; below).
+- `legendaryTune.ts`: `defenseFight` / `defenseRows` take an optional `character` (the run config built through
+  `withCharacters`), so LG7's hold bots measure each character's own roll or guard. `buildOffers.ts`: per checkpoint
+  `greedPoolEmpty` / `greedPoolSize` (legendaryPool with the mask). Exported through the testing barrel.
+- **Opt-in census:** the headless runner takes `--census` (`scripts/lune/run-tests.luau`: sets the Workspace attribute
+  `KV_Census`, which the harness Instance's `GetAttribute` now answers; `scripts/lune/lib/Instance.luau`). Nothing in
+  the repo had a skip convention (the existing censuses, e.g. `snagCensus` 7 min, simply run in the full suite), so the
+  survival census runs a 2-seed, 3-floor smoke sample (14 s) by default and its full sample only with
+  `npm run test:only -- --census run/archer.survival`.
+
+**Specs and runtimes** (Linux cloud box, 2 cores shared with another agent; headless; each prints its tables with an
+`[archer tune]` / `[archer survival]` prefix and asserts loose bounds only): `sim/archer.ttk.rooms` (95 s),
+`sim/archer.ttk.builds` (41 s), `sim/archer.ttk.boss.mayhem` (33 s), `sim/archer.ttk.boss.demonlord` (18 s),
+`sim/archer.roll.hold` (65 s), `sim/archer.roll.fight` (25 s), `run/archer.offers` (57 s), `run/archer.survival` (14 s
+smoke; **307 s** with `--census`: 12 seeds x 3 characters to floor 20).
+
+**Method.** Arena fights: solo, the state's endless floor and Depth set before anything spawns (Depth after every boss on
+the way), god mode (hearts refilled after every step; hits that landed counted: a pressure measure, "hits / min"), the
+build granted before tick 0, the target the nearest living actor. "Both" is the reference for "the old swap player":
+the ratios are character / Both (> 1 = slower than the old player). Turret pairs (M1 sandbox kinds, never in endless
+rooms) revive 6 s after death, so their "clear" is the first tick both are down at once (cap 90 s, "t/o" past it).
+
+### 1. Rooms by kind (no build; seeds 1-3, mean seconds to clear; f2 / f6 / f11 / f20 spawn hp)
+
+| room | Knight | Archer (charge) | Archer (stream only) | Both (old player) | Knight x Both | Archer x Both | stream x Both | hits / min at f20 K / A / As / B |
+|---|---|---|---|---|---|---|---|---|
+| 8 swarmer (pack) | 1.4 / 1.4 / 1.8 / 3.5 | 3.2 / 4.5 / 5.1 / 10.2 | 3.2 / 4.7 / 9.5 / 16.2 | 1.4 / 1.4 / 1.8 / 3.5 | 1.00 / 1.00 / 1.00 / 1.00 | 2.28 / 3.24 / 2.89 / 2.88 | 2.28 / 3.38 / 5.40 / 4.59 | 68 / 0 / 0 / 68 |
+| 3 sniper | 4.2 / 5.2 / 8.6 / 15.3 | 2.5 / 7.3 / 12.6 / 26.1 | 4.6 / 8.0 / 14.7 / 28.8 | 3.1 / 4.9 / 7.4 / 13.5 | 1.34 / 1.05 / 1.16 / 1.14 | 0.80 / 1.48 / 1.70 / 1.94 | 1.48 / 1.63 / 1.98 / 2.14 | 9 / 1 / 3 / 6 |
+| 2 bruiser | 2.3 / 3.7 / 7.6 / 12.5 | 4.0 / 6.8 / 11.9 / 21.5 | 4.4 / 9.3 / 16.6 / 36.6 | 2.3 / 3.7 / 7.0 / 12.1 | 1.00 / 1.00 / 1.10 / 1.03 | 1.71 / 1.83 / 1.71 / 1.78 | 1.90 / 2.52 / 2.38 / 3.02 | 69 / 4 / 8 / 69 |
+| 3 imp | 3.9 / 4.9 / 6.8 / 10.3 | 5.0 / 9.3 / 15.7 / 25.8 | 3.6 / 6.1 / 11.4 / 21.6 | 2.5 / 4.1 / 5.0 / 8.8 | 1.56 / 1.20 / 1.36 / 1.16 | 2.00 / 2.28 / 3.15 / 2.92 | 1.43 / 1.50 / 2.28 / 2.44 | 2 / 3 / 2 / 2 |
+| 2 slime (+4 small) | 2.8 / 6.4 / 10.0 / 16.0 | 5.0 / 10.1 / 14.8 / 24.5 | 7.0 / 13.1 / 24.7 / 59.2 | 2.8 / 5.3 / 10.0 / 16.0 | 1.00 / 1.20 / 1.00 / 1.00 | 1.83 / 1.90 / 1.48 / 1.53 | 2.52 / 2.46 / 2.47 / 3.71 | 79 / 0 / 23 / 79 |
+| 1 summoner (+summons) | 1.5 / 1.9 / 3.0 / 5.4 | 1.4 / 2.0 / 4.4 / 9.7 | 1.5 / 4.1 / 8.3 / 22.4 | 0.8 / 1.5 / 2.6 / 4.7 | 1.80 / 1.33 / 1.16 / 1.15 | 1.74 / 1.39 / 1.69 / 2.05 | 1.81 / 2.81 / 3.19 / 4.74 | 15 / 0 / 0 / 13 |
+| 4 bomber | 1.1 / 1.5 / 1.5 / 1.5 | 2.0 / 2.0 / 4.9 / 9.5 | 2.4 / 4.0 / 7.2 / 14.7 | 1.1 / 1.5 / 1.5 / 1.5 | 1.00 / 1.05 / 1.00 / 1.00 | 1.88 / 1.36 / 3.33 / 6.27 | 2.23 / 2.72 / 4.84 / 9.67 | 40 / 0 / 0 / 40 |
+| 2 charger | 4.7 / 6.8 / 10.0 / 20.5 | 3.9 / 8.2 / 14.2 / 28.1 | 6.0 / 11.9 / 22.3 / 46.0 | 3.3 / 5.9 / 9.3 / 19.6 | 1.42 / 1.15 / 1.08 / 1.05 | 1.16 / 1.38 / 1.53 / 1.43 | 1.82 / 2.01 / 2.40 / 2.35 | 9 / 0 / 0 / 9 |
+| 2 stormcaller | 3.1 / 4.1 / 6.0 / 10.3 | 3.6 / 4.7 / 6.6 / 12.8 | 3.0 / 5.4 / 9.2 / 18.9 | 2.5 / 3.4 / 5.1 / 8.8 | 1.26 / 1.19 / 1.18 / 1.17 | 1.45 / 1.38 / 1.31 / 1.45 | 1.19 / 1.57 / 1.82 / 2.14 | 12 / 6 / 6 / 0 |
+| 2 reaper | 3.9 / 4.2 / 7.6 / 13.8 | 2.6 / 4.9 / 7.7 / 14.8 | 3.4 / 6.7 / 12.6 / 25.8 | 1.6 / 4.5 / 7.2 / 13.6 | 2.46 / 0.93 / 1.06 / 1.02 | 1.67 / 1.08 / 1.07 / 1.09 | 2.18 / 1.47 / 1.75 / 1.90 | 23 / 4 / 6 / 24 |
+| warbanner + 2 sniper + 2 swarmer | 3.0 / 4.1 / 8.3 / 17.6 | 5.9 / 9.0 / 15.0 / 30.7 | 6.0 / 9.9 / 17.6 / 34.3 | 2.6 / 3.8 / 7.8 / 16.0 | 1.14 / 1.10 / 1.06 / 1.10 | 2.27 / 2.39 / 1.92 / 1.92 | 2.29 / 2.65 / 2.26 / 2.14 | 10 / 1 / 2 / 10 |
+| 2 turret.sprayer | 4.0 / 13.8 / 66.8 / 44.9 | 7.0 / 27.3 / t/o / 86.6 | 6.7 / 15.1 / 74.7 / t/o | 3.7 / 5.2 / 18.5 / 37.6 | 1.08 / 2.66 / 3.62 / 1.19 | 1.88 / 5.26 / - / 2.30 | 1.82 / 2.91 / 4.04 / - | 32 / 12 / - / 30 |
+| 2 turret.caster | 16.6 / 25.2 / t/o / t/o | 7.0 / 15.7 / 69.4 / t/o | 7.6 / 41.1 / 69.0 / t/o | 9.0 / 48.8 / t/o / t/o | 1.85 / 0.52 / - / - | 0.78 / 0.32 / - / - | 0.85 / 0.84 / - / - | - |
+
+### 2. Builds per character (pack seeds 1-3, census rooms seeds 1-2; f1 / f6 / f11 / f20)
+
+The pack: 8 swarmers 5-7 units ahead. The census room per floor (BU13's `tuneCensusRoom` over solo runs 1-10, planned
+affixes, \* = affixed): f1 run 2 room 0 (4 swarmer, 1 sniper); f6 run 2 room 7 (3 imp, 1 bomber, 2 swarmer, 1 sniper);
+f11 run 10 room 3 (1 bruiser, 1 stormcaller, 1 warbanner, 1 summoner, 1 sniper, 1 charger\*, 2 swarmer); f20 run 6 room
+1 (1 bomber, 1 charger, 2 sniper, 1 bruiser, 1 summoner, 2 imp\*, 1 warbanner, 1 reaper, 1 slime, 1 swarmer).
+
+| fight | build | Knight s | Archer s | Both s | Knight x Both | Archer x Both | hits / min at f20 K / A / B |
+|---|---|---|---|---|---|---|---|
+| pack | no build | 1.4 / 1.4 / 1.8 / 3.5 | 1.6 / 4.5 / 5.1 / 10.2 | 1.4 / 1.4 / 1.8 / 3.5 | 1.00 / 1.00 / 1.00 / 1.00 | 1.15 / 3.24 / 2.89 / 2.88 | 68 / 0 / 68 |
+| pack | Storm Blade (Chain Spark I + Swift Strikes I) | 0.3 / 0.5 / 1.2 / 2.5 | 0.5 / 2.6 / 3.4 / 8.1 | 0.4 / 0.5 / 1.0 / 2.5 | 0.95 / 1.00 / 1.24 / 1.00 | 1.23 / 5.03 / 3.39 / 3.27 | 65 / 0 / 65 |
+| pack | Soul Swarm (Soul Shards III) | 0.4 / 0.4 / 0.7 / 1.1 | 0.3 / 0.9 / 0.9 / 4.8 | 0.3 / 0.4 / 0.7 / 1.1 | 1.31 / 1.00 / 1.00 / 1.00 | 1.00 / 1.97 / 1.31 / 4.46 | 56 / 0 / 56 |
+| pack | Executioner (Sharpened III) | 1.4 / 1.4 / 1.4 / 1.8 | 1.6 / 3.4 / 4.1 / 5.5 | 1.4 / 1.4 / 1.4 / 1.8 | 1.00 / 1.00 / 1.00 / 1.00 | 1.15 / 2.40 / 2.94 / 3.08 | 68 / 0 / 68 |
+| pack | Fire Arrows (Ember Wake + Piercing Arrows I) | n/a | 0.9 / 2.7 / 4.3 / 7.0 | 1.1 / 1.4 / 1.8 / 3.5 | - | 0.79 / 1.94 / 2.44 / 1.98 | - / 0 / 68 |
+| pack | Siege Bolt (Ballista III) | n/a | 1.6 / 2.5 / 2.6 / 7.1 | 1.4 / 1.4 / 1.8 / 3.5 | - | 1.15 / 1.77 / 1.49 / 2.01 | - / 0 / 68 |
+| pack | Counterstrike (Riposte III) | 1.4 / 1.4 / 1.8 / 3.5 | n/a | 1.4 / 1.4 / 1.8 / 3.5 | 1.00 / 1.00 / 1.00 / 1.00 | - | 68 / - / 68 |
+| census room | no build | 2.1 / 6.9 / 27.3 / 62.0 | 1.6 / 14.5 / 46.5 / 121.8 | 1.7 / 5.7 / 24.6 / 61.2 | 1.24 / 1.21 / 1.11 / 1.01 | 0.96 / 2.54 / 1.89 / 1.99 | 27 / 12 / 26 |
+| census room | Storm Blade | 1.6 / 6.5 / 23.0 / 57.3 | 1.3 / 15.9 / 38.8 / 103.4 | 1.1 / 4.5 / 21.2 / 55.4 | 1.48 / 1.46 / 1.08 / 1.03 | 1.24 / 3.57 / 1.83 / 1.87 | 30 / 9 / 30 |
+| census room | Soul Swarm | 1.8 / 2.1 / 16.8 / 45.1 | 1.4 / 2.0 / 24.9 / 85.5 | 1.3 / 1.5 / 15.3 / 42.1 | 1.38 / 1.42 / 1.10 / 1.07 | 1.07 / 1.29 / 1.63 / 2.03 | 27 / 10 / 31 |
+| census room | Executioner (Sharpened III) | 1.8 / 4.5 / 14.7 / 36.0 | 1.6 / 8.9 / 24.5 / 60.8 | 1.4 / 3.8 / 13.1 / 34.0 | 1.28 / 1.19 / 1.12 / 1.06 | 1.12 / 2.36 / 1.87 / 1.79 | 26 / 11 / 26 |
+| census room | Fire Arrows | n/a | 1.6 / 12.0 / 33.8 / 70.6 | 1.6 / 5.7 / 22.0 / 48.3 | - | 1.03 / 2.12 / 1.54 / 1.46 | - / 10 / 27 |
+| census room | Siege Bolt (Ballista III) | n/a | 1.5 / 10.0 / 19.6 / 58.7 | 1.7 / 5.7 / 24.6 / 61.2 | - | 0.88 / 1.76 / 0.80 / 0.96 | - / 11 / 26 |
+| census room | Counterstrike (Riposte III) | 2.0 / 5.1 / 21.6 / 38.6 | n/a | 1.7 / 4.3 / 21.8 / 38.1 | 1.18 / 1.20 / 0.99 / 1.02 | - | 33 / - / 34 |
+
+### 3. Bosses (boss floors 5 / 10 / 15 = Depth 1 / 2 / 3; seeds 1-2; the damage cap's floor hp / 6 = 45.0 / 67.5 / 101.2 s)
+
+| boss | build | Knight | Archer (charge) | Archer (stream only) | Both | Knight x Both | Archer x Both | stream x Both | hits / min f15 K / A / As / B |
+|---|---|---|---|---|---|---|---|---|---|
+| Mother Mayhem | no build | 58.9 / 91.4 / 136.1 | 75.9 / 112.9 / 162.2 | 76.9 / 118.8 / 174.5 | 57.7 / 90.2 / 137.3 | 1.02 / 1.01 / 0.99 | 1.32 / 1.25 / 1.18 | 1.33 / 1.32 / 1.27 | 66 / 9 / 7 / 68 |
+| Mother Mayhem | Soul Swarm | 56.8 / 89.7 / 134.7 | 69.4 / 101.9 / 150.4 | 69.7 / 103.2 / 161.0 | 57.6 / 87.9 / 133.2 | 0.99 / 1.02 / 1.01 | 1.21 / 1.16 / 1.13 | 1.21 / 1.17 / 1.21 | 66 / 9 / 8 / 68 |
+| Demon Lord | no build | 51.8 / 76.3 / 113.3 | 66.0 / 97.0 / 142.2 | 68.6 / 108.2 / 161.2 | 50.8 / 77.2 / 114.3 | 1.02 / 0.99 / 0.99 | 1.30 / 1.26 / 1.24 | 1.35 / 1.40 / 1.41 | 74 / 7 / 4 / 73 |
+| Demon Lord | Soul Swarm | 51.7 / 77.2 / 113.9 | 63.5 / 94.7 / 139.6 | 65.3 / 95.6 / 143.6 | 50.6 / 77.1 / 112.9 | 1.02 / 1.00 / 1.01 | 1.25 / 1.23 / 1.24 | 1.29 / 1.24 / 1.27 | 73 / 8 / 4 / 74 |
+
+### 4. Endless survival census (`run/archer.survival --census`)
+
+**The bot** (`survivalBot.ts`): an honest solo endless run, no god mode, no debug hits, recorded by endlessBot.ts's
+`Driver` (its flask at <= 3 half hearts and Ember at <= 2). Config through the real path:
+`buildEndlessRunConfig(seed, 1, { characters: [who] })` (Knight, Archer), `buildEndlessRunConfig(seed, 1)` for Both
+(both weapons, no traits). Per floor: every room with planned spawns but the boss room, nearest first by BFS: walk in
+(`Driver.walkTo`, the open stairwell avoided) until the room's score record engages, fight it with the fighter (target:
+the nearest living member, else the nearest actor within 14; sight through the bullet blocker, BFS paths) until it
+clears (cap 120 s); on a boss floor walk to the boss and fight her / him and the adds (cap 420 s, never J); walk onto
+the stairwell (a floor not left in 4000 ticks is debug-skipped and counted: none was); the draft resolved with
+buildOffers.ts's greedy pick. Shrines, pacts, pedestals, chests, pellets ignored. **Sample: run seeds 1-12 per
+character (the same floors for each), to floor 20; 307 s** (Knight 48 s, Archer 206 s, Both 52 s).
+
+| character | floor reached mean / median | alive entering f2 / f5 / f6 / f10 / f11 / f15 / f16 | deaths in room / boss / walk | hits per room f1-4 / f5-9 / f10-14 / f15-20 (rooms) | s per room f1-4 / f5-9 / f10-14 | boss fights killed / fought, s per fight | rolls / guards / heavy arrows |
+|---|---|---|---|---|---|---|---|
+| Knight | 3.3 / 3.5 | 10 / 6 / 0 / 0 / 0 / 0 / 0 | 7 / 5 / 0 | 0.40 (245) / 0.74 (34) / - / - | 5.5 / 5.4 / - | 0 / 5, 5.3 s | 28 / 168 / 0 |
+| Archer | 8.5 / 8.5 | 12 / 12 / 7 / 6 / 2 / 2 / 0 | 1 / 8 / 3 | 0.04 (362) / 0.36 (292) / 0.58 (118) / 0.43 (14) | 6.3 / 13.7 / 16.3 | 9 / 17, 59.0 s | 2147 / 0 / 6918 |
+| Both (old player) | 4.6 / 5.0 | 12 / 9 / 0 / 0 / 0 / 0 / 0 | 3 / 9 / 0 | 0.30 (347) / 0.61 (49) / - / - | 4.3 / 5.1 / - | 0 / 9, 4.7 s | 89 / 74 / 0 |
+
+**Read with care: the census measures the bots.** The melee policy (walk in, swing, guard bullets) cannot read a boss's
+melee telegraphs, so every melee boss fight (Knight 5, Both 9) ended in the bot's death within about 5 s; the Archer's kiting stays out of the bosses' reach and killed 9 of 17. So the Knight / Both floors
+reached are the melee bot's ceiling (the first boss), not the Knight's; the useful comparisons are the room columns
+(same rooms, same seeds): the Archer takes **0.04 / 0.36 hits per room** on floors 1-4 / 5-9 against the Knight's 0.40 /
+0.74 and the old player's 0.30 / 0.61, and spends 6.3 / 13.7 s per room against 5.5 / 5.4 (Knight) and 4.3 / 5.1 (Both).
+
+### 5. The Archer's roll
+
+**Same policy, only the roll differs** (`sim/archer.roll.hold`: LG7's rooms at floor 6, the "roll-hold" bot kites and
+rolls into every volley, never attacks: weapon-free; seeds 1-5, 20 s per room). Hits per minute, Knight's roll (2.5
+tiles, 12 i-frames) / Archer's roll (3.38 tiles, 15 i-frames), and the Knight's own guard ("guard-hold": the guard on
+every near bullet, never a roll):
+
+| room | roll-hold Knight / Archer | with Slippery I: Knight / Archer | guard-hold Knight | Bastion: bullets counted per roll Knight / Archer | Bastion braces per room: roll Knight / Archer; guard Knight |
+|---|---|---|---|---|---|
+| 2 turret.caster | 51.6 / 38.4 (-26 %) | 49.8 / **4.2** | 28.8 | 2.0 / 1.6 | 0.8 / 0.6; 0.8 |
+| 2 turret.sprayer | 18.0 / 18.6 (+3 %) | 12.0 / 12.6 | 16.8 | 1.1 / 1.6 | 0.0 / 0.8; 0.0 |
+| 4 sniper | 7.2 / 4.2 (-42 %) | 5.4 / 1.8 | 13.8 | 2.2 / 2.7 | 0.0 / 0.0; 0.2 |
+| 2 reaper | 9.0 / 6.6 (-27 %) | 7.2 / 3.0 | 3.0 | 1.3 / 1.5 | 0.0 / 0.0; 0.0 |
+| mixed f6 census | 3.0 / 4.2 (+40 %, 1.0 / 1.4 hits) | 3.0 / 1.8 | 8.4 | 1.7 / 1.8 | 0.0 / 0.0; 0.2 |
+
+Rolls per room: about the same for both (caster 48 / 44, sprayer 22 / 31, sniper 12 / 12, reaper 7 / 5, mixed 10 / 9).
+With Bastion + Warding I + Citadel the roll braces are Knight 0.8 / 0 / 0 / 0 / 0, Archer 0.6 / 1.0 / 0 / 0 / 0 per
+room (the guard: 1.4 / 0 / 0.2 / 0 / 0.2). **Slippery I on the Archer:** 12 x 187.5 % = 23 i-frames, longer than the
+whole 21-tick roll, so a roll-spamming Archer is never hit while rolling: the caster room drops from 38.4 to 4.2 hits /
+min (-89 %), the Knight's Slippery I (18 i-frames) from 51.6 to 49.8 (-3 %).
+
+**While fighting** (`sim/archer.roll.fight`: LG7's fighting "roll" bot, the bow's stream, as the Archer and as the bow
+with the Knight's roll; no build): hits / min caster 42.0 / 48.6, sprayer 11.4 / 15.6, sniper 2.4 / 3.6, reaper 7.3 /
+9.1, mixed 0.0 / 1.1 (Archer / Knight's roll): 14-33 % fewer. Bastion's counted bullets per roll 1.0-2.1 (Archer) /
+0.9-2.0 (Knight's roll); braces per room 0.4 / 0.2 (caster, sprayer) against 0.8 / 0 with the Knight's roll.
+
+**What rides the roll** (open ground, one roll along +X):
+
+| character | roll | Blazing Trail: embers, first to last, gaps min / max | Wrecker I: crates on the line at 1-6 tiles broken / farthest | a single crate at 1 / 2 / 3 / 4 / 5 tiles |
+|---|---|---|---|---|
+| Knight | 2.50 tiles | 6, 1.70 tiles, 0.10 / 0.55 | 3 / 3 | yes / yes / yes / no / no |
+| Archer | 3.38 tiles | 6, 2.29 tiles (+35 %), 0.10 / 0.77 | 4 / 4 | yes / yes / yes / yes / no |
+
+### 6. Offers per character pool (`run/archer.offers`: 1000 simulated runs per policy and pool, by floor 11)
+
+"Both weapons" is the old two-weapon pool (every boon, no mask); Knight 18 boons / 16 duos, Archer 19 / 17.
+
+| pool | policy | runs with >= 1 evolution | runs with >= 1 duo | mean evolutions | mean duos | mean legendaries owned | Greed pool empty / mean size | boss-draft duo available f5 / f10 |
+|---|---|---|---|---|---|---|---|---|
+| both weapons | greedy | 100.0 % | 51.6 % | 3.38 | 0.60 | 0.42 | 0.0 % / 3.99 | 9.3 % / 19.9 % |
+| Knight | greedy | 100.0 % | 54.2 % | 3.34 | 0.62 | 0.41 | 0.1 % / 4.05 | 10.6 % / 20.1 % |
+| Archer | greedy | 100.0 % | 50.8 % | 3.37 | 0.59 | 0.43 | 0.0 % / 4.00 | 9.1 % / 19.7 % |
+| both weapons | random | 96.8 % | 54.3 % | 2.22 | 0.67 | 0.51 | 0.0 % / 5.32 | 16.6 % / 41.9 % |
+| Knight | random | 96.7 % | 58.7 % | 2.21 | 0.73 | 0.49 | 0.0 % / 5.40 | 19.8 % / 42.6 % |
+| Archer | random | 96.9 % | 54.6 % | 2.21 | 0.68 | 0.52 | 0.0 % / 5.32 | 17.0 % / 41.4 % |
+| both weapons | duo-seeking | 99.8 % | 96.8 % | 2.69 | 1.80 | 0.52 | 0.0 % / 4.15 | 28.3 % / 31.6 % |
+| Knight | duo-seeking | 99.9 % | 98.3 % | 2.71 | 1.81 | 0.45 | 0.0 % / 4.16 | 32.5 % / 32.7 % |
+| Archer | duo-seeking | 99.9 % | 96.8 % | 2.69 | 1.80 | 0.49 | 0.0 % / 4.19 | 29.2 % / 32.9 % |
+
+By floor 6 the pools are within a point of each other (greedy duos 11.2 / 12.1 / 10.9 %). Greed's deal holds a new
+legendary in 97-100 % of deals for every pool. **Relics:** pools both weapons 4 (Mirror Cloak, Hourglass, Vampire Fang,
+Second Wind), Knight 4, Archer 3 (no Mirror Cloak). Relic sources on real floors (pedestals + Rare vaults; solo runs
+1-20, floors 1-10): 1.65 / 3.40 / 5.20 / 8.65 / 17.50 by the end of floor 1 / 2 / 3 / 5 / 10, so a player who takes
+every relic empties a 3-relic pool by floor 3 in 100 % of runs and a 4-relic pool in 95 % (median floor 2 for both);
+after that pedestals stay inert and a Rare vault pays its 2-boost fallback.
+
+### Readings
+
+- **The Knight is the old player in melee rooms, slower where the old player shot instead** (Knight x Both):
+  pack, bruiser, Ooze, bomber, Warbanner room 1.00-1.20; snipers 1.05-1.34, imps 1.16-1.56, summoner 1.15-1.80,
+  stormcallers 1.17-1.26, chargers 1.05-1.42, reapers 0.93-2.46 (f2), the census rooms 1.01-1.24, bosses 0.99-1.02. The
+  gap is largest on shallow floors (where the walk-in is most of the fight) and shrinks with hp: by f20 it is 0-17 %.
+  The bot's swap player mostly held the sword, so "Both" is close to the Knight by construction; the true old player
+  could only be faster.
+- **The Archer is slower everywhere a body comes close, and much safer.** Rooms by kind mostly 1.1-3.3x the old player
+  (pack 2.3-3.2x, bombers up to 6.3x at f20, Warbanner room 1.9-2.4x, census rooms 1.9-2.5x from f6), faster only against
+  snipers at f2 (0.80) and the caster turrets; bosses 1.13-1.32x (the cap binds the Knight, not the Archer's ~8 dps
+  charge chain minus kiting). In god mode the Archer takes 0-12 hits / min where the Knight takes 40-79 (pack, bruiser,
+  Ooze, bomber): the trade the design wants, measured. In the survival census that trade is decisive for the bots: the
+  Archer reaches floor 8.5 on average (2 of 12 runs alive at floor 15), the melee bots die at the first boss.
+- **Charged shots carry the Archer.** Holding ALT to full charge and releasing back to back is 5 damage every 37 ticks
+  (~8.1 dps, piercing, aim-assisted) against the stream's 5 dps; the charge bot beats the stream bot in 10 of 11 endless
+  kinds at f20 (up to 2.4x in Ooze rooms) and on both bosses; only imps (blinking) favour the stream. A player who only
+  streams is 1.2-9.7x slower than the old player.
+- **The longer roll is worth 14-42 % fewer hits in bullet rooms** under the same policy (casters -26 %, snipers -42 %,
+  reapers -27 %; the sprayer and the mixed room are a wash at 1-1.4 hits a room). Bastion's roll braces: about as rare
+  as the Knight's roll's (0-1 a room; only the turret rooms carry 8 bullets into one roll), a little more often in the
+  sprayer room (0.8 vs 0). The Knight's guard is his better defence in turret rooms (28.8 vs the roll's 51.6 hits / min
+  vs casters) and worse against snipers (13.8 vs 7.2). **Slippery I makes the Archer's roll a full-length i-frame
+  window** (23 >= 21 ticks): the measured outlier.
+- **What rides the roll:** Blazing Trail lays its 6 embers over 2.29 tiles instead of 1.70 (+35 %, the same count, wider
+  gaps up to 0.77); Wrecker breaks one more crate on a line (4 vs 3) and reaches a lone crate 4 tiles out (AR3's spec).
+- **Pools barely move offers.** Duos by floor 11 within -0.8 / +4.4 points of the old pool (the Knight's 16-duo pool is
+  slightly MORE generous: fewer partners to dilute), evolutions within 0.04, legendaries within 0.07; Greed's pool is
+  never empty by floor 11 (<= 0.1 %). Relics are the one pool the cut is felt in: every pool empties by floor 2-3 for a
+  relic-taker, the Archer's one relic sooner.
+
+### Recommendations (owner calls; nothing changed here)
+
+1. **Archer clear speed** (the measured gap: rooms mostly 1.4-3.3x, census rooms ~2x, bosses ~1.25x the old player). Options:
+   (a) accept: the Archer clears slower but takes 2-10x fewer hits per room and survives deeper (survival census), which
+   is the character's identity; (b) a stream buff, e.g. `BOW_DATA.streamTicks` 12 -> 10 (6 dps: the stream-only player stops
+   being the trap it is, x 1.2 on every stream row; affects M1's bow too unless made a trait); (c) an
+   Archer trait `damagePercent` (a second per-character stat, ARD10's open door) of 115-125 %; (d) teach the charge
+   (the bot's back-to-back charge is ~60 % more dps than the stream; a tutorial / codex line rather than a number).
+   Suggested: (a) + (d), revisit with a playtest (AR14); if players stream, (b).
+2. **Knight against ranged rooms** (slower than the old player on floors 6-20: snipers 5-16 %, imps 16-36 %, the
+   summoner 15-33 %, stormcallers 17-19 %, reapers about equal; up to 80 % on floor 2). Options: (a) accept (no room is more than 1.4x past floor 2, bosses equal);
+   (b) a Knight tool: a ranged finisher (Flurry's crescent at level I), or a longer lunge on the finisher; (c) a +10 %
+   Knight walk speed trait. Suggested: (a).
+3. **Archer + Slippery** (the measured outlier). The Archer's 125 % folds with Slippery I into 23 i-frames, longer than
+   the 21-tick roll, and a roll can follow a roll at once: roll-spam is untouchable (-89 % hits in a caster room). The
+   Knight reaches the same full-roll window only at Slippery II / III (21 / 24). Options: (a) cap `rollIframeTicks` at
+   `ROLL_TICKS - 1` (20) for everyone (changes Knight Slippery II / III and Archer Slippery I-III to 20: a 1-tick gap
+   per roll); (b) the larger of the two percents instead of their product for the Archer (Slippery I-III 18 / 21 / 24
+   like the Knight, 15 without Slippery); (c) accept, Slippery as the Archer's signature pick. Suggested: (b) if the
+   Knight's Slippery III is meant to be the full window, else (a).
+4. **Bastion's roll brace: no change.** The longer roll does not make roll braces common (0-1 a room either way); the
+   Risks section's worry is not borne out at `BASTION_BRACE_BULLETS` 8.
+5. **Pools and offers: no change.** No duo / evolution / legendary / Greed number moves by more than 4.4 points.
+   Relics: the Archer's 3-relic pool empties a floor sooner; if that matters, an Archer-side relic is the lever (out of
+   scope per this plan: new items).
+6. **Melee survival is unmeasured** (the bot's limit, not a finding): before any Knight buff, AR14's playtest should
+   check the first boss as the Knight; a boss-telegraph-aware melee bot is the harness work that would close this.
+
+**Not measured.** Party play, the Daily, real floor geometry for TTK (arena fights; the survival census is the real-floor
+measure), relics, curses and boosts in the arena fights, human aiming and dodging (the bots' policies above), the melee
+characters' boss survival (see 6), Riposte's counter-waves in a fight that guards often (the arena Knight guards only
+when a bullet is near, so Counterstrike rows equal no build in bullet-free fights).
