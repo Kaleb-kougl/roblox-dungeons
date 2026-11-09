@@ -490,3 +490,36 @@ Knight, combat D's corridor leads straight to combat F, no bow prompt.
 - Other per-character stats, skills or a second weapon per character.
 - Per-character boards, records or daily boards (owner answer 4).
 - New Archer-only or Knight-only boons to even the pools.
+
+## AR1 (as built)
+
+Data and helpers only: no rule reads them yet, so every run plays, draws and hashes exactly as before. Paths under
+`src/shared/`. The names below are final; later tasks use them as is.
+
+- **Weapon ids** (`sim/combat/weapons/loadout.ts`, exported from shared/sim): `SWORD_WEAPON_ID` "weapon.sword",
+  `BOW_WEAPON_ID` "weapon.bow"; `DEFAULT_LOADOUT` is now `[SWORD_WEAPON_ID, BOW_WEAPON_ID]` (same values).
+- **Tags** (`sim/progression/progressionData.ts`): `BoonDef.requires?: string` (a weapon id) on Piercing Arrows and
+  Ballista (`BOW_WEAPON_ID`) and Riposte (`SWORD_WEAPON_ID`); `RelicDef.requires?: string` on Mirror Cloak
+  (`SWORD_WEAPON_ID`). Duos carry none.
+- **Eligibility** (`sim/progression/eligibility.ts`, in the progression barrel): `carriesWeapon(weapons, id)` (any set
+  holds it), `boonEligible(state, i, boon)` / `relicEligible(state, i, relic)` (player i's `weaponsAt`; false for an
+  index that is no boon / relic), `eligibleBoonMask(state, i, out)` (fills entries 0 .. BOON_COUNT - 1 of a caller's
+  reused array and returns it), and two mask readers the pools use in AR2: `maskAllows(eligible, boon)` (no mask:
+  true) and `duoEligible(eligible, duo)` (both its boons allowed). No state, nothing hashed.
+- **Traits data** (`sim/playerData.ts`; moved forward from AR3 because the characters carry them): `PlayerTraits {
+  rollDashPercent, rollIframePercent }`, `NEUTRAL_TRAIT_PERCENT` 100 (progression's `PERCENT`, which playerData cannot
+  import), `NEUTRAL_TRAITS` (both 100, frozen). Nothing reads them until AR3.
+- **Characters** (`characters/`, new, pure; barrel `shared/characters`): `CharacterId` "knight" | "archer",
+  `CharacterDef { id, visualId, loadout, traits }`, `CHARACTERS` (append only: Knight `class.vanguard`
+  `[SWORD_WEAPON_ID]` `NEUTRAL_TRAITS`; Archer `class.ranger` `[BOW_WEAPON_ID]` { 140, 125 }), `CHARACTER_IDS`,
+  `DEFAULT_CHARACTER` "knight", `ARCHER_ROLL_DASH_PERCENT` 140, `ARCHER_ROLL_IFRAME_PERCENT` 125, `isCharacterId(x)`,
+  `characterDef(id)` (throws on an unknown id), `characterLoadout(id)`, `characterTraits(id)`,
+  `characterOfLoadout(loadout)` (set for set over `WEAPON_SETS`, an empty set undefined or "") and
+  `characterOfWeapons(weapons)` (a `WeaponsState`, through the registry ids): the character, or undefined for any
+  other loadout (M1's two weapons, test loadouts). It imports shared/sim; the sim never imports it.
+- **Spec** `characters/characters.spec.ts` (11): the table and helpers; the tags; per character every boon, duo
+  (derived) and relic against "Who gets what"; pool counts Knight 18 / 11 / 16 / 4, Archer 19 / 12 / 17 / 3; both
+  weapons (no loadout, `DEFAULT_LOADOUT`, either order) everything; co-op per player (`PartyConfig.loadouts`); out of
+  range.
+- **Ran:** typecheck, lint, build; `shared/characters` 11 / 11, `sim/progression` 52 / 52, `sim/hash` 6 / 6,
+  `sim/constants` 7 / 7 (no hash moved: nothing reads the new data).

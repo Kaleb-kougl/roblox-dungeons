@@ -77,3 +77,27 @@ export const ROLL_RECOVERY_SPEED = 2;
 /** Roll distance in open space: 2.5 tiles. */
 export const ROLL_DISTANCE =
 	(ROLL_DASH_TICKS * ROLL_SPEED + (ROLL_TICKS - ROLL_DASH_TICKS) * ROLL_RECOVERY_SPEED) / SIM_HZ;
+
+// --- Player traits (docs/ARCHER.md "The Archer's dodge") -----------------------------------------
+
+/**
+ * Per-player traits a character brings to a run (SimConfig.traits for player 0, PartyConfig.traits per co-op player;
+ * read through player.ts playerTraits): integer percents of the roll. Config, not state: the client and the server
+ * build them from the same run setup, and they are not hashed (a mismatch shows in the hashed positions on the first
+ * roll). The sim knows only these numbers, never a character id (shared/characters holds the characters).
+ */
+export interface PlayerTraits {
+	/** The roll's dash step (the first ROLL_DASH_TICKS ticks) x this / 100; 100 = ROLL_DASH_STEP exactly. */
+	readonly rollDashPercent: number;
+	/** The roll's i-frames x this / 100, folded with Slippery's percent into one rounding (rollIframeTicks). */
+	readonly rollIframePercent: number;
+}
+
+/** A trait percent that changes nothing (progression's PERCENT; playerData cannot import it: a require cycle). */
+export const NEUTRAL_TRAIT_PERCENT = 100;
+
+/** No traits: today's roll exactly (what every player without SimConfig.traits / PartyConfig.traits gets). */
+export const NEUTRAL_TRAITS: PlayerTraits = table.freeze({
+	rollDashPercent: NEUTRAL_TRAIT_PERCENT,
+	rollIframePercent: NEUTRAL_TRAIT_PERCENT,
+});
