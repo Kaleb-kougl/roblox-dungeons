@@ -222,7 +222,10 @@ describe("required IDs and strings", () => {
 		// + docs/BUILDS_V2.md BV10: 5 BUILD_STRING_KEYS (hud.draft.duoHint, fx.counter / .pinned / .slam.text,
 		// hud.toast.happyHour)
 		// + docs/RUN_CONTRIBUTION.md CT4: CONTRIB_STRING_KEYS (44; CT5's `run.recap.party.share`: 45)
-		expect(REQUIRED_STRING_KEYS.size()).toBe(before + 28 + 1 + 1 + 4 + 16 + 1 + 19 + 1 + 1 + 3 + 18 + 17 + 5 + 45);
+		// + docs/ARCHER.md AR11: the character screen's 7 (theme characters.ts characterStringKeys)
+		expect(REQUIRED_STRING_KEYS.size()).toBe(
+			before + 28 + 1 + 1 + 4 + 16 + 1 + 19 + 1 + 1 + 3 + 18 + 17 + 5 + 45 + 7,
+		);
 		expect(new Set(REQUIRED_STRING_KEYS).size()).toBe(REQUIRED_STRING_KEYS.size());
 		expect(BIOMES.map((b) => b.forgeTheme)).toEqual(["ancient", "molten", "frost", "grim", "verdant"]);
 	});
