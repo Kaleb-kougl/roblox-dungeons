@@ -1609,7 +1609,7 @@ describe("vale enemy.sprayer and enemy.caster (2D Demons turrets, per-sheet cell
 		}
 	});
 
-	it("land in the preload core tier with their rims once uploaded (docs/PRELOAD.md: `enemy.` is core)", () => {
+	it("land in the preload later tier with their rims once uploaded (docs/STAGE_ASSETS.md SA8: core is the menu kit; each floor's manifest fronts them)", () => {
 		const ids = fakeIds();
 		const pack = new ThemePack(buildValeManifest(ids), { warn: quiet });
 		const plan = preloadPlan(pack);
@@ -1621,7 +1621,7 @@ describe("vale enemy.sprayer and enemy.caster (2D Demons turrets, per-sheet cell
 			want.sort();
 			refs.sort();
 			expect([id, refs]).toEqual([id, want]);
-			for (const ref of refs) expect([id, ref, core.has(ref), later.has(ref)]).toEqual([id, ref, true, false]);
+			for (const ref of refs) expect([id, ref, core.has(ref), later.has(ref)]).toEqual([id, ref, false, true]);
 		}
 	});
 });
@@ -1849,7 +1849,7 @@ describe("vale enemy.imp and enemy.summoner (EV10: Imp 9 / Demon Spawn 10, per-s
 		expect(rect("enemy.summoner", "death", 7, 5)).toEqual(at("summoner-death.png", 500, 609, 100, 87, 52, 51));
 	});
 
-	it("land in the preload core tier with their rims once uploaded (docs/PRELOAD.md: `enemy.` is core)", () => {
+	it("land in the preload later tier with their rims once uploaded (docs/STAGE_ASSETS.md SA8: core is the menu kit; each floor's manifest fronts them)", () => {
 		const ids = fakeIds();
 		const pack = new ThemePack(buildValeManifest(ids), { warn: quiet });
 		const plan = preloadPlan(pack);
@@ -1861,7 +1861,7 @@ describe("vale enemy.imp and enemy.summoner (EV10: Imp 9 / Demon Spawn 10, per-s
 			want.sort();
 			refs.sort();
 			expect([id, refs]).toEqual([id, want]);
-			for (const ref of refs) expect([id, ref, core.has(ref), later.has(ref)]).toEqual([id, ref, true, false]);
+			for (const ref of refs) expect([id, ref, core.has(ref), later.has(ref)]).toEqual([id, ref, false, true]);
 		}
 	});
 });
