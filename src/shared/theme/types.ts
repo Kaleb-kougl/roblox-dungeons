@@ -535,8 +535,8 @@ export type BiomeTileKey = (typeof BIOME_TILE_KEYS)[number];
 
 /**
  * Roblox materials for a biome's surfaces (`BIOME_MATERIALS` names, contract.ts). Every surface is optional and
- * defaults to `DEFAULT_BIOME_MATERIAL` (SmoothPlastic). A floor whose tile is a repeating texture must stay
- * SmoothPlastic (the validator enforces it).
+ * defaults to `DEFAULT_BIOME_MATERIAL` (SmoothPlastic). A floor or wall whose tile is a repeating texture must name a
+ * rough material (the validator enforces it): SmoothPlastic's sun glint washes the image out at the game camera.
  */
 export type BiomeMaterials = Partial<Record<BiomeMaterialSurface, BiomeMaterial>>;
 

@@ -142,6 +142,9 @@ import type { RobloxAssetId } from "../../types";
  * sfx-boost-drop ("Retro Coin 4" by Driken Stan, Pixabay 236671) and sfx-boost-aegisbreak ("Plate Break 1" by
  * freesound_community, Pixabay 36468) uploaded 2026-11-08 by k9kbdev as built by audio:build, transcribed from an Asset
  * Manager screenshot.
+ * tile-biome2-floor.png / tile-biome2-wall.png (the molten biome's floor and wall textures, docs/ART.md "As built:
+ * molten tiles"; original art, scripts/art/molten/gen_molten_tiles.py) uploaded 2026-11-08 1:21 PM by k9kbdev,
+ * transcribed from an Asset Manager screenshot.
  */
 export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"amb-b1.ogg": "rbxassetid://91158343621799",
@@ -412,6 +415,8 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"swarmer-move-outline.png": "rbxassetid://71928565662655",
 	"swarmer-move.png": "rbxassetid://123202950556458",
 	"tile-biome1-floor.png": "rbxassetid://98164459682194",
+	"tile-biome2-floor.png": "rbxassetid://100132893234485",
+	"tile-biome2-wall.png": "rbxassetid://111148927425576",
 	"treasure-column.png": "rbxassetid://90798930010648",
 	"ui-bar-fill.png": "rbxassetid://77055366404694",
 	"ui-bar-track.png": "rbxassetid://102111490052610",

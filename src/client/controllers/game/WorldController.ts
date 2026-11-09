@@ -4,14 +4,7 @@ import { Workspace } from "@rbxts/services";
 import { STUDS_PER_TILE } from "shared/config";
 import { THEMES, TileType, type Dungeon } from "shared/dungeon";
 import { DEFAULT_BOUNDS, type SimConfig } from "shared/sim";
-import {
-	BIOMES,
-	DEFAULT_BIOME_MATERIAL,
-	MISSING_COLOR,
-	type ImageRef,
-	type PlaceholderVisual,
-	type ThemePack,
-} from "shared/theme";
+import { BIOMES, MISSING_COLOR, type ImageRef, type PlaceholderVisual, type ThemePack } from "shared/theme";
 import {
 	GAME_WORLD,
 	VOID,
@@ -61,11 +54,11 @@ interface Surface {
  * (shared/view floorTextureOffsets; the biome colour stays on the Part). Likewise a biome whose wall tile is such an
  * image draws it on every wall Part's GAME_WORLD.wallTextureFaces (the Top face and the four sides: 5 Textures per wall
  * Part), world-anchored along each face and hung from the wall's top edge (shared/view wallTextureOffsets), the wall
- * Part in DEFAULT_BIOME_MATERIAL; without a wall image walls draw as before. Pools have no
+ * Part in the biome's wall material; without a wall image walls draw as before. Pools have no
  * theme role yet: like the web build they use the Dungeon Forge theme's liquid colour (data in shared/dungeon).
  * Materials (docs/DECOR.md R1): floor, wall and pool Parts take the matched biome's `materials` (ThemePack.biome,
- * SmoothPlastic where the pack names none), mapped through `Enum.Material[name]`; a textured floor is always drawn
- * in DEFAULT_BIOME_MATERIAL (the validator requires it; this guards a pack that failed validation). Pillar cells that
+ * SmoothPlastic where the pack names none), mapped through `Enum.Material[name]`, textured surfaces too (the
+ * validator requires a rough one under a repeating texture: SmoothPlastic's sun glint washes it out). Pillar cells that
  * the Forge turns solid are WALL tiles, so they merge into the wall Parts and get the wall material like any wall.
  * Per-cell floor variants (tint or material by cell hash) are not done: they would need un-merged floor Parts.
  *
@@ -126,11 +119,11 @@ export class WorldController implements OnStart {
 		// describe the same floor; the greybox / unmatched floor keeps the plain `floor` role.
 		const texture = biome !== undefined && floorImage?.tilesPerImage !== undefined ? floorImage : undefined;
 		const materials = biome !== undefined ? pack.biome(biome.id).materials : undefined;
-		const floorMaterial = texture !== undefined ? DEFAULT_BIOME_MATERIAL : materials?.floor ?? floorVisual.material;
-		// The wall the same way: a repeating wall image (a matched biome only) is drawn in DEFAULT_BIOME_MATERIAL.
+		// Textured or not, a surface keeps its biome material (a rough one under a repeating texture: the validator).
+		const floorMaterial = materials?.floor ?? floorVisual.material;
+		// The wall the same way: a repeating wall image (a matched biome only) on every wall Part's texture faces.
 		const wallTexture = biome !== undefined && wallImage?.tilesPerImage !== undefined ? wallImage : undefined;
-		const wallMaterial =
-			wallTexture !== undefined ? DEFAULT_BIOME_MATERIAL : materials?.wall ?? wallVisual.material;
+		const wallMaterial = materials?.wall ?? wallVisual.material;
 		return {
 			floor: {
 				visual: floorVisual,

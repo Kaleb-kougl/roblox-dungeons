@@ -1691,49 +1691,50 @@ export function validateManifest(manifest: unknown, opts: ValidateOptions = {}):
 
 /**
  * A biome's optional `materials` (docs/DECOR.md R1): an object of surface (floor, wall, pool) -> a BIOME_MATERIALS
- * name. A floor or wall whose tile is a repeating texture (an image with `tilesPerImage`) must keep
- * DEFAULT_BIOME_MATERIAL.
+ * name. A floor or wall whose tile is a repeating texture (an image with `tilesPerImage`) must name a rough material:
+ * on a glossy one (DEFAULT_BIOME_MATERIAL, also when the biome names none, or Glass) the sun's glint washes the image
+ * out at the game camera (docs/ART.md "As built: molten tiles").
  */
 function validateBiomeMaterials(def: Obj, path: Array<string>, assets: Obj, err: Err, unknownKeys: UnknownKeys) {
 	const materials = def.materials;
-	if (materials === undefined) {
-		return;
-	}
 	const mp = append(path, "materials");
-	if (!isObj(materials)) {
-		err(mp, `must map ${BIOME_MATERIAL_SURFACES.join(", ")} to material names, got ${describeValue(materials)}`);
-		return;
-	}
-	unknownKeys(materials, mp, BIOME_MATERIAL_SURFACES);
-	for (const surface of BIOME_MATERIAL_SURFACES) {
-		const name = materials[surface];
-		if (name === undefined) {
-			continue;
+	if (materials !== undefined) {
+		if (!isObj(materials)) {
+			err(
+				mp,
+				`must map ${BIOME_MATERIAL_SURFACES.join(", ")} to material names, got ${describeValue(materials)}`,
+			);
+			return;
 		}
-		if (!typeIs(name, "string")) {
-			err(append(mp, surface), `must be a material name string, got ${describeValue(name)}`);
-		} else if (!BIOME_MATERIAL_SET.has(name)) {
-			err(append(mp, surface), `unknown material ${q(name)} (allowed: ${BIOME_MATERIAL_LIST})`);
+		unknownKeys(materials, mp, BIOME_MATERIAL_SURFACES);
+		for (const surface of BIOME_MATERIAL_SURFACES) {
+			const name = materials[surface];
+			if (name === undefined) {
+				continue;
+			}
+			if (!typeIs(name, "string")) {
+				err(append(mp, surface), `must be a material name string, got ${describeValue(name)}`);
+			} else if (!BIOME_MATERIAL_SET.has(name)) {
+				err(append(mp, surface), `unknown material ${q(name)} (allowed: ${BIOME_MATERIAL_LIST})`);
+			}
 		}
 	}
+	// The glossy materials a repeating texture may not sit on (a local: validate.luau is near Luau's 200 locals).
+	const glossy = new Set<string>([DEFAULT_BIOME_MATERIAL, "Glass"]);
 	for (const surface of BIOME_TILE_KEYS) {
-		const name = materials[surface];
 		const ref = isObj(def.tiles) ? def.tiles[surface] : undefined;
 		const asset = typeIs(ref, "string") ? assets[ref] : undefined;
-		if (
-			typeIs(name, "string") &&
-			typeIs(ref, "string") &&
-			name !== DEFAULT_BIOME_MATERIAL &&
-			BIOME_MATERIAL_SET.has(name) &&
-			isObj(asset) &&
-			asset.kind === "image" &&
-			asset.tilesPerImage !== undefined
-		) {
+		if (!typeIs(ref, "string") || !isObj(asset) || asset.kind !== "image" || asset.tilesPerImage === undefined) {
+			continue;
+		}
+		const named = isObj(materials) ? materials[surface] : undefined;
+		const name = named === undefined ? DEFAULT_BIOME_MATERIAL : named;
+		if (typeIs(name, "string") && glossy.has(name)) {
 			err(
 				append(mp, surface),
-				`${surface} tile ${q(ref)} is a repeating texture: use ${q(DEFAULT_BIOME_MATERIAL)}, ${q(
+				`${surface} tile ${q(ref)} is a repeating texture: name a rough material, not ${q(
 					name,
-				)} would fight the image`,
+				)} (its sun glint washes the image out at the game camera)`,
 			);
 		}
 	}

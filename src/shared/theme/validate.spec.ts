@@ -882,6 +882,8 @@ describe("validateManifest: repeating tile images (tilesPerImage)", () => {
 	const withAsset = (id: string, def: Obj) => {
 		const m = clone();
 		at(m, "assets")[id] = def;
+		// a repeating texture needs a rough material under it (biome materials, below)
+		at(m, "biomes", "biome.1").materials = { floor: "Slate" };
 		return validateManifest(m);
 	};
 	const FLOOR = "tile.biome.1.floor";
@@ -1005,7 +1007,7 @@ describe("validateManifest: biome materials (docs/DECOR.md R1)", () => {
 		]);
 	});
 
-	it("a textured floor (tilesPerImage) must stay SmoothPlastic; an untextured wall and pools are free", () => {
+	it("a textured floor (tilesPerImage) needs a rough material; an untextured wall and pools are free", () => {
 		const m = clone();
 		at(m, "assets")["tile.biome.1.floor"] = {
 			kind: "image",
@@ -1015,41 +1017,45 @@ describe("validateManifest: biome materials (docs/DECOR.md R1)", () => {
 			tilesPerImage: 4,
 		};
 		at(m, "biomes", "biome.1").materials = { floor: "Slate", wall: "Brick", pool: "Mud" };
-		expect(validateManifest(m)).toEqual([
-			'biomes["biome.1"].materials.floor: floor tile "tile.biome.1.floor" is a repeating texture: use ' +
-				'"SmoothPlastic", "Slate" would fight the image',
-		]);
-		at(m, "biomes", "biome.1").materials = { floor: "SmoothPlastic", wall: "Brick" };
 		expect(validateManifest(m)).toEqual([]);
+		const glossy = (name: string) =>
+			'biomes["biome.1"].materials.floor: floor tile "tile.biome.1.floor" is a repeating texture: name a rough ' +
+			`material, not "${name}" (its sun glint washes the image out at the game camera)`;
+		at(m, "biomes", "biome.1").materials = { floor: "SmoothPlastic", wall: "Brick" };
+		expect(validateManifest(m)).toEqual([glossy("SmoothPlastic")]);
+		at(m, "biomes", "biome.1").materials = { floor: "Glass" };
+		expect(validateManifest(m)).toEqual([glossy("Glass")]);
+		// no floor entry (or no materials at all) is SmoothPlastic too
+		at(m, "biomes", "biome.1").materials = { wall: "Brick" };
+		expect(validateManifest(m)).toEqual([glossy("SmoothPlastic")]);
+		at(m, "biomes", "biome.1").materials = undefined;
+		expect(validateManifest(m)).toEqual([glossy("SmoothPlastic")]);
 		// a plain 16x16 tile image is not a repeating texture: any floor material
 		at(m, "assets")["tile.biome.1.floor"] = { kind: "image", assetId: "rbxassetid://1002", w: 16, h: 16 };
-		at(m, "biomes", "biome.1").materials = { floor: "Slate" };
+		at(m, "biomes", "biome.1").materials = { floor: "SmoothPlastic" };
 		expect(validateManifest(m)).toEqual([]);
 	});
 
-	it("a textured wall (tilesPerImage) must stay SmoothPlastic too, floor and wall each named", () => {
+	it("a textured wall (tilesPerImage) needs a rough material too, floor and wall each named", () => {
 		const m = clone();
 		const texture = (assetId: string): Obj => ({ kind: "image", assetId, w: 256, h: 256, tilesPerImage: 4 });
+		const glossy = (surface: string, name: string) =>
+			`biomes["biome.2"].materials.${surface}: ${surface} tile "tile.biome.2.${surface}" is a repeating texture: ` +
+			`name a rough material, not "${name}" (its sun glint washes the image out at the game camera)`;
 		at(m, "assets")["tile.biome.2.wall"] = texture("rbxassetid://1003");
 		at(m, "biomes", "biome.2").materials = { floor: "Basalt", wall: "Rock", pool: "CrackedLava" };
-		expect(validateManifest(m)).toEqual([
-			'biomes["biome.2"].materials.wall: wall tile "tile.biome.2.wall" is a repeating texture: use ' +
-				'"SmoothPlastic", "Rock" would fight the image',
-		]);
-		// both surfaces textured: one problem each, floor first
+		expect(validateManifest(m)).toEqual([]);
+		at(m, "biomes", "biome.2").materials = { floor: "Basalt", wall: "SmoothPlastic", pool: "CrackedLava" };
+		expect(validateManifest(m)).toEqual([glossy("wall", "SmoothPlastic")]);
+		// both surfaces textured: one problem each, floor first; the pool keeps its material
 		at(m, "assets")["tile.biome.2.floor"] = texture("rbxassetid://1004");
-		expect(validateManifest(m)).toEqual([
-			'biomes["biome.2"].materials.floor: floor tile "tile.biome.2.floor" is a repeating texture: use ' +
-				'"SmoothPlastic", "Basalt" would fight the image',
-			'biomes["biome.2"].materials.wall: wall tile "tile.biome.2.wall" is a repeating texture: use ' +
-				'"SmoothPlastic", "Rock" would fight the image',
-		]);
-		// SmoothPlastic or no entry is fine; the pool keeps its material
-		at(m, "biomes", "biome.2").materials = { wall: "SmoothPlastic", pool: "CrackedLava" };
+		at(m, "biomes", "biome.2").materials = { floor: "Glass", pool: "CrackedLava" };
+		expect(validateManifest(m)).toEqual([glossy("floor", "Glass"), glossy("wall", "SmoothPlastic")]);
+		at(m, "biomes", "biome.2").materials = { floor: "Basalt", wall: "Rock", pool: "CrackedLava" };
 		expect(validateManifest(m)).toEqual([]);
 		// a plain 16x16 wall image is not a repeating texture: any wall material
 		at(m, "assets")["tile.biome.2.wall"] = { kind: "image", assetId: "rbxassetid://1003", w: 16, h: 16 };
-		at(m, "biomes", "biome.2").materials = { wall: "Rock" };
+		at(m, "biomes", "biome.2").materials = { floor: "Basalt", wall: "SmoothPlastic" };
 		expect(validateManifest(m)).toEqual([]);
 	});
 });

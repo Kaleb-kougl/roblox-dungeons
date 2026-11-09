@@ -15,7 +15,7 @@ six bullet IDs, the biome tiles, `ui.cursor` (the facing pip) and the pedestal /
 | `class.vanguard` (every player, solo and co-op) | **Knight** | SmallScaleInt free edition (already here) |
 | `enemy.swarmer` (packs of 4-6, the most common enemy) | **Skeleton** (walk, death) | Lords of Pain demo |
 | `tile.biome.1.floor` | **`ground_stone1`**, tiled | Lords of Pain demo |
-| `tile.biome.2.floor` / `tile.biome.2.wall` (the molten biome; "As built: molten tiles" below) | **Original art**: basalt flagstones / coursed basalt blocks with lava in the joints, by `scripts/art/molten/gen_molten_tiles.py`, tiled (256 x 256, `tilesPerImage` 4); built 2026-11-08, not uploaded | none (original) |
+| `tile.biome.2.floor` / `tile.biome.2.wall` (the molten biome; "As built: molten tiles" below) | **Original art**: basalt flagstones / coursed basalt blocks with lava in the joints, by `scripts/art/molten/gen_molten_tiles.py`, tiled (256 x 256, `tilesPerImage` 4); built and uploaded 2026-11-08 (`assetIds.ts`), so the bundled vale pack draws them | none (original) |
 | co-op player marker / under-player ring | **`highlight_yellow`**, tinted per player | Lords of Pain demo |
 | relic pedestal marker (`RunMarkerController`) | **`loot_indicator_yellow`** beam (+ `glint`, stretch) | Lords of Pain demo |
 | `enemy.golden` (the Goldling, docs/FORTUNE.md FO10 / FD14) | **Skeleton recoloured gold** (`recolor`, below; bodyTiles 0.95): `golden-move.png`, `golden-death.png` + rims, built 2026-11-04, not uploaded | Lords of Pain demo |
@@ -243,20 +243,27 @@ bright red lava in the cracks.
   repeating tile (`tilesPerImage`) without `meanHex` fails the build.
 - **Pack.** `packs/vale/manifest.ts`: a biome floor or wall whose tile is an uploaded repeating texture (an `image` with
   `tilesPerImage`) takes its `VALE_TILE_MEAN_HEX` colour as that surface's biome colour (so the contrast checks describe
-  what is drawn) and drops that surface's material (SmoothPlastic). Each texture switches on alone; the other biomes
-  never pick up the molten means. As bundled (no IDs) `biome.2` is exactly as before (vale.spec "vale molten tiles").
-- **Validator.** A textured wall must use `SmoothPlastic` (no `materials.wall` or `"SmoothPlastic"`), like a textured
-  floor; a patterned material under the image would fight it.
+  what is drawn) and keeps the biome's material (molten Basalt / Rock). Each texture switches on alone; the other biomes
+  never pick up the molten means. Without the IDs `biome.2` is exactly as before (vale.spec "vale molten tiles").
+- **Validator.** A textured floor or wall must name a rough material: not `SmoothPlastic` (also the default when the
+  biome names none) or `Glass`. **Reversed in the Studio check (2026-11-08):** the first build drew textured surfaces in
+  SmoothPlastic (so the material's own pattern would not fight the image), and every textured top face came out pale
+  grey. At the game camera (7 degrees FOV, ~551 studs out, yaw 45, pitch 55) every up-facing face is seen from the same
+  angle, and with the place's sun that angle catches SmoothPlastic's sun glint across the whole floor: a plain `#2d211e`
+  SmoothPlastic slab turned as pale as the textured ones, the side faces and the Basalt void stayed dark, and removing
+  `Atmosphere` or `EnvironmentSpecularScale` 0 did not help. The molten texture on Basalt reads as drawn (dark basalt,
+  lit lava), so every textured surface now keeps its biome's rough material (biome.1's stone floor: Pavement).
 - **Renderer.** `WorldController`: when the biome's wall image has `tilesPerImage`, every wall Part gets 5 Textures
-  (`GAME_WORLD.wallTextureFaces`: Top and the four sides; the Bottom lies on the floor) and `DEFAULT_BIOME_MATERIAL`;
+  (`GAME_WORLD.wallTextureFaces`: Top and the four sides; the Bottom lies on the floor) in the biome's wall material;
   otherwise walls draw as before. shared/view `wallTexture.ts` (`wallTextureOffsets`) anchors each face's pattern to
   the world (U along the face's world axis, V down from the wall's top edge), so merged wall Parts run on without
   seams; the Top face is the floor's rule (`floorTexture.ts`, whose per-axis helper is now `textureAxisOffset`). The
   side faces' U / V conventions are assumed in `GAME_WORLD.wallTextureUV` (from a Decal's: upright and unmirrored from
   outside the face) until Studio confirms them. Faces hidden between merged wall Parts are drawn anyway (no per-face
   neighbour test).
-- **Pending.** Upload `art/upload/tile-biome2-floor.png` and `tile-biome2-wall.png` and paste their IDs into
-  `packs/vale/assetIds.ts`. Studio checks: no seams where wall Parts meet; the stone upright on the side faces (flip a
+- **Uploaded** 2026-11-08 (`tile-biome2-floor.png` / `tile-biome2-wall.png`, IDs in `packs/vale/assetIds.ts`), so the
+  bundled vale pack draws them. **Pending:** the Studio checks: biome.1's stone floor on Pavement (does the slab pattern
+  fight the image?); no seams where wall Parts meet; the stone upright on the side faces (flip a
   face's sign in `GAME_WORLD.wallTextureUV` if not); telegraph rings still readable on molten floors (the 30.8 CIE76
   above). Optional: `scripts/art/kenney/kenney.json` still bakes the biome.2 Kenney floor patches toward the old
   placeholder floor `#2a1a16`; rebake toward `#2d211e` once the floor is uploaded.

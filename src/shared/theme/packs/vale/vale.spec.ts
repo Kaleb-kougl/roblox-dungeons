@@ -453,12 +453,12 @@ describe("vale biome materials (docs/DECOR.md R1)", () => {
 		}
 	});
 
-	it("a textured floor stays SmoothPlastic; untextured walls and pools keep their materials", () => {
-		// as bundled, biome.1's stone texture is uploaded
+	it("a textured floor or wall keeps its biome's rough material (no sun glint), like every other surface", () => {
+		// as bundled, biome.1's stone texture and biome.2's molten floor and wall are uploaded
 		const pack = new ThemePack(VALE_MANIFEST, { warn: quiet });
 		expect(pack.image("tile.biome.1.floor")?.tilesPerImage).never.toBe(undefined);
 		expect(pack.biome("biome.1").materials).toEqual({
-			floor: DEFAULT_BIOME_MATERIAL,
+			floor: VALE_BIOME_MATERIALS["biome.1"].floor,
 			wall: VALE_BIOME_MATERIALS["biome.1"].wall,
 			pool: DEFAULT_BIOME_MATERIAL,
 			shoulder: "Brick",
@@ -471,7 +471,7 @@ describe("vale biome materials (docs/DECOR.md R1)", () => {
 			shoulder: "Basalt",
 			cliff: "Basalt",
 		});
-		// without the texture, biome.1's floor gets its material
+		// without the texture, biome.1's floor has the same material
 		const noFloor = new ThemePack(buildValeManifest(fakeIds("tile-biome1-floor.png")), { warn: quiet });
 		expect(noFloor.biome("biome.1").materials.floor).toBe(VALE_BIOME_MATERIALS["biome.1"].floor);
 		expect(validateManifest(buildValeManifest(fakeIds("tile-biome1-floor.png")), { packId: "vale" })).toEqual([]);
@@ -503,19 +503,30 @@ describe("vale molten tiles (tile.biome.2.floor / .wall: scripts/art/molten/gen_
 		expect(VALE_TILE_MEAN_HEX["tile.biome.1.floor"]).toBe(VALE_FLOOR_HEX);
 	});
 
-	it("as bundled (no molten IDs yet), biome.2 is exactly as before", () => {
-		expect(VALE_ASSET_IDS[FLOOR_FILE]).toBe(undefined);
-		expect(VALE_ASSET_IDS[WALL_FILE]).toBe(undefined);
-		expect(VALE_MANIFEST.assets[FLOOR_ID]).toEqual({ kind: "placeholder" });
-		expect(VALE_MANIFEST.assets[WALL_ID]).toEqual({ kind: "placeholder" });
-		expect(VALE_MANIFEST.biomes["biome.2"]).toEqual(untextured());
+	it("as bundled (both uploaded 2026-11-08), biome.2 draws them; without them it is exactly as before", () => {
+		for (const [id, file] of [
+			[FLOOR_ID, FLOOR_FILE],
+			[WALL_ID, WALL_FILE],
+		] as const) {
+			expect([file, VALE_ASSET_IDS[file] !== undefined]).toEqual([file, true]);
+			expect([id, VALE_MANIFEST.assets[id]]).toEqual([
+				id,
+				{ kind: "image", assetId: VALE_ASSET_IDS[file], w: SIZE, h: SIZE, tilesPerImage: TILES_PER_IMAGE },
+			]);
+		}
+		const bundled = VALE_MANIFEST.biomes["biome.2"];
+		expect(bundled.floor).toBe(VALE_TILE_MEAN_HEX[FLOOR_ID]);
+		expect(bundled.wall).toBe(VALE_TILE_MEAN_HEX[WALL_ID]);
+		expect(bundled.materials).toEqual(VALE_BIOME_MATERIALS["biome.2"]);
+		expect(validateManifest(VALE_MANIFEST, { packId: "vale" })).toEqual([]);
+		// without the two IDs: the placeholder's biome plus VALE_BIOME_MATERIALS
 		const biome = deepClone(untextured());
 		expect(biome.materials).toEqual(VALE_BIOME_MATERIALS["biome.2"]);
 		biome.materials = undefined;
 		expect(biome).toEqual(PLACEHOLDER_MANIFEST.biomes["biome.2"]);
 	});
 
-	it("once uploaded, biome.2's floor and wall draw them: images with tilesPerImage, the means, no material", () => {
+	it("once uploaded, biome.2's floor and wall draw them: images with tilesPerImage, the means, Basalt / Rock", () => {
 		const ids = fakeIds();
 		const m = buildValeManifest(ids);
 		expect(m.assets[FLOOR_ID]).toEqual({
@@ -535,7 +546,7 @@ describe("vale molten tiles (tile.biome.2.floor / .wall: scripts/art/molten/gen_
 		const biome = m.biomes["biome.2"];
 		expect(biome.floor).toBe(VALE_TILE_MEAN_HEX[FLOOR_ID]);
 		expect(biome.wall).toBe(VALE_TILE_MEAN_HEX[WALL_ID]);
-		expect(biome.materials).toEqual({ pool: "CrackedLava", shoulder: "Basalt", cliff: "Basalt" });
+		expect(biome.materials).toEqual(VALE_BIOME_MATERIALS["biome.2"]);
 		// everything else about biome.2 is unchanged
 		expect({ ...biome, floor: undefined, wall: undefined, materials: undefined }).toEqual({
 			...untextured(),
@@ -549,8 +560,8 @@ describe("vale molten tiles (tile.biome.2.floor / .wall: scripts/art/molten/gen_
 		expect(pack.image(WALL_ID)?.tilesPerImage).toBe(TILES_PER_IMAGE);
 		expect(pack.texture(WALL_ID)).toBe(ids[WALL_FILE]);
 		expect(pack.biome("biome.2").materials).toEqual({
-			floor: DEFAULT_BIOME_MATERIAL,
-			wall: DEFAULT_BIOME_MATERIAL,
+			floor: "Basalt",
+			wall: "Rock",
 			pool: "CrackedLava",
 			shoulder: "Basalt",
 			cliff: "Basalt",
@@ -567,27 +578,17 @@ describe("vale molten tiles (tile.biome.2.floor / .wall: scripts/art/molten/gen_
 		}
 	});
 
-	it("each texture switches on its own: the other surface keeps its placeholder colour and its material", () => {
+	it("each texture switches on its own: the other surface keeps its placeholder colour; materials never change", () => {
 		const floorOnly = buildValeManifest(fakeIds(WALL_FILE));
 		expect(floorOnly.biomes["biome.2"].floor).toBe(VALE_TILE_MEAN_HEX[FLOOR_ID]);
 		expect(floorOnly.biomes["biome.2"].wall).toBe(untextured().wall);
-		expect(floorOnly.biomes["biome.2"].materials).toEqual({
-			wall: "Rock",
-			pool: "CrackedLava",
-			shoulder: "Basalt",
-			cliff: "Basalt",
-		});
+		expect(floorOnly.biomes["biome.2"].materials).toEqual(VALE_BIOME_MATERIALS["biome.2"]);
 		expect(validateManifest(floorOnly, { packId: "vale" })).toEqual([]);
 
 		const wallOnly = buildValeManifest(fakeIds(FLOOR_FILE));
 		expect(wallOnly.biomes["biome.2"].floor).toBe(untextured().floor);
 		expect(wallOnly.biomes["biome.2"].wall).toBe(VALE_TILE_MEAN_HEX[WALL_ID]);
-		expect(wallOnly.biomes["biome.2"].materials).toEqual({
-			floor: "Basalt",
-			pool: "CrackedLava",
-			shoulder: "Basalt",
-			cliff: "Basalt",
-		});
+		expect(wallOnly.biomes["biome.2"].materials).toEqual(VALE_BIOME_MATERIALS["biome.2"]);
 		expect(validateManifest(wallOnly, { packId: "vale" })).toEqual([]);
 		// the other biomes never pick up the molten means
 		const all = buildValeManifest(fakeIds());
