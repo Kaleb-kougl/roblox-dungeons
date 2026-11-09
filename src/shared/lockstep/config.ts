@@ -53,6 +53,14 @@ export const HASH_RESEND_SECONDS = 2;
 export const HASH_SEND_MIN_SECONDS = 0.25;
 export const MAX_HASH_BATCH = 32;
 
+/**
+ * The input echo (docs/FRAME_PACING.md Design 9, wire.ts `encodeInputEcho`): every `lockstepFrames` carries, for its
+ * recipient only, how early that member's newest input reached the server. Its slack is sent in 1/this of a tick.
+ */
+export const INPUT_ECHO_SLACK_SCALE = 16;
+/** Bytes of one input echo: u8 flags, i32 tick offset, i16 slack, u8 lates. */
+export const INPUT_ECHO_BYTES = 8;
+
 /** Per player: lockstepInput calls allowed per window (a client sends ~30-60 per second); extra calls are dropped. */
 export const LOCKSTEP_INPUT_RATE = table.freeze({ count: SIM_HZ * 3, windowSeconds: 1 });
 /**

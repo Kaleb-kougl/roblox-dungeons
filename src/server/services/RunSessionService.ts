@@ -211,7 +211,8 @@ export class RunSessionService implements OnStart {
 		this.janitor.Add(
 			Events.lockstepInput.connect((player, runId, firstTick, data) => {
 				if (!this.inputLimiter.tryAcquire(player, os.clock())) return;
-				this.lockstep.get(runId)?.coop.submitInput(player.UserId, firstTick, data);
+				// The session's clock (startedAt is os.clock() too): places the receipt for the input echo.
+				this.lockstep.get(runId)?.coop.submitInput(player.UserId, firstTick, data, os.clock());
 			}),
 		);
 		this.janitor.Add(
@@ -531,9 +532,13 @@ export class RunSessionService implements OnStart {
 			}
 			const r = out as LockstepStepResult;
 			if (r.broadcasts.size() > 0) {
-				const players = this.memberPlayers(session);
-				for (const b of r.broadcasts)
-					Events.lockstepFrames.fire(players, runId, b.firstTick, b.data, r.ackTick);
+				// One fire per member present, each with only its own input echo (docs/FRAME_PACING.md FPD14).
+				const recipients = this.lockstepRecipients(coop);
+				for (const b of r.broadcasts) {
+					for (const [i, p] of recipients) {
+						Events.lockstepFrames.fire(p, runId, b.firstTick, b.data, r.ackTick, b.echoes[i]);
+					}
+				}
 			}
 			for (const i of r.dropped) {
 				log.warn("STALLED", `run ${runId}: player ${session.members[i]} dropped`);
@@ -568,7 +573,33 @@ export class RunSessionService implements OnStart {
 			}
 			if (r.segmentsOffered > 0 || r.submitted) this.pump(owner, session);
 		}
-		for (const runId of done) this.lockstep.delete(runId);
+		for (const runId of done) this.forgetLockstep(runId);
+	}
+
+	/** The members of a lockstep run still in this server, with their player index (index order). */
+	private lockstepRecipients(coop: LockstepSession): Array<[number, Player]> {
+		const out: Array<[number, Player]> = [];
+		for (let i = 0; i < coop.members.size(); i++) {
+			const p = Players.GetPlayerByUserId(coop.members[i]);
+			if (p !== undefined) out.push([i, p]);
+		}
+		return out;
+	}
+
+	/** A party run's lockstep part is over: one input-timing line per player (inputStats), then forget the session. */
+	private forgetLockstep(runId: string): void {
+		const entry = this.lockstep.get(runId);
+		if (entry === undefined) return;
+		this.lockstep.delete(runId);
+		const coop = entry.coop;
+		for (let i = 0; i < coop.size; i++) {
+			const st = coop.inputStats(i);
+			log.info(
+				"LOCKSTEP_INPUT",
+				`run ${runId} player ${coop.members[i]}: inputs ${st.samples} lates ${st.lates} slack min ` +
+					`${string.format("%.2f", st.slackMin)}t mean ${string.format("%.2f", st.slackMean)}t`,
+			);
+		}
 	}
 
 	private submitSegment(player: Player, segment: RunSegment): void {
@@ -778,7 +809,7 @@ export class RunSessionService implements OnStart {
 				this.runs.reportRejected(player, code, result.reason ?? code);
 		}
 		meta.release?.();
-		this.lockstep.delete(session.runId);
+		this.forgetLockstep(session.runId);
 		const verdict: RunFinishVerdict = {
 			runId: session.runId,
 			ok: result.ok,

@@ -44,6 +44,7 @@ import {
 	MergedEncoder,
 	PACING,
 	decodeInputBatch,
+	decodeInputEcho,
 	encodeInputBatch,
 	outliersOf,
 	type LockstepStepResult,
@@ -438,6 +439,9 @@ class Net {
 			for (const b of out.broadcasts) {
 				const ticks = this.logDecoder.decode(b.data)!;
 				expect(b.firstTick).toBe(this.log.size());
+				// One input echo per player, each well-formed (the clients do not read them yet: FP11).
+				expect(b.echoes.size()).toBe(this.clients.size());
+				for (const e of b.echoes) expect(decodeInputEcho(e, b.firstTick)).toBeDefined();
 				for (const t of ticks) this.log.push(t);
 				const ack = out.ackTick;
 				for (let i = 0; i < this.clients.size(); i++) {
@@ -478,7 +482,7 @@ class Net {
 				for (const inp of res.inputs) {
 					this.up[i].send(this.now, () => {
 						if (!this.inputLimiter.tryAcquire(user, this.now)) this.inputCallsLimited[i]++;
-						else this.session.submitInput(user, inp.firstTick, inp.data);
+						else this.session.submitInput(user, inp.firstTick, inp.data, this.now);
 					});
 				}
 				if (res.hashes.size() > 0) {
