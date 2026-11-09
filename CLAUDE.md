@@ -1054,11 +1054,13 @@ Decision log (deviations from `PLAN.md`):
   (`tile-biome2-floor.png` / `-wall.png`, 256 x 256, seamless, `tilesPerImage` 4, means `#2d211e` / `#342622`). The
   pipeline writes `VALE_TILE_MEAN_HEX` (asset id -> mean colour of every `meanHex` image; `VALE_FLOOR_HEX` is now
   `tile.biome.1.floor`'s by id) and refuses `tilesPerImage` without `meanHex`. Manifest: an uploaded repeating floor or
-  wall texture makes its mean that surface's biome colour and drops that surface's material; validator: a textured
-  wall must use SmoothPlastic, like a textured floor. WorldController: a repeating wall image gives every wall Part 5
-  Textures (`GAME_WORLD.wallTextureFaces`, Top + 4 sides) in DEFAULT_BIOME_MATERIAL, world-anchored by shared/view
+  wall texture makes its mean that surface's biome colour; every textured surface keeps its biome's rough material
+  (validator: a textured floor or wall must not be SmoothPlastic or Glass; the Studio check found SmoothPlastic's sun
+  glint washes textured faces out at the game camera, biome.1's stone floor included, so it is now on Pavement).
+  WorldController: a repeating wall image gives every wall Part 5 Textures (`GAME_WORLD.wallTextureFaces`, Top + 4
+  sides) in the biome's wall material, world-anchored by shared/view
   `wallTextureOffsets` (side-face conventions assumed in `GAME_WORLD.wallTextureUV`); without one walls draw as before.
-  No IDs in `assetIds.ts` yet, so the bundled pack draws exactly as today. Upload and the Studio checks (no seams at
+  Both PNGs uploaded 2026-11-08 (`assetIds.ts`), so the bundled vale pack draws them; the Studio checks (no seams at
   wall joins, stone upright on side faces, telegraph rings readable on molten floors: the lava's hottest pixel is 31
   CIE76 from `telegraph`) pending; the biome.2 Kenney floor patches still bake toward the old `#2a1a16` (optional
   rebake).

@@ -331,7 +331,8 @@ every room a theme (`Dungeon.roomThemes`, by room id) and places its set pieces.
   role from the result so the validator's enemy-bullet vs wall contrast check (>= 3:1) still describes what is drawn.
   → Verify: `npm run verify`; in Studio every biome reads, and enemy bullets stand out against walls.
   As built: optional `BiomeDef.materials { floor?, wall?, pool? }` (allow-list `BIOME_MATERIALS`, no Neon, default
-  SmoothPlastic, textured floors must stay SmoothPlastic), set per biome in `vale` and applied to the merged floor /
+  SmoothPlastic; textured floors and walls must name a rough material: SmoothPlastic's sun glint washed them out,
+  docs/ART.md "As built: molten tiles"), set per biome in `vale` and applied to the merged floor /
   wall / pool Parts; the wall colour is not recomputed (`Part.Color` stays the hex, the material only adds texture, see
   the theme README), and floor variants by cell hash are skipped (greedy merging leaves no per-cell Parts).
   - [ ] Studio check: each biome reads at the game camera, and enemy bullets stand out against the textured walls.

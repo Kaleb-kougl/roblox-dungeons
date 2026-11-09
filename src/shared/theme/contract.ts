@@ -561,9 +561,8 @@ export const BIOME_MATERIAL_SURFACES = ["floor", "wall", "pool", "shoulder", "cl
 export type BiomeMaterialSurface = (typeof BIOME_MATERIAL_SURFACES)[number];
 
 /**
- * The material of a surface whose biome names none (what every Part was drawn in before R1). Also the only material a
- * textured floor may use (a biome whose floor tile is a repeating `tilesPerImage` image): any other one draws its own
- * pattern under the image and fights it.
+ * The material of a surface whose biome names none (what every Part was drawn in before R1). A repeating
+ * `tilesPerImage` texture must not sit on it (validateManifest): at the game camera its sun glint washes the image out.
  */
 export const DEFAULT_BIOME_MATERIAL: BiomeMaterial = "SmoothPlastic";
 

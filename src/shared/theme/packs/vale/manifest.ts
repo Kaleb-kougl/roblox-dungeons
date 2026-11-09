@@ -54,8 +54,8 @@
  * so no sound plays half its variant pool.
  *
  * Biome materials (docs/DECOR.md R1) need no upload, so they apply whatever is in assetIds.ts: VALE_BIOME_MATERIALS,
- * except that a biome floor or wall whose tile is a repeating texture stays SmoothPlastic (the default, so that
- * surface's entry is dropped): a patterned material under the image would fight it.
+ * on every surface, textured ones too: a repeating texture needs a rough material under it (the validator), since at
+ * the game camera SmoothPlastic's sun glint washes the image out (docs/ART.md "As built: molten tiles").
  *
  * World art (docs/DECOR.md R5): the Lords of Pain props, effects and breakables (VALE_WORLD_LAYOUTS, one shared atlas
  * plus the ambient particle texture), and the pellets' own cubes (VALE_PELLET_ART, docs/PELLETS.md PL8). VALE_DECOR_PIECES / VALE_DECOR_FX / VALE_AMBIENT_ART / VALE_BREAKABLE_ART say
@@ -861,14 +861,7 @@ export function buildValeManifest(ids: AssetIds = VALE_ASSET_IDS, sources: ValeL
 		if (materials === undefined) {
 			continue;
 		}
-		const biome = manifest.biomes[biomeId];
-		const out: BiomeMaterials = deepClone(materials) as BiomeMaterials;
-		for (const surface of BIOME_TILE_KEYS) {
-			if (tiledImage(manifest, biome.tiles[surface]) !== undefined) {
-				out[surface] = undefined; // a textured surface stays SmoothPlastic (DEFAULT_BIOME_MATERIAL)
-			}
-		}
-		biome.materials = out;
+		manifest.biomes[biomeId].materials = deepClone(materials) as BiomeMaterials;
 	}
 
 	for (const id of sortedKeys(VALE_SOUND_LAYOUTS)) {
