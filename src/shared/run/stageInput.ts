@@ -14,7 +14,7 @@
  *             Floor 1's biome is the seed's auto theme, so any of the five; biome 1 is the plan's guess (SA7 may
  *             prefetch the others behind it).
  *
- * Characters are passed in by the caller (today only the knight, shared/view STAGE_CHARACTERS; the Archer is planned).
+ * Characters are passed in by the caller (the run's visuals, shared/view stageCharacters; no roster: STAGE_CHARACTERS).
  * Only type imports from shared/view, and BIOMES by file from the theme contract, so the server's shared/run never
  * loads the presentation layer or the theme packs.
  */

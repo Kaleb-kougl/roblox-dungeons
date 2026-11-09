@@ -25,6 +25,7 @@ import {
 	PregenTracker,
 	STAGE_AUDIT,
 	STAGE_CHARACTERS,
+	stageCharacters,
 	STAGE_LOADER,
 	StageAuditLog,
 	StageLoad,
@@ -87,7 +88,7 @@ function seconds(sec: number): string {
  *              cover owns the input (blocksInput: SimController sends neutral input, client/store selectMenuOpen
  *              treats it as a menu), so a floor change's draft cannot be confirmed blind.
  *   assets     (docs/STAGE_ASSETS.md SA5 / SA19) after the listeners: the floor's stage manifest, shared/view
- *              stageAssets(pack, shared/run stageInputOf(ctx, floor, STAGE_CHARACTERS, run start)) through
+ *              stageAssets(pack, shared/run stageInputOf(ctx, floor, stageCharacters(ctx.characters), run start)) through
  *              stageContentRefs: `must` to the FRONT lane in manifest order (PreloadController.whenLoaded), `soon` to
  *              `next`. AudioController's and the boss push's own requests are untouched. Only a solo run start waits
  *              (StageLoad.waitsForAssets): at most STAGE_ASSETS.wait.softWaitSec, then the reveal with stand-ins for
@@ -478,7 +479,7 @@ export class StageController implements OnStart, StageDriver {
 			return;
 		}
 		const pack = this.theme.getPack();
-		const input = stageInputOf(ctx, ctx.floor, STAGE_CHARACTERS, load.kind !== "floorChange");
+		const input = stageInputOf(ctx, ctx.floor, stageCharacters(ctx.characters), load.kind !== "floorChange");
 		const set = stageAssets(pack, input);
 		this.audit.setManifest(set);
 		const refs = stageContentRefs(pack, set);
@@ -577,8 +578,8 @@ export class StageController implements OnStart, StageDriver {
 		const [ok, err] = pcall(() => {
 			const built = ctx.tutorial || this.trackerFor(ctx).wasBuilt(target);
 			const input: StageAssetInput = built
-				? stageInputOf(ctx, target, STAGE_CHARACTERS)
-				: forecastStageInput(ctx.seed, target, STAGE_CHARACTERS, ctx.world);
+				? stageInputOf(ctx, target, stageCharacters(ctx.characters))
+				: forecastStageInput(ctx.seed, target, stageCharacters(ctx.characters), ctx.world);
 			const pack = this.theme.getPack();
 			const set = stageAssets(pack, input);
 			const refs = stageContentRefs(pack, set);

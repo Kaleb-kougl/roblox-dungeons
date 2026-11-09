@@ -5,7 +5,8 @@ import { characterLoadout } from "shared/characters";
 import { DEV_WORLD_KIND, buildWorldSetup } from "shared/run";
 import { DEFAULT_LOADOUT, createSimState, type SimConfig } from "shared/sim";
 import { ACTOR_VIEW, ARCHER_SPRITE } from "./config";
-import { characterVisualId, playerCharacterOf, playerVisualIdOf } from "./characters";
+import { characterVisualId, playerCharacterOf, playerVisualIdOf, stageCharacters } from "./characters";
+import { STAGE_CHARACTERS } from "./stageAssetsConfig";
 
 const solo = (loadout: ReadonlyArray<string | undefined>) => createSimState(1, 0, 0, { loadout });
 
@@ -73,5 +74,13 @@ describe("player visuals (docs/ARCHER.md AR9)", () => {
 			"class.vanguard",
 		]);
 		expect([0, 1].map((i) => playerVisualIdOf(undefined, state, i))).toEqual(["class.ranger", "class.vanguard"]);
+	});
+
+	it("stageCharacters: each picked visual once in player order; no roster is STAGE_CHARACTERS", () => {
+		expect(stageCharacters(undefined)).toEqual(STAGE_CHARACTERS);
+		expect(stageCharacters([])).toEqual(STAGE_CHARACTERS);
+		expect(stageCharacters(["archer", "knight", "archer"])).toEqual(["class.ranger", "class.vanguard"]);
+		expect(stageCharacters(["knight"])).toEqual(["class.vanguard"]);
+		expect(stageCharacters(["nobody"])).toEqual([ACTOR_VIEW.playerVisualId]);
 	});
 });

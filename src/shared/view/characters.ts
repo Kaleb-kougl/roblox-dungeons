@@ -38,3 +38,20 @@ export function playerVisualIdOf(
 ): string {
 	return characterVisualId(playerCharacterOf(characters, state, index));
 }
+
+/**
+ * The visuals a run's stage manifest loads for its players (docs/STAGE_ASSETS.md "characters", docs/ARCHER.md): each
+ * picked character's visual once, in player order; no roster (M1, an older run): [ACTOR_VIEW.playerVisualId], the
+ * Knight's, exactly shared/view STAGE_CHARACTERS.
+ */
+export function stageCharacters(characters: ReadonlyArray<string> | undefined): ReadonlyArray<string> {
+	const out: string[] = [];
+	if (characters !== undefined) {
+		for (const c of characters) {
+			const id = isCharacterId(c) ? characterDef(c).visualId : ACTOR_VIEW.playerVisualId;
+			if (!out.includes(id)) out.push(id);
+		}
+	}
+	if (out.size() === 0) out.push(ACTOR_VIEW.playerVisualId);
+	return out;
+}
