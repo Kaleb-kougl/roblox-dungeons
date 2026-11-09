@@ -826,6 +826,54 @@
 			"tilesPerImage": 4,
 			"meanHex": true
 		},
+		"tile.biome.3.floor": {
+			"$comment": "Frost slate flagstones with snow-packed joints, rime and hoarfrost: original art by scripts/art/frost/gen_frost_tiles.py (python3, numpy + Pillow; not run by art:build), the molten tiles' sibling. 256x256, opaque, seamless, at the stone floor's density. meanHex = the biome.3 floor colour once uploaded (VALE_TILE_MEAN_HEX).",
+			"file": "kaleb-vale/frost/frost-floor.png",
+			"name": "tile-biome3-floor",
+			"crop": "none",
+			"tilesPerImage": 4,
+			"meanHex": true
+		},
+		"tile.biome.3.wall": {
+			"$comment": "Frost coursed slate wall face (snow on the blocks' tops, rime in the joints, icicles): original art by scripts/art/frost/gen_frost_tiles.py, like tile.biome.3.floor. meanHex = the biome.3 wall colour once uploaded (VALE_TILE_MEAN_HEX).",
+			"file": "kaleb-vale/frost/frost-wall.png",
+			"name": "tile-biome3-wall",
+			"crop": "none",
+			"tilesPerImage": 4,
+			"meanHex": true
+		},
+		"tile.biome.4.floor": {
+			"$comment": "Grim Vaults crypt flagstones (violet-grey slate slabs on a 32 px lattice, worn corners, cracks, a broken slab, one engraved grave slab, grave moss in some joints): original art by scripts/art/grim/gen_grim_tiles.py (python3, numpy + Pillow; not run by art:build), the molten / frost tiles' sibling. 256x256, opaque, seamless, at the stone floor's density. meanHex = the biome.4 floor colour once uploaded (VALE_TILE_MEAN_HEX).",
+			"file": "kaleb-vale/grim/grim-floor.png",
+			"name": "tile-biome4-floor",
+			"crop": "none",
+			"tilesPerImage": 4,
+			"meanHex": true
+		},
+		"tile.biome.4.wall": {
+			"$comment": "Grim Vaults crypt masonry (mixed-height courses, chipped blocks, cracks, damp streaks, moss caps and tendrils): original art by scripts/art/grim/gen_grim_tiles.py, like tile.biome.4.floor. meanHex = the biome.4 wall colour once uploaded (VALE_TILE_MEAN_HEX).",
+			"file": "kaleb-vale/grim/grim-wall.png",
+			"name": "tile-biome4-wall",
+			"crop": "none",
+			"tilesPerImage": 4,
+			"meanHex": true
+		},
+		"tile.biome.5.floor": {
+			"$comment": "Verdant mossy limestone flagstones with moss in the joints, grass tufts, leaf litter and lichen: original art by scripts/art/verdant/gen_verdant_tiles.py (python3, numpy + Pillow; not run by art:build), the molten and frost tiles' sibling. 256x256, opaque, seamless, at the stone floor's density. meanHex = the biome.5 floor colour once uploaded (VALE_TILE_MEAN_HEX).",
+			"file": "kaleb-vale/verdant/verdant-floor.png",
+			"name": "tile-biome5-floor",
+			"crop": "none",
+			"tilesPerImage": 4,
+			"meanHex": true
+		},
+		"tile.biome.5.wall": {
+			"$comment": "Verdant coursed limestone wall face (moss on the blocks' tops and in the joints, lichen, trailing ivy): original art by scripts/art/verdant/gen_verdant_tiles.py, like tile.biome.5.floor. meanHex = the biome.5 wall colour once uploaded (VALE_TILE_MEAN_HEX).",
+			"file": "kaleb-vale/verdant/verdant-wall.png",
+			"name": "tile-biome5-wall",
+			"crop": "none",
+			"tilesPerImage": 4,
+			"meanHex": true
+		},
 		"ui.ring.player": {
 			"$comment": "Soft ring; cropped to alpha > noiseAlpha + pad. Pivot = centre of the crop (the ring sits centred under the player).",
 			"file": "lords-of-pain-demo/user interface/highlight/highlight_yellow.png",

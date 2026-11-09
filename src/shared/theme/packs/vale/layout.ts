@@ -734,6 +734,12 @@ export const VALE_IMAGE_LAYOUTS: Record<string, ValeImageLayout> = {
 	"tile.biome.1.floor": { file: "tile-biome1-floor.png", w: 256, h: 256, tilesPerImage: 4 },
 	"tile.biome.2.floor": { file: "tile-biome2-floor.png", w: 256, h: 256, tilesPerImage: 4 },
 	"tile.biome.2.wall": { file: "tile-biome2-wall.png", w: 256, h: 256, tilesPerImage: 4 },
+	"tile.biome.3.floor": { file: "tile-biome3-floor.png", w: 256, h: 256, tilesPerImage: 4 },
+	"tile.biome.3.wall": { file: "tile-biome3-wall.png", w: 256, h: 256, tilesPerImage: 4 },
+	"tile.biome.4.floor": { file: "tile-biome4-floor.png", w: 256, h: 256, tilesPerImage: 4 },
+	"tile.biome.4.wall": { file: "tile-biome4-wall.png", w: 256, h: 256, tilesPerImage: 4 },
+	"tile.biome.5.floor": { file: "tile-biome5-floor.png", w: 256, h: 256, tilesPerImage: 4 },
+	"tile.biome.5.wall": { file: "tile-biome5-wall.png", w: 256, h: 256, tilesPerImage: 4 },
 	"ui.bar.fill": {
 		file: "ui-bar-fill.png",
 		w: 48,
@@ -873,6 +879,12 @@ export const VALE_TILE_MEAN_HEX: Record<string, HexColor> = {
 	"tile.biome.1.floor": "#1a1619",
 	"tile.biome.2.floor": "#2d211e",
 	"tile.biome.2.wall": "#342622",
+	"tile.biome.3.floor": "#222a32",
+	"tile.biome.3.wall": "#303941",
+	"tile.biome.4.floor": "#212023",
+	"tile.biome.4.wall": "#353338",
+	"tile.biome.5.floor": "#1e2a1a",
+	"tile.biome.5.wall": "#273125",
 };
 
 /**

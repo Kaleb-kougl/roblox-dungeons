@@ -396,7 +396,7 @@ Presentation only (the Forge half, KN5-KN8, places the pieces; this draws them).
 - [~] **KN10. Re-pins and docs.** (2026-11-08: re-pins, `DAILY.ruleset` 12 -> 13, the CLAUDE.md row and decision log done; the DECOR.md / BOOKSHELVES.md pointers open) roomPool.lock roster digests, the stormcaller run, `DAILY.ruleset`, the CLAUDE.md
   table row and decision log, docs/DECOR.md and BOOKSHELVES.md pointers.
 - [ ] **KN11. Verify** (the Mac's aarch64 VM). Typecheck, lint, check:assets, build, test:art, and every spec file.
-- [ ] **KN12. [owner] Upload** the `kenney` sheet (`art/upload/kenney-decor.png`) and add its id to
+- [x] **KN12. [owner] Upload** (done 2026-11-08: `rbxassetid://103391851167045`) the `kenney` sheet (`art/upload/kenney-decor.png`) and add its id to
   `packs/vale/assetIds.ts` under `"kenney-decor.png"`.
 - [ ] **KN13. [owner] Studio check and playtest.** Libraries and mess halls read as rooms; bullets never hide behind
   tables or stock; walkers, bots and the charger (its wall stun now hits tables) get round the new pieces; the count

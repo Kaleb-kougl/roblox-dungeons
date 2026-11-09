@@ -290,14 +290,16 @@ describe("boosts: validator", () => {
 			}
 			const bullets = report.filter((e) => e.check === "bullet" && e.role === "boost.fury");
 			expect(bullets.map((e) => e.against)).toEqual([...ENEMY_BULLET_ROLES]);
-			// as measured (docs/BOOSTS.md B5): the worst case is aegis, 59.4 from enemyBullet and 5.86:1 on a floor
+			// as measured (docs/BOOSTS.md B5): the worst case is aegis, 59.4 from enemyBullet and 5.86:1 on the placeholder
+			// frost wall #2a3842; 5.72:1 on the vale frost wall texture's mean #303941 (docs/ART.md "As built: frost
+			// tiles"). The rule itself is MIN_BOOST_CONTRAST (3:1); this pins the measured margin
 			let minDifference = math.huge;
 			let minContrast = math.huge;
 			for (const e of report) {
 				if (e.check === "bullet") minDifference = math.min(minDifference, e.value);
 				else minContrast = math.min(minContrast, e.value);
 			}
-			expect([id, minDifference > 59, minContrast > 5.8]).toEqual([id, true, true]);
+			expect([id, minDifference > 59, minContrast > 5.7]).toEqual([id, true, true]);
 		}
 	});
 

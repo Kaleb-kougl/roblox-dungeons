@@ -29,6 +29,7 @@ import { VALE_ASSET_IDS } from "./assetIds";
 import { VALE_AUDIO_FILES } from "./audioLayout";
 import { VALE_BOON_ICON_FILE } from "./boonIconLayout";
 import { VALE_DUO_ICON_FILE } from "./duoIconLayout";
+import { VALE_KENNEY_SHEETS } from "./kenneyLayout";
 import { VALE_ITEM_ICON_FILE } from "./itemIconLayout";
 import { VALE_BOOST_ICON_FILE } from "./boostIconLayout";
 import { VALE_PIP_ICON_FILE } from "./pipIconLayout";
@@ -132,8 +133,8 @@ describe("vale pack", () => {
 		// the hazard sheet (hazardLayout.ts, docs/HAZARD_ART.md) and the pact altar and coin burst sheets (fortuneLayout.ts,
 		// docs/FORTUNE.md FO10), the boon icon sheet (boonIconLayout.ts, docs/BUILDS.md BU11), the relic and curse
 		// icon sheet (itemIconLayout.ts, BU11), the boost icon sheet (boostIconLayout.ts, docs/BOOSTS.md B7) and the
-		// armor pip sheet (pipIconLayout.ts, docs/UI_ART.md) and the duo icon sheet (duoIconLayout.ts, BU11) are art/build
-		// files too
+		// armor pip sheet (pipIconLayout.ts, docs/UI_ART.md), the duo icon sheet (duoIconLayout.ts, BU11) and the Kenney
+		// Forge pieces' sheet (kenneyLayout.ts, docs/KENNEY_DECOR.md KN9) are art/build files too
 		const files = allFiles();
 		files.push(VALE_FX_SHEET.file);
 		files.push(VALE_BULLET_SHEET.file);
@@ -149,6 +150,7 @@ describe("vale pack", () => {
 		files.push(VALE_BOOST_ICON_FILE);
 		files.push(VALE_PIP_ICON_FILE);
 		files.push(VALE_DUO_ICON_FILE);
+		for (const file of VALE_KENNEY_SHEETS) files.push(file);
 		for (const id of sortedKeys(VALE_AMBIENT_LAYOUTS)) files.push(VALE_AMBIENT_LAYOUTS[id].file);
 		for (const file of sortedKeys(VALE_ASSET_IDS)) {
 			expect([file, files.includes(file)]).toEqual([file, true]);
@@ -595,6 +597,306 @@ describe("vale molten tiles (tile.biome.2.floor / .wall: scripts/art/molten/gen_
 		const none = buildValeManifest(fakeIds(FLOOR_FILE, WALL_FILE));
 		for (const b of BIOMES) {
 			if (b.id !== "biome.2") {
+				expect([b.id, all.biomes[b.id]]).toEqual([b.id, none.biomes[b.id]]);
+			}
+		}
+	});
+});
+
+describe("vale frost tiles (tile.biome.3.floor / .wall: scripts/art/frost/gen_frost_tiles.py)", () => {
+	const FLOOR_ID = "tile.biome.3.floor";
+	const WALL_ID = "tile.biome.3.wall";
+	const FLOOR_FILE = "tile-biome3-floor.png";
+	const WALL_FILE = "tile-biome3-wall.png";
+	const TILES_PER_IMAGE = 4;
+	const SIZE = 256;
+	/** biome.3 with no frost texture uploaded: the placeholder's biome plus VALE_BIOME_MATERIALS. */
+	const untextured = () => buildValeManifest(fakeIds(FLOOR_FILE, WALL_FILE)).biomes["biome.3"];
+
+	it("are repeating 256 x 256 textures at the stone floor's density, each with its measured mean colour", () => {
+		for (const [id, file] of [
+			[FLOOR_ID, FLOOR_FILE],
+			[WALL_ID, WALL_FILE],
+		] as const) {
+			expect([id, VALE_IMAGE_LAYOUTS[id]]).toEqual([
+				id,
+				{ file, w: SIZE, h: SIZE, tilesPerImage: TILES_PER_IMAGE },
+			]);
+			expect([id, VALE_TILE_MEAN_HEX[id] !== undefined]).toEqual([id, true]);
+		}
+	});
+
+	it("as bundled (both uploaded 2026-11-08), biome.3 draws them", () => {
+		for (const [id, file] of [
+			[FLOOR_ID, FLOOR_FILE],
+			[WALL_ID, WALL_FILE],
+		] as const) {
+			expect([file, VALE_ASSET_IDS[file] !== undefined]).toEqual([file, true]);
+			expect([id, VALE_MANIFEST.assets[id]]).toEqual([
+				id,
+				{ kind: "image", assetId: VALE_ASSET_IDS[file], w: SIZE, h: SIZE, tilesPerImage: TILES_PER_IMAGE },
+			]);
+		}
+		const bundled = VALE_MANIFEST.biomes["biome.3"];
+		expect(bundled.floor).toBe(VALE_TILE_MEAN_HEX[FLOOR_ID]);
+		expect(bundled.wall).toBe(VALE_TILE_MEAN_HEX[WALL_ID]);
+		expect(bundled.materials).toEqual(VALE_BIOME_MATERIALS["biome.3"]);
+		expect(validateManifest(VALE_MANIFEST, { packId: "vale" })).toEqual([]);
+	});
+
+	it("without their IDs biome.3 is exactly as before", () => {
+		const biome = deepClone(untextured());
+		expect(biome.materials).toEqual(VALE_BIOME_MATERIALS["biome.3"]);
+		biome.materials = undefined;
+		expect(biome).toEqual(PLACEHOLDER_MANIFEST.biomes["biome.3"]);
+		expect(validateManifest(buildValeManifest(fakeIds(FLOOR_FILE, WALL_FILE)), { packId: "vale" })).toEqual([]);
+	});
+
+	it("once uploaded, biome.3's floor and wall draw them: the means, Snow / Glacier, and every check passes", () => {
+		const ids = fakeIds();
+		const m = buildValeManifest(ids);
+		for (const [id, file] of [
+			[FLOOR_ID, FLOOR_FILE],
+			[WALL_ID, WALL_FILE],
+		] as const) {
+			expect([id, m.assets[id]]).toEqual([
+				id,
+				{ kind: "image", assetId: ids[file], w: SIZE, h: SIZE, tilesPerImage: TILES_PER_IMAGE },
+			]);
+		}
+		const biome = m.biomes["biome.3"];
+		expect(biome.floor).toBe(VALE_TILE_MEAN_HEX[FLOOR_ID]);
+		expect(biome.wall).toBe(VALE_TILE_MEAN_HEX[WALL_ID]);
+		expect(biome.materials).toEqual(VALE_BIOME_MATERIALS["biome.3"]);
+		expect({ ...biome, floor: undefined, wall: undefined, materials: undefined }).toEqual({
+			...untextured(),
+			floor: undefined,
+			wall: undefined,
+			materials: undefined,
+		});
+		const pack = new ThemePack(m, { warn: quiet });
+		expect(pack.image(WALL_ID)?.tilesPerImage).toBe(TILES_PER_IMAGE);
+		expect(pack.texture(WALL_ID)).toBe(ids[WALL_FILE]);
+		// the contrast and void checks run on the means, and pass
+		expect(validateManifest(m, { packId: "vale" })).toEqual([]);
+		for (const e of contrastReport(m)) {
+			expect([e.biome, e.surface, e.ok]).toEqual([e.biome, e.surface, true]);
+		}
+	});
+
+	it("each texture switches on its own, and the other biomes never pick up the frost means", () => {
+		const floorOnly = buildValeManifest(fakeIds(WALL_FILE));
+		expect(floorOnly.biomes["biome.3"].floor).toBe(VALE_TILE_MEAN_HEX[FLOOR_ID]);
+		expect(floorOnly.biomes["biome.3"].wall).toBe(untextured().wall);
+		expect(validateManifest(floorOnly, { packId: "vale" })).toEqual([]);
+		const wallOnly = buildValeManifest(fakeIds(FLOOR_FILE));
+		expect(wallOnly.biomes["biome.3"].floor).toBe(untextured().floor);
+		expect(wallOnly.biomes["biome.3"].wall).toBe(VALE_TILE_MEAN_HEX[WALL_ID]);
+		expect(validateManifest(wallOnly, { packId: "vale" })).toEqual([]);
+		const all = buildValeManifest(fakeIds());
+		const none = buildValeManifest(fakeIds(FLOOR_FILE, WALL_FILE));
+		for (const b of BIOMES) {
+			if (b.id !== "biome.3") {
+				expect([b.id, all.biomes[b.id]]).toEqual([b.id, none.biomes[b.id]]);
+			}
+		}
+	});
+});
+
+describe("vale grim tiles (tile.biome.4.floor / .wall: scripts/art/grim/gen_grim_tiles.py)", () => {
+	const FLOOR_ID = "tile.biome.4.floor";
+	const WALL_ID = "tile.biome.4.wall";
+	const FLOOR_FILE = "tile-biome4-floor.png";
+	const WALL_FILE = "tile-biome4-wall.png";
+	const TILES_PER_IMAGE = 4;
+	const SIZE = 256;
+	/** biome.4 with no grim texture uploaded: the placeholder's biome plus VALE_BIOME_MATERIALS. */
+	const untextured = () => buildValeManifest(fakeIds(FLOOR_FILE, WALL_FILE)).biomes["biome.4"];
+
+	it("are repeating 256 x 256 textures at the stone floor's density, each with its measured mean colour", () => {
+		for (const [id, file] of [
+			[FLOOR_ID, FLOOR_FILE],
+			[WALL_ID, WALL_FILE],
+		] as const) {
+			expect([id, VALE_IMAGE_LAYOUTS[id]]).toEqual([
+				id,
+				{ file, w: SIZE, h: SIZE, tilesPerImage: TILES_PER_IMAGE },
+			]);
+			expect([id, VALE_TILE_MEAN_HEX[id] !== undefined]).toEqual([id, true]);
+		}
+	});
+
+	it("as bundled (both uploaded 2026-11-09), biome.4 draws them", () => {
+		for (const [id, file] of [
+			[FLOOR_ID, FLOOR_FILE],
+			[WALL_ID, WALL_FILE],
+		] as const) {
+			expect([file, VALE_ASSET_IDS[file] !== undefined]).toEqual([file, true]);
+			expect([id, VALE_MANIFEST.assets[id]]).toEqual([
+				id,
+				{ kind: "image", assetId: VALE_ASSET_IDS[file], w: SIZE, h: SIZE, tilesPerImage: TILES_PER_IMAGE },
+			]);
+		}
+		const bundled = VALE_MANIFEST.biomes["biome.4"];
+		expect(bundled.floor).toBe(VALE_TILE_MEAN_HEX[FLOOR_ID]);
+		expect(bundled.wall).toBe(VALE_TILE_MEAN_HEX[WALL_ID]);
+		expect(bundled.materials).toEqual(VALE_BIOME_MATERIALS["biome.4"]);
+		expect(validateManifest(VALE_MANIFEST, { packId: "vale" })).toEqual([]);
+	});
+
+	it("without their IDs biome.4 is exactly as before", () => {
+		const biome = deepClone(untextured());
+		expect(biome.materials).toEqual(VALE_BIOME_MATERIALS["biome.4"]);
+		biome.materials = undefined;
+		expect(biome).toEqual(PLACEHOLDER_MANIFEST.biomes["biome.4"]);
+		expect(validateManifest(buildValeManifest(fakeIds(FLOOR_FILE, WALL_FILE)), { packId: "vale" })).toEqual([]);
+	});
+
+	it("once uploaded, biome.4's floor and wall draw them: the means, Slate / Cobblestone, and every check passes", () => {
+		const ids = fakeIds();
+		const m = buildValeManifest(ids);
+		for (const [id, file] of [
+			[FLOOR_ID, FLOOR_FILE],
+			[WALL_ID, WALL_FILE],
+		] as const) {
+			expect([id, m.assets[id]]).toEqual([
+				id,
+				{ kind: "image", assetId: ids[file], w: SIZE, h: SIZE, tilesPerImage: TILES_PER_IMAGE },
+			]);
+		}
+		const biome = m.biomes["biome.4"];
+		expect(biome.floor).toBe(VALE_TILE_MEAN_HEX[FLOOR_ID]);
+		expect(biome.wall).toBe(VALE_TILE_MEAN_HEX[WALL_ID]);
+		expect(biome.materials).toEqual(VALE_BIOME_MATERIALS["biome.4"]);
+		expect({ ...biome, floor: undefined, wall: undefined, materials: undefined }).toEqual({
+			...untextured(),
+			floor: undefined,
+			wall: undefined,
+			materials: undefined,
+		});
+		const pack = new ThemePack(m, { warn: quiet });
+		expect(pack.image(WALL_ID)?.tilesPerImage).toBe(TILES_PER_IMAGE);
+		expect(pack.texture(WALL_ID)).toBe(ids[WALL_FILE]);
+		// the contrast and void checks run on the means, and pass
+		expect(validateManifest(m, { packId: "vale" })).toEqual([]);
+		for (const e of contrastReport(m)) {
+			expect([e.biome, e.surface, e.ok]).toEqual([e.biome, e.surface, true]);
+		}
+	});
+
+	it("each texture switches on its own, and the other biomes never pick up the grim means", () => {
+		const floorOnly = buildValeManifest(fakeIds(WALL_FILE));
+		expect(floorOnly.biomes["biome.4"].floor).toBe(VALE_TILE_MEAN_HEX[FLOOR_ID]);
+		expect(floorOnly.biomes["biome.4"].wall).toBe(untextured().wall);
+		expect(validateManifest(floorOnly, { packId: "vale" })).toEqual([]);
+		const wallOnly = buildValeManifest(fakeIds(FLOOR_FILE));
+		expect(wallOnly.biomes["biome.4"].floor).toBe(untextured().floor);
+		expect(wallOnly.biomes["biome.4"].wall).toBe(VALE_TILE_MEAN_HEX[WALL_ID]);
+		expect(validateManifest(wallOnly, { packId: "vale" })).toEqual([]);
+		const all = buildValeManifest(fakeIds());
+		const none = buildValeManifest(fakeIds(FLOOR_FILE, WALL_FILE));
+		for (const b of BIOMES) {
+			if (b.id !== "biome.4") {
+				expect([b.id, all.biomes[b.id]]).toEqual([b.id, none.biomes[b.id]]);
+			}
+		}
+	});
+});
+
+describe("vale verdant tiles (tile.biome.5.floor / .wall: scripts/art/verdant/gen_verdant_tiles.py)", () => {
+	const FLOOR_ID = "tile.biome.5.floor";
+	const WALL_ID = "tile.biome.5.wall";
+	const FLOOR_FILE = "tile-biome5-floor.png";
+	const WALL_FILE = "tile-biome5-wall.png";
+	const TILES_PER_IMAGE = 4;
+	const SIZE = 256;
+	/** biome.5 with no verdant texture uploaded: the placeholder's biome plus VALE_BIOME_MATERIALS. */
+	const untextured = () => buildValeManifest(fakeIds(FLOOR_FILE, WALL_FILE)).biomes["biome.5"];
+
+	it("are repeating 256 x 256 textures at the stone floor's density, each with its measured mean colour", () => {
+		for (const [id, file] of [
+			[FLOOR_ID, FLOOR_FILE],
+			[WALL_ID, WALL_FILE],
+		] as const) {
+			expect([id, VALE_IMAGE_LAYOUTS[id]]).toEqual([
+				id,
+				{ file, w: SIZE, h: SIZE, tilesPerImage: TILES_PER_IMAGE },
+			]);
+			expect([id, VALE_TILE_MEAN_HEX[id] !== undefined]).toEqual([id, true]);
+		}
+	});
+
+	it("as bundled (both uploaded 2026-11-09), biome.5 draws them", () => {
+		for (const [id, file] of [
+			[FLOOR_ID, FLOOR_FILE],
+			[WALL_ID, WALL_FILE],
+		] as const) {
+			expect([file, VALE_ASSET_IDS[file] !== undefined]).toEqual([file, true]);
+			expect([id, VALE_MANIFEST.assets[id]]).toEqual([
+				id,
+				{ kind: "image", assetId: VALE_ASSET_IDS[file], w: SIZE, h: SIZE, tilesPerImage: TILES_PER_IMAGE },
+			]);
+		}
+		const bundled = VALE_MANIFEST.biomes["biome.5"];
+		expect(bundled.floor).toBe(VALE_TILE_MEAN_HEX[FLOOR_ID]);
+		expect(bundled.wall).toBe(VALE_TILE_MEAN_HEX[WALL_ID]);
+		expect(bundled.materials).toEqual(VALE_BIOME_MATERIALS["biome.5"]);
+		expect(validateManifest(VALE_MANIFEST, { packId: "vale" })).toEqual([]);
+	});
+
+	it("without their IDs biome.5 is exactly as before", () => {
+		const biome = deepClone(untextured());
+		expect(biome.materials).toEqual(VALE_BIOME_MATERIALS["biome.5"]);
+		biome.materials = undefined;
+		expect(biome).toEqual(PLACEHOLDER_MANIFEST.biomes["biome.5"]);
+		expect(validateManifest(buildValeManifest(fakeIds(FLOOR_FILE, WALL_FILE)), { packId: "vale" })).toEqual([]);
+	});
+
+	it("once uploaded, biome.5's floor and wall draw them: the means, Grass / Limestone, and every check passes", () => {
+		const ids = fakeIds();
+		const m = buildValeManifest(ids);
+		for (const [id, file] of [
+			[FLOOR_ID, FLOOR_FILE],
+			[WALL_ID, WALL_FILE],
+		] as const) {
+			expect([id, m.assets[id]]).toEqual([
+				id,
+				{ kind: "image", assetId: ids[file], w: SIZE, h: SIZE, tilesPerImage: TILES_PER_IMAGE },
+			]);
+		}
+		const biome = m.biomes["biome.5"];
+		expect(biome.floor).toBe(VALE_TILE_MEAN_HEX[FLOOR_ID]);
+		expect(biome.wall).toBe(VALE_TILE_MEAN_HEX[WALL_ID]);
+		expect(biome.materials).toEqual(VALE_BIOME_MATERIALS["biome.5"]);
+		expect({ ...biome, floor: undefined, wall: undefined, materials: undefined }).toEqual({
+			...untextured(),
+			floor: undefined,
+			wall: undefined,
+			materials: undefined,
+		});
+		const pack = new ThemePack(m, { warn: quiet });
+		expect(pack.image(WALL_ID)?.tilesPerImage).toBe(TILES_PER_IMAGE);
+		expect(pack.texture(WALL_ID)).toBe(ids[WALL_FILE]);
+		// the contrast and void checks run on the means, and pass
+		expect(validateManifest(m, { packId: "vale" })).toEqual([]);
+		for (const e of contrastReport(m)) {
+			expect([e.biome, e.surface, e.ok]).toEqual([e.biome, e.surface, true]);
+		}
+	});
+
+	it("each texture switches on its own, and the other biomes never pick up the verdant means", () => {
+		const floorOnly = buildValeManifest(fakeIds(WALL_FILE));
+		expect(floorOnly.biomes["biome.5"].floor).toBe(VALE_TILE_MEAN_HEX[FLOOR_ID]);
+		expect(floorOnly.biomes["biome.5"].wall).toBe(untextured().wall);
+		expect(validateManifest(floorOnly, { packId: "vale" })).toEqual([]);
+		const wallOnly = buildValeManifest(fakeIds(FLOOR_FILE));
+		expect(wallOnly.biomes["biome.5"].floor).toBe(untextured().floor);
+		expect(wallOnly.biomes["biome.5"].wall).toBe(VALE_TILE_MEAN_HEX[WALL_ID]);
+		expect(validateManifest(wallOnly, { packId: "vale" })).toEqual([]);
+		const all = buildValeManifest(fakeIds());
+		const none = buildValeManifest(fakeIds(FLOOR_FILE, WALL_FILE));
+		for (const b of BIOMES) {
+			if (b.id !== "biome.5") {
 				expect([b.id, all.biomes[b.id]]).toEqual([b.id, none.biomes[b.id]]);
 			}
 		}

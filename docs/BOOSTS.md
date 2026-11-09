@@ -296,7 +296,7 @@ read helpers, hash), `boostMods.ts` (the effect reads, a leaf), specs `drops.spe
   `tutorial.callout.boost` (since replaced by `tutorial.prompt.boost.<device>`), optional `fx.boost.collect` / `fx.boost.aura.<kind>`. The Aegis sound is
   `sfx.boost.aegisbreak` (lowercase: the validator rejects uppercase IDs). Placeholder colours: Fury `#ffc83d`,
   Quickstep `#3ff0d8`, Frenzy `#a8f03c`, Aegis `#c3a6ff` (>= 59 Delta E from the bullet roles, >= 5.86:1 on every
-  biome floor and wall). Placeholder shape `"Diamond"` (a cube on its corner). Not checked in the darkest decor band
+  placeholder biome floor and wall; 5.72:1 on the vale frost wall texture's mean `#303941`, the rule being 3:1). Placeholder shape `"Diamond"` (a cube on its corner). Not checked in the darkest decor band
   (`decorBandContrastReport`), unlike `enemyOutline`.
 - **Client (B6 / B7).** `BoostDropRenderController` (pooled views keyed by ground slot in a Map: freed slots leave no
   array holes), `BoostAuraController` (Neon discs, one per active boost; since docs/BOOST_ART.md BAD3 a flat sprite ring per

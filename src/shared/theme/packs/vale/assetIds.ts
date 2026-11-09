@@ -147,6 +147,13 @@ import type { RobloxAssetId } from "../../types";
  * tile-biome2-floor.png / tile-biome2-wall.png (the molten biome's floor and wall textures, docs/ART.md "As built:
  * molten tiles"; original art, scripts/art/molten/gen_molten_tiles.py) uploaded 2026-11-08 1:21 PM by k9kbdev,
  * transcribed from an Asset Manager screenshot.
+ * kenney-decor.png (the Kenney Forge pieces' sheet, docs/KENNEY_DECOR.md KN12) and tile-biome3-floor.png /
+ * tile-biome3-wall.png (the frost biome's floor and wall textures, docs/ART.md "As built: frost tiles"; original art,
+ * scripts/art/frost/gen_frost_tiles.py) uploaded 2026-11-08, transcribed from an Asset Manager screenshot.
+ * tile-biome4-floor.png / tile-biome4-wall.png (the grim biome's, docs/ART.md "As built: grim tiles"; original art,
+ * scripts/art/grim/gen_grim_tiles.py) and tile-biome5-floor.png / tile-biome5-wall.png (the verdant biome's, docs/ART.md
+ * "As built: verdant tiles"; original art, scripts/art/verdant/gen_verdant_tiles.py) uploaded 2026-11-09 6:56 AM by
+ * k9kbdev, transcribed from an Asset Manager screenshot.
  */
 export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"amb-b1.ogg": "rbxassetid://91158343621799",
@@ -220,6 +227,7 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"imp-body.png": "rbxassetid://130645679779456",
 	"imp-death-outline.png": "rbxassetid://134104614361499",
 	"imp-death.png": "rbxassetid://84336726009588",
+	"kenney-decor.png": "rbxassetid://103391851167045",
 	"kenney-bookcase-books-x.png": "rbxassetid://112414765339087",
 	"kenney-bookcase-books-z.png": "rbxassetid://127677993573030",
 	"kenney-bookcase-destroyed-x.png": "rbxassetid://90622744050525",
@@ -424,6 +432,12 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"tile-biome1-floor.png": "rbxassetid://98164459682194",
 	"tile-biome2-floor.png": "rbxassetid://100132893234485",
 	"tile-biome2-wall.png": "rbxassetid://111148927425576",
+	"tile-biome3-floor.png": "rbxassetid://103567277258288",
+	"tile-biome3-wall.png": "rbxassetid://102833424816991",
+	"tile-biome4-floor.png": "rbxassetid://96561145070596",
+	"tile-biome4-wall.png": "rbxassetid://86828307319715",
+	"tile-biome5-floor.png": "rbxassetid://108289710149110",
+	"tile-biome5-wall.png": "rbxassetid://99876348099559",
 	"treasure-column.png": "rbxassetid://90798930010648",
 	"ui-bar-fill.png": "rbxassetid://77055366404694",
 	"ui-bar-track.png": "rbxassetid://102111490052610",

@@ -1552,6 +1552,16 @@
 			"bytes": 420
 		},
 		{
+			"path": "kaleb-vale/frost/frost-floor.png",
+			"sha256": "d25763bae15204ed4feb48acc71df5ebc78195edc28000b9923eca190b84fe54",
+			"bytes": 117018
+		},
+		{
+			"path": "kaleb-vale/frost/frost-wall.png",
+			"sha256": "0c1c08776d89f6f1099b652b8156feaac4dfd9c812b6747cd0241981109cdf8c",
+			"bytes": 122982
+		},
+		{
 			"path": "kaleb-vale/golden-coin/coin.png",
 			"sha256": "f9cab4c410bb725370c3c3e5e56db80a6cd3967ed28a784c27353a7bfce26e29",
 			"bytes": 2961
@@ -1580,6 +1590,16 @@
 			"path": "kaleb-vale/grave/grave_skull.png",
 			"sha256": "c8c22d38323a978d26e28ce2966836dc2652afbae6cc0cb42c8bd8e497612f60",
 			"bytes": 1219
+		},
+		{
+			"path": "kaleb-vale/grim/grim-floor.png",
+			"sha256": "8dec35537ee93075af9596c1bbf64ad8fe3c0325f7900f0f4a984aab9735189e",
+			"bytes": 102119
+		},
+		{
+			"path": "kaleb-vale/grim/grim-wall.png",
+			"sha256": "799acc7f9ba0e31273adfef7ce2856d41d747fbb883147c93ce28b915db276fd",
+			"bytes": 119910
 		},
 		{
 			"path": "kaleb-vale/hazards/ember_burn.png",
@@ -1740,6 +1760,16 @@
 			"path": "kaleb-vale/vault-cage/SW/cage_SW_225.0_0.png",
 			"sha256": "7e241deeef61669be044f4699e54043f8374cc926cf3ec5e7635f42b4b2980a7",
 			"bytes": 1444
+		},
+		{
+			"path": "kaleb-vale/verdant/verdant-floor.png",
+			"sha256": "5296404131f334884b8b2aa83ea20d3dbea7da1e7686da1ad381024009d0e28a",
+			"bytes": 118233
+		},
+		{
+			"path": "kaleb-vale/verdant/verdant-wall.png",
+			"sha256": "a6dc1c8505523390bf126a8c0506e6803563892d8bb2870c364c1b58f1041208",
+			"bytes": 114159
 		},
 		{
 			"path": "kenney/barrelHeap/heap_a.png",

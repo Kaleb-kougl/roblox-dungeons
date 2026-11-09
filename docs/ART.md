@@ -16,6 +16,9 @@ six bullet IDs, the biome tiles, `ui.cursor` (the facing pip) and the pedestal /
 | `enemy.swarmer` (packs of 4-6, the most common enemy) | **Skeleton** (walk, death) | Lords of Pain demo |
 | `tile.biome.1.floor` | **`ground_stone1`**, tiled | Lords of Pain demo |
 | `tile.biome.2.floor` / `tile.biome.2.wall` (the molten biome; "As built: molten tiles" below) | **Original art**: basalt flagstones / coursed basalt blocks with lava in the joints, by `scripts/art/molten/gen_molten_tiles.py`, tiled (256 x 256, `tilesPerImage` 4); built and uploaded 2026-11-08 (`assetIds.ts`), so the bundled vale pack draws them | none (original) |
+| `tile.biome.3.floor` / `tile.biome.3.wall` (the frost biome; "As built: frost tiles" below) | **Original art**: slate flagstones with snow-packed joints, rime and hoarfrost / coursed slate blocks with snow on their tops and icicles, by `scripts/art/frost/gen_frost_tiles.py`, tiled (256 x 256, `tilesPerImage` 4); built and uploaded 2026-11-08 (`assetIds.ts`), so the bundled vale pack draws them | none (original) |
+| `tile.biome.4.floor` / `tile.biome.4.wall` (the grim biome; "As built: grim tiles" below) | **Original art**: crypt slate slabs with worn corners, cracks, an engraved grave slab and grave moss in the joints / mixed-height crypt masonry with damp streaks, moss caps and tendrils, by `scripts/art/grim/gen_grim_tiles.py`, tiled (256 x 256, `tilesPerImage` 4); built and uploaded 2026-11-09 (`assetIds.ts`), so the bundled vale pack draws them | none (original) |
+| `tile.biome.5.floor` / `tile.biome.5.wall` (the verdant biome; "As built: verdant tiles" below) | **Original art**: mossy grey-green limestone flagstones with moss in the joints, grass tufts, leaf litter and lichen / coursed limestone blocks with moss caps, lichen and trailing ivy, by `scripts/art/verdant/gen_verdant_tiles.py`, tiled (256 x 256, `tilesPerImage` 4); built and uploaded 2026-11-09 (`assetIds.ts`), so the bundled vale pack draws them | none (original) |
 | co-op player marker / under-player ring | **`highlight_yellow`**, tinted per player | Lords of Pain demo |
 | relic pedestal marker (`RunMarkerController`) | **`loot_indicator_yellow`** beam (+ `glint`, stretch) | Lords of Pain demo |
 | `enemy.golden` (the Goldling, docs/FORTUNE.md FO10 / FD14) | **Skeleton recoloured gold** (`recolor`, below; bodyTiles 0.95): `golden-move.png`, `golden-death.png` + rims, built 2026-11-04, not uploaded | Lords of Pain demo |
@@ -267,3 +270,92 @@ bright red lava in the cracks.
   face's sign in `GAME_WORLD.wallTextureUV` if not); telegraph rings still readable on molten floors (the 30.8 CIE76
   above). Optional: `scripts/art/kenney/kenney.json` still bakes the biome.2 Kenney floor patches toward the old
   placeholder floor `#2a1a16`; rebake toward `#2d211e` once the floor is uploaded.
+
+## As built: frost tiles (2026-11-08)
+
+Presentation only (no sim, dungeon, lockstep, hash, replay, fixture or score change). The frost biome (`biome.3`,
+Frost Reach) gets a repeating floor and wall texture like the molten tiles above, ORIGINAL art in the Lords of Pain
+ground's style: cold blue-grey slate with pale frost.
+
+- **Art.** `scripts/art/frost/gen_frost_tiles.py` (python3 with numpy + Pillow; NOT run by `art:build` / `art:lock`;
+  it imports the molten script's periodic helpers: `fbm`, `wrapped_voronoi`, `shade`, `scratches`, `blur_wrap`) writes
+  `art/vendor/kaleb-vale/frost/frost-floor.png` (slate flagstones: a lightly warped jittered hex Voronoi, the pack's grit
+  and scratches, a top-left bevel; snow packed into the joints where a slow "cold" field allows, a rime rim inside the
+  stones' edges, hoarfrost crystal speckle in patches, a few pale ice-filled hairline cracks) and `frost-wall.png` (8
+  staggered courses of 32 px blocks lit from above; snow lying along the top of about 3 blocks in 4, rime in the joints,
+  short icicles hanging from the snow with a faint shadow). Both 256 x 256, opaque and seamless, `tilesPerImage` 4.
+  Means `#222a32` (floor) and `#303941` (wall), near the placeholder `#1e2a33` / `#2a3842`. Measured: `enemyBullet` on
+  the means 4.50:1 / 3.64:1; the brightest frost pixel is 78 CIE76 from `telegraph` and 81 from `enemyBullet` (no pixel
+  within 40 of either); the shoulder `#28353f` is 5.2 CIE76 from the floor mean (>= `VOID_CONTRAST.shoulderVsFloor` 4)
+  and nearer the wall (2.9). The stone stays dark on purpose: a pale ice floor could not keep 3:1 for the pink bullets.
+- **Pipeline / pack / renderer.** Nothing new: `art/atlases.json` images `tile.biome.3.floor` / `.wall` (`crop: "none"`,
+  `tilesPerImage` 4, `meanHex`) -> `art/upload/tile-biome3-floor.png` / `-wall.png`; `VALE_TILE_MEAN_HEX` and the
+  manifest's textured-surface rule pick them up as for molten; the biome keeps `Snow` / `Glacier`
+  (`VALE_BIOME_MATERIALS`). Without the IDs `biome.3` is exactly as before (vale.spec "vale frost tiles").
+- **Uploaded** 2026-11-08 (`tile-biome3-floor.png` / `tile-biome3-wall.png`, IDs in `packs/vale/assetIds.ts`), so the
+  bundled vale pack draws them. **Pending:** the Studio checks: **Glacier under the textured walls**
+  (a glossy material: if it glints like SmoothPlastic did, move the wall to `Slate` or `Rock` in
+  `VALE_BIOME_MATERIALS`), Snow's own pattern under the floor image, and the icicles on the walls' Top faces (the Top
+  face shares the wall image, as on molten). Optional: rebake the biome.3 Kenney floor patches toward `#222a32`.
+
+## As built: grim tiles (2026-11-09)
+
+Presentation only (no sim, dungeon, lockstep, hash, replay, fixture or score change). The grim biome (`biome.4`, the
+Grim Vaults) gets a repeating floor and wall texture like the molten and frost tiles above, ORIGINAL art in the Lords
+of Pain ground's style: dark violet-grey crypt slate with dim grave moss.
+
+- **Art.** `scripts/art/grim/gen_grim_tiles.py` (python3 with numpy + Pillow; NOT run by `art:build` / `art:lock`; it
+  imports the molten script's periodic helpers, as the frost script does) writes `art/vendor/kaleb-vale/grim/grim-floor.png`
+  (crypt flagstones: slabs of 1 x 1 to 3 x 2 cells on a 32 px lattice, packed with wrap-around, their edges warped and
+  chipped and their corners worn round; the pack's grit and scratches, a top-left bevel with a slight per-slab tilt,
+  damp stains, hairline cracks in about 3 slabs in 10, one slab broken into shards, and one 2 x 3 grave slab with a
+  faint engraved border and cross; grave moss in the joints where a slow field lets it grow, with lichen freckles) and
+  `grim-wall.png` (crypt masonry: courses of 24 / 32 / 40 px, staggered blocks with worn corners lit from above, cracks
+  in about 1 block in 5, damp streaks leaking down from some joints, moss in some joints and capping about 3 blocks in
+  10 with short tendrils hanging from the caps). Both 256 x 256, opaque and seamless, `tilesPerImage` 4. The moss is the
+  biome's wisp green (`decor.fx.ambient.b4` `#9fe66a`) darkened and greyed (`#3a4c2c`), far from `fx.heal`. Means
+  `#212023` (floor) and `#353338` (wall), near the placeholder `#1c1a20` / `#34303a` (3.6 CIE76 for the floor).
+  Measured: `enemyBullet` on the means 5.02:1 / 3.86:1; the brightest pixel (`#756f7d`, wall) is >= 73.5 CIE76 from
+  `enemyBullet` and >= 74.9 from `telegraph`; the shoulder `#2e2a34` is 7.3 CIE76 from the floor mean
+  (>= `VOID_CONTRAST.shoulderVsFloor` 4) and nearer the wall (5.3).
+- **Pipeline / pack / renderer.** Nothing new: `art/atlases.json` images `tile.biome.4.floor` / `.wall` (`crop: "none"`,
+  `tilesPerImage` 4, `meanHex`) -> `art/upload/tile-biome4-floor.png` / `-wall.png`; `VALE_TILE_MEAN_HEX` and the
+  manifest's textured-surface rule pick them up as for molten; the biome keeps `Slate` / `Cobblestone`
+  (`VALE_BIOME_MATERIALS`). Without the IDs `biome.4` is exactly as before (vale.spec "vale grim tiles").
+- **Uploaded** 2026-11-09 (`tile-biome4-floor.png` / `tile-biome4-wall.png`, IDs in `packs/vale/assetIds.ts`), so the
+  bundled vale pack draws them. **Pending:** the Studio checks: Slate's and Cobblestone's own patterns under the images (Cobblestone
+  is busy: if it fights the masonry, move the wall to `Slate` or `Rock`), the moss tendrils on the walls' Top faces (the
+  Top face shares the wall image), and whether the grave slab's cross, once every 4 tiles, reads as a repeat. Optional:
+  rebake the biome.4 Kenney floor patches toward `#212023`.
+
+## As built: verdant tiles (2026-11-09)
+
+Presentation only (no sim, dungeon, lockstep, hash, replay, fixture or score change). The verdant biome (`biome.5`, the
+overgrown ruin) gets a repeating floor and wall texture like the molten, frost and grim tiles above, ORIGINAL art in the
+Lords of Pain ground's style: dark weathered limestone taken over by moss, grass and ivy.
+
+- **Art.** `scripts/art/verdant/gen_verdant_tiles.py` (python3 with numpy + Pillow; NOT run by `art:build` /
+  `art:lock`; it imports the molten script's periodic helpers, as the frost script does) writes
+  `art/vendor/kaleb-vale/verdant/verdant-floor.png` (limestone flagstones: the frost floor's lightly warped jittered hex
+  Voronoi, the pack's grit and scratches, a top-left bevel, damp stains; a slow "damp" field decides where the growth has
+  taken, about half the floor: moss filling the joints and creeping over the stones' edges with a ragged, fuzzy front and
+  a dark rim, moss cushions on some stones (a bumpy surface lit top-left), 140 grass tufts of 3-6 tapered blades sprouting
+  from the joints with a shadow down-right, mossy hairline cracks, lichen speckle on the dry stone and 26 small fallen
+  leaves in a dry olive-brown) and `verdant-wall.png` (8 staggered courses of 32 px limestone blocks lit from above, as
+  the frost wall; damp streaks, lichen, patchy moss in the joints, a moss cap with a ragged lower edge on about 7 blocks
+  in 10, and 5 ivy vines trailing 3-6 courses down, wrapping, with leaves on alternating sides, a lit edge and a cast
+  shadow). Both 256 x 256, opaque and seamless, `tilesPerImage` 4. Means `#1e2a1a` (floor) and `#273125` (wall), near
+  the placeholder `#1d2a1d` / `#283626` (2.1 / 3.7 CIE76); the limestone is kept dark on purpose (a pale stone could not
+  keep 3:1 for the pink bullets). Measured: `enemyBullet` on the means 4.64:1 / 4.19:1; every pixel (brightest `#48692e`
+  floor, `#5a6c5a` wall) is >= 90 CIE76 from `enemyBullet` and >= 74 from `telegraph`; the shoulder `#263324` is 4.3
+  CIE76 from the floor mean (>= `VOID_CONTRAST.shoulderVsFloor` 4, the narrowest margin: a lighter or greyer floor fails
+  it) and nearer the wall (2.5); the wall is darker than the placeholder's, so `boost.aegis` keeps boosts.spec's 5.8:1.
+- **Pipeline / pack / renderer.** Nothing new: `art/atlases.json` images `tile.biome.5.floor` / `.wall` (`crop: "none"`,
+  `tilesPerImage` 4, `meanHex`) -> `art/upload/tile-biome5-floor.png` / `-wall.png`; `VALE_TILE_MEAN_HEX` and the
+  manifest's textured-surface rule pick them up as for molten; the biome keeps `Grass` / `Limestone`
+  (`VALE_BIOME_MATERIALS`). Without the IDs `biome.5` is exactly as before (vale.spec "vale verdant tiles").
+- **Uploaded** 2026-11-09 (`tile-biome5-floor.png` / `tile-biome5-wall.png`, IDs in `packs/vale/assetIds.ts`), so the
+  bundled vale pack draws them. **Pending:** the Studio checks: Grass's own pattern under the
+  floor image (if it fights the art, move the floor to `Ground` or `Slate` in `VALE_BIOME_MATERIALS`), the ivy and moss
+  caps on the walls' Top faces (the Top face shares the wall image), and the telegraph rings on the mossy floor.
+  Optional: rebake the biome.5 Kenney floor patches toward `#1e2a1a`.

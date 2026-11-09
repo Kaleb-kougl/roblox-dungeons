@@ -42,6 +42,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/MINIMAP.md` | Minimap with fog of war (corner map + full-map toggle, sight + whole-room reveal, shared party map): plan, tasks M0-M12, decisions MD1-MD14 |
 | `docs/PRELOAD.md` | Asset preloading (join loading screen for the core tier, background queue for bosses / later music): plan, tasks P0-P7, decisions D1-D6 |
 | `docs/STAGE_LOADER.md` | Stage loader (cover while a floor generates and loads: run start, stairwell card, pre-generation during the boon draft, deferred view rebuilds): plan, tasks SL0-SL8, decisions SD1-SD6 |
+| `docs/STAGE_ASSETS.md` | Stage assets (a per-floor asset manifest from the layout, a `next` prefetch lane, a short join screen; revision 2: playable while loading on every device, the placeholders drawn as stand-ins until each id has downloaded and swapped live, a 1.5 s soft wait at run start and no holds, a stand-in box for solid decor, late cues dropped, `KV_StandInsForce` / `KV_FakeAssetLatency` / `KV_StageAssetAudit`): plan, tasks SA0-SA20, decisions SAD1-SAD16 |
 | `docs/INVITES.md` | Roblox friend invites (`PromptGameInvite` + LaunchData into a lobby) and Roblox Party grouping: plan, tasks I0-I9, decisions ID1-ID7 |
 | `docs/MOBILE.md` | Mobile play (two-stick touch controls with auto-target, touch HUD, touch menus / tutorial, real-device performance): plan, tasks MB0-MB16, decisions MBD1-MBD10. Step-by-step build: `docs/MOBILE_IMPL.md` (MB1-MB13) |
 | `docs/ROOM_CLEAR.md` | Room clear celebration (1.5 s: 0.5x slow motion on the last kill, CLEAR / PERFECT stamp, room score tally rolling into the score panel, a corner chip for a far co-op clear, On / Off setting; presentation only): plan, tasks RC0-RC10, decisions RCD1-RCD18. Step-by-step build: `docs/ROOM_CLEAR_IMPL.md` (RC1-RC9) |
@@ -73,6 +74,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/WALL_SLIDE.md` | Wall slide (the player's body slides round corners instead of stopping: `slideCircle` collide and slide, a corner tie-break, a face assist within 0.35 tiles of a wall's end, a full pillar slip on isolated 1 x 1 blockers; every world, M1 included; snag census; gameplay): findings, plan, as built, tasks WS0-WS10, decisions WSD1-WSD7 |
 | `docs/FRAME_PACING.md` | Co-op frame pacing (a playout clock: received merged frames stepped at a steady 60 Hz from a small jitter buffer, holds on underflow, the input lead covers the buffer; the lead-never-decays fix; client timing only): findings, plan, tasks FP0-FP8, decisions FPD1-FPD8 |
 | `docs/BUILDS_V2.md` | Builds v2, wave 1 (Riposte: a guard that erases bullets answers with a counter-wave, Counterstrike ring and returns; Ballista: the heavy arrow bursts into bolts, Siege Bolt pins and drags an enemy into a wall; Wrecker: rolls smash breakables, every piece you break fires splinters, Demolition chains them; duos Thunder Guard / Stillwater / Rebuke (Bastion + Riposte) / Dragon Bolt / Powder Keg / Full Heart / Happy Hour; the duo hint on New cards; overcap boss points `ScoreSource.OVERCAP`; gameplay, opt-in `SimConfig.builds`; wave 2 and the proposal in its appendix): plan, tasks BV0-BV13, decisions BVD1-BVD20 |
+| `docs/ARCHER.md` | The Archer (the bow split off the knight into its own character: Knight = sword, Archer = bow and a longer roll, one weapon set each; weapon-tagged boons / relics dealt only to the character who carries the weapon; a character screen every run; Knight-only tutorial without the bow room; shared boards with the character shown; SmallScaleInt Archer art): plan, tasks AR0-AR14, decisions ARD1-ARD17 |
 
 Decision log (deviations from `PLAN.md`):
 - **Art (docs/ART.md).** The theme contract gained a `"sprites"` kind (large pre-rendered cells, 1/4/8/16 screen-space
@@ -1088,6 +1090,32 @@ Decision log (deviations from `PLAN.md`):
   wall joins, stone upright on side faces, telegraph rings readable on molten floors: the lava's hottest pixel is 31
   CIE76 from `telegraph`) pending; the biome.2 Kenney floor patches still bake toward the old `#2a1a16` (optional
   rebake).
+- **Frost tiles (docs/ART.md "As built: frost tiles", 2026-11-08).** Presentation only (no sim, dungeon, lockstep,
+  hash, replay, fixture or score change). The frost biome (`biome.3`) gets a repeating floor and wall texture, ORIGINAL
+  art (dark slate with snow-packed joints, rime, hoarfrost; coursed blocks with snow tops and icicles) by
+  `scripts/art/frost/gen_frost_tiles.py` (python3, numpy + Pillow, the molten script's helpers; not run by
+  `art:build`) into `art/vendor/kaleb-vale/frost/`: images `tile.biome.3.floor` / `.wall` (`tile-biome3-floor.png` /
+  `-wall.png`, 256 x 256, seamless, `tilesPerImage` 4, means `#222a32` / `#303941`), through the molten tiles' pipeline
+  unchanged; materials stay Snow / Glacier. Both PNGs uploaded 2026-11-08 (`assetIds.ts`), so the bundled vale pack draws
+  them; the Studio checks (Glacier's glint under the wall texture) pending.
+- **Grim tiles (docs/ART.md "As built: grim tiles", 2026-11-09).** Presentation only (no sim, dungeon, lockstep, hash,
+  replay, fixture or score change). The grim biome (`biome.4`, the Grim Vaults) gets a repeating floor and wall texture,
+  ORIGINAL art in the Lords of Pain ground's style (dark violet-grey crypt slabs with worn corners, cracks, a broken slab,
+  an engraved grave slab and dim grave moss in the joints; mixed-height crypt masonry with damp streaks, moss caps and
+  tendrils) by `scripts/art/grim/gen_grim_tiles.py` (python3, numpy + Pillow, the molten script's helpers; not run by
+  `art:build`) into `art/vendor/kaleb-vale/grim/`: images `tile.biome.4.floor` / `.wall` (`tile-biome4-floor.png` /
+  `-wall.png`, 256 x 256, seamless, `tilesPerImage` 4, means `#212023` / `#353338`), through the molten tiles' pipeline
+  unchanged; materials stay Slate / Cobblestone. Both PNGs uploaded 2026-11-09 (`assetIds.ts`), so the bundled vale
+  pack draws them; the Studio checks pending.
+- **Verdant tiles (docs/ART.md "As built: verdant tiles", 2026-11-09).** Presentation only (no sim, dungeon, lockstep,
+  hash, replay, fixture or score change). The verdant biome (`biome.5`) gets a repeating floor and wall texture,
+  ORIGINAL art (dark grey-green limestone flagstones with moss in the joints, moss cushions, grass tufts, leaf litter and
+  lichen; coursed limestone blocks with moss caps, lichen and trailing ivy) by `scripts/art/verdant/gen_verdant_tiles.py`
+  (python3, numpy + Pillow, the molten script's helpers; not run by `art:build`) into `art/vendor/kaleb-vale/verdant/`:
+  images `tile.biome.5.floor` / `.wall` (`tile-biome5-floor.png` / `-wall.png`, 256 x 256, seamless, `tilesPerImage` 4,
+  means `#1e2a1a` / `#273125`; the floor's 4.3 CIE76 from the shoulder is the tight margin), through the molten tiles'
+  pipeline unchanged; materials stay Grass / Limestone. Both PNGs uploaded 2026-11-09 (`assetIds.ts`), so the bundled
+  vale pack draws them; the Studio checks (Grass's pattern under the floor image) pending.
 - **Kenney Forge pieces (docs/KENNEY_DECOR.md KN5-KN9, 2026-11-08).** Gameplay (dungeon), the `solidDecor` Forge
   option (endless only). `SolidDecorKind` gains `studyTable` (2 x 2), `display` (2 x 1), `lectern` (1 x 1),
   `fallenShelf` (2 x 1, low), `diningTable` (1 x 1), `barrelStack` (2 x 1, flush), `crateStack` / `lumber` /
@@ -1106,8 +1134,8 @@ Decision log (deviations from `PLAN.md`):
   variants 5-10 (segments along X / Z, ends toward +X / +Z / -X / -Z); `DECOR_KENNEY` look picks by cell hash; a
   stockpile's back cells join `behindShelf`. Without the sheet's ID the pieces block and draw nothing, and floors
   without the new kinds plan exactly as before. Credits: Kenney Isometric Library / Dungeon (CC0). No Luau-locals
-  change. Upload of `kenney-decor.png` (KN12) and the Studio check (KN13: the toppled case's Z art and the 1 x 1 stock's
-  facings were picked by eye) pending.
+  change. `kenney-decor.png` uploaded 2026-11-08 (KN12, `assetIds.ts`); the Studio check (KN13: the toppled case's Z
+  art and the 1 x 1 stock's facings were picked by eye) pending.
 
 ## Commands
 
