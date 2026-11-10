@@ -11,13 +11,11 @@ the sim still steps exactly the server's merged log, and nothing predicted ever 
 remote. Solo runs are untouched (they step locally, with no input delay). Teammates, enemies, bullets, pickups and
 every outcome (hits, kills, pickups, room clears) stay at the merged state.
 
-## Status (2026-11-09)
+## Status (2026-11-10)
 
-**LP0-LP4 built** (branch `local-prediction`, the pure parts: the census, the motion mirror, the LocalPredictor in
-LockstepClient, the smoother; "As built" below). Not yet built: LP5 (wiring: nothing draws the prediction yet), LP6,
-LP10; LP8 and LP9 open. Frame pacing (FP1-FP3, revision 2) has landed, so LP5 is no longer blocked. Note: with
-`DEFAULT_LOCKSTEP.prediction` set, every co-op client already rebuilds a prediction after each pump that steps
-(~0.03 ms headless at 10 ticks), unread until LP5.
+**LP0-LP6 built** (branch `local-prediction`): the census, the motion mirror, the LocalPredictor in LockstepClient,
+the smoother (LP0-LP4, "As built" below), then the wiring and the diagnostics (LP5 / LP6, "As built: LP5 / LP6").
+Open: the Studio checks of LP5 and LP6 (owner), LP10 (being built on branch `lp-bullets`), LP8 and LP9.
 
 Drafted from an audit of branch `frame-pacing` @ `0a8e8ec4` (docs/FRAME_PACING.md: planned,
 nothing built). It builds on frame pacing (LPD2): FP1's lead fix and FP2-FP3's playout clock come first for the
@@ -305,10 +303,10 @@ All provisional until LP8.
 - [x] **LP4. `PredictionSmoother`** (Design 4). -> Verify: `smoother.spec.ts`: a 0.3-tile correction decays below 0.01
   within 0.4 s at 30 / 60 / 144 fps and never moves the drawn pose by more than walk speed x dt + the decayed part in a
   frame; each snap rule; facing passes through; with no correction the drawn pose equals `lerp(prev, x, alpha)` exactly.
-- [ ] **LP5. Wiring** (after FP3). `getDrawnPlayer`, the aim origin, the Design 6 sites, `KV_PredictOff`. -> Verify:
+- [x] **LP5. Wiring** (code done 2026-11-10; **the Studio two-player check below is open, owner**). `getDrawnPlayer`, the aim origin, the Design 6 sites, `KV_PredictOff`. -> Verify:
   `npm run verify`; Studio two-player test (Test > Clients and Servers, Incoming Replication Lag 100 ms): your knight
   walks, rolls and turns on the press, the teammate's view of you is unchanged, `KV_PredictOff` restores today's view.
-- [ ] **LP6. Diagnostics** (Design 7; `KV_CollisionDebug`'s merged ring). -> Verify: Studio, the debug line shows the
+- [x] **LP6. Diagnostics** (code done 2026-11-10; **the Studio check below is open, owner**; Design 7; `KV_CollisionDebug`'s merged ring). -> Verify: Studio, the debug line shows the
   horizon, error and press -> drawn of 1 frame with prediction (the lead without).
 - ~~**LP7. Hitbox pip.**~~ Dropped (LPD7, owner 2026-11-07).
 - [ ] **LP8 [owner]. Playtest** (with FP6: the same group, 60 Hz and 120 Hz+ screens, a phone). On vs `KV_PredictOff`.
@@ -369,6 +367,50 @@ Order: LP0 -> LP1 -> LP2 -> LP3 -> LP4 (all pure, any time) -> FP1-FP3 land -> L
   plus 4 more, 227 files, pass; 3 time out at the VM shell's cap (affixes.census, minimap/tiles, roomEdges: the known
   slow ones, which import none of this). The other 242 spec files (sim, dungeon, run, theme, ...) were not run: none
   imports shared/lockstep or shared/view/predict, and no file they load changed.
+
+## As built: LP5 / LP6 (2026-11-10)
+
+- **SimController** owns the `PredictionSmoother` (`PREDICTION_VIEW`) and, once per co-op frame after the pump and the
+  spectate update (`updateDrawn`), feeds it `coop.predicted()` / `coop.predictedPath()`, or undefined while the views
+  follow a teammate or the stage cover is up (the client itself predicts nothing while dead or left, a draft is open,
+  the run is over, or with KV_PredictOff). Snaps: a run start, a floor change and a spectate switch (`snap()`); death,
+  revive and a draft through the undefined feed (the next prediction starts fresh).
+- **`getDrawnPlayer(state, index)`**: while predicting, the local player as drawn (shared/view/predict
+  `writeDrawnPlayer`: the head's position plus the smoother's offset, its prev plus the same offset, facing, roll timer
+  and direction, the flask's slowdown timer; every other field the merged player's: hearts, armor, flask charges,
+  Embers, i-frames, the hurt blink, death, buttons); otherwise, and for every other player, exactly
+  `playerAt(state, index)` (solo is unchanged). A view's `lerp(prev, x, alpha)` gives the smoothed pose, `x - prevX`
+  the head's step (the walk animation). `drawnPlayerOf` is the same as a `DrawnPlayerOf` function value for the
+  shared/view helpers (`drawnOrMerged`).
+- **`getPredictionAheadTicks()`**: the predictor's horizon this frame (`LockstepClient.predictionHorizonTicks()`, at
+  most `PREDICTION.maxTicks`) while `getDrawnPlayer` draws the local player predicted, else 0. LP10's bullets read it.
+- **Aim**: `coopFrame` samples the mouse aim from the drawn pose of the previous frame, and the touch facing /
+  auto-target from the drawn body (`TouchAimContext.player`, `AutoTargetQuery.player`, both optional: absent is the
+  merged player as before).
+- **Views on the drawn player** (the census's "drawn" rows): ActorRenderController (position, facing, roll, squash /
+  afterimages, outline, sprite input through `playerSpriteInputFor`'s new trailing `p`; the look, the hurt blink and
+  death read the merged fields the drawn player keeps), CameraController, WeaponViewController (the windup / guard /
+  charge on the drawn knight; the last swing's fan and blade are the sim's swing shifted by drawn - merged this
+  frame), BoostAuraController, ComboController, ParryFlashController, GoldenRenderController's label, the minimap's
+  self marker, HudOcclusionController, FxCueMapper (`FxCueFrame.drawn`), NearMissDirector and BuildFxDirector
+  (`frame(..., drawn)`), ParticleController's pellet ring and power fly-in, DecorController's fades
+  (`decorFadeBodies(..., drawn)`). Every "merged" row is untouched.
+- **KV_PredictOff** (`RUN_ATTRIBUTES.predictOff`, read at each co-op start, combinable with KV_PacingOff / KV_LeadOff):
+  the client is built with `prediction: undefined`; `RunContext.predictOff`.
+- **LP6**: the co-op debug line's `{pred}` part (developer strings `hud.debug.pred` / `.predWait` / `.predOff`,
+  HUD_STRINGS `predProbe*`, English only like every `hud.debug*` key; no l10n context needed): `pred {h}t · err
+  {mean}/{max} · snaps {snaps} · press->drawn {drawn}ms avg {drawnMean}` (errors in tiles, 2 decimals, the head error
+  over the stats window; snaps the smoother's). `LatencyProbe.drawn(nextTick, ahead, now)`: a press is answered on
+  screen once the drawn knight shows its tick (with prediction: once `state.tick + horizon` passes it; without, it is
+  press -> step). KV_CollisionDebug: the body ring follows the drawn knight, a second ring (`uiTextDim`, 0.5
+  transparency) marks the merged body while predicted (`collisionRings`); the cells and the stall flash stay merged.
+- **Verify**: typecheck, lint, build; Lune: every spec under shared/lockstep, shared/view, shared/play and
+  shared/spikes, 205 files, pass (drawn.spec, predictDebug.spec new; latencyProbe.spec's pinned lines gain the part);
+  roomEdges.spec and minimap/tiles.spec time out at the VM shell's cap (the known slow ones, as before).
+- **Open (owner, Studio)**: LP5's two-player check (Test > Clients and Servers, Incoming Replication Lag 100 ms: the
+  knight walks, rolls and turns on the press; the teammate's view of you unchanged; KV_PredictOff restores today's
+  view) and LP6's (the debug line's horizon, error and press -> drawn of about one frame with prediction, the lead
+  without; the merged ring). Not checked headlessly: anything client-side (it compiles and lints only).
 
 ## Testing
 
