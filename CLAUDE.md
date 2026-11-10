@@ -663,7 +663,7 @@ Decision log (deviations from `PLAN.md`):
   not the spectate view, which a wipe leaves on the last watched teammate. Strings `CONTRIB_STRING_KEYS` (45,
   `run.recap.tab.*` / `.you.*` / `.party.*` / `.title.*` / `.titleDesc.*`; the `daredevil` title reads "Bullet Dancer":
   Daredevil is a boon); contract.luau / validate.luau stay 186 / 197. Telemetry: `RunRecapReport.views` and a `views`
-  row on `RunRecap` (still 37 names, 2760 of 8,000 combinations; 39 / 3320 with the rollback spike). Studio check
+  row on `RunRecap` (still 37 names, 2760 of 8,000 combinations; 39 / 3000 with the rollback spike). Studio check
   (CT10) pending.
 - **Bookshelves (docs/BOOKSHELVES.md).** Gameplay (dungeon), same Forge option as solid decor (endless only). A new
   solid kind `bookcase` (1 x 1, the Dungeon Essential Kit's case at 125 kit units a tile) stands flush in runs of
@@ -1174,31 +1174,35 @@ Decision log (deviations from `PLAN.md`):
   No new strings, roles or sounds; no Luau-locals change. Studio checks, SA0 / SA20 device measurements and the
   playtest pending; SA9 warm draw and SA12 telemetry not built.
 - **Rollback spike (docs/ROLLBACK_SPIKE.md, 2026-11-09).** Spike only: measures whether co-op rollback is worth
-  building, builds no production path (no sim, dungeon, hash, replay, lockstep wire, session, log, validator, fixture
-  or score change; nothing predicted reaches the sim, a hash or a recording). Shared, in `shared/lockstep`
-  `rollbackSpike/`: the generic copy `cloneSimState` (an upper bound; NOT shared/sim's unrelated `cloneSimState`: import
-  it from `shared/lockstep`) with `SHARED_BY_REFERENCE`, the pooled copy `PooledStateCopier` / `pooledCopyFn` (R1b, the
-  realistic cost, 2 tables a copy), the prediction model `RollbackModel` with its digest / metrics / harness
-  (`runModelOverRecording`, `captureModelInput`), the worker core (`RollbackWorkerCore`, `RollbackFeed`, protocol),
-  tunables `ROLLBACK_SPIKE`; read-only `LockstepClient` accessors `queuedFrame` / `lastSentInputTick` / `sentInput` /
-  `pacingDepthTicks` (no behaviour change); `shared/run/testing` `denseFight.ts` and `recordNoisyPartyRun`; in
-  `shared/spikes` the summaries `ProbeSummary` / `LiveSummary`, their strict readers and the capture codec
-  (`rollbackCapture.ts`). Switches (off by default, `shared/config` spikes.ts): client `KV_RollbackSpike` (H; 0 /
-  absent: nothing created), `KV_RollbackSpikeMode` (`parallel` default: an Actor `KV_RollbackWorker` mirrors the run
-  from the merged frames, hash-checked; `serial`; `facts`), `KV_RollbackDeviceTag` (the dev panel's field); server
-  `KV_RollbackCapture` (probe intake, always in Studio; co-op run captures for Studio, all-developer parties or a
-  developer's private server). New debug remote `rollbackProbe(kind, payload)` (`ROLLBACK_PROBE_RATE`), server
-  `RollbackSpikeService` (hooks in RunSessionService's lockstep start / step / forget), DataStores
-  `KV_RollbackCapture_v1` (chunked captures) and `KV_RollbackProbe_v1` (one row per window), custom events
-  `RollbackCpu` / `RollbackProbe` through `TelemetryService.logSpike` (published places only; the catalog is now 39
-  names, 3320 of 8,000 combinations). Worker LocalScript `client/rollbackWorker` (disabled template), client
-  `RollbackSpikeController` (spike HUD line), Studio plugin `plugin/RollbackCapturePlugin.server.lua`
-  (`npm run rollback:plugin`), localhost receiver `npm run rollback:receive` into gitignored `/captures`, which
-  gen-fixtures turns into gitignored capture modules; `npm run test:rollback` is in verify. The Lune runner takes
-  `--flag name` (`_G.KV_SPEC_FLAGS`); the full sweep is `--flag rollbackSweep`. R0-R2 / R1b verified headlessly (pooled
-  copy + 15 steps about 4.4-5.0 ms a frame under Lune; bots at L 11: teammate corrections far over the proposed gate);
-  the Studio checks of R3a / R3 / R4 / R4b (the doc's owner checklist), R5 devices and playtest, R6 decision (RBD8) and
-  R7 cleanup pending; the Open Cloud fallback not built.
+  building, builds no production path (no sim, dungeon, hash, replay, lockstep wire, session, log, validator, fixture or
+  score change; nothing predicted reaches the sim, a hash or a recording). Shared, in `shared/lockstep/rollbackSpike`
+  (its own barrel, NOT re-exported by `shared/lockstep`: import that directory): the generic copy `cloneForRollback` (an
+  upper bound; shared/sim's `cloneSimState` is unrelated) with `SHARED_BY_REFERENCE`, the pooled copy
+  `PooledStateCopier` / `pooledCopyFn` (R1b, the realistic cost, 2 tables a copy), the prediction model `RollbackModel`
+  with its digest / metrics / harness (`runModelOverRecording`, `captureModelInput`), the worker core
+  (`RollbackWorkerCore`, `RollbackFeed`, protocol), tunables `ROLLBACK_SPIKE`; read-only `LockstepClient` accessors
+  `queuedFrame` / `lastSentInputTick` / `sentInput` / `pacingDepthTicks` (no behaviour change); `shared/run/testing`
+  `denseFight.ts` and `recordNoisyPartyRun`; in `shared/spikes` the summaries `ProbeSummary` / `LiveSummary`, their
+  strict readers, the intake `RollbackProbeIntake` (`rollbackIntake.ts`) and the capture codec (`rollbackCapture.ts`,
+  encoded block by block off the lockstep step). Switches (off by default, `shared/config` spikes.ts): client
+  `KV_RollbackSpike` (H; 0 / absent: nothing created), `KV_RollbackSpikeMode` (`parallel` default: an Actor
+  `KV_RollbackWorker` mirrors the run from the merged frames, hash-checked; `serial`; `facts`), `KV_RollbackDeviceTag`
+  (the dev panel's field); server `KV_RollbackCapture` (Studio too: probe intake from the players the capture policy
+  allows, who get the player attribute `KV_RollbackAllowed` the client probe waits for; co-op run captures for Studio,
+  all-developer parties or a developer's private server; writes tagged with the players' UserIds). New debug remote
+  `rollbackProbe(kind, payload)` (`ROLLBACK_PROBE_RATE`, limits before any logging; session ids bound to their first
+  player), server `RollbackSpikeService` (hooks in RunSessionService's lockstep start / step / forget), DataStores
+  `KV_RollbackCapture_v1` (chunked captures) and `KV_RollbackProbe_v1` (at most one row a minute per player, key
+  `<server writer id>/<n>`, `ROLLBACK_PROBE_ROWS`), custom events `RollbackCpu` / `RollbackProbe` (the four gate
+  metrics) through `TelemetryService.logSpike` (published places only, `ROLLBACK_ANALYTICS_RATE`: at most 15 events a
+  minute per player; the catalog is now 39 names, 3000 of 8,000 combinations). Worker LocalScript
+  `client/rollbackWorker` (disabled template), client `RollbackSpikeController` (spike HUD line), Studio plugin
+  `plugin/RollbackCapturePlugin.server.lua` (`npm run rollback:plugin`), localhost receiver `npm run rollback:receive`
+  into gitignored `/captures`, which gen-fixtures turns into gitignored capture modules; `npm run test:rollback` is in
+  verify. The Lune runner takes `--flag name` (`_G.KV_SPEC_FLAGS`; no value: exit 2); the full sweep is `--flag
+  rollbackSweep`. R0-R2 / R1b verified headlessly (pooled copy + 15 steps about 4.4-5.0 ms a frame under Lune; bots at L
+  11: teammate corrections far over the proposed gate); the Studio checks of R3a / R3 / R4 / R4b (the doc's owner
+  checklist), R5 devices and playtest, R6 decision (RBD8) and R7 cleanup pending; the Open Cloud fallback not built.
 
 ## Commands
 

@@ -27,7 +27,10 @@ fallback only.
 prediction vs rollback (2026-11-09); revision 2 (same day, owner): the device work off the main thread (Parallel Luau,
 a worker that mirrors the run), Roblox-side measuring and logging instead of Open Cloud, and live metrics on the
 players' devices (Design 5-7, R3a, R4b). Revision 3 (same day): as built ("As built" below), task R1b (the pooled copy)
-added, the headless results filled in.
+added, the headless results filled in. Revision 4 (same day): an independent review's fixes (branch `rs-fixes`): the
+probe intake gated on the capture policy and budgeted (rows once a minute per player, bounded analytics), captures
+encoded block by block off the lockstep step, erasure tags, the live model at H, live windows' prediction counts, the
+spike out of the `shared/lockstep` barrel, the generic copy renamed `cloneForRollback` ("As built").
 
 | Part | State |
 |---|---|
@@ -71,7 +74,7 @@ Read from the code on `rs-census` (= `main` + this plan). Paths are under `src/s
 `cloneCombatState` (`sim/combat/combat.ts:250`) throws once either bullet pool has ever spawned a bullet (it rebuilds
 pristine pools by re-stepping them). It is used only by specs (`sim/combat.spec.ts`, `sim/builds/builds.spec.ts`). The
 spike's copy must therefore be new, and must not be called `cloneSimState`: that name is exported through the
-`shared/sim` barrel (`sim/index.ts:33`). Suggested: `cloneForRollback` in `lockstep/rollbackSpike/clone.ts`.
+`shared/sim` barrel (`sim/index.ts:33`). Suggested (and built): `cloneForRollback` in `lockstep/rollbackSpike/clone.ts`.
 
 **SimState and every object it reaches** (`sim/state.ts:259-343`; created in `createSimState`, `:375`):
 
@@ -256,7 +259,7 @@ state differs keep cross-tick memory.
 Two copies, both in `shared/lockstep` (the sim is not touched), both exact (the copy hashes like the source and,
 stepped with the same inputs, stays equal; the source is never written):
 
-- **Generic** `cloneSimState(state)` (clone.ts, R1): a deep copy. Recursive over tables with a memo (a reference
+- **Generic** `cloneForRollback(state)` (clone.ts, R1): a deep copy. Recursive over tables with a memo (a reference
   shared inside the state stays shared in the copy), metatables kept by reference (class instances such as
   `BulletSimulation` stay instances), buffers copied, `table.clone` per table so `pairs` order matches. Immutable data
   the state only points at (R0's list `SHARED_BY_REFERENCE`) is shared, not copied. It copies every table every time,
@@ -356,27 +359,29 @@ only** (Roblox's docs), so the spike measures the sim with and without it on And
   labels show on worker threads is not documented: R3 records it.
 - A `[Rollback]` line every 10 s in the **Developer Console** (F9; on a phone, the in-game console) and an overlay line.
 - **Logged, not only shown.** Every 10 s window the worker (or the serial mode) sends a `ProbeSummary` to the server
-  through a rate-limited debug remote (`rollbackProbe`, only while `KV_RollbackSpike` is on; the server re-reads every
-  field, like `readRunRecapReport`): mode, H, case (room / floor / boss / walk, from the state), party size, actors and
-  enemy bullets alive, clone / step / send ms p50 / p95 / max, frames per prediction, render fps, frame ms p95,
+  through a rate-limited debug remote (`rollbackProbe`, only while `KV_RollbackSpike` is on and the server allows the
+  player; the server re-reads every field, like `readRunRecapReport`): mode, H, case (room / floor / boss / walk, from
+  the state), party size, actors and enemy bullets alive, clone / step / send ms p50 / p95 / max, the digest's arrival
+  on the main thread, frames per prediction, the live model's own work in the same rounds, render fps, frame ms p95,
   `gcinfo()` KB/s, whether `--!native` ran, and a device label. Roblox gives scripts no device model, so the label is
   what the game knows (touch / gamepad / keyboard, viewport size, `GuiService:IsTenFootInterface()`) plus an optional
   tester's tag typed in the dev panel (F2, e.g. "Pixel 6a"). The server writes it to three places:
   - **the server log** (`[Rollback] ...`, Developer Console > Server), live while you are in the session;
-  - **`KV_RollbackProbe_v1`**, one row per window (key: session id + window index, a session's rows listed by a
-    prefix), the per-session record the Studio plugin pulls with the captures (Design 6) and the harness turns into the
-    device table;
+  - **`KV_RollbackProbe_v1`**, at most one row a minute per player holding that minute's summaries (key: a writer id
+    the server makes per player + a row number, a player's rows listed by a prefix), the per-session record the Studio
+    plugin pulls with the captures (Design 6) and the harness turns into the device table;
   - **AnalyticsService** in published places: one custom event `RollbackCpu`, value = total ms p95 of the window,
     custom fields (three): device class (pc / phone / tablet / console), mode + H (`parallel16`), case; a dashboard
-    across sessions and testers, daily (up to 24 h). Together with `RollbackProbe` (Design 7) that is two of the 100
-    event names.
+    across sessions and testers, daily (up to 24 h), within a per-player budget (As built, R4). Together with
+    `RollbackProbe` (Design 7) that is two of the 100 event names.
 
 ### 6. Capturing human runs (`KV_RollbackCapture`, server)
 
-On a server where the switch is on and only for parties of DEV_MODE-allowed players (or a private server the owner
-names): at the end of every co-op run the server writes the run's merged log through the existing recording codec to
+On a server where the switch is on and only for parties of DEV_MODE-allowed players (or a private server whose owner
+is one): at the end of every co-op run the server writes the run's merged log through the existing recording codec to
 DataStore `KV_RollbackCapture_v1`, keyed by run id, chunked under the 4 MB value limit, with user ids replaced by player
-indices (inputs only). Studio and published places only; never on by default.
+indices in the data (inputs only; each write is tagged with the party's UserIds for erasure). Studio and published
+places only; never on by default (Studio needs the switch too).
 
 **Getting them out without Open Cloud:** the existing Studio plugin (`plugin/RunTestsPlugin.server.lua`, or a small
 second one) gains a "Pull rollback captures" action: with Game Settings > Security > "Enable Studio Access to API
@@ -391,15 +396,16 @@ plugin path fails.
 The parallel worker (Design 5) already holds the confirmed state and the real merged frames, so it can run the
 prediction model (Design 2) live: each frame it predicts the drawn tick with the guess strategy, and when that tick is
 confirmed it compares, computing Design 3's metrics on the real network (the real L and D) and the real inputs. Every
-60 s it sends a summary (per metric per minute, L and D seen, room type) to the server by the same debug remote; the
-server prints it and, in published places, logs aggregate custom events through AnalyticsService (`RollbackProbe`: one
-event name, value = the metric, custom fields: metric, device class, horizon bucket; one more of the 100 names Roblox allows). Custom
+60 s it sends a summary (per metric per minute, L and D seen, room type, predictions made over main frames seen) to the
+server by the same debug remote; the server prints it and, in published places, logs aggregate custom events through
+AnalyticsService (`RollbackProbe`: one event name, value = the metric, custom fields: metric (the four gate metrics),
+device class, horizon bucket; one more of the 100 names Roblox allows). Custom
 events are server-only, published-place only and aggregated daily (charts can take up to 24 h), so they are a
 dashboard over many sessions; the server log and `KV_RollbackProbe_v1` are the per-session record.
 
 Live metrics answer Q2 at today's lead with `repeatLast` (the gate), with no capture to move. Captures stay for what
 live cannot do: rerun the same play at other (L, D, H, strategy) after the fact. The live model runs only in the
-parallel mode and only with `KV_RollbackSpike` on.
+parallel mode and only with `KV_RollbackSpike` on, at horizon H (it draws T + min(D + L, H)).
 
 ## Gates (proposed; the owner sets them in R6)
 
@@ -436,18 +442,19 @@ Open owner calls: the gates' numbers, the test devices, whether PC-only rollback
 ## As built
 
 Paths under `src/` unless they start elsewhere. Everything is imported from its directory's barrel: the state copy, the
-model and the worker core from `shared/lockstep` (barrel `lockstep/rollbackSpike/index.ts`, worker
-`rollbackSpike/worker/index.ts`), the summaries, readers and capture codec from `shared/spikes`.
+model and the worker core from `shared/lockstep/rollbackSpike` (barrel `lockstep/rollbackSpike/index.ts`, worker
+`rollbackSpike/worker/index.ts`; NOT re-exported by `shared/lockstep`, so production code importing the lockstep barrel
+never loads the spike; the pooled copier's module-load work is lazy), the summaries, readers, intake and capture codec
+from `shared/spikes`.
 
 ### R1. Generic copy (`shared/lockstep/rollbackSpike/clone.ts`)
 
-- `cloneSimState(state): SimState`, `deepCopy(value, shared?)`, `cloneStats()`, `SHARED_BY_REFERENCE` (a path tree:
+- `cloneForRollback(state): SimState`, `deepCopy(value, shared?)`, `cloneStats()`, `SHARED_BY_REFERENCE` (a path tree:
   the eight subsystem `.config` fields, `golden.floor`, `golden.cache.floor`; frozen tables are shared too).
   `table.clone`
   per table, so key layout and `pairs` order equal the original's (the sim walks Maps with `pairs`).
-- **Deviation:** the name is `cloneSimState`, not the census's suggested `cloneForRollback`. `shared/sim` already
-  exports
-  an unrelated `cloneSimState` (throws once bullets exist, specs only): import the spike's from `shared/lockstep`.
+- The name is the census's `cloneForRollback`: `shared/sim` exports an unrelated `cloneSimState` (throws once bullets
+  exist, specs only).
 - Tunables `ROLLBACK_SPIKE` (`rollbackSpike/config.ts`): `sliceTicks` 4, `statsWindowSec` 10, `liveSummarySec` 60,
   `mirrorHashTicks` 600, `digestActors` / `digestBullets` / `digestPlayers` 64 / 150 / 8, `horizons` [8, 16, 24], plus
   the `model` and `probe` blocks (below).
@@ -464,7 +471,8 @@ model and the worker core from `shared/lockstep` (barrel `lockstep/rollbackSpike
   state that must stay alive; its own scratch passed back as a source is an error.
 - Dead bullet slots are skipped (never read by the sim, never hashed). A reused record keeps the scratch's key order,
   which can differ from the source's; nothing iterates state records with `pairs`, and `stateDifference` compares key
-  sets after stepping. Steady state allocates 2 tables a copy (`breakables.slotByCell`, `pellets.byCell`, re-cloned).
+  sets after stepping. A reused array scratch must iterate exactly 1..n after the copy (walked with `next`), else it is
+  re-cloned. Steady state allocates 2 tables a copy (`breakables.slotByCell`, `pellets.byCell`, re-cloned).
 - `pooledCopy.spec.ts`: exact copies on the same six cases, reuse into a dirty scratch (other ticks, floors,
   subsystems), the bench (Results).
 
@@ -507,7 +515,8 @@ metrics: RollbackMetrics     // toLiveSummaryCounts(), leadSeen(), totalSeconds(
   - **not built:** "the delay each plan leaves on an enemy's reaction to your hit".
 - Captures reach the harness through `scripts/gen-fixtures.js`: each `captures/<runId>.json` becomes a gitignored
   module under `shared/fixtures-generated/captures/`, read by `loadCaptureModules`. No captures: nothing changes.
-- Runner: `scripts/lune/run-tests.luau` takes `--flag name` (sets `_G.KV_SPEC_FLAGS[name]`). The full sweep is
+- Runner: `scripts/lune/run-tests.luau` takes `--flag name` (sets `_G.KV_SPEC_FLAGS[name]`; a `--flag` without a
+  value exits 2). The full sweep is
   `npm run test:only -- lockstep/rollbackSpike/model.sweep --flag rollbackSweep` (bots and every capture present, about
   19 minutes on the cloud container); `npm test` runs `model.spec.ts`'s small passes only.
 - `model.spec.ts` sanity, exact: perfect guesses (oracle = the truth) over 1,600 frames with 52 true events: glitch
@@ -516,43 +525,79 @@ metrics: RollbackMetrics     // toLiveSummaryCounts(), leadSeen(), totalSeconds(
 ### R4. Capture and server sinks (`shared/spikes`, server `RollbackSpikeService`, plugin, receiver)
 
 - Shared `shared/spikes/rollbackSpike.ts`: `ROLLBACK_CAPTURE` (attribute `KV_RollbackCapture`, registered in
-  `shared/config` spikes.ts `SPIKE_DEFAULTS.rollbackCapture` / `SPIKE_ATTRIBUTES.rollbackCapture`; stores
-  `KV_RollbackCapture_v1` / `KV_RollbackProbe_v1`; `chunkChars` 3,000,000; `blockTicks` 3600; `receiverPort` 34880;
-  ids `maxIdChars` 38 of `[A-Za-z0-9_{}-]`), `ROLLBACK_PROBE_RATE` (cpu 12 / 60 s, live 3 / 60 s), the enums
-  (`ROLLBACK_PROBE_MODES`, `ROLLBACK_PROBE_CASES`, `ROLLBACK_ROOM_TYPES`, `ROLLBACK_GUESS_STRATEGIES`,
-  `ROLLBACK_DEVICE_CLASSES`, `ROLLBACK_LIVE_METRICS`), `ProbeSummary` / `LiveSummary` / `RollbackProbeRow` and the
-  strict readers `readProbeSummary` / `readLiveSummary`, `analyticsForProbeSummary` / `analyticsForLiveSummary`,
-  `describeProbeSummary` / `describeLiveSummary`, the key helpers, `rollbackCaptureAllowed`.
+  `shared/config` spikes.ts `SPIKE_DEFAULTS.rollbackCapture` / `SPIKE_ATTRIBUTES.rollbackCapture`; player attribute
+  `probeAllowedAttribute` `KV_RollbackAllowed`; stores `KV_RollbackCapture_v1` / `KV_RollbackProbe_v1`; `chunkChars`
+  3,000,000; `blockTicks` 600; `receiverPort` 34880; ids `maxIdChars` 38 of `[A-Za-z0-9_{}-]`), `ROLLBACK_PROBE_RATE`
+  (cpu 12 / 60 s, live 3 / 60 s, `refused` 3 warnings / 60 s), `ROLLBACK_ANALYTICS_RATE` (cpu 7 windows / 60 s, live
+  2 windows / 120 s), `ROLLBACK_PROBE_ROWS` (`writeEverySeconds` 60, `pollSeconds` 5, `maxPerRow` cpu 24 / live 6,
+  `budgetReserve` 20), the enums (`ROLLBACK_PROBE_MODES`, `ROLLBACK_PROBE_CASES`, `ROLLBACK_ROOM_TYPES`,
+  `ROLLBACK_GUESS_STRATEGIES`, `ROLLBACK_DEVICE_CLASSES`, `ROLLBACK_LIVE_METRICS`, `ROLLBACK_ANALYTICS_LIVE_METRICS`),
+  `ProbeSummary` / `LiveSummary` / `RollbackProbeRow` and the strict readers `readProbeSummary` / `readLiveSummary`
+  (labels: at most 48 bytes of valid UTF-8, no control characters), `analyticsForProbeSummary` /
+  `analyticsForLiveSummary`, `describeProbeSummary` / `describeLiveSummary`, the key helpers (`rollbackProbeRowKey`,
+  `rollbackCaptureMetaKey`, `rollbackCaptureChunkKey`), the gates `rollbackCaptureAllowed` (a party) and
+  `rollbackProbeAllowed` (one player, the same rule).
+- The summaries as built (beyond Design 5 / 7): `ProbeSummary` has a `total` stat, `samples` / `windowSeconds`,
+  `framesPerPrediction` as a p50 / p95 / max stat, `digest` (ms from the digest's send to its arrival on the main
+  thread, the main thread's clock: the client fills it from its own window of arrivals) and `live` / `liveSamples` (the
+  live model's work per round, see R4b). `LiveSummary` has `predictions` (live predictions made in the window) and
+  `mainFrames` (main rendered frames the worker saw).
+- Intake `shared/spikes/rollbackIntake.ts` `RollbackProbeIntake` (pure, `rollbackIntake.spec.ts`), per player in this
+  order: the gate (`rollbackProbeAllowed`: Studio, a DEV_MODE-allowed player, or anyone in a private server a
+  DEV_MODE-allowed player owns); the rate limits, before anything is read or logged (refused payloads of every kind,
+  not allowed, unknown kind, malformed, a stolen session id, print at most `refused` warnings, the rest are dropped
+  silently); the readers; the session id bound to the first player who sent it on this server (anyone else's summary
+  with it is refused); the row buffer; the analytics budget (a summary's events logged whole or not at all).
 - Codec `shared/spikes/rollbackCapture.ts`: `encodeCapture` / `decodeCapture(meta, chunks)` ->
   `{ setup, info, recording }`; setup = world kind, seed, party size, at boss door, debug, ruleset, daily?, place
   version (no user ids); `info` = run id, how it ended, `verifiedTicks`, `serverHash`. `RollbackCaptureRecorder` reads
-  the server's merged log in 1-minute blocks through a structural interface (no shared/lockstep change).
+  the server's merged log through a structural interface (no shared/lockstep change): `pull` only copies frame
+  references and closes a block every `blockTicks` into a queue; `encodePending(n)` encodes queued blocks one at a time
+  (the recording codec, then base64 through `Base64Stream`, which carries 0-2 bytes between blocks so the text equals
+  the base64 of the joined bytes: the format did not change); `finish(setup, info, chunkChars, pause?)` encodes the
+  rest and cuts the chunks, calling `pause()` between blocks and chunks.
 - Remote `Events.rollbackProbe(kind: string, payload: unknown)` (client -> server, `shared/network.ts`).
-- Server `RollbackSpikeService` (`server/services/spikes`): intake only while `KV_RollbackCapture` is on or in Studio;
-  rate limit; strict readers (a malformed summary: `BAD_PROBE`, dropped); one `[Rollback] CPU:` / `LIVE:` server log
-  line; one row per window in `KV_RollbackProbe_v1` (key `<sessionId>/<kind>/<windowIndex>`, row `{ v, kind, at,
-  placeVersion, summary }`); AnalyticsService through the new `TelemetryService.logSpike` in published places only
-  (in Studio, `KV_AnalyticsDebug` prints what would be sent). Custom events `RollbackCpu` (value total ms p95; device
-  class, mode + H bucket, case) and `RollbackProbe` (value per minute; metric, device class, H bucket):
-  `ROLLBACK_ANALYTICS_EVENT`. The catalog is now 39 of 100 names and 3320 of 8,000 field combinations
-  (`analyticsCatalog.spec.ts`).
+- Server `RollbackSpikeService` (`server/services/spikes`): intake only while `KV_RollbackCapture` is on (Studio too);
+  it then sets `KV_RollbackAllowed` on every player the gate allows (the client's probe waits for it). Per summary
+  taken: one `[Rollback] CPU:` / `LIVE:` server log line; the summary into its player's row buffer; AnalyticsService
+  through `TelemetryService.logSpike` in published places only, within the budget (in Studio, `KV_AnalyticsDebug` prints
+  what would be sent). **Rows** in `KV_RollbackProbe_v1`: a player's buffer leaves as ONE row (a SetAsync of a new key
+  `<writerId>/<n>`, the writer id a GUID the server makes per player, never the client's session id; row `{ v: 2, at,
+  placeVersion, cpu: [...], live: [...], dropped }`) once its oldest summary is 60 s old (polled every 5 s), when the
+  player leaves, when the switch goes off and when the server closes: at most one write a minute per player (plus one at
+  a leave / close), each tagged with the player's UserId, skipped (logged `PROBE_ROW_SKIPPED`, the server log keeps the
+  lines) while `GetRequestBudgetForRequestType(SetIncrementAsync)` is under 20. **Analytics**: `RollbackCpu` (value
+  total ms p95; device class, mode + H bucket, case), one per CPU window, at most 7 windows a minute per player;
+  `RollbackProbe` (value per minute; metric, device class, H bucket) for the four gate metrics only
+  (`ROLLBACK_ANALYTICS_LIVE_METRICS`: `enemyCorr050`, `undoneKill`, `phantomBullet`, `mateCorr100`; every metric stays
+  in the log line and the row), at most 2 live windows per 2 minutes: at most 15 events in any minute, about 10 a minute
+  sustained, per player. `ROLLBACK_ANALYTICS_EVENT`. The catalog is now 39 of 100 names and 3000 of 8,000 field
+  combinations (`RollbackProbe` 4 x 4 x 5 = 80; `analyticsCatalog.spec.ts`).
 - Capture hook in `RunSessionService`: `startLockstep` -> `beginCapture` (undefined when off), `stepLockstep` ->
   `tapCapture` after every `coop.step` (the merged log releases validated ticks, so every tick is read before it
-  goes), `forgetLockstep` -> `endCapture` (the one place a lockstep entry is deleted: every exit path). `endCapture`
-  spawns a thread, waits up to 60 s for the validator's hash, encodes, writes the chunks and then the meta (all under
-  pcall), logs `CAPTURE_ENCODED` / `CAPTURE_WRITTEN`. `BindToClose` writes open captures with status `shutdown`.
+  goes; a pull copies references only, and a finished block starts a deferred encoder thread that encodes one block per
+  resumption with a `task.wait()` between, never inside the step), `forgetLockstep` -> `endCapture` (the one place a
+  lockstep entry is deleted: every exit path). `endCapture` spawns a thread, waits up to 60 s for the validator's hash,
+  encodes the rest with a yield between blocks and chunks, writes the chunks and then the meta (all under pcall, each
+  tagged with the party's UserIds), logs `CAPTURE_ENCODED` (size, ms, slices) / `CAPTURE_WRITTEN`. `BindToClose` ends
+  every verdict wait at once (a capture without a verdict is written with status `shutdown`), writes the open captures
+  with status `shutdown` and every buffered probe row, and waits for all of those writes (counted together), at most
+  20 s.
 - **Who is captured** (with the switch on): Studio, a party whose every member is DEV_MODE-allowed, or a private server
-  whose owner is. Turning the switch off mid-run abandons the open recorders (`CAPTURE_DROPPED`).
+  whose owner is. The private-server rule is deliberate: R5's playtest is a developer's private server with friends on
+  their own connections, whose inputs are the answer; their data is tagged with their UserIds for erasure. Turning the
+  switch off mid-run abandons the open recorders (`CAPTURE_DROPPED`).
 - Measured: a 3-player bot run of 964 ticks encodes to 6,323 bytes (about 6.6 bytes a tick for the party). At that
   rate a 30-minute run (108,000 ticks) is about 0.7 MB, about 1 MB of base64: one 3,000,000-character chunk. Human
   inputs change more often and encode larger; R4's Studio check and R5 measure the real size.
 - Plugin `plugin/RollbackCapturePlugin.server.lua` (toolbar button "Pull rollback captures", edit mode only; built by
   `rollback-plugin.project.json`, `npm run rollback:plugin`). Receiver `scripts/rollback/receive-captures.js`
   (`npm run rollback:receive`): 127.0.0.1 only, Host header and JSON content type checked, 64 MB cap, writes
-  `captures/<runId>.json` and appends `captures/probe/<kind>.jsonl` (skips rows it has). `/captures` is gitignored.
-  `npm run test:rollback` (node tests of the receiver and gen-fixtures' capture modules) is in `verify`.
-- Deviations: `framesPerPrediction` is a p50 / p95 / max stat, and a `total` stat plus `samples` / `windowSeconds`
-  were added to `ProbeSummary`. **Not built:** the Open Cloud fallback (`scripts/rollback/fetch-captures.js`).
+  `captures/<runId>.json` and appends `captures/probe/<kind>.jsonl`: each v2 row becomes one line per summary (key
+  `<writerId>/<n>/<kind>/<i>`, row `{ v, kind, at, placeVersion, summary }`), a v1 row one line; lines it has are
+  skipped. `/captures` is gitignored. `npm run test:rollback` (node tests of the receiver and gen-fixtures' capture
+  modules) is in `verify`.
+- **Not built:** the Open Cloud fallback (`scripts/rollback/fetch-captures.js`).
 
 ### R3a / R3 / R4b. The worker, the probe, live metrics
 
@@ -561,7 +606,9 @@ metrics: RollbackMetrics     // toLiveSummaryCounts(), leadSeen(), totalSeconds(
   `readMainToWorker` / `readWorkerToMain`; frames packed `[moveX, moveZ, aimX, aimZ, buttons]`), `setup.ts`
   (`buildRollbackMirror` / `rollbackMirrorConfig`), `core.ts` (`RollbackWorkerCore`, `fillDigestBuffer`), `feed.ts`
   (`RollbackFeed`, the main side), `sources.ts` (`lockstepFrameSource`, `soloFrameSource`), `facts.ts` (R3a). Tunables
-  `ROLLBACK_SPIKE.probe`; `rollbackDigestBytes()` = 2,928 bytes.
+  `ROLLBACK_SPIKE.probe`; `rollbackDigestBytes()` = 3,184 bytes (actor records of 20 bytes: id, kind, alive, x, z, hp).
+  The device label is cut with `utf8Truncate` (never inside a character); a tag that is not valid UTF-8 keeps its
+  ASCII.
 - `LockstepClient` read-only accessors (no behaviour change): `queuedFrame(k)`, `lastSentInputTick()`,
   `sentInput(tick)`, `pacingDepthTicks()`.
 - Protocol: main -> worker `actor:SendMessage("kv.rollback.toWorker", msg)`: `setup` (session id, mode, horizon, world
@@ -578,26 +625,42 @@ metrics: RollbackMetrics     // toLiveSummaryCounts(), leadSeen(), totalSeconds(
   Actor the script does nothing.
 - Client `RollbackSpikeController` (spikes barrel); store slice and the spike HUD's `ROLLBACK ...` line (`SpikeHud`);
   the dev panel's "Rollback probe device tag" field (DevPanel / DevModeController, docs/DEV_MODE.md);
-  `SimController.getDevRunOptions()`; `RENDER_ORDER.rollbackProbeBeforeSim`.
+  `SimController.getDevRunOptions()`; `RENDER_ORDER.rollbackProbeBeforeSim`. The probe starts only while the server's
+  player attribute `KV_RollbackAllowed` is true (RollbackSpikeService sets it, with `KV_RollbackCapture` on, for the
+  players the capture policy allows), so a Workspace attribute, which replicates to every client, never starts it on
+  anyone else's device; serial mode refuses a run with more than one player. Facts mode's Heartbeat samplers are
+  janitor-owned (turning the probe off mid-phase disconnects them).
 - Attributes (`ROLLBACK_SPIKE_ATTRIBUTES`, `shared/config` spikes.ts): `KV_RollbackSpike` (a number H 1..64; 0 or
   absent: off, nothing created), `KV_RollbackSpikeMode` `parallel` (default) / `serial` / `facts`,
   `KV_RollbackDeviceTag` (a string). Changing an attribute restarts the probe; a co-op run past tick 0 is skipped until
   the next run (its early merged frames are gone); a solo run picked up mid-run replays its recorded frames into the
   mirror unless they were released. Under `KV_Debug` the main state's hash is checked before / after the probe's work
   once a second.
-- **As built vs Design 5 / 7:** the live model uses its own cap 32 and predicts the full D + L (H applies only to the
-  CPU probe; the live window's `horizon` field is 32); hash checks are requested by the main thread (about every 600
-  ticks); the mirror runs one frame behind the main state; frames coalesce when the worker falls behind; the digest
-  `send` stat is measured on the worker (fill + Fire), the main thread's arrival delay only on the HUD line (`send ..
-  ms`); `native` is always false (no `--!native` variant built); the CPU probe copies with the pooled copy, so its
-  `clone` stat is R1b's cost; the MicroProfiler labels are `kv.rollback.copy` / `.step` / `.send` / `.live` /
-  `.mirror` / `.facts` (`probe.profileLabels`; Design 5 said `.clone`).
+- **As built vs Design 5 / 7:** the live model predicts at horizon H (`horizonCap` = the setup's H: it draws
+  T + min(D + L, H), and the live window's `horizon` is H); hash checks are requested by the main thread (about every
+  600 ticks); the mirror runs one frame behind the main state; the digest `send` stat is measured on the worker
+  (fill + Fire), its arrival on the main thread is the summary's `digest` stat (and the HUD line's `send .. ms`);
+  `native` is always false (no `--!native` variant built); the CPU probe copies with the pooled copy, so its `clone`
+  stat is R1b's cost; the MicroProfiler labels are `kv.rollback.copy` / `.step` / `.send` / `.live` / `.mirror` /
+  `.facts` (`probe.profileLabels`; Design 5 said `.clone`).
+- **CPU and live loads (co-op parallel): measured separately, not alternated.** Each worker round runs the CPU
+  prediction (H ticks) and then the live model's prediction on the same worker. A CPU window's `clone` / `step` /
+  `send` / `total` are the CPU prediction's own work (yields excluded), and its `live` stat / `liveSamples` are the
+  live model's work per round, timed apart; `framesPerPrediction`, the frame rate, frame time and gc carry both loads.
+  `liveSamples` 0 (solo, serial) means the window is the CPU probe alone; read the device table from solo windows, or
+  from `total` beside `live`.
+- **Reading a live window.** The worker predicts once a round on the newest confirmed tick, so when it falls behind it
+  coalesces frames: `predictions` < `mainFrames`. Then corrections are undercounted (only drawn ticks two consecutive
+  predictions both drew are compared), ticks never drawn count as late events (overcount), and seconds come from the
+  confirmed ticks. Read the rates with `predictions / mainFrames` beside them (1 means every frame predicted).
 - Specs (`worker/core.spec.ts`, `protocol.spec.ts`, `lockstep/rollbackAccessors.spec.ts`), with synchronous yields:
-  3-player bot run, 949 frames, observer 1, L 11, D 4, H 8: 7 / 7 mirror hash checks equal a plain replay; 10 CPU and 2
-  live windows pass the server's readers; each of the 20 metrics summed over the live windows equals
-  `runModelOverRecording` exactly. Perfect-guess hook: 0 glitches. One slice per frame: hashes equal, up to 2 frames
-  per prediction, live counts differ from offline (coalescing, expected). Serial: the lent state's hash unchanged.
-  Accessors over a real `LockstepClient`: exact replay, 0 mismatches.
+  3-player bot run, 949 frames, observer 1, L 11, D 4, H 8 (the CPU probe's ticks and the live model's cap): 7 / 7
+  mirror hash checks equal a plain replay; 10 CPU and 2 live windows pass the server's readers; each of the 20 metrics
+  summed over the live windows equals `runModelOverRecording` at the same H exactly, the windows' `mainFrames` sum to
+  the 949 frames and their `predictions` to the harness's, the CPU windows' `liveSamples` to 949. Perfect-guess hook: 0
+  glitches. One slice per frame: hashes equal, up to 2 frames per prediction, live counts differ from offline
+  (coalescing, expected). Serial: the lent state's hash unchanged. Accessors over a real `LockstepClient`: exact replay,
+  0 mismatches.
 - Build note: a clean `npm run build` can exhaust node's default heap on a small host:
   `NODE_OPTIONS=--max-old-space-size=4096 npm run build`.
 
@@ -609,7 +672,7 @@ metrics: RollbackMetrics     // toLiveSummaryCounts(), leadSeen(), totalSeconds(
   collectors, each marked "presentation, needs dedup under rollback" or "must stay on the confirmed state" (telemetry,
   recap tallies, records). (c) Whether bullet payloads carry a spawn tick. -> Verify: the three lists in this doc, and a
   rough count of the client files a real rollback would touch.
-- [x] **R1. State copy.** `cloneSimState` + `SHARED_BY_REFERENCE`. -> Verify: `clone.spec.ts` on endless floors 1, 5
+- [x] **R1. State copy.** `cloneForRollback` + `SHARED_BY_REFERENCE`. -> Verify: `clone.spec.ts` on endless floors 1, 5
   (boss) and 15 (dense), solo and 4 players: the copy's hash equals the original's; both stepped 600 ticks with the same
   inputs stay equal at every 60-tick check; stepping the copy 600 ticks leaves the original's hash unchanged; a bench
   prints the clone time per case. Done headlessly: every check holds; 21-41 ms a clone (Results).
@@ -760,15 +823,15 @@ server command line, F9 > Server):
 
 | Attribute | Side | Value | Does |
 |---|---|---|---|
-| `KV_RollbackSpike` | client | number H 1..64 (0 or absent: off) | the probe: CPU windows (H ticks a prediction) and, co-op parallel, live metrics |
+| `KV_RollbackSpike` | client | number H 1..64 (0 or absent: off) | the probe: CPU windows (H ticks a prediction) and, co-op parallel, live metrics (at horizon H); runs only while the server set `KV_RollbackAllowed` on the player (`KV_RollbackCapture` on) |
 | `KV_RollbackSpikeMode` | client | `parallel` (default) / `serial` / `facts` | worker Actor / main thread / the R3a facts once (needs `KV_RollbackSpike` > 0) |
 | `KV_RollbackDeviceTag` | client | string, e.g. "Pixel 6a" | appended to the device label; the dev panel's "Rollback probe device tag" field (F2) sets it |
-| `KV_RollbackCapture` | server | boolean | takes probe / live summaries (always in Studio) and captures co-op runs (Studio, an all-developer party, or a developer's private server) |
+| `KV_RollbackCapture` | server | boolean | takes probe / live summaries from the players the capture policy allows (Studio, DEV_MODE-allowed, everyone in a developer's private server; it sets their `KV_RollbackAllowed`) and captures co-op runs (Studio, an all-developer party, or a developer's private server). Needed in Studio too |
 | `KV_Debug` | both | boolean | adds the once-a-second main hash check around the probe's work |
 | `KV_AnalyticsDebug` | server | boolean | in Studio, prints the `RollbackCpu` / `RollbackProbe` events that a published place would send |
 
-Set `KV_RollbackSpike` before the run starts: a co-op run already past tick 0 is skipped until the next run. Changing
-any of the three client attributes restarts the probe.
+Set `KV_RollbackCapture` (server) and `KV_RollbackSpike` before the run starts: a co-op run already past tick 0 is
+skipped until the next run. Changing any of the three client attributes (or `KV_RollbackAllowed`) restarts the probe.
 
 **Pulling captures and probe rows** (after any session that wrote them):
 1. Once: `npm run rollback:plugin` (builds `KalebValeRollbackCapture.rbxm` into Studio's Plugins folder), restart
@@ -778,8 +841,9 @@ any of the three client attributes restarts the probe.
 3. In Studio, edit mode (not playing): Plugins > toolbar "Kaleb-Vale Rollback" > "Pull rollback captures". Allow the
 localhost request the first time
    Studio asks. The plugin lists `KV_RollbackCapture_v1` and `KV_RollbackProbe_v1` and posts everything; the receiver
-   writes `captures/<runId>.json` and appends `captures/probe/cpu.jsonl` / `live.jsonl` (rows already there are
-   skipped). Nothing is deleted from the stores.
+   writes `captures/<runId>.json` and appends `captures/probe/cpu.jsonl` / `live.jsonl` (one line per window: each
+   stored row holds a player's minute of windows; lines already there are skipped). Nothing is deleted from the
+   stores.
 4. Replay: `npm run build` turns `captures/*.json` into gitignored modules; `npm run test:only --
    lockstep/rollbackSpike/model` replays each capture to its server hash (the spec fails on a miss) and prints a
    short report at L 11, D 4;
@@ -797,24 +861,27 @@ localhost request the first time
    BindableEvent with a buffer; binding to a second Actor's messages; whether `kv.rollback.facts` shows on worker
    threads in the MicroProfiler; the main frame time with a 5 ms and a 20 ms parallel task per frame vs the baseline and
    vs the same task on the main thread. Adjust Design 5 to the answers.
-3. **Parallel probe, solo (R3).** `KV_RollbackSpikeMode` `parallel` (or absent), `KV_RollbackSpike` 16, `KV_Debug`
-   on. Start a solo endless run. Expect `[Rollback] probe on: H 16, parallel`, `worker ready after .. s`, the HUD line
-   `ROLLBACK parallel H16 | tick .. total .. ms over .. fr | hash ok N | 10s p95 total .. clone .. .. fps | send .. ms`,
-   a `[Rollback] ...` CPU line every 10 s on the client and `[Rollback] CPU: ...` on the server (Developer Console >
-   Server). Play 10 minutes: "hash ok" keeps counting (a mirror hash mismatch stops the probe and prints both hashes),
-   no main hash warning. Note the frames per prediction and whether `kv.rollback.copy` / `.step` / `.send` show in the
-   MicroProfiler. Then the dense case: dev mode (docs/DEV_MODE.md, F2) floor 15, and a dev run with the vault override
-   (`KV_TreasureDebug`): the mirror must follow without a mismatch.
+3. **Parallel probe, solo (R3).** `KV_RollbackCapture` on (server), `KV_RollbackSpikeMode` `parallel` (or absent),
+   `KV_RollbackSpike` 16, `KV_Debug` on. Start a solo endless run. Expect `[Rollback] probe on: H 16, parallel`, `worker
+   ready after .. s`, the HUD line `ROLLBACK parallel H16 | tick .. total .. ms over .. fr | hash ok N | 10s p95 total
+   .. clone .. .. fps | send .. ms`, a `[Rollback] ...` CPU line every 10 s on the client and `[Rollback] CPU: ...` on
+   the server (Developer Console > Server). Play 10 minutes: "hash ok" keeps counting (a mirror hash mismatch stops the
+   probe and prints both hashes), no main hash warning. Note the frames per prediction and whether `kv.rollback.copy` /
+   `.step` / `.send` show in the MicroProfiler. Then the dense case: dev mode (docs/DEV_MODE.md, F2) floor 15, and a dev
+   run with the vault override (`KV_TreasureDebug`): the mirror must follow without a mismatch.
 4. **Parallel probe, co-op (R3, R4b).** Test > Clients and Servers, 2 players, `KV_RollbackSpike` 16 and
    `KV_RollbackCapture` on (server), start a co-op run from a lobby. Both clients show the HUD line with `live fr ..`;
-   the server prints `[Rollback] CPU:` every 10 s per client and `[Rollback] LIVE:` every 60 s. After a few windows,
-   pull (above): `captures/probe/cpu.jsonl` and `live.jsonl` have one row per window.
+   the server prints `[Rollback] CPU:` every 10 s per client and `[Rollback] LIVE:` every 60 s (with `pred N/M fr`:
+   predictions over main frames). After two minutes, pull (above): `captures/probe/cpu.jsonl` and `live.jsonl` have one
+   line per window (the store holds at most one row a minute per player).
 5. **Serial (R3).** Solo only, `KV_RollbackSpikeMode` `serial`, H 16: the HUD line and CPU windows as in step 3 (frames
-   per prediction 1); the frame time shows the cost. Never with other players.
+   per prediction 1); the frame time shows the cost. A run with more than one player is refused (`serial mode is solo
+   only`).
 6. **Capture (R4).** In step 4's session, finish the co-op run (die, win or leave). The server logs `CAPTURE_START`,
    then `CAPTURE_ENCODED` (size) and `CAPTURE_WRITTEN`. Pull, then build and run the model spec (Pulling, 4): the
    capture replays to the server's hash. Check large bodies: a long run (or several) still pulls (receiver cap 64 MB).
-   Stop a Play session with a co-op run open: `BindToClose` writes it with status `shutdown`.
+   Stop a Play session with a co-op run open (or right after one ended, while its capture waits for the verdict):
+   `BindToClose` writes it with status `shutdown`, and the buffered probe rows.
 7. **Analytics (R4).** In Studio with `KV_AnalyticsDebug` on, the server prints
    `[Rollback] ANALYTICS_STUDIO: (not sent) ...` for `RollbackCpu` / `RollbackProbe`. In a published place they reach
    the Creator Hub's custom events after up to a day.
