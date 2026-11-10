@@ -27,6 +27,7 @@ import {
 	type SimConfig,
 	type SimState,
 } from "shared/sim";
+import type { CharacterId } from "shared/characters";
 import { recordPartyRun, type RecordedPartyRun } from "shared/run/testing";
 import { ROLLBACK_GLITCH_METRICS, ROLLBACK_SPIKE, recordedFrame, runModelOverRecording } from "..";
 import {
@@ -43,6 +44,8 @@ import {
 const SEED = 4242;
 const PLAYERS = 3;
 const WALK_TICKS = 900;
+/** docs/ARCHER.md: a mixed party, so the mirror must carry the characters (their loadouts and rolls differ). */
+const CHARACTERS_USED: ReadonlyArray<CharacterId> = ["knight", "archer", "knight"];
 const OBSERVER = 1;
 const L = 11;
 const D = 4;
@@ -58,7 +61,8 @@ const YIELD_FRAMES = 360;
 
 let cached: RecordedPartyRun | undefined;
 function run(): RecordedPartyRun {
-	if (cached === undefined) cached = recordPartyRun(SEED, PLAYERS, { walkTicks: WALK_TICKS, boss: false });
+	if (cached === undefined)
+		cached = recordPartyRun(SEED, PLAYERS, { walkTicks: WALK_TICKS, boss: false, characters: CHARACTERS_USED });
 	return cached;
 }
 
@@ -153,6 +157,8 @@ function setupMsg(n: number, live: boolean, borrowed = false): RollbackSetupMsg 
 		atBossDoor: false,
 		scoring: false,
 		stress: 0,
+		// docs/ARCHER.md AR5: the run's characters, as the main client sends them (RunSetup.characters).
+		characters: CHARACTERS_USED.size() === n ? CHARACTERS_USED : undefined,
 		live,
 		strategy: "repeatLast",
 		borrowed,

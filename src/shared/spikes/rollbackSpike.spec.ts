@@ -3,6 +3,7 @@
 // capture gate; and the capture codec: a recorded bot party run round-trips through tiny chunks and blocks, the
 // server's recorder follows a releasing PartyRunLog, the decoded capture replays to the run's final hash, and a
 // malformed meta / chunk is refused.
+import type { CharacterId } from "shared/characters";
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { PartyRunLog } from "shared/lockstep";
 import { buildWorldSetup, ENDLESS_WORLD_KIND } from "shared/run";
@@ -322,7 +323,9 @@ function sameStreams(a: Readonly<Recording>, b: Readonly<Recording>): boolean {
 
 describe("capture codec", () => {
 	const N = 3;
-	const run = recordPartyRun(4242, N, { walkTicks: 900, boss: false });
+	// docs/ARCHER.md AR5: a mixed party, so the setup must carry the characters for the replay to match.
+	const CHARS: ReadonlyArray<CharacterId> = ["archer", "knight", "knight"];
+	const run = recordPartyRun(4242, N, { walkTicks: 900, boss: false, characters: CHARS });
 	const rec = run.recording;
 	const T = rec.frames.size();
 	const setup: RollbackCaptureSetup = {
@@ -333,6 +336,7 @@ describe("capture codec", () => {
 		debug: true,
 		ruleset: 13,
 		placeVersion: 0,
+		characters: CHARS,
 	};
 	const info: RollbackCaptureInfo = {
 		runId: "{run-1}",
@@ -370,6 +374,7 @@ describe("capture codec", () => {
 		const world = buildWorldSetup(back.setup.worldKind as typeof ENDLESS_WORLD_KIND, back.setup.seed, {
 			atBossDoor: back.setup.atBossDoor,
 			partySize: back.setup.partySize,
+			characters: back.setup.characters,
 		});
 		const r = back.recording;
 		const state = createSimState(r.seed, r.spawn.x, r.spawn.z, world.config);
@@ -384,7 +389,7 @@ describe("capture codec", () => {
 	});
 
 	it("carries the members' characters (docs/ARCHER.md AR5) and refuses unknown ones", () => {
-		const withChars: RollbackCaptureSetup = { ...setup, characters: ["archer", "knight", "archer"] };
+		const withChars: RollbackCaptureSetup = { ...setup, characters: ["archer", "archer", "knight"] };
 		const cap = encodeCapture(withChars, rec, info);
 		expect(decodeCapture(cap.meta, cap.chunks)?.setup).toEqual(withChars);
 		const bad = encodeCapture({ ...setup, characters: ["wizard"] } as unknown as RollbackCaptureSetup, rec, info);

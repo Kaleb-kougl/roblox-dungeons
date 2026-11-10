@@ -37,6 +37,7 @@ import {
 	type Recording,
 	type SimState,
 } from "shared/sim";
+import type { CharacterId } from "shared/characters";
 import { buildEndlessRunConfig, type EndlessRunSetup } from "../endless";
 import { distanceField, frame as rawFrame, walkDir, type Field } from "./endlessBot";
 
@@ -329,11 +330,19 @@ export interface PartyRunScript {
 	readonly walkTicks?: number;
 	/** Fight the floor 5 boss (default true). */
 	readonly boss?: boolean;
+	/**
+	 * docs/ARCHER.md AR4: the players' characters (buildEndlessRunConfig's `characters`). Absent: no characters (both
+	 * weapons, no traits), the run every older spec pins.
+	 */
+	readonly characters?: ReadonlyArray<CharacterId>;
 }
 
 /** Plays and records the run in the file comment for a party of `n` on `seed`. */
 export function recordPartyRun(seed: number, n: number, plan: PartyRunScript = {}): RecordedPartyRun {
-	const setup = buildEndlessRunConfig(seed, n);
+	const setup =
+		plan.characters !== undefined
+			? buildEndlessRunConfig(seed, n, { characters: plan.characters })
+			: buildEndlessRunConfig(seed, n);
 	const drv = new PartyDriver(setup, seed);
 	const log: string[] = [];
 	const note = (what: string) => {

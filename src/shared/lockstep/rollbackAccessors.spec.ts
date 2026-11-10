@@ -16,6 +16,7 @@ import {
 	stepRecorded,
 	type InputFrame,
 } from "shared/sim";
+import type { CharacterId } from "shared/characters";
 import { recordPartyRun } from "shared/run/testing";
 import { DEFAULT_LOCKSTEP, LockstepClient, MergedEncoder, type LockstepTunables } from ".";
 import {
@@ -37,12 +38,15 @@ const DT = 1 / 60;
 const AHEAD = 1;
 const FRAMES = 300;
 const HASH_EVERY = 60;
+/** docs/ARCHER.md: a mixed party (the mirror must carry the characters). */
+const CHARS: ReadonlyArray<CharacterId> = ["archer", "knight"];
+
 /** Unpaced, legacy lead (inputDelay): a steady, known lead. */
 const TUNABLES: LockstepTunables = { ...DEFAULT_LOCKSTEP, pacing: undefined, lead: undefined };
 
 describe("LockstepClient rollback spike accessors (R3 / R4b)", () => {
 	it("read what is queued and sent, change nothing, and feed a mirror that matches", () => {
-		const r = recordPartyRun(SEED, PLAYERS, { walkTicks: FRAMES, boss: false });
+		const r = recordPartyRun(SEED, PLAYERS, { walkTicks: FRAMES, boss: false, characters: CHARS });
 		const rec = r.recording;
 		const config = r.setup.config;
 		const client = new LockstepClient({
@@ -91,6 +95,8 @@ describe("LockstepClient rollback spike accessors (R3 / R4b)", () => {
 				atBossDoor: false,
 				scoring: false,
 				stress: 0,
+				// docs/ARCHER.md AR5: the run's characters, as the main client sends them.
+				characters: CHARS,
 				live: true,
 				strategy: "repeatLast",
 				borrowed: false,
