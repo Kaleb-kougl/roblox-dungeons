@@ -440,7 +440,18 @@ function copyInPlace(dst: Table, src: Table, node: SharedNode | undefined, was: 
 			dst.set(j, undefined);
 			j += 1;
 		}
-		if (next(dst, i)[0] !== undefined) return undefined;
+		// The scratch must now iterate exactly 1..i in order, as the source does: a key in its hash part (an integer
+		// past the array part, or any other key) could make `pairs` visit it differently, so such a scratch is re-cloned.
+		let seen = 0;
+		let kd: unknown = undefined;
+		for (;;) {
+			const [k] = next(dst, kd);
+			if (k === undefined) break;
+			seen += 1;
+			if (k !== seen) return undefined;
+			kd = k;
+		}
+		if (seen !== i) return undefined;
 		return KIND_ARRAY;
 	}
 	if (!typeIs(k1, "string")) return undefined;
