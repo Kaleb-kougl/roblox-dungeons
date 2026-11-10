@@ -117,10 +117,16 @@ describe("rollback probe protocol (R3)", () => {
 		const setup = buildEndlessRunConfig(4242, 2);
 		const state = createSimState(4242, setup.spawn!.x, setup.spawn!.z, setup.config);
 		const b = buffer.create(rollbackDigestBytes());
-		expect(rollbackDigestBytes()).toBe(8 + 64 * 16 + 150 * 12 + 8 * 12);
+		expect(rollbackDigestBytes()).toBe(8 + 64 * 20 + 150 * 12 + 8 * 12);
 		fillDigestBuffer(b, state);
 		expect(buffer.readu32(b, 0)).toBe(0);
 		expect(buffer.readu8(b, 7)).toBe(2);
+		// Each actor record ends with its hp (f32 at +16).
+		const first = state.combat.actors.find((a) => a.kind >= 0);
+		if (first !== undefined) {
+			expect(buffer.readu8(b, 4)).toBeGreaterThan(0);
+			expect(buffer.readf32(b, 8 + 16)).toBeCloseTo(first.hp);
+		}
 	});
 });
 
