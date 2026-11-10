@@ -827,12 +827,12 @@ knight); below it the slowest 1 % of the last 15 s are covered, for free as far 
   lates. Considered: today's bump (`today`), after 2 lates (`k2`), +1 a late (`plus1`), today's bump with a fast fall
   (`fast`, `cov20bf`: the only way to keep FP12's long-spike lates, at today's churn). If the owner values long spikes
   over bursts, `cov20bf` is the alternative (FPD15b).
-- **FPD16 (proposed). The cover: p99 over 15 s, never past the prediction cap minus the buffer.** Lead under the cap
+- **FPD16 (accepted, owner 2026-11-10). The cover: p99 over 15 s, never past the prediction cap minus the buffer.** Lead under the cap
   is free for your own knight but not for what is not predicted: hits landing, enemies reacting to you, a teammate
   seeing you. `cov20` spends 2-3 t more than `nobump` on the owner-like links for 56-66 % fewer lates. Considered: no cover
   (`nobump`), an uncapped p99 (`p99w15`: fewest lates, about twice the felt delay, fails FP12's back-within bound), the
   window's max (`cov20m`: keeps a one-off hold's trip for the whole window).
-- **FPD17 (proposed). The cover follows `PREDICTION.maxTicks`.** At cap 20 (now) it buys ~3 t; at cap 10 it vanishes on
+- **FPD17 (accepted, owner 2026-11-10: the cap stays 20). The cover follows `PREDICTION.maxTicks`.** At cap 20 (now) it buys ~3 t; at cap 10 it vanishes on
   a 4G-like link (the rule is `nobump` there: felt @10 7.15 against today's 10.79 t, lates 28.8 against 14.1 / 10 s).
   The cap is LPD4's (docs/LOCAL_PREDICTION.md); this rule takes whatever it is.
 - **FPD18 (proposed). The gates.** FP11 and FP12 stay as they are (every proposed rule passes). New, on the census's
