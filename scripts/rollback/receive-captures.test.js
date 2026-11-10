@@ -61,23 +61,33 @@ test("a capture and probe rows land in captures/", async () => {
 		assert.deepEqual(doc.chunks, ["AAAA", "BBBB"]);
 		assert.equal(doc.runId, runId);
 
+		const writer = "0f8e2a6c-1d3b-4c5e-9a7f-aabbccddeeff";
 		const rows = [
+			// v2 (shared/spikes RollbackProbeRow): one player's minute, a line per summary.
+			{
+				key: `${writer}/0`,
+				value: { v: 2, at: 1, placeVersion: 3, cpu: [{ horizon: 16 }, { horizon: 24 }], live: [{}], dropped: 0 },
+			},
+			{ key: `${writer}/1`, value: { v: 2, at: 2, placeVersion: 3, cpu: [{ horizon: 8 }], live: [], dropped: 0 } },
+			// v1: one window a row.
 			{ key: "s1/cpu/0", value: { v: 1, kind: "cpu", summary: { horizon: 16 } } },
-			{ key: "s1/live/0", value: { v: 1, kind: "live", summary: {} } },
-			{ key: "s1/cpu/1", value: { v: 1, kind: "cpu", summary: { horizon: 16 } } },
 			{ key: "s1/gpu/0", value: { v: 1, kind: "gpu" } },
+			{ key: `${writer}/2`, value: { v: 2, cpu: "not a list" } },
 		];
 		const first = await request(port, { body: { kind: "probe", rows } });
 		assert.equal(first.status, 200);
-		assert.deepEqual([first.body.written, first.body.duplicates, first.body.rejected], [3, 0, 1]);
+		assert.deepEqual([first.body.written, first.body.duplicates, first.body.rejected], [5, 0, 2]);
 		const again = await request(port, { body: { kind: "probe", rows } });
-		assert.deepEqual([again.body.written, again.body.duplicates, again.body.rejected], [0, 3, 1]);
+		assert.deepEqual([again.body.written, again.body.duplicates, again.body.rejected], [0, 5, 2]);
 		const cpu = fs.readFileSync(path.join(outDir, "probe", "cpu.jsonl"), "utf8").trim().split("\n");
-		assert.equal(cpu.length, 2);
-		assert.equal(JSON.parse(cpu[0]).key, "s1/cpu/0");
-		assert.equal(JSON.parse(cpu[0]).row.summary.horizon, 16);
+		assert.equal(cpu.length, 4);
+		assert.equal(JSON.parse(cpu[0]).key, `${writer}/0/cpu/0`);
+		assert.deepEqual(JSON.parse(cpu[1]).row, { v: 2, kind: "cpu", at: 1, placeVersion: 3, summary: { horizon: 24 } });
+		assert.equal(JSON.parse(cpu[3]).key, "s1/cpu/0");
+		assert.equal(JSON.parse(cpu[3]).row.summary.horizon, 16);
 		const liveLines = fs.readFileSync(path.join(outDir, "probe", "live.jsonl"), "utf8").trim().split("\n");
 		assert.equal(liveLines.length, 1);
+		assert.equal(JSON.parse(liveLines[0]).key, `${writer}/0/live/0`);
 		assert.deepEqual(fs.readdirSync(path.join(outDir, "probe")).sort(), ["cpu.jsonl", "live.jsonl"]);
 	});
 });

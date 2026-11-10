@@ -32,12 +32,35 @@ export function rollbackDeviceClass(f: Readonly<RollbackDeviceFacts>): RollbackD
 	return "pc";
 }
 
-/** Strips control characters (the server's reader refuses them) and trims spaces. */
+const UTF8_CONTINUATION_MIN = 0x80;
+const UTF8_NON_ASCII_MIN = 0x80;
+const BYTE_MAX = 0xff;
+const UTF8_CONTINUATION_MAX = 0xbf;
+
+/**
+ * Strips control characters (the server's reader refuses them) and trims spaces; a tag that is not valid UTF-8 keeps
+ * its ASCII characters only (the reader refuses invalid UTF-8 too).
+ */
 function cleanTag(tag: string): string {
-	const [plain] = string.gsub(tag, "%c", "");
+	let [plain] = string.gsub(tag, "%c", "");
+	if (!typeIs(utf8.len(plain)[0], "number")) {
+		[plain] = string.gsub(plain, `[${string.char(UTF8_NON_ASCII_MIN)}-${string.char(BYTE_MAX)}]`, "");
+	}
 	const [trimmed] = string.gsub(plain, "^%s+", "");
 	const [done] = string.gsub(trimmed, "%s+$", "");
 	return done;
+}
+
+/** `s` cut to at most `max` bytes without splitting a UTF-8 character (the cut moves back to a character's start). */
+export function utf8Truncate(s: string, max: number): string {
+	if (s.size() <= max) return s;
+	let cut = max;
+	while (cut > 0) {
+		const [b] = string.byte(s, cut + 1);
+		if (b === undefined || b < UTF8_CONTINUATION_MIN || b > UTF8_CONTINUATION_MAX) break;
+		cut--;
+	}
+	return s.sub(1, cut);
 }
 
 /**
@@ -54,8 +77,7 @@ export function rollbackDeviceLabel(f: Readonly<RollbackDeviceFacts>, tag: strin
 	let label = `${inputs.join("+")} ${math.round(f.viewportX)}x${math.round(f.viewportY)}`;
 	const t = tag !== undefined ? cleanTag(tag) : "";
 	if (t !== "") label = `${label} ${t}`;
-	const max = ROLLBACK_PROBE_LIMITS.maxDeviceLabelChars;
-	return label.size() > max ? label.sub(1, max) : label;
+	return utf8Truncate(label, ROLLBACK_PROBE_LIMITS.maxDeviceLabelChars);
 }
 
 /** Actors alive (a kind, not dead). */

@@ -10,7 +10,8 @@ import { recordPartyRun } from "shared/run/testing";
 import { createSimState, hashState, stepParty, type InputFrame, type Recording } from "shared/sim";
 import {
 	ROLLBACK_ANALYTICS_EVENT,
-	ROLLBACK_LIVE_METRICS,
+	ROLLBACK_ANALYTICS_LIVE_METRICS,
+	Base64Stream,
 	RollbackCaptureRecorder,
 	analyticsForLiveSummary,
 	analyticsForProbeSummary,
@@ -31,7 +32,8 @@ import {
 	rollbackHorizonLabel,
 	rollbackModeHorizon,
 	rollbackModeHorizonValues,
-	rollbackProbeKey,
+	rollbackProbeAllowed,
+	rollbackProbeRowKey,
 	type RollbackCaptureInfo,
 	type RollbackCaptureSetup,
 } from ".";
@@ -56,7 +58,10 @@ function probe(): Record<string, unknown> {
 		step: stat(2, 3.5, 6),
 		send: stat(0.01, 0.02, 0.05),
 		total: stat(2.5, 4.4, 7.3),
+		digest: stat(0.5, 1.5, 4),
 		framesPerPrediction: stat(1, 2, 3),
+		live: stat(3, 5, 9),
+		liveSamples: 580,
 		samples: 590,
 		windowSeconds: 10,
 		renderFps: 59.8,
@@ -77,6 +82,8 @@ function live(): Record<string, unknown> {
 		partySize: 2,
 		playerIndex: 1,
 		seconds: 60,
+		predictions: 3400,
+		mainFrames: 3590,
 		lead: { lMean: 11.5, lMax: 14, dMean: 3.2, dMax: 5 },
 		rooms: {
 			combat: { seconds: 40, counts: { enemyCorr050: 6, undoneKill: 1 } },
@@ -122,10 +129,14 @@ describe("readProbeSummary", () => {
 			["step", stat(1, 2, 1e9)],
 			["total", { p50: 1, p95: 2 }],
 			["framesPerPrediction", stat(1, 2, 601)],
+			["digest", undefined],
+			["live", stat(3, 2, 1)],
+			["liveSamples", -1],
 			["renderFps", math.huge],
 			["gcKbPerSec", -2e6],
 			["native", 1],
 			["deviceLabel", "tab\there"],
+			["deviceLabel", `cut${string.char(195)}`],
 			["deviceLabel", string.rep("x", 49)],
 			["deviceClass", "fridge"],
 		];
@@ -164,6 +175,7 @@ describe("readLiveSummary", () => {
 		const line = describeLiveSummary(s);
 		expect(string.find(line, "enemyCorr050=6.00", 1, true)[0]).never.toBe(undefined);
 		expect(string.find(line, "combat 40s walk 20s", 1, true)[0]).never.toBe(undefined);
+		expect(string.find(line, "pred 3400/3590 fr", 1, true)[0]).never.toBe(undefined);
 	});
 
 	it("refuses malformed windows", () => {
@@ -171,6 +183,8 @@ describe("readLiveSummary", () => {
 			["strategy", "oracle"],
 			["playerIndex", 2],
 			["seconds", -1],
+			["predictions", undefined],
+			["mainFrames", 0.5],
 			["lead", { lMean: 20, lMax: 14, dMean: 3, dMax: 5 }],
 			["lead", { lMean: 1, lMax: 2, dMean: 1 }],
 			["rooms", { lobby: { seconds: 1, counts: {} } }],
@@ -184,10 +198,16 @@ describe("readLiveSummary", () => {
 		for (const [key, value] of bad) expect(readLiveSummary(withField(live(), key, value))).toBe(undefined);
 	});
 
-	it("logs one RollbackProbe per metric, none for an empty window", () => {
+	it("logs one RollbackProbe per gate metric, none for an empty window", () => {
 		const s = readLiveSummary(live())!;
 		const specs = analyticsForLiveSummary(s);
-		expect(specs.size()).toBe(ROLLBACK_LIVE_METRICS.size());
+		expect(specs.size()).toBe(ROLLBACK_ANALYTICS_LIVE_METRICS.size());
+		expect(ROLLBACK_ANALYTICS_LIVE_METRICS.size()).toBe(4);
+		const values = new Map<string, number>();
+		for (const e of specs) if (e.kind === "custom") values.set(e.fields?.field01 ?? "", e.value);
+		expect(values.get("enemyCorr050")).toBe(6);
+		expect(values.get("mateCorr100")).toBe(2);
+		expect(values.get("phantomBullet")).toBe(0);
 		for (const e of specs) {
 			expect(e.kind === "custom" && e.name).toBe(ROLLBACK_ANALYTICS_EVENT.probe);
 			if (e.kind === "custom") {
@@ -211,8 +231,8 @@ describe("buckets, keys and the capture gate", () => {
 	});
 
 	it("keys fit DataStore's 50 characters", () => {
-		expect(rollbackProbeKey("live", SESSION, 99999)).toBe(`${SESSION}/live/99999`);
-		expect(rollbackProbeKey("live", SESSION, 99999).size() <= 50).toBe(true);
+		expect(rollbackProbeRowKey(SESSION, 99999)).toBe(`${SESSION}/99999`);
+		expect(rollbackProbeRowKey(SESSION, 9999999).size() <= 50).toBe(true);
 		const run = "{0f8e2a6c-1d3b-4c5e-9a7f-112233445566}";
 		expect(rollbackCaptureMetaKey(run).size() <= 50).toBe(true);
 		expect(rollbackCaptureChunkKey(run, 63)).toBe(`${run}/63`);
@@ -234,6 +254,14 @@ describe("buckets, keys and the capture gate", () => {
 		expect(rollbackCaptureAllowed({ ...base, memberIds: [50, 51], privateServerOwnerId: 50 }, policy)).toBe(false);
 		expect(rollbackCaptureAllowed({ ...base, memberIds: [50], studio: true }, policy)).toBe(true);
 		expect(rollbackCaptureAllowed(base, { ...policy, enabled: false })).toBe(false);
+		// The same rule per player for the probe intake (and the client's KV_RollbackAllowed attribute).
+		const one = { studio: false, userId: 11, privateServerOwnerId: 0, creatorId: 99, creatorIsUser: true };
+		expect(rollbackProbeAllowed(one, policy)).toBe(true);
+		expect(rollbackProbeAllowed({ ...one, userId: 99 }, policy)).toBe(true);
+		expect(rollbackProbeAllowed({ ...one, userId: 50 }, policy)).toBe(false);
+		expect(rollbackProbeAllowed({ ...one, userId: 50, privateServerOwnerId: 12 }, policy)).toBe(true);
+		expect(rollbackProbeAllowed({ ...one, userId: 50, studio: true }, policy)).toBe(true);
+		expect(rollbackProbeAllowed(one, { ...policy, enabled: false })).toBe(false);
 	});
 });
 
@@ -250,6 +278,26 @@ describe("base64", () => {
 		expect(base64Encode(buffer.fromstring("Ma"))).toBe("TWE=");
 		expect(base64Encode(buffer.fromstring("M"))).toBe("TQ==");
 		for (const bad of ["TWF", "TW=u", "T===", "TWE!", "TWF=", "TR=="]) expect(base64Decode(bad)).toBe(undefined);
+	});
+
+	it("a Base64Stream fed in pieces gives the text of the joined bytes", () => {
+		const total = 40;
+		const all = buffer.create(total);
+		for (let i = 0; i < total; i++) buffer.writeu8(all, i, (i * 53 + 7) % 256);
+		for (const sizes of [[40], [1, 1, 1, 37], [2, 5, 0, 7, 26], [3, 3, 34], [13, 14, 13]]) {
+			const stream = new Base64Stream();
+			let at = 0;
+			for (const n of sizes) {
+				const piece = buffer.create(n);
+				buffer.copy(piece, 0, all, at, n);
+				stream.push(piece);
+				at += n;
+				const sofar = buffer.create(at);
+				buffer.copy(sofar, 0, all, 0, at);
+				expect(stream.text()).toBe(base64Encode(sofar));
+				expect(stream.length()).toBe(base64Encode(sofar).size());
+			}
+		}
 	});
 });
 
@@ -383,6 +431,8 @@ describe("capture codec", () => {
 		const STEP = 7;
 		const SEGMENT = 360;
 		let t = 0;
+		let steps = 0;
+		let queuedSeen = 0;
 		while (t < T) {
 			// One lockstep step: a few ticks finalized, then a segment's ticks released (never this step's own).
 			const before = log.ticks();
@@ -396,10 +446,22 @@ describe("capture codec", () => {
 			const stop = math.floor(before / SEGMENT) * SEGMENT;
 			log.releaseBefore(stop);
 			recorder.pull();
+			// pull never encodes: finished blocks wait for encodePending (the server's own thread, one at a time),
+			// here every 20th step, so some are still queued at the end.
+			queuedSeen = math.max(queuedSeen, recorder.queuedBlocks());
+			steps++;
+			if (steps % 20 === 0) recorder.encodePending(1);
 		}
 		expect(recorder.getProblem()).toBe(undefined);
 		expect(recorder.ticks()).toBe(T);
-		const cap = recorder.finish(setup, info, TINY_CHUNK);
+		expect(queuedSeen).toBeGreaterThan(1);
+		const queued = recorder.queuedBlocks();
+		expect(queued).toBeGreaterThan(0);
+		let pauses = 0;
+		const cap = recorder.finish(setup, info, TINY_CHUNK, () => pauses++);
+		// A pause between the blocks finish encodes (the queued ones and the open one) and between chunks.
+		const encodedAtFinish = queued + (T % SMALL_BLOCK > 0 ? 1 : 0);
+		expect(pauses).toBe(encodedAtFinish - 1 + (cap !== undefined ? cap.chunks.size() - 1 : 0));
 		expect(cap).never.toBe(undefined);
 		if (cap === undefined) return;
 		const direct = encodeCapture(setup, rec, info, TINY_CHUNK, SMALL_BLOCK);

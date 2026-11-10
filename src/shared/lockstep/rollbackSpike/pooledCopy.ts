@@ -1,7 +1,7 @@
 /**
  * The rollback spike's pooled state copy (docs/ROLLBACK_SPIKE.md Design 1, task R1b): `PooledStateCopier.copyInto(src)`
  * copies a live SimState INTO a scratch state the copier keeps and reuses, so a steady-state copy allocates (almost)
- * nothing and touches only what is alive. It is exact like R1's `cloneSimState` (clone.ts): the copy hashes like the
+ * nothing and touches only what is alive. It is exact like R1's `cloneForRollback` (clone.ts): the copy hashes like the
  * source and, stepped with the same inputs, stays equal to it; the source is never written. Roblox-API-free (headless
  * specs and the client's worker run it). Spike only: nothing in shared/sim changes.
  *
@@ -71,9 +71,9 @@ import {
 import { SHARED_ANY_KEY, SHARED_BY_REFERENCE, type SharedNode } from "./clone";
 
 /**
- * A state copy function a model or probe can be given: `cloneSimState` (R1, a fresh copy each call) or a pooled copier's
- * `copyFn()` (R1b, the SAME scratch overwritten by every call: use the result before the next call). Structurally the
- * model's injectable copy type.
+ * A state copy function a model or probe can be given: `cloneForRollback` (R1, a fresh copy each call) or a pooled
+ * copier's `copyFn()` (R1b, the SAME scratch overwritten by every call: use the result before the next call).
+ * Structurally the model's injectable copy type.
  */
 export type StateCopyFn = (state: Readonly<SimState>) => SimState;
 
@@ -159,11 +159,17 @@ const POOL_ARRAYS = 13;
 /** Per-slot vector tables (pos, vel, acc). */
 const POOL_VECTORS = 3;
 
-const POOL_META = getmetatable(createBulletSimulation({ maxBullets: 0 }));
+/** The pools' class metatable, read from an empty pool on first use (no module-load work: the spike stays lazy). */
+let poolMetaCache: unknown;
+
+function poolMeta(): unknown {
+	if (poolMetaCache === undefined) poolMetaCache = getmetatable(createBulletSimulation({ maxBullets: 0 }));
+	return poolMetaCache;
+}
 
 /** Whether `t` is a bullet pool (a SimulationCore instance). */
 export function isBulletPool(t: unknown): boolean {
-	return typeIs(t, "table") && getmetatable(t) === POOL_META;
+	return typeIs(t, "table") && getmetatable(t) === poolMeta();
 }
 
 function poolOf(t: unknown): PoolInternals {
@@ -388,7 +394,7 @@ function copyValue(old: unknown, v: unknown, node: SharedNode | true | undefined
 function copyPool(old: unknown, src: Table): Table {
 	checkPoolFields(src);
 	const s = poolOf(src);
-	const cand = usable(old, POOL_META);
+	const cand = usable(old, poolMeta());
 	let d: PoolInternals;
 	if (cand !== undefined && samePoolOptions(poolOf(cand), s)) {
 		d = poolOf(cand);
@@ -434,7 +440,18 @@ function copyInPlace(dst: Table, src: Table, node: SharedNode | undefined, was: 
 			dst.set(j, undefined);
 			j += 1;
 		}
-		if (next(dst, i)[0] !== undefined) return undefined;
+		// The scratch must now iterate exactly 1..i in order, as the source does: a key in its hash part (an integer
+		// past the array part, or any other key) could make `pairs` visit it differently, so such a scratch is re-cloned.
+		let seen = 0;
+		let kd: unknown = undefined;
+		for (;;) {
+			const [k] = next(dst, kd);
+			if (k === undefined) break;
+			seen += 1;
+			if (k !== seen) return undefined;
+			kd = k;
+		}
+		if (seen !== i) return undefined;
 		return KIND_ARRAY;
 	}
 	if (!typeIs(k1, "string")) return undefined;
@@ -466,7 +483,7 @@ function copyTable(old: unknown, src: Table, node: SharedNode | undefined): Tabl
 		error("PooledStateCopier: the source holds a table of this copier's scratch (a copy passed back?)", 0);
 	}
 	const mt = getmetatable(src);
-	if (mt === POOL_META) return copyPool(old, src);
+	if (mt === poolMeta()) return copyPool(old, src);
 	const dst = usable(old, mt);
 	if (dst !== undefined && !table.isfrozen(dst)) {
 		const was = owned.get(dst)!;
@@ -688,7 +705,7 @@ function difference(
 		aToB.set(a, bt);
 		bToA.set(bt, a);
 		if (getmetatable(a) !== getmetatable(bt)) return `${path}: metatable`;
-		if (getmetatable(a) === POOL_META) {
+		if (getmetatable(a) === poolMeta()) {
 			checkPoolFields(a);
 			checkPoolFields(bt);
 			return poolDifference(poolOf(a), poolOf(bt), path);

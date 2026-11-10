@@ -9,6 +9,7 @@ import {
 	ROLLBACK_WORKER_TOPIC,
 	RollbackFeed,
 	RollbackWorkerCore,
+	WindowSamples,
 	buildFactsRun,
 	bufferAfter,
 	busyWait,
@@ -30,10 +31,16 @@ import {
 	type RollbackStatusMsg,
 	type RollbackWorkerHost,
 	type TableArrival,
-} from "shared/lockstep";
+} from "shared/lockstep/rollbackSpike";
 import { RUN_ATTRIBUTES } from "shared/play";
 import { hashState, type SimConfig, type SimState } from "shared/sim";
-import { ROLLBACK_PROBE_LIMITS, describeLiveSummary, describeProbeSummary, type ProbeSummary } from "shared/spikes";
+import {
+	ROLLBACK_CAPTURE,
+	ROLLBACK_PROBE_LIMITS,
+	describeLiveSummary,
+	describeProbeSummary,
+	type ProbeSummary,
+} from "shared/spikes";
 import { RENDER_ORDER } from "shared/view";
 import { SimController, type RunContext } from "../game/SimController";
 
@@ -54,6 +61,11 @@ function readHorizon(): number {
 	const raw = Workspace.GetAttribute(ROLLBACK_SPIKE_ATTRIBUTES.horizon);
 	if (!typeIs(raw, "number") || raw !== raw) return 0;
 	return math.clamp(math.floor(raw), 0, ROLLBACK_PROBE_LIMITS.maxHorizon);
+}
+
+/** The server's word that it takes this player's summaries (RollbackSpikeService: the capture policy, switch on). */
+function probeAllowed(): boolean {
+	return Players.LocalPlayer.GetAttribute(ROLLBACK_CAPTURE.probeAllowedAttribute) === true;
 }
 
 function readMode(): RollbackSpikeModeName {
@@ -154,6 +166,8 @@ class ProbeSession {
 	private status: RollbackStatusMsg | undefined;
 	private lastCpu: ProbeSummary | undefined;
 	private digestMs = 0;
+	/** The digests' send -> arrival delays since the last CPU window (ProbeSummary.digest), seconds. */
+	private readonly digestArrivals = new WindowSamples();
 	private digestRefused = false;
 
 	constructor(
@@ -292,9 +306,21 @@ class ProbeSession {
 			this.pending.clear();
 			print(`${TAG} worker ready after ${string.format("%.2f", os.clock() - this.createdAt)} s`);
 		} else if (m.kind === "cpu") {
-			this.lastCpu = m.summary;
-			print(`${TAG} ${describeProbeSummary(m.summary)}`);
-			Events.rollbackProbe.fire("cpu", m.summary);
+			// The worker cannot see when its digests arrive: the main thread's own window of arrivals goes in here.
+			const digest = this.digestArrivals.stat(MS);
+			this.digestArrivals.clear();
+			const max = ROLLBACK_PROBE_LIMITS.maxMs;
+			const summary: ProbeSummary = {
+				...m.summary,
+				digest: {
+					p50: math.min(digest.p50, max),
+					p95: math.min(digest.p95, max),
+					max: math.min(digest.max, max),
+				},
+			};
+			this.lastCpu = summary;
+			print(`${TAG} ${describeProbeSummary(summary)}`);
+			Events.rollbackProbe.fire("cpu", summary);
 			this.line();
 		} else if (m.kind === "live") {
 			print(`${TAG} live ${describeLiveSummary(m.summary)}`);
@@ -310,7 +336,9 @@ class ProbeSession {
 			this.status = m;
 			this.line();
 		} else if (m.kind === "digest") {
-			this.digestMs = (os.clock() - m.sentAt) * MS;
+			const delay = math.max(0, os.clock() - m.sentAt);
+			this.digestMs = delay * MS;
+			this.digestArrivals.add(delay);
 		} else if (m.kind === "error") {
 			this.fail(`worker: ${m.message}`);
 		}
@@ -343,7 +371,10 @@ class ProbeSession {
 /**
  * The rollback probe's client glue (docs/ROLLBACK_SPIKE.md Design 5 / 7, tasks R3a / R3 / R4b), thin over the shared
  * worker core (shared/lockstep rollbackSpike/worker). Off by default: with Workspace `KV_RollbackSpike` 0 or absent
- * nothing is created (no Actor, no render step; only the two attribute watches). On (a number H 1..64):
+ * nothing is created (no Actor, no render step; only the attribute watches). It also needs the server's player
+ * attribute ROLLBACK_CAPTURE.probeAllowedAttribute (`KV_RollbackAllowed`, set while `KV_RollbackCapture` is on for a
+ * player the capture policy allows: Studio, a DEV_MODE-allowed player, a developer's private server), so a Workspace
+ * attribute, which replicates to every client, never starts the probe on anyone else's device. On (a number H 1..64):
  *
  *   parallel (KV_RollbackSpikeMode absent / "parallel")  every run start (co-op or solo; a solo run picked up mid-run
  *       replays its recorded frames into the mirror) spawns an Actor under PlayerScripts with a clone of the disabled
@@ -355,7 +386,8 @@ class ProbeSession {
  *       (`Events.rollbackProbe("cpu" | "live", summary)`), shown on the spike HUD's line. A mirror hash that differs
  *       from the main state's stops the probe and prints both.
  *   serial ("serial")  the same core on the main thread, on the main state itself (lent, never stepped by it): the
- *       comparison, which costs frames. Never with other players. No mirror, no live model.
+ *       comparison, which costs frames. Refused in a run with more than one player (it would cost everyone's frames
+ *       through the lockstep). No mirror, no live model.
  *   facts ("facts")  R3a once: the Parallel Luau facts printed as `[RollbackFacts]` lines (facts.ts).
  * Under KV_Debug, once a second, the main state's hash is taken before and after the probe's frame work: a change
  * stops it. Device label: what the game knows plus Workspace `KV_RollbackDeviceTag` (the dev panel sets it).
@@ -371,20 +403,37 @@ export class RollbackSpikeController implements OnStart {
 	private session: ProbeSession | undefined;
 	/** The run counter last seen (a session per run). */
 	private counter = -1;
+	/** The "not allowed" line was printed (once per client). */
+	private refusedSaid = false;
 
 	constructor(private readonly sim: SimController) {}
 
 	onStart(): void {
 		Workspace.GetAttributeChangedSignal(ROLLBACK_SPIKE_ATTRIBUTES.horizon).Connect(() => this.refresh());
 		Workspace.GetAttributeChangedSignal(ROLLBACK_SPIKE_ATTRIBUTES.mode).Connect(() => this.refresh());
+		Players.LocalPlayer.GetAttributeChangedSignal(ROLLBACK_CAPTURE.probeAllowedAttribute).Connect(() =>
+			this.refresh(),
+		);
 		this.refresh();
 	}
 
 	private refresh(): void {
 		const horizon = readHorizon();
 		const mode = readMode();
-		if (this.on && (horizon !== this.horizon || mode !== this.mode)) this.stop();
+		const allowed = probeAllowed();
+		if (this.on && (horizon !== this.horizon || mode !== this.mode || !allowed)) this.stop();
 		if (horizon <= 0 || this.on) return;
+		if (!allowed) {
+			if (!this.refusedSaid) {
+				print(
+					`${TAG} ${ROLLBACK_SPIKE_ATTRIBUTES.horizon} is set but the server does not take this player's ` +
+						`summaries (${ROLLBACK_CAPTURE.probeAllowedAttribute}: ${ROLLBACK_CAPTURE.attribute} on, ` +
+						`and Studio, a DEV_MODE-allowed player or a developer's private server): the probe stays off`,
+				);
+			}
+			this.refusedSaid = true;
+			return;
+		}
 		this.on = true;
 		this.horizon = horizon;
 		this.mode = mode;
@@ -452,6 +501,11 @@ export class RollbackSpikeController implements OnStart {
 		const live = ctx.live;
 		let src: RollbackFrameSource;
 		let config: Readonly<SimConfig>;
+		if (mode === "serial" && coop !== undefined && coop.players > 1) {
+			print(`${TAG} serial mode is solo only: run ${ctx.counter} has ${coop.players} players, no probe`);
+			clientStore.setRollbackSpikeLine(`ROLLBACK serial: solo only (this run has ${coop.players} players)`);
+			return undefined;
+		}
 		if (coop !== undefined) {
 			if (coop.state.tick > 0) {
 				print(
@@ -631,14 +685,21 @@ export class RollbackSpikeController implements OnStart {
 		waitFor("profile");
 
 		// 4. The main thread's frame time with a parallel task, against a baseline and the same task on the main thread.
+		// Each phase's Heartbeat hook lives in `phase`, which the controller's janitor also cleans: the probe turned off
+		// mid-phase cancels this thread inside task.wait, and the hook (a main-thread busy wait in the last phases) goes
+		// with it instead of running every frame forever.
+		const phase = new Janitor();
+		this.janitor.Add(() => phase.Cleanup(), true);
 		const sample = (seconds: number, onFrame?: () => void): number[] => {
 			const out: number[] = [];
-			const conn = RunService.Heartbeat.Connect((dt) => {
-				out.push(dt * MS);
-				onFrame?.();
-			});
+			phase.Add(
+				RunService.Heartbeat.Connect((dt) => {
+					out.push(dt * MS);
+					onFrame?.();
+				}),
+			);
 			task.wait(seconds);
-			conn.Disconnect();
+			phase.Cleanup();
 			return out;
 		};
 		say("frame time, baseline", frameLine(sample(FACTS.phaseSec)));

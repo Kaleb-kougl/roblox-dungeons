@@ -4,7 +4,8 @@
 
 	The server (RollbackSpikeService, Workspace attribute KV_RollbackCapture) writes:
 	  KV_RollbackCapture_v1   <runId>/meta (a table) and <runId>/<i> (base64 chunk strings), one per co-op run
-	  KV_RollbackProbe_v1     <sessionId>/<kind>/<windowIndex> (a table), one per probe window
+	  KV_RollbackProbe_v1     <writerId>/<n> (a table: one player's summaries of up to a minute), at most one a
+	                          minute per player (the receiver splits each into a line per summary)
 	The "Pull rollback captures" button lists both stores with Studio's own API access, reads every capture (meta and
 	its chunks) and every probe row, and posts them as JSON to the receiver on this computer:
 	  node scripts/rollback/receive-captures.js        (writes gitignored captures/)

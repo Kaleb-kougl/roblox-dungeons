@@ -18,8 +18,9 @@
  *              their newest merged frame (solo: the local frame for the first tick, then neutral), discard it; fill
  *              the digest buffer (rollbackDigestBytes) from the copy and send it (host.sendDigest). Timed (host clock):
  *              copy, step (yields excluded), send, total, and the rendered frames from its start to its end.
- *   live       (co-op, parallel, `live`) the RollbackModel (Design 7): beginPredict(mirror) -> stepPredict(sliceTicks)
- *              until done -> finishPredict; its metrics are the live window's.
+ *   live       (co-op, parallel, `live`) the RollbackModel (Design 7) with horizonCap H: beginPredict(mirror) ->
+ *              stepPredict(sliceTicks) until done -> finishPredict (the drawn tick T + min(D + L, H)); its metrics are
+ *              the live window's.
  * Both step in slices of ROLLBACK_SPIKE.sliceTicks with `host.yieldSlice()` between slices (the worker yields to a
  * later parallel phase there; messages that arrive meanwhile wait in the inbox until the round ends: a new setup never
  * lands mid-prediction), and the mirror catches up in slices of
@@ -29,9 +30,10 @@
  * ## Windows
  *
  * CPU: every ROLLBACK_SPIKE.statsWindowSec of host clock, one ProbeSummary (p50 / p95 / max of the samples, the
- * frames messages' frame ms as fps and p95, gcinfo growth, the case from the confirmed state); live: every
- * liveSummarySec one LiveSummary from the model's metrics (`toLiveSummaryCounts`, `leadSeen`, `totalSeconds`, then
- * `metrics.reset()`). A `control end` steps the mirror to its tick, posts both partial windows and stops. A window
+ * frames messages' frame ms as fps and p95, gcinfo growth, the case from the confirmed state; in co-op parallel the
+ * live model's work per round as its own `live` stat: CPU and live loads are measured separately in the same rounds,
+ * not alternated); live: every liveSummarySec one LiveSummary from the model's metrics (`toLiveSummaryCounts`,
+ * `leadSeen`, `totalSeconds`, `predictions`, then `metrics.reset()`) and the frames messages seen (`mainFrames`). A `control end` steps the mirror to its tick, posts both partial windows and stops. A window
  * with nothing in it is not posted.
  *
  * Errors (a gap in the merged frames, a frame missing, an unknown world) stop the core: `fail(message)` posts `error`.
@@ -102,6 +104,8 @@ class CpuWindow {
 	readonly total = new WindowSamples();
 	readonly frames = new WindowSamples();
 	readonly frameMs = new WindowSamples();
+	/** The live model's work per round (co-op parallel), measured apart from the CPU prediction's. */
+	readonly live = new WindowSamples();
 	start = 0;
 	gcStart = 0;
 
@@ -112,6 +116,7 @@ class CpuWindow {
 		this.total.clear();
 		this.frames.clear();
 		this.frameMs.clear();
+		this.live.clear();
 		this.start = now;
 		this.gcStart = gc;
 	}
@@ -139,6 +144,7 @@ export function fillDigestBuffer(buf: buffer, state: Readonly<SimState>): void {
 		buffer.writeu8(buf, o + 6, a.alive !== 0 ? 1 : 0);
 		buffer.writef32(buf, o + 8, a.x);
 		buffer.writef32(buf, o + 12, a.z);
+		buffer.writef32(buf, o + 16, a.hp);
 		o += PROBE.digestActorBytes;
 		actors++;
 	}
@@ -211,6 +217,8 @@ export class RollbackWorkerCore {
 	private cpuIndex = 0;
 	private liveStart = 0;
 	private liveIndex = 0;
+	/** Frames messages (main rendered frames) received in the current live window. */
+	private liveMainFrames = 0;
 	private lastStatus = -math.huge;
 	private lastTotal = 0;
 	private lastFrames = 0;
@@ -332,6 +340,8 @@ export class RollbackWorkerCore {
 					playerIndex: msg.localIndex,
 					config: run.config,
 					strategy: msg.strategy,
+					// H caps the live prediction too (the gate's question is "at horizon H"): drawn tick T + min(D + L, H).
+					horizonCap: msg.horizon,
 					oracle: this.options.oracle,
 				});
 				model.reset(run.state);
@@ -343,6 +353,7 @@ export class RollbackWorkerCore {
 		this.cpuIndex = 0;
 		this.liveStart = now;
 		this.liveIndex = 0;
+		this.liveMainFrames = 0;
 		this.lastStatus = -math.huge;
 	}
 
@@ -377,6 +388,7 @@ export class RollbackWorkerCore {
 		if (msg.tick > this.target) this.target = msg.tick;
 		if (msg.hashTick >= 0 && this.mirror !== undefined) this.hashRequests.push(msg.hashTick);
 		this.cpu.frameMs.add(msg.frameMs);
+		if (model !== undefined) this.liveMainFrames++;
 		this.framesSince = true;
 	}
 
@@ -452,18 +464,22 @@ export class RollbackWorkerCore {
 		if (model === undefined || this.stopped) return;
 		const host = this.host;
 		host.yieldSlice();
+		// The live round's own work (yields excluded), kept apart from the CPU prediction's stats (ProbeSummary.live).
+		let t0 = host.clock();
 		model.beginPredict(state);
+		let work = host.clock() - t0;
 		const slice = ROLLBACK_SPIKE.sliceTicks;
 		while (model.isPredicting()) {
 			host.profileBegin(LABELS.live);
+			t0 = host.clock();
 			const done = model.stepPredict(slice);
+			if (done) model.finishPredict();
+			work += host.clock() - t0;
 			host.profileEnd();
-			if (done) {
-				model.finishPredict();
-				break;
-			}
+			if (done) break;
 			host.yieldSlice();
 		}
+		this.cpu.live.add(work);
 	}
 
 	/** One CPU prediction: copy, H steps of repeat-last guesses, the digest send (see the file comment). */
@@ -561,7 +577,11 @@ export class RollbackWorkerCore {
 				step: clampStat(w.step.stat(MS), L.maxMs),
 				send: clampStat(w.send.stat(MS), L.maxMs),
 				total: clampStat(w.total.stat(MS), L.maxMs),
+				// The main thread fills this from the digests it received (RollbackSpikeController).
+				digest: { p50: 0, p95: 0, max: 0 },
 				framesPerPrediction: clampStat(w.frames.stat(), L.maxFrames),
+				live: clampStat(w.live.stat(MS), L.maxMs),
+				liveSamples: math.min(w.live.count(), L.maxSamples),
 				samples: math.min(w.total.count(), L.maxSamples),
 				windowSeconds: seconds,
 				renderFps: frameSec > 0 ? math.min(w.frameMs.count() / frameSec, L.maxFps) : 0,
@@ -592,6 +612,8 @@ export class RollbackWorkerCore {
 				partySize: this.n,
 				playerIndex: setup.localIndex,
 				seconds: math.min(m.totalSeconds(), L.maxWindowSeconds),
+				predictions: math.min(m.predictions, L.maxSamples),
+				mainFrames: math.min(this.liveMainFrames, L.maxSamples),
 				lead: m.leadSeen(),
 				rooms: m.toLiveSummaryCounts(),
 				deviceLabel: setup.deviceLabel,
@@ -601,6 +623,7 @@ export class RollbackWorkerCore {
 			this.host.post({ kind: "live", summary });
 		}
 		m.reset();
+		this.liveMainFrames = 0;
 		this.liveStart = now;
 	}
 }

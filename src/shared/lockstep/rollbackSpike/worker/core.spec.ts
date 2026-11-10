@@ -46,7 +46,7 @@ const WALK_TICKS = 900;
 const OBSERVER = 1;
 const L = 11;
 const D = 4;
-/** The CPU probe's H in these specs (the device probe's own default is the attribute). */
+/** H in these specs (the CPU probe's ticks, and the live model's cap: it predicts min(D + L, H) = 8 ahead). */
 const H = 8;
 /** Simulated seconds per rendered frame: CPU windows every 100 frames, live windows every 600. */
 const FRAME_SEC = 0.1;
@@ -296,6 +296,7 @@ describe("rollback probe worker core (R3 / R4b)", () => {
 			playerIndex: OBSERVER,
 			L,
 			D,
+			H,
 			toTick: p.last,
 		});
 		const t2 = os.clock();
@@ -307,6 +308,19 @@ describe("rollback probe worker core (R3 / R4b)", () => {
 		}
 		expect(any).toBeGreaterThan(0);
 		expect(math.abs(liveSeconds(p.live) - offline.seconds)).toBeLessThan(1e-6);
+		// One round per frame here: the windows saw every main frame and made the offline harness's predictions.
+		let predictions = 0;
+		let mainFrames = 0;
+		for (const w of p.live) {
+			predictions += w.predictions;
+			mainFrames += w.mainFrames;
+		}
+		expect(mainFrames).toBe(p.frames);
+		expect(predictions).toBe(offline.metrics.predictions);
+		// The live model's work is its own stat on the CPU windows (measured apart from the CPU prediction's).
+		let liveSamples = 0;
+		for (const w of p.cpu) liveSamples += w.liveSamples;
+		expect(liveSamples).toBe(p.frames);
 		const cpu0 = p.cpu[1] ?? p.cpu[0];
 		print(
 			`[R3] worker core: ${p.frames} frames, ${p.checks} mirror hash checks equal, ${p.cpu.size()} CPU and ` +
@@ -340,6 +354,7 @@ describe("rollback probe worker core (R3 / R4b)", () => {
 			playerIndex: OBSERVER,
 			L,
 			D,
+			H,
 			toTick: p.last,
 		});
 		const live = liveTotals(p.live);

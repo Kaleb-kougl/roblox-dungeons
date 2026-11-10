@@ -25,7 +25,7 @@ import {
 	readTableProbe,
 	stepFactsRun,
 	type RollbackWorkerHost,
-} from "shared/lockstep";
+} from "shared/lockstep/rollbackSpike";
 
 const FACTS = ROLLBACK_SPIKE.probe.facts;
 const LABELS = ROLLBACK_SPIKE.probe.profileLabels;

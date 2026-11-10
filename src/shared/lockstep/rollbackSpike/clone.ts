@@ -1,5 +1,5 @@
 /**
- * The rollback spike's state copy (docs/ROLLBACK_SPIKE.md Design 1, task R1): `cloneSimState(state)`, a generic deep
+ * The rollback spike's state copy (docs/ROLLBACK_SPIKE.md Design 1, task R1): `cloneForRollback(state)`, a generic deep
  * copy of a live `SimState` that can be stepped on its own without touching the original.
  *
  * Spike grade, correct first and slow (RBD2): every call allocates a fresh copy (a real rollback would copy into
@@ -100,7 +100,7 @@ function resetStats(): void {
 	functionsKept = 0;
 }
 
-/** The counts of the last cloneSimState / deepCopy call. */
+/** The counts of the last cloneForRollback / deepCopy call. */
 export function cloneStats(): CloneStats {
 	return { tablesCopied, instancesCopied, entriesVisited, buffersCopied, sharedByPath, sharedFrozen, functionsKept };
 }
@@ -131,7 +131,7 @@ function copyTable(t: Table, node: SharedNode | undefined, memo: Map<unknown, un
 	// Assigning to keys that already exist during a traversal is allowed (Lua's `next` contract), and keeps the layout.
 	for (const [k, v] of pairs(out)) {
 		entriesVisited += 1;
-		if (typeIs(k, "table")) error("cloneSimState: a table used as a key is not supported (see clone.ts)", 0);
+		if (typeIs(k, "table")) error("cloneForRollback: a table used as a key is not supported (see clone.ts)", 0);
 		if (typeIs(v, "table")) {
 			const seen = memo.get(v);
 			if (seen !== undefined) {
@@ -172,6 +172,6 @@ export function deepCopy<T extends object>(value: T, shared: SharedNode | undefi
  * other, and `hashState(copy) === hashState(state)`. Shares SHARED_BY_REFERENCE and frozen tables. Resets
  * cloneStats().
  */
-export function cloneSimState(state: Readonly<SimState>): SimState {
+export function cloneForRollback(state: Readonly<SimState>): SimState {
 	return deepCopy(state as SimState, SHARED_BY_REFERENCE);
 }

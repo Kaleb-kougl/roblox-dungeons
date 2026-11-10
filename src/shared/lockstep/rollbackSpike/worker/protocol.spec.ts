@@ -20,6 +20,7 @@ import {
 	readWorkerToMain,
 	rollbackDeviceClass,
 	rollbackDeviceLabel,
+	utf8Truncate,
 	rollbackProbeCase,
 	bufferAfter,
 	tableAfter,
@@ -116,10 +117,16 @@ describe("rollback probe protocol (R3)", () => {
 		const setup = buildEndlessRunConfig(4242, 2);
 		const state = createSimState(4242, setup.spawn!.x, setup.spawn!.z, setup.config);
 		const b = buffer.create(rollbackDigestBytes());
-		expect(rollbackDigestBytes()).toBe(8 + 64 * 16 + 150 * 12 + 8 * 12);
+		expect(rollbackDigestBytes()).toBe(8 + 64 * 20 + 150 * 12 + 8 * 12);
 		fillDigestBuffer(b, state);
 		expect(buffer.readu32(b, 0)).toBe(0);
 		expect(buffer.readu8(b, 7)).toBe(2);
+		// Each actor record ends with its hp (f32 at +16).
+		const first = state.combat.actors.find((a) => a.kind >= 0);
+		if (first !== undefined) {
+			expect(buffer.readu8(b, 4)).toBeGreaterThan(0);
+			expect(buffer.readf32(b, 8 + 16)).toBeCloseTo(first.hp);
+		}
 	});
 });
 
@@ -151,6 +158,16 @@ describe("rollback probe device, case, stats, facts (R3 / R3a)", () => {
 		);
 		const long = rollbackDeviceLabel(base, string.rep("x", 100));
 		expect(long.size()).toBe(ROLLBACK_PROBE_LIMITS.maxDeviceLabelChars);
+		// A cut never splits a UTF-8 character (the server's reader refuses invalid UTF-8): e-acute is 2 bytes, so 13
+		// bytes of label + 18 of them leave the cut at a character's start, one byte short of the limit.
+		const eAcute = string.char(0xc3, 0xa9);
+		const accents = rollbackDeviceLabel(base, string.rep(eAcute, 18));
+		expect(typeIs(utf8.len(accents)[0], "number")).toBe(true);
+		expect(accents.size()).toBe(ROLLBACK_PROBE_LIMITS.maxDeviceLabelChars - 1);
+		expect(utf8Truncate(`ab${eAcute}`, 3)).toBe("ab");
+		expect(utf8Truncate(`ab${eAcute}`, 4)).toBe(`ab${eAcute}`);
+		// A tag that is not UTF-8 keeps its ASCII.
+		expect(rollbackDeviceLabel(base, `Pixel${string.char(255)} 6a`)).toBe("kb 1920x1080 Pixel 6a");
 	});
 
 	it("reads the case from the state", () => {

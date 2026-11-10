@@ -20,19 +20,33 @@ import { MAX_PARTY_SIZE } from "shared/sim";
  * scripts/rollback/receive-captures.test.js checks they match these.
  */
 export const ROLLBACK_CAPTURE = table.freeze({
-	/** Workspace attribute (boolean, server): captures co-op runs and takes probe / live summaries. Off by default. */
+	/**
+	 * Workspace attribute (boolean, server): captures co-op runs and takes probe / live summaries (Studio included).
+	 * Off by default.
+	 */
 	attribute: SPIKE_ATTRIBUTES.rollbackCapture,
+	/**
+	 * Player attribute the server sets (true) on every player whose summaries it takes (rollbackProbeAllowed, while the
+	 * switch is on); the client's probe runs only for such a player.
+	 */
+	probeAllowedAttribute: "KV_RollbackAllowed",
 	/** DataStore of captured co-op runs: `<runId>/meta` (RollbackCaptureMeta) and `<runId>/<i>` (chunk i, a string). */
 	captureStore: "KV_RollbackCapture_v1",
-	/** DataStore of probe windows: `<sessionId>/<kind>/<windowIndex>` (RollbackProbeRow). */
+	/**
+	 * DataStore of probe rows: `<writerId>/<n>` (RollbackProbeRow, one per player per minute at most: that minute's
+	 * summaries). The writer id is the server's (one GUID per player per server), never the client's session id.
+	 */
 	probeStore: "KV_RollbackProbe_v1",
 	/**
 	 * Characters per chunk. A DataStore value is at most 4 MB (4,194,304 bytes, JSON encoded); a chunk is base64 text
 	 * (no character needs escaping), so 3,000,000 leaves over a megabyte of margin.
 	 */
 	chunkChars: 3000000,
-	/** Ticks per encoded block (a minute at 60 Hz): the server keeps each finished minute encoded, not as frames. */
-	blockTicks: 3600,
+	/**
+	 * Ticks per encoded block (10 s at 60 Hz): the server encodes each finished block in its own thread step (one
+	 * encodeRecording of this many ticks x the party, then its base64) and keeps it as text, not as frames.
+	 */
+	blockTicks: 600,
 	/** The longest capture kept (two hours at 60 Hz); the recorder stops there and marks the capture truncated. */
 	maxTicks: 432000,
 	/** Chunks per capture at most (the decoder refuses more; a real capture has one or two, specs use tiny chunks). */
@@ -63,10 +77,39 @@ export const ROLLBACK_CAPTURE = table.freeze({
 export type RollbackProbeKind = "cpu" | "live";
 export const ROLLBACK_PROBE_KINDS: ReadonlyArray<RollbackProbeKind> = ["cpu", "live"];
 
-/** Per player and kind, sliding window (shared/run SlidingWindowLimiter): a CPU window every 10 s, a live one a minute. */
+/**
+ * Per player, sliding windows (shared/run SlidingWindowLimiter), checked before anything is read or logged: a CPU
+ * window every 10 s and a live one a minute (with slack), and `refused`: the warnings a player's refused payloads may
+ * print (unknown kind, malformed, not allowed, a session id another player owns), the rest dropped silently.
+ */
 export const ROLLBACK_PROBE_RATE = table.freeze({
 	cpu: table.freeze({ count: 12, windowSeconds: 60 }),
 	live: table.freeze({ count: 3, windowSeconds: 60 }),
+	refused: table.freeze({ count: 3, windowSeconds: 60 }),
+});
+
+/**
+ * The analytics budget per player (published places only), in summaries a sliding window, each logged whole or not at
+ * all: a CPU window logs 1 event (RollbackCpu), a live window ROLLBACK_ANALYTICS_LIVE_METRICS.size() (4: RollbackProbe).
+ * So at most 7 x 1 + 2 x 4 = 15 events in any minute and about 6 + 4 = 10 a minute sustained per player.
+ */
+export const ROLLBACK_ANALYTICS_RATE = table.freeze({
+	cpu: table.freeze({ count: 7, windowSeconds: 60 }),
+	live: table.freeze({ count: 2, windowSeconds: 120 }),
+});
+
+/**
+ * Probe rows (KV_RollbackProbe_v1): a player's summaries are buffered and written as ONE row (SetAsync of a new key)
+ * once the oldest has waited writeEverySeconds, so a player writes at most one row a minute (plus one when they leave
+ * or the server closes). A row holds at most maxPerRow summaries of each kind (more are dropped and counted). A write
+ * is skipped (the row dropped, logged) while the server's SetIncrementAsync budget is under budgetReserve, which keeps
+ * the game's own saves (records, settings, onboarding) first. The service polls for due rows every pollSeconds.
+ */
+export const ROLLBACK_PROBE_ROWS = table.freeze({
+	writeEverySeconds: 60,
+	pollSeconds: 5,
+	maxPerRow: table.freeze({ cpu: 24, live: 6 }),
+	budgetReserve: 20,
 });
 
 /** The readers' bounds. Numbers outside them (or not finite) drop the whole payload. */
@@ -147,11 +190,23 @@ export const ROLLBACK_LIVE_METRICS = [
 ] as const;
 export type RollbackLiveMetric = (typeof ROLLBACK_LIVE_METRICS)[number];
 
+/**
+ * The live metrics a live window logs to AnalyticsService (RollbackProbe's field01): the four the proposed gates read
+ * (docs/ROLLBACK_SPIKE.md Gates: enemy corrections >= 0.5 tile, undone kills, phantom bullets, teammate corrections
+ * >= 1 tile). Every metric stays in the server log line and the probe row.
+ */
+export const ROLLBACK_ANALYTICS_LIVE_METRICS: ReadonlyArray<RollbackLiveMetric> = [
+	"enemyCorr050",
+	"undoneKill",
+	"phantomBullet",
+	"mateCorr100",
+];
+
 /** Custom event names (two of Roblox's 100; shared/onboarding analyticsCatalog lists them). */
 export const ROLLBACK_ANALYTICS_EVENT = {
 	/** One CPU window: value = total ms p95; device class, mode + H bucket, case. */
 	cpu: "RollbackCpu",
-	/** One live metric of one window: value = per minute; metric, device class, H bucket. */
+	/** One gate metric of one live window: value = per minute; metric, device class, H bucket. */
 	probe: "RollbackProbe",
 } as const;
 
@@ -188,14 +243,31 @@ export interface ProbeSummary {
 	/** Actors and enemy bullets alive (the window's last sample). */
 	readonly actors: number;
 	readonly enemyBullets: number;
-	/** Milliseconds per prediction: clone, step H ticks, send the digest, and their total. */
+	/**
+	 * Milliseconds per CPU prediction, the worker's own work (yields excluded): clone, step H ticks, send the digest
+	 * (fill + post, timed where it is sent), and their total. The live model's work in the same rounds is NOT in them
+	 * (see `live`).
+	 */
 	readonly clone: RollbackProbeStat;
 	readonly step: RollbackProbeStat;
 	readonly send: RollbackProbeStat;
 	readonly total: RollbackProbeStat;
-	/** Rendered frames from the start to the end of one prediction (1 in serial mode). */
+	/**
+	 * Milliseconds from the digest's send to its arrival on the main thread (the main thread's clock; the client
+	 * fills it from the digests that arrived since its previous CPU window; zeros when none did).
+	 */
+	readonly digest: RollbackProbeStat;
+	/** Rendered frames from the start to the end of one CPU prediction (1 in serial mode). */
 	readonly framesPerPrediction: RollbackProbeStat;
-	/** Predictions in the window, and its length in seconds. */
+	/**
+	 * Co-op parallel: the live model's work per round (milliseconds, yields excluded) and its predictions in the
+	 * window. Each round runs the CPU prediction, then the live one, on the same worker: the CPU stats above are the CPU
+	 * prediction alone, while frame rate, frame time, gc and frames per prediction carry both loads. liveSamples 0 (solo,
+	 * serial): no live model ran, the window is the CPU probe alone.
+	 */
+	readonly live: RollbackProbeStat;
+	readonly liveSamples: number;
+	/** CPU predictions in the window, and its length in seconds. */
 	readonly samples: number;
 	readonly windowSeconds: number;
 	readonly renderFps: number;
@@ -235,8 +307,17 @@ export interface LiveSummary {
 	readonly partySize: number;
 	/** The predicting player's index in the party. */
 	readonly playerIndex: number;
-	/** The window's play seconds (the per-minute rates divide by it). */
+	/** The window's play seconds (the per-minute rates divide by it; counted from confirmed ticks). */
 	readonly seconds: number;
+	/**
+	 * Predictions the live model made in the window (rounds with something to predict), and the main thread's rendered
+	 * frames the worker saw (one frames message each). The worker predicts once a round on the newest confirmed tick,
+	 * so when it falls behind it coalesces frames: predictions < mainFrames. Then corrections are undercounted (only
+	 * drawn ticks two consecutive predictions both drew are compared) and late events overcounted (a tick never drawn
+	 * is "late"): read the window's rates with predictions / mainFrames beside them.
+	 */
+	readonly predictions: number;
+	readonly mainFrames: number;
 	readonly lead: RollbackLeadSeen;
 	/** Per room type (absent: none of the window was spent there). */
 	readonly rooms: { readonly [K in RollbackRoomType]?: RollbackLiveRoom };
@@ -244,19 +325,24 @@ export interface LiveSummary {
 	readonly deviceClass: RollbackDeviceClass;
 }
 
-/** One `KV_RollbackProbe_v1` row: a re-read summary and when / where the server took it. */
+/**
+ * One `KV_RollbackProbe_v1` row: one player's re-read summaries of up to a minute, in arrival order, and when / where
+ * the server wrote them. The receiver (scripts/rollback/receive-captures.js) turns each summary into its own line.
+ */
 export interface RollbackProbeRow {
 	readonly v: number;
-	readonly kind: RollbackProbeKind;
-	/** Unix seconds. */
+	/** Unix seconds of the write. */
 	readonly at: number;
 	/** game.PlaceVersion (0 in Studio). */
 	readonly placeVersion: number;
-	readonly summary: ProbeSummary | LiveSummary;
+	readonly cpu: ReadonlyArray<ProbeSummary>;
+	readonly live: ReadonlyArray<LiveSummary>;
+	/** Summaries over maxPerRow that were dropped from this row. */
+	readonly dropped: number;
 }
 
-/** The probe row format version. */
-export const ROLLBACK_PROBE_ROW_VERSION = 1;
+/** The probe row format version (1: one row per window keyed by the client's session id; 2: rows per minute). */
+export const ROLLBACK_PROBE_ROW_VERSION = 2;
 
 // ---------------------------------------------------------------------------------------------
 // Readers
@@ -286,9 +372,10 @@ export function isRollbackKeyId(v: unknown, max: number = ROLLBACK_CAPTURE.maxId
 	return typeIs(v, "string") && v.size() > 0 && v.size() <= max && string.match(v, "^[%w%-_{}]+$")[0] !== undefined;
 }
 
-/** A label: at most maxDeviceLabelChars, no control characters (it is printed and stored). */
+/** A label: at most maxDeviceLabelChars bytes of valid UTF-8, no control characters (it is printed and stored). */
 function label(v: unknown): string | undefined {
 	if (!typeIs(v, "string") || v.size() > ROLLBACK_PROBE_LIMITS.maxDeviceLabelChars) return undefined;
+	if (!typeIs(utf8.len(v)[0], "number")) return undefined;
 	return string.find(v, "%c")[0] === undefined ? v : undefined;
 }
 
@@ -329,9 +416,13 @@ export function readProbeSummary(v: unknown): ProbeSummary | undefined {
 	const stepStat = stat(t.step, L.maxMs);
 	const send = stat(t.send, L.maxMs);
 	const total = stat(t.total, L.maxMs);
+	const digest = stat(t.digest, L.maxMs);
 	const frames = stat(t.framesPerPrediction, L.maxFrames);
 	if (clone === undefined || stepStat === undefined || send === undefined || total === undefined) return undefined;
-	if (frames === undefined) return undefined;
+	if (digest === undefined || frames === undefined) return undefined;
+	const liveStat = stat(t.live, L.maxMs);
+	const liveSamples = integer(t.liveSamples, 0, L.maxSamples);
+	if (liveStat === undefined || liveSamples === undefined) return undefined;
 	const samples = integer(t.samples, 0, L.maxSamples);
 	const windowSeconds = bounded(t.windowSeconds, 0, L.maxWindowSeconds);
 	const renderFps = bounded(t.renderFps, 0, L.maxFps);
@@ -355,7 +446,10 @@ export function readProbeSummary(v: unknown): ProbeSummary | undefined {
 		step: stepStat,
 		send,
 		total,
+		digest,
 		framesPerPrediction: frames,
+		live: liveStat,
+		liveSamples,
 		samples,
 		windowSeconds,
 		renderFps,
@@ -440,11 +534,14 @@ export function readLiveSummary(v: unknown): LiveSummary | undefined {
 	}
 	const playerIndex = integer(t.playerIndex, 0, partySize - 1);
 	const seconds = bounded(t.seconds, 0, L.maxWindowSeconds);
+	const predictions = integer(t.predictions, 0, L.maxSamples);
+	const mainFrames = integer(t.mainFrames, 0, L.maxSamples);
 	const lead = readLead(t.lead);
 	const rooms = readRooms(t.rooms);
 	if (playerIndex === undefined || seconds === undefined || lead === undefined || rooms === undefined) {
 		return undefined;
 	}
+	if (predictions === undefined || mainFrames === undefined) return undefined;
 	const deviceLabel = label(t.deviceLabel);
 	const deviceClass = oneOf(t.deviceClass, ROLLBACK_DEVICE_CLASSES);
 	if (deviceLabel === undefined || deviceClass === undefined) return undefined;
@@ -456,6 +553,8 @@ export function readLiveSummary(v: unknown): LiveSummary | undefined {
 		partySize,
 		playerIndex,
 		seconds,
+		predictions,
+		mainFrames,
 		lead,
 		rooms,
 		deviceLabel,
@@ -479,10 +578,9 @@ export function liveMetricPerMinute(s: Readonly<LiveSummary>, metric: RollbackLi
 // ---------------------------------------------------------------------------------------------
 // Keys
 
-/** `<sessionId>/<kind>/<windowIndex>`: one probe row (a session's rows list by the `<sessionId>/` prefix). */
-export function rollbackProbeKey(kind: RollbackProbeKind, sessionId: string, windowIndex: number): string {
-	const sep = ROLLBACK_CAPTURE.keySeparator;
-	return `${sessionId}${sep}${kind}${sep}${windowIndex}`;
+/** `<writerId>/<n>`: a player's n-th probe row on one server (a writer's rows list by the `<writerId>/` prefix). */
+export function rollbackProbeRowKey(writerId: string, n: number): string {
+	return `${writerId}${ROLLBACK_CAPTURE.keySeparator}${n}`;
 }
 
 /** `<runId>/meta`: a capture's meta (written last, so its presence means every chunk is in). */
@@ -510,10 +608,38 @@ export interface RollbackCaptureFacts {
 	readonly creatorIsUser: boolean;
 }
 
+/** What the probe intake's gate reads about the server and one player. */
+export interface RollbackProbeFacts {
+	readonly studio: boolean;
+	readonly userId: number;
+	readonly privateServerOwnerId: number;
+	readonly creatorId: number;
+	readonly creatorIsUser: boolean;
+}
+
+/**
+ * The capture policy for one player (the probe intake, and the client probe through the server's
+ * probeAllowedAttribute): Studio, a player who may use developer mode, or anyone in a private server whose owner may.
+ * The same rule as rollbackCaptureAllowed, which takes a party when every member passes it (or the owner does).
+ */
+export function rollbackProbeAllowed(facts: Readonly<RollbackProbeFacts>, policy?: Readonly<DevAccessPolicy>): boolean {
+	return rollbackCaptureAllowed(
+		{
+			studio: facts.studio,
+			memberIds: [facts.userId],
+			privateServerOwnerId: facts.privateServerOwnerId,
+			creatorId: facts.creatorId,
+			creatorIsUser: facts.creatorIsUser,
+		},
+		policy,
+	);
+}
+
 /**
  * Design 6: a party run is captured (with the switch on) in Studio, when every member may use developer mode
  * (shared/devmode devModeAllowed: a listed UserId or the user-owned place's creator), or in a private server whose
- * owner may (a developer's playtest server with friends on their own connections).
+ * owner may (deliberately: R5's playtest is a developer's private server with friends on their own connections, whose
+ * inputs are the answer; every capture and probe row is written with its players' UserIds for erasure).
  */
 export function rollbackCaptureAllowed(
 	facts: Readonly<RollbackCaptureFacts>,
@@ -584,14 +710,15 @@ export function analyticsForProbeSummary(s: Readonly<ProbeSummary>): AnalyticsEv
 }
 
 /**
- * One live window's events: `RollbackProbe` per metric (every metric, zeros included, so a dashboard's mean is over
- * every window), value = per minute of the window's play; metric, device class, H label. An empty window logs none.
+ * One live window's events: `RollbackProbe` per gate metric (ROLLBACK_ANALYTICS_LIVE_METRICS, zeros included, so a
+ * dashboard's mean is over every window), value = per minute of the window's play; metric, device class, H label. An
+ * empty window logs none.
  */
 export function analyticsForLiveSummary(s: Readonly<LiveSummary>): AnalyticsEventSpec[] {
 	const out: AnalyticsEventSpec[] = [];
 	if (s.seconds <= 0) return out;
 	const h = rollbackHorizonLabel(s.horizon);
-	for (const metric of ROLLBACK_LIVE_METRICS) {
+	for (const metric of ROLLBACK_ANALYTICS_LIVE_METRICS) {
 		out.push({
 			kind: "custom",
 			name: ROLLBACK_ANALYTICS_EVENT.probe,
@@ -618,14 +745,15 @@ function shortId(id: string): string {
 
 /**
  * One CPU window as a `[Rollback]` line (ms as p50/p95/max): `s1a2b3c4d#12 parallel H16 room party 4 actors 37
- * bullets 120 | clone .. step .. send .. total .. | frames/pred .. n 590 in 10.0 s | 59.8 fps frame p95 18.10 ms gc
- * 120 KB/s native | pc "label"`.
+ * bullets 120 | clone .. step .. send .. total .. digest .. | frames/pred .. live .. n 590 | n 590 in 10.0 s | 59.8 fps
+ * frame p95 18.10 ms gc 120 KB/s native | pc "label"`.
  */
 export function describeProbeSummary(s: Readonly<ProbeSummary>): string {
 	return (
 		`${shortId(s.sessionId)}#${s.windowIndex} ${s.mode} H${s.horizon} ${s.case} party ${s.partySize} ` +
 		`actors ${s.actors} bullets ${s.enemyBullets} | clone ${fmtStat(s.clone)} step ${fmtStat(s.step)} ` +
-		`send ${fmtStat(s.send)} total ${fmtStat(s.total)} | frames/pred ${fmtStat(s.framesPerPrediction)} ` +
+		`send ${fmtStat(s.send)} total ${fmtStat(s.total)} digest ${fmtStat(s.digest)} | ` +
+		`frames/pred ${fmtStat(s.framesPerPrediction)} live ${fmtStat(s.live)} n ${s.liveSamples} | ` +
 		`n ${s.samples} in ${string.format("%.1f", s.windowSeconds)} s | ${string.format("%.1f", s.renderFps)} fps ` +
 		`frame p95 ${string.format(MS, s.frameMsP95)} ms gc ${string.format("%.0f", s.gcKbPerSec)} KB/s ` +
 		`${s.native ? "native" : "interpreted"} | ${s.deviceClass} "${s.deviceLabel}"`
@@ -633,8 +761,8 @@ export function describeProbeSummary(s: Readonly<ProbeSummary>): string {
 }
 
 /**
- * One live window as a `[Rollback]` line: header, the lead seen, the room seconds, then every metric with a non-zero
- * count as `name=<per minute>/min`.
+ * One live window as a `[Rollback]` line: header, play seconds, predictions over the main frames seen, the lead seen,
+ * the room seconds, then every metric with a non-zero count as `name=<per minute>/min`.
  */
 export function describeLiveSummary(s: Readonly<LiveSummary>): string {
 	const rooms: string[] = [];
@@ -651,7 +779,8 @@ export function describeLiveSummary(s: Readonly<LiveSummary>): string {
 	const l = s.lead;
 	return (
 		`${shortId(s.sessionId)}#${s.windowIndex} ${s.strategy} H${s.horizon} p${s.playerIndex}/${s.partySize} ` +
-		`${string.format("%.1f", s.seconds)} s | L ${string.format("%.1f", l.lMean)}/${l.lMax} ` +
+		`${string.format("%.1f", s.seconds)} s pred ${s.predictions}/${s.mainFrames} fr | ` +
+		`L ${string.format("%.1f", l.lMean)}/${l.lMax} ` +
 		`D ${string.format("%.1f", l.dMean)}/${l.dMax} | ${rooms.size() > 0 ? rooms.join(" ") : "no rooms"} | ` +
 		`${metrics.size() > 0 ? `${metrics.join(" ")} /min` : "no glitches"} | ${s.deviceClass} "${s.deviceLabel}"`
 	);

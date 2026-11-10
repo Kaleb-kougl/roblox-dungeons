@@ -3,7 +3,7 @@
  * client's worker run it):
  *
  *   config.ts   ROLLBACK_SPIKE tunables (slices, windows, mirror hash period, digest sizes, horizons, the model's)
- *   clone.ts    cloneSimState: a generic deep copy of a live SimState (R1), SHARED_BY_REFERENCE, cloneStats
+ *   clone.ts    cloneForRollback: a generic deep copy of a live SimState (R1), SHARED_BY_REFERENCE, cloneStats
  *   pooledCopy.ts  PooledStateCopier: an exact copy INTO a reused scratch state (R1b), StateCopyFn, stateDifference
  *   digest.ts   the per-tick view digest (R2): BulletTracker (bullet identity keys), PreSnap, ViewDigest, fillDigest,
  *               BulletMatcher, roomTypeOf

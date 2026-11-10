@@ -41,8 +41,8 @@ import {
 import { BOSS_FINAL_PHASE, archetypeIds } from "shared/sim";
 import {
 	ROLLBACK_ANALYTICS_EVENT,
+	ROLLBACK_ANALYTICS_LIVE_METRICS,
 	ROLLBACK_DEVICE_CLASSES,
-	ROLLBACK_LIVE_METRICS,
 	ROLLBACK_PROBE_CASES,
 	rollbackHorizonLabels,
 	rollbackModeHorizonValues,
@@ -350,7 +350,7 @@ function buildCatalog(): ReadonlyArray<AnalyticsCatalogEntry> {
 			field03: set(ROLLBACK_PROBE_CASES),
 		}),
 		custom(ROLLBACK_ANALYTICS_EVENT.probe, spike, {
-			field01: set(ROLLBACK_LIVE_METRICS),
+			field01: set(ROLLBACK_ANALYTICS_LIVE_METRICS),
 			field02: set(ROLLBACK_DEVICE_CLASSES),
 			field03: set(rollbackHorizonLabels()),
 		}),

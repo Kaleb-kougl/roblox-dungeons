@@ -49,11 +49,17 @@ do
 	local args = process.args
 	while i <= #args do
 		local arg = args[i]
-		if arg == "--project" then
-			projectPath = args[i + 1]
-			i += 2
-		elseif arg == "--flag" then
-			specFlags[args[i + 1]] = true
+		if arg == "--project" or arg == "--flag" then
+			local value = args[i + 1]
+			if value == nil or string.sub(value, 1, 2) == "--" then
+				stdio.ewrite(arg .. " needs a value (e.g. " .. arg .. " name)\n")
+				process.exit(2)
+			end
+			if arg == "--project" then
+				projectPath = value
+			else
+				specFlags[value] = true
+			end
 			i += 2
 		else
 			table.insert(filters, arg)

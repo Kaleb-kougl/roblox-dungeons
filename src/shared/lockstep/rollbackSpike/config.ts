@@ -213,7 +213,7 @@ export const ROLLBACK_SPIKE: RollbackSpikeConfig = {
 		floorCaseRooms: 2,
 		tabletMinShortSidePx: 600,
 		digestHeaderBytes: 8,
-		digestActorBytes: 16,
+		digestActorBytes: 20,
 		digestBulletBytes: 12,
 		digestPlayerBytes: 12,
 		maxTicksPerMessage: 512,
