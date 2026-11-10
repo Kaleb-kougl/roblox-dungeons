@@ -26,6 +26,11 @@ setting (FPD8). See "As built" for the real API and the deviations from the desi
 section at the end): the net lead is set from the 95th percentile of measured input round trips plus a margin, instead
 of +1 per miss. Pending: FP14 / FP15 (owner) and the Studio checks.
 
+**Revision 3 (planned 2026-11-10): a steady lead on jittery links** (FP17-FP22, decisions FPD15-FPD19 proposed;
+section at the end): on a 4G-like link the late bump keeps the lead hovering far above its target; the census (FP17,
+built) measures today's rule against eleven candidates and proposes the capped cover: no late bump, the p95 target
+plus a p99 / 15 s cover that never passes the prediction cap. Pending: the owner's decisions, then FP18-FP22.
+
 ## Why co-op stutters (findings)
 
 | Fact | Where | Consequence |
@@ -624,3 +629,413 @@ Order: FP9 -> FP10 (parallel) -> FP11 -> FP12 -> FP13 -> FP14 / FP15 -> FP16. FP
   reliable remote, which is all the client needs).
 - **Local prediction** (claude/local-prediction-plan.md) predicts up to the effective lead, capped at 10 ticks: a lower,
   steadier lead helps it directly; nothing there changes.
+
+## Revision 3: a steady lead on jittery links (FP17-FP22, planned)
+
+On the owner's Studio run with the simulated 4G network the measured lead hovered far above its own target and still
+missed inputs. The co-op line read `lead 17t 283ms (net 13t, trip p95 159ms) · pace 4t 60ms · holds 16 · backlog 3 ·
+press->step 700ms avg 422 max 700 n6 · late 374 miss 107 · pred 10t`; the `[Pace]` lines: trip p50 ~155 ms, p95
+~160 ms, max 290-324 ms, net lead 17-19 ticks against a target of 11-12, 16-46 lates and 6-9 bumps every 10 s. Every
+tick of effective lead past the prediction cap (`PREDICTION.maxTicks`, 10 then, 20 now) is delay you feel.
+
+Revision 3 reproduces that in the spec harness and proposes a steadier rule, **the capped cover**: the lead follows the
+trips' quantiles only, never a single late, and a second, longer window buys extra lead against the rare slow trips
+**only up to what local prediction hides** (the prediction cap minus the buffer). On the owner-like links it keeps the
+same lead as today with up to half fewer dropped inputs (none fewer on the harshest variant), a sixth to a quarter of
+the lead changes and a third to a half of the felt delay at cap 20.
+
+**Client timing only.** No sim, dungeon, hash, replay, wire, server, fixture or score change: only `LeadController`'s
+rule and its tunables. The echo, the pacer, the send rules (FP1) and the tap latch are unchanged.
+
+### Status (2026-11-10)
+
+**Planned. FP17 (the census) is built** on branch `lead-spikes` (from `local-prediction` @ `533af85`):
+`src/shared/lockstep/lead.census.spec.ts`, opt-in. Nothing in `lead.ts` or any other non-spec file changed. FP18-FP22
+wait for the owner's decisions FPD15-FPD19 below.
+
+### The census (FP17)
+
+The real `LockstepClient`, `LockstepSession`, relay, pacer and echo, 2 players on M1 without enemies, 60 fps, the
+harmless bot of `predict.net.spec` (walks, rolls, swings, guards; neutral under a 1 s stage cover), prediction off (it
+is read only: it never changes what is sent), every number after a 2 s warm-up. A rule is put in place of each
+client's controller after its construction: `SpecLead`, `lead.ts` copied with knobs. Its "today" configuration gives
+exactly `LeadController`'s lead on every frame (asserted by the smoke run). The channels are `lockstep.spec`'s, FIFO
+and drawn per 1/60 s slot, plus a spike chance per slot: a spiked slot's messages take 80-200 ms more and every later
+message waits behind them (a head-of-line hold, as a lost packet's retransmit holds a reliable remote).
+
+```
+npm run test:only -- lockstep/lead.census                    # smoke: 12 s, today vs the copy (in every test run)
+npm run test:only -- --census lockstep/lead.census           # every network x every rule, ~3.5 min
+# split in two (the VM shell's 3 min cap): owner networks, then the rest
+npm run test:only -- --census lockstep/lead.census --flag lead.owner --flag lead.owner2 --flag lead.ownerS
+npm run test:only -- --census lockstep/lead.census --flag lead.jitter --flag lead.clean --flag lead.spec \
+  --flag lead.spec200 --flag lead.fp12 --flag lead.longhold
+# --flag lead.rule.<name> keeps only those rules (today's always runs)
+```
+
+Measured per network and rule: the **effective lead** (net + the buffer's depth, `inputLead()`) and the **net lead**
+(mean / p95 / max over frames); **lates** (frames the server got after their tick, per 10 s per client); **dropped
+changed** (a frame sent that differs from the one the relay finalized: what local prediction shows as a correction);
+**relay missed** (repeat-last ticks, lates plus ticks never sent because the lead or the depth jumped past them);
+**bumps**; **churn** (the net lead's total change per 10 s); **felt delay** `max(0, effective lead - cap)` per frame at
+the caps 20 and 10 (mean / p95, ticks of 16.7 ms).
+
+| Network | One way (each client its own two channels) |
+|---|---|
+| `owner` | 78-84 ms; 1.2 % of up slots +120-175 ms, 0.2 % of down slots; 62 s |
+| `owner2` | the same, harsher: 2 % of up slots +100-200 ms |
+| `ownerS` | `owner` on other channel seeds |
+| `jitter` | 4G-like jitter: 50-130 ms; 0.4 % of slots +80-200 ms both ways |
+| `clean` | 30-40 ms |
+| `spec` / `spec200` | FP11's networks: 20-120 / 0-200 ms (gate FP11) |
+| `fp12` | FP12's: 20-120 ms, +200 ms up for 1 s at 7 s (gate FP12) |
+| `longhold` | 70-82 ms, one 600 ms up hold at 15 s (gate FP12's bound) |
+
+**How close the reproduction is** (today's rule on `owner`; the owner's numbers were taken at cap 10):
+
+| | Owner, Studio 4G | Census `owner`, today's rule |
+|---|---|---|
+| Trip p50 / p95 / max | ~155 / ~160 / 290-324 ms | 142-158 / 159-182 / 292-342 ms per 10 s window (276 ms p95 in one client's first window; whole run 158 / 175 / 342) |
+| Net lead | 17-19 t at the `[Pace]` lines (13 t on the debug line) | 12-22 t at the 10 s marks; mean 16.9, p95 22, max 23 |
+| Target L* | 11-12 t | 12-13 t |
+| Buffer depth | 4 t (60 ms) | 3.9 t |
+| Lates / bumps per 10 s | 16-46 / 6-9 | 25-28 / 9-10 in the first window, then 6-22 / 1-5 (mean 14.1 / 4.0) |
+| Holds | 16 | 3-4 a minute per client |
+
+The trips, the target, the depth and the hover far above the target match; the steady-state lates and bumps are about
+half the owner's. Bursts on the owner's link more often ran past the lead the last burst left; two harsher variants
+(`owner2`, and per-slot spikes of 3 %, not kept: their bursts lift the p95 itself to 300 ms, which the owner's p95 does
+not show) did not raise the steady bump rate either. The ranking below is the same on all three owner-like networks.
+
+### Why the lead hovers and still misses (findings)
+
+| Fact | Where (census) | Consequence |
+|---|---|---|
+| A head-of-line burst reaches the server as one clump: the echo (the window's worst frame, Design 9) reports it as one or two samples | `owner`: per-window p95 159-177 ms while max is 292-342 | A burst barely moves the p95 (the owner's p95 is ~5 ms over the p50), but its lates bump the lead to the burst's own trip |
+| The bump comes one round trip after the late input was sent: the burst is already over | every owner-like run | It protects only against the NEXT burst, if that comes before the fall (1 s, then 0.25 s a tick: 20 -> 12 in 3 s). That is the hover: the lead is the last burst's trip, decaying, and a bigger burst still misses |
+| A one-off hold gains nothing from the bump | `longhold`: today jumps to 30 t (`maxLead`) and is back 5.3 s after the hold; the steady rules stay at 11 t | Identical lates (12.8) and dropped inputs (10.2) per 10 s: everything sent in the 600 ms is late at any lead under 36 t; today adds felt delay at cap 20 (mean 1.22 t, p95 11 t) |
+| Every bump and fall is churn | `owner`: 36 ticks of change per 10 s (steady rules 4-9); never-sent ticks 3.8 % of ticks (steady rules 1.0-1.4 %) | A rise repeats the last input on the server for the ticks skipped; a fall skips a sample (latched). With prediction a rise also moves the predicted head k ticks ahead (the drawn knight lurches by k ticks of held input), a fall pulls it back |
+| Under prediction, lead below the cap is not felt in your own movement; above it, it is | `owner`, today: effective 20.8 t mean, p95 27 | At cap 20 with a 4 t buffer, net lead up to 16 is free for the knight; today spends 2.1 t mean (p95 7) above it. At cap 10 everything above net 6 is felt |
+| A late only bumps usefully when the trouble lasts longer than a round trip | `fp12` (1 s of +200 ms): today 11.3 lates / 10 s, the no-bump rules 20.3 | About 17 late frames per client per such spike are saved by the bump. At the first late a burst and a long spike look the same; telling them apart takes ~0.25 s of echoes, as long as the 5 s p95 needs to move on its own (5 % of ~150 samples) |
+| A quantile alone is cheaper than a bump for the same lates | `owner`: p98 / 10 s with no bump: 17.6 net, 10.3 lates; today 16.9 net, 14.1 lates; p99 / 15 s: 19.9 net, 2.2 lates | A steady lead covers the bursts BEFORE they come; a bump covers them after |
+
+### The candidates
+
+| Rule | What it changes from today |
+|---|---|
+| `today` | `LeadController` with `LEAD` (Revision 2) |
+| `k2` | A late bumps (to its trip) only on the 2nd late echo within 3 s |
+| `plus1` | A late bumps one tick over the lead it was sent with, not to its trip |
+| `nobump` | Lates never bump (the miss budget: only the p95 / 5 s target) |
+| `p99w15` | No bump; the target from p99 / 15 s; falls after 0.5 s, 0.1 s a tick |
+| `p98w10` | No bump; the target from p98 / 10 s |
+| `cap20` | Today's bump, never past effective lead 20 |
+| **`cov20`** | **The capped cover (proposed):** no bump; `max(p95 / 5 s, min(p99 / 15 s, 20 - depth))` + margin |
+| `cov20m` | `cov20` with the cover from the window's max over 10 s |
+| `cov20f` | `cov20`, falls after 0.5 s at 0.1 s a tick |
+| `fast` | Today's bump, falls after 0.3 s at 0.05 s a tick |
+| `cov20bf` | `cov20` plus today's bump (uncapped), falls after 0.3 s at 0.05 s a tick |
+
+`cov10` (the cover capped at 10) equals `nobump` on every network here (10 - depth is below the base); `cov` (uncapped)
+equals `p99w15` within 0.4 t; a cover with today's bump capped at 20 equals `cov20` within 0.2 lates / 10 s. They are left out.
+
+**The owner-like link** (`owner`; `owner2` and `ownerS` in the appendix rank the same):
+
+| Rule | Effective lead mean / p95 (t) | Net lead mean / p95 (t) | Lates / 10 s | Dropped changed / 10 s | Churn / 10 s | Felt @20 mean / p95 | Felt @10 mean / p95 |
+|---|---|---|---|---|---|---|---|
+| today | 20.8 / 27 | 16.9 / 22 | 14.1 | 8.2 | 36.3 | 2.10 / 7 | 10.79 / 17 |
+| k2 | 19.8 / 26 | 15.9 / 22 | 16.2 | 9.5 | 25.7 | 1.66 / 6 | 9.81 / 16 |
+| plus1 | 18.1 / 23 | 14.2 / 19 | 22.8 | 13.0 | 12.1 | 0.56 / 3 | 8.10 / 13 |
+| nobump | 17.2 / 23 | 13.2 / 19 | 28.8 | 17.6 | 4.3 | 0.39 / 3 | 7.15 / 13 |
+| p99w15 | 23.8 / 28 | 19.9 / 21 | 2.2 | 0.9 | 5.2 | 4.03 / 8 | 13.80 / 18 |
+| p98w10 | 21.5 / 27 | 17.6 / 21 | 10.3 | 6.5 | 5.5 | 2.67 / 7 | 11.50 / 17 |
+| cap20 | 18.9 / 23 | 15.0 / 19 | 19.6 | 10.8 | 20.7 | 0.57 / 3 | 8.90 / 13 |
+| **cov20** | **20.4 / 24** | **16.5 / 19** | **11.3** | **4.4** | **6.2** | **0.61 / 4** | **10.40 / 14** |
+| cov20m | 20.6 / 24 | 16.6 / 19 | 10.3 | 4.3 | 5.2 | 0.65 / 4 | 10.58 / 14 |
+| cov20f | 20.2 / 23 | 16.2 / 19 | 12.8 | 5.4 | 8.5 | 0.44 / 3 | 10.15 / 13 |
+| fast | 18.6 / 25 | 14.6 / 21 | 22.2 | 12.6 | 58.0 | 1.03 / 5 | 8.58 / 15 |
+| cov20bf | 20.8 / 25 | 16.8 / 21 | 11.3 | 4.7 | 38.7 | 1.06 / 5 | 10.76 / 15 |
+
+**Across the networks and the gates** (lates / dropped changed per 10 s / felt @20 mean; FP11 = no late after the
+warm-up and relay missed under 0.5 % on `spec` and `spec200`; FP12 = peak at most `ceil(trip + 1.5) + 1` and back
+within one tick within today's fall bound on `fp12` and `longhold`):
+
+| Rule | owner2 | ownerS | jitter | fp12 | FP11 | FP12 (fp12, longhold) |
+|---|---|---|---|---|---|---|
+| today | 12.1 / 6.8 / 3.13 | 11.2 / 6.8 / 2.26 | 5.8 / 2.7 / 2.46 | 11.3 / 6.8 / 3.94 | pass | pass, pass |
+| k2 | 15.5 / 7.5 / 2.61 | 14.8 / 8.5 / 1.90 | 7.2 / 3.4 / 1.75 | 11.8 / 7.6 / 3.93 | pass | pass, pass |
+| plus1 | 22.2 / 11.2 / 1.63 | 22.2 / 12.2 / 0.73 | 6.8 / 2.8 / 1.29 | 20.3 / 13.9 / 3.58 | pass | pass, pass |
+| nobump | 32.1 / 17.2 / 1.45 | 29.1 / 17.5 / 0.59 | 7.9 / 3.7 / 0.99 | 20.3 / 13.9 / 3.58 | pass | pass, pass |
+| p99w15 | 2.0 / 1.2 / 5.83 | 0.9 / 0.3 / 4.38 | 3.4 / 1.2 / 3.55 | 13.7 / 8.7 / 7.09 | pass | **fail** (never back), pass |
+| p98w10 | 5.2 / 3.0 / 4.27 | 8.8 / 4.5 / 3.08 | 5.8 / 2.3 / 1.83 | 16.6 / 10.5 / 5.94 | pass | **fail** (never back), pass |
+| cap20 | 20.8 / 11.2 / 1.41 | 16.8 / 8.9 / 0.80 | 7.8 / 3.5 / 1.01 | 20.3 / 13.9 / 3.58 | pass | pass, pass |
+| **cov20** | **14.2 / 6.8 / 1.55** | **9.8 / 3.6 / 0.86** | **7.6 / 3.5 / 1.01** | **20.3 / 13.9 / 3.58** | **pass** | **pass, pass** |
+| cov20m | 14.2 / 6.8 / 1.55 | 9.2 / 3.5 / 0.86 | 7.6 / 3.5 / 1.02 | 20.3 / 13.9 / 3.58 | pass | pass, **fail** (the hold kept 10 s) |
+| cov20f | 16.7 / 8.0 / 1.28 | 10.7 / 4.2 / 0.54 | 7.6 / 3.5 / 0.99 | 20.3 / 13.9 / 3.05 | pass | pass, pass |
+| fast | 25.9 / 13.9 / 1.89 | 21.2 / 12.4 / 0.96 | 6.8 / 2.8 / 1.50 | 11.3 / 6.8 / 3.03 | pass | pass, pass |
+| cov20bf | 13.6 / 6.6 / 1.93 | 8.3 / 3.6 / 0.97 | 6.8 / 2.8 / 1.50 | 11.3 / 6.8 / 3.03 | pass | pass, pass |
+
+On `clean` no rule has a late; the cover rules sit at 7 t net instead of 6.2 (felt 0 at cap 20, 1 t at cap 10). On
+`spec200` the buffer (11.9 t) alone puts every rule's effective lead at ~28 t (felt @20 ~7.8 t): the depth, not the
+lead, is that network's cost. FP11 passes for every rule (0 lates, relay missed 0.17 % / 0.11 %, as today).
+
+**Reading it.** `cov20` keeps today's lead on the owner-like links (effective 20.4 / 21.5 / 20.8 t against 20.8 / 22.4
+/ 21.3), with 46 % / 0 % / 47 % fewer dropped changed inputs, a sixth to a quarter of the churn and 29-50 % of the felt delay
+at cap 20. It pays where the bump helps: on `jitter` (+1.8 lates, +0.8 dropped per 10 s, felt halved) and in FP12's 1 s spike
+(20.3 against 11.3 lates per 10 s, about 17 more late frames per client for the spike). `cov20bf` takes the bump back
+for long spikes (FP12 at today's lates, faster back) but brings today's churn back on the bursts (38.7 / 10 s).
+`p99w15` has the fewest lates on the burst links but about twice today's felt delay and never comes back after FP12's
+spike; `nobump` and `plus1` have the least felt delay but 1.6-2.6x today's dropped inputs. At cap 10 the cover vanishes on these links
+(10 - 4 is below the base): `cov20` becomes `nobump` (felt @10 7.15 against 10.79, lates 28.8 against 14.1).
+
+### Design 13. The capped cover (pure, `shared/lockstep/lead.ts`)
+
+- **Base** (today's target): `Lb = ceil(p95(trips of the last windowSec 5 s) + marginTicks 1.5)`, the warm-up's max
+  rule unchanged.
+- **Cover:** `Lc = ceil(p99(trips of the last coverWindowSec 15 s) + marginTicks)`.
+- **Ceiling:** `C = PREDICTION.maxTicks - depthTicks()` (the prediction cap minus the buffer the lead adds, at the
+  newest send), so `net + depth` never goes past the cap for the cover's sake. Without prediction
+  (`LockstepTunables.prediction` undefined, `KV_PredictOff`) there is no cover.
+- **Target** `L* = clamp(max(Lb, min(Lc, C)), minLead, maxLead)`; the **fall target** is the same with
+  `fallSlackTicks` added to both quantiles. Up at once, down after `fallHoldSec` 1 s at a tick per `fallStepSec`
+  0.25 s, exactly as today.
+- **A late never bumps** while echoing (`LEAD.lateBump` false). Its trip enters both windows like any other, so a late
+  that moves the p95 or the p99 raises the lead the same frame; a late is counted (`lates`, the debug line) and that is
+  all. Excused lates (Revision 2's rules) are counted as before. The legacy rule without echoes is unchanged.
+- **Stats:** `LeadStats` gains `coverP99`, `coverTarget` (Lc), `ceiling` (C); `bumps` stays (0 unless `lateBump`).
+
+The cover is what turns a miss into a budget: above the prediction cap only the slowest 5 % of the last 5 s raise the
+lead, so the rare bursts are let through as lates (each one a frame the relay repeats, a small correction of the drawn
+knight); below it the slowest 1 % of the last 15 s are covered, for free as far as your own movement goes.
+
+### Tunables (`LEAD`, additions)
+
+| Name | Value | Why |
+|---|---|---|
+| `lateBump` | false | FPD15: a late no longer bumps; true restores Revision 2's bump (A/B, `KV_LeadBump`) |
+| `coverWindowSec` | 15 | Long enough that the bursts of the last seconds are still in it (a 5 s window forgets them before the next) |
+| `coverPercentile` | 0.99 | Under the cap p99 and the max (`cov20m`) measure the same on the owner-like links; the max also keeps a one-off hold's trip for the whole window (`longhold` fails) |
+| ceiling | `PREDICTION.maxTicks` | Read from `LockstepTunables.prediction` by LockstepClient, passed to the controller (FPD16) |
+
+`windowSec`, `percentile`, `marginTicks`, `fallSlackTicks`, `fallHoldSec`, `fallStepSec`, `minSamples`,
+`echoTimeoutSec` and `recordTicks` are unchanged.
+
+### Decisions (FPD15-FPD19 proposed, for the owner)
+
+- **FPD15 (proposed). A late never bumps; the lead follows the trip quantiles only.** The bump arrives a round trip
+  after the late input left, after the burst; on the owner-like links it costs churn and felt delay for about the same
+  lates. Considered: today's bump (`today`), after 2 lates (`k2`), +1 a late (`plus1`), today's bump with a fast fall
+  (`fast`, `cov20bf`: the only way to keep FP12's long-spike lates, at today's churn). If the owner values long spikes
+  over bursts, `cov20bf` is the alternative (FPD15b).
+- **FPD16 (proposed). The cover: p99 over 15 s, never past the prediction cap minus the buffer.** Lead under the cap
+  is free for your own knight but not for what is not predicted: hits landing, enemies reacting to you, a teammate
+  seeing you. `cov20` spends 2-3 t more than `nobump` on the owner-like links for 56-66 % fewer lates. Considered: no cover
+  (`nobump`), an uncapped p99 (`p99w15`: fewest lates, about twice the felt delay, fails FP12's back-within bound), the
+  window's max (`cov20m`: keeps a one-off hold's trip for the whole window).
+- **FPD17 (proposed). The cover follows `PREDICTION.maxTicks`.** At cap 20 (now) it buys ~3 t; at cap 10 it vanishes on
+  a 4G-like link (the rule is `nobump` there: felt @10 7.15 against today's 10.79 t, lates 28.8 against 14.1 / 10 s).
+  The cap is LPD4's (docs/LOCAL_PREDICTION.md); this rule takes whatever it is.
+- **FPD18 (proposed). The gates.** FP11 and FP12 stay as they are (every proposed rule passes). New, on the census's
+  owner-like networks against today's rule: felt delay at cap 20 at most half, dropped changed inputs at most today's,
+  churn at most a third. Lates may rise where the bump did help (`jitter` +31 %, FP12's spike: printed, not gated).
+- **FPD19 (proposed). Without prediction there is no cover** (`KV_PredictOff`, a debug A/B): every tick of lead is felt
+  there, so only the base's p95 raises it.
+
+### Tasks
+
+- [x] **FP17. The census.** `src/shared/lockstep/lead.census.spec.ts` (opt-in `--census`; smoke: today against its copy,
+  12 s). -> Verify: the smoke passes in the default suite; the two census runs above print the appendix's tables (the
+  copy of today's rule matches `LeadController` on every frame).
+- [ ] **FP18. `LeadController`: the cover and no bump.** `lead.ts`: a second trip window (`coverWindowSec`,
+  `coverPercentile`), `ceiling` (constructor argument, undefined = no cover) less the newest send's `depthUsed`,
+  `L*` / `Lf` as Design 13, `lateBump` (false: lates counted only); `LeadStats` additions; `LEAD` additions in
+  config.ts. -> Verify: `lead.spec.ts`: Revision 2's cases with `lateBump: true` unchanged; with the defaults: a late
+  does not move the lead unless its trip moves the p95 / p99; one burst sample in 15 s does not move the p99 (1 % of
+  ~450); the cover rises to and stops at `ceiling - depthUsed`, and follows a depth change; no ceiling = the base only;
+  a step up of the trips still followed the same frame; the fall unchanged.
+- [ ] **FP19. LockstepClient wiring.** The client passes `tunables.prediction?.maxTicks` as the ceiling.
+  -> Verify: lockstep.spec FP11 networks (lates 0 after the warm-up, relay missed under 0.5 %), FP12 spike and hold
+  (peak and back-within bounds; FP12's dropped-inputs line printed beside today's); every other lockstep / predict
+  spec unchanged; the census gains a `rule3` row from the real controller that matches `cov20` frame for frame, and
+  meets FPD18's gates on `owner`, `owner2` and `ownerS`.
+- [ ] **FP20. Diagnostics.** The `[Pace]` line's lead part `lead {l}t target {L*}t (base {Lb}t cover {Lc}t cap {C}t)
+  fall {Lf}t · lates {n} bumps {n} falls {n}`; the debug line unchanged but `trip p95` -> `trip p95 / p99`; `KV_LeadBump`
+  (`RUN_ATTRIBUTES.leadBump`, read at each co-op start like `KV_LeadOff`) builds the client with `lateBump: true`.
+  -> Verify: `arrivalLog.spec` updated; `npm run verify`.
+- [ ] **FP21 [owner]. Studio 4G again.** The same session as the owner's first, once with Revision 3, once with
+  `KV_LeadBump`. -> Verify: docs/SPIKES.md "Frame pacing" gains the rows (trip p50 / p95 / max, lead, target, lates,
+  bumps, `pred`); felt delay (effective lead past `pred`) at most half of `KV_LeadBump`'s, `miss` at most its; `LEAD`
+  confirmed or edited.
+- [ ] **FP22. Docs.** CLAUDE.md's decision log entry (Revision 3), this section's status and as built, docs/FEEL.md J9
+  if the debug line changed.
+
+Order: FP17 -> owner decisions -> FP18 -> FP19 -> FP20 -> FP21 -> FP22.
+
+### Risks
+
+- **The census underestimates the owner's bursts** (about half the steady-state lates and bumps). With more bursts the
+  steady rules change little and the bump rules churn more, so the ranking should hold; FP21 is the check.
+- **The cover spends lead that is not free for everything.** Below the cap your knight is drawn ahead, but a sword hit
+  confirms, an enemy reacts and a teammate sees you one effective lead later. FPD16 is the owner's call; `coverPercentile`
+  0.98 or `coverWindowSec` 10 spend less (`p98w10` without the cap: 17.6 net on `owner`).
+- **Long spikes cost more lates** than today (FP12's spike: ~17 frames per client). If FP21 shows long latency shifts
+  more than bursts, FPD15b (`cov20bf`) keeps today's lates there.
+- **The ceiling moves with the buffer.** A deeper buffer lowers the cover's room tick for tick; on a very jittery down
+  link (`spec200`, depth 12) the cover is gone and only the base raises the lead, as today without bumps.
+
+### Appendix: the census tables (2026-11-10, `lead-spikes` @ the FP17 commit)
+
+Per 10 s rates are per client; relay missed is the worst client's share of ticks after the warm-up.
+
+**owner** (owner-like (Studio 4G): 78-84 ms one way, 1.2 % of up slots +120-175 ms (head-of-line), 0.2 % down)
+
+| Rule | Effective lead mean / p95 / max (t) | Net lead mean / p95 / max (t) | Lates / 10 s | Dropped changed / 10 s | Relay missed | Bumps / 10 s | Churn / 10 s | Felt @20 mean / p95 (t) | Felt @10 mean / p95 (t) | Gate |
+|---|---|---|---|---|---|---|---|---|---|---|
+| today | 20.8 / 27 / 32 | 16.9 / 22 / 23 | 14.1 | 8.2 | 6.39 % | 4.0 | 36.3 | 2.10 / 7 | 10.79 / 17 |  |
+| k2 | 19.8 / 26 / 32 | 15.9 / 22 / 23 | 16.2 | 9.5 | 5.97 % | 2.8 | 25.7 | 1.66 / 6 | 9.81 / 16 |  |
+| plus1 | 18.1 / 23 / 30 | 14.2 / 19 / 20 | 22.8 | 13.0 | 5.70 % | 6.3 | 12.1 | 0.56 / 3 | 8.10 / 13 |  |
+| nobump | 17.2 / 23 / 30 | 13.2 / 19 / 19 | 28.8 | 17.6 | 6.09 % | 0.0 | 4.3 | 0.39 / 3 | 7.15 / 13 |  |
+| p99w15 | 23.8 / 28 / 32 | 19.9 / 21 / 21 | 2.2 | 0.9 | 1.58 % | 0.0 | 5.2 | 4.03 / 8 | 13.80 / 18 |  |
+| p98w10 | 21.5 / 27 / 32 | 17.6 / 21 / 21 | 10.3 | 6.5 | 2.97 % | 0.0 | 5.5 | 2.67 / 7 | 11.50 / 17 |  |
+| cap20 | 18.9 / 23 / 30 | 15.0 / 19 / 19 | 19.6 | 10.8 | 6.00 % | 6.2 | 20.7 | 0.57 / 3 | 8.90 / 13 |  |
+| cov20 | 20.4 / 24 / 30 | 16.5 / 19 / 19 | 11.3 | 4.4 | 3.47 % | 0.0 | 6.2 | 0.61 / 4 | 10.40 / 14 |  |
+| cov20m | 20.6 / 24 / 30 | 16.6 / 19 / 19 | 10.3 | 4.3 | 3.25 % | 0.0 | 5.2 | 0.65 / 4 | 10.58 / 14 |  |
+| fast | 18.6 / 25 / 30 | 14.6 / 21 / 23 | 22.2 | 12.6 | 9.64 % | 5.5 | 58.0 | 1.03 / 5 | 8.58 / 15 |  |
+| cov20bf | 20.8 / 25 / 30 | 16.8 / 21 / 23 | 11.3 | 4.7 | 6.36 % | 5.4 | 38.7 | 1.06 / 5 | 10.76 / 15 |  |
+| cov20f | 20.2 / 23 / 27 | 16.2 / 19 / 19 | 12.8 | 5.4 | 3.89 % | 0.0 | 8.5 | 0.44 / 3 | 10.15 / 13 |  |
+
+**owner2** (owner-like, harsher: 78-84 ms one way, 2 % of up slots +100-200 ms (head-of-line), 0.2 % down)
+
+| Rule | Effective lead mean / p95 / max (t) | Net lead mean / p95 / max (t) | Lates / 10 s | Dropped changed / 10 s | Relay missed | Bumps / 10 s | Churn / 10 s | Felt @20 mean / p95 (t) | Felt @10 mean / p95 (t) | Gate |
+|---|---|---|---|---|---|---|---|---|---|---|
+| today | 22.4 / 27 / 34 | 18.5 / 23 / 24 | 12.1 | 6.8 | 6.09 % | 4.3 | 34.7 | 3.13 / 7 | 12.38 / 17 |  |
+| k2 | 21.6 / 27 / 34 | 17.7 / 22 / 24 | 15.5 | 7.5 | 6.22 % | 3.5 | 29.0 | 2.61 / 7 | 11.57 / 17 |  |
+| plus1 | 20.3 / 25 / 29 | 16.4 / 21 / 21 | 22.2 | 11.2 | 6.34 % | 7.2 | 16.4 | 1.63 / 5 | 10.30 / 15 |  |
+| nobump | 19.4 / 25 / 29 | 15.5 / 21 / 21 | 32.1 | 17.2 | 7.95 % | 0.0 | 11.2 | 1.45 / 5 | 9.43 / 15 |  |
+| p99w15 | 25.8 / 29 / 34 | 21.9 / 23 / 23 | 2.0 | 1.2 | 1.39 % | 0.0 | 2.8 | 5.83 / 9 | 15.76 / 19 |  |
+| p98w10 | 24.1 / 27 / 33 | 20.2 / 22 / 22 | 5.2 | 3.0 | 2.20 % | 0.0 | 4.6 | 4.27 / 7 | 14.09 / 17 |  |
+| cap20 | 20.4 / 25 / 29 | 16.6 / 20 / 21 | 20.8 | 11.2 | 6.95 % | 7.2 | 19.7 | 1.41 / 5 | 10.45 / 15 |  |
+| cov20 | 21.5 / 25 / 29 | 17.6 / 21 / 21 | 14.2 | 6.8 | 4.20 % | 0.0 | 8.5 | 1.55 / 5 | 11.48 / 15 |  |
+| cov20m | 21.5 / 25 / 29 | 17.6 / 21 / 21 | 14.2 | 6.8 | 4.20 % | 0.0 | 8.5 | 1.55 / 5 | 11.48 / 15 |  |
+| fast | 20.2 / 26 / 32 | 16.4 / 22 / 24 | 25.9 | 13.9 | 10.67 % | 7.1 | 68.7 | 1.89 / 6 | 10.24 / 16 |  |
+| cov20bf | 21.9 / 26 / 32 | 18.0 / 22 / 24 | 13.6 | 6.6 | 6.45 % | 5.9 | 43.3 | 1.93 / 6 | 11.86 / 16 |  |
+| cov20f | 21.2 / 25 / 29 | 17.3 / 21 / 21 | 16.7 | 8.0 | 4.67 % | 0.0 | 11.3 | 1.28 / 5 | 11.20 / 15 |  |
+
+**ownerS** (owner-like, other channel seeds: 78-84 ms one way, 1.2 % of up slots +120-175 ms, 0.2 % down)
+
+| Rule | Effective lead mean / p95 / max (t) | Net lead mean / p95 / max (t) | Lates / 10 s | Dropped changed / 10 s | Relay missed | Bumps / 10 s | Churn / 10 s | Felt @20 mean / p95 (t) | Felt @10 mean / p95 (t) | Gate |
+|---|---|---|---|---|---|---|---|---|---|---|
+| today | 21.3 / 27 / 31 | 17.2 / 21 / 22 | 11.2 | 6.8 | 5.78 % | 4.2 | 36.9 | 2.26 / 7 | 11.33 / 17 |  |
+| k2 | 20.5 / 27 / 32 | 16.4 / 21 / 22 | 14.8 | 8.5 | 5.81 % | 3.2 | 29.0 | 1.90 / 7 | 10.54 / 17 |  |
+| plus1 | 18.8 / 24 / 28 | 14.6 / 19 / 20 | 22.2 | 12.2 | 5.86 % | 6.9 | 13.3 | 0.73 / 4 | 8.76 / 14 |  |
+| nobump | 17.9 / 23 / 28 | 13.8 / 19 / 20 | 29.1 | 17.5 | 6.47 % | 0.0 | 6.4 | 0.59 / 3 | 7.90 / 13 |  |
+| p99w15 | 24.3 / 29 / 33 | 20.1 / 21 / 21 | 0.9 | 0.3 | 1.44 % | 0.0 | 3.6 | 4.38 / 9 | 14.26 / 19 |  |
+| p98w10 | 22.4 / 28 / 32 | 18.3 / 21 / 21 | 8.8 | 4.5 | 4.08 % | 0.0 | 6.7 | 3.08 / 8 | 12.44 / 18 |  |
+| cap20 | 19.5 / 24 / 28 | 15.4 / 19 / 20 | 16.8 | 8.9 | 5.50 % | 6.6 | 20.2 | 0.80 / 4 | 9.52 / 14 |  |
+| cov20 | 20.8 / 25 / 28 | 16.7 / 19 / 20 | 9.8 | 3.6 | 2.95 % | 0.0 | 6.5 | 0.86 / 5 | 10.78 / 15 |  |
+| cov20m | 20.9 / 25 / 28 | 16.7 / 19 / 20 | 9.2 | 3.5 | 2.92 % | 0.0 | 6.0 | 0.86 / 5 | 10.85 / 15 |  |
+| fast | 18.7 / 25 / 30 | 14.6 / 21 / 22 | 21.2 | 12.4 | 9.42 % | 5.6 | 54.6 | 0.96 / 5 | 8.69 / 15 |  |
+| cov20bf | 20.8 / 25 / 30 | 16.7 / 21 / 22 | 8.3 | 3.6 | 4.89 % | 4.8 | 31.6 | 0.97 / 5 | 10.84 / 15 |  |
+| cov20f | 20.4 / 23 / 28 | 16.3 / 19 / 19 | 10.7 | 4.2 | 3.33 % | 0.0 | 8.0 | 0.54 / 3 | 10.42 / 13 |  |
+
+**jitter** (4G jitter: 50-130 ms one way, 0.4 % of slots +80-200 ms both ways)
+
+| Rule | Effective lead mean / p95 / max (t) | Net lead mean / p95 / max (t) | Lates / 10 s | Dropped changed / 10 s | Relay missed | Bumps / 10 s | Churn / 10 s | Felt @20 mean / p95 (t) | Felt @10 mean / p95 (t) | Gate |
+|---|---|---|---|---|---|---|---|---|---|---|
+| today | 22.4 / 29 / 35 | 15.4 / 22 / 24 | 5.8 | 2.7 | 3.56 % | 2.4 | 16.1 | 2.46 / 9 | 12.44 / 19 |  |
+| k2 | 21.6 / 27 / 32 | 14.6 / 20 / 22 | 7.2 | 3.4 | 3.03 % | 1.5 | 9.6 | 1.75 / 7 | 11.59 / 17 |  |
+| plus1 | 21.3 / 25 / 28 | 14.3 / 16 / 17 | 6.8 | 2.8 | 2.61 % | 2.8 | 4.1 | 1.29 / 5 | 11.27 / 15 |  |
+| nobump | 20.8 / 25 / 27 | 13.8 / 15 / 16 | 7.9 | 3.7 | 2.50 % | 0.0 | 0.8 | 0.99 / 5 | 10.83 / 15 |  |
+| p99w15 | 23.5 / 29 / 34 | 16.5 / 21 / 22 | 3.4 | 1.2 | 2.31 % | 0.0 | 3.9 | 3.55 / 9 | 13.55 / 19 |  |
+| p98w10 | 21.8 / 26 / 29 | 14.8 / 18 / 19 | 5.8 | 2.3 | 2.36 % | 0.0 | 0.9 | 1.83 / 6 | 11.83 / 16 |  |
+| cap20 | 20.9 / 25 / 27 | 13.9 / 15 / 16 | 7.8 | 3.5 | 2.45 % | 3.0 | 0.8 | 1.01 / 5 | 10.95 / 15 |  |
+| cov20 | 21.0 / 25 / 27 | 14.0 / 15 / 16 | 7.6 | 3.5 | 2.42 % | 0.0 | 0.8 | 1.01 / 5 | 11.01 / 15 |  |
+| cov20m | 21.0 / 25 / 27 | 14.0 / 15 / 16 | 7.6 | 3.5 | 2.42 % | 0.0 | 0.9 | 1.02 / 5 | 11.02 / 15 |  |
+| fast | 21.5 / 26 / 33 | 14.5 / 18 / 24 | 6.8 | 2.8 | 4.03 % | 2.8 | 19.2 | 1.50 / 6 | 11.48 / 16 |  |
+| cov20bf | 21.5 / 26 / 33 | 14.5 / 18 / 24 | 6.8 | 2.8 | 4.03 % | 2.8 | 19.2 | 1.50 / 6 | 11.50 / 16 |  |
+| cov20f | 21.0 / 25 / 27 | 14.0 / 15 / 16 | 7.6 | 3.5 | 2.45 % | 0.0 | 0.8 | 0.99 / 5 | 10.98 / 15 |  |
+
+**clean** (clean: 30-40 ms one way)
+
+| Rule | Effective lead mean / p95 / max (t) | Net lead mean / p95 / max (t) | Lates / 10 s | Dropped changed / 10 s | Relay missed | Bumps / 10 s | Churn / 10 s | Felt @20 mean / p95 (t) | Felt @10 mean / p95 (t) | Gate |
+|---|---|---|---|---|---|---|---|---|---|---|
+| today | 10.2 / 11 / 11 | 6.2 / 7 / 7 | 0.0 | 0.0 | 0.00 % | 0.7 | 0.3 | 0.00 / 0 | 0.17 / 1 |  |
+| k2 | 10.2 / 11 / 11 | 6.2 / 7 / 7 | 0.0 | 0.0 | 0.00 % | 0.3 | 0.3 | 0.00 / 0 | 0.17 / 1 |  |
+| plus1 | 10.2 / 11 / 11 | 6.2 / 7 / 7 | 0.0 | 0.0 | 0.00 % | 0.7 | 0.3 | 0.00 / 0 | 0.17 / 1 |  |
+| nobump | 10.2 / 11 / 11 | 6.2 / 7 / 7 | 0.0 | 0.0 | 0.00 % | 0.0 | 0.3 | 0.00 / 0 | 0.17 / 1 |  |
+| p99w15 | 11.0 / 11 / 11 | 7.0 / 7 / 7 | 0.0 | 0.0 | 0.00 % | 0.0 | 0.0 | 0.00 / 0 | 1.00 / 1 |  |
+| p98w10 | 11.0 / 11 / 11 | 7.0 / 7 / 7 | 0.0 | 0.0 | 0.00 % | 0.0 | 0.0 | 0.00 / 0 | 1.00 / 1 |  |
+| cap20 | 10.2 / 11 / 11 | 6.2 / 7 / 7 | 0.0 | 0.0 | 0.00 % | 0.7 | 0.3 | 0.00 / 0 | 0.17 / 1 |  |
+| cov20 | 11.0 / 11 / 11 | 7.0 / 7 / 7 | 0.0 | 0.0 | 0.00 % | 0.0 | 0.0 | 0.00 / 0 | 1.00 / 1 |  |
+| cov20m | 11.0 / 11 / 11 | 7.0 / 7 / 7 | 0.0 | 0.0 | 0.00 % | 0.0 | 0.0 | 0.00 / 0 | 1.00 / 1 |  |
+| fast | 10.2 / 11 / 11 | 6.2 / 7 / 7 | 0.0 | 0.0 | 0.00 % | 0.7 | 0.3 | 0.00 / 0 | 0.15 / 1 |  |
+| cov20bf | 11.0 / 11 / 11 | 7.0 / 7 / 7 | 0.0 | 0.0 | 0.00 % | 0.7 | 0.0 | 0.00 / 0 | 1.00 / 1 |  |
+| cov20f | 11.0 / 11 / 11 | 7.0 / 7 / 7 | 0.0 | 0.0 | 0.00 % | 0.0 | 0.0 | 0.00 / 0 | 1.00 / 1 |  |
+
+**spec** (FP11 spec: 20-120 ms one way)
+
+| Rule | Effective lead mean / p95 / max (t) | Net lead mean / p95 / max (t) | Lates / 10 s | Dropped changed / 10 s | Relay missed | Bumps / 10 s | Churn / 10 s | Felt @20 mean / p95 (t) | Felt @10 mean / p95 (t) | Gate |
+|---|---|---|---|---|---|---|---|---|---|---|
+| today | 19.2 / 20 / 20 | 11.6 / 13 / 13 | 0.0 | 0.0 | 0.17 % | 1.5 | 0.5 | 0.00 / 0 | 9.18 / 10 | FP11 pass (lates 0, missed 0.17 %) |
+| k2 | 19.2 / 20 / 20 | 11.6 / 13 / 13 | 0.0 | 0.0 | 0.17 % | 1.2 | 0.5 | 0.00 / 0 | 9.18 / 10 | FP11 pass (lates 0, missed 0.17 %) |
+| plus1 | 19.2 / 20 / 20 | 11.6 / 13 / 13 | 0.0 | 0.0 | 0.17 % | 1.5 | 0.5 | 0.00 / 0 | 9.18 / 10 | FP11 pass (lates 0, missed 0.17 %) |
+| nobump | 19.2 / 20 / 20 | 11.6 / 13 / 13 | 0.0 | 0.0 | 0.17 % | 0.0 | 0.5 | 0.00 / 0 | 9.18 / 10 | FP11 pass (lates 0, missed 0.17 %) |
+| p99w15 | 19.8 / 21 / 21 | 12.2 / 13 / 13 | 0.0 | 0.0 | 0.17 % | 0.0 | 0.2 | 0.06 / 1 | 9.84 / 11 | FP11 pass (lates 0, missed 0.17 %) |
+| p98w10 | 19.8 / 21 / 21 | 12.2 / 13 / 13 | 0.0 | 0.0 | 0.17 % | 0.0 | 0.2 | 0.06 / 1 | 9.76 / 11 | FP11 pass (lates 0, missed 0.17 %) |
+| cap20 | 19.2 / 20 / 20 | 11.6 / 13 / 13 | 0.0 | 0.0 | 0.17 % | 1.5 | 0.5 | 0.00 / 0 | 9.18 / 10 | FP11 pass (lates 0, missed 0.17 %) |
+| cov20 | 19.7 / 20 / 21 | 12.1 / 13 / 13 | 0.0 | 0.0 | 0.17 % | 0.0 | 0.2 | 0.03 / 0 | 9.74 / 10 | FP11 pass (lates 0, missed 0.17 %) |
+| cov20m | 19.7 / 20 / 21 | 12.1 / 13 / 13 | 0.0 | 0.0 | 0.17 % | 0.0 | 0.2 | 0.03 / 0 | 9.74 / 10 | FP11 pass (lates 0, missed 0.17 %) |
+| fast | 19.1 / 20 / 20 | 11.5 / 13 / 13 | 0.0 | 0.0 | 0.17 % | 1.5 | 0.5 | 0.00 / 0 | 9.15 / 10 | FP11 pass (lates 0, missed 0.17 %) |
+| cov20bf | 19.7 / 20 / 21 | 12.1 / 13 / 13 | 0.0 | 0.0 | 0.17 % | 1.5 | 0.3 | 0.01 / 0 | 9.68 / 10 | FP11 pass (lates 0, missed 0.17 %) |
+| cov20f | 19.7 / 20 / 21 | 12.1 / 13 / 13 | 0.0 | 0.0 | 0.17 % | 0.0 | 0.3 | 0.02 / 0 | 9.68 / 10 | FP11 pass (lates 0, missed 0.17 %) |
+
+**spec200** (FP11 spec: 0-200 ms one way)
+
+| Rule | Effective lead mean / p95 / max (t) | Net lead mean / p95 / max (t) | Lates / 10 s | Dropped changed / 10 s | Relay missed | Bumps / 10 s | Churn / 10 s | Felt @20 mean / p95 (t) | Felt @10 mean / p95 (t) | Gate |
+|---|---|---|---|---|---|---|---|---|---|---|
+| today | 27.8 / 31 / 32 | 15.9 / 19 / 20 | 0.0 | 0.0 | 0.11 % | 2.5 | 1.2 | 7.79 / 11 | 17.79 / 21 | FP11 pass (lates 0, missed 0.11 %) |
+| k2 | 27.8 / 31 / 32 | 15.9 / 19 / 20 | 0.0 | 0.0 | 0.11 % | 2.2 | 1.2 | 7.79 / 11 | 17.79 / 21 | FP11 pass (lates 0, missed 0.11 %) |
+| plus1 | 27.8 / 31 / 32 | 15.9 / 19 / 20 | 0.0 | 0.0 | 0.11 % | 2.5 | 1.2 | 7.79 / 11 | 17.79 / 21 | FP11 pass (lates 0, missed 0.11 %) |
+| nobump | 27.8 / 31 / 32 | 15.9 / 19 / 20 | 0.0 | 0.0 | 0.11 % | 0.0 | 1.2 | 7.79 / 11 | 17.79 / 21 | FP11 pass (lates 0, missed 0.11 %) |
+| p99w15 | 29.3 / 32 / 32 | 17.4 / 20 / 20 | 0.0 | 0.0 | 0.11 % | 0.0 | 0.8 | 9.31 / 12 | 19.31 / 22 | FP11 pass (lates 0, missed 0.11 %) |
+| p98w10 | 28.9 / 32 / 32 | 17.0 / 20 / 20 | 0.0 | 0.0 | 0.11 % | 0.0 | 0.8 | 8.89 / 12 | 18.89 / 22 | FP11 pass (lates 0, missed 0.11 %) |
+| cap20 | 27.8 / 31 / 32 | 15.9 / 19 / 20 | 0.0 | 0.0 | 0.11 % | 2.5 | 1.2 | 7.79 / 11 | 17.79 / 21 | FP11 pass (lates 0, missed 0.11 %) |
+| cov20 | 27.8 / 31 / 32 | 15.9 / 19 / 20 | 0.0 | 0.0 | 0.11 % | 0.0 | 1.2 | 7.79 / 11 | 17.79 / 21 | FP11 pass (lates 0, missed 0.11 %) |
+| cov20m | 27.8 / 31 / 32 | 15.9 / 19 / 20 | 0.0 | 0.0 | 0.11 % | 0.0 | 1.2 | 7.79 / 11 | 17.79 / 21 | FP11 pass (lates 0, missed 0.11 %) |
+| fast | 27.7 / 31 / 32 | 15.8 / 19 / 20 | 0.0 | 0.0 | 0.11 % | 2.5 | 1.2 | 7.72 / 11 | 17.72 / 21 | FP11 pass (lates 0, missed 0.11 %) |
+| cov20bf | 27.7 / 31 / 32 | 15.8 / 19 / 20 | 0.0 | 0.0 | 0.11 % | 2.5 | 1.2 | 7.72 / 11 | 17.72 / 21 | FP11 pass (lates 0, missed 0.11 %) |
+| cov20f | 27.7 / 31 / 32 | 15.8 / 19 / 20 | 0.0 | 0.0 | 0.11 % | 0.0 | 1.2 | 7.74 / 11 | 17.74 / 21 | FP11 pass (lates 0, missed 0.11 %) |
+
+**fp12** (FP12: 20-120 ms one way, +200 ms up for 1 s at 7 s)
+
+| Rule | Effective lead mean / p95 / max (t) | Net lead mean / p95 / max (t) | Lates / 10 s | Dropped changed / 10 s | Relay missed | Bumps / 10 s | Churn / 10 s | Felt @20 mean / p95 (t) | Felt @10 mean / p95 (t) | Gate |
+|---|---|---|---|---|---|---|---|---|---|---|
+| today | 23.6 / 31 / 31 | 16.2 / 23 / 23 | 11.3 | 6.8 | 2.98 % | 7.1 | 11.6 | 3.94 / 11 | 13.65 / 21 | FP12 pass (12->23 (<= 24) back 8.18 s (<= 9.25 s); 11->21 (<= 23) back 8.20 s (<= 9.00 s)) |
+| k2 | 23.6 / 31 / 31 | 16.2 / 23 / 23 | 11.8 | 7.6 | 3.07 % | 6.1 | 11.6 | 3.93 / 11 | 13.64 / 21 | FP12 pass (12->23 (<= 24) back 8.18 s (<= 9.25 s); 11->21 (<= 23) back 8.20 s (<= 9.00 s)) |
+| plus1 | 23.3 / 30 / 30 | 15.8 / 22 / 22 | 20.3 | 13.9 | 4.56 % | 10.0 | 11.1 | 3.58 / 10 | 13.28 / 20 | FP12 pass (12->22 (<= 24) back 7.98 s (<= 9.00 s); 11->21 (<= 23) back 8.20 s (<= 9.00 s)) |
+| nobump | 23.3 / 30 / 30 | 15.8 / 22 / 22 | 20.3 | 13.9 | 4.56 % | 0.0 | 11.1 | 3.58 / 10 | 13.27 / 20 | FP12 pass (12->22 (<= 24) back 7.98 s (<= 9.00 s); 11->21 (<= 23) back 8.20 s (<= 9.00 s)) |
+| p99w15 | 27.1 / 31 / 31 | 19.6 / 23 / 23 | 13.7 | 8.7 | 3.42 % | 0.0 | 5.3 | 7.09 / 11 | 17.08 / 21 | FP12 FAIL (13->23 (<= 24) back never (<= 9.00 s); 12->22 (<= 23) back never (<= 9.00 s)) |
+| p98w10 | 25.9 / 30 / 30 | 18.5 / 22 / 22 | 16.6 | 10.5 | 3.86 % | 0.0 | 8.9 | 5.94 / 10 | 15.93 / 20 | FP12 FAIL (13->22 (<= 24) back never (<= 8.75 s); 12->21 (<= 23) back never (<= 8.75 s)) |
+| cap20 | 23.3 / 30 / 30 | 15.8 / 22 / 22 | 20.3 | 13.9 | 4.56 % | 10.0 | 11.1 | 3.58 / 10 | 13.28 / 20 | FP12 pass (12->22 (<= 24) back 7.98 s (<= 9.00 s); 11->21 (<= 23) back 8.20 s (<= 9.00 s)) |
+| cov20 | 23.6 / 30 / 30 | 16.1 / 22 / 22 | 20.3 | 13.9 | 4.47 % | 0.0 | 9.7 | 3.58 / 10 | 13.56 / 20 | FP12 pass (13->22 (<= 24) back 7.73 s (<= 8.75 s); 12->21 (<= 23) back 7.95 s (<= 8.75 s)) |
+| cov20m | 23.5 / 30 / 30 | 16.0 / 22 / 22 | 20.3 | 13.9 | 4.47 % | 0.0 | 10.3 | 3.58 / 10 | 13.48 / 20 | FP12 pass (13->22 (<= 24) back 7.73 s (<= 8.75 s); 12->21 (<= 23) back 7.95 s (<= 8.75 s)) |
+| fast | 22.6 / 30 / 30 | 15.1 / 22 / 23 | 11.3 | 6.8 | 2.98 % | 7.1 | 11.6 | 3.03 / 10 | 12.61 / 20 | FP12 pass (12->23 (<= 24) back 5.68 s (<= 9.25 s); 11->21 (<= 23) back 5.90 s (<= 9.00 s)) |
+| cov20bf | 23.0 / 30 / 30 | 15.5 / 22 / 23 | 11.3 | 6.8 | 2.89 % | 7.1 | 10.3 | 3.03 / 10 | 13.01 / 20 | FP12 pass (13->23 (<= 24) back 5.63 s (<= 9.00 s); 12->21 (<= 23) back 5.85 s (<= 8.75 s)) |
+| cov20f | 23.0 / 30 / 30 | 15.6 / 22 / 22 | 20.3 | 13.9 | 4.47 % | 0.0 | 9.7 | 3.05 / 10 | 13.04 / 20 | FP12 pass (13->22 (<= 24) back 6.18 s (<= 8.75 s); 12->21 (<= 23) back 6.40 s (<= 8.75 s)) |
+
+**longhold** (one-off: 70-82 ms one way, a 600 ms up hold at 15 s)
+
+| Rule | Effective lead mean / p95 / max (t) | Net lead mean / p95 / max (t) | Lates / 10 s | Dropped changed / 10 s | Relay missed | Bumps / 10 s | Churn / 10 s | Felt @20 mean / p95 (t) | Felt @10 mean / p95 (t) | Gate |
+|---|---|---|---|---|---|---|---|---|---|---|
+| today | 16.6 / 31 / 33 | 13.6 / 28 / 30 | 12.8 | 10.2 | 3.32 % | 2.6 | 14.3 | 1.22 / 11 | 6.60 / 21 | FP12 pass (11->30 (<= 48) back 5.32 s (<= 11.25 s); 11->30 (<= 48) back 5.32 s (<= 11.25 s)) |
+| k2 | 14.0 / 14 / 14 | 11.0 / 11 / 11 | 12.8 | 10.2 | 2.13 % | 1.9 | 0.0 | 0.00 / 0 | 4.00 / 4 | FP12 pass (11->11 (<= 48) back 0.00 s (<= 6.50 s); 11->11 (<= 48) back 0.00 s (<= 6.50 s)) |
+| plus1 | 14.5 / 15 / 15 | 11.5 / 12 / 12 | 12.8 | 10.2 | 2.19 % | 2.6 | 0.8 | 0.00 / 0 | 4.48 / 5 | FP12 pass (11->12 (<= 48) back 0.00 s (<= 6.75 s); 11->12 (<= 48) back 0.00 s (<= 6.75 s)) |
+| nobump | 14.0 / 14 / 14 | 11.0 / 11 / 11 | 12.8 | 10.2 | 2.13 % | 0.0 | 0.0 | 0.00 / 0 | 4.00 / 4 | FP12 pass (11->11 (<= 48) back 0.00 s (<= 6.50 s); 11->11 (<= 48) back 0.00 s (<= 6.50 s)) |
+| p99w15 | 14.0 / 14 / 14 | 11.0 / 11 / 11 | 12.8 | 10.2 | 2.13 % | 0.0 | 0.0 | 0.00 / 0 | 4.00 / 4 | FP12 pass (11->11 (<= 48) back 0.00 s (<= 6.50 s); 11->11 (<= 48) back 0.00 s (<= 6.50 s)) |
+| p98w10 | 14.0 / 14 / 14 | 11.0 / 11 / 11 | 12.8 | 10.2 | 2.13 % | 0.0 | 0.0 | 0.00 / 0 | 4.00 / 4 | FP12 pass (11->11 (<= 48) back 0.00 s (<= 6.50 s); 11->11 (<= 48) back 0.00 s (<= 6.50 s)) |
+| cap20 | 14.8 / 18 / 20 | 11.8 / 15 / 17 | 12.8 | 10.2 | 2.51 % | 2.6 | 4.5 | 0.00 / 0 | 4.76 / 8 | FP12 pass (11->17 (<= 48) back 2.07 s (<= 8.00 s); 11->17 (<= 48) back 2.07 s (<= 8.00 s)) |
+| cov20 | 14.0 / 14 / 14 | 11.0 / 11 / 11 | 12.8 | 10.2 | 2.13 % | 0.0 | 0.0 | 0.00 / 0 | 4.00 / 4 | FP12 pass (11->11 (<= 48) back 0.00 s (<= 6.50 s); 11->11 (<= 48) back 0.00 s (<= 6.50 s)) |
+| cov20m | 16.7 / 20 / 20 | 13.7 / 17 / 17 | 12.8 | 10.2 | 2.51 % | 0.0 | 4.1 | 0.00 / 0 | 6.65 / 10 | FP12 FAIL (11->17 (<= 48) back never (<= 8.00 s); 11->17 (<= 48) back never (<= 8.00 s)) |
+| fast | 14.9 / 15 / 33 | 11.9 / 12 / 30 | 12.8 | 10.2 | 3.32 % | 2.6 | 14.3 | 0.29 / 0 | 4.94 / 5 | FP12 pass (11->30 (<= 48) back 1.22 s (<= 11.25 s); 11->30 (<= 48) back 1.22 s (<= 11.25 s)) |
+| cov20bf | 15.0 / 15 / 33 | 12.0 / 12 / 30 | 12.8 | 10.2 | 3.32 % | 2.6 | 13.9 | 0.29 / 0 | 4.98 / 5 | FP12 pass (11->30 (<= 48) back 1.22 s (<= 11.25 s); 11->30 (<= 48) back 1.22 s (<= 11.25 s)) |
+| cov20f | 14.0 / 14 / 14 | 11.0 / 11 / 11 | 12.8 | 10.2 | 2.13 % | 0.0 | 0.0 | 0.00 / 0 | 4.00 / 4 | FP12 pass (11->11 (<= 48) back 0.00 s (<= 6.50 s); 11->11 (<= 48) back 0.00 s (<= 6.50 s)) |
