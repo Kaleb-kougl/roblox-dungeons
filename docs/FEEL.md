@@ -161,7 +161,8 @@ Never enemy bullets (JD3). Risk: a `Ball` Part cannot be non-uniform, so the pla
 
 - **The sim.** No knockback (JD2): it would change every replay and fixture for a feel effect the view can fake.
 - Anticipation, audio and appeal: already strong; no work here.
-- Co-op prediction: the 50 ms+ input lead stays. J9 only measures it; prediction would be its own plan.
+- Co-op prediction: the 50 ms+ input lead stays in the sim. J9 only measures it; your own knight drawn ahead of it is
+  docs/LOCAL_PREDICTION.md (its own plan, built).
 - The HUD footprint (docs/HUD_LAYOUT.md): the hurt flash is an edge gradient under the HUD, not a panel, so it is
   outside `HUD_FOOTPRINT` and the occlusion fade.
 
@@ -230,7 +231,8 @@ As built (differences from the design above):
 - J9: KV_Debug, co-op only: a second debug line `co-op lead {lead}t {ms}ms · press->step {last}ms avg max n · late miss`
   (`LatencyProbe`, the window of 16 presses). `LockstepClient.nextInputTick()` is the send target's own expression,
   now shared by `pump` (behaviour unchanged). The headless floor is (lead + 1) ticks = 66.7 ms; Studio numbers pending.
-  Caveat: `startCoop` uses the KV_Debug value read at the last solo / tutorial start.
+  `startCoop` reads KV_Debug at every co-op start (until 2026-11-10 it kept the value read at the last solo / tutorial
+  start, so a co-op run from a lobby showed no line, probe or `[Pace]` log).
   Since co-op frame pacing (docs/FRAME_PACING.md FP5) the line reads `co-op lead {lead}t {leadMs}ms (net {net}t) ·
   {pace} · press->step ...`: `lead` is the EFFECTIVE lead (`inputLead()`: the net lead plus the pacing buffer's depth,
   what a press really waits), `net` the network part (`netLead()`). `{pace}` is `pace {depth}t {depthMs}ms · holds
@@ -242,7 +244,11 @@ As built (differences from the design above):
   `late` / `miss` are the client's echoed lates / `inputsEqual` mismatches (`leadDebugView` / `leadDebugKey` /
   `leadDebugVars`). The headless floor is now
   (net lead + depth + 1) ticks: 7 ticks = 117 ms at the minimum depth of 3. KV_Debug co-op also prints the `[Pace]`
-  arrival log every 10 s (docs/FRAME_PACING.md "As built").
+  arrival log every 10 s (docs/FRAME_PACING.md "As built"). Since local prediction (docs/LOCAL_PREDICTION.md LP6) the
+  line ends with `{pred}`: `pred {h}t · err {mean}/{max} · snaps {snaps} · press->drawn {drawn}ms avg {drawnMean}`
+  (`hud.debug.pred`: the horizon, the head error in tiles over the stats window, the smoother's snaps, press -> the
+  drawn knight answering), `pred waiting · ...` (`.predWait`) or `pred off (KV_PredictOff) · ...` (`.predOff`);
+  shared/view `predictionDebugView` / `predictionDebugKey` / `predictionDebugVars`.
 
 Critical path: J1 -> J2 -> J3 (the hurt package, the biggest gap; ship it first) -> J4 / J5 -> J6 / J7 -> J12. J8 can go
 with J3, J11 right after J2; J9 any time.

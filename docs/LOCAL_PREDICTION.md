@@ -13,11 +13,13 @@ every outcome (hits, kills, pickups, room clears) stay at the merged state.
 
 ## Status (2026-11-10)
 
-**LP0-LP6 and LP10's code built** (branch `local-prediction`; LP10 built on `lp-bullets`, rebased in): the census, the
+**Built, signed off and on main** (branch `local-prediction`; LP10 built on `lp-bullets`, rebased in): the census, the
 motion mirror, the LocalPredictor in LockstepClient, the smoother (LP0-LP4, "As built" below), the wiring and the
-diagnostics (LP5 / LP6, "As built: LP5 / LP6"), enemy bullets drawn ahead (LP10, "As built (LP10)"). Open: the
-Studio checks of LP5, LP6 and LP10 (owner), LP8 and LP9. The horizon cap is 20 ticks since 2026-11-10 (LPD4, owner,
-after a Studio test on a simulated 4G link: lead 17-23 ticks, `press->drawn` 253 ms against `press->step` 422 ms at 10).
+diagnostics (LP5 / LP6, "As built: LP5 / LP6"), enemy bullets drawn ahead (LP10, "As built (LP10)"), the docs (LP9).
+**LP8 signed off by the owner** in a Studio test on a simulated 4G link on 2026-11-10 ("a huge improvement"; "LP8
+sign-off" below). The horizon cap is 20 ticks since that test (LPD4, owner: lead 17-23 ticks, `press->drawn` 253 ms
+against `press->step` 422 ms at the cap of 10). Still listed, optional: the formal playtest with the group and a phone
+(LP8), and the Studio check items of LP5, LP6 and LP10 (owner).
 
 Drafted from an audit of branch `frame-pacing` @ `0a8e8ec4` (docs/FRAME_PACING.md: planned,
 nothing built). It builds on frame pacing (LPD2): FP1's lead fix and FP2-FP3's playout clock come first for the
@@ -256,7 +258,7 @@ drawn** (frames until the drawn knight first answers a press: 1 with prediction,
 | `statsWindowTicks` | 600 | 10 s, like the pacing windows |
 | `correctionTiles` | 0.01 | A stepped tick farther than this from its head counts as a correction (stats only) |
 
-All provisional until LP8.
+Set at LP8 (2026-11-10): `maxTicks` raised 10 -> 20 (LPD4), the rest kept.
 
 ## Decisions (LPD1-LPD3, LPD6 proposed; LPD4, LPD5, LPD7, LPD8 the owner's answers, 2026-11-07; LPD9 the owner's, 2026-11-09)
 
@@ -314,12 +316,15 @@ All provisional until LP8.
 - [x] **LP6. Diagnostics** (code done 2026-11-10; **the Studio check below is open, owner**; Design 7; `KV_CollisionDebug`'s merged ring). -> Verify: Studio, the debug line shows the
   horizon, error and press -> drawn of 1 frame with prediction (the lead without).
 - ~~**LP7. Hitbox pip.**~~ Dropped (LPD7, owner 2026-11-07).
-- [ ] **LP8 [owner]. Playtest** (with FP6: the same group, 60 Hz and 120 Hz+ screens, a phone). On vs `KV_PredictOff`.
+- [x] **LP8 [owner]. Playtest** (with FP6: the same group, 60 Hz and 120 Hz+ screens, a phone). On vs `KV_PredictOff`.
   -> Verify: the owner signs off LPD4, LPD5 and LPD8 in play (dodging with the 10-tick horizon, the merged roll tint,
   the camera); `maxTicks`, `halfLifeSec`, `snapTiles` set from LP6's numbers; corrections per minute recorded here.
-- [ ] **LP9. Docs.** docs/SERVER.md "Clients" (the "Not done" line becomes the prediction), docs/FRAME_PACING.md (FPD2's
-  pointer), docs/FEEL.md J9 and its non-goal line ("Co-op prediction ... its own plan"), CLAUDE.md's decision-log row,
-  this file's status.
+  - [x] Signed off by the owner, 2026-11-10, in a Studio test on a simulated 4G link ("a huge improvement"); `maxTicks`
+    raised to 20, `halfLifeSec` and `snapTiles` kept ("LP8 sign-off" below).
+  - [ ] Optional: the formal playtest with the group and a phone (60 Hz and 120 Hz+ screens).
+- [x] **LP9. Docs** (2026-11-10). docs/SERVER.md "Clients" (the "Not done" line becomes the prediction),
+  docs/FRAME_PACING.md (FPD2's pointer), docs/FEEL.md J9 and its non-goal line ("Co-op prediction ... its own plan"),
+  CLAUDE.md's decision-log row, this file's status.
 - [ ] **LP10. Bullets drawn ahead** (Design 5, LPD9; after LP5, before LP8). A pure `bulletAhead(sim, i, n, scale, blocked)` in
   shared/view/predict plus the renderers' `aheadTicks` argument from `getDrawnPlayer`'s offset. -> Verify: a spec over
   real floors: with no shot fired or removed in the window, every drawn enemy bullet equals the merged state's bullet
@@ -356,7 +361,9 @@ Order: LP0 -> LP1 -> LP2 -> LP3 -> LP4 (all pure, any time) -> FP1-FP3 land -> L
 - **predict.spec.ts**: a scripted server and an oracle (M1 without enemies, two walkers, bursts of 0-3 ticks, one step
   a pump): with no misses 1488 of 1488 judged heads exact (the first 12 ticks, never sent, not judged), a miss every 97
   ticks 1373 exact, 115 not (the misses), and every head whose inputs the server takes is exact; a twin client without
-  prediction sends, hashes and claims the same, both states hash the same every pump; dead / draft stops; the
+  prediction sends, hashes and claims the same, both states hash the same every pump (at the cap of 20, 2026-11-10:
+  the legacy lead is maxTicks + 2, 1478 of 1478 judged heads exact, the first 22 ticks not judged, and the stats
+  count corrections only after the warm-up's heads: 20 there, 0 after); dead / draft stops; the
   merged state's hash unchanged; bench **0.030 ms a rebuild at 10 ticks, 0.084 ms at 30** (headless, aarch64 VM).
 - **predict.net.spec.ts** (the shipped client: paced, measured lead): 3 players 20-120 ms and 2 players 0-200 ms, on
   endless and M1 without enemies: prediction on and off give the same log, final claims, client hashes and server
@@ -450,13 +457,29 @@ Order: LP0 -> LP1 -> LP2 -> LP3 -> LP4 (all pure, any time) -> FP1-FP3 land -> L
   under what reading today's pairs costs headless; the real number is the Studio MicroProfiler's
   (`BULLET_VIEW.profileLabel`).
 
+## LP8 sign-off (2026-11-10)
+
+The owner's Studio test on a simulated 4G link, the cap still at 10 ticks: "a huge improvement". Signed off; the cap
+went to 20 the same day (LPD4), since the lead sat at 17-23 ticks and a cap of 10 left 7-13 of them in the walk.
+
+- **The co-op debug line** (docs/FEEL.md J9) read: `lead 17t 283ms (net 13t, trip p95 159ms) · pace 4t 60ms · holds
+  16 · backlog 3 · press->step 700ms avg 422 max 700 n6 · late 374 miss 107 · pred 10t · err 0.00/0.00 · snaps 0 ·
+  press->drawn 532ms avg 253`: the horizon at its cap, no head error over the stats window and no snaps; a press drawn
+  in 253 ms on average against 422 ms stepped. The lead past the cap (`lead - maxTicks`, 7 ticks here) stayed in the
+  walk; the cap of 20 covers it.
+- **The `[Pace]` lines** (every 10 s): trip p50 about 155 ms, p95 about 160 ms, max 290-324 ms; net lead 17-19 ticks
+  against the lead controller's target of 11-12; 16-46 lates and 6-9 bumps a window. The lead above its target and
+  the lates are frame pacing's to answer (docs/FRAME_PACING.md); nothing here depends on them but the horizon.
+- **Corrections per minute** were not recorded apart from the line's window (`err 0.00/0.00`, `snaps 0`).
+- Not covered by this test: the group playtest and a phone (still optional, LP8).
+
 ## Testing
 
 - **Headless:** the mirrors against the real sim (LP1, LP2), the predictor inside the lockstep network harness (its
   `Channel` gives random latency with ordered delivery) with prediction on and off (LP3), the smoother (LP4).
 - **Studio:** Test > Clients and Servers with Incoming Replication Lag gives a fixed delay: enough to see the knight
   lead its merged position and to check corrections (a guard, a roll into a crate, a missed tick).
-- **Published place:** real jitter and missed deadlines (LP8, with FP0 / FP6).
+- **Published place:** real jitter and missed deadlines (LP8's optional group playtest, with FP0 / FP6).
 
 ## Risks
 

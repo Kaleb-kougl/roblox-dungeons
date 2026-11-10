@@ -161,7 +161,7 @@ All provisional until FP0 / FP6.
 - **FPD1. Client only.** The client still steps exactly the merged log; only the timing changes. No sim, wire or
   server change (FP7 is a tunable, and only if measured).
 - **FPD2. Smooth beats instant.** A buffer of 3-5 ticks (50-83 ms) is worth it: stutter is visible to everyone all the
-  time, the delay only in your own presses. Local prediction (separate plan) is the fix for the delay.
+  time, the delay only in your own presses. Local prediction (docs/LOCAL_PREDICTION.md, built) is the fix for the delay.
 - **FPD3. Hold, never extrapolate.** On an empty buffer the views freeze on the newest state; nothing is drawn that
   the sim has not stepped (no extrapolated enemies or bullets in a bullet hell).
 - **FPD4. The lead fix ships first and on its own (FP1).** It is a bug, it costs nothing, and it is part of the lag.

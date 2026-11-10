@@ -74,6 +74,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/WALL_SLIDE.md` | Wall slide (the player's body slides round corners instead of stopping: `slideCircle` collide and slide, a corner tie-break, a face assist within 0.35 tiles of a wall's end, a full pillar slip on isolated 1 x 1 blockers; every world, M1 included; snag census; gameplay): findings, plan, as built, tasks WS0-WS10, decisions WSD1-WSD7 |
 | `docs/FRAME_PACING.md` | Co-op frame pacing (a playout clock: received merged frames stepped at a steady 60 Hz from a small jitter buffer, holds on underflow, the input lead covers the buffer; the lead-never-decays fix; client timing only; revision 2: the net lead from measured input trips, a per-member input echo on `lockstepFrames`): findings, plan, tasks FP0-FP16, decisions FPD1-FPD14 |
 | `docs/ROLLBACK_SPIKE.md` | Rollback measurement spike, closed (the record: CPU of copying the state and stepping it H ticks a frame on a Mac and an iPhone, mispredictions in a bot sweep): census R0, design, as built, tasks R0-R7, results, decisions RBD1-RBD8 (RBD8: don't build rollback; the code removed in R7) |
+| `docs/LOCAL_PREDICTION.md` | Local prediction in co-op (your own knight's body drawn up to 20 ticks past the merged state from the inputs you sent, corrected by a smoother; enemy bullets drawn as far ahead; vitals, hits and everything else merged; presentation and client timing only): findings, census LP0, design, as built, LP8 sign-off, tasks LP0-LP10, decisions LPD1-LPD9 |
 | `docs/BUILDS_V2.md` | Builds v2, wave 1 (Riposte: a guard that erases bullets answers with a counter-wave, Counterstrike ring and returns; Ballista: the heavy arrow bursts into bolts, Siege Bolt pins and drags an enemy into a wall; Wrecker: rolls smash breakables, every piece you break fires splinters, Demolition chains them; duos Thunder Guard / Stillwater / Rebuke (Bastion + Riposte) / Dragon Bolt / Powder Keg / Full Heart / Happy Hour; the duo hint on New cards; overcap boss points `ScoreSource.OVERCAP`; gameplay, opt-in `SimConfig.builds`; wave 2 and the proposal in its appendix): plan, tasks BV0-BV13, decisions BVD1-BVD20 |
 | `docs/ARCHER.md` | The Archer (the bow split off the knight into its own character: Knight = sword, Archer = bow and a longer roll, one weapon set each; weapon-tagged boons / relics dealt only to the character who carries the weapon; a character screen every run; Knight-only tutorial without the bow room; shared boards with the character shown; SmallScaleInt Archer art): plan, tasks AR0-AR14, decisions ARD1-ARD17 |
 
@@ -1211,6 +1212,29 @@ Decision log (deviations from `PLAN.md`):
   receiver, the `LockstepClient` accessors, `recordNoisyPartyRun`); `shared/run/testing` `denseFight.ts` (the replay
   bench's setup) and the Lune runner's `--flag name` stay. The last commit with the code is `f6f6e6c`
   (`git show f6f6e6c:<path>`); the doc keeps the plan, as built and results as the record.
+- **Local prediction (docs/LOCAL_PREDICTION.md).** Presentation and client timing only (no sim, dungeon, hash, replay,
+  wire, fixture or score change; the sim still steps exactly the merged log, and nothing predicted reaches it, a hash, a
+  recording or a remote; solo runs are untouched). In co-op the local player's BODY is drawn ahead of the merged state
+  (LPD3): position, facing, the roll, the walk's speed, the flask / weapon slowdowns and the sword's lunge, replayed
+  from the inputs the client sent (the server's queued frames first, then `sent`, a tick never sent repeating the last).
+  shared/lockstep `predictMotion.ts` (`copyMotionBase` / `predictMotionTick`) is a MIRROR of `stepPlayer`'s motion and
+  `stepWeapons`' motion counters (guard, wind-up, lunge, bow charge, swaps, Quickstep / Frenzy timers), never a sim
+  refactor (LPD1): `predictMotion.spec.ts` pins it bit for bit to the real sim, so **any sim change to the player's
+  motion or a weapon's `moveMultiplier` must update the mirror and keep that parity spec passing**. `LocalPredictor`
+  (`predict.ts`) rebuilds the head after every pump that stepped, through `LockstepTunables.prediction`
+  (`DEFAULT_LOCKSTEP.prediction` = `PREDICTION`; undefined = off, as the exact-stepping network specs pass):
+  `predicted()` / `predictedPath()` / `predictionHorizonTicks()` / `predictionStats()`. The horizon is the effective
+  lead capped at `PREDICTION.maxTicks` 20 (333 ms; LPD4, owner, 10 until 2026-11-10). shared/view/predict:
+  `PredictionSmoother` (`PREDICTION_VIEW`: half-life 0.06 s, snaps over 1 tile and on run start, floor change, spectate
+  switch) and `writeDrawnPlayer`; SimController `getDrawnPlayer` (the local player as drawn while predicting, else
+  exactly `playerAt`) feeds the knight, camera (LPD8), weapon view, aura, minimap self marker, occlusion fade, cue
+  mapper and the aim origin; attacks, hits, hearts, the i-frame look (LPD5), pickups, teammates and enemies stay merged,
+  and no hitbox pip is drawn (LPD7). LP10: `BulletAhead` draws each enemy bullet `getPredictionAheadTicks()` ticks ahead
+  in closed form (the Hourglass per tick, life, walls and intact pieces; goo and strikes unchanged;
+  `BULLET_AHEAD.maxTicks` 30). Debug: `KV_PredictOff` (`RUN_ATTRIBUTES.predictOff`, read at each co-op start) builds the
+  client without prediction; the KV_Debug co-op line's `{pred}` part (`hud.debug.pred` / `.predWait` / `.predOff`, press
+  -> drawn) and `KV_CollisionDebug`'s merged ring. LP8 signed off by the owner in a Studio test on a simulated 4G link
+  (2026-11-10); the group / phone playtest stays optional.
 
 ## Commands
 

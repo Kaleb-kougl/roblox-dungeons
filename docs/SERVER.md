@@ -414,7 +414,9 @@ of ~11-12 ticks at 20-120 ms one way (old rule ~16), ~15-17 at 0-200 ms (old rul
 warm-up; after a spike back within seconds (old rule: 10 s a tick). The server logs `LOCKSTEP_INPUT` (per player: batches,
 lates, slack min / mean) once per run. No pause,
 no hitstop pacing (`simPacerFor`: hitstop is view-only in co-op; the playout clock is not hitstop), no restart until
-the party is down. Not done: visual prediction of the local character (it is drawn at the merged state).
+the party is down. **Local prediction** (docs/LOCAL_PREDICTION.md, client only): your own knight's body is drawn up to
+`PREDICTION.maxTicks` (20) ticks past the merged state from the inputs you sent, and enemy bullets as far ahead; the
+sim, the hashes, the wire and every outcome stay at the merged state.
 
 **Desync detection** (`ledger.ts`). Every client reports `hashState` after each tick that is a multiple of
 `HASH_REPORT_EVERY_TICKS` (60). Reports are reliable without trusting the transport: the client keeps every report
