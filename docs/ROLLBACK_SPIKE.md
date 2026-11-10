@@ -720,8 +720,22 @@ unknown refused, an Archer mirror equal to `buildWorldSetup`'s state, a dropped 
   slack on either side; in parallel it adds p95 / max jitter (21.9 / 29.3 ms) the main thread did not. So one worker
   only helps while its work fits the frame's slack; spreading a prediction over frames needs a wait for the next frame
   between slices (not `synchronize` / `desynchronize`, which may resume in the same frame), or the work split across
-  several Actors (cores). The other facts lines (worker ready, desynchronized sim hash, `SendMessage` table / buffer /
-  `SharedTable`, cross-Actor binding, MicroProfiler labels) are still to be pasted.
+  several Actors (cores).
+
+  **The other facts (same run):**
+  - Worker ready 0.13 s after the Actor was parented (modules required in the serial phase).
+  - The sim stepped desynchronized in the Actor: 600 ticks of a 4-player endless run in 14.5 ms (main thread 15.0 ms),
+    hash equal to the main thread's. That is about 0.024 ms a tick, 8-50x under Lune's headless 0.19-1.17 ms, but on a
+    light state (the run's start, few actors and bullets): step 3's dense floor-15 case is the real number.
+  - `SendMessage(table)`: arrives, nested tables and lists intact, COPIED (the worker's writes do not show), a table
+    referenced twice arrives as two tables, metatables stripped. The protocol's plain tables are fine.
+  - `SendMessage(buffer)`: arrives as a buffer, content intact, copied; a buffer back through the BindableEvent arrives
+    as a buffer. The digest path works as built: no `SharedTable` fallback needed.
+  - `SendMessage(SharedTable)`: shared (not copied: the worker's write shows on the main thread).
+  - The main thread cannot `BindToMessage` on another Actor ("only allowed in scripts that are a descendent of that
+    Actor"); the worker's `SendMessage` while desynchronized is fine. The worker -> main path must stay the
+    BindableEvent `KV_RollbackReply`, as built.
+  - MicroProfiler label `kv.rollback.facts` on a worker thread: not yet recorded.
 - [ ] **R3. CPU probe.** **Built; headless specs pass; Studio check pending** (checklist steps 3-5). Design 5, both
   modes, the mirror and its hash check, the digest send. -> Verify: `npm run verify`; Studio: at H 16 the probe shows
   its line in both modes, the mirror's hash matches for a 10-minute run, the main hash check passes, attribute off
