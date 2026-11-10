@@ -55,6 +55,10 @@ export interface RollbackProbeConfig {
 	readonly mirrorSliceTicks: number;
 	/** KV_Debug: the main thread checks its own state's hash is unchanged by the probe this often, seconds. */
 	readonly mainHashCheckSec: number;
+	/** The worker must say `ready` within this long of its Actor's creation, else the probe stops, seconds. */
+	readonly readyTimeoutSec: number;
+	/** A finished session's Actor is kept this long for its last posts (the end flush), then destroyed, seconds. */
+	readonly endGraceSec: number;
 	/** MicroProfiler labels (debug.profilebegin) of the probe's phases. */
 	readonly profileLabels: {
 		readonly copy: string;
@@ -215,6 +219,8 @@ export const ROLLBACK_SPIKE: RollbackSpikeConfig = {
 		maxTicksPerMessage: 512,
 		mirrorSliceTicks: 16,
 		mainHashCheckSec: 1,
+		readyTimeoutSec: 15,
+		endGraceSec: 3,
 		profileLabels: {
 			copy: "kv.rollback.copy",
 			step: "kv.rollback.step",

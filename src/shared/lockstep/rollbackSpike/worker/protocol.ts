@@ -20,6 +20,7 @@
  *   status      the overlay line's numbers (every probe.statusSec)
  *   digest      the per-prediction digest buffer (what a real rollback would send back; timed at both ends)
  *   error       the probe stopped: why
+ *   ready       the worker bound its topics (the main thread holds its messages until then)
  * An input frame packs as [moveX, moveZ, aimX, aimZ, buttons].
  */
 import { MAX_PARTY_SIZE, type InputFrame } from "shared/sim";
@@ -143,7 +144,8 @@ export type RollbackWorkerToMain =
 	| { readonly kind: "mirrorHash"; readonly tick: number; readonly hash: string }
 	| RollbackStatusMsg
 	| RollbackDigestMsg
-	| { readonly kind: "error"; readonly message: string };
+	| { readonly kind: "error"; readonly message: string }
+	| { readonly kind: "ready" };
 
 // ---------------------------------------------------------------------------------------------
 // Packing
@@ -353,6 +355,7 @@ export function readWorkerToMain(v: unknown): RollbackWorkerToMain | undefined {
 		if (sentAt === undefined || !typeIs(t.data, "buffer")) return undefined;
 		return { kind: "digest", sentAt, data: t.data };
 	}
+	if (t.kind === "ready") return { kind: "ready" };
 	if (t.kind === "error") {
 		const message = typeIs(t.message, "string") ? t.message.sub(1, MAX_ERROR_CHARS) : undefined;
 		return message !== undefined ? { kind: "error", message } : undefined;
