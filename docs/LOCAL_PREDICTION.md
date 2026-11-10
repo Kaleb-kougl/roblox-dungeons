@@ -13,9 +13,10 @@ every outcome (hits, kills, pickups, room clears) stay at the merged state.
 
 ## Status (2026-11-10)
 
-**LP0-LP6 built** (branch `local-prediction`): the census, the motion mirror, the LocalPredictor in LockstepClient,
-the smoother (LP0-LP4, "As built" below), then the wiring and the diagnostics (LP5 / LP6, "As built: LP5 / LP6").
-Open: the Studio checks of LP5 and LP6 (owner), LP10 (being built on branch `lp-bullets`), LP8 and LP9.
+**LP0-LP6 and LP10's code built** (branch `local-prediction`; LP10 built on `lp-bullets`, rebased in): the census, the
+motion mirror, the LocalPredictor in LockstepClient, the smoother (LP0-LP4, "As built" below), the wiring and the
+diagnostics (LP5 / LP6, "As built: LP5 / LP6"), enemy bullets drawn ahead (LP10, "As built (LP10)"). Open: the
+Studio checks of LP5, LP6 and LP10 (owner), LP8 and LP9.
 
 Drafted from an audit of branch `frame-pacing` @ `0a8e8ec4` (docs/FRAME_PACING.md: planned,
 nothing built). It builds on frame pacing (LPD2): FP1's lead fix and FP2-FP3's playout clock come first for the
@@ -321,6 +322,8 @@ All provisional until LP8.
   `n` ticks later (a stepped copy) to 1e-9, for n 1..10, with the spawn delay and the Hourglass; walls and pieces stop
   it, an expired one is hidden; n = 0 draws exactly today's positions; a bench at 150 bullets under 0.05 ms a frame.
   Studio, Incoming Replication Lag 100 ms: a tight dodge through a stream is not hit, the off switch restores today's.
+  - [x] Code (built on branch `lp-bullets`, now on `local-prediction`, 2026-11-10; "As built (LP10)"). The Studio dodge check stays open (owner). The
+    renderers read LP5's `SimController.getPredictionAheadTicks()` (the branch's stub dropped in the rebase).
 
 Order: LP0 -> LP1 -> LP2 -> LP3 -> LP4 (all pure, any time) -> FP1-FP3 land -> LP5 -> LP10 -> LP6 -> LP8 -> LP9.
 
@@ -411,6 +414,37 @@ Order: LP0 -> LP1 -> LP2 -> LP3 -> LP4 (all pure, any time) -> FP1-FP3 land -> L
   knight walks, rolls and turns on the press; the teammate's view of you unchanged; KV_PredictOff restores today's
   view) and LP6's (the debug line's horizon, error and press -> drawn of about one frame with prediction, the lead
   without; the merged ring). Not checked headlessly: anything client-side (it compiles and lints only).
+
+## As built (LP10, 2026-11-10)
+
+- **Core** (`shared/view/predict/bulletAhead.ts`, presentation only): `BulletAhead.prepare(state, world, n)` once a frame
+  (n clamped to `BULLET_AHEAD.maxTicks` 30, the predictor's own cap is the real one), then `pose(sim, i, out)` per slot:
+  the bullet's (prev, cur) pair n ticks past the merged state, which the renderers lerp by alpha as today. Mirrors
+  combat/bullets.ts `step` and combat.ts's enemy collision walk: tick k steps by SIM_DT x HOURGLASS_TIME_SCALE while
+  any run player's `hourglassTicks` > k (consumeEnemyBulletTimeScale counts each down once a tick), else SIM_DT; a
+  spawn delay is replayed step by step (`replay`; always 0 in the sim); life counted down tick by tick when it might
+  run out (gone: hidden); the culling cube at the end (convex; `math.huge` on dungeon floors); the floor's bullet
+  blocker or an intact piece's cell stops it: drawn still at its last free position (prev = cur) until the merged
+  state removes it. Goo and strikes keep today's pair. n = 0 is today's pair exactly.
+- **What the doc's formula missed**: no enemy bullet accelerates (the pool keeps an acceleration, nothing sets one and
+  there is no accessor; the term is dropped, and the spec against the real sim would catch one); the Hourglass is not
+  one scale for the window but ends after the larger `hourglassTicks` (handled per tick); positions use the closed form
+  pos + vel x (dt_0 + ... + dt_(k-1)), measured within 7.1e-14 of the sim's k additions on real floors; walls and pieces
+  answer per grid cell, so a bullet that stays in its cell is not tested, one that leaves it tests the box of cells to
+  its end, and only then are its tick positions tested to find the stopping tick.
+- **No fade-in**: the pool keeps no age to fade a young shot by (Design 5's option dropped); a new shot appears up to n
+  ticks along.
+- **Renderers**: `BulletPool.frame(..., ahead?)` and `SpriteBulletPool.frame(..., ahead?)` (enemy pools only; with
+  `ahead` they draw live slots `pose` keeps, else today's code unchanged); BulletRenderController prepares one
+  `BulletAhead` a frame from `SimController.getPredictionAheadTicks()` and `simWorldConfig(state, ctx.config)`.
+- **Spec** (`bulletAhead.spec.ts`): 6 endless floors (god mode, the busiest room, 40 windows of 10 ticks, the
+  Hourglass at 0 / 4 / 15 ticks): 5200 poses n = 1..10 compared with the stepped state, max difference 7.1e-14; 244
+  stopped at a wall or piece exactly where the sim consumed them; 166 hidden exactly when their life ran out; 0
+  removed otherwise; a pool of its own covers the delay, the life and the cube; n = 0 exact.
+- **Bench** (headless, aarch64 VM, 150 bullets, 10 ticks): 0.32 ms a frame on a real floor's blocker (0.28 ms with no
+  blocker) against 0.11 ms for today's pairs through the same accessors. The plan's 0.05 ms target is missed: it is
+  under what reading today's pairs costs headless; the real number is the Studio MicroProfiler's
+  (`BULLET_VIEW.profileLabel`).
 
 ## Testing
 

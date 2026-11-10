@@ -15,6 +15,7 @@ import {
 	studsZ,
 	type BulletYawAxes,
 } from "shared/view";
+import { BulletAhead, newAheadPose, type AheadPose } from "shared/view/predict";
 import { BulletTrails, type TrailLook } from "./bulletTrails";
 import { renderPart } from "./placeholders";
 
@@ -179,6 +180,7 @@ export class SpriteBulletPool {
 	private readonly moveParts = new Array<BasePart>();
 	private readonly moveCFrames = new Array<CFrame>();
 	private readonly prev: SimVec3 = { x: 0, y: 0, z: 0 };
+	private readonly pose: AheadPose = newAheadPose();
 	private readonly axes: BulletYawAxes = { c: 1, s: 0 };
 	private readonly trailParts: BulletTrails;
 	private sim: BulletSimulation | undefined;
@@ -217,8 +219,12 @@ export class SpriteBulletPool {
 		return slot < this.shown.size() && this.shown[slot];
 	}
 
-	/** `fade`: per-bullet transparency from its emitter id (co-op teammates' bullets), or undefined (always opaque). */
-	frame(sim: BulletSimulation, alpha: number, fade?: (emitter: number) => number): void {
+	/**
+	 * `fade`: per-bullet transparency from its emitter id (co-op teammates' bullets), or undefined (always opaque).
+	 * `ahead`: the frame's enemy bullets drawn ahead (docs/LOCAL_PREDICTION.md LP10; prepared, ticks > 0), or undefined
+	 * (today's pairs).
+	 */
+	frame(sim: BulletSimulation, alpha: number, fade?: (emitter: number) => number, ahead?: BulletAhead): void {
 		if (sim !== this.sim) {
 			// A new run built new simulations: everything shown belongs to the old one.
 			this.sim = sim;
@@ -236,7 +242,9 @@ export class SpriteBulletPool {
 			let lookIndex = -1;
 			let look: SpriteBulletLook | undefined;
 			let scale = 1;
-			if (i < n && sim.isVisible(i)) {
+			const drawn =
+				i < n && (ahead === undefined ? sim.isVisible(i) : sim.isLive(i) && ahead.pose(sim, i, this.pose));
+			if (drawn) {
 				const payload = sim.payloadAt(i);
 				if (this.skip === undefined || !this.skip(payload)) {
 					scale = sim.scaleAt(i);
@@ -267,11 +275,21 @@ export class SpriteBulletPool {
 				this.alphaKey[i] = t;
 				this.labels[i].ImageTransparency = t;
 			}
-			const cur = sim.positionAt(i);
-			sim.previousPositionAt(i, prev);
-			const x = studsX(lerp(prev.x, cur.x, alpha));
-			const y = studsY(lerp(prev.y, cur.y, alpha));
-			const z = studsZ(lerp(prev.z, cur.z, alpha));
+			let x: number;
+			let y: number;
+			let z: number;
+			if (ahead === undefined) {
+				const cur = sim.positionAt(i);
+				sim.previousPositionAt(i, prev);
+				x = studsX(lerp(prev.x, cur.x, alpha));
+				y = studsY(lerp(prev.y, cur.y, alpha));
+				z = studsZ(lerp(prev.z, cur.z, alpha));
+			} else {
+				const pose = this.pose;
+				x = studsX(lerp(pose.prevX, pose.x, alpha));
+				y = studsY(lerp(pose.prevY, pose.y, alpha));
+				z = studsZ(lerp(pose.prevZ, pose.z, alpha));
+			}
 			const v = sim.velocityAt(i);
 			const a = bulletYawAxes(v.x, v.z, this.axes);
 			const top = y + this.liftStuds + (i % V.layers) * V.layerStepStuds;

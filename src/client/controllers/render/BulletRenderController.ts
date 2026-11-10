@@ -10,6 +10,7 @@ import {
 	STORMCALLER,
 	STRIKE_BULLET_RADIUS,
 	partySize,
+	simWorldConfig,
 	type BulletSimulation,
 	type Vec3 as SimVec3,
 } from "shared/sim";
@@ -47,6 +48,7 @@ import {
 	type GooLook,
 } from "shared/view";
 import { buildTrailsOn, isEmberPayload } from "shared/view/fx";
+import { BulletAhead, newAheadPose, type AheadPose } from "shared/view/predict";
 import { PreloadController } from "../game/PreloadController";
 import { SimController } from "../game/SimController";
 import { ThemeController } from "../game/ThemeController";
@@ -99,6 +101,7 @@ class BulletPool {
 	private readonly moveParts = new Array<BasePart>();
 	private readonly moveCFrames = new Array<CFrame>();
 	private readonly prev: SimVec3 = { x: 0, y: 0, z: 0 };
+	private readonly pose: AheadPose = newAheadPose();
 	private sim: BulletSimulation | undefined;
 
 	constructor(
@@ -126,8 +129,10 @@ class BulletPool {
 
 	/**
 	 * `fade`: per-bullet transparency from its emitter id (co-op teammates' bullets), or undefined (always opaque).
+	 * `ahead`: the frame's enemy bullets drawn ahead (docs/LOCAL_PREDICTION.md LP10; prepared, ticks > 0), or undefined
+	 * (today's pairs: the player pools and every frame not drawing ahead).
 	 */
-	frame(sim: BulletSimulation, alpha: number, fade?: (emitter: number) => number): void {
+	frame(sim: BulletSimulation, alpha: number, fade?: (emitter: number) => number, ahead?: BulletAhead): void {
 		if (sim !== this.sim) {
 			// A new run built new simulations: everything shown belongs to the old one.
 			this.sim = sim;
@@ -138,17 +143,30 @@ class BulletPool {
 		this.moveCFrames.clear();
 		const prev = this.prev;
 		const slots = math.max(this.parts.size(), n);
+		const pose = this.pose;
 		for (let i = 0; i < slots; i++) {
-			const payload = i < n && sim.isVisible(i) ? sim.payloadAt(i) : -1;
+			let payload = -1;
+			if (ahead === undefined) {
+				if (i < n && sim.isVisible(i)) payload = sim.payloadAt(i);
+			} else if (i < n && sim.isLive(i) && ahead.pose(sim, i, pose)) payload = sim.payloadAt(i);
 			if (payload >= 0 && (this.skip === undefined || !this.skip(payload, i))) {
 				const scale = sim.scaleAt(i);
 				while (this.parts.size() <= i) this.grow();
 				const part = this.parts[i];
-				const cur = sim.positionAt(i);
-				sim.previousPositionAt(i, prev);
-				const x = studsX(lerp(prev.x, cur.x, alpha));
-				const y = studsY(lerp(prev.y, cur.y, alpha));
-				const z = studsZ(lerp(prev.z, cur.z, alpha));
+				let x: number;
+				let y: number;
+				let z: number;
+				if (ahead === undefined) {
+					const cur = sim.positionAt(i);
+					sim.previousPositionAt(i, prev);
+					x = studsX(lerp(prev.x, cur.x, alpha));
+					y = studsY(lerp(prev.y, cur.y, alpha));
+					z = studsZ(lerp(prev.z, cur.z, alpha));
+				} else {
+					x = studsX(lerp(pose.prevX, pose.x, alpha));
+					y = studsY(lerp(pose.prevY, pose.y, alpha));
+					z = studsZ(lerp(pose.prevZ, pose.z, alpha));
+				}
 				const look = this.lookOf !== undefined ? this.lookOf(payload, scale) : 0;
 				this.resize(i, scale, sim.fadeAt(i), look);
 				const t = fade !== undefined ? fade(sim.emitterIdAt(i)) : 0;
@@ -687,6 +705,7 @@ export class BulletRenderController implements OnStart {
 		this.enemy = enemy;
 		this.player = player;
 
+		const ahead = new BulletAhead();
 		RunService.BindToRenderStep(
 			RENDER_STEP,
 			Enum.RenderPriority.Camera.Value + RENDER_ORDER.viewsAfterCamera,
@@ -702,12 +721,20 @@ export class BulletRenderController implements OnStart {
 				enemyReady.refresh(readiness);
 				playerReady.refresh(readiness);
 				hazardReady.refresh(readiness);
+				// docs/LOCAL_PREDICTION.md LP10: enemy bullets drawn as many ticks ahead as the knight (0: today's).
+				const aheadTicks = this.sim.getPredictionAheadTicks();
+				const ctx = this.sim.getContext();
+				let enemyAhead: BulletAhead | undefined;
+				if (aheadTicks > 0 && ctx !== undefined) {
+					ahead.prepare(state, simWorldConfig(state, ctx.config), aheadTicks);
+					if (ahead.ticks > 0) enemyAhead = ahead;
+				}
 				// Sprite pools first: each neon pool then skips the slots its sprite pool drew (withSprites).
 				if (enemySprites !== undefined) {
 					enemySprites.reducedMotion = reducedMotion;
-					enemySprites.frame(state.combat.enemyBullets, alpha);
+					enemySprites.frame(state.combat.enemyBullets, alpha, undefined, enemyAhead);
 				}
-				enemy.frame(state.combat.enemyBullets, alpha);
+				enemy.frame(state.combat.enemyBullets, alpha, undefined, enemyAhead);
 				// docs/HAZARD_ART.md HA5: the sprite drawers' clock (sim seconds, the floor, motion); discs ignore it
 				const clock: HazardClock = {
 					simSec: (state.tick + alpha) / SIM_HZ,

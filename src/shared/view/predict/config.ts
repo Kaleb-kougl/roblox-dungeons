@@ -16,3 +16,19 @@ export const PREDICTION_VIEW: PredictionViewTunables = table.freeze({
 	snapTiles: 1.0,
 	maxOffsetTiles: 1.0,
 });
+
+/**
+ * Enemy bullets drawn ahead (docs/LOCAL_PREDICTION.md Design 5, LP10, LPD9): the bullet renderers draw every enemy
+ * bullet `aheadTicks` ticks past the merged state, the ticks the local knight is drawn ahead. Presentation only.
+ */
+export interface BulletAheadTunables {
+	/**
+	 * The most ticks a bullet is drawn ahead (the predictor's own cap, shared/lockstep PREDICTION.maxTicks, is the real
+	 * limit; this keeps the view's scratch bounded if it is raised).
+	 */
+	readonly maxTicks: number;
+}
+
+export const BULLET_AHEAD: BulletAheadTunables = table.freeze({
+	maxTicks: 30,
+});
