@@ -154,6 +154,7 @@ class ProbeSession {
 	private status: RollbackStatusMsg | undefined;
 	private lastCpu: ProbeSummary | undefined;
 	private digestMs = 0;
+	private digestRefused = false;
 
 	constructor(
 		readonly ctx: RunContext,
@@ -273,8 +274,16 @@ class ProbeSession {
 		if (this.dead && !this.ended) return;
 		const m = readWorkerToMain(raw);
 		if (m === undefined) {
-			if (typeIs(raw, "table") && (raw as { kind?: unknown }).kind === "facts") return;
-			warn(`${TAG} a worker message its reader refused`);
+			const kind = typeIs(raw, "table") ? (raw as { kind?: unknown }).kind : undefined;
+			if (kind === "facts") return;
+			if (kind === "digest") {
+				// R3a: a buffer that does not survive the BindableEvent arrives as nil; said once, the probe goes on.
+				if (!this.digestRefused)
+					warn(`${TAG} the digest buffer did not arrive through the BindableEvent (R3a)`);
+				this.digestRefused = true;
+				return;
+			}
+			warn(`${TAG} a worker message its reader refused (${tostring(kind)})`);
 			return;
 		}
 		if (m.kind === "ready") {
