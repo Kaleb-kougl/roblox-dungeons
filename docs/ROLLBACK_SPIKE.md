@@ -797,13 +797,16 @@ also showed every 10 s window's `kv.rollback.send` label closing after the send'
 profile annotation"): fixed (the label covers the fill, the Fire has its own), and the core spec's host now refuses a
 label left open across a yield or a send. The floor-15 rows: the step cost grows with the awake actors (about 0.08 ms a tick at
 11, 0.21 at 31; Lune headless: 0.19 a room, 0.72-1.17 at 64); the first window's 54.7 fps and 635 KB/s GC are the dev
-run's floor build and asset loading, not the probe (the next window is back at 60 fps with 4 ms of probe work).
+run's floor build and asset loading, not the probe (the next window is back at 60 fps with 4 ms of probe work). The phone row is
+from its HUD line (last prediction 20.56 ms, digest arrival 20.8 ms): about 3x the Mac's floor case, 12 of the 16.7
+ms frame, so the frame waits and the phone drops to 50 fps; its stored CPU rows (pull) give the full columns.
 
 | Device / host | Mode | Case | Party | H | Copy ms p50 / p95 | Step ms p50 / p95 | Total p95 | Frames / prediction p95 | Frame ms p95 | GC KB/s |
 |---|---|---|---|---|---|---|---|---|---|---|
 | Owner's Mac, Studio Play (2026-11-09) | parallel | room (11 actors, 19 bullets) | 1 | 16 | 0.52 / 0.57 | 1.20 / 1.44 | 1.99 | 1.00 | 19.09 (60 fps) | 117 |
 | Owner's Mac, Studio Play, dev floor 15 | parallel | floor (21 actors, 23 bullets; the run's first window) | 1 | 16 | 0.50 / 0.59 | 0.96 / 2.43 | 3.04 | 1.00 | 20.66 (54.7 fps) | 635 |
 | Owner's Mac, Studio Play, dev floor 15 | parallel | floor (31 actors, 14 bullets) | 1 | 16 | 0.61 / 0.67 | 3.13 / 3.40 | 4.06 | 1.00 | 18.84 (60 fps) | 59 |
+| Phone (model to confirm), published place, dev floor 15 (2026-11-10) | parallel | floor, many rooms walked (counts not on the HUD line; dev panel open) | 1 | 16 | - / 1.22 | - | 11.77 | 1 | (50 fps) | - |
 | PC | | | | | | | | | | |
 | iPhone | | | | | | | | | | |
 | Mid Android | | | | | | | | | | |
