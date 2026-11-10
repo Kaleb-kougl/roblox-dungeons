@@ -19,7 +19,7 @@ wiring (LP5); the pure parts (LP1-LP4) can be built before them. Owner answers (
 (LPD4), no hitbox pip (LPD7), the i-frame look merged (LPD5), the camera on the drawn knight (LPD8).
 Rollback spike (2026-11-09): docs/ROLLBACK_SPIKE.md measures full co-op rollback against this plan as the cheaper
 alternative. Its RBD8 (owner, 2026-11-09): don't build rollback, build this plan (too slow on an iPhone 17, and
-teammate corrections far over the gate).
+teammate corrections far over the gate). Its cheap plan, enemy bullets drawn ahead, is LP10 here.
 
 ## Why your knight feels late (findings)
 
@@ -109,6 +109,22 @@ your drawn pose is real. Two rules keep that honest:
 
 No marker is drawn at the merged position (LPD7): the screen stays clean, and the cap keeps the gap small.
 
+**Bullets drawn ahead (follow-up: LP10, LPD9).** Closes that gap: the enemy-bullet renderers
+(`BulletRenderController.frame` and the sprite pool) draw each enemy bullet `n` ticks past the merged state, `n` = the
+knight's prediction offset this frame (0 solo or with `KV_PredictOff`, at most `maxTicks`), so the knight and the
+bullets show the same tick. Per bullet, read-only, from its interpolated position: the remaining spawn delay first, then
+the sim's own stepping in closed form, `p + v t + a dt^2 n(n+1)/2` (`t = n dt`, `dt` = SIM_DT x the Hourglass scale
+active on the merged state); hidden once its life would run out, stopped at the floor's bullet blocker or an intact
+piece. Exact while it flies: enemy bullets are ballistic in the sim (the only steered bullets are player Soul Swarm
+shards, builds/evolutions.ts; player bullets stay merged). Not exact, at the ends of a bullet's life:
+- a new shot appears up to `n` ticks along (at most ~0.7 tiles; fading it in over `n` ticks hides most of it);
+- a bullet removed in the next `n` ticks (it hits a teammate or you, a guard or an erase takes it) flies on for up to
+  `n` ticks past that point;
+- a Hourglass slow that starts inside the window overshoots for a moment.
+Nothing in the sim, the hashes or the hits changes; enemies, teammates and vitals stay merged. This is the rollback
+spike's "cheap plan" (docs/ROLLBACK_SPIKE.md: in-flight bullets exact, its glitch counts are the shots fired and removed
+above; `rollbackSpike/model.ts` has a headless version).
+
 ### 6. Wiring
 
 - `LockstepClient.predicted(): Readonly<PlayerState> | undefined` (the raw head; undefined when not predicting) and
@@ -157,7 +173,7 @@ drawn** (frames until the drawn knight first answers a press: 1 with prediction,
 
 All provisional until LP8.
 
-## Decisions (LPD1-LPD3, LPD6 proposed; LPD4, LPD5, LPD7, LPD8 the owner's answers, 2026-11-07)
+## Decisions (LPD1-LPD3, LPD6, LPD9 proposed; LPD4, LPD5, LPD7, LPD8 the owner's answers, 2026-11-07)
 
 - **LPD1. Mirror, not refactor.** The motion and weapon-motion replays are copies in shared/lockstep, pinned to the
   sim by parity specs, so `shared/sim` is not touched at all (the brief). Considered: extracting `stepPlayer`'s motion
@@ -177,6 +193,8 @@ All provisional until LP8.
   only).
 - **LPD8. The camera follows the drawn knight (owner).** The knight stays steady on screen; corrections move the
   camera with it (its follow smoothing absorbs them).
+- **LPD9. Enemy bullets drawn ahead with the knight (proposed; added 2026-11-09 after docs/ROLLBACK_SPIKE.md RBD8).**
+  Cosmetic only (Design 5). Owner call: build it straight after LP5, or only if LP8 finds the dodge gap noticeable.
 
 ## Tasks
 
@@ -214,8 +232,14 @@ All provisional until LP8.
 - [ ] **LP9. Docs.** docs/SERVER.md "Clients" (the "Not done" line becomes the prediction), docs/FRAME_PACING.md (FPD2's
   pointer), docs/FEEL.md J9 and its non-goal line ("Co-op prediction ... its own plan"), CLAUDE.md's decision-log row,
   this file's status.
+- [ ] **LP10. Bullets drawn ahead** (Design 5, LPD9; follow-up). A pure `bulletAhead(sim, i, n, scale, blocked)` in
+  shared/view/predict plus the renderers' `aheadTicks` argument from `getDrawnPlayer`'s offset. -> Verify: a spec over
+  real floors: with no shot fired or removed in the window, every drawn enemy bullet equals the merged state's bullet
+  `n` ticks later (a stepped copy) to 1e-9, for n 1..10, with the spawn delay and the Hourglass; walls and pieces stop
+  it, an expired one is hidden; n = 0 draws exactly today's positions; a bench at 150 bullets under 0.05 ms a frame.
+  Studio, Incoming Replication Lag 100 ms: a tight dodge through a stream is not hit, the off switch restores today's.
 
-Order: LP0 -> LP1 -> LP2 -> LP3 -> LP4 (all pure, any time) -> FP1-FP3 land -> LP5 -> LP6 -> LP8 -> LP9.
+Order: LP0 -> LP1 -> LP2 -> LP3 -> LP4 (all pure, any time) -> FP1-FP3 land -> LP5 -> LP6 -> LP8 -> LP9. LP10 after LP5 (before or after LP8: LPD9).
 
 ## Testing
 
@@ -228,7 +252,7 @@ Order: LP0 -> LP1 -> LP2 -> LP3 -> LP4 (all pure, any time) -> FP1-FP3 land -> L
 ## Risks
 
 - **The knight runs ahead of the bullets.** Inherent to predicting one entity. Mitigations: the cap (LPD4), merged
-  vitals and look (LPD5). If LP8 finds dodging worse, lower `maxTicks`.
+  vitals and look (LPD5), enemy bullets drawn ahead (LP10). If LP8 finds dodging worse, lower `maxTicks`.
 - **Mirror drift.** A later sim change to the player's motion or a weapon's `moveMultiplier` (e.g. docs/BUILDS_V2.md's
   Wrecker rolls that smash breakables) would mispredict until mirrored. LP1 / LP2's parity specs fail on any such
   change; the CLAUDE.md row tells the next plan to update the mirror.
