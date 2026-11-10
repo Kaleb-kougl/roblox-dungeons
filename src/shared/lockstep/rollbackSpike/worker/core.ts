@@ -139,6 +139,7 @@ export function fillDigestBuffer(buf: buffer, state: Readonly<SimState>): void {
 		buffer.writeu8(buf, o + 6, a.alive !== 0 ? 1 : 0);
 		buffer.writef32(buf, o + 8, a.x);
 		buffer.writef32(buf, o + 12, a.z);
+		buffer.writef32(buf, o + 16, a.hp);
 		o += PROBE.digestActorBytes;
 		actors++;
 	}
