@@ -25,6 +25,7 @@ function makeEnv(over: Partial<TouchFrameEnv> = {}): TouchFrameEnv {
 		autoAim: () => undefined,
 		draftOpen: false,
 		draftReady: false,
+		draftDeal: 0,
 		...over,
 	};
 }
@@ -203,6 +204,32 @@ describe("TouchControls", () => {
 		expect(c.hasDraftPick()).toBe(true);
 		c.frame(makeEnv({ draftOpen: false }));
 		expect(c.hasDraftPick()).toBe(false);
+	});
+
+	it("drops the draft pick when a pick re-deals the open draft: the next deal waits for its own tap", () => {
+		const c = new TouchControls();
+		const firstDeal = makeEnv({ draftOpen: true, draftReady: true, draftDeal: 2 });
+		c.queueDraftPick(DRAFT_COLUMN_LEFT);
+		expect(c.frame(firstDeal).buttons & Button.FIRE).toBe(Button.FIRE);
+
+		// The sim took the card and re-dealt (the boss double draft): open still, deals left 2 -> 1.
+		const secondDeal = makeEnv({ draftOpen: true, draftReady: true, draftDeal: 1 });
+		const after = c.frame(secondDeal);
+		expect(c.hasDraftPick()).toBe(false);
+		expect(after.moveX).toBe(0);
+		expect(after.buttons).toBe(0);
+		// Well past the retry: no stick push, no FIRE pulse on the new cards.
+		for (let i = 0; i < 120; i++) {
+			const s = c.frame(secondDeal);
+			expect(s.moveX).toBe(0);
+			expect(s.buttons & Button.FIRE).toBe(0);
+		}
+
+		// A tap on the new deal is its own pick.
+		c.queueDraftPick(DRAFT_COLUMN_RIGHT);
+		const tapped = c.frame(secondDeal);
+		expect(tapped.moveX).toBeCloseTo(1);
+		expect(tapped.buttons & Button.FIRE).toBe(Button.FIRE);
 	});
 
 	it("reset drops the fingers and the aim latch but keeps a queued draft pick", () => {
