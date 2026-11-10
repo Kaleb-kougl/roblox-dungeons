@@ -33,8 +33,10 @@ bump, the p95 target plus a p99 / 15 s cover that settles the effective lead at 
 buffer deepens by k ticks the effective lead is cap + k for ~1 + 0.25 k s, until the net lead falls). The cost: with
 prediction on, a spike longer than a burst holds the lead for the cover's whole 15 s window (FP12's spike on a shallow
 buffer: back in 17.9 s, Revision 2 8.0 s); your knight feels nothing under the cap, hits, enemies and teammates run that
-lead behind. Pending: FP21 (owner: Studio 4G again, with and without `KV_LeadBump`; its `miss` criterion is an open
-owner question).
+lead behind. **FP23 (built 2026-11-10, FPD20 accepted): the episode detector** takes a long spike's trips out of the
+cover (0.25 s and 6 slow trips or more; bursts on top of it still enter), so that spike is back in 8.0 s again
+(`cleanspike` 8.05 s) while every owner-like link keeps the cover's lead frame for frame. Pending: FP21 (owner: Studio
+4G again, with and without `KV_LeadBump`; its `miss` criterion is an open owner question).
 
 ## Why co-op stutters (findings)
 
@@ -655,14 +657,15 @@ rule and its tunables. The echo, the pacer, the send rules (FP1) and the tap lat
 
 ### Status (2026-11-10)
 
-**Built: FP17-FP20 and FP22**, verified headlessly (typecheck, lint, build, the asset id and AutoLocalize checks, every
-spec under `shared/lockstep`, `shared/view` and `shared/play`, and the full census with the `rule3` row). FP17 (the
+**Built: FP17-FP20, FP22 and FP23**, verified headlessly (typecheck, lint, build, the asset id and AutoLocalize checks,
+every spec under `shared/lockstep`, `shared/view` and `shared/play`, and the full census with the `rule3` row; FP23: the
+default census and every opt-in network with the `rule4` row). FP17 (the
 census, `src/shared/lockstep/lead.census.spec.ts`, opt-in) on branch `lead-spikes` (from `local-prediction` @
 `533af85`); FP18-FP20 and FP22 after the owner's answers (2026-11-10: FPD15, FPD16 and FPD17 accepted; FPD18 and FPD19
-not answered, built as proposed). **Pending: FP21 (owner: the Studio 4G session again, once with `KV_LeadBump`).** See
+not answered, built as proposed); FP23 after FPD20 (accepted, owner 2026-11-10). **Pending: FP21 (owner: the Studio 4G session again, once with `KV_LeadBump`).** See
 "As built (FP18-FP20)" for the real API, the census numbers and the deviations.
-"Spike recovery candidates" prototypes fixes for the long-spike cost in the census only (FPD20 proposed, revised by
-its round 2: `ep25mnt`; not built).
+"Spike recovery candidates" prototyped fixes for the long-spike cost in the census; its round 2's `ep25mnt` is FPD20
+(accepted, owner 2026-11-10), built as FP23: "As built (FP23): the episode detector".
 
 ### The census (FP17)
 
@@ -682,9 +685,10 @@ npm run test:only -- --census lockstep/lead.census           # every network x e
 npm run test:only -- --census lockstep/lead.census --flag lead.owner --flag lead.owner2 --flag lead.ownerS
 npm run test:only -- --census lockstep/lead.census --flag lead.jitter --flag lead.clean --flag lead.spec \
   --flag lead.spec200 --flag lead.fp12 --flag lead.longhold --flag lead.cleanspike
-# --flag lead.rule.<name> keeps only those rules (today's always runs)
+# --flag lead.rule.<name> keeps only those rules (today's always runs; rule4 brings ep25mnt, rule3 cov20)
 # --flag lead.rule.spikes: the opt-in spike recovery candidates ("Spike recovery candidates"); lead.rule.spikes2: round 2's
 # --flag lead.extra: the opt-in networks too (spike35, spike60, spike150, cburst, cbspike, cbstep)
+# FP23: the default run has rule4 (the shipped controller) and ep25mnt in place of rule3 (opt-in: --flag lead.rule.rule3)
 ```
 
 Measured per network and rule: the **effective lead** (net + the buffer's depth, `inputLead()`) and the **net lead**
@@ -836,6 +840,11 @@ Where the buffer is deep (`fp12`, depth ~7.5 t) C sits near the base and the spi
 a run the p99 is the window's max (nearest rank: rank ceil(0.99 n) = n for n <= 100 cover trips, the first ~3.3 s after
 the base's 20-trip warm-up), so a single slow trip then sets the cover, up to C.
 
+**Since FP23 (FPD20)** a spike of 0.25 s and 6 slow trips or more is an episode, kept out of the cover, so it is back in
+the base's time (`cleanspike` 8.05 s); the cost above is left for shorter spikes and for spikes the base window's median
+follows (longer than ~2.5 s, or, like FP1's scenario, still 19.92 s, a 3 s spike 1 s into the run, when the base window
+holds only that second): "As built (FP23)".
+
 ### Tunables (`LEAD`, additions)
 
 | Name | Value | Why |
@@ -844,6 +853,12 @@ the base's 20-trip warm-up), so a single slow trip then sets the cover, up to C.
 | `coverWindowSec` | 15 | Long enough that the bursts of the last seconds are still in it (a 5 s window forgets them before the next) |
 | `coverPercentile` | 0.99 | Under the cap p99 and the max (`cov20m`) measure the same on the owner-like links; the max also keeps a one-off hold's trip for the whole window (`longhold` fails) |
 | ceiling | `PREDICTION.maxTicks` | Read from `LockstepTunables.prediction` by LockstepClient, passed to the controller (FPD16) |
+| `episodes` | true | FP23 (FPD20): the episode detector on (only with a ceiling and without `lateBump`); false = Revision 3 as FP18-FP20 built it (the census's `rule3`) |
+| `episodeGapMs` | 40 | A slow trip is over the base median by max(this, k IQR): the floor on a clean link (IQR a tick or less) |
+| `episodeIqrK` | 3 | k: the spread term, from the cover window's p75 - p25 |
+| `episodeGapSamples` | 2 | Measured trips in a row that are not slow and do not end a run (trips, not time: a burst's hole inside a spike is longer than 0.1 s) |
+| `episodeMinSec` | 0.25 | A run's slow trips span more than this to be an episode: a 0.35 s spike is caught (`ep50` missed it) |
+| `episodeMinSlow` | 6 | ... and number this many: two merged head-of-line clumps are 2-3 (no false episode on the owner-like links or `cburst`) |
 
 `windowSec`, `percentile`, `marginTicks`, `fallSlackTicks`, `fallHoldSec`, `fallStepSec`, `minSamples`,
 `echoTimeoutSec` and `recordTicks` are unchanged.
@@ -1018,7 +1033,7 @@ window, far more than the 1 % its p99 ignores, so the lead holds at `min(Lc, C)`
 the episode rule below counts 31 slow trips per client). On the owner-like 4G links a burst is a head-of-line clump the echo reports as
 1-2 trips: that is what the cover is meant to remember. Two candidates, prototyped as opt-in census rules in
 `lead.census.spec.ts` (`SpecLead` knobs `cover.hold` / `cover.episode`; nothing in `lead.ts`, `client.ts` or any
-production path changed):
+production path changed until FP23 built round 2's `ep25mnt`):
 
 - **Option 2, the hold (`hold3` / `hold5` / `hold8`).** No cover window. A **slow trip** is a measured trip (past the
   base's 20-trip warm-up) above `Lb - marginTicks`, Lb the base target with that trip already in the base window (it
@@ -1454,7 +1469,8 @@ is remembered like a burst; the first 0.25 s of a spike or step still enters the
 `min(Lc, C)` until it is removed; FP12's spike lates and dropped inputs (FPD15's cost: `fp12` 20.3 / 13.9) are
 unchanged.
 
-- **FPD20 (proposed, revised by round 2). Long spikes are kept out of the cover; bursts on top of them are not.**
+- **FPD20 (accepted, owner 2026-11-10; built as FP23). Long spikes are kept out of the cover; bursts on top of them
+  are not.**
   `ep25mnt`: a trip more than max(40 ms, 3 IQR of the cover window) over the base window's median is slow; slow trips
   (up to 2 others between) spanning more than 0.25 s and at least 6 of them are an episode, its trips taken out of the
   cover and later ones kept out while it lasts, except a trip that much over the run's own median (a burst on top),
@@ -1465,7 +1481,150 @@ unchanged.
   Considered: round 1's `ep50` (misses spikes under ~0.55 s, a 14 s step episode), a time gap (splits spikes at burst
   holes), a maximum length (cannot end a step before the longest spike it must forget), the base window's IQR (breaks
   on a 1.5 s spike), the cover window's median with on-top bursts (`ep25nt`: passes, but its step episode lasts the
-  cover's window). Owner: accept, change the tunables, or keep Revision 3 as built.
+  cover's window). Owner (2026-11-10): accepted, the tunables as proposed.
+
+### As built (FP23): the episode detector
+
+**API (shared/lockstep).**
+
+- `LeadTunables` gains `episodes` (true), `episodeGapMs` (40), `episodeIqrK` (3), `episodeGapSamples` (2),
+  `episodeMinSec` (0.25) and `episodeMinSlow` (6), with doc comments in config.ts ("Tunables" above); every other `LEAD`
+  value is unchanged. The detector runs only when the cover does and the bump does not: a ceiling (prediction on),
+  `lateBump` false and `episodes` true. Otherwise every trip enters the cover exactly as FP18 built it, so
+  `KV_PredictOff`, `KV_LeadBump` (and the census's `today` / `kvbump`) are unchanged. `episodes` false is the A/B in
+  code (the census's `rule3`); no Workspace switch was added (`KV_LeadBump` turns the detector off with the bump).
+- `LeadController` (FPD20's rule, `ep25mnt` exactly): a measured trip (Revision 2's rules: not from an unsteady send,
+  not from a catching-up echo; an echo without a trip is neither slow nor a gap) first expires the cover window at its
+  clock, then is classified: slow when `trip > m + g`, m the base window's median as sorted at the last refresh
+  (without this trip), g = max(`episodeGapMs` in ticks, `episodeIqrK` x the cover window's p75 - p25), nearest rank,
+  both references from `minSamples` trips. Slow trips form a run; up to `episodeGapSamples` measured trips in a row
+  that are not slow do not end it. A run whose slow trips span more than `episodeMinSec` (first to newest) and number
+  at least `episodeMinSlow` becomes an episode: its slow trips leave the cover by id, and later slow trips stay out
+  while it lasts, except a burst on top (more than g over the median of the run's own slow trips, which leaves it out of
+  that median): it enters the cover. Then the trip is inserted (or kept out), and the refresh runs as before. The base
+  window keeps every trip.
+- `LeadStats` gains `episodes` (runs that became episodes; undefined while the detector is off), `episodeActive` and
+  `keptOut` (trips taken out of or kept out of the cover).
+- Diagnostics: the `[Pace]` line's lead part ends `· lates {n} bumps {n} falls {n} · episodes {n} out {k}` (`episodes
+  {n} (on) out {k}` while one holds, `episodes off` without the detector); the debug line is unchanged.
+
+**How the census's steps map to `lead.ts`.**
+
+| Census (`SpecLead`, `cover.episode` = ep25mnt's knobs) | `lead.ts` |
+|---|---|
+| `echoed`: base window push, then `episodeTrip(e, clock, trip)` | the same push, then `episodeTrip(clock, trip)` (detector on) or `coverInsert` (off, FP18's path) |
+| `refreshCover(cov, clock)` first: expire, re-sort the cover from scratch | `expireCover(clock)` (factored out of `refresh`); `covSorted` is kept in step by binary insertion and removal, the same multiset, so the same nearest ranks |
+| `reference: "mixed"`: median of `scratch`, the IQR of `covSorted`, each from `minSamples` | the same arrays: `scratch` is lead.ts's sorted base copy (re-sorted in place when the window changed, at the last refresh), `covSorted` the cover's |
+| slow, run start / gap / end, span, `minSlow`, `episodeMinSec` | the same code (`runActive`, `runStartAt`, `runSlow`, `runGap`, `runEpisode`) |
+| `onTop`: the run's slow trips sorted by linear insertion (after equal values) | `runSlowSorted`, binary insertion at the upper bound: the same position |
+| the trip pushed with an id (`covId`); on an episode its run's ids found by `indexOf` and removed | `coverInsert` returns the id (`covId`, ascending beside `covAt` / `covTrip`); removal by binary search on `covId`, then from `covSorted` by binary search |
+| `refresh(clock)`: the cover (nothing left to expire) and the base | `refresh(clock)` unchanged but for the factored expiry |
+
+No behavioural deviation: `rule4` gives `ep25mnt`'s lead on every client frame of every network and the same counters
+(episodes; kept out = the census's removed + kept out). Not ported: the census-only knobs `gapSec`, `maxSec` (levels,
+returned), the `cover` / `base` references, the run and on-top counters. The census's order (expire, classify, insert)
+applies only with the detector on; with it off the trip is inserted before the refresh's expiry as before (the same
+content: a trip at the clock never expires at that clock).
+
+**Cost per echo.** No allocation per echo (the arrays are reused; a run's arrays are cleared at its end). Per measured
+trip with the detector: an expiry pass (moved, not added), three nearest ranks, a binary insertion into
+`runSlowSorted` while a run lasts, and at an episode's start a binary search and removal per trip of its run so far (~9 per episode here).
+Measured in Lune (a temporary bench, not committed: `echoed` + `frame` over 600 s of a 30-echo/s link with a 1.5 s
+spike every 20 s, three repeats): 59-67 us per echo with the detector, 62-67 us without, the difference within the
+run-to-run noise; the base window's re-sort (150 trips) dominates both.
+
+**Specs.** lead.spec.ts gains 8 cases (36 in all): the tunables; a 1 s +12-tick spike is an episode (30 trips kept
+out, the cover's p99 the steady link's at its end) and the lead is back in 8.13 s (bound: the base window + hold + a
+fall step per tick + 0.5 s, 9.50 s; episodes off: 18.07 s);
+a 0.2 s burst is not (the cover holds it); 5 slow trips one every 3 echoes (span 0.4 s) are no episode, 6 are (6 kept
+out); slow trips one in 4 never are (three other trips end the run); 5 bursts on top of an episode enter the cover (its
+p99 30 ticks, kept out only the spike's own trips) and hold the lead at the ceiling after it; a lasting +6-tick step:
+the episode ends 2.60 s after it (half the base window and three echoes), the base covers the new level meanwhile, and
+the cover takes it afterwards; without a ceiling and with `lateBump` the lead is the episodes-off controller's on every
+frame. arrivalLog.spec: the two expected lines gain the episode part, one new case (`(on)`, `off`). lockstep.spec
+prints the episodes of FP1's echoing scenario (2, 174 kept out; its numbers and assertions unchanged: its 3 s spike
+starts 1 s into the run, when the base window holds that second only, so its median follows within about a second and
+the rest of the spike enters the cover: back 19.92 s as before, bound 20.50 s). No other spec changed; every lead,
+lockstep, predict and arrivalLog spec passes (shared/lockstep 213 tests, shared/view and shared/play too).
+
+**The census** (`rule4` is the shipped controller: in the default run with `ep25mnt` as its reference, asserted equal
+on every client frame and in its counters; `rule3`, the controller with `episodes` false, is opt-in and asserted equal
+to `cov20`; FPD18 asserted for `rule4` (and `rule3`) on `owner` / `owner2` / `ownerS`, FP12 asserted for `rule4` on
+`fp12`, `longhold`, `cleanspike`, `spike35`, `spike60`, `spike150`):
+
+```
+# the default census: every default rule with rule4 and ep25mnt (two halves side by side: ~3.9 and ~2.6 min)
+npm run test:only -- --census lockstep/lead.census --flag lead.owner --flag lead.owner2 --flag lead.ownerS --flag lead.jitter
+npm run test:only -- --census lockstep/lead.census --flag lead.clean --flag lead.spec --flag lead.spec200 --flag lead.fp12 \
+  --flag lead.longhold --flag lead.cleanspike
+# rule4 (with ep25mnt), rule3 (with cov20) on every network, the opt-in ones too (side by side: ~1.3 and ~2.4 min)
+npm run test:only -- --census lockstep/lead.census --flag lead.rule.rule4 --flag lead.rule.rule3 --flag lead.rule.cov20 \
+  --flag lead.spike35 --flag lead.spike60 --flag lead.spike150 --flag lead.cburst --flag lead.cbspike --flag lead.cbstep
+npm run test:only -- --census lockstep/lead.census --flag lead.rule.rule4 --flag lead.rule.rule3 --flag lead.rule.cov20 \
+  --flag lead.owner --flag lead.owner2 --flag lead.ownerS --flag lead.jitter --flag lead.clean --flag lead.spec \
+  --flag lead.spec200 --flag lead.fp12 --flag lead.longhold --flag lead.cleanspike
+```
+
+Every row is round 2's (`ep25mnt`'s and `cov20`'s above) exactly; episodes / kept out are both clients':
+
+| Network | Rule | Effective lead mean / p95 / max (t) | Net lead mean (t) | Lates / 10 s | Dropped changed / 10 s | Relay missed | Churn / 10 s | Felt @20 mean / p95 (t) | Felt @10 mean (t) | Episodes / kept out | Gate |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| owner | today | 20.8 / 27 / 32 | 16.9 | 14.1 | 8.2 | 6.39 % | 36.3 | 2.10 / 7 | 10.79 |  |  |
+| owner | cov20 | 20.4 / 24 / 30 | 16.5 | 11.3 | 4.4 | 3.47 % | 6.2 | 0.61 / 4 | 10.40 |  |  |
+| owner | **rule4** | 20.4 / 24 / 30 | 16.5 | 11.3 | 4.4 | 3.47 % | 6.2 | 0.61 / 4 | 10.40 | 0 / 0 | FPD18 pass |
+| owner2 | today | 22.4 / 27 / 34 | 18.5 | 12.1 | 6.8 | 6.09 % | 34.7 | 3.13 / 7 | 12.38 |  |  |
+| owner2 | cov20 | 21.5 / 25 / 29 | 17.6 | 14.2 | 6.8 | 4.20 % | 8.5 | 1.55 / 5 | 11.48 |  |  |
+| owner2 | **rule4** | 21.5 / 25 / 29 | 17.6 | 14.2 | 6.8 | 4.20 % | 8.5 | 1.55 / 5 | 11.48 | 0 / 0 | FPD18 pass |
+| ownerS | today | 21.3 / 27 / 31 | 17.2 | 11.2 | 6.8 | 5.78 % | 36.9 | 2.26 / 7 | 11.33 |  |  |
+| ownerS | cov20 | 20.8 / 25 / 28 | 16.7 | 9.8 | 3.6 | 2.95 % | 6.5 | 0.86 / 5 | 10.78 |  |  |
+| ownerS | **rule4** | 20.8 / 25 / 28 | 16.7 | 9.8 | 3.6 | 2.95 % | 6.5 | 0.86 / 5 | 10.78 | 0 / 0 | FPD18 pass |
+| jitter | today | 22.4 / 29 / 35 | 15.4 | 5.8 | 2.7 | 3.56 % | 16.1 | 2.46 / 9 | 12.44 |  |  |
+| jitter | cov20 | 21.0 / 25 / 27 | 14.0 | 7.6 | 3.5 | 2.42 % | 0.8 | 1.01 / 5 | 11.01 |  |  |
+| jitter | **rule4** | 21.0 / 25 / 27 | 14.0 | 7.6 | 3.5 | 2.42 % | 0.8 | 1.01 / 5 | 11.01 | 0 / 0 |  |
+| clean | today | 10.2 / 11 / 11 | 6.2 | 0.0 | 0.0 | 0.00 % | 0.3 | 0.00 / 0 | 0.17 |  |  |
+| clean | cov20 | 11.0 / 11 / 11 | 7.0 | 0.0 | 0.0 | 0.00 % | 0.0 | 0.00 / 0 | 1.00 |  |  |
+| clean | **rule4** | 11.0 / 11 / 11 | 7.0 | 0.0 | 0.0 | 0.00 % | 0.0 | 0.00 / 0 | 1.00 | 0 / 0 |  |
+| spec | today | 19.2 / 20 / 20 | 11.6 | 0.0 | 0.0 | 0.17 % | 0.5 | 0.00 / 0 | 9.18 |  | FP11 pass |
+| spec | cov20 | 19.7 / 20 / 21 | 12.1 | 0.0 | 0.0 | 0.17 % | 0.2 | 0.03 / 0 | 9.74 |  | FP11 pass |
+| spec | **rule4** | 19.7 / 20 / 21 | 12.1 | 0.0 | 0.0 | 0.17 % | 0.2 | 0.03 / 0 | 9.74 | 0 / 0 | FP11 pass |
+| spec200 | today | 27.8 / 31 / 32 | 15.9 | 0.0 | 0.0 | 0.11 % | 1.2 | 7.79 / 11 | 17.79 |  | FP11 pass |
+| spec200 | cov20 | 27.8 / 31 / 32 | 15.9 | 0.0 | 0.0 | 0.11 % | 1.2 | 7.79 / 11 | 17.79 |  | FP11 pass |
+| spec200 | **rule4** | 27.8 / 31 / 32 | 15.9 | 0.0 | 0.0 | 0.11 % | 1.2 | 7.79 / 11 | 17.79 | 0 / 0 | FP11 pass |
+| fp12 | today | 23.6 / 31 / 31 | 16.2 | 11.3 | 6.8 | 2.98 % | 11.6 | 3.94 / 11 | 13.65 |  | FP12 pass: back 8.18 s / 8.20 s |
+| fp12 | cov20 | 23.6 / 30 / 30 | 16.1 | 20.3 | 13.9 | 4.47 % | 9.7 | 3.58 / 10 | 13.56 |  | FP12 pass: back 7.73 s / 7.95 s |
+| fp12 | **rule4** | 23.4 / 30 / 30 | 15.9 | 20.3 | 13.9 | 4.47 % | 9.7 | 3.58 / 10 | 13.35 | 2 / 46 | FP12 pass: back 7.73 s / 7.95 s |
+| longhold | today | 16.6 / 31 / 33 | 13.6 | 12.8 | 10.2 | 3.32 % | 14.3 | 1.22 / 11 | 6.60 |  | FP12 pass: back 5.32 s / 5.32 s |
+| longhold | cov20 | 14.0 / 14 / 14 | 11.0 | 12.8 | 10.2 | 2.13 % | 0.0 | 0.00 / 0 | 4.00 |  | FP12 pass: back 0.00 s / 0.00 s |
+| longhold | **rule4** | 14.0 / 14 / 14 | 11.0 | 12.8 | 10.2 | 2.13 % | 0.0 | 0.00 / 0 | 4.00 | 0 / 0 | FP12 pass: back 0.00 s / 0.00 s |
+| cleanspike | today | 13.2 / 21 / 21 | 9.3 | 5.0 | 3.9 | 1.41 % | 7.2 | 0.21 / 1 | 3.28 |  | FP12 pass: back 8.05 s / 8.03 s |
+| cleanspike | cov20 | 16.2 / 21 / 21 | 12.2 | 6.2 | 4.7 | 1.56 % | 6.2 | 0.20 / 1 | 6.17 |  | FP12 **FAIL**: back 17.92 s / 17.92 s |
+| cleanspike | **rule4** | 13.4 / 21 / 21 | 9.4 | 6.2 | 4.7 | 1.56 % | 6.2 | 0.20 / 1 | 3.39 | 2 / 62 | FP12 pass: back 8.05 s / 8.03 s |
+| spike35 | today | 13.1 / 21 / 21 | 9.1 | 5.1 | 4.0 | 1.44 % | 7.3 | 0.19 / 1 | 3.13 |  | FP12 pass: back 7.98 s / 7.98 s |
+| spike35 | cov20 | 16.0 / 21 / 21 | 12.0 | 6.4 | 4.8 | 1.60 % | 6.1 | 0.09 / 1 | 5.99 |  | FP12 **FAIL**: back 17.87 s / 17.88 s |
+| spike35 | **rule4** | 13.1 / 21 / 21 | 9.2 | 6.4 | 4.8 | 1.60 % | 6.1 | 0.09 / 1 | 3.13 | 2 / 22 | FP12 pass: back 8.03 s / 7.78 s |
+| spike60 | today | 13.2 / 21 / 21 | 9.2 | 5.1 | 4.0 | 1.42 % | 7.3 | 0.20 / 1 | 3.20 |  | FP12 pass: back 8.03 s / 8.03 s |
+| spike60 | cov20 | 16.1 / 21 / 21 | 12.2 | 6.3 | 4.7 | 1.58 % | 6.3 | 0.19 / 1 | 6.12 |  | FP12 **FAIL**: back 17.90 s / 17.90 s |
+| spike60 | **rule4** | 13.3 / 21 / 21 | 9.3 | 6.3 | 4.7 | 1.58 % | 6.3 | 0.19 / 1 | 3.31 | 2 / 38 | FP12 pass: back 8.03 s / 8.03 s |
+| spike150 | today | 13.4 / 22 / 22 | 9.5 | 4.9 | 3.8 | 1.44 % | 7.4 | 0.31 / 2 | 3.51 |  | FP12 pass: back 8.03 s / 8.28 s |
+| spike150 | cov20 | 16.3 / 22 / 22 | 12.4 | 6.2 | 4.6 | 1.59 % | 6.5 | 0.31 / 2 | 6.32 |  | FP12 **FAIL**: back 17.90 s / 17.90 s |
+| spike150 | **rule4** | 13.6 / 22 / 22 | 9.7 | 6.2 | 4.6 | 1.59 % | 6.5 | 0.31 / 2 | 3.62 | 2 / 92 | FP12 pass: back 8.03 s / 8.28 s |
+| cburst | today | 15.2 / 22 / 27 | 10.9 | 13.3 | 7.8 | 6.85 % | 36.2 | 0.22 / 2 | 5.22 |  |  |
+| cburst | cov20 | 18.2 / 23 / 26 | 13.9 | 2.6 | 1.4 | 2.04 % | 6.8 | 0.26 / 3 | 8.17 |  |  |
+| cburst | **rule4** | 18.2 / 23 / 26 | 13.9 | 2.6 | 1.4 | 2.04 % | 6.8 | 0.26 / 3 | 8.17 | 0 / 0 |  |
+| cbspike | today | 17.3 / 25 / 30 | 12.7 | 12.0 | 6.7 | 7.35 % | 32.8 | 0.85 / 5 | 7.28 |  | FP12 **FAIL**: back never / never |
+| cbspike | cov20 | 19.9 / 25 / 28 | 15.3 | 7.0 | 4.5 | 3.28 % | 5.9 | 0.66 / 5 | 9.87 |  | FP12 **FAIL**: back 17.07 s / 24.88 s |
+| cbspike | **rule4** | 19.9 / 25 / 28 | 15.3 | 7.0 | 4.5 | 3.28 % | 5.9 | 0.66 / 5 | 9.87 | 2 / 53 | FP12 **FAIL**: back 17.07 s / 24.88 s |
+| cbstep | today | 20.4 / 27 / 31 | 16.1 | 14.9 | 9.0 | 7.22 % | 35.8 | 2.01 / 7 | 10.36 |  |  |
+| cbstep | cov20 | 20.0 / 24 / 30 | 15.7 | 12.8 | 6.8 | 4.22 % | 7.2 | 0.61 / 4 | 10.00 |  |  |
+| cbstep | **rule4** | 20.0 / 24 / 30 | 15.7 | 12.6 | 6.6 | 4.19 % | 7.2 | 0.61 / 4 | 10.03 | 2 / 121 |  |
+
+FPD18 for `rule4` (= `rule3` = `cov20` there: no episode on these links): `owner` felt @20 0.61 <= 1.05, dropped 4.42 <=
+8.25, churn 6.17 <= 12.11; `owner2` 1.55 <= 1.56, 6.75 <= 6.75, 8.50 <= 11.56; `ownerS` 0.86 <= 1.13, 3.58 <= 6.83,
+6.50 <= 12.31. FP12's back-within now passes for the shipped rule on every spike network on the clean link (`cleanspike`
+8.05 / 8.03 s, `spike35` 8.03 / 7.78 s, `spike60` 8.03 / 8.03 s, `spike150` 8.03 / 8.28 s; `cov20` 17.87-17.92 s);
+`cbspike` fails for every rule, today's too (the bursts after the spike move the lead more than a tick: printed). FP11
+passes (0 lates; relay missed 0.17 % / 0.11 %). `cbstep`: `rule4` [8, 12) 26.2 / 17.5 lates / dropped per 10 s
+against `cov20`'s 28.8 / 20.0, [12, 22) 16.5 / 5.5 the same.
 
 ### Tasks
 
@@ -1492,14 +1651,26 @@ unchanged.
   `KV_LeadBump`. -> Verify: docs/SPIKES.md "Frame pacing" gains the rows (trip p50 / p95 / max, lead, target, lates,
   bumps, `pred`); felt delay (effective lead past `pred`) at most half of `KV_LeadBump`'s, `miss` at most its; `LEAD`
   confirmed or edited. **Open owner question (not decided here):** with prediction on, `KV_LeadBump` builds the cover
-  plus the bump, not Revision 2's rule (that is `KV_LeadBump` with `KV_PredictOff`), and by the census `rule3` meets the
+  plus the bump, not Revision 2's rule (that is `KV_LeadBump` with `KV_PredictOff`), and by the census `rule3` (and
+  FP23's `rule4`, the same on these links) meets the
   felt-delay criterion against it (0.61 / 1.55 / 0.86 against half of 2.11 / 3.26 / 2.21) but fails "`miss` at most
   its" (dropped 4.4 / 6.8 / 3.6 against 3.2 / 4.6 / 2.8 per 10 s on `owner` / `owner2` / `ownerS`): keep the criterion,
   change it, or change the A/B's baseline.
 - [x] **FP22. Docs.** CLAUDE.md's decision log entry (Revision 3), this section's status and as built, docs/FEEL.md J9
   if the debug line changed.
+- [x] **FP23. The episode detector (FPD20).** `lead.ts`: `ep25mnt`'s rule whenever the cover is on (a ceiling, no
+  `lateBump`), in the census's order (the cover expired at the trip's clock, the trip classified, then inserted); cover
+  trip ids and removal by id; `LEAD` additions (`episodes`, `episodeGapMs`, `episodeIqrK`, `episodeGapSamples`,
+  `episodeMinSec`, `episodeMinSlow`); `LeadStats.episodes` / `episodeActive` / `keptOut`; the `[Pace]` line's
+  `episodes {n} out {k}`. -> Verify: lead.spec's episode cases (a long spike leaves the cover and is back in the base's
+  time, a short burst does not, `episodeMinSlow`, the gap trips, bursts on top enter, a lasting step's episode ends as
+  the base median follows, no ceiling / `lateBump` unchanged); every lead / lockstep / predict / arrivalLog spec
+  passes; the census's `rule4` (the shipped controller, in the default run) equals `ep25mnt` on every client frame of
+  every network, the opt-in ones too, and meets FPD18 on `owner` / `owner2` / `ownerS` and FP12 on `fp12`, `longhold`,
+  `cleanspike` and the `spike*` networks (asserted); `rule3` (`episodes` false) equals `cov20`; docs. Done
+  2026-11-10 ("As built (FP23)").
 
-Order: FP17 -> owner decisions -> FP18 -> FP19 -> FP20 -> FP21 -> FP22.
+Order: FP17 -> owner decisions -> FP18 -> FP19 -> FP20 -> FP21 -> FP22; FP23 after FPD20.
 
 ### Risks
 
@@ -1514,8 +1685,13 @@ Order: FP17 -> owner decisions -> FP18 -> FP19 -> FP20 -> FP21 -> FP22.
   at `min(Lc, C)` for 15 s, then the hold and the fall (FP1's scenario back in 19.92 s against Revision 2's 9.55 s;
   `cleanspike` 17.92 s against 8.05 s; lead.spec 17.38 s with a ceiling against 7.28 s without). Your knight feels none
   of it under the cap; hits landing, enemies reacting and teammates seeing you run that lead behind the whole time.
-  `coverWindowSec` 10 shortens it by 5 s. Candidates measured in "Spike recovery candidates" (FPD20 proposed, round 2:
-  long-spike episodes kept out of the cover, bursts on top let in; `cleanspike` back in 8.05 s).
+  `coverWindowSec` 10 shortens it by 5 s. Candidates measured in "Spike recovery candidates"; FPD20 (accepted, built
+  as FP23) keeps a spike of 0.25 s and 6 slow trips or more out of the cover (`cleanspike` back in 8.05 s). Left: a
+  spike over ~2.5 s (or over half of what the base window holds, as FP1's scenario 1 s into a run) moves the base median,
+  so its later trips enter the cover and it is held like the cover's (a level change by construction); a spike under
+  0.25 s or 6 slow trips is remembered like a burst; the first 0.25 s of a spike or a step still enters the cover and
+  lifts the lead to `min(Lc, C)` until it is taken out; FP12's spike lates and dropped inputs (FPD15's cost) are
+  unchanged.
 - **A deeper buffer passes the cap for a moment.** C follows the depth of the newest send, but the net lead falls only
   at the fall's pace: a depth rise of k ticks puts the effective lead at cap + k for ~1 + 0.25 k s.
 - **The p99 of a small window is its max** (n <= 100 cover trips, ~3.3 s after the warm-up): one slow trip early in a
