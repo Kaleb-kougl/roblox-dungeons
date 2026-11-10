@@ -18,8 +18,8 @@ motion mirror, the LocalPredictor in LockstepClient, the smoother (LP0-LP4, "As 
 diagnostics (LP5 / LP6, "As built: LP5 / LP6"), enemy bullets drawn ahead (LP10, "As built (LP10)"), the docs (LP9).
 **LP8 signed off by the owner** in a Studio test on a simulated 4G link on 2026-11-10 ("a huge improvement"; "LP8
 sign-off" below). The horizon cap is 20 ticks since that test (LPD4, owner: lead 17-23 ticks, `press->drawn` 253 ms
-against `press->step` 422 ms at the cap of 10). Still listed, optional: the formal playtest with the group and a phone
-(LP8), and the Studio check items of LP5, LP6 and LP10 (owner).
+against `press->step` 422 ms at the cap of 10). The Studio checks of LP5, LP6 and LP10 were passed in that
+test (owner, 2026-11-10). Still listed, optional: the formal playtest with the group and a phone (LP8).
 
 Drafted from an audit of branch `frame-pacing` @ `0a8e8ec4` (docs/FRAME_PACING.md: planned,
 nothing built). It builds on frame pacing (LPD2): FP1's lead fix and FP2-FP3's playout clock come first for the
@@ -310,10 +310,10 @@ Set at LP8 (2026-11-10): `maxTicks` raised 10 -> 20 (LPD4), the rest kept.
 - [x] **LP4. `PredictionSmoother`** (Design 4). -> Verify: `smoother.spec.ts`: a 0.3-tile correction decays below 0.01
   within 0.4 s at 30 / 60 / 144 fps and never moves the drawn pose by more than walk speed x dt + the decayed part in a
   frame; each snap rule; facing passes through; with no correction the drawn pose equals `lerp(prev, x, alpha)` exactly.
-- [x] **LP5. Wiring** (code done 2026-11-10; **the Studio two-player check below is open, owner**). `getDrawnPlayer`, the aim origin, the Design 6 sites, `KV_PredictOff`. -> Verify:
+- [x] **LP5. Wiring** (2026-11-10; Studio check passed, owner). `getDrawnPlayer`, the aim origin, the Design 6 sites, `KV_PredictOff`. -> Verify:
   `npm run verify`; Studio two-player test (Test > Clients and Servers, Incoming Replication Lag 100 ms): your knight
   walks, rolls and turns on the press, the teammate's view of you is unchanged, `KV_PredictOff` restores today's view.
-- [x] **LP6. Diagnostics** (code done 2026-11-10; **the Studio check below is open, owner**; Design 7; `KV_CollisionDebug`'s merged ring). -> Verify: Studio, the debug line shows the
+- [x] **LP6. Diagnostics** (2026-11-10; Studio check passed, owner; Design 7; `KV_CollisionDebug`'s merged ring). -> Verify: Studio, the debug line shows the
   horizon, error and press -> drawn of 1 frame with prediction (the lead without).
 - ~~**LP7. Hitbox pip.**~~ Dropped (LPD7, owner 2026-11-07).
 - [x] **LP8 [owner]. Playtest** (with FP6: the same group, 60 Hz and 120 Hz+ screens, a phone). On vs `KV_PredictOff`.
@@ -325,13 +325,13 @@ Set at LP8 (2026-11-10): `maxTicks` raised 10 -> 20 (LPD4), the rest kept.
 - [x] **LP9. Docs** (2026-11-10). docs/SERVER.md "Clients" (the "Not done" line becomes the prediction),
   docs/FRAME_PACING.md (FPD2's pointer), docs/FEEL.md J9 and its non-goal line ("Co-op prediction ... its own plan"),
   CLAUDE.md's decision-log row, this file's status.
-- [ ] **LP10. Bullets drawn ahead** (Design 5, LPD9; after LP5, before LP8). A pure `bulletAhead(sim, i, n, scale, blocked)` in
+- [x] **LP10. Bullets drawn ahead** (Design 5, LPD9; after LP5, before LP8). A pure `bulletAhead(sim, i, n, scale, blocked)` in
   shared/view/predict plus the renderers' `aheadTicks` argument from `getDrawnPlayer`'s offset. -> Verify: a spec over
   real floors: with no shot fired or removed in the window, every drawn enemy bullet equals the merged state's bullet
   `n` ticks later (a stepped copy) to 1e-9, for n 1..10, with the spawn delay and the Hourglass; walls and pieces stop
   it, an expired one is hidden; n = 0 draws exactly today's positions; a bench at 150 bullets under 0.05 ms a frame.
   Studio, Incoming Replication Lag 100 ms: a tight dodge through a stream is not hit, the off switch restores today's.
-  - [x] Code (built on branch `lp-bullets`, now on `local-prediction`, 2026-11-10; "As built (LP10)"). The Studio dodge check stays open (owner). The
+  - [x] Code (built on branch `lp-bullets`, now on `local-prediction`, 2026-11-10; "As built (LP10)"). The Studio dodge check passed (owner, 2026-11-10). The
     renderers read LP5's `SimController.getPredictionAheadTicks()` (the branch's stub dropped in the rebase).
 
 Order: LP0 -> LP1 -> LP2 -> LP3 -> LP4 (all pure, any time) -> FP1-FP3 land -> LP5 -> LP10 -> LP6 -> LP8 -> LP9.
@@ -421,7 +421,7 @@ Order: LP0 -> LP1 -> LP2 -> LP3 -> LP4 (all pure, any time) -> FP1-FP3 land -> L
 - **Verify**: typecheck, lint, build; Lune: every spec under shared/lockstep, shared/view, shared/play and
   shared/spikes, 205 files, pass (drawn.spec, predictDebug.spec new; latencyProbe.spec's pinned lines gain the part);
   roomEdges.spec and minimap/tiles.spec time out at the VM shell's cap (the known slow ones, as before).
-- **Open (owner, Studio)**: LP5's two-player check (Test > Clients and Servers, Incoming Replication Lag 100 ms: the
+- **Studio (owner, passed 2026-11-10 in the 4G test)**: LP5's two-player check (Test > Clients and Servers, Incoming Replication Lag 100 ms: the
   knight walks, rolls and turns on the press; the teammate's view of you unchanged; KV_PredictOff restores today's
   view) and LP6's (the debug line's horizon, error and press -> drawn of about one frame with prediction, the lead
   without; the merged ring). Not checked headlessly: anything client-side (it compiles and lints only).
