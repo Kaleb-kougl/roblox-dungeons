@@ -11,6 +11,7 @@ import { createSimState, hashState, stepParty, type InputFrame, type Recording }
 import {
 	ROLLBACK_ANALYTICS_EVENT,
 	ROLLBACK_LIVE_METRICS,
+	Base64Stream,
 	RollbackCaptureRecorder,
 	analyticsForLiveSummary,
 	analyticsForProbeSummary,
@@ -263,6 +264,26 @@ describe("base64", () => {
 		expect(base64Encode(buffer.fromstring("M"))).toBe("TQ==");
 		for (const bad of ["TWF", "TW=u", "T===", "TWE!", "TWF=", "TR=="]) expect(base64Decode(bad)).toBe(undefined);
 	});
+
+	it("a Base64Stream fed in pieces gives the text of the joined bytes", () => {
+		const total = 40;
+		const all = buffer.create(total);
+		for (let i = 0; i < total; i++) buffer.writeu8(all, i, (i * 53 + 7) % 256);
+		for (const sizes of [[40], [1, 1, 1, 37], [2, 5, 0, 7, 26], [3, 3, 34], [13, 14, 13]]) {
+			const stream = new Base64Stream();
+			let at = 0;
+			for (const n of sizes) {
+				const piece = buffer.create(n);
+				buffer.copy(piece, 0, all, at, n);
+				stream.push(piece);
+				at += n;
+				const sofar = buffer.create(at);
+				buffer.copy(sofar, 0, all, 0, at);
+				expect(stream.text()).toBe(base64Encode(sofar));
+				expect(stream.length()).toBe(base64Encode(sofar).size());
+			}
+		}
+	});
 });
 
 function sameStreams(a: Readonly<Recording>, b: Readonly<Recording>): boolean {
@@ -395,6 +416,8 @@ describe("capture codec", () => {
 		const STEP = 7;
 		const SEGMENT = 360;
 		let t = 0;
+		let steps = 0;
+		let queuedSeen = 0;
 		while (t < T) {
 			// One lockstep step: a few ticks finalized, then a segment's ticks released (never this step's own).
 			const before = log.ticks();
@@ -408,10 +431,22 @@ describe("capture codec", () => {
 			const stop = math.floor(before / SEGMENT) * SEGMENT;
 			log.releaseBefore(stop);
 			recorder.pull();
+			// pull never encodes: finished blocks wait for encodePending (the server's own thread, one at a time),
+			// here every 20th step, so some are still queued at the end.
+			queuedSeen = math.max(queuedSeen, recorder.queuedBlocks());
+			steps++;
+			if (steps % 20 === 0) recorder.encodePending(1);
 		}
 		expect(recorder.getProblem()).toBe(undefined);
 		expect(recorder.ticks()).toBe(T);
-		const cap = recorder.finish(setup, info, TINY_CHUNK);
+		expect(queuedSeen).toBeGreaterThan(1);
+		const queued = recorder.queuedBlocks();
+		expect(queued).toBeGreaterThan(0);
+		let pauses = 0;
+		const cap = recorder.finish(setup, info, TINY_CHUNK, () => pauses++);
+		// A pause between the blocks finish encodes (the queued ones and the open one) and between chunks.
+		const encodedAtFinish = queued + (T % SMALL_BLOCK > 0 ? 1 : 0);
+		expect(pauses).toBe(encodedAtFinish - 1 + (cap !== undefined ? cap.chunks.size() - 1 : 0));
 		expect(cap).never.toBe(undefined);
 		if (cap === undefined) return;
 		const direct = encodeCapture(setup, rec, info, TINY_CHUNK, SMALL_BLOCK);

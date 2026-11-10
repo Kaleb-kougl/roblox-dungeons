@@ -5,9 +5,11 @@
  *
  * Format (meta version ROLLBACK_CAPTURE.version):
  *   blocks   the run in blocks of ROLLBACK_CAPTURE.blockTicks ticks (the last one shorter), each encoded on its own
- *            by encodeRecording (seed, spawn, every player's stream for those ticks). The server keeps finished blocks
- *            encoded (a few bytes a tick), never a whole run's frames.
- *   payload  every block's bytes back to back, base64 (RFC 4648, `+` `/`, `=` padding)
+ *            by encodeRecording (seed, spawn, every player's stream for those ticks). The server encodes each finished
+ *            block in its own thread step (RollbackCaptureRecorder.encodePending) and keeps it as base64 text, never a
+ *            whole run's frames.
+ *   payload  every block's bytes back to back, base64 (RFC 4648, `+` `/`, `=` padding), built block by block
+ *            (Base64Stream: the same text as encoding the joined bytes at once)
  *   chunks   the payload cut into strings of at most `chunkChars` characters, in order
  *   meta     RollbackCaptureMeta: version, setup (no user ids: players are indices), info (run id, time, how the run
  *            ended, the server's final hash), players, ticks, each block's tick count and byte length, chunk count
@@ -180,6 +182,64 @@ export function base64Decode(text: string): buffer | undefined {
 	return out;
 }
 
+/**
+ * Base64 in pieces: the bytes pushed one buffer after another give, joined, exactly base64Encode of all of them back
+ * to back (0-2 bytes are carried to the next push so no `=` lands mid-text). The capture encodes each block's bytes as
+ * it is finished, so the run is never joined and encoded in one go.
+ */
+export class Base64Stream {
+	private readonly parts: string[] = [];
+	private carry: number[] = [];
+	private chars = 0;
+
+	push(bytes: buffer): void {
+		const n = buffer.len(bytes);
+		const c = this.carry.size();
+		const whole = n + c - ((n + c) % 3);
+		if (whole > 0) {
+			const head = buffer.create(whole);
+			for (let i = 0; i < c; i++) buffer.writeu8(head, i, this.carry[i]);
+			buffer.copy(head, c, bytes, 0, whole - c);
+			const text = base64Encode(head);
+			this.parts.push(text);
+			this.chars += text.size();
+			const next: number[] = [];
+			for (let i = whole - c; i < n; i++) next.push(buffer.readu8(bytes, i));
+			this.carry = next;
+		} else {
+			for (let i = 0; i < n; i++) this.carry.push(buffer.readu8(bytes, i));
+		}
+	}
+
+	/** Characters of the whole text so far, the carried bytes' padded tail included. */
+	length(): number {
+		return this.chars + (this.carry.size() > 0 ? 4 : 0);
+	}
+
+	/** The whole text (the carried bytes padded). The stream stays usable. */
+	text(): string {
+		const out = [...this.parts];
+		if (this.carry.size() > 0) {
+			const tail = buffer.create(this.carry.size());
+			for (let i = 0; i < this.carry.size(); i++) buffer.writeu8(tail, i, this.carry[i]);
+			out.push(base64Encode(tail));
+		}
+		return out.join("");
+	}
+}
+
+/** `text` cut into strings of at most `chunkChars` characters, in order; `pause()` between chunks. */
+function chunksOf(text: string, chunkChars: number, pause?: () => void): string[] {
+	const chunks: string[] = [];
+	let from = 1;
+	while (from <= text.size()) {
+		if (from > 1) pause?.();
+		chunks.push(text.sub(from, from + chunkChars - 1));
+		from += chunkChars;
+	}
+	return chunks;
+}
+
 // ---------------------------------------------------------------------------------------------
 // Encode
 
@@ -202,41 +262,28 @@ function blockOf(rec: Readonly<Recording>, start: number, count: number): Record
 }
 
 /**
- * Packs encoded blocks into chunks and their meta. Throws (error(msg, 0)) on no blocks or a chunk size below 4: a
- * capture always has at least one tick.
+ * Packs a capture's base64 text (every block's bytes back to back, a Base64Stream) into chunks and their meta; `pause`
+ * runs between chunks. Throws (error(msg, 0)) on no blocks or a chunk size below 4: a capture always has a tick.
  */
 export function packCapture(
 	setup: Readonly<RollbackCaptureSetup>,
 	info: Readonly<RollbackCaptureInfo>,
 	players: number,
-	blocks: ReadonlyArray<buffer>,
+	stream: Base64Stream,
 	blockTicks: ReadonlyArray<number>,
+	blockBytes: ReadonlyArray<number>,
 	chunkChars: number = ROLLBACK_CAPTURE.chunkChars,
+	pause?: () => void,
 ): EncodedCapture {
-	if (blocks.size() === 0 || blocks.size() !== blockTicks.size()) error("packCapture: no blocks", 0);
+	if (blockTicks.size() === 0 || blockTicks.size() !== blockBytes.size()) error("packCapture: no blocks", 0);
 	if (chunkChars < 4) error("packCapture: chunkChars below 4", 0);
 	let bytes = 0;
 	let ticks = 0;
-	const blockBytes: number[] = [];
-	for (let i = 0; i < blocks.size(); i++) {
-		const len = buffer.len(blocks[i]);
-		blockBytes.push(len);
-		bytes += len;
+	for (let i = 0; i < blockTicks.size(); i++) {
+		bytes += blockBytes[i];
 		ticks += blockTicks[i];
 	}
-	const joined = buffer.create(bytes);
-	let at = 0;
-	for (const b of blocks) {
-		buffer.copy(joined, at, b, 0);
-		at += buffer.len(b);
-	}
-	const text = base64Encode(joined);
-	const chunks: string[] = [];
-	let from = 1;
-	while (from <= text.size()) {
-		chunks.push(text.sub(from, from + chunkChars - 1));
-		from += chunkChars;
-	}
+	const chunks = chunksOf(stream.text(), chunkChars, pause);
 	const meta: RollbackCaptureMeta = {
 		v: ROLLBACK_CAPTURE.version,
 		setup,
@@ -244,7 +291,7 @@ export function packCapture(
 		players,
 		ticks,
 		blockTicks: [...blockTicks],
-		blockBytes,
+		blockBytes: [...blockBytes],
 		bytes,
 		chunks: chunks.size(),
 		encoding: ENCODING,
@@ -265,17 +312,20 @@ export function encodeCapture(
 ): EncodedCapture {
 	const n = recording.frames.size();
 	if (n === 0) error("encodeCapture: an empty recording", 0);
-	const blocks: buffer[] = [];
+	const stream = new Base64Stream();
 	const ticks: number[] = [];
+	const sizes: number[] = [];
 	let start = 0;
 	while (start < n) {
 		const count = math.min(blockTicks, n - start);
-		blocks.push(encodeRecording(blockOf(recording, start, count)));
+		const block = encodeRecording(blockOf(recording, start, count));
+		stream.push(block);
 		ticks.push(count);
+		sizes.push(buffer.len(block));
 		start += count;
 	}
 	const players = recording.others !== undefined ? recording.others.size() + 1 : 1;
-	return packCapture(setup, info, players, blocks, ticks, chunkChars);
+	return packCapture(setup, info, players, stream, ticks, sizes, chunkChars);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -294,19 +344,29 @@ export interface RollbackCaptureLog {
 	frameAt(t: number): ReadonlyArray<InputFrame>;
 }
 
+/** A finished block's frames (per player), waiting for `encodePending`. */
+interface RawBlock {
+	readonly streams: InputFrame[][];
+	readonly ticks: number;
+}
+
 /**
- * Follows a party run's merged log as it grows (`pull` after every lockstep step), encoding every `blockTicks` ticks
- * into a block so only the open block's frames are held. The log releases ticks once they are validated; `pull` after
- * every step reads them first (a step releases only ticks below what earlier steps finalized). A tick released before
- * it was read, or an encode failure, stops the recorder with `problem` set; past ROLLBACK_CAPTURE.maxTicks it stops
- * as truncated. It never throws.
+ * Follows a party run's merged log as it grows (`pull` after every lockstep step). `pull` only copies frame references:
+ * every `blockTicks` ticks it closes a block into a queue, and `encodePending` (the server calls it from its own
+ * thread, one block per resumption) encodes queued blocks one at a time (the recording codec, then base64 through a
+ * Base64Stream), so no step pays for an encode and only open / queued blocks hold frames. The log releases ticks once
+ * they are validated; `pull` after every step reads them first (a step releases only ticks below what earlier steps
+ * finalized). A tick released before it was read, or an encode failure, stops the recorder with `problem` set; past
+ * ROLLBACK_CAPTURE.maxTicks it stops as truncated. It never throws.
  */
 export class RollbackCaptureRecorder {
 	private cursor = 0;
 	private pending: InputFrame[][] = [];
 	private pendingTicks = 0;
-	private readonly blocks: buffer[] = [];
+	private readonly queued: RawBlock[] = [];
+	private stream = new Base64Stream();
 	private readonly blockTicks: number[] = [];
+	private readonly blockBytes: number[] = [];
 	private problem: string | undefined;
 	private stopped = false;
 
@@ -329,7 +389,7 @@ export class RollbackCaptureRecorder {
 		}
 		while (this.cursor < last) {
 			if (this.cursor >= this.maxTicks) {
-				if (this.pendingTicks > 0) this.flush();
+				if (this.pendingTicks > 0) this.close();
 				this.stop(`truncated at ${this.maxTicks} ticks`);
 				return;
 			}
@@ -337,9 +397,26 @@ export class RollbackCaptureRecorder {
 			for (let i = 0; i < log.players; i++) this.pending[i].push(merged[i]);
 			this.pendingTicks++;
 			this.cursor++;
-			if (this.pendingTicks >= this.blockSize) this.flush();
-			if (this.stopped) return;
+			if (this.pendingTicks >= this.blockSize) this.close();
 		}
+	}
+
+	/** Finished blocks waiting to be encoded. */
+	queuedBlocks(): number {
+		return this.queued.size();
+	}
+
+	/**
+	 * Encodes at most `maxBlocks` queued blocks (oldest first); true while more wait. The server runs it from its own
+	 * thread with a yield between calls, so each call costs one block's encode.
+	 */
+	encodePending(maxBlocks = 1): boolean {
+		let done = 0;
+		while (done < maxBlocks && this.queued.size() > 0) {
+			this.encodeBlock(this.queued.remove(0)!);
+			done++;
+		}
+		return this.queued.size() > 0;
 	}
 
 	/** Ticks read so far. */
@@ -352,24 +429,40 @@ export class RollbackCaptureRecorder {
 		return this.problem;
 	}
 
-	/** Finishes the open block; the capture's chunks and meta, or undefined when it holds no tick. */
+	/**
+	 * Closes the open block and encodes every queued one (`pause()` between blocks and between chunks: the server
+	 * yields there); the capture's chunks and meta, or undefined when it holds no tick.
+	 */
 	finish(
 		setup: Readonly<RollbackCaptureSetup>,
 		info: Readonly<Omit<RollbackCaptureInfo, "problem">>,
 		chunkChars: number = ROLLBACK_CAPTURE.chunkChars,
+		pause?: () => void,
 	): EncodedCapture | undefined {
-		if (this.pendingTicks > 0) this.flush();
+		if (this.pendingTicks > 0) this.close();
 		this.stopped = true;
-		if (this.blocks.size() === 0) return undefined;
+		while (this.encodePending(1)) pause?.();
+		if (this.blockTicks.size() === 0) return undefined;
 		const full: RollbackCaptureInfo = this.problem !== undefined ? { ...info, problem: this.problem } : info;
-		return packCapture(setup, full, this.log.players, this.blocks, this.blockTicks, chunkChars);
+		return packCapture(
+			setup,
+			full,
+			this.log.players,
+			this.stream,
+			this.blockTicks,
+			this.blockBytes,
+			chunkChars,
+			pause,
+		);
 	}
 
 	/** Stops recording and drops everything held (the switch went off mid-run): `finish` then returns undefined. */
 	abandon(why: string): void {
 		this.stop(why);
-		this.blocks.clear();
+		this.queued.clear();
+		this.stream = new Base64Stream();
 		this.blockTicks.clear();
+		this.blockBytes.clear();
 	}
 
 	private resetPending(): void {
@@ -378,23 +471,30 @@ export class RollbackCaptureRecorder {
 		this.pendingTicks = 0;
 	}
 
-	private flush(): void {
+	/** The open block into the encode queue. */
+	private close(): void {
+		this.queued.push({ streams: this.pending, ticks: this.pendingTicks });
+		this.resetPending();
+	}
+
+	private encodeBlock(block: RawBlock): void {
 		const log = this.log;
-		const rec: Recording = { seed: log.seed, spawn: { x: log.spawn.x, z: log.spawn.z }, frames: this.pending[0] };
+		const rec: Recording = { seed: log.seed, spawn: { x: log.spawn.x, z: log.spawn.z }, frames: block.streams[0] };
 		if (log.players > 1) {
 			const others: InputFrame[][] = [];
-			for (let i = 1; i < log.players; i++) others.push(this.pending[i]);
+			for (let i = 1; i < log.players; i++) others.push(block.streams[i]);
 			rec.others = others;
 		}
-		const count = this.pendingTicks;
 		const [ok, out] = pcall(() => encodeRecording(rec));
-		this.resetPending();
 		if (!ok) {
+			// Nothing after a failed block can be kept (the capture must be whole from tick 0 to its end).
 			this.stop(`encode failed: ${tostring(out)}`);
+			this.queued.clear();
 			return;
 		}
-		this.blocks.push(out as buffer);
-		this.blockTicks.push(count);
+		this.stream.push(out as buffer);
+		this.blockTicks.push(block.ticks);
+		this.blockBytes.push(buffer.len(out as buffer));
 	}
 
 	private stop(why: string): void {

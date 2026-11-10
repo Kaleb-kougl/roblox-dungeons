@@ -31,8 +31,11 @@ export const ROLLBACK_CAPTURE = table.freeze({
 	 * (no character needs escaping), so 3,000,000 leaves over a megabyte of margin.
 	 */
 	chunkChars: 3000000,
-	/** Ticks per encoded block (a minute at 60 Hz): the server keeps each finished minute encoded, not as frames. */
-	blockTicks: 3600,
+	/**
+	 * Ticks per encoded block (10 s at 60 Hz): the server encodes each finished block in its own thread step (one
+	 * encodeRecording of this many ticks x the party, then its base64) and keeps it as text, not as frames.
+	 */
+	blockTicks: 600,
 	/** The longest capture kept (two hours at 60 Hz); the recorder stops there and marks the capture truncated. */
 	maxTicks: 432000,
 	/** Chunks per capture at most (the decoder refuses more; a real capture has one or two, specs use tiny chunks). */
