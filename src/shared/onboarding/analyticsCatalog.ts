@@ -2,7 +2,7 @@
  * The game's AnalyticsService catalog (docs/TUTORIAL_FUNNEL.md TF1): every funnel and custom event name the server
  * logs, with each event's custom field value sets, gathered from their owners (shared/run analytics.ts and
  * dailyAnalytics.ts and recapAnalytics.ts, shared/lobby analytics.ts, which also carries shared/invite's arrival
- * events, shared/spikes rollbackSpike.ts's two debug events, and this module's tutorial / onboarding events). Pure data plus counting; analyticsCatalog.spec.ts holds it
+ * events, and this module's tutorial / onboarding events). Pure data plus counting; analyticsCatalog.spec.ts holds it
  * to Roblox's limits: 10 funnels, 100 custom event names, 8,000 field value combinations per experience, step names
  * <= 32 chars.
  *
@@ -41,14 +41,6 @@ import {
 	type SegmentRejectCode,
 } from "shared/run";
 import { BOSS_FINAL_PHASE, archetypeIds } from "shared/sim";
-import {
-	ROLLBACK_ANALYTICS_EVENT,
-	ROLLBACK_ANALYTICS_LIVE_METRICS,
-	ROLLBACK_DEVICE_CLASSES,
-	ROLLBACK_PROBE_CASES,
-	rollbackHorizonLabels,
-	rollbackModeHorizonValues,
-} from "shared/spikes";
 import { TUTORIAL_DEVICES, TUTORIAL_STEPS } from "shared/tutorial";
 import {
 	ONBOARDING_FUNNEL,
@@ -229,7 +221,6 @@ function buildCatalog(): ReadonlyArray<AnalyticsCatalogEntry> {
 	const daily = "shared/run dailyAnalytics.ts";
 	const lobby = "shared/lobby analytics.ts";
 	const tut = "shared/onboarding";
-	const spike = "shared/spikes rollbackSpike.ts";
 	const causes = deathCauses();
 	const attempts = labels(DAILY_ANALYTICS.attemptBuckets);
 	const boards = DAILY_ANALYTICS.boards.map((b) => b as string);
@@ -351,17 +342,6 @@ function buildCatalog(): ReadonlyArray<AnalyticsCatalogEntry> {
 		}),
 		custom(TUTORIAL_ANALYTICS_EVENT.newPlayerRunStarted, tut, { field01: set(outcomes) }),
 		custom(TUTORIAL_ANALYTICS_EVENT.newPlayerReturned, tut, { field01: set(outcomes) }),
-		// --- The rollback spike (docs/ROLLBACK_SPIKE.md Design 5, 7): debug only, KV_RollbackCapture servers
-		custom(ROLLBACK_ANALYTICS_EVENT.cpu, spike, {
-			field01: set(ROLLBACK_DEVICE_CLASSES),
-			field02: set(rollbackModeHorizonValues()),
-			field03: set(ROLLBACK_PROBE_CASES),
-		}),
-		custom(ROLLBACK_ANALYTICS_EVENT.probe, spike, {
-			field01: set(ROLLBACK_ANALYTICS_LIVE_METRICS),
-			field02: set(ROLLBACK_DEVICE_CLASSES),
-			field03: set(rollbackHorizonLabels()),
-		}),
 	];
 	return table.freeze(out);
 }

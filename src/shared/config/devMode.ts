@@ -16,7 +16,7 @@ export const DEV_MODE = {
 	enabled: true,
 	/** Roblox UserIds allowed on live servers (find yours on your profile URL: roblox.com/users/<id>/profile). */
 	allowedUserIds: [
-		8814003556, // Slaylub, the owner's phone test account (docs/ROLLBACK_SPIKE.md R5) // check-asset-ids: allow (a UserId, not an asset id)
+		8814003556, // Slaylub, the owner's phone test account // check-asset-ids: allow (a UserId, not an asset id)
 	] as ReadonlyArray<number>,
 	/** The place's creator is allowed on live servers when the game is owned by a user (not a group). */
 	allowPlaceCreator: true,
@@ -84,7 +84,5 @@ export const DEV_PANEL_VIEW = {
 		bossFloor: "boss floor",
 		notInDevRun: "Go starts a local run (never submitted).",
 		inDevRun: "Dev run on floor %d: not submitted.",
-		/** The rollback probe's device tag (docs/ROLLBACK_SPIKE.md Design 5: Workspace KV_RollbackDeviceTag). */
-		rollbackTag: "Rollback probe device tag",
 	},
 } as const;

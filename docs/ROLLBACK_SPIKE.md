@@ -1,5 +1,10 @@
 # Rollback spike (measure before building)
 
+> **Closed (2026-11-09).** Decision RBD8 (owner): don't build rollback; build docs/LOCAL_PREDICTION.md (with its enemy
+> bullets drawn ahead, LP10). R7 removed the spike's code; the last commit that has it is `f6f6e6c`
+> (`git show f6f6e6c:src/shared/lockstep/rollbackSpike/model.ts` and so on). Paths, switches and commands below
+> describe that commit, not the current tree. This doc stays as the record.
+
 Co-op rollback would draw the whole world ahead of the server: every frame, copy the confirmed state, step it forward
 over the inputs not confirmed yet (your own known, teammates' guessed), draw the copy, and redo it when the server's
 frames arrive. This spike does **not** build that. It answers, with numbers, whether it is worth building:
@@ -22,6 +27,8 @@ fallback only.
 
 ## Status (2026-11-09)
 
+Closed: RBD8 (don't build), R7 done (the code removed after `f6f6e6c`). History below.
+
 **Built headlessly** on branch `rollback-spike` (@ `6569ef9`, from `main` @ `3f7ce65`, which has the measured lead,
 `frame-pacing-lead`, merged). The plan was written against `main` @ `49a74856` after the discussion of local
 prediction vs rollback (2026-11-09); revision 2 (same day, owner): the device work off the main thread (Parallel Luau,
@@ -41,7 +48,7 @@ spike out of the `shared/lockstep` barrel, the generic copy renamed `cloneForRol
 | R3a facts, R3 CPU probe, R4 capture / plugin / receiver, R4b live metrics | Built, compiled, pure cores spec'd headlessly. **Studio check pending** (the Actor, the remote, DataStores, the plugin, AnalyticsService need the engine): "Studio and device checklist" below |
 | R5 devices | Mac and iPhone 17 rows only (Results); the co-op playtest not run |
 | R6 decision | **RBD8: don't build rollback** (2026-11-09) |
-| R7 cleanup | Not started |
+| R7 cleanup | **Done** (2026-11-09): every part removed; `denseFight.ts` and the runner's `--flag` kept |
 
 Nothing under `src/shared/sim/**`, `src/shared/dungeon/**` or `fixtures/` changed, nor the lockstep wire, session, log,
 validator, hashes, replays or scores (checked with `git diff` against `3f7ce65`). Every runtime part is off by default.
@@ -768,7 +775,7 @@ unknown refused, an Archer mirror equal to `buildWorldSetup`'s state, a dropped 
 - [x] **R6. Report and decision.** Done: RBD8 (don't build). The live summaries (the gate) and the harness over the captures (the sweeps); the
   result tables filled in; a recommendation (build rollback and its scope, build the cheap plan, or the cheap plan
   first). -> Verify: the owner's decision recorded here as RBD8; docs/LOCAL_PREDICTION.md points at it.
-- [ ] **R7. Cleanup.** Per RBD8: the spike code removed, or kept behind its switches as the first piece of the build
+- [x] **R7. Cleanup.** Done (2026-11-09): removed (RBD8); kept only `shared/run/testing` `denseFight.ts` (the replay bench's setup) and the Lune runner's `--flag name`. Was: the spike code removed, or kept behind its switches as the first piece of the build
   (the worker mirror is reusable).
 
 Order: R0 -> R1 -> R1b -> R3a -> R2, R3, R4 (in parallel) -> R4b -> R5 -> R6 -> R7. R2 needs only R1 / R1b. As built,
@@ -884,7 +891,7 @@ L 11 are 3 kills; (L, D) is fixed per pass, not measured.
 
 ## Studio and device checklist (owner)
 
-Everything below is built and off by default. Run the steps in order; paste each result into this doc (the facts
+Obsolete since R7 (the code is removed; kept for the record of what was run). Everything below was built and off by default. Run the steps in order; paste each result into this doc (the facts
 under R3a, the numbers in Results) and tick the task once its Verify is met.
 
 **Switches.** Workspace attributes (Explorer -> Workspace -> Properties -> Attributes, before Play; or the command bar,

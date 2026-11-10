@@ -11,9 +11,6 @@
  *   workspace:SetAttribute("KV_UiArtSpike", true)     (client; docs/UI_ART.md UA1)
  *   workspace:SetAttribute("KV_L10nSpike", true)      (client; docs/LOCALIZATION.md L0)
  *   workspace:SetAttribute("KV_PadSpike", true)       (client; docs/GAMEPAD_MENUS.md GM0)
- *   workspace:SetAttribute("KV_RollbackCapture", true) (server; docs/ROLLBACK_SPIKE.md Design 5-7: probe summaries
- *                                                      and co-op run captures; shared/spikes ROLLBACK_CAPTURE)
- *   workspace:SetAttribute("KV_RollbackSpike", 16)     (client, a number H: the rollback probe; ROLLBACK_SPIKE_ATTRIBUTES)
  * An attribute, when present, overrides the default below; setting it to false stops the spike
  * and cleans up everything it made.
  */
@@ -28,7 +25,6 @@ export const SPIKE_DEFAULTS = {
 	uiArt: false,
 	l10n: false,
 	pad: false,
-	rollbackCapture: false,
 } as const;
 
 /** Workspace attribute names that override SPIKE_DEFAULTS. */
@@ -41,30 +37,9 @@ export const SPIKE_ATTRIBUTES = {
 	uiArt: "KV_UiArtSpike",
 	l10n: "KV_L10nSpike",
 	pad: "KV_PadSpike",
-	rollbackCapture: "KV_RollbackCapture",
 } as const;
 
 export type SpikeName = keyof typeof SPIKE_DEFAULTS;
-
-/**
- * The rollback spike's client probe (docs/ROLLBACK_SPIKE.md Design 5 / 7, tasks R3a / R3 / R4b; RollbackSpikeController),
- * Workspace attributes read at every run start (and watched: off stops it at once). Not booleans, so not in
- * SPIKE_ATTRIBUTES:
- *   KV_RollbackSpike      a number H, the ticks each CPU prediction steps (1..64); 0 or absent: off (nothing created)
- *   KV_RollbackSpikeMode  "parallel" (default: an Actor mirrors the run; live metrics in co-op), "serial" (the same
- *                         work on the main thread, the comparison: never with other players), "facts" (R3a: the
- *                         Parallel Luau facts, printed once; needs KV_RollbackSpike > 0 to start)
- *   KV_RollbackDeviceTag  a string (e.g. "Pixel 6a"), appended to the summaries' device label; the dev panel sets it
- */
-export const ROLLBACK_SPIKE_ATTRIBUTES = {
-	horizon: "KV_RollbackSpike",
-	mode: "KV_RollbackSpikeMode",
-	deviceTag: "KV_RollbackDeviceTag",
-} as const;
-
-/** KV_RollbackSpikeMode's values ("parallel" when absent or unknown). */
-export type RollbackSpikeModeName = "parallel" | "serial" | "facts";
-export const ROLLBACK_SPIKE_MODE_NAMES: ReadonlyArray<RollbackSpikeModeName> = ["parallel", "serial", "facts"];
 
 /**
  * Touch spike MB1 (docs/MOBILE_IMPL.md MB1, docs/SPIKES.md "Spike MB0"): a debug overlay on a phone or tablet that

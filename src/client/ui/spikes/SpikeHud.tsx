@@ -1,12 +1,6 @@
 import React from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
-import {
-	clientStore,
-	selectBulletSpike,
-	selectCameraSpike,
-	selectInviteSpike,
-	selectRollbackSpike,
-} from "client/store";
+import { clientStore, selectBulletSpike, selectCameraSpike, selectInviteSpike } from "client/store";
 import { BULLET_SPIKE, CAMERA_SPIKE, InviteSpikeAction, SPIKE_ATTRIBUTES, STUDS_PER_TILE } from "shared/config";
 
 const TEXT_SIZE = 16;
@@ -215,22 +209,12 @@ function InvitePanel() {
 	);
 }
 
-/** First LayoutOrder of the rollback probe's line (after the invites panel). */
-const ROLLBACK_ORDER = 61;
-
-/** The rollback probe's one line (docs/ROLLBACK_SPIKE.md R3; RollbackSpikeController writes it). */
-function RollbackPanel() {
-	const spike = useSelector(selectRollbackSpike);
-	return <LogLine order={ROLLBACK_ORDER} text={spike.line} />;
-}
-
 /** Readouts and touch-friendly controls for whichever spikes are running (docs/SPIKES.md). */
 export function SpikeHud() {
 	const bulletsActive = useSelector((state) => selectBulletSpike(state).active);
 	const cameraActive = useSelector((state) => selectCameraSpike(state).active);
 	const invitesActive = useSelector((state) => selectInviteSpike(state).active);
-	const rollbackActive = useSelector((state) => selectRollbackSpike(state).active);
-	if (!bulletsActive && !cameraActive && !invitesActive && !rollbackActive) {
+	if (!bulletsActive && !cameraActive && !invitesActive) {
 		return undefined;
 	}
 	return (
@@ -251,7 +235,6 @@ export function SpikeHud() {
 			{bulletsActive && <BulletPanel />}
 			{cameraActive && <CameraPanel />}
 			{invitesActive && <InvitePanel />}
-			{rollbackActive && <RollbackPanel />}
 		</frame>
 	);
 }

@@ -21,8 +21,6 @@ export interface DevPanelProps {
 	readonly bothWeapons: boolean;
 	/** The current run is a dev run, on this floor (undefined outside one). */
 	readonly runFloor: number | undefined;
-	/** The rollback probe's device tag (Workspace KV_RollbackDeviceTag; "" = none). */
-	readonly rollbackTag: string;
 	readonly onToggleOpen: () => void;
 	readonly onFloorDelta: (delta: number) => void;
 	readonly onFloorText: (text: string) => void;
@@ -32,7 +30,6 @@ export interface DevPanelProps {
 	readonly onToggleBothWeapons: () => void;
 	readonly onGo: () => void;
 	readonly onRestart: () => void;
-	readonly onRollbackTagText: (text: string) => void;
 }
 
 function Corner() {
@@ -225,10 +222,6 @@ export function DevPanel(props: DevPanelProps) {
 					dim={true}
 					text={props.runFloor !== undefined ? string.format(S.inDevRun, props.runFloor) : S.notInDevRun}
 				/>
-				<Label order={11} text={S.rollbackTag} dim={true} />
-				<Row order={12}>
-					<Field order={1} width={rest(0, 0)} text={props.rollbackTag} onCommit={props.onRollbackTagText} />
-				</Row>
 			</frame>
 		</frame>
 	);

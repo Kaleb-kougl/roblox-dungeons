@@ -123,7 +123,7 @@ shards, builds/evolutions.ts; player bullets stay merged). Not exact, at the end
 - a Hourglass slow that starts inside the window overshoots for a moment.
 Nothing in the sim, the hashes or the hits changes; enemies, teammates and vitals stay merged. This is the rollback
 spike's "cheap plan" (docs/ROLLBACK_SPIKE.md: in-flight bullets exact, its glitch counts are the shots fired and removed
-above; `rollbackSpike/model.ts` has a headless version).
+above; a headless version was `shared/lockstep/rollbackSpike/model.ts`, removed in its R7: `git show f6f6e6c:<path>`).
 
 ### 6. Wiring
 

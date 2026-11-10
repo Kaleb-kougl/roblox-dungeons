@@ -63,11 +63,6 @@ export interface SpikeState {
 		readonly lines: ReadonlyArray<string>;
 		readonly request?: InviteSpikeRequest;
 	};
-	/** The rollback probe (docs/ROLLBACK_SPIKE.md R3, RollbackSpikeController): its one overlay line. */
-	readonly rollback: {
-		readonly active: boolean;
-		readonly line: string;
-	};
 }
 
 const EMPTY_STATS: BulletSpikeStats = {
@@ -98,7 +93,6 @@ const initialState: SpikeState = {
 		distance: 0,
 	},
 	invites: { active: false, lines: [] },
-	rollback: { active: false, line: "" },
 };
 
 export const spikesSlice = createProducer(initialState, {
@@ -162,10 +156,6 @@ export const spikesSlice = createProducer(initialState, {
 		lines.push(line);
 		return { ...state, invites: { ...state.invites, lines } };
 	},
-	setRollbackSpikeLine: (state, line: string | undefined) => ({
-		...state,
-		rollback: { active: line !== undefined, line: line ?? "" },
-	}),
 	requestInviteSpike: (state, action: InviteSpikeAction) => ({
 		...state,
 		invites: { ...state.invites, request: { seq: (state.invites.request?.seq ?? 0) + 1, action } },
@@ -175,5 +165,4 @@ export const spikesSlice = createProducer(initialState, {
 export const selectBulletSpike = (state: { spikes: SpikeState }) => state.spikes.bullets;
 export const selectCameraSpike = (state: { spikes: SpikeState }) => state.spikes.camera;
 export const selectInviteSpike = (state: { spikes: SpikeState }) => state.spikes.invites;
-export const selectRollbackSpike = (state: { spikes: SpikeState }) => state.spikes.rollback;
 export const selectInviteSpikeRequest = (state: { spikes: SpikeState }) => state.spikes.invites.request;

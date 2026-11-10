@@ -16,9 +16,6 @@ the server, shown only to players the server allows.
 
 The chip shows `DEV · F<n> · GOD` during a dev run. The run is not paused while the panel is open. Studio shortcuts:
 `workspace:SetAttribute("KV_DevPanel", true)` opens the panel on join; `KV_Seed` sets the panel's first seed.
-The panel's last field, **Rollback probe device tag**, sets the client's Workspace `KV_RollbackDeviceTag` (e.g.
-"Pixel 6a"; empty clears it): the rollback probe appends it to its summaries' device label (docs/ROLLBACK_SPIKE.md
-Design 5; read at each probe session start).
 
 ## Who gets it
 

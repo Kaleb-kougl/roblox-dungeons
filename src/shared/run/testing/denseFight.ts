@@ -1,7 +1,6 @@
 /**
  * Test support for specs (never imported by the game): a fight on a chosen endless floor, as run/replay.bench.spec.ts
- * sets it up (docs/SERVER.md "Replay capacity") and the rollback spike's state copy spec reuses (docs/ROLLBACK_SPIKE.md
- * R1). Test-only shortcuts: debug-skip to the floor with every draft dismissed, then the party teleported onto a
+ * sets it up (docs/SERVER.md "Replay capacity"). Test-only shortcuts: debug-skip to the floor with every draft dismissed, then the party teleported onto a
  * room's first spawn so its enemies aggro.
  */
 import {

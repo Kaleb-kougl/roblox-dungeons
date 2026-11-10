@@ -9,7 +9,6 @@ import { boardForParty, dailyRunResult, partyContributors, type LeaderboardMembe
 import { LobbyRunTracker, type LobbyRunStart } from "shared/lobby";
 import type { LeaderboardPostStatus, RunFinishVerdict } from "shared/network";
 import type { RunRecordsResult } from "shared/records";
-import type { RollbackCaptureRecorder } from "shared/spikes";
 import {
 	DEFAULT_RUN_SCORE,
 	MAX_RUN_ID_CHARS,
@@ -49,7 +48,6 @@ import { LeaderboardService } from "./LeaderboardService";
 import { OnboardingService } from "./OnboardingService";
 import { RecordsService } from "./RecordsService";
 import { RunValidationService } from "./RunValidationService";
-import { RollbackSpikeService } from "./spikes";
 import { TelemetryService } from "./TelemetryService";
 
 const log = serverLogger("RunSession");
@@ -156,14 +154,8 @@ export class RunSessionService implements OnStart {
 		SEGMENT_SUBMIT_RATE.count,
 		SEGMENT_SUBMIT_RATE.windowSeconds,
 	);
-	/**
-	 * Co-op lockstep sessions by runId, with their run session and, with the rollback spike's KV_RollbackCapture on,
-	 * the recorder that captures the run (docs/ROLLBACK_SPIKE.md Design 6; undefined otherwise).
-	 */
-	private readonly lockstep = new Map<
-		string,
-		{ readonly coop: LockstepSession; readonly session: RunSession; readonly capture?: RollbackCaptureRecorder }
-	>();
+	/** Co-op lockstep sessions by runId, with their run session. */
+	private readonly lockstep = new Map<string, { readonly coop: LockstepSession; readonly session: RunSession }>();
 	private readonly inputLimiter = new SlidingWindowLimiter<Player>(
 		LOCKSTEP_INPUT_RATE.count,
 		LOCKSTEP_INPUT_RATE.windowSeconds,
@@ -191,7 +183,6 @@ export class RunSessionService implements OnStart {
 		private readonly records: RecordsService,
 		private readonly daily: DailyService,
 		private readonly telemetry: TelemetryService,
-		private readonly rollback: RollbackSpikeService,
 	) {}
 
 	onStart(): void {
@@ -509,9 +500,7 @@ export class RunSessionService implements OnStart {
 			startedAt: os.clock(),
 			tunables: { ...DEFAULT_LOCKSTEP, allowDebugInput: s.debug },
 		});
-		// The rollback spike's capture (undefined, and nothing kept, unless KV_RollbackCapture is on).
-		const capture = this.rollback.beginCapture(s, coop);
-		this.lockstep.set(s.runId, { coop, session: s, capture });
+		this.lockstep.set(s.runId, { coop, session: s });
 		const start = {
 			runId: s.runId,
 			seed: s.seed,
@@ -551,15 +540,13 @@ export class RunSessionService implements OnStart {
 		}
 		if (this.lockstep.size() === 0) return;
 		const done: string[] = [];
-		for (const [runId, { coop, session, capture }] of this.lockstep) {
+		for (const [runId, { coop, session }] of this.lockstep) {
 			// Concluded elsewhere (expiry, an error path): never keep broadcasting a run that no longer exists.
 			if (!this.meta.has(session)) {
 				done.push(runId);
 				continue;
 			}
 			const [ok, out] = pcall(() => coop.step(now));
-			// The rollback capture reads what this step finalized before a later step's segment releases it.
-			if (capture !== undefined) this.rollback.tapCapture(capture);
 			if (!ok) {
 				log.warn("LOCKSTEP_ERROR", `run ${runId}: ${tostring(out)}`);
 				done.push(runId);
@@ -625,15 +612,12 @@ export class RunSessionService implements OnStart {
 
 	/**
 	 * A party run's lockstep part is over: one input-timing line per player (inputStats: batches recorded, late frames,
-	 * and each batch's slack, its first frame's, the one its echo would carry), then forget the session. Every way a
-	 * party run's lockstep part ends comes through here (the stepper's `done` list, `conclude` on any verdict), so this
-	 * is where the rollback spike's capture ends too (written from its own thread).
+	 * and each batch's slack, its first frame's, the one its echo would carry), then forget the session.
 	 */
 	private forgetLockstep(runId: string): void {
 		const entry = this.lockstep.get(runId);
 		if (entry === undefined) return;
 		this.lockstep.delete(runId);
-		if (entry.capture !== undefined) this.rollback.endCapture(entry.capture);
 		const coop = entry.coop;
 		for (let i = 0; i < coop.size; i++) {
 			const st = coop.inputStats(i);

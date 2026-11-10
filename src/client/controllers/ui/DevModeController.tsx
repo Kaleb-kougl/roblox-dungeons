@@ -4,7 +4,7 @@ import React from "@rbxts/react";
 import { createRoot, type Root } from "@rbxts/react-roblox";
 import { Players, RunService, UserInputService, Workspace } from "@rbxts/services";
 import { DevPanel, type DevPanelProps, createKvScreenGui } from "client/ui";
-import { DEV_MODE, DEV_PANEL_VIEW, ROLLBACK_SPIKE_ATTRIBUTES } from "shared/config";
+import { DEV_MODE, DEV_PANEL_VIEW } from "shared/config";
 import { isBossFloor } from "shared/dungeon";
 import { RUN_ATTRIBUTES } from "shared/play";
 import { TREASURE_DEBUG_ATTRIBUTE, clampDevFloor, isValidRunSeed, parseTreasureDebug } from "shared/run";
@@ -22,7 +22,6 @@ interface Shown {
 	godPending: boolean;
 	bothWeapons: boolean;
 	runFloor: number | undefined;
-	rollbackTag: string;
 }
 
 /**
@@ -150,19 +149,6 @@ export class DevModeController implements OnStart {
 		this.render(true); // an invalid entry snaps back to the current seed
 	}
 
-	/** The rollback probe's device tag (docs/ROLLBACK_SPIKE.md Design 5), as the panel shows it. */
-	private rollbackTag(): string {
-		const raw = Workspace.GetAttribute(ROLLBACK_SPIKE_ATTRIBUTES.deviceTag);
-		return typeIs(raw, "string") ? raw : "";
-	}
-
-	/** Sets (or, empty, clears) Workspace KV_RollbackDeviceTag on this client: the next probe session's label reads it. */
-	private setRollbackTag(text: string): void {
-		const [trimmed] = string.gsub(text, "^%s*(.-)%s*$", "%1");
-		Workspace.SetAttribute(ROLLBACK_SPIKE_ATTRIBUTES.deviceTag, trimmed !== "" ? trimmed : undefined);
-		this.render(true);
-	}
-
 	/** Re-renders when what the panel shows changed (or `force`: a text box must snap back). */
 	private render(force = false): void {
 		const root = this.root;
@@ -178,7 +164,6 @@ export class DevModeController implements OnStart {
 			godPending: this.sim.isGodTogglePending(),
 			bothWeapons: this.bothWeapons,
 			runFloor,
-			rollbackTag: this.rollbackTag(),
 		};
 		const last = this.shown;
 		if (
@@ -190,8 +175,7 @@ export class DevModeController implements OnStart {
 			last.god === view.god &&
 			last.godPending === view.godPending &&
 			last.bothWeapons === view.bothWeapons &&
-			last.runFloor === view.runFloor &&
-			last.rollbackTag === view.rollbackTag
+			last.runFloor === view.runFloor
 		) {
 			return;
 		}
@@ -214,7 +198,6 @@ export class DevModeController implements OnStart {
 			},
 			onGo: () => this.go(),
 			onRestart: () => this.sim.requestRestart(),
-			onRollbackTagText: (text) => this.setRollbackTag(text),
 		};
 		root.render(<DevPanel {...props} />);
 	}

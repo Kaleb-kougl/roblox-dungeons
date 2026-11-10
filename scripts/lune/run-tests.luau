@@ -10,8 +10,7 @@
 	fails, or when no spec matched. `--census` sets the Workspace attribute `KV_Census` (true), which
 	opt-in census specs read (shared/run/testing censusRequested) to run their full sample instead of
 	the small default one (docs/ARCHER.md AR13). `--flag name` (repeatable) turns on an opt-in spec
-	switch: every spec realm gets `_G.KV_SPEC_FLAGS[name] = true` (absent in Studio and without the flag), e.g.
-	`npm run test:only -- lockstep/rollbackSpike/model.sweep --flag rollbackSweep`.
+	switch: every spec realm gets `_G.KV_SPEC_FLAGS[name] = true` (absent in Studio and without the flag).
 
 	How it works (details in the lib/ headers):
 	  1. lib/rojoTree   builds a fake DataModel from default.project.json, mirroring the filesystem
