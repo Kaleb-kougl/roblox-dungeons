@@ -188,14 +188,31 @@ export interface ProbeSummary {
 	/** Actors and enemy bullets alive (the window's last sample). */
 	readonly actors: number;
 	readonly enemyBullets: number;
-	/** Milliseconds per prediction: clone, step H ticks, send the digest, and their total. */
+	/**
+	 * Milliseconds per CPU prediction, the worker's own work (yields excluded): clone, step H ticks, send the digest
+	 * (fill + post, timed where it is sent), and their total. The live model's work in the same rounds is NOT in them
+	 * (see `live`).
+	 */
 	readonly clone: RollbackProbeStat;
 	readonly step: RollbackProbeStat;
 	readonly send: RollbackProbeStat;
 	readonly total: RollbackProbeStat;
-	/** Rendered frames from the start to the end of one prediction (1 in serial mode). */
+	/**
+	 * Milliseconds from the digest's send to its arrival on the main thread (the main thread's clock; the client
+	 * fills it from the digests that arrived since its previous CPU window; zeros when none did).
+	 */
+	readonly digest: RollbackProbeStat;
+	/** Rendered frames from the start to the end of one CPU prediction (1 in serial mode). */
 	readonly framesPerPrediction: RollbackProbeStat;
-	/** Predictions in the window, and its length in seconds. */
+	/**
+	 * Co-op parallel: the live model's work per round (milliseconds, yields excluded) and its predictions in the
+	 * window. Each round runs the CPU prediction, then the live one, on the same worker: the CPU stats above are the CPU
+	 * prediction alone, while frame rate, frame time, gc and frames per prediction carry both loads. liveSamples 0 (solo,
+	 * serial): no live model ran, the window is the CPU probe alone.
+	 */
+	readonly live: RollbackProbeStat;
+	readonly liveSamples: number;
+	/** CPU predictions in the window, and its length in seconds. */
 	readonly samples: number;
 	readonly windowSeconds: number;
 	readonly renderFps: number;
@@ -235,8 +252,17 @@ export interface LiveSummary {
 	readonly partySize: number;
 	/** The predicting player's index in the party. */
 	readonly playerIndex: number;
-	/** The window's play seconds (the per-minute rates divide by it). */
+	/** The window's play seconds (the per-minute rates divide by it; counted from confirmed ticks). */
 	readonly seconds: number;
+	/**
+	 * Predictions the live model made in the window (rounds with something to predict), and the main thread's rendered
+	 * frames the worker saw (one frames message each). The worker predicts once a round on the newest confirmed tick,
+	 * so when it falls behind it coalesces frames: predictions < mainFrames. Then corrections are undercounted (only
+	 * drawn ticks two consecutive predictions both drew are compared) and late events overcounted (a tick never drawn
+	 * is "late"): read the window's rates with predictions / mainFrames beside them.
+	 */
+	readonly predictions: number;
+	readonly mainFrames: number;
 	readonly lead: RollbackLeadSeen;
 	/** Per room type (absent: none of the window was spent there). */
 	readonly rooms: { readonly [K in RollbackRoomType]?: RollbackLiveRoom };
@@ -289,7 +315,7 @@ export function isRollbackKeyId(v: unknown, max: number = ROLLBACK_CAPTURE.maxId
 /** A label: at most maxDeviceLabelChars bytes of valid UTF-8, no control characters (it is printed and stored). */
 function label(v: unknown): string | undefined {
 	if (!typeIs(v, "string") || v.size() > ROLLBACK_PROBE_LIMITS.maxDeviceLabelChars) return undefined;
-	if (utf8.len(v)[0] === false) return undefined;
+	if (!typeIs(utf8.len(v)[0], "number")) return undefined;
 	return string.find(v, "%c")[0] === undefined ? v : undefined;
 }
 
@@ -330,9 +356,13 @@ export function readProbeSummary(v: unknown): ProbeSummary | undefined {
 	const stepStat = stat(t.step, L.maxMs);
 	const send = stat(t.send, L.maxMs);
 	const total = stat(t.total, L.maxMs);
+	const digest = stat(t.digest, L.maxMs);
 	const frames = stat(t.framesPerPrediction, L.maxFrames);
 	if (clone === undefined || stepStat === undefined || send === undefined || total === undefined) return undefined;
-	if (frames === undefined) return undefined;
+	if (digest === undefined || frames === undefined) return undefined;
+	const liveStat = stat(t.live, L.maxMs);
+	const liveSamples = integer(t.liveSamples, 0, L.maxSamples);
+	if (liveStat === undefined || liveSamples === undefined) return undefined;
 	const samples = integer(t.samples, 0, L.maxSamples);
 	const windowSeconds = bounded(t.windowSeconds, 0, L.maxWindowSeconds);
 	const renderFps = bounded(t.renderFps, 0, L.maxFps);
@@ -356,7 +386,10 @@ export function readProbeSummary(v: unknown): ProbeSummary | undefined {
 		step: stepStat,
 		send,
 		total,
+		digest,
 		framesPerPrediction: frames,
+		live: liveStat,
+		liveSamples,
 		samples,
 		windowSeconds,
 		renderFps,
@@ -441,11 +474,14 @@ export function readLiveSummary(v: unknown): LiveSummary | undefined {
 	}
 	const playerIndex = integer(t.playerIndex, 0, partySize - 1);
 	const seconds = bounded(t.seconds, 0, L.maxWindowSeconds);
+	const predictions = integer(t.predictions, 0, L.maxSamples);
+	const mainFrames = integer(t.mainFrames, 0, L.maxSamples);
 	const lead = readLead(t.lead);
 	const rooms = readRooms(t.rooms);
 	if (playerIndex === undefined || seconds === undefined || lead === undefined || rooms === undefined) {
 		return undefined;
 	}
+	if (predictions === undefined || mainFrames === undefined) return undefined;
 	const deviceLabel = label(t.deviceLabel);
 	const deviceClass = oneOf(t.deviceClass, ROLLBACK_DEVICE_CLASSES);
 	if (deviceLabel === undefined || deviceClass === undefined) return undefined;
@@ -457,6 +493,8 @@ export function readLiveSummary(v: unknown): LiveSummary | undefined {
 		partySize,
 		playerIndex,
 		seconds,
+		predictions,
+		mainFrames,
 		lead,
 		rooms,
 		deviceLabel,
@@ -619,14 +657,15 @@ function shortId(id: string): string {
 
 /**
  * One CPU window as a `[Rollback]` line (ms as p50/p95/max): `s1a2b3c4d#12 parallel H16 room party 4 actors 37
- * bullets 120 | clone .. step .. send .. total .. | frames/pred .. n 590 in 10.0 s | 59.8 fps frame p95 18.10 ms gc
- * 120 KB/s native | pc "label"`.
+ * bullets 120 | clone .. step .. send .. total .. digest .. | frames/pred .. live .. n 590 | n 590 in 10.0 s | 59.8 fps
+ * frame p95 18.10 ms gc 120 KB/s native | pc "label"`.
  */
 export function describeProbeSummary(s: Readonly<ProbeSummary>): string {
 	return (
 		`${shortId(s.sessionId)}#${s.windowIndex} ${s.mode} H${s.horizon} ${s.case} party ${s.partySize} ` +
 		`actors ${s.actors} bullets ${s.enemyBullets} | clone ${fmtStat(s.clone)} step ${fmtStat(s.step)} ` +
-		`send ${fmtStat(s.send)} total ${fmtStat(s.total)} | frames/pred ${fmtStat(s.framesPerPrediction)} ` +
+		`send ${fmtStat(s.send)} total ${fmtStat(s.total)} digest ${fmtStat(s.digest)} | ` +
+		`frames/pred ${fmtStat(s.framesPerPrediction)} live ${fmtStat(s.live)} n ${s.liveSamples} | ` +
 		`n ${s.samples} in ${string.format("%.1f", s.windowSeconds)} s | ${string.format("%.1f", s.renderFps)} fps ` +
 		`frame p95 ${string.format(MS, s.frameMsP95)} ms gc ${string.format("%.0f", s.gcKbPerSec)} KB/s ` +
 		`${s.native ? "native" : "interpreted"} | ${s.deviceClass} "${s.deviceLabel}"`
@@ -634,8 +673,8 @@ export function describeProbeSummary(s: Readonly<ProbeSummary>): string {
 }
 
 /**
- * One live window as a `[Rollback]` line: header, the lead seen, the room seconds, then every metric with a non-zero
- * count as `name=<per minute>/min`.
+ * One live window as a `[Rollback]` line: header, play seconds, predictions over the main frames seen, the lead seen,
+ * the room seconds, then every metric with a non-zero count as `name=<per minute>/min`.
  */
 export function describeLiveSummary(s: Readonly<LiveSummary>): string {
 	const rooms: string[] = [];
@@ -652,7 +691,8 @@ export function describeLiveSummary(s: Readonly<LiveSummary>): string {
 	const l = s.lead;
 	return (
 		`${shortId(s.sessionId)}#${s.windowIndex} ${s.strategy} H${s.horizon} p${s.playerIndex}/${s.partySize} ` +
-		`${string.format("%.1f", s.seconds)} s | L ${string.format("%.1f", l.lMean)}/${l.lMax} ` +
+		`${string.format("%.1f", s.seconds)} s pred ${s.predictions}/${s.mainFrames} fr | ` +
+		`L ${string.format("%.1f", l.lMean)}/${l.lMax} ` +
 		`D ${string.format("%.1f", l.dMean)}/${l.dMax} | ${rooms.size() > 0 ? rooms.join(" ") : "no rooms"} | ` +
 		`${metrics.size() > 0 ? `${metrics.join(" ")} /min` : "no glitches"} | ${s.deviceClass} "${s.deviceLabel}"`
 	);

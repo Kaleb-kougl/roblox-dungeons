@@ -284,6 +284,8 @@ describe("rollback spike model (R2)", () => {
 			partySize: PLAYERS,
 			playerIndex: 1,
 			seconds: r.seconds,
+			predictions: r.metrics.predictions,
+			mainFrames: r.metrics.frames,
 			lead: r.metrics.leadSeen(),
 			rooms: r.metrics.toLiveSummaryCounts(),
 			deviceLabel: "headless",

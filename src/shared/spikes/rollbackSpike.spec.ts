@@ -56,7 +56,10 @@ function probe(): Record<string, unknown> {
 		step: stat(2, 3.5, 6),
 		send: stat(0.01, 0.02, 0.05),
 		total: stat(2.5, 4.4, 7.3),
+		digest: stat(0.5, 1.5, 4),
 		framesPerPrediction: stat(1, 2, 3),
+		live: stat(3, 5, 9),
+		liveSamples: 580,
 		samples: 590,
 		windowSeconds: 10,
 		renderFps: 59.8,
@@ -77,6 +80,8 @@ function live(): Record<string, unknown> {
 		partySize: 2,
 		playerIndex: 1,
 		seconds: 60,
+		predictions: 3400,
+		mainFrames: 3590,
 		lead: { lMean: 11.5, lMax: 14, dMean: 3.2, dMax: 5 },
 		rooms: {
 			combat: { seconds: 40, counts: { enemyCorr050: 6, undoneKill: 1 } },
@@ -122,6 +127,9 @@ describe("readProbeSummary", () => {
 			["step", stat(1, 2, 1e9)],
 			["total", { p50: 1, p95: 2 }],
 			["framesPerPrediction", stat(1, 2, 601)],
+			["digest", undefined],
+			["live", stat(3, 2, 1)],
+			["liveSamples", -1],
 			["renderFps", math.huge],
 			["gcKbPerSec", -2e6],
 			["native", 1],
@@ -165,6 +173,7 @@ describe("readLiveSummary", () => {
 		const line = describeLiveSummary(s);
 		expect(string.find(line, "enemyCorr050=6.00", 1, true)[0]).never.toBe(undefined);
 		expect(string.find(line, "combat 40s walk 20s", 1, true)[0]).never.toBe(undefined);
+		expect(string.find(line, "pred 3400/3590 fr", 1, true)[0]).never.toBe(undefined);
 	});
 
 	it("refuses malformed windows", () => {
@@ -172,6 +181,8 @@ describe("readLiveSummary", () => {
 			["strategy", "oracle"],
 			["playerIndex", 2],
 			["seconds", -1],
+			["predictions", undefined],
+			["mainFrames", 0.5],
 			["lead", { lMean: 20, lMax: 14, dMean: 3, dMax: 5 }],
 			["lead", { lMean: 1, lMax: 2, dMean: 1 }],
 			["rooms", { lobby: { seconds: 1, counts: {} } }],

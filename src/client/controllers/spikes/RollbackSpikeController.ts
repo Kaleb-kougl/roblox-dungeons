@@ -9,6 +9,7 @@ import {
 	ROLLBACK_WORKER_TOPIC,
 	RollbackFeed,
 	RollbackWorkerCore,
+	WindowSamples,
 	buildFactsRun,
 	bufferAfter,
 	busyWait,
@@ -154,6 +155,8 @@ class ProbeSession {
 	private status: RollbackStatusMsg | undefined;
 	private lastCpu: ProbeSummary | undefined;
 	private digestMs = 0;
+	/** The digests' send -> arrival delays since the last CPU window (ProbeSummary.digest), seconds. */
+	private readonly digestArrivals = new WindowSamples();
 	private digestRefused = false;
 
 	constructor(
@@ -292,9 +295,17 @@ class ProbeSession {
 			this.pending.clear();
 			print(`${TAG} worker ready after ${string.format("%.2f", os.clock() - this.createdAt)} s`);
 		} else if (m.kind === "cpu") {
-			this.lastCpu = m.summary;
-			print(`${TAG} ${describeProbeSummary(m.summary)}`);
-			Events.rollbackProbe.fire("cpu", m.summary);
+			// The worker cannot see when its digests arrive: the main thread's own window of arrivals goes in here.
+			const digest = this.digestArrivals.stat(MS);
+			this.digestArrivals.clear();
+			const max = ROLLBACK_PROBE_LIMITS.maxMs;
+			const summary: ProbeSummary = {
+				...m.summary,
+				digest: { p50: math.min(digest.p50, max), p95: math.min(digest.p95, max), max: math.min(digest.max, max) },
+			};
+			this.lastCpu = summary;
+			print(`${TAG} ${describeProbeSummary(summary)}`);
+			Events.rollbackProbe.fire("cpu", summary);
 			this.line();
 		} else if (m.kind === "live") {
 			print(`${TAG} live ${describeLiveSummary(m.summary)}`);
@@ -310,7 +321,9 @@ class ProbeSession {
 			this.status = m;
 			this.line();
 		} else if (m.kind === "digest") {
-			this.digestMs = (os.clock() - m.sentAt) * MS;
+			const delay = math.max(0, os.clock() - m.sentAt);
+			this.digestMs = delay * MS;
+			this.digestArrivals.add(delay);
 		} else if (m.kind === "error") {
 			this.fail(`worker: ${m.message}`);
 		}
