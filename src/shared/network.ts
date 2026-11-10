@@ -50,7 +50,7 @@ import type { SettingsOverrides } from "shared/settings";
  * (limits in shared/run `RUN_SUBMIT_RATE`, shared/settings `SETTINGS_REQUEST_RATE` and shared/onboarding
  * `ONBOARDING_REQUEST_RATE` / `TUTORIAL_START_RATE` / `TUTORIAL_FINISH_RATE` / `TUTORIAL_STEP_RATE` /
  * `TUTORIAL_REPORT_RATE`, shared/records `RECORDS_REQUEST_RATE`,
- * shared/daily `DAILY_REQUEST_RATE`, shared/run `RUN_RECAP_RATE`).
+ * shared/daily `DAILY_REQUEST_RATE`, shared/run `RUN_RECAP_RATE`, shared/spikes `ROLLBACK_PROBE_RATE`).
  *
  * Bind side-specific handlers with `GlobalEvents.createServer` (src/server/network.ts) and `GlobalEvents.createClient`
  * (the client's network module, task 8), never here.
@@ -414,6 +414,15 @@ export interface ClientToServerEvents {
 	runRecap(report: RunRecapReport): void;
 	/** The Daily (docs/DAILY.md): asks for today's status; answered with `dailyStatus`. Rate limited. */
 	requestDaily(): void;
+	/**
+	 * Rollback spike (docs/ROLLBACK_SPIKE.md Design 5 / 7, debug only): one probe window from a client with
+	 * `KV_RollbackSpike` on. `kind` "cpu": a CPU window (shared/spikes ProbeSummary); "live": a live-metric window
+	 * (LiveSummary). The payload is deliberately `unknown`: the server takes it only while its own `KV_RollbackCapture`
+	 * is on (or in Studio), rate limits it per player and kind (ROLLBACK_PROBE_RATE) and re-reads every field
+	 * (readProbeSummary / readLiveSummary; anything else is dropped). Logged, stored in `KV_RollbackProbe_v1` and sent to
+	 * AnalyticsService (published places); never read by any game decision. No reply.
+	 */
+	rollbackProbe(kind: string, payload: unknown): void;
 }
 
 export interface ServerToClientEvents {

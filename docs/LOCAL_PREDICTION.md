@@ -17,6 +17,8 @@ Planned, nothing built. Drafted from an audit of branch `frame-pacing` @ `0a8e8e
 nothing built). It builds on frame pacing (LPD2): FP1's lead fix and FP2-FP3's playout clock come first for the
 wiring (LP5); the pure parts (LP1-LP4) can be built before them. Owner answers (2026-11-07): a 10-tick horizon
 (LPD4), no hitbox pip (LPD7), the i-frame look merged (LPD5), the camera on the drawn knight (LPD8).
+Rollback spike (2026-11-09): docs/ROLLBACK_SPIKE.md measures full co-op rollback against this plan as the cheaper
+alternative (built headlessly, Studio and device checks pending); its RBD8 decides between them.
 
 ## Why your knight feels late (findings)
 

@@ -21,6 +21,9 @@
 		"test": "npm run build && lune run scripts/lune/run-tests.luau",
 		"test:only": "lune run scripts/lune/run-tests.luau",
 		"test:plugin": "rojo build test-runner.project.json -o \"$HOME/Documents/Roblox/Plugins/KalebValeTestRunner.rbxm\"",
+		"rollback:plugin": "rojo build rollback-plugin.project.json -o \"$HOME/Documents/Roblox/Plugins/KalebValeRollbackCapture.rbxm\"",
+		"rollback:receive": "node scripts/rollback/receive-captures.js",
+		"test:rollback": "node --test \"scripts/rollback/*.test.js\"",
 		"check:assets": "node scripts/check-asset-ids.js",
 		"check:autolocalize": "node scripts/check-autolocalize.js",
 		"test:checks": "node --test \"scripts/check-*.test.js\"",
@@ -35,7 +38,7 @@
 		"audio:build": "node scripts/audio/build-audio.js",
 		"audio:lock": "node scripts/audio/build-audio.js --lock",
 		"audio:audition": "node scripts/audio/build-audio.js --audition",
-		"verify": "npm run typecheck && npm run lint && npm run check:assets && npm run check:autolocalize && npm run test:art && npm run test:checks && npm run test:l10n && npm run build && npm run test:only",
+		"verify": "npm run typecheck && npm run lint && npm run check:assets && npm run check:autolocalize && npm run test:art && npm run test:checks && npm run test:l10n && npm run test:rollback && npm run build && npm run test:only",
 		"build:place": "npm run build && node -e \"require('fs').mkdirSync('build',{recursive:true})\" && rojo build publish.project.json -o build/kaleb-vale.rbxl"
 	},
 	"keywords": [],

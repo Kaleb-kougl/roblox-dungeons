@@ -14,6 +14,10 @@
  *   client.ts   LockstepClient: steps the sim with merged frames only, sends inputs / hashes / the final claim
  *   menuInput.ts  CoopMenuInputGate: neutral local input while a menu owns the controls (a party run never pauses)
  *
+ * Not re-exported here: rollbackSpike/, the rollback measurement spike (docs/ROLLBACK_SPIKE.md). Its users (the
+ * client's probe controller and worker, its specs) import that directory's own barrel, `shared/lockstep/rollbackSpike`,
+ * so production code that imports this barrel never loads the spike (its harness, capture modules, copiers).
+ *
  * The server's RunSessionService and the client's SimController wrap these with remotes and clocks.
  */
 export * from "./config";

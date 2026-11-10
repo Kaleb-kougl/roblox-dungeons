@@ -797,6 +797,8 @@ Custom events (`LogCustomEvent`; fields are `CustomField01..03`):
 | `NewPlayerRunStarted` | run number (counted runs + 1, 1..3) | tutorial outcome (`completed` / `skipped` / `none`) | | | a ranked (endless) or daily session start, per member in the new-player window (not debug; not Studio unless `KV_AnalyticsDebug`) |
 | `NewPlayerRun` | run number (1..3) | tutorial outcome | run end (`death` / `abandoned` / `victory`) | floor bucket (the Daily's) | an accepted ranked or daily run, per credited member in the window (same rules); counts the run in the doc |
 | `NewPlayerReturned` | whole UTC days since `firstDay` (1..7) | tutorial outcome | | | the first join on a later UTC day within 7 days of `firstDay`, once per player |
+| `RollbackCpu` | total ms p95 of one 10 s probe window | device class (`pc` / `phone` / `tablet` / `console`) | mode + H bucket (`parallel8` .. `parallel32` / `parallelMore`, `serial...`) | case (`room` / `floor` / `boss` / `walk`) | rollback spike only (docs/ROLLBACK_SPIKE.md R3): a client `ProbeSummary` over the debug remote `rollbackProbe`, taken only while `KV_RollbackCapture` is on, re-read by shared/spikes `readProbeSummary`, rate limited `ROLLBACK_PROBE_RATE`; `RollbackSpikeService` -> `TelemetryService.logSpike`, published places only |
+| `RollbackProbe` | one gate metric per minute of a 60 s window (the 4 gate metrics only: enemyCorr050, undoneKill, phantomBullet, mateCorr100; at most 2 live windows per 2 minutes a player) | metric (4 gate metrics) | device class | H bucket (`h8` .. `h32` / `hMore`) | rollback spike only (R4b): a client `LiveSummary`, same path as `RollbackCpu` (`readLiveSummary`) |
 
 Lobby events come from `src/shared/lobby/analytics.ts`, logged through `TelemetryService.logEvents(player, specs)`.
 The tutorial / onboarding events and funnels come from `src/shared/onboarding` (`PlayerTutorialTelemetry`), logged by
@@ -813,6 +815,8 @@ session shows what a live server would send. In Studio it also lets runs count i
 Studio test path, like `KV_FakeRecords` for records); without it Studio runs never count.
 
 Every field value comes from a small fixed set (Roblox: 8,000 combinations, 100 custom event names, 10 funnels).
+The catalog (`shared/onboarding` `analyticsCatalog`, checked by its spec) uses 39 custom event names and 3000 of the
+8,000 field value combinations (with the rollback spike's `RollbackCpu` / `RollbackProbe`).
 The web build's per-run markers (`boss.phase`, `boss.engaged`, `boss.defeated`, `player.death`, `run.victory`) and
 `event.<field>` counters are kept on `RunTelemetryRecord` for future sinks; they are not all sent.
 

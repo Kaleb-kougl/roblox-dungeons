@@ -13,12 +13,9 @@
 // The headless runner is a pessimistic host (bench.spec.ts: no Luau fast paths / native codegen in its sandbox).
 import { describe, expect, it } from "@rbxts/jest-globals";
 import {
-	AXIS_MAX,
 	BOMBER,
 	BOMBER_DETONATED,
 	BOMBER_FUSED,
-	Button,
-	DEBUG_FLOOR_BUTTON,
 	EMPTY_INPUT,
 	NO_KIND,
 	START_HALF_HEARTS,
@@ -26,16 +23,17 @@ import {
 	countActors,
 	createSimState,
 	hashState,
-	partySize,
 	playerAt,
-	step,
-	stepParty,
 	type InputFrame,
-	type SimConfig,
-	type SimState,
 } from "shared/sim";
-import { RunTelemetry, SEGMENT_CHECKPOINT_TICKS, buildEndlessRunConfig, type EndlessRunSetup } from "shared/run";
-import { dismissDraft } from "shared/run/testing";
+import { RunTelemetry, SEGMENT_CHECKPOINT_TICKS, buildEndlessRunConfig } from "shared/run";
+import {
+	busiestRoom,
+	denseFighterFrame as fighter,
+	sameFrames as same,
+	skipPartyToFloor as skipTo,
+	tickAll,
+} from "shared/run/testing";
 
 const SEED = 4242;
 const FLOOR = 15;
@@ -44,65 +42,6 @@ const WARMUP_TICKS = 120;
 const MEASURE_TICKS = 600;
 /** Generous on purpose (shared CI machines); the printed numbers are what docs/SERVER.md records. */
 const BUDGET_MS_PER_TICK = 10;
-
-function tickAll(s: SimState, config: Readonly<SimConfig>, frames: InputFrame[]): void {
-	if (frames.size() === 1) step(s, frames[0], config);
-	else stepParty(s, frames, config);
-}
-
-function same(n: number, f: InputFrame): InputFrame[] {
-	const out: InputFrame[] = [];
-	for (let i = 0; i < n; i++) out.push({ ...f });
-	return out;
-}
-
-/** Debug-skips to `floor` (press, release), dismissing every draft. */
-function skipTo(s: SimState, config: Readonly<SimConfig>, floor: number): void {
-	const n = partySize(s);
-	while (s.endless!.floor < floor) {
-		tickAll(s, config, same(n, { ...EMPTY_INPUT, buttons: DEBUG_FLOOR_BUTTON }));
-		dismissDraft(s);
-		tickAll(s, config, same(n, EMPTY_INPUT));
-	}
-}
-
-/** The floor's room with the most deferred spawns. */
-function busiestRoom(setup: EndlessRunSetup, floor: number): number {
-	const w = setup.endlessFloor(floor);
-	let best = -1;
-	for (let id = 0; id < w.roomSpawns.size(); id++) {
-		if (best < 0 || w.roomSpawns[id].size() > w.roomSpawns[best].size()) best = id;
-	}
-	return best;
-}
-
-/** Player i's frame: strafe, aim at the nearest enemy, roll now and then (no attacks: the room stays full). */
-function fighter(s: SimState, i: number): InputFrame {
-	const p = playerAt(s, i);
-	let best = math.huge;
-	let ax = 0;
-	let az = 0;
-	for (const a of s.combat.actors) {
-		if (a.kind === NO_KIND || a.alive === 0) continue;
-		const dx = a.x - p.x;
-		const dz = a.z - p.z;
-		const d2 = dx * dx + dz * dz;
-		if (d2 < best) {
-			best = d2;
-			ax = dx;
-			az = dz;
-		}
-	}
-	const len = math.sqrt(ax * ax + az * az);
-	const t = s.tick + i * 17;
-	return {
-		moveX: math.floor(t / 30) % 2 === 0 ? 400 : -400,
-		moveZ: 0,
-		aimX: len > 0 ? math.round((ax / len) * AXIS_MAX) : AXIS_MAX,
-		aimZ: len > 0 ? math.round((az / len) * AXIS_MAX) : 0,
-		buttons: t % 90 === 0 ? Button.ROLL : 0,
-	};
-}
 
 interface BenchResult {
 	readonly stepUs: number;

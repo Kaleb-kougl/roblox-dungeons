@@ -82,5 +82,7 @@ export const DEV_PANEL_VIEW = {
 		bossFloor: "boss floor",
 		notInDevRun: "Go starts a local run (never submitted).",
 		inDevRun: "Dev run on floor %d: not submitted.",
+		/** The rollback probe's device tag (docs/ROLLBACK_SPIKE.md Design 5: Workspace KV_RollbackDeviceTag). */
+		rollbackTag: "Rollback probe device tag",
 	},
 } as const;

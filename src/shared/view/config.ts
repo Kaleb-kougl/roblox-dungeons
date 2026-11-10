@@ -236,6 +236,11 @@ export const WEAPON_VIEW = {
 export const RENDER_ORDER = {
 	/** Touch controls: mode, layout and finger state, before the sim samples input (simAfterInput). */
 	touchBeforeSim: 0,
+	/**
+	 * The rollback probe (docs/ROLLBACK_SPIKE.md R3, RollbackSpikeController, KV_RollbackSpike only): reads the merged
+	 * frames still queued before the sim steps them.
+	 */
+	rollbackProbeBeforeSim: 0,
 	/** After Input: sample input once, then run the frame's ticks. */
 	simAfterInput: 1,
 	/** Right after the sim: the FX hit tracker diffs the new state and dispatches juice / audio events. */

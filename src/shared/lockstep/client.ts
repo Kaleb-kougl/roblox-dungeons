@@ -335,6 +335,33 @@ export class LockstepClient implements RunView {
 		return this.pacing && this.pacer !== undefined ? this.pacer.depthTicks() : 0;
 	}
 
+	/**
+	 * Rollback spike (docs/ROLLBACK_SPIKE.md R3 / R4b), read-only: the queued merged frame `k` ticks after the next tick
+	 * to step (tick state.tick + k, 0 <= k < backlog(); index order), or undefined. Read it, never keep or write it.
+	 */
+	queuedFrame(k: number): ReadonlyArray<Readonly<InputFrame>> | undefined {
+		if (k < 0 || k >= this.backlog() || k % 1 !== 0) return undefined;
+		return this.queue[this.queueHead + k];
+	}
+
+	/** Rollback spike, read-only: the last tick an own input was sent for (-1 before the first send). */
+	lastSentInputTick(): number {
+		return this.lastSentTick;
+	}
+
+	/**
+	 * Rollback spike, read-only: the own input sent for `tick` while that tick is not stepped yet (undefined once stepped,
+	 * or never sent: a tick the lead jumped over, which the server fills with the previous input). Never keep or write it.
+	 */
+	sentInput(tick: number): Readonly<InputFrame> | undefined {
+		return this.sent.get(tick);
+	}
+
+	/** Rollback spike, read-only: the pacing buffer's lead depth in ticks (0 without pacing; see nextInputTick). */
+	pacingDepthTicks(): number {
+		return this.depthTicks();
+	}
+
 	/** Nothing more will be stepped: broken, ended by the server, or the final claim made. */
 	private steppingDone(): boolean {
 		return this.broken !== undefined || this.endedReason !== undefined || this.finalSent;

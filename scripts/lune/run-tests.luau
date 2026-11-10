@@ -3,13 +3,15 @@
 	Headless spec runner: runs every compiled `*.spec` module under ReplicatedStorage.TS
 	(`out/shared/**`) with real JestCircus + Expect, inside Lune. No Roblox Studio needed.
 
-	  lune run scripts/lune/run-tests.luau [filter ...] [--project default.project.json] [--census]
+	  lune run scripts/lune/run-tests.luau [filter ...] [--project default.project.json] [--census] [--flag name ...]
 
 	`npm test` builds first (gen fixtures -> rbxtsc) and then runs this. A filter keeps the spec
 	files whose source path contains it (e.g. `sim/rng`). Exit code is 1 when any test or suite
 	fails, or when no spec matched. `--census` sets the Workspace attribute `KV_Census` (true), which
 	opt-in census specs read (shared/run/testing censusRequested) to run their full sample instead of
-	the small default one (docs/ARCHER.md AR13).
+	the small default one (docs/ARCHER.md AR13). `--flag name` (repeatable) turns on an opt-in spec
+	switch: every spec realm gets `_G.KV_SPEC_FLAGS[name] = true` (absent in Studio and without the flag), e.g.
+	`npm run test:only -- lockstep/rollbackSpike/model.sweep --flag rollbackSweep`.
 
 	How it works (details in the lib/ headers):
 	  1. lib/rojoTree   builds a fake DataModel from default.project.json, mirroring the filesystem
@@ -44,13 +46,23 @@ end
 local projectPath = "default.project.json"
 local filters: { string } = {}
 local census = false
+local specFlags: { [string]: boolean } = {}
 do
 	local i = 1
 	local args = process.args
 	while i <= #args do
 		local arg = args[i]
-		if arg == "--project" then
-			projectPath = args[i + 1]
+		if arg == "--project" or arg == "--flag" then
+			local value = args[i + 1]
+			if value == nil or string.sub(value, 1, 2) == "--" then
+				stdio.ewrite(arg .. " needs a value (e.g. " .. arg .. " name)\n")
+				process.exit(2)
+			end
+			if arg == "--project" then
+				projectPath = value
+			else
+				specFlags[value] = true
+			end
 			i += 2
 		elseif arg == "--census" then
 			census = true
@@ -143,6 +155,7 @@ local startedAt = os.clock()
 for _, spec in specs do
 	local suiteStart = os.clock()
 	local realm = Realm.new(game)
+	realm.G.KV_SPEC_FLAGS = table.freeze(table.clone(specFlags))
 	local lines: { string } = {}
 	local suiteFailed = false
 
