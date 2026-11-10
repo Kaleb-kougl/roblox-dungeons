@@ -43,6 +43,8 @@ review except where they cite an answer.
     platforms. The store asks for a rating and review.
 11. **Names:** "Knight" and "Archer". The screen's summary lines and the per-character overrides below are the working
     text.
+12. **Health (2026-11-09, after AR13):** the Archer starts with one heart less than the Knight: 2 hearts (4 half
+    hearts) to the Knight's 3 (answer: one full heart, not a half). See "The Archer's health".
 
 ## AR0 findings (2026-11-09, on `cc22c8f`)
 
@@ -254,6 +256,21 @@ behaves exactly as before.
   bullets of a longer path (likelier braces: AR13 measures); Ember Wake's ring is fired at the start as today.
 - View: nothing to change (the afterimages, dust and the roll's `stretched` animation follow the positions and ticks).
 
+### The Archer's health (sim, owner answer 12)
+
+- `PlayerTraits.heartsMaxDelta` (half hearts added to `START_HALF_HEARTS`; `NEUTRAL_TRAITS` 0, `NEUTRAL_TRAIT_DELTA`):
+  `ARCHER_HEARTS_MAX_DELTA` **-2** (`shared/characters`), so the Archer's starting and maximum health is 4 half hearts
+  (2 hearts), the Knight's 6 as before. `playerStartHalfHearts(traits)` (`sim/playerData.ts`, at least
+  `MIN_START_HALF_HEARTS` 1) is applied once, in `createSimState` right after the party is built, to every player
+  (`playerTraits(config, i)`, like the roll); the tutorial's wounded start then clamps to that maximum.
+- Everything that refills or caps health reads `heartsMax` (respawn, revive, flask, Hearty, Lionheart, Stone Heart,
+  Full Heart), so the Archer's maximum holds all run and Hearty still adds to it.
+- `heartsMax` is hashed state, so Archer runs replay and hash differently from older builds; a run without traits or
+  with the Knight's hashes exactly as before (no fixture, M1, tutorial or Knight run changes).
+- `runStartHalfHearts(config, playerIndex = 0)` reads the player's traits, so RunTelemetry's baseline is the Archer's 4.
+- Text: `character.archer.line.2` "A longer, safer roll; one heart less." (the HUD draws `heartsMax / 2` hearts, no
+  view change). Spec `characters/archerHearts.spec.ts`.
+
 ### Run configs (`shared/run`)
 
 `WorldBuildOptions.characters?: ReadonlyArray<CharacterId>` (per player, index order; absent: each world's default).
@@ -450,8 +467,8 @@ Knight, combat D's corridor leads straight to combat F, no bow prompt.
 - **ARD8** Boards, daily boards and records are shared; the character is shown (owner answer 4).
 - **ARD9** M1 (`game`), `dungeonNoEncounter`, `greybox` and every fixture keep `DEFAULT_LOADOUT` and no traits; dev has
   a "Both weapons" option.
-- **ARD10** The roll (dash length and i-frames) is the only per-character stat (owner answers 6 and 9); hearts, speed
-  and damage stay shared unless AR13 shows a need (the open owner call).
+- **ARD10** The roll (dash length and i-frames) and, since owner answer 12, health (the Archer one heart less) are the
+  per-character stats (owner answers 6, 9 and 12); speed and damage stay shared unless AR13 shows a need.
 - **ARD11** `DAILY.ruleset` 13 -> 14 once (AR4); the all-time boards stay `_v1` (BUD9's precedent).
 - **ARD12** The remembered pick is a client preference in the settings document (overrides-only, default Knight); AR0
   confirms the group.

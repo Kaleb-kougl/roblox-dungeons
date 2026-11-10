@@ -9,7 +9,8 @@
  */
 
 import { seedToState } from "./rng";
-import { newPlayerState } from "./player";
+import { newPlayerState, playerTraits } from "./player";
+import { playerStartHalfHearts } from "./playerData";
 import { cloneCombatState, createCombatState, startCombat, type CombatState } from "./combat/combat";
 import type { SimConfig } from "./step";
 import { cloneEndlessState, createEndlessState, endlessStartFloor, type EndlessState } from "./endless";
@@ -393,6 +394,15 @@ export function createSimState(
 	};
 	// Co-op: the other players (and their player bullet emitter ids) exist before anything spawns. No rng.
 	state.party = createPartyState(state, config.party, config.loadout ?? world.loadout, spawnX, spawnZ);
+	// docs/ARCHER.md: each player's starting and maximum health from their traits (the run config's, like the roll;
+	// START_HALF_HEARTS without traits, so a run without them is unchanged). No rng.
+	const players = partySize(state);
+	for (let i = 0; i < players; i++) {
+		const p = playerAt(state, i);
+		const max = playerStartHalfHearts(playerTraits(config, i));
+		p.heartsMax = max;
+		p.hearts = max;
+	}
 	// Tutorial: harmless hits and the wounded start (every player, max hearts unchanged). No rng.
 	const tutorial = config.tutorial;
 	if (tutorial !== undefined) {

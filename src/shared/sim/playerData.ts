@@ -29,8 +29,10 @@ export const MAX_MOVE_STEP = 0.1;
 
 // --- Hearts and armor (all in HALF-heart units) ------------------------------------------------
 
-/** Starting and maximum health: 3 hearts = 6 half hearts. */
+/** Starting and maximum health: 3 hearts = 6 half hearts (a character's trait may change it: PlayerTraits.heartsMaxDelta). */
 export const START_HALF_HEARTS = 6;
+/** The least maximum health a character's traits can leave a player with (playerStartHalfHearts): never start dead. */
+export const MIN_START_HALF_HEARTS = 1;
 /** A normal hit costs 1 half heart; heavy hits cost 2. The caller of damagePlayer() decides. */
 export const HIT_NORMAL = 1;
 export const HIT_HEAVY = 2;
@@ -91,7 +93,15 @@ export interface PlayerTraits {
 	readonly rollDashPercent: number;
 	/** The roll's i-frames x this / 100, folded with Slippery's percent into one rounding (rollIframeTicks). */
 	readonly rollIframePercent: number;
+	/**
+	 * Half hearts added to START_HALF_HEARTS for the player's starting and maximum health (0 = 3 hearts exactly; the
+	 * Archer's -2 = 2 hearts). Applied once, when createSimState builds the player (playerStartHalfHearts).
+	 */
+	readonly heartsMaxDelta: number;
 }
+
+/** A trait delta that changes nothing. */
+export const NEUTRAL_TRAIT_DELTA = 0;
 
 /** A trait percent that changes nothing (progression's PERCENT; playerData cannot import it: a require cycle). */
 export const NEUTRAL_TRAIT_PERCENT = 100;
@@ -100,4 +110,11 @@ export const NEUTRAL_TRAIT_PERCENT = 100;
 export const NEUTRAL_TRAITS: PlayerTraits = table.freeze({
 	rollDashPercent: NEUTRAL_TRAIT_PERCENT,
 	rollIframePercent: NEUTRAL_TRAIT_PERCENT,
+	heartsMaxDelta: NEUTRAL_TRAIT_DELTA,
 });
+
+/** A player's starting and maximum health in half hearts: START_HALF_HEARTS + the traits' delta, at least MIN_START_HALF_HEARTS. */
+export function playerStartHalfHearts(traits: Readonly<PlayerTraits>): number {
+	const n = START_HALF_HEARTS + traits.heartsMaxDelta;
+	return n < MIN_START_HALF_HEARTS ? MIN_START_HALF_HEARTS : n;
+}

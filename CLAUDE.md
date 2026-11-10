@@ -1197,7 +1197,10 @@ Decision log (deviations from `PLAN.md`):
   `<key>.<characterId>`. Art: the SmallScaleInt Archer (paid edition, Standard Commercial License), sprite set
   `class.ranger` built by `build-atlases.js --only class.ranger`; its 14 PNGs uploaded 2026-11-09 (`assetIds.ts`), so the
   bundled vale pack draws the Archer. Tuning measured (AR13; census `npm run test:only -- --census run/archer.survival`);
-  owner calls and the Studio check (AR14) pending.
+  owner calls and the Studio check (AR14) pending. Health (owner answer 12): `PlayerTraits.heartsMaxDelta` (half hearts,
+  neutral 0), the Archer's `ARCHER_HEARTS_MAX_DELTA` -2 = 2 hearts to the Knight's 3, applied in `createSimState` per
+  player (`playerStartHalfHearts`, at least 1); `runStartHalfHearts` takes a player index. Archer replays changed;
+  Knight runs, M1, every fixture and the tutorial unchanged.
 - **Rollback spike (docs/ROLLBACK_SPIKE.md, 2026-11-09): don't build rollback; the spike code is removed.**
   Measured whether co-op rollback is worth building (copy the state, step it H ticks a frame with guessed teammate
   inputs, in a Parallel Luau worker that mirrors the run). Results: H 16 cost 4.06 ms p95 a frame on the owner's Mac on

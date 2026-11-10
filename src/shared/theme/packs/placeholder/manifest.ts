@@ -555,7 +555,7 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"character.knight.line.1": "Sword: a three-hit combo.",
 		"character.knight.line.2": "Guard blocks bullets.",
 		"character.archer.line.1": "Bow: a stream of arrows, hold to charge.",
-		"character.archer.line.2": "A longer, safer roll.",
+		"character.archer.line.2": "A longer, safer roll; one heart less.",
 		"enemy.swarmer.name": "Swarmer",
 		"enemy.sprayer.name": "Sprayer",
 		"enemy.sniper.name": "Sniper",

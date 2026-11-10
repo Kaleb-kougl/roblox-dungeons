@@ -39,6 +39,7 @@ import {
 	START_ARMOR_MAX,
 	START_HALF_HEARTS,
 	NEUTRAL_TRAITS,
+	playerStartHalfHearts,
 	type PlayerTraits,
 } from "./playerData";
 import type { PlayerState, SimState } from "./state";
@@ -437,11 +438,12 @@ export const PLAYER_HASH_FIELDS = [
 ] as const;
 
 /**
- * The half hearts every player starts a run of `config` with (what createSimState gives a fresh player):
- * START_HALF_HEARTS, or the tutorial's start (tutorialStartHalfHearts). RunTelemetry's baseline, so a wounded tutorial
- * start is not logged as hearts lost on tick 1.
+ * The half hearts player `playerIndex` starts a run of `config` with (what createSimState gives them): their maximum
+ * (playerStartHalfHearts of their traits: START_HALF_HEARTS, the Archer's one heart less), or the tutorial's start
+ * (tutorialStartHalfHearts). RunTelemetry's baseline, so a wounded tutorial start is not logged as hearts lost on tick 1.
  */
-export function runStartHalfHearts(config: Readonly<SimConfig>): number {
+export function runStartHalfHearts(config: Readonly<SimConfig>, playerIndex: number = SOLO_PLAYER): number {
+	const max = playerStartHalfHearts(playerTraits(config, playerIndex));
 	const t = config.tutorial;
-	return t !== undefined ? tutorialStartHalfHearts(t, START_HALF_HEARTS) : START_HALF_HEARTS;
+	return t !== undefined ? tutorialStartHalfHearts(t, max) : max;
 }

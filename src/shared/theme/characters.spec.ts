@@ -65,7 +65,7 @@ describe("character strings (docs/ARCHER.md AR11)", () => {
 		]);
 		expect([s[characterLineKey("archer", 1)], s[characterLineKey("archer", 2)]]).toEqual([
 			"Bow: a stream of arrows, hold to charge.",
-			"A longer, safer roll.",
+			"A longer, safer roll; one heart less.",
 		]);
 	});
 

@@ -31,6 +31,7 @@ import {
 } from "shared/sim";
 import { CLASS_IDS } from "shared/theme";
 import {
+	ARCHER_HEARTS_MAX_DELTA,
 	ARCHER_ROLL_DASH_PERCENT,
 	ARCHER_ROLL_IFRAME_PERCENT,
 	CHARACTERS,
@@ -93,9 +94,11 @@ describe("characters", () => {
 		expect(characterTraits("archer")).toEqual({
 			rollDashPercent: ARCHER_ROLL_DASH_PERCENT,
 			rollIframePercent: ARCHER_ROLL_IFRAME_PERCENT,
+			heartsMaxDelta: ARCHER_HEARTS_MAX_DELTA,
 		});
-		expect([ARCHER_ROLL_DASH_PERCENT, ARCHER_ROLL_IFRAME_PERCENT]).toEqual([140, 125]);
+		expect([ARCHER_ROLL_DASH_PERCENT, ARCHER_ROLL_IFRAME_PERCENT, ARCHER_HEARTS_MAX_DELTA]).toEqual([140, 125, -2]);
 		expect([NEUTRAL_TRAITS.rollDashPercent, NEUTRAL_TRAITS.rollIframePercent]).toEqual([PERCENT, PERCENT]);
+		expect(NEUTRAL_TRAITS.heartsMaxDelta).toBe(0);
 		expect([SWORD.id, BOW.id]).toEqual([SWORD_WEAPON_ID, BOW_WEAPON_ID]);
 		expect(DEFAULT_LOADOUT).toEqual([SWORD_WEAPON_ID, BOW_WEAPON_ID]);
 		expect(characterDef("archer").id).toBe("archer");

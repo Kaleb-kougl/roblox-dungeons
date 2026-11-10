@@ -1,6 +1,6 @@
 /**
  * The playable characters (docs/ARCHER.md "Characters", ARD1 / ARD2; a Roblox-port feature, no web source). A character
- * is a loadout (one weapon set, set 1 empty) plus a traits record (the roll); the sim never sees a character id: the
+ * is a loadout (one weapon set, set 1 empty) plus a traits record (the roll, the hearts); the sim never sees a character id: the
  * run configs (shared/run, AR4) turn characters into `SimConfig.loadout` / `traits` and `PartyConfig.loadouts` /
  * `traits`, and the view and the server read this table. Pure data and helpers, Roblox-API-free.
  *
@@ -23,6 +23,8 @@ export type CharacterId = "knight" | "archer";
 export const ARCHER_ROLL_DASH_PERCENT = 140;
 /** The Archer's roll i-frames: 125 % (12 -> 15 ticks; owner answer 9). */
 export const ARCHER_ROLL_IFRAME_PERCENT = 125;
+/** The Archer's health: one heart less than the Knight (half hearts: 6 -> 4, 3 -> 2 hearts; owner, 2026-11-09). */
+export const ARCHER_HEARTS_MAX_DELTA = -2;
 
 export interface CharacterDef {
 	readonly id: CharacterId;
@@ -30,7 +32,7 @@ export interface CharacterDef {
 	readonly visualId: string;
 	/** Weapon id per set (SimConfig.loadout): one weapon, set 1 empty (ARD2). */
 	readonly loadout: ReadonlyArray<string | undefined>;
-	/** Roll traits (SimConfig.traits). */
+	/** Roll and health traits (SimConfig.traits). */
 	readonly traits: PlayerTraits;
 }
 
@@ -44,6 +46,7 @@ export const CHARACTERS: ReadonlyArray<CharacterDef> = [
 		traits: table.freeze({
 			rollDashPercent: ARCHER_ROLL_DASH_PERCENT,
 			rollIframePercent: ARCHER_ROLL_IFRAME_PERCENT,
+			heartsMaxDelta: ARCHER_HEARTS_MAX_DELTA,
 		}),
 	},
 ];

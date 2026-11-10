@@ -148,7 +148,7 @@ describe("the Archer's roll: distance (dash x 140 %)", () => {
 		const others = [
 			{ traits: NEUTRAL_TRAITS },
 			{ traits: KNIGHT },
-			{ traits: { rollDashPercent: 100, rollIframePercent: 100 } },
+			{ traits: { rollDashPercent: 100, rollIframePercent: 100, heartsMaxDelta: 0 } },
 		];
 		const states = others.map((c) => createSimState(1, 0, 0, c));
 		for (let t = 0; t < ROLL_TICKS + 5; t++) {
