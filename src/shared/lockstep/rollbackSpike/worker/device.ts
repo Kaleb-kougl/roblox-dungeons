@@ -33,6 +33,8 @@ export function rollbackDeviceClass(f: Readonly<RollbackDeviceFacts>): RollbackD
 }
 
 const UTF8_CONTINUATION_MIN = 0x80;
+const UTF8_NON_ASCII_MIN = 0x80;
+const BYTE_MAX = 0xff;
 const UTF8_CONTINUATION_MAX = 0xbf;
 
 /**
@@ -41,7 +43,9 @@ const UTF8_CONTINUATION_MAX = 0xbf;
  */
 function cleanTag(tag: string): string {
 	let [plain] = string.gsub(tag, "%c", "");
-	if (utf8.len(plain)[0] === false) [plain] = string.gsub(plain, "[\128-\255]", "");
+	if (utf8.len(plain)[0] === false) {
+		[plain] = string.gsub(plain, `[${string.char(UTF8_NON_ASCII_MIN)}-${string.char(BYTE_MAX)}]`, "");
+	}
 	const [trimmed] = string.gsub(plain, "^%s+", "");
 	const [done] = string.gsub(trimmed, "%s+$", "");
 	return done;
