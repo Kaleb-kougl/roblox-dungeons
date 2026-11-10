@@ -422,7 +422,9 @@ Free functions (exported, so the spec can test them):
      aim = `(env.facingX, env.facingZ)`.
   3. **Latch:** if a stick gave an aim, store it in the latch with `latchSec = TOUCH.aimLatchSec`. Else, if
      `latchSec > 0`: aim = the latch, then `latchSec -= env.dt`. Else aim = `(0, 0)`.
-  4. **Draft pick:** if `draftColumn !== undefined`. If `!env.draftOpen`: clear it. Otherwise:
+  4. **Draft pick:** if `draftColumn !== undefined`. If `!env.draftOpen`, or `env.draftDeal` differs from the deal the
+     pick saw on its first frame (a pick re-dealt the open draft: builds' boss double draft, docs/BUILDS.md BUD4): clear
+     it (fixed 2026-11-09: the queued column had confirmed the same column on the second deal). Otherwise:
      `moveX = draftScreenX(draftColumn)`, `moveY = 0`, then
      - if `draftPulseSec > 0`: `buttons |= Button.FIRE`, `draftPulseSec -= dt`;
      - else if `draftCooldownSec > 0`: `draftCooldownSec -= dt`;

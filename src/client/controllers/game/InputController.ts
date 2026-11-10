@@ -682,6 +682,7 @@ export class InputController implements OnStart {
 			},
 			draftOpen: draft.open,
 			draftReady: draft.ready,
+			draftDeal: draft.deal,
 		});
 	}
 

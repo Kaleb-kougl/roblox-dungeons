@@ -59,6 +59,12 @@ export interface TouchFrameEnv {
 	readonly autoAim: () => WorldVec | undefined;
 	readonly draftOpen: boolean;
 	readonly draftReady: boolean;
+	/**
+	 * The open draft's deal (shared/play touch `draftStatus(...).deal`): a queued pick belongs to the deal it was tapped
+	 * on and is dropped when this changes (a re-deal keeps the draft open, so it would otherwise confirm the same column
+	 * on the new cards).
+	 */
+	readonly draftDeal: number;
 }
 
 /** Where a stick is drawn (raw touch px): the touch-down point and the current finger. */
@@ -123,6 +129,8 @@ export class TouchControls {
 	private latchZ = 0;
 	private latchSec = 0;
 	private draftColumn: number | undefined;
+	/** The deal the queued pick was tapped on (env.draftDeal on its first frame); undefined until that frame. */
+	private draftDeal: number | undefined;
 	private draftPulseSec = 0;
 	private draftCooldownSec = 0;
 	private autoAimed = false;
@@ -174,6 +182,7 @@ export class TouchControls {
 	/** Queues a card pick: the stick is held toward the column while the draft is open, then a FIRE pulse taps it. */
 	queueDraftPick(column: number): void {
 		this.draftColumn = column;
+		this.draftDeal = undefined;
 		this.draftPulseSec = 0;
 		this.draftCooldownSec = 0;
 	}
@@ -233,23 +242,28 @@ export class TouchControls {
 			aim = NO_AIM;
 		}
 
+		if (this.draftColumn !== undefined) {
+			// The pick is spent once its deal is gone: the draft closed, or a pick re-dealt it (the draft stays open).
+			if (!env.draftOpen || (this.draftDeal !== undefined && env.draftDeal !== this.draftDeal)) {
+				this.draftColumn = undefined;
+				this.draftDeal = undefined;
+			} else {
+				this.draftDeal = env.draftDeal;
+			}
+		}
 		const column = this.draftColumn;
 		if (column !== undefined) {
-			if (!env.draftOpen) {
-				this.draftColumn = undefined;
-			} else {
-				moveX = draftScreenX(column);
-				moveY = 0;
-				if (this.draftPulseSec > 0) {
-					buttons = bit32.bor(buttons, Button.FIRE);
-					this.draftPulseSec -= dt;
-				} else if (this.draftCooldownSec > 0) {
-					this.draftCooldownSec -= dt;
-				} else if (env.draftReady) {
-					buttons = bit32.bor(buttons, Button.FIRE);
-					this.draftPulseSec = TOUCH.draft.pulseSec - dt;
-					this.draftCooldownSec = TOUCH.draft.retrySec;
-				}
+			moveX = draftScreenX(column);
+			moveY = 0;
+			if (this.draftPulseSec > 0) {
+				buttons = bit32.bor(buttons, Button.FIRE);
+				this.draftPulseSec -= dt;
+			} else if (this.draftCooldownSec > 0) {
+				this.draftCooldownSec -= dt;
+			} else if (env.draftReady) {
+				buttons = bit32.bor(buttons, Button.FIRE);
+				this.draftPulseSec = TOUCH.draft.pulseSec - dt;
+				this.draftCooldownSec = TOUCH.draft.retrySec;
 			}
 		}
 
