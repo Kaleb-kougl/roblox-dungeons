@@ -11,6 +11,8 @@
  *   lead.ts     LeadController: the net input lead from the server's echoed trips (p95 + margin, up at once, down
  *               within seconds; the legacy miss counter while no echo arrives)
  *   arrivalLog.ts  ArrivalLog: the KV_Debug co-op arrival log (batch gaps and sizes, pacing, fps; FP0)
+ *   predictMotion.ts  the motion mirror: one tick of one player's body on scratch, from a merged state (LP1 / LP2)
+ *   predict.ts  LocalPredictor: the local player's body replayed past the merged state (docs/LOCAL_PREDICTION.md)
  *   client.ts   LockstepClient: steps the sim with merged frames only, sends inputs / hashes / the final claim
  *   menuInput.ts  CoopMenuInputGate: neutral local input while a menu owns the controls (a party run never pauses)
  *
@@ -25,5 +27,7 @@ export * from "./session";
 export * from "./pacer";
 export * from "./lead";
 export * from "./arrivalLog";
+export * from "./predictMotion";
+export * from "./predict";
 export * from "./client";
 export * from "./menuInput";

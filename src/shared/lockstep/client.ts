@@ -57,6 +57,12 @@
  * (and a latched button) changes. With `tunables.lead` undefined: the legacy miss counter only, exactly as before
  * (`sample` is called only when sending; an echo is ignored).
  *
+ * Local prediction (docs/LOCAL_PREDICTION.md, predict.ts). With `tunables.prediction` defined the client owns a
+ * LocalPredictor: after every stepped tick it compares the merged pose with its prediction (`observe`), and after every
+ * pump that stepped (or while nothing is predicted) it rebuilds the prediction from the merged state, the queued frames
+ * and the inputs it sent (`predicted()`: the local player's body up to `maxTicks` ticks ahead; `predictionStats()`).
+ * Read only: it changes nothing that is stepped, sent, hashed or claimed. Undefined: nothing is predicted.
+ *
  * Hitstop is never applied here: a co-op sim is paced by the server's frames alone (shared/view/fx freezeRules
  * `simPacerFor`); presentation may freeze sprites or the camera instead. The local player's character may be drawn
  * predicted (presentation only); nothing predicted ever reaches the sim.
@@ -71,6 +77,7 @@ import {
 	isPartyWiped,
 	stepParty,
 	type InputFrame,
+	type PlayerState,
 	type SimConfig,
 	type SimState,
 	runStartHalfHearts,
@@ -102,6 +109,7 @@ import {
 import { DEFAULT_LOCKSTEP, PACING, type LockstepTunables } from "./config";
 import { LeadController, type LeadStats } from "./lead";
 import { PlayoutPacer, type PacingStats } from "./pacer";
+import { LocalPredictor, type PredictionSource, type PredictionStats } from "./predict";
 import { MergedDecoder, decodeInputEcho, encodeInputBatch } from "./wire";
 
 /** Not a clock: what the lead controller gets before any was given (its legacy rule needs none). */
@@ -144,7 +152,7 @@ export interface PumpResult {
 	readonly final?: RunFinal;
 }
 
-export class LockstepClient implements RunView {
+export class LockstepClient implements RunView, PredictionSource {
 	readonly state: SimState;
 	readonly runId: string;
 	readonly players: number;
@@ -240,6 +248,10 @@ export class LockstepClient implements RunView {
 	 */
 	private earlyAt: number | undefined;
 	private earlyNewest = 0;
+	/** Local prediction (docs/LOCAL_PREDICTION.md), when `tunables.prediction` is defined. */
+	private readonly predictor: LocalPredictor | undefined;
+	/** The own input in the last merged frame stepped (the relay's repeat-last, for the predictor). */
+	private lastLocal: InputFrame | undefined;
 
 	constructor(params: LockstepClientParams) {
 		this.runId = params.runId;
@@ -255,6 +267,7 @@ export class LockstepClient implements RunView {
 			t.lead !== undefined
 				? new LeadController(t.lead, t.inputDelay, t.maxInputLead, t.leadDecayTicks)
 				: undefined;
+		this.predictor = t.prediction !== undefined ? new LocalPredictor(t.prediction) : undefined;
 		this.decoder = new MergedDecoder(params.players);
 		this.state = createSimState(params.seed, params.spawn.x, params.spawn.z, params.config);
 		this.telemetry = new RunTelemetry(runStartHalfHearts(params.config));
@@ -333,6 +346,49 @@ export class LockstepClient implements RunView {
 	/** The pacing buffer's lead depth (PlayoutPacer.depthTicks: whole ticks, hysteresis, capped) while pacing, else 0. */
 	private depthTicks(): number {
 		return this.pacing && this.pacer !== undefined ? this.pacer.depthTicks() : 0;
+	}
+
+	/**
+	 * Local prediction (predict.ts PredictionSource), read-only: the queued merged frame `k` ticks after the next tick
+	 * to step (tick state.tick + k, 0 <= k < backlog(); index order), or undefined. Read it, never keep or write it.
+	 */
+	queuedFrame(k: number): ReadonlyArray<Readonly<InputFrame>> | undefined {
+		if (k < 0 || k >= this.backlog() || k % 1 !== 0) return undefined;
+		return this.queue[this.queueHead + k];
+	}
+
+	/** Local prediction, read-only: the last tick an own input was sent for (-1 before any). */
+	lastSentInputTick(): number {
+		return this.lastSentTick;
+	}
+
+	/**
+	 * Local prediction, read-only: the own input sent for `tick` while that tick is not stepped
+	 * yet (undefined once stepped, or never sent: a tick the lead jumped over, which the server fills with the previous
+	 * input). Never keep or write it.
+	 */
+	sentInput(tick: number): Readonly<InputFrame> | undefined {
+		return this.sent.get(tick);
+	}
+
+	/** The own input in the last merged frame stepped (undefined before the first step). Read it, never keep or write it. */
+	lastSteppedInput(): Readonly<InputFrame> | undefined {
+		return this.lastLocal;
+	}
+
+	/**
+	 * The local player's predicted body (docs/LOCAL_PREDICTION.md Design 2): up to `prediction.maxTicks` ticks past the
+	 * merged state, rebuilt after every pump that stepped; prevX / prevZ are the pose a tick before the head (lerp with
+	 * getAlpha()). Undefined without `tunables.prediction`, while the local player is dead or left, while a draft is
+	 * open, and once the run is over here. Presentation only: read it, never keep or write it.
+	 */
+	predicted(): Readonly<PlayerState> | undefined {
+		return this.predictor?.predicted();
+	}
+
+	/** The predictor's numbers (horizon, error, corrections); undefined without `tunables.prediction`. */
+	predictionStats(): PredictionStats | undefined {
+		return this.predictor?.stats();
 	}
 
 	/** Nothing more will be stepped: broken, ended by the server, or the final claim made. */
@@ -531,6 +587,8 @@ export class LockstepClient implements RunView {
 			const tick = state.tick;
 			this.checkDeadline(tick, merged[this.localIndex]);
 			stepParty(state, merged, this.config);
+			this.lastLocal = merged[this.localIndex];
+			this.predictor?.observe(state, this.localIndex);
 			this.telemetry.observe(state);
 			accumulateEvents(this.frameEvents, state.events);
 			this.kills += state.events.enemiesKilled;
@@ -586,6 +644,11 @@ export class LockstepClient implements RunView {
 			ctl?.sent(target, state.tick, depthRaw, unsteady, depthUsed);
 		}
 		flushInputs();
+		const predictor = this.predictor;
+		if (predictor !== undefined) {
+			if (this.steppingDone() || this.isOver()) predictor.stop();
+			else if (stepped > 0 || predictor.predicted() === undefined) predictor.rebuild(this);
+		}
 		this.collectHashes(dt, hashes);
 		if (stepped > 0) this.sinceStep = 0;
 		// Release stepped frames now and then (the queue is read from queueHead).

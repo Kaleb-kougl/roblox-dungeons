@@ -309,6 +309,7 @@ const TUNABLES: LockstepTunables = {
 	allowDebugInput: true,
 	pacing: undefined,
 	lead: undefined,
+	prediction: undefined,
 };
 const SEG_LIMITS: SegmentLimits = { ...DEFAULT_SEGMENT_LIMITS, checkpointEvery: 120, allowDebugInput: true };
 

@@ -238,6 +238,26 @@ export const LEAD: LeadTunables = table.freeze({
 	recordTicks: SIM_HZ * 2,
 });
 
+/**
+ * Local prediction (docs/LOCAL_PREDICTION.md Design 2 / 7, predict.ts): the client draws its own player's body ahead of
+ * the merged state, replayed from its own inputs. Presentation only: nothing predicted reaches the sim, a hash, a
+ * recording or a remote. All provisional until LP8 (the playtest).
+ */
+export interface PredictionTunables {
+	/** The most ticks the body is replayed past the merged state (LPD4: 10 = 167 ms; the owner's). */
+	readonly maxTicks: number;
+	/** The error statistics (predictionStats) cover this many stepped ticks (10 s, like the pacing windows). */
+	readonly statsWindowTicks: number;
+	/** A stepped tick whose merged pose is farther than this (tiles) from its prediction counts as a correction. */
+	readonly correctionTiles: number;
+}
+
+export const PREDICTION: PredictionTunables = table.freeze({
+	maxTicks: 10,
+	statsWindowTicks: SIM_HZ * 10,
+	correctionTiles: 0.01,
+});
+
 export interface LockstepTunables {
 	readonly inputDelay: number;
 	readonly maxInputLead: number;
@@ -283,6 +303,12 @@ export interface LockstepTunables {
 	 * the network. The most an input reaches past the tick it was sent from: the largest lead plus the largest depth.
 	 */
 	readonly echoCatchUpTailTicks: number;
+	/**
+	 * Client: local prediction (docs/LOCAL_PREDICTION.md, predict.ts). Defined: the client replays its own player's body
+	 * past the merged state after every pump that stepped (`predicted()`, `predictionStats()`); undefined: nothing is
+	 * predicted. Read only: it never changes what is stepped, sent or hashed. The server ignores it.
+	 */
+	readonly prediction: PredictionTunables | undefined;
 }
 
 export const DEFAULT_LOCKSTEP: LockstepTunables = table.freeze({
@@ -307,4 +333,5 @@ export const DEFAULT_LOCKSTEP: LockstepTunables = table.freeze({
 	pacing: PACING,
 	lead: LEAD,
 	echoCatchUpTailTicks: MAX_INPUT_LEAD_TICKS + PACING.maxDepthTicks,
+	prediction: PREDICTION,
 });
