@@ -691,6 +691,15 @@ export class SimController implements OnStart {
 		return this.ctx?.dev === true;
 	}
 
+	/**
+	 * Developer mode: the options the current dev run was built with (start floor, god mode at start, vault override),
+	 * or undefined outside a dev run. Read-only: the rollback probe's worker rebuilds the same run from them
+	 * (docs/ROLLBACK_SPIKE.md Design 5).
+	 */
+	getDevRunOptions(): DevRunOptions | undefined {
+		return this.ctx?.dev === true ? this.devRun : undefined;
+	}
+
 	/** Developer mode: god mode as the sim has it now (state.dev), or undefined outside a dev run. */
 	getGodMode(): boolean | undefined {
 		const d = this.ctx?.dev === true ? this.ctx.run.state.dev : undefined;

@@ -1,0 +1,85 @@
+/**
+ * What the rollback probe's summaries say about the device and the moment (docs/ROLLBACK_SPIKE.md Design 5 "Logged,
+ * not only shown"): the device class and label from what the game knows (Roblox gives scripts no device model), and
+ * the probe case (room / floor / boss / walk) from the state. Pure.
+ */
+import { NO_KIND, archetypeAt, type SimState } from "shared/sim";
+import { ROLLBACK_PROBE_LIMITS, type RollbackDeviceClass, type RollbackProbeCase } from "shared/spikes";
+import { ROLLBACK_SPIKE } from "../config";
+
+/** What the client reads about its device (UserInputService, GuiService, the camera's viewport). */
+export interface RollbackDeviceFacts {
+	/** GuiService:IsTenFootInterface(). */
+	readonly tenFoot: boolean;
+	readonly touch: boolean;
+	readonly keyboard: boolean;
+	readonly gamepad: boolean;
+	/** Viewport size, pixels. */
+	readonly viewportX: number;
+	readonly viewportY: number;
+}
+
+/**
+ * The device class: a ten-foot interface is a console; touch without a keyboard or a gamepad is a phone or (short side
+ * at least ROLLBACK_SPIKE.probe.tabletMinShortSidePx) a tablet; anything else a pc.
+ */
+export function rollbackDeviceClass(f: Readonly<RollbackDeviceFacts>): RollbackDeviceClass {
+	if (f.tenFoot) return "console";
+	if (f.touch && !f.keyboard && !f.gamepad) {
+		const short = math.min(f.viewportX, f.viewportY);
+		return short >= ROLLBACK_SPIKE.probe.tabletMinShortSidePx ? "tablet" : "phone";
+	}
+	return "pc";
+}
+
+/** Strips control characters (the server's reader refuses them) and trims spaces. */
+function cleanTag(tag: string): string {
+	const [plain] = string.gsub(tag, "%c", "");
+	const [trimmed] = string.gsub(plain, "^%s+", "");
+	const [done] = string.gsub(trimmed, "%s+$", "");
+	return done;
+}
+
+/**
+ * The device label: the inputs present, the viewport, then the tester's tag (KV_RollbackDeviceTag), cut to the
+ * reader's maxDeviceLabelChars ("touch 2400x1080 Pixel 6a").
+ */
+export function rollbackDeviceLabel(f: Readonly<RollbackDeviceFacts>, tag: string | undefined): string {
+	const inputs: string[] = [];
+	if (f.tenFoot) inputs.push("tv");
+	if (f.touch) inputs.push("touch");
+	if (f.keyboard) inputs.push("kb");
+	if (f.gamepad) inputs.push("pad");
+	if (inputs.size() === 0) inputs.push("none");
+	let label = `${inputs.join("+")} ${math.round(f.viewportX)}x${math.round(f.viewportY)}`;
+	const t = tag !== undefined ? cleanTag(tag) : "";
+	if (t !== "") label = `${label} ${t}`;
+	const max = ROLLBACK_PROBE_LIMITS.maxDeviceLabelChars;
+	return label.size() > max ? label.sub(1, max) : label;
+}
+
+/** Actors alive (a kind, not dead). */
+export function aliveActors(state: Readonly<SimState>): number {
+	let n = 0;
+	for (const a of state.combat.actors) if (a.kind !== NO_KIND && a.alive !== 0) n++;
+	return n;
+}
+
+/**
+ * The probe case from the state: "boss" while a boss is engaged; "floor" while at least floorCaseRooms score rooms
+ * are engaged and not cleared at once (the whole floor entered: the replay bench's dense case); "room" while one is;
+ * else "walk".
+ */
+export function rollbackProbeCase(state: Readonly<SimState>): RollbackProbeCase {
+	for (const a of state.combat.actors) {
+		if (a.kind === NO_KIND || a.alive === 0 || a.phase <= 0) continue;
+		if (archetypeAt(a.kind).data.boss === true) return "boss";
+	}
+	let engaged = 0;
+	const score = state.score;
+	if (score !== undefined) {
+		for (const r of score.rooms) if (r.engageTick >= 0 && r.cleared === 0) engaged++;
+	}
+	if (engaged >= ROLLBACK_SPIKE.probe.floorCaseRooms) return "floor";
+	return engaged > 0 ? "room" : "walk";
+}
