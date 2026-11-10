@@ -1,6 +1,12 @@
 import React, { useEffect, useState } from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
-import { selectAwaitingFirstRun, selectGameActive, selectMenuScreen, selectTutorialActive } from "client/store";
+import {
+	selectAwaitingFirstRun,
+	selectGameActive,
+	selectMenuPointerSink,
+	selectMenuScreen,
+	selectTutorialActive,
+} from "client/store";
 import { useHudScale } from "client/ui/hud";
 import { role } from "client/ui/theme";
 import { MENU_VIEW } from "shared/view/menu";
@@ -21,13 +27,16 @@ import { InviteBadge, InviteToasts, NoticeToasts, useInviteToasts } from "./Toas
  * "Starting run..." cover: client/ui/loading StageCard, docs/STAGE_LOADER.md SL3.) On join, until the first-run gate decided (a first-time player goes
  * straight into the tutorial), the backdrop alone. The invite badge is hidden during a tutorial run (nothing there can
  * take the player out of it). Same reference layout and UIScale as the HUD. The main menu's Y hands the pad to the
- * invite toasts (docs/GAMEPAD_MENUS.md GM6) while one is pending; B there hands it back.
+ * invite toasts (docs/GAMEPAD_MENUS.md GM6) while one is pending; B there hands it back. While a panel (Options,
+ * leaderboards) is open over a screen, an invisible Active button covers it (PointerSink, shared/view/menu pointer.ts):
+ * the panel's dim lets clicks through, and the main menu under Options stayed clickable.
  */
 export function MenuLayer() {
 	const screen = useSelector(selectMenuScreen);
 	const active = useSelector(selectGameActive);
 	const awaitingFirstRun = useSelector(selectAwaitingFirstRun);
 	const inTutorial = useSelector(selectTutorialActive);
+	const pointerSink = useSelector(selectMenuPointerSink);
 	const scale = useHudScale();
 	// docs/GAMEPAD_MENUS.md GM6: the invite toasts take the pad only once the main menu's Y jumps to them, and give it
 	// back on B, when the last toast goes, or when the screen changes.
@@ -82,6 +91,21 @@ export function MenuLayer() {
 								invites={invites}
 								focused={invitesFocused && screen === "main"}
 								onLeave={() => setInvitesFocused(false)}
+							/>
+						) : undefined}
+						{body !== undefined && pointerSink ? (
+							// A panel (Options, leaderboards) is open over the screen: its dim is not Active, so this
+							// invisible Active button takes mouse / touch instead of the screen's buttons (pointer.ts).
+							<textbutton
+								key="PointerSink"
+								Size={UDim2.fromScale(1, 1)}
+								ZIndex={MENU_VIEW.pointerSinkZIndex}
+								BackgroundTransparency={1}
+								BorderSizePixel={0}
+								AutoButtonColor={false}
+								Selectable={false}
+								Active={true}
+								Text=""
 							/>
 						) : undefined}
 					</frame>

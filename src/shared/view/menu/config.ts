@@ -57,6 +57,13 @@ export const MENU_VIEW = {
 	 * safe-area ScreenGui it stopped at the top bar and a phone's notch insets and read as a second, plain panel.
 	 */
 	backdropDisplayOrder: 14,
+	/**
+	 * The shell's pointer sink (client/ui/menu MenuLayer, pointer.ts menuPointerSinkShown): a full-screen, invisible,
+	 * Active button over the menu screen while a panel (Options, leaderboards) is open, so mouse and touch never reach
+	 * the screen under the panel's dim. Its ZIndex among the shell's Screen frame children (the screen body and the
+	 * invite toasts, which leave the default 1): above them under ZIndexBehavior.Sibling.
+	 */
+	pointerSinkZIndex: 10,
 } as const;
 
 /**

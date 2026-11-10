@@ -1,4 +1,5 @@
 import { createSelector } from "@rbxts/reflex";
+import { menuPointerSinkShown } from "shared/view/menu";
 import { selectGameActive, selectSnapshot } from "./game";
 import { selectAnyPanelOpen } from "./leaderboard";
 import { selectLoadingReleased } from "./loading";
@@ -27,6 +28,15 @@ export const selectMenuShown = createSelector(
 		screen !== "none" ||
 		coopOverlay ||
 		(active && (outroOpen || snapshot.outcome !== "playing" || snapshot.paused)),
+);
+
+/**
+ * The menu shell covers its screen with a pointer sink: a panel (Options, leaderboards) is open over a menu screen, so
+ * mouse / touch never reach the main menu (or lobby room, ...) through the panel's dim (shared/view/menu pointer.ts).
+ */
+export const selectMenuPointerSink = createSelector(
+	[selectMenuScreen, selectAnyPanelOpen] as const,
+	(screen, panelOpen) => menuPointerSinkShown({ screen, panelOpen }),
 );
 
 /**
