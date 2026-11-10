@@ -15,6 +15,7 @@ turned off.
 | PA0: sprite bullets | Can the bullets be drawn as pixel-art sprites (Decal, per-bullet SurfaceGui, or one canvas SurfaceGui) at bullet-hell counts, within 1.5x the neon parts' update? (docs/PROJECTILE_ART.md PA0) | `src/client/controllers/spikes/BulletSpikeController.ts` (spike A's controller, render modes) |
 | L0: localization | Which fonts draw each script we may ship (tofu, fallback or correct), do Arabic shaping / right-to-left and CJK / Thai wrapping work, which locale id is the player's language, does `AutoLocalize = false` stop translated content, and what does the cloud table's CSV look like? (docs/LOCALIZATION.md L0) | `src/client/controllers/spikes/L10nSpikeController.ts`, `src/shared/spikes/l10nSpike.ts` |
 | GM0: gamepad menus | Does the default selection image draw over our buttons, do ScrollingFrames follow the selection and scroll with the stick, what happens to a destroyed / hidden selection, does a Stop SelectionGroup hold across ScreenGuis, does `GuiService:Select` honour `SelectionOrder`, what glyphs and haptics does the engine give, what do the console signals read, does Start reach the game? (docs/GAMEPAD_MENUS.md GM0) | `src/client/controllers/spikes/PadSpikeController.tsx` |
+| Rollback: measure before building | Can a phone copy the co-op state and step it H ticks a frame (off the main thread, Parallel Luau), and how often would a rollback's drawn world visibly correct itself with real inputs? Plus the Parallel Luau facts the worker relies on (R3a). (docs/ROLLBACK_SPIKE.md) | `src/client/controllers/spikes/RollbackSpikeController.ts`, `src/client/rollbackWorker/worker.client.ts`, `src/server/services/spikes/RollbackSpikeService.ts`, `src/shared/lockstep/rollbackSpike/`, `src/shared/spikes/rollbackSpike.ts` |
 
 Tunables for all of them: `src/shared/config/spikes.ts`. HUD: `src/client/ui/spikes/SpikeHud.tsx` (top left, with buttons
 for touch devices).
@@ -679,6 +680,28 @@ or drop the selection?).
 | 10. A held A / LB leaks into the sim after a menu closes | | | | |
 
 Results pending. Notes (Studio version, pad models, the glyph strings verbatim, anything odd):
+
+## Rollback spike (docs/ROLLBACK_SPIKE.md)
+
+Not a task 1 gate: it decides whether co-op rollback is worth building (docs/ROLLBACK_SPIKE.md, tasks R0-R7; the
+cheaper alternative is docs/LOCAL_PREDICTION.md). Client and server code plus a Studio plugin and a localhost receiver,
+all **off by default**: with the attributes absent nothing is created (the worker LocalScript ships disabled), and
+turning one off cleans up through Janitor. The headless parts (state copies, prediction model, bot sweep) are done; the
+Studio and device checks are written as a step-by-step owner list in docs/ROLLBACK_SPIKE.md, **"Studio and device
+checklist (owner)"**, which also says how to pull captures and probe rows (`npm run rollback:plugin` once, then
+`npm run rollback:receive` and the plugin's "Pull rollback captures").
+
+### Turning it on
+
+- **Client probe:** `workspace:SetAttribute("KV_RollbackSpike", 16)` (H, ticks a prediction; 0 or absent: off) before
+  a run starts; `KV_RollbackSpikeMode` `"parallel"` (default), `"serial"` (the main-thread comparison: costs frames,
+  never with other players) or `"facts"` (the R3a Parallel Luau facts, printed once as `[RollbackFacts]` lines);
+  `KV_RollbackDeviceTag` names the device (the dev panel, F2, has a field for it).
+- **Server:** `workspace:SetAttribute("KV_RollbackCapture", true)` takes the probe summaries (always taken in Studio)
+  and captures co-op runs (Studio, an all-developer party, or a developer's private server).
+- Output: `[Rollback]` lines on the client and the server, one spike HUD line, rows in `KV_RollbackProbe_v1`.
+
+Results: recorded in docs/ROLLBACK_SPIKE.md (R3a's facts under the task, the numbers under "Results").
 
 ## Results
 
