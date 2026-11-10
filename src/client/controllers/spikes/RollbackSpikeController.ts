@@ -631,14 +631,21 @@ export class RollbackSpikeController implements OnStart {
 		waitFor("profile");
 
 		// 4. The main thread's frame time with a parallel task, against a baseline and the same task on the main thread.
+		// Each phase's Heartbeat hook lives in `phase`, which the controller's janitor also cleans: the probe turned off
+		// mid-phase cancels this thread inside task.wait, and the hook (a main-thread busy wait in the last phases) goes
+		// with it instead of running every frame forever.
+		const phase = new Janitor();
+		this.janitor.Add(() => phase.Cleanup(), true);
 		const sample = (seconds: number, onFrame?: () => void): number[] => {
 			const out: number[] = [];
-			const conn = RunService.Heartbeat.Connect((dt) => {
-				out.push(dt * MS);
-				onFrame?.();
-			});
+			phase.Add(
+				RunService.Heartbeat.Connect((dt) => {
+					out.push(dt * MS);
+					onFrame?.();
+				}),
+			);
 			task.wait(seconds);
-			conn.Disconnect();
+			phase.Cleanup();
 			return out;
 		};
 		say("frame time, baseline", frameLine(sample(FACTS.phaseSec)));
