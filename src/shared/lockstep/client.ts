@@ -48,8 +48,9 @@
  * the window, its late never bumps) when the pacer's frame was hitched, catching up or fast-forwarding, or, unpaced,
  * when dt or the clock since the last pump is over PACING.hitchFrameSec, or the pump (or the one before) started with
  * more frames queued than maxCatchup (catch-up after a hitch). Each send also records the depth the lead added
- * (`depthTicks()`), so a late caused by the buffer's lead cap is not bumped. The tap latch (FPD13): a step whose target was already sent still samples
- * (`sample(false)`), and that sample's buttons are OR-ed into the next frame actually sent (axes from the newer sample),
+ * (`depthTicks()`), so a late caused by the buffer's lead cap is not bumped. The cover's ceiling (Revision 3, Design
+ * 13) is the prediction cap, `tunables.prediction?.maxTicks`: without prediction there is no cover (FPD19). The tap
+ * latch (FPD13): a step whose target was already sent still samples (`sample(false)`), and that sample's buttons are OR-ed into the next frame actually sent (axes from the newer sample),
  * so a one-frame tap on a fall's skipped tick becomes a one-tick hold one tick later instead of nothing. `misses`
  * counts every input known to have missed: echoed lates while echoing, plus `inputsEqual` mismatches while not (no
  * double count: the echo that turns echoing on adds only its lates beyond the mismatches already counted);
@@ -265,7 +266,7 @@ export class LockstepClient implements RunView, PredictionSource {
 		const t = this.tunables;
 		this.leadCtl =
 			t.lead !== undefined
-				? new LeadController(t.lead, t.inputDelay, t.maxInputLead, t.leadDecayTicks)
+				? new LeadController(t.lead, t.inputDelay, t.maxInputLead, t.leadDecayTicks, t.prediction?.maxTicks)
 				: undefined;
 		this.predictor = t.prediction !== undefined ? new LocalPredictor(t.prediction) : undefined;
 		this.decoder = new MergedDecoder(params.players);

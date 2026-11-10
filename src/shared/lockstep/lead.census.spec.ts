@@ -16,6 +16,14 @@
  * depth skips them), bumps and lead churn (the net lead's total change) per 10 s, the felt delay max(0, effective lead
  * - cap) at the prediction caps 20 and 10 (mean / p95), and the FP11 / FP12 gates where the network has one. Loose
  * assertions only: every run plays through measured, the copy matches today's rule exactly.
+ *
+ * Revision 3 (FP19): "today" is Revision 2's rule explicitly (`LEAD` with `lateBump: true`, no ceiling: what
+ * `KV_LeadBump` builds), so its rows are the FP17 tables' exactly; `rule3` is the real, shipped LeadController
+ * (`LEAD`'s defaults, built by LockstepClient with prediction on, so its ceiling is `PREDICTION.maxTicks`), which must
+ * give `cov20`'s lead on every frame (asserted wherever both run, the smoke included), and is held to FPD18's gates
+ * against today on the owner-like networks (printed: felt delay at cap 20 at most half, dropped changed inputs at most
+ * today's, churn at most a third). `kvbump` is what `KV_LeadBump` builds with prediction on: the bump on top of the
+ * cover (FP21's A/B), printed only.
  */
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { AXIS_MAX, Button, EMPTY_INPUT, Rng, SIM_HZ, inputsEqual, isFiniteNumber, playerAt } from "shared/sim";
@@ -29,6 +37,7 @@ import {
 	LockstepSession,
 	MergedDecoder,
 	PACING,
+	PREDICTION,
 	decodeInputBatch,
 	decodeInputEcho,
 	nearestRank,
@@ -80,6 +89,15 @@ const TUNABLES: LockstepTunables = {
 	// ceiling (no cover): today's rule.
 	prediction: undefined,
 };
+/** Revision 3 as shipped: LEAD's defaults, and prediction on, so LockstepClient gives the lead its ceiling. */
+const RULE3_TUNABLES: LockstepTunables = { ...TUNABLES, lead: LEAD, prediction: PREDICTION };
+/** KV_LeadBump as built (FP20): the shipped client with `lateBump` (prediction on: the cover stays, plus the bump). */
+const KV_BUMP_TUNABLES: LockstepTunables = { ...RULE3_TUNABLES, lead: REV2_LEAD };
+/** FPD18's gates are held on these networks. */
+const GATE_NETWORKS = ["owner", "owner2", "ownerS"];
+/** FPD18: felt delay at cap 20 at most this share of today's, churn at most this share; dropped at most today's. */
+const GATE_FELT_SHARE = 0.5;
+const GATE_CHURN_SHARE = 1 / 3;
 const SEG_LIMITS = { ...DEFAULT_SEGMENT_LIMITS, checkpointEvery: SIM_HZ * 2, allowDebugInput: true };
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -284,6 +302,8 @@ interface Policy {
 	readonly label: string;
 	/** undefined: the real LeadController (today); else SpecLead with these knobs. */
 	readonly spec?: SpecKnobs;
+	/** The clients' tunables (default TUNABLES: today's rule). */
+	readonly tunables?: LockstepTunables;
 }
 
 interface SpecKnobs {
@@ -645,6 +665,11 @@ const TODAY_KNOBS: SpecKnobs = { lead: LEAD, bump: "trip", bumpAfter: 1, bumpWin
 const NO_BUMP: SpecKnobs = { ...TODAY_KNOBS, bump: "none", lateHolds: false };
 
 const TODAY: Policy = { name: "today", label: "today (LeadController, Revision 2: LEAD with lateBump, no ceiling)" };
+const RULE3: Policy = {
+	name: "rule3",
+	label: "Revision 3 as built: LeadController with LEAD, ceiling PREDICTION.maxTicks (prediction on)",
+	tunables: RULE3_TUNABLES,
+};
 const COPY: Policy = { name: "copy", label: "today, this spec's copy", spec: TODAY_KNOBS };
 
 const CANDIDATES: ReadonlyArray<Policy> = [
@@ -684,6 +709,12 @@ const CANDIDATES: ReadonlyArray<Policy> = [
 		name: "cov20",
 		label: "no bump; max(p95 / 5 s, min(p99 / 15 s, 20 - depth)) + margin",
 		spec: { ...NO_BUMP, cover: { windowSec: 15, percentile: 0.99, ceiling: 20 } },
+	},
+	RULE3,
+	{
+		name: "kvbump",
+		label: "KV_LeadBump as built: LeadController with lateBump, ceiling PREDICTION.maxTicks (the cover and the bump)",
+		tunables: KV_BUMP_TUNABLES,
 	},
 	{
 		name: "cov20m",
@@ -804,7 +835,7 @@ function play(net: NetSpec, policy: Policy, durationSec: number): NetRun {
 			config: own.config,
 			players: PLAYERS,
 			localIndex: i,
-			tunables: TUNABLES,
+			tunables: policy.tunables ?? TUNABLES,
 		});
 		const ctl = controllerOf(policy);
 		if (ctl !== undefined) (c as unknown as { leadCtl: LeadLike }).leadCtl = ctl;
@@ -1097,14 +1128,17 @@ function gateText(net: NetSpec, r: NetRun, s: Summary): string {
 	return "";
 }
 
-function row(net: NetSpec, policy: Policy, r: NetRun, s: Summary): string {
+function row(net: NetSpec, policy: Policy, r: NetRun, s: Summary, extra = ""): string {
 	return `| ${net.name} | ${policy.name} | ${f1(s.effMean)} / ${s.effP95} / ${s.effMax} | ${f1(s.netMean)} / ${
 		s.netP95
 	} / ${s.netMax} | ${f1(s.latesRate)} | ${f1(s.droppedRate)} | ${f2(s.missedShare * 100)} % | ${f1(
 		s.bumpsRate,
-	)} | ${f1(s.churnRate)} | ${f2(s.feltMean[0])} / ${s.feltP95[0]} | ${f2(s.feltMean[1])} / ${
-		s.feltP95[1]
-	} | ${gateText(net, r, s)} |`;
+	)} | ${f1(s.churnRate)} | ${f2(s.feltMean[0])} / ${s.feltP95[0]} | ${f2(s.feltMean[1])} / ${s.feltP95[1]} | ${[
+		gateText(net, r, s),
+		extra,
+	]
+		.filter((x) => x !== "")
+		.join("; ")} |`;
 }
 
 function paceLines(net: NetSpec, policy: Policy, r: NetRun): string[] {
@@ -1141,13 +1175,62 @@ function specFlag(name: string): boolean {
 	return specFlags()?.[name] === true;
 }
 
-/** `--flag lead.rule.<name>` keeps only those rules (today's is always run first: the table's reference). */
+/**
+ * `--flag lead.rule.<name>` keeps only those rules (today's is always run first: the table's reference; `rule3` brings
+ * `cov20`, the rule it must equal).
+ */
 function selectedRules(): Policy[] {
 	const out: Policy[] = [TODAY];
 	let any = false;
 	for (const p of CANDIDATES) if (specFlag(`lead.rule.${p.name}`)) any = true;
-	for (const p of CANDIDATES) if (p !== TODAY && (!any || specFlag(`lead.rule.${p.name}`))) out.push(p);
+	const keep = (p: Policy) =>
+		!any || specFlag(`lead.rule.${p.name}`) || (p.name === "cov20" && specFlag(`lead.rule.${RULE3.name}`));
+	for (const p of CANDIDATES) if (p !== TODAY && keep(p)) out.push(p);
 	return out;
+}
+
+/** Frames where two runs' leads (net and effective, every client) differ, and the first one ("" when none). */
+function leadDiff(a: NetRun, b: NetRun): { readonly frames: number; readonly differ: number; readonly first: string } {
+	let frames = 0;
+	let differ = 0;
+	let first = "";
+	for (let i = 0; i < a.clients.size(); i++) {
+		const x = a.clients[i];
+		const y = b.clients[i];
+		const n = math.max(x.net.size(), y.net.size());
+		frames += n;
+		for (let k = 0; k < n; k++) {
+			if (x.net[k] === y.net[k] && x.eff[k] === y.eff[k]) continue;
+			differ++;
+			if (first === "") {
+				first = `p${i} frame ${k} (${f2(x.at[k] ?? 0)} s): net ${x.net[k]} vs ${y.net[k]}, eff ${x.eff[k]} vs ${
+					y.eff[k]
+				}`;
+			}
+		}
+		if (x.lates !== y.lates || x.dropped !== y.dropped) {
+			differ++;
+			if (first === "") first = `p${i}: lates ${x.lates} vs ${y.lates}, dropped ${x.dropped} vs ${y.dropped}`;
+		}
+	}
+	return { frames, differ, first };
+}
+
+/** FPD18's gates for a rule against today's on one network (unrounded rates). */
+function fpd18(today: Summary, rule: Summary): { readonly ok: boolean; readonly text: string } {
+	const felt = rule.feltMean[0] <= today.feltMean[0] * GATE_FELT_SHARE + EPSILON;
+	const dropped = rule.droppedRate <= today.droppedRate + EPSILON;
+	const churn = rule.churnRate <= today.churnRate * GATE_CHURN_SHARE + EPSILON;
+	const v = (b: boolean) => (b ? "pass" : "FAIL");
+	const ok = felt && dropped && churn;
+	return {
+		ok,
+		text: `FPD18 ${v(ok)} (felt @20 ${f2(rule.feltMean[0])} <= ${f2(today.feltMean[0] * GATE_FELT_SHARE)} ${v(
+			felt,
+		)}; dropped ${f2(rule.droppedRate)} <= ${f2(today.droppedRate)} ${v(dropped)}; churn ${f2(
+			rule.churnRate,
+		)} <= ${f2(today.churnRate * GATE_CHURN_SHARE)} ${v(churn)})`,
+	};
 }
 
 function selectedNetworks(): NetSpec[] {
@@ -1165,12 +1248,23 @@ if (FULL) {
 			it(`${net.label} (${net.durationSec} s, ${PLAYERS} players)`, () => {
 				const rows: string[] = [];
 				const trips: string[] = [];
+				const runs = new Map<string, NetRun>();
+				let todaySummary: Summary | undefined;
+				const gates: string[] = [];
 				for (const policy of selectedRules()) {
 					const r = play(net, policy, net.durationSec);
 					const s = summarize(r, net.durationSec);
 					expect(r.finalized).toBeGreaterThan((net.durationSec - 1) * SIM_HZ);
 					for (const c of r.clients) expect(c.measuredAtEnd).toBe(true);
-					rows.push(row(net, policy, r, s));
+					runs.set(policy.name, r);
+					if (policy === TODAY) todaySummary = s;
+					let extra = "";
+					if (policy === RULE3 && todaySummary !== undefined && GATE_NETWORKS.includes(net.name)) {
+						const g = fpd18(todaySummary, s);
+						extra = g.text;
+						gates.push(`[lead census gate] ${net.name} rule3 ${g.text}`);
+					}
+					rows.push(row(net, policy, r, s, extra));
 					trips.push(
 						`${policy.name} echoed trips p50 ${ms(s.tripP50)} p95 ${ms(s.tripP95)} max ${ms(
 							s.tripMax,
@@ -1181,6 +1275,18 @@ if (FULL) {
 					if (policy === TODAY) for (const line of paceLines(net, policy, r)) print(line);
 				}
 				print(`[lead census] ${net.label}\n${HEADER}\n${rows.join("\n")}\n[lead census] ${trips.join("; ")}`);
+				for (const g of gates) print(g);
+				const r3 = runs.get(RULE3.name);
+				const c20 = runs.get("cov20");
+				if (r3 !== undefined && c20 !== undefined) {
+					const d = leadDiff(c20, r3);
+					print(
+						`[lead census] ${net.name}: rule3 vs cov20 frame for frame: ${
+							d.differ === 0 ? "same" : "DIFFERENT"
+						}` + ` (${d.frames} client frames${d.first !== "" ? `; first ${d.first}` : ""})`,
+					);
+					expect(d.differ).toBe(0);
+				}
 			});
 		}
 	});
@@ -1210,6 +1316,20 @@ if (FULL) {
 				)}`,
 			);
 			for (const line of paceLines(net, TODAY, a)) print(line);
+		});
+
+		it("the shipped LeadController (rule3: LEAD, the prediction cap as its ceiling) gives cov20's lead on every frame", () => {
+			const cov20 = CANDIDATES.find((p) => p.name === "cov20")!;
+			const a = play(net, cov20, SMOKE_SEC);
+			const b = play(net, RULE3, SMOKE_SEC);
+			const d = leadDiff(a, b);
+			print(
+				`[lead census smoke] rule3 vs cov20: ${d.differ} of ${d.frames} client frames differ${
+					d.first !== "" ? `; first ${d.first}` : ""
+				}\n${row(net, cov20, a, summarize(a, SMOKE_SEC))}\n${row(net, RULE3, b, summarize(b, SMOKE_SEC))}`,
+			);
+			expect(d.differ).toBe(0);
+			for (const c of b.clients) expect(c.bumps).toBe(0);
 		});
 	});
 }

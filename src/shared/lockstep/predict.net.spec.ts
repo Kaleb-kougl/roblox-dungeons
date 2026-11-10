@@ -3,7 +3,10 @@
  *
  * The same co-op run is played twice over the same channels (random latency, ordered delivery, drawn per tick of the
  * simulated clock, so both runs see the same network), once with prediction on and once off: the merged log, every
- * client's final claim and the server's verdict are identical (prediction is read only). With it on, every client's
+ * client's final claim and the server's verdict are identical (the predictor is read only). Since Revision 3 of
+ * docs/FRAME_PACING.md (FPD19) the prediction cap is also the measured lead's ceiling, so a client built without
+ * prediction sends with another lead: the "off" run's clients get the shipped controller with the same ceiling
+ * (`PREDICTION.maxTicks`), so the predictor alone differs. With it on, every client's
  * prediction statistics are printed: on real endless floors (the record for LP8), and on M1 without enemies, where
  * nothing but the inputs moves a body, so a client whose sent inputs all made their deadlines has zero error.
  */
@@ -18,7 +21,15 @@ import {
 	type RunSetup,
 	type SegmentedRunResult,
 } from "shared/run";
-import { DEFAULT_LOCKSTEP, LockstepClient, LockstepSession, MergedDecoder, PREDICTION, type LockstepTunables } from ".";
+import {
+	DEFAULT_LOCKSTEP,
+	LeadController,
+	LockstepClient,
+	LockstepSession,
+	MergedDecoder,
+	PREDICTION,
+	type LockstepTunables,
+} from ".";
 
 const SEED = 31337;
 const DT = 1 / 60;
@@ -114,17 +125,28 @@ function play(
 	const up: Channel[] = [];
 	for (let i = 0; i < players; i++) {
 		const own = setupOf();
-		clients.push(
-			new LockstepClient({
-				runId: "coop",
-				seed: SEED,
-				spawn: own.spawn!,
-				config: own.config,
-				players,
-				localIndex: i,
-				tunables,
-			}),
-		);
+		const c = new LockstepClient({
+			runId: "coop",
+			seed: SEED,
+			spawn: own.spawn!,
+			config: own.config,
+			players,
+			localIndex: i,
+			tunables,
+		});
+		const lead = TUNABLES.lead;
+		if (!prediction && lead !== undefined) {
+			// The lead's ceiling with prediction on (FPD19), so only the predictor differs between the two runs.
+			const t = TUNABLES;
+			(c as unknown as { leadCtl: LeadController }).leadCtl = new LeadController(
+				lead,
+				t.inputDelay,
+				t.maxInputLead,
+				t.leadDecayTicks,
+				PREDICTION.maxTicks,
+			);
+		}
+		clients.push(c);
 		down.push(new Channel(7 + 2 * i, latency[0], latency[1]));
 		up.push(new Channel(8 + 2 * i, latency[0], latency[1]));
 	}

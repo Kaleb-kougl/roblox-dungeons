@@ -45,6 +45,7 @@ import {
 	MergedDecoder,
 	MergedEncoder,
 	PACING,
+	PREDICTION,
 	decodeInputBatch,
 	decodeInputEcho,
 	encodeInputBatch,
@@ -1224,23 +1225,28 @@ for (const kind of ["spike", "hold"] as const) {
 	describe(`co-op over a simulated network with ${title} on the way up: 3 players, 20-120 ms each way (FP12)`, () => {
 		const [players, lo, hi] = NET_RUNS[0];
 		const nets: Net[] = [];
-		for (const measured of [true, false]) {
+		const netOf = (measured: boolean, tunables?: LockstepTunables) => {
 			const net = new Net({
 				players,
 				latency: [lo, hi],
 				pacing: true,
 				measured,
+				tunables,
 				coverSec: STAGE_COVER_SEC,
 				harmless: true,
 				upEvents: events,
 				maxFrames: NET_FPS * (SPIKE_AT + sec + WATCH_SEC + 1),
 			});
 			net.run();
-			nets.push(net);
-		}
+			return net;
+		};
+		for (const measured of [true, false]) nets.push(netOf(measured));
 		const [measured, legacy] = nets;
+		// Revision 2's rule (the late bump, KV_LeadBump), printed beside Revision 3's (FP19).
+		const bumped = netOf(true, { ...TUNABLES, lead: { ...LEAD, lateBump: true } });
 		const m = troubleNumbers(measured, SPIKE_AT, sec, extra);
 		const l = troubleNumbers(legacy, SPIKE_AT, sec, extra);
+		const r2 = troubleNumbers(bumped, SPIKE_AT, sec, extra);
 		/** FP12's peak bound: ceil(the trouble's longest trip + margin) plus the fall's hysteresis tick. */
 		const peakBounds = m.trip.map((t) => math.ceil(t + LEAD.marginTicks - ORACLE_EPSILON) + 1);
 		/** The fall's own bound: the window, the hold, a step per tick of excess, and slack. */
@@ -1257,6 +1263,7 @@ for (const kind of ["spike", "hold"] as const) {
 				.map((t) => string.format("%.1f", t))
 				.join(",")} t); fall bound ${fallBounds.map((b) => string.format("%.2f s", b)).join(",")}`,
 		);
+		print(`${tag} rev2     ${troubleText(r2)}; ${leadStatsText(bumped)}`);
 		print(`${tag} legacy   ${troubleText(l)}`);
 		print(
 			`${tag} relay missed measured ${measured.session
@@ -1276,11 +1283,11 @@ for (const kind of ["spike", "hold"] as const) {
 		print(
 			`${tag} FP12 criteria: dropped <= legacy ${verdict(sum(m.dropped) <= sum(l.dropped))} (${sum(
 				m.dropped,
-			)} vs ${sum(l.dropped)}); peak <= ceil(trip + ${LEAD.marginTicks}) + 1 ${verdict(
-				peaksMet,
-			)} (legacy peak ${l.peak.join(",")}); back within ${RECOVER_TICKS} tick within the fall bound ${verdict(
-				backMet,
-			)}`,
+			)} vs ${sum(l.dropped)}; Revision 2's bump ${sum(r2.dropped)}); peak <= ceil(trip + ${
+				LEAD.marginTicks
+			}) + 1 ${verdict(peaksMet)} (legacy peak ${l.peak.join(
+				",",
+			)}); back within ${RECOVER_TICKS} tick within the fall bound ${verdict(backMet)}`,
 		);
 
 		it("both runs play through and step exactly the server's log; the measured clients echo", () => {
@@ -2163,7 +2170,11 @@ describe("the measured input lead follows the latency both ways (FP1's scenario 
 	const m = fallOf(measured);
 	const l = fallOf(legacy);
 	const fallSec = (m.at - SPIKE1_END) * DT;
-	const bound = LEAD.windowSec + LEAD.fallHoldSec + LEAD.fallStepSec * (m.peak - m.calm) + FALL_SLACK_SEC;
+	// DEFAULT_LOCKSTEP has prediction, so the lead has its ceiling (Revision 3, Design 13): unpaced (depth 0) the cover's
+	// room is the whole prediction cap, and the spike's trips hold the lead until they leave the cover's window, not the
+	// base's (Revision 2's bound used windowSec).
+	const fallWindowSec = DEFAULT_LOCKSTEP.prediction !== undefined ? LEAD.coverWindowSec : LEAD.windowSec;
+	const bound = fallWindowSec + LEAD.fallHoldSec + LEAD.fallStepSec * (m.peak - m.calm) + FALL_SLACK_SEC;
 	const legacyPerTick = legacyTunables.leadDecayTicks / SIM_HZ;
 	const spikeMisses = (net: LeadNet) =>
 		`spike 1 ${net.missesAt[SPIKE2_START - 1]}, spike 2 ${
@@ -2190,7 +2201,7 @@ describe("the measured input lead follows the latency both ways (FP1's scenario 
 			)} s; misses ${legacy.client.misses}`,
 	);
 
-	it("is measured, and falls back within windowSec + fallHoldSec + fallStepSec x excess + 0.5 s", () => {
+	it("is measured, and falls back within the cover's window + fallHoldSec + fallStepSec x excess + 0.5 s", () => {
 		expect(measured.client.brokenReason()).toBe(undefined);
 		expect(isPartyWiped(measured.client.state)).toBe(false);
 		expect(measured.client.isLeadMeasured()).toBe(true);
@@ -2404,6 +2415,16 @@ describe("LockstepClient measured lead wiring (docs/FRAME_PACING.md FP11)", () =
 		const late = c.pump(DT, () => EMPTY_INPUT, DT).inputs[0].firstTick;
 		c.receive(2, enc.encode(ONE_IDLE), 2 * DT, encodeInputEcho({ tick: late, slack: -1, lates: 1 }, 2));
 		expect([c.misses, c.leadStats()!.lates, c.leadStats()!.bumps]).toEqual([1, 1, 1]);
+	});
+
+	it("the lead's ceiling is the prediction cap (FP19): none without prediction", () => {
+		const off = client(MEASURED).c;
+		expect(off.leadStats()!.ceiling).toBe(undefined);
+		const { c, enc } = client({ ...MEASURED, prediction: PREDICTION });
+		expect(c.leadStats()!.ceiling).toBe(PREDICTION.maxTicks);
+		firstStep(c, enc, 0);
+		// Unpaced: the send added no depth, so C is the whole cap.
+		expect(c.leadStats()!.ceiling).toBe(PREDICTION.maxTicks);
 	});
 
 	it("a malformed echo is ignored: the stream goes on, the lead stays on the legacy rule", () => {
