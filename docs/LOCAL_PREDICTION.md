@@ -11,9 +11,15 @@ the sim still steps exactly the server's merged log, and nothing predicted ever 
 remote. Solo runs are untouched (they step locally, with no input delay). Teammates, enemies, bullets, pickups and
 every outcome (hits, kills, pickups, room clears) stay at the merged state.
 
-## Status (2026-11-07)
+## Status (2026-11-09)
 
-Planned, nothing built. Drafted from an audit of branch `frame-pacing` @ `0a8e8ec4` (docs/FRAME_PACING.md: planned,
+**LP0-LP4 built** (branch `local-prediction`, the pure parts: the census, the motion mirror, the LocalPredictor in
+LockstepClient, the smoother; "As built" below). Not yet built: LP5 (wiring: nothing draws the prediction yet), LP6,
+LP10; LP8 and LP9 open. Frame pacing (FP1-FP3, revision 2) has landed, so LP5 is no longer blocked. Note: with
+`DEFAULT_LOCKSTEP.prediction` set, every co-op client already rebuilds a prediction after each pump that steps
+(~0.03 ms headless at 10 ticks), unread until LP5.
+
+Drafted from an audit of branch `frame-pacing` @ `0a8e8ec4` (docs/FRAME_PACING.md: planned,
 nothing built). It builds on frame pacing (LPD2): FP1's lead fix and FP2-FP3's playout clock come first for the
 wiring (LP5); the pure parts (LP1-LP4) can be built before them. Owner answers (2026-11-07): a 10-tick horizon
 (LPD4), no hitbox pip (LPD7), the i-frame look merged (LPD5), the camera on the drawn knight (LPD8).
@@ -160,8 +166,11 @@ Each rebuild is a fresh prediction from a newer base, so a wrong guess (a missed
 broke, a Charger in your path's breakables, the boss room's clamp) shows up as a jump between the old and the new
 prediction **for the same tick**. `PredictionSmoother`:
 
-- keeps the previous prediction per tick (a ring of `maxTicks + 2`), and on a rebuild adds `old - new` at the old
-  head to a visual **offset**, so the drawn knight does not jump;
+- keeps the head it was last fed and its tick; the predictor keeps its **path** (every replayed tick's position, the
+  merged one first), so on a rebuild the smoother adds `old - new` at the old head's tick to a visual **offset**, and
+  the drawn knight does not jump (as built: the path replaced the planned ring of `maxTicks + 2`, because a pump that
+  steps two ticks leaves no newer head for the old head's tick; an old head past the new path's end is compared with
+  the new head, one before its start with the merged position);
 - decays the offset on real time, `0.5 ^ (dt / halfLifeSec)` (60 ms);
 - **snaps** (offset 0) when the jump is over `snapTiles` (1.0), on a floor change, run start, death, revive, a
   spectate switch and a draft opening or closing; never draws farther than `maxOffsetTiles` from the prediction;
@@ -229,12 +238,14 @@ above; a headless version was `shared/lockstep/rollbackSpike/model.ts`, removed 
 
 ### 7. Diagnostics (KV_Debug)
 
-`predictionStats()`: when tick K is stepped, the merged pose at K is compared with the prediction made for K one
-rebuild earlier: mean / max error (tiles) over `statsWindowTicks` (600), corrections (error > 0.01), snaps. The co-op
+`predictionStats()`: when tick K is stepped, the merged pose at K is compared with the head last predicted for K (the
+pose drawn for that tick; as built, not the prediction one rebuild earlier, which is nearly always truth already):
+mean / max error (tiles) over `statsWindowTicks` (600), corrections (error > `correctionTiles` 0.01), and run totals
+(compared, corrections, max). Snaps are the smoother's (`snapCount()`). The co-op
 debug line (docs/FEEL.md J9) gains `pred {h}t · err {mean}/{max} · snaps {n}`; the latency probe gains **press ->
 drawn** (frames until the drawn knight first answers a press: 1 with prediction, the lead without).
 
-## Tunables (`PREDICTION`, shared/lockstep/config.ts; smoother ones in shared/view/predict/config.ts)
+## Tunables (`PREDICTION`, shared/lockstep/config.ts; the smoother's `PREDICTION_VIEW`, shared/view/predict/config.ts)
 
 | Name | Value | Why |
 |---|---|---|
@@ -243,6 +254,7 @@ drawn** (frames until the drawn knight first answers a press: 1 with prediction,
 | `snapTiles` | 1.0 | Larger than any guess error from a missed tick; teleports and clamps snap |
 | `maxOffsetTiles` | 1.0 | Never drawn farther than this from the prediction |
 | `statsWindowTicks` | 600 | 10 s, like the pacing windows |
+| `correctionTiles` | 0.01 | A stepped tick farther than this from its head counts as a correction (stats only) |
 
 All provisional until LP8.
 
@@ -271,26 +283,26 @@ All provisional until LP8.
 
 ## Tasks
 
-- [ ] **LP0. Census.** Every rule that writes the local player's `x / z / face / roll / flask`, or reads a movement
+- [x] **LP0. Census.** Every rule that writes the local player's `x / z / face / roll / flask`, or reads a movement
   modifier (grep `movePlayer`, `p.x =`, `moveMultiplier`, `boostWalkPercent`, run mods; WALL_SLIDE's findings mention
   treasure / drop pushes: confirm or strike), each marked mirrored / held / corrected; every view site that reads the
   watched player's pose, each with its choice (Design 6 table). -> Verify: both tables in this doc, reviewed.
-- [ ] **LP1. Motion mirror** (`predictMotionTick`, no weapons). -> Verify: `predictMotion.spec.ts`: on endless floors
+- [x] **LP1. Motion mirror** (`predictMotionTick`, no weapons). -> Verify: `predictMotion.spec.ts`: on endless floors
   (seeds 1-20, breakables as solid cells, the slide mover) and M1, 10,000 random input ticks each (walks, held and
   tapped ROLL / FLASK, aim on and off, `quantizeAxis`'d sticks, a Quickstep boost running out) equal the real
   `stepPlayer`'s `x, z, prevX, prevZ, faceX, faceZ, rollTicks, rollDirX, rollDirZ, flaskTicks` bit for bit, with a
   sword in hand but no attack pressed; the merged state's hash is unchanged by a replay.
-- [ ] **LP2. Weapon motion mirror** (sword guard / wind-up / lunge, bow charge, swaps). -> Verify: the same spec with
+- [x] **LP2. Weapon motion mirror** (sword guard / wind-up / lunge, bow charge, swaps). -> Verify: the same spec with
   ATTACK / ALT / SWAP in the random inputs, sword and bow, with and without builds (Swift Strikes, Frenzy, Bastion's
   guard), and under `setSwordTimings(WEB_SWORD_TIMINGS)`: positions bit for bit against a real single-player sim in an
   enemy-free room.
-- [ ] **LP3. `LocalPredictor` in LockstepClient** (Design 2, 6, 7: inputs from queue / sent / repeat, horizon, rebuild
+- [x] **LP3. `LocalPredictor` in LockstepClient** (Design 2, 6, 7: inputs from queue / sent / repeat, horizon, rebuild
   in `pump`, `predicted()`, stats). -> Verify: lockstep specs: with prediction on vs off every simulated-network run
   (`NET_RUNS`) ends with identical hashes, logs and validator verdicts; in an enemy-free room at 20-120 ms the
   prediction error is exactly 0 apart from the client's own deadline misses; on real endless floors mean / max error
   and corrections are printed (the record for LP8); a bench prints the rebuild cost at 10 and 30 ticks (target < 0.1 ms
   a frame headless).
-- [ ] **LP4. `PredictionSmoother`** (Design 4). -> Verify: `smoother.spec.ts`: a 0.3-tile correction decays below 0.01
+- [x] **LP4. `PredictionSmoother`** (Design 4). -> Verify: `smoother.spec.ts`: a 0.3-tile correction decays below 0.01
   within 0.4 s at 30 / 60 / 144 fps and never moves the drawn pose by more than walk speed x dt + the decayed part in a
   frame; each snap rule; facing passes through; with no correction the drawn pose equals `lerp(prev, x, alpha)` exactly.
 - [ ] **LP5. Wiring** (after FP3). `getDrawnPlayer`, the aim origin, the Design 6 sites, `KV_PredictOff`. -> Verify:
@@ -313,6 +325,50 @@ All provisional until LP8.
   Studio, Incoming Replication Lag 100 ms: a tight dodge through a stream is not hit, the off switch restores today's.
 
 Order: LP0 -> LP1 -> LP2 -> LP3 -> LP4 (all pure, any time) -> FP1-FP3 land -> LP5 -> LP10 -> LP6 -> LP8 -> LP9.
+
+## As built (LP1-LP4, 2026-11-09)
+
+- **Mirror** (`shared/lockstep/predictMotion.ts`): `MotionScratch` (a PlayerState, a WeaponsState, the Quickstep and
+  Frenzy timers), `copyMotionBase(out, state, i)`, `predictMotionTick(s, state, input, world, i, traits)`. Order:
+  stepPlayer's motion steps, then stepWeapons' (cooldowns, SWAP, the sword's guard / combo / wind-up and lunge, the
+  bow's charge), then the two boost timers count down like stepDrops. `attackTicks` is recomputed with the predicted
+  Frenzy timer. Other weapons keep their slot (held).
+- **Parity** (`predictMotion.spec.ts`, ~35 s headless): per tick AND over 10-tick horizons from one merged state:
+  endless dev floors (20 seeds, start floors 1-4 / 6-9, Knight / Archer / both weapons with swaps, god mode; Swift
+  Strikes, Bastion and Ballista granted along the way, boosts set to run out, wounds for the flask), a co-op party of
+  two (both players), M1 without enemies with the slide and the web mover, the port's and the web sword's timings.
+  10,000 + 4,000 + 10,000 ticks compared, 960 horizons, 0 differences, 0 excused; it prints what the walks covered
+  (guards, Bastion guards, wind-ups, charges, swaps, wall contacts, Quickstep, Frenzy, flasks) and requires each.
+  Sabotaging the lunge by 0.1 % or dropping Frenzy from `attackTicks` fails it.
+- **Predictor** (`shared/lockstep/predict.ts`): `LocalPredictor.rebuild(src)` / `observe(state, i)` / `predicted()` /
+  `predictedPath()` / `stats()`, `PredictionSource` (LockstepClient implements it; specs fake it), `PredictedPath`,
+  `PredictionStats`. A tick never sent repeats the previous replayed input; the first such tick repeats the last
+  stepped frame's own input (`LockstepClient.lastSteppedInput()`), exactly the relay's repeat-last.
+- **Client**: `LockstepTunables.prediction` (`DEFAULT_LOCKSTEP.prediction` = `PREDICTION`; lockstep.spec's and
+  rollbackAccessors.spec's TUNABLES pass `undefined`), `predicted()`, `predictedPath()`, `predictionStats()`. Observed
+  after every stepped tick, rebuilt after every pump that stepped (or while nothing is predicted), stopped once the run
+  is over here.
+- **predict.spec.ts**: a scripted server and an oracle (M1 without enemies, two walkers, bursts of 0-3 ticks, one step
+  a pump): with no misses 1488 of 1488 judged heads exact (the first 12 ticks, never sent, not judged), a miss every 97
+  ticks 1373 exact, 115 not (the misses), and every head whose inputs the server takes is exact; a twin client without
+  prediction sends, hashes and claims the same, both states hash the same every pump; dead / draft stops; the
+  merged state's hash unchanged; bench **0.030 ms a rebuild at 10 ticks, 0.084 ms at 30** (headless, aarch64 VM).
+- **predict.net.spec.ts** (the shipped client: paced, measured lead): 3 players 20-120 ms and 2 players 0-200 ms, on
+  endless and M1 without enemies: prediction on and off give the same log, final claims, client hashes and server
+  verdict. The record for LP8 (scripted bots, about 37 s of play each): 4-18 corrections a player, all in the first
+  seconds while the lead settles (0 in the last 10 s), largest 0.06-0.60 tiles; lead 18 (20-120 ms) and 26-27 (0-200 ms)
+  ticks, so the horizon sits at its cap. The endless and M1 numbers are equal: the bots stay near the spawn, so only
+  the misses correct. A real endless fight (pickups, pieces, the boss's seal) is LP8's to measure.
+- **Smoother** (`shared/view/predict`): `PredictionSmoother.feed(head, path)` / `draw(alpha, dt)` / `snap()`,
+  `PREDICTION_VIEW` (halfLifeSec 0.06, snapTiles 1, maxOffsetTiles 1). `smoother.spec.ts`: no correction draws exactly
+  `lerp(prev, x, alpha)`; a 0.3-tile correction is under 0.01 tiles 0.4 s later at 30 / 60 / 144 fps and the body never
+  moves more than the walk's frame plus what the offset gave up; the snap rules, several ticks a pump, the clamp,
+  facing.
+- **Verify**: typecheck, lint, check:assets, check:autolocalize, test:art 273, test:checks 8, test:l10n 36,
+  test:rollback 6, build. Lune on the VM: every spec under shared/lockstep, shared/view, shared/spikes and shared/play
+  plus 4 more, 227 files, pass; 3 time out at the VM shell's cap (affixes.census, minimap/tiles, roomEdges: the known
+  slow ones, which import none of this). The other 242 spec files (sim, dungeon, run, theme, ...) were not run: none
+  imports shared/lockstep or shared/view/predict, and no file they load changed.
 
 ## Testing
 
