@@ -12,6 +12,7 @@
  *   harness.ts  runModelOverRecording: a recorded party run replayed through a model at a fixed (L, D) (spec support),
  *               captureModelInput (a decoded capture's config, replayed to the server's hash)
  *   captureModules.ts  loadCaptureModules: the gitignored capture modules gen-fixtures writes (spec support)
+ *   worker/     the device probe's worker core, protocol, main-side feed and R3a facts (R3a / R3 / R4b)
  *
  * Spike only (RBD1): nothing here reaches the sim, a hash or a recording.
  */
@@ -23,3 +24,4 @@ export * from "./metrics";
 export * from "./model";
 export * from "./harness";
 export * from "./captureModules";
+export * from "./worker";

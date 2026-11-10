@@ -25,6 +25,65 @@ export interface RollbackSpikeConfig {
 	readonly horizons: ReadonlyArray<number>;
 	/** Design 2 (task R2), the prediction model's tunables. */
 	readonly model: RollbackModelConfig;
+	/** Design 5 / 7 (tasks R3a, R3, R4b), the device probe's and the worker's tunables. */
+	readonly probe: RollbackProbeConfig;
+}
+
+/**
+ * The device probe (docs/ROLLBACK_SPIKE.md Design 5 / 7, tasks R3a / R3 / R4b): the worker core (rollbackSpike/worker),
+ * the main-side feed and the client glue (RollbackSpikeController). The Workspace attributes are shared/config
+ * ROLLBACK_SPIKE_ATTRIBUTES.
+ */
+export interface RollbackProbeConfig {
+	/** The worker posts a status line (overlay) at most this often, seconds. */
+	readonly statusSec: number;
+	/** Case "floor" (whole floor entered) when at least this many score rooms are engaged and not cleared at once. */
+	readonly floorCaseRooms: number;
+	/** Touch-only device: "tablet" when the viewport's short side is at least this many pixels, else "phone". */
+	readonly tabletMinShortSidePx: number;
+	/**
+	 * The digest buffer a prediction "sends back" (Design 5: what a real rollback would hand the main thread each frame):
+	 * a header, then digestActors / digestBullets / digestPlayers records of these sizes, bytes.
+	 */
+	readonly digestHeaderBytes: number;
+	readonly digestActorBytes: number;
+	readonly digestBulletBytes: number;
+	readonly digestPlayerBytes: number;
+	/** A frames message carries at most this many ticks of merged frames, and of own frames (the validators' cap). */
+	readonly maxTicksPerMessage: number;
+	/** The worker's mirror catches up at most this many ticks between two yields (a long hitch is stepped in slices). */
+	readonly mirrorSliceTicks: number;
+	/** KV_Debug: the main thread checks its own state's hash is unchanged by the probe this often, seconds. */
+	readonly mainHashCheckSec: number;
+	/** MicroProfiler labels (debug.profilebegin) of the probe's phases. */
+	readonly profileLabels: {
+		readonly copy: string;
+		readonly step: string;
+		readonly send: string;
+		readonly live: string;
+		readonly mirror: string;
+		readonly facts: string;
+	};
+	/** The R3a facts mode (KV_RollbackSpikeMode = "facts"). */
+	readonly facts: RollbackFactsConfig;
+}
+
+/** R3a (docs/ROLLBACK_SPIKE.md): the Studio facts the worker and the main thread measure and print. */
+export interface RollbackFactsConfig {
+	/** The sim stepped desynchronized inside the Actor: an endless run of this seed and party size, this many ticks. */
+	readonly seed: number;
+	readonly partySize: number;
+	readonly stepTicks: number;
+	/** The frame-time phases: a baseline, then a busy task of each length per frame (parallel, then serial), seconds. */
+	readonly phaseSec: number;
+	readonly taskMs: ReadonlyArray<number>;
+	/** How long the worker keeps a labelled loop running for the MicroProfiler check, seconds. */
+	readonly profileSec: number;
+	/** A marker value written and read back through the buffer / SharedTable / table probes. */
+	readonly marker: number;
+	readonly mutated: number;
+	/** The facts report is given up after this long without the worker's answer, seconds. */
+	readonly replyTimeoutSec: number;
 }
 
 /**
@@ -145,4 +204,47 @@ export const ROLLBACK_SPIKE: RollbackSpikeConfig = {
 			captureFrames: 1200,
 		},
 	},
+	probe: {
+		statusSec: 1,
+		floorCaseRooms: 2,
+		tabletMinShortSidePx: 600,
+		digestHeaderBytes: 8,
+		digestActorBytes: 16,
+		digestBulletBytes: 12,
+		digestPlayerBytes: 12,
+		maxTicksPerMessage: 512,
+		mirrorSliceTicks: 16,
+		mainHashCheckSec: 1,
+		profileLabels: {
+			copy: "kv.rollback.copy",
+			step: "kv.rollback.step",
+			send: "kv.rollback.send",
+			live: "kv.rollback.live",
+			mirror: "kv.rollback.mirror",
+			facts: "kv.rollback.facts",
+		},
+		facts: {
+			seed: 4242,
+			partySize: 4,
+			stepTicks: 600,
+			phaseSec: 5,
+			taskMs: [5, 20],
+			profileSec: 3,
+			marker: 7,
+			mutated: 42,
+			replyTimeoutSec: 30,
+		},
+	},
 };
+
+/** The digest buffer's size, bytes (Design 5: 64 actors, 150 bullets, 8 players). */
+export function rollbackDigestBytes(): number {
+	const s = ROLLBACK_SPIKE;
+	const p = s.probe;
+	return (
+		p.digestHeaderBytes +
+		s.digestActors * p.digestActorBytes +
+		s.digestBullets * p.digestBulletBytes +
+		s.digestPlayers * p.digestPlayerBytes
+	);
+}
