@@ -24,6 +24,13 @@
  * against today on the owner-like networks (printed: felt delay at cap 20 at most half, dropped changed inputs at most
  * today's, churn at most a third; asserted). `kvbump` is what `KV_LeadBump` builds with prediction on: the bump on top of the
  * cover (FP21's A/B), printed only.
+ *
+ * Spike recovery candidates (the doc's "Spike recovery candidates"): option 2 (`hold3` / `hold5` / `hold8`, capped
+ * `hold3c` / `hold5c`: the cover a hold of the slowest slow trip) and option 3 (`episode`, `ep15`, `ep50`, `epg25`,
+ * `epg60`: cov20 with long-spike episodes kept out of the cover). Opt-in rows: they run only when selected (`--flag
+ * lead.rule.spikes` for all of them, or `--flag lead.rule.<name>`), each with `cov20` as its reference, so the default
+ * `--census` run is unchanged. Printed per network: their counters, the frames that differ from cov20's, and FPD18
+ * against today on the owner-like networks (printed only).
  */
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { AXIS_MAX, Button, EMPTY_INPUT, Rng, SIM_HZ, inputsEqual, isFiniteNumber, playerAt } from "shared/sim";
@@ -324,6 +331,11 @@ interface Policy {
 	readonly spec?: SpecKnobs;
 	/** The clients' tunables (default TUNABLES: today's rule). */
 	readonly tunables?: LockstepTunables;
+	/**
+	 * Run only when selected (`--flag lead.rule.<name>`, or `--flag lead.rule.spikes` for every one): the spike recovery
+	 * candidates, kept out of the default `--census` run's length.
+	 */
+	readonly optIn?: boolean;
 }
 
 interface SpecKnobs {
@@ -341,11 +353,63 @@ interface SpecKnobs {
 	 * A second, longer window (the cover): the lead target is max(the base target, min(the cover's, ceiling)), with
 	 * ceiling = coverCeiling - the depth the lead last added (the prediction cap: what the drawn knight hides).
 	 */
-	readonly cover?: { readonly windowSec: number; readonly percentile: number; readonly ceiling?: number };
+	readonly cover?: {
+		readonly windowSec: number;
+		readonly percentile: number;
+		readonly ceiling?: number;
+		/** Spike recovery, option 2: the cover's p99 replaced by a hold (HoldKnobs). */
+		readonly hold?: HoldKnobs;
+		/** Spike recovery, option 3: the p99 cover with long-spike episodes kept out of it (EpisodeKnobs). */
+		readonly episode?: EpisodeKnobs;
+	};
+}
+
+/**
+ * Option 2 (docs/FRAME_PACING.md "Spike recovery candidates"): no cover window. A slow trip (past the base's warm-up, a
+ * trip above Lb - marginTicks: it asks for more than the base's target) starts or extends a hold: the held trip is the
+ * slowest slow trip since the hold began, kept for `holdSec` after the newest slow trip, then 1 tick lower every
+ * LEAD.fallStepSec; once at or below the base window's p95 trip the hold ends. The cover is ceil(held trip + margin),
+ * capped like cov20's. `capped`: the held trip is never above the ceiling's trip (C - marginTicks), so the fall starts
+ * from what the cover could use, not from a one-off trip far over the cap.
+ */
+interface HoldKnobs {
+	readonly holdSec: number;
+	readonly capped?: boolean;
+}
+
+/**
+ * Option 3: cov20's cover, but a long spike is kept out of it. A slow trip: trip > median + max(minGap, k x IQR) of the
+ * cover window before it enters (nearest rank p50, p75 - p25; only once the cover holds LEAD.minSamples trips). Slow
+ * trips form a run; up to `gapSamples` trips in a row that are not slow do not end it. Every trip enters the cover
+ * provisionally; once a run's slow trips span more than `episodeMinSec` (arrival clocks, first to newest) it is an
+ * episode: its slow trips leave the cover and later ones stay out while it lasts. The base window keeps every trip.
+ */
+interface EpisodeKnobs {
+	readonly minGapMs: number;
+	readonly iqrK: number;
+	readonly gapSamples: number;
+	readonly episodeMinSec: number;
+}
+
+/** What option 2 / 3 saw (summed over a run's clients by the census). */
+interface SpikeCounters {
+	/** Trips classed slow. */
+	slow: number;
+	/** Option 3: runs of slow trips; option 2: holds started. */
+	runs: number;
+	/** Option 3: runs that became episodes. */
+	episodes: number;
+	/** Option 3: trips taken out of the cover when their run became an episode. */
+	removed: number;
+	/** Option 3: slow trips kept out of the cover while their episode lasted. */
+	keptOut: number;
 }
 
 const ascending = (a: number, b: number) => a < b;
 const NO_RECORD = -1;
+/** Option 3's spread reference: the cover window's quartiles (nearest rank). */
+const QUARTILE_LOW = 0.25;
+const QUARTILE_HIGH = 0.75;
 
 function ceilTicks(x: number): number {
 	return math.ceil(x - EPSILON);
@@ -384,7 +448,23 @@ class SpecLead implements LeadLike {
 	private readonly lateEchoAt: number[] = [];
 	private readonly covAt: number[] = [];
 	private readonly covTrip: number[] = [];
+	/** Option 3: each cover trip's id (its order of arrival), to take an episode's trips out. */
+	private readonly covId: number[] = [];
+	private readonly covSorted: number[] = [];
+	private covDirty = false;
 	private covHigh: number | undefined;
+	private nextTripId = 0;
+	/** Option 2: the trip measured by the current echo (classified once the base window has it). */
+	private pendingTrip: number | undefined;
+	private holdTrip: number | undefined;
+	private holdUntil = 0;
+	/** Option 3: the current run of slow trips. */
+	private runActive = false;
+	private runStartAt = 0;
+	private runGap = 0;
+	private runEpisode = false;
+	private readonly runIds: number[] = [];
+	readonly spike: SpikeCounters = { slow: 0, runs: 0, episodes: 0, removed: 0, keptOut: 0 };
 	private lateCount = 0;
 	private mismatchCount = 0;
 	private bumpCount = 0;
@@ -466,7 +546,12 @@ class SpecLead implements LeadLike {
 						trip = tr;
 						this.winAt.push(clock);
 						this.winTrip.push(tr);
-						if (this.k.cover !== undefined) {
+						const cov = this.k.cover;
+						if (cov?.episode !== undefined) {
+							this.episodeTrip(cov.episode, clock, tr);
+						} else if (cov?.hold !== undefined) {
+							this.pendingTrip = tr;
+						} else if (cov !== undefined) {
 							this.covAt.push(clock);
 							this.covTrip.push(tr);
 						}
@@ -646,21 +731,32 @@ class SpecLead implements LeadLike {
 
 	private refresh(now: number): void {
 		const cov = this.k.cover;
-		if (cov !== undefined) {
-			const keepCov = now - cov.windowSec;
-			let changed = false;
-			while (this.covAt.size() > 0 && this.covAt[0] < keepCov) {
-				this.covAt.remove(0);
-				this.covTrip.remove(0);
-				changed = true;
-			}
-			if (changed || this.dirty) {
-				const sc: number[] = [];
-				for (const x of this.covTrip) sc.push(x);
-				sc.sort(ascending);
-				this.covHigh = nearestRank(sc, cov.percentile);
-			}
+		if (cov !== undefined && cov.hold === undefined) this.refreshCover(cov, now);
+		this.refreshBase(now);
+		if (cov?.hold !== undefined) this.refreshHold(cov.hold, now);
+	}
+
+	/** The cover window: expiry, and its sorted copy and quantile when it changed. */
+	private refreshCover(cov: NonNullable<SpecKnobs["cover"]>, now: number): void {
+		const keepCov = now - cov.windowSec;
+		let changed = this.covDirty;
+		while (this.covAt.size() > 0 && this.covAt[0] < keepCov) {
+			this.covAt.remove(0);
+			this.covTrip.remove(0);
+			if (this.covId.size() > 0) this.covId.remove(0);
+			changed = true;
 		}
+		if (changed || this.dirty) {
+			this.covDirty = false;
+			const sc = this.covSorted;
+			sc.clear();
+			for (const x of this.covTrip) sc.push(x);
+			sc.sort(ascending);
+			this.covHigh = nearestRank(sc, cov.percentile);
+		}
+	}
+
+	private refreshBase(now: number): void {
 		const keep = now - this.t.windowSec;
 		while (this.winAt.size() > 0 && this.winAt[0] < keep) {
 			this.winAt.remove(0);
@@ -678,6 +774,98 @@ class SpecLead implements LeadLike {
 		this.pHigh = nearestRank(scratch, this.t.percentile);
 		this.pMax = n > 0 ? scratch[n - 1] : undefined;
 	}
+
+	/**
+	 * Option 2: the held trip at `now` (held, then 1 tick per fallStepSec; ended once at or below the base's p95 trip),
+	 * after classifying this echo's trip against the base window that now holds it.
+	 */
+	private refreshHold(h: HoldKnobs, now: number): void {
+		const trip = this.pendingTrip;
+		this.pendingTrip = undefined;
+		const held = this.heldTrip(now);
+		const p = this.pHigh;
+		if (trip !== undefined && p !== undefined && this.winTrip.size() >= this.t.minSamples) {
+			const base = ceilTicks(p + this.t.marginTicks);
+			if (trip > base - this.t.marginTicks + EPSILON) {
+				this.spike.slow++;
+				if (held === undefined) this.spike.runs++;
+				let newHeld = held === undefined ? trip : math.max(held, trip);
+				const ceiling = this.k.cover?.ceiling;
+				if (h.capped === true && ceiling !== undefined) {
+					newHeld = math.min(newHeld, ceiling - this.lastDepthUsed - this.t.marginTicks);
+				}
+				this.holdTrip = newHeld;
+				this.holdUntil = now + h.holdSec;
+			}
+		}
+		this.covHigh = this.heldTrip(now);
+	}
+
+	private heldTrip(now: number): number | undefined {
+		const h = this.holdTrip;
+		if (h === undefined) return undefined;
+		if (now <= this.holdUntil + EPSILON) return h;
+		const v = h - math.floor((now - this.holdUntil) / this.t.fallStepSec + EPSILON);
+		if (this.pHigh === undefined || v <= this.pHigh + EPSILON) {
+			this.holdTrip = undefined;
+			return undefined;
+		}
+		return v;
+	}
+
+	/** Option 3: classify a measured trip against the cover window, put it in (or keep it out), step the run. */
+	private episodeTrip(e: EpisodeKnobs, clock: number, trip: number): void {
+		const cov = this.k.cover!;
+		this.refreshCover(cov, clock);
+		const sorted = this.covSorted;
+		let slow = false;
+		if (sorted.size() >= this.t.minSamples) {
+			const median = nearestRank(sorted, MEDIAN)!;
+			const iqr = nearestRank(sorted, QUARTILE_HIGH)! - nearestRank(sorted, QUARTILE_LOW)!;
+			const minGap = (e.minGapMs / MS_PER_SEC) * SIM_HZ;
+			slow = trip > median + math.max(minGap, e.iqrK * iqr) + EPSILON;
+		}
+		if (slow) {
+			this.spike.slow++;
+			if (!this.runActive) {
+				this.runActive = true;
+				this.runStartAt = clock;
+				this.runEpisode = false;
+				this.runIds.clear();
+				this.spike.runs++;
+			}
+			this.runGap = 0;
+		} else if (this.runActive) {
+			this.runGap++;
+			if (this.runGap > e.gapSamples) {
+				this.runActive = false;
+				this.runIds.clear();
+			}
+		}
+		if (slow && this.runEpisode) {
+			this.spike.keptOut++;
+		} else {
+			const id = this.nextTripId++;
+			this.covAt.push(clock);
+			this.covTrip.push(trip);
+			this.covId.push(id);
+			if (slow) this.runIds.push(id);
+		}
+		if (slow && !this.runEpisode && clock - this.runStartAt > e.episodeMinSec + EPSILON) {
+			this.runEpisode = true;
+			this.spike.episodes++;
+			for (const id of this.runIds) {
+				const i = this.covId.indexOf(id);
+				if (i < 0) continue;
+				this.covAt.remove(i);
+				this.covTrip.remove(i);
+				this.covId.remove(i);
+				this.spike.removed++;
+			}
+			this.runIds.clear();
+			this.covDirty = true;
+		}
+	}
 }
 
 const TODAY_KNOBS: SpecKnobs = { lead: LEAD, bump: "trip", bumpAfter: 1, bumpWindowSec: 0, lateHolds: true };
@@ -691,6 +879,44 @@ const RULE3: Policy = {
 	tunables: RULE3_TUNABLES,
 };
 const COPY: Policy = { name: "copy", label: "today, this spec's copy", spec: TODAY_KNOBS };
+
+/**
+ * Spike recovery candidates (docs/FRAME_PACING.md Revision 3, "Spike recovery candidates"): opt-in rows (`--flag
+ * lead.rule.spikes`, or one by name), each bringing `cov20` as its reference.
+ */
+function spikeCandidates(): Policy[] {
+	const COVER = { windowSec: 15, percentile: 0.99, ceiling: 20 };
+	const EPISODE: EpisodeKnobs = { minGapMs: 40, iqrK: 3, gapSamples: 2, episodeMinSec: 0.25 };
+	const hold = (sec: number, capped = false): Policy => ({
+		name: `hold${sec}${capped ? "c" : ""}`,
+		label: `option 2: cov20's cap, the cover a hold of the slowest slow trip for ${sec} s, then the fall${
+			capped ? " (the held trip capped at the ceiling's)" : ""
+		}`,
+		spec: { ...NO_BUMP, cover: { ...COVER, hold: { holdSec: sec, capped } } },
+		optIn: true,
+	});
+	const episode = (name: string, e: EpisodeKnobs): Policy => ({
+		name,
+		label: `option 3: cov20 with episodes out of the cover (gap max(${e.minGapMs} ms, ${e.iqrK} IQR), ${e.gapSamples} gap trips, > ${e.episodeMinSec} s)`,
+		spec: { ...NO_BUMP, cover: { ...COVER, episode: e } },
+		optIn: true,
+	});
+	const HOLD_SECS = [3, 5, 8];
+	const HOLD_CAPPED_SECS = [3, 5];
+	const EPISODE_SHORT_SEC = 0.15;
+	const EPISODE_LONG_SEC = 0.5;
+	const GAP_LOW_MS = 25;
+	const GAP_HIGH_MS = 60;
+	return [
+		...HOLD_SECS.map((sec) => hold(sec)),
+		...HOLD_CAPPED_SECS.map((sec) => hold(sec, true)),
+		episode("episode", EPISODE),
+		episode("ep15", { ...EPISODE, episodeMinSec: EPISODE_SHORT_SEC }),
+		episode("ep50", { ...EPISODE, episodeMinSec: EPISODE_LONG_SEC }),
+		episode("epg25", { ...EPISODE, minGapMs: GAP_LOW_MS }),
+		episode("epg60", { ...EPISODE, minGapMs: GAP_HIGH_MS }),
+	];
+}
 
 const CANDIDATES: ReadonlyArray<Policy> = [
 	TODAY,
@@ -764,6 +990,7 @@ const CANDIDATES: ReadonlyArray<Policy> = [
 			cover: { windowSec: 15, percentile: 0.99, ceiling: 20 },
 		},
 	},
+	...spikeCandidates(),
 ];
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -806,6 +1033,8 @@ interface NetRun {
 	readonly clients: ClientRun[];
 	readonly finalized: number;
 	readonly sec: number;
+	/** The clients' spec controllers (SpecLead; empty for the real LeadController). */
+	readonly ctls: ReadonlyArray<LeadLike>;
 }
 
 function controllerOf(policy: Policy): LeadLike | undefined {
@@ -858,7 +1087,10 @@ function play(net: NetSpec, policy: Policy, durationSec: number): NetRun {
 			tunables: policy.tunables ?? TUNABLES,
 		});
 		const ctl = controllerOf(policy);
-		if (ctl !== undefined) (c as unknown as { leadCtl: LeadLike }).leadCtl = ctl;
+		if (ctl !== undefined) {
+			(c as unknown as { leadCtl: LeadLike }).leadCtl = ctl;
+			ctls.push(ctl);
+		}
 		clients.push(c);
 		const seedBase = net.seedBase ?? DEFAULT_CHANNEL_SEED;
 		down.push(new Channel(seedBase + 2 * i, net, false));
@@ -983,7 +1215,7 @@ function play(net: NetSpec, policy: Policy, durationSec: number): NetRun {
 		run.measuredAtEnd = clients[i].isLeadMeasured();
 		expect(clients[i].brokenReason()).toBe(undefined);
 	}
-	return { clients: runs, finalized, sec: os.clock() - t0 };
+	return { clients: runs, finalized, sec: os.clock() - t0, ctls };
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -1195,18 +1427,44 @@ function specFlag(name: string): boolean {
 	return specFlags()?.[name] === true;
 }
 
+/** `--flag lead.rule.spikes` selects every opt-in rule (the spike recovery candidates). */
+const SPIKES_FLAG = "lead.rule.spikes";
+
 /**
- * `--flag lead.rule.<name>` keeps only those rules (today's is always run first: the table's reference; `rule3` brings
- * `cov20`, the rule it must equal).
+ * `--flag lead.rule.<name>` keeps only those rules (today's is always run first: the table's reference; `rule3` and every
+ * spike recovery candidate bring `cov20`, the rule they are compared with). Without a rule flag every rule but the
+ * opt-in ones runs; `--flag lead.rule.spikes` selects every opt-in rule.
  */
 function selectedRules(): Policy[] {
 	const out: Policy[] = [TODAY];
+	const spikes = specFlag(SPIKES_FLAG);
+	const picked = (p: Policy) => specFlag(`lead.rule.${p.name}`) || (spikes && p.optIn === true);
 	let any = false;
-	for (const p of CANDIDATES) if (specFlag(`lead.rule.${p.name}`)) any = true;
-	const keep = (p: Policy) =>
-		!any || specFlag(`lead.rule.${p.name}`) || (p.name === "cov20" && specFlag(`lead.rule.${RULE3.name}`));
+	let withCov20 = false;
+	for (const p of CANDIDATES) {
+		if (!picked(p)) continue;
+		any = true;
+		if (p === RULE3 || p.optIn === true) withCov20 = true;
+	}
+	const keep = (p: Policy) => (any ? picked(p) || (p.name === "cov20" && withCov20) : p.optIn !== true);
 	for (const p of CANDIDATES) if (p !== TODAY && keep(p)) out.push(p);
 	return out;
+}
+
+/** Option 2 / 3's counters summed over a run's clients (undefined for any other rule). */
+function spikeCounters(r: NetRun): SpikeCounters | undefined {
+	const sum: SpikeCounters = { slow: 0, runs: 0, episodes: 0, removed: 0, keptOut: 0 };
+	let found = false;
+	for (const c of r.ctls) {
+		if (!(c instanceof SpecLead)) continue;
+		found = true;
+		sum.slow += c.spike.slow;
+		sum.runs += c.spike.runs;
+		sum.episodes += c.spike.episodes;
+		sum.removed += c.spike.removed;
+		sum.keptOut += c.spike.keptOut;
+	}
+	return found ? sum : undefined;
 }
 
 /** Frames where two runs' leads (net and effective, every client) differ, and the first one ("" when none). */
@@ -1269,6 +1527,8 @@ if (FULL) {
 				const rows: string[] = [];
 				const trips: string[] = [];
 				const runs = new Map<string, NetRun>();
+				const summaries = new Map<string, Summary>();
+				const spikeLines: string[] = [];
 				let todaySummary: Summary | undefined;
 				const gates: string[] = [];
 				/** FPD18's verdicts, asserted once everything is printed. */
@@ -1279,6 +1539,7 @@ if (FULL) {
 					expect(r.finalized).toBeGreaterThan((net.durationSec - 1) * SIM_HZ);
 					for (const c of r.clients) expect(c.measuredAtEnd).toBe(true);
 					runs.set(policy.name, r);
+					summaries.set(policy.name, s);
 					if (policy === TODAY) todaySummary = s;
 					let extra = "";
 					if (policy === RULE3 && todaySummary !== undefined && GATE_NETWORKS.includes(net.name)) {
@@ -1299,6 +1560,32 @@ if (FULL) {
 				}
 				print(`[lead census] ${net.label}\n${HEADER}\n${rows.join("\n")}\n[lead census] ${trips.join("; ")}`);
 				for (const g of gates) print(g);
+				// The spike recovery candidates: their counters, FPD18 against today (printed only) and the frames that
+				// differ from cov20's.
+				const c20run = runs.get("cov20");
+				for (const policy of selectedRules()) {
+					if (policy.optIn !== true) continue;
+					const r = runs.get(policy.name)!;
+					const k = spikeCounters(r)!;
+					const parts: string[] = [
+						policy.spec?.cover?.hold !== undefined
+							? `slow ${k.slow}, holds ${k.runs}`
+							: `slow ${k.slow}, runs ${k.runs}, episodes ${k.episodes}, removed ${k.removed}, kept out ${k.keptOut}`,
+					];
+					if (c20run !== undefined) {
+						const d = leadDiff(c20run, r);
+						parts.push(
+							`vs cov20 ${
+								d.differ === 0 ? "same" : `DIFFERENT ${d.differ} of ${d.frames} client frames`
+							}${d.first !== "" ? ` (first ${d.first})` : ""}`,
+						);
+					}
+					if (todaySummary !== undefined && GATE_NETWORKS.includes(net.name)) {
+						parts.push(fpd18(todaySummary, summaries.get(policy.name)!).text);
+					}
+					spikeLines.push(`[lead census spike] ${net.name} ${policy.name}: ${parts.join("; ")}`);
+				}
+				for (const line of spikeLines) print(line);
 				const r3 = runs.get(RULE3.name);
 				const c20 = runs.get("cov20");
 				if (r3 !== undefined && c20 !== undefined) {
