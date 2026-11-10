@@ -2,9 +2,9 @@
  * docs/FRAME_PACING.md Revision 3 (FP17): the measured lead on jittery links, today's rule against candidate rules,
  * on the real client, server, relay, pacer and echo (only the lead rule changes). OPT-IN CENSUS: without the runner's
  * `--census` flag it runs a smoke sample (12 s of the owner-like network: today's LeadController next to this spec's
- * copy of it, which must give the same lead every frame); with it (npm run test:only -- --census lockstep/lead.census),
- * every network x every rule, printed as the doc's tables (about 3.5 minutes; the VM shell's 3-minute cap needs two runs,
- * see the doc). `--flag lead.<network>` (repeatable, e.g. `--flag lead.owner`) keeps only those networks and
+ * copy of it, which must give the same lead every frame, and the shipped controller next to the spec rules it must
+ * equal); with it (npm run test:only -- --census lockstep/lead.census), every network x every rule, printed as the
+ * doc's tables (several minutes; the doc splits it in two runs side by side). `--flag lead.<network>` (repeatable, e.g. `--flag lead.owner`) keeps only those networks and
  * `--flag lead.rule.<rule>` only those rules (today's always runs first: the reference).
  *
  * A candidate is a lead rule written here, never wired into LeadController: `SpecLead` is lead.ts's rule copied with
@@ -18,12 +18,16 @@
  * assertions only: every run plays through measured, the copy matches today's rule exactly.
  *
  * Revision 3 (FP19): "today" is Revision 2's rule explicitly (`LEAD` with `lateBump: true`, no ceiling: what
- * `KV_LeadBump` builds), so its rows are the FP17 tables' exactly; `rule3` is the real, shipped LeadController
- * (`LEAD`'s defaults, built by LockstepClient with prediction on, so its ceiling is `PREDICTION.maxTicks`), which must
- * give `cov20`'s lead on every frame (asserted wherever both run, the smoke included), and is held to FPD18's gates
- * against today on the owner-like networks (printed: felt delay at cap 20 at most half, dropped changed inputs at most
- * today's, churn at most a third; asserted). `kvbump` is what `KV_LeadBump` builds with prediction on: the bump on top of the
- * cover (FP21's A/B), printed only.
+ * `KV_LeadBump` builds), so its rows are the FP17 tables' exactly. FP23: `rule4` is the real, shipped LeadController
+ * (`LEAD`'s defaults: the cover and the episode detector, FPD20; built by LockstepClient with prediction on, so its
+ * ceiling is `PREDICTION.maxTicks`), which must give `ep25mnt`'s lead on every frame and its episode counters (asserted
+ * on every network, the smoke included: selecting `rule4`, as the default run does, brings `ep25mnt`), is held to
+ * FPD18's gates against today on the owner-like networks (felt delay at cap 20 at most half, dropped changed inputs at
+ * most today's, churn at most a third; asserted) and to FP12's gate on `fp12`, `longhold`, `cleanspike` and the
+ * `spike*` networks (asserted). `rule3` (opt-in, `--flag lead.rule.rule3`) is the same controller with `episodes` false,
+ * Revision 3 as FP18-FP20 built it, which must give `cov20`'s lead on every frame (asserted; the smoke too) and meets
+ * FPD18 as well. `kvbump` is what `KV_LeadBump` builds with prediction on: the bump on top of the cover (no episodes
+ * with `lateBump`; FP21's A/B), printed only.
  *
  * Spike recovery candidates (the doc's "Spike recovery candidates"): option 2 (`hold3` / `hold5` / `hold8`, capped
  * `hold3c` / `hold5c`: the cover a hold of the slowest slow trip) and option 3 (`episode`, `ep15`, `ep50`, `epg25`,
@@ -101,12 +105,26 @@ const TUNABLES: LockstepTunables = {
 	// ceiling (no cover): today's rule.
 	prediction: undefined,
 };
-/** Revision 3 as shipped: LEAD's defaults, and prediction on, so LockstepClient gives the lead its ceiling. */
-const RULE3_TUNABLES: LockstepTunables = { ...TUNABLES, lead: LEAD, prediction: PREDICTION };
-/** KV_LeadBump as built (FP20): the shipped client with `lateBump` (prediction on: the cover stays, plus the bump). */
-const KV_BUMP_TUNABLES: LockstepTunables = { ...RULE3_TUNABLES, lead: REV2_LEAD };
+/**
+ * The shipped client (FP23): LEAD's defaults (the cover and the episode detector), and prediction on, so LockstepClient
+ * gives the lead its ceiling.
+ */
+const SHIPPED_TUNABLES: LockstepTunables = { ...TUNABLES, lead: LEAD, prediction: PREDICTION };
+/** Revision 3 as built by FP18-FP20: the shipped client with the episode detector off (`episodes` false). */
+const RULE3_TUNABLES: LockstepTunables = { ...SHIPPED_TUNABLES, lead: { ...LEAD, episodes: false } };
+/**
+ * KV_LeadBump as built (FP20): the shipped client with `lateBump` (prediction on: the cover stays, plus the bump; the
+ * episode detector is off with `lateBump`).
+ */
+const KV_BUMP_TUNABLES: LockstepTunables = { ...SHIPPED_TUNABLES, lead: REV2_LEAD };
 /** FPD18's gates are held on these networks. */
 const GATE_NETWORKS = ["owner", "owner2", "ownerS"];
+/**
+ * FP12's gate (peak and back within today's fall bound) is asserted for the shipped rule on these networks (FP23: the
+ * episode detector brings the cover back within it where it has room; `cbspike` fails for every rule, today's too:
+ * printed only).
+ */
+const FP12_ASSERT_NETWORKS = ["fp12", "longhold", "cleanspike", "spike35", "spike60", "spike150"];
 /** FPD18: felt delay at cap 20 at most this share of today's, churn at most this share; dropped at most today's. */
 const GATE_FELT_SHARE = 0.5;
 const GATE_CHURN_SHARE = 1 / 3;
@@ -425,6 +443,11 @@ interface Policy {
 	readonly optIn?: boolean;
 	/** `--flag lead.rule.<group>` selects every rule of the group (round 2: `spikes2`). */
 	readonly groups?: ReadonlyArray<string>;
+	/**
+	 * The spec rule this real controller must equal on every client frame (asserted wherever both run); selecting this
+	 * rule brings it.
+	 */
+	readonly reference?: string;
 }
 
 interface SpecKnobs {
@@ -1091,10 +1114,20 @@ const TODAY_KNOBS: SpecKnobs = { lead: LEAD, bump: "trip", bumpAfter: 1, bumpWin
 const NO_BUMP: SpecKnobs = { ...TODAY_KNOBS, bump: "none", lateHolds: false };
 
 const TODAY: Policy = { name: "today", label: "today (LeadController, Revision 2: LEAD with lateBump, no ceiling)" };
+/** The shipped rule (FP23): LeadController with LEAD (the cover and the episode detector, FPD20) = `ep25mnt`. */
+const RULE4: Policy = {
+	name: "rule4",
+	label: "shipped (FP23): LeadController with LEAD (episodes on), ceiling PREDICTION.maxTicks (prediction on)",
+	tunables: SHIPPED_TUNABLES,
+	reference: "ep25mnt",
+};
+/** Revision 3 as FP18-FP20 built it: the shipped controller with `episodes` false = `cov20` (opt-in since FP23). */
 const RULE3: Policy = {
 	name: "rule3",
-	label: "Revision 3 as built: LeadController with LEAD, ceiling PREDICTION.maxTicks (prediction on)",
+	label: "Revision 3 before FP23: LeadController with LEAD but episodes off, ceiling PREDICTION.maxTicks",
 	tunables: RULE3_TUNABLES,
+	optIn: true,
+	reference: "cov20",
 };
 const COPY: Policy = { name: "copy", label: "today, this spec's copy", spec: TODAY_KNOBS };
 
@@ -1200,6 +1233,7 @@ const CANDIDATES: ReadonlyArray<Policy> = [
 		label: "no bump; max(p95 / 5 s, min(p99 / 15 s, 20 - depth)) + margin",
 		spec: { ...NO_BUMP, cover: { windowSec: 15, percentile: 0.99, ceiling: 20 } },
 	},
+	RULE4,
 	RULE3,
 	{
 		name: "kvbump",
@@ -1271,6 +1305,9 @@ interface ClientRun {
 	bumps: number;
 	holds: number;
 	measuredAtEnd: boolean;
+	/** The controller's episode detector at the end (LeadStats.episodes: undefined while off) and its kept-out trips. */
+	episodes: number | undefined;
+	keptOut: number;
 	/** Per NetSpec window: server lates (relay) and dropped changed inputs (by send time). */
 	readonly windowLates: number[];
 	readonly windowDropped: number[];
@@ -1372,6 +1409,8 @@ function play(net: NetSpec, policy: Policy, durationSec: number): NetRun {
 			bumps: 0,
 			holds: 0,
 			measuredAtEnd: false,
+			episodes: undefined,
+			keptOut: 0,
 			windowLates: [],
 			windowDropped: [],
 		});
@@ -1492,6 +1531,8 @@ function play(net: NetSpec, policy: Policy, durationSec: number): NetRun {
 		}
 		const st = clients[i].leadStats()!;
 		run.bumps = st.bumps;
+		run.episodes = st.episodes;
+		run.keptOut = st.keptOut;
 		run.holds = clients[i].pacingStats()?.holds ?? 0;
 		run.measuredAtEnd = clients[i].isLeadMeasured();
 		expect(clients[i].brokenReason()).toBe(undefined);
@@ -1637,10 +1678,11 @@ const f1 = (x: number) => string.format("%.1f", x);
 const f2 = (x: number) => string.format("%.2f", x);
 const ms = (ticks: number) => string.format("%d", math.floor(ticks * DT * MS_PER_SEC + 0.5));
 
-function gateText(net: NetSpec, r: NetRun, s: Summary): string {
+/** The network's FP11 / FP12 gate: its verdict (undefined without one) and its text. */
+function gateOf(net: NetSpec, r: NetRun, s: Summary): { readonly ok: boolean | undefined; readonly text: string } {
 	if (net.gate === "fp11") {
 		const ok = s.lates === 0 && s.missedShare < FP11_MISSED_SHARE;
-		return `FP11 ${ok ? "pass" : "FAIL"} (lates ${s.lates}, missed ${f2(s.missedShare * 100)} %)`;
+		return { ok, text: `FP11 ${ok ? "pass" : "FAIL"} (lates ${s.lates}, missed ${f2(s.missedShare * 100)} %)` };
 	}
 	if (net.gate === "fp12") {
 		const tr = net.upSpike ?? net.upHold!;
@@ -1656,9 +1698,9 @@ function gateText(net: NetSpec, r: NetRun, s: Summary): string {
 				} (<= ${f2(t.fallBound)} s)`,
 			);
 		}
-		return `FP12 ${ok ? "pass" : "FAIL"} (${parts.join("; ")})`;
+		return { ok, text: `FP12 ${ok ? "pass" : "FAIL"} (${parts.join("; ")})` };
 	}
-	return "";
+	return { ok: undefined, text: "" };
 }
 
 function row(net: NetSpec, policy: Policy, r: NetRun, s: Summary, extra = ""): string {
@@ -1667,7 +1709,7 @@ function row(net: NetSpec, policy: Policy, r: NetRun, s: Summary, extra = ""): s
 	} / ${s.netMax} | ${f1(s.latesRate)} | ${f1(s.droppedRate)} | ${f2(s.missedShare * 100)} % | ${f1(
 		s.bumpsRate,
 	)} | ${f1(s.churnRate)} | ${f2(s.feltMean[0])} / ${s.feltP95[0]} | ${f2(s.feltMean[1])} / ${s.feltP95[1]} | ${[
-		gateText(net, r, s),
+		gateOf(net, r, s).text,
 		extra,
 	]
 		.filter((x) => x !== "")
@@ -1742,27 +1784,33 @@ function specFlag(name: string): boolean {
 /** `--flag lead.rule.spikes` selects every opt-in rule (the spike recovery candidates). */
 const SPIKES_FLAG = "lead.rule.spikes";
 
+/** The rule every spike recovery candidate is compared with. */
+const COV20 = "cov20";
+
 /**
- * `--flag lead.rule.<name>` keeps only those rules (today's is always run first: the table's reference; `rule3` and every
- * spike recovery candidate bring `cov20`, the rule they are compared with). Without a rule flag every rule but the
- * opt-in ones runs; `--flag lead.rule.spikes` selects every opt-in rule.
+ * `--flag lead.rule.<name>` keeps only those rules (today's is always run first: the table's reference). A real
+ * controller with a `reference` brings it (`rule4` brings `ep25mnt`, `rule3` `cov20`), and every spike recovery
+ * candidate brings `cov20`, the rule it is compared with. Without a rule flag every rule but the opt-in ones runs, plus
+ * those references (FP23: `rule4` and its `ep25mnt`); `--flag lead.rule.spikes` selects every opt-in rule.
  */
 function selectedRules(): Policy[] {
-	const out: Policy[] = [TODAY];
 	const spikes = specFlag(SPIKES_FLAG);
 	const picked = (p: Policy) =>
 		specFlag(`lead.rule.${p.name}`) ||
 		(spikes && p.optIn === true) ||
 		(p.groups ?? []).some((g) => specFlag(`lead.rule.${g}`));
 	let any = false;
-	let withCov20 = false;
+	for (const p of CANDIDATES) if (picked(p)) any = true;
+	const chosen = new Set<string>();
+	for (const p of CANDIDATES) if (any ? picked(p) : p.optIn !== true) chosen.add(p.name);
+	// In CANDIDATES order: a reference listed after its rule (rule4's ep25mnt) brings its own reference in turn.
 	for (const p of CANDIDATES) {
-		if (!picked(p)) continue;
-		any = true;
-		if (p === RULE3 || p.optIn === true) withCov20 = true;
+		if (!chosen.has(p.name)) continue;
+		if (p.reference !== undefined) chosen.add(p.reference);
+		if (p.optIn === true && p.spec !== undefined) chosen.add(COV20);
 	}
-	const keep = (p: Policy) => (any ? picked(p) || (p.name === "cov20" && withCov20) : p.optIn !== true);
-	for (const p of CANDIDATES) if (p !== TODAY && keep(p)) out.push(p);
+	const out: Policy[] = [TODAY];
+	for (const p of CANDIDATES) if (p !== TODAY && chosen.has(p.name)) out.push(p);
 	return out;
 }
 
@@ -1811,6 +1859,31 @@ function leadDiff(a: NetRun, b: NetRun): { readonly frames: number; readonly dif
 		}
 	}
 	return { frames, differ, first };
+}
+
+/**
+ * The real controller's episode counters (LeadStats.episodes / keptOut, summed over its clients) against its spec
+ * reference's (episodes; removed + kept out): equal where the reference has an episode rule, else none (0 kept out).
+ */
+function episodeCheck(spec: NetRun, real: NetRun): { readonly ok: boolean; readonly text: string } {
+	const k = spikeCounters(spec);
+	let episodes = 0;
+	let keptOut = 0;
+	let on = false;
+	for (const c of real.clients) {
+		if (c.episodes !== undefined) on = true;
+		episodes += c.episodes ?? 0;
+		keptOut += c.keptOut;
+	}
+	const wantEpisodes = k?.episodes ?? 0;
+	const wantOut = k !== undefined ? k.removed + k.keptOut : 0;
+	const ok = episodes === wantEpisodes && keptOut === wantOut;
+	return {
+		ok,
+		text: `episodes ${on ? episodes : "off"} (spec ${wantEpisodes}), kept out ${keptOut} (spec ${wantOut}) ${
+			ok ? "same" : "DIFFERENT"
+		}`,
+	};
 }
 
 /** FPD18's gates for a rule against today's on one network (unrounded rates). */
@@ -1867,11 +1940,17 @@ if (FULL) {
 					summaries.set(policy.name, s);
 					if (policy === TODAY) todaySummary = s;
 					let extra = "";
-					if (policy === RULE3 && todaySummary !== undefined && GATE_NETWORKS.includes(net.name)) {
+					const real = policy === RULE4 || policy === RULE3;
+					if (real && todaySummary !== undefined && GATE_NETWORKS.includes(net.name)) {
 						const g = fpd18(todaySummary, s);
 						extra = g.text;
-						gates.push(`[lead census gate] ${net.name} rule3 ${g.text}`);
+						gates.push(`[lead census gate] ${net.name} ${policy.name} ${g.text}`);
 						gateOk.push(g.ok);
+					}
+					if (policy === RULE4 && FP12_ASSERT_NETWORKS.includes(net.name)) {
+						const g = gateOf(net, r, s);
+						gates.push(`[lead census gate] ${net.name} rule4 ${g.text}`);
+						gateOk.push(g.ok === true);
 					}
 					rows.push(row(net, policy, r, s, extra));
 					trips.push(
@@ -1892,7 +1971,7 @@ if (FULL) {
 				// differ from cov20's.
 				const c20run = runs.get("cov20");
 				for (const policy of selectedRules()) {
-					if (policy.optIn !== true) continue;
+					if (policy.optIn !== true || policy.spec === undefined) continue;
 					const r = runs.get(policy.name)!;
 					const k = spikeCounters(r)!;
 					const parts: string[] = [
@@ -1919,17 +1998,27 @@ if (FULL) {
 				}
 				for (const line of spikeLines) print(line);
 				for (const line of windowLines) print(line);
-				const r3 = runs.get(RULE3.name);
-				const c20 = runs.get("cov20");
-				if (r3 !== undefined && c20 !== undefined) {
-					const d = leadDiff(c20, r3);
+				// A real controller against the spec rule it must equal (rule4 = ep25mnt, rule3 = cov20): every client frame,
+				// and the episode detector's counters.
+				const diffs: number[] = [];
+				const countersOk: boolean[] = [];
+				for (const policy of selectedRules()) {
+					const ref = policy.reference;
+					const r = runs.get(policy.name);
+					const a = ref !== undefined ? runs.get(ref) : undefined;
+					if (ref === undefined || r === undefined || a === undefined) continue;
+					const d = leadDiff(a, r);
+					const c = episodeCheck(a, r);
 					print(
-						`[lead census] ${net.name}: rule3 vs cov20 frame for frame: ${
+						`[lead census] ${net.name}: ${policy.name} vs ${ref} frame for frame: ${
 							d.differ === 0 ? "same" : "DIFFERENT"
-						}` + ` (${d.frames} client frames${d.first !== "" ? `; first ${d.first}` : ""})`,
+						} (${d.frames} client frames${d.first !== "" ? `; first ${d.first}` : ""}); ${c.text}`,
 					);
-					expect(d.differ).toBe(0);
+					diffs.push(d.differ);
+					countersOk.push(c.ok);
 				}
+				for (const d of diffs) expect(d).toBe(0);
+				for (const ok of countersOk) expect(ok).toBe(true);
 				for (const ok of gateOk) expect(ok).toBe(true);
 			});
 		}
@@ -1962,8 +2051,32 @@ if (FULL) {
 			for (const line of paceLines(net, TODAY, a)) print(line);
 		});
 
-		it("the shipped LeadController (rule3: LEAD, the prediction cap as its ceiling) gives cov20's lead on every frame", () => {
-			const cov20 = CANDIDATES.find((p) => p.name === "cov20")!;
+		it("the shipped LeadController (rule4: LEAD, the prediction cap as its ceiling) gives ep25mnt's lead on every frame", () => {
+			const ep = CANDIDATES.find((p) => p.name === RULE4.reference)!;
+			const a = play(net, ep, SMOKE_SEC);
+			const b = play(net, RULE4, SMOKE_SEC);
+			const d = leadDiff(a, b);
+			const c = episodeCheck(a, b);
+			print(
+				`[lead census smoke] rule4 vs ep25mnt: ${d.differ} of ${d.frames} client frames differ${
+					d.first !== "" ? `; first ${d.first}` : ""
+				}; ${c.text}\n${row(net, ep, a, summarize(a, SMOKE_SEC))}\n${row(
+					net,
+					RULE4,
+					b,
+					summarize(b, SMOKE_SEC),
+				)}`,
+			);
+			expect(d.differ).toBe(0);
+			expect(c.ok).toBe(true);
+			for (const cl of b.clients) {
+				expect(cl.bumps).toBe(0);
+				expect(cl.episodes).toBeDefined();
+			}
+		});
+
+		it("with episodes off (rule3: Revision 3 before FP23) it gives cov20's lead on every frame", () => {
+			const cov20 = CANDIDATES.find((p) => p.name === COV20)!;
 			const a = play(net, cov20, SMOKE_SEC);
 			const b = play(net, RULE3, SMOKE_SEC);
 			const d = leadDiff(a, b);
