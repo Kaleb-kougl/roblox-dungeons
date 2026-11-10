@@ -30,7 +30,10 @@
  * `epg60`: cov20 with long-spike episodes kept out of the cover). Opt-in rows: they run only when selected (`--flag
  * lead.rule.spikes` for all of them, or `--flag lead.rule.<name>`), each with `cov20` as its reference, so the default
  * `--census` run is unchanged. Printed per network: their counters, the frames that differ from cov20's, and FPD18
- * against today on the owner-like networks (printed only).
+ * against today on the owner-like networks (printed only). Round 2 (`--flag lead.rule.spikes2`): `ep25t`, `ep25x`,
+ * `ep25b`, `ep50x`, `ep50b`, `ep25n`, `ep25bn`, `ep25mn`, `ep25nt`, `ep25bnt`, `ep25mnt` (EpisodeKnobs' round-2 knobs)
+ * with `episode` and `ep50`, and opt-in networks (`--flag lead.<name>` or `--flag lead.extra`): `spike35`, `spike60`,
+ * `spike150`, `cburst`, `cbspike`, `cbstep`, the last three with windows (`[lead census window]`).
  */
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { AXIS_MAX, Button, EMPTY_INPUT, Rng, SIM_HZ, inputsEqual, isFiniteNumber, playerAt } from "shared/sim";
@@ -143,6 +146,88 @@ interface NetSpec {
 	readonly watchSec?: number;
 	/** Client i's down / up channels are seeded seedBase + 2i / + 1 (default 7, predict.net.spec's). */
 	readonly seedBase?: number;
+	/** A lasting +extra for every up message sent from `at` on (a latency step; `sec` unused). */
+	readonly upStep?: Trouble;
+	/** Run only when named (`--flag lead.<name>`) or with `--flag lead.extra`: the default census is unchanged. */
+	readonly optIn?: boolean;
+	/** Windows [from, to) (seconds) printed on their own: leads, lates and dropped changed inputs per 10 s. */
+	readonly windows?: ReadonlyArray<readonly [number, number]>;
+}
+
+/**
+ * Spike recovery round 2 (the doc's "Spike recovery candidates"): opt-in networks. `cleanspike`'s link with shorter
+ * spikes; the clean link with `owner`'s bursts (`cburst`), plus FP12's spike (`cbspike`) or a lasting +100 ms up step
+ * at 7 s (`cbstep`).
+ */
+function spikeNetworks(): NetSpec[] {
+	const SPIKE_AT = 7;
+	const SPIKE_EXTRA = 0.2;
+	const STEP_EXTRA = 0.1;
+	const SHORT_SPIKES_SEC = [0.35, 0.6, 1.5];
+	const BURSTS_SEC = 47;
+	const clean = { baseSec: 0.03, jitterSec: 0.01, spikeChance: 0, spikeLoSec: 0, spikeHiSec: 0 };
+	const bursts = {
+		baseSec: 0.03,
+		jitterSec: 0.01,
+		spikeChance: 0.012,
+		downSpikeChance: 0.002,
+		spikeLoSec: 0.12,
+		spikeHiSec: 0.175,
+	};
+	const SPIKE_WINDOWS: ReadonlyArray<readonly [number, number]> = [
+		[2, 7],
+		[7, 9],
+		[9, 22],
+		[22, 34],
+	];
+	const STEP_WINDOWS: ReadonlyArray<readonly [number, number]> = [
+		[2, 7],
+		[7, 8],
+		[8, 12],
+		[12, 22],
+		[22, 47],
+	];
+	const short = (sec: number): NetSpec => ({
+		name: `spike${math.floor(sec * 100 + 0.5)}`,
+		label: `clean + a ${sec} s +200 ms up spike at 7 s: 30-40 ms one way (cleanspike's link)`,
+		...clean,
+		durationSec: SPIKE_AT + sec + CLEAN_SPIKE_WATCH_SEC + 1,
+		upSpike: { at: SPIKE_AT, sec, extra: SPIKE_EXTRA },
+		gate: "fp12",
+		watchSec: CLEAN_SPIKE_WATCH_SEC,
+		optIn: true,
+	});
+	return [
+		...SHORT_SPIKES_SEC.map(short),
+		{
+			name: "cburst",
+			label: "clean + owner-like bursts: 30-40 ms one way, 1.2 % of up slots +120-175 ms, 0.2 % down",
+			...bursts,
+			durationSec: BURSTS_SEC,
+			optIn: true,
+			windows: SPIKE_WINDOWS,
+		},
+		{
+			name: "cbspike",
+			label: "cburst + FP12's spike: +200 ms up for 1 s at 7 s",
+			...bursts,
+			durationSec: SPIKE_AT + 1 + CLEAN_SPIKE_WATCH_SEC + 1,
+			upSpike: { at: SPIKE_AT, sec: 1, extra: SPIKE_EXTRA },
+			gate: "fp12",
+			watchSec: CLEAN_SPIKE_WATCH_SEC,
+			optIn: true,
+			windows: SPIKE_WINDOWS,
+		},
+		{
+			name: "cbstep",
+			label: "cburst + a lasting +100 ms up step from 7 s",
+			...bursts,
+			durationSec: BURSTS_SEC,
+			upStep: { at: SPIKE_AT, sec: 0, extra: STEP_EXTRA },
+			optIn: true,
+			windows: STEP_WINDOWS,
+		},
+	];
 }
 
 const NETWORKS: ReadonlyArray<NetSpec> = [
@@ -262,6 +347,7 @@ const NETWORKS: ReadonlyArray<NetSpec> = [
 		gate: "fp12",
 		watchSec: CLEAN_SPIKE_WATCH_SEC,
 	},
+	...spikeNetworks(),
 ];
 
 interface Message {
@@ -293,7 +379,8 @@ class Channel {
 		}
 		const ev = this.isUp ? n.upSpike : undefined;
 		const add = ev !== undefined && now >= ev.at && now < ev.at + ev.sec ? ev.extra : 0;
-		return this.latencies[slot] + add;
+		const step = this.isUp ? n.upStep : undefined;
+		return this.latencies[slot] + add + (step !== undefined && now >= step.at ? step.extra : 0);
 	}
 
 	send(now: number, deliver: () => void): void {
@@ -336,6 +423,8 @@ interface Policy {
 	 * candidates, kept out of the default `--census` run's length.
 	 */
 	readonly optIn?: boolean;
+	/** `--flag lead.rule.<group>` selects every rule of the group (round 2: `spikes2`). */
+	readonly groups?: ReadonlyArray<string>;
 }
 
 interface SpecKnobs {
@@ -383,12 +472,32 @@ interface HoldKnobs {
  * trips form a run; up to `gapSamples` trips in a row that are not slow do not end it. Every trip enters the cover
  * provisionally; once a run's slow trips span more than `episodeMinSec` (arrival clocks, first to newest) it is an
  * episode: its slow trips leave the cover and later ones stay out while it lasts. The base window keeps every trip.
+ *
+ * Round 2 (each optional; absent = the rule above exactly):
+ * - `gapSec`: the run's gap in time instead of trips: a slow trip more than gapSec after the run's newest slow trip
+ *   starts a new run (a trip that is not slow arriving that late ends it); `gapSamples` is then unused.
+ * - `maxSec`: an episode whose run lasts longer than maxSec (first slow trip to the newest) is a level change: every
+ *   trip it took out or kept out that is still within the cover window returns to the cover (at its own arrival
+ *   time), and its later trips enter the cover; the run stays open (no new episode) until its gap ends it.
+ * - `reference` "base": the median / IQR from the base window (LEAD.windowSec, every trip, as sorted at the last
+ *   refresh, without this trip; from LEAD.minSamples trips) instead of the cover window; "mixed": the median from the
+ *   base window, the IQR from the cover window (both from LEAD.minSamples trips).
+ * - `minSlow`: a run becomes an episode only once it also holds this many slow trips (head-of-line clumps a few
+ *   tenths of a second apart are 1-2 trips each).
+ * - `onTop`: while an episode holds, a slow trip more than max(minGap, k x IQR) (the same IQR) over the median of the
+ *   run's own slow trips (nearest rank; on-top trips not counted in it) is a burst on top of the episode: it enters
+ *   the cover like any other trip (the cover keeps remembering bursts through a spike or a step).
  */
 interface EpisodeKnobs {
 	readonly minGapMs: number;
 	readonly iqrK: number;
 	readonly gapSamples: number;
 	readonly episodeMinSec: number;
+	readonly gapSec?: number;
+	readonly maxSec?: number;
+	readonly reference?: "cover" | "base" | "mixed";
+	readonly minSlow?: number;
+	readonly onTop?: boolean;
 }
 
 /** What option 2 / 3 saw (summed over a run's clients by the census). */
@@ -403,6 +512,17 @@ interface SpikeCounters {
 	removed: number;
 	/** Option 3: slow trips kept out of the cover while their episode lasted. */
 	keptOut: number;
+	/** Option 3, `onTop`: slow trips let into the cover during an episode as bursts on top of it. */
+	onTop: number;
+	/** Option 3, `maxSec`: episodes turned level changes, and the trips they returned to the cover. */
+	levels: number;
+	returned: number;
+	/** Option 3: the longest episode (seconds from its run's first slow trip to its newest while an episode). */
+	longestSec: number;
+}
+
+function noCounters(): SpikeCounters {
+	return { slow: 0, runs: 0, episodes: 0, removed: 0, keptOut: 0, onTop: 0, levels: 0, returned: 0, longestSec: 0 };
 }
 
 const ascending = (a: number, b: number) => a < b;
@@ -463,8 +583,16 @@ class SpecLead implements LeadLike {
 	private runStartAt = 0;
 	private runGap = 0;
 	private runEpisode = false;
+	private runLevel = false;
+	private runLastSlowAt = 0;
+	private runSlow = 0;
+	/** `onTop`: the run's slow trips (not the on-top ones), ascending. */
+	private readonly runSlowSorted: number[] = [];
 	private readonly runIds: number[] = [];
-	readonly spike: SpikeCounters = { slow: 0, runs: 0, episodes: 0, removed: 0, keptOut: 0 };
+	/** `maxSec`: the trips the current episode took out or kept out (arrival clock, trip), oldest first. */
+	private readonly runHeldAt: number[] = [];
+	private readonly runHeldTrip: number[] = [];
+	readonly spike: SpikeCounters = noCounters();
 	private lateCount = 0;
 	private mismatchCount = 0;
 	private bumpCount = 0;
@@ -813,50 +941,77 @@ class SpecLead implements LeadLike {
 		return v;
 	}
 
-	/** Option 3: classify a measured trip against the cover window, put it in (or keep it out), step the run. */
+	/** Option 3: classify a measured trip against the reference window, put it in (or keep it out), step the run. */
 	private episodeTrip(e: EpisodeKnobs, clock: number, trip: number): void {
 		const cov = this.k.cover!;
 		this.refreshCover(cov, clock);
-		const sorted = this.covSorted;
+		const mid = e.reference === "base" || e.reference === "mixed" ? this.scratch : this.covSorted;
+		const spread = e.reference === "base" ? this.scratch : this.covSorted;
 		let slow = false;
-		if (sorted.size() >= this.t.minSamples) {
-			const median = nearestRank(sorted, MEDIAN)!;
-			const iqr = nearestRank(sorted, QUARTILE_HIGH)! - nearestRank(sorted, QUARTILE_LOW)!;
+		let gap = 0;
+		if (mid.size() >= this.t.minSamples && spread.size() >= this.t.minSamples) {
+			const median = nearestRank(mid, MEDIAN)!;
+			const iqr = nearestRank(spread, QUARTILE_HIGH)! - nearestRank(spread, QUARTILE_LOW)!;
 			const minGap = (e.minGapMs / MS_PER_SEC) * SIM_HZ;
-			slow = trip > median + math.max(minGap, e.iqrK * iqr) + EPSILON;
+			gap = math.max(minGap, e.iqrK * iqr);
+			slow = trip > median + gap + EPSILON;
 		}
+		const late = (at: number) => e.gapSec !== undefined && clock - at > e.gapSec + EPSILON;
 		if (slow) {
 			this.spike.slow++;
+			if (this.runActive && late(this.runLastSlowAt)) this.endRun();
 			if (!this.runActive) {
+				this.endRun();
 				this.runActive = true;
 				this.runStartAt = clock;
-				this.runEpisode = false;
-				this.runIds.clear();
+				this.runSlow = 0;
 				this.spike.runs++;
 			}
+			this.runSlow++;
 			this.runGap = 0;
+			this.runLastSlowAt = clock;
 		} else if (this.runActive) {
-			this.runGap++;
-			if (this.runGap > e.gapSamples) {
-				this.runActive = false;
-				this.runIds.clear();
+			if (e.gapSec !== undefined) {
+				if (late(this.runLastSlowAt)) this.endRun();
+			} else {
+				this.runGap++;
+				if (this.runGap > e.gapSamples) this.endRun();
 			}
 		}
-		if (slow && this.runEpisode) {
+		const span = clock - this.runStartAt;
+		if (slow && this.runEpisode && !this.runLevel && e.maxSec !== undefined && span > e.maxSec + EPSILON) {
+			this.runLevel = true;
+			this.spike.levels++;
+			this.returnHeld(clock - cov.windowSec);
+		}
+		let holding = this.runEpisode && !this.runLevel;
+		const level = nearestRank(this.runSlowSorted, MEDIAN);
+		if (slow && holding && e.onTop === true && level !== undefined && trip > level + gap + EPSILON) {
+			this.spike.onTop++;
+			holding = false;
+		} else if (slow && e.onTop === true) {
+			let i = this.runSlowSorted.size();
+			while (i > 0 && this.runSlowSorted[i - 1] > trip) i--;
+			this.runSlowSorted.insert(i, trip);
+		}
+		if (slow && holding) {
 			this.spike.keptOut++;
+			this.holdOut(clock, trip);
 		} else {
 			const id = this.nextTripId++;
 			this.covAt.push(clock);
 			this.covTrip.push(trip);
 			this.covId.push(id);
-			if (slow) this.runIds.push(id);
+			if (slow && !this.runEpisode) this.runIds.push(id);
 		}
-		if (slow && !this.runEpisode && clock - this.runStartAt > e.episodeMinSec + EPSILON) {
+		const dense = this.runSlow >= (e.minSlow ?? 0);
+		if (slow && !this.runEpisode && dense && span > e.episodeMinSec + EPSILON) {
 			this.runEpisode = true;
 			this.spike.episodes++;
 			for (const id of this.runIds) {
 				const i = this.covId.indexOf(id);
 				if (i < 0) continue;
+				this.holdOut(this.covAt[i], this.covTrip[i]);
 				this.covAt.remove(i);
 				this.covTrip.remove(i);
 				this.covId.remove(i);
@@ -865,6 +1020,66 @@ class SpecLead implements LeadLike {
 			this.runIds.clear();
 			this.covDirty = true;
 		}
+		if (slow && this.runEpisode) this.spike.longestSec = math.max(this.spike.longestSec, span);
+	}
+
+	private endRun(): void {
+		this.runActive = false;
+		this.runEpisode = false;
+		this.runLevel = false;
+		this.runIds.clear();
+		this.runHeldAt.clear();
+		this.runHeldTrip.clear();
+		this.runSlowSorted.clear();
+	}
+
+	/** Remembers a trip the episode keeps from the cover (only `maxSec` returns them), oldest first. */
+	private holdOut(at: number, trip: number): void {
+		if (this.k.cover?.episode?.maxSec === undefined) return;
+		let i = this.runHeldAt.size();
+		while (i > 0 && this.runHeldAt[i - 1] > at) i--;
+		this.runHeldAt.insert(i, at);
+		this.runHeldTrip.insert(i, trip);
+	}
+
+	/** A level change: the episode's held trips newer than `keep` go back into the cover, merged by arrival time. */
+	private returnHeld(keep: number): void {
+		const at: number[] = [];
+		const tr: number[] = [];
+		const ids: number[] = [];
+		let a = 0;
+		let b = 0;
+		const na = this.covAt.size();
+		const nb = this.runHeldAt.size();
+		while (a < na || b < nb) {
+			if (b < nb && this.runHeldAt[b] < keep) {
+				b++;
+				continue;
+			}
+			if (b >= nb || (a < na && this.covAt[a] <= this.runHeldAt[b])) {
+				at.push(this.covAt[a]);
+				tr.push(this.covTrip[a]);
+				ids.push(this.covId[a]);
+				a++;
+			} else {
+				at.push(this.runHeldAt[b]);
+				tr.push(this.runHeldTrip[b]);
+				ids.push(this.nextTripId++);
+				this.spike.returned++;
+				b++;
+			}
+		}
+		this.covAt.clear();
+		this.covTrip.clear();
+		this.covId.clear();
+		for (let i = 0; i < at.size(); i++) {
+			this.covAt.push(at[i]);
+			this.covTrip.push(tr[i]);
+			this.covId.push(ids[i]);
+		}
+		this.runHeldAt.clear();
+		this.runHeldTrip.clear();
+		this.covDirty = true;
 	}
 }
 
@@ -895,26 +1110,52 @@ function spikeCandidates(): Policy[] {
 		spec: { ...NO_BUMP, cover: { ...COVER, hold: { holdSec: sec, capped } } },
 		optIn: true,
 	});
-	const episode = (name: string, e: EpisodeKnobs): Policy => ({
+	const episode = (name: string, e: EpisodeKnobs, groups?: ReadonlyArray<string>): Policy => ({
 		name,
-		label: `option 3: cov20 with episodes out of the cover (gap max(${e.minGapMs} ms, ${e.iqrK} IQR), ${e.gapSamples} gap trips, > ${e.episodeMinSec} s)`,
+		label: `option 3: cov20 with episodes out of the cover (gap max(${e.minGapMs} ms, ${e.iqrK} IQR), ${
+			e.gapSec !== undefined ? `gap ${e.gapSec} s` : `${e.gapSamples} gap trips`
+		}, > ${e.episodeMinSec} s${e.maxSec !== undefined ? `, level past ${e.maxSec} s` : ""}${
+			e.reference !== undefined ? `, ${e.reference} reference` : ""
+		}${e.minSlow !== undefined ? `, >= ${e.minSlow} slow trips` : ""}${
+			e.onTop === true ? ", bursts on top let in" : ""
+		})`,
 		spec: { ...NO_BUMP, cover: { ...COVER, episode: e } },
 		optIn: true,
+		groups,
 	});
+	/** Round 2 (`--flag lead.rule.spikes2`: these, `episode` and `ep50`). */
+	const ROUND2 = ["spikes2"];
+	const GAP_SEC = 0.1;
+	const MAX_SEC = 2.5;
+	const timeGap: EpisodeKnobs = { ...EPISODE, gapSec: GAP_SEC };
+	const MIN_SLOW = 6;
+	const dense: EpisodeKnobs = { ...EPISODE, minSlow: MIN_SLOW };
 	const HOLD_SECS = [3, 5, 8];
 	const HOLD_CAPPED_SECS = [3, 5];
 	const EPISODE_SHORT_SEC = 0.15;
 	const EPISODE_LONG_SEC = 0.5;
 	const GAP_LOW_MS = 25;
 	const GAP_HIGH_MS = 60;
+	const long: EpisodeKnobs = { ...timeGap, episodeMinSec: EPISODE_LONG_SEC };
 	return [
 		...HOLD_SECS.map((sec) => hold(sec)),
 		...HOLD_CAPPED_SECS.map((sec) => hold(sec, true)),
-		episode("episode", EPISODE),
+		episode("episode", EPISODE, ROUND2),
 		episode("ep15", { ...EPISODE, episodeMinSec: EPISODE_SHORT_SEC }),
-		episode("ep50", { ...EPISODE, episodeMinSec: EPISODE_LONG_SEC }),
+		episode("ep50", { ...EPISODE, episodeMinSec: EPISODE_LONG_SEC }, ROUND2),
 		episode("epg25", { ...EPISODE, minGapMs: GAP_LOW_MS }),
 		episode("epg60", { ...EPISODE, minGapMs: GAP_HIGH_MS }),
+		episode("ep25t", timeGap, ROUND2),
+		episode("ep25x", { ...timeGap, maxSec: MAX_SEC }, ROUND2),
+		episode("ep25b", { ...timeGap, reference: "base" }, ROUND2),
+		episode("ep50x", { ...long, maxSec: MAX_SEC }, ROUND2),
+		episode("ep50b", { ...long, reference: "base" }, ROUND2),
+		episode("ep25n", dense, ROUND2),
+		episode("ep25bn", { ...dense, reference: "base" }, ROUND2),
+		episode("ep25mn", { ...dense, reference: "mixed" }, ROUND2),
+		episode("ep25nt", { ...dense, onTop: true }, ROUND2),
+		episode("ep25bnt", { ...dense, reference: "base", onTop: true }, ROUND2),
+		episode("ep25mnt", { ...dense, reference: "mixed", onTop: true }, ROUND2),
 	];
 }
 
@@ -1027,6 +1268,9 @@ interface ClientRun {
 	bumps: number;
 	holds: number;
 	measuredAtEnd: boolean;
+	/** Per NetSpec window: server lates (relay) and dropped changed inputs (by send time). */
+	readonly windowLates: number[];
+	readonly windowDropped: number[];
 }
 
 interface NetRun {
@@ -1074,6 +1318,18 @@ function play(net: NetSpec, policy: Policy, durationSec: number): NetRun {
 	const sendTick: Array<Map<number, number>> = [];
 	const sendDepth: Array<Map<number, number>> = [];
 	const sentFrames: Array<Map<number, InputFrame>> = [];
+	/** The clock each tick's frame was sent (the windows' dropped inputs). */
+	const sentClock: Array<Map<number, number>> = [];
+	const windows = net.windows ?? [];
+	/** Each window edge (seconds) and the relay's late counts when the clock passed it. */
+	const edges: number[] = [];
+	for (const [a, b] of windows) {
+		if (!edges.includes(a)) edges.push(a);
+		if (!edges.includes(b)) edges.push(b);
+	}
+	edges.sort(ascending);
+	const lateAtEdge = new Map<number, number[]>();
+	let nextEdge = 0;
 	const ctls: LeadLike[] = [];
 	for (let i = 0; i < PLAYERS; i++) {
 		const own = setupOf();
@@ -1098,6 +1354,7 @@ function play(net: NetSpec, policy: Policy, durationSec: number): NetRun {
 		sendTick.push(new Map());
 		sendDepth.push(new Map());
 		sentFrames.push(new Map());
+		sentClock.push(new Map());
 		runs.push({
 			at: [],
 			eff: [],
@@ -1112,6 +1369,8 @@ function play(net: NetSpec, policy: Policy, durationSec: number): NetRun {
 			bumps: 0,
 			holds: 0,
 			measuredAtEnd: false,
+			windowLates: [],
+			windowDropped: [],
 		});
 	}
 	const decoder = new MergedDecoder(PLAYERS);
@@ -1181,7 +1440,10 @@ function play(net: NetSpec, policy: Policy, durationSec: number): NetRun {
 			run.net.push(c.netLead());
 			for (const inp of res.inputs) {
 				const fs = decodeInputBatch(inp.data, TUNABLES.maxBatchFrames)!;
-				for (let j = 0; j < fs.size(); j++) sentFrames[i].set(inp.firstTick + j, fs[j]);
+				for (let j = 0; j < fs.size(); j++) {
+					sentFrames[i].set(inp.firstTick + j, fs[j]);
+					sentClock[i].set(inp.firstTick + j, now);
+				}
 				up[i].send(now, () => session.submitInput(user, inp.firstTick, inp.data, now));
 			}
 			if (res.hashes.size() > 0) {
@@ -1190,6 +1452,10 @@ function play(net: NetSpec, policy: Policy, durationSec: number): NetRun {
 				up[i].send(now, () => session.reportHashes(user, ticks, hashes));
 			}
 			expect(res.final).toBe(undefined);
+		}
+		while (nextEdge < edges.size() && now + EPSILON >= edges[nextEdge]) {
+			lateAtEdge.set(edges[nextEdge], [...session.getRelay().getStats().late]);
+			nextEdge++;
 		}
 		if (now + EPSILON >= nextMark) {
 			nextMark += RATE_SEC;
@@ -1209,6 +1475,18 @@ function play(net: NetSpec, policy: Policy, durationSec: number): NetRun {
 			if (mine !== undefined && !inputsEqual(mine, log[tick][i])) dropped++;
 		}
 		run.dropped = dropped;
+		for (const [a, b] of windows) {
+			const lateA = lateAtEdge.get(a)?.[i] ?? rs.late[i];
+			const lateB = lateAtEdge.get(b)?.[i] ?? rs.late[i];
+			run.windowLates.push(lateB - lateA);
+			let d = 0;
+			for (const [tick, at] of sentClock[i]) {
+				if (at < a || at >= b || tick >= log.size()) continue;
+				const mine = sentFrames[i].get(tick);
+				if (mine !== undefined && !inputsEqual(mine, log[tick][i])) d++;
+			}
+			run.windowDropped.push(d);
+		}
 		const st = clients[i].leadStats()!;
 		run.bumps = st.bumps;
 		run.holds = clients[i].pacingStats()?.holds ?? 0;
@@ -1415,6 +1693,37 @@ function paceLines(net: NetSpec, policy: Policy, r: NetRun): string[] {
 	return out;
 }
 
+/** A network's windows: per window the effective / net lead means, lates and dropped changed per 10 s per client. */
+function windowText(net: NetSpec, r: NetRun): string {
+	const parts: string[] = [];
+	const windows = net.windows ?? [];
+	for (let w = 0; w < windows.size(); w++) {
+		const [a, b] = windows[w];
+		let eff = 0;
+		let netSum = 0;
+		let n = 0;
+		let lates = 0;
+		let dropped = 0;
+		for (const c of r.clients) {
+			for (let k = 0; k < c.at.size(); k++) {
+				if (c.at[k] < a || c.at[k] >= b) continue;
+				eff += c.eff[k];
+				netSum += c.net[k];
+				n++;
+			}
+			lates += c.windowLates[w];
+			dropped += c.windowDropped[w];
+		}
+		const per = RATE_SEC / ((b - a) * r.clients.size());
+		parts.push(
+			`[${a}, ${b}) eff ${f1(n > 0 ? eff / n : 0)} net ${f1(n > 0 ? netSum / n : 0)} lates ${f1(
+				lates * per,
+			)} dropped ${f1(dropped * per)}`,
+		);
+	}
+	return parts.join(" | ");
+}
+
 const HEADER =
 	"| network | rule | effective lead mean / p95 / max (t) | net lead mean / p95 / max (t) | lates / 10 s | " +
 	"dropped changed / 10 s | relay missed | bumps / 10 s | lead churn / 10 s | felt @20 mean / p95 (t) | felt @10 mean / p95 (t) | gate |";
@@ -1438,7 +1747,10 @@ const SPIKES_FLAG = "lead.rule.spikes";
 function selectedRules(): Policy[] {
 	const out: Policy[] = [TODAY];
 	const spikes = specFlag(SPIKES_FLAG);
-	const picked = (p: Policy) => specFlag(`lead.rule.${p.name}`) || (spikes && p.optIn === true);
+	const picked = (p: Policy) =>
+		specFlag(`lead.rule.${p.name}`) ||
+		(spikes && p.optIn === true) ||
+		(p.groups ?? []).some((g) => specFlag(`lead.rule.${g}`));
 	let any = false;
 	let withCov20 = false;
 	for (const p of CANDIDATES) {
@@ -1453,7 +1765,7 @@ function selectedRules(): Policy[] {
 
 /** Option 2 / 3's counters summed over a run's clients (undefined for any other rule). */
 function spikeCounters(r: NetRun): SpikeCounters | undefined {
-	const sum: SpikeCounters = { slow: 0, runs: 0, episodes: 0, removed: 0, keptOut: 0 };
+	const sum = noCounters();
 	let found = false;
 	for (const c of r.ctls) {
 		if (!(c instanceof SpecLead)) continue;
@@ -1463,6 +1775,10 @@ function spikeCounters(r: NetRun): SpikeCounters | undefined {
 		sum.episodes += c.spike.episodes;
 		sum.removed += c.spike.removed;
 		sum.keptOut += c.spike.keptOut;
+		sum.onTop += c.spike.onTop;
+		sum.levels += c.spike.levels;
+		sum.returned += c.spike.returned;
+		sum.longestSec = math.max(sum.longestSec, c.spike.longestSec);
 	}
 	return found ? sum : undefined;
 }
@@ -1511,12 +1827,17 @@ function fpd18(today: Summary, rule: Summary): { readonly ok: boolean; readonly 
 	};
 }
 
+/** `--flag lead.extra` adds every opt-in network to the selection (all of them with no other network flag). */
+const EXTRA_NETS_FLAG = "lead.extra";
+
 function selectedNetworks(): NetSpec[] {
 	const flags = specFlags();
 	const out: NetSpec[] = [];
+	const named = (n: NetSpec) => flags?.[`lead.${n.name}`] === true;
+	const extra = specFlag(EXTRA_NETS_FLAG);
 	let any = false;
-	for (const n of NETWORKS) if (flags?.[`lead.${n.name}`] === true) any = true;
-	for (const n of NETWORKS) if (!any || flags?.[`lead.${n.name}`] === true) out.push(n);
+	for (const n of NETWORKS) if (named(n)) any = true;
+	for (const n of NETWORKS) if (named(n) || (extra && n.optIn === true) || (!any && n.optIn !== true)) out.push(n);
 	return out;
 }
 
@@ -1529,6 +1850,7 @@ if (FULL) {
 				const runs = new Map<string, NetRun>();
 				const summaries = new Map<string, Summary>();
 				const spikeLines: string[] = [];
+				const windowLines: string[] = [];
 				let todaySummary: Summary | undefined;
 				const gates: string[] = [];
 				/** FPD18's verdicts, asserted once everything is printed. */
@@ -1557,6 +1879,9 @@ if (FULL) {
 							.join(",")}, never sent ${f2(s.neverSentShare * 100)} % (${f2(r.sec)} s cpu)`,
 					);
 					if (policy === TODAY) for (const line of paceLines(net, policy, r)) print(line);
+					if (net.windows !== undefined) {
+						windowLines.push(`[lead census window] ${net.name} ${policy.name}: ${windowText(net, r)}`);
+					}
 				}
 				print(`[lead census] ${net.label}\n${HEADER}\n${rows.join("\n")}\n[lead census] ${trips.join("; ")}`);
 				for (const g of gates) print(g);
@@ -1570,7 +1895,11 @@ if (FULL) {
 					const parts: string[] = [
 						policy.spec?.cover?.hold !== undefined
 							? `slow ${k.slow}, holds ${k.runs}`
-							: `slow ${k.slow}, runs ${k.runs}, episodes ${k.episodes}, removed ${k.removed}, kept out ${k.keptOut}`,
+							: `slow ${k.slow}, runs ${k.runs}, episodes ${k.episodes}, removed ${k.removed}, kept out ${
+									k.keptOut
+							  }, on top ${k.onTop}, levels ${k.levels}, returned ${k.returned}, longest ${f2(
+									k.longestSec,
+							  )} s`,
 					];
 					if (c20run !== undefined) {
 						const d = leadDiff(c20run, r);
@@ -1586,6 +1915,7 @@ if (FULL) {
 					spikeLines.push(`[lead census spike] ${net.name} ${policy.name}: ${parts.join("; ")}`);
 				}
 				for (const line of spikeLines) print(line);
+				for (const line of windowLines) print(line);
 				const r3 = runs.get(RULE3.name);
 				const c20 = runs.get("cov20");
 				if (r3 !== undefined && c20 !== undefined) {

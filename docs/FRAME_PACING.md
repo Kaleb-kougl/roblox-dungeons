@@ -661,8 +661,8 @@ census, `src/shared/lockstep/lead.census.spec.ts`, opt-in) on branch `lead-spike
 `533af85`); FP18-FP20 and FP22 after the owner's answers (2026-11-10: FPD15, FPD16 and FPD17 accepted; FPD18 and FPD19
 not answered, built as proposed). **Pending: FP21 (owner: the Studio 4G session again, once with `KV_LeadBump`).** See
 "As built (FP18-FP20)" for the real API, the census numbers and the deviations.
-"Spike recovery candidates" prototypes two fixes for the long-spike cost in the census only (FPD20 proposed, not
-built).
+"Spike recovery candidates" prototypes fixes for the long-spike cost in the census only (FPD20 proposed, revised by
+its round 2: `ep25mnt`; not built).
 
 ### The census (FP17)
 
@@ -683,7 +683,8 @@ npm run test:only -- --census lockstep/lead.census --flag lead.owner --flag lead
 npm run test:only -- --census lockstep/lead.census --flag lead.jitter --flag lead.clean --flag lead.spec \
   --flag lead.spec200 --flag lead.fp12 --flag lead.longhold --flag lead.cleanspike
 # --flag lead.rule.<name> keeps only those rules (today's always runs)
-# --flag lead.rule.spikes: the opt-in spike recovery candidates ("Spike recovery candidates")
+# --flag lead.rule.spikes: the opt-in spike recovery candidates ("Spike recovery candidates"); lead.rule.spikes2: round 2's
+# --flag lead.extra: the opt-in networks too (spike35, spike60, spike150, cburst, cbspike, cbstep)
 ```
 
 Measured per network and rule: the **effective lead** (net + the buffer's depth, `inputLead()`) and the **net lead**
@@ -1189,7 +1190,7 @@ FP12 on `fp12` / `longhold` as `cov20`). `hold3`, `hold5`: pass the two parts, *
 **fails** `cleanspike` (11.07 s). `hold3c`, `hold5c`: pass `cleanspike` and `longhold`, **fail** FPD18's dropped gate
 on `owner2`.
 
-**Recommendation: option 3 with `episodeMinSec` 0.5** (`ep50`): `cov20`'s cover, a long spike kept out of it. Tunables
+**Round 1 recommendation (superseded by round 2, below): option 3 with `episodeMinSec` 0.5** (`ep50`): `cov20`'s cover, a long spike kept out of it. Tunables
 (proposed `LEAD` additions): `episodeGapMs` 40 (the slow threshold's floor), `episodeIqrK` 3, `episodeGapSamples` 2,
 `episodeMinSec` 0.5, the reference from `minSamples` 20 cover trips. 0.5 s instead of the start value 0.25 for the
 margin on the owner-like links (no episode there, against 1-2 per 62 s run that happened to move nothing); a 1 s spike is
@@ -1203,7 +1204,7 @@ cover window has emptied of the old trips (15 s: then the reference is gone, the
 the new level) and only the base covers the new level meanwhile; the first `episodeMinSec` of a long spike still
 lifts the lead to `min(Lc, C)` until the base takes over.
 
-- **FPD20 (proposed). Long spikes are kept out of the cover.** Option 3: a trip more than max(40 ms, 3 IQR) over the
+- **FPD20, round 1 (superseded by round 2's, below).** Option 3: a trip more than max(40 ms, 3 IQR) over the
   cover window's median is slow; slow trips (up to 2 others between) spanning more than 0.5 s are an episode, its trips
   taken out of the cover and later ones kept out while it lasts; the base window keeps them all. `cleanspike` is back
   in 8.05 s (`cov20` 17.92 s, FP12's bound 9.00 s) and the owner-like links, `jitter`, `clean`, FP11's and `longhold`
@@ -1212,8 +1213,259 @@ lifts the lead to `min(Lc, C)` until the base takes over.
   capped at C it loses FPD18's dropped gate on `owner2`); `episodeMinSec` 0.25 (passes everything too, with 1-2 false
   episodes per run on the owner-like links); `coverWindowSec` 10 (Risks: shortens the hold by 5 s; the 10 s window
   rules `cov20m` / `p98w10` are back on `cleanspike` in 13.03 / 13.08 s, still past 9.00 s; not run as `cov20` with a
-  10 s cover). Owner: accept, change the tunables,
-  or keep Revision 3 as built.
+  10 s cover).
+
+#### Round 2 (2026-11-10, after the review)
+
+**What the review found** (reproduced here exactly; numbers per 10 s per client):
+
+- `ep50` misses spikes under ~0.55 s: a 0.35 s +200 ms spike on `cleanspike`'s link (`spike35`) holds the lead 17.87 /
+  17.88 s like `cov20` (`episode` at 0.25 s: 8.03 / 7.78 s); a 0.6 s one (`spike60`) is caught.
+- A lasting latency step keeps the episode open: on `cbstep` (the clean link with `owner`'s bursts, +100 ms up from
+  7 s on) `ep50`'s episode lasts 14.15 s (724 trips kept out), because "slow" is measured against the 15 s cover
+  window's median; meanwhile the cover is frozen at the old level and the bursts that come at the new one are kept
+  out: lates / dropped 40.0 / 30.0 in [8, 12) and 32.0 / 12.5 in [12, 22) against `cov20`'s 28.8 / 20.0 and 16.5 / 5.5
+  (today 17.5 / 15.0 and 15.0 / 4.5).
+- False episodes: two head-of-line clumps 0.26-0.27 s apart merge into one run (a hold's echoes carry no trip, so they
+  are not gap trips): `episode` raises 1 on `cburst` (2 trips, no frame moved; the review: `ep15` moved 409).
+- Not measured before: a bursty link with a spike (`cbspike`).
+
+**New networks** (opt-in like the candidates: `--flag lead.<name>` or `--flag lead.extra`; same seeds as the
+others, so `cburst`, `cbspike` and `cbstep` share every burst):
+
+| Network | One way | Watched |
+|---|---|---|
+| `spike35` / `spike60` / `spike150` | `cleanspike`'s link (30-40 ms) + one +200 ms up spike at 7 s of 0.35 / 0.6 / 1.5 s (`spike150` added: where a base-window IQR breaks) | FP12, 25 s |
+| `cburst` | 30-40 ms; `owner`'s bursts: 1.2 % of up slots +120-175 ms (head-of-line), 0.2 % down | 47 s; windows [2, 7), [7, 9), [9, 22), [22, 34) |
+| `cbspike` | `cburst` + FP12's spike (+200 ms up for 1 s at 7 s) | 34 s (FP12 printed, below); the same windows |
+| `cbstep` | `cburst` + a lasting +100 ms up from 7 s (`NetSpec.upStep`) | 47 s; windows [2, 7), [7, 8), [8, 12), [12, 22), [22, 47) |
+
+A window prints the effective / net lead means, server lates (the relay's counts at the window's edges) and dropped
+changed inputs (by the clock the frame was sent) per 10 s per client (`[lead census window]`).
+
+**New knobs on `cover.episode`** (each optional; absent = round 1's rule exactly, so `episode` / `ep50` print the
+same rows as before):
+
+- **(c) `gapSec`:** the run's gap in time, not trips: a slow trip more than `gapSec` after the run's newest slow
+  trip starts a new run.
+- **(a) `maxSec`:** an episode whose run lasts longer than `maxSec` is a **level change** (chosen semantics: it was
+  not a spike after all): every trip it took out or kept out that is still within the cover window returns to the
+  cover at its own arrival time, its later trips enter the cover, and the run stays open (no new episode) until its
+  gap ends it.
+- **(b) `reference`:** `"base"`: median and IQR from the base window (5 s, every trip, as sorted at the last refresh,
+  without this trip); `"mixed"`: the median from the base window, the IQR from the cover window (episodes out); both
+  only from 20 trips each.
+- **`minSlow`** (added): a run becomes an episode only once it also holds this many slow trips (6; a merged pair of
+  clumps is 2-3, a 0.25 s spike ~8).
+- **`onTop`** (added): while an episode holds, a slow trip more than the same gap, max(40 ms, 3 IQR), over the median
+  of the run's own slow trips is a burst on top of the episode and enters the cover like any trip.
+
+Rules (`--flag lead.rule.spikes2` runs them with `episode`, `ep50`, today and `cov20`): `ep25t` = `episode` + `gapSec`
+0.1; `ep25x` = `ep25t` + `maxSec` 2.5; `ep25b` = `ep25t` + base reference; `ep50x` / `ep50b` the same at 0.5 s; `ep25n` =
+`episode` + `minSlow` 6; `ep25bn` / `ep25mn` = `ep25n` + base / mixed reference; `ep25nt` / `ep25bnt` / `ep25mnt` the
+three with `onTop`.
+
+```
+# round 2: today, cov20 and every round-2 rule on every network, old and new (two halves side by side: ~5.9 and ~5.0 min)
+npm run test:only -- --census lockstep/lead.census --flag lead.rule.spikes2 --flag lead.owner --flag lead.owner2 \
+  --flag lead.ownerS --flag lead.jitter --flag lead.cburst --flag lead.spec200 --flag lead.spec
+npm run test:only -- --census lockstep/lead.census --flag lead.rule.spikes2 --flag lead.clean --flag lead.fp12 \
+  --flag lead.longhold --flag lead.cleanspike --flag lead.spike35 --flag lead.spike60 --flag lead.spike150 \
+  --flag lead.cbspike --flag lead.cbstep
+```
+
+**The success test, per rule** (back-within: the worser client; the spike networks' FP12 bound is 9.00 s, 9.25 s for
+one `spike150` client; episodes = both clients; "=": the same as `cov20` on every client frame):
+
+| Rule | cleanspike / spike35 / spike60 / spike150 back (s, worst client; <= 9.00) | owner / owner2 / ownerS: episodes, = cov20, FPD18 | jitter / cburst: episodes (frames moved) | cbstep [8, 12) lates / dropped | cbstep [12, 22) lates / dropped | cbspike [9, 22) / [22, 34) lates / dropped (cburst: 0 / 0) | fp12, longhold FP12 | FP11 |
+|---|---|---|---|---|---|---|---|---|
+| today | 8.05 / 7.98 / 8.03 / 8.28 | -; -; - | -; - | 17.5 / 15.0 | 15.0 / 4.5 | 5.0 / 0.4, 7.9 / 5.4 | pass, pass | pass, pass |
+| cov20 | 17.92 **F** / 17.88 **F** / 17.90 **F** / 17.90 **F** | -; -; - | -; - | 28.8 / 20.0 | 16.5 / 5.5 | 0.0 / 0.0, 0.0 / 0.0 | pass, pass | pass, pass |
+| episode | 8.05 / 8.03 / 8.03 / 8.28 | 1, =, pass; 2, =, pass; 2, =, pass | 0 (0); 1 (0) | 40.0 / 30.0 | 32.0 / 12.5 | 0.0 / 0.0, 0.0 / 0.0 | pass, pass | pass, pass |
+| ep50 | 8.05 / 17.88 **F** / 8.03 / 8.28 | 0, =, pass; 0, =, pass; 0, =, pass | 0 (0); 0 (0) | 40.0 / 30.0 | 32.0 / 12.5 | 0.0 / 0.0, 0.0 / 0.0 | pass, pass | pass, pass |
+| ep25t | 8.05 / 8.03 / 8.03 / 8.28 | 0, =, pass; 0, =, pass; 0, =, pass | 0 (0); 0 (0) | 30.0 / 21.2 | 19.0 / 6.0 | 0.0 / 0.0, 0.0 / 0.0 | pass, pass | pass, pass |
+| ep25x | 8.05 / 8.03 / 8.03 / 8.28 | 0, =, pass; 0, =, pass; 0, =, pass | 0 (0); 0 (0) | 30.0 / 21.2 | 19.0 / 6.0 | 0.0 / 0.0, 0.0 / 0.0 | pass, pass | pass, pass |
+| ep25b | 8.05 / 8.03 / 8.03 / 17.90 **F** | 0, =, pass; 0, =, pass; 0, =, pass | 0 (0); 0 (0) | 31.2 / 22.5 | 16.5 / 5.5 | 0.0 / 0.0, 0.0 / 0.0 | pass, pass | pass, pass |
+| ep50x | 8.05 / 17.88 **F** / 8.03 / 8.28 | 0, =, pass; 0, =, pass; 0, =, pass | 0 (0); 0 (0) | 28.8 / 20.0 | 19.0 / 6.0 | 0.0 / 0.0, 0.0 / 0.0 | pass, pass | pass, pass |
+| ep50b | 8.05 / 17.88 **F** / 8.03 / 17.90 **F** | 0, =, pass; 0, =, pass; 0, =, pass | 0 (0); 0 (0) | 27.5 / 18.8 | 16.5 / 5.5 | 0.0 / 0.0, 0.0 / 0.0 | pass, pass | pass, pass |
+| ep25n | 8.05 / 8.03 / 8.03 / 8.28 | 0, =, pass; 0, =, pass; 0, =, pass | 0 (0); 0 (0) | 40.0 / 30.0 | 32.0 / 12.5 | 0.0 / 0.0, 0.0 / 0.0 | pass, pass | pass, pass |
+| ep25bn | 8.05 / 8.03 / 8.03 / 17.90 **F** | 0, =, pass; 0, =, pass; 0, =, pass | 0 (0); 0 (0) | 36.2 / 26.2 | 16.5 / 5.5 | 0.0 / 0.0, 0.0 / 0.0 | pass, pass | pass, pass |
+| ep25mn | 8.05 / 8.03 / 8.03 / 8.28 | 0, =, pass; 0, =, pass; 0, =, pass | 0 (0); 0 (0) | 40.0 / 30.0 | 20.0 / 7.0 | 0.0 / 0.0, 0.0 / 0.0 | pass, pass | pass, pass |
+| ep25nt | 8.05 / 8.03 / 8.03 / 8.28 | 0, =, pass; 0, =, pass; 0, =, pass | 0 (0); 0 (0) | 26.2 / 17.5 | 16.5 / 5.5 | 0.0 / 0.0, 0.0 / 0.0 | pass, pass | pass, pass |
+| ep25bnt | 8.05 / 8.03 / 8.03 / 17.90 **F** | 0, =, pass; 0, =, pass; 0, =, pass | 0 (0); 0 (0) | 27.5 / 18.8 | 16.5 / 5.5 | 0.0 / 0.0, 0.0 / 0.0 | pass, pass | pass, pass |
+| ep25mnt | 8.05 / 8.03 / 8.03 / 8.28 | 0, =, pass; 0, =, pass; 0, =, pass | 0 (0); 0 (0) | 26.2 / 17.5 | 16.5 / 5.5 | 0.0 / 0.0, 0.0 / 0.0 | pass, pass | pass, pass |
+
+**Today, `cov20` and the recommended rule on every network:**
+
+| Network | Rule | Effective lead mean / p95 / max (t) | Net lead mean (t) | Lates / 10 s | Dropped changed / 10 s | Relay missed | Churn / 10 s | Felt @20 mean / p95 (t) | Felt @10 mean (t) | Gate |
+|---|---|---|---|---|---|---|---|---|---|---|
+| owner | today | 20.8 / 27 / 32 | 16.9 | 14.1 | 8.2 | 6.39 % | 36.3 | 2.10 / 7 | 10.79 |  |
+| owner | cov20 | 20.4 / 24 / 30 | 16.5 | 11.3 | 4.4 | 3.47 % | 6.2 | 0.61 / 4 | 10.40 |  |
+| owner | **ep25mnt** | 20.4 / 24 / 30 | 16.5 | 11.3 | 4.4 | 3.47 % | 6.2 | 0.61 / 4 | 10.40 | FPD18 pass |
+| owner2 | today | 22.4 / 27 / 34 | 18.5 | 12.1 | 6.8 | 6.09 % | 34.7 | 3.13 / 7 | 12.38 |  |
+| owner2 | cov20 | 21.5 / 25 / 29 | 17.6 | 14.2 | 6.8 | 4.20 % | 8.5 | 1.55 / 5 | 11.48 |  |
+| owner2 | **ep25mnt** | 21.5 / 25 / 29 | 17.6 | 14.2 | 6.8 | 4.20 % | 8.5 | 1.55 / 5 | 11.48 | FPD18 pass |
+| ownerS | today | 21.3 / 27 / 31 | 17.2 | 11.2 | 6.8 | 5.78 % | 36.9 | 2.26 / 7 | 11.33 |  |
+| ownerS | cov20 | 20.8 / 25 / 28 | 16.7 | 9.8 | 3.6 | 2.95 % | 6.5 | 0.86 / 5 | 10.78 |  |
+| ownerS | **ep25mnt** | 20.8 / 25 / 28 | 16.7 | 9.8 | 3.6 | 2.95 % | 6.5 | 0.86 / 5 | 10.78 | FPD18 pass |
+| jitter | today | 22.4 / 29 / 35 | 15.4 | 5.8 | 2.7 | 3.56 % | 16.1 | 2.46 / 9 | 12.44 |  |
+| jitter | cov20 | 21.0 / 25 / 27 | 14.0 | 7.6 | 3.5 | 2.42 % | 0.8 | 1.01 / 5 | 11.01 |  |
+| jitter | **ep25mnt** | 21.0 / 25 / 27 | 14.0 | 7.6 | 3.5 | 2.42 % | 0.8 | 1.01 / 5 | 11.01 |  |
+| clean | today | 10.2 / 11 / 11 | 6.2 | 0.0 | 0.0 | 0.00 % | 0.3 | 0.00 / 0 | 0.17 |  |
+| clean | cov20 | 11.0 / 11 / 11 | 7.0 | 0.0 | 0.0 | 0.00 % | 0.0 | 0.00 / 0 | 1.00 |  |
+| clean | **ep25mnt** | 11.0 / 11 / 11 | 7.0 | 0.0 | 0.0 | 0.00 % | 0.0 | 0.00 / 0 | 1.00 |  |
+| spec | today | 19.2 / 20 / 20 | 11.6 | 0.0 | 0.0 | 0.17 % | 0.5 | 0.00 / 0 | 9.18 | FP11 pass; 0 lates, missed 0.17 % |
+| spec | cov20 | 19.7 / 20 / 21 | 12.1 | 0.0 | 0.0 | 0.17 % | 0.2 | 0.03 / 0 | 9.74 | FP11 pass; 0 lates, missed 0.17 % |
+| spec | **ep25mnt** | 19.7 / 20 / 21 | 12.1 | 0.0 | 0.0 | 0.17 % | 0.2 | 0.03 / 0 | 9.74 | FP11 pass; 0 lates, missed 0.17 % |
+| spec200 | today | 27.8 / 31 / 32 | 15.9 | 0.0 | 0.0 | 0.11 % | 1.2 | 7.79 / 11 | 17.79 | FP11 pass; 0 lates, missed 0.11 % |
+| spec200 | cov20 | 27.8 / 31 / 32 | 15.9 | 0.0 | 0.0 | 0.11 % | 1.2 | 7.79 / 11 | 17.79 | FP11 pass; 0 lates, missed 0.11 % |
+| spec200 | **ep25mnt** | 27.8 / 31 / 32 | 15.9 | 0.0 | 0.0 | 0.11 % | 1.2 | 7.79 / 11 | 17.79 | FP11 pass; 0 lates, missed 0.11 % |
+| fp12 | today | 23.6 / 31 / 31 | 16.2 | 11.3 | 6.8 | 2.98 % | 11.6 | 3.94 / 11 | 13.65 | FP12 pass: back 8.18 s / 8.20 s |
+| fp12 | cov20 | 23.6 / 30 / 30 | 16.1 | 20.3 | 13.9 | 4.47 % | 9.7 | 3.58 / 10 | 13.56 | FP12 pass: back 7.73 s / 7.95 s |
+| fp12 | **ep25mnt** | 23.4 / 30 / 30 | 15.9 | 20.3 | 13.9 | 4.47 % | 9.7 | 3.58 / 10 | 13.35 | FP12 pass: back 7.73 s / 7.95 s |
+| longhold | today | 16.6 / 31 / 33 | 13.6 | 12.8 | 10.2 | 3.32 % | 14.3 | 1.22 / 11 | 6.60 | FP12 pass: back 5.32 s / 5.32 s |
+| longhold | cov20 | 14.0 / 14 / 14 | 11.0 | 12.8 | 10.2 | 2.13 % | 0.0 | 0.00 / 0 | 4.00 | FP12 pass: back 0.00 s / 0.00 s |
+| longhold | **ep25mnt** | 14.0 / 14 / 14 | 11.0 | 12.8 | 10.2 | 2.13 % | 0.0 | 0.00 / 0 | 4.00 | FP12 pass: back 0.00 s / 0.00 s |
+| cleanspike | today | 13.2 / 21 / 21 | 9.3 | 5.0 | 3.9 | 1.41 % | 7.2 | 0.21 / 1 | 3.28 | FP12 pass: back 8.05 s / 8.03 s |
+| cleanspike | cov20 | 16.2 / 21 / 21 | 12.2 | 6.2 | 4.7 | 1.56 % | 6.2 | 0.20 / 1 | 6.17 | FP12 **FAIL**: back 17.92 s / 17.92 s |
+| cleanspike | **ep25mnt** | 13.4 / 21 / 21 | 9.4 | 6.2 | 4.7 | 1.56 % | 6.2 | 0.20 / 1 | 3.39 | FP12 pass: back 8.05 s / 8.03 s |
+| spike35 | today | 13.1 / 21 / 21 | 9.1 | 5.1 | 4.0 | 1.44 % | 7.3 | 0.19 / 1 | 3.13 | FP12 pass: back 7.98 s / 7.98 s |
+| spike35 | cov20 | 16.0 / 21 / 21 | 12.0 | 6.4 | 4.8 | 1.60 % | 6.1 | 0.09 / 1 | 5.99 | FP12 **FAIL**: back 17.87 s / 17.88 s |
+| spike35 | **ep25mnt** | 13.1 / 21 / 21 | 9.2 | 6.4 | 4.8 | 1.60 % | 6.1 | 0.09 / 1 | 3.13 | FP12 pass: back 8.03 s / 7.78 s |
+| spike60 | today | 13.2 / 21 / 21 | 9.2 | 5.1 | 4.0 | 1.42 % | 7.3 | 0.20 / 1 | 3.20 | FP12 pass: back 8.03 s / 8.03 s |
+| spike60 | cov20 | 16.1 / 21 / 21 | 12.2 | 6.3 | 4.7 | 1.58 % | 6.3 | 0.19 / 1 | 6.12 | FP12 **FAIL**: back 17.90 s / 17.90 s |
+| spike60 | **ep25mnt** | 13.3 / 21 / 21 | 9.3 | 6.3 | 4.7 | 1.58 % | 6.3 | 0.19 / 1 | 3.31 | FP12 pass: back 8.03 s / 8.03 s |
+| spike150 | today | 13.4 / 22 / 22 | 9.5 | 4.9 | 3.8 | 1.44 % | 7.4 | 0.31 / 2 | 3.51 | FP12 pass: back 8.03 s / 8.28 s |
+| spike150 | cov20 | 16.3 / 22 / 22 | 12.4 | 6.2 | 4.6 | 1.59 % | 6.5 | 0.31 / 2 | 6.32 | FP12 **FAIL**: back 17.90 s / 17.90 s |
+| spike150 | **ep25mnt** | 13.6 / 22 / 22 | 9.7 | 6.2 | 4.6 | 1.59 % | 6.5 | 0.31 / 2 | 3.62 | FP12 pass: back 8.03 s / 8.28 s |
+| cburst | today | 15.2 / 22 / 27 | 10.9 | 13.3 | 7.8 | 6.85 % | 36.2 | 0.22 / 2 | 5.22 |  |
+| cburst | cov20 | 18.2 / 23 / 26 | 13.9 | 2.6 | 1.4 | 2.04 % | 6.8 | 0.26 / 3 | 8.17 |  |
+| cburst | **ep25mnt** | 18.2 / 23 / 26 | 13.9 | 2.6 | 1.4 | 2.04 % | 6.8 | 0.26 / 3 | 8.17 |  |
+| cbspike | today | 17.3 / 25 / 30 | 12.7 | 12.0 | 6.7 | 7.35 % | 32.8 | 0.85 / 5 | 7.28 | FP12 **FAIL**: back never / never |
+| cbspike | cov20 | 19.9 / 25 / 28 | 15.3 | 7.0 | 4.5 | 3.28 % | 5.9 | 0.66 / 5 | 9.87 | FP12 **FAIL**: back 17.07 s / 24.88 s |
+| cbspike | **ep25mnt** | 19.9 / 25 / 28 | 15.3 | 7.0 | 4.5 | 3.28 % | 5.9 | 0.66 / 5 | 9.87 | FP12 **FAIL**: back 17.07 s / 24.88 s |
+| cbstep | today | 20.4 / 27 / 31 | 16.1 | 14.9 | 9.0 | 7.22 % | 35.8 | 2.01 / 7 | 10.36 |  |
+| cbstep | cov20 | 20.0 / 24 / 30 | 15.7 | 12.8 | 6.8 | 4.22 % | 7.2 | 0.61 / 4 | 10.00 |  |
+| cbstep | **ep25mnt** | 20.0 / 24 / 30 | 15.7 | 12.6 | 6.6 | 4.19 % | 7.2 | 0.61 / 4 | 10.03 |  |
+
+**Episode counters** (both clients: slow trips / runs / episodes / removed from the cover / kept out / let in on top;
+the longest episode; "=" or the client frames that differ from `cov20`'s):
+
+| Network | episode | ep50 | ep25n | ep25mn | ep25nt | ep25mnt |
+|---|---|---|---|---|---|---|
+| owner | 76/67/1/2/0/0, 0.27 s, = | 76/67/0/0/0/0, 0.00 s, = | 76/67/0/0/0/0, 0.00 s, = | 76/67/0/0/0/0, 0.00 s, = | 76/67/0/0/0/0, 0.00 s, = | 76/67/0/0/0/0, 0.00 s, = |
+| owner2 | 124/97/2/5/0/0, 0.40 s, = | 124/97/0/0/0/0, 0.00 s, = | 124/97/0/0/0/0, 0.00 s, = | 124/97/0/0/0/0, 0.00 s, = | 124/97/0/0/0/0, 0.00 s, = | 124/97/0/0/0/0, 0.00 s, = |
+| ownerS | 80/71/2/6/0/0, 0.37 s, = | 80/71/0/0/0/0, 0.00 s, = | 80/71/0/0/0/0, 0.00 s, = | 80/71/0/0/0/0, 0.00 s, = | 80/71/0/0/0/0, 0.00 s, = | 80/71/0/0/0/0, 0.00 s, = |
+| jitter | 21/19/0/0/0/0, 0.00 s, = | 21/19/0/0/0/0, 0.00 s, = | 21/19/0/0/0/0, 0.00 s, = | 21/19/0/0/0/0, 0.00 s, = | 21/19/0/0/0/0, 0.00 s, = | 21/19/0/0/0/0, 0.00 s, = |
+| clean | 0/0/0/0/0/0, 0.00 s, = | 0/0/0/0/0/0, 0.00 s, = | 0/0/0/0/0/0, 0.00 s, = | 0/0/0/0/0/0, 0.00 s, = | 0/0/0/0/0/0, 0.00 s, = | 0/0/0/0/0/0, 0.00 s, = |
+| spec | 0/0/0/0/0/0, 0.00 s, = | 0/0/0/0/0/0, 0.00 s, = | 0/0/0/0/0/0, 0.00 s, = | 0/0/0/0/0/0, 0.00 s, = | 0/0/0/0/0/0, 0.00 s, = | 0/0/0/0/0/0, 0.00 s, = |
+| spec200 | 0/0/0/0/0/0, 0.00 s, = | 0/0/0/0/0/0, 0.00 s, = | 0/0/0/0/0/0, 0.00 s, = | 0/0/0/0/0/0, 0.00 s, = | 0/0/0/0/0/0, 0.00 s, = | 0/0/0/0/0/0, 0.00 s, = |
+| fp12 | 46/2/2/13/33/0, 1.07 s, 480 | 46/2/2/22/24/0, 1.07 s, 480 | 46/2/2/14/32/0, 1.07 s, 480 | 46/2/2/14/32/0, 1.07 s, 480 | 46/2/2/14/32/0, 1.07 s, 480 | 46/2/2/14/32/0, 1.07 s, 480 |
+| longhold | 2/2/0/0/0/0, 0.00 s, = | 2/2/0/0/0/0, 0.00 s, = | 2/2/0/0/0/0, 0.00 s, = | 2/2/0/0/0/0, 0.00 s, = | 2/2/0/0/0/0, 0.00 s, = | 2/2/0/0/0/0, 0.00 s, = |
+| cleanspike | 62/2/2/19/43/0, 1.00 s, 1425 | 62/2/2/34/28/0, 1.00 s, 1425 | 62/2/2/19/43/0, 1.00 s, 1425 | 62/2/2/19/43/0, 1.00 s, 1425 | 62/2/2/19/43/0, 1.00 s, 1425 | 62/2/2/19/43/0, 1.00 s, 1425 |
+| spike35 | 22/2/2/19/3/0, 0.33 s, 1436 | 22/2/0/0/0/0, 0.00 s, = | 22/2/2/19/3/0, 0.33 s, 1436 | 22/2/2/19/3/0, 0.33 s, 1436 | 22/2/2/19/3/0, 0.33 s, 1436 | 22/2/2/19/3/0, 0.33 s, 1436 |
+| spike60 | 38/2/2/19/19/0, 0.60 s, 1424 | 38/2/2/34/4/0, 0.60 s, 1424 | 38/2/2/19/19/0, 0.60 s, 1424 | 38/2/2/19/19/0, 0.60 s, 1424 | 38/2/2/19/19/0, 0.60 s, 1424 | 38/2/2/19/19/0, 0.60 s, 1424 |
+| spike150 | 92/2/2/19/73/0, 1.48 s, 1409 | 92/2/2/34/58/0, 1.48 s, 1409 | 92/2/2/19/73/0, 1.48 s, 1409 | 92/2/2/19/73/0, 1.48 s, 1409 | 92/2/2/19/73/0, 1.48 s, 1409 | 92/2/2/19/73/0, 1.48 s, 1409 |
+| cburst | 58/51/1/2/0/0, 0.27 s, = | 58/51/0/0/0/0, 0.00 s, = | 58/51/0/0/0/0, 0.00 s, = | 58/51/0/0/0/0, 0.00 s, = | 58/51/0/0/0/0, 0.00 s, = | 58/51/0/0/0/0, 0.00 s, = |
+| cbspike | 100/42/3/19/38/0, 1.10 s, 906 | 100/42/2/32/23/0, 1.10 s, 906 | 100/42/2/17/38/0, 1.10 s, 906 | 100/42/2/17/38/0, 1.10 s, 906 | 100/42/2/17/36/2, 1.10 s, = | 100/42/2/17/36/2, 1.10 s, = |
+| cbstep | 788/32/2/18/738/0, 14.15 s, 1393 | 788/32/2/32/724/0, 14.15 s, 1393 | 788/32/2/18/738/0, 14.15 s, 1393 | 169/42/2/18/108/0, 2.45 s, 671 | 757/32/2/18/684/23, 13.47 s, 141 | 169/42/2/18/103/5, 2.45 s, 141 |
+
+**`cbstep`, per window** (effective / net lead mean, lates / dropped per 10 s per client):
+
+| cbstep: eff / net mean (t), lates / dropped per 10 s | [2, 7) | [7, 8) | [8, 12) | [12, 22) | [22, 47) |
+|---|---|---|---|---|---|
+| today | 15.8 / 10.9 / 19.0 / 8.0 | 18.0 / 12.4 / 90.0 / 75.0 | 22.9 / 18.3 / 17.5 / 15.0 | 21.3 / 17.0 / 15.0 / 4.5 | 20.6 / 16.5 / 10.6 / 7.4 |
+| cov20 | 17.2 / 12.2 / 9.0 / 4.0 | 19.1 / 13.5 / 40.0 / 30.0 | 19.9 / 15.3 / 28.8 / 20.0 | 20.7 / 16.4 / 16.5 / 5.5 | 20.3 / 16.3 / 8.4 / 4.8 |
+| episode | 17.2 / 12.2 / 9.0 / 4.0 | 19.1 / 13.5 / 40.0 / 30.0 | 18.1 / 13.4 / 40.0 / 30.0 | 18.9 / 14.6 / 32.0 / 12.5 | 20.3 / 16.3 / 8.4 / 4.8 |
+| ep50 | 17.2 / 12.2 / 9.0 / 4.0 | 19.1 / 13.5 / 40.0 / 30.0 | 18.1 / 13.4 / 40.0 / 30.0 | 18.9 / 14.6 / 32.0 / 12.5 | 20.3 / 16.3 / 8.4 / 4.8 |
+| ep25x | 17.2 / 12.2 / 9.0 / 4.0 | 19.1 / 13.5 / 40.0 / 30.0 | 19.5 / 14.9 / 30.0 / 21.2 | 20.4 / 16.1 / 19.0 / 6.0 | 20.3 / 16.3 / 8.4 / 4.8 |
+| ep25b | 17.2 / 12.2 / 9.0 / 4.0 | 19.1 / 13.5 / 40.0 / 30.0 | 19.6 / 15.0 / 31.2 / 22.5 | 20.7 / 16.4 / 16.5 / 5.5 | 20.3 / 16.3 / 8.4 / 4.8 |
+| ep25n | 17.2 / 12.2 / 9.0 / 4.0 | 19.1 / 13.5 / 40.0 / 30.0 | 18.1 / 13.4 / 40.0 / 30.0 | 18.9 / 14.6 / 32.0 / 12.5 | 20.3 / 16.3 / 8.4 / 4.8 |
+| ep25bn | 17.2 / 12.2 / 9.0 / 4.0 | 19.1 / 13.5 / 40.0 / 30.0 | 18.9 / 14.2 / 36.2 / 26.2 | 20.7 / 16.4 / 16.5 / 5.5 | 20.3 / 16.3 / 8.4 / 4.8 |
+| ep25mn | 17.2 / 12.2 / 9.0 / 4.0 | 19.1 / 13.5 / 40.0 / 30.0 | 18.1 / 13.5 / 40.0 / 30.0 | 20.4 / 16.1 / 20.0 / 7.0 | 20.3 / 16.3 / 8.4 / 4.8 |
+| ep25nt | 17.2 / 12.2 / 9.0 / 4.0 | 19.1 / 13.5 / 40.0 / 30.0 | 20.2 / 15.6 / 26.2 / 17.5 | 20.7 / 16.4 / 16.5 / 5.5 | 20.3 / 16.3 / 8.4 / 4.8 |
+| ep25bnt | 17.2 / 12.2 / 9.0 / 4.0 | 19.1 / 13.5 / 40.0 / 30.0 | 20.1 / 15.4 / 27.5 / 18.8 | 20.7 / 16.4 / 16.5 / 5.5 | 20.3 / 16.3 / 8.4 / 4.8 |
+| ep25mnt | 17.2 / 12.2 / 9.0 / 4.0 | 19.1 / 13.5 / 40.0 / 30.0 | 20.2 / 15.6 / 26.2 / 17.5 | 20.7 / 16.4 / 16.5 / 5.5 | 20.3 / 16.3 / 8.4 / 4.8 |
+
+**`cbspike` against `cburst` after the spike** (same columns; the bursts are the same in both):
+
+| Rule | cburst [9, 22) | cbspike [9, 22) | cburst [22, 34) | cbspike [22, 34) |
+|---|---|---|---|---|
+| today | 16.1 / 11.8 / 15.0 / 5.8 | 18.7 / 14.4 / 5.0 / 0.4 | 15.3 / 10.7 / 7.9 / 5.4 | 15.3 / 10.6 / 7.9 / 5.4 |
+| cov20 | 19.2 / 14.9 / 0.0 / 0.0 | 20.7 / 16.4 / 0.0 / 0.0 | 19.3 / 14.7 / 0.0 / 0.0 | 19.7 / 15.1 / 0.0 / 0.0 |
+| episode | 19.2 / 14.9 / 0.0 / 0.0 | 20.4 / 16.1 / 0.0 / 0.0 | 19.3 / 14.7 / 0.0 / 0.0 | 19.4 / 14.8 / 0.0 / 0.0 |
+| ep25x | 19.2 / 14.9 / 0.0 / 0.0 | 20.7 / 16.4 / 0.0 / 0.0 | 19.3 / 14.7 / 0.0 / 0.0 | 19.7 / 15.1 / 0.0 / 0.0 |
+| ep25b | 19.2 / 14.9 / 0.0 / 0.0 | 20.7 / 16.4 / 0.0 / 0.0 | 19.3 / 14.7 / 0.0 / 0.0 | 19.7 / 15.1 / 0.0 / 0.0 |
+| ep25n | 19.2 / 14.9 / 0.0 / 0.0 | 20.4 / 16.1 / 0.0 / 0.0 | 19.3 / 14.7 / 0.0 / 0.0 | 19.4 / 14.8 / 0.0 / 0.0 |
+| ep25mn | 19.2 / 14.9 / 0.0 / 0.0 | 20.4 / 16.1 / 0.0 / 0.0 | 19.3 / 14.7 / 0.0 / 0.0 | 19.4 / 14.8 / 0.0 / 0.0 |
+| ep25mnt | 19.2 / 14.9 / 0.0 / 0.0 | 20.7 / 16.4 / 0.0 / 0.0 | 19.3 / 14.7 / 0.0 / 0.0 | 19.7 / 15.1 / 0.0 / 0.0 |
+
+What each fix does (the windows and counters above):
+
+- **(c) The time gap breaks spike detection.** It does remove the false episodes (0 on every owner-like link and
+  `cburst`), but a burst's head-of-line hole inside a spike is longer than 0.1 s, so the spike splits into runs that
+  each start over and stay in the cover: on `cbspike` `ep25t` keeps 13 trips out and is `cov20` on every frame; on
+  `fp12` (20-120 ms jitter) 7 runs, `cov20` on every frame (FP12 passes there only because `cov20` does). Not
+  recommended.
+- **(a) A maximum length** (`ep25x` / `ep50x`) ends the long step episode at 2.53 s and returns its trips (151 / 152),
+  but the bursts kept out before that are already lates: `cbstep` [12, 22) 19.0 / 6.0 against `cov20`'s 16.5 / 5.5
+  ([8, 12): 30.0 / 21.2, `ep50x` 28.8 / 20.0). Any `maxSec` must exceed the longest spike it should forget, so it cannot
+  end a step sooner.
+- **(b) The base window's median** follows a level change in ~2.5 s (half its window), which ends the step's run on
+  its own (`ep25bn` 1.17 s, [12, 22) = `cov20`'s 16.5 / 5.5); but its IQR breaks on a spike that fills a quarter of the
+  5 s window: on `spike150` the threshold climbs over the spike, the run ends and the rest of it enters the cover
+  (`ep25b` / `ep25bn` / `ep25bnt` back 17.90 s). The mixed reference (median from the base window, IQR from the cover
+  window, episodes out) keeps the spread stable: `ep25mn` catches `spike150` (8.28 s) and ends the step's episode at
+  2.45 s.
+- **`minSlow` 6** removes every false episode at 0.25 s (owner / owner2 / ownerS / jitter / cburst: 0) and keeps every
+  spike (`spike35` 0.33 s is ~11 slow trips per client).
+- **On-top bursts** are what the step needed: with them the bursts at the new level reach the cover during the
+  episode (`ep25mnt`: 5 let in on `cbstep`, 2 on `cbspike`), and `cbstep` is no worse than `cov20` in either window
+  ([8, 12) 26.2 / 17.5 against 28.8 / 20.0; [12, 22) 16.5 / 5.5, the same). Without them (`ep25mn`) the window after
+  the step loses: [8, 12) 40.0 / 30.0, [12, 22) 20.0 / 7.0.
+- **`cbspike`:** no rule loses a burst after the spike (0 lates, 0 dropped in [9, 22) and [22, 34), as `cburst`).
+  `ep25mnt` is `cov20` on every frame there: the cap binds, the spike's own trips are kept
+  out (36) but two bursts on top of it enter, so the cover sits at C like `cov20`'s (net 16.4 t in [9, 22) against
+  `cburst`'s 14.9). Its FP12 line fails for every rule, today too (today: never back; the bursts keep moving the lead
+  more than a tick): printed, not a criterion.
+
+**Which passes** (every criterion: `cleanspike`, `spike35`, `spike60` back within 9.00 s; owner-like FPD18 and `cov20`
+on every frame; no false episode on `jitter` / `cburst`; `cbstep` no worse than `cov20` in [8, 12) and [12, 22);
+`cbspike` keeps the bursts after the spike; FP12 on `fp12` / `longhold` and FP11 as `cov20`): **`ep25mnt` and
+`ep25nt`**, and `spike150` too. Every other rule fails at least one: `episode` / `ep25n` / `ep25mn` / `ep50` the
+`cbstep` windows (`ep50` also `spike35`); `ep25t` / `ep25x` `cbstep` [8, 12) and [12, 22) (and the time gap misses
+`cbspike`'s spike); `ep25b` / `ep25bn` / `ep25bnt` `spike150` (and `ep25b` / `ep25bn` `cbstep` [8, 12)); `ep50x` /
+`ep50b` `spike35` (`ep50x` also `cbstep` [12, 22), `ep50b` also `spike150`). `ep25nt` passes with the cover window's median, so its step episode
+stays open 13.47 s with 684 trips kept out (harmless here only because the on-top bursts reach the cover);
+`ep25mnt`'s ends at 2.45 s (103 kept out).
+
+**Recommendation (revised): `ep25mnt`.** Tunables (proposed `LEAD` additions): `episodeGapMs` 40, `episodeIqrK` 3,
+`episodeGapSamples` 2 (trips, not time), `episodeMinSec` 0.25, `episodeMinSlow` 6; the median from the base window
+(5 s), the IQR from the cover window (15 s, episodes out), each from `minSamples` 20 trips; bursts on top of an
+episode let in (the same gap over the median of the run's slow trips). Port notes for `lead.ts`: the census classifies
+a trip after expiring the cover window (`refreshCover(clock)` first) and inserts it after; `lead.ts` today inserts
+before `refresh(clock)` expires: keep the census's order. The base reference is the base window as sorted at the last
+refresh, without the new trip. Run state: start clock, gap count, slow count, the run's slow trips sorted (on-top
+median), the ids of its provisional trips (removal from `covSorted` by binary search).
+
+Risks left (not measured): a spike longer than ~2.5 s moves the base median, so its later trips enter the cover and
+it is held like `cov20` (a level change by construction; not run); a spike shorter than 0.25 s or under 6 slow trips
+is remembered like a burst; the first 0.25 s of a spike or step still enters the cover and lifts the lead to
+`min(Lc, C)` until it is removed; FP12's spike lates and dropped inputs (FPD15's cost: `fp12` 20.3 / 13.9) are
+unchanged.
+
+- **FPD20 (proposed, revised by round 2). Long spikes are kept out of the cover; bursts on top of them are not.**
+  `ep25mnt`: a trip more than max(40 ms, 3 IQR of the cover window) over the base window's median is slow; slow trips
+  (up to 2 others between) spanning more than 0.25 s and at least 6 of them are an episode, its trips taken out of the
+  cover and later ones kept out while it lasts, except a trip that much over the run's own median (a burst on top),
+  which enters it; the base window keeps every trip. `cleanspike` / `spike35` / `spike60` / `spike150` are back in
+  8.05 / 8.03 / 8.03 / 8.28 s (`cov20` 17.88-17.92 s, FP12's bound 9.00 s); `owner` / `owner2` / `ownerS` / `jitter` /
+  `cburst` / `clean` / FP11's / `longhold` are `cov20` on every frame (no episode); `cbstep` is no worse than `cov20`
+  ([8, 12) 26.2 / 17.5 against 28.8 / 20.0 lates / dropped, [12, 22) the same) and `cbspike` keeps its bursts.
+  Considered: round 1's `ep50` (misses spikes under ~0.55 s, a 14 s step episode), a time gap (splits spikes at burst
+  holes), a maximum length (cannot end a step before the longest spike it must forget), the base window's IQR (breaks
+  on a 1.5 s spike), the cover window's median with on-top bursts (`ep25nt`: passes, but its step episode lasts the
+  cover's window). Owner: accept, change the tunables, or keep Revision 3 as built.
 
 ### Tasks
 
@@ -1262,8 +1514,8 @@ Order: FP17 -> owner decisions -> FP18 -> FP19 -> FP20 -> FP21 -> FP22.
   at `min(Lc, C)` for 15 s, then the hold and the fall (FP1's scenario back in 19.92 s against Revision 2's 9.55 s;
   `cleanspike` 17.92 s against 8.05 s; lead.spec 17.38 s with a ceiling against 7.28 s without). Your knight feels none
   of it under the cap; hits landing, enemies reacting and teammates seeing you run that lead behind the whole time.
-  `coverWindowSec` 10 shortens it by 5 s. Candidates measured in "Spike recovery candidates" (FPD20 proposed: long-spike
-  episodes kept out of the cover, `cleanspike` back in 8.05 s).
+  `coverWindowSec` 10 shortens it by 5 s. Candidates measured in "Spike recovery candidates" (FPD20 proposed, round 2:
+  long-spike episodes kept out of the cover, bursts on top let in; `cleanspike` back in 8.05 s).
 - **A deeper buffer passes the cap for a moment.** C follows the depth of the newest send, but the net lead falls only
   at the fall's pace: a depth rise of k ticks puts the effective lead at cap + k for ~1 + 0.25 k s.
 - **The p99 of a small window is its max** (n <= 100 cover trips, ~3.3 s after the warm-up): one slow trip early in a
