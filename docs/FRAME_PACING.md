@@ -26,10 +26,11 @@ setting (FPD8). See "As built" for the real API and the deviations from the desi
 section at the end): the net lead is set from the 95th percentile of measured input round trips plus a margin, instead
 of +1 per miss. Pending: FP14 / FP15 (owner) and the Studio checks.
 
-**Revision 3 (planned 2026-11-10): a steady lead on jittery links** (FP17-FP22, decisions FPD15-FPD19 proposed;
-section at the end): on a 4G-like link the late bump keeps the lead hovering far above its target; the census (FP17,
-built) measures today's rule against eleven candidates and proposes the capped cover: no late bump, the p95 target
-plus a p99 / 15 s cover that never passes the prediction cap. Pending: the owner's decisions, then FP18-FP22.
+**Revision 3 (built 2026-11-10, verified headlessly): a steady lead on jittery links** (FP17-FP22, decisions
+FPD15-FPD19; section at the end): on a 4G-like link the late bump keeps the lead hovering far above its target; the
+census (FP17) measured today's rule against eleven candidates, and the capped cover is built (FP18-FP20, FP22): no late
+bump, the p95 target plus a p99 / 15 s cover that never passes the prediction cap. Pending: FP21 (owner: Studio 4G
+again, with and without `KV_LeadBump`).
 
 ## Why co-op stutters (findings)
 
@@ -627,10 +628,10 @@ Order: FP9 -> FP10 (parallel) -> FP11 -> FP12 -> FP13 -> FP14 / FP15 -> FP16. FP
   The bytes each client receives grow by 8 a batch; the server's fire calls grow from 1 to n a batch (n <= 8). FP9's
   Studio check confirms the members still receive their batches in order (each member's calls stay ordered on their own
   reliable remote, which is all the client needs).
-- **Local prediction** (claude/local-prediction-plan.md) predicts up to the effective lead, capped at 10 ticks: a lower,
-  steadier lead helps it directly; nothing there changes.
+- **Local prediction** (docs/LOCAL_PREDICTION.md) predicts up to the effective lead, capped at 20 ticks
+  (`PREDICTION.maxTicks`, LPD4; 10 until 2026-11-10): a lower, steadier lead helps it directly; nothing there changes.
 
-## Revision 3: a steady lead on jittery links (FP17-FP22, planned)
+## Revision 3: a steady lead on jittery links (FP17-FP22)
 
 On the owner's Studio run with the simulated 4G network the measured lead hovered far above its own target and still
 missed inputs. The co-op line read `lead 17t 283ms (net 13t, trip p95 159ms) · pace 4t 60ms · holds 16 · backlog 3 ·
@@ -649,9 +650,12 @@ rule and its tunables. The echo, the pacer, the send rules (FP1) and the tap lat
 
 ### Status (2026-11-10)
 
-**Planned. FP17 (the census) is built** on branch `lead-spikes` (from `local-prediction` @ `533af85`):
-`src/shared/lockstep/lead.census.spec.ts`, opt-in. Nothing in `lead.ts` or any other non-spec file changed. FP18-FP22
-wait for the owner's decisions FPD15-FPD19 below.
+**Built: FP17-FP20 and FP22**, verified headlessly (typecheck, lint, build, the asset id and AutoLocalize checks, every
+spec under `shared/lockstep`, `shared/view` and `shared/play`, and the full census with the `rule3` row). FP17 (the
+census, `src/shared/lockstep/lead.census.spec.ts`, opt-in) on branch `lead-spikes` (from `local-prediction` @
+`533af85`); FP18-FP20 and FP22 after the owner's answers (2026-11-10: FPD15, FPD16 and FPD17 accepted; FPD18 and FPD19
+not answered, built as proposed). **Pending: FP21 (owner: the Studio 4G session again, once with `KV_LeadBump`).** See
+"As built (FP18-FP20)" for the real API, the census numbers and the deviations.
 
 ### The census (FP17)
 
@@ -665,7 +669,8 @@ message waits behind them (a head-of-line hold, as a lost packet's retransmit ho
 
 ```
 npm run test:only -- lockstep/lead.census                    # smoke: 12 s, today vs the copy (in every test run)
-npm run test:only -- --census lockstep/lead.census           # every network x every rule, ~3.5 min
+npm run test:only -- --census lockstep/lead.census           # every network x every rule, ~3.5 min (~5.6 min with
+                                                              # FP19's rule3 and kvbump)
 # split in two (the VM shell's 3 min cap): owner networks, then the rest
 npm run test:only -- --census lockstep/lead.census --flag lead.owner --flag lead.owner2 --flag lead.ownerS
 npm run test:only -- --census lockstep/lead.census --flag lead.jitter --flag lead.clean --flag lead.spec \
@@ -820,45 +825,158 @@ knight); below it the slowest 1 % of the last 15 s are covered, for free as far 
 `windowSec`, `percentile`, `marginTicks`, `fallSlackTicks`, `fallHoldSec`, `fallStepSec`, `minSamples`,
 `echoTimeoutSec` and `recordTicks` are unchanged.
 
-### Decisions (FPD15-FPD19 proposed, for the owner)
+### Decisions (FPD15-FPD17 the owner's answers, 2026-11-10; FPD18-FPD19 proposed, built as proposed)
 
-- **FPD15 (proposed). A late never bumps; the lead follows the trip quantiles only.** The bump arrives a round trip
-  after the late input left, after the burst; on the owner-like links it costs churn and felt delay for about the same
-  lates. Considered: today's bump (`today`), after 2 lates (`k2`), +1 a late (`plus1`), today's bump with a fast fall
-  (`fast`, `cov20bf`: the only way to keep FP12's long-spike lates, at today's churn). If the owner values long spikes
-  over bursts, `cov20bf` is the alternative (FPD15b).
-- **FPD16 (accepted, owner 2026-11-10). The cover: p99 over 15 s, never past the prediction cap minus the buffer.** Lead under the cap
-  is free for your own knight but not for what is not predicted: hits landing, enemies reacting to you, a teammate
-  seeing you. `cov20` spends 2-3 t more than `nobump` on the owner-like links for 56-66 % fewer lates. Considered: no cover
-  (`nobump`), an uncapped p99 (`p99w15`: fewest lates, about twice the felt delay, fails FP12's back-within bound), the
-  window's max (`cov20m`: keeps a one-off hold's trip for the whole window).
-- **FPD17 (accepted, owner 2026-11-10: the cap stays 20). The cover follows `PREDICTION.maxTicks`.** At cap 20 (now) it buys ~3 t; at cap 10 it vanishes on
-  a 4G-like link (the rule is `nobump` there: felt @10 7.15 against today's 10.79 t, lates 28.8 against 14.1 / 10 s).
-  The cap is LPD4's (docs/LOCAL_PREDICTION.md); this rule takes whatever it is.
-- **FPD18 (proposed). The gates.** FP11 and FP12 stay as they are (every proposed rule passes). New, on the census's
-  owner-like networks against today's rule: felt delay at cap 20 at most half, dropped changed inputs at most today's,
-  churn at most a third. Lates may rise where the bump did help (`jitter` +31 %, FP12's spike: printed, not gated).
-- **FPD19 (proposed). Without prediction there is no cover** (`KV_PredictOff`, a debug A/B): every tick of lead is felt
-  there, so only the base's p95 raises it.
+- **FPD15 (accepted, owner 2026-11-10). A late never bumps; the lead follows the trip quantiles only** (`LEAD.lateBump`
+  false; `KV_LeadBump` builds Revision 2's bump for an A/B). The bump arrives a round trip after the late input left,
+  after the burst; on the owner-like links it costs churn and felt delay for about the same lates. Considered: today's
+  bump (`today`), after 2 lates (`k2`), +1 a late (`plus1`), today's bump with a fast fall (`fast`, `cov20bf`: the only
+  way to keep FP12's long-spike lates, at today's churn). If the owner values long spikes over bursts, `cov20bf` is the
+  alternative (FPD15b).
+- **FPD16 (accepted, owner 2026-11-10). The cover: p99 over 15 s, never past the prediction cap minus the buffer.** Lead
+  under the cap is free for your own knight but not for what is not predicted: hits landing, enemies reacting to you, a
+  teammate seeing you. `cov20` spends 2-3 t more than `nobump` on the owner-like links for 56-66 % fewer lates.
+  Considered: no cover (`nobump`), an uncapped p99 (`p99w15`: fewest lates, about twice the felt delay, fails FP12's
+  back-within bound), the window's max (`cov20m`: keeps a one-off hold's trip for the whole window).
+- **FPD17 (accepted, owner 2026-11-10: the cap stays 20). The cover follows `PREDICTION.maxTicks`.** At cap 20 (now) it
+  buys ~3 t; at cap 10 it vanishes on a 4G-like link (the rule is `nobump` there: felt @10 7.15 against today's 10.79 t,
+  lates 28.8 against 14.1 / 10 s). The cap is LPD4's (docs/LOCAL_PREDICTION.md); this rule takes whatever it is.
+- **FPD18 (proposed, built as proposed). The gates.** FP11 and FP12 stay as they are (every proposed rule passes). New,
+  on the census's owner-like networks against today's rule: felt delay at cap 20 at most half, dropped changed inputs at
+  most today's, churn at most a third. Lates may rise where the bump did help (`jitter` +31 %, FP12's spike: printed,
+  not gated).
+- **FPD19 (proposed, built as proposed). Without prediction there is no cover** (`KV_PredictOff`, a debug A/B): every
+  tick of lead is felt there, so only the base's p95 raises it.
+
+### As built (FP18-FP20)
+
+**API (shared/lockstep).**
+
+- `LeadTunables` gains `lateBump` (false, FPD15), `coverWindowSec` (15) and `coverPercentile` (0.99), with doc
+  comments in config.ts; every other `LEAD` value is unchanged.
+- `LeadController(tunables, minLead, maxLead, legacyDecayTicks, ceiling?)`: `ceiling` in ticks of effective lead
+  (undefined or not finite: no cover). Every trip that enters the base window (Revision 2's rules: not from an unsteady
+  send, not from a catching-up echo) enters the cover window too, kept oldest first with an ascending copy maintained by
+  binary insertion and removal (no sort and no allocation per echo; the base window is unchanged). The cover's p99 is
+  read from that copy at every refresh. C = `ceiling - depthUsed` of the newest send (`sent`'s last argument), L* =
+  `clamp(max(Lb, min(ceil(p99 + margin), C)))`, Lf the same with `fallSlackTicks` added to both quantiles; the cover is
+  left out while the base window warms up (fewer than `minSamples` trips), before any cover trip, and without a
+  ceiling. Up at once, the hold and the fall steps are Revision 2's. `lateBump` false: an echoed late that is not
+  excused is counted (`lates`) and nothing else (no bump, no restart of the fall hold); excused lates are counted as
+  before (`excused`); true: Revision 2's bump exactly. The legacy rule without echoes is unchanged.
+- `LeadStats` gains `baseTarget` (Lb), `coverP99`, `coverTarget` (Lc) and `ceiling` (C); `bumps` is 0 unless
+  `lateBump`.
+- `LockstepClient` passes `tunables.prediction?.maxTicks` (FP19): `KV_PredictOff` (or any client without prediction)
+  has no cover (FPD19).
+- `KV_LeadBump` (`RUN_ATTRIBUTES.leadBump`, read in `startCoop` beside `KV_LeadOff`; ignored with it) builds the
+  client with `{ ...LEAD, lateBump: true }` and prints `[Sim] co-op run <runId>: late bump on (KV_LeadBump)`.
+- Diagnostics (FP20): the `[Pace]` line's lead part reads `lead {l}t target {L*}t (base {Lb}t cover {Lc}t cap {C}t)
+  fall {Lf}t · lates {n} bumps {n} falls {n}` (`cover -` before any cover trip, `cap off` without a ceiling); the debug
+  line's measured brackets read `(net {net}t, trip p95 / p99 {p95} / {p99}ms)` (`hud.debug.lead`, a developer string:
+  English everywhere, no context entry; shared/view `LeadStatsInput.coverP99`, `LeadDebugView.tripP99Ms`,
+  `leadDebugVars`' `p99`).
+
+**Interpretations and deviations.**
+
+- `LeadStats.baseTarget` is an addition to Design 13's list: the `[Pace]` line prints Lb. `coverTarget` is Lc clamped
+  to [minLead, maxLead] like the other targets and before the ceiling, so the line shows both what the cover asks and
+  what C allows.
+- The cover window is kept (and its p99 printed) without a ceiling too, but never applied: a `KV_PredictOff` A/B still
+  shows the trips' tail.
+- In the warm-up the cover is left out of the fall target too (the census's copy left it in; only `stats()` reads the
+  fall target in the warm-up, so the lead is the same: `rule3` = `cov20` on every frame below).
+- `KV_LeadBump` sets only `lateBump`, as FP20 says; with prediction on the cover stays, so it builds the bump on top of
+  the cover, not Revision 2's rule (that is `KV_LeadBump` with `KV_PredictOff`, which also turns prediction off). The
+  census measures it as `kvbump` (below), for FP21.
+- Spec assertions changed (each pinned to the bump or to the window the cover replaces): lockstep.spec FP12's hold
+  asserted that the 300 ms hold raises the lead (`peak > before`); without the bump it does not move (its few echoes
+  are under the top 5 % of the window), so the hold asserts `peak >= before` (the spike keeps `>`). The FP11 wiring
+  test's bump count is 0 (a second test keeps the bump under `lateBump`). FP1's echoing scenario runs
+  `DEFAULT_LOCKSTEP`, whose prediction gives the lead its ceiling: unpaced (depth 0) the spike's trips are under it and
+  hold the lead until they leave the cover's 15 s window, so its bound uses `coverWindowSec` (back 19.92 s, bound 20.50
+  s; was `windowSec`, 10.50 s). predict.net.spec's "prediction on and off: the same log" gives the off run's clients
+  the same ceiling (a `LeadController` with `PREDICTION.maxTicks` put in place, as the census does): the predictor is
+  still read only, but whether prediction is configured now sets the lead's ceiling (FPD19).
+- lockstep.spec's network harness keeps `prediction: undefined` (its `TUNABLES`), so its FP11 / FP12 nets run
+  Revision 3 without a ceiling (the `nobump` rule); the shipped rule with its ceiling is measured end to end by the
+  census's `rule3` (the FP11 / FP12 gates in its table).
+
+**Measured.** lead.spec (FP18's cases): one 15-tick late among steady 6 +/- 1 trips moves nothing for the cover window
+(Revision 2 bumps it to 17 at once); five such lates within half a second move the p99 and raise the lead to 17 the
+same echo, without a bump, until they leave the cover window; with 1 trip in 33 at 30 ticks the lead sits at the
+ceiling (20 at depth 0, 16 at depth 4, 19 back at depth 1 as soon as a send carries it; the base when C is below
+it); a step of the trips from 6 to 12 is followed in 0.17 s in one jump (unflagged or late); a step from 12 to 4 is back
+in 7.28 s without a ceiling (bound 8.25 s) and 17.38 s with one (the cover's window; bound 18.25 s). lockstep.spec (no
+ceiling): FP11 3 / 8 players mean lead 11.0-12.4 / 15.0-16.6 after 2 s, 0 lates, relay missed <= 0.22 % / 0.43 %;
+FP12 spike: peak 21-22 (bound 23-24), back in 8.1-8.2 s (bound 9.0-9.25 s), dropped changed 79 (Revision 2's bump 39,
+legacy 39); hold: no rise, dropped 19 (Revision 2 19, legacy 12).
+
+**The census** (`npm run test:only -- --census lockstep/lead.census`, on the FP20 tree; today's rows and every FP17
+candidate's are the appendix's exactly; `rule3` = `cov20` on every client frame of every network):
+
+| Network | Rule | Effective lead mean / p95 (t) | Net lead mean (t) | Lates / 10 s | Dropped changed / 10 s | Relay missed | Bumps / 10 s | Churn / 10 s | Felt @20 mean / p95 (t) | Felt @10 mean (t) |
+|---|---|---|---|---|---|---|---|---|---|---|
+| owner | today | 20.8 / 27 | 16.9 | 14.1 | 8.2 | 6.39 % | 4.0 | 36.3 | 2.10 / 7 | 10.79 |
+| owner | **rule3** | 20.4 / 24 | 16.5 | 11.3 | 4.4 | 3.47 % | 0.0 | 6.2 | 0.61 / 4 | 10.40 |
+| owner | kvbump | 21.9 / 27 | 18.0 | 7.5 | 3.2 | 4.42 % | 3.8 | 24.3 | 2.11 / 7 | 11.91 |
+| owner2 | today | 22.4 / 27 | 18.5 | 12.1 | 6.8 | 6.09 % | 4.3 | 34.7 | 3.13 / 7 | 12.38 |
+| owner2 | **rule3** | 21.5 / 25 | 17.6 | 14.2 | 6.8 | 4.20 % | 0.0 | 8.5 | 1.55 / 5 | 11.48 |
+| owner2 | kvbump | 23.2 / 27 | 19.3 | 8.5 | 4.6 | 4.61 % | 4.2 | 26.5 | 3.26 / 7 | 13.19 |
+| ownerS | today | 21.3 / 27 | 17.2 | 11.2 | 6.8 | 5.78 % | 4.2 | 36.9 | 2.26 / 7 | 11.33 |
+| ownerS | **rule3** | 20.8 / 25 | 16.7 | 9.8 | 3.6 | 2.95 % | 0.0 | 6.5 | 0.86 / 5 | 10.78 |
+| ownerS | kvbump | 22.1 / 27 | 18.0 | 5.7 | 2.8 | 3.75 % | 3.8 | 23.2 | 2.21 / 7 | 12.14 |
+| jitter | today | 22.4 / 29 | 15.4 | 5.8 | 2.7 | 3.56 % | 2.4 | 16.1 | 2.46 / 9 | 12.44 |
+| jitter | **rule3** | 21.0 / 25 | 14.0 | 7.6 | 3.5 | 2.42 % | 0.0 | 0.8 | 1.01 / 5 | 11.01 |
+| jitter | kvbump | 22.5 / 29 | 15.4 | 5.7 | 2.7 | 3.56 % | 2.4 | 16.1 | 2.46 / 9 | 12.46 |
+| clean | today | 10.2 / 11 | 6.2 | 0.0 | 0.0 | 0.00 % | 0.7 | 0.3 | 0.00 / 0 | 0.17 |
+| clean | **rule3** | 11.0 / 11 | 7.0 | 0.0 | 0.0 | 0.00 % | 0.0 | 0.0 | 0.00 / 0 | 1.00 |
+| clean | kvbump | 11.0 / 11 | 7.0 | 0.0 | 0.0 | 0.00 % | 0.7 | 0.0 | 0.00 / 0 | 1.00 |
+| spec | today | 19.2 / 20 | 11.6 | 0.0 | 0.0 | 0.17 % | 1.5 | 0.5 | 0.00 / 0 | 9.18 |
+| spec | **rule3** | 19.7 / 20 | 12.1 | 0.0 | 0.0 | 0.17 % | 0.0 | 0.2 | 0.03 / 0 | 9.74 |
+| spec | kvbump | 19.7 / 20 | 12.1 | 0.0 | 0.0 | 0.17 % | 1.5 | 0.2 | 0.03 / 0 | 9.74 |
+| spec200 | today | 27.8 / 31 | 15.9 | 0.0 | 0.0 | 0.11 % | 2.5 | 1.2 | 7.79 / 11 | 17.79 |
+| spec200 | **rule3** | 27.8 / 31 | 15.9 | 0.0 | 0.0 | 0.11 % | 0.0 | 1.2 | 7.79 / 11 | 17.79 |
+| spec200 | kvbump | 27.8 / 31 | 15.9 | 0.0 | 0.0 | 0.11 % | 2.5 | 1.2 | 7.79 / 11 | 17.79 |
+| fp12 | today | 23.6 / 31 | 16.2 | 11.3 | 6.8 | 2.98 % | 7.1 | 11.6 | 3.94 / 11 | 13.65 |
+| fp12 | **rule3** | 23.6 / 30 | 16.1 | 20.3 | 13.9 | 4.47 % | 0.0 | 9.7 | 3.58 / 10 | 13.56 |
+| fp12 | kvbump | 23.9 / 31 | 16.5 | 11.3 | 6.8 | 2.89 % | 7.1 | 10.3 | 3.94 / 11 | 13.93 |
+| longhold | today | 16.6 / 31 | 13.6 | 12.8 | 10.2 | 3.32 % | 2.6 | 14.3 | 1.22 / 11 | 6.60 |
+| longhold | **rule3** | 14.0 / 14 | 11.0 | 12.8 | 10.2 | 2.13 % | 0.0 | 0.0 | 0.00 / 0 | 4.00 |
+| longhold | kvbump | 16.6 / 31 | 13.6 | 12.8 | 10.2 | 3.32 % | 2.6 | 13.9 | 1.22 / 11 | 6.60 |
+
+FPD18's gates (rule3 against today; compared unrounded, printed to two decimals), all met:
+
+- `owner`: felt @20 0.61 <= 1.05, dropped 4.42 <= 8.25, churn 6.17 <= 12.11 per 10 s.
+- `owner2`: felt @20 1.55 <= 1.56, dropped 6.75 <= 6.75, churn 8.50 <= 11.56: the near miss the plan named (felt
+  against half of today's 3.13; dropped exactly today's).
+- `ownerS`: felt @20 0.86 <= 1.13, dropped 3.58 <= 6.83, churn 6.50 <= 12.31.
+
+`kvbump` (what `KV_LeadBump` builds with prediction on, for FP21's A/B) keeps today's felt delay (2.11 / 3.26 / 2.21 t
+at cap 20 on the owner-like links, today 2.10 / 3.13 / 2.26) and churn about two thirds of today's, with the fewest
+lates and dropped inputs of the three (the cover and the bump together); on `jitter`, `fp12` and `longhold` it is
+today's within 0.3 t. So FP21's "felt delay at most half of `KV_LeadBump`'s" compares Revision 3 against about today's
+felt delay, and "`miss` at most its" against fewer dropped inputs than today's: by the census `rule3` meets the first
+(0.61 / 1.55 / 0.86 against 1.06 / 1.63 / 1.11) and not the second (4.4 / 6.8 / 3.6 dropped against 3.2 / 4.6 / 2.8 per
+10 s).
 
 ### Tasks
 
 - [x] **FP17. The census.** `src/shared/lockstep/lead.census.spec.ts` (opt-in `--census`; smoke: today against its copy,
   12 s). -> Verify: the smoke passes in the default suite; the two census runs above print the appendix's tables (the
   copy of today's rule matches `LeadController` on every frame).
-- [ ] **FP18. `LeadController`: the cover and no bump.** `lead.ts`: a second trip window (`coverWindowSec`,
+- [x] **FP18. `LeadController`: the cover and no bump.** `lead.ts`: a second trip window (`coverWindowSec`,
   `coverPercentile`), `ceiling` (constructor argument, undefined = no cover) less the newest send's `depthUsed`,
   `L*` / `Lf` as Design 13, `lateBump` (false: lates counted only); `LeadStats` additions; `LEAD` additions in
   config.ts. -> Verify: `lead.spec.ts`: Revision 2's cases with `lateBump: true` unchanged; with the defaults: a late
   does not move the lead unless its trip moves the p95 / p99; one burst sample in 15 s does not move the p99 (1 % of
   ~450); the cover rises to and stops at `ceiling - depthUsed`, and follows a depth change; no ceiling = the base only;
   a step up of the trips still followed the same frame; the fall unchanged.
-- [ ] **FP19. LockstepClient wiring.** The client passes `tunables.prediction?.maxTicks` as the ceiling.
+- [x] **FP19. LockstepClient wiring.** The client passes `tunables.prediction?.maxTicks` as the ceiling.
   -> Verify: lockstep.spec FP11 networks (lates 0 after the warm-up, relay missed under 0.5 %), FP12 spike and hold
   (peak and back-within bounds; FP12's dropped-inputs line printed beside today's); every other lockstep / predict
   spec unchanged; the census gains a `rule3` row from the real controller that matches `cov20` frame for frame, and
   meets FPD18's gates on `owner`, `owner2` and `ownerS`.
-- [ ] **FP20. Diagnostics.** The `[Pace]` line's lead part `lead {l}t target {L*}t (base {Lb}t cover {Lc}t cap {C}t)
+- [x] **FP20. Diagnostics.** The `[Pace]` line's lead part `lead {l}t target {L*}t (base {Lb}t cover {Lc}t cap {C}t)
   fall {Lf}t · lates {n} bumps {n} falls {n}`; the debug line unchanged but `trip p95` -> `trip p95 / p99`; `KV_LeadBump`
   (`RUN_ATTRIBUTES.leadBump`, read at each co-op start like `KV_LeadOff`) builds the client with `lateBump: true`.
   -> Verify: `arrivalLog.spec` updated; `npm run verify`.
@@ -866,7 +984,7 @@ knight); below it the slowest 1 % of the last 15 s are covered, for free as far 
   `KV_LeadBump`. -> Verify: docs/SPIKES.md "Frame pacing" gains the rows (trip p50 / p95 / max, lead, target, lates,
   bumps, `pred`); felt delay (effective lead past `pred`) at most half of `KV_LeadBump`'s, `miss` at most its; `LEAD`
   confirmed or edited.
-- [ ] **FP22. Docs.** CLAUDE.md's decision log entry (Revision 3), this section's status and as built, docs/FEEL.md J9
+- [x] **FP22. Docs.** CLAUDE.md's decision log entry (Revision 3), this section's status and as built, docs/FEEL.md J9
   if the debug line changed.
 
 Order: FP17 -> owner decisions -> FP18 -> FP19 -> FP20 -> FP21 -> FP22.

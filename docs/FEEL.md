@@ -242,7 +242,8 @@ As built (differences from the design above):
   (docs/FRAME_PACING.md Revision 2, FP13) the brackets read `(net {net}t, trip p95 {ms}ms)` (`hud.debug.lead`),
   `(net {net}t legacy)` (`.leadLegacy`: warm-up or no echo) or `(net {net}t, lead off (KV_LeadOff))` (`.leadOff`), and
   `late` / `miss` are the client's echoed lates / `inputsEqual` mismatches (`leadDebugView` / `leadDebugKey` /
-  `leadDebugVars`). The headless floor is now
+  `leadDebugVars`). Since Revision 3 (FP20) the measured brackets read `(net {net}t, trip p95 / p99 {p95} / {p99}ms)`:
+  the base window's p95 (5 s) and the cover window's p99 (15 s, `LeadStats.coverP99`). The headless floor is now
   (net lead + depth + 1) ticks: 7 ticks = 117 ms at the minimum depth of 3. KV_Debug co-op also prints the `[Pace]`
   arrival log every 10 s (docs/FRAME_PACING.md "As built"). Since local prediction (docs/LOCAL_PREDICTION.md LP6) the
   line ends with `{pred}`: `pred {h}t · err {mean}/{max} · snaps {snaps} · press->drawn {drawn}ms avg {drawnMean}`

@@ -72,7 +72,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/HAZARD_ART.md` | Hazard art (the Stormcaller's strike and the build embers as original greyscale pixel art tinted by their roles: a flash over the strike's 0.1 s life and a short scorch after it, the ember's burn loop; supersedes PAD3; presentation only): plan, as built, tasks HA0-HA8, decisions HAD1-HAD5 |
 | `docs/GAMEPAD_MENUS.md` | Gamepad menus (every menu usable with a controller: focus scopes with one owner, recovery and memory, one B path (hold B to exit on run over), LB/RB / LT/RT tabs, right-stick scroll, X / Y shortcuts, a hint bar with Roblox button icons, menu haptics, console TV-safe fit; client input and presentation only): census, plan, as built, tasks GM0-GM12, decisions GMD1-GMD16 |
 | `docs/WALL_SLIDE.md` | Wall slide (the player's body slides round corners instead of stopping: `slideCircle` collide and slide, a corner tie-break, a face assist within 0.35 tiles of a wall's end, a full pillar slip on isolated 1 x 1 blockers; every world, M1 included; snag census; gameplay): findings, plan, as built, tasks WS0-WS10, decisions WSD1-WSD7 |
-| `docs/FRAME_PACING.md` | Co-op frame pacing (a playout clock: received merged frames stepped at a steady 60 Hz from a small jitter buffer, holds on underflow, the input lead covers the buffer; the lead-never-decays fix; client timing only; revision 2: the net lead from measured input trips, a per-member input echo on `lockstepFrames`): findings, plan, tasks FP0-FP16, decisions FPD1-FPD14 |
+| `docs/FRAME_PACING.md` | Co-op frame pacing (a playout clock: received merged frames stepped at a steady 60 Hz from a small jitter buffer, holds on underflow, the input lead covers the buffer; the lead-never-decays fix; client timing only; revision 2: the net lead from measured input trips, a per-member input echo on `lockstepFrames`; revision 3: no late bump, a p99 / 15 s cover capped at the prediction cap, the lead census): findings, plan, census, tasks FP0-FP22, decisions FPD1-FPD19 |
 | `docs/ROLLBACK_SPIKE.md` | Rollback measurement spike, closed (the record: CPU of copying the state and stepping it H ticks a frame on a Mac and an iPhone, mispredictions in a bot sweep): census R0, design, as built, tasks R0-R7, results, decisions RBD1-RBD8 (RBD8: don't build rollback; the code removed in R7) |
 | `docs/LOCAL_PREDICTION.md` | Local prediction in co-op (your own knight's body drawn up to 20 ticks past the merged state from the inputs you sent, corrected by a smoother; enemy bullets drawn as far ahead; vitals, hits and everything else merged; presentation and client timing only): findings, census LP0, design, as built, LP8 sign-off, tasks LP0-LP10, decisions LPD1-LPD9 |
 | `docs/BUILDS_V2.md` | Builds v2, wave 1 (Riposte: a guard that erases bullets answers with a counter-wave, Counterstrike ring and returns; Ballista: the heavy arrow bursts into bolts, Siege Bolt pins and drags an enemy into a wall; Wrecker: rolls smash breakables, every piece you break fires splinters, Demolition chains them; duos Thunder Guard / Stillwater / Rebuke (Bastion + Riposte) / Dragon Bolt / Powder Keg / Full Heart / Happy Hour; the duo hint on New cards; overcap boss points `ScoreSource.OVERCAP`; gameplay, opt-in `SimConfig.builds`; wave 2 and the proposal in its appendix): plan, tasks BV0-BV13, decisions BVD1-BVD20 |
@@ -1049,6 +1049,20 @@ Decision log (deviations from `PLAN.md`):
   Debug strings `hud.debug.lead` / `.leadLegacy` / `.leadOff`, trip columns on the `[Pace]` line. Spec networks: lead
   11-12 / 15-17 ticks (old rule ~16 / ~22-25), no lates after the warm-up, back within seconds after a spike. FP14 /
   FP15 (owner) and the Studio checks pending.
+  **Revision 3 (2026-11-10): a steady lead on jittery links** (FP17-FP20, FP22). Client timing only (no sim, dungeon,
+  hash, replay, wire, server, fixture or score change; the echo, the pacer, the send rules and the tap latch are
+  unchanged). `LeadController` gains the capped cover (Design 13): a second trip window (`LEAD.coverWindowSec` 15,
+  `coverPercentile` 0.99) and a ceiling (constructor argument, undefined = no cover; `LockstepClient` passes
+  `tunables.prediction?.maxTicks`, so no prediction / `KV_PredictOff` = no cover, FPD19): L* = `max(ceil(p95 / 5 s +
+  1.5), min(ceil(p99 / 15 s + 1.5), ceiling - the newest send's depthUsed))`, the fall target the same plus 0.75, the
+  cover ignored in the warm-up; a late never bumps (`LEAD.lateBump` false, FPD15), it is only counted. `LeadStats` gains
+  `baseTarget` / `coverP99` / `coverTarget` / `ceiling`. `KV_LeadBump` (`RUN_ATTRIBUTES.leadBump`, read at each co-op
+  start, ignored with `KV_LeadOff`) builds the client with `lateBump: true` (with prediction on: the bump on top of the
+  cover). Debug: `hud.debug.lead` reads `trip p95 / p99`, the `[Pace]` lead part `lead {l}t target {L*}t (base {Lb}t
+  cover {Lc}t cap {C}t) fall {Lf}t`. The opt-in census (`lead.census.spec.ts`, `--census`) runs Revision 2 as `today`
+  and the shipped controller as `rule3`, equal to the plan's `cov20` frame for frame; on the owner-like links it keeps
+  today's lead with 0-47 % fewer dropped changed inputs, a sixth to a quarter of the churn and 29-50 % of the felt delay
+  at cap 20 (FPD18's gates met, `owner2` within 0.01 t). FP21 (owner: Studio 4G with and without `KV_LeadBump`) pending.
 - **Builds v2, wave 1 (docs/BUILDS_V2.md).** Gameplay, opt-in `SimConfig.builds` (endless only). Three boons appended
   to `BOONS` (`Boon.RIPOSTE` 17 rare, `BALLISTA` 18 rare, `WRECKER` 19 common; `BOON_COUNT` 20, `CLASSIC_BOON_COUNT`
   stays 12, so the tutorial's draft is unchanged; evolutions Counterstrike / Siege Bolt / Demolition) and seven duos

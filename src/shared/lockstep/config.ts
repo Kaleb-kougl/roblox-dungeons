@@ -265,10 +265,13 @@ export const LEAD: LeadTunables = table.freeze({
 /**
  * Local prediction (docs/LOCAL_PREDICTION.md Design 2 / 7, predict.ts): the client draws its own player's body ahead of
  * the merged state, replayed from its own inputs. Presentation only: nothing predicted reaches the sim, a hash, a
- * recording or a remote. All provisional until LP8 (the playtest).
+ * recording or a remote. Set at LP8 (2026-11-10).
  */
 export interface PredictionTunables {
-	/** The most ticks the body is replayed past the merged state (LPD4: 20 = 333 ms, the owner's; was 10). */
+	/**
+	 * The most ticks the body is replayed past the merged state (LPD4: 20 = 333 ms, the owner's; was 10). Also the
+	 * measured lead's ceiling for its cover (docs/FRAME_PACING.md Design 13: LockstepClient passes it to LeadController).
+	 */
 	readonly maxTicks: number;
 	/** The error statistics (predictionStats) cover this many stepped ticks (10 s, like the pacing windows). */
 	readonly statsWindowTicks: number;
