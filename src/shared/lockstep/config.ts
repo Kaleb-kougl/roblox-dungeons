@@ -244,7 +244,7 @@ export const LEAD: LeadTunables = table.freeze({
  * recording or a remote. All provisional until LP8 (the playtest).
  */
 export interface PredictionTunables {
-	/** The most ticks the body is replayed past the merged state (LPD4: 10 = 167 ms; the owner's). */
+	/** The most ticks the body is replayed past the merged state (LPD4: 20 = 333 ms, the owner's; was 10). */
 	readonly maxTicks: number;
 	/** The error statistics (predictionStats) cover this many stepped ticks (10 s, like the pacing windows). */
 	readonly statsWindowTicks: number;
@@ -253,7 +253,7 @@ export interface PredictionTunables {
 }
 
 export const PREDICTION: PredictionTunables = table.freeze({
-	maxTicks: 10,
+	maxTicks: 20,
 	statsWindowTicks: SIM_HZ * 10,
 	correctionTiles: 0.01,
 });

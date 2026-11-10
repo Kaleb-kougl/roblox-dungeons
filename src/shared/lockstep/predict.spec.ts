@@ -48,8 +48,8 @@ const LOCAL = 1;
 const DT = 1 / 60;
 const TICKS = 1500;
 const AHEAD_MAX = 3;
-/** A long legacy lead, so the horizon reaches maxTicks (the shipped lead at 20-120 ms is 11-17 ticks). */
-const LEAD = 12;
+/** A legacy lead past the cap, so the horizon reaches maxTicks (the shipped lead at 20-120 ms is 15-23 ticks). */
+const LEAD = PREDICTION.maxTicks + 2;
 /** Ticks whose local input the scripted server repeats instead of taking what was sent (a missed deadline). */
 const MISS_EVERY = 97;
 
@@ -302,23 +302,31 @@ describe("LocalPredictor in LockstepClient (docs/LOCAL_PREDICTION.md LP3)", () =
 	});
 
 	it("the stats compare every stepped tick with its prediction (zero error without misses)", () => {
-		const s = scripted(undefined);
-		let last: LockstepClient | undefined;
-		play(s, (c) => {
-			last = c;
-		});
-		const st = last!.predictionStats()!;
+		// The warm-up's ticks were never sent (the lead's start), so a head predicted there (state.tick <= LEAD) can
+		// differ; it is compared up to maxTicks later. Corrections are counted from the tick after that.
+		const settled = LEAD + PREDICTION.maxTicks + 1;
+		const playStats = (s: Script): { last: LockstepClient; warmupCorrections: number } => {
+			let last: LockstepClient | undefined;
+			let warmupCorrections = -1;
+			play(s, (c) => {
+				last = c;
+				if (warmupCorrections < 0 && c.state.tick >= settled)
+					warmupCorrections = c.predictionStats()!.totalCorrections;
+			});
+			return { last: last!, warmupCorrections };
+		};
+		const clean = playStats(scripted(undefined));
+		const st = clean.last.predictionStats()!;
 		print(
-			`[predict] stats: ${st.totalCompared} compared, mean ${st.meanError} max ${st.maxError}, ${st.totalCorrections} corrections`,
+			`[predict] stats: ${st.totalCompared} compared, mean ${st.meanError} max ${st.maxError}, ${st.totalCorrections} corrections (${clean.warmupCorrections} in the warm-up)`,
 		);
 		expect(st.totalCompared).toBeGreaterThan(TICKS / 2);
+		expect(clean.warmupCorrections).toBeGreaterThanOrEqual(0);
 		expect(st.maxError).toBe(0);
-		expect(st.totalCorrections).toBe(0);
-		const sm = scripted(MISS_EVERY);
-		play(sm, (c) => {
-			last = c;
-		});
-		expect(last!.predictionStats()!.totalCorrections).toBeGreaterThan(0);
+		expect(st.corrections).toBe(0);
+		expect(st.totalCorrections).toBe(clean.warmupCorrections);
+		const missed = playStats(scripted(MISS_EVERY));
+		expect(missed.last.predictionStats()!.totalCorrections).toBeGreaterThan(missed.warmupCorrections);
 	});
 
 	it("predicts nothing while the local player is dead or a draft is open, and never writes the state", () => {

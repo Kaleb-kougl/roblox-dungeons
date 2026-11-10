@@ -16,7 +16,8 @@ every outcome (hits, kills, pickups, room clears) stay at the merged state.
 **LP0-LP6 and LP10's code built** (branch `local-prediction`; LP10 built on `lp-bullets`, rebased in): the census, the
 motion mirror, the LocalPredictor in LockstepClient, the smoother (LP0-LP4, "As built" below), the wiring and the
 diagnostics (LP5 / LP6, "As built: LP5 / LP6"), enemy bullets drawn ahead (LP10, "As built (LP10)"). Open: the
-Studio checks of LP5, LP6 and LP10 (owner), LP8 and LP9.
+Studio checks of LP5, LP6 and LP10 (owner), LP8 and LP9. The horizon cap is 20 ticks since 2026-11-10 (LPD4, owner,
+after a Studio test on a simulated 4G link: lead 17-23 ticks, `press->drawn` 253 ms against `press->step` 422 ms at 10).
 
 Drafted from an audit of branch `frame-pacing` @ `0a8e8ec4` (docs/FRAME_PACING.md: planned,
 nothing built). It builds on frame pacing (LPD2): FP1's lead fix and FP2-FP3's playout clock come first for the
@@ -248,7 +249,7 @@ drawn** (frames until the drawn knight first answers a press: 1 with prediction,
 
 | Name | Value | Why |
 |---|---|---|
-| `maxTicks` | 10 | 167 ms (owner, LPD4): past it the knight drifts too far ahead of the bullets (Design 5) |
+| `maxTicks` | 20 | 333 ms (owner, LPD4; 10 until 2026-11-10): covers a 4G-like lead; enemy bullets are drawn as far ahead (LP10) |
 | `halfLifeSec` | 0.06 | A correction is mostly gone in ~4 frames, without a visible glide |
 | `snapTiles` | 1.0 | Larger than any guess error from a missed tick; teleports and clamps snap |
 | `maxOffsetTiles` | 1.0 | Never drawn farther than this from the prediction |
@@ -268,8 +269,11 @@ All provisional until LP8.
   out of scope).
 - **LPD3. Body only.** Attacks, hits, pickups and other players are not predicted (no rollback): nothing is drawn that
   the sim may not do, except your own walk and roll a few ticks early.
-- **LPD4. Horizon: the effective lead, capped at `maxTicks` 10 (167 ms; owner).** Felt delay of the walk drops to one
-  frame up to the cap; above it the rest (`lead - maxTicks`) stays. LP8 may retune it against the bullet gap.
+- **LPD4. Horizon: the effective lead, capped at `maxTicks` 20 (333 ms; owner).** Felt delay of the walk drops to one
+  frame up to the cap; above it the rest (`lead - maxTicks`) stays. LP8 may retune it against the bullet gap. Raised
+  from 10 (167 ms) on 2026-11-10 (owner): on a simulated 4G link the lead sat at 17-23 ticks, so 10 left about 250 ms
+  of the delay; enemy bullets are drawn ahead with the knight (LP10, up to `BULLET_AHEAD.maxTicks` 30), and teammates
+  and enemies stay merged, so the knight runs up to 333 ms ahead of them and corrections grow with the horizon.
 - **LPD5. Vitals and the invulnerability look are merged (owner).** Truth against the bullets you see; the roll's tint
   starts a few ticks after the predicted roll animation.
 - **LPD6. On by default, no player setting** (like FPD8). `KV_PredictOff` stays a debug switch.
