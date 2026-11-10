@@ -1062,7 +1062,13 @@ Decision log (deviations from `PLAN.md`):
   cover {Lc}t cap {C}t) fall {Lf}t`. The opt-in census (`lead.census.spec.ts`, `--census`) runs Revision 2 as `today`
   and the shipped controller as `rule3`, equal to the plan's `cov20` frame for frame; on the owner-like links it keeps
   today's lead with 0-47 % fewer dropped changed inputs, a sixth to a quarter of the churn and 29-50 % of the felt delay
-  at cap 20 (FPD18's gates met, `owner2` within 0.01 t). FP21 (owner: Studio 4G with and without `KV_LeadBump`) pending.
+  at cap 20 (FPD18's gates met and asserted, `owner2` within 0.01 t). The cost: with prediction on, a spike longer than
+  a burst holds the lead at `min(Lc, C)` for the cover's whole 15 s window, then the 1 s hold and 0.25 s a tick (FP1's
+  echoing scenario back in 19.92 s, Revision 2 9.55 s; the census's `cleanspike` 17.92 s, today 8.05 s, failing FP12's
+  back-within bound there; FP12's dropped clause fails under FPD15, printed only); the knight feels nothing under the
+  cap, hits, enemies and teammates run that lead behind; a depth rise of k puts the effective lead at cap + k for ~1 +
+  0.25 k s. FP21 (owner: Studio 4G with and without `KV_LeadBump`; its `miss` criterion against `KV_LeadBump`, which
+  with prediction on is the cover plus the bump, is an open owner question) pending.
 - **Builds v2, wave 1 (docs/BUILDS_V2.md).** Gameplay, opt-in `SimConfig.builds` (endless only). Three boons appended
   to `BOONS` (`Boon.RIPOSTE` 17 rare, `BALLISTA` 18 rare, `WRECKER` 19 common; `BOON_COUNT` 20, `CLASSIC_BOON_COUNT`
   stays 12, so the tutorial's draft is unchanged; evolutions Counterstrike / Siege Bolt / Demolition) and seven duos

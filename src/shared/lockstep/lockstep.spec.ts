@@ -1281,9 +1281,9 @@ for (const kind of ["spike", "hold"] as const) {
 			if (m.backSec[i] > fallBounds[i]) backMet = false;
 		}
 		print(
-			`${tag} FP12 criteria: dropped <= legacy ${verdict(sum(m.dropped) <= sum(l.dropped))} (${sum(
-				m.dropped,
-			)} vs ${sum(l.dropped)}; Revision 2's bump ${sum(r2.dropped)}); peak <= ceil(trip + ${
+			`${tag} FP12 criteria: dropped <= legacy (informational since FPD15: the long-spike cost) ${verdict(
+				sum(m.dropped) <= sum(l.dropped),
+			)} (${sum(m.dropped)} vs ${sum(l.dropped)}; Revision 2's bump ${sum(r2.dropped)}); peak <= ceil(trip + ${
 				LEAD.marginTicks
 			}) + 1 ${verdict(peaksMet)} (legacy peak ${l.peak.join(
 				",",
@@ -1306,9 +1306,10 @@ for (const kind of ["spike", "hold"] as const) {
 		it("the trouble raised the measured lead to at most ceil(its trip + margin) + 1", () => {
 			for (let i = 0; i < players; i++) {
 				// Revision 3 (FPD15): a late never bumps, so the 300 ms hold (a few echoes, under the top 5 % of the
-				// window's ~150) does not raise the lead at all; Revision 2's bump did. The 1 s spike still moves the p95.
+				// window's ~150) does not raise the lead at all (measured 11,11,12 before and at the peak); Revision 2's
+				// bump did (27). The 1 s spike still moves the p95.
 				if (isSpike) expect(m.peak[i] > m.before[i]).toBe(true);
-				else expect(m.peak[i] >= m.before[i]).toBe(true);
+				else expect(m.peak[i]).toBe(m.before[i]);
 				expect(m.peak[i] <= peakBounds[i]).toBe(true);
 			}
 		});

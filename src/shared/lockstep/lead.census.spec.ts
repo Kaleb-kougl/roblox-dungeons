@@ -22,7 +22,7 @@
  * (`LEAD`'s defaults, built by LockstepClient with prediction on, so its ceiling is `PREDICTION.maxTicks`), which must
  * give `cov20`'s lead on every frame (asserted wherever both run, the smoke included), and is held to FPD18's gates
  * against today on the owner-like networks (printed: felt delay at cap 20 at most half, dropped changed inputs at most
- * today's, churn at most a third). `kvbump` is what `KV_LeadBump` builds with prediction on: the bump on top of the
+ * today's, churn at most a third; asserted). `kvbump` is what `KV_LeadBump` builds with prediction on: the bump on top of the
  * cover (FP21's A/B), printed only.
  */
 import { describe, expect, it } from "@rbxts/jest-globals";
@@ -67,6 +67,8 @@ const HIGH = 0.95;
 const RECOVER_TICKS = 1;
 /** FP12: the recovery is watched this long after the trouble ended (seconds). */
 const WATCH_SEC = 12;
+/** `cleanspike`'s watch: the cover's 15 s window, its hold and fall, and slack. */
+const CLEAN_SPIKE_WATCH_SEC = 25;
 /** FP12: slack on the fall's own bound (seconds). */
 const TROUBLE_FALL_SLACK_SEC = 0.5;
 /** FP11: relay misses (repeat-last ticks) after the warm-up stay under this share of ticks. */
@@ -130,6 +132,8 @@ interface NetSpec {
 	readonly upHold?: Trouble;
 	/** Gates measured on this network. */
 	readonly gate?: "fp11" | "fp12";
+	/** FP12: the recovery is watched this long after the trouble ended (default WATCH_SEC). */
+	readonly watchSec?: number;
 	/** Client i's down / up channels are seeded seedBase + 2i / + 1 (default 7, predict.net.spec's). */
 	readonly seedBase?: number;
 }
@@ -234,6 +238,22 @@ const NETWORKS: ReadonlyArray<NetSpec> = [
 		durationSec: 15 + 0.6 + WATCH_SEC + 1,
 		upHold: { at: 15, sec: 0.6, extra: 0.6 },
 		gate: "fp12",
+	},
+	{
+		// Review fix (Revision 3): FP12's spike where the cover has room (a shallow buffer, so C = 20 - depth is far above
+		// the base): with prediction on, the spike's trips hold the lead at min(Lc, C) for the cover's whole window. The
+		// watch is long enough to see it come back (FP12's bound is today's, so the cover rules print FAIL here).
+		name: "cleanspike",
+		label: "clean + FP12's spike: 30-40 ms one way, +200 ms up for 1 s at 7 s (the cover has room)",
+		baseSec: 0.03,
+		jitterSec: 0.01,
+		spikeChance: 0,
+		spikeLoSec: 0,
+		spikeHiSec: 0,
+		durationSec: 7 + 1 + CLEAN_SPIKE_WATCH_SEC + 1,
+		upSpike: { at: 7, sec: 1, extra: 0.2 },
+		gate: "fp12",
+		watchSec: CLEAN_SPIKE_WATCH_SEC,
 	},
 ];
 
@@ -1070,9 +1090,9 @@ interface TroubleResult {
 }
 
 /** FP12 on one client: the net lead before the trouble, its peak, when it was back within RECOVER_TICKS. */
-function trouble(c: ClientRun, tr: Trouble): TroubleResult {
+function trouble(c: ClientRun, tr: Trouble, watchSec: number = WATCH_SEC): TroubleResult {
 	const ends = tr.at + tr.sec;
-	const watchEnd = ends + WATCH_SEC;
+	const watchEnd = ends + watchSec;
 	let before = 0;
 	let peak = 0;
 	let lastOut = ends;
@@ -1114,7 +1134,7 @@ function gateText(net: NetSpec, r: NetRun, s: Summary): string {
 		const parts: string[] = [];
 		let ok = true;
 		for (const c of r.clients) {
-			const t = trouble(c, tr);
+			const t = trouble(c, tr, net.watchSec);
 			const met = t.peak <= t.peakBound && t.backSec <= t.fallBound;
 			if (!met) ok = false;
 			parts.push(
@@ -1251,6 +1271,8 @@ if (FULL) {
 				const runs = new Map<string, NetRun>();
 				let todaySummary: Summary | undefined;
 				const gates: string[] = [];
+				/** FPD18's verdicts, asserted once everything is printed. */
+				const gateOk: boolean[] = [];
 				for (const policy of selectedRules()) {
 					const r = play(net, policy, net.durationSec);
 					const s = summarize(r, net.durationSec);
@@ -1263,6 +1285,7 @@ if (FULL) {
 						const g = fpd18(todaySummary, s);
 						extra = g.text;
 						gates.push(`[lead census gate] ${net.name} rule3 ${g.text}`);
+						gateOk.push(g.ok);
 					}
 					rows.push(row(net, policy, r, s, extra));
 					trips.push(
@@ -1287,6 +1310,7 @@ if (FULL) {
 					);
 					expect(d.differ).toBe(0);
 				}
+				for (const ok of gateOk) expect(ok).toBe(true);
 			});
 		}
 	});

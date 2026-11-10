@@ -29,8 +29,12 @@ of +1 per miss. Pending: FP14 / FP15 (owner) and the Studio checks.
 **Revision 3 (built 2026-11-10, verified headlessly): a steady lead on jittery links** (FP17-FP22, decisions
 FPD15-FPD19; section at the end): on a 4G-like link the late bump keeps the lead hovering far above its target; the
 census (FP17) measured today's rule against eleven candidates, and the capped cover is built (FP18-FP20, FP22): no late
-bump, the p95 target plus a p99 / 15 s cover that never passes the prediction cap. Pending: FP21 (owner: Studio 4G
-again, with and without `KV_LeadBump`).
+bump, the p95 target plus a p99 / 15 s cover that settles the effective lead at the prediction cap at most (when the
+buffer deepens by k ticks the effective lead is cap + k for ~1 + 0.25 k s, until the net lead falls). The cost: with
+prediction on, a spike longer than a burst holds the lead for the cover's whole 15 s window (FP12's spike on a shallow
+buffer: back in 17.9 s, Revision 2 8.0 s); your knight feels nothing under the cap, hits, enemies and teammates run that
+lead behind. Pending: FP21 (owner: Studio 4G again, with and without `KV_LeadBump`; its `miss` criterion is an open
+owner question).
 
 ## Why co-op stutters (findings)
 
@@ -643,7 +647,8 @@ Revision 3 reproduces that in the spec harness and proposes a steadier rule, **t
 trips' quantiles only, never a single late, and a second, longer window buys extra lead against the rare slow trips
 **only up to what local prediction hides** (the prediction cap minus the buffer). On the owner-like links it keeps the
 same lead as today with up to half fewer dropped inputs (none fewer on the harshest variant), a sixth to a quarter of
-the lead changes and a third to a half of the felt delay at cap 20.
+the lead changes and 29-50 % of the felt delay at cap 20 (as built: "As built (FP18-FP20)"; the cost is the long
+spikes, Design 13).
 
 **Client timing only.** No sim, dungeon, hash, replay, wire, server, fixture or score change: only `LeadController`'s
 rule and its tunables. The echo, the pacer, the send rules (FP1) and the tap latch are unchanged.
@@ -670,11 +675,11 @@ message waits behind them (a head-of-line hold, as a lost packet's retransmit ho
 ```
 npm run test:only -- lockstep/lead.census                    # smoke: 12 s, today vs the copy (in every test run)
 npm run test:only -- --census lockstep/lead.census           # every network x every rule, ~3.5 min (~5.6 min with
-                                                              # FP19's rule3 and kvbump)
+                                                              # FP19's rule3 and kvbump, ~6.5 min with cleanspike)
 # split in two (the VM shell's 3 min cap): owner networks, then the rest
 npm run test:only -- --census lockstep/lead.census --flag lead.owner --flag lead.owner2 --flag lead.ownerS
 npm run test:only -- --census lockstep/lead.census --flag lead.jitter --flag lead.clean --flag lead.spec \
-  --flag lead.spec200 --flag lead.fp12 --flag lead.longhold
+  --flag lead.spec200 --flag lead.fp12 --flag lead.longhold --flag lead.cleanspike
 # --flag lead.rule.<name> keeps only those rules (today's always runs)
 ```
 
@@ -695,6 +700,7 @@ the caps 20 and 10 (mean / p95, ticks of 16.7 ms).
 | `spec` / `spec200` | FP11's networks: 20-120 / 0-200 ms (gate FP11) |
 | `fp12` | FP12's: 20-120 ms, +200 ms up for 1 s at 7 s (gate FP12) |
 | `longhold` | 70-82 ms, one 600 ms up hold at 15 s (gate FP12's bound) |
+| `cleanspike` | 30-40 ms (depth ~4 t), +200 ms up for 1 s at 7 s, watched 25 s: FP12's spike where the cover has room (added in the review fixes, after FP19) |
 
 **How close the reproduction is** (today's rule on `owner`; the owner's numbers were taken at cap 10):
 
@@ -799,8 +805,10 @@ spike; `nobump` and `plus1` have the least felt delay but 1.6-2.6x today's dropp
   rule unchanged.
 - **Cover:** `Lc = ceil(p99(trips of the last coverWindowSec 15 s) + marginTicks)`.
 - **Ceiling:** `C = PREDICTION.maxTicks - depthTicks()` (the prediction cap minus the buffer the lead adds, at the
-  newest send), so `net + depth` never goes past the cap for the cover's sake. Without prediction
-  (`LockstepTunables.prediction` undefined, `KV_PredictOff`) there is no cover.
+  newest send), so the cover settles `net + depth` at the cap at most. It does not hold it there at every frame: when
+  the buffer deepens by k ticks the effective lead is cap + k until the net lead has fallen k ticks (the fall's own
+  pace, ~1 + 0.25 k s). Without prediction (`LockstepTunables.prediction` undefined, `KV_PredictOff`) there is no
+  cover.
 - **Target** `L* = clamp(max(Lb, min(Lc, C)), minLead, maxLead)`; the **fall target** is the same with
   `fallSlackTicks` added to both quantiles. Up at once, down after `fallHoldSec` 1 s at a tick per `fallStepSec`
   0.25 s, exactly as today.
@@ -812,6 +820,17 @@ spike; `nobump` and `plus1` have the least felt delay but 1.6-2.6x today's dropp
 The cover is what turns a miss into a budget: above the prediction cap only the slowest 5 % of the last 5 s raise the
 lead, so the rare bursts are let through as lates (each one a frame the relay repeats, a small correction of the drawn
 knight); below it the slowest 1 % of the last 15 s are covered, for free as far as your own movement goes.
+
+**The cost: long spikes hold the lead for the cover's window.** With prediction on, a spike longer than a burst (enough
+slow trips to move the p99: ~5 of the ~450 in 15 s) holds the lead at `min(Lc, C)` for the cover's whole 15 s window,
+then the 1 s hold and 0.25 s a tick bring it down. Measured (as built): FP1's echoing scenario (unpaced, depth 0) is
+back 19.92 s after the latency dropped (Revision 2: 9.55 s); lead.spec's 12 -> 4 step in 17.38 s with a ceiling against
+7.28 s without; the census's `cleanspike` (a 1 s +200 ms spike on a 30-40 ms link, depth 4) in 17.92 s (today 8.05
+s). Under the cap your own knight feels nothing (`cleanspike` felt @20 0.20 t, today 0.21), but a hit landing, an enemy
+reacting to you and a teammate seeing you run that lead behind the whole time (felt @10 6.17 t against today's 3.28).
+Where the buffer is deep (`fp12`, depth ~7.5 t) C sits near the base and the spike is gone within FP12's bound. Early in
+a run the p99 is the window's max (nearest rank: rank ceil(0.99 n) = n for n <= 100 cover trips, the first ~3.3 s after
+the base's 20-trip warm-up), so a single slow trip then sets the cover, up to C.
 
 ### Tunables (`LEAD`, additions)
 
@@ -836,15 +855,24 @@ knight); below it the slowest 1 % of the last 15 s are covered, for free as far 
 - **FPD16 (accepted, owner 2026-11-10). The cover: p99 over 15 s, never past the prediction cap minus the buffer.** Lead
   under the cap is free for your own knight but not for what is not predicted: hits landing, enemies reacting to you, a
   teammate seeing you. `cov20` spends 2-3 t more than `nobump` on the owner-like links for 56-66 % fewer lates.
-  Considered: no cover (`nobump`), an uncapped p99 (`p99w15`: fewest lates, about twice the felt delay, fails FP12's
-  back-within bound), the window's max (`cov20m`: keeps a one-off hold's trip for the whole window).
+  Considered: no cover (`nobump`), an uncapped p99 (`p99w15`: fewest lates, about twice the felt delay, never back
+  within FP12's bound on `fp12`: the capped cover passes there only because its ceiling, 20 - depth ~7.5, sits near the
+  base; where the cover has room it fails that bound too, below), the window's max (`cov20m`: keeps a one-off hold's
+  trip for the whole window). The cost, as built: with prediction on a spike longer than a burst holds the lead at
+  `min(Lc, C)` for the whole 15 s cover window, then the 1 s hold and 0.25 s a tick (FP1's scenario back in 19.92 s,
+  Revision 2 9.55 s; `cleanspike` 17.92 s, today 8.05 s); under the cap your knight feels nothing, hits, enemies and
+  teammates run that lead behind the whole time (Design 13).
 - **FPD17 (accepted, owner 2026-11-10: the cap stays 20). The cover follows `PREDICTION.maxTicks`.** At cap 20 (now) it
   buys ~3 t; at cap 10 it vanishes on a 4G-like link (the rule is `nobump` there: felt @10 7.15 against today's 10.79 t,
   lates 28.8 against 14.1 / 10 s). The cap is LPD4's (docs/LOCAL_PREDICTION.md); this rule takes whatever it is.
-- **FPD18 (proposed, built as proposed). The gates.** FP11 and FP12 stay as they are (every proposed rule passes). New,
-  on the census's owner-like networks against today's rule: felt delay at cap 20 at most half, dropped changed inputs at
-  most today's, churn at most a third. Lates may rise where the bump did help (`jitter` +31 %, FP12's spike: printed,
-  not gated).
+- **FPD18 (proposed, built as proposed). The gates.** FP11 stays as it is (every rule passes). FP12 does not pass whole
+  any more: its peak bound passes everywhere and its back-within bound on `fp12` and `longhold`, but not where the cover
+  has room (`cleanspike`: back 17.92 s against 9.00 s, the cover's window), and its printed dropped-inputs clause
+  (`dropped <= legacy`) fails under FPD15 (lockstep.spec's spike, no ceiling: 79 against 39, Revision 2's bump 39):
+  both are the long-spike cost, printed, not gated (lockstep.spec now labels the clause informational). New, on the
+  census's owner-like networks against today's rule (asserted in the census run): felt delay at cap 20 at most half,
+  dropped changed inputs at most today's, churn at most a third. Lates may rise where the bump did help (`jitter` +31 %,
+  FP12's spike: printed, not gated).
 - **FPD19 (proposed, built as proposed). Without prediction there is no cover** (`KV_PredictOff`, a debug A/B): every
   tick of lead is felt there, so only the base's p95 raises it.
 
@@ -900,6 +928,16 @@ knight); below it the slowest 1 % of the last 15 s are covered, for free as far 
 - lockstep.spec's network harness keeps `prediction: undefined` (its `TUNABLES`), so its FP11 / FP12 nets run
   Revision 3 without a ceiling (the `nobump` rule); the shipped rule with its ceiling is measured end to end by the
   census's `rule3` (the FP11 / FP12 gates in its table).
+- **FP12's dropped-inputs clause fails under FPD15.** lockstep.spec prints `dropped <= legacy (informational since
+  FPD15: the long-spike cost) NOT met (79 vs 39; Revision 2's bump 39)` for the 1 s spike: without the bump the inputs
+  sent while the spike lifts the p95 are lost (79 against 39 over 3 clients, ~13 a client; the census's `fp12`: 13.9
+  against 6.8 dropped per 10 s). Printed only, as before (FPD18).
+- **The cover's p99 on a small window is its max** (nearest rank, rank ceil(0.99 n) = n for n <= 100): the cover
+  applies once the base window has 20 trips, so for about the first 3.3 s after that one slow trip sets the cover (up
+  to C). Left as built for the owner (a minimum cover sample count would change it).
+- Review fixes (after FP20): lockstep.spec's hold asserts the lead did not move at all (`peak` equals `before`:
+  11,11,12), the census asserts FPD18's gates (it printed them), and a new census network `cleanspike` measures FP12's
+  spike where the cover has room (below).
 
 **Measured.** lead.spec (FP18's cases): one 15-tick late among steady 6 +/- 1 trips moves nothing for the cover window
 (Revision 2 bumps it to 17 at once); five such lates within half a second move the p99 and raise the lead to 17 the
@@ -943,6 +981,15 @@ candidate's are the appendix's exactly; `rule3` = `cov20` on every client frame 
 | longhold | today | 16.6 / 31 | 13.6 | 12.8 | 10.2 | 3.32 % | 2.6 | 14.3 | 1.22 / 11 | 6.60 |
 | longhold | **rule3** | 14.0 / 14 | 11.0 | 12.8 | 10.2 | 2.13 % | 0.0 | 0.0 | 0.00 / 0 | 4.00 |
 | longhold | kvbump | 16.6 / 31 | 13.6 | 12.8 | 10.2 | 3.32 % | 2.6 | 13.9 | 1.22 / 11 | 6.60 |
+| cleanspike | today | 13.2 / 21 | 9.3 | 5.0 | 3.9 | 1.41 % | 3.3 | 7.2 | 0.21 / 1 | 3.28 |
+| cleanspike | **rule3** | 16.2 / 21 | 12.2 | 6.2 | 4.7 | 1.56 % | 0.0 | 6.2 | 0.20 / 1 | 6.17 |
+| cleanspike | kvbump | 16.2 / 21 | 12.2 | 5.3 | 4.2 | 1.41 % | 3.6 | 6.2 | 0.21 / 1 | 6.19 |
+
+`cleanspike` (added in the review fixes; 30-40 ms one way, depth 4.0 t, +200 ms up for 1 s at 7 s, watched 25 s),
+FP12's gate: today and the bump rules pass (7 -> 17, bound 18; back in 8.05 / 8.03 s, bound 9.00 s); `cov20` = `rule3`
+= `kvbump` peak 7 -> 17 but back only after 17.92 s (FAIL against 9.00 s: the spike's trips stay in the cover's 15 s
+window, the lead held at `min(Lc, C)`, C = 20 - 4); `p99w15` 16.47 s, `cov20bf` 15.82 s, `cov20m` 13.03 s, `p98w10` 13.08 s. The knight feels none of
+it (felt @20 0.20-0.21 t for every rule); hits, enemies and teammates do (felt @10 6.17 against 3.28 t).
 
 FPD18's gates (rule3 against today; compared unrounded, printed to two decimals), all met:
 
@@ -983,7 +1030,11 @@ felt delay, and "`miss` at most its" against fewer dropped inputs than today's: 
 - [ ] **FP21 [owner]. Studio 4G again.** The same session as the owner's first, once with Revision 3, once with
   `KV_LeadBump`. -> Verify: docs/SPIKES.md "Frame pacing" gains the rows (trip p50 / p95 / max, lead, target, lates,
   bumps, `pred`); felt delay (effective lead past `pred`) at most half of `KV_LeadBump`'s, `miss` at most its; `LEAD`
-  confirmed or edited.
+  confirmed or edited. **Open owner question (not decided here):** with prediction on, `KV_LeadBump` builds the cover
+  plus the bump, not Revision 2's rule (that is `KV_LeadBump` with `KV_PredictOff`), and by the census `rule3` meets the
+  felt-delay criterion against it (0.61 / 1.55 / 0.86 against half of 2.11 / 3.26 / 2.21) but fails "`miss` at most
+  its" (dropped 4.4 / 6.8 / 3.6 against 3.2 / 4.6 / 2.8 per 10 s on `owner` / `owner2` / `ownerS`): keep the criterion,
+  change it, or change the A/B's baseline.
 - [x] **FP22. Docs.** CLAUDE.md's decision log entry (Revision 3), this section's status and as built, docs/FEEL.md J9
   if the debug line changed.
 
@@ -998,6 +1049,15 @@ Order: FP17 -> owner decisions -> FP18 -> FP19 -> FP20 -> FP21 -> FP22.
   0.98 or `coverWindowSec` 10 spend less (`p98w10` without the cap: 17.6 net on `owner`).
 - **Long spikes cost more lates** than today (FP12's spike: ~17 frames per client). If FP21 shows long latency shifts
   more than bursts, FPD15b (`cov20bf`) keeps today's lates there.
+- **Long spikes hold the lead for the cover's window.** With prediction on, a spike longer than a burst holds the lead
+  at `min(Lc, C)` for 15 s, then the hold and the fall (FP1's scenario back in 19.92 s against Revision 2's 9.55 s;
+  `cleanspike` 17.92 s against 8.05 s; lead.spec 17.38 s with a ceiling against 7.28 s without). Your knight feels none
+  of it under the cap; hits landing, enemies reacting and teammates seeing you run that lead behind the whole time.
+  `coverWindowSec` 10 shortens it by 5 s.
+- **A deeper buffer passes the cap for a moment.** C follows the depth of the newest send, but the net lead falls only
+  at the fall's pace: a depth rise of k ticks puts the effective lead at cap + k for ~1 + 0.25 k s.
+- **The p99 of a small window is its max** (n <= 100 cover trips, ~3.3 s after the warm-up): one slow trip early in a
+  run sets the cover up to C for the cover's window. A minimum cover sample count would change it (owner).
 - **The ceiling moves with the buffer.** A deeper buffer lowers the cover's room tick for tick; on a very jittery down
   link (`spec200`, depth 12) the cover is gone and only the base raises the lead, as today without bumps.
 
@@ -1157,3 +1217,23 @@ Per 10 s rates are per client; relay missed is the worst client's share of ticks
 | fast | 14.9 / 15 / 33 | 11.9 / 12 / 30 | 12.8 | 10.2 | 3.32 % | 2.6 | 14.3 | 0.29 / 0 | 4.94 / 5 | FP12 pass (11->30 (<= 48) back 1.22 s (<= 11.25 s); 11->30 (<= 48) back 1.22 s (<= 11.25 s)) |
 | cov20bf | 15.0 / 15 / 33 | 12.0 / 12 / 30 | 12.8 | 10.2 | 3.32 % | 2.6 | 13.9 | 0.29 / 0 | 4.98 / 5 | FP12 pass (11->30 (<= 48) back 1.22 s (<= 11.25 s); 11->30 (<= 48) back 1.22 s (<= 11.25 s)) |
 | cov20f | 14.0 / 14 / 14 | 11.0 / 11 / 11 | 12.8 | 10.2 | 2.13 % | 0.0 | 0.0 | 0.00 / 0 | 4.00 / 4 | FP12 pass (11->11 (<= 48) back 0.00 s (<= 6.50 s); 11->11 (<= 48) back 0.00 s (<= 6.50 s)) |
+
+**cleanspike** (added in the review fixes, on the Revision 3 tree: clean + FP12's spike, 30-40 ms one way, +200 ms up
+for 1 s at 7 s, watched 25 s; `rule3` and `kvbump` are the real client with prediction on)
+
+| Rule | Effective lead mean / p95 / max (t) | Net lead mean / p95 / max (t) | Lates / 10 s | Dropped changed / 10 s | Relay missed | Bumps / 10 s | Churn / 10 s | Felt @20 mean / p95 (t) | Felt @10 mean / p95 (t) | Gate |
+|---|---|---|---|---|---|---|---|---|---|---|
+| today | 13.2 / 21 / 21 | 9.3 / 17 / 17 | 5.0 | 3.9 | 1.41 % | 3.3 | 7.2 | 0.21 / 1 | 3.28 / 11 | FP12 pass (7->17 (<= 18) back 8.05 s (<= 9.00 s); 7->17 (<= 18) back 8.03 s (<= 9.00 s)) |
+| k2 | 13.2 / 21 / 21 | 9.3 / 17 / 17 | 5.6 | 4.2 | 1.51 % | 3.0 | 7.2 | 0.21 / 1 | 3.27 / 11 | FP12 pass (7->17 (<= 18) back 8.05 s (<= 9.00 s); 7->17 (<= 18) back 8.03 s (<= 9.00 s)) |
+| plus1 | 13.2 / 21 / 21 | 9.2 / 17 / 17 | 9.8 | 8.3 | 2.24 % | 5.8 | 7.2 | 0.20 / 1 | 3.21 / 11 | FP12 pass (7->17 (<= 18) back 8.05 s (<= 9.00 s); 7->17 (<= 18) back 8.03 s (<= 9.00 s)) |
+| nobump | 13.1 / 21 / 21 | 9.2 / 17 / 17 | 9.8 | 8.3 | 2.24 % | 0.0 | 7.2 | 0.20 / 1 | 3.19 / 11 | FP12 pass (7->17 (<= 18) back 8.05 s (<= 9.00 s); 7->17 (<= 18) back 8.03 s (<= 9.00 s)) |
+| p99w15 | 16.2 / 21 / 21 | 12.2 / 17 / 17 | 6.2 | 4.7 | 1.56 % | 0.0 | 6.2 | 0.51 / 1 | 6.20 / 11 | FP12 FAIL (7->17 (<= 18) back 16.47 s (<= 9.00 s); 7->17 (<= 18) back 16.47 s (<= 9.00 s)) |
+| p98w10 | 14.9 / 21 / 21 | 11.0 / 17 / 17 | 7.8 | 6.2 | 1.82 % | 0.0 | 6.2 | 0.36 / 1 | 4.95 / 11 | FP12 FAIL (7->17 (<= 18) back 13.08 s (<= 9.00 s); 7->17 (<= 18) back 13.08 s (<= 9.00 s)) |
+| cap20 | 13.2 / 21 / 21 | 9.3 / 17 / 17 | 5.0 | 3.9 | 1.41 % | 3.3 | 7.2 | 0.20 / 1 | 3.27 / 11 | FP12 pass (7->17 (<= 18) back 8.05 s (<= 9.00 s); 7->17 (<= 18) back 8.03 s (<= 9.00 s)) |
+| cov20 | 16.2 / 21 / 21 | 12.2 / 17 / 17 | 6.2 | 4.7 | 1.56 % | 0.0 | 6.2 | 0.20 / 1 | 6.17 / 11 | FP12 FAIL (7->17 (<= 18) back 17.92 s (<= 9.00 s); 7->17 (<= 18) back 17.92 s (<= 9.00 s)) |
+| rule3 | 16.2 / 21 / 21 | 12.2 / 17 / 17 | 6.2 | 4.7 | 1.56 % | 0.0 | 6.2 | 0.20 / 1 | 6.17 / 11 | FP12 FAIL (7->17 (<= 18) back 17.92 s (<= 9.00 s); 7->17 (<= 18) back 17.92 s (<= 9.00 s)) |
+| kvbump | 16.2 / 21 / 21 | 12.2 / 17 / 17 | 5.3 | 4.2 | 1.41 % | 3.6 | 6.2 | 0.21 / 1 | 6.19 / 11 | FP12 FAIL (7->17 (<= 18) back 17.92 s (<= 9.00 s); 7->17 (<= 18) back 17.92 s (<= 9.00 s)) |
+| cov20m | 14.8 / 21 / 21 | 10.9 / 17 / 17 | 5.3 | 4.2 | 1.41 % | 0.0 | 6.2 | 0.20 / 1 | 4.81 / 11 | FP12 FAIL (7->17 (<= 18) back 13.03 s (<= 9.00 s); 7->17 (<= 18) back 13.03 s (<= 9.00 s)) |
+| fast | 12.7 / 21 / 21 | 8.7 / 17 / 17 | 5.3 | 4.2 | 1.46 % | 3.6 | 7.2 | 0.19 / 1 | 2.74 / 11 | FP12 pass (6->17 (<= 18) back 5.80 s (<= 9.25 s); 6->17 (<= 18) back 5.78 s (<= 9.25 s)) |
+| cov20bf | 15.7 / 21 / 21 | 11.8 / 17 / 17 | 5.3 | 4.2 | 1.41 % | 3.6 | 6.2 | 0.19 / 1 | 5.75 / 11 | FP12 FAIL (7->17 (<= 18) back 15.82 s (<= 9.00 s); 7->17 (<= 18) back 15.82 s (<= 9.00 s)) |
+| cov20f | 15.8 / 21 / 21 | 11.9 / 17 / 17 | 6.2 | 4.7 | 1.56 % | 0.0 | 6.2 | 0.19 / 1 | 5.85 / 11 | FP12 FAIL (7->17 (<= 18) back 16.37 s (<= 9.00 s); 7->17 (<= 18) back 16.37 s (<= 9.00 s)) |

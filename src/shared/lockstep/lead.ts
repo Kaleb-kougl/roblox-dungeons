@@ -15,8 +15,8 @@
  *                                            cap (depthRaw - depthUsed) covers its overshoot. Excused lates are counted,
  *                                            never bumped; the catching-up echo's and the unsteady send's trips stay out
  *   deadline(matched, now)                   checkDeadline's per-tick result: today's miss counter while not echoing;
- *                                            while echoing a mismatch is only counted (its late is the echo's:
- *                                            only echoed lates bump, Design 10)
+ *                                            while echoing a mismatch is only counted (its late is the echo's,
+ *                                            which bumps only with `lateBump`, Design 10)
  *   frame(now)                               once per pump: the fall (after a hold, a tick per step)
  *   lead()                                   the net lead, an integer in [minLead, maxLead]
  *
@@ -31,6 +31,8 @@
  * `fallSlackTicks` added to both quantiles; once Lf has been below the lead for `fallHoldSec`, the lead falls a tick
  * every `fallStepSec` while it stays below, so after a fall the lead rests at Lf (L* or L* + 1: the slack band).
  * Without `lateBump` the lead follows these quantiles only: a late raises it only when its trip moves one of them.
+ * Nearest rank: with n <= 100 cover trips the p99 is the cover window's max (rank ceil(0.99 n) = n), and the cover
+ * applies from the base's minSamples (20) trips, so early on one slow trip sets the cover up to the ceiling.
  *
  * Echoing: off before the first echo with a tick, and again once batches keep arriving (`received`) for
  * `echoTimeoutSec` without any decodable echo (an old server; a "none" echo proves the server echoes, so an up-link
@@ -188,7 +190,10 @@ export class LeadController {
 	private isEchoing = false;
 	private lastEchoAt: number | undefined;
 	private lastNow: number | undefined;
-	/** The fall target has been below the lead since this time (undefined: not below); a late restarts it. */
+	/**
+	 * The fall target has been below the lead since this time (undefined: not below); a bumping late (only with
+	 * `lateBump`) restarts it.
+	 */
 	private holdFrom: number | undefined;
 	/** The last fall of the current hold. */
 	private lastFallAt: number | undefined;
@@ -347,9 +352,10 @@ export class LeadController {
 			if (this.leadValue < this.maxLead) this.leadValue++;
 			return;
 		}
-		// While echoing a mismatch is only counted: the input was late, and the echo's lates already bump the lead to
-		// that late's own trip (Design 10: a mismatch bumps only without an echo). Bumping here too raised the lead a
-		// tick per late input on top of the echo's bump (FP12's spike overshoot).
+		// While echoing a mismatch is only counted: the input was late, and the echo reports that late (with `lateBump` it
+		// bumps the lead to the late's own trip; without, its trip only enters the windows). Design 10: a mismatch bumps
+		// only without an echo; bumping here too raised the lead a tick per late input on top of the echo's bump (FP12's
+		// spike overshoot).
 		if (!matched) this.mismatchCount++;
 	}
 

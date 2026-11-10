@@ -6,7 +6,7 @@
  * client's final claim and the server's verdict are identical (the predictor is read only). Since Revision 3 of
  * docs/FRAME_PACING.md (FPD19) the prediction cap is also the measured lead's ceiling, so a client built without
  * prediction sends with another lead: the "off" run's clients get the shipped controller with the same ceiling
- * (`PREDICTION.maxTicks`), so the predictor alone differs. With it on, every client's
+ * (`TUNABLES.prediction.maxTicks`, what the "on" client reads), so the predictor alone differs. With it on, every client's
  * prediction statistics are printed: on real endless floors (the record for LP8), and on M1 without enemies, where
  * nothing but the inputs moves a body, so a client whose sent inputs all made their deadlines has zero error.
  */
@@ -143,7 +143,7 @@ function play(
 				t.inputDelay,
 				t.maxInputLead,
 				t.leadDecayTicks,
-				PREDICTION.maxTicks,
+				TUNABLES.prediction!.maxTicks,
 			);
 		}
 		clients.push(c);
