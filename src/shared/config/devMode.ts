@@ -15,7 +15,9 @@ export const DEV_MODE = {
 	/** Master switch. False: no player ever gets dev mode, Studio included. */
 	enabled: true,
 	/** Roblox UserIds allowed on live servers (find yours on your profile URL: roblox.com/users/<id>/profile). */
-	allowedUserIds: [] as ReadonlyArray<number>,
+	allowedUserIds: [
+		8814003556, // Slaylub, the owner's phone test account (docs/ROLLBACK_SPIKE.md R5) // check-asset-ids: allow (a UserId, not an asset id)
+	] as ReadonlyArray<number>,
 	/** The place's creator is allowed on live servers when the game is owned by a user (not a group). */
 	allowPlaceCreator: true,
 	/** Player attribute the server sets (true) on allowed players. */
