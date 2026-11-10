@@ -507,12 +507,14 @@ export class RollbackWorkerCore {
 				if (i < H - 1) host.yieldSlice();
 			}
 		}
+		// The label covers the fill only: sendDigest synchronizes, and a profile label cannot span that switch
+		// (debug.profileend then finds no active annotation). The host labels the Fire itself.
 		host.profileBegin(LABELS.send);
 		const d0 = host.clock();
 		fillDigestBuffer(this.digest, copy);
 		const fillSec = host.clock() - d0;
-		const postSec = host.sendDigest(this.digest, host.clock());
 		host.profileEnd();
+		const postSec = host.sendDigest(this.digest, host.clock());
 		const sendSec = fillSec + postSec;
 		const copySec = c1 - c0;
 		const total = copySec + stepSec + sendSec;

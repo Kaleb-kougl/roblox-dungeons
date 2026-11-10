@@ -131,16 +131,26 @@ class SpecHost implements RollbackWorkerHost {
 		this.posts.push(back);
 	}
 	sendDigest(data: buffer): number {
+		// The real host synchronizes here: a MicroProfiler label cannot span it (debug.profileend finds none).
+		if (this.openLabels !== 0) error("a profile label is open across sendDigest", 0);
 		this.digests++;
 		expect(buffer.len(data)).toBeGreaterThan(0);
 		return 0;
 	}
 	yieldSlice(): void {
+		if (this.openLabels !== 0) error("a profile label is open across yieldSlice", 0);
 		this.yields++;
 		this.onYield?.();
 	}
-	profileBegin(): void {}
-	profileEnd(): void {}
+	/** Open MicroProfiler labels: begin / end must pair up within one resume (no yield or send inside). */
+	openLabels = 0;
+	profileBegin(): void {
+		this.openLabels++;
+	}
+	profileEnd(): void {
+		if (this.openLabels === 0) error("profileEnd without an open label", 0);
+		this.openLabels--;
+	}
 }
 
 function setupMsg(n: number, live: boolean, borrowed = false): RollbackSetupMsg {

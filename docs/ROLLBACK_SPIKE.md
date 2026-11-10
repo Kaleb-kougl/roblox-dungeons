@@ -790,10 +790,16 @@ Model per frame (R2, pooled copy, 3-player bot run, a 15-tick prediction): copy 
 
 ### Devices (R5; the probe's `ProbeSummary` rows)
 
-The copy column is the summary's `clone` stat (the pooled copy). Native is always off as built.
+The copy column is the summary's `clone` stat (the pooled copy). Native is always off as built. The Mac row's digest
+(worker send -> main-thread arrival) was 11.1 / 12.1 / 15.0 ms p50 / p95 / max: the result reaches the main thread
+about one frame later, a frame a real rollback would add unless the worker ran earlier in the frame. The first run
+also showed every 10 s window's `kv.rollback.send` label closing after the send's `task.synchronize()` ("No active
+profile annotation"): fixed (the label covers the fill, the Fire has its own), and the core spec's host now refuses a
+label left open across a yield or a send.
 
 | Device / host | Mode | Case | Party | H | Copy ms p50 / p95 | Step ms p50 / p95 | Total p95 | Frames / prediction p95 | Frame ms p95 | GC KB/s |
 |---|---|---|---|---|---|---|---|---|---|---|
+| Owner's Mac, Studio Play (2026-11-09) | parallel | room (11 actors, 19 bullets) | 1 | 16 | 0.52 / 0.57 | 1.20 / 1.44 | 1.99 | 1.00 | 19.09 (60 fps) | 117 |
 | PC | | | | | | | | | | |
 | iPhone | | | | | | | | | | |
 | Mid Android | | | | | | | | | | |

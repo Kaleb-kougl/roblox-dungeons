@@ -58,9 +58,11 @@ function startWorker(owner: Actor): void {
 		},
 		sendDigest(data, sentAt) {
 			task.synchronize();
+			debug.profilebegin(ROLLBACK_SPIKE.probe.profileLabels.send);
 			const t0 = os.clock();
 			reply.Fire({ kind: "digest", sentAt, data });
 			const sec = os.clock() - t0;
+			debug.profileend();
 			flush();
 			task.desynchronize();
 			return sec;
