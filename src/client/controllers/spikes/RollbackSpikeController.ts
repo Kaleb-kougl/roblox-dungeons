@@ -34,7 +34,13 @@ import {
 } from "shared/lockstep/rollbackSpike";
 import { RUN_ATTRIBUTES } from "shared/play";
 import { hashState, type SimConfig, type SimState } from "shared/sim";
-import { ROLLBACK_PROBE_LIMITS, describeLiveSummary, describeProbeSummary, type ProbeSummary } from "shared/spikes";
+import {
+	ROLLBACK_CAPTURE,
+	ROLLBACK_PROBE_LIMITS,
+	describeLiveSummary,
+	describeProbeSummary,
+	type ProbeSummary,
+} from "shared/spikes";
 import { RENDER_ORDER } from "shared/view";
 import { SimController, type RunContext } from "../game/SimController";
 
@@ -55,6 +61,11 @@ function readHorizon(): number {
 	const raw = Workspace.GetAttribute(ROLLBACK_SPIKE_ATTRIBUTES.horizon);
 	if (!typeIs(raw, "number") || raw !== raw) return 0;
 	return math.clamp(math.floor(raw), 0, ROLLBACK_PROBE_LIMITS.maxHorizon);
+}
+
+/** The server's word that it takes this player's summaries (RollbackSpikeService: the capture policy, switch on). */
+function probeAllowed(): boolean {
+	return Players.LocalPlayer.GetAttribute(ROLLBACK_CAPTURE.probeAllowedAttribute) === true;
 }
 
 function readMode(): RollbackSpikeModeName {
@@ -301,7 +312,11 @@ class ProbeSession {
 			const max = ROLLBACK_PROBE_LIMITS.maxMs;
 			const summary: ProbeSummary = {
 				...m.summary,
-				digest: { p50: math.min(digest.p50, max), p95: math.min(digest.p95, max), max: math.min(digest.max, max) },
+				digest: {
+					p50: math.min(digest.p50, max),
+					p95: math.min(digest.p95, max),
+					max: math.min(digest.max, max),
+				},
 			};
 			this.lastCpu = summary;
 			print(`${TAG} ${describeProbeSummary(summary)}`);
@@ -356,7 +371,10 @@ class ProbeSession {
 /**
  * The rollback probe's client glue (docs/ROLLBACK_SPIKE.md Design 5 / 7, tasks R3a / R3 / R4b), thin over the shared
  * worker core (shared/lockstep rollbackSpike/worker). Off by default: with Workspace `KV_RollbackSpike` 0 or absent
- * nothing is created (no Actor, no render step; only the two attribute watches). On (a number H 1..64):
+ * nothing is created (no Actor, no render step; only the attribute watches). It also needs the server's player
+ * attribute ROLLBACK_CAPTURE.probeAllowedAttribute (`KV_RollbackAllowed`, set while `KV_RollbackCapture` is on for a
+ * player the capture policy allows: Studio, a DEV_MODE-allowed player, a developer's private server), so a Workspace
+ * attribute, which replicates to every client, never starts the probe on anyone else's device. On (a number H 1..64):
  *
  *   parallel (KV_RollbackSpikeMode absent / "parallel")  every run start (co-op or solo; a solo run picked up mid-run
  *       replays its recorded frames into the mirror) spawns an Actor under PlayerScripts with a clone of the disabled
@@ -368,7 +386,8 @@ class ProbeSession {
  *       (`Events.rollbackProbe("cpu" | "live", summary)`), shown on the spike HUD's line. A mirror hash that differs
  *       from the main state's stops the probe and prints both.
  *   serial ("serial")  the same core on the main thread, on the main state itself (lent, never stepped by it): the
- *       comparison, which costs frames. Never with other players. No mirror, no live model.
+ *       comparison, which costs frames. Refused in a run with more than one player (it would cost everyone's frames
+ *       through the lockstep). No mirror, no live model.
  *   facts ("facts")  R3a once: the Parallel Luau facts printed as `[RollbackFacts]` lines (facts.ts).
  * Under KV_Debug, once a second, the main state's hash is taken before and after the probe's frame work: a change
  * stops it. Device label: what the game knows plus Workspace `KV_RollbackDeviceTag` (the dev panel sets it).
@@ -384,20 +403,37 @@ export class RollbackSpikeController implements OnStart {
 	private session: ProbeSession | undefined;
 	/** The run counter last seen (a session per run). */
 	private counter = -1;
+	/** The "not allowed" line was printed (once per client). */
+	private refusedSaid = false;
 
 	constructor(private readonly sim: SimController) {}
 
 	onStart(): void {
 		Workspace.GetAttributeChangedSignal(ROLLBACK_SPIKE_ATTRIBUTES.horizon).Connect(() => this.refresh());
 		Workspace.GetAttributeChangedSignal(ROLLBACK_SPIKE_ATTRIBUTES.mode).Connect(() => this.refresh());
+		Players.LocalPlayer.GetAttributeChangedSignal(ROLLBACK_CAPTURE.probeAllowedAttribute).Connect(() =>
+			this.refresh(),
+		);
 		this.refresh();
 	}
 
 	private refresh(): void {
 		const horizon = readHorizon();
 		const mode = readMode();
-		if (this.on && (horizon !== this.horizon || mode !== this.mode)) this.stop();
+		const allowed = probeAllowed();
+		if (this.on && (horizon !== this.horizon || mode !== this.mode || !allowed)) this.stop();
 		if (horizon <= 0 || this.on) return;
+		if (!allowed) {
+			if (!this.refusedSaid) {
+				print(
+					`${TAG} ${ROLLBACK_SPIKE_ATTRIBUTES.horizon} is set but the server does not take this player's ` +
+						`summaries (${ROLLBACK_CAPTURE.probeAllowedAttribute}: ${ROLLBACK_CAPTURE.attribute} on, ` +
+						`and Studio, a DEV_MODE-allowed player or a developer's private server): the probe stays off`,
+				);
+			}
+			this.refusedSaid = true;
+			return;
+		}
 		this.on = true;
 		this.horizon = horizon;
 		this.mode = mode;
@@ -465,6 +501,11 @@ export class RollbackSpikeController implements OnStart {
 		const live = ctx.live;
 		let src: RollbackFrameSource;
 		let config: Readonly<SimConfig>;
+		if (mode === "serial" && coop !== undefined && coop.players > 1) {
+			print(`${TAG} serial mode is solo only: run ${ctx.counter} has ${coop.players} players, no probe`);
+			clientStore.setRollbackSpikeLine(`ROLLBACK serial: solo only (this run has ${coop.players} players)`);
+			return undefined;
+		}
 		if (coop !== undefined) {
 			if (coop.state.tick > 0) {
 				print(
