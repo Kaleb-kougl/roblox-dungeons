@@ -1137,12 +1137,14 @@ export class SimController implements OnStart {
 		const setup = result as ReturnType<typeof buildWorldSetup>;
 		const spawn = setup.spawn ?? { x: 0, z: 0 };
 		this.draftGate.reset();
-		// KV_PacingOff (docs/FRAME_PACING.md FPD8) and KV_LeadOff (Design 12): A/B switches for playtests, read at every
-		// co-op start, combinable.
+		// KV_PacingOff (docs/FRAME_PACING.md FPD8), KV_LeadOff (Design 12) and KV_LeadBump (Revision 3, FP20): A/B
+		// switches for playtests, read at every co-op start, combinable (KV_LeadOff wins over KV_LeadBump).
 		const pacingOff = Workspace.GetAttribute(RUN_ATTRIBUTES.pacingOff) === true;
 		const leadOff = Workspace.GetAttribute(RUN_ATTRIBUTES.leadOff) === true;
+		const leadBump = !leadOff && Workspace.GetAttribute(RUN_ATTRIBUTES.leadBump) === true;
 		// KV_PredictOff (docs/LOCAL_PREDICTION.md LPD6): the same kind of switch for local prediction.
 		const predictOff = Workspace.GetAttribute(RUN_ATTRIBUTES.predictOff) === true;
+		const shippedLead = DEFAULT_LOCKSTEP.lead;
 		const client = new LockstepClient({
 			runId: start.runId,
 			seed: start.seed,
@@ -1151,17 +1153,23 @@ export class SimController implements OnStart {
 			players: start.members.size(),
 			localIndex,
 			tunables:
-				pacingOff || leadOff || predictOff
+				pacingOff || leadOff || leadBump || predictOff
 					? {
 							...DEFAULT_LOCKSTEP,
 							pacing: pacingOff ? undefined : DEFAULT_LOCKSTEP.pacing,
-							lead: leadOff ? undefined : DEFAULT_LOCKSTEP.lead,
+							lead:
+								leadOff || shippedLead === undefined
+									? undefined
+									: leadBump
+									? { ...shippedLead, lateBump: true }
+									: shippedLead,
 							prediction: predictOff ? undefined : DEFAULT_LOCKSTEP.prediction,
 					  }
 					: undefined,
 		});
 		if (pacingOff) print(`[Sim] co-op run ${start.runId}: frame pacing off (${RUN_ATTRIBUTES.pacingOff})`);
 		if (leadOff) print(`[Sim] co-op run ${start.runId}: measured lead off (${RUN_ATTRIBUTES.leadOff})`);
+		if (leadBump) print(`[Sim] co-op run ${start.runId}: late bump on (${RUN_ATTRIBUTES.leadBump})`);
 		if (predictOff) print(`[Sim] co-op run ${start.runId}: local prediction off (${RUN_ATTRIBUTES.predictOff})`);
 		// A new run: nothing to glide from (LP5's run-start snap).
 		this.smoother.snap();

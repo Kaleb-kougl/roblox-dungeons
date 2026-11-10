@@ -25,14 +25,15 @@ const INFO_WAITING: ArrivalLineInfo = {
 };
 
 /** The measured lead's stats: trips 7 / 9 / 11 ticks (117 / 150 / 183 ms). */
+/** And Revision 3's parts: base 11, the cover's p99 10.4 ticks (12 with the margin) under its ceiling 16: L* 12. */
 const LEAD_STATS: LeadStats = {
-	lead: 11,
-	target: 11,
+	lead: 12,
+	target: 12,
 	fallTarget: 12,
 	baseTarget: 11,
-	coverP99: undefined,
-	coverTarget: undefined,
-	ceiling: undefined,
+	coverP99: 10.4,
+	coverTarget: 12,
+	ceiling: 16,
 	tripP50: 7,
 	tripP95: 9,
 	tripMax: 11,
@@ -40,7 +41,7 @@ const LEAD_STATS: LeadStats = {
 	warmingUp: false,
 	lates: 9,
 	mismatches: 0,
-	bumps: 3,
+	bumps: 0,
 	excused: 0,
 	raises: 4,
 	falls: 1,
@@ -191,9 +192,25 @@ describe("formatArrivalLine", () => {
 		expect(line).toBe(
 			"[Pace] 10.0s batches 3 ticks 7 · gap p50 33 p95 37 max 37 ms · sizes 2:2 3:1" +
 				" · pace 4t 58ms target 3.5t jitter p95 9ms holds 1 discarded 0 · lead 7t net 3t miss 2 backlog 3" +
-				" · fps 0.1 worst 17ms · trip p50 117 p95 150 max 183 ms · lead 11t target 11t fall 12t" +
-				" · lates 9 bumps 3 falls 1",
+				" · fps 0.1 worst 17ms · trip p50 117 p95 150 max 183 ms · lead 12t target 12t" +
+				" (base 11t cover 12t cap 16t) fall 12t · lates 9 bumps 0 falls 1",
 		);
+	});
+
+	it("prints the lead's base, cover and ceiling: `cap off` without a ceiling (no prediction), '-' before a cover trip", () => {
+		const info: ArrivalLineInfo = {
+			...INFO_WAITING,
+			leadStats: { ...LEAD_STATS, lead: 11, target: 11, ceiling: undefined, bumps: 3 },
+			leadOff: false,
+		};
+		const tail = "lead 11t target 11t (base 11t cover 12t cap off) fall 12t · lates 9 bumps 3 falls 1";
+		const line = formatArrivalLine(window(), info);
+		expect(line.sub(-tail.size())).toBe(tail);
+		const early = formatArrivalLine(window(), {
+			...info,
+			leadStats: { ...LEAD_STATS, coverP99: undefined, coverTarget: undefined },
+		});
+		expect(early.find("(base 11t cover - cap 16t)", 1, true)[0]).never.toBe(undefined);
 	});
 
 	it("says when the lead is not measured: the legacy counter, or KV_LeadOff", () => {

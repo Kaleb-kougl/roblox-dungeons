@@ -767,7 +767,7 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"hud.debug.net":
 			"co-op lead {lead}t {leadMs}ms ({netPart}) · {pace} · press->step {last}ms avg {mean} max {max} n{count} · " +
 			"late {late} miss {misses} · {pred}",
-		"hud.debug.lead": "net {net}t, trip p95 {p95}ms",
+		"hud.debug.lead": "net {net}t, trip p95 / p99 {p95} / {p99}ms",
 		"hud.debug.leadLegacy": "net {net}t legacy",
 		"hud.debug.leadOff": "net {net}t, lead off (KV_LeadOff)",
 		"hud.debug.pace": "pace {depth}t {depthMs}ms · holds {holds} · backlog {backlog} · jitter p95 {jitter}ms",

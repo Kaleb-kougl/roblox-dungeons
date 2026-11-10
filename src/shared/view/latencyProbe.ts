@@ -129,6 +129,8 @@ export interface LeadStatsInput {
 	readonly echoing: boolean;
 	/** The window's trip p95, ticks (undefined while the window is empty). */
 	readonly tripP95: number | undefined;
+	/** The cover window's trip p99, ticks (Revision 3, Design 13; undefined while it is empty). */
+	readonly coverP99: number | undefined;
 }
 
 /**
@@ -139,12 +141,18 @@ export interface LeadDebugView {
 	readonly mode: "measured" | "legacy" | "off";
 	/** The trip p95 in whole ms (undefined: not measured, or no trip in the window). */
 	readonly tripP95Ms: number | undefined;
+	/** The cover window's trip p99 in whole ms (undefined: not measured, or no trip in the cover window). */
+	readonly tripP99Ms: number | undefined;
 }
 
 /** The lead part of a client built without the measured lead (KV_LeadOff). */
-export const LEAD_DEBUG_OFF: LeadDebugView = table.freeze({ mode: "off", tripP95Ms: undefined });
+export const LEAD_DEBUG_OFF: LeadDebugView = table.freeze({ mode: "off", tripP95Ms: undefined, tripP99Ms: undefined });
 /** The lead part while the legacy miss counter steers the lead. */
-export const LEAD_DEBUG_LEGACY: LeadDebugView = table.freeze({ mode: "legacy", tripP95Ms: undefined });
+export const LEAD_DEBUG_LEGACY: LeadDebugView = table.freeze({
+	mode: "legacy",
+	tripP95Ms: undefined,
+	tripP99Ms: undefined,
+});
 
 /** What the debug line shows (the SimController hands it to the HUD store). */
 export interface LatencyProbeView extends LatencyProbeStats {
@@ -303,16 +311,18 @@ export function pacingDebugView(
 
 /**
  * The debug line's lead part from the client's lead stats (undefined without the measured lead) and whether the client
- * was built with it (false: KV_LeadOff). The trip p95 in whole ms, so the HUD store only changes with the line.
+ * was built with it (false: KV_LeadOff). The trip p95 (and the cover's p99) in whole ms, so the HUD store only changes
+ * with the line.
  */
 export function leadDebugView(stats: LeadStatsInput | undefined, configured: boolean): LeadDebugView {
 	if (!configured || stats === undefined) return LEAD_DEBUG_OFF;
 	if (!stats.echoing) return LEAD_DEBUG_LEGACY;
-	const p95 = stats.tripP95;
-	return {
-		mode: "measured",
-		tripP95Ms: p95 === undefined ? undefined : math.round(p95 * SIM_DT * LATENCY_PROBE.msPerSecond),
-	};
+	return { mode: "measured", tripP95Ms: wholeMs(stats.tripP95), tripP99Ms: wholeMs(stats.coverP99) };
+}
+
+/** Ticks -> whole ms (undefined stays undefined). */
+function wholeMs(ticks: number | undefined): number | undefined {
+	return ticks === undefined ? undefined : math.round(ticks * SIM_DT * LATENCY_PROBE.msPerSecond);
 }
 
 function roundTo(v: number, decimals: number): number {
@@ -380,6 +390,7 @@ export function latencyProbeViewsEqual(a: LatencyProbeView | undefined, b: Laten
 		pacingViewsEqual(a.pacing, b.pacing) &&
 		a.lead.mode === b.lead.mode &&
 		a.lead.tripP95Ms === b.lead.tripP95Ms &&
+		a.lead.tripP99Ms === b.lead.tripP99Ms &&
 		a.lastMs === b.lastMs &&
 		a.meanMs === b.meanMs &&
 		a.maxMs === b.maxMs &&
@@ -431,9 +442,9 @@ export function leadDebugKey(view: LeadDebugView): string {
 	return LEAD_DEBUG_STRINGS[view.mode];
 }
 
-/** The vars of the lead part's strings: the net lead in ticks, the trip p95 in whole ms ('-' while none). */
+/** The vars of the lead part's strings: the net lead in ticks, the trip p95 / the cover's p99 in whole ms ('-': none). */
 export function leadDebugVars(view: LatencyProbeView): Readonly<Record<string, string | number>> {
-	return { net: view.netLeadTicks, p95: msText(view.lead.tripP95Ms) };
+	return { net: view.netLeadTicks, p95: msText(view.lead.tripP95Ms), p99: msText(view.lead.tripP99Ms) };
 }
 
 /** The pacing part's string key by mode (PACING_DEBUG_STRINGS; HUD_STRINGS paceProbe / paceProbeWait / paceProbeOff). */

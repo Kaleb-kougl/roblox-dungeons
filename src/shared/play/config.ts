@@ -83,6 +83,13 @@ export const RUN_ATTRIBUTES = {
 	 */
 	leadOff: "KV_LeadOff",
 	/**
+	 * Boolean, debug (docs/FRAME_PACING.md Revision 3, FP20), read at every co-op run start: true builds the co-op client
+	 * with Revision 2's late bump (`LEAD.lateBump` true: an echoed late raises the lead at once to its own trip), for an
+	 * A/B against Revision 3's rule in a playtest (FP21); combinable with KV_PacingOff / KV_PredictOff, ignored with
+	 * KV_LeadOff. Off by default.
+	 */
+	leadBump: "KV_LeadBump",
+	/**
 	 * Boolean, read at each co-op run start (docs/LOCAL_PREDICTION.md LPD6): the run's LockstepClient is built without
 	 * local prediction (your own knight is drawn at the merged state, as before LP5), for an A/B in a playtest;
 	 * combinable with KV_PacingOff / KV_LeadOff. Off by default.

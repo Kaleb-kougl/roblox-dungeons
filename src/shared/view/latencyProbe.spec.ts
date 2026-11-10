@@ -269,7 +269,8 @@ describe("the debug line's pacing part (docs/FRAME_PACING.md Design 7)", () => {
 			"co-op lead 3t 50ms (net 3t, lead off (KV_LeadOff)) · pace off (KV_PacingOff) · press->step -ms avg - max - " +
 				"n0 · late 0 miss 0 · pred off (KV_PredictOff) · press->drawn -ms avg -",
 		);
-		// The measured lead (docs/FRAME_PACING.md Design 11): trip p95 9.4 ticks = 157 ms; late = echoed lates, miss =
+		// The measured lead (docs/FRAME_PACING.md Design 11, Revision 3 FP20): trip p95 9.4 ticks = 157 ms, the cover's p99
+		// 11.5 ticks = 192 ms; late = echoed lates, miss =
 		// mismatches.
 		const measured = latencyProbeView(
 			p,
@@ -277,11 +278,11 @@ describe("the debug line's pacing part (docs/FRAME_PACING.md Design 7)", () => {
 			4,
 			11,
 			pacingDebugView(stats, 3, true),
-			leadDebugView({ echoing: true, tripP95: 9.4 }, true),
+			leadDebugView({ echoing: true, tripP95: 9.4, coverP99: 11.5 }, true),
 			1,
 		);
 		expect(line(measured)).toBe(
-			"co-op lead 18t 300ms (net 11t, trip p95 157ms) · pace 4t 58ms · holds 2 · backlog 3 · jitter p95 10ms · " +
+			"co-op lead 18t 300ms (net 11t, trip p95 / p99 157 / 192ms) · pace 4t 58ms · holds 2 · backlog 3 · jitter p95 10ms · " +
 				"press->step -ms avg - max - n0 · late 4 miss 1 · pred off (KV_PredictOff) · press->drawn -ms avg -",
 		);
 		const waiting = latencyProbeView(p, 3, 0, 3, pacingDebugView(undefined, 2, true));
@@ -291,14 +292,15 @@ describe("the debug line's pacing part (docs/FRAME_PACING.md Design 7)", () => {
 
 	it("the lead part: off without the measured lead, legacy while not echoing, whole ms while measured", () => {
 		expect(leadDebugView(undefined, true)).toEqual(LEAD_DEBUG_OFF);
-		expect(leadDebugView({ echoing: true, tripP95: 5 }, false)).toEqual(LEAD_DEBUG_OFF);
-		expect(leadDebugView({ echoing: false, tripP95: 5 }, true)).toEqual(LEAD_DEBUG_LEGACY);
-		expect(leadDebugView({ echoing: true, tripP95: undefined }, true)).toEqual({
+		expect(leadDebugView({ echoing: true, tripP95: 5, coverP99: 6 }, false)).toEqual(LEAD_DEBUG_OFF);
+		expect(leadDebugView({ echoing: false, tripP95: 5, coverP99: 6 }, true)).toEqual(LEAD_DEBUG_LEGACY);
+		expect(leadDebugView({ echoing: true, tripP95: undefined, coverP99: undefined }, true)).toEqual({
 			mode: "measured",
 			tripP95Ms: undefined,
+			tripP99Ms: undefined,
 		});
-		const v = leadDebugView({ echoing: true, tripP95: 9.4 }, true);
-		expect(v).toEqual({ mode: "measured", tripP95Ms: 157 });
+		const v = leadDebugView({ echoing: true, tripP95: 9.4, coverP99: 11.5 }, true);
+		expect(v).toEqual({ mode: "measured", tripP95Ms: 157, tripP99Ms: 192 });
 		expect([leadDebugKey(LEAD_DEBUG_OFF), leadDebugKey(LEAD_DEBUG_LEGACY), leadDebugKey(v)]).toEqual([
 			HUD_STRINGS.leadProbeOff,
 			HUD_STRINGS.leadProbeLegacy,
@@ -307,13 +309,17 @@ describe("the debug line's pacing part (docs/FRAME_PACING.md Design 7)", () => {
 		// Sub-millisecond trip changes round away: the HUD store keeps its view.
 		const p = new LatencyProbe();
 		const a = latencyProbeView(p, 12, 0, 9, PACING_DEBUG_OFF, v, 0);
-		const near = leadDebugView({ echoing: true, tripP95: 9.41 }, true);
+		const near = leadDebugView({ echoing: true, tripP95: 9.41, coverP99: 11.51 }, true);
 		expect(latencyProbeViewsEqual(a, latencyProbeView(p, 12, 0, 9, PACING_DEBUG_OFF, near, 0))).toBe(true);
 		expect(latencyProbeViewsEqual(a, latencyProbeView(p, 12, 0, 9, PACING_DEBUG_OFF, LEAD_DEBUG_LEGACY, 0))).toBe(
 			false,
 		);
 		expect(latencyProbeViewsEqual(a, latencyProbeView(p, 12, 0, 9, PACING_DEBUG_OFF, v, 1))).toBe(false);
-		expect(leadDebugVars(a)).toEqual({ net: 9, p95: 157 });
+		expect(leadDebugVars(a)).toEqual({ net: 9, p95: 157, p99: 192 });
+		// A new cover p99 is a new view.
+		const p99 = leadDebugView({ echoing: true, tripP95: 9.4, coverP99: 13 }, true);
+		expect(latencyProbeViewsEqual(a, latencyProbeView(p, 12, 0, 9, PACING_DEBUG_OFF, p99, 0))).toBe(false);
+		expect(leadDebugVars(latencyProbeView(p, 12, 0, 9, PACING_DEBUG_OFF, LEAD_DEBUG_LEGACY, 0)).p99).toBe("-");
 	});
 
 	it("a change in the net lead or the pacing part is a new view (the HUD store updates)", () => {
