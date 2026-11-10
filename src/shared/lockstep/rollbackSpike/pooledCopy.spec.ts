@@ -32,7 +32,7 @@ import {
 	PooledStateCopier,
 	SHARED_ANY_KEY,
 	SHARED_BY_REFERENCE,
-	cloneSimState,
+	cloneForRollback,
 	isBulletPool,
 	pooledCopyFn,
 	stateDifference,
@@ -283,7 +283,7 @@ for (const floor of FLOORS) {
 				const c = caseFor(players, floor);
 				const o = c.original;
 				// The comparison itself, on R1's generic clone.
-				expect(stateDifference(o, cloneSimState(o))).toBe(undefined);
+				expect(stateDifference(o, cloneForRollback(o))).toBe(undefined);
 				const cp = new PooledStateCopier();
 				const copy = cp.copyInto(o);
 				expectExact("first copy", o, copy);
@@ -341,7 +341,7 @@ for (const floor of FLOORS) {
 				expect(hashState(o)).toBe(c.hash0);
 				const copy = new PooledStateCopier().copyInto(o);
 				const ahead = new PooledStateCopier().copyInto(o);
-				const twin = runAlone(cloneSimState(o), c.config, STEP_TICKS * 2, divergent).hashes;
+				const twin = runAlone(cloneForRollback(o), c.config, STEP_TICKS * 2, divergent).hashes;
 				const mine: string[] = [];
 				const theirs: string[] = [];
 				const aheadHashes: string[] = [];
@@ -388,11 +388,11 @@ for (const floor of FLOORS) {
 						src = snapshots[0];
 						label = `round ${r}: older snapshot (tick ${src.tick})`;
 					} else if (r === 3) {
-						src = cloneSimState(o);
+						src = cloneForRollback(o);
 						skipPartyToFloor(src, c.config, floor + 1);
 						label = `round ${r}: next floor (${src.endless!.floor})`;
 					} else if (r === 5) {
-						src = cloneSimState(o);
+						src = cloneForRollback(o);
 						src.golden = undefined;
 						src.pacts = undefined;
 						steppable = false;
@@ -405,7 +405,7 @@ for (const floor of FLOORS) {
 					if (r > 0) deadDiffer += deadSlotsDiffering(src, s);
 					if (steppable) {
 						// The scratch's future: stepped beside a generic clone of the source, exact at the end.
-						const ref = cloneSimState(src);
+						const ref = cloneForRollback(src);
 						for (let k = 0; k < VERIFY_TICKS; k++) {
 							tickScripted(ref, c.config);
 							tickScripted(s, c.config);
@@ -415,7 +415,7 @@ for (const floor of FLOORS) {
 					expect([label, hashState(src)]).toEqual([label, srcHash]);
 					// Dirty the scratch: other inputs (other bullets, kills, events, pickups).
 					stepN(s, c.config, DIVERGE_TICKS[r], divergent);
-					if (r === 0) snapshots.push(cloneSimState(o));
+					if (r === 0) snapshots.push(cloneForRollback(o));
 					stepN(o, c.config, ADVANCE_TICKS[r]);
 				}
 				print(
@@ -439,7 +439,7 @@ for (const floor of FLOORS) {
 				let cloneSteps = 0;
 				for (let r = 0; r < CLONE_RUNS; r++) {
 					const t0 = os.clock();
-					const copy = cloneSimState(o);
+					const copy = cloneForRollback(o);
 					cloneSec += os.clock() - t0;
 					const t1 = os.clock();
 					stepN(copy, c.config, HORIZON);

@@ -92,7 +92,7 @@ const MODEL = ROLLBACK_SPIKE.model;
 /**
  * The state copy a model uses: pooledCopy.ts's StateCopyFn. Default: a `pooledCopyFn()` of the model's own (R1b, one
  * scratch overwritten by every prediction: the model uses a copy only until its next beginPredict); R1's
- * `cloneSimState` (a fresh state each call, ~25x slower) also fits.
+ * `cloneForRollback` (a fresh state each call, ~25x slower) also fits.
  */
 export type RollbackCopy = StateCopyFn;
 

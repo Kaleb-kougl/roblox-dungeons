@@ -30,7 +30,7 @@ import {
 	type RollbackStatusMsg,
 	type RollbackWorkerHost,
 	type TableArrival,
-} from "shared/lockstep";
+} from "shared/lockstep/rollbackSpike";
 import { RUN_ATTRIBUTES } from "shared/play";
 import { hashState, type SimConfig, type SimState } from "shared/sim";
 import { ROLLBACK_PROBE_LIMITS, describeLiveSummary, describeProbeSummary, type ProbeSummary } from "shared/spikes";

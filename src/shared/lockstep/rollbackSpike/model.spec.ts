@@ -35,7 +35,7 @@ import {
 	RoomKind,
 	ViewDigest,
 	captureModelInput,
-	cloneSimState,
+	cloneForRollback,
 	fillDigest,
 	firstTickWhere,
 	formatReport,
@@ -182,7 +182,7 @@ describe("rollback spike model (R2)", () => {
 		const base: ModelRunOptions = { playerIndex: 2, L: 11, D: 4, fromTick: from, toTick: from + SAME_FRAMES };
 		const whole = runModelOverRecording(config, rec, base);
 		const sliced = runModelOverRecording(config, rec, { ...base, sliceTicks: ROLLBACK_SPIKE.sliceTicks });
-		const cloned = runModelOverRecording(config, rec, { ...base, copy: cloneSimState });
+		const cloned = runModelOverRecording(config, rec, { ...base, copy: cloneForRollback });
 		// The confirmed state after the window is the plain replay's: the model never wrote it.
 		const plain = hashState(replayTo(config, rec, from + SAME_FRAMES));
 		expect(whole.state.tick).toBe(from + SAME_FRAMES);

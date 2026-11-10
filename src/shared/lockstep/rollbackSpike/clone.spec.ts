@@ -29,7 +29,7 @@ import { bossRoomOf, busiestRoom, placeParty, skipPartyToFloor, tickAll, topUpHe
 import {
 	SHARED_ANY_KEY,
 	SHARED_BY_REFERENCE,
-	cloneSimState,
+	cloneForRollback,
 	cloneStats,
 	deepCopy,
 	type CloneStats,
@@ -296,12 +296,12 @@ function benchClone(s: SimState): CloneBench {
 	let worst = 0;
 	for (let r = 0; r < CLONE_RUNS; r++) {
 		const t0 = os.clock();
-		cloneSimState(s);
+		cloneForRollback(s);
 		const dt = os.clock() - t0;
 		total += dt;
 		worst = math.max(worst, dt);
 	}
-	cloneSimState(s);
+	cloneForRollback(s);
 	const stats = cloneStats();
 	let poolTables = 0;
 	let poolSec = 0;
@@ -381,11 +381,11 @@ describe("deepCopy rules", () => {
 
 for (const floor of FLOORS) {
 	for (const players of PARTY_SIZES) {
-		describe(`cloneSimState, endless floor ${floor}, ${players} player(s)`, () => {
+		describe(`cloneForRollback, endless floor ${floor}, ${players} player(s)`, () => {
 			it("(i) the copy hashes like the original and shares nothing mutable", () => {
 				const c = caseFor(players, floor);
 				const o = c.original;
-				const copy = cloneSimState(o);
+				const copy = cloneForRollback(o);
 				expect(hashState(copy)).toBe(c.hash0);
 				expect(hashState(o)).toBe(c.hash0);
 				// The state's own shared references stay shared, in the copy.
@@ -418,8 +418,8 @@ for (const floor of FLOORS) {
 				const c = caseFor(players, floor);
 				const o = c.original;
 				expect(hashState(o)).toBe(c.hash0);
-				const copy = cloneSimState(o);
-				const second = cloneSimState(o);
+				const copy = cloneForRollback(o);
+				const second = cloneForRollback(o);
 				const shared = sharedObjects(o);
 				const before = fingerprints(shared);
 				const copyRun = runAlone(copy, c.config, STEP_TICKS);
@@ -448,11 +448,11 @@ for (const floor of FLOORS) {
 				expect(reference !== undefined).toBe(true);
 				const o = prepare(players, floor); // independent of c.original, which was stepped alone in (ii)
 				expect(hashState(o)).toBe(c.hash0);
-				const copy = cloneSimState(o);
+				const copy = cloneForRollback(o);
 				// A third copy that diverges (other inputs, two ticks per round: ahead of the others, like a prediction),
 				// checked against its own twin stepped alone first.
-				const ahead = cloneSimState(o);
-				const twin = runAlone(cloneSimState(o), c.config, STEP_TICKS * 2, divergent).hashes;
+				const ahead = cloneForRollback(o);
+				const twin = runAlone(cloneForRollback(o), c.config, STEP_TICKS * 2, divergent).hashes;
 				const got = new Map<string, string[]>([
 					["original", []],
 					["copy", []],
