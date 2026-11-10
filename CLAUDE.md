@@ -1060,23 +1060,24 @@ Decision log (deviations from `PLAN.md`):
   start, ignored with `KV_LeadOff`) builds the client with `lateBump: true` (with prediction on: the bump on top of the
   cover). Debug: `hud.debug.lead` reads `trip p95 / p99`, the `[Pace]` lead part `lead {l}t target {L*}t (base {Lb}t
   cover {Lc}t cap {C}t) fall {Lf}t`. The opt-in census (`lead.census.spec.ts`, `--census`) runs Revision 2 as `today`
-  and the controller as `rule3` (since FP23 with `episodes` off), equal to the plan's `cov20` frame for frame; on the owner-like links it keeps
-  today's lead with 0-47 % fewer dropped changed inputs, a sixth to a quarter of the churn and 29-50 % of the felt delay
-  at cap 20 (FPD18's gates met and asserted, `owner2` within 0.01 t). The cost: with prediction on, a spike longer than
-  a burst holds the lead at `min(Lc, C)` for the cover's whole 15 s window, then the 1 s hold and 0.25 s a tick (FP1's
-  echoing scenario back in 19.92 s, Revision 2 9.55 s; the census's `cleanspike` 17.92 s, today 8.05 s, failing FP12's
-  back-within bound there; FP12's dropped clause fails under FPD15, printed only); the knight feels nothing under the
-  cap, hits, enemies and teammates run that lead behind; a depth rise of k puts the effective lead at cap + k for ~1 +
-  0.25 k s. FP23 (FPD20, owner 2026-11-10): the episode detector (`LEAD.episodes`, only with a ceiling and without
-  `lateBump`): a trip more than max(`episodeGapMs` 40 ms, `episodeIqrK` 3 x the cover window's IQR) over the base
-  window's median is slow; slow trips (up to `episodeGapSamples` 2 others between) spanning more than `episodeMinSec`
-  0.25 s and at least `episodeMinSlow` 6 are an episode, taken out of the cover and kept out while it lasts (bursts on
-  top of it enter; the base keeps every trip), so `cleanspike` is back in 8.05 s again and the owner-like links are
-  `cov20` frame for frame (`LeadStats.episodes` / `episodeActive` / `keptOut`, the `[Pace]` line's `episodes {n} out
-  {k}`; the census's default `rule4` asserted equal to `ep25mnt`, `rule3` = `episodes` false). Left: a spike over ~2.5 s
-  moves the base median and is held like the cover's; one under 0.25 s or 6 slow trips is remembered like a burst.
-  FP21 (owner: Studio 4G with and without `KV_LeadBump`; its `miss` criterion against `KV_LeadBump`, which
-  with prediction on is the cover plus the bump, is an open owner question) pending.
+  and the controller as `rule3` (since FP23 with `episodes` off), equal to the plan's `cov20` frame for frame; on the
+  owner-like links it keeps today's lead with 0-47 % fewer dropped changed inputs, a sixth to a quarter of the churn and
+  29-50 % of the felt delay at cap 20 (FPD18's gates met and asserted, `owner2` within 0.01 t). The cost: with
+  prediction on, a spike longer than a burst holds the lead at `min(Lc, C)` for the cover's whole 15 s window, then the
+  1 s hold and 0.25 s a tick (FP1's echoing scenario back in 19.92 s, Revision 2 9.55 s; the census's `cleanspike`
+  17.92 s, today 8.05 s, failing FP12's back-within bound there; FP12's dropped clause fails under FPD15, printed only); the
+  knight feels nothing under the cap, hits, enemies and teammates run that lead behind; a depth rise of k puts the
+  effective lead at cap + k for ~1 + 0.25 k s. FP23 (FPD20, owner 2026-11-10): the episode detector (`LEAD.episodes`,
+  only with a ceiling and without `lateBump`): a trip more than max(`episodeGapMs` 40 ms, `episodeIqrK` 3 x the cover
+  window's IQR) over the base window's median is slow; slow trips (up to `episodeGapSamples` 2 others between) spanning
+  more than `episodeMinSec` 0.25 s and at least `episodeMinSlow` 6 are an episode, taken out of the cover and kept out
+  while it lasts (bursts on top of it enter; the base keeps every trip), so `cleanspike` is back in 8.05 s again and the
+  owner-like links are `cov20` frame for frame (`LeadStats.episodes` / `episodeActive` / `keptOut`, the `[Pace]` line's
+  `episodes {n} out {k}`; the census's default `rule4` asserted equal to `ep25mnt`, `rule3` = `episodes` false). Left: a
+  spike over ~2.5 s moves the base median and is held like the cover's; one under 0.25 s or 6 slow trips is remembered
+  like a burst; a bimodal link can keep an episode on indefinitely (the base's p95 covers it; the episode's level keeps
+  at most a cover window of slow trips). FP21 (owner: Studio 4G with and without `KV_LeadBump`; its `miss` criterion
+  against `KV_LeadBump`, which with prediction on is the cover plus the bump, is an open owner question) pending.
 - **Builds v2, wave 1 (docs/BUILDS_V2.md).** Gameplay, opt-in `SimConfig.builds` (endless only). Three boons appended
   to `BOONS` (`Boon.RIPOSTE` 17 rare, `BALLISTA` 18 rare, `WRECKER` 19 common; `BOON_COUNT` 20, `CLASSIC_BOON_COUNT`
   stays 12, so the tutorial's draft is unchanged; evolutions Counterstrike / Siege Bolt / Demolition) and seven duos

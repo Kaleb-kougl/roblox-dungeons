@@ -1233,6 +1233,77 @@ describe("LeadController, the episode detector (FPD20, FP23: LEAD's defaults wit
 		expect(s.episodeActive).toBe(false);
 	});
 
+	/** The run's slow trips the controller keeps for an episode's level (private: read for the bound). */
+	function runSlowSize(ctl: LeadController): number {
+		return (ctl as unknown as { runSlowSorted: number[] }).runSlowSorted.size();
+	}
+
+	it("a bimodal link keeps an episode alive, but its level holds at most a cover window of slow trips", () => {
+		const ECHOES_PER_SEC = SIM_HZ / BROADCAST_EVERY_TICKS;
+		const MINUTES = 4;
+		for (const every of [3, 2]) {
+			// From the settle's end: one slow trip in `every` (at most every - 1 steady ones between: the run never ends).
+			const rng = new Rng(53);
+			let k = 0;
+			let bimodal = false;
+			const trip = () => {
+				const steady = jittered(rng, STEADY, SPREAD);
+				if (!bimodal) return steady;
+				k++;
+				return k % every === 0 ? SLOW : steady;
+			};
+			const trace = settled(LEAD, CEILING, trip);
+			bimodal = true;
+			let maxSize = 0;
+			let minLead = math.huge;
+			let slowServed = 0;
+			trace.run({
+				seconds: MINUTES * 60,
+				trip,
+				late: () => false,
+				onFrame: (t) => {
+					maxSize = math.max(maxSize, runSlowSize(t.ctl));
+					if (t.now() > SETTLE_SEC + 1) minLead = math.min(minLead, t.ctl.lead());
+				},
+			});
+			slowServed = math.floor(k / every);
+			const s = trace.ctl.stats();
+			const bound = (LEAD.coverWindowSec * ECHOES_PER_SEC) / every + 1;
+			print(
+				`[lead] bimodal 1 slow in ${every} for ${MINUTES} min: episodes ${s.episodes} (on ${s.episodeActive}), ` +
+					`level trips max ${maxSize} (bound ${bound}; ${slowServed} slow served), kept out ${s.keptOut}, ` +
+					`lead ${s.lead} min ${minLead} (base ${s.baseTarget} p95 ${f2(s.tripP95 ?? 0)} p99 ${f2(
+						s.coverP99 ?? 0,
+					)})`,
+			);
+			expect(maxSize <= bound).toBe(true);
+			expect(slowServed > 4 * bound).toBe(true);
+			// The lead stays safe: the base's p95 covers the slow mode the cover does not see.
+			expect(s.tripP95).toBe(SLOW);
+			expect(minLead >= expectedTarget(SLOW)).toBe(true);
+			expect(s.lead).toBe(s.target);
+			if (every === 3) {
+				expect(s.episodes).toBe(1);
+				expect(s.episodeActive).toBe(true);
+				expect((s.coverP99 ?? 0) <= STEADY + SPREAD).toBe(true);
+			}
+		}
+	});
+
+	it("an echo outage ends the run: no episode shows (or holds) across it", () => {
+		const from = SETTLE_SEC;
+		const trip = spikeTrip(59, from, 3, SPIKE);
+		const trace = settled(LEAD, CEILING, trip);
+		trace.run({ seconds: 1, trip, late: () => false });
+		expect(trace.ctl.stats().episodeActive).toBe(true);
+		trace.run({ seconds: LEAD.echoTimeoutSec + 0.5, trip, echoes: false });
+		const s = trace.ctl.stats();
+		expect(s.echoing).toBe(false);
+		expect(s.episodeActive).toBe(false);
+		expect(s.episodes).toBe(1);
+		expect(runSlowSize(trace.ctl)).toBe(0);
+	});
+
 	it("without a ceiling, or with lateBump, nothing changes: the same lead on every frame as with episodes off", () => {
 		const from = SETTLE_SEC;
 		const cases: Array<{ name: string; on: LeadTunables; off: LeadTunables; ceiling?: number }> = [

@@ -4,8 +4,9 @@
  * `--census` flag it runs a smoke sample (12 s of the owner-like network: today's LeadController next to this spec's
  * copy of it, which must give the same lead every frame, and the shipped controller next to the spec rules it must
  * equal); with it (npm run test:only -- --census lockstep/lead.census), every network x every rule, printed as the
- * doc's tables (several minutes; the doc splits it in two runs side by side). `--flag lead.<network>` (repeatable, e.g. `--flag lead.owner`) keeps only those networks and
- * `--flag lead.rule.<rule>` only those rules (today's always runs first: the reference).
+ * doc's tables (several minutes; the doc splits it in two runs side by side). `--flag lead.<network>` (repeatable,
+ * e.g. `--flag lead.owner`) keeps only those networks and `--flag lead.rule.<rule>` only those rules (today's always
+ * runs first: the reference).
  *
  * A candidate is a lead rule written here, never wired into LeadController: `SpecLead` is lead.ts's rule copied with
  * knobs (what a late does, a second, longer "cover" window capped at the prediction cap, the fall), put in place of
@@ -24,10 +25,10 @@
  * on every network, the smoke included: selecting `rule4`, as the default run does, brings `ep25mnt`), is held to
  * FPD18's gates against today on the owner-like networks (felt delay at cap 20 at most half, dropped changed inputs at
  * most today's, churn at most a third; asserted) and to FP12's gate on `fp12`, `longhold`, `cleanspike` and the
- * `spike*` networks (asserted). `rule3` (opt-in, `--flag lead.rule.rule3`) is the same controller with `episodes` false,
- * Revision 3 as FP18-FP20 built it, which must give `cov20`'s lead on every frame (asserted; the smoke too) and meets
- * FPD18 as well. `kvbump` is what `KV_LeadBump` builds with prediction on: the bump on top of the cover (no episodes
- * with `lateBump`; FP21's A/B), printed only.
+ * `spike*` networks (asserted). `rule3` (opt-in, `--flag lead.rule.rule3`) is the same controller with `episodes`
+ * false, Revision 3 as FP18-FP20 built it, which must give `cov20`'s lead on every frame (asserted; the smoke too) and
+ * meets FPD18 as well. `kvbump` is what `KV_LeadBump` builds with prediction on: the bump on top of the cover (no
+ * episodes with `lateBump`; FP21's A/B), printed only.
  *
  * Spike recovery candidates (the doc's "Spike recovery candidates"): option 2 (`hold3` / `hold5` / `hold8`, capped
  * `hold3c` / `hold5c`: the cover a hold of the slowest slow trip) and option 3 (`episode`, `ep15`, `ep50`, `epg25`,
@@ -609,8 +610,14 @@ class SpecLead implements LeadLike {
 	private runLevel = false;
 	private runLastSlowAt = 0;
 	private runSlow = 0;
-	/** `onTop`: the run's slow trips (not the on-top ones), ascending. */
+	/**
+	 * `onTop`: the run's slow trips (not the on-top ones) of the last cover window, ascending, with a FIFO of their
+	 * arrival clocks and trips beside it, expired with the cover (FP23's review fix, as lead.ts: a lasting episode holds
+	 * at most a cover window of them).
+	 */
 	private readonly runSlowSorted: number[] = [];
+	private readonly runSlowAt: number[] = [];
+	private readonly runSlowTrip: number[] = [];
 	private readonly runIds: number[] = [];
 	/** `maxSec`: the trips the current episode took out or kept out (arrival clock, trip), oldest first. */
 	private readonly runHeldAt: number[] = [];
@@ -664,6 +671,8 @@ class SpecLead implements LeadLike {
 			this.isEchoing = false;
 			this.cleanTicks = 0;
 			this.resetHold();
+			// As lead.ts (FP23's review fix): an echo outage ends the run.
+			this.endRun();
 		}
 	}
 
@@ -971,6 +980,14 @@ class SpecLead implements LeadLike {
 	private episodeTrip(e: EpisodeKnobs, clock: number, trip: number): void {
 		const cov = this.k.cover!;
 		this.refreshCover(cov, clock);
+		// The run's slow trips older than the cover window leave its level (FP23's review fix, as lead.ts).
+		const keepSlow = clock - cov.windowSec;
+		while (this.runSlowAt.size() > 0 && this.runSlowAt[0] < keepSlow) {
+			const i = this.runSlowSorted.indexOf(this.runSlowTrip[0]);
+			if (i >= 0) this.runSlowSorted.remove(i);
+			this.runSlowAt.remove(0);
+			this.runSlowTrip.remove(0);
+		}
 		const mid = e.reference === "base" || e.reference === "mixed" ? this.scratch : this.covSorted;
 		const spread = e.reference === "base" ? this.scratch : this.covSorted;
 		let slow = false;
@@ -1019,6 +1036,8 @@ class SpecLead implements LeadLike {
 			let i = this.runSlowSorted.size();
 			while (i > 0 && this.runSlowSorted[i - 1] > trip) i--;
 			this.runSlowSorted.insert(i, trip);
+			this.runSlowAt.push(clock);
+			this.runSlowTrip.push(trip);
 		}
 		if (slow && holding) {
 			this.spike.keptOut++;
@@ -1057,6 +1076,8 @@ class SpecLead implements LeadLike {
 		this.runHeldAt.clear();
 		this.runHeldTrip.clear();
 		this.runSlowSorted.clear();
+		this.runSlowAt.clear();
+		this.runSlowTrip.clear();
 	}
 
 	/** Remembers a trip the episode keeps from the cover (only `maxSec` returns them), oldest first. */

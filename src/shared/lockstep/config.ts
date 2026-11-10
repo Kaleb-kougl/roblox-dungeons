@@ -195,8 +195,9 @@ export const ARRIVAL_LOG: ArrivalLogTunables = table.freeze({
  * cover), but the cover only up to the prediction cap less the buffer's depth (the ceiling LockstepClient passes from
  * PREDICTION.maxTicks; no prediction, no cover); raised at once, lowered a tick at a time once the fall target (with
  * `fallSlackTicks` more) has been below it for `fallHoldSec`. A late never bumps it (FPD15) unless `lateBump`. A long
- * spike's trips are kept out of the cover (`episodes`, FPD20). Trips are in ticks of SIM_DT, without the pacing buffer's depth (the lead adds that separately, Design 5). All provisional
- * until FP0 / FP6 / FP21 measure a real session.
+ * spike's trips are kept out of the cover (`episodes`, FPD20). Trips are in ticks of SIM_DT, without the pacing
+ * buffer's depth (the lead adds that separately, Design 5). All provisional until FP0 / FP6 / FP21 measure a real
+ * session.
  */
 export interface LeadTunables {
 	/** The trips of this many seconds are kept (~150 at 30 echoes a second): follows a changing network within seconds. */

@@ -42,9 +42,10 @@
  * `episodeGapSamples` measured trips in a row that are not slow do not end it. A run whose slow trips span more than
  * `episodeMinSec` (first to newest) and number at least `episodeMinSlow` is an episode: its slow trips leave the cover
  * (by id) and later slow trips stay out while it lasts, except a burst on top (more than g over the median of the run's
- * own slow trips, which leaves it out of that median): it enters the cover. The base window keeps every trip, so a
- * lasting step moves the base median within its window and the run ends by itself. Echoes without a measured trip
- * (none, an unsteady send, the server catching up) are neither slow nor a gap.
+ * slow trips of the last coverWindowSec, which leaves it out of that median): it enters the cover. The base window keeps
+ * every trip, so a lasting step moves the base median within its window and the run ends by itself (a bimodal link can
+ * keep an episode alive indefinitely; the base's p95 covers its slow mode). Echoes without a measured trip (none, an
+ * unsteady send, the server catching up) are neither slow nor a gap; an echo outage ends the run.
  *
  * Echoing: off before the first echo with a tick, and again once batches keep arriving (`received`) for
  * `echoTimeoutSec` without any decodable echo (an old server; a "none" echo proves the server echoes, so an up-link
@@ -226,8 +227,14 @@ export class LeadController {
 	private runGap = 0;
 	/** The run is an episode (its slow trips are kept out of the cover). */
 	private runEpisode = false;
-	/** The run's slow trips (not the bursts on top), ascending: their median is the episode's level. */
+	/**
+	 * The run's slow trips (not the bursts on top) of the last coverWindowSec, ascending: their median is the episode's
+	 * level. Kept only within the cover's window (a FIFO of arrival clock and trip beside it, expired with the cover), so
+	 * an episode that lasts (a bimodal link keeps one alive) holds at most a cover window of them.
+	 */
 	private readonly runSlowSorted: number[] = [];
+	private readonly runSlowAt: number[] = [];
+	private readonly runSlowTrip: number[] = [];
 	/** The cover ids of the run's slow trips while it is not yet an episode (taken out when it becomes one). */
 	private readonly runIds: number[] = [];
 	private episodeCount = 0;
@@ -313,6 +320,8 @@ export class LeadController {
 			this.isEchoing = false;
 			this.cleanTicks = 0;
 			this.resetHold();
+			// An outage ends any run of slow trips: no episode is shown (or held) across it.
+			this.endRun();
 		}
 	}
 
@@ -589,6 +598,7 @@ export class LeadController {
 	private episodeTrip(clock: number, trip: number): void {
 		const t = this.tunables;
 		this.expireCover(clock);
+		this.expireRunSlow(clock);
 		const base = this.scratch;
 		const cover = this.covSorted;
 		let slow = false;
@@ -620,6 +630,8 @@ export class LeadController {
 			if (!onTop) {
 				keepOut = this.runEpisode;
 				this.runSlowSorted.insert(searchSorted(this.runSlowSorted, trip, true), trip);
+				this.runSlowAt.push(clock);
+				this.runSlowTrip.push(trip);
 			}
 		}
 		if (keepOut) {
@@ -654,11 +666,26 @@ export class LeadController {
 		this.keptOutCount++;
 	}
 
+	/** Drops the run's slow trips older than the cover's window at `now` from its level (oldest first). */
+	private expireRunSlow(now: number): void {
+		const keep = now - this.tunables.coverWindowSec;
+		const sorted = this.runSlowSorted;
+		while (this.runSlowAt.size() > 0 && this.runSlowAt[0] < keep) {
+			const old = this.runSlowTrip[0];
+			const i = searchSorted(sorted, old, false);
+			if (i < sorted.size() && sorted[i] === old) sorted.remove(i);
+			this.runSlowAt.remove(0);
+			this.runSlowTrip.remove(0);
+		}
+	}
+
 	private endRun(): void {
 		this.runActive = false;
 		this.runEpisode = false;
 		this.runIds.clear();
 		this.runSlowSorted.clear();
+		this.runSlowAt.clear();
+		this.runSlowTrip.clear();
 	}
 
 	/** Drops trips older than the windows and recomputes their quantiles when they changed. */

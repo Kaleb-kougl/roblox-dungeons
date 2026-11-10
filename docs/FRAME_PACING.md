@@ -659,11 +659,11 @@ rule and its tunables. The echo, the pacer, the send rules (FP1) and the tap lat
 
 **Built: FP17-FP20, FP22 and FP23**, verified headlessly (typecheck, lint, build, the asset id and AutoLocalize checks,
 every spec under `shared/lockstep`, `shared/view` and `shared/play`, and the full census with the `rule3` row; FP23: the
-default census and every opt-in network with the `rule4` row). FP17 (the
-census, `src/shared/lockstep/lead.census.spec.ts`, opt-in) on branch `lead-spikes` (from `local-prediction` @
-`533af85`); FP18-FP20 and FP22 after the owner's answers (2026-11-10: FPD15, FPD16 and FPD17 accepted; FPD18 and FPD19
-not answered, built as proposed); FP23 after FPD20 (accepted, owner 2026-11-10). **Pending: FP21 (owner: the Studio 4G session again, once with `KV_LeadBump`).** See
-"As built (FP18-FP20)" for the real API, the census numbers and the deviations.
+default census and every opt-in network with the `rule4` row). FP17 (the census,
+`src/shared/lockstep/lead.census.spec.ts`, opt-in) on branch `lead-spikes` (from `local-prediction` @ `533af85`);
+FP18-FP20 and FP22 after the owner's answers (2026-11-10: FPD15, FPD16 and FPD17 accepted; FPD18 and FPD19 not answered,
+built as proposed); FP23 after FPD20 (accepted, owner 2026-11-10). **Pending: FP21 (owner: the Studio 4G session again,
+once with `KV_LeadBump`).** See "As built (FP18-FP20)" for the real API, the census numbers and the deviations.
 "Spike recovery candidates" prototyped fixes for the long-spike cost in the census; its round 2's `ep25mnt` is FPD20
 (accepted, owner 2026-11-10), built as FP23: "As built (FP23): the episode detector".
 
@@ -1502,7 +1502,9 @@ unchanged.
   at least `episodeMinSlow` becomes an episode: its slow trips leave the cover by id, and later slow trips stay out
   while it lasts, except a burst on top (more than g over the median of the run's own slow trips, which leaves it out of
   that median): it enters the cover. Then the trip is inserted (or kept out), and the refresh runs as before. The base
-  window keeps every trip.
+  window keeps every trip. Review fixes: the run's slow trips that median is taken from are kept only within
+  `coverWindowSec` (a FIFO of arrival clock and trip beside the sorted copy, expired with the cover at each trip, in
+  the census's `SpecLead` too), and an echo outage (echoing turning off) ends the run.
 - `LeadStats` gains `episodes` (runs that became episodes; undefined while the detector is off), `episodeActive` and
   `keptOut` (trips taken out of or kept out of the cover).
 - Diagnostics: the `[Pace]` line's lead part ends `· lates {n} bumps {n} falls {n} · episodes {n} out {k}` (`episodes
@@ -1526,12 +1528,16 @@ returned), the `cover` / `base` references, the run and on-top counters. The cen
 applies only with the detector on; with it off the trip is inserted before the refresh's expiry as before (the same
 content: a trip at the clock never expires at that clock).
 
-**Cost per echo.** No allocation per echo (the arrays are reused; a run's arrays are cleared at its end). Per measured
-trip with the detector: an expiry pass (moved, not added), three nearest ranks, a binary insertion into
-`runSlowSorted` while a run lasts, and at an episode's start a binary search and removal per trip of its run so far (~9 per episode here).
-Measured in Lune (a temporary bench, not committed: `echoed` + `frame` over 600 s of a 30-echo/s link with a 1.5 s
-spike every 20 s, three repeats): 59-67 us per echo with the detector, 62-67 us without, the difference within the
-run-to-run noise; the base window's re-sort (150 trips) dominates both.
+**Cost per echo.** No allocation per echo once the arrays have grown to their working size: they are reused, and the
+run's slow trips (the on-top level, `runSlowSorted`) are kept only within the cover's window, a FIFO of arrival clock
+and trip beside the sorted copy, expired with the cover at each trip (review fix: unbounded before, it grew for as long
+as an episode lasted, ~54,000 entries after an hour of a bimodal link); so at most a cover window's slow trips, ~450 at
+30 echoes a second, and cleared when the run ends or echoing stops. Per measured trip with the detector: an expiry pass
+of the cover (moved, not added) and of the run's slow trips, three nearest ranks, a binary insertion into
+`runSlowSorted` while a run lasts, and at an episode's start a binary search and removal per trip of its run so far (~9
+per episode here). Measured in Lune (a temporary bench, not committed: `echoed` + `frame` over 600 s of a 30-echo/s link
+with a 1.5 s spike every 20 s, three repeats; before the review fix): 59-67 us per echo with the detector, 62-67 us
+without, the difference within the run-to-run noise; the base window's re-sort (150 trips) dominates both.
 
 **Specs.** lead.spec.ts gains 8 cases (36 in all): the tunables; a 1 s +12-tick spike is an episode (30 trips kept
 out, the cover's p99 the steady link's at its end) and the lead is back in 8.13 s (bound: the base window + hold + a
@@ -1652,10 +1658,9 @@ against `cov20`'s 28.8 / 20.0, [12, 22) 16.5 / 5.5 the same.
   bumps, `pred`); felt delay (effective lead past `pred`) at most half of `KV_LeadBump`'s, `miss` at most its; `LEAD`
   confirmed or edited. **Open owner question (not decided here):** with prediction on, `KV_LeadBump` builds the cover
   plus the bump, not Revision 2's rule (that is `KV_LeadBump` with `KV_PredictOff`), and by the census `rule3` (and
-  FP23's `rule4`, the same on these links) meets the
-  felt-delay criterion against it (0.61 / 1.55 / 0.86 against half of 2.11 / 3.26 / 2.21) but fails "`miss` at most
-  its" (dropped 4.4 / 6.8 / 3.6 against 3.2 / 4.6 / 2.8 per 10 s on `owner` / `owner2` / `ownerS`): keep the criterion,
-  change it, or change the A/B's baseline.
+  FP23's `rule4`, the same on these links) meets the felt-delay criterion against it (0.61 / 1.55 / 0.86 against half of
+  2.11 / 3.26 / 2.21) but fails "`miss` at most its" (dropped 4.4 / 6.8 / 3.6 against 3.2 / 4.6 / 2.8 per 10 s on
+  `owner` / `owner2` / `ownerS`): keep the criterion, change it, or change the A/B's baseline.
 - [x] **FP22. Docs.** CLAUDE.md's decision log entry (Revision 3), this section's status and as built, docs/FEEL.md J9
   if the debug line changed.
 - [x] **FP23. The episode detector (FPD20).** `lead.ts`: `ep25mnt`'s rule whenever the cover is on (a ceiling, no
@@ -1685,13 +1690,18 @@ Order: FP17 -> owner decisions -> FP18 -> FP19 -> FP20 -> FP21 -> FP22; FP23 aft
   at `min(Lc, C)` for 15 s, then the hold and the fall (FP1's scenario back in 19.92 s against Revision 2's 9.55 s;
   `cleanspike` 17.92 s against 8.05 s; lead.spec 17.38 s with a ceiling against 7.28 s without). Your knight feels none
   of it under the cap; hits landing, enemies reacting and teammates seeing you run that lead behind the whole time.
-  `coverWindowSec` 10 shortens it by 5 s. Candidates measured in "Spike recovery candidates"; FPD20 (accepted, built
-  as FP23) keeps a spike of 0.25 s and 6 slow trips or more out of the cover (`cleanspike` back in 8.05 s). Left: a
-  spike over ~2.5 s (or over half of what the base window holds, as FP1's scenario 1 s into a run) moves the base median,
-  so its later trips enter the cover and it is held like the cover's (a level change by construction); a spike under
-  0.25 s or 6 slow trips is remembered like a burst; the first 0.25 s of a spike or a step still enters the cover and
-  lifts the lead to `min(Lc, C)` until it is taken out; FP12's spike lates and dropped inputs (FPD15's cost) are
-  unchanged.
+  `coverWindowSec` 10 shortens it by 5 s. Candidates measured in "Spike recovery candidates"; FPD20 (accepted, built as
+  FP23) keeps a spike of 0.25 s and 6 slow trips or more out of the cover (`cleanspike` back in 8.05 s). Left: a spike
+  over ~2.5 s (or over half of what the base window holds, as FP1's scenario 1 s into a run) moves the base median, so
+  its later trips enter the cover and it is held like the cover's (a level change by construction); a spike under 0.25 s
+  or 6 slow trips is remembered like a burst; the first 0.25 s of a spike or a step still enters the cover and lifts the
+  lead to `min(Lc, C)` until it is taken out; FP12's spike lates and dropped inputs (FPD15's cost) are unchanged.
+- **An episode can last indefinitely on a bimodal link** (FP23). When a third to a half of the trips turn slow (~200 ms)
+  with at most two fast ones between, the run never ends: its slow trips are kept out of the cover, so the cover's IQR
+  stays at the fast mode's spread and the threshold at the 40 ms floor. The lead stays safe (the base's p95 covers the
+  slow mode: lead.spec's 4 simulated minutes keep the lead at the base's 20 t), the cover sees only the fast mode and
+  the `[Pace]` line shows `episodes 1 (on)` throughout; the episode's level holds at most a cover window of slow trips
+  (the review fix: 151 / 226 at one slow trip in 3 / 2, against 2,400 / 3,600 served).
 - **A deeper buffer passes the cap for a moment.** C follows the depth of the newest send, but the net lead falls only
   at the fall's pace: a depth rise of k ticks puts the effective lead at cap + k for ~1 + 0.25 k s.
 - **The p99 of a small window is its max** (n <= 100 cover trips, ~3.3 s after the warm-up): one slow trip early in a
