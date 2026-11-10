@@ -203,9 +203,9 @@ export class Base64Stream {
 			const text = base64Encode(head);
 			this.parts.push(text);
 			this.chars += text.size();
-			const next: number[] = [];
-			for (let i = whole - c; i < n; i++) next.push(buffer.readu8(bytes, i));
-			this.carry = next;
+			const rest: number[] = [];
+			for (let i = whole - c; i < n; i++) rest.push(buffer.readu8(bytes, i));
+			this.carry = rest;
 		} else {
 			for (let i = 0; i < n; i++) this.carry.push(buffer.readu8(bytes, i));
 		}
