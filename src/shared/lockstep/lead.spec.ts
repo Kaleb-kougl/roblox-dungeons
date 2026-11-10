@@ -989,3 +989,275 @@ describe("LeadController, Revision 3's defaults: no bump, the capped cover (FP18
 		]);
 	});
 });
+
+describe("LeadController, the episode detector (FPD20, FP23: LEAD's defaults with a ceiling)", () => {
+	/** The steady link: 6 +/- 1 tick trips. */
+	const STEADY = 6;
+	const SPREAD = 1;
+	/** A +200 ms spike: 12 ticks over the steady trips (FP12's). */
+	const SPIKE = 12;
+	/** Slow trips sit this far over the steady ones (the threshold is max(2.4, 3 IQR ~ 3) ticks over the median). */
+	const SLOW = STEADY + SPIKE;
+	/** Long enough that the cover window (15 s) is full of steady trips. */
+	const SETTLE_SEC = LEAD.coverWindowSec + 2;
+	const NO_EPISODES: LeadTunables = { ...LEAD, episodes: false };
+
+	/** Steady trips, `extra` more for the echoes in [from, from + sec) (trace time). */
+	function spikeTrip(seed: number, from: number, sec: number, extra: number): (t: number) => number {
+		const rng = new Rng(seed);
+		return (t) => jittered(rng, STEADY, SPREAD) + (t >= from && t < from + sec ? extra : 0);
+	}
+
+	/** A trace settled on the steady link (episodes off or on), its lead and the time the trouble starts. */
+	function settled(tunables: LeadTunables, ceiling: number | undefined, trip: (t: number) => number): Trace {
+		const trace = new Trace(INPUT_LEAD_DECAY_TICKS, tunables, ceiling);
+		trace.run({ seconds: SETTLE_SEC, trip, late: () => false });
+		return trace;
+	}
+
+	/** Seconds after `since` until the lead is back within a tick of `before` for good (math.huge: never in the run). */
+	function backAfter(trace: Trace, trip: (t: number) => number, since: number, seconds: number, before: number) {
+		let lastOut = since;
+		let peak = 0;
+		trace.run({
+			seconds,
+			trip,
+			late: () => false,
+			onFrame: (t) => {
+				const lead = t.ctl.lead();
+				peak = math.max(peak, lead);
+				if (t.now() >= since && math.abs(lead - before) > 1) lastOut = t.now();
+			},
+		});
+		return { back: lastOut + 1 / SIM_HZ < trace.now() ? lastOut - since : math.huge, peak };
+	}
+
+	it("LEAD's episode tunables", () => {
+		expect([
+			LEAD.episodes,
+			LEAD.episodeGapMs,
+			LEAD.episodeIqrK,
+			LEAD.episodeGapSamples,
+			LEAD.episodeMinSec,
+			LEAD.episodeMinSlow,
+		]).toEqual([true, 40, 3, 2, 0.25, 6]);
+	});
+
+	it("a long spike becomes an episode: its trips leave the cover and the lead is back in the base's time", () => {
+		const from = SETTLE_SEC;
+		const sec = 1;
+		const runFor = LEAD.coverWindowSec + 6;
+		const results: Array<{ back: number; peak: number; before: number; episodes?: number; keptOut: number }> = [];
+		for (const tunables of [LEAD, NO_EPISODES]) {
+			const trip = spikeTrip(23, from, sec, SPIKE);
+			const trace = settled(tunables, CEILING, trip);
+			const before = trace.ctl.lead();
+			let activeDuring = false;
+			let p99During = 0;
+			trace.run({
+				seconds: sec,
+				trip,
+				late: () => false,
+				onFrame: (t) => {
+					const s = t.ctl.stats();
+					if (s.episodeActive) activeDuring = true;
+					p99During = s.coverP99 ?? 0;
+				},
+			});
+			const s = trace.ctl.stats();
+			if (tunables === LEAD) {
+				expect(activeDuring).toBe(true);
+				expect(s.episodes).toBe(1);
+				// 30 echoes a second: every spike trip is kept from the cover (taken out or kept out).
+				expect(s.keptOut >= sec * (SIM_HZ / BROADCAST_EVERY_TICKS) - 1).toBe(true);
+				// The cover's p99 at the spike's end is the steady link's.
+				expect(p99During <= STEADY + SPREAD).toBe(true);
+			} else {
+				expect(s.episodes).toBe(undefined);
+				expect(s.keptOut).toBe(0);
+				expect(p99During > SLOW - SPREAD).toBe(true);
+			}
+			const r = backAfter(trace, trip, from + sec, runFor, before);
+			// The run ends with the spike (three steady trips): the episode is over.
+			expect(trace.ctl.stats().episodeActive).toBe(false);
+			results.push({ ...r, before, episodes: s.episodes, keptOut: s.keptOut });
+		}
+		const [on, off] = results;
+		print(
+			`[lead] 1 s +${SPIKE}-tick spike, ceiling ${CEILING}: episodes ${on.episodes} kept out ${on.keptOut}, ` +
+				`${on.before} -> ${on.peak} back in ${f2(on.back)} s; episodes off ${off.before} -> ${
+					off.peak
+				} back in ${f2(off.back)} s`,
+		);
+		const bound = LEAD.windowSec + LEAD.fallHoldSec + LEAD.fallStepSec * (on.peak - on.before) + 0.5;
+		expect(on.back <= bound).toBe(true);
+		expect(off.back > LEAD.coverWindowSec).toBe(true);
+		// The base still covers the spike while it lasts: the same peak.
+		expect(on.peak).toBe(off.peak);
+	});
+
+	it("a short burst is not an episode: the cover remembers it", () => {
+		// 0.2 s: 6 echoes spanning 0.17 s, under episodeMinSec.
+		const from = SETTLE_SEC;
+		const trip = spikeTrip(29, from, 0.2, SPIKE);
+		const trace = settled(LEAD, CEILING, trip);
+		trace.run({ seconds: 2, trip, late: () => false });
+		const s = trace.ctl.stats();
+		expect(s.episodes).toBe(0);
+		expect(s.keptOut).toBe(0);
+		expect((s.coverP99 ?? 0) > SLOW - SPREAD).toBe(true);
+		expect(s.lead).toBe(math.min(CEILING, expectedTarget(s.coverP99 ?? 0)));
+		expect(s.lead > expectedTarget(STEADY + SPREAD)).toBe(true);
+	});
+
+	/** Steady trips, but every `every`-th echo from echo `first` is slow, `count` of them. */
+	function sparseSlow(seed: number, first: number, every: number, count: number): (t: number) => number {
+		const rng = new Rng(seed);
+		let k = 0;
+		return () => {
+			k++;
+			const steady = jittered(rng, STEADY, SPREAD);
+			const i = k - first;
+			return i >= 0 && i % every === 0 && i / every < count ? SLOW : steady;
+		};
+	}
+
+	const SETTLE_ECHOES = (SETTLE_SEC * SIM_HZ) / BROADCAST_EVERY_TICKS;
+
+	it("an episode needs episodeMinSlow slow trips, not only episodeMinSec; two other trips between keep the run", () => {
+		// Slow every 3rd echo (two steady ones between): 5 span 0.4 s (> 0.25 s) but are fewer than 6.
+		const gapEvery = LEAD.episodeGapSamples + 1;
+		for (const count of [LEAD.episodeMinSlow - 1, LEAD.episodeMinSlow]) {
+			const trip = sparseSlow(31, SETTLE_ECHOES + 10, gapEvery, count);
+			const trace = settled(LEAD, CEILING, trip);
+			trace.run({ seconds: 2, trip, late: () => false });
+			const s = trace.ctl.stats();
+			print(
+				`[lead] ${count} slow trips, one every ${gapEvery} echoes: episodes ${s.episodes} kept out ${s.keptOut}`,
+			);
+			expect(s.episodes).toBe(count < LEAD.episodeMinSlow ? 0 : 1);
+			expect(s.keptOut).toBe(count < LEAD.episodeMinSlow ? 0 : count);
+		}
+	});
+
+	it("three other trips in a row end the run: slow trips one in four never make an episode", () => {
+		const gapEvery = LEAD.episodeGapSamples + 2;
+		const count = 4 * LEAD.episodeMinSlow;
+		const trip = sparseSlow(37, SETTLE_ECHOES + 10, gapEvery, count);
+		const trace = settled(LEAD, CEILING, trip);
+		trace.run({ seconds: 4, trip, late: () => false });
+		expect(trace.ctl.stats().tripMax).toBe(SLOW);
+		const s = trace.ctl.stats();
+		expect(s.episodes).toBe(0);
+		expect(s.keptOut).toBe(0);
+	});
+
+	it("bursts on top of an episode enter the cover (and are remembered after it)", () => {
+		const from = SETTLE_SEC;
+		const sec = 1.5;
+		const ON_TOP = SLOW + SPIKE;
+		const BURSTS = 5;
+		const rng = new Rng(41);
+		let burstsLeft = 0;
+		/** The spike's own trips served (not the bursts). */
+		let spikeServed = 0;
+		const trip = (t: number) => {
+			const steady = jittered(rng, STEADY, SPREAD);
+			if (t < from || t >= from + sec) return steady;
+			if (burstsLeft > 0) {
+				burstsLeft--;
+				return ON_TOP;
+			}
+			spikeServed++;
+			return steady + SPIKE;
+		};
+		const trace = settled(LEAD, CEILING, trip);
+		// Into the episode, then five bursts on top of it.
+		trace.run({ seconds: 0.7, trip, late: () => false });
+		const mid = trace.ctl.stats();
+		expect(mid.episodeActive).toBe(true);
+		burstsLeft = BURSTS;
+		spikeServed = 0;
+		trace.run({ seconds: sec - 0.7, trip, late: () => false });
+		const s = trace.ctl.stats();
+		print(
+			`[lead] ${BURSTS} bursts on top of an episode: kept out ${mid.keptOut} -> ${s.keptOut}, p99 ${f2(
+				mid.coverP99 ?? 0,
+			)} -> ${f2(s.coverP99 ?? 0)}`,
+		);
+		expect(burstsLeft).toBe(0);
+		expect(s.episodes).toBe(1);
+		// Five of ~450 cover trips: the p99 is theirs; the spike's own trips stay out.
+		expect(s.coverP99).toBe(ON_TOP);
+		// The episode's own trips after the bursts were kept out; the bursts were not.
+		expect(s.keptOut - mid.keptOut).toBe(spikeServed);
+		// After the spike the cover still holds the lead at the ceiling for the bursts (they are bursts, not the spike).
+		trace.run({ seconds: LEAD.windowSec + 3, trip, late: () => false });
+		expect(trace.ctl.lead()).toBe(CEILING);
+	});
+
+	it("a lasting step: the episode ends once the base window's median follows, and the cover takes the new level", () => {
+		const from = SETTLE_SEC;
+		const STEP = 6;
+		const rng = new Rng(43);
+		const trip = (t: number) => jittered(rng, STEADY, SPREAD) + (t >= from ? STEP : 0);
+		const trace = settled(LEAD, CEILING, trip);
+		let endedAt: number | undefined;
+		let wasActive = false;
+		let minLead = math.huge;
+		trace.run({
+			seconds: LEAD.windowSec + 2,
+			trip,
+			late: () => false,
+			onFrame: (t) => {
+				const s = t.ctl.stats();
+				if (s.episodeActive) wasActive = true;
+				else if (wasActive && endedAt === undefined) endedAt = t.now();
+				if (t.now() > from + 0.5) minLead = math.min(minLead, s.lead);
+			},
+		});
+		const s = trace.ctl.stats();
+		const took = (endedAt ?? math.huge) - from;
+		print(
+			`[lead] step +${STEP} ticks: episode over after ${f2(took)} s, kept out ${s.keptOut}, p99 ${f2(
+				s.coverP99 ?? 0,
+			)}`,
+		);
+		expect(wasActive).toBe(true);
+		expect(s.episodes).toBe(1);
+		// Half the base window (its median's rank) and a few echoes.
+		expect(took <= LEAD.windowSec / 2 + 0.5).toBe(true);
+		// The base covers the new level meanwhile; afterwards the new trips enter the cover.
+		expect(minLead >= expectedTarget(STEADY + STEP - SPREAD)).toBe(true);
+		expect((s.coverP99 ?? 0) > STEADY + STEP).toBe(true);
+		expect(s.episodeActive).toBe(false);
+	});
+
+	it("without a ceiling, or with lateBump, nothing changes: the same lead on every frame as with episodes off", () => {
+		const from = SETTLE_SEC;
+		const cases: Array<{ name: string; on: LeadTunables; off: LeadTunables; ceiling?: number }> = [
+			{ name: "no ceiling", on: LEAD, off: NO_EPISODES },
+			{ name: "lateBump", on: REV2, off: { ...REV2, episodes: false }, ceiling: CEILING },
+		];
+		for (const c of cases) {
+			const traces = [c.on, c.off].map((tunables) => {
+				const trip = spikeTrip(47, from, 1, SPIKE);
+				const trace = settled(tunables, c.ceiling, trip);
+				const leads: number[] = [];
+				trace.run({ seconds: LEAD.coverWindowSec + 4, trip, onFrame: (t) => leads.push(t.ctl.lead()) });
+				return { trace, leads };
+			});
+			const [a, b] = traces;
+			let differ = 0;
+			for (let k = 0; k < a.leads.size(); k++) if (a.leads[k] !== b.leads[k]) differ++;
+			const s = a.trace.ctl.stats();
+			print(
+				`[lead] episodes with ${c.name}: ${differ} frames differ, episodes ${s.episodes}, kept out ${s.keptOut}`,
+			);
+			expect(differ).toBe(0);
+			expect(s.episodes).toBe(undefined);
+			expect(s.keptOut).toBe(0);
+			expect(s.coverP99).toBe(b.trace.ctl.stats().coverP99);
+		}
+	});
+});

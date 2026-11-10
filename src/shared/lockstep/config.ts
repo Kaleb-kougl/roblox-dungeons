@@ -194,8 +194,8 @@ export const ARRIVAL_LOG: ArrivalLogTunables = table.freeze({
  * `marginTicks` (the base), or more, the slowest `coverPercentile` of the last `coverWindowSec` plus the margin (the
  * cover), but the cover only up to the prediction cap less the buffer's depth (the ceiling LockstepClient passes from
  * PREDICTION.maxTicks; no prediction, no cover); raised at once, lowered a tick at a time once the fall target (with
- * `fallSlackTicks` more) has been below it for `fallHoldSec`. A late never bumps it (FPD15) unless `lateBump`. Trips
- * are in ticks of SIM_DT, without the pacing buffer's depth (the lead adds that separately, Design 5). All provisional
+ * `fallSlackTicks` more) has been below it for `fallHoldSec`. A late never bumps it (FPD15) unless `lateBump`. A long
+ * spike's trips are kept out of the cover (`episodes`, FPD20). Trips are in ticks of SIM_DT, without the pacing buffer's depth (the lead adds that separately, Design 5). All provisional
  * until FP0 / FP6 / FP21 measure a real session.
  */
 export interface LeadTunables {
@@ -245,6 +245,29 @@ export interface LeadTunables {
 	 * the same on the census's owner-like links, but the max keeps a one-off hold's trip for the whole window. FPD16.
 	 */
 	readonly coverPercentile: number;
+	/**
+	 * The long-spike episode detector (FPD20, owner 2026-11-10; docs/FRAME_PACING.md FP23): a long spike's slow trips are
+	 * taken out of the cover and kept out while it lasts (the base window keeps them), so the cover forgets a spike as fast
+	 * as the base does instead of holding the lead for its whole window; bursts on top of it still enter. Only with the
+	 * cover (a ceiling) and without `lateBump`; false: Revision 3's cover exactly (the census's `rule3` / `cov20`).
+	 */
+	readonly episodes: boolean;
+	/**
+	 * A trip is slow when it is more than max(this, `episodeIqrK` x the cover window's IQR) over the base window's median
+	 * (milliseconds; 2.4 ticks): the floor under the spread on a clean link, where the IQR is a tick or less.
+	 */
+	readonly episodeGapMs: number;
+	/** The slow threshold's spread term: this many interquartile ranges (p75 - p25) of the cover window, nearest rank. */
+	readonly episodeIqrK: number;
+	/** Up to this many measured trips in a row that are not slow do not end a run of slow trips (the next one does). */
+	readonly episodeGapSamples: number;
+	/**
+	 * A run is an episode once its slow trips span more than this (seconds, arrival clocks, first to newest) and it holds
+	 * `episodeMinSlow` of them: a 0.35 s spike is caught; a shorter one is remembered by the cover like a burst.
+	 */
+	readonly episodeMinSec: number;
+	/** The slow trips a run needs to be an episode (a head-of-line clump is 1-2, two merged ones 2-3, a 0.25 s spike ~8). */
+	readonly episodeMinSlow: number;
 }
 
 export const LEAD: LeadTunables = table.freeze({
@@ -260,6 +283,12 @@ export const LEAD: LeadTunables = table.freeze({
 	lateBump: false,
 	coverWindowSec: 15,
 	coverPercentile: 0.99,
+	episodes: true,
+	episodeGapMs: 40,
+	episodeIqrK: 3,
+	episodeGapSamples: 2,
+	episodeMinSec: 0.25,
+	episodeMinSlow: 6,
 });
 
 /**

@@ -34,20 +34,36 @@
  * Nearest rank: with n <= 100 cover trips the p99 is the cover window's max (rank ceil(0.99 n) = n), and the cover
  * applies from the base's minSamples (20) trips, so early on one slow trip sets the cover up to the ceiling.
  *
+ * Episodes (FPD20, docs/FRAME_PACING.md FP23; only with a ceiling, without `lateBump`, and with `episodes`): a long spike
+ * is kept out of the cover, so the cover forgets it as the base does. A measured trip is classified before it enters the
+ * cover (the cover window expired at its clock first): slow = trip > m + g, m the base window's median as sorted at the
+ * last refresh (without this trip), g = max(`episodeGapMs` in ticks, `episodeIqrK` x the cover window's p75 - p25),
+ * nearest rank, each reference from minSamples trips (else nothing is slow). Slow trips form a run; up to
+ * `episodeGapSamples` measured trips in a row that are not slow do not end it. A run whose slow trips span more than
+ * `episodeMinSec` (first to newest) and number at least `episodeMinSlow` is an episode: its slow trips leave the cover
+ * (by id) and later slow trips stay out while it lasts, except a burst on top (more than g over the median of the run's
+ * own slow trips, which leaves it out of that median): it enters the cover. The base window keeps every trip, so a
+ * lasting step moves the base median within its window and the run ends by itself. Echoes without a measured trip
+ * (none, an unsteady send, the server catching up) are neither slow nor a gap.
+ *
  * Echoing: off before the first echo with a tick, and again once batches keep arriving (`received`) for
  * `echoTimeoutSec` without any decodable echo (an old server; a "none" echo proves the server echoes, so an up-link
  * outage keeps echoing). While off, `deadline` runs the legacy rule exactly as
  * LockstepClient.checkDeadline: matched -> one clean tick, `legacyDecayTicks` of them lower the lead by one (never below
  * minLead); a mismatch raises it by one (never above maxLead) and restarts the clean count.
  */
-import { isFiniteNumber } from "shared/sim";
+import { SIM_HZ, isFiniteNumber } from "shared/sim";
 import { nearestRank } from "./arrivalLog";
 import type { LeadTunables } from "./config";
 
 /** Absorbs float rounding: a trip + margin a hair over a whole tick does not round up a tick (as pacer.ts). */
 const EPSILON = 1e-9;
-/** The trip quantile shown beside the target's. */
+/** The trip quantile shown beside the target's; the episode detector's reference (the base window's median). */
 const MEDIAN = 0.5;
+/** The episode detector's spread: the cover window's interquartile range (nearest rank). */
+const QUARTILE_LOW = 0.25;
+const QUARTILE_HIGH = 0.75;
+const MS_PER_SEC = 1000;
 /** A ring slot never written. */
 const NO_RECORD = -1;
 
@@ -114,6 +130,15 @@ export interface LeadStats {
 	readonly falls: number;
 	/** The server's echoes are steering the lead (else the legacy miss counter). */
 	readonly echoing: boolean;
+	/**
+	 * The episode detector (FPD20): runs that became episodes; undefined while it is off (no ceiling, `lateBump`, or
+	 * `episodes` false).
+	 */
+	readonly episodes: number | undefined;
+	/** An episode holds: its slow trips are out of the cover and later ones stay out. */
+	readonly episodeActive: boolean;
+	/** Trips episodes kept from the cover (taken out when their run became one, or kept out while it held). */
+	readonly keptOut: number;
 }
 
 /** Index of the first element of the ascending `sorted` greater than (upper) or at least (lower) x: a binary search. */
@@ -185,7 +210,28 @@ export class LeadController {
 	private readonly covAt: number[] = [];
 	private readonly covTrip: number[] = [];
 	private readonly covSorted: number[] = [];
+	/** Each cover trip's id (ascending: its order of arrival), so an episode can take its trips out. */
+	private readonly covId: number[] = [];
+	private nextTripId = 0;
 	private covHigh: number | undefined;
+
+	/** The episode detector (FPD20) runs: a ceiling, no `lateBump`, `episodes`. */
+	private readonly episodesOn: boolean;
+	/** `episodeGapMs` in ticks. */
+	private readonly episodeGapTicks: number;
+	/** The current run of slow trips: its first slow trip's clock, slow trips, non-slow trips since the newest slow one. */
+	private runActive = false;
+	private runStartAt = 0;
+	private runSlow = 0;
+	private runGap = 0;
+	/** The run is an episode (its slow trips are kept out of the cover). */
+	private runEpisode = false;
+	/** The run's slow trips (not the bursts on top), ascending: their median is the episode's level. */
+	private readonly runSlowSorted: number[] = [];
+	/** The cover ids of the run's slow trips while it is not yet an episode (taken out when it becomes one). */
+	private readonly runIds: number[] = [];
+	private episodeCount = 0;
+	private keptOutCount = 0;
 
 	private isEchoing = false;
 	private lastEchoAt: number | undefined;
@@ -221,6 +267,8 @@ export class LeadController {
 		this.maxLead = maxLead;
 		this.legacyDecayTicks = legacyDecayTicks;
 		this.ceilingTicks = ceiling !== undefined && isFiniteNumber(ceiling) ? ceiling : undefined;
+		this.episodesOn = this.ceilingTicks !== undefined && !tunables.lateBump && tunables.episodes;
+		this.episodeGapTicks = (tunables.episodeGapMs / MS_PER_SEC) * SIM_HZ;
 		this.leadValue = minLead;
 		const size = math.max(1, math.floor(tunables.recordTicks));
 		this.ringSize = size;
@@ -304,9 +352,8 @@ export class LeadController {
 						this.winAt.push(clock);
 						this.winTrip.push(t);
 						this.dirty = true;
-						this.covAt.push(clock);
-						this.covTrip.push(t);
-						this.covSorted.insert(searchSorted(this.covSorted, t, true), t);
+						if (this.episodesOn) this.episodeTrip(clock, t);
+						else this.coverInsert(clock, t);
 					}
 				}
 			}
@@ -424,6 +471,9 @@ export class LeadController {
 			raises: this.raiseCount,
 			falls: this.fallCount,
 			echoing: this.isEchoing,
+			episodes: this.episodesOn ? this.episodeCount : undefined,
+			episodeActive: this.runEpisode,
+			keptOut: this.keptOutCount,
 		};
 	}
 
@@ -504,18 +554,117 @@ export class LeadController {
 		this.lastFallAt = undefined;
 	}
 
-	/** Drops trips older than the windows and recomputes their quantiles when they changed. */
-	private refresh(now: number): void {
+	/** A trip enters the cover window (newest), its ascending copy (binary insertion) and gets the next id. */
+	private coverInsert(clock: number, trip: number): number {
+		const id = this.nextTripId++;
+		this.covAt.push(clock);
+		this.covTrip.push(trip);
+		this.covId.push(id);
+		this.covSorted.insert(searchSorted(this.covSorted, trip, true), trip);
+		return id;
+	}
+
+	/** Drops the cover window's trips older than its window at `now` (oldest first; binary removal from the copy). */
+	private expireCover(now: number): void {
 		const keepCov = now - this.tunables.coverWindowSec;
-		const sorted = this.covSorted;
 		while (this.covAt.size() > 0 && this.covAt[0] < keepCov) {
-			const old = this.covTrip[0];
+			this.removeSorted(this.covTrip[0]);
 			this.covAt.remove(0);
 			this.covTrip.remove(0);
-			const i = searchSorted(sorted, old, false);
-			if (i < sorted.size() && sorted[i] === old) sorted.remove(i);
+			this.covId.remove(0);
 		}
-		this.covHigh = nearestRank(sorted, this.tunables.coverPercentile);
+	}
+
+	private removeSorted(trip: number): void {
+		const sorted = this.covSorted;
+		const i = searchSorted(sorted, trip, false);
+		if (i < sorted.size() && sorted[i] === trip) sorted.remove(i);
+	}
+
+	/**
+	 * The episode detector (FPD20): classifies a measured trip against the base window (as sorted at the last refresh)
+	 * and the cover window (expired at `clock`, before the trip enters), steps the run, and puts the trip in the cover or
+	 * keeps it out; a run that becomes an episode takes its slow trips out of the cover by id.
+	 */
+	private episodeTrip(clock: number, trip: number): void {
+		const t = this.tunables;
+		this.expireCover(clock);
+		const base = this.scratch;
+		const cover = this.covSorted;
+		let slow = false;
+		let gap = 0;
+		if (base.size() >= t.minSamples && cover.size() >= t.minSamples) {
+			const median = nearestRank(base, MEDIAN)!;
+			const iqr = nearestRank(cover, QUARTILE_HIGH)! - nearestRank(cover, QUARTILE_LOW)!;
+			gap = math.max(this.episodeGapTicks, t.episodeIqrK * iqr);
+			slow = trip > median + gap + EPSILON;
+		}
+		if (slow) {
+			if (!this.runActive) {
+				this.endRun();
+				this.runActive = true;
+				this.runStartAt = clock;
+				this.runSlow = 0;
+			}
+			this.runSlow++;
+			this.runGap = 0;
+		} else if (this.runActive) {
+			this.runGap++;
+			if (this.runGap > t.episodeGapSamples) this.endRun();
+		}
+		let keepOut = false;
+		if (slow) {
+			// A burst on top of an episode enters the cover and stays out of the run's median (its level).
+			const level = nearestRank(this.runSlowSorted, MEDIAN);
+			const onTop = this.runEpisode && level !== undefined && trip > level + gap + EPSILON;
+			if (!onTop) {
+				keepOut = this.runEpisode;
+				this.runSlowSorted.insert(searchSorted(this.runSlowSorted, trip, true), trip);
+			}
+		}
+		if (keepOut) {
+			this.keptOutCount++;
+		} else {
+			const id = this.coverInsert(clock, trip);
+			if (slow && !this.runEpisode) this.runIds.push(id);
+		}
+		if (
+			slow &&
+			!this.runEpisode &&
+			this.runSlow >= t.episodeMinSlow &&
+			clock - this.runStartAt > t.episodeMinSec + EPSILON
+		) {
+			this.runEpisode = true;
+			this.episodeCount++;
+			const ids = this.runIds;
+			const n = ids.size();
+			for (let k = 0; k < n; k++) this.removeId(ids[k]);
+			ids.clear();
+		}
+	}
+
+	/** Takes the cover trip with this id out (gone already if it left the window). */
+	private removeId(id: number): void {
+		const i = searchSorted(this.covId, id, false);
+		if (i >= this.covId.size() || this.covId[i] !== id) return;
+		this.removeSorted(this.covTrip[i]);
+		this.covAt.remove(i);
+		this.covTrip.remove(i);
+		this.covId.remove(i);
+		this.keptOutCount++;
+	}
+
+	private endRun(): void {
+		this.runActive = false;
+		this.runEpisode = false;
+		this.runIds.clear();
+		this.runSlowSorted.clear();
+	}
+
+	/** Drops trips older than the windows and recomputes their quantiles when they changed. */
+	private refresh(now: number): void {
+		this.expireCover(now);
+		this.covHigh = nearestRank(this.covSorted, this.tunables.coverPercentile);
 		const keep = now - this.tunables.windowSec;
 		while (this.winAt.size() > 0 && this.winAt[0] < keep) {
 			this.winAt.remove(0);

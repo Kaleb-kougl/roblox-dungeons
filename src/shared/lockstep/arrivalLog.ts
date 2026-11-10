@@ -190,17 +190,22 @@ function ticksText(ticks: number | undefined): string {
 
 /**
  * The measured lead's part (docs/FRAME_PACING.md Design 11, Revision 3 FP20): trips, the lead and its targets (L*, its
- * base Lb, cover Lc and ceiling C: `cap off` without one, no prediction), lates / bumps / falls.
+ * base Lb, cover Lc and ceiling C: `cap off` without one, no prediction), lates / bumps / falls, and the episode
+ * detector (FP23: episodes, `(on)` while one holds, trips kept out of the cover; `episodes off` without it).
  */
 function leadText(info: ArrivalLineInfo): string {
 	const l = info.leadStats;
 	if (info.leadOff || l === undefined) return "lead off (KV_LeadOff)";
 	if (!l.echoing) return "lead legacy";
 	const cap = l.ceiling === undefined ? "cap off" : `cap ${l.ceiling}t`;
+	const episodes =
+		l.episodes === undefined
+			? "episodes off"
+			: `episodes ${l.episodes}${l.episodeActive ? " (on)" : ""} out ${l.keptOut}`;
 	return (
 		`trip p50 ${tickMs(l.tripP50)} p95 ${tickMs(l.tripP95)} max ${tickMs(l.tripMax)} ms` +
 		` · lead ${l.lead}t target ${l.target}t (base ${l.baseTarget}t cover ${ticksText(l.coverTarget)} ${cap})` +
-		` fall ${l.fallTarget}t · lates ${l.lates} bumps ${l.bumps} falls ${l.falls}`
+		` fall ${l.fallTarget}t · lates ${l.lates} bumps ${l.bumps} falls ${l.falls} · ${episodes}`
 	);
 }
 
@@ -208,8 +213,9 @@ function leadText(info: ArrivalLineInfo): string {
  * The arrival log's line (developer text, English):
  * `[Pace] 10.0s batches 300 ticks 600 · gap p50 33 p95 41 max 87 ms · sizes 2:290 3:10 · pace 4t 58ms target 3.5t
  * jitter p95 9ms holds 0 discarded 0 · lead 7t net 3t miss 0 backlog 3 · fps 60.0 worst 21ms · trip p50 117 p95 150
- * max 183 ms · lead 11t target 12t (base 11t cover 12t cap 16t) fall 12t · lates 9 bumps 0 falls 1` (the last part
- * `lead legacy` while the miss counter steers the lead, `lead off (KV_LeadOff)` without the measured lead).
+ * max 183 ms · lead 11t target 12t (base 11t cover 12t cap 16t) fall 12t · lates 9 bumps 0 falls 1 · episodes 0 out 0`
+ * (the measured lead's part `lead legacy` while the miss counter steers the lead, `lead off (KV_LeadOff)` without the
+ * measured lead).
  */
 export function formatArrivalLine(w: ArrivalWindow, info: ArrivalLineInfo, tunables = ARRIVAL_LOG): string {
 	const mid = math.round(tunables.midPercentile * PERCENT);

@@ -2188,7 +2188,7 @@ describe("the measured input lead follows the latency both ways (FP1's scenario 
 				measured.client.leadStats()!.falls
 			} skipped samples ${measured.skippedAt.size()}; misses ${measured.client.misses} (spike 2 lead ${
 				measured.leads[SPIKE2_END - 1]
-			})`,
+			}); episodes ${measured.client.leadStats()!.episodes} kept out ${measured.client.leadStats()!.keptOut}`,
 	);
 	print(
 		`[lockstep lead legacy]   spike 1 peak ${l.peak}: ${l.peak - legacy.leads[SPIKE2_START - 1]} ticks down in ` +

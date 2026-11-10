@@ -26,6 +26,7 @@ const INFO_WAITING: ArrivalLineInfo = {
 
 /** The measured lead's stats: trips 7 / 9 / 11 ticks (117 / 150 / 183 ms). */
 /** And Revision 3's parts: base 11, the cover's p99 10.4 ticks (12 with the margin) under its ceiling 16: L* 12. */
+/** And FP23's episode detector: no episode yet. */
 const LEAD_STATS: LeadStats = {
 	lead: 12,
 	target: 12,
@@ -46,6 +47,9 @@ const LEAD_STATS: LeadStats = {
 	raises: 4,
 	falls: 1,
 	echoing: true,
+	episodes: 0,
+	episodeActive: false,
+	keptOut: 0,
 };
 
 describe("nearestRank", () => {
@@ -193,17 +197,18 @@ describe("formatArrivalLine", () => {
 			"[Pace] 10.0s batches 3 ticks 7 · gap p50 33 p95 37 max 37 ms · sizes 2:2 3:1" +
 				" · pace 4t 58ms target 3.5t jitter p95 9ms holds 1 discarded 0 · lead 7t net 3t miss 2 backlog 3" +
 				" · fps 0.1 worst 17ms · trip p50 117 p95 150 max 183 ms · lead 12t target 12t" +
-				" (base 11t cover 12t cap 16t) fall 12t · lates 9 bumps 0 falls 1",
+				" (base 11t cover 12t cap 16t) fall 12t · lates 9 bumps 0 falls 1 · episodes 0 out 0",
 		);
 	});
 
 	it("prints the lead's base, cover and ceiling: `cap off` without a ceiling (no prediction), '-' before a cover trip", () => {
 		const info: ArrivalLineInfo = {
 			...INFO_WAITING,
-			leadStats: { ...LEAD_STATS, lead: 11, target: 11, ceiling: undefined, bumps: 3 },
+			leadStats: { ...LEAD_STATS, lead: 11, target: 11, ceiling: undefined, bumps: 3, episodes: undefined },
 			leadOff: false,
 		};
-		const tail = "lead 11t target 11t (base 11t cover 12t cap off) fall 12t · lates 9 bumps 3 falls 1";
+		const tail =
+			"lead 11t target 11t (base 11t cover 12t cap off) fall 12t · lates 9 bumps 3 falls 1 · episodes off";
 		const line = formatArrivalLine(window(), info);
 		expect(line.sub(-tail.size())).toBe(tail);
 		const early = formatArrivalLine(window(), {
@@ -211,6 +216,21 @@ describe("formatArrivalLine", () => {
 			leadStats: { ...LEAD_STATS, coverP99: undefined, coverTarget: undefined },
 		});
 		expect(early.find("(base 11t cover - cap 16t)", 1, true)[0]).never.toBe(undefined);
+	});
+
+	it("prints the episode detector (FP23): episodes so far, (on) while one holds, the trips kept out of the cover", () => {
+		const held = formatArrivalLine(window(), {
+			...INFO_WAITING,
+			leadStats: { ...LEAD_STATS, episodes: 2, episodeActive: true, keptOut: 43 },
+			leadOff: false,
+		});
+		expect(held.sub(-"falls 1 · episodes 2 (on) out 43".size())).toBe("falls 1 · episodes 2 (on) out 43");
+		const over = formatArrivalLine(window(), {
+			...INFO_WAITING,
+			leadStats: { ...LEAD_STATS, episodes: 2, episodeActive: false, keptOut: 43 },
+			leadOff: false,
+		});
+		expect(over.sub(-"falls 1 · episodes 2 out 43".size())).toBe("falls 1 · episodes 2 out 43");
 	});
 
 	it("says when the lead is not measured: the legacy counter, or KV_LeadOff", () => {

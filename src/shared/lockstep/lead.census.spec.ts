@@ -804,6 +804,9 @@ class SpecLead implements LeadLike {
 			raises: this.raiseCount,
 			falls: this.fallCount,
 			echoing: this.isEchoing,
+			episodes: this.k.cover?.episode !== undefined ? this.spike.episodes : undefined,
+			episodeActive: this.runEpisode && !this.runLevel,
+			keptOut: this.spike.removed + this.spike.keptOut,
 		};
 	}
 
