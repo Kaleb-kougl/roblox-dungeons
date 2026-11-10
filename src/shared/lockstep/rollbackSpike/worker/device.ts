@@ -43,7 +43,7 @@ const UTF8_CONTINUATION_MAX = 0xbf;
  */
 function cleanTag(tag: string): string {
 	let [plain] = string.gsub(tag, "%c", "");
-	if (utf8.len(plain)[0] === false) {
+	if (!typeIs(utf8.len(plain)[0], "number")) {
 		[plain] = string.gsub(plain, `[${string.char(UTF8_NON_ASCII_MIN)}-${string.char(BYTE_MAX)}]`, "");
 	}
 	const [trimmed] = string.gsub(plain, "^%s+", "");
