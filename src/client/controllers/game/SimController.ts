@@ -82,6 +82,7 @@ import {
 	latencyProbeView,
 	listenerLabel,
 	leadDebugView,
+	predictionDebugView,
 	pacingDebugView,
 	spectateCommand,
 	type ListenerTime,
@@ -1308,6 +1309,8 @@ export class SimController implements OnStart {
 		this.spectateView = view;
 		const spectateChanged = view !== undefined && (view.viewIndex !== viewBefore || view.active !== activeBefore);
 		this.updateDrawn(ctx, coop, dt, floorChanged || spectateChanged);
+		// KV_Debug latency probe (LP6): press -> drawn, once the drawn knight shows the ticks a press was sent for.
+		probe?.drawn(coop.state.tick, this.getPredictionAheadTicks(), os.clock());
 		// M2 progression: the local player's toasts; while any draft is open (the world frozen until every player
 		// confirmed) the overlay follows the stick and the "waiting for N teammates" line every frame.
 		this.pushToasts(coop);
@@ -1365,8 +1368,23 @@ export class SimController implements OnStart {
 		if (probe === undefined) return;
 		const pacing = pacingDebugView(coop.pacingStats(), coop.backlog(), ctx.pacingOff !== true);
 		const lead = leadDebugView(coop.leadStats(), ctx.leadOff !== true);
+		const prediction = predictionDebugView(
+			coop.predictionStats(),
+			ctx.predictOff !== true,
+			this.drawnActive,
+			this.smoother.snapCount(),
+		);
 		clientStore.setLatencyProbe(
-			latencyProbeView(probe, coop.inputLead(), coop.misses, coop.netLead(), pacing, lead, coop.mismatches),
+			latencyProbeView(
+				probe,
+				coop.inputLead(),
+				coop.misses,
+				coop.netLead(),
+				pacing,
+				lead,
+				coop.mismatches,
+				prediction,
+			),
 		);
 	}
 

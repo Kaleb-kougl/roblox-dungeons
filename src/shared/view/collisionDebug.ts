@@ -19,7 +19,7 @@ import {
 	type Dungeon,
 	type SolidCells,
 } from "shared/dungeon";
-import { AXIS_MAX, PLAYER_SPEED, SIM_HZ } from "shared/sim";
+import { AXIS_MAX, PLAYER_SPEED, SIM_HZ, type PlayerState } from "shared/sim";
 import { COLLISION_DEBUG } from "./collisionDebugConfig";
 
 /**
@@ -178,4 +178,34 @@ export function stallLine(x: number, z: number, moveX: number, moveZ: number): s
 		`[collision] stall at ${fixed(x)},${fixed(z)} (${worldToGrid(x)},${worldToGrid(z)}) ` +
 		`input ${fixed(moveX / AXIS_MAX)},${fixed(moveZ / AXIS_MAX)}`
 	);
+}
+
+/** Where KV_CollisionDebug draws its body rings this frame (sim units; see collisionRings). */
+export interface CollisionRings {
+	/** The body ring: the player as drawn. */
+	bodyX: number;
+	bodyZ: number;
+	/** The merged (sim) body's ring, shown only while the drawn player is not the merged one (predicted). */
+	mergedShown: boolean;
+	mergedX: number;
+	mergedZ: number;
+}
+
+/**
+ * docs/LOCAL_PREDICTION.md LP6: the body ring at the drawn player (SimController.getDrawnPlayer) and, while that is
+ * the predicted body (another object than the merged player), a second ring at the merged one; both interpolated by
+ * `alpha` like every view. Written into `out`, returned.
+ */
+export function collisionRings(
+	drawn: Readonly<PlayerState>,
+	merged: Readonly<PlayerState>,
+	alpha: number,
+	out: CollisionRings,
+): CollisionRings {
+	out.bodyX = drawn.prevX + (drawn.x - drawn.prevX) * alpha;
+	out.bodyZ = drawn.prevZ + (drawn.z - drawn.prevZ) * alpha;
+	out.mergedShown = drawn !== merged;
+	out.mergedX = merged.prevX + (merged.x - merged.prevX) * alpha;
+	out.mergedZ = merged.prevZ + (merged.z - merged.prevZ) * alpha;
+	return out;
 }

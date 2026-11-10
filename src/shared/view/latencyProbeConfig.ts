@@ -33,3 +33,18 @@ export const LEAD_DEBUG_STRINGS = {
 	legacy: "hud.debug.leadLegacy",
 	off: "hud.debug.leadOff",
 } as const;
+
+/**
+ * The co-op debug line's prediction part (docs/LOCAL_PREDICTION.md Design 7, LP6), one string per PredictionDebugView
+ * mode: predicting (the horizon, the head error over the stats window, the smoother's snaps, press -> drawn), not
+ * predicting now (dead, spectating, a draft, the cover), and KV_PredictOff. Developer strings (`hud.debug*`): English
+ * in every locale, never exported for translation.
+ */
+export const PREDICTION_DEBUG_STRINGS = {
+	on: "hud.debug.pred",
+	waiting: "hud.debug.predWait",
+	off: "hud.debug.predOff",
+} as const;
+
+/** The prediction part's errors are shown in tiles with this many decimals. */
+export const PREDICTION_DEBUG_DECIMALS = 2;

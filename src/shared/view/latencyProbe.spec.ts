@@ -22,6 +22,8 @@ import {
 	pacingDebugVars,
 	pacingDebugView,
 	type LatencyProbeView,
+	predictionDebugKey,
+	predictionDebugVars,
 } from "shared/view";
 import { HUD_STRINGS } from "shared/view/hud";
 
@@ -232,6 +234,7 @@ describe("the debug line's pacing part (docs/FRAME_PACING.md Design 7)", () => {
 				v,
 				pack.str(pacingDebugKey(v.pacing), pacingDebugVars(v.pacing)),
 				pack.str(leadDebugKey(v.lead), leadDebugVars(v)),
+				pack.str(predictionDebugKey(v.prediction), predictionDebugVars(v)),
 			),
 		);
 
@@ -259,12 +262,12 @@ describe("the debug line's pacing part (docs/FRAME_PACING.md Design 7)", () => {
 		const paced = latencyProbeView(p, 7, 1, 3, pacingDebugView(stats, 3, true));
 		expect(line(paced)).toBe(
 			"co-op lead 7t 117ms (net 3t legacy) · pace 4t 58ms · holds 2 · backlog 3 · jitter p95 10ms · " +
-				"press->step -ms avg - max - n0 · late 1 miss 1",
+				"press->step -ms avg - max - n0 · late 1 miss 1 · pred off (KV_PredictOff) · press->drawn -ms avg -",
 		);
 		const off = latencyProbeView(p, 3, 0, 3, pacingDebugView(undefined, 2, false), LEAD_DEBUG_OFF);
 		expect(line(off)).toBe(
 			"co-op lead 3t 50ms (net 3t, lead off (KV_LeadOff)) · pace off (KV_PacingOff) · press->step -ms avg - max - " +
-				"n0 · late 0 miss 0",
+				"n0 · late 0 miss 0 · pred off (KV_PredictOff) · press->drawn -ms avg -",
 		);
 		// The measured lead (docs/FRAME_PACING.md Design 11): trip p95 9.4 ticks = 157 ms; late = echoed lates, miss =
 		// mismatches.
@@ -279,7 +282,7 @@ describe("the debug line's pacing part (docs/FRAME_PACING.md Design 7)", () => {
 		);
 		expect(line(measured)).toBe(
 			"co-op lead 18t 300ms (net 11t, trip p95 157ms) · pace 4t 58ms · holds 2 · backlog 3 · jitter p95 10ms · " +
-				"press->step -ms avg - max - n0 · late 4 miss 1",
+				"press->step -ms avg - max - n0 · late 4 miss 1 · pred off (KV_PredictOff) · press->drawn -ms avg -",
 		);
 		const waiting = latencyProbeView(p, 3, 0, 3, pacingDebugView(undefined, 2, true));
 		expect(line(waiting).find("· pace waiting · backlog 2 ·", 1, true)[0]).never.toBe(undefined);

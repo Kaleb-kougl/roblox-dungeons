@@ -766,13 +766,16 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"hud.debug.replayMismatch": "replay MISMATCH @ {ticks}",
 		"hud.debug.net":
 			"co-op lead {lead}t {leadMs}ms ({netPart}) · {pace} · press->step {last}ms avg {mean} max {max} n{count} · " +
-			"late {late} miss {misses}",
+			"late {late} miss {misses} · {pred}",
 		"hud.debug.lead": "net {net}t, trip p95 {p95}ms",
 		"hud.debug.leadLegacy": "net {net}t legacy",
 		"hud.debug.leadOff": "net {net}t, lead off (KV_LeadOff)",
 		"hud.debug.pace": "pace {depth}t {depthMs}ms · holds {holds} · backlog {backlog} · jitter p95 {jitter}ms",
 		"hud.debug.paceWait": "pace waiting · backlog {backlog}",
 		"hud.debug.paceOff": "pace off (KV_PacingOff)",
+		"hud.debug.pred": "pred {h}t · err {mean}/{max} · snaps {snaps} · press->drawn {drawn}ms avg {drawnMean}",
+		"hud.debug.predWait": "pred waiting · snaps {snaps} · press->drawn {drawn}ms avg {drawnMean}",
+		"hud.debug.predOff": "pred off (KV_PredictOff) · press->drawn {drawn}ms avg {drawnMean}",
 		// M2 scoring (score panel, combo meter, score pops, the results breakdown).
 		"hud.score": "Score",
 		"hud.score.combo": "x{combo}",

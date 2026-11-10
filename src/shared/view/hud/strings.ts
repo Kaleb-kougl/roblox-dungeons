@@ -12,7 +12,7 @@ import {
 	SCORE_SOURCE_NAMES,
 	TREASURE_SCORE_SOURCE_NAMES,
 } from "shared/sim";
-import { LEAD_DEBUG_STRINGS, PACING_DEBUG_STRINGS } from "../latencyProbeConfig";
+import { LEAD_DEBUG_STRINGS, PACING_DEBUG_STRINGS, PREDICTION_DEBUG_STRINGS } from "../latencyProbeConfig";
 export const HUD_STRINGS = {
 	title: "game.title",
 	health: "hud.health",
@@ -57,6 +57,10 @@ export const HUD_STRINGS = {
 	leadProbe: LEAD_DEBUG_STRINGS.measured,
 	leadProbeLegacy: LEAD_DEBUG_STRINGS.legacy,
 	leadProbeOff: LEAD_DEBUG_STRINGS.off,
+	/** Its `{pred}` part (docs/LOCAL_PREDICTION.md Design 7): predicting, not predicting now, KV_PredictOff. */
+	predProbe: PREDICTION_DEBUG_STRINGS.on,
+	predProbeWait: PREDICTION_DEBUG_STRINGS.waiting,
+	predProbeOff: PREDICTION_DEBUG_STRINGS.off,
 	cap: "fx.cap",
 	score: "hud.score",
 	combo: "hud.score.combo",

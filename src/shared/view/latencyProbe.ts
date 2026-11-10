@@ -14,13 +14,24 @@
  *   stepped(nextTick, now, missed) after the pump: every tick below `nextTick` (state.tick) has been stepped. `missed`:
  *                                  the pump saw one of this client's inputs miss the server's deadline, so a press
  *                                  resolved in it may have landed later than its tick: counted as `late`, not measured.
+ *   drawn(nextTick, ahead, now)    after the drawn player was updated (docs/LOCAL_PREDICTION.md LP6): the drawn knight
+ *                                  shows every tick below `nextTick + ahead` (`ahead`: SimController
+ *                                  getPredictionAheadTicks, 0 without prediction), so a press sent for such a tick has
+ *                                  been answered on screen: press -> drawn (the press -> step time without prediction;
+ *                                  a missed deadline does not matter here, the drawn knight replays what was sent).
  *
  * A press is a button bit sent that the previous sent input did not have; its time is the first frame that sampled it
  * (a press sampled in a frame that stepped nothing waits for the next send). A press released before it was ever sent
  * is not measured.
  */
 import { SIM_DT } from "shared/sim";
-import { LATENCY_PROBE, LEAD_DEBUG_STRINGS, PACING_DEBUG_STRINGS } from "./latencyProbeConfig";
+import {
+	LATENCY_PROBE,
+	LEAD_DEBUG_STRINGS,
+	PACING_DEBUG_STRINGS,
+	PREDICTION_DEBUG_DECIMALS,
+	PREDICTION_DEBUG_STRINGS,
+} from "./latencyProbeConfig";
 
 export interface LatencyProbeStats {
 	/** The last measured press, ms (undefined before the first). */
@@ -32,7 +43,43 @@ export interface LatencyProbeStats {
 	readonly count: number;
 	/** Presses resolved in a pump with a deadline miss (not measured). */
 	readonly late: number;
+	/** Press -> drawn (LP6): the last, and the mean over the last LATENCY_PROBE.window presses, ms. */
+	readonly drawnLastMs: number | undefined;
+	readonly drawnMeanMs: number | undefined;
 }
+
+/**
+ * The predictor's numbers the debug line reads (docs/LOCAL_PREDICTION.md Design 7): a structural subset of
+ * shared/lockstep PredictionStats (LockstepClient.predictionStats()).
+ */
+export interface PredictionStatsInput {
+	readonly horizonTicks: number;
+	readonly meanError: number;
+	readonly maxError: number;
+}
+
+/**
+ * The debug line's prediction part: `off` (KV_PredictOff: the client was built without prediction), `waiting` (built
+ * with it, but the local player is not drawn predicted now), `on`. Errors rounded to PREDICTION_DEBUG_DECIMALS tiles, so
+ * the HUD store only changes when the line does.
+ */
+export interface PredictionDebugView {
+	readonly mode: "off" | "waiting" | "on";
+	readonly horizonTicks: number;
+	readonly meanError: number;
+	readonly maxError: number;
+	/** The smoother's snaps so far (SimController.getPredictionSmoothing). */
+	readonly snaps: number;
+}
+
+/** No prediction part: the client predicts nothing. */
+export const PREDICTION_DEBUG_OFF: PredictionDebugView = table.freeze({
+	mode: "off",
+	horizonTicks: 0,
+	meanError: 0,
+	maxError: 0,
+	snaps: 0,
+});
 
 /**
  * The pacer's numbers the debug line reads (docs/FRAME_PACING.md Design 7): a structural subset of shared/lockstep
@@ -119,6 +166,8 @@ export interface LatencyProbeView extends LatencyProbeStats {
 	readonly pacing: PacingDebugView;
 	/** The lead part (docs/FRAME_PACING.md Design 11). */
 	readonly lead: LeadDebugView;
+	/** The prediction part (docs/LOCAL_PREDICTION.md Design 7). */
+	readonly prediction: PredictionDebugView;
 }
 
 export class LatencyProbe {
@@ -130,6 +179,11 @@ export class LatencyProbe {
 	private head = 0;
 	private lastMs: number | undefined;
 	private late = 0;
+	private readonly drawnTicks: number[] = [];
+	private readonly drawnAt: number[] = [];
+	private readonly drawnSamples: number[] = [];
+	private drawnHead = 0;
+	private drawnLast: number | undefined;
 
 	constructor(
 		private readonly window: number = LATENCY_PROBE.window,
@@ -152,9 +206,30 @@ export class LatencyProbe {
 		if (rising === 0) return;
 		const at = this.edgeAt;
 		this.edgeAt = undefined;
-		if (at === undefined || this.pendingTicks.size() >= this.maxPending) return;
+		if (at === undefined) return;
+		if (this.drawnTicks.size() < this.maxPending) {
+			this.drawnTicks.push(tick);
+			this.drawnAt.push(at);
+		}
+		if (this.pendingTicks.size() >= this.maxPending) return;
 		this.pendingTicks.push(tick);
 		this.pendingAt.push(at);
+	}
+
+	/** The drawn knight shows every tick below `nextTick + ahead`, at `now` (seconds): press -> drawn. */
+	drawn(nextTick: number, ahead: number, now: number): void {
+		const shown = nextTick + math.max(ahead, 0);
+		while (this.drawnTicks.size() > 0 && this.drawnTicks[0] < shown) {
+			this.drawnTicks.remove(0);
+			const at = this.drawnAt.remove(0)!;
+			const ms = (now - at) * LATENCY_PROBE.msPerSecond;
+			this.drawnLast = ms;
+			if (this.drawnSamples.size() < this.window) this.drawnSamples.push(ms);
+			else {
+				this.drawnSamples[this.drawnHead] = ms;
+				this.drawnHead = (this.drawnHead + 1) % this.window;
+			}
+		}
 	}
 
 	/** Every tick below `nextTick` has been stepped, at `now` (seconds). */
@@ -180,7 +255,18 @@ export class LatencyProbe {
 			sum += v;
 			if (max === undefined || v > max) max = v;
 		}
-		return { lastMs: this.lastMs, meanMs: n > 0 ? sum / n : undefined, maxMs: max, count: n, late: this.late };
+		let drawnSum = 0;
+		for (const v of this.drawnSamples) drawnSum += v;
+		const dn = this.drawnSamples.size();
+		return {
+			lastMs: this.lastMs,
+			meanMs: n > 0 ? sum / n : undefined,
+			maxMs: max,
+			count: n,
+			late: this.late,
+			drawnLastMs: this.drawnLast,
+			drawnMeanMs: dn > 0 ? drawnSum / dn : undefined,
+		};
 	}
 
 	private record(ms: number): void {
@@ -229,9 +315,36 @@ export function leadDebugView(stats: LeadStatsInput | undefined, configured: boo
 	};
 }
 
+function roundTo(v: number, decimals: number): number {
+	const k = math.pow(10, decimals);
+	return math.round(v * k) / k;
+}
+
+/**
+ * The debug line's prediction part from the client's prediction stats (undefined without prediction), whether the
+ * client was built with it (false: KV_PredictOff), whether the local player is drawn predicted this frame, and the
+ * smoother's snaps.
+ */
+export function predictionDebugView(
+	stats: PredictionStatsInput | undefined,
+	configured: boolean,
+	predicting: boolean,
+	snaps: number,
+): PredictionDebugView {
+	if (!configured || stats === undefined) return PREDICTION_DEBUG_OFF;
+	return {
+		mode: predicting ? "on" : "waiting",
+		horizonTicks: predicting ? stats.horizonTicks : 0,
+		meanError: roundTo(stats.meanError, PREDICTION_DEBUG_DECIMALS),
+		maxError: roundTo(stats.maxError, PREDICTION_DEBUG_DECIMALS),
+		snaps,
+	};
+}
+
 /**
  * The probe's view for the debug line: its stats plus the client's effective lead, misses, net lead (default: the
- * effective lead), pacing part (default: off), lead part (default: legacy) and mismatches (default: the misses).
+ * effective lead), pacing part (default: off), lead part (default: legacy), mismatches (default: the misses) and
+ * prediction part (default: off).
  */
 export function latencyProbeView(
 	probe: LatencyProbe,
@@ -241,8 +354,9 @@ export function latencyProbeView(
 	pacing: PacingDebugView = PACING_DEBUG_OFF,
 	lead: LeadDebugView = LEAD_DEBUG_LEGACY,
 	mismatches: number = misses,
+	prediction: PredictionDebugView = PREDICTION_DEBUG_OFF,
 ): LatencyProbeView {
-	return { ...probe.stats(), leadTicks, netLeadTicks, misses, mismatches, pacing, lead };
+	return { ...probe.stats(), leadTicks, netLeadTicks, misses, mismatches, pacing, lead, prediction };
 }
 
 function pacingViewsEqual(a: PacingDebugView, b: PacingDebugView): boolean {
@@ -270,7 +384,14 @@ export function latencyProbeViewsEqual(a: LatencyProbeView | undefined, b: Laten
 		a.meanMs === b.meanMs &&
 		a.maxMs === b.maxMs &&
 		a.count === b.count &&
-		a.late === b.late
+		a.late === b.late &&
+		a.drawnLastMs === b.drawnLastMs &&
+		a.drawnMeanMs === b.drawnMeanMs &&
+		a.prediction.mode === b.prediction.mode &&
+		a.prediction.horizonTicks === b.prediction.horizonTicks &&
+		a.prediction.meanError === b.prediction.meanError &&
+		a.prediction.maxError === b.prediction.maxError &&
+		a.prediction.snaps === b.prediction.snaps
 	);
 }
 
@@ -281,19 +402,21 @@ function msText(ms: number | undefined): string | number {
 /**
  * The vars of the `hud.debug.net` string: the effective lead in ticks and ms, last / mean / max press -> step in whole
  * ms, `late` = the client's misses (echoed lates), `misses` = its mismatches. Its `{netPart}` is the lead part's own
- * string (leadDebugKey / leadDebugVars) and its `{pace}` the pacing part's (pacingDebugKey / pacingDebugVars), which
- * the caller formats and passes in.
+ * string (leadDebugKey / leadDebugVars), its `{pace}` the pacing part's (pacingDebugKey / pacingDebugVars) and its
+ * `{pred}` the prediction part's (predictionDebugKey / predictionDebugVars), which the caller formats and passes in.
  */
 export function latencyProbeVars(
 	view: LatencyProbeView,
 	pace = "",
 	netPart = "",
+	pred = "",
 ): Readonly<Record<string, string | number>> {
 	return {
 		lead: view.leadTicks,
 		leadMs: math.round(view.leadTicks * SIM_DT * LATENCY_PROBE.msPerSecond),
 		netPart,
 		pace,
+		pred,
 		last: msText(view.lastMs),
 		mean: msText(view.meanMs),
 		max: msText(view.maxMs),
@@ -326,5 +449,26 @@ export function pacingDebugVars(view: PacingDebugView): Readonly<Record<string, 
 		holds: view.holds,
 		backlog: view.backlog,
 		jitter: view.jitterMs,
+	};
+}
+
+/** The prediction part's string key by mode (PREDICTION_DEBUG_STRINGS; HUD_STRINGS predProbe / predProbeWait / predProbeOff). */
+export function predictionDebugKey(view: PredictionDebugView): string {
+	return PREDICTION_DEBUG_STRINGS[view.mode];
+}
+
+/**
+ * The vars of the prediction part's strings: the horizon in ticks, the window's mean / max head error in tiles
+ * (PREDICTION_DEBUG_DECIMALS), the snaps, press -> drawn last / mean in whole ms ('-' while none).
+ */
+export function predictionDebugVars(view: LatencyProbeView): Readonly<Record<string, string | number>> {
+	const p = view.prediction;
+	return {
+		h: p.horizonTicks,
+		mean: string.format(`%.${PREDICTION_DEBUG_DECIMALS}f`, p.meanError),
+		max: string.format(`%.${PREDICTION_DEBUG_DECIMALS}f`, p.maxError),
+		snaps: p.snaps,
+		drawn: msText(view.drawnLastMs),
+		drawnMean: msText(view.drawnMeanMs),
 	};
 }

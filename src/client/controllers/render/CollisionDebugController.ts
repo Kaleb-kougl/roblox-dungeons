@@ -13,7 +13,8 @@ import {
 	blockingCellsNear,
 	floorStudsY,
 	inputMagnitude,
-	lerp,
+	collisionRings,
+	type CollisionRings,
 	stallLine,
 	studsX,
 	studsZ,
@@ -37,6 +38,8 @@ interface Scene {
 	/** Pooled cell squares (hidden past the current layout's count). */
 	readonly cells: BoxHandleAdornment[];
 	readonly ring: CylinderHandleAdornment;
+	/** docs/LOCAL_PREDICTION.md LP6: the merged body's ring while the local player is drawn predicted. */
+	readonly mergedRing: CylinderHandleAdornment;
 	/** The layout drawn: the watched player's cell, the intact breakables' count, the cells shown. */
 	gx: number;
 	gy: number;
@@ -70,6 +73,7 @@ export class CollisionDebugController implements OnStart {
 	private overlay: Janitor | undefined;
 	private scene: Scene | undefined;
 	private readonly detector = new StallDetector();
+	private readonly rings: CollisionRings = { bodyX: 0, bodyZ: 0, mergedShown: false, mergedX: 0, mergedZ: 0 };
 
 	constructor(private readonly sim: SimController, private readonly theme: ThemeController) {}
 
@@ -161,10 +165,17 @@ export class CollisionDebugController implements OnStart {
 			scene.ring.Color3 = this.color(stalled ? COLLISION_DEBUG.stallRole : COLLISION_DEBUG.ringRole);
 		}
 
-		const alpha = this.sim.getAlpha();
-		const x = lerp(p.prevX, p.x, alpha);
-		const z = lerp(p.prevZ, p.z, alpha);
-		scene.ring.CFrame = new CFrame(x * STUDS_PER_TILE, COLLISION_DEBUG.ringLiftStuds, z * STUDS_PER_TILE).mul(FLAT);
+		// The cells and the stall flash read the merged body (the sim's); the rings: the drawn knight and, while
+		// predicted, the merged body beside it (docs/LOCAL_PREDICTION.md LP6).
+		const r = collisionRings(this.sim.getDrawnPlayer(state, viewIndex), p, this.sim.getAlpha(), this.rings);
+		const lift = COLLISION_DEBUG.ringLiftStuds;
+		scene.ring.CFrame = new CFrame(r.bodyX * STUDS_PER_TILE, lift, r.bodyZ * STUDS_PER_TILE).mul(FLAT);
+		if (scene.mergedRing.Visible !== r.mergedShown) scene.mergedRing.Visible = r.mergedShown;
+		if (r.mergedShown) {
+			scene.mergedRing.CFrame = new CFrame(r.mergedX * STUDS_PER_TILE, lift, r.mergedZ * STUDS_PER_TILE).mul(
+				FLAT,
+			);
+		}
 	}
 
 	private color(role: ColorRole): Color3 {
@@ -196,6 +207,13 @@ export class CollisionDebugController implements OnStart {
 		ring.ZIndex = v.ringZIndex;
 		ring.Adornee = anchor;
 		ring.Parent = anchor;
+		const mergedRing = ring.Clone();
+		mergedRing.Name = "MergedBody";
+		mergedRing.Color3 = this.color(v.mergedRole);
+		mergedRing.Transparency = v.mergedRingTransparency;
+		mergedRing.Visible = false;
+		mergedRing.Adornee = anchor;
+		mergedRing.Parent = anchor;
 		folder.Parent = Workspace;
 
 		const scene: Scene = {
@@ -204,6 +222,7 @@ export class CollisionDebugController implements OnStart {
 			anchor,
 			cells: [],
 			ring,
+			mergedRing,
 			gx: NONE,
 			gy: NONE,
 			intact: -1,

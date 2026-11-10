@@ -36,6 +36,12 @@ export const COLLISION_DEBUG = {
 	ringRole: "uiText" as ColorRole,
 	/** The ring while a stall episode is on. */
 	stallRole: "uiHealth" as ColorRole,
+	/**
+	 * docs/LOCAL_PREDICTION.md LP6: while the local player is drawn predicted the body ring follows the drawn knight and
+	 * a second ring, in this role and transparency, marks the merged (sim) body; hidden otherwise.
+	 */
+	mergedRole: "uiTextDim" as ColorRole,
+	mergedRingTransparency: 0.5,
 
 	/** Every piece draws over the art (a wall cell's square would be inside the wall's box otherwise). */
 	alwaysOnTop: true,
