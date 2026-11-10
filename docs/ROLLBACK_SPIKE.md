@@ -704,6 +704,24 @@ unknown refused, an Archer mirror equal to `buildWorldSetup`'s state, a dropped 
   and stepped desynchronized; `SendMessage` with a table, a `buffer` and a `SharedTable` (what arrives, copied or not,
   metatables); MicroProfiler labels from the worker; how a 5 ms and a 20 ms parallel task affect the frame time.
   -> Verify: the answers written here (they are not in Roblox's docs); Design 5 adjusted to them.
+  **Frame-time facts (2026-11-09, the owner's Mac, Studio Play solo, 60 Hz, while the later preload tier was still
+  loading):**
+
+  | Task per frame | Frame ms p50 / p95 / max | fps |
+  |---|---|---|
+  | none (baseline) | 16.67 / 17.68 / 19.14 | 60.0 |
+  | 5 ms, parallel (worker Actor) | 16.70 / 21.94 / 29.30 | 58.0 |
+  | 20 ms, parallel | 21.09 / 21.35 / 22.09 | 47.4 |
+  | 5 ms, main thread | 16.66 / 17.44 / 17.60 | 60.1 |
+  | 20 ms, main thread | 20.66 / 21.31 / 52.91 | 47.8 |
+
+  Reading: the frame waits for desynchronized work, so a long parallel task holds the frame like a main-thread one (20
+  ms costs the same 47-48 fps either way): Parallel Luau is not a background thread here. 5 ms fits in this frame's
+  slack on either side; in parallel it adds p95 / max jitter (21.9 / 29.3 ms) the main thread did not. So one worker
+  only helps while its work fits the frame's slack; spreading a prediction over frames needs a wait for the next frame
+  between slices (not `synchronize` / `desynchronize`, which may resume in the same frame), or the work split across
+  several Actors (cores). The other facts lines (worker ready, desynchronized sim hash, `SendMessage` table / buffer /
+  `SharedTable`, cross-Actor binding, MicroProfiler labels) are still to be pasted.
 - [ ] **R3. CPU probe.** **Built; headless specs pass; Studio check pending** (checklist steps 3-5). Design 5, both
   modes, the mirror and its hash check, the digest send. -> Verify: `npm run verify`; Studio: at H 16 the probe shows
   its line in both modes, the mirror's hash matches for a 10-minute run, the main hash check passes, attribute off
