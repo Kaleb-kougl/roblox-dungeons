@@ -22,10 +22,30 @@ fallback only.
 
 ## Status (2026-11-09)
 
-Planned, nothing built. Written against `main` @ `49a74856` (frame pacing FP1-FP8 in; the measured lead,
-`frame-pacing-lead` @ `b5bfd4bb`, not merged). Follows the discussion of local prediction vs rollback (2026-11-09).
-Revision 2 (same day, owner): the device work off the main thread (Parallel Luau, a worker that mirrors the run), Roblox-
-side measuring and logging instead of Open Cloud, and live metrics on the players' devices (Design 5-7, R3a, R4b).
+**Built headlessly** on branch `rollback-spike` (@ `6569ef9`, from `main` @ `3f7ce65`, which has the measured lead,
+`frame-pacing-lead`, merged). The plan was written against `main` @ `49a74856` after the discussion of local
+prediction vs rollback (2026-11-09); revision 2 (same day, owner): the device work off the main thread (Parallel Luau,
+a worker that mirrors the run), Roblox-side measuring and logging instead of Open Cloud, and live metrics on the
+players' devices (Design 5-7, R3a, R4b). Revision 3 (same day): as built ("As built" below), task R1b (the pooled copy)
+added, the headless results filled in.
+
+| Part | State |
+|---|---|
+| R0 census, R1 generic copy, R1b pooled copy, R2 model / metrics / bot sweep | Done, verified headlessly (Lune specs) |
+| R3a facts, R3 CPU probe, R4 capture / plugin / receiver, R4b live metrics | Built, compiled, pure cores spec'd headlessly. **Studio check pending** (the Actor, the remote, DataStores, the plugin, AnalyticsService need the engine): "Studio and device checklist" below |
+| R5 devices and playtest, R6 report, R7 cleanup | Not started (owner) |
+
+Nothing under `src/shared/sim/**`, `src/shared/dungeon/**` or `fixtures/` changed, nor the lockstep wire, session, log,
+validator, hashes, replays or scores (checked with `git diff` against `3f7ce65`). Every runtime part is off by default.
+
+Headless answers so far (Lune, no native code, bots; device numbers decide):
+- **Q1.** The realistic per-frame cost (pooled copy + 15 steps + bookkeeping) is about 4.4-5.0 ms in a 3-player bot
+  run; the generic copy alone is 21-41 ms (an upper bound nobody would ship).
+- **Q2.** Even with bots (who under-state wrong guesses), at today's lead (L 11, D 4, `repeatLast`) teammate
+  corrections >= 1 tile come about 62 a minute against a proposed gate of 6, and undone kills 4.5 a minute against 1
+  (3 kills in 40 s of play: a small sample). Enemy corrections (1.5) and phantom bullets (7.5) pass. Human numbers
+  (R4b live metrics, R5 captures) decide.
+- **Q3.** On paper (R0 census): a real rollback would rework about 44 client files and 30 shared classes.
 
 ## What is known (findings)
 
@@ -231,15 +251,24 @@ state differs keep cross-tick memory.
 
 ## Design
 
-### 1. State copy (spike-grade, `shared/lockstep/rollbackSpike/clone.ts`)
+### 1. State copy (spike-grade, `shared/lockstep/rollbackSpike/clone.ts` and `pooledCopy.ts`)
 
-`cloneSimState(state)`: a generic deep copy. Recursive over tables with a memo (a reference shared inside the state
-stays shared in the copy; cycles are fine), metatables kept by reference (class instances such as `BulletSimulation`
-stay instances), buffers copied. Immutable data the state only points at (configs, the floor's grid and world, arc
-tables: R0's list `SHARED_BY_REFERENCE`) is shared, not copied. Not in `shared/sim`: the sim is not touched.
+Two copies, both in `shared/lockstep` (the sim is not touched), both exact (the copy hashes like the source and,
+stepped with the same inputs, stays equal; the source is never written):
 
-It is correct first and slow: a real rollback would copy into preallocated pools. So the spike's **clone time is an
-upper bound** and its **step time is the floor** of what rollback costs.
+- **Generic** `cloneSimState(state)` (clone.ts, R1): a deep copy. Recursive over tables with a memo (a reference
+  shared inside the state stays shared in the copy), metatables kept by reference (class instances such as
+  `BulletSimulation` stay instances), buffers copied, `table.clone` per table so `pairs` order matches. Immutable data
+  the state only points at (R0's list `SHARED_BY_REFERENCE`) is shared, not copied. It copies every table every time,
+  the 2,560 bullet slots' vectors included: the **upper bound**.
+- **Pooled** `PooledStateCopier.copyInto(src)` (pooledCopy.ts, R1b): copies INTO a scratch state the copier keeps and
+  reuses. Bullet pools copy only the live slots and the bookkeeping (dead slots are never read by the sim nor hashed:
+  `fireAt` rewrites a slot it takes, `writeStateHash` reads only slots with `slotToDense >= 0`), records and dense
+  arrays are written in place, Maps re-cloned. Steady state allocates 2 tables a copy. This is how a real rollback
+  would copy (into preallocated pools): the **realistic cost**. The model (R2) and the device probe (R3) use it.
+
+So the generic clone time is an upper bound, the pooled copy time is the realistic cost, and the **step time is the
+floor** of what rollback costs.
 
 ### 2. The prediction model (headless, `rollbackSpike/model.ts`)
 
@@ -385,7 +414,10 @@ parallel mode and only with `KV_RollbackSpike` on.
 
 - **RBD1. Measure, don't build.** The spike adds no production path; its code stays behind its switches or is removed
   (R7).
-- **RBD2. A generic copy, not a pooled one.** Correct first; the clone time is an upper bound (Design 1).
+- **RBD2. Generic copy first, then a pooled one.** The generic copy (R1) is correct first and its time an upper bound;
+  it measured 21-41 ms (bullet slots dominate), too far from any budget to read, so the pooled copy (R1b) was added as
+  the realistic cost, checked exact against the generic one. Both stay (Design 1); the model and the probe use the
+  pooled copy.
 - **RBD3. An offline model over recorded logs** for Q2, not a live rollback client: deterministic, every capture rerun
   at any (L, D, H, strategy). The network is a fixed (L, D) per pass; one pass through the lockstep harness's `Channel`
   with the measured lead is an optional check.
@@ -401,6 +433,174 @@ parallel mode and only with `KV_RollbackSpike` on.
 
 Open owner calls: the gates' numbers, the test devices, whether PC-only rollback is acceptable.
 
+## As built
+
+Paths under `src/` unless they start elsewhere. Everything is imported from its directory's barrel: the state copy, the
+model and the worker core from `shared/lockstep` (barrel `lockstep/rollbackSpike/index.ts`, worker
+`rollbackSpike/worker/index.ts`), the summaries, readers and capture codec from `shared/spikes`.
+
+### R1. Generic copy (`shared/lockstep/rollbackSpike/clone.ts`)
+
+- `cloneSimState(state): SimState`, `deepCopy(value, shared?)`, `cloneStats()`, `SHARED_BY_REFERENCE` (a path tree:
+  the eight subsystem `.config` fields, `golden.floor`, `golden.cache.floor`; frozen tables are shared too).
+  `table.clone`
+  per table, so key layout and `pairs` order equal the original's (the sim walks Maps with `pairs`).
+- **Deviation:** the name is `cloneSimState`, not the census's suggested `cloneForRollback`. `shared/sim` already
+  exports
+  an unrelated `cloneSimState` (throws once bullets exist, specs only): import the spike's from `shared/lockstep`.
+- Tunables `ROLLBACK_SPIKE` (`rollbackSpike/config.ts`): `sliceTicks` 4, `statsWindowSec` 10, `liveSummarySec` 60,
+  `mirrorHashTicks` 600, `digestActors` / `digestBullets` / `digestPlayers` 64 / 150 / 8, `horizons` [8, 16, 24], plus
+  the `model` and `probe` blocks (below).
+- Test helpers moved out of `run/replay.bench.spec.ts` into `shared/run/testing/denseFight.ts` (`tickAll`, `sameFrames`,
+  `skipPartyToFloor`, `busiestRoom`, `bossRoomOf`, `placeParty`, `topUpHearts`, `fighterFrame`).
+- `clone.spec.ts` (endless floors 1 / 5 / 15, 1 and 4 players): hashes equal; copy and original stepped 600 ticks stay
+  equal at every check; the original is untouched; original and copies stepped alternately in one VM are exact (no
+  module scratch carries between ticks).
+
+### R1b. Pooled copy (`shared/lockstep/rollbackSpike/pooledCopy.ts`)
+
+- `StateCopyFn = (state) => SimState`; `PooledStateCopier` (`copyInto(src)`, `copyFn()`, `stats()`), `pooledCopyFn()`,
+  `stateDifference(a, b)`. The returned state is the copier's scratch, overwritten by the next call: one copier per
+  state that must stay alive; its own scratch passed back as a source is an error.
+- Dead bullet slots are skipped (never read by the sim, never hashed). A reused record keeps the scratch's key order,
+  which can differ from the source's; nothing iterates state records with `pairs`, and `stateDifference` compares key
+  sets after stepping. Steady state allocates 2 tables a copy (`breakables.slotByCell`, `pellets.byCell`, re-cloned).
+- `pooledCopy.spec.ts`: exact copies on the same six cases, reuse into a dirty scratch (other ticks, floors,
+  subsystems), the bench (Results).
+
+### R2. Model and metrics (`model.ts`, `digest.ts`, `metrics.ts`, `harness.ts`, `captureModules.ts`)
+
+```ts
+new RollbackModel({ playerIndex, config, strategy?, horizonCap? /* ROLLBACK_SPIKE.model.horizonCap 32 */,
+                    copy? /* a StateCopyFn, default its own pooledCopyFn() */, oracle?, cheapPlan? })
+reset(state)                 // run start / mirror rebuild
+putTruth(tick, frames)       // every merged frame (everyone, index order) as soon as received, in tick order
+putOwn(tick, frame)          // own sent frames past the merged ones
+beginPredict(state): number  // copies; returns the drawn tick K = T + min(D + L, horizonCap) (T if nothing pending)
+stepPredict(maxTicks): boolean  // true once the copy reached K
+finishPredict(): number
+predict(state): number       // begin + step(all) + finish
+isPredicting(): boolean
+confirm(state)               // after each confirmed step, in order, draft ticks included (throws while predicting)
+lastTimes()                  // { copy, step, other } seconds of the last prediction
+drawn(): ViewDigest | undefined
+metrics: RollbackMetrics     // toLiveSummaryCounts(), leadSeen(), totalSeconds(), perMinute(m, room?), reset()
+```
+
+- While a sliced prediction is in flight the caller must not step its state (`confirm` / `reset` throw). Per frame:
+  `beginPredict(mirror)` -> `stepPredict(ROLLBACK_SPIKE.sliceTicks)` with a yield between slices -> `finishPredict()`
+  -> step the mirror and `confirm(mirror)` once per tick. Truth / own rings hold 256 ticks (`model.frameRingTicks`).
+- Harness: `runModelOverRecording(...)`, `recordedFrame`, `firstTickWhere`, `captureModelInput(capture)` (rebuilds the
+  config with `buildWorldSetup` and replays to the capture's server hash). The noisy bot is `shared/run/testing`
+  `recordNoisyPartyRun(seed, n)` (`NOISY_BOT`: aim drifting every tick, tapped attacks, random rolls).
+- Metrics as built (deviations from Design 3; tunables `ROLLBACK_SPIKE.model`):
+  - bullet identity: per pool slot with a spike-side spawn tag (R0's exact alternative), matched by key, else same
+    emitter + kind within `bulletMatchTiles` 0.35; "appears far along" = age > `appearAgeTicks` 1 at the drawn tick;
+  - corrections and truth errors count only living enemies / teammates within `viewRadiusTiles` 12 of the observer,
+    once per entity per frame, in cumulative buckets (>= 0.1 counts every >= 0.25, ...);
+  - undone / late / phantom events once per entity per `dedupTicks` 600, with +/- `eventSlackTicks` 6 of slack;
+  - the 20 metric names are `ROLLBACK_LIVE_METRICS` (`enemyCorr010/025/050/100`, `mateCorr010/025/050/100`,
+    `enemyErr050/100`, `undoneKill/Death/Pickup/Erase`, `lateEvent`, `phantomBullet`, `heartPhantom`, `heartMissed`,
+    `cheapPhantomBullet`, `cheapLateBullet`);
+  - the cheap plan's numbers saturate (they read about as "bullets fired / removed in view per minute") and it ignores
+    the Hourglass; `undoneErase` is a heuristic; a floor change produces no kills; draft ticks add no seconds;
+  - **not built:** "the delay each plan leaves on an enemy's reaction to your hit".
+- Captures reach the harness through `scripts/gen-fixtures.js`: each `captures/<runId>.json` becomes a gitignored
+  module under `shared/fixtures-generated/captures/`, read by `loadCaptureModules`. No captures: nothing changes.
+- Runner: `scripts/lune/run-tests.luau` takes `--flag name` (sets `_G.KV_SPEC_FLAGS[name]`). The full sweep is
+  `npm run test:only -- lockstep/rollbackSpike/model.sweep --flag rollbackSweep` (bots and every capture present, about
+  19 minutes on the cloud container); `npm test` runs `model.spec.ts`'s small passes only.
+- `model.spec.ts` sanity, exact: perfect guesses (oracle = the truth) over 1,600 frames with 52 true events: glitch
+  total 0; L = 0: glitch total 0; sliced, one-shot and generic-copy passes identical.
+
+### R4. Capture and server sinks (`shared/spikes`, server `RollbackSpikeService`, plugin, receiver)
+
+- Shared `shared/spikes/rollbackSpike.ts`: `ROLLBACK_CAPTURE` (attribute `KV_RollbackCapture`, registered in
+  `shared/config` spikes.ts `SPIKE_DEFAULTS.rollbackCapture` / `SPIKE_ATTRIBUTES.rollbackCapture`; stores
+  `KV_RollbackCapture_v1` / `KV_RollbackProbe_v1`; `chunkChars` 3,000,000; `blockTicks` 3600; `receiverPort` 34880;
+  ids `maxIdChars` 38 of `[A-Za-z0-9_{}-]`), `ROLLBACK_PROBE_RATE` (cpu 12 / 60 s, live 3 / 60 s), the enums
+  (`ROLLBACK_PROBE_MODES`, `ROLLBACK_PROBE_CASES`, `ROLLBACK_ROOM_TYPES`, `ROLLBACK_GUESS_STRATEGIES`,
+  `ROLLBACK_DEVICE_CLASSES`, `ROLLBACK_LIVE_METRICS`), `ProbeSummary` / `LiveSummary` / `RollbackProbeRow` and the
+  strict readers `readProbeSummary` / `readLiveSummary`, `analyticsForProbeSummary` / `analyticsForLiveSummary`,
+  `describeProbeSummary` / `describeLiveSummary`, the key helpers, `rollbackCaptureAllowed`.
+- Codec `shared/spikes/rollbackCapture.ts`: `encodeCapture` / `decodeCapture(meta, chunks)` ->
+  `{ setup, info, recording }`; setup = world kind, seed, party size, at boss door, debug, ruleset, daily?, place
+  version (no user ids); `info` = run id, how it ended, `verifiedTicks`, `serverHash`. `RollbackCaptureRecorder` reads
+  the server's merged log in 1-minute blocks through a structural interface (no shared/lockstep change).
+- Remote `Events.rollbackProbe(kind: string, payload: unknown)` (client -> server, `shared/network.ts`).
+- Server `RollbackSpikeService` (`server/services/spikes`): intake only while `KV_RollbackCapture` is on or in Studio;
+  rate limit; strict readers (a malformed summary: `BAD_PROBE`, dropped); one `[Rollback] CPU:` / `LIVE:` server log
+  line; one row per window in `KV_RollbackProbe_v1` (key `<sessionId>/<kind>/<windowIndex>`, row `{ v, kind, at,
+  placeVersion, summary }`); AnalyticsService through the new `TelemetryService.logSpike` in published places only
+  (in Studio, `KV_AnalyticsDebug` prints what would be sent). Custom events `RollbackCpu` (value total ms p95; device
+  class, mode + H bucket, case) and `RollbackProbe` (value per minute; metric, device class, H bucket):
+  `ROLLBACK_ANALYTICS_EVENT`. The catalog is now 39 of 100 names and 3320 of 8,000 field combinations
+  (`analyticsCatalog.spec.ts`).
+- Capture hook in `RunSessionService`: `startLockstep` -> `beginCapture` (undefined when off), `stepLockstep` ->
+  `tapCapture` after every `coop.step` (the merged log releases validated ticks, so every tick is read before it
+  goes), `forgetLockstep` -> `endCapture` (the one place a lockstep entry is deleted: every exit path). `endCapture`
+  spawns a thread, waits up to 60 s for the validator's hash, encodes, writes the chunks and then the meta (all under
+  pcall), logs `CAPTURE_ENCODED` / `CAPTURE_WRITTEN`. `BindToClose` writes open captures with status `shutdown`.
+- **Who is captured** (with the switch on): Studio, a party whose every member is DEV_MODE-allowed, or a private server
+  whose owner is. Turning the switch off mid-run abandons the open recorders (`CAPTURE_DROPPED`).
+- Measured: a 3-player bot run of 964 ticks encodes to 6,323 bytes (about 6.6 bytes a tick for the party). At that
+  rate a 30-minute run (108,000 ticks) is about 0.7 MB, about 1 MB of base64: one 3,000,000-character chunk. Human
+  inputs change more often and encode larger; R4's Studio check and R5 measure the real size.
+- Plugin `plugin/RollbackCapturePlugin.server.lua` (toolbar button "Pull rollback captures", edit mode only; built by
+  `rollback-plugin.project.json`, `npm run rollback:plugin`). Receiver `scripts/rollback/receive-captures.js`
+  (`npm run rollback:receive`): 127.0.0.1 only, Host header and JSON content type checked, 64 MB cap, writes
+  `captures/<runId>.json` and appends `captures/probe/<kind>.jsonl` (skips rows it has). `/captures` is gitignored.
+  `npm run test:rollback` (node tests of the receiver and gen-fixtures' capture modules) is in `verify`.
+- Deviations: `framesPerPrediction` is a p50 / p95 / max stat, and a `total` stat plus `samples` / `windowSeconds`
+  were added to `ProbeSummary`. **Not built:** the Open Cloud fallback (`scripts/rollback/fetch-captures.js`).
+
+### R3a / R3 / R4b. The worker, the probe, live metrics
+
+- Pure core `shared/lockstep/rollbackSpike/worker/`: `stats.ts` (`WindowSamples`), `device.ts` (`rollbackDeviceClass`,
+  `rollbackDeviceLabel`, `rollbackProbeCase`, `aliveActors`), `protocol.ts` (messages and their readers
+  `readMainToWorker` / `readWorkerToMain`; frames packed `[moveX, moveZ, aimX, aimZ, buttons]`), `setup.ts`
+  (`buildRollbackMirror` / `rollbackMirrorConfig`), `core.ts` (`RollbackWorkerCore`, `fillDigestBuffer`), `feed.ts`
+  (`RollbackFeed`, the main side), `sources.ts` (`lockstepFrameSource`, `soloFrameSource`), `facts.ts` (R3a). Tunables
+  `ROLLBACK_SPIKE.probe`; `rollbackDigestBytes()` = 2,928 bytes.
+- `LockstepClient` read-only accessors (no behaviour change): `queuedFrame(k)`, `lastSentInputTick()`,
+  `sentInput(tick)`, `pacingDepthTicks()`.
+- Protocol: main -> worker `actor:SendMessage("kv.rollback.toWorker", msg)`: `setup` (session id, mode, horizon, world
+  kind, seed, party size, local index, coop, at boss door, scoring, stress, dev?, live, strategy, borrowed, device
+  label / class, native), `frames` (each rendered frame BEFORE the sim steps: tick, frame ms, truth, own, hash tick),
+  `control` stop / end. Worker -> main through the BindableEvent `KV_RollbackReply` inside the Actor (fired in the
+  serial phase): ready, cpu, live, mirrorHash, status, digest `{ sentAt, data: buffer }`, error. Facts topic
+  `kv.rollback.facts`.
+- Shipping: `client/rollbackWorker/worker.client.ts` is the LocalScript `StarterPlayerScripts.TS.rollbackWorker.worker`,
+  disabled by `worker.meta.json`. Per probe session the controller creates the Actor `KV_RollbackWorker` with the reply
+  event, clones the template into it, parents the Actor to PlayerScripts and enables the clone; the worker requires its
+  modules in the serial phase, `BindToMessageParallel`, fires ready; the main side waits up to 15 s
+  (`probe.readyTimeoutSec`). Yields between slices: `task.synchronize()`, flush, `task.desynchronize()`. Outside an
+  Actor the script does nothing.
+- Client `RollbackSpikeController` (spikes barrel); store slice and the spike HUD's `ROLLBACK ...` line (`SpikeHud`);
+  the dev panel's "Rollback probe device tag" field (DevPanel / DevModeController, docs/DEV_MODE.md);
+  `SimController.getDevRunOptions()`; `RENDER_ORDER.rollbackProbeBeforeSim`.
+- Attributes (`ROLLBACK_SPIKE_ATTRIBUTES`, `shared/config` spikes.ts): `KV_RollbackSpike` (a number H 1..64; 0 or
+  absent: off, nothing created), `KV_RollbackSpikeMode` `parallel` (default) / `serial` / `facts`,
+  `KV_RollbackDeviceTag` (a string). Changing an attribute restarts the probe; a co-op run past tick 0 is skipped until
+  the next run (its early merged frames are gone); a solo run picked up mid-run replays its recorded frames into the
+  mirror unless they were released. Under `KV_Debug` the main state's hash is checked before / after the probe's work
+  once a second.
+- **As built vs Design 5 / 7:** the live model uses its own cap 32 and predicts the full D + L (H applies only to the
+  CPU probe; the live window's `horizon` field is 32); hash checks are requested by the main thread (about every 600
+  ticks); the mirror runs one frame behind the main state; frames coalesce when the worker falls behind; the digest
+  `send` stat is measured on the worker (fill + Fire), the main thread's arrival delay only on the HUD line (`send ..
+  ms`); `native` is always false (no `--!native` variant built); the CPU probe copies with the pooled copy, so its
+  `clone` stat is R1b's cost; the MicroProfiler labels are `kv.rollback.copy` / `.step` / `.send` / `.live` /
+  `.mirror` / `.facts` (`probe.profileLabels`; Design 5 said `.clone`).
+- Specs (`worker/core.spec.ts`, `protocol.spec.ts`, `lockstep/rollbackAccessors.spec.ts`), with synchronous yields:
+  3-player bot run, 949 frames, observer 1, L 11, D 4, H 8: 7 / 7 mirror hash checks equal a plain replay; 10 CPU and 2
+  live windows pass the server's readers; each of the 20 metrics summed over the live windows equals
+  `runModelOverRecording` exactly. Perfect-guess hook: 0 glitches. One slice per frame: hashes equal, up to 2 frames
+  per prediction, live counts differ from offline (coalescing, expected). Serial: the lent state's hash unchanged.
+  Accessors over a real `LockstepClient`: exact replay, 0 mismatches.
+- Build note: a clean `npm run build` can exhaust node's default heap on a small host:
+  `NODE_OPTIONS=--max-old-space-size=4096 npm run build`.
+
 ## Tasks
 
 - [x] **R0. Census (paper).** (a) The copy surface: every `SimState` subsystem and every object it reaches, marked
@@ -409,51 +609,226 @@ Open owner calls: the gates' numbers, the test devices, whether PC-only rollback
   collectors, each marked "presentation, needs dedup under rollback" or "must stay on the confirmed state" (telemetry,
   recap tallies, records). (c) Whether bullet payloads carry a spawn tick. -> Verify: the three lists in this doc, and a
   rough count of the client files a real rollback would touch.
-- [ ] **R1. State copy.** `cloneSimState` + `SHARED_BY_REFERENCE`. -> Verify: `clone.spec.ts` on endless floors 1, 5
+- [x] **R1. State copy.** `cloneSimState` + `SHARED_BY_REFERENCE`. -> Verify: `clone.spec.ts` on endless floors 1, 5
   (boss) and 15 (dense), solo and 4 players: the copy's hash equals the original's; both stepped 600 ticks with the same
   inputs stay equal at every 60-tick check; stepping the copy 600 ticks leaves the original's hash unchanged; a bench
-  prints the clone time per case.
-- [ ] **R2. Model and metrics (headless).** Design 2-4 over bot runs. -> Verify: the two sanity rules (Design 3) hold
+  prints the clone time per case. Done headlessly: every check holds; 21-41 ms a clone (Results).
+- [x] **R1b. Pooled copy.** `PooledStateCopier` (Design 1): copies into a reused scratch, live bullet slots only.
+  -> Verify: `pooledCopy.spec.ts` on R1's six cases: the copy hashes like the original; stepped alike they stay equal;
+  the original is untouched; alternate stepping is exact; copies into a dirty scratch (other ticks, floors, subsystems)
+  are exact; a bench prints generic vs pooled time, tables allocated, copy + 16 steps. Done headlessly: every check
+  holds; 0.7-1.8 ms a copy, 2 tables allocated (Results).
+- [x] **R2. Model and metrics (headless).** Design 2-4 over bot runs. -> Verify: the two sanity rules (Design 3) hold
   exactly; the report table prints for `recordPartyRun` and the noisy bot over the (L, D, strategy) sweep. The full
-  sweep is opt-in (`npm run test:only -- lockstep/rollbackSpike` with its flag on), so `npm test` runs one small pass.
-- [ ] **R3a. Parallel facts (Studio, small).** An Actor with a LocalScript under roblox-ts: required modules in the
-  serial phase, the sim built and stepped desynchronized; `SendMessage` with a table, a `buffer` and a `SharedTable`
-  (what arrives, copied or not, metatables); MicroProfiler labels from the worker; how a 5 ms and a 20 ms parallel task
-  affect the frame time. -> Verify: the answers written here (they are not in Roblox's docs); Design 5 adjusted to them.
-- [ ] **R3. CPU probe.** Design 5, both modes, the mirror and its hash check, the digest send. -> Verify:
-  `npm run verify`; Studio: at H 16 the probe shows its line in both modes, the mirror's hash matches for a 10-minute
-  run, the main hash check passes, attribute off creates nothing (no Actor); every window's summary prints on the
-  server and lands in `KV_RollbackProbe_v1`, the plugin pulls the rows, and a malformed summary is refused (spec on the
-  reader).
-- [ ] **R4. Capture.** Design 6, the plugin action and the receiver. -> Verify: Studio (Test > Clients and Servers, 2
-  players): a run's capture is written, pulled by the plugin through the receiver, and replays in the harness to the
-  run's final hash (the capture is whole).
-- [ ] **R4b. Live metrics.** Design 7 in the worker, the summary remote, the server line, `KV_RollbackProbe_v1`, the
-  `RollbackProbe` custom event. -> Verify: in Studio with Incoming Replication Lag 100 ms and two clients, the summaries
-  print on the server; with a test hook that makes the guess the truth (teammates' frames read from the log ahead of
-  time) every glitch metric is zero; the live numbers for a captured run equal R2's offline numbers for the same run at
-  the same (L, D) within the lead's movement.
+  sweep is opt-in (`npm run test:only -- lockstep/rollbackSpike/model.sweep --flag rollbackSweep`), so `npm test` runs
+  one small pass. Done headlessly: both rules give 0 glitches; the sweep's table is in Results.
+- [ ] **R3a. Parallel facts (Studio, small).** **Built; Studio check pending** (`KV_RollbackSpikeMode` = `facts`,
+  checklist step 2). An Actor with a LocalScript under roblox-ts: required modules in the serial phase, the sim built
+  and stepped desynchronized; `SendMessage` with a table, a `buffer` and a `SharedTable` (what arrives, copied or not,
+  metatables); MicroProfiler labels from the worker; how a 5 ms and a 20 ms parallel task affect the frame time.
+  -> Verify: the answers written here (they are not in Roblox's docs); Design 5 adjusted to them.
+- [ ] **R3. CPU probe.** **Built; headless specs pass; Studio check pending** (checklist steps 3-5). Design 5, both
+  modes, the mirror and its hash check, the digest send. -> Verify: `npm run verify`; Studio: at H 16 the probe shows
+  its line in both modes, the mirror's hash matches for a 10-minute run, the main hash check passes, attribute off
+  creates nothing (no Actor); every window's summary prints on the server and lands in `KV_RollbackProbe_v1`, the
+  plugin pulls the rows, and a malformed summary is refused (spec on the reader: done, `rollbackSpike.spec.ts`).
+- [ ] **R4. Capture.** **Built; headless specs pass; Studio check pending** (checklist steps 6-7). Design 6, the plugin
+  action and the receiver. -> Verify: Studio (Test > Clients and Servers, 2 players): a run's capture is written, pulled
+  by the plugin through the receiver, and replays in the harness to the run's final hash (the capture is whole).
+- [ ] **R4b. Live metrics.** **Built; headless specs pass; Studio check pending** (checklist step 8). Design 7 in the
+  worker, the summary remote, the server line, `KV_RollbackProbe_v1`, the `RollbackProbe` custom event. -> Verify: in
+  Studio with Incoming Replication Lag 100 ms and two clients, the summaries print on the server; with a test hook that
+  makes the guess the truth (teammates' frames read from the log ahead of time) every glitch metric is zero (done
+  headlessly, `worker/core.spec.ts`); the live numbers for a captured run equal R2's offline numbers for the same run at
+  the same (L, D) within the lead's movement (headlessly exact over a bot run; the Studio capture pending).
 - [ ] **R5 [owner]. Device and playtest session.** The probe on a PC, an iPhone, a mid and a low Android phone (Design
   5's cases; both modes, MicroProfiler screenshots kept), numbers recorded here; a co-op playtest of 20-30 minutes with
   friends on their own connections, capture and live metrics on (parallel mode only; pairs with FP14 / FP15).
-  -> Verify: the device table, the live summaries and at least three captured runs.
+  -> Verify: the device table, the live summaries and at least three captured runs. (Checklist step 9.)
 - [ ] **R6. Report and decision.** The live summaries (the gate) and the harness over the captures (the sweeps); the
   result tables filled in; a recommendation (build rollback and its scope, build the cheap plan, or the cheap plan
   first). -> Verify: the owner's decision recorded here as RBD8; docs/LOCAL_PREDICTION.md points at it.
 - [ ] **R7. Cleanup.** Per RBD8: the spike code removed, or kept behind its switches as the first piece of the build
   (the worker mirror is reusable).
 
-Order: R0 -> R1 -> R3a -> R2, R3, R4 (in parallel) -> R4b -> R5 -> R6 -> R7. R2 needs only R1.
+Order: R0 -> R1 -> R1b -> R3a -> R2, R3, R4 (in parallel) -> R4b -> R5 -> R6 -> R7. R2 needs only R1 / R1b. As built,
+R3a / R3 / R4b were written together before any Studio run, so the Studio checks below run in that order instead.
 
 ## Results (filled in by R2, R5, R6)
 
-| Device / host | Case | H | Clone ms p50 / p95 | Step ms p50 / p95 | Total p95 | Frame ms | GC KB/s |
-|---|---|---|---|---|---|---|---|
-| | | | | | | | |
+### Headless CPU (R1 / R1b / R2)
+
+Lune on the cloud container (x86, shared with other builds): no Luau fast paths, no native code, wall clock noisy
+(the same case moves by 20-50 % between runs). Pessimistic; R5's devices decide Q1.
+
+`pooledCopy.spec.ts` bench, one run (2026-11-09), endless floor at the replay bench's dense-fight setup:
+
+| Case | Tick | Actors / enemy bullets alive | Generic clone ms | Pooled copy ms (max) | Copy + 16 steps ms, generic / pooled |
+|---|---|---|---|---|---|
+| floor 1, solo | 734 | 3 / 0 | 26.3 | 1.52 (1.71) | 27.9 / 3.2 |
+| floor 1, 4 players | 734 | 8 / 0 | 23.0 | 1.34 (2.00) | 26.1 / 5.0 |
+| floor 5, solo | 742 | 14 / 3 | 21.8 | 1.01 (1.27) | 24.1 / 3.4 |
+| floor 5, 4 players | 742 | 12 / 6 | 22.4 | 1.17 (3.25) | 26.8 / 5.3 |
+| floor 15, solo | 762 | 12 / 21 | 26.5 | 1.18 (1.69) | 30.4 / 4.2 |
+| floor 15, 4 players | 762 | 16 / 39 | 41.1 | 1.83 (2.69) | 51.8 / 9.3 |
+
+Earlier runs: generic 21-38 ms, pooled 0.74-1.65 ms, copy + 16 steps pooled 1.7-7.4 ms vs generic 22.7-40.2 ms; one sim
+step 0.085-0.39 ms. Of the ~8,100 tables a generic clone copies, 7,708 are the two bullet pools' per-slot `{x, y, z}`
+tables (2048 enemy + 512 player slots, live or not); the pooled copy visits 330-520 tables and allocates 2.
+
+Model per frame (R2, pooled copy, 3-player bot run, a 15-tick prediction): copy 1.1-1.3 ms, step 3.1-3.5 ms
+(0.21-0.23 ms a tick), other (digest, metrics) about 0.17 ms: **about 4.4-5.0 ms a frame** headless.
+
+### Devices (R5; the probe's `ProbeSummary` rows)
+
+The copy column is the summary's `clone` stat (the pooled copy). Native is always off as built.
+
+| Device / host | Mode | Case | Party | H | Copy ms p50 / p95 | Step ms p50 / p95 | Total p95 | Frames / prediction p95 | Frame ms p95 | GC KB/s |
+|---|---|---|---|---|---|---|---|---|---|---|
+| PC | | | | | | | | | | |
+| iPhone | | | | | | | | | | |
+| Mid Android | | | | | | | | | | |
+| Low Android | | | | | | | | | | |
+
+### Mispredictions, bots (R2 sweep)
+
+`model.sweep.spec.ts` (`--flag rollbackSweep`, 1,142 s): seed 4242, 3 players, observer player 0, `horizonCap` 32.
+`bot` = `recordPartyRun` (2,608 ticks, floors 1-7 with the floor 5 boss; 40 s of play once drafts are taken out),
+`noisy bot` = `recordNoisyPartyRun` (3,972 ticks; 63 s of play). Per minute of play, D 4. Proposed gates (Gates):
+enemy corrections under 6, undone kills under 1, phantom bullets under 10, teammate corrections under 6.
 
 | Input | L | D | Strategy | Enemy corr. >= 0.5 /min | Undone kills /min | Phantom bullets /min | Teammate corr. >= 1 /min | Cheap plan: phantom / late bullets /min |
 |---|---|---|---|---|---|---|---|---|
+| bot | 6 | 4 | repeatLast | 0.00 | 0.00 | 7.51 | 27.05 | 13.52 / 112.69 |
+| bot | 6 | 4 | repeatLastAxesOnly | 0.00 | 0.00 | 7.51 | 27.05 | 13.52 / 112.69 |
+| bot | 6 | 4 | neutral | 1.50 | 0.00 | 7.51 | 123.21 | 13.52 / 112.69 |
+| bot | 11 | 4 | repeatLast | 1.50 | 4.51 | 7.51 | 61.60 | 13.52 / 112.69 |
+| bot | 11 | 4 | repeatLastAxesOnly | 0.00 | 4.51 | 6.01 | 58.60 | 13.52 / 112.69 |
+| bot | 11 | 4 | neutral | 16.53 | 4.51 | 6.01 | 124.71 | 13.52 / 112.69 |
+| bot | 16 | 4 | repeatLast | 4.51 | 0.00 | 9.02 | 73.62 | 13.52 / 112.69 |
+| bot | 16 | 4 | repeatLastAxesOnly | 3.01 | 4.51 | 1.50 | 61.60 | 13.52 / 112.69 |
+| bot | 16 | 4 | neutral | 52.59 | 4.51 | 4.51 | 126.21 | 13.52 / 112.69 |
+| bot | 25 | 4 | repeatLast | 25.54 | 15.03 | 31.55 | 199.83 | 13.52 / 112.69 |
+| bot | 25 | 4 | repeatLastAxesOnly | 24.04 | 7.51 | 28.55 | 157.76 | 13.52 / 112.69 |
+| bot | 25 | 4 | neutral | 117.20 | 7.51 | 31.55 | 126.21 | 13.52 / 112.69 |
+| noisy bot | 6 | 4 | repeatLast | 0.00 | 0.00 | 3.83 | 30.64 | 45.96 / 123.51 |
+| noisy bot | 6 | 4 | repeatLastAxesOnly | 0.00 | 0.00 | 3.83 | 30.64 | 45.96 / 123.51 |
+| noisy bot | 6 | 4 | neutral | 0.00 | 0.00 | 6.70 | 35.43 | 45.96 / 123.51 |
+| noisy bot | 11 | 4 | repeatLast | 0.96 | 0.00 | 8.62 | 44.04 | 45.00 / 123.51 |
+| noisy bot | 11 | 4 | repeatLastAxesOnly | 0.96 | 0.00 | 8.62 | 43.09 | 45.00 / 123.51 |
+| noisy bot | 11 | 4 | neutral | 3.83 | 0.96 | 14.36 | 39.26 | 45.00 / 123.51 |
+| noisy bot | 16 | 4 | repeatLast | 3.83 | 0.00 | 75.64 | 64.15 | 45.00 / 125.43 |
+| noisy bot | 16 | 4 | repeatLastAxesOnly | 3.83 | 0.00 | 35.43 | 55.53 | 45.00 / 125.43 |
+| noisy bot | 16 | 4 | neutral | 15.32 | 0.00 | 45.96 | 39.26 | 45.00 / 125.43 |
+| noisy bot | 25 | 4 | repeatLast | 18.19 | 3.83 | 153.19 | 160.85 | 38.30 / 126.38 |
+| noisy bot | 25 | 4 | repeatLastAxesOnly | 18.19 | 1.91 | 55.53 | 115.85 | 38.30 / 126.38 |
+| noisy bot | 25 | 4 | neutral | 45.96 | 1.91 | 64.15 | 39.26 | 38.30 / 126.38 |
+
+D 0 (no playout buffer) changes only the teammate corrections, about 8-18 a minute more (bot L 11 `repeatLast`: 75.13
+vs 61.60); every enemy, kill and phantom column is identical to D 4, the cheap plan's moves by a few. The sweep prints
+the D 0 rows and a 20-metric
+table per pass (every `ROLLBACK_LIVE_METRICS` count per minute).
+
+What the bots say (not the answer: RBD4):
+- Enemy corrections and undone kills grow steeply with L (bot `repeatLast`: 0 / 1.5 / 4.5 / 25.5 enemy corrections a
+  minute at L 6 / 11 / 16 / 25). At today's measured lead (L 11-12, docs/FRAME_PACING.md) enemies pass the gate.
+- Teammate corrections >= 1 tile fail the proposed gate at every L, even L 6 (27-31 a minute), with bots that move
+  smoothly.
+- `repeatLastAxesOnly` roughly halves the noisy bot's phantom bullets at L 16-25 (75.6 -> 35.4, 153.2 -> 55.5) and trims
+  teammate corrections; `neutral` trades: more enemy errors always, fewer teammate jumps only for the noisy bot.
+- The cheap plan's two numbers barely move with L and saturate: read them as "bullets fired / removed in view per
+  minute", not as glitches comparable one for one.
+
+Caveats: bots are not people (aim follows the walk; presses scripted); few bullets (10-19 enemy bullets alive, and the
+knights fire none); one run per input, so one count is 1.50 a minute (bot) or 0.96 (noisy bot): the undone kills at
+L 11 are 3 kills; (L, D) is fixed per pass, not measured.
+
+### Mispredictions, humans (R4b live windows, R5 captures)
+
+| Source | L mean / max | D mean / max | Strategy | Enemy corr. >= 0.5 /min | Undone kills /min | Phantom bullets /min | Teammate corr. >= 1 /min | Cheap plan: phantom / late bullets /min |
+|---|---|---|---|---|---|---|---|---|
 | | | | | | | | | |
+
+## Studio and device checklist (owner)
+
+Everything below is built and off by default. Run the steps in order; paste each result into this doc (the facts
+under R3a, the numbers in Results) and tick the task once its Verify is met.
+
+**Switches.** Workspace attributes (Explorer -> Workspace -> Properties -> Attributes, before Play; or the command bar,
+server side while playing: Workspace attributes replicate to every client; in a live server, the Developer Console's
+server command line, F9 > Server):
+
+| Attribute | Side | Value | Does |
+|---|---|---|---|
+| `KV_RollbackSpike` | client | number H 1..64 (0 or absent: off) | the probe: CPU windows (H ticks a prediction) and, co-op parallel, live metrics |
+| `KV_RollbackSpikeMode` | client | `parallel` (default) / `serial` / `facts` | worker Actor / main thread / the R3a facts once (needs `KV_RollbackSpike` > 0) |
+| `KV_RollbackDeviceTag` | client | string, e.g. "Pixel 6a" | appended to the device label; the dev panel's "Rollback probe device tag" field (F2) sets it |
+| `KV_RollbackCapture` | server | boolean | takes probe / live summaries (always in Studio) and captures co-op runs (Studio, an all-developer party, or a developer's private server) |
+| `KV_Debug` | both | boolean | adds the once-a-second main hash check around the probe's work |
+| `KV_AnalyticsDebug` | server | boolean | in Studio, prints the `RollbackCpu` / `RollbackProbe` events that a published place would send |
+
+Set `KV_RollbackSpike` before the run starts: a co-op run already past tick 0 is skipped until the next run. Changing
+any of the three client attributes restarts the probe.
+
+**Pulling captures and probe rows** (after any session that wrote them):
+1. Once: `npm run rollback:plugin` (builds `KalebValeRollbackCapture.rbxm` into Studio's Plugins folder), restart
+   Studio. The place must be published, with Game Settings > Security > "Enable Studio Access to API Services" on
+   (also needed for the server to write DataStores in Studio: without it the server logs `STORE_OFF` once).
+2. On the laptop: `npm run rollback:receive` (listens on 127.0.0.1:34880; `--port`, `--out` to change).
+3. In Studio, edit mode (not playing): Plugins > toolbar "Kaleb-Vale Rollback" > "Pull rollback captures". Allow the
+localhost request the first time
+   Studio asks. The plugin lists `KV_RollbackCapture_v1` and `KV_RollbackProbe_v1` and posts everything; the receiver
+   writes `captures/<runId>.json` and appends `captures/probe/cpu.jsonl` / `live.jsonl` (rows already there are
+   skipped). Nothing is deleted from the stores.
+4. Replay: `npm run build` turns `captures/*.json` into gitignored modules; `npm run test:only --
+   lockstep/rollbackSpike/model` replays each capture to its server hash (the spec fails on a miss) and prints a
+   short report at L 11, D 4;
+   `npm run test:only -- lockstep/rollbackSpike/model.sweep --flag rollbackSweep` sweeps the bots and every capture
+   (a capture whose replay misses the server's hash is printed and skipped).
+
+**Steps.**
+1. **Off leaves nothing (R3).** `npm run verify`, `npm run dev`, Play with no attribute set. In
+   `Players.<you>.PlayerScripts.TS.rollbackWorker` the `worker` LocalScript is Disabled and nothing runs; there is no
+   `KV_RollbackWorker` Actor, no `[Rollback]` line, no spike HUD line.
+2. **Facts (R3a).** `KV_RollbackSpike` 16, `KV_RollbackSpikeMode` `facts`, Play solo, open the MicroProfiler (Ctrl+F6)
+   for the label part. Copy every `[RollbackFacts] ...` line from the Output into R3a: the worker ready; the sim built
+   in the serial phase and stepped desynchronized with a hash equal to the main thread's; what a `SendMessage` table
+   (nested, double reference, metatable), a `buffer` and a `SharedTable` arrive as (copied or shared); the reply
+   BindableEvent with a buffer; binding to a second Actor's messages; whether `kv.rollback.facts` shows on worker
+   threads in the MicroProfiler; the main frame time with a 5 ms and a 20 ms parallel task per frame vs the baseline and
+   vs the same task on the main thread. Adjust Design 5 to the answers.
+3. **Parallel probe, solo (R3).** `KV_RollbackSpikeMode` `parallel` (or absent), `KV_RollbackSpike` 16, `KV_Debug`
+   on. Start a solo endless run. Expect `[Rollback] probe on: H 16, parallel`, `worker ready after .. s`, the HUD line
+   `ROLLBACK parallel H16 | tick .. total .. ms over .. fr | hash ok N | 10s p95 total .. clone .. .. fps | send .. ms`,
+   a `[Rollback] ...` CPU line every 10 s on the client and `[Rollback] CPU: ...` on the server (Developer Console >
+   Server). Play 10 minutes: "hash ok" keeps counting (a mirror hash mismatch stops the probe and prints both hashes),
+   no main hash warning. Note the frames per prediction and whether `kv.rollback.copy` / `.step` / `.send` show in the
+   MicroProfiler. Then the dense case: dev mode (docs/DEV_MODE.md, F2) floor 15, and a dev run with the vault override
+   (`KV_TreasureDebug`): the mirror must follow without a mismatch.
+4. **Parallel probe, co-op (R3, R4b).** Test > Clients and Servers, 2 players, `KV_RollbackSpike` 16 and
+   `KV_RollbackCapture` on (server), start a co-op run from a lobby. Both clients show the HUD line with `live fr ..`;
+   the server prints `[Rollback] CPU:` every 10 s per client and `[Rollback] LIVE:` every 60 s. After a few windows,
+   pull (above): `captures/probe/cpu.jsonl` and `live.jsonl` have one row per window.
+5. **Serial (R3).** Solo only, `KV_RollbackSpikeMode` `serial`, H 16: the HUD line and CPU windows as in step 3 (frames
+   per prediction 1); the frame time shows the cost. Never with other players.
+6. **Capture (R4).** In step 4's session, finish the co-op run (die, win or leave). The server logs `CAPTURE_START`,
+   then `CAPTURE_ENCODED` (size) and `CAPTURE_WRITTEN`. Pull, then build and run the model spec (Pulling, 4): the
+   capture replays to the server's hash. Check large bodies: a long run (or several) still pulls (receiver cap 64 MB).
+   Stop a Play session with a co-op run open: `BindToClose` writes it with status `shutdown`.
+7. **Analytics (R4).** In Studio with `KV_AnalyticsDebug` on, the server prints
+   `[Rollback] ANALYTICS_STUDIO: (not sent) ...` for `RollbackCpu` / `RollbackProbe`. In a published place they reach
+   the Creator Hub's custom events after up to a day.
+8. **Live metrics under lag (R4b).** Studio Network settings: Incoming Replication Lag 100 ms, two clients, co-op run,
+   `KV_RollbackSpike` 16 parallel: `[Rollback] LIVE:` lines print with L and D near the run's lead; capture the run and
+   compare its live rows with the sweep's capture row at the nearest (L, D).
+9. **Devices and playtest (R5).** A published place, a private server owned by a DEV_MODE-allowed account,
+   `KV_RollbackCapture` on (server console). Per device (PC, iPhone, mid Android, low Android; a 120 Hz screen if
+   available): type the device into the dev panel's device tag, `KV_RollbackSpike` 8 / 16 / 24 parallel (and serial
+   on the PC, solo), the Design 5 cases (floor 15 one room and whole floor, a boss fight, walking; solo and a party),
+   MicroProfiler screenshots kept (on a phone: Settings > MicroProfiler On, then a laptop browser at the address the
+   phone shows). Then a 20-30 minute co-op playtest with friends on their own connections, parallel only, capture on.
+   Pull everything; fill the Devices and humans tables in Results (the `cpu.jsonl` / `live.jsonl` rows carry every
+   field); at least three captures.
 
 ## Risks
 
@@ -461,8 +836,8 @@ Order: R0 -> R1 -> R3a -> R2, R3, R4 (in parallel) -> R4b -> R5 -> R6 -> R7. R2 
   R5) decide (RBD4).
 - **Headless timing is not a device.** Lune runs without fast paths or native codegen, so the headless numbers are
   pessimistic; R5's device numbers decide Q1.
-- **Capture size.** A 30-minute, 4-player log's encoded size is unknown; chunked under the DataStore limit (R4 measures
-  it).
+- **Capture size.** Bots encode to about 6.6 bytes a tick for a 3-player party (about 1 MB of base64 for 30 minutes,
+  one chunk); human inputs encode larger and are measured in R5. Chunked under the DataStore limit either way.
 - **A hidden shared reference in the copy** would make the probe or the model corrupt the real state. R1's checks and
   R3's hash check catch it.
 - **The probe costs frames.** Off by default. The parallel mode keeps the work off the main thread, but Roblox does not

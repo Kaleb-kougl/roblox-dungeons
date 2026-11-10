@@ -73,6 +73,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/GAMEPAD_MENUS.md` | Gamepad menus (every menu usable with a controller: focus scopes with one owner, recovery and memory, one B path (hold B to exit on run over), LB/RB / LT/RT tabs, right-stick scroll, X / Y shortcuts, a hint bar with Roblox button icons, menu haptics, console TV-safe fit; client input and presentation only): census, plan, as built, tasks GM0-GM12, decisions GMD1-GMD16 |
 | `docs/WALL_SLIDE.md` | Wall slide (the player's body slides round corners instead of stopping: `slideCircle` collide and slide, a corner tie-break, a face assist within 0.35 tiles of a wall's end, a full pillar slip on isolated 1 x 1 blockers; every world, M1 included; snag census; gameplay): findings, plan, as built, tasks WS0-WS10, decisions WSD1-WSD7 |
 | `docs/FRAME_PACING.md` | Co-op frame pacing (a playout clock: received merged frames stepped at a steady 60 Hz from a small jitter buffer, holds on underflow, the input lead covers the buffer; the lead-never-decays fix; client timing only; revision 2: the net lead from measured input trips, a per-member input echo on `lockstepFrames`): findings, plan, tasks FP0-FP16, decisions FPD1-FPD14 |
+| `docs/ROLLBACK_SPIKE.md` | Rollback measurement spike (measure before building co-op rollback: CPU of copying the state and stepping it H ticks a frame, mispredictions with real inputs, the client cost on paper; spike only, every part behind `KV_RollbackSpike` / `KV_RollbackCapture`): census R0, design, as built, tasks R0-R7, results, the owner's Studio and device checklist, decisions RBD1-RBD7 |
 | `docs/BUILDS_V2.md` | Builds v2, wave 1 (Riposte: a guard that erases bullets answers with a counter-wave, Counterstrike ring and returns; Ballista: the heavy arrow bursts into bolts, Siege Bolt pins and drags an enemy into a wall; Wrecker: rolls smash breakables, every piece you break fires splinters, Demolition chains them; duos Thunder Guard / Stillwater / Rebuke (Bastion + Riposte) / Dragon Bolt / Powder Keg / Full Heart / Happy Hour; the duo hint on New cards; overcap boss points `ScoreSource.OVERCAP`; gameplay, opt-in `SimConfig.builds`; wave 2 and the proposal in its appendix): plan, tasks BV0-BV13, decisions BVD1-BVD20 |
 | `docs/ARCHER.md` | The Archer (the bow split off the knight into its own character: Knight = sword, Archer = bow and a longer roll, one weapon set each; weapon-tagged boons / relics dealt only to the character who carries the weapon; a character screen every run; Knight-only tutorial without the bow room; shared boards with the character shown; SmallScaleInt Archer art): plan, tasks AR0-AR14, decisions ARD1-ARD17 |
 
@@ -642,12 +643,12 @@ Decision log (deviations from `PLAN.md`):
   `out.parryGroups`; `TeamMomentsController` steps the ONE `TeamMoments`, clears in the new `FX_FRAME_PHASE.teamMoments`
   (-2), parries on the first `syncs()` of a near-miss frame; `SyncCalloutController` floor text + tether). Revives
   reserved only. contract.luau / validate.luau stay at 186 / 196 top-level locals (counted on out/). Telemetry: one new
-  custom event `RunRecap` (37 of 100 names; seconds the panel was open by close `retry` / `exit` / `lobby`, near-miss
-  kind, record x skipped; a party run's team totals as rows on the same event) from the client remote `runRecap`,
-  re-read by shared/run `readRunRecapReport`, rate limited (`RUN_RECAP_RATE`) and taken once per run session the server
-  issued (`RunRecapGate`) by TelemetryService; analytics only. Debug `KV_TeamMomentsDebug`, `KV_RetryTiming` (RR8's
-  press -> control print). Vale clips uploaded 2026-11-03 (CM7: Success2 + Gold1, Bonus3); Studio check (RR10) and the retry measurement (RR8)
-  pending.
+  custom event `RunRecap` (37 of 100 names then, 39 since the rollback spike; seconds the panel was open by close
+  `retry` / `exit` / `lobby`, near-miss kind, record x skipped; a party run's team totals as rows on the same event)
+  from the client remote `runRecap`, re-read by shared/run `readRunRecapReport`, rate limited (`RUN_RECAP_RATE`) and
+  taken once per run session the server issued (`RunRecapGate`) by TelemetryService; analytics only. Debug
+  `KV_TeamMomentsDebug`, `KV_RetryTiming` (RR8's press -> control print). Vale clips uploaded 2026-11-03 (CM7:
+  Success2 + Gold1, Bonus3); Studio check (RR10) and the retry measurement (RR8) pending.
 
 - **Co-op contribution (docs/RUN_CONTRIBUTION.md).** One unhashed sim feed, otherwise presentation, client input and
   telemetry (no hash, replay, fixture, rng, score, leaderboard or lockstep change). `ScoreEvents` gained per-tick
@@ -662,7 +663,8 @@ Decision log (deviations from `PLAN.md`):
   not the spectate view, which a wipe leaves on the last watched teammate. Strings `CONTRIB_STRING_KEYS` (45,
   `run.recap.tab.*` / `.you.*` / `.party.*` / `.title.*` / `.titleDesc.*`; the `daredevil` title reads "Bullet Dancer":
   Daredevil is a boon); contract.luau / validate.luau stay 186 / 197. Telemetry: `RunRecapReport.views` and a `views`
-  row on `RunRecap` (still 37 names, 2760 of 8,000 combinations). Studio check (CT10) pending.
+  row on `RunRecap` (still 37 names, 2760 of 8,000 combinations; 39 / 3320 with the rollback spike). Studio check
+  (CT10) pending.
 - **Bookshelves (docs/BOOKSHELVES.md).** Gameplay (dungeon), same Forge option as solid decor (endless only). A new
   solid kind `bookcase` (1 x 1, the Dungeon Essential Kit's case at 125 kit units a tile) stands flush in runs of
   2-5 against far walls only (+X / +Z facings), with 2 non-walkable cells behind (`SOLID_DECOR.bookcase.backTiles`)
@@ -1171,6 +1173,32 @@ Decision log (deviations from `PLAN.md`):
   (`RUN_ATTRIBUTES`): `KV_StandInsForce` ("all" or prefixes), `KV_FakeAssetLatency` (Studio), `KV_StageAssetAudit`.
   No new strings, roles or sounds; no Luau-locals change. Studio checks, SA0 / SA20 device measurements and the
   playtest pending; SA9 warm draw and SA12 telemetry not built.
+- **Rollback spike (docs/ROLLBACK_SPIKE.md, 2026-11-09).** Spike only: measures whether co-op rollback is worth
+  building, builds no production path (no sim, dungeon, hash, replay, lockstep wire, session, log, validator, fixture
+  or score change; nothing predicted reaches the sim, a hash or a recording). Shared, in `shared/lockstep`
+  `rollbackSpike/`: the generic copy `cloneSimState` (an upper bound; NOT shared/sim's unrelated `cloneSimState`: import
+  it from `shared/lockstep`) with `SHARED_BY_REFERENCE`, the pooled copy `PooledStateCopier` / `pooledCopyFn` (R1b, the
+  realistic cost, 2 tables a copy), the prediction model `RollbackModel` with its digest / metrics / harness
+  (`runModelOverRecording`, `captureModelInput`), the worker core (`RollbackWorkerCore`, `RollbackFeed`, protocol),
+  tunables `ROLLBACK_SPIKE`; read-only `LockstepClient` accessors `queuedFrame` / `lastSentInputTick` / `sentInput` /
+  `pacingDepthTicks` (no behaviour change); `shared/run/testing` `denseFight.ts` and `recordNoisyPartyRun`; in
+  `shared/spikes` the summaries `ProbeSummary` / `LiveSummary`, their strict readers and the capture codec
+  (`rollbackCapture.ts`). Switches (off by default, `shared/config` spikes.ts): client `KV_RollbackSpike` (H; 0 /
+  absent: nothing created), `KV_RollbackSpikeMode` (`parallel` default: an Actor `KV_RollbackWorker` mirrors the run
+  from the merged frames, hash-checked; `serial`; `facts`), `KV_RollbackDeviceTag` (the dev panel's field); server
+  `KV_RollbackCapture` (probe intake, always in Studio; co-op run captures for Studio, all-developer parties or a
+  developer's private server). New debug remote `rollbackProbe(kind, payload)` (`ROLLBACK_PROBE_RATE`), server
+  `RollbackSpikeService` (hooks in RunSessionService's lockstep start / step / forget), DataStores
+  `KV_RollbackCapture_v1` (chunked captures) and `KV_RollbackProbe_v1` (one row per window), custom events
+  `RollbackCpu` / `RollbackProbe` through `TelemetryService.logSpike` (published places only; the catalog is now 39
+  names, 3320 of 8,000 combinations). Worker LocalScript `client/rollbackWorker` (disabled template), client
+  `RollbackSpikeController` (spike HUD line), Studio plugin `plugin/RollbackCapturePlugin.server.lua`
+  (`npm run rollback:plugin`), localhost receiver `npm run rollback:receive` into gitignored `/captures`, which
+  gen-fixtures turns into gitignored capture modules; `npm run test:rollback` is in verify. The Lune runner takes
+  `--flag name` (`_G.KV_SPEC_FLAGS`); the full sweep is `--flag rollbackSweep`. R0-R2 / R1b verified headlessly (pooled
+  copy + 15 steps about 4.4-5.0 ms a frame under Lune; bots at L 11: teammate corrections far over the proposed gate);
+  the Studio checks of R3a / R3 / R4 / R4b (the doc's owner checklist), R5 devices and playtest, R6 decision (RBD8) and
+  R7 cleanup pending; the Open Cloud fallback not built.
 
 ## Commands
 
