@@ -138,8 +138,10 @@ Keeps `LobbyService` a thin wrapper of `Lobbies`; InviteService calls new public
 - **Recipients**: `GameInvitePromptClosed` (server side, or relayed by the client as
   `inviteRecipients(userIds)`, at most `LOBBY.maxPlatformInvitesPerMember` integers) -> `platformInvites`, one feed
   line, analytics.
-- **Eligibility**: client -> server `inviteEligibility()` -> one pcall'd `CanSendGameInviteAsync` per player per
-  `INVITE.eligibilityCacheSeconds` (300) -> `inviteEligible(boolean)`.
+- **Eligibility**: the client calls `CanSendGameInviteAsync(LocalPlayer)` itself (pcall), at most once per
+  `INVITE.eligibilityCacheSeconds` (300): the server cannot (a published place answers "Must be called from a local
+  script.", 2026-11-09). A failed call leaves the answer unknown (buttons enabled). The `inviteEligibility()` remote
+  stays as the join-intent request; in Studio the server answers it with `KV_FakeInviteEligible`.
 - **Arrival**: on `PlayerAdded`, resolve at once from live platform invites + party mates (both already known, so the
   common case has no wait). Then poll `GetJoinData().LaunchData` every `INVITE.launchDataPollSeconds` (1) up to
   `INVITE.launchDataWaitSeconds` (10) only if nothing matched yet; a late answer is applied if the player is still on
@@ -185,8 +187,8 @@ As built (I5 client):
   disabled while the lobby is in a run or full); `MainMenu`: **Invite friends** under Lobbies (`withLobby: false`,
   also while in a lobby, as specced). Both read the `lobby` slice's `inviteEligible` (shared/view/menu
   `platformInviteButton`): `false` disables them with `lobby.invite.platformUnavailable` under / beside the button;
-  unknown stays enabled. The client sends `inviteEligibility()` once at start (LobbyController; it doubles as the
-  join-intent request) and again when a menu screen opens from none and the last ask is
+  unknown stays enabled. The client checks `CanSendGameInviteAsync` and sends `inviteEligibility()` (the join-intent
+  request) once at start (LobbyController) and again when a menu screen opens from none and the last check is
   `INVITE.eligibilityCacheSeconds` old (`eligibilityDue`).
 - **Invite list.** `inviteCandidates` reads `invitedSources`: a platform / party invitee reads
   `lobby.invite.invitedPlatform` ("Invited (Roblox)"). Chosen: invitees not in this server get their own rows after

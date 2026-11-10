@@ -326,7 +326,7 @@ write what happened and edit the plan (I0's Verify).
 | # | Fact (docs/INVITES.md) | Steps | Confirmed? | What happened (log lines, devices) | Plan change |
 |---|---|---|---|---|---|
 | 1 | `PromptGameInvite(player, ExperienceInviteOptions)` from the server opens the prompt; options `PromptMessage`, `InviteUser`, `InviteMessageId`, `LaunchData` (max 200) apply | 2, 3, 4 | | | |
-| 2 | `CanSendGameInviteAsync(player, recipientId?)` yields, can fail, varies by platform / player; with vs without recipient | 1, 10 | | | |
+| 2 | `CanSendGameInviteAsync(player, recipientId?)` yields, can fail, varies by platform / player; with vs without recipient | 1, 10 | **No (server)** | 2026-11-09, published place, owner (PC): the server call errors `SocialService:CanSendGameInviteAsync Must be called from a local script.` (InviteService `ELIGIBILITY_FAILED`), so every player read `canSend: false` and both Invite buttons greyed out. Client result, recipient variant, restricted accounts: not run yet | Eligibility moved to the client (LobbyController); the server only resends `joinIntent` and Studio's fake |
 | 3 | `GameInvitePromptClosed(player, recipientIds)`: which side fires, what `recipientIds` holds (none picked, several, Roblox menu invite) | 2, 8 | | | |
 | 4 | Accepting bypasses matchmaking and joins the inviter's server; inviter left; full server shows a join queue | 2, 5, 7 | | | |
 | 5 | `GetJoinData().LaunchData` carries the string, delay after PlayerAdded, late accept | 2, 3, 5, 6 | | | |

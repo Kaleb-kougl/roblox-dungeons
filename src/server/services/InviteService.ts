@@ -86,8 +86,6 @@ interface InviteMember {
 	prompt?: PromptRecord;
 	/** The server-side prompt's options, kept until the prompt closes (or INVITE.promptOptionsSeconds). */
 	options?: ExperienceInviteOptions;
-	eligibility?: { readonly canSend: boolean; readonly at: number };
-	eligibilityPending: boolean;
 }
 
 function isStudio(): boolean {
@@ -148,9 +146,9 @@ function partyIdOf(player: Player): string | undefined {
  *   LOBBY.maxPlatformInvitesPerMember) consumes it; a lobby prompt whose lobby the sender is still in becomes platform
  *   invites (players already in this server are refused: they get `lobbyInvite`), a menu prompt logs one
  *   `LobbyInviteSent` (platform). A second report of the same prompt finds no record and does nothing.
- * - **Eligibility** (`inviteEligibility`, INVITE_ELIGIBILITY_RATE): one pcall'd `CanSendGameInviteAsync` per player
- *   per INVITE.eligibilityCacheSeconds -> `inviteEligible` (false on error). It also re-sends the last `joinIntent`
- *   (the client asks at startup, in case it missed the first push).
+ * - **Eligibility** (`inviteEligibility`, INVITE_ELIGIBILITY_RATE): re-sends the last `joinIntent` (the client asks
+ *   at startup, in case it missed the first push) and, in Studio, answers KV_FakeInviteEligible with `inviteEligible`.
+ *   `CanSendGameInviteAsync` itself runs on the client (Roblox refuses it on the server).
  * - **Arrival** (PlayerAdded, and players here at start): `resolveArrival` on the live invites, the LaunchData and
  *   the party mates here (accept order from one pcall'd `GetPartyAsync` per party on a thread of its own, else join
  *   order), applied through LobbyService; at most one resolve per player in flight (another request makes it loop
@@ -349,32 +347,18 @@ export class InviteService implements OnStart {
 	// ---------------------------------------------------------------------------------------------
 	// Eligibility
 
+	/**
+	 * The client's `inviteEligibility` ask: resend the last `joinIntent`; in Studio also answer KV_FakeInviteEligible.
+	 * The real eligibility check is the client's own (`CanSendGameInviteAsync` refuses the server: "Must be called
+	 * from a local script.", published place 2026-11-09).
+	 */
 	private eligibility(player: Player): void {
 		const m = this.members.get(player);
 		if (m === undefined) return;
 		if (m.intent !== undefined) this.sendJoinIntent(player, m.intent);
-		if (isStudio()) {
-			const forced = Workspace.GetAttribute(INVITE_STUDIO_ATTRIBUTES.fakeInviteEligible);
-			if (typeIs(forced, "boolean")) {
-				Events.inviteEligible.fire(player, { canSend: forced });
-				return;
-			}
-		}
-		const cached = m.eligibility;
-		if (cached !== undefined && os.clock() - cached.at < INVITE.eligibilityCacheSeconds) {
-			Events.inviteEligible.fire(player, { canSend: cached.canSend });
-			return;
-		}
-		if (m.eligibilityPending) return; // the call in flight answers
-		m.eligibilityPending = true;
-		task.spawn(() => {
-			const [ok, result] = pcall(() => SocialService.CanSendGameInviteAsync(player));
-			m.eligibilityPending = false;
-			const canSend = ok && result === true;
-			if (!ok) log.warn("ELIGIBILITY_FAILED", `${player.UserId}: ${tostring(result)}`);
-			m.eligibility = { canSend, at: os.clock() };
-			if (player.Parent !== undefined) Events.inviteEligible.fire(player, { canSend });
-		});
+		if (!isStudio()) return;
+		const forced = Workspace.GetAttribute(INVITE_STUDIO_ATTRIBUTES.fakeInviteEligible);
+		if (typeIs(forced, "boolean")) Events.inviteEligible.fire(player, { canSend: forced });
 	}
 
 	// ---------------------------------------------------------------------------------------------
@@ -394,7 +378,6 @@ export class InviteService implements OnStart {
 			arrivalLogged: false,
 			resolving: false,
 			resolveAgain: false,
-			eligibilityPending: false,
 		};
 		this.members.set(player, m);
 		if (isStudio()) {

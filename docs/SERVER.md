@@ -567,10 +567,10 @@ No lobby activity feed exists (`LobbyView` has none), so a platform invite shows
   client relay) or a later Roblox-menu invite finds nothing. A lobby prompt whose lobby the sender is still in ->
   `platformInvites` (recipients already in this server are refused there); a menu prompt logs one `LobbyInviteSent`
   (platform, value = recipients, at most the cap); without a live prompt record nothing happens.
-- **Eligibility.** `inviteEligibility` (`INVITE_ELIGIBILITY_RATE`) first re-sends `joinIntent` if the arrival is
-  resolved (the client asks at startup, in case it missed the push), then answers `inviteEligible { canSend }` from
-  one pcall'd `CanSendGameInviteAsync(player)` per player per `INVITE.eligibilityCacheSeconds` (false on error; a call
-  in flight answers every request made meanwhile).
+- **Eligibility.** `inviteEligibility` (`INVITE_ELIGIBILITY_RATE`) re-sends `joinIntent` if the arrival is
+  resolved (the client asks at startup, in case it missed the push) and, in Studio only, answers
+  `inviteEligible { canSend }` with `KV_FakeInviteEligible`. The server never calls `CanSendGameInviteAsync`: Roblox
+  refuses it there ("Must be called from a local script.", published place 2026-11-09); LobbyController calls it.
 - **Arrival.** On PlayerAdded (and for players here at start), on the player's own thread (cancelled on leave). At
   most one resolve per player is in flight: a request while one runs (a late PartyId, Studio's fake LaunchData)
   makes the running one loop once more, and every resolve reads the player's latest LaunchData.

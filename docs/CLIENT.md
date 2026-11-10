@@ -931,8 +931,9 @@ its arrival time, received invites, notices, the players in this server).
 - **Roblox invites (docs/INVITES.md I5)**: the lobby room's invite panel starts with **Invite friends (Roblox)**
   (`invitePrompt({ withLobby: true })`; off while the lobby is in a run or full) and the main menu has **Invite
   friends** under Lobbies (`withLobby: false`). Both are disabled with `Invites aren't available on this account or
-  device` once the server's `inviteEligible` says `canSend: false` (unknown: enabled). LobbyController sends
-  `inviteEligibility` at start and again when a menu screen opens and the last ask is
+  device` once `CanSendGameInviteAsync` (called here: Roblox refuses it on the server) or Studio's
+  `inviteEligible` says `canSend: false` (unknown or a failed call: enabled). LobbyController checks it and sends
+  `inviteEligibility` (the join-intent request) at start and again when a menu screen opens and the last check is
   `INVITE.eligibilityCacheSeconds` (300 s) old. Friends invited through Roblox (or a party invite) read
   `Invited (Roblox)`; those not in this server yet get their own dim rows (`#<UserId>`: no web name lookups). With
   `INVITE.promptSide` "client" the server's `invitePromptOnClient` opens the prompt here; the local

@@ -1,10 +1,10 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
-import { Players, RunService, SocialService } from "@rbxts/services";
+import { Players, RunService, SocialService, Workspace } from "@rbxts/services";
 import { Events } from "client/network";
 import { clientStore, selectSelectedCharacter } from "client/store";
 import { isCharacterId, type CharacterId } from "shared/characters";
-import { INVITE } from "shared/invite";
+import { INVITE, INVITE_STUDIO_ATTRIBUTES } from "shared/invite";
 import { LOBBY, type LobbyVisibility, type LobbyWorld } from "shared/lobby";
 import type { InvitePromptOptions, LobbyNotice } from "shared/network";
 import {
@@ -31,9 +31,10 @@ import { FocusController } from "./FocusController";
  * same rule (lobbyStartAccepted). Neither takes over a tutorial run being played (SimController.inRunningTutorial).
  *
  * Roblox invites (docs/INVITES.md I5): `invitePrompt` for the lobby room's "Invite friends (Roblox)" and the main
- * menu's "Invite friends"; `inviteEligibility` once at start (the server also answers it with `joinIntent` when this
- * player's arrival is already resolved, so it doubles as the join-intent request) and again when a menu opens and the
- * last ask is INVITE.eligibilityCacheSeconds old; `inviteEligible` and `joinIntent` into the slice (TutorialController's
+ * menu's "Invite friends"; eligibility (a client-side `CanSendGameInviteAsync`: Roblox refuses it on the server) and
+ * `inviteEligibility` (the server answers with `joinIntent` when this player's arrival is already resolved, so it is
+ * the join-intent request) once at start and again when a menu opens and the last check is
+ * INVITE.eligibilityCacheSeconds old; the answer, Studio's `inviteEligible` and `joinIntent` into the slice (TutorialController's
  * first-join gate reads the intent). INVITE.promptSide "client": `invitePromptOnClient` opens the prompt here
  * (ExperienceInviteOptions with the server's LaunchData / InviteMessageId, pcall; kept until the local
  * GameInvitePromptClosed or INVITE.promptOptionsSeconds, then destroyed). The local player's
@@ -49,6 +50,8 @@ export class LobbyController implements OnStart {
 	private promptOptions: ExperienceInviteOptions | undefined;
 	/** os.clock() of the last `inviteEligibility` sent (undefined: never). */
 	private eligibilityAskedAt: number | undefined;
+	/** A CanSendGameInviteAsync is in flight (its answer covers a second ask). */
+	private eligibilityPending = false;
 
 	constructor(private readonly sim: SimController, private readonly focus: FocusController) {}
 
@@ -139,12 +142,35 @@ export class LobbyController implements OnStart {
 
 	// --- Roblox invites (docs/INVITES.md I5) -----------------------------------------------------
 
-	/** Asks the server for `inviteEligible` (and the join intent) unless the last ask is still fresh. */
+	/**
+	 * Re-checks invite eligibility (and asks the server for the join intent) unless the last check is still fresh.
+	 * `SocialService:CanSendGameInviteAsync` must be called from a LocalScript (a published place's server answers
+	 * "Must be called from a local script."), so the check runs here; the server only resends `joinIntent` (and, in
+	 * Studio, the `KV_FakeInviteEligible` answer). A failed call leaves the answer unknown, so the buttons stay
+	 * enabled: Roblox's prompt is the final word.
+	 */
 	refreshEligibility(): void {
 		const now = os.clock();
 		if (!eligibilityDue(this.eligibilityAskedAt, now, INVITE.eligibilityCacheSeconds)) return;
 		this.eligibilityAskedAt = now;
 		Events.inviteEligibility.fire();
+		if (
+			RunService.IsStudio() &&
+			typeIs(Workspace.GetAttribute(INVITE_STUDIO_ATTRIBUTES.fakeInviteEligible), "boolean")
+		) {
+			return; // the server answers with the forced value
+		}
+		if (this.eligibilityPending) return;
+		this.eligibilityPending = true;
+		task.spawn(() => {
+			const [ok, result] = pcall(() => SocialService.CanSendGameInviteAsync(Players.LocalPlayer));
+			this.eligibilityPending = false;
+			if (!ok) {
+				warn(`[Invite] CanSendGameInviteAsync failed: ${tostring(result)}`);
+				return;
+			}
+			clientStore.setInviteEligible(result === true);
+		});
 	}
 
 	/** Roblox's invite prompt: with this player's lobby attached (the lobby room) or not (the main menu). */

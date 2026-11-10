@@ -209,7 +209,10 @@ export interface InvitePromptOptions {
 	inviteMessageId?: string;
 }
 
-/** `inviteEligible`: whether this player may send Roblox invites (CanSendGameInviteAsync; false when it failed). */
+/**
+ * `inviteEligible`: Studio's KV_FakeInviteEligible answer only. The real check is the client's own
+ * CanSendGameInviteAsync (Roblox refuses it on the server).
+ */
 export interface InviteEligibility {
 	canSend: boolean;
 }
@@ -359,7 +362,7 @@ export interface ClientToServerEvents {
 	 * ids it already recorded from its own GameInvitePromptClosed. No reply beyond the lobby pushes.
 	 */
 	inviteRecipients(userIds: number[]): void;
-	/** Roblox invites: may this player send invites? Answered with `inviteEligible` (cached per player). */
+	/** Roblox invites: resend `joinIntent` (and, in Studio, the `inviteEligible` fake). Eligibility is checked on the client. */
 	inviteEligibility(): void;
 	/** Onboarding: asks whether this player has done the tutorial; answered with `onboardingStatus`. */
 	requestOnboarding(): void;
