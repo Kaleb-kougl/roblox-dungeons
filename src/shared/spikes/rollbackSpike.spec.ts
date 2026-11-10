@@ -126,6 +126,7 @@ describe("readProbeSummary", () => {
 			["gcKbPerSec", -2e6],
 			["native", 1],
 			["deviceLabel", "tab\there"],
+			["deviceLabel", `cut${string.char(195)}`],
 			["deviceLabel", string.rep("x", 49)],
 			["deviceClass", "fridge"],
 		];

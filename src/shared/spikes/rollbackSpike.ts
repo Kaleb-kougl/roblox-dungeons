@@ -286,9 +286,10 @@ export function isRollbackKeyId(v: unknown, max: number = ROLLBACK_CAPTURE.maxId
 	return typeIs(v, "string") && v.size() > 0 && v.size() <= max && string.match(v, "^[%w%-_{}]+$")[0] !== undefined;
 }
 
-/** A label: at most maxDeviceLabelChars, no control characters (it is printed and stored). */
+/** A label: at most maxDeviceLabelChars bytes of valid UTF-8, no control characters (it is printed and stored). */
 function label(v: unknown): string | undefined {
 	if (!typeIs(v, "string") || v.size() > ROLLBACK_PROBE_LIMITS.maxDeviceLabelChars) return undefined;
+	if (utf8.len(v)[0] === false) return undefined;
 	return string.find(v, "%c")[0] === undefined ? v : undefined;
 }
 
