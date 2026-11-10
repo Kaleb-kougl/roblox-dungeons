@@ -36,6 +36,79 @@ teammate corrections far over the gate). Its cheap plan, enemy bullets drawn ahe
 | Mouse aim is the cursor minus the player's position, taken at the merged position | InputController `sample(me.x, me.z, ...)`, SimController `coopFrame` | With a predicted knight the aim origin must be the drawn knight, or the aim line and the shot leave from a point behind it |
 | 12 client sites read the watched player's pose (`lerp(p.prevX, p.x, alpha)`, `faceX`) | ActorRenderController, CameraController, WeaponViewController, BoostAuraController, MinimapController, HudOcclusionController, ParryFlashController, ComboController, GoldenRenderController, CollisionDebugController, TutorialArrowController, InputController (touch facing / auto-target) | One accessor (`getDrawnPlayer`) and a per-site choice (Design 6) |
 
+## Census (LP0, 2026-11-09)
+
+From branch `local-prediction` @ `f6f6e6cc` (main: the Archer, frame pacing revision 2 and the rollback spike merged).
+**Mirrored**: `predictMotion.ts` replays it exactly. **Held**: the base's value is kept over the horizon.
+**Corrected**: not predicted; the next rebuild from a newer merged state shows the difference (the smoother's offset or
+a snap, Design 4).
+
+### What moves the local player's body, or changes how it moves
+
+| Rule | Where (sim) | When in the tick | Choice |
+|---|---|---|---|
+| `prevX / prevZ = x / z` | player.ts `stepPlayer` 1 | stepPlayer | mirrored |
+| `rollTicks`, `flaskTicks` count down | `stepPlayer` 3 | stepPlayer | mirrored (`iframeTicks` / `hurtTicks` held: they never move the body) |
+| ROLL press edge: direction (move, else facing), `rollTicks = ROLL_TICKS` | `stepPlayer` 4 | stepPlayer | mirrored (Slippery's and the trait's i-frames skipped: no motion) |
+| FLASK press edge: a charge, missing health, not drinking; heals, `flaskTicks` | `stepPlayer` 4 | stepPlayer | mirrored on the scratch (`flask`, `hearts` from the base; a hit or heal inside the horizon is corrected) |
+| The roll's step: dash `scalePercent(ROLL_DASH_STEP, traits.rollDashPercent)` (the Archer's 140 %), then the recovery | `stepPlayer` 5 | stepPlayer | mirrored (traits from the run config, `playerTraits`) |
+| The walk: `WALK_STEP` x flask 0.5 x `weaponMoveMultiplier` x Quickstep 130 % | `stepPlayer` 5, `boostWalkPercent` | stepPlayer | mirrored (Quickstep's timer counted down from the base, as stepDrops 3 does after the step) |
+| `movePlayer`: the world's `moveResolver` (`playerMover`: the slide, or `PlayerMover.WEB`) in sub-steps of `MAX_MOVE_STEP`, with `solidCells(state)` | player.ts | stepPlayer; the sword's lunge | mirrored: the same function, the floor's `simWorldConfig`, the merged state's pieces (read only; it writes only the scratch player) |
+| Facing: aim, else the roll's direction, else the move | `stepPlayer` 6 | stepPlayer | mirrored |
+| Wrecker's roll smash: the pieces the roll step touches break before it moves | builds/wrecker.ts `buildsRollSmash` | stepPlayer, before the roll's move | **corrected**: the mirror breaks nothing, so a Wrecker roll into a crate is predicted to stop at it (follow-up: a solid view without the pieces the step would smash) |
+| The boss's room seal clamps every player inside the arena while the fight is on | boss/shared.ts `sealArena` (209) | stepCombat 2 (actors) | corrected (only matters at a corridor mouth) |
+| The sword: guard (`SWORD_V_GUARD` > 0: x 0.5), finisher wind-up (`SWORD_V_STEP` = WINDUP: x 0.35) | sword.ts `step`, `moveMultiplier` | stepCombat 4 (weapons) | mirrored (LP2): swap / roll resets, a guard on an ALT edge off cooldown (`swordGuardTicks`: Bastion), busy / window, swings 1-2, the wind-up's start (`attackTicks`: Swift Strikes, and Frenzy from the predicted Frenzy timer) |
+| The finisher's lunge: `lungeDistance / finisherWindupTicks` a tick along the facing, through `movePlayer` | sword.ts 312 | stepCombat 4 | mirrored |
+| The bow's charge (`BOW_V_CHARGE` > 0: x 0.5); a roll or a swap cancels it; `bowChargeTicks` (Ballista) | bow.ts `step`, `moveMultiplier` | stepCombat 4 | mirrored (LP2). The stream, the heavy arrow and the cooldowns they set never change the walk: not mirrored |
+| SWAP press edge: the next set; onto an empty set nothing (ARD3) | weapons.ts `stepWeapons` 3 | stepCombat 4 | mirrored (the predicted active set) |
+| Every set's cooldown counts down | `stepWeapons` 1 | stepCombat 4 | mirrored (the sword's guard cooldown gates the next guard) |
+| A weapon with no mirror (the spec-only test weapons) | `weaponMoveMultiplier` | | held: its slot stays the base's, so its `moveMultiplier` is the merged one |
+| Frenzy's timer (Swift Strikes' percent x 70 %) | boostMods.ts `boostAttackTicksPercent` | read in stepCombat 4, counted down in stepDrops 3 | mirrored (counted down from the base) |
+| A boost picked up (a ground drop, a breakable's loot, a vault's reward straight to the player) | drops.ts, breakLoot.ts 78 | stepDrops / stepTreasure | corrected |
+| A hit: hearts / armor (the flask's missing-health test), death (`killPlayerState` ends the roll and the flask) | player.ts `damagePlayer` | stepCombat 6-7 | corrected (death stops the predictor) |
+| The floor change: every player to the spawn, the dead revived | endless.ts 287 | stepEndless | corrected (a snap) |
+| Revive / leave (`revivePartyMember`, `markPlayerLeft`) | party.ts | stepEndless / stepParty 2 | corrected (the predictor stops while dead or left) |
+| A draft freezes the world (its ticks set `prevX = x` and the buttons) | step.ts `isDraftOpen`, progression.ts 368 | instead of the step | not predicted (the predictor stops while any draft is open) |
+| A teammate's swing (lower index) or a Charger breaking a piece in the same tick, before the local lunge | sword.ts, charger.ts | stepCombat 2 / 4 | corrected (pieces are read from the merged state) |
+| `respawnPlayer` | player.ts | nothing calls it in a run | n/a |
+| WALL_SLIDE's "treasure / drop pushes" | | | **struck**: nothing in the sim pushes a player (every write to a player's x / z is listed above) |
+
+### What reads the watched player's pose (view)
+
+The plan's 12 sites plus the ones added since (builds v2, the run recap, team moments, pacts, the decor plan). "Drawn":
+`getDrawnPlayer`'s pose for the local player; "merged": `playerAt(state, view)` as today. Planners that take the view
+index only to choose whose events to show (NearMiss, Siege, Wrecker, Overcap, CounterWave, HeartBeam, BuildFx, the
+pellet / Golden freezes, Audio's per-player split, FreezeFrame / HurtFlash) read no pose: unchanged.
+
+| Site | Reads | Choice | Why |
+|---|---|---|---|
+| ActorRenderController `drawPlayer` (831), through shared/view sprites.ts 532 `playerSpriteInput` / `archerSpriteInput` | x, z, prev, face, roll, walk speed | drawn (sprite / capsule, ring, squash, afterimages, outline) | It is the knight |
+| ActorRenderController look (i-frame tint), hurt blink, death | iframe / hurt / dead | merged | LPD5 |
+| CameraController (74) | x, z, prev | drawn | LPD8 |
+| WeaponViewController (128) | x, z, prev, face; swing timing | drawn pose and facing; timing merged | Attached |
+| BoostAuraController (178, the local player in its loop) | x, z, prev | drawn | Attached |
+| ComboController shout feet (417) | x, z, prev | drawn | Attached |
+| ParryFlashController centre (175) | x, z, prev | drawn | Attached |
+| GoldenRenderController label fallback (274) | x, z, prev | drawn | Attached |
+| MinimapController self marker (827) | x, z, prev, face | drawn | Same knight on both |
+| MinimapController fog sources (740), mates, room edges, pickups | x, z | merged | Sim truth |
+| HudOcclusionController (163) | x, z, prev | drawn | Fades what covers the knight you see |
+| InputController touch facing / auto-target origin (662) | face, x, z | drawn | The aim's origin |
+| SimController `coopFrame` mouse aim origin (1161, `sample(me.x, me.z)`) | x, z | drawn | The aim's origin |
+| CollisionDebugController (140) | x, z | both (a second ring for merged) | Debug |
+| TutorialArrowController (110) | x, z | unchanged | Solo only |
+| shared/view fxCues.ts 663 (the flask / Ember cue at the player) | x, z, prev | drawn (local player) | Attached |
+| shared/view nearMissRules.ts 443 / 501 / 580 (graze sparks, the parry burst and flash) | x, z | drawn (local player) | Attached |
+| shared/view buildFxRules.ts 936 (brace rings follow their player); buildFxEvents.ts 651 (brace), 582 (Ballista's back direction) | x, z | rings drawn; the Ballista direction merged | Rings attached; the direction is the sim's |
+| ParticleController 330 (the pellet ring at the taker), 487 (the power fly-in's target) | x, z | drawn (local player) | Attached |
+| shared/view decor/render.ts 49 (decor fades round player bodies) | x, z | drawn (local player) | Fades what covers the knight you see |
+| shared/view hitReact.ts 112 (an enemy's push away from the nearest player) | x, z, prev | merged | Reaction to the sim's hit |
+| RoomClearController 146 (near / far), RecapController 683 (stairs path), pacts.ts 263 (cards near), sighting.ts 81, decor director.ts 396, TeamMomentsController 161 (debug fakes) | x, z | merged | Sim truth, prompts, run-over numbers |
+| watch.ts, lowHealth.ts, recapTally.ts, teamMomentsView.ts | hearts, dead | merged | LPD5 |
+
+LP5 routes every "drawn" row through `getDrawnPlayer(index)` (the shared/view helpers that read `playerAt` themselves
+take a player instead where they draw).
+
 ## Design
 
 ### 1. What is predicted
