@@ -1100,6 +1100,8 @@ export class SimController implements OnStart {
 	 * server's merged frames. No pause, no hitstop pacing (shared/view/fx `simPacerFor`), no restart mid-run.
 	 */
 	private startCoop(start: PartyRunStart): void {
+		this.debug = Workspace.GetAttribute(RUN_ATTRIBUTES.debug) === true;
+		this.inputController.setDebug(this.debug);
 		const localIndex = start.members.indexOf(Players.LocalPlayer.UserId);
 		if (localIndex < 0 || !isValidRunSeed(start.seed)) return;
 		// Never pulled out of a running tutorial (the server refuses lobby starts while the player is in it too; this
