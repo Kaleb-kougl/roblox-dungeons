@@ -10,7 +10,8 @@
  *                  stepped frame's), up to the last tick sent and at most `maxTicks` ticks (LPD4). Nothing is
  *                  predicted (undefined) while the local player is dead or left or any draft is open (the sim freezes
  *                  everyone). The head is the pose after the last replayed tick; its prevX / prevZ the pose a tick before
- *                  (the views' lerp with the client's alpha).
+ *                  (the views' lerp with the client's alpha). The path keeps every replayed tick's position (the merged
+ *                  one first), so the view can compare a newer prediction with an older head at the same tick.
  *   observe(state) after every stepped tick: the merged pose at that tick against the head last predicted for it (the
  *                  pose drawn for that tick: the error statistics; a floor change or a dead player is not compared).
  *
@@ -49,6 +50,24 @@ export interface PredictionSource {
 	lastSteppedInput(): Readonly<InputFrame> | undefined;
 }
 
+/**
+ * The positions of the last prediction, by state tick: entry k is the body at state tick firstTick + k (entry 0 the
+ * merged pose, the last one the head). Owned by the predictor and rewritten by every rebuild: read it, never keep it.
+ */
+export interface PredictedPath {
+	readonly firstTick: number;
+	readonly size: number;
+	readonly xs: ReadonlyArray<number>;
+	readonly zs: ReadonlyArray<number>;
+}
+
+interface MutablePath {
+	firstTick: number;
+	size: number;
+	readonly xs: number[];
+	readonly zs: number[];
+}
+
 /** The predictor's numbers (KV_Debug's co-op line, docs/LOCAL_PREDICTION.md Design 7). */
 export interface PredictionStats {
 	/** Ticks the last rebuild replayed past the merged state (0: nothing to replay or not predicting). */
@@ -68,6 +87,7 @@ export interface PredictionStats {
 
 export class LocalPredictor {
 	private readonly head = newMotionScratch();
+	private readonly path: MutablePath = { firstTick: 0, size: 0, xs: [], zs: [] };
 	private active = false;
 	private horizon = 0;
 	/** The head last predicted per state tick (the state.tick after its last replayed tick), a ring of maxTicks + 2. */
@@ -95,6 +115,11 @@ export class LocalPredictor {
 		return this.active ? this.head.player : undefined;
 	}
 
+	/** The last prediction's positions by tick (see PredictedPath); undefined while not predicting. Read only. */
+	predictedPath(): PredictedPath | undefined {
+		return this.active ? this.path : undefined;
+	}
+
 	/** Ticks the last rebuild replayed (0 while not predicting). */
 	horizonTicks(): number {
 		return this.active ? this.horizon : 0;
@@ -118,6 +143,10 @@ export class LocalPredictor {
 		const head = this.head;
 		copyMotionBase(head, state, i);
 		const base = state.tick;
+		const path = this.path;
+		path.firstTick = base;
+		path.size = 0;
+		this.pathPush(head.player.x, head.player.z);
 		const last = src.lastSentInputTick();
 		const span = last - base + 1;
 		const h = span < 0 ? 0 : span > this.tunables.maxTicks ? this.tunables.maxTicks : span;
@@ -141,6 +170,7 @@ export class LocalPredictor {
 				return;
 			}
 			predictMotionTick(head, state, input, world, i, traits);
+			this.pathPush(head.player.x, head.player.z);
 		}
 		this.horizon = h;
 		this.active = true;
@@ -151,6 +181,18 @@ export class LocalPredictor {
 			this.ringX[slot] = head.player.x;
 			this.ringZ[slot] = head.player.z;
 		}
+	}
+
+	private pathPush(x: number, z: number): void {
+		const path = this.path;
+		if (path.xs.size() <= path.size) {
+			path.xs.push(x);
+			path.zs.push(z);
+		} else {
+			path.xs[path.size] = x;
+			path.zs[path.size] = z;
+		}
+		path.size++;
 	}
 
 	/**

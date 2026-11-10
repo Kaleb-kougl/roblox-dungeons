@@ -109,7 +109,7 @@ import {
 import { DEFAULT_LOCKSTEP, PACING, type LockstepTunables } from "./config";
 import { LeadController, type LeadStats } from "./lead";
 import { PlayoutPacer, type PacingStats } from "./pacer";
-import { LocalPredictor, type PredictionSource, type PredictionStats } from "./predict";
+import { LocalPredictor, type PredictedPath, type PredictionSource, type PredictionStats } from "./predict";
 import { MergedDecoder, decodeInputEcho, encodeInputBatch } from "./wire";
 
 /** Not a clock: what the lead controller gets before any was given (its legacy rule needs none). */
@@ -384,6 +384,14 @@ export class LockstepClient implements RunView, PredictionSource {
 	 */
 	predicted(): Readonly<PlayerState> | undefined {
 		return this.predictor?.predicted();
+	}
+
+	/**
+	 * The last prediction's positions by state tick (merged pose first, the head last; predict.ts PredictedPath), for
+	 * the view's smoothing; undefined whenever `predicted()` is. Rewritten by every rebuild: read it, never keep it.
+	 */
+	predictedPath(): PredictedPath | undefined {
+		return this.predictor?.predictedPath();
 	}
 
 	/** The predictor's numbers (horizon, error, corrections); undefined without `tunables.prediction`. */
