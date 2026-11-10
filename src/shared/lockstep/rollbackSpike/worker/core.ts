@@ -18,8 +18,9 @@
  *              their newest merged frame (solo: the local frame for the first tick, then neutral), discard it; fill
  *              the digest buffer (rollbackDigestBytes) from the copy and send it (host.sendDigest). Timed (host clock):
  *              copy, step (yields excluded), send, total, and the rendered frames from its start to its end.
- *   live       (co-op, parallel, `live`) the RollbackModel (Design 7): beginPredict(mirror) -> stepPredict(sliceTicks)
- *              until done -> finishPredict; its metrics are the live window's.
+ *   live       (co-op, parallel, `live`) the RollbackModel (Design 7) with horizonCap H: beginPredict(mirror) ->
+ *              stepPredict(sliceTicks) until done -> finishPredict (the drawn tick T + min(D + L, H)); its metrics are
+ *              the live window's.
  * Both step in slices of ROLLBACK_SPIKE.sliceTicks with `host.yieldSlice()` between slices (the worker yields to a
  * later parallel phase there; messages that arrive meanwhile wait in the inbox until the round ends: a new setup never
  * lands mid-prediction), and the mirror catches up in slices of
@@ -333,6 +334,8 @@ export class RollbackWorkerCore {
 					playerIndex: msg.localIndex,
 					config: run.config,
 					strategy: msg.strategy,
+					// H caps the live prediction too (the gate's question is "at horizon H"): drawn tick T + min(D + L, H).
+					horizonCap: msg.horizon,
 					oracle: this.options.oracle,
 				});
 				model.reset(run.state);
