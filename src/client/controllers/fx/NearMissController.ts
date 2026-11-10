@@ -65,6 +65,7 @@ export class NearMissController implements OnStart {
 			quiet,
 			settings,
 			os.clock(),
+			this.sim.drawnPlayerOf,
 		);
 		this.last = out;
 		this.frames++;

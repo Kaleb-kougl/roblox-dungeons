@@ -49,6 +49,7 @@
  * No allocation per frame: cues come from a fixed pool (FxCueBuffer, like FxEventBuffer), scratch arrays are reused.
  * Read-only on the sim. No Roblox API: tested headlessly (fxCues.spec.ts).
  */
+import { drawnOrMerged, type DrawnPlayerOf } from "shared/view/predict";
 import { CAMERA_PITCH_DEG, CAMERA_YAW_DEG } from "shared/config";
 import {
 	AiState,
@@ -150,6 +151,11 @@ export interface FxCueFrame {
 	readonly settings: Readonly<JuiceSettings>;
 	/** The current floor's spots (stairwell, shrine, pedestals); undefined: none of those cues. */
 	readonly spots?: FxSpots;
+	/**
+	 * The players as drawn (docs/LOCAL_PREDICTION.md LP5: the flask / Ember / guard cues sit on the drawn body);
+	 * absent: the merged players.
+	 */
+	readonly drawn?: DrawnPlayerOf;
 }
 
 /** How long an effect plays, seconds, or undefined when the pack has no art for it (then it is never cued). */
@@ -660,7 +666,7 @@ export class FxCueMapper {
 		const deflector = deleted > 0 ? this.soleDeflector(state, n) : -1;
 		for (let i = 0; i < n; i++) {
 			if (hasLeft(state, i) || i >= this.pEmbers.size()) continue;
-			const p = playerAt(state, i);
+			const p = drawnOrMerged(state, i, f.drawn);
 			const w = weaponsAt(state, i);
 			const px = p.prevX + (p.x - p.prevX) * f.alpha;
 			const pz = p.prevZ + (p.z - p.prevZ) * f.alpha;

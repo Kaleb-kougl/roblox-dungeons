@@ -31,15 +31,8 @@
  * No allocation in steady state: the output and its records are reused frame to frame (per-player state grows once
  * per new player index). Presentation only.
  */
-import {
-	SOLO_PARTY_SIZE,
-	SWORD_DATA,
-	partySize,
-	playerAt,
-	swordGuardTicks,
-	type PlayerState,
-	type SimState,
-} from "shared/sim";
+import { drawnOrMerged, type DrawnPlayerOf } from "shared/view/predict";
+import { SOLO_PARTY_SIZE, SWORD_DATA, partySize, swordGuardTicks, type PlayerState, type SimState } from "shared/sim";
 import type { JuiceSettings } from "shared/settings";
 // Not the shared/view/hud barrel: hud imports this barrel (shared/view/fx), so the barrel would be a require cycle.
 // comboConfig only imports shared/sim.
@@ -346,6 +339,8 @@ export function parryStartsGroup(
 
 /** The grazes and parries' per-frame director (see the file comment). One per run view consumer. */
 export class NearMissDirector {
+	/** This frame's drawn players (frame's `drawn`). */
+	private drawn: DrawnPlayerOf | undefined;
 	/** The last frame's output (also returned by frame()). */
 	readonly out: NearMissFrame;
 
@@ -382,7 +377,8 @@ export class NearMissDirector {
 	/**
 	 * One rendered frame, after its ticks. `source`: the frame's grazes / erases (RunView.nearMiss). `viewIndex`: the
 	 * view player (SimController.getViewPlayerIndex). `quiet`: comboQuiet(covered, runOver). `clockSec`: a clock in
-	 * seconds that only moves forward (real time). Returns `out`.
+	 * seconds that only moves forward (real time). `drawn`: the players as drawn (docs/LOCAL_PREDICTION.md LP5: sparks
+	 * and flashes on the drawn body); absent: the merged players. Returns `out`.
 	 */
 	frame(
 		source: NearMissFrameSource,
@@ -391,8 +387,10 @@ export class NearMissDirector {
 		quiet: boolean,
 		settings: Readonly<JuiceSettings>,
 		clockSec: number,
+		drawn?: DrawnPlayerOf,
 	): NearMissFrame {
 		this.frameId += 1;
+		this.drawn = drawn;
 		const out = this.slot;
 		out.grazeSparks.clear();
 		out.parryBursts.clear();
@@ -440,7 +438,7 @@ export class NearMissDirector {
 		for (const g of grazes) {
 			if (out.size() >= cap) return;
 			if (g.player < 0 || g.player >= n || (g.player === viewIndex) !== viewPass) continue;
-			const p = playerAt(state, g.player);
+			const p = drawnOrMerged(state, g.player, this.drawn);
 			const i = out.size();
 			let s = this.sparkPool[i];
 			if (s === undefined) {
@@ -498,7 +496,7 @@ export class NearMissDirector {
 			}
 			t.flash.count += 1;
 			t.grewFrame = this.frameId;
-			if (sparksOn) this.burst(e, playerAt(state, e.player));
+			if (sparksOn) this.burst(e, drawnOrMerged(state, e.player, this.drawn));
 		}
 	}
 
@@ -577,7 +575,7 @@ export class NearMissDirector {
 				if (isView && n === SOLO_PARTY_SIZE && freezeFrameOn(settings)) out.freezeMs = NEAR_MISS_VIEW.freezeMs;
 			}
 			if (!t.flashOn) continue;
-			const p = playerAt(state, i);
+			const p = drawnOrMerged(state, i, this.drawn);
 			const age = clockSec - t.groupStartSec;
 			if (p.dead !== 0 || age >= f.sec) {
 				t.flashOn = false;

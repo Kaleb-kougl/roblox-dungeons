@@ -4,7 +4,7 @@ import { RunService, Workspace } from "@rbxts/services";
 import { DEV_MONO_FONT, createKvBillboardGui } from "client/ui";
 import { STUDS_PER_TILE } from "shared/config";
 import { RUN_ATTRIBUTES } from "shared/play";
-import { GOLDEN_RADIUS, GoldenStatus, SIM_HZ, partySize, playerAt, type SimState } from "shared/sim";
+import { GOLDEN_RADIUS, GoldenStatus, SIM_HZ, partySize, type SimState } from "shared/sim";
 import { GOLDEN_COIN_FX_ID, GOLDEN_COIN_ROLE, type FxId, type ThemePack } from "shared/theme";
 import { RENDER_ORDER, SPRITE_VIEW, floorStudsY, lerp, studsX, studsZ } from "shared/view";
 import { burstSeed } from "shared/view/fx";
@@ -271,7 +271,8 @@ export class GoldenRenderController implements OnStart {
 			z = lerp(a.prevZ, a.z, alpha);
 		} else {
 			const n = partySize(state);
-			const p = playerAt(state, math.clamp(this.sim.getViewPlayerIndex(), 0, math.max(n - 1, 0)));
+			// docs/LOCAL_PREDICTION.md LP5: as drawn (the predicted local player; the merged one otherwise).
+			const p = this.sim.getDrawnPlayer(state, math.clamp(this.sim.getViewPlayerIndex(), 0, math.max(n - 1, 0)));
 			x = lerp(p.prevX, p.x, alpha);
 			z = lerp(p.prevZ, p.z, alpha);
 		}

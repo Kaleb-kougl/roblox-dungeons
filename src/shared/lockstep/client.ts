@@ -394,6 +394,11 @@ export class LockstepClient implements RunView, PredictionSource {
 		return this.predictor?.predictedPath();
 	}
 
+	/** Ticks the last prediction replayed past the merged state (its head's lead); 0 while nothing is predicted. */
+	predictionHorizonTicks(): number {
+		return this.predictor?.horizonTicks() ?? 0;
+	}
+
 	/** The predictor's numbers (horizon, error, corrections); undefined without `tunables.prediction`. */
 	predictionStats(): PredictionStats | undefined {
 		return this.predictor?.stats();

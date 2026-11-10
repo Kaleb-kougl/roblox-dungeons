@@ -3,7 +3,7 @@ import { Janitor } from "@rbxts/janitor";
 import { Workspace } from "@rbxts/services";
 import { COMBO_UI, currentHudFont, onLocaleChanged, resetComboUi, createKvSurfaceGui } from "client/ui";
 import { STUDS_PER_TILE } from "shared/config";
-import { COMBO_MIN, TILE_SIZE, partySize, playerAt, teamComboWindowTicks, type SimState } from "shared/sim";
+import { COMBO_MIN, TILE_SIZE, partySize, teamComboWindowTicks, type SimState } from "shared/sim";
 import type { JuiceSettings } from "shared/settings";
 import type { ColorRole, ThemePack } from "shared/theme";
 import { floorStudsY, lerp, studsX, studsZ } from "shared/view";
@@ -414,7 +414,8 @@ export class ComboController implements OnStart {
 			this.hideShout();
 			return;
 		}
-		const p = playerAt(state, view);
+		// docs/LOCAL_PREDICTION.md LP5: as drawn (the predicted local player; the merged one otherwise).
+		const p = this.sim.getDrawnPlayer(state, view);
 		const feetX = lerp(p.prevX, p.x, alpha);
 		const feetZ = lerp(p.prevZ, p.z, alpha);
 		// The box where the shout stands now (its slide so far): one bullet pass, only while a shout shows.

@@ -1,7 +1,6 @@
 import { Controller, OnStart } from "@flamework/core";
 import { RunService, Workspace } from "@rbxts/services";
 import { CAMERA_PITCH_DEG, CAMERA_YAW_DEG, PIXELS_PER_TILE, STUDS_PER_TILE } from "shared/config";
-import { playerAt } from "shared/sim";
 import { clientStore, selectInputDevice, selectJuice } from "client/store";
 import {
 	GAME_CAMERA,
@@ -71,7 +70,8 @@ export class CameraController implements OnStart {
 				const dt = math.min(math.max(rawDt, 0), GAME_CAMERA.maxFollowDtSec);
 				// Co-op: this client's player, or the teammate it watches while spectating.
 				const index = this.sim.getViewPlayerIndex();
-				const p = playerAt(state, index);
+				// docs/LOCAL_PREDICTION.md LP5: as drawn (the predicted local player; the merged one otherwise).
+				const p = this.sim.getDrawnPlayer(state, index);
 				const alpha = this.sim.getAlpha();
 				const tx = studsX(lerp(p.prevX, p.x, alpha));
 				const tz = studsZ(lerp(p.prevZ, p.z, alpha));

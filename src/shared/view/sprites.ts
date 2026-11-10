@@ -520,6 +520,7 @@ export function archerSpriteInput(
  * The sprite input of player `playerIndex` drawn as `visualId` (their class.* theme id): the Archer's
  * (ARCHER_SPRITE.visualId) reads the bow (archerSpriteInput); every other visual exactly playerSpriteInput with the
  * sword (the Knight's choices unchanged). `swordIndex` / `bowIndex`: weaponIndex of the sword / bow (NO_WEAPON if none).
+ * `p`: the body as drawn (docs/LOCAL_PREDICTION.md LP5: the predicted local player); the merged player by default.
  */
 export function playerSpriteInputFor(
 	visualId: string,
@@ -528,8 +529,8 @@ export function playerSpriteInputFor(
 	alpha: number,
 	swordIndex: number,
 	bowIndex: number,
+	p: Readonly<PlayerState> = playerAt(state, playerIndex),
 ): PlayerSpriteInput {
-	const p = playerAt(state, playerIndex);
 	const w = weaponsAt(state, playerIndex);
 	if (visualId === ARCHER_SPRITE.visualId) {
 		return archerSpriteInput(p, w, state.tick, alpha, bowIndex, bowTimingOf(state, playerIndex));

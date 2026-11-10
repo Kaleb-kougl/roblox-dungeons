@@ -2,7 +2,7 @@ import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { RunService, Workspace } from "@rbxts/services";
 import { STUDS_PER_TILE } from "shared/config";
-import { SIM_HZ, activeBoosts, partySize, playerAt, type ActiveBoost } from "shared/sim";
+import { SIM_HZ, activeBoosts, partySize, type ActiveBoost } from "shared/sim";
 import { BOOST_KINDS, boostAuraFxId } from "shared/theme";
 import { BULLET_ART_VIEW, BULLET_VIEW, RENDER_ORDER, ReadyIds, floorStudsY, lerp, studsX, studsZ } from "shared/view";
 import {
@@ -175,7 +175,8 @@ export class BoostAuraController implements OnStart {
 				activeBoosts(state, i, this.active);
 				const count = this.active.size();
 				if (count === 0) continue;
-				const p = playerAt(state, i);
+				// docs/LOCAL_PREDICTION.md LP5: as drawn (the predicted local player; the merged one otherwise).
+				const p = this.sim.getDrawnPlayer(state, i);
 				const x = studsX(lerp(p.prevX, p.x, alpha));
 				const z = studsZ(lerp(p.prevZ, p.z, alpha));
 				for (let rank = 0; rank < count; rank++) {

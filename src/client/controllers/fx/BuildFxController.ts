@@ -240,6 +240,7 @@ export class BuildFxController implements OnStart {
 			quiet,
 			settings,
 			os.clock(),
+			this.sim.drawnPlayerOf,
 		);
 		for (const b of out.sparkBursts) this.particles.buildSparkBurst(b.x, b.z, out.burstShape, b.seed);
 		for (const b of out.phantomBursts) this.particles.buildPhantomBurst(b.x, b.z, out.phantomShape, b.seed);

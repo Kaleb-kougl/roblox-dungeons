@@ -642,7 +642,7 @@ export class DecorController implements OnStart {
 	private applyFades(dt: number, state: Readonly<SimState>): void {
 		const plan = this.scene?.plan;
 		if (plan === undefined || (this.drawn.size() === 0 && this.standIns.size() === 0)) return;
-		selectDecorFades(plan, decorFadeBodies(state, this.bodies), this.fades);
+		selectDecorFades(plan, decorFadeBodies(state, this.bodies, this.sim.drawnPlayerOf), this.fades);
 		for (const [b, pv] of this.fadeViews) {
 			const target = this.fades[b] ? 1 : 0;
 			if (pv.fade === target) continue;

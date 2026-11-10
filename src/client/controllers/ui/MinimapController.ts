@@ -824,7 +824,8 @@ export class MinimapController implements OnStart {
 		const view = this.sim.getViewPlayerIndex();
 		const n = partySize(state);
 		const left = state.party?.left;
-		const me = playerAt(state, math.clamp(view, 0, n - 1));
+		// docs/LOCAL_PREDICTION.md LP5: as drawn (the predicted local player; the merged one otherwise). The fog's sources stay merged.
+		const me = this.sim.getDrawnPlayer(state, math.clamp(view, 0, n - 1));
 		marks.selfX = lerp(me.prevX, me.x, alpha);
 		marks.selfZ = lerp(me.prevZ, me.z, alpha);
 		marks.faceX = me.faceX;

@@ -15,7 +15,6 @@ import {
 	SWORD,
 	archetypeAt,
 	partySize,
-	playerAt,
 	weaponIndex,
 	type ActorState,
 	type PlayerState,
@@ -828,7 +827,9 @@ export class ActorRenderController implements OnStart {
 		pack: ThemePack,
 		isLocal: boolean,
 	): boolean {
-		const p = playerAt(state, index);
+		// docs/LOCAL_PREDICTION.md LP5: as drawn (the predicted local player; the merged one otherwise). The look (i-frame tint), the hurt blink and
+		// death are the merged player's fields (LPD5), which the drawn player keeps.
+		const p = this.sim.getDrawnPlayer(state, index);
 		const x = studsX(lerp(p.prevX, p.x, alpha));
 		const z = studsZ(lerp(p.prevZ, p.z, alpha));
 		const floorY = floorStudsY() + ACTOR_VIEW.liftStuds;
@@ -850,7 +851,7 @@ export class ActorRenderController implements OnStart {
 			this.moveParts.push(sprite.anchor);
 			this.moveCFrames.push(new CFrame(at));
 			// docs/ARCHER.md AR12 / AR9: the Archer's set plays the bow's draw / release / stream, every other visual the sword.
-			const input = playerSpriteInputFor(view.visualId, state, index, alpha, this.sword(), this.bow());
+			const input = playerSpriteInputFor(view.visualId, state, index, alpha, this.sword(), this.bow(), p);
 			sprite.update(choosePlayerAnim(input, sprite.set), dirX, dirZ, this.basis, this.dtSec);
 			if (look !== view.look) {
 				view.look = look;

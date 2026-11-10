@@ -3,7 +3,7 @@ import { Janitor } from "@rbxts/janitor";
 import { RunService, Workspace } from "@rbxts/services";
 import { CAMERA_PITCH_DEG } from "shared/config";
 import type { JuiceSettings } from "shared/settings";
-import { IMP, MAX_ACTORS, archetypeAt, archetypeIds, archetypeIndex, partySize, playerAt } from "shared/sim";
+import { IMP, MAX_ACTORS, archetypeAt, archetypeIds, archetypeIndex, partySize } from "shared/sim";
 import {
 	BOOST_KINDS,
 	BREAKABLE_KINDS,
@@ -327,7 +327,8 @@ export class ParticleController implements OnStart, ParticleWriter {
 		this.flyIns.add(taken, reduced ? 0 : 1);
 		const state = this.sim.getContext()?.run.state;
 		if (state === undefined || taken.player < 0 || taken.player >= partySize(state)) return;
-		const me = playerAt(state, taken.player);
+		// docs/LOCAL_PREDICTION.md LP5: as drawn (the predicted local player; the merged one otherwise).
+		const me = this.sim.getDrawnPlayer(state, taken.player);
 		const r = PELLETS_VIEW.ring;
 		this.system.rings.spawn(
 			me.x,
@@ -484,7 +485,7 @@ export class ParticleController implements OnStart, ParticleWriter {
 		if (this.flyIns.size() > 0) {
 			const party = partySize(state);
 			this.flyIns.draw(this, this.pelletPowerColor, (player) =>
-				player >= 0 && player < party ? playerAt(state, player) : undefined,
+				player >= 0 && player < party ? this.sim.getDrawnPlayer(state, player) : undefined,
 			);
 		}
 		for (let i = this.used; i < this.lastUsed; i++) {

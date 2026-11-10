@@ -82,6 +82,12 @@ export const RUN_ATTRIBUTES = {
 	 * in a playtest; combinable with KV_PacingOff. Off by default.
 	 */
 	leadOff: "KV_LeadOff",
+	/**
+	 * Boolean, read at each co-op run start (docs/LOCAL_PREDICTION.md LPD6): the run's LockstepClient is built without
+	 * local prediction (your own knight is drawn at the merged state, as before LP5), for an A/B in a playtest;
+	 * combinable with KV_PacingOff / KV_LeadOff. Off by default.
+	 */
+	predictOff: "KV_PredictOff",
 } as const;
 
 /** The web build's DEFAULT_SEED (`?seed=` absent). */

@@ -33,7 +33,7 @@ import {
 	type TouchMode,
 	type TouchSnapshot,
 } from "shared/play";
-import { Button, EMPTY_INPUT, playerAt, type InputFrame, type SimState } from "shared/sim";
+import { Button, EMPTY_INPUT, playerAt, type InputFrame, type PlayerState, type SimState } from "shared/sim";
 import type { BulletBlocker } from "shared/dungeon";
 import { pointerAimFromRay } from "shared/view";
 import {
@@ -66,6 +66,11 @@ export interface TouchAimContext {
 	readonly state: SimState;
 	readonly playerIndex: number;
 	readonly blocked: BulletBlocker | undefined;
+	/**
+	 * The player as drawn (docs/LOCAL_PREDICTION.md LP5: SimController.getDrawnPlayer): the touch facing and the
+	 * auto-target aim from it. Absent: the merged player.
+	 */
+	readonly player?: Readonly<PlayerState>;
 }
 
 function keyCodeByName(): Map<string, Enum.KeyCode> {
@@ -659,7 +664,7 @@ export class InputController implements OnStart {
 
 	/** One touch frame: the controls' snapshot, with the auto-target and the draft read from the run. */
 	private touchFrame(ctx: TouchAimContext, dt: number): TouchSnapshot {
-		const me = playerAt(ctx.state, ctx.playerIndex);
+		const me = ctx.player ?? playerAt(ctx.state, ctx.playerIndex);
 		const draft = draftStatus(ctx.state, ctx.playerIndex);
 		return this.touch.frame({
 			dt,
@@ -673,6 +678,7 @@ export class InputController implements OnStart {
 					playerIndex: ctx.playerIndex,
 					blocked: ctx.blocked,
 					previousId: this.targetId,
+					player: me,
 				});
 				this.targetId = t !== undefined ? t.id : 0;
 				if (t === undefined) return undefined;

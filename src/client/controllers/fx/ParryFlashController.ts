@@ -2,7 +2,7 @@ import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { Workspace } from "@rbxts/services";
 import { currentHudFont, onLocaleChanged } from "client/ui";
-import { MAX_PARTY_SIZE, partySize, playerAt, type SimState } from "shared/sim";
+import { MAX_PARTY_SIZE, partySize, type SimState } from "shared/sim";
 import type { JuiceSettings } from "shared/settings";
 import type { ThemePack } from "shared/theme";
 import { lerp, studsX, studsZ } from "shared/view";
@@ -172,7 +172,8 @@ export class ParryFlashController implements OnStart {
 		const pack = this.pack;
 		if (slot === undefined || pack === undefined) return;
 		slot.seen = true;
-		const p = playerAt(state, flash.player);
+		// docs/LOCAL_PREDICTION.md LP5: as drawn (the predicted local player; the merged one otherwise).
+		const p = this.sim.getDrawnPlayer(state, flash.player);
 		const c = parryFlashCentre(this.centre, lerp(p.prevX, p.x, alpha), lerp(p.prevZ, p.z, alpha), AXES);
 		const size = parryFlashSize(flash.scale, flash.pop);
 		shoutBoxAt(this.box, c.x, c.z, AXES.rightX, AXES.rightZ, size);

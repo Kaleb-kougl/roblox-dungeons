@@ -10,7 +10,7 @@ import {
 	selectRunInfo,
 } from "client/store";
 import { cornerFrame, setCornerFade } from "client/ui";
-import { NO_KIND, playerAt } from "shared/sim";
+import { NO_KIND } from "shared/sim";
 import { RENDER_ORDER, floorStudsY, lerp, studsX, studsY, studsZ } from "shared/view";
 import { motionScale } from "shared/view/fx";
 import {
@@ -160,7 +160,8 @@ export class HudOcclusionController implements OnStart {
 		const floorY = floorStudsY();
 		let n = 0;
 		// The watched player (a dead co-op player watches a teammate).
-		const p = playerAt(state, this.sim.getViewPlayerIndex());
+		// docs/LOCAL_PREDICTION.md LP5: as drawn (the predicted local player; the merged one otherwise).
+		const p = this.sim.getDrawnPlayer(state, this.sim.getViewPlayerIndex());
 		n = this.push(
 			camera,
 			n,

@@ -177,6 +177,7 @@ export class FxSpriteController implements OnStart {
 				fx: this.fx.tracker.events,
 				settings: this.fx.settings(),
 				spots: this.decor.getScene(),
+				drawn: this.sim.drawnPlayerOf,
 			};
 			this.cueFrame = f;
 		} else {

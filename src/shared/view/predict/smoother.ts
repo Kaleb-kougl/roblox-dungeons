@@ -52,8 +52,8 @@ export class PredictionSmoother {
 	private lastTick = -1;
 	private lastX = 0;
 	private lastZ = 0;
-	private offsetX = 0;
-	private offsetZ = 0;
+	private offX = 0;
+	private offZ = 0;
 	private snaps = 0;
 	private corrections = 0;
 	private readonly drawn: DrawnPose = { x: 0, z: 0, faceX: 0, faceZ: 0 };
@@ -62,13 +62,13 @@ export class PredictionSmoother {
 
 	/** Snaps: no offset, nothing to glide from. Counted when it drops an offset. */
 	snap(): void {
-		if (this.offsetX !== 0 || this.offsetZ !== 0) this.snaps++;
+		if (this.offX !== 0 || this.offZ !== 0) this.snaps++;
 		this.reset();
 	}
 
 	private reset(): void {
-		this.offsetX = 0;
-		this.offsetZ = 0;
+		this.offX = 0;
+		this.offZ = 0;
 		this.lastTick = -1;
 	}
 
@@ -90,11 +90,11 @@ export class PredictionSmoother {
 				const snap = this.tunables.snapTiles;
 				if (dx * dx + dz * dz > snap * snap) {
 					this.snaps++;
-					this.offsetX = 0;
-					this.offsetZ = 0;
+					this.offX = 0;
+					this.offZ = 0;
 				} else {
-					this.offsetX += dx;
-					this.offsetZ += dz;
+					this.offX += dx;
+					this.offZ += dz;
 					this.corrections++;
 				}
 			}
@@ -109,29 +109,38 @@ export class PredictionSmoother {
 		const head = this.head;
 		if (head === undefined) return undefined;
 		const t = this.tunables;
-		if (this.offsetX !== 0 || this.offsetZ !== 0) {
+		if (this.offX !== 0 || this.offZ !== 0) {
 			const k = dt > 0 ? math.pow(0.5, dt / t.halfLifeSec) : 1;
-			this.offsetX *= k;
-			this.offsetZ *= k;
-			const d2 = this.offsetX * this.offsetX + this.offsetZ * this.offsetZ;
+			this.offX *= k;
+			this.offZ *= k;
+			const d2 = this.offX * this.offX + this.offZ * this.offZ;
 			const max = t.maxOffsetTiles;
 			if (d2 > max * max) {
 				const s = max / math.sqrt(d2);
-				this.offsetX *= s;
-				this.offsetZ *= s;
+				this.offX *= s;
+				this.offZ *= s;
 			}
 		}
 		const p = this.drawn;
-		p.x = head.prevX + (head.x - head.prevX) * alpha + this.offsetX;
-		p.z = head.prevZ + (head.z - head.prevZ) * alpha + this.offsetZ;
+		p.x = head.prevX + (head.x - head.prevX) * alpha + this.offX;
+		p.z = head.prevZ + (head.z - head.prevZ) * alpha + this.offZ;
 		p.faceX = head.faceX;
 		p.faceZ = head.faceZ;
 		return p;
 	}
 
+	/** The visual offset's components now (tiles): drawn = lerp(prev, x, alpha) + (offsetX, offsetZ). */
+	offsetX(): number {
+		return this.offX;
+	}
+
+	offsetZ(): number {
+		return this.offZ;
+	}
+
 	/** The visual offset now (tiles). */
 	offset(): number {
-		return math.sqrt(this.offsetX * this.offsetX + this.offsetZ * this.offsetZ);
+		return math.sqrt(this.offX * this.offX + this.offZ * this.offZ);
 	}
 
 	/** Snaps (a jump over snapTiles, or snap() dropping an offset) since the smoother was made. */

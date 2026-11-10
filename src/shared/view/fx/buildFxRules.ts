@@ -43,6 +43,7 @@
  *
  * No allocation in steady state: the output and its records are reused frame to frame. Presentation only.
  */
+import { drawnOrMerged, type DrawnPlayerOf } from "shared/view/predict";
 import {
 	BraceKind,
 	Duo,
@@ -510,6 +511,8 @@ function isSkewer(r: StreakRecord, duoProcs: ReadonlyArray<EffectRecord>): boole
 
 /** The build effects' per-frame director (see the file comment). One per client (BuildFxController). */
 export class BuildFxDirector {
+	/** This frame's drawn players (frame's `drawn`). */
+	private drawn: DrawnPlayerOf | undefined;
 	readonly out: BuildFxFrame;
 
 	private readonly slot: FrameSlot = {
@@ -578,7 +581,9 @@ export class BuildFxDirector {
 		quiet: boolean,
 		settings: Readonly<BuildFxSettings>,
 		clockSec: number,
+		drawn?: DrawnPlayerOf,
 	): BuildFxFrame {
+		this.drawn = drawn;
 		const out = this.slot;
 		out.sparkBursts.clear();
 		out.phantomBursts.clear();
@@ -933,7 +938,8 @@ export class BuildFxDirector {
 			for (const g of list) {
 				const age = math.max(clockSec - g.startSec, 0);
 				if (g.player >= 0) {
-					const p = playerAt(state, g.player);
+					// Rings follow their player as drawn (docs/LOCAL_PREDICTION.md LP5).
+					const p = drawnOrMerged(state, g.player, this.drawn);
 					g.x = p.x;
 					g.z = p.z;
 				}

@@ -8,7 +8,7 @@
  */
 import { TOUCH } from "shared/config";
 import { TILE_SIZE, lineOfSight, type BulletBlocker } from "shared/dungeon";
-import { NO_KIND, playerAt, type ActorState, type SimState } from "shared/sim";
+import { NO_KIND, playerAt, type ActorState, type PlayerState, type SimState } from "shared/sim";
 import { isGoldenKind } from "shared/view/golden";
 
 export interface AutoTargetQuery {
@@ -18,6 +18,8 @@ export interface AutoTargetQuery {
 	readonly blocked: BulletBlocker | undefined;
 	/** ActorState.id of the last target (0 = none): it keeps a bonus (hysteresis). */
 	readonly previousId: number;
+	/** The body to aim from (docs/LOCAL_PREDICTION.md LP5: the drawn one while predicting); absent: the merged one. */
+	readonly player?: Readonly<PlayerState>;
 }
 
 export interface AutoTarget {
@@ -28,7 +30,7 @@ export interface AutoTarget {
 
 /** The actor a centre Attack / Alt aims at (docs/MOBILE.md MBD6), or undefined. Read-only on the state. */
 export function pickAutoTarget(q: AutoTargetQuery): AutoTarget | undefined {
-	const p = playerAt(q.state, q.playerIndex);
+	const p = q.player ?? playerAt(q.state, q.playerIndex);
 	const actors = q.state.combat.actors;
 	const range = TOUCH.autoTarget.rangeTiles * TILE_SIZE;
 	const yieldRange = TOUCH.autoTarget.goldenYieldTiles * TILE_SIZE;

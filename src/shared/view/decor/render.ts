@@ -3,8 +3,9 @@
  * pieces, the fade tween, a flame's frame with its per-piece phase, a standing piece's footprint (debug), and the
  * biome's ambient emitter numbers. DecorController / DecorFxController only copy the results onto Instances.
  */
+import { drawnOrMerged, type DrawnPlayerOf } from "shared/view/predict";
 import { THEMES, type ThemeKey } from "shared/dungeon";
-import { PLAYER_RADIUS, partySize, playerAt, type SimState } from "shared/sim";
+import { PLAYER_RADIUS, partySize, type SimState } from "shared/sim";
 import type { DecorBody } from "./decor";
 import type { DecorEntry, DecorFootprint } from "./decorPlan";
 import { decorLiveBoss } from "./director";
@@ -39,14 +40,15 @@ export function decorFadeStep(current: number, target: number, dt: number, secon
 
 /**
  * The bodies tall decor must not hide this frame (selectDecorFades): every living player and the live boss, tiles,
- * written into `out` (its objects reused). Returns `out`.
+ * written into `out` (its objects reused). Returns `out`. `drawn`: the players as drawn (docs/LOCAL_PREDICTION.md LP5:
+ * the decor fades round the drawn body); absent: the merged players.
  */
-export function decorFadeBodies(state: Readonly<SimState>, out: DecorBody[]): DecorBody[] {
+export function decorFadeBodies(state: Readonly<SimState>, out: DecorBody[], drawn?: DrawnPlayerOf): DecorBody[] {
 	const pool = out as MutableBody[];
 	let n = 0;
 	const players = partySize(state);
 	for (let i = 0; i < players; i++) {
-		const p = playerAt(state, i);
+		const p = drawnOrMerged(state, i, drawn);
 		if (p.dead !== 0) continue;
 		putBody(pool, n, p.x, p.z, PLAYER_RADIUS, DECOR_VIEW.playerBodyHeightTiles);
 		n++;

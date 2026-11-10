@@ -125,9 +125,15 @@ export class WeaponViewController implements OnStart {
 		// Co-op (M4): this client's own player's weapons, or the watched teammate's while spectating (docs/SPECTATE.md).
 		const me = this.sim.getViewPlayerIndex();
 		const w = weaponsAt(s, me);
-		const p = playerAt(s, me);
+		// docs/LOCAL_PREDICTION.md LP5: drawn on the knight as drawn (the predicted local player); the weapon's state and
+		// the swing's timing stay merged. The last swing's fan moves with the knight: its sim origin shifted by how far
+		// the drawn knight is from the merged one this frame (0 when nothing is predicted).
+		const merged = playerAt(s, me);
+		const p = this.sim.getDrawnPlayer(s, me);
 		const px = lerp(p.prevX, p.x, alpha);
 		const pz = lerp(p.prevZ, p.z, alpha);
+		const shiftX = p === merged ? 0 : px - lerp(merged.prevX, merged.x, alpha);
+		const shiftZ = p === merged ? 0 : pz - lerp(merged.prevZ, merged.z, alpha);
 		const active = w.sets[w.activeSet];
 		const alive = p.dead === 0;
 
@@ -140,8 +146,8 @@ export class WeaponViewController implements OnStart {
 		if (w.swingTick >= 0 && age >= 0 && age < showTicks) {
 			sector(
 				isFinisher ? L.finisher : L.swing,
-				w.swingX,
-				w.swingZ,
+				w.swingX + shiftX,
+				w.swingZ + shiftZ,
 				w.swingDirX,
 				w.swingDirZ,
 				w.swingRadius,
@@ -154,8 +160,8 @@ export class WeaponViewController implements OnStart {
 				const from = last === 2 || isFinisher ? -half : half;
 				ray(
 					L.blade,
-					w.swingX,
-					w.swingZ,
+					w.swingX + shiftX,
+					w.swingZ + shiftZ,
 					heading(w.swingDirX, w.swingDirZ) + from - 2 * from * t,
 					0,
 					w.swingRadius,
