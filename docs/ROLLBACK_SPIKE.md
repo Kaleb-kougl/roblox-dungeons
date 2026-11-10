@@ -30,7 +30,10 @@ players' devices (Design 5-7, R3a, R4b). Revision 3 (same day): as built ("As bu
 added, the headless results filled in. Revision 4 (same day): an independent review's fixes (branch `rs-fixes`): the
 probe intake gated on the capture policy and budgeted (rows once a minute per player, bounded analytics), captures
 encoded block by block off the lockstep step, erasure tags, the live model at H, live windows' prediction counts, the
-spike out of the `shared/lockstep` barrel, the generic copy renamed `cloneForRollback` ("As built").
+spike out of the `shared/lockstep` barrel, the generic copy renamed `cloneForRollback` ("As built"). Merged into `main`
+(2026-11-09, `e298301`, fast-forwarded to `ce1d207`) on top of the Archer: the spike now carries the run's characters
+("Merged into main with the Archer"); full Lune suite on the merge: 467 spec files, the only failures the known x86
+`forge.spec` vector and the three spikes specs fixed in `ce1d207` (re-run green).
 
 | Part | State |
 |---|---|
