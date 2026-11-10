@@ -6,7 +6,8 @@
  * docs/TREASURE.md's vault runs (vaultRun.ts: the endless world with a forced VaultOverride, a start floor and an
  * optional treasure config), docs/FORTUNE.md's pact helpers (pactsBot.ts) and docs/LEGENDARIES.md LG7's legendary
  * tuning (legendaryTune.ts: Overkill TTK and chains, Bastion's defence rooms; the offer tallies in buildOffers.ts), and
- * the dense fight setup of the replay bench and the rollback spike's state copy spec (denseFight.ts).
+ * the dense fight setup of the replay bench and the rollback spike's state copy spec (denseFight.ts), and the rollback
+ * spike's noisy party bot (noisyBot.ts: drifting aim, tapped attacks, random rolls).
  */
 export * from "./endlessBot";
 export * from "./partyBot";
@@ -19,3 +20,4 @@ export * from "./vaultRun";
 export * from "./pactsBot";
 export * from "./legendaryTune";
 export * from "./denseFight";
+export * from "./noisyBot";
