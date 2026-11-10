@@ -10,7 +10,7 @@ import { recordPartyRun } from "shared/run/testing";
 import { createSimState, hashState, stepParty, type InputFrame, type Recording } from "shared/sim";
 import {
 	ROLLBACK_ANALYTICS_EVENT,
-	ROLLBACK_LIVE_METRICS,
+	ROLLBACK_ANALYTICS_LIVE_METRICS,
 	Base64Stream,
 	RollbackCaptureRecorder,
 	analyticsForLiveSummary,
@@ -32,7 +32,8 @@ import {
 	rollbackHorizonLabel,
 	rollbackModeHorizon,
 	rollbackModeHorizonValues,
-	rollbackProbeKey,
+	rollbackProbeAllowed,
+	rollbackProbeRowKey,
 	type RollbackCaptureInfo,
 	type RollbackCaptureSetup,
 } from ".";
@@ -197,10 +198,16 @@ describe("readLiveSummary", () => {
 		for (const [key, value] of bad) expect(readLiveSummary(withField(live(), key, value))).toBe(undefined);
 	});
 
-	it("logs one RollbackProbe per metric, none for an empty window", () => {
+	it("logs one RollbackProbe per gate metric, none for an empty window", () => {
 		const s = readLiveSummary(live())!;
 		const specs = analyticsForLiveSummary(s);
-		expect(specs.size()).toBe(ROLLBACK_LIVE_METRICS.size());
+		expect(specs.size()).toBe(ROLLBACK_ANALYTICS_LIVE_METRICS.size());
+		expect(ROLLBACK_ANALYTICS_LIVE_METRICS.size()).toBe(4);
+		const values = new Map<string, number>();
+		for (const e of specs) if (e.kind === "custom") values.set(e.fields?.field01 ?? "", e.value);
+		expect(values.get("enemyCorr050")).toBe(6);
+		expect(values.get("mateCorr100")).toBe(2);
+		expect(values.get("phantomBullet")).toBe(0);
 		for (const e of specs) {
 			expect(e.kind === "custom" && e.name).toBe(ROLLBACK_ANALYTICS_EVENT.probe);
 			if (e.kind === "custom") {
@@ -224,8 +231,8 @@ describe("buckets, keys and the capture gate", () => {
 	});
 
 	it("keys fit DataStore's 50 characters", () => {
-		expect(rollbackProbeKey("live", SESSION, 99999)).toBe(`${SESSION}/live/99999`);
-		expect(rollbackProbeKey("live", SESSION, 99999).size() <= 50).toBe(true);
+		expect(rollbackProbeRowKey(SESSION, 99999)).toBe(`${SESSION}/99999`);
+		expect(rollbackProbeRowKey(SESSION, 9999999).size() <= 50).toBe(true);
 		const run = "{0f8e2a6c-1d3b-4c5e-9a7f-112233445566}";
 		expect(rollbackCaptureMetaKey(run).size() <= 50).toBe(true);
 		expect(rollbackCaptureChunkKey(run, 63)).toBe(`${run}/63`);
@@ -247,6 +254,14 @@ describe("buckets, keys and the capture gate", () => {
 		expect(rollbackCaptureAllowed({ ...base, memberIds: [50, 51], privateServerOwnerId: 50 }, policy)).toBe(false);
 		expect(rollbackCaptureAllowed({ ...base, memberIds: [50], studio: true }, policy)).toBe(true);
 		expect(rollbackCaptureAllowed(base, { ...policy, enabled: false })).toBe(false);
+		// The same rule per player for the probe intake (and the client's KV_RollbackAllowed attribute).
+		const one = { studio: false, userId: 11, privateServerOwnerId: 0, creatorId: 99, creatorIsUser: true };
+		expect(rollbackProbeAllowed(one, policy)).toBe(true);
+		expect(rollbackProbeAllowed({ ...one, userId: 99 }, policy)).toBe(true);
+		expect(rollbackProbeAllowed({ ...one, userId: 50 }, policy)).toBe(false);
+		expect(rollbackProbeAllowed({ ...one, userId: 50, privateServerOwnerId: 12 }, policy)).toBe(true);
+		expect(rollbackProbeAllowed({ ...one, userId: 50, studio: true }, policy)).toBe(true);
+		expect(rollbackProbeAllowed(one, { ...policy, enabled: false })).toBe(false);
 	});
 });
 

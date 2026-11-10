@@ -12,9 +12,12 @@
  *   GET  /    {"ok":true,...}: the plugin's reachability check
  *   POST /    {"kind":"capture","runId":"<id>","meta":{...},"chunks":["...",...]}
  *             -> captures/<runId>.json = { runId, meta, chunks, receivedAt } (rewritten on every pull)
- *   POST /    {"kind":"probe","rows":[{"key":"<sessionId>/<kind>/<windowIndex>","value":{...}},...]}
- *             -> one line per new key appended to captures/probe/<kind>.jsonl = { key, row } (kind cpu / live;
- *             a key already in the file is skipped, so pulling twice adds nothing)
+ *   POST /    {"kind":"probe","rows":[{"key":"<writerId>/<n>","value":{...}},...]}
+ *             -> one line per summary appended to captures/probe/<kind>.jsonl = { key, row }: a v2 row (shared/spikes
+ *             RollbackProbeRow: one player's summaries of up to a minute, `cpu` / `live` lists) becomes one line per
+ *             summary, key "<writerId>/<n>/<kind>/<i>", row { v, kind, at, placeVersion, summary }; a v1 row (one
+ *             window, `kind` + `summary`, key "<sessionId>/<kind>/<windowIndex>") one line as it is. A key already in
+ *             the file is skipped, so pulling twice adds nothing.
  * The capture is stored exactly as the DataStore holds it: shared/spikes decodeCapture(meta, chunks) reads it.
  *
  * The default port is shared/spikes ROLLBACK_CAPTURE.receiverPort, duplicated here as a literal (and in the plugin);
@@ -127,6 +130,24 @@ function createReceiver({ outDir = DEFAULT_OUT, maxBodyBytes = MAX_BODY_BYTES, l
 		return { ok: true, file };
 	}
 
+	/** A stored row as its lines: [{ kind, key, row }], or undefined (refused). */
+	function linesOf(key, value) {
+		if (typeof key !== "string" || key.length > 50 || value === null || typeof value !== "object") return undefined;
+		if (value.v === 1) return PROBE_KINDS.has(value.kind) ? [{ kind: value.kind, key, row: value }] : undefined;
+		if (value.v !== 2) return undefined;
+		const out = [];
+		for (const kind of PROBE_KINDS) {
+			const list = value[kind];
+			if (list === undefined) continue;
+			if (!Array.isArray(list)) return undefined;
+			list.forEach((summary, i) => {
+				const row = { v: value.v, kind, at: value.at, placeVersion: value.placeVersion, summary };
+				out.push({ kind, key: `${key}/${kind}/${i}`, row });
+			});
+		}
+		return out;
+	}
+
 	function probe(body) {
 		const { rows } = body;
 		if (!Array.isArray(rows) || rows.length > MAX_ROWS) throw new RequestError(400, "bad rows");
@@ -135,23 +156,23 @@ function createReceiver({ outDir = DEFAULT_OUT, maxBodyBytes = MAX_BODY_BYTES, l
 		let rejected = 0;
 		const lines = new Map();
 		for (const r of rows) {
-			const key = r && r.key;
-			const value = r && r.value;
-			const kind = value && typeof value === "object" ? value.kind : undefined;
-			if (typeof key !== "string" || key.length > 50 || !PROBE_KINDS.has(kind)) {
+			const entries = linesOf(r && r.key, r && r.value);
+			if (entries === undefined) {
 				rejected++;
 				continue;
 			}
-			const file = path.join(outDir, "probe", `${kind}.jsonl`);
-			const keys = keysOf(file);
-			if (keys.has(key)) {
-				duplicates++;
-				continue;
+			for (const { kind, key, row } of entries) {
+				const file = path.join(outDir, "probe", `${kind}.jsonl`);
+				const keys = keysOf(file);
+				if (keys.has(key)) {
+					duplicates++;
+					continue;
+				}
+				keys.add(key);
+				if (!lines.has(file)) lines.set(file, []);
+				lines.get(file).push(JSON.stringify({ key, row }));
+				written++;
 			}
-			keys.add(key);
-			if (!lines.has(file)) lines.set(file, []);
-			lines.get(file).push(JSON.stringify({ key, row: value }));
-			written++;
 		}
 		for (const [file, list] of lines) {
 			fs.mkdirSync(path.dirname(file), { recursive: true });

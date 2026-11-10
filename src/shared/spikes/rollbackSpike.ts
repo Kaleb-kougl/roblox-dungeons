@@ -20,11 +20,22 @@ import { MAX_PARTY_SIZE } from "shared/sim";
  * scripts/rollback/receive-captures.test.js checks they match these.
  */
 export const ROLLBACK_CAPTURE = table.freeze({
-	/** Workspace attribute (boolean, server): captures co-op runs and takes probe / live summaries. Off by default. */
+	/**
+	 * Workspace attribute (boolean, server): captures co-op runs and takes probe / live summaries (Studio included).
+	 * Off by default.
+	 */
 	attribute: SPIKE_ATTRIBUTES.rollbackCapture,
+	/**
+	 * Player attribute the server sets (true) on every player whose summaries it takes (rollbackProbeAllowed, while the
+	 * switch is on); the client's probe runs only for such a player.
+	 */
+	probeAllowedAttribute: "KV_RollbackAllowed",
 	/** DataStore of captured co-op runs: `<runId>/meta` (RollbackCaptureMeta) and `<runId>/<i>` (chunk i, a string). */
 	captureStore: "KV_RollbackCapture_v1",
-	/** DataStore of probe windows: `<sessionId>/<kind>/<windowIndex>` (RollbackProbeRow). */
+	/**
+	 * DataStore of probe rows: `<writerId>/<n>` (RollbackProbeRow, one per player per minute at most: that minute's
+	 * summaries). The writer id is the server's (one GUID per player per server), never the client's session id.
+	 */
 	probeStore: "KV_RollbackProbe_v1",
 	/**
 	 * Characters per chunk. A DataStore value is at most 4 MB (4,194,304 bytes, JSON encoded); a chunk is base64 text
@@ -66,10 +77,39 @@ export const ROLLBACK_CAPTURE = table.freeze({
 export type RollbackProbeKind = "cpu" | "live";
 export const ROLLBACK_PROBE_KINDS: ReadonlyArray<RollbackProbeKind> = ["cpu", "live"];
 
-/** Per player and kind, sliding window (shared/run SlidingWindowLimiter): a CPU window every 10 s, a live one a minute. */
+/**
+ * Per player, sliding windows (shared/run SlidingWindowLimiter), checked before anything is read or logged: a CPU
+ * window every 10 s and a live one a minute (with slack), and `refused`: the warnings a player's refused payloads may
+ * print (unknown kind, malformed, not allowed, a session id another player owns), the rest dropped silently.
+ */
 export const ROLLBACK_PROBE_RATE = table.freeze({
 	cpu: table.freeze({ count: 12, windowSeconds: 60 }),
 	live: table.freeze({ count: 3, windowSeconds: 60 }),
+	refused: table.freeze({ count: 3, windowSeconds: 60 }),
+});
+
+/**
+ * The analytics budget per player (published places only), in summaries a sliding window, each logged whole or not at
+ * all: a CPU window logs 1 event (RollbackCpu), a live window ROLLBACK_ANALYTICS_LIVE_METRICS.size() (4: RollbackProbe).
+ * So at most 7 x 1 + 2 x 4 = 15 events in any minute and about 6 + 4 = 10 a minute sustained per player.
+ */
+export const ROLLBACK_ANALYTICS_RATE = table.freeze({
+	cpu: table.freeze({ count: 7, windowSeconds: 60 }),
+	live: table.freeze({ count: 2, windowSeconds: 120 }),
+});
+
+/**
+ * Probe rows (KV_RollbackProbe_v1): a player's summaries are buffered and written as ONE row (SetAsync of a new key)
+ * once the oldest has waited writeEverySeconds, so a player writes at most one row a minute (plus one when they leave
+ * or the server closes). A row holds at most maxPerRow summaries of each kind (more are dropped and counted). A write
+ * is skipped (the row dropped, logged) while the server's SetIncrementAsync budget is under budgetReserve, which keeps
+ * the game's own saves (records, settings, onboarding) first. The service polls for due rows every pollSeconds.
+ */
+export const ROLLBACK_PROBE_ROWS = table.freeze({
+	writeEverySeconds: 60,
+	pollSeconds: 5,
+	maxPerRow: table.freeze({ cpu: 24, live: 6 }),
+	budgetReserve: 20,
 });
 
 /** The readers' bounds. Numbers outside them (or not finite) drop the whole payload. */
@@ -150,11 +190,23 @@ export const ROLLBACK_LIVE_METRICS = [
 ] as const;
 export type RollbackLiveMetric = (typeof ROLLBACK_LIVE_METRICS)[number];
 
+/**
+ * The live metrics a live window logs to AnalyticsService (RollbackProbe's field01): the four the proposed gates read
+ * (docs/ROLLBACK_SPIKE.md Gates: enemy corrections >= 0.5 tile, undone kills, phantom bullets, teammate corrections
+ * >= 1 tile). Every metric stays in the server log line and the probe row.
+ */
+export const ROLLBACK_ANALYTICS_LIVE_METRICS: ReadonlyArray<RollbackLiveMetric> = [
+	"enemyCorr050",
+	"undoneKill",
+	"phantomBullet",
+	"mateCorr100",
+];
+
 /** Custom event names (two of Roblox's 100; shared/onboarding analyticsCatalog lists them). */
 export const ROLLBACK_ANALYTICS_EVENT = {
 	/** One CPU window: value = total ms p95; device class, mode + H bucket, case. */
 	cpu: "RollbackCpu",
-	/** One live metric of one window: value = per minute; metric, device class, H bucket. */
+	/** One gate metric of one live window: value = per minute; metric, device class, H bucket. */
 	probe: "RollbackProbe",
 } as const;
 
@@ -273,19 +325,24 @@ export interface LiveSummary {
 	readonly deviceClass: RollbackDeviceClass;
 }
 
-/** One `KV_RollbackProbe_v1` row: a re-read summary and when / where the server took it. */
+/**
+ * One `KV_RollbackProbe_v1` row: one player's re-read summaries of up to a minute, in arrival order, and when / where
+ * the server wrote them. The receiver (scripts/rollback/receive-captures.js) turns each summary into its own line.
+ */
 export interface RollbackProbeRow {
 	readonly v: number;
-	readonly kind: RollbackProbeKind;
-	/** Unix seconds. */
+	/** Unix seconds of the write. */
 	readonly at: number;
 	/** game.PlaceVersion (0 in Studio). */
 	readonly placeVersion: number;
-	readonly summary: ProbeSummary | LiveSummary;
+	readonly cpu: ReadonlyArray<ProbeSummary>;
+	readonly live: ReadonlyArray<LiveSummary>;
+	/** Summaries over maxPerRow that were dropped from this row. */
+	readonly dropped: number;
 }
 
-/** The probe row format version. */
-export const ROLLBACK_PROBE_ROW_VERSION = 1;
+/** The probe row format version (1: one row per window keyed by the client's session id; 2: rows per minute). */
+export const ROLLBACK_PROBE_ROW_VERSION = 2;
 
 // ---------------------------------------------------------------------------------------------
 // Readers
@@ -521,10 +578,9 @@ export function liveMetricPerMinute(s: Readonly<LiveSummary>, metric: RollbackLi
 // ---------------------------------------------------------------------------------------------
 // Keys
 
-/** `<sessionId>/<kind>/<windowIndex>`: one probe row (a session's rows list by the `<sessionId>/` prefix). */
-export function rollbackProbeKey(kind: RollbackProbeKind, sessionId: string, windowIndex: number): string {
-	const sep = ROLLBACK_CAPTURE.keySeparator;
-	return `${sessionId}${sep}${kind}${sep}${windowIndex}`;
+/** `<writerId>/<n>`: a player's n-th probe row on one server (a writer's rows list by the `<writerId>/` prefix). */
+export function rollbackProbeRowKey(writerId: string, n: number): string {
+	return `${writerId}${ROLLBACK_CAPTURE.keySeparator}${n}`;
 }
 
 /** `<runId>/meta`: a capture's meta (written last, so its presence means every chunk is in). */
@@ -552,10 +608,38 @@ export interface RollbackCaptureFacts {
 	readonly creatorIsUser: boolean;
 }
 
+/** What the probe intake's gate reads about the server and one player. */
+export interface RollbackProbeFacts {
+	readonly studio: boolean;
+	readonly userId: number;
+	readonly privateServerOwnerId: number;
+	readonly creatorId: number;
+	readonly creatorIsUser: boolean;
+}
+
+/**
+ * The capture policy for one player (the probe intake, and the client probe through the server's
+ * probeAllowedAttribute): Studio, a player who may use developer mode, or anyone in a private server whose owner may.
+ * The same rule as rollbackCaptureAllowed, which takes a party when every member passes it (or the owner does).
+ */
+export function rollbackProbeAllowed(facts: Readonly<RollbackProbeFacts>, policy?: Readonly<DevAccessPolicy>): boolean {
+	return rollbackCaptureAllowed(
+		{
+			studio: facts.studio,
+			memberIds: [facts.userId],
+			privateServerOwnerId: facts.privateServerOwnerId,
+			creatorId: facts.creatorId,
+			creatorIsUser: facts.creatorIsUser,
+		},
+		policy,
+	);
+}
+
 /**
  * Design 6: a party run is captured (with the switch on) in Studio, when every member may use developer mode
  * (shared/devmode devModeAllowed: a listed UserId or the user-owned place's creator), or in a private server whose
- * owner may (a developer's playtest server with friends on their own connections).
+ * owner may (deliberately: R5's playtest is a developer's private server with friends on their own connections, whose
+ * inputs are the answer; every capture and probe row is written with its players' UserIds for erasure).
  */
 export function rollbackCaptureAllowed(
 	facts: Readonly<RollbackCaptureFacts>,
@@ -626,14 +710,15 @@ export function analyticsForProbeSummary(s: Readonly<ProbeSummary>): AnalyticsEv
 }
 
 /**
- * One live window's events: `RollbackProbe` per metric (every metric, zeros included, so a dashboard's mean is over
- * every window), value = per minute of the window's play; metric, device class, H label. An empty window logs none.
+ * One live window's events: `RollbackProbe` per gate metric (ROLLBACK_ANALYTICS_LIVE_METRICS, zeros included, so a
+ * dashboard's mean is over every window), value = per minute of the window's play; metric, device class, H label. An
+ * empty window logs none.
  */
 export function analyticsForLiveSummary(s: Readonly<LiveSummary>): AnalyticsEventSpec[] {
 	const out: AnalyticsEventSpec[] = [];
 	if (s.seconds <= 0) return out;
 	const h = rollbackHorizonLabel(s.horizon);
-	for (const metric of ROLLBACK_LIVE_METRICS) {
+	for (const metric of ROLLBACK_ANALYTICS_LIVE_METRICS) {
 		out.push({
 			kind: "custom",
 			name: ROLLBACK_ANALYTICS_EVENT.probe,

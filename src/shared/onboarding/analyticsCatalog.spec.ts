@@ -15,9 +15,9 @@ import {
 } from "shared/run";
 import { TUTORIAL_DEVICES, TUTORIAL_STEPS } from "shared/tutorial";
 import {
+	ROLLBACK_ANALYTICS_LIVE_METRICS,
 	ROLLBACK_DEVICE_CLASSES,
 	ROLLBACK_GUESS_STRATEGIES,
-	ROLLBACK_LIVE_METRICS,
 	ROLLBACK_PROBE_CASES,
 	ROLLBACK_PROBE_MODES,
 	ROLLBACK_ANALYTICS_EVENT,
@@ -299,10 +299,11 @@ describe("rollback spike events stay inside the catalog", () => {
 					expectInCatalog(analyticsForLiveSummary(l));
 				}
 			}
-		// 4 device classes x (2 modes x 5 H buckets) x 4 cases; 20 metrics x 4 device classes x 5 H buckets.
+		// 4 device classes x (2 modes x 5 H buckets) x 4 cases; 4 gate metrics x 4 device classes x 5 H buckets.
 		expect(analyticsEntryCombinations(analyticsCatalogEntry("custom", ROLLBACK_ANALYTICS_EVENT.cpu)!)).toBe(160);
+		expect(ROLLBACK_ANALYTICS_LIVE_METRICS.size()).toBe(4);
 		expect(analyticsEntryCombinations(analyticsCatalogEntry("custom", ROLLBACK_ANALYTICS_EVENT.probe)!)).toBe(
-			ROLLBACK_LIVE_METRICS.size() * 4 * 5,
+			ROLLBACK_ANALYTICS_LIVE_METRICS.size() * 4 * 5,
 		);
 	});
 });
