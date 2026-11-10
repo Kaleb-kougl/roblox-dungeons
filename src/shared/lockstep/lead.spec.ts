@@ -1,9 +1,13 @@
-// The co-op input lead from measured trips (docs/FRAME_PACING.md Revision 2, FP10): the LeadController on synthetic
-// trip traces. A client steps and sends at 60 Hz and the server echoes every broadcast (30 a second) with a chosen net
-// trip; the lead holds at ceil(p95 + margin) on a steady network, follows a step up in the same echo and a step down
-// within the window + hold + a fall step per tick, ignores a single unflagged outlier, bumps a late to its own trip,
-// never bounces with the p95 near a tick boundary, warms up on the max, and runs the legacy miss counter exactly while
-// no echo arrives (before the first, and after the echo timeout, resuming on the next echo).
+// The co-op input lead from measured trips (docs/FRAME_PACING.md Revision 2, FP10; Revision 3, FP18): the
+// LeadController on synthetic trip traces. A client steps and sends at 60 Hz and the server echoes every broadcast (30 a
+// second) with a chosen net trip. Revision 2's rule (`lateBump: true`, KV_LeadBump; no ceiling: no cover), its cases
+// unchanged: the lead holds at ceil(p95 + margin) on a steady network, follows a step up in the same echo and a step
+// down within the window + hold + a fall step per tick, ignores a single unflagged outlier, bumps a late to its own
+// trip, never bounces with the p95 near a tick boundary, warms up on the max, and runs the legacy miss counter exactly
+// while no echo arrives (before the first, and after the echo timeout, resuming on the next echo). Revision 3's
+// defaults (`LEAD`: no bump, the capped cover with the prediction cap as the ceiling): a late moves the lead only
+// through the p95 / p99, the cover rises to and stops at the ceiling less the depth and follows it, no ceiling = the
+// base alone, a step up is still followed at once, the fall is unchanged.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { Rng, SIM_HZ } from "shared/sim";
 import {
@@ -13,10 +17,16 @@ import {
 	LEAD,
 	LeadController,
 	MAX_INPUT_LEAD_TICKS,
+	PREDICTION,
+	type LeadTunables,
 } from "shared/lockstep";
 
 const MIN_LEAD = INPUT_DELAY_TICKS;
 const MAX_LEAD = MAX_INPUT_LEAD_TICKS;
+/** Revision 2's rule (KV_LeadBump): every late not excused bumps; Revision 2's cases run on it unchanged. */
+const REV2: LeadTunables = { ...LEAD, lateBump: true };
+/** The cover's ceiling LockstepClient passes (the prediction cap). */
+const CEILING = PREDICTION.maxTicks;
 
 interface TraceOptions {
 	readonly seconds: number;
@@ -34,6 +44,8 @@ interface TraceOptions {
 	readonly matched?: (t: number) => boolean;
 	/** Called after every frame. */
 	readonly onFrame?: (trace: Trace) => void;
+	/** The pacing depth (whole ticks) at time t: the lead adds it to the target, the record carries it (default 0). */
+	readonly depth?: (t: number) => number;
 }
 
 /** A client at 60 fps stepping one tick a frame, the controller driven as LockstepClient will drive it. */
@@ -49,10 +61,11 @@ class Trace {
 	private latesFrom = 0;
 	private bumpsFrom = 0;
 	private readonly sentAt = new Map<number, number>();
+	private readonly depthAt = new Map<number, number>();
 	private prevLead: number;
 
-	constructor(decay: number = INPUT_LEAD_DECAY_TICKS) {
-		this.ctl = new LeadController(LEAD, MIN_LEAD, MAX_LEAD, decay);
+	constructor(decay: number = INPUT_LEAD_DECAY_TICKS, tunables: LeadTunables = REV2, ceiling?: number) {
+		this.ctl = new LeadController(tunables, MIN_LEAD, MAX_LEAD, decay, ceiling);
 		this.prevLead = this.ctl.lead();
 	}
 
@@ -69,17 +82,19 @@ class Trace {
 			const now = this.now();
 			ctl.deadline(opts.matched === undefined || opts.matched(now), now);
 			this.tick++;
-			const target = this.tick + ctl.lead();
+			const depth = opts.depth !== undefined ? opts.depth(now) : 0;
+			const target = this.tick + ctl.lead() + depth;
 			if (target > this.lastTarget) {
-				ctl.sent(target, this.tick, 0, opts.hitched !== undefined && opts.hitched(now));
+				ctl.sent(target, this.tick, depth, opts.hitched !== undefined && opts.hitched(now), depth);
 				this.sentAt.set(target, this.tick);
+				this.depthAt.set(target, depth);
 				this.lastTarget = target;
 			}
 			if (this.frames % every === 0) {
 				ctl.received(now);
 				if (opts.echoes !== false) {
 					const x = this.lastTarget;
-					const slack = x - (this.sentAt.get(x) ?? x) - opts.trip(now);
+					const slack = x - (this.sentAt.get(x) ?? x) - (this.depthAt.get(x) ?? 0) - opts.trip(now);
 					const late = opts.late !== undefined ? opts.late(now, slack) : slack <= 0;
 					ctl.echoed({ tick: x, slack, lates: late ? 1 : 0 }, now);
 				}
@@ -129,9 +144,9 @@ function jittered(rng: Rng, centre: number, spread: number): number {
 	return centre + (rng.next() * 2 - 1) * spread;
 }
 
-describe("LeadController", () => {
+describe("LeadController, Revision 2's rule (lateBump: true, no ceiling)", () => {
 	it("measures a trip as the lead sent with, minus the slack, minus the buffer depth", () => {
-		const ctl = new LeadController(LEAD, MIN_LEAD, MAX_LEAD, INPUT_LEAD_DECAY_TICKS);
+		const ctl = new LeadController(REV2, MIN_LEAD, MAX_LEAD, INPUT_LEAD_DECAY_TICKS);
 		expect(ctl.lead()).toBe(MIN_LEAD);
 		expect(ctl.echoing()).toBe(false);
 		ctl.sent(100, 90, 1.5, false);
@@ -407,7 +422,7 @@ describe("LeadController", () => {
 
 	it("without an echo runs exactly the legacy miss counter (client.ts checkDeadline)", () => {
 		const decay = 10;
-		const ctl = new LeadController(LEAD, MIN_LEAD, MAX_LEAD, decay);
+		const ctl = new LeadController(REV2, MIN_LEAD, MAX_LEAD, decay);
 		// checkDeadline, reimplemented.
 		let lead = MIN_LEAD;
 		let clean = 0;
@@ -544,7 +559,7 @@ describe("LeadController", () => {
 	});
 
 	it("keeps a bounded ring of send records: a server that never echoes cannot grow it", () => {
-		const ctl = new LeadController(LEAD, MIN_LEAD, MAX_LEAD, INPUT_LEAD_DECAY_TICKS);
+		const ctl = new LeadController(REV2, MIN_LEAD, MAX_LEAD, INPUT_LEAD_DECAY_TICKS);
 		const n = 100000;
 		for (let target = 0; target < n; target++) ctl.sent(target, target - 5, 0, false);
 		const newest = n - 1;
@@ -567,7 +582,7 @@ describe("LeadController", () => {
 	});
 
 	it("ignores non-finite input and a clock that goes back", () => {
-		const ctl = new LeadController(LEAD, MIN_LEAD, MAX_LEAD, INPUT_LEAD_DECAY_TICKS);
+		const ctl = new LeadController(REV2, MIN_LEAD, MAX_LEAD, INPUT_LEAD_DECAY_TICKS);
 		ctl.sent(0 / 0, 1, 0, false);
 		ctl.echoed({ tick: 0 / 0, slack: 1, lates: 0 / 0 }, 1);
 		ctl.frame(0 / 0);
@@ -585,7 +600,7 @@ describe("LeadController", () => {
 	});
 });
 
-describe("LeadController: echoes that do not measure the network (review fixes)", () => {
+describe("LeadController, Revision 2's rule: echoes that do not measure the network (review fixes)", () => {
 	/** A controller echoing steady 6-tick trips for 10 s at 60 fps (one echo per broadcast). */
 	function steady(): Trace {
 		const trace = new Trace();
@@ -656,5 +671,321 @@ describe("LeadController: echoes that do not measure the network (review fixes)"
 		}
 		expect(offAfter).toBeDefined();
 		expect(math.abs(offAfter! - LEAD.echoTimeoutSec) <= 2 * step).toBe(true);
+	});
+});
+
+describe("LeadController, Revision 3's defaults: no bump, the capped cover (FP18)", () => {
+	/** A late of `trip` ticks echoed now, for a tick sent now (it joins both windows like any other trip). */
+	function lateNow(trace: Trace, trip: number): void {
+		const ctl = trace.ctl;
+		const target = trace.lastTarget + 1;
+		trace.lastTarget = target;
+		ctl.sent(target, trace.tick, 0, false);
+		ctl.echoed({ tick: target, slack: target - trace.tick - trip, lates: 1 }, trace.now());
+	}
+
+	it("LEAD's defaults: no bump, a 15 s cover at p99", () => {
+		expect([LEAD.lateBump, LEAD.coverWindowSec, LEAD.coverPercentile]).toEqual([false, 15, 0.99]);
+		expect(CEILING).toBe(20);
+	});
+
+	it("a late does not move the lead unless its trip moves the p95 / p99: one burst sample in 15 s moves nothing", () => {
+		const rng = new Rng(17);
+		const trip = () => jittered(rng, 6, 1);
+		const trace = new Trace(INPUT_LEAD_DECAY_TICKS, LEAD, CEILING);
+		trace.run({ seconds: LEAD.coverWindowSec + 2, trip, late: () => false });
+		const lead = trace.ctl.lead();
+		expect(lead).toBe(expectedTarget(trace.ctl.stats().tripP95 ?? 0));
+		const before = trace.ctl.stats();
+		expect(before.samples >= (LEAD.windowSec * SIM_HZ) / BROADCAST_EVERY_TICKS - 1).toBe(true);
+		trace.resetCounts();
+		// One burst sample: 15 ticks, late. 1 of ~450 cover trips, 1 of ~150 base trips: neither quantile moves.
+		lateNow(trace, 15);
+		let s = trace.ctl.stats();
+		expect(s.lead).toBe(lead);
+		expect(s.coverTarget).toBe(before.coverTarget);
+		expect(s.baseTarget).toBe(before.baseTarget);
+		expect(s.tripMax).toBe(15);
+		expect(trace.lates()).toBe(1);
+		expect(trace.bumps()).toBe(0);
+		// Nor for the whole cover window after it.
+		let maxLead = 0;
+		trace.run({
+			seconds: LEAD.coverWindowSec + 1,
+			trip,
+			late: () => false,
+			onFrame: (t) => {
+				maxLead = math.max(maxLead, t.ctl.lead());
+			},
+		});
+		expect(maxLead).toBe(lead);
+		expect(trace.changes).toBe(0);
+
+		// The same late under Revision 2's rule bumps to its own trip at once.
+		const rev2 = new Trace();
+		rev2.run({ seconds: LEAD.coverWindowSec + 2, trip, late: () => false });
+		rev2.resetCounts();
+		lateNow(rev2, 15);
+		expect(rev2.ctl.lead()).toBe(expectedTarget(15));
+		expect(rev2.bumps()).toBe(1);
+
+		// Five such lates within a second move the cover's p99 (1 % of ~450 is ~4.5): the lead rises to the cover's
+		// target the same echo, never a bump, and holds for the cover window (the p95 never moved).
+		trace.resetCounts();
+		const coverBefore = trace.ctl.stats().coverP99 ?? 0;
+		const leads: number[] = [];
+		for (let k = 0; k < 5; k++) {
+			lateNow(trace, 15);
+			leads.push(trace.ctl.lead());
+			trace.run({ seconds: 0.1, trip, late: () => false });
+		}
+		s = trace.ctl.stats();
+		print(
+			`[lead] five 15-tick lates: leads ${leads.join(",")} (p99 ${f2(coverBefore)} -> ${f2(s.coverP99 ?? 0)}, ` +
+				`base ${s.baseTarget}t cover ${s.coverTarget}t cap ${s.ceiling}t)`,
+		);
+		expect(leads[3]).toBe(lead);
+		expect(leads[4]).toBe(expectedTarget(15));
+		expect(s.coverP99).toBe(15);
+		expect(s.baseTarget).toBe(lead);
+		expect(s.target).toBe(expectedTarget(15));
+		expect(trace.bumps()).toBe(0);
+		expect(trace.lates()).toBe(5);
+		trace.run({ seconds: LEAD.coverWindowSec - 2, trip, late: () => false });
+		expect(trace.ctl.lead()).toBe(expectedTarget(15));
+		// Gone once they leave the cover window: the hold and the fall steps (Revision 2's) bring it back.
+		trace.run({ seconds: 6, trip, late: () => false });
+		s = trace.ctl.stats();
+		expect(s.lead).toBe(s.fallTarget);
+		expect(s.lead <= lead + 1).toBe(true);
+	});
+
+	/** 32 of 33 trips at 6 ticks, every 33rd at 30: the p95 (top 5 % of ~150) stays 6, the p99 (top 1 % of ~450) is 30. */
+	function rareSlow(): (t: number) => number {
+		let k = 0;
+		return () => {
+			k++;
+			return k % 33 === 0 ? 30 : 6;
+		};
+	}
+
+	it("the cover rises to and stops at the ceiling less the depth, and follows a depth change", () => {
+		const trip = rareSlow();
+		let depth = 0;
+		const trace = new Trace(INPUT_LEAD_DECAY_TICKS, LEAD, CEILING);
+		let worstEffective = 0;
+		const onFrame = (t: Trace) => {
+			if (t.now() > LEAD.coverWindowSec) worstEffective = math.max(worstEffective, t.ctl.lead() + depth);
+		};
+		trace.run({ seconds: LEAD.coverWindowSec + 5, trip, depth: () => depth, late: () => false, onFrame });
+		let s = trace.ctl.stats();
+		print(
+			`[lead] cover at depth 0: lead ${s.lead} (base ${s.baseTarget} cover ${s.coverTarget} cap ${s.ceiling},` +
+				` p95 ${f2(s.tripP95 ?? 0)} p99 ${f2(s.coverP99 ?? 0)})`,
+		);
+		expect(s.tripP95).toBe(6);
+		expect(s.coverP99).toBe(30);
+		expect(s.baseTarget).toBe(expectedTarget(6));
+		expect(s.coverTarget).toBe(expectedTarget(30));
+		expect(s.ceiling).toBe(CEILING);
+		expect(s.target).toBe(CEILING);
+		expect(s.lead).toBe(CEILING);
+		expect(s.bumps).toBe(0);
+		// A deeper buffer: the ceiling falls tick for tick, the lead follows it down (the fall's own pace).
+		depth = 4;
+		trace.run({ seconds: 3, trip, depth: () => depth, late: () => false, onFrame });
+		s = trace.ctl.stats();
+		expect(s.ceiling).toBe(CEILING - 4);
+		expect(s.target).toBe(CEILING - 4);
+		expect(s.lead).toBe(CEILING - 4);
+		// A shallower one: the lead rises to the new ceiling at once, as soon as a send carries the new depth (the
+		// targets the 3 ticks of depth already covered are not sent again).
+		depth = 1;
+		let raisedAt: number | undefined;
+		const shallowFrom = trace.now();
+		trace.run({
+			seconds: 0.5,
+			trip,
+			depth: () => depth,
+			late: () => false,
+			onFrame: (t) => {
+				onFrame(t);
+				const st = t.ctl.stats();
+				if (raisedAt === undefined && st.ceiling === CEILING - 1) {
+					raisedAt = t.now();
+					expect(st.lead).toBe(CEILING - 1);
+				}
+			},
+		});
+		s = trace.ctl.stats();
+		expect(s.ceiling).toBe(CEILING - 1);
+		expect(s.lead).toBe(CEILING - 1);
+		expect((raisedAt ?? math.huge) - shallowFrom <= 4 / SIM_HZ + 1e-6).toBe(true);
+		// The effective lead (net + depth) never went past the cap for the cover's sake once settled.
+		expect(worstEffective <= CEILING + 4).toBe(true);
+		// A ceiling under the base: the base alone (the cover never lowers the lead).
+		depth = 16;
+		trace.run({ seconds: 8, trip, depth: () => depth, late: () => false });
+		s = trace.ctl.stats();
+		expect(s.ceiling).toBe(CEILING - 16);
+		expect(s.target).toBe(expectedTarget(6));
+		expect(s.lead).toBe(s.fallTarget);
+		expect(s.lead <= expectedTarget(6) + 1).toBe(true);
+	});
+
+	it("no ceiling (no prediction): the base alone; the cover is measured but never raises the lead", () => {
+		const trip = rareSlow();
+		const trace = new Trace(INPUT_LEAD_DECAY_TICKS, LEAD);
+		trace.run({ seconds: LEAD.coverWindowSec + 5, trip, late: () => false });
+		const s = trace.ctl.stats();
+		expect(s.ceiling).toBe(undefined);
+		expect(s.coverP99).toBe(30);
+		expect(s.target).toBe(expectedTarget(6));
+		expect(s.baseTarget).toBe(expectedTarget(6));
+		expect(s.lead).toBe(expectedTarget(6));
+		expect(s.bumps).toBe(0);
+	});
+
+	it("the cover waits for the warm-up (minSamples base trips)", () => {
+		const trace = new Trace(INPUT_LEAD_DECAY_TICKS, LEAD, CEILING);
+		// A single slow first trip, then steady 6s: the warm-up's max-based target, no cover on top.
+		let first = true;
+		trace.run({
+			seconds: ((LEAD.minSamples - 2) * BROADCAST_EVERY_TICKS) / SIM_HZ,
+			trip: () => {
+				const t = first ? 12 : 6;
+				first = false;
+				return t;
+			},
+			late: () => false,
+		});
+		const s = trace.ctl.stats();
+		expect(s.warmingUp).toBe(true);
+		expect(s.coverTarget).toBe(expectedTarget(12));
+		expect(s.target).toBe(expectedTarget(12));
+		expect(s.baseTarget).toBe(expectedTarget(12));
+	});
+
+	it("a step up of the trips is still followed at once (unflagged or late), in one jump, without a bump", () => {
+		for (const flagged of [false, true]) {
+			const trace = new Trace(INPUT_LEAD_DECAY_TICKS, LEAD, CEILING);
+			trace.run({ seconds: LEAD.coverWindowSec + 2, trip: () => 6, late: () => false });
+			expect(trace.ctl.lead()).toBe(expectedTarget(6));
+			trace.resetCounts();
+			const stepAt = trace.now();
+			let upAt: number | undefined;
+			let below = 0;
+			trace.run({
+				seconds: 2,
+				trip: () => 12,
+				late: flagged ? undefined : () => false,
+				onFrame: (t) => {
+					const st = t.ctl.stats();
+					if (st.lead < st.target) below++;
+					if (upAt === undefined && st.lead === expectedTarget(12)) upAt = t.now();
+				},
+			});
+			const took = (upAt ?? math.huge) - stepAt;
+			print(
+				`[lead] step 6 -> 12 ${flagged ? "late" : "unflagged"}, defaults: up in ${f2(took)} s, changes ${
+					trace.changes
+				} lates ${trace.lates()} bumps ${trace.bumps()}`,
+			);
+			expect(took <= 0.5).toBe(true);
+			expect(trace.changes).toBe(1);
+			expect(below).toBe(0);
+			expect(trace.bumps()).toBe(0);
+			expect(trace.ctl.lead()).toBe(expectedTarget(12));
+		}
+	});
+
+	it("the fall is unchanged: no ceiling within window + hold + a step per tick, with the cover after its window", () => {
+		// (Objects: an array holding undefined ends at it in Luau.)
+		for (const { ceiling } of [{ ceiling: undefined }, { ceiling: CEILING }] as Array<{ ceiling?: number }>) {
+			const trace = new Trace(INPUT_LEAD_DECAY_TICKS, LEAD, ceiling);
+			trace.run({ seconds: 20, trip: () => 12 });
+			const before = trace.ctl.lead();
+			expect(before).toBe(expectedTarget(12));
+			trace.resetCounts();
+			const stepAt = trace.now();
+			let settledAt: number | undefined;
+			let firstFallAt: number | undefined;
+			trace.run({
+				seconds: 25,
+				trip: () => 4,
+				onFrame: (t) => {
+					const s = t.ctl.stats();
+					if (firstFallAt === undefined && s.lead < before) firstFallAt = t.now();
+					if (settledAt === undefined && s.lead === s.fallTarget && s.lead < before) settledAt = t.now();
+				},
+			});
+			const s = trace.ctl.stats();
+			const ticks = before - s.lead;
+			const windowSec = ceiling === undefined ? LEAD.windowSec : LEAD.coverWindowSec;
+			const bound = windowSec + LEAD.fallHoldSec + LEAD.fallStepSec * ticks + 0.5;
+			const took = (settledAt ?? math.huge) - stepAt;
+			print(
+				`[lead] step 12 -> 4, defaults, ceiling ${ceiling ?? "none"}: ${before} -> ${s.lead} in ${f2(
+					took,
+				)} s (bound ${bound} s), first fall after ${f2((firstFallAt ?? math.huge) - stepAt)} s, falls ${
+					s.falls
+				}`,
+			);
+			expect(s.lead).toBe(s.fallTarget);
+			expect(s.lead >= s.target && s.lead <= s.target + 1).toBe(true);
+			expect(took <= bound).toBe(true);
+			expect(s.falls).toBe(ticks);
+			// One tick a fall step once it starts: the hold and the step are Revision 2's.
+			expect(took - ((firstFallAt ?? 0) - stepAt) <= LEAD.fallStepSec * (ticks - 1) + 2 / SIM_HZ).toBe(true);
+		}
+	});
+
+	it("a late during a fall neither bumps nor restarts the hold: the next fall step comes on time", () => {
+		const trace = new Trace(INPUT_LEAD_DECAY_TICKS, LEAD);
+		trace.run({ seconds: 10, trip: () => 12 });
+		const high = trace.ctl.lead();
+		let fellAt: number | undefined;
+		trace.run({
+			seconds: LEAD.windowSec + LEAD.fallHoldSec + 0.6,
+			trip: () => 4,
+			onFrame: (t) => {
+				if (fellAt === undefined && t.ctl.lead() < high) fellAt = t.now();
+			},
+		});
+		expect(fellAt).toBeDefined();
+		const ctl = trace.ctl;
+		const before = ctl.stats();
+		const at = trace.now();
+		lateNow(trace, 5);
+		const after = ctl.stats();
+		expect(after.lead).toBe(before.lead);
+		expect([after.lates, after.bumps, after.excused]).toEqual([before.lates + 1, 0, before.excused]);
+		let nextFallAt: number | undefined;
+		trace.run({
+			seconds: 2,
+			trip: () => 4,
+			onFrame: (t) => {
+				if (nextFallAt === undefined && t.ctl.stats().falls > before.falls) nextFallAt = t.now();
+			},
+		});
+		expect((nextFallAt ?? math.huge) - at <= LEAD.fallStepSec + 2 / SIM_HZ).toBe(true);
+	});
+
+	it("excused lates are counted as before (the server catching up)", () => {
+		const trace = new Trace(INPUT_LEAD_DECAY_TICKS, LEAD, CEILING);
+		trace.run({ seconds: 10, trip: () => 6 });
+		const ctl = trace.ctl;
+		const before = ctl.stats();
+		const target = trace.lastTarget + 1;
+		ctl.sent(target, trace.tick, 0, false);
+		ctl.echoed({ tick: target, slack: -30, lates: 4, catchingUp: true }, trace.now());
+		const s = ctl.stats();
+		expect([s.lates, s.excused, s.bumps, s.samples, s.lead]).toEqual([
+			before.lates + 4,
+			before.excused + 1,
+			0,
+			before.samples,
+			before.lead,
+		]);
 	});
 });

@@ -1,17 +1,19 @@
 /**
- * LeadController: the co-op net input lead from measured trips (docs/FRAME_PACING.md Revision 2, Design 10). Pure: no
- * Roblox API, clock or randomness; the caller passes its monotonic clock `now` (seconds). Nothing here reaches the sim:
- * it only decides how far ahead the client's inputs are sent (LockstepClient adds the pacing buffer's depth, Design 5).
+ * LeadController: the co-op net input lead from measured trips (docs/FRAME_PACING.md Revision 2, Design 10; Revision 3,
+ * Design 13: the capped cover). Pure: no Roblox API, clock or randomness; the caller passes its monotonic clock `now`
+ * (seconds). Nothing here reaches the sim: it only decides how far ahead the client's inputs are sent (LockstepClient
+ * adds the pacing buffer's depth, Design 5).
  *
  *   sent(target, sentAt, depthRaw, hitched, depthUsed)  a frame was sent for `target` at state.tick `sentAt` (a
  *                                            fixed ring of records, the newest `recordTicks` targets)
  *   received(now)                            a merged batch arrived (echo or not): times the echo timeout
- *   echoed(echo, now)                        the server's echo: the trip of its tick X joins the window; the lead jumps
- *                                            up to the target at once; a late bumps it to that late's own trip, unless
- *                                            excused: the server was catching up (the echo's flag), the late was sent
- *                                            in an unsteady frame, or the buffer depth over the lead's cap (depthRaw -
- *                                            depthUsed) covers its overshoot. Excused lates are counted, never bumped;
- *                                            the catching-up echo's and the unsteady send's trips stay out
+ *   echoed(echo, now)                        the server's echo: the trip of its tick X joins both windows; the lead
+ *                                            jumps up to the target at once; a late is counted, and only with
+ *                                            `lateBump` (Revision 2's rule, KV_LeadBump) bumps it to that late's own
+ *                                            trip, unless excused: the server was catching up (the echo's flag), the
+ *                                            late was sent in an unsteady frame, or the buffer depth over the lead's
+ *                                            cap (depthRaw - depthUsed) covers its overshoot. Excused lates are counted,
+ *                                            never bumped; the catching-up echo's and the unsteady send's trips stay out
  *   deadline(matched, now)                   checkDeadline's per-tick result: today's miss counter while not echoing;
  *                                            while echoing a mismatch is only counted (its late is the echo's:
  *                                            only echoed lates bump, Design 10)
@@ -20,10 +22,15 @@
  *
  * A trip (Design 9): netTrip(X) = (X - sentAt[X]) - slack - depthRaw[X], ticks: the lead X was sent with, minus what
  * it had to spare at the server, minus the buffer. The window keeps the trips of the last `windowSec` (from sends not
- * hitched). Target L* = clamp(ceil(p + marginTicks)) with p the window's `percentile` trip (nearest rank); in the
- * warm-up (fewer than `minSamples` trips) p is the window's max and nothing falls. Fall target Lf = clamp(ceil(p +
- * marginTicks + fallSlackTicks)): once Lf has been below the lead for `fallHoldSec`, the lead falls a tick every
- * `fallStepSec` while it stays below, so after a fall the lead rests at Lf (L* or L* + 1: the slack band).
+ * hitched). The base Lb = ceil(p + marginTicks) with p the window's `percentile` trip (nearest rank); in the warm-up
+ * (fewer than `minSamples` trips) p is the window's max and nothing falls. The cover (Design 13): the same trips over
+ * `coverWindowSec` give Lc = ceil(p99 + marginTicks) (`coverPercentile`), capped at the ceiling C = `ceiling` (the
+ * constructor's: the prediction cap, PREDICTION.maxTicks) minus the depth the newest send's lead added (`depthUsed`),
+ * so net + depth never passes the cap for the cover's sake. Target L* = clamp(max(Lb, min(Lc, C))); without a ceiling
+ * (no prediction), in the warm-up, or before any cover trip, L* = clamp(Lb). Fall target Lf: the same with
+ * `fallSlackTicks` added to both quantiles; once Lf has been below the lead for `fallHoldSec`, the lead falls a tick
+ * every `fallStepSec` while it stays below, so after a fall the lead rests at Lf (L* or L* + 1: the slack band).
+ * Without `lateBump` the lead follows these quantiles only: a late raises it only when its trip moves one of them.
  *
  * Echoing: off before the first echo with a tick, and again once batches keep arriving (`received`) for
  * `echoTimeoutSec` without any decodable echo (an old server; a "none" echo proves the server echoes, so an up-link
@@ -69,6 +76,17 @@ export interface LeadStats {
 	readonly target: number;
 	/** Lf: what the lead falls toward (L* + the slack band); the lead when no trip is in the window. */
 	readonly fallTarget: number;
+	/** Lb: the base window's target alone (warm-up: from its max); the lead when no trip is in the window. */
+	readonly baseTarget: number;
+	/** The cover window's `coverPercentile` trip (ticks; undefined while it is empty). */
+	readonly coverP99: number | undefined;
+	/**
+	 * Lc: ceil(coverP99 + marginTicks), clamped like the targets, before the ceiling (undefined while the cover window is
+	 * empty). It raises L* only up to `ceiling`, and only with a ceiling and past the warm-up.
+	 */
+	readonly coverTarget: number | undefined;
+	/** C: the ceiling less the depth the newest send added (ticks); undefined without a ceiling (no cover). */
+	readonly ceiling: number | undefined;
 	/** The window's trips (ticks): median, `percentile` and max; undefined while the window is empty. */
 	readonly tripP50: number | undefined;
 	readonly tripP95: number | undefined;
@@ -81,11 +99,11 @@ export interface LeadStats {
 	readonly lates: number;
 	/** checkDeadline mismatches (the finalized frame differs from the one sent), echoing or not. */
 	readonly mismatches: number;
-	/** Bumps while echoing: echoes with lates. */
+	/** Bumps while echoing: echoes with lates that bumped (only with `lateBump`; 0 otherwise). */
 	readonly bumps: number;
 	/**
-	 * Echoes with lates that did not bump: the server was catching up, the late was sent in an unsteady (hitched /
-	 * catching-up) frame, or the pacing depth over its lead cap explains it.
+	 * Echoes with lates that are not the network's: the server was catching up, the late was sent in an unsteady
+	 * (hitched / catching-up) frame, or the pacing depth over its lead cap explains it (never bumped).
 	 */
 	readonly excused: number;
 	/** Jumps up to the target (L* above the lead). */
@@ -94,6 +112,19 @@ export interface LeadStats {
 	readonly falls: number;
 	/** The server's echoes are steering the lead (else the legacy miss counter). */
 	readonly echoing: boolean;
+}
+
+/** Index of the first element of the ascending `sorted` greater than (upper) or at least (lower) x: a binary search. */
+function searchSorted(sorted: ReadonlyArray<number>, x: number, upper: boolean): number {
+	let lo = 0;
+	let hi = sorted.size();
+	while (lo < hi) {
+		const mid = math.floor((lo + hi) / 2);
+		const v = sorted[mid];
+		if (v < x || (upper && v === x)) lo = mid + 1;
+		else hi = mid;
+	}
+	return lo;
 }
 
 function sanitizeCount(v: number): number {
@@ -110,6 +141,8 @@ export class LeadController {
 	private readonly minLead: number;
 	private readonly maxLead: number;
 	private readonly legacyDecayTicks: number;
+	/** The cover's ceiling (the prediction cap, ticks of effective lead); undefined: no cover (Design 13). */
+	private readonly ceilingTicks: number | undefined;
 	private readonly ringSize: number;
 
 	private leadValue: number;
@@ -126,6 +159,8 @@ export class LeadController {
 	/** The net lead when the target was sent (a late bumps past it, not past a lead already raised since). */
 	private readonly recLead: number[] = [];
 	private newestSent: number | undefined;
+	/** The depth the newest send's lead added (recDepthUsed of `newestSent`): the ceiling is C = ceiling - this. */
+	private lastDepthUsed = 0;
 	/**
 	 * The newest tick echoed: records at or below it are spent (every later echo names a frame received after this one,
 	 * so a later tick: the frames of one echo window all arrive after the previous window's).
@@ -141,6 +176,14 @@ export class LeadController {
 	private p50: number | undefined;
 	private pHigh: number | undefined;
 	private pMax: number | undefined;
+	/**
+	 * The cover window (Design 13): the same trips over coverWindowSec, oldest first, and an ascending copy kept in step
+	 * (binary insertion and removal: no sort, no allocation per echo).
+	 */
+	private readonly covAt: number[] = [];
+	private readonly covTrip: number[] = [];
+	private readonly covSorted: number[] = [];
+	private covHigh: number | undefined;
 
 	private isEchoing = false;
 	private lastEchoAt: number | undefined;
@@ -157,11 +200,22 @@ export class LeadController {
 	private raiseCount = 0;
 	private fallCount = 0;
 
-	constructor(tunables: LeadTunables, minLead: number, maxLead: number, legacyDecayTicks: number) {
+	/**
+	 * `ceiling`: the cover's ceiling in ticks of effective lead (LockstepClient passes `PREDICTION.maxTicks`, the
+	 * prediction cap); undefined (or not finite): no cover, the base window alone raises the lead (FPD19).
+	 */
+	constructor(
+		tunables: LeadTunables,
+		minLead: number,
+		maxLead: number,
+		legacyDecayTicks: number,
+		ceiling: number | undefined = undefined,
+	) {
 		this.tunables = tunables;
 		this.minLead = minLead;
 		this.maxLead = maxLead;
 		this.legacyDecayTicks = legacyDecayTicks;
+		this.ceilingTicks = ceiling !== undefined && isFiniteNumber(ceiling) ? ceiling : undefined;
 		this.leadValue = minLead;
 		const size = math.max(1, math.floor(tunables.recordTicks));
 		this.ringSize = size;
@@ -191,6 +245,7 @@ export class LeadController {
 		this.recHitched[slot] = hitched;
 		this.recDepthUsed[slot] = isFiniteNumber(depthUsed) ? depthUsed : this.recDepth[slot];
 		this.recLead[slot] = this.leadValue;
+		this.lastDepthUsed = this.recDepthUsed[slot];
 		this.newestSent = target;
 	}
 
@@ -244,6 +299,9 @@ export class LeadController {
 						this.winAt.push(clock);
 						this.winTrip.push(t);
 						this.dirty = true;
+						this.covAt.push(clock);
+						this.covTrip.push(t);
+						this.covSorted.insert(searchSorted(this.covSorted, t, true), t);
 					}
 				}
 			}
@@ -260,7 +318,8 @@ export class LeadController {
 		}
 		if (lates > 0 && excused) {
 			this.excusedCount++;
-		} else if (lates > 0) {
+		} else if (lates > 0 && this.tunables.lateBump) {
+			// Revision 2's bump (KV_LeadBump). Without it a late is only counted: its trip is in both windows already.
 			let bump = (sentLead ?? this.leadValue) + 1;
 			if (trip !== undefined) bump = math.max(bump, ceilTicks(trip + this.tunables.marginTicks));
 			bump = this.clampLead(bump);
@@ -338,10 +397,15 @@ export class LeadController {
 
 	stats(): LeadStats {
 		const n = this.winTrip.size();
+		const cov = this.covHigh;
 		return {
 			lead: this.leadValue,
 			target: this.windowTarget() ?? this.leadValue,
 			fallTarget: n > 0 ? this.fallTarget() : this.leadValue,
+			baseTarget: this.baseTarget() ?? this.leadValue,
+			coverP99: cov,
+			coverTarget: cov !== undefined ? this.clampLead(ceilTicks(cov + this.tunables.marginTicks)) : undefined,
+			ceiling: this.ceiling(),
 			tripP50: this.p50,
 			tripP95: this.pHigh,
 			tripMax: this.pMax,
@@ -377,19 +441,51 @@ export class LeadController {
 		return math.clamp(x, this.minLead, this.maxLead);
 	}
 
-	/** L*: undefined with an empty window; the max-based warm-up target below minSamples trips. */
-	private windowTarget(): number | undefined {
+	/** Lb, unclamped: undefined with an empty window; the max-based warm-up target below minSamples trips. */
+	private baseRaw(): number | undefined {
 		const n = this.winTrip.size();
 		if (n === 0) return undefined;
 		const p = n < this.tunables.minSamples ? this.pMax : this.pHigh;
-		return p === undefined ? undefined : this.clampLead(ceilTicks(p + this.tunables.marginTicks));
+		return p === undefined ? undefined : ceilTicks(p + this.tunables.marginTicks);
 	}
 
-	/** Lf (with a non-empty window). */
+	/** Lb, clamped (undefined with an empty window). */
+	private baseTarget(): number | undefined {
+		const b = this.baseRaw();
+		return b === undefined ? undefined : this.clampLead(b);
+	}
+
+	/** L*: max(Lb, min(Lc, C)) clamped; undefined with an empty window (the warm-up: Lb alone). */
+	private windowTarget(): number | undefined {
+		const b = this.baseRaw();
+		return b === undefined ? undefined : this.withCover(b, 0);
+	}
+
+	/** Lf (with a non-empty window): L*'s rule with fallSlackTicks added to both quantiles. */
 	private fallTarget(): number {
 		const t = this.tunables;
 		const p = this.pHigh ?? 0;
-		return this.clampLead(ceilTicks(p + t.marginTicks + t.fallSlackTicks));
+		return this.withCover(ceilTicks(p + t.marginTicks + t.fallSlackTicks), t.fallSlackTicks);
+	}
+
+	/** C: the ceiling less the newest send's depth; undefined without a ceiling. */
+	private ceiling(): number | undefined {
+		const c = this.ceilingTicks;
+		return c === undefined ? undefined : c - this.lastDepthUsed;
+	}
+
+	/**
+	 * max(base, min(ceil(cover p99 + margin + slack), C)), clamped (Design 13); the base alone without a ceiling, in the
+	 * warm-up (fewer than minSamples trips in the base window) or before any cover trip.
+	 */
+	private withCover(base: number, slack: number): number {
+		const c = this.ceiling();
+		const cov = this.covHigh;
+		if (c === undefined || cov === undefined || this.winTrip.size() < this.tunables.minSamples) {
+			return this.clampLead(base);
+		}
+		const cover = math.min(ceilTicks(cov + this.tunables.marginTicks + slack), c);
+		return this.clampLead(math.max(base, cover));
 	}
 
 	private resetHold(): void {
@@ -402,8 +498,18 @@ export class LeadController {
 		this.lastFallAt = undefined;
 	}
 
-	/** Drops trips older than the window and recomputes its quantiles when it changed. */
+	/** Drops trips older than the windows and recomputes their quantiles when they changed. */
 	private refresh(now: number): void {
+		const keepCov = now - this.tunables.coverWindowSec;
+		const sorted = this.covSorted;
+		while (this.covAt.size() > 0 && this.covAt[0] < keepCov) {
+			const old = this.covTrip[0];
+			this.covAt.remove(0);
+			this.covTrip.remove(0);
+			const i = searchSorted(sorted, old, false);
+			if (i < sorted.size() && sorted[i] === old) sorted.remove(i);
+		}
+		this.covHigh = nearestRank(sorted, this.tunables.coverPercentile);
 		const keep = now - this.tunables.windowSec;
 		while (this.winAt.size() > 0 && this.winAt[0] < keep) {
 			this.winAt.remove(0);

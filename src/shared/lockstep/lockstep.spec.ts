@@ -1298,7 +1298,10 @@ for (const kind of ["spike", "hold"] as const) {
 
 		it("the trouble raised the measured lead to at most ceil(its trip + margin) + 1", () => {
 			for (let i = 0; i < players; i++) {
-				expect(m.peak[i] > m.before[i]).toBe(true);
+				// Revision 3 (FPD15): a late never bumps, so the 300 ms hold (a few echoes, under the top 5 % of the
+				// window's ~150) does not raise the lead at all; Revision 2's bump did. The 1 s spike still moves the p95.
+				if (isSpike) expect(m.peak[i] > m.before[i]).toBe(true);
+				else expect(m.peak[i] >= m.before[i]).toBe(true);
 				expect(m.peak[i] <= peakBounds[i]).toBe(true);
 			}
 		});
@@ -2390,7 +2393,17 @@ describe("LockstepClient measured lead wiring (docs/FRAME_PACING.md FP11)", () =
 		expect(
 			c.receive(2, enc.encode(ONE_IDLE), 2 * DT, encodeInputEcho({ tick: late, slack: -1, lates: 1 }, 2)),
 		).toBe(true);
-		expect([c.misses, c.mismatches, c.leadStats()!.lates, c.leadStats()!.bumps]).toEqual([1, 0, 1, 1]);
+		// Revision 3 (FPD15): counted, never bumped (the bump is Revision 2's, below).
+		expect([c.misses, c.mismatches, c.leadStats()!.lates, c.leadStats()!.bumps]).toEqual([1, 0, 1, 0]);
+	});
+
+	it("with lateBump (KV_LeadBump, Revision 2's rule) the same late bumps", () => {
+		const { c, enc } = client({ ...MEASURED, lead: { ...LEAD, lateBump: true } });
+		const target = firstStep(c, enc, 0);
+		c.receive(1, enc.encode(ONE_IDLE), DT, encodeInputEcho({ tick: target, slack: 2, lates: 0 }, 1));
+		const late = c.pump(DT, () => EMPTY_INPUT, DT).inputs[0].firstTick;
+		c.receive(2, enc.encode(ONE_IDLE), 2 * DT, encodeInputEcho({ tick: late, slack: -1, lates: 1 }, 2));
+		expect([c.misses, c.leadStats()!.lates, c.leadStats()!.bumps]).toEqual([1, 1, 1]);
 	});
 
 	it("a malformed echo is ignored: the stream goes on, the lead stays on the legacy rule", () => {

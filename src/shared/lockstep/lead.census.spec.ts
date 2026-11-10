@@ -65,6 +65,9 @@ const FP11_MISSED_SHARE = 0.005;
 /** NetSpec.seedBase's default. */
 const DEFAULT_CHANNEL_SEED = 7;
 
+/** Revision 2's rule (FP17's "today"; Revision 3's KV_LeadBump): every late not excused bumps, no cover. */
+const REV2_LEAD: LeadTunables = { ...LEAD, lateBump: true };
+
 const TUNABLES: LockstepTunables = {
 	...DEFAULT_LOCKSTEP,
 	// No segment is offered within a run (the validator is never pumped: the server side is the relay and the echo).
@@ -72,8 +75,9 @@ const TUNABLES: LockstepTunables = {
 	checkpointEvery: SIM_HZ * 2,
 	allowDebugInput: true,
 	pacing: PACING,
-	lead: LEAD,
-	// Read only (it never changes what is sent or stepped): off, to save the time.
+	lead: REV2_LEAD,
+	// Read only (it never changes what is sent or stepped): off, to save the time. Without it the client's lead has no
+	// ceiling (no cover): today's rule.
 	prediction: undefined,
 };
 const SEG_LIMITS = { ...DEFAULT_SEGMENT_LIMITS, checkpointEvery: SIM_HZ * 2, allowDebugInput: true };
@@ -528,6 +532,13 @@ class SpecLead implements LeadLike {
 			lead: this.leadValue,
 			target: this.windowTarget() ?? this.leadValue,
 			fallTarget: n > 0 ? this.fallTarget() : this.leadValue,
+			baseTarget: this.clampLead(
+				ceilTicks(((n < this.t.minSamples ? this.pMax : this.pHigh) ?? 0) + this.t.marginTicks),
+			),
+			coverP99: this.covHigh,
+			coverTarget:
+				this.covHigh !== undefined ? this.clampLead(ceilTicks(this.covHigh + this.t.marginTicks)) : undefined,
+			ceiling: this.k.cover?.ceiling !== undefined ? this.k.cover.ceiling - this.lastDepthUsed : undefined,
 			tripP50: this.p50,
 			tripP95: this.pHigh,
 			tripMax: this.pMax,
@@ -633,7 +644,7 @@ const TODAY_KNOBS: SpecKnobs = { lead: LEAD, bump: "trip", bumpAfter: 1, bumpWin
 
 const NO_BUMP: SpecKnobs = { ...TODAY_KNOBS, bump: "none", lateHolds: false };
 
-const TODAY: Policy = { name: "today", label: "today (LeadController, LEAD)" };
+const TODAY: Policy = { name: "today", label: "today (LeadController, Revision 2: LEAD with lateBump, no ceiling)" };
 const COPY: Policy = { name: "copy", label: "today, this spec's copy", spec: TODAY_KNOBS };
 
 const CANDIDATES: ReadonlyArray<Policy> = [

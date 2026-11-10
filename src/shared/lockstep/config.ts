@@ -189,11 +189,14 @@ export const ARRIVAL_LOG: ArrivalLogTunables = table.freeze({
 });
 
 /**
- * The co-op input lead from measured trips (docs/FRAME_PACING.md Revision 2, Design 10; lead.ts LeadController): the
- * net lead is the slowest `percentile` of the last `windowSec` of the server-echoed net trips plus `marginTicks`,
- * raised at once (and by a late to that late's own trip), lowered a tick at a time once the fall target (with
- * `fallSlackTicks` more) has been below it for `fallHoldSec`. Trips are in ticks of SIM_DT, without the pacing
- * buffer's depth (the lead adds that separately, Design 5). All provisional until FP0 / FP6 measure a real session.
+ * The co-op input lead from measured trips (docs/FRAME_PACING.md Revision 2, Design 10; Revision 3, Design 13; lead.ts
+ * LeadController): the net lead is the slowest `percentile` of the last `windowSec` of the server-echoed net trips plus
+ * `marginTicks` (the base), or more, the slowest `coverPercentile` of the last `coverWindowSec` plus the margin (the
+ * cover), but the cover only up to the prediction cap less the buffer's depth (the ceiling LockstepClient passes from
+ * PREDICTION.maxTicks; no prediction, no cover); raised at once, lowered a tick at a time once the fall target (with
+ * `fallSlackTicks` more) has been below it for `fallHoldSec`. A late never bumps it (FPD15) unless `lateBump`. Trips
+ * are in ticks of SIM_DT, without the pacing buffer's depth (the lead adds that separately, Design 5). All provisional
+ * until FP0 / FP6 / FP21 measure a real session.
  */
 export interface LeadTunables {
 	/** The trips of this many seconds are kept (~150 at 30 echoes a second): follows a changing network within seconds. */
@@ -224,6 +227,24 @@ export interface LeadTunables {
 	 * past any echo still useful; a server that never echoes cannot grow the store.
 	 */
 	readonly recordTicks: number;
+	/**
+	 * An echoed late (not excused) bumps the lead at once to that late's own trip + margin, at least a tick past the lead
+	 * it was sent with, and restarts the fall hold: Revision 2's rule. False (FPD15, owner 2026-11-10): a late is only
+	 * counted; its trip is in both windows like any other, so it raises the lead only by moving the base's or the cover's
+	 * quantile. The bump came a round trip after the late, after the burst, and cost churn and felt delay for about the
+	 * same lates (docs/FRAME_PACING.md Revision 3, the census). True: KV_LeadBump's A/B.
+	 */
+	readonly lateBump: boolean;
+	/**
+	 * The cover's window (seconds; ~450 trips at 30 echoes a second): long enough that the bursts of the last seconds are
+	 * still in it when the next comes (a 5 s window forgets them first). FPD16.
+	 */
+	readonly coverWindowSec: number;
+	/**
+	 * The cover covers this quantile of its window's trips (nearest rank). Under the ceiling the p99 and the max measure
+	 * the same on the census's owner-like links, but the max keeps a one-off hold's trip for the whole window. FPD16.
+	 */
+	readonly coverPercentile: number;
 }
 
 export const LEAD: LeadTunables = table.freeze({
@@ -236,6 +257,9 @@ export const LEAD: LeadTunables = table.freeze({
 	minSamples: 20,
 	echoTimeoutSec: 2,
 	recordTicks: SIM_HZ * 2,
+	lateBump: false,
+	coverWindowSec: 15,
+	coverPercentile: 0.99,
 });
 
 /**
