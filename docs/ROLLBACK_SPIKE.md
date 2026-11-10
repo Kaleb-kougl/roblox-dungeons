@@ -39,7 +39,9 @@ spike out of the `shared/lockstep` barrel, the generic copy renamed `cloneForRol
 |---|---|
 | R0 census, R1 generic copy, R1b pooled copy, R2 model / metrics / bot sweep | Done, verified headlessly (Lune specs) |
 | R3a facts, R3 CPU probe, R4 capture / plugin / receiver, R4b live metrics | Built, compiled, pure cores spec'd headlessly. **Studio check pending** (the Actor, the remote, DataStores, the plugin, AnalyticsService need the engine): "Studio and device checklist" below |
-| R5 devices and playtest, R6 report, R7 cleanup | Not started (owner) |
+| R5 devices | Mac and iPhone 17 rows only (Results); the co-op playtest not run |
+| R6 decision | **RBD8: don't build rollback** (2026-11-09) |
+| R7 cleanup | Not started |
 
 Nothing under `src/shared/sim/**`, `src/shared/dungeon/**` or `fixtures/` changed, nor the lockstep wire, session, log,
 validator, hashes, replays or scores (checked with `git diff` against `3f7ce65`). Every runtime part is off by default.
@@ -442,6 +444,15 @@ parallel mode and only with `KV_RollbackSpike` on, at horizon H (it draws T + mi
 
 Open owner calls: the gates' numbers, the test devices, whether PC-only rollback is acceptable.
 
+- **RBD8 (owner, 2026-11-09). Don't build rollback; build local prediction (docs/LOCAL_PREDICTION.md).** Two results
+  fail independently. CPU: an iPhone 17 (a current flagship) spent 11.77 ms p95 a frame at H 16 on dev floor 15 and
+  dropped to 50 fps, against a 4 ms gate meant for a mid phone; slower phones can only be worse. Mispredictions: in the
+  bot sweep, teammate corrections >= 1 tile run 27-74 a minute at L 6-16 against a gate of 6, at every L and strategy.
+  The human live windows, captures and other devices were not run: none could overturn the CPU result. Open: a short
+  horizon (H 6-8, about half the delay removed). By the sweep's L 6 rows, enemies, kills and bullets pass there, but
+  teammate corrections (27-31 a minute) still fail; its iPhone cost is not measured (expected roughly half of H 16).
+  R7 (cleanup) follows this.
+
 ## As built
 
 Paths under `src/` unless they start elsewhere. Everything is imported from its directory's barrel: the state copy, the
@@ -754,7 +765,7 @@ unknown refused, an Archer mirror equal to `buildWorldSetup`'s state, a dropped 
   5's cases; both modes, MicroProfiler screenshots kept), numbers recorded here; a co-op playtest of 20-30 minutes with
   friends on their own connections, capture and live metrics on (parallel mode only; pairs with FP14 / FP15).
   -> Verify: the device table, the live summaries and at least three captured runs. (Checklist step 9.)
-- [ ] **R6. Report and decision.** The live summaries (the gate) and the harness over the captures (the sweeps); the
+- [x] **R6. Report and decision.** Done: RBD8 (don't build). The live summaries (the gate) and the harness over the captures (the sweeps); the
   result tables filled in; a recommendation (build rollback and its scope, build the cheap plan, or the cheap plan
   first). -> Verify: the owner's decision recorded here as RBD8; docs/LOCAL_PREDICTION.md points at it.
 - [ ] **R7. Cleanup.** Per RBD8: the spike code removed, or kept behind its switches as the first piece of the build
