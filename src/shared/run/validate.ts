@@ -136,6 +136,17 @@ export function isFiniteValue(v: unknown): v is number {
 	return typeIs(v, "number") && v === v && v !== math.huge && v !== -math.huge;
 }
 
+/**
+ * Largest |UserId| accepted from the wire or a report (2^53 - 1: every integer up to it is exact in a float64), so a
+ * forged 1e300 never reaches `Players:GetPlayerByUserId` in a flush. Negative ids stay valid (Studio test players).
+ */
+export const MAX_USER_ID_MAGNITUDE = 2 ** 53 - 1;
+
+/** A UserId as the wire carries it: a nonzero integer of magnitude at most MAX_USER_ID_MAGNITUDE. */
+export function isWireUserId(v: unknown): v is number {
+	return isFiniteValue(v) && v % 1 === 0 && v !== 0 && math.abs(v) <= MAX_USER_ID_MAGNITUDE;
+}
+
 /** Shape check of a submission that came over the wire (Flamework's guard checks types; this checks values). */
 function checkShape(s: RunSubmission): string | undefined {
 	if (!typeIs(s, "table")) return "submission is not an object";

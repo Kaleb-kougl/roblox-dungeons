@@ -33,7 +33,7 @@ import {
 } from "./limits";
 import type { RunScoreReader } from "./score";
 import { SegmentedValidator, type SegmentRejectCode, type SegmentedRunResult } from "./segments";
-import { errorMessage, isFiniteValue, truncateReason } from "./validate";
+import { errorMessage, isFiniteValue, isWireUserId, truncateReason } from "./validate";
 import { buildWorldSetup, isRunWorldKind, isServerRunWorld, type RunWorldKind } from "./worlds";
 
 /** `startRun` (shared/network). */
@@ -161,8 +161,9 @@ export interface RunSessionDeps {
 	readonly readScore?: RunScoreReader;
 }
 
+/** A party member's UserId: the lobby's wire rule (Studio's negative test players allowed). */
 function isUserId(v: unknown): v is number {
-	return isFiniteValue(v) && v > 0 && math.floor(v) === v;
+	return isWireUserId(v);
 }
 
 /**

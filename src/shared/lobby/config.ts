@@ -132,16 +132,8 @@ export const FRIEND_CACHE: FriendCacheConfig = table.freeze({
 	maxConcurrentFetches: 4,
 });
 
-/**
- * Largest |UserId| accepted from the wire or a report (2^53 - 1: every integer up to it is exact in a float64), so a
- * forged 1e300 never reaches `Players:GetPlayerByUserId` in a flush. Negative ids stay valid (Studio test players).
- */
-export const MAX_USER_ID_MAGNITUDE = 2 ** 53 - 1;
-
-/** A UserId as the wire carries it: a nonzero integer of magnitude at most MAX_USER_ID_MAGNITUDE. */
-export function isWireUserId(v: unknown): v is number {
-	return isFiniteValue(v) && v % 1 === 0 && v !== 0 && math.abs(v) <= MAX_USER_ID_MAGNITUDE;
-}
+/** The UserId wire rule lives in shared/run (run sessions check party members with it too). */
+export { MAX_USER_ID_MAGNITUDE, isWireUserId } from "shared/run";
 
 export function isLobbyNameId(v: unknown): v is LobbyNameId {
 	if (!typeIs(v, "string")) return false;

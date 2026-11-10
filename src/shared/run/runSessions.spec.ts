@@ -174,6 +174,14 @@ describe("RunSessionRegistry", () => {
 		expect(r.ok && r.session.members).toEqual([OWNER, FRIEND]);
 	});
 
+	it("accepts Studio's negative test UserIds in a party and refuses 0, fractions and non-numbers", () => {
+		const here = () => true;
+		expect(resolveParty(-1, [-1, -2], here, 8)).toEqual([-1, -2]);
+		expect(typeIs(resolveParty(-1, [0], here, 8), "string")).toBe(true);
+		expect(typeIs(resolveParty(-1, [1.5], here, 8), "string")).toBe(true);
+		expect(typeIs(resolveParty(-1, ["2" as unknown as number], here, 8), "string")).toBe(true);
+	});
+
 	it("members of an unconcluded party run are busy (the owner's restart included) until it is decided or they leave", () => {
 		const reg = registry();
 		const party = reg.start(OWNER, { ...REQUEST, party: [FRIEND] }, ctx(0, { partyConsent: [OWNER, FRIEND] }));
