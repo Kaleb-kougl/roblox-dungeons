@@ -1,5 +1,5 @@
 {
-	"$comment": "Audio pipeline config (docs/FX_AUDIO.md A0 / A1; scripts/audio/build-audio.js). Paths are relative to art/vendor/. Each sound ID: category (sfx | jingle | music | ambience), clips (several = variants, played round-robin; a clip is a path or { src, gainDb?, trim?: [startSec, endSec?], mix?: [paths layered on src], lowpassHz? }), volume (0..1, the SoundAsset volume), pitch ([min, max] PlaybackSpeed jitter), minInterval (seconds, overrides the code's default), gainDb (on top of the category's normalisation), confirmed (false until the owner picked it by ear), alternates (listed on the audition page), notes. \"silent\": true leaves the ID silent. After editing: npm run audio:lock, npm run audio:build, npm run audio:audition.",
+	"$comment": "Audio pipeline config (docs/FX_AUDIO.md A0 / A1; scripts/audio/build-audio.js). Paths are relative to art/vendor/. Each sound ID: category (sfx | jingle | music | ambience), clips (several = variants, played round-robin; a clip is a path or { src, gainDb?, trim?: [startSec, endSec?], mix?: [paths layered on src], lowpassHz?, fadeOutSec? (with a [startSec, endSec] trim) }), volume (0..1, the SoundAsset volume), pitch ([min, max] PlaybackSpeed jitter), minInterval (seconds, overrides the code's default), gainDb (on top of the category's normalisation), confirmed (false until the owner picked it by ear), alternates (listed on the audition page), notes. \"silent\": true leaves the ID silent. After editing: npm run audio:lock, npm run audio:build, npm run audio:audition.",
 	"output": {
 		"$comment": "Vorbis at a fixed quality. Lossy encoding overshoots transients: a decoded sample peak above maxDecodedPeakDb is re-encoded with the gain lowered by the overshoot plus peakStepDb (at most peakPasses encodes).",
 		"codec": "libvorbis",
@@ -582,6 +582,82 @@
 			"volume": 0.6,
 			"alternates": [
 				"ninja-adventure/Audio/Jingles/Secret1.wav"
+			],
+			"confirmed": false
+		},
+		"sfx.floor.modifier.gilded": {
+			"category": "jingle",
+			"clips": [
+				"wobbleboxx-soundpack01/Coin01.aif"
+			],
+			"volume": 0.65,
+			"notes": "docs/FLOOR_MODIFIERS.md FM10: Gilded's banner stamps in on the floor card (A Goldling is certain). Bright, coins. wobbleboxx Level up / Power up / Coin get, CC0. Must read apart from sfx.golden.hit (Ninja Bonus/Coin.wav).",
+			"alternates": [
+				"kenney-music-jingles/OGG/jingles_NES/jingles_NES13.ogg",
+				"kenney-music-jingles/OGG/jingles_STEEL/jingles_STEEL07.ogg",
+				"wobbleboxx-soundpack01/Upper01.aif"
+			],
+			"confirmed": false
+		},
+		"sfx.floor.modifier.hoard": {
+			"category": "jingle",
+			"clips": [
+				"kenney-music-jingles/OGG/jingles_NES/jingles_NES00.ogg"
+			],
+			"volume": 0.65,
+			"notes": "docs/FLOOR_MODIFIERS.md FM10: Hoard's banner (a treasure vault is certain). A short 8-bit fanfare. Kenney Music Jingles, CC0.",
+			"alternates": [
+				"kenney-music-jingles/OGG/jingles_STEEL/jingles_STEEL07.ogg",
+				"kenney-music-jingles/OGG/jingles_STEEL/jingles_STEEL01.ogg",
+				"kenney-music-jingles/OGG/jingles_NES/jingles_NES13.ogg"
+			],
+			"confirmed": false
+		},
+		"sfx.floor.modifier.feast": {
+			"category": "jingle",
+			"clips": [
+				"wobbleboxx-soundpack01/Rise03.aif"
+			],
+			"volume": 0.65,
+			"notes": "docs/FLOOR_MODIFIERS.md FM10: Feast's banner (a power pellet is certain). A power-up rise. wobbleboxx, CC0. Must read apart from sfx.pellet.power (EdR power up 01a).",
+			"alternates": [
+				"wobbleboxx-soundpack01/Rise01.aif",
+				"wobbleboxx-soundpack01/Rise02.aif",
+				"wobbleboxx-soundpack01/Rise06.aif"
+			],
+			"confirmed": false
+		},
+		"sfx.floor.modifier.plunder": {
+			"category": "jingle",
+			"clips": [
+				"kenney-music-jingles/OGG/jingles_NES/jingles_NES05.ogg"
+			],
+			"volume": 0.65,
+			"notes": "docs/FLOOR_MODIFIERS.md FM10: Plunder's banner (a boost hides in every room's barrels). A quick 8-bit flourish. Kenney Music Jingles, CC0.",
+			"alternates": [
+				"kenney-music-jingles/OGG/jingles_NES/jingles_NES12.ogg",
+				"kenney-music-jingles/OGG/jingles_NES/jingles_NES11.ogg",
+				"kenney-music-jingles/OGG/jingles_STEEL/jingles_STEEL12.ogg"
+			],
+			"confirmed": false
+		},
+		"sfx.floor.modifier.bloodmoon": {
+			"category": "jingle",
+			"clips": [
+				{
+					"src": "dhsfx-horror-stingers/Low Bell.wav",
+					"trim": [
+						0,
+						2.2
+					],
+					"fadeOutSec": 0.8
+				}
+			],
+			"volume": 0.7,
+			"notes": "docs/FLOOR_MODIFIERS.md FM10: Blood Moon's banner (twice the elites), the one twist: ominous. DHSFX Horror Stinger Sound Effects (free for use in your own game, credit + SoundCloud link required, no redistribution of raw files: THIRD_PARTY_NOTICES.md, Credits screen). The bell rings ~8 s: cut to 2.2 s with a 0.8 s fade.",
+			"alternates": [
+				"dhsfx-horror-stingers/Trombone Low Note.wav",
+				"dhsfx-horror-stingers/Very Low Bell.wav"
 			],
 			"confirmed": false
 		},

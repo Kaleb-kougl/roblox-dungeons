@@ -77,6 +77,20 @@ export const CREDITS: ReadonlyArray<CreditEntry> = [
 	{ section: "audio", work: "Pick up sfx", author: "freesound_community (Pixabay)" },
 	{ section: "audio", work: "Power down 02", author: "freesound_community (Pixabay)" },
 	{ section: "audio", work: "Plate Break 1", author: "freesound_community (Pixabay)" },
+	{ section: "audio", work: "Music Jingles", author: "Kenney (kenney.nl)", license: "CC0" },
+	{
+		section: "audio",
+		work: "Level up, power up, Coin get",
+		author: "wobbleboxx (WobbleBoxx Workshop)",
+		license: "CC0",
+	},
+	{
+		section: "audio",
+		work: "Horror Stinger Sound Effects",
+		author: "DHSFX",
+		license: "Free for games; credit required - soundcloud.com/dhsfx",
+		modified: true,
+	},
 	{
 		section: "code",
 		work: "Dungeon Forge (threejs-procedural-dungeon)",

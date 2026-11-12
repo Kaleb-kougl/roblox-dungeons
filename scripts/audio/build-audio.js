@@ -16,7 +16,7 @@
  *   -> art/audio-audition.html                      (--audition) the listening page: each ID's pick(s) next to the
  *                                                   alternates, with the raw clips' measured length and loudness
  *
- * Per clip (ffmpeg): [mix layers] -> [explicit trim window] -> [low-pass] -> [silence trim: sfx and jingles, never the
+ * Per clip (ffmpeg): [mix layers] -> [explicit trim window] -> [fade-out at the window's end] -> [low-pass] -> [silence trim: sfx and jingles, never the
  * music / ambience loops] -> [mono downmix: categories with channels 1] -> loudness normalisation per category (peak:
  * a gain to the category's sample-peak target, measured on the chain's output; loudnorm: two-pass EBU R128 to the
  * category's integrated-LUFS target, linear) -> resample (<= 48 kHz) -> Vorbis OGG at a fixed quality.
@@ -163,7 +163,7 @@ function clipSpec(entryId, clip) {
 	const c = typeof clip === "string" ? { src: clip } : clip;
 	if (!c || typeof c.src !== "string") fail(`${entryId}: a clip needs "src" (a path under art/vendor/)`);
 	for (const k of Object.keys(c)) {
-		if (!["src", "gainDb", "trim", "mix", "lowpassHz"].includes(k)) fail(`${entryId}: unknown clip key "${k}"`);
+		if (!["src", "gainDb", "trim", "mix", "lowpassHz", "fadeOutSec"].includes(k)) fail(`${entryId}: unknown clip key "${k}"`);
 	}
 	if (c.trim !== undefined) {
 		const ok = Array.isArray(c.trim) && c.trim.length >= 1 && c.trim.length <= 2 && c.trim.every((x) => typeof x === "number" && x >= 0);
@@ -172,7 +172,16 @@ function clipSpec(entryId, clip) {
 	if (c.mix !== undefined && !(Array.isArray(c.mix) && c.mix.every((x) => typeof x === "string"))) fail(`${entryId}: clip mix must list paths`);
 	if (c.gainDb !== undefined && typeof c.gainDb !== "number") fail(`${entryId}: clip gainDb must be a number`);
 	if (c.lowpassHz !== undefined && !(typeof c.lowpassHz === "number" && c.lowpassHz > 0)) fail(`${entryId}: clip lowpassHz must be > 0`);
-	return { src: c.src, gainDb: c.gainDb ?? 0, trim: c.trim, mix: c.mix ?? [], lowpassHz: c.lowpassHz };
+	// fadeOutSec: a linear fade over the last seconds of an explicit [startSec, endSec] window, so a long ringing source
+	// (a bell, a held note) can be cut short without a click (docs/FLOOR_MODIFIERS.md FM10).
+	if (c.fadeOutSec !== undefined) {
+		const window = c.trim !== undefined && c.trim.length === 2 ? c.trim[1] - c.trim[0] : undefined;
+		if (window === undefined) fail(`${entryId}: clip fadeOutSec needs a trim window [startSec, endSec]`);
+		if (!(typeof c.fadeOutSec === "number" && c.fadeOutSec > 0 && c.fadeOutSec <= window)) {
+			fail(`${entryId}: clip fadeOutSec must be > 0 and at most the trim window`);
+		}
+	}
+	return { src: c.src, gainDb: c.gainDb ?? 0, trim: c.trim, mix: c.mix ?? [], lowpassHz: c.lowpassHz, fadeOutSec: c.fadeOutSec };
 }
 
 const ENTRY_KEYS = ["category", "clips", "volume", "pitch", "minInterval", "gainDb", "silent", "confirmed", "alternates", "notes"];
@@ -311,6 +320,10 @@ function preChain(config, category, clip) {
 	if (clip.trim) {
 		const [start, end] = clip.trim;
 		chain.push(`atrim=start=${start}${end !== undefined ? `:end=${end}` : ""}`, "asetpts=PTS-STARTPTS");
+		if (clip.fadeOutSec !== undefined) {
+			const fadeStart = end - start - clip.fadeOutSec;
+			chain.push(`afade=t=out:st=${fadeStart.toFixed(SECONDS_DECIMALS)}:d=${clip.fadeOutSec}`);
+		}
 	}
 	if (clip.lowpassHz !== undefined) chain.push(`lowpass=f=${clip.lowpassHz}`);
 	if (cat.trimSilence) {
@@ -711,6 +724,7 @@ function audition() {
 		const opts = [];
 		if (clip.trim) opts.push(`trim ${clip.trim.join("..")} s`);
 		if (clip.lowpassHz !== undefined) opts.push(`low-pass ${clip.lowpassHz} Hz`);
+		if (clip.fadeOutSec !== undefined) opts.push(`fade-out ${clip.fadeOutSec} s`);
 		if (clip.gainDb !== 0) opts.push(`gain ${clip.gainDb} dB`);
 		if (clip.mix.length > 0) opts.push("layers mixed");
 		const builtButton = built ? `<div class="clip built"><button data-src="${esc(`build/audio/${built}`)}">&#9654;</button> built <code>${esc(built)}</code> <span class="stats">(after npm run audio:build)</span></div>` : "";
