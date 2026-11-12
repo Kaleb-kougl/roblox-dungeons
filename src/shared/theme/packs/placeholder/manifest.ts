@@ -1443,6 +1443,8 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"bestiary.pellet.power": "Power pellet: grab it to turn every enemy bullet into points",
 		// docs/FORTUNE.md FO6: the Goldling's first sighting
 		"bestiary.golden": "A Goldling! Catch it before it escapes!",
+		// docs/GOLDLING_RUMOURS.md GR7: the first Goldling rumour heard (its first-time card)
+		"bestiary.golden.rumour": "Hear coins? A Goldling is hiding in a barrel or crate on this floor. Find it!",
 		// --- pact.* / Fortune (docs/FORTUNE.md FO6: the shrine room's two altars, their cards (`{curse}` the curse's name,
 		// `{key}` the shrine key) and the dimmed altar's lines; the Greed deal's draft title; the Horde's chip and floor
 		// shouts; the Goldling's shout and escape line, `{points}` formatted by the view) --------------------------------
@@ -1478,6 +1480,9 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"floormod.bloodMoon.name": "Blood Moon",
 		"floormod.bloodMoon.line": "Twice the elites",
 		"hud.pause.floorMod": "{name} · {line}",
+		// docs/GOLDLING_RUMOURS.md GR7: the rumour chip beside the Horde chip (the floor rumour, then its room engaged)
+		"hud.chip.golden.rumour": "Coins jingling...",
+		"hud.chip.golden.hiding": "It's hiding here!",
 		// --- daily.* (docs/DAILY.md DS9 / DS11 / DS12: the main menu's Daily card and podium, the leaderboard tabs, the
 		// run-over daily block, the lobby world toggle; numbers arrive formatted by the view) ---------------------------
 		"daily.card.title": "DAILY #{label} · {date}",

@@ -135,3 +135,16 @@ export const FORTUNE_SCORE_SOURCE_KEYS: ReadonlyArray<string> = ["score.source.h
 
 /** The Goldling's first-sighting toast (shared/onboarding sighting id `golden`), in BESTIARY_STRING_KEYS. */
 export const GOLDEN_BESTIARY_KEY = "bestiary.golden";
+
+/**
+ * The Goldling rumour chip's two lines (docs/GOLDLING_RUMOURS.md GR7; required, in REQUIRED_STRING_KEYS after
+ * FORTUNE_STRING_KEYS, written out there): the floor rumour ("Coins jingling...") and the room rumour ("It's hiding
+ * here!").
+ */
+export const GOLDEN_RUMOUR_STRING_KEYS: ReadonlyArray<string> = ["hud.chip.golden.rumour", "hud.chip.golden.hiding"];
+
+/**
+ * The first Goldling rumour's first-time card (shared/onboarding sighting id `golden.rumour`), in BESTIARY_STRING_KEYS
+ * (last).
+ */
+export const GOLDEN_RUMOUR_BESTIARY_KEY = "bestiary.golden.rumour";

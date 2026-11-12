@@ -182,7 +182,7 @@ describe("Goldling view: the frame's events from a real run", () => {
 		expect(jackpotPopMask(pops, [], []).every((m) => !m)).toBe(true);
 		// Caught: no blip, no ring.
 		expect(goldenBlipSlot(r.s)).toBe(-1);
-		expect(goldenDebugText(r.s)).toBe(`CAUGHT coins ${g.coins}`);
+		expect(goldenDebugText(r.s)).toBe(`CAUGHT coins ${g.coins} release ${g.releaseTick}`);
 	});
 
 	it("collects the escape with the floor's banked coins", () => {
@@ -356,10 +356,11 @@ describe("Goldling view: the catch, the pops, the strings, the debug label", () 
 		expect(warnings).toEqual([]);
 	});
 
-	it("KV_GoldenLabel: status, ticks left and hp while it runs; the appear tick while it waits", () => {
+	it("KV_GoldenLabel: status, ticks left and hp while it runs; room, piece, rumour phase and release while it hides", () => {
 		const r = devRun();
 		expect(goldenDebugText(createSimState(1, 0, 0))).toBe(undefined);
-		expect(goldenDebugText(r.s)).toBe(`WAITING room ${r.s.golden!.room} engage`);
+		const h = r.s.golden!;
+		expect(goldenDebugText(r.s)).toBe(`WAITING room ${h.room} piece ${h.piece} rumour FLOOR release -1`);
 		const a = untilOut(r);
 		const g = r.s.golden!;
 		expect(goldenDebugText(r.s)).toBe(

@@ -50,7 +50,13 @@ import {
 	treasureUiRole,
 } from "./treasure";
 import { TREASURE_COLOR_RULES, treasureReport } from "./treasureColors";
-import { FORTUNE_AUDIO_IDS, FORTUNE_ROLES, FORTUNE_STRING_KEYS, GOLDEN_RUMOUR_AUDIO_IDS } from "./fortune";
+import {
+	FORTUNE_AUDIO_IDS,
+	FORTUNE_ROLES,
+	FORTUNE_STRING_KEYS,
+	GOLDEN_RUMOUR_AUDIO_IDS,
+	GOLDEN_RUMOUR_STRING_KEYS,
+} from "./fortune";
 import { FLOOR_MODIFIER_AUDIO_IDS, FLOOR_MODIFIER_ROLES, FLOOR_MODIFIER_STRING_KEYS } from "./floorModifiers";
 import { COLOR_ROLES } from "./types";
 import { deepClone, sortedKeys, type Obj } from "./util";
@@ -177,7 +183,7 @@ describe("treasure: contract", () => {
 	});
 
 	it("the strings: REQUIRED_STRING_KEYS' last sixteen before Fortune's, filled by every pack with the placeholders the view fills", () => {
-		const skip = FORTUNE_STRING_KEYS.size() + FLOOR_MODIFIER_STRING_KEYS.size();
+		const skip = FORTUNE_STRING_KEYS.size() + FLOOR_MODIFIER_STRING_KEYS.size() + GOLDEN_RUMOUR_STRING_KEYS.size();
 		expect(tail(REQUIRED_STRING_KEYS, TREASURE_STRING_KEYS.size(), skip)).toEqual([...TREASURE_STRING_KEYS]);
 		expect(TREASURE_STRING_KEYS.size()).toBe(16);
 		expect(new Set(TREASURE_STRING_KEYS).size()).toBe(TREASURE_STRING_KEYS.size());

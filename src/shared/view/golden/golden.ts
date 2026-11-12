@@ -35,6 +35,7 @@ import { freezeFrameOn } from "../fx/juiceRules";
 import type { SegmentSink } from "../markings";
 import { GOLDEN_VIEW } from "./config";
 import type { GoldenAppear, GoldenCatch, GoldenFrameSource } from "./events";
+import { GOLDEN_RUMOUR_PHASE_NAMES, goldenRumourPhase } from "./rumour";
 
 const TAU = 2 * math.pi;
 const SOLO = 1;
@@ -359,7 +360,9 @@ export function goldenEscapedText(str: GoldenStr, coins: number): string {
 
 /**
  * KV_GoldenLabel's text (developer text, English): the status, and while it runs its ticks left / escapeTicks and hp /
- * hpMax; while waiting the tick it appears (or `engage` before its room engaged). Undefined without state.golden.
+ * hpMax; while it hides (docs/GOLDLING_RUMOURS.md GR7) its room, its piece's breakables slot, the rumour phase
+ * (goldenRumourPhase: FLOOR / ROOM) and the release tick (-1: not broken yet); after it, the floor's coins and the release
+ * tick. Undefined without state.golden.
  */
 export function goldenDebugText(state: Readonly<SimState>): string | undefined {
 	const g = state.golden;
@@ -371,7 +374,8 @@ export function goldenDebugText(state: Readonly<SimState>): string | undefined {
 		return `${name} t ${a.v[GOLDEN_TICKS_LEFT]}/${g.config.escapeTicks} hp ${a.hp}/${a.hpMax} hits ${g.hits}`;
 	}
 	if (g.status === GoldenStatus.WAITING) {
-		return g.appearTick >= 0 ? `${name} room ${g.room} @${g.appearTick}` : `${name} room ${g.room} engage`;
+		const phase = GOLDEN_RUMOUR_PHASE_NAMES[goldenRumourPhase(state)];
+		return `${name} room ${g.room} piece ${g.piece} rumour ${phase} release ${g.releaseTick}`;
 	}
-	return `${name} coins ${g.coins}`;
+	return `${name} coins ${g.coins} release ${g.releaseTick}`;
 }

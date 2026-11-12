@@ -30,6 +30,8 @@ import {
 	FORTUNE_STRING_KEYS,
 	GOLDEN_BESTIARY_KEY,
 	GOLDEN_RUMOUR_AUDIO_IDS,
+	GOLDEN_RUMOUR_BESTIARY_KEY,
+	GOLDEN_RUMOUR_STRING_KEYS,
 	GOLDEN_COIN_FX_ID,
 	GOLDEN_COIN_ROLE,
 	HORDE_ROOM_CLEAR_KEY,
@@ -199,7 +201,8 @@ describe("fortune: contract", () => {
 	});
 
 	it("the strings: cards, dim lines (PACT_DIM_NAMES but none), titles, chips, shouts (required); rows; sighting", () => {
-		expect(tail(REQUIRED_STRING_KEYS, FORTUNE_STRING_KEYS.size(), FLOOR_MOD_AFTER.strings)).toEqual([
+		// docs/FLOOR_MODIFIERS.md FM7's strings, then docs/GOLDLING_RUMOURS.md GR7's two chip lines come after them
+		expect(tail(REQUIRED_STRING_KEYS, FORTUNE_STRING_KEYS.size(), FLOOR_MOD_AFTER.strings + GOLDEN_RUMOUR_STRING_KEYS.size())).toEqual([
 			...FORTUNE_STRING_KEYS,
 		]);
 		const dims = new Array<string>();
@@ -266,6 +269,25 @@ describe("fortune: contract", () => {
 		expect(pack.str("pact.accept", { key: "1" })).toBe("1 Accept");
 		expect(pack.str("fx.golden.escaped", { points: "350" })).toBe("It got away!  +350 banked");
 		expect(pack.str(HORDE_ROOM_CLEAR_KEY, { points: "420" })).toBe("Horde x2 +420");
+	});
+
+	it("the rumour strings (docs/GOLDLING_RUMOURS.md GR7): the chip's two lines last, the first-time card last", () => {
+		expect([...GOLDEN_RUMOUR_STRING_KEYS]).toEqual(["hud.chip.golden.rumour", "hud.chip.golden.hiding"]);
+		expect(tail(REQUIRED_STRING_KEYS, GOLDEN_RUMOUR_STRING_KEYS.size())).toEqual([...GOLDEN_RUMOUR_STRING_KEYS]);
+		expect(GOLDEN_RUMOUR_BESTIARY_KEY).toBe("bestiary.golden.rumour");
+		expect(BESTIARY_STRING_KEYS[BESTIARY_STRING_KEYS.size() - 1]).toBe(GOLDEN_RUMOUR_BESTIARY_KEY);
+		expect(has(REQUIRED_STRING_KEYS, GOLDEN_RUMOUR_BESTIARY_KEY)).toBe(true);
+		for (const id of sortedKeys(THEME_PACKS)) {
+			const strings = THEME_PACKS[id].strings;
+			for (const k of [...GOLDEN_RUMOUR_STRING_KEYS, GOLDEN_RUMOUR_BESTIARY_KEY])
+				expect([id, k, typeIs(strings[k], "string")]).toEqual([id, k, true]);
+		}
+		const s = PLACEHOLDER_MANIFEST.strings;
+		expect([...GOLDEN_RUMOUR_STRING_KEYS, GOLDEN_RUMOUR_BESTIARY_KEY].map((k) => s[k])).toEqual([
+			"Coins jingling...",
+			"It's hiding here!",
+			"Hear coins? A Goldling is hiding in a barrel or crate on this floor. Find it!",
+		]);
 	});
 });
 

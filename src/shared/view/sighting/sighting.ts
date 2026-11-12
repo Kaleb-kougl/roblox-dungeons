@@ -11,6 +11,10 @@
  *     ids come out in canonical order (shared/onboarding SIGHTING_IDS), each once. The power pellet (`pellet.power`,
  *     docs/PELLETS.md PL14) counts while it lies untaken in a live room within the same radius (shared/view/pellets
  *     livePowerPellet); the tutorial never shows one (its caller skips the tutorial anyway).
+ *   - withRumourSighting: the first-time card of the Goldling's rumours (`golden.rumour`, docs/GOLDLING_RUMOURS.md
+ *     GR7): added once this floor's first rumour cue has played (shared/view/golden GoldenRumourClock.heard), so it is
+ *     queued on that cue. It is SIGHTING_IDS' last id, so the canonical order holds; one card at a time (the queue), so
+ *     it never shows on top of the Goldling's own `golden` card.
  *   - SightingQueue: the account's seen set (every `onboardingStatus.seen`, unioned: a later status never forgets a
  *     local sighting), the queue of ids found but not shown yet, and the one-at-a-time clock. Nothing is queued before a
  *     LOADED status arrived (`loaded: false` = the stored set is unknown, so no toast at all rather than repeat them all
@@ -29,6 +33,9 @@ import { SIGHTING_VIEW } from "./config";
 
 /** The power pellet's sighting id (shared/onboarding SIGHTING_IDS, docs/PELLETS.md PL14). */
 export const POWER_PELLET_SIGHTING = "pellet.power";
+
+/** The first Goldling rumour's sighting id (shared/onboarding SIGHTING_IDS, docs/GOLDLING_RUMOURS.md GR7, RD7). */
+export const GOLDEN_RUMOUR_SIGHTING = "golden.rumour";
 
 /** Archetype id -> its sighting id (the archetypes a first sighting announces; a slimelet is an Ooze). */
 export const ARCHETYPE_SIGHTINGS: ReadonlyMap<string, string> = new Map([
@@ -102,6 +109,15 @@ export function sightingsInView(
 		if (dx * dx + dz * dz <= r2) found.add(POWER_PELLET_SIGHTING);
 	}
 	for (const id of SIGHTING_IDS) if (found.has(id)) out.push(id);
+	return out;
+}
+
+/**
+ * `out` (sightingsInView's canonical list) plus GOLDEN_RUMOUR_SIGHTING when `heard` (this floor's first rumour cue has
+ * played) and it is not listed yet; returns `out`. GOLDEN_RUMOUR_SIGHTING is SIGHTING_IDS' last id: the order holds.
+ */
+export function withRumourSighting(out: string[], heard: boolean): string[] {
+	if (heard && !out.includes(GOLDEN_RUMOUR_SIGHTING)) out.push(GOLDEN_RUMOUR_SIGHTING);
 	return out;
 }
 

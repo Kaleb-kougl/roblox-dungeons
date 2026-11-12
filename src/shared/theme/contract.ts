@@ -1324,6 +1324,9 @@ export const REQUIRED_STRING_KEYS: ReadonlyArray<string> = ((): string[] => [
 	"floormod.bloodMoon.name",
 	"floormod.bloodMoon.line",
 	"hud.pause.floorMod",
+	// docs/GOLDLING_RUMOURS.md GR7: fortune.ts GOLDEN_RUMOUR_STRING_KEYS, written out: the rumour chip's two lines
+	"hud.chip.golden.rumour",
+	"hud.chip.golden.hiding",
 ])();
 
 /**

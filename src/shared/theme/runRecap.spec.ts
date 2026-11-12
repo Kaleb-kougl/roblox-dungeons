@@ -10,7 +10,7 @@ import { PLACEHOLDER_MANIFEST } from "./packs/placeholder";
 import { CONTRIB_STRING_KEYS, RECAP_STRING_KEYS, TEAM_MOMENT_AUDIO_IDS, TEAM_MOMENT_STRING_KEYS } from "./runRecap";
 import { placeholders, templateProblem } from "./strings";
 import { TREASURE_AUDIO_IDS, TREASURE_STRING_KEYS } from "./treasure";
-import { FORTUNE_AUDIO_IDS, FORTUNE_STRING_KEYS, GOLDEN_RUMOUR_AUDIO_IDS } from "./fortune";
+import { FORTUNE_AUDIO_IDS, FORTUNE_STRING_KEYS, GOLDEN_RUMOUR_AUDIO_IDS, GOLDEN_RUMOUR_STRING_KEYS } from "./fortune";
 import { FLOOR_MODIFIER_AUDIO_IDS, FLOOR_MODIFIER_STRING_KEYS } from "./floorModifiers";
 import { deepClone, sortedKeys, type Obj } from "./util";
 import { validateManifest } from "./validate";
@@ -121,8 +121,13 @@ describe("run recap and co-op moments: contract", () => {
 		expect(RECAP_STRING_KEYS.size()).toBe(30);
 		expect(TEAM_MOMENT_STRING_KEYS.size()).toBe(4);
 		expect(CONTRIB_STRING_KEYS.size()).toBe(45);
-		// docs/TREASURE.md TR6's strings come after them, then docs/FORTUNE.md FO6's, then docs/FLOOR_MODIFIERS.md FM7's
-		const after = TREASURE_STRING_KEYS.size() + FORTUNE_STRING_KEYS.size() + FLOOR_MODIFIER_STRING_KEYS.size();
+		// docs/TREASURE.md TR6's strings come after them, then docs/FORTUNE.md FO6's, docs/FLOOR_MODIFIERS.md FM7's and
+		// docs/GOLDLING_RUMOURS.md GR7's
+		const after =
+			TREASURE_STRING_KEYS.size() +
+			FORTUNE_STRING_KEYS.size() +
+			FLOOR_MODIFIER_STRING_KEYS.size() +
+			GOLDEN_RUMOUR_STRING_KEYS.size();
 		expect(tail(REQUIRED_STRING_KEYS, all.size(), after)).toEqual(all);
 		expect(new Set(REQUIRED_STRING_KEYS).size()).toBe(REQUIRED_STRING_KEYS.size());
 	});

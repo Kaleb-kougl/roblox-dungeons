@@ -19,12 +19,27 @@
  *   heard   `heard()`: this floor's first rumour cue has played (the first-time card `golden.rumour` is queued then).
  *   room    goldenRumourInRoom: the view player stands in the Goldling's room (the room cue's full volume; outside it
  *           plays at the teammate volume, RD6).
+ *   chip    goldenRumourChipKey / goldenRumourChipText: the chip's line per phase (theme GOLDEN_RUMOUR_STRING_KEYS);
+ *           goldenRumourChipScale: its gentle pulse while it reads "hiding" (none under reduced motion);
+ *           chipRowWidth: the status corner's boost row split between the chips and one boost cell.
  *
  * Co-op (RD6): every client steps the same merged state, so every client hears both cues (their own clock, their own
  * frame times). Muted: the chip and the glint say what the sounds say.
  */
 import { GoldenStatus, goldenInRoom, isDraftOpen, partySize, playerAt, type SimState } from "shared/sim";
 import { GOLDEN_VIEW } from "./config";
+
+const TAU = 2 * math.pi;
+
+/** The rumours' theme strings (shared/theme GOLDEN_RUMOUR_STRING_KEYS and GOLDEN_RUMOUR_BESTIARY_KEY). */
+export const GOLDEN_RUMOUR_STRINGS = {
+	/** The chip in FLOOR ("Coins jingling..."). */
+	floor: "hud.chip.golden.rumour",
+	/** The chip in ROOM ("It's hiding here!"). */
+	room: "hud.chip.golden.hiding",
+	/** The first-time card (the sighting id `golden.rumour`'s bestiary line). */
+	card: "bestiary.golden.rumour",
+} as const;
 
 /** The rumour's phase (goldenRumourPhase). */
 export const GoldenRumourPhase = {
@@ -151,4 +166,37 @@ export class GoldenRumourClock implements GoldenRumourCueSource {
 	floorSec(): number {
 		return this.unfrozenSec;
 	}
+}
+
+/** The chip's theme string for `phase`, or undefined for NONE (no chip). */
+export function goldenRumourChipKey(phase: number): string | undefined {
+	if (phase === GoldenRumourPhase.FLOOR) return GOLDEN_RUMOUR_STRINGS.floor;
+	if (phase === GoldenRumourPhase.ROOM) return GOLDEN_RUMOUR_STRINGS.room;
+	return undefined;
+}
+
+/** The chip's line for `phase` through the pack's string lookup ("" for NONE). */
+export function goldenRumourChipText(str: (key: string) => string, phase: number): string {
+	const key = goldenRumourChipKey(phase);
+	return key !== undefined ? str(key) : "";
+}
+
+/**
+ * The chip content's scale `ageSec` seconds into its ROOM look: 1 + pulseAmp x a 0..1 wave (0 at each cycle's start),
+ * one cycle per pulseSec. 1 in FLOOR / NONE, and under reduced motion (`motion` 0, shared/view/fx motionScale).
+ */
+export function goldenRumourChipScale(ageSec: number, phase: number, motion: number): number {
+	const c = GOLDEN_VIEW.rumour.chip;
+	if (phase !== GoldenRumourPhase.ROOM || !(motion > 0) || !(c.pulseSec > 0)) return 1;
+	const wave = 0.5 - 0.5 * math.cos((TAU * math.max(0, ageSec)) / c.pulseSec);
+	return 1 + c.pulseAmp * wave;
+}
+
+/**
+ * The width of each of `chips` chips sharing the status corner's boost row with one boost cell (`cellWidth`): the row
+ * minus the cell and the gaps, split evenly (shared/view/pacts hordeChipWidth for one chip). 0 for no chip.
+ */
+export function chipRowWidth(rowWidth: number, cellWidth: number, gap: number, chips: number): number {
+	if (!(chips > 0)) return 0;
+	return math.max(0, (rowWidth - cellWidth - gap - (chips - 1) * gap) / chips);
 }

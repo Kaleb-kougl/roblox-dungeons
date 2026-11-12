@@ -52,6 +52,10 @@
 		"note": "First-sighting toast, shown once per account (top centre, during combat) the first time a Goldling (enemy.golden.name: a rare harmless gold creature that runs away; every hit gives coins and catching it within 10 seconds gives a jackpot) appears in a run. Two short exclamations; the name must be the same word as enemy.golden.name. Brief, direct, second person.",
 		"max": 48
 	},
+	"bestiary.golden.rumour": {
+		"note": "First-time card, shown once per account (left edge, under the status panel) the first time the player hears a Goldling rumour: a soft coin jingle that plays when a floor has a Goldling (enemy.golden.name: a rare harmless gold creature) hiding inside one of its barrels or crates (breakable.barrel.name / breakable.crate.name); breaking that barrel or crate lets it out. A question, then where it is, then a short call to act. The name must be the same word as enemy.golden.name. Brief, direct, second person.",
+		"max": 90
+	},
 	"bestiary.imp": {
 		"note": "First-sighting toast, shown once per account (top centre, during combat) the first time the player meets the Imp (enemy.imp.name). Format \"Name: short survival tip\"; the name before the colon must be the same word as that name string. Brief, direct, second person."
 	},
@@ -1520,6 +1524,14 @@
 	"hud.build.title": {
 		"note": "Title of the list of boons the player owns (pause menu and run-over panel): their \"build\" for this run.",
 		"max": 12
+	},
+	"hud.chip.golden.hiding": {
+		"note": "The same chip once someone has walked into the room where the Goldling (enemy.golden.name) hides in a barrel or crate: it is in this room. Short, excited, ends with an exclamation mark. \"It\" is the Goldling.",
+		"max": 20
+	},
+	"hud.chip.golden.rumour": {
+		"note": "Small chip in the status corner of the HUD (beside the Horde chip) while a Goldling (enemy.golden.name) hides somewhere on this floor and nobody has found its room yet; it appears with a soft coin jingle. A short, playful hint that coins can be heard; the trailing dots mean \"somewhere nearby\". No direction, no name.",
+		"max": 20
 	},
 	"hud.chip.horde": {
 		"note": "Small chip in the status corner of the HUD while the Pact of the Horde is armed: the next enemy room the party enters fights twice the enemies for twice (x2) the score. \"HORDE\" in capitals, then a short reminder; keep \"x2\" as is.",

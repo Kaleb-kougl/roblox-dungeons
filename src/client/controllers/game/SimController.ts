@@ -593,7 +593,10 @@ export class SimController implements OnStart {
 			this.isHeldByLoader() ||
 			this.isRunOver() ||
 			ctx.live?.isPaused() === true;
+		const chip = this.rumour.chip();
 		this.rumour.step(ctx.run.state, dt, hold);
+		// The chip shows (or changes) with its cue: the next frame's snapshot goes out at once, not at the ~10 Hz tick.
+		if (this.rumour.chip() !== chip) this.hudTimer = HUD_SNAPSHOT_INTERVAL_SEC;
 	}
 
 	// --- read access for views (never write the state) -----------------------------------------
@@ -1486,6 +1489,7 @@ export class SimController implements OnStart {
 					? { name: ctx?.memberNames[watched] ?? "", position: view.position, count: view.count }
 					: undefined,
 			config: coop.config,
+			goldenRumour: this.rumour.chip(),
 		});
 	}
 
@@ -1956,6 +1960,7 @@ export class SimController implements OnStart {
 			hitsTaken: run.hitsTaken,
 			endTick: run.endTick(),
 			config: run.setup.config,
+			goldenRumour: this.rumour.chip(),
 		});
 	}
 

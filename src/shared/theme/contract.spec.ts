@@ -225,8 +225,9 @@ describe("required IDs and strings", () => {
 		// + docs/RUN_CONTRIBUTION.md CT4: CONTRIB_STRING_KEYS (44; CT5's `run.recap.party.share`: 45)
 		// + docs/ARCHER.md AR11: the character screen's 7 (theme characters.ts characterStringKeys)
 		// + docs/FLOOR_MODIFIERS.md FM7: FLOOR_MODIFIER_STRING_KEYS (11: five names and lines, the pause line)
+		// + docs/GOLDLING_RUMOURS.md GR7: the rumour chip's 2 (GOLDEN_RUMOUR_STRING_KEYS), bestiary.golden.rumour
 		expect(REQUIRED_STRING_KEYS.size()).toBe(
-			before + 28 + 1 + 1 + 4 + 16 + 1 + 19 + 1 + 1 + 3 + 18 + 17 + 5 + 45 + 7 + 11,
+			before + 28 + 1 + 1 + 4 + 16 + 1 + 19 + 1 + 1 + 3 + 18 + 17 + 5 + 45 + 7 + 11 + 2 + 1,
 		);
 		expect(new Set(REQUIRED_STRING_KEYS).size()).toBe(REQUIRED_STRING_KEYS.size());
 		expect(BIOMES.map((b) => b.forgeTheme)).toEqual(["ancient", "molten", "frost", "grim", "verdant"]);
