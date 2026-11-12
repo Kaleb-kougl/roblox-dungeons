@@ -78,6 +78,9 @@
  *   voidDecor/    void decoration (docs/VOID_DECOR.md VD2-VD4, VD9): voidField, planVoid (shoulder / ledge / outcrop /
  *                 abyss per cell, greedy rects), VOID / VOID_DEPTH, the VoidController's columns (voidColumnOf,
  *                 voidLayerStyle, voidRunInput, VOID_VIEW)
+ *   modifiers/    floor modifiers on screen (docs/FLOOR_MODIFIERS.md FM5 / FM6): the floor card banner's rows, stamp
+ *                 and hold, the status chip's pulse, ModifierPayoff (the once-per-floor payoff frame) and its input
+ *                 from a run view (tunables: FLOOR_MODIFIER_VIEW in modifiers/config.ts)
  *   minimap/      the minimap with fog of war (docs/MINIMAP.md M1-M5): map tiles, sight, FogOfWar, the turned map
  *                 transform, the RGBA8 painter (tunables: MINIMAP_VIEW in minimap/config.ts)
  *
@@ -123,6 +126,7 @@ export * from "./roomEdgeState";
 export * from "./decor";
 export * from "./voidDecor";
 export * from "./minimap";
+export * from "./modifiers";
 export * from "./collisionDebugConfig";
 export * from "./collisionDebug";
 export * from "./watch";

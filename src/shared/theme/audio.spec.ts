@@ -165,6 +165,12 @@ describe("audio contract: port IDs and ambience", () => {
 			"sfx.golden.hit",
 			"sfx.golden.jackpot",
 			"sfx.golden.escape",
+			// docs/FLOOR_MODIFIERS.md FM7: one sting per floor modifier kind (lowercase segments: bloodmoon)
+			"sfx.floor.modifier.gilded",
+			"sfx.floor.modifier.hoard",
+			"sfx.floor.modifier.feast",
+			"sfx.floor.modifier.plunder",
+			"sfx.floor.modifier.bloodmoon",
 		]);
 		const web = new Set<string>([...AUDIO_EVENTS, ...BREAKABLE_AUDIO_EVENTS]);
 		for (const id of PORT_AUDIO_EVENTS) {

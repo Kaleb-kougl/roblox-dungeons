@@ -93,7 +93,7 @@ import { HitstopClock, simPacerFor, type FrameAdvance, type FramePacer } from "s
 import { PREDICTION_VIEW, PredictionSmoother, writeDrawnPlayer, type DrawnPlayerOf } from "shared/view/predict";
 import { PROGRESSION_VIEW, boardFor, toastFor, type PendingRunClaim } from "shared/view/hud";
 import { afterRobloxMenuClosed, lobbyStartAccepted, restartForfeits } from "shared/view/menu";
-import { ENDLESS_FIRST_FLOOR, type Dungeon } from "shared/dungeon";
+import { ENDLESS_FIRST_FLOOR, FloorModifier, type Dungeon } from "shared/dungeon";
 import { InputController } from "./InputController";
 import { ThemeController } from "./ThemeController";
 
@@ -289,6 +289,17 @@ function placeKeyFor(pack: ThemePack, dungeon: Dungeon | undefined): string {
 	if (dungeon === undefined) return "";
 	const biome = BIOMES.find((b) => b.forgeTheme === dungeon.params.themeKey);
 	return biome !== undefined ? pack.biome(biome.id).nameKey : "";
+}
+
+/**
+ * docs/FLOOR_MODIFIERS.md FM5 / FM6: floor `floor`'s modifier in the run `ctx` (a shared/dungeon FloorModifier id, the
+ * floor layout's EndlessFloorLayout.modifier through the run's cached floor builder), FloorModifier.NONE without an
+ * endless floor (M1, the greybox, the menu) or before the first one. Pure and cheap (the floor is cached).
+ */
+export function floorModifierOf(ctx: RunContext, floor: number = ctx.floor): number {
+	const build = ctx.endlessFloor;
+	if (build === undefined || floor < ENDLESS_FIRST_FLOOR) return FloorModifier.NONE;
+	return build(floor).layout.modifier;
 }
 
 /**
@@ -774,6 +785,7 @@ export class SimController implements OnStart {
 			startFloor: clampDevFloor(options.startFloor),
 			invulnerable: options.invulnerable,
 			vault: options.vault,
+			modifier: options.modifier,
 			bothWeapons: options.bothWeapons,
 		};
 		this.devSeed = seed;
@@ -1678,6 +1690,7 @@ export class SimController implements OnStart {
 			coop: ctx.coop !== undefined,
 			lobbyId: ctx.lobbyId,
 			character: playerCharacterOf(ctx.characters, ctx.run.state, ctx.localIndex) ?? "",
+			floorModifier: floorModifierOf(ctx),
 		};
 	}
 

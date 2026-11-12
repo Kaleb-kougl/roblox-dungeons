@@ -15,6 +15,9 @@ licences forbid redistributing the raw files. See `THIRD_PARTY_NOTICES.md` and `
 | `art/vendor/ninja-adventure/` | Ninja Adventure Asset Pack (CC0): only its `FX/` and `Audio/` folders, with their original layout and casing (`FX/Attack/...`, `Audio/Sounds/...`, `Audio/Musics/...`, `Audio/Jingles/...`) | https://pixel-boy.itch.io/ninja-adventure-asset-pack |
 | `art/vendor/toffeecraft-horror-ui/` | UI User Interface Pack - Horror (ToffeeCraft, the paid download `UiHorror.png.zip`): the one sheet `UiHorror.png` (1024x607) directly in the folder. Read for the boon draft cards (docs/DRAFT_REVEAL.md DR3) | https://toffeecraft.itch.io/ui-user-interface-pack-horror |
 | `art/vendor/pixabay/` | Single sound effects from Pixabay (Pixabay Content License: no attribution, the raw file is not redistributed). Keep the downloaded file names. Today one: `dragon-studio-glass-breaking-504033.mp3` ("Glass breaking" by DRAGON-STUDIO, id 504033; `sfx.combo.break`, docs/COMBO.md CD12) | https://pixabay.com/sound-effects/ (search "glass breaking dragon-studio") |
+| `art/vendor/kenney-music-jingles/` | Kenney Music Jingles (CC0, `jingleSounds_Kenney.zip`, 85 OGGs): unzip so `OGG/jingles_NES/...`, `OGG/jingles_STEEL/...` (and `license.txt`) sit in the folder. Read for the floor modifier stings (docs/FLOOR_MODIFIERS.md FM10) | https://kenney.nl/assets/music-jingles (or https://opengameart.org/node/22000) |
+| `art/vendor/wobbleboxx-soundpack01/` | Level up, power up, Coin get (13 Sounds) by wobbleboxx (CC0, `SoundPack01.zip`): its 13 `.aif` files directly in the folder (drop `__MACOSX/`). Floor modifier stings | https://opengameart.org/content/level-up-power-up-coin-get-13-sounds |
+| `art/vendor/dhsfx-horror-stingers/` | Horror Stinger Sound Effects by DHSFX (free, credit required, no redistribution): the single WAVs `Low Bell.wav`, `Very Low Bell.wav`, `Trombone Low Note.wav`, names unchanged. Blood Moon's sting | https://dhsfx.itch.io/horror-stinger-sound-effects |
 | `art/vendor/player-bullets/` | 16Bit Bullets, missiles, Explosions & Misc Asset Pack by J i m (itch.io `jinvorionstg`): the free `Player Bullets.rar` (6 kB, name your own price). Unpack its 10 PNGs from `Player Bullets/` directly into the folder, names unchanged (`P1 Bullet_Yellow.png`, `p1_Bullet_Alt.png`, ...). Read for every flying projectile (docs/PROJECTILE_ART.md) | https://jinvorionstg.itch.io/bullet-asset-pack-top-down-or-shmup-classic-bullet-hell-style |
 | `art/vendor/kaleb-vale/` | Original art drawn by code, not downloaded: `loot-glint/loot_glint_0..7.png`, the anime twinkle on loaded barrels and crates (docs/BREAKABLE_DROPS.md), from `scripts/art/gen-loot-glint.js`. `npm run art:build` / `art:lock` regenerate it first (byte-identical), so nothing to fetch | (generated) |
 
@@ -63,7 +66,9 @@ files into `art/vendor.lock.json`. A full `npm run art:build` builds it too, wit
 ## Audio
 
 The sounds come from the Ninja Adventure pack's `Audio/` folder (`art/vendor/ninja-adventure/Audio/`, CC0), plus single
-Pixabay clips in `art/vendor/pixabay/` (the combo break's glass shatter; ffmpeg reads the MP3 like any WAV / OGG).
+Pixabay clips in `art/vendor/pixabay/` (the combo break's glass shatter; ffmpeg reads the MP3 like any WAV / OGG) and the floor
+modifier stings' packs (`kenney-music-jingles/`, `wobbleboxx-soundpack01/` (AIF), `dhsfx-horror-stingers/`). A clip's
+`fadeOutSec` (with a `[startSec, endSec]` trim) fades the cut so a long bell or held note ends without a click.
 `art/audio.json` maps every logical sound ID (`sfx.*`, `music.*`, `amb.*`) to its source clip(s), variants, volume,
 pitch jitter, minimum interval, gain and trim; `"silent": true` leaves an ID silent. `art/audio.lock.json` lists every
 clip it builds, with its sha256 (a separate lock from `vendor.lock.json`, so neither pipeline rewrites the other's).

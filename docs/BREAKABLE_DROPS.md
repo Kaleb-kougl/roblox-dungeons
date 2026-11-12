@@ -352,3 +352,12 @@ reduced-motion glint is likely invisible too (not changed here; docs/BOOST_ART.m
 
 To switch it on: `npm run art:build`, upload `art/upload/loot-glint.png`, paste its ID into `assetIds.ts` as
 `"loot-glint.png"`, `npm run verify`.
+
+## Floor modifiers (2026-11-12)
+
+docs/FLOOR_MODIFIERS.md's boon **Plunder** (`Plunder · A boost hides in every room's barrels`, endless only, 8.2 % of
+non-boss floors in its FM9 census): `placeBreakableLoot(..., { everyRoom: true })` makes the count draw, ignores it,
+then loads one weighted piece (and draws its boost kind) in every room that holds a weighted piece, in room id order;
+only on floors with at least `MODIFIERS.plunder.minRooms` 3 such rooms. A Plunder floor loads 11.1 pieces on average
+(5-13) against 1.8 natural: open owner call OC2 there. Breaking, the drop, the ground cap of 4 and the fizzle are
+unchanged; the floor's status chip pulses on the first loaded piece broken.

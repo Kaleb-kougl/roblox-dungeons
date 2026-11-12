@@ -43,6 +43,12 @@
  *   golden        the Goldling's room, if any (./golden.ts, docs/FORTUNE.md GE1), LAST, from its own stream
  *                 hash(floor seed, GOLDEN_PLACE.salt), reading the encounter rooms and the room spawns; nothing above
  *                 reads it
+ *   modifier      opt-in (EndlessFloorOptions.modifiers; off: no draw, `modifier` NONE, every output above as before):
+ *                 the floor's modifier (./modifiers.ts, docs/FLOOR_MODIFIERS.md FM1 / FM2), from its own stream
+ *                 hash(floor seed, MODIFIERS.salt) and floor n - 1's chance draw, reading the floor built so far
+ *                 (eligibility); a pick re-runs its placer forced (Blood Moon: affixes, Plunder: loot, Feast: pellets,
+ *                 Hoard: vault, Gilded: golden) and every placer after it, so the layout, digest, props, spawns, pieces
+ *                 and boss pick never move, and a floor without a modifier is the option-off floor exactly
  *
  * Generating the dungeon is left to the caller (`dungeonFor`), so shared/run can cache it (LRU).
  */
@@ -61,13 +67,25 @@ import {
 } from "./encounter";
 import { SPREAD_TRIES, SWARMER_KIND, isOpenTile, nearestFree, roomSpawnTiles, spreadTile } from "./enemyRooms";
 import { encounterCost } from "./encounterCost";
-import { placeBreakables, withoutBreakableCells, type BreakablePlacement } from "./breakables";
+import {
+	placeBreakables,
+	withoutBreakableCells,
+	type BreakableFloorInput,
+	type BreakablePlacement,
+} from "./breakables";
 import { assignAffixes } from "./affixes";
 import { placeBreakableLoot, type BreakableLoot } from "./breakableLoot";
 import { placePellets, type FloorPellets } from "./pellets";
 import { placeVault, vaultChest, type VaultOverride, type VaultPlan } from "./vault";
 import { placePactAltars, type FloorPacts } from "./pacts";
 import { placeGolden, type FloorGolden } from "./golden";
+import { FloorModifier, MODIFIERS, type FloorModifierId } from "./modifiersData";
+import {
+	pickFloorModifier,
+	type FloorModifierOverride,
+	type FloorModifierPickInput,
+	type FloorModifierWorld,
+} from "./modifiers";
 import type { ActorSpawn, EncounterConfig, EncounterRoom, EncounterRoomType } from "./encounterTypes";
 import {
 	BOSS_FLOOR_EVERY,
@@ -498,6 +516,12 @@ export interface EndlessFloorLayout {
 	 * rectangle and walk mask. Absent: no Goldling on this floor (and always on the tutorial's hand-built floors).
 	 */
 	readonly golden?: FloorGolden;
+	/**
+	 * The floor's modifier (./modifiers.ts pickFloorModifier, docs/FLOOR_MODIFIERS.md FM1): a FloorModifier id,
+	 * FloorModifier.NONE when none (EndlessFloorOptions.modifiers off, a plain floor, the tutorial's floors). Its
+	 * effect is already in the parts above (the forced placer); the view reads the id (the card, the chip).
+	 */
+	readonly modifier: FloorModifierId;
 }
 
 /** Opt-in parts of an endless floor (buildEndlessFloor). Absent or empty: the floor exactly as before them. */
@@ -511,6 +535,132 @@ export interface EndlessFloorOptions {
 	 * the Daily (shared/daily DAILY.rosterUnlockFloors). Absent or true: every other endless world, exactly as before.
 	 */
 	readonly unlockFloors?: boolean;
+	/**
+	 * Pick the floor's modifier (docs/FLOOR_MODIFIERS.md FM2: ./modifiers.ts): the world's sim parts, so a modifier is
+	 * only picked where its effect will show (the vaults come from `vaults`). Every endless world sets it (shared/run
+	 * ENDLESS_MODIFIER_WORLD: all on). Absent: no draw, `modifier` NONE, the floor exactly as before.
+	 */
+	readonly modifiers?: FloorModifierWorld;
+	/** With `modifiers`: the dev world's KV_FloorModifier (FloorModifierOverride). Ignored without `modifiers`. */
+	readonly modifierOverride?: FloorModifierOverride;
+}
+
+/** What the modifier pick reads of floor `floor`'s place in the run `runSeed` (its seed, floor n - 1's seed). Pure. */
+export function floorModifierPickInput(runSeed: number, floor: number): FloorModifierPickInput {
+	return {
+		floor,
+		seed: floorSeed(runSeed, floor),
+		bossFloor: isBossFloor(floor),
+		prevSeed: floorSeed(runSeed, floor - 1),
+		prevBossFloor: isBossFloor(floor - 1),
+	};
+}
+
+/** The floor parts placed after the breakables, in build order (placeFloorParts). */
+interface FloorParts {
+	readonly roomAffixes: number[][];
+	readonly breakableLoot: BreakableLoot[];
+	readonly pellets: FloorPellets;
+	readonly vault: VaultPlan | undefined;
+	/** The breakables with the vault's chest appended, if any. */
+	readonly pieces: ReadonlyArray<BreakablePlacement>;
+	readonly pactAltars: FloorPacts | undefined;
+	readonly golden: FloorGolden | undefined;
+}
+
+/** Build order of the parts placeFloorParts re-runs (a modifier re-runs its placer and every one after it). */
+const PART_STEP = { affixes: 0, loot: 1, pellets: 2, vault: 3, pacts: 4, golden: 5 } as const;
+
+/** The first part a modifier re-runs (its forced placer); NONE: none. */
+function modifierFirstStep(modifier: number): number {
+	if (modifier === FloorModifier.BLOOD_MOON) return PART_STEP.affixes;
+	if (modifier === FloorModifier.PLUNDER) return PART_STEP.loot;
+	if (modifier === FloorModifier.FEAST) return PART_STEP.pellets;
+	if (modifier === FloorModifier.HOARD) return PART_STEP.vault;
+	if (modifier === FloorModifier.GILDED) return PART_STEP.golden;
+	return math.huge;
+}
+
+/**
+ * The parts after the breakables (affixes, loot, pellets, vault, pact altars, Goldling), each on its own stream. Without
+ * `natural`: every part as built today (no force flag). With `natural` (the parts of the same floor built without a
+ * modifier): the parts before `modifier`'s placer are kept, its placer runs with its force flag and every later one
+ * runs again on the forced outputs.
+ */
+function placeFloorParts(
+	input: BreakableFloorInput,
+	floor: number,
+	breakables: ReadonlyArray<BreakablePlacement>,
+	options: EndlessFloorOptions | undefined,
+	modifier: number,
+	natural?: FloorParts,
+): FloorParts {
+	const from = natural === undefined ? 0 : modifierFirstStep(modifier);
+	const seed = input.seed;
+	const encounter = input.encounter;
+	// Affixes run after everything else, on their own rng stream (./affixes.ts): nothing above moves.
+	const roomAffixes =
+		natural === undefined || from <= PART_STEP.affixes
+			? assignAffixes(
+					seed,
+					floor,
+					encounter.rooms,
+					input.roomSpawns,
+					modifier === FloorModifier.BLOOD_MOON
+						? { sharePercent: MODIFIERS.bloodMoon.sharePercent }
+						: undefined,
+			  )
+			: natural.roomAffixes;
+	// Loot reads the placed pieces, on its own rng stream (./breakableLoot.ts): nothing above moves.
+	const breakableLoot =
+		natural === undefined || from <= PART_STEP.loot
+			? placeBreakableLoot(
+					seed,
+					floor,
+					breakables,
+					encounter,
+					modifier === FloorModifier.PLUNDER ? { everyRoom: true } : undefined,
+			  )
+			: natural.breakableLoot;
+	// Pellets run last, on their own rng stream (./pellets.ts), reading the layout and the placed pieces: nothing
+	// above moves.
+	const pellets =
+		natural === undefined || from <= PART_STEP.pellets
+			? placePellets(
+					input,
+					floor,
+					breakables,
+					modifier === FloorModifier.FEAST ? { powerCertain: true } : undefined,
+			  )
+			: natural.pellets;
+	// The vault runs next, on its own rng stream (./vault.ts), reading everything above: nothing above moves. Its chest
+	// is appended after every piece, so loot slots and pellet cells never include it. Hoard: `every` (the dev world's
+	// tier / lock kept).
+	const devVault = options?.vaultOverride;
+	const vaultOverride: VaultOverride | undefined =
+		modifier !== FloorModifier.HOARD
+			? devVault
+			: devVault !== undefined
+			? { ...devVault, every: true }
+			: { every: true };
+	const vault =
+		natural === undefined || from <= PART_STEP.vault
+			? options?.vaults === true
+				? placeVault(input, floor, breakables, pellets, vaultOverride)
+				: undefined
+			: natural.vault;
+	const pieces = vault !== undefined ? [...breakables, vaultChest(vault)] : breakables;
+	// Pact altars, drawing nothing, reading the layout, the pieces (the chest included) and the pellets: nothing above
+	// moves.
+	const pactAltars =
+		natural === undefined || from <= PART_STEP.pacts ? placePactAltars(input, pieces, pellets) : natural.pactAltars;
+	// The Goldling runs last, on its own rng stream (./golden.ts), reading the encounter rooms and the room spawns:
+	// nothing above moves.
+	const golden =
+		natural === undefined || from <= PART_STEP.golden
+			? placeGolden(input, floor, modifier === FloorModifier.GILDED ? { certain: true } : undefined)
+			: natural.golden;
+	return { roomAffixes, breakableLoot, pellets, vault, pieces, pactAltars, golden };
 }
 
 /**
@@ -543,25 +693,25 @@ export function buildEndlessFloor(
 		{ seed: params.seed, dungeon: d, encounter, roomSpawns, spawn, stairwell },
 		floor,
 	);
-	// Affixes run after everything else, on their own rng stream (./affixes.ts): nothing above moves.
-	const roomAffixes = assignAffixes(params.seed, floor, encounter.rooms, roomSpawns);
-	// Loot reads the placed pieces, on its own rng stream (./breakableLoot.ts): nothing above moves.
-	const breakableLoot = placeBreakableLoot(params.seed, floor, breakables, encounter);
-	// Pellets run last, on their own rng stream (./pellets.ts), reading the layout and the placed pieces: nothing
-	// above moves.
+	// Affixes, loot, pellets, the vault, the pact altars and the Goldling, each on its own stream (placeFloorParts).
 	const input = { seed: params.seed, dungeon: d, encounter, roomSpawns, spawn, stairwell };
-	const pellets = placePellets(input, floor, breakables);
-	// The vault runs next, on its own rng stream (./vault.ts), reading everything above: nothing above moves. Its chest
-	// is appended after every piece, so loot slots and pellet cells never include it.
-	const vault =
-		options?.vaults === true ? placeVault(input, floor, breakables, pellets, options.vaultOverride) : undefined;
-	const pieces = vault !== undefined ? [...breakables, vaultChest(vault)] : breakables;
-	// Pact altars, drawing nothing, reading the layout, the pieces (the chest included) and the pellets: nothing above
-	// moves.
-	const pactAltars = placePactAltars(input, pieces, pellets);
-	// The Goldling runs last, on its own rng stream (./golden.ts), reading the encounter rooms and the room spawns:
-	// nothing above moves.
-	const golden = placeGolden({ seed: params.seed, dungeon: d, encounter, roomSpawns }, floor);
+	let parts = placeFloorParts(input, floor, breakables, options, FloorModifier.NONE);
+	// The modifier reads the floor built so far, on its own stream (./modifiers.ts); a pick re-runs its placer forced and
+	// every placer after it. Off: no draw, nothing moves.
+	let modifier: FloorModifierId = FloorModifier.NONE;
+	const world = options?.modifiers;
+	if (world !== undefined) {
+		const natural = { ...input, floor, breakables, ...parts };
+		modifier = pickFloorModifier(
+			floorModifierPickInput(runSeed, floor),
+			natural,
+			{ ...world, vaults: options?.vaults === true },
+			options?.modifierOverride,
+		);
+		if (modifier !== FloorModifier.NONE)
+			parts = placeFloorParts(input, floor, breakables, options, modifier, parts);
+	}
+	const { roomAffixes, breakableLoot, pellets, vault, pieces, pactAltars, golden } = parts;
 	return {
 		floor,
 		seed: params.seed,
@@ -582,5 +732,6 @@ export function buildEndlessFloor(
 		vault,
 		pactAltars,
 		golden,
+		modifier,
 	};
 }

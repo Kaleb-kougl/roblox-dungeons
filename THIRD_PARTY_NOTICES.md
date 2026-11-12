@@ -368,3 +368,35 @@ docs/BOOKSHELVES.md). **Changes made:** rendered to 2D sprites
   **Attribution is required where players can see it**: the main menu's Credits screen (shared/view/menu `CREDITS`)
   shows the title, "by SebastianSosnowski (Sketchfab)", "CC BY 4.0 - creativecommons.org/licenses/by/4.0" and the
   change note.
+
+## Music Jingles (audio, CC0)
+
+- Author: Kenney (kenney.nl). Source: https://kenney.nl/assets/music-jingles; downloaded 2026-11-12 from Kenney's own
+  OpenGameArt upload, https://opengameart.org/node/22000 ("85 Short music jingles", `jingleSounds_Kenney.zip`).
+- Used for: the floor modifier stings `sfx.floor.modifier.hoard` / `.plunder` (docs/FLOOR_MODIFIERS.md FM10), built by
+  `scripts/audio/build-audio.js`.
+- Raw files: `art/vendor/kenney-music-jingles/` (gitignored, like the other packs).
+- License: Creative Commons Zero (CC0 1.0), per the pack's `license.txt`: "Credit (Kenney or www.kenney.nl) would be
+  nice but is not mandatory." Listed on the Credits screen anyway.
+
+## Level up, power up, Coin get (13 Sounds) (audio, CC0)
+
+- Author: wobbleboxx (WobbleBoxx Workshop). Source: https://opengameart.org/content/level-up-power-up-coin-get-13-sounds
+  (`SoundPack01.zip`, downloaded 2026-11-12).
+- Used for: the floor modifier stings `sfx.floor.modifier.gilded` / `.feast` (docs/FLOOR_MODIFIERS.md FM10).
+- Raw files: `art/vendor/wobbleboxx-soundpack01/` (the zip's 13 `.aif` files; gitignored).
+- License: CC0 (public domain), per the page: credit not required ("WobbleBoxx Workshop" suggested). Listed on the
+  Credits screen anyway.
+
+## Horror Stinger Sound Effects (audio) by DHSFX - ATTRIBUTION REQUIRED
+
+- Author: DHSFX (Dafydd Harvey). Source: https://dhsfx.itch.io/horror-stinger-sound-effects (free, name your own
+  price; downloaded 2026-11-12: `Low Bell.wav`, `Very Low Bell.wav`, `Trombone Low Note.wav`).
+- Used for: the floor modifier sting `sfx.floor.modifier.bloodmoon` (docs/FLOOR_MODIFIERS.md FM10), cut to 2.2 s with a
+  fade by `scripts/audio/build-audio.js` (modified).
+- Raw files: `art/vendor/dhsfx-horror-stingers/` (gitignored, never redistributed).
+- License: NOT Creative Commons. The author's terms (the store page and the "License?" thread,
+  https://itch.io/t/1600351/license, read 2026-11-12): free to use in your own game, integrated in the game and heard
+  only when it runs; never redistribute or repost the raw files (keep the uploaded Roblox audio private, never on the
+  Creator Store); credit the author with a reference to their SoundCloud profile, https://soundcloud.com/dhsfx, in the
+  published game: the Credits screen does (`CREDITS`, shared/view/menu credits.ts).

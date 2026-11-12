@@ -189,7 +189,7 @@
  *
  * Presentation only: reads sim state, never writes it.
  */
-import { VaultTier } from "shared/dungeon";
+import { VaultTier, floorModifierKey } from "shared/dungeon";
 import {
 	BOSS_DEMONLORD_ID,
 	COMBO_MIN,
@@ -438,6 +438,17 @@ export const SFX = {
 	goldenHit: "sfx.golden.hit",
 	goldenJackpot: "sfx.golden.jackpot",
 	goldenEscape: "sfx.golden.escape",
+	/**
+	 * Floor modifiers (docs/FLOOR_MODIFIERS.md FM7; the theme's PORT_AUDIO_EVENTS, FLOOR_MODIFIER_AUDIO_IDS): one sting
+	 * per kind on the floor card banner's stamp (FMD9: a boon's bright, the twist's ominous; asset ID segments are
+	 * lowercase). Each plays its SFX_FALLBACK while silent. Registered only: the card plays floorModifierStingId(kind) on
+	 * the stamp (FM5).
+	 */
+	floorModifierGilded: "sfx.floor.modifier.gilded",
+	floorModifierHoard: "sfx.floor.modifier.hoard",
+	floorModifierFeast: "sfx.floor.modifier.feast",
+	floorModifierPlunder: "sfx.floor.modifier.plunder",
+	floorModifierBloodMoon: "sfx.floor.modifier.bloodmoon",
 } as const;
 export type SfxId = (typeof SFX)[keyof typeof SFX];
 
@@ -540,6 +551,11 @@ export const ALL_SFX: ReadonlyArray<SfxId> = [
 	SFX.goldenHit,
 	SFX.goldenJackpot,
 	SFX.goldenEscape,
+	SFX.floorModifierGilded,
+	SFX.floorModifierHoard,
+	SFX.floorModifierFeast,
+	SFX.floorModifierPlunder,
+	SFX.floorModifierBloodMoon,
 ];
 
 /** IDs this port added to the placeholder pack (not in the web contract's AUDIO_EVENTS; theme PORT_AUDIO_EVENTS). */
@@ -628,6 +644,11 @@ export const PORT_SFX: ReadonlyArray<SfxId> = [
 	SFX.goldenHit,
 	SFX.goldenJackpot,
 	SFX.goldenEscape,
+	SFX.floorModifierGilded,
+	SFX.floorModifierHoard,
+	SFX.floorModifierFeast,
+	SFX.floorModifierPlunder,
+	SFX.floorModifierBloodMoon,
 ];
 
 /**
@@ -889,6 +910,15 @@ export const SFX_PRIORITY: Readonly<Record<SfxId, number>> = {
 	[SFX.goldenJackpot]: 73,
 	[SFX.goldenEscape]: 70,
 	/**
+	 * A floor modifier's sting (docs/FLOOR_MODIFIERS.md FM7): just under the floor enter it follows (0.3 s later, on the
+	 * banner's stamp), with the friend passed; over the tier sting and the pickups.
+	 */
+	[SFX.floorModifierGilded]: 67,
+	[SFX.floorModifierHoard]: 67,
+	[SFX.floorModifierFeast]: 67,
+	[SFX.floorModifierPlunder]: 67,
+	[SFX.floorModifierBloodMoon]: 67,
+	/**
 	 * A boost out of a broken piece (docs/BREAKABLE_DROPS.md BL6): just over a kill drop's landing (the rarer, chosen
 	 * reward), under the pickup; over the piece's own break (40), which plays on the same frame.
 	 */
@@ -1120,6 +1150,16 @@ export const SFX_FALLBACK: Readonly<Partial<Record<SfxId, SfxId>>> = {
 	[SFX.goldenJackpot]: SFX.roomPerfect,
 	[SFX.goldenEscape]: SFX.comboBreak,
 	/**
+	 * docs/FLOOR_MODIFIERS.md FM7: until the stings are picked (FM10), a boon plays a Legendary chest's jingle (bright
+	 * good news) and the twist the Horde's horn (a fight coming). One step each: while those are silent too (the
+	 * placeholder pack; vale until their clips exist) the banner has no sting.
+	 */
+	[SFX.floorModifierGilded]: SFX.jingleTreasure,
+	[SFX.floorModifierHoard]: SFX.jingleTreasure,
+	[SFX.floorModifierFeast]: SFX.jingleTreasure,
+	[SFX.floorModifierPlunder]: SFX.jingleTreasure,
+	[SFX.floorModifierBloodMoon]: SFX.hordeHorn,
+	/**
 	 * docs/LEGENDARIES.md LG5: until the legendaries' clips are picked (LG8), an Overkill streak plays the spark's zap
 	 * and a Bastion brace the Aegis pip's break (the player's armor sound). One step each: while the spark is silent too
 	 * (the placeholder pack) a streak has no sound.
@@ -1138,6 +1178,25 @@ export const SFX_FALLBACK: Readonly<Partial<Record<SfxId, SfxId>>> = {
 	[SFX.buildSmash]: SFX.breakableBreak,
 	[SFX.buildBeam]: SFX.buildSpark,
 };
+
+/** The floor modifier stings by shared/dungeon floorModifierKey (MODIFIERS.kinds' keys). */
+const FLOOR_MODIFIER_STINGS: Readonly<Record<string, SfxId>> = {
+	gilded: SFX.floorModifierGilded,
+	hoard: SFX.floorModifierHoard,
+	feast: SFX.floorModifierFeast,
+	plunder: SFX.floorModifierPlunder,
+	bloodMoon: SFX.floorModifierBloodMoon,
+};
+
+/**
+ * The sting of floor modifier `kind` (a shared/dungeon FloorModifier id: EndlessFloorLayout.modifier), played on the
+ * floor card banner's stamp (docs/FLOOR_MODIFIERS.md FM5 / FM7); undefined for NONE or an unknown id (no banner, no
+ * sting).
+ */
+export function floorModifierStingId(kind: number): SfxId | undefined {
+	const key = floorModifierKey(kind);
+	return key !== undefined ? FLOOR_MODIFIER_STINGS[key] : undefined;
+}
 
 /**
  * The run-over jingle (docs/NEW_BEST.md NB5): sfx.jingle.record on a record run (`recordSet`: the tracker's recordRun,

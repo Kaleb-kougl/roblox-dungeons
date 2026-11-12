@@ -14,9 +14,10 @@
  *            (docs/FORTUNE.md PS5: each floor's altars come from its world, EndlessFloorWorld.pactAltars; the tutorial
  *            keeps the classic shrine) and the Goldling (docs/FORTUNE.md GE3: each floor's room, if any, from
  *            EndlessFloorWorld.golden))
- *   floor f  buildEndlessFloor(runSeed, f, ..., { vaults: true }) (shared/dungeon endless.ts: solid pillars, breakables,
- *            the vault, the pact altars, the Goldling's room; the dev world's KV_TreasureDebug adds a VaultOverride,
- *            run/dev.ts) + playerMover (the slide; ./playerMover.ts, docs/WALL_SLIDE.md) / bulletBlocker /
+ *   floor f  buildEndlessFloor(runSeed, f, ..., { vaults: true, modifiers: ENDLESS_MODIFIER_WORLD }) (shared/dungeon
+ *            endless.ts: solid pillars, breakables, the vault, the pact altars, the Goldling's room, the floor modifier,
+ *            docs/FLOOR_MODIFIERS.md FM4; the dev world's KV_TreasureDebug adds a VaultOverride and its KV_FloorModifier
+ *            a FloorModifierOverride, run/dev.ts) + playerMover (the slide; ./playerMover.ts, docs/WALL_SLIDE.md) / bulletBlocker /
  *            actorMover / actorSteerMover (enemies walk around pillars) on its dungeon; built on first use, kept in a
  *            per-config LRU (ENDLESS_FLOOR_CACHE_SIZE), the dungeons in a server-wide LRU (ENDLESS_DUNGEON_CACHE_SIZE)
  *            keyed by seed and room count
@@ -42,6 +43,8 @@ import {
 	roomIdAt,
 	type Dungeon,
 	type EndlessFloorLayout,
+	type FloorModifierOverride,
+	type FloorModifierWorld,
 	type ForgeParams,
 	type VaultOverride,
 } from "shared/dungeon";
@@ -116,10 +119,24 @@ export interface EndlessRunFloor extends EndlessFloorWorld {
 }
 
 /**
+ * The sim parts every endless world runs, as the floor modifier pick reads them (shared/dungeon FloorModifierWorld,
+ * docs/FLOOR_MODIFIERS.md FM4): the endless config below always sets SimConfig.golden (ENDLESS_GOLDEN_CONFIG), pellets
+ * (PELLETS_CONFIG), drops with breakableLoot (ENDLESS_DROPS_CONFIG) and affixes (AFFIXES_CONFIG), solo and co-op, the
+ * Daily and dev alike (endless.spec checks it), so every part is on.
+ */
+export const ENDLESS_MODIFIER_WORLD: FloorModifierWorld = table.freeze({
+	golden: true,
+	pellets: true,
+	breakableLoot: true,
+	affixes: true,
+});
+
+/**
  * Builds floor `floor` of the run `runSeed` for a party of `partySize` (uncached; the dungeon comes from
- * endlessDungeon's cache), vaults on (docs/TREASURE.md TR5); `vaultOverride`: the dev world's KV_TreasureDebug only;
- * `mover`: the player's mover (default: the current `playerMoverKind()`); `unlockFloors` false: the Daily's roster
- * (EndlessFloorOptions.unlockFloors). Pure.
+ * endlessDungeon's cache), vaults on (docs/TREASURE.md TR5) and floor modifiers on (ENDLESS_MODIFIER_WORLD,
+ * docs/FLOOR_MODIFIERS.md FM4); `vaultOverride`: the dev world's KV_TreasureDebug only; `mover`: the player's mover
+ * (default: the current `playerMoverKind()`); `unlockFloors` false: the Daily's roster
+ * (EndlessFloorOptions.unlockFloors); `modifierOverride`: the dev world's KV_FloorModifier only. Pure.
  */
 export function endlessRunFloor(
 	runSeed: number,
@@ -128,9 +145,16 @@ export function endlessRunFloor(
 	vaultOverride?: VaultOverride,
 	mover: PlayerMoverKind = playerMoverKind(),
 	unlockFloors = true,
+	modifierOverride?: FloorModifierOverride,
 ): EndlessRunFloor {
 	return endlessFloorWorld(
-		buildEndlessFloor(runSeed, floor, endlessDungeon, partySize, { vaults: true, vaultOverride, unlockFloors }),
+		buildEndlessFloor(runSeed, floor, endlessDungeon, partySize, {
+			vaults: true,
+			vaultOverride,
+			unlockFloors,
+			modifiers: ENDLESS_MODIFIER_WORLD,
+			modifierOverride,
+		}),
 		mover,
 	);
 }
@@ -172,6 +196,7 @@ export function endlessFloorWorld(
 		vault: layout.vault,
 		pactAltars: layout.pactAltars,
 		golden: layout.golden,
+		modifier: layout.modifier,
 		layout,
 		dungeon: d,
 	};
@@ -192,6 +217,7 @@ function floorCache(
 	partySize: number,
 	vaultOverride: VaultOverride | undefined,
 	unlockFloors: boolean,
+	modifierOverride: FloorModifierOverride | undefined,
 ): (floor: number) => EndlessRunFloor {
 	const mover = playerMoverKind();
 	const floors: number[] = [];
@@ -202,7 +228,7 @@ function floorCache(
 		if (floor === lastFloor && last !== undefined) return last;
 		let w = worlds.get(floor);
 		if (w === undefined) {
-			w = endlessRunFloor(runSeed, floor, partySize, vaultOverride, mover, unlockFloors);
+			w = endlessRunFloor(runSeed, floor, partySize, vaultOverride, mover, unlockFloors, modifierOverride);
 			worlds.set(floor, w);
 			floors.push(floor);
 			while (floors.size() > ENDLESS_FLOOR_CACHE_SIZE) {
@@ -230,6 +256,12 @@ export interface EndlessRunOptions {
 	 * and specs only. Absent: placeVault's own draws.
 	 */
 	readonly vaultOverride?: VaultOverride;
+	/**
+	 * Forces one floor modifier on every floor where it is eligible (shared/dungeon FloorModifierOverride,
+	 * docs/FLOOR_MODIFIERS.md FM4): the dev world's KV_FloorModifier (run/dev.ts) and specs only. Absent: the floors'
+	 * own picks.
+	 */
+	readonly modifierOverride?: FloorModifierOverride;
 	/**
 	 * docs/ARCHER.md AR4: the players' characters (index order; missing entries DEFAULT_CHARACTER's). Absent: no
 	 * characters at all (both weapons, no traits; tools and specs), not the Knight.
@@ -259,7 +291,13 @@ export function buildEndlessRunConfig(
 	if (!isValidPartySize(partySize)) {
 		error(`buildEndlessRunConfig: party size must be an integer in [1, ${MAX_PARTY_SIZE}], got ${partySize}`, 0);
 	}
-	const worldForFloor = floorCache(runSeed, partySize, options.vaultOverride, options.unlockFloors !== false);
+	const worldForFloor = floorCache(
+		runSeed,
+		partySize,
+		options.vaultOverride,
+		options.unlockFloors !== false,
+		options.modifierOverride,
+	);
 	const first = worldForFloor(ENDLESS_FIRST_FLOOR);
 	const base: SimConfig =
 		partySize === DEFAULT_PARTY_SIZE

@@ -12,6 +12,9 @@
  *            spawns and at least minRoomTiles FLOOR cells of its own, never the boss room); none eligible: no Goldling
  *            and no more draws. Else ONE draw rng.int(0, total weight - 1) walks the list by weight.
  *   draws    0 below fromFloor; else 1, + 1 when the chance hit and a room is eligible.
+ *   certain  (GoldenForce, docs/FLOOR_MODIFIERS.md FM2: the Gilded floor) the chance draw is still made and its result
+ *            ignored, so the room draw is the very draw a natural hit makes: a forced floor whose natural roll hit gets
+ *            the natural Goldling. Absent: the floor exactly as before.
  *
  * Output: FloorGolden (EndlessFloorLayout / EndlessFloorWorld.golden): the room and what the sim needs to keep the
  * Goldling inside it without a Dungeon: the room's floor rectangle (roomGridRect) and a walk mask over it (1 = a FLOOR
@@ -112,14 +115,21 @@ export function goldenRoomMask(d: Dungeon, room: Readonly<EncounterRoom>): Floor
 	return { room: room.id, x0, y0, w, h, walk };
 }
 
+/** placeGolden's force flag (docs/FLOOR_MODIFIERS.md FM2). Absent or empty: the natural roll. */
+export interface GoldenForce {
+	/** The chance draw always hits (it is still made: the room draw stays the natural hit's). Gilded floors. */
+	readonly certain?: boolean;
+}
+
 /**
  * The Goldling of the built endless floor `input` (floor `floor`), or undefined: see the file comment. Pure and
- * deterministic: the same floor always gets the same answer.
+ * deterministic: the same floor always gets the same answer. `force.certain`: the Gilded floor (file comment).
  */
-export function placeGolden(input: GoldenFloorInput, floor: number): FloorGolden | undefined {
+export function placeGolden(input: GoldenFloorInput, floor: number, force?: GoldenForce): FloorGolden | undefined {
 	if (floor < GOLDEN_PLACE.fromFloor) return undefined;
 	const rng = new EncounterRng(goldenSeed(input.seed));
-	if (rng.int(0, GOLDEN_PLACE.percentRange - 1) >= goldenChancePercent(floor)) return undefined;
+	const hit = rng.int(0, GOLDEN_PLACE.percentRange - 1) < goldenChancePercent(floor);
+	if (!hit && force?.certain !== true) return undefined;
 	const rooms = goldenEligibleRooms(input);
 	if (rooms.size() === 0) return undefined;
 	let total = 0;

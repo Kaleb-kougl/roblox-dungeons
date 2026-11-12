@@ -1,14 +1,20 @@
 import React, { useEffect, useMemo, useRef } from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
 import { selectStageCover } from "client/store";
-import { Text, useHudScale } from "client/ui/hud";
-import { str } from "client/ui/theme";
-import { LOADING_STRINGS, LOADING_VIEW, STAGE_STRINGS, STAGE_VIEW } from "shared/view";
+import { ArtImage, Text, useHudScale } from "client/ui/hud";
+import { str, textSizeFor, uiImage, useUiArt, useUiFonts } from "client/ui/theme";
+import { LOADING_STRINGS, LOADING_VIEW, STAGE_STRINGS, STAGE_VIEW, modifierCardRows } from "shared/view";
 import { HUD_VIEW, NEW_BEST_ROLE } from "shared/view/hud";
 import { Cover, ProgressBar } from "./parts";
 
 const HALF = 0.5;
 const HIDDEN = 1;
+/** Text box height = text size + this (the Text primitive's room for the stroke). */
+const LINE_SLACK = 4;
+/** The column's rows in order (the banner after the boss row, before the second line). */
+const ROW = { title: 1, biome: 2, boss: 3, banner: 4, line: 5 } as const;
+/** The run-start cover's rows. */
+const START_ROW = { label: 1, bar: 2, assets: 3, banner: 4, line: 5 } as const;
 
 export interface StageCardProps {
 	/** The ScreenGui's Enabled (StageController sets it synchronously at the cut and at the end). */
@@ -24,6 +30,100 @@ export interface StageCardProps {
 	readonly onCovered: (serial: number) => void;
 	/** The mounted ScreenGui (StageController reads its Enabled back at the cut). */
 	readonly onGui: (gui: ScreenGui | undefined) => void;
+	/**
+	 * The floor modifier banner's text transparency (docs/FLOOR_MODIFIERS.md FM5: shared/view modifierBannerLook times
+	 * the cover's fade) and its stamp's scale, both set by StageController every frame.
+	 */
+	readonly bannerTransparency: React.Binding<number>;
+	readonly bannerScale: React.Binding<number>;
+}
+
+/**
+ * The floor modifier banner (docs/FLOOR_MODIFIERS.md FM5, shared/view modifierCardRows): the kind's name in its colour
+ * role (`floorMod.<key>`: gold boons, the blood-red twist) at HUD_VIEW.titleText, the kind's icon left of it when the
+ * pack has the art (`ui.floormod.<key>`, all or none), and its line under it in uiText. The stamp scales the two rows
+ * through a UIScale inside a box of their resting height, so the rows around the banner never move while it lands.
+ */
+function ModifierBanner(props: {
+	order: number;
+	kind: number;
+	width: number;
+	transparency: React.Binding<number>;
+	scale: React.Binding<number>;
+}) {
+	useUiArt();
+	const fonts = useUiFonts();
+	const rows = modifierCardRows(props.kind);
+	if (rows === undefined) return undefined;
+	const nameH = textSizeFor(fonts, HUD_VIEW.titleText) + LINE_SLACK;
+	const lineH = textSizeFor(fonts, HUD_VIEW.textSize) + LINE_SLACK;
+	const icon = uiImage(rows.iconId) !== undefined;
+	return (
+		<frame
+			key="Banner"
+			LayoutOrder={props.order}
+			Size={new UDim2(0, props.width, 0, nameH + STAGE_VIEW.gap + lineH)}
+			BackgroundTransparency={HIDDEN}
+		>
+			<frame
+				key="Stamp"
+				AnchorPoint={new Vector2(HALF, HALF)}
+				Position={UDim2.fromScale(HALF, HALF)}
+				Size={UDim2.fromScale(1, 1)}
+				BackgroundTransparency={HIDDEN}
+			>
+				<uiscale Scale={props.scale} />
+				<uilistlayout
+					FillDirection={Enum.FillDirection.Vertical}
+					HorizontalAlignment={Enum.HorizontalAlignment.Center}
+					SortOrder={Enum.SortOrder.LayoutOrder}
+					Padding={new UDim(0, STAGE_VIEW.gap)}
+				/>
+				<frame
+					key="Name"
+					LayoutOrder={1}
+					Size={new UDim2(0, 0, 0, nameH)}
+					AutomaticSize={Enum.AutomaticSize.X}
+					BackgroundTransparency={HIDDEN}
+				>
+					<uilistlayout
+						FillDirection={Enum.FillDirection.Horizontal}
+						HorizontalAlignment={Enum.HorizontalAlignment.Center}
+						VerticalAlignment={Enum.VerticalAlignment.Center}
+						SortOrder={Enum.SortOrder.LayoutOrder}
+						Padding={new UDim(0, HUD_VIEW.gap)}
+					/>
+					{icon ? (
+						<ArtImage
+							key="Icon"
+							name="Icon"
+							order={1}
+							id={rows.iconId}
+							box={{ w: nameH, h: nameH }}
+							transparency={props.transparency}
+						/>
+					) : undefined}
+					<Text
+						key="Text"
+						order={2}
+						size={HUD_VIEW.titleText}
+						color={rows.role}
+						transparency={props.transparency}
+						text={str(rows.nameKey)}
+					/>
+				</frame>
+				<Text
+					key="Line"
+					order={2}
+					width={props.width}
+					color="uiText"
+					align={Enum.TextXAlignment.Center}
+					transparency={props.transparency}
+					text={str(rows.lineKey)}
+				/>
+			</frame>
+		</frame>
+	);
 }
 
 /**
@@ -42,7 +142,10 @@ export interface StageCardProps {
  *                stageCardLine, docs/DAILY.md DSD13): the roster's `New: Imp` on a floor where kinds join, else, on a
  *                ranked run with a floor record, the new-best line (docs/NEW_BEST.md NB8: `Deepest: floor 9 · 2 to
  *                go`, `Record floor`, `NEW DEEPEST` / `Deepest yet` in the newBest gold; NEW DEEPEST outranks the
- *                roster); no bar
+ *                roster); no bar. On a floor modifier's floor (docs/FLOOR_MODIFIERS.md FM5, the slice's `modifier`) the
+ *                banner between the boss row and that line: the name (`Gilded`, in its role) over its line (`A
+ *                Goldling is certain`), stamped in by the `bannerTransparency` / `bannerScale` bindings
+ *                (ModifierBanner); a run start past floor 1 (a dev run) shows it under the bar, before the roster line
  *
  * Drawn in the frame of the cut: Enabled, the fade and the rows' visibility are bindings StageController sets
  * synchronously (the slice reaches React only on Reflex's Heartbeat flush, after that frame's render), so the first
@@ -72,11 +175,21 @@ export function StageCard(props: StageCardProps) {
 
 	const width = STAGE_VIEW.width;
 	const rows = new Array<React.Element>();
+	const banner = (order: number, kind: number) => (
+		<ModifierBanner
+			key="Banner"
+			order={order}
+			kind={kind}
+			width={width}
+			transparency={props.bannerTransparency}
+			scale={props.bannerScale}
+		/>
+	);
 	if (stage.card) {
 		rows.push(
 			<Text
 				key="Title"
-				order={1}
+				order={ROW.title}
 				width={width}
 				size={HUD_VIEW.bigText}
 				color="uiAccent"
@@ -89,7 +202,7 @@ export function StageCard(props: StageCardProps) {
 			rows.push(
 				<Text
 					key="Biome"
-					order={2}
+					order={ROW.biome}
 					width={width}
 					color="uiText"
 					align={Enum.TextXAlignment.Center}
@@ -102,7 +215,7 @@ export function StageCard(props: StageCardProps) {
 			rows.push(
 				<Text
 					key="Boss"
-					order={3}
+					order={ROW.boss}
 					width={width}
 					color="uiTextDim"
 					align={Enum.TextXAlignment.Center}
@@ -111,12 +224,15 @@ export function StageCard(props: StageCardProps) {
 				/>,
 			);
 		}
+		if (stage.modifier !== undefined) {
+			rows.push(banner(ROW.banner, stage.modifier));
+		}
 		const line = stage.line;
 		if (line !== undefined) {
 			rows.push(
 				<Text
 					key="Line"
-					order={4}
+					order={ROW.line}
 					width={width}
 					color={line.gold ? NEW_BEST_ROLE : "uiTextDim"}
 					align={Enum.TextXAlignment.Center}
@@ -129,7 +245,7 @@ export function StageCard(props: StageCardProps) {
 		rows.push(
 			<Text
 				key="Label"
-				order={1}
+				order={START_ROW.label}
 				width={width}
 				color="uiAccent"
 				align={Enum.TextXAlignment.Center}
@@ -140,7 +256,7 @@ export function StageCard(props: StageCardProps) {
 		rows.push(
 			<ProgressBar
 				key="Bar"
-				order={2}
+				order={START_ROW.bar}
 				width={width}
 				height={STAGE_VIEW.barHeight}
 				fraction={stage.fraction}
@@ -152,7 +268,7 @@ export function StageCard(props: StageCardProps) {
 			rows.push(
 				<Text
 					key="Assets"
-					order={3}
+					order={START_ROW.assets}
 					width={width}
 					color="uiTextDim"
 					align={Enum.TextXAlignment.Center}
@@ -161,12 +277,15 @@ export function StageCard(props: StageCardProps) {
 				/>,
 			);
 		}
+		if (stage.modifier !== undefined) {
+			rows.push(banner(START_ROW.banner, stage.modifier));
+		}
 		const line = stage.line;
 		if (line !== undefined) {
 			rows.push(
 				<Text
 					key="Line"
-					order={4}
+					order={START_ROW.line}
 					width={width}
 					color={line.gold ? NEW_BEST_ROLE : "uiTextDim"}
 					align={Enum.TextXAlignment.Center}

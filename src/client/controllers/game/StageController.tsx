@@ -16,7 +16,7 @@ import {
 } from "client/store";
 import { LocaleRoot, StageCard } from "client/ui";
 import { TUTORIAL } from "shared/config";
-import { ENDLESS_FIRST_FLOOR, endlessRoster } from "shared/dungeon";
+import { ENDLESS_FIRST_FLOOR, endlessRoster, floorModifierKey } from "shared/dungeon";
 import { RUN_ATTRIBUTES } from "shared/play";
 import { dailyDay } from "shared/daily";
 import {
@@ -28,6 +28,7 @@ import {
 } from "shared/run";
 import { BIOMES, type ContentRef } from "shared/theme";
 import { floorTarget, stageBestLine, stageCardLine, stageRosterLine, type NewBestLineText } from "shared/view/hud";
+import { floorModifierStingId } from "shared/view/audio";
 import { todaysDailySeed } from "shared/view/menu";
 import {
 	PRELOAD_BIOME_PREFIX,
@@ -42,14 +43,18 @@ import {
 	stageContentRefs,
 	stageMergedAssets,
 	stageMerge,
+	modifierBannerLook,
+	modifierCardHoldSec,
+	modifierCardRows,
 	type StageAssetInput,
 	type StageAssetSet,
 	type StageKind,
 	type StagePhase,
 	type StageWorkItem,
 } from "shared/view";
+import { AudioController } from "../audio/AudioController";
 import { PreloadController, type LoadHandle } from "./PreloadController";
-import { SimController, type RunContext, type StageDriver, type StageWork } from "./SimController";
+import { SimController, floorModifierOf, type RunContext, type StageDriver, type StageWork } from "./SimController";
 import { ThemeController } from "./ThemeController";
 
 const LOG = "[Stage]";
@@ -130,12 +135,22 @@ function seconds(sec: number): string {
  *              floor before) or new best's line, NEW DEEPEST first; under a run start's bar floor 1's roster (`Swarmer ·
  *              Bruiser`), set once the run is built (after the forge, or the listeners for a co-op start), and the
  *              cover then shows at least STAGE_LOADER.rosterStartSec (StageLoad.holdAtLeast) so it can be read.
+ *   banner     (docs/FLOOR_MODIFIERS.md FM5) on a floor whose layout has a modifier (floorModifierOf: the run's cached
+ *              floor, EndlessFloorLayout.modifier) the card shows its banner, the name and line rows after the boss row
+ *              (the slice's `modifier`), and the cover holds at least shared/view modifierCardHoldSec
+ *              (FLOOR_MODIFIER_VIEW.modifierCardSec, none with a live world). The stamp is two bindings stepped here
+ *              every frame (modifierBannerLook from the banner's start, its transparency times the cover's fade, its
+ *              scale through StageCard's UIScale: no re-render per frame); the kind's sting (shared/view/audio
+ *              floorModifierStingId, AudioController.play) once, on the first frame the banner shows. A run start past
+ *              floor 1 (a dev run) sets the banner under its bar once the run is built, like the roster line, and holds
+ *              it modifierCardHoldSec from then.
  *   cancel     SimController.stopRun (Leave run, exit) cancels: the cover goes, pending work is dropped. A restart, a
  *              new run or a party start replaces the load (stageMerge "new").
  *
  * Log lines start with `[Stage]`: `run N: forged in t ms, built in t ms, revealed at t s`, `floor N: built in t ms,
  * revealed at t s`, `floor X pre-generated in T ms (run start | during floor N's draft)`, `floor N: built mid-tick (not
- * pre-generated)`, `floor N: M ids, ready in T s` / `floor N: M ids, K of C content ids missing at reveal (<ids>)` (and
+ * pre-generated)`, `floor N: modifier <key>` (a modifier floor's card or run-start banner), `floor N: M ids, ready in
+ * T s` / `floor N: M ids, K of C content ids missing at reveal (<ids>)` (and
  * `floor N: ready in T s, after the reveal` once they land), `prefetch floor N (k ids, next lane)`, and failures (warn).
  */
 @Controller({ loadOrder: 2 })
@@ -144,6 +159,17 @@ export class StageController implements OnStart, StageDriver {
 	private readonly opacity = createBinding(0);
 	private readonly visible = createBinding(false);
 	private readonly shownSerial = createBinding(0);
+	/** The modifier banner's text transparency (the stamp times the cover's fade) and its UIScale (FM5). */
+	private readonly bannerTransparency = createBinding(1);
+	private readonly bannerScale = createBinding(1);
+	/** The banner on the cover (a FloorModifier id), undefined: none. */
+	private bannerKind: number | undefined;
+	/** os.clock() when the banner went on the cover (its stamp's clock). */
+	private bannerStart = 0;
+	/** The banner's sting was played (once per banner). */
+	private bannerStung = false;
+	/** The load serial whose run-start banner was set (once per load). */
+	private modifierSerial = -1;
 	/** StageCard's ScreenGui, once mounted. */
 	private gui: ScreenGui | undefined;
 	/** Inside the render step, before the frame's render (SimController's frame .. RENDER_END_STEP). */
@@ -189,6 +215,7 @@ export class StageController implements OnStart, StageDriver {
 		private readonly sim: SimController,
 		private readonly preload: PreloadController,
 		private readonly theme: ThemeController,
+		private readonly audio: AudioController,
 	) {}
 
 	onStart(): void {
@@ -203,6 +230,8 @@ export class StageController implements OnStart, StageDriver {
 		const [opacity] = this.opacity;
 		const [visible] = this.visible;
 		const [serial] = this.shownSerial;
+		const [bannerTransparency] = this.bannerTransparency;
+		const [bannerScale] = this.bannerScale;
 		root.render(
 			createPortal(
 				<ReflexProvider producer={clientStore}>
@@ -211,6 +240,8 @@ export class StageController implements OnStart, StageDriver {
 							visible={visible}
 							opacity={opacity}
 							serial={serial}
+							bannerTransparency={bannerTransparency}
+							bannerScale={bannerScale}
 							onCovered={(s) => this.onCovered(s)}
 							onGui={(gui) => (this.gui = gui)}
 						/>
@@ -349,11 +380,19 @@ export class StageController implements OnStart, StageDriver {
 		let biomeKey = "";
 		let boss = false;
 		let line: NewBestLineText | undefined;
+		let modifier: number | undefined;
+		this.setBanner(undefined);
 		if (kind === "floorChange" && ctx !== undefined) {
 			biomeKey = clientStore.getState().game.run.placeKey;
 			boss = ctx.endlessFloor !== undefined && ctx.floor > 0 && ctx.endlessFloor(ctx.floor).bossFloor;
 			const floor = work?.floor ?? ctx.floor;
 			line = stageCardLine(this.bestLine(ctx, floor), this.rosterLine(ctx, floor));
+			modifier = this.bannerOf(ctx, floor);
+			if (modifier !== undefined) {
+				const hold = modifierCardHoldSec(modifier, worldLive);
+				if (hold > 0) load.holdAtLeast(hold);
+				this.setBanner(modifier);
+			}
 			const tracker = this.trackerFor(ctx);
 			if (ctx.floor > ENDLESS_FIRST_FLOOR && !tracker.wasBuilt(ctx.floor)) {
 				print(`${LOG} floor ${ctx.floor}: built mid-tick (not pre-generated)`);
@@ -369,7 +408,61 @@ export class StageController implements OnStart, StageDriver {
 			boss,
 			line,
 			fraction: load.fraction(),
+			modifier,
 		});
+	}
+
+	/**
+	 * Floor `floor`'s modifier when it has a banner (shared/view modifierCardRows: a known kind), else undefined. Logs
+	 * `[Stage] floor N: modifier <key>`.
+	 */
+	private bannerOf(ctx: RunContext, floor: number): number | undefined {
+		const kind = floorModifierOf(ctx, floor);
+		if (modifierCardRows(kind) === undefined) return undefined;
+		print(`${LOG} floor ${floor}: modifier ${floorModifierKey(kind) ?? kind}`);
+		return kind;
+	}
+
+	/** The banner on the cover from now (its stamp starts over), or none. */
+	private setBanner(kind: number | undefined): void {
+		this.bannerKind = kind;
+		this.bannerStart = os.clock();
+		this.bannerStung = false;
+		this.bannerTransparency[1](1);
+		this.bannerScale[1](1);
+	}
+
+	/**
+	 * A run start's banner (docs/FLOOR_MODIFIERS.md FM5: a dev run starting past floor 1 on a modifier floor), once the
+	 * run is built, like runStartRoster; the cover then holds the banner modifierCardHoldSec from now. Once per load.
+	 */
+	private runStartModifier(load: StageLoad): void {
+		if (load.kind === "floorChange" || this.modifierSerial === this.serial) return;
+		const ctx = this.sim.getContext();
+		if (ctx === undefined) return;
+		this.modifierSerial = this.serial;
+		const kind = this.bannerOf(ctx, ctx.floor);
+		if (kind === undefined) return;
+		this.setBanner(kind);
+		clientStore.setStageModifier(kind);
+		// A solo start holds the sim under its cover (frozen); a co-op start's world plays on (no hold).
+		const hold = modifierCardHoldSec(kind, load.kind === "coopStart");
+		if (hold > 0) load.holdAtLeast(load.coverSeconds() + hold);
+	}
+
+	/** The banner's stamp this frame (bindings) and its sting on the first frame it shows. */
+	private stepBanner(load: StageLoad): void {
+		const kind = this.bannerKind;
+		if (kind === undefined) return;
+		const reduced = this.reducedMotion();
+		const look = modifierBannerLook(os.clock() - this.bannerStart, reduced);
+		const opacity = load.coverOpacity(reduced);
+		this.bannerTransparency[1](look.visible ? 1 - opacity * (1 - look.transparency) : 1);
+		this.bannerScale[1](look.scale);
+		if (!look.visible || this.bannerStung) return;
+		this.bannerStung = true;
+		const sting = floorModifierStingId(kind);
+		if (sting !== undefined) this.audio.play(sting, 1);
 	}
 
 	/**
@@ -439,6 +532,7 @@ export class StageController implements OnStart, StageDriver {
 	}
 
 	private hideCover(): void {
+		this.setBanner(undefined);
 		this.visible[1](false);
 		this.opacity[1](0);
 		clientStore.hideStage();
@@ -464,6 +558,7 @@ export class StageController implements OnStart, StageDriver {
 			this.forgeSec = os.clock() - t0;
 			load.forged();
 			this.runStartRoster(load);
+			this.runStartModifier(load);
 			return;
 		}
 		if (item === "notify") {
@@ -473,6 +568,7 @@ export class StageController implements OnStart, StageDriver {
 			this.buildSec = os.clock() - t0;
 			load.built();
 			this.runStartRoster(load);
+			this.runStartModifier(load);
 			const [waitOk, waitErr] = pcall(() => this.waitAssets(load));
 			if (!waitOk) {
 				warn(`${LOG} the assets wait failed: ${tostring(waitErr)}`);
@@ -531,6 +627,7 @@ export class StageController implements OnStart, StageDriver {
 	/** Pushes the frame's opacity (binding), the label / bar (on a change), the reveal (once). */
 	private publish(load: StageLoad): void {
 		this.opacity[1](load.coverOpacity(this.reducedMotion()));
+		this.stepBanner(load);
 		const label = load.label();
 		const fraction = load.fraction();
 		if (label.key !== this.lastLabelKey || label.vars.floor !== this.lastFloor || fraction !== this.lastFraction) {

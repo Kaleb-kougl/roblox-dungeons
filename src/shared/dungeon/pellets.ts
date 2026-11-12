@@ -20,6 +20,9 @@
  *            draw for the room (among the rooms that got pellets, id order) and ONE for which of its pellets (path
  *            order) becomes the power pellet. At most one per floor (PD4).
  *   draws    2 per room with enemies, + (floor >= fromFloor and any pellets ? 1 + (hit ? 2 : 0) : 0).
+ *   certain  (PelletsForce.powerCertain, docs/FLOOR_MODIFIERS.md FM2: the Feast floor) the power draw is still made and
+ *            its result ignored, so the room and pellet draws are the natural hit's; the pellets themselves never move.
+ *            Absent: the floor exactly as before.
  *
  * Patterns (inset rectangle x0..x1 by y0..y1 in grid cells; the long axis is x when x1 - x0 >= y1 - y0, else y):
  *   ring     the rectangle's outline, clockwise from its top-left corner (top row, right column, bottom row, left
@@ -212,14 +215,22 @@ export function reachableFloor(d: Dungeon, x: number, z: number, solid: Readonly
 	return seen;
 }
 
+/** placePellets' force flag (docs/FLOOR_MODIFIERS.md FM2). Absent or empty: the natural roll. */
+export interface PelletsForce {
+	/** The power pellet's chance draw always hits (still made: the room and pellet draws stay a natural hit's). Feast. */
+	readonly powerCertain?: boolean;
+}
+
 /**
  * Every pellet of the built endless floor `input` (floor `floor`, its placed breakables `pieces`): see the file
  * comment. Pure and deterministic: the same floor always gets the same pellets, in the same order.
+ * `force.powerCertain`: the Feast floor (file comment).
  */
 export function placePellets(
 	input: BreakableFloorInput,
 	floor: number,
 	pieces: ReadonlyArray<BreakablePlacement>,
+	force?: PelletsForce,
 ): FloorPellets {
 	const d = input.dungeon;
 	const rng = new EncounterRng(pelletSeed(input.seed));
@@ -251,7 +262,8 @@ export function placePellets(
 	}
 	let power = NO_POWER_PELLET;
 	if (floor >= PELLETS.power.fromFloor && firsts.size() > 0) {
-		if (rng.int(0, PELLET_CHANCE_RANGE - 1) < PELLETS.power.chancePercent) {
+		const hit = rng.int(0, PELLET_CHANCE_RANGE - 1) < PELLETS.power.chancePercent;
+		if (hit || force?.powerCertain === true) {
 			const r = rng.int(0, firsts.size() - 1);
 			power = firsts[r] + rng.int(0, counts[r] - 1);
 		}

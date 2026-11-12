@@ -148,6 +148,12 @@ export interface EndlessFloorWorld {
 	 * this floor (the tutorial, hand-built test worlds, a floor that did not roll one).
 	 */
 	readonly golden?: FloorGolden;
+	/**
+	 * The floor's modifier (shared/dungeon EndlessFloorLayout.modifier, docs/FLOOR_MODIFIERS.md FM1): a FloorModifier
+	 * id, 0 (NONE) or absent for none. View-only floor data: the sim never reads it (wave 1's effects are already in
+	 * the floor-built parts above) and it is in no hash group.
+	 */
+	readonly modifier?: number;
 }
 
 /** SimConfig.endless. */

@@ -32,6 +32,8 @@ export * from "./NewBestController";
 export * from "./RecapController";
 export * from "./BuildFxController";
 export * from "./BraceFxController";
+// docs/FLOOR_MODIFIERS.md FM6: the floor modifier chip's payoff pulse.
+export * from "./FloorModifierController";
 // docs/BUILDS_V2.md BV11b: Riposte's counter-waves and COUNTER xN.
 export * from "./CounterWaveController";
 export * from "./SiegeFxController"; // docs/BUILDS_V2.md BV11c: Ballista / Siege Bolt

@@ -849,6 +849,7 @@ is open, and only one of the Options screen / leaderboard panel is open at a tim
 | `KV_NewBestDebug` | string | New best (docs/NEW_BEST.md): read at each ranked run start, forces the run's baseline: `score:2000`, `floor:2`, both (`score:2000,floor:3`), `first` (no record) or `unknown` (records not loaded). The server-side Studio fake `KV_FakeRecords` (`solo:48210:9`, `none`, `unknown`; docs/SERVER.md "Personal records") changes what the records say instead. Off by default. Presentation only. |
 | `KV_PelletDebug` | boolean | Pellets (docs/PELLETS.md): with Studio or KV_Debug, labels every live room's centre `pellets <left> / <count>` (developer English; toggles at once). Off by default. Presentation only. |
 | `KV_TreasureDebug` | string | Treasure rooms (docs/TREASURE.md TR5): read when the DEV panel's Go starts a dev run (docs/DEV_MODE.md; R / Restart keep it): words, any case and separator, last of a kind wins: `every` (every floor from 2 has a vault, when a room is eligible), `legendary` / `rare` (its starting tier), `untouched` / `swift` (its lock), e.g. `every,legendary,untouched`. A `VaultOverride` on the dev world's floors only (client-only world, never submitted). Unset: the run's own vaults. |
+| `KV_FloorModifier` | string | Floor modifiers (docs/FLOOR_MODIFIERS.md FM4 / FM5): read when the DEV panel's Go starts a dev run (docs/DEV_MODE.md; R / Restart keep it): a kind's name, any case, letters only (`gilded`, `hoard`, `feast`, `plunder`, `blood moon` / `bloodMoon`), or its FloorModifier id. That kind on every dev-world floor from 2 where it is eligible (boss floors too), ignoring the chance and the streak: a `FloorModifierOverride` on the dev world's floors only (client-only world, never submitted). Unset: the run's own modifiers. |
 | `KV_TreasureLabel` | boolean | Treasure rooms (docs/TREASURE.md TR7): with Studio or KV_Debug, a label over the vault's chest: lock, tier, status and the SWIFT `t=<ticksLeft>` or UNTOUCHED `hits <hits>/<allowance>` (developer English; toggles at once). Off by default. Presentation only. |
 | `KV_PactLabel` | boolean | Pacts (docs/FORTUNE.md): with Studio or KV_Debug, labels each altar with its kind, the view player's availability (and Greed's curse) and the Horde's phase (developer English). Off by default. Presentation only. |
 | `KV_GoldenLabel` | boolean | The Goldling (docs/FORTUNE.md): with Studio or KV_Debug, one label with its status, ticks left / escapeTicks and hp over the running Goldling (else over the view player while one is due or done this floor; developer English). Off by default. Presentation only. |
@@ -897,6 +898,27 @@ Pure half: `shared/view/stageLoader.ts` (`StageLoad`, `stageMerge`, `floorChange
 - **Input** is neutral while covered and through the fade (held buttons stay masked), pause and the party overlay are
   ignored, no gamepad selection under the cover. KV_Debug bits pass.
 - `KV_Debug` adds `[Stage] listeners (...)` per-listener times and `[Stage] floor step T ms` (SL0).
+
+## Floor modifiers (docs/FLOOR_MODIFIERS.md FM5 / FM6; not run in Studio yet)
+
+Pure half `shared/view/modifiers` (`FLOOR_MODIFIER_VIEW`, `modifierCardRows`, `modifierBannerLook`,
+`modifierCardHoldSec`, `chipPulse`, `ModifierPayoff` / `modifierPayoffInput`); strings `floormod.<key>.name` / `.line`
+and `hud.pause.floorMod`, roles `floorMod.<key>`. The modifier is floor data (`EndlessFloorLayout.modifier`, read through
+SimController `floorModifierOf(ctx)`); no remote.
+
+- **Card banner** (StageController / StageCard): a floor change to a modifier floor puts `modifier` in the stage slice;
+  the banner (the name in the kind's role over its line, the icon left of the name once the pack has
+  `ui.floormod.<key>`) stamps in 0.3 s after the card through two bindings, the kind's sting (`floorModifierStingId`,
+  silent until FM10) plays once, and the cover holds 1.8 s unless the world is live (then the banner may not show). A
+  dev run starting past floor 1 shows it on the run-start cover (`setStageModifier`). Logs `[Stage] floor N: modifier
+  <key>`.
+- **Chip:** `RunInfo.floorModifier` -> `FloorModifierChip` in StatusPanel's boost row (`ChipBoostRow`: with
+  `HordeChip`, both on one line and the boosts under them) and at the head of TouchStrip's chip line.
+  `FloorModifierController` pulses it once on the payoff frame (Goldling appears, vault arms, power pellet taken, first
+  loaded piece broken, first room with an elite engaged; after the cover lifts; none under reduced motion).
+- **Pause:** `PauseOverlay` shows `hud.pause.floorMod` (`Gilded · A Goldling is certain`) in the kind's colour above
+  the info line; a compact layout drops the divider while it shows.
+- **Dev:** `KV_FloorModifier` (DevModeController -> `DevRunOptions.modifier`; Workspace attributes below).
 
 ## Main menu, lobbies and Leave run (L3 / L5 / L6, client half)
 
@@ -1477,6 +1499,13 @@ world) and TR7's "Studio-only assumptions to check first". Client-side additions
 only after the stairwell card has faded (and after the boon draft); the minimap mark is the chest's floor colour and
 turns into a ring once opened; with the placeholder pack every vault sound is its fallback (combo break, stairwell
 open, relic take pitched by tier, PERFECT jingle).
+
+### Floor modifiers (docs/FLOOR_MODIFIERS.md "Studio check"; not run in Studio yet)
+
+Follow docs/FLOOR_MODIFIERS.md "Studio check": `KV_FloorModifier` per kind in the dev world from floor 4 (the banner on
+the run-start cover, then on a floor change with the draft open, held 1.8 s), the chip and its one pulse per payoff,
+the pause line (compact: no divider), the touch strip, reduced motion, co-op; then seeds 1-10 without the override
+(about one floor in five, never a boss floor, never two in a row). The stings are silent with today's packs.
 
 ## Gotchas
 

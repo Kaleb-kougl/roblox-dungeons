@@ -11,6 +11,7 @@ import { CONTRIB_STRING_KEYS, RECAP_STRING_KEYS, TEAM_MOMENT_AUDIO_IDS, TEAM_MOM
 import { placeholders, templateProblem } from "./strings";
 import { TREASURE_AUDIO_IDS, TREASURE_STRING_KEYS } from "./treasure";
 import { FORTUNE_AUDIO_IDS, FORTUNE_STRING_KEYS } from "./fortune";
+import { FLOOR_MODIFIER_AUDIO_IDS, FLOOR_MODIFIER_STRING_KEYS } from "./floorModifiers";
 import { deepClone, sortedKeys, type Obj } from "./util";
 import { validateManifest } from "./validate";
 
@@ -120,16 +121,16 @@ describe("run recap and co-op moments: contract", () => {
 		expect(RECAP_STRING_KEYS.size()).toBe(30);
 		expect(TEAM_MOMENT_STRING_KEYS.size()).toBe(4);
 		expect(CONTRIB_STRING_KEYS.size()).toBe(45);
-		// docs/TREASURE.md TR6's strings come after them, then docs/FORTUNE.md FO6's
-		const after = TREASURE_STRING_KEYS.size() + FORTUNE_STRING_KEYS.size();
+		// docs/TREASURE.md TR6's strings come after them, then docs/FORTUNE.md FO6's, then docs/FLOOR_MODIFIERS.md FM7's
+		const after = TREASURE_STRING_KEYS.size() + FORTUNE_STRING_KEYS.size() + FLOOR_MODIFIER_STRING_KEYS.size();
 		expect(tail(REQUIRED_STRING_KEYS, all.size(), after)).toEqual(all);
 		expect(new Set(REQUIRED_STRING_KEYS).size()).toBe(REQUIRED_STRING_KEYS.size());
 	});
 
 	it("appends the two sounds to PORT_AUDIO_EVENTS: required, sfx; SILENT in the placeholder, a clip in vale (CM7)", () => {
 		expect([...TEAM_MOMENT_AUDIO_IDS]).toEqual(["sfx.room.teamperfect", "sfx.player.syncparry"]);
-		// docs/TREASURE.md TR6's four sounds come after them, then docs/FORTUNE.md FO6's eight
-		const skip = TREASURE_AUDIO_IDS.size() + FORTUNE_AUDIO_IDS.size();
+		// docs/TREASURE.md TR6's four sounds come after them, then docs/FORTUNE.md FO6's eight, docs/FLOOR_MODIFIERS.md FM7's five
+		const skip = TREASURE_AUDIO_IDS.size() + FORTUNE_AUDIO_IDS.size() + FLOOR_MODIFIER_AUDIO_IDS.size();
 		expect(tail(PORT_AUDIO_EVENTS, TEAM_MOMENT_AUDIO_IDS.size(), skip)).toEqual([...TEAM_MOMENT_AUDIO_IDS]);
 		for (const id of TEAM_MOMENT_AUDIO_IDS) {
 			expect([id, has(REQUIRED_ASSET_IDS, id), slotFor(id)?.soundGroup]).toEqual([id, true, "sfx"]);

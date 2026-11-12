@@ -124,7 +124,7 @@ a dearer kind joins. The census reports it; tuning is an owner call.
   RFC 4231 vectors); `dailySeedFrom(day, key)` refuses keys under 16 bytes. (First build used an invertible 32-bit
   mixer; the review caught it.) Valid by
   `isValidRunSeed`. The seed of today is sent to clients (`dailyStatus`), so the menu can preview the roster and boss.
-- **Ruleset (DSD11).** `DAILY.ruleset` (an integer, `shared/daily/config.ts`; now **8**) joins the board scope. Bump
+- **Ruleset (DSD11).** `DAILY.ruleset` (an integer, `shared/daily/config.ts`; now **16**) joins the board scope. Bump
   it with any change that alters endless play; after an update, servers still on the old build keep posting to the old
   ruleset's board and new servers to the new one, so no daily board mixes two rulesets.
   History: 1 at launch of the feature; 2 with boosts from breakables (docs/BREAKABLE_DROPS.md, 2026-11-01); 3 with
@@ -134,7 +134,11 @@ a dearer kind joins. The census reports it; tuning is an owner call.
   rooms merged onto main's 6 (docs/TREASURE.md TR5 and "As built (merge with main)", 2026-11-04: vaults, their chest
   piece and rewards change endless floors and play; the all-time boards stay `_v1`, TRD13), kept at 7 on the second
   merge (main's reading area, still at main's 6); 8 pacts and the Goldling merged onto main's 7 (docs/FORTUNE.md FD15,
-  one bump for both, 2026-11-04: endless shrines, rooms and scores change; the fortune branch's own 6 never shipped).
+  one bump for both, 2026-11-04: endless shrines, rooms and scores change; the fortune branch's own 6 never shipped). 9-15:
+  legendaries, Bastion's brace, the wall slide, builds v2, Kenney decor, the Archer and DSD17 (the comment has them); 16
+  floor modifiers (docs/FLOOR_MODIFIERS.md FM4, 2026-11-12: Gilded / Hoard / Feast / Plunder / Blood Moon floors change
+  endless floors, play and scores, the Daily's banners included; other work in progress also took 16, so whichever
+  merges second takes 17).
   The history is also the comment on `DAILY.ruleset` (`shared/daily/config.ts`).
 
 ### 3. World, sessions, remotes

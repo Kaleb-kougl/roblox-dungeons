@@ -19,7 +19,10 @@ import {
 import { BestCompactLine, ScoreNumber } from "./BestTargetRow";
 import { BoostRow, boostCellWidth, type BoostLook } from "./BoostRow";
 import { HordeChip } from "./HordeChip";
+import { FloorModifierChip, useFloorModifier } from "./FloorModifierChip";
 import { HORDE_CHIP } from "shared/view/pacts";
+import { FLOOR_MODIFIER_VIEW } from "shared/view/modifiers";
+import { FloorModifier } from "shared/dungeon";
 import { ComboMeter } from "./ComboMeter";
 import { ComboMultiplier } from "./ComboRow";
 import { cornerFadeBinding, cornerRef } from "./cornerFade";
@@ -148,7 +151,8 @@ export interface TouchStripProps {
  * the rolling ROOM_CLEAR_UI number, the COMBO_UI multiplier) over a thin combo line (ComboMeter, tier colours and
  * bindings unchanged) and, on a run with a new-best target, the compact target line hung under the combo line
  * (BestCompactLine, docs/NEW_BEST.md NB6; no size changes); under it one line of chips (the Horde chip while armed,
- * docs/FORTUNE.md FO7, then BoostRow, then RunItems capped
+ * docs/FORTUNE.md FO7, after the floor modifier's chip, docs/FLOOR_MODIFIERS.md FM6, then BoostRow, then RunItems
+ * capped
  * with "+N"). No panel box: icons and stroked text, the art's icons when the pack has them (fitted to whole screen px under the strip's own UIScale,
  * ArtScaleContext), the flat pips and hearts otherwise. The row and the chips are one CanvasGroup registered as the
  * top-left corner panel, so HudOcclusionController fades it when the action passes under it. The tutorial's rings sit
@@ -158,6 +162,7 @@ export interface TouchStripProps {
  */
 export function TouchStrip(props: TouchStripProps) {
 	const s = useSelector(selectSnapshot);
+	const modifier = useFloorModifier();
 	const L = props.layout;
 	const k = L.scale;
 	const T = TOUCH_STRIP;
@@ -191,7 +196,9 @@ export function TouchStrip(props: TouchStripProps) {
 			: 0;
 	// docs/FORTUNE.md FO7: the Horde chip (while armed) leads the chip line; the items take what is left.
 	const hordeW = s.hordeArmed ? HORDE_CHIP.touchWidth + CHIPS.cellGap : 0;
-	const itemsW = math.max(0, L.maxWidth - hordeW - boostsW - (boostsW > 0 ? CHIPS.cellGap : 0));
+	// docs/FLOOR_MODIFIERS.md FM6: the floor modifier chip ahead of it.
+	const modifierW = modifier !== FloorModifier.NONE ? FLOOR_MODIFIER_VIEW.chip.touchWidth + CHIPS.cellGap : 0;
+	const itemsW = math.max(0, L.maxWidth - modifierW - hordeW - boostsW - (boostsW > 0 ? CHIPS.cellGap : 0));
 
 	return (
 		<ArtScaleContext.Provider value={k}>
@@ -329,6 +336,15 @@ export function TouchStrip(props: TouchStripProps) {
 							SortOrder={Enum.SortOrder.LayoutOrder}
 							Padding={new UDim(0, CHIPS.cellGap)}
 						/>
+						{modifier !== FloorModifier.NONE ? (
+							<FloorModifierChip
+								order={-1}
+								kind={modifier}
+								width={FLOOR_MODIFIER_VIEW.chip.touchWidth}
+								height={CHIPS.cell}
+								textSize={FLOOR_MODIFIER_VIEW.chip.touchTextSize}
+							/>
+						) : undefined}
 						{s.hordeArmed ? (
 							<HordeChip
 								order={0}

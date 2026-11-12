@@ -51,6 +51,7 @@ import {
 } from "./treasure";
 import { TREASURE_COLOR_RULES, treasureReport } from "./treasureColors";
 import { FORTUNE_AUDIO_IDS, FORTUNE_ROLES, FORTUNE_STRING_KEYS } from "./fortune";
+import { FLOOR_MODIFIER_AUDIO_IDS, FLOOR_MODIFIER_ROLES, FLOOR_MODIFIER_STRING_KEYS } from "./floorModifiers";
 import { COLOR_ROLES } from "./types";
 import { deepClone, sortedKeys, type Obj } from "./util";
 import { validateManifest } from "./validate";
@@ -77,8 +78,15 @@ function tail(list: ReadonlyArray<string>, n: number, skip = 0): string[] {
 	return out;
 }
 
-/** Entries docs/FORTUNE.md FO6 appended after the treasure rooms' (fortune.spec.ts checks them). */
-const FORTUNE_AFTER = { assets: 1, roles: FORTUNE_ROLES.size(), audio: FORTUNE_AUDIO_IDS.size() } as const;
+/**
+ * Entries docs/FORTUNE.md FO6 appended after the treasure rooms' (fortune.spec.ts checks them), then docs/FLOOR_MODIFIERS.md
+ * FM7's (floorModifiers.spec.ts).
+ */
+const FORTUNE_AFTER = {
+	assets: 1,
+	roles: FORTUNE_ROLES.size() + FLOOR_MODIFIER_ROLES.size(),
+	audio: FORTUNE_AUDIO_IDS.size() + FLOOR_MODIFIER_AUDIO_IDS.size(),
+} as const;
 
 function printEntry(tag: string, id: string, e: ReturnType<typeof treasureReport>[number]): void {
 	const value = e.check === "difference" ? fixed1(e.value) : `${fixed2(e.value)}:1`;
@@ -167,7 +175,7 @@ describe("treasure: contract", () => {
 	});
 
 	it("the strings: REQUIRED_STRING_KEYS' last sixteen before Fortune's, filled by every pack with the placeholders the view fills", () => {
-		const skip = FORTUNE_STRING_KEYS.size();
+		const skip = FORTUNE_STRING_KEYS.size() + FLOOR_MODIFIER_STRING_KEYS.size();
 		expect(tail(REQUIRED_STRING_KEYS, TREASURE_STRING_KEYS.size(), skip)).toEqual([...TREASURE_STRING_KEYS]);
 		expect(TREASURE_STRING_KEYS.size()).toBe(16);
 		expect(new Set(TREASURE_STRING_KEYS).size()).toBe(TREASURE_STRING_KEYS.size());

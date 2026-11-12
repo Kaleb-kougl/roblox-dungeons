@@ -5,7 +5,7 @@
 // hashed state), and nothing at all without the config. Test-only surgery: teleports, kills through SimCtx.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import "shared/sim/testing";
-import { GOLDEN_PLACE, gridToWorld, worldToGrid } from "shared/dungeon";
+import { FloorModifier, GOLDEN_PLACE, gridToWorld, worldToGrid } from "shared/dungeon";
 import {
 	DEBUG_FLOOR_BUTTON,
 	EMPTY_INPUT,
@@ -49,12 +49,17 @@ import {
 import { buildDevRunConfig, buildEndlessRunConfig, type EndlessRunFloor } from "shared/run";
 import { frame } from "shared/run/testing";
 
-/** The first (run seed, floor) from floor 2 whose floor rolled a Goldling. */
+/**
+ * The first (run seed, floor) from floor 2 whose floor rolled a Goldling. A Gilded floor's (docs/FLOOR_MODIFIERS.md FM3:
+ * seed 1 floor 3 since the modifiers) is skipped, so the scenes stay the natural roll's room they were written on.
+ */
 function findGoldenFloor(): [number, number] {
 	for (let seed = 1; seed <= 60; seed++) {
 		const setup = buildEndlessRunConfig(seed);
-		for (let floor = 2; floor <= 4; floor++)
-			if (setup.endlessFloor(floor).golden !== undefined) return [seed, floor];
+		for (let floor = 2; floor <= 4; floor++) {
+			const w = setup.endlessFloor(floor);
+			if (w.golden !== undefined && w.modifier !== FloorModifier.GILDED) return [seed, floor];
+		}
 	}
 	error("no Goldling floor in run seeds 1-60, floors 2-4", 0);
 }

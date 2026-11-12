@@ -805,7 +805,9 @@ export const BOOST_BEAM_IMAGE_ID = "ui.marker.boost";
  * four (docs/TREASURE.md TR6, treasure.ts TREASURE_AUDIO_IDS): a vault's lock cracks, its cage unlocks, its chest
  * opens, a Legendary chest's jingle. Then Fortune's eight (docs/FORTUNE.md FO6, fortune.ts FORTUNE_AUDIO_IDS): a pact
  * taken, the Horde's horn / second wave / doubling, the Goldling's appearance / hit / jackpot / escape (each falls back
- * to an existing clip while silent: shared/view/audio SFX_FALLBACK).
+ * to an existing clip while silent: shared/view/audio SFX_FALLBACK). Then the floor modifiers' five
+ * (docs/FLOOR_MODIFIERS.md FM7, floorModifiers.ts FLOOR_MODIFIER_AUDIO_IDS): one sting per kind on the floor card
+ * banner's stamp (a boon falls back to sfx.jingle.treasure, the twist to sfx.horde.horn).
  */
 export const PORT_AUDIO_EVENTS = [
 	"sfx.player.swing",
@@ -929,6 +931,14 @@ export const PORT_AUDIO_EVENTS = [
 	"sfx.golden.hit",
 	"sfx.golden.jackpot",
 	"sfx.golden.escape",
+	// docs/FLOOR_MODIFIERS.md FM7 (floorModifiers.ts FLOOR_MODIFIER_AUDIO_IDS, the same list): a floor modifier's sting
+	// on the floor card banner's stamp, one per kind (FMD9; asset ID segments are lowercase: `.bloodmoon`): a boon's
+	// bright, the twist's ominous
+	"sfx.floor.modifier.gilded",
+	"sfx.floor.modifier.hoard",
+	"sfx.floor.modifier.feast",
+	"sfx.floor.modifier.plunder",
+	"sfx.floor.modifier.bloodmoon",
 ] as const;
 
 /**
@@ -1297,6 +1307,19 @@ export const REQUIRED_STRING_KEYS: ReadonlyArray<string> = ((): string[] => [
 	"fx.golden.escaped",
 	// docs/FORTUNE.md FO7: a Horde room kill's score pop (`+{points}` and the x2 mark)
 	"hud.score.pop.horde",
+	// docs/FLOOR_MODIFIERS.md FM7: floorModifiers.ts FLOOR_MODIFIER_STRING_KEYS, written out (an import would be one
+	// more top-level local): each kind's banner name and line, then the pause line (`{name}` · `{line}`)
+	"floormod.gilded.name",
+	"floormod.gilded.line",
+	"floormod.hoard.name",
+	"floormod.hoard.line",
+	"floormod.feast.name",
+	"floormod.feast.line",
+	"floormod.plunder.name",
+	"floormod.plunder.line",
+	"floormod.bloodMoon.name",
+	"floormod.bloodMoon.line",
+	"hud.pause.floorMod",
 ])();
 
 /**

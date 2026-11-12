@@ -14,6 +14,10 @@
  *            walked in placement order), then ONE weighted draw of the boost kind (kindWeights, the sim's BOOSTS
  *            weights, walked in Boost order).
  *   draws    1 + 2 per loaded piece (fewer loaded pieces than the count only when the candidates run out).
+ *   every    (BreakableLootForce.everyRoom, docs/FLOOR_MODIFIERS.md FM2: the Plunder floor) the count draw is still
+ *            made and ignored; then, per room holding a weighted piece (breakableLootRooms: room id order; a piece in no
+ *            room is no room's), ONE weighted draw over that room's pieces (placement order) and ONE kind draw: one
+ *            loaded piece in every such room (maxPerRoom permitting). Absent: the floor exactly as before.
  *
  * Output: the loaded pieces as { slot (index into the floor's breakables), kind (shared/sim Boost index) }, in slot
  * order.
@@ -74,28 +78,84 @@ function pickKind(rng: EncounterRng): number {
 	return weights.size() - 1; // unreachable: the roll is below the total weight
 }
 
+/** placeBreakableLoot's force flag (docs/FLOOR_MODIFIERS.md FM2). Absent or empty: the natural roll. */
+export interface BreakableLootForce {
+	/** One loaded piece in every room that holds a weighted piece (the file comment's "every"). Plunder floors. */
+	readonly everyRoom?: boolean;
+}
+
+/** The room id of every piece (roomAt on its cell centre; NO_ROOM for none), placement order. */
+function pieceRooms(pieces: ReadonlyArray<BreakablePlacement>, encounter: EncounterConfig): number[] {
+	const rooms: number[] = [];
+	for (const p of pieces) rooms.push(roomAt(encounter, gridToWorld(p.x), gridToWorld(p.y))?.id ?? NO_ROOM);
+	return rooms;
+}
+
+/** The rooms of `rooms` (pieceRooms) holding a piece of weight > 0, ascending, each once (NO_ROOM never). */
+function weightedRooms(rooms: ReadonlyArray<number>, weights: ReadonlyArray<number>): number[] {
+	const seen = new Set<number>();
+	const out: number[] = [];
+	for (let i = 0; i < rooms.size(); i++) {
+		const room = rooms[i];
+		if (room === NO_ROOM || weights[i] <= 0 || seen.has(room)) continue;
+		seen.add(room);
+		out.push(room);
+	}
+	out.sort((a, b) => a < b);
+	return out;
+}
+
+/**
+ * The encounter rooms (ids, ascending) that hold at least one piece the loot can load (lootPieceWeight > 0; a piece in
+ * no room counts for none): the rooms a Plunder floor loads (docs/FLOOR_MODIFIERS.md FM2). Pure; draws nothing.
+ */
+export function breakableLootRooms(pieces: ReadonlyArray<BreakablePlacement>, encounter: EncounterConfig): number[] {
+	const weights: number[] = [];
+	for (const p of pieces) weights.push(lootPieceWeight(p.kind));
+	return weightedRooms(pieceRooms(pieces, encounter), weights);
+}
+
 /**
  * The loaded pieces of floor `floor` (seed `floorSeed`) whose breakables are `pieces` (placement order) in the rooms of
- * `encounter` (see the file comment). Pure and deterministic.
+ * `encounter` (see the file comment). Pure and deterministic. `force.everyRoom`: the Plunder floor (file comment).
  */
 export function placeBreakableLoot(
 	floorSeed: number,
 	floor: number,
 	pieces: ReadonlyArray<BreakablePlacement>,
 	encounter: EncounterConfig,
+	force?: BreakableLootForce,
 ): BreakableLoot[] {
 	const rng = new EncounterRng(breakableLootSeed(floorSeed));
 	const band = breakableLootBand(floor);
 	const count = math.min(rng.int(band.min, band.max), pieces.size());
-	const rooms: number[] = [];
+	const rooms = pieceRooms(pieces, encounter);
 	const weights: number[] = [];
-	for (const p of pieces) {
-		rooms.push(roomAt(encounter, gridToWorld(p.x), gridToWorld(p.y))?.id ?? NO_ROOM);
-		weights.push(lootPieceWeight(p.kind));
-	}
+	for (const p of pieces) weights.push(lootPieceWeight(p.kind));
 	const loaded = new Map<number, number>(); // slot -> kind
 	const perRoom = new Map<number, number>();
-	for (let k = 0; k < count; k++) {
+	if (force?.everyRoom === true) {
+		for (const room of weightedRooms(rooms, weights)) {
+			if ((perRoom.get(room) ?? 0) >= BREAKABLE_LOOT.maxPerRoom) continue;
+			let total = 0;
+			for (let i = 0; i < pieces.size(); i++) if (rooms[i] === room && !loaded.has(i)) total += weights[i];
+			if (total <= 0) continue;
+			let roll = rng.int(0, total - 1);
+			let slot = -1;
+			for (let i = 0; i < pieces.size(); i++) {
+				if (rooms[i] !== room || loaded.has(i) || weights[i] <= 0) continue;
+				if (roll < weights[i]) {
+					slot = i;
+					break;
+				}
+				roll -= weights[i];
+			}
+			loaded.set(slot, pickKind(rng));
+			perRoom.set(room, (perRoom.get(room) ?? 0) + 1);
+		}
+	}
+	const natural = force?.everyRoom === true ? 0 : count;
+	for (let k = 0; k < natural; k++) {
 		let total = 0;
 		const open: boolean[] = [];
 		for (let i = 0; i < pieces.size(); i++) {

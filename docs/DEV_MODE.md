@@ -15,7 +15,10 @@ the server, shown only to players the server allows.
    **F3** (or the panel's button) flips god mode mid-run. Leave run returns to the menu (no forfeit).
 
 The chip shows `DEV · F<n> · GOD` during a dev run. The run is not paused while the panel is open. Studio shortcuts:
-`workspace:SetAttribute("KV_DevPanel", true)` opens the panel on join; `KV_Seed` sets the panel's first seed.
+`workspace:SetAttribute("KV_DevPanel", true)` opens the panel on join; `KV_Seed` sets the panel's first seed. `KV_FloorModifier` (a floor
+modifier's name, any case: `gilded`, `hoard`, `feast`, `plunder`, `blood moon`) forces it on every floor of the dev run
+where it is eligible, boss floors included, ignoring its chance and streak rules (docs/FLOOR_MODIFIERS.md; read when Go
+starts the run, R keeps it; like `KV_TreasureDebug` for vaults, docs/TREASURE.md TR5).
 
 ## Who gets it
 

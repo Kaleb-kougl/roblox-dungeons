@@ -72,9 +72,10 @@ function tail(list: ReadonlyArray<string>, n: number, skip = 0): string[] {
 
 /**
  * Entries appended after the pellets': docs/TREASURE.md TR6's 3 asset IDs and 5 colour roles, then docs/FORTUNE.md
- * FO6's 1 asset ID, 4 colour roles and 1 tally segment (treasure.spec.ts / fortune.spec.ts check them).
+ * FO6's 1 asset ID, 4 colour roles and 1 tally segment, then docs/FLOOR_MODIFIERS.md FM7's 5 colour roles
+ * (treasure.spec.ts / fortune.spec.ts / floorModifiers.spec.ts check them).
  */
-const AFTER = { assets: 3 + 1, roles: 5 + 4, roomClear: 1 } as const;
+const AFTER = { assets: 3 + 1, roles: 5 + 4 + 5, roomClear: 1 } as const;
 
 describe("pellets: contract", () => {
 	it("two kinds, normal and power; their asset and colour role IDs are `pellet.<kind>`", () => {
