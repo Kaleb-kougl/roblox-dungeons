@@ -136,7 +136,10 @@ describe("run recap and co-op moments: contract", () => {
 		expect([...TEAM_MOMENT_AUDIO_IDS]).toEqual(["sfx.room.teamperfect", "sfx.player.syncparry"]);
 		// docs/TREASURE.md TR6's four sounds come after them, then docs/FORTUNE.md FO6's eight, docs/FLOOR_MODIFIERS.md FM7's five, then
 		// docs/GOLDLING_RUMOURS.md GR6's two
-		const skip = TREASURE_AUDIO_IDS.size() + FORTUNE_AUDIO_IDS.size() + FLOOR_MODIFIER_AUDIO_IDS.size() +
+		const skip =
+			TREASURE_AUDIO_IDS.size() +
+			FORTUNE_AUDIO_IDS.size() +
+			FLOOR_MODIFIER_AUDIO_IDS.size() +
 			GOLDEN_RUMOUR_AUDIO_IDS.size();
 		expect(tail(PORT_AUDIO_EVENTS, TEAM_MOMENT_AUDIO_IDS.size(), skip)).toEqual([...TEAM_MOMENT_AUDIO_IDS]);
 		for (const id of TEAM_MOMENT_AUDIO_IDS) {

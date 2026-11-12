@@ -50,12 +50,14 @@ import {
 	vaultChest,
 	type BreakableFloorInput,
 	type BreakablePlacement,
+	type GoldenFloorInput,
 	type Dungeon,
 	type EndlessFloorLayout,
 	type EndlessFloorOptions,
 	type FloorModifierFloor,
 	type ForgeParams,
 } from "shared/dungeon";
+import { piecesBeforeGolden } from "shared/dungeon/testing";
 import { DROPS, GOLDEN_SIM_SALT, TREASURE } from "shared/sim";
 
 const dungeons = new Map<string, Dungeon>();
@@ -103,11 +105,16 @@ function inputOf(l: EndlessFloorLayout): BreakableFloorInput {
 
 /** The pieces before the vault's chest. */
 function piecesOf(l: EndlessFloorLayout): BreakablePlacement[] {
-	const all = l.breakables ?? [];
+	const all = piecesBeforeGolden(l);
 	const n = l.vault !== undefined ? all.size() - 1 : all.size();
 	const out: BreakablePlacement[] = [];
 	for (let i = 0; i < n; i++) out.push(all[i]);
 	return out;
+}
+
+/** placeGolden's input on `l`: every piece before the Goldling's own (the chest included), the pellets, the vault. */
+function goldenInputOf(l: EndlessFloorLayout): GoldenFloorInput {
+	return { ...inputOf(l), pieces: piecesBeforeGolden(l), pellets: l.pellets, vault: l.vault };
 }
 
 /** The option-off floor as the pick reads it. */
@@ -350,14 +357,17 @@ describe("modifiers: each kind forced (the dev override)", () => {
 	});
 
 	it("Hoard re-runs the downstream: the pact altars see the chest, the Goldling is the natural one", () => {
+		// The Goldling's own piece (docs/GOLDLING_RUMOURS.md GR1) is placed against every piece, the forced chest
+		// included, so on a Hoard floor its room and roll are the natural ones while its cell and slot may move.
 		for (const { run, off } of SAMPLE) {
 			const l = buildEndlessFloor(run, off.floor, dungeonFor, 1, {
 				...ON,
 				modifierOverride: { every: true, kind: FloorModifier.HOARD },
 			});
 			if (l.modifier !== FloorModifier.HOARD) continue;
-			expect(l.pactAltars).toEqual(placePactAltars(inputOf(l), l.breakables!, l.pellets));
-			expect(l.golden).toEqual(off.golden);
+			expect(l.pactAltars).toEqual(placePactAltars(inputOf(l), piecesBeforeGolden(l), l.pellets));
+			expect(l.golden?.room).toEqual(off.golden?.room);
+			expect(l.golden).toEqual(placeGolden(goldenInputOf(l), l.floor));
 			expect(l.roomAffixes).toEqual(off.roomAffixes);
 			expect(l.breakableLoot).toEqual(off.breakableLoot);
 			expect(l.pellets).toEqual(off.pellets);
@@ -371,7 +381,7 @@ describe("modifiers: forced placers (FM2)", () => {
 		for (const { off } of SAMPLE) {
 			const input = inputOf(off);
 			const pieces = piecesOf(off);
-			expect(placeGolden(input, off.floor, {})).toEqual(off.golden);
+			expect(placeGolden(goldenInputOf(off), off.floor, {})).toEqual(off.golden);
 			expect(placePellets(input, off.floor, pieces, {})).toEqual(off.pellets);
 			expect(placeBreakableLoot(off.seed, off.floor, pieces, off.encounter, {})).toEqual(off.breakableLoot);
 			expect(assignAffixes(off.seed, off.floor, off.encounter.rooms, off.roomSpawns, {})).toEqual(
@@ -390,7 +400,7 @@ describe("modifiers: forced placers (FM2)", () => {
 		for (const { off } of SAMPLE) {
 			const input = inputOf(off);
 			const pieces = piecesOf(off);
-			const g = placeGolden(input, off.floor, { certain: true });
+			const g = placeGolden(goldenInputOf(off), off.floor, { certain: true });
 			if (off.golden !== undefined) {
 				golden++;
 				expect(g).toEqual(off.golden);

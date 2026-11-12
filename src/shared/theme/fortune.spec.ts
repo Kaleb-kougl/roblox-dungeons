@@ -142,9 +142,9 @@ describe("fortune: contract", () => {
 			"sfx.golden.escape",
 		]);
 		// docs/FLOOR_MODIFIERS.md FM7's five, then docs/GOLDLING_RUMOURS.md GR6's two rumours come after them
-		expect(tail(PORT_AUDIO_EVENTS, FORTUNE_AUDIO_IDS.size(), FLOOR_MOD_AFTER.audio + GOLDEN_RUMOUR_AUDIO_IDS.size())).toEqual([
-			...FORTUNE_AUDIO_IDS,
-		]);
+		expect(
+			tail(PORT_AUDIO_EVENTS, FORTUNE_AUDIO_IDS.size(), FLOOR_MOD_AFTER.audio + GOLDEN_RUMOUR_AUDIO_IDS.size()),
+		).toEqual([...FORTUNE_AUDIO_IDS]);
 		for (const id of FORTUNE_AUDIO_IDS) {
 			expect([id, has(REQUIRED_ASSET_IDS, id), slotFor(id)?.soundGroup]).toEqual([id, true, "sfx"]);
 			// the vale pack plays them: picked on the audition checklist and uploaded 2026-11-11 (docs/FX_AUDIO.md
@@ -202,9 +202,13 @@ describe("fortune: contract", () => {
 
 	it("the strings: cards, dim lines (PACT_DIM_NAMES but none), titles, chips, shouts (required); rows; sighting", () => {
 		// docs/FLOOR_MODIFIERS.md FM7's strings, then docs/GOLDLING_RUMOURS.md GR7's two chip lines come after them
-		expect(tail(REQUIRED_STRING_KEYS, FORTUNE_STRING_KEYS.size(), FLOOR_MOD_AFTER.strings + GOLDEN_RUMOUR_STRING_KEYS.size())).toEqual([
-			...FORTUNE_STRING_KEYS,
-		]);
+		expect(
+			tail(
+				REQUIRED_STRING_KEYS,
+				FORTUNE_STRING_KEYS.size(),
+				FLOOR_MOD_AFTER.strings + GOLDEN_RUMOUR_STRING_KEYS.size(),
+			),
+		).toEqual([...FORTUNE_STRING_KEYS]);
 		const dims = new Array<string>();
 		for (let d = 0; d < PACT_DIM_NAMES.size(); d++)
 			if (d !== PactDim.NONE) dims.push(pactDimStringKey(PACT_DIM_NAMES[d]));
