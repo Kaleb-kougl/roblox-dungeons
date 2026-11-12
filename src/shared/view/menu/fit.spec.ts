@@ -2,7 +2,7 @@
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { SIM_HZ } from "shared/sim";
 import { PORTRAIT } from "shared/view";
-import { CODEX_SCREEN, codexTabRowWidth } from "shared/view/codex";
+import { CODEX_SCREEN, codexRecapRowHeight, codexTabRowWidth } from "shared/view/codex";
 import { NO_RECAP_TALLY, type RecapTallySource } from "shared/view/fx";
 import {
 	DAILY_RANK,
@@ -149,7 +149,8 @@ function estimates(uiScale: number, compact: boolean): ReadonlyMap<string, Estim
 			header +
 			2 * HUD_VIEW.titleText +
 			4 +
-			(3 * lineH + 2 * HUD_VIEW.gap) +
+			// The stats at the breakdown's line gap (claude/codex-plan.md CX9).
+			(3 * lineH + 2 * MENU_FIT.runOverLineGap) +
 			MENU_FIT.runOverButton.y +
 			LINE(HUD_VIEW.smallText) +
 			TWO_SMALL_LINES +
@@ -815,7 +816,8 @@ describe("the upright pause (docs/PORTRAIT.md PT6)", () => {
  * the friends passed, the verdict and info lines, the exits with Again, Character, Main menu and Details: two rows since
  * docs/ARCHER.md AR7, compact one row with Details atop the right column), still fits the smallest
  * landscape phone, every portrait phone and the HUD 70 % step (Details shows the breakdown and Build list in the
- * highlights' place: the panel as before). A run without a record draws the plain near-miss line under the main line
+ * highlights' place: the panel as before), and since claude/codex-plan.md CX9 the Codex row (a run's first-ever finds).
+ * A run without a record draws the plain near-miss line under the main line
  * instead of the ribbon (compact: the taller of the two is counted in the left column).
  */
 function recapWorst(uiScale: number, layout: "compact" | "narrow" | "wide", party?: RunContribution): Estimate {
@@ -833,7 +835,8 @@ function recapWorst(uiScale: number, layout: "compact" | "narrow" | "wide", part
 	// and the headshot cells.
 	const dailyRows = [small, title, small, small];
 	const passed = small + DAILY_RANK.passedHeadshotPx + small;
-	const stats = 3 * lineH + 2 * HUD_VIEW.gap;
+	// Compact: the stats at the breakdown's line gap (claude/codex-plan.md CX9: room for the Codex row).
+	const stats = 3 * lineH + 2 * (layout === "compact" ? MENU_FIT.runOverLineGap : HUD_VIEW.gap);
 	const main = 2 * HUD_VIEW.titleText + 4;
 	// docs/ARCHER.md AR7: a solo run's exits are Again, Character, the exit and Details, in two rows (runOverExitRows):
 	// the second row and its gap count as one more row; a party run's stay one row (no Again, no Character).
@@ -846,7 +849,9 @@ function recapWorst(uiScale: number, layout: "compact" | "narrow" | "wide", part
 	const exitRows = exits.rows.size();
 	const button = RECAP_UI.exits[layout].again.y * exitRows + HUD_VIEW.gap * (exitRows - 1);
 	if (layout === "compact") {
-		const leftRows = [header, math.max(title, nearMiss), main, stats, button, small, TWO_SMALL_LINES];
+		// claude/codex-plan.md CX9: the Codex row (one line) above the exits in the left column.
+		const codexRow = codexRecapRowHeight("compact", HUD_VIEW.gap);
+		const leftRows = [header, math.max(title, nearMiss), main, stats, codexRow, button, small, TWO_SMALL_LINES];
 		let left = 0;
 		for (const r of leftRows) left += r;
 		left += (leftRows.size() - 1) * HUD_VIEW.gap;
@@ -864,6 +869,8 @@ function recapWorst(uiScale: number, layout: "compact" | "narrow" | "wide", part
 		};
 	}
 	const rows = [header, title, main, stats, lineH, dim, grid, ...dailyRows, passed, small, TWO_SMALL_LINES];
+	// claude/codex-plan.md CX9: the Codex row under the daily block (one line wide, two narrow).
+	rows.push(codexRecapRowHeight(layout, HUD_VIEW.gap));
 	rows.push(button);
 	return {
 		w: layout === "narrow" ? MENU_FIT.runOverNarrowWidth : HUD_VIEW.panelWidth * 2,
@@ -924,7 +931,10 @@ describe("run-over recap fit (docs/RUN_RECAP.md RR5)", () => {
 			// Today's panel for the same run: the breakdown, plus the record row and the daily block it already draws.
 			const small = LINE(HUD_VIEW.smallText);
 			const daily = small + LINE(HUD_VIEW.titleText) + 2 * small + small + DAILY_RANK.passedHeadshotPx + small;
-			const today = estimates(u, false).get("runOver")!.h + LINE(HUD_VIEW.textSize) + daily + 3 * HUD_VIEW.gap;
+			// claude/codex-plan.md CX9: the Codex row is drawn with or without the recap (one line on the wide panel).
+			const codexRow = codexRecapRowHeight("wide", HUD_VIEW.gap) + HUD_VIEW.gap;
+			const today =
+				estimates(u, false).get("runOver")!.h + LINE(HUD_VIEW.textSize) + daily + 3 * HUD_VIEW.gap + codexRow;
 			expect([s.name, worst.h <= today]).toEqual([s.name, true]);
 		}
 	});
@@ -939,6 +949,8 @@ describe("run-over recap fit (docs/RUN_RECAP.md RR5)", () => {
 				RECAP_UI.nearMiss.height,
 				HUD_VIEW.pad * 2 + LINE(HUD_VIEW.smallText) + HUD_VIEW.gap + LINE(HUD_VIEW.titleText),
 				recapGridSize(4, HUD_VIEW.gap).h,
+				// claude/codex-plan.md CX9: the Codex row.
+				codexRecapRowHeight("wide", HUD_VIEW.gap),
 				LINE(HUD_VIEW.smallText),
 				TWO_SMALL_LINES,
 				RECAP_UI.exits.wide.again.y,
@@ -1038,7 +1050,10 @@ describe("run-over contribution fit (docs/RUN_CONTRIBUTION.md CT5)", () => {
 			const worst = recapWorst(u, "wide", eight);
 			const small = LINE(HUD_VIEW.smallText);
 			const daily = small + LINE(HUD_VIEW.titleText) + 2 * small + small + DAILY_RANK.passedHeadshotPx + small;
-			const today = estimates(u, false).get("runOver")!.h + LINE(HUD_VIEW.textSize) + daily + 3 * HUD_VIEW.gap;
+			// claude/codex-plan.md CX9: the Codex row is drawn with or without the recap (one line on the wide panel).
+			const codexRow = codexRecapRowHeight("wide", HUD_VIEW.gap) + HUD_VIEW.gap;
+			const today =
+				estimates(u, false).get("runOver")!.h + LINE(HUD_VIEW.textSize) + daily + 3 * HUD_VIEW.gap + codexRow;
 			expect([s.name, worst.h <= today]).toEqual([s.name, true]);
 		}
 	});
@@ -1053,6 +1068,8 @@ describe("run-over contribution fit (docs/RUN_CONTRIBUTION.md CT5)", () => {
 				RECAP_UI.nearMiss.height,
 				HUD_VIEW.pad * 2 + LINE(HUD_VIEW.smallText) + HUD_VIEW.gap + LINE(HUD_VIEW.titleText),
 				contribTabBodyHeight(eight, 4, "wide", HUD_VIEW.gap),
+				// claude/codex-plan.md CX9: the Codex row.
+				codexRecapRowHeight("wide", HUD_VIEW.gap),
 				LINE(HUD_VIEW.smallText),
 				TWO_SMALL_LINES,
 				RECAP_UI.exits.wide.again.y,

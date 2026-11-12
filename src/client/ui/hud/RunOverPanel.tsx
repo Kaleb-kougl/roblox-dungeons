@@ -70,6 +70,7 @@ import { runOverBest, type RunOverBest } from "./newBestRunOver";
 import { NEW_BEST_UI } from "./newBestUi";
 import { ArtImage, MenuButton, Panel, Row, Text, panelIcon } from "./primitives";
 import { BuildList, hasBuildItems } from "./BuildList";
+import { CodexRunRow } from "./CodexRunRow";
 import { DailyPassedRow } from "./DailyPassedRow";
 import { RunInfoLine, verdictColor, verdictLine } from "./RunInfoLine";
 import { DetailsToggle, HighlightGrid, NearMissLine } from "./RecapBlocks";
@@ -97,11 +98,13 @@ const ROW = {
 	/** docs/DAILY.md DS11: the daily block (daily runs only), then the friends you passed (DailyPassedRow, DS10). */
 	daily: 11,
 	dailyPassed: 12,
-	exits: 13,
-	verdict: 14,
-	info: 15,
+	/** claude/codex-plan.md CX9: the Codex row (CodexRunRow; compact: one line in the left column, above the exits). */
+	codex: 13,
+	exits: 14,
+	verdict: 15,
+	info: 16,
 	/** docs/GAMEPAD_MENUS.md GM7: the gamepad hint bar (gamepad only), last. */
-	padHints: 16,
+	padHints: 17,
 } as const;
 
 function Stat(props: { order: number; label: string; value: string }) {
@@ -470,6 +473,10 @@ function RunOverHeader(props: { order: number; victory: boolean; icon: string | 
  * focus brightens once armed; it goes through the recap's retry gate (HudActions.again: before the 0.6 s arm a press
  * skips the timeline). Runs without a recap keep exactly the old panel.
  *
+ * The Codex (claude/codex-plan.md CX9, R12): a row under the daily block (compact: one line above the exits)
+ * with this run's first-ever finds (CodexRunRow: the count, up to five icons and `+N`, the completion), from the store's
+ * frozen summary; none for a run that found nothing new, could not claim or ran with the Codex unloaded.
+ *
  * A party run's contribution (docs/RUN_CONTRIBUTION.md CT5 / CT6, the store's `recap.contribution` / `recap.tab`): in
  * the highlights' place the `You | Team | Party` tabs and their box (ContributionBlocks RecapTabBody; the near-miss line
  * stays above them on every tab), opening on You; Details swaps the whole tab body for the breakdown and the Build list
@@ -794,7 +801,8 @@ export function RunOverPanel() {
 										{mainLine}
 										{altLine}
 										{nearMissLine}
-										<Column order={ROW.stats} width={breakdownWidth} gap={HUD_VIEW.gap}>
+										{/* claude/codex-plan.md CX9: the stats at the breakdown's line gap, room for the Codex row. */}
+										<Column order={ROW.stats} width={breakdownWidth} gap={MENU_FIT.runOverLineGap}>
 											{stats.map((st, i) => (
 												<BreakdownLine
 													key={`st${i}`}
@@ -804,6 +812,7 @@ export function RunOverPanel() {
 												/>
 											))}
 										</Column>
+										<CodexRunRow order={ROW.codex} layout="compact" gap={HUD_VIEW.gap} />
 										{exitButtons("compact", legacyButton)}
 										{verdictRow}
 										<RunInfoLine order={ROW.info} />
@@ -898,6 +907,7 @@ export function RunOverPanel() {
 									withBoosts={false}
 								/>
 							) : undefined}
+							<CodexRunRow order={ROW.codex} layout={narrow ? "narrow" : "wide"} gap={HUD_VIEW.gap} />
 							{verdictRow}
 							<RunInfoLine order={ROW.info} />
 							{exitButtons(narrow ? "narrow" : "wide", narrow ? legacyButton : undefined)}
