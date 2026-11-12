@@ -928,6 +928,25 @@
 			"tilesPerImage": 4,
 			"meanHex": true
 		},
+		"ui.cursor": {
+			"$comment": "The menus' gauntlet cursor (docs/CURSOR.md C1), the white glow. Cropped to alpha > noiseAlpha + pad (25 x 25 + 2 px). Pivot = the steel fingertip's top-left corner in SOURCE pixels (the first opaque pixel of the index finger, (53, 54) on the 128 px PNG): the click point.",
+			"file": "lords-of-pain/user interface/cursor/cursor_gauntlet_white.png",
+			"name": "ui-cursor",
+			"crop": "alpha",
+			"noiseAlpha": 2,
+			"pad": 2,
+			"pivot": { "x": 53, "y": 54 }
+		},
+		"ui.cursor.hover": {
+			"$comment": "The gauntlet over a button (docs/CURSOR.md C1), the yellow glow: same hand, same crop and pivot as ui.cursor (sameCropAs: the build fails if they differ, so the fingertip never moves).",
+			"file": "lords-of-pain/user interface/cursor/cursor_gauntlet_yellow.png",
+			"name": "ui-cursor-hover",
+			"crop": "alpha",
+			"noiseAlpha": 2,
+			"pad": 2,
+			"pivot": { "x": 53, "y": 54 },
+			"sameCropAs": "ui.cursor"
+		},
 		"ui.ring.player": {
 			"$comment": "Soft ring; cropped to alpha > noiseAlpha + pad. Pivot = centre of the crop (the ring sits centred under the player).",
 			"file": "lords-of-pain-demo/user interface/highlight/highlight_yellow.png",

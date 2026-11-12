@@ -10937,6 +10937,16 @@
 			"bytes": 40349
 		},
 		{
+			"path": "lords-of-pain/user interface/cursor/cursor_gauntlet_white.png",
+			"sha256": "1791c026fdb8631f79a4f5fd0150c1379fbd8dba7e6e11bc8f73d0a419432a2b",
+			"bytes": 16760
+		},
+		{
+			"path": "lords-of-pain/user interface/cursor/cursor_gauntlet_yellow.png",
+			"sha256": "60b083e966c5fac03e56d0db7b7d4736ab8d3fd479f257d6dded321c96d6abb9",
+			"bytes": 16747
+		},
+		{
 			"path": "lords-of-pain/user interface/loot-indicator/loot_indicator_white.png",
 			"sha256": "f8a49a7b264ecfb6bf281c72767d774c65042b7a132d0d0a17481bc4fdb0e38f",
 			"bytes": 19045
