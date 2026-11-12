@@ -684,6 +684,8 @@ describe("stormcaller: strikes on real endless floors", () => {
 		// Re-recorded for Kenney decor's Forge pieces (docs/KENNEY_DECOR.md KN5-KN8): floor 3 lays out differently
 		// (library v2, mess halls, store stock; free-standing pieces clear solid pillars); run 4 now casts 3 strikes (none
 		// skipped), run 23 still 6. Before: 2/1/6b48e632, 6/0/4293fa96.
-		expect(pins).toEqual(["3/0/4b457f84", "6/0/c213cd8f"]); // check-asset-ids: allow (state hashes)
+		// Re-recorded for floor modifiers (docs/FLOOR_MODIFIERS.md FM3): run 23's co-op floor 3 is a Hoard floor (a vault
+		// and its chest piece now); strike and skip counts unchanged, run 4 untouched (a plain floor). Before: 6/0/c213cd8f.
+		expect(pins).toEqual(["3/0/4b457f84", "6/0/59e6c52a"]); // check-asset-ids: allow (state hashes)
 	});
 });
