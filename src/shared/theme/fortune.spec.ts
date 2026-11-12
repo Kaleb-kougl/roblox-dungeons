@@ -47,6 +47,7 @@ import {
 	MIN_GOLDEN_COIN_PELLET_DIFFERENCE,
 	fortuneReport,
 } from "./fortuneColors";
+import { FLOOR_MODIFIER_AUDIO_IDS, FLOOR_MODIFIER_ROLES, FLOOR_MODIFIER_STRING_KEYS } from "./floorModifiers";
 import { ThemePack } from "./pack";
 import { THEME_PACKS } from "./packs";
 import { PLACEHOLDER_MANIFEST } from "./packs/placeholder";
@@ -72,12 +73,20 @@ function packsToCheck(): Array<[string, Obj]> {
 	return out;
 }
 
-/** The last `n` entries of `list`, in order. */
-function tail(list: ReadonlyArray<string>, n: number): string[] {
+/** The last `n` entries of `list` before its last `skip` (docs/FLOOR_MODIFIERS.md FM7's entries come after), in order. */
+function tail(list: ReadonlyArray<string>, n: number, skip = 0): string[] {
 	const out = new Array<string>();
-	for (let i = list.size() - n; i < list.size(); i++) out.push(list[i]);
+	const last = list.size() - skip;
+	for (let i = last - n; i < last; i++) out.push(list[i]);
 	return out;
 }
+
+/** Entries docs/FLOOR_MODIFIERS.md FM7 appended after Fortune's (floorModifiers.spec.ts checks them). */
+const FLOOR_MOD_AFTER = {
+	roles: FLOOR_MODIFIER_ROLES.size(),
+	audio: FLOOR_MODIFIER_AUDIO_IDS.size(),
+	strings: FLOOR_MODIFIER_STRING_KEYS.size(),
+} as const;
 
 const clone = () => deepClone(PLACEHOLDER_MANIFEST) as unknown as Obj;
 
@@ -107,10 +116,12 @@ describe("fortune: contract", () => {
 		expect(has(REQUIRED_ASSET_IDS, "pact.greed")).toBe(false);
 	});
 
-	it("the colour roles are COLOR_ROLES' last four: the Horde edge, the two pacts (PactKind order), the coins", () => {
+	it("the colour roles are COLOR_ROLES' last four before the floor modifiers': the Horde edge, the two pacts (PactKind order), the coins", () => {
 		expect([...FORTUNE_ROLES]).toEqual(["roomEdge.horde", "pact.greed", "pact.horde", "golden.coin"]);
 		expect([...FORTUNE_ROLES]).toEqual([ROOM_EDGE_HORDE_ROLE, ...PACT_ROLES, GOLDEN_COIN_ROLE]);
-		expect(tail(COLOR_ROLES as unknown as ReadonlyArray<string>, FORTUNE_ROLES.size())).toEqual([...FORTUNE_ROLES]);
+		expect(
+			tail(COLOR_ROLES as unknown as ReadonlyArray<string>, FORTUNE_ROLES.size(), FLOOR_MOD_AFTER.roles),
+		).toEqual([...FORTUNE_ROLES]);
 		// the Goldling's own role and asset are the enemy slot's
 		expect(ENEMY_ARCHETYPES[ENEMY_ARCHETYPES.size() - 1]).toBe("golden");
 		expect(has(COLOR_ROLES as unknown as ReadonlyArray<string>, "enemy.golden")).toBe(true);
@@ -127,7 +138,9 @@ describe("fortune: contract", () => {
 			"sfx.golden.jackpot",
 			"sfx.golden.escape",
 		]);
-		expect(tail(PORT_AUDIO_EVENTS, FORTUNE_AUDIO_IDS.size())).toEqual([...FORTUNE_AUDIO_IDS]);
+		expect(tail(PORT_AUDIO_EVENTS, FORTUNE_AUDIO_IDS.size(), FLOOR_MOD_AFTER.audio)).toEqual([
+			...FORTUNE_AUDIO_IDS,
+		]);
 		for (const id of FORTUNE_AUDIO_IDS) {
 			expect([id, has(REQUIRED_ASSET_IDS, id), slotFor(id)?.soundGroup]).toEqual([id, true, "sfx"]);
 			for (const p of sortedKeys(THEME_PACKS))
@@ -167,7 +180,9 @@ describe("fortune: contract", () => {
 	});
 
 	it("the strings: cards, dim lines (PACT_DIM_NAMES but none), titles, chips, shouts (required); rows; sighting", () => {
-		expect(tail(REQUIRED_STRING_KEYS, FORTUNE_STRING_KEYS.size())).toEqual([...FORTUNE_STRING_KEYS]);
+		expect(tail(REQUIRED_STRING_KEYS, FORTUNE_STRING_KEYS.size(), FLOOR_MOD_AFTER.strings)).toEqual([
+			...FORTUNE_STRING_KEYS,
+		]);
 		const dims = new Array<string>();
 		for (let d = 0; d < PACT_DIM_NAMES.size(); d++)
 			if (d !== PactDim.NONE) dims.push(pactDimStringKey(PACT_DIM_NAMES[d]));

@@ -1270,6 +1270,46 @@
 	"enemy.warbanner.name": {
 		"note": "Enemy type name: an imp carrying a war banner that stays behind other enemies and makes those near it faster. Shown in the stage card's roster line (the enemy kinds of a floor, joined with \" · \") and the main menu's Daily card. Singular noun, title case, used as a proper name; keep it short. Glossary term."
 	},
+	"floormod.bloodMoon.line": {
+		"note": "A floor modifier: some floors of an endless run are special, and the card shown when the player reaches a new floor says so in a banner under the floor's title and biome name; the same name also shows in a small status chip in the HUD corner (and the touch strip) for as long as the player is on that floor. Says this floor has twice the usual number of elite enemies (the stronger enemies with an affix); plain and a little ominous. Shown as the banner's line under the name, and in the pause menu after the name. A short plain statement of fact (sentence case, no full stop): the card never lies, it states exactly what the floor holds.",
+		"max": 48
+	},
+	"floormod.bloodMoon.name": {
+		"note": "A floor modifier: some floors of an endless run are special, and the card shown when the player reaches a new floor says so in a banner under the floor's title and biome name; the same name also shows in a small status chip in the HUD corner (and the touch strip) for as long as the player is on that floor. This one is a warning (a twist, shown in blood red, never as good news): this floor has twice as many elite enemies (stronger enemies with an affix: Hulking, Swift, Shielded, Vengeful), which also pay more points. A red full moon, an omen of danger. Shown as the banner's big name (in the modifier's colour) and as the chip's text. One or two words, title case, used as a proper name; keep it short. Glossary term.",
+		"max": 14
+	},
+	"floormod.feast.line": {
+		"note": "A floor modifier: some floors of an endless run are special, and the card shown when the player reaches a new floor says so in a banner under the floor's title and biome name; the same name also shows in a small status chip in the HUD corner (and the touch strip) for as long as the player is on that floor. Says this floor certainly has a power pellet (the big pellet that turns enemy bullets into points). Shown as the banner's line under the name, and in the pause menu after the name. A short plain statement of fact (sentence case, no full stop): the card never lies, it states exactly what the floor holds.",
+		"max": 48
+	},
+	"floormod.feast.name": {
+		"note": "A floor modifier: some floors of an endless run are special, and the card shown when the player reaches a new floor says so in a banner under the floor's title and biome name; the same name also shows in a small status chip in the HUD corner (and the touch strip) for as long as the player is on that floor. This one is good news (a boon): this floor is certain to have a power pellet (the big glowing pellet that turns every enemy bullet into points). The name means a big meal: the pellets are 'eaten'. Shown as the banner's big name (in the modifier's colour) and as the chip's text. One or two words, title case, used as a proper name; keep it short. Glossary term.",
+		"max": 14
+	},
+	"floormod.gilded.line": {
+		"note": "A floor modifier: some floors of an endless run are special, and the card shown when the player reaches a new floor says so in a banner under the floor's title and biome name; the same name also shows in a small status chip in the HUD corner (and the touch strip) for as long as the player is on that floor. Says this floor certainly has a Goldling (use the same word as enemy.golden.name). Shown as the banner's line under the name, and in the pause menu after the name. A short plain statement of fact (sentence case, no full stop): the card never lies, it states exactly what the floor holds.",
+		"max": 48
+	},
+	"floormod.gilded.name": {
+		"note": "A floor modifier: some floors of an endless run are special, and the card shown when the player reaches a new floor says so in a banner under the floor's title and biome name; the same name also shows in a small status chip in the HUD corner (and the touch strip) for as long as the player is on that floor. This one is good news (a boon): this floor is certain to have a Goldling (enemy.golden.name: a rare harmless gold creature that runs away; catching it gives a big bonus). The name means 'covered in gold'. Shown as the banner's big name (in the modifier's colour) and as the chip's text. One or two words, title case, used as a proper name; keep it short. Glossary term.",
+		"max": 14
+	},
+	"floormod.hoard.line": {
+		"note": "A floor modifier: some floors of an endless run are special, and the card shown when the player reaches a new floor says so in a banner under the floor's title and biome name; the same name also shows in a small status chip in the HUD corner (and the touch strip) for as long as the player is on that floor. Says this floor certainly has a treasure vault (a locked room with a chest). Shown as the banner's line under the name, and in the pause menu after the name. A short plain statement of fact (sentence case, no full stop): the card never lies, it states exactly what the floor holds.",
+		"max": 48
+	},
+	"floormod.hoard.name": {
+		"note": "A floor modifier: some floors of an endless run are special, and the card shown when the player reaches a new floor says so in a banner under the floor's title and biome name; the same name also shows in a small status chip in the HUD corner (and the touch strip) for as long as the player is on that floor. This one is good news (a boon): this floor is certain to have a treasure vault (a locked room whose chest opens after the room's fight). The name means a hidden pile of treasure. Shown as the banner's big name (in the modifier's colour) and as the chip's text. One or two words, title case, used as a proper name; keep it short. Glossary term.",
+		"max": 14
+	},
+	"floormod.plunder.line": {
+		"note": "A floor modifier: some floors of an endless run are special, and the card shown when the player reaches a new floor says so in a banner under the floor's title and biome name; the same name also shows in a small status chip in the HUD corner (and the touch strip) for as long as the player is on that floor. Says every room of this floor has a boost (temporary power-up) hidden in one of its breakable barrels or crates. Shown as the banner's line under the name, and in the pause menu after the name. A short plain statement of fact (sentence case, no full stop): the card never lies, it states exactly what the floor holds.",
+		"max": 48
+	},
+	"floormod.plunder.name": {
+		"note": "A floor modifier: some floors of an endless run are special, and the card shown when the player reaches a new floor says so in a banner under the floor's title and biome name; the same name also shows in a small status chip in the HUD corner (and the touch strip) for as long as the player is on that floor. This one is good news (a boon): every room of this floor hides a boost (a temporary power-up) inside one of its breakable barrels or crates. The name means loot taken by raiders. Shown as the banner's big name (in the modifier's colour) and as the chip's text. One or two words, title case, used as a proper name; keep it short. Glossary term.",
+		"max": 14
+	},
 	"fx.brace.text": {
 		"note": "Text written on the floor beside the player when the Bastion boon \"braces\": a guard (the sword's block) or a roll stopped 8 bullets and restored an armor pip (or, with the Stone Heart duo, healed). ALL CAPS, one word, like the parry flash (fx.parry.text); keep capitals if the script has them.",
 		"max": 10
@@ -1839,6 +1879,13 @@
 		"note": "Technical notice in the bottom-right info lines when enemies failed to load and the floor plays without them. {reason} is a short technical reason from the game (English, not translated). Lowercase start because it is a status line; a plain sentence.",
 		"example": {
 			"reason": "asset timeout"
+		}
+	},
+	"hud.pause.floorMod": {
+		"note": "Pause menu, a line under the floor information while the current floor has a floor modifier (a special floor announced on the new-floor card, e.g. Gilded: a Goldling is certain). {name} is the modifier's name (floormod.*.name, e.g. \"Gilded\"), {line} its statement (floormod.*.line, e.g. \"A Goldling is certain\"). Usually only the order or the separator changes.",
+		"example": {
+			"name": "Gilded",
+			"line": "A Goldling is certain"
 		}
 	},
 	"hud.pause.hint": {

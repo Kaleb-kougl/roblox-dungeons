@@ -225,6 +225,15 @@ export const COLOR_ROLES = [
 	"pact.greed",
 	"pact.horde",
 	"golden.coin",
+	// Roblox port (docs/FLOOR_MODIFIERS.md FM7): one colour per floor modifier kind (floorModifiers.ts
+	// FLOOR_MODIFIER_ROLES: the floor card banner's name, the status chip, the pause line): four boons (Gilded, Hoard,
+	// Feast, Plunder), then the twist (Blood Moon). Held to FLOOR_MODIFIER_COLOR_RULES by floorModifierReport
+	// (floorModifierColors.ts): >= 4.5:1 (text) on background and uiPanel, and the twist >= 40 CIE76 from every boon.
+	"floorMod.gilded",
+	"floorMod.hoard",
+	"floorMod.feast",
+	"floorMod.plunder",
+	"floorMod.bloodMoon",
 ] as const;
 
 export type ColorRole = (typeof COLOR_ROLES)[number];

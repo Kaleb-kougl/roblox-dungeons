@@ -854,6 +854,19 @@
 				"hud.info",
 				"hud.seed"
 			]
+		},
+		{
+			"term": "Gilded / Hoard / Feast / Plunder / Blood Moon",
+			"meaning": "The floor modifiers' names: a special endless floor announced on the new-floor card and in a HUD chip. Gilded: a Goldling is certain; Hoard: a treasure vault is certain; Feast: a power pellet is certain; Plunder: a boost in every room's barrels (four boons, good news); Blood Moon: twice the elite enemies (a twist, a warning). Translate each as one fixed short name, used the same on the card, the chip and the pause menu.",
+			"translate": true,
+			"keys": [
+				"floormod.bloodMoon.name",
+				"floormod.feast.name",
+				"floormod.gilded.name",
+				"floormod.hoard.name",
+				"floormod.plunder.name",
+				"hud.pause.floorMod"
+			]
 		}
 	]
 }

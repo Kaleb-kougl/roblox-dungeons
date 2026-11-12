@@ -17,6 +17,8 @@
  *   - likewise (docs/FORTUNE.md FO6), fortuneColors.ts `fortuneReport`: the Horde edge, the pacts and the Goldling's
  *     coins read on every floor and never as a bullet or a telegraph (the coins never as a pellet), and the Goldling
  *     never as a threat cue;
+ *   - likewise (docs/FLOOR_MODIFIERS.md FM7), floorModifierColors.ts `floorModifierReport`: every kind's colour reads as
+ *     text on `background` and `uiPanel`, and a twist's never as a boon's;
  *   - likewise (docs/PROJECTILE_ART.md PA3), bulletArt.ts `bulletArtProblems`: bullet sprite art (one facing, a short
  *     `fly` loop, a meanColor) whose player shots never read as danger and whose enemy bullets read as the danger
  *     colour on every floor and wall; the floor decals take no art;
@@ -37,6 +39,7 @@ import { buildReport } from "./buildColors";
 import { pelletReport } from "./pelletColors";
 import { treasureReport } from "./treasureColors";
 import { fortuneReport } from "./fortuneColors";
+import { floorModifierReport } from "./floorModifierColors";
 import { bulletArtProblems } from "./bulletArt";
 import { gooArtProblems } from "./gooArt";
 import { hazardArtProblems } from "./hazardArt";
@@ -235,9 +238,16 @@ const WHY = {
 			"a Fortune colour must never read as an enemy bullet or a telegraph, a coin never as a pellet, the Goldling never as a threat cue",
 		apart: "",
 	},
+	floorMod: {
+		panel: "a floor modifier's name must read as text on the floor card and the HUD panel",
+		apart: "a twist's colour must never read as a boon's (the danger banner is not good news)",
+	},
 } as const;
 
-/** A report entry variantColorProblems words: the floor / difference checks, plus treasureReport's map / bullet. */
+/**
+ * A report entry variantColorProblems words: the floor / difference checks, plus treasureReport's map / bullet and
+ * floorModifierReport's panel / apart.
+ */
 interface ProblemEntry {
 	role: string;
 	check: string;
@@ -250,7 +260,7 @@ interface ProblemEntry {
 }
 
 /**
- * Every failed affix, goo, aura, build effect, pellet, treasure and Fortune check as a validator message
+ * Every failed affix, goo, aura, build effect, pellet, treasure, Fortune and floor modifier check as a validator message
  * (validateManifest adds them to its errors, path `colors.<role>`). `suffix(biome)` is the validator's forge-theme
  * suffix for a biome ID (" (crypt)").
  */
@@ -264,6 +274,7 @@ export function variantColorProblems(manifest: unknown, suffix: (biome: string) 
 		{ entries: pelletReport(manifest), why: WHY.pellet },
 		{ entries: treasureReport(manifest), why: WHY.treasure },
 		{ entries: fortuneReport(manifest), why: WHY.fortune },
+		{ entries: floorModifierReport(manifest), why: WHY.floorMod },
 	];
 	for (const report of reports) {
 		for (const c of report.entries) {
@@ -276,7 +287,7 @@ export function variantColorProblems(manifest: unknown, suffix: (biome: string) 
 				msg = `contrast: ${c.role} ${c.color} on ${c.against}${suffix(c.against)} floor ${
 					c.againstColor
 				} is ${ratio}`;
-			} else if (c.check === "map") {
+			} else if (c.check === "map" || c.check === "panel") {
 				msg = `contrast: ${c.role} ${c.color} on ${c.against} ${c.againstColor} is ${ratio}`;
 			} else if (c.check === "bullet") {
 				msg = `contrast: ${c.against} ${c.againstColor} on ${c.role} ${c.color} is ${ratio}`;

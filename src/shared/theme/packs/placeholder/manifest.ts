@@ -244,6 +244,18 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"pact.greed": "#ffc800",
 		"pact.horde": "#ff0040",
 		"golden.coin": "#ffdc5a",
+		// Roblox port (docs/FLOOR_MODIFIERS.md FM7): the floor modifiers' banner / chip colours. The boons reuse the hue of
+		// what they promise: Gilded the Goldling's coins (golden.coin), Hoard a Legendary vault's gold
+		// (treasure.legendary), Feast the power pellet's yellow (pellet.power), Plunder the Frenzy boost's green
+		// (boost.frenzy). Blood Moon, the twist, is a blood red as deep as the text bar lets it go: a deeper red falls
+		// under 4.5:1 on uiPanel (pure #ff0000 is 4.23:1), so it is a crimson lifted by a little green and blue, 4.69:1 on
+		// uiPanel and 5.26:1 on background, >= 82 CIE76 from every boon (nearest Hoard). Every check: floorModifierReport,
+		// printed by theme/floorModifiers.spec.ts.
+		"floorMod.gilded": "#ffdc5a",
+		"floorMod.hoard": "#ebc444",
+		"floorMod.feast": "#ffff00",
+		"floorMod.plunder": "#a8f03c",
+		"floorMod.bloodMoon": "#ff3348",
 	},
 	// Roblox port (docs/VOID_DECOR.md VD1): `shoulder` is the wall darkened in linear light (ancient x0.95, molten x0.75,
 	// frost x0.9, grim x0.8, verdant x0.9: as far as the "nearer the wall than the floor" rule lets each go; the ancient
@@ -522,6 +534,14 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"sfx.golden.hit": SILENT,
 		"sfx.golden.jackpot": SILENT,
 		"sfx.golden.escape": SILENT,
+		// Roblox port (docs/FLOOR_MODIFIERS.md FM7): a floor modifier's sting on the floor card banner's stamp, one per
+		// kind. Silent until clips are picked (FM10); a boon falls back to sfx.jingle.treasure, the twist to
+		// sfx.horde.horn (shared/view/audio SFX_FALLBACK).
+		"sfx.floor.modifier.gilded": SILENT,
+		"sfx.floor.modifier.hoard": SILENT,
+		"sfx.floor.modifier.feast": SILENT,
+		"sfx.floor.modifier.plunder": SILENT,
+		"sfx.floor.modifier.bloodmoon": SILENT,
 		"music.menu": SILENT,
 		"music.biome.1": SILENT,
 		"music.biome.2": SILENT,
@@ -1443,6 +1463,18 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"fx.golden.escaped": "It got away!  +{points} banked",
 		// docs/FORTUNE.md FO7: a Horde room kill's score pop, the kill pop's `+{points}` with the x2 mark
 		"hud.score.pop.horde": "+{points} x2",
+		// --- floormod.* (docs/FLOOR_MODIFIERS.md FM7: the floor card's banner, the status chip, the pause line) --------
+		"floormod.gilded.name": "Gilded",
+		"floormod.gilded.line": "A Goldling is certain",
+		"floormod.hoard.name": "Hoard",
+		"floormod.hoard.line": "A treasure vault is certain",
+		"floormod.feast.name": "Feast",
+		"floormod.feast.line": "A power pellet is certain",
+		"floormod.plunder.name": "Plunder",
+		"floormod.plunder.line": "A boost hides in every room's barrels",
+		"floormod.bloodMoon.name": "Blood Moon",
+		"floormod.bloodMoon.line": "Twice the elites",
+		"hud.pause.floorMod": "{name} · {line}",
 		// --- daily.* (docs/DAILY.md DS9 / DS11 / DS12: the main menu's Daily card and podium, the leaderboard tabs, the
 		// run-over daily block, the lobby world toggle; numbers arrive formatted by the view) ---------------------------
 		"daily.card.title": "DAILY #{label} · {date}",

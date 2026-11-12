@@ -177,6 +177,16 @@ export {
 	type FortuneColorEntry,
 	type FortuneColorRules,
 } from "./fortuneColors";
+// Roblox port (docs/FLOOR_MODIFIERS.md FM7): the floor modifiers' strings, roles, stings and icon ids, and their colour
+// rules.
+export * from "./floorModifiers";
+export {
+	FLOOR_MODIFIER_COLOR_RULES,
+	MIN_FLOOR_MODIFIER_TWIST_DIFFERENCE,
+	floorModifierReport,
+	type FloorModifierColorEntry,
+	type FloorModifierColorRules,
+} from "./floorModifierColors";
 // Roblox port (docs/PROJECTILE_ART.md PA3): the bullet sprite rules.
 export { bulletArtProblems, bulletArtReport, type BulletArtEntry, type BulletArtProblem } from "./bulletArt";
 export { GOO_ART_RULES, gooArtProblems, gooArtReport, type GooArtEntry, type GooArtProblem } from "./gooArt";
