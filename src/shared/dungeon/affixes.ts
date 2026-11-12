@@ -14,6 +14,10 @@
  *   combat   from combatFromFloor: per eligible member in spawn order, one rng.int(0, percentRange - 1) <
  *            combatChancePercent, and on a hit its affix: one rng.int(0, unlocked - 1).
  *   other    rooms (and rooms below their floor) draw nothing.
+ *   share    (AffixForce.sharePercent, docs/FLOOR_MODIFIERS.md FM2: the Blood Moon floor, 200) both rules scaled by
+ *            sharePercent / 100: the elite share (k = max(1, ceil(n x eliteSharePercent x sharePercent / 100^2)), still
+ *            capped at n) and the combat chance (combatChancePercent x sharePercent / 100); the same draws in the same
+ *            order, the same excluded kinds. Absent: 100, the floor exactly as before.
  *
  * Output: an affix id per planned spawn (index = room id, then spawn index; AffixKind.NONE = none), the same shape as
  * the room spawns.
@@ -51,17 +55,50 @@ export function eliteAffixCount(n: number): number {
 }
 
 /**
+ * eliteAffixCount with the share scaled by `sharePercent` / 100 (AffixForce, docs/FLOOR_MODIFIERS.md FM2):
+ * max(1, ceil(n x share x sharePercent / 100^2)), at most n, 0 when n = 0; 100 is eliteAffixCount(n). Integer math.
+ */
+export function scaledEliteAffixCount(n: number, sharePercent: number): number {
+	if (n <= 0) return 0;
+	const range = AFFIXES.percentRange * AFFIXES.percentRange;
+	const num = n * AFFIXES.eliteSharePercent * sharePercent + range - 1;
+	const k = (num - (num % range)) / range;
+	return math.min(n, math.max(1, k));
+}
+
+/** assignAffixes' force flag (docs/FLOOR_MODIFIERS.md FM2). Absent or empty: the natural shares. */
+export interface AffixForce {
+	/** Both affix rules scaled by sharePercent / 100 (the file comment's "share"). Blood Moon floors: 200. */
+	readonly sharePercent?: number;
+}
+
+/**
+ * Affixed planned members in `roomAffixes` (assignAffixes' shape), skipping room id `exceptRoom` (default: none). Pure.
+ */
+export function countAffixed(roomAffixes: ReadonlyArray<ReadonlyArray<number>>, exceptRoom = -1): number {
+	let n = 0;
+	for (let id = 0; id < roomAffixes.size(); id++) {
+		if (id === exceptRoom) continue;
+		for (const a of roomAffixes[id]) if (a !== AffixKind.NONE) n++;
+	}
+	return n;
+}
+
+/**
  * The affix of every planned room spawn of `floor` (see the file comment). `rooms[i].id === i`; `roomSpawns[id]` are
- * room id's planned spawns. Pure.
+ * room id's planned spawns. Pure. `force.sharePercent`: the Blood Moon floor (file comment).
  */
 export function assignAffixes(
 	floorSeed: number,
 	floor: number,
 	rooms: ReadonlyArray<EncounterRoom>,
 	roomSpawns: ReadonlyArray<ReadonlyArray<ActorSpawn>>,
+	force?: AffixForce,
 ): number[][] {
 	const rng = new EncounterRng(affixSeed(floorSeed));
 	const unlocked = unlockedAffixes(floor);
+	const sharePercent = force?.sharePercent ?? AFFIXES.percentRange;
+	const combatChance = (AFFIXES.combatChancePercent * sharePercent) / AFFIXES.percentRange;
 	const out: number[][] = [];
 	for (let id = 0; id < roomSpawns.size(); id++) {
 		const spawns = roomSpawns[id];
@@ -77,7 +114,7 @@ export function assignAffixes(
 		const last = unlocked.size() - 1;
 		if (room.type === AFFIXES.eliteRoomType && floor >= AFFIXES.eliteFromFloor) {
 			const n = eligible.size();
-			const k = eliteAffixCount(n);
+			const k = force === undefined ? eliteAffixCount(n) : scaledEliteAffixCount(n, sharePercent);
 			for (let j = 0; j < k; j++) {
 				const r = rng.int(j, n - 1);
 				const t = eligible[j];
@@ -89,8 +126,7 @@ export function assignAffixes(
 			for (let i = 0; i < spawns.size(); i++) if (chosen.has(i)) row[i] = unlocked[rng.int(0, last)];
 		} else if (room.type === AFFIXES.combatRoomType && floor >= AFFIXES.combatFromFloor) {
 			for (const i of eligible) {
-				if (rng.int(0, AFFIXES.percentRange - 1) < AFFIXES.combatChancePercent)
-					row[i] = unlocked[rng.int(0, last)];
+				if (rng.int(0, AFFIXES.percentRange - 1) < combatChance) row[i] = unlocked[rng.int(0, last)];
 			}
 		}
 	}

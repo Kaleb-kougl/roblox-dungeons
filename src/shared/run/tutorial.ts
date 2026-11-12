@@ -40,6 +40,7 @@ import {
 	BOSS_ACT1_KIND,
 	BRUISER_KIND,
 	ENDLESS_FIRST_FLOOR,
+	FloorModifier,
 	NO_POWER_PELLET,
 	SNIPER_KIND,
 	SWARMER_KIND,
@@ -581,6 +582,8 @@ function buildTutorialFloor(floor: number, mover: PlayerMoverKind): EndlessRunFl
 		stairwell: { x: bossRoom.cx, z: bossRoom.cz },
 		// Combat G's pellets on floor 1 (tutorialPellets); none on any later floor.
 		pellets: plan !== undefined ? plan.pellets : undefined,
+		// Never a floor modifier (docs/FLOOR_MODIFIERS.md: endless worlds only).
+		modifier: FloorModifier.NONE,
 	};
 	// The endless floor's world (movers, bullet blocker, the enemies' steering mover, ...) on the tutorial layout.
 	return endlessFloorWorld(layout, mover);

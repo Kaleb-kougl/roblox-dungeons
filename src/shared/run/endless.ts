@@ -172,6 +172,7 @@ export function endlessFloorWorld(
 		vault: layout.vault,
 		pactAltars: layout.pactAltars,
 		golden: layout.golden,
+		modifier: layout.modifier,
 		layout,
 		dungeon: d,
 	};
