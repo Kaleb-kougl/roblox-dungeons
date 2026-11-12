@@ -60,6 +60,10 @@ lockstep / tutorial and the rest 523); typecheck, lint, check:assets, test:art, 
   mid-tick (not pre-generated)`, `[Stage] floor N: assets ready in T s (k ids)` / `asset wait capped at T s`. KV_Debug
   (SL0): `[Stage] listeners (run 3 start, 112.4 ms): World 38.2 ms, Decor 21.0 ms, ...` and `[Stage] floor step T ms
   (to floor 5)`.
+- **Floor modifier banner** (docs/FLOOR_MODIFIERS.md FM5, 2026-11-12): on a modifier floor the card adds two rows after
+  `Boss floor` (the kind's name in its colour, its line), stamped in 0.3 s after the card, and holds at least 1.8 s
+  (`holdAtLeast`) unless the world is live; a dev run starting past floor 1 shows it on the run-start cover, held like
+  the roster line. With a live world the card has no minimum, so the banner may not show (the HUD chip carries it).
 - **Known gaps:** the co-op start build hitch (above); a cover's binding path is unverified in Studio (the fallbacks
   bound it to a frame or 0.5 s).
 

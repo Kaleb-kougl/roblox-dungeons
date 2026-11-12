@@ -546,3 +546,11 @@ Turn on the Workspace booleans `KV_PactLabel` (each altar's availability, Greed'
 - **Co-op.** A teammate's Greed freezes everyone (`hud.draft.waiting` for the others) and an engaged room's FAST par,
   the wave-2 telegraph and the Goldling's delay resume where they stood; each player sees their own Greed curse; the
   Horde once per party; every client sees the same Goldling; the catch freeze is solo only.
+
+## Floor modifiers (2026-11-12)
+
+docs/FLOOR_MODIFIERS.md's boon **Gilded** (`Gilded · A Goldling is certain`, endless only, 2.0 % of non-boss floors in
+its FM9 census) makes the Goldling certain: `placeGolden(..., { certain: true })` makes the chance draw and ignores its
+result, so the room draw is a natural hit's. Only on floors whose own roll missed and that have an eligible room
+(FMD7), so it always adds a Goldling; the floor's status chip pulses when it appears. The Goldling's rules, catch and
+score are unchanged; a Goldling skipped by a full actor pool is the one accepted miss (FMD3).

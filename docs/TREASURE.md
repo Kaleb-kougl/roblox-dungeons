@@ -1477,3 +1477,11 @@ of the room's centre takes a relic, one nobody can take is not drawn.
 - **Studio check pending:** the chest's facing (try (-1, 0) if (0, -1) reads worse), the glint's height over the lid,
   the beam's foot behind the chest's billboard, and the 40 ms solo freeze on a relic take (drop it in RunMarkerController
   if it feels heavy for a pickup that also has its own toast and effect).
+
+## Floor modifiers (2026-11-12)
+
+docs/FLOOR_MODIFIERS.md's boon **Hoard** (`Hoard · A treasure vault is certain`, endless only, 1.5 % of non-boss floors
+in its FM9 census) is `placeVault` with `VaultOverride.every` (under `KV_TreasureDebug` that override's tier and lock
+are kept). Only on floors whose own roll missed and whose `vaultRooms` is not empty, so it always adds a vault; the
+pact altars and the Goldling are placed again after its chest. Tier, lock and rewards are unchanged; the floor's status
+chip pulses when the vault arms (its room engages).

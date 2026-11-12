@@ -507,6 +507,14 @@ choice, then the alternative.
   30-45 s longer.
 - **Luau locals** in `contract.luau` / `validate.luau`: function-scoped additions only.
 
+## Floor modifiers (2026-11-12)
+
+docs/FLOOR_MODIFIERS.md's boon **Feast** (`Feast · A power pellet is certain`, endless only, 4.9 % of non-boss floors
+in its FM9 census): `placePellets(..., { powerCertain: true })` forces the power draw's result, so the room and pellet
+draws after it are a natural hit's and `pellets.tiles` never move. Only from `power.fromFloor` on floors where some room
+got pellets and the own roll missed, so it always adds a power pellet; the vault, the pact altars and the Goldling are
+placed again after it. The floor's status chip pulses when the power pellet is taken.
+
 ## Out of scope
 
 - Pellets in M1, in boss rooms, or in any tutorial room but combat G; the power pellet in the tutorial (PD16).

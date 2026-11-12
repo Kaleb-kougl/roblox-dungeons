@@ -1,8 +1,12 @@
 # Floor modifiers: know it before you see it
 
-Status (2026-11-12): **plan, decisions FMD1-FMD12 answered by the owner (2026-11-12); FM0 next.** Two answers
+Status (2026-11-12): **built on branch `floor-modifiers`: FM0-FM9 done and verified headlessly (`npm run verify`'s
+steps, the whole headless suite but four heavy censuses this branch does not touch; see "As built"); FM10 (owner: the
+five stings), FM11 (icons, optional), FM12 (owner: Studio check and playtest) and FM13 (telemetry, optional) pending,
+with the open owner calls OC1-OC3 ("Open owner calls").** Decisions FMD1-FMD12 answered by the owner (2026-11-12). Two answers
 changed the plan: twists are allowed (FMD1), and Blood Moon now means **twice the elites** (FMD5), which makes all of
-wave 1 floor-built (no sim state). One owner call is open: OC1, which other twists (if any) join wave 1. Planned against `main` @ `677b5b1` (Fortune,
+wave 1 floor-built (no sim state). Owner call OC1 (which other twists, if any, join wave 1) is still open; OC2 / OC3
+came from the FM9 census. Planned against `main` @ `677b5b1` (Fortune,
 treasure rooms, pellets, affixes and the stage loader merged; the working tree's uncommitted audio / DSD18 work, with
 `DAILY.ruleset` 16, is not assumed). Work it task by task like `PLAN.md`; each task ends with a **Verify**. Project
 copy: `claude/floor-modifiers-plan.md`. Related: docs/STAGE_LOADER.md (the card), docs/FORTUNE.md (the Goldling),
@@ -36,6 +40,99 @@ Rules that keep it kind: a modifier **never lies** (it is only picked where its 
 twist **always names its edge plainly** and comes with a reward the game already pays (elites' points and drop bonus),
 and **missing a boon costs nothing** (an ignored Goldling still runs off as today). Boons and twists look different on
 the card (gold vs blood-red banner) so "something good" and "something dangerous" never read alike.
+
+## As built (2026-11-12, branch `floor-modifiers`; differences from the sketch below)
+
+Nothing has run in Studio yet. Per task: FM0 `8cbdbca`, FM1 + FM2 `53712db` / `5de8abc`, FM4 `078b6bd`, FM3 `f3d9a5c`,
+FM7 `b672904`, FM5 / FM6 view core `e972045`, FM5 `f5195b7`, FM6 `79dc5e7`, FM9 census `cdcb87e`, FM8 these docs.
+
+- **Dungeon (FM1 / FM2)** as designed: `shared/dungeon/modifiersData.ts` (`FloorModifier` NONE 0, GILDED 1,
+  BLOOD_MOON 2, HOARD 3, FEAST 4, PLUNDER 5; `MODIFIERS`: salt `0x4b56464d`, from floor 2, bands 20 / 25 / 30 %, weights
+  Gilded 1 / Hoard 1 / Feast 2 / Plunder 2 / Blood Moon 2, `plunder.minRooms` 3, `bloodMoon.minExtra` 2 /
+  `sharePercent` 200; kind keys `gilded`, `hoard`, `feast`, `plunder`, `bloodMoon`) and `modifiers.ts`
+  (`modifierChanceHit`, `modifierStreakBlocked`, `pickFloorModifier`, `floorModifierEligible`, 0 / 1 / 2 draws).
+  `buildEndlessFloor` builds the parts after the breakables once (`placeFloorParts`), picks, and on a pick re-runs from
+  the forced placer (Blood Moon: affixes; Plunder: loot; Feast: pellets; Hoard: vault; Gilded: Goldling) through the
+  Goldling. Option off or a plain floor: every output exactly as before (`roomPool.lock.spec` digests unchanged).
+  Differences:
+  - **Blood Moon's combat rooms** (from floor 11) are a per-member CHANCE, not a share: `sharePercent` 200 takes it
+    10 -> 20 % (elite rooms' share 35 -> 70 %, rounded up, capped at the eligible members).
+  - **Plunder covers every room with a weighted piece**, not only fight rooms: `everyRoom` makes the count draw,
+    ignores it, then one weighted piece + one kind per room holding a weighted piece (room id order). The card line says
+    so: *A boost hides in every room's barrels*.
+  - **The dev override** (`FloorModifierOverride`, `KV_FloorModifier`) ignores the chance, the streak and the boss-floor
+    rule: its kind on every floor from 2 where it is eligible, boss floors included. Hoard under `KV_TreasureDebug`
+    keeps that override's tier and lock.
+  - `EndlessFloorLayout.modifier` is required (NONE on the tutorial's floors); **`EndlessFloorWorld.modifier` is
+    optional and view-only** (the sim never reads it).
+- **Run configs (FM4).** `endlessRunFloor` passes `modifiers: ENDLESS_MODIFIER_WORLD` (all parts on) for every endless
+  world: solo, co-op, the Daily, dev, and the server's registry and validator, which share it.
+  `EndlessRunOptions.modifierOverride` / `DevRunOptions.modifier` carry the dev world's `KV_FloorModifier`
+  (`FLOOR_MODIFIER_ATTRIBUTE`, `parseFloorModifierOverride`: a kind key in any case, letters only, so `blood moon` /
+  `BLOOD_MOON` name Blood Moon, or a FloorModifier id). `DAILY.ruleset` 15 -> 16. M1 and the tutorial unchanged.
+  **Merge note:** the main checkout's uncommitted audio / DSD18 work also takes 16, so whichever lands second takes 17.
+- **Replays (FM3).** No sim change: M1, every golden fixture and the tutorial replay as before. Two pins moved:
+  `sim/stormcaller.spec` (run 23's co-op floor 3 is now a Hoard floor: 6/0/c213cd8f -> 6/0/59e6c52a, counts
+  unchanged) and `sim/golden/golden.spec`'s scene finder skips a Gilded floor (seed 1 floor 3) so its scenes stay on a
+  natural Goldling room.
+- **Theme (FM7).** String keys `floormod.<key>.name` / `.line` (a string key's first segment must be lowercase:
+  `floormod.bloodMoon.name`) and `hud.pause.floorMod` (`{name} · {line}`), in `REQUIRED_STRING_KEYS`, l10n context
+  entries and a glossary term (no `hud.chip.floorMod`: the chip shows the name string). Colour roles `floorMod.<key>`:
+  the boons reuse `golden.coin` `#ffdc5a`, `treasure.legendary` `#ebc444`, `pellet.power` `#ffff00` and `boost.frenzy`
+  `#a8f03c`; **Blood Moon is a new crimson `#ff3348`** (`floorModifierReport`: >= 4.5:1 on `background` and `uiPanel`,
+  the twist >= 40 CIE76 from every boon, folded into `variantColorProblems`). **Asset ids are lowercase**: five port
+  audio IDs `sfx.floor.modifier.gilded` / `.hoard` / `.feast` / `.plunder` / `.bloodmoon` (SILENT in the placeholder;
+  fallbacks boons -> `sfx.jingle.treasure`, the twist -> `sfx.horde.horn`; priority 67, under `sfx.floor.enter` 68;
+  `floorModifierStingId`) and optional icon ids `ui.floormod.<key>` (`ui.floormod.bloodmoon`). `contract.luau` /
+  `validate.luau` at 186 / 192 top-level `local` statements, unchanged by the branch (recounted on out/, 2026-11-12;
+  validate's 192 declare 197 names).
+- **View core** `shared/view/modifiers`: `FLOOR_MODIFIER_VIEW` (`bannerDelaySec` 0.3, `modifierCardSec` 1.8, stamp
+  0.2 s from x1.6, chip pulse 0.6 s / +0.1 / peak 0.35, and **`chip`**: text 16, touch width 96 / text 12, pad 3, fill
+  `uiPanel`), `modifierCardRows`, `modifierBannerLook` (reduced motion: no stamp), `modifierCardHoldSec`, `chipPulse`,
+  and `ModifierPayoff` (a once-per-floor latch) with `modifierPayoffInput`: Gilded = the Goldling appears, Hoard = the
+  vault arms (its room engages), Feast = the power pellet is taken, Plunder = the first loaded piece breaks (a boost hops
+  out or fizzles on a full ground), Blood Moon = a room with a living affixed member engages (`affixedRoomEngaged`).
+- **The card (FM5).** `StageController` reads `floorModifierOf` (the run's cached floor layout) at a floor change,
+  puts `modifier` in the stage slice and holds the cover `modifierCardHoldSec` (1.8 s; none with a live world).
+  `StageCard` draws the banner after the boss row (the icon left of the name once the pack has `ui.floormod.<key>`),
+  stamped in by two bindings stepped every frame (a `UIScale` in a fixed box, so no row moves). The sting plays once on
+  the banner's first frame. Logs `[Stage] floor N: modifier <key>`. **A dev run starting past floor 1 shows the banner
+  on the run-start cover** (`setStageModifier`, held like the roster line; a co-op start never holds). Known gaps: a
+  floor change with a live world (no draft open) has no minimum card time, so the cover can lift before the 0.3 s
+  banner delay and **the banner may not show** (the chip carries it); and **the sting is silent until FM10**: the
+  placeholder and vale packs have no clip for it and its fallbacks are silent too (one fallback step only).
+- **Chip and pause line (FM6).** `RunInfo.floorModifier` (SimController `runInfo`, set at each run start and floor
+  change) feeds `FloorModifierChip` (client/ui/hud, after `HordeChip`): the name in the kind's role on a dark panel,
+  the icon once the pack has it. In the status corner's boost row through **`ChipBoostRow`**: one chip in the chip
+  slot; with the Horde chip, both on one line and the boosts under them; at the head of the touch strip's chip line.
+  `FloorModifierController` steps `ModifierPayoff` each frame and pulses the chip once (a payoff under the stage cover
+  waits for it to lift; none under reduced motion). The pause overlay shows `hud.pause.floorMod` in the kind's colour
+  over the run's info line; **on a compact (landscape phone) layout the divider is dropped while the modifier line
+  shows**, so the panel still fits (menu `fit.spec`).
+
+### FM9 census (2026-11-12)
+
+`modifiers.census.spec.ts --census`: run seeds 1-60 x floors 2-30, 1380 non-boss floors per party size, solo and
+party 3, each open chance hit built with and without modifiers (run here in three slices of 20 runs, ~1 min each; the
+default sample is runs 1-3 x floors 2-14).
+
+| Measure | Solo | Party 3 |
+|---|---|---|
+| Chance hits by band (no build): 2-4 (20 %) / 5-9 (25 %) / 10+ (30 %) | 21.7 / 25.0 / 28.5 % | same draws |
+| ... after the streak rule | 18.9 / 20.0 / 22.4 % | same |
+| Modifier floors | 297 of 1380 (21.5 %): 4.95 per run (2-9) | the same 297 floors and kinds |
+| Open hits with no eligible kind | 0 (Plunder is eligible on every hit floor) | 0 |
+| Kind mix (weights would give 12.5 / 12.5 / 25 / 25 / 25 %) | Gilded 28 (9.4 %), Hoard 21 (7.1 %), Feast 68 (22.9 %), Plunder 113 (38.0 %), Blood Moon 67 (22.6 %) | same |
+| Start kind drawn / not eligible (the pick moved on) | Gilded 38 / 16, Hoard 33 / 18, Feast 72 / 28, Plunder 77 / 0, Blood Moon 77 / 10 (72 of 297 hits, 24 %) | same |
+| Eligible on the 297 hit floors | Gilded 185 (62 %), Hoard 149 (50 %), Feast 198 (67 %), Plunder 297, Blood Moon 264 (89 %) | same |
+| Gilded / Hoard / Feast: Goldling / vault / power pellet added | 28 / 21 / 68: on every one of their floors (FMD7 holds) | same |
+| Plunder: loaded pieces per Plunder floor | 11.1 (5-13; 1251 on 113 floors) vs 1.8 natural (200) | 11.0 (4-13; 1247) vs 1.8 (200) |
+| Blood Moon: affixed planned members per floor (boss room excluded) | 18.1 natural -> 34.4 (x1.91; 1211 -> 2308 on 67 floors) | 21.4 -> 41.0 (x1.92; 1432 -> 2745) |
+
+Tuning: FMD2's bands land on target (about one non-boss floor in five) and stay; FMD6's weights stay, but the real mix
+differs from them (OC3), and Plunder is far stronger than the other boons (OC2): both left to the owner. Not measured
+here: the bot's deaths and clear times on Blood Moon floors and the score change per kind (a bot census on built runs;
+too heavy for this headless budget), so the Risks' Blood Moon watch is still open.
 
 ## What the code gives us (read in the source at 677b5b1; FM0, 2026-11-12: every row marked **read** or **corrected**, the client rows left to FM5 / FM6 / FM7)
 
@@ -147,35 +244,39 @@ the card (gold vs blood-red banner) so "something good" and "something dangerous
 
 ## Tasks
 
-- [ ] **FM0. Confirm the code assumptions.** Each placer's draw order (a forced hit really leaves the following draws
+- [x] **FM0. Confirm the code assumptions.** Each placer's draw order (a forced hit really leaves the following draws
   as a natural hit's); what reads `pellets.power` and the chest downstream; affixed members in the boss room on boss
   floors (excluded anyway); `holdAtLeast` on a floor change; the card's height on the smallest phone with five rows;
   that co-op's mid-tick build of floor n + 1 sets the modifier before the card shows. → Verify: each table row marked
   read or corrected here.
-- [ ] **FM1. Modifier pick** (`dungeon/modifiers*.ts`). → Verify (spec): no modifier on floor 1, boss floors, or after a
+- [x] **FM1. Modifier pick** (`dungeon/modifiers*.ts`). → Verify (spec): no modifier on floor 1, boss floors, or after a
   hit floor; bands' rates over runs 1-60 x floors 2-30 (printed); every pick eligible; the salt unique among the floor
   salts; the pick never moves layouts, digests, spawns, pieces, affixes, pellets, vault, altars or Goldling on floors
   without a modifier (`roomPool.lock.spec` digests unchanged with the option off).
-- [ ] **FM2. Forced placers.** `certain` / `every` / `powerCertain` / `everyRoom` / `sharePercent`. → Verify: absent
+- [x] **FM2. Forced placers.** `certain` / `every` / `powerCertain` / `everyRoom` / `sharePercent`. → Verify: absent
   flag byte-identical (lock specs); forced = the natural hit's room / pellet / tier when the natural roll hit (same
   draws); downstream re-run (altars after Hoard); Blood Moon's affixed count about twice the natural one, never on
   excluded kinds, capped at eligible members.
-- [ ] **FM3. Replays.** No sim change: M1, every golden fixture and the tutorial bit for bit; endless with modifiers
+- [x] **FM3. Replays.** No sim change: M1, every golden fixture and the tutorial bit for bit; endless with modifiers
   deterministic; the determinism pins (charger / stormcaller / vault) re-recorded where endless moved.
-- [ ] **FM4. Run configs, daily, dev.** → Verify: endless / daily / dev on, M1 / tutorial off; `DAILY.ruleset` + 1;
+- [x] **FM4. Run configs, daily, dev.** → Verify: endless / daily / dev on, M1 / tutorial off; `DAILY.ruleset` + 1;
   `KV_FloorModifier` dev world only and never submitted; the server validator builds the same floors.
-- [ ] **FM5. The card.** → Verify (Studio): banner on a modifier floor, the 1.8 s hold, no hold with a live world,
-  reduced motion cut, no banner on plain floors, the run-start cover in a dev run from floor 6; phone fit.
-- [ ] **FM6. Chip, pause line, payoff pulse.** → Verify: each kind's payoff pulses once; touch strip; beside `HORDE`.
-- [ ] **FM7. Theme: strings, roles, audio ID.** → Verify: contract / validator specs, `floorModifierReport`, l10n check,
+- [x] **FM5. The card.** → Verify (Studio): banner on a modifier floor, the 1.8 s hold, no hold with a live world,
+  reduced motion cut, no banner on plain floors, the run-start cover in a dev run from floor 6; phone fit. *Built and
+  specced headlessly (phone fit in menu `fit.spec`); the Studio part is FM12's.*
+- [x] **FM6. Chip, pause line, payoff pulse.** → Verify: each kind's payoff pulses once; touch strip; beside `HORDE`.
+- [x] **FM7. Theme: strings, roles, audio ID.** → Verify: contract / validator specs, `floorModifierReport`, l10n check,
   Luau locals counted.
-- [ ] **FM8. Docs.** This doc's as-built, FORTUNE.md / TREASURE.md / PELLETS.md / BREAKABLE_DROPS.md / BOOSTS.md cross
-  references, STAGE_LOADER.md (the banner), DAILY.md (ruleset), CLAUDE.md docs row and decision log.
-- [ ] **FM9. Census and tuning.** Runs 1-60 x floors 2-30, solo and party 3: modifier floors per run (target about one
+- [x] **FM8. Docs.** This doc's as-built, FORTUNE.md / TREASURE.md / PELLETS.md / BREAKABLE_DROPS.md / BOOSTS.md cross
+  references, STAGE_LOADER.md (the banner), DAILY.md (ruleset), CLAUDE.md docs row and decision log. *Done, plus
+  ENEMY_VARIANTS.md (Blood Moon), DEV_MODE.md, CLIENT.md and FX_AUDIO.md; Plunder's note went to BREAKABLE_DROPS.md,
+  so BOOSTS.md is untouched.*
+- [x] **FM9. Census and tuning.** Runs 1-60 x floors 2-30, solo and party 3: modifier floors per run (target about one
   in five non-boss floors), the kind mix, eligibility misses, Blood Moon's affixed members per floor (natural vs
   doubled) and the bot's deaths / clear time on those floors, Plunder loaded pieces, score change per kind (Gilded's
   catch is 1500 x floor scale). → Verify: numbers recorded; FMD2 /
-  FMD6 tuned.
+  FMD6 tuned. *Done: numbers in "As built" (FM9 census); FMD2 / FMD6 kept, Plunder's strength (OC2) and the mix
+  (OC3) left to the owner; Blood Moon's bot deaths / clear time and the score per kind not measured.*
 - [ ] **FM10. [owner] Audio:** pick the five stings (`art/audio-audition.html`): boons bright, the twist ominous.
 - [ ] **FM11. Icons (optional).** → Verify: the sheet's lock, the card and chip with and without the art.
 - [ ] **FM12. [owner] Studio check and playtest** (below). The question: do players read the banner, and do they change
@@ -207,6 +308,20 @@ the card (gold vs blood-red banner) so "something good" and "something dangerous
   (the next draft deals four cards); both need sim rules, so wave 2 brings `SimConfig.modifiers` and the `modifiers`
   hash group. Fever and Bounty Hunt dropped for now.
 
+## Open owner calls
+
+- **OC1. Other twists in wave 1?** (FMD1) Blood Moon is the only twist built.
+- **OC2. Plunder's strength.** A Plunder floor loads 11.1 pieces on average (5-13) against 1.8 on the same floors
+  without it (FM9 census): about six times a floor's boosts from breakables. The ground cap of 4 bounds what lies on the
+  floor at once, not the total. Options: cap Plunder at `MODIFIERS.plunder.minRooms`..N rooms (e.g. 3-5, the rooms
+  drawn on the loot stream), keep every room but load each room's piece at a lower chance, or keep it (a Plunder floor
+  is about one in twelve non-boss floors). Not retuned.
+- **OC3. The kind mix.** The pick tries the kinds in table order from the drawn start, so a miss passes to the next
+  kind: Feast's misses (39 % of its draws) land on Plunder, which is always eligible, and Blood Moon's wrap to Gilded.
+  Result: Plunder 38 % of modifier floors against a 25 % weight, Gilded / Hoard 9 / 7 % against 12.5 %. Options: one
+  weighted draw over the eligible kinds only (still one draw, no reroll), reorder the table so Plunder does not follow
+  Feast, or keep.
+
 ## Risks
 
 - **Blood Moon's difficulty.** Twice the elites on floors 4-10 means elite rooms where most members are affixed; FM9
@@ -224,13 +339,22 @@ the card (gold vs blood-red banner) so "something good" and "something dangerous
 
 ## Studio check
 
-Dev panel (**F2**), `KV_FloorModifier` = `gilded` (then each kind), start floor 4:
+Dev panel (**F2**), `KV_FloorModifier` = `gilded` (then `hoard`, `feast`, `plunder`, `blood moon`; read when Go starts
+the dev run, R keeps it), start floor 4 (`KV_Debug` for the logs):
 
-- Card: `Floor 4 · ...`, the banner stamps in, 1.8 s, the draft; the chip in the status corner.
-- Gilded: `KV_GoldenLabel` shows a Goldling on the floor; the chip pulses when it appears.
-- Hoard: a vault on the minimap's vault mark; Feast: the power pellet; Plunder: every fight room's glint; Blood Moon:
-  the elite rooms hold about twice the affix rings, with a red banner.
+- Run start: the cover shows `Floor 4 · ...`, the banner (`Gilded` in gold, *A Goldling is certain*) stamps in under
+  the bar and holds 1.8 s; the output says `[Stage] floor 4: modifier gilded`. The chip `Gilded` in the status corner's
+  boost row (with a Horde chip both on one line); the pause overlay's `Gilded · A Goldling is certain` line (on a
+  landscape phone without the divider).
+- Take the stairs with the draft open: the card, then 0.3 s later the banner, the card held 1.8 s. With the override,
+  boss floors get the banner too (dev only: the override ignores the boss rule).
+- Gilded: `KV_GoldenLabel` shows a Goldling on the floor; the chip pulses once when it appears.
+- Hoard: a vault on the minimap's vault mark, the pulse when its room engages; Feast: the power pellet, the pulse when
+  it is eaten; Plunder: one glinting loaded barrel / crate in every room that has pieces, the pulse on the first one
+  broken; Blood Moon: the elite rooms hold about twice the affix rings, a red banner, the pulse when the first room with
+  an elite engages.
+- The sting: silent with today's packs (FM10 picks the clips; the fallbacks are silent too).
 - Without the override, endless seeds 1-10 from floor 1: banners on about one floor in five, none on boss floors, none
   two in a row.
-- Reduced motion (cut, no pulse), touch layout (chip in the strip), co-op (same banner on every client, no hold with a
-  live world), Daily (same banners for two accounts).
+- Reduced motion (cut, no pulse), touch layout (chip at the head of the strip), co-op (same banner on every client, no
+  hold with a live world: the banner may not show then, the chip does), Daily (same banners for two accounts).

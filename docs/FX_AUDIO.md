@@ -208,6 +208,12 @@ Clip names are file names under `Sounds/` unless noted. "A / B" means "audition 
 | `sfx.depth.up` | `depthChanged` (a boss kill) | `Jingles/LevelUp1` |
 | `sfx.jingle.gameover` | run over (all players dead) | `Jingles/GameOver` / `GameOver3` |
 
+Later port IDs follow the same pattern in their own docs. Floor modifiers (docs/FLOOR_MODIFIERS.md FM7, 2026-11-12)
+add five, the floor card banner's sting: `sfx.floor.modifier.gilded` / `.hoard` / `.feast` / `.plunder` /
+`.bloodmoon` (asset id segments are lowercase), SILENT in the placeholder, falling back to `sfx.jingle.treasure` (the
+boons) / `sfx.horde.horn` (the twist), priority 67 under `sfx.floor.enter`; picked by ear in FM10
+(`art/audio-audition.html`: boons bright, the twist ominous).
+
 ### Music
 
 | ID | Candidate tracks (`Musics/`) | Notes |

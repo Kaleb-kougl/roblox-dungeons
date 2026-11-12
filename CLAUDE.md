@@ -77,6 +77,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/LOCAL_PREDICTION.md` | Local prediction in co-op (your own knight's body drawn up to 20 ticks past the merged state from the inputs you sent, corrected by a smoother; enemy bullets drawn as far ahead; vitals, hits and everything else merged; presentation and client timing only): findings, census LP0, design, as built, LP8 sign-off, tasks LP0-LP10, decisions LPD1-LPD9 |
 | `docs/BUILDS_V2.md` | Builds v2, wave 1 (Riposte: a guard that erases bullets answers with a counter-wave, Counterstrike ring and returns; Ballista: the heavy arrow bursts into bolts, Siege Bolt pins and drags an enemy into a wall; Wrecker: rolls smash breakables, every piece you break fires splinters, Demolition chains them; duos Thunder Guard / Stillwater / Rebuke (Bastion + Riposte) / Dragon Bolt / Powder Keg / Full Heart / Happy Hour; the duo hint on New cards; overcap boss points `ScoreSource.OVERCAP`; gameplay, opt-in `SimConfig.builds`; wave 2 and the proposal in its appendix): plan, tasks BV0-BV13, decisions BVD1-BVD20 |
 | `docs/ARCHER.md` | The Archer (the bow split off the knight into its own character: Knight = sword, Archer = bow and a longer roll, one weapon set each; weapon-tagged boons / relics dealt only to the character who carries the weapon; a character screen every run; Knight-only tutorial without the bow room; shared boards with the character shown; SmallScaleInt Archer art): plan, tasks AR0-AR14, decisions ARD1-ARD17 |
+| `docs/FLOOR_MODIFIERS.md` | Floor modifiers (about one endless non-boss floor in five from floor 2 is special and the floor card says so: Gilded = a certain Goldling, Hoard = a certain vault, Feast = a certain power pellet, Plunder = a boost in every room's barrels, Blood Moon = twice the elites; only where true, never on boss floors, never two in a row; a banner on the card, a status chip and a pause line; gameplay, floor-built, opt-in `EndlessFloorOptions.modifiers`, endless only): plan, as built, FM9 census, open owner calls OC1-OC3, Studio check, tasks FM0-FM13, decisions FMD1-FMD12 |
 
 Decision log (deviations from `PLAN.md`):
 - **Art (docs/ART.md).** The theme contract gained a `"sprites"` kind (large pre-rendered cells, 1/4/8/16 screen-space
@@ -1288,6 +1289,39 @@ Decision log (deviations from `PLAN.md`):
   `options.display.cursorSize*`. Kill switch `KV_SystemCursor` (`RUN_ATTRIBUTES.systemCursor`, read live). `ui-cursor.png`
   / `ui-cursor-hover.png` uploaded 2026-11-11 (`assetIds.ts`), so the bundled vale pack draws the gauntlet; the Studio
   answers (C0) and the smoke test (C8) pending.
+
+- **Floor modifiers (docs/FLOOR_MODIFIERS.md).** Gameplay (dungeon), endless only, floor-built: opt-in
+  `EndlessFloorOptions.modifiers` (a `FloorModifierWorld`: the world's golden / pellets / breakable loot / affixes, plus
+  `vaults`), set by shared/run `endlessRunFloor` (`ENDLESS_MODIFIER_WORLD`, all on) for endless solo / co-op, the Daily,
+  dev and the server's registry and validator. shared/dungeon `modifiers.ts` / `modifiersData.ts`: its own stream
+  (`floorSeed ^ MODIFIERS.salt` 0x4b56464d), from floor 2 ONE chance draw (20 / 25 / 30 % by band), never on a boss
+  floor, never on the floor after a chance hit (floor n - 1's draw alone, no build), then ONE weighted kind draw
+  (Gilded 1 / Hoard 1 / Feast 2 / Plunder 2 / Blood Moon 2) giving a start index; the first eligible kind in table order
+  wins (none: no modifier). Honesty (FMD3 / FMD7): eligibility reads the floor built without modifiers, so a kind lands
+  only where its effect is certain and new. Each kind re-runs one existing placer with a force flag, then every placer
+  after it (`buildEndlessFloor`'s `placeFloorParts`; a forced roll still makes its chance draw): Gilded `placeGolden`
+  `certain`, Hoard `placeVault` `every`, Feast `placePellets` `powerCertain`, Plunder `placeBreakableLoot` `everyRoom`
+  (one loaded piece in every room with a weighted piece, >= 3 such rooms), the twist Blood Moon `assignAffixes`
+  `sharePercent` 200 (elite rooms 35 -> 70 %, combat rooms' chance 10 -> 20 %, >= 2 more affixed members). No sim state,
+  rule or hash group: the forced outputs reach the sim through their own groups; `EndlessFloorLayout.modifier` (NONE when
+  off, plain or a tutorial floor) and the optional, view-only `EndlessFloorWorld.modifier`. Option off or a plain floor:
+  every output as before (`roomPool.lock.spec`). M1, every fixture and the tutorial replay as before; endless / daily /
+  dev replays and scores change on modifier floors (the stormcaller co-op pin and sim golden.spec's scene finder moved),
+  boards stay `_v1`, `DAILY.ruleset` 15 -> 16 (other work in progress also took 16: the second to merge takes 17). Dev:
+  `KV_FloorModifier` (`parseFloorModifierOverride` -> `FloorModifierOverride`: the kind on every floor where eligible,
+  ignoring the chance, the streak and the boss rule; dev world only). Theme: strings `floormod.<key>.name` / `.line` and
+  `hud.pause.floorMod`, roles `floorMod.<key>` (the boons reuse the Goldling / Legendary vault / power pellet / Frenzy
+  hexes, Blood Moon a new crimson `#ff3348`; `floorModifierReport`), five port audio IDs `sfx.floor.modifier.<key>`
+  (lowercase, `.bloodmoon`; SILENT, fallbacks `sfx.jingle.treasure` / `sfx.horde.horn`, priority 67 under the floor
+  enter), optional icon ids `ui.floormod.<key>`; `contract.luau` / `validate.luau` 186 / 192 top-level locals (counted
+  on out/, unchanged). Client: shared/view/modifiers (`FLOOR_MODIFIER_VIEW`, `ModifierPayoff`); the floor card's banner
+  (stamped 0.3 s after the card, the card held 1.8 s while the draft freezes the world, none with a live world, where
+  the banner may not show; on the run-start cover in a dev run past floor 1; the sting silent until its clips exist),
+  `FloorModifierChip` (`RunInfo.floorModifier`; status corner beside `HordeChip`, touch strip; one pulse when the
+  promise pays off), the pause line (`hud.pause.floorMod`). FM9 census (runs 1-60 x floors 2-30, solo = party 3):
+  21.5 % of non-boss floors, mix Gilded 9 / Hoard 7 / Feast 23 / Plunder 38 / Blood Moon 23 %, Plunder 11.1 loaded
+  pieces per floor vs 1.8 natural, Blood Moon x1.9 affixed members. Pending: owner calls OC1-OC3 (more twists, Plunder's
+  strength, the mix), the stings (FM10), icons (FM11), Studio check and playtest (FM12), telemetry (FM13).
 
 ## Commands
 

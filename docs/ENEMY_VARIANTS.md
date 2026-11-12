@@ -933,6 +933,16 @@ Details (the task in brackets builds it):
 - **`contract.luau` locals limit.** EV1 compiles it under Lune before anything else lands.
 - **Mobile frame time** with more bullets and actors. EV14 checks the densest census room on a device.
 
+## Floor modifiers (2026-11-12)
+
+docs/FLOOR_MODIFIERS.md's twist **Blood Moon** (`Blood Moon · Twice the elites`, a red banner, endless only, 4.9 % of
+non-boss floors in its FM9 census): `assignAffixes(..., { sharePercent: 200 })` doubles every affix share on the floor:
+elite rooms 35 -> 70 % of the eligible members (rounded up, capped at them), combat rooms' per-member chance (from floor
+11) 10 -> 20 %; the same kinds stay excluded. Only from `eliteFromFloor` 4 where the doubled shares affix at least 2
+more planned members (outside the boss room) than the natural assignment: 18.1 -> 34.4 affixed members per Blood Moon
+floor solo, 21.4 -> 41.0 in a party of 3. The affixes' rules and rewards (x1.5 kill points, +4 drop points, par cost)
+are unchanged; the bot's deaths and clear times on these floors are not measured yet.
+
 ## Out of scope
 
 - New bosses or boss affixes; affixes in M1 or the tutorial.
