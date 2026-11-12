@@ -69,6 +69,11 @@ export const OPTIONS_STRINGS = {
 	buildFx: "options.display.buildFx",
 	buildFxFull: "options.display.buildFx.full",
 	buildFxReduced: "options.display.buildFx.reduced",
+	/** The gauntlet cursor's size Small / Normal / Large (docs/CURSOR.md D2, C6) and its three option labels. */
+	cursorSize: "options.display.cursorSize",
+	cursorSizeSmall: "options.display.cursorSize.small",
+	cursorSizeNormal: "options.display.cursorSize.normal",
+	cursorSizeLarge: "options.display.cursorSize.large",
 	/** Touch controls (docs/MOBILE.md MB7): the size and opacity steps (percent), and the auto-target and left-handed On / Off rows (labels as roomEdges). */
 	touchSize: "options.display.touchSize",
 	touchOpacity: "options.display.touchOpacity",

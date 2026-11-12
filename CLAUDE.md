@@ -32,7 +32,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/BREAKABLE_DROPS.md` | Boosts from breakables (some barrels / crates hold a boost, picked per floor from the floor seed, released on any break, a soft glint on loaded pieces): plan, tasks BL0-BL9, decisions BLD1-BLD9 |
 | `docs/SNIPER_ART.md` | Sniper art (`enemy.sniper` as the Lords of Pain subservient): mapping, budget, tasks SN1-SN8, decisions D1-D6 |
 | `docs/BOSS_DEMONLORD.md` | Demon Lord boss variant (`boss.demonlord`, seeded pick per endless boss floor, Lords of Pain Demonlord art): plan, tasks D0-D8, decisions |
-| `docs/CURSOR.md` | Gauntlet mouse cursor (Lords of Pain `cursor_gauntlet_*`, software cursor, hover / target colours): plan, tasks C0-C8, decisions D1-D5 |
+| `docs/CURSOR.md` | Gauntlet mouse cursor in menus only (Lords of Pain `cursor_gauntlet_*`, software cursor in menus and run overlays, gameplay keeps the Roblox pointer, hover colour, Cursor size setting; revision 2): plan, tasks C0-C8, decisions D1-D5 |
 | `docs/DEMON_ART.md` | Placeholder enemies as 2D Demons (bruiser = Demon Beast 3; turrets sprayer / caster = Demon Spawn 8 / 11; Lords of Pain art unchanged): plan, tasks DA0-DA15, decisions DD1-DD7 |
 | `docs/BRAMBLE_ART.md` | Mother Mayhem (`boss.act1`) as a 2D Demons Elite: state-to-animation mapping, size and budget, tasks BR0-BR7, decisions BD1-BD7 |
 | `docs/ROOM_EDGES.md` | Room edges (dashed floor line where every corridor meets a room, tinted safe / waiting / live): plan, tasks RE1-RE8, decisions RD1-RD9 |
@@ -1269,6 +1269,24 @@ Decision log (deviations from `PLAN.md`):
   client without prediction; the KV_Debug co-op line's `{pred}` part (`hud.debug.pred` / `.predWait` / `.predOff`, press
   -> drawn) and `KV_CollisionDebug`'s merged ring. LP8 signed off by the owner in a Studio test on a simulated 4G link
   (2026-11-10); the group / phone playtest stays optional.
+
+- **Gauntlet cursor (docs/CURSOR.md).** Presentation only (no sim, dungeon, lockstep, server, hash, replay, fixture or
+  score change). The Lords of Pain gauntlet (white; yellow over a button) is a software cursor in a menu context only
+  (client/store `selectCursorMenuContext` = `selectMenuOpen` or the local draft open in a running run: menus, panels,
+  the loading screen and stage cover, pause, the party overlay, the draft, run over, the tutorial outro); gameplay keeps
+  the Roblox pointer, so aiming is untouched. `CursorController` (ScreenGui `KV_Cursor`, display order 200, a `Last`
+  render step) is the single writer of `UserInputService.MouseIconEnabled` (= mode `system`, the label's Visible = mode
+  `custom`, written in the same step); `MouseIconController` (the pointer hidden on a gamepad) is folded in and
+  deleted. Pure core shared/view `cursorMode` / `cursorVisualId` / `cursorScale` / `cursorSqueeze` / `cursorPlacement`
+  (`CURSOR_VIEW`); the hover test is `PlayerGui:GetGuiObjectsAtPosition` at 20 Hz in a menu context (its inset
+  convention is C0's open question); the click squeeze is off under reduced motion. Theme: shared/theme `cursorArt(pack)`
+  (undefined while `ui.cursor` is a placeholder: the system pointer), an optional port id `ui.cursor.hover` (same size
+  and pivot, `cursorArtProblems`); the gauntlet waits for its art readiness. Art pipeline: an image `pivot` may be
+  `{ x, y }` in source pixels (fingertip (53, 54) -> (4, 4)), `sameCropAs` fails a variant that crops differently,
+  `--only <images id>` builds one image's family. Setting `DisplaySettings.cursorSize` Small / Normal / Large (whole
+  scale steps; overrides-only, doc stays v2), the Options > Display row shown only with a mouse and the art, strings
+  `options.display.cursorSize*`. Kill switch `KV_SystemCursor` (`RUN_ATTRIBUTES.systemCursor`, read live). Upload of
+  `ui-cursor.png` / `ui-cursor-hover.png` (C1), the Studio answers (C0) and the smoke test (C8) pending.
 
 ## Commands
 

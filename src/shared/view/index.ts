@@ -12,6 +12,9 @@
  *                 switch command, SpectateTracker (tunables: SPECTATE in spectateConfig.ts)
  *   portrait.ts   portrait play (docs/PORTRAIT.md): the view's framing on any aspect (the short side keeps
  *                 VIEW_TILES_HIGH), the upright lift, the backdrop's reach (tunables: PORTRAIT)
+ *   cursor.ts     the gauntlet cursor (docs/CURSOR.md C3): the pointer mode (custom in menus only / system / hidden),
+ *                 the hover art id, the whole-number scale per Cursor size, the label's placement with the fingertip
+ *                 on the mouse through the click squeeze (tunables: CURSOR_VIEW in cursorConfig.ts)
  *   floorTexture.ts  world-anchored Texture offsets so merged floor slabs show one continuous pattern
  *   wallTexture.ts   the same for wall Parts' Top and side faces (a biome with a repeating wall image)
  *   sprites.ts    sprite renderer logic: world facing -> screen facing, animation + frame from sim state, billboard
@@ -92,6 +95,8 @@ export * from "./party";
 export * from "./spectateConfig";
 export * from "./spectate";
 export * from "./portrait";
+export * from "./cursorConfig";
+export * from "./cursor";
 export * from "./sprites";
 export * from "./characters";
 export * from "./variantsConfig";

@@ -713,6 +713,11 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"options.display.buildFx": "Build effects",
 		"options.display.buildFx.full": "Full",
 		"options.display.buildFx.reduced": "Reduced",
+		// Roblox port (docs/CURSOR.md D2, C6): the gauntlet cursor's size (the row shows only with a mouse and the art).
+		"options.display.cursorSize": "Cursor size",
+		"options.display.cursorSize.small": "Small",
+		"options.display.cursorSize.normal": "Normal",
+		"options.display.cursorSize.large": "Large",
 		"options.display.language": "Language",
 		"options.display.language.auto": "Automatic ({name})",
 		"options.display.language.prev": "<",

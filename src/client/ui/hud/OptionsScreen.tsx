@@ -15,7 +15,7 @@ import {
 	type OptionsState,
 } from "client/store";
 import { useFocusScope, useOpeningId } from "client/ui/focus";
-import { role, str, useHudFont, useLocale, useUiArt } from "client/ui/theme";
+import { role, str, themePack, useHudFont, useLocale, useUiArt } from "client/ui/theme";
 import {
 	KBM_ACTIONS,
 	PAD_ACTIONS,
@@ -29,6 +29,7 @@ import {
 import {
 	AUDIO_SETTING_KEYS,
 	BUILD_FX_LEVELS,
+	CURSOR_SIZES,
 	HEALTH_BARS_MODES,
 	HUD_SCALE_PERCENTS,
 	PARTICLES_LEVELS,
@@ -36,8 +37,10 @@ import {
 	TOUCH_SIZE_PERCENTS,
 	stepVolume,
 	type AudioSettings,
+	type CursorSize,
 	type JuiceOverrides,
 } from "shared/settings";
+import { cursorArt } from "shared/theme";
 import { SFX } from "shared/view/audio";
 import {
 	HUD_VIEW,
@@ -601,6 +604,13 @@ function LanguageRow(props: { order: number; actions: HudActions; selectable: bo
 	);
 }
 
+/** The Cursor size row's option labels (docs/CURSOR.md C6). */
+const CURSOR_SIZE_LABELS: Readonly<Record<CursorSize, string>> = {
+	small: OPTIONS_STRINGS.cursorSizeSmall,
+	normal: OPTIONS_STRINGS.cursorSizeNormal,
+	large: OPTIONS_STRINGS.cursorSizeLarge,
+};
+
 function DisplayTab(props: { order: number; actions: HudActions; selectable: boolean }) {
 	const display = useSelector(selectDisplay);
 	/** Touch devices only: the touch rows (docs/MOBILE.md MB11). Read once, when the tab opens. */
@@ -610,6 +620,12 @@ function DisplayTab(props: { order: number; actions: HudActions; selectable: boo
 	 * shows only then (a touch-only phone's Display tab keeps its rows). Read once, when the tab opens.
 	 */
 	const mouse = UserInputService.MouseEnabled;
+	/**
+	 * The gauntlet cursor's size (docs/CURSOR.md D2, C6): only with a mouse and when the pack has the gauntlet's art
+	 * (the placeholder pack, or vale before its upload, keeps Roblox's pointer, so the row would do nothing).
+	 */
+	const pack = themePack();
+	const cursorRow = mouse && pack !== undefined && cursorArt(pack) !== undefined;
 	return (
 		<Panel position={new UDim2()} anchor={new Vector2()} order={props.order} transparency={HIDDEN} padding={0}>
 			<LanguageRow order={0} actions={props.actions} selectable={props.selectable} />
@@ -706,8 +722,25 @@ function DisplayTab(props: { order: number; actions: HudActions; selectable: boo
 					props.actions.updateDisplay({ playerOutline: v });
 				}}
 			/>
+			{cursorRow && (
+				<SettingRow
+					order={7}
+					name="cursorSize"
+					selectable={props.selectable}
+					label={str(OPTIONS_STRINGS.cursorSize)}
+					value={display.cursorSize}
+					options={CURSOR_SIZES.map((size) => ({
+						value: size,
+						label: str(CURSOR_SIZE_LABELS[size]),
+					}))}
+					onPick={(v) => {
+						props.actions.playUi(SFX.uiClick);
+						props.actions.updateDisplay({ cursorSize: v });
+					}}
+				/>
+			)}
 			<SettingRow
-				order={7}
+				order={8}
 				name="buildFx"
 				selectable={props.selectable}
 				label={str(OPTIONS_STRINGS.buildFx)}
@@ -723,7 +756,7 @@ function DisplayTab(props: { order: number; actions: HudActions; selectable: boo
 			/>
 			{touch && (
 				<SettingRow
-					order={8}
+					order={9}
 					name="touchSize"
 					selectable={props.selectable}
 					label={str(OPTIONS_STRINGS.touchSize)}
@@ -741,7 +774,7 @@ function DisplayTab(props: { order: number; actions: HudActions; selectable: boo
 			)}
 			{touch && (
 				<SettingRow
-					order={9}
+					order={10}
 					name="touchOpacity"
 					selectable={props.selectable}
 					label={str(OPTIONS_STRINGS.touchOpacity)}
@@ -759,7 +792,7 @@ function DisplayTab(props: { order: number; actions: HudActions; selectable: boo
 			)}
 			{touch && (
 				<SettingRow
-					order={10}
+					order={11}
 					name="touchAutoTarget"
 					selectable={props.selectable}
 					label={str(OPTIONS_STRINGS.touchAutoTarget)}
@@ -776,7 +809,7 @@ function DisplayTab(props: { order: number; actions: HudActions; selectable: boo
 			)}
 			{touch && (
 				<SettingRow
-					order={11}
+					order={12}
 					name="touchLeftHanded"
 					selectable={props.selectable}
 					label={str(OPTIONS_STRINGS.touchLeftHanded)}

@@ -2972,6 +2972,22 @@
 		"note": "Options screen: a choice button (about 92 x 30 px) for build effects: toned down. One short word.",
 		"max": 10
 	},
+	"options.display.cursorSize": {
+		"note": "Options screen, Display tab: row label for the size of the mouse pointer (a gauntlet) shown in menus (Small / Normal / Large). Shown only with a mouse. Label column 210 px.",
+		"max": 24
+	},
+	"options.display.cursorSize.large": {
+		"note": "Options screen: a choice button (about 92 x 30 px) for the menu mouse pointer's size: bigger than normal. One short word.",
+		"max": 10
+	},
+	"options.display.cursorSize.normal": {
+		"note": "Options screen: a choice button (about 92 x 30 px) for the menu mouse pointer's size: the default size. One short word.",
+		"max": 10
+	},
+	"options.display.cursorSize.small": {
+		"note": "Options screen: a choice button (about 92 x 30 px) for the menu mouse pointer's size: smaller than normal. One short word.",
+		"max": 10
+	},
 	"options.display.hudFade": {
 		"note": "Options screen, Display tab: row label for corner HUD panels fading out when action passes under them (On / Off). Label column 210 px.",
 		"max": 24

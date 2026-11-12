@@ -8,8 +8,9 @@
  * toasts (TreasureToastController); docs/GAMEPAD_MENUS.md GM2-GM4 the menus' focus scopes, recovery, memory and pad
  * actions (FocusController); GM9 the menu haptics (PadHapticsController); GM12 the console chat rule
  * (ConsoleController);
- * docs/ITEM_TOOLTIPS.md IT4 the item tooltips' hover / focus / tap (TooltipController); docs/CURSOR.md the pointer
- * hidden while on a gamepad (MouseIconController); docs/STAGE_ASSETS.md SA18 the UI's art readiness (UiArtController).
+ * docs/ITEM_TOOLTIPS.md IT4 the item tooltips' hover / focus / tap (TooltipController); docs/STAGE_ASSETS.md SA18 the
+ * UI's art readiness (UiArtController); docs/CURSOR.md C4 / C5 the menus' gauntlet cursor and the one writer of
+ * MouseIconEnabled, the pointer hidden while on a gamepad included (CursorController).
  */
 export * from "./SettingsController";
 export * from "./RebindController";
@@ -29,4 +30,4 @@ export * from "./PadHapticsController";
 export * from "./ConsoleController";
 export * from "./TooltipController";
 export * from "./UiArtController";
-export * from "./MouseIconController";
+export * from "./CursorController";

@@ -18,6 +18,10 @@
  *   - a biome floor or wall whose tile is an uploaded repeating texture (an `image` with tilesPerImage) takes that
  *     texture's mean colour (VALE_TILE_MEAN_HEX; biome.1's floor is VALE_FLOOR_HEX), so the contrast checks describe
  *     what is drawn.
+ *   - the menus' gauntlet cursor (docs/CURSOR.md C2; shared/theme cursorArt.ts): ui.cursor (the white glow, required)
+ *     is an `image` with its fingertip pivot once ui-cursor.png is uploaded, else the placeholder (the system pointer);
+ *     ui.cursor.hover (the yellow glow, optional) is an `image` once ui-cursor-hover.png is uploaded, else ABSENT (the
+ *     hover state draws ui.cursor). The facing pip borrows ui.cursor but reads placeholder(id), so it never changes.
  *   - the boon draft's card art (docs/DRAFT_REVEAL.md DR3, contract.ts draftSkinIds: ui.draft.back / .back.eyes /
  *     .card.common / .card.rare / .skull.left / .skull.right, cut from the ToffeeCraft Horror UI sheet): `image` once
  *     uploaded, else ABSENT (optional ids: the overlay draws the flat card), never a placeholder.
@@ -107,6 +111,7 @@ import { deepClone, sortedKeys } from "../../util";
 import { PELLET_KINDS, pelletId, type PelletKind } from "../../pellets";
 import { TREASURE_CAGE_ID, TREASURE_IDS } from "../../treasure";
 import { PACT_ALTAR_ID } from "../../fortune";
+import { cursorOptionalIds } from "../../cursorArt";
 import { PLACEHOLDER_MANIFEST } from "../placeholder";
 import { VALE_ASSET_IDS, VALE_UPLOADED_SIZES } from "./assetIds";
 import { VALE_SOUND_LAYOUTS, type ValeSoundLayout } from "./audioLayout";
@@ -907,13 +912,14 @@ export function buildValeManifest(ids: AssetIds = VALE_ASSET_IDS, sources: ValeL
 	for (const id of sortedKeys(VALE_SPRITE_LAYOUTS)) {
 		manifest.assets[id] = valeSpriteAsset(id, VALE_SPRITE_LAYOUTS[id], ids) ?? { kind: "placeholder" };
 	}
-	const optional = new Set([...draftSkinIds(), ...uiSkinIds()]);
+	const optional = new Set([...draftSkinIds(), ...uiSkinIds(), ...cursorOptionalIds()]);
 	for (const id of sortedKeys(images)) {
 		const layout = images[id];
 		const assetId = ids[layout.file];
 		if (assetId === undefined) {
-			// an optional draft skin image (docs/DRAFT_REVEAL.md DR3) or UI skin piece (docs/UI_ART.md UA4) is simply
-			// absent: the overlay / primitive draws the flat look
+			// an optional draft skin image (docs/DRAFT_REVEAL.md DR3), UI skin piece (docs/UI_ART.md UA4) or the hover
+			// cursor (docs/CURSOR.md C2) is simply absent: the overlay / primitive draws the flat look, the cursor the
+			// plain gauntlet
 			if (!optional.has(id)) {
 				manifest.assets[id] = { kind: "placeholder" };
 			}

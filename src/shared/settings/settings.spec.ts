@@ -8,12 +8,15 @@ import {
 	DEFAULT_ROOM_EDGES,
 	DEFAULT_HUD_FADE,
 	DEFAULT_HUD_TOOLTIPS,
+	DISPLAY_RESET_KEEPS,
 	DISPLAY_SETTING_KEYS,
 	DEFAULT_MINIMAP,
 	DEFAULT_PLAYER_OUTLINE,
 	DEFAULT_PAD_VIBRATION,
 	DEFAULT_BUILD_FX,
 	BUILD_FX_LEVELS,
+	CURSOR_SIZES,
+	DEFAULT_CURSOR_SIZE,
 	DEFAULT_TOUCH_AUTO_TARGET,
 	DEFAULT_TOUCH_LEFT_HANDED,
 	DEFAULT_LANGUAGE,
@@ -300,6 +303,7 @@ describe("display: room edges (docs/ROOM_EDGES.md RE6)", () => {
 			language: DEFAULT_LANGUAGE,
 			padVibration: DEFAULT_PAD_VIBRATION,
 			character: DEFAULT_CHARACTER,
+			cursorSize: DEFAULT_CURSOR_SIZE,
 		});
 	});
 
@@ -345,6 +349,7 @@ describe("display: room edges (docs/ROOM_EDGES.md RE6)", () => {
 			language: DEFAULT_LANGUAGE,
 			padVibration: DEFAULT_PAD_VIBRATION,
 			character: DEFAULT_CHARACTER,
+			cursorSize: DEFAULT_CURSOR_SIZE,
 		});
 		expect(resolveDisplaySettings(decodeSettingsDoc({ v: 2 }).display).roomEdges).toBe(true);
 		expect(resolveDisplaySettings(decodeSettingsDoc({ v: SETTINGS_DOC_V1, juice: {} }).display).roomEdges).toBe(
@@ -453,6 +458,7 @@ describe("display: minimap (docs/MINIMAP.md M10)", () => {
 			language: DEFAULT_LANGUAGE,
 			padVibration: DEFAULT_PAD_VIBRATION,
 			character: DEFAULT_CHARACTER,
+			cursorSize: DEFAULT_CURSOR_SIZE,
 		});
 	});
 
@@ -499,6 +505,7 @@ describe("display: minimap (docs/MINIMAP.md M10)", () => {
 			language: DEFAULT_LANGUAGE,
 			padVibration: DEFAULT_PAD_VIBRATION,
 			character: DEFAULT_CHARACTER,
+			cursorSize: DEFAULT_CURSOR_SIZE,
 		});
 		expect(resolveDisplaySettings(decodeSettingsDoc({ v: 2 }).display).minimap).toBe(true);
 		expect(resolveDisplaySettings(decodeSettingsDoc({ v: SETTINGS_DOC_V1, juice: {} }).display).minimap).toBe(true);
@@ -735,6 +742,7 @@ describe("display: player outline (docs/PLAYER_OUTLINE.md P4)", () => {
 			language: DEFAULT_LANGUAGE,
 			padVibration: DEFAULT_PAD_VIBRATION,
 			character: DEFAULT_CHARACTER,
+			cursorSize: DEFAULT_CURSOR_SIZE,
 		});
 	});
 
@@ -817,6 +825,7 @@ describe("display: touch controls (docs/MOBILE.md MB7)", () => {
 			language: DEFAULT_LANGUAGE,
 			padVibration: DEFAULT_PAD_VIBRATION,
 			character: DEFAULT_CHARACTER,
+			cursorSize: DEFAULT_CURSOR_SIZE,
 		});
 	});
 
@@ -936,6 +945,7 @@ describe("display: gamepad menu vibration (docs/GAMEPAD_MENUS.md GM9)", () => {
 			language: DEFAULT_LANGUAGE,
 			padVibration: false,
 			character: DEFAULT_CHARACTER,
+			cursorSize: DEFAULT_CURSOR_SIZE,
 		});
 	});
 
@@ -996,5 +1006,41 @@ describe("display: the remembered character pick (docs/ARCHER.md ARD12, AR5)", (
 	it("the Display tab's Reset keeps it (it is the character screen's)", () => {
 		expect(displayResetOverrides({ hudScale: 110, character: "archer" })).toEqual({ character: "archer" });
 		expect(displayResetOverrides({ hudScale: 110, character: "knight" })).toEqual({});
+	});
+});
+
+describe("display: the gauntlet cursor's size (docs/CURSOR.md D2, C6)", () => {
+	it("defaults to Normal; only Small or Large is stored, in the v2 document", () => {
+		expect([...CURSOR_SIZES]).toEqual(["small", "normal", "large"]);
+		expect(DEFAULT_CURSOR_SIZE).toBe("normal");
+		expect(defaultDisplaySettings().cursorSize).toBe("normal");
+		expect(resolveDisplaySettings(undefined).cursorSize).toBe("normal");
+		expect(DISPLAY_SETTING_KEYS.includes("cursorSize")).toBe(true);
+		expect(sanitizeDisplayOverrides({ cursorSize: "small" })).toEqual({ cursorSize: "small" });
+		expect(sanitizeDisplayOverrides({ cursorSize: "large" })).toEqual({ cursorSize: "large" });
+		expect(sanitizeDisplayOverrides({ cursorSize: "normal" })).toEqual({});
+		expect(resolveDisplaySettings({ cursorSize: "large" }).cursorSize).toBe("large");
+		const overrides: SettingsOverrides = { display: { cursorSize: "small" } };
+		const doc = encodeSettingsDoc(overrides);
+		expect(doc).toEqual({ ...EMPTY_DOC, display: { cursorSize: "small" } });
+		expect(doc.v).toBe(2);
+		expect(decodeSettingsDoc(doc)).toEqual(overrides);
+		expect(applySettingsPatch(overrides, { display: { cursorSize: "normal" } })).toEqual({});
+		expect(sameSettingsOverrides(overrides, { display: { cursorSize: "small" } })).toBe(true);
+		expect(sameSettingsOverrides(overrides, { display: { cursorSize: "large" } })).toBe(false);
+	});
+
+	it("ignores unknown strings and non-strings; an older v2 document without the field reads Normal", () => {
+		for (const junk of ["Small", "LARGE", "huge", "", 0, 1, true, {}, ["large"]] as ReadonlyArray<unknown>) {
+			expect(sanitizeDisplayOverrides({ cursorSize: junk })).toEqual({});
+		}
+		const old = { v: 2, juice: {}, controls: {}, audio: {}, display: { minimap: false } };
+		expect(resolveDisplaySettings(decodeSettingsDoc(old).display).cursorSize).toBe("normal");
+	});
+
+	it("the Display tab's Reset drops it", () => {
+		expect(DISPLAY_RESET_KEEPS.includes("cursorSize")).toBe(false);
+		expect(displayResetOverrides({ cursorSize: "large" })).toEqual({});
+		expect(displayResetOverrides({ cursorSize: "small", padVibration: false })).toEqual({ padVibration: false });
 	});
 });

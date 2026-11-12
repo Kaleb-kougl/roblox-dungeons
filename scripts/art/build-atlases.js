@@ -150,6 +150,11 @@
  *                                                                  in layout.ts (merged, every other entry unchanged);
  *                                                                  needs only its packs and its pixelsPerTileFrom set's
  *        node scripts/art/build-atlases.js --lock --only class.ranger  re-hash just that set's files into the lock
+ *        node scripts/art/build-atlases.js --only ui.cursor        build just one `images` entry (any `images` id) and
+ *                                                                  the images of its crop family (`sameCropAs`): their
+ *                                                                  PNGs, contact sheets and VALE_IMAGE_LAYOUTS entries
+ *                                                                  (merged, every other entry unchanged)
+ *        node scripts/art/build-atlases.js --lock --only ui.cursor  re-hash just that family's files into the lock
  * Plain Node plus pngjs. The pure helpers are exported for scripts/art/build-atlases.test.js (npm run test:art).
  */
 "use strict";
@@ -1220,7 +1225,12 @@ function contactSheet(result) {
  *   - `rect` [x, y, w, h] (optional): the window of `file` the image is cut from (default: the whole file). `crop`
  *     "none" keeps the window as it is, "alpha" trims it to its pixels with alpha > noiseAlpha (+ pad). With "none",
  *     `noiseAlpha` (optional) clears the window's pixels with alpha <= it (absent: every pixel is kept);
- *   - `pivot` may also be [x, y] (pixels from the image's top-left, inside it);
+ *   - `pivot` may also be [x, y] (pixels from the image's top-left, inside it), or { x, y } in SOURCE pixels (`file`'s
+ *     own, e.g. a cursor's fingertip measured on the pack's PNG), converted to the cut image (minus the crop's top-left)
+ *     and checked inside it the same way;
+ *   - `sameCropAs` (optional, an `images` id; docs/CURSOR.md): a recoloured variant of that image (the hover gauntlet
+ *     of the cursor). It must crop to the identical source rect, size and pivot, else the build fails (checkSameCrop),
+ *     so swapping the two never moves a pixel or the click point;
  *   - `cutout` { outlineRgb } (optional): keeps only what an outline encloses (a piece cut from a busier panel, the
  *     red-eyed skulls): pixels with alpha > 0 and max(R, G, B) <= outlineRgb are the outline; every pixel 4-connected
  *     to the image border without crossing it is cleared (cutoutPixels);
@@ -1254,9 +1264,12 @@ function buildImage(id, def, built) {
 	const win = imageWindow(id, def, src);
 	let img;
 	let pivot;
+	/** The source rect the image is cut from, in `file` pixels (may reach past it by `pad`): { x, y, w, h }. */
+	let crop;
 	if (def.crop === "none") {
 		img = raster(win.w, win.h);
 		blit(src, win.x, win.y, win.w, win.h, img, 0, 0, def.noiseAlpha === undefined ? -1 : def.noiseAlpha);
+		crop = { x: win.x, y: win.y, w: win.w, h: win.h };
 	} else if (def.crop === "alpha") {
 		const b = alphaBounds(src, win.x, win.y, win.w, win.h, def.noiseAlpha);
 		if (!b) throw new Error(`${id}: no visible pixels`);
@@ -1265,6 +1278,7 @@ function buildImage(id, def, built) {
 		const h = b[3] - b[1] + 1 + 2 * pad;
 		img = raster(w, h);
 		blit(src, win.x + b[0] - pad, win.y + b[1] - pad, w, h, img, 0, 0, def.noiseAlpha);
+		crop = { x: win.x + b[0] - pad, y: win.y + b[1] - pad, w, h };
 	} else throw new Error(`${id}: unknown crop ${def.crop}`);
 	if (def.cutout !== undefined) {
 		if (!isByte(def.cutout.outlineRgb)) throw new Error(`${id}: cutout.outlineRgb must be an integer 0-255`);
@@ -1280,7 +1294,11 @@ function buildImage(id, def, built) {
 			throw new Error(`${id}: pivot ${JSON.stringify(def.pivot)} must be [x, y] inside the ${img.w}x${img.h} image`);
 		}
 		pivot = { x, y };
-	} else if (def.pivot !== undefined) throw new Error(`${id}: unknown pivot ${def.pivot}`);
+	} else if (def.pivot !== null && typeof def.pivot === "object") pivot = sourcePivot(id, def.pivot, crop, img);
+	else if (def.pivot !== undefined) throw new Error(`${id}: unknown pivot ${def.pivot}`);
+	if (def.sameCropAs !== undefined && typeof def.sameCropAs !== "string") {
+		throw new Error(`${id}: sameCropAs must be an images id, got ${JSON.stringify(def.sameCropAs)}`);
+	}
 	if (img.w > MAX_ATLAS || img.h > MAX_ATLAS) throw new Error(`${id}: ${img.w}x${img.h} > ${MAX_ATLAS}`);
 	const slice = def.slice === undefined ? undefined : sliceInsets(id, def.slice, img);
 	if (def.mask !== undefined && def.centre !== undefined) throw new Error(`${id}: a mask has no centre to flatten`);
@@ -1311,7 +1329,67 @@ function buildImage(id, def, built) {
 	if (pivot) layout.pivot = pivot;
 	if (pixelsPerTile !== undefined) layout.pixelsPerTile = pixelsPerTile;
 	if (slice) layout.slice = slice;
-	return { id, name: def.name, img, layout, meanHex };
+	return { id, name: def.name, img, layout, meanHex, crop };
+}
+
+/**
+ * A `pivot` { x, y } in source pixels (`file`'s own) as a pivot in the cut image: minus the crop's top-left, which must
+ * leave it inside the image (0..w, 0..h, like the [x, y] form). Throws otherwise, or on any other key.
+ */
+function sourcePivot(id, p, crop, img) {
+	const keys = Object.keys(p).sort();
+	if (keys.join(",") !== "x,y" || !Number.isFinite(p.x) || !Number.isFinite(p.y)) {
+		throw new Error(`${id}: pivot ${JSON.stringify(p)} must be { x, y } (finite numbers, source pixels) or [x, y] (image pixels)`);
+	}
+	const x = p.x - crop.x;
+	const y = p.y - crop.y;
+	if (x < 0 || y < 0 || x > img.w || y > img.h) {
+		throw new Error(
+			`${id}: pivot ${JSON.stringify(p)} (source pixels) is (${x}, ${y}) in the ${img.w}x${img.h} image cut at source (${crop.x}, ${crop.y}): outside it`,
+		);
+	}
+	return { x, y };
+}
+
+/**
+ * `sameCropAs` (docs/CURSOR.md): every built image in `built` whose def (`images`, by id) names another images entry
+ * must have that image's exact source crop rect, size and pivot (a recoloured variant, swapped in place). The named
+ * entry must be in `built`, be another image and name none itself (one level). Throws on the first mismatch.
+ */
+function checkSameCrop(images, built) {
+	const byId = new Map(built.map((b) => [b.id, b]));
+	for (const b of built) {
+		const ref = images[b.id].sameCropAs;
+		if (ref === undefined) continue;
+		const base = ref !== b.id ? byId.get(ref) : undefined;
+		if (!base) throw new Error(`${b.id}: sameCropAs ${JSON.stringify(ref)} is not another built images entry`);
+		if (images[ref].sameCropAs !== undefined) throw new Error(`${b.id}: sameCropAs ${ref}, which has a sameCropAs itself (one level only)`);
+		const c = b.crop;
+		const d = base.crop;
+		if (c.x !== d.x || c.y !== d.y || c.w !== d.w || c.h !== d.h) {
+			throw new Error(
+				`${b.id}: crops to source (${c.x}, ${c.y}) ${c.w}x${c.h} but its sameCropAs ${ref} to (${d.x}, ${d.y}) ${d.w}x${d.h}: a variant must share the rect`,
+			);
+		}
+		const p = b.layout.pivot;
+		const q = base.layout.pivot;
+		if (JSON.stringify(p) !== JSON.stringify(q)) {
+			throw new Error(`${b.id}: pivot ${JSON.stringify(p)} differs from its sameCropAs ${ref}'s ${JSON.stringify(q)}`);
+		}
+	}
+}
+
+/**
+ * The crop family of `images` entry `id` (sameCropAs): the entry it names (or itself) and every entry naming that one,
+ * sorted by id. Throws when `id` is not an images entry.
+ */
+function imageFamily(images, id) {
+	if (!Object.prototype.hasOwnProperty.call(images || {}, id)) throw new Error(`no images entry ${id}`);
+	const ref = images[id].sameCropAs;
+	const root = typeof ref === "string" && Object.prototype.hasOwnProperty.call(images, ref) ? ref : id;
+	return Object.keys(images)
+		.filter((k) => k === root || images[k].sameCropAs === root)
+		.sort();
 }
 
 const isByte = (n) => Number.isInteger(n) && n >= 0 && n <= 255;
@@ -1451,9 +1529,11 @@ function recolour(id, img, mode) {
 /** Every `images` entry in id order; `sets` (buildSpriteSets' result) feeds `pixelsPerTileFrom`. */
 function buildImages(images, sets) {
 	const built = new Map(sets.map((s) => [s.id, s]));
-	return Object.keys(images)
+	const out = Object.keys(images)
 		.sort()
 		.map((id) => buildImage(id, images[id], built));
+	checkSameCrop(images, out);
+	return out;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -2206,6 +2286,7 @@ function comment(lines) {
 }
 
 const SPRITE_LAYOUTS_DECL = "export const VALE_SPRITE_LAYOUTS: Record<string, ValeSpriteLayout> = ";
+const IMAGE_LAYOUTS_DECL = "export const VALE_IMAGE_LAYOUTS: Record<string, ValeImageLayout> = ";
 const TOP_KEY = /^\t(?:("(?:[^"\\]|\\.)*")|([A-Za-z_$][A-Za-z0-9_$]*)): /;
 
 /**
@@ -2215,13 +2296,28 @@ const TOP_KEY = /^\t(?:("(?:[^"\\]|\\.)*")|([A-Za-z_$][A-Za-z0-9_$]*)): /;
  * or when the entry needs per-sheet cell fields the file does not declare (a full build adds them).
  */
 function mergeSpriteLayout(text, id, layout) {
-	const start = text.indexOf(`\n${SPRITE_LAYOUTS_DECL}`);
-	if (start < 0) throw new Error("layout.ts has no VALE_SPRITE_LAYOUTS (run a full art:build)");
-	const open = start + 1 + SPRITE_LAYOUTS_DECL.length;
-	// layoutModule always expands it (an empty one is "{\n};"), one top-level entry per sprite set
-	if (!text.startsWith("{\n", open)) throw new Error("layout.ts: VALE_SPRITE_LAYOUTS is not an expanded object (run a full art:build)");
+	const perSheet = layout.sheets.some((sh) => sh.frameW !== undefined);
+	if (perSheet && !text.includes("\n\tframeW?: number;\n")) throw new Error(`${id}: per-sheet cells need the ValeSpriteSheetFile fields a full art:build declares`);
+	return mergeLayoutEntry(text, SPRITE_LAYOUTS_DECL, "VALE_SPRITE_LAYOUTS", id, layout);
+}
+
+/**
+ * layout.ts `text` with image `id`'s VALE_IMAGE_LAYOUTS entry set to `layout` (replaced, or inserted at its sorted
+ * place), every other byte unchanged: what layoutModule writes with this one image rebuilt (`--only <image id>`).
+ */
+function mergeImageLayout(text, id, layout) {
+	return mergeLayoutEntry(text, IMAGE_LAYOUTS_DECL, "VALE_IMAGE_LAYOUTS", id, layout);
+}
+
+/** The entry merge of mergeSpriteLayout / mergeImageLayout: `decl` names the record, `what` its name in messages. */
+function mergeLayoutEntry(text, decl, what, id, layout) {
+	const start = text.indexOf(`\n${decl}`);
+	if (start < 0) throw new Error(`layout.ts has no ${what} (run a full art:build)`);
+	const open = start + 1 + decl.length;
+	// layoutModule always expands it (an empty one is "{\n};"), one top-level entry per id
+	if (!text.startsWith("{\n", open)) throw new Error(`layout.ts: ${what} is not an expanded object (run a full art:build)`);
 	const close = text.indexOf("\n};\n", open);
-	if (close < 0) throw new Error("layout.ts: VALE_SPRITE_LAYOUTS has no closing `};`");
+	if (close < 0) throw new Error(`layout.ts: ${what} has no closing \`};\``);
 	const body = text.slice(open + 2, close + 1);
 	const end = close + "\n};\n".length;
 	const entries = new Map();
@@ -2230,17 +2326,15 @@ function mergeSpriteLayout(text, id, layout) {
 		const m = TOP_KEY.exec(line);
 		if (m) {
 			key = m[1] !== undefined ? JSON.parse(m[1]) : m[2];
-			if (entries.has(key)) throw new Error(`layout.ts: VALE_SPRITE_LAYOUTS lists ${key} twice`);
+			if (entries.has(key)) throw new Error(`layout.ts: ${what} lists ${key} twice`);
 			entries.set(key, "");
 		} else if (key === undefined || (!line.startsWith("\t\t") && line !== "\t},")) {
-			throw new Error(`layout.ts: unexpected line in VALE_SPRITE_LAYOUTS: ${line}`);
+			throw new Error(`layout.ts: unexpected line in ${what}: ${line}`);
 		}
 		entries.set(key, `${entries.get(key)}${line}\n`);
 	}
 	const keys = [...entries.keys()];
-	if (keys.join("\n") !== [...keys].sort().join("\n")) throw new Error("layout.ts: VALE_SPRITE_LAYOUTS is not sorted by id (run a full art:build)");
-	const perSheet = layout.sheets.some((sh) => sh.frameW !== undefined);
-	if (perSheet && !text.includes("\n\tframeW?: number;\n")) throw new Error(`${id}: per-sheet cells need the ValeSpriteSheetFile fields a full art:build declares`);
+	if (keys.join("\n") !== [...keys].sort().join("\n")) throw new Error(`layout.ts: ${what} is not sorted by id (run a full art:build)`);
 	const k = tsKey(id);
 	entries.set(id, `\t${k}: ${tsValue(layout, 1, TAB_WIDTH + k.length + 2)},\n`);
 	const merged = [...entries.keys()].sort().map((n) => entries.get(n));
@@ -2338,7 +2432,7 @@ function layoutModule(sets, images, floorHex, world) {
 		"",
 		`${SPRITE_LAYOUTS_DECL}${tsValue(spriteLayouts, 0, PRINT_WIDTH)};`,
 		"",
-		`export const VALE_IMAGE_LAYOUTS: Record<string, ValeImageLayout> = ${tsValue(imageLayouts, 0, PRINT_WIDTH)};`,
+		`${IMAGE_LAYOUTS_DECL}${tsValue(imageLayouts, 0, PRINT_WIDTH)};`,
 		"",
 		"/** Rounded mean colour of the biome.1 floor texture (tile.biome.1.floor): the `biome.1` floor colour. */",
 		`export const VALE_FLOOR_HEX: HexColor = ${JSON.stringify(floorHex)};`,
@@ -2825,6 +2919,30 @@ function overScaled(src, s, dst, dx, dy) {
 			}
 		}
 	}
+}
+
+/** The largest pivot contact sheet's image side, before its margin (pivotContact picks the scale). */
+const PIVOT_CONTACT_PX = 512;
+const PIVOT_CONTACT_MAX_SCALE = 8;
+
+/**
+ * Contact sheet of an image with a pivot: the image at an integer scale (up to PIVOT_CONTACT_MAX_SCALE, its longer
+ * side at most PIVOT_CONTACT_PX) on the contact grey with the red pivot cross, as the sprite sets' and icons' sheets
+ * draw it (its centre on the pixel right-below the pivot point).
+ */
+function pivotContact(image) {
+	const { img } = image;
+	const { pivot } = image.layout;
+	const S = Math.max(1, Math.min(PIVOT_CONTACT_MAX_SCALE, Math.floor(PIVOT_CONTACT_PX / Math.max(img.w, img.h))));
+	const m = CONTACT_GUTTER * 2;
+	const out = raster(m * 2 + img.w * S, m * 2 + img.h * S);
+	fillRect(out, 0, 0, out.w, out.h, [CONTACT_BG, CONTACT_BG, CONTACT_BG]);
+	overScaled(img, S, out, m, m);
+	const px = m + Math.floor(pivot.x * S);
+	const py = m + Math.floor(pivot.y * S);
+	fillRect(out, px - 6, py, 13, 1, [230, 30, 30]);
+	fillRect(out, px, py - 6, 1, 13, [230, 30, 30]);
+	return out;
 }
 
 /**
@@ -4874,7 +4992,8 @@ function removeStale(dir, keep) {
 
 /**
  * Every PNG the build writes, in write order: { dir: "build" | "contact", name, img }. Sheets (each followed by its
- * outline sheet, if any) and a contact sheet per set, then the images (a sliced one followed by its sliceContact).
+ * outline sheet, if any) and a contact sheet per set, then the images (a sliced one followed by its sliceContact, one
+ * with a pivot by its pivotContact).
  * Everything else in art/build is stale.
  */
 function buildOutputs(sets, images) {
@@ -4889,26 +5008,34 @@ function buildOutputs(sets, images) {
 	for (const i of images) {
 		out.push({ dir: "build", name: i.layout.file, img: i.img });
 		if (i.layout.slice) out.push({ dir: "contact", name: `${i.id}.png`, img: sliceContact(i) });
+		else if (i.layout.pivot) out.push({ dir: "contact", name: `${i.id}.png`, img: pivotContact(i) });
 	}
 	return out;
 }
 
 /**
- * `--only <group>` from argv: undefined (a full build), a group the scoped build knows (ONLY_GROUPS), or the id of one
- * sprite set in `spriteSets` (art/atlases.json `spriteSets`; e.g. `--only class.ranger`, mainOnlySpriteSet).
+ * `--only <group>` from argv: undefined (a full build), a group the scoped build knows (ONLY_GROUPS), the id of one
+ * sprite set in `spriteSets` (art/atlases.json `spriteSets`; e.g. `--only class.ranger`, mainOnlySpriteSet) or of one
+ * entry of `images` (e.g. `--only ui.cursor`, mainOnlyImage).
  */
-function onlyGroup(argv, spriteSets) {
+function onlyGroup(argv, spriteSets, images) {
 	const i = argv.indexOf("--only");
 	if (i < 0) return undefined;
 	const g = argv[i + 1];
 	if (ONLY_GROUPS.includes(g)) return g;
 	if (spriteSets && typeof g === "string" && Object.prototype.hasOwnProperty.call(spriteSets, g)) return g;
-	fail(`--only takes one of ${ONLY_GROUPS.join(", ")} or a sprite set id, got ${JSON.stringify(g)}`);
+	if (images && typeof g === "string" && Object.prototype.hasOwnProperty.call(images, g)) return g;
+	fail(`--only takes one of ${ONLY_GROUPS.join(", ")}, a sprite set id or an images id, got ${JSON.stringify(g)}`);
 }
 
-/** True when `only` (onlyGroup's result) names a sprite set rather than a group. */
-function isOnlySpriteSet(only) {
-	return only !== undefined && !ONLY_GROUPS.includes(only);
+/** True when `only` (onlyGroup's result) names an entry of `images` (art/atlases.json `images`). */
+function isOnlyImage(only, images) {
+	return only !== undefined && !ONLY_GROUPS.includes(only) && images !== undefined && Object.prototype.hasOwnProperty.call(images, only);
+}
+
+/** True when `only` (onlyGroup's result) names a sprite set rather than a group (or, given `images`, an image). */
+function isOnlySpriteSet(only, images) {
+	return only !== undefined && !ONLY_GROUPS.includes(only) && !isOnlyImage(only, images);
 }
 
 /** Groups `--only` can build on their own (their sources need no other pack). */
@@ -4929,7 +5056,8 @@ const ONLY_GROUPS = [
 
 /** The vendor files `--lock --only <group>` re-hashes (a sprite set id: that set's own files, not its pixelsPerTileFrom's). */
 function onlyGroupSourceFiles(config, group) {
-	if (isOnlySpriteSet(group)) return spriteSetSourceFiles(config.spriteSets, group);
+	if (isOnlyImage(group, config.images)) return imageFamilySourceFiles(config.images, group);
+	if (isOnlySpriteSet(group, config.images)) return spriteSetSourceFiles(config.spriteSets, group);
 	if (group === "bullets") return bulletSourceFiles(config.bullets);
 	if (group === "goo") {
 		if (!config.goo) fail("art/atlases.json has no `goo` group");
@@ -5216,14 +5344,78 @@ function mainOnlySpriteSet(config, id) {
 	for (const f of pending) console.log(`  ${f}  (${fs.statSync(path.join(BUILD, f)).size} bytes)`);
 }
 
+/** Every source file the crop family of images entry `id` reads (imageFamily), sorted (`--lock --only <image id>`). */
+function imageFamilySourceFiles(images, id) {
+	return [...new Set(imageFamily(images, id).map((k) => images[k].file))].sort();
+}
+
+/**
+ * Builds the crop family of images entry `id` alone (imageFamily: the entry, the one its sameCropAs names and every
+ * entry naming that one), checked by checkSameCrop. Refuses an image the scoped build cannot write exactly: one drawn
+ * at a sprite set's scale (`pixelsPerTileFrom`) or a tile with a mean colour (`meanHex`: VALE_TILE_MEAN_HEX).
+ */
+function buildImageFamily(images, id) {
+	const family = imageFamily(images, id);
+	for (const k of family) {
+		if (images[k].pixelsPerTileFrom !== undefined) throw new Error(`--only ${id}: ${k} has pixelsPerTileFrom; run a full art:build`);
+		if (images[k].meanHex) throw new Error(`--only ${id}: ${k} has meanHex (VALE_TILE_MEAN_HEX); run a full art:build`);
+	}
+	const built = family.map((k) => buildImage(k, images[k], undefined));
+	checkSameCrop(images, built);
+	return built;
+}
+
+/**
+ * `--only <images id>` (docs/CURSOR.md C1: `--only ui.cursor`): checks the files of the image's crop family against
+ * the lock, builds them, then writes ONLY their PNGs (and art/upload copies), their contact sheets and their entries in
+ * packs/vale/layout.ts's VALE_IMAGE_LAYOUTS (merged: mergeImageLayout, every other byte unchanged), byte for byte what a
+ * full build writes for them. Nothing else is read, written or removed (no stale-file sweep).
+ */
+function mainOnlyImage(config, id) {
+	checkLock(config, imageFamilySourceFiles(config.images, id));
+	let built;
+	try {
+		built = buildImageFamily(config.images, id);
+	} catch (e) {
+		fail(e.message);
+	}
+	if (!fs.existsSync(LAYOUT_FILE)) fail(`--only ${id} merges into an existing ${path.relative(ROOT, LAYOUT_FILE)}; run a full art:build first`);
+	let changed = 0;
+	const written = [];
+	for (const o of buildOutputs([], built)) {
+		const png = encodePng(o.img);
+		if (writeIfChanged(path.join(o.dir === "build" ? BUILD : CONTACT, o.name), png)) changed++;
+		if (o.dir === "build") {
+			written.push(o.name);
+			if (writeIfChanged(path.join(UPLOAD, o.name), png)) changed++;
+		}
+	}
+	let text = fs.readFileSync(LAYOUT_FILE, "utf8");
+	for (const b of built) text = mergeImageLayout(text, b.id, b.layout);
+	if (writeIfChanged(LAYOUT_FILE, text)) changed++;
+	for (const b of built) {
+		const pv = b.layout.pivot ? `, pivot (${b.layout.pivot.x}, ${b.layout.pivot.y})` : "";
+		console.log(`${b.id}: ${b.layout.file} ${b.layout.w}x${b.layout.h}, cut at source (${b.crop.x}, ${b.crop.y})${pv}`);
+	}
+	console.log(`art:build --only ${id}: ${changed} file(s) updated (${built.map((b) => b.id).join(", ")})`);
+	const uploaded = uploadedFiles();
+	const pending = written.filter((f) => !uploaded.has(f));
+	console.log(`art:build --only ${id}: ${pending.length} of its ${written.length} PNG(s) still need an ID in packs/vale/assetIds.ts${pending.length > 0 ? ":" : ""}`);
+	for (const f of pending) console.log(`  ${f}  (${fs.statSync(path.join(BUILD, f)).size} bytes)`);
+}
+
 function main() {
 	const config = JSON.parse(fs.readFileSync(CONFIG_FILE, "utf8"));
-	const only = onlyGroup(process.argv, config.spriteSets);
+	const only = onlyGroup(process.argv, config.spriteSets, config.images);
 	if (process.argv.includes("--lock")) {
 		writeLock(config, only ? onlyGroupSourceFiles(config, only) : undefined);
 		return;
 	}
-	if (isOnlySpriteSet(only)) {
+	if (isOnlyImage(only, config.images)) {
+		mainOnlyImage(config, only);
+		return;
+	}
+	if (isOnlySpriteSet(only, config.images)) {
 		mainOnlySpriteSet(config, only);
 		return;
 	}
@@ -5467,8 +5659,15 @@ module.exports = {
 	blit,
 	bodyMask,
 	buildImage,
+	buildImageFamily,
 	buildImages,
 	buildOutputs,
+	checkSameCrop,
+	imageFamily,
+	imageFamilySourceFiles,
+	isOnlyImage,
+	mergeImageLayout,
+	pivotContact,
 	buildSpriteSet,
 	buildSpriteSets,
 	buildOneSpriteSet,

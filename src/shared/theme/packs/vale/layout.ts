@@ -796,6 +796,18 @@ export const VALE_IMAGE_LAYOUTS: Record<string, ValeImageLayout> = {
 		h: 27,
 		slice: { left: 5, top: 5, right: 5, bottom: 5 },
 	},
+	"ui.cursor": {
+		file: "ui-cursor.png",
+		w: 29,
+		h: 29,
+		pivot: { x: 4, y: 4 },
+	},
+	"ui.cursor.hover": {
+		file: "ui-cursor-hover.png",
+		w: 29,
+		h: 29,
+		pivot: { x: 4, y: 4 },
+	},
 	"ui.draft.back": {
 		file: "ui-draft-back.png",
 		w: 93,

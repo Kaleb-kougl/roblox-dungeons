@@ -77,6 +77,18 @@ export { CURSE_ICON_PREFIX, RELIC_ICON_PREFIX, curseIconId, relicIconId } from "
 export { BOOST_ICON_PREFIX, boostIconId } from "./boostIcons";
 export { PIP_ICON_IDS, PIP_ICON_PREFIX } from "./pipIcons";
 export {
+	CURSOR_IMAGE_IDS,
+	CURSOR_STATES,
+	cursorArt,
+	cursorArtProblems,
+	cursorOptionalIds,
+	type CursorArt,
+	type CursorArtProblem,
+	type CursorImageSource,
+	type CursorState,
+	type CursorStateArt,
+} from "./cursorArt";
+export {
 	CHARACTER_ICON_PREFIX,
 	CHARACTER_OVERRIDE_KEYS,
 	CHARACTER_SCREEN_STRINGS,

@@ -95,6 +95,12 @@ export const RUN_ATTRIBUTES = {
 	 * combinable with KV_PacingOff / KV_LeadOff. Off by default.
 	 */
 	predictOff: "KV_PredictOff",
+	/**
+	 * Boolean, read live (docs/CURSOR.md section 4): true forces Roblox's own pointer everywhere, the menus' gauntlet
+	 * cursor never drawn (CursorController), for debugging and as the fallback if a Roblox update breaks the software
+	 * cursor. The gamepad rule (no pointer while on a pad) still applies. Off by default.
+	 */
+	systemCursor: "KV_SystemCursor",
 } as const;
 
 /** The web build's DEFAULT_SEED (`?seed=` absent). */

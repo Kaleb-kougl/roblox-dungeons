@@ -50,3 +50,16 @@ export const selectMenuOpen = createSelector(
 	[selectMenuShown, selectLoadingReleased, selectStageCovered] as const,
 	(shown, loadingReleased, stageCovered) => !loadingReleased || stageCovered || shown,
 );
+
+/**
+ * The gauntlet cursor's menu context (docs/CURSOR.md section 3): a menu that takes the pointer is open
+ * (selectMenuOpen: a menu screen, a panel, the party overlay, a paused run, run over, the tutorial outro, the join
+ * loading screen, the stage cover) or the local player's boon draft is open in a running run (the snapshot's
+ * `draftOpen`: the run is not paused, so neither selector above has it; a co-op player who picked and waits for
+ * teammates is back in gameplay). Cross-slice, so it lives here. CursorController draws the gauntlet only while this
+ * holds; gameplay keeps Roblox's pointer.
+ */
+export const selectCursorMenuContext = createSelector(
+	[selectMenuOpen, selectGameActive, selectSnapshot] as const,
+	(menuOpen, active, snapshot) => menuOpen || (active && snapshot.draftOpen),
+);

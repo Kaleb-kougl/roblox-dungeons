@@ -4,14 +4,17 @@
  * (docs/ROOM_EDGES.md RE6), the corner panels' occlusion fade (docs/HUD_LAYOUT.md H7), the live HUD's item tooltips (docs/ITEM_TOOLTIPS.md ITD8), the corner minimap
  * (docs/MINIMAP.md M10), the player outline (docs/PLAYER_OUTLINE.md P4), the build effects (docs/BUILDS.md BUD13), the touch controls (docs/MOBILE.md MB7: size,
  * opacity, auto-target, left-handed), the language (docs/LOCALIZATION.md L6) and the gamepad menus' vibration
- * (docs/GAMEPAD_MENUS.md GM9) and the remembered character pick (docs/ARCHER.md ARD12: the character screen's focus
- * and the run a start plays). Presentation only; stored overrides-only (a new optional field needs no migration).
+ * (docs/GAMEPAD_MENUS.md GM9), the remembered character pick (docs/ARCHER.md ARD12: the character screen's focus
+ * and the run a start plays) and the gauntlet cursor's size (docs/CURSOR.md D2). Presentation only; stored
+ * overrides-only (a new optional field needs no migration).
  */
 import { DEFAULT_CHARACTER, isCharacterId, type CharacterId } from "shared/characters";
 import { localeDef } from "shared/l10n";
 import {
 	BUILD_FX_LEVELS,
+	CURSOR_SIZES,
 	DEFAULT_BUILD_FX,
+	DEFAULT_CURSOR_SIZE,
 	DEFAULT_HUD_FADE,
 	DEFAULT_HUD_SCALE_PERCENT,
 	DEFAULT_HUD_TOOLTIPS,
@@ -29,6 +32,7 @@ import {
 	TOUCH_OPACITY_PERCENTS,
 	TOUCH_SIZE_PERCENTS,
 	type BuildFxLevel,
+	type CursorSize,
 } from "./config";
 
 export interface DisplaySettings {
@@ -70,6 +74,11 @@ export interface DisplaySettings {
 	 * character screen, not the Display tab (DISPLAY_RESET_KEEPS).
 	 */
 	character: CharacterId;
+	/**
+	 * The gauntlet cursor's size in menus, Small / Normal / Large (docs/CURSOR.md D2; shared/view cursorScale). Default
+	 * DEFAULT_CURSOR_SIZE ("normal"): only "small" or "large" is ever stored.
+	 */
+	cursorSize: CursorSize;
 }
 
 export type DisplayOverrides = Partial<DisplaySettings>;
@@ -89,6 +98,7 @@ export const DISPLAY_SETTING_KEYS: ReadonlyArray<keyof DisplaySettings> = [
 	"language",
 	"padVibration",
 	"character",
+	"cursorSize",
 ];
 
 export function defaultDisplaySettings(): DisplaySettings {
@@ -107,6 +117,7 @@ export function defaultDisplaySettings(): DisplaySettings {
 		language: DEFAULT_LANGUAGE,
 		padVibration: DEFAULT_PAD_VIBRATION,
 		character: DEFAULT_CHARACTER,
+		cursorSize: DEFAULT_CURSOR_SIZE,
 	};
 }
 
@@ -117,7 +128,8 @@ export function defaultDisplaySettings(): DisplaySettings {
  * from its list and not the default; a touchAutoTarget / touchLeftHanded that is a boolean other than the default; a
  * language that is a known locale code (stored as LOCALES spells it; "auto" and unknown codes are dropped); a
  * padVibration that is a boolean other than the default (so only `false`); a character that is a character id other
- * than DEFAULT_CHARACTER. Never throws.
+ * than DEFAULT_CHARACTER; a cursorSize from CURSOR_SIZES other than the default (so only "small" / "large"). Never
+ * throws.
  */
 export function sanitizeDisplayOverrides(raw: unknown): DisplayOverrides {
 	const out: DisplayOverrides = {};
@@ -172,6 +184,14 @@ export function sanitizeDisplayOverrides(raw: unknown): DisplayOverrides {
 	if (typeIs(vibration, "boolean") && vibration !== DEFAULT_PAD_VIBRATION) out.padVibration = vibration;
 	const character = t.character;
 	if (isCharacterId(character) && character !== DEFAULT_CHARACTER) out.character = character;
+	const cursorSize = t.cursorSize;
+	if (
+		typeIs(cursorSize, "string") &&
+		cursorSize !== DEFAULT_CURSOR_SIZE &&
+		CURSOR_SIZES.includes(cursorSize as CursorSize)
+	) {
+		out.cursorSize = cursorSize as CursorSize;
+	}
 	return out;
 }
 
