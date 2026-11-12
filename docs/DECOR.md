@@ -639,6 +639,11 @@ chest slot no view; the treasure renderer draws it from its own `treasure.*` slo
 `treasure.chestopen` / `treasure.cage`). The decor plan draws nothing on its cell (planDecor's `breakables` input is
 the floor's full piece list), as for a crate.
 
+**The Goldling's piece (docs/GOLDLING_RUMOURS.md GR1).** On a Goldling floor `placeGolden` appends one more barrel or
+crate after the chest (the floor's last piece, `FloorGolden.piece`): an ordinary clutter kind, placed by the clutter's
+cell and fit rules off pellets and the chest's front, drawn by BreakableRenderController like any crate and glinting
+like a loaded one while the Goldling hides in it; only players can break it.
+
 ### Tasks
 
 - [x] **R8. Depth profile.** (needs R3) `decorProfile`, `DECOR_DEPTH`, band swaps and thinning inside the R3 plan, the

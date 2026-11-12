@@ -114,6 +114,10 @@ gem and steps onto it; nothing is auto-collected.
 | Theme | One port audio ID; no new image slot, colour role or string (the toast is `hud.toast.boost`) |
 | Debug | `KV_LootDebug` (Studio / KV_Debug): a label with the kind over every loaded piece. The existing debug drop key is unchanged |
 
+Since docs/GOLDLING_RUMOURS.md GR4 the Goldling's hiding place (its own barrel or crate, the floor's last piece, never
+loaded) glints exactly like a loaded piece while it hides: shared/view `pieceGlints` (`breakableLootAt` or shared/sim
+`goldenPieceAt`) is the glint's one test; `KV_LootDebug` still labels loaded pieces only.
+
 ### 5. Server, lockstep, leaderboards
 
 Nothing new: validation re-runs the same sim, co-op steps the same frames. Cost: one array per floor and one check per

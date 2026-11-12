@@ -1,9 +1,11 @@
 # Goldling rumours: hear it, find its hiding place, catch it
 
-Status (2026-11-12): **plan, revision 3.** The owner (Kaleb) has confirmed RD1, RD2, RD8 and RD10-RD15 (see
-"Decisions"): the Goldling **brings its own barrel or crate** into its room, the piece **glints like a loot piece**,
-**only players** can break it open, it never shares a piece with loot, and a Goldling nobody finds is fine. RD3-RD7 and
-RD9 are built as their recommended options (owner to confirm). Planned against `main` @ `677b5b1` (Fortune and treasure rooms merged; the uncommitted audio
+Status (2026-11-12): **built on branch `goldling-rumours` (GR0-GR9); owner tasks GR10 (audio audition), GR11
+(Studio check / playtest), GR12 (telemetry, optional) and the confirmation of RD3-RD7 / RD9 pending** (see "As built").
+Plan revision 3: the owner (Kaleb) confirmed RD1, RD2, RD8 and RD10-RD15 (see "Decisions"): the Goldling **brings its
+own barrel or crate** into its room, the piece **glints like a loot piece**, **only players** can break it open, it
+never shares a piece with loot, and a Goldling nobody finds is fine. RD3-RD7 and RD9 are built as their recommended
+options (owner to confirm). Planned against `main` @ `677b5b1` (Fortune and treasure rooms merged; the uncommitted audio
 work in the working tree is not assumed). Work it task by task like `PLAN.md`; each task ends with a **Verify**.
 Project copy: `claude/goldling-rumours-plan.md`. Parent feature: docs/FORTUNE.md (the Goldling, GE1-GE4, FO8 / FO9).
 
@@ -126,39 +128,39 @@ and missing it costs nothing (RD12): you keep everything else the floor gives.
 
 ## Tasks
 
-- [ ] **GR0. Confirm the code assumptions.** The Charger / Bomber / slam paths into `damageBreakable` and what they do
+- [x] **GR0. Confirm the code assumptions.** The Charger / Bomber / slam paths into `damageBreakable` and what they do
   when it refuses (the chest's behaviour); anything that assumes the chest is the last piece; `engageTick` latching
   unchanged; the loot glint's call site; the cue mapper's state under local prediction; `isDraftOpen` per frame; the
   floor-change sequence; two chips on a phone; `SIGHTING_IDS` append rules; `lowpassHz` / `mix` on committed `main`.
   → Verify: each assumed row marked read or corrected.
-- [ ] **GR1. The Goldling's piece** (dungeon). → Verify (spec): pure; draws 0 / 1 / 4 as stated; the piece in its
+- [x] **GR1. The Goldling's piece** (dungeon). → Verify (spec): pure; draws 0 / 1 / 4 as stated; the piece in its
   room, off doorways, spawns, pellets and the chest's front, passing the gap and reachability rules; appended last
   (every earlier slot, loot slot and the chest's slot unchanged); `roomSpawnTiles` loses only its cell; party sizes
   1-4; every other floor output identical to today; never the boss room. **Census** (runs 1-40 x floors 2-20, solo and
   party of 4): Goldling floors per band against today's (target: equal; a room with no fitting cell is the only loss),
   barrel / crate split.
-- [ ] **GR2. Hidden, released** (sim). → Verify (spec): no appearance before the break; a sword, an arrow, a roll and a
+- [x] **GR2. Hidden, released** (sim). → Verify (spec): no appearance before the break; a sword, an arrow, a roll and a
   build splinter each release it on the break tick at the cell centre; an enemy bullet, a Charger, a Bomber and a slam
   never damage that piece; it never drops loot; SKIPPED on a full pool; the room clears without it; floor change while
   hidden: gone, no counters; replays bit-identical; absent config unchanged; M1, fixtures, tutorial unchanged; the
   pacts freeze spec without the waiting branch.
-- [ ] **GR3. Hash and worlds.** → Verify: `releaseTick` / `piece` at the end of `golden`; the hash-group pins; daily /
+- [x] **GR3. Hash and worlds.** → Verify: `releaseTick` / `piece` at the end of `golden`; the hash-group pins; daily /
   dev follow; `DAILY.ruleset` + 1; the pins that record endless floors (roomPool.lock, vault, charger / stormcaller)
   re-recorded where a Goldling piece now stands; `npm run verify`.
-- [ ] **GR4. Glint and release view.** → Verify (spec): the Goldling's piece glints while WAITING exactly like a loot
+- [x] **GR4. Glint and release view.** → Verify (spec): the Goldling's piece glints while WAITING exactly like a loot
   piece (art, tint, phase) and stops at the break; the break, then the coins and `GOLDLING!`.
-- [ ] **GR5. Rumour phase and clock** (view). → Verify (spec): once per floor, never under a draft, room-before-floor
+- [x] **GR5. Rumour phase and clock** (view). → Verify (spec): once per floor, never under a draft, room-before-floor
   skips the floor cue, a second floor re-arms, read-only on the state; the chip stays `ROOM` after the room clears
   while hidden.
-- [ ] **GR6. Audio IDs and cues.** → Verify (`view/audio/goldenRumourCues.spec.ts`): IDs, SILENT + fallback volume,
+- [x] **GR6. Audio IDs and cues.** → Verify (`view/audio/goldenRumourCues.spec.ts`): IDs, SILENT + fallback volume,
   priorities, teammate volume, no duck.
-- [ ] **GR7. Chip, first-time card, strings, debug label.** → Verify: both chip texts, pulse / reduced motion, beside
+- [x] **GR7. Chip, first-time card, strings, debug label.** → Verify: both chip texts, pulse / reduced motion, beside
   `HORDE`, touch strip, never under a draft; the card once per account; l10n context entries; locale check; label
   lines.
-- [ ] **GR8. Census** (`run/goldenCensus.spec.ts`, a bot that walks to the glinting pieces and breaks them): catch rate
+- [x] **GR8. Census** (`run/goldenCensus.spec.ts`, a bot that walks to the glinting pieces and breaks them): catch rate
   and seconds from the room cue to the release, during the fight and after the clear, sword / bow, solo / party,
   floors 2 / 6 / 12, against GE4's numbers. Feeds FORTUNE.md's open owner calls 2 and 3.
-- [ ] **GR9. Docs.** FORTUNE.md ("Hiding places and rumours", as built), DECOR.md / BREAKABLE_DROPS.md (the appended
+- [x] **GR9. Docs.** FORTUNE.md ("Hiding places and rumours", as built), DECOR.md / BREAKABLE_DROPS.md (the appended
   piece, the shared glint), FX_AUDIO.md, CLIENT.md, DAILY.md (the bump), the CLAUDE.md docs row and log; seeds for the
   Studio check.
 - [ ] **GR10. [owner] Audio audition** (`art/audio-audition.html`).
@@ -210,18 +212,182 @@ Built as the recommended option, owner to confirm (2026-11-12):
 - **Masking and confusion** of the faint jingle with the hit coins (GR10 tunes it; the chip is the backstop).
 - **Prediction:** a room cue on a mispredicted step (GR0).
 
+## As built (2026-11-12)
+
+Branch `goldling-rumours` from `main` @ `677b5b1`, one commit per task (GR1-GR8; GR0's findings went into GR1 / GR2,
+listed under "GR0" below). Gameplay for the Goldling only; everything else on the floor and in the sim is unchanged.
+M1, every golden fixture and the tutorial (no Goldling) replay exactly as before.
+
+### GR0 (the code assumptions)
+
+- **Enemy paths into `damageBreakable`:** enemy bullets (`ENEMY_BULLET`), the boss's slam, a Bomber's blast and a
+  Charger's charge (the last three `SLAM` through `slamBreakables`, the blast / charge with their own radius). Refused
+  like the chest's: a bullet that reaches the piece is still consumed (it stops on it), a Charger stops at it like a
+  wall and stuns, the Bomber's blast leaves it intact. The comments that called the chest the floor's last piece now say
+  "after the clutter; only the Goldling's piece comes after it" (`EndlessFloorLayout.vault`).
+- `engageTick` latches as before; the glint's call site is BreakableRenderController (now through `pieceGlints`); the
+  clock reads the run view's state (`ctx.run.state`: in co-op the merged state, never the predicted head, so no cue on
+  a mispredicted step); `isDraftOpen` per frame; two chips share the boost row's one cell (below); `SIGHTING_IDS` and
+  `BESTIARY_STRING_KEYS` append at the end; the candidates use the audio pipeline's `lowpassHz` / `mix` (GR6).
+
+### Dungeon (GR1)
+
+- `placeGolden` (still last in `buildEndlessFloor`, its own stream, salt `0x3d2f8b4d`) also places the hiding place.
+  **Draws:** 0 below floor 2; 1 on a miss or with no eligible room; 4 on a hit (chance, room, cell, kind).
+- **Eligible room** (`goldenRooms`, tested before the room draw): `goldenRoomOpen` (combat / elite, planned spawns,
+  >= `minRoomTiles` 100 FLOOR cells, never the boss room) **and** at least one piece cell (`goldenPieceCells`).
+- **Piece cell** (uniform draw, row order): a `breakableCandidates` cell of the room (off doorways, spawns, the
+  entrance, the stairwell, pedestal, shrine, pools) that passes `pieceFitter` against every piece so far, the vault's
+  chest included (the 2-tile gap rule and the ring reachability test), is no pellet's cell and lies outside the chest's
+  **front box**: the chest's cell row plus `VAULT.wallClearTiles` (2) rows in front of it, `VAULT.sideClearTiles` cells
+  to each side (the cells the vault keeps FLOOR and free, so the chest stays reachable and its boosts land on open
+  floor). **Kind:** a crate at `BREAKABLE.crateShare` (0.5), else a barrel.
+- `FloorGolden` gains `piece` (its breakables slot: the number of pieces before it), `pieceX` / `pieceY` (grid) and
+  `pieceKind` (`GoldenRoomMask` is the room part). `GoldenFloorInput` extends `BreakableFloorInput` with `pieces` (the
+  clutter, then the chest), `pellets` and `vault`. `buildEndlessFloor` appends `goldenPiece(golden)` after every other
+  piece and before `roomSpawnTiles`, so every earlier output and slot is unchanged and only `roomSpawnTiles` loses its
+  cell. Loot is rolled over the clutter before the piece exists: it never holds a boost (RD15).
+- Test helpers `shared/dungeon/testing` `piecesBeforeGolden` / `withoutGoldenPiece` for specs that compare floor
+  outputs placed before it.
+
+### Sim (GR2, GR3)
+
+- `GoldenState` gains `releaseTick` (-1 until a player broke its piece this floor) and `piece` (`FloorGolden.piece`,
+  -1 without a Goldling); both cloned, reset by `goldenOnFloor` (which now throws if the slot is not an intact barrel /
+  crate on the piece's cell) and hashed **at the end of the `golden` group** (`GOLDEN_HASH_TAIL_FIELDS`, after the
+  flee field's source cells).
+- **Hidden:** WAITING until a player breaks the piece; `engageTick` still latches (the room rumour). Never found: hidden
+  until the floor ends, no counter (RD12).
+- **Enemy refusal (RD13):** `damageBreakable` returns before any bookkeeping for `ENEMY_BULLET` and `SLAM` on that slot
+  (`goldenGuardsPiece`), exactly like the chest (see GR0: bullets consumed, the Charger stuns, Bombers and slams leave
+  it). A player's break (`MELEE` / `PLAYER_BULLET` / `ROLL` / `BUILD`) scores as any piece and calls the leaf hook
+  `goldenOnBreak` (`releaseTick` = this tick).
+- **Release:** `stepGolden` (after `stepScore`, the same tick) spawns it at the piece's cell centre
+  (`goldenPieceCentre`): RUNNING, `appearTick` = that tick, `seen` + 1, `events.appeared`; a full actor pool
+  (`MAX_ACTORS` 64): SKIPPED. Running, catch, escape, payouts and the flee field are unchanged (RD8).
+- `holdAbsoluteTimers` drops the waiting branch (a running Goldling's `fieldTick` still moves). Removed:
+  `GoldenConfig.appearTicks`, `GOLDEN_APPEAR_TICKS`, `goldenSpawnTile`. New queries: `goldenPieceAt(state, slot)` (the
+  glint), `goldenGuardsPiece`, `goldenPieceCentre`.
+- **Worlds (GR3):** `DAILY.ruleset` 15 -> 16 (docs/DAILY.md); the all-time boards stay `_v1`. Re-recorded, only where a
+  Goldling piece now stands (each floor rolled a Goldling; with its piece filtered out the old values replay exactly):
+  the Charger's run 4 floor 3 pin (`1a65fa83` -> `be9d10a6`, counts unchanged) and the Stormcaller's run 4 / run 23
+  floor 3 pins (`3/0/4b457f84` -> `3/0/77c11a8d`, `6/0/c213cd8f` -> `6/0/a2fea36e`). No other pin, digest or
+  hash-group layout moved (`hash.spec`, `roomPool.lock`, vault, determinism).
+
+### View (GR4-GR7, presentation only)
+
+- **Glint (GR4):** shared/view `pieceGlints(state, slot)` is the one test (a loaded piece, `breakableLootAt`, or the
+  Goldling's piece while it hides, `goldenPieceAt`); `glintSlotCount` scans the loot table or one past the hiding place.
+  BreakableRenderController's glints follow it: the same art, tint, cadence and per-cell phase, gone the frame it
+  breaks (`KV_LootDebug` still labels loaded pieces only).
+- **Release:** GoldenRenderController's coin flash, ring and `GOLDLING!` wait `GOLDEN_VIEW.appear.afterBreakSec`
+  (0.12 s of sim time) through `GoldenAppearQueue`, so the piece's own break reads first (cleared on run start, floor
+  change and exit). Sounds unchanged: the break and `sfx.golden.appear` share the release frame.
+- **Rumour phase and clock (GR5):** `shared/view/golden/rumour.ts`: `GoldenRumourPhase` NONE / FLOOR / ROOM
+  (`goldenRumourPhase`: FLOOR while it hides and its room has not engaged, ROOM once `engageTick` latched, so ROOM
+  holds after the clear while it still hides) and the per-client `GoldenRumourClock` (pure, read-only on the state):
+  the floor cue once per floor after `floorDelaySec` 1.0 s of unfrozen FLOOR time (skipped for good if ROOM came first),
+  the room cue on the first unfrozen ROOM frame; `chip()` (NONE until this floor's first cue and while frozen) and
+  `heard()`. SimController owns the clock (`getGoldenRumour`), stepped right after each frame's ticks, reset on a new
+  run context, held under the stage cover, the loader's hold, a solo pause, the frozen tutorial and run over.
+  `goldenRumourInRoom(state, viewIndex)` for the room cue's volume. Tunables `GOLDEN_VIEW.rumour`.
+- **Audio (GR6):** port audio IDs `sfx.golden.rumour.floor` / `.room` appended to `PORT_AUDIO_EVENTS` after Fortune's
+  eight (`GOLDEN_RUMOUR_AUDIO_IDS`), required, sfx group, **SILENT** in the placeholder (and in vale until GR10);
+  `SFX_PRIORITY` 45 / 66; `SFX_FALLBACK` -> `sfx.golden.hit` (at the rumour's volume, the pack's jitter, no hit ladder);
+  not a jingle, no duck. Volumes: floor 0.45, room 0.8 inside the Goldling's room; from outside it (a teammate walked
+  in, RD6) x `AUDIO_VIEW.teammateVolume` and `TEAMMATE_PRIORITY_DROP` (50) lower. `art/audio.json` lists both silent and
+  unconfirmed with the candidates as alternates: the floor `Bonus/Coin3` low-passed 2200 Hz at -6 dB, the room `Coin3`
+  plain or a `mix` of two `Coin2` taps.
+- **Chip (GR7):** `GoldenRumourChip` beside the Horde chip: `hud.chip.golden.rumour` ("Coins jingling...") from the
+  floor cue on, `hud.chip.golden.hiding` ("It's hiding here!") from the room cue on; `golden.coin` on `uiPanel` with
+  the coin glyph (`ui.icon.coin`); in ROOM a gentle pulse (`goldenRumourChipScale`: 1 + 0.08 x a 0.8 s wave; still
+  under reduced motion). In the status corner's boost row (StatusPanel `ChipBoostRow`: the chips split the row's one
+  boost cell, shared/view/golden `chipRowWidth`; one chip is exactly the old Horde chip width) and on the touch strip's
+  chip line after the Horde chip. It reaches the HUD as the snapshot's `goldenRumour` (`SnapshotExtras.goldenRumour` =
+  the clock's `chip()`); a chip change sends the next snapshot at once.
+- **First-time card:** sighting id `golden.rumour` appended to `SIGHTING_IDS`, line `bestiary.golden.rumour` ("Hear
+  coins? A Goldling is hiding in a barrel or crate on this floor. Find it!") appended to `BESTIARY_STRING_KEYS`;
+  SightingController queues it on this floor's first rumour cue of either kind (`withRumourSighting`, the clock's
+  `heard()`); one card at a time, so never on top of `bestiary.golden`; once per account.
+- **Strings:** `GOLDEN_RUMOUR_STRING_KEYS` (written out at the end of `REQUIRED_STRING_KEYS`) and
+  `GOLDEN_RUMOUR_BESTIARY_KEY`, English in the placeholder manifest, context entries in `l10n/context.json`.
+  **Luau locals (out/): `contract.luau` 186, `validate.luau` 192** (no new top-level local).
+- **Debug:** `KV_GoldenLabel` while it hides reads `WAITING room R piece P rumour FLOOR|ROOM release T`; after it, the
+  coins and the release tick.
+
+### Census
+
+**Floor share (GR1, `dungeon/golden.census.spec.ts --census`: run seeds 1-40 x floors 2-20, solo and party of 4).**
+Goldling floors equal the old rule's in every band, no floor lost and no room pick moved: 44 / 120 floors 2-4 (36.7 %),
+72 / 200 floors 5-9 (36.0 %), 180 / 440 floors 10-20 (40.9 %); crates 144 / 296 (48.6 %); 90.2 piece cells per
+eligible room solo (75.6 in a party of 4), at least 1.
+
+**The hunt (GR8, `run/goldenCensus.spec.ts --census`; 6 Goldling floors per row, GE4's sample).** A bot walks from the
+floor's spawn to the glinting piece, breaks it and chases; god mode solo, hearts topped up in the party. `focused`: the
+piece, then the Goldling only (upper bound); `during`: the piece first, then GE4's fighting bot (the nearest room
+member, the Goldling within 4 tiles); `after`: clears the room, then the piece, then a calm chase. The bow rows are the
+**Archer** (the dev world's `characters`: GE4's bow rows swapped to weapon set 1, empty for the Knight since
+docs/ARCHER.md, and read 0 / 6); the bow leads its target by the arrow's flight. Cells: caught, hits to catch, seconds
+engage -> release + release -> catch.
+
+| Bot | Floor 2 (hp 25.9) | Floor 6 (hp 50.4) | Floor 12 (hp 101.5) |
+|---|---|---|---|
+| Sword, solo, focused | 6 / 6, 7 hits, 1.3 + 2.4 s | 6 / 6, 13, 2.2 + 4.5 s | 5 / 6 (1 SKIPPED), 25.4, 1.4 + 9.0 s |
+| Sword, solo, during the fight | = focused | = focused | = focused |
+| Sword, solo, after the clear | 6 / 6, 7, 4.4 + 2.6 s | 6 / 6, 13, 9.7 + 4.6 s | 6 / 6, 25.7, 13.9 + 8.8 s |
+| Bow (Archer), solo, focused | 6 / 6, 26, 5.8 + 7.6 s | 0 / 6 (2.2 s to release) | 0 / 6 (8.4 s to release) |
+| Bow (Archer), solo, after the clear | 6 / 6, 26, 8.3 + 7.4 s | 1 / 6, 51, 20.8 + 7.6 s | 0 / 6 (35.2 s to release) |
+| Sword, party of 2, focused (hp 41.5 / 80.6 / 162.4) | 6 / 6, 10, 1.9 + 1.7 s | 6 / 6, 21, 2.6 + 3.9 s | 4 / 6 (2 SKIPPED), 41, 1.2 + 7.5 s |
+
+Solo sword: focused 17 / 18, during the fight 17 / 18, after the clear 18 / 18 (GE4: focused 15 / 18, fighting the room
+6 / 18; the plan's target 50-65 %). Bow (Archer): 6 / 18 and 7 / 18. Party of 2: 16 / 18 (GE4 18 / 18). Read with care:
+
+- **It comes out within sword reach.** The bot is at the piece when it breaks, and a 6 u/s chaser stays on a 5.1 u/s
+  runner (docs/FORTUNE.md open call 4), so the room's fight never gets a look in: `during` plays exactly as `focused`.
+  GE4's lower bound (6 / 18) came from the Goldling appearing on the far spawn tile mid-fight; that case is gone.
+- **The calm catch after the clear** (RD12) is 18 / 18, at 8.8 of 10 s on floor 12: hp scaling still bites at depth,
+  the window does not.
+- **The bow** catches only on floor 2: the stream is 5 arrows / s x 1 damage, so 50 hp (floor 6) needs 10 s of
+  perfect hits (the bot never uses the heavy arrow).
+- **SKIPPED:** 3 of the floor-12 focused hunts broke the piece with the actor pool full (64 live): the bot walks
+  through rooms and fights none, so their enemies pile up. The rumour then lied (RD1's one exception). The `after` bot
+  never hit it.
+
+### Tests
+
+New specs: `dungeon/golden.census.spec` (GR1), `view/golden/release.spec` (GR4), `view/golden/rumour.spec` (GR5),
+`view/audio/goldenRumourCues.spec` (GR6), `view/golden/rumourChip.spec` (GR7); `dungeon/golden.spec` and
+`sim/golden/golden.spec` grew the placement, refusal, release, replay and clone cases; `run/goldenCensus.spec` is the
+GR8 hunt (default: 1 Goldling floor per row on floors 2 and 6, 16 s; `--census` 3.7 min). Pins that follow the
+appended ids, keys and pieces: the payouts, freeze, view golden, theme (fortune, audio, boosts, contract,
+enemyVariants, pellets, runRecap, treasure) and dungeon (affixes, breakableLoot, breakables, endless, pellets, vault)
+specs, the charger / stormcaller pins, `daily.spec`. Re-run for GR9 (headless, after a fresh build): every Goldling,
+pacts freeze, Charger, Bomber, Stormcaller and daily suite, 17 suites, 179 tests, all pass; typecheck and lint clean.
+The whole suite was not re-run here.
+
 ## Studio check
 
-In Studio, dev panel (**F2**); seeds from GR9 (a Goldling floor, a Goldling floor whose room also has a loot piece, a
-Goldling room with a vault). Turn on `KV_GoldenLabel` (rumour phase, piece slot, release tick).
+Not run yet. In Studio, dev panel (**F2**), pick the seed and floor (dev runs are solo; the co-op checks need a lobby
+run). Turn on `KV_GoldenLabel` (rumour phase, piece slot, release tick) and `KV_LootDebug` (the loaded pieces). Cells
+are grid (x, y); every Goldling piece is its floor's last breakables slot.
 
-- Arrive: the draft closes, about 1 s later the faint jingle and `Coins jingling...`; nothing under the draft.
-- Enter its room: the brighter jingle, `It's hiding here!`; a glinting barrel or crate; no Goldling yet, however long
-  you fight.
-- Enemy bullets on the glinting piece do nothing to it. Break it: its break, the coin burst, `GOLDLING!`, the ring;
-  the chase as today. A loot piece's glint in the same room gives a boost as before.
+| Seed, floor | What is there |
+|---|---|
+| **2, floor 2** | The Goldling in room 3, a barrel at (60, 12), slot 30; no loaded piece in its room, no vault on the floor (docs/FORTUNE.md's Studio seed) |
+| **14, floor 2** | Room 2, a barrel at (51, 42), slot 35, **and a loaded piece in the same room** (slot 7, Quickstep): two glints, one of them the Goldling. Also **42, floor 2** (room 6, a crate at (76, 28); loot slot 5, Quickstep) |
+| **44, floor 2** | Room 6 is **also the vault room**: a crate at (39, 61), slot 26, the chest slot 25. Also **12, floor 3** (room 11) and **11, floor 4** (room 3) |
+| any seed, floor 1 | No Goldling (from floor 2) |
+
+- Arrive: the draft closes, about 1 s later the faint jingle (silent until GR10: the Goldling's hit coin plays) and
+  `Coins jingling...`; nothing under the draft or the stage cover. First run on a fresh account: the card once.
+- Enter its room: the brighter jingle, `It's hiding here!` (gentle pulse; reduced motion: none); a glinting barrel or
+  crate; no Goldling yet, however long you fight.
+- Enemy bullets on the glinting piece stop on it and do nothing; a Charger stuns on it; a Bomber's blast leaves it.
+  Break it: its break, then (0.12 s later) the coin burst and `GOLDLING!`, the ring; the chase as before. On seed 14 /
+  42 the loot piece's glint gives a boost as before and the two glints look the same.
+- Seed 44: the chest stays reachable round the Goldling's piece; the vault opens as before.
 - Clear the room without breaking it: the chip and the glint stay; break it after the clear: it runs, catchable.
-- A floor without one (floor 1): no jingle, no chip. First run on a fresh account: the card once. Reduced motion: no
-  pulse. SFX volume 0: the chip and the glint still tell the story.
+- A floor without one: no jingle, no chip. SFX volume 0: the chip and the glint still tell the story. Phone: both chips
+  on the touch strip.
 - Co-op (lobby run): a teammate enters the room while you are elsewhere (the quieter cue, your chip changes); a
   teammate breaks the piece (everyone sees it come out).

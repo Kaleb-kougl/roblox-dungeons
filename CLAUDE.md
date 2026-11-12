@@ -64,6 +64,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/BOOKSHELVES.md` | Bookshelves (Dungeon Essential Kit bookcases, solid 1 x 1 cases flush in runs on rooms' far walls; a new `library` room theme plus a run in some `hall` rooms; endless layouts change): plan, tasks BK0-BK10 / RA1-RA6, decisions BKD1-BKD14; the library's reading area, a table and two chairs |
 | `docs/TREASURE.md` | Treasure rooms (vaults: about one endless floor in two from floor 2 has a caged chest in a combat / elite room, seen through the doorway; clearing the room unlocks it, its lock (UNTOUCHED / SWIFT) kept or cracked one tier down; walk up to open it: a relic, boosts or a bonus draft; gameplay, opt-in `SimConfig.treasure`): plan, TR0 findings, as built TR1-TR8, tasks TR0-TR11, decisions TRD1-TRD14 |
 | `docs/FORTUNE.md` | Fortune (risk shrines: two pact altars in the shrine room, Greed = a shown curse + a Legendary deal now, Horde = the next room fights a second wave for x2 score; the Goldling: a rare harmless gold enemy that flees within its room, coins per hit, a jackpot if caught within 10 s; gameplay, opt-in `SimConfig.pacts` / `SimConfig.golden` on endless only): plan, as built, open owner calls, Studio check, tasks FO0-FO13 / PS1-PS5 / GE1-GE4, decisions FD1-FD16 |
+| `docs/GOLDLING_RUMOURS.md` | Goldling hiding places and rumours (the Goldling brings its own barrel or crate into its room, glinting like a loot piece, and comes out when a player breaks it; only players can break it; a floor rumour (coin jingle + `Coins jingling...` chip) and a room rumour (`It's hiding here!`), a first-time card; gameplay for the Goldling, opt-in `SimConfig.golden`): plan, as built, the hunt census, Studio check seeds, tasks GR0-GR12, decisions RD1-RD15 |
 | `docs/PROJECTILE_ART.md` | Projectile art (every flying bullet drawn with the Player Bullets pack: yellow / green bolts and the Hyper flame for the player, chevron / needle / teardrop recoloured into the danger pink for enemies, optional `fx.bullet.hit`; goo / strike / ember unchanged; presentation only): plan, measured pack, mapping, tasks PA0-PA10, decisions PAD1-PAD11 |
 | `docs/DUMMY_ART.md` | Training dummy art (`enemy.dummy` drawn with the Training Dummy 2D Pixel Art pack: one facing, idle / 7-frame hit wobble / 9-frame break, the wobble on a view-side 0.7 s hit clip; presentation only): plan, tasks DA1-DA7, decisions DD1-DD5 |
 | `docs/GOO_ART.md` | Goo art (the Ooze's goo puddles drawn with the heimlich3 Slime pack's last two frames: land then splat, recoloured into `enemyGoo`, flat on the floor sized to cover the hit; presentation only): plan, tasks GA0-GA7, decisions GAD1-GAD5 |
@@ -1310,7 +1311,7 @@ Decision log (deviations from `PLAN.md`):
   off, plain or a tutorial floor) and the optional, view-only `EndlessFloorWorld.modifier`. Option off or a plain floor:
   every output as before (`roomPool.lock.spec`). M1, every fixture and the tutorial replay as before; endless / daily /
   dev replays and scores change on modifier floors (the stormcaller co-op pin and sim golden.spec's scene finder moved),
-  boards stay `_v1`, `DAILY.ruleset` 15 -> 16 (other work in progress also took 16: the second to merge takes 17). Dev:
+  boards stay `_v1`, `DAILY.ruleset` 15 -> 16 (the Goldling hiding places, which had also taken 16, moved to 17 on their rebase). Dev:
   `KV_FloorModifier` (`parseFloorModifierOverride` -> `FloorModifierOverride`: the kind on every floor where eligible,
   ignoring the chance, the streak and the boss rule; dev world only). Theme: strings `floormod.<key>.name` / `.line` and
   `hud.pause.floorMod`, roles `floorMod.<key>` (the boons reuse the Goldling / Legendary vault / power pellet / Frenzy
@@ -1325,6 +1326,37 @@ Decision log (deviations from `PLAN.md`):
   21.5 % of non-boss floors, mix Gilded 9 / Hoard 7 / Feast 23 / Plunder 38 / Blood Moon 23 %, Plunder 11.1 loaded
   pieces per floor vs 1.8 natural, Blood Moon x1.9 affixed members. Pending: owner calls OC1-OC3 (more twists, Plunder's
   strength, the mix), the stings (FM10), icons (FM11), Studio check and playtest (FM12), telemetry (FM13).
+- **Goldling hiding places and rumours (docs/GOLDLING_RUMOURS.md, 2026-11-12).** Gameplay for the Goldling only
+  (opt-in `SimConfig.golden`, endless / co-op / daily / dev), plus presentation. Supersedes docs/FORTUNE.md FD10's "3 s
+  after its room engages" (RD10): shared/dungeon `placeGolden` (still last, its own stream, 0 / 1 / 4 draws: chance,
+  room, cell, kind) also places the Goldling's own barrel or crate in its room (a `breakableCandidates` cell passing
+  `pieceFitter` against every piece, the vault's chest included, off pellet cells and the chest's front box; a room
+  needs one to be eligible, tested before the room draw), `FloorGolden.piece` / `pieceX` / `pieceY` / `pieceKind`,
+  `GoldenFloorInput` gains `pieces` / `pellets` / `vault`; `buildEndlessFloor` appends it after every other piece
+  (after the chest), so every earlier output and slot is unchanged and only `roomSpawnTiles` loses its cell; it never
+  holds loot (RD15). GR1 census: Goldling floors per band unchanged, none lost (296 of 760, runs 1-40 x floors 2-20).
+  Sim: WAITING until a PLAYER breaks it (`damageBreakable` refuses `ENEMY_BULLET` / `SLAM` on that slot like the
+  chest's, `goldenGuardsPiece`: bullets stop on it, a Charger stuns, Bombers and slams leave it; RD13); a player's break
+  calls the leaf hook `goldenOnBreak` (`releaseTick`), `stepGolden` spawns it at the piece's cell centre that tick (a
+  full pool: SKIPPED); never found: hidden until the floor ends (RD12); `engageTick` still latches; running, catch,
+  escape and payouts unchanged (RD8). `GoldenConfig.appearTicks`, `GOLDEN_APPEAR_TICKS`, `goldenSpawnTile` and the
+  freeze's waiting branch (`holdAbsoluteTimers`) are gone; new `goldenPieceAt` / `goldenPieceCentre`. Hash: `releaseTick`
+  / `piece` appended at the end of the `golden` group (`GOLDEN_HASH_TAIL_FIELDS`). M1, every fixture and the tutorial
+  replay exactly as before; endless replays and scores changed (the charger run 4 floor 3 and stormcaller run 4 / run 23
+  floor 3 pins re-recorded, only where a Goldling piece now stands), the all-time boards stay `_v1`, `DAILY.ruleset`
+  16 -> 17. Presentation: the piece glints like a loot piece while it hides (shared/view `pieceGlints`, RD14); the coin
+  flash / `GOLDLING!` wait `afterBreakSec` 0.12 s after the break (`GoldenAppearQueue`); the per-client
+  `GoldenRumourClock` (shared/view/golden rumour.ts, phases NONE / FLOOR / ROOM, owned by SimController): the floor
+  rumour once per floor 1 s into unfrozen FLOOR time, the room rumour on its room's engagement (RD3 / RD5); port audio
+  IDs `sfx.golden.rumour.floor` / `.room` (SILENT in the placeholder, falling back to `sfx.golden.hit`; priorities 45 /
+  66; from outside the room at teammate volume, RD6); `GoldenRumourChip` beside the Horde chip (`hud.chip.golden.rumour` /
+  `.hiding`, snapshot `goldenRumour`, StatusPanel `ChipBoostRow` and the touch strip, RD4); first-time card (sighting id
+  `golden.rumour`, `bestiary.golden.rumour`, RD7); `KV_GoldenLabel`'s WAITING line. `contract.luau` / `validate.luau`
+  186 / 192 top-level locals (counted on out/). GR8 hunt census (`run/goldenCensus.spec.ts`, `--census`; its bow rows
+  now the Archer's): solo sword 17 / 18 focused and during the fight, 18 / 18 after the clear (it comes out within sword
+  reach; GE4: 15 / 18 and 6 / 18), Archer bow 6 / 18 focused and 7 / 18 after the clear (the stream's 5 hp / s caps it past floor 2), party of 2 16 / 18 (every sword miss SKIPPED on a full
+  pool). Pending: RD3-RD7 / RD9 confirmation, the audio audition (GR10), the Studio check and playtest (GR11),
+  telemetry (GR12, optional) and docs/FORTUNE.md's open calls 2 / 3 with the GR8 numbers.
 
 ## Commands
 
