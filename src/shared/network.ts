@@ -1,5 +1,6 @@
 import { Networking } from "@flamework/networking";
 import type { CharacterId } from "shared/characters";
+import type { CodexClaim, CodexStatus } from "shared/codex";
 import type { DailyRunResult, DailyStatus } from "shared/daily";
 import type { LeaderboardRequest, LeaderboardView } from "shared/leaderboard";
 import type { ArrivalJoinIntent, ArrivalToastKey } from "shared/invite";
@@ -50,7 +51,8 @@ import type { SettingsOverrides } from "shared/settings";
  * (limits in shared/run `RUN_SUBMIT_RATE`, shared/settings `SETTINGS_REQUEST_RATE` and shared/onboarding
  * `ONBOARDING_REQUEST_RATE` / `TUTORIAL_START_RATE` / `TUTORIAL_FINISH_RATE` / `TUTORIAL_STEP_RATE` /
  * `TUTORIAL_REPORT_RATE`, shared/records `RECORDS_REQUEST_RATE`,
- * shared/daily `DAILY_REQUEST_RATE`, shared/run `RUN_RECAP_RATE`).
+ * shared/daily `DAILY_REQUEST_RATE`, shared/run `RUN_RECAP_RATE`, shared/codex `CODEX.claimRate` for each of
+ * `requestCodex` / `codexClaim` / `codexViewed`).
  *
  * Bind side-specific handlers with `GlobalEvents.createServer` (src/server/network.ts) and `GlobalEvents.createClient`
  * (the client's network module, task 8), never here.
@@ -417,6 +419,23 @@ export interface ClientToServerEvents {
 	runRecap(report: RunRecapReport): void;
 	/** The Daily (docs/DAILY.md): asks for today's status; answered with `dailyStatus`. Rate limited. */
 	requestDaily(): void;
+	/**
+	 * The Codex (claude/codex-plan.md): asks for this player's Codex; answered with `codexStatus` once the join load and
+	 * seed ended (an earlier request is answered by the join-end push). Rate limited (CODEX.claimRate).
+	 */
+	requestCodex(): void;
+	/**
+	 * The Codex: entries this client saw or found (`tier` 1 seen / 2 found, `floor` the floor it was found on). At most
+	 * CODEX.claimMaxItems items (a longer call is refused whole), ids checked against the catalog, idempotent (a lower
+	 * tier never wins); the server stamps the day. Ignored before the join load and seed ended and after a failed load
+	 * (the client waits for a loaded `codexStatus` and resends). Rate limited (CODEX.claimRate). No reply.
+	 */
+	codexClaim(items: CodexClaim[]): void;
+	/**
+	 * The Codex: the player looked at these entries (their NEW dots clear). At most CODEX.viewedMaxIds ids, ignored
+	 * before the load as `codexClaim`. Rate limited (CODEX.claimRate). No reply.
+	 */
+	codexViewed(ids: string[]): void;
 }
 
 export interface ServerToClientEvents {
@@ -458,6 +477,12 @@ export interface ServerToClientEvents {
 	 * member after a daily run's verdict (DailyService).
 	 */
 	dailyStatus(status: DailyStatus): void;
+	/**
+	 * The Codex (claude/codex-plan.md): this player's entries, NEW dots and seed marker (shared/codex CodexStatus,
+	 * `codexDocOfStatus` reads it back). Sent once after the join load and the one-time seed end (`loaded: false` when
+	 * the load failed: the Codex is unavailable this session) and in answer to `requestCodex`; never before.
+	 */
+	codexStatus(status: CodexStatus): void;
 	/** Co-op (M4): a party run starts (every member gets it, only after every member accepted the invite). */
 	partyRunStarted(start: PartyRunStart): void;
 	/** Lobbies: the lobbies this player may see and join (never closed ones), sorted. Throttled. */

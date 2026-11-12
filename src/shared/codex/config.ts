@@ -10,7 +10,7 @@ export const CODEX_DOC_VERSION = 1;
 export interface CodexTunables {
 	/** DataStore holding one CodexDoc per player, keyed by shared/settings `playerDataKey(userId)`. */
 	readonly dataStore: string;
-	/** Per-player budget for `codexClaim` and `codexViewed` (each). */
+	/** Per-player budget for each of `codexClaim`, `codexViewed` and `requestCodex` (CodexService, one limiter each). */
 	readonly claimRate: { readonly count: number; readonly windowSeconds: number };
 	/** Most items one `codexClaim` call may carry (a longer call is refused whole: decodeCodexClaims). */
 	readonly claimMaxItems: number;
@@ -28,6 +28,17 @@ export interface CodexTunables {
 	readonly floorMax: number;
 	/** `day` stamps are whole UTC days since the unix epoch (codexDay): unix seconds / this. */
 	readonly secondsPerDay: number;
+	/**
+	 * The one-time seed waits at most this long for OnboardingService's join load (its `seen` list); past it the seed
+	 * counts as failed for the session (`seeded` stays unset, retried on the next join) and codexStatus goes out.
+	 */
+	readonly seedWaitSeconds: number;
+	/** How often the seed re-checks OnboardingService's join load while waiting. */
+	readonly seedPollSeconds: number;
+	/** BindToClose: give up waiting for the last saves after this many seconds (Roblox allows about 30). */
+	readonly shutdownSaveSeconds: number;
+	/** BindToClose: how often it re-checks the pending saves. */
+	readonly shutdownPollSeconds: number;
 }
 
 export const CODEX: CodexTunables = table.freeze({
@@ -41,6 +52,10 @@ export const CODEX: CodexTunables = table.freeze({
 	writeFromStudio: false,
 	floorMax: 999,
 	secondsPerDay: 86400,
+	seedWaitSeconds: 30,
+	seedPollSeconds: 0.25,
+	shutdownSaveSeconds: 25,
+	shutdownPollSeconds: 0.1,
 });
 
 /** DataStore calls (load, merge writes): the settings policy (3 tries, waiting 1 s then 2 s), like the records. */
