@@ -29,6 +29,7 @@ import {
 	FORTUNE_SCORE_SOURCE_KEYS,
 	FORTUNE_STRING_KEYS,
 	GOLDEN_BESTIARY_KEY,
+	GOLDEN_RUMOUR_AUDIO_IDS,
 	GOLDEN_COIN_FX_ID,
 	GOLDEN_COIN_ROLE,
 	HORDE_ROOM_CLEAR_KEY,
@@ -138,7 +139,8 @@ describe("fortune: contract", () => {
 			"sfx.golden.jackpot",
 			"sfx.golden.escape",
 		]);
-		expect(tail(PORT_AUDIO_EVENTS, FORTUNE_AUDIO_IDS.size(), FLOOR_MOD_AFTER.audio)).toEqual([
+		// docs/FLOOR_MODIFIERS.md FM7's five, then docs/GOLDLING_RUMOURS.md GR6's two rumours come after them
+		expect(tail(PORT_AUDIO_EVENTS, FORTUNE_AUDIO_IDS.size(), FLOOR_MOD_AFTER.audio + GOLDEN_RUMOUR_AUDIO_IDS.size())).toEqual([
 			...FORTUNE_AUDIO_IDS,
 		]);
 		for (const id of FORTUNE_AUDIO_IDS) {
@@ -148,6 +150,21 @@ describe("fortune: contract", () => {
 			for (const p of sortedKeys(THEME_PACKS))
 				expect([p, id, THEME_PACKS[p].assets[id].kind]).toEqual([p, id, p === "vale" ? "sound" : "silent"]);
 		}
+	});
+
+	it("appends the Goldling's two rumours last (docs/GOLDLING_RUMOURS.md GR6): required, sfx; SILENT in every pack", () => {
+		expect([...GOLDEN_RUMOUR_AUDIO_IDS]).toEqual(["sfx.golden.rumour.floor", "sfx.golden.rumour.room"]);
+		expect(tail(PORT_AUDIO_EVENTS, GOLDEN_RUMOUR_AUDIO_IDS.size())).toEqual([...GOLDEN_RUMOUR_AUDIO_IDS]);
+		for (const id of GOLDEN_RUMOUR_AUDIO_IDS) {
+			expect([id, has(REQUIRED_ASSET_IDS, id), slotFor(id)?.soundGroup]).toEqual([id, true, "sfx"]);
+			for (const p of sortedKeys(THEME_PACKS))
+				expect([p, id, THEME_PACKS[p].assets[id].kind]).toEqual([p, id, "silent"]);
+		}
+		// a pack without them still fails validation (required), and the placeholder validates with them silent
+		expect(validateManifest(clone())).toEqual([]);
+		const m = clone();
+		(m.assets as Obj)["sfx.golden.rumour.room"] = undefined;
+		expect(validateManifest(m).size() > 0).toBe(true);
 	});
 
 	it("the coin burst is an optional fx ID (only vale has it, FO10), tinted by golden.coin under the fx rule", () => {

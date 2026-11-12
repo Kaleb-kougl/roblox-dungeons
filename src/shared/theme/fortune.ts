@@ -1,7 +1,7 @@
 /**
  * Roblox port (docs/FORTUNE.md FO6): the theme's Fortune keys, for the pacts' and the Goldling's views (FO7 / FO8) and
- * the cue mapper (FO9): the pact altar (asset ID and slot), the colour roles, the eight sounds, the optional coin
- * effect and every string. Data only, like pellets.ts: contract.ts and validate.ts sit near Luau's 200-locals-per-function
+ * the cue mapper (FO9): the pact altar (asset ID and slot), the colour roles, the eight sounds (and the Goldling's two
+ * rumours, docs/GOLDLING_RUMOURS.md GR6), the optional coin effect and every string. Data only, like pellets.ts: contract.ts and validate.ts sit near Luau's 200-locals-per-function
  * limit, so neither imports this module: contract.ts names the same IDs inline inside its existing lists (SLOTS,
  * REQUIRED_ASSET_IDS, PORT_AUDIO_EVENTS, FX_IDS, ROOM_CLEAR_STRING_KEYS, REQUIRED_STRING_KEYS) and fortune.spec.ts checks
  * they agree. The colour rules and `fortuneReport` are in fortuneColors.ts, folded into variantColors.ts' problems
@@ -68,6 +68,14 @@ export const FORTUNE_AUDIO_IDS: ReadonlyArray<string> = [
 	"sfx.golden.jackpot",
 	"sfx.golden.escape",
 ];
+
+/**
+ * The Goldling's rumours (docs/GOLDLING_RUMOURS.md GR6; port audio IDs appended to PORT_AUDIO_EVENTS after
+ * FORTUNE_AUDIO_IDS, required, SILENT in the placeholder): the floor rumour (a soft, muffled coin jingle once per floor
+ * with a hidden Goldling) and the room rumour (the same jingle, closer and brighter, when its room engages). Plain sfx
+ * (no music duck, not a jingle). While silent each falls back to sfx.golden.hit (shared/view/audio SFX_FALLBACK).
+ */
+export const GOLDEN_RUMOUR_AUDIO_IDS: ReadonlyArray<string> = ["sfx.golden.rumour.floor", "sfx.golden.rumour.room"];
 
 /**
  * The line a dimmed altar shows, one per shared/sim PACT_DIM_NAMES entry but `none` (`pact.dim.<name>`, PactDim

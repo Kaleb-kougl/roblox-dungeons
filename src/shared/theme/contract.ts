@@ -939,6 +939,10 @@ export const PORT_AUDIO_EVENTS = [
 	"sfx.floor.modifier.feast",
 	"sfx.floor.modifier.plunder",
 	"sfx.floor.modifier.bloodmoon",
+	// docs/GOLDLING_RUMOURS.md GR6 (fortune.ts GOLDEN_RUMOUR_AUDIO_IDS, the same list): a Goldling hides on this floor
+	// (a soft, far-off coin jingle), its room engaged (the same jingle, closer and brighter)
+	"sfx.golden.rumour.floor",
+	"sfx.golden.rumour.room",
 ] as const;
 
 /**

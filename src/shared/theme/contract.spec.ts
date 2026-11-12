@@ -188,10 +188,11 @@ describe("required IDs and strings", () => {
 		// + docs/FORTUNE.md FD9: 1 enemy archetype (enemy.golden). + FO6: 8 port audio events (sfx.pact.take,
 		// sfx.horde.*, sfx.golden.*), the pact altar. + docs/LEGENDARIES.md LG5: 2 port audio events (sfx.build.overkill,
 		// sfx.build.brace). + docs/BUILDS_V2.md BV10: 5 port audio events (sfx.build.counter / .pin / .slam / .smash /
-		// .beam). + docs/FLOOR_MODIFIERS.md FM7: 5 port audio events (sfx.floor.modifier.*).
+		// .beam). + docs/FLOOR_MODIFIERS.md FM7: 5 port audio events (sfx.floor.modifier.*). + docs/GOLDLING_RUMOURS.md
+		// GR6: 2 port audio events (sfx.golden.rumour.floor / .room).
 		const assetsBefore =
 			60 + 1 + 2 + 2 + 37 + 5 + 4 + 2 + 1 + 5 + 2 + 4 + 9 + 2 + 1 + 5 + 1 + 6 + 3 + 2 + 2 + 4 + 3 + 1 + 8 + 1 + 2;
-		expect(REQUIRED_ASSET_IDS.size()).toBe(assetsBefore + 5 + 5);
+		expect(REQUIRED_ASSET_IDS.size()).toBe(assetsBefore + 5 + 5 + 2);
 		expect(AUDIO_EVENTS.size()).toBe(20);
 		expect(new Set(REQUIRED_ASSET_IDS).size()).toBe(REQUIRED_ASSET_IDS.size());
 		for (const id of REQUIRED_ASSET_IDS) {

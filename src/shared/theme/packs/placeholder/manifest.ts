@@ -542,6 +542,9 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"sfx.floor.modifier.feast": SILENT,
 		"sfx.floor.modifier.plunder": SILENT,
 		"sfx.floor.modifier.bloodmoon": SILENT,
+		// docs/GOLDLING_RUMOURS.md GR6: the Goldling's floor and room rumours
+		"sfx.golden.rumour.floor": SILENT,
+		"sfx.golden.rumour.room": SILENT,
 		"music.menu": SILENT,
 		"music.biome.1": SILENT,
 		"music.biome.2": SILENT,

@@ -50,7 +50,7 @@ import {
 	treasureUiRole,
 } from "./treasure";
 import { TREASURE_COLOR_RULES, treasureReport } from "./treasureColors";
-import { FORTUNE_AUDIO_IDS, FORTUNE_ROLES, FORTUNE_STRING_KEYS } from "./fortune";
+import { FORTUNE_AUDIO_IDS, FORTUNE_ROLES, FORTUNE_STRING_KEYS, GOLDEN_RUMOUR_AUDIO_IDS } from "./fortune";
 import { FLOOR_MODIFIER_AUDIO_IDS, FLOOR_MODIFIER_ROLES, FLOOR_MODIFIER_STRING_KEYS } from "./floorModifiers";
 import { COLOR_ROLES } from "./types";
 import { deepClone, sortedKeys, type Obj } from "./util";
@@ -80,12 +80,12 @@ function tail(list: ReadonlyArray<string>, n: number, skip = 0): string[] {
 
 /**
  * Entries docs/FORTUNE.md FO6 appended after the treasure rooms' (fortune.spec.ts checks them), then docs/FLOOR_MODIFIERS.md
- * FM7's (floorModifiers.spec.ts).
+ * FM7's (floorModifiers.spec.ts), then docs/GOLDLING_RUMOURS.md GR6's two sounds.
  */
 const FORTUNE_AFTER = {
 	assets: 1,
 	roles: FORTUNE_ROLES.size() + FLOOR_MODIFIER_ROLES.size(),
-	audio: FORTUNE_AUDIO_IDS.size() + FLOOR_MODIFIER_AUDIO_IDS.size(),
+	audio: FORTUNE_AUDIO_IDS.size() + FLOOR_MODIFIER_AUDIO_IDS.size() + GOLDEN_RUMOUR_AUDIO_IDS.size(),
 } as const;
 
 function printEntry(tag: string, id: string, e: ReturnType<typeof treasureReport>[number]): void {
