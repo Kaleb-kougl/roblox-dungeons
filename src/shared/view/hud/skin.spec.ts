@@ -19,6 +19,7 @@ import {
 	contentInsetsOf,
 	dividerShown,
 	fitArt,
+	fitArtWithin,
 	fitTurnedArt,
 	focusCornerBox,
 	iconShown,
@@ -148,6 +149,23 @@ describe("fitArt", () => {
 		expect(f.scale).toBe(1);
 		expect(f.w).toBe(40 / 0.6);
 		expect(f.w > 24).toBe(true);
+	});
+
+	it("fitArtWithin: fitArt whenever a whole scale fits", () => {
+		expect(fitArtWithin(18, 15, 24, 24, 1.5)).toEqual(fitArt(18, 15, 24, 24, 1.5));
+		expect(fitArtWithin(48, 60, 60, 60, 1)).toEqual(fitArt(48, 60, 60, 60, 1));
+		expect(fitArtWithin(48, 60, 60, 60, 2.5)).toEqual(fitArt(48, 60, 60, 60, 2.5));
+	});
+
+	it("fitArtWithin: art that overflows at k = 1 shrinks into the box", () => {
+		const f = fitArtWithin(48, 60, 40, 40, 0.6);
+		expect(f.scale < 1).toBe(true);
+		expect(f.h).toBeCloseTo(40, 9);
+		expect(f.w).toBeCloseTo(32, 9);
+		expect(f.w <= 40 + 1e-9 && f.h <= 40 + 1e-9).toBe(true);
+		const turned = fitTurnedArt(48, 60, 40, 30, 1, 90, true);
+		expect(turned.h <= 40 + 1e-9 && turned.w <= 30 + 1e-9).toBe(true);
+		expect(fitTurnedArt(48, 60, 40, 30, 1, 90).scale).toBe(1);
 	});
 
 	it("degenerate inputs fall back to k = 1", () => {

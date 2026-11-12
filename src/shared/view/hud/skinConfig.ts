@@ -80,7 +80,10 @@ export const UI_ART = {
 		 * (one screen px per art px), a little over the title's line (HUD_VIEW.bigText 36 + 4).
 		 */
 		header: 44,
-		/** The spectate bar's ghost (48 x 60 art): never over its box at UIScale >= 1; the bar is ~90 reference px tall. */
+		/**
+		 * The spectate bar's ghost (48 x 60 art), its largest box: the ghost takes the bar's height inside its frame rails
+		 * up to this (spectateGhostBox), shrinking below one screen px per art px on a small screen.
+		 */
 		ghost: 60,
 	},
 	/**

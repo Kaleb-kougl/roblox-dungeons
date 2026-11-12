@@ -11,7 +11,7 @@ import {
 	useUiFonts,
 	type FontRole,
 } from "client/ui/theme";
-import type { ColorRole, ImageRef } from "shared/theme";
+import type { ColorRole, ImageRef, SliceInsets } from "shared/theme";
 import {
 	DRAFT_REVEAL_VIEW,
 	HUD_VIEW,
@@ -309,6 +309,17 @@ export function Panel(props: PanelProps) {
 			{props.overlay}
 		</frame>
 	);
+}
+
+/**
+ * The visible border (art px per side, contentInsetsOf) of the frame art a Panel with this `skin` (and corner
+ * placement) is drawn on; undefined when it is drawn flat.
+ */
+export function panelArtInsets(skin: PanelSkin | undefined, corner = false): Readonly<SliceInsets> | undefined {
+	const context = panelSkinContext(skin, corner);
+	if (context === undefined) return undefined;
+	const id = skinFor(skinHasOf(UI_IMAGES), "panel", context);
+	return id !== undefined ? contentInsetsOf(id, uiImage(id)?.slice) : undefined;
 }
 
 /**
@@ -679,6 +690,11 @@ export interface ArtImageProps {
 	 * top bar, in screen px).
 	 */
 	uiScale?: number;
+	/**
+	 * Shrink art that overflows `box` even at one screen px per art px to fit it (fitArtWithin) instead of letting it
+	 * spill over: for a box that is the room the icon has (the spectate bar's ghost). Default off.
+	 */
+	shrink?: boolean;
 }
 
 /**
@@ -703,7 +719,7 @@ function DrawnArtImage(p: { image: ImageRef; props: ArtImageProps }) {
 	const [boxW, boxH] = typeIs(box, "Vector2") ? [box.X, box.Y] : [box.w, box.h];
 	const r = ref.rect;
 	const rotation = props.rotation ?? 0;
-	const fit = fitTurnedArt(r?.w ?? ref.w, r?.h ?? ref.h, boxW, boxH, uiScale, rotation);
+	const fit = fitTurnedArt(r?.w ?? ref.w, r?.h ?? ref.h, boxW, boxH, uiScale, rotation, props.shrink === true);
 	const z = props.zIndex ?? 1;
 	return (
 		<frame
