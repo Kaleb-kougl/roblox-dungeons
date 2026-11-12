@@ -49,6 +49,11 @@ export const CODEX_CHIP = {
 	popSeconds: 0.18,
 } as const;
 
+/** A codex toast's line (CX7): the entry's tile art before the chip, this many reference px square (the line's height). */
+export const CODEX_TOAST = {
+	iconBox: 16,
+} as const;
+
 /** The chip's scale `elapsed` seconds after it appeared (1 once settled, and always under Reduced motion). */
 export function codexChipScale(elapsed: number, reducedMotion: boolean): number {
 	if (reducedMotion || elapsed >= CODEX_CHIP.popSeconds) return 1;

@@ -2,6 +2,7 @@
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { SIM_HZ } from "shared/sim";
 import { PORTRAIT } from "shared/view";
+import { CODEX_SCREEN, codexTabRowWidth } from "shared/view/codex";
 import { NO_RECAP_TALLY, type RecapTallySource } from "shared/view/fx";
 import {
 	DAILY_RANK,
@@ -124,8 +125,13 @@ function estimates(uiScale: number, compact: boolean): ReadonlyMap<string, Estim
 	out.set("mainMenu", {
 		w: compact ? MENU_FIT.mainCompactWidth : MENU_VIEW.mainWidth,
 		h: compact
-			? column([big, BUTTON, BUTTON, BUTTON, TWO_SMALL_LINES], BIG, uiScale) // Credits beside the invite reason
-			: column([big, BUTTON, BUTTON, BUTTON, TWO_SMALL_LINES, BUTTON, BUTTON, BUTTON, BUTTON], BIG, uiScale),
+			? column([big, BUTTON, BUTTON, BUTTON, TWO_SMALL_LINES], BIG, uiScale) // Codex, Credits beside the reason
+			: // claude/codex-plan.md CX7: Tutorial, Options, Leaderboard, Codex, Credits under the invite reason.
+			  column(
+					[big, BUTTON, BUTTON, BUTTON, TWO_SMALL_LINES, BUTTON, BUTTON, BUTTON, BUTTON, BUTTON],
+					BIG,
+					uiScale,
+			  ),
 		ornament: true,
 	});
 	// Solo pause on touch: title, five buttons, the divider, the info line (two lines); no key hints.
@@ -226,6 +232,18 @@ function estimates(uiScale: number, compact: boolean): ReadonlyMap<string, Estim
 		ornament: false,
 		flex: { min: MENU_FIT.listMin, max: MENU_VIEW.listHeight },
 	});
+	// claude/codex-plan.md CX7: the Codex: title, the tab row (a scroll bar when it overflows), the grid (the flexible
+	// list; the detail beside it is as tall), Back (no key hint on touch).
+	const codexW = compact ? CODEX_SCREEN.compactWidth : CODEX_SCREEN.width;
+	const codexTabs =
+		CODEX_SCREEN.tab.h +
+		(codexTabRowWidth(HUD_VIEW.gap) > codexW - 2 * CODEX_SCREEN.pad ? CODEX_SCREEN.scrollBar : 0);
+	out.set("codex", {
+		w: codexW,
+		h: column([title, codexTabs, CODEX_SCREEN.gridHeight, MENU_VIEW.smallButton.y], BIG, uiScale),
+		ornament: false,
+		flex: { min: CODEX_SCREEN.gridMin, max: CODEX_SCREEN.gridHeight },
+	});
 	out.set("leaderboard", {
 		w: LEADERBOARD_VIEW.width,
 		h: column([title, BUTTON, LINE(HUD_VIEW.smallText), board, LINE(HUD_VIEW.smallText), BUTTON], BIG, uiScale),
@@ -281,6 +299,7 @@ const SCREENS = [
 	"options",
 	"lobbyBrowser",
 	"credits",
+	"codex",
 	"lobbyRoom",
 	"lobbyRoomInviting",
 	"tutorialOutro",
@@ -339,6 +358,15 @@ describe("menu fit on phones (docs/UI_ART.md Phones)", () => {
 		for (const name of ["pause", "runOver", "lobbyRoomInviting"]) {
 			expect(u * fitOn(s, all.get(name)!, u, true).factor).toBeGreaterThan(0.65);
 		}
+	});
+
+	it("the phone's last row fits the invite reason, Codex and Credits (claude/codex-plan.md CX7, R10)", () => {
+		const inner = MENU_FIT.mainCompactWidth - HUD_VIEW.pad * 4;
+		const reason = inner - 2 * (MENU_VIEW.smallButton.x + HUD_VIEW.gap);
+		// The reason keeps two lines' room at the small text size (the widest reason wraps once).
+		expect(reason).toBeGreaterThanOrEqual(2 * MENU_VIEW.smallButton.x);
+		// Two full buttons per row (Options, Leaderboard) still fit the compact column.
+		expect(2 * HUD_VIEW.buttonSize.x + HUD_VIEW.gap).toBeLessThanOrEqual(inner);
 	});
 
 	it("the main menu keeps its ornament on every phone; it never costs the panel any size", () => {
@@ -406,6 +434,26 @@ function narrowEstimates(uiScale: number): ReadonlyMap<string, Estimate> {
 	const compactMain = estimates(uiScale, true).get("mainMenu")!;
 	// The stacked main menu with the Daily card and podium under Play solo's row (generously 240 tall).
 	out.set("mainMenu", { ...compactMain, h: compactMain.h + 240 });
+	// claude/codex-plan.md CX7: the upright Codex, one column: the scrolling tab row, the grid, the detail sheet under it.
+	out.set("codex", {
+		w: CODEX_SCREEN.narrowWidth,
+		h:
+			column(
+				[
+					LINE(HUD_VIEW.titleText),
+					CODEX_SCREEN.tab.h + CODEX_SCREEN.scrollBar,
+					CODEX_SCREEN.gridHeight,
+					CODEX_SCREEN.sheetHeight,
+					MENU_VIEW.smallButton.y,
+				],
+				BIG,
+				uiScale,
+			) +
+			CODEX_SCREEN.detailGap -
+			HUD_VIEW.gap,
+		ornament: false,
+		flex: { min: CODEX_SCREEN.gridMin, max: CODEX_SCREEN.gridHeight },
+	});
 	const lineH = LINE(HUD_VIEW.textSize);
 	const breakdown = SCORE_LINES * lineH + (SCORE_LINES - 1) * HUD_VIEW.gap + HUD_VIEW.pad * 2;
 	out.set("runOver", {
@@ -506,6 +554,15 @@ describe("menu fit on a touchscreen and in portrait", () => {
 				}
 			}
 		}
+	});
+
+	it("the upright Codex fits a 360 pt phone at the full touch scale (claude/codex-plan.md CX7)", () => {
+		const s: Screen = { name: "360x780", x: 360, y: 780, insets: { top: TOP, left: 0, right: 0, bottom: 34 } };
+		const u = computeHudScale(s.x, s.y, false, 100, true);
+		const e = narrowEstimates(u).get("codex")!;
+		const fit = narrowFit(s, e, u);
+		expect([fit.overflow, fit.factor]).toEqual([false, 1]);
+		expectInside(s, e, fit, u);
 	});
 
 	it("the portrait main menu and run over keep the full floor (only the widest screens use the narrow one)", () => {

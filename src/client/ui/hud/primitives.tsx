@@ -43,7 +43,7 @@ import {
 	type SkinPadding,
 	type SkinPanelContext,
 } from "shared/view/hud";
-import { GAMEPAD_MENU } from "shared/view/menu";
+import { GAMEPAD_MENU, MENU_VIEW } from "shared/view/menu";
 import { cornerFadeBinding, cornerRef } from "./cornerFade";
 import { useArtScale } from "./useHudScale";
 
@@ -867,6 +867,49 @@ export interface MenuButtonProps {
 	 * left under the label, drawn from the binding (no re-render per frame). Absent: exactly the button as before.
 	 */
 	fill?: React.Binding<number>;
+	/**
+	 * A count badge on the button's top-right corner (claude/codex-plan.md CX7: the Codex button's NEW count, already
+	 * formatted: `3`, `9+`): a uiAccent pill (MENU_VIEW.buttonBadge). Absent or empty: no badge, the button as before.
+	 */
+	badge?: string;
+}
+
+/** A MenuButton's count badge: a uiAccent pill over its top-right corner, never taking input. */
+function ButtonBadge(props: { text: string }) {
+	const fonts = useUiFonts();
+	const B = MENU_VIEW.buttonBadge;
+	return (
+		<frame
+			key="Badge"
+			AnchorPoint={new Vector2(1, 0)}
+			Position={new UDim2(1, B.offset, 0, -B.offset)}
+			Size={new UDim2()}
+			AutomaticSize={Enum.AutomaticSize.XY}
+			BackgroundColor3={role("uiAccent")}
+			BorderSizePixel={0}
+			Active={false}
+			ZIndex={B.zIndex}
+		>
+			<uicorner CornerRadius={new UDim(HALF, 0)} />
+			<uipadding
+				PaddingLeft={new UDim(0, B.padX)}
+				PaddingRight={new UDim(0, B.padX)}
+				PaddingTop={new UDim(0, B.padY)}
+				PaddingBottom={new UDim(0, B.padY)}
+			/>
+			<textlabel
+				Size={new UDim2()}
+				AutomaticSize={Enum.AutomaticSize.XY}
+				BackgroundTransparency={HIDDEN}
+				Active={false}
+				ZIndex={B.zIndex}
+				Font={fontFor(fonts)}
+				TextSize={textSizeFor(fonts, B.textSize)}
+				TextColor3={role("background")}
+				Text={props.text}
+			/>
+		</frame>
+	);
 }
 
 /** A hold's fill under a button's label: uiAccent from the left edge, as wide as the binding, hidden at 0. */
@@ -901,6 +944,7 @@ export const MenuButton = React.forwardRef<TextButton, MenuButtonProps>((props, 
 	const size = props.size ?? new Vector2(HUD_VIEW.buttonSize.x, HUD_VIEW.buttonSize.y);
 	const active = props.active === true;
 	const disabled = props.disabled === true;
+	const badge = props.badge !== undefined && props.badge !== "" ? props.badge : undefined;
 	// docs/STAGE_ASSETS.md SA18: the flat button until its art has downloaded (useUiArt re-renders on the flip)
 	useUiArt();
 	const has = skinHasOf(UI_IMAGES);
@@ -959,6 +1003,7 @@ export const MenuButton = React.forwardRef<TextButton, MenuButtonProps>((props, 
 						TextTransparency={disabled ? DISABLED_TEXT : 0}
 					/>
 				)}
+				{badge !== undefined ? <ButtonBadge text={badge} /> : undefined}
 				{corners ? (
 					focused ? (
 						<FocusCorners key="Focus" zIndex={SKIN_Z.corners} />
@@ -1007,6 +1052,7 @@ export const MenuButton = React.forwardRef<TextButton, MenuButtonProps>((props, 
 				Color={role(focused || active ? "uiAccent" : "uiTextDim")}
 			/>
 			{props.fill !== undefined ? <HoldFill key="HoldFill" fill={props.fill} /> : undefined}
+			{badge !== undefined ? <ButtonBadge text={badge} /> : undefined}
 			{props.fill !== undefined ? (
 				// With a fill the label is a child above it (a button's own text draws under its children).
 				<textlabel

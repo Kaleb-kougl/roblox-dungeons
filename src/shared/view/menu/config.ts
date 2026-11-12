@@ -35,6 +35,11 @@ export const MENU_VIEW = {
 	tagWidth: 100,
 	smallButton: { x: 110, y: 30 },
 	wideButton: { x: 180, y: 30 },
+	/**
+	 * A MenuButton's count badge (claude/codex-plan.md CX7: the Codex button's NEW count): a uiAccent pill on the
+	 * button's top-right corner, `offset` px out past it each way, its text padded by padX / padY.
+	 */
+	buttonBadge: { textSize: 14, padX: 5, padY: 1, offset: 6, zIndex: 6 },
 	/** Invite toasts (top right, on menu screens) and the in-run invite badge (bottom centre). */
 	inviteToastWidth: 380,
 	inviteToastTop: 16,

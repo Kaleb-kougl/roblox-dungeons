@@ -157,7 +157,13 @@ describe("PAD_SURFACES census (GM1)", () => {
 describe("menuPadAction (section 3, 4.3)", () => {
 	it("B is never destructive on a tap: back / close / resume / cancel, or a hold on the run-over panel", () => {
 		const b = (s: PadSurface) => menuPadAction(s, PAD_KEYS.b, NOTHING).kind;
-		expect([b("lobbies"), b("lobby"), b("credits"), b("invites")]).toEqual(["back", "back", "back", "back"]);
+		expect([b("lobbies"), b("lobby"), b("credits"), b("codex"), b("invites")]).toEqual([
+			"back",
+			"back",
+			"back",
+			"back",
+			"back",
+		]);
 		expect([b("options"), b("leaderboard"), b("party")]).toEqual(["close", "close", "close"]);
 		expect(b("pause")).toBe("resume");
 		expect(b("confirm")).toBe("cancel");
@@ -183,6 +189,15 @@ describe("menuPadAction (section 3, 4.3)", () => {
 		}
 		for (const s of PAD_SURFACE_IDS) {
 			if (s === "options" || s === "leaderboard") continue;
+			// claude/codex-plan.md CX7: the Codex's bumpers step its tabs (below); its triggers do nothing.
+			if (s === "codex") {
+				expect(menuPadAction(s, PAD_KEYS.lb, NOTHING).kind).toBe("tabPrev");
+				expect(menuPadAction(s, PAD_KEYS.rb, NOTHING).kind).toBe("tabNext");
+				for (const k of [PAD_KEYS.lt, PAD_KEYS.rt]) {
+					expect([s, k, menuPadAction(s, k, EVERYTHING).kind]).toEqual([s, k, "none"]);
+				}
+				continue;
+			}
 			// The run-over panel's bumpers: a party run's tabs (below); its triggers do nothing.
 			const keys =
 				s === "runOver" ? [PAD_KEYS.lt, PAD_KEYS.rt] : [PAD_KEYS.lb, PAD_KEYS.rb, PAD_KEYS.lt, PAD_KEYS.rt];

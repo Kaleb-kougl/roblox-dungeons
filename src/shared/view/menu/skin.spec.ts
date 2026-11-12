@@ -19,6 +19,7 @@ const MENU_SCREENS: ReadonlyArray<UiScreen> = [
 	"mainMenu",
 	"lobbyBrowser",
 	"credits",
+	"codex",
 	"character",
 	"lobbyRoom",
 	"options",
