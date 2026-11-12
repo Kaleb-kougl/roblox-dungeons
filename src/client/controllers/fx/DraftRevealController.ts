@@ -7,6 +7,8 @@ import { draftConfirmHeld, draftNeverRevealed } from "shared/play";
 import { isPortrait } from "shared/view";
 import { DRAFT_MIN_OPEN_TICKS, DRAFT_OFFER_COUNT, PactKind, pactDraftKind } from "shared/sim";
 import { GreedDealGap, draftTitleKey } from "shared/view/pacts";
+import { codexCardId } from "shared/codex";
+import { DraftNewTags } from "shared/view/codex";
 import { getActiveThemePack } from "shared/theme";
 import type { JuiceSettings } from "shared/settings";
 import {
@@ -30,6 +32,7 @@ import { AudioController } from "../audio/AudioController";
 import { InputController } from "../game/InputController";
 import { SimController, type DraftRevealDriver, type RunContext } from "../game/SimController";
 import { StageController } from "../game/StageController";
+import { CodexController } from "./CodexController";
 import { FxTrackerController } from "./FxTrackerController";
 
 const HALF = 0.5;
@@ -81,6 +84,9 @@ function localDraft(ctx: RunContext): LocalDraft | undefined {
  * unpaused real time after the draft opened (shared/view/pacts GreedDealGap: the take's pulse and toast first, the
  * confirm held meanwhile like any open draft whose reveal has not begun), and the title reads `hud.draft.title.greed`
  * (DRAFT_UI.titleKey from shared/sim pactDraftKind, written at the begin).
+ * The Codex (claude/codex-plan.md CX8): at the begin each card's NEW tag is decided (CodexController.showsNewTag of the
+ * card's entry at its dealt kind) and drawn per frame once that card's flip settled (shared/view/codex DraftNewTags:
+ * DRAFT_UI newTagT / newTagScale; the reveal's timeline is only read).
  * Cleared on run start / exit (and a new run counter), a floor change without a local draft, and the tutorial's end.
  * Registers with SimController (setDraftRevealDriver) and InputController (setDraftTapFilter), so neither injects
  * this (no Flamework cycle). Presentation and client input only: nothing here writes the sim.
@@ -109,6 +115,9 @@ export class DraftRevealController implements OnStart, DraftRevealDriver {
 	/** DRAFT_UI shows something (reset once when it stops). */
 	private drawn = false;
 	private debugBeats: DraftBeatId[] | undefined;
+	/** claude/codex-plan.md CX8: the deal's Codex NEW tags (read at the deal, drawn once each flip settled). */
+	private readonly tags = new DraftNewTags();
+	private reducedMotion = false;
 
 	constructor(
 		private readonly sim: SimController,
@@ -116,6 +125,7 @@ export class DraftRevealController implements OnStart, DraftRevealDriver {
 		private readonly audio: AudioController,
 		private readonly input: InputController,
 		private readonly fx: FxTrackerController,
+		private readonly codex: CodexController,
 	) {}
 
 	onStart(): void {
@@ -238,6 +248,15 @@ export class DraftRevealController implements OnStart, DraftRevealDriver {
 		const has = (key: string) => pack?.hasString(key) === true;
 		const beats: DraftBeatId[] = [];
 		const tones: DraftTone[] = [];
+		// claude/codex-plan.md CX8: a card whose Codex entry (its kind at the deal: an evolution card names the
+		// evolution) is not yet found wears the NEW tag (CodexController.showsNewTag: never in the tutorial or unloaded).
+		const tagged: boolean[] = [];
+		for (let i = 0; i < this.count; i++) {
+			const kind = kinds[i];
+			tagged.push(this.codex.showsNewTag(codexCardId(offers[i], kind === -1 ? undefined : kind)));
+		}
+		this.tags.begin(tagged);
+		this.reducedMotion = reducedMotion;
 		for (let i = 0; i < this.count; i++) {
 			const dealt = draftCardModel(offers[i], kinds[i], build?.levels, build?.duos);
 			const model = dealt !== undefined ? characterDraftCard(dealt, character, has) : undefined;
@@ -344,6 +363,9 @@ export class DraftRevealController implements OnStart, DraftRevealDriver {
 			ui.rayY.write(slot.y);
 			ui.selected.write(look.selected);
 			ui.z.write(look.raised ? DRAFT_SLOT_Z_RAISED : DRAFT_SLOT_Z_REST);
+			const tag = this.tags.look(i, fr.cards[i].textAlpha, look.textAlpha, fr.elapsed, this.reducedMotion);
+			ui.newTagT.write(1 - tag.alpha);
+			ui.newTagScale.write(tag.scale);
 		}
 	}
 
@@ -358,6 +380,7 @@ export class DraftRevealController implements OnStart, DraftRevealDriver {
 		this.lastDraftTicks = 0;
 		this.offers = [];
 		this.count = 0;
+		this.tags.clear();
 		if (this.drawn) {
 			this.drawn = false;
 			resetDraftUi();

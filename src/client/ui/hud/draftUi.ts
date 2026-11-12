@@ -59,6 +59,12 @@ export interface DraftCardUi {
 	readonly selected: ComboUiValue<boolean>;
 	/** The slot's ZIndex in the row (a card drawn larger than its slot draws over the others). */
 	readonly z: ComboUiValue<number>;
+	/**
+	 * claude/codex-plan.md CX8: the Codex NEW tag (shared/view/codex DraftNewTags: a not-yet-found card, once its flip
+	 * settled): its transparency (hidden: 1) and its pop's scale.
+	 */
+	readonly newTagT: ComboUiValue<number>;
+	readonly newTagScale: ComboUiValue<number>;
 }
 
 const HIDDEN = 1;
@@ -106,6 +112,8 @@ function newCardUi(): DraftCardUi {
 		rayY: new ComboUiValue(0),
 		selected: new ComboUiValue(false),
 		z: new ComboUiValue(DRAFT_SLOT_Z_REST),
+		newTagT: new ComboUiValue(HIDDEN),
+		newTagScale: new ComboUiValue(1),
 	};
 }
 
