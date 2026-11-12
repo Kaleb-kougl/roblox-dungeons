@@ -473,6 +473,11 @@ export const SFX = {
 	 */
 	goldenRumourFloor: "sfx.golden.rumour.floor",
 	goldenRumourRoom: "sfx.golden.rumour.room",
+	/**
+	 * claude/codex-plan.md CX6 / CXD12: a codex toast's soft chime (SightingController plays it when the toast shows; the
+	 * decorated chips and draft tags are silent). SILENT in every pack until CX11 (no fallback: nothing plays).
+	 */
+	codexNew: "sfx.codex.new",
 } as const;
 export type SfxId = (typeof SFX)[keyof typeof SFX];
 
@@ -582,6 +587,7 @@ export const ALL_SFX: ReadonlyArray<SfxId> = [
 	SFX.floorModifierBloodMoon,
 	SFX.goldenRumourFloor,
 	SFX.goldenRumourRoom,
+	SFX.codexNew,
 ];
 
 /** IDs this port added to the placeholder pack (not in the web contract's AUDIO_EVENTS; theme PORT_AUDIO_EVENTS). */
@@ -677,6 +683,7 @@ export const PORT_SFX: ReadonlyArray<SfxId> = [
 	SFX.floorModifierBloodMoon,
 	SFX.goldenRumourFloor,
 	SFX.goldenRumourRoom,
+	SFX.codexNew,
 ];
 
 /**
@@ -953,6 +960,8 @@ export const SFX_PRIORITY: Readonly<Record<SfxId, number>> = {
 	 */
 	[SFX.goldenRumourFloor]: 45,
 	[SFX.goldenRumourRoom]: 66,
+	/** A codex toast's chime (played outside the mapper's frame; ranked with the menu sounds, just over a confirm). */
+	[SFX.codexNew]: 46,
 	/**
 	 * A boost out of a broken piece (docs/BREAKABLE_DROPS.md BL6): just over a kill drop's landing (the rarer, chosen
 	 * reward), under the pickup; over the piece's own break (40), which plays on the same frame.

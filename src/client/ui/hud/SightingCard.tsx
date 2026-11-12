@@ -4,7 +4,8 @@ import { selectInputDevice, selectSighting } from "client/store";
 import { str } from "client/ui/theme";
 import { HUD_TRANSIENT, HUD_VIEW, SIGHTING_CARD, TOUCH_SIGHTING_BOX } from "shared/view/hud";
 import { screenSkin } from "shared/view/menu";
-import { Panel, Text } from "./primitives";
+import { CodexChip } from "./CodexChip";
+import { Panel, Row, Text } from "./primitives";
 import { useTouchStrip } from "./touchStripContext";
 
 /**
@@ -14,6 +15,10 @@ import { useTouchStrip } from "./touchStripContext";
  * panel (HUD_TRANSIENT.sighting, held out of HUD_CLEAR_ZONE by footprint.spec.ts); on touch at the safe area's top left
  * (TOUCH_SIGHTING_BOX), under the touch strip when the strip hangs below the top bar. It fades under the action on its
  * own occlusion slot (`sighting`, HudOcclusionController).
+ *
+ * The Codex (claude/codex-plan.md CX6): a card whose entry rose in the Codex this run wears the NEW! chip on a row above
+ * its (unchanged) line; a codex toast (`codexId`: a first kill, a vault chest's relic, a boss down) is one line, the chip
+ * then `{name} · Codex`. CX7's tile art for the entry goes before the chip there (the `codexId` hook); text only today.
  */
 export function SightingCard() {
 	const sighting = useSelector(selectSighting);
@@ -35,14 +40,29 @@ export function SightingCard() {
 			skin={screenSkin("toast")}
 			name="Sighting"
 		>
-			<Text
-				key={`s${sighting.id}`}
-				order={1}
-				size={HUD_VIEW.smallText}
-				color="uiAccent"
-				wrap={true}
-				text={str(sighting.key)}
-			/>
+			{sighting.codexId !== undefined ? (
+				<Row key={`c${sighting.id}`} order={1}>
+					<CodexChip order={1} />
+					<Text
+						order={2}
+						size={HUD_VIEW.smallText}
+						color="uiAccent"
+						text={str(sighting.key, { name: sighting.nameKey !== undefined ? str(sighting.nameKey) : "" })}
+					/>
+				</Row>
+			) : (
+				<>
+					{sighting.codexNew === true ? <CodexChip key={`n${sighting.id}`} order={1} /> : undefined}
+					<Text
+						key={`s${sighting.id}`}
+						order={2}
+						size={HUD_VIEW.smallText}
+						color="uiAccent"
+						wrap={true}
+						text={str(sighting.key)}
+					/>
+				</>
+			)}
 		</Panel>
 	);
 }

@@ -33,11 +33,12 @@
  *
  * Toasts (only when eligibility.toasts: never in the tutorial, which claims silently; R8), CXD7 / R14:
  *   - chip: the entry's existing toast this frame gets the NEW! chip: boon found (boon toast), evolution found (the
- *     evolved toast), duo found, a pedestal relic (the relic toast: frame.pedestalRelics), curse found;
+ *     evolved toast), duo found, a pedestal relic (the relic toast: frame.pedestalRelics), curse found, boost found
+ *     (its `hud.toast.boost` pickup toast; CX6 lead decision: no separate codex toast for a boost);
  *   - card: a first sighting with a bestiary line (`bestiary.<id>`: the SightingCard shows it later through its own
  *     queue; sightingChip(id) tells the card to wear the chip). Always, outside the budget: a first sighting is new by
  *     definition, and the card plays anyway;
- *   - codex: a codex toast (nothing else toasts): an enemy / affix / boss found, a boost found, a sighting of a kind
+ *   - codex: a codex toast (nothing else toasts): an enemy / affix / boss found, a sighting of a kind
  *     with no bestiary line (swarmer, sniper, bruiser), a relic from a vault chest (no relic toast, R1). At most one
  *     codex toast per entry per run (a swarmer's sighting and its first kill would read the same);
  *   - none: a draft card dealt (the card's NEW tag: showsNewTag), a drop seen, a Greed card, a boss engaging.
@@ -155,14 +156,13 @@ export function codexToastRoute(entry: Readonly<CodexEntry>, tier: CodexTierId, 
 	switch (entry.group) {
 		case "boons":
 		case "curses":
+		case "boosts":
 			return found ? CHIP_ROUTE : NONE_ROUTE;
 		case "evolutions":
 		case "duos":
 			return found ? CHIP_ALWAYS : NONE_ROUTE;
 		case "relics":
 			return !found ? NONE_ROUTE : pedestal ? CHIP_ROUTE : CODEX_ALWAYS;
-		case "boosts":
-			return found ? CODEX_ROUTE : NONE_ROUTE;
 		case "enemies":
 		case "champions":
 			return found ? CODEX_ROUTE : hasSightingCard(entry) ? CARD_ROUTE : CODEX_ROUTE;

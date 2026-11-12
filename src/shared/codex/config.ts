@@ -58,6 +58,23 @@ export const CODEX: CodexTunables = table.freeze({
 	shutdownPollSeconds: 0.1,
 });
 
+/**
+ * The client's send pacing (CodexOutbox, CX6): claims and views are batched and sent at most every `flushSeconds`
+ * (sooner when hurried: run over, the Codex screen closing), and each remote at most `callsPerWindow` calls per
+ * `windowSeconds`: well under the server's CODEX.claimRate (10 / 10 s per remote), whose over-limit calls are lost.
+ */
+export interface CodexOutboxTunables {
+	readonly flushSeconds: number;
+	readonly windowSeconds: number;
+	readonly callsPerWindow: number;
+}
+
+export const CODEX_OUTBOX: CodexOutboxTunables = table.freeze({
+	flushSeconds: 2,
+	windowSeconds: 10,
+	callsPerWindow: 5,
+});
+
 /** DataStore calls (load, merge writes): the settings policy (3 tries, waiting 1 s then 2 s), like the records. */
 export const CODEX_RETRY: RetryPolicy = SETTINGS_RETRY;
 

@@ -113,16 +113,24 @@ function repeated(value: number, n: number): number[] {
 	return out;
 }
 
-/** The toasts at their fullest: maxToasts one-line toasts and the shrine hint. */
+/**
+ * The toasts at their fullest: maxToasts toasts, each wearing the Codex's chip and its `Added to your Codex` line under
+ * it (claude/codex-plan.md CX6: one line plus a small one), and the shrine hint.
+ */
 function toastLines(): number[] {
-	const out = repeated(line(HUD_VIEW.textSize), PROGRESSION_VIEW.maxToasts);
+	const out = repeated(line(HUD_VIEW.textSize) + line(HUD_VIEW.smallText), PROGRESSION_VIEW.maxToasts);
 	out.push(line(HUD_VIEW.smallText));
 	return out;
 }
 
-/** The first-sighting card: its wrapped bestiary line (SIGHTING_CARD.lines lines at smallText). */
+/**
+ * The first-sighting card: the Codex's NEW! chip row (claude/codex-plan.md CX6) and its wrapped bestiary line
+ * (SIGHTING_CARD.lines lines at smallText).
+ */
 function sightingLines(): number[] {
-	return repeated(line(HUD_VIEW.smallText), SIGHTING_CARD.lines);
+	const out = [line(HUD_VIEW.smallText)];
+	for (const h of repeated(line(HUD_VIEW.smallText), SIGHTING_CARD.lines)) out.push(h);
+	return out;
 }
 
 /** The tutorial prompt (wrapped), its progress line and the pause hint. */

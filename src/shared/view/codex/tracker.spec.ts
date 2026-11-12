@@ -161,14 +161,14 @@ describe("CodexTracker: relics, curses, boosts", () => {
 		expect(read(t.update(f)).rises).toEqual([["curse:frailty", F]]);
 	});
 
-	it("a boost drop near the view player is seen (silent); running on you finds it (a codex toast)", () => {
+	it("a boost drop near the view player is seen (silent); running on you finds it (a chip on its pickup toast)", () => {
 		const t = tracker();
 		const f = frame();
 		f.drops.push(Boost.FRENZY, Boost.FRENZY);
 		expect(read(t.update(f))).toEqual({ rises: [["boost:frenzy", S]], codex: [], chips: [] });
 		f.drops.clear();
 		f.boosts.push(Boost.FRENZY);
-		expect(read(t.update(f))).toEqual({ rises: [["boost:frenzy", F]], codex: ["boost:frenzy"], chips: [] });
+		expect(read(t.update(f))).toEqual({ rises: [["boost:frenzy", F]], codex: [], chips: ["boost:frenzy"] });
 	});
 });
 
@@ -472,7 +472,7 @@ describe("CodexTracker: the toast budget (CXD8)", () => {
 		expect([route("duo:supernova", S), route("duo:supernova", F)]).toEqual(["none", "chip!"]);
 		expect([route("relic:hourglass", F, true), route("relic:hourglass", F)]).toEqual(["chip", "codex!"]);
 		expect([route("curse:haste", S), route("curse:haste", F)]).toEqual(["none", "chip"]);
-		expect([route("boost:fury", S), route("boost:fury", F)]).toEqual(["none", "codex"]);
+		expect([route("boost:fury", S), route("boost:fury", F)]).toEqual(["none", "chip"]);
 		expect([route("enemy:reaper", S), route("enemy:bruiser", S), route("enemy:reaper", F)]).toEqual([
 			"card!",
 			"codex",

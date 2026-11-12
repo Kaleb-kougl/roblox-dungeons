@@ -215,4 +215,30 @@ describe("SightingQueue", () => {
 		for (const q of [veteran, rookie]) q.observe(["imp"]);
 		expect([veteran.next(0, true), rookie.next(0, true)]).toEqual([undefined, "imp"]);
 	});
+
+	it("learn (a seeded Codex doc's sightings, CX6) unions into the seen set and drops queued ids; it never loads", () => {
+		const q = new SightingQueue();
+		q.learn(["imp"]);
+		q.observe(["slime"]);
+		expect([q.isLoaded(), q.pending()]).toEqual([false, []]);
+		q.receive(LOADED);
+		q.observe(["imp", "slime", "summoner"]);
+		expect(q.pending()).toEqual(["slime", "summoner"]);
+		q.learn(["summoner"]);
+		expect(q.pending()).toEqual(["slime"]);
+	});
+
+	it("claimSlot (a codex toast on the card, CX6) takes the one-at-a-time slot: the next sighting waits toast + gap", () => {
+		const q = new SightingQueue();
+		q.receive(LOADED);
+		const span = SIGHTING_VIEW.toastSeconds + SIGHTING_VIEW.gapSeconds;
+		expect(q.claimSlot(0, false)).toBe(false);
+		expect(q.claimSlot(0, true)).toBe(true);
+		expect(q.claimSlot(1, true)).toBe(false);
+		q.observe(["imp"]);
+		expect(q.next(span - 0.01, true)).toBe(undefined);
+		expect(q.next(span, true)).toBe("imp");
+		expect(q.claimSlot(span + 1, true)).toBe(false);
+		expect(q.claimSlot(2 * span, true)).toBe(true);
+	});
 });
