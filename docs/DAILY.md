@@ -137,8 +137,9 @@ a dearer kind joins. The census reports it; tuning is an owner call.
   one bump for both, 2026-11-04: endless shrines, rooms and scores change; the fortune branch's own 6 never shipped). 9-15:
   legendaries, Bastion's brace, the wall slide, builds v2, Kenney decor, the Archer and DSD17 (the comment has them); 16
   floor modifiers (docs/FLOOR_MODIFIERS.md FM4, 2026-11-12: Gilded / Hoard / Feast / Plunder / Blood Moon floors change
-  endless floors, play and scores, the Daily's banners included; other work in progress also took 16, so whichever
-  merges second takes 17).
+  endless floors, play and scores, the Daily's banners included; the Goldling rumours branch had also taken 16 and moved to 17 on its rebase); 17 the Goldling hiding in its own
+  barrel or crate (docs/GOLDLING_RUMOURS.md GR3, 2026-11-12: Goldling floors gain a piece, and it comes out when a
+  player breaks it).
   The history is also the comment on `DAILY.ruleset` (`shared/daily/config.ts`).
 
 ### 3. World, sessions, remotes

@@ -721,6 +721,9 @@ const PIN_COUNTS = [3, 0, 2, 3, 0];
 // Re-recorded for docs/DAILY.md DSD18 (every endless roster without unlock floors, one new kind a floor): floor 3's
 // other rooms buy other kinds, so its spawns, breakables and state hash moved; the counts and the layout did not.
 // Before: 1a65fa83.
+// Re-recorded for the Goldling's hiding place (docs/GOLDLING_RUMOURS.md GR1 / GR3): run 4's floor 3 rolled a Goldling,
+// whose own barrel or crate is now appended to the floor's breakables (one more piece); the counts did not move.
+// Before: 7414ecc5.
 const PIN_HASH = "7414ecc5"; // check-asset-ids: allow (state hash)
 const PIN_ARENA = [12, STATE_RETURN, 11.062568325627446, 8, 3663131635];
 const PIN_ARENA_HASH = "80069968"; // check-asset-ids: allow (state hash)

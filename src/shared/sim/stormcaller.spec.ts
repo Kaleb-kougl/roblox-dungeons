@@ -689,6 +689,9 @@ describe("stormcaller: strikes on real endless floors", () => {
 		// Re-recorded for docs/DAILY.md DSD18 (every endless roster without unlock floors, one new kind a floor): floor
 		// 3's rooms buy other kinds (run 23's on top of its Hoard floor), so spawns, breakables and state hashes moved;
 		// strike and skip counts are unchanged and no layout changed. Before: 3/0/4b457f84, 6/0/59e6c52a.
+		// Re-recorded for the Goldling's hiding place (docs/GOLDLING_RUMOURS.md GR1 / GR3): both scenes' floor 3 rolled a
+		// Goldling, whose own barrel or crate is now appended to the floor's breakables (one more piece); strike and skip
+		// counts are unchanged. Before: 3/0/ad7f1462, 6/0/f7c37743.
 		expect(pins).toEqual(["3/0/ad7f1462", "6/0/f7c37743"]); // check-asset-ids: allow (state hashes)
 	});
 });
