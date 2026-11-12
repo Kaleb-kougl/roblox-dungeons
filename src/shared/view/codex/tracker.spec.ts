@@ -278,17 +278,41 @@ describe("CodexTracker: who counts", () => {
 		]);
 	});
 
-	it("a leaver claims nothing from the frame they left on (deaths included), for the rest of the run", () => {
+	it("a leaver's last frame counts its kills (not its state); nothing after it for the rest of the run", () => {
 		const t = tracker();
-		const f = frame();
+		const f = frame(6);
 		f.deaths.push({ archetype: "sniper", affix: AffixKind.NONE });
+		f.boons.push(Boon.BOUNTY);
+		f.actors.push({ archetype: "imp", affix: AffixKind.NONE });
 		f.left = true;
-		expect(t.update(f).rises.size()).toBe(0);
+		expect(read(t.update(f)).rises).toEqual([["enemy:sniper", F]]);
+		expect(t.codexRunSummary().newIds).toEqual(["enemy:sniper"]);
 		f.left = false;
 		expect(t.update(f).rises.size()).toBe(0);
 		// the next run counts again
 		t.startRun(FULL);
-		expect(read(t.update(f)).rises).toEqual([["enemy:sniper", F]]);
+		expect(read(t.update(f)).rises).toEqual([
+			["boon:bounty", F],
+			["enemy:imp", S],
+		]);
+	});
+
+	it("a boss kill on the run-over frame counts (the run's last update), with the buffered kills", () => {
+		const t = tracker();
+		const over = frame(10);
+		over.runOver = true;
+		over.bossDefeated = "boss.act1";
+		over.deaths.push({ archetype: "imp", affix: AffixKind.SWIFT }); // the previous frame's, delivered now
+		const out = read(t.update(over));
+		expect(out.rises).toEqual([
+			["enemy:imp", F],
+			["affix:swift", F],
+			["boss:act1", F],
+		]);
+		expect(out.codex).toContain("boss:act1");
+		expect(t.codexRunSummary().newIds).toEqual(["boss:act1", "enemy:imp", "affix:swift"]);
+		expect(t.isCounting()).toBe(false);
+		expect(t.update(over).rises.size()).toBe(0);
 	});
 
 	it("nothing after run over (the summary freezes), nothing before startRun or after endRun", () => {
@@ -309,6 +333,21 @@ describe("CodexTracker: who counts", () => {
 		t.startRun(FULL);
 		t.endRun();
 		expect(t.update(over).rises.size()).toBe(0);
+	});
+
+	it("isCounting: a started, eligible run whose load did not fail (pending counts: held)", () => {
+		const t = new CodexTracker();
+		expect(t.isCounting()).toBe(false);
+		t.startRun(FULL);
+		expect(t.isCounting()).toBe(true);
+		t.receive(undefined);
+		expect(t.isCounting()).toBe(false);
+		const u = tracker(emptyCodexDoc(), codexEligibility({ ...ENDLESS, world: "game" }));
+		expect(u.isCounting()).toBe(false);
+		const over = frame();
+		over.runOver = true;
+		u.update(over);
+		expect(u.codexRunSummary().newIds).toEqual([]);
 	});
 });
 
@@ -406,6 +445,37 @@ describe("CodexTracker: the baseline and the load", () => {
 		expect(t.receive(emptyCodexDoc()).size()).toBe(0);
 	});
 
+	it("a load after the run ended moves its held finds into the frozen summary (rebuilt once)", () => {
+		const t = new CodexTracker();
+		t.startRun(FULL);
+		const f = frame(3);
+		f.boons.push(Boon.WARDING);
+		t.update(f);
+		const over = frame(3);
+		over.runOver = true;
+		over.bossDefeated = "boss.act1";
+		t.update(over);
+		const frozen = t.codexRunSummary();
+		expect([frozen.loaded, frozen.newIds]).toEqual([false, []]);
+		t.endRun();
+		const rises = t.receive(emptyCodexDoc());
+		expect(rises.map((r) => r.id)).toEqual(["boon:warding", "boss:act1"]);
+		const rebuilt = t.codexRunSummary();
+		expect(rebuilt).never.toBe(frozen);
+		expect([rebuilt.loaded, rebuilt.newIds, rebuilt.foundTotal]).toEqual([true, ["boss:act1", "boon:warding"], 2]);
+		// a later status changes nothing: the same frozen object
+		t.receive(emptyCodexDoc());
+		expect(t.codexRunSummary()).toBe(rebuilt);
+		// a doc loaded before the next run's end: the held finds of an older run are claimed but not this run's news
+		const u = new CodexTracker();
+		u.startRun(FULL);
+		u.update(f);
+		u.endRun();
+		u.startRun(FULL);
+		u.receive(emptyCodexDoc());
+		expect(u.codexRunSummary().newIds).toEqual([]);
+	});
+
 	it("a failed load (`loaded: false`) drops the held entries and claims nothing for the session", () => {
 		const t = new CodexTracker();
 		t.startRun(FULL);
@@ -460,6 +530,18 @@ describe("CodexTracker: the toast budget (CXD8)", () => {
 		const out = read(t.update(f));
 		expect(out.chips).toEqual(["boon:sharpened", "boon:hearty", "evo:lingering", "duo:chainReaction"]);
 		expect(out.codex).toEqual(["relic:vampireFang", "boss:act1"]);
+	});
+
+	it("each codex toast carries its rise's tier (a sighting is seen, a kill found)", () => {
+		const t = tracker();
+		const f = frame();
+		f.actors.push({ archetype: "swarmer", affix: AffixKind.NONE });
+		const out = t.update(f);
+		expect([[...out.codexToasts], [...out.codexToastTiers]]).toEqual([["enemy:swarmer"], [S]]);
+		const g = frame();
+		g.deaths.push({ archetype: "sniper", affix: AffixKind.NONE });
+		const out2 = t.update(g);
+		expect([[...out2.codexToasts], [...out2.codexToastTiers]]).toEqual([["enemy:sniper"], [F]]);
 	});
 
 	it("routes per kind (codexToastRoute)", () => {

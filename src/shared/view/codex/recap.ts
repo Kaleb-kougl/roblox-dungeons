@@ -7,14 +7,16 @@
  *                        summary's order (found order, rarest first on one frame), `+N` for the rest, `Codex 41%`.
  *                        None when nothing new was found, the Codex is not loaded, or the run could not claim
  *                        (its summary has no new ids)
- *   codexRecapRowHeight  the row's height per run-over layout (wide and compact: one line; narrow: the count and the
- *                        total on one line, the icons under it), for the panel's fit (fit.spec.ts)
+ *   codexRecapRowFit     the row as drawn in a column: one line when its estimated width (codexRecapRowWidth) fits,
+ *                        else one line with fewer icons, else (and always upright) two lines: the count and the
+ *                        total, the icons under them
+ *   codexRecapRowHeight  the row's height for that fit, for the panel's fit (fit.spec.ts)
  *   codexSummaryHas      entry `id` is in a run's new ids (claude/build-online-plan.md's first-fire callout line
  *                        `NEW TO YOUR CODEX` reads it from the frozen summary, or CodexController.codexNewThisRun live;
  *                        the callout is not built yet: CX9 exports the hooks only)
  */
 import { CODEX } from "shared/codex";
-import { HUD_VIEW, type RecapLayout } from "shared/view/hud";
+import { HUD_VIEW, ROOM_CLEAR_VIEW, type RecapLayout } from "shared/view/hud";
 import { codexCompletionPct, type CodexStr } from "./screen";
 import type { CodexRunSummary } from "./tracker";
 
@@ -36,6 +38,8 @@ export const CODEX_RECAP = {
 	iconGap: 4,
 	/** One line of the row's small text (HUD_VIEW.smallText + the Text primitive's 4 px slack). */
 	lineHeight: HUD_VIEW.smallText + 4,
+	/** A one-line row too long for its column shows fewer icons, down to this many, before it takes two lines. */
+	minIcons: 1,
 } as const;
 
 /** What the row shows. */
@@ -48,14 +52,21 @@ export interface CodexRecapRowModel {
 	readonly totalText: string;
 }
 
-/** The run-over row for a run's summary, or undefined (nothing new, not loaded, no summary). */
-export function codexRecapRow(summary: CodexRunSummary | undefined, s: CodexStr): CodexRecapRowModel | undefined {
+/**
+ * The run-over row for a run's summary, or undefined (nothing new, not loaded, no summary). At most `maxIcons` icons
+ * (CODEX.recapIcons by default; codexRecapRowFit shows fewer to keep a line), `+N` for the rest.
+ */
+export function codexRecapRow(
+	summary: CodexRunSummary | undefined,
+	s: CodexStr,
+	maxIcons: number = CODEX.recapIcons,
+): CodexRecapRowModel | undefined {
 	if (summary === undefined || !summary.loaded) return undefined;
 	const n = summary.newIds.size();
 	if (n === 0) return undefined;
 	const T = CODEX_RECAP_STRINGS;
 	const icons: string[] = [];
-	const shown = math.min(n, CODEX.recapIcons);
+	const shown = math.min(n, maxIcons);
 	for (let i = 0; i < shown; i++) icons.push(summary.newIds[i]);
 	const more = n - shown;
 	return {
@@ -67,17 +78,68 @@ export function codexRecapRow(summary: CodexRunSummary | undefined, s: CodexStr)
 }
 
 /**
- * The row on one line (the wide panel, and a landscape phone's left column: its height is the tight one) or two
- * (upright: the text line, then the icons).
+ * The row's width (reference px) on one line, estimated: its texts at HUD_VIEW.smallText by the HUD font's average
+ * advance per byte (ROOM_CLEAR_VIEW.tallyFit.glyphAspect, the estimate the room-clear tally row fits with; bytes, so
+ * non-Latin text is over-estimated), the icon strip, and the Row primitive's HUD_VIEW.gap between its parts.
  */
-export function codexRecapRowLines(layout: RecapLayout): number {
-	return layout === "narrow" ? 2 : 1;
+export function codexRecapRowWidth(row: CodexRecapRowModel): number {
+	const em = HUD_VIEW.smallText * ROOM_CLEAR_VIEW.tallyFit.glyphAspect;
+	let bytes = row.countText.size() + row.totalText.size();
+	let parts = 3; // the count, the icons, the total
+	if (row.moreText !== undefined) {
+		bytes += row.moreText.size();
+		parts++;
+	}
+	return bytes * em + codexRecapIconsWidth(row.icons.size()) + (parts - 1) * HUD_VIEW.gap;
 }
 
-/** The row's height (reference px) in `layout`, `gap` between its lines. */
-export function codexRecapRowHeight(layout: RecapLayout, gap: number): number {
+/**
+ * The row on one line (the wide panel, and a landscape phone's left column) when `row` fits `width` (reference px:
+ * the column it is drawn in; codexRecapRowWidth), else two (the text line, then the icons); always two upright. Without
+ * a row or a width: one (wide, compact) or two (narrow).
+ */
+export function codexRecapRowLines(layout: RecapLayout, row?: CodexRecapRowModel, width?: number): number {
+	if (layout === "narrow") return 2;
+	if (row === undefined || width === undefined) return 1;
+	return codexRecapRowWidth(row) <= width ? 1 : 2;
+}
+
+/** The row as drawn: its model and its lines (codexRecapRowFit). */
+export interface CodexRecapRowFit {
+	readonly row: CodexRecapRowModel;
+	readonly lines: number;
+}
+
+/**
+ * The row for `summary` as drawn in `layout` within `width` (reference px, the column's): on one line (wide, compact)
+ * with every icon when it fits (codexRecapRowWidth); else on one line with fewer icons (down to CODEX_RECAP.minIcons,
+ * the rest in `+N`: a landscape phone's left column has no height for a second line); else, and always upright, on
+ * two lines with every icon. Undefined when there is no row (codexRecapRow).
+ */
+export function codexRecapRowFit(
+	summary: CodexRunSummary | undefined,
+	s: CodexStr,
+	layout: RecapLayout,
+	width: number,
+): CodexRecapRowFit | undefined {
+	const full = codexRecapRow(summary, s);
+	if (full === undefined) return undefined;
+	if (layout === "narrow") return { row: full, lines: 2 };
+	if (codexRecapRowLines(layout, full, width) === 1) return { row: full, lines: 1 };
+	for (let icons = full.icons.size() - 1; icons >= CODEX_RECAP.minIcons; icons--) {
+		const fewer = codexRecapRow(summary, s, icons) as CodexRecapRowModel;
+		if (codexRecapRowLines(layout, fewer, width) === 1) return { row: fewer, lines: 1 };
+	}
+	return { row: full, lines: 2 };
+}
+
+/**
+ * The row's height (reference px) in `layout`, `gap` between its lines: `fit`'s lines (codexRecapRowFit), or without
+ * one the layout's default (codexRecapRowLines).
+ */
+export function codexRecapRowHeight(layout: RecapLayout, gap: number, fit?: CodexRecapRowFit): number {
 	const line = math.max(CODEX_RECAP.iconBox, CODEX_RECAP.lineHeight);
-	const lines = codexRecapRowLines(layout);
+	const lines = fit?.lines ?? codexRecapRowLines(layout);
 	return lines * line + (lines - 1) * gap;
 }
 

@@ -131,7 +131,50 @@ export const CODEX_SCREEN = {
 	badgeMax: 9,
 	/** A seen tile's art transparency (45 % opacity). */
 	seenTransparency: 0.55,
+	/**
+	 * A tile counts as viewed (its NEW dot clears) when activated (click, tap, A) or after it held the focus (hover, the
+	 * pad's selection, the screen's default selection) this long (CodexViewDwell): passing over a tile is not a look.
+	 */
+	viewDwellSeconds: 0.6,
 } as const;
+
+/**
+ * When a focused Codex tile counts as viewed (CODEX_SCREEN.viewDwellSeconds; the screen calls `due` every frame).
+ * Pure: the caller passes the clock. Activation is immediate; focus (hover, pad selection, the default selection on
+ * open) counts only after the dwell, and only while the tile keeps the focus.
+ */
+export class CodexViewDwell {
+	private focusId: string | undefined;
+	private since = 0;
+
+	constructor(private readonly dwellSeconds: number = CODEX_SCREEN.viewDwellSeconds) {}
+
+	/** Tile `id` has the focus from `now` on (a repeat for the focused tile keeps its start). */
+	focus(id: string, now: number): void {
+		if (id === this.focusId) return;
+		this.focusId = id;
+		this.since = now;
+	}
+
+	/** Tile `id` lost the focus (undefined: whichever had it, e.g. a tab change): its dwell stops. */
+	blur(id?: string): void {
+		if (id === undefined || id === this.focusId) this.focusId = undefined;
+	}
+
+	/** Tile `id` was activated: viewed now (its dwell, if any, ends). Returns `id`. */
+	activate(id: string): string {
+		if (id === this.focusId) this.focusId = undefined;
+		return id;
+	}
+
+	/** The focused tile once it held the focus for the dwell at `now` (returned once), else undefined. */
+	due(now: number): string | undefined {
+		const id = this.focusId;
+		if (id === undefined || now - this.since < this.dwellSeconds) return undefined;
+		this.focusId = undefined;
+		return id;
+	}
+}
 
 /** What a tile shows. */
 export type CodexTileState = "unknown" | "seen" | "found";

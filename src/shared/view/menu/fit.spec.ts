@@ -2,7 +2,15 @@
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { SIM_HZ } from "shared/sim";
 import { PORTRAIT } from "shared/view";
-import { CODEX_SCREEN, codexRecapRowHeight, codexTabRowWidth } from "shared/view/codex";
+import { CODEX_CATALOG } from "shared/codex";
+import { PLACEHOLDER_MANIFEST, ThemePack, type StringVars } from "shared/theme";
+import {
+	CODEX_SCREEN,
+	codexRecapRowFit,
+	codexRecapRowHeight,
+	codexTabRowWidth,
+	type CodexRunSummary,
+} from "shared/view/codex";
 import { NO_RECAP_TALLY, type RecapTallySource } from "shared/view/fx";
 import {
 	DAILY_RANK,
@@ -820,6 +828,18 @@ describe("the upright pause (docs/PORTRAIT.md PT6)", () => {
  * A run without a record draws the plain near-miss line under the main line
  * instead of the ribbon (compact: the taller of the two is counted in the left column).
  */
+/**
+ * claude/codex-plan.md CX9: the Codex row's longest English line (every entry new on one run: `86 new in the Codex`,
+ * the icons, `+N`, `Codex 100%`) as drawn in a column `width` wide (codexRecapRowFit).
+ */
+const CODEX_PACK = new ThemePack(PLACEHOLDER_MANIFEST, { warn: () => undefined });
+function codexWorstRow(layout: "compact" | "narrow" | "wide", width: number) {
+	const newIds: string[] = [];
+	for (const e of CODEX_CATALOG) newIds.push(e.id);
+	const summary: CodexRunSummary = { newIds, foundTotal: newIds.size(), catalogTotal: newIds.size(), loaded: true };
+	return codexRecapRowFit(summary, (key: string, vars?: StringVars) => CODEX_PACK.str(key, vars), layout, width)!;
+}
+
 function recapWorst(uiScale: number, layout: "compact" | "narrow" | "wide", party?: RunContribution): Estimate {
 	const title = LINE(HUD_VIEW.titleText);
 	const small = LINE(HUD_VIEW.smallText);
@@ -849,8 +869,11 @@ function recapWorst(uiScale: number, layout: "compact" | "narrow" | "wide", part
 	const exitRows = exits.rows.size();
 	const button = RECAP_UI.exits[layout].again.y * exitRows + HUD_VIEW.gap * (exitRows - 1);
 	if (layout === "compact") {
-		// claude/codex-plan.md CX9: the Codex row (one line) above the exits in the left column.
-		const codexRow = codexRecapRowHeight("compact", HUD_VIEW.gap);
+		// claude/codex-plan.md CX9: the Codex row above the exits in the left column (its worst line keeps one line
+		// with fewer icons).
+		const worstRow = codexWorstRow("compact", MENU_FIT.runOverLeftWidth);
+		expect(worstRow.lines).toBe(1);
+		const codexRow = codexRecapRowHeight("compact", HUD_VIEW.gap, worstRow);
 		const leftRows = [header, math.max(title, nearMiss), main, stats, codexRow, button, small, TWO_SMALL_LINES];
 		let left = 0;
 		for (const r of leftRows) left += r;
@@ -870,7 +893,8 @@ function recapWorst(uiScale: number, layout: "compact" | "narrow" | "wide", part
 	}
 	const rows = [header, title, main, stats, lineH, dim, grid, ...dailyRows, passed, small, TWO_SMALL_LINES];
 	// claude/codex-plan.md CX9: the Codex row under the daily block (one line wide, two narrow).
-	rows.push(codexRecapRowHeight(layout, HUD_VIEW.gap));
+	const inner = (layout === "narrow" ? MENU_FIT.runOverNarrowWidth : HUD_VIEW.panelWidth * 2) - HUD_VIEW.pad * 4;
+	rows.push(codexRecapRowHeight(layout, HUD_VIEW.gap, codexWorstRow(layout, inner)));
 	rows.push(button);
 	return {
 		w: layout === "narrow" ? MENU_FIT.runOverNarrowWidth : HUD_VIEW.panelWidth * 2,

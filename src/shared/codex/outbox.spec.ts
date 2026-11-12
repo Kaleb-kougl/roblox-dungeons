@@ -32,11 +32,13 @@ describe("CodexOutbox", () => {
 		expect(o.flush(0)).toEqual([]);
 		expect(o.pendingCount()).toBe(4);
 		expect(o.pendingClaims().map((c) => c.id)).toEqual(["boon:x1", "boon:x2", "boon:x3"]);
+		expect(o.pendingViews()).toEqual(["boon:x1"]);
 		o.receive(true);
 		expect(o.isReady()).toBe(true);
 		const sent = o.flush(1);
 		expect(sizes(sent)).toEqual(["claim:3", "viewed:1"]);
 		expect(o.pendingCount()).toBe(0);
+		expect(o.pendingViews()).toEqual([]);
 	});
 
 	it("a failed load first drops the queue and refuses everything after; once ready a failed status is ignored", () => {

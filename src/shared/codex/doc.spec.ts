@@ -363,6 +363,59 @@ describe("codex store transform", () => {
 			true,
 		]);
 	});
+
+	it("rollout: keeps a newer server's well-formed unknown entries and their dots untouched (claude/codex-plan.md)", () => {
+		const future = [2, 5, 3];
+		const stored = {
+			v: CODEX_DOC_VERSION,
+			e: new Map<string, unknown>([["boon:future", future]]),
+			unread: ["boon:future"],
+		};
+		const incomings = [
+			emptyCodexDoc(),
+			sample(),
+			docOf([["enemy:imp", [2, 9, 1]]], ["enemy:imp"]),
+			docOf([], undefined, true),
+		];
+		for (const incoming of incomings) {
+			const out = mergeStoredCodex(stored, incoming);
+			if (out === undefined) {
+				// nothing to write: the stored value (with the unknown entry) stays as it is
+				expect(incoming.e.size()).toBe(0);
+				expect(incoming.seeded).toBeUndefined();
+				continue;
+			}
+			expect(out.e.get("boon:future")).toBe(future);
+			expect(out.unread?.includes("boon:future")).toBe(true);
+			// the session / display doc still drops it
+			expect(decodeCodexDoc(out).e.has("boon:future")).toBe(false);
+			// and a later write over the result keeps it again
+			const again = mergeStoredCodex(out, docOf([["enemy:swarmer", [1, 0, 0]]]))!;
+			expect([again.e.get("boon:future"), again.unread?.includes("boon:future")]).toEqual([future, true]);
+		}
+		// a stored doc of a newer catalog alone: no write
+		expect(mergeStoredCodex(stored, emptyCodexDoc())).toBeUndefined();
+	});
+
+	it("rollout: malformed unknown ids, bad marks and dots without an entry still drop", () => {
+		const stored = {
+			v: CODEX_DOC_VERSION,
+			e: new Map<string, unknown>([
+				["boon:future", [1, 0, 0]],
+				["no-colon", [2, 1, 1]],
+				["boon:bad key", [2, 1, 1]],
+				["boon:badMark", "x"],
+				["boon:noTier", ["x", 1, 1]],
+			]),
+			unread: ["boon:future", "boon:ghost", "no-colon"],
+		};
+		const out = mergeStoredCodex(stored, sample())!;
+		const unknown: string[] = [];
+		for (const [id] of out.e) if (codexIds(decodeCodexDoc(out)).includes(id) === false) unknown.push(id);
+		unknown.sort();
+		expect(unknown).toEqual(["boon:future"]);
+		expect(out.unread).toEqual(["boon:future", "boon:volatile", "duo:fireArrows"]);
+	});
 });
 
 describe("codex seed and counts", () => {

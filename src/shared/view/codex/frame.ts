@@ -93,7 +93,18 @@ export interface CodexFrame {
 	readonly bossDefeated: string | undefined;
 }
 
-/** A CodexFrame the client owns and refills every frame (readCodexFrame, then the event fields). */
+/** A pooled actor view (CodexFrameBuffer's pools): rewritten in place, never allocated per frame. */
+interface PooledActorView {
+	archetype: string;
+	affix: number;
+}
+
+/**
+ * A CodexFrame the client owns and refills every frame (readCodexFrame, then the event fields). `actors` and `deaths`
+ * hold views taken from `actorPool` / `deathPool` (the first `actors.size()` / `deaths.size()` of each, rewritten in
+ * place): a frame allocates no view once the pools have grown to the most actors in view / deaths in a frame. A hand-
+ * built frame (specs) may push its own objects instead.
+ */
 export interface CodexFrameBuffer extends CodexFrame {
 	localIndex: number;
 	viewIndex: number;
@@ -115,6 +126,10 @@ export interface CodexFrameBuffer extends CodexFrame {
 	readonly deaths: CodexActorView[];
 	bossEngaged: string | undefined;
 	bossDefeated: string | undefined;
+	/** The views `actors` reuses (index i serves actors[i]). */
+	readonly actorPool: PooledActorView[];
+	/** The views `deaths` reuses. */
+	readonly deathPool: PooledActorView[];
 }
 
 /** No curse / no player (CodexFrame.greedCurse). */
@@ -143,7 +158,22 @@ export function newCodexFrame(): CodexFrameBuffer {
 		deaths: [],
 		bossEngaged: undefined,
 		bossDefeated: undefined,
+		actorPool: [],
+		deathPool: [],
 	};
+}
+
+/** Pool slot `i` of `pool` set to (`archetype`, `affix`), grown by one view when `i` is past its end. */
+function pooledView(pool: PooledActorView[], i: number, archetype: string, affix: number): PooledActorView {
+	let v = pool[i];
+	if (v === undefined) {
+		v = { archetype, affix };
+		pool.push(v);
+	} else {
+		v.archetype = archetype;
+		v.affix = affix;
+	}
+	return v;
 }
 
 /** Clears the fields only the caller fills (deaths, pedestal relics, boss events); readCodexFrame keeps the rest. */
@@ -228,10 +258,8 @@ export function readCodexFrame(
 		const dx = a.x - viewer.x;
 		const dz = a.z - viewer.z;
 		if (dx * dx + dz * dz > r2) continue;
-		out.actors.push({
-			archetype: archetypeAt(a.kind).id,
-			affix: affixSlotAt(state, i, a)?.affix ?? AffixKind.NONE,
-		});
+		const affix = affixSlotAt(state, i, a)?.affix ?? AffixKind.NONE;
+		out.actors.push(pooledView(out.actorPool, out.actors.size(), archetypeAt(a.kind).id, affix));
 	}
 	return out;
 }
@@ -243,5 +271,6 @@ export function readCodexFrame(
 export function pushCodexDeath(state: Readonly<SimState>, out: CodexFrameBuffer, slot: number): void {
 	const a = state.combat.actors[slot];
 	if (a === undefined || a.kind === NO_KIND) return;
-	out.deaths.push({ archetype: archetypeAt(a.kind).id, affix: affixSlotAt(state, slot, a)?.affix ?? AffixKind.NONE });
+	const affix = affixSlotAt(state, slot, a)?.affix ?? AffixKind.NONE;
+	out.deaths.push(pooledView(out.deathPool, out.deaths.size(), archetypeAt(a.kind).id, affix));
 }

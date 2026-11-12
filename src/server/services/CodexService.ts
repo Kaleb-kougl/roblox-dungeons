@@ -51,9 +51,16 @@ interface FakeEntry {
  * Remotes (shapes guarded by Flamework, values re-checked in shared/codex): `codexClaim(items)` -> codexClaimUpdate
  * (decodeCodexClaims, applyClaims on the server's codexDay(os.time()), rises marked unread), `codexViewed(ids)` ->
  * codexViewedUpdate (decodeCodexViewed, markViewed); both change only the session cache (written by the next save) and
- * are ignored before `ready`; `requestCodex` answers with `codexStatus` once ready (an earlier one is answered by the
- * join-end push, so the client never sees a pre-seed status). Each remote has its own per-player limiter at
- * CODEX.claimRate; a dropped request still answers.
+ * are ignored before `ready` (logged once per player); `requestCodex` answers with `codexStatus` once ready (an earlier
+ * one is answered by the join-end push, so the client never sees a pre-seed status). Each remote has its own per-player
+ * limiter at CODEX.claimRate; a call over it is dropped unanswered. Drop warnings (over the rate, a bad payload) are
+ * throttled to CODEX.warnRate per player.
+ *
+ * Rejoin to the same server while the last session's leave save is writing (PlayerDocCache would hand the new join the
+ * cached entry that the release then deletes): the service tracks each UserId's release in flight and the new join
+ * load waits for it (at most CODEX.rejoinWaitSeconds), so it reads the stored doc fresh. Each cache entry has one owning
+ * Player (the session that loaded it); only the owner's leave releases it. Should the wait time out, the release, once
+ * done, starts a fresh load for the newer session.
  *
  * Seed (CXD5, R13): once, after a successful load of a doc without `seeded`: waits (at most CODEX.seedWaitSeconds) for
  * OnboardingService's join load; when it finished OK its cached doc's `seen` list becomes seen entries without NEW dots
@@ -81,6 +88,14 @@ export class CodexService implements OnStart {
 		CODEX.claimRate.count,
 		CODEX.claimRate.windowSeconds,
 	);
+	/** One drop warning per player per CODEX.warnRate window. */
+	private readonly warnLimiter = new SlidingWindowLimiter<Player>(CODEX.warnRate.count, CODEX.warnRate.windowSeconds);
+	/** Players whose `notReady` refusal was logged (once per player). */
+	private readonly notReadyLogged = new Set<Player>();
+	/** UserIds whose cache entry is being released (the leave save is writing): a rejoin's load waits for it. */
+	private readonly releasing = new Set<number>();
+	/** The Player whose session owns each UserId's cache entry (set before its join load). */
+	private readonly owners = new Map<number, Player>();
 	private readonly fakes = new Map<Player, FakeEntry>();
 	/** Players whose join load and seed have finished: only they are sent `codexStatus` and may change their doc. */
 	private readonly ready = new Set<Player>();
@@ -105,7 +120,8 @@ export class CodexService implements OnStart {
 			Events.requestCodex.connect((player) => {
 				if (player.Parent === undefined) return;
 				if (!this.requestLimiter.tryAcquire(player, this.now())) {
-					log.warn("RATE_LIMITED", `${player.UserId}: requestCodex dropped`);
+					this.warnDropped(player, "RATE_LIMITED", "requestCodex dropped");
+					return;
 				}
 				// Before the join load and seed end, the join-end push answers instead (send skips players not ready).
 				this.send(player);
@@ -201,11 +217,24 @@ export class CodexService implements OnStart {
 		return this.cache.loadFailed(key) ? undefined : this.cache.get(key);
 	}
 
+	/** A drop warning, at most CODEX.warnRate per player. */
+	private warnDropped(player: Player, code: string, message: string): void {
+		if (this.warnLimiter.tryAcquire(player, this.now())) log.warn(code, `${player.UserId}: ${message}`);
+	}
+
 	/** Keeps an accepted update's doc where target() read it (the fake or the cache: saved when dirty). */
 	private apply(player: Player, what: string, update: CodexUpdate): void {
 		if (update.refused !== undefined) {
-			// Before the load (or after a failed one) the client is expected to wait: ignored quietly.
-			if (update.refused !== "notReady") log.warn("DROPPED", `${player.UserId}: ${what} ${update.refused}`);
+			if (update.refused === "notReady") {
+				// Before the load (or after a failed one) the client is expected to wait: logged once per player.
+				if (!this.notReadyLogged.has(player)) {
+					this.notReadyLogged.add(player);
+					log.info(
+						"NOT_READY",
+						`${player.UserId}: ${what} before the codex was ready (ignored; logged once)`,
+					);
+				}
+			} else this.warnDropped(player, "DROPPED", `${what} ${update.refused}`);
 			return;
 		}
 		if (!update.changed) return;
@@ -218,8 +247,15 @@ export class CodexService implements OnStart {
 	}
 
 	private loadAndSend(player: Player): void {
-		const key = playerDataKey(player.UserId);
-		this.cache.load(key, [player.UserId]);
+		const userId = player.UserId;
+		const key = playerDataKey(userId);
+		this.waitForRelease(player);
+		if (player.Parent === undefined) {
+			this.release(player);
+			return;
+		}
+		this.owners.set(userId, player);
+		this.cache.load(key, [userId]);
 		if (player.Parent === undefined) {
 			this.release(player);
 			return;
@@ -235,6 +271,22 @@ export class CodexService implements OnStart {
 		}
 		this.ready.add(player);
 		this.send(player);
+	}
+
+	/**
+	 * A rejoin while this UserId's last session is still being released (its leave save writing): waits until that
+	 * release ended (bounded by CODEX.rejoinWaitSeconds; logged past it), or the player left again.
+	 */
+	private waitForRelease(player: Player): void {
+		const userId = player.UserId;
+		if (!this.releasing.has(userId)) return;
+		const deadline = this.now() + CODEX.rejoinWaitSeconds;
+		while (this.releasing.has(userId) && player.Parent !== undefined && this.now() < deadline) {
+			task.wait(CODEX.rejoinPollSeconds);
+		}
+		if (this.releasing.has(userId) && player.Parent !== undefined) {
+			log.warn("REJOIN_WAIT_TIMEOUT", `${userId}: the last session's save is still writing; loading anyway`);
+		}
 	}
 
 	/**
@@ -274,20 +326,45 @@ export class CodexService implements OnStart {
 		return codexStatusOf(this.cache.get(key), !this.cache.loadFailed(key));
 	}
 
-	/** Sends the player's status, only once their join load and seed ended (loadAndSend sends then). */
+	/**
+	 * Sends the player's status, only once their join load and seed ended (loadAndSend sends then), and never from a
+	 * missing cache entry (a release dropped it: the fresh load it started sends instead).
+	 */
 	private send(player: Player): void {
-		if (player.Parent !== undefined && this.ready.has(player)) Events.codexStatus.fire(player, this.status(player));
+		if (player.Parent === undefined || !this.ready.has(player)) return;
+		if (this.fakeCodex() === undefined && this.cache.get(playerDataKey(player.UserId)) === undefined) return;
+		Events.codexStatus.fire(player, this.status(player));
 	}
 
+	/**
+	 * A player left (PlayerRemoving, or loadAndSend once a yield ended after the leave). Releases the cache entry only
+	 * when this player's session owns it and its load ended (a leave during the join load: loadAndSend calls this again
+	 * after it). While the release saves, a rejoin's load waits (waitForRelease); a newer session that stopped waiting
+	 * gets a fresh load once the release is done.
+	 */
 	private release(player: Player): void {
 		this.requestLimiter.forget(player);
 		this.claimLimiter.forget(player);
 		this.viewedLimiter.forget(player);
+		this.warnLimiter.forget(player);
+		this.notReadyLogged.delete(player);
 		this.fakes.delete(player);
 		this.ready.delete(player);
-		const key = playerDataKey(player.UserId);
-		if (this.cache.get(key) === undefined) return;
-		if (this.cache.release(key) === "failed") log.warn("SAVE_FAILED", `${player.UserId}: codex not saved on leave`);
+		const userId = player.UserId;
+		const key = playerDataKey(userId);
+		if (this.owners.get(userId) !== player || this.cache.get(key) === undefined) return;
+		this.owners.delete(userId);
+		this.releasing.add(userId);
+		const outcome = this.cache.release(key);
+		this.releasing.delete(userId);
+		if (outcome === "failed") log.warn("SAVE_FAILED", `${userId}: codex not saved on leave`);
+		const newer = this.owners.get(userId);
+		if (newer !== undefined && newer.Parent !== undefined) {
+			// A rejoin that stopped waiting loaded the entry this release just dropped: load it again, fresh.
+			this.owners.delete(userId);
+			this.ready.delete(newer);
+			task.spawn(() => this.loadAndSend(newer));
+		}
 	}
 
 	private saveKey(key: string): void {

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
+import { RunService } from "@rbxts/services";
 import { selectCodexDoc, selectCodexProgress, selectCodexStatus, selectInputDevice } from "client/store";
 import { FocusScope } from "client/ui/focus";
 import { CodexArt, MenuButton, MenuFit, PadHintBar, Panel, Row, Text, type MenuLayout } from "client/ui/hud";
@@ -10,6 +11,7 @@ import { SFX } from "shared/view/audio";
 import {
 	CODEX_SCREEN,
 	CODEX_SCREEN_STRINGS,
+	CodexViewDwell,
 	codexCompletionPct,
 	codexDetail,
 	codexGridColumns,
@@ -38,6 +40,8 @@ const TILE_INSET = 4;
 const SMALL = new Vector2(MENU_VIEW.smallButton.x, MENU_VIEW.smallButton.y);
 /** Draw order inside a tile: the art, the NEW dot. */
 const TILE_Z = { art: 1, dot: 2 } as const;
+/** The tab row's drawn-to-reference scale never divides by less (a frame not laid out yet reads 0). */
+const MIN_TAB_SCALE = 1e-6;
 
 /** The layout's sizes (reference px): the panel, the grid's width and columns, the detail's width. */
 interface CodexLayoutSizes {
@@ -90,13 +94,20 @@ function NewDot(props: { zIndex?: number }) {
 	);
 }
 
+/** The grid's tile callbacks: focus (hover, pad selection; viewed after the dwell), blur, activation (viewed now). */
+interface TileHandlers {
+	readonly onFocus: (id: string) => void;
+	readonly onBlur: (id: string) => void;
+	readonly onActivate: (id: string) => void;
+}
+
 /** One tile of the grid: a selectable square with the entry's art, focus ring and NEW dot. */
 function Tile(props: {
 	tile: CodexTileModel;
 	order: number;
 	focused: boolean;
 	isNew: boolean;
-	onFocus: (id: string) => void;
+	handlers: TileHandlers;
 	tileRef?: React.Ref<TextButton>;
 }) {
 	const t = props.tile;
@@ -113,9 +124,11 @@ function Tile(props: {
 			BorderSizePixel={0}
 			Text=""
 			Event={{
-				Activated: () => props.onFocus(t.id),
-				MouseEnter: () => props.onFocus(t.id),
-				SelectionGained: () => props.onFocus(t.id),
+				Activated: () => props.handlers.onActivate(t.id),
+				MouseEnter: () => props.handlers.onFocus(t.id),
+				MouseLeave: () => props.handlers.onBlur(t.id),
+				SelectionGained: () => props.handlers.onFocus(t.id),
+				SelectionLost: () => props.handlers.onBlur(t.id),
 			}}
 		>
 			<uistroke
@@ -145,7 +158,7 @@ function Grid(props: {
 	focusId: string | undefined;
 	sizes: CodexLayoutSizes;
 	height: number;
-	onFocus: (id: string) => void;
+	handlers: TileHandlers;
 	gridRef: React.Ref<ScrollingFrame>;
 	firstRef: React.Ref<TextButton>;
 	order: number;
@@ -177,7 +190,7 @@ function Grid(props: {
 					order={i + 1}
 					focused={props.focusId === t.id}
 					isNew={t.isNew}
-					onFocus={props.onFocus}
+					handlers={props.handlers}
 					tileRef={ref}
 				/>
 			);
@@ -380,11 +393,13 @@ function Completion(props: { order: number; found: number; total: number; unavai
  * The Codex screen (main menu > Codex; claude/codex-plan.md "Main menu and the Codex screen", CX7; rules in
  * shared/view/codex screen.ts): the title with the completion % and bar, the tab row (each tab's `found / total` and a
  * NEW dot; it scrolls when the panel is narrower), the grid of the tab's tiles (sub-headers in the items tab and the
- * Bestiary; unknown `?` / silhouettes, seen faded, found in full; a NEW dot until the tile is focused) and the detail
+ * Bestiary; unknown `?` / silhouettes, seen faded, found in full; a NEW dot until the tile is viewed) and the detail
  * of the focused tile beside it (upright: a sheet under it), then Back and its key hint. Built like the Credits
  * screen: a `screen` focus scope (docs/GAMEPAD_MENUS.md GM2) whose pad starts on the first tile, LB / RB step the tabs
  * (clamped, silent at the ends), the right stick scrolls the grid, B goes back. A tap, a click, the mouse over a tile
- * or the pad's selection focuses it. Fitted into the safe area on touch (MenuFit: the grid is the flexible part).
+ * or the pad's selection focuses it; a tile counts as viewed (its dot clears) on activation (click, tap, A) or once it
+ * held the focus for CODEX_SCREEN.viewDwellSeconds (CodexViewDwell: the default selection on open included), never by
+ * passing over it. Fitted into the safe area on touch (MenuFit: the grid is the flexible part).
  * Closing it sends the entries whose NEW dots this visit cleared (MenuActions.codexViewed), so the badge drops.
  */
 export function CodexScreen() {
@@ -414,13 +429,32 @@ export function CodexScreen() {
 		};
 	}, []);
 
+	const dwellRef = useRef(new CodexViewDwell());
 	const viewed = viewedRef.current;
-	const onFocus = (id: string) => {
-		setFocusId(id);
+	const markViewed = (id: string) => {
 		if (codexTileNew(docRef.current, id, viewedRef.current)) {
 			viewedRef.current.add(id);
 			setViewedVersion((v) => v + 1);
 		}
+	};
+	// A focused tile counts as viewed once it held the focus for the dwell (checked every frame).
+	useEffect(() => {
+		const connection = RunService.Heartbeat.Connect(() => {
+			const id = dwellRef.current.due(os.clock());
+			if (id !== undefined) markViewed(id);
+		});
+		return () => connection.Disconnect();
+	}, []);
+	const handlers: TileHandlers = {
+		onFocus: (id) => {
+			setFocusId(id);
+			dwellRef.current.focus(id, os.clock());
+		},
+		onBlur: (id) => dwellRef.current.blur(id),
+		onActivate: (id) => {
+			setFocusId(id);
+			markViewed(dwellRef.current.activate(id));
+		},
 	};
 	const scrollTabsTo = (t: CodexTab) => {
 		const row = tabRowRef.current;
@@ -428,7 +462,7 @@ export function CodexScreen() {
 		if (row === undefined || !(view > 0)) return;
 		// Reference px -> the frame's own px (its UIScale and the fit factor), from the drawn window's width.
 		const scale = row.AbsoluteWindowSize.X / view;
-		const x = codexTabScrollX(t, HUD_VIEW.gap, view, row.CanvasPosition.X / math.max(scale, 1e-6));
+		const x = codexTabScrollX(t, HUD_VIEW.gap, view, row.CanvasPosition.X / math.max(scale, MIN_TAB_SCALE));
 		row.CanvasPosition = new Vector2(x * scale, 0);
 	};
 	const showTab = (t: CodexTab) => {
@@ -436,6 +470,7 @@ export function CodexScreen() {
 		actions.playUi(SFX.uiClick);
 		setTab(t);
 		setFocusId(undefined);
+		dwellRef.current.blur();
 		const grid = gridRef.current;
 		if (grid !== undefined) grid.CanvasPosition = Vector2.zero;
 		scrollTabsTo(t);
@@ -499,7 +534,7 @@ export function CodexScreen() {
 							focusId={detailId}
 							sizes={sizes}
 							height={layout.flex}
-							onFocus={onFocus}
+							handlers={handlers}
 							gridRef={gridRef}
 							firstRef={firstRef}
 						/>

@@ -82,8 +82,13 @@ describe("readCodexFrame", () => {
 			],
 			[Boost.QUICKSTEP],
 		]);
+		// the views are pooled: a later read rewrites them in place (no view allocated per actor per frame)
+		const pooled = f.actors[0];
+		readCodexFrame(s, config, 0, 1, f);
+		expect([f.actors[0] === pooled, f.actorPool.size()]).toEqual([true, 2]);
 		readCodexFrame(s, config, 0, 7, f);
 		expect(f.viewIndex).toBe(0);
+		expect([f.actors.size(), f.actors[0] === pooled, f.actorPool.size()]).toEqual([1, true, 2]);
 		// dead ones are not in view; a smaller radius sees less
 		s.combat.actors[slotOf(s, "imp")].alive = 0;
 		expect(readCodexFrame(s, config, 0, 0, f).actors).toEqual([]);
@@ -150,6 +155,7 @@ describe("readCodexFrame", () => {
 		pushCodexDeath(s, f, slot);
 		pushCodexDeath(s, f, slot + 1);
 		expect(f.deaths).toEqual([{ archetype: "swarmer", affix: AffixKind.SWIFT }]);
+		const death = f.deaths[0];
 		f.pedestalRelics.push(Relic.HOURGLASS);
 		f.bossEngaged = "boss.act1";
 		f.bossDefeated = "boss.act1";
@@ -162,6 +168,8 @@ describe("readCodexFrame", () => {
 			undefined,
 			[Boon.HEARTY],
 		]);
+		pushCodexDeath(s, f, slot);
+		expect([f.deaths.size(), f.deaths[0] === death]).toEqual([1, true]);
 	});
 
 	it("end to end: a frame read from the state feeds the tracker", () => {

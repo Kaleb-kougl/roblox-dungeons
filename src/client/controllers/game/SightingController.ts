@@ -92,14 +92,16 @@ export class SightingController implements OnStart {
 			}
 		}
 		if (!this.codex.hasToast() || !this.queue.claimSlot(now, canShow)) return;
-		const entry = this.codex.takeToast() as string;
+		const toast = this.codex.takeToast();
+		if (toast === undefined) return;
 		this.serial++;
 		clientStore.setSighting({
 			id: SIGHTING_VIEW.toastIdBase - this.serial,
 			key: CODEX_HUD_STRINGS.toast,
-			nameKey: codexToastNameKey(entry),
+			nameKey: codexToastNameKey(toast.id),
 			codexNew: true,
-			codexId: entry,
+			codexId: toast.id,
+			codexTier: toast.tier,
 			until: now + SIGHTING_VIEW.toastSeconds,
 		});
 		this.audio.play(SFX.codexNew, 1);

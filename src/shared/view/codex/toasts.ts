@@ -25,6 +25,7 @@ import {
 } from "shared/codex";
 import { SIGHTING_IDS } from "shared/onboarding";
 import { CardKind } from "shared/sim";
+import type { CodexTileState } from "./screen";
 import { codexSightingId } from "./tracker";
 
 /** The Codex's HUD strings (shared/theme CODEX_STRING_KEYS). */
@@ -53,6 +54,14 @@ export const CODEX_CHIP = {
 export const CODEX_TOAST = {
 	iconBox: 16,
 } as const;
+
+/**
+ * The tile art state a codex toast draws its entry in (ToastView.codexTier, the tier the entry rose to): a sighting
+ * (SEEN: a swarmer walking in) its faded seen art, a find (FOUND, and an unknown tier) its full art.
+ */
+export function codexToastArtState(tier: number | undefined): CodexTileState {
+	return tier === CodexTier.SEEN ? "seen" : "found";
+}
 
 /** The chip's scale `elapsed` seconds after it appeared (1 once settled, and always under Reduced motion). */
 export function codexChipScale(elapsed: number, reducedMotion: boolean): number {

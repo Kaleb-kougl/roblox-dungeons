@@ -26,7 +26,9 @@
  * plus every rise this tracker already reported this session. Each rise is reported once, at its highest tier on that
  * frame (a seen and a found on one frame is one found rise). Nothing rises:
  *   - for a run that cannot claim (eligibility.claims false: M1, dev, debug, stress, unknown worlds);
- *   - before startRun, from the frame the run is over or the local player left (and for the rest of that run);
+ *   - before startRun, after the frame the run is over or the local player left (and for the rest of that run). That
+ *     last frame still counts its events (deaths, a boss's death: the kill that ended the run, the previous frame's
+ *     buffered kills), never its state (owned boons, sightings);
  *   - before the doc is loaded: the frame's entries are HELD (no rise, no toast, so never a false NEW) and resolved
  *     silently by the `receive` that loads the doc (rises against the loaded doc; a found one still counts as new this
  *     run when the run is the same); a failed load (`receive(undefined)`) drops what was held and stops holding.
@@ -49,7 +51,8 @@
  * The run summary (codexRunSummary, R12 / RR's line): the entries found for the FIRST time ever this run, in the order
  * found (one frame's finds rarest first: legendary boon, duo, evolution, boss, rare boon, the rest; then catalog
  * order), this account's found total and the catalog's, and whether the Codex is loaded. Frozen when the run is over
- * (or the local player left, or the run ended).
+ * (or the local player left, or the run ended); rebuilt once more when a late load resolves held finds of that run (or
+ * the frozen one was not loaded yet): CodexController hands the new one to the store.
  */
 import {
 	CODEX,
@@ -95,6 +98,8 @@ export interface CodexTrackerOutput {
 	readonly rises: ReadonlyArray<CodexRise>;
 	/** Entries to show a codex toast for now (budget applied), catalog order. */
 	readonly codexToasts: ReadonlyArray<string>;
+	/** The tier each codex toast's entry rose to (CodexTier SEEN: a sighting, FOUND), same order as codexToasts. */
+	readonly codexToastTiers: ReadonlyArray<number>;
 	/** Entries whose existing toast this frame wears the NEW! chip (budget applied), catalog order. */
 	readonly chips: ReadonlyArray<string>;
 }
@@ -230,10 +235,12 @@ export class CodexTracker {
 	private readonly found: string[] = [];
 	private readonly rises: CodexRise[] = [];
 	private readonly codexToasts: string[] = [];
+	private readonly codexToastTiers: number[] = [];
 	private readonly chips: string[] = [];
 	private readonly output: CodexTrackerOutput = {
 		rises: this.rises,
 		codexToasts: this.codexToasts,
+		codexToastTiers: this.codexToastTiers,
 		chips: this.chips,
 	};
 
@@ -241,7 +248,9 @@ export class CodexTracker {
 	 * A `codexStatus` arrived (shared/codex codexDocOfStatus): the doc, or undefined for `loaded: false`. A doc merges
 	 * into the baseline (tiers only rise) and resolves the held entries: those above it are returned as rises (silent;
 	 * claim them). Undefined before any doc loaded: the Codex is unavailable, the held entries drop and nothing is held
-	 * from now on; ignored once a doc loaded.
+	 * from now on; ignored once a doc loaded. A summary frozen before this load (the run ended while the doc was on its
+	 * way) is rebuilt when held finds of that run moved into it or it was frozen unloaded (codexRunSummary returns the
+	 * new object: CodexController sends it to the store again).
 	 */
 	receive(doc: Readonly<CodexDoc> | undefined): CodexRise[] {
 		const out: CodexRise[] = [];
@@ -259,17 +268,22 @@ export class CodexTracker {
 		}
 		this.countFound();
 		this.found.clear();
+		let moved = 0;
 		for (const id of this.heldIds) {
 			const h = this.held.get(id) as Held;
 			if (h.tier <= this.tier(id)) continue;
 			out.push(this.riseOf(id, h.tier, h.floor));
 			if (h.run === this.run && this.run > 0) {
 				this.markRisen(id, h.tier);
-				if (h.tier === CodexTier.FOUND) this.found.push(id);
+				if (h.tier === CodexTier.FOUND) {
+					this.found.push(id);
+					moved++;
+				}
 			}
 		}
 		this.pushFound();
 		this.clearHeld();
+		if (this.frozen !== undefined && (moved > 0 || !this.frozen.loaded)) this.frozen = this.summaryNow();
 		return out;
 	}
 
@@ -294,22 +308,37 @@ export class CodexTracker {
 		this.ended = true;
 	}
 
-	/** One frame. The returned object is reused (see CodexTrackerOutput). */
+	/**
+	 * One frame. The returned object is reused (see CodexTrackerOutput). The frame the run is over or the local player
+	 * left is the run's last: only its events count (deaths, bossDefeated), then the summary freezes.
+	 */
 	update(frame: Readonly<CodexFrame>): CodexTrackerOutput {
 		this.rises.clear();
 		this.codexToasts.clear();
+		this.codexToastTiers.clear();
 		this.chips.clear();
 		if (!this.inRun || this.ended) return this.output;
-		if (frame.left || frame.runOver) {
-			this.ended = true;
-			this.freeze();
-			return this.output;
-		}
-		if (!this.eligibility.claims || this.load === "failed") return this.output;
-		this.collect(frame);
+		const last = frame.left || frame.runOver;
+		if (last) this.ended = true;
+		this.step(frame, last);
+		if (last) this.freeze();
+		return this.output;
+	}
+
+	/**
+	 * This run's frames count (a run started, not over, it may claim and the load did not fail): when false, update only
+	 * watches for the last frame, so the caller may skip filling the frame's state (readCodexFrame) and events.
+	 */
+	isCounting(): boolean {
+		return this.counting() && this.load !== "failed";
+	}
+
+	private step(frame: Readonly<CodexFrame>, last: boolean): void {
+		if (!this.eligibility.claims || this.load === "failed") return;
+		this.collect(frame, !last);
 		if (this.load === "pending") {
 			this.hold(frame.floor);
-			return this.output;
+			return;
 		}
 		const order = this.candIds;
 		order.sort((a, b) => catalogIndex(a) < catalogIndex(b));
@@ -323,7 +352,6 @@ export class CodexTracker {
 		}
 		this.pushFound();
 		if (this.eligibility.toasts) this.decideToasts(frame);
-		return this.output;
 	}
 
 	/** A doc has loaded (a status with `loaded: true` arrived). */
@@ -451,12 +479,21 @@ export class CodexTracker {
 		} else if (tier > cur) this.cand.set(id, tier);
 	}
 
-	/** Every entry the frame shows, at its tier (see the file comment's table). */
-	private collect(f: Readonly<CodexFrame>): void {
+	/**
+	 * Every entry the frame shows, at its tier (see the file comment's table); `withState` false (the run's last frame):
+	 * only the events (deaths, the boss's death).
+	 */
+	private collect(f: Readonly<CodexFrame>, withState: boolean): void {
 		this.candIds.clear();
 		this.cand.clear();
 		const SEEN = CodexTier.SEEN;
 		const FOUND = CodexTier.FOUND;
+		for (const a of f.deaths) {
+			this.observe(codexEnemyId(a.archetype) ?? codexBossId(a.archetype), FOUND);
+			this.observe(codexAffixId(a.affix), FOUND);
+		}
+		if (f.bossDefeated !== undefined) this.observe(codexBossId(f.bossDefeated), FOUND);
+		if (!withState) return;
 		for (let i = 0; i < f.draftOffers.size(); i++) {
 			const kind = f.draftKinds[i] ?? -1;
 			this.observe(codexCardId(f.draftOffers[i], kind >= 0 ? (kind as CardKindId) : undefined), SEEN);
@@ -475,12 +512,7 @@ export class CodexTracker {
 			this.observe(codexEnemyId(a.archetype), SEEN);
 			this.observe(codexAffixId(a.affix), SEEN);
 		}
-		for (const a of f.deaths) {
-			this.observe(codexEnemyId(a.archetype) ?? codexBossId(a.archetype), FOUND);
-			this.observe(codexAffixId(a.affix), FOUND);
-		}
 		if (f.bossEngaged !== undefined) this.observe(codexBossId(f.bossEngaged), SEEN);
-		if (f.bossDefeated !== undefined) this.observe(codexBossId(f.bossDefeated), FOUND);
 	}
 
 	private decideToasts(frame: Readonly<CodexFrame>): void {
@@ -502,6 +534,7 @@ export class CodexTracker {
 			if (d.route === "codex") {
 				this.toasted.add(rise.id);
 				this.codexToasts.push(rise.id);
+				this.codexToastTiers.push(rise.tier);
 			} else this.chips.push(rise.id);
 		}
 	}

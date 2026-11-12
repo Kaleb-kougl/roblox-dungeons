@@ -9,6 +9,7 @@ import {
 	applyClaims,
 	codexClaimUpdate,
 	codexDocOfStatus,
+	codexReceivedDoc,
 	codexStatusOf,
 	codexViewedUpdate,
 	emptyCodexDoc,
@@ -205,5 +206,43 @@ describe("seedCodexDoc", () => {
 		const empty = seedCodexDoc(emptyCodexDoc(), [], DAY);
 		expect(empty.seeded).toBe(true);
 		expect(CODEX_CODEC.equals(empty, emptyCodexDoc())).toBe(false);
+	});
+});
+
+describe("codexReceivedDoc (the client's copy after a status)", () => {
+	it("takes the server's dots minus the views still queued, not a union with the local copy", () => {
+		// local: imp / swarmer dotted; the server cleared imp (viewed on another server) and still dots swarmer,
+		// which this session viewed (its codexViewed not sent yet); the server dots the hourglass
+		const mine = docWith(
+			[
+				["enemy:imp", 2, DAY, 3],
+				["enemy:swarmer", 1, 0, 0],
+			],
+			["enemy:imp", "enemy:swarmer"],
+		);
+		const server = docWith(
+			[
+				["enemy:imp", 2, DAY, 3],
+				["enemy:swarmer", 1, 0, 0],
+				["relic:hourglass", 2, DAY, 2],
+			],
+			["enemy:swarmer", "relic:hourglass"],
+		);
+		const out = codexReceivedDoc(mine, server, ["enemy:swarmer"]);
+		expect(out.unread).toEqual(["relic:hourglass"]);
+		expect(out.e.size()).toBe(3);
+		// nothing queued: the server's list as it is
+		expect(codexReceivedDoc(mine, server, []).unread).toEqual(["enemy:swarmer", "relic:hourglass"]);
+		// the first status: the server's doc
+		expect(codexReceivedDoc(undefined, server, []).unread).toEqual(["enemy:swarmer", "relic:hourglass"]);
+	});
+
+	it("keeps this session's rises the server has not stored yet (tier and dot)", () => {
+		const mine = docWith([["boss:act1", 2, DAY, 5]], ["boss:act1"]);
+		const server = docWith([["boss:act1", 1, 0, 0]]);
+		const out = codexReceivedDoc(mine, server, []);
+		expect([out.e.get("boss:act1"), out.unread]).toEqual([[2, DAY, 5], ["boss:act1"]]);
+		// once the server has it at that tier, its list decides
+		expect(codexReceivedDoc(mine, docWith([["boss:act1", 2, DAY, 5]]), []).unread).toBeUndefined();
 	});
 });

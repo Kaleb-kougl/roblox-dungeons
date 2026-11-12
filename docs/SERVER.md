@@ -186,7 +186,7 @@ The client side is `src/client/network.ts` (`GlobalEvents.createClient`); `SimCo
 | `SETTINGS_REQUEST_RATE` | 20 per 10 s per player | Settings remotes. |
 | `ONBOARDING_REQUEST_RATE` / `TUTORIAL_START_RATE` / `TUTORIAL_STEP_RATE` / `TUTORIAL_FINISH_RATE` / `TUTORIAL_REPORT_RATE` | 10 / 3 / 30 / 10 / 40 per 10 s per player | Onboarding remotes (`shared/onboarding/config.ts`): request / started (over it the attempt still opens, unlogged) / steps / finish (its own budget) / lesson + stuck + onboardingReport together. Tutorial telemetry is also capped per player per session (`TUTORIAL_TELEMETRY.maxAttemptsLoggedPerSession` 3, `maxEventsPerSession` 240), see "Onboarding (tutorial)". |
 | `RECORDS_REQUEST_RATE` | 10 per 10 s per player | `requestRecords` (`shared/records/config.ts`); a dropped request still answers with the cached status. |
-| `CODEX.claimRate` | 10 per 10 s per player, each of `requestCodex` / `codexClaim` / `codexViewed` | `shared/codex/config.ts`; a dropped request still answers, a dropped claim or view is lost. Claims at most `CODEX.claimMaxItems` 16 items, views `viewedMaxIds` 64 ids a call (longer: refused whole). |
+| `CODEX.claimRate` | 10 per 10 s per player, each of `requestCodex` / `codexClaim` / `codexViewed` | `shared/codex/config.ts`; a call over it is dropped unanswered (a dropped claim or view is lost); the drop warnings are throttled to `CODEX.warnRate` (1 per 10 s per player). Claims at most `CODEX.claimMaxItems` 16 items, views `viewedMaxIds` 64 ids a call (longer: refused whole). |
 | `INVITE_PROMPT_RATE` / `INVITE_RECIPIENTS_RATE` / `INVITE_ELIGIBILITY_RATE` | 5 / 10 / 10 per 60 s per player | Roblox invite remotes (`shared/invite/config.ts`); a spent prompt budget is a `rateLimited` refusal, the others drop quietly. |
 | Seeds | integers in [0, 2^32) | What the web build's `seedFromQuery` produces. |
 | Debug input (`DEBUG_HIT`, `DEBUG_BOSS` bits) | rejected (`debug_input`) | K / J are debug keys. The boost debug drop (M, `DEBUG_DROP_BUTTON`, docs/BOOSTS.md) is a `PORT_BUTTONS` bit and is rejected the same way. |
@@ -1049,7 +1049,10 @@ size / rate checks; nothing is replayed.
 [tier, day, floor] }, unread?: string[] }`. `tier` 1 seen / 2 found; `day` the UTC day (`codexDay`, unix seconds /
 86400) the entry was FIRST found (0 while seen); `floor` the floor it was first found on (0..999, 0 while seen); `unread`
 the ids whose tier rose since the player last looked, sorted. Entry ids are the catalog's (`boon:swiftStrikes`,
-`enemy:imp`, `boss:act1`, ...); unknown ids decode away and decoding never throws (`decodeCodexDoc`). Under 3 KB.
+`enemy:imp`, `boss:act1`, ...); unknown ids decode away from the session doc and decoding never throws
+(`decodeCodexDoc`), but the store transform writes well-formed unknown entries (an id shaped `<category>:<key>`,
+`isCodexIdShape`, with a valid mark) and their unread ids back untouched, so a server on an older catalog never deletes
+what a newer one added. Under 3 KB.
 
 **Writes are merges.** Every write is `MergeKeyValue` `UpdateAsync` with `mergeStoredCodex(stored, incoming)`: per
 entry the higher tier wins, two founds keep the earlier day (and its floor), `seeded` is kept once either side has it;
@@ -1079,8 +1082,21 @@ refused whole, catalog ids, tier exactly 1 or 2, floor clamped; then `applyClaim
 rises marked unread; idempotent, a lower tier never wins) and `codexViewed(ids: string[])` (`codexViewedUpdate`:
 `decodeCodexViewed`, at most `CODEX.viewedMaxIds` 64, then `markViewed`) change only the session cache and send no
 reply. Both are ignored before `ready` and after a failed load (the client queues claims until a loaded status and
-resends). Each of the three remotes has its own per-player limiter at `CODEX.claimRate` (10 per 10 s); a dropped claim
-or view is lost (`[Codex] DROPPED`), a dropped request still answers.
+resends; a refusal before `ready` logs `[Codex] NOT_READY` once per player). Each of the three remotes has its own
+per-player limiter at `CODEX.claimRate` (10 per 10 s); a call over it is dropped unanswered (a dropped claim or view is
+lost, `[Codex] DROPPED`; a dropped request gets no status, `[Codex] RATE_LIMITED`); those warnings and a bad payload's
+are throttled to `CODEX.warnRate` (1 per 10 s per player).
+
+**Rejoin during a leave save.** `PlayerDocCache` hands a load of a cached key the cached entry, and `release` deletes
+the key after its save yields, so a rejoin to the same server while the last session's leave save is writing would get
+the old entry and then lose it (claims refused `notReady`, nothing saved). CodexService tracks each UserId's release in
+flight (`releasing`) and the new join load waits for it (at most `CODEX.rejoinWaitSeconds` 30, polling
+`rejoinPollSeconds`; `[Codex] REJOIN_WAIT_TIMEOUT` past it), so it reads the stored doc fresh. Each cache entry has one
+owning Player (`owners`, set before its load); only the owner's leave releases it, and a release that finds a newer
+owner (a rejoin that stopped waiting) starts a fresh load for it; a status is never sent from a missing entry.
+PlayerDocCache itself is unchanged: RecordsService and SettingsService release the same way (save, then delete) and
+share the exposure; OnboardingService narrows it (it skips the release while the player is back) but its final
+`release` has the same window.
 
 **Budget.** +1 `GetAsync` per join; the seed reads OnboardingService's cache. `UpdateAsync`: the autosave / leave /
 shutdown writes of a dirty doc, plus one per seed (once per player).

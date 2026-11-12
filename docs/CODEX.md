@@ -130,7 +130,8 @@ Full detail: docs/SERVER.md "Codex".
 - **DataStore** `KV_Codex_v1` (`CODEX.dataStore`), key `u_<UserId>`: `{ v: 1, seeded?: true, e: { [entryId]: [tier,
   day, floor] }, unread?: string[] }`; `tier` 1 seen / 2 found, `day` the UTC day it was first found (0 while seen),
   `floor` 1..`CODEX.floorMax` 999 (0 while seen), `unread` the ids with a NEW dot. 86 entries, under 3 KB. Unknown ids
-  decode away; decoding never throws.
+  decode away from the session / display doc; decoding never throws. The store transform keeps well-formed unknown
+  entries (a newer server's) and their dots untouched (rollout-safe, review fix M1).
 - **Entry ids** `<category>:<key>` (the theme id minus its prefix): `boon:swiftStrikes`, `evo:sharpened`,
   `duo:fireArrows`, `relic:mirrorCloak`, `curse:frailty`, `boost:fury`, `enemy:swarmer`, `enemy:slime`, `enemy:golden`,
   `affix:hulking`, `boss:act1`, `boss:demonlord`. Catalog order is append-only (a lock list in `catalog.spec.ts`).
@@ -205,7 +206,7 @@ Per step (commits `665d70f`, `5be1d84`, `b30dd2e`, `f951bc8`, `51ef63d`, `c5b9c5
   and the other specs skip both; `SFX_PRIORITY` 46 for `sfx.codex.new` (the stings took 67, no collision).
 - **CX6 Controller and store.** The tracker frame runs inside `SimController.pushToasts` (`ToastChipSource`), so chips
   match that frame's toasts. **Kills count one frame late**: FxTracker runs after the sim, so a kill or a
-  `bossDefeated` lands in the next sim frame's update. **A first boost decorates `hud.toast.boost` with the chip**
+  `bossDefeated` lands in the next sim frame's update (the run's last update waits for that frame's FX instead: m4). **A first boost decorates `hud.toast.boost` with the chip**
   (route `chip`), not a codex toast (the plan's codex toast would have doubled the existing toast). **Codex toasts use
   the sighting card's slot** (SightingCard, left edge) instead of a separate toast, so they inherit its queue and gates;
   they show whether or not the onboarding status loaded. After a seeded `codexStatus`, the Codex's sightings are
@@ -214,18 +215,52 @@ Per step (commits `665d70f`, `5be1d84`, `b30dd2e`, `f951bc8`, `51ef63d`, `c5b9c5
 - **CX7 Screen.** **Codex button after Leaderboard** (not "between Leaderboard and Tutorial": not adjacent in the
   real order); **on phones a small button between the invite reason and Credits** (the reason shrinks by one small
   button), `fit.spec` covers the last row, the desktop menu one button taller and the screen at landscape compact,
-  desktop and a 360 pt upright phone. **The NEW dot clears on hover, tap or selection** (locally at once; the server
-  hears at screen close). `MenuButton` gained `badge?` (the `MENU_VIEW.buttonBadge` pill). Sprite stills draw idle frame
+  desktop and a 360 pt upright phone. **The NEW dot clears on activation (click, tap, A) or after the tile held the
+  focus (hover, pad selection, the default selection on open) for `CODEX_SCREEN.viewDwellSeconds` 0.6 s**
+  (`CodexViewDwell`, review fix m6; locally at once; the server hears at screen close). `MenuButton` gained `badge?` (the `MENU_VIEW.buttonBadge` pill). Sprite stills draw idle frame
   0 facing 270 degrees, the whole cell (`art.ts`, kept out of `sprites.ts` for its Luau locals); silhouettes are the
   same image tinted black.
 - **CX8 Draft tag.** Flags are taken at the deal (`showsNewTag(codexCardId(offer, kind))`), the tag shows when the
   card's `textAlpha` reaches 1; the reveal's timings spec is unchanged.
 - **CX9 Hooks.** RR had no slot in code (only a sentence in docs/RUN_RECAP.md), so CX9 added `ROW.codex` 13 to
   RunOverPanel (exits 14, verdict 15, info 16, padHints 17): wide / narrow under the daily block (narrow on two lines),
-  compact one line in the left column above the exits. **The compact run-over stats column's line gap went 6 -> 2**
-  (`MENU_FIT.runOverLineGap`) to keep the 693 x 320 record-daily worst case fitting. BO's first-fire callout does not
+  compact in the left column above the exits. **While the Codex row shows, the compact run-over stats column's line gap
+  is 2 instead of 6** (`MENU_FIT.runOverLineGap`) to keep the 693 x 320 record-daily worst case fitting; runs without
+  the row keep the old layout (review fix m10). BO's first-fire callout does not
   exist in code: only the hooks are exported (`codexSummaryHas`, `CodexController.codexNewThisRun`); BO adds `NEW TO
   YOUR CODEX` (a new string) when it is built.
+- **Review fixes** (commit after `15872b0`):
+  - **M1 rollout-safe merge.** `mergeStoredCodex` passes stored entries whose ids this catalog does not know through
+    untouched when well-formed (`isCodexIdShape`: `CODEX_ID_SHAPE` `^%a%w*:[%w_]+$`, at most `CODEX_ID_MAX_LENGTH` 64
+    bytes; a mark `decodeCodexMark` reads), with their unread ids; malformed ones still drop. Only the session /
+    display doc drops unknown ids. A doc holding only a newer server's entries is not rewritten.
+  - **M2 rejoin during a leave save.** CodexService waits (bounded, `CODEX.rejoinWaitSeconds` 30 / `rejoinPollSeconds`)
+    for the same UserId's release before the join load, tracks one owning Player per entry (only the owner's leave
+    releases it; a release that finds a newer owner reloads it) and never sends a status from a missing entry.
+    `notReady` refusals log once per player. PlayerDocCache is unchanged; RecordsService / SettingsService share the
+    exposure (docs/SERVER.md "Codex").
+  - **m1.** `requestCodex` over the rate gets no answer; drop warnings throttled to `CODEX.warnRate` (1 / 10 s / player).
+  - **m2.** A status sets the local copy's dots to the server's minus the views still queued (`CodexOutbox.pendingViews`)
+    plus this session's rises the server has not stored (`codexReceivedDoc`), not a union.
+  - **m3.** A load after the run's summary froze moves the held finds of that run into it: the tracker rebuilds the
+    frozen summary (also when it froze unloaded) and CodexController dispatches `setCodexRunSummary` again.
+  - **m4. The run's last frame counts its events.** On the frame the run is over or the local player left, the tracker
+    still collects that frame's deaths / `bossDefeated` (never its state) before it ends; CodexController runs that
+    last update after the frame's FX events (FxTracker `onFrame`), so the buffered kills and the kill that ended the run
+    count (a boss kill on the run-over frame is found). An exit before it runs the update at `endRun`.
+  - **m5.** `readCodexFrame` / `pushCodexDeath` reuse pooled actor views (`actorPool` / `deathPool` in the buffer), and
+    CodexController skips the frame read (and buffers no kills) while `CodexTracker.isCounting()` is false (an
+    ineligible run, a failed load).
+  - **m6.** Viewed dwell (above, CX7).
+  - **m7.** The run-over row's width is estimated (`codexRecapRowWidth`: the texts at `HUD_VIEW.smallText` by
+    `ROOM_CLEAR_VIEW.tallyFit.glyphAspect` per byte, the icons, the Row gaps; no text-width constant existed in the
+    run-over fit specs, so the room-clear tally's HUD-font advance is used). `codexRecapRowFit`: one line when it fits
+    the column, else one line with fewer icons (down to `CODEX_RECAP.minIcons` 1; a second line would overflow the
+    693 x 320 record-daily worst case), else two lines (always upright). fit.spec counts the worst English row
+    (`86 new in the Codex`, `+N`, `Codex 100%`) through it.
+  - **m8.** A codex toast's tile art is drawn in the tier its entry rose to (`codexToastTiers` on the tracker output,
+    `ToastView.codexTier`, `codexToastArtState`): a swarmer's sighting toast shows the seen art.
+  - **m10.** The compact stats gap change applies only with the row (above); CodexScreen's `1e-6` is `MIN_TAB_SCALE`.
 - **Not done** (v1 gaps): gamepad focus does not wrap in the grid; no names under tiles (the detail shows the name);
   seen tiles are faded, not desaturated; the Codex is not on the pause menu (CXD15).
 

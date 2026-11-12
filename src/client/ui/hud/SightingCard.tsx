@@ -4,7 +4,7 @@ import { selectInputDevice, selectSighting } from "client/store";
 import { str } from "client/ui/theme";
 import { HUD_TRANSIENT, HUD_VIEW, SIGHTING_CARD, TOUCH_SIGHTING_BOX } from "shared/view/hud";
 import { screenSkin } from "shared/view/menu";
-import { CODEX_TOAST } from "shared/view/codex";
+import { CODEX_TOAST, codexToastArtState } from "shared/view/codex";
 import { CodexArt } from "./CodexArt";
 import { CodexChip } from "./CodexChip";
 import { Panel, Row, Text } from "./primitives";
@@ -20,7 +20,8 @@ import { useTouchStrip } from "./touchStripContext";
  *
  * The Codex (claude/codex-plan.md CX6): a card whose entry rose in the Codex this run wears the NEW! chip on a row above
  * its (unchanged) line; a codex toast (`codexId`: a first kill, a vault chest's relic, a boss down) is one line, the chip
- * then `{name} · Codex`, after the entry's tile art (CodexArt, CODEX_TOAST.iconBox: claude/codex-plan.md CX7).
+ * then `{name} · Codex`, after the entry's tile art (CodexArt, CODEX_TOAST.iconBox: claude/codex-plan.md CX7) in the
+ * tier the entry rose to (`codexTier`: a sighting's faded seen art, a find's full art; codexToastArtState).
  */
 export function SightingCard() {
 	const sighting = useSelector(selectSighting);
@@ -44,7 +45,12 @@ export function SightingCard() {
 		>
 			{sighting.codexId !== undefined ? (
 				<Row key={`c${sighting.id}`} order={1}>
-					<CodexArt order={0} id={sighting.codexId} state="found" box={CODEX_TOAST.iconBox} />
+					<CodexArt
+						order={0}
+						id={sighting.codexId}
+						state={codexToastArtState(sighting.codexTier)}
+						box={CODEX_TOAST.iconBox}
+					/>
 					<CodexChip order={1} />
 					<Text
 						order={2}

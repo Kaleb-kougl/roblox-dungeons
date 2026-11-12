@@ -2,9 +2,9 @@ import { createProducer, createSelector } from "@rbxts/reflex";
 import {
 	applyClaims,
 	codexProgressOf,
+	codexReceivedDoc,
 	codexUnreadCount,
 	markViewed,
-	mergeCodex,
 	type CodexClaim,
 	type CodexDoc,
 	type CodexProgress,
@@ -50,13 +50,15 @@ const initialState: CodexState = {
 
 export const codexSlice = createProducer(initialState, {
 	/**
-	 * A `codexStatus` (shared/codex codexDocOfStatus): a doc loads (merged over the local copy: tiers only rise, NEW dots
-	 * unioned, as the server merges), undefined is `loaded: false`: unavailable unless a doc already loaded (ignored).
+	 * A `codexStatus` (shared/codex codexDocOfStatus): a doc loads (shared/codex codexReceivedDoc over the local copy:
+	 * tiers only rise; the NEW dots are the server's minus `pendingViewed`, CodexOutbox.pendingViews, plus this
+	 * session's rises the server has not stored yet), undefined is `loaded: false`: unavailable unless a doc already
+	 * loaded (ignored).
 	 */
-	codexReceive: (state, doc: CodexDoc | undefined): CodexState => {
+	codexReceive: (state, doc: CodexDoc | undefined, pendingViewed: ReadonlyArray<string>): CodexState => {
 		if (doc === undefined)
 			return state.status === "loaded" ? state : { ...state, status: "unavailable", doc: undefined };
-		const merged = state.doc !== undefined ? mergeCodex(state.doc, doc) : doc;
+		const merged = codexReceivedDoc(state.doc, doc, pendingViewed);
 		return { ...state, status: "loaded", doc: merged, version: state.version + 1 };
 	},
 	/** This session's claims on the local copy (applyClaims on the client's `day`, marking rises unread). */

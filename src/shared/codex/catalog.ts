@@ -88,6 +88,13 @@ export const CODEX_TAB_GROUPS: { readonly [K in CodexTab]: ReadonlyArray<CodexGr
 /** Separator between an id's category and its key (`boon:volatile`). */
 export const CODEX_ID_SEPARATOR = ":";
 
+/**
+ * The shape of any Codex id, this catalog's or a newer server's (Luau pattern): a category of letters / digits starting
+ * with a letter, the separator, a key of letters / digits / `_`. At most CODEX_ID_MAX_LENGTH bytes (isCodexIdShape).
+ */
+export const CODEX_ID_SHAPE = "^%a%w*:[%w_]+$";
+export const CODEX_ID_MAX_LENGTH = 64;
+
 /** The category part of each id (`<category>:<key>`). */
 export const CODEX_ID_CATEGORY = table.freeze({
 	boon: "boon",
@@ -407,6 +414,15 @@ export function codexEntry(id: unknown): CodexEntry | undefined {
 /** True for a catalog entry id (an untrusted value: a remote's argument, a stored key). */
 export function isCodexId(id: unknown): id is string {
 	return codexEntry(id) !== undefined;
+}
+
+/**
+ * True for a string shaped like a Codex id (CODEX_ID_SHAPE, at most CODEX_ID_MAX_LENGTH bytes), whether or not this
+ * catalog has it: a stored entry a newer server added (mergeStoredCodex keeps those untouched).
+ */
+export function isCodexIdShape(id: unknown): id is string {
+	if (!typeIs(id, "string") || id.size() > CODEX_ID_MAX_LENGTH) return false;
+	return string.match(id, CODEX_ID_SHAPE)[0] !== undefined;
 }
 
 /** The number of entries in `tab` (every tab when absent): the 100 % mark. */

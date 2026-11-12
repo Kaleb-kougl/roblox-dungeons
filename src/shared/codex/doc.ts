@@ -10,7 +10,9 @@
  *          a fake / unknown day)
  *   floor  the floor it was first found on, 0..CODEX.floorMax (0 while seen / unknown)
  *   unread entry ids whose tier rose since the player last looked (the NEW dots); only ids in `e`, sorted
- * Ids outside the catalog decode away (an entry removed from the game drops out). `seeded` marks a doc that took the
+ * Ids outside the catalog decode away (an entry removed from the game drops out of the session and the display), but
+ * the store transform (mergeStoredCodex) writes well-formed unknown entries back untouched, so a server running an
+ * older catalog never deletes what a newer one added. `seeded` marks a doc that took the
  * one-time seed (seedFromSightings), stored only when true.
  *
  * Merges are per entry: the higher tier wins; two founds keep the earlier day with its floor (a tie on the day keeps
@@ -25,6 +27,7 @@ import {
 	codexEnemyId,
 	codexEntry,
 	isCodexId,
+	isCodexIdShape,
 	type CodexTab,
 } from "./catalog";
 import { CODEX, CODEX_DOC_VERSION } from "./config";
@@ -364,12 +367,53 @@ export function decodeCodexViewed(raw: unknown): string[] | undefined {
 	return sortedUnique(ids);
 }
 
+/** A stored doc's entries and unread ids this catalog does not know (a newer server's), as stored. */
+interface ForeignPart {
+	/** Id -> the stored mark, untouched. */
+	readonly e: Map<string, unknown>;
+	/** Unread ids among `e`'s, sorted and distinct. */
+	readonly unread: string[];
+}
+
+/**
+ * The well-formed entries of a stored value whose ids this catalog does not have: an id shaped like a codex id
+ * (isCodexIdShape) with a valid mark (decodeCodexMark reads it), kept as stored; and the stored unread ids among them.
+ * Empty for a value that is not this doc version.
+ */
+function foreignPartOf(stored: unknown): ForeignPart {
+	const out: ForeignPart = { e: new Map(), unread: [] };
+	if (!typeIs(stored, "table")) return out;
+	const doc = stored as { v?: unknown; e?: unknown; unread?: unknown };
+	if (doc.v !== CODEX_DOC_VERSION) return out;
+	if (typeIs(doc.e, "table")) {
+		for (const [id, raw] of doc.e as Map<unknown, unknown>) {
+			if (isCodexId(id) || !isCodexIdShape(id)) continue;
+			if (decodeCodexMark(raw) !== undefined) out.e.set(id, raw);
+		}
+	}
+	if (out.e.size() > 0 && typeIs(doc.unread, "table")) {
+		const list = doc.unread as unknown[];
+		const n = math.min(list.size(), UNREAD_SCAN_LIMIT + 2 * out.e.size());
+		const ids: string[] = [];
+		for (let i = 0; i < n; i++) {
+			const id = list[i];
+			if (typeIs(id, "string") && out.e.has(id)) ids.push(id);
+		}
+		for (const id of sortedUnique(ids)) out.unread.push(id);
+	}
+	return out;
+}
+
 /**
  * UpdateAsync's transform for a codex write: the stored value merged with `incoming` (the session's doc). Tiers,
  * found days and `seeded` merge as in mergeCodex. `unread` is NOT a plain union here (that would bring back the dots
  * the session cleared): it is the incoming session's list plus the stored unread ids whose stored tier is above the
  * incoming one (a rise another server wrote that this session never saw). Undefined (cancel the write) when the stored
  * value is a NEWER doc version or the merge changes nothing. Junk stored values read as empty and are replaced.
+ *
+ * Rollout-safe: stored entries whose ids this server's catalog does not know (a newer server added them) pass through
+ * untouched when well-formed (an id shaped `<category>:<key>`, a valid mark), with their unread ids; only the session
+ * and display docs drop them (decodeCodexDoc). A malformed unknown entry is dropped as before.
  */
 export function mergeStoredCodex(stored: unknown, incoming: Readonly<CodexDoc>): CodexDoc | undefined {
 	if (typeIs(stored, "table")) {
@@ -385,7 +429,17 @@ export function mergeStoredCodex(stored: unknown, incoming: Readonly<CodexDoc>):
 	const storedValid = typeIs(stored, "table") && (stored as { v?: unknown }).v === CODEX_DOC_VERSION;
 	const nothingToKeep = merged.e.size() === 0 && merged.seeded !== true;
 	if (sameCodexDoc(old, merged) && (storedValid || nothingToKeep)) return undefined;
-	return encodeCodexDoc(merged);
+	const out = encodeCodexDoc(merged);
+	const foreign = foreignPartOf(stored);
+	if (foreign.e.size() === 0) return out;
+	// Stored as they were: the value is only ever read back through decodeCodexDoc / foreignPartOf.
+	for (const [id, raw] of foreign.e) out.e.set(id, raw as CodexMark);
+	if (foreign.unread.size() > 0) {
+		const all = [...(out.unread ?? [])];
+		for (const id of foreign.unread) all.push(id);
+		out.unread = sortedUnique(all);
+	}
+	return out;
 }
 
 /** PlayerDocCache codec (shared/settings store.ts). */

@@ -11,12 +11,21 @@ import {
 	CODEX_HUD_STRINGS,
 	codexChipScale,
 	codexSeenSightings,
+	codexToastArtState,
 	codexToastChip,
 	codexToastEntryId,
 	codexToastNameKey,
 } from ".";
 
 describe("codex toasts", () => {
+	it("a codex toast's art follows the tier its entry rose to (seen sighting, found kill)", () => {
+		expect([
+			codexToastArtState(CodexTier.SEEN),
+			codexToastArtState(CodexTier.FOUND),
+			codexToastArtState(undefined),
+		]).toEqual(["seen", "found", "found"]);
+	});
+
 	it("maps a run event's toast to its entry", () => {
 		expect([
 			codexToastEntryId("boon", boonCard(Boon.VOLATILE)),

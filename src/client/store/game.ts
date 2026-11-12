@@ -109,6 +109,11 @@ export interface ToastView {
 	 * `{name} · Codex`), no second line. The hook for the entry's tile art (CX7's codexTileArt).
 	 */
 	readonly codexId?: string;
+	/**
+	 * The tier `codexId` rose to (shared/codex CodexTier): the toast's tile art is drawn in it (a sighting's seen art, a
+	 * find's full art; shared/view/codex codexToastArtState).
+	 */
+	readonly codexTier?: number;
 	/** os.clock() at which it disappears. */
 	readonly until: number;
 }

@@ -120,6 +120,14 @@ export class CodexOutbox {
 	}
 
 	/**
+	 * The queued viewed ids not sent yet (oldest first; a copy): a status arriving meanwhile must not bring their dots
+	 * back on the local copy (shared/codex codexReceivedDoc).
+	 */
+	pendingViews(): string[] {
+		return [...this.viewIds];
+	}
+
+	/**
 	 * The calls to make at `now` (os.clock seconds), oldest queued first; empty when not ready, nothing is queued, the
 	 * last flush was under flushSeconds ago (unless hurried) or both windows are full. What does not fit stays queued.
 	 */

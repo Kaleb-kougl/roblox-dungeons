@@ -10,11 +10,13 @@
 import { CODEX_DOC_VERSION } from "./config";
 import {
 	applyClaims,
+	codexTier,
 	decodeCodexClaims,
 	decodeCodexDoc,
 	decodeCodexViewed,
 	emptyCodexDoc,
 	markViewed,
+	mergeCodex,
 	seedFromSightings,
 	type CodexDoc,
 	type CodexMark,
@@ -138,5 +140,35 @@ export function seedCodexDoc(doc: Readonly<CodexDoc>, seen: ReadonlyArray<unknow
 	if (doc.unread !== undefined) base.unread = [...doc.unread];
 	const out = applyClaims(base, seedFromSightings(seen), day, false);
 	out.seeded = true;
+	return out;
+}
+
+/**
+ * The client's copy after a `codexStatus` (`server`, codexDocOfStatus) arrived over its current copy `copy` (undefined
+ * before the first): entries merged (mergeCodex: tiers only rise, so this session's claims the server has not stored
+ * yet stay risen); `unread` is the SERVER's list (dots cleared elsewhere stay cleared; never a union with the local
+ * copy) plus the local dots of entries the copy holds above the server's tier (this session's rises on their way),
+ * minus `pendingViewed` (CodexOutbox.pendingViews: ids this session viewed whose `codexViewed` has not gone out yet).
+ * A new doc.
+ */
+export function codexReceivedDoc(
+	copy: Readonly<CodexDoc> | undefined,
+	server: Readonly<CodexDoc>,
+	pendingViewed: ReadonlyArray<string>,
+): CodexDoc {
+	const out = mergeCodex(copy ?? emptyCodexDoc(), server);
+	const drop = new Set<string>();
+	for (const id of pendingViewed) drop.add(id);
+	const keep = new Set<string>();
+	for (const id of server.unread ?? []) if (!drop.has(id)) keep.add(id);
+	if (copy !== undefined) {
+		for (const id of copy.unread ?? []) {
+			if (!drop.has(id) && codexTier(copy, id) > codexTier(server, id)) keep.add(id);
+		}
+	}
+	const unread: string[] = [];
+	for (const id of keep) if (out.e.has(id)) unread.push(id);
+	unread.sort();
+	out.unread = unread.size() > 0 ? unread : undefined;
 	return out;
 }

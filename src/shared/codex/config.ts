@@ -39,6 +39,17 @@ export interface CodexTunables {
 	readonly shutdownSaveSeconds: number;
 	/** BindToClose: how often it re-checks the pending saves. */
 	readonly shutdownPollSeconds: number;
+	/**
+	 * A rejoin to the same server while the last session's leave save is still writing: the new join load waits at
+	 * most this long for that save (and the cache entry's release) to end, so it reads the stored doc fresh instead of
+	 * the entry the release is about to drop. Past it the load goes ahead (logged), and the release hands the new
+	 * session a fresh load when it ends.
+	 */
+	readonly rejoinWaitSeconds: number;
+	/** How often the rejoin wait re-checks the release. */
+	readonly rejoinPollSeconds: number;
+	/** The service's drop warnings (over the rate, a bad payload) per player: at most `count` per `windowSeconds`. */
+	readonly warnRate: { readonly count: number; readonly windowSeconds: number };
 }
 
 export const CODEX: CodexTunables = table.freeze({
@@ -56,6 +67,9 @@ export const CODEX: CodexTunables = table.freeze({
 	seedPollSeconds: 0.25,
 	shutdownSaveSeconds: 25,
 	shutdownPollSeconds: 0.1,
+	rejoinWaitSeconds: 30,
+	rejoinPollSeconds: 0.25,
+	warnRate: table.freeze({ count: 1, windowSeconds: 10 }),
 });
 
 /**

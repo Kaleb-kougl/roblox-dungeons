@@ -4,12 +4,17 @@
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { CODEX } from "shared/codex";
 import { CODEX_STRING_KEYS, PLACEHOLDER_MANIFEST, ThemePack, type StringVars } from "shared/theme";
+import { HUD_VIEW, ROOM_CLEAR_VIEW } from "shared/view/hud";
+import { MENU_FIT } from "shared/view/menu";
 import {
 	CODEX_RECAP,
 	CODEX_RECAP_STRINGS,
 	codexRecapIconsWidth,
 	codexRecapRow,
+	codexRecapRowFit,
 	codexRecapRowHeight,
+	codexRecapRowLines,
+	codexRecapRowWidth,
 	codexSummaryHas,
 	type CodexRunSummary,
 } from ".";
@@ -58,13 +63,57 @@ describe("codex run-over row", () => {
 		expect(codexRecapRow(summary(["a:b", "c:d"]), s)!.moreText).toBe(undefined);
 	});
 
-	it("one line on the wide panel and a landscape phone, two upright; the strip leaves the text room", () => {
+	it("one line on the wide panel and a landscape phone when it fits, two upright", () => {
 		const line = math.max(CODEX_RECAP.iconBox, CODEX_RECAP.lineHeight);
-		expect(codexRecapRowHeight("wide", 6)).toBe(line);
-		expect(codexRecapRowHeight("compact", 6)).toBe(line);
-		expect(codexRecapRowHeight("narrow", 6)).toBe(2 * line + 6);
-		// The compact left column (MENU_FIT.runOverLeftWidth 400): the strip and `+N` leave over half for the texts.
-		expect(codexRecapIconsWidth(CODEX.recapIcons) + 6 + 40).toBeLessThanOrEqual(400 / 2);
+		const gap = HUD_VIEW.gap;
+		expect(codexRecapRowHeight("wide", gap)).toBe(line);
+		expect(codexRecapRowHeight("compact", gap)).toBe(line);
+		expect(codexRecapRowHeight("narrow", gap)).toBe(2 * line + gap);
+		expect(codexRecapRowLines("narrow", codexRecapRow(summary(["boon:volatile"]), s), math.huge)).toBe(2);
+	});
+
+	it("the width estimate: the texts by the HUD font's advance, the strip, the Row's gaps", () => {
+		const row = codexRecapRow(summary(SEVEN), s)!;
+		const em = HUD_VIEW.smallText * ROOM_CLEAR_VIEW.tallyFit.glyphAspect;
+		const bytes = row.countText.size() + row.moreText!.size() + row.totalText.size();
+		expect(codexRecapRowWidth(row)).toBeCloseTo(
+			bytes * em + codexRecapIconsWidth(CODEX.recapIcons) + 3 * HUD_VIEW.gap,
+		);
+	});
+
+	it("the compact left column: a full strip without `+N` fits one line; a longer row shows fewer icons", () => {
+		const left = MENU_FIT.runOverLeftWidth;
+		const line = math.max(CODEX_RECAP.iconBox, CODEX_RECAP.lineHeight);
+		const fiveIds = [...SEVEN].filter((_, i) => i < CODEX.recapIcons);
+		const five = codexRecapRowFit(summary(fiveIds), s, "compact", left)!;
+		expect([five.lines, five.row.icons.size(), five.row.moreText]).toEqual([1, CODEX.recapIcons, undefined]);
+		expect(codexRecapRowHeight("compact", HUD_VIEW.gap, five)).toBe(line);
+		const all = [...SEVEN, "boon:volatile", "boon:bounty", "boon:warding"];
+		const full = codexRecapRow(summary(all, 86), s)!; // `10 new in the Codex`, 5 icons, `+5`, `Codex 100%`
+		expect(codexRecapRowWidth(full)).toBeGreaterThan(left);
+		const many = codexRecapRowFit(summary(all, 86), s, "compact", left)!;
+		expect(many.lines).toBe(1);
+		expect(many.row.icons.size()).toBeLessThan(CODEX.recapIcons);
+		expect(many.row.icons.size()).toBeGreaterThanOrEqual(CODEX_RECAP.minIcons);
+		expect(codexRecapRowWidth(many.row)).toBeLessThanOrEqual(left);
+		expect(many.row.moreText).toBe(`+${all.size() - many.row.icons.size()}`);
+		// one icon more would not fit
+		expect(codexRecapRowWidth(codexRecapRow(summary(all, 86), s, many.row.icons.size() + 1)!)).toBeGreaterThan(
+			left,
+		);
+		// the wide panel (its padding off both sides) keeps the whole row on one line
+		const wide = codexRecapRowFit(summary(all, 86), s, "wide", HUD_VIEW.panelWidth * 2 - HUD_VIEW.pad * 4)!;
+		expect([wide.lines, wide.row.icons.size()]).toEqual([1, CODEX.recapIcons]);
+	});
+
+	it("two lines when even the fewest icons do not fit, and always upright", () => {
+		const line = math.max(CODEX_RECAP.iconBox, CODEX_RECAP.lineHeight);
+		const tight = codexRecapRowFit(summary(SEVEN), s, "compact", 100)!;
+		expect([tight.lines, tight.row.icons.size()]).toEqual([2, CODEX.recapIcons]);
+		expect(codexRecapRowHeight("compact", HUD_VIEW.gap, tight)).toBe(2 * line + HUD_VIEW.gap);
+		const upright = codexRecapRowFit(summary(["boon:volatile"]), s, "narrow", math.huge)!;
+		expect(upright.lines).toBe(2);
+		expect(codexRecapRowFit(summary([]), s, "compact", 400)).toBe(undefined);
 	});
 
 	it("the callout hook: an entry new on the frozen run", () => {

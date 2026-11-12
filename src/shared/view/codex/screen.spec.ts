@@ -19,6 +19,7 @@ import { CODEX_STRING_KEYS, PLACEHOLDER_MANIFEST, ThemePack, type StringVars } f
 import {
 	CODEX_SCREEN,
 	CODEX_SCREEN_STRINGS,
+	CodexViewDwell,
 	codexBadgeText,
 	codexCompletionPct,
 	codexDateText,
@@ -256,5 +257,42 @@ describe("codex completion and badge", () => {
 	it("uses only the Codex's theme strings", () => {
 		for (const [, key] of pairs(CODEX_SCREEN_STRINGS))
 			expect([key, CODEX_STRING_KEYS.includes(key)]).toEqual([key, true]);
+	});
+});
+
+describe("codex viewed dwell", () => {
+	const D = CODEX_SCREEN.viewDwellSeconds;
+
+	it("activation views at once; focus only after the dwell (hover, pad selection, the default selection on open)", () => {
+		expect(D > 0 && D < 1).toBe(true);
+		const d = new CodexViewDwell();
+		// the default selection on open: nothing until it dwelt
+		d.focus("boon:volatile", 0);
+		expect(d.due(0)).toBe(undefined);
+		expect(d.due(D * 0.9)).toBe(undefined);
+		expect(d.due(D)).toBe("boon:volatile");
+		// reported once
+		expect(d.due(D * 3)).toBe(undefined);
+		expect(d.activate("enemy:imp")).toBe("enemy:imp");
+	});
+
+	it("passing over tiles views nothing; a repeat focus keeps the start; a blur or a tab change stops it", () => {
+		const d = new CodexViewDwell();
+		d.focus("a:x", 0);
+		d.focus("a:y", D / 2);
+		expect(d.due(D)).toBe(undefined);
+		d.focus("a:y", D);
+		expect(d.due(D * 2)).toBe("a:y");
+		d.focus("a:z", 2);
+		d.blur("a:other");
+		d.blur("a:z");
+		expect(d.due(2 + D * 2)).toBe(undefined);
+		d.focus("a:z", 5);
+		d.blur();
+		expect(d.due(5 + D * 2)).toBe(undefined);
+		// an activated tile's dwell ends with it
+		d.focus("a:w", 9);
+		d.activate("a:w");
+		expect(d.due(9 + D * 2)).toBe(undefined);
 	});
 });
