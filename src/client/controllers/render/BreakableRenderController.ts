@@ -42,6 +42,7 @@ import {
 	isChestPiece,
 	floorImageOffset,
 	floorImageSize,
+	glintSlotCount,
 	isoBasis,
 	lookWhenReady,
 	lootDebugText,
@@ -51,6 +52,7 @@ import {
 	lootGlintPhaseSec,
 	lootGlintTransparency,
 	oneShotSec,
+	pieceGlints,
 	spriteBillboard,
 	ReadinessCursor,
 	type PieceTop,
@@ -183,7 +185,9 @@ const EMPTY_BOARD: SpriteBillboard = { w: 0, h: 0, offsetX: 0, offsetY: 0, offse
  * sim time, phased by the piece's cell (lootGlintPhaseSec: every client of a party sees the same sparkle), soft
  * (glintTransparency); a still sparkle under reduced motion; hidden while an enemy bullet is within duckTiles
  * (lootGlintDucked), so it is never drawn over a bullet. It goes the frame the piece breaks (or its loot is released) and
- * with every new layout (floor change, restart, run end). Debug: KV_LootDebug (Workspace boolean, Studio or KV_Debug,
+ * with every new layout (floor change, restart, run end). The Goldling's hiding place (docs/GOLDLING_RUMOURS.md RD14,
+ * GR4: shared/sim goldenPieceAt, while it hides) gets the very same glint: shared/view pieceGlints is the one test, so the
+ * art, tint, cadence and per-cell phase are the loot glint's, and it goes the frame the piece breaks. Debug: KV_LootDebug (Workspace boolean, Studio or KV_Debug,
  * off by default) labels every loaded intact piece with its boost kind (lootDebugText, developer English).
  *
  * A vault's chest slot (isChestPiece, docs/TREASURE.md TR7) gets no view at all: TreasureRenderController draws it.
@@ -665,7 +669,7 @@ export class BreakableRenderController implements OnStart {
 
 	// --- loot (docs/BREAKABLE_DROPS.md BL6) ------------------------------------------------------------
 
-	/** Slot `slot` is an intact piece of the layout drawn whose slot holds a boost. */
+	/** Slot `slot` is an intact piece of the layout drawn whose slot holds a boost (KV_LootDebug's labels). */
 	private loaded(state: Readonly<SimState>, slot: number): boolean {
 		return (
 			this.views[slot] !== undefined && this.tracker.isIntact(slot) && breakableLootAt(state, slot) !== NO_BOOST
@@ -673,16 +677,24 @@ export class BreakableRenderController implements OnStart {
 	}
 
 	/**
-	 * One frame of the loot hints: glints (and KV_LootDebug labels) follow the loaded intact pieces, then every glint
-	 * steps its cadence (hidden between passes and near an enemy bullet). Nothing while the run has no breakable loot and
-	 * nothing is shown.
+	 * Slot `slot` is an intact piece of the layout drawn that glints: a loaded piece or the Goldling's hiding place
+	 * (shared/view pieceGlints, docs/GOLDLING_RUMOURS.md GR4).
+	 */
+	private glinting(state: Readonly<SimState>, slot: number): boolean {
+		return this.views[slot] !== undefined && this.tracker.isIntact(slot) && pieceGlints(state, slot);
+	}
+
+	/**
+	 * One frame of the loot hints: glints follow the glinting intact pieces (loaded ones and the Goldling's hiding
+	 * place), KV_LootDebug labels the loaded ones, then every glint steps its cadence (hidden between passes and near an
+	 * enemy bullet). Nothing while no piece can glint and nothing is shown.
 	 */
 	private syncLoot(state: Readonly<SimState>, simSec: number, motion: number): void {
-		const n = state.drops?.pieceLoot.size() ?? 0;
+		const n = glintSlotCount(state);
 		if (n === 0 && this.glints.size() === 0 && this.lootLabels.size() === 0) return;
 		const gone = this.slotScratch;
 		gone.clear();
-		for (const [slot] of this.glints) if (!this.loaded(state, slot)) gone.push(slot);
+		for (const [slot] of this.glints) if (!this.glinting(state, slot)) gone.push(slot);
 		for (const slot of gone) this.releaseGlint(slot);
 		gone.clear();
 		for (const [slot] of this.lootLabels) if (!this.lootDebug || !this.loaded(state, slot)) gone.push(slot);
@@ -690,9 +702,10 @@ export class BreakableRenderController implements OnStart {
 		gone.clear();
 		if (this.glintArt !== undefined || this.lootDebug) {
 			for (let slot = 0; slot < n; slot++) {
-				if (!this.loaded(state, slot)) continue;
-				if (this.glintArt !== undefined && !this.glints.has(slot)) this.attachGlint(slot);
-				if (this.lootDebug && !this.lootLabels.has(slot)) this.addLabel(slot, breakableLootAt(state, slot));
+				if (this.glintArt !== undefined && !this.glints.has(slot) && this.glinting(state, slot))
+					this.attachGlint(slot);
+				if (this.lootDebug && !this.lootLabels.has(slot) && this.loaded(state, slot))
+					this.addLabel(slot, breakableLootAt(state, slot));
 			}
 		}
 		if (this.glints.size() === 0) return;

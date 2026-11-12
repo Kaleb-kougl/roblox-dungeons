@@ -10,6 +10,7 @@ import { RENDER_ORDER, SPRITE_VIEW, floorStudsY, lerp, studsX, studsZ } from "sh
 import { burstSeed } from "shared/view/fx";
 import {
 	GOLDEN_VIEW,
+	GoldenAppearQueue,
 	goldenBlipSlot,
 	goldenCatchFreezeMs,
 	goldenCatchNudges,
@@ -46,8 +47,11 @@ const V = GOLDEN_VIEW;
  * (`RunView.golden`, shared/view/golden events.ts) and the hashed state, and hands each beat to the view that owns its
  * construction:
  *
- *   appear    a gold flash at the spawn (ParticleController.goldenBurst GOLDEN_VIEW.appear.burst + goldenAppearRing, in
- *             golden.coin) and the floor shout `fx.golden.shout` ("GOLDLING!") in the combo shout's slot
+ *   appear    a gold flash where it came out, its piece's cell centre (ParticleController.goldenBurst
+ *             GOLDEN_VIEW.appear.burst + goldenAppearRing, in golden.coin) and the floor shout `fx.golden.shout`
+ *             ("GOLDLING!"), both GOLDEN_VIEW.appear.afterBreakSec of sim time after the release tick
+ *             (GoldenAppearQueue, docs/GOLDLING_RUMOURS.md GR4: the piece's own break, BreakableRenderController's,
+ *             shows first, then the coins burst out of it); the shout in the combo shout's slot
  *             (ComboController.requestShout at FLOOR_SHOUT_PRIORITY.goldenAppear: the combo shout's SurfaceGui under
  *             every bullet, <= COMBO_SHOUT.maxOpacity, ducking near enemy bullets, held under the stage cover). Its
  *             body is the actor pipeline's (ActorRenderController); its first-sighting toast SightingController's.
@@ -93,6 +97,8 @@ export class GoldenRenderController implements OnStart {
 	private folder: Folder | undefined;
 	private debug = false;
 	private label: { anchor: Part; label: TextLabel; text: string } | undefined;
+	/** Appearances waiting for their beat after the piece's break (GR4). */
+	private readonly appears = new GoldenAppearQueue();
 
 	constructor(
 		private readonly sim: SimController,
@@ -142,8 +148,15 @@ export class GoldenRenderController implements OnStart {
 		this.janitor.Add(Workspace.GetAttributeChangedSignal(V.debugAttribute).Connect(() => this.readDebug()));
 		this.janitor.Add(Workspace.GetAttributeChangedSignal(RUN_ATTRIBUTES.debug).Connect(() => this.readDebug()));
 		this.janitor.Add(() => this.removeLabel());
-		this.sim.onRunStarted(() => this.removeLabel());
-		this.sim.onRunExited(() => this.removeLabel());
+		this.sim.onRunStarted(() => {
+			this.removeLabel();
+			this.appears.clear();
+		});
+		this.sim.onRunExited(() => {
+			this.removeLabel();
+			this.appears.clear();
+		});
+		this.sim.onFloorChanged(() => this.appears.clear());
 
 		RunService.BindToRenderStep(
 			V.renderStep,
@@ -166,7 +179,7 @@ export class GoldenRenderController implements OnStart {
 		}
 		debug.profilebegin(V.profileLabel);
 		const alpha = this.sim.getAlpha();
-		this.beats(ctx.run.golden, state);
+		this.beats(ctx.run.golden, state, (state.tick + alpha) / SIM_HZ);
 		this.drawRing(ring, state, alpha);
 		ring.finish();
 		this.updateLabel(state, alpha);
@@ -175,12 +188,13 @@ export class GoldenRenderController implements OnStart {
 
 	// --- the frame's beats ---------------------------------------------------------------------------------
 
-	private beats(ev: GoldenFrameSource, state: Readonly<SimState>): void {
+	private beats(ev: GoldenFrameSource, state: Readonly<SimState>, simSec: number): void {
 		const pack = this.pack;
 		if (pack === undefined) return;
 		const str = (key: string, vars?: Readonly<Record<string, string | number>>) => pack.str(key, vars);
 		const settings = this.fx.settings();
-		for (const a of ev.appeared) {
+		this.appears.push(ev.appeared);
+		for (const a of this.appears.due(simSec)) {
 			this.particles.goldenBurst(
 				a.x,
 				a.z,

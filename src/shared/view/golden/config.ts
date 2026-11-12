@@ -25,13 +25,17 @@ export const GOLDEN_VIEW = {
 
 	// --- appear ------------------------------------------------------------------------------------------------------
 	/**
-	 * The gold flash at its spawn tile: a chip burst in golden.coin and one ring from the spot (the particle system's ring
-	 * pool: radius r0 -> r1 tiles over lifeSec; reduced motion: no growth, a flash in place at r1).
+	 * The gold flash where it came out (its piece's cell centre, docs/GOLDLING_RUMOURS.md GR4): a chip burst in
+	 * golden.coin and one ring from the spot (the particle system's ring pool: radius r0 -> r1 tiles over lifeSec; reduced
+	 * motion: no growth, a flash in place at r1). It and the GOLDLING! shout wait afterBreakSec of sim time after the
+	 * release tick (GoldenAppearQueue), so the piece's own break (chips, splinters, shatter: BreakableRenderController,
+	 * the same tick) reads first and the coins burst out of it.
 	 */
 	appear: {
 		burst: { chunks: 0, bits: 14, sparks: 8, startPx: 4, radiusTiles: 0.3, speed: 1 } as GoldenBurstView,
 		ring: { r0Tiles: 0.2, r1Tiles: 1.6, lifeSec: 0.4 },
 		seedSalt: 61,
+		afterBreakSec: 0.12,
 	},
 	/**
 	 * The floor shout `fx.golden.shout` ("GOLDLING!") in the combo shout's slot (ComboController.requestShout: under every
