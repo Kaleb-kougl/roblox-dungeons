@@ -1,8 +1,10 @@
 // Absolute-tick timers through a mid-floor freeze (docs/FORTUNE.md "Pacts", holdTimers.ts). Greed opens its deal
 // mid-floor, so a player browsing it holds the world frozen while another room is engaged. Counted in ticks of LIVE
-// play (ticks the world was not frozen), the frozen ticks must cost nothing: the room's FAST par, the Horde's wave-2
-// telegraph (trigger to spawn) and the Goldling's appearance delay (engage to appearance) equal the no-freeze case,
-// solo and co-op (the teammate holds the deal open while player 0's room fights). Each timer moves exactly while live.
+// play (ticks the world was not frozen), the frozen ticks must cost nothing: the room's FAST par and the Horde's wave-2
+// telegraph (trigger to spawn) equal the no-freeze case, solo and co-op (the teammate holds the deal open while player
+// 0's room fights). Each timer moves exactly while live. The Goldling has no waiting timer since it hides in its piece
+// (docs/GOLDLING_RUMOURS.md GR2): it stays hidden through every freeze, its latched engageTick untouched; a running
+// one's field tick still moves.
 // Invariants: holdAbsoluteTimers is a no-op without pacts (and the frozen step never calls it there: a no-pacts freeze
 // keeps today's behaviour) and on every frozen tick of a pacts run whose drafts all open on a floor change (so such a
 // run replays exactly as before).
@@ -91,17 +93,16 @@ interface Run {
 	/** Ticks of live play stepped so far (ticks that started with no draft open), and frozen ones. */
 	live: number;
 	frozen: number;
-	/** The live-tick count at the tick wave 2 telegraphed / spawned, the Goldling appeared (-1: not yet). */
+	/** The live-tick count at the tick wave 2 telegraphed / spawned (-1: not yet). */
 	trigger: number;
 	spawn: number;
-	appear: number;
 }
 
 function newRun(seed: number, floor: number, party: number, pacts = true): Run {
 	const setup = pactsSetup(seed, party, pacts);
 	const s = createSimState(seed, setup.spawn!.x, setup.spawn!.z, setup.config);
 	skipToFloorAny(s, setup.config, floor);
-	return { setup, s, world: setup.endlessFloor(floor), live: 0, frozen: 0, trigger: -1, spawn: -1, appear: -1 };
+	return { setup, s, world: setup.endlessFloor(floor), live: 0, frozen: 0, trigger: -1, spawn: -1 };
 }
 
 /** One tick; `input(i)` is player i's frame (default: idle). Counts live and frozen ticks. */
@@ -118,7 +119,6 @@ function tick(r: Run, input: (i: number) => InputFrame = () => frame(0, 0)): voi
 	const p = r.s.pacts;
 	if (p !== undefined && p.events.waveTelegraphed > 0) r.trigger = r.live;
 	if (p !== undefined && p.events.waveSpawned > 0) r.spawn = r.live;
-	if (r.s.golden !== undefined && r.s.golden.events.appeared !== 0) r.appear = r.live;
 }
 
 /** The walk-mask cell of the Goldling room nearest the room's centre (world). */
@@ -191,8 +191,8 @@ function greedHeld(r: Run, taker: number, hold: number): void {
 interface Timings {
 	/** Live ticks from wave 2's trigger to its spawn. */
 	telegraph: number;
-	/** Live ticks from the room's engagement to the Goldling's appearance. */
-	appear: number;
+	/** The Goldling at the end: still hidden (WAITING) with its engageTick the record's tick at the engagement. */
+	goldenHidden: boolean;
 	/** Live ticks from the engagement to the clear, and FAST's `under` as the sim judged it at the clear. */
 	engagedFor: number;
 	under: number;
@@ -205,7 +205,7 @@ interface Timings {
 /**
  * The scenario: the Horde taken (by the taker), player 0 rouses the Goldling room, wave 1 dies at once (wave 2
  * telegraphs), 10 live ticks later the taker takes Greed and holds the deal `hold` ticks (undefined: no Greed), wave 2
- * spawns and dies at once (the clear), the Goldling appears.
+ * spawns and dies at once (the clear); the Goldling stays in its piece throughout (nobody breaks it).
  */
 function play(seed: number, floor: number, party: number, hold: number | undefined): Timings {
 	const r = newRun(seed, floor, party);
@@ -217,8 +217,9 @@ function play(seed: number, floor: number, party: number, hold: number | undefin
 	expect(g.status).toBe(GoldenStatus.WAITING);
 	const rec = engageGoldenRoom(r);
 	const liveEngage = r.live;
+	const engaged = rec.engageTick;
 	expect(p.horde.room).toBe(r.world.golden!.room);
-	expect(g.appearTick).toBe(rec.engageTick + g.config.appearTicks);
+	expect([g.engageTick, g.appearTick, g.releaseTick]).toEqual([engaged, -1, -1]);
 	killAll(r, rec);
 	tick(r);
 	expect(r.trigger).toBe(r.live);
@@ -227,7 +228,7 @@ function play(seed: number, floor: number, party: number, hold: number | undefin
 	if (hold !== undefined) {
 		greedHeld(r, taker, hold);
 		expect(p.horde.spawned).toBe(HORDE_WAVE_PENDING); // the freeze fell inside the telegraph
-		expect(g.status).toBe(GoldenStatus.WAITING); // and before the appearance
+		expect(g.status).toBe(GoldenStatus.WAITING); // and it is still hidden
 	}
 	for (let k = 0; k < 2000 && r.spawn < 0; k++) tick(r);
 	expect(r.spawn > 0).toBe(true);
@@ -243,9 +244,9 @@ function play(seed: number, floor: number, party: number, hold: number | undefin
 	const engagedFor = r.live - liveEngage;
 	const under = rec.parTicks - (r.s.tick - 1 - rec.engageTick);
 	const fast = sc.points[ScoreSource.FAST] - fast0;
-	for (let k = 0; k < 2000 && r.appear < 0; k++) tick(r);
-	expect(r.appear > 0).toBe(true);
-	return { telegraph: r.spawn - r.trigger, appear: r.appear - liveEngage, engagedFor, under, fast, frozen };
+	for (let k = 0; k < 600; k++) tick(r);
+	const goldenHidden = g.status === GoldenStatus.WAITING && g.engageTick === engaged && g.appearTick === -1;
+	return { telegraph: r.spawn - r.trigger, goldenHidden, engagedFor, under, fast, frozen };
 }
 
 const HOLD = 600;
@@ -254,7 +255,7 @@ describe("a mid-floor freeze costs no live-play time (holdAbsoluteTimers)", () =
 	for (const party of [2, 1]) {
 		it(`${
 			party === 1 ? "solo" : "co-op"
-		}: FAST, the wave-2 telegraph and the Goldling's delay equal the no-freeze case`, () => {
+		}: FAST and the wave-2 telegraph equal the no-freeze case; the Goldling stays hidden`, () => {
 			const [seed, floor] = findFortuneFloor(party);
 			const none = play(seed, floor, party, undefined);
 			const brief = play(seed, floor, party, 0);
@@ -262,7 +263,7 @@ describe("a mid-floor freeze costs no live-play time (holdAbsoluteTimers)", () =
 			const w = pactsSetup(seed, party).config;
 			for (const t of [none, brief, held]) {
 				expect(t.telegraph).toBe(w.pacts!.waveTelegraphTicks);
-				expect(t.appear).toBe(w.golden!.appearTicks);
+				expect(t.goldenHidden).toBe(true);
 				expect(t.engagedFor).toBe(none.engagedFor);
 				expect(t.under).toBe(none.under);
 			}
@@ -278,7 +279,7 @@ describe("a mid-floor freeze costs no live-play time (holdAbsoluteTimers)", () =
 });
 
 describe("holdAbsoluteTimers invariants", () => {
-	it("moves exactly the live timers: engaged uncleared records, a telegraphed wave, the waiting Goldling, a running one's field, an armed Vengeful ring", () => {
+	it("moves exactly the live timers: engaged uncleared records, a telegraphed wave, a running Goldling's field, an armed Vengeful ring; never a hidden Goldling's", () => {
 		const [seed, floor] = findFortuneFloor(1);
 		const r = newRun(seed, floor, 1);
 		const rec = engageGoldenRoom(r);
@@ -305,12 +306,15 @@ describe("holdAbsoluteTimers invariants", () => {
 			expect(q.engageTick).toBe(q.engageTick >= 0 && q.cleared === 0 ? engage[k] + 1 : engage[k]);
 		}
 		expect(rec.engageTick).toBe(engage[sc.rooms.indexOf(rec)] + 1);
+		// The hidden Goldling (WAITING) has no timer: its latched engageTick and its appearTick (-1) stay put.
+		expect(g.status).toBe(GoldenStatus.WAITING);
 		expect([x.vengeArmTick, h.waveDueTick, g.engageTick, g.appearTick]).toEqual([
 			vArm + 1,
 			due + 1,
-			gEngage + 1,
-			gAppear + 1,
+			gEngage,
+			gAppear,
 		]);
+		expect(gAppear).toBe(-1);
 		// a cleared record, a spawned wave, a fired ring, a Goldling out: only the running field's tick moves
 		rec.cleared = 1;
 		h.spawned = 0;
@@ -336,9 +340,9 @@ describe("holdAbsoluteTimers invariants", () => {
 		const rec = engageGoldenRoom(r);
 		const g = r.s.golden!;
 		for (let k = 0; k < 5; k++) tick(r);
-		expect(g.appearTick).toBe(rec.engageTick + g.config.appearTicks);
+		expect(g.engageTick).toBe(rec.engageTick);
 		const engage = rec.engageTick;
-		const appear = g.appearTick;
+		const gEngage = g.engageTick;
 		const h0 = hashState(r.s);
 		holdAbsoluteTimers(r.s);
 		expect(hashState(r.s)).toBe(h0);
@@ -348,7 +352,7 @@ describe("holdAbsoluteTimers invariants", () => {
 		for (let k = 0; k < 50; k++) tick(r);
 		expect(r.s.tick).toBe(tick0 + 50);
 		expect(rec.engageTick).toBe(engage);
-		expect(g.appearTick).toBe(appear);
+		expect([g.engageTick, g.appearTick, g.status]).toEqual([gEngage, -1, GoldenStatus.WAITING]);
 	});
 
 	it("with pacts: a no-op on every frozen tick of a run whose drafts all open on a floor change", () => {

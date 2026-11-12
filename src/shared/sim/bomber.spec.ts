@@ -25,7 +25,9 @@ import {
 	DEFAULT_SIM_CONFIG,
 	DROPS_CONFIG,
 	EMPTY_INPUT,
+	ENDLESS_GOLDEN_CONFIG,
 	FULL_RING,
+	GoldenStatus,
 	NOT_BROKEN,
 	NO_BOOST,
 	Relic,
@@ -392,6 +394,37 @@ describe("bomber: a vault's chest (docs/TREASURE.md TR2)", () => {
 		const chest = s.breakables!.pieces[0];
 		expect(dist(a, gridToWorld(chest.x), gridToWorld(chest.y)) <= BOMBER.data.blastBreakRadius).toBe(true);
 		expect(s.breakables!.pieces.map((p) => p.brokenTick)).toEqual([NOT_BROKEN, NOT_BROKEN, NOT_BROKEN]);
+	});
+});
+
+describe("bomber: the Goldling's hidden piece (docs/GOLDLING_RUMOURS.md GR0 / RD13)", () => {
+	it("the blast never breaks the piece a Goldling hides in (the breakables test's layout, its inner crate the hiding place)", () => {
+		const pieces: BreakablePlacement[] = [
+			{ x: worldToGrid(2), y: worldToGrid(0), kind: "crate" },
+			{ x: worldToGrid(4), y: worldToGrid(0), kind: "crate" },
+			{ x: worldToGrid(2), y: worldToGrid(2.5), kind: "crate" },
+		];
+		const config: SimConfig = {
+			...DEFAULT_SIM_CONFIG,
+			breakables: { ...BREAKABLES_CONFIG, pieces },
+			golden: ENDLESS_GOLDEN_CONFIG,
+		};
+		const s = createSimState(SEED, 0, 0, config);
+		ghost(s);
+		// Surgery: the inner crate is a hiding Goldling's piece (no endless floor here to roll one).
+		s.golden!.status = GoldenStatus.WAITING;
+		s.golden!.piece = 0;
+		const a = bomber(s, config, 7, 0);
+		runUntil(s, config, 400, () => a.alive === 0);
+		expect(a.alive).toBe(0);
+		const hide = s.breakables!.pieces[0];
+		expect(dist(a, gridToWorld(hide.x), gridToWorld(hide.y)) <= BOMBER.data.blastBreakRadius).toBe(true);
+		expect(s.breakables!.pieces.map((p) => p.brokenTick)).toEqual([NOT_BROKEN, NOT_BROKEN, NOT_BROKEN]);
+		expect([hide.hp, s.golden!.status, s.golden!.releaseTick]).toEqual([
+			BREAKABLES_CONFIG.hp[1],
+			GoldenStatus.WAITING,
+			-1,
+		]);
 	});
 });
 

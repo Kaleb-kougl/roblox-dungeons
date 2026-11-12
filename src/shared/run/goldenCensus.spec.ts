@@ -12,11 +12,13 @@
 // is the closer measure: the bot fights the room (walks at the nearest living enemy and swings, the drops census
 // bot's fight) and turns on the Goldling only while it is within SWITCH_TILES or once the room is clear.
 //
-// Test-only surgery: the player is teleported into the Goldling's room; drafts never open (the dev world's floor jump;
-// the party run's startFloor / startDepth). SWEEP (off) prints the tuning sweeps behind GE4's numbers instead.
+// Test-only surgery: the player is teleported into the Goldling's room and its piece broken open; drafts never open
+// (the dev world's floor jump; the party run's startFloor / startDepth). SWEEP (off) prints the tuning sweeps behind
+// GE4's numbers instead.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { bulletBlocker, gridToWorld, lineOfSight, pathField, type Dungeon, type PathField } from "shared/dungeon";
 import {
+	BreakableSource,
 	Button,
 	EMPTY_INPUT,
 	ENDLESS_GOLDEN_CONFIG,
@@ -28,6 +30,7 @@ import {
 	ScoreSource,
 	archetypeIndex,
 	createSimState,
+	damageBreakable,
 	partySize,
 	playerAt,
 	step,
@@ -216,7 +219,12 @@ function chase(seed: number, floor: number, n: number, weapon: Weapon, knobs: Kn
 	}
 	const idle: InputFrame[] = [];
 	for (let i = 0; i < n; i++) idle.push(EMPTY_INPUT);
-	for (let k = 0; k < 400 && g.status === GoldenStatus.WAITING; k++) tickAll(c, idle);
+	tickAll(c, idle);
+	// Its piece broken open (docs/GOLDLING_RUMOURS.md GR2; test surgery, player 0's swing): it comes out on the next
+	// tick. The rest of the census (GE4's chase from the appearance) is unchanged; GR8 rewrites it as a hunt.
+	const slot = f.piece;
+	damageBreakable(c.s, slot, c.s.breakables!.pieces[slot].hp, BreakableSource.MELEE, 0);
+	tickAll(c, idle);
 	if (g.status !== GoldenStatus.RUNNING) error(`seed ${seed} floor ${floor}: the Goldling did not appear`, 0);
 	const a = c.s.combat.actors[g.actorSlot];
 	expect(a.kind).toBe(archetypeIndex(GOLDEN_KIND));

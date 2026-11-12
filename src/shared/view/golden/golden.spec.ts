@@ -8,6 +8,7 @@ import { gridToWorld } from "shared/dungeon";
 import { LiveRun } from "shared/play";
 import { buildDevRunConfig, buildEndlessRunConfig } from "shared/run";
 import {
+	BreakableSource,
 	EMPTY_INPUT,
 	ENDLESS_GOLDEN_CONFIG,
 	GOLDEN,
@@ -18,6 +19,7 @@ import {
 	SimCtx,
 	archetypeIndex,
 	createSimState,
+	damageBreakable,
 	simWorldConfig,
 	step,
 	type ActorState,
@@ -93,7 +95,10 @@ function tick(r: Run): void {
 	r.ev.collect(r.s);
 }
 
-/** Player 0 into the Goldling room (a walk-mask cell near its middle), then on until it is out. */
+/**
+ * Player 0 into the Goldling room (a walk-mask cell near its middle), a few ticks (nothing collected while it hides),
+ * then its piece broken open (docs/GOLDLING_RUMOURS.md GR2; test surgery, player 0's swing): out on the next tick.
+ */
 function untilOut(r: Run): ActorState {
 	const f = r.s.golden!.floor!;
 	let lx = math.floor(f.w / 2);
@@ -105,10 +110,13 @@ function untilOut(r: Run): ActorState {
 	p.prevX = p.x;
 	p.prevZ = p.z;
 	const g = r.s.golden!;
-	for (let k = 0; k < 400 && g.status === GoldenStatus.WAITING; k++) {
+	for (let k = 0; k < 30; k++) {
 		tick(r);
-		if (g.status === GoldenStatus.WAITING) expect(r.ev.count()).toBe(0);
+		expect(g.status).toBe(GoldenStatus.WAITING);
+		expect(r.ev.count()).toBe(0);
 	}
+	damageBreakable(r.s, g.piece, r.s.breakables!.pieces[g.piece].hp, BreakableSource.MELEE, 0);
+	tick(r);
 	expect(g.status).toBe(GoldenStatus.RUNNING);
 	return r.s.combat.actors[g.actorSlot];
 }

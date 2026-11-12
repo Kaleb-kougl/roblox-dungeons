@@ -277,13 +277,13 @@ const partyPrev: number[] = [];
  *   8b. stepTreasure (only with config.treasure: the vault arms on its room's engagement, cracks on a hit past the
  *                    allowance or the SWIFT countdown's end, unlocks on the clear; after 8, so this tick's engagement,
  *                    hits and clear are known)
- *   9. stepGolden   (only with config.golden: the Goldling appears appearTicks after its room engaged, or escapes when
- *                    its time is up; its hits and catch score inside 3)
+ *   9. stepGolden   (only with config.golden: the Goldling comes out of its piece the tick a player broke it, or
+ *                    escapes when its time is up; its hits and catch score inside 3)
  *  10. tick += 1
  * While a boon draft is open (endless mode, progression/progression.ts) the world is frozen: after the event clears
  * only stepDraft runs (the stick selects, a FIRE press confirms), then (only with config.pacts: Greed's deal opens
  * mid-floor) holdAbsoluteTimers (pacts/holdTimers.ts) moves the live absolute-tick timers 1 tick later (engaged room
- * records' engageTick for FAST, the Horde's waveDueTick, the waiting Goldling's appearTick, a running one's
+ * records' engageTick for FAST, the Horde's waveDueTick, a running Goldling's
  * fieldTick, a Vengeful corpse's vengeArmTick), then tick += 1 (a forfeit on such a tick closes the draft without a
  * pick and the tick stays frozen, like a co-op leaver's).
  * In endless mode steps 2-3 run with the current floor's SimConfig (simWorldConfig). Scoring is read from the top-level
