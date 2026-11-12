@@ -359,6 +359,24 @@ describe("menu fit on phones (docs/UI_ART.md Phones)", () => {
 		expect(fit.factor).toBe(fitOn(s, { ...e, ornament: false }, u, true).factor);
 	});
 
+	it("a floor modifier's pause line (FM6): compact, the divider gives way; inside, at the floor", () => {
+		// Worst case on touch: the floor line and the floor modifier's line (one small line each) over the info
+		// line; the compact pause drops its divider while the floor modifier's line shows (PauseOverlay).
+		const extra = (u: number) => 2 * (LINE(HUD_VIEW.smallText) + HUD_VIEW.gap) - divider(u) - HUD_VIEW.gap;
+		for (const s of PHONES) {
+			const u = touchScale(s);
+			const base = estimates(u, true).get("pause")!;
+			const e = { ...base, h: base.h + extra(u) };
+			const fit = fitOn(s, e, u, true);
+			expect([s.name, fit.overflow]).toEqual([s.name, false]);
+			expect(u * fit.factor).toBeGreaterThanOrEqual(MENU_FIT.minScale - 1e-9);
+			expectInside(s, e, fit, u);
+			// with the divider kept it would not fit the owner's 693 x 320 phone
+			const kept = fitOn(s, { ...base, h: base.h + 2 * (LINE(HUD_VIEW.smallText) + HUD_VIEW.gap) }, u, true);
+			expect([s.name, kept.overflow]).toEqual([s.name, s.name === "693x320"]);
+		}
+	});
+
 	it("without the compact layouts the main menu and run over would not fit the 693 x 320 phone", () => {
 		const s = PHONES[2];
 		const u = touchScale(s);
@@ -677,6 +695,35 @@ describe("the upright pause (docs/PORTRAIT.md PT6)", () => {
 				const fit = fitMenu({
 					w: e.w,
 					h: e.h + BUTTON + HUD_VIEW.gap,
+					areaW: area.w,
+					areaH: area.h,
+					uiScale: u,
+					touch: true,
+					narrow: true,
+					ornament: e.ornament,
+					ornamentArtH: ORNAMENT_ART_H,
+					flex: undefined,
+				});
+				expect([s.name, percent, fit.overflow]).toEqual([s.name, percent, false]);
+				expect([s.name, percent, u * fit.factor >= MENU_FIT.narrowMinScale - 1e-9]).toEqual([
+					s.name,
+					percent,
+					true,
+				]);
+			}
+		}
+	});
+
+	it("with the Build / Map toggle, the floor line and a floor modifier's line (docs/FLOOR_MODIFIERS.md FM6)", () => {
+		const extra = BUTTON + HUD_VIEW.gap + 2 * (LINE(HUD_VIEW.smallText) + HUD_VIEW.gap);
+		for (const s of PORTRAITS) {
+			for (const percent of [70, 100, 125]) {
+				const u = computeHudScale(s.x, s.y, false, percent, true);
+				const e = narrowEstimates(u).get("pause")!;
+				const area = pausePanelArea(menuArea(s.x, s.y, s.insets, u), HUD_VIEW.gap);
+				const fit = fitMenu({
+					w: e.w,
+					h: e.h + extra,
 					areaW: area.w,
 					areaH: area.h,
 					uiScale: u,

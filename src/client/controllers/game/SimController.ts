@@ -1690,6 +1690,7 @@ export class SimController implements OnStart {
 			coop: ctx.coop !== undefined,
 			lobbyId: ctx.lobbyId,
 			character: playerCharacterOf(ctx.characters, ctx.run.state, ctx.localIndex) ?? "",
+			floorModifier: floorModifierOf(ctx),
 		};
 	}
 

@@ -3,6 +3,7 @@
  * modifiers.ts / payoff.ts, drawing in the client's StageCard banner and FloorModifierChip, FM5 / FM6). Presentation
  * only: which floor gets which modifier is shared/dungeon MODIFIERS', so nothing here can change a replay.
  */
+import type { ColorRole } from "shared/theme";
 
 /** The banner's stamp (the name and line scale down onto the card as they fade in). */
 export interface FloorModifierStampView {
@@ -22,6 +23,22 @@ export interface FloorModifierChipPulseView {
 	readonly peakTransparency: number;
 }
 
+/**
+ * The status chip (FM6, client FloorModifierChip): the floor's modifier named in its colour role on a dark panel, in
+ * the status corner's boost row (beside the Horde chip) and at the head of the touch strip's chip line. Reference px.
+ */
+export interface FloorModifierChipView {
+	/** Text size cap (TextScaled into the chip's box) in the status corner. */
+	readonly textSize: number;
+	/** Touch strip: the chip's width and text cap (its height is the strip's chip cell). */
+	readonly touchWidth: number;
+	readonly touchTextSize: number;
+	/** Horizontal padding inside the chip and between its icon and name. */
+	readonly pad: number;
+	/** The chip's panel fill (a dark backing so the role colour reads). */
+	readonly fillRole: ColorRole;
+}
+
 export interface FloorModifierViewTunables {
 	/** Seconds after the floor card appears before the banner stamps in (the title and biome read first). */
 	readonly bannerDelaySec: number;
@@ -29,6 +46,7 @@ export interface FloorModifierViewTunables {
 	readonly modifierCardSec: number;
 	readonly stamp: FloorModifierStampView;
 	readonly chipPulse: FloorModifierChipPulseView;
+	readonly chip: FloorModifierChipView;
 }
 
 export const FLOOR_MODIFIER_VIEW: FloorModifierViewTunables = {
@@ -36,4 +54,5 @@ export const FLOOR_MODIFIER_VIEW: FloorModifierViewTunables = {
 	modifierCardSec: 1.8,
 	stamp: { durationSec: 0.2, fromScale: 1.6 },
 	chipPulse: { durationSec: 0.6, amplitude: 0.1, peakTransparency: 0.35 },
+	chip: { textSize: 16, touchWidth: 96, touchTextSize: 12, pad: 3, fillRole: "uiPanel" },
 };

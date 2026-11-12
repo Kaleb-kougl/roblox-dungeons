@@ -18,8 +18,9 @@ import {
 import { useFocusScope, useOpeningId } from "client/ui/focus";
 import { str } from "client/ui/theme";
 import { swapHint, keyDevice } from "shared/play";
+import { FLOOR_MODIFIER_PAUSE_KEY } from "shared/theme";
 import { TUTORIAL_STRINGS } from "shared/tutorial";
-import { PORTRAIT } from "shared/view";
+import { PORTRAIT, modifierCardRows } from "shared/view";
 import { SFX } from "shared/view/audio";
 import {
 	HUD_STRINGS,
@@ -52,6 +53,7 @@ import { Divider, MenuButton, Panel, Row, Text } from "./primitives";
 import { ScreenDim } from "./ScreenDim";
 import { usePortrait } from "./usePortrait";
 import { RunInfoLine } from "./RunInfoLine";
+import { useFloorModifier } from "./FloorModifierChip";
 
 const CONFIRM_BUTTON = new Vector2(HUD_VIEW.buttonSize.x / 2, HUD_VIEW.buttonSize.y);
 
@@ -121,11 +123,15 @@ const SKIP_CONFIRM: ConfirmSpec = {
  * Hidden while a panel is open and once the run is over (the run-over panel has the exits). The solo dim covers the
  * whole screen (ScreenDim); the panel is fitted into the safe area on touch (MenuFit; the ornament only with room).
  * A ranked run with a record shows the target line under the buttons (`Best 48210 · floor 9`, docs/NEW_BEST.md NB9:
- * bestText of the run's frozen baseline); other runs are unchanged.
+ * bestText of the run's frozen baseline); other runs are unchanged. On a floor modifier's floor
+ * (docs/FLOOR_MODIFIERS.md FM6) one line over the run's info line: `hud.pause.floorMod` (`Gilded · A Goldling is
+ * certain`) in the kind's colour; the compact layout (a landscape phone) drops the divider then, so the panel keeps
+ * its fit (shared/view/menu fit.spec).
  */
 export function PauseOverlay() {
 	const s = useSelector(selectSnapshot);
 	const info = useSelector(selectRunInfo);
+	const modifierRows = modifierCardRows(useFloorModifier());
 	const coopOverlay = useSelector(selectCoopOverlay);
 	const confirm = useSelector(selectLeaveConfirm);
 	const panelOpen = useSelector(selectAnyPanelOpen);
@@ -313,7 +319,7 @@ export function PauseOverlay() {
 						text={str(coop ? MENU_STRINGS.coopTitle : HUD_STRINGS.paused)}
 					/>
 					{body}
-					{screenDividers("pause") ? (
+					{screenDividers("pause") && !(layout.compact && modifierRows !== undefined) ? (
 						<Divider key="Divider" order={17} skin={screenSkin("pause")} />
 					) : undefined}
 					{best !== "" ? (
@@ -347,13 +353,28 @@ export function PauseOverlay() {
 							text={str(HUD_STRINGS.floor, { floor: s.floor, depth: s.depth })}
 						/>
 					) : undefined}
-					<RunInfoLine order={20} />
+					{modifierRows !== undefined ? (
+						<Text
+							key="FloorModifier"
+							fill={true}
+							order={20}
+							size={HUD_VIEW.smallText}
+							color={modifierRows.role}
+							align={Enum.TextXAlignment.Center}
+							wrap={true}
+							text={str(FLOOR_MODIFIER_PAUSE_KEY, {
+								name: str(modifierRows.nameKey),
+								line: str(modifierRows.lineKey),
+							})}
+						/>
+					) : undefined}
+					<RunInfoLine order={21} />
 					{device === "gamepad" ? (
-						<PadHintBar order={21} surface={confirmShown ? "confirm" : coop ? "party" : "pause"} />
+						<PadHintBar order={22} surface={confirmShown ? "confirm" : coop ? "party" : "pause"} />
 					) : touch ? undefined : (
 						<Text
 							fill={true}
-							order={21}
+							order={22}
 							size={HUD_VIEW.smallText}
 							color="uiTextDim"
 							align={Enum.TextXAlignment.Center}

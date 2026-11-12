@@ -3,9 +3,11 @@ import { useSelector } from "@rbxts/react-reflex";
 import { selectSnapshot } from "client/store";
 import { UI_IMAGES, role, str, useUiArt } from "client/ui/theme";
 import type { ThemePack } from "shared/theme";
+import { FloorModifier } from "shared/dungeon";
 import { HORDE_CHIP, hordeChipWidth } from "shared/view/pacts";
 import { BOOST_VIEW, type BoostHudEntry } from "shared/view/boosts";
 import { BRACE_VIEW } from "shared/view/fx";
+import { FLOOR_MODIFIER_VIEW } from "shared/view/modifiers";
 import {
 	HUD_STRINGS,
 	HUD_VIEW,
@@ -21,6 +23,7 @@ import {
 } from "shared/view/hud";
 import { BoostRow, boostCellWidth } from "./BoostRow";
 import { BRACE_UI } from "./braceUi";
+import { FloorModifierChip, useFloorModifier } from "./FloorModifierChip";
 import { HordeChip } from "./HordeChip";
 import { ArtImage, Panel, Pip, Row, Text, type PipArtProps } from "./primitives";
 import { RunItems } from "./RunItems";
@@ -159,22 +162,66 @@ function BracePulse() {
 }
 
 /**
- * The boost row while the Pact of the Horde is armed (docs/FORTUNE.md FO7): the Horde chip, then the running boosts in
- * what is left of the row (shared/view/pacts hordeChipWidth: one boost cell beside the chip; more boosts wrap under
- * it), so the chip shares the boost row's line instead of adding a panel or a row of its own.
+ * The boost row while a chip leads it: the Pact of the Horde armed (docs/FORTUNE.md FO7, `horde`) and / or the floor's
+ * modifier (docs/FLOOR_MODIFIERS.md FM6, `modifier`: a FloorModifier id, NONE for none). One chip takes the chip slot
+ * (shared/view/pacts hordeChipWidth: one boost cell beside it, more boosts wrap under it), so a chip shares the boost
+ * row's line instead of adding a panel or a row of its own. Both: the modifier chip in a boost cell's width, the Horde
+ * chip in its slot, the boosts on the line under them.
  */
-function HordeBoostRow(props: { order: number; boosts: ReadonlyArray<BoostHudEntry>; highlight?: boolean }) {
+function ChipBoostRow(props: {
+	order: number;
+	boosts: ReadonlyArray<BoostHudEntry>;
+	highlight?: boolean;
+	horde: boolean;
+	modifier: number;
+}) {
 	const cell = boostCellWidth(BOOST_VIEW);
-	const chipW = hordeChipWidth(statusRowMaxWidth(), cell, HUD_VIEW.gap);
+	const slot = hordeChipWidth(statusRowMaxWidth(), cell, HUD_VIEW.gap);
+	const h = BOOST_VIEW.iconSize;
+	const both = props.horde && props.modifier !== FloorModifier.NONE;
+	const chips = new Array<React.Element>();
+	if (props.modifier !== FloorModifier.NONE) {
+		chips.push(
+			<FloorModifierChip
+				key="FloorModifier"
+				order={1}
+				kind={props.modifier}
+				width={both ? cell : slot}
+				height={h}
+				textSize={FLOOR_MODIFIER_VIEW.chip.textSize}
+			/>,
+		);
+	}
+	if (props.horde) {
+		chips.push(<HordeChip key="Horde" order={2} width={slot} height={h} textSize={HORDE_CHIP.textSize} />);
+	}
+	if (both) {
+		return (
+			<frame
+				LayoutOrder={props.order}
+				Size={new UDim2()}
+				AutomaticSize={Enum.AutomaticSize.XY}
+				BackgroundTransparency={HIDDEN}
+			>
+				<uilistlayout
+					FillDirection={Enum.FillDirection.Vertical}
+					SortOrder={Enum.SortOrder.LayoutOrder}
+					Padding={new UDim(0, HUD_VIEW.gap)}
+				/>
+				<Row order={1}>{chips}</Row>
+				<BoostRow order={2} boosts={props.boosts} highlight={props.highlight} tooltips={true} />
+			</frame>
+		);
+	}
 	return (
 		<Row order={props.order}>
-			<HordeChip order={1} width={chipW} height={BOOST_VIEW.iconSize} textSize={HORDE_CHIP.textSize} />
+			{chips}
 			<BoostRow
-				order={2}
+				order={3}
 				boosts={props.boosts}
 				highlight={props.highlight}
 				tooltips={true}
-				maxWidth={math.max(cell, statusRowMaxWidth() - chipW - HUD_VIEW.gap)}
+				maxWidth={math.max(cell, statusRowMaxWidth() - slot - HUD_VIEW.gap)}
 			/>
 		</Row>
 	);
@@ -193,8 +240,9 @@ export interface StatusPanelProps {
  * Top left (web PlayerHud): hearts (full / half / empty) with armor pips, flask charges and Ember pips, each row
  * labelled from the theme string table (labels in a column of HUD_VIEW.statusLabelWidth so the rows line up); with
  * boost drops (docs/BOOSTS.md B7) the Aegis pip after the armor pips (its own colour, BOOST_VIEW.aegisPipRole) and the
- * running boosts (BoostRow; while the Pact of the Horde is armed, docs/FORTUNE.md FO7, the Horde chip leads the row:
- * HordeBoostRow); on an unscored endless run a line with the floor and Depth (a scored run shows it under
+ * running boosts (BoostRow; while the Pact of the Horde is armed, docs/FORTUNE.md FO7, the Horde chip leads the row,
+ * and on a floor modifier's floor, docs/FLOOR_MODIFIERS.md FM6, the modifier chip: ChipBoostRow); on an unscored
+ * endless run a line with the floor and Depth (a scored run shows it under
  * the score, docs/HUD_LAYOUT.md H4); the owned boons, relics and curses (M2, RunItems). Reads only the ~10 Hz
  * snapshot. In the tutorial: the highlight ring on the hearts or the flask row or the boost row, and the ghost half
  * heart after a harmless hit. With the UI art (docs/UI_ART.md UA10) hearts, potions, candles and chips replace the
@@ -202,6 +250,7 @@ export interface StatusPanelProps {
  */
 export function StatusPanel(props: StatusPanelProps) {
 	const s = useSelector(selectSnapshot);
+	const modifier = useFloorModifier();
 	const uiScale = useHudScale();
 	useUiArt();
 	const skin: StatusSkin = { pack: UI_IMAGES, has: skinHasOf(UI_IMAGES), uiScale };
@@ -234,8 +283,14 @@ export function StatusPanel(props: StatusPanelProps) {
 				<Text order={0} width={HUD_VIEW.statusLabelWidth} color="uiTextDim" text={str(HUD_STRINGS.ember)} />
 				{pips(s.embers, s.emberMax, "ember", true, "ember", skin)}
 			</Row>
-			{s.hordeArmed ? (
-				<HordeBoostRow order={4} boosts={s.boosts} highlight={props.boostsHighlight} />
+			{s.hordeArmed || modifier !== FloorModifier.NONE ? (
+				<ChipBoostRow
+					order={4}
+					boosts={s.boosts}
+					highlight={props.boostsHighlight}
+					horde={s.hordeArmed}
+					modifier={modifier}
+				/>
 			) : (
 				<BoostRow order={4} boosts={s.boosts} highlight={props.boostsHighlight} tooltips={true} />
 			)}

@@ -153,6 +153,18 @@ describe("chipPulse", () => {
 		expect(a.scale > 1 && a.scale < peak.scale).toBe(true);
 	});
 
+	it("the chip's tunables: positive sizes, a fill role every bundled pack has", () => {
+		const c = V.chip;
+		expect([c.textSize > 0, c.touchTextSize > 0, c.touchWidth > c.touchTextSize, c.pad >= 0]).toEqual([
+			true,
+			true,
+			true,
+			true,
+		]);
+		for (const p of ["placeholder", "vale"]) {
+			expect([p, typeIs(THEME_PACKS[p].colors[c.fillRole], "string")]).toEqual([p, true]);
+		}
+	});
 	it("reduced motion: no pulse", () => {
 		for (const t of [0, 0.1, 0.3, 0.5]) expect([t, chipPulse(t, true)]).toEqual([t, { scale: 1, transparency: 1 }]);
 	});

@@ -71,6 +71,12 @@ export interface RunInfo {
 	 * one their weapons are), "" for none (M1's two weapons, no run): the per-character string overrides' reader.
 	 */
 	readonly character: string;
+	/**
+	 * docs/FLOOR_MODIFIERS.md FM6: the current floor's modifier (shared/dungeon FloorModifier id, the floor layout's
+	 * EndlessFloorLayout.modifier; 0 = NONE: a plain floor, no endless floor). The status chip and the pause line
+	 * read it.
+	 */
+	readonly floorModifier: number;
 }
 
 /** One HUD toast (M2: boon taken, relic found, curse accepted, Second Wind, Fang heal); text from the theme. */
@@ -148,6 +154,7 @@ const initialState: GameState = {
 		coop: false,
 		lobbyId: "",
 		character: "",
+		floorModifier: 0,
 	},
 	active: false,
 	toasts: [],
