@@ -41,9 +41,11 @@
  *                 room, prop, spawn, piece, loot slot, affix, pellet and the boss pick are the option-off floor's
  *   pacts         the shrine room's two pact altars (./pacts.ts, docs/FORTUNE.md PS1): no draw, reading the layout,
  *                 the placed pieces (the chest included) and the pellets; nothing above reads it
- *   golden        the Goldling's room, if any (./golden.ts, docs/FORTUNE.md GE1), LAST, from its own stream
- *                 hash(floor seed, GOLDEN_PLACE.salt), reading the encounter rooms and the room spawns; nothing above
- *                 reads it
+ *   golden        the Goldling's room and its barrel or crate, if any (./golden.ts, docs/FORTUNE.md GE1,
+ *                 docs/GOLDLING_RUMOURS.md GR1), LAST, from its own stream hash(floor seed, GOLDEN_PLACE.salt), reading
+ *                 the layout, spawns, pieces (the chest included), pellets and the vault; its piece is appended to
+ *                 `breakables` after every other piece (slot golden.piece) and its cell leaves roomSpawnTiles; nothing
+ *                 above reads it
  *   modifier      opt-in (EndlessFloorOptions.modifiers; off: no draw, `modifier` NONE, every output above as before):
  *                 the floor's modifier (./modifiers.ts, docs/FLOOR_MODIFIERS.md FM1 / FM2), from its own stream
  *                 hash(floor seed, MODIFIERS.salt) and floor n - 1's chance draw, reading the floor built so far
@@ -79,7 +81,7 @@ import { placeBreakableLoot, type BreakableLoot } from "./breakableLoot";
 import { placePellets, type FloorPellets } from "./pellets";
 import { placeVault, vaultChest, type VaultOverride, type VaultPlan } from "./vault";
 import { placePactAltars, type FloorPacts } from "./pacts";
-import { placeGolden, type FloorGolden } from "./golden";
+import { goldenPiece, placeGolden, type FloorGolden } from "./golden";
 import { FloorModifier, MODIFIERS, type FloorModifierId } from "./modifiersData";
 import {
 	pickFloorModifier,
@@ -504,8 +506,8 @@ export interface EndlessFloorLayout {
 	 */
 	readonly pellets?: FloorPellets;
 	/**
-	 * The floor's vault (./vault.ts placeVault, docs/TREASURE.md TR1): its chest is `breakables[vault.slot]` (the last
-	 * piece). Absent: no vault (option off, below VAULT.fromFloor, a miss, no eligible room, the tutorial's floors).
+	 * The floor's vault (./vault.ts placeVault, docs/TREASURE.md TR1): its chest is `breakables[vault.slot]` (after the
+	 * clutter; only the Goldling's piece, when there is one, comes after it). Absent: no vault (option off, below VAULT.fromFloor, a miss, no eligible room, the tutorial's floors).
 	 */
 	readonly vault?: VaultPlan;
 	/**
@@ -515,7 +517,8 @@ export interface EndlessFloorLayout {
 	readonly pactAltars?: FloorPacts;
 	/**
 	 * The floor's Goldling room, if it rolled one (./golden.ts placeGolden, docs/FORTUNE.md GE1): the room id, its floor
-	 * rectangle and walk mask. Absent: no Goldling on this floor (and always on the tutorial's hand-built floors).
+	 * rectangle and walk mask, and its hiding place (docs/GOLDLING_RUMOURS.md GR1): `breakables[golden.piece]`, the last
+	 * piece. Absent: no Goldling on this floor (and always on the tutorial's hand-built floors).
 	 */
 	readonly golden?: FloorGolden;
 	/**
@@ -657,11 +660,15 @@ function placeFloorParts(
 	// moves.
 	const pactAltars =
 		natural === undefined || from <= PART_STEP.pacts ? placePactAltars(input, pieces, pellets) : natural.pactAltars;
-	// The Goldling runs last, on its own rng stream (./golden.ts), reading the encounter rooms and the room spawns:
-	// nothing above moves.
+	// The Goldling runs last, on its own rng stream (./golden.ts), reading the layout, the room spawns, the pieces (the
+	// chest included), the pellets and the vault: nothing above moves. Its barrel or crate is appended by the caller.
 	const golden =
 		natural === undefined || from <= PART_STEP.golden
-			? placeGolden(input, floor, modifier === FloorModifier.GILDED ? { certain: true } : undefined)
+			? placeGolden(
+					{ ...input, pieces, pellets, vault },
+					floor,
+					modifier === FloorModifier.GILDED ? { certain: true } : undefined,
+			  )
 			: natural.golden;
 	return { roomAffixes, breakableLoot, pellets, vault, pieces, pactAltars, golden };
 }
@@ -715,6 +722,9 @@ export function buildEndlessFloor(
 			parts = placeFloorParts(input, floor, breakables, options, modifier, parts);
 	}
 	const { roomAffixes, breakableLoot, pellets, vault, pieces, pactAltars, golden } = parts;
+	// The Goldling's own barrel or crate (docs/GOLDLING_RUMOURS.md RD11) is appended after every other piece, so every
+	// earlier slot (loot's, the chest's) keeps its index; only the room spawn tiles below lose its cell.
+	const floorPieces = golden !== undefined ? [...pieces, goldenPiece(golden)] : pieces;
 	return {
 		floor,
 		seed: params.seed,
@@ -725,10 +735,10 @@ export function buildEndlessFloor(
 		roster,
 		encounter,
 		roomSpawns,
-		roomSpawnTiles: withoutBreakableCells(endlessRoomSpawnTiles(d, roomSpawns), pieces),
+		roomSpawnTiles: withoutBreakableCells(endlessRoomSpawnTiles(d, roomSpawns), floorPieces),
 		spawn: { x: spawn.x, z: spawn.z },
 		stairwell,
-		breakables: pieces,
+		breakables: floorPieces,
 		roomAffixes,
 		breakableLoot,
 		pellets,

@@ -45,6 +45,7 @@ import {
 	type PelletPattern,
 	type TileXZ,
 } from "shared/dungeon";
+import { piecesBeforeGolden } from "shared/dungeon/testing";
 
 const dungeons = new Map<string, Dungeon>();
 function dungeonFor(params: ForgeParams): Dungeon {
@@ -83,7 +84,8 @@ function inputOf(l: EndlessFloorLayout): BreakableFloorInput {
 function usableOf(l: EndlessFloorLayout): (gx: number, gy: number) => boolean {
 	const d = l.dungeon;
 	const solid = new Set<number>();
-	for (const b of l.breakables ?? []) solid.add(cellKey(b.x, b.y));
+	// the pieces placed before the pellets: the Goldling's own comes later (docs/GOLDLING_RUMOURS.md GR1)
+	for (const b of piecesBeforeGolden(l)) solid.add(cellKey(b.x, b.y));
 	const spawns = new Set<number>();
 	for (const list of l.roomSpawns) for (const s of list) spawns.add(cellKey(worldToGrid(s.x), worldToGrid(s.z)));
 	const reach = reachableFloor(d, l.spawn.x, l.spawn.z, solid);
@@ -193,7 +195,7 @@ describe("pellets: tunables, stream and determinism", () => {
 	it("is a pure function of the floor: the same floor always gets the same pellets (fresh dungeon too)", () => {
 		for (let k = 0; k < 6; k++) {
 			const l = CENSUS[k * 31];
-			expect(placePellets(inputOf(l), l.floor, l.breakables ?? [])).toEqual(pelletsOf(l));
+			expect(placePellets(inputOf(l), l.floor, piecesBeforeGolden(l))).toEqual(pelletsOf(l));
 			const run = 1 + math.floor((k * 31) / CENSUS_FLOORS);
 			const fresh = buildEndlessFloor(run, l.floor, (p) => generateDungeon(p));
 			expect(fresh.pellets).toEqual(l.pellets);
@@ -293,10 +295,10 @@ describe("pellets: where they lie", () => {
 		let hits = 0;
 		const n = 1000;
 		for (let seed = 1; seed <= n; seed++) {
-			const out = placePellets({ ...inputOf(l), seed }, l.floor, l.breakables ?? []);
+			const out = placePellets({ ...inputOf(l), seed }, l.floor, piecesBeforeGolden(l));
 			if (out.power !== NO_POWER_PELLET) hits++;
 			if (seed <= 100) {
-				expect(placePellets({ ...inputOf(l), seed }, 1, l.breakables ?? []).power).toBe(NO_POWER_PELLET);
+				expect(placePellets({ ...inputOf(l), seed }, 1, piecesBeforeGolden(l)).power).toBe(NO_POWER_PELLET);
 				expect(out).toEqual(twin(l, seed).pellets);
 			}
 		}
@@ -308,7 +310,8 @@ describe("pellets: where they lie", () => {
 		for (const l of CENSUS.filter((_l, i) => i % 9 === 0)) {
 			const input = inputOf(l);
 			const pieces = placeBreakables(input, l.floor);
-			expect(pieces).toEqual(l.breakables);
+			// (the Goldling's own piece comes after the pellets, docs/GOLDLING_RUMOURS.md GR1)
+			expect(pieces).toEqual(piecesBeforeGolden(l));
 			expect(endlessRoomSpawns(l.dungeon, l.floor, 1, l.roster)).toEqual(l.roomSpawns);
 			expect(assignAffixes(l.seed, l.floor, l.encounter.rooms, l.roomSpawns)).toEqual(l.roomAffixes);
 			expect(placeBreakableLoot(l.seed, l.floor, pieces, l.encounter)).toEqual(l.breakableLoot);

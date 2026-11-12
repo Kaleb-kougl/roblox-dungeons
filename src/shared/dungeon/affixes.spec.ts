@@ -29,6 +29,7 @@ import {
 	type EncounterRoom,
 	type ForgeParams,
 } from "shared/dungeon";
+import { withoutGoldenPiece } from "shared/dungeon/testing";
 import { AFFIX_IDS } from "shared/theme";
 
 const dungeons = new Map<string, Dungeon>();
@@ -146,7 +147,8 @@ describe("buildEndlessFloor with affixes: nothing else moves", () => {
 		for (let run = 1; run <= 6; run++) {
 			for (const floor of [1, 3, 4, 5, 7, 9, 10, 11, 14]) {
 				for (const party of [1, 3]) {
-					const l = buildEndlessFloor(run, floor, dungeonFor, party);
+					// Without the Goldling's own piece (placed after everything, docs/GOLDLING_RUMOURS.md GR1).
+					const l = withoutGoldenPiece(buildEndlessFloor(run, floor, dungeonFor, party));
 					const params = endlessFloorParams(run, floor);
 					const d = dungeonFor(params);
 					expect(l.dungeon).toBe(d);
