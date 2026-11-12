@@ -351,6 +351,28 @@ describe("PreloadQueue (docs/PRELOAD.md P3, docs/STAGE_ASSETS.md SA4)", () => {
 		expect(q.laneOf(fakeId(4))).toBe("taken");
 	});
 
+	it("a first push goes to the head of its lane in order, pulls its ids up from the same or a lower lane", () => {
+		const q = new PreloadQueue();
+		q.push([image(1), image(2)], "back");
+		q.push([image(3), image(4), image(5)], "next");
+		q.push([sound(6)], "front");
+		q.take(0);
+		// image 9 is new, image 4 waits in next (moves to its head), image 1 waits in back (moves up), sound 6 waits in a
+		// higher lane (stays): the Daily's floor ahead of the every-biome guess.
+		expect(q.push([image(9), image(4), image(1), sound(6)], "next", true)).toBe(3);
+		expect([q.laneOf(fakeId(9)), q.laneOf(fakeId(4)), q.laneOf(fakeId(1))]).toEqual(["next", "next", "next"]);
+		expect(q.pending("next")).toBe(5);
+		expect(numbers(q.take(10))).toEqual(
+			numbers([sound(6), image(9), image(4), image(1), image(3), image(5), image(2)]),
+		);
+		// a taken id is never queued again, first or not
+		expect(q.push([image(9)], "next", true)).toBe(0);
+		// without `first` an id already waiting in the same lane keeps its place
+		q.push([image(10), image(11)], "next");
+		expect(q.push([image(11)], "next")).toBe(0);
+		expect(numbers(q.take(2))).toEqual(numbers([image(10), image(11)]));
+	});
+
 	it("retry re-queues a taken id once, bypassing the seen set", () => {
 		const q = new PreloadQueue();
 		q.push([image(1), image(2)], "front");

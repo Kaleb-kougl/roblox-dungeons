@@ -242,10 +242,11 @@ export class PreloadController implements OnInit, OnStart {
 
 	/**
 	 * Queues `refs` (each content id once per session) on `lane`: "front" (default) is served before anything on the
-	 * back lane and moves ids still waiting there. `label` names the request in the log.
+	 * back lane and moves ids still waiting there. `label` names the request in the log. `first`: to the head of `lane`
+	 * (PreloadQueue.push), ahead of what already waits there: the Daily's known first floor on the menu.
 	 */
-	request(refs: ReadonlyArray<ContentRef>, lane: PreloadLane = "front", label?: string): void {
-		const count = this.queue.push(refs, lane);
+	request(refs: ReadonlyArray<ContentRef>, lane: PreloadLane = "front", label?: string, first = false): void {
+		const count = this.queue.push(refs, lane, first);
 		if (lane !== "back" && count > 0) {
 			print(`${LOG} ${lane}: ${label ?? "request"} (${count} of ${refs.size()} queued, the rest already seen)`);
 		}

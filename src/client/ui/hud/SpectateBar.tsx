@@ -1,4 +1,4 @@
-import React, { useBinding, useEffect } from "@rbxts/react";
+import React, { useBinding, useEffect, useRef, useState } from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
 import { RunService } from "@rbxts/services";
 import { selectBindings, selectInputDevice, selectJuice, selectSnapshot } from "client/store";
@@ -12,11 +12,13 @@ import {
 	TOUCH_STRINGS,
 	UI_ART,
 	spectateBarTransparency,
+	spectateGhostBox,
 	spectateHintShown,
 	spectateWatchingKey,
 } from "shared/view/hud";
 import { screenSkin } from "shared/view/menu";
-import { ArtImage, Panel, Text, panelArt } from "./primitives";
+import { ArtImage, Panel, Text, panelArt, panelArtInsets } from "./primitives";
+import { useArtScale } from "./useHudScale";
 
 const HALF = 0.5;
 const HIDDEN = 1;
@@ -28,7 +30,8 @@ const GHOST_Z = 2;
  * "Spectating <name> · 2 / 3", the switch hint (the player's own Attack / Alt bindings on the last-used device; hidden
  * with fewer than two living teammates and during a hold) and "You're back on the next floor". Fades in when it appears (instant under
  * reduced motion). With the frame art (docs/UI_ART.md UA8), the ghost at the bar's left, beside the centred lines and
- * outside their layout (the canvas group has none). Reads only the HUD snapshot (shared/play takeSnapshot's spectate fields).
+ * outside their layout (the canvas group has none), sized to the bar's measured height inside its frame rails
+ * (spectateGhostBox), so it fits the bar on every screen size. Reads only the HUD snapshot (shared/play takeSnapshot's spectate fields).
  */
 export function SpectateBar() {
 	const s = useSelector(selectSnapshot);
@@ -57,10 +60,23 @@ function SpectateBarBody(props: { name: string; position: number; count: number 
 	}, [motion]);
 	const keys = spectateHint(bindings, str)[keyDevice(device)];
 	const skin = screenSkin("spectate");
-	const ghost = UI_ART.iconBox.ghost;
+	const uiScale = useArtScale();
+	const barRef = useRef<CanvasGroup>();
+	// The bar's height, reference px (AbsoluteSize is screen px, under the UIScale): two or three lines, and wrapping.
+	const [barHeight, setBarHeight] = useState(0);
+	useEffect(() => {
+		const bar = barRef.current;
+		if (bar === undefined) return undefined;
+		const measure = () => setBarHeight(uiScale > 0 ? bar.AbsoluteSize.Y / uiScale : 0);
+		measure();
+		const connection = bar.GetPropertyChangedSignal("AbsoluteSize").Connect(measure);
+		return () => connection.Disconnect();
+	}, [uiScale]);
+	const ghost = spectateGhostBox(barHeight, panelArtInsets(skin), uiScale);
 	return (
 		<canvasgroup
 			key="SpectateBar"
+			ref={barRef}
 			Position={new UDim2(HALF, 0, 1, -SPECTATE_BAR_VIEW.bottom)}
 			AnchorPoint={new Vector2(HALF, 1)}
 			Size={new UDim2(0, SPECTATE_BAR_VIEW.width, 0, 0)}
@@ -112,12 +128,13 @@ function SpectateBarBody(props: { name: string; position: number; count: number 
 					text={str(SPECTATE_HUD_STRINGS.back)}
 				/>
 			</Panel>
-			{panelArt(skin) ? (
+			{panelArt(skin) && ghost.h > 0 ? (
 				<ArtImage
 					key="Ghost"
 					name="Ghost"
 					id={UI_ART.ids.iconGhost}
-					box={{ w: ghost, h: ghost }}
+					box={ghost}
+					shrink={true}
 					position={new UDim2(0, HUD_VIEW.pad, HALF, 0)}
 					anchor={new Vector2(0, HALF)}
 					zIndex={GHOST_Z}

@@ -3,7 +3,8 @@
 // only kinds unlocked there); one more seeded kind every ROSTER.floorsPerKind floors, never before its unlock floor,
 // never leaving. Ten seeded kinds since docs/NEW_ENEMIES.md NE7, so a roster is full on floor 19. The roster closes kinds in the spender only, so the layout, its digest, the props, the boss pick, the
 // spawn and the stairwell are the floor built without it; room spawns (and the breakables and affixes placed from
-// them) change by design.
+// them) change by design. The Daily (unlockFloors false, DSD17) drops the unlock floors: each join is the next kind of
+// the shuffle, floor 1's seeded kind any of the ten.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import {
 	AFFIXES,
@@ -245,6 +246,67 @@ describe("seeded roster in the spender", () => {
 			expect(l.roster).toEqual(endlessRoster(run, 1));
 			for (const room of l.roomSpawns) for (const s of room) expect(l.roster!.includes(s.kind)).toBe(true);
 		}
+	});
+});
+
+describe("the Daily's roster: no unlock floors (docs/DAILY.md DSD17, unlockFloors false)", () => {
+	it("every join is the next kind of the shuffle: roster(f) = swarmers + the first target(f) kinds of the order", () => {
+		for (let run = 0; run < SEEDS; run++) {
+			const order = rosterOrder(run);
+			for (let f = ENDLESS_FIRST_FLOOR; f <= FLOORS; f++) {
+				const want = [ROSTER.always];
+				const target = rosterTargetSize(f, order.size());
+				for (let i = 0; i < target; i++) want.push(order[i]);
+				expect([run, f, endlessRoster(run, f, false)]).toEqual([run, f, want]);
+			}
+		}
+	});
+
+	it("floor 1's seeded kind can be any of the ten; the default (true) keeps the unlock floors", () => {
+		const seen = new Set<string>();
+		for (let run = 0; run < SEEDS; run++) {
+			const r = endlessRoster(run, 1, false);
+			expect(r.size()).toBe(2);
+			seen.add(r[1]);
+			expect(endlessRoster(run, 1, true)).toEqual(endlessRoster(run, 1));
+			expect(unlockOf(endlessRoster(run, 1)[1])).toBe(ENDLESS_FIRST_FLOOR);
+		}
+		for (const k of SEEDED) expect([k, seen.has(k)]).toEqual([k, true]);
+	});
+
+	it("the spender opens a roster kind before its unlock floor only without unlock floors", () => {
+		for (let seed = 1; seed <= 40; seed++) {
+			const locked = spendEncounterBudget(new EncounterRng(seed), 13.2, 1, undefined, ["swarmer", "reaper"]);
+			expect(locked.includes("reaper")).toBe(false);
+			const free = spendEncounterBudget(new EncounterRng(seed), 13.2, 1, undefined, ["swarmer", "reaper"], false);
+			for (const k of free) expect(k === "swarmer" || k === "reaper").toBe(true);
+		}
+		let reapers = 0;
+		for (let seed = 1; seed <= 40; seed++) {
+			const free = spendEncounterBudget(new EncounterRng(seed), 13.2, 1, undefined, ["swarmer", "reaper"], false);
+			for (const k of free) if (k === "reaper") reapers++;
+		}
+		expect(reapers > 0).toBe(true);
+	});
+
+	it("a Daily floor 1 buys from its roster, a kind past floor 1's unlocks among them on some runs", () => {
+		let early = 0;
+		for (let run = 1; run <= 30; run++) {
+			const l = buildEndlessFloor(run, 1, dungeonFor, 1, { unlockFloors: false });
+			expect(l.roster).toEqual(endlessRoster(run, 1, false));
+			for (const room of l.roomSpawns) {
+				for (const s of room) {
+					expect(l.roster!.includes(s.kind)).toBe(true);
+					if (unlockOf(s.kind) > ENDLESS_FIRST_FLOOR) early++;
+				}
+			}
+			// The option only touches the roster and the spender: the default floor is exactly as before.
+			const plain = buildEndlessFloor(run, 1, dungeonFor);
+			const kept = buildEndlessFloor(run, 1, dungeonFor, 1, { unlockFloors: true });
+			expect(kept.roster).toEqual(plain.roster);
+			expect(kept.roomSpawns).toEqual(plain.roomSpawns);
+		}
+		expect(early > 0).toBe(true);
 	});
 });
 

@@ -16,7 +16,7 @@
  * without `mine` (no DataStore: Studio, an outage) shows no best line; Play solo never waits on any of it.
  */
 import { BOSS_FLOOR_EVERY, bossKindFor, endlessRoster, floorSeed } from "shared/dungeon";
-import { dailyLabel, type DailyMineEntry, type DailyPodium, type DailyStatus } from "shared/daily";
+import { DAILY, dailyLabel, type DailyMineEntry, type DailyPodium, type DailyStatus } from "shared/daily";
 import type { LobbyVisibility } from "shared/lobby";
 import { formatThousands } from "shared/l10n";
 import {
@@ -60,10 +60,26 @@ export interface DailyPreview {
 	readonly boss: string;
 }
 
-/** Floor 1's roster and the first boss floor's boss for run seed `seed` (the Daily's seed of the day). */
+/**
+ * Floor 1's roster and the first boss floor's boss for run seed `seed` (the Daily's seed of the day). The roster follows
+ * the Daily's rule (DAILY.rosterUnlockFloors, docs/DAILY.md DSD17), like the daily world's floors.
+ */
 export function dailyPreview(seed: number): DailyPreview {
 	const bossFloor = BOSS_FLOOR_EVERY;
-	return { roster: endlessRoster(seed, 1), bossFloor, boss: bossKindFor(floorSeed(seed, bossFloor)) };
+	return {
+		roster: endlessRoster(seed, 1, DAILY.rosterUnlockFloors),
+		bossFloor,
+		boss: bossKindFor(floorSeed(seed, bossFloor)),
+	};
+}
+
+/**
+ * Today's Daily run seed from `status` (the Reflex daily slice) on day `today` (dailyDay(GetServerTimeNow())): the
+ * seed while the status is today's, else undefined (not answered yet, or a stale status whose day is over). The stage
+ * loader's menu prefetch reads it to queue the Daily's own first floor (docs/STAGE_ASSETS.md SA7).
+ */
+export function todaysDailySeed(status: DailyStatus | undefined, today: number): number | undefined {
+	return status !== undefined && status.day === today ? status.seed : undefined;
 }
 
 /** The Daily card's text ("" for a line that is not shown). */

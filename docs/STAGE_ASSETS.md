@@ -462,6 +462,20 @@ smoke test lines, CLAUDE.md decision log. Fresh-phone playtest: a full solo run 
   (soft: enemy.imp, ... +n)` (names from `isArtReady`, `STAGE_LOADER.logMissingIds` 5) and later `floor N: ready in T
   s, after the reveal`. Specs: soft lift at exactly 1.5 s with refs missing, no line under 0.375 s, floor change / co-op
   ignore assets, the full wait's Skip at 6 s and cap at 30 s, `maxCoverSec` without the assets phase.
+- **SA7, the Daily's seed (2026-11-11, owner).** The only run whose seed the client knows before it starts is the
+  Daily (the daily slice's `DailyStatus.seed`; endless and lobby seeds are picked by the server at the start). Once
+  today's seed is in (`shared/view/menu` `todaysDailySeed`: the status while it is today's), StageController queues
+  the Daily's own first floor, `shared/run` `forecastDailyFirstFloor(seed, STAGE_CHARACTERS)` (floor 1 of the daily
+  world as a run start: the seed's roster under docs/DAILY.md DSD17, its biome, music and features, forging nothing),
+  to the HEAD of the next lane, ahead of the every-biome guess: `PreloadController.request(..., "next", label, true)`
+  -> `PreloadQueue.push(refs, lane, first)` (new trailing `first`: refs go to the head in order, ids already waiting
+  in the same or a lower lane move there; higher-lane and taken ids stay put; without it the queue is exactly as
+  before). Once per menu visit key and seed (it also subscribes to the daily slice, so a seed that arrives after the
+  guess, or a new day's, still jumps it); the refs are built once per seed. Log `[Stage] prefetch daily floor 1 (k
+  ids, seed S, head of the next lane)`. The run start itself still pushes its exact layout's manifest to the front
+  lane, as before. Specs: `view/preload.spec` (first push), `view/menu/daily.spec` (todaysDailySeed),
+  `run/stageInput.spec` (the Daily's first floor covers the daily world's built floor 1, its kinds are the seed's
+  roster only).
 - **SA7 (prefetch).** At every reveal, floor n + 1's manifest goes to the next lane (once per run and floor; the
   exact input when that floor was already built: a run start's pre-generation, every tutorial floor; else
   `forecastStageInput(ctx.seed, n + 1, STAGE_CHARACTERS, ctx.world)`; never past `TUTORIAL.lastFloor`); log `[Stage]

@@ -4,7 +4,9 @@
  * The switch keys follow the player's bindings (shared/play spectateHint); the snapshot fields it reads come from
  * shared/play takeSnapshot (`spectating`, `spectateName`, `spectatePosition`, `spectateCount`).
  */
-import type { ColorRole } from "shared/theme";
+import type { ColorRole, SliceInsets } from "shared/theme";
+import { snappedSliceScale, type SkinBox } from "./skin";
+import { UI_ART } from "./skinConfig";
 
 export const SPECTATE_HUD_STRINGS = {
 	/** "Spectating {name}  ·  {pos} / {count}". */
@@ -35,7 +37,28 @@ export const SPECTATE_BAR_VIEW = {
 	fadeSec: 0.3,
 	/** The switch hint shows with at least this many living teammates to switch between. */
 	hintMinCount: 2,
+	/** Reference px kept between the ghost and the frame's top and bottom rails. */
+	ghostGap: 2,
 } as const;
+
+/**
+ * The ghost's box beside the bar's lines (docs/UI_ART.md UA8), reference px: square, as tall as the bar's height
+ * (`barHeight`, reference px, measured: it has two or three lines, and translations wrap) inside its frame's rails
+ * (`insets`, art px, at the hud frames' snapped SliceScale under `uiScale`) less SPECTATE_BAR_VIEW.ghostGap each side,
+ * capped at UI_ART.iconBox.ghost; never negative. The client fits the art into it with fitArtWithin, so the ghost stays
+ * inside the bar on every screen size.
+ */
+export function spectateGhostBox(
+	barHeight: number,
+	insets: Readonly<SliceInsets> | undefined,
+	uiScale: number,
+): SkinBox {
+	const slice = snappedSliceScale(uiScale, UI_ART.hudRefPerArt);
+	const rails = insets !== undefined ? (insets.top + insets.bottom) * slice : 0;
+	const room = barHeight - rails - 2 * SPECTATE_BAR_VIEW.ghostGap;
+	const side = math.clamp(room, 0, UI_ART.iconBox.ghost);
+	return { w: side, h: side };
+}
 
 /** The name line's key: with the "pos / count" part only while the watched player is one of the living ones. */
 export function spectateWatchingKey(position: number): string {

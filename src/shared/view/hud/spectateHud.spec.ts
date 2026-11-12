@@ -7,7 +7,11 @@ import { PLACEHOLDER_MANIFEST, ThemePack } from "shared/theme";
 import {
 	SPECTATE_BAR_VIEW,
 	SPECTATE_HUD_STRINGS,
+	UI_ART,
+	fitArtWithin,
+	snappedSliceScale,
 	spectateBarTransparency,
+	spectateGhostBox,
 	spectateHintShown,
 	spectateStringKeys,
 	spectateWatchingKey,
@@ -56,5 +60,35 @@ describe("spectate bar", () => {
 		expect(spectateBarTransparency(f, 1)).toBe(0);
 		expect(spectateBarTransparency(f * 4, 1)).toBe(0);
 		expect(spectateBarTransparency(0, 0)).toBe(0);
+	});
+});
+
+describe("spectate bar ghost", () => {
+	const insets = UI_ART.contentInsets["ui.panel.hud"];
+	const scales = [0.4, 0.5, 0.55, 0.75, 1, 1.25, 1.5, 2, 3];
+	const heights = [30, 45, 60, 75, 90, 120];
+
+	it("fits inside the bar's frame rails on every screen size and bar height", () => {
+		for (const u of scales) {
+			for (const bar of heights) {
+				const box = spectateGhostBox(bar, insets, u);
+				const rails = (insets.top + insets.bottom) * snappedSliceScale(u, UI_ART.hudRefPerArt);
+				expect(box.h <= bar - rails - 2 * SPECTATE_BAR_VIEW.ghostGap + 1e-9).toBe(true);
+				const art = fitArtWithin(48, 60, box.w, box.h, u);
+				expect(art.w <= box.w + 1e-9).toBe(true);
+				expect(art.h <= box.h + 1e-9).toBe(true);
+			}
+		}
+	});
+
+	it("is capped at the ghost's icon box and never negative", () => {
+		expect(spectateGhostBox(500, insets, 1)).toEqual({ w: UI_ART.iconBox.ghost, h: UI_ART.iconBox.ghost });
+		expect(spectateGhostBox(0, insets, 1)).toEqual({ w: 0, h: 0 });
+		expect(spectateGhostBox(40, undefined, 1).h).toBe(40 - 2 * SPECTATE_BAR_VIEW.ghostGap);
+	});
+
+	it("keeps whole screen px per art px where the bar has room (1080 p)", () => {
+		const box = spectateGhostBox(90, insets, 1.5);
+		expect(fitArtWithin(48, 60, box.w, box.h, 1.5).scale).toBe(1);
 	});
 });

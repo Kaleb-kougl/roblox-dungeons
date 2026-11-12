@@ -186,8 +186,22 @@ export function isQuarterTurn(rotation: number): boolean {
 }
 
 /**
+ * fitArt, except that art which overflows its box even at one screen px per art px shrinks to fit it exactly (a
+ * fractional `scale` below UI_ART.minArtScale; Pixelated resampling drops a few art rows). For an icon whose box is
+ * the room it has, not a layout slot it may spill over (the spectate bar's ghost on a small screen). Whenever a whole
+ * scale fits, exactly fitArt's result.
+ */
+export function fitArtWithin(artW: number, artH: number, boxW: number, boxH: number, uiScale: number): ArtFit {
+	const u = uiScale > 0 && uiScale < math.huge ? uiScale : 1;
+	if (artW <= 0 || artH <= 0 || boxW <= 0 || boxH <= 0) return fitArt(artW, artH, boxW, boxH, uiScale);
+	const fit = math.min((boxW * u) / artW, (boxH * u) / artH);
+	if (fit + UI_ART.fitEpsilon >= UI_ART.minArtScale) return fitArt(artW, artH, boxW, boxH, uiScale);
+	return { w: (artW * fit) / u, h: (artH * fit) / u, scale: fit };
+}
+
+/**
  * fitArt for an image drawn turned by `rotation` degrees: a quarter turn fits the art's turned size (h x w) into the
- * box. Returns the label's own (unturned) size, reference px, and the whole scale.
+ * box. Returns the label's own (unturned) size, reference px, and the whole scale. `shrink`: fitArtWithin instead.
  */
 export function fitTurnedArt(
 	artW: number,
@@ -196,11 +210,13 @@ export function fitTurnedArt(
 	boxH: number,
 	uiScale: number,
 	rotation: number,
+	shrink: boolean = false,
 ): ArtFit {
+	const fitter = shrink ? fitArtWithin : fitArt;
 	if (!isQuarterTurn(rotation)) {
-		return fitArt(artW, artH, boxW, boxH, uiScale);
+		return fitter(artW, artH, boxW, boxH, uiScale);
 	}
-	const turned = fitArt(artH, artW, boxW, boxH, uiScale);
+	const turned = fitter(artH, artW, boxW, boxH, uiScale);
 	return { w: turned.h, h: turned.w, scale: turned.scale };
 }
 

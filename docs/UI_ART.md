@@ -273,7 +273,10 @@ Changes from the plan, found while building:
 - **The reveal's cards are not snapped yet** (UAD1 says they should be): `SlicedImage` `snap` is opt-in, so
   `DraftOverlay` is unchanged apart from `skin="none"` on its two Panels.
 - **Below UIScale ~0.75** art never drops under 1 screen px per art px, so hud frames pad a few px more than 8 and
-  icons (ghost, run-over header) can overflow their boxes slightly.
+  the run-over header icon can overflow its box slightly. The spectate bar's ghost no longer does (2026-11-10): it
+  takes the bar's measured height inside the frame rails (shared/view/hud `spectateGhostBox`, capped at
+  `UI_ART.iconBox.ghost` 60) and `ArtImage` `shrink` (`fitArtWithin`) draws it below one screen px per art px when
+  even that overflows, so it fits the bar on every screen size (whole px wherever it has room).
 
 ## As built: armor pips (2026-11-08)
 

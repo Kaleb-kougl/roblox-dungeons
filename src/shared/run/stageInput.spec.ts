@@ -4,7 +4,8 @@
 //
 // Seeds 1-12 x floors 1-10 (120 forged floors), not the plan's 1-60 x 1-20: a floor costs about 110 ms to forge, so
 // 1,200 would take minutes. Floors 15 and 20 (boss floors deep in the run) are checked on two seeds. The daily and dev
-// worlds build the same floors (buildEndlessRunConfig; dev from its start floor), so they need no rows of their own.
+// worlds build the same floors (buildEndlessRunConfig; dev from its start floor), except the Daily's roster, which ignores
+// the unlock floors (docs/DAILY.md DSD17): a few daily rows check its forecast.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { TUTORIAL } from "shared/config";
 import { BOSS_ACT1_KIND, ENDLESS_FIRST_FLOOR, THEME_KEYS, endlessRoster } from "shared/dungeon";
@@ -20,8 +21,10 @@ import {
 	buildTutorialRunConfig,
 	cachedEndlessDungeonKeys,
 	endlessRunFloor,
+	forecastDailyFirstFloor,
 	forecastFirstFloor,
 	forecastStageInput,
+	rosterUnlockFloors,
 	stageInputOf,
 	stageInputOfLayout,
 } from "shared/run";
@@ -55,6 +58,33 @@ describe("stage floor inputs (docs/STAGE_ASSETS.md SA3)", () => {
 				expectCovers(label, forecast, exact);
 				if (floor === 1 || floor === 5 || floor === 10) expectManifestCovers(label, forecast, exact);
 			}
+		}
+	});
+
+	it("a daily forecast covers the daily world's floors (no unlock floors, docs/DAILY.md DSD17)", () => {
+		for (let seed = 1; seed <= 6; seed++) {
+			for (const floor of [1, 2, 3]) {
+				const label = `daily ${seed}/${floor}`;
+				const unlocks = rosterUnlockFloors("daily");
+				const layout = endlessRunFloor(seed, floor, 1, undefined, undefined, unlocks).layout;
+				const exact = stageInputOfLayout("daily", layout, STAGE_CHARACTERS);
+				expectCovers(label, forecastStageInput(seed, floor, STAGE_CHARACTERS, "daily"), exact);
+			}
+		}
+	});
+
+	it("the Daily's first floor (the menu prefetch) is the daily world's floor 1: its kinds, biome, a run start", () => {
+		for (let seed = 1; seed <= 6; seed++) {
+			const unlocks = rosterUnlockFloors("daily");
+			const layout = endlessRunFloor(seed, ENDLESS_FIRST_FLOOR, 1, undefined, undefined, unlocks).layout;
+			const exact = stageInputOfLayout("daily", layout, STAGE_CHARACTERS, true);
+			const daily = forecastDailyFirstFloor(seed, STAGE_CHARACTERS);
+			expect([daily.world, daily.floor, daily.runStart]).toEqual(["daily", ENDLESS_FIRST_FLOOR, true]);
+			expect(daily).toEqual(forecastStageInput(seed, ENDLESS_FIRST_FLOOR, STAGE_CHARACTERS, "daily", true));
+			expectCovers(`daily first ${seed}`, daily, exact);
+			expectManifestCovers(`daily first ${seed}`, daily, exact);
+			// Only the seed's own kinds: swarmers and the one seeded kind, never the whole floor-1 guess.
+			expect([...daily.actorKinds]).toEqual(endlessRoster(seed, ENDLESS_FIRST_FLOOR, false));
 		}
 	});
 

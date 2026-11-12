@@ -7,6 +7,7 @@ import { GuiService, Players, RunService, Workspace } from "@rbxts/services";
 import {
 	clientStore,
 	selectBaselineRun,
+	selectDailyStatus,
 	selectJuice,
 	selectMenuScreen,
 	selectMyLobbyId,
@@ -17,9 +18,17 @@ import { LocaleRoot, StageCard } from "client/ui";
 import { TUTORIAL } from "shared/config";
 import { ENDLESS_FIRST_FLOOR, endlessRoster } from "shared/dungeon";
 import { RUN_ATTRIBUTES } from "shared/play";
-import { forecastFirstFloor, forecastStageInput, stageInputOf } from "shared/run";
+import { dailyDay } from "shared/daily";
+import {
+	forecastDailyFirstFloor,
+	forecastFirstFloor,
+	forecastStageInput,
+	rosterUnlockFloors,
+	stageInputOf,
+} from "shared/run";
 import { BIOMES, type ContentRef } from "shared/theme";
 import { floorTarget, stageBestLine, stageCardLine, stageRosterLine, type NewBestLineText } from "shared/view/hud";
+import { todaysDailySeed } from "shared/view/menu";
 import {
 	PRELOAD_BIOME_PREFIX,
 	PregenTracker,
@@ -102,7 +111,11 @@ function seconds(sec: number): string {
  *              forecastStageInput (no generation); once per run and floor, never past the tutorial's last floor.
  *              On the menu (once the join screen released) and on joining a lobby: the first-floor guess,
  *              forecastFirstFloor for biome 1 then biomes 2..5 (floor 1's biome is the seed's auto theme, any of
- *              the five), merged in that order (stageMergedAssets), all on `next`; computed once per session.
+ *              the five), merged in that order (stageMergedAssets), all on `next`; computed once per session. Once
+ *              today's Daily seed is known (the daily slice, todaysDailySeed) the Daily's own first floor
+ *              (forecastDailyFirstFloor: its roster, biome and music, decided by the seed) goes to the HEAD of `next`
+ *              ahead of that guess (PreloadController.request `first`), once per visit key and seed, again when the
+ *              day's seed changes.
  *   audit      (SA11) Workspace `KV_StageAssetAudit` (RUN_ATTRIBUTES.stageAssetAudit, read at each cut): from the cut
  *              every logical id the views resolve through the pack is recorded (ThemeController.setAuditRecorder,
  *              shared/view StageAuditLog); at the next cut, the run's end (run over) or an exit it is diffed against
@@ -161,6 +174,10 @@ export class StageController implements OnStart, StageDriver {
 	/** The menu / lobby key of the last first-floor prefetch ("menu" or the lobby id). */
 	private menuPrefetchKey = "";
 	private menuPrefetchRefs: ReadonlyArray<ContentRef> | undefined;
+	/** The menu visit key and today's Daily seed the Daily's first floor was last queued for ("" = never). */
+	private dailyPrefetchKey = "";
+	/** The Daily's first-floor refs, built once per seed. */
+	private dailyPrefetchRefs: { readonly seed: number; readonly refs: ReadonlyArray<ContentRef> } | undefined;
 	private readonly audit = new StageAuditLog();
 	private forgeSec = 0;
 	private buildSec = 0;
@@ -373,8 +390,8 @@ export class StageController implements OnStart, StageDriver {
 
 	/**
 	 * The seeded roster's line for `floor` (docs/DAILY.md DS2, shared/view/hud stageRosterLine): floor 1 every kind,
-	 * later floors the kinds that joined there (the floor before's roster is endlessRoster(seed, floor - 1): cheap and
-	 * pure, no floor build). `runStart`: every kind on any floor (a dev run starting past floor 1, docs/DEV_MODE.md).
+	 * later floors the kinds that joined there (the floor before's roster is endlessRoster(seed, floor - 1) under the
+	 * world's rosterUnlockFloors: cheap and pure, no floor build). `runStart`: every kind on any floor (a dev run starting past floor 1, docs/DEV_MODE.md).
 	 * Undefined: no endless floor, a floor without a roster (the tutorial) or no kind joined.
 	 */
 	private rosterLine(ctx: RunContext, floor: number, runStart = false): NewBestLineText | undefined {
@@ -382,7 +399,10 @@ export class StageController implements OnStart, StageDriver {
 		if (build === undefined || floor < ENDLESS_FIRST_FLOOR) return undefined;
 		const roster = build(floor).layout.roster;
 		if (roster === undefined) return undefined;
-		const previous = !runStart && floor > ENDLESS_FIRST_FLOOR ? endlessRoster(ctx.seed, floor - 1) : undefined;
+		const previous =
+			!runStart && floor > ENDLESS_FIRST_FLOOR
+				? endlessRoster(ctx.seed, floor - 1, rosterUnlockFloors(ctx.world))
+				: undefined;
 		const pack = this.theme.getPack();
 		return stageRosterLine(roster, previous, (key, vars) => pack.str(key, vars));
 	}
@@ -596,6 +616,7 @@ export class StageController implements OnStart, StageDriver {
 	private watchMenu(): void {
 		this.janitor.Add(clientStore.subscribe(selectMenuScreen, () => this.menuPrefetch()));
 		this.janitor.Add(clientStore.subscribe(selectMyLobbyId, () => this.menuPrefetch()));
+		this.janitor.Add(clientStore.subscribe(selectDailyStatus, () => this.menuPrefetch()));
 		this.menuPrefetch();
 	}
 
@@ -608,7 +629,12 @@ export class StageController implements OnStart, StageDriver {
 		const state = clientStore.getState();
 		if (selectMenuScreen(state) === undefined) return;
 		const key = selectMyLobbyId(state) ?? "menu";
-		if (key === this.menuPrefetchKey) return;
+		const seed = todaysDailySeed(selectDailyStatus(state), dailyDay(Workspace.GetServerTimeNow()));
+		if (key === this.menuPrefetchKey) {
+			// The guess is queued for this visit; a Daily seed that arrived (or changed) since still goes first.
+			this.dailyPrefetch(key, seed);
+			return;
+		}
 		this.menuPrefetchKey = key;
 		const [ok, err] = pcall(() => {
 			let refs = this.menuPrefetchRefs;
@@ -630,6 +656,36 @@ export class StageController implements OnStart, StageDriver {
 			if (ids >= 0) print(`${LOG} prefetch floor 1 (${ids} ids, every biome, next lane)`);
 		});
 		if (!ok) warn(`${LOG} the first floor could not be prefetched: ${tostring(err)}`);
+		this.dailyPrefetch(key, seed);
+	}
+
+	/**
+	 * Today's Daily (`seed`, undefined while unknown) on menu visit `key`: its exact first floor to the head of the next
+	 * lane, ahead of the every-biome guess, once per key and seed. The refs are built once per seed.
+	 */
+	private dailyPrefetch(key: string, seed: number | undefined): void {
+		if (seed === undefined) return;
+		const visit = `${key}:${seed}`;
+		if (visit === this.dailyPrefetchKey) return;
+		this.dailyPrefetchKey = visit;
+		const [ok, err] = pcall(() => {
+			let built = this.dailyPrefetchRefs;
+			let ids = -1;
+			if (built === undefined || built.seed !== seed) {
+				const pack = this.theme.getPack();
+				const set = stageAssets(pack, forecastDailyFirstFloor(seed, STAGE_CHARACTERS));
+				const both = stageContentRefs(pack, set);
+				const all = [...both.must];
+				for (const r of both.soon) all.push(r);
+				built = { seed, refs: all };
+				ids = set.must.size() + set.soon.size();
+				this.dailyPrefetchRefs = built;
+			}
+			if (built.refs.size() === 0) return;
+			this.preload.request(built.refs, "next", `prefetch daily floor 1 (${key})`, true);
+			if (ids >= 0) print(`${LOG} prefetch daily floor 1 (${ids} ids, seed ${seed}, head of the next lane)`);
+		});
+		if (!ok) warn(`${LOG} the Daily's first floor could not be prefetched: ${tostring(err)}`);
 	}
 
 	// --- audit (docs/STAGE_ASSETS.md SA11) ---------------------------------------------------------
