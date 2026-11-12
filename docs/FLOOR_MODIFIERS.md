@@ -3,9 +3,9 @@
 Status (2026-11-12): **built on branch `floor-modifiers`: FM0-FM9 done and verified headlessly (`npm run verify`'s
 steps, the whole headless suite but four heavy censuses this branch does not touch; see "As built"); FM10 (owner: the
 five stings), FM11 (icons, optional), FM12 (owner: Studio check and playtest) and FM13 (telemetry, optional) pending,
-with the open owner calls OC1-OC3 ("Open owner calls").** Decisions FMD1-FMD12 answered by the owner (2026-11-12). Two answers
+with the open owner calls OC2-OC3 ("Open owner calls"; OC1 answered: no other twists).** Decisions FMD1-FMD12 answered by the owner (2026-11-12). Two answers
 changed the plan: twists are allowed (FMD1), and Blood Moon now means **twice the elites** (FMD5), which makes all of
-wave 1 floor-built (no sim state). Owner call OC1 (which other twists, if any, join wave 1) is still open; OC2 / OC3
+wave 1 floor-built (no sim state). OC1 (owner, 2026-11-12): **no other twists** in wave 1; OC2 / OC3
 came from the FM9 census. Planned against `main` @ `677b5b1` (Fortune,
 treasure rooms, pellets, affixes and the stage loader merged; the working tree's uncommitted audio / DSD18 work, with
 `DAILY.ruleset` 16, is not assumed). Work it task by task like `PLAN.md`; each task ends with a **Verify**. Project
@@ -288,8 +288,7 @@ too heavy for this headless budget), so the Risks' Blood Moon watch is still ope
 
 - **FMD1. Only good? -> Some twists.** Twists are allowed, as long as the card names the edge plainly and the floor pays
   for it with a reward the game already has. Wave 1's twist is Blood Moon (FMD5). Twists get a blood-red banner and an
-  ominous sting; boons a gold banner and a bright one. *Open (OC1): which other twists, if any, join wave 1* (e.g.
-  "Swarm: twice the enemies, x2 score", which overlaps the Horde pact, would need a sim rule and the `modifiers` group).
+  ominous sting; boons a gold banner and a bright one. OC1 (owner, 2026-11-12): **no other twists** in wave 1.
 - **FMD2. Frequency -> about one floor in five** (recommended): 20 / 25 / 30 % of non-boss floors by band from floor 2,
   never two in a row.
 - **FMD3. Honesty -> only where certain** (recommended): eligibility checks on the built floor; the only accepted miss
@@ -310,7 +309,7 @@ too heavy for this headless budget), so the Risks' Blood Moon watch is still ope
 
 ## Open owner calls
 
-- **OC1. Other twists in wave 1?** (FMD1) Blood Moon is the only twist built.
+- **OC1. Other twists in wave 1? -> No** (owner, 2026-11-12): Blood Moon stays the only twist.
 - **OC2. Plunder's strength.** A Plunder floor loads 11.1 pieces on average (5-13) against 1.8 on the same floors
   without it (FM9 census): about six times a floor's boosts from breakables. The ground cap of 4 bounds what lies on the
   floor at once, not the total. Options: cap Plunder at `MODIFIERS.plunder.minRooms`..N rooms (e.g. 3-5, the rooms
