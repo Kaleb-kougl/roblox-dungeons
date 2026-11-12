@@ -69,6 +69,14 @@ export type BuildFxLevel = "full" | "reduced";
 export const BUILD_FX_LEVELS: ReadonlyArray<BuildFxLevel> = ["full", "reduced"];
 export const DEFAULT_BUILD_FX: BuildFxLevel = "full";
 
+/**
+ * The gauntlet cursor's size (docs/CURSOR.md D2, Options > Display > Cursor size): Small / Normal / Large, one whole
+ * scale step apart (shared/view CURSOR_VIEW.sizeSteps, cursorScale). Normal is the default. Presentation only.
+ */
+export type CursorSize = "small" | "normal" | "large";
+export const CURSOR_SIZES: ReadonlyArray<CursorSize> = ["small", "normal", "large"];
+export const DEFAULT_CURSOR_SIZE: CursorSize = "normal";
+
 /** Touch control sizes, percent of the layout (docs/MOBILE.md MB7, Options > Display > Touch size). 100 is the default. */
 export const TOUCH_SIZE_PERCENTS: ReadonlyArray<number> = [80, 100, 120];
 export const DEFAULT_TOUCH_SIZE_PERCENT = 100;
