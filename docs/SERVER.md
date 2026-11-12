@@ -1040,8 +1040,8 @@ nothing.
 
 ## Codex
 
-`CodexService` (`src/server/services/CodexService.ts`; pure rules in `src/shared/codex/`; plan in
-`claude/codex-plan.md` "Codex data (server)", task CX3) keeps each player's Codex: which catalog entries they have
+`CodexService` (`src/server/services/CodexService.ts`; pure rules in `src/shared/codex/`; plan and as
+built in docs/CODEX.md "Data (server)", task CX3) keeps each player's Codex: which catalog entries they have
 seen or found, and which carry a NEW dot. Trust (CXD1): the server records what the client claims, after the id / tier /
 size / rate checks; nothing is replayed.
 

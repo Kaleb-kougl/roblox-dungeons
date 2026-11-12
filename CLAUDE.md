@@ -79,6 +79,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/BUILDS_V2.md` | Builds v2, wave 1 (Riposte: a guard that erases bullets answers with a counter-wave, Counterstrike ring and returns; Ballista: the heavy arrow bursts into bolts, Siege Bolt pins and drags an enemy into a wall; Wrecker: rolls smash breakables, every piece you break fires splinters, Demolition chains them; duos Thunder Guard / Stillwater / Rebuke (Bastion + Riposte) / Dragon Bolt / Powder Keg / Full Heart / Happy Hour; the duo hint on New cards; overcap boss points `ScoreSource.OVERCAP`; gameplay, opt-in `SimConfig.builds`; wave 2 and the proposal in its appendix): plan, tasks BV0-BV13, decisions BVD1-BVD20 |
 | `docs/ARCHER.md` | The Archer (the bow split off the knight into its own character: Knight = sword, Archer = bow and a longer roll, one weapon set each; weapon-tagged boons / relics dealt only to the character who carries the weapon; a character screen every run; Knight-only tutorial without the bow room; shared boards with the character shown; SmallScaleInt Archer art): plan, tasks AR0-AR14, decisions ARD1-ARD17 |
 | `docs/FLOOR_MODIFIERS.md` | Floor modifiers (about one endless non-boss floor in five from floor 2 is special and the floor card says so: Gilded = a certain Goldling, Hoard = a certain vault, Feast = a certain power pellet, Plunder = a boost in every room's barrels, Blood Moon = twice the elites; only where true, never on boss floors, never two in a row; a banner on the card, a status chip and a pause line; gameplay, floor-built, opt-in `EndlessFloorOptions.modifiers`, endless only): plan, as built, FM9 census, open owner calls OC1-OC3, Studio check, tasks FM0-FM13, decisions FMD1-FMD12 |
+| `docs/CODEX.md` | Codex (a main-menu catalogue of 86 entries: boons, evolutions, duos, relics & curses, boosts, enemies, champions, bosses; each unknown / seen / found with a NEW dot, completion %; in-run NEW! chips on existing toasts, codex cards on the sighting slot under a 2-per-floor budget, NEW tags on unfound draft cards, a run-over row; client-claimed, server-stored `KV_Codex_v1`; presentation plus one server doc): plan, as built, tasks CX0-CX11, decisions CXD1-CXD15 / R1-R14 |
 
 Decision log (deviations from `PLAN.md`):
 - **Art (docs/ART.md).** The theme contract gained a `"sprites"` kind (large pre-rendered cells, 1/4/8/16 screen-space
@@ -1357,6 +1358,27 @@ Decision log (deviations from `PLAN.md`):
   reach; GE4: 15 / 18 and 6 / 18), Archer bow 6 / 18 focused and 7 / 18 after the clear (the stream's 5 hp / s caps it past floor 2), party of 2 16 / 18 (every sword miss SKIPPED on a full
   pool). Pending: RD3-RD7 / RD9 confirmation, the audio audition (GR10), the Studio check and playtest (GR11),
   telemetry (GR12, optional) and docs/FORTUNE.md's open calls 2 / 3 with the GR8 numbers.
+
+- **Codex (docs/CODEX.md).** Presentation plus one server doc (no sim, dungeon, lockstep, hash, replay, fixture or score
+  change; drafts and their odds untouched). `CODEX_CATALOG` (shared/codex, 86 entries, ids `<category>:<key>` from the
+  theme ids, append-only order lock in `catalog.spec`), two tiers seen / found. DataStore `KV_Codex_v1` (`CodexService`;
+  `{ v: 1, seeded?, e: { [id]: [tier, day, floor] }, unread? }`), every write a `MergeKeyValue` UpdateAsync (tiers only
+  rise, the earliest found day wins), seeded once from the onboarding doc's cached `seen` without NEW dots
+  (`OnboardingService.joinLoadState`; a failed load = `loaded: false`, never written). Remotes `codexStatus` (push after
+  the join load and seed) / `requestCodex` / `codexClaim` (<= 16 items) / `codexViewed` (<= 64 ids), 10 / 10 s each.
+  **Client-trusted claims (CXD1, owner):** the server checks id / tier / size / rate and replays nothing; claims only
+  from endless / the Daily (with toasts) and the tutorial (silent), never M1, `dev`, dev / stress runs or a run started
+  with `KV_Debug` on (`SimController.isDebugRun()`). Client: pure `CodexTracker` / `readCodexFrame` (shared/view/codex)
+  run inside `SimController.pushToasts` (`ToastChipSource`, `ToastView.codexNew`; FX kills land one frame late),
+  `CodexOutbox` (queue until loaded, batch, pace), `CodexController`, store slice `codex`, `CodexScreen` (MenuScreen
+  `codex`, button after Leaderboard with `MenuButton.badge`), draft `NEW` tags after the flip, RunOverPanel
+  `ROW.codex` (compact stats gap 6 -> 2). Strings `CODEX_STRING_KEYS` (54, spread last into `REQUIRED_STRING_KEYS`,
+  after the floor modifiers'; `sfx.codex.new` last in `PORT_AUDIO_EVENTS`, after their stings: a later feature
+  appending there must update `codex.spec`'s tail and the skips in the fortune / treasure / runRecap / boosts / audio /
+  contract / floorModifiers specs); port audio id `sfx.codex.new` SILENT, no fallback, `SFX_PRIORITY` 46;
+  `contract.luau` / `validate.luau` top-level locals now 187 / 197 (counted on out/). Debug `KV_FakeCodex` (Studio:
+  `all` / `seen` / `none` / `unknown` / an id list). No setting. Studio check and the sound's audition / lock / build /
+  upload (CX11) pending.
 
 ## Commands
 

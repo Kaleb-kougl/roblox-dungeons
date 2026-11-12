@@ -47,6 +47,7 @@ rebinding, audio, display). Everything presentation-side reads the sim and never
 | `NewBestController` | `.../fx/NewBestController.ts` | docs/NEW_BEST.md NB7-NB9: stores `records(RecordsStatus)` (asks once on start), freezes each run's `RunBaseline` (records + `SimController.pendingRunClaims`, `KV_NewBestDebug`), steps `NewBestTracker` inside RoomClearController's `scoreRoll` frame (`onShownScore`) and hands its frame to the cue mapper (`AudioController.setNewBestCues`); writes `NEW_BEST_UI` (score panel target row, gold number, touch compact line, run-over record rows), asks `ComboController.requestShout` for NEW BEST!, drops the clear jingle on the fanfare frame, draws the gold confetti (`KV_NewBestConfetti`, HUD + 1; in-run outside the clear zone and hidden under menus, full screen at run over). |
 | `DraftRevealController` | `.../fx/DraftRevealController.ts` | docs/DRAFT_REVEAL.md DR6: each frame begins the local player's draft reveal once the stage cover lifts (`StageController.coverLifting()`), steps `DraftReveal` on unpaused frames, picks on the local `boon` run event and writes `DRAFT_UI` (the `DraftOverlay` cards); plays its cues through `AudioController.playCue` and its music dip through `duckFor`; drives SimController's confirm gate (`setDraftRevealDriver`: the confirm is held while the reveal plays or before it begins) and InputController's tap filter (a tap during the reveal skips). `KV_DraftRevealDebug` overrides the first cards' rarities (display only). |
 | `RecapController` | `.../fx/RecapController.ts` | docs/RUN_RECAP.md RR6 / RR7 / RR9: an `FX_FRAME_PHASE.normal` frame handler (after NewBestController's `scoreRoll` step). When the run-over panel opens it builds `RunRecapInput` once (the final state, the snapshot's boss, the stairs' walking distance, `RunView.recapTally`, new best's baseline and `runOverBest`, `TeamMomentsController.totals()`), runs `nearMissFor` / `pickHighlights` and a `RecapTimeline` (real seconds, held under the stage cover), writes the store's `recap` slice and `RECAP_BINDINGS`, plays `recapCue` (one `sfx.score.tick` / `.land` a frame) and re-derives silently on a verdict with other numbers. Again / Enter / Space / FIRE go through `RunOverRetryGate` (skip before the 0.6 s arm, retry after; party runs only skip). Once per run over it sends `runRecap` (how the panel was left, seconds open, near-miss kind, record / skipped, a party run's team moments; ranked runs only). `KV_RetryTiming` prints press -> control (RR8). |
+| `CodexController` | `.../fx/CodexController.ts` | docs/CODEX.md CX6: owns the session's pure `CodexTracker` (shared/view/codex) and `CodexOutbox` (shared/codex) and keeps the store's `codex` slice. `codexStatus` (asks once: `requestCodex`) -> tracker `receive` (held entries come back as claims), outbox, `codexReceive`. Run start: `startRun(codexEligibility(...))` (world, `SimController.isDebugRun()`, dev, stress, Studio); run exit: `endRun()`. SimController's `ToastChipSource`: once per sim frame inside `pushToasts`, `readCodexFrame` + the frame's pedestal relics, boss engage and run over + the FX `killed` / `bossDefeated` events since the last sim frame (one frame late) -> `update`; chips back to the toasts (`ToastView.codexNew`), codex toasts queued for SightingController (`hasToast` / `takeToast`), rises claimed and applied to the store copy at once; the run summary frozen into the store at run over / left / exit. Outbox flush on Heartbeat. Hooks: `showsNewTag(id)` (draft tag), `codexNewThisRun(id)` (BO), `codexRunSummary()`, `sightingChip(id)`, `sendViewed(ids)` (the screen). See "Codex". |
 | `TeamMomentsController` | `.../fx/TeamMomentsController.ts` | docs/RUN_RECAP.md Part B (CM1 / CM2): owns the ONE `TeamMoments` (shared/view/fx): the clear half (TEAM PERFECT, its streak) in `FX_FRAME_PHASE.teamMoments` before RoomClearController's `scoreRoll`, the parry half (SYNC!) on the first `syncs()` call of a NearMissController frame (the director's `parryGroups`); `teamPerfects()` / `syncs()` for this frame, `totals()` for the recap. Party runs only. `KV_TeamMomentsDebug` fakes a team perfect or a SYNC! (never in the totals). |
 | `SyncCalloutController` | `.../fx/SyncCalloutController.ts` | docs/RUN_RECAP.md CM5: a NearMissController subscriber drawing each SYNC! (`SyncCallout` timeline): `fx.parry.sync` / `.syncCount` floor text on the PARRY! flash's construction (fxHelpers `floorText`, under every bullet, <= 55 % opaque, ducking near enemy bullets) at the points' mean with one pooled Neon tether for 0.25 s, or a small text at each point when they are farther than `tetherMaxTiles`. |
 | `ScorePopController` | `.../fx/ScorePopController.ts` | Scored runs (M2): a rising, fading `+points` BillboardGui per kill (`LiveRun.scorePops`, pooled `ScorePopPool`). |
@@ -618,6 +619,36 @@ RecapController builds `contributionOf` once at run over from `RunView.recapTall
 contribution feed) and `RunContext.memberNames`, with the local player (`getLocalPlayerIndex`) as You; `RecapViews`
 counts up each tab on its first open; LB / RB, Q / E / Tab and taps switch tabs (never through `RunOverRetryGate`);
 `runRecap` reports the seconds on You / Party.
+
+### Codex (docs/CODEX.md; not run in Studio yet)
+
+Presentation plus one server doc (docs/SERVER.md "Codex"); read-only on the sim. `CodexController` (controller map)
+runs the pure `CodexTracker` inside `SimController.pushToasts`, so a toast whose entry was found for the first time ever
+that frame wears the NEW! chip (`ToastView.codexNew`: ToastPanel's chip + `Added to your Codex` line, `CodexChip`, a
+UIScale pop off under reduced motion). Codex toasts (a first kill, a floor-1 kind's first sighting, a vault chest's
+relic, a boss down: `NEW! {name} · Codex` with the 16 px `CodexArt`, `sfx.codex.new`) share the SightingCard's slot:
+`SightingController` shows a queued sighting first (`SightingQueue.claimSlot`), with the same gates (never the tutorial,
+the stage cover or after run over; waiting on a draft or pause), and puts a chip on a sighting card when
+`sightingChip(id)` says the entry rose this run; a seeded `codexStatus` unions the Codex's sightings into the queue's
+seen set (`codexSeenSightings`). `DraftRevealController` takes the draft cards' NEW flags at `begin`
+(`showsNewTag(codexCardId(offer, kind))`; `DraftNewTags`) and writes `DRAFT_UI.cards[i].newTagT` / `newTagScale` once a
+card's `textAlpha` reaches 1 (DraftOverlay `NewTag`). The run-over panel's `ROW.codex` (`CodexRunRow`, from
+`selectCodexRunSummary`, `codexRecapRow`) sits under the daily block (wide / narrow) or above the exits (compact).
+
+Store slice `codex` (client/store/codex.ts): `status` (`pending` / `loaded` / `unavailable`), `doc` (the local copy,
+updated by `codexReceive` (mergeCodex), `codexApplyClaims`, `codexMarkViewed`; no server echo), `version`,
+`runSummary` (`setCodexRunSummary`, reset at run start); selectors `selectCodexStatus` / `Doc` / `Version` /
+`RunSummary`, `selectCodexNewCount` (badge), `selectCodexProgress`.
+
+Screen: MenuScreen `codex` (`MenuController.openCodex`, `MenuActions.openCodex` / `codexViewed`), `CodexScreen`
+(client/ui/menu, skin `codex` = MENU, pad surface TABS + SCROLL, LB / RB clamp, the first tile the pad default) over the
+pure shared/view/codex `screen.ts` (`CODEX_SCREEN`, `codexGridColumns`, `codexGridGroups`, `codexDetail`, tab helpers)
+and `art.ts` (`codexTileArt`: item cells, boost icons, a sprite set's idle frame 0 facing 270 degrees, black silhouettes
+while unknown). Hover, tap or selection clears a tile's dot locally; on unmount the cleared ids go to
+`CodexController.sendViewed`. Upright: the detail is a sheet under the grid and the tab row scrolls (`scrollTabsTo`).
+Main menu: the Codex button after Leaderboard (phone: a small button beside Credits), badge
+`codexBadgeText(selectCodexNewCount)`, disabled while `unavailable`.
+
 ### Sprite effects (docs/FX_AUDIO.md F3 / F4; Roblox port, no web source)
 
 `FxSpriteController` (render step `KV_FxSprites` at Camera + 2) draws the cues of the pure `FxCueMapper`
@@ -1509,6 +1540,12 @@ Follow docs/FLOOR_MODIFIERS.md "Studio check": `KV_FloorModifier` per kind in th
 the run-start cover, then on a floor change with the draft open, held 1.8 s), the chip and its one pulse per payoff,
 the pause line (compact: no divider), the touch strip, reduced motion, co-op; then seeds 1-10 without the override
 (about one floor in five, never a boss floor, never two in a row). The stings are silent with today's packs.
+
+### Codex (docs/CODEX.md "Studio check"; not run in Studio yet)
+
+Follow docs/CODEX.md "Studio check" (`KV_FakeCodex` = `none` / `seen` / `all` / `unknown` or an id list, Studio only).
+Check first: toast clutter on a veteran's first run, the draft `NEW` tag against the legendary flare, sprite-still crops
+at tile size, the badge past the button edge, the tab row scroll under UIScale. `sfx.codex.new` is silent until CX11.
 
 ## Gotchas
 
