@@ -8,7 +8,9 @@
  *   floors   identical to the endless run's (same builder): floor N of a dev run on seed S is floor N of the endless
  *            run on seed S, unless `options.vault` (KV_TreasureDebug, parseTreasureDebug) forces / fixes the vaults
  *            (docs/TREASURE.md TR5, correction 12: a VaultOverride into the dev world's own floor cache; never the
- *            server's, the world is refused there)
+ *            server's, the world is refused there), or `options.modifier` (KV_FloorModifier,
+ *            parseFloorModifierOverride) forces one floor modifier on every floor where it is eligible
+ *            (docs/FLOOR_MODIFIERS.md FM4: a FloorModifierOverride into the same cache)
  *   Depth    as if every boss before `startFloor` had been killed (devStartDepth); no boons, relics or curses
  *
  * Characters (docs/ARCHER.md AR4): the picked character's loadout and traits like an endless run (the Knight when none is
@@ -19,7 +21,17 @@
  * client never submits it. Solo only: a party throws.
  */
 import { DEV_MODE } from "shared/config";
-import { ENDLESS_FIRST_FLOOR, VaultLock, VaultTier, isBossFloor, type VaultOverride } from "shared/dungeon";
+import {
+	ENDLESS_FIRST_FLOOR,
+	FloorModifier,
+	MODIFIERS,
+	VaultLock,
+	VaultTier,
+	floorModifierKind,
+	isBossFloor,
+	type FloorModifierOverride,
+	type VaultOverride,
+} from "shared/dungeon";
 import { DEFAULT_PARTY_SIZE, ENDLESS_FIRST_DEPTH, isIntegerNumber } from "shared/sim";
 import type { RunSetup } from "./config";
 import { buildEndlessRunConfig } from "./endless";
@@ -36,6 +48,11 @@ export interface DevRunOptions {
 	readonly invulnerable: boolean;
 	/** Treasure rooms (docs/TREASURE.md TR5): force / fix every floor's vault (KV_TreasureDebug). Absent: as endless. */
 	readonly vault?: VaultOverride;
+	/**
+	 * Floor modifiers (docs/FLOOR_MODIFIERS.md FM4): force one kind on every floor where it is eligible
+	 * (KV_FloorModifier, parseFloorModifierOverride). Absent: the floors' own picks, as endless.
+	 */
+	readonly modifier?: FloorModifierOverride;
 	/**
 	 * docs/ARCHER.md AR4: "Both weapons": the sword and the bow (DEFAULT_LOADOUT) with the picked character's roll
 	 * traits. Absent / false: the character's own loadout.
@@ -66,6 +83,30 @@ export function parseTreasureDebug(text: string | undefined): VaultOverride | un
 	}
 	if (every === undefined && tier === undefined && lock === undefined) return undefined;
 	return { every, tier, lock };
+}
+
+/**
+ * Workspace attribute read when a dev run starts (the client's DevModeController; docs/FLOOR_MODIFIERS.md FM4):
+ * parseFloorModifierOverride's value.
+ */
+export const FLOOR_MODIFIER_ATTRIBUTE = "KV_FloorModifier";
+
+/**
+ * KV_FloorModifier's value -> a FloorModifierOverride (docs/FLOOR_MODIFIERS.md "Studio check"): a string naming a kind
+ * by its MODIFIERS key in any case, letters only ("gilded", "Hoard", "blood moon", "BLOOD_MOON" -> bloodMoon), or a
+ * number that is a kind's FloorModifier id. Undefined for anything else (absent, empty, "none", 0, unknown words,
+ * other types). Pure.
+ */
+export function parseFloorModifierOverride(value: unknown): FloorModifierOverride | undefined {
+	if (typeIs(value, "number")) {
+		const kind = floorModifierKind(value);
+		return kind !== undefined && kind.id !== FloorModifier.NONE ? { every: true, kind: kind.id } : undefined;
+	}
+	if (!typeIs(value, "string")) return undefined;
+	const letters = value.lower().gsub("%A", "")[0];
+	if (letters === "") return undefined;
+	for (const k of MODIFIERS.kinds) if (k.key.lower() === letters) return { every: true, kind: k.id };
+	return undefined;
 }
 
 /** A dev run with no choices made: DEV_MODE's defaults. */
@@ -104,6 +145,7 @@ export function buildDevRunConfig(
 	const startFloor = clampDevFloor(options.startFloor);
 	const base = buildEndlessRunConfig(runSeed, DEFAULT_PARTY_SIZE, {
 		vaultOverride: options.vault,
+		modifierOverride: options.modifier,
 		characters,
 		bothWeapons: options.bothWeapons,
 	});

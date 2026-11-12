@@ -57,7 +57,9 @@ export const DAILY: DailyConfig = table.freeze({
 	// 14: the Archer (docs/ARCHER.md ARD11): a character per run (the Knight sword only, the Archer bow only with a
 	// longer roll), weapon-tagged drafts; every endless run plays and draws differently.
 	// 15: the Daily's roster ignores the unlock floors (docs/DAILY.md DSD17, rosterUnlockFloors): daily rooms change.
-	ruleset: 15,
+	// 16: floor modifiers (docs/FLOOR_MODIFIERS.md FM4: Gilded / Hoard / Feast / Plunder / Blood Moon floors change
+	// endless floors, play and scores).
+	ruleset: 16,
 	labelOffset: 1,
 	yesterdayCacheSeconds: 600,
 	minEntrantsForPercentile: 20,
