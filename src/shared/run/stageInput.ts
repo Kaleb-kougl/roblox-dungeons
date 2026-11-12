@@ -32,11 +32,12 @@ import {
 	type EncounterConfig,
 	type EndlessFloorLayout,
 } from "shared/dungeon";
+import { DAILY_WORLD_KIND } from "shared/daily";
 import { archetypeAt, archetypeIndex, hasArchetype, type SimConfig } from "shared/sim";
 import { BIOMES } from "shared/theme/contract";
 import type { StageAssetInput, StageFeatures } from "shared/view";
 import type { EndlessRunFloor } from "./endless";
-import { ENDLESS_WORLD_KIND } from "./worlds";
+import { ENDLESS_WORLD_KIND, rosterUnlockFloors } from "./worlds";
 
 /** The floor's biome as 1..5 for a Forge theme key (theme BIOMES order: the biome whose forgeTheme it is), 0 if none. */
 export function biomeIndexForTheme(themeKey: string): number {
@@ -226,7 +227,7 @@ export function forecastStageInput(
 	runStart = false,
 ): StageAssetInput {
 	const params = endlessFloorParams(runSeed, floor);
-	const kinds = endlessRoster(runSeed, floor);
+	const kinds = endlessRoster(runSeed, floor, rosterUnlockFloors(world));
 	const bossKind = isBossFloor(floor) ? bossKindFor(params.seed) : undefined;
 	if (bossKind !== undefined) kinds.push(bossKind);
 	return {
@@ -239,6 +240,17 @@ export function forecastStageInput(
 		features: EVERY_FEATURE,
 		runStart,
 	};
+}
+
+/**
+ * The Daily's first floor for today's seed `seed` (shared/view/menu todaysDailySeed): forecastStageInput on floor 1 of
+ * the daily world, a run start (the run kit), forging nothing. Its roster follows the Daily's rule (rosterUnlockFloors,
+ * docs/DAILY.md DSD17) and its biome is the floor seed's theme, so it names the very kinds, biome and music that run
+ * will meet: the menu / lobby prefetch queues it ahead of forecastFirstFloor's every-biome guess (docs/STAGE_ASSETS.md
+ * SA7).
+ */
+export function forecastDailyFirstFloor(seed: number, characters: ReadonlyArray<string>): StageAssetInput {
+	return forecastStageInput(seed, ENDLESS_FIRST_FLOOR, characters, DAILY_WORLD_KIND, true);
 }
 
 /**

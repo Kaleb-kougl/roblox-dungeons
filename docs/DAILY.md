@@ -404,6 +404,21 @@ Owner (2026-10-31, Kaleb; DSD5-DSD16 answered the same day):
 - **DSD16. Friends: every friend looked up (up to 200)**, in-server friends first, under the per-server read budget,
   cached 5 min per server (proposed 50; owner chose all).
 
+Owner (2026-11-11, Kaleb):
+
+- **DSD17. The Daily's roster ignores the unlock floors** (supersedes DSD9 for the Daily only; endless and dev keep
+  DSD9). The day's seed alone orders the pool: roster(f) = swarmers + the first `rosterTargetSize(f)` kinds of
+  `rosterOrder(seed)`, so floor 1's seeded kind may be any of the ten (an Imp, an Ooze, a Reaper...) and no join waits
+  for an unlock floor. Built as `DAILY.rosterUnlockFloors` false (shared/daily config.ts) -> shared/run `rosterUnlockFloors(world)`
+  -> `EndlessRunOptions.unlockFloors` / `EndlessFloorOptions.unlockFloors` -> `endlessRoster(seed, floor, false)` and the
+  spender's `unlockFloors` (roomKindOpen skips `fromFloor`; `needsCompany` and the room maxima still apply). The stage
+  card's previous-floor roster, the stage forecast and the Daily card's floor-1 preview read the same rule. Daily
+  replays change from floor 1; `DAILY.ruleset` 14 -> 15. Endless, dev, M1, every fixture and the tutorial unchanged
+  (`roomPool.lock.spec` digests untouched). Specs: `dungeon/roster.spec` ("the Daily's roster"), `run/dailyRoster.spec`,
+  `daily/daily.spec` (the daily world vs endless), `run/stageInput.spec` (daily forecast). The menu / lobby first-floor
+  guess (`forecastFirstFloor`, a prefetch hint with no seed) still lists floor 1's unlocked kinds only; a Daily's
+  other floor-1 kind draws as a stand-in until its art loads.
+
 ## Risks
 
 - **DataStore budget.** Friends lookups and histogram shards add reads; mitigated by shared caches, the per-server

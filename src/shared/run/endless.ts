@@ -118,7 +118,8 @@ export interface EndlessRunFloor extends EndlessFloorWorld {
 /**
  * Builds floor `floor` of the run `runSeed` for a party of `partySize` (uncached; the dungeon comes from
  * endlessDungeon's cache), vaults on (docs/TREASURE.md TR5); `vaultOverride`: the dev world's KV_TreasureDebug only;
- * `mover`: the player's mover (default: the current `playerMoverKind()`). Pure.
+ * `mover`: the player's mover (default: the current `playerMoverKind()`); `unlockFloors` false: the Daily's roster
+ * (EndlessFloorOptions.unlockFloors). Pure.
  */
 export function endlessRunFloor(
 	runSeed: number,
@@ -126,9 +127,10 @@ export function endlessRunFloor(
 	partySize: number = DEFAULT_PARTY_SIZE,
 	vaultOverride?: VaultOverride,
 	mover: PlayerMoverKind = playerMoverKind(),
+	unlockFloors = true,
 ): EndlessRunFloor {
 	return endlessFloorWorld(
-		buildEndlessFloor(runSeed, floor, endlessDungeon, partySize, { vaults: true, vaultOverride }),
+		buildEndlessFloor(runSeed, floor, endlessDungeon, partySize, { vaults: true, vaultOverride, unlockFloors }),
 		mover,
 	);
 }
@@ -189,6 +191,7 @@ function floorCache(
 	runSeed: number,
 	partySize: number,
 	vaultOverride: VaultOverride | undefined,
+	unlockFloors: boolean,
 ): (floor: number) => EndlessRunFloor {
 	const mover = playerMoverKind();
 	const floors: number[] = [];
@@ -199,7 +202,7 @@ function floorCache(
 		if (floor === lastFloor && last !== undefined) return last;
 		let w = worlds.get(floor);
 		if (w === undefined) {
-			w = endlessRunFloor(runSeed, floor, partySize, vaultOverride, mover);
+			w = endlessRunFloor(runSeed, floor, partySize, vaultOverride, mover, unlockFloors);
 			worlds.set(floor, w);
 			floors.push(floor);
 			while (floors.size() > ENDLESS_FLOOR_CACHE_SIZE) {
@@ -234,6 +237,11 @@ export interface EndlessRunOptions {
 	readonly characters?: ReadonlyArray<CharacterId>;
 	/** With `characters`: every player carries both weapons with their character's traits (the dev world's option). */
 	readonly bothWeapons?: boolean;
+	/**
+	 * False: the seeded roster ignores the room kinds' unlock floors (shared/dungeon EndlessFloorOptions.unlockFloors):
+	 * the Daily (DAILY.rosterUnlockFloors, ./worlds.ts rosterUnlockFloors). Absent or true: as before.
+	 */
+	readonly unlockFloors?: boolean;
 }
 
 /**
@@ -251,7 +259,7 @@ export function buildEndlessRunConfig(
 	if (!isValidPartySize(partySize)) {
 		error(`buildEndlessRunConfig: party size must be an integer in [1, ${MAX_PARTY_SIZE}], got ${partySize}`, 0);
 	}
-	const worldForFloor = floorCache(runSeed, partySize, options.vaultOverride);
+	const worldForFloor = floorCache(runSeed, partySize, options.vaultOverride, options.unlockFloors !== false);
 	const first = worldForFloor(ENDLESS_FIRST_FLOOR);
 	const base: SimConfig =
 		partySize === DEFAULT_PARTY_SIZE

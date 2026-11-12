@@ -458,7 +458,10 @@ Decision log (deviations from `PLAN.md`):
   lobby world toggle, leaderboard tabs, in-run rank layer, run-over daily block; strings `ROSTER_STRING_KEYS` /
   `DAILY_STRING_KEYS` / `DAILY_RANK_STRING_KEYS`, port audio IDs `sfx.rank.up` / `sfx.friend.passed` (SILENT in the
   placeholder). Telemetry `daily_*` and an optional `daily` field in `KV_Records_v1` (still v1). Debug `KV_Daily`,
-  `KV_DailyRankDebug`, Studio `KV_FakeFriends`. DS0 spike and Studio check pending.
+  `KV_DailyRankDebug`, Studio `KV_FakeFriends`. DS0 spike and Studio check pending. **DSD17 (2026-11-11):** the Daily's
+  roster ignores the unlock floors (`DAILY.rosterUnlockFloors` false, shared/run `rosterUnlockFloors(world)`,
+  `endlessRoster(seed, floor, unlockFloors)` / the spender's `unlockFloors`): the day's seed alone orders the pool, floor
+  1's seeded kind any of the ten; daily replays changed, `DAILY.ruleset` 14 -> 15; endless / dev keep DSD9.
 - **Localization (docs/LOCALIZATION.md).** Presentation and tooling only (no sim, dungeon, lockstep, hash, replay,
   fixture or score change). `shared/l10n`: `LOCALES` (English live; the 17 targets and pseudo-locale `en-XA` hidden
   until each passes the LD12 gate), `pickLocale` / `resolveLocaleState` (Roblox ids `[Player.LocaleId,
@@ -1169,7 +1172,9 @@ Decision log (deviations from `PLAN.md`):
   (`getReadiness` / `isArtReady` / `onReadinessChanged`; `GetAssetFetchStatus` pre-check under pcall). StageController:
   each cover pushes the floor's manifest to the front lane; a solo run start waits at most
   `STAGE_ASSETS.wait.softWaitSec` 1.5 s (bar after 0.4 s), floor changes and co-op never wait (`assetCapSec` gone);
-  floor n + 1 prefetched to `next` at each reveal, the first floor's guess on the menu / in a lobby. AudioController
+  floor n + 1 prefetched to `next` at each reveal, the first floor's guess on the menu / in a lobby, today's Daily's
+  own floor 1 (`forecastDailyFirstFloor` from the daily slice's seed) at the head of `next` ahead of it
+  (`PreloadQueue.push(..., first)`, 2026-11-11). AudioController
   drops a cue not loaded (never late) and fades a bed in when it lands (`BedGate`, `AUDIO_VIEW.lateBedFadeSec`). UI:
   `client/ui` `uiImage` / `UI_IMAGES` / `useUiArt` (`UiArtController`), the flat UI until an image is in. Debug
   (`RUN_ATTRIBUTES`): `KV_StandInsForce` ("all" or prefixes), `KV_FakeAssetLatency` (Studio), `KV_StageAssetAudit`.

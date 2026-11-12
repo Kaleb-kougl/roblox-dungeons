@@ -13,7 +13,7 @@
  * Which registered worlds the SERVER refuses to run (session starts, including lobby starts) is SERVER_REFUSED_WORLDS.
  * Which worlds are the endless descent (floors, scoring, death-only, the stage loader) is `isEndlessWorld`.
  */
-import { DAILY_WORLD_KIND } from "shared/daily";
+import { DAILY, DAILY_WORLD_KIND } from "shared/daily";
 import { buildRunConfig, type RunSetup } from "./config";
 import { buildEndlessRunConfig } from "./endless";
 import { TUTORIAL_WORLD_KIND, buildTutorialRunConfig } from "./tutorial";
@@ -34,6 +34,16 @@ export const ENDLESS_WORLD_KIND = "endless";
  */
 export function isEndlessWorld(kind: RunWorldKind): boolean {
 	return kind === ENDLESS_WORLD_KIND || kind === DAILY_WORLD_KIND;
+}
+
+/**
+ * Whether world `kind`'s seeded roster keeps the room kinds' unlock floors (shared/dungeon endlessRoster
+ * `unlockFloors`): false for the Daily (DAILY.rosterUnlockFloors, docs/DAILY.md DSD17: the day's seed alone orders the
+ * pool), true for every other world. The daily builder below and every reader of a run's roster (the stage card, the
+ * stage forecast, the Daily card's preview) ask this, so they agree with the floors the sim steps.
+ */
+export function rosterUnlockFloors(kind: RunWorldKind): boolean {
+	return kind === DAILY_WORLD_KIND ? DAILY.rosterUnlockFloors : true;
 }
 
 export interface WorldBuildOptions {
@@ -110,8 +120,12 @@ function registerBuiltinWorlds(): void {
 	);
 	// The Daily (docs/DAILY.md): the endless descent, identical setup for the same seed. The server picks its seed of
 	// the day (RunSessionDeps.dailySeed, a server-only secret); a server world (not SERVER_REFUSED_WORLDS).
+	// Its roster ignores the unlock floors (rosterUnlockFloors, docs/DAILY.md DSD17).
 	registerRunWorld(DAILY_WORLD_KIND, (seed, o) =>
-		buildEndlessRunConfig(seed, o.partySize, { characters: o.characters ?? [] }),
+		buildEndlessRunConfig(seed, o.partySize, {
+			characters: o.characters ?? [],
+			unlockFloors: rosterUnlockFloors(DAILY_WORLD_KIND),
+		}),
 	);
 	// The first-run tutorial (docs/TUTORIAL.md): a fixed world whatever the seed (and whatever `characters`: the Knight,
 	// docs/ARCHER.md owner answer 3), solo only, never leaderboard-eligible

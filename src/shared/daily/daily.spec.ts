@@ -28,11 +28,13 @@ import {
 	ENDLESS_WORLD_KIND,
 	SERVER_REFUSED_WORLDS,
 	TUTORIAL_WORLD_KIND,
+	buildEndlessRunConfig,
 	buildWorldSetup,
 	isEndlessWorld,
 	isRunWorldKind,
 	isServerRunWorld,
 	isValidRunSeed,
+	rosterUnlockFloors,
 } from "shared/run";
 
 /** 2026-10-31T00:00:00Z (today in the plan: Daily #304). */
@@ -81,7 +83,7 @@ describe("day math", () => {
 		expect(dailyScope(303, 1)).toBe("d303_r1");
 		expect(dailyScope(303, 7)).toBe("d303_r7");
 		expect(dailyScope(303)).toBe(`d303_r${DAILY.ruleset}`);
-		expect(DAILY.ruleset).toBe(14);
+		expect(DAILY.ruleset).toBe(15);
 		expect(dailyRunKeyAt(OCT_31 + 86399)).toEqual({ day: 303, ruleset: DAILY.ruleset });
 	});
 
@@ -206,7 +208,7 @@ describe("daily seed", () => {
 });
 
 describe("daily world", () => {
-	it("is a server world, the endless descent, building the identical setup for the same seed", () => {
+	it("is a server world, the endless descent: the same layouts as endless, its rooms from the Daily's roster", () => {
 		expect(isRunWorldKind(DAILY_WORLD_KIND)).toBe(true);
 		expect(isServerRunWorld(DAILY_WORLD_KIND)).toBe(true);
 		expect(SERVER_REFUSED_WORLDS.has(DAILY_WORLD_KIND)).toBe(false);
@@ -221,6 +223,9 @@ describe("daily world", () => {
 		] as const) {
 			const daily = buildWorldSetup(DAILY_WORLD_KIND, seed, { atBossDoor: false, partySize });
 			const endless = buildWorldSetup(ENDLESS_WORLD_KIND, seed, { atBossDoor: false, partySize });
+			// The Daily's roster ignores the unlock floors (docs/DAILY.md DSD17): its rooms are this build's.
+			const unlocks = rosterUnlockFloors(DAILY_WORLD_KIND);
+			const free = buildEndlessRunConfig(seed, partySize, { characters: [], unlockFloors: unlocks });
 			expect(daily.spawn).toEqual(endless.spawn);
 			expect(daily.config.scoring).toEqual(endless.config.scoring);
 			expect(daily.config.party).toEqual(endless.config.party);
@@ -234,12 +239,14 @@ describe("daily world", () => {
 					b.layout.bossKind,
 				]);
 				expect(a.layout.stairwell).toEqual(b.layout.stairwell);
-				expect(a.layout.roomSpawns).toEqual(b.layout.roomSpawns);
-				expect(a.layout.roomAffixes).toEqual(b.layout.roomAffixes);
+				const c = free.endlessFloor(floor);
+				expect(a.layout.roster).toEqual(c.layout.roster);
+				expect(a.layout.roomSpawns).toEqual(c.layout.roomSpawns);
+				expect(a.layout.roomAffixes).toEqual(c.layout.roomAffixes);
 			}
 			const spawn = daily.spawn!;
 			expect(hashState(createSimState(seed, spawn.x, spawn.z, daily.config))).toBe(
-				hashState(createSimState(seed, spawn.x, spawn.z, endless.config)),
+				hashState(createSimState(seed, spawn.x, spawn.z, free.config)),
 			);
 		}
 	});

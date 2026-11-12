@@ -3,10 +3,10 @@
 // entries, the host's toggle.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { BOSS_FLOOR_EVERY, bossKindFor, endlessRoster, floorSeed } from "shared/dungeon";
-import { dailyResetsAt, dailyStatusFor, type DailyPodium, type DailyStatus } from "shared/daily";
+import { DAILY, dailyResetsAt, dailyStatusFor, type DailyPodium, type DailyStatus } from "shared/daily";
 import { PLACEHOLDER_MANIFEST, ThemePack, type StringVars } from "shared/theme";
 import { enemyNameKey } from "shared/view/hud";
-import { dailyCardModel, dailyPodiumModel, dailyPreview, lobbyWorldModel } from "shared/view/menu";
+import { dailyCardModel, dailyPodiumModel, dailyPreview, lobbyWorldModel, todaysDailySeed } from "shared/view/menu";
 
 const quiet = (): void => {};
 const pack = new ThemePack(PLACEHOLDER_MANIFEST, { warn: quiet });
@@ -19,12 +19,21 @@ const status = (patch: Partial<DailyStatus>): DailyStatus => ({ ...dailyStatusFo
 describe("daily preview (DSD14)", () => {
 	it("floor 1's roster in join order and the first boss floor's boss", () => {
 		const p = dailyPreview(SEED);
-		expect([...p.roster]).toEqual(endlessRoster(SEED, 1));
+		expect([...p.roster]).toEqual(endlessRoster(SEED, 1, DAILY.rosterUnlockFloors));
+		expect(DAILY.rosterUnlockFloors).toBe(false);
 		expect(p.roster[0]).toBe("swarmer");
 		expect(p.roster.size()).toBe(2);
 		expect(p.bossFloor).toBe(5);
 		expect(p.bossFloor).toBe(BOSS_FLOOR_EVERY);
 		expect(p.boss).toBe(bossKindFor(floorSeed(SEED, 5)));
+	});
+});
+
+describe("today's Daily seed (the menu prefetch, docs/STAGE_ASSETS.md SA7)", () => {
+	it("is the status's seed while it is today's; none before the answer or once its day is over", () => {
+		expect(todaysDailySeed(status({}), TODAY)).toBe(SEED);
+		expect(todaysDailySeed(undefined, TODAY)).toBe(undefined);
+		expect(todaysDailySeed(status({}), TODAY + 1)).toBe(undefined);
 	});
 });
 

@@ -213,22 +213,31 @@ export class PreloadQueue {
 	/**
 	 * Queues each of `refs` not seen before at the end of `lane` (in order; a ref repeated within `refs` once). A push
 	 * also moves ids waiting in a lower lane up to `lane`. Returns how many refs were queued or moved.
+	 *
+	 * `first` (the Daily's known first floor on the menu, docs/STAGE_ASSETS.md SA7): the refs go to the HEAD of `lane`
+	 * instead, in `refs` order, ahead of everything already waiting there, and ids already waiting in `lane` itself move
+	 * to the head too (so a guess queued earlier never holds them back). Ids waiting in a higher lane or taken stay put.
 	 */
-	push(refs: ReadonlyArray<ContentRef>, lane: PreloadLane): number {
+	push(refs: ReadonlyArray<ContentRef>, lane: PreloadLane, first = false): number {
 		let count = 0;
+		let head = 0;
 		const rank = laneRank(lane);
+		const target = this.lanes[rank];
 		for (const ref of refs) {
 			const at = this.where.get(ref.contentId);
-			if (at === undefined) {
-				this.where.set(ref.contentId, lane);
-				this.lanes[rank].push(ref);
-				count += 1;
-			} else if (at !== "taken" && laneRank(at) > rank) {
-				this.removeFrom(this.lanes[laneRank(at)], ref.contentId);
-				this.where.set(ref.contentId, lane);
-				this.lanes[rank].push(ref);
-				count += 1;
+			const fresh = at === undefined;
+			const lower = !fresh && at !== "taken" && laneRank(at) > rank;
+			const same = first && !fresh && at === lane;
+			if (!fresh && !lower && !same) continue;
+			if (lower || same) this.removeFrom(this.lanes[laneRank(at as PreloadLane)], ref.contentId);
+			this.where.set(ref.contentId, lane);
+			if (first) {
+				target.insert(head, ref);
+				head += 1;
+			} else {
+				target.push(ref);
 			}
+			count += 1;
 		}
 		return count;
 	}
