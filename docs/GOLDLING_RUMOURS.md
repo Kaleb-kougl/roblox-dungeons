@@ -117,7 +117,7 @@ and missing it costs nothing (RD12): you keep everything else the floor gives.
 4. **View, rumours** (revision 1): `shared/view/golden/rumour.ts` (`goldenRumourPhase`, `GoldenRumourClock`);
    `GOLDEN_VIEW.rumour` (`floorDelaySec` 1.0, `floorVolume` 0.45, `roomVolume` 0.8, pulse 0.8 s / 0.08).
 5. **Audio:** `sfx.golden.rumour.floor` / `.room` in `PORT_AUDIO_EVENTS` (SILENT in the placeholder), category sfx (no
-   music duck), `SFX_PRIORITY` 45 / 66, `SFX_FALLBACK` -> `sfx.golden.hit`; the room cue at `teammateVolume` from
+   music duck), `SFX_PRIORITY` 45 / 66, `SFX_FALLBACK` -> `sfx.score.tick`; the room cue at `teammateVolume` from
    outside the room. Candidates for GR10: `Bonus/Coin3` with `lowpassHz` ~2200 and `gainDb` -6 for the floor, the same
    clip unfiltered (or a `mix` of two `Coin2` taps) for the room; must read apart from the hit's plain `Coin.wav`.
 6. **HUD:** `GoldenRumourChip` beside `HordeChip` (status corner and touch strip), coin glyph, `golden.coin`.
@@ -293,7 +293,7 @@ M1, every golden fixture and the tutorial (no Goldling) replay exactly as before
   `goldenRumourInRoom(state, viewIndex)` for the room cue's volume. Tunables `GOLDEN_VIEW.rumour`.
 - **Audio (GR6):** port audio IDs `sfx.golden.rumour.floor` / `.room` appended to `PORT_AUDIO_EVENTS` after Fortune's
   eight (`GOLDEN_RUMOUR_AUDIO_IDS`), required, sfx group, **SILENT** in the placeholder (and in vale until GR10);
-  `SFX_PRIORITY` 45 / 66; `SFX_FALLBACK` -> `sfx.golden.hit` (at the rumour's volume, the pack's jitter, no hit ladder);
+  `SFX_PRIORITY` 45 / 66; `SFX_FALLBACK` -> `sfx.score.tick` (at the rumour's volume, the pack's jitter, no hit ladder);
   not a jingle, no duck. Volumes: floor 0.45, room 0.8 inside the Goldling's room; from outside it (a teammate walked
   in, RD6) x `AUDIO_VIEW.teammateVolume` and `TEAMMATE_PRIORITY_DROP` (50) lower. `art/audio.json` lists both silent and
   unconfirmed with the candidates as alternates: the floor `Bonus/Coin3` low-passed 2200 Hz at -6 dB, the room `Coin3`
@@ -363,7 +363,13 @@ appended ids, keys and pieces: the payouts, freeze, view golden, theme (fortune,
 enemyVariants, pellets, runRecap, treasure) and dungeon (affixes, breakableLoot, breakables, endless, pellets, vault)
 specs, the charger / stormcaller pins, `daily.spec`. Re-run for GR9 (headless, after a fresh build): every Goldling,
 pacts freeze, Charger, Bomber, Stormcaller and daily suite, 17 suites, 179 tests, all pass; typecheck and lint clean.
-The whole suite was not re-run here.
+Full `npm run verify` on the branch after GR9 (cloud, x86): typecheck, lint, check:assets, check:autolocalize,
+test:art, test:checks, test:l10n and the build clean; Lune 476 of 477 suites, 6201 of 6202 tests (90 min), the one
+failure the known x86-only `dungeon/forge/forge.spec.ts` NaN sign bit. Review fixes after it (re-checked: typecheck,
+lint, build, test:art, check:assets, test:checks, `view/audio view/golden theme/fortune theme/audio` 23 suites / 278
+tests): both rumours fall back to `sfx.score.tick` (not `sfx.golden.hit`, which has no clip on main, and a fallback
+resolves one step); the touch strip's boosts take the width the Horde and rumour chips leave. Open nit for the owner:
+`sfx.golden.appear` plays on the break's frame while the flash and `GOLDLING!` wait `afterBreakSec` 0.12 s.
 
 ## Studio check
 
@@ -378,7 +384,7 @@ are grid (x, y); every Goldling piece is its floor's last breakables slot.
 | **44, floor 2** | Room 6 is **also the vault room**: a crate at (39, 61), slot 26, the chest slot 25. Also **12, floor 3** (room 11) and **11, floor 4** (room 3) |
 | any seed, floor 1 | No Goldling (from floor 2) |
 
-- Arrive: the draft closes, about 1 s later the faint jingle (silent until GR10: the Goldling's hit coin plays) and
+- Arrive: the draft closes, about 1 s later the faint jingle (silent until GR10: the score tick plays) and
   `Coins jingling...`; nothing under the draft or the stage cover. First run on a fresh account: the card once.
 - Enter its room: the brighter jingle, `It's hiding here!` (gentle pulse; reduced motion: none); a glinting barrel or
   crate; no Goldling yet, however long you fight.

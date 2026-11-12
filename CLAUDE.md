@@ -1348,7 +1348,7 @@ Decision log (deviations from `PLAN.md`):
   flash / `GOLDLING!` wait `afterBreakSec` 0.12 s after the break (`GoldenAppearQueue`); the per-client
   `GoldenRumourClock` (shared/view/golden rumour.ts, phases NONE / FLOOR / ROOM, owned by SimController): the floor
   rumour once per floor 1 s into unfrozen FLOOR time, the room rumour on its room's engagement (RD3 / RD5); port audio
-  IDs `sfx.golden.rumour.floor` / `.room` (SILENT in the placeholder, falling back to `sfx.golden.hit`; priorities 45 /
+  IDs `sfx.golden.rumour.floor` / `.room` (SILENT in the placeholder, falling back to `sfx.score.tick`; priorities 45 /
   66; from outside the room at teammate volume, RD6); `GoldenRumourChip` beside the Horde chip (`hud.chip.golden.rumour` /
   `.hiding`, snapshot `goldenRumour`, StatusPanel `ChipBoostRow` and the touch strip, RD4); first-time card (sighting id
   `golden.rumour`, `bestiary.golden.rumour`, RD7); `KV_GoldenLabel`'s WAITING line. `contract.luau` / `validate.luau`

@@ -73,7 +73,7 @@ export const FORTUNE_AUDIO_IDS: ReadonlyArray<string> = [
  * The Goldling's rumours (docs/GOLDLING_RUMOURS.md GR6; port audio IDs appended to PORT_AUDIO_EVENTS after
  * FORTUNE_AUDIO_IDS, required, SILENT in the placeholder): the floor rumour (a soft, muffled coin jingle once per floor
  * with a hidden Goldling) and the room rumour (the same jingle, closer and brighter, when its room engages). Plain sfx
- * (no music duck, not a jingle). While silent each falls back to sfx.golden.hit (shared/view/audio SFX_FALLBACK).
+ * (no music duck, not a jingle). While silent each falls back to sfx.score.tick (shared/view/audio SFX_FALLBACK).
  */
 export const GOLDEN_RUMOUR_AUDIO_IDS: ReadonlyArray<string> = ["sfx.golden.rumour.floor", "sfx.golden.rumour.room"];
 

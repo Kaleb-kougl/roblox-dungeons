@@ -192,19 +192,20 @@ export function TouchStrip(props: TouchStripProps) {
 	const multW = T.multChars * T.multText * T.charEm;
 	const lineH = T.multText + FOOTPRINT_ESTIMATE.lineSlack;
 
-	const boostsW =
-		s.boosts.size() > 0
-			? wrapGrid(s.boosts.size(), boostCellWidth(CHIP_BOOST), CHIPS.cell, CHIPS.cellGap, L.maxWidth).width
-			: 0;
 	// docs/FORTUNE.md FO7: the Horde chip (while armed) leads the chip line, the Goldling rumour's chip
-	// (docs/GOLDLING_RUMOURS.md GR7) beside it; the items take what is left.
+	// (docs/GOLDLING_RUMOURS.md GR7) beside it; the boosts take what the chips leave, the items the rest.
 	const hordeW = s.hordeArmed ? HORDE_CHIP.touchWidth + CHIPS.cellGap : 0;
 	// docs/FLOOR_MODIFIERS.md FM6: the floor modifier chip ahead of it.
 	const modifierW = modifier !== FloorModifier.NONE ? FLOOR_MODIFIER_VIEW.chip.touchWidth + CHIPS.cellGap : 0;
 	// docs/GOLDLING_RUMOURS.md GR7: the Goldling rumour's chip after the Horde's.
 	const rumour = s.goldenRumour !== GoldenRumourPhase.NONE;
 	const rumourW = rumour ? GOLDEN_VIEW.rumour.chip.touchWidth + CHIPS.cellGap : 0;
-	const itemsW = math.max(0, L.maxWidth - modifierW - hordeW - rumourW - boostsW - (boostsW > 0 ? CHIPS.cellGap : 0));
+	const boostsMaxW = math.max(0, L.maxWidth - modifierW - hordeW - rumourW);
+	const boostsW =
+		s.boosts.size() > 0
+			? wrapGrid(s.boosts.size(), boostCellWidth(CHIP_BOOST), CHIPS.cell, CHIPS.cellGap, boostsMaxW).width
+			: 0;
+	const itemsW = math.max(0, boostsMaxW - boostsW - (boostsW > 0 ? CHIPS.cellGap : 0));
 
 	return (
 		<ArtScaleContext.Provider value={k}>
@@ -373,7 +374,7 @@ export function TouchStrip(props: TouchStripProps) {
 							boosts={s.boosts}
 							highlight={props.boostsHighlight}
 							look={CHIP_BOOST}
-							maxWidth={L.maxWidth}
+							maxWidth={boostsMaxW}
 							gap={CHIPS.cellGap}
 						/>
 						<RunItems

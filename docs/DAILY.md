@@ -124,7 +124,7 @@ a dearer kind joins. The census reports it; tuning is an owner call.
   RFC 4231 vectors); `dailySeedFrom(day, key)` refuses keys under 16 bytes. (First build used an invertible 32-bit
   mixer; the review caught it.) Valid by
   `isValidRunSeed`. The seed of today is sent to clients (`dailyStatus`), so the menu can preview the roster and boss.
-- **Ruleset (DSD11).** `DAILY.ruleset` (an integer, `shared/daily/config.ts`; now **16**) joins the board scope. Bump
+- **Ruleset (DSD11).** `DAILY.ruleset` (an integer, `shared/daily/config.ts`; now **17**) joins the board scope. Bump
   it with any change that alters endless play; after an update, servers still on the old build keep posting to the old
   ruleset's board and new servers to the new one, so no daily board mixes two rulesets.
   History: 1 at launch of the feature; 2 with boosts from breakables (docs/BREAKABLE_DROPS.md, 2026-11-01); 3 with

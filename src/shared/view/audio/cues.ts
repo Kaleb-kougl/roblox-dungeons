@@ -193,7 +193,7 @@
  * once per floor each: `floorCue` -> sfx.golden.rumour.floor at GOLDEN_VIEW.rumour.floorVolume; `roomCue` ->
  * sfx.golden.rumour.room at roomVolume, x AUDIO_VIEW.teammateVolume and TEAMMATE_PRIORITY_DROP lower while the view
  * player stands outside the Goldling's room (a teammate engaged it, RD6). Plain sfx (no duck, not a jingle); silent,
- * each plays sfx.golden.hit at the rumour's volume with the pack's jitter (no hit ladder).
+ * each plays sfx.score.tick at the rumour's volume with the pack's jitter.
  *
  * Presentation only: reads sim state, never writes it.
  */
@@ -466,9 +466,10 @@ export const SFX = {
 	floorModifierFeast: "sfx.floor.modifier.feast",
 	floorModifierPlunder: "sfx.floor.modifier.plunder",
 	floorModifierBloodMoon: "sfx.floor.modifier.bloodmoon",
+	/**
 	 * The Goldling's rumours (docs/GOLDLING_RUMOURS.md GR6; the theme's GOLDEN_RUMOUR_AUDIO_IDS): a soft, far-off coin
 	 * jingle once per floor where one hides, the same jingle closer and brighter when its room engages. Mapped from the
-	 * client's GoldenRumourClock edges (goldenRumourCues); each plays sfx.golden.hit while silent.
+	 * client's GoldenRumourClock edges (goldenRumourCues); each plays sfx.score.tick while silent.
 	 */
 	goldenRumourFloor: "sfx.golden.rumour.floor",
 	goldenRumourRoom: "sfx.golden.rumour.room",
@@ -945,6 +946,7 @@ export const SFX_PRIORITY: Readonly<Record<SfxId, number>> = {
 	[SFX.floorModifierFeast]: 67,
 	[SFX.floorModifierPlunder]: 67,
 	[SFX.floorModifierBloodMoon]: 67,
+	/**
 	 * The rumours (docs/GOLDLING_RUMOURS.md GR6): the floor's is ambience-like news (under the breakables' hit, 45: a
 	 * busy arrival frame drops it before any fight sound); the room's is a call to look around (66: with the boosts'
 	 * pickups, under the Goldling's own appearance and the floor enter).
@@ -1192,11 +1194,13 @@ export const SFX_FALLBACK: Readonly<Partial<Record<SfxId, SfxId>>> = {
 	[SFX.floorModifierFeast]: SFX.jingleTreasure,
 	[SFX.floorModifierPlunder]: SFX.jingleTreasure,
 	[SFX.floorModifierBloodMoon]: SFX.hordeHorn,
-	 * docs/GOLDLING_RUMOURS.md GR6: until the rumours' clips are picked (GR10), both play the Goldling's hit coin (at the
-	 * rumour's own volume, the pack's jitter: no hit ladder). One step: with the hit silent too, nothing.
+	/**
+	 * docs/GOLDLING_RUMOURS.md GR6: until the rumours' clips are picked (GR10), both play the score tick (at the
+	 * rumour's own volume, the pack's jitter), the sound the Goldling's hit itself falls back to while it is silent: on
+	 * committed main sfx.golden.hit has no clip, and a fallback resolves one step only. With the tick silent too, nothing.
 	 */
-	[SFX.goldenRumourFloor]: SFX.goldenHit,
-	[SFX.goldenRumourRoom]: SFX.goldenHit,
+	[SFX.goldenRumourFloor]: SFX.scoreTick,
+	[SFX.goldenRumourRoom]: SFX.scoreTick,
 	/**
 	 * docs/LEGENDARIES.md LG5: until the legendaries' clips are picked (LG8), an Overkill streak plays the spark's zap
 	 * and a Bastion brace the Aegis pip's break (the player's armor sound). One step each: while the spark is silent too

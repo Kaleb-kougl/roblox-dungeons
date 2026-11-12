@@ -1,5 +1,5 @@
 // The Goldling's rumours in the cue mapper (docs/GOLDLING_RUMOURS.md GR6): the two IDs (the theme's port audio events,
-// in ALL_SFX / PORT_SFX), plain sfx (no duck, not a jingle), ranked 45 / 66, each falling back to sfx.golden.hit while
+// in ALL_SFX / PORT_SFX), plain sfx (no duck, not a jingle), ranked 45 / 66, each falling back to sfx.score.tick while
 // silent at the rumour's own volume with the pack's jitter (no hit ladder); the floor cue at floorVolume; the room cue
 // at roomVolume inside the Goldling's room and at the teammate volume (and lower rank) from outside it; nothing without
 // an edge; and the clock's edges reaching the mapper over a real Goldling floor.
@@ -180,15 +180,15 @@ describe("audio: the Goldling's rumours (docs/GOLDLING_RUMOURS.md GR6)", () => {
 		expect(TEAMMATE_PRIORITY_DROP > 0).toBe(true);
 	});
 
-	it("silent: each plays sfx.golden.hit at the rumour's volume with the pack's jitter; with the hit silent, nothing", () => {
+	it("silent: each plays sfx.score.tick at the rumour's volume with the pack's jitter; with the tick silent, nothing", () => {
 		const s = createSimState(1, 0, 0);
-		for (const id of RUMOURS) expect([id, SFX_FALLBACK[id]]).toEqual([id, SFX.goldenHit]);
+		for (const id of RUMOURS) expect([id, SFX_FALLBACK[id]]).toEqual([id, SFX.scoreTick]);
 		const noRumours: Playable = (id) => !(RUMOURS as ReadonlyArray<string>).includes(id);
-		expect(frame(new AudioCueMapper(noRumours), 0, s, FLOOR_CUE)).toEqual([[SFX.goldenHit, R.floorVolume, 0]]);
+		expect(frame(new AudioCueMapper(noRumours), 0, s, FLOOR_CUE)).toEqual([[SFX.scoreTick, R.floorVolume, 0]]);
 		const r = devRun();
 		intoRoom(r.s);
-		expect(frame(new AudioCueMapper(noRumours), 0, r.s, ROOM_CUE)).toEqual([[SFX.goldenHit, R.roomVolume, 0]]);
-		const noCoins: Playable = (id) => noRumours(id) && id !== SFX.goldenHit;
+		expect(frame(new AudioCueMapper(noRumours), 0, r.s, ROOM_CUE)).toEqual([[SFX.scoreTick, R.roomVolume, 0]]);
+		const noCoins: Playable = (id) => noRumours(id) && id !== SFX.scoreTick;
 		expect(frame(new AudioCueMapper(noCoins), 0, s, FLOOR_CUE)).toEqual([]);
 		expect(frame(new AudioCueMapper(noCoins), 0, r.s, ROOM_CUE)).toEqual([]);
 	});
