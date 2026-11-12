@@ -13,10 +13,10 @@ the system pointer's hotspot as it is today.
 ## Status (2026-11-11)
 
 **Built (code complete), revision 2: menus only** (owner, 2026-11-11), verified headlessly only. C1-C7 are done on
-branch `gauntlet-cursor` ("As built" below); still open: the owner's upload of the two PNGs and their ids (C1), the
-five Studio answers (C0) and the smoke test (C8), which also covers the Studio halves of C4-C6's Verify. Until the upload, vale's `ui.cursor` stays a placeholder,
-`cursorArt(pack)` is undefined and every pack shows Roblox's pointer exactly as before (the gamepad rule included); the
-Cursor size row stays hidden. Revision 1 (2026-10-26) put the gauntlet everywhere, gameplay included, as the aim point.
+branch `gauntlet-cursor` ("As built" below); merged into `main` (`686ead1`). Both PNGs uploaded 2026-11-11 (`ui-cursor.png`
+99705434998185, `ui-cursor-hover.png` 105045987009903 in `assetIds.ts`), so the bundled vale pack draws the gauntlet.
+Still open: the five Studio answers (C0) and the smoke test (C8), which also covers the Studio halves of C4-C6's
+Verify. The placeholder pack keeps Roblox's pointer (`cursorArt(pack)` undefined, the Cursor size row hidden). Revision 1 (2026-10-26) put the gauntlet everywhere, gameplay included, as the aim point.
 Every decision is made (D1-D5, owner 2026-11-11): D2 a size setting in Options (section 5), D5 the click squeeze on,
 off under reduced motion.
 
@@ -239,10 +239,9 @@ above are marked **(differs)**.
 
 ### Pending (owner)
 
-1. Build and upload: `node scripts/art/build-atlases.js --only ui.cursor` (or `npm run art:build`) writes
-   `art/build/ui-cursor.png` / `ui-cursor-hover.png` and copies them to `art/upload/`; upload both and paste the ids
-   into `src/shared/theme/packs/vale/assetIds.ts` under the keys `"ui-cursor.png"` and `"ui-cursor-hover.png"`, then
-   `npm run verify`.
+1. ~~Build and upload~~ Done 2026-11-11: `node scripts/art/build-atlases.js --only ui.cursor` writes
+   `art/build/ui-cursor.png` / `ui-cursor-hover.png` and copies them to `art/upload/`; the ids are in
+   `src/shared/theme/packs/vale/assetIds.ts` under the keys `"ui-cursor.png"` and `"ui-cursor-hover.png"`.
 2. C0's five answers (below), written here: (a) the label's lag at 60 FPS, (b) `MouseIconEnabled` after the Roblox
    menu closes, (c) `GetGuiObjectsAtPosition`'s inset convention, (d) (0, 0) at the window corner with
    `IgnoreGuiInset` + `ScreenInsets.None`, (e) no blank or doubled frame when the two pointers swap.
@@ -257,8 +256,7 @@ above are marked **(differs)**.
   wants the raw mouse position or one minus `GuiService:GetGuiInset()`, (d) `IgnoreGuiInset` + `ScreenInsets.None`
   puts (0, 0) at the window corner, (e) flipping `MouseIconEnabled` true and hiding the label in the same frame shows
   no blank frame and no doubled pointer. → Verify: the five answers written into "As built".
-- [ ] **C1. Art.** (Built and verified headlessly, `d08bb20`; open: the upload and the two ids, "As built" >
-  Pending.) The two `images` entries; `{ x, y }` source pivot in `build-atlases.js` plus the same-crop check
+- [x] **C1. Art.** (Built and verified headlessly, `d08bb20`; uploaded 2026-11-11, ids in `assetIds.ts`.) The two `images` entries; `{ x, y }` source pivot in `build-atlases.js` plus the same-crop check
   across variants; a `scripts/art/*.test.js` case for the explicit pivot (inside, outside, crop offset); `art:build`,
   contact sheet looked at. Upload the two PNGs and paste the ids into `packs/vale/assetIds.ts`. → Verify:
   `npm run test:art`; `VALE_IMAGE_LAYOUTS["ui.cursor"].pivot` is the fingertip (about (3, 3) with `pad` 2); the

@@ -29,7 +29,7 @@ six bullet IDs, the biome tiles, `ui.cursor` (the facing pip) and the pedestal /
 | `enemy.sprayer` / `enemy.caster` (M1's turrets, the tutorial's sprayers) | **Demon Spawn 8** / **Demon Spawn 11** (Idle 1, TakeDamage 1, Die 1; the baked staff glow cut by `layerNoiseAlpha`; docs/DEMON_ART.md Phase 2): 2 sheets + rims each, uploaded 2026-10-30 (DA13) | 2D Demons - TopDown asset pack v1.1 |
 | boost drops `boost.fury` / `.quickstep` / `.frenzy` / `.aegis` (docs/BOOST_ART.md) | **`gold_drop`** (Fury) and **`gemstones_blue` / `_green` / `_white`**, S facing frame 0, 29.6 px/tile; halo `decor.fx.glow` and sparkle `decor.fx.glint` (the decor atlas), beam **`loot_indicator_white`** (`ui.marker.boost`), all tinted by the kind's role | Lords of Pain (full pack) |
 | the UI (menus, overlays, in-run HUD, touch; docs/UI_ART.md) | 12 sliced pieces (`ui.panel.*`, `ui.button*`, `ui.option.*`, `ui.bar.*`, `ui.slot*`) and the `ui-icons.png` atlas (hearts, flasks, candle, chips, glyphs, ornament); uploaded 2026-10-30 | UI User Interface Pack - Horror |
-| the menus' mouse pointer `ui.cursor` / `ui.cursor.hover` (docs/CURSOR.md) | **`cursor_gauntlet_white`** (normal) and **`cursor_gauntlet_yellow`** (over a button), cut to the same 29 x 29 rect, fingertip pivot source (53, 54) -> (4, 4); drawn as a software cursor in menus only, Pixelated at whole scales. `ui-cursor.png` / `ui-cursor-hover.png` built 2026-11-11, not uploaded (Roblox's pointer until then) | Lords of Pain (full pack) |
+| the menus' mouse pointer `ui.cursor` / `ui.cursor.hover` (docs/CURSOR.md) | **`cursor_gauntlet_white`** (normal) and **`cursor_gauntlet_yellow`** (over a button), cut to the same 29 x 29 rect, fingertip pivot source (53, 54) -> (4, 4); drawn as a software cursor in menus only, Pixelated at whole scales. `ui-cursor.png` / `ui-cursor-hover.png` built and uploaded 2026-11-11 | Lords of Pain (full pack) |
 | walls, the shrine | placeholder primitives (unchanged) | none |
 | every flying `bullet.*` (docs/PROJECTILE_ART.md) | **Player Bullets**: yellow / green bolts and the Hyper flame for the player; chevron / teardrops / needle recoloured into the danger pink (`recolor`, one ramp per set) for enemies; the impact burst as `fx.bullet.hit`. One atlas `bullets.png` (`--only bullets`), built and uploaded 2026-11-05 (`assetIds.ts`), so the bundled vale pack draws them. Strike / ember stay neon floor decals (PAD3); goo has its own art (next row). The GDD bullet-readability rule now lives in `bulletArtReport` | 16Bit Bullets Asset Pack (J i m) |
 | the Ooze's goo puddles `bullet.enemy.goo` (docs/GOO_ART.md) | **Free Slimes Asset Pack** green slime death, frames 3 (land) and 4 (splat), recoloured into `enemyGoo`, flat on the floor. Own sheet `goo.png` (`--only goo`), built and uploaded 2026-11-06 (`assetIds.ts`), so the bundled vale pack draws them | Free Slimes Asset Pack (heimlich3) |
@@ -134,8 +134,8 @@ Gauntlet cursor (docs/CURSOR.md C1, 2026-11-11): two `images` entries, `ui.curso
 `{ x, y }` in SOURCE pixels (converted to the cut image and checked inside it): the fingertip (53, 54) -> (4, 4). A
 variant's `sameCropAs: "<images id>"` fails the build unless it crops to the identical rect, size and pivot; images
 with a pivot get a contact sheet with the red cross; `--only <images id>` (and `--lock --only`) builds one image's crop
-family alone (`--only ui.cursor`). Every other output byte-identical. Upload of `ui-cursor.png` /
-`ui-cursor-hover.png` (keys of the same names in `assetIds.ts`) pending.
+family alone (`--only ui.cursor`). Every other output byte-identical. `ui-cursor.png` /
+`ui-cursor-hover.png` uploaded 2026-11-11 (keys of the same names in `assetIds.ts`), so the bundled vale pack draws them.
 
 ## Tasks
 

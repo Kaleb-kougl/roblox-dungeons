@@ -1285,8 +1285,9 @@ Decision log (deviations from `PLAN.md`):
   `{ x, y }` in source pixels (fingertip (53, 54) -> (4, 4)), `sameCropAs` fails a variant that crops differently,
   `--only <images id>` builds one image's family. Setting `DisplaySettings.cursorSize` Small / Normal / Large (whole
   scale steps; overrides-only, doc stays v2), the Options > Display row shown only with a mouse and the art, strings
-  `options.display.cursorSize*`. Kill switch `KV_SystemCursor` (`RUN_ATTRIBUTES.systemCursor`, read live). Upload of
-  `ui-cursor.png` / `ui-cursor-hover.png` (C1), the Studio answers (C0) and the smoke test (C8) pending.
+  `options.display.cursorSize*`. Kill switch `KV_SystemCursor` (`RUN_ATTRIBUTES.systemCursor`, read live). `ui-cursor.png`
+  / `ui-cursor-hover.png` uploaded 2026-11-11 (`assetIds.ts`), so the bundled vale pack draws the gauntlet; the Studio
+  answers (C0) and the smoke test (C8) pending.
 
 ## Commands
 

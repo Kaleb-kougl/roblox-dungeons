@@ -462,6 +462,8 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"ui-button-disabled.png": "rbxassetid://127150562683800",
 	"ui-button-focus.png": "rbxassetid://123935262412449",
 	"ui-button.png": "rbxassetid://107732705819497",
+	"ui-cursor-hover.png": "rbxassetid://105045987009903",
+	"ui-cursor.png": "rbxassetid://99705434998185",
 	"ui-draft-back-eyes.png": "rbxassetid://101806914395578",
 	"ui-draft-back.png": "rbxassetid://107712653809455",
 	"ui-draft-card-common.png": "rbxassetid://134898571956574",
