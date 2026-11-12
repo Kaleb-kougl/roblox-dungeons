@@ -1,6 +1,11 @@
 /**
  * Barrel for the Codex (claude/codex-plan.md): the catalog of every entry (boons, evolutions, duos, relics, curses,
- * boosts, enemies, champion affixes, bosses) with its stable ids and the lookups from game facts to ids. Plain
- * TypeScript, headlessly tested.
+ * boosts, enemies, champion affixes, bosses) with its stable ids and the lookups from game facts to ids (CX1); the
+ * stored document `KV_Codex_v1` with its codec, merges, claims, views and the one-time seed, the claim policy, the
+ * Studio fake parser and the tunables (CX2). Plain TypeScript, headlessly tested; CodexService wraps the doc.
  */
 export * from "./catalog";
+export * from "./config";
+export * from "./doc";
+export * from "./policy";
+export * from "./fake";
