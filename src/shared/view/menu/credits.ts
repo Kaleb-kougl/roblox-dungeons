@@ -1,10 +1,10 @@
 /**
- * The Credits screen (main menu > Credits): the third-party work the game ships, grouped by section. Required for
- * the two 3D kits (CC BY 4.0: credit where players see it, the licence named with its address, and a note
- * that it was changed) and the Dungeon Forge (MIT: its copyright notice ships with every copy); the others ask for no
- * credit and are listed anyway. Titles, names and licence names are proper nouns and stay as written in every
- * language (plain data, not theme strings); the section labels, "by {author}" and the change note are strings. Keep
- * this list in step with THIRD_PARTY_NOTICES.md.
+ * The Credits screen (main menu > Credits): the third-party work the game ships, grouped by section. Required for the
+ * CC BY works (the 3D kits and the Old Chest, CC BY 4.0; the fire loop, CC BY 3.0: credit where players see it, the
+ * licence named with its address, and a note that it was changed) and the Dungeon Forge (MIT: its copyright notice
+ * ships with every copy); the others ask for no credit and are listed anyway. Titles, names and licence names are
+ * proper nouns and stay as written in every language (plain data, not theme strings); the section labels, "by {author}"
+ * and the change note are strings. Keep this list in step with THIRD_PARTY_NOTICES.md.
  */
 
 export type CreditSection = "art" | "models" | "audio" | "code";
@@ -77,6 +77,21 @@ export const CREDITS: ReadonlyArray<CreditEntry> = [
 	{ section: "audio", work: "Pick up sfx", author: "freesound_community (Pixabay)" },
 	{ section: "audio", work: "Power down 02", author: "freesound_community (Pixabay)" },
 	{ section: "audio", work: "Plate Break 1", author: "freesound_community (Pixabay)" },
+	{
+		section: "audio",
+		work: "Fire Loop",
+		author: "qubodup (OpenGameArt)",
+		license: "CC BY 3.0 - creativecommons.org/licenses/by/3.0",
+		modified: true,
+	},
+	{ section: "audio", work: "Impact Sounds", author: "Kenney (kenney.nl)", license: "CC0" },
+	{
+		section: "audio",
+		work: "Their Coming (generic horn sound)",
+		author: "StumpyStrust (OpenGameArt)",
+		license: "CC0",
+	},
+	{ section: "audio", work: "open chest SFX", author: "Oiboo (OpenGameArt)", license: "CC0" },
 	{
 		section: "code",
 		work: "Dungeon Forge (threejs-procedural-dungeon)",

@@ -121,7 +121,7 @@ describe("boosts: contract", () => {
 		}
 	});
 
-	it("appends sfx.breakable.loot last (docs/BREAKABLE_DROPS.md BL5): required, sfx, SILENT in the placeholder and vale", () => {
+	it("appends sfx.breakable.loot last (docs/BREAKABLE_DROPS.md BL5): required, sfx, SILENT in the placeholder, a sound in vale", () => {
 		// Last before docs/NEW_ENEMIES.md NE1's six enemy sounds (then docs/PELLETS.md PL6's three, docs/RUN_RECAP.md
 		// CM4's two, docs/TREASURE.md TR6's four, then docs/FORTUNE.md FO6's eight).
 		const n = PORT_AUDIO_EVENTS.size() - 6 - 3 - 2 - 4 - 8;
@@ -136,8 +136,9 @@ describe("boosts: contract", () => {
 			true,
 			"silent",
 		]);
-		// no file id yet (BL7 picks the clip): the vale pack keeps the placeholder's SILENT, the drop sound plays there
-		expect(THEME_PACKS.vale.assets[id]?.kind).toBe("silent");
+		// BL7: the vale pack plays its own clip, picked on the audition checklist and uploaded 2026-11-11 (docs/FX_AUDIO.md
+		// "Sourcing the remaining silent IDs")
+		expect(THEME_PACKS.vale.assets[id]?.kind).toBe("sound");
 	});
 
 	it("adds one colour role per kind, held to the enemy outline's bars", () => {

@@ -264,9 +264,18 @@
 			"confirmed": false
 		},
 		"sfx.boss.taunt": {
-			"silent": true,
-			"notes": "The Demon Lord's phase-change laugh (docs/BOSS_DEMONLORD.md D6; the roar plays while this is silent). D7: audition a laugh from ninja-adventure/Audio/Voice/ (not in the D6 sandbox) and set clips.",
-			"confirmed": false
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Voice/Voice8.wav"
+			],
+			"volume": 0.9,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Voice/Voice6.wav",
+				"ninja-adventure/Audio/Sounds/Voice/Voice9.wav",
+				"ninja-adventure/Audio/Sounds/Voice/Voice1.wav"
+			],
+			"notes": "The Demon Lord's phase-change laugh (docs/BOSS_DEMONLORD.md D6; the roar plays while this is silent). D7: audition a laugh from ninja-adventure/Audio/Voice/ (not in the D6 sandbox) and set clips. 2026-11-11: the Voice/ clips are 8-bit voice blips (0.1-0.3 s), listed as candidates; none is a laugh (a pitch of about 0.7 may help). A real laugh needs a download.",
+			"confirmed": true
 		},
 		"sfx.victory": {
 			"category": "jingle",
@@ -306,20 +315,22 @@
 			"confirmed": false
 		},
 		"sfx.loot.drop": {
-			"silent": true,
-			"alternates": [
+			"category": "sfx",
+			"clips": [
 				"ninja-adventure/Audio/Sounds/Bonus/Coin.wav"
 			],
+			"volume": 0.5,
 			"notes": "No caller yet (no loot lands in this build): silent so it costs no upload. Pick from the alternates when loot lands.",
-			"confirmed": false
+			"confirmed": true
 		},
 		"sfx.loot.rare": {
-			"silent": true,
-			"alternates": [
+			"category": "sfx",
+			"clips": [
 				"ninja-adventure/Audio/Sounds/Bonus/PowerUp1.wav"
 			],
+			"volume": 0.6,
 			"notes": "No caller yet: silent, like sfx.loot.drop.",
-			"confirmed": false
+			"confirmed": true
 		},
 		"sfx.ui.click": {
 			"category": "sfx",
@@ -1091,13 +1102,17 @@
 			"confirmed": false
 		},
 		"amb.b2": {
-			"silent": true,
+			"category": "ambience",
+			"clips": [
+				"oga-fire-loop/qubodupFireLoop.ogg"
+			],
+			"volume": 0.7,
 			"alternates": [
 				"ninja-adventure/Audio/Sounds/Elemental/Fire2.wav",
 				"ninja-adventure/Audio/Sounds/Elemental/Fire.wav"
 			],
-			"notes": "molten. Gap: no fire-crackle bed in the pack (Elemental/Fire* are one-shots, not loops). Silent until another CC0 source is found.",
-			"confirmed": false
+			"notes": "molten. Gap: no fire-crackle bed in the pack (Elemental/Fire* are one-shots, not loops). Silent until another CC0 source is found. 2026-11-11: candidates outside the pack, not downloaded: \"Fire Loop\" by qubodup on OpenGameArt (CC-BY 3.0: credit required, Credits screen and THIRD_PARTY_NOTICES.md), and \"Fireplace Sound loop\" on OpenGameArt (licence field blank on the page; confirm before use). Downloaded 2026-11-11: qubodupFireLoop.ogg (5.02 s, 44.1 kHz stereo, an even level throughout, ends close to where it starts); listed first. CC-BY 3.0: if picked, credit qubodup on the Credits screen (CREDITS) and in THIRD_PARTY_NOTICES.md.",
+			"confirmed": true
 		},
 		"amb.b3": {
 			"category": "ambience",
@@ -1140,6 +1155,409 @@
 			],
 			"notes": "verdant",
 			"confirmed": false
+		},
+		"sfx.build.spark": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Magic & Skill/Magic1.wav"
+			],
+			"volume": 0.35,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Alert/Alert3.wav",
+				"ninja-adventure/Audio/Sounds/Menu/Menu6.wav"
+			],
+			"notes": "CC0 candidates from the Ninja Adventure pack, sourced 2026-11-11, not auditioned: pick by ear, move the pick into \"clips\", drop \"silent\", set \"confirmed\": true. Chain Spark's zap between enemies (docs/BUILDS.md); frequent, so short and dry.",
+			"confirmed": true
+		},
+		"sfx.build.burst": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Elemental/Explosion2.wav"
+			],
+			"volume": 0.45,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Elemental/Explosion.wav"
+			],
+			"notes": "CC0 candidates from the Ninja Adventure pack, sourced 2026-11-11, not auditioned: pick by ear, move the pick into \"clips\", drop \"silent\", set \"confirmed\": true. Volatile: a kill bursts into bullets (docs/BUILDS.md).",
+			"confirmed": true
+		},
+		"sfx.build.shard": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Magic & Skill/Magic2.wav"
+			],
+			"volume": 0.35,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Magic & Skill/Heal3.wav",
+				"ninja-adventure/Audio/Sounds/Jump & Bounce/Bounce4.wav"
+			],
+			"notes": "CC0 candidates from the Ninja Adventure pack, sourced 2026-11-11, not auditioned: pick by ear, move the pick into \"clips\", drop \"silent\", set \"confirmed\": true. Soul Shards released from a kill (docs/BUILDS.md).",
+			"confirmed": true
+		},
+		"sfx.build.ember": {
+			"category": "sfx",
+			"clips": [
+				{
+					"src": "ninja-adventure/Audio/Sounds/Elemental/Fire2.wav",
+					"trim": [
+						0,
+						0.6
+					]
+				}
+			],
+			"volume": 0.4,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Elemental/Fireball2.wav"
+			],
+			"notes": "CC0 candidates from the Ninja Adventure pack, sourced 2026-11-11, not auditioned: pick by ear, move the pick into \"clips\", drop \"silent\", set \"confirmed\": true. A build ember patch catching fire (docs/BUILDS.md).",
+			"confirmed": true
+		},
+		"sfx.build.nova": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Alert/Alert5.wav"
+			],
+			"volume": 0.55,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Elemental/Explosion4.wav"
+			],
+			"notes": "CC0 candidates from the Ninja Adventure pack, sourced 2026-11-11, not auditioned: pick by ear, move the pick into \"clips\", drop \"silent\", set \"confirmed\": true. A nova ring going off (docs/BUILDS.md).",
+			"confirmed": true
+		},
+		"sfx.build.execute": {
+			"category": "sfx",
+			"clips": [
+				"kenney-impact-sounds/Audio/impactPunch_medium_000.ogg"
+			],
+			"volume": 0.5,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Jump & Bounce/Jump3.wav",
+				"ninja-adventure/Audio/Sounds/Menu/Menu8.wav",
+				"ninja-adventure/Audio/Sounds/Magic & Skill/Heal2.wav"
+			],
+			"notes": "CC0 candidates from the Ninja Adventure pack, sourced 2026-11-11, not auditioned: pick by ear, move the pick into \"clips\", drop \"silent\", set \"confirmed\": true. Executioner finishing an enemy (docs/BUILDS.md): a low, heavy thump. 2026-11-11: a Kenney Impact Sounds (CC0) punch added first.",
+			"confirmed": true
+		},
+		"sfx.build.jackpot": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Bonus/Coin.wav"
+			],
+			"volume": 0.5,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Menu/Accept8.wav"
+			],
+			"notes": "CC0 candidates from the Ninja Adventure pack, sourced 2026-11-11, not auditioned: pick by ear, move the pick into \"clips\", drop \"silent\", set \"confirmed\": true. The build Jackpot's score pop (docs/BUILDS.md, ScoreSource.JACKPOT).",
+			"confirmed": true
+		},
+		"sfx.build.evolve": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Menu/Accept.wav"
+			],
+			"volume": 0.65,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Magic & Skill/Magic1.wav"
+			],
+			"notes": "CC0 candidates from the Ninja Adventure pack, sourced 2026-11-11, not auditioned: pick by ear, move the pick into \"clips\", drop \"silent\", set \"confirmed\": true. An evolution taken (docs/BUILDS.md): with the 1 s flare ring on the knight.",
+			"confirmed": true
+		},
+		"sfx.build.duo": {
+			"category": "sfx",
+			"clips": [
+				{
+					"src": "ninja-adventure/Audio/Jingles/Secret1.wav",
+					"trim": [
+						0,
+						1
+					]
+				}
+			],
+			"volume": 0.65,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Menu/Accept.wav"
+			],
+			"notes": "CC0 candidates from the Ninja Adventure pack, sourced 2026-11-11, not auditioned: pick by ear, move the pick into \"clips\", drop \"silent\", set \"confirmed\": true. A duo taken (docs/BUILDS.md): with the 1 s flare ring on the knight.",
+			"confirmed": true
+		},
+		"sfx.build.overkill": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Menu/Menu5.wav"
+			],
+			"volume": 0.4,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Alert/Alert6.wav"
+			],
+			"notes": "CC0 candidates from the Ninja Adventure pack, sourced 2026-11-11, not auditioned: pick by ear, move the pick into \"clips\", drop \"silent\", set \"confirmed\": true. An Overkill streak to the next enemy (docs/LEGENDARIES.md); falls back to the spark while silent.",
+			"confirmed": true
+		},
+		"sfx.build.brace": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Magic & Skill/Heal2.wav"
+			],
+			"volume": 0.6,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Magic & Skill/Heal3.wav",
+				"ninja-adventure/Audio/Sounds/Menu/Accept9.wav"
+			],
+			"notes": "CC0 candidates from the Ninja Adventure pack, sourced 2026-11-11, not auditioned: pick by ear, move the pick into \"clips\", drop \"silent\", set \"confirmed\": true. A Bastion brace restoring a pip (docs/LEGENDARIES.md); falls back to the Aegis break while silent.",
+			"confirmed": true
+		},
+		"sfx.build.counter": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Menu/Accept3.wav"
+			],
+			"volume": 0.6,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Alert/Alert4.wav",
+				"ninja-adventure/Audio/Sounds/Menu/Menu11.wav"
+			],
+			"notes": "CC0 candidates from the Ninja Adventure pack, sourced 2026-11-11, not auditioned: pick by ear, move the pick into \"clips\", drop \"silent\", set \"confirmed\": true. Riposte's counter-wave answering the parry (docs/BUILDS_V2.md); ranks just over the parry.",
+			"confirmed": true
+		},
+		"sfx.build.pin": {
+			"category": "sfx",
+			"clips": [
+				"kenney-impact-sounds/Audio/impactMetal_heavy_000.ogg"
+			],
+			"volume": 0.5,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Jump & Bounce/Bounce5.wav",
+				"ninja-adventure/Audio/Sounds/Menu/Menu12.wav"
+			],
+			"notes": "CC0 candidates from the Ninja Adventure pack, sourced 2026-11-11, not auditioned: pick by ear, move the pick into \"clips\", drop \"silent\", set \"confirmed\": true. A Siege Bolt pinning an enemy (docs/BUILDS_V2.md). 2026-11-11: a Kenney Impact Sounds (CC0) metal hit added first: the bolt driving in.",
+			"confirmed": true
+		},
+		"sfx.build.slam": {
+			"category": "sfx",
+			"clips": [
+				"kenney-impact-sounds/Audio/impactPunch_heavy_000.ogg",
+				"kenney-impact-sounds/Audio/impactSoft_heavy_000.ogg",
+				"kenney-impact-sounds/Audio/impactWood_heavy_002.ogg"
+			],
+			"volume": 0.6,
+			"alternates": [
+				{
+					"src": "ninja-adventure/Audio/Sounds/Elemental/Explosion2.wav",
+					"lowpassHz": 1500
+				},
+				"ninja-adventure/Audio/Sounds/Jump & Bounce/Jump3.wav"
+			],
+			"notes": "CC0 candidates from the Ninja Adventure pack, sourced 2026-11-11, not auditioned: pick by ear, move the pick into \"clips\", drop \"silent\", set \"confirmed\": true. A pinned enemy slammed into a wall (docs/BUILDS_V2.md): a body hitting stone. 2026-11-11: Kenney Impact Sounds (CC0) heavy body hits added first (5 variants each in the pack: list several as clips for a round-robin).",
+			"confirmed": true
+		},
+		"sfx.build.smash": {
+			"category": "sfx",
+			"clips": [
+				"kenney-impact-sounds/Audio/impactPlank_medium_000.ogg"
+			],
+			"volume": 0.4,
+			"alternates": [
+				"kenney-impact-sounds/Audio/impactWood_medium_000.ogg",
+				"kenney-impact-sounds/Audio/impactMining_000.ogg",
+				"ninja-adventure/Audio/Sounds/Elemental/Grass2.wav",
+				"ninja-adventure/Audio/Sounds/Elemental/Grass.wav"
+			],
+			"notes": "CC0 candidates from the Ninja Adventure pack, sourced 2026-11-11, not auditioned: pick by ear, move the pick into \"clips\", drop \"silent\", set \"confirmed\": true. A Wrecker smash breaking a piece (docs/BUILDS_V2.md); chains climb like the sparks, so short. 2026-11-11: Kenney Impact Sounds (CC0) wood / plank / mining hits added first (5 variants each in the pack).",
+			"confirmed": true
+		},
+		"sfx.build.beam": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Magic & Skill/Magic1.wav"
+			],
+			"volume": 0.45,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Menu/Menu10.wav"
+			],
+			"notes": "CC0 candidates from the Ninja Adventure pack, sourced 2026-11-11, not auditioned: pick by ear, move the pick into \"clips\", drop \"silent\", set \"confirmed\": true. Full Heart's beam, a line of light (docs/BUILDS_V2.md).",
+			"confirmed": true
+		},
+		"sfx.breakable.loot": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Jump & Bounce/Bounce.wav"
+			],
+			"volume": 0.5,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Menu/Accept3.wav",
+				"ninja-adventure/Audio/Sounds/Menu/Accept5.wav"
+			],
+			"notes": "CC0 candidates from the Ninja Adventure pack, sourced 2026-11-11, not auditioned: pick by ear, move the pick into \"clips\", drop \"silent\", set \"confirmed\": true. A loaded barrel / crate releasing its boost (docs/BREAKABLE_DROPS.md BL7); falls back to sfx.boost.drop while silent.",
+			"confirmed": true
+		},
+		"sfx.treasure.crack": {
+			"category": "sfx",
+			"clips": [
+				"kenney-impact-sounds/Audio/impactGlass_light_002.ogg"
+			],
+			"volume": 0.6,
+			"alternates": [
+				"kenney-impact-sounds/Audio/impactGlass_medium_000.ogg",
+				"kenney-impact-sounds/Audio/impactMetal_light_000.ogg",
+				"ninja-adventure/Audio/Sounds/Menu/Cancel.wav",
+				"ninja-adventure/Audio/Sounds/Elemental/Explosion.wav"
+			],
+			"notes": "CC0 candidates from the Ninja Adventure pack, sourced 2026-11-11, not auditioned: pick by ear, move the pick into \"clips\", drop \"silent\", set \"confirmed\": true. A vault lock cracking one tier (docs/TREASURE.md TR9); falls back to the combo break. Gap: the CC0 Ninja Adventure pack has no metal or glass crack; a better source needs a download (see the sourcing note in docs/FX_AUDIO.md). 2026-11-11: Kenney Impact Sounds (CC0) candidates added first: glass / metal cracks (5 variants each in the pack).",
+			"confirmed": true
+		},
+		"sfx.treasure.unlock": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Menu/Accept6.wav"
+			],
+			"volume": 0.6,
+			"alternates": [
+				"kenney-impact-sounds/Audio/impactMetal_medium_000.ogg",
+				"kenney-impact-sounds/Audio/impactMetal_light_002.ogg",
+				"kenney-impact-sounds/Audio/impactTin_medium_000.ogg",
+				"ninja-adventure/Audio/Sounds/Menu/Accept7.wav"
+			],
+			"notes": "CC0 candidates from the Ninja Adventure pack, sourced 2026-11-11, not auditioned: pick by ear, move the pick into \"clips\", drop \"silent\", set \"confirmed\": true. A vault cage unlocking on the room clear (docs/TREASURE.md TR9); falls back to the stairwell opening. Gap: the CC0 Ninja Adventure pack has no lock or latch click; a better source needs a download (see the sourcing note in docs/FX_AUDIO.md). 2026-11-11: Kenney Impact Sounds (CC0) metal clicks added first, as a latch.",
+			"confirmed": true
+		},
+		"sfx.treasure.open": {
+			"category": "sfx",
+			"clips": [
+				"oga-open-chest/open-chest.wav"
+			],
+			"volume": 0.7,
+			"alternates": [
+				{
+					"src": "oga-open-chest/open-chest.wav",
+					"trim": [
+						0,
+						1.2
+					]
+				},
+				"kenney-impact-sounds/Audio/impactWood_heavy_000.ogg",
+				"ninja-adventure/Audio/Sounds/Jump & Bounce/Jump2.wav",
+				"ninja-adventure/Audio/Sounds/Menu/Accept9.wav"
+			],
+			"notes": "CC0 candidates from the Ninja Adventure pack, sourced 2026-11-11, not auditioned: pick by ear, move the pick into \"clips\", drop \"silent\", set \"confirmed\": true. A chest opening (docs/TREASURE.md TR9); falls back to the relic take. Gap: the CC0 Ninja Adventure pack has no wooden lid creak; a better source needs a download (see the sourcing note in docs/FX_AUDIO.md). 2026-11-11: \"open chest SFX\" by Oiboo, OpenGameArt, CC0 (https://opengameart.org/content/open-chest-sfx; the owner's download \"open chest.wav\", 2.53 s, 44.1 kHz stereo: the sound to about 1.0 s, a tail fading to 2.5 s; quiet, -19 dBFS peak, the category normalises it), whole and trimmed to 1.2 s; then a Kenney Impact Sounds (CC0) wood hit.",
+			"confirmed": true
+		},
+		"sfx.jingle.treasure": {
+			"category": "jingle",
+			"clips": [
+				"ninja-adventure/Audio/Jingles/Secret4.wav"
+			],
+			"volume": 0.75,
+			"alternates": [
+				"ninja-adventure/Audio/Jingles/Secret1.wav"
+			],
+			"notes": "CC0 candidates from the Ninja Adventure pack, sourced 2026-11-11, not auditioned: pick by ear, move the pick into \"clips\", drop \"silent\", set \"confirmed\": true. A Legendary chest's jingle (docs/TREASURE.md TR6); falls back to the PERFECT jingle.",
+			"confirmed": true
+		},
+		"sfx.pact.take": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Jingles/GameOver3.wav"
+			],
+			"volume": 0.7,
+			"alternates": [
+				"ninja-adventure/Audio/Jingles/GameOver4.wav"
+			],
+			"notes": "CC0 candidates from the Ninja Adventure pack, sourced 2026-11-11, not auditioned: pick by ear, move the pick into \"clips\", drop \"silent\", set \"confirmed\": true. Taking a pact at an altar (docs/FORTUNE.md FO10): ominous; falls back to the shrine.",
+			"confirmed": true
+		},
+		"sfx.horde.horn": {
+			"category": "sfx",
+			"clips": [
+				"oga-horn/theircoming3.ogg"
+			],
+			"volume": 0.75,
+			"alternates": [
+				{
+					"src": "oga-horn/theircoming3.ogg",
+					"trim": [
+						0,
+						3
+					]
+				},
+				"ninja-adventure/Audio/Sounds/Alert/Alert5.wav",
+				"ninja-adventure/Audio/Jingles/GameOver3.wav"
+			],
+			"notes": "CC0 candidates from the Ninja Adventure pack, sourced 2026-11-11, not auditioned: pick by ear, move the pick into \"clips\", drop \"silent\", set \"confirmed\": true. The Horde room's horn as it engages (docs/FORTUNE.md FO10); falls back to the combo tier sting. Gap: the CC0 Ninja Adventure pack has no horn; a better source needs a download (see the sourcing note in docs/FX_AUDIO.md). 2026-11-11: \"Their Coming (generic horn sound)\" by StumpyStrust, OpenGameArt, CC0 (theircoming3.ogg: 5.15 s, the horn held to about 2.75 s, a tail to 5 s), whole and trimmed to 3 s.",
+			"confirmed": true
+		},
+		"sfx.horde.wave": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Alert/Alert.wav"
+			],
+			"volume": 0.6,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Menu/Cancel.wav"
+			],
+			"notes": "CC0 candidates from the Ninja Adventure pack, sourced 2026-11-11, not auditioned: pick by ear, move the pick into \"clips\", drop \"silent\", set \"confirmed\": true. The Horde's second wave arriving (docs/FORTUNE.md FO10); falls back to a Summoner's call.",
+			"confirmed": true
+		},
+		"sfx.horde.double": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Menu/Accept8.wav"
+			],
+			"volume": 0.5,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Menu/Menu11.wav"
+			],
+			"notes": "CC0 candidates from the Ninja Adventure pack, sourced 2026-11-11, not auditioned: pick by ear, move the pick into \"clips\", drop \"silent\", set \"confirmed\": true. The Horde's x2 landing in the score (docs/FORTUNE.md FO10).",
+			"confirmed": true
+		},
+		"sfx.golden.appear": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Elemental/Bubble.wav"
+			],
+			"volume": 0.6,
+			"alternates": [
+				{
+					"src": "ninja-adventure/Audio/Jingles/Secret1.wav",
+					"trim": [
+						0,
+						1
+					]
+				}
+			],
+			"notes": "CC0 candidates from the Ninja Adventure pack, sourced 2026-11-11, not auditioned: pick by ear, move the pick into \"clips\", drop \"silent\", set \"confirmed\": true. The Goldling appearing (docs/FORTUNE.md FO10): sparkly.",
+			"confirmed": true
+		},
+		"sfx.golden.hit": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Bonus/Coin.wav"
+			],
+			"volume": 0.35,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Alert/Alert3.wav"
+			],
+			"notes": "CC0 candidates from the Ninja Adventure pack, sourced 2026-11-11, not auditioned: pick by ear, move the pick into \"clips\", drop \"silent\", set \"confirmed\": true. Coins on each Goldling hit (docs/FORTUNE.md FO10); a ladder climbs on it, so short and no pitch jitter.",
+			"confirmed": true
+		},
+		"sfx.golden.jackpot": {
+			"category": "jingle",
+			"clips": [
+				"ninja-adventure/Audio/Jingles/Success4.wav"
+			],
+			"volume": 0.75,
+			"notes": "CC0 candidates from the Ninja Adventure pack, sourced 2026-11-11, not auditioned: pick by ear, move the pick into \"clips\", drop \"silent\", set \"confirmed\": true. The Goldling caught (docs/FORTUNE.md FO9), a jingle ranked with the treasure jingle.",
+			"confirmed": true
+		},
+		"sfx.golden.escape": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Menu/Cancel.wav"
+			],
+			"volume": 0.55,
+			"alternates": [
+				"ninja-adventure/Audio/Jingles/GameOver2.wav"
+			],
+			"notes": "CC0 candidates from the Ninja Adventure pack, sourced 2026-11-11, not auditioned: pick by ear, move the pick into \"clips\", drop \"silent\", set \"confirmed\": true. The Goldling escaping (docs/FORTUNE.md FO10): a let-down.",
+			"confirmed": true
 		}
 	}
 }
