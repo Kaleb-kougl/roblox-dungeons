@@ -7,7 +7,14 @@ import { DevPanel, type DevPanelProps, createKvScreenGui } from "client/ui";
 import { DEV_MODE, DEV_PANEL_VIEW } from "shared/config";
 import { isBossFloor } from "shared/dungeon";
 import { RUN_ATTRIBUTES } from "shared/play";
-import { TREASURE_DEBUG_ATTRIBUTE, clampDevFloor, isValidRunSeed, parseTreasureDebug } from "shared/run";
+import {
+	FLOOR_MODIFIER_ATTRIBUTE,
+	TREASURE_DEBUG_ATTRIBUTE,
+	clampDevFloor,
+	isValidRunSeed,
+	parseFloorModifierOverride,
+	parseTreasureDebug,
+} from "shared/run";
 import { SimController } from "../game/SimController";
 import { MenuController } from "./MenuController";
 
@@ -36,7 +43,10 @@ interface Shown {
  * the dev run as the pick), and "Both weapons" (AR4, `DevRunOptions.bothWeapons`) arms the sword and the bow with the
  * pick's roll; R / Restart keep both.
  * Treasure rooms (docs/TREASURE.md TR5): Go reads the Workspace string KV_TreasureDebug ("every,legendary,untouched",
- * shared/run parseTreasureDebug) into the dev run's vault override; R / Restart keep it. Dev runs are never counted.
+ * shared/run parseTreasureDebug) into the dev run's vault override; R / Restart keep it. Floor modifiers
+ * (docs/FLOOR_MODIFIERS.md FM4): Go reads the Workspace attribute KV_FloorModifier (a kind's key in any case, "blood
+ * moon", or a FloorModifier id; shared/run parseFloorModifierOverride) into the dev run's modifier override (that kind
+ * on every floor where it is eligible); R / Restart keep it. Dev runs are never counted.
  */
 @Controller({})
 export class DevModeController implements OnStart {
@@ -124,7 +134,10 @@ export class DevModeController implements OnStart {
 		this.god = god;
 		const raw = Workspace.GetAttribute(TREASURE_DEBUG_ATTRIBUTE);
 		const vault = parseTreasureDebug(typeIs(raw, "string") ? raw : undefined);
-		const options = { startFloor: this.floor, invulnerable: god, vault, bothWeapons: this.bothWeapons };
+		// docs/FLOOR_MODIFIERS.md FM4 / FM5: KV_FloorModifier ("gilded", "blood moon", a FloorModifier id) forces
+		// that kind
+		const modifier = parseFloorModifierOverride(Workspace.GetAttribute(FLOOR_MODIFIER_ATTRIBUTE));
+		const options = { startFloor: this.floor, invulnerable: god, vault, modifier, bothWeapons: this.bothWeapons };
 		const seed = this.seed;
 		// docs/ARCHER.md AR7: the character screen first; its Confirm starts the run as the pick.
 		this.menu.devStart((character) => this.sim.startDev(options, seed, character));

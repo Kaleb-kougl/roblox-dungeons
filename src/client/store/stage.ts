@@ -41,6 +41,12 @@ export interface StageCoverState {
 	 * (StageLoad.showAssetProgress). Undefined: no line.
 	 */
 	readonly assets: StageAssetsLine | undefined;
+	/**
+	 * docs/FLOOR_MODIFIERS.md FM5: the floor's modifier (shared/dungeon FloorModifier id) whose banner the cover shows
+	 * (the name and line rows after the boss row), or undefined: no banner. A floor card sets it at the cut; a run
+	 * start's cover once the run is built (setStageModifier: a dev run starting past floor 1).
+	 */
+	readonly modifier: number | undefined;
 }
 
 /** The cover's asset progress line. */
@@ -59,6 +65,7 @@ export interface StageCoverView {
 	readonly boss: boolean;
 	readonly line: NewBestLineText | undefined;
 	readonly fraction: number;
+	readonly modifier: number | undefined;
 }
 
 const initialState: StageCoverState = {
@@ -73,6 +80,7 @@ const initialState: StageCoverState = {
 	line: undefined,
 	fraction: 0,
 	assets: undefined,
+	modifier: undefined,
 };
 
 export const stageSlice = createProducer(initialState, {
@@ -93,6 +101,9 @@ export const stageSlice = createProducer(initialState, {
 			: { ...state, labelKey, floor, fraction },
 	/** The second line became known after the cut (a run start's roster, once the run is built). */
 	setStageLine: (state, line: NewBestLineText | undefined) => (state.shown ? { ...state, line } : state),
+	/** The banner's modifier became known after the cut (a run start's, once the run is built). */
+	setStageModifier: (state, modifier: number | undefined) =>
+		state.shown && state.modifier !== modifier ? { ...state, modifier } : state,
 	setStageRevealing: (state) => (state.revealing || !state.shown ? state : { ...state, revealing: true }),
 	hideStage: (state) => (state.shown ? { ...state, shown: false, revealing: false } : state),
 });
