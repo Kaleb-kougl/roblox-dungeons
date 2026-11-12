@@ -12,11 +12,13 @@ the system pointer's hotspot as it is today.
 
 ## Status (2026-11-11)
 
-Planned, **revision 2: menus only** (owner, 2026-11-11). Revision 1 (2026-10-26) put the gauntlet everywhere,
-gameplay included, as the aim point. No cursor art or controller is written; the only cursor code on `main` is
-`MouseIconController` (`cf12b1c`: the Roblox pointer hidden while on a gamepad), which C4 folds into the new
-controller. Every decision is made (D1-D5, owner 2026-11-11): D2 a size setting in Options (section 5), D5 the click
-squeeze on, off under reduced motion.
+**Built (code complete), revision 2: menus only** (owner, 2026-11-11), verified headlessly only. C1-C7 are done on
+branch `gauntlet-cursor` ("As built" below); still open: the owner's upload of the two PNGs and their ids (C1), the
+five Studio answers (C0) and the smoke test (C8), which also covers the Studio halves of C4-C6's Verify. Until the upload, vale's `ui.cursor` stays a placeholder,
+`cursorArt(pack)` is undefined and every pack shows Roblox's pointer exactly as before (the gamepad rule included); the
+Cursor size row stays hidden. Revision 1 (2026-10-26) put the gauntlet everywhere, gameplay included, as the aim point.
+Every decision is made (D1-D5, owner 2026-11-11): D2 a size setting in Options (section 5), D5 the click squeeze on,
+off under reduced motion.
 
 What revision 2 changed: the gauntlet shows only in a **menu context** (section 3); gameplay keeps the system
 pointer; the over-enemy red (`ui.cursor.target`, revision 1's task C6, D4) is dropped; the fingertip-on-aim-point checks and the
@@ -145,49 +147,151 @@ draws the red pivot cross on it like every other image. Output: `art/build/ui-cu
 `InputController`'s aim, bindings and sinking; the pointer in gameplay; every sim, dungeon, lockstep and server file;
 fixtures and hashes (the size setting is a display override); the facing pip; tutorial, spectate and boosts logic; gamepad focus (`FocusController`).
 
+## As built (2026-11-11)
+
+Presentation only: no sim, dungeon, lockstep, server, hash, replay, fixture or score change. Differences from the plan
+above are marked **(differs)**.
+
+### Art (C1, `d08bb20`)
+
+- `art/atlases.json` `images`: `ui.cursor` (`cursor_gauntlet_white.png`) and `ui.cursor.hover`
+  (`cursor_gauntlet_yellow.png`), `crop: "alpha"`, `noiseAlpha` 2, `pad` 2: both cut to the same **29 x 29** rect at
+  source (49, 50).
+- Pivot **(differs)**: `{ "x": 53, "y": 54 }` in SOURCE pixels, the steel fingertip's first opaque pixel, which lands
+  at **(4, 4)** in `VALE_IMAGE_LAYOUTS` (`layout.ts`). The plan's "about (52, 52)" / "about (3, 3)" was measured on
+  the glow: (52, 53) is a faint glow pixel, not the hand.
+- `scripts/art/build-atlases.js`: an image `pivot` may be `{ x, y }` in source pixels (converted to the cut image,
+  minus the crop's top-left, and checked inside it); a new field **`sameCropAs`** (the hover entry names `ui.cursor`)
+  fails the build unless the variant crops to the identical source rect, size and pivot, so swapping the states never
+  moves the fingertip; images with a pivot get a contact sheet with the red cross; **`--only <images id>`** (and
+  `--lock --only`) builds one image's crop family alone (`node scripts/art/build-atlases.js --only ui.cursor`),
+  merging its `VALE_IMAGE_LAYOUTS` entries. `art/vendor.lock.json` gained the two PNGs. Pipeline specs in
+  `scripts/art/*.test.js` (inside / outside / crop offset, same-crop).
+
+### Theme (C2, `89c859a`)
+
+- `shared/theme` `cursorArt.ts`: `cursorArt(pack): CursorArt | undefined`, undefined while `ui.cursor` is not an image
+  (a placeholder: the system pointer). `CursorArt` is per state (`normal` / `hover`) `{ id, assetId, size: { w, h },
+  pivot, rect }`: `id` is the logical id drawn (what art readiness is asked about), `rect` the region to draw
+  (ImageRectOffset / Size) when the image carries one. The hover state falls back to the normal art when the pack has
+  no `ui.cursor.hover`.
+- `ui.cursor.hover` is port-only and **optional** (`cursorOptionalIds`, no placeholder entry); `cursorArtProblems`
+  (folded into `variantColorProblems`, so validate.ts takes no new local) requires a hover image to have `ui.cursor`
+  as an image with the same drawn size and pivot.
+- vale manifest: both ids become `image`s with their layout pivot once `ui-cursor.png` / `ui-cursor-hover.png` have
+  ids in `packs/vale/assetIds.ts`; until then `ui.cursor` is the placeholder and `ui.cursor.hover` absent. The facing
+  pip still reads `placeholder("ui.cursor")` (pinned by a spec).
+
+### Pure view logic and the setting (C3 / C6 shared, `27c0c22`, `cf5ae39`)
+
+- `shared/view` `cursorConfig.ts` `CURSOR_VIEW` (displayOrder 200, `visualId` / `hoverVisualId`, baseScale 2 at
+  referenceHeight 1080, min / max scale 1 / 5, `sizeSteps`, pressScale 0.85, pressSec 0.09, hoverPollHz 20) and
+  `cursor.ts`: `cursorMode(input)` -> `"custom" | "system" | "hidden"` (inputs `hasCustomArt`, `artReady`,
+  `menuContext`, `mouseEnabled`, `touchOnly`, `onGamepad`, `robloxMenuOpen`, `windowFocused`, `killSwitch`);
+  `cursorVisualId({ overButton })`; `cursorScale(viewportHeight, size)`; `cursorSqueeze(pressT)` (a triangle to
+  pressScale and back); `cursorPlacement(mouse, pivot, imageSize, scale, pressT)` -> `{ x, y, width, height }`
+  **(differs: takes the art's `imageSize` too, so it also gives the label's size)**, the pivot exactly on the mouse at
+  every scale and through the squeeze. Specs in `cursor.spec.ts`.
+- `shared/settings`: `CursorSize` `small | normal | large`, `CURSOR_SIZES`, `DEFAULT_CURSOR_SIZE` `normal`,
+  `DisplaySettings.cursorSize` (sanitized: only `small` / `large` stored, overrides-only, the doc stays v2; Reset drops
+  it). Strings `options.display.cursorSize` / `.small` / `.normal` / `.large` (`OPTIONS_STRINGS.cursorSize*`), in the
+  placeholder pack and `l10n/context.json`.
+
+### Client (C4 / C5 / C6 client, `4e663b1`, `d5d8266`)
+
+- `client/store/selectors.ts` `selectCursorMenuContext` = `selectMenuOpen || (game active && snapshot.draftOpen)`
+  (the draft only while a run is active, so a stale snapshot never counts).
+- `client/controllers/ui/CursorController.ts`: one ScreenGui `KV_Cursor` (`createKvScreenGui`, DisplayOrder 200,
+  IgnoreGuiInset, `ScreenInsets.None`, ResetOnSpawn off) with one ImageLabel `Gauntlet` (Active / Interactable /
+  Selectable false, Pixelated, no background). `RunService:BindToRenderStep("KV_Cursor", RenderPriority.Last, ...)`
+  reads `GetMouseLocation()`, the mode inputs and the size, then writes `MouseIconEnabled = mode === "system"` and
+  `Visible = mode === "custom"` in that step; every property only when it differs (MouseIconEnabled is compared with
+  the engine's value every frame, so it is re-asserted if the Roblox menu or anything else changed it). It is the ONE
+  writer of `MouseIconEnabled`: `MouseIconController` is deleted and its rule moved in. Janitor: the step unbound, the
+  gui destroyed, MouseIconEnabled restored to its value before start.
+- Mode inputs, where each comes from:
+  - `hasCustomArt`: `cursorArt(ThemeController.getPack())`, read once at start (the pack instance never changes);
+  - `artReady`: `PreloadController.isArtReady(id)` for the normal and hover ids, cached and refreshed on
+    `onReadinessChanged`; the drawn state is the hover art only once ITS id is ready (else the white one), and
+    `artReady` is the drawn state's readiness;
+  - `menuContext`: `selectCursorMenuContext(clientStore.getState())`, read every frame (memoized);
+  - `mouseEnabled` / `touchOnly`: `UserInputService.MouseEnabled`, and `TouchEnabled && !MouseEnabled`, every frame;
+  - `onGamepad`: true when the store's `inputDevice` becomes `gamepad` (subscribe), false when it becomes anything
+    else, on an `InputChanged` MouseMovement with a non-zero delta, or on an `InputBegan` MouseButton1 / 2;
+  - `robloxMenuOpen`: `GuiService.MenuIsOpen` at start, then `MenuOpened` / `MenuClosed`;
+  - `windowFocused`: true at start, then `UserInputService.WindowFocused` / `WindowFocusReleased`;
+  - `killSwitch`: Workspace attribute `KV_SystemCursor` (`RUN_ATTRIBUTES.systemCursor`, off by default), read at
+    start and on `GetAttributeChangedSignal`.
+- Size: `cursorScale(Workspace.CurrentCamera.ViewportSize.Y, selectDisplay(state).cursorSize)` every frame, so a
+  pick or a window resize shows on the next frame.
+- Hover (C5): while in a menu context with art and a mouse, every 1 / hoverPollHz s,
+  `PlayerGui:GetGuiObjectsAtPosition(mouse - GuiService:GetGuiInset())`: true if any hit is a `GuiButton` that is
+  Visible, Active and Interactable and not under `KV_Cursor`. Outside a menu context the hover state is cleared. The
+  inset subtraction follows Roblox's documented space for that call (InputObject.Position's, without the top bar);
+  it is C0 (c)'s open question: if Studio shows the hover offset by the top bar's height, drop the subtraction
+  (commented at `buttonAt`).
+- Press (C5): `InputBegan` MouseButton1 / 2 while the last step's mode was `custom` starts the squeeze (`os.clock`),
+  whether or not the input was game-processed (menu clicks are), never under `selectJuice(...).reducedMotion`.
+- Options > Display (C6): a choice row `cursorSize` after Player outline (Small / Normal / Large), shown only while
+  `UserInputService.MouseEnabled` (read when the tab opens, like `hudTooltips`) and `cursorArt(themePack())` is
+  defined; picking plays `sfx.ui.click` and `updateDisplay({ cursorSize })`. Build effects and the touch rows moved
+  down one order.
+
+### Pending (owner)
+
+1. Build and upload: `node scripts/art/build-atlases.js --only ui.cursor` (or `npm run art:build`) writes
+   `art/build/ui-cursor.png` / `ui-cursor-hover.png` and copies them to `art/upload/`; upload both and paste the ids
+   into `src/shared/theme/packs/vale/assetIds.ts` under the keys `"ui-cursor.png"` and `"ui-cursor-hover.png"`, then
+   `npm run verify`.
+2. C0's five answers (below), written here: (a) the label's lag at 60 FPS, (b) `MouseIconEnabled` after the Roblox
+   menu closes, (c) `GetGuiObjectsAtPosition`'s inset convention, (d) (0, 0) at the window corner with
+   `IgnoreGuiInset` + `ScreenInsets.None`, (e) no blank or doubled frame when the two pointers swap.
+3. The Studio smoke test (C8).
+
 ## Tasks
 
-- [ ] **C0. Confirm the engine behaviour in Studio** (a 10-minute throwaway LocalScript, not committed): with
+- [ ] **C0. Confirm the engine behaviour in Studio** (open) (a 10-minute throwaway LocalScript, not committed): with
   `MouseIconEnabled = false` and an ImageLabel at `GetMouseLocation()` from a `Last` render step, (a) the label tracks
   with no visible lag beyond one frame at 60 FPS, (b) the Roblox menu shows its own cursor and closing it leaves
   `MouseIconEnabled` as we set it (or not: then the re-assert is required), (c) whether `GetGuiObjectsAtPosition`
   wants the raw mouse position or one minus `GuiService:GetGuiInset()`, (d) `IgnoreGuiInset` + `ScreenInsets.None`
   puts (0, 0) at the window corner, (e) flipping `MouseIconEnabled` true and hiding the label in the same frame shows
   no blank frame and no doubled pointer. → Verify: the five answers written into "As built".
-- [ ] **C1. Art.** The two `images` entries; `{ x, y }` source pivot in `build-atlases.js` plus the same-crop check
+- [ ] **C1. Art.** (Built and verified headlessly, `d08bb20`; open: the upload and the two ids, "As built" >
+  Pending.) The two `images` entries; `{ x, y }` source pivot in `build-atlases.js` plus the same-crop check
   across variants; a `scripts/art/*.test.js` case for the explicit pivot (inside, outside, crop offset); `art:build`,
   contact sheet looked at. Upload the two PNGs and paste the ids into `packs/vale/assetIds.ts`. → Verify:
   `npm run test:art`; `VALE_IMAGE_LAYOUTS["ui.cursor"].pivot` is the fingertip (about (3, 3) with `pad` 2); the
   contact sheet's cross sits on the fingertip.
-- [ ] **C2. Theme.** vale manifest fills the two ids from the layout once uploaded; the optional id is accepted by the
+- [x] **C2. Theme.** vale manifest fills the two ids from the layout once uploaded; the optional id is accepted by the
   validator; fallback helper (`cursorArt(pack)` -> image, pivot and size per state, or `undefined` for a placeholder).
   Specs: vale `ui.cursor` is an image with an in-bounds pivot; placeholder `ui.cursor` yields `undefined`; the facing
   pip still reads the placeholder diamond when vale's `ui.cursor` is an image. → Verify: `npm test` (theme + vale
   specs), `check:assets`.
-- [ ] **C3. Pure view logic.** `shared/view/cursor.ts`, `cursorConfig.ts`, barrel exports, specs for every mode branch
+- [x] **C3. Pure view logic.** `shared/view/cursor.ts`, `cursorConfig.ts`, barrel exports, specs for every mode branch
   (gameplay always `system` / `hidden`; `custom` only in a menu context with ready art; gamepad `hidden` in both
   contexts; kill switch; art not ready), the hover priority, integer scaling at 720 / 1080 / 1440 / 2160 for each size
   (section 3's table), and placement
   (fingertip on the mouse at every scale and through the whole squeeze). → Verify: `npm run test:only -- view/cursor`.
-- [ ] **C4. CursorController.** `selectCursorMenuContext`; ScreenGui, render step, mode / visual / placement wiring,
+- [x] **C4. CursorController.** `selectCursorMenuContext`; ScreenGui, render step, mode / visual / placement wiring,
   the single `MouseIconEnabled` writer, the gamepad rule moved in and `MouseIconController` deleted, touch / Roblox
   menu / window focus hiding, art readiness, kill switch, Janitor cleanup. → Verify: `npm run verify`; Studio: the
   gauntlet on the main menu, lobby and pause overlay, the Roblox pointer in a run.
-- [ ] **C5. Hover and press.** Throttled over-button test -> yellow; press squeeze (off under reduced motion). →
+- [x] **C5. Hover and press.** Throttled over-button test -> yellow; press squeeze (off under reduced motion). →
   Verify: Studio: every main-menu, lobby, Options, character, pause, draft and run-over button turns it yellow; the
   squeeze never moves the click point.
-- [ ] **C6. Cursor size setting** (D2; revision 1's C6, the over-enemy red, was dropped with D4). The
+- [x] **C6. Cursor size setting** (D2; revision 1's C6, the over-enemy red, was dropped with D4). The
   `DisplaySettings.cursorSize` field, defaults and sanitize; the Display tab row (mouse and art only); the four strings
   and their l10n context; the controller reading it. Specs: `sanitizeDisplayOverrides` keeps `small` / `large`, drops `normal`, unknown
   values and non-strings; `displayResetOverrides` drops it; `cursorScale` for each size at 720 / 1080 / 1440 / 2160 (the C3 table); the
   menu `fit.spec` still passes with the extra row. → Verify: `npm run verify` (`l10n:check` included); Studio: the row
   on a laptop, absent in the touch emulator and with the placeholder pack; Small / Large change the gauntlet live;
   the pick survives a rejoin; Reset brings Normal back.
-- [ ] **C7. Docs.** "As built" here; `docs/ART.md` mapping and status rows; `shared/theme/README.md` row for
+- [x] **C7. Docs.** "As built" here; `docs/ART.md` mapping and status rows; `shared/theme/README.md` row for
   `ui.cursor` (now an image with a pivot); CLAUDE.md decision-log line ("Gauntlet cursor: presentation only, software
   cursor in menus and run overlays only, gameplay keeps the Roblox pointer, `DisplaySettings.cursorSize` (Small /
   Normal / Large, overrides-only, doc stays v2), `KV_SystemCursor` kill switch, `MouseIconController` folded in").
-- [ ] **C8. Playtest pass** (the Studio smoke test below).
+- [ ] **C8. Playtest pass** (open) (the Studio smoke test below).
 
 ## Studio smoke test
 

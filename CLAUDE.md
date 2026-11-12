@@ -1270,6 +1270,24 @@ Decision log (deviations from `PLAN.md`):
   -> drawn) and `KV_CollisionDebug`'s merged ring. LP8 signed off by the owner in a Studio test on a simulated 4G link
   (2026-11-10); the group / phone playtest stays optional.
 
+- **Gauntlet cursor (docs/CURSOR.md).** Presentation only (no sim, dungeon, lockstep, server, hash, replay, fixture or
+  score change). The Lords of Pain gauntlet (white; yellow over a button) is a software cursor in a menu context only
+  (client/store `selectCursorMenuContext` = `selectMenuOpen` or the local draft open in a running run: menus, panels,
+  the loading screen and stage cover, pause, the party overlay, the draft, run over, the tutorial outro); gameplay keeps
+  the Roblox pointer, so aiming is untouched. `CursorController` (ScreenGui `KV_Cursor`, display order 200, a `Last`
+  render step) is the single writer of `UserInputService.MouseIconEnabled` (= mode `system`, the label's Visible = mode
+  `custom`, written in the same step); `MouseIconController` (the pointer hidden on a gamepad) is folded in and
+  deleted. Pure core shared/view `cursorMode` / `cursorVisualId` / `cursorScale` / `cursorSqueeze` / `cursorPlacement`
+  (`CURSOR_VIEW`); the hover test is `PlayerGui:GetGuiObjectsAtPosition` at 20 Hz in a menu context (its inset
+  convention is C0's open question); the click squeeze is off under reduced motion. Theme: shared/theme `cursorArt(pack)`
+  (undefined while `ui.cursor` is a placeholder: the system pointer), an optional port id `ui.cursor.hover` (same size
+  and pivot, `cursorArtProblems`); the gauntlet waits for its art readiness. Art pipeline: an image `pivot` may be
+  `{ x, y }` in source pixels (fingertip (53, 54) -> (4, 4)), `sameCropAs` fails a variant that crops differently,
+  `--only <images id>` builds one image's family. Setting `DisplaySettings.cursorSize` Small / Normal / Large (whole
+  scale steps; overrides-only, doc stays v2), the Options > Display row shown only with a mouse and the art, strings
+  `options.display.cursorSize*`. Kill switch `KV_SystemCursor` (`RUN_ATTRIBUTES.systemCursor`, read live). Upload of
+  `ui-cursor.png` / `ui-cursor-hover.png` (C1), the Studio answers (C0) and the smoke test (C8) pending.
+
 ## Commands
 
 ```
