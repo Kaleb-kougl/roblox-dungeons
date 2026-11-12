@@ -1,44 +1,62 @@
 # Gauntlet cursor: plan
 
-The player's mouse pointer becomes the **Lords of Pain gauntlet** (`cursor_gauntlet_*.png`), everywhere the mouse is
-used: the main menu, the lobby, Options, the HUD and in the run, where it is the aim point. Work it task by task, like
-`PLAN.md` and `docs/SPECTATE.md`; each task ends with a **Verify**.
+The player's mouse pointer becomes the **Lords of Pain gauntlet** (`cursor_gauntlet_*.png`) **in the menus only**: the
+main menu, lobbies, Options, the character screen, credits, leaderboards, the join loading screen, and the overlays a
+run opens over the floor (pause, the co-op party overlay, the boon draft, the run-over panel, the tutorial's outro).
+While you are actually playing, the pointer is Roblox's own, exactly as today. Work it task by task, like `PLAN.md`
+and `docs/SPECTATE.md`; each task ends with a **Verify**.
 
 It is **presentation only**: nothing touches `src/shared/sim/**`, `src/shared/dungeon/**`, the lockstep wire, the
-server, a fixture or a replay hash. The aim ray stays exactly what it is today (the camera ray through
-`UserInputService:GetMouseLocation()`); the gauntlet is drawn so its fingertip sits on that point.
+server, a fixture or a replay hash. Aiming is untouched: in gameplay the gauntlet is never drawn, so the aim point is
+the system pointer's hotspot as it is today.
 
-## Status (2026-10-26)
+## Status (2026-11-11)
 
-Planned. No code written. Decisions below are recommendations waiting for Kaleb's sign-off.
+Planned, **revision 2: menus only** (owner, 2026-11-11). Revision 1 (2026-10-26) put the gauntlet everywhere,
+gameplay included, as the aim point. No cursor art or controller is written; the only cursor code on `main` is
+`MouseIconController` (`cf12b1c`: the Roblox pointer hidden while on a gamepad), which C4 folds into the new
+controller. Every decision is made (D1-D5, owner 2026-11-11): D2 a size setting in Options (section 5), D5 the click
+squeeze on, off under reduced motion.
 
-## What the code and the engine give us (checked against `main` @ `1bb9e99`)
+What revision 2 changed: the gauntlet shows only in a **menu context** (section 3); gameplay keeps the system
+pointer; the over-enemy red (`ui.cursor.target`, revision 1's task C6, D4) is dropped; the fingertip-on-aim-point checks and the
+in-run latency fallback are gone; the controller owns `MouseIconEnabled` in both contexts.
+
+## What the code and the engine give us (checked against `main` @ `35b6193`)
 
 | Fact | Where | Consequence |
 |---|---|---|
-| The art: 5 colours (`white`, `red`, `yellow`, `blue`, `green`), each a **128x128** PNG with the gauntlet in the middle: opaque bbox (51, 51)-(75, 77), so the hand is **25x27 px**; the fingertip (the click point) is the top-left corner, about **(52, 52)**. The colour is the glow outline; the hand itself is dark steel | `art/vendor/lords-of-pain/user interface/cursor/` (full pack, gitignored) | Crop to alpha like `ui.ring.player`; needs an explicit pivot at the fingertip (the builder only knows `center` / `bottom`). Small pixel art: draw with `ResamplerMode.Pixelated` at an integer scale |
+| The art: 5 colours (`white`, `red`, `yellow`, `blue`, `green`), each a **128x128** PNG with the gauntlet in the middle: opaque bbox (51, 51)-(75, 77), so the hand is **25x27 px**; the fingertip (the click point) is the top-left corner, about **(52, 52)**. The colour is the glow outline; the hand itself is dark steel | `art/vendor/lords-of-pain/user interface/cursor/` (full pack, gitignored) | Crop to alpha like `ui.ring.player`; needs an explicit pivot at the fingertip (the builder only knows `center` / `bottom`). Small pixel art: draw with `ResamplerMode.Pixelated` at an integer scale. Only white and yellow are used |
 | Licence: free and commercial use, may modify, **may not redistribute** | `docs/ART.md` packs table | Same as every other Lords of Pain asset: source stays in `art/vendor/`, only the uploaded Roblox image ships |
-| The theme already has a required `ui.cursor` id (UI slot, `STILL`, may carry a `pivot`; the validator checks the pivot is inside the image) | `shared/theme/contract.ts` `UI_IDS`, `validate.spec.ts` | `ui.cursor` becomes the gauntlet. No new required id; the hover / target colours are port-only optional ids that fall back to it |
-| `ui.cursor` is also borrowed for the **facing pip** (`ACTOR_VIEW.facingPipVisualId`), but the pip reads `pack.placeholder(...)`, never the image | `shared/view/config.ts`, `ActorRenderController.ts:415` | Filling `ui.cursor` in vale does not turn the pip into a gauntlet. Pin that with a spec (C2) |
-| Vale ui images switch from placeholder to `image` once their file has an id; pivots come from the generated `VALE_IMAGE_LAYOUTS` | `packs/vale/manifest.ts` header, `layout.ts` | Same path for the cursor: until it is uploaded, `ui.cursor` stays a placeholder and the game keeps the system cursor |
-| Nothing sets `MouseIcon`, `MouseIconEnabled` or `MouseBehavior` today; the run camera is `Scriptable` | grep of `src/client` | No existing cursor code to fight. Right mouse button does not lock the pointer |
-| Mouse aim = `GetMouseLocation()` -> `ViewportPointToRay` -> floor plane (`pointerAimFromRay`) | `InputController.ts` (~line 364) | The cursor reads the same `GetMouseLocation()`; aim code is untouched |
-| **Engine cursor** (`UserInputService.MouseIcon`): the click point is the **image centre**, max 256 px a side, drawn at the image's pixel size, and **ignored while hovering any GuiButton** (Roblox shows its default cursor there) | Roblox `Mouse.Icon` docs; DevForum thread 2535543 | An engine cursor would flip back to the Roblox arrow on every menu button and the pause button. That rules it out as the only mechanism (D1) |
-| ScreenGuis: HUD, menu and pause button use `HUD_VIEW` / `MENU_VIEW` / `PAUSE_BUTTON_VIEW` display orders; the spikes HUD has its own | `GameHud.tsx`, `MenuLayer.tsx`, `SpikeHudController.tsx` | The cursor's ScreenGui needs a display order above all of them (CoreGui still draws above it) |
-| `InputDeviceTracker.aimDevice` (`mouse` / `stick` / `none`) and the store's `inputDevice` | `shared/play/inputMapping.ts`, `client/store/game.ts` | Hide the gauntlet while the player is on a gamepad, show it again on the first mouse move |
+| The theme already has a required `ui.cursor` id (UI slot, `STILL`, may carry a `pivot`; the validator checks the pivot is inside the image) | `shared/theme/contract.ts` `UI_IDS`, `validate.spec.ts` | `ui.cursor` becomes the gauntlet. No new required id; the hover colour is a port-only optional id that falls back to it |
+| `ui.cursor` is also borrowed for the **facing pip** (`ACTOR_VIEW.facingPipVisualId`), but the pip reads `pack.placeholder(...)`, never the image | `shared/view/config.ts`, `ActorRenderController.ts:712` | Filling `ui.cursor` in vale does not turn the pip into a gauntlet. Pin that with a spec (C2) |
+| Vale ui images switch from placeholder to `image` once their file has an id; pivots come from the generated `VALE_IMAGE_LAYOUTS` | `packs/vale/manifest.ts` header, `layout.ts` | Until it is uploaded, `ui.cursor` stays a placeholder and the game keeps the system pointer |
+| Stage assets: art is drawn only once its content has downloaded (`PreloadController.isArtReady` / `onReadinessChanged`); `ui.` is in `PRELOAD.core`, the menu kit, front lane | docs/STAGE_ASSETS.md, `client/ui` `uiImage` | The gauntlet waits for `isArtReady("ui.cursor")`; until then (or if it failed) the system pointer, never an empty pointer |
+| `MouseIconController` sets `UserInputService.MouseIconEnabled` false while the store's `inputDevice` is `gamepad`, true again on a real mouse move (non-zero delta) or a click | `client/controllers/ui/MouseIconController.ts` | A second writer of the same property would fight the cursor. C4 moves this rule into `CursorController` and deletes `MouseIconController` |
+| A menu context is already one selector: `selectMenuShown` (a menu screen, a panel, the party overlay, a paused run, run over, the tutorial outro), and `selectMenuOpen` = that + the join loading screen + the stage cover | `client/store/selectors.ts` | The cursor reads `selectMenuOpen`; nothing new to track for those screens |
+| The boon draft is not in either selector (the run is not paused); its overlay reads `game.snapshot.draftOpen` (the local player's draft) | `client/ui/hud/DraftOverlay.tsx:73` | Menu context = `selectMenuOpen || snapshot.draftOpen` (section 3) |
+| Mouse aim = `GetMouseLocation()` -> `ViewportPointToRay` -> floor plane (`pointerAimFromRay`) | `InputController.ts` | Untouched; in gameplay nothing is drawn over the pointer |
+| **Engine cursor** (`UserInputService.MouseIcon`): the click point is the **image centre**, max 256 px a side, drawn at the image's pixel size, and **ignored while hovering any GuiButton** (Roblox shows its default cursor there) | Roblox `Mouse.Icon` docs; DevForum thread 2535543 | Menus are mostly buttons, so the engine cursor would be the Roblox arrow most of the time. Software cursor (D1) |
+| ScreenGui display orders today: touch 11, menu backdrop 14, menu 15, pause / settings layer `HUD_VIEW.menuDisplayOrder` 20, dev panel 20, tooltips 25, loading screen / stage card 30, spikes 50-101 | `shared/view/menu/config.ts`, `hud/layout.ts`, `hud/tooltipConfig.ts`, `preloadConfig.ts`, `shared/config/spikes.ts` | `CURSOR_VIEW.displayOrder` above every game layer (e.g. 200). CoreGui still draws above it |
 | `GuiService.MenuOpened` / `MenuClosed` are already watched (pause, rebind cancel) | `SimController.ts`, `RebindController.ts` | Hide the gauntlet while the Roblox menu is open: CoreGui draws its own cursor above our layer |
-| `settings.reducedMotion` | `client/store/settings.ts` | The click "punch" is skipped under reduced motion |
+| `settings.reducedMotion` | `client/store/settings.ts` | The click squeeze is skipped under reduced motion |
+| Display settings are overrides-only (`shared/settings/display.ts`: a new optional field needs no migration, the doc stays v2; only a non-default value is stored; `sanitizeDisplayOverrides` drops anything else). The Display tab already has a mouse-only row (`hudTooltips`, `UserInputService.MouseEnabled` read when the tab opens) and choice rows (`buildFx`) | `shared/settings/display.ts`, `config.ts`, `client/ui/hud/OptionsScreen.tsx` `DisplayTab`, `shared/view/hud/options.ts` `OPTIONS_STRINGS` | The size setting is one more field and one more choice row, shown only with a mouse (D2) |
 
 ## Player experience
 
-- With a mouse, the pointer is the gauntlet from the first frame of the main menu until you leave. The fingertip is the
-  exact point you click and aim at.
-- **Normal**: the white-glow gauntlet.
-- **Over a button** (menu, lobby, Options, pause button, draft cards): the **yellow**-glow gauntlet, so the "this is
-  clickable" cue the Roblox hand cursor gave is not lost.
-- **Over an enemy** in a run (optional, D4): the **red**-glow gauntlet.
-- **Click**: a short squeeze (scale to 85% and back over ~90 ms). Not under reduced motion.
-- Picking up a gamepad hides it; moving the mouse brings it back. Touch-only devices never show it.
+- With a mouse, the pointer is the gauntlet on every menu screen and run overlay; the fingertip is the exact point you
+  click.
+- **Normal**: the white-glow gauntlet. **Over a button**: the **yellow**-glow gauntlet, so the "this is clickable" cue
+  the Roblox hand cursor gave is not lost.
+- **Click**: a short squeeze (scale to 85% and back over ~90 ms) about the fingertip. Not under reduced motion.
+- **Size**: Options > Display > **Cursor size**: Small / Normal / Large (default Normal), one whole step of scale apart,
+  each still following the window's height. The change shows at once (you are in a menu, so the gauntlet is on screen).
+- **In gameplay** (the run playing, a dead player spectating, the HUD's pause button, item tooltips, the dev panel):
+  Roblox's pointer, unchanged.
+- Opening the pause overlay or a draft swaps the Roblox pointer for the gauntlet at the same spot; Resume or a pick
+  swaps it back. Never both, never neither (one write per frame, section 4).
+- Picking up a gamepad hides the pointer in both contexts; moving the mouse brings it back. Touch-only devices never
+  show the gauntlet.
 - The Roblox menu (Esc), the dev console and other CoreGui keep Roblox's own cursor.
 
 ## Architecture
@@ -46,58 +64,86 @@ Planned. No code written. Decisions below are recommendations waiting for Kaleb'
 ### 1. Art (`art/atlases.json` `images`, `scripts/art/build-atlases.js`)
 
 ```jsonc
-"ui.cursor":        { "file": "lords-of-pain/user interface/cursor/cursor_gauntlet_white.png",
-                      "name": "ui-cursor", "crop": "alpha", "noiseAlpha": 2, "pad": 2,
-                      "pivot": { "x": 52, "y": 52 } },   // fingertip, in SOURCE pixels
-"ui.cursor.hover":  { ... "cursor_gauntlet_yellow.png", "name": "ui-cursor-hover", same crop / pivot },
-"ui.cursor.target": { ... "cursor_gauntlet_red.png",    "name": "ui-cursor-target", same crop / pivot }
+"ui.cursor":       { "file": "lords-of-pain/user interface/cursor/cursor_gauntlet_white.png",
+                     "name": "ui-cursor", "crop": "alpha", "noiseAlpha": 2, "pad": 2,
+                     "pivot": { "x": 52, "y": 52 } },   // fingertip, in SOURCE pixels
+"ui.cursor.hover": { ... "cursor_gauntlet_yellow.png", "name": "ui-cursor-hover", same crop / pivot }
 ```
 
 The builder gains one pivot form: `{ x, y }` in source pixels, converted to the cropped image (`x - cropX`,
-`y - cropY`), with the existing out-of-image check. The three colours must crop to the **same** rect (same shape, only
+`y - cropY`), with the existing out-of-image check. The two colours must crop to the **same** rect (same shape, only
 the glow differs); the builder fails if they do not, so swapping variants never shifts the fingertip. The contact sheet
 draws the red pivot cross on it like every other image. Output: `art/build/ui-cursor*.png`, copied to `art/upload`.
 
 ### 2. Theme
 
-- vale: `ui.cursor`, `ui.cursor.hover`, `ui.cursor.target` become `image` assets with their `VALE_IMAGE_LAYOUTS`
-  pivot once uploaded (`assetIds.ts`), like `ui.ring.player`.
-- `ui.cursor.hover` / `ui.cursor.target` are port-only and optional (no placeholder entry needed); a missing one falls
-  back to `ui.cursor`.
-- placeholder pack: `ui.cursor` stays the placeholder, which means **system cursor** (the controller never hides the
-  Roblox pointer for a placeholder).
+- vale: `ui.cursor` and `ui.cursor.hover` become `image` assets with their `VALE_IMAGE_LAYOUTS` pivot once uploaded
+  (`assetIds.ts`), like `ui.ring.player`.
+- `ui.cursor.hover` is port-only and optional (no placeholder entry needed); a missing one falls back to `ui.cursor`.
+- placeholder pack: `ui.cursor` stays the placeholder, which means **system pointer** everywhere.
 
 ### 3. Pure view logic: `shared/view/cursor.ts` + `shared/view/cursorConfig.ts` (headless-tested)
 
-`CURSOR_VIEW` tunables: `displayOrder`, `baseScale` (2 at a 1080 px tall viewport), `minScale` 1, `maxScale` 4
-(integer scales only, so the pixels stay square), `pressScale` 0.85, `pressSec` 0.09, `hoverPollHz` 20.
+`CURSOR_VIEW` tunables: `displayOrder`, `baseScale` (2 at a 1080 px tall viewport), `referenceHeight` 1080,
+`minScale` 1, `maxScale` 5 (integer scales only, so the pixels stay square; 5 keeps Large a step above Normal at 2160),
+`sizeSteps` (`small` -1, `normal` 0, `large` +1), `pressScale` 0.85, `pressSec` 0.09, `hoverPollHz` 20.
 
-- `cursorMode({ hasCustomArt, mouseEnabled, touchOnly, aimDevice, robloxMenuOpen, windowFocused, killSwitch })`
-  -> `"custom" | "hidden" | "system"`.
-- `cursorVisualId({ overButton, overEnemy })` -> `ui.cursor.hover` beats `ui.cursor.target` beats `ui.cursor`.
-- `cursorScale(viewportHeight)` -> integer scale.
-- `cursorPlacement(mouse, pivot, scale, pressT)` -> the label's top-left so `pivot * scale` lands on `mouse`
-  (the squeeze scales about the fingertip, so the click point never moves).
+- **Menu context**: `menuContext = selectMenuOpen || snapshot.draftOpen`. A cross-slice selector
+  `selectCursorMenuContext` in `client/store/selectors.ts`, next to `selectMenuOpen`. In co-op, a player who has picked
+  and waits for teammates is back in gameplay (the draft is closed for them).
+- `cursorMode({ hasCustomArt, artReady, menuContext, mouseEnabled, touchOnly, onGamepad, robloxMenuOpen,
+  windowFocused, killSwitch })` -> `"custom" | "system" | "hidden"`:
+  - `hidden`: on a gamepad (in either context), or the window unfocused while `custom` would apply;
+  - `custom`: a menu context with the gauntlet's art ready, a mouse, not touch-only, the Roblox menu closed, no kill
+    switch;
+  - `system`: everything else, so gameplay is always `system` (or `hidden` on a pad).
+- `cursorVisualId({ overButton })` -> `ui.cursor.hover` over a button, else `ui.cursor`.
+- `cursorScale(viewportHeight, size)` -> integer scale: `clamp(max(1, round(baseScale x viewportHeight /
+  referenceHeight)) + sizeSteps[size], minScale, maxScale)`. Normal at 720 / 1080 / 1440 / 2160 = 1 / 2 / 3 / 4; Small
+  1 / 1 / 2 / 3; Large 2 / 3 / 4 / 5 (the hand 27 px tall at 1x).
+- `cursorPlacement(mouse, pivot, scale, pressT)` -> the label's top-left so `pivot * scale` lands on `mouse` (the
+  squeeze scales about the fingertip, so the click point never moves).
 
 ### 4. Client: `client/controllers/ui/CursorController.ts`
 
 - One ScreenGui `KV_Cursor` (`DisplayOrder = CURSOR_VIEW.displayOrder`, `ScreenInsets.None`, `IgnoreGuiInset`, so
   `GetMouseLocation()` coordinates map 1:1) holding one `ImageLabel` (`Active = false`, `Pixelated`, never a button, so
-  it never eats a click).
+  it never eats a click). Created through `createKvScreenGui` (AutoLocalize off, docs/LOCALIZATION.md).
 - `RunService:BindToRenderStep("KV_Cursor", Enum.RenderPriority.Last.Value, ...)`: reads `GetMouseLocation()`, the
-  mode and the visual, and positions the label. One write per property per frame, only when it changed.
-- `UserInputService.MouseIconEnabled = false` only while the mode is `custom`; re-asserted each frame (cheap, and it
-  survives anything that resets it, e.g. the Roblox menu). Restored to `true` by the Janitor.
-- Over-button test: `PlayerGui:GetGuiObjectsAtPosition(x, y)` at `hoverPollHz`, true if any hit is a visible, active
-  `GuiButton`, ignoring the cursor's own ScreenGui. (Check the GUI-inset convention of that call in C0.)
-- Press squeeze: `InputBegan` on MouseButton1 / MouseButton2, skipped under `reducedMotion`.
-- Kill switch: Workspace attribute `KV_SystemCursor` (off by default) forces `system`, for debugging and as the
-  fallback if a Roblox update breaks the custom cursor.
+  mode and the visual, then writes in one place: `MouseIconEnabled = mode === "system"` and the label's `Visible =
+  mode === "custom"`, so a context switch never shows both pointers or neither for a frame. One write per property per
+  frame, only when it changed; `MouseIconEnabled` re-asserted while `custom` or `hidden` (it survives the Roblox menu).
+  The Janitor restores the value from before start.
+- **Owns the pointer on gamepad**: `MouseIconController`'s rule moves here (hidden while `inputDevice` is `gamepad`,
+  back on a non-zero `MouseMovement` delta or a mouse click) and that controller is deleted, so only one writer of
+  `MouseIconEnabled` exists.
+- Over-button test, only in a menu context: `PlayerGui:GetGuiObjectsAtPosition(x, y)` at `hoverPollHz`, true if any hit
+  is a visible, active `GuiButton`, ignoring the cursor's own ScreenGui. (Check the GUI-inset convention of that call
+  in C0.)
+- Press squeeze: `InputBegan` on MouseButton1 / MouseButton2 while `custom`, skipped under `reducedMotion`.
+- Kill switch: Workspace attribute `KV_SystemCursor` (off by default, `RUN_ATTRIBUTES`) forces `system`, for debugging
+  and as the fallback if a Roblox update breaks the custom cursor.
+- Reads `selectDisplay(...).cursorSize` for `cursorScale`; a change applies on the next frame.
 
-### 5. What does not change
+### 5. Setting: Cursor size (D2)
 
-`InputController`'s aim, bindings and sinking; every sim, dungeon, lockstep and server file; fixtures and hashes; the
-facing pip; tutorial, spectate and boosts logic.
+- `shared/settings`: `CursorSize = "small" | "normal" | "large"`, `CURSOR_SIZES` (that order) and `DEFAULT_CURSOR_SIZE`
+  `"normal"` in `config.ts`; `DisplaySettings.cursorSize` appended to `DISPLAY_SETTING_KEYS` and
+  `defaultDisplaySettings()`; `sanitizeDisplayOverrides` keeps only a `CURSOR_SIZES` value other than the default (so the stored doc
+  stays v2, overrides-only). The Display tab's Reset drops it (not in `DISPLAY_RESET_KEEPS`).
+- Options > Display: a `SettingRow` `cursorSize` after Player outline (the choice-row shape of `buildFx`), shown only
+  while `UserInputService.MouseEnabled` (like `hudTooltips`) **and** the pack has gauntlet art (`cursorArt(pack)`), so
+  a touch phone, a pad-only console or the placeholder pack never sees a row that does nothing. The row orders after it
+  shift by one.
+- Strings (required, in the placeholder manifest, `REQUIRED_STRING_KEYS` through `OPTIONS_STRINGS`, context entries in
+  `l10n/context.json` for `l10n:check`): `options.display.cursorSize` "Cursor size", `.small` "Small", `.normal`
+  "Normal", `.large` "Large".
+- Presentation only: no sim, hash, replay, wire or server change.
+
+### 6. What does not change
+
+`InputController`'s aim, bindings and sinking; the pointer in gameplay; every sim, dungeon, lockstep and server file;
+fixtures and hashes (the size setting is a display override); the facing pip; tutorial, spectate and boosts logic; gamepad focus (`FocusController`).
 
 ## Tasks
 
@@ -106,74 +152,99 @@ facing pip; tutorial, spectate and boosts logic.
   with no visible lag beyond one frame at 60 FPS, (b) the Roblox menu shows its own cursor and closing it leaves
   `MouseIconEnabled` as we set it (or not: then the re-assert is required), (c) whether `GetGuiObjectsAtPosition`
   wants the raw mouse position or one minus `GuiService:GetGuiInset()`, (d) `IgnoreGuiInset` + `ScreenInsets.None`
-  puts (0, 0) at the window corner. → Verify: the four answers written into "As built".
-- [ ] **C1. Art.** The three `images` entries; `{ x, y }` source pivot in `build-atlases.js` plus the same-crop check
+  puts (0, 0) at the window corner, (e) flipping `MouseIconEnabled` true and hiding the label in the same frame shows
+  no blank frame and no doubled pointer. → Verify: the five answers written into "As built".
+- [ ] **C1. Art.** The two `images` entries; `{ x, y }` source pivot in `build-atlases.js` plus the same-crop check
   across variants; a `scripts/art/*.test.js` case for the explicit pivot (inside, outside, crop offset); `art:build`,
-  contact sheet looked at. Upload the three PNGs and paste the ids into `packs/vale/assetIds.ts`. → Verify:
+  contact sheet looked at. Upload the two PNGs and paste the ids into `packs/vale/assetIds.ts`. → Verify:
   `npm run test:art`; `VALE_IMAGE_LAYOUTS["ui.cursor"].pivot` is the fingertip (about (3, 3) with `pad` 2); the
   contact sheet's cross sits on the fingertip.
-- [ ] **C2. Theme.** vale manifest fills the three ids from the layout once uploaded; the two optional ids are accepted
-  by the validator; fallback helper (`cursorArt(pack)` -> image, pivot and size per state, or `undefined` for a
-  placeholder). Specs: vale `ui.cursor` is an image with an in-bounds pivot; placeholder `ui.cursor` yields
-  `undefined`; the facing pip still reads the placeholder diamond when vale's `ui.cursor` is an image. → Verify:
-  `npm test` (theme + vale specs), `check:assets`.
-- [ ] **C3. Pure view logic.** `shared/view/cursor.ts`, `cursorConfig.ts`, barrel exports, specs for every mode
-  branch, the state priority, integer scaling at 720 / 1080 / 1440 / 2160, and placement (fingertip on the mouse at
-  every scale and through the whole squeeze). → Verify: `npm run test:only -- view/cursor`.
-- [ ] **C4. CursorController.** ScreenGui, render step, mode / visual / placement wiring, `MouseIconEnabled` handling,
-  gamepad / touch / Roblox menu / window focus hiding, kill switch, Janitor cleanup. → Verify: `npm run verify`;
-  Studio: the gauntlet in the main menu, lobby and a run; fingertip on the aim point (fire at a wall corner).
+- [ ] **C2. Theme.** vale manifest fills the two ids from the layout once uploaded; the optional id is accepted by the
+  validator; fallback helper (`cursorArt(pack)` -> image, pivot and size per state, or `undefined` for a placeholder).
+  Specs: vale `ui.cursor` is an image with an in-bounds pivot; placeholder `ui.cursor` yields `undefined`; the facing
+  pip still reads the placeholder diamond when vale's `ui.cursor` is an image. → Verify: `npm test` (theme + vale
+  specs), `check:assets`.
+- [ ] **C3. Pure view logic.** `shared/view/cursor.ts`, `cursorConfig.ts`, barrel exports, specs for every mode branch
+  (gameplay always `system` / `hidden`; `custom` only in a menu context with ready art; gamepad `hidden` in both
+  contexts; kill switch; art not ready), the hover priority, integer scaling at 720 / 1080 / 1440 / 2160 for each size
+  (section 3's table), and placement
+  (fingertip on the mouse at every scale and through the whole squeeze). → Verify: `npm run test:only -- view/cursor`.
+- [ ] **C4. CursorController.** `selectCursorMenuContext`; ScreenGui, render step, mode / visual / placement wiring,
+  the single `MouseIconEnabled` writer, the gamepad rule moved in and `MouseIconController` deleted, touch / Roblox
+  menu / window focus hiding, art readiness, kill switch, Janitor cleanup. → Verify: `npm run verify`; Studio: the
+  gauntlet on the main menu, lobby and pause overlay, the Roblox pointer in a run.
 - [ ] **C5. Hover and press.** Throttled over-button test -> yellow; press squeeze (off under reduced motion). →
-  Verify: Studio: every main-menu, lobby, Options, pause and draft button turns it yellow; the squeeze never moves
-  the click point.
-- [ ] **C6. (optional, D4) Over-enemy red.** Presentation only: the controller reads the pointer's floor point
-  (expose it from `InputController`, it already computes it) and the enemies in the latest view snapshot; red when the
-  point is within an enemy's body radius, run only, not while spectating. → Verify: spec for the hit test; Studio.
+  Verify: Studio: every main-menu, lobby, Options, character, pause, draft and run-over button turns it yellow; the
+  squeeze never moves the click point.
+- [ ] **C6. Cursor size setting** (D2; revision 1's C6, the over-enemy red, was dropped with D4). The
+  `DisplaySettings.cursorSize` field, defaults and sanitize; the Display tab row (mouse and art only); the four strings
+  and their l10n context; the controller reading it. Specs: `sanitizeDisplayOverrides` keeps `small` / `large`, drops `normal`, unknown
+  values and non-strings; `displayResetOverrides` drops it; `cursorScale` for each size at 720 / 1080 / 1440 / 2160 (the C3 table); the
+  menu `fit.spec` still passes with the extra row. → Verify: `npm run verify` (`l10n:check` included); Studio: the row
+  on a laptop, absent in the touch emulator and with the placeholder pack; Small / Large change the gauntlet live;
+  the pick survives a rejoin; Reset brings Normal back.
 - [ ] **C7. Docs.** "As built" here; `docs/ART.md` mapping and status rows; `shared/theme/README.md` row for
   `ui.cursor` (now an image with a pivot); CLAUDE.md decision-log line ("Gauntlet cursor: presentation only, software
-  cursor, `KV_SystemCursor` kill switch").
+  cursor in menus and run overlays only, gameplay keeps the Roblox pointer, `DisplaySettings.cursorSize` (Small /
+  Normal / Large, overrides-only, doc stays v2), `KV_SystemCursor` kill switch, `MouseIconController` folded in").
 - [ ] **C8. Playtest pass** (the Studio smoke test below).
 
 ## Studio smoke test
 
 1. Main menu: gauntlet visible, yellow over every button, white elsewhere; no Roblox arrow anywhere except over CoreGui.
-2. Start a solo run: aim at a wall corner and shoot; bullets leave toward the fingertip, not the middle of the hand.
-3. Press Esc: Roblox cursor in the menu, gauntlet hidden; close it: gauntlet back, run still paused.
-4. Pick up a gamepad and move the stick: gauntlet gone; move the mouse: back.
-5. Alt-tab out and back: no frozen gauntlet at the window edge.
-6. Resize the window from small to full-screen 1440p+: the scale steps 1 -> 2 -> 3, pixels stay crisp.
-7. Reduced motion on: no squeeze. `KV_SystemCursor` on: Roblox arrow, nothing else changes.
-8. 2-player co-op: each client sees only its own gauntlet; die and spectate, click to switch targets still works.
-9. Chat focused: gauntlet still visible and usable on the chat window.
+2. Start a solo run: the gauntlet over the stage cover, the Roblox pointer from the reveal on; aiming and shooting as
+   before.
+3. Pause (the pause key or the HUD's pause button): the gauntlet at the pointer's spot, no flicker; Resume: the Roblox
+   pointer back at the same spot.
+4. Clear to a boon draft: gauntlet, yellow over the cards; pick: the stairwell card keeps it, the next floor's reveal
+   brings the Roblox pointer.
+5. Die: the run-over panel shows the gauntlet; Again: the Roblox pointer once the run plays.
+6. Press Esc (Roblox menu) on the main menu and in a run: Roblox's cursor there, no gauntlet under it; close it: the
+   context's pointer back.
+7. Pick up a gamepad and move the stick, in a menu and in a run: no pointer at all; move the mouse: the right pointer
+   for the context.
+8. Alt-tab out and back on a menu: no frozen gauntlet at the window edge.
+9. Resize the window from small to full-screen 1440p+ on a menu: Normal steps 1 -> 2 -> 3, pixels stay crisp.
+10. Options > Display > Cursor size: Small and Large change the gauntlet at once, a step either side of Normal, the
+    fingertip still on the click point; rejoin: the pick kept; Reset: Normal. The row is absent in the touch emulator.
+11. Reduced motion on: no squeeze. `KV_SystemCursor` on: the Roblox pointer everywhere, nothing else changes.
+12. 2-player co-op: the party overlay and draft show the gauntlet on each client; a player who picked first and waits
+    has the Roblox pointer; die and spectate: Roblox pointer, click to switch targets still works.
+13. With `KV_FakeAssetLatency` on a fresh join: the Roblox pointer until `ui.cursor` has loaded, then the gauntlet.
 
 ## Edge cases
 
-- **Frame latency.** A software cursor can trail the hardware pointer by one frame. C0 measures it; if it feels bad in
-  a run, D1's hybrid (engine `MouseIcon` in a run, software cursor only in menus) is the fallback. The engine image
-  would then need the fingertip moved to the image centre (a second build output padded around the pivot).
-- **Low frame rate.** The cursor moves at the render rate, so a 20 FPS client gets a 20 FPS cursor. The kill switch,
-  or later a player setting, is the escape hatch.
+- **Context flips.** The pointer swaps on every pause, draft and run over. Both writes happen in one render step
+  (C0 (e) checks it); if the engine still shows a stray frame of both pointers or neither, C0 picks the write order
+  that hides it.
+- **Frame latency.** A software cursor can trail the hardware pointer by one frame. In menus that is barely visible;
+  the in-run fallback of revision 1 is no longer needed.
+- **Low frame rate.** The gauntlet moves at the render rate. The kill switch is the escape hatch; an Off choice for
+  players could join the Cursor size row later (not planned).
+- **Overlays that are not menus.** Item tooltips, the dev panel (F2) and the HUD's pause button are in gameplay and keep
+  the Roblox pointer. If the owner wants the dev panel or tooltips to count, they join the selector.
 - **CoreGui** (Roblox menu, dev console, chat window chrome, the top bar) draws above our ScreenGui; the gauntlet can
   sit under it. The menu case is hidden explicitly; the others are cosmetic.
-- **Hover test cost.** `GetGuiObjectsAtPosition` allocates; 20 Hz keeps it negligible.
-- **Placeholder pack / missing upload.** System cursor, exactly today's behaviour.
+- **Hover test cost.** `GetGuiObjectsAtPosition` allocates; 20 Hz and menu context only keep it negligible.
+- **Placeholder pack / missing upload / art not loaded.** System pointer, exactly today's behaviour.
 
-## Decisions (open, recommended default first)
+## Decisions
 
-- **D1. Mechanism:** software cursor everywhere (recommended: the engine cursor reverts to the Roblox arrow over
-  every GuiButton and puts the click point at the image centre) / engine `MouseIcon` only / hybrid.
-- **D2. Size:** integer scale, 2x at 1080 px tall (the hand is ~54 px tall) / 1x (27 px, close to the Roblox arrow) /
-  a player setting in Options.
-- **D3. Colours:** white normal, yellow over buttons, red over enemies (recommended) / white only / match the local
-  player's ring colour in co-op.
-- **D4. Over-enemy red (C6):** do it (a clear aim-on-target cue in a bullet hell) / skip it (keep the cursor quiet
-  over the busy floor).
-- **D5. Click squeeze:** on, off under reduced motion (recommended) / off.
+All decided (revision 2, owner 2026-11-11):
+
+- **D1. Mechanism and scope:** a software cursor in a menu context only (menus, panels, the loading screen and stage
+  cover, pause, the party overlay, the boon draft, run over, the tutorial outro); gameplay keeps the Roblox pointer.
+  Not the engine `MouseIcon`: it reverts to the Roblox arrow over every GuiButton and clicks at the image centre.
+- **D3. Colours:** white normal, yellow over buttons (red needed D4).
+- **D2. Size:** a player setting in Options (section 5): Cursor size Small / Normal / Large, Normal = 2x at 1080 px
+  tall (the hand ~54 px), each a whole scale step apart and following the window height.
+- **D4. Over-enemy red:** dropped; the gauntlet is never over the floor.
+- **D5. Click squeeze:** on, off under reduced motion.
 
 ## Out of scope
 
-Cursor trails or particles; a separate crosshair or aim line; changing the gamepad aim (no virtual cursor); a custom
-cursor over CoreGui (not possible).
+A custom pointer or crosshair in gameplay; cursor trails or particles; an aim line; changing the gamepad aim (no virtual
+cursor); a custom cursor over CoreGui (not possible).
 
 Sources: [Roblox `Mouse` reference (Icon: size, centre click point, ignored over GuiButtons)](https://create.roblox.com/docs/reference/engine/classes/Mouse.md),
 [DevForum: "Mouse Icon changes to default cursor when focused on a gui element"](https://devforum.roblox.com/t/2535543).
