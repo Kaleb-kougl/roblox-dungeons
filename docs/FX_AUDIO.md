@@ -401,3 +401,35 @@ after F2. W1 lands with each part; W2 last.
   redone many times. Pick carefully in A0 before uploading.
 - **Co-op noise.** Eight players' rolls, shots and hurts in one mix. X4's local / teammate split is required for party
   runs, not a nice-to-have.
+
+## Sourcing the remaining silent IDs (2026-11-11)
+
+29 port audio IDs had no entry in `art/audio.json` (the build effects, the legendaries and builds v2, treasure rooms,
+Fortune, the breakable loot). Each now has a silent entry whose `alternates` are CC0 candidates from the Ninja
+Adventure pack already in `art/vendor/` (unused clips first), shown on `art/audio-audition.html`; none is auditioned.
+To pick one: move it into `clips`, drop `silent`, set `confirmed: true`, then `audio:lock`, `audio:build`,
+`audio:audition` on the Mac and upload the new OGGs. `sfx.boss.taunt` gained the pack's Voice blips as candidates and
+`amb.b2` a note. `sfx.loot.drop` / `sfx.loot.rare` (no caller) and `music.lobby` (plays the menu track) stay silent.
+
+Gaps the pack cannot fill well, with sources found but not downloaded (the session's network could not reach them):
+
+| ID | Source | Licence | Vendor folder |
+|---|---|---|---|
+| `sfx.horde.horn` | "Their Coming (generic horn sound)" by StumpyStrust, OpenGameArt (`theircoming.ogg`, `theircoming3.ogg`) | CC0 | `art/vendor/oga-horn/` (downloaded 2026-11-11: `theircoming3.ogg`) |
+| `amb.b2` | "Fire Loop" by qubodup, OpenGameArt (`qubodupFireLoop.flac`) | CC-BY 3.0 (credit on the Credits screen and in THIRD_PARTY_NOTICES.md) | `art/vendor/oga-fire-loop/` (downloaded 2026-11-11: `qubodupFireLoop.ogg`) |
+| `sfx.treasure.open`, `sfx.treasure.unlock` | Kenney "RPG Audio" (door / creak / metal latch clips) | CC0 | `art/vendor/kenney-rpg-audio/` |
+| `sfx.treasure.crack`, `sfx.build.slam`, `sfx.build.smash` | Kenney "Impact Sounds" | CC0 | `art/vendor/kenney-impact-sounds/` (downloaded 2026-11-11, 1.0; also candidates for `sfx.build.pin` / `.execute`) |
+| `sfx.golden.hit`, `sfx.golden.jackpot`, `sfx.build.jackpot` | Kenney "Casino Audio" (coins, chips) | CC0 | `art/vendor/kenney-casino-audio/` |
+| `sfx.jingle.treasure`, `sfx.golden.jackpot` | Kenney "Music Jingles" | CC0 | `art/vendor/kenney-music-jingles/` |
+| `sfx.boss.taunt` | no vetted CC0 laugh found yet | | |
+| `sfx.treasure.open` | "open chest SFX" by Oiboo, OpenGameArt (`open chest.wav`) | CC0 | `art/vendor/oga-open-chest/` (downloaded 2026-11-11 as `open-chest.wav`) |
+
+"Fireplace Sound loop" (OpenGameArt) is a second fire candidate, but its page lists no licence: confirm before use.
+Once a pack is in `art/vendor/`, its clips can join the alternates; record every pick's source in
+THIRD_PARTY_NOTICES.md (and, for CC-BY, the Credits screen's `CREDITS`).
+
+**Picked and uploaded (2026-11-11).** The owner ticked picks on the audition checklist (`--apply-picks`), built them and
+uploaded all 35 new OGGs (9:56 PM; IDs in `packs/vale/assetIds.ts`), the loot pair and `amb-b2.ogg` (the qubodup fire
+loop, CC BY 3.0, credited) included. THIRD_PARTY_NOTICES.md and `CREDITS` list the four new sources (fire loop, Kenney Impact Sounds,
+the StumpyStrust horn, Oiboo's open chest). The mix pass (volumes: picks without one play at 1) and the Studio check
+are pending.

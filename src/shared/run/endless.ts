@@ -135,8 +135,9 @@ export const ENDLESS_MODIFIER_WORLD: FloorModifierWorld = table.freeze({
  * Builds floor `floor` of the run `runSeed` for a party of `partySize` (uncached; the dungeon comes from
  * endlessDungeon's cache), vaults on (docs/TREASURE.md TR5) and floor modifiers on (ENDLESS_MODIFIER_WORLD,
  * docs/FLOOR_MODIFIERS.md FM4); `vaultOverride`: the dev world's KV_TreasureDebug only; `mover`: the player's mover
- * (default: the current `playerMoverKind()`); `unlockFloors` false: the Daily's roster
- * (EndlessFloorOptions.unlockFloors); `modifierOverride`: the dev world's KV_FloorModifier only. Pure.
+ * (default: the current `playerMoverKind()`); `unlockFloors`: whether the seeded roster keeps the room kinds' unlock
+ * floors (EndlessFloorOptions.unlockFloors; default ENDLESS_ROSTER_UNLOCK_FLOORS, false: every endless world's rule
+ * since docs/DAILY.md DSD18); `modifierOverride`: the dev world's KV_FloorModifier only. Pure.
  */
 export function endlessRunFloor(
 	runSeed: number,
@@ -144,7 +145,7 @@ export function endlessRunFloor(
 	partySize: number = DEFAULT_PARTY_SIZE,
 	vaultOverride?: VaultOverride,
 	mover: PlayerMoverKind = playerMoverKind(),
-	unlockFloors = true,
+	unlockFloors: boolean = ENDLESS_ROSTER_UNLOCK_FLOORS,
 	modifierOverride?: FloorModifierOverride,
 ): EndlessRunFloor {
 	return endlessFloorWorld(
@@ -246,6 +247,16 @@ function floorCache(
 	};
 }
 
+/**
+ * Whether an endless run's seeded roster keeps the room kinds' unlock floors (shared/dungeon endlessRoster
+ * `unlockFloors`, EndlessRoomKind.fromFloor). False (owner, 2026-11-11, docs/DAILY.md DSD18; the Daily since DSD17):
+ * the run seed alone orders the pool, so floor 1 is swarmers plus ONE seeded kind that may be any of the ten room
+ * kinds (never a turret, boss, the dummy or the Goldling; no affix unlocks before floor 4), and every later floor adds
+ * the next kind of the shuffle (ROSTER.floorsPerKind 1: the full roster on floor 10). buildEndlessRunConfig's default, so the endless and dev worlds and every tool or spec
+ * that builds an endless run follow it; the tutorial (its own floors) and M1 never read it.
+ */
+export const ENDLESS_ROSTER_UNLOCK_FLOORS = false;
+
 /** M2 scoring of every endless run: solo (party size 1). Part of the config, so the server's replay is scored too. */
 export const ENDLESS_SCORING: ScoringConfig = table.freeze({ partySize: DEFAULT_PARTY_SIZE });
 
@@ -270,8 +281,8 @@ export interface EndlessRunOptions {
 	/** With `characters`: every player carries both weapons with their character's traits (the dev world's option). */
 	readonly bothWeapons?: boolean;
 	/**
-	 * False: the seeded roster ignores the room kinds' unlock floors (shared/dungeon EndlessFloorOptions.unlockFloors):
-	 * the Daily (DAILY.rosterUnlockFloors, ./worlds.ts rosterUnlockFloors). Absent or true: as before.
+	 * Whether the seeded roster keeps the room kinds' unlock floors (shared/dungeon EndlessFloorOptions.unlockFloors;
+	 * ./worlds.ts rosterUnlockFloors). Absent: ENDLESS_ROSTER_UNLOCK_FLOORS (false). True: the DSD9 rule (specs only).
 	 */
 	readonly unlockFloors?: boolean;
 }
@@ -295,7 +306,7 @@ export function buildEndlessRunConfig(
 		runSeed,
 		partySize,
 		options.vaultOverride,
-		options.unlockFloors !== false,
+		options.unlockFloors ?? ENDLESS_ROSTER_UNLOCK_FLOORS,
 		options.modifierOverride,
 	);
 	const first = worldForFloor(ENDLESS_FIRST_FLOOR);

@@ -184,7 +184,7 @@ describe("stage floor inputs (docs/STAGE_ASSETS.md SA3)", () => {
 		expect(guess.biome).toBe(1);
 		expect(guess.runStart).toBe(true);
 		for (let seed = 1; seed <= 60; seed++) {
-			for (const k of endlessRoster(seed, ENDLESS_FIRST_FLOOR)) {
+			for (const k of endlessRoster(seed, ENDLESS_FIRST_FLOOR, rosterUnlockFloors("endless"))) {
 				expect([seed, k, guess.actorKinds.includes(k)]).toEqual([seed, k, true]);
 			}
 		}

@@ -254,17 +254,20 @@ export function forecastDailyFirstFloor(seed: number, characters: ReadonlyArray<
 }
 
 /**
- * The menu / lobby guess at a first floor (no seed yet): every kind floor 1 can roll (ENDLESS_ROOM_KINDS unlocked on
- * floor 1: swarmers and both seeded candidates), biome `biome` (default 1), every feature, the run kit.
+ * The menu / lobby guess at a first floor (no seed yet): every kind floor 1 can roll under `world`'s roster rule
+ * (rosterUnlockFloors: without unlock floors, the endless / dev / daily rule since docs/DAILY.md DSD18, every room kind
+ * of ENDLESS_ROOM_KINDS; with them, the kinds unlocked on floor 1), biome `biome` (default 1), every feature, the run
+ * kit.
  */
 export function forecastFirstFloor(
 	characters: ReadonlyArray<string>,
 	biome = 1,
 	world: string = ENDLESS_WORLD_KIND,
 ): StageAssetInput {
+	const unlockFloors = rosterUnlockFloors(world);
 	const kinds = new Array<string>();
 	for (const k of ENDLESS_ROOM_KINDS) {
-		if ((k.fromFloor ?? ENDLESS_FIRST_FLOOR) <= ENDLESS_FIRST_FLOOR) kinds.push(k.kind);
+		if (!unlockFloors || (k.fromFloor ?? ENDLESS_FIRST_FLOOR) <= ENDLESS_FIRST_FLOOR) kinds.push(k.kind);
 	}
 	return {
 		world,

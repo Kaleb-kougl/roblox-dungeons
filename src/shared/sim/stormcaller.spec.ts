@@ -686,6 +686,9 @@ describe("stormcaller: strikes on real endless floors", () => {
 		// skipped), run 23 still 6. Before: 2/1/6b48e632, 6/0/4293fa96.
 		// Re-recorded for floor modifiers (docs/FLOOR_MODIFIERS.md FM3): run 23's co-op floor 3 is a Hoard floor (a vault
 		// and its chest piece now); strike and skip counts unchanged, run 4 untouched (a plain floor). Before: 6/0/c213cd8f.
-		expect(pins).toEqual(["3/0/4b457f84", "6/0/59e6c52a"]); // check-asset-ids: allow (state hashes)
+		// Re-recorded for docs/DAILY.md DSD18 (every endless roster without unlock floors, one new kind a floor): floor
+		// 3's rooms buy other kinds (run 23's on top of its Hoard floor), so spawns, breakables and state hashes moved;
+		// strike and skip counts are unchanged and no layout changed. Before: 3/0/4b457f84, 6/0/59e6c52a.
+		expect(pins).toEqual(["3/0/ad7f1462", "6/0/f7c37743"]); // check-asset-ids: allow (state hashes)
 	});
 });

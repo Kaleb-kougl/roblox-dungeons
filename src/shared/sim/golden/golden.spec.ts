@@ -245,9 +245,18 @@ describe("golden: appearance, room, escape (GE2)", () => {
 		expect(rec.memberIds.includes(g.actorId)).toBe(false);
 		for (const rr of r.s.score!.rooms) expect(rr.memberIds.includes(g.actorId)).toBe(false);
 		const ctx = new SimCtx().bind(r.s, simWorldConfig(r.s, r.config), EMPTY_INPUT);
-		for (let m = 0; m < rec.memberSlots.size(); m++) {
-			const a = r.s.combat.actors[rec.memberSlots[m]];
-			if (a.kind !== NO_KIND && a.id === rec.memberIds[m] && a.alive !== 0) ctx.killActor(a);
+		// Several passes: an Ooze's slimelets join the room when it dies (which kinds the room holds is the run's
+		// roster, docs/DAILY.md DSD18).
+		for (let pass = 0; pass < 8; pass++) {
+			let killed = 0;
+			for (let m = 0; m < rec.memberSlots.size(); m++) {
+				const a = r.s.combat.actors[rec.memberSlots[m]];
+				if (a.kind !== NO_KIND && a.id === rec.memberIds[m] && a.alive !== 0) {
+					ctx.killActor(a);
+					killed++;
+				}
+			}
+			if (killed === 0) break;
 		}
 		tick(r);
 		expect(rec.cleared).toBe(1);

@@ -15,7 +15,7 @@
  */
 import { DAILY, DAILY_WORLD_KIND } from "shared/daily";
 import { buildRunConfig, type RunSetup } from "./config";
-import { buildEndlessRunConfig } from "./endless";
+import { ENDLESS_ROSTER_UNLOCK_FLOORS, buildEndlessRunConfig } from "./endless";
 import { TUTORIAL_WORLD_KIND, buildTutorialRunConfig } from "./tutorial";
 import { DEV_WORLD_KIND, buildDevRunConfig, type DevRunOptions } from "./dev";
 import type { RunWorld } from "./limits";
@@ -38,12 +38,15 @@ export function isEndlessWorld(kind: RunWorldKind): boolean {
 
 /**
  * Whether world `kind`'s seeded roster keeps the room kinds' unlock floors (shared/dungeon endlessRoster
- * `unlockFloors`): false for the Daily (DAILY.rosterUnlockFloors, docs/DAILY.md DSD17: the day's seed alone orders the
- * pool), true for every other world. The daily builder below and every reader of a run's roster (the stage card, the
- * stage forecast, the Daily card's preview) ask this, so they agree with the floors the sim steps.
+ * `unlockFloors`): the Daily DAILY.rosterUnlockFloors (docs/DAILY.md DSD17), endless and dev
+ * ENDLESS_ROSTER_UNLOCK_FLOORS (DSD18; both false: the run seed alone orders the pool), true for every other world.
+ * The builders below and every reader of a run's roster (the stage card, the stage forecast, the Daily card's preview)
+ * ask this, so they agree with the floors the sim steps.
  */
 export function rosterUnlockFloors(kind: RunWorldKind): boolean {
-	return kind === DAILY_WORLD_KIND ? DAILY.rosterUnlockFloors : true;
+	if (kind === DAILY_WORLD_KIND) return DAILY.rosterUnlockFloors;
+	if (kind === ENDLESS_WORLD_KIND || kind === DEV_WORLD_KIND) return ENDLESS_ROSTER_UNLOCK_FLOORS;
+	return true;
 }
 
 export interface WorldBuildOptions {

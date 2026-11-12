@@ -156,7 +156,7 @@ describe("treasure: contract", () => {
 		expect([...TREASURE_UI_ROLES]).toEqual([...BOON_RARITY_ROLES]);
 	});
 
-	it("appends the four sounds to PORT_AUDIO_EVENTS: required, sfx, SILENT in every bundled pack", () => {
+	it("appends the four sounds to PORT_AUDIO_EVENTS: required, sfx, SILENT in the placeholder, a sound in vale", () => {
 		expect([...TREASURE_AUDIO_IDS]).toEqual([
 			"sfx.treasure.crack",
 			"sfx.treasure.unlock",
@@ -168,8 +168,10 @@ describe("treasure: contract", () => {
 		]);
 		for (const id of TREASURE_AUDIO_IDS) {
 			expect([id, has(REQUIRED_ASSET_IDS, id), slotFor(id)?.soundGroup]).toEqual([id, true, "sfx"]);
+			// the vale pack plays them: picked on the audition checklist and uploaded 2026-11-11 (docs/FX_AUDIO.md
+			// "Sourcing the remaining silent IDs")
 			for (const p of sortedKeys(THEME_PACKS)) {
-				expect([p, id, THEME_PACKS[p].assets[id].kind]).toEqual([p, id, "silent"]);
+				expect([p, id, THEME_PACKS[p].assets[id].kind]).toEqual([p, id, p === "vale" ? "sound" : "silent"]);
 			}
 		}
 	});

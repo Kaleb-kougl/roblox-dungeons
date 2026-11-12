@@ -139,6 +139,10 @@ import type { RobloxAssetId } from "../../types";
  * original art, scripts/art/gen-pip-icons.js, built by `node scripts/art/build-atlases.js --only pipIcons`): the first
  * 9 x 9 sheet was uploaded 2026-11-08 (103884093874949) and is retired: the 16 x 15 sheet (the hearts' size) changed
  * every rect; the 16 x 15 sheet uploaded 2026-11-08, the ID given by the owner in chat.
+ * duo-icons.png (one icon per duo, docs/BUILDS.md BU11; original art, scripts/art/gen-duo-icons.js, built by
+ * `node scripts/art/build-atlases.js --only duoIcons`) and lop-patch-blotch1 / -2.png (the Lords of Pain floor blotches,
+ * biome.1 floor patches 6 / 7, docs/KENNEY_DECOR.md; scripts/art/lop/floor_blotches.py) uploaded 2026-11-11, transcribed
+ * from an Asset Manager screenshot the owner gave in chat.
  * sfx-boost-collect ("Pick up sfx", Pixabay 38516) and sfx-boost-expire ("Power down 02", Pixabay 82200; both by
  * freesound_community, docs/BOOSTS.md) uploaded 2026-11-08 10:17 AM by k9kbdev as built by audio:build, transcribed
  * from an Asset Manager screenshot. The same upload replaced sfx-pellet-power (was the raw MP3, 119476079306502),
@@ -146,6 +150,10 @@ import type { RobloxAssetId } from "../../types";
  * sfx-boost-drop ("Retro Coin 4" by Driken Stan, Pixabay 236671) and sfx-boost-aegisbreak ("Plate Break 1" by
  * freesound_community, Pixabay 36468) uploaded 2026-11-08 by k9kbdev as built by audio:build, transcribed from an Asset
  * Manager screenshot.
+ * The picks from the audition checklist (docs/FX_AUDIO.md "Sourcing the remaining silent IDs": Ninja Adventure, Kenney
+ * Impact Sounds, OpenGameArt CC0) uploaded 2026-11-11 9:56 PM by k9kbdev as built by audio:build, 31 files transcribed
+ * from Asset Manager screenshots; amb-b2, sfx-boss-taunt, sfx-breakable-loot and sfx-build-beam (the same upload) from a
+ * second screenshot.
  * grave-<look>.png (the five gravestones, docs/DECOR.md "Graves"; original art, scripts/art/gen-grave-art.js, own
  * world art PNGs) uploaded 2026-11-08 10:25 AM by k9kbdev, transcribed from an Asset Manager screenshot.
  * tile-biome2-floor.png / tile-biome2-wall.png (the molten biome's floor and wall textures, docs/ART.md "As built:
@@ -211,6 +219,7 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"decor-atlas.png": "rbxassetid://115064942223814",
 	"dummy-outline.png": "rbxassetid://114899302767067",
 	"dummy.png": "rbxassetid://76011095585692",
+	"duo-icons.png": "rbxassetid://90883501251408",
 	"decor-mote.png": "rbxassetid://108281638823690",
 	"golden-coin.png": "rbxassetid://102072224489625",
 	"golden-death-outline.png": "rbxassetid://129944301136987",
@@ -283,6 +292,8 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"kenney-patch-planksbroken-b-b3.png": "rbxassetid://130432145775566",
 	"kenney-patch-planksbroken-b-b4.png": "rbxassetid://125543174873336",
 	"kenney-patch-planksbroken-b-b5.png": "rbxassetid://116604869772401",
+	"lop-patch-blotch1.png": "rbxassetid://111897142511672",
+	"lop-patch-blotch2.png": "rbxassetid://131620628857220",
 	"kit-banner.png": "rbxassetid://116783891005736",
 	"kit-bookcase-x.png": "rbxassetid://84780192220821",
 	"kit-bookcase-z.png": "rbxassetid://106394405354637",
@@ -423,6 +434,41 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"sfx-ui-confirm.ogg": "rbxassetid://129583273016065",
 	"sfx-ui-move.ogg": "rbxassetid://98968775960499",
 	"sfx-victory.ogg": "rbxassetid://138562382025197",
+	"sfx-build-beam.ogg": "rbxassetid://107320143421087",
+	"sfx-build-brace.ogg": "rbxassetid://131702853786466",
+	"sfx-build-burst.ogg": "rbxassetid://137428773165639",
+	"sfx-build-counter.ogg": "rbxassetid://127620694827762",
+	"sfx-build-duo.ogg": "rbxassetid://108457797205594",
+	"sfx-build-ember.ogg": "rbxassetid://121718463634893",
+	"sfx-build-evolve.ogg": "rbxassetid://107585516035166",
+	"sfx-build-execute.ogg": "rbxassetid://119554509996955",
+	"sfx-build-jackpot.ogg": "rbxassetid://83143085411619",
+	"sfx-build-nova.ogg": "rbxassetid://126598742196767",
+	"sfx-build-overkill.ogg": "rbxassetid://114557631378046",
+	"sfx-build-pin.ogg": "rbxassetid://87829869756188",
+	"sfx-build-shard.ogg": "rbxassetid://108190596023853",
+	"sfx-build-slam-1.ogg": "rbxassetid://71609476290138",
+	"sfx-build-slam-2.ogg": "rbxassetid://96477815538911",
+	"sfx-build-slam-3.ogg": "rbxassetid://81592673405654",
+	"sfx-build-smash.ogg": "rbxassetid://134543356878311",
+	"sfx-build-spark.ogg": "rbxassetid://123551644430335",
+	"amb-b2.ogg": "rbxassetid://84470694394747",
+	"sfx-boss-taunt.ogg": "rbxassetid://114123945324646",
+	"sfx-breakable-loot.ogg": "rbxassetid://135727786889304",
+	"sfx-golden-appear.ogg": "rbxassetid://102235846548497",
+	"sfx-golden-escape.ogg": "rbxassetid://80710768689206",
+	"sfx-golden-hit.ogg": "rbxassetid://139364139046372",
+	"sfx-golden-jackpot.ogg": "rbxassetid://113621437177810",
+	"sfx-horde-double.ogg": "rbxassetid://139381436835109",
+	"sfx-horde-horn.ogg": "rbxassetid://113615316454201",
+	"sfx-horde-wave.ogg": "rbxassetid://98733707329120",
+	"sfx-jingle-treasure.ogg": "rbxassetid://79661760081714",
+	"sfx-loot-drop.ogg": "rbxassetid://79146160329570",
+	"sfx-loot-rare.ogg": "rbxassetid://114749102123684",
+	"sfx-pact-take.ogg": "rbxassetid://102959594693498",
+	"sfx-treasure-crack.ogg": "rbxassetid://129473916727514",
+	"sfx-treasure-open.ogg": "rbxassetid://91726633163994",
+	"sfx-treasure-unlock.ogg": "rbxassetid://134958985801748",
 	"slime-body-outline.png": "rbxassetid://125641170965641",
 	"slime-body.png": "rbxassetid://105955364807363",
 	"sniper-idle-outline.png": "rbxassetid://72531972026139",

@@ -400,3 +400,43 @@ docs/BOOKSHELVES.md). **Changes made:** rendered to 2D sprites
   only when it runs; never redistribute or repost the raw files (keep the uploaded Roblox audio private, never on the
   Creator Store); credit the author with a reference to their SoundCloud profile, https://soundcloud.com/dhsfx, in the
   published game: the Credits screen does (`CREDITS`, shared/view/menu credits.ts).
+
+## "Fire Loop" (OpenGameArt sound effect, CC-BY 3.0) - ATTRIBUTION REQUIRED
+
+- "Fire Loop" by qubodup. Source: https://opengameart.org/content/fire-loop (`qubodupFireLoop.ogg`).
+- Used for: the molten biome's ambience bed `amb.b2`. **Changes made:** downmixed, loudness-normalised (EBU R128) and
+  re-encoded to OGG by `scripts/audio/build-audio.js`; only the built OGG is uploaded to Roblox as an audio asset.
+- Raw file: `art/vendor/oga-fire-loop/` (gitignored).
+- License: Creative Commons Attribution 3.0 Unported (https://creativecommons.org/licenses/by/3.0/).
+  **Attribution is required where players can see it**: the main menu's Credits screen (shared/view/menu `CREDITS`)
+  shows the title, "by qubodup (OpenGameArt)", "CC BY 3.0 - creativecommons.org/licenses/by/3.0" and the change note.
+
+## Kenney Impact Sounds (audio, CC0)
+
+- Author: Kenney (https://www.kenney.nl). Pack: "Impact Sounds" 1.0, with its `License.txt` (Creative Commons Zero,
+  CC0 1.0: http://creativecommons.org/publicdomain/zero/1.0/).
+- Used for: `sfx.build.execute`, `sfx.build.pin`, `sfx.build.slam` (three variants), `sfx.build.smash`,
+  `sfx.treasure.crack`. The clips are silence-trimmed where they are effects, downmixed to mono, loudness-normalised and encoded to OGG by
+  `scripts/audio/build-audio.js`; only the built OGGs are uploaded to Roblox as audio assets (docs/FX_AUDIO.md "Sourcing the
+  remaining silent IDs").
+- Raw files: `art/vendor/kenney-impact-sounds/` (gitignored).
+- License: CC0, public domain: no restriction and no credit required. Credited anyway (Credits screen: "Impact
+  Sounds", "by Kenney (kenney.nl)", "CC0").
+
+## "Their Coming (generic horn sound)" (OpenGameArt sound effect, CC0)
+
+- Author: StumpyStrust. Source: https://opengameart.org/content/their-coming-generic-horn-sound (`theircoming3.ogg`).
+- Used for: `sfx.horde.horn`. The clip is silence-trimmed where they are effects, downmixed to mono, loudness-normalised and encoded to OGG by
+  `scripts/audio/build-audio.js`; only the built OGGs are uploaded to Roblox as audio assets (docs/FX_AUDIO.md "Sourcing the
+  remaining silent IDs").
+- Raw file: `art/vendor/oga-horn/` (gitignored).
+- License: CC0, public domain: no credit required. Credited anyway (Credits screen).
+
+## "open chest SFX" (OpenGameArt sound effect, CC0)
+
+- Author: Oiboo. Source: https://opengameart.org/content/open-chest-sfx (`open chest.wav`, kept as `open-chest.wav`).
+- Used for: `sfx.treasure.open`. The clip is silence-trimmed where they are effects, downmixed to mono, loudness-normalised and encoded to OGG by
+  `scripts/audio/build-audio.js`; only the built OGGs are uploaded to Roblox as audio assets (docs/FX_AUDIO.md "Sourcing the
+  remaining silent IDs").
+- Raw file: `art/vendor/oga-open-chest/` (gitignored).
+- License: CC0, public domain: no credit required. Credited anyway (Credits screen).

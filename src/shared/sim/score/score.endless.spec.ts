@@ -49,6 +49,20 @@ function firstRoom(setup: EndlessRunSetup, s: SimState): number {
 	return error("no room with spawns");
 }
 
+/**
+ * The first room id with deferred spawns and no Ooze on the run's current floor: an Ooze splits when killed (its
+ * slimelets join the room), so a room without one clears on the tick after its members die. Which kinds a room holds
+ * is the run's roster (docs/DAILY.md DSD18).
+ */
+function firstRoomWithoutSplits(setup: EndlessRunSetup, s: SimState): number {
+	const w = setup.endlessFloor(s.endless!.floor);
+	for (let id = 0; id < w.roomSpawns.size(); id++) {
+		const spawns = w.roomSpawns[id];
+		if (spawns.size() > 0 && !spawns.some((sp) => sp.kind === "slime")) return id;
+	}
+	return error("no room with spawns and no Ooze");
+}
+
 /** Puts the player on the room's first spawn tile and steps once (`input`): the room's enemies spawn. */
 function enter(setup: EndlessRunSetup, s: SimState, id: number, input: InputFrame = EMPTY_INPUT): void {
 	const first = setup.endlessFloor(s.endless!.floor).roomSpawns[id][0];
@@ -111,7 +125,7 @@ describe("endless room records (deferred spawns)", () => {
 	it("clear + perfect + fast at the clearing tick's combo; kills scaled by the floor (floor 3)", () => {
 		const { setup, s } = runOn(3);
 		const st = s.score!;
-		const id = firstRoom(setup, s);
+		const id = firstRoomWithoutSplits(setup, s);
 		enter(setup, s, id);
 		const r = st.rooms.find((x) => x.room === id)!;
 		const ms = members(s, id);

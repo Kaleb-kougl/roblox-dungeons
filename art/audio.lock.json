@@ -7,6 +7,41 @@
 			"bytes": 2168112
 		},
 		{
+			"path": "kenney-impact-sounds/Audio/impactGlass_light_002.ogg",
+			"sha256": "710db7451bb7857b9140dfe6afe4621ea2188ad65eda3919c569d1bb285b933d",
+			"bytes": 6562
+		},
+		{
+			"path": "kenney-impact-sounds/Audio/impactMetal_heavy_000.ogg",
+			"sha256": "e07045693e4a2b3d165c424e3dab4c781d9ff8880a386880ac89a51315d7f831",
+			"bytes": 6110
+		},
+		{
+			"path": "kenney-impact-sounds/Audio/impactPlank_medium_000.ogg",
+			"sha256": "8403cd7a043f0391574c88c55dd205743725b5363d2407f6de145f201690b68f",
+			"bytes": 12016
+		},
+		{
+			"path": "kenney-impact-sounds/Audio/impactPunch_heavy_000.ogg",
+			"sha256": "b33a8f14068aec24ec69ba85e5e87fdc41228975f6a1a3e44a6e7d6fc3d9f8d8",
+			"bytes": 11617
+		},
+		{
+			"path": "kenney-impact-sounds/Audio/impactPunch_medium_000.ogg",
+			"sha256": "486988aa2d6440ffc4c62a0e8ccf3c23673ba84424bd4723378d451b7255eb5c",
+			"bytes": 8800
+		},
+		{
+			"path": "kenney-impact-sounds/Audio/impactSoft_heavy_000.ogg",
+			"sha256": "49e7ca88743fca974bb8676ea138b751cfd8f9033b5e7af8736c2a215d6edbc1",
+			"bytes": 6570
+		},
+		{
+			"path": "kenney-impact-sounds/Audio/impactWood_heavy_002.ogg",
+			"sha256": "ce1e06f2a05f2634c645cb72f6a1623e64bc2d92be34917430a61031fb6597d4",
+			"bytes": 6146
+		},
+		{
 			"path": "kenney-music-jingles/OGG/jingles_NES/jingles_NES00.ogg",
 			"sha256": "1010c9b566d6c090ff03a4aaaf7439e26eb4cc4f20373800d0b7e6a9057b795d",
 			"bytes": 39948
@@ -19,6 +54,11 @@
 		{
 			"path": "ninja-adventure/Audio/Jingles/GameOver.wav",
 			"sha256": "e12fc497fbf2a3a7d787167f8fe8c0de542d4f9ad950be67ac4036c16477d1fc",
+			"bytes": 353012
+		},
+		{
+			"path": "ninja-adventure/Audio/Jingles/GameOver3.wav",
+			"sha256": "66b30f6f84e46a3e434ee5c912b1005a74aaa9f1b200f8560959b3b04a97a161",
 			"bytes": 353012
 		},
 		{
@@ -37,6 +77,11 @@
 			"bytes": 264812
 		},
 		{
+			"path": "ninja-adventure/Audio/Jingles/Secret1.wav",
+			"sha256": "c5222a56e0c188862bce0a75d178e9be21149eb5a5f41df32a288788bc4abc9e",
+			"bytes": 353008
+		},
+		{
 			"path": "ninja-adventure/Audio/Jingles/Secret2.wav",
 			"sha256": "8829fc50a9b6ae7f76eff208cf421990f939fc8d7570b038efde12dc6974dace",
 			"bytes": 273736
@@ -45,6 +90,11 @@
 			"path": "ninja-adventure/Audio/Jingles/Secret3.wav",
 			"sha256": "91224ef1963de1146264976bb81e4c441b25da5b7d344014aa341ec49886a115",
 			"bytes": 339696
+		},
+		{
+			"path": "ninja-adventure/Audio/Jingles/Secret4.wav",
+			"sha256": "93c1ce1560c5fb0a1f40687947185d625d18b8c3eef8edb79f3588e3fc96633f",
+			"bytes": 315936
 		},
 		{
 			"path": "ninja-adventure/Audio/Jingles/Success1.wav",
@@ -107,9 +157,19 @@
 			"bytes": 2333694
 		},
 		{
+			"path": "ninja-adventure/Audio/Sounds/Alert/Alert.wav",
+			"sha256": "abdccbc57827194b9bc643560692d4b2b3caddf6b128aafc2ddf80ffdbe6c104",
+			"bytes": 87296
+		},
+		{
 			"path": "ninja-adventure/Audio/Sounds/Alert/Alert2.wav",
 			"sha256": "070bb57d1929b773d9ab1a799cb7904a4bd8f3db2c79332149963e439c43c755",
 			"bytes": 53128
+		},
+		{
+			"path": "ninja-adventure/Audio/Sounds/Alert/Alert5.wav",
+			"sha256": "9dde23743ed3182624a9dfd1e0c0ce4a1f7fe025e3fe42c98b36974e4ec41b1f",
+			"bytes": 264808
 		},
 		{
 			"path": "ninja-adventure/Audio/Sounds/Ambient/River.wav",
@@ -147,6 +207,11 @@
 			"bytes": 68084
 		},
 		{
+			"path": "ninja-adventure/Audio/Sounds/Bonus/Coin.wav",
+			"sha256": "0a28cb379c8b9ba2dc0a96ddc770aeaa648c013fb1f5db3be3535467ca928661",
+			"bytes": 51508
+		},
+		{
 			"path": "ninja-adventure/Audio/Sounds/Bonus/Coin2.wav",
 			"sha256": "8fe129feb63baafc2a65ad7f19dc184d6ec9e7d9d3df4a8a143740ffe009dfa6",
 			"bytes": 59188
@@ -177,9 +242,19 @@
 			"bytes": 83084
 		},
 		{
+			"path": "ninja-adventure/Audio/Sounds/Elemental/Bubble.wav",
+			"sha256": "86a9278d2816e30a00ea8a682f5795f5fa104ff9fb9de589f89e78213617c7d3",
+			"bytes": 264808
+		},
+		{
 			"path": "ninja-adventure/Audio/Sounds/Elemental/Bubble2.wav",
 			"sha256": "078b0a6f9d82b0a1c5a1f9d8ec8293e77433da71e8af82b08dc0377d41556ad3",
 			"bytes": 75404
+		},
+		{
+			"path": "ninja-adventure/Audio/Sounds/Elemental/Explosion2.wav",
+			"sha256": "6ee30b0cd88e83e302cbea4adb7d53322a414aef64cd0e03194d4465e31a9d60",
+			"bytes": 112016
 		},
 		{
 			"path": "ninja-adventure/Audio/Sounds/Elemental/Explosion3.wav",
@@ -200,6 +275,11 @@
 			"path": "ninja-adventure/Audio/Sounds/Elemental/Fire.wav",
 			"sha256": "3be772c559fff04e7532719816a5c6ad1af1d0773869620f18e3c20dde277cdb",
 			"bytes": 157644
+		},
+		{
+			"path": "ninja-adventure/Audio/Sounds/Elemental/Fire2.wav",
+			"sha256": "d2fb2f6446e0f0646bc35a55511e326206d8eb7347e6e87c4390738325f0b729",
+			"bytes": 221036
 		},
 		{
 			"path": "ninja-adventure/Audio/Sounds/Elemental/Fire3.wav",
@@ -277,6 +357,11 @@
 			"bytes": 85928
 		},
 		{
+			"path": "ninja-adventure/Audio/Sounds/Jump & Bounce/Bounce.wav",
+			"sha256": "734cb8ff524a7b3b22fc0ffb11a11bb596b1d9569e005dc4707fc32618b51e61",
+			"bytes": 37184
+		},
+		{
 			"path": "ninja-adventure/Audio/Sounds/Jump & Bounce/Bounce2.wav",
 			"sha256": "4cb86ed1fd8ba65a80bf88f071f89114013c0de5a99f368c995d1b3eaeca7633",
 			"bytes": 79496
@@ -295,6 +380,21 @@
 			"path": "ninja-adventure/Audio/Sounds/Magic & Skill/Heal.wav",
 			"sha256": "693dc7b572ab92a58f17d71f4866a82252841841426928c777d7aa52b39a8dee",
 			"bytes": 54816
+		},
+		{
+			"path": "ninja-adventure/Audio/Sounds/Magic & Skill/Heal2.wav",
+			"sha256": "9464ca5a18ced45b1977cf5134219273eca6d14eb36d37f2eca10a6f27177f6c",
+			"bytes": 57788
+		},
+		{
+			"path": "ninja-adventure/Audio/Sounds/Magic & Skill/Magic1.wav",
+			"sha256": "8e73ed5ac62f32e8f327a6e3d12c8dd90fb087e4b6ac4367e69a856ca43a6630",
+			"bytes": 70608
+		},
+		{
+			"path": "ninja-adventure/Audio/Sounds/Magic & Skill/Magic2.wav",
+			"sha256": "88a5645181c462607566f62d4673dd3e1fd59867b3b58cce7a0b37bb14eef243",
+			"bytes": 54400
 		},
 		{
 			"path": "ninja-adventure/Audio/Sounds/Magic & Skill/Magic3.wav",
@@ -322,9 +422,19 @@
 			"bytes": 582720
 		},
 		{
+			"path": "ninja-adventure/Audio/Sounds/Menu/Accept.wav",
+			"sha256": "6716438c97cf2fe11baf90b99742800a23cecc4f55728c8d57be28e1aa1e372f",
+			"bytes": 353032
+		},
+		{
 			"path": "ninja-adventure/Audio/Sounds/Menu/Accept2.wav",
 			"sha256": "7cccd8dc645b86f24c95d4bf1c97122f32f20446614e17a328f9e291fc54f98f",
 			"bytes": 114792
+		},
+		{
+			"path": "ninja-adventure/Audio/Sounds/Menu/Accept3.wav",
+			"sha256": "4ca6e3bcd1762c78dd51cd72ff66189dbaa0892070175648af49854a0592a4e6",
+			"bytes": 69968
 		},
 		{
 			"path": "ninja-adventure/Audio/Sounds/Menu/Accept4.wav",
@@ -332,9 +442,29 @@
 			"bytes": 43460
 		},
 		{
+			"path": "ninja-adventure/Audio/Sounds/Menu/Accept6.wav",
+			"sha256": "38e53e17c1ba0c72b963ccb3cadb9d7ceaad31a147d272d9c237fe269dd730de",
+			"bytes": 46148
+		},
+		{
+			"path": "ninja-adventure/Audio/Sounds/Menu/Accept8.wav",
+			"sha256": "3ace6469262e5a5246deaa6d782e46f571058d358d68cb57097a7346ab4a5102",
+			"bytes": 99628
+		},
+		{
+			"path": "ninja-adventure/Audio/Sounds/Menu/Cancel.wav",
+			"sha256": "c1efbb7576f4c17da62c12cf6135fe9da82eecc9b21d4f9e0c94a180164cc7d8",
+			"bytes": 83606
+		},
+		{
 			"path": "ninja-adventure/Audio/Sounds/Menu/Cancel2.wav",
 			"sha256": "3c33fc37c1d28bdd5cb0a1e77bb62f30ca7c82f505f6b314016d312eccce6a3f",
 			"bytes": 54900
+		},
+		{
+			"path": "ninja-adventure/Audio/Sounds/Menu/Menu5.wav",
+			"sha256": "376036855095aa4f2f33e208885b370e632aa7b92bca868fa26b900c5db863d1",
+			"bytes": 48432
 		},
 		{
 			"path": "ninja-adventure/Audio/Sounds/Menu/Move1.wav",
@@ -365,6 +495,11 @@
 			"path": "ninja-adventure/Audio/Sounds/Menu/Move8.wav",
 			"sha256": "f10515c77207f1ee63cec13f2379dcf691b50a81f55315891157052fe2a44223",
 			"bytes": 51024
+		},
+		{
+			"path": "ninja-adventure/Audio/Sounds/Voice/Voice8.wav",
+			"sha256": "09fc8d39937d4cb18e6b87edcd9f9773ff001d6a3eee2f43573debbd6066af25",
+			"bytes": 52332
 		},
 		{
 			"path": "ninja-adventure/Audio/Sounds/Whoosh & Slash/Launch.wav",
@@ -410,6 +545,21 @@
 			"path": "ninja-adventure/Audio/Sounds/Whoosh & Slash/Whoosh2.wav",
 			"sha256": "7ba3cc15a17cf9dd7e2da8dec4d5f8d5e73a7d5e316c213a52731f71c484abec",
 			"bytes": 78332
+		},
+		{
+			"path": "oga-fire-loop/qubodupFireLoop.ogg",
+			"sha256": "d3ff69b32c445fd4aec13a986394b03f0c36a20d8a4a0f930d05eb555b5f8681",
+			"bytes": 67566
+		},
+		{
+			"path": "oga-horn/theircoming3.ogg",
+			"sha256": "4f2e3500b4f06470727012e36709931d3edfc186d78999cee59674a521d06538",
+			"bytes": 119570
+		},
+		{
+			"path": "oga-open-chest/open-chest.wav",
+			"sha256": "8c0f35db7a309905e914a9098d9bf63ca649c8506f0781e33390ea3715628ca9",
+			"bytes": 451454
 		},
 		{
 			"path": "pixabay/cryptologymedia-chomp-155392.mp3",

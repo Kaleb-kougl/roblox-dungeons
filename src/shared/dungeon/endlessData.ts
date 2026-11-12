@@ -187,7 +187,9 @@ export interface RosterTunables {
 	readonly always: string;
 	/**
 	 * One more seeded kind joins every this many floors: the roster holds 1 + floor((floor - 1) / floorsPerKind) kinds
-	 * besides `always` (capped at the kinds there are), each from its unlock floor (EndlessRoomKind.fromFloor) only.
+	 * besides `always` (capped at the kinds there are; with unlock floors, endlessRoster `unlockFloors` true, each from
+	 * its EndlessRoomKind.fromFloor only). 1 since docs/DAILY.md DSD18 (owner, 2026-11-11; was 2, DSD2): one new kind
+	 * every floor, so the ten seeded kinds are all in by floor 10.
 	 */
 	readonly floorsPerKind: number;
 	/**
@@ -198,7 +200,7 @@ export interface RosterTunables {
 	readonly salt: number;
 }
 
-export const ROSTER: RosterTunables = table.freeze({ always: "swarmer", floorsPerKind: 2, salt: 0x165667b1 });
+export const ROSTER: RosterTunables = table.freeze({ always: "swarmer", floorsPerKind: 1, salt: 0x165667b1 });
 
 /**
  * Room enemies wider than half a tile (body radius > 0.5: the Ooze's 0.55, docs/ENEMY_VARIANTS.md EV0 item 14). A

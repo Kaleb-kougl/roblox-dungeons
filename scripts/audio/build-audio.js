@@ -33,7 +33,9 @@
  *
  * Usage: node scripts/audio/build-audio.js             build (refuses if a source is missing or differs from the lock)
  *        node scripts/audio/build-audio.js --lock      rewrite art/audio.lock.json from the files on disk
- *        node scripts/audio/build-audio.js --audition  rewrite art/audio-audition.html (measures picks + alternates)
+ *        node scripts/audio/build-audio.js --audition  rewrite art/audio-audition.html (measures picks + alternates;
+ *                                                      a checklist: tick the clip(s) to use, then Download picks.json)
+ *        node scripts/audio/build-audio.js --apply-picks <picks.json>   write the page's picks into art/audio.json
  * Plain Node plus ffmpeg / ffprobe on the PATH.
  */
 "use strict";
@@ -182,6 +184,16 @@ function clipSpec(entryId, clip) {
 		}
 	}
 	return { src: c.src, gainDb: c.gainDb ?? 0, trim: c.trim, mix: c.mix ?? [], lowpassHz: c.lowpassHz, fadeOutSec: c.fadeOutSec };
+}
+
+/** A clipSpec back in art/audio.json's form: the bare path when it has no options, else the object (src first). */
+function clipConfig(c) {
+	const o = { src: c.src };
+	if (c.gainDb !== 0) o.gainDb = c.gainDb;
+	if (c.trim !== undefined) o.trim = c.trim;
+	if (c.mix.length > 0) o.mix = c.mix;
+	if (c.lowpassHz !== undefined) o.lowpassHz = c.lowpassHz;
+	return Object.keys(o).length === 1 ? c.src : o;
 }
 
 const ENTRY_KEYS = ["category", "clips", "volume", "pitch", "minInterval", "gainDb", "silent", "confirmed", "alternates", "notes"];
@@ -711,7 +723,8 @@ function audition() {
 		return cache.get(rel);
 	};
 	const fmt = (x, d, unit) => (x === undefined || !Number.isFinite(x) ? "n/a" : `${x.toFixed(d)}${unit}`);
-	const row = (kind, category, clip, built) => {
+	const row = (kind, category, clip, built, id) => {
+		const use = `<label class="use"><input type="checkbox" class="use" data-id="${esc(id)}" data-clip="${esc(JSON.stringify(clipConfig(clip)))}"${kind === "pick" ? " checked" : ""}> use</label>`;
 		const layers = [clip.src, ...clip.mix];
 		const cells = layers.map((rel) => {
 			const a = get(rel);
@@ -728,19 +741,19 @@ function audition() {
 		if (clip.gainDb !== 0) opts.push(`gain ${clip.gainDb} dB`);
 		if (clip.mix.length > 0) opts.push("layers mixed");
 		const builtButton = built ? `<div class="clip built"><button data-src="${esc(`build/audio/${built}`)}">&#9654;</button> built <code>${esc(built)}</code> <span class="stats">(after npm run audio:build)</span></div>` : "";
-		return `<div class="${kind}">${cells.join("")}${opts.length > 0 ? `<div class="opts">${esc(opts.join(", "))}</div>` : ""}${builtButton}</div>`;
+		return `<div class="${kind} row">${use}<div class="body">${cells.join("")}${opts.length > 0 ? `<div class="opts">${esc(opts.join(", "))}</div>` : ""}${builtButton}</div></div>`;
 	};
 	const sections = [];
 	for (const s of sounds) {
 		const category = s.category ?? "sfx";
-		const head = `<h2 id="${esc(s.id)}"><code>${esc(s.id)}</code> <span class="cat">${esc(category)}</span> ${s.confirmed ? '<span class="ok">confirmed</span>' : '<span class="todo">not confirmed</span>'}</h2>`;
+		const head = `<h2 id="${esc(s.id)}"><code>${esc(s.id)}</code> <span class="cat">${esc(category)}</span> ${s.confirmed ? '<span class="ok">confirmed</span>' : '<span class="todo">not confirmed</span>'} <span class="mine" hidden>changed</span></h2>`;
 		const meta = s.silent
 			? '<p class="meta"><b>silent for now</b></p>'
 			: `<p class="meta">volume ${s.volume}${s.pitch ? `, pitch ${s.pitch.join("..")}` : ""}${s.minInterval !== undefined ? `, min interval ${s.minInterval} s` : ""}${s.gainDb !== 0 ? `, gain ${s.gainDb} dB` : ""}${s.clips.length > 1 ? `, ${s.clips.length} variants (round-robin)` : ""}</p>`;
-		const picks = s.silent ? "" : `<h3>Pick${s.clips.length > 1 ? "s" : ""}</h3>${s.clips.map((c, k) => row("pick", category, c, s.files[k])).join("")}`;
-		const alts = s.alternates.length > 0 ? `<h3>Alternates</h3>${s.alternates.map((c) => row("alt", category, c, undefined)).join("")}` : "";
+		const picks = s.silent ? "" : `<h3>Pick${s.clips.length > 1 ? "s" : ""}</h3>${s.clips.map((c, k) => row("pick", category, c, s.files[k], s.id)).join("")}`;
+		const alts = s.alternates.length > 0 ? `<h3>Alternates</h3>${s.alternates.map((c) => row("alt", category, c, undefined, s.id)).join("")}` : "";
 		const notes = s.notes ? `<p class="notes">${esc(s.notes)}</p>` : "";
-		sections.push(`<section>${head}${meta}${notes}${picks}${alts}</section>`);
+		sections.push(`<section data-id="${esc(s.id)}" data-silent="${s.silent ? 1 : 0}">${head}${meta}${notes}${picks}${alts}</section>`);
 	}
 	const toc = sounds.map((s) => `<a href="#${esc(s.id)}">${esc(s.id)}</a>`).join(" ");
 	const html = `<!doctype html>
@@ -769,12 +782,23 @@ section { background: var(--card); border: 1px solid var(--line); border-radius:
 button { width: 28px; height: 24px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); color: var(--fg); cursor: pointer; }
 button.playing { background: var(--accent); color: #fff; }
 code { font-size: 13px; }
+.row { display: flex; gap: 10px; align-items: flex-start; padding: 2px 0; }
+.row .body { flex: 1; min-width: 0; }
+label.use { white-space: nowrap; font-size: 12px; color: var(--dim); padding-top: 3px; cursor: pointer; }
+label.use input { width: 16px; height: 16px; vertical-align: -3px; margin: 0 4px 0 0; cursor: pointer; }
+.row:has(input.use:checked) .body code { font-weight: 600; color: var(--accent); }
+.mine { font-size: 12px; color: var(--bg); background: var(--accent); border-radius: 4px; padding: 0 6px; font-weight: normal; }
+.bar { position: sticky; top: 0; z-index: 1; display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; margin: 12px 0; }
+.bar button { width: auto; height: 28px; padding: 0 12px; }
+.bar label { cursor: pointer; } #status { color: var(--dim); font-size: 12px; }
+section.hide { display: none; }
 </style>
 </head>
 <body>
 <h1>Audio audition</h1>
-<p>Open this file from <code>art/</code> (the raw clips are read from <code>art/vendor/</code>, the built ones from <code>art/build/audio/</code>). Each sound ID shows the current pick(s) from <code>art/audio.json</code> and the plan's alternates (docs/FX_AUDIO.md). Measurements are of the raw clips: length, audible length (above ${esc(config.silence.thresholdDb)} dB), sample peak, integrated loudness. Edit <code>art/audio.json</code>, set <code>"confirmed": true</code> once a pick is settled, then <code>npm run audio:lock</code>, <code>npm run audio:build</code> and <code>npm run audio:audition</code>.</p>
+<p>Open this file from <code>art/</code> (the raw clips are read from <code>art/vendor/</code>, the built ones from <code>art/build/audio/</code>). Each sound ID shows the current pick(s) from <code>art/audio.json</code> and the plan's alternates (docs/FX_AUDIO.md). Measurements are of the raw clips: length, audible length (above ${esc(config.silence.thresholdDb)} dB), sample peak, integrated loudness. <b>Tick the clip(s) to use</b> for each sound (several ticked = variants, played round-robin; none ticked = silent). Your ticks are kept in this browser. Then <b>Download picks.json</b> and run <code>node scripts/audio/build-audio.js --apply-picks &lt;path to picks.json&gt;</code> (or send the file to Claude): it writes the ticked clips into <code>art/audio.json</code> as confirmed picks. Then <code>npm run audio:lock</code>, <code>npm run audio:build</code> and <code>npm run audio:audition</code>.</p>
 <p>${esc(sounds.length)} IDs. ${sounds.filter((s) => s.silent).length} silent. ${sounds.filter((s) => s.confirmed).length} confirmed.</p>
+<div class="bar"><span id="count"></span><label><input type="checkbox" id="onlyOpen"> only silent sounds (no pick yet)</label><button id="download">Download picks.json</button><button id="copy">Copy picks</button><button id="reset">Clear my ticks</button><span id="status"></span></div>
 <div class="toc">${toc}</div>
 ${sections.join("\n")}
 <script>
@@ -798,6 +822,69 @@ document.addEventListener("click", (e) => {
 	currentButton = b;
 	b.classList.add("playing");
 });
+// The checklist: ticks that differ from art/audio.json's picks, per sound ID, kept in this browser.
+const KEY = "kv-audition-picks-v1";
+const boxes = [...document.querySelectorAll("input.use")];
+const byId = new Map();
+for (const b of boxes) { if (!byId.has(b.dataset.id)) byId.set(b.dataset.id, []); byId.get(b.dataset.id).push(b); }
+const ticked = (id, def) => [...new Set(byId.get(id).filter((b) => (def ? b.defaultChecked : b.checked)).map((b) => b.dataset.clip))];
+const same = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
+let saved = {};
+try { saved = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { saved = {}; }
+const store = () => { try { localStorage.setItem(KEY, JSON.stringify(saved)); } catch (e) {} };
+for (const [id, list] of Object.entries(saved)) {
+	if (!byId.has(id)) { delete saved[id]; continue; }
+	for (const b of byId.get(id)) b.checked = list.includes(b.dataset.clip);
+}
+const onlyOpen = document.getElementById("onlyOpen");
+try { onlyOpen.checked = localStorage.getItem(KEY + ":open") === "1"; } catch (e) {}
+function refresh() {
+	let changed = 0;
+	for (const sec of document.querySelectorAll("section[data-id]")) {
+		const id = sec.dataset.id;
+		const mine = byId.has(id) && saved[id] !== undefined;
+		if (mine) changed++;
+		sec.querySelector(".mine").hidden = !mine;
+		sec.classList.toggle("hide", onlyOpen.checked && sec.dataset.silent !== "1" && !mine);
+	}
+	document.getElementById("count").textContent = changed === 1 ? "1 sound changed" : changed + " sounds changed";
+}
+document.addEventListener("change", (e) => {
+	const b = e.target;
+	if (b === onlyOpen) { try { localStorage.setItem(KEY + ":open", onlyOpen.checked ? "1" : "0"); } catch (err) {} refresh(); return; }
+	if (!b.matches("input.use")) return;
+	for (const o of byId.get(b.dataset.id)) if (o.dataset.clip === b.dataset.clip) o.checked = b.checked;
+	const now = ticked(b.dataset.id, false);
+	if (same(now, ticked(b.dataset.id, true))) delete saved[b.dataset.id]; else saved[b.dataset.id] = now;
+	store();
+	refresh();
+});
+function picksJson() {
+	const picks = {};
+	for (const id of Object.keys(saved).sort()) picks[id] = saved[id].map((c) => JSON.parse(c));
+	return JSON.stringify({ $comment: "Audio picks ticked on art/audio-audition.html. Apply: node scripts/audio/build-audio.js --apply-picks <this file>. An empty list makes the sound silent.", picks }, null, "\\t") + "\\n";
+}
+const status = (t) => { const el = document.getElementById("status"); el.textContent = t; setTimeout(() => { if (el.textContent === t) el.textContent = ""; }, 3000); };
+document.getElementById("download").addEventListener("click", () => {
+	if (Object.keys(saved).length === 0) { status("nothing ticked differs from audio.json"); return; }
+	const a = document.createElement("a");
+	a.href = URL.createObjectURL(new Blob([picksJson()], { type: "application/json" }));
+	a.download = "picks.json";
+	document.body.appendChild(a); a.click(); a.remove();
+	status("downloaded picks.json");
+});
+document.getElementById("copy").addEventListener("click", () => {
+	const text = picksJson();
+	const fallback = () => { const t = document.createElement("textarea"); t.value = text; document.body.appendChild(t); t.select(); try { document.execCommand("copy"); status("copied"); } catch (e) { status("copy failed: use Download"); } t.remove(); };
+	if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(() => status("copied"), fallback); else fallback();
+});
+document.getElementById("reset").addEventListener("click", () => {
+	saved = {}; store();
+	for (const b of boxes) b.checked = b.defaultChecked;
+	refresh();
+	status("cleared");
+});
+refresh();
 </script>
 </body>
 </html>
@@ -806,7 +893,57 @@ document.addEventListener("click", (e) => {
 	console.log(`audio:audition: ${sounds.length} sound ID(s), ${cache.size} clip(s) measured -> ${path.relative(ROOT, AUDITION_FILE)}${changed ? "" : " (unchanged)"}`);
 }
 
+/**
+ * --apply-picks <file>: the audition page's picks.json into art/audio.json. Per sound ID, a non-empty list becomes
+ * its "clips" (drops "silent", sets "confirmed": true, takes the picks out of "alternates"); an empty list makes it
+ * silent (its old clips join the front of "alternates", "confirmed": false). Other keys and IDs are untouched.
+ */
+function applyPicks(file) {
+	if (!file || !fs.existsSync(file)) fail(`--apply-picks: give the picks.json file (got ${file ?? "nothing"})`);
+	const picks = JSON.parse(fs.readFileSync(file, "utf8")).picks;
+	if (!picks || typeof picks !== "object") fail(`${file}: no "picks" object`);
+	const config = JSON.parse(fs.readFileSync(CONFIG_FILE, "utf8"));
+	const key = (id, c) => JSON.stringify(clipConfig(clipSpec(id, c)));
+	const done = [];
+	for (const id of Object.keys(picks).sort()) {
+		const e = config.sounds[id];
+		if (!e) fail(`${file}: ${id} is not in art/audio.json`);
+		const list = picks[id];
+		if (!Array.isArray(list)) fail(`${file}: ${id} must list clips`);
+		const chosen = list.map((c) => clipConfig(clipSpec(id, c)));
+		const out = {};
+		for (const k of Object.keys(e)) if (k.startsWith("$")) out[k] = e[k];
+		const category = e.category ?? (id.startsWith("music.") ? "music" : id.startsWith("amb.") ? "ambience" : "sfx");
+		let alternates;
+		if (chosen.length > 0) {
+			const picked = new Set(chosen.map((c) => key(id, c)));
+			alternates = [...(e.clips ?? []), ...(e.alternates ?? [])].filter((c) => !picked.has(key(id, c)));
+		} else {
+			alternates = [...(e.clips ?? []), ...(e.alternates ?? [])];
+		}
+		const seen = new Set();
+		alternates = alternates.filter((c) => { const k = key(id, c); if (seen.has(k)) return false; seen.add(k); return true; });
+		out.category = category;
+		if (chosen.length > 0) out.clips = chosen;
+		for (const k of ["volume", "pitch", "minInterval", "gainDb"]) if (e[k] !== undefined) out[k] = e[k];
+		if (chosen.length === 0) out.silent = true;
+		if (alternates.length > 0) out.alternates = alternates;
+		if (e.notes !== undefined) out.notes = e.notes;
+		out.confirmed = chosen.length > 0;
+		config.sounds[id] = out;
+		done.push(`${id}: ${chosen.length > 0 ? chosen.map((c) => (typeof c === "string" ? c : c.src)).join(" + ") : "silent"}${chosen.length > 0 && e.volume === undefined ? " (volume 1: set it in the mix pass)" : ""}`);
+	}
+	fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, "\t") + "\n");
+	loadConfig();
+	console.log(`audio:apply-picks: ${done.length} sound ID(s) in art/audio.json\n  ${done.join("\n  ")}\nNext: npm run audio:lock, npm run audio:build, npm run audio:audition.`);
+}
+
 function main() {
+	const applyAt = process.argv.indexOf("--apply-picks");
+	if (applyAt >= 0) {
+		applyPicks(process.argv[applyAt + 1]);
+		return;
+	}
 	if (process.argv.includes("--lock")) {
 		writeLock(loadConfig().sounds);
 		return;

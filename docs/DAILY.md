@@ -4,7 +4,7 @@ Goal: more reasons to come back, and a payoff every time you do. Two parts:
 
 1. **Seeded rosters (every endless run).** The run seed already picks the layout and the boss. It now also picks
    **which enemy kinds** the run meets: floor 1 is always **swarmers + one seeded kind**, and one more seeded kind joins
-   every two floors. Each seed has its own character ("an Imp run", "a Bruiser run"), and a new kind joining is a moment
+   every floor (every two floors until DSD18). Each seed has its own character ("an Imp run", "a Bruiser run"), and a new kind joining is a moment
    on the stairwell card.
 2. **The Daily.** One seed per day, the same for everyone, with its own **daily leaderboards** (solo and co-op). Play
    it as often as you like; your best run of the day counts. Around it: a **result card** with today's rank and
@@ -92,8 +92,8 @@ endlessRoster(runSeed, floor) -> ReadonlySet<string>
 
 - **Order.** One Fisher-Yates shuffle of the non-swarmer room kinds (`ENDLESS_ROOM_KINDS` minus `swarmer`, in table
   order) from `new EncounterRng(u32(runSeed) ^ ROSTER.salt)`: 4 draws for 5 kinds, once per run (cached by run seed).
-- **Growth (DSD2).** Target size at floor f: `1 + floor((f - 1) / ROSTER.floorsPerKind)` other kinds (`floorsPerKind` 2:
-  floors 1-2 one, 3-4 two, 5-6 three, 7-8 four, 9+ five), capped at the number of kinds.
+- **Growth (DSD2, DSD18).** Target size at floor f: `1 + floor((f - 1) / ROSTER.floorsPerKind)` other kinds, capped at
+  the number of kinds (`floorsPerKind` 1 since DSD18: f kinds on floor f, all ten by floor 10; it was 2).
 - **Monotonic build.** roster(f) = roster(f - 1) plus, while it is below the target, the first kind in the order that
   is **not yet in** and **unlocked at f** (`fromFloor`). A kind never leaves the roster. If nothing unlocked is left, the
   roster waits for the next unlock (e.g. the summoner at 6). Swarmers are always in (`ROSTER.always`).
@@ -101,7 +101,7 @@ endlessRoster(runSeed, floor) -> ReadonlySet<string>
   the spender, placement, packs or wide-body rules changes. `endlessRoomSpawns(d, floor, partySize, roster)`;
   `buildEndlessFloor` computes the roster and stores it on `EndlessFloorLayout.roster` (the view reads it) and passes
   it down.
-- **Data.** `ROSTER` in `endlessData.ts`: `always: "swarmer"`, `floorsPerKind: 2`, `salt: 0x165667b1`. No magic numbers
+- **Data.** `ROSTER` in `endlessData.ts`: `always: "swarmer"`, `floorsPerKind: 1` (2 until DSD18), `salt: 0x165667b1`. No magic numbers
   in `endless.ts`.
 - **What moves.** Room spawns on every endless floor, so breakables (they keep clear of spawns) and affixes (stamped per
   spawn). Not the layout, digest, props, boss pick, spawn point or stairwell. Endless replays and scores change;
@@ -422,6 +422,17 @@ Owner (2026-11-11, Kaleb):
   `daily/daily.spec` (the daily world vs endless), `run/stageInput.spec` (daily forecast). The menu / lobby first-floor
   guess (`forecastFirstFloor`, a prefetch hint with no seed) still lists floor 1's unlocked kinds only; a Daily's
   other floor-1 kind draws as a stand-in until its art loads.
+- **DSD18. Every endless world drops the unlock floors, and one new kind joins every floor** (supersedes DSD9 for
+  endless and dev, and DSD2's every-2-floors pace for every world). Floor 1 is swarmers plus ONE seeded kind that may be
+  any of the ten room kinds (never a turret, a boss, the training dummy or the Goldling; no elite affix before floor 4);
+  the run seed's shuffle (`rosterOrder`) alone decides which kind joins on each floor, so the "unlock floor" of each
+  kind is its place in that run's order: the full roster on floor 10 (was floor 19). Built as shared/run
+  `ENDLESS_ROSTER_UNLOCK_FLOORS` false (`rosterUnlockFloors` endless / dev, `buildEndlessRunConfig`'s default; the Daily
+  keeps `DAILY.rosterUnlockFloors` false) and `ROSTER.floorsPerKind` 2 -> 1 (every world, also the DSD9 path that
+  specs and tools still reach with `unlockFloors` true). The menu / lobby first-floor guess (`forecastFirstFloor`) now
+  lists every room kind for the endless / dev / daily worlds. Endless, dev and daily replays and scores change from
+  floor 1 (all-time boards stay `_v1`, DSD10); `DAILY.ruleset` 16 -> 17 (floor modifiers took 16). M1, every fixture and the tutorial unchanged.
+  Specs: `dungeon/roster.spec`, `run/dailyRoster.spec`, `run/stageInput.spec` and the pins the new rooms moved.
 
 ## Risks
 

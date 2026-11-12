@@ -55,6 +55,35 @@ function findFortuneFloor(party: number): [number, number] {
 	error(`no floor with altars and a Goldling for a party of ${party} (seeds 1-200, floors 2-9)`, 0);
 }
 
+/**
+ * Room kinds that never spawn a bullet (cloneSimState refuses a run that has spawned one): a room holding only these
+ * can be fought while the twin below is cloned.
+ */
+const BULLETLESS_KINDS: ReadonlyArray<string> = ["swarmer", "charger"];
+
+/** The first room of `w` with spawns, all of BULLETLESS_KINDS (-1: none). */
+function bulletlessRoom(w: EndlessRunFloor): number {
+	return w.roomSpawns.findIndex((l) => l.size() > 0 && l.every((sp) => BULLETLESS_KINDS.includes(sp.kind)));
+}
+
+/**
+ * findFortuneFloor(party)'s rule, also wanting a bulletless room (bulletlessRoom) on the floor and the floor before:
+ * which kinds a floor's rooms hold is the run's roster (docs/DAILY.md DSD18), so the first fortune floor may hold only
+ * shooters.
+ */
+function findQuietFortuneFloor(party: number): [number, number] {
+	for (let seed = 1; seed <= 400; seed++) {
+		const setup = pactsSetup(seed, party);
+		for (let floor = 2; floor <= 9; floor++) {
+			const w = setup.endlessFloor(floor);
+			if (w.pactAltars === undefined || w.golden === undefined || w.roomSpawns[w.golden.room].size() === 0)
+				continue;
+			if (bulletlessRoom(w) >= 0 && bulletlessRoom(setup.endlessFloor(floor - 1)) >= 0) return [seed, floor];
+		}
+	}
+	error(`no quiet floor with altars and a Goldling for a party of ${party} (seeds 1-400, floors 2-9)`, 0);
+}
+
 interface Run {
 	readonly setup: EndlessRunSetup;
 	readonly s: SimState;
@@ -323,7 +352,7 @@ describe("holdAbsoluteTimers invariants", () => {
 	});
 
 	it("with pacts: a no-op on every frozen tick of a run whose drafts all open on a floor change", () => {
-		const [seed, floor] = findFortuneFloor(1);
+		const [seed, floor] = findQuietFortuneFloor(1);
 		const r = newRun(seed, floor - 1, 1);
 		let checked = 0;
 		const checkedTick = (input: (i: number) => InputFrame = () => frame(0, 0)) => {
@@ -339,7 +368,7 @@ describe("holdAbsoluteTimers invariants", () => {
 		for (let f = floor - 1; f <= floor; f++) {
 			expect(r.s.endless!.floor).toBe(f);
 			const w = r.setup.endlessFloor(f);
-			const room = w.roomSpawns.findIndex((l) => l.size() > 0);
+			const room = bulletlessRoom(w);
 			const rm = w.config.encounter!.rooms[room];
 			teleport(r.s, 0, rm.cx, rm.cz);
 			for (let k = 0; k < 30; k++) checkedTick();

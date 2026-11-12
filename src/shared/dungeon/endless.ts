@@ -14,8 +14,9 @@
  *   roster        the room kinds the run meets on the floor (endlessRoster): swarmers plus seeded kinds, one more
  *                 every ROSTER.floorsPerKind floors, from the run seed's own stream hash(run seed, ROSTER.salt); it
  *                 only closes kinds in the spender, so the layout, digest, props, boss pick, spawn and stairwell never
- *                 depend on it. The Daily ignores the unlock floors (EndlessFloorOptions.unlockFloors false,
- *                 shared/daily DAILY.rosterUnlockFloors): the seed's order alone decides when each kind joins
+ *                 depend on it. Every endless world ignores the unlock floors (EndlessFloorOptions.unlockFloors
+ *                 false: shared/run rosterUnlockFloors, docs/DAILY.md DSD17 / DSD18): the seed's order alone decides
+ *                 which kind joins on each floor
  *   room enemies  per combat / elite room: ENCOUNTER_BUDGET spent by ENCOUNTER_COST from the room's own encounter rng
  *                 (encounterRoomSeed(dungeon seed, room id), as placeEncounter does) on the kinds open on the floor
  *                 (ENDLESS_ROOM_KINDS fromFloor / maxPerRoom, docs/ENEMY_VARIANTS.md EV5) that are in the run's
@@ -221,9 +222,9 @@ function kindUnlockFloor(kind: string): number {
  * and exactly one seeded kind, which is a sniper or a bruiser (the only kinds unlocked there). Pure and cheap (one
  * shuffle, at most floor x kinds steps, none past a full roster); nothing is cached.
  *
- * `unlockFloors` false (the Daily, shared/daily DAILY.rosterUnlockFloors): the unlock floors are ignored, so each join
- * is simply the next kind of rosterOrder(runSeed) and floor 1's seeded kind may be any of them; the roster never waits.
- * True (default): exactly the rule above.
+ * `unlockFloors` false (every endless world since docs/DAILY.md DSD18: shared/run rosterUnlockFloors): the unlock
+ * floors are ignored, so each join is simply the next kind of rosterOrder(runSeed) and floor 1's seeded kind may be
+ * any of them; the roster never waits. True (the default, specs and tools only): exactly the rule above.
  */
 export function endlessRoster(runSeed: number, floor: number, unlockFloors = true): string[] {
 	const order = rosterOrder(runSeed);
@@ -250,7 +251,7 @@ export function endlessRoster(runSeed: number, floor: number, unlockFloors = tru
  * True when a room on `floor` that has already bought `bought` (count per kind; `boughtTotal` enemies in all) may buy
  * kind `k`: from its unlock floor (EndlessRoomKind.fromFloor), below its room maximum (maxPerRoom), not as the room's
  * first buy when it needsCompany (docs/NEW_ENEMIES.md NED9) and, with a `roster` (endlessRoster), in it. Draws nothing.
- * `unlockFloors` false (the Daily): the unlock floor is not checked (the roster alone gates the kind).
+ * `unlockFloors` false (every endless world): the unlock floor is not checked (the roster alone gates the kind).
  */
 function roomKindOpen(
 	k: EndlessRoomKind,
@@ -275,7 +276,8 @@ function roomKindOpen(
  * the affordable open kinds (ENDLESS_ROOM_KINDS) that cost at least budget-left / slots-left (so a big budget buys
  * dearer enemies instead of running out of slots), drawn by weight with one rng draw; when none of them is that dear,
  * the dearest affordable open kind (no draw). Stops when nothing is affordable or the cap is reached.
- * `unlockFloors` false (the Daily, with its roster): kinds open whatever their unlock floor; true (default): as above.
+ * `unlockFloors` false (every endless world, with its roster): kinds open whatever their unlock floor; true (default):
+ * as above.
  */
 export function spendEncounterBudget(
 	rng: DungeonRng,
@@ -377,8 +379,8 @@ export function populateEndlessRoom(
 /**
  * Every room's deferred enemies on `floor` for a party of `partySize` (index = room id; empty for the entrance, the
  * boss room and non-combat rooms), buying only the kinds in `roster` (endlessRoster of the run and floor; every real
- * endless floor passes it, buildEndlessFloor; absent, in specs only: every unlocked kind). `unlockFloors` false: the
- * Daily's rule (spendEncounterBudget).
+ * endless floor passes it, buildEndlessFloor; absent, in specs only: every unlocked kind). `unlockFloors` false: every
+ * endless world's rule since docs/DAILY.md DSD18 (spendEncounterBudget).
  */
 export function endlessRoomSpawns(
 	d: Dungeon,
@@ -532,7 +534,8 @@ export interface EndlessFloorOptions {
 	readonly vaultOverride?: VaultOverride;
 	/**
 	 * False: the roster ignores the room kinds' unlock floors (endlessRoster / spendEncounterBudget `unlockFloors`):
-	 * the Daily (shared/daily DAILY.rosterUnlockFloors). Absent or true: every other endless world, exactly as before.
+	 * every endless world (shared/run rosterUnlockFloors, docs/DAILY.md DSD17 / DSD18). Absent or true: the DSD9 rule
+	 * (specs and tools).
 	 */
 	readonly unlockFloors?: boolean;
 	/**

@@ -73,6 +73,7 @@ describe("floor modifiers: the endless worlds (FM4)", () => {
 					const w = setup.endlessFloor(f);
 					const want = buildEndlessFloor(seed, f, endlessDungeon, party, {
 						vaults: true,
+						unlockFloors: rosterUnlockFloors(ENDLESS_WORLD_KIND),
 						modifiers: ENDLESS_MODIFIER_WORLD,
 					});
 					expect(w.layout.modifier).toBe(want.modifier);
@@ -157,7 +158,10 @@ describe("floor modifiers: the dev world's KV_FloorModifier (FM4)", () => {
 		let forcedFloors = 0;
 		for (let f = MODIFIERS.fromFloor; f <= LAST; f++) {
 			const w = forced.endlessFloor!(f);
-			const natural = buildEndlessFloor(seed, f, endlessDungeon, 1, { vaults: true });
+			const natural = buildEndlessFloor(seed, f, endlessDungeon, 1, {
+				vaults: true,
+				unlockFloors: rosterUnlockFloors(DEV_WORLD_KIND),
+			});
 			if (w.modifier === FloorModifier.PLUNDER) {
 				forcedFloors++;
 				// Every room with a lootable piece holds one loaded piece (the vault's chest is never loaded).
