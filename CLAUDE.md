@@ -462,6 +462,9 @@ Decision log (deviations from `PLAN.md`):
   roster ignores the unlock floors (`DAILY.rosterUnlockFloors` false, shared/run `rosterUnlockFloors(world)`,
   `endlessRoster(seed, floor, unlockFloors)` / the spender's `unlockFloors`): the day's seed alone orders the pool, floor
   1's seeded kind any of the ten; daily replays changed, `DAILY.ruleset` 14 -> 15; endless / dev keep DSD9.
+  **DSD18 (2026-11-11):** endless and dev follow the same rule (shared/run `ENDLESS_ROSTER_UNLOCK_FLOORS` false), and
+  one new seeded kind joins every floor in every world (`ROSTER.floorsPerKind` 2 -> 1: full roster on floor 10, was
+  19); endless, dev and daily replays and scores changed from floor 1 (boards stay `_v1`), `DAILY.ruleset` 15 -> 16.
 - **Localization (docs/LOCALIZATION.md).** Presentation and tooling only (no sim, dungeon, lockstep, hash, replay,
   fixture or score change). `shared/l10n`: `LOCALES` (English live; the 17 targets and pseudo-locale `en-XA` hidden
   until each passes the LD12 gate), `pickLocale` / `resolveLocaleState` (Roblox ids `[Player.LocaleId,

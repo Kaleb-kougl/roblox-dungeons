@@ -29,7 +29,8 @@ export interface DailyConfig {
 	/**
 	 * Whether the Daily's seeded roster keeps the room kinds' unlock floors (shared/dungeon ROOM_KIND_UNLOCK_FLOOR,
 	 * DSD9). False (owner, 2026-11-11, DSD17): the day's seed alone orders the pool, so floor 1's seeded kind may be any
-	 * of the ten and every later join is the next kind of the shuffle. Other endless worlds always keep them.
+	 * of the ten and every later join is the next kind of the shuffle. Endless and dev follow the same rule since DSD18
+	 * (shared/run ENDLESS_ROSTER_UNLOCK_FLOORS).
 	 */
 	readonly rosterUnlockFloors: boolean;
 }
@@ -57,7 +58,9 @@ export const DAILY: DailyConfig = table.freeze({
 	// 14: the Archer (docs/ARCHER.md ARD11): a character per run (the Knight sword only, the Archer bow only with a
 	// longer roll), weapon-tagged drafts; every endless run plays and draws differently.
 	// 15: the Daily's roster ignores the unlock floors (docs/DAILY.md DSD17, rosterUnlockFloors): daily rooms change.
-	ruleset: 15,
+	// 16: one new seeded kind every floor, not every 2 (docs/DAILY.md DSD18, ROSTER.floorsPerKind 2 -> 1): daily rooms
+	// change from floor 2.
+	ruleset: 16,
 	labelOffset: 1,
 	yesterdayCacheSeconds: 600,
 	minEntrantsForPercentile: 20,

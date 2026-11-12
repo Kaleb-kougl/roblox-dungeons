@@ -433,6 +433,9 @@ describe("treasure open: where the boosts land (C1)", () => {
 		unlock(r, 2); // Common: 4 boosts, 4 slots
 		const t = T(r);
 		const d = r.s.drops!;
+		// The room's kills may have rolled a kill drop (which kinds the room holds is the run's roster, docs/DAILY.md
+		// DSD18): pick it off the ground so the chest lands on an empty one.
+		for (const g of d.ground) g.kind = NO_BOOST;
 		const e = open(r);
 		expect(d.events.fromChest).toEqual([0, 1, 2, 3]);
 		expect([e.grants[0].slots, e.grants[1].slots]).toEqual([

@@ -30,6 +30,11 @@
 // clear solid pillars) wall and clear more cells, so the roster digests were re-recorded again (2026-11-08); spawn counts
 // are unchanged, only tiles moved. Before: floor 1 a74a7abe / 08a7ee67 / 05962732 / 2d0f27a6, floors 2-6 a5d6f0a0 /
 // 79e8d2f7 / 27f499ad / 4d99fd04 / 7f0114b5.
+//
+// docs/DAILY.md DSD18 (2026-11-11): every endless world's roster ignores the unlock floors and grows by one kind a floor
+// (ROSTER.floorsPerKind 2 -> 1), so the roster digests now spend as real floors do (endlessRoster(run, floor, false)
+// and the spender's `unlockFloors` false) and were re-recorded; spawn counts moved with the kinds bought. Before:
+// floor 1 9ecc5ec5 / 6faff1e6 / 1cb6a304 / 0d9cee9a, floors 2-6 5be5f164 / 322d4ac5 / 6aafc720 / 966461e5 / 701fddff.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { imul } from "shared/jsmath";
 import { endlessFloorParams, endlessRoomSpawns, endlessRoster, generateDungeon, type ActorSpawn } from "shared/dungeon";
@@ -65,7 +70,10 @@ function digests(
 	for (let run = first; run <= last; run++) {
 		const d = generateDungeon({ ...endlessFloorParams(run, floor), solidDecor: solid });
 		for (let p = 0; p < parties.size(); p++) {
-			const rooms = endlessRoomSpawns(d, floor, parties[p], roster ? endlessRoster(run, floor) : undefined);
+			// A real floor's roster rule (docs/DAILY.md DSD18): no unlock floors in the roster or the spender.
+			const rooms = roster
+				? endlessRoomSpawns(d, floor, parties[p], endlessRoster(run, floor, false), false)
+				: endlessRoomSpawns(d, floor, parties[p]);
 			h[p] = foldFloor(h[p], rooms);
 			for (const r of rooms) n[p] += r.size();
 		}
@@ -118,15 +126,14 @@ describe("endless room pool lock (EV5)", () => {
 	});
 
 	it("seeded roster: floor 1, run seeds 1-200, party 1-4 (re-recorded for docs/NEW_ENEMIES.md NE7, solid decor, room themes, bookcases, reading areas and Kenney decor)", () => {
-		// Floor 1 still buys swarmers and one sniper or bruiser, but the reshuffled order picks the other one for many
-		// run seeds. Before NE7 (docs/DAILY.md DSD1): party 1 7384 spawns 1f360722, party 4 13885 spawns 47d57a83.
+		// Floor 1 buys swarmers and one seeded kind, any of the ten since DSD18 (before: a sniper or a bruiser). Before NE7 (docs/DAILY.md DSD1): party 1 7384 spawns 1f360722, party 4 13885 spawns 47d57a83.
 		const got = digests(1, 1, 200, [1, 2, 3, 4], true);
 		for (const line of got) print(`[room pool lock] roster ${line}`);
 		expect(got).toEqual([
-			"floor 1 party 1: 7421 spawns, 9ecc5ec5",
-			"floor 1 party 2: 9724 spawns, 6faff1e6",
-			"floor 1 party 3: 11991 spawns, 1cb6a304",
-			"floor 1 party 4: 13912 spawns, 0d9cee9a",
+			"floor 1 party 1: 7619 spawns, 98ab5221",
+			"floor 1 party 2: 10097 spawns, b07d6232",
+			"floor 1 party 3: 12614 spawns, fde7e2ba",
+			"floor 1 party 4: 15115 spawns, 568217ff",
 		]);
 	});
 
@@ -135,11 +142,11 @@ describe("endless room pool lock (EV5)", () => {
 		for (let floor = 2; floor <= 6; floor++) got.push(digests(floor, 1, 40, [1], true)[0]);
 		for (const line of got) print(`[room pool lock] roster ${line}`);
 		expect(got).toEqual([
-			"floor 2 party 1: 1734 spawns, 5be5f164",
-			"floor 3 party 1: 1699 spawns, 322d4ac5",
-			"floor 4 party 1: 1929 spawns, 6aafc720",
-			"floor 5 party 1: 1920 spawns, 966461e5",
-			"floor 6 party 1: 2471 spawns, 701fddff",
+			"floor 2 party 1: 1547 spawns, 7c499ec9",
+			"floor 3 party 1: 1544 spawns, 057d63aa",
+			"floor 4 party 1: 1671 spawns, 0cbeb84a",
+			"floor 5 party 1: 1778 spawns, e6a20dc1",
+			"floor 6 party 1: 2195 spawns, c99ebb14",
 		]);
 	});
 });

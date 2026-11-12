@@ -684,6 +684,9 @@ const PIN_COUNTS = [3, 0, 2, 3, 0];
 // Re-recorded for Kenney decor's Forge pieces (docs/KENNEY_DECOR.md KN5-KN8): floor 3 lays out differently (library v2,
 // mess halls, store stock; free-standing pieces clear solid pillars), so the pinned charger meets other walls: 3 lanes
 // (3 draws) with 2 clean recovers, no stun, no piece broken. Before: 3422aa24, counts [5, 4, 1, 5, 3].
-const PIN_HASH = "1a65fa83"; // check-asset-ids: allow (state hash)
+// Re-recorded for docs/DAILY.md DSD18 (every endless roster without unlock floors, one new kind a floor): floor 3's
+// other rooms buy other kinds, so its spawns, breakables and state hash moved; the counts and the layout did not.
+// Before: 1a65fa83.
+const PIN_HASH = "7414ecc5"; // check-asset-ids: allow (state hash)
 const PIN_ARENA = [12, STATE_RETURN, 11.062568325627446, 8, 3663131635];
 const PIN_ARENA_HASH = "80069968"; // check-asset-ids: allow (state hash)
