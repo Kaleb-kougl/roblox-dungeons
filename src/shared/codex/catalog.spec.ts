@@ -276,13 +276,12 @@ describe("codex catalog: content", () => {
 });
 
 describe("codex catalog: strings", () => {
-	it("every name and existing description key is in both bundled packs", () => {
+	it("every name and description key is in both bundled packs (the codex-only ones since CX5)", () => {
 		const packIds = ["placeholder", "vale"];
 		for (const packId of packIds) {
 			const strings = THEME_PACKS[packId].strings;
 			for (const e of CODEX_CATALOG) {
 				expect([packId, e.nameKey, typeIs(strings[e.nameKey], "string")]).toEqual([packId, e.nameKey, true]);
-				if (e.descKey.sub(1, CODEX_DESC_PREFIX.size()) === CODEX_DESC_PREFIX) continue;
 				expect([packId, e.descKey, typeIs(strings[e.descKey], "string")]).toEqual([packId, e.descKey, true]);
 			}
 		}

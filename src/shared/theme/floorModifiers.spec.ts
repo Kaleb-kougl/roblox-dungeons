@@ -5,6 +5,7 @@
 // sits near the 200-locals limit), so these specs are what keeps floorModifiers.ts and contract.ts in step.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { FloorModifierClass, MODIFIERS } from "shared/dungeon";
+import { CODEX_AUDIO_IDS, CODEX_STRING_KEYS } from "./codex";
 import { colorDifference, contrastRatio } from "./color";
 import { PORT_AUDIO_EVENTS, REQUIRED_ASSET_IDS, REQUIRED_STRING_KEYS, slotFor } from "./contract";
 import {
@@ -43,14 +44,22 @@ const quiet = () => {};
 const has = (list: ReadonlyArray<string>, id: string) => list.includes(id);
 const clone = () => deepClone(PLACEHOLDER_MANIFEST) as unknown as Obj;
 
-/** The last `n` entries of `list`, in order. */
-/** The last `n` entries of `list` before its last `skip` (docs/GOLDLING_RUMOURS.md GR6 / GR7's come after), in order. */
+/** The last `n` entries of `list` before its last `skip` (later features' entries), in order. */
 function tail(list: ReadonlyArray<string>, n: number, skip = 0): string[] {
 	const out = new Array<string>();
 	const last = list.size() - skip;
 	for (let i = last - n; i < last; i++) out.push(list[i]);
 	return out;
 }
+
+/**
+ * What comes after the floor modifiers' entries: docs/GOLDLING_RUMOURS.md GR6 / GR7's two sounds and two strings, then
+ * claude/codex-plan.md CX5's sound and strings (codex.spec.ts).
+ */
+const LATER_AFTER = {
+	audio: GOLDEN_RUMOUR_AUDIO_IDS.size() + CODEX_AUDIO_IDS.size(),
+	strings: GOLDEN_RUMOUR_STRING_KEYS.size() + CODEX_STRING_KEYS.size(),
+} as const;
 
 describe("floor modifiers: theme keys", () => {
 	it("the keys are shared/dungeon MODIFIERS.kinds' keys, in order; the twists are its TWIST class", () => {
@@ -70,14 +79,14 @@ describe("floor modifiers: theme keys", () => {
 		]);
 	});
 
-	it("the strings: REQUIRED_STRING_KEYS' eleven before the Goldling rumours' (name and line per kind, the pause line), every pack fills them", () => {
+	it("the strings: REQUIRED_STRING_KEYS' eleven before the Goldling rumours' and the Codex's (name and line per kind, the pause line), every pack fills them", () => {
 		const keys = new Array<string>();
 		for (const k of FLOOR_MODIFIER_KEYS) keys.push(floorModifierNameKey(k), floorModifierLineKey(k));
 		keys.push(FLOOR_MODIFIER_PAUSE_KEY);
 		expect(keys).toEqual([...FLOOR_MODIFIER_STRING_KEYS]);
-		expect(tail(REQUIRED_STRING_KEYS, FLOOR_MODIFIER_STRING_KEYS.size(), GOLDEN_RUMOUR_STRING_KEYS.size())).toEqual(
-			[...FLOOR_MODIFIER_STRING_KEYS],
-		);
+		expect(tail(REQUIRED_STRING_KEYS, FLOOR_MODIFIER_STRING_KEYS.size(), LATER_AFTER.strings)).toEqual([
+			...FLOOR_MODIFIER_STRING_KEYS,
+		]);
 		expect(new Set(REQUIRED_STRING_KEYS).size()).toBe(REQUIRED_STRING_KEYS.size());
 		// a string key's first segment is lowercase (`floormod.`), unlike the colour role (`floorMod.`)
 		for (const k of FLOOR_MODIFIER_STRING_KEYS) expect([k, isStringKey(k)]).toEqual([k, true]);
@@ -140,7 +149,7 @@ describe("floor modifiers: theme keys", () => {
 			"sfx.floor.modifier.bloodmoon",
 		]);
 		expect(FLOOR_MODIFIER_AUDIO_PREFIX).toBe("sfx.floor.modifier.");
-		expect(tail(PORT_AUDIO_EVENTS, FLOOR_MODIFIER_AUDIO_IDS.size(), GOLDEN_RUMOUR_AUDIO_IDS.size())).toEqual([
+		expect(tail(PORT_AUDIO_EVENTS, FLOOR_MODIFIER_AUDIO_IDS.size(), LATER_AFTER.audio)).toEqual([
 			...FLOOR_MODIFIER_AUDIO_IDS,
 		]);
 		for (const id of FLOOR_MODIFIER_AUDIO_IDS) {

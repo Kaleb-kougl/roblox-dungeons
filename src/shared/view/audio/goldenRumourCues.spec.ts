@@ -16,7 +16,7 @@ import {
 	type SimEvents,
 	type SimState,
 } from "shared/sim";
-import { GOLDEN_RUMOUR_AUDIO_IDS, PORT_AUDIO_EVENTS, REQUIRED_ASSET_IDS } from "shared/theme";
+import { CODEX_AUDIO_IDS, GOLDEN_RUMOUR_AUDIO_IDS, PORT_AUDIO_EVENTS, REQUIRED_ASSET_IDS } from "shared/theme";
 import { NO_BOOST_EVENTS } from "shared/view/boosts";
 import { FxEventBuffer, NO_BUILD_FX_EVENTS, NO_COMBO_EVENTS, NO_VARIANT_CUES } from "shared/view/fx";
 import {
@@ -132,10 +132,11 @@ function intoRoom(s: SimState): void {
 }
 
 describe("audio: the Goldling's rumours (docs/GOLDLING_RUMOURS.md GR6)", () => {
-	it("the IDs: the theme's two rumours, last in PORT_AUDIO_EVENTS, in ALL_SFX and PORT_SFX, required", () => {
+	it("the IDs: the theme's two rumours, last in PORT_AUDIO_EVENTS before the Codex's, in ALL_SFX and PORT_SFX, required", () => {
 		expect([...RUMOURS]).toEqual(["sfx.golden.rumour.floor", "sfx.golden.rumour.room"]);
 		expect([...RUMOURS]).toEqual([...GOLDEN_RUMOUR_AUDIO_IDS]);
-		const n = PORT_AUDIO_EVENTS.size();
+		// claude/codex-plan.md CX5's sound comes after them (codex.spec.ts)
+		const n = PORT_AUDIO_EVENTS.size() - CODEX_AUDIO_IDS.size();
 		expect([PORT_AUDIO_EVENTS[n - 2], PORT_AUDIO_EVENTS[n - 1]]).toEqual([...RUMOURS]);
 		for (const id of RUMOURS) {
 			expect([id, ALL_SFX.includes(id), PORT_SFX.includes(id), REQUIRED_ASSET_IDS.includes(id)]).toEqual([

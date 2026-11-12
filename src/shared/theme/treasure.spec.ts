@@ -7,6 +7,7 @@
 // step.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { VaultLock, VaultTier } from "shared/dungeon";
+import { CODEX_AUDIO_IDS, CODEX_STRING_KEYS } from "./codex";
 import { colorDifference, contrastRatio } from "./color";
 import {
 	BIOMES,
@@ -86,12 +87,22 @@ function tail(list: ReadonlyArray<string>, n: number, skip = 0): string[] {
 
 /**
  * Entries docs/FORTUNE.md FO6 appended after the treasure rooms' (fortune.spec.ts checks them), then docs/FLOOR_MODIFIERS.md
- * FM7's (floorModifiers.spec.ts), then docs/GOLDLING_RUMOURS.md GR6's two sounds.
+ * FM7's (floorModifiers.spec.ts), then docs/GOLDLING_RUMOURS.md GR6's two sounds and GR7's two strings, then
+ * claude/codex-plan.md CX5's sound and strings (codex.spec.ts).
  */
 const FORTUNE_AFTER = {
 	assets: 1,
 	roles: FORTUNE_ROLES.size() + FLOOR_MODIFIER_ROLES.size(),
-	audio: FORTUNE_AUDIO_IDS.size() + FLOOR_MODIFIER_AUDIO_IDS.size() + GOLDEN_RUMOUR_AUDIO_IDS.size(),
+	audio:
+		FORTUNE_AUDIO_IDS.size() +
+		FLOOR_MODIFIER_AUDIO_IDS.size() +
+		GOLDEN_RUMOUR_AUDIO_IDS.size() +
+		CODEX_AUDIO_IDS.size(),
+	strings:
+		FORTUNE_STRING_KEYS.size() +
+		FLOOR_MODIFIER_STRING_KEYS.size() +
+		GOLDEN_RUMOUR_STRING_KEYS.size() +
+		CODEX_STRING_KEYS.size(),
 } as const;
 
 function printEntry(tag: string, id: string, e: ReturnType<typeof treasureReport>[number]): void {
@@ -183,7 +194,7 @@ describe("treasure: contract", () => {
 	});
 
 	it("the strings: REQUIRED_STRING_KEYS' last sixteen before Fortune's, filled by every pack with the placeholders the view fills", () => {
-		const skip = FORTUNE_STRING_KEYS.size() + FLOOR_MODIFIER_STRING_KEYS.size() + GOLDEN_RUMOUR_STRING_KEYS.size();
+		const skip = FORTUNE_AFTER.strings;
 		expect(tail(REQUIRED_STRING_KEYS, TREASURE_STRING_KEYS.size(), skip)).toEqual([...TREASURE_STRING_KEYS]);
 		expect(TREASURE_STRING_KEYS.size()).toBe(16);
 		expect(new Set(TREASURE_STRING_KEYS).size()).toBe(TREASURE_STRING_KEYS.size());
