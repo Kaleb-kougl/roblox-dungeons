@@ -1,6 +1,7 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { Workspace } from "@rbxts/services";
+import { STUDS_PER_TILE } from "shared/config";
 import type { Dungeon } from "shared/dungeon";
 import { DEFAULT_BIOME_MATERIAL, hexToColor3 } from "shared/theme";
 import {
@@ -42,6 +43,10 @@ const MS = 1000;
  *              VOID_VIEW.debugColors tint (SmoothPlastic). Both off by default and toggle at once.
  *
  * The greybox world gets none (VDD7). Like the world, the void stays when the run is left (the menu sits over it).
+ *
+ * Secret rooms (docs/SECRET_ROOMS.md SR7): on a secret floor voidRunInput carries the chamber's ring as the plan's
+ * hold-out, so the rock over it forms columns of its own (VoidPlan.held); SecretRenderController lowers them every
+ * frame through sinkHeld (shared/view/secrets secretSinkTiles: 0 while hidden, SECRET_VIEW.sink.depthTiles once sunk).
  */
 @Controller({})
 export class VoidController implements OnStart {
@@ -51,6 +56,11 @@ export class VoidController implements OnStart {
 	/** What the current build was made from (undefined: nothing built yet). */
 	private builtDungeon: Dungeon | undefined;
 	private builtKey = "";
+	/** The held-out columns (VoidPlan.held: a secret room's rock) and where each stands unsunk. */
+	private readonly held = new Array<Part>();
+	private readonly heldRest = new Array<CFrame>();
+	/** How far they are sunk now, tiles. */
+	private heldSunk = 0;
 
 	constructor(private readonly sim: SimController, private readonly theme: ThemeController) {}
 
@@ -64,6 +74,17 @@ export class VoidController implements OnStart {
 		for (const attribute of [DECOR_DEPTH.forceBandAttribute, VOID_VIEW.offAttribute, VOID_VIEW.debugAttribute])
 			this.janitor.Add(Workspace.GetAttributeChangedSignal(attribute).Connect(rebuild));
 		this.janitor.Add(this.floorJanitor, "Cleanup");
+	}
+
+	/**
+	 * A secret room's rock (the plan's held columns) `tiles` below where it stands (docs/SECRET_ROOMS.md SR7; 0: in
+	 * place). Writes only when the depth changes; a floor without held columns does nothing.
+	 */
+	sinkHeld(tiles: number): void {
+		if (tiles === this.heldSunk || this.held.size() === 0) return;
+		this.heldSunk = tiles;
+		const down = new Vector3(0, -tiles * STUDS_PER_TILE, 0);
+		for (let i = 0; i < this.held.size(); i++) this.held[i].CFrame = this.heldRest[i].add(down);
 	}
 
 	/** Parts in the current void (for budgets / the smoke test). */
@@ -91,6 +112,9 @@ export class VoidController implements OnStart {
 		this.builtKey = key;
 		this.floorJanitor.Cleanup();
 		this.partCount = 0;
+		this.held.clear();
+		this.heldRest.clear();
+		this.heldSunk = 0;
 		if (d === undefined || input === undefined || off) return; // greybox, or KV_VoidOff
 		const biomeId = voidBiomeOf(d.params.themeKey);
 		if (biomeId === undefined) {
@@ -107,7 +131,9 @@ export class VoidController implements OnStart {
 		let shoulder = 0;
 		let ledge = 0;
 		let outcrop = 0;
-		for (const r of plan.rects) {
+		const heldSet = new Set<number>(plan.held ?? []);
+		for (let i = 0; i < plan.rects.size(); i++) {
+			const r = plan.rects[i];
 			const style = voidLayerStyle(r.layer);
 			if (style === undefined) continue;
 			if (r.layer === VoidLayer.SHOULDER) shoulder++;
@@ -126,6 +152,10 @@ export class VoidController implements OnStart {
 				part.Material = Enum.Material[colors.materials?.[style.material] ?? DEFAULT_BIOME_MATERIAL];
 			}
 			part.Parent = folder;
+			if (heldSet.has(i)) {
+				this.held.push(part);
+				this.heldRest.push(part.CFrame);
+			}
 		}
 		this.partCount = shoulder + ledge + outcrop;
 		folder.Parent = Workspace;

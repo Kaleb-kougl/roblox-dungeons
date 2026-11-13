@@ -1,4 +1,4 @@
-import { createKvBillboardGui } from "client/ui";
+import { createKvBillboardGui, currentHudFont } from "client/ui";
 import { STUDS_PER_TILE } from "shared/config";
 import {
 	TREASURE_COLUMN_FX_ID,
@@ -20,7 +20,8 @@ import {
 	type SpriteAnimChoice,
 	type SpriteLayout,
 } from "shared/view";
-import { FX_SPRITE_VIEW } from "shared/view/fx";
+import { charCount } from "shared/l10n";
+import { FX_SPRITE_VIEW, FX_VIEW, SCORE_POP_GLYPH_PX } from "shared/view/fx";
 import { TREASURE_VIEW, type ColumnLook } from "shared/view/treasure";
 import {
 	buildPlaceholder,
@@ -34,7 +35,8 @@ import { SPRITE_TINT_NONE, SpriteView } from "./SpriteView";
 /**
  * The treasure chest's drawn pieces, shared by the vault (TreasureRenderController: the closed / open chest, the art
  * cage, the light column) and the relic pedestals (RunMarkerController: the same chest and column, docs/TREASURE.md
- * "Relic pedestals"). A body is a theme TreasurePiece drawn as art (a sprite set's idle or an image billboard, capped at
+ * "Relic pedestals") and a secret room's chest (SecretRenderController, docs/SECRET_ROOMS.md SR7: the chest, its column
+ * and its reward cards). A body is a theme TreasurePiece drawn as art (a sprite set's idle or an image billboard, capped at
  * a height above its pivot: breakableArtLayout) or as its placeholder model. Callers pass a look whose art is dropped
  * while its id has not downloaded (shared/view lookWhenReady, docs/STAGE_ASSETS.md SA18) and rebuild the body on the
  * flip. Presentation only.
@@ -312,4 +314,75 @@ function buildImage(art: WorldImage, layout: SpriteLayout, parent: Instance, ext
 	gui.Parent = anchor;
 	anchor.Parent = parent;
 	return { anchor, gui, label };
+}
+
+/** A billboard text over a chest (a reward card, a vault's near-miss / kept line, a secret's `Secret cache`). */
+export interface TreasureCard {
+	readonly att: Attachment;
+	readonly gui: BillboardGui;
+	readonly label: TextLabel;
+	shown: boolean;
+	text: string;
+}
+
+/** A hidden card: an Attachment in `holder` (an anchor Part) carrying a BillboardGui in `folder`, the HUD font. */
+export function buildTreasureCard(pack: ThemePack, holder: Instance, folder: Instance, name: string): TreasureCard {
+	const att = new Instance("Attachment");
+	att.Name = name;
+	att.Parent = holder;
+	const gui = createKvBillboardGui(name);
+	gui.Adornee = att;
+	gui.AlwaysOnTop = true;
+	gui.LightInfluence = 0;
+	gui.MaxDistance = math.huge;
+	gui.ResetOnSpawn = false;
+	gui.Enabled = false;
+	const label = new Instance("TextLabel");
+	label.BackgroundTransparency = HIDDEN;
+	label.Size = UDim2.fromScale(1, 1);
+	label.Font = currentHudFont();
+	label.TextScaled = true;
+	label.TextStrokeColor3 = pack.color("background");
+	label.Parent = gui;
+	gui.Parent = folder;
+	return { att, gui, label, shown: false, text: "" };
+}
+
+/** A card at floor point `at`, `upStuds` up the screen, sized from its text (the score pops' glyphs x scale). */
+export function drawTreasureCard(
+	view: TreasureCard,
+	at: Vector3,
+	text: string,
+	scale: number,
+	upStuds: number,
+	alpha: number,
+	color: Color3,
+): void {
+	if (alpha <= 0) {
+		hideTreasureCard(view);
+		return;
+	}
+	const px = FX_VIEW.pxStuds;
+	const glyphW = SCORE_POP_GLYPH_PX.w * scale;
+	const glyphH = SCORE_POP_GLYPH_PX.h * scale;
+	if (text !== view.text) {
+		view.text = text;
+		view.label.Text = text;
+		view.gui.Size = new UDim2(math.max(charCount(text), 1) * glyphW * px, 0, glyphH * px, 0);
+	}
+	view.att.WorldPosition = at;
+	view.gui.StudsOffset = new Vector3(0, upStuds, 0);
+	view.label.TextColor3 = color;
+	view.label.TextTransparency = HIDDEN - alpha;
+	view.label.TextStrokeTransparency = HIDDEN - alpha * (HIDDEN - FX_VIEW.numberStroke);
+	if (!view.shown) {
+		view.shown = true;
+		view.gui.Enabled = true;
+	}
+}
+
+export function hideTreasureCard(view: TreasureCard): void {
+	if (!view.shown) return;
+	view.shown = false;
+	view.gui.Enabled = false;
 }

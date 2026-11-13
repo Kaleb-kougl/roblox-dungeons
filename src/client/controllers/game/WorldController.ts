@@ -4,43 +4,17 @@ import { Workspace } from "@rbxts/services";
 import { STUDS_PER_TILE } from "shared/config";
 import { THEMES, TileType, type Dungeon } from "shared/dungeon";
 import { DEFAULT_BOUNDS, type SimConfig } from "shared/sim";
-import { BIOMES, MISSING_COLOR, type ImageRef, type PlaceholderVisual, type ThemePack } from "shared/theme";
-import {
-	GAME_WORLD,
-	VOID,
-	floorStudsY,
-	floorTextureOffsets,
-	greedyRectsOf,
-	studsX,
-	studsZ,
-	wallTextureOffsets,
-	type TileRect,
-	type WallTextureFace,
-} from "shared/view";
+import type { ThemePack } from "shared/theme";
+import { GAME_WORLD, VOID, floorStudsY, greedyRectsOf, studsX, studsZ, type TileRect } from "shared/view";
+import { secretWallMergeGrid } from "shared/view/secrets";
 import { renderPart } from "../render/placeholders";
-import { SimController, type RunContext } from "./SimController";
+import { SimController, floorSecretOf, type RunContext } from "./SimController";
 import { ThemeController } from "./ThemeController";
+import { buildWorldSlabs, worldSurfaces, type WorldSurface } from "./worldSurfaces";
 
 const RGB_SHIFT_R = 16;
 const RGB_SHIFT_G = 8;
 const RGB_MASK = 0xff;
-/** Grid cell (gx, gy) is centred on sim world (gx, gy): its edges are half a tile away. */
-const HALF_TILE = 0.5;
-
-interface Surface {
-	readonly visual: PlaceholderVisual;
-	readonly color: Color3;
-	/** The Part material: the biome's `materials` entry for this surface (theme), else the placeholder's. */
-	readonly material: Enum.Material;
-	/**
-	 * A repeating texture laid on the Parts' faces: the biome's floor image on floor slabs' top faces, its wall image
-	 * on wall Parts' `textureFaces`, when the pack has one.
-	 */
-	readonly texture?: ImageRef;
-	/** The faces that carry `texture` (wall Parts: GAME_WORLD.wallTextureFaces); undefined: the Top face (a floor). */
-	readonly textureFaces?: ReadonlyArray<WallTextureFace>;
-}
-
 /**
  * Builds the run's floor in Workspace (web DungeonFloor): floor slabs, wall blocks and sunken pools from the Dungeon
  * Forge grid, each tile type merged into as few Parts as the greedy rectangle scan finds (shared/view tileMerge.ts;
@@ -61,6 +35,9 @@ interface Surface {
  * validator requires a rough one under a repeating texture: SmoothPlastic's sun glint washes it out). Pillar cells that
  * the Forge turns solid are WALL tiles, so they merge into the wall Parts and get the wall material like any wall.
  * Per-cell floor variants (tint or material by cell hash) are not done: they would need un-merged floor Parts.
+ * The surfaces and slabs are shared with SecretRenderController (worldSurfaces.ts). A secret room's crack cells
+ * (docs/SECRET_ROOMS.md SR7, shared/view/secrets secretWallMergeGrid) are left out of the wall merge: SecretRenderController
+ * draws them as their own Part in the same look.
  *
  * Rebuilt only when the run's floor changes (a restart on the same seed reuses the cached Dungeon object; in endless
  * mode, every floor change). The greybox world gets a plain floor over the sim's bounds.
@@ -95,58 +72,14 @@ export class WorldController implements OnStart {
 		const pack = this.theme.getPack();
 		this.partCount =
 			ctx.dungeon !== undefined
-				? this.buildDungeon(pack, ctx.dungeon, folder)
+				? this.buildDungeon(pack, ctx.dungeon, folder, ctx)
 				: this.buildGreybox(pack, ctx.config, folder);
 		folder.Parent = Workspace;
 		print(`[World] built ${this.partCount} parts (${ctx.dungeon !== undefined ? ctx.dungeon.name : "greybox"})`);
 	}
 
-	private surfaces(
-		pack: ThemePack,
-		themeKey: string | undefined,
-	): { floor: Surface; wall: Surface; poolMaterial: Enum.Material; abyss: Color3 } {
-		const biome = themeKey !== undefined ? BIOMES.find((b) => b.forgeTheme === themeKey) : undefined;
-		const floorId = biome !== undefined ? `tile.${biome.id}.floor` : "tile.biome.1.floor";
-		const wallId = biome !== undefined ? `tile.${biome.id}.wall` : "tile.biome.1.wall";
-		const floorVisual = pack.placeholder(floorId);
-		const floorImage = pack.image(floorId);
-		const wallVisual = pack.placeholder(wallId);
-		const wallImage = pack.image(wallId);
-		const usable = (hex: string) => hex.lower() !== MISSING_COLOR;
-		const floorHex = pack.visualHex(floorVisual.color);
-		const wallHex = pack.visualHex(wallVisual.color);
-		// Only for a matched biome: its floor colour (the texture's mean colour in the vale pack) and its texture
-		// describe the same floor; the greybox / unmatched floor keeps the plain `floor` role.
-		const texture = biome !== undefined && floorImage?.tilesPerImage !== undefined ? floorImage : undefined;
-		const materials = biome !== undefined ? pack.biome(biome.id).materials : undefined;
-		// Textured or not, a surface keeps its biome material (a rough one under a repeating texture: the validator).
-		const floorMaterial = materials?.floor ?? floorVisual.material;
-		// The wall the same way: a repeating wall image (a matched biome only) on every wall Part's texture faces.
-		const wallTexture = biome !== undefined && wallImage?.tilesPerImage !== undefined ? wallImage : undefined;
-		const wallMaterial = materials?.wall ?? wallVisual.material;
-		return {
-			floor: {
-				visual: floorVisual,
-				color:
-					biome !== undefined && usable(floorHex) ? pack.visualColor(floorVisual.color) : pack.color("floor"),
-				material: Enum.Material[floorMaterial],
-				texture,
-			},
-			wall: {
-				visual: wallVisual,
-				color: biome !== undefined && usable(wallHex) ? pack.visualColor(wallVisual.color) : pack.color("wall"),
-				material: Enum.Material[wallMaterial],
-				texture: wallTexture,
-				textureFaces: wallTexture !== undefined ? GAME_WORLD.wallTextureFaces : undefined,
-			},
-			poolMaterial: Enum.Material[materials?.pool ?? floorVisual.material],
-			// the backdrop: the biome's abyss (docs/VOID_DECOR.md VD1 / VD3); greybox / unmatched keep `background`
-			abyss: biome !== undefined ? pack.biome(biome.id).abyssColor : pack.color("background"),
-		};
-	}
-
-	private buildDungeon(pack: ThemePack, d: Dungeon, folder: Folder): number {
-		const { floor, wall, poolMaterial, abyss } = this.surfaces(pack, d.params.themeKey);
+	private buildDungeon(pack: ThemePack, d: Dungeon, folder: Folder, ctx: RunContext): number {
+		const { floor, wall, poolMaterial, abyss } = worldSurfaces(pack, d.params.themeKey);
 		const S = STUDS_PER_TILE;
 		const floorThick = floor.visual.size[1];
 		const wallHeight = GAME_WORLD.wallHeightTiles * S;
@@ -156,6 +89,9 @@ export class WorldController implements OnStart {
 		for (const piece of d.solidDecor ?? [])
 			for (let gy = piece.y; gy < piece.y + piece.h; gy++)
 				for (let gx = piece.x; gx < piece.x + piece.w; gx++) grid[gy * d.W + gx] = TileType.FLOOR;
+		// docs/SECRET_ROOMS.md SR7: a secret room's crack is no part of any wall Part (SecretRenderController draws it as
+		// its own Part in the same look, and takes it away at the open)
+		secretWallMergeGrid(grid, d.W, floorSecretOf(ctx));
 		let n = 0;
 		n += this.slabs(
 			folder,
@@ -199,7 +135,7 @@ export class WorldController implements OnStart {
 	}
 
 	private buildGreybox(pack: ThemePack, config: Readonly<SimConfig>, folder: Folder): number {
-		const { floor } = this.surfaces(pack, undefined);
+		const { floor } = worldSurfaces(pack, undefined);
 		const b = config.bounds ?? DEFAULT_BOUNDS;
 		const minX = math.floor(b.minX);
 		const minZ = math.floor(b.minZ);
@@ -212,75 +148,17 @@ export class WorldController implements OnStart {
 		return n;
 	}
 
-	/** One Part per rectangle: grid cell (gx, gy) is centred on sim world (gx, gy). */
+	/** One Part per rectangle (worldSurfaces.ts buildWorldSlabs); returns how many. */
 	private slabs(
 		folder: Folder,
 		name: string,
 		rects: ReadonlyArray<TileRect>,
-		surface: Surface,
+		surface: WorldSurface,
 		centerY: number,
 		height: number,
 		castShadow: boolean,
 	): number {
-		const S = STUDS_PER_TILE;
-		for (const r of rects) {
-			const part = renderPart("Part", castShadow);
-			part.Name = name;
-			part.Size = new Vector3(r.w * S, height, r.h * S);
-			part.CFrame = new CFrame(studsX(r.x + (r.w - 1) / 2), centerY, studsZ(r.y + (r.h - 1) / 2));
-			part.Color = surface.color;
-			part.Material = surface.material;
-			const image = surface.texture;
-			if (image !== undefined && image.tilesPerImage !== undefined) {
-				// The image repeats every tilesPerImage tiles both ways (its own pixel density: a 1-tile wall face
-				// shows 1 / tilesPerImage of its height); the Part keeps the biome colour underneath.
-				const period = image.tilesPerImage * S;
-				const minX = studsX(r.x - HALF_TILE);
-				const minZ = studsZ(r.y - HALF_TILE);
-				const maxX = studsX(r.x + r.w - HALF_TILE);
-				const maxZ = studsZ(r.y + r.h - HALF_TILE);
-				// Start the pattern at the Part's world corner (mod the period), so merged Parts show no seams.
-				const faces = surface.textureFaces;
-				if (faces === undefined) {
-					const offsets = floorTextureOffsets(minX, minZ, maxX, maxZ, period, GAME_WORLD.floorTextureUV);
-					this.faceTexture(part, image.assetId, Enum.NormalId.Top, period, offsets);
-				} else {
-					for (const face of faces) {
-						const offsets = wallTextureOffsets(
-							face,
-							minX,
-							minZ,
-							maxX,
-							maxZ,
-							height,
-							period,
-							GAME_WORLD.wallTextureUV,
-						);
-						this.faceTexture(part, image.assetId, Enum.NormalId[face], period, offsets);
-					}
-				}
-			}
-			part.Parent = folder;
-		}
-		return rects.size();
-	}
-
-	/** One repeating Texture on `face` of `part`, `period` studs square, shifted by `offsets` (OffsetStudsU / V). */
-	private faceTexture(
-		part: Part,
-		assetId: string,
-		face: Enum.NormalId,
-		period: number,
-		offsets: readonly [number, number],
-	): void {
-		const texture = new Instance("Texture");
-		texture.Face = face;
-		texture.Texture = assetId;
-		texture.StudsPerTileU = period;
-		texture.StudsPerTileV = period;
-		texture.OffsetStudsU = offsets[0];
-		texture.OffsetStudsV = offsets[1];
-		texture.Parent = part;
+		return buildWorldSlabs(folder, name, rects, surface, centerY, height, castShadow).size();
 	}
 
 	/**

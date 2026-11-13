@@ -15,5 +15,6 @@ export * from "./TutorialController";
 export * from "./SightingController";
 export * from "./CameraController";
 export * from "./WorldController";
+export * from "./worldSurfaces";
 export * from "./CharacterController";
 export * from "./TouchControlsController";

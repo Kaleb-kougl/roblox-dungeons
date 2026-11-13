@@ -11,6 +11,7 @@ import {
 	RENDER_ORDER,
 	StallDetector,
 	blockingCellsNear,
+	collisionDebugDungeon,
 	floorStudsY,
 	inputMagnitude,
 	collisionRings,
@@ -128,7 +129,10 @@ export class CollisionDebugController implements OnStart {
 
 	private frame(): void {
 		const ctx = this.sim.getContext();
-		const d = ctx?.dungeon;
+		// docs/SECRET_ROOMS.md SR7: a secret floor's sim moves on the carved grid (the crack FLOOR under its pieces, the
+		// chamber walkable), so the overlay reads that one
+		const forge = ctx?.dungeon;
+		const d = forge !== undefined ? collisionDebugDungeon(forge, this.sim.getFloorSecret()) : undefined;
 		if (ctx === undefined || d === undefined) {
 			this.clearScene();
 			return;

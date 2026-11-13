@@ -3,7 +3,6 @@ import { Janitor } from "@rbxts/janitor";
 import { RunService, Workspace } from "@rbxts/services";
 import { DEV_MONO_FONT, createKvBillboardGui, createKvSurfaceGui, currentHudFont, onLocaleChanged } from "client/ui";
 import { CAMERA_PITCH_DEG, CAMERA_YAW_DEG, STUDS_PER_TILE } from "shared/config";
-import { charCount } from "shared/l10n";
 import { RUN_ATTRIBUTES } from "shared/play";
 import type { JuiceSettings } from "shared/settings";
 import { SIM_HZ, TILE_SIZE, VaultStatus, partySize, type SimState } from "shared/sim";
@@ -37,7 +36,7 @@ import {
 	type SpriteBillboard,
 	type SpriteLayout,
 } from "shared/view";
-import { FX_SPRITE_VIEW, FX_VIEW, SCORE_POP_GLYPH_PX, burstSeed, effectiveParticles } from "shared/view/fx";
+import { FX_SPRITE_VIEW, burstSeed, effectiveParticles } from "shared/view/fx";
 import {
 	COMBO_SHOUT_DRAW,
 	ShoutDuck,
@@ -96,14 +95,18 @@ import { buildGlint, setGlintBoard, setGlintFrame, setGlintTransparency, type Gl
 import {
 	TREASURE_PARKED,
 	buildPieceBody,
+	buildTreasureCard,
 	buildTreasureColumn,
 	destroyPieceBody,
 	drawTreasureColumn,
+	drawTreasureCard,
 	hidePieceBody,
+	hideTreasureCard,
 	parkTreasureModel,
 	placePieceBody,
 	setPieceBodyTransparency,
 	type PieceBody,
+	type TreasureCard,
 	type TreasureColumn,
 } from "./treasureBody";
 
@@ -146,15 +149,6 @@ interface Plate extends FloorText {
 
 interface Line extends FloorText {
 	readonly label: TextLabel;
-	text: string;
-}
-
-/** A billboard text over the chest (a reward card, the near-miss / kept line). */
-interface CardView {
-	readonly att: Attachment;
-	readonly gui: BillboardGui;
-	readonly label: TextLabel;
-	shown: boolean;
 	text: string;
 }
 
@@ -234,8 +228,8 @@ export class TreasureRenderController implements OnStart {
 	private plate: Plate | undefined;
 	private line: Line | undefined;
 	private column: TreasureColumn | undefined;
-	private readonly cards = new Array<CardView>();
-	private openLine: CardView | undefined;
+	private readonly cards = new Array<TreasureCard>();
+	private openLine: TreasureCard | undefined;
 	private debugLabel: { anchor: Part; label: TextLabel } | undefined;
 	private debugOn = false;
 	// --- per open: the texts drawn (rebuilt when the open or the view player changes)
@@ -622,31 +616,31 @@ export class TreasureRenderController implements OnStart {
 		for (let i = 0; i < this.cards.size(); i++) {
 			const cardView = this.cards[i];
 			if (i >= n) {
-				hideCard(cardView);
+				hideTreasureCard(cardView);
 				continue;
 			}
 			const card = this.cardTexts[i];
 			rewardCardAt(look.openAge, i, reduced, this.cardLook);
 			const color = card.kind === "points" ? pack.color(V.pointsRole) : this.uiColors[o.tier];
 			const up = O.cardBaseStuds + (n - 1 - i) * O.cardRowStuds + this.cardLook.riseTiles * STUDS_PER_TILE;
-			drawCard(cardView, at, card.text, O.cardScale, up, this.cardLook.alpha, color);
+			drawTreasureCard(cardView, at, card.text, O.cardScale, up, this.cardLook.alpha, color);
 		}
 		const line = this.openLine;
 		if (line === undefined) return;
 		const text = this.lineText;
 		if (text === undefined) {
-			hideCard(line);
+			hideTreasureCard(line);
 			return;
 		}
 		openLineAt(look.openAge, reduced, this.cardLook);
 		const color = o.kept !== 0 ? this.uiColors[o.tier] : pack.color(V.nearMissRole);
 		const up = O.cardBaseStuds - O.cardRowStuds + this.cardLook.riseTiles * STUDS_PER_TILE;
-		drawCard(line, at, text, O.lineScale, up, this.cardLook.alpha, color);
+		drawTreasureCard(line, at, text, O.lineScale, up, this.cardLook.alpha, color);
 	}
 
 	private hideCards(): void {
-		for (const c of this.cards) hideCard(c);
-		if (this.openLine !== undefined) hideCard(this.openLine);
+		for (const c of this.cards) hideTreasureCard(c);
+		if (this.openLine !== undefined) hideTreasureCard(this.openLine);
 		this.cardsFor = undefined;
 	}
 
@@ -979,26 +973,8 @@ export class TreasureRenderController implements OnStart {
 		return { ...f, label, text: "" };
 	}
 
-	private buildCard(pack: ThemePack, name: string): CardView {
-		const att = new Instance("Attachment");
-		att.Name = name;
-		att.Parent = this.holder;
-		const gui = createKvBillboardGui(name);
-		gui.Adornee = att;
-		gui.AlwaysOnTop = true;
-		gui.LightInfluence = 0;
-		gui.MaxDistance = math.huge;
-		gui.ResetOnSpawn = false;
-		gui.Enabled = false;
-		const label = new Instance("TextLabel");
-		label.BackgroundTransparency = HIDDEN;
-		label.Size = UDim2.fromScale(1, 1);
-		label.Font = currentHudFont();
-		label.TextScaled = true;
-		label.TextStrokeColor3 = pack.color("background");
-		label.Parent = gui;
-		gui.Parent = this.folder;
-		return { att, gui, label, shown: false, text: "" };
+	private buildCard(pack: ThemePack, name: string): TreasureCard {
+		return buildTreasureCard(pack, this.holder!, this.folder!, name);
 	}
 
 	private destroyBodies(): void {
@@ -1035,43 +1011,4 @@ function setText(label: TextLabel, text: string, opacity: number, color: Color3)
 	if (label.TextColor3 !== color) label.TextColor3 = color;
 	label.TextTransparency = HIDDEN - opacity;
 	label.TextStrokeTransparency = HIDDEN - opacity * (HIDDEN - COMBO_SHOUT_DRAW.strokeTransparency);
-}
-
-/** A card billboard at floor point `at`, `upStuds` up the screen, sized from its text (the score pops' glyphs x scale). */
-function drawCard(
-	view: CardView,
-	at: Vector3,
-	text: string,
-	scale: number,
-	upStuds: number,
-	alpha: number,
-	color: Color3,
-): void {
-	if (alpha <= 0) {
-		hideCard(view);
-		return;
-	}
-	const px = FX_VIEW.pxStuds;
-	const glyphW = SCORE_POP_GLYPH_PX.w * scale;
-	const glyphH = SCORE_POP_GLYPH_PX.h * scale;
-	if (text !== view.text) {
-		view.text = text;
-		view.label.Text = text;
-		view.gui.Size = new UDim2(math.max(charCount(text), 1) * glyphW * px, 0, glyphH * px, 0);
-	}
-	view.att.WorldPosition = at;
-	view.gui.StudsOffset = new Vector3(0, upStuds, 0);
-	view.label.TextColor3 = color;
-	view.label.TextTransparency = HIDDEN - alpha;
-	view.label.TextStrokeTransparency = HIDDEN - alpha * (HIDDEN - FX_VIEW.numberStroke);
-	if (!view.shown) {
-		view.shown = true;
-		view.gui.Enabled = true;
-	}
-}
-
-function hideCard(view: CardView): void {
-	if (!view.shown) return;
-	view.shown = false;
-	view.gui.Enabled = false;
 }
