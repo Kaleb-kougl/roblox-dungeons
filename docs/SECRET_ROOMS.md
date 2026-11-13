@@ -182,6 +182,13 @@ fixture and the tutorial replay exactly as before; endless / daily / dev replays
    `CODEX_CATALOG` gains `secret:room` in a new category `secrets` (appended last; `catalog.spec`'s order lock updated),
    read by `CodexTracker` / `readCodexFrame` from the secret frame events: seen at the first knock, found at an open the
    player is present for; the Codex screen's new section, the NEW dot and the run-over row as for every entry.
+   *Catalogue shape (Track T, SR10):* the group `secrets` is the **Bestiary tab's last section** (sub-header
+   `codex.group.secrets`, after the bosses), not a seventh tab: a seventh tab broke the desktop tab row's fit
+   (view/codex screen.spec: 988 > 868 px). The entry is still last in the catalogue. Its art ref is `{ kind: "secret" }`,
+   which `codexTileArt` does not handle yet (the unknown glyph): the view track picks its tile art (the crack, or the
+   chest) and its toast route (`codexToastRoute` / `codexSummaryRank` fall to their defaults for `secrets`). The seen
+   claim needs no new mapping: `CODEX_SIGHTING_ENTRIES` (shared/codex) maps the sighting `secret.crack` to
+   `secret:room`, so `seedFromSightings` and the tracker's `codexSightingId` already give it.
 10. **Theme:** strings `fx.secret.text` (SECRET!), `hud.toast.secret`, `treasure.secret.title`, `bestiary.secret.crack`,
     `run.recap.hl.secrets`, `score.source.secret`, the Codex entry's name / description and the category label in
     docs/CODEX.md's key scheme (l10n context entries); port audio IDs `sfx.secret.knock` /
@@ -196,6 +203,55 @@ fixture and the tutorial replay exactly as before; endless / daily / dev replays
     3 variants), rubble (2 x 1, flat), a 6-frame dust trickle. No third-party art, no Credits entry.
 12. **Debug:** `KV_SecretDebug` (dev), `KV_SecretLabel` (outline every crack, chamber and front box; the chest's tier),
     `[Secret] floor 6: room 4 crack (31,12)+x opened by heavy (player 1)` under KV_Debug.
+
+## As built (Track T: theme, art, Codex entry; SR10, SR11, SRD12)
+
+For the view track. Presentation data only (no sim, dungeon, hash or replay change).
+
+- **Strings** (`shared/theme/secrets.ts`): `SECRET_STRING_KEYS`, written out last in `REQUIRED_STRING_KEYS`:
+  `fx.secret.text` "SECRET!", `hud.toast.secret` "Secret found by {name}" (`{name}` the opener's display name, like
+  `lobby.notice.followed`), `treasure.secret.title` "Secret cache", `run.recap.hl.secrets` "Secrets found" (a label like
+  every `run.recap.hl.*`: the count is drawn beside it), `secret.room.name` "Secret rooms" (the Codex entry's name).
+  The first-knock card `bestiary.secret.crack` (Knight / default: "A hollow wall. A finishing blow, a Charger's charge or
+  a Wrecker roll could break through.") is `BESTIARY_STRING_KEYS`' last, and its sighting id `secret.crack` is
+  shared/onboarding `SIGHTING_IDS`' last (the two lists are kept equal by a spec; nothing raises the sighting yet: SR9);
+  the Archer's override `bestiary.secret.crack.archer` ("A charged arrow" instead of "A finishing blow") is
+  `CHARACTER_OVERRIDE_KEYS`' last (read through shared/view/hud `characterStringKey`, the SightingCard must pass the
+  local character). `score.source.secret` "Secrets" is not required (like `score.source.treasure`): add it to
+  shared/view/hud `SCORE_SOURCE_KEYS` once the sim has `ScoreSource.SECRET`. Constants: `SECRET_SHOUT_KEY`,
+  `SECRET_TOAST_KEY`, `SECRET_CACHE_TITLE_KEY`, `SECRET_RECAP_KEY`, `SECRET_CODEX_NAME_KEY`, `SECRET_BESTIARY_KEY`,
+  `SECRET_BESTIARY_ARCHER_KEY`, `SECRET_SCORE_SOURCE_KEY`. Every key has an `l10n/context.json` entry.
+- **Sounds:** `sfx.secret.knock`, `sfx.secret.open`, `sfx.jingle.secret` (`SECRET_AUDIO_IDS`), `PORT_AUDIO_EVENTS`' last
+  three (after `sfx.codex.new`), SILENT in both packs; shared/view/audio `SFX.secretKnock` / `.secretOpen` /
+  `.jingleSecret` in `ALL_SFX` / `PORT_SFX`, `SFX_FALLBACK` one step to `sfx.breakable.hit` / `sfx.breakable.break` /
+  `sfx.jingle.treasure`, `SFX_PRIORITY` 31 / 48 / 72 (knock just over the breakable hit; crumble over the breakable
+  break and the enemy sounds, under the player's own; jingle one under a Legendary chest's, with the room clear's), the
+  jingle in `JINGLE_SFX` and `DUCKING_SFX`. No cue mapping yet (SR6 / SR9). Silent entries with audition candidates in
+  art/audio.json (SR14).
+- **Colour role** `secret.dust` `#c8bfae` (pale dusty stone; `COLOR_ROLES`' last), held by secretColors.ts
+  `secretReport` (folded into `variantColorProblems`): 82.1 CIE76 from `enemyBullet`, 75.5 from `enemyBulletOutline`,
+  63.0 from `telegraph` (bar 40).
+- **Optional art ids:** world art slot `secret` (inline in `SLOTS`, in `WORLD_ART_SLOTS`; `image` or a one-facing
+  `sprites` set with `idle`, no placeholder kind; any other `secret.` id is refused; secretArt.ts holds one facing):
+  `secret.crack` (`SECRET_CRACK_ID`; a sprites set's `idle` frames are its variants: pick one per crack, never play it)
+  and `secret.rubble` (`SECRET_RUBBLE_ID`); fx `fx.secret.dust` (`SECRET_DUST_FX_ID`, `FX_IDS`' last, tinted
+  `secret.dust`). Read them with `pack.sprites(id)` / `pack.fx(id)`; absent = the fallback (the placeholder pack, and
+  vale until upload).
+- **Art (SR11):** original greyscale pixel art by `scripts/art/gen-secret-art.js` (art:build / art:lock) into
+  `art/vendor/kaleb-vale/secret/`, 32 px a tile: the crack overlay 64 x 32 (2 x 1 tiles, a wall face or its top; three
+  variants split / impact / mortar, pivot the centre; it only darkens: tint it with the biome's wall colour, darkened),
+  the rubble 64 x 32 seen from above (lay it flat on the two opened cells; tint with the wall colour), the dust 12 x 32,
+  6 frames at 10 fps, one-shot, pivot (6, 1) on the joint at the top (`fx.secret.dust` look: sizeTiles 1, not
+  additive). Its own sheet **`secret.png`** (72 x 160, atlas group `secret`, `--only secret`), layout
+  `packs/vale/secretLayout.ts` (`VALE_SECRET_SHEET`, `VALE_SECRET_ART_LAYOUTS`, `VALE_SECRET_FX_LAYOUTS`). Vale switches
+  all three on once `secret.png` has an ID in `assetIds.ts` (not uploaded: the owner's step); when it does, the stage
+  manifest (shared/view `STAGE_ASSETS`) must list `secret.` or `stageAssets.coverage.spec` fails.
+- **Codex (SRD12):** entry `secret:room` (`CODEX_SECRET_ID`, `codexSecretId()`), group `secrets` (the Bestiary's last
+  section, see Design 9), name `secret.room.name`, description `codex.desc.secret.room` ("Secret rooms: a cracked wall
+  that knocks hollow hides a chamber and its chest"), kind line `codex.kind.secret` "Secret", sub-header
+  `codex.group.secrets` "Secrets", art ref `{ kind: "secret" }`, no hint; catalogue 86 -> 87 (order lock updated);
+  `CODEX_SIGHTING_ENTRIES` maps the sighting `secret.crack` to it (seed and tracker).
+- `contract.luau` / `validate.luau` top-level locals unchanged at 187 / 197 (counted on out/).
 
 ## Tasks
 

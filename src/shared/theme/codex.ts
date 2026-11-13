@@ -7,14 +7,19 @@
  * (shared/codex CODEX_TABS / CODEX_GROUPS, shared/characters; codex.spec.ts checks they agree).
  *
  * Entry names and descriptions are the existing item / enemy keys (`boon.<k>.name`, `bestiary.<id>`, ...); only the
- * five entries with no line of their own get a codex description (`codex.desc.<category>.<key>`, decision R6).
+ * entries with no line of their own get a codex description (`codex.desc.<category>.<key>`, decision R6): the five of
+ * CX5, then the secret rooms' (docs/SECRET_ROOMS.md SRD12: `codex.desc.secret.room`; its name `secret.room.name` is
+ * secrets.ts SECRET_STRING_KEYS').
  */
 
 /** The Codex screen's tabs (shared/codex CODEX_TABS, same order): `codex.tab.<tab>`. */
 export const CODEX_TAB_NAMES = ["boons", "evolutions", "duos", "items", "boosts", "bestiary"] as const;
 
-/** The sub-headers inside a tab with more than one group (items: relics, curses; bestiary: enemies, champions, bosses). */
-export const CODEX_SUBHEADER_GROUPS = ["relics", "curses", "enemies", "champions", "bosses"] as const;
+/**
+ * The sub-headers inside a tab with more than one group (items: relics, curses; bestiary: enemies, champions, bosses,
+ * then docs/SECRET_ROOMS.md SRD12's secret rooms).
+ */
+export const CODEX_SUBHEADER_GROUPS = ["relics", "curses", "enemies", "champions", "bosses", "secrets"] as const;
 
 /**
  * The detail panel's kind line per catalog group (shared/codex CODEX_GROUPS): `codex.kind.<kind>`. A boon's takes
@@ -30,6 +35,7 @@ export const CODEX_KIND_OF_GROUP = {
 	enemies: "enemy",
 	champions: "champion",
 	bosses: "boss",
+	secrets: "secret",
 } as const;
 
 /** Characters a weapon-gated entry can need (R7: `codex.requires.<character>`, shared/characters CHARACTERS ids). */
@@ -62,15 +68,15 @@ export function codexRequiresKey(character: string): string {
 
 /**
  * Every Codex string (all REQUIRED), in this order:
- *   - the screen: title, completion (`{pct}`), the tabs, a tab's count (`{tab}` `{found}`/`{total}`), the sub-headers,
- *     the unknown name `???`;
+ *   - the screen: title, completion (`{pct}`), the tabs, a tab's count (`{tab}` `{found}`/`{total}`), the sub-headers
+ *     (docs/SECRET_ROOMS.md SRD12's `secrets` last), the unknown name `???`;
  *   - the state lines: Seen; Found with its floor and date (`{floor}`, `{date}`), and the variants that drop an unknown
  *     part (day 0 / floor 0: floor only, date only, neither); the date (`{day}` `{month}` `{year}`, the month a
  *     `daily.date.month.*` name);
  *   - the hints of unknown tiles (R3): enemy, affix (`{floor}`), boss (`{every}`: BOSS_FLOOR_EVERY), evolution (`{boon}`;
  *     the third take evolves), duo recipe (`{a}` + `{b}`) and the duo hint before both boons are found;
  *   - the character tags (R7), the kind lines (one per group);
- *   - the codex-only descriptions (R6: swarmer, sniper, bruiser, both bosses);
+ *   - the codex-only descriptions (R6: swarmer, sniper, bruiser, both bosses; then the secret rooms');
  *   - the run: the NEW! chip, the draft card's NEW tag, the decorated toast's second line, a codex toast (`{name}`);
  *   - the run-over line: `{n}` new (2 or more) and its singular, the icon strip's `+{n}`, the completion (`{pct}`);
  *   - the main menu: the Codex button, its badge above 9 (`{n}+`), the unavailable line.
@@ -90,6 +96,7 @@ export const CODEX_STRING_KEYS: ReadonlyArray<string> = [
 	"codex.group.enemies",
 	"codex.group.champions",
 	"codex.group.bosses",
+	"codex.group.secrets",
 	"codex.unknown",
 	"codex.state.seen",
 	"codex.state.found",
@@ -114,11 +121,13 @@ export const CODEX_STRING_KEYS: ReadonlyArray<string> = [
 	"codex.kind.enemy",
 	"codex.kind.champion",
 	"codex.kind.boss",
+	"codex.kind.secret",
 	"codex.desc.enemy.swarmer",
 	"codex.desc.enemy.sniper",
 	"codex.desc.enemy.bruiser",
 	"codex.desc.boss.act1",
 	"codex.desc.boss.demonlord",
+	"codex.desc.secret.room",
 	"hud.codex.new",
 	"hud.codex.tag",
 	"hud.codex.added",

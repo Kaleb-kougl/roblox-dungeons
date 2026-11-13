@@ -11,6 +11,7 @@ import {
 	ENDLESS_ROOM_KINDS,
 	TEST_TURRET_KINDS,
 } from "shared/dungeon";
+import { SIGHTING_IDS } from "shared/onboarding";
 import { TUTORIAL_ROOMS } from "shared/run";
 import {
 	BOONS,
@@ -35,6 +36,8 @@ import {
 	CODEX_CATALOG,
 	CODEX_DESC_PREFIX,
 	CODEX_GROUPS,
+	CODEX_SECRET_ID,
+	CODEX_SIGHTING_ENTRIES,
 	CODEX_TABS,
 	CODEX_TAB_GROUPS,
 	catalogTotal,
@@ -51,6 +54,7 @@ import {
 	codexEvoId,
 	codexGroupTab,
 	codexRelicId,
+	codexSecretId,
 	codexTabEntries,
 	isCodexId,
 	type CodexGroup,
@@ -142,7 +146,12 @@ const ORDER_LOCK: { readonly [K in CodexGroup]: ReadonlyArray<string> } = {
 	],
 	champions: ["affix:hulking", "affix:swift", "affix:shielded", "affix:vengeful"],
 	bosses: ["boss:act1", "boss:demonlord"],
+	// docs/SECRET_ROOMS.md SRD12: the secret rooms' one entry, its own tab and group appended after every other
+	secrets: ["secret:room"],
 };
+
+/** Every group's lock in catalog order: the whole catalog's (87 entries since the secret rooms). */
+const LOCK_TOTAL = 87;
 
 /** Why `ids` breaks the lock (undefined: it holds): every locked id at its place; extra ids only after them. */
 function lockProblem(ids: ReadonlyArray<string>, lock: ReadonlyArray<string>): string | undefined {
@@ -162,6 +171,38 @@ describe("codex catalog: order lock", () => {
 	it("holds for every group", () => {
 		for (const group of CODEX_GROUPS)
 			expect([group, lockProblem(groupIds(group), ORDER_LOCK[group])]).toEqual([group, undefined]);
+		let locked = 0;
+		for (const group of CODEX_GROUPS) locked += ORDER_LOCK[group].size();
+		expect([locked, CODEX_CATALOG.size()]).toEqual([LOCK_TOTAL, LOCK_TOTAL]);
+	});
+
+	it("appends the secret rooms last: a group (the last tab's last section) and entry after every other (docs/SECRET_ROOMS.md SRD12)", () => {
+		expect(CODEX_TABS[CODEX_TABS.size() - 1]).toBe("bestiary");
+		expect(CODEX_GROUPS[CODEX_GROUPS.size() - 1]).toBe("secrets");
+		expect([...CODEX_TAB_GROUPS.bestiary]).toEqual(["enemies", "champions", "bosses", "secrets"]);
+		expect(codexGroupTab("secrets")).toBe("bestiary");
+		const last = CODEX_CATALOG[CODEX_CATALOG.size() - 1];
+		expect([last.id, last.tab, last.group, last.order]).toEqual([
+			CODEX_SECRET_ID,
+			"bestiary",
+			"secrets",
+			catalogTotal("bestiary") - 1,
+		]);
+		expect(codexSecretId()).toBe("secret:room");
+		expect([last.nameKey, last.descKey, last.artRef, last.hint, last.requires]).toEqual([
+			"secret.room.name",
+			"codex.desc.secret.room",
+			{ kind: "secret" },
+			{ kind: "none" },
+			undefined,
+		]);
+		// the first-knock card's sighting id claims it (it is no `golden.rumour`: never pinned as no entry)
+		expect(CODEX_SIGHTING_ENTRIES.get("secret.crack")).toBe(CODEX_SECRET_ID);
+		expect(SIGHTING_IDS.includes("secret.crack")).toBe(true);
+		for (const [sighting, id] of CODEX_SIGHTING_ENTRIES as unknown as Map<string, string>) {
+			expect([sighting, SIGHTING_IDS.includes(sighting), isCodexId(id)]).toEqual([sighting, true, true]);
+		}
+		expect(CODEX_SIGHTING_ENTRIES.get("golden.rumour")).toBe(undefined);
 	});
 
 	it("passes an append and fails a reorder or a removal", () => {
@@ -220,10 +261,12 @@ describe("codex catalog: content", () => {
 		expect(catalogTotal("duos")).toBe(DUOS.size());
 		expect(catalogTotal("items")).toBe(RELICS.size() + CURSES.size());
 		expect(catalogTotal("boosts")).toBe(BOOST_KINDS.size());
+		// + docs/SECRET_ROOMS.md SRD12's secret rooms (the Bestiary's last section)
 		expect(catalogTotal("bestiary")).toBe(
-			ENDLESS_ROOM_KINDS.size() + 1 + AFFIXES.unlocks.size() + ENDLESS_BOSSES.size(),
+			ENDLESS_ROOM_KINDS.size() + 1 + AFFIXES.unlocks.size() + ENDLESS_BOSSES.size() + 1,
 		);
 		expect(groupIds("champions").size()).toBe(AFFIX_IDS.size());
+		expect(groupIds("secrets")).toEqual([CODEX_SECRET_ID]);
 	});
 
 	it("every endless entity appears exactly once", () => {
@@ -243,6 +286,7 @@ describe("codex catalog: content", () => {
 		add(codexEnemyId(GOLDEN_KIND));
 		for (const u of AFFIXES.unlocks) add(codexAffixId(u.kind));
 		for (const b of ENDLESS_BOSSES) add(codexBossId(b.kind));
+		add(codexSecretId());
 		expect(ids.size()).toBe(CODEX_CATALOG.size());
 		for (const e of CODEX_CATALOG) expect([e.id, ids.has(e.id)]).toEqual([e.id, true]);
 	});
@@ -306,6 +350,8 @@ describe("codex catalog: strings", () => {
 			"codex.desc.enemy.bruiser",
 			"codex.desc.boss.act1",
 			"codex.desc.boss.demonlord",
+			// docs/SECRET_ROOMS.md SRD12
+			"codex.desc.secret.room",
 		]);
 		const strings = THEME_PACKS.placeholder.strings;
 		for (const e of CODEX_CATALOG) {
@@ -376,7 +422,7 @@ describe("codex catalog: gates and hints", () => {
 			});
 		}
 		for (const id of groupIds("enemies")) expect(codexEntry(id)!.hint).toEqual({ kind: "enemy" });
-		for (const g of ["relics", "curses", "boosts"] as const) {
+		for (const g of ["relics", "curses", "boosts", "secrets"] as const) {
 			for (const id of groupIds(g)) expect(codexEntry(id)!.hint).toEqual({ kind: "none" });
 		}
 		// R3 (read from data, never hard-coded): Hulking and Swift 4, Shielded 7, Vengeful 9 today

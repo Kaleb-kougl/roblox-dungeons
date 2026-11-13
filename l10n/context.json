@@ -642,6 +642,9 @@
 	"codex.desc.enemy.swarmer": {
 		"note": "Codex screen (the Codex (a collection book on the main menu listing every boon, evolution, duo, relic, curse, boost, enemy, champion affix and boss; each entry starts unknown, becomes seen when it first shows up and found when the player first takes, picks up or defeats it)), detail panel: the tell for the Swarmer (enemy.swarmer.name: a weak, fast enemy that comes in packs and lunges in a straight line after a short warning). Same format as the bestiary.* lines: \"Name: short survival tip\", the name before the colon the same word as that name string. Brief, direct, second person."
 	},
+	"codex.desc.secret.room": {
+		"note": "Codex screen (the Codex (a collection book on the main menu listing every boon, evolution, duo, relic, curse, boost, enemy, champion affix, boss and the secret rooms; each entry starts unknown, becomes seen when it first shows up and found when the player first takes, picks up, defeats or opens it)), detail panel: the description of the secret rooms (secret rooms: small hidden chambers behind a cracked stretch of a room's wall on some dungeon floors, each with a treasure chest; nothing announces them, and breaking the cracked wall the right way opens one). Same format as the bestiary.* lines: \"Name: short line\", the name before the colon the same words as secret.room.name. Says what a secret room is (a hollow-sounding cracked wall hiding a chamber with a chest), never where one is. Brief."
+	},
 	"codex.group.bosses": {
 		"note": "Codex screen (the Codex (a collection book on the main menu listing every boon, evolution, duo, relic, curse, boost, enemy, champion affix and boss; each entry starts unknown, becomes seen when it first shows up and found when the player first takes, picks up or defeats it)), Bestiary tab: sub-header above the bosses. Plural.",
 		"max": 16
@@ -660,6 +663,10 @@
 	},
 	"codex.group.relics": {
 		"note": "Codex screen (the Codex (a collection book on the main menu listing every boon, evolution, duo, relic, curse, boost, enemy, champion affix and boss; each entry starts unknown, becomes seen when it first shows up and found when the player first takes, picks up or defeats it)), Relics & Curses tab: sub-header above the relics (permanent items for a run). Plural.",
+		"max": 16
+	},
+	"codex.group.secrets": {
+		"note": "Codex screen (the Codex (a collection book on the main menu listing every boon, evolution, duo, relic, curse, boost, enemy, champion affix, boss and the secret rooms; each entry starts unknown, becomes seen when it first shows up and found when the player first takes, picks up, defeats or opens it)): sub-header inside the Bestiary tab (codex.tab.bestiary), after the bosses, over the secret rooms' entry (secret rooms: small hidden chambers behind a cracked stretch of a room's wall on some dungeon floors, each with a treasure chest; nothing announces them, and breaking the cracked wall the right way opens one). One word, plural, title case; the same word as score.source.secret.",
 		"max": 16
 	},
 	"codex.hint.affix": {
@@ -739,6 +746,10 @@
 	},
 	"codex.kind.relic": {
 		"note": "Codex screen (the Codex (a collection book on the main menu listing every boon, evolution, duo, relic, curse, boost, enemy, champion affix and boss; each entry starts unknown, becomes seen when it first shows up and found when the player first takes, picks up or defeats it)), detail panel: kind line under a relic's name (a permanent item for a run). Singular.",
+		"max": 24
+	},
+	"codex.kind.secret": {
+		"note": "Codex screen (the Codex (a collection book on the main menu listing every boon, evolution, duo, relic, curse, boost, enemy, champion affix, boss and the secret rooms; each entry starts unknown, becomes seen when it first shows up and found when the player first takes, picks up, defeats or opens it)), detail panel: kind line under the secret rooms' entry name (secret.room.name). Singular noun.",
 		"max": 24
 	},
 	"codex.requires.archer": {

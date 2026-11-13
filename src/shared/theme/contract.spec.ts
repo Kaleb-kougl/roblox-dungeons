@@ -231,9 +231,10 @@ describe("required IDs and strings", () => {
 		// + docs/FLOOR_MODIFIERS.md FM7: FLOOR_MODIFIER_STRING_KEYS (11: five names and lines, the pause line)
 		// + docs/GOLDLING_RUMOURS.md GR7: the rumour chip's 2 (GOLDEN_RUMOUR_STRING_KEYS), bestiary.golden.rumour
 		// + claude/codex-plan.md CX5: CODEX_STRING_KEYS (54)
-		// + docs/SECRET_ROOMS.md SR10: SECRET_STRING_KEYS (5), bestiary.secret.crack (BESTIARY_STRING_KEYS)
+		// + docs/SECRET_ROOMS.md SR10: SECRET_STRING_KEYS (5), bestiary.secret.crack (BESTIARY_STRING_KEYS); SRD12: the
+		// Codex's secrets sub-header, kind line and description (CODEX_STRING_KEYS, 57)
 		expect(REQUIRED_STRING_KEYS.size()).toBe(
-			before + 28 + 1 + 1 + 4 + 16 + 1 + 19 + 1 + 1 + 3 + 18 + 17 + 5 + 45 + 7 + 11 + 2 + 1 + 54 + 5 + 1,
+			before + 28 + 1 + 1 + 4 + 16 + 1 + 19 + 1 + 1 + 3 + 18 + 17 + 5 + 45 + 7 + 11 + 2 + 1 + 54 + 5 + 1 + 3,
 		);
 		expect(new Set(REQUIRED_STRING_KEYS).size()).toBe(REQUIRED_STRING_KEYS.size());
 		expect(BIOMES.map((b) => b.forgeTheme)).toEqual(["ancient", "molten", "frost", "grim", "verdant"]);

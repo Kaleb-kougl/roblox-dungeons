@@ -42,7 +42,8 @@ const quiet = () => {};
 
 describe("codex: theme contract", () => {
 	it("the strings are REQUIRED_STRING_KEYS' last ones before the secret rooms', distinct, and every bundled pack has each", () => {
-		expect(CODEX_STRING_KEYS.size()).toBe(54);
+		// 54 (CX5) + docs/SECRET_ROOMS.md SRD12's sub-header, kind line and description
+		expect(CODEX_STRING_KEYS.size()).toBe(57);
 		expect(tail(REQUIRED_STRING_KEYS, CODEX_STRING_KEYS.size(), SECRET_AFTER.strings)).toEqual([
 			...CODEX_STRING_KEYS,
 		]);
@@ -112,6 +113,12 @@ describe("codex: theme contract", () => {
 		expect(s("codex.hint.duo", { a: "Volatile", b: "Chain Spark" })).toBe("Recipe: Volatile + Chain Spark");
 		expect(s("codex.kind.boon", { rarity: s("boon.rarity.rare") })).toBe("Rare boon");
 		expect(s("codex.kind.evolution", { boon: "Volatile" })).toBe("Evolution of Volatile");
+		// docs/SECRET_ROOMS.md SRD12: the secret rooms' section (the Bestiary's last sub-header), kind line and entry name
+		expect([s("codex.group.secrets"), s("codex.kind.secret"), s("secret.room.name")]).toEqual([
+			"Secrets",
+			"Secret",
+			"Secret rooms",
+		]);
 		expect([s("hud.codex.new"), s("hud.codex.tag"), s("hud.codex.added")]).toEqual([
 			"NEW!",
 			"NEW",
@@ -136,6 +143,7 @@ describe("codex: theme contract", () => {
 			["codex.desc.enemy.bruiser", "enemy.bruiser.name"],
 			["codex.desc.boss.act1", "boss.act1.name"],
 			["codex.desc.boss.demonlord", "boss.demonlord.name"],
+			["codex.desc.secret.room", "secret.room.name"],
 		]) {
 			const line = s(key);
 			expect([key, line.sub(1, s(name).size() + 1)]).toEqual([key, `${s(name)}:`]);

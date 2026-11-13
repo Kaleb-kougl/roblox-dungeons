@@ -24,6 +24,7 @@ import {
 	CODEX_CATALOG,
 	CODEX_ID_CATEGORY,
 	CODEX_ID_SEPARATOR,
+	CODEX_SIGHTING_ENTRIES,
 	codexEnemyId,
 	codexEntry,
 	isCodexId,
@@ -309,9 +310,10 @@ const AFFIX_SIGHTING_PREFIX = "affix.";
 /**
  * The one-time seed (CXD5, R5): the onboarding doc's `seen` sightings as tier-1 claims (floor 0), sorted by id and
  * distinct. Archetype sightings map through codexEnemyId (`imp` -> `enemy:imp`, the Goldling `golden` ->
- * `enemy:golden`); `affix.<id>` -> `affix:<id>`; anything else (`pellet.power`, the Goldling rumour's first-time card
- * `golden.rumour` (docs/GOLDLING_RUMOURS.md GR7: a rumour heard is not the Goldling seen), unknown or non-string values)
- * is dropped.
+ * `enemy:golden`); `affix.<id>` -> `affix:<id>`; a sighting that is an entry of its own through CODEX_SIGHTING_ENTRIES
+ * (the first knock on a secret room's crack `secret.crack` -> `secret:room`, docs/SECRET_ROOMS.md SRD12); anything else
+ * (`pellet.power`, the Goldling rumour's first-time card `golden.rumour` (docs/GOLDLING_RUMOURS.md GR7: a rumour heard
+ * is not the Goldling seen), unknown or non-string values) is dropped.
  */
 export function seedFromSightings(seen: ReadonlyArray<unknown>): CodexClaim[] {
 	const ids: string[] = [];
@@ -320,7 +322,7 @@ export function seedFromSightings(seen: ReadonlyArray<unknown>): CodexClaim[] {
 		const isAffix = s.sub(1, AFFIX_SIGHTING_PREFIX.size()) === AFFIX_SIGHTING_PREFIX;
 		const id = isAffix
 			? `${CODEX_ID_CATEGORY.affix}${CODEX_ID_SEPARATOR}${s.sub(AFFIX_SIGHTING_PREFIX.size() + 1)}`
-			: codexEnemyId(s);
+			: CODEX_SIGHTING_ENTRIES.get(s) ?? codexEnemyId(s);
 		if (id !== undefined && isCodexId(id)) ids.push(id);
 	}
 	const out: CodexClaim[] = [];
