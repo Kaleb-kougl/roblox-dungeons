@@ -8,8 +8,30 @@ import type { BindingDevice, BindingRefusal, GameAction } from "shared/play";
 export type OptionsTab = "juice" | "controls" | "audio" | "display";
 /** Tab order (the first is selected when the screen opens). */
 export const OPTIONS_TABS: ReadonlyArray<OptionsTab> = ["juice", "controls", "audio", "display"];
-/** The Controls tab's sub-tabs. */
-export const OPTIONS_DEVICES: ReadonlyArray<BindingDevice> = ["kbm", "pad"];
+/**
+ * A Controls sub-tab: a binding device, or Touch (docs/HAPTICS.md HP5: the phone's Vibration row only; touch has no
+ * bindings, test strip or device reset).
+ */
+export type OptionsControlsDevice = BindingDevice | "touch";
+/** The Controls tab's sub-tabs (every one; a device without touch shows `optionsDevices(false)`). */
+export const OPTIONS_DEVICES: ReadonlyArray<OptionsControlsDevice> = ["kbm", "pad", "touch"];
+const OPTIONS_DEVICES_NO_TOUCH: ReadonlyArray<OptionsControlsDevice> = ["kbm", "pad"];
+
+/** The Controls sub-tabs shown: Touch only on a touch-enabled device (as the Display tab's touch rows). */
+export function optionsDevices(touch: boolean): ReadonlyArray<OptionsControlsDevice> {
+	return touch ? OPTIONS_DEVICES : OPTIONS_DEVICES_NO_TOUCH;
+}
+
+/** The sub-tab drawn: `device` when it is shown, else the first (a stored Touch on a device without touch). */
+export function shownControlsDevice(device: OptionsControlsDevice, touch: boolean): OptionsControlsDevice {
+	const shown = optionsDevices(touch);
+	return shown.includes(device) ? device : shown[0];
+}
+
+/** The binding device a Controls sub-tab rebinds, or undefined for Touch (no bindings). */
+export function controlsBindingDevice(device: OptionsControlsDevice): BindingDevice | undefined {
+	return device === "touch" ? undefined : device;
+}
 
 /** Every way a rebind / clear can be refused (shared/play BindingRefusal), for the refusal notes. */
 export const BINDING_REFUSALS: ReadonlyArray<BindingRefusal> = [
@@ -37,7 +59,10 @@ export const OPTIONS_STRINGS = {
 	resetYes: "options.controls.resetYes",
 	cancel: "options.controls.cancel",
 	test: "options.controls.test",
-	/** Controls > Gamepad: menu vibration On / Off (docs/GAMEPAD_MENUS.md GM9; labels as roomEdges). */
+	/**
+	 * Controls > Gamepad: vibration On / Off (docs/GAMEPAD_MENUS.md GM9; labels as roomEdges); the same label on Controls
+	 * > Touch for the phone (docs/HAPTICS.md HP5).
+	 */
 	vibration: "options.controls.vibration",
 	/** The capture overlay ("Press a key... (5)") and its cancel line. */
 	captureKey: "options.capture.key",
@@ -87,7 +112,7 @@ export const OPTIONS_STRINGS = {
 	languageAuto: "options.display.language.auto",
 	languagePrev: "options.display.language.prev",
 	languageNext: "options.display.language.next",
-	/** Prefixes: `options.tab.<tab>`, `options.device.<kbm|pad>`, `options.action.<action>`, `options.refused.<reason>`. */
+	/** Prefixes: `options.tab.<tab>`, `options.device.<kbm|pad|touch>`, `options.action.<action>`, `options.refused.<reason>`. */
 	tabPrefix: "options.tab.",
 	devicePrefix: "options.device.",
 	actionPrefix: "options.action.",
@@ -98,7 +123,7 @@ export function optionsTabKey(tab: OptionsTab): string {
 	return `${OPTIONS_STRINGS.tabPrefix}${tab}`;
 }
 
-export function optionsDeviceKey(device: BindingDevice): string {
+export function optionsDeviceKey(device: OptionsControlsDevice): string {
 	return `${OPTIONS_STRINGS.devicePrefix}${device}`;
 }
 

@@ -19,6 +19,7 @@ import {
 	type CaptureTarget,
 	type GameAction,
 } from "shared/play";
+import { controlsBindingDevice } from "shared/view/hud";
 import { SettingsController } from "./SettingsController";
 
 function keyCodeByName(): Map<string, Enum.KeyCode> {
@@ -182,8 +183,14 @@ export class RebindController implements OnStart {
 			if (o.pressed.size() > 0) clientStore.setPressed([]);
 			return;
 		}
-		const held = o.controlsDevice === "kbm" ? this.heldKbm() : this.heldPad();
-		clientStore.setPressed(pressedActions(selectBindings(state), o.controlsDevice, held));
+		const device = controlsBindingDevice(o.controlsDevice);
+		// Controls > Touch (docs/HAPTICS.md HP5) has no test strip.
+		if (device === undefined) {
+			if (o.pressed.size() > 0) clientStore.setPressed([]);
+			return;
+		}
+		const held = device === "kbm" ? this.heldKbm() : this.heldPad();
+		clientStore.setPressed(pressedActions(selectBindings(state), device, held));
 	}
 
 	private heldKbm(): Set<string> {

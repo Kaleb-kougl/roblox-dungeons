@@ -26,7 +26,10 @@ import {
 	OPTIONS_STRINGS,
 	OPTIONS_TABS,
 	actionNameKey,
+	controlsBindingDevice,
+	optionsDevices,
 	optionsStringKeys,
+	shownControlsDevice,
 	refusalKey,
 	SCORE_SOURCE_KEYS,
 	scoreBreakdownRows,
@@ -248,6 +251,18 @@ describe("HUD helpers", () => {
 		expect(warnings).toEqual([]);
 	});
 
+	it("Controls sub-tabs: Touch only on a touch device, no bindings there (docs/HAPTICS.md HP5)", () => {
+		expect([...OPTIONS_DEVICES]).toEqual(["kbm", "pad", "touch"]);
+		expect([...optionsDevices(true)]).toEqual(["kbm", "pad", "touch"]);
+		expect([...optionsDevices(false)]).toEqual(["kbm", "pad"]);
+		expect(shownControlsDevice("touch", true)).toBe("touch");
+		expect(shownControlsDevice("touch", false)).toBe("kbm");
+		expect(shownControlsDevice("pad", false)).toBe("pad");
+		expect(controlsBindingDevice("kbm")).toBe("kbm");
+		expect(controlsBindingDevice("pad")).toBe("pad");
+		expect(controlsBindingDevice("touch")).toBe(undefined);
+	});
+
 	it("every Options screen string exists: tabs, devices, every action's name, every refusal note", () => {
 		const warnings: string[] = [];
 		const pack = quietPack(warnings);
@@ -260,6 +275,7 @@ describe("HUD helpers", () => {
 		for (const action of PAD_ACTIONS) expect(KBM_ACTIONS.includes(action)).toBe(true);
 		expect(actionNameKey("swap")).toBe("options.action.swap");
 		expect(refusalKey("reserved")).toBe("options.refused.reserved");
+		expect(keys.includes("options.device.touch")).toBe(true);
 		expect(pack.str(OPTIONS_STRINGS.captureKey, { seconds: REBIND.captureTimeoutSeconds })).toBe(
 			"Press a key... (5)",
 		);
