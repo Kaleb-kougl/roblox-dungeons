@@ -55,3 +55,9 @@ export * from "./siegeDraw"; // BV11c: the bow's drawing rules
 export * from "./wreckerFx";
 export * from "./heartBeamFx";
 export * from "./overcapFx";
+// docs/HAPTICS.md HP1: in-run haptics' pure core (the shared timeline and generations, the play cues, the director).
+export * from "./haptics";
+export * from "./hapticsConfig";
+export * from "./playHaptics";
+// docs/HAPTICS.md HP4 / HP6: the frame's facts -> the director's input, the KV_HapticDebug value.
+export * from "./playHapticsInput";

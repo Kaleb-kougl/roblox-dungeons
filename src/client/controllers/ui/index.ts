@@ -6,7 +6,7 @@
  * M8 / M9 the minimap and the full map (MinimapController); docs/DAILY.md DS4 the Daily's status (DailyController);
  * docs/LOCALIZATION.md L9 the fit audit (LocaleAuditController, KV_LocaleAudit); docs/TREASURE.md TR8 the vault's
  * toasts (TreasureToastController); docs/GAMEPAD_MENUS.md GM2-GM4 the menus' focus scopes, recovery, memory and pad
- * actions (FocusController); GM9 the menu haptics (PadHapticsController); GM12 the console chat rule
+ * actions (FocusController); GM9 the menu haptics (fx/HapticsController since docs/HAPTICS.md HP2); GM12 the console chat rule
  * (ConsoleController);
  * docs/ITEM_TOOLTIPS.md IT4 the item tooltips' hover / focus / tap (TooltipController); docs/STAGE_ASSETS.md SA18 the
  * UI's art readiness (UiArtController); docs/CURSOR.md C4 / C5 the menus' gauntlet cursor and the one writer of
@@ -26,7 +26,6 @@ export * from "./DailyController";
 export * from "./LocaleAuditController";
 export * from "./TreasureToastController";
 export * from "./FocusController";
-export * from "./PadHapticsController";
 export * from "./ConsoleController";
 export * from "./TooltipController";
 export * from "./UiArtController";

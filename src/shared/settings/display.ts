@@ -3,8 +3,8 @@
  * computeHudScale; the client's useHudScale multiplies it in), and the room-edge lines on the floor
  * (docs/ROOM_EDGES.md RE6), the corner panels' occlusion fade (docs/HUD_LAYOUT.md H7), the live HUD's item tooltips (docs/ITEM_TOOLTIPS.md ITD8), the corner minimap
  * (docs/MINIMAP.md M10), the player outline (docs/PLAYER_OUTLINE.md P4), the build effects (docs/BUILDS.md BUD13), the touch controls (docs/MOBILE.md MB7: size,
- * opacity, auto-target, left-handed), the language (docs/LOCALIZATION.md L6) and the gamepad menus' vibration
- * (docs/GAMEPAD_MENUS.md GM9), the remembered character pick (docs/ARCHER.md ARD12: the character screen's focus
+ * opacity, auto-target, left-handed), the language (docs/LOCALIZATION.md L6), the gamepad menus' vibration
+ * (docs/GAMEPAD_MENUS.md GM9), the phone's vibration (docs/HAPTICS.md HP5), the remembered character pick (docs/ARCHER.md ARD12: the character screen's focus
  * and the run a start plays) and the gauntlet cursor's size (docs/CURSOR.md D2). Presentation only; stored
  * overrides-only (a new optional field needs no migration).
  */
@@ -27,6 +27,7 @@ import {
 	DEFAULT_TOUCH_LEFT_HANDED,
 	DEFAULT_TOUCH_OPACITY_PERCENT,
 	DEFAULT_TOUCH_SIZE_PERCENT,
+	DEFAULT_TOUCH_VIBRATION,
 	HUD_SCALE_PERCENTS,
 	LANGUAGE_AUTO,
 	TOUCH_OPACITY_PERCENTS,
@@ -69,6 +70,12 @@ export interface DisplaySettings {
 	 */
 	padVibration: boolean;
 	/**
+	 * Vibrate the phone on in-run moments (docs/HAPTICS.md HP5, HPD6: a separate Touch toggle; touchHapticsOn). Shown on
+	 * Options > Controls > Touch, not the Display tab (DISPLAY_RESET_KEEPS). Default true: only Off (false) is ever
+	 * stored.
+	 */
+	touchVibration: boolean;
+	/**
 	 * The last character picked (docs/ARCHER.md ARD12, AR5): a shared/characters CharacterId, the next run's and the
 	 * character screen's focus. Default DEFAULT_CHARACTER (the Knight): only another pick is ever stored. Shown on the
 	 * character screen, not the Display tab (DISPLAY_RESET_KEEPS).
@@ -97,6 +104,7 @@ export const DISPLAY_SETTING_KEYS: ReadonlyArray<keyof DisplaySettings> = [
 	"touchLeftHanded",
 	"language",
 	"padVibration",
+	"touchVibration",
 	"character",
 	"cursorSize",
 ];
@@ -116,6 +124,7 @@ export function defaultDisplaySettings(): DisplaySettings {
 		touchLeftHanded: DEFAULT_TOUCH_LEFT_HANDED,
 		language: DEFAULT_LANGUAGE,
 		padVibration: DEFAULT_PAD_VIBRATION,
+		touchVibration: DEFAULT_TOUCH_VIBRATION,
 		character: DEFAULT_CHARACTER,
 		cursorSize: DEFAULT_CURSOR_SIZE,
 	};
@@ -127,7 +136,7 @@ export function defaultDisplaySettings(): DisplaySettings {
  * BUILD_FX_LEVELS other than the default (so only "reduced"); a touchSize / touchOpacity
  * from its list and not the default; a touchAutoTarget / touchLeftHanded that is a boolean other than the default; a
  * language that is a known locale code (stored as LOCALES spells it; "auto" and unknown codes are dropped); a
- * padVibration that is a boolean other than the default (so only `false`); a character that is a character id other
+ * padVibration / touchVibration that is a boolean other than the default (so only `false`); a character that is a character id other
  * than DEFAULT_CHARACTER; a cursorSize from CURSOR_SIZES other than the default (so only "small" / "large"). Never
  * throws.
  */
@@ -182,6 +191,10 @@ export function sanitizeDisplayOverrides(raw: unknown): DisplayOverrides {
 	}
 	const vibration = t.padVibration;
 	if (typeIs(vibration, "boolean") && vibration !== DEFAULT_PAD_VIBRATION) out.padVibration = vibration;
+	const touchVibration = t.touchVibration;
+	if (typeIs(touchVibration, "boolean") && touchVibration !== DEFAULT_TOUCH_VIBRATION) {
+		out.touchVibration = touchVibration;
+	}
 	const character = t.character;
 	if (isCharacterId(character) && character !== DEFAULT_CHARACTER) out.character = character;
 	const cursorSize = t.cursorSize;
@@ -197,9 +210,14 @@ export function sanitizeDisplayOverrides(raw: unknown): DisplayOverrides {
 
 /**
  * Display settings shown elsewhere, which the Display tab's Reset (and Options X there) keeps: `padVibration` sits on
- * Controls > Gamepad (docs/GAMEPAD_MENUS.md GM9), `character` is the character screen's pick (docs/ARCHER.md AR5).
+ * Controls > Gamepad (docs/GAMEPAD_MENUS.md GM9), `touchVibration` on Controls > Touch (docs/HAPTICS.md HP5),
+ * `character` is the character screen's pick (docs/ARCHER.md AR5).
  */
-export const DISPLAY_RESET_KEEPS: ReadonlyArray<keyof DisplaySettings> = ["padVibration", "character"];
+export const DISPLAY_RESET_KEEPS: ReadonlyArray<keyof DisplaySettings> = [
+	"padVibration",
+	"touchVibration",
+	"character",
+];
 
 /** The display group after the Display tab's Reset: every override dropped but DISPLAY_RESET_KEEPS' (sanitized). */
 export function displayResetOverrides(current: unknown): DisplayOverrides {

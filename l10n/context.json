@@ -3251,7 +3251,7 @@
 		"note": "Label of the input test strip in the Controls tab: press any control and its action lights up."
 	},
 	"options.controls.vibration": {
-		"note": "Options screen, Controls tab, controller bindings: row label for controller vibration in menus (On / Off).",
+		"note": "Options screen, Controls tab: row label for vibration (On / Off), on the Gamepad sub-tab (controller vibration in menus and play) and on the Touch sub-tab (phone vibration in play).",
 		"max": 24
 	},
 	"options.device.kbm": {
@@ -3260,6 +3260,10 @@
 	},
 	"options.device.pad": {
 		"note": "Sub-tab of the Controls tab: bindings for a game controller. Also inserted as {device} in other lines.",
+		"max": 12
+	},
+	"options.device.touch": {
+		"note": "Sub-tab of the Controls tab on phones and tablets: touch-screen settings (only the vibration row; touch controls have no bindings).",
 		"max": 12
 	},
 	"options.display.buildFx": {

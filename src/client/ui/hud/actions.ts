@@ -2,7 +2,7 @@ import React, { useContext } from "@rbxts/react";
 import type { LeaderboardBoard } from "shared/leaderboard";
 import type { BindingDevice, CaptureTarget, GameAction } from "shared/play";
 import type { AudioOverrides, DisplayOverrides, JuiceOverrides, SettingsGroup } from "shared/settings";
-import type { LeaderboardTabs, OptionsTab, RecapTab } from "shared/view/hud";
+import type { LeaderboardTabs, OptionsControlsDevice, OptionsTab, RecapTab } from "shared/view/hud";
 
 /**
  * What the HUD's menus can do. HudController builds it from the controllers (SimController, SettingsController,
@@ -25,7 +25,7 @@ export interface HudActions {
 	readonly resetSettings: (group?: SettingsGroup) => void;
 	/** Options screen: tabs, volumes, HUD scale. */
 	readonly setOptionsTab: (tab: OptionsTab) => void;
-	readonly setControlsDevice: (device: BindingDevice) => void;
+	readonly setControlsDevice: (device: OptionsControlsDevice) => void;
 	readonly updateAudio: (patch: AudioOverrides) => void;
 	readonly updateDisplay: (patch: DisplayOverrides) => void;
 	/** Options > Controls: capture an input for a slot, answer the swap prompt, clear a secondary, reset a device. */

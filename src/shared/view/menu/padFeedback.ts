@@ -6,14 +6,17 @@
  *     (UserInputService:GetImageForKeyCode; GMD8: engine content, not a theme asset), else the engine's text for the
  *     key (GetStringForKeyCode) when it says more than the KeyCode's own name, else our label (shared/play inputLabel).
  *   - menuHapticsOn / hapticTimeline: whether a menu cue may vibrate at all, and a cue's pulses as motor on / off
- *     events in time order (client PadHaptics schedules them).
- *   - HapticGenerations: which scheduled motor event is still current (per pad and motor, so a cue on one pad never
- *     drops another pad's "off").
+ *     events in time order (client fx HapticsController schedules them). The timeline itself, its event type and
+ *     HapticGenerations (which scheduled motor event is still current, per pad and motor) live in shared/view/fx
+ *     haptics.ts since docs/HAPTICS.md HP1 (the play cues share them) and are re-exported here.
  *   - padConfirmFeedback: what a MenuButton activation means for the pad's haptics (a confirm, a disabled press, or
  *     nothing: not on the pad, or not from A).
  */
 import type { InputDeviceKind } from "shared/play";
-import { MENU_HAPTICS, type MenuHaptic, type MenuHapticMotor } from "./config";
+import { hapticTimeline as pulseTimeline, type HapticEvent, type HapticPulse } from "../fx/haptics";
+import { MENU_HAPTICS, MENU_HAPTIC_KINDS, type MenuHaptic, type MenuHapticPulse } from "./config";
+
+export { HapticGenerations, type HapticEvent } from "../fx/haptics";
 
 /** One drawn glyph: the engine's image, or a text label. */
 export type PadGlyph =
@@ -43,55 +46,35 @@ export function menuHapticsOn(device: InputDeviceKind, vibration: boolean): bool
 	return device === "gamepad" && vibration;
 }
 
-/** One motor event: at `atSec` after the cue, set `motor` to `strength` (0: off). */
-export interface HapticEvent {
-	readonly atSec: number;
-	readonly motor: MenuHapticMotor;
-	readonly strength: number;
+/** Menu cues have no ramps: the timeline's ramp step is never used for them. */
+const MENU_RAMP_STEP_SEC = 0;
+
+/** A menu pulse as the shared pulse type (its `delaySec` is the start offset). */
+export function menuHapticPulse(p: MenuHapticPulse): HapticPulse {
+	return { motor: p.motor, strength: p.strength, seconds: p.seconds, atSec: p.delaySec };
+}
+
+/** Every menu cue's pulses as shared pulses, built once. */
+const MENU_PULSES = new Map<MenuHaptic, ReadonlyArray<HapticPulse>>();
+for (const cue of MENU_HAPTIC_KINDS) {
+	const pulses = new Array<HapticPulse>();
+	for (const p of MENU_HAPTICS[cue]) pulses.push(menuHapticPulse(p));
+	MENU_PULSES.set(cue, pulses);
 }
 
 /**
- * A cue's pulses (MENU_HAPTICS) as motor events, in time order (ties: offs first, so a pulse that starts as another on
- * the same motor ends is not cut): each pulse turns its motor on at `delaySec` and off `seconds` later. Strength
- * clamped to 0..1, durations never negative.
+ * A menu cue's pulses (MENU_HAPTICS) as motor events, in time order (shared/view/fx haptics.ts hapticTimeline: ties
+ * offs first; each pulse on at its `delaySec`, off `seconds` later; strength clamped to 0..1, durations never
+ * negative). Given a pulse list and a ramp step instead, the shared timeline itself (play cues).
  */
-export function hapticTimeline(cue: MenuHaptic): ReadonlyArray<HapticEvent> {
-	const out = new Array<HapticEvent>();
-	for (const p of MENU_HAPTICS[cue]) {
-		const start = math.max(0, p.delaySec);
-		out.push({ atSec: start, motor: p.motor, strength: math.clamp(p.strength, 0, 1) });
-		out.push({ atSec: start + math.max(0, p.seconds), motor: p.motor, strength: 0 });
-	}
-	out.sort((a, b) => (a.atSec !== b.atSec ? a.atSec < b.atSec : a.strength < b.strength));
-	return out;
-}
-
-/**
- * The latest cue per pad + motor (client PadHaptics): `begin` hands a cue its generation for one pad's motor, `current`
- * says whether a scheduled event of that generation still applies. A newer cue on the SAME pad and motor drops an older
- * one's later events (the newer cue schedules its own off); a cue on another pad never does, so every pad's "off"
- * arrives. Generations come from one counter, so after `clear` (every motor off) no older event matches again.
- */
-export class HapticGenerations {
-	private counter = 0;
-	private readonly latest = new Map<string, number>();
-
-	/** A new cue on `pad`'s `motor` (any stable names): its generation. */
-	begin(pad: string, motor: MenuHapticMotor): number {
-		this.counter += 1;
-		this.latest.set(`${pad}/${motor}`, this.counter);
-		return this.counter;
-	}
-
-	/** An event of generation `gen` on `pad`'s `motor` still applies. */
-	current(pad: string, motor: MenuHapticMotor, gen: number): boolean {
-		return this.latest.get(`${pad}/${motor}`) === gen;
-	}
-
-	/** Every pending event is stale (the motors were turned off). */
-	clear(): void {
-		this.latest.clear();
-	}
+export function hapticTimeline(cue: MenuHaptic): ReadonlyArray<HapticEvent>;
+export function hapticTimeline(pulses: ReadonlyArray<HapticPulse>, rampStepSec: number): ReadonlyArray<HapticEvent>;
+export function hapticTimeline(
+	cue: MenuHaptic | ReadonlyArray<HapticPulse>,
+	rampStepSec?: number,
+): ReadonlyArray<HapticEvent> {
+	if (typeIs(cue, "string")) return pulseTimeline(MENU_PULSES.get(cue) ?? [], MENU_RAMP_STEP_SEC);
+	return pulseTimeline(cue, rampStepSec ?? MENU_RAMP_STEP_SEC);
 }
 
 /** What a menu button press means for the pad's haptics. */

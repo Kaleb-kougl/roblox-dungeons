@@ -80,6 +80,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/ARCHER.md` | The Archer (the bow split off the knight into its own character: Knight = sword, Archer = bow and a longer roll, one weapon set each; weapon-tagged boons / relics dealt only to the character who carries the weapon; a character screen every run; Knight-only tutorial without the bow room; shared boards with the character shown; SmallScaleInt Archer art): plan, tasks AR0-AR14, decisions ARD1-ARD17 |
 | `docs/FLOOR_MODIFIERS.md` | Floor modifiers (about one endless non-boss floor in five from floor 2 is special and the floor card says so: Gilded = a certain Goldling, Hoard = a certain vault, Feast = a certain power pellet, Plunder = a boost in every room's barrels, Blood Moon = twice the elites; only where true, never on boss floors, never two in a row; a banner on the card, a status chip and a pause line; gameplay, floor-built, opt-in `EndlessFloorOptions.modifiers`, endless only): plan, as built, FM9 census, open owner calls OC1-OC3, Studio check, tasks FM0-FM13, decisions FMD1-FMD12 |
 | `docs/CODEX.md` | Codex (a main-menu catalogue of 86 entries: boons, evolutions, duos, relics & curses, boosts, enemies, champions, bosses; each unknown / seen / found with a NEW dot, completion %; in-run NEW! chips on existing toasts, codex cards on the sighting slot under a 2-per-floor budget, NEW tags on unfound draft cards, a run-over row; client-claimed, server-stored `KV_Codex_v1`; presentation plus one server doc): plan, as built, tasks CX0-CX11, decisions CXD1-CXD15 / R1-R14 |
+| `docs/HAPTICS.md` | Haptics in play (a kill tick, a parry thump, the boss phase break's heavy hit, the boss death rumble and three hurt buzzes, on the view player's own events only, by priority with a kill gap / cap and a 40 % duty cap; pads through `SetMotor`, phones through `HapticEffect`; quiet in menus, spectating and after run over; `padVibration` for menus and play, a new `touchVibration` on Options > Controls > Touch; `KV_HapticDebug`; presentation only): plan, as built, tasks HP0-HP8, decisions HPD1-HPD12 |
 
 Decision log (deviations from `PLAN.md`):
 - **Art (docs/ART.md).** The theme contract gained a `"sprites"` kind (large pre-rendered cells, 1/4/8/16 screen-space
@@ -924,7 +925,8 @@ Decision log (deviations from `PLAN.md`):
   prompt holds the selection. `InputController.onMenuPadInput` (LB/RB/LT/RT/X/Y/right stick, sunk, driver keys still
   reported) and `blockHeldPadInputs` (on resume and when a shown menu closes: `selectMenuShown`, the menu without the
   stage cover / loading screen). `PadHintBar` (Roblox `GetImageForKeyCode` glyphs), `PadHapticsController`
-  (HapticService motors), `ConsoleController` (chat off on a ten-foot interface), MenuFit's TV-safe inset. Setting
+  (HapticService motors; now `HapticsController`, docs/HAPTICS.md), `ConsoleController` (chat off on a ten-foot
+  interface), MenuFit's TV-safe inset. Setting
   `DisplaySettings.padVibration` (default On, only Off stored, doc stays v2; the Display reset keeps it); strings
   `PAD_HINT_STRING_KEYS` (`pad.hint.*`) and `options.controls.vibration`. Spike `KV_PadSpike` (GM0), debug
   `KV_FocusDebug`. Studio check (GM0 results, GM8, GM11) pending.
@@ -1381,6 +1383,28 @@ Decision log (deviations from `PLAN.md`):
   `contract.luau` / `validate.luau` top-level locals now 187 / 197 (counted on out/). Debug `KV_FakeCodex` (Studio:
   `all` / `seen` / `none` / `unknown` / an id list). No setting. Studio check and the sound's audition / lock / build /
   upload (CX11) pending.
+- **Haptics in play (docs/HAPTICS.md, 2026-11-13).** Presentation only (no sim, dungeon, lockstep, hash, replay,
+  fixture, score or wire change; no new sim field: kills are credited from existing feeds, HPD1). Five moments vibrate
+  on the view player's own events: kill (one tick a frame, `killGapSec` 0.07, `killCapPerSec` 6), parry (per guard,
+  big from `NEAR_MISS_VIEW.parry.bigFrom`), the boss phase break (HPD4: "stagger") and death (HPD5) for everyone in
+  the fight, hurt per `StateWatch.hurtKind` (HPD9); priority lethal > boss death > stagger > heart > armor > parry >
+  kill, a weaker cue never cuts a stronger one; only kills drop for the gap / cap / 40 % duty cap (HPD10). Pure core in
+  shared/view/fx (`haptics.ts`: the pulse types, ramped `hapticTimeline` and `HapticGenerations` with a priority, moved
+  out of shared/view/menu padFeedback.ts, which re-exports them, `MENU_HAPTICS` keeping `delaySec`; `hapticsConfig.ts`
+  `PLAY_HAPTICS` / `PLAY_HAPTICS_PRIORITY` / `PLAY_HAPTICS_RULES` / `HAPTIC_DEBUG`; `playHaptics.ts`
+  `PlayHapticsDirector`, `touchWaveform`; `playHapticsInput.ts` the facts -> input builder). **`HapticsController`
+  (client/controllers/fx) replaces `PadHapticsController`** (client/controllers/ui, removed; FocusController injects
+  the new one): menu cues as before, play cues in a new `FX_FRAME_PHASE.haptics` (1, after `normal`) on the pad that
+  drives the player (new `InputController.getActivePad`) or, on a phone, nine `HapticEffect`s made on first use under
+  `Workspace/KV_Haptics` (Custom, `SetWaveformKeys` once; any failure disables the backend for the session). Kill feed:
+  scored runs the run view's `RecapTally` (`ScoreEvents.popPlayer`), unscored solo every tracker kill, unscored co-op
+  M1 none; a heavy kill in co-op only when every kill of the frame is the view player's. Quiet in menus, paused, the
+  draft, under the stage cover, spectating (HPD7) and after run over, except the run-ending frame's lethal hit or boss
+  death (`PlayHapticsInput.ending`). Setting: new **`DisplaySettings.touchVibration`** (default On, only Off stored,
+  settings doc stays v2, kept by the Display reset) on a new Options > Controls > **Touch** sub-tab (touch devices only;
+  string `options.device.touch`; no pad X Reset there, `PadCondition` `canReset`; opens there for a touch player);
+  `padVibration` now covers menus and play (HPD6); reduced motion changes nothing (HPD8). Debug `KV_HapticDebug`
+  (prints, test cues 1-7). HP0 (the device spike, docs/SPIKES.md) and HP8 (device check + tune) pending.
 
 ## Commands
 

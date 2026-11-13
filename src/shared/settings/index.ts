@@ -10,3 +10,4 @@ export * from "./display";
 export * from "./doc";
 export * from "./store";
 export * from "./config";
+export * from "./vibration";

@@ -1,6 +1,6 @@
 import { createProducer } from "@rbxts/reflex";
 import type { BindingDevice, BindingRef, BindingRefusal, Bindings, CaptureTarget, GameAction } from "shared/play";
-import type { OptionsTab } from "shared/view/hud";
+import type { OptionsControlsDevice, OptionsTab } from "shared/view/hud";
 
 /**
  * Client-local Reflex slice for the Options screen's own state (task L4 / L4b client): the open tab, the Controls
@@ -30,7 +30,8 @@ export interface RebindNotice {
 
 export interface OptionsState {
 	readonly tab: OptionsTab;
-	readonly controlsDevice: BindingDevice;
+	/** The Controls sub-tab (Touch: the phone's Vibration row, docs/HAPTICS.md HP5). */
+	readonly controlsDevice: OptionsControlsDevice;
 	readonly capture: CaptureState | undefined;
 	readonly conflict: ConflictState | undefined;
 	readonly notice: RebindNotice | undefined;
@@ -65,7 +66,7 @@ function samePressed(a: ReadonlyArray<GameAction>, b: ReadonlyArray<GameAction>)
 export const optionsSlice = createProducer(initialState, {
 	setOptionsTab: (state, tab: OptionsTab) =>
 		state.tab === tab ? state : { ...state, tab, notice: undefined, confirmReset: undefined, pressed: [] },
-	setControlsDevice: (state, controlsDevice: BindingDevice) =>
+	setControlsDevice: (state, controlsDevice: OptionsControlsDevice) =>
 		state.controlsDevice === controlsDevice
 			? state
 			: { ...state, controlsDevice, notice: undefined, confirmReset: undefined, pressed: [] },

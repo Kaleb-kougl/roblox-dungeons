@@ -2,7 +2,7 @@ import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { GuiService, UserInputService, Workspace } from "@rbxts/services";
 import { Events } from "client/network";
-import { clientStore, selectAnyPanelOpen, selectOverrides, selectPanelOpen } from "client/store";
+import { clientStore, selectAnyPanelOpen, selectInputDevice, selectOverrides, selectPanelOpen } from "client/store";
 import { DEFAULT_CHARACTER, isCharacterId, type CharacterId } from "shared/characters";
 import { diffControlsOverrides, type Bindings } from "shared/play";
 import {
@@ -20,7 +20,7 @@ import {
 	type SettingsGroup,
 	type SettingsOverrides,
 } from "shared/settings";
-import { SETTINGS_KEY } from "shared/view/hud";
+import { SETTINGS_KEY, openingControlsDevice } from "shared/view/hud";
 import { SimController } from "../game/SimController";
 
 /**
@@ -85,8 +85,19 @@ export class SettingsController implements OnStart {
 
 	/** Opens / closes the Options screen (one menu panel at a time). The existing "open settings" action. */
 	setPanelOpen(open: boolean): void {
-		if (open) clientStore.setLeaderboardOpen(false);
-		else clientStore.clearRebindUi();
+		if (open) {
+			clientStore.setLeaderboardOpen(false);
+			// A phone player's Controls tab opens on Touch, its only row (docs/HAPTICS.md HP5 / HP7 review).
+			const state = clientStore.getState();
+			if (!selectPanelOpen(state)) {
+				const device = openingControlsDevice(
+					state.options.controlsDevice,
+					selectInputDevice(state),
+					UserInputService.TouchEnabled,
+				);
+				clientStore.setControlsDevice(device);
+			}
+		} else clientStore.clearRebindUi();
 		clientStore.setPanelOpen(open);
 	}
 

@@ -2,6 +2,7 @@
  * Menu shell and lobby UI tunables (client/ui/menu), in the HUD's reference pixels (shared/view/hud HUD_VIEW: the
  * 1280x720 layout under the HUD's UIScale), plus the menu's fixed keys.
  */
+import type { HapticMotor } from "../fx/haptics";
 
 /** Enum.KeyCode names that go back one menu screen (pad B: GUI "back"; Escape stays Roblox's menu key). */
 export const MENU_BACK_KEYS: ReadonlyArray<string> = ["ButtonB", "Backspace"];
@@ -184,10 +185,14 @@ export const GAMEPAD_MENU_ATTRIBUTES = {
 	focusDebug: "KV_FocusDebug",
 } as const;
 
-/** The pad's vibration motors the menu uses (Enum.VibrationMotor names). */
-export type MenuHapticMotor = "Small" | "Large";
+/** The pad's vibration motors the menu uses (Enum.VibrationMotor names; shared/view/fx haptics.ts HapticMotor). */
+export type MenuHapticMotor = HapticMotor;
 
-/** One vibration pulse: a motor at `strength` (0..1) for `seconds`, starting `delaySec` after the cue. */
+/**
+ * One vibration pulse: a motor at `strength` (0..1) for `seconds`, starting `delaySec` after the cue. The play cues'
+ * HapticPulse (shared/view/fx haptics.ts) without a ramp, its `atSec` named `delaySec` here; padFeedback hapticTimeline
+ * turns it into one.
+ */
 export interface MenuHapticPulse {
 	readonly motor: MenuHapticMotor;
 	readonly strength: number;
@@ -203,7 +208,7 @@ export const MENU_HAPTIC_KINDS: ReadonlyArray<MenuHaptic> = ["confirm", "disable
 export const MENU_HAPTIC_MAX_PULSE_SEC = 0.2;
 
 /**
- * Every menu cue's pulses (client PadHaptics plays them; silent where the pad has no such motor, and with
+ * Every menu cue's pulses (client fx HapticsController plays them; silent where the pad has no such motor, and with
  * DisplaySettings.padVibration Off): a light tick on confirm, a short double buzz on pressing a disabled button, a
  * tick at a list's end when scrolling into it, a firmer tick when hold-B completes.
  */

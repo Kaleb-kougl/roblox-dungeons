@@ -45,7 +45,6 @@ import { SFX } from "shared/view/audio";
 import {
 	HUD_VIEW,
 	LANGUAGE_ROW,
-	OPTIONS_DEVICES,
 	OPTIONS_STRINGS,
 	OPTIONS_TABS,
 	OPTIONS_VIEW,
@@ -56,7 +55,10 @@ import {
 	currentLanguageChoice,
 	languageChoiceLabel,
 	languageChoices,
+	controlsBindingDevice,
 	optionsDeviceKey,
+	optionsDevices,
+	shownControlsDevice,
 	optionsTabKey,
 	refusalKey,
 	stepLanguageChoice,
@@ -335,16 +337,17 @@ function ControlsTab(props: {
 	const bindings = useSelector(selectBindings);
 	const display = useSelector(selectDisplay);
 	const { actions, options } = props;
-	const device = options.controlsDevice;
-	const list = device === "kbm" ? KBM_ACTIONS : PAD_ACTIONS;
+	/** Touch devices only: the Touch sub-tab (docs/HAPTICS.md HP5). Read once, as the Display tab's touch rows. */
+	const touch = UserInputService.TouchEnabled;
+	const shown = shownControlsDevice(options.controlsDevice, touch);
 	const sel = props.selectable;
-	const deviceTabs = OPTIONS_DEVICES.map((d, i) => (
+	const deviceTabs = optionsDevices(touch).map((d, i) => (
 		<MenuButton
 			key={d}
 			order={i + 1}
 			name={`device_${d}`}
 			text={str(optionsDeviceKey(d))}
-			active={d === device}
+			active={d === shown}
 			selectable={sel}
 			size={new Vector2(OPTIONS_VIEW.slotSize.x, OPTIONS_VIEW.tabSize.y)}
 			textSize={HUD_VIEW.smallText}
@@ -354,6 +357,32 @@ function ControlsTab(props: {
 			}}
 		/>
 	));
+	const device = controlsBindingDevice(shown);
+	if (device === undefined) {
+		// Controls > Touch (docs/HAPTICS.md HP5, HPD6): the phone's vibration On / Off (DisplaySettings.touchVibration,
+		// only Off stored), placed as the Gamepad sub-tab's row; touch has no bindings, test strip or device reset.
+		return (
+			<Panel position={new UDim2()} anchor={new Vector2()} order={props.order} transparency={HIDDEN} padding={0}>
+				<Row order={1}>{deviceTabs}</Row>
+				<SettingRow
+					order={7}
+					name="touchVibration"
+					selectable={sel}
+					label={str(OPTIONS_STRINGS.vibration)}
+					value={display.touchVibration}
+					options={[
+						{ value: true, label: str(SETTINGS_STRINGS.on) },
+						{ value: false, label: str(SETTINGS_STRINGS.off) },
+					]}
+					onPick={(v) => {
+						actions.playUi(SFX.uiClick);
+						actions.updateDisplay({ touchVibration: v });
+					}}
+				/>
+			</Panel>
+		);
+	}
+	const list = device === "kbm" ? KBM_ACTIONS : PAD_ACTIONS;
 	const rows = list.map((action, i) => (
 		<BindingRow
 			key={`${device}_${action}`}
@@ -1016,10 +1045,16 @@ export function OptionsScreen() {
 	const rootRef = useRef<Frame>();
 	const listRef = useRef<ScrollingFrame>();
 	const tab = options.tab;
+	// Controls > Touch has no bindings to reset (docs/HAPTICS.md HP5): no X there, and no X hint.
+	const bindingDevice = controlsBindingDevice(
+		shownControlsDevice(options.controlsDevice, UserInputService.TouchEnabled),
+	);
+	const canReset = tab !== "controls" || bindingDevice !== undefined;
 	const resetTab = () => {
 		if (tab === "controls") {
+			if (bindingDevice === undefined) return;
 			actions.playUi(SFX.uiClick);
-			actions.askResetBindings(options.controlsDevice);
+			actions.askResetBindings(bindingDevice);
 		} else {
 			actions.playUi(SFX.uiConfirm);
 			actions.resetSettings(tab);
@@ -1036,7 +1071,7 @@ export function OptionsScreen() {
 		memoryKey: `options${opened}`,
 		active: open,
 		// The right stick scrolls the Controls list or (compact) the whole body, whichever is drawn (scrollRef).
-		padContext: { subTabs: tab === "controls", scrollList: true },
+		padContext: { subTabs: tab === "controls", scrollList: true, canReset },
 		scrollRef: listRef,
 		onPadAction: (action) => {
 			if (action.kind === "close") {
@@ -1057,7 +1092,12 @@ export function OptionsScreen() {
 				actions.setOptionsTab(nextTab);
 				return;
 			}
-			const nextDevice = stepTab(OPTIONS_DEVICES, options.controlsDevice, subTabStep(action));
+			const touch = UserInputService.TouchEnabled;
+			const nextDevice = stepTab(
+				optionsDevices(touch),
+				shownControlsDevice(options.controlsDevice, touch),
+				subTabStep(action),
+			);
 			if (nextDevice !== undefined && tab === "controls") {
 				actions.playUi(SFX.uiClick);
 				actions.setControlsDevice(nextDevice);
@@ -1188,7 +1228,9 @@ export function OptionsScreen() {
 								surface="options"
 								context={{
 									subTabs: tab === "controls",
-									scrollList: layout.compact || tab === "controls",
+									// Controls > Touch draws no list (its one row never scrolls).
+									scrollList: layout.compact || (tab === "controls" && bindingDevice !== undefined),
+									canReset,
 								}}
 							/>
 						) : device === "touch" ? undefined : (

@@ -20,9 +20,11 @@ export type FxFrameHandler = (events: FxEventBuffer, settings: Readonly<JuiceSet
  * NB7), so the new-best frame is ready before every `normal` handler: NearMissController (and AudioController's sound
  * frame, its subscriber, which hands the new-best cues to the cue mapper) and ComboController (the NEW BEST! shout).
  * `teamMoments` (before scoreRoll): TeamMomentsController steps the co-op moments' room-clear half (docs/RUN_RECAP.md
- * CM2), so RoomClearController's stamp reads this frame's TEAM PERFECT streak.
+ * CM2), so RoomClearController's stamp reads this frame's TEAM PERFECT streak. `haptics` (after normal):
+ * HapticsController's play frame (docs/HAPTICS.md HP4), which reads the parry cue NearMissController dispatched this
+ * frame and the hurt edge of the same frame, so a cue starts on its freeze's frame.
  */
-export const FX_FRAME_PHASE = { teamMoments: -2, scoreRoll: -1, normal: 0 } as const;
+export const FX_FRAME_PHASE = { teamMoments: -2, scoreRoll: -1, normal: 0, haptics: 1 } as const;
 
 interface PhasedFrameHandler {
 	readonly phase: number;

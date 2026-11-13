@@ -13,6 +13,7 @@ import {
 	DEFAULT_MINIMAP,
 	DEFAULT_PLAYER_OUTLINE,
 	DEFAULT_PAD_VIBRATION,
+	DEFAULT_TOUCH_VIBRATION,
 	DEFAULT_BUILD_FX,
 	BUILD_FX_LEVELS,
 	CURSOR_SIZES,
@@ -53,6 +54,7 @@ import {
 	sanitizeSettingsOverrides,
 	sanitizeSettingsPatch,
 	stepVolume,
+	touchHapticsOn,
 	withRetries,
 	type DocCodec,
 	type JuiceOverrides,
@@ -302,6 +304,7 @@ describe("display: room edges (docs/ROOM_EDGES.md RE6)", () => {
 			touchLeftHanded: DEFAULT_TOUCH_LEFT_HANDED,
 			language: DEFAULT_LANGUAGE,
 			padVibration: DEFAULT_PAD_VIBRATION,
+			touchVibration: DEFAULT_TOUCH_VIBRATION,
 			character: DEFAULT_CHARACTER,
 			cursorSize: DEFAULT_CURSOR_SIZE,
 		});
@@ -348,6 +351,7 @@ describe("display: room edges (docs/ROOM_EDGES.md RE6)", () => {
 			touchLeftHanded: DEFAULT_TOUCH_LEFT_HANDED,
 			language: DEFAULT_LANGUAGE,
 			padVibration: DEFAULT_PAD_VIBRATION,
+			touchVibration: DEFAULT_TOUCH_VIBRATION,
 			character: DEFAULT_CHARACTER,
 			cursorSize: DEFAULT_CURSOR_SIZE,
 		});
@@ -457,6 +461,7 @@ describe("display: minimap (docs/MINIMAP.md M10)", () => {
 			touchLeftHanded: DEFAULT_TOUCH_LEFT_HANDED,
 			language: DEFAULT_LANGUAGE,
 			padVibration: DEFAULT_PAD_VIBRATION,
+			touchVibration: DEFAULT_TOUCH_VIBRATION,
 			character: DEFAULT_CHARACTER,
 			cursorSize: DEFAULT_CURSOR_SIZE,
 		});
@@ -504,6 +509,7 @@ describe("display: minimap (docs/MINIMAP.md M10)", () => {
 			touchLeftHanded: DEFAULT_TOUCH_LEFT_HANDED,
 			language: DEFAULT_LANGUAGE,
 			padVibration: DEFAULT_PAD_VIBRATION,
+			touchVibration: DEFAULT_TOUCH_VIBRATION,
 			character: DEFAULT_CHARACTER,
 			cursorSize: DEFAULT_CURSOR_SIZE,
 		});
@@ -741,6 +747,7 @@ describe("display: player outline (docs/PLAYER_OUTLINE.md P4)", () => {
 			touchLeftHanded: DEFAULT_TOUCH_LEFT_HANDED,
 			language: DEFAULT_LANGUAGE,
 			padVibration: DEFAULT_PAD_VIBRATION,
+			touchVibration: DEFAULT_TOUCH_VIBRATION,
 			character: DEFAULT_CHARACTER,
 			cursorSize: DEFAULT_CURSOR_SIZE,
 		});
@@ -824,6 +831,7 @@ describe("display: touch controls (docs/MOBILE.md MB7)", () => {
 			touchLeftHanded: DEFAULT_TOUCH_LEFT_HANDED,
 			language: DEFAULT_LANGUAGE,
 			padVibration: DEFAULT_PAD_VIBRATION,
+			touchVibration: DEFAULT_TOUCH_VIBRATION,
 			character: DEFAULT_CHARACTER,
 			cursorSize: DEFAULT_CURSOR_SIZE,
 		});
@@ -944,6 +952,7 @@ describe("display: gamepad menu vibration (docs/GAMEPAD_MENUS.md GM9)", () => {
 			touchLeftHanded: DEFAULT_TOUCH_LEFT_HANDED,
 			language: DEFAULT_LANGUAGE,
 			padVibration: false,
+			touchVibration: DEFAULT_TOUCH_VIBRATION,
 			character: DEFAULT_CHARACTER,
 			cursorSize: DEFAULT_CURSOR_SIZE,
 		});
@@ -985,6 +994,79 @@ describe("display: the Display tab's Reset keeps the gamepad vibration (Controls
 		expect(displayResetOverrides({})).toEqual({});
 		expect(displayResetOverrides(undefined)).toEqual({});
 		expect(displayResetOverrides({ padVibration: "off" })).toEqual({});
+	});
+});
+
+describe("display: the phone's vibration (docs/HAPTICS.md HP5, HPD6)", () => {
+	it("defaults to On; only Off is stored", () => {
+		expect(DEFAULT_TOUCH_VIBRATION).toBe(true);
+		expect(defaultDisplaySettings().touchVibration).toBe(true);
+		expect(resolveDisplaySettings(undefined).touchVibration).toBe(true);
+		expect(DISPLAY_SETTING_KEYS.includes("touchVibration")).toBe(true);
+		expect(sanitizeDisplayOverrides({ touchVibration: false })).toEqual({ touchVibration: false });
+		expect(sanitizeDisplayOverrides({ touchVibration: true })).toEqual({});
+		expect(resolveDisplaySettings({ touchVibration: false })).toEqual({
+			...defaultDisplaySettings(),
+			touchVibration: false,
+		});
+		// Independent of the gamepad's toggle (HPD6: one per device).
+		expect(sanitizeDisplayOverrides({ padVibration: false, touchVibration: false })).toEqual({
+			padVibration: false,
+			touchVibration: false,
+		});
+		expect(resolveDisplaySettings({ padVibration: false }).touchVibration).toBe(true);
+		expect(resolveDisplaySettings({ touchVibration: false }).padVibration).toBe(true);
+	});
+
+	it("round-trips Off through the stored document (still v2)", () => {
+		const overrides: SettingsOverrides = { display: { touchVibration: false } };
+		const doc = encodeSettingsDoc(overrides);
+		expect(doc).toEqual({ ...EMPTY_DOC, display: { touchVibration: false } });
+		expect(doc.v).toBe(2);
+		expect(doc.v).toBe(SETTINGS_DOC_VERSION);
+		expect(decodeSettingsDoc(doc)).toEqual(overrides);
+		expect(resolveDisplaySettings(decodeSettingsDoc(doc).display).touchVibration).toBe(false);
+		expect(applySettingsPatch(overrides, { display: { touchVibration: true } })).toEqual({});
+		expect(applySettingsPatch({}, { display: { touchVibration: false } })).toEqual(overrides);
+		expect(sameSettingsOverrides(overrides, { display: { touchVibration: false } })).toBe(true);
+		expect(sameSettingsOverrides(overrides, { display: { padVibration: false } })).toBe(false);
+	});
+
+	it("ignores junk", () => {
+		for (const junk of [0, 1, "false", "off", {}, [false]] as ReadonlyArray<unknown>) {
+			expect(sanitizeDisplayOverrides({ touchVibration: junk })).toEqual({});
+		}
+	});
+
+	it("an older document without the field reads On", () => {
+		const old = { v: 2, juice: {}, controls: {}, audio: {}, display: { minimap: false, padVibration: false } };
+		const display = resolveDisplaySettings(decodeSettingsDoc(old).display);
+		expect(display.touchVibration).toBe(true);
+		expect(display.padVibration).toBe(false);
+		expect(
+			resolveDisplaySettings(decodeSettingsDoc({ v: SETTINGS_DOC_V1, juice: {} }).display).touchVibration,
+		).toBe(true);
+	});
+
+	it("the Display tab's Reset keeps it (it is Controls > Touch's)", () => {
+		expect(DISPLAY_RESET_KEEPS.includes("touchVibration")).toBe(true);
+		expect(displayResetOverrides({ hudScale: 110, minimap: false, touchVibration: false })).toEqual({
+			touchVibration: false,
+		});
+		expect(
+			displayResetOverrides({ touchSize: 120, padVibration: false, touchVibration: false, character: "archer" }),
+		).toEqual({ padVibration: false, touchVibration: false, character: "archer" });
+		expect(displayResetOverrides({ touchVibration: true })).toEqual({});
+		expect(displayResetOverrides({ touchVibration: "off" })).toEqual({});
+	});
+
+	it("touchHapticsOn: only touch with the setting On", () => {
+		expect(touchHapticsOn("touch", true)).toBe(true);
+		expect(touchHapticsOn("touch", false)).toBe(false);
+		expect(touchHapticsOn("gamepad", true)).toBe(false);
+		expect(touchHapticsOn("gamepad", false)).toBe(false);
+		expect(touchHapticsOn("keyboard", true)).toBe(false);
+		expect(touchHapticsOn("keyboard", false)).toBe(false);
 	});
 });
 

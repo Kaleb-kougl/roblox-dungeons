@@ -700,6 +700,7 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"options.tab.display": "Display",
 		"options.device.kbm": "Keyboard & mouse",
 		"options.device.pad": "Gamepad",
+		"options.device.touch": "Touch",
 		"options.controls.primary": "Primary",
 		"options.controls.secondary": "Secondary",
 		"options.controls.button": "Button",

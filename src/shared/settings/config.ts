@@ -62,6 +62,12 @@ export const DEFAULT_PLAYER_OUTLINE = true;
 export const DEFAULT_PAD_VIBRATION = true;
 
 /**
+ * Phone vibration (docs/HAPTICS.md HP5, HPD6, Options > Controls > Touch > Vibration): On by default. The in-run haptics
+ * on a touch device (shared/settings touchHapticsOn); silent where the phone has no actuator.
+ */
+export const DEFAULT_TOUCH_VIBRATION = true;
+
+/**
  * Build effects (docs/BUILDS.md BUD13, Options > Display > Build effects): Full, or Reduced (half the spark / nova
  * particles and ring segments, no bullet trails). Presentation only: effect bullets are always drawn.
  */

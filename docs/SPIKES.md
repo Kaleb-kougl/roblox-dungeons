@@ -15,6 +15,7 @@ turned off.
 | PA0: sprite bullets | Can the bullets be drawn as pixel-art sprites (Decal, per-bullet SurfaceGui, or one canvas SurfaceGui) at bullet-hell counts, within 1.5x the neon parts' update? (docs/PROJECTILE_ART.md PA0) | `src/client/controllers/spikes/BulletSpikeController.ts` (spike A's controller, render modes) |
 | L0: localization | Which fonts draw each script we may ship (tofu, fallback or correct), do Arabic shaping / right-to-left and CJK / Thai wrapping work, which locale id is the player's language, does `AutoLocalize = false` stop translated content, and what does the cloud table's CSV look like? (docs/LOCALIZATION.md L0) | `src/client/controllers/spikes/L10nSpikeController.ts`, `src/shared/spikes/l10nSpike.ts` |
 | GM0: gamepad menus | Does the default selection image draw over our buttons, do ScrollingFrames follow the selection and scroll with the stick, what happens to a destroyed / hidden selection, does a Stop SelectionGroup hold across ScreenGuis, does `GuiService:Select` honour `SelectionOrder`, what glyphs and haptics does the engine give, what do the console signals read, does Start reach the game? (docs/GAMEPAD_MENUS.md GM0) | `src/client/controllers/spikes/PadSpikeController.tsx` |
+| HP0: haptics in play | Does `HapticEffect` (Custom) vibrate phones and pads, how short a pulse is felt, how late is `Play()`, where must a non-spatial effect be parented, does it beat `SetMotor` on pads, what does a pad on a phone do, which feed names a co-op kill's killer, does the heart hurt's double buzz stay two buzzes? (docs/HAPTICS.md HP0) | not built yet: `KV_PadSpike` extended or a new `KV_HapticSpike` (HP0) |
 | Rollback: measure before building (closed) | Can a phone copy the co-op state and step it H ticks a frame (off the main thread, Parallel Luau), and how often would a rollback's drawn world visibly correct itself? Answered: no (docs/ROLLBACK_SPIKE.md RBD8); code removed (last at `f6f6e6c`) | none (removed) |
 
 Tunables for all of them: `src/shared/config/spikes.ts`. HUD: `src/client/ui/spikes/SpikeHud.tsx` (top left, with buttons
@@ -680,6 +681,61 @@ or drop the selection?).
 | 10. A held A / LB leaks into the sim after a menu closes | | | | |
 
 Results pending. Notes (Studio version, pad models, the glyph strings verbatim, anything odd):
+
+## Spike HP0: haptics in play (docs/HAPTICS.md)
+
+Decides every "HP0 picks" branch of docs/HAPTICS.md before HP2-HP4 are wired: the phone backend's facts (HP3), whether
+pads stay on `SetMotor` (HPD2), the co-op kill feed (HP4, HPD1) and the hurt buzz's shape (HPD9). Client code, **off by
+default** like every spike here: `KV_PadSpike` extended (it already plays `SetMotor` and `HapticEffect`, GM0 question
+7) or a new `KV_HapticSpike` (tunables in `src/shared/config/spikes.ts`). Not built yet. Phones must be tested in a
+**published** place (Studio cannot vibrate a phone); the voice-chat row needs a place with voice chat enabled. Play
+each cue at the strengths and durations of docs/HAPTICS.md's "Player experience" table.
+
+### How to run: the seven test cues (`KV_HapticDebug`, HP6)
+
+The built game already plays every play cue through `HapticsController` (client/controllers/fx), so rows 1a-1d, 2a,
+2b, 3 and 5 can be felt on the real cues without a spike build. Workspace attribute **`KV_HapticDebug`**
+(`HAPTIC_DEBUG` in shared/view/fx hapticsConfig.ts, off by default):
+
+- `true` (any value but absent / `false` / `0` / `""`): prints every play cue played (`[Haptics] play <kind> on <pad |
+  touch> (<backend>)`, backend `motor` / `effect`, or why nothing played: `no pad`, `no motor`, `held` (a stronger cue
+  holds the motor or the phone), `effect off`, `no device`), every drop with its reason (`gap`, `cap`, `duty`,
+  `priority`, `quiet`), each `stopAll`, and once a warning if the phone's `HapticEffect` backend failed and was
+  disabled for the session (with the failing call).
+- An integer **1-7** fires one test cue once per change of the attribute, on the current device, even outside a run (the
+  device and its setting still apply: the last-used device must be the gamepad with Options > Controls > Gamepad >
+  Vibration On, or touch with Options > Controls > Touch > Vibration On): **1** kill, **2** parry, **3** stagger (phase
+  break), **4** boss death, **5** hurt armor, **6** hurt heart, **7** hurt lethal. The attribute keeps its value: set
+  another number (or the same number after any other value) to fire again. It prints `[Haptics] test <kind> on
+  <device> (<backend>)`.
+
+On a **phone** (published place): set the attribute on the server from the developer console's server command line
+(`workspace:SetAttribute("KV_HapticDebug", 6)`; a Workspace attribute set on the server replicates to every client, and
+the client log shows the prints); touch the screen once so the device is touch, then 1-7 in turn; row 1b by tuning
+`PLAY_HAPTICS` locally, row 1c with 1, row 5 with 6, row 1e by moving the effects' folder (`KV_Haptics`, today under
+Workspace with no `Position` / `Radius`). On **pads** (Xbox / PlayStation on PC): press any pad button first, then 1-7;
+rows 2a / 2b compare against today's `SetMotor` backend (HapticEffect on pads is not wired, HPD2). A pad on a phone
+(row 3): connect it, press a button, fire 1-7: expected `no motor` or nothing felt, no error. Row 4 (the co-op kill
+feed) is answered in code (HP4): scored runs credit kills by `ScoreEvents.popPlayer`, summed per frame from the run
+view's `RecapTally`; an unscored co-op run (M1 without `KV_Scoring`) has no feed and gets no kill tick.
+
+### Results: haptics in play (HP0)
+
+| Question | iPhone | Android phone | Xbox pad (PC) | PlayStation pad (PC) | Decides |
+|---|---|---|---|---|---|
+| 1a. `HapticEffect` `Type = Custom` (`SetWaveformKeys`, `Play()`): created, played, felt | pending | pending | pending | pending | HP3, HPD2 |
+| 1b. Shortest Custom pulse that is felt (ms) | pending | pending | pending | pending | `PLAY_HAPTICS` floors (HP8) |
+| 1c. A 25 ms pulse at 0.35 reads as a tick (not a buzz, not nothing) | pending | pending | n/a | n/a | the kill tick's phone pulse |
+| 1d. Latency from `Play()` to the felt pulse (ms; on the freeze frame?) | pending | pending | pending | pending | HP3, Design 2 |
+| 1e. Parenting a non-spatial effect needs (no `Position` / `Radius`: under the camera, the character, `SoundService`, nowhere?) | pending | pending | pending | pending | HP3 |
+| 1f. The iPhone voice-chat issue in a VC-enabled place (felt? errors?) | pending | n/a | n/a | n/a | HP3, Studio / device check 8 |
+| 2a. `HapticEffect` vs `SetMotor`: the small motor at 0.25 / 0.4 (kill ticks), felt and how | n/a | n/a | pending | pending | HPD2 (pads switch backend?) |
+| 2b. `HapticEffect` vs `SetMotor`: the large motor at 0.6 / 0.8 / 1.0 (parry, stagger, death), felt and how | n/a | n/a | pending | pending | HPD2 |
+| 3. A pad connected to a phone: anything felt, any error (expected: nothing, HPD11) | pending | pending | n/a | n/a | HPD11 |
+| 4. Which feed names the killer in co-op: the tracker `killed` event carries the hitter, or the score pops / combo feed (`popPlayer`), or neither (unscored co-op M1) | pending (one answer: a sim / view fact, not per device) | - | - | - | HP4, HPD1 |
+| 5. A 50 ms gap keeps the heart hurt's double buzz two distinct buzzes (90 ms + 90 ms pad, 80 ms + 80 ms phone) | pending | pending | pending | pending | HPD9, `PLAY_HAPTICS` hurt `heart` |
+
+Results pending. Notes (Studio / app versions, phone and pad models, OS versions, anything odd):
 
 ## Rollback spike (docs/ROLLBACK_SPIKE.md), closed
 

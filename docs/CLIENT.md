@@ -50,6 +50,7 @@ rebinding, audio, display). Everything presentation-side reads the sim and never
 | `CodexController` | `.../fx/CodexController.ts` | docs/CODEX.md CX6: owns the session's pure `CodexTracker` (shared/view/codex) and `CodexOutbox` (shared/codex) and keeps the store's `codex` slice. `codexStatus` (asks once: `requestCodex`) -> tracker `receive` (held entries come back as claims), outbox, `codexReceive`. Run start: `startRun(codexEligibility(...))` (world, `SimController.isDebugRun()`, dev, stress, Studio); run exit: `endRun()`. SimController's `ToastChipSource`: once per sim frame inside `pushToasts`, `readCodexFrame` + the frame's pedestal relics, boss engage and run over + the FX `killed` / `bossDefeated` events since the last sim frame (one frame late) -> `update`; chips back to the toasts (`ToastView.codexNew`), codex toasts queued for SightingController (`hasToast` / `takeToast`), rises claimed and applied to the store copy at once; the run summary frozen into the store at run over / left / exit. Outbox flush on Heartbeat. Hooks: `showsNewTag(id)` (draft tag), `codexNewThisRun(id)` (BO), `codexRunSummary()`, `sightingChip(id)`, `sendViewed(ids)` (the screen). See "Codex". |
 | `TeamMomentsController` | `.../fx/TeamMomentsController.ts` | docs/RUN_RECAP.md Part B (CM1 / CM2): owns the ONE `TeamMoments` (shared/view/fx): the clear half (TEAM PERFECT, its streak) in `FX_FRAME_PHASE.teamMoments` before RoomClearController's `scoreRoll`, the parry half (SYNC!) on the first `syncs()` call of a NearMissController frame (the director's `parryGroups`); `teamPerfects()` / `syncs()` for this frame, `totals()` for the recap. Party runs only. `KV_TeamMomentsDebug` fakes a team perfect or a SYNC! (never in the totals). |
 | `SyncCalloutController` | `.../fx/SyncCalloutController.ts` | docs/RUN_RECAP.md CM5: a NearMissController subscriber drawing each SYNC! (`SyncCallout` timeline): `fx.parry.sync` / `.syncCount` floor text on the PARRY! flash's construction (fxHelpers `floorText`, under every bullet, <= 55 % opaque, ducking near enemy bullets) at the points' mean with one pooled Neon tether for 0.25 s, or a small text at each point when they are farther than `tetherMaxTiles`. |
+| `HapticsController` | `.../fx/HapticsController.ts` | docs/HAPTICS.md (was the menus' `PadHapticsController`, docs/GAMEPAD_MENUS.md GM9): the only code that touches the haptic engine. Menu cues (`play`, FocusController) on the navigation pad; in-run cues once a frame in `FX_FRAME_PHASE.haptics` (after every normal handler): the frame's facts (tracker events, the run view's per-killer kills, NearMissController's local parry, the view player's hurt edge from its own `StateWatch`, the quiet gates) through `PlayHapticsInputBuilder` into the ONE `PlayHapticsDirector`, the cue on the pad's motors (`HapticService:SetMotor`, `InputController.getActivePad`) or the phone's `HapticEffect`s (Workspace/`KV_Haptics`, made on first use). `KV_HapticDebug` prints and test cues. |
 | `ScorePopController` | `.../fx/ScorePopController.ts` | Scored runs (M2): a rising, fading `+points` BillboardGui per kill (`LiveRun.scorePops`, pooled `ScorePopPool`). |
 | `ParticleController` | `.../fx/ParticleController.ts` | Death bursts, boss waves, roar sparks, hit sparks, breakable chips, boost pickup / fade bursts: pooled 1-3 px Parts, one BulkMoveTo per frame, particle budget. |
 | `FxSpriteController` | `.../fx/FxSpriteController.ts` | Sprite effects (docs/FX_AUDIO.md F3 / F4): the pure `FxCueMapper` turns each frame's FX events, summed sim events and state into one-shot cues (hit marks, swing trails, the guard shield, roll dust, flask, Ember ring, boss phase / slam / death, relic, shrine, death puffs, breakable splinters, boost pickups) and the stairwell loop; pooled floor-flat SurfaceGuis (or billboards) flip through the theme's `fx.*` flipbooks on the hitstop clock, budgeted by the particle level. Builds nothing without `fx.*` art (today). See "Sprite effects". |
@@ -449,8 +450,8 @@ The same buttons everywhere while a menu owns the pad (fixed, not rebindable; in
 
 A pad Restart binding wins over a shortcut on the same button. A hint bar at the bottom of each menu shows Roblox's
 own button icons. Menus vibrate the pad lightly (confirm, disabled press, list end, hold complete; Options >
-Controls > Gamepad > Vibration). Held pad buttons are blocked when a menu hands control back, so Resume never fires
-a skill.
+Controls > Gamepad > Vibration, which also covers the in-run haptics: Juice "Haptics" below). Held pad buttons are
+blocked when a menu hands control back, so Resume never fires a skill.
 
 Menus (pause overlay, settings panel): while one is open the gamepad's A / B / D-pad / left stick go to Roblox's GUI
 selection (InputController passes them through instead of sinking them; the D-pad-down restart is off then, the
@@ -649,6 +650,28 @@ while unknown). Hover, tap or selection clears a tile's dot locally; on unmount 
 Main menu: the Codex button after Leaderboard (phone: a small button beside Credits), badge
 `codexBadgeText(selectCodexNewCount)`, disabled while `unavailable`.
 
+### Haptics (docs/HAPTICS.md; not run in Studio or on a device yet)
+
+Presentation only. Five in-run moments vibrate the device in your hands, on the view player's own events (a teammate's
+kill, parry or hit never does): a **kill** tick (small motor 0.25, 35 ms; heavy / elite 0.4, 55 ms; one per frame, at
+least 0.07 s apart, at most 6 a second), a **parry** thump (large 0.6 / small 0.3; x3+ large 0.8, 110 ms), the boss's
+**phase break** (large 1.0 then a 0.45 -> 0 tail; everyone in the fight), the **boss death** (large 0.9 -> 0 over
+0.6 s, riding the slow-mo) and **getting hurt** (armor / harmless a light buzz, a heart a rough double buzz, the lethal
+hit a long decay). Priority lethal > boss death > phase break > heart > armor > parry > kill: a weaker cue never cuts a
+stronger one. Only kill ticks drop for the gap, the cap or the 40 % duty cap. Silent while spectating, under the stage
+cover, paused, in any menu or the boon draft, and after run over (the run's own last cue, a lethal hit or an M1 boss
+death, still rings out). Opening a menu stops the motors.
+
+Devices: a **gamepad** through `HapticService:SetMotor` on the pad that drives the player (Options > Controls >
+Gamepad > Vibration, `padVibration`, menus and play); a **phone** through nine `HapticEffect`s (Custom waveforms from
+`touchWaveform`, made on first use under `Workspace/KV_Haptics`; Options > Controls > Touch > Vibration,
+`touchVibration`, default On). Keyboard / mouse never; a pad on a phone or on macOS 15+ is silent (engine limit).
+Reduced motion changes nothing. Pure core in shared/view/fx (`haptics.ts`, `hapticsConfig.ts` `PLAY_HAPTICS` /
+`PLAY_HAPTICS_RULES`, `playHaptics.ts` `PlayHapticsDirector`, `playHapticsInput.ts`); drawing in `HapticsController`.
+Debug: `KV_HapticDebug` (Workspace attribute, below) prints every cue played or dropped with its reason and backend; an
+integer 1-7 fires a test cue on the current device (1 kill, 2 parry, 3 phase break, 4 boss death, 5 hurt armor, 6 hurt
+heart, 7 hurt lethal). Device facts pending: docs/SPIKES.md "Spike HP0".
+
 ### Sprite effects (docs/FX_AUDIO.md F3 / F4; Roblox port, no web source)
 
 `FxSpriteController` (render step `KV_FxSprites` at Camera + 2) draws the cues of the pure `FxCueMapper`
@@ -799,7 +822,7 @@ action `setSettingsOpen(true)` (any other menu, e.g. a main menu, opens it throu
 | Tab | Rows | Group (stored) |
 | --- | --- | --- |
 | Juice | enemy health bars (always / when hit / off), damage numbers, freeze frame on kill, particles (off / low / normal / high), reduced motion (on / off, `(system: on/off)` below) | `juice` |
-| Controls | Keyboard & mouse / Gamepad sub-tabs; one row per rebindable action (`KBM_ACTIONS` / `PAD_ACTIONS`, names `options.action.*`): primary + secondary (+ Clear when a secondary is set) on keyboard / mouse, one button on the pad; the input test strip; Reset <device> (asks first) | `controls` (`ControlsOverrides`) |
+| Controls | Keyboard & mouse / Gamepad sub-tabs, plus Touch on a touch-enabled device (docs/HAPTICS.md HP5: only a Vibration On / Off row, `touchVibration`; no bindings, test strip or reset, no pad X / its hint; Options opens Controls on Touch when the last device is touch); Gamepad also has Vibration On / Off (`padVibration`, menus and play); both vibration rows are `display` overrides kept by the Display reset; one row per rebindable action (`KBM_ACTIONS` / `PAD_ACTIONS`, names `options.action.*`): primary + secondary (+ Clear when a secondary is set) on keyboard / mouse, one button on the pad; the input test strip; Reset <device> (asks first) | `controls` (`ControlsOverrides`) |
 | Audio | master, music, sound effects: `-` / `+` in 10 % steps (0..100) | `audio` |
 | Display | HUD scale 80 / 90 / 100 / 110 / 125 % (multiplies the automatic scale) | `display` |
 
@@ -887,6 +910,7 @@ is open, and only one of the Options screen / leaderboard panel is open at a tim
 | `KV_TreasureLabel` | boolean | Treasure rooms (docs/TREASURE.md TR7): with Studio or KV_Debug, a label over the vault's chest: lock, tier, status and the SWIFT `t=<ticksLeft>` or UNTOUCHED `hits <hits>/<allowance>` (developer English; toggles at once). Off by default. Presentation only. |
 | `KV_PactLabel` | boolean | Pacts (docs/FORTUNE.md): with Studio or KV_Debug, labels each altar with its kind, the view player's availability (and Greed's curse) and the Horde's phase (developer English). Off by default. Presentation only. |
 | `KV_GoldenLabel` | boolean | The Goldling (docs/FORTUNE.md): with Studio or KV_Debug, one label with its status, ticks left / escapeTicks and hp over the running Goldling (else over the view player while one hides or is done this floor: while it hides `WAITING room R piece P rumour FLOOR\|ROOM release T`, docs/GOLDLING_RUMOURS.md GR7; developer English). Off by default. Presentation only. |
+| `KV_HapticDebug` | boolean / number | Haptics (docs/HAPTICS.md HP6; read live, not only on R): any value but absent / `false` / `0` / `""` prints every play cue played (`[Haptics] play <kind> on <device> (<backend>)`), every drop with its reason (`gap` / `cap` / `duty` / `priority` / `quiet`), each `stopAll` and the phone backend's failure once; an integer 1-7 also fires that test cue once per change on the current device (1 kill, 2 parry, 3 phase break, 4 boss death, 5 hurt armor, 6 hurt heart, 7 hurt lethal), even outside a run. Off by default. Presentation only. |
 | `KV_Tutorial` | boolean | Read once on join (not on R). `true`: the join starts the tutorial whatever the server says (the server is not asked; no main menu first); `false`: never (the normal join flow at once: the main menu, or `KV_SkipMenu`'s solo run). Unset: the server's `onboardingStatus` decides. Server side, `KV_ResetOnboarding` (docs/SERVER.md) resets the stored flag instead. |
 
 If the `game` world cannot start (e.g. a build without the actor archetypes: "Unknown archetype"), the client falls
