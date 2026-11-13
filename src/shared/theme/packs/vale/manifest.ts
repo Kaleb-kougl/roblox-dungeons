@@ -111,6 +111,7 @@ import { deepClone, sortedKeys } from "../../util";
 import { PELLET_KINDS, pelletId, type PelletKind } from "../../pellets";
 import { TREASURE_CAGE_ID, TREASURE_IDS } from "../../treasure";
 import { PACT_ALTAR_ID } from "../../fortune";
+import { SECRET_ART_IDS } from "../../secrets";
 import { cursorOptionalIds } from "../../cursorArt";
 import { PLACEHOLDER_MANIFEST } from "../placeholder";
 import { VALE_ASSET_IDS, VALE_UPLOADED_SIZES } from "./assetIds";
@@ -122,6 +123,7 @@ import { valeHazardAssets, type ValeHazardSource } from "./hazards";
 import { valeAmbientAssets, valeFxAssets, valeFxSources } from "./fx";
 import { VALE_TREASURE_CAGE_LAYOUT } from "./treasureLayout";
 import { VALE_PACT_ALTAR_LAYOUT } from "./fortuneLayout";
+import { VALE_SECRET_ART_LAYOUTS } from "./secretLayout";
 import { VALE_KENNEY_LAYOUTS } from "./kenneyLayout";
 import {
 	VALE_IMAGE_LAYOUTS,
@@ -729,6 +731,15 @@ function addWorldArt(manifest: ThemeManifest, ids: AssetIds): void {
 	// pact-altar.png, one facing (round); the placeholder plinth until it has an ID
 	const altar = worldAsset(VALE_PACT_ALTAR_LAYOUT, ids, {});
 	if (altar !== undefined) manifest.assets[PACT_ALTAR_ID] = altar;
+	// the secret rooms' crack overlay and rubble (docs/SECRET_ROOMS.md SR11): original greyscale pixel art
+	// (scripts/art/gen-secret-art.js) in its own sheet secret.png, one facing; optional, so nothing (the view's
+	// fallback) until it has an ID
+	for (const id of SECRET_ART_IDS) {
+		const layout = VALE_SECRET_ART_LAYOUTS[id];
+		if (layout === undefined) continue;
+		const art = worldAsset(layout, ids, {});
+		if (art !== undefined) manifest.assets[id] = art;
+	}
 }
 
 /** A sound from its layout, or undefined (the placeholder's SILENT stays) while any of its files has no ID. */
