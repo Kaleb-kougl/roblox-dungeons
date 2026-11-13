@@ -27,6 +27,7 @@ import {
 	type HapticDevice,
 	type HapticEvent,
 	type HapticMotor,
+	type HapticWaveInterp,
 	type PlayHaptic,
 	type PlayHapticsFrame,
 } from "shared/view/fx";
@@ -42,6 +43,11 @@ const MOTORS: { readonly [K in HapticMotor]: Enum.VibrationMotor } = {
 	Large: Enum.VibrationMotor.Large,
 };
 const MOTOR_NAMES: ReadonlyArray<HapticMotor> = ["Small", "Large"];
+/** The engine's key interpolation for a waveform point's (never a bare string to an engine constructor). */
+const WAVE_INTERP: { readonly [K in HapticWaveInterp]: Enum.KeyInterpolationMode } = {
+	Constant: Enum.KeyInterpolationMode.Constant,
+	Linear: Enum.KeyInterpolationMode.Linear,
+};
 
 /** The phone effects' folder (Workspace: see TOUCH_EFFECT_PARENT). */
 const TOUCH_FOLDER_NAME = "KV_Haptics";
@@ -116,7 +122,8 @@ type BackendResult = "motor" | "effect" | "no pad" | "no motor" | "held" | "effe
  * quiet gates, the device) go through shared/view/fx PlayHapticsInputBuilder into the ONE PlayHapticsDirector, and its
  * cue plays on the current device's backend. `stopAll` (the edge into quiet, spectating or no device; a device change)
  * drops every pending play pulse and zeroes the motors play cues hold (a menu cue that took a motor over keeps it);
- * the phone's running effect stops. A run exit, a new run and the tracker's reset do the same.
+ * the phone's running effect stops. A run exit, a new run and the tracker's reset do the same. The run's end is the
+ * exception (the director's `ending`): the lethal hit or boss death of the frame the run ends on plays and rings out.
  *
  * Everything (menus and play) goes to 0 on cleanup, on Gamepad vibration Off and when the device leaves the gamepad;
  * the phone's effects stop on Touch vibration Off and when the device leaves touch.
@@ -447,11 +454,11 @@ export class HapticsController implements OnStart {
 		return "effect";
 	}
 
-	/** The running phone effect stops. */
+	/** The running phone effect stops (one that already ran out is left alone: no needless engine call). */
 	private stopTouch(): void {
 		const running = this.runningEffect;
 		this.runningEffect = undefined;
-		if (running === undefined || this.effectsOff) return;
+		if (running === undefined || this.effectsOff || !(os.clock() < this.runningEffectUntil)) return;
 		const effect = this.effects.get(running);
 		if (effect !== undefined) this.effectCall(() => effect.Stop());
 	}
@@ -481,7 +488,7 @@ export class HapticsController implements OnStart {
 				effect.Looped = false;
 				const keys = new Array<FloatCurveKey>();
 				for (const p of touchWaveform(PLAY_HAPTICS[kind].touch))
-					keys.push(new FloatCurveKey(p.tMs, p.value, p.interp));
+					keys.push(new FloatCurveKey(p.tMs, p.value, WAVE_INTERP[p.interp]));
 				effect.SetWaveformKeys(keys);
 				effect.Parent = folder;
 				return effect;

@@ -10,6 +10,8 @@
  *               the setting Off). A pad on a phone is "pad" (the motor backend finds no motor there: silent, HPD11).
  *   quiet       no run, a menu shown (pause, Options, the party overlay, run over: client selectMenuShown), the run
  *               paused, the local player's boon draft open, the stage cover up (or a held run start), the run over.
+ *   ending      quiet only because the run is over (the run-over panel's menu ignored; no pause, draft or cover): the
+ *               director still plays the run-ending frame's lethal hit or boss death and lets it ring out.
  *   spectating  the views follow a teammate (view index != local index): silent (HPD7).
  *   kills       the view player's kills this frame, from the feed that names the killer (HPD1, no sim field):
  *               scored runs: the score pops credited to the view player (ScoreEvents.popPlayer, summed per frame by the
@@ -172,6 +174,14 @@ export function playHapticsQuiet(f: Readonly<PlayHapticsFacts>): boolean {
 	return !f.inRun || f.menuShown || f.paused || f.draftOpen || f.stageCovered || f.runOver;
 }
 
+/**
+ * Quiet only because the run has ended (playHapticsQuiet's run-over gate alone; the run-over panel counts as part of
+ * it, being the menu the run's end opens): the director's `ending`.
+ */
+export function playHapticsEnding(f: Readonly<PlayHapticsFacts>): boolean {
+	return f.inRun && f.runOver && !f.paused && !f.draftOpen && !f.stageCovered;
+}
+
 /** The view player's kills this frame and whether the merged tick is heavy (see the module header's `kills`). */
 export function viewKillsOf(f: Readonly<PlayHapticsFacts>): { readonly kills: number; readonly heavy: boolean } {
 	return viewKillSlot(f, { kills: 0, heavy: false });
@@ -194,6 +204,7 @@ function viewKillSlot(f: Readonly<PlayHapticsFacts>, out: { kills: number; heavy
 interface InputSlot {
 	device: HapticDevice | undefined;
 	quiet: boolean;
+	ending: boolean;
 	spectating: boolean;
 	viewKills: number;
 	viewHeavyKill: boolean;
@@ -208,6 +219,7 @@ export class PlayHapticsInputBuilder {
 	private readonly slot: InputSlot = {
 		device: undefined,
 		quiet: true,
+		ending: false,
 		spectating: false,
 		viewKills: 0,
 		viewHeavyKill: false,
@@ -224,6 +236,7 @@ export class PlayHapticsInputBuilder {
 		const s = this.slot;
 		s.device = hapticDeviceOf(f.inputDevice, f.padVibration, f.touchVibration);
 		s.quiet = playHapticsQuiet(f);
+		s.ending = playHapticsEnding(f);
 		s.spectating = f.viewIndex !== f.localIndex;
 		viewKillSlot(f, this.kills);
 		s.viewKills = this.kills.kills;

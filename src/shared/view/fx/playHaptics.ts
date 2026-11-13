@@ -8,6 +8,10 @@
  *   gate       no device (no vibrating device, or its setting Off), quiet (stage cover, run over, pause, a menu on the
  *              pad, a boon draft) or spectating: nothing plays, every candidate drops as "quiet", and the first such
  *              frame after an open one (or a device change) sets `stopAll` once: motors to 0, pending pulses dropped.
+ *   ending     the run-over gate is the exception (`ending`: quiet only because the run just ended): on its edge frame
+ *              (the frame before was open on the same device) the run-ending cue still plays (the lethal hit, the boss
+ *              death that ends an M1 run; any other candidate drops "quiet"), and nothing stops: the cue rings out.
+ *              Later run-over frames stay quiet without a stopAll; the run's exit or restart stops the motors.
  *   one cue    at most one cue a frame: the highest PLAY_HAPTICS_PRIORITY candidate; the others drop ("priority").
  *              Kills in one frame merge into one tick (a heavy kill makes it killHeavy); a parry of
  *              PLAY_HAPTICS_RULES.parryBigFrom erases or more is parryBig; hurt harmless / armor -> hurtArmor, heart ->
@@ -38,6 +42,11 @@ export interface PlayHapticsInput {
 	readonly device: HapticDevice | undefined;
 	/** Play cues are quiet (stage cover, run over, pause, a menu owning the pad, a boon draft). */
 	readonly quiet: boolean;
+	/**
+	 * Quiet only because the run has ended (run over, the finished tutorial frozen; no pause, draft or cover): the edge
+	 * frame's run-ending cue (hurtLethal, bossDeath) still plays and the running cue rings out (see the header).
+	 */
+	readonly ending: boolean;
 	/** The views follow a teammate (HPD7: silent). */
 	readonly spectating: boolean;
 	/** The view player's kills this frame (they merge into one tick). */
@@ -99,6 +108,11 @@ function isKill(kind: PlayHaptic): boolean {
 	return kind === "kill" || kind === "killHeavy";
 }
 
+/** A cue that can end the run on its own frame (the lethal hit; the boss death, which ends an M1 run). */
+function isRunEnding(kind: PlayHaptic): boolean {
+	return kind === "hurtLethal" || kind === "bossDeath";
+}
+
 function isHurt(kind: PlayHaptic): boolean {
 	return kind === "hurtArmor" || kind === "hurtHeart" || kind === "hurtLethal";
 }
@@ -151,12 +165,24 @@ export class PlayHapticsDirector {
 
 		const device = input.device;
 		if (device === undefined || input.quiet || input.spectating) {
-			if (this.openDevice !== undefined) {
+			// The run ended this frame (it was open on this device the frame before): its own last cue still plays.
+			const endingEdge = input.ending && !input.spectating && device !== undefined && this.openDevice === device;
+			if (this.openDevice !== undefined && !endingEdge) {
 				out.stopAll = true;
 				this.stopRunning(nowSec);
 			}
 			this.openDevice = undefined;
-			for (const kind of this.candidates) this.drop(kind, "quiet");
+			let best: PlayHaptic | undefined;
+			for (const kind of this.candidates) {
+				if (endingEdge && isRunEnding(kind)) {
+					if (best === undefined || PLAY_HAPTICS_PRIORITY[kind] > PLAY_HAPTICS_PRIORITY[best]) best = kind;
+				} else {
+					this.drop(kind, "quiet");
+				}
+			}
+			if (best === undefined || device === undefined) return out;
+			for (const kind of this.candidates) if (kind !== best && isRunEnding(kind)) this.drop(kind, "priority");
+			this.tryPlay(best, device, nowSec);
 			return out;
 		}
 		if (this.openDevice !== undefined && this.openDevice !== device) {

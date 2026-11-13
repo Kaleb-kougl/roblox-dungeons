@@ -2,7 +2,8 @@
 // the parry, lengths), and PlayHapticsDirector on hand-built frames: kills merge (heavy wins), gap, cap, duty (a 30 s
 // fight), priority (a kill during a stagger drops, a stagger during a kill replaces, the lethal hit replaces the boss
 // death, a heart hit upgrades an armor buzz inside 0.75 s), hurt never dropped by the cap or duty, the quiet /
-// spectating / no-device gates with one stopAll edge, and touchWaveform's points.
+// spectating / no-device gates with one stopAll edge, the run-over edge (its lethal hit or boss death still plays and
+// rings out), and touchWaveform's points.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import type { HurtKind } from "../watch";
 import { pulseEndSec, pulseStartSec } from "./haptics";
@@ -25,6 +26,8 @@ const FRAME_SEC = 0.05;
 interface Frame {
 	device?: HapticDevice | "none";
 	quiet?: boolean;
+	/** Quiet only because the run ended (implies quiet). */
+	ending?: boolean;
 	spectating?: boolean;
 	kills?: number;
 	heavy?: boolean;
@@ -37,7 +40,8 @@ interface Frame {
 function input(f: Frame): PlayHapticsInput {
 	return {
 		device: f.device === "none" ? undefined : f.device ?? "pad",
-		quiet: f.quiet ?? false,
+		quiet: (f.quiet ?? false) || (f.ending ?? false),
+		ending: f.ending ?? false,
 		spectating: f.spectating ?? false,
 		viewKills: f.kills ?? 0,
 		viewHeavyKill: f.heavy ?? false,
@@ -340,6 +344,44 @@ describe("PlayHapticsDirector: quiet, spectating, no device", () => {
 			expect(d.out.stopAll).toBe(false);
 		});
 	}
+
+	it("the run-over edge: the lethal hit (or the boss death) of that frame plays and rings out; nothing else", () => {
+		const d = new PlayHapticsDirector();
+		expect(play(d, { kills: 1 }, 0)).toBe("kill");
+		// The death frame is already run over: the lethal hit plays, the kill drops, nothing stops.
+		d.frame(input({ ending: true, hurt: "lethal", kills: 1 }), 0.5);
+		expect(d.out.cue).toBe("hurtLethal");
+		expect(d.out.stopAll).toBe(false);
+		expect(dropsOf(d)).toEqual(["kill:quiet"]);
+		// Later run-over frames: quiet, no stopAll (the rumble rings out), no new cue.
+		d.frame(input({ ending: true, death: true }), 0.6);
+		expect(d.out.cue).toBeUndefined();
+		expect(d.out.stopAll).toBe(false);
+		expect(dropsOf(d)).toEqual(["bossDeath:quiet"]);
+		// An M1 victory: the boss death ends the run on its own frame; with the lethal hit the lethal wins.
+		const m1 = new PlayHapticsDirector();
+		play(m1, {}, 0);
+		expect(play(m1, { ending: true, death: true, kills: 2 }, 0.1)).toBe("bossDeath");
+		expect(m1.out.stopAll).toBe(false);
+		const both = new PlayHapticsDirector();
+		play(both, {}, 0);
+		expect(play(both, { ending: true, death: true, hurt: "lethal" }, 0.1)).toBe("hurtLethal");
+		expect(dropsOf(both)).toEqual(["bossDeath:priority"]);
+	});
+
+	it("the run-over edge needs an open frame before it on the same device, and never plays while spectating", () => {
+		const shut = new PlayHapticsDirector();
+		play(shut, { quiet: true }, 0);
+		expect(play(shut, { ending: true, hurt: "lethal" }, 0.1)).toBeUndefined();
+		const spectator = new PlayHapticsDirector();
+		play(spectator, {}, 0);
+		expect(play(spectator, { ending: true, spectating: true, hurt: "lethal" }, 0.1)).toBeUndefined();
+		expect(spectator.out.stopAll).toBe(true);
+		const moved = new PlayHapticsDirector();
+		play(moved, {}, 0);
+		expect(play(moved, { ending: true, device: "touch", hurt: "lethal" }, 0.1)).toBeUndefined();
+		expect(moved.out.stopAll).toBe(true);
+	});
 
 	it("a device change (pad -> phone) stops the old one once", () => {
 		const d = new PlayHapticsDirector();

@@ -17,6 +17,7 @@ import {
 	isHeavyKill,
 	localParryCount,
 	newPlayHapticsFacts,
+	playHapticsEnding,
 	playHapticsQuiet,
 	scanHapticEvents,
 	viewKillsOf,
@@ -132,6 +133,39 @@ describe("PlayHapticsInputBuilder: gates", () => {
 			expect(new PlayHapticsDirector().frame(input, 0).cue).toBe(undefined);
 		});
 	}
+
+	it("run over alone is `ending` (the run-over panel's menu ignored); a pause, draft or cover is not", () => {
+		const f = running();
+		f.runOver = true;
+		f.menuShown = true;
+		const input = new PlayHapticsInputBuilder().build(f);
+		expect(input.quiet).toBe(true);
+		expect(input.ending).toBe(true);
+		expect(playHapticsEnding(running())).toBe(false);
+		for (const set of [
+			(g: PlayHapticsFacts) => (g.paused = true),
+			(g: PlayHapticsFacts) => (g.draftOpen = true),
+			(g: PlayHapticsFacts) => (g.stageCovered = true),
+			(g: PlayHapticsFacts) => (g.inRun = false),
+		]) {
+			const g = running();
+			g.runOver = true;
+			set(g);
+			expect(playHapticsEnding(g)).toBe(false);
+		}
+	});
+
+	it("a solo death: the lethal hit plays on the frame the run ends", () => {
+		const d = new PlayHapticsDirector();
+		const b = new PlayHapticsInputBuilder();
+		d.frame(b.build(running()), 0);
+		const f = running();
+		f.runOver = true;
+		f.menuShown = true;
+		f.hurt = "lethal";
+		expect(d.frame(b.build(f), 0.1).cue).toBe("hurtLethal");
+		expect(d.out.stopAll).toBe(false);
+	});
 
 	it("spectating a teammate is silent even for a phase break", () => {
 		const f = running();
