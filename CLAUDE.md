@@ -944,7 +944,7 @@ Decision log (deviations from `PLAN.md`):
   unchanged; the server validator builds the same config. Live replays and scores changed in every world (M1 runs
   recorded by older builds no longer replay; the pins that record player paths were re-recorded, docs/WALL_SLIDE.md
   WS4); the all-time boards stay `_v1`; `DAILY.ruleset` 9 -> 11 (main's brace threshold took 10). Snag census
-  (`run/snagCensus.spec.ts`, WS5): zero unexcused stalls with the slide in every class. The new paths exposed a latent
+  (`run/snagCensus.<n>.spec.ts`, WS5): zero unexcused stalls with the slide in every class. The new paths exposed a latent
   imp bug (a blink could land on a POOL tile, which bullets cross): `impBlinkValid` now reads the new optional
   `SimConfig.isBodyBlocked` (`bodyBlocker(d)`, endless floors; `isBulletBlocked` without it). Debug `KV_CollisionDebug`
   (presentation only: blocking cells, isolated blockers, the body ring, a stall flash). Playtest (WS8) passed
@@ -1359,6 +1359,12 @@ Tools come from `rokit.toml` (`rokit install`): rojo 7.7.0, lune 0.11.0.
   build / typecheck / lint). Import with a default import: `import rng from "shared/fixtures-generated/rng"`.
   Numbers are bit-exact (written as shortest round-trip literals, `-0` kept); a `.` in a file name becomes `_`.
   Never route fixtures through Rojo JSON modules or `HttpService:JSONDecode`: serde-style parsers can be 1 ULP off.
+- A census too long for one file (more than about a minute) is split by run seed into shard files
+  (`<name>.<n>.spec.ts`, `shared/dungeon/testing` `censusShard`), the census body in the directory's `testing/` module,
+  so each shard runs in its own process (a shell that caps a command at 3 minutes) and shards can run side by side:
+  the endless censuses of room edges (`view/roomEdges.endless.<n>`), minimap tiles (`view/minimap/tiles.endless.<n>`),
+  elite affixes (`dungeon/affixes.census.<n>`) and snags (`run/snagCensus.<n>`). A gate that holds per shard holds over
+  the whole sample; share gates are checked per shard (the affix shares have the margin at 15 run seeds).
 
 ## The sim is deterministic and Roblox-API-free
 

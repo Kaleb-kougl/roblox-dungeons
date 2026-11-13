@@ -245,7 +245,8 @@ PROVENANCE row).
   grid 181 wide / 179 high (largest area 166 x 156, run 41 floor 18), M1 at most 77 x 71, tutorial 86 x 71: far under
   1024 (`MINIMAP_VIEW.maxImageSide`). Most cells per room (floor + pool + ring): 1518 endless (run 2 floor 4), 1070
   tutorial floor 2, 434 M1. The stairwell (run 1, floors 1-20, through `endlessRunFloor`) is FLOOR in the boss room on
-  every floor. All 1200 endless floors, about 112 s (generation dominates, like the room-edge census).
+  every floor. All 1200 endless floors, about 112 s (generation dominates, like the room-edge census); since
+  2026-11-12 in four shards `tiles.endless.<n>.spec.ts` (`minimap/testing/census.ts`), about 50 s each.
 - [x] **M2. Sight.** `shadowcast` + spec: open field (a disc of the radius), a wall blocks what is behind it, a
   1-wide doorway shows a cone, symmetry (A sees B iff B sees A over random grids), no leak through diagonal wall
   corners, pools and breakables do not block, solid pillars do, radius 0.
