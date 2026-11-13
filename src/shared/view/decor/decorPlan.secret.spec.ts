@@ -81,7 +81,8 @@ describe("planDecor's keep-out (docs/SECRET_ROOMS.md SR7)", () => {
 			// The Forge's floor pieces keep their cells (a standing piece pushed off the keep-out may take another
 			// far-wall spot, and so drop or free a torch under it, as tall pieces do on any floor).
 			const key = (e: DecorEntry) => `${e.source}/${e.kind}/${e.cellX},${e.cellY}`;
-			const flats = (p: DecorPlan) => p.entries.filter((e) => e.layer === "flat" && e.source === "forge").map(key);
+			const flats = (p: DecorPlan) =>
+				p.entries.filter((e) => e.layer === "flat" && e.source === "forge").map(key);
 			expect(flats(plan)).toEqual(flats(free));
 		}
 		// The rule does something on these floors (wall-top pieces and void rock pieces round the chamber).

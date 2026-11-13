@@ -164,7 +164,13 @@ describe("a secret room on screen against the real sim (solo, LiveRun)", () => {
 	for (const ticks of [1, 3]) {
 		it(`collects the knocks, the open and the take once each (${ticks} tick(s) a frame); the look and edges follow`, () => {
 			const cfg = config(1);
-			const run = new LiveRun({ seed: SEED, spawnX: ARENA.spawnX, spawnZ: ARENA.spawnZ, config: cfg, atBossDoor: false });
+			const run = new LiveRun({
+				seed: SEED,
+				spawnX: ARENA.spawnX,
+				spawnZ: ARENA.spawnZ,
+				config: cfg,
+				atBossDoor: false,
+			});
 			const s = run.state;
 			s.player.x = CX;
 			s.player.z = FACE + 1.5;

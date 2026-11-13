@@ -67,7 +67,8 @@ describe("planVoid's hold-out (docs/SECRET_ROOMS.md SR7)", () => {
 			const plan = planVoid(input);
 			const cells = plan.W * plan.H;
 			let same = true;
-			for (let c = 0; c < cells; c++) if (plan.layer[c] !== free.layer[c] || plan.top[c] !== free.top[c]) same = false;
+			for (let c = 0; c < cells; c++)
+				if (plan.layer[c] !== free.layer[c] || plan.top[c] !== free.top[c]) same = false;
 			expect(same).toBe(true);
 			const inside: number[] = [];
 			let crossing = 0;

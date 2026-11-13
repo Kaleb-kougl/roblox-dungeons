@@ -25,17 +25,15 @@ import { NO_GOLDEN_EVENTS, NO_GOLDEN_RUMOUR_CUES } from "shared/view/golden";
 import { NO_DAILY_RANK_CUES, NO_NEW_BEST_CUES } from "shared/view/hud";
 import { NO_PACT_EVENTS } from "shared/view/pacts";
 import { NO_PELLET_EVENTS } from "shared/view/pellets";
-import { NO_SECRET_CUES, SECRET_VIEW, SecretCueTracker, SecretFrameEvents, type SecretCueSource } from "shared/view/secrets";
-import { NO_TREASURE_CUES } from "shared/view/treasure";
 import {
-	AUDIO_VIEW,
-	AudioCueList,
-	AudioCueMapper,
-	NO_SYNC_CUES,
-	SFX,
-	SFX_FALLBACK,
-	type Playable,
-} from ".";
+	NO_SECRET_CUES,
+	SECRET_VIEW,
+	SecretCueTracker,
+	SecretFrameEvents,
+	type SecretCueSource,
+} from "shared/view/secrets";
+import { NO_TREASURE_CUES } from "shared/view/treasure";
+import { AUDIO_VIEW, AudioCueList, AudioCueMapper, NO_SYNC_CUES, SFX, SFX_FALLBACK, type Playable } from ".";
 
 function noEvents(): SimEvents {
 	const e = {} as SimEvents;
@@ -129,7 +127,9 @@ describe("audio: secret rooms (docs/SECRET_ROOMS.md SR6)", () => {
 			const c = tracker.update(s, plan, ev, s.tick / SIM_HZ, 0);
 			for (const [id, vol] of frame(m, s.tick / SIM_HZ, s, c)) heard.push([s.tick, id, vol]);
 		}
-		const secret = heard.filter(([, id]) => id === SFX.secretKnock || id === SFX.secretOpen || id === SFX.jingleSecret);
+		const secret = heard.filter(
+			([, id]) => id === SFX.secretKnock || id === SFX.secretOpen || id === SFX.jingleSecret,
+		);
 		const jingleTick = openTick + math.round(SECRET_VIEW.reveal.jingleSec * SIM_HZ);
 		expect(secret.map(([tick, id, vol]) => [id, vol, id === SFX.secretOpen ? tick === openTick : true])).toEqual([
 			[SFX.secretKnock, 1, true],

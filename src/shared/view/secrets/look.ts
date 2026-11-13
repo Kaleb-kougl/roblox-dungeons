@@ -141,6 +141,16 @@ export function secretLook(
 	};
 }
 
+/**
+ * How far the void rock over the chamber (VoidPlan.held's columns) has sunk, tiles below its top: SECRET_VIEW.sink's
+ * depth eased in (slow start, then falling away) by the look's sinkU. 0 while hidden; the whole depth once sunk (and at
+ * once under reduced motion, where sinkU is 1 from the open).
+ */
+export function secretSinkTiles(look: Readonly<SecretLook>): number {
+	const u = look.sinkU;
+	return SECRET_VIEW.sink.depthTiles * u * u;
+}
+
 /** SecretViewTracker's frame: the look plus the frame's edges and knock puffs. One object, rewritten every frame. */
 export interface SecretViewFrame {
 	readonly look: SecretLook;

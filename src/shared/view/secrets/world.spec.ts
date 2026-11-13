@@ -46,7 +46,10 @@ describe("secret geometry (docs/SECRET_ROOMS.md SR7)", () => {
 			const ring = secretRingRect(plan);
 			const crack = secretCrackIndices(plan, d.W);
 			for (const c of crack) expect(inCellRect(ring, c % d.W, math.floor(c / d.W))).toBe(true);
-			expect([inCellRect(ring, plan.chestX, plan.chestY), inCellRect(ring, plan.x0, plan.y0)]).toEqual([true, true]);
+			expect([inCellRect(ring, plan.chestX, plan.chestY), inCellRect(ring, plan.x0, plan.y0)]).toEqual([
+				true,
+				true,
+			]);
 			const grid = secretWallMergeGrid([...d.grid], d.W, plan);
 			for (const c of crack) expect([d.grid[c], grid[c]]).toEqual([TileType.WALL, SECRET_CRACK_CELL]);
 			const crackSet = new Set(crack);
@@ -117,7 +120,8 @@ describe("the secret on the minimap (docs/SECRET_ROOMS.md SR8)", () => {
 			expect(secretMapChange(tiles, plan).cells.size()).toBe(0); // applied: nothing more
 			fog.revealCells(change.reveal);
 			for (let y = plan.y0; y < plan.y0 + plan.h; y++)
-				for (let x = plan.x0; x < plan.x0 + plan.w; x++) expect(fog.state(y * W + x)).never.toBe(FogState.UNKNOWN);
+				for (let x = plan.x0; x < plan.x0 + plan.w; x++)
+					expect(fog.state(y * W + x)).never.toBe(FogState.UNKNOWN);
 			for (const c of secretCrackIndices(plan, W)) {
 				expect(tiles.tile[c]).toBe(MapTile.FLOOR);
 				expect(change.reveal.includes(c)).toBe(true);

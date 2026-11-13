@@ -35,8 +35,11 @@ import {
 	secretLook,
 	secretMatchesPlan,
 	secretOpenSec,
+	secretDebugLabel,
+	secretOpenLogLine,
 	secretRewardTexts,
 	secretShout,
+	secretSinkTiles,
 	secretToast,
 	type SecretOpenedEvent,
 } from ".";
@@ -108,6 +111,13 @@ describe("secretLook (docs/SECRET_ROOMS.md SR6)", () => {
 		expect([done.phase, done.burstU, done.sinkU, done.bursting]).toEqual([SecretPhase.OPEN, 1, 1, false]);
 		const reduced = at(0, REDUCED);
 		expect([reduced.sinkU, reduced.bursting, reduced.chamberShown]).toEqual([1, false, true]);
+		// The rock's sink: 0 at the open, eased, the whole depth at the end (and at once under reduced motion).
+		expect([secretSinkTiles(start), secretSinkTiles(done), secretSinkTiles(reduced)]).toEqual([
+			0,
+			V.sink.depthTiles,
+			V.sink.depthTiles,
+		]);
+		expect(secretSinkTiles(at(V.sink.sec / 2)) < V.sink.depthTiles / 2).toBe(true);
 		// The chest: TAKEN.
 		const p = playerAt(s, 0);
 		p.x = gridToWorld(ARENA.chestX);
@@ -275,5 +285,18 @@ describe("the news: shout, toast, cards", () => {
 		);
 		expect(r.title).toBe("Secret cache");
 		expect(r.cards.map((c) => c.kind)).toEqual(["draft", "boosts", "points"]);
+	});
+});
+
+describe("debug text (Design 12)", () => {
+	it("the open's log line and the label", () => {
+		const plan = { room: 4, x: 31, y: 12, fx: 1, fz: 0, tier: 2, along: 5, depth: 4 };
+		expect(secretOpenLogLine(6, plan, { how: 2, player: 1 })).toBe(
+			"[Secret] floor 6: room 4 crack (31,12)+x opened by heavy (player 1)",
+		);
+		expect(secretOpenLogLine(3, { ...plan, fx: 0, fz: 1 }, { how: 3, player: -1 })).toBe(
+			"[Secret] floor 3: room 4 crack (31,12)+z opened by charger (nobody)",
+		);
+		expect(secretDebugLabel(plan, SecretStatus.HIDDEN)).toBe("legendary hidden 5x4");
 	});
 });

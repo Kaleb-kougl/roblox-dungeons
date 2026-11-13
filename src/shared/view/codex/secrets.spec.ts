@@ -134,7 +134,11 @@ describe("the Codex's secret rooms entry (docs/SECRET_ROOMS.md SRD12)", () => {
 				return undefined;
 			},
 		};
-		expect(codexTileArt(pack, CODEX_SECRET_ID)).toEqual({ kind: "label", key: entry.nameKey, role: SECRET_DUST_ROLE });
+		expect(codexTileArt(pack, CODEX_SECRET_ID)).toEqual({
+			kind: "label",
+			key: entry.nameKey,
+			role: SECRET_DUST_ROLE,
+		});
 		expect(codexTileArt(pack, CODEX_SECRET_ID, "unknown").kind).toBe("unknown");
 	});
 });

@@ -95,7 +95,10 @@ describe("BreakableTracker", () => {
 			BreakableKind.CRACKED_WALL,
 			BreakableKind.CHEST,
 		]);
-		expect([isInertPieceKind(BreakableKind.CRACKED_WALL), isInertPieceKind(BreakableKind.CHEST)]).toEqual([true, true]);
+		expect([isInertPieceKind(BreakableKind.CRACKED_WALL), isInertPieceKind(BreakableKind.CHEST)]).toEqual([
+			true,
+			true,
+		]);
 		expect([isInertPieceKind(BreakableKind.BARREL), isInertPieceKind(BreakableKind.CRATE)]).toEqual([false, false]);
 		// A crack is no chest (the treasure view draws chests only) and has no clutter name (no barrel / crate art).
 		expect([isChestPiece(BreakableKind.CRACKED_WALL), breakableKindName(BreakableKind.CRACKED_WALL)]).toEqual([

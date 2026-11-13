@@ -13,7 +13,10 @@
  *   secretRewardTexts  the chest's reward cards (the vault's rewardCardTexts: relic, bonus draft, boosts, points) for
  *                      the view player, under the line `Secret cache` (`treasure.secret.title`, where a vault shows its
  *                      kept / near-miss line)
+ *   secretOpenLogLine  Design 12's KV_Debug line at an open, and secretDebugLabel KV_SecretLabel's text (developer
+ *                      English, never translated)
  */
+import type { FloorSecret } from "shared/dungeon";
 import { treasureFloorRole } from "shared/theme";
 import { partySize, type SimState } from "shared/sim";
 import type { FloorShoutRequest } from "../fx/buildsV2Fx";
@@ -81,4 +84,40 @@ export interface SecretRewardTexts {
 /** The reward cards of a taken secret chest for view player `player` (a spectator: the watched player's share). */
 export function secretRewardTexts(s: TreasureStr, t: Readonly<SecretTakenEvent>, player: number): SecretRewardTexts {
 	return { title: s(SECRET_TEXT_KEYS.cacheTitle), cards: rewardCardTexts(s, t, player) };
+}
+
+/** shared/sim SecretHow -> its log name. */
+const HOW_NAMES = ["finisher", "roll", "heavy", "charger"];
+
+/** "+x" / "+z": the crack's facing into its room. */
+function facingName(fx: number, fz: number): string {
+	return fx !== 0 ? (fx > 0 ? "+x" : "-x") : fz > 0 ? "+z" : "-z";
+}
+
+/**
+ * The KV_Debug line at an open (docs/SECRET_ROOMS.md Design 12): `[Secret] floor 6: room 4 crack (31,12)+x opened by
+ * heavy (player 1)`; a Charger's: `... opened by charger (nobody)`.
+ */
+export function secretOpenLogLine(
+	floor: number,
+	plan: Readonly<Pick<FloorSecret, "room" | "x" | "y" | "fx" | "fz">>,
+	o: Readonly<Pick<SecretOpenedEvent, "how" | "player">>,
+): string {
+	const how = HOW_NAMES[o.how] ?? `${o.how}`;
+	const who = o.player >= 0 ? `player ${o.player}` : "nobody";
+	return `[Secret] floor ${floor}: room ${plan.room} crack (${plan.x},${plan.y})${facingName(
+		plan.fx,
+		plan.fz,
+	)} opened by ${how} (${who})`;
+}
+
+const STATUS_NAMES = ["none", "hidden", "open", "taken"];
+const TIER_NAMES = ["common", "rare", "legendary"];
+
+/** KV_SecretLabel's text over a crack: `<tier> <status> <along>x<depth>` (e.g. "legendary hidden 5x4"). */
+export function secretDebugLabel(
+	plan: Readonly<Pick<FloorSecret, "tier" | "along" | "depth">>,
+	status: number,
+): string {
+	return `${TIER_NAMES[plan.tier] ?? plan.tier} ${STATUS_NAMES[status] ?? status} ${plan.along}x${plan.depth}`;
 }
