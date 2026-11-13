@@ -6,7 +6,7 @@
  *   A           press the selected button (the engine does it: `select` is for the hint only)
  *   B           back / close / cancel / resume: never destructive on a tap (GMD5); run over: hold to exit (GMD13);
  *               the outro, the loading screen, a rebind capture and the draft: nothing
- *   LB / RB     previous / next tab; LT / RT previous / next sub-tab (Options' device, the leaderboard's board)
+ *   LB / RB     previous / next tab (Options, the leaderboard, the Codex); LT / RT previous / next sub-tab (Options' device, the leaderboard's board)
  *   X / Y       one contextual shortcut each (4.3)
  *   Right stick scroll the scope's main list (the engine moves nothing; `scroll` is FocusController's)
  *   Start       the pause overlay: resume
@@ -21,6 +21,7 @@ export type PadSurface =
 	| "lobbies"
 	| "lobby"
 	| "credits"
+	| "codex"
 	| "character"
 	| "invites"
 	| "options"
@@ -218,6 +219,8 @@ export const PAD_SURFACES: { readonly [K in PadSurface]: PadSurfaceDef } = {
 		rows: [shortcutX("ready", "canReady"), shortcutY("invite", "canInvite"), SCROLL],
 	},
 	credits: { layer: "screen", select: true, back: "back", rows: [SCROLL] },
+	// claude/codex-plan.md CX7: LB / RB step the Codex's tabs, the right stick scrolls its grid.
+	codex: { layer: "screen", select: true, back: "back", rows: [TABS, SCROLL] },
 	// docs/ARCHER.md AR7: the D-pad / stick move between the cards (the engine), A confirms the selected card, B back.
 	character: { layer: "screen", select: true, back: "back", rows: [] },
 	invites: { layer: "invites", select: true, back: "back", rows: [] },
@@ -261,6 +264,7 @@ export const PAD_SURFACE_IDS: ReadonlyArray<PadSurface> = [
 	"lobbies",
 	"lobby",
 	"credits",
+	"codex",
 	"character",
 	"invites",
 	"options",

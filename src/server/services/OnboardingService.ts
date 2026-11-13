@@ -48,6 +48,12 @@ const log = serverLogger("Onboarding");
 const SHUTDOWN_SAVE_TIMEOUT_SECONDS = 25;
 const SHUTDOWN_POLL_SECONDS = 0.1;
 
+/**
+ * Where a player's join load stands (joinLoadState): still running (or the player left), finished OK, or failed (the
+ * stored doc is unknown this session).
+ */
+export type OnboardingJoinLoad = "pending" | "loaded" | "failed";
+
 /** A session start or accepted run as RunSessionService hands it to the new-player window (TF7). */
 export interface NewPlayerRunSubmission {
 	readonly worldKind: string;
@@ -107,6 +113,8 @@ export interface NewPlayerRunSubmission {
  * unknown stored doc, tutorial state included). Updates are merge-safe: a finish keeps `seen` (finishedOnboardingDoc
  * with the cached doc's seenOf) and a sighting keeps the tutorial fields (withSeenId), each read from the cache right
  * before its set with no yield in between.
+ * CodexService reads `seen` once for its one-time seed (claude/codex-plan.md), through getDoc once
+ * joinLoadState says the join load finished OK.
  *
  * Remotes are re-validated (types, step range; a step's funnel name comes from the shared step list, never from the
  * client; a sighting id against SIGHTING_IDS) and rate limited per player
@@ -153,6 +161,8 @@ export class OnboardingService implements OnStart {
 	private readonly trackers = new Map<Player, PlayerTutorialTelemetry>();
 	/** Players whose doc is reset to empty once it is loaded (Studio, KV_ResetOnboarding at join). */
 	private readonly resetPending = new Set<Player>();
+	/** Players whose join load finished (loadAndSend), and whether it succeeded (joinLoadState). */
+	private readonly joinLoads = new Map<Player, boolean>();
 	/** Players who left, by UserId, whose cached doc is held until their runs finished validating (see above). */
 	private readonly departed = new Map<number, Player>();
 	private closing = false;
@@ -354,6 +364,18 @@ export class OnboardingService implements OnStart {
 		return this.cache.get(playerDataKey(player.UserId));
 	}
 
+	/**
+	 * Whether this player's JOIN load has finished OK (claude/codex-plan.md R13: CodexService's one-time seed reads
+	 * `seen` from getDoc only after "loaded", and leaves its seed for the next join on "failed"). Decided when the join
+	 * load ended (any Studio reset applied), and kept for the session even if a later save succeeds (a failed join
+	 * load's cached doc is defaults, not the stored doc). "pending" while it runs and after the leave. Never yields.
+	 */
+	joinLoadState(player: Player): OnboardingJoinLoad {
+		const ok = this.joinLoads.get(player);
+		if (ok === undefined) return "pending";
+		return ok ? "loaded" : "failed";
+	}
+
 	/** The store (a seam: a test or tool can subclass the service with an in-memory KeyValueStore). */
 	protected createStore(): KeyValueStore {
 		return new DataStoreKeyValue(ONBOARDING_DATASTORE_NAME);
@@ -435,6 +457,7 @@ export class OnboardingService implements OnStart {
 				this.logOnboarding(player, update.events);
 			}
 		}
+		this.joinLoads.set(player, loaded);
 		const tracker = this.trackers.get(player);
 		if (tracker !== undefined) {
 			const fresh = loaded && doc.tutorialVersion === 0;
@@ -527,6 +550,7 @@ export class OnboardingService implements OnStart {
 		this.reportLimiter.forget(player);
 		this.trackers.delete(player);
 		this.resetPending.delete(player);
+		this.joinLoads.delete(player);
 		this.holdUntilIdle(player);
 	}
 

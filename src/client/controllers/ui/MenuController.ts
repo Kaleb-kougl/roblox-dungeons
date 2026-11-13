@@ -310,6 +310,11 @@ export class MenuController implements OnStart {
 		clientStore.menuNav({ kind: "open", screen: "credits" });
 	}
 
+	/** The Codex (claude/codex-plan.md CX7): a menu screen over the main menu (Back returns to it). */
+	openCodex(): void {
+		clientStore.menuNav({ kind: "open", screen: "codex" });
+	}
+
 	back(): void {
 		clientStore.menuNav({ kind: "back" });
 	}

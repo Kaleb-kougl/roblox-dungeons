@@ -30,6 +30,7 @@ import {
 	type DraftSurface,
 	type DraftTone,
 } from "shared/view/hud";
+import { CODEX_HUD_STRINGS, DRAFT_NEW_TAG } from "shared/view/codex";
 import { useHudActions } from "./actions";
 import { DraftRays } from "./DraftRays";
 import { DRAFT_UI, type DraftCardUi } from "./draftUi";
@@ -268,6 +269,51 @@ function DuoChip(props: {
  * the duo's joined chip (smaller, outlined in the duo colour) and "Unlocks a duo: {duo}" in the duo colour. Hidden
  * without a hint; faded with the card's text.
  */
+/**
+ * claude/codex-plan.md CX8: the Codex NEW tag in the card's top-right corner (`hud.codex.tag` in the background colour
+ * on a uiAccent pill), its transparency and pop from DRAFT_UI (DraftRevealController: a not-yet-found card, once its
+ * flip settled). With the card's text, under the dim (a legendary's charge dims it with the card).
+ */
+function NewTag(props: { ui: DraftCardUi }) {
+	const hudFont = useHudFont();
+	const ui = props.ui;
+	const T = DRAFT_NEW_TAG;
+	return (
+		<frame
+			key="CodexTag"
+			AnchorPoint={new Vector2(1, 0)}
+			Position={new UDim2(1, -T.inset, 0, T.inset)}
+			Size={new UDim2()}
+			AutomaticSize={Enum.AutomaticSize.XY}
+			BackgroundColor3={role("uiAccent")}
+			BackgroundTransparency={ui.newTagT.binding}
+			BorderSizePixel={0}
+			Visible={ui.newTagT.binding.map((t) => t < HIDDEN)}
+			ZIndex={BODY_Z.text}
+		>
+			<uiscale Scale={ui.newTagScale.binding} />
+			<uicorner CornerRadius={new UDim(0, T.padX)} />
+			<uipadding
+				PaddingLeft={new UDim(0, T.padX)}
+				PaddingRight={new UDim(0, T.padX)}
+				PaddingTop={new UDim(0, T.padY)}
+				PaddingBottom={new UDim(0, T.padY)}
+			/>
+			<textlabel
+				Size={new UDim2()}
+				AutomaticSize={Enum.AutomaticSize.XY}
+				BackgroundTransparency={HIDDEN}
+				Font={hudFont}
+				TextSize={T.textSize}
+				TextColor3={role("background")}
+				TextTransparency={ui.newTagT.binding}
+				Text={str(CODEX_HUD_STRINGS.tag)}
+				ZIndex={BODY_Z.text}
+			/>
+		</frame>
+	);
+}
+
 function HintRow(props: { ui: DraftCardUi }) {
 	const hudFont = useHudFont();
 	const ui = props.ui;
@@ -718,6 +764,7 @@ function DraftCard(props: { index: number; onTap?: () => void }) {
 					transparency={ui.textT.binding}
 				/>
 				<HintRow key="Hint" ui={ui} />
+				<NewTag key="CodexTag" ui={ui} />
 				<frame
 					key="Shine"
 					Position={look.boxPosition}

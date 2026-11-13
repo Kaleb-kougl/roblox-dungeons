@@ -4,12 +4,15 @@ import { selectBindings, selectInputDevice, selectSnapshot, selectToasts, type T
 import { shrineHint, keyDevice } from "shared/play";
 import { hudText, role, str } from "client/ui/theme";
 import { DAILY_RANK, HUD_VIEW, PROGRESSION_STRINGS, PROGRESSION_VIEW, TOUCH_STRINGS } from "shared/view/hud";
+import { CODEX_HUD_STRINGS } from "shared/view/codex";
+import { CodexChip } from "./CodexChip";
 import { useHeadshot } from "./headshots";
 import { Panel, Row, Text } from "./primitives";
 import { screenSkin } from "shared/view/menu";
 import { pactHintText, pactRole } from "shared/view/pacts";
 
 const HALF = 0.5;
+const HIDDEN = 1;
 const FULL_ROUND = new UDim(1, 0);
 
 /**
@@ -48,6 +51,40 @@ function HeadshotToast(props: { readonly order: number; readonly userId: number;
 }
 
 /**
+ * A toast whose entry the Codex found for the first time ever on its frame (claude/codex-plan.md CX6, R14:
+ * ToastView.codexNew): the NEW! chip at the left of the line (uiAccent), then a second line `Added to your Codex` in
+ * uiTextDim under it.
+ */
+function CodexToast(props: { readonly order: number; readonly text: string }) {
+	return (
+		<frame
+			LayoutOrder={props.order}
+			Size={new UDim2()}
+			AutomaticSize={Enum.AutomaticSize.XY}
+			BackgroundTransparency={HIDDEN}
+		>
+			<uilistlayout
+				FillDirection={Enum.FillDirection.Vertical}
+				HorizontalAlignment={Enum.HorizontalAlignment.Center}
+				SortOrder={Enum.SortOrder.LayoutOrder}
+			/>
+			<Row order={1} align={Enum.HorizontalAlignment.Center}>
+				<CodexChip order={1} />
+				<Text key="Line" order={2} color="uiAccent" text={props.text} />
+			</Row>
+			<Text
+				key="Added"
+				order={2}
+				size={HUD_VIEW.smallText}
+				color="uiTextDim"
+				align={Enum.TextXAlignment.Center}
+				text={str(CODEX_HUD_STRINGS.added)}
+			/>
+		</frame>
+	);
+}
+
+/**
  * The shrine hint's line: on a pact altar (docs/FORTUNE.md FO7: `pact` a PactKind) the pact's title and accept line
  * (the title alone on touch, where the shrine button reads Accept), else the classic curse shrine's line.
  */
@@ -63,7 +100,8 @@ function shrineHintText(pact: number, touch: boolean, key: string): string {
  * unused curse shrine's zone, the accept hint (on a pact altar the pact's own line, shrineHintText). Item names are
  * theme strings themselves (`<id>.name`); a player's name comes in the toast's literal `args`. It fades under the
  * action on its own occlusion slot (`toasts`, HudOcclusionController, docs/HUD_LAYOUT.md H7). First sightings are not
- * toasts: they show on the SightingCard at the left edge.
+ * toasts: they show on the SightingCard at the left edge. A toast for an entry the Codex found for the first time ever
+ * wears its NEW! chip and `Added to your Codex` (CodexToast; claude/codex-plan.md CX6).
  */
 export function ToastPanel() {
 	const toasts = useSelector(selectToasts);
@@ -74,6 +112,8 @@ export function ToastPanel() {
 	const lines = toasts.map((t, i) =>
 		t.headshotUserId !== undefined ? (
 			<HeadshotToast key={`t${t.id}`} order={i + 1} userId={t.headshotUserId} text={toastText(t)} />
+		) : t.codexNew === true ? (
+			<CodexToast key={`t${t.id}`} order={i + 1} text={toastText(t)} />
 		) : (
 			<Text
 				key={`t${t.id}`}

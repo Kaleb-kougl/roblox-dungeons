@@ -603,6 +603,219 @@
 	"class.vanguard.name": {
 		"note": "Name of the Knight, a playable character: an armored fighter with a sword and a guard that blocks bullets. Shown on the character screen's card, in the lobby and on the run-over panel. Title case; one word."
 	},
+	"codex.completion": {
+		"note": "Codex screen (the Codex (a collection book on the main menu listing every boon, evolution, duo, relic, curse, boost, enemy, champion affix and boss; each entry starts unknown, becomes seen when it first shows up and found when the player first takes, picks up or defeats it)), top right next to the completion bar: how much of the Codex is found. {pct} is a whole number 0 to 100. Use the language's percent format (e.g. \"{pct} %\" in French and German).",
+		"max": 8,
+		"example": {
+			"pct": 41
+		}
+	},
+	"codex.date": {
+		"note": "Codex screen (the Codex (a collection book on the main menu listing every boon, evolution, duo, relic, curse, boost, enemy, champion affix and boss; each entry starts unknown, becomes seen when it first shows up and found when the player first takes, picks up or defeats it)): the order of a date inside codex.state.found. {day} is the day of the month (a number), {month} a short month name (daily.date.month.*), {year} the year (a number). Reorder to the language's usual date order and add any particles it needs (e.g. Japanese \"{year}年{month}{day}日\").",
+		"max": 16,
+		"example": {
+			"day": 3,
+			"month": "Nov",
+			"year": 2026
+		}
+	},
+	"codex.desc.boss.act1": {
+		"note": "Codex screen (the Codex (a collection book on the main menu listing every boon, evolution, duo, relic, curse, boost, enemy, champion affix and boss; each entry starts unknown, becomes seen when it first shows up and found when the player first takes, picks up or defeats it)), detail panel: the tell for the boss Mother Mayhem (boss.act1.name, she: holds the centre of her room and fills it with bullet patterns, then rests for a moment, vulnerable). Same format as the bestiary.* lines: \"Name: short survival tip\", the name before the colon the same words as that name string. Brief, direct, second person."
+	},
+	"codex.desc.boss.demonlord": {
+		"note": "Codex screen (the Codex (a collection book on the main menu listing every boon, evolution, duo, relic, curse, boost, enemy, champion affix and boss; each entry starts unknown, becomes seen when it first shows up and found when the player first takes, picks up or defeats it)), detail panel: the tell for the boss The Demon Lord (boss.demonlord.name, he: walks at the player and cleaves anyone standing next to him). Same format as the bestiary.* lines: \"Name: short survival tip\", the name before the colon the same words as that name string. Brief, direct, second person."
+	},
+	"codex.desc.enemy.bruiser": {
+		"note": "Codex screen (the Codex (a collection book on the main menu listing every boon, evolution, duo, relic, curse, boost, enemy, champion affix and boss; each entry starts unknown, becomes seen when it first shows up and found when the player first takes, picks up or defeats it)), detail panel: the tell for the Bruiser (enemy.bruiser.name: a slow tank that slams the floor, sending out a ring of bullets with one gap, then stands still for a moment). Same format as the bestiary.* lines: \"Name: short survival tip\", the name before the colon the same word as that name string. Brief, direct, second person."
+	},
+	"codex.desc.enemy.sniper": {
+		"note": "Codex screen (the Codex (a collection book on the main menu listing every boon, evolution, duo, relic, curse, boost, enemy, champion affix and boss; each entry starts unknown, becomes seen when it first shows up and found when the player first takes, picks up or defeats it)), detail panel: the tell for the Sniper (enemy.sniper.name: keeps its distance, shows a warning line along its aim, then fires a fast line of bullets down it). Same format as the bestiary.* lines: \"Name: short survival tip\", the name before the colon the same word as that name string. Brief, direct, second person."
+	},
+	"codex.desc.enemy.swarmer": {
+		"note": "Codex screen (the Codex (a collection book on the main menu listing every boon, evolution, duo, relic, curse, boost, enemy, champion affix and boss; each entry starts unknown, becomes seen when it first shows up and found when the player first takes, picks up or defeats it)), detail panel: the tell for the Swarmer (enemy.swarmer.name: a weak, fast enemy that comes in packs and lunges in a straight line after a short warning). Same format as the bestiary.* lines: \"Name: short survival tip\", the name before the colon the same word as that name string. Brief, direct, second person."
+	},
+	"codex.group.bosses": {
+		"note": "Codex screen (the Codex (a collection book on the main menu listing every boon, evolution, duo, relic, curse, boost, enemy, champion affix and boss; each entry starts unknown, becomes seen when it first shows up and found when the player first takes, picks up or defeats it)), Bestiary tab: sub-header above the bosses. Plural.",
+		"max": 16
+	},
+	"codex.group.champions": {
+		"note": "Codex screen (the Codex (a collection book on the main menu listing every boon, evolution, duo, relic, curse, boost, enemy, champion affix and boss; each entry starts unknown, becomes seen when it first shows up and found when the player first takes, picks up or defeats it)), Bestiary tab: sub-header above the champion affixes (Hulking, Swift, Shielded, Vengeful: traits that make an enemy a tougher champion). Plural.",
+		"max": 16
+	},
+	"codex.group.curses": {
+		"note": "Codex screen (the Codex (a collection book on the main menu listing every boon, evolution, duo, relic, curse, boost, enemy, champion affix and boss; each entry starts unknown, becomes seen when it first shows up and found when the player first takes, picks up or defeats it)), Relics & Curses tab: sub-header above the curses (drawbacks accepted at a shrine for more score). Plural.",
+		"max": 16
+	},
+	"codex.group.enemies": {
+		"note": "Codex screen (the Codex (a collection book on the main menu listing every boon, evolution, duo, relic, curse, boost, enemy, champion affix and boss; each entry starts unknown, becomes seen when it first shows up and found when the player first takes, picks up or defeats it)), Bestiary tab: sub-header above the ordinary enemies. Plural.",
+		"max": 16
+	},
+	"codex.group.relics": {
+		"note": "Codex screen (the Codex (a collection book on the main menu listing every boon, evolution, duo, relic, curse, boost, enemy, champion affix and boss; each entry starts unknown, becomes seen when it first shows up and found when the player first takes, picks up or defeats it)), Relics & Curses tab: sub-header above the relics (permanent items for a run). Plural.",
+		"max": 16
+	},
+	"codex.hint.affix": {
+		"note": "Codex screen (the Codex (a collection book on the main menu listing every boon, evolution, duo, relic, curse, boost, enemy, champion affix and boss; each entry starts unknown, becomes seen when it first shows up and found when the player first takes, picks up or defeats it)): hint under a champion affix (a trait that makes an enemy a tougher champion) the player has never seen: champions with it appear from that floor on. {floor} is a floor number.",
+		"max": 34,
+		"example": {
+			"floor": 4
+		}
+	},
+	"codex.hint.boss": {
+		"note": "Codex screen (the Codex (a collection book on the main menu listing every boon, evolution, duo, relic, curse, boost, enemy, champion affix and boss; each entry starts unknown, becomes seen when it first shows up and found when the player first takes, picks up or defeats it)): hint under a boss the player has never seen: a boss waits at the end of every Nth floor. {every} is that number (5 today, so floors 5, 10, 15 ...).",
+		"max": 34,
+		"example": {
+			"every": 5
+		}
+	},
+	"codex.hint.duo": {
+		"note": "Codex screen (the Codex (a collection book on the main menu listing every boon, evolution, duo, relic, curse, boost, enemy, champion affix and boss; each entry starts unknown, becomes seen when it first shows up and found when the player first takes, picks up or defeats it)): hint under a duo (a special boon unlocked by owning two specific boons) the player has not found, once both of its boons are found: the two boons it needs. {a} and {b} are boon names (already translated).",
+		"max": 40,
+		"example": {
+			"a": "Volatile",
+			"b": "Chain Spark"
+		}
+	},
+	"codex.hint.duoLocked": {
+		"note": "Codex screen (the Codex (a collection book on the main menu listing every boon, evolution, duo, relic, curse, boost, enemy, champion affix and boss; each entry starts unknown, becomes seen when it first shows up and found when the player first takes, picks up or defeats it)): hint under a duo the player has not found while its two boons are not both found yet: a duo comes from owning two boons together.",
+		"max": 34
+	},
+	"codex.hint.enemy": {
+		"note": "Codex screen (the Codex (a collection book on the main menu listing every boon, evolution, duo, relic, curse, boost, enemy, champion affix and boss; each entry starts unknown, becomes seen when it first shows up and found when the player first takes, picks up or defeats it)): hint under an enemy the player has never seen: it appears on deeper floors of the dungeon. Atmospheric, short.",
+		"max": 34
+	},
+	"codex.hint.evo": {
+		"note": "Codex screen (the Codex (a collection book on the main menu listing every boon, evolution, duo, relic, curse, boost, enemy, champion affix and boss; each entry starts unknown, becomes seen when it first shows up and found when the player first takes, picks up or defeats it)): hint under an evolution the player has not found, once its boon is found: a boon evolves when it is taken a third time (level III). {boon} is the boon's name (already translated).",
+		"max": 34,
+		"example": {
+			"boon": "Volatile"
+		}
+	},
+	"codex.kind.boon": {
+		"note": "Codex screen (the Codex (a collection book on the main menu listing every boon, evolution, duo, relic, curse, boost, enemy, champion affix and boss; each entry starts unknown, becomes seen when it first shows up and found when the player first takes, picks up or defeats it)), detail panel: kind line under a boon's name. {rarity} is the rarity's name (boon.rarity.*: Common / Rare / Legendary). Reorder or inflect as the language needs; if the rarity must agree with the word for boon, use the form that fits all three.",
+		"max": 24,
+		"example": {
+			"rarity": "Rare"
+		}
+	},
+	"codex.kind.boost": {
+		"note": "Codex screen (the Codex (a collection book on the main menu listing every boon, evolution, duo, relic, curse, boost, enemy, champion affix and boss; each entry starts unknown, becomes seen when it first shows up and found when the player first takes, picks up or defeats it)), detail panel: kind line under a boost's name (a temporary power-up dropped by enemies). Singular.",
+		"max": 24
+	},
+	"codex.kind.boss": {
+		"note": "Codex screen (the Codex (a collection book on the main menu listing every boon, evolution, duo, relic, curse, boost, enemy, champion affix and boss; each entry starts unknown, becomes seen when it first shows up and found when the player first takes, picks up or defeats it)), detail panel: kind line under a boss's name. Singular.",
+		"max": 24
+	},
+	"codex.kind.champion": {
+		"note": "Codex screen (the Codex (a collection book on the main menu listing every boon, evolution, duo, relic, curse, boost, enemy, champion affix and boss; each entry starts unknown, becomes seen when it first shows up and found when the player first takes, picks up or defeats it)), detail panel: kind line under a champion affix's name (Hulking, Swift, ...: a trait that makes an enemy a tougher champion). Singular.",
+		"max": 24
+	},
+	"codex.kind.curse": {
+		"note": "Codex screen (the Codex (a collection book on the main menu listing every boon, evolution, duo, relic, curse, boost, enemy, champion affix and boss; each entry starts unknown, becomes seen when it first shows up and found when the player first takes, picks up or defeats it)), detail panel: kind line under a curse's name (a drawback accepted at a shrine for more score). Singular.",
+		"max": 24
+	},
+	"codex.kind.duo": {
+		"note": "Codex screen (the Codex (a collection book on the main menu listing every boon, evolution, duo, relic, curse, boost, enemy, champion affix and boss; each entry starts unknown, becomes seen when it first shows up and found when the player first takes, picks up or defeats it)), detail panel: kind line under a duo's name (a special boon unlocked by owning two specific boons). Singular.",
+		"max": 24
+	},
+	"codex.kind.enemy": {
+		"note": "Codex screen (the Codex (a collection book on the main menu listing every boon, evolution, duo, relic, curse, boost, enemy, champion affix and boss; each entry starts unknown, becomes seen when it first shows up and found when the player first takes, picks up or defeats it)), detail panel: kind line under an ordinary enemy's name. Singular.",
+		"max": 24
+	},
+	"codex.kind.evolution": {
+		"note": "Codex screen (the Codex (a collection book on the main menu listing every boon, evolution, duo, relic, curse, boost, enemy, champion affix and boss; each entry starts unknown, becomes seen when it first shows up and found when the player first takes, picks up or defeats it)), detail panel: kind line under an evolution's name (the stronger form a boon takes when taken a third time). {boon} is that boon's name (already translated).",
+		"max": 28,
+		"example": {
+			"boon": "Volatile"
+		}
+	},
+	"codex.kind.relic": {
+		"note": "Codex screen (the Codex (a collection book on the main menu listing every boon, evolution, duo, relic, curse, boost, enemy, champion affix and boss; each entry starts unknown, becomes seen when it first shows up and found when the player first takes, picks up or defeats it)), detail panel: kind line under a relic's name (a permanent item for a run). Singular.",
+		"max": 24
+	},
+	"codex.requires.archer": {
+		"note": "Codex screen (the Codex (a collection book on the main menu listing every boon, evolution, duo, relic, curse, boost, enemy, champion affix and boss; each entry starts unknown, becomes seen when it first shows up and found when the player first takes, picks up or defeats it)), detail panel: tag on an entry only the Archer (the bow character, character.archer.*) can find. \"Only for the Archer.\"",
+		"max": 18
+	},
+	"codex.requires.knight": {
+		"note": "Codex screen (the Codex (a collection book on the main menu listing every boon, evolution, duo, relic, curse, boost, enemy, champion affix and boss; each entry starts unknown, becomes seen when it first shows up and found when the player first takes, picks up or defeats it)), detail panel: tag on an entry only the Knight (the sword character, character.knight.*) can find. \"Only for the Knight.\"",
+		"max": 18
+	},
+	"codex.state.found": {
+		"note": "Codex screen (the Codex (a collection book on the main menu listing every boon, evolution, duo, relic, curse, boost, enemy, champion affix and boss; each entry starts unknown, becomes seen when it first shows up and found when the player first takes, picks up or defeats it)), detail panel: when the entry was first found. {floor} is the dungeon floor number, {date} the date (codex.date). Variants without a part: codex.state.foundFloor, codex.state.foundDate, codex.state.foundAny.",
+		"max": 40,
+		"example": {
+			"floor": 7,
+			"date": "3 Nov 2026"
+		}
+	},
+	"codex.state.foundAny": {
+		"note": "Codex screen (the Codex (a collection book on the main menu listing every boon, evolution, duo, relic, curse, boost, enemy, champion affix and boss; each entry starts unknown, becomes seen when it first shows up and found when the player first takes, picks up or defeats it)), detail panel: the entry is found, when neither the floor nor the date is known (form of codex.state.found without both).",
+		"max": 20
+	},
+	"codex.state.foundDate": {
+		"note": "Codex screen (the Codex (a collection book on the main menu listing every boon, evolution, duo, relic, curse, boost, enemy, champion affix and boss; each entry starts unknown, becomes seen when it first shows up and found when the player first takes, picks up or defeats it)), detail panel: when the entry was first found, when the floor is unknown. {date} is the date (codex.date) (form of codex.state.found without the floor).",
+		"max": 32,
+		"example": {
+			"date": "3 Nov 2026"
+		}
+	},
+	"codex.state.foundFloor": {
+		"note": "Codex screen (the Codex (a collection book on the main menu listing every boon, evolution, duo, relic, curse, boost, enemy, champion affix and boss; each entry starts unknown, becomes seen when it first shows up and found when the player first takes, picks up or defeats it)), detail panel: when the entry was first found, when the date is unknown. {floor} is the dungeon floor number (form of codex.state.found without the date).",
+		"max": 32,
+		"example": {
+			"floor": 7
+		}
+	},
+	"codex.state.seen": {
+		"note": "Codex screen (the Codex (a collection book on the main menu listing every boon, evolution, duo, relic, curse, boost, enemy, champion affix and boss; each entry starts unknown, becomes seen when it first shows up and found when the player first takes, picks up or defeats it)), detail panel: the entry has been seen (it showed up) but not found yet (never taken, picked up or defeated).",
+		"max": 20
+	},
+	"codex.tab.bestiary": {
+		"note": "Codex screen (the Codex (a collection book on the main menu listing every boon, evolution, duo, relic, curse, boost, enemy, champion affix and boss; each entry starts unknown, becomes seen when it first shows up and found when the player first takes, picks up or defeats it)): tab listing the enemies, champion affixes and bosses (a bestiary: a book of creatures).",
+		"max": 14
+	},
+	"codex.tab.boons": {
+		"note": "Codex screen (the Codex (a collection book on the main menu listing every boon, evolution, duo, relic, curse, boost, enemy, champion affix and boss; each entry starts unknown, becomes seen when it first shows up and found when the player first takes, picks up or defeats it)): tab for boons (run power-ups picked from a draft). Plural.",
+		"max": 14
+	},
+	"codex.tab.boosts": {
+		"note": "Codex screen (the Codex (a collection book on the main menu listing every boon, evolution, duo, relic, curse, boost, enemy, champion affix and boss; each entry starts unknown, becomes seen when it first shows up and found when the player first takes, picks up or defeats it)): tab for boosts (temporary power-ups dropped by enemies). Plural.",
+		"max": 14
+	},
+	"codex.tab.count": {
+		"note": "Codex screen (the Codex (a collection book on the main menu listing every boon, evolution, duo, relic, curse, boost, enemy, champion affix and boss; each entry starts unknown, becomes seen when it first shows up and found when the player first takes, picks up or defeats it)): a tab's label with how many of its entries are found. {tab} is the tab's name (codex.tab.*), {found} and {total} are numbers.",
+		"max": 24,
+		"example": {
+			"tab": "Boons",
+			"found": 9,
+			"total": 20
+		}
+	},
+	"codex.tab.duos": {
+		"note": "Codex screen (the Codex (a collection book on the main menu listing every boon, evolution, duo, relic, curse, boost, enemy, champion affix and boss; each entry starts unknown, becomes seen when it first shows up and found when the player first takes, picks up or defeats it)): tab for duos (special boons unlocked by owning two specific boons). Plural.",
+		"max": 14
+	},
+	"codex.tab.evolutions": {
+		"note": "Codex screen (the Codex (a collection book on the main menu listing every boon, evolution, duo, relic, curse, boost, enemy, champion affix and boss; each entry starts unknown, becomes seen when it first shows up and found when the player first takes, picks up or defeats it)): tab for evolutions (the stronger form a boon takes when it is taken a third time). Plural.",
+		"max": 14
+	},
+	"codex.tab.items": {
+		"note": "Codex screen (the Codex (a collection book on the main menu listing every boon, evolution, duo, relic, curse, boost, enemy, champion affix and boss; each entry starts unknown, becomes seen when it first shows up and found when the player first takes, picks up or defeats it)): tab listing relics (permanent items for a run, found in treasure rooms) and curses (drawbacks accepted at a shrine for more score).",
+		"max": 18
+	},
+	"codex.title": {
+		"note": "Title of the Codex screen (the Codex (a collection book on the main menu listing every boon, evolution, duo, relic, curse, boost, enemy, champion affix and boss; each entry starts unknown, becomes seen when it first shows up and found when the player first takes, picks up or defeats it)). The name of the book itself; keep it short.",
+		"max": 16
+	},
+	"codex.unavailable": {
+		"note": "Main menu, under the greyed-out Codex button: the Codex (a collection book on the main menu listing every boon, evolution, duo, relic, curse, boost, enemy, champion affix and boss; each entry starts unknown, becomes seen when it first shows up and found when the player first takes, picks up or defeats it) could not be loaded this session (a server problem); it is not available.",
+		"max": 30
+	},
+	"codex.unknown": {
+		"note": "Codex screen (the Codex (a collection book on the main menu listing every boon, evolution, duo, relic, curse, boost, enemy, champion affix and boss; each entry starts unknown, becomes seen when it first shows up and found when the player first takes, picks up or defeats it)): the name and hint shown for an entry the player has never seen (a dark tile). Keep it as question marks unless the language writes them differently.",
+		"max": 6
+	},
 	"credits.by": {
 		"note": "Credits screen: the author of a credited work, shown after the work's title. {author} is a person's or studio's name (never translated), sometimes with the store in brackets, e.g. \"Rakshaan (Sketchfab)\".",
 		"example": {
@@ -1536,6 +1749,25 @@
 	"hud.chip.horde": {
 		"note": "Small chip in the status corner of the HUD while the Pact of the Horde is armed: the next enemy room the party enters fights twice the enemies for twice (x2) the score. \"HORDE\" in capitals, then a short reminder; keep \"x2\" as is.",
 		"max": 26
+	},
+	"hud.codex.added": {
+		"note": "Second line of an in-run toast (dim, under the toast's text, after the NEW! chip): the thing the toast names was just added to the Codex (a collection book on the main menu listing every boon, evolution, duo, relic, curse, boost, enemy, champion affix and boss; each entry starts unknown, becomes seen when it first shows up and found when the player first takes, picks up or defeats it).",
+		"max": 26
+	},
+	"hud.codex.new": {
+		"note": "In-run chip (accent colour, left of a toast or on the first-sighting card): what the toast names is new to the Codex (a collection book on the main menu listing every boon, evolution, duo, relic, curse, boost, enemy, champion affix and boss; each entry starts unknown, becomes seen when it first shows up and found when the player first takes, picks up or defeats it). Short exclamation; capitals as written are part of the string.",
+		"max": 6
+	},
+	"hud.codex.tag": {
+		"note": "Small tag in the top corner of a boon draft card: this card's boon / duo / evolution is not found in the Codex (a collection book on the main menu listing every boon, evolution, duo, relic, curse, boost, enemy, champion affix and boss; each entry starts unknown, becomes seen when it first shows up and found when the player first takes, picks up or defeats it) yet. Short; capitals as written are part of the string.",
+		"max": 5
+	},
+	"hud.codex.toast": {
+		"note": "Small in-run toast (left edge card, after the NEW! chip): something new was added to the Codex (a collection book on the main menu listing every boon, evolution, duo, relic, curse, boost, enemy, champion affix and boss; each entry starts unknown, becomes seen when it first shows up and found when the player first takes, picks up or defeats it). {name} is the entry's name (an enemy, a boost, a relic, a boss...; already translated). \"· Codex\" names the book.",
+		"max": 30,
+		"example": {
+			"name": "Swarmer"
+		}
 	},
 	"hud.combo.best": {
 		"note": "Shown in the combo tier slot (score panel) after a combo lapses: the streak's peak multiplier. {combo} is a decimal like 3.4. ALL CAPS in English.",
@@ -2764,6 +2996,17 @@
 			"floor": 14
 		}
 	},
+	"menu.codex": {
+		"note": "Main menu button (260 x 40 px): open the Codex (a collection book on the main menu listing every boon, evolution, duo, relic, curse, boost, enemy, champion affix and boss; each entry starts unknown, becomes seen when it first shows up and found when the player first takes, picks up or defeats it).",
+		"max": 22
+	},
+	"menu.codexMore": {
+		"note": "Main menu, the Codex button's badge when more than 9 entries are new: \"9+\". {n} is that number (9).",
+		"max": 4,
+		"example": {
+			"n": 9
+		}
+	},
 	"menu.coopHint": {
 		"note": "Hint at the bottom of the co-op run menu. {key} is a key or button name such as \"R\", \"B\" or \"Backspace\" (currently always English); the second part warns the game keeps running.",
 		"example": {
@@ -3546,6 +3789,31 @@
 	},
 	"run.best.unsaved": {
 		"note": "Small chip on the run-over panel: the record was not saved because the server did not verify the run."
+	},
+	"run.codex.more": {
+		"note": "Run-over panel, after the five Codex icons of this run's finds: how many more there are. {n} is a number (1 or more).",
+		"max": 6,
+		"example": {
+			"n": 3
+		}
+	},
+	"run.codex.new": {
+		"note": "Run-over panel: how many entries this run added to the Codex (a collection book on the main menu listing every boon, evolution, duo, relic, curse, boost, enemy, champion affix and boss; each entry starts unknown, becomes seen when it first shows up and found when the player first takes, picks up or defeats it) as found. {n} is a number, 2 or more (the one-entry form is run.codex.newOne).",
+		"max": 28,
+		"example": {
+			"n": 3
+		}
+	},
+	"run.codex.newOne": {
+		"note": "Run-over panel: this run added exactly one entry to the Codex (a collection book on the main menu listing every boon, evolution, duo, relic, curse, boost, enemy, champion affix and boss; each entry starts unknown, becomes seen when it first shows up and found when the player first takes, picks up or defeats it) as found (the singular form of run.codex.new).",
+		"max": 28
+	},
+	"run.codex.total": {
+		"note": "Run-over panel, end of the Codex line: how much of the Codex (a collection book on the main menu listing every boon, evolution, duo, relic, curse, boost, enemy, champion affix and boss; each entry starts unknown, becomes seen when it first shows up and found when the player first takes, picks up or defeats it) is now found. {pct} is a whole number 0 to 100. Use the language's percent format.",
+		"max": 14,
+		"example": {
+			"pct": 41
+		}
 	},
 	"run.dailyRank.first": {
 		"note": "Run-over ribbon for the player's first Daily run today. ALL CAPS in English.",

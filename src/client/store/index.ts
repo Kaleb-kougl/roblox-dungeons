@@ -1,4 +1,5 @@
 import { combineProducers, InferState } from "@rbxts/reflex";
+import { codexSlice } from "./codex";
 import { dailySlice } from "./daily";
 import { dailyRankSlice } from "./dailyRank";
 import { gameSlice } from "./game";
@@ -31,10 +32,12 @@ import { tutorialSlice } from "./tutorial";
  * Daily's status (today's day, label, seed, ruleset, reset time: docs/DAILY.md DS4); the `dailyRank` slice the friends a
  * daily run passed (docs/DAILY.md DS10); the `l10n` slice the locale shown (docs/LOCALIZATION.md L6); the `recap` slice the
  * run-over recap's near-miss line, highlights, Details toggle and arm (docs/RUN_RECAP.md RR5); the `tooltip` slice the item
- * tooltip shown (docs/ITEM_TOOLTIPS.md IT4).
+ * tooltip shown (docs/ITEM_TOOLTIPS.md IT4); the `codex` slice the Codex's load status, the local doc copy and the last
+ * run's codex summary (claude/codex-plan.md CX6).
  *
  * Import through the directory (`client/store`), never the file.
  */
+export * from "./codex";
 export * from "./daily";
 export * from "./dailyRank";
 export * from "./game";
@@ -70,6 +73,7 @@ export const clientStore = combineProducers({
 	dailyRank: dailyRankSlice,
 	l10n: l10nSlice,
 	tooltip: tooltipSlice,
+	codex: codexSlice,
 });
 
 export type ClientStore = typeof clientStore;

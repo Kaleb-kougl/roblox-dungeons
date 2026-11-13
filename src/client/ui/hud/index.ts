@@ -24,6 +24,7 @@ export * from "./cornerFade";
 export * from "./dailyHooks";
 export * from "./DailyResultBlock";
 export * from "./comboUi";
+export * from "./CodexArt";
 export * from "./draftUi";
 export * from "./floorModifierUi";
 export * from "./headshots";

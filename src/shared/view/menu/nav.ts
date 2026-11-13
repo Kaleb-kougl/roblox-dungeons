@@ -1,5 +1,6 @@
 /**
- * The menu shell's screen + back stack (task L3; "credits": main menu > Credits; "character": the character screen
+ * The menu shell's screen + back stack (task L3; "credits": main menu > Credits; "codex": main menu > Codex,
+ * claude/codex-plan.md CX7; "character": the character screen
  * before a run, docs/ARCHER.md AR7, opened over the main menu / the lobby room, or from no menu over the run-over panel,
  * the tutorial outro or a dev run), as a pure reducer: the client's Reflex `menu` slice wraps it and
  * MenuController dispatches into it. "none" is no menu (a run, or the wait for one).
@@ -11,7 +12,7 @@
  *   reset    a whole path, root first (["main", "lobbies", "lobby"]: the lobby room with back -> browser -> main)
  *   close    no menu
  */
-export type MenuScreen = "none" | "main" | "lobbies" | "lobby" | "credits" | "character";
+export type MenuScreen = "none" | "main" | "lobbies" | "lobby" | "credits" | "codex" | "character";
 
 export interface MenuNav {
 	readonly screen: MenuScreen;

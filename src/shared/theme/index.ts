@@ -187,6 +187,8 @@ export {
 	type FloorModifierColorEntry,
 	type FloorModifierColorRules,
 } from "./floorModifierColors";
+// Roblox port (claude/codex-plan.md CX5): the Codex's strings, key helpers and its one sound.
+export * from "./codex";
 // Roblox port (docs/PROJECTILE_ART.md PA3): the bullet sprite rules.
 export { bulletArtProblems, bulletArtReport, type BulletArtEntry, type BulletArtProblem } from "./bulletArt";
 export { GOO_ART_RULES, gooArtProblems, gooArtReport, type GooArtEntry, type GooArtProblem } from "./gooArt";

@@ -134,7 +134,15 @@ export class SightingQueue {
 		if (status.loaded) this.loaded = true;
 		const seen = status.seen;
 		if (seen === undefined) return;
-		for (const id of seen) this.seen.add(id);
+		this.learn(seen);
+	}
+
+	/**
+	 * More ids this account has seen, from another record (claude/codex-plan.md CX6: a seeded Codex doc's sightings,
+	 * shared/view/codex codexSeenSightings), unioned into the seen set; queued ones drop. Does not mark the queue loaded.
+	 */
+	learn(ids: ReadonlyArray<string>): void {
+		for (const id of ids) this.seen.add(id);
 		// Drop queued ids the account turned out to have seen (another server, a late status).
 		let i = 0;
 		while (i < this.queued.size()) {
@@ -175,6 +183,17 @@ export class SightingQueue {
 		this.seen.add(id);
 		this.readyAt = now + SIGHTING_VIEW.toastSeconds + SIGHTING_VIEW.gapSeconds;
 		return id;
+	}
+
+	/**
+	 * The card shows something else now (claude/codex-plan.md CX6: a codex toast through the sighting slot): true when
+	 * `canShow` and the previous toast plus its gap are over at `now`; the slot is then taken (the next sighting waits a
+	 * toast and a gap, as after one of its own). A queued sighting goes first: call `next` before this.
+	 */
+	claimSlot(now: number, canShow: boolean): boolean {
+		if (!canShow || now < this.readyAt) return false;
+		this.readyAt = now + SIGHTING_VIEW.toastSeconds + SIGHTING_VIEW.gapSeconds;
+		return true;
 	}
 
 	/** A run ended: forget the queued ids that were never shown (they will be found again). */

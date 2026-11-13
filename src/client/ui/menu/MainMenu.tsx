@@ -1,12 +1,19 @@
 import React, { useRef } from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
-import { selectInviteEligible, selectMyLobbyId, selectSoloBest } from "client/store";
+import {
+	selectCodexNewCount,
+	selectCodexStatus,
+	selectInviteEligible,
+	selectMyLobbyId,
+	selectSoloBest,
+} from "client/store";
 import { FocusScope } from "client/ui/focus";
 import { MenuButton, MenuFit, PadHintBar, Panel, Row, Text } from "client/ui/hud";
 import { str } from "client/ui/theme";
 import { SFX } from "shared/view/audio";
 import { HUD_STRINGS, HUD_VIEW, NEW_BEST_STRINGS, UI_ART, bestText } from "shared/view/hud";
 import { TUTORIAL_STRINGS } from "shared/tutorial";
+import { CODEX_SCREEN_STRINGS, codexBadgeText } from "shared/view/codex";
 import {
 	CREDIT_STRINGS,
 	DAILY_MENU,
@@ -27,8 +34,8 @@ const SMALL = new Vector2(MENU_VIEW.smallButton.x, MENU_VIEW.smallButton.y);
  * The main menu (task L3), shown on join instead of a run: the game title, Play solo (a ranked solo run), Lobbies
  * (the browser; "Your lobby" goes straight to the room while in one), Invite friends (Roblox's invite prompt, no
  * lobby attached: docs/INVITES.md ID7; disabled with the reason when the server says this player cannot), Tutorial (the first-run Practice Descent again,
- * docs/TUTORIAL.md), Options (the Options screen), Leaderboard (the leaderboard panel) and Credits (the Credits screen,
- * shared/view/menu credits.ts). With a gamepad the
+ * docs/TUTORIAL.md), Options (the Options screen), Leaderboard (the leaderboard panel), the Codex (its screen and the
+ * NEW badge, claude/codex-plan.md CX7) and Credits (the Credits screen, shared/view/menu credits.ts). With a gamepad the
  * selection starts on Play solo. Fitted into the safe area on touch (MenuFit); compact or narrow (a phone, landscape
  * or portrait): the buttons in two columns, the invite reason under them. Under Play solo (compact: under its row), once the server's records loaded
  * and the solo board has one, the player's solo best (`Best 48210 · floor 9`, docs/NEW_BEST.md NB9: menu.best).
@@ -51,6 +58,8 @@ export function MainMenu(props: {
 	const myLobby = useSelector(selectMyLobbyId);
 	const eligible = useSelector(selectInviteEligible);
 	const soloBest = useSelector(selectSoloBest);
+	const codexNew = useSelector(selectCodexNewCount);
+	const codexUnavailable = useSelector(selectCodexStatus) === "unavailable";
 	const invite = platformInviteButton(eligible);
 	const playRef = useRef<TextButton>();
 	const inLobby = myLobby !== undefined;
@@ -155,6 +164,25 @@ export function MainMenu(props: {
 			}}
 		/>
 	);
+	// claude/codex-plan.md CX7 (R10): the Codex right after Leaderboard, its badge the count of NEW dots (`9+` above 9),
+	// greyed while the Codex is unavailable this session (desktop: `Codex unavailable`; the phone's small button keeps
+	// its name). Like Credits: a full button in the desktop column, a small one beside the invite reason on a phone.
+	const codex = (small: boolean, order: number) => (
+		<MenuButton
+			key="Codex"
+			order={order}
+			name="Codex"
+			size={small ? SMALL : undefined}
+			textSize={small ? HUD_VIEW.smallText : undefined}
+			text={str(codexUnavailable && !small ? CODEX_SCREEN_STRINGS.unavailable : CODEX_SCREEN_STRINGS.menu)}
+			disabled={codexUnavailable}
+			badge={codexUnavailable ? undefined : codexBadgeText(codexNew, str)}
+			onActivated={() => {
+				actions.playUi(SFX.uiClick);
+				actions.openCodex();
+			}}
+		/>
+	);
 	// Credits: a full button in the desktop column; on a phone a small one beside the invite reason (its own row
 	// would cost the smallest phone the ornament, fit.spec.ts).
 	const credits = (small: boolean, order: number) => (
@@ -237,7 +265,7 @@ export function MainMenu(props: {
 											<Text
 												key="InviteReason"
 												order={1}
-												width={compactInner - MENU_VIEW.smallButton.x - HUD_VIEW.gap}
+												width={compactInner - 2 * (MENU_VIEW.smallButton.x + HUD_VIEW.gap)}
 												size={HUD_VIEW.smallText}
 												color="uiTextDim"
 												align={Enum.TextXAlignment.Center}
@@ -245,7 +273,8 @@ export function MainMenu(props: {
 												text={str(invite.reasonKey)}
 											/>
 										) : undefined}
-										{credits(true, 2)}
+										{codex(true, 2)}
+										{credits(true, 3)}
 									</Row>
 								</>
 							) : (
@@ -259,7 +288,8 @@ export function MainMenu(props: {
 										{tutorial}
 										{options}
 										{leaderboard}
-										{credits(false, 10)}
+										{codex(false, 10)}
+										{credits(false, 11)}
 									</Column>
 									<Column key="Daily" order={2} width={DAILY_MENU.cardWidth}>
 										<DailyCard key="Card" order={1} width={DAILY_MENU.cardWidth} compact={false} />

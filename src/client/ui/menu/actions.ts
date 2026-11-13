@@ -29,6 +29,13 @@ export interface MenuActions {
 	readonly openLeaderboard: () => void;
 	/** The Credits screen (shared/view/menu credits.ts). */
 	readonly openCredits: () => void;
+	/** The Codex screen (claude/codex-plan.md CX7). */
+	readonly openCodex: () => void;
+	/**
+	 * The Codex screen closed: the entries whose NEW dots its visit cleared (their tiles were focused). CodexController
+	 * sendViewed: the store's copy now, `codexViewed` soon.
+	 */
+	readonly codexViewed: (ids: ReadonlyArray<string>) => void;
 	/** Roblox's invite prompt without a lobby (docs/INVITES.md ID7). */
 	readonly inviteFriends: () => void;
 	/** One screen back (the Back buttons). */
@@ -82,6 +89,8 @@ const NOOP: MenuActions = {
 	openOptions: nothing,
 	openLeaderboard: nothing,
 	openCredits: nothing,
+	openCodex: nothing,
+	codexViewed: nothing,
 	inviteFriends: nothing,
 	back: nothing,
 	screenBack: nothing,

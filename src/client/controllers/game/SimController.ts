@@ -89,6 +89,7 @@ import {
 	type SpectateView,
 	type StageKind,
 } from "shared/view";
+import { codexToastChip } from "shared/view/codex";
 import { HitstopClock, simPacerFor, type FrameAdvance, type FramePacer } from "shared/view/fx";
 import { GoldenRumourClock } from "shared/view/golden";
 import { PREDICTION_VIEW, PredictionSmoother, writeDrawnPlayer, type DrawnPlayerOf } from "shared/view/predict";
@@ -241,6 +242,20 @@ export interface DraftRevealDriver {
 	blocksConfirm(): boolean;
 	/** A confirm press edge during the reveal: skip it (DRD6). */
 	skip(): void;
+}
+
+/**
+ * The Codex as SimController's toasts see it (claude/codex-plan.md CX6, R14; CodexController implements it and registers
+ * with `setToastChipSource`; one direction only, so SimController never injects it). Without a source no toast wears
+ * the chip.
+ */
+export interface ToastChipSource {
+	/**
+	 * Called once per sim frame, right before the frame's toasts are pushed (solo and co-op, after the step): the Codex
+	 * tracker's frame runs here, so its chips are this frame's. Returns the entry ids whose toast this frame wears the
+	 * NEW! chip (shared/view/codex codexToastChip maps each run event to its entry). Read it before the next call only.
+	 */
+	toastChips(view: RunView): ReadonlyArray<string>;
 }
 
 /** The run was left for the menu: "left" (Leave run, mid-run) or "exited" (Main menu / Back to lobby after it). */
@@ -460,6 +475,8 @@ export class SimController implements OnStart {
 	private readonly coverGate = new CoopMenuInputGate();
 	/** The boon draft reveal (setDraftRevealDriver), if registered. */
 	private draftReveal: DraftRevealDriver | undefined;
+	/** The Codex's toast chips (setToastChipSource), if registered. */
+	private toastChipSource: ToastChipSource | undefined;
 	/**
 	 * Solo and co-op: the draft's confirm held back while the local reveal plays, after the cover / menu gate
 	 * (docs/DRAFT_REVEAL.md DR6, DRD2); a press then skips the reveal and stays masked until released.
@@ -696,6 +713,14 @@ export class SimController implements OnStart {
 		return this.input;
 	}
 
+	/**
+	 * KV_Debug was on when the current (or last) run started (read at every run start; claude/codex-plan.md R9: such a
+	 * run claims no Codex entries, like it counts no records). False before the first run.
+	 */
+	isDebugRun(): boolean {
+		return this.debug;
+	}
+
 	/** The current run is a tutorial run. */
 	isTutorialRun(): boolean {
 		return this.ctx?.tutorial === true;
@@ -747,6 +772,11 @@ export class SimController implements OnStart {
 	/** The boon draft reveal registers itself (DraftRevealController.onStart). */
 	setDraftRevealDriver(driver: DraftRevealDriver): void {
 		this.draftReveal = driver;
+	}
+
+	/** The Codex registers its toast chips (CodexController.onStart; claude/codex-plan.md CX6). */
+	setToastChipSource(source: ToastChipSource): void {
+		this.toastChipSource = source;
 	}
 
 	/**
@@ -1937,14 +1967,22 @@ export class SimController implements OnStart {
 		this.beginRun();
 	}
 
-	/** M2 progression toasts for the local player's events of the last frame (solo or co-op), then expiry. */
+	/**
+	 * M2 progression toasts for the local player's events of the last frame (solo or co-op), then expiry. The Codex's
+	 * frame runs first (ToastChipSource): a toast whose entry it found for the first time ever this frame wears the
+	 * NEW! chip (claude/codex-plan.md CX6, R14: ToastView.codexNew).
+	 */
 	private pushToasts(view: RunView): void {
 		const now = os.clock();
+		const chips = this.toastChipSource?.toastChips(view);
 		for (const e of view.runEvents) {
 			this.toastSerial++;
 			const spec = toastFor(e.kind, e.index, e.build);
+			const codexNew = chips !== undefined && codexToastChip(chips, e.kind, e.index, e.build);
 			clientStore.pushToast(
-				{ id: this.toastSerial, ...spec, until: now + PROGRESSION_VIEW.toastSeconds },
+				codexNew
+					? { id: this.toastSerial, ...spec, codexNew, until: now + PROGRESSION_VIEW.toastSeconds }
+					: { id: this.toastSerial, ...spec, until: now + PROGRESSION_VIEW.toastSeconds },
 				PROGRESSION_VIEW.maxToasts,
 			);
 		}

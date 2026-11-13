@@ -5,6 +5,7 @@
 // limit), so these specs are what keeps fortune.ts and contract.ts in step.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { PACT_DIM_NAMES, PactDim } from "shared/sim";
+import { CODEX_AUDIO_IDS, CODEX_STRING_KEYS } from "./codex";
 import { colorDifference, contrastRatio } from "./color";
 import {
 	BIOMES,
@@ -76,7 +77,7 @@ function packsToCheck(): Array<[string, Obj]> {
 	return out;
 }
 
-/** The last `n` entries of `list` before its last `skip` (docs/FLOOR_MODIFIERS.md FM7's entries come after), in order. */
+/** The last `n` entries of `list` before its last `skip` (later features' entries), in order. */
 function tail(list: ReadonlyArray<string>, n: number, skip = 0): string[] {
 	const out = new Array<string>();
 	const last = list.size() - skip;
@@ -90,6 +91,9 @@ const FLOOR_MOD_AFTER = {
 	audio: FLOOR_MODIFIER_AUDIO_IDS.size(),
 	strings: FLOOR_MODIFIER_STRING_KEYS.size(),
 } as const;
+
+/** What claude/codex-plan.md CX5 appends last, after the Goldling rumours' entries (its sound, its strings; codex.spec.ts). */
+const CODEX_AFTER = { audio: CODEX_AUDIO_IDS.size(), strings: CODEX_STRING_KEYS.size() } as const;
 
 const clone = () => deepClone(PLACEHOLDER_MANIFEST) as unknown as Obj;
 
@@ -141,9 +145,14 @@ describe("fortune: contract", () => {
 			"sfx.golden.jackpot",
 			"sfx.golden.escape",
 		]);
-		// docs/FLOOR_MODIFIERS.md FM7's five, then docs/GOLDLING_RUMOURS.md GR6's two rumours come after them
+		// docs/FLOOR_MODIFIERS.md FM7's five, then docs/GOLDLING_RUMOURS.md GR6's two rumours come after them (then
+		// claude/codex-plan.md CX5's one)
 		expect(
-			tail(PORT_AUDIO_EVENTS, FORTUNE_AUDIO_IDS.size(), FLOOR_MOD_AFTER.audio + GOLDEN_RUMOUR_AUDIO_IDS.size()),
+			tail(
+				PORT_AUDIO_EVENTS,
+				FORTUNE_AUDIO_IDS.size(),
+				FLOOR_MOD_AFTER.audio + GOLDEN_RUMOUR_AUDIO_IDS.size() + CODEX_AFTER.audio,
+			),
 		).toEqual([...FORTUNE_AUDIO_IDS]);
 		for (const id of FORTUNE_AUDIO_IDS) {
 			expect([id, has(REQUIRED_ASSET_IDS, id), slotFor(id)?.soundGroup]).toEqual([id, true, "sfx"]);
@@ -154,9 +163,11 @@ describe("fortune: contract", () => {
 		}
 	});
 
-	it("appends the Goldling's two rumours last (docs/GOLDLING_RUMOURS.md GR6): required, sfx; SILENT in every pack", () => {
+	it("appends the Goldling's two rumours last before the Codex's (docs/GOLDLING_RUMOURS.md GR6): required, sfx; SILENT in every pack", () => {
 		expect([...GOLDEN_RUMOUR_AUDIO_IDS]).toEqual(["sfx.golden.rumour.floor", "sfx.golden.rumour.room"]);
-		expect(tail(PORT_AUDIO_EVENTS, GOLDEN_RUMOUR_AUDIO_IDS.size())).toEqual([...GOLDEN_RUMOUR_AUDIO_IDS]);
+		expect(tail(PORT_AUDIO_EVENTS, GOLDEN_RUMOUR_AUDIO_IDS.size(), CODEX_AFTER.audio)).toEqual([
+			...GOLDEN_RUMOUR_AUDIO_IDS,
+		]);
 		for (const id of GOLDEN_RUMOUR_AUDIO_IDS) {
 			expect([id, has(REQUIRED_ASSET_IDS, id), slotFor(id)?.soundGroup]).toEqual([id, true, "sfx"]);
 			for (const p of sortedKeys(THEME_PACKS))
@@ -201,12 +212,13 @@ describe("fortune: contract", () => {
 	});
 
 	it("the strings: cards, dim lines (PACT_DIM_NAMES but none), titles, chips, shouts (required); rows; sighting", () => {
-		// docs/FLOOR_MODIFIERS.md FM7's strings, then docs/GOLDLING_RUMOURS.md GR7's two chip lines come after them
+		// docs/FLOOR_MODIFIERS.md FM7's strings, then docs/GOLDLING_RUMOURS.md GR7's two chip lines come after them (then
+		// claude/codex-plan.md CX5's)
 		expect(
 			tail(
 				REQUIRED_STRING_KEYS,
 				FORTUNE_STRING_KEYS.size(),
-				FLOOR_MOD_AFTER.strings + GOLDEN_RUMOUR_STRING_KEYS.size(),
+				FLOOR_MOD_AFTER.strings + GOLDEN_RUMOUR_STRING_KEYS.size() + CODEX_AFTER.strings,
 			),
 		).toEqual([...FORTUNE_STRING_KEYS]);
 		const dims = new Array<string>();
@@ -275,9 +287,11 @@ describe("fortune: contract", () => {
 		expect(pack.str(HORDE_ROOM_CLEAR_KEY, { points: "420" })).toBe("Horde x2 +420");
 	});
 
-	it("the rumour strings (docs/GOLDLING_RUMOURS.md GR7): the chip's two lines last, the first-time card last", () => {
+	it("the rumour strings (docs/GOLDLING_RUMOURS.md GR7): the chip's two lines last before the Codex's, the first-time card last", () => {
 		expect([...GOLDEN_RUMOUR_STRING_KEYS]).toEqual(["hud.chip.golden.rumour", "hud.chip.golden.hiding"]);
-		expect(tail(REQUIRED_STRING_KEYS, GOLDEN_RUMOUR_STRING_KEYS.size())).toEqual([...GOLDEN_RUMOUR_STRING_KEYS]);
+		expect(tail(REQUIRED_STRING_KEYS, GOLDEN_RUMOUR_STRING_KEYS.size(), CODEX_AFTER.strings)).toEqual([
+			...GOLDEN_RUMOUR_STRING_KEYS,
+		]);
 		expect(GOLDEN_RUMOUR_BESTIARY_KEY).toBe("bestiary.golden.rumour");
 		expect(BESTIARY_STRING_KEYS[BESTIARY_STRING_KEYS.size() - 1]).toBe(GOLDEN_RUMOUR_BESTIARY_KEY);
 		expect(has(REQUIRED_STRING_KEYS, GOLDEN_RUMOUR_BESTIARY_KEY)).toBe(true);

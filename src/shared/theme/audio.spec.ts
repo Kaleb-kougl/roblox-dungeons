@@ -174,6 +174,8 @@ describe("audio contract: port IDs and ambience", () => {
 			// docs/GOLDLING_RUMOURS.md GR6: the Goldling's floor and room rumours
 			"sfx.golden.rumour.floor",
 			"sfx.golden.rumour.room",
+			// claude/codex-plan.md CX5: a codex toast's chime
+			"sfx.codex.new",
 		]);
 		const web = new Set<string>([...AUDIO_EVENTS, ...BREAKABLE_AUDIO_EVENTS]);
 		for (const id of PORT_AUDIO_EVENTS) {

@@ -42,6 +42,7 @@
  */
 
 import type { AssetKind, ColorRole, ParticleFlipbookMode, Pivot } from "./types";
+import { CODEX_STRING_KEYS } from "./codex";
 import { DAILY_STRING_KEYS } from "./daily";
 import { DAILY_RANK_STRING_KEYS } from "./dailyRank";
 import { NEW_BEST_STRING_KEYS } from "./newBest";
@@ -807,7 +808,9 @@ export const BOOST_BEAM_IMAGE_ID = "ui.marker.boost";
  * taken, the Horde's horn / second wave / doubling, the Goldling's appearance / hit / jackpot / escape (each falls back
  * to an existing clip while silent: shared/view/audio SFX_FALLBACK). Then the floor modifiers' five
  * (docs/FLOOR_MODIFIERS.md FM7, floorModifiers.ts FLOOR_MODIFIER_AUDIO_IDS): one sting per kind on the floor card
- * banner's stamp (a boon falls back to sfx.jingle.treasure, the twist to sfx.horde.horn).
+ * banner's stamp (a boon falls back to sfx.jingle.treasure, the twist to sfx.horde.horn). Then the Codex's one
+ * (claude/codex-plan.md CX5, codex.ts CODEX_AUDIO_IDS): a codex toast's chime (no fallback: silent until a clip is
+ * picked, CXD12).
  */
 export const PORT_AUDIO_EVENTS = [
 	"sfx.player.swing",
@@ -943,6 +946,8 @@ export const PORT_AUDIO_EVENTS = [
 	// (a soft, far-off coin jingle), its room engaged (the same jingle, closer and brighter)
 	"sfx.golden.rumour.floor",
 	"sfx.golden.rumour.room",
+	// claude/codex-plan.md CX5 (codex.ts CODEX_AUDIO_IDS, the same list): a codex toast's soft chime (CXD12; no fallback)
+	"sfx.codex.new",
 ] as const;
 
 /**
@@ -1327,6 +1332,9 @@ export const REQUIRED_STRING_KEYS: ReadonlyArray<string> = ((): string[] => [
 	// docs/GOLDLING_RUMOURS.md GR7: fortune.ts GOLDEN_RUMOUR_STRING_KEYS, written out: the rumour chip's two lines
 	"hud.chip.golden.rumour",
 	"hud.chip.golden.hiding",
+	// claude/codex-plan.md CX5: the Codex screen, its states, hints, kind lines and descriptions, the in-run chip / tag /
+	// toast lines, the run-over line and the menu button (codex.ts CODEX_STRING_KEYS)
+	...CODEX_STRING_KEYS,
 ])();
 
 /**

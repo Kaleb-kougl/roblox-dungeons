@@ -11,6 +11,7 @@ import { useHudScale } from "client/ui/hud";
 import { role } from "client/ui/theme";
 import { MENU_VIEW } from "shared/view/menu";
 import { CharacterScreen } from "./CharacterScreen";
+import { CodexScreen } from "./CodexScreen";
 import { CreditsScreen } from "./CreditsScreen";
 import { LobbyBrowser } from "./LobbyBrowser";
 import { LobbyRoom } from "./LobbyRoom";
@@ -20,7 +21,7 @@ import { InviteBadge, InviteToasts, NoticeToasts, useInviteToasts } from "./Toas
 /**
  * The menu shell (tasks L3 / L5), its own ScreenGui between the HUD and the pause / settings layer
  * (MENU_VIEW.displayOrder): while a menu screen is up, the screen (main menu, lobby browser, lobby room, credits, the
- * character screen: docs/ARCHER.md AR7, also over a finished run, the tutorial outro or a paused dev run) with the
+ * Codex (claude/codex-plan.md CX7), the character screen: docs/ARCHER.md AR7, also over a finished run, the tutorial outro or a paused dev run) with the
  * invite toasts, over a backdrop that covers the whole screen (its own ScreenGui KV_MenuBackdrop just under the shell,
  * ScreenInsets None: under the Roblox top bar and into a phone's notch insets, docs/UI_ART.md "Phones"); during a
  * run, the invite badge; always, the lobby notices. (A run start waiting for the server shows the stage loader's
@@ -52,6 +53,7 @@ export function MenuLayer() {
 	} else if (screen === "lobbies") body = <LobbyBrowser key="Lobbies" />;
 	else if (screen === "lobby") body = <LobbyRoom key="Lobby" />;
 	else if (screen === "credits") body = <CreditsScreen key="Credits" />;
+	else if (screen === "codex") body = <CodexScreen key="Codex" />;
 	else if (screen === "character") body = <CharacterScreen key="Character" />;
 	const backdrop = body !== undefined || (awaitingFirstRun && !active);
 	return (

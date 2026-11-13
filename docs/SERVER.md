@@ -158,6 +158,8 @@ Event pairs, like the user's other Flamework project. Flamework generates a runt
 | server -> client | `onboardingStatus` | `OnboardingStatus { loaded, tutorialDone }` (sent once after join too) | |
 | client -> server | `requestRecords` | none | `records` (see "Personal records") |
 | server -> client | `records` | `RecordsStatus { loaded, solo?: { score, floor }, coop?: { score, floor } }` (sent once after the join load and seed, again after a verdict raised a record) | |
+| client -> server | `requestCodex` / `codexClaim` / `codexViewed` | none; `{ id, tier, floor }[]` (at most 16); `string[]` (at most 64) | `codexStatus` (request only; see "Codex") |
+| server -> client | `codexStatus` | `CodexStatus { loaded, entries?: { id, tier, day, floor }[], unread?, seeded? }` (sent once after the join load and seed) | |
 | client -> server | `invitePrompt` | `InvitePromptRequest { withLobby }` | the prompt opens (server side), or `invitePromptOnClient`; refusals `lobbyNotice { kind: "refused", requestKind: "invitePrompt" }` |
 | client -> server | `inviteRecipients` | `number[]` (the friends picked in a prompt the client saw close) | none beyond the lobby pushes |
 | client -> server | `inviteEligibility` | none | `joinIntent` again (once resolved), then `inviteEligible` |
@@ -184,6 +186,7 @@ The client side is `src/client/network.ts` (`GlobalEvents.createClient`); `SimCo
 | `SETTINGS_REQUEST_RATE` | 20 per 10 s per player | Settings remotes. |
 | `ONBOARDING_REQUEST_RATE` / `TUTORIAL_START_RATE` / `TUTORIAL_STEP_RATE` / `TUTORIAL_FINISH_RATE` / `TUTORIAL_REPORT_RATE` | 10 / 3 / 30 / 10 / 40 per 10 s per player | Onboarding remotes (`shared/onboarding/config.ts`): request / started (over it the attempt still opens, unlogged) / steps / finish (its own budget) / lesson + stuck + onboardingReport together. Tutorial telemetry is also capped per player per session (`TUTORIAL_TELEMETRY.maxAttemptsLoggedPerSession` 3, `maxEventsPerSession` 240), see "Onboarding (tutorial)". |
 | `RECORDS_REQUEST_RATE` | 10 per 10 s per player | `requestRecords` (`shared/records/config.ts`); a dropped request still answers with the cached status. |
+| `CODEX.claimRate` | 10 per 10 s per player, each of `requestCodex` / `codexClaim` / `codexViewed` | `shared/codex/config.ts`; a call over it is dropped unanswered (a dropped claim or view is lost); the drop warnings are throttled to `CODEX.warnRate` (1 per 10 s per player). Claims at most `CODEX.claimMaxItems` 16 items, views `viewedMaxIds` 64 ids a call (longer: refused whole). |
 | `INVITE_PROMPT_RATE` / `INVITE_RECIPIENTS_RATE` / `INVITE_ELIGIBILITY_RATE` | 5 / 10 / 10 per 60 s per player | Roblox invite remotes (`shared/invite/config.ts`); a spent prompt budget is a `rateLimited` refusal, the others drop quietly. |
 | Seeds | integers in [0, 2^32) | What the web build's `seedFromQuery` produces. |
 | Debug input (`DEBUG_HIT`, `DEBUG_BOSS` bits) | rejected (`debug_input`) | K / J are debug keys. The boost debug drop (M, `DEBUG_DROP_BUTTON`, docs/BOOSTS.md) is a `PORT_BUTTONS` bit and is rejected the same way. |
@@ -866,6 +869,9 @@ never played); a bad `at` alone decodes as 0. The optional fields (no version bu
 (malformed = absent) and written only when present: `seen` (first sightings, docs/ENEMY_VARIANTS.md EV12), `firstDay`
 (the UTC day number `floor(os.time() / 86400)` of the first fresh join), `newRuns` (ranked runs counted in the
 new-player window, 0..3), `returned` (`NewPlayerReturned` was logged).
+`OnboardingService.joinLoadState(player)` (`"pending"` / `"loaded"` / `"failed"`, decided when the join load ended
+and kept for the session) tells CodexService's one-time seed whether `seen` in the cache is the stored list (see
+"Codex").
 
 **Failure rule.** A failed join load sends `{ loaded: false, tutorialDone: false }`: the client then plays a normal run
 and keeps the Tutorial button in the pause menu (a DataStore outage never forces a veteran through the tutorial). The
@@ -1032,6 +1038,76 @@ the session's fake (so the next run's target moves), with nothing written and no
 (`[Records] BAD_FAKE`). Without it, Studio reads the real doc (or fails without API access: `LOAD_FAILED`) and writes
 nothing.
 
+## Codex
+
+`CodexService` (`src/server/services/CodexService.ts`; pure rules in `src/shared/codex/`; plan and as
+built in docs/CODEX.md "Data (server)", task CX3) keeps each player's Codex: which catalog entries they have
+seen or found, and which carry a NEW dot. Trust (CXD1): the server records what the client claims, after the id / tier /
+size / rate checks; nothing is replayed.
+
+**Doc** (DataStore `KV_Codex_v1` = `CODEX.dataStore`, key `u_<UserId>`): `{ v: 1, seeded?: true, e: { [entryId]:
+[tier, day, floor] }, unread?: string[] }`. `tier` 1 seen / 2 found; `day` the UTC day (`codexDay`, unix seconds /
+86400) the entry was FIRST found (0 while seen); `floor` the floor it was first found on (0..999, 0 while seen); `unread`
+the ids whose tier rose since the player last looked, sorted. Entry ids are the catalog's (`boon:swiftStrikes`,
+`enemy:imp`, `boss:act1`, ...); unknown ids decode away from the session doc and decoding never throws
+(`decodeCodexDoc`), but the store transform writes well-formed unknown entries (an id shaped `<category>:<key>`,
+`isCodexIdShape`, with a valid mark) and their unread ids back untouched, so a server on an older catalog never deletes
+what a newer one added. Under 3 KB.
+
+**Writes are merges.** Every write is `MergeKeyValue` `UpdateAsync` with `mergeStoredCodex(stored, incoming)`: per
+entry the higher tier wins, two founds keep the earlier day (and its floor), `seeded` is kept once either side has it;
+`unread` is the session's list plus stored unread ids whose stored tier is above the session's (a rise another server
+wrote). It cancels over a NEWER doc version or when nothing changes. The session cache is a `PlayerDocCache` (load on
+join with `CODEX_RETRY`, 3 tries); writes go only through it: when dirty every `CODEX.autosaveSeconds` (120 s), on
+leave and on `BindToClose` (parallel, `CODEX.shutdownSaveSeconds` 25 s), plus one save right after a seed. A long
+session writes a handful of times however many claims it made. Writes are tagged with the UserId.
+
+**Failure rule.** A failed join load sends `{ loaded: false }` for the session (the client greys the Codex button),
+never sets the cache entry (nothing is saved from it) and ignores every claim and view.
+
+**Seed** (CXD5, R13): once, after a successful load of a doc without `seeded`, the service waits (at most
+`CODEX.seedWaitSeconds` 30 s, polling `OnboardingService.joinLoadState` every `seedPollSeconds`) for the onboarding
+join load. When it finished OK (`"loaded"`), the onboarding doc's cached `seen` list (`OnboardingService.getDoc`, no
+extra DataStore read) becomes seen entries WITHOUT NEW dots (`seedCodexDoc`: `seedFromSightings`, `applyClaims(...,
+markUnread = false)`; `imp` -> `enemy:imp`, `golden` -> `enemy:golden`, `affix.swift` -> `affix:swift`, `pellet.power`
+and unknown ids dropped) and the doc is marked `seeded` (also with an empty list). When the onboarding load failed or
+did not end in time, the marker stays unset (`[Codex] SEED_SKIPPED`, retried on the next join) and the Codex works
+meanwhile. The status waits for the seed.
+
+**Remotes.** `codexStatus(CodexStatus { loaded, entries?: { id, tier, day, floor }[], unread?, seeded? })` (shared/codex
+`codexStatusOf`; the client reads it back with `codexDocOfStatus`) is sent once the join load and seed ended (`ready`)
+and in answer to `requestCodex`; never before (an earlier request is answered by the join-end push). `codexClaim(items:
+{ id, tier, floor }[])` (`codexClaimUpdate`: `decodeCodexClaims`, at most `CODEX.claimMaxItems` 16 items or the call is
+refused whole, catalog ids, tier exactly 1 or 2, floor clamped; then `applyClaims` on the server's `codexDay(os.time())`,
+rises marked unread; idempotent, a lower tier never wins) and `codexViewed(ids: string[])` (`codexViewedUpdate`:
+`decodeCodexViewed`, at most `CODEX.viewedMaxIds` 64, then `markViewed`) change only the session cache and send no
+reply. Both are ignored before `ready` and after a failed load (the client queues claims until a loaded status and
+resends; a refusal before `ready` logs `[Codex] NOT_READY` once per player). Each of the three remotes has its own
+per-player limiter at `CODEX.claimRate` (10 per 10 s); a call over it is dropped unanswered (a dropped claim or view is
+lost, `[Codex] DROPPED`; a dropped request gets no status, `[Codex] RATE_LIMITED`); those warnings and a bad payload's
+are throttled to `CODEX.warnRate` (1 per 10 s per player).
+
+**Rejoin during a leave save.** `PlayerDocCache` hands a load of a cached key the cached entry, and `release` deletes
+the key after its save yields, so a rejoin to the same server while the last session's leave save is writing would get
+the old entry and then lose it (claims refused `notReady`, nothing saved). CodexService tracks each UserId's release in
+flight (`releasing`) and the new join load waits for it (at most `CODEX.rejoinWaitSeconds` 30, polling
+`rejoinPollSeconds`; `[Codex] REJOIN_WAIT_TIMEOUT` past it), so it reads the stored doc fresh. Each cache entry has one
+owning Player (`owners`, set before its load); only the owner's leave releases it, and a release that finds a newer
+owner (a rejoin that stopped waiting) starts a fresh load for it; a status is never sent from a missing entry.
+PlayerDocCache itself is unchanged: RecordsService and SettingsService release the same way (save, then delete) and
+share the exposure; OnboardingService narrows it (it skips the release while the player is back) but its final
+`release` has the same window.
+
+**Budget.** +1 `GetAsync` per join; the seed reads OnboardingService's cache. `UpdateAsync`: the autosave / leave /
+shutdown writes of a dirty doc, plus one per seed (once per player).
+
+**Studio:** writes are no-ops unless `codexWritesAllowed` (`CODEX.writeFromStudio`, false: records' parity); claims
+still update the session cache. Workspace string attribute `KV_FakeCodex` (`parseFakeCodex`, Studio only): `all`
+(every entry found), `seen`, `none` (loaded, empty), `unknown` (`loaded: false`) or a list `boon:volatile:2,enemy:imp:1`
+(those tiers, each unread). It replaces the loaded doc: claims and views apply to the fake for the session, nothing is
+written and no seed runs; changing the attribute resets the fake at the next send or claim. An unparsable value is
+ignored (`[Codex] BAD_FAKE`).
+
 ## DataStores
 
 | DataStore | Key | Value | Written |
@@ -1039,6 +1115,7 @@ nothing.
 | `PlayerSettings` | `u_<UserId>` | settings document v2 `{ v: 2, juice, controls, audio, display }` (only what the player changed; v1 `{ v: 1, juice }` migrates on read) | when dirty: on leave, on `BindToClose` (parallel, 25 s budget), every 120 s |
 | `KV_Onboarding_v1` | `u_<UserId>` | `{ v: 1, tutorialVersion, outcome: "completed" \| "skipped", at, seen?, firstDay?, newRuns?, returned? }` (see "Onboarding (tutorial)") | when dirty: on leave, on `BindToClose`, every 120 s |
 | `KV_Records_v1` | `u_<UserId>` | `{ v: 1, endless: { solo?, coop? }, seeded?, daily? }`, each board `{ score, scoreAt, scoreRunId, floor, floorAt, floorRunId }`; `daily = { day, starts, lastFinishedDay?, prevFinishedDay? }` (docs/DAILY.md DS13) (see "Personal records") | merge writes (UpdateAsync, max per field, `seeded` kept, `daily` max-merged): right after a verdict raised a record or a seed, and when dirty on leave / `BindToClose` / every 120 s; daily-activity delta writes (UpdateAsync, same-day starts summed): one per credited member per accepted daily run, plus one on leave / shutdown for starts no finish wrote |
+| `KV_Codex_v1` | `u_<UserId>` | `{ v: 1, seeded?, e: { [entryId]: [tier, day, floor] }, unread? }` (see "Codex") | merge writes (UpdateAsync, tiers only rise, earliest found day): when dirty on leave / `BindToClose` / every 120 s, and once after the seed |
 | `Runs` (off: `RUNS_DATASTORE_ENABLED = false`) | `u_<UserId>` | the last 50 accepted runs `{ id, seed, hash, ticks, kills, boss, died, at }` (UpdateAsync) | on each accepted run |
 
 Every write is tagged with the owner's UserId (`SetAsync`'s `userIds`, UpdateAsync's second return value), for

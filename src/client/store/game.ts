@@ -98,6 +98,22 @@ export interface ToastView {
 	readonly args?: StringVars;
 	/** A player whose headshot leads the line (docs/DAILY.md DS10: a friend passed), fetched by ToastPanel. */
 	readonly headshotUserId?: number;
+	/**
+	 * claude/codex-plan.md CX6 (R14): the toast's entry was found for the first time ever on its frame: the NEW! chip at
+	 * its left and, on a top-centre toast, the second line `Added to your Codex` (SimController.pushToasts from the
+	 * CodexTracker's chips; a first-sighting card: SightingController from its sightingChip).
+	 */
+	readonly codexNew?: boolean;
+	/**
+	 * claude/codex-plan.md CX6: a codex toast (SightingController) for this Codex entry id: one line (the chip, then
+	 * `{name} · Codex`), no second line. The hook for the entry's tile art (CX7's codexTileArt).
+	 */
+	readonly codexId?: string;
+	/**
+	 * The tier `codexId` rose to (shared/codex CodexTier): the toast's tile art is drawn in it (a sighting's seen art, a
+	 * find's full art; shared/view/codex codexToastArtState).
+	 */
+	readonly codexTier?: number;
 	/** os.clock() at which it disappears. */
 	readonly until: number;
 }

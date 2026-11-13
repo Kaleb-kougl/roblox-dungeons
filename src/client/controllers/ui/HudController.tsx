@@ -19,6 +19,7 @@ import type { LobbyVisibility, LobbyWorld } from "shared/lobby";
 import { draftColumnForCard } from "shared/play";
 import type { RecapTab } from "shared/view/hud";
 import { AudioController } from "../audio/AudioController";
+import { CodexController } from "../fx/CodexController";
 import { RecapController } from "../fx/RecapController";
 import { InputController } from "../game/InputController";
 import { SimController } from "../game/SimController";
@@ -58,6 +59,7 @@ export class HudController implements OnStart {
 		private readonly tutorial: TutorialController,
 		private readonly recap: RecapController,
 		private readonly focus: FocusController,
+		private readonly codex: CodexController,
 	) {}
 
 	onStart(): void {
@@ -139,6 +141,8 @@ export class HudController implements OnStart {
 			openOptions: click(() => this.menu.openOptions()),
 			openLeaderboard: click(() => this.menu.openLeaderboard()),
 			openCredits: click(() => this.menu.openCredits()),
+			openCodex: click(() => this.menu.openCodex()),
+			codexViewed: (ids) => this.codex.sendViewed(ids),
 			inviteFriends: click(() => this.menu.inviteFriends()),
 			playTutorial: click(() => this.tutorial.playTutorial("menu")),
 			back: click(() => this.menu.back()),
