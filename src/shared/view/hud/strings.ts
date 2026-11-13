@@ -10,6 +10,7 @@ import {
 	PACT_SCORE_SOURCE_NAMES,
 	PELLET_SCORE_SOURCE_NAMES,
 	SCORE_SOURCE_NAMES,
+	SECRET_SCORE_SOURCE_NAMES,
 	TREASURE_SCORE_SOURCE_NAMES,
 } from "shared/sim";
 import { LEAD_DEBUG_STRINGS, PACING_DEBUG_STRINGS, PREDICTION_DEBUG_STRINGS } from "../latencyProbeConfig";
@@ -82,7 +83,8 @@ export const HUD_STRINGS = {
  * `pellets` 10 / `sweep` 11, only in pellet runs' points), then the treasure rooms' (docs/TREASURE.md TR6: `treasure`
  * 12, only in vault runs' points: shared/sim TREASURE_SCORE_SOURCE_NAMES; the theme's TREASURE_SCORE_SOURCE_KEY), then
  * PACT_SCORE_SOURCE_NAMES (docs/FORTUNE.md FO6: `horde` 13, pacts runs only), GOLDEN_SCORE_SOURCE_NAMES (`golden`
- * 14, Goldling runs only) and OVERCAP_SCORE_SOURCE_NAMES (docs/BUILDS_V2.md BV9: `overcap` 15, builds runs only).
+ * 14, Goldling runs only), OVERCAP_SCORE_SOURCE_NAMES (docs/BUILDS_V2.md BV9: `overcap` 15, builds runs only) and
+ * SECRET_SCORE_SOURCE_NAMES (docs/SECRET_ROOMS.md SR4: `secret` 16, secret runs only; the theme's SECRET_SCORE_SOURCE_KEY).
  */
 export const SCORE_SOURCE_KEYS: ReadonlyArray<string> = [
 	...SCORE_SOURCE_NAMES,
@@ -92,6 +94,7 @@ export const SCORE_SOURCE_KEYS: ReadonlyArray<string> = [
 	...PACT_SCORE_SOURCE_NAMES,
 	...GOLDEN_SCORE_SOURCE_NAMES,
 	...OVERCAP_SCORE_SOURCE_NAMES,
+	...SECRET_SCORE_SOURCE_NAMES,
 ].map((n) => `score.source.${n}`);
 
 /** One run-over breakdown row: the score source's index, its label key and its points. */

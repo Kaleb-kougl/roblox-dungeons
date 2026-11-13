@@ -15,6 +15,10 @@
  *   chest              a vault's chest is a breakables piece too (docs/TREASURE.md TRD3, kind BreakableKind.CHEST):
  *                      isChestPiece; the tracker never lists it as hit / broken / restored, BreakableRenderController
  *                      gives it no body (TreasureRenderController draws it).
+ *   inert              a secret room's cracked wall (docs/SECRET_ROOMS.md SR2, BreakableKind.CRACKED_WALL) and its chest
+ *                      are pieces too: isInertPieceKind (chest or crack) is every slot BreakableRenderController must
+ *                      give no view (SecretRenderController / TreasureRenderController draw them); the tracker never
+ *                      lists one as hit / broken / restored (a crack's open sets its brokenTick: no barrel shatter).
  *   aim clip           clipToSolidCells: where a ray first enters an intact piece's cell (the sniper's aim line stops
  *                      where its bullet will).
  */
@@ -28,7 +32,7 @@ import {
 	type BreakableKindName,
 	type SolidCells,
 } from "shared/dungeon";
-import { BreakableKind, NOT_BROKEN, type BreakablesState } from "shared/sim";
+import { BreakableKind, NOT_BROKEN, inertPiece, type BreakablesState } from "shared/sim";
 import type { DecorKind } from "shared/theme";
 import { BREAKABLE_VIEW } from "./breakablesConfig";
 import { decorHash } from "./decor";
@@ -51,8 +55,9 @@ const TAU = 2 * math.pi;
  *   broken    intact last frame, broken now (its hits this frame are folded in: the break wins)
  *   hits      intact both times, hp dropped
  *   restored  broken last frame and intact now, or hp went up (not a play path; a defensive silent repair)
- * No breakables state at all is an empty layout. A chest slot (isChestPiece) is in the layout (its kind and cell count
- * for "new") but never in `hits` / `broken` / `restored`: it is unbreakable and drawn by the treasure view.
+ * No breakables state at all is an empty layout. An inert slot (isInertPieceKind: a chest, a secret's crack) is in the
+ * layout (its kind and cell count for "new") but never in `hits` / `broken` / `restored`: a chest is unbreakable and
+ * drawn by the treasure view, a crack opens (brokenTick set) without a break and is drawn by the secret view.
  */
 export class BreakableTracker {
 	private readonly kinds = new Array<number>();
@@ -133,7 +138,7 @@ export class BreakableTracker {
 		if (pieces === undefined) return false;
 		for (let i = 0; i < n; i++) {
 			const p = pieces[i];
-			if (isChestPiece(p.kind)) continue;
+			if (isInertPieceKind(p.kind)) continue;
 			const wasIntact = this.brokenTicks[i] === NOT_BROKEN;
 			const intact = p.brokenTick === NOT_BROKEN;
 			if (wasIntact && !intact) this.broken.push(i);
@@ -150,6 +155,15 @@ export class BreakableTracker {
 /** A vault's chest (shared/sim BreakableKind.CHEST): not drawn or diffed as a barrel / crate. */
 export function isChestPiece(kind: number): boolean {
 	return kind === BreakableKind.CHEST;
+}
+
+/**
+ * A piece no barrel / crate view draws or diffs (shared/sim inertPiece): a chest (a vault's or a secret's) or a secret
+ * room's cracked wall (BreakableKind.CRACKED_WALL, docs/SECRET_ROOMS.md SR2). BreakableRenderController skips these
+ * slots (no body, hit, glint, shatter or debris); the treasure and secret views draw them.
+ */
+export function isInertPieceKind(kind: number): boolean {
+	return inertPiece(kind);
 }
 
 // ---------------------------------------------------------------------------------------------

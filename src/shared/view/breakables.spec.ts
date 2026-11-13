@@ -34,6 +34,7 @@ import {
 	debrisVariant,
 	floorStudsY,
 	isChestPiece,
+	isInertPieceKind,
 	oneShotSec,
 	studsX,
 	studsZ,
@@ -77,6 +78,38 @@ describe("BreakableTracker", () => {
 		b.pieces[3].brokenTick = 1;
 		expect(t.update(b, 2)).toBe(false);
 		expect([[...t.hits], [...t.broken], [...t.restored]]).toEqual([[], [], []]);
+	});
+
+	it("a secret's crack and chest are inert: in the layout, never listed, not a barrel (docs/SECRET_ROOMS.md SR2)", () => {
+		const b = fresh([
+			...PIECES,
+			{ x: 12, y: 3, kind: "crackedWall" },
+			{ x: 13, y: 3, kind: "crackedWall" },
+			{ x: 12, y: 0, kind: "chest" },
+		]);
+		const t = new BreakableTracker();
+		expect(t.update(b, 0)).toBe(true);
+		expect([t.count(), t.kindAt(3), t.kindAt(4), t.kindAt(5)]).toEqual([
+			6,
+			BreakableKind.CRACKED_WALL,
+			BreakableKind.CRACKED_WALL,
+			BreakableKind.CHEST,
+		]);
+		expect([isInertPieceKind(BreakableKind.CRACKED_WALL), isInertPieceKind(BreakableKind.CHEST)]).toEqual([true, true]);
+		expect([isInertPieceKind(BreakableKind.BARREL), isInertPieceKind(BreakableKind.CRATE)]).toEqual([false, false]);
+		// A crack is no chest (the treasure view draws chests only) and has no clutter name (no barrel / crate art).
+		expect([isChestPiece(BreakableKind.CRACKED_WALL), breakableKindName(BreakableKind.CRACKED_WALL)]).toEqual([
+			false,
+			undefined,
+		]);
+		// The open sets both pieces' brokenTick without a break: never a shatter here; a barrel's hit still lists.
+		b.pieces[3].hp = 0;
+		b.pieces[3].brokenTick = 1;
+		b.pieces[4].hp = 0;
+		b.pieces[4].brokenTick = 1;
+		b.pieces[0].hp -= 1;
+		expect(t.update(b, 2)).toBe(false);
+		expect([[...t.hits], [...t.broken], [...t.restored]]).toEqual([[0], [], []]);
 	});
 
 	it("classifies each piece once per frame from hp / brokenTick, however many ticks the frame ran", () => {
