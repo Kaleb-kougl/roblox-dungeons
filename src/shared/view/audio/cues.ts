@@ -264,6 +264,7 @@ import {
 	type GoldenFrameSource,
 	type GoldenRumourCueSource,
 } from "../golden";
+import { NO_SECRET_CUES, type SecretCueSource } from "../secrets/cues";
 
 /** Every sound effect the game plays, by logical ID (theme manifest). */
 export const SFX = {
@@ -1731,6 +1732,25 @@ export class AudioCueMapper {
 			);
 	}
 
+	/**
+	 * The frame's secret-room cues (docs/SECRET_ROOMS.md SR6; the client's SecretCueTracker edges of THIS frame, already
+	 * throttled): the hollow knock, the crumble at the open and the discovery jingle at the reveal, each at full volume
+	 * when near the listener (their own, or within SECRET_VIEW.audio.nearTiles), else at AUDIO_VIEW.teammateVolume and
+	 * TEAMMATE_PRIORITY_DROP lower (a far teammate's). Silent clips play their SFX_FALLBACK (the breakable hit / break,
+	 * the treasure jingle). The secret chest's open is the vault's path (its sting), not here.
+	 */
+	private secretCues(secrets: SecretCueSource): void {
+		if (secrets.knock) this.nearCue(SFX.secretKnock, secrets.knockNear);
+		if (secrets.open) this.nearCue(SFX.secretOpen, secrets.openNear);
+		if (secrets.jingle) this.nearCue(SFX.jingleSecret, secrets.jingleNear);
+	}
+
+	/** `id` at full volume when `near`, else a teammate's quieter, lower-ranked cue. */
+	private nearCue(id: SfxId, near: boolean): void {
+		if (near) this.cue(id, 1);
+		else this.cue(id, AUDIO_VIEW.teammateVolume, priorityOf(id) - TEAMMATE_PRIORITY_DROP);
+	}
+
 	/** The frame's build cues (BU8; see the file comment). */
 	private buildCues(builds: BuildFxFrameSource, localIndex: number): void {
 		const streaks = builds.overkills;
@@ -1864,7 +1884,9 @@ export class AudioCueMapper {
 	 * none by default), `pacts` the frame's pact events (the run view's `pacts`, docs/FORTUNE.md FO9; none by default),
 	 * `golden` the frame's Goldling events (the run view's `golden`, docs/FORTUNE.md FO9; none by default), `rumour` the
 	 * frame's Goldling rumour edges (the client's GoldenRumourClock, stepped by SimController after THIS frame's ticks,
-	 * docs/GOLDLING_RUMOURS.md GR6; none by default). Appends the cues to start to `out` (in table order) and returns it.
+	 * docs/GOLDLING_RUMOURS.md GR6; none by default), `secrets` the frame's secret-room sound edges (the client's
+	 * SecretCueTracker of THIS frame, docs/SECRET_ROOMS.md SR6; none by default). Appends the cues to start to `out`
+	 * (in table order) and returns it.
 	 */
 	frame(
 		now: number,
@@ -1886,6 +1908,7 @@ export class AudioCueMapper {
 		pacts: PactFrameSource = NO_PACT_EVENTS,
 		golden: GoldenFrameSource = NO_GOLDEN_EVENTS,
 		rumour: GoldenRumourCueSource = NO_GOLDEN_RUMOUR_CUES,
+		secrets: SecretCueSource = NO_SECRET_CUES,
 	): AudioCueList {
 		this.now = now;
 		this.pending = 0;
@@ -2033,6 +2056,8 @@ export class AudioCueMapper {
 		this.goldenCues(golden, localIndex);
 		// Its rumours (docs/GOLDLING_RUMOURS.md GR6): the floor's jingle, the room's (quieter from outside the room).
 		this.goldenRumourCues(rumour, state, localIndex);
+		// Secret rooms (docs/SECRET_ROOMS.md SR6): the knock, the crumble at the open, the jingle at the reveal.
+		this.secretCues(secrets);
 
 		this.keepOneJingle();
 		this.applyCap();
