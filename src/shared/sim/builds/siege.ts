@@ -282,6 +282,7 @@ function breakPieces(state: SimState, x: number, z: number, owner: number): void
 	if (b === undefined || b.intact === 0) return;
 	for (let k = 0; k < b.pieces.size(); k++) {
 		const p = b.pieces[k];
+		// A chest is skipped; a secret's crack goes on to damageBreakable, which knocks (docs/SECRET_ROOMS.md SR2).
 		if (p.brokenTick !== NOT_BROKEN || p.kind === BreakableKind.CHEST) continue;
 		const dx = gridToWorld(p.x) - x;
 		const dz = gridToWorld(p.y) - z;

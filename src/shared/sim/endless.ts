@@ -49,6 +49,7 @@ import type {
 	BreakableLoot,
 	BreakablePlacement,
 	FloorGolden,
+	FloorSecret,
 	FloorPacts,
 	FloorPellets,
 	VaultPlan,
@@ -154,6 +155,12 @@ export interface EndlessFloorWorld {
 	 * the floor-built parts above) and it is in no hash group.
 	 */
 	readonly modifier?: number;
+	/**
+	 * The floor's secret room (shared/dungeon placeSecret, docs/SECRET_ROOMS.md SR1): the crack's and chest's slots in
+	 * `breakables`, the chamber, the chest's cell and tier, and the carved dungeon this world's movers and blockers
+	 * were built on. Read only when the run's SimConfig.secrets is set (secrets/secrets.ts secretsOnFloor). Absent: none.
+	 */
+	readonly secret?: FloorSecret;
 }
 
 /** SimConfig.endless. */

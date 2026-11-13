@@ -27,6 +27,12 @@
  *            by step(), presentation only, not hashed) `hitSlots` and `brokenSlots` (slot per hit / break, in order).
  *   chest    a vault's chest (docs/TREASURE.md, BreakableKind.CHEST, hp CHEST_HP) blocks like any piece but is never
  *            damaged: no hit, event, score, loot or break from any source (bullets that reach it still stop).
+ *   crack    a secret room's cracked wall (docs/SECRET_ROOMS.md SR2, BreakableKind.CRACKED_WALL, hp CRACKED_WALL_HP) is
+ *            inert like the chest (inertPiece): it blocks bodies and every bullet and takes no damage, and every
+ *            contact that reaches damageBreakable is a KNOCK instead (knockSlots / knockSources / knockPlayers, per tick,
+ *            unhashed): bullets, slams, blasts, Demolition and Siege's shock (their area loops skip only the chest, so
+ *            the crack reaches damageBreakable's early return), the sword's swings (the melee pass). Its openers are
+ *            sim/secrets (SR3).
  *   golden   the Goldling's hiding place (docs/GOLDLING_RUMOURS.md GR2, RD13; the floor's last piece, SimConfig.golden
  *            only): a barrel or crate like any other for the players, but enemy sources (enemy bullets, the boss's
  *            slam, a Bomber's blast, a Charger's charge) never reach it, exactly like the chest (a Charger stuns on
@@ -58,7 +64,9 @@ import {
 	BREAKABLE_SLAM_RADIUS,
 	BreakableKind,
 	BreakableSource,
+	CRACKED_WALL_HP,
 	NOT_BROKEN,
+	inertPiece,
 	type BreakableSourceId,
 } from "./breakablesData";
 
@@ -119,6 +127,14 @@ export interface BreakablesState {
 	/** Per tick, presentation only (cleared each tick, not hashed): the slot of every hit / break, in order. */
 	hitSlots: number[];
 	brokenSlots: number[];
+	/**
+	 * Per tick, presentation only (cleared each tick, not hashed; docs/SECRET_ROOMS.md SR2): every knock on a cracked
+	 * wall, in order: its slot, the BreakableSource of the contact and the party index of the player behind it (-1 for
+	 * none: enemy bullets, slams, a Bomber's blast, a Charger).
+	 */
+	knockSlots: number[];
+	knockSources: number[];
+	knockPlayers: number[];
 }
 
 function kindIndex(kind: string): number {
@@ -131,8 +147,14 @@ function piecesFrom(config: Readonly<BreakablesConfig>, list: ReadonlyArray<Brea
 	const out: BreakablePiece[] = [];
 	for (const p of list) {
 		const kind = kindIndex(p.kind);
-		// The vault's chest (docs/TREASURE.md correction 3) has a fixed hp by kind: it never takes damage.
-		const hp = kind === BreakableKind.CHEST ? CHEST_HP : config.hp[kind];
+		// The vault's chest (docs/TREASURE.md correction 3) and a secret's crack (docs/SECRET_ROOMS.md SR2) have a fixed hp
+		// by kind: they never take damage.
+		const hp =
+			kind === BreakableKind.CHEST
+				? CHEST_HP
+				: kind === BreakableKind.CRACKED_WALL
+				? CRACKED_WALL_HP
+				: config.hp[kind];
 		if (hp === undefined || !(hp > 0)) error(`breakables: no hp for kind ${p.kind}`, 0);
 		out.push({ kind, x: p.x, y: p.y, hp, brokenTick: NOT_BROKEN });
 	}
@@ -164,6 +186,9 @@ export function createBreakablesState(
 		intact: 0,
 		hitSlots: [],
 		brokenSlots: [],
+		knockSlots: [],
+		knockSources: [],
+		knockPlayers: [],
 	};
 	rebuildDerived(b);
 	return b;
@@ -185,6 +210,9 @@ export function cloneBreakablesState(b: Readonly<BreakablesState>): BreakablesSt
 		intact: 0,
 		hitSlots: [...b.hitSlots],
 		brokenSlots: [...b.brokenSlots],
+		knockSlots: [...b.knockSlots],
+		knockSources: [...b.knockSources],
+		knockPlayers: [...b.knockPlayers],
 	};
 	rebuildDerived(out);
 	return out;
@@ -194,12 +222,23 @@ export function cloneBreakablesState(b: Readonly<BreakablesState>): BreakablesSt
 export function clearBreakableEvents(b: BreakablesState): void {
 	b.hitSlots.clear();
 	b.brokenSlots.clear();
+	b.knockSlots.clear();
+	b.knockSources.clear();
+	b.knockPlayers.clear();
+}
+
+/** A knock on the cracked wall in `slot` (docs/SECRET_ROOMS.md SR2): the per-tick feed only, no state change. */
+export function knockBreakable(b: BreakablesState, slot: number, source: number, player: number): void {
+	b.knockSlots.push(slot);
+	b.knockSources.push(source);
+	b.knockPlayers.push(player);
 }
 
 /**
- * Damages the intact piece in `slot` by `amount` from `source` (BreakableSource). A vault's chest (BreakableKind.CHEST,
- * docs/TREASURE.md correction 3) returns false before any of this: no hit event, hit slot, score, loot or break (a
- * bullet that reached it still stops: the callers consume it). So does the Goldling's piece (docs/GOLDLING_RUMOURS.md
+ * Damages the intact piece in `slot` by `amount` from `source` (BreakableSource). An inert piece (inertPiece: a chest,
+ * docs/TREASURE.md correction 3, or a secret's cracked wall, docs/SECRET_ROOMS.md SR2) returns false before any of this:
+ * no hit event, hit slot, score, loot or break (a bullet that reached it still stops: the callers consume it); a cracked
+ * wall's contact is a knock (knockBreakable, `owner` as its player). So does the Goldling's piece (docs/GOLDLING_RUMOURS.md
  * RD13, golden/golden.ts goldenGuardsPiece) for the enemy sources ENEMY_BULLET and SLAM (enemy bullets, the boss's slam,
  * a Bomber's blast, a Charger's charge). Otherwise events.breakableHits += 1 and the
  * slot joins hitSlots; at hp <= 0 it breaks this tick: hp 0, brokenTick = state.tick, out of the lookup,
@@ -222,7 +261,12 @@ export function damageBreakable(
 	const b = state.breakables;
 	if (b === undefined) return false;
 	const p = b.pieces[slot];
-	if (p === undefined || p.brokenTick !== NOT_BROKEN || p.kind === BreakableKind.CHEST) return false;
+	if (p === undefined || p.brokenTick !== NOT_BROKEN) return false;
+	if (inertPiece(p.kind)) {
+		// A secret's crack (docs/SECRET_ROOMS.md SR2) reports the contact as a knock; a chest is silent.
+		if (p.kind === BreakableKind.CRACKED_WALL) knockBreakable(b, slot, source, owner);
+		return false;
+	}
 	const playerSource =
 		source === BreakableSource.MELEE ||
 		source === BreakableSource.PLAYER_BULLET ||
@@ -276,7 +320,7 @@ export function rollSmashBreakables(
 	let broken = 0;
 	for (let i = 0; i < b.pieces.size(); i++) {
 		const p = b.pieces[i];
-		if (p.brokenTick !== NOT_BROKEN || p.kind === BreakableKind.CHEST) continue;
+		if (p.brokenTick !== NOT_BROKEN || inertPiece(p.kind)) continue;
 		const px = gridToWorld(p.x) - x;
 		const pz = gridToWorld(p.y) - z;
 		// The step's point nearest the centre: t along (dx, dz), clamped to the segment.
@@ -326,7 +370,8 @@ export function meleeHitBreakables(
 	let hits = 0;
 	for (let i = 0; i < b.pieces.size(); i++) {
 		const p = b.pieces[i];
-		// A vault's chest is never hit (docs/TREASURE.md correction 3): not counted either.
+		// A vault's chest is never hit (docs/TREASURE.md correction 3): not counted either. A secret's crack goes on to
+		// damageBreakable, which knocks (docs/SECRET_ROOMS.md SR2).
 		if (p.brokenTick !== NOT_BROKEN || p.kind === BreakableKind.CHEST) continue;
 		const dx = gridToWorld(p.x) - x;
 		const dz = gridToWorld(p.y) - z;
@@ -355,7 +400,8 @@ export function slamBreakables(state: SimState, x: number, z: number, radius?: n
 	let broken = 0;
 	for (let i = 0; i < b.pieces.size(); i++) {
 		const p = b.pieces[i];
-		// A vault's chest never breaks (docs/TREASURE.md correction 3).
+		// A vault's chest never breaks (docs/TREASURE.md correction 3). A secret's crack goes on to damageBreakable,
+		// which knocks and returns false (docs/SECRET_ROOMS.md SR2): never counted.
 		if (p.brokenTick !== NOT_BROKEN || p.kind === BreakableKind.CHEST) continue;
 		const dx = gridToWorld(p.x) - x;
 		const dz = gridToWorld(p.y) - z;
