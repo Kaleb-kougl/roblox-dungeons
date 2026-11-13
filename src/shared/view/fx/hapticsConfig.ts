@@ -172,3 +172,15 @@ export const PLAY_HAPTICS_RULES = {
 export function playCueSeconds(kind: PlayHaptic, device: HapticDevice): number {
 	return pulsesSeconds(PLAY_HAPTICS[kind][device]);
 }
+
+/**
+ * The haptics debug switch (docs/HAPTICS.md HP6; Workspace attribute, off by default; playHapticsInput hapticDebugOf
+ * reads it): any value but absent / false / 0 / "" prints every play cue played (kind, device, backend) and every drop
+ * with its reason; an integer n in 1 .. testCues.size() also fires testCues[n - 1] once per change on the current
+ * device (even outside a run; the device and its setting still apply).
+ */
+export const HAPTIC_DEBUG = {
+	attribute: "KV_HapticDebug",
+	/** 1 kill, 2 parry, 3 stagger, 4 boss death, 5 hurt armor, 6 hurt heart, 7 hurt lethal. */
+	testCues: ["kill", "parry", "stagger", "bossDeath", "hurtArmor", "hurtHeart", "hurtLethal"],
+} as const satisfies { readonly attribute: string; readonly testCues: ReadonlyArray<PlayHaptic> };

@@ -59,3 +59,5 @@ export * from "./overcapFx";
 export * from "./haptics";
 export * from "./hapticsConfig";
 export * from "./playHaptics";
+// docs/HAPTICS.md HP4 / HP6: the frame's facts -> the director's input, the KV_HapticDebug value.
+export * from "./playHapticsInput";
