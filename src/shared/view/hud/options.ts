@@ -3,7 +3,7 @@
  * layout tunables and every theme string key it reads (`options.*`; hud.spec.ts checks they all exist). The juice tab
  * keeps the juice panel's `fx.settings.*` keys.
  */
-import type { BindingDevice, BindingRefusal, GameAction } from "shared/play";
+import type { BindingDevice, BindingRefusal, GameAction, InputDeviceKind } from "shared/play";
 
 export type OptionsTab = "juice" | "controls" | "audio" | "display";
 /** Tab order (the first is selected when the screen opens). */
@@ -26,6 +26,18 @@ export function optionsDevices(touch: boolean): ReadonlyArray<OptionsControlsDev
 export function shownControlsDevice(device: OptionsControlsDevice, touch: boolean): OptionsControlsDevice {
 	const shown = optionsDevices(touch);
 	return shown.includes(device) ? device : shown[0];
+}
+
+/**
+ * The Controls sub-tab an opening of Options starts on: Touch when the last-used device is touch and the device shows
+ * Touch (a phone player's only Controls row; docs/HAPTICS.md HP7 review), else the sub-tab kept from last time.
+ */
+export function openingControlsDevice(
+	current: OptionsControlsDevice,
+	lastDevice: InputDeviceKind,
+	touch: boolean,
+): OptionsControlsDevice {
+	return lastDevice === "touch" && touch ? "touch" : current;
 }
 
 /** The binding device a Controls sub-tab rebinds, or undefined for Touch (no bindings). */

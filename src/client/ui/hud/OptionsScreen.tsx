@@ -1045,12 +1045,13 @@ export function OptionsScreen() {
 	const rootRef = useRef<Frame>();
 	const listRef = useRef<ScrollingFrame>();
 	const tab = options.tab;
+	// Controls > Touch has no bindings to reset (docs/HAPTICS.md HP5): no X there, and no X hint.
+	const bindingDevice = controlsBindingDevice(
+		shownControlsDevice(options.controlsDevice, UserInputService.TouchEnabled),
+	);
+	const canReset = tab !== "controls" || bindingDevice !== undefined;
 	const resetTab = () => {
 		if (tab === "controls") {
-			// Controls > Touch has no bindings to reset (docs/HAPTICS.md HP5).
-			const bindingDevice = controlsBindingDevice(
-				shownControlsDevice(options.controlsDevice, UserInputService.TouchEnabled),
-			);
 			if (bindingDevice === undefined) return;
 			actions.playUi(SFX.uiClick);
 			actions.askResetBindings(bindingDevice);
@@ -1070,7 +1071,7 @@ export function OptionsScreen() {
 		memoryKey: `options${opened}`,
 		active: open,
 		// The right stick scrolls the Controls list or (compact) the whole body, whichever is drawn (scrollRef).
-		padContext: { subTabs: tab === "controls", scrollList: true },
+		padContext: { subTabs: tab === "controls", scrollList: true, canReset },
 		scrollRef: listRef,
 		onPadAction: (action) => {
 			if (action.kind === "close") {
@@ -1227,7 +1228,9 @@ export function OptionsScreen() {
 								surface="options"
 								context={{
 									subTabs: tab === "controls",
-									scrollList: layout.compact || tab === "controls",
+									// Controls > Touch draws no list (its one row never scrolls).
+									scrollList: layout.compact || (tab === "controls" && bindingDevice !== undefined),
+									canReset,
 								}}
 							/>
 						) : device === "touch" ? undefined : (

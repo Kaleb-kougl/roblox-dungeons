@@ -77,7 +77,9 @@ export type PadCondition =
 	 */
 	| "partyTabs"
 	/** The scope's main list is shown (and can overflow). */
-	| "scrollList";
+	| "scrollList"
+	/** Options: the shown tab has a Reset (every tab but Controls > Touch, which has nothing to reset; HAPTICS.md HP5). */
+	| "canReset";
 
 /** The surface facts menuPadAction and padHints read (absent = false). */
 export type PadContext = { readonly [K in PadCondition]?: boolean } & {
@@ -224,7 +226,12 @@ export const PAD_SURFACES: { readonly [K in PadSurface]: PadSurfaceDef } = {
 	// docs/ARCHER.md AR7: the D-pad / stick move between the cards (the engine), A confirms the selected card, B back.
 	character: { layer: "screen", select: true, back: "back", rows: [] },
 	invites: { layer: "invites", select: true, back: "back", rows: [] },
-	options: { layer: "panel", select: true, back: "close", rows: [TABS, SUB_TABS, shortcutX("reset"), SCROLL] },
+	options: {
+		layer: "panel",
+		select: true,
+		back: "close",
+		rows: [TABS, SUB_TABS, shortcutX("reset", "canReset"), SCROLL],
+	},
 	// A rebind capture listens to every input (navigation off): no pad meaning while it runs.
 	rebind: { layer: "rebind", select: false, back: "none", rows: [] },
 	leaderboard: { layer: "panel", select: true, back: "close", rows: [TABS, SUB_TABS, SCROLL] },

@@ -27,6 +27,7 @@ import {
 	OPTIONS_TABS,
 	actionNameKey,
 	controlsBindingDevice,
+	openingControlsDevice,
 	optionsDevices,
 	optionsStringKeys,
 	shownControlsDevice,
@@ -261,6 +262,11 @@ describe("HUD helpers", () => {
 		expect(controlsBindingDevice("kbm")).toBe("kbm");
 		expect(controlsBindingDevice("pad")).toBe("pad");
 		expect(controlsBindingDevice("touch")).toBe(undefined);
+		// An opening starts on Touch for a touch player (where Touch is shown), else keeps the last sub-tab.
+		expect(openingControlsDevice("kbm", "touch", true)).toBe("touch");
+		expect(openingControlsDevice("pad", "touch", false)).toBe("pad");
+		expect(openingControlsDevice("pad", "gamepad", true)).toBe("pad");
+		expect(openingControlsDevice("touch", "keyboard", true)).toBe("touch");
 	});
 
 	it("every Options screen string exists: tabs, devices, every action's name, every refusal note", () => {

@@ -36,6 +36,7 @@ const ALL_CONDITIONS: ReadonlyArray<PadCondition> = [
 	"recap",
 	"partyTabs",
 	"scrollList",
+	"canReset",
 ];
 const EVERYTHING: PadContext = {
 	invitePending: true,
@@ -46,6 +47,7 @@ const EVERYTHING: PadContext = {
 	recap: true,
 	partyTabs: true,
 	scrollList: true,
+	canReset: true,
 };
 const NOTHING: PadContext = {};
 const ALL_KEYS: ReadonlyArray<string> = [
@@ -247,7 +249,9 @@ describe("menuPadAction (section 3, 4.3)", () => {
 		expect(act("lobby", PAD_KEYS.y, { canInvite: true })).toBe("shortcutY:invite");
 		expect(act("runOver", PAD_KEYS.x, NOTHING)).toBe("none");
 		expect(act("runOver", PAD_KEYS.x, { recap: true })).toBe("shortcutX:details");
-		expect(act("options", PAD_KEYS.x, NOTHING)).toBe("shortcutX:reset");
+		expect(act("options", PAD_KEYS.x, { canReset: true })).toBe("shortcutX:reset");
+		// Controls > Touch (docs/HAPTICS.md HP5) has nothing to reset: X does nothing there and is not hinted.
+		expect(act("options", PAD_KEYS.x, NOTHING)).toBe("none");
 		expect(act("options", PAD_KEYS.y, EVERYTHING)).toBe("none");
 	});
 
@@ -286,8 +290,8 @@ describe("padHints (4.1)", () => {
 			[PAD_KEYS.a],
 			[PAD_KEYS.b],
 			[PAD_KEYS.lb, PAD_KEYS.rb],
-			[PAD_KEYS.x],
 		]);
+		expect(hintKeys("options", { subTabs: true }).includes("pad.hint.reset")).toBe(false);
 		expect(hintKeys("lobby", { canReady: true, canInvite: true })).toEqual([
 			"pad.hint.select",
 			"pad.hint.back",
