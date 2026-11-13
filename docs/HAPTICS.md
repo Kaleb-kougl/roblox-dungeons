@@ -1,9 +1,11 @@
 # Haptics in play: kill tick, parry thump, boss stagger, hurt (plan)
 
-Status (2026-11-13): **planned, nothing built.** Tasks HP0-HP8, decisions HPD1-HPD12. Owner answers 2026-11-13: the
-stagger is the phase break (HPD4), the boss death rumble is in (HPD5), **getting hurt vibrates** (HPD9, reversed from
-the draft), a separate Touch toggle (HPD6). The other decisions stand as recommended. Follows GMD14 in
-docs/GAMEPAD_MENUS.md ("in-run haptics are a separate follow-up, not this plan").
+Status: built on branch `haptics` (2026-11-13) without a Studio or device run: HP1-HP7 done; HP0 (spike on real
+phones and pads) and HP8 (device check + tune) pending. Tasks HP0-HP8, decisions HPD1-HPD12. Owner answers 2026-11-13:
+the stagger is the phase break (HPD4), the boss death rumble is in (HPD5), **getting hurt vibrates** (HPD9, reversed
+from the draft), a separate Touch toggle (HPD6). The other decisions stand as recommended. Follows GMD14 in
+docs/GAMEPAD_MENUS.md ("in-run haptics are a separate follow-up, not this plan"). What was built, and where it differs
+from the plan below, is in "As built (2026-11-13)".
 
 **Goal.** The moments that should land in the player's hands do: a **kill** gives a tiny, crisp tick; a **parry**
 gives a short, solid thump; a **boss stagger** (a phase break) gives a heavy two-stage hit; the **boss death** rumbles
@@ -17,7 +19,7 @@ GPD1's view side). One new setting (`touchVibration`), one new string, one debug
 
 | Piece | Today | Where |
 |---|---|---|
-| Pad haptics | `PadHapticsController` plays `hapticTimeline` (a cue's pulses as on / off motor events) on the navigation pad with `HapticService:SetMotor`, only on motors `IsVibrationSupported` / `IsMotorSupported` report, behind pcall. `HapticGenerations`: a newer cue on a pad + motor drops an older one's later events. Motors to 0 on cleanup, vibration Off and leaving the gamepad. **Menus only** (`confirm`, `disabled`, `listEnd`, `holdComplete`) | client PadHapticsController, shared/view/menu `padFeedback.ts`, `config.ts` `MENU_HAPTICS` |
+| Pad haptics | (Before this plan; folded into `HapticsController`, client/controllers/fx, by HP2.) `PadHapticsController` played `hapticTimeline` (a cue's pulses as on / off motor events) on the navigation pad with `HapticService:SetMotor`, only on motors `IsVibrationSupported` / `IsMotorSupported` report, behind pcall. `HapticGenerations`: a newer cue on a pad + motor drops an older one's later events. Motors to 0 on cleanup, vibration Off and leaving the gamepad. **Menus only** (`confirm`, `disabled`, `listEnd`, `holdComplete`) | client HapticsController (was PadHapticsController), shared/view/menu `padFeedback.ts`, `config.ts` `MENU_HAPTICS` |
 | Setting | `DisplaySettings.padVibration` (default On, only Off stored), Options > Controls > Gamepad, `options.controls.vibration`; kept by the Display reset | shared/settings |
 | Phones | **No haptics at all.** `SetMotor` is a gamepad API in practice; the engine's phone path is `HapticEffect` | - |
 | Kill moment | Kill freeze 50 ms (80 heavy / elite), kill hold, kill ladder pitch, tracker `killed` events | freezeRules.ts, hitReact.ts, audio cues |
@@ -144,6 +146,58 @@ How anything scores or freezes, the menu haptics and their table, `padVibration`
 fixture or replay, the hurt flash and freeze. No haptic on hits landed, grazes, rolls, pickups, tier-ups, room clears
 or low health (HPD3).
 
+## As built (2026-11-13)
+
+Built by parallel agents on worktree branches merged into `haptics` (HP1 pure core, HP5 setting, then HP4's input
+builder and HP2-HP4 / HP6's controller), then a review pass. No Studio or device run: every engine call is behind
+pcall, and the facts the code assumes are listed under "HP0 must confirm" below. Presentation only, as planned: nothing
+under shared/sim, shared/dungeon, shared/lockstep or fixtures changed; no hash, replay, score or wire change. Changes
+from the plan are marked **Change**.
+
+| Task | As built |
+|---|---|
+| HP1 | shared/view/fx `haptics.ts`: the pulse types (`HapticShape` with `atSec` and an optional linear ramp `toStrength`, `HapticPulse` = a shape on a `HapticMotor`, `TouchPulse` = a motor-free shape), `hapticTimeline(pulses, rampStepSec)` (moved from padFeedback.ts; a ramp is stepped every `rampStepSec`, ties offs first; pulses without a ramp give exactly the menu's old timeline) and `HapticGenerations` with an optional priority (`begin(pad, motor, priority, nowSec, untilSec)` returns undefined while a higher-priority cue there still runs; the priority-free `begin` of menu cues always takes over and releases the hold). `hapticsConfig.ts`: `PLAY_HAPTICS` (the "Player experience" table exactly, per cue `pad` / `touch` pulses; `parryBig` keeps the parry's small-motor edge 0.3 / 50 ms), `PLAY_HAPTIC_KINDS` (nine), `PLAY_HAPTICS_PRIORITY` (kill / killHeavy 0, parry / parryBig 1, hurtArmor 2, hurtHeart 3, stagger 4, bossDeath 5, hurtLethal 6), `PLAY_HAPTICS_RULES` (kill gap 0.07 s, cap 6 in a rolling 1 s, duty 0.4 per 1 s, floor 0.15, `rampStepSec` 0.05, `hurtUpgradeWindowSec` = `FEEL_HURT.minIntervalSec` 0.75, `parryBigFrom` = `NEAR_MISS_VIEW.parry.bigFrom`), `playCueSeconds`, `HAPTIC_DEBUG`. `playHaptics.ts`: `PlayHapticsDirector.frame(input, nowSec)` -> one reused `{ cue, stopAll, drops }` (**Change:** at most ONE cue a frame, the strongest candidate, not "0-3 cues"; pooled drop records, allocation-free), `hurtHapticOf`, `touchWaveform` (integer ms, step edges Constant, ramps Linear, ending at 0). **Change:** `MENU_HAPTICS` keeps its `delaySec` (`MenuHapticPulse`; `menuHapticPulse` maps it to `atSec`, `MenuHapticMotor` = `HapticMotor`); shared/view/menu `padFeedback.ts` re-exports `HapticGenerations` / `HapticEvent` and keeps `hapticTimeline(cue)` as an overload, so the menu specs are unchanged. Specs `haptics.spec.ts`, `playHaptics.spec.ts` |
+| HP2 | `HapticsController` (client/controllers/fx; `PadHapticsController` and its ui barrel export are gone, FocusController injects the new one). Motor backend: menu cues (`play(cue)`) as before on the navigation pad; play cues on `InputController.getActivePad()` (**new**: Gamepad1 when connected, else the first connected pad), else the navigation pad, else the first connected; per pad + motor priority holds until that motor's last event; one `task.delay` closure per event of a played cue (cues are rare), skipped when stale (generation) or after cleanup (`stopped`). `stopPlay` (the director's `stopAll`, a new run, a run exit, the tracker's `reset`) zeroes only the motors a play cue still holds (a menu cue that took a motor over keeps it) and stops the phone effect; `stopPads` (cleanup, Gamepad vibration Off, the device leaving the gamepad) zeroes every motor set and drops every pending event, menu and play |
+| HP3 | **Change:** the nine `HapticEffect`s are created lazily, on the first play cue (or test cue) on touch, not preallocated at start: a Folder `KV_Haptics` under **Workspace**, one effect per `PlayHaptic` named by kind, `Type = Custom`, `Looped = false`, no `Position` / `Radius`, `SetWaveformKeys` once from `touchWaveform` (`FloatCurveKey(tMs, value, Enum.KeyInterpolationMode)`: time in ms, an HP0 fact). A newer cue `Stop()`s the running one first (a weaker one while a stronger runs is `held`); `Stop()` only while the running cue has time left. Any failed create or call disables the backend for the session, destroys the effects and warns once under `KV_HapticDebug` |
+| HP4 | shared/view/fx `playHapticsInput.ts`: `PlayHapticsFacts` (filled once a frame by the controller, one reused object) -> `PlayHapticsInputBuilder.build` -> the director's input (allocation-free). Device: `hapticDeviceOf` = `menuHapticsOn` (gamepad + `padVibration`) -> `pad`, `touchHapticsOn` (touch + `touchVibration`) -> `touch`, else none. Quiet (`playHapticsQuiet`): no run, `selectMenuShown`, paused, the local player's draft open, the stage cover up or a held run start, run over (`isRunOver()` or the frozen finished tutorial). Spectating: view index != local index. The kill feed per mode (row 4, answered in code): **scored runs** (solo and co-op) count the view player's credited kills this frame as the deltas of the run view's `RecapTally.kills` (`ScoreEvents.popPlayer`, docs/RUN_CONTRIBUTION.md), so kills over a multi-tick frame merge and count once; **unscored solo** (M1 without `KV_Scoring`) counts every non-boss tracker `killed` of the frame; **unscored co-op M1 gets no kill tick** (no feed names the killer; HPD1: no sim field). Heavy: a tracker kill of the frame that froze as heavy / elite (`freezeMsFor` = `HEAVY_KILL_FREEZE_MS`); **Change:** in co-op only while every credited kill of the frame is the view player's (the tracker does not name killers). Parry: `NearMissController.onFrame`'s `local` parry cue (`localParryCount`: the new flash's count, or `bigFrom` by the cue's pitch when there is no flash). Hurt: the controller's own `StateWatch` on the view index through `hurtKindLanded` (a forfeit's death is not a lethal hit). Boss: a tracker `bossPhase` the freeze rules freeze for (phase >= 2) and `bossDefeated`. **Change:** the play frame is `FX_FRAME_PHASE.haptics` (1), a new phase after `normal`, so the frame's parry cue, freeze and hurt edge are in. Spec `playHapticsInput.spec.ts` |
+| HP5 | `DisplaySettings.touchVibration` (`DEFAULT_TOUCH_VIBRATION` true, only Off stored, settings doc v2; in `DISPLAY_RESET_KEEPS` with `padVibration` and `character`); shared/settings `vibration.ts` `touchHapticsOn` (imported by file from shared/view: the settings barrel reaches shared/play, whose run views import the fx barrel, a require cycle). **Change:** a **Touch sub-tab** on Options > Controls (`OptionsControlsDevice` = `BindingDevice` or `touch`; shown only on a `TouchEnabled` device: `optionsDevices(touch)` / `shownControlsDevice` / `controlsBindingDevice`) with the one Vibration row (`options.controls.vibration` reused) and **one new string `options.device.touch`** ("Touch", context in `l10n/context.json`; the plan said no new string); no bindings, test strip (RebindController) or device reset there. Review fixes: no pad X Reset and no X hint there (a new `PadCondition` `canReset` on the options surface), no right-stick scroll hint, and Options opens Controls on Touch when the last-used device is touch (`openingControlsDevice`, SettingsController). Specs `settings.spec.ts`, `hud.spec.ts`, `padActions.spec.ts` |
+| HP6 | `KV_HapticDebug` (Workspace attribute, `HAPTIC_DEBUG`, `hapticDebugOf`): any value but absent / `false` / `0` / `""` prints `[Haptics] play <kind> on <device> (<backend>)` (backend `motor` / `effect`, or `no pad` / `no motor` / `held` / `effect off` / `no device`), `drop <kind> (<reason>)` (`gap` / `cap` / `duty` / `priority` / `quiet`), `stopAll`, and the phone backend's failure once; an integer 1-7 fires that test cue once per change on the current device, even outside a run (1 kill, 2 parry, 3 stagger, 4 boss death, 5 hurt armor, 6 hurt heart, 7 hurt lethal; the device and its setting still apply; test cues bypass the director). **Change:** no `KV_HapticSpike` controller: docs/SPIKES.md "Spike HP0" runs the rows on the real cues through these test cues |
+| HP7 | This section; CLIENT.md (Juice "Haptics", the Options Controls row, the controller map, Workspace attributes); GAMEPAD_MENUS.md (GMD14 pointer, `PadHapticsController` -> `HapticsController`); the CLAUDE.md docs row and decision-log entry |
+
+Rules as built (director, per device):
+
+- **One cue a frame**: the strongest candidate; the others drop `priority`. A cue weaker than a played cue still running
+  drops `priority`; an equal or stronger one replaces it (the replaced cue's on-time ends there). A hurt within 0.75 s
+  of the last played hurt plays only as a stronger kind (the HurtFlash upgrade).
+- **Kills only** drop for the rules: `gap` (0.07 s since the last played tick's start), `cap` (6 tick starts in the
+  rolling 1 s), `duty`: the device's played on-time (cue lengths, gaps inside a cue included, cut at a replacement) in
+  the 1 s window that ends with the candidate tick's end, plus the tick, must stay <= 0.4 s. Hurt, parry, stagger and
+  death never drop for these. So a kill right after a long cue can drop for `duty` (after a 0.6 s boss death or a
+  0.5 s lethal on the pad, ticks drop for up to about a second; after a stagger's 0.38 s, a few ticks), as HPD10 means.
+- **Gates**: the first quiet / spectating / no-device frame after an open one sets `stopAll` once; a device change
+  (pad <-> touch) stops the old one once and forgets the kill / hurt / duty history. The client also stops the pads on
+  Gamepad vibration Off or leaving the gamepad, and the phone on Touch vibration Off or leaving touch.
+- **Change (review): the run's end.** `PlayHapticsInput.ending` (`playHapticsEnding`: quiet only because the run is
+  over; the run-over panel's own menu ignored): on the edge frame (open on the same device the frame before) that
+  frame's lethal hit or boss death still plays, with no `stopAll`, and rings out; later run-over frames are quiet
+  without a stopAll, and the run's exit or restart stops the motors. Without it the solo death's lethal hit and an M1
+  victory's boss death were dropped as `quiet` on their own frame (`isRunOver` turns true on that tick). A co-op death
+  while teammates live is unaffected (the view holds 1.5 s on the corpse before spectating).
+
+Known gaps, left as built: unscored co-op M1 has no kill tick; in co-op a heavy kill only ticks heavy when every kill
+of the frame is the view player's; a play cue on a motor where a menu cue is running takes it over (menu cues hold no
+priority; menus are quiet for play cues, so at most a confirm right before a draft closes is cut short); the first
+frame of a new run view takes its tally as the baseline (a kill on that frame is not ticked).
+
+**HP0 must confirm** (docs/SPIKES.md "Spike HP0", rows 1a-1f, 2a / 2b, 3, 5; row 4 is answered in code above):
+`HapticEffect` Custom plays on iPhone and Android phones parented under a Workspace Folder with no `Position` /
+`Radius` (row 1e; else move `KV_Haptics`); `SetWaveformKeys`' key time is milliseconds (values 0..1) and
+`Enum.KeyInterpolationMode` Constant / Linear give steps and ramps; `Stop()` then `Play()` on one effect replays it at
+once; the latency from `Play()`; the shortest felt pulse (the 25 ms kill tick at 0.35); the iPhone voice-chat issue; a
+pad on a phone stays silent with no error (`no motor` expected); the pad motors' feel at `PLAY_HAPTICS`' strengths
+against `HapticEffect` on pads (HPD2); the heart hurt's 50 ms gap keeps two buzzes. Then HP8 tunes `PLAY_HAPTICS` on
+the hardware.
+
 ## Tasks
 
 - [ ] **HP0. Spike.** Extend `KV_PadSpike` (or a new `KV_HapticSpike`, docs/SPIKES.md, off by
@@ -152,21 +206,21 @@ or low health (HPD3).
   issue in a VC place); `HapticEffect` vs `SetMotor` on Xbox and PlayStation pads (feel of small / large at the table's
   strengths); a pad on a phone (expected: nothing); which feed names the killer in co-op; whether a 50 ms gap keeps the heart hurt's double buzz distinct on each device.
   → Verify: SPIKES.md table filled; every "HP0 picks" branch decided here.
-- [ ] **HP1. Pure core.** `hapticsConfig.ts`, `playHaptics.ts`, shared `haptics.ts` (moved `hapticTimeline`,
+- [x] **HP1. Pure core.** `hapticsConfig.ts`, `playHaptics.ts`, shared `haptics.ts` (moved `hapticTimeline`,
   priority in `HapticGenerations`), `touchWaveform`; specs as in Design 1. → Verify: `npm run test:only -- view/fx`
   and `view/menu` (the menu haptics specs unchanged).
-- [ ] **HP2. HapticsController.** Rename / fold `PadHapticsController`, the motor backend for play cues on the active
+- [x] **HP2. HapticsController.** Rename / fold `PadHapticsController`, the motor backend for play cues on the active
   pad, the quiet / menu hand-over (menu opens: play pulses dropped, motors 0). → Verify: `npm run verify`; Studio with
   a pad: menu haptics as before.
-- [ ] **HP3. Effect backend (phones).** Preallocated `HapticEffect`s, `SetWaveformKeys` once, Stop / Play by priority,
+- [x] **HP3. Effect backend (phones).** Preallocated `HapticEffect`s, `SetWaveformKeys` once, Stop / Play by priority,
   failure disables. → Verify: on a real iPhone and Android phone (Studio cannot vibrate a phone), the seven test cues
   through `KV_HapticDebug`.
-- [ ] **HP4. Wire the moments.** Kills (HP0's feed, view player only), parries (`NearMissController.onFrame`), boss
+- [x] **HP4. Wire the moments.** Kills (HP0's feed, view player only), parries (`NearMissController.onFrame`), boss
   phase break and death (the freeze / nudge edges), hurt (`StateWatch.hurtKind` of the view player). → Verify: specs for the input builder; Studio check below.
-- [ ] **HP5. Setting.** `touchVibration` in the Display schema, sanitize / overrides / reset keeps, the Touch row.
+- [x] **HP5. Setting.** `touchVibration` in the Display schema, sanitize / overrides / reset keeps, the Touch row.
   → Verify: settings spec (round trip, old docs, reset keeps it); `npm run verify` (`l10n:check`).
-- [ ] **HP6. Debug.** `KV_HapticDebug` prints and test cues. → Verify: in Studio, each drop reason prints once.
-- [ ] **HP7. Docs.** CLIENT.md (an FX "Haptics" block and the Controls tables), GAMEPAD_MENUS.md GMD14 points here,
+- [x] **HP6. Debug.** `KV_HapticDebug` prints and test cues. → Verify: in Studio, each drop reason prints once.
+- [x] **HP7. Docs.** CLIENT.md (an FX "Haptics" block and the Controls tables), GAMEPAD_MENUS.md GMD14 points here,
   CLAUDE.md decision-log line, this doc's "As built".
 - [ ] **HP8. Device check + tune.** The Studio / device check below; tune `PLAY_HAPTICS` on the real hardware.
 

@@ -295,7 +295,8 @@ fallback, and the facts the code assumes are listed under "Studio check" below.
   column), tutorial outro, the invite toasts while focused. On a gamepad it replaces the screens' text back / key
   hints (keyboard and touch unchanged). `padLabelSet` (platform-aware text labels in localized sentences) is not built:
   it waits for GM0's answer on what the engine reports per pad.
-- **GM9 haptics, vibration, hold B.** `PadHapticsController` plays `hapticTimeline` on the navigation pad (else the
+- **GM9 haptics, vibration, hold B.** `PadHapticsController` (since docs/HAPTICS.md HP2 folded into `HapticsController`,
+  client/controllers/fx, which also plays the in-run cues) plays `hapticTimeline` on the navigation pad (else the
   first connected) with `HapticService:SetMotor`, only on motors `IsVibrationSupported` / `IsMotorSupported` report,
   every call behind pcall; silent unless gamepad + `padVibration` On; a newer cue on a motor drops an older one's later
   events (per-motor generation); motors back to 0 on cleanup. HapticEffect is not used. Cues: `confirm` / `disabled`
@@ -355,7 +356,8 @@ does (only Controls asks first): intended, kept.
   off is what blocks them (HudController), so RT held through a stairwell card keeps firing. The cover's neutral input
   (SimController `coverGate`) is unchanged.
 - **Lobby memory.** The lobby room's memory key is `lobby<lobbyId>`: a new lobby opens on Ready.
-- **Haptics, two pads.** `HapticGenerations` (padFeedback.ts): generations per pad + motor from one counter, so a cue
+- **Haptics, two pads.** `HapticGenerations` (padFeedback.ts; since docs/HAPTICS.md HP1 in shared/view/fx `haptics.ts`,
+  re-exported there, with an optional priority for play cues): generations per pad + motor from one counter, so a cue
   on one pad never drops another pad's "off". Every motor set goes back to 0 on every pad on cleanup, on vibration Off
   and when the device leaves the gamepad (pending pulses dropped).
 - **Pad spike.** The spike reads a SelectionImageObject named `NO_SELECTION_IMAGE_NAME` (FocusController's empty
@@ -409,7 +411,8 @@ does (only Controls asks first): intended, kept.
   layout with a pad. Add `NextSelection*` only where geometry picks wrong (main menu and Daily card, lobby member
   rows' Kick / Make host, Options' `-` / `+` rows, run-over exits row). Each override is listed in this doc.
 - [x] **GM9. Sounds, haptics and hold-to-exit.** The tab switch plays `sfx.ui.click`. Haptics are on (GMD14),
-  through a client `PadHaptics` (`HapticEffect` or `HapticService`, whichever GM0 shows works; silent where the pad
+  through a client `PadHaptics` (as built `PadHapticsController`, now `HapticsController` in client/controllers/fx;
+  `HapticEffect` or `HapticService`, whichever GM0 shows works; silent where the pad
   has no motor). Menus only, from a pure `MENU_HAPTICS` table (motor, strength, seconds) in shared/view/menu
   `config.ts`:
   - a light tick on confirm,
@@ -471,7 +474,8 @@ does (only Controls asks first): intended, kept.
   fill on Exit, and a press from before the panel opened never counts.
 - **GMD14 (owner, 2026-11-06).** Controller vibration is on, for menus only (confirm, disabled press, list end, hold
   complete), never on focus moves. There is a player setting to turn it off. In-run haptics (hits, parries) are a
-  separate follow-up, not this plan.
+  separate follow-up, not this plan. In-run haptics: docs/HAPTICS.md (kill, parry, phase break, boss death, hurt; the
+  same `padVibration` toggle now covers menus and play).
 - **GMD15 (owner, 2026-11-06).** The game ships wherever Roblox is, consoles included, so GM12 is in scope and the
   console guidelines are a requirement, not advice.
 - **GMD16 (owner, 2026-11-06).** Button glyphs are Roblox's own icons (`GetImageForKeyCode`), with a text fallback. No
