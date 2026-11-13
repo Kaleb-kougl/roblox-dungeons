@@ -216,7 +216,8 @@ Built as the recommended option, owner to confirm (2026-11-12):
 
 Branch `goldling-rumours` from `main` @ `677b5b1`, one commit per task (GR1-GR8; GR0's findings went into GR1 / GR2,
 listed under "GR0" below); rebased onto `main` @ `6704c16` (the floor modifiers, docs/FLOOR_MODIFIERS.md) on
-2026-11-12, see "Rebase onto the floor modifiers" below. Gameplay for the Goldling only; everything else on the floor and in the sim is unchanged.
+2026-11-12, see "Rebase onto the floor modifiers" below; then onto `4cf11cb` (DSD18, the audio sources) and `8b095ab`
+(the long censuses split into shards: no change here but the shard helpers' barrel). Gameplay for the Goldling only; everything else on the floor and in the sim is unchanged.
 M1, every golden fixture and the tutorial (no Goldling) replay exactly as before.
 
 ### GR0 (the code assumptions)
