@@ -27,7 +27,8 @@ Measured on the three M1 fixtures (seeds 1337 / 42 / 7): 98 / 84 / 95 corridor-t
 flanking a room), about 220 / 185 / 210 dashes at the starting dash size below. No room cell touches another room's
 cell there. Endless rooms are twice as large (`roomScale` 2), so expect 2-3x the dashes per floor (RE1 measures it).
 
-As built (RE1 census, `roomEdges.spec.ts`): endless run seeds 1-60 x floors 1-20 (1200 floors, 240 boss floors), worst
+As built (RE1 census, `roomEdges.spec.ts`; since 2026-11-12 the endless part in four shards
+`roomEdges.endless.<n>.spec.ts`, `view/testing/roomEdgesCensus.ts`): endless run seeds 1-60 x floors 1-20 (1200 floors, 240 boss floors), worst
 floor 428 dashes (run 57 floor 17; budget 1200), at most 103 runs and 191 unit edges; tutorial floor 1 / 2: 132 / 14
 dashes. **Room-to-room contacts do happen on endless floors** (98 of 1200 floors, 1886 unit edges; none on M1 or the
 tutorial): there each room keeps its own line on its outside (RD9), so the two rooms' dashes lie side by side on the

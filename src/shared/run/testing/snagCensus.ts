@@ -1,5 +1,5 @@
 /**
- * Snag census (docs/WALL_SLIDE.md WS5): on real endless floors (buildEndlessFloor, vaults on; breakables and the vault
+ * The snag census (docs/WALL_SLIDE.md WS5), shared by its shard specs (snagCensus.<n>.spec.ts): on real endless floors (buildEndlessFloor, vaults on; breakables and the vault
  * chest as SolidCells, as the sim passes them), walk WALK_TICKS from the centre of every FLOOR cell that touches an
  * obstacle, in the 8 keyboard screen directions and 32 stick directions, through the real input path (radial deadzone,
  * the camera's yaw, quantizeAxis), with the web build's mover (moveCircle) and the player's slide (slideCircle,
@@ -23,8 +23,10 @@
  * 3.38 tiles). A roll stalls when it ends less than STALL_SHARE of its open-floor distance from its start; the same
  * excuses and classes. Gate for the Archer's roll: zero unexcused pillar stalls with the slide, never more than the web
  * mover in any class (WS5's gate); the Knight's is printed beside it.
+ *
+ * Each shard gates its own seeds (zero pillar stalls and never more than the web mover per shard), which is stricter
+ * than the single file's gate over all seeds was. Test support only.
  */
-import { describe, expect, it } from "@rbxts/jest-globals";
 import {
 	TILE_SIZE,
 	blocksMove,
@@ -58,12 +60,12 @@ import {
 import { characterTraits, type CharacterId } from "shared/characters";
 
 /**
- * Run seeds 1..SEEDS, one floor each, cycling through floors 1..FLOORS (seed s walks floor 1 + (s - 1) % FLOORS), so
- * every floor depth is walked SEEDS / FLOORS times. The plan's full 40 x 10 grid would take some 40 minutes headless
- * (about 6 s a floor); this cut keeps the census near 3 minutes.
+ * Run seeds 1..seeds, one floor each, cycling through floors 1..floors (seed s walks floor 1 + (s - 1) % floors), so
+ * every floor depth is walked seeds / floors times. The plan's full 40 x 10 grid would take some 40 minutes headless
+ * (about 6 s a floor); this cut keeps the census near 3 minutes, split over `shards` spec files of consecutive seeds
+ * (snagCensus.<n>.spec.ts: seeds 1-10, 11-20, 21-30, so each shard walks every floor depth once).
  */
-const SEEDS = 30;
-const FLOORS = 10;
+export const SNAG_CENSUS = { seeds: 30, floors: 10, shards: 3 } as const;
 const WALK_TICKS = 40;
 const STALL_SHARE = 0.25;
 const EXCUSE_DEG = 20;
@@ -344,14 +346,18 @@ function rollOne(f: CensusFloor, mover: Mover, gx: number, gy: number, dir: Dir,
 	judge(f, gx, gy, x, z, ux, uz, STALL_SHARE * free, t);
 }
 
-/** The census floors, built once for both tests (about 6 s a floor). */
-let floorsCache: CensusFloor[] | undefined;
-function censusFloors(): CensusFloor[] {
-	if (floorsCache === undefined) {
-		floorsCache = [];
-		for (let seed = 1; seed <= SEEDS; seed++) floorsCache.push(censusFloor(seed, 1 + ((seed - 1) % FLOORS)));
+/** The census floors of seeds firstSeed..lastSeed, built once for both censuses (about 6 s a floor). */
+const floorsCache = new Map<string, CensusFloor[]>();
+function censusFloors(firstSeed: number, lastSeed: number): CensusFloor[] {
+	const key = `${firstSeed}-${lastSeed}`;
+	let floors = floorsCache.get(key);
+	if (floors === undefined) {
+		floors = [];
+		for (let seed = firstSeed; seed <= lastSeed; seed++)
+			floors.push(censusFloor(seed, 1 + ((seed - 1) % SNAG_CENSUS.floors)));
+		floorsCache.set(key, floors);
 	}
-	return floorsCache;
+	return floors;
 }
 
 function row(name: string, t: Tally): string {
@@ -366,76 +372,77 @@ function row(name: string, t: Tally): string {
 	return s;
 }
 
-describe("snag census (WALL_SLIDE.md WS5)", () => {
-	it(`seeds 1-${SEEDS} (floors 1-${FLOORS} in turn): no unexcused pillar stall with the slide, never more than the web mover`, () => {
-		const tallies = new Map<string, Tally>();
-		for (const [inputName] of INPUTS)
-			for (const [moverName] of MOVERS) tallies.set(`${inputName}/${moverName}`, newTally());
-		let floors = 0,
-			starts = 0;
-		for (const f of censusFloors()) {
-			floors++;
-			starts += f.starts.size();
-			for (const [inputName, dirs] of INPUTS)
-				for (const [moverName, mover] of MOVERS) {
-					const t = tallies.get(`${inputName}/${moverName}`)!;
-					for (const [gx, gy] of f.starts) for (const dir of dirs) walkOne(f, mover, gx, gy, dir, t);
-				}
-		}
-		const lines = [`[snag census] ${floors} floors, ${starts} start cells, ${WALK_TICKS} ticks a walk`];
-		for (const [inputName] of INPUTS)
-			for (const [moverName] of MOVERS)
-				lines.push(row(`${inputName} ${moverName}`, tallies.get(`${inputName}/${moverName}`)!));
-		print(lines.join("\n"));
-		for (const [inputName] of INPUTS) {
-			const web = tallies.get(`${inputName}/web`)!;
-			const slide = tallies.get(`${inputName}/slide`)!;
-			expect([inputName, "pillar", slide.byClass.get("pillar")]).toEqual([inputName, "pillar", 0]);
-			for (const c of CLASSES) {
-				const ok = slide.byClass.get(c)! <= web.byClass.get(c)!;
-				expect([inputName, c, ok]).toEqual([inputName, c, true]);
-			}
-		}
-	});
+/** A census's printed lines and its gate failures (empty: the gate holds). */
+export interface SnagCensusResult {
+	readonly lines: ReadonlyArray<string>;
+	readonly problems: ReadonlyArray<string>;
+}
 
-	it(`rolls (docs/ARCHER.md AR4): the Archer's 140 % roll, no unexcused pillar stall with the slide, never more than the web mover`, () => {
-		const who: ReadonlyArray<CharacterId> = ["knight", "archer"];
-		const tallies = new Map<string, Tally>();
-		for (const c of who) for (const [moverName] of MOVERS) tallies.set(`${c}/${moverName}`, newTally());
-		let floors = 0,
-			starts = 0;
-		for (const f of censusFloors()) {
-			floors++;
-			starts += f.starts.size();
-			for (const c of who) {
-				const pct = characterTraits(c).rollDashPercent;
-				for (const [moverName, mover] of MOVERS) {
-					const t = tallies.get(`${c}/${moverName}`)!;
-					for (const [gx, gy] of f.starts) for (const dir of KEYS) rollOne(f, mover, gx, gy, dir, pct, t);
-				}
+/** Zero unexcused pillar stalls with the slide, and never more stalls than the web mover in any class. */
+function gate(name: string, web: Tally, slide: Tally, out: string[]): void {
+	if (slide.byClass.get("pillar") !== 0) out.push(`${name}: ${slide.byClass.get("pillar")} unexcused pillar stalls`);
+	for (const c of CLASSES)
+		if (slide.byClass.get(c)! > web.byClass.get(c)!)
+			out.push(`${name}: slide ${slide.byClass.get(c)} ${c} stalls, web ${web.byClass.get(c)}`);
+}
+
+/** WS5: walks on seeds firstSeed..lastSeed, keys and sticks, the web mover and the slide. */
+export function snagWalkCensus(firstSeed: number, lastSeed: number): SnagCensusResult {
+	const tallies = new Map<string, Tally>();
+	for (const [inputName] of INPUTS)
+		for (const [moverName] of MOVERS) tallies.set(`${inputName}/${moverName}`, newTally());
+	let floors = 0,
+		starts = 0;
+	for (const f of censusFloors(firstSeed, lastSeed)) {
+		floors++;
+		starts += f.starts.size();
+		for (const [inputName, dirs] of INPUTS)
+			for (const [moverName, mover] of MOVERS) {
+				const t = tallies.get(`${inputName}/${moverName}`)!;
+				for (const [gx, gy] of f.starts) for (const dir of dirs) walkOne(f, mover, gx, gy, dir, t);
+			}
+	}
+	const lines = [`[snag census] ${floors} floors, ${starts} start cells, ${WALK_TICKS} ticks a walk`];
+	for (const [inputName] of INPUTS)
+		for (const [moverName] of MOVERS)
+			lines.push(row(`${inputName} ${moverName}`, tallies.get(`${inputName}/${moverName}`)!));
+	const problems: string[] = [];
+	for (const [inputName] of INPUTS)
+		gate(inputName, tallies.get(`${inputName}/web`)!, tallies.get(`${inputName}/slide`)!, problems);
+	return { lines, problems };
+}
+
+/** AR4: rolls on seeds firstSeed..lastSeed in the 8 key directions, the Knight's and the Archer's, both movers. */
+export function snagRollCensus(firstSeed: number, lastSeed: number): SnagCensusResult {
+	const who: ReadonlyArray<CharacterId> = ["knight", "archer"];
+	const tallies = new Map<string, Tally>();
+	for (const c of who) for (const [moverName] of MOVERS) tallies.set(`${c}/${moverName}`, newTally());
+	let floors = 0,
+		starts = 0;
+	for (const f of censusFloors(firstSeed, lastSeed)) {
+		floors++;
+		starts += f.starts.size();
+		for (const c of who) {
+			const pct = characterTraits(c).rollDashPercent;
+			for (const [moverName, mover] of MOVERS) {
+				const t = tallies.get(`${c}/${moverName}`)!;
+				for (const [gx, gy] of f.starts) for (const dir of KEYS) rollOne(f, mover, gx, gy, dir, pct, t);
 			}
 		}
-		const lines = [`[snag census] rolls: ${floors} floors, ${starts} start cells, 8 key directions`];
-		for (const c of who)
-			for (const [moverName] of MOVERS)
-				lines.push(row(`roll ${c} ${moverName}`, tallies.get(`${c}/${moverName}`)!));
-		for (const c of who)
-			lines.push(
-				`roll ${c} slide: mean distance ${string.format(
-					"%.3f",
-					tallies.get(`${c}/slide`)!.moved / tallies.get(`${c}/slide`)!.walks,
-				)}`,
-			);
-		print(lines.join("\n"));
-		// The Archer's rolls do go farther (the census is not rolling the Knight's roll twice).
-		expect(tallies.get("archer/slide")!.moved > tallies.get("knight/slide")!.moved).toBe(true);
-		const web = tallies.get("archer/web")!;
-		const slide = tallies.get("archer/slide")!;
-		expect(["archer", "pillar", slide.byClass.get("pillar")]).toEqual(["archer", "pillar", 0]);
-		for (const c of CLASSES) {
-			const ok = slide.byClass.get(c)! <= web.byClass.get(c)!;
-			expect(["archer", c, ok]).toEqual(["archer", c, true]);
-		}
-		expect(slide.walks).toBe(tallies.get("knight/slide")!.walks);
-	});
-});
+	}
+	const lines = [`[snag census] rolls: ${floors} floors, ${starts} start cells, 8 key directions`];
+	for (const c of who)
+		for (const [moverName] of MOVERS) lines.push(row(`roll ${c} ${moverName}`, tallies.get(`${c}/${moverName}`)!));
+	for (const c of who) {
+		const t = tallies.get(`${c}/slide`)!;
+		lines.push(`roll ${c} slide: mean distance ${string.format("%.3f", t.moved / t.walks)}`);
+	}
+	const problems: string[] = [];
+	const knight = tallies.get("knight/slide")!;
+	const slide = tallies.get("archer/slide")!;
+	// The Archer's rolls do go farther (the census is not rolling the Knight's roll twice).
+	if (!(slide.moved > knight.moved)) problems.push(`archer rolls ${slide.moved}, knight ${knight.moved}`);
+	gate("archer", tallies.get("archer/web")!, slide, problems);
+	if (slide.walks !== knight.walks) problems.push(`archer ${slide.walks} rolls, knight ${knight.walks}`);
+	return { lines, problems };
+}

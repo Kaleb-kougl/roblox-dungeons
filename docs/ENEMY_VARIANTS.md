@@ -585,7 +585,9 @@ way new archetypes use only the shared choke points (`ctx.telegraph`, `enemyCool
   by kind, budget spent) recorded here.
 - **EV6. Affix assignment (dungeon).** `assignAffixes`, `roomAffixes`, `AFFIXES` data. **Verify:** layouts, digests,
   room spawns, breakables and boss picks identical with and without; affixes never on excluded kinds or below their
-  unlock floor; the elite / combat shares hold over the census.
+  unlock floor; the elite / combat shares hold over the census (since 2026-11-12 four shards
+  `affixes.census.<n>.spec.ts` of 15 run seeds, `dungeon/testing/affixCensus.ts`, the shares gated per shard, the
+  spawns built with the endless roster rule of docs/DAILY.md DSD18).
 - **EV7. Affixes (sim).** `SimConfig.affixes`, `state.affixes`, the hash group, the four rules, score / drop / par
   bonuses, the corpse hold. **Verify:** one spec per affix (Hulking hp and radius; Swift walk and cooldown but equal
   telegraph ticks; Shielded absorb and refill; Vengeful telegraph >= 0.6 s, then exactly one ring); without

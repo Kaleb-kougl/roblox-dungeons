@@ -1,5 +1,6 @@
 /**
- * Test support for the minimap specs (never imported by the game): hand-made dungeons from text rows.
+ * Test support for the minimap specs (never imported by the game): hand-made dungeons from text rows, and the tiles
+ * census (census.ts: checkMinimapFloor and the endless census its shard specs run).
  */
 import { RoomType, TileType, type Dungeon } from "shared/dungeon";
 
@@ -53,3 +54,5 @@ export function specField(W: number, H: number): Dungeon {
 	}
 	return specDungeon(rows, 0, -1);
 }
+
+export * from "./census";

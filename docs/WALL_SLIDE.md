@@ -342,7 +342,8 @@ Unchanged: the server validator (same config builder), the lockstep wire and the
     - `sim/drops/boosts.spec` Quickstep no tunnelling: the crate is a column of three (the lone one is slipped round).
     - Unchanged: `enemies.determinism` (builds its own world), the charger arena pin (its own config), every census
       band, every lock spec on layouts.
-- [x] **WS5. Snag census** (`run/snagCensus.spec.ts`). Over seeds 1-40 x floors 1-10, start from every FLOOR cell that
+- [x] **WS5. Snag census** (`run/snagCensus.<n>.spec.ts`, three shards of 10 seeds since 2026-11-12; the census in
+  `run/testing/snagCensus.ts`, gated per shard). Over seeds 1-40 x floors 1-10, start from every FLOOR cell that
   touches an obstacle and walk 40 ticks in each of the 8 keyboard screen directions and 32 stick directions (quantized
   through `quantizeAxis`). Counts are reported per input kind.
   - A **stall** is moving less than 25 % of the open-floor distance.
