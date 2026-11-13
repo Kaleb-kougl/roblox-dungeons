@@ -140,6 +140,20 @@ export class FogOfWar implements MinimapFogView {
 		this.updateFrontier();
 	}
 
+	/**
+	 * Reveals `cells` (cell indices) as REMEMBERED (IN_SIGHT where lit): a secret room's chamber, ring and crack at its
+	 * open (docs/SECRET_ROOMS.md SR8, shared/view/secrets secretMapChange's `reveal`), on the shared party map whoever
+	 * opened it. Cells already known are unchanged; the frontier follows.
+	 */
+	revealCells(cells: ReadonlyArray<number>): void {
+		for (const c of cells) {
+			if (c < 0 || c >= this.fog.size()) continue;
+			if (this.fog[c] === FogState.UNKNOWN)
+				this.setState(c, this.litCount[c] > 0 ? FogState.IN_SIGHT : FogState.REMEMBERED);
+		}
+		this.updateFrontier();
+	}
+
 	/** Reveals the whole room (its cells and wall ring) as REMEMBERED (IN_SIGHT where lit), once per room. */
 	revealRoom(room: number): void {
 		this.revealRoomCells(room);

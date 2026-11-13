@@ -163,7 +163,10 @@ export function relicNameKey(relic: number): string | undefined {
 }
 
 /** The grant of player `player` in an open, or undefined (dead, left, or spectating someone without one). */
-export function grantOf(o: Readonly<TreasureOpenedEvent>, player: number): TreasureGrantView | undefined {
+export function grantOf(
+	o: Readonly<Pick<TreasureOpenedEvent, "grants">>,
+	player: number,
+): TreasureGrantView | undefined {
 	for (const g of o.grants) if (g.player === player) return g;
 	return undefined;
 }
@@ -171,9 +174,14 @@ export function grantOf(o: Readonly<TreasureOpenedEvent>, player: number): Treas
 /**
  * The reward cards top to bottom for the VIEW player `player` (Rules: a spectator sees the watched player's): their
  * relic (`RELIC · Hourglass`), bonus draft (`BONUS DRAFT next floor`), boosts (`BOOSTS +2`), then the open's points
- * (`+1,200`, the party's; none at 0). A player without a grant sees the points alone.
+ * (`+1,200`, the party's; none at 0). A player without a grant sees the points alone. Any open with grants and points
+ * reads here: a secret room's chest too (docs/SECRET_ROOMS.md SR9, shared/view/secrets secretRewardTexts).
  */
-export function rewardCardTexts(s: TreasureStr, o: Readonly<TreasureOpenedEvent>, player: number): RewardCardText[] {
+export function rewardCardTexts(
+	s: TreasureStr,
+	o: Readonly<Pick<TreasureOpenedEvent, "grants" | "points">>,
+	player: number,
+): RewardCardText[] {
 	const K = TREASURE_TEXT_KEYS;
 	const out: RewardCardText[] = [];
 	const g = grantOf(o, player);
