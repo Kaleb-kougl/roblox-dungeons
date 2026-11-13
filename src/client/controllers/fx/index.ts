@@ -47,3 +47,5 @@ export * from "./HappyHourController";
 export * from "./OvercapPopController";
 // claude/codex-plan.md CX6: the Codex tracker, claims and toast chips.
 export * from "./CodexController";
+// docs/HAPTICS.md HP2-HP4 / HP6: the one haptics controller (menu cues on the pad, play cues on the pad or the phone).
+export * from "./HapticsController";

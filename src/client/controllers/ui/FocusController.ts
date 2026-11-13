@@ -34,9 +34,9 @@ import {
 	type FocusSelection,
 	type MenuPadInput,
 } from "shared/view/menu";
+import { HapticsController } from "../fx/HapticsController";
 import { InputController } from "../game/InputController";
 import { watchSpikeFlag } from "../spikes/spikeFlags";
-import { PadHapticsController } from "./PadHapticsController";
 
 /** One registered scope: its handle and its mount order (unique: the registry's key). */
 interface ScopeRecord {
@@ -162,7 +162,7 @@ function coreSelected(): boolean {
  *             button inside a ScrollingFrame and outside its window is scrolled into view (followSelection:
  *             scrollToShow with GAMEPAD_MENU.followMarginPx), harmless where the engine already does it
  *   haptics   (GM9) a MenuButton activation right after ButtonA (buttonPressed) ticks `confirm` or buzzes `disabled`
- *             (PadHapticsController: gamepad and vibration On only)
+ *             (HapticsController: gamepad and vibration On only)
  *   hold B    (GM9, GMD13) while a scope whose B means holdExit (the run over) owns the pad, B's held state is polled
  *             every frame into PadHoldGate (a B held when it took the pad must be let go first; an early release
  *             empties it); PAD_HOLD_UI carries the fill to the Exit button; completing sends `holdExit` to the scope
@@ -199,7 +199,7 @@ export class FocusController implements OnStart, FocusScopeRegistry {
 	/** A Roblox CoreGui prompt has the pad (the menus leave it alone meanwhile). */
 	private readonly corePrompt = new CorePromptGuard();
 
-	constructor(private readonly input: InputController, private readonly haptics: PadHapticsController) {}
+	constructor(private readonly input: InputController, private readonly haptics: HapticsController) {}
 
 	onStart(): void {
 		this.playerGui = Players.LocalPlayer.WaitForChild("PlayerGui") as PlayerGui;

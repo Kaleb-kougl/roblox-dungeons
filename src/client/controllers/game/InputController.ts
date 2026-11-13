@@ -304,6 +304,14 @@ export class InputController implements OnStart {
 		return this.tracker.aimDevice;
 	}
 
+	/**
+	 * The gamepad the game reads (Gamepad1 when connected, else the first connected one; undefined: none): the pad
+	 * that drives the local player, which the in-run haptics vibrate (docs/HAPTICS.md HP2).
+	 */
+	getActivePad(): Enum.UserInputType | undefined {
+		return activePad(this.pads);
+	}
+
 	/** Called when a menu button is activated: mouse buttons read as released until they actually are. */
 	suppressMouseUntilRelease(): void {
 		this.mouseSuppressed = true;
