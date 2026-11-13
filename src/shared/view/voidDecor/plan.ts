@@ -20,7 +20,11 @@
  *             1..VOID.outcropMaxCells cells; top = the shoulder's or the ledge's (hash).
  *             Never higher than the shoulder top: taller pieces are VD5's, under the footprint rule.
  *   abyss     every other void cell (top -VOID.abyssDepthTiles). Non-void cells are NONE with top 0.
- *   rects     greedy rectangles (tileMerge's greedyRects scan) merged per (layer, top), in scan order.
+ *   rects     greedy rectangles (tileMerge's greedyRects scan) merged per (layer, top), in scan order. With a
+ *             hold-out (VoidPlanInput.holdOut: a secret room's chamber and ring, docs/SECRET_ROOMS.md SR7) the cells
+ *             inside it merge only with each other, never across its edge, and `held` lists their rects, so the
+ *             VoidController can sink them at the open; every layer and top is the same as without it. No hold-out:
+ *             the plan is exactly the one before (no `held`).
  *
  * Why nothing here can hide a bullet: the Forge walls all eight neighbours of every floor and pool cell, so void is at
  * least one wall tile from anywhere a bullet flies, and every top here is at most VOID.shoulderTopTiles (below the wall
@@ -33,6 +37,8 @@ import { decorHash01, decorProfile, type DecorProfile } from "../decor";
 import { VOID, VOID_DEPTH, type VoidDepthBand } from "./config";
 import { voidField, type VoidField } from "./field";
 import { VoidLayer } from "./layer";
+// By file: a leaf (the shared/view/secrets barrel imports the void's planner's users).
+import { inCellRect, secretRingRect, type CellRect } from "../secrets/geometry";
 
 /** Cells [x, x + w) x [y, y + h) of one layer at one height (grid cells; top in tiles above the floor). */
 export interface VoidRect {
@@ -57,6 +63,11 @@ export interface VoidPlanInput {
 	readonly forceBand?: number;
 	/** A ready decor profile (its band overrides floor / depth / forceBand). */
 	readonly profile?: DecorProfile;
+	/**
+	 * docs/SECRET_ROOMS.md SR7: a rectangle of cells (a secret room's chamber and its ring, secretRingRect) whose raised
+	 * cells form rects of their own (VoidPlan.held), never merged across its edge. Absent: the plan before, exactly.
+	 */
+	readonly holdOut?: CellRect;
 }
 
 /** Cell counts of a plan, per layer, and the outcrop draw's inputs. */
@@ -87,11 +98,26 @@ export interface VoidPlan {
 	/** Shoulder, ledge and outcrop cells, greedy-merged per (layer, top). */
 	readonly rects: ReadonlyArray<VoidRect>;
 	readonly stats: VoidStats;
+	/**
+	 * With VoidPlanInput.holdOut: the indices into `rects` (ascending) of the rects inside it (every one of their cells
+	 * is in the hold-out; no other rect has one). Absent without a hold-out.
+	 */
+	readonly held?: ReadonlyArray<number>;
 }
 
-/** planVoid's input for an endless floor layout (its seed and floor). */
+/**
+ * planVoid's input for an endless floor layout (its seed and floor; a secret floor's chamber and ring as the hold-out,
+ * docs/SECRET_ROOMS.md SR7: the rock over them sinks at the open).
+ */
 export function voidInputOfLayout(layout: EndlessFloorLayout, depth?: number): VoidPlanInput {
-	return { dungeon: layout.dungeon, floorSeed: layout.seed, floor: layout.floor, depth };
+	const secret = layout.secret;
+	return {
+		dungeon: layout.dungeon,
+		floorSeed: layout.seed,
+		floor: layout.floor,
+		depth,
+		holdOut: secret !== undefined ? secretRingRect(secret) : undefined,
+	};
 }
 
 /** The VOID_DEPTH band index `input` plans with (decorProfile's band, clamped to VOID_DEPTH). */
@@ -344,7 +370,13 @@ export function planVoid(input: VoidPlanInput): VoidPlan {
 	}
 
 	// --- rects and stats ----------------------------------------------------------------------------------------
-	const rects = voidRects(W, H, layer, top, near, mid);
+	const holdOut = input.holdOut;
+	const rects = voidRects(W, H, layer, top, near, mid, holdOut);
+	let heldRects: number[] | undefined;
+	if (holdOut !== undefined) {
+		heldRects = [];
+		for (let i = 0; i < rects.size(); i++) if (inCellRect(holdOut, rects[i].x, rects[i].y)) heldRects.push(i);
+	}
 	let shoulder = 0;
 	let ledge = 0;
 	let outcrop = 0;
@@ -366,8 +398,12 @@ export function planVoid(input: VoidPlanInput): VoidPlan {
 		field,
 		rects,
 		stats: { shoulder, ledge, outcrop, abyss, pocketFilled, outcrops, outcropEligible },
+		held: heldRects,
 	};
 }
+
+/** A held cell's greedy key: its rectKey past every free key, so held and free cells never merge. */
+const HELD_KEY_OFFSET = 4;
 
 /** Greedy key of a raised (layer, top) pair: 1..4 in rect order, 0 for none (non-void, abyss). */
 function rectKey(l: number, t: number): number {
@@ -389,12 +425,20 @@ function voidRects(
 	top: ReadonlyArray<number>,
 	near: ReadonlyArray<number>,
 	mid: ReadonlyArray<number>,
+	holdOut: CellRect | undefined,
 ): VoidRect[] {
 	// Every raised cell is in `near` (shoulder, ledge) or `mid` (outcrops). A covered cell's key drops to 0, so the
 	// key array doubles as greedyRects' `covered`.
 	const key = new Array<number>(W * H, 0);
 	for (const c of near) key[c] = rectKey(layer[c], top[c]);
 	for (const c of mid) key[c] = rectKey(layer[c], top[c]);
+	// The hold-out (docs/SECRET_ROOMS.md SR7): its raised cells take keys of their own, so no rect crosses its edge.
+	if (holdOut !== undefined)
+		for (let y = math.max(0, holdOut.y0); y <= math.min(H - 1, holdOut.y1); y++)
+			for (let x = math.max(0, holdOut.x0); x <= math.min(W - 1, holdOut.x1); x++) {
+				const c = y * W + x;
+				if (key[c] !== 0) key[c] += HELD_KEY_OFFSET;
+			}
 	const out: VoidRect[] = [];
 	for (let y = 0; y < H; y++) {
 		const row = y * W;
@@ -432,21 +476,34 @@ function voidRects(
 let cachedDungeon: Dungeon | undefined;
 let cachedSeed = 0;
 let cachedBand = -1;
+let cachedHoldOut: CellRect | undefined;
 let cachedPlan: VoidPlan | undefined;
 
+function sameRect(a: CellRect | undefined, b: CellRect | undefined): boolean {
+	if (a === undefined || b === undefined) return a === b;
+	return a.x0 === b.x0 && a.y0 === b.y0 && a.x1 === b.x1 && a.y1 === b.y1;
+}
+
 /**
- * planVoid, memoised on the LAST input (the same Dungeon object, floor seed and band), so two controllers (the void
+ * planVoid, memoised on the LAST input (the same Dungeon object, floor seed, band and hold-out), so two controllers (the void
  * geometry, the void pieces) share one plan per floor. A new floor replaces it.
  */
 export function planVoidCached(input: VoidPlanInput): VoidPlan {
 	const seed = input.floorSeed ?? input.dungeon.seed;
 	const band = voidBandOf(input);
-	if (cachedPlan !== undefined && cachedDungeon === input.dungeon && cachedSeed === seed && cachedBand === band)
+	if (
+		cachedPlan !== undefined &&
+		cachedDungeon === input.dungeon &&
+		cachedSeed === seed &&
+		cachedBand === band &&
+		sameRect(cachedHoldOut, input.holdOut)
+	)
 		return cachedPlan;
 	const plan = planVoid(input);
 	cachedDungeon = input.dungeon;
 	cachedSeed = seed;
 	cachedBand = band;
+	cachedHoldOut = input.holdOut;
 	cachedPlan = plan;
 	return plan;
 }
