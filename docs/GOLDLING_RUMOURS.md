@@ -270,7 +270,7 @@ M1, every golden fixture and the tutorial (no Goldling) replay exactly as before
   `GoldenConfig.appearTicks`, `GOLDEN_APPEAR_TICKS`, `goldenSpawnTile`. New queries: `goldenPieceAt(state, slot)` (the
   glint), `goldenGuardsPiece`, `goldenPieceCentre`.
 - **Worlds (GR3):** `DAILY.ruleset` 15 -> 16 (docs/DAILY.md; 16 -> 17 on the rebase onto the floor modifiers, which
-  took 16); the all-time boards stay `_v1`. Re-recorded, only where a
+  took 16, and 17 -> 18 on the rebase onto DSD18, which took 17); the all-time boards stay `_v1`. Re-recorded, only where a
   Goldling piece now stands (each floor rolled a Goldling; with its piece filtered out the old values replay exactly):
   the Charger's run 4 floor 3 pin (`1a65fa83` -> `be9d10a6`, counts unchanged) and the Stormcaller's run 4 / run 23
   floor 3 pins (`3/0/4b457f84` -> `3/0/77c11a8d`, `6/0/c213cd8f` -> `6/0/a2fea36e`). No other pin, digest or
@@ -389,7 +389,10 @@ resolves one step); the touch strip's boosts take the width the Horde and rumour
   three before the boosts and items.
 - **Theme order:** the rumours' two audio IDs and two chip strings come after the floor modifiers' five stings and
   eleven strings (their tail specs in floorModifiers / fortune / treasure / runRecap / boosts / contract skip them).
-- `DAILY.ruleset` 17; the stormcaller co-op pin `6/0/87bec14a` (above).
+- `DAILY.ruleset` 17 (18 after the second rebase, onto `main` @ `4cf11cb`: DSD18 and the audio sources); the
+  stormcaller co-op pin `6/0/87bec14a` (above). After the second rebase, on DSD18's rosters, the pins are re-recorded
+  once more where the Goldling's piece stands: charger `7414ecc5` -> `e42f7fdf`, stormcaller `3/0/ad7f1462` ->
+  `3/0/0406aa34`, `6/0/f7c37743` -> `6/0/346b5428` (strike and skip counts unchanged).
 - Verify after the rebase (cloud, x86): typecheck, lint, check:assets, check:autolocalize, test:art, test:checks,
   test:l10n and the build clean; Lune 482 of 483 suites pass, the one failure the known x86-only
   `dungeon/forge/forge.spec.ts` NaN sign bit.

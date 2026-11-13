@@ -692,6 +692,6 @@ describe("stormcaller: strikes on real endless floors", () => {
 		// Re-recorded for the Goldling's hiding place (docs/GOLDLING_RUMOURS.md GR1 / GR3): both scenes' floor 3 rolled a
 		// Goldling, whose own barrel or crate is now appended to the floor's breakables (one more piece); strike and skip
 		// counts are unchanged. Before: 3/0/ad7f1462, 6/0/f7c37743.
-		expect(pins).toEqual(["3/0/ad7f1462", "6/0/f7c37743"]); // check-asset-ids: allow (state hashes)
+		expect(pins).toEqual(["3/0/0406aa34", "6/0/346b5428"]); // check-asset-ids: allow (state hashes)
 	});
 });

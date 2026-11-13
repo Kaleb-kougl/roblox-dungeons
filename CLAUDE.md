@@ -1311,7 +1311,7 @@ Decision log (deviations from `PLAN.md`):
   off, plain or a tutorial floor) and the optional, view-only `EndlessFloorWorld.modifier`. Option off or a plain floor:
   every output as before (`roomPool.lock.spec`). M1, every fixture and the tutorial replay as before; endless / daily /
   dev replays and scores change on modifier floors (the stormcaller co-op pin and sim golden.spec's scene finder moved),
-  boards stay `_v1`, `DAILY.ruleset` 15 -> 16 (the Goldling hiding places, which had also taken 16, moved to 17 on their rebase). Dev:
+  boards stay `_v1`, `DAILY.ruleset` 15 -> 16. Dev:
   `KV_FloorModifier` (`parseFloorModifierOverride` -> `FloorModifierOverride`: the kind on every floor where eligible,
   ignoring the chance, the streak and the boss rule; dev world only). Theme: strings `floormod.<key>.name` / `.line` and
   `hud.pause.floorMod`, roles `floorMod.<key>` (the boons reuse the Goldling / Legendary vault / power pellet / Frenzy
@@ -1344,7 +1344,7 @@ Decision log (deviations from `PLAN.md`):
   / `piece` appended at the end of the `golden` group (`GOLDEN_HASH_TAIL_FIELDS`). M1, every fixture and the tutorial
   replay exactly as before; endless replays and scores changed (the charger run 4 floor 3 and stormcaller run 4 / run 23
   floor 3 pins re-recorded, only where a Goldling piece now stands), the all-time boards stay `_v1`, `DAILY.ruleset`
-  16 -> 17. Presentation: the piece glints like a loot piece while it hides (shared/view `pieceGlints`, RD14); the coin
+  17 -> 18. Presentation: the piece glints like a loot piece while it hides (shared/view `pieceGlints`, RD14); the coin
   flash / `GOLDLING!` wait `afterBreakSec` 0.12 s after the break (`GoldenAppearQueue`); the per-client
   `GoldenRumourClock` (shared/view/golden rumour.ts, phases NONE / FLOOR / ROOM, owned by SimController): the floor
   rumour once per floor 1 s into unfrozen FLOOR time, the room rumour on its room's engagement (RD3 / RD5); port audio
