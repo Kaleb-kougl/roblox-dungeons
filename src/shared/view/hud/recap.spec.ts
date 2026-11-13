@@ -10,6 +10,7 @@
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { TileType, type Dungeon } from "shared/dungeon";
 import { SCORE_SOURCE_COUNT, ScoreSource } from "shared/sim";
+import { SECRET_RECAP_KEY } from "shared/theme";
 import { NO_RECAP_TALLY } from "shared/view/fx";
 import {
 	RECAP,
@@ -358,6 +359,25 @@ describe("pickHighlights", () => {
 		expect([coop[0].id, coop[0].scope]).toEqual(["chests", "team"]);
 	});
 
+	it("Secrets (docs/SECRET_ROOMS.md SR9): only in secret runs, from 1 found, before Chests, a Team value", () => {
+		const secrets = (found: number) => ({ found, taken: found });
+		expect(ids(pickHighlights(input({ secrets: secrets(0) })))).toEqual(["kills", "rooms"]);
+		const h = pickHighlights(input({ secrets: secrets(2) }));
+		expect(ids(h)).toEqual(["secrets", "kills"]);
+		expect([h[0].value, h[0].key, h[0].scope]).toEqual([2, SECRET_RECAP_KEY, undefined]);
+		// its slot sits between Sweeps and Chests
+		const counts = sources({ [ScoreSource.SWEEP]: 1 }, FULL_SOURCES);
+		const score = { total: 1, maxCombo: 10, points: sources({}, FULL_SOURCES), counts };
+		const chests = { opened: 1, kept: 0, legendary: 0 };
+		expect(ids(pickHighlights(input({ score, chests, secrets: secrets(1) })))).toEqual([
+			"sweeps",
+			"secrets",
+			"chests",
+		]);
+		const coop = pickHighlights(input({ partySize: 2, secrets: secrets(1) }));
+		expect([coop[0].id, coop[0].scope]).toEqual(["secrets", "team"]);
+	});
+
 	it("co-op: Team and You labels, the local player's tally, TEAM PERFECT, the team rows", () => {
 		const h = pickHighlights(
 			input({
@@ -415,7 +435,8 @@ describe("pickHighlights", () => {
 		for (const d of RECAP_HIGHLIGHTS) {
 			expect(d.priority >= last).toBe(true);
 			last = d.priority;
-			expect(keys.includes(d.key)).toBe(true);
+			// docs/SECRET_ROOMS.md SR9: the Secrets label is the theme's secret-room string (not a RECAP_STRINGS key)
+			expect([d.key, keys.includes(d.key) || d.key === SECRET_RECAP_KEY]).toEqual([d.key, true]);
 		}
 		expect(keys.includes("run.recap.near.fullClearOne")).toBe(true);
 		expect(keys.size()).toBe(30);

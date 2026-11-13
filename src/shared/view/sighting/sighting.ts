@@ -15,6 +15,13 @@
  *     GR7): added once this floor's first rumour cue has played (shared/view/golden GoldenRumourClock.heard), so it is
  *     queued on that cue. It is SIGHTING_IDS' last id, so the canonical order holds; one card at a time (the queue), so
  *     it never shows on top of the Goldling's own `golden` card.
+ *   - withSecretSighting: the first-time card of a secret room's crack (`secret.crack`, docs/SECRET_ROOMS.md SR9 /
+ *     SRD5): added once the LOCAL player has knocked on a crack (shared/view/secrets FirstKnockLatch.knocked), so it
+ *     is queued at the first knock. SIGHTING_IDS' last id (after `golden.rumour`): call it after withRumourSighting
+ *     and the canonical order holds.
+ *   - sightingCardKey: the card's text key (`bestiary.<id>`) read as the LOCAL player's character (shared/view/hud
+ *     characterStringKey): the Archer reads `bestiary.secret.crack.archer` (a charged arrow, not a finishing blow);
+ *     every id without an override reads its plain key.
  *   - SightingQueue: the account's seen set (every `onboardingStatus.seen`, unioned: a later status never forgets a
  *     local sighting), the queue of ids found but not shown yet, and the one-at-a-time clock. Nothing is queued before a
  *     LOADED status arrived (`loaded: false` = the stored set is unknown, so no toast at all rather than repeat them all
@@ -26,16 +33,21 @@
  * does. Read-only on the sim.
  */
 import { affixThemeIndex } from "shared/dungeon";
-import { AFFIX_SIGHTING_IDS, SIGHTING_IDS, type OnboardingStatus } from "shared/onboarding";
+import { AFFIX_SIGHTING_IDS, SIGHTING_IDS, sightingStringKey, type OnboardingStatus } from "shared/onboarding";
 import { NO_KIND, affixSlotAt, archetypeIndex, partySize, playerAt, type SimState } from "shared/sim";
 import { livePowerPellet } from "../pellets";
 import { SIGHTING_VIEW } from "./config";
+// By file: characterText imports only types from the shared/view/hud barrel (which imports this folder's users).
+import { characterStringKey, type HasString } from "../hud/characterText";
 
 /** The power pellet's sighting id (shared/onboarding SIGHTING_IDS, docs/PELLETS.md PL14). */
 export const POWER_PELLET_SIGHTING = "pellet.power";
 
 /** The first Goldling rumour's sighting id (shared/onboarding SIGHTING_IDS, docs/GOLDLING_RUMOURS.md GR7, RD7). */
 export const GOLDEN_RUMOUR_SIGHTING = "golden.rumour";
+
+/** The first knock on a secret room's crack's sighting id (shared/onboarding SIGHTING_IDS' last, docs/SECRET_ROOMS.md SR9). */
+export const SECRET_CRACK_SIGHTING = "secret.crack";
 
 /** Archetype id -> its sighting id (the archetypes a first sighting announces; a slimelet is an Ooze). */
 export const ARCHETYPE_SIGHTINGS: ReadonlyMap<string, string> = new Map([
@@ -119,6 +131,24 @@ export function sightingsInView(
 export function withRumourSighting(out: string[], heard: boolean): string[] {
 	if (heard && !out.includes(GOLDEN_RUMOUR_SIGHTING)) out.push(GOLDEN_RUMOUR_SIGHTING);
 	return out;
+}
+
+/**
+ * `out` plus SECRET_CRACK_SIGHTING when `knocked` (the local player has knocked on a crack this session) and it is not
+ * listed yet; returns `out`. SECRET_CRACK_SIGHTING is SIGHTING_IDS' last id: call after withRumourSighting.
+ */
+export function withSecretSighting(out: string[], knocked: boolean): string[] {
+	if (knocked && !out.includes(SECRET_CRACK_SIGHTING)) out.push(SECRET_CRACK_SIGHTING);
+	return out;
+}
+
+/**
+ * The SightingCard's text key for sighting `id` as `character` (the LOCAL player's character id: SimController's run
+ * character; undefined or "": none): its per-character override when the pack has it (`has`, ThemePack.hasString), else
+ * shared/onboarding sightingStringKey(id).
+ */
+export function sightingCardKey(id: string, character: string | undefined, has: HasString): string {
+	return characterStringKey(sightingStringKey(id), character, has);
 }
 
 /** The seen set, the queue of new sightings and the one-toast-at-a-time clock (see the file comment). */

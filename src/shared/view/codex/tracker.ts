@@ -19,6 +19,8 @@
  *                                                               member's kill; a slimelet counts for the Ooze)
  *   affix       an affixed enemy near the view player           an affixed enemy of that kind dies (same rule)
  *   boss        it engages                                      it dies
+ *   secret      you knock on a crack (the first-time card's     a crack opens while you are in the run (any
+ *               moment; docs/SECRET_ROOMS.md SRD12)             opener's: you were present, SRD12)
  *
  * "Near" is SIGHTING_VIEW.radius (readCodexFrame). Turrets, the dummy and the power pellet have no entry (R5, R8).
  *
@@ -41,7 +43,8 @@
  *     queue; sightingChip(id) tells the card to wear the chip). Always, outside the budget: a first sighting is new by
  *     definition, and the card plays anyway;
  *   - codex: a codex toast (nothing else toasts): an enemy / affix / boss found, a sighting of a kind
- *     with no bestiary line (swarmer, sniper, bruiser), a relic from a vault chest (no relic toast, R1). At most one
+ *     with no bestiary line (swarmer, sniper, bruiser), a relic from a vault chest (no relic toast, R1), a secret room
+ *     found (always: one a floor at most; its seen is the first-time card's, `card`). At most one
  *     codex toast per entry per run (a swarmer's sighting and its first kill would read the same);
  *   - none: a draft card dealt (the card's NEW tag: showsNewTag), a drop seen, a Greed card, a boss engaging.
  * The budget (CXD8): at most CODEX.toastsPerFloor chips and codex toasts per floor, in catalog order; a duo or
@@ -57,6 +60,7 @@
 import {
 	CODEX,
 	CODEX_CATALOG,
+	CODEX_SECRET_ID,
 	CodexTier,
 	catalogTotal,
 	codexAffixId,
@@ -132,6 +136,7 @@ export function codexSummaryRank(entry: Readonly<CodexEntry>): number {
 		case "evolutions":
 			return R.evolution;
 		case "bosses":
+		case "secrets":
 			return R.boss;
 		default:
 			return R.other;
@@ -173,6 +178,9 @@ export function codexToastRoute(entry: Readonly<CodexEntry>, tier: CodexTierId, 
 			return found ? CODEX_ROUTE : hasSightingCard(entry) ? CARD_ROUTE : CODEX_ROUTE;
 		case "bosses":
 			return found ? CODEX_ALWAYS : NONE_ROUTE;
+		case "secrets":
+			// seen: the first-time card (`secret.crack`) shows through its own queue and wears the chip (sightingChip)
+			return found ? CODEX_ALWAYS : CARD_ROUTE;
 	}
 	return NONE_ROUTE;
 }
@@ -493,6 +501,9 @@ export class CodexTracker {
 			this.observe(codexAffixId(a.affix), FOUND);
 		}
 		if (f.bossDefeated !== undefined) this.observe(codexBossId(f.bossDefeated), FOUND);
+		// docs/SECRET_ROOMS.md SRD12: events, so the run's last frame counts them too
+		if (f.secretKnocked === true) this.observe(CODEX_SECRET_ID, SEEN);
+		if (f.secretOpened === true) this.observe(CODEX_SECRET_ID, FOUND);
 		if (!withState) return;
 		for (let i = 0; i < f.draftOffers.size(); i++) {
 			const kind = f.draftKinds[i] ?? -1;
