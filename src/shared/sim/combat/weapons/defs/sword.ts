@@ -197,6 +197,9 @@ function swing(ctx: SimCtx, v: number[], n: number): void {
 			true,
 			undefined,
 			SWORD_DATA.finisherDamage, // breakables take the base damage (docs/DECOR.md D4)
+			undefined,
+			false,
+			true, // the finisher: a secret's crack in its arc opens (docs/SECRET_ROOMS.md SR3)
 		);
 		// Builds (docs/BUILDS.md BU5 / BU6, opt-in): the finisher hook (Flurry's crescent, Storm Blade's spark).
 		if (ctx.state.builds !== undefined) buildsOnFinisher(ctx, hits, finisherFirst);

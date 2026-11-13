@@ -22,8 +22,9 @@
  *      (score.ts adoptScoreRoomMember), so the room clears, and the chest unlocks, only once they are down too.
  *   4. UNLOCKED (from step 3 this tick too) -> OPENED (TR4): the first living present player (index order) whose
  *      centre is within config.reachTiles of the chest's centre opens it for the party (TRD8; the dead never open).
- *      Every living present player, in index order, gets their own grants, every draw on the treasure stream (this
- *      state, an RngHolder; never state.rngState or the drop stream), fixed counts per case:
+ *      Every living present player, in index order, gets their own grants (./grants.ts grantShares, shared with a
+ *      secret room's chest), every draw on the treasure stream (this state, an RngHolder; never state.rngState or the
+ *      drop stream), fixed counts per case:
  *        LEGENDARY  with builds: bonusDeals[i] += 1 (stepRun step 1 deals it on the next floor change, its first deal
  *                   a guaranteed duo when one is available); without builds: the RARE relic (below). Then
  *                   boosts[LEGENDARY] (1) boost draws.
@@ -38,27 +39,16 @@
  *      legendary += 1 for a Legendary tier, events.opened (the grants, for the view).
  */
 import { VaultLock, VaultTier } from "shared/dungeon";
-import { rngInt } from "../rng";
 import type { SimState } from "../state";
-import { hasLeft, partySize, playerAt, presentPlayerCount } from "../party";
+import { partySize, playerAt, presentPlayerCount } from "../party";
 import { scaleTicks } from "../progression/runMods";
-import { grantRelic, unownedRelics } from "../progression/progression";
 import { DEFAULT_PARTY_SIZE } from "../score/scoreData";
 import { scoreTreasure, type RoomScore, type ScoreState } from "../score/score";
-import { pickBoostKind } from "../drops/drops";
-import { giveBoost, landDrop, lowestFreeDropSlot } from "../drops/breakLoot";
-import { GIVEN_DROP_SLOT } from "../drops/dropsData";
 import { pactHoldsRoom } from "../pacts/pactRooms";
 import { treasureRespiteLevel } from "./respite";
-import type { TreasureGrant, TreasureState } from "./treasure";
-import {
-	TREASURE,
-	TREASURE_UNSET,
-	VAULT_CRACK_TIERS,
-	VAULT_LOWEST_TIER,
-	VaultStatus,
-	type TreasureConfig,
-} from "./treasureData";
+import type { TreasureState } from "./treasure";
+import { grantShares, livingPresent } from "./grants";
+import { TREASURE_UNSET, VAULT_CRACK_TIERS, VAULT_LOWEST_TIER, VaultStatus, type TreasureConfig } from "./treasureData";
 
 /** `list[level]`, the level clamped into the list (an empty list: 0). */
 function byLevel(list: ReadonlyArray<number>, level: number): number {
@@ -146,11 +136,6 @@ function within(x: number, z: number, cx: number, cz: number, radius: number): b
 	return dx * dx + dz * dz <= radius * radius;
 }
 
-/** Alive and still in the run (a solo player never leaves). */
-function livingPresent(state: Readonly<SimState>, i: number): boolean {
-	return playerAt(state, i).dead === 0 && !hasLeft(state, i);
-}
-
 /** The opener: the first living present player (index order) in reach of the chest's centre; TREASURE_UNSET if none. */
 function openerOf(state: Readonly<SimState>, t: Readonly<TreasureState>): number {
 	const n = partySize(state);
@@ -162,78 +147,13 @@ function openerOf(state: Readonly<SimState>, t: Readonly<TreasureState>): number
 	return TREASURE_UNSET;
 }
 
-/**
- * `count` boost draws for player `i` (into `g`), each landed in front of the chest or given straight to them (C1).
- * `landed` counts this open's landings so far (the offset index); returns it updated.
- */
-function grantBoosts(
-	state: SimState,
-	t: TreasureState,
-	i: number,
-	count: number,
-	g: TreasureGrant,
-	landed: number,
-): number {
-	const d = state.drops;
-	const offsets = TREASURE.boostOffsets;
-	for (let k = 0; k < count; k++) {
-		const kind = pickBoostKind(t);
-		g.boosts.push(kind);
-		if (d === undefined) {
-			g.slots.push(TREASURE_UNSET);
-			continue;
-		}
-		const slot = lowestFreeDropSlot(d);
-		if (slot < 0) {
-			const p = playerAt(state, i);
-			giveBoost(d, i, kind, p.x, p.z);
-			g.slots.push(GIVEN_DROP_SLOT);
-			continue;
-		}
-		const o = offsets[landed % offsets.size()];
-		const x = t.x + t.fx * o.forward - t.fz * o.side;
-		const z = t.z + t.fz * o.forward + t.fx * o.side;
-		landDrop(d, slot, kind, x, z, state.tick);
-		d.events.fromChest.push(slot);
-		g.slots.push(slot);
-		landed += 1;
-	}
-	return landed;
-}
-
-/** A Rare share for player `i`: one relic draw over their unowned pool, or (none left) the fallback boosts. */
-function grantRelicShare(state: SimState, t: TreasureState, i: number, g: TreasureGrant, landed: number): number {
-	const left = unownedRelics(state, i);
-	if (left.size() === 0) return grantBoosts(state, t, i, t.config.relicFallbackBoosts, g, landed);
-	const relic = left[rngInt(t, 0, left.size() - 1)];
-	grantRelic(state, i, relic);
-	g.relic = relic;
-	return landed;
-}
-
-/** Step 4: player `opener` opens the unlocked chest (see the file comment). */
+/** Step 4: player `opener` opens the unlocked chest (see the file comment; the shares are ./grants.ts grantShares). */
 function openChest(state: SimState, t: TreasureState, opener: number): void {
 	const config = t.config;
 	const tier = t.tier;
 	t.status = VaultStatus.OPENED;
-	const grants: TreasureGrant[] = [];
-	let landed = 0;
-	const n = partySize(state);
-	for (let i = 0; i < n; i++) {
-		if (!livingPresent(state, i)) continue;
-		const g: TreasureGrant = { player: i, relic: TREASURE_UNSET, bonusDeal: 0, boosts: [], slots: [] };
-		if (tier === VaultTier.LEGENDARY) {
-			if (state.builds !== undefined) {
-				t.bonusDeals[i] += 1;
-				g.bonusDeal = 1;
-			} else landed = grantRelicShare(state, t, i, g, landed);
-			landed = grantBoosts(state, t, i, config.boosts[tier], g, landed);
-		} else if (tier === VaultTier.RARE) {
-			landed = grantRelicShare(state, t, i, g, landed);
-			landed = grantBoosts(state, t, i, config.boosts[tier], g, landed);
-		} else landed = grantBoosts(state, t, i, config.boosts[tier], g, landed);
-		grants.push(g);
-	}
+	// The treasure state is the stream (an RngHolder) and the origin (its centre and facing).
+	const grants = grantShares(state, t, t, tier, config, t.bonusDeals);
 	const points = scoreTreasure(state, config.points[tier]);
 	const kept = t.crackTick === TREASURE_UNSET ? 1 : 0;
 	t.opened += 1;

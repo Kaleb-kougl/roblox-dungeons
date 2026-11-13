@@ -113,6 +113,8 @@ function bulletInArc(i: number, pos: Readonly<Vec3>, payload: number): boolean {
  *    then quietly, outside events.bulletsDeleted and the erase sink, never reflected (sweepGooErased counts them).
  *    Without it a sweep leaves them on the floor.
  *  - Strikes (BulletKind.STRIKE, docs/NEW_ENEMIES.md NED7) are never erased: every sweep, the guard included, leaves them.
+ *  - `finisher` (docs/SECRET_ROOMS.md SR3): the sword's third hit only; a secret's cracked wall the breakables pass reaches
+ *    opens instead of knocking. Absent or false (every other sweep): exactly as before.
  * Returns the number of actors hit.
  */
 export function sweepArc(
@@ -130,6 +132,7 @@ export function sweepArc(
 	breakableDamage?: number,
 	eraseSink?: ArcEraseSink,
 	eraseGoo = false,
+	finisher = false,
 ): number {
 	arc.x = x;
 	arc.z = z;
@@ -160,7 +163,19 @@ export function sweepArc(
 	}
 	if (breakableDamage !== undefined && ctx.state.breakables !== undefined) {
 		// Builds v2 (BV5): the swinging player owns the breaks (Wrecker's splinters), generation 0.
-		meleeHitBreakables(ctx.state, x, z, dirX, dirZ, radius, halfAngleCos, breakableDamage, ctx.playerIndex);
+		// docs/SECRET_ROOMS.md SR3: only the sword's finisher passes `finisher` (a crack in its arc opens).
+		meleeHitBreakables(
+			ctx.state,
+			x,
+			z,
+			dirX,
+			dirZ,
+			radius,
+			halfAngleCos,
+			breakableDamage,
+			ctx.playerIndex,
+			finisher,
+		);
 	}
 	if (deleteEnemyBullets) {
 		arcCtx = ctx;

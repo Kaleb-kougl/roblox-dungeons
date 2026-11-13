@@ -9,3 +9,4 @@ export * from "./treasure";
 export * from "./respite";
 export * from "./stepTreasure";
 export * from "./bonus";
+export * from "./grants";

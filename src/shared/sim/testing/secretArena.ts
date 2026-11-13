@@ -13,6 +13,7 @@ import {
 	bodyBlocker,
 	bulletBlocker,
 	circleMover,
+	worldToGrid,
 	type BreakablePlacement,
 	type Dungeon,
 	type FloorSecret,
@@ -153,8 +154,8 @@ export function arenaWorld(o: ArenaOptions = {}): (floor: number) => EndlessFloo
 				stairZ: 1000,
 				roomSpawns: [[]],
 				roomIdAt: (x, z) => {
-					const gx = math.floor(x + 0.5);
-					const gz = math.floor(z + 0.5);
+					const gx = worldToGrid(x);
+					const gz = worldToGrid(z);
 					const r = ARENA.room;
 					return gx >= r.x0 && gx <= r.x1 && gz >= r.z0 && gz <= r.z1 ? 0 : -1;
 				},

@@ -80,13 +80,15 @@ import { resetBuildScratch, stepBuilds } from "../builds/procs";
 import { BuildEffect, killGenOfSource, sourceEffect } from "../builds/buildsData";
 import { KillCause } from "../builds/effectsData";
 import { buildsOnPierceHit, phantomStepErased, phantomStepOn } from "../builds/evolutions";
-import { buildsOnArrowHit } from "../builds/duos";
+import { buildsOnArrowHit, isHeavyArrow } from "../builds/duos";
+import { secretsOpenPiece } from "../secrets/open";
+import { SecretHow } from "../secrets/secretsData";
 import { bastionRollOn, buildsOnRollThrough } from "../builds/hooks";
 import { ballistaActive, buildsOnHeavyEnd } from "../builds/ballista";
 import { siegeCarriedSlot, siegeSlamDue, siegeTryPin, stepPins } from "../builds/siege";
 import { damageBreakable, enemyBulletHitsBreakable, type BreakablesState } from "../breakables/breakables";
 import { breakableSlotAt } from "../breakables/cells";
-import { BreakableSource } from "../breakables/breakablesData";
+import { BreakableKind, BreakableSource } from "../breakables/breakablesData";
 import { SOLO_PLAYER, consumeEnemyBulletTimeScale, playerHitDamage, runMods } from "../progression/runMods";
 import {
 	actorHashNames,
@@ -554,6 +556,18 @@ function playerBulletHit(i: number, pos: Readonly<Vec3>, payload: number): boole
 		// (to the actors below, no pierce spent) only when it broke the piece.
 		const slot = breakableSlotAt(hitPieces, pos.x, pos.z);
 		if (slot >= 0) {
+			// A secret's cracked wall (docs/SECRET_ROOMS.md SR3): a heavy arrow stopped by it opens it (consumed like on a
+			// wall; Ballista bursts back from it). Any other bullet knocks below (damageBreakable's early return).
+			if (hitPieces.pieces[slot].kind === BreakableKind.CRACKED_WALL) {
+				const v = ctx.state.combat.playerBullets.velocityAt(i);
+				if (
+					isHeavyArrow(payload, v.x, v.z) &&
+					secretsOpenPiece(ctx.state, slot, SecretHow.HEAVY, ctx.playerIndex)
+				) {
+					if (ballistaOn) buildsOnHeavyEnd(ctx, i, pos, payload, true);
+					return true;
+				}
+			}
 			const broke = damageBreakable(
 				ctx.state,
 				slot,

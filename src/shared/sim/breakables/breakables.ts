@@ -56,6 +56,8 @@ import { goldenGuardsPiece } from "../golden/golden";
 import { goldenOnBreak } from "../golden/goldenHooks";
 import { CHEST_HP } from "../treasure/treasureData";
 import { bindRollSmash, buildsOnPieceBroken } from "../builds/wrecker";
+import { secretsOpenPiece } from "../secrets/open";
+import { SecretHow } from "../secrets/secretsData";
 import { PLAYER_RADIUS } from "../playerData";
 import {
 	BREAKABLE_ENEMY_BULLET_DAMAGE,
@@ -302,7 +304,8 @@ export function damageBreakable(
  * the boon): player `owner`'s body (PLAYER_RADIUS) at (x, z) about to move by (dx, dz) this roll tick breaks, in slot
  * order, every intact piece but a chest whose circle (config.hitRadius round its cell centre) the body touches along
  * that step (the segment's distance to the centre below the two radii's sum; no trig), at full hp, BreakableSource.ROLL,
- * credited to `owner` at generation 0. Returns the pieces broken.
+ * credited to `owner` at generation 0. A secret's cracked wall it touches opens instead (docs/SECRET_ROOMS.md SR3:
+ * secrets/open.ts, SecretHow.ROLL; not counted). Returns the pieces broken.
  */
 export function rollSmashBreakables(
 	state: SimState,
@@ -320,7 +323,7 @@ export function rollSmashBreakables(
 	let broken = 0;
 	for (let i = 0; i < b.pieces.size(); i++) {
 		const p = b.pieces[i];
-		if (p.brokenTick !== NOT_BROKEN || inertPiece(p.kind)) continue;
+		if (p.brokenTick !== NOT_BROKEN || p.kind === BreakableKind.CHEST) continue;
 		const px = gridToWorld(p.x) - x;
 		const pz = gridToWorld(p.y) - z;
 		// The step's point nearest the centre: t along (dx, dz), clamped to the segment.
@@ -330,6 +333,10 @@ export function rollSmashBreakables(
 		const ex = px - t * dx;
 		const ez = pz - t * dz;
 		if (ex * ex + ez * ez >= reach2) continue;
+		if (p.kind === BreakableKind.CRACKED_WALL) {
+			secretsOpenPiece(state, i, SecretHow.ROLL, owner);
+			continue;
+		}
 		if (damageBreakable(state, i, p.hp, BreakableSource.ROLL, owner, 0)) broken++;
 	}
 	return broken;
@@ -351,7 +358,9 @@ export function enemyBulletHitsBreakable(state: SimState, b: Readonly<Breakables
  * The melee pass (sweepArc, after the actors): every intact piece but a chest, in slot order, whose circle (hitRadius round its
  * cell centre) reaches into the arc from (x, z) toward (dirX, dirZ), `radius` long, half-angle cosine `halfAngleCos`
  * (the actors' test: in reach, and in the cone unless the arc's origin is inside the circle), takes `damage`, credited
- * to `owner` (docs/BUILDS_V2.md BV5: the swinging player, generation 0; -1 nobody). Returns the pieces hit.
+ * to `owner` (docs/BUILDS_V2.md BV5: the swinging player, generation 0; -1 nobody). A secret's cracked wall in the arc
+ * (docs/SECRET_ROOMS.md SR3) opens on a `finisher` pass (the sword's third hit: secrets/open.ts, SecretHow.FINISHER;
+ * absent or false: never) and is knocked otherwise; neither is counted. Returns the pieces hit.
  */
 export function meleeHitBreakables(
 	state: SimState,
@@ -363,6 +372,7 @@ export function meleeHitBreakables(
 	halfAngleCos: number,
 	damage: number,
 	owner = -1,
+	finisher = false,
 ): number {
 	const b = state.breakables;
 	if (b === undefined || b.intact === 0) return 0;
@@ -370,8 +380,8 @@ export function meleeHitBreakables(
 	let hits = 0;
 	for (let i = 0; i < b.pieces.size(); i++) {
 		const p = b.pieces[i];
-		// A vault's chest is never hit (docs/TREASURE.md correction 3): not counted either. A secret's crack goes on to
-		// damageBreakable, which knocks (docs/SECRET_ROOMS.md SR2).
+		// A vault's chest is never hit (docs/TREASURE.md correction 3): not counted either. A secret's crack opens or
+		// knocks below (docs/SECRET_ROOMS.md SR2 / SR3).
 		if (p.brokenTick !== NOT_BROKEN || p.kind === BreakableKind.CHEST) continue;
 		const dx = gridToWorld(p.x) - x;
 		const dz = gridToWorld(p.y) - z;
@@ -380,6 +390,12 @@ export function meleeHitBreakables(
 		if (d2 > reach * reach) continue;
 		const d = math.sqrt(d2);
 		if (d > r && dx * dirX + dz * dirZ < halfAngleCos * d) continue;
+		if (p.kind === BreakableKind.CRACKED_WALL) {
+			// The finisher opens it; any other pass (or no secrets state) knocks (damageBreakable's early return).
+			if (!(finisher && secretsOpenPiece(state, i, SecretHow.FINISHER, owner)))
+				damageBreakable(state, i, damage, BreakableSource.MELEE, owner, 0);
+			continue;
+		}
 		damageBreakable(state, i, damage, BreakableSource.MELEE, owner, 0);
 		hits++;
 	}

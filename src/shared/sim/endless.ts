@@ -79,6 +79,7 @@ import { treasureOnFloor } from "./treasure/treasure";
 import { pactsOnFloor } from "./pacts/pacts";
 import { pactsOnRoomSpawned } from "./pacts/pactRooms";
 import { goldenOnFloor } from "./golden/golden";
+import { secretsOnFloor } from "./secrets/secrets";
 
 /** A candidate spawn position (structurally shared/dungeon's TileXZ). */
 export interface SpawnTile {
@@ -324,6 +325,9 @@ function nextFloor(state: SimState, input: Readonly<InputFrame>, endless: Endles
 	pactsOnFloor(state, world.pactAltars);
 	// The Goldling (docs/FORTUNE.md GE2): the new floor's room, after the records (no-op without it). No rng.
 	goldenOnFloor(state, world.golden);
+	// Secret rooms (docs/SECRET_ROOMS.md SR4): the new floor's secret on its pieces; a secret of the old floor is gone
+	// (no-op without them). No rng.
+	secretsOnFloor(state, world.secret);
 	state.events.floorChanged = e.floor;
 }
 

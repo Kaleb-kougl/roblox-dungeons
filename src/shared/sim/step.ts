@@ -36,6 +36,9 @@ import { stepPacts, stepPactsWave } from "./pacts/stepPacts";
 import { holdAbsoluteTimers } from "./pacts/holdTimers";
 import { clearGoldenEvents, type GoldenConfig } from "./golden/golden";
 import { stepGolden } from "./golden/stepGolden";
+import { clearSecretsEvents } from "./secrets/secrets";
+import { stepSecrets } from "./secrets/stepSecrets";
+import type { SecretsConfig } from "./secrets/secretsData";
 import type { SolidCells } from "shared/dungeon";
 import type { PlayerTraits } from "./playerData";
 
@@ -232,6 +235,17 @@ export interface SimConfig {
 	 * (after "pacts").
 	 */
 	golden?: GoldenConfig;
+	/**
+	 * Secret rooms (docs/SECRET_ROOMS.md SR4, secrets/secrets.ts): the rules (SECRETS_CONFIG is the game's: the chest's
+	 * reach, the open's points, the chest's points and boosts by tier); where a floor's crack, chamber and chest are comes
+	 * from each endless floor's world (EndlessFloorWorld.secret, its crack and chest breakables pieces, its movers built
+	 * on the carved dungeon). Absent: no secrets state, nothing extra hashed, no SECRET score source, a crack never opens
+	 * (every fixture, M1, the tutorial). Present: state.secrets is created, its crack opens through the openers
+	 * (secrets/open.ts: the sword's finisher, a Wrecker roll, a heavy arrow or Siege Bolt's slam, a Charger's charge), its
+	 * chest is stepped (stepSecrets, after stepGolden) and it is hashed as the "secrets" subsystem, appended after every
+	 * other group (after "golden"), and a scored run's points / counts gain SECRET last.
+	 */
+	secrets?: SecretsConfig;
 }
 
 /** Matches the 16x16 greybox room: inner wall faces at +/-7.75, minus the 0.4 player half-width (rounded). */
@@ -257,7 +271,7 @@ const partyPrev: number[] = [];
  *
  * Tick order (fixed; part of the determinism contract):
  *   1. clear per-tick events (and the score's, the breakables', the drops', the affixes', the builds', the pellets',
- *      the treasure's, the pacts', the Goldling's); then FORFEIT_BUTTON ("Leave run") -> forfeitSoloRun:
+ *      the treasure's, the pacts', the Goldling's, the secrets'); then FORFEIT_BUTTON ("Leave run") -> forfeitSoloRun:
  *      the player dies at this tick; then (dev runs only) a DEV_GOD_BUTTON edge toggles god mode (stepDevToggle)
  *   2. stepPlayer  (movement, facing, roll, hearts, flask, Ember)
  *   3. stepCombat   (Ember clear, actors act, the player's weapons, bullets step, hits, contact damage)
@@ -279,6 +293,8 @@ const partyPrev: number[] = [];
  *                    hits and clear are known)
  *   9. stepGolden   (only with config.golden: the Goldling comes out of its piece the tick a player broke it, or
  *                    escapes when its time is up; its hits and catch score inside 3)
+ *   9b. stepSecrets (only with config.secrets: an open crack's chest opens on reach for every living present player;
+ *                    the crack itself opens inside 3, in its openers)
  *  10. tick += 1
  * While a boon draft is open (endless mode, progression/progression.ts) the world is frozen: after the event clears
  * only stepDraft runs (the stick selects, a FIRE press confirms), then (only with config.pacts: Greed's deal opens
@@ -310,6 +326,7 @@ export function step(
 	if (state.treasure !== undefined) clearTreasureEvents(state.treasure);
 	if (state.pacts !== undefined) clearPactsEvents(state.pacts);
 	if (state.golden !== undefined) clearGoldenEvents(state.golden);
+	if (state.secrets !== undefined) clearSecretsEvents(state.secrets);
 	const run = state.run;
 	// Read before the forfeit, which closes an open draft: that tick stays a frozen draft tick.
 	const frozen = run !== undefined && isDraftOpen(state);
@@ -335,6 +352,7 @@ export function step(
 	if (score !== undefined) stepScore(state);
 	if (state.treasure !== undefined) stepTreasure(state);
 	if (state.golden !== undefined) stepGolden(state, config);
+	if (state.secrets !== undefined) stepSecrets(state);
 	state.tick += 1;
 }
 
@@ -377,6 +395,7 @@ export function forfeitSoloRun(state: SimState): boolean {
  *   9. stepScore
  *   9b. stepTreasure (treasure: the vault's lock, after 9)
  *  10. stepGolden
+ *  10b. stepSecrets (secrets: the chest's open)
  *  11. tick += 1
  * A solo state (no party) is stepped exactly as step(state, inputs[0], config) would.
  */
@@ -405,6 +424,7 @@ export function stepParty(
 	if (state.treasure !== undefined) clearTreasureEvents(state.treasure);
 	if (state.pacts !== undefined) clearPactsEvents(state.pacts);
 	if (state.golden !== undefined) clearGoldenEvents(state.golden);
+	if (state.secrets !== undefined) clearSecretsEvents(state.secrets);
 	for (let i = 0; i < n; i++) if (hasLeftBit(inputs[i].buttons)) markPlayerLeft(state, i);
 	if (state.dev !== undefined) stepDevToggle(state, inputs, partyPrev);
 	const run = state.run;
@@ -429,5 +449,6 @@ export function stepParty(
 	if (score !== undefined) stepScore(state);
 	if (state.treasure !== undefined) stepTreasure(state);
 	if (state.golden !== undefined) stepGolden(state, config);
+	if (state.secrets !== undefined) stepSecrets(state);
 	state.tick += 1;
 }

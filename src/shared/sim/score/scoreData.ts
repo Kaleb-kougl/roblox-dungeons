@@ -98,6 +98,12 @@ export const JACKPOT_POINTS = 100;
  * feeding the combo.
  */
 export const OVERCAP_POINTS = 10;
+/**
+ * A secret room's crack opened (docs/SECRET_ROOMS.md SRD7): this many points at the kills' floor scaling
+ * (floorScalePercent) into ScoreSource.SECRET, with the treasure award's multipliers (Depth, curses; the combo fixed at
+ * x1.0), once per open. The secret chest then pays the treasure points of its tier into SECRET too.
+ */
+export const SECRET_POINTS = 600;
 
 // --- Multipliers -----------------------------------------------------------------------------------------
 
@@ -187,6 +193,14 @@ export const ScoreSource = {
 	 * Every other scored run's "score" hash group is unchanged.
 	 */
 	OVERCAP: 15,
+	/**
+	 * Secret rooms (docs/SECRET_ROOMS.md SR4, SRD7): a crack opened (SECRET_POINTS at the kills' floor scaling) and the
+	 * secret chest's treasure points for its tier, both combo-neutral (the treasure award's multipliers). Appended after
+	 * OVERCAP, and ONLY in runs with SimConfig.secrets (SECRET_SCORE_SOURCE_NAMES; createSimState pads points / counts to
+	 * it last, every earlier gated source included, addSecretScoreSources). Every other scored run's "score" hash group is
+	 * unchanged.
+	 */
+	SECRET: 16,
 } as const;
 export type ScoreSourceId = (typeof ScoreSource)[keyof typeof ScoreSource];
 /** Source names in index order (dump names, results screen string keys `score.source.<name>`). */
@@ -238,3 +252,8 @@ export const GOLDEN_SCORE_SOURCE_NAMES = ["golden"] as const;
  * run without pellets / treasure / pacts / the Goldling).
  */
 export const OVERCAP_SCORE_SOURCE_NAMES = ["overcap"] as const;
+/**
+ * Sources only a secrets run has (docs/SECRET_ROOMS.md SR4), at ScoreSource.SECRET (16), after OVERCAP. A secrets run's
+ * points / counts hold every source up to it (padding the earlier gated ones: they stay 0 in a run without them).
+ */
+export const SECRET_SCORE_SOURCE_NAMES = ["secret"] as const;

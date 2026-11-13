@@ -72,6 +72,7 @@ import {
 } from "./effectsData";
 import { isHeavyArrow } from "./duos";
 import { buildPlayerLeft, isEvolved } from "./hooks";
+import { secretsSlamAt } from "../secrets/open";
 
 const SLAM_SHORT2 = SIEGE_SLAM_SHORT * SIEGE_SLAM_SHORT;
 const SHOCK_RADIUS2 = SIEGE_SHOCK_RADIUS * SIEGE_SHOCK_RADIUS;
@@ -265,6 +266,9 @@ function slam(ctx: SimCtx, s: BuildsState, pin: Readonly<BuildPin>, a: ActorStat
 	}
 	ctx.procGen = gen;
 	ctx.procCause = cause;
+	// docs/SECRET_ROOMS.md SR3: a slam on (or beside) a secret's crack opens it, before the shock's pieces (which only
+	// knock an unopened crack).
+	secretsSlamAt(state, x, z, owner);
 	breakPieces(state, x, z, owner);
 	const e = s.events;
 	e.slamX.push(x);

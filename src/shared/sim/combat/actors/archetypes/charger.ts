@@ -36,6 +36,7 @@ import { SIM_DT } from "../../../units";
 import { SQRT1_2 } from "../../../jsnum";
 import { partySize, playerAt } from "../../../party";
 import { slamBreakables } from "../../../breakables/breakables";
+import { secretsChargeAt } from "../../../secrets/open";
 import { TILE_SIZE, type EncounterRoom } from "shared/dungeon";
 import type { SimCtx } from "../../ctx";
 import { enemyCooldown, walkStep } from "../actorMods";
@@ -261,7 +262,13 @@ function charging(ctx: SimCtx, a: ActorState, d: ChargerData): void {
 	// 1. Break what the body would touch along this step, before the move.
 	if (len > 0) {
 		const half = len / 2;
-		slamBreakables(ctx.state, a.x + dirX * half, a.z + dirZ * half, a.radius + d.chargeBreakRadius + half);
+		const mx = a.x + dirX * half;
+		const mz = a.z + dirZ * half;
+		const reach = a.radius + d.chargeBreakRadius + half;
+		// docs/SECRET_ROOMS.md SR3 / SRD8: a secret's crack in the same reach opens (first, so the opening charge does
+		// not also knock it).
+		secretsChargeAt(ctx.state, mx, mz, reach);
+		slamBreakables(ctx.state, mx, mz, reach);
 	}
 	// 2b. The plain mover (walls, pillars, void and intact pieces stop it).
 	const x0 = a.x;
