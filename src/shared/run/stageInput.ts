@@ -4,7 +4,8 @@
  *
  *   exact     stageInputOf / stageInputOfLayout read a forged floor: every kind in its initial spawns (the boss, M1's
  *             encounter) and planned room spawns, nearest the player's spawn first; its boss; its features (pieces,
- *             loot, pellets, power pellet, vault, relic pedestals = a treasure room, pact altars, the Goldling); its
+ *             loot, pellets, power pellet, vault, relic pedestals = a treasure room, pact altars, the Goldling, a
+ *             secret room); its
  *             biome (the Forge theme's BIOMES index, biomeIndexOf).
  *   forecast  forecastStageInput builds nothing: the run's roster on the floor (endlessRoster: a room only buys roster
  *             kinds), the boss of a boss floor (bossKindFor(floorSeed)), the biome from the Forge's theme rule
@@ -72,6 +73,7 @@ const NO_FEATURES: StageFeatures = {
 	pedestals: false,
 	pacts: false,
 	golden: false,
+	secret: false,
 };
 
 const EVERY_FEATURE: StageFeatures = {
@@ -83,6 +85,7 @@ const EVERY_FEATURE: StageFeatures = {
 	pedestals: true,
 	pacts: true,
 	golden: true,
+	secret: true,
 };
 
 /** One kind and how near the player's spawn it first stands (squared, world units). */
@@ -160,6 +163,8 @@ export function stageInputOfLayout(
 			pedestals: hasTreasureRoom(layout.encounter),
 			pacts: layout.pactAltars !== undefined,
 			golden: layout.golden !== undefined,
+			// docs/SECRET_ROOMS.md SR6: only on a floor that holds one (the forecast lists it on every floor)
+			secret: layout.secret !== undefined,
 		},
 		runStart,
 	};

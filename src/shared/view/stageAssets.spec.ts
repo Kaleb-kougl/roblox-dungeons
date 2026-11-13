@@ -78,6 +78,25 @@ describe("stage asset manifest (docs/STAGE_ASSETS.md SA2)", () => {
 		expect(stageAssets(vale, input()).must.includes("music.boss")).toBe(false);
 	});
 
+	it("a secret floor (docs/SECRET_ROOMS.md SR6): its crack art, rubble, dust and chest; none on a floor without one", () => {
+		const src = fakeSource(
+			{
+				"secret.crack": [image(1)],
+				"secret.rubble": [image(2)],
+				"fx.secret.dust": [image(3)],
+				"treasure.chest": [image(4)],
+				"treasure.chestopen": [image(5)],
+			},
+			{},
+		);
+		const on = stageAssets(src, input({ features: { ...NO_STAGE_FEATURES, secret: true } })).must;
+		for (const id of ["secret.crack", "secret.rubble", "fx.secret.dust", "treasure.chest", "treasure.chestopen"])
+			expect([id, on.includes(id)]).toEqual([id, true]);
+		const off = stageAssets(src, input()).must;
+		expect(off.includes("secret.crack") || off.includes("fx.secret.dust")).toBe(false);
+		expect(ALL_STAGE_FEATURES.secret).toBe(true);
+	});
+
 	it("the run kit joins on a run start only", () => {
 		const start = stageAssets(vale, input({ runStart: true })).must;
 		const change = stageAssets(vale, input()).must;

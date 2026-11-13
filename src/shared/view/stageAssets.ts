@@ -45,6 +45,7 @@ export const NO_STAGE_FEATURES: StageFeatures = {
 	pedestals: false,
 	pacts: false,
 	golden: false,
+	secret: false,
 };
 
 /** Every feature on (a forecast: the features are small, so a guess includes them all). */
@@ -57,6 +58,7 @@ export const ALL_STAGE_FEATURES: StageFeatures = {
 	pedestals: true,
 	pacts: true,
 	golden: true,
+	secret: true,
 };
 
 /** One stage (a run start or a floor change) as the manifest sees it. */
