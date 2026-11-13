@@ -5,14 +5,18 @@
  * open). They follow the look's edges (SecretViewTracker, its own instance: the audio never depends on the order the
  * client's render steps run in), so a secret met mid-way is silent. Each edge says whether it is NEAR the listener (the
  * local / view player made it, or stands within SECRET_VIEW.audio.nearTiles of the crack): far ones play at the
- * teammate's volume (a far teammate's open). The chest's open is the vault's path (its sting through the vault's cue
- * edges), not here. Pure, tested headlessly.
+ * teammate's volume (a far teammate's open). The chest's open plays the vault's open path: `chestTier` on the frame the
+ * lid pops (TREASURE_VIEW.open.popSec after the take, shared/view/treasure popCrossed: the same moment a
+ * PedestalChestTracker-drawn chest pops), and the mapper plays it exactly as a vault's (sfx.treasure.open pitched by the
+ * tier, a Legendary's jingle). Pure, tested headlessly.
  */
 import { gridToWorld, type FloorSecret } from "shared/dungeon";
-import { partySize, playerAt, type SimState } from "shared/sim";
+import { SIM_HZ, partySize, playerAt, type SimState } from "shared/sim";
+import { NO_TREASURE_OPEN } from "../treasure/cues";
+import { popCrossed } from "../treasure/timeline";
 import { SECRET_VIEW } from "./config";
 import type { SecretFrameSource } from "./events";
-import { SecretViewTracker } from "./look";
+import { SecretPhase, SecretViewTracker } from "./look";
 
 /** A frame's secret sound edges (what the cue mapper reads). */
 export interface SecretCueSource {
@@ -25,6 +29,8 @@ export interface SecretCueSource {
 	/** The reveal fell in this frame (the jingle); near when the open was. */
 	readonly jingle: boolean;
 	readonly jingleNear: boolean;
+	/** The chest's lid popped this frame: its VaultTier (the vault's open cues), else NO_TREASURE_OPEN. */
+	readonly chestTier: number;
 }
 
 /** No secret sounds (the mapper's default). */
@@ -35,6 +41,7 @@ export const NO_SECRET_CUES: SecretCueSource = table.freeze({
 	openNear: false,
 	jingle: false,
 	jingleNear: false,
+	chestTier: NO_TREASURE_OPEN,
 });
 
 /** The crack's centre (world, between its cells). */
@@ -65,13 +72,19 @@ export class SecretCueTracker implements SecretCueSource {
 	openNear = false;
 	jingle = false;
 	jingleNear = false;
+	chestTier = NO_TREASURE_OPEN;
 	private nearOpen = false;
+	/** The chest's take (sim seconds) seen live, until its lid's pop; undefined otherwise. */
+	private takenAt: number | undefined;
+	private takenTier = NO_TREASURE_OPEN;
+	private lastAge = -1;
 
 	/** Forget the secret (run start, floor change, run exit). */
 	reset(): void {
 		this.view.reset();
 		this.clearEdges();
 		this.nearOpen = false;
+		this.takenAt = undefined;
 	}
 
 	/** Nothing this frame (no run). */
@@ -82,6 +95,7 @@ export class SecretCueTracker implements SecretCueSource {
 		this.openNear = false;
 		this.jingle = false;
 		this.jingleNear = false;
+		this.chestTier = NO_TREASURE_OPEN;
 	}
 
 	/**
@@ -98,7 +112,10 @@ export class SecretCueTracker implements SecretCueSource {
 	): SecretCueSource {
 		this.clearEdges();
 		const f = this.view.update(state, plan, events, simSec, QUIET);
-		if (plan === undefined) return this;
+		if (plan === undefined || f.look.phase === SecretPhase.NONE) {
+			this.takenAt = undefined;
+			return this;
+		}
 		const near = SECRET_VIEW.audio.nearTiles;
 		const c = secretCrackCentre(plan);
 		const listenerNear = playerNear(state, listener, c.x, c.z, near);
@@ -115,6 +132,21 @@ export class SecretCueTracker implements SecretCueSource {
 		if (f.revealEdge) {
 			this.jingle = true;
 			this.jingleNear = this.nearOpen;
+		}
+		const t = f.takenEdge;
+		if (t !== undefined) {
+			this.takenAt = t.tick / SIM_HZ;
+			this.takenTier = t.tier;
+			this.lastAge = -1;
+		}
+		const at = this.takenAt;
+		if (at !== undefined) {
+			const age = math.max(0, simSec - at);
+			if (popCrossed(this.lastAge, age)) {
+				this.chestTier = this.takenTier;
+				this.takenAt = undefined;
+			}
+			this.lastAge = age;
 		}
 		return this;
 	}

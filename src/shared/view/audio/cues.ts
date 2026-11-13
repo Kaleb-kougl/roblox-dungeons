@@ -1685,7 +1685,11 @@ export class AudioCueMapper {
 	private treasureCues(treasure: TreasureCueSource): void {
 		if (treasure.crack) this.cue(SFX.treasureCrack, 1);
 		if (treasure.unlock) this.cue(SFX.treasureUnlock, 1);
-		const tier = treasure.openTier;
+		this.chestOpenCues(treasure.openTier);
+	}
+
+	/** A chest's lid popped (a vault's or a secret room's): the open's sting pitched by `tier`, a Legendary's jingle. */
+	private chestOpenCues(tier: number): void {
 		if (tier === NO_TREASURE_OPEN) return;
 		this.cue(SFX.treasureOpen, 1, priorityOf(SFX.treasureOpen), treasureOpenSpeed(tier));
 		if (tier === VaultTier.LEGENDARY) this.cue(SFX.jingleTreasure, 1);
@@ -1737,12 +1741,13 @@ export class AudioCueMapper {
 	 * throttled): the hollow knock, the crumble at the open and the discovery jingle at the reveal, each at full volume
 	 * when near the listener (their own, or within SECRET_VIEW.audio.nearTiles), else at AUDIO_VIEW.teammateVolume and
 	 * TEAMMATE_PRIORITY_DROP lower (a far teammate's). Silent clips play their SFX_FALLBACK (the breakable hit / break,
-	 * the treasure jingle). The secret chest's open is the vault's path (its sting), not here.
+	 * the treasure jingle). The secret chest's lid pop (`chestTier`) plays the vault's open cues (chestOpenCues).
 	 */
 	private secretCues(secrets: SecretCueSource): void {
 		if (secrets.knock) this.nearCue(SFX.secretKnock, secrets.knockNear);
 		if (secrets.open) this.nearCue(SFX.secretOpen, secrets.openNear);
 		if (secrets.jingle) this.nearCue(SFX.jingleSecret, secrets.jingleNear);
+		this.chestOpenCues(secrets.chestTier);
 	}
 
 	/** `id` at full volume when `near`, else a teammate's quieter, lower-ranked cue. */

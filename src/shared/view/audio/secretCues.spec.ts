@@ -1,10 +1,11 @@
 // Secret rooms in the cue mapper (docs/SECRET_ROOMS.md SR6): the knock, the crumble at the open and the jingle at the
 // reveal from the frame's SecretCueSource edges, full volume near the listener and the teammate's volume (a rank lower)
 // for a far teammate's; nothing without an edge; each falls back while silent (the breakable hit / break, the treasure
-// jingle); and the cue tracker's edges reaching the mapper over the secret arena (a finisher opening the crack: the
-// crumble on the open's frame, the jingle reveal.jingleSec later, a knock per swing before).
+// jingle); the chest's lid pop plays the vault's open (the sting by tier, a Legendary's jingle); and the cue tracker's
+// edges reaching the mapper over the secret arena (a finisher opening the crack: the crumble on the open's frame, the
+// jingle reveal.jingleSec later, a knock per swing before; the chest's sting popSec after its take).
 import { describe, expect, it } from "@rbxts/jest-globals";
-import { gridToWorld } from "shared/dungeon";
+import { VaultTier, gridToWorld } from "shared/dungeon";
 import {
 	ALL_EVENT_FIELDS,
 	AXIS_MAX,
@@ -32,7 +33,7 @@ import {
 	SecretFrameEvents,
 	type SecretCueSource,
 } from "shared/view/secrets";
-import { NO_TREASURE_CUES } from "shared/view/treasure";
+import { NO_TREASURE_CUES, TREASURE_VIEW } from "shared/view/treasure";
 import { AUDIO_VIEW, AudioCueList, AudioCueMapper, NO_SYNC_CUES, SFX, SFX_FALLBACK, type Playable } from ".";
 
 function noEvents(): SimEvents {
@@ -89,6 +90,16 @@ describe("audio: secret rooms (docs/SECRET_ROOMS.md SR6)", () => {
 		expect(new AudioCueMapper().frame(0, noEvents(), NO_FX, s, 0, new AudioCueList()).size()).toBe(0);
 	});
 
+	it("the secret chest's lid pop plays the vault's open: the sting by tier, a Legendary's jingle", () => {
+		const s = createSimState(1, 0, 0);
+		const rare = frame(new AudioCueMapper(), 0, s, edges({ chestTier: VaultTier.RARE }));
+		expect(rare.map(([id]) => id)).toEqual([SFX.treasureOpen]);
+		const legendary = frame(new AudioCueMapper(), 0, s, edges({ chestTier: VaultTier.LEGENDARY }));
+		expect(legendary.map(([id]) => id)).toEqual([SFX.treasureOpen, SFX.jingleTreasure]);
+		const vault = frame(new AudioCueMapper(), 0, s, NO_SECRET_CUES);
+		expect(vault).toEqual([]);
+	});
+
 	it("silent: the knock plays the breakable hit, the crumble the break, the jingle the treasure jingle", () => {
 		const s = createSimState(1, 0, 0);
 		const ids = [SFX.secretKnock, SFX.secretOpen, SFX.jingleSecret];
@@ -119,11 +130,18 @@ describe("audio: secret rooms (docs/SECRET_ROOMS.md SR6)", () => {
 		const fire = { ...EMPTY_INPUT, aimZ: -AXIS_MAX, buttons: Button.FIRE };
 		const idle = { ...EMPTY_INPUT, aimZ: -AXIS_MAX };
 		let openTick = -1;
+		let takenTick = -1;
 		for (let n = 0; n < 4 * SIM_HZ; n++) {
 			ev.reset();
+			if (n === 3 * SIM_HZ) {
+				// to the chest (in reach): the take, then the lid's pop
+				s.player.x = gridToWorld(ARENA.chestX);
+				s.player.z = gridToWorld(ARENA.chestY) + 1;
+			}
 			step(s, openTick < 0 ? fire : idle, config);
 			ev.collect(s);
 			if (ev.opened.size() > 0) openTick = s.tick;
+			if (ev.taken.size() > 0) takenTick = s.tick;
 			const c = tracker.update(s, plan, ev, s.tick / SIM_HZ, 0);
 			for (const [id, vol] of frame(m, s.tick / SIM_HZ, s, c)) heard.push([s.tick, id, vol]);
 		}
@@ -138,5 +156,11 @@ describe("audio: secret rooms (docs/SECRET_ROOMS.md SR6)", () => {
 			[SFX.jingleSecret, 1, true],
 		]);
 		expect(math.abs(secret[3][0] - jingleTick) <= 1).toBe(true);
+		// The chest's take, then its lid's pop: the vault's open sting (a Rare chest: no Legendary jingle).
+		expect(takenTick > openTick).toBe(true);
+		const opens = heard.filter(([, id]) => id === SFX.treasureOpen);
+		const popTick = takenTick + math.round(TREASURE_VIEW.open.popSec * SIM_HZ);
+		expect(opens.size()).toBe(1);
+		expect(math.abs(opens[0][0] - popTick) <= 1).toBe(true);
 	});
 });

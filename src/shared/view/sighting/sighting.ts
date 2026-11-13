@@ -13,8 +13,8 @@
  *     livePowerPellet); the tutorial never shows one (its caller skips the tutorial anyway).
  *   - withRumourSighting: the first-time card of the Goldling's rumours (`golden.rumour`, docs/GOLDLING_RUMOURS.md
  *     GR7): added once this floor's first rumour cue has played (shared/view/golden GoldenRumourClock.heard), so it is
- *     queued on that cue. It is SIGHTING_IDS' last id, so the canonical order holds; one card at a time (the queue), so
- *     it never shows on top of the Goldling's own `golden` card.
+ *     queued on that cue. It is SIGHTING_IDS' last id but `secret.crack`, so the canonical order holds; one card at a
+ *     time (the queue), so it never shows on top of the Goldling's own `golden` card.
  *   - withSecretSighting: the first-time card of a secret room's crack (`secret.crack`, docs/SECRET_ROOMS.md SR9 /
  *     SRD5): added once the LOCAL player has knocked on a crack (shared/view/secrets FirstKnockLatch.knocked), so it
  *     is queued at the first knock. SIGHTING_IDS' last id (after `golden.rumour`): call it after withRumourSighting
@@ -126,7 +126,8 @@ export function sightingsInView(
 
 /**
  * `out` (sightingsInView's canonical list) plus GOLDEN_RUMOUR_SIGHTING when `heard` (this floor's first rumour cue has
- * played) and it is not listed yet; returns `out`. GOLDEN_RUMOUR_SIGHTING is SIGHTING_IDS' last id: the order holds.
+ * played) and it is not listed yet; returns `out`. GOLDEN_RUMOUR_SIGHTING is SIGHTING_IDS' last id but
+ * SECRET_CRACK_SIGHTING (withSecretSighting, called after this): the order holds.
  */
 export function withRumourSighting(out: string[], heard: boolean): string[] {
 	if (heard && !out.includes(GOLDEN_RUMOUR_SIGHTING)) out.push(GOLDEN_RUMOUR_SIGHTING);
