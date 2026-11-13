@@ -56,8 +56,7 @@ import type { EncounterRoom } from "./encounterTypes";
 import { roomGridRect, type FloorPellets } from "./pellets";
 import { breakableCandidateFinder, pieceFitter, type BreakableFloorInput, type BreakablePlacement } from "./breakables";
 import { BREAKABLE, BREAKABLE_KINDS, type BreakableKindName } from "./breakablesData";
-import type { VaultPlan } from "./vault";
-import { VAULT } from "./vaultData";
+import { vaultFrontCells, type VaultPlan } from "./vault";
 import { GOLDEN_FLEE, GOLDEN_PLACE } from "./goldenData";
 
 /** A room's floor rectangle and walk mask (goldenRoomMask): FloorGolden without its piece. Never mutated. */
@@ -142,17 +141,9 @@ interface PiecePrep {
 	readonly chestFront: ReadonlySet<number>;
 }
 
-/** The vault chest's front box (file comment, "cell"): cellKeys, empty without a vault. */
+/** The vault chest's front box (file comment, "cell"): cellKeys, empty without a vault (./vault.ts vaultFrontCells). */
 function chestFrontCells(vault: VaultPlan | undefined): Set<number> {
-	const out = new Set<number>();
-	if (vault === undefined) return out;
-	// Across the facing: (1, 0) -> (0, 1), (0, 1) -> (1, 0) (./vault.ts facingOk).
-	const px = math.abs(vault.fz);
-	const pz = math.abs(vault.fx);
-	for (let a = 0; a <= VAULT.wallClearTiles; a++)
-		for (let b = -VAULT.sideClearTiles; b <= VAULT.sideClearTiles; b++)
-			out.add(cellKey(vault.x + vault.fx * a + px * b, vault.y + vault.fz * a + pz * b));
-	return out;
+	return vault === undefined ? new Set<number>() : vaultFrontCells(vault);
 }
 
 function prepPiece(input: GoldenFloorInput): PiecePrep {

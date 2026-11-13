@@ -46,6 +46,12 @@
  *                 the layout, spawns, pieces (the chest included), pellets and the vault; its piece is appended to
  *                 `breakables` after every other piece (slot golden.piece) and its cell leaves roomSpawnTiles; nothing
  *                 above reads it
+ *   secret        opt-in (EndlessFloorOptions.secrets; off: no draw, nothing below happens): the floor's secret room, if
+ *                 any (./secrets.ts, docs/SECRET_ROOMS.md SR1), LAST (after the modifier's re-run and the Goldling's
+ *                 piece), from its own stream hash(floor seed, SECRET.salt), reading the layout, the spawns, every piece,
+ *                 the vault and the altars; its crack pieces and chest are appended after every other piece and the
+ *                 room spawn tiles are left as they were (the crack is on WALL cells, the chest in the void); nothing
+ *                 above reads it
  *   modifier      opt-in (EndlessFloorOptions.modifiers; off: no draw, `modifier` NONE, every output above as before):
  *                 the floor's modifier (./modifiers.ts, docs/FLOOR_MODIFIERS.md FM1 / FM2), from its own stream
  *                 hash(floor seed, MODIFIERS.salt) and floor n - 1's chance draw, reading the floor built so far
@@ -82,6 +88,7 @@ import { placePellets, type FloorPellets } from "./pellets";
 import { placeVault, vaultChest, type VaultOverride, type VaultPlan } from "./vault";
 import { placePactAltars, type FloorPacts } from "./pacts";
 import { goldenPiece, placeGolden, type FloorGolden } from "./golden";
+import { placeSecret, secretPieces, type FloorSecret, type SecretOverride } from "./secrets";
 import { FloorModifier, MODIFIERS, type FloorModifierId } from "./modifiersData";
 import {
 	pickFloorModifier,
@@ -527,6 +534,13 @@ export interface EndlessFloorLayout {
 	 * effect is already in the parts above (the forced placer); the view reads the id (the card, the chip).
 	 */
 	readonly modifier: FloorModifierId;
+	/**
+	 * The floor's secret room, if it rolled one (./secrets.ts placeSecret, docs/SECRET_ROOMS.md SR1): the crack
+	 * (`breakables[secret.crackSlot ..]`, kind `crackedWall`), the chamber, the chest (`breakables[secret.chestSlot]`, the
+	 * last piece) and the carved dungeon the sim steps on (`secret.dungeon`; `dungeon` above stays the Forge's). Absent:
+	 * none (EndlessFloorOptions.secrets off, below SECRET.fromFloor, a miss, no candidate, the tutorial's floors).
+	 */
+	readonly secret?: FloorSecret;
 }
 
 /** Opt-in parts of an endless floor (buildEndlessFloor). Absent or empty: the floor exactly as before them. */
@@ -549,6 +563,13 @@ export interface EndlessFloorOptions {
 	readonly modifiers?: FloorModifierWorld;
 	/** With `modifiers`: the dev world's KV_FloorModifier (FloorModifierOverride). Ignored without `modifiers`. */
 	readonly modifierOverride?: FloorModifierOverride;
+	/**
+	 * Roll the floor's secret room (docs/SECRET_ROOMS.md: ./secrets.ts): the endless worlds with SimConfig.secrets set
+	 * it (shared/run endlessRunFloor). Absent: no draw, no `secret`, the floor exactly as before.
+	 */
+	readonly secrets?: boolean;
+	/** With `secrets`: the dev world's KV_SecretDebug override. Ignored without `secrets`. */
+	readonly secretOverride?: SecretOverride;
 }
 
 /** What the modifier pick reads of floor `floor`'s place in the run `runSeed` (its seed, floor n - 1's seed). Pure. */
@@ -725,6 +746,14 @@ export function buildEndlessFloor(
 	// The Goldling's own barrel or crate (docs/GOLDLING_RUMOURS.md RD11) is appended after every other piece, so every
 	// earlier slot (loot's, the chest's) keeps its index; only the room spawn tiles below lose its cell.
 	const floorPieces = golden !== undefined ? [...pieces, goldenPiece(golden)] : pieces;
+	// The secret room (docs/SECRET_ROOMS.md SR1) runs last, on its own stream (./secrets.ts), reading every piece above:
+	// nothing above moves. Its crack pieces and chest are appended after every other piece; the room spawn tiles keep
+	// the list without them (the crack stands on WALL cells and the chest in the void: no spawn tile holds either).
+	const secret =
+		options?.secrets === true
+			? placeSecret({ ...input, pieces: floorPieces, vault, pactAltars }, floor, options.secretOverride)
+			: undefined;
+	const allPieces = secret !== undefined ? [...floorPieces, ...secretPieces(secret)] : floorPieces;
 	return {
 		floor,
 		seed: params.seed,
@@ -738,7 +767,7 @@ export function buildEndlessFloor(
 		roomSpawnTiles: withoutBreakableCells(endlessRoomSpawnTiles(d, roomSpawns), floorPieces),
 		spawn: { x: spawn.x, z: spawn.z },
 		stairwell,
-		breakables: floorPieces,
+		breakables: allPieces,
 		roomAffixes,
 		breakableLoot,
 		pellets,
@@ -746,5 +775,6 @@ export function buildEndlessFloor(
 		pactAltars,
 		golden,
 		modifier,
+		secret,
 	};
 }

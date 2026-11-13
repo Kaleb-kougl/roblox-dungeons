@@ -40,6 +40,57 @@ with its own hash group `secrets` appended LAST (after `golden`) and its own rng
 fixture and the tutorial replay exactly as before; endless / daily / dev replays and scores change (boards stay
 `_v1`, `DAILY.ruleset` 18 -> 19).
 
+## As built (branch `secret-rooms`, Track A: dungeon and sim)
+
+### SR1: placement (`shared/dungeon/secrets.ts`, `secretsData.ts`)
+
+- `SECRET` (salt `0x4b565343`, fromFloor 2, chancePercent 25, roomTypes combat / elite, crackCells 2, frontDepth 3,
+  chambers 5x4 / 4x4 / 4x3 / 3x3, tierWeights Rare 65 / Legendary 35, doorClearTiles 2, wallPropClearTiles 1,
+  poolClearTiles 1), `CRACKED_WALL_KIND` = `"crackedWall"` appended to `BREAKABLE_PIECE_KINDS` (index 3).
+- `secretCandidates(input)` (pure; room id, then the crack's first cell in row order, then facing (1, 0), (0, 1); one
+  candidate per crack position with its largest chamber), `placeSecret(input, floor, override?)` (0 / 1 / 3 draws),
+  `carveSecret(d, plan)`, `secretPieces(plan)`, `secretCrackCells`, `secretChestCentre`, `secretSeed`; `FloorSecret`
+  carries the crack (`x`, `y`, `fx`, `fz`, `ax`, `az`, `cells`), the chamber rectangle (`x0`, `y0`, `w`, `h`, `along`,
+  `depth`), the chest (`chestX`, `chestY`, faces `fx`, `fz`), `tier`, `crackSlot` / `chestSlot` and the carved `dungeon`.
+  `SecretOverride` (`every`, `tier`) like `VaultOverride`.
+- `buildEndlessFloor` runs it last when `EndlessFloorOptions.secrets` is set (`secretOverride` with it), appends the
+  crack pieces then the chest after the Goldling's piece, and keeps `roomSpawnTiles` from the list without them (no
+  spawn tile can hold either). `EndlessFloorLayout.secret`.
+- Rules the plan left open, decided in SR1: the crack cells must be **outer** walls (`roomId` -1, no solid decor), the
+  wall props kept clear are Forge torches and any Forge prop standing on an outer wall cell (banners, wall-top graves),
+  doorway arches are covered by the doorway test (they frame doorway cells); the chamber starts
+  `floor((along - 2) / 2)` cells before the crack's first cell; the halo is checked over `k = 0 .. depth + 2` (the
+  wall line and behind it), and the row in front of the wall line holds no corridor / doorway over `i = -1 .. along`
+  and no solid decor over the chamber's own columns (a bookcase's back must never stand over the chamber's floor);
+  the chest is on the back row at along index `floor((along - 1) / 2)`; the front box keeps the clutter's clearances
+  for the entrance, stairwell, pedestal, shrine and pact altars (moot in combat / elite rooms, kept for safety). The
+  vault chest's front box moved from golden.ts into vault.ts as `vaultFrontCells` (same cells, same order).
+- secrets.spec.ts: the tunables, the piece kind, the salt against every floor and sim salt, a hand twin of the draws,
+  the override, every rule above on every secret of runs 1-4 x floors 1-9 (with `every`), the carved grid's diff, the
+  pieces' slots, and the option off / a floor without a secret equal to the option-off floor (solo and party 3).
+
+### SR1 census (`secrets.census.<n>.spec.ts`, `--census`; runs 1-60 x floors 2-30, solo and party 3)
+
+Four shards of 15 run seeds (about 50 s each, only chance hits are built). Sums of the `[secrets:raw]` lines:
+
+| Floors | Floors | Chance hits | Hits with no candidate | Secret floors | Candidates per hit (max) |
+|---|---|---|---|---|---|
+| 2-4 | 180 | 43 (23.9 %) | 4 (9 %) | 39 (21.7 %) | 4.7 (16) |
+| 5-9 | 300 | 74 (24.7 %) | 7 (9 %) | 67 (22.3 %) | 5.7 (18) |
+| 10-19 | 600 | 140 (23.3 %) | 16 (11 %) | 124 (20.7 %) | 4.8 (18) |
+| 20-30 | 660 | 169 (25.6 %) | 23 (14 %) | 146 (22.1 %) | 5.5 (27) |
+| **all, solo** | 1740 | 426 (24.5 %) | 50 (11.7 %) | **376 (21.6 %)** | |
+| all, party 3 | 1740 | 426 (24.5 %) | 47 (11.0 %) | 379 (21.8 %) | |
+
+- **The real rate is 21.6 % of floors** (SRD1's 25 % less the 11.7 % of hits with no candidate): close to the plan, so
+  no rule changed. Deep floors fit slightly worse (9 % of hits empty on floors 2-9, 14 % on 20-30: more rooms, more
+  corridors in the void) but the secret rate holds (20.7-22.3 % per band).
+- Chamber sizes (solo): 5x4 145, 4x4 72, 4x3 55, 3x3 104 (party 3: 153 / 68 / 52 / 106): most cracks get the largest.
+- Tiers (solo): Rare 254 / Legendary 122 (67.6 / 32.4 %, against 65 / 35). Facings: (1, 0) 207, (0, 1) 169.
+- Boss floors with a secret: 75 (never the boss room). Crack rooms that are elite: 29 of 376.
+- **Crack rooms with a planned Charger** (the Archer's third key): 189 of 376 solo (50.3 %), 136 of 379 in a party of 3
+  (35.9 %: the party's bigger budgets buy dearer kinds).
+
 ## What the code gives us (read in the source at c0a8de2; SR0, 2026-11-13: every row marked **read** or **corrected**, the client and Codex rows left to their tracks)
 
 | Fact | Where | Consequence | SR0 |
@@ -219,7 +270,7 @@ SR0's design changes, each the smallest that keeps the plan's intent:
   manifest); what besides `endlessFloorWorld` builds movers from `layout.dungeon` (BulletAhead, local prediction,
   collision debug, the bots' `pathField`); that no consumer of the sim world reads `bfs` from the carved copy.
   → Verify: every row marked.
-- [ ] **SR1. Placement and census** (`dungeon/secrets*.ts`, no sim). → Verify (spec): no secret on floor 1 or in a
+- [x] **SR1. Placement and census** (`dungeon/secrets*.ts`, no sim). → Verify (spec): no secret on floor 1 or in a
   boss / entrance / shrine / treasure room; every chamber inside the grid, its ring touching no other floor, one way in;
   the front box clear; the salt unique; option off byte-identical (`roomPool.lock.spec` digests, vault / Goldling /
   modifier specs). Census (`secrets.census.spec.ts`, `--census`, runs 1-60 x floors 2-30, solo and party 3, sharded if

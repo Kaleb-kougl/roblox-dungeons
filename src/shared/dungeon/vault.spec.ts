@@ -238,7 +238,12 @@ describe("vault: tunables, kinds and stream", () => {
 
 	it("piece kinds: the clutter kinds unchanged, the chest appended as index 2", () => {
 		expect(BREAKABLE_KINDS).toEqual(["barrel", "crate"]);
-		expect(BREAKABLE_PIECE_KINDS).toEqual(["barrel", "crate", "chest"]);
+		// docs/SECRET_ROOMS.md SR1 appended the cracked wall after the chest (secrets.spec.ts).
+		expect([BREAKABLE_PIECE_KINDS[0], BREAKABLE_PIECE_KINDS[1], BREAKABLE_PIECE_KINDS[2]]).toEqual([
+			"barrel",
+			"crate",
+			"chest",
+		]);
 		expect(BREAKABLE_PIECE_KINDS[2]).toBe(CHEST_KIND);
 	});
 

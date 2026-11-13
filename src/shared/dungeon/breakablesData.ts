@@ -13,11 +13,13 @@ export type BreakableKindName = (typeof BREAKABLE_KINDS)[number];
 
 /**
  * Every kind of piece a floor's breakables list can hold, in the sim's kind index order (shared/sim BreakableKind:
- * barrel 0, crate 1, chest 2). The first two are BREAKABLE_KINDS (the clutter placeBreakables lays, mirrored by the
- * theme); `chest` is a vault's unbreakable chest (./vault.ts, docs/TREASURE.md correction 2), appended to the list
- * after every other floor output and drawn from its own `treasure.*` slot, never a `breakable.*` one. Append only.
+ * barrel 0, crate 1, chest 2, cracked wall 3). The first two are BREAKABLE_KINDS (the clutter placeBreakables lays,
+ * mirrored by the theme); `chest` is a vault's (or a secret room's) unbreakable chest (./vault.ts, docs/TREASURE.md
+ * correction 2), appended to the list after every other floor output and drawn from its own `treasure.*` slot, never a
+ * `breakable.*` one; `crackedWall` is a secret room's crack (./secrets.ts, docs/SECRET_ROOMS.md), one piece per crack
+ * cell on a WALL cell of the Forge grid (FLOOR in the sim's carved grid), inert until an opener breaks it. Append only.
  */
-export const BREAKABLE_PIECE_KINDS = ["barrel", "crate", "chest"] as const;
+export const BREAKABLE_PIECE_KINDS = ["barrel", "crate", "chest", "crackedWall"] as const;
 export type BreakablePieceKindName = (typeof BREAKABLE_PIECE_KINDS)[number];
 
 /** A depth band of the descent (docs/DECOR.md Phase 2 part 1: kept 1-4, worn 5-9, ruined 10-14, abyss 15+). */
