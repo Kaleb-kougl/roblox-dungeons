@@ -478,6 +478,14 @@ export const SFX = {
 	 * decorated chips and draft tags are silent). SILENT in every pack until CX11 (no fallback: nothing plays).
 	 */
 	codexNew: "sfx.codex.new",
+	/**
+	 * docs/SECRET_ROOMS.md SR10 (the theme's SECRET_AUDIO_IDS): a wrong-way hit on a secret room's crack (a hollow
+	 * knock), the wall bursting open (a crumble) and the discovery jingle on the chamber's reveal. Registered here (the
+	 * view track maps them from the secret frame events, SR6 / SR9); each plays its SFX_FALLBACK while silent.
+	 */
+	secretKnock: "sfx.secret.knock",
+	secretOpen: "sfx.secret.open",
+	jingleSecret: "sfx.jingle.secret",
 } as const;
 export type SfxId = (typeof SFX)[keyof typeof SFX];
 
@@ -588,6 +596,9 @@ export const ALL_SFX: ReadonlyArray<SfxId> = [
 	SFX.goldenRumourFloor,
 	SFX.goldenRumourRoom,
 	SFX.codexNew,
+	SFX.secretKnock,
+	SFX.secretOpen,
+	SFX.jingleSecret,
 ];
 
 /** IDs this port added to the placeholder pack (not in the web contract's AUDIO_EVENTS; theme PORT_AUDIO_EVENTS). */
@@ -684,6 +695,9 @@ export const PORT_SFX: ReadonlyArray<SfxId> = [
 	SFX.goldenRumourFloor,
 	SFX.goldenRumourRoom,
 	SFX.codexNew,
+	SFX.secretKnock,
+	SFX.secretOpen,
+	SFX.jingleSecret,
 ];
 
 /**
@@ -963,6 +977,19 @@ export const SFX_PRIORITY: Readonly<Record<SfxId, number>> = {
 	/** A codex toast's chime (played outside the mapper's frame; ranked with the menu sounds, just over a confirm). */
 	[SFX.codexNew]: 46,
 	/**
+	 * Secret rooms (docs/SECRET_ROOMS.md SR10). The knock is a hint, not a fight sound: just over the breakable hit it
+	 * falls back to (30; a cue keeps its own rank when it resolves to a fallback), under the enemy death (35) and every
+	 * player or danger sound, so a busy frame drops it first. The crumble is the payoff of a deliberate hit (the
+	 * finisher 56, the roll 58, the charged arrow 55 ride on its frame) and the jingle follows 0.4 s later, so it only
+	 * has to beat what usually shares its frame: over the breakable break it falls back to (40) and the enemy sounds
+	 * (35-47), with the boost expiry and the enemy blast (48), under the player's own sounds. The jingle is the
+	 * discovery itself: one rank under a Legendary chest's (73: the chest at the back of the chamber is opened later,
+	 * never on the reveal's frame, and a tie keeps the first cued), with the room clear's jingles (72).
+	 */
+	[SFX.secretKnock]: 31,
+	[SFX.secretOpen]: 48,
+	[SFX.jingleSecret]: 72,
+	/**
 	 * A boost out of a broken piece (docs/BREAKABLE_DROPS.md BL6): just over a kill drop's landing (the rarer, chosen
 	 * reward), under the pickup; over the piece's own break (40), which plays on the same frame.
 	 */
@@ -1102,6 +1129,8 @@ export const DUCKING_SFX: ReadonlyArray<SfxId> = [
 	SFX.ember,
 	/** docs/FORTUNE.md FO9: the Goldling's jackpot, like the other jingles. */
 	SFX.goldenJackpot,
+	/** docs/SECRET_ROOMS.md SR10: the secret room's discovery jingle, like the other jingles. */
+	SFX.jingleSecret,
 ];
 
 /**
@@ -1124,6 +1153,8 @@ export const JINGLE_SFX: ReadonlyArray<SfxId> = [
 	SFX.jingleTreasure,
 	/** docs/FORTUNE.md FO9: the Goldling's catch, in rank order: over the room clear's, under the new-best fanfare. */
 	SFX.goldenJackpot,
+	/** docs/SECRET_ROOMS.md SR10: the discovery jingle, in rank order: under a Legendary chest's, with the room clear's. */
+	SFX.jingleSecret,
 	SFX.roomClear,
 	SFX.roomPerfect,
 	SFX.roomTeamPerfect,
@@ -1228,6 +1259,15 @@ export const SFX_FALLBACK: Readonly<Partial<Record<SfxId, SfxId>>> = {
 	[SFX.buildSlam]: SFX.enemyStun,
 	[SFX.buildSmash]: SFX.breakableBreak,
 	[SFX.buildBeam]: SFX.buildSpark,
+	/**
+	 * docs/SECRET_ROOMS.md SR10: until the secret rooms' clips are picked (SR14), the knock plays the breakable hit (a
+	 * piece struck), the crumble the breakable break (a piece bursting) and the discovery jingle a Legendary chest's
+	 * (bright good news). One step each: while the treasure jingle is silent too (the placeholder pack) the reveal has
+	 * no jingle.
+	 */
+	[SFX.secretKnock]: SFX.breakableHit,
+	[SFX.secretOpen]: SFX.breakableBreak,
+	[SFX.jingleSecret]: SFX.jingleTreasure,
 };
 
 /** The floor modifier stings by shared/dungeon floorModifierKey (MODIFIERS.kinds' keys). */

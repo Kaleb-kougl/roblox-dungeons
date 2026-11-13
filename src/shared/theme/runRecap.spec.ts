@@ -5,6 +5,7 @@
 // limit), so these specs are what keeps runRecap.ts and contract.ts in step.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { CODEX_AUDIO_IDS, CODEX_STRING_KEYS } from "./codex";
+import { SECRET_AUDIO_IDS, SECRET_STRING_KEYS } from "./secrets";
 import { PORT_AUDIO_EVENTS, REQUIRED_ASSET_IDS, REQUIRED_STRING_KEYS, slotFor } from "./contract";
 import { THEME_PACKS } from "./packs";
 import { PLACEHOLDER_MANIFEST } from "./packs/placeholder";
@@ -123,13 +124,14 @@ describe("run recap and co-op moments: contract", () => {
 		expect(TEAM_MOMENT_STRING_KEYS.size()).toBe(4);
 		expect(CONTRIB_STRING_KEYS.size()).toBe(45);
 		// docs/TREASURE.md TR6's strings come after them, then docs/FORTUNE.md FO6's, docs/FLOOR_MODIFIERS.md FM7's and
-		// docs/GOLDLING_RUMOURS.md GR7's (then claude/codex-plan.md CX5's)
+		// docs/GOLDLING_RUMOURS.md GR7's (then claude/codex-plan.md CX5's, docs/SECRET_ROOMS.md SR10's)
 		const after =
 			TREASURE_STRING_KEYS.size() +
 			FORTUNE_STRING_KEYS.size() +
 			FLOOR_MODIFIER_STRING_KEYS.size() +
 			GOLDEN_RUMOUR_STRING_KEYS.size() +
-			CODEX_STRING_KEYS.size();
+			CODEX_STRING_KEYS.size() +
+			SECRET_STRING_KEYS.size();
 		expect(tail(REQUIRED_STRING_KEYS, all.size(), after)).toEqual(all);
 		expect(new Set(REQUIRED_STRING_KEYS).size()).toBe(REQUIRED_STRING_KEYS.size());
 	});
@@ -137,13 +139,14 @@ describe("run recap and co-op moments: contract", () => {
 	it("appends the two sounds to PORT_AUDIO_EVENTS: required, sfx; SILENT in the placeholder, a clip in vale (CM7)", () => {
 		expect([...TEAM_MOMENT_AUDIO_IDS]).toEqual(["sfx.room.teamperfect", "sfx.player.syncparry"]);
 		// docs/TREASURE.md TR6's four sounds come after them, then docs/FORTUNE.md FO6's eight, docs/FLOOR_MODIFIERS.md FM7's five, then
-		// docs/GOLDLING_RUMOURS.md GR6's two (then claude/codex-plan.md CX5's one)
+		// docs/GOLDLING_RUMOURS.md GR6's two (then claude/codex-plan.md CX5's one, docs/SECRET_ROOMS.md SR10's three)
 		const skip =
 			TREASURE_AUDIO_IDS.size() +
 			FORTUNE_AUDIO_IDS.size() +
 			FLOOR_MODIFIER_AUDIO_IDS.size() +
 			GOLDEN_RUMOUR_AUDIO_IDS.size() +
-			CODEX_AUDIO_IDS.size();
+			CODEX_AUDIO_IDS.size() +
+			SECRET_AUDIO_IDS.size();
 		expect(tail(PORT_AUDIO_EVENTS, TEAM_MOMENT_AUDIO_IDS.size(), skip)).toEqual([...TEAM_MOMENT_AUDIO_IDS]);
 		for (const id of TEAM_MOMENT_AUDIO_IDS) {
 			expect([id, has(REQUIRED_ASSET_IDS, id), slotFor(id)?.soundGroup]).toEqual([id, true, "sfx"]);

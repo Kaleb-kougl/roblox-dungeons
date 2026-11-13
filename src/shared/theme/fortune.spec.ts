@@ -6,6 +6,7 @@
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { PACT_DIM_NAMES, PactDim } from "shared/sim";
 import { CODEX_AUDIO_IDS, CODEX_STRING_KEYS } from "./codex";
+import { SECRET_AUDIO_IDS, SECRET_ROLES, SECRET_STRING_KEYS } from "./secrets";
 import { colorDifference, contrastRatio } from "./color";
 import {
 	BIOMES,
@@ -87,13 +88,19 @@ function tail(list: ReadonlyArray<string>, n: number, skip = 0): string[] {
 
 /** Entries docs/FLOOR_MODIFIERS.md FM7 appended after Fortune's (floorModifiers.spec.ts checks them). */
 const FLOOR_MOD_AFTER = {
-	roles: FLOOR_MODIFIER_ROLES.size(),
+	roles: FLOOR_MODIFIER_ROLES.size() + SECRET_ROLES.size(),
 	audio: FLOOR_MODIFIER_AUDIO_IDS.size(),
 	strings: FLOOR_MODIFIER_STRING_KEYS.size(),
 } as const;
 
-/** What claude/codex-plan.md CX5 appends last, after the Goldling rumours' entries (its sound, its strings; codex.spec.ts). */
-const CODEX_AFTER = { audio: CODEX_AUDIO_IDS.size(), strings: CODEX_STRING_KEYS.size() } as const;
+/**
+ * What claude/codex-plan.md CX5 appends after the Goldling rumours' entries (its sound, its strings; codex.spec.ts), then
+ * docs/SECRET_ROOMS.md SR10's (secrets.spec.ts): the secret rooms' role (after the floor modifiers': FLOOR_MOD_AFTER).
+ */
+const CODEX_AFTER = {
+	audio: CODEX_AUDIO_IDS.size() + SECRET_AUDIO_IDS.size(),
+	strings: CODEX_STRING_KEYS.size() + SECRET_STRING_KEYS.size(),
+} as const;
 
 const clone = () => deepClone(PLACEHOLDER_MANIFEST) as unknown as Obj;
 
@@ -106,8 +113,9 @@ describe("fortune: contract", () => {
 			undefined,
 			[],
 		]);
-		expect(SLOTS[SLOTS.size() - 1]).toBe(PACT);
-		expect(WORLD_ART_SLOTS[WORLD_ART_SLOTS.size() - 1]).toBe(PACT);
+		// docs/SECRET_ROOMS.md SR10's optional SECRET slot comes after it (secrets.spec.ts)
+		expect(SLOTS[SLOTS.size() - 2]).toBe(PACT);
+		expect(WORLD_ART_SLOTS[WORLD_ART_SLOTS.size() - 2]).toBe(PACT);
 		expect(requiredBaseAnimations(PACT)).toEqual(["idle"]);
 		expect(PACT_ALTAR_ID).toBe("pact.altar");
 		expect(tail(REQUIRED_ASSET_IDS, 1)).toEqual([PACT_ALTAR_ID]);
@@ -287,13 +295,14 @@ describe("fortune: contract", () => {
 		expect(pack.str(HORDE_ROOM_CLEAR_KEY, { points: "420" })).toBe("Horde x2 +420");
 	});
 
-	it("the rumour strings (docs/GOLDLING_RUMOURS.md GR7): the chip's two lines last before the Codex's, the first-time card last", () => {
+	it("the rumour strings (docs/GOLDLING_RUMOURS.md GR7): the chip's two lines last before the Codex's, the first-time card last before the secret rooms'", () => {
 		expect([...GOLDEN_RUMOUR_STRING_KEYS]).toEqual(["hud.chip.golden.rumour", "hud.chip.golden.hiding"]);
 		expect(tail(REQUIRED_STRING_KEYS, GOLDEN_RUMOUR_STRING_KEYS.size(), CODEX_AFTER.strings)).toEqual([
 			...GOLDEN_RUMOUR_STRING_KEYS,
 		]);
 		expect(GOLDEN_RUMOUR_BESTIARY_KEY).toBe("bestiary.golden.rumour");
-		expect(BESTIARY_STRING_KEYS[BESTIARY_STRING_KEYS.size() - 1]).toBe(GOLDEN_RUMOUR_BESTIARY_KEY);
+		// docs/SECRET_ROOMS.md SR10's first-knock card (bestiary.secret.crack) comes after it
+		expect(BESTIARY_STRING_KEYS[BESTIARY_STRING_KEYS.size() - 2]).toBe(GOLDEN_RUMOUR_BESTIARY_KEY);
 		expect(has(REQUIRED_STRING_KEYS, GOLDEN_RUMOUR_BESTIARY_KEY)).toBe(true);
 		for (const id of sortedKeys(THEME_PACKS)) {
 			const strings = THEME_PACKS[id].strings;

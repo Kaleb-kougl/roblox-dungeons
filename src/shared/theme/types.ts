@@ -234,6 +234,10 @@ export const COLOR_ROLES = [
 	"floorMod.feast",
 	"floorMod.plunder",
 	"floorMod.bloodMoon",
+	// Roblox port (docs/SECRET_ROOMS.md SR10): a secret room's dust (secrets.ts SECRET_DUST_ROLE: the trickle from the
+	// crack's joints, the knock's puff, the burst; the tint of `fx.secret.dust`). Held to SECRET_COLOR_RULES by
+	// secretReport (secretColors.ts): >= 40 CIE76 from the enemy-bullet roles and telegraph, like the decor fx roles.
+	"secret.dust",
 ] as const;
 
 export type ColorRole = (typeof COLOR_ROLES)[number];

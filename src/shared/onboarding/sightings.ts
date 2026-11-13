@@ -4,7 +4,8 @@
  * new archetype's id (`imp`, `slime`, `summoner`; a `slime.small` counts as `slime`; docs/NEW_ENEMIES.md's `bomber`,
  * `charger`, `stormcaller`, `warbanner`, `reaper`; docs/FORTUNE.md's Goldling `golden`) or `affix.<id>` for an elite affix
  * (`affix.hulking`, ...), or `pellet.power` for the power pellet (docs/PELLETS.md PL14), or `golden.rumour` for the first
- * Goldling rumour heard (docs/GOLDLING_RUMOURS.md GR7). Its toast line is the theme string `bestiary.<sighting id>` (shared/theme
+ * Goldling rumour heard (docs/GOLDLING_RUMOURS.md GR7), or `secret.crack` for the first knock on a secret room's
+ * crack (docs/SECRET_ROOMS.md SRD5). Its toast line is the theme string `bestiary.<sighting id>` (shared/theme
  * BESTIARY_STRING_KEYS; a spec keeps the two lists equal). Plain data, no Roblox API and no theme import, so the server's
  * OnboardingService can validate a client's report with it cheaply.
  */
@@ -30,6 +31,9 @@ export const SIGHTING_IDS: ReadonlyArray<string> = [
 	"pellet.power",
 	// docs/GOLDLING_RUMOURS.md GR7 (RD7): the first Goldling rumour heard (its first-time card; appended)
 	"golden.rumour",
+	// docs/SECRET_ROOMS.md SR10 (SRD5, SRD12): the first knock on a secret room's crack (its first-time card; appended;
+	// the Codex reads it as `secret:room` seen)
+	"secret.crack",
 ];
 
 /** The affix sighting ids by shared/dungeon AffixKind - 1 (AffixKind 1..4 = hulking, swift, shielded, vengeful). */

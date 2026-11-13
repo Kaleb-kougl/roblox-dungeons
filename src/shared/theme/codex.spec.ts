@@ -1,8 +1,8 @@
-// Roblox port (claude/codex-plan.md CX5): the Codex's theme keys. Its strings are REQUIRED_STRING_KEYS' last ones (one
-// spread of codex.ts CODEX_STRING_KEYS), every bundled pack has them, their placeholders format; its one sound is
-// PORT_AUDIO_EVENTS' last, required, sfx, SILENT in every bundled pack (vale has no clip for it yet) with no
-// SFX_FALLBACK (CXD12); the plain-string copies of the Codex's tabs, groups and characters agree with shared/codex and
-// shared/characters, and every codex-only description the catalog names exists.
+// Roblox port (claude/codex-plan.md CX5): the Codex's theme keys. Its strings are REQUIRED_STRING_KEYS' last ones before
+// docs/SECRET_ROOMS.md SR10's (one spread of codex.ts CODEX_STRING_KEYS), every bundled pack has them, their placeholders
+// format; its one sound is PORT_AUDIO_EVENTS' last before the secret rooms' three, required, sfx, SILENT in every bundled
+// pack (vale has no clip for it yet) with no SFX_FALLBACK (CXD12); the plain-string copies of the Codex's tabs, groups and
+// characters agree with shared/codex and shared/characters, and every codex-only description the catalog names exists.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { CHARACTERS } from "shared/characters";
 import { CODEX_GROUPS, CODEX_TABS, CODEX_TAB_GROUPS, codexDescKeys } from "shared/codex";
@@ -21,24 +21,31 @@ import {
 	codexTabNameKey,
 } from "./codex";
 import { PORT_AUDIO_EVENTS, REQUIRED_ASSET_IDS, REQUIRED_STRING_KEYS, slotFor } from "./contract";
+import { SECRET_AUDIO_IDS, SECRET_STRING_KEYS } from "./secrets";
 import { ThemePack } from "./pack";
 import { THEME_PACKS } from "./packs";
 import { PLACEHOLDER_MANIFEST } from "./packs/placeholder";
 import { sortedKeys } from "./util";
 
-/** The last `n` entries of `list`, in order. */
-function tail(list: ReadonlyArray<string>, n: number): string[] {
+/** The last `n` entries of `list` before its last `skip` (later features' entries), in order. */
+function tail(list: ReadonlyArray<string>, n: number, skip = 0): string[] {
 	const out = new Array<string>();
-	for (let i = list.size() - n; i < list.size(); i++) out.push(list[i]);
+	const last = list.size() - skip;
+	for (let i = last - n; i < last; i++) out.push(list[i]);
 	return out;
 }
+
+/** What docs/SECRET_ROOMS.md SR10 appends after the Codex's entries (its strings and sounds; secrets.spec.ts). */
+const SECRET_AFTER = { audio: SECRET_AUDIO_IDS.size(), strings: SECRET_STRING_KEYS.size() } as const;
 
 const quiet = () => {};
 
 describe("codex: theme contract", () => {
-	it("the strings are REQUIRED_STRING_KEYS' last ones, distinct, and every bundled pack has each", () => {
+	it("the strings are REQUIRED_STRING_KEYS' last ones before the secret rooms', distinct, and every bundled pack has each", () => {
 		expect(CODEX_STRING_KEYS.size()).toBe(54);
-		expect(tail(REQUIRED_STRING_KEYS, CODEX_STRING_KEYS.size())).toEqual([...CODEX_STRING_KEYS]);
+		expect(tail(REQUIRED_STRING_KEYS, CODEX_STRING_KEYS.size(), SECRET_AFTER.strings)).toEqual([
+			...CODEX_STRING_KEYS,
+		]);
 		expect(new Set(CODEX_STRING_KEYS).size()).toBe(CODEX_STRING_KEYS.size());
 		expect(new Set(REQUIRED_STRING_KEYS).size()).toBe(REQUIRED_STRING_KEYS.size());
 		for (const p of sortedKeys(THEME_PACKS))
@@ -46,10 +53,10 @@ describe("codex: theme contract", () => {
 				expect([p, key, typeIs(THEME_PACKS[p].strings[key], "string")]).toEqual([p, key, true]);
 	});
 
-	it("appends sfx.codex.new to PORT_AUDIO_EVENTS: required, sfx; SILENT in every bundled pack; no fallback", () => {
+	it("appends sfx.codex.new to PORT_AUDIO_EVENTS (before the secret rooms' three): required, sfx; SILENT in every bundled pack; no fallback", () => {
 		expect([...CODEX_AUDIO_IDS]).toEqual([CODEX_NEW_SOUND]);
 		expect(CODEX_NEW_SOUND).toBe("sfx.codex.new");
-		expect(tail(PORT_AUDIO_EVENTS, CODEX_AUDIO_IDS.size())).toEqual([...CODEX_AUDIO_IDS]);
+		expect(tail(PORT_AUDIO_EVENTS, CODEX_AUDIO_IDS.size(), SECRET_AFTER.audio)).toEqual([...CODEX_AUDIO_IDS]);
 		for (const id of CODEX_AUDIO_IDS) {
 			expect([id, REQUIRED_ASSET_IDS.includes(id), slotFor(id)?.soundGroup]).toEqual([id, true, "sfx"]);
 			// vale keeps the placeholder's SILENT for an ID its audio layout has no clip for (CX11 adds one)

@@ -190,11 +190,13 @@ describe("required IDs and strings", () => {
 		// sfx.build.brace). + docs/BUILDS_V2.md BV10: 5 port audio events (sfx.build.counter / .pin / .slam / .smash /
 		// .beam). + docs/FLOOR_MODIFIERS.md FM7: 5 port audio events (sfx.floor.modifier.*). + docs/GOLDLING_RUMOURS.md
 		// GR6: 2 port audio events (sfx.golden.rumour.floor / .room). + claude/codex-plan.md CX5: 1 port audio event
-		// (sfx.codex.new).
+		// (sfx.codex.new). + docs/SECRET_ROOMS.md SR10: 3 port audio events (sfx.secret.knock / .open, sfx.jingle.secret);
+		// its crack / rubble art and dust effect are optional, so not here.
 		const assetsBefore =
 			60 + 1 + 2 + 2 + 37 + 5 + 4 + 2 + 1 + 5 + 2 + 4 + 9 + 2 + 1 + 5 + 1 + 6 + 3 + 2 + 2 + 4 + 3 + 1 + 8 + 1 + 2;
 		const codexSounds = 1;
-		expect(REQUIRED_ASSET_IDS.size()).toBe(assetsBefore + 5 + 5 + 2 + codexSounds);
+		const secretSounds = 3;
+		expect(REQUIRED_ASSET_IDS.size()).toBe(assetsBefore + 5 + 5 + 2 + codexSounds + secretSounds);
 		expect(AUDIO_EVENTS.size()).toBe(20);
 		expect(new Set(REQUIRED_ASSET_IDS).size()).toBe(REQUIRED_ASSET_IDS.size());
 		for (const id of REQUIRED_ASSET_IDS) {
@@ -229,8 +231,9 @@ describe("required IDs and strings", () => {
 		// + docs/FLOOR_MODIFIERS.md FM7: FLOOR_MODIFIER_STRING_KEYS (11: five names and lines, the pause line)
 		// + docs/GOLDLING_RUMOURS.md GR7: the rumour chip's 2 (GOLDEN_RUMOUR_STRING_KEYS), bestiary.golden.rumour
 		// + claude/codex-plan.md CX5: CODEX_STRING_KEYS (54)
+		// + docs/SECRET_ROOMS.md SR10: SECRET_STRING_KEYS (5), bestiary.secret.crack (BESTIARY_STRING_KEYS)
 		expect(REQUIRED_STRING_KEYS.size()).toBe(
-			before + 28 + 1 + 1 + 4 + 16 + 1 + 19 + 1 + 1 + 3 + 18 + 17 + 5 + 45 + 7 + 11 + 2 + 1 + 54,
+			before + 28 + 1 + 1 + 4 + 16 + 1 + 19 + 1 + 1 + 3 + 18 + 17 + 5 + 45 + 7 + 11 + 2 + 1 + 54 + 5 + 1,
 		);
 		expect(new Set(REQUIRED_STRING_KEYS).size()).toBe(REQUIRED_STRING_KEYS.size());
 		expect(BIOMES.map((b) => b.forgeTheme)).toEqual(["ancient", "molten", "frost", "grim", "verdant"]);

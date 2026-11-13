@@ -1141,7 +1141,7 @@ type UnknownKeys = (obj: Obj, path: ReadonlyArray<string>, allowed: ReadonlyArra
 
 const TOP_LEVEL_KEYS = ["format", "id", "name", "version", "colors", "biomes", "assets", "strings", "locales"];
 const SLOT_PREFIXES =
-	"class., enemy., boss., bullet., tile., item., ui., sfx., music., decor., breakable., amb., fx., boost., pellet., treasure., pact.";
+	"class., enemy., boss., bullet., tile., item., ui., sfx., music., decor., breakable., amb., fx., boost., pellet., treasure., pact., secret.";
 const AMBIENCE_ID_LIST = AMBIENCE_IDS.join(", ");
 const FX_ID_LIST = FX_IDS.join(", ");
 
@@ -1317,6 +1317,11 @@ export function validateManifest(manifest: unknown, opts: ValidateOptions = {}):
 		// docs/FORTUNE.md FO6: the one pact ID (fortune.ts PACT_ALTAR_ID), written out likewise
 		if (slot.slot === "pact" && assetId !== "pact.altar") {
 			err(path, "unknown pact ID (known: pact.altar)");
+			continue;
+		}
+		// docs/SECRET_ROOMS.md SR10: the two optional secret IDs (secrets.ts SECRET_ART_IDS), written out likewise
+		if (slot.slot === "secret" && assetId !== "secret.crack" && assetId !== "secret.rubble") {
+			err(path, "unknown secret ID (known: secret.crack, secret.rubble)");
 			continue;
 		}
 		validateAsset(def, path, slot, err, unknownKeys);
@@ -1878,7 +1883,7 @@ function validateAsset(def: unknown, path: Array<string>, slot: SlotContract, er
 				if (slot !== UI) {
 					err(
 						pp,
-						`only ui.*, decor.*, breakable.*, boost.*, pellet.*, treasure.* and pact.* images have a pivot; slot "${slot.slot}" has none`,
+						`only ui.*, decor.*, breakable.*, boost.*, pellet.*, treasure.*, pact.* and secret.* images have a pivot; slot "${slot.slot}" has none`,
 					);
 				} else if (!isObj(imagePivot) || !isFiniteNumber(imagePivot.x) || !isFiniteNumber(imagePivot.y)) {
 					err(pp, `must be { "x": number, "y": number } in pixels from the ${pivotWhat} top-left`);

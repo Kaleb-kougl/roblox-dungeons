@@ -123,6 +123,8 @@ describe("fx contract", () => {
 			"fx.boost.aura.aegis",
 			// docs/TREASURE.md TR6: a vault chest's light column
 			"fx.treasure.column",
+			// docs/SECRET_ROOMS.md SR10: a secret room's dust trickle
+			"fx.secret.dust",
 		]);
 		expect(new Set<string>(FX_IDS).size()).toBe(FX_IDS.size());
 		for (const id of FX_IDS) {

@@ -65,6 +65,14 @@
 	"bestiary.reaper": {
 		"note": "First-sighting toast, shown once per account (top centre, during combat) the first time the player meets the Reaper (enemy.reaper.name). Format \"Name: short survival tip\"; the name before the colon must be the same word as that name string. Brief, direct, second person."
 	},
+	"bestiary.secret.crack": {
+		"note": "First-time card, shown once per account (left edge, under the status panel) the first time the player hits a cracked wall the wrong way and it only knocks (A secret room is a small hidden chamber behind a cracked stretch of a room's wall on some dungeon floors, with a treasure chest inside; nothing announces it, and breaking the cracked wall the right way opens it.) It says what CAN break it, never where: a finishing blow (the sword's third, lunging combo hit), a Charger's charge (enemy.charger.name, an enemy that charges in a straight line) or a Wrecker roll (boon.wrecker.name, a boon whose rolls smash things). The enemy and boon names must be the same words as those name strings. Brief, direct.",
+		"max": 100
+	},
+	"bestiary.secret.crack.archer": {
+		"note": "Per-character version of \"bestiary.secret.crack\": shown instead of it when the local player plays the Archer (the character with the bow: a stream of arrows and a charged shot). Same style and terms as \"bestiary.secret.crack\", but it names a charged arrow (the bow's held, fully charged shot) instead of a finishing blow. Base line's note: First-time card the first time the player hits a cracked wall that hides a secret room and it only knocks; it says what can break it, never where. The enemy and boon names must be the same words as enemy.charger.name and boon.wrecker.name.",
+		"max": 100
+	},
 	"bestiary.slime": {
 		"note": "First-sighting toast, shown once per account (top centre, during combat) the first time the player meets the Ooze (enemy.slime.name). Format \"Name: short survival tip\"; the name before the colon must be the same word as that name string. Brief, direct, second person."
 	},
@@ -1584,6 +1592,10 @@
 		"note": "Text written on the floor while a charged arrow (the Siege Bolt boon) carries an enemy it hit along with it. ALL CAPS, one word, like the parry flash (fx.parry.text); keep capitals if the script has them.",
 		"max": 10
 	},
+	"fx.secret.text": {
+		"note": "Flash written on the floor at the spot where a cracked wall bursts open on a secret room (A secret room is a small hidden chamber behind a cracked stretch of a room's wall on some dungeon floors, with a treasure chest inside; nothing announces it, and breaking the cracked wall the right way opens it.) ALL CAPS exclamation, one word; keep capitals if the script has them.",
+		"max": 10
+	},
 	"fx.settings.close": {
 		"note": "Button that closes the settings panel.",
 		"max": 12
@@ -2358,6 +2370,13 @@
 	},
 	"hud.toast.secondWind": {
 		"note": "Toast (top centre) when the Second Wind relic saves the player from a lethal hit. Name of the relic as an exclamation; must match relic.secondWind.name."
+	},
+	"hud.toast.secret": {
+		"note": "Toast (top centre) in a co-op run when a teammate opens a secret room (A secret room is a small hidden chamber behind a cracked stretch of a room's wall on some dungeon floors, with a treasure chest inside; nothing announces it, and breaking the cracked wall the right way opens it.). {name} is the player's display name (never translated).",
+		"max": 40,
+		"example": {
+			"name": "Builderman"
+		}
 	},
 	"hud.toast.vault": {
 		"note": "Toast (top centre, 2 s) on arriving on a dungeon floor that holds a vault. A vault is a fight room on some dungeon floors holding a caged treasure chest; clearing the room unlocks the chest, and meeting the room's lock condition (UNTOUCHED: no hits; SWIFT: under a time limit) keeps its full rarity. Says only that one exists on this floor, not where. \"Vault\" is a glossary term: the same word in every vault string.",
@@ -3921,6 +3940,10 @@
 		"note": "Run-over panel (after death), a highlight cell label (2 x 2 grid of cells about 200 px wide; the value is drawn beside or under it, text shrinks): rooms cleared of enemies this run.",
 		"max": 20
 	},
+	"run.recap.hl.secrets": {
+		"note": "Run-over panel (after death), a highlight cell label (2 x 2 grid of cells about 200 px wide; the value is drawn beside or under it, text shrinks): how many secret rooms (A secret room is a small hidden chamber behind a cracked stretch of a room's wall on some dungeon floors, with a treasure chest inside; nothing announces it, and breaking the cracked wall the right way opens it.) were opened this run (the number is drawn beside it).",
+		"max": 20
+	},
 	"run.recap.hl.speed": {
 		"note": "Run-over panel (after death), a highlight cell label (2 x 2 grid of cells about 200 px wide; the value is drawn beside or under it, text shrinks): points earned for clearing rooms fast (the formatted points are drawn beside it).",
 		"max": 20
@@ -4267,6 +4290,10 @@
 		"note": "Run-over panel: score breakdown row label (200 px label column, the points sit to the right) for points from rooms cleared of enemies.",
 		"max": 20
 	},
+	"score.source.secret": {
+		"note": "Run-over panel: score breakdown row label (200 px label column, the points sit to the right) for points from secret rooms (A secret room is a small hidden chamber behind a cracked stretch of a room's wall on some dungeon floors, with a treasure chest inside; nothing announces it, and breaking the cracked wall the right way opens it.): opening them and their chests. Plural: every secret room of the whole run.",
+		"max": 20
+	},
 	"score.source.sweep": {
 		"note": "Run-over panel: score breakdown row label (200 px label column, the points sit to the right) for Sweep bonuses (every pellet of a room collected before its last enemy died). Plural: the bonuses of the whole run.",
 		"max": 20
@@ -4274,6 +4301,10 @@
 	"score.source.treasure": {
 		"note": "Run-over panel: score breakdown row label (200 px label column, the points sit to the right) for points from vault chests opened (treasure chests in caged fight rooms). Plural: every vault of the whole run.",
 		"max": 20
+	},
+	"secret.room.name": {
+		"note": "Codex entry name (the Codex: a collection book on the main menu) for the secret rooms as a whole (A secret room is a small hidden chamber behind a cracked stretch of a room's wall on some dungeon floors, with a treasure chest inside; nothing announces it, and breaking the cracked wall the right way opens it.) Plural, title case, short.",
+		"max": 24
 	},
 	"stage.best.deeperYet": {
 		"note": "Gold second line of the new-floor card on each further floor past the record (the run keeps setting a new record)."
@@ -4416,6 +4447,10 @@
 		"example": {
 			"name": "Hourglass"
 		}
+	},
+	"treasure.secret.title": {
+		"note": "Title above the reward cards of a secret room's chest (A secret room is a small hidden chamber behind a cracked stretch of a room's wall on some dungeon floors, with a treasure chest inside; nothing announces it, and breaking the cracked wall the right way opens it.), so it reads apart from a vault's chest. \"Cache\" as in a hidden store of treasure. Title case.",
+		"max": 24
 	},
 	"treasure.spareHits": {
 		"note": "Short line rising from a vault's chest when a co-op party cleared the room with hits to spare. {lock} is the lock's name (treasure.lock.untouched), {hits} the number of hits the party could still have taken.",

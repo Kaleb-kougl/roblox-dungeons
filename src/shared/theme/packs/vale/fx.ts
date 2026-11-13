@@ -13,6 +13,7 @@
  */
 import { BOOST_COLLECT_FX_ID, BOOST_FX_IDS, FX_IDS, type BoostFxId, type FxId } from "../../contract";
 import { GOLDEN_COIN_ROLE } from "../../fortune";
+import { SECRET_DUST_FX_ID, SECRET_DUST_ROLE } from "../../secrets";
 import type { ColorRole, ImageAsset, SpriteSetAsset } from "../../types";
 import { sortedKeys } from "../../util";
 import { VALE_BULLET_SOURCE, type ValeBulletSource } from "./bullets";
@@ -44,7 +45,7 @@ export type ValeFxId = Exclude<FxId, BoostFxId>;
  * pickup burst. The boost auras are neither here nor in VALE_FX_IDS: boostAuras.ts draws them (VALE_BOOST_AURA_IDS)
  * once boost-auras.png has an ID.
  */
-export const VALE_FX_PENDING: ReadonlyArray<FxId> = [BOOST_COLLECT_FX_ID];
+export const VALE_FX_PENDING: ReadonlyArray<FxId> = [BOOST_COLLECT_FX_ID, SECRET_DUST_FX_ID];
 
 /** One sheet of effects: the PNG and the effects packed into it (cells `start + f`, floor(sheet w / frameW) per row). */
 export interface ValeFxSource {
@@ -113,6 +114,9 @@ export const VALE_FX: Readonly<Record<ValeFxId, ValeFxLook>> = {
 	// docs/FORTUNE.md FO10: the Goldling's coin burst (original art, gen-fortune-art.js): solid coins (not additive: their
 	// dark rims would vanish), tinted golden.coin; GoldenRenderController plays it x GOLDEN_VIEW.fountainFxScale on a catch
 	"fx.golden.coin": { sizeTiles: 1, tint: GOLDEN_COIN_ROLE, additive: false },
+	// docs/SECRET_ROOMS.md SR10 / SR11: a secret room's dust trickle (original art, gen-secret-art.js): solid grey motes
+	// (not additive: dust is not light), tinted secret.dust; the view drops it down the crack's face
+	"fx.secret.dust": { sizeTiles: 1, tint: SECRET_DUST_ROLE, additive: false },
 };
 
 /** Ambient textures that glow (LightEmission 1): molten embers. */

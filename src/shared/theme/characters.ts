@@ -76,4 +76,6 @@ export const CHARACTER_OVERRIDE_KEYS: ReadonlyArray<string> = [
 	"duo.fullHeart.desc.knight",
 	"duo.fullHeart.desc.archer",
 	"duo.citadel.desc.archer",
+	// docs/SECRET_ROOMS.md SR10 (SRD5): the first-knock card names the charged arrow, not the finishing blow
+	"bestiary.secret.crack.archer",
 ];

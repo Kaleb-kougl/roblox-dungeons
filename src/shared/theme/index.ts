@@ -189,6 +189,11 @@ export {
 } from "./floorModifierColors";
 // Roblox port (claude/codex-plan.md CX5): the Codex's strings, key helpers and its one sound.
 export * from "./codex";
+// Roblox port (docs/SECRET_ROOMS.md SR10): the secret rooms' strings, sounds, dust role and optional art ids, their
+// colour report and the art's facing rule.
+export * from "./secrets";
+export { SECRET_COLOR_RULES, secretReport, type SecretColorEntry, type SecretColorRules } from "./secretColors";
+export { secretArtProblems, type SecretArtProblem } from "./secretArt";
 // Roblox port (docs/PROJECTILE_ART.md PA3): the bullet sprite rules.
 export { bulletArtProblems, bulletArtReport, type BulletArtEntry, type BulletArtProblem } from "./bulletArt";
 export { GOO_ART_RULES, gooArtProblems, gooArtReport, type GooArtEntry, type GooArtProblem } from "./gooArt";

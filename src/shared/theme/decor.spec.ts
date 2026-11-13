@@ -152,8 +152,9 @@ describe("decor contract", () => {
 		]);
 		// (and the treasure rooms' chest and cage, docs/TREASURE.md TR6: treasure.spec.ts)
 		// (and the boost drops' slot, docs/BOOSTS.md B5: boosts.spec.ts; the pellets', docs/PELLETS.md PL6: pellets.spec.ts;
-		// the pact altar's, docs/FORTUNE.md FO6: fortune.spec.ts)
-		expect(WORLD_ART_SLOTS).toEqual([DECOR, BREAKABLE, BOOST, PELLET, TREASURE, PACT]);
+		// the pact altar's, docs/FORTUNE.md FO6: fortune.spec.ts; the secret rooms' optional art, docs/SECRET_ROOMS.md SR10:
+		// secrets.spec.ts)
+		expect(WORLD_ART_SLOTS).toEqual([DECOR, BREAKABLE, BOOST, PELLET, TREASURE, PACT, slotFor("secret.crack")]);
 		expect(slotFor("decor.delve.b1.pillar")).toBe(DECOR);
 		expect(slotFor("decor.fx.torch")).toBe(DECOR);
 		expect(slotFor("breakable.crate")).toBe(BREAKABLE);
