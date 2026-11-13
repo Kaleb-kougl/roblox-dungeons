@@ -22,7 +22,7 @@ Wave 1 (five modifiers, every one **true**; four boons and one twist, FMD1):
 
 | Id | Kind | Card | What it does | Built from |
 |---|---|---|---|---|
-| `gilded` | boon | **Gilded** · A Goldling is certain | The floor's Goldling roll always hits | `placeGolden` |
+| `gilded` | boon | **Gilded** · A Goldling is certain | The floor's Goldling roll always hits (since docs/GOLDLING_RUMOURS.md: it hides in its own barrel or crate) | `placeGolden` |
 | `hoard` | boon | **Hoard** · A treasure vault is certain | The floor's vault roll always hits | `placeVault` |
 | `feast` | boon | **Feast** · A power pellet is certain | The floor's power pellet roll always hits | `placePellets` |
 | `plunder` | boon | **Plunder** · Every fight room hides a boost | One loaded barrel / crate in every room that has pieces | `placeBreakableLoot` |

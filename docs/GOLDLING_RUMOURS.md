@@ -215,7 +215,8 @@ Built as the recommended option, owner to confirm (2026-11-12):
 ## As built (2026-11-12)
 
 Branch `goldling-rumours` from `main` @ `677b5b1`, one commit per task (GR1-GR8; GR0's findings went into GR1 / GR2,
-listed under "GR0" below). Gameplay for the Goldling only; everything else on the floor and in the sim is unchanged.
+listed under "GR0" below); rebased onto `main` @ `6704c16` (the floor modifiers, docs/FLOOR_MODIFIERS.md) on
+2026-11-12, see "Rebase onto the floor modifiers" below. Gameplay for the Goldling only; everything else on the floor and in the sim is unchanged.
 M1, every golden fixture and the tutorial (no Goldling) replay exactly as before.
 
 ### GR0 (the code assumptions)
@@ -268,11 +269,14 @@ M1, every golden fixture and the tutorial (no Goldling) replay exactly as before
 - `holdAbsoluteTimers` drops the waiting branch (a running Goldling's `fieldTick` still moves). Removed:
   `GoldenConfig.appearTicks`, `GOLDEN_APPEAR_TICKS`, `goldenSpawnTile`. New queries: `goldenPieceAt(state, slot)` (the
   glint), `goldenGuardsPiece`, `goldenPieceCentre`.
-- **Worlds (GR3):** `DAILY.ruleset` 15 -> 16 (docs/DAILY.md); the all-time boards stay `_v1`. Re-recorded, only where a
+- **Worlds (GR3):** `DAILY.ruleset` 15 -> 16 (docs/DAILY.md; 16 -> 17 on the rebase onto the floor modifiers, which
+  took 16); the all-time boards stay `_v1`. Re-recorded, only where a
   Goldling piece now stands (each floor rolled a Goldling; with its piece filtered out the old values replay exactly):
   the Charger's run 4 floor 3 pin (`1a65fa83` -> `be9d10a6`, counts unchanged) and the Stormcaller's run 4 / run 23
   floor 3 pins (`3/0/4b457f84` -> `3/0/77c11a8d`, `6/0/c213cd8f` -> `6/0/a2fea36e`). No other pin, digest or
-  hash-group layout moved (`hash.spec`, `roomPool.lock`, vault, determinism).
+  hash-group layout moved (`hash.spec`, `roomPool.lock`, vault, determinism). After the rebase: run 23's co-op floor 3
+  is also a Hoard floor (docs/FLOOR_MODIFIERS.md), so its pin is `6/0/87bec14a` (main's Hoard pin `6/0/59e6c52a` plus
+  the Goldling's piece).
 
 ### View (GR4-GR7, presentation only)
 
@@ -370,6 +374,25 @@ lint, build, test:art, check:assets, test:checks, `view/audio view/golden theme/
 tests): both rumours fall back to `sfx.score.tick` (not `sfx.golden.hit`, which has no clip on main, and a fallback
 resolves one step); the touch strip's boosts take the width the Horde and rumour chips leave. Open nit for the owner:
 `sfx.golden.appear` plays on the break's frame while the flash and `GOLDLING!` wait `afterBreakSec` 0.12 s.
+
+### Rebase onto the floor modifiers (2026-11-12)
+
+- **Gilded** (`placeGolden`'s `certain`, a modifier floor's sure Goldling) now places its piece too: `placeFloorParts`
+  passes the pieces so far (the chest included), the pellets and the vault; the piece is appended in
+  `buildEndlessFloor` after `placeFloorParts`, so a forced re-run never sees it. Gilded's eligibility
+  (`floorModifierEligible`) asks `goldenEligibleRooms` with the natural pieces and chest, so a Gilded floor always has
+  a room its piece fits in. On a Hoard floor the Goldling's room and roll are the natural ones; its cell and slot are
+  placed against the forced chest (modifiers.spec's Hoard case).
+- **Chips:** the status corner's chip row holds the floor modifier, Horde and rumour chips. Without the modifier they
+  split the row but one boost cell (`chipRowWidth`); with the modifier and another chip they take a line of their own
+  (the modifier in a boost cell's width, as main had it with the Horde) above the boosts. The touch strip budgets all
+  three before the boosts and items.
+- **Theme order:** the rumours' two audio IDs and two chip strings come after the floor modifiers' five stings and
+  eleven strings (their tail specs in floorModifiers / fortune / treasure / runRecap / boosts / contract skip them).
+- `DAILY.ruleset` 17; the stormcaller co-op pin `6/0/87bec14a` (above).
+- Verify after the rebase (cloud, x86): typecheck, lint, check:assets, check:autolocalize, test:art, test:checks,
+  test:l10n and the build clean; Lune 482 of 483 suites pass, the one failure the known x86-only
+  `dungeon/forge/forge.spec.ts` NaN sign bit.
 
 ## Studio check
 

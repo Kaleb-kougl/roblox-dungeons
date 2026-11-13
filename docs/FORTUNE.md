@@ -315,7 +315,7 @@ area and art ids). Main's treasure landed first, so Fortune moved after it; both
 
 Branch `goldling-rumours` (GR0-GR9; owner tasks GR10-GR12 and RD3-RD7 / RD9 pending). Gameplay for the Goldling only;
 M1, every fixture and the tutorial replay as before; endless replays and scores changed, boards stay `_v1`,
-`DAILY.ruleset` 15 -> 16.
+`DAILY.ruleset` 16 -> 17 (after the floor modifiers' 16). A Gilded floor's certain Goldling hides in its piece too.
 
 - **Appear rule:** no more "3 s after its room engages on the farthest spawn tile" (FD10's delay, `appearTicks`,
   `GOLDEN_APPEAR_TICKS`, `goldenSpawnTile`, the freeze's waiting branch: gone). It hides (WAITING) until a player breaks
