@@ -691,6 +691,34 @@ default** like every spike here: `KV_PadSpike` extended (it already plays `SetMo
 **published** place (Studio cannot vibrate a phone); the voice-chat row needs a place with voice chat enabled. Play
 each cue at the strengths and durations of docs/HAPTICS.md's "Player experience" table.
 
+### How to run: the seven test cues (`KV_HapticDebug`, HP6)
+
+The built game already plays every play cue through `HapticsController` (client/controllers/fx), so rows 1a-1d, 2a,
+2b, 3 and 5 can be felt on the real cues without a spike build. Workspace attribute **`KV_HapticDebug`**
+(`HAPTIC_DEBUG` in shared/view/fx hapticsConfig.ts, off by default):
+
+- `true` (any value but absent / `false` / `0` / `""`): prints every play cue played (`[Haptics] play <kind> on <pad |
+  touch> (<backend>)`, backend `motor` / `effect`, or why nothing played: `no pad`, `no motor`, `held` (a stronger cue
+  holds the motor or the phone), `effect off`, `no device`), every drop with its reason (`gap`, `cap`, `duty`,
+  `priority`, `quiet`), each `stopAll`, and once a warning if the phone's `HapticEffect` backend failed and was
+  disabled for the session (with the failing call).
+- An integer **1-7** fires one test cue once per change of the attribute, on the current device, even outside a run (the
+  device and its setting still apply: the last-used device must be the gamepad with Options > Controls > Gamepad >
+  Vibration On, or touch with Options > Controls > Touch > Vibration On): **1** kill, **2** parry, **3** stagger (phase
+  break), **4** boss death, **5** hurt armor, **6** hurt heart, **7** hurt lethal. The attribute keeps its value: set
+  another number (or the same number after any other value) to fire again. It prints `[Haptics] test <kind> on
+  <device> (<backend>)`.
+
+On a **phone** (published place): set the attribute on the server from the developer console's server command line
+(`workspace:SetAttribute("KV_HapticDebug", 6)`; a Workspace attribute set on the server replicates to every client, and
+the client log shows the prints); touch the screen once so the device is touch, then 1-7 in turn; row 1b by tuning
+`PLAY_HAPTICS` locally, row 1c with 1, row 5 with 6, row 1e by moving the effects' folder (`KV_Haptics`, today under
+Workspace with no `Position` / `Radius`). On **pads** (Xbox / PlayStation on PC): press any pad button first, then 1-7;
+rows 2a / 2b compare against today's `SetMotor` backend (HapticEffect on pads is not wired, HPD2). A pad on a phone
+(row 3): connect it, press a button, fire 1-7: expected `no motor` or nothing felt, no error. Row 4 (the co-op kill
+feed) is answered in code (HP4): scored runs credit kills by `ScoreEvents.popPlayer`, summed per frame from the run
+view's `RecapTally`; an unscored co-op run (M1 without `KV_Scoring`) has no feed and gets no kill tick.
+
 ### Results: haptics in play (HP0)
 
 | Question | iPhone | Android phone | Xbox pad (PC) | PlayStation pad (PC) | Decides |
