@@ -6,7 +6,7 @@
  *     (UserInputService:GetImageForKeyCode; GMD8: engine content, not a theme asset), else the engine's text for the
  *     key (GetStringForKeyCode) when it says more than the KeyCode's own name, else our label (shared/play inputLabel).
  *   - menuHapticsOn / hapticTimeline: whether a menu cue may vibrate at all, and a cue's pulses as motor on / off
- *     events in time order (client PadHaptics schedules them). The timeline itself, its event type and
+ *     events in time order (client fx HapticsController schedules them). The timeline itself, its event type and
  *     HapticGenerations (which scheduled motor event is still current, per pad and motor) live in shared/view/fx
  *     haptics.ts since docs/HAPTICS.md HP1 (the play cues share them) and are re-exported here.
  *   - padConfirmFeedback: what a MenuButton activation means for the pad's haptics (a confirm, a disabled press, or

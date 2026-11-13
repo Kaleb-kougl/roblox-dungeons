@@ -208,7 +208,7 @@ export const MENU_HAPTIC_KINDS: ReadonlyArray<MenuHaptic> = ["confirm", "disable
 export const MENU_HAPTIC_MAX_PULSE_SEC = 0.2;
 
 /**
- * Every menu cue's pulses (client PadHaptics plays them; silent where the pad has no such motor, and with
+ * Every menu cue's pulses (client fx HapticsController plays them; silent where the pad has no such motor, and with
  * DisplaySettings.padVibration Off): a light tick on confirm, a short double buzz on pressing a disabled button, a
  * tick at a list's end when scrolling into it, a firmer tick when hold-B completes.
  */
