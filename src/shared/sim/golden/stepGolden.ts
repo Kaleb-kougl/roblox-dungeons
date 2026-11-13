@@ -1,14 +1,16 @@
 /**
- * The Goldling's tick step (docs/FORTUNE.md "Appears" / "Escape", GE2): appearance and escape. Only with state.golden
- * (SimConfig.golden) on an endless floor; step() / stepParty() call stepGolden right after stepScore (so the room's
- * engagement and this tick's kills are settled first). Draws NO rng (the main stream, the drops' and its own alike).
+ * The Goldling's tick step (docs/FORTUNE.md "Appears" / "Escape", GE2; docs/GOLDLING_RUMOURS.md GR2): release and
+ * escape. Only with state.golden (SimConfig.golden) on an endless floor; step() / stepParty() call stepGolden right after
+ * stepScore (so the room's engagement, this tick's kills and this tick's breaks are settled first). Draws NO rng (the
+ * main stream, the drops' and its own alike).
  *
- *   WAITING   the room's engagement tick is latched (its score record's engageTick; an unscored run: the tick a player
- *             first entered the room, endless roomsEntered), appearTick = engageTick + config.appearTicks. From
- *             appearTick on: it spawns on the room's spawn tile (EndlessFloorWorld.roomSpawnTiles[room], row order)
- *             farthest from every living player (the largest distance to the nearest of them; ties to the first tile),
- *             RUNNING, seen + 1, events.appeared; a full actor pool (spawnActor returns undefined): SKIPPED,
- *             events.skipped. It is never attached to the room's record (the room clears without it; FD10).
+ *   WAITING   hidden in its piece. The room's engagement tick is latched once (its score record's engageTick; an
+ *             unscored run: the tick a player first entered the room, endless roomsEntered): the view's room rumour
+ *             reads it; nothing here times off it. Once a player broke its piece (releaseTick >= 0, goldenHooks.ts
+ *             goldenOnBreak, earlier this tick): it spawns at the piece's cell centre (goldenPieceCentre), RUNNING,
+ *             appearTick = this tick, seen + 1, events.appeared; a full actor pool (spawnActor returns undefined):
+ *             SKIPPED, events.skipped. It is never attached to the room's record (the room clears without it; FD10).
+ *             Never released: it stays WAITING until the floor ends (no counter).
  *   RUNNING   its time is up (v[GOLDEN_TICKS_LEFT] <= 0, still alive): freed (freeActor: no onDeath, score or drop),
  *             ESCAPED, escaped + 1, events.escaped. Coins won stay won. The catch is its onDeath (goldenHooks.ts).
  */
@@ -19,38 +21,11 @@ import { freeActor, spawnActor } from "../combat/actors/actors";
 import { archetypeIndex } from "../combat/actors/registry";
 import { GOLDEN_TICKS_LEFT } from "../combat/actors/archetypes/golden";
 import { EMPTY_INPUT } from "../input";
-import { partySize, playerAt } from "../party";
-import { endlessFloorWorld, type SpawnTile } from "../endless";
+import { endlessFloorWorld } from "../endless";
 import { GOLDEN_KIND, GoldenStatus } from "./goldenData";
-import type { GoldenState } from "./golden";
+import { goldenPieceCentre, type GoldenState } from "./golden";
 
 const ctx = new SimCtx();
-
-/**
- * The tile of `tiles` farthest from every living player (largest squared distance to the nearest one; ties to the first
- * tile), or undefined when `tiles` is empty. With nobody alive: the first tile.
- */
-export function goldenSpawnTile(state: Readonly<SimState>, tiles: ReadonlyArray<SpawnTile>): SpawnTile | undefined {
-	let best: SpawnTile | undefined;
-	let bestD2 = -1;
-	const n = partySize(state);
-	for (const t of tiles) {
-		let near2 = math.huge;
-		for (let i = 0; i < n; i++) {
-			const p = playerAt(state, i);
-			if (p.dead !== 0) continue;
-			const dx = t.x - p.x;
-			const dz = t.z - p.z;
-			const d2 = dx * dx + dz * dz;
-			if (d2 < near2) near2 = d2;
-		}
-		if (near2 > bestD2) {
-			best = t;
-			bestD2 = near2;
-		}
-	}
-	return best;
-}
 
 /** The tick its room engaged, or -1 (see the file comment). */
 function engagedAt(state: Readonly<SimState>, g: Readonly<GoldenState>): number {
@@ -69,21 +44,19 @@ export function stepGolden(state: SimState, config: Readonly<SimConfig>): void {
 	if (g.status === GoldenStatus.WAITING) {
 		if (g.engageTick < 0) {
 			const t = engagedAt(state, g);
-			if (t >= 0) {
-				g.engageTick = t;
-				g.appearTick = t + g.config.appearTicks;
-			}
+			if (t >= 0) g.engageTick = t;
 		}
-		if (g.appearTick < 0 || state.tick < g.appearTick) return;
-		const tile = goldenSpawnTile(state, world.roomSpawnTiles?.[g.room] ?? []);
+		if (g.releaseTick < 0) return;
+		const at = goldenPieceCentre(g)!;
 		ctx.bind(state, world.config, EMPTY_INPUT);
-		const a = tile !== undefined ? spawnActor(ctx, archetypeIndex(GOLDEN_KIND), tile.x, tile.z) : undefined;
+		const a = spawnActor(ctx, archetypeIndex(GOLDEN_KIND), at.x, at.z);
 		if (a === undefined) {
 			g.status = GoldenStatus.SKIPPED;
 			g.events.skipped = 1;
 			return;
 		}
 		g.status = GoldenStatus.RUNNING;
+		g.appearTick = state.tick;
 		g.actorSlot = state.combat.actors.indexOf(a);
 		g.actorId = a.id;
 		g.seen += 1;

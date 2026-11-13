@@ -7,13 +7,16 @@
  *   glint     a loaded intact piece (shared/sim breakableLootAt) shows `decor.fx.glint` once every glintEverySeconds of
  *             sim time, phased by its cell hash (deterministic: every client sees the same sparkle at the same tick);
  *             a still frame under reduced motion; its billboard on the piece's top as drawn (art or placeholder box);
- *             hidden while an enemy bullet is near (never over a bullet)
+ *             hidden while an enemy bullet is near (never over a bullet). The Goldling's hiding place glints exactly
+ *             the same way while it hides (docs/GOLDLING_RUMOURS.md RD14, GR4: shared/sim goldenPieceAt): pieceGlints
+ *             is the one test, glintSlotCount the slots to scan
  *   hop       a released boost's height over the floor: the piece's top -> the floor in an arc over hopSeconds, then
  *             the drop's ordinary bob counted from the landing
  *   debug     the label text of a loaded piece (developer text, English)
  */
 import { CAMERA_PITCH_DEG, STUDS_PER_TILE } from "shared/config";
 import { TILE_SIZE, cellKey } from "shared/dungeon";
+import { NO_BOOST, breakableLootAt, goldenPieceAt, type SimState } from "shared/sim";
 import { BOOST_KINDS } from "shared/theme";
 import { BREAKABLE_LOOT_VIEW } from "./breakableLootConfig";
 import { degToRad } from "./iso";
@@ -26,6 +29,27 @@ export const LOOT_GLINT_HIDDEN = -1;
 
 // ---------------------------------------------------------------------------------------------
 // The glint
+
+/**
+ * Breakables slot `slot` glints (the caller also checks the piece is drawn and intact): it holds a boost
+ * (breakableLootAt) or it is the Goldling's piece while the Goldling hides in it (goldenPieceAt, docs/GOLDLING_RUMOURS.md
+ * RD14). Both glint with the same art, tint, cadence and per-cell phase (lootGlintPhaseSec), so nobody can tell a
+ * Goldling's crate from a loaded one until it breaks. Read-only.
+ */
+export function pieceGlints(state: Readonly<SimState>, slot: number): boolean {
+	return breakableLootAt(state, slot) !== NO_BOOST || goldenPieceAt(state, slot);
+}
+
+/**
+ * How many breakables slots the glint scans from 0: the loot table's size, or one past the Goldling's piece while it
+ * hides there (its piece is the floor's last piece, past every loot slot). 0: nothing can glint.
+ */
+export function glintSlotCount(state: Readonly<SimState>): number {
+	const loot = state.drops?.pieceLoot.size() ?? 0;
+	const g = state.golden;
+	const piece = g !== undefined && g.piece >= 0 && goldenPieceAt(state, g.piece) ? g.piece + 1 : 0;
+	return math.max(loot, piece);
+}
 
 /**
  * A loaded piece's glint phase, sim seconds into the glint cycle, from its cell (cellX, cellY) alone: one of

@@ -29,6 +29,7 @@ import {
 	MIN_FLOOR_MODIFIER_TWIST_DIFFERENCE,
 	floorModifierReport,
 } from "./floorModifierColors";
+import { GOLDEN_RUMOUR_AUDIO_IDS, GOLDEN_RUMOUR_STRING_KEYS } from "./fortune";
 import { ThemePack } from "./pack";
 import { THEME_PACKS } from "./packs";
 import { PLACEHOLDER_MANIFEST } from "./packs/placeholder";
@@ -43,9 +44,11 @@ const has = (list: ReadonlyArray<string>, id: string) => list.includes(id);
 const clone = () => deepClone(PLACEHOLDER_MANIFEST) as unknown as Obj;
 
 /** The last `n` entries of `list`, in order. */
-function tail(list: ReadonlyArray<string>, n: number): string[] {
+/** The last `n` entries of `list` before its last `skip` (docs/GOLDLING_RUMOURS.md GR6 / GR7's come after), in order. */
+function tail(list: ReadonlyArray<string>, n: number, skip = 0): string[] {
 	const out = new Array<string>();
-	for (let i = list.size() - n; i < list.size(); i++) out.push(list[i]);
+	const last = list.size() - skip;
+	for (let i = last - n; i < last; i++) out.push(list[i]);
 	return out;
 }
 
@@ -67,12 +70,14 @@ describe("floor modifiers: theme keys", () => {
 		]);
 	});
 
-	it("the strings: REQUIRED_STRING_KEYS' last eleven (name and line per kind, the pause line), every pack fills them", () => {
+	it("the strings: REQUIRED_STRING_KEYS' eleven before the Goldling rumours' (name and line per kind, the pause line), every pack fills them", () => {
 		const keys = new Array<string>();
 		for (const k of FLOOR_MODIFIER_KEYS) keys.push(floorModifierNameKey(k), floorModifierLineKey(k));
 		keys.push(FLOOR_MODIFIER_PAUSE_KEY);
 		expect(keys).toEqual([...FLOOR_MODIFIER_STRING_KEYS]);
-		expect(tail(REQUIRED_STRING_KEYS, FLOOR_MODIFIER_STRING_KEYS.size())).toEqual([...FLOOR_MODIFIER_STRING_KEYS]);
+		expect(tail(REQUIRED_STRING_KEYS, FLOOR_MODIFIER_STRING_KEYS.size(), GOLDEN_RUMOUR_STRING_KEYS.size())).toEqual(
+			[...FLOOR_MODIFIER_STRING_KEYS],
+		);
 		expect(new Set(REQUIRED_STRING_KEYS).size()).toBe(REQUIRED_STRING_KEYS.size());
 		// a string key's first segment is lowercase (`floormod.`), unlike the colour role (`floorMod.`)
 		for (const k of FLOOR_MODIFIER_STRING_KEYS) expect([k, isStringKey(k)]).toEqual([k, true]);
@@ -125,7 +130,7 @@ describe("floor modifiers: theme keys", () => {
 		}
 	});
 
-	it("appends the five stings to PORT_AUDIO_EVENTS (lowercase: bloodmoon): required, sfx; SILENT in every bundled pack", () => {
+	it("appends the five stings to PORT_AUDIO_EVENTS before the Goldling rumours' (lowercase: bloodmoon): required, sfx; SILENT in every bundled pack", () => {
 		expect(FLOOR_MODIFIER_KEYS.map((k) => floorModifierAudioId(k))).toEqual([...FLOOR_MODIFIER_AUDIO_IDS]);
 		expect([...FLOOR_MODIFIER_AUDIO_IDS]).toEqual([
 			"sfx.floor.modifier.gilded",
@@ -135,7 +140,9 @@ describe("floor modifiers: theme keys", () => {
 			"sfx.floor.modifier.bloodmoon",
 		]);
 		expect(FLOOR_MODIFIER_AUDIO_PREFIX).toBe("sfx.floor.modifier.");
-		expect(tail(PORT_AUDIO_EVENTS, FLOOR_MODIFIER_AUDIO_IDS.size())).toEqual([...FLOOR_MODIFIER_AUDIO_IDS]);
+		expect(tail(PORT_AUDIO_EVENTS, FLOOR_MODIFIER_AUDIO_IDS.size(), GOLDEN_RUMOUR_AUDIO_IDS.size())).toEqual([
+			...FLOOR_MODIFIER_AUDIO_IDS,
+		]);
 		for (const id of FLOOR_MODIFIER_AUDIO_IDS) {
 			expect([id, has(REQUIRED_ASSET_IDS, id), slotFor(id)?.soundGroup]).toEqual([id, true, "sfx"]);
 			for (const p of sortedKeys(THEME_PACKS))

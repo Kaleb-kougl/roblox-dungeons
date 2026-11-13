@@ -207,6 +207,8 @@ Clip names are file names under `Sounds/` unless noted. "A / B" means "audition 
 | `sfx.floor.enter` | `floorChanged` | `Jump & Bounce/Bounce2` / `Jingles/Secret1` |
 | `sfx.depth.up` | `depthChanged` (a boss kill) | `Jingles/LevelUp1` |
 | `sfx.jingle.gameover` | run over (all players dead) | `Jingles/GameOver` / `GameOver3` |
+| `sfx.golden.rumour.floor` | docs/GOLDLING_RUMOURS.md GR6 (added 2026-11-12, SILENT until GR10's audition; falls back to `sfx.score.tick`): a Goldling hides on this floor, once per floor 1 s after the draft closed, cue volume 0.45, priority 45 | `Bonus/Coin3` low-passed ~2200 Hz at -6 dB / `Coin3` |
+| `sfx.golden.rumour.room` | docs/GOLDLING_RUMOURS.md GR6: its room engaged, once per floor, cue volume 0.8 (x the teammate volume from outside the room), priority 66 | `Bonus/Coin3` unfiltered / a `mix` of two `Coin2` taps |
 
 Later port IDs follow the same pattern in their own docs. Floor modifiers (docs/FLOOR_MODIFIERS.md FM7, 2026-11-12)
 add five, the floor card banner's sting: `sfx.floor.modifier.gilded` / `.hoard` / `.feast` / `.plunder` /

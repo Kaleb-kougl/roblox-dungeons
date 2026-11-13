@@ -48,6 +48,7 @@ import {
 	type VaultOverride,
 	type VaultPlan,
 } from "shared/dungeon";
+import { withoutGoldenPiece } from "shared/dungeon/testing";
 
 const dungeons = new Map<string, Dungeon>();
 function dungeonFor(params: ForgeParams): Dungeon {
@@ -75,11 +76,15 @@ interface Built {
 const BUILT: Built[] = [];
 for (let run = 1; run <= RUNS; run++)
 	for (let floor = 1; floor <= FLOORS; floor++)
+		// Each without the Goldling's own piece, which is placed after the vault (docs/GOLDLING_RUMOURS.md GR1) and so
+		// may differ between the three builds; golden.spec.ts checks it.
 		BUILT.push({
 			run,
-			off: buildEndlessFloor(run, floor, dungeonFor),
-			on: buildEndlessFloor(run, floor, dungeonFor, 1, { vaults: true }),
-			every: buildEndlessFloor(run, floor, dungeonFor, 1, { vaults: true, vaultOverride: EVERY }),
+			off: withoutGoldenPiece(buildEndlessFloor(run, floor, dungeonFor)),
+			on: withoutGoldenPiece(buildEndlessFloor(run, floor, dungeonFor, 1, { vaults: true })),
+			every: withoutGoldenPiece(
+				buildEndlessFloor(run, floor, dungeonFor, 1, { vaults: true, vaultOverride: EVERY }),
+			),
 		});
 
 /** Every floor that holds a vault (natural or forced), with the option-off twin of the floor. */
@@ -264,9 +269,11 @@ describe("vault: the option gate", () => {
 			const l = b.off;
 			expect(l.vault).toBe(undefined);
 			const f = l.floor;
-			expect(buildEndlessFloor(b.run, f, dungeonFor, 1, {})).toEqual(l);
-			expect(buildEndlessFloor(b.run, f, dungeonFor, 1, { vaults: false, vaultOverride: EVERY })).toEqual(l);
-			expect(buildEndlessFloor(b.run, f, dungeonFor, 1, { vaultOverride: EVERY })).toEqual(l);
+			const raw = buildEndlessFloor(b.run, f, dungeonFor);
+			expect(withoutGoldenPiece(raw)).toEqual(l);
+			expect(buildEndlessFloor(b.run, f, dungeonFor, 1, {})).toEqual(raw);
+			expect(buildEndlessFloor(b.run, f, dungeonFor, 1, { vaults: false, vaultOverride: EVERY })).toEqual(raw);
+			expect(buildEndlessFloor(b.run, f, dungeonFor, 1, { vaultOverride: EVERY })).toEqual(raw);
 		}
 	});
 
@@ -303,7 +310,9 @@ describe("vault: determinism and fixed draws", () => {
 			expect(again !== undefined && again.x === on.vault!.x && again.y === on.vault!.y).toBe(true);
 		}
 		const b = BUILT.find((x) => x.on.vault !== undefined)!;
-		const fresh = buildEndlessFloor(b.run, b.on.floor, (p) => generateDungeon(p), 1, { vaults: true });
+		const fresh = withoutGoldenPiece(
+			buildEndlessFloor(b.run, b.on.floor, (p) => generateDungeon(p), 1, { vaults: true }),
+		);
 		expect(fresh.vault).toEqual(b.on.vault);
 		expect(fresh.breakables).toEqual(b.on.breakables);
 	});
@@ -636,8 +645,10 @@ describe("vault: the rest of the floor is the option-off floor's", () => {
 	it("a party of 4: the gate and the rest-of-floor rule hold too", () => {
 		for (let run = 1; run <= 2; run++)
 			for (let floor = 2; floor <= 6; floor++) {
-				const off = buildEndlessFloor(run, floor, dungeonFor, 4);
-				const on = buildEndlessFloor(run, floor, dungeonFor, 4, { vaults: true, vaultOverride: EVERY });
+				const off = withoutGoldenPiece(buildEndlessFloor(run, floor, dungeonFor, 4));
+				const on = withoutGoldenPiece(
+					buildEndlessFloor(run, floor, dungeonFor, 4, { vaults: true, vaultOverride: EVERY }),
+				);
 				expect(twin(off, piecesOf(off), EVERY).plan).toEqual(on.vault);
 				if (on.vault === undefined) {
 					expect(on).toEqual(off);

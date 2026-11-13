@@ -35,6 +35,7 @@ import {
 	type EndlessFloorLayout,
 	type ForgeParams,
 } from "shared/dungeon";
+import { withoutGoldenPiece } from "shared/dungeon/testing";
 
 const generated = new Map<string, Dungeon>();
 function dungeonFor(p: ForgeParams): Dungeon {
@@ -313,7 +314,8 @@ describe("the boss pick moves nothing else on the floor", () => {
 		for (const party of [1, 3]) {
 			it(`run ${seed}, party ${party}: only the boss spawn's kind differs from a Mother Mayhem floor`, () => {
 				for (const floor of [5, 10]) {
-					const fl = buildEndlessFloor(seed, floor, dungeonFor, party);
+					// Without the Goldling's own piece (placed after everything, docs/GOLDLING_RUMOURS.md GR1).
+					const fl = withoutGoldenPiece(buildEndlessFloor(seed, floor, dungeonFor, party));
 					const d = fl.dungeon;
 					// The floor as it was built before the pick (Mother Mayhem on every boss floor), piece by piece.
 					const bramble = placeEncounter(d, { boss: BOSS_ACT1_KIND });

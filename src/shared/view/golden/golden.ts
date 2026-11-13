@@ -3,6 +3,9 @@
  * Every input is hashed sim state or the frame's collected events (events.ts); nothing here writes the sim.
  *
  *   kind          goldenKind / isGoldenKind: its archetype index (the minimap blip, the body flicker, the touch pick).
+ *   appear        GoldenAppearQueue: the frame's appearances held GOLDEN_VIEW.appear.afterBreakSec of sim time after
+ *                 their release tick, so its piece's break shows first and the coins and GOLDLING! follow
+ *                 (docs/GOLDLING_RUMOURS.md GR4).
  *   timer ring    goldenRingLook: how much of the ring is left (ticks left / the config's escapeTicks, whole pieces),
  *                 its pulse and warning colour in the last GOLDEN_VIEW.warn.warnSec (reduced motion: colour only);
  *                 goldenRingSegments lays it clockwise on screen from screen-up into a SegmentSink.
@@ -31,7 +34,8 @@ import type { JuiceSettings } from "shared/settings";
 import { freezeFrameOn } from "../fx/juiceRules";
 import type { SegmentSink } from "../markings";
 import { GOLDEN_VIEW } from "./config";
-import type { GoldenCatch, GoldenFrameSource } from "./events";
+import type { GoldenAppear, GoldenCatch, GoldenFrameSource } from "./events";
+import { GOLDEN_RUMOUR_PHASE_NAMES, goldenRumourPhase } from "./rumour";
 
 const TAU = 2 * math.pi;
 const SOLO = 1;
@@ -57,6 +61,51 @@ export const GOLDEN_STATUS_NAMES: ReadonlyArray<string> = [
 ];
 
 let cachedKind: number | undefined;
+
+/**
+ * The appearances' beat after its piece's break (docs/GOLDLING_RUMOURS.md GR4): `push` the frame's appearances, `due`
+ * hands back (in order, once each) those whose release tick is at least GOLDEN_VIEW.appear.afterBreakSec of sim time
+ * behind `simSec`. Sim time, so a pause, a draft or a freeze holds the beat with the world. `clear` on a new run, a floor
+ * change or a run exit. Plain data; the client's GoldenRenderController owns one.
+ */
+export class GoldenAppearQueue {
+	private readonly waiting = new Array<GoldenAppear>();
+	private readonly ready = new Array<GoldenAppear>();
+
+	/** Queues the frame's appearances (GoldenFrameSource.appeared). */
+	push(appeared: ReadonlyArray<GoldenAppear>): void {
+		for (const a of appeared) this.waiting.push(a);
+	}
+
+	/**
+	 * The queued appearances due at sim second `simSec` (their tick / SIM_HZ + afterBreakSec <= simSec), oldest first,
+	 * removed from the queue. The returned array is reused: read it before the next call.
+	 */
+	due(simSec: number): ReadonlyArray<GoldenAppear> {
+		const out = this.ready;
+		out.clear();
+		const wait = GOLDEN_VIEW.appear.afterBreakSec;
+		let i = 0;
+		while (i < this.waiting.size()) {
+			const a = this.waiting[i];
+			if (a.tick / SIM_HZ + wait <= simSec + 1e-9) {
+				out.push(a);
+				this.waiting.remove(i);
+			} else i++;
+		}
+		return out;
+	}
+
+	/** Appearances still waiting (specs / debug). */
+	size(): number {
+		return this.waiting.size();
+	}
+
+	clear(): void {
+		this.waiting.clear();
+		this.ready.clear();
+	}
+}
 
 /** The Goldling's archetype index, or -1 when it is not registered. Cached. */
 export function goldenKind(): number {
@@ -311,7 +360,9 @@ export function goldenEscapedText(str: GoldenStr, coins: number): string {
 
 /**
  * KV_GoldenLabel's text (developer text, English): the status, and while it runs its ticks left / escapeTicks and hp /
- * hpMax; while waiting the tick it appears (or `engage` before its room engaged). Undefined without state.golden.
+ * hpMax; while it hides (docs/GOLDLING_RUMOURS.md GR7) its room, its piece's breakables slot, the rumour phase
+ * (goldenRumourPhase: FLOOR / ROOM) and the release tick (-1: not broken yet); after it, the floor's coins and the release
+ * tick. Undefined without state.golden.
  */
 export function goldenDebugText(state: Readonly<SimState>): string | undefined {
 	const g = state.golden;
@@ -323,7 +374,8 @@ export function goldenDebugText(state: Readonly<SimState>): string | undefined {
 		return `${name} t ${a.v[GOLDEN_TICKS_LEFT]}/${g.config.escapeTicks} hp ${a.hp}/${a.hpMax} hits ${g.hits}`;
 	}
 	if (g.status === GoldenStatus.WAITING) {
-		return g.appearTick >= 0 ? `${name} room ${g.room} @${g.appearTick}` : `${name} room ${g.room} engage`;
+		const phase = GOLDEN_RUMOUR_PHASE_NAMES[goldenRumourPhase(state)];
+		return `${name} room ${g.room} piece ${g.piece} rumour ${phase} release ${g.releaseTick}`;
 	}
-	return `${name} coins ${g.coins}`;
+	return `${name} coins ${g.coins} release ${g.releaseTick}`;
 }

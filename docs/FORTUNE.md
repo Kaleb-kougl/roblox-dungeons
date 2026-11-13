@@ -3,7 +3,10 @@
 Status (2026-11-04): **built on branch `fortune` (FO0, PS1-PS5, GE1-GE4, FO6-FO9, FO12) and merged into `main` after
 main's treasure rooms (docs/TREASURE.md; "Merge with main" below: hash groups `... pellets, treasure, pacts, golden`,
 score sources `TREASURE` 12, `HORDE` 13, `GOLDEN` 14, `DAILY.ruleset` 7 -> 8); owner tasks FO10 (art and audio), FO11
-(telemetry), FO13 (playtest), the Studio check and the open owner calls pending** (see "As built"). Plan:
+(telemetry), FO13 (playtest), the Studio check and the open owner calls pending** (see "As built"). Since 2026-11-12
+the Goldling hides in its own glinting barrel or crate and comes out when a player breaks it, with a floor and a room
+rumour (docs/GOLDLING_RUMOURS.md, "Hiding places and rumours" below); lines here that describe the old engage + 3 s
+appearance are marked *superseded*. Plan:
 the owner (Kaleb) confirmed every decision (FD1-FD16) on 2026-11-03, each the recommended option. Planned against
 `main` @ `82c2af6`. Work it task by task like `PLAN.md`; each task ends with a **Verify**.
 Project copy: `claude/fortune-plan.md`. Sibling plan: `claude/treasure-rooms-plan.md` (vaults, docs/TREASURE.md); it
@@ -17,7 +20,8 @@ Goal: two hits of dopamine that come from the **player's choice** and a **chase*
    - **Pact of the Horde**: *the next room you enter fights twice the enemies and pays twice the score.*
 2. **The Goldling (golden enemy).** On some floors, a few seconds into a room's fight, a small gold creature pops out
    and **runs**. Every hit sprays coins (points). Catch it within 10 s for a jackpot of points and boosts; too slow and
-   it dives into a crack and is gone.
+   it dives into a crack and is gone. *(Superseded 2026-11-12: it hides in a glinting barrel or crate in its room and
+   pops out when a player breaks it; a coin jingle tells you it is on the floor. docs/GOLDLING_RUMOURS.md.)*
 
 **Sim impact: both are gameplay**, opt-in like boosts / breakable loot / pellets:
 
@@ -46,7 +50,7 @@ option, and a miss always leaves you something.**
 | Endless always runs builds | `buildEndlessRunConfig` | Pacts can rely on cards |
 | **Room records:** `RoomScore` (bounds, `parTicks`, `engageTick`, `hitsAtEngage`, `cleared`, `memberSlots` / `memberIds`). `stepScore` latches engagement then `clearRoom` when `scoreRoomDown`: ROOMS 250, PERFECT 500, FAST, pellets' Sweep first | `sim/score/score.ts` | Horde holds its room's clear while wave 2 is pending and appends wave 2 to the same record |
 | `attachScoreRoomMembers(state, roomId, spawned)`, `adoptScoreRoomMember(state, parent, child)` | `score.ts` | Wave 2 needs a sibling `appendScoreRoomMembers(state, k, spawned)` |
-| **Room spawns:** `enterRoom` spawns `world.roomSpawns[id]` through `safeRoomSpawns(state, planned, roomSpawnTiles[id])`, affixes for planned spawns only; a full pool (`MAX_ACTORS` 64) drops the rest | `sim/endless.ts` | Wave 2 = the planned kinds again through `safeRoomSpawns`, no affixes. The Goldling spawns on the room's spawn tile farthest from the players |
+| **Room spawns:** `enterRoom` spawns `world.roomSpawns[id]` through `safeRoomSpawns(state, planned, roomSpawnTiles[id])`, affixes for planned spawns only; a full pool (`MAX_ACTORS` 64) drops the rest | `sim/endless.ts` | Wave 2 = the planned kinds again through `safeRoomSpawns`, no affixes. The Goldling spawns on the room's spawn tile farthest from the players *(superseded: at its piece's cell centre, docs/GOLDLING_RUMOURS.md GR2)* |
 | `awardPoints(..., scalePercent, bonusPercent, extraPercent)`: exact integer factors; `scoreKill` passes bonus = affix x Bounty, extra = Gold Rush | `score.ts` | Horde x2 multiplies into `bonusPercent` |
 | Gated score sources: `JACKPOT` 9 (builds), `PELLETS` 10 / `SWEEP` 11 (pellets) | `scoreData.ts` | Append `HORDE` 12 (pacts only) and `GOLDEN` 13 (golden only; pads HORDE when pacts is absent, the pellets/JACKPOT pattern; on main: `TREASURE` 12, `HORDE` 13, `GOLDEN` 14) |
 | Hash groups: the last is `pellets` | `sim/hashLayout.ts` | Append `pacts`, then `golden` (on main: after `treasure`) |
@@ -92,7 +96,7 @@ you is greyed out with one line (`No curses left` / `No legendary to draw` / `No
 
 | When | What happens |
 |---|---|
-| Room engages + 3 s | A gold flash on the tile farthest from you, `sfx.golden.appear`, floor shout `GOLDLING!`, gold minimap blip in sight; first ever sighting: toast `A Goldling! Catch it before it escapes!` |
+| Room engages + 3 s *(superseded: a player breaks its glinting barrel or crate; the flash at the piece, 0.12 s after its break; the rumours before it, docs/GOLDLING_RUMOURS.md "Player experience")* | A gold flash on the tile farthest from you, `sfx.golden.appear`, floor shout `GOLDLING!`, gold minimap blip in sight; first ever sighting: toast `A Goldling! Catch it before it escapes!` |
 | Running (10 s) | Flees within the room, jinks sideways when you get within 2.5 tiles, slips past you rather than cornering itself. A gold ring under it shrinks with its time. A positional coin-jingle loop *(as built: no loop, the theme contract has no optional positional ambience; GE4 found a 6 u/s chaser corners it anyway, see "Open owner calls")* |
 | Each hit | A coin burst, a `+50` pop, `sfx.golden.hit` climbing a scale |
 | Last 3 s | Flicker, squeak, ring pulse (reduced motion: colour only) |
@@ -133,7 +137,8 @@ It never attacks and does no contact damage.
   room. `EndlessFloorLayout.golden?` / `EndlessFloorWorld.golden?` (`{ room }`; as built `FloorGolden`: the room plus
   its floor rectangle and walk mask, so the sim keeps it in the room without a Dungeon).
 - **Appears** `appearTicks` (180) after its room's record engages, on the room's spawn tile farthest from every living
-  player; a full pool skips it. **Not a room member** (the room clears without it; no PERFECT effect; no affixes); it
+  player; a full pool skips it. *(Superseded: it hides in its own piece and comes out at the piece's cell centre the tick
+  a player breaks it; `appearTicks` is gone. docs/GOLDLING_RUMOURS.md "Rules".)* **Not a room member** (the room clears without it; no PERFECT effect; no affixes); it
   keeps running after the clear until its time is up.
 - **Moves** at 5.1 within its room's FLOOR cells (breakables blocked) on a **flee field**: multi-source BFS from every
   living player over the room box every `fieldTicks` (6), with the `-1.2 x distance` re-relax so a cornered Goldling
@@ -200,7 +205,8 @@ It never attacks and does no contact damage.
   affix-free; lapse on floor change; never the boss room; exact x2 totals with Bounty, affixes and Gold Rush.
 - [x] **PS5. Pacts worlds and bot census.** → Verify: `npm run verify`; numbers in this doc.
 - [x] **GE1. Goldling roll and flee field.** → Verify: pure; rate per band; never boss room.
-- [x] **GE2. Goldling archetype and state.** → Verify: appears at engage + 180 farthest; not a member; stays in its
+- [x] **GE2. Goldling archetype and state.** → Verify: appears at engage + 180 farthest *(superseded by
+  docs/GOLDLING_RUMOURS.md GR2: on its piece's break)*; not a member; stays in its
   room; slips out of a corner; escapes at 600; replays bit-identically; absent config unchanged.
 - [x] **GE3. Goldling payouts.** → Verify: no combo feed per hit; one on the kill; party 1-4 boosts; full ground; main
   and drops rng identical to a no-golden twin.
@@ -228,7 +234,8 @@ It never attacks and does no contact damage.
 - **FD7.** Horde is a second wave (same kinds, no affixes, at half down, 1 s telegraph; no clear between waves).
 - **FD8.** Horde doubles everything the room pays (kills, room / perfect / fast, pellets, Sweep).
 - **FD9.** The Goldling is its own archetype (band 5).
-- **FD10.** Room-bound, 3 s after engaging, not a room member, 10 s to escape.
+- **FD10.** Room-bound, 3 s after engaging, not a room member, 10 s to escape. *(The 3 s superseded by
+  docs/GOLDLING_RUMOURS.md RD10: it comes out of its own barrel or crate when a player breaks it.)*
 - **FD11.** Harmless.
 - **FD12.** Coins per hit (no combo feed), jackpot on the kill (1500 x floor scale + party size + 1 boosts).
 - **FD13.** 30 / 35 / 40 % of floors by band from floor 2.
@@ -304,6 +311,33 @@ area and art ids). Main's treasure landed first, so Fortune moved after it; both
   `dungeon/forge/forge.spec.ts` seedToState vectors (NaN sign bit) and `sim/hash.spec.ts`'s group-order pin (main's,
   written before Fortune: fixed in the follow-up commit, passing).
 
+### Hiding places and rumours (docs/GOLDLING_RUMOURS.md, 2026-11-12)
+
+Branch `goldling-rumours` (GR0-GR9; owner tasks GR10-GR12 and RD3-RD7 / RD9 pending). Gameplay for the Goldling only;
+M1, every fixture and the tutorial replay as before; endless replays and scores changed, boards stay `_v1`,
+`DAILY.ruleset` 17 -> 18 (after the floor modifiers' 16 and DSD18's 17). A Gilded floor's certain Goldling hides in its piece too.
+
+- **Appear rule:** no more "3 s after its room engages on the farthest spawn tile" (FD10's delay, `appearTicks`,
+  `GOLDEN_APPEAR_TICKS`, `goldenSpawnTile`, the freeze's waiting branch: gone). It hides (WAITING) until a player breaks
+  its piece and comes out at the piece's cell centre on the break tick (`releaseTick`); never found, it stays hidden
+  until the floor ends. A full pool at the break: SKIPPED, as before.
+- **Its piece:** `placeGolden` also places its own barrel or crate in its room (a cell the clutter rules and every
+  piece so far allow, off pellets and the vault chest's front; two more draws, 4 on a hit), appended after every other
+  piece (after the chest), so nothing else on the floor moves; a room needs such a cell to be eligible, and the
+  Goldling floor rate is unchanged (GR1 census: 296 of 760 floors, none lost). It never holds loot.
+- **Players only:** enemy bullets, the boss's slam, a Bomber's blast and a Charger's charge never damage it (refused
+  like the chest's: bullets stop on it, the Charger stuns).
+- **Glint:** it glints exactly like a loot piece while it hides (`pieceGlints`), so a room can show two glints.
+- **Rumours** (presentation): a soft coin jingle and the chip `Coins jingling...` 1 s into a floor where one hides,
+  a brighter jingle and `It's hiding here!` when its room engages (teammate volume from outside it), a first-time card
+  once per account; two silent port audio IDs (`sfx.golden.rumour.floor` / `.room`, GR10 picks the clips).
+- **Hash:** `releaseTick` and `piece` appended at the end of the `golden` group.
+- **Census (GR8, the hunt; it replaces GE4's table above):** from the floor's spawn to the glinting piece, then the
+  chase. Solo sword 17 / 18 focused, 17 / 18 during the fight, 18 / 18 after the clear; Archer bow 6 / 18 focused, 7 / 18
+  after the clear (floor 2, plus one on floor 6); sword party of 2 16 / 18. Every sword miss was SKIPPED (a full actor
+  pool on floor 12), none an escape. Table and notes in docs/GOLDLING_RUMOURS.md "As built", "Census"; open calls 2 and
+  3 below.
+
 ### Open owner calls
 
 1. **Greed's deal is short.** The deal fills with ordinary upgrades (owned level-I boons) only, so from floor 4 it is
@@ -311,7 +345,17 @@ area and art ids). Main's treasure landed first, so Fortune moved after it; both
 2. **The Goldling's depth scaling.** Its hp scales with the floor like any enemy, but the window is a fixed 10 s: the
    focused solo sword catches 6 / 6 on floors 2 and 6 but 3 / 6 on floor 12, and fighting the room 5 / 6, 1 / 6, 0 / 6.
    Scale the window, cap the hp, or accept it?
+   *GR8 (hiding places, 2026-11-12):* the call has turned around. It now comes out of its piece within sword reach of
+   whoever broke it, so the solo sword catches 17 / 18 focused, 17 / 18 during the fight (it plays exactly as focused:
+   the bot never leaves it) and 18 / 18 after the clear, floor 12 included (25 hits, 8.8-9.0 of the 10 s; hp 101.5).
+   Against the plan's 50-65 % the sword's catch is now too easy, not too hard: the lever is the release (a head start
+   or a dash away from the breaker, a shorter window), not the depth scaling, which only shows in the time to catch.
 3. **The bow.** The solo bow caught 6 / 6 on floor 2, then 0 / 6 on floors 6 and 12. A bow-specific lever, or accept?
+   *GR8:* the bow is now the Archer's (GE4's rows swapped to the Knight's weapon set 1, empty since docs/ARCHER.md, and
+   read 0 / 6). With the stream led onto it: focused 6 / 6, 0 / 6, 0 / 6; after the clear 6 / 6, 1 / 6, 0 / 6. The cap
+   is the stream's damage, 5 arrows / s x 1 = 5 hp / s, so the floor-6 Goldling (50.4 hp) needs 10 s of perfect hits;
+   the bot never charges the heavy arrow. Still open: a bow lever (Goldling hp per weapon, arrows that pay double on
+   it) or accept a sword-only jackpot past floor 2.
 4. **"Slips past" did not hold.** The flee field's re-relax does make a cornered Goldling run past the player on the
    field (fleeField spec), but at factor 1.2, 2 or 3 a 6 u/s chaser corners a 5.1 u/s runner in any 17 x 17 room
    (GE4). Kept 1.2 (`GoldenConfig.fleeFactor`); a faster runner or a bigger jink is the lever.
@@ -367,7 +411,8 @@ state, `pactsOnFloor`, clone, hash), `pactRooms.ts` (the leaf endless.ts and sco
   tick and shifts one tick forward: the `engageTick` of engaged, uncleared score records; the Horde's pending
   `waveDueTick`; the waiting Goldling's `appearTick` / `engageTick` and a running one's `fieldTick`; an armed Vengeful
   corpse's `vengeArmTick`. So a teammate's Greed draft never eats FAST par, the telegraph or the Goldling's delay. All
-  are hashed already; a no-op on floor-change drafts.
+  are hashed already; a no-op on floor-change drafts. *(The waiting branch superseded by docs/GOLDLING_RUMOURS.md GR2:
+  a hidden Goldling has no timer; a running one's `fieldTick` still moves.)*
 - View queries (pure reads of hashed state): `pactAltarAt`, `pactAvailability`, `greedCurseFor`, `hordePhase`,
   `pactAltarOffered`, `pactDraftKind`, `greedTakes`, `pactsSpent` (takes the SimConfig: the Horde counts as spent when
   taken or NO_ROOM, so the crystal dims).
@@ -411,6 +456,8 @@ member, never aggroed, alerting or in a Warbanner aura), in `DROP_INELIGIBLE_ARC
 - Status NONE / WAITING / RUNNING / CAUGHT / ESCAPED / SKIPPED (SKIPPED: due with the actor pool full). `stepGolden`
   (after `stepScore`) spawns it `appearTicks` (180) after its room's record engages, on the room's spawn tile farthest
   from every living player, and frees it `escapeTicks` (600) later (no onDeath, score or drops; coins kept).
+  *(Superseded: it spawns at its piece's cell centre the tick a player broke the piece; `appearTicks`,
+  `GOLDEN_APPEAR_TICKS` and `goldenSpawnTile` are gone. docs/GOLDLING_RUMOURS.md GR2.)*
 - Moves on the flee field (flee factor 1.2, `GoldenConfig.fleeFactor`), sources = living players inside its room's
   rectangle re-read every 6 ticks; with no player inside its room it stands still. Jink: a player within 2.5, cooldown
   1.5 s, 0.25 s at 9 u/s. Every step is kept inside the walk mask.
@@ -419,11 +466,13 @@ member, never aggroed, alerting or in a Warbanner aura), in `DROP_INELIGIBLE_ARC
   the combo once, and lands party size + 1 boosts (one golden-stream `weightedBoostKind` draw each, the fixed
   `GOLDEN_BOOST_RING`, lowest free slots; a full ground loses the rest with the same draws).
 - Hashed (group `golden`, last): `rngState`, status, room, record, engage / appear ticks, actor slot / id, coins, hits,
-  seen / caught / escaped, `fieldTick`, the source cells. The walk mask enters through `room`; the field cache is a
+  seen / caught / escaped, `fieldTick`, the source cells, then (docs/GOLDLING_RUMOURS.md GR3) `releaseTick` and
+  `piece`. The walk mask enters through `room`; the field cache is a
   pure function of hashed state (unhashed).
 - Worlds: `ENDLESS_GOLDEN_CONFIG` in `buildEndlessRunConfig` (solo, co-op; daily and dev follow).
 
-**Census (GE4, `run/goldenCensus.spec.ts`; 6 Goldling floors per row, a chase bot):**
+**Census (GE4, `run/goldenCensus.spec.ts`; 6 Goldling floors per row, a chase bot; superseded by the GR8 hunt census
+under "Hiding places and rumours", which rewrote the spec):**
 
 | Bot | Floor 2 | Floor 6 | Floor 12 |
 |---|---|---|---|
@@ -511,7 +560,8 @@ goldenEscaped 1 > comboTier 0. A jackpot pop is never Horde-tinted.
 ### Tests
 
 Specs: `dungeon/pacts.spec`, `dungeon/golden.spec`, `sim/pacts/{pacts,greed,horde,freeze}.spec`,
-`sim/golden/{golden,payouts}.spec`, `run/pactsCensus.spec`, `run/goldenCensus.spec`, `theme/fortune.spec`,
+`sim/golden/{golden,payouts}.spec`, `run/pactsCensus.spec`, `run/goldenCensus.spec` (GR8's hunt since
+docs/GOLDLING_RUMOURS.md), `theme/fortune.spec`,
 `view/pacts/pacts.spec`, `view/golden/golden.spec`, `view/audio/{pactCues,goldenCues,fortuneCues}.spec`; the hash-group
 order / count pins in the endless, affixes, dev, party progression, breakables, builds, pellets and progression specs
 moved for `pacts` / `golden`. Known failures, both not Fortune's: `dungeon/forge/forge.spec.ts › EncounterRng is the
@@ -536,7 +586,9 @@ Turn on the Workspace booleans `KV_PactLabel` (each altar's availability, Greed'
 - **Horde.** The chip `HORDE · next room x2`; the next enemy room's edges in the Horde crimson, `HORDE x2` shout, x2
   pops; at half down the wave-2 rings fill for 1 s and `WAVE 2` shows; no clear before wave 2; the tally's last
   `Horde x2` segment slams in with `sfx.horde.double`. Leaving the floor armed: the chip goes, nothing else.
-- **Goldling.** 3 s into room 3's fight: the flash on the far spawn tile, `GOLDLING!`, the first-sighting toast, the
+- **Goldling.** *(Superseded: the hiding place's checks and seeds are in docs/GOLDLING_RUMOURS.md "Studio check"; on
+  seed 2 floor 2 it hides in room 3's glinting barrel at (60, 12).)* 3 s into room 3's fight: the flash on the far spawn
+  tile, `GOLDLING!`, the first-sighting toast, the
   minimap diamond; the ring shrinks a piece at a time, pulses and the body flickers in the last 3 s; each hit a coin
   burst, a pop and a climbing note; a catch: fountain, 40 ms freeze, the big pop, boosts hopping in; an escape: the
   puff and `It got away!  +N banked`. It never hurts you; with nobody in its room it stands still.
@@ -544,7 +596,7 @@ Turn on the Workspace booleans `KV_PactLabel` (each altar's availability, Greed'
   pulse), Freeze frame off (no catch freeze), Screen shake off (no nudge), Room clear Off (`sfx.horde.double` at the
   clear, no tally), touch: auto-target prefers a threat within 3 tiles over the Goldling.
 - **Co-op.** A teammate's Greed freezes everyone (`hud.draft.waiting` for the others) and an engaged room's FAST par,
-  the wave-2 telegraph and the Goldling's delay resume where they stood; each player sees their own Greed curse; the
+  the wave-2 telegraph and the Goldling's delay *(gone: it waits for its piece)* resume where they stood; each player sees their own Greed curse; the
   Horde once per party; every client sees the same Goldling; the catch freeze is solo only.
 
 ## Floor modifiers (2026-11-12)

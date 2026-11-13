@@ -36,6 +36,8 @@ import {
 	CHARGER_RECOVER,
 	CHARGER_STUN,
 	EMPTY_INPUT,
+	ENDLESS_GOLDEN_CONFIG,
+	GoldenStatus,
 	HIT_HEAVY,
 	NOT_BROKEN,
 	PORT_BAND_ENEMIES_2,
@@ -148,9 +150,16 @@ interface ChargeRun {
 }
 
 /** Steps a fresh state until the first charge ended and its stun / recover ran out (ghost player unless `hurt`). */
-function firstCharge(config: SimConfig, px: number, pz: number, seed = 1): { run: ChargeRun; s: SimState } {
+function firstCharge(
+	config: SimConfig,
+	px: number,
+	pz: number,
+	seed = 1,
+	prep?: (s: SimState) => void,
+): { run: ChargeRun; s: SimState } {
 	const s = createSimState(seed, px, pz, config);
 	ghost(s);
+	if (prep !== undefined) prep(s);
 	const a = chargerOf(s);
 	const r: ChargeRun = {
 		laneTicks: 0,
@@ -389,6 +398,31 @@ describe("charger: a vault's chest (docs/TREASURE.md TR2)", () => {
 		expect(run.end).toBe(CHARGER_STUN);
 		expect(run.endTicks).toBe(D.stunTicks);
 		expect(run.endZ).toBeCloseTo(7 - 0.5 - D.radius, 6);
+	});
+});
+
+describe("charger: the Goldling's hidden piece (docs/GOLDLING_RUMOURS.md GR0 / RD13)", () => {
+	it("stops it like the chest: stunned at the piece's face, the piece intact; the same barrel without a Goldling breaks", () => {
+		const pieces = [{ x: 11, y: 7, kind: "barrel" as const }];
+		const config = arena(11, 3, true, {
+			breakables: { ...BREAKABLES_CONFIG, pieces },
+			golden: ENDLESS_GOLDEN_CONFIG,
+		});
+		// Surgery: the barrel is a hiding Goldling's piece (no endless floor here to roll one).
+		const hide = (s: SimState) => {
+			s.golden!.status = GoldenStatus.WAITING;
+			s.golden!.piece = 0;
+		};
+		const { run, s } = firstCharge(config, 11, 9, 1, hide);
+		expect(s.breakables!.pieces[0].brokenTick).toBe(NOT_BROKEN);
+		expect(s.events.breakableHits).toBe(0);
+		expect(run.end).toBe(CHARGER_STUN);
+		expect(run.endTicks).toBe(D.stunTicks);
+		expect(run.endZ).toBeCloseTo(7 - 0.5 - D.radius, 6);
+		expect([s.golden!.status, s.golden!.releaseTick]).toEqual([GoldenStatus.WAITING, -1]);
+		// Not hiding anything (the config on, no piece guarded): the charge breaks it and goes on, as without a Goldling.
+		const open = firstCharge(config, 11, 9).run;
+		expect(open.end).toBe(CHARGER_RECOVER);
 	});
 });
 
@@ -687,6 +721,9 @@ const PIN_COUNTS = [3, 0, 2, 3, 0];
 // Re-recorded for docs/DAILY.md DSD18 (every endless roster without unlock floors, one new kind a floor): floor 3's
 // other rooms buy other kinds, so its spawns, breakables and state hash moved; the counts and the layout did not.
 // Before: 1a65fa83.
-const PIN_HASH = "7414ecc5"; // check-asset-ids: allow (state hash)
+// Re-recorded for the Goldling's hiding place (docs/GOLDLING_RUMOURS.md GR1 / GR3): run 4's floor 3 rolled a Goldling,
+// whose own barrel or crate is now appended to the floor's breakables (one more piece); the counts did not move.
+// Before: 7414ecc5.
+const PIN_HASH = "e42f7fdf"; // check-asset-ids: allow (state hash)
 const PIN_ARENA = [12, STATE_RETURN, 11.062568325627446, 8, 3663131635];
 const PIN_ARENA_HASH = "80069968"; // check-asset-ids: allow (state hash)

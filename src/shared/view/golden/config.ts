@@ -25,13 +25,17 @@ export const GOLDEN_VIEW = {
 
 	// --- appear ------------------------------------------------------------------------------------------------------
 	/**
-	 * The gold flash at its spawn tile: a chip burst in golden.coin and one ring from the spot (the particle system's ring
-	 * pool: radius r0 -> r1 tiles over lifeSec; reduced motion: no growth, a flash in place at r1).
+	 * The gold flash where it came out (its piece's cell centre, docs/GOLDLING_RUMOURS.md GR4): a chip burst in
+	 * golden.coin and one ring from the spot (the particle system's ring pool: radius r0 -> r1 tiles over lifeSec; reduced
+	 * motion: no growth, a flash in place at r1). It and the GOLDLING! shout wait afterBreakSec of sim time after the
+	 * release tick (GoldenAppearQueue), so the piece's own break (chips, splinters, shatter: BreakableRenderController,
+	 * the same tick) reads first and the coins burst out of it.
 	 */
 	appear: {
 		burst: { chunks: 0, bits: 14, sparks: 8, startPx: 4, radiusTiles: 0.3, speed: 1 } as GoldenBurstView,
 		ring: { r0Tiles: 0.2, r1Tiles: 1.6, lifeSec: 0.4 },
 		seedSalt: 61,
+		afterBreakSec: 0.12,
 	},
 	/**
 	 * The floor shout `fx.golden.shout` ("GOLDLING!") in the combo shout's slot (ComboController.requestShout: under every
@@ -116,6 +120,36 @@ export const GOLDEN_VIEW = {
 	audio: {
 		ladderSemitones: [0, 2, 4, 5, 7, 9, 11, 12] as ReadonlyArray<number>,
 		hitMinIntervalSec: 0.05,
+	},
+
+	// --- rumours (docs/GOLDLING_RUMOURS.md GR5-GR7; logic in rumour.ts) ---------------------------------------------
+	/**
+	 * The floor rumour plays once per floor after floorDelaySec of unfrozen time on a floor whose Goldling hides and whose
+	 * room nobody engaged yet (no time counts while a draft is open, the stage cover is up, the solo run is paused or the
+	 * run is over); the room rumour once, on the first unfrozen frame its room is engaged (the floor rumour skipped if it
+	 * had not played). floorVolume / roomVolume scale the two cues (the room cue x AUDIO_VIEW.teammateVolume while the
+	 * view player stands outside its room, RD6).
+	 */
+	rumour: {
+		floorDelaySec: 1.0,
+		floorVolume: 0.45,
+		roomVolume: 0.8,
+		/**
+		 * The HUD chip (GoldenRumourChip, beside the Horde chip): `hud.chip.golden.rumour` ("Coins jingling...") from the
+		 * floor rumour on, `hud.chip.golden.hiding` ("It's hiding here!") from the room rumour on, in `role` on a
+		 * `fillRole` panel with the coin glyph (ui.icon.coin when the pack has it), its text capped at textSize (touch:
+		 * touchWidth wide, capped at touchTextSize). While it reads "hiding" it pulses gently: its content's scale
+		 * 1 + pulseAmp x a 0..1 wave, one cycle per pulseSec (reduced motion: still).
+		 */
+		chip: {
+			role: "golden.coin" as ColorRole,
+			fillRole: "uiPanel" as ColorRole,
+			textSize: 16,
+			touchWidth: 120,
+			touchTextSize: 12,
+			pulseSec: 0.8,
+			pulseAmp: 0.08,
+		},
 	},
 
 	// --- KV_GoldenLabel (Studio check aid, off by default) -----------------------------------------------------------

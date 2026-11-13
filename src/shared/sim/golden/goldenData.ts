@@ -15,7 +15,7 @@ export const GOLDEN_KIND = "golden";
 export const GoldenStatus = {
 	/** No Goldling on this floor (or no endless floor). */
 	NONE: 0,
-	/** Its room rolled one; waiting for the room's record to engage + appearTicks. */
+	/** Its room rolled one; hiding in its piece until a player breaks it (docs/GOLDLING_RUMOURS.md RD10). */
 	WAITING: 1,
 	/** Out and running (GoldenState.actorSlot / actorId). */
 	RUNNING: 2,
@@ -23,13 +23,14 @@ export const GoldenStatus = {
 	CAUGHT: 3,
 	/** Its time ran out: gone, coins kept. */
 	ESCAPED: 4,
-	/** It was due but the actor pool was full (MAX_ACTORS): it never appeared (docs/FORTUNE.md: a full pool skips it). */
+	/** Its piece broke but the actor pool was full (MAX_ACTORS): it never appeared (docs/FORTUNE.md: a full pool skips it). */
 	SKIPPED: 5,
 } as const;
 
-/** It appears this long after its room's record engages (FD10: 3 s). */
-export const GOLDEN_APPEAR_TICKS = secondsToTicks(3);
-/** It escapes this long after appearing (FD10: 10 s). */
+/**
+ * It escapes this long after appearing (FD10: 10 s). It appears when a player breaks its piece (docs/GOLDLING_RUMOURS.md
+ * RD10; FD10's 3 s after the room engaged is gone).
+ */
 export const GOLDEN_ESCAPE_TICKS = secondsToTicks(10);
 /** The flee field's sources (living players' cells) are re-read every this many ticks. */
 export const GOLDEN_FIELD_TICKS = 6;

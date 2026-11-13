@@ -9,14 +9,15 @@
  * "ticks since" / "ticks until" reads after the freeze exactly as if it had never happened:
  *   score    the engageTick of every engaged, uncleared room record (FAST's par: parTicks - (tick - engageTick))
  *   horde    waveDueTick while wave 2 is telegraphed and unspawned (the telegraph keeps its length)
- *   golden   WAITING with its appearance known: engageTick (the record's copy) and appearTick (the delay after engage);
- *            RUNNING: fieldTick (the flee field's re-read period; the field cache is keyed on it and rebuilds the same)
+ *   golden   RUNNING: fieldTick (the flee field's re-read period; the field cache is keyed on it and rebuilds the same).
+ *            A WAITING one has no timer (docs/GOLDLING_RUMOURS.md GR2: it comes out when a player breaks its piece; its
+ *            latched engageTick is only read as "engaged yet").
  *   treasure a live lock (ARMED / CRACKED, its record engaged and uncleared): armTick (it stays the record's engageTick,
  *            docs/TREASURE.md TR3) and, once cracked, crackTick (a SWIFT clear's missBy = clear tick - crackTick)
  *   affixes  a Vengeful corpse's vengeArmTick while its ring is armed (vengeTicks > 0, the slot's actor still there)
  * Countdowns (combo timer, boost timers, ground life, the Goldling's ticks left, SWIFT's ticksLeft, actor timers) only
  * run in the steps a frozen tick skips and need nothing. A no-op on a floor-change draft (no record engaged, the vault
- * SEALED or gone, the Goldling not yet due, every actor freed), so a pacts run whose drafts all open on a floor change
+ * SEALED or gone, the Goldling hidden or gone, every actor freed), so a pacts run whose drafts all open on a floor change
  * hashes as before. No rng, no new state.
  */
 import { AffixKind } from "shared/dungeon";
@@ -37,12 +38,7 @@ export function holdAbsoluteTimers(state: SimState): void {
 	if (h.room >= 0 && h.spawned === HORDE_WAVE_PENDING && h.waveDueTick !== HORDE_NONE) h.waveDueTick += 1;
 	const g = state.golden;
 	if (g !== undefined) {
-		if (g.status === GoldenStatus.WAITING && g.appearTick >= 0) {
-			g.engageTick += 1;
-			g.appearTick += 1;
-		} else if (g.status === GoldenStatus.RUNNING && g.fieldTick >= 0) {
-			g.fieldTick += 1;
-		}
+		if (g.status === GoldenStatus.RUNNING && g.fieldTick >= 0) g.fieldTick += 1;
 	}
 	const t = state.treasure;
 	if (t !== undefined && (t.status === VaultStatus.ARMED || t.status === VaultStatus.CRACKED)) {

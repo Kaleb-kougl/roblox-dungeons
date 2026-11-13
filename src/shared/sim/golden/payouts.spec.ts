@@ -3,13 +3,15 @@
 // x the floor scale into GOLDEN (not KILLS), feeds the combo once, lands party size + 1 boosts (kinds from its own
 // stream, a fixed ring, lowest free slots) and loses what a full ground cannot hold with the same draws; the main rng
 // and the drops' stream move exactly as in a no-golden twin; and every endless world sets the config. Test-only
-// surgery: teleports, damage and kills through SimCtx, ground slots filled by hand.
+// surgery: teleports, damage and kills through SimCtx, ground slots filled by hand, its piece broken open by a direct
+// damageBreakable (docs/GOLDLING_RUMOURS.md GR2: it comes out of its piece).
 import { describe, expect, it } from "@rbxts/jest-globals";
 import "shared/sim/testing";
 import { gridToWorld } from "shared/dungeon";
 import {
 	BOOSTS,
 	BOOST_TOTAL_WEIGHT,
+	BreakableSource,
 	EMPTY_INPUT,
 	ENDLESS_GOLDEN_CONFIG,
 	GOLDEN_BOOST_RING,
@@ -23,6 +25,7 @@ import {
 	SimCtx,
 	awardPoints,
 	createSimState,
+	damageBreakable,
 	floorScalePercent,
 	hashLayout,
 	landDrop,
@@ -90,7 +93,16 @@ function tick(r: Run, input: InputFrame = EMPTY_INPUT): void {
 	}
 }
 
-/** Player 0 into the Goldling room (a walk-mask cell near its middle), one tick, then on until it is out. */
+/** Breaks the Goldling's piece open (test surgery, player 0's swing): it comes out at the end of the next tick. */
+function breakPiece(r: Run): void {
+	const slot = r.config.endless!.worldForFloor(FLOOR).golden!.piece;
+	damageBreakable(r.s, slot, r.s.breakables!.pieces[slot].hp, BreakableSource.MELEE, 0);
+}
+
+/**
+ * Player 0 into the Goldling room (a walk-mask cell near its middle), one tick, then its piece broken open
+ * (docs/GOLDLING_RUMOURS.md GR2): one more tick and it is out.
+ */
 function untilOut(r: Run): ActorState {
 	const world = r.config.endless!.worldForFloor(FLOOR);
 	const f = world.golden!;
@@ -102,7 +114,9 @@ function untilOut(r: Run): ActorState {
 	p.z = gridToWorld(f.y0 + ly);
 	tick(r);
 	const g = r.s.golden!;
-	for (let k = 0; k < 400 && g.status === GoldenStatus.WAITING; k++) tick(r);
+	expect(g.status).toBe(GoldenStatus.WAITING);
+	breakPiece(r);
+	tick(r);
 	expect(g.status).toBe(GoldenStatus.RUNNING);
 	return r.s.combat.actors[g.actorSlot];
 }
@@ -257,7 +271,9 @@ describe("golden: the rng streams (GE3)", () => {
 		}
 		const g = on.s.golden!;
 		let hitAt = -1;
-		for (let k = 0; k < ENDLESS_GOLDEN_CONFIG.appearTicks + 200; k++) {
+		for (let k = 0; k < 400; k++) {
+			// Its piece broken open in both runs (the twin's is an ordinary piece) on the same tick.
+			if (k === 180) for (const r of [on, off]) breakPiece(r);
 			if (g.status === GoldenStatus.RUNNING) {
 				const a = on.s.combat.actors[g.actorSlot];
 				if (hitAt < 0) hitAt = k;

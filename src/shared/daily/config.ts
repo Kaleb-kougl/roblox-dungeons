@@ -62,7 +62,9 @@ export const DAILY: DailyConfig = table.freeze({
 	// endless floors, play and scores).
 	// 17: one new seeded kind every floor, not every 2 (docs/DAILY.md DSD18, ROSTER.floorsPerKind 2 -> 1): daily rooms
 	// change from floor 2.
-	ruleset: 17,
+	// 18: the Goldling hides in its own barrel or crate and comes out when a player breaks it (docs/GOLDLING_RUMOURS.md
+	// GR1-GR3, RD10 / RD11): Goldling floors gain a piece and the Goldling no longer appears 3 s into the fight.
+	ruleset: 18,
 	labelOffset: 1,
 	yesterdayCacheSeconds: 600,
 	minEntrantsForPercentile: 20,

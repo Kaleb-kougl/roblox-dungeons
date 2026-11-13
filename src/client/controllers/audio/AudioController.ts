@@ -151,7 +151,9 @@ class LoopChannel {
  *                a voice cap, evolve / duo stings) from the run view's `builds` through audibleBuilds. Treasure rooms
  *                (docs/TREASURE.md TR8): a shared/view/treasure TreasureCueTracker of its own turns the run view's
  *                `treasure` events into the look's edges on the sim clock (the crack, the bars' sink 0.6 s after the
- *                clear, the lid's pop 0.25 s after the open), reset on run start / floor change / exit. The mapper is given `playable` (the ID has an assetId): a silent
+ *                clear, the lid's pop 0.25 s after the open), reset on run start / floor change / exit. The Goldling's
+ *                rumours (docs/GOLDLING_RUMOURS.md GR6): SimController's GoldenRumourClock edges of this frame (held
+ *                under a draft, the cover, a pause and run over by the clock itself). The mapper is given `playable` (the ID has an assetId): a silent
  *                ID with an SFX_FALLBACK cues that instead (no finisher clip: the swing), one without never becomes a
  *                cue (no cap slot, no cooldown).
  *   duck         a DUCKING_SFX sound (jingles, the Ember) dips the music group to AUDIO_VIEW.duck.level for the
@@ -269,6 +271,8 @@ export class AudioController implements OnStart {
 				treasure,
 				ctx.run.pacts,
 				ctx.run.golden,
+				// docs/GOLDLING_RUMOURS.md GR6: this frame's rumour edges (SimController stepped the clock after the ticks)
+				this.sim.getGoldenRumour(),
 			);
 			for (let i = 0; i < this.cues.size(); i++) {
 				this.play(this.cues.id(i), this.cues.volume(i), this.cues.speed(i));

@@ -4,7 +4,8 @@ import { selectSnapshot } from "client/store";
 import { UI_IMAGES, role, str, useUiArt } from "client/ui/theme";
 import type { ThemePack } from "shared/theme";
 import { FloorModifier } from "shared/dungeon";
-import { HORDE_CHIP, hordeChipWidth } from "shared/view/pacts";
+import { HORDE_CHIP } from "shared/view/pacts";
+import { GOLDEN_VIEW, GoldenRumourPhase, chipRowWidth } from "shared/view/golden";
 import { BOOST_VIEW, type BoostHudEntry } from "shared/view/boosts";
 import { BRACE_VIEW } from "shared/view/fx";
 import { FLOOR_MODIFIER_VIEW } from "shared/view/modifiers";
@@ -24,6 +25,7 @@ import {
 import { BoostRow, boostCellWidth } from "./BoostRow";
 import { BRACE_UI } from "./braceUi";
 import { FloorModifierChip, useFloorModifier } from "./FloorModifierChip";
+import { GoldenRumourChip } from "./GoldenRumourChip";
 import { HordeChip } from "./HordeChip";
 import { ArtImage, Panel, Pip, Row, Text, type PipArtProps } from "./primitives";
 import { RunItems } from "./RunItems";
@@ -162,11 +164,12 @@ function BracePulse() {
 }
 
 /**
- * The boost row while a chip leads it: the Pact of the Horde armed (docs/FORTUNE.md FO7, `horde`) and / or the floor's
- * modifier (docs/FLOOR_MODIFIERS.md FM6, `modifier`: a FloorModifier id, NONE for none). One chip takes the chip slot
- * (shared/view/pacts hordeChipWidth: one boost cell beside it, more boosts wrap under it), so a chip shares the boost
- * row's line instead of adding a panel or a row of its own. Both: the modifier chip in a boost cell's width, the Horde
- * chip in its slot, the boosts on the line under them.
+ * The boost row while chips lead it: the floor's modifier (docs/FLOOR_MODIFIERS.md FM6, `modifier`: a FloorModifier
+ * id, NONE for none), the Pact of the Horde armed (docs/FORTUNE.md FO7, `horde`) and the Goldling's rumour
+ * (docs/GOLDLING_RUMOURS.md GR7, `rumour`). Without the modifier the chips split the row but one boost cell
+ * (shared/view/golden chipRowWidth; one chip: hordeChipWidth's slot) and the boosts share their line. With the modifier
+ * and another chip, the chips take a line of their own (the modifier in a boost cell's width, the others splitting the
+ * rest) and the boosts go on the line under them.
  */
 function ChipBoostRow(props: {
 	order: number;
@@ -174,28 +177,45 @@ function ChipBoostRow(props: {
 	highlight?: boolean;
 	horde: boolean;
 	modifier: number;
+	rumour: number;
 }) {
 	const cell = boostCellWidth(BOOST_VIEW);
-	const slot = hordeChipWidth(statusRowMaxWidth(), cell, HUD_VIEW.gap);
+	const rowW = statusRowMaxWidth();
 	const h = BOOST_VIEW.iconSize;
-	const both = props.horde && props.modifier !== FloorModifier.NONE;
+	const hasModifier = props.modifier !== FloorModifier.NONE;
+	const hasRumour = props.rumour !== GoldenRumourPhase.NONE;
+	const others = (props.horde ? 1 : 0) + (hasRumour ? 1 : 0);
+	const stacked = hasModifier && others > 0;
+	const chipW = chipRowWidth(rowW, cell, HUD_VIEW.gap, stacked ? others : others + (hasModifier ? 1 : 0));
 	const chips = new Array<React.Element>();
-	if (props.modifier !== FloorModifier.NONE) {
+	if (hasModifier) {
 		chips.push(
 			<FloorModifierChip
 				key="FloorModifier"
 				order={1}
 				kind={props.modifier}
-				width={both ? cell : slot}
+				width={stacked ? cell : chipW}
 				height={h}
 				textSize={FLOOR_MODIFIER_VIEW.chip.textSize}
 			/>,
 		);
 	}
 	if (props.horde) {
-		chips.push(<HordeChip key="Horde" order={2} width={slot} height={h} textSize={HORDE_CHIP.textSize} />);
+		chips.push(<HordeChip key="Horde" order={2} width={chipW} height={h} textSize={HORDE_CHIP.textSize} />);
 	}
-	if (both) {
+	if (hasRumour) {
+		chips.push(
+			<GoldenRumourChip
+				key="GoldenRumour"
+				order={3}
+				width={chipW}
+				height={h}
+				textSize={GOLDEN_VIEW.rumour.chip.textSize}
+				phase={props.rumour}
+			/>,
+		);
+	}
+	if (stacked) {
 		return (
 			<frame
 				LayoutOrder={props.order}
@@ -213,6 +233,7 @@ function ChipBoostRow(props: {
 			</frame>
 		);
 	}
+	const used = chips.size() * (chipW + HUD_VIEW.gap);
 	return (
 		<Row order={props.order}>
 			{chips}
@@ -221,7 +242,7 @@ function ChipBoostRow(props: {
 				boosts={props.boosts}
 				highlight={props.highlight}
 				tooltips={true}
-				maxWidth={math.max(cell, statusRowMaxWidth() - slot - HUD_VIEW.gap)}
+				maxWidth={math.max(cell, statusRowMaxWidth() - used)}
 			/>
 		</Row>
 	);
@@ -241,7 +262,8 @@ export interface StatusPanelProps {
  * labelled from the theme string table (labels in a column of HUD_VIEW.statusLabelWidth so the rows line up); with
  * boost drops (docs/BOOSTS.md B7) the Aegis pip after the armor pips (its own colour, BOOST_VIEW.aegisPipRole) and the
  * running boosts (BoostRow; while the Pact of the Horde is armed, docs/FORTUNE.md FO7, the Horde chip leads the row,
- * and on a floor modifier's floor, docs/FLOOR_MODIFIERS.md FM6, the modifier chip: ChipBoostRow); on an unscored
+ * and on a floor modifier's floor, docs/FLOOR_MODIFIERS.md FM6, the modifier chip, and while a Goldling's rumour is heard, docs/GOLDLING_RUMOURS.md GR7, its
+ * chip: ChipBoostRow); on an unscored
  * endless run a line with the floor and Depth (a scored run shows it under
  * the score, docs/HUD_LAYOUT.md H4); the owned boons, relics and curses (M2, RunItems). Reads only the ~10 Hz
  * snapshot. In the tutorial: the highlight ring on the hearts or the flask row or the boost row, and the ghost half
@@ -283,13 +305,14 @@ export function StatusPanel(props: StatusPanelProps) {
 				<Text order={0} width={HUD_VIEW.statusLabelWidth} color="uiTextDim" text={str(HUD_STRINGS.ember)} />
 				{pips(s.embers, s.emberMax, "ember", true, "ember", skin)}
 			</Row>
-			{s.hordeArmed || modifier !== FloorModifier.NONE ? (
+			{s.hordeArmed || modifier !== FloorModifier.NONE || s.goldenRumour !== GoldenRumourPhase.NONE ? (
 				<ChipBoostRow
 					order={4}
 					boosts={s.boosts}
 					highlight={props.boostsHighlight}
 					horde={s.hordeArmed}
 					modifier={modifier}
+					rumour={s.goldenRumour}
 				/>
 			) : (
 				<BoostRow order={4} boosts={s.boosts} highlight={props.boostsHighlight} tooltips={true} />

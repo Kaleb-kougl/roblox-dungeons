@@ -10,23 +10,30 @@
  * boost kinds only.
  *
  *   floor start   goldenOnFloor (createSimState after the score state; stepEndless after rebuildScoreRooms): status
- *                 WAITING with the floor's FloorGolden (its score record index in `record`), else NONE; every per-floor
- *                 field reset. The actor of a Goldling still out is freed with every other actor by the floor change
- *                 (gone, no counter).
- *   appear        stepGolden.ts (after stepScore): appearTicks after the room's record engaged, on the room's spawn tile
- *                 farthest from every living player; a full pool: SKIPPED.
+ *                 WAITING with the floor's FloorGolden (its score record index in `record`, its piece's breakables slot
+ *                 in `piece`), else NONE; every per-floor field reset. The actor of a Goldling still out is freed with
+ *                 every other actor by the floor change (gone, no counter); one still hidden is gone with its piece.
+ *   hidden        WAITING (docs/GOLDLING_RUMOURS.md GR2, RD10 / RD12 / RD13): it hides in its own barrel or crate
+ *                 (breakables slot `piece`, the floor's last piece). The piece blocks and scores like any piece, but only
+ *                 a PLAYER's damage reaches it (breakables.ts damageBreakable: goldenGuardsPiece refuses ENEMY_BULLET and
+ *                 SLAM, the boss's slam, a Bomber's blast and a Charger's charge, before any bookkeeping, like a chest's).
+ *                 Its room's engagement still latches `engageTick` (the view's room rumour). Never found: hidden until
+ *                 the floor ends, no counter.
+ *   release       a player's break (MELEE / PLAYER_BULLET / ROLL / BUILD) calls goldenOnBreak (goldenHooks.ts, a leaf
+ *                 hook like the drops' dropsOnBreak): `releaseTick` = this tick. stepGolden.ts (after stepScore, the same
+ *                 tick) spawns it at the piece's cell centre, `appearTick` = that tick; a full pool: SKIPPED.
  *   run           the archetype (combat/actors/archetypes/golden.ts) flees on the field of goldenField.ts.
  *   hit / catch   the archetype's onHit / onDeath (goldenHooks.ts): coins per damaging hit, the jackpot on the kill.
  *   escape        stepGolden.ts: its time (escapeTicks) is up: freed (no onDeath, score or drops), ESCAPED.
  *
- * This module holds the config, the state, its floor fill, clone and hash. A LEAF (shared/dungeon, types and
- * goldenData.ts only): the archetype and stepGolden import it without a require cycle.
+ * This module holds the config, the state, its floor fill, clone and hash, and the piece queries (goldenPieceAt,
+ * goldenGuardsPiece). A LEAF (shared/dungeon, types and goldenData.ts only): the archetype, stepGolden and
+ * breakables.ts import it without a require cycle.
  */
-import { GOLDEN_FLEE, type FloorGolden, type FleeScratch } from "shared/dungeon";
+import { BREAKABLE_KINDS, GOLDEN_FLEE, cellKey, gridToWorld, type FloorGolden, type FleeScratch } from "shared/dungeon";
 import { seedToState } from "../rng";
 import type { SimState } from "../state";
 import {
-	GOLDEN_APPEAR_TICKS,
 	GOLDEN_ESCAPE_TICKS,
 	GOLDEN_EXTRA_BOOSTS,
 	GOLDEN_FIELD_TICKS,
@@ -42,9 +49,7 @@ import {
 
 /** SimConfig.golden: presence turns the Goldling on (endless runs: each floor's room comes from its world). */
 export interface GoldenConfig {
-	/** Ticks from the room's engagement to its appearance. */
-	readonly appearTicks: number;
-	/** Ticks from its appearance to its escape. */
+	/** Ticks from its appearance (its piece broken) to its escape. */
 	readonly escapeTicks: number;
 	/** The flee field's sources are re-read every this many ticks. */
 	readonly fieldTicks: number;
@@ -65,7 +70,6 @@ export interface GoldenConfig {
 
 /** The game's Goldling rules (docs/FORTUNE.md; endless worlds). */
 export const ENDLESS_GOLDEN_CONFIG: GoldenConfig = table.freeze({
-	appearTicks: GOLDEN_APPEAR_TICKS,
 	escapeTicks: GOLDEN_ESCAPE_TICKS,
 	fieldTicks: GOLDEN_FIELD_TICKS,
 	fleeFactor: GOLDEN_FLEE.factor,
@@ -143,10 +147,9 @@ export interface GoldenState {
 	room: number;
 	/** Index into state.score.rooms of that room's record, -1 for none (or no scoring). */
 	record: number;
-	/** The tick its room engaged (-1: not yet). */
+	/** The tick its room engaged (-1: not yet). Latched once while WAITING; nothing moves it after (the room rumour). */
 	engageTick: number;
-	/** The tick it appears / appeared (engageTick + appearTicks; -1: not known yet; pacts/holdTimers.ts moves it 1
-	 * later per frozen tick while WAITING, with engageTick). */
+	/** The tick it came out of its piece (= releaseTick when the pool had room; -1: not yet, or SKIPPED). */
 	appearTick: number;
 	/** Its actor's pool slot and ActorState.id while RUNNING (and after: the corpse / last position), -1 / 0 before. */
 	actorSlot: number;
@@ -162,6 +165,10 @@ export interface GoldenState {
 	/** The flee field's sources: the tick they were read (-1: never this floor) and the box cells (living players). */
 	fieldTick: number;
 	src: number[];
+	/** The tick a player broke its piece (goldenOnBreak; -1: not yet this floor). */
+	releaseTick: number;
+	/** Its piece's slot in state.breakables (FloorGolden.piece; -1: no Goldling on this floor). */
+	piece: number;
 	/** Floor data (EndlessFloorWorld.golden): hashed through `room` only. */
 	floor: FloorGolden | undefined;
 	/** Not hashed (a pure function of hashed state). */
@@ -202,6 +209,8 @@ export function createGoldenState(config: GoldenConfig, seed: number): GoldenSta
 		escaped: 0,
 		fieldTick: -1,
 		src: [],
+		releaseTick: -1,
+		piece: -1,
 		floor: undefined,
 		cache: emptyCache(),
 		events: emptyEvents(),
@@ -209,9 +218,10 @@ export function createGoldenState(config: GoldenConfig, seed: number): GoldenSta
 }
 
 /**
- * A new floor (createSimState after the score state, stepEndless after rebuildScoreRooms): WAITING with `floor`'s
- * Goldling room (its score record looked up), else NONE; every per-floor field reset, the run counters and the stream
- * kept. No-op without state.golden. No rng.
+ * A new floor (createSimState after the score state, stepEndless after rebuildScoreRooms, both after the breakables'
+ * reset): WAITING with `floor`'s Goldling room (its score record looked up) and its piece's slot, else NONE; every
+ * per-floor field reset, the run counters and the stream kept. With breakables, throws when piece `floor.piece` is not
+ * an intact barrel or crate on the floor's piece cell (floor data out of step). No-op without state.golden. No rng.
  */
 export function goldenOnFloor(state: SimState, floor: FloorGolden | undefined): void {
 	const g = state.golden;
@@ -229,6 +239,22 @@ export function goldenOnFloor(state: SimState, floor: FloorGolden | undefined): 
 			}
 		}
 	}
+	g.piece = floor !== undefined ? floor.piece : -1;
+	const b = state.breakables;
+	if (floor !== undefined && b !== undefined) {
+		const p = b.pieces[floor.piece];
+		if (
+			p === undefined ||
+			p.kind !== (BREAKABLE_KINDS as ReadonlyArray<string>).indexOf(floor.pieceKind) ||
+			p.x !== floor.pieceX ||
+			p.y !== floor.pieceY ||
+			b.slotByCell.get(cellKey(p.x, p.y)) !== floor.piece
+		)
+			error(
+				`golden: breakables slot ${floor.piece} is not the Goldling's piece at (${floor.pieceX}, ${floor.pieceY})`,
+				0,
+			);
+	}
 	g.engageTick = -1;
 	g.appearTick = -1;
 	g.actorSlot = -1;
@@ -237,6 +263,7 @@ export function goldenOnFloor(state: SimState, floor: FloorGolden | undefined): 
 	g.hits = 0;
 	g.fieldTick = -1;
 	g.src.clear();
+	g.releaseTick = -1;
 	g.cache = emptyCache();
 }
 
@@ -271,6 +298,8 @@ export function cloneGoldenState(g: Readonly<GoldenState>): GoldenState {
 		escaped: g.escaped,
 		fieldTick: g.fieldTick,
 		src: [...g.src],
+		releaseTick: g.releaseTick,
+		piece: g.piece,
 		floor: g.floor,
 		// A pure function of hashed state: the clone rebuilds it on first use.
 		cache: emptyCache(),
@@ -283,6 +312,36 @@ export function cloneGoldenState(g: Readonly<GoldenState>): GoldenState {
 			escaped: e.escaped !== undefined ? { ...e.escaped } : undefined,
 		},
 	};
+}
+
+/**
+ * True while the Goldling hides (WAITING) and breakables slot `slot` is its intact piece: the view's glint
+ * (docs/GOLDLING_RUMOURS.md RD14, like a loaded piece's breakableLootAt). False without state.golden or breakables.
+ * Read-only; no rng.
+ */
+export function goldenPieceAt(state: Readonly<SimState>, slot: number): boolean {
+	const g = state.golden;
+	if (g === undefined || g.status !== GoldenStatus.WAITING || g.piece < 0 || slot !== g.piece) return false;
+	const b = state.breakables;
+	const p = b?.pieces[slot];
+	// Intact: the cell lookup of the intact pieces still names this slot.
+	return b !== undefined && p !== undefined && b.slotByCell.get(cellKey(p.x, p.y)) === slot;
+}
+
+/**
+ * True when breakables slot `slot` is this floor's Goldling piece (any status): damageBreakable refuses every enemy
+ * source on it (RD13). False without state.golden.
+ */
+export function goldenGuardsPiece(state: Readonly<SimState>, slot: number): boolean {
+	const g = state.golden;
+	return g !== undefined && g.piece >= 0 && slot === g.piece;
+}
+
+/** World centre of the Goldling's piece cell on this floor (where it comes out), or undefined: no Goldling. */
+export function goldenPieceCentre(g: Readonly<GoldenState>): { readonly x: number; readonly z: number } | undefined {
+	const f = g.floor;
+	if (f === undefined) return undefined;
+	return { x: gridToWorld(f.pieceX), z: gridToWorld(f.pieceY) };
 }
 
 /** The Goldling's actor while it is out (RUNNING, its slot still holding its id), else undefined. */
@@ -315,18 +374,27 @@ export const GOLDEN_HASH_FIELDS = [
 ] as const;
 
 /**
- * writeGoldenHash order: GOLDEN_HASH_FIELDS, then the source count and each source cell. The floor data (walk mask) is
- * a pure function of the floor seed and enters through `room`; the field cache is a pure function of hashed state.
+ * Hashed GoldenState fields after the source cells (docs/GOLDLING_RUMOURS.md GR3: the hiding place), in order. Append
+ * only.
+ */
+export const GOLDEN_HASH_TAIL_FIELDS = ["releaseTick", "piece"] as const;
+
+/**
+ * writeGoldenHash order: GOLDEN_HASH_FIELDS, then the source count and each source cell, then GOLDEN_HASH_TAIL_FIELDS.
+ * The floor data (walk mask, piece cell and kind) is a pure function of the floor seed and enters through `room` and
+ * `piece`; the field cache is a pure function of hashed state.
  */
 export function writeGoldenHash(g: Readonly<GoldenState>, out: number[]): void {
 	for (const f of GOLDEN_HASH_FIELDS) out.push(g[f]);
 	out.push(g.src.size());
 	for (const c of g.src) out.push(c);
+	for (const f of GOLDEN_HASH_TAIL_FIELDS) out.push(g[f]);
 }
 
-/** Dump names for writeGoldenHash, same order (`golden.status`, `golden.src[0]`, ...). */
+/** Dump names for writeGoldenHash, same order (`golden.status`, `golden.src[0]`, ..., `golden.piece`). */
 export function goldenHashNames(g: Readonly<GoldenState>, out: string[]): void {
 	for (const f of GOLDEN_HASH_FIELDS) out.push(`golden.${f}`);
 	out.push("golden.src.length");
 	for (let i = 0; i < g.src.size(); i++) out.push(`golden.src[${i}]`);
+	for (const f of GOLDEN_HASH_TAIL_FIELDS) out.push(`golden.${f}`);
 }

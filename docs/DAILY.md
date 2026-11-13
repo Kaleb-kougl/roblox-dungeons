@@ -124,7 +124,7 @@ a dearer kind joins. The census reports it; tuning is an owner call.
   RFC 4231 vectors); `dailySeedFrom(day, key)` refuses keys under 16 bytes. (First build used an invertible 32-bit
   mixer; the review caught it.) Valid by
   `isValidRunSeed`. The seed of today is sent to clients (`dailyStatus`), so the menu can preview the roster and boss.
-- **Ruleset (DSD11).** `DAILY.ruleset` (an integer, `shared/daily/config.ts`; now **16**) joins the board scope. Bump
+- **Ruleset (DSD11).** `DAILY.ruleset` (an integer, `shared/daily/config.ts`; now **18**) joins the board scope. Bump
   it with any change that alters endless play; after an update, servers still on the old build keep posting to the old
   ruleset's board and new servers to the new one, so no daily board mixes two rulesets.
   History: 1 at launch of the feature; 2 with boosts from breakables (docs/BREAKABLE_DROPS.md, 2026-11-01); 3 with
@@ -137,8 +137,9 @@ a dearer kind joins. The census reports it; tuning is an owner call.
   one bump for both, 2026-11-04: endless shrines, rooms and scores change; the fortune branch's own 6 never shipped). 9-15:
   legendaries, Bastion's brace, the wall slide, builds v2, Kenney decor, the Archer and DSD17 (the comment has them); 16
   floor modifiers (docs/FLOOR_MODIFIERS.md FM4, 2026-11-12: Gilded / Hoard / Feast / Plunder / Blood Moon floors change
-  endless floors, play and scores, the Daily's banners included; other work in progress also took 16, so whichever
-  merges second takes 17).
+  endless floors, play and scores, the Daily's banners included); 17 DSD18 (one new seeded kind every floor); 18 the
+  Goldling hiding in its own barrel or crate (docs/GOLDLING_RUMOURS.md GR3, 2026-11-12: Goldling floors gain a piece,
+  and it comes out when a player breaks it; the branch took 16, then 17, then 18 as main moved under it).
   The history is also the comment on `DAILY.ruleset` (`shared/daily/config.ts`).
 
 ### 3. World, sessions, remotes

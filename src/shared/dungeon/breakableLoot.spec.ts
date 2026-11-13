@@ -34,6 +34,7 @@ import {
 	type EndlessFloorLayout,
 	type ForgeParams,
 } from "shared/dungeon";
+import { piecesBeforeGolden } from "shared/dungeon/testing";
 
 const dungeons = new Map<string, Dungeon>();
 function dungeonFor(params: ForgeParams): Dungeon {
@@ -53,8 +54,9 @@ const CENSUS: EndlessFloorLayout[] = [];
 for (let run = 1; run <= CENSUS_RUNS; run++)
 	for (const floor of CENSUS_FLOORS) CENSUS.push(buildEndlessFloor(run, floor, dungeonFor));
 
+/** The floor's clutter: its breakables without the Goldling's own piece (appended last, docs/GOLDLING_RUMOURS.md GR1). */
 function pieces(l: EndlessFloorLayout): ReadonlyArray<BreakablePlacement> {
-	return l.breakables ?? [];
+	return piecesBeforeGolden(l);
 }
 
 function loot(l: EndlessFloorLayout): ReadonlyArray<BreakableLoot> {

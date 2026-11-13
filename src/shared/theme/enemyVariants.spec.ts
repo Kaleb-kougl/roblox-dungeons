@@ -207,6 +207,8 @@ describe("enemy variants: contract", () => {
 			...AFFIX_IDS.map((a) => bestiaryAffixKey(a)),
 			// docs/PELLETS.md PL14: the power pellet's first sighting, appended last
 			"bestiary.pellet.power",
+			// docs/GOLDLING_RUMOURS.md GR7: the first Goldling rumour's card, appended after it
+			"bestiary.golden.rumour",
 		]);
 		expect([...BESTIARY_STRING_KEYS]).toEqual([
 			"bestiary.imp",
@@ -223,6 +225,7 @@ describe("enemy variants: contract", () => {
 			"bestiary.affix.shielded",
 			"bestiary.affix.vengeful",
 			"bestiary.pellet.power",
+			"bestiary.golden.rumour",
 		]);
 		expect([...ENEMY_VARIANT_STRING_KEYS]).toEqual([...AFFIX_STRING_KEYS, ...BESTIARY_STRING_KEYS]);
 		for (const k of ENEMY_VARIANT_STRING_KEYS) expect([k, has(REQUIRED_STRING_KEYS, k)]).toEqual([k, true]);

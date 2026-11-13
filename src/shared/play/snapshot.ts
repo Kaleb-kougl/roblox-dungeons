@@ -34,6 +34,7 @@ import {
 	type SimState,
 } from "shared/sim";
 import { boostEntriesEqual, boostHudEntries, type BoostHudEntry } from "shared/view/boosts";
+import { GoldenRumourPhase, type GoldenRumourPhaseId } from "shared/view/golden";
 import type { RunOutcome } from "./liveRun";
 
 export interface GameSnapshot {
@@ -123,6 +124,11 @@ export interface GameSnapshot {
 	readonly draftPact: number;
 	/** The Pact of the Horde is armed (taken, no room roused yet): the status corner's chip. Party state. */
 	readonly hordeArmed: boolean;
+	/**
+	 * The Goldling rumour chip's phase (docs/GOLDLING_RUMOURS.md GR7: shared/view/golden GoldenRumourPhase; NONE: no
+	 * chip): this client's GoldenRumourClock.chip(), from SnapshotExtras.goldenRumour (NONE without it).
+	 */
+	readonly goldenRumour: GoldenRumourPhaseId;
 	/** Co-op spectating (docs/SPECTATE.md): the local player is dead and watches a teammate (the spectate bar shows). */
 	readonly spectating: boolean;
 	/** The watched teammate's display name; "" when not spectating. */
@@ -189,6 +195,7 @@ export const EMPTY_SNAPSHOT: GameSnapshot = table.freeze({
 	shrinePact: -1,
 	draftPact: NO_PACT,
 	hordeArmed: false,
+	goldenRumour: GoldenRumourPhase.NONE,
 	spectating: false,
 	spectateName: "",
 	spectatePosition: 0,
@@ -241,6 +248,11 @@ export interface SnapshotExtras {
 	readonly vitalsIndex?: number;
 	/** Co-op spectating: the spectate bar's watched name and "position / count"; absent when not spectating. */
 	readonly spectate?: SnapshotSpectate;
+	/**
+	 * The Goldling rumour chip (docs/GOLDLING_RUMOURS.md GR7): the client's GoldenRumourClock.chip() (a per-client clock,
+	 * not sim state). Default NONE.
+	 */
+	readonly goldenRumour?: GoldenRumourPhaseId;
 }
 
 /** SnapshotExtras.spectate: who the local player watches (SimController's SpectateView + the member's name). */
@@ -319,6 +331,7 @@ export function takeSnapshot(state: Readonly<SimState>, extras: SnapshotExtras):
 			extras.config !== undefined && pactAltarOffered(state, extras.config, me) ? pactAltarAt(state, me) : -1,
 		draftPact: pactDraftKind(state, me),
 		hordeArmed: hordePhase(state) === HordePhase.ARMED,
+		goldenRumour: extras.goldenRumour ?? GoldenRumourPhase.NONE,
 		spectating: spectate !== undefined,
 		spectateName: spectate !== undefined ? spectate.name : "",
 		spectatePosition: spectate !== undefined ? spectate.position : 0,
@@ -388,6 +401,7 @@ export function snapshotsEqual(a: GameSnapshot, b: GameSnapshot): boolean {
 		a.shrinePact === b.shrinePact &&
 		a.draftPact === b.draftPact &&
 		a.hordeArmed === b.hordeArmed &&
+		a.goldenRumour === b.goldenRumour &&
 		a.spectating === b.spectating &&
 		a.spectateName === b.spectateName &&
 		a.spectatePosition === b.spectatePosition &&

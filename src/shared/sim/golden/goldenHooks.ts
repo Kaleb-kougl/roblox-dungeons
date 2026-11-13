@@ -1,8 +1,13 @@
 /**
- * The Goldling's hit and catch hooks (docs/FORTUNE.md "Payouts", GE2 / GE3, FD12), called from its archetype's onHit /
- * onDeath (combat/actors/archetypes/golden.ts). No-op without state.golden, or for an actor that is not this floor's
- * running Goldling (a stray one a spec spawned by hand). Draws only the Goldling's own stream.
+ * The Goldling's hooks: the hit and catch hooks (docs/FORTUNE.md "Payouts", GE2 / GE3, FD12), called from its
+ * archetype's onHit / onDeath (combat/actors/archetypes/golden.ts), and the release hook (docs/GOLDLING_RUMOURS.md GR2),
+ * called from breakables.ts damageBreakable's break line. No-op without state.golden, or for an actor that is not this
+ * floor's running Goldling (a stray one a spec spawned by hand) / a piece that is not its hiding place. Draws only the
+ * Goldling's own stream (the catch's boosts); the release draws nothing.
  *
+ *   release a PLAYER's break of its piece (MELEE / PLAYER_BULLET / ROLL / BUILD; enemy sources never reach the break
+ *           line on that slot, golden.ts goldenGuardsPiece) while it hides: releaseTick = this tick (once). stepGolden
+ *           (after stepScore, the same tick) brings it out. A leaf hook like the drops' dropsOnBreak.
  *   hit     a damaging hit (damage > 0 after the cap): score.ts scoreGoldenHit (hitPoints x the kills' floor scale into
  *           ScoreSource.GOLDEN; NO combo feed), coins += its points, hits + 1, events.hits.
  *   catch   the kill. killActor already scored it (score.ts scoreKill: killPoints x the floor scale into GOLDEN, the
@@ -30,6 +35,16 @@ function ownGolden(state: Readonly<SimState>, a: Readonly<ActorState>): GoldenSt
 	const g = state.golden;
 	if (g === undefined || g.status !== GoldenStatus.RUNNING || g.actorId !== a.id) return undefined;
 	return g;
+}
+
+/**
+ * damageBreakable's break line, for a player's break of the piece in breakables slot `slot`: when it is the hiding
+ * Goldling's piece (WAITING, not yet released), releaseTick = this tick. Otherwise nothing. No rng.
+ */
+export function goldenOnBreak(state: SimState, slot: number): void {
+	const g = state.golden;
+	if (g === undefined || g.status !== GoldenStatus.WAITING || g.piece < 0 || slot !== g.piece) return;
+	if (g.releaseTick < 0) g.releaseTick = state.tick;
 }
 
 /** A damaging hit on the Goldling `a` by `player` (onHit with damage > 0). */

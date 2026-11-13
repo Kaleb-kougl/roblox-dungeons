@@ -35,6 +35,7 @@ import {
 	type EndlessFloorLayout,
 	type ForgeParams,
 } from "shared/dungeon";
+import { piecesBeforeGolden } from "shared/dungeon/testing";
 import { PEDESTAL_RADIUS, SHRINE_RADIUS, STAIRWELL_RADIUS } from "shared/sim";
 
 const dungeons = new Map<string, Dungeon>();
@@ -59,8 +60,9 @@ for (let run = 1; run <= 4; run++)
 
 const ALL = [...CENSUS, ...DEEP];
 
+/** The floor's clutter: its breakables without the Goldling's own piece (appended last, docs/GOLDLING_RUMOURS.md GR1). */
 function pieces(l: EndlessFloorLayout): ReadonlyArray<BreakablePlacement> {
-	return l.breakables ?? [];
+	return piecesBeforeGolden(l);
 }
 
 function dist2(ax: number, az: number, bx: number, bz: number): number {
@@ -132,14 +134,15 @@ describe("breakable placement: stream and determinism", () => {
 			expect(diff).toBe(0);
 			expect(fresh.props.size()).toBe(d.props.size());
 			expect(fresh.spawns.size()).toBe(d.spawns.size());
-			// ... and the spawn tiles are the floor's own minus the taken cells.
+			// ... and the spawn tiles are the floor's own minus the taken cells (every piece's, the Goldling's included).
+			const all = l.breakables ?? [];
 			const tiles = endlessRoomSpawnTiles(d, l.roomSpawns);
-			const want = withoutBreakableCells(tiles, pieces(l));
+			const want = withoutBreakableCells(tiles, all);
 			let same = l.roomSpawnTiles.size() === want.size();
 			let left = 0;
 			let inPiece = 0;
 			const taken = new Set<string>();
-			for (const b of pieces(l)) taken.add(`${gridToWorld(b.x)},${gridToWorld(b.y)}`);
+			for (const b of all) taken.add(`${gridToWorld(b.x)},${gridToWorld(b.y)}`);
 			for (let r = 0; r < want.size(); r++) {
 				const got = l.roomSpawnTiles[r];
 				if (got.size() !== want[r].size()) same = false;
@@ -151,7 +154,7 @@ describe("breakable placement: stream and determinism", () => {
 			}
 			expect([same, inPiece]).toEqual([true, 0]);
 			// Exactly the taken cells left the lists (each was a spawn tile of at most one room).
-			expect(left).toBeLessThanOrEqual(pieces(l).size());
+			expect(left).toBeLessThanOrEqual(all.size());
 		}
 	});
 

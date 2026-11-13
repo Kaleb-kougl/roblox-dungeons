@@ -1068,6 +1068,33 @@
 			"notes": "docs/DAILY.md DS10: a friend passed on today's daily board, with their headshot toast (one per toast, the toasts queue). Short and light, under sfx.rank.up. Unused as a primary clip so far (relic's alternate only). Audition at DS12.",
 			"confirmed": false
 		},
+		"sfx.golden.rumour.floor": {
+			"silent": true,
+			"alternates": [
+				{
+					"src": "ninja-adventure/Audio/Sounds/Bonus/Coin3.wav",
+					"lowpassHz": 2200,
+					"gainDb": -6
+				},
+				"ninja-adventure/Audio/Sounds/Bonus/Coin3.wav"
+			],
+			"notes": "docs/GOLDLING_RUMOURS.md GR6: a Goldling hides on this floor (once per floor, 1 s after the floor's draft closed; the chip says Coins jingling...). A soft, muffled, far-off coin jingle: candidate Bonus/Coin3 low-passed ~2200 Hz at -6 dB (the plan's pick, first alternate). Category sfx (no duck, not a jingle), SFX_PRIORITY 45, cue volume 0.45 (GOLDEN_VIEW.rumour.floorVolume). Must read apart from sfx.golden.hit's plain Coin.wav. Silent until GR10's audition: the score tick plays meanwhile (SFX_FALLBACK).",
+			"confirmed": false
+		},
+		"sfx.golden.rumour.room": {
+			"silent": true,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Bonus/Coin3.wav",
+				{
+					"src": "ninja-adventure/Audio/Sounds/Bonus/Coin2.wav",
+					"mix": [
+						"ninja-adventure/Audio/Sounds/Bonus/Coin2.wav"
+					]
+				}
+			],
+			"notes": "docs/GOLDLING_RUMOURS.md GR6: the Goldling's room engaged (once per floor; the chip says It's hiding here!). The floor rumour's jingle, closer and brighter: candidate Bonus/Coin3 unfiltered, or Coin2 layered (a mix of two Coin2 taps). Category sfx (no duck, not a jingle), SFX_PRIORITY 66, cue volume 0.8 (GOLDEN_VIEW.rumour.roomVolume; x the teammate volume from outside the room). Must read apart from sfx.golden.hit's plain Coin.wav. Silent until GR10's audition: the score tick plays meanwhile (SFX_FALLBACK).",
+			"confirmed": false
+		},
 		"music.menu": {
 			"category": "music",
 			"clips": [

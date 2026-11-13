@@ -5,7 +5,7 @@ import { clientStore } from "client/store";
 import { sightingStringKey } from "shared/onboarding";
 import { isDraftOpen } from "shared/sim";
 import { RENDER_ORDER } from "shared/view";
-import { SIGHTING_VIEW, SightingQueue, sightingsInView } from "shared/view/sighting";
+import { SIGHTING_VIEW, SightingQueue, sightingsInView, withRumourSighting } from "shared/view/sighting";
 import { SimController } from "./SimController";
 
 const RENDER_STEP = "KV_Sightings";
@@ -20,7 +20,9 @@ const RENDER_STEP = "KV_Sightings";
  * gapSeconds), it shows the line on the SightingCard (the left edge under the status panel, not the top-centre toasts:
  * those hang over the far side of the room where the new enemy walks in; theme string `bestiary.<id>`), hides it again
  * after toastSeconds and reports the id
- * (`bestiarySeen`; the server validates and stores it). Never in the tutorial, under the stage cover or after the run
+ * (`bestiarySeen`; the server validates and stores it). The Goldling rumours' card (`golden.rumour`, docs/
+ * GOLDLING_RUMOURS.md GR7) is found once this floor's first rumour cue played (SimController's GoldenRumourClock.heard,
+ * shared/view/sighting withRumourSighting): one card at a time, so never on top of the Goldling's own. Never in the tutorial, under the stage cover or after the run
  * is over (no scan at all); a toast waits while a boon draft is open or the solo run is paused. A run exit drops the
  * queued ids that were never shown. Nothing at all until a LOADED status arrived (a failed join load: the stored set is
  * unknown).
@@ -53,7 +55,9 @@ export class SightingController implements OnStart {
 		if (ctx === undefined || ctx.tutorial || !this.queue.isLoaded()) return;
 		if (this.sim.isInputCovered() || this.sim.isRunOver()) return;
 		const state = ctx.run.state;
-		this.queue.observe(sightingsInView(state, this.sim.getViewPlayerIndex(), this.found));
+		const found = sightingsInView(state, this.sim.getViewPlayerIndex(), this.found);
+		// docs/GOLDLING_RUMOURS.md GR7: the rumours' first-time card, queued on this floor's first rumour cue
+		this.queue.observe(withRumourSighting(found, this.sim.getGoldenRumour().heard()));
 		const canShow = !isDraftOpen(state) && ctx.live?.isPaused() !== true;
 		const id = this.queue.next(now, canShow);
 		if (id === undefined) return;

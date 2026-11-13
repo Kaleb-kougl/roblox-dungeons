@@ -90,6 +90,7 @@ import {
 	type StageKind,
 } from "shared/view";
 import { HitstopClock, simPacerFor, type FrameAdvance, type FramePacer } from "shared/view/fx";
+import { GoldenRumourClock } from "shared/view/golden";
 import { PREDICTION_VIEW, PredictionSmoother, writeDrawnPlayer, type DrawnPlayerOf } from "shared/view/predict";
 import { PROGRESSION_VIEW, boardFor, toastFor, type PendingRunClaim } from "shared/view/hud";
 import { afterRobloxMenuClosed, lobbyStartAccepted, restartForfeits } from "shared/view/menu";
@@ -474,6 +475,9 @@ export class SimController implements OnStart {
 
 	/** The freeze frame / slow motion clock (presentation pacing only; cleared at every run start). */
 	readonly hitstop = new HitstopClock();
+	/** The Goldling rumour clock (getGoldenRumour) and the run context it was last stepped for. */
+	private readonly rumour = new GoldenRumourClock();
+	private rumourCtx: RunContext | undefined;
 
 	/**
 	 * Local prediction on screen (docs/LOCAL_PREDICTION.md LP5): the co-op client's predicted head smoothed into the
@@ -560,9 +564,39 @@ export class SimController implements OnStart {
 
 		// No run yet: MenuController starts one (Play solo, a lobby, or at once with KV_SkipMenu), or the
 		// TutorialController's first-run gate starts the tutorial (a first join).
-		RunService.BindToRenderStep(RENDER_STEP, Enum.RenderPriority.Input.Value + RENDER_ORDER.simAfterInput, (dt) =>
-			this.frame(dt),
-		);
+		RunService.BindToRenderStep(RENDER_STEP, Enum.RenderPriority.Input.Value + RENDER_ORDER.simAfterInput, (dt) => {
+			this.frame(dt);
+			this.stepRumour(dt);
+		});
+	}
+
+	/**
+	 * The Goldling rumour clock (docs/GOLDLING_RUMOURS.md GR5 / GR6), stepped once per rendered frame right after the
+	 * frame's ticks (so the audio frame, the HUD snapshot and the first-time card read THIS frame's edges): reset on
+	 * every new run context, held under the stage cover, a solo pause or the frozen tutorial and once the run is over.
+	 * Read only: it never writes the state.
+	 */
+	getGoldenRumour(): GoldenRumourClock {
+		return this.rumour;
+	}
+
+	private stepRumour(dt: number): void {
+		const ctx = this.ctx;
+		if (ctx !== this.rumourCtx) {
+			this.rumourCtx = ctx;
+			this.rumour.reset();
+		}
+		if (ctx === undefined) return;
+		const hold =
+			this.frozen ||
+			this.isInputCovered() ||
+			this.isHeldByLoader() ||
+			this.isRunOver() ||
+			ctx.live?.isPaused() === true;
+		const chip = this.rumour.chip();
+		this.rumour.step(ctx.run.state, dt, hold);
+		// The chip shows (or changes) with its cue: the next frame's snapshot goes out at once, not at the ~10 Hz tick.
+		if (this.rumour.chip() !== chip) this.hudTimer = HUD_SNAPSHOT_INTERVAL_SEC;
 	}
 
 	// --- read access for views (never write the state) -----------------------------------------
@@ -1455,6 +1489,7 @@ export class SimController implements OnStart {
 					? { name: ctx?.memberNames[watched] ?? "", position: view.position, count: view.count }
 					: undefined,
 			config: coop.config,
+			goldenRumour: this.rumour.chip(),
 		});
 	}
 
@@ -1925,6 +1960,7 @@ export class SimController implements OnStart {
 			hitsTaken: run.hitsTaken,
 			endTick: run.endTick(),
 			config: run.setup.config,
+			goldenRumour: this.rumour.chip(),
 		});
 	}
 

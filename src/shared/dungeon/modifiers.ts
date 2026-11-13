@@ -40,7 +40,7 @@ import { AFFIXES } from "./affixesData";
 import { breakableLootRooms } from "./breakableLoot";
 import { NO_POWER_PELLET, type FloorPellets } from "./pellets";
 import { PELLETS } from "./pelletsData";
-import { vaultRooms, type VaultPlan } from "./vault";
+import { vaultChest, vaultRooms, type VaultPlan } from "./vault";
 import { VAULT } from "./vaultData";
 import { goldenEligibleRooms, type FloorGolden } from "./golden";
 import { GOLDEN_PLACE } from "./goldenData";
@@ -171,7 +171,10 @@ export function floorModifierEligible(kind: number, floor: FloorModifierFloor, p
 	const f = floor.floor;
 	if (kind === FloorModifier.GILDED) {
 		if (!parts.golden || f < GOLDEN_PLACE.fromFloor || floor.golden !== undefined) return false;
-		return goldenEligibleRooms(floor).size() > 0;
+		// The Goldling's room needs a cell for its own barrel or crate (docs/GOLDLING_RUMOURS.md GR1) against every
+		// natural piece, the vault's chest included.
+		const pieces = floor.vault !== undefined ? [...floor.breakables, vaultChest(floor.vault)] : floor.breakables;
+		return goldenEligibleRooms({ ...floor, pieces }).size() > 0;
 	}
 	if (kind === FloorModifier.HOARD) {
 		if (!parts.vaults || f < VAULT.fromFloor || floor.vault !== undefined) return false;

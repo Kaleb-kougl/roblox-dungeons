@@ -187,6 +187,14 @@
  * clear celebration is off (else the celebration plays it with the tally's Horde segment). The classic shrine's
  * sfx.shrine.use (StateWatch.shrineUsed) no longer counts pacts: a silent pact take falls back to it (SFX_FALLBACK).
  *
+ * The Goldling's rumours (docs/GOLDLING_RUMOURS.md GR6) come from the frame's GoldenRumourCueSource (shared/view/golden
+ * GoldenRumourClock: the client's SimController steps it after the frame's ticks; NO_GOLDEN_RUMOUR_CUES by default, so
+ * every other cue is as before). The clock already holds them under a draft, the stage cover, a solo pause and run over,
+ * once per floor each: `floorCue` -> sfx.golden.rumour.floor at GOLDEN_VIEW.rumour.floorVolume; `roomCue` ->
+ * sfx.golden.rumour.room at roomVolume, x AUDIO_VIEW.teammateVolume and TEAMMATE_PRIORITY_DROP lower while the view
+ * player stands outside the Goldling's room (a teammate engaged it, RD6). Plain sfx (no duck, not a jingle); silent,
+ * each plays sfx.score.tick at the rumour's volume with the pack's jitter.
+ *
  * Presentation only: reads sim state, never writes it.
  */
 import { VaultTier, floorModifierKey } from "shared/dungeon";
@@ -246,7 +254,16 @@ import {
 import { TREASURE_VIEW } from "../treasure/config";
 import { NO_TREASURE_CUES, NO_TREASURE_OPEN, type TreasureCueSource } from "../treasure/cues";
 import { NO_PACT_EVENTS, type PactFrameSource } from "../pacts/events";
-import { GOLDEN_VIEW, NO_GOLDEN_EVENTS, goldenFrameHitCount, goldenHitSpeed, type GoldenFrameSource } from "../golden";
+import {
+	GOLDEN_VIEW,
+	NO_GOLDEN_EVENTS,
+	NO_GOLDEN_RUMOUR_CUES,
+	goldenFrameHitCount,
+	goldenHitSpeed,
+	goldenRumourInRoom,
+	type GoldenFrameSource,
+	type GoldenRumourCueSource,
+} from "../golden";
 
 /** Every sound effect the game plays, by logical ID (theme manifest). */
 export const SFX = {
@@ -449,6 +466,13 @@ export const SFX = {
 	floorModifierFeast: "sfx.floor.modifier.feast",
 	floorModifierPlunder: "sfx.floor.modifier.plunder",
 	floorModifierBloodMoon: "sfx.floor.modifier.bloodmoon",
+	/**
+	 * The Goldling's rumours (docs/GOLDLING_RUMOURS.md GR6; the theme's GOLDEN_RUMOUR_AUDIO_IDS): a soft, far-off coin
+	 * jingle once per floor where one hides, the same jingle closer and brighter when its room engages. Mapped from the
+	 * client's GoldenRumourClock edges (goldenRumourCues); each plays sfx.score.tick while silent.
+	 */
+	goldenRumourFloor: "sfx.golden.rumour.floor",
+	goldenRumourRoom: "sfx.golden.rumour.room",
 } as const;
 export type SfxId = (typeof SFX)[keyof typeof SFX];
 
@@ -556,6 +580,8 @@ export const ALL_SFX: ReadonlyArray<SfxId> = [
 	SFX.floorModifierFeast,
 	SFX.floorModifierPlunder,
 	SFX.floorModifierBloodMoon,
+	SFX.goldenRumourFloor,
+	SFX.goldenRumourRoom,
 ];
 
 /** IDs this port added to the placeholder pack (not in the web contract's AUDIO_EVENTS; theme PORT_AUDIO_EVENTS). */
@@ -649,6 +675,8 @@ export const PORT_SFX: ReadonlyArray<SfxId> = [
 	SFX.floorModifierFeast,
 	SFX.floorModifierPlunder,
 	SFX.floorModifierBloodMoon,
+	SFX.goldenRumourFloor,
+	SFX.goldenRumourRoom,
 ];
 
 /**
@@ -919,6 +947,13 @@ export const SFX_PRIORITY: Readonly<Record<SfxId, number>> = {
 	[SFX.floorModifierPlunder]: 67,
 	[SFX.floorModifierBloodMoon]: 67,
 	/**
+	 * The rumours (docs/GOLDLING_RUMOURS.md GR6): the floor's is ambience-like news (under the breakables' hit, 45: a
+	 * busy arrival frame drops it before any fight sound); the room's is a call to look around (66: with the boosts'
+	 * pickups, under the Goldling's own appearance and the floor enter).
+	 */
+	[SFX.goldenRumourFloor]: 45,
+	[SFX.goldenRumourRoom]: 66,
+	/**
 	 * A boost out of a broken piece (docs/BREAKABLE_DROPS.md BL6): just over a kill drop's landing (the rarer, chosen
 	 * reward), under the pickup; over the piece's own break (40), which plays on the same frame.
 	 */
@@ -1159,6 +1194,13 @@ export const SFX_FALLBACK: Readonly<Partial<Record<SfxId, SfxId>>> = {
 	[SFX.floorModifierFeast]: SFX.jingleTreasure,
 	[SFX.floorModifierPlunder]: SFX.jingleTreasure,
 	[SFX.floorModifierBloodMoon]: SFX.hordeHorn,
+	/**
+	 * docs/GOLDLING_RUMOURS.md GR6: until the rumours' clips are picked (GR10), both play the score tick (at the
+	 * rumour's own volume, the pack's jitter), the sound the Goldling's hit itself falls back to while it is silent: on
+	 * committed main sfx.golden.hit has no clip, and a fallback resolves one step only. With the tick silent too, nothing.
+	 */
+	[SFX.goldenRumourFloor]: SFX.scoreTick,
+	[SFX.goldenRumourRoom]: SFX.scoreTick,
 	/**
 	 * docs/LEGENDARIES.md LG5: until the legendaries' clips are picked (LG8), an Overkill streak plays the spark's zap
 	 * and a Bastion brace the Aegis pip's break (the player's armor sound). One step each: while the spark is silent too
@@ -1620,6 +1662,26 @@ export class AudioCueMapper {
 		if (golden.escaped.size() > 0) this.cue(SFX.goldenEscape, 1);
 	}
 
+	/**
+	 * The frame's rumour cues (docs/GOLDLING_RUMOURS.md GR6; the client's GoldenRumourClock edges of THIS frame): the
+	 * floor rumour at GOLDEN_VIEW.rumour.floorVolume; the room rumour at roomVolume while the view player (`localIndex`)
+	 * stands in the Goldling's room, else at roomVolume x AUDIO_VIEW.teammateVolume and TEAMMATE_PRIORITY_DROP lower
+	 * (RD6: a teammate walked in). Plain sfx: no duck, no jingle slot; the pack's jitter (no exact speed), also through
+	 * the sfx.golden.hit fallback.
+	 */
+	private goldenRumourCues(rumour: GoldenRumourCueSource, state: Readonly<SimState>, localIndex: number): void {
+		const R = GOLDEN_VIEW.rumour;
+		if (rumour.floorCue) this.cue(SFX.goldenRumourFloor, R.floorVolume);
+		if (!rumour.roomCue) return;
+		if (goldenRumourInRoom(state, localIndex)) this.cue(SFX.goldenRumourRoom, R.roomVolume);
+		else
+			this.cue(
+				SFX.goldenRumourRoom,
+				R.roomVolume * AUDIO_VIEW.teammateVolume,
+				priorityOf(SFX.goldenRumourRoom) - TEAMMATE_PRIORITY_DROP,
+			);
+	}
+
 	/** The frame's build cues (BU8; see the file comment). */
 	private buildCues(builds: BuildFxFrameSource, localIndex: number): void {
 		const streaks = builds.overkills;
@@ -1751,8 +1813,9 @@ export class AudioCueMapper {
 	 * client's TeamMomentsController.syncs() of THIS near-miss frame, docs/RUN_RECAP.md CM4; none by default),
 	 * `treasure` the frame's vault sound edges (the client's TreasureCueTracker of THIS frame, docs/TREASURE.md TR8;
 	 * none by default), `pacts` the frame's pact events (the run view's `pacts`, docs/FORTUNE.md FO9; none by default),
-	 * `golden` the frame's Goldling events (the run view's `golden`, docs/FORTUNE.md FO9; none by default). Appends the
-	 * cues to start to `out` (in table order) and returns it.
+	 * `golden` the frame's Goldling events (the run view's `golden`, docs/FORTUNE.md FO9; none by default), `rumour` the
+	 * frame's Goldling rumour edges (the client's GoldenRumourClock, stepped by SimController after THIS frame's ticks,
+	 * docs/GOLDLING_RUMOURS.md GR6; none by default). Appends the cues to start to `out` (in table order) and returns it.
 	 */
 	frame(
 		now: number,
@@ -1773,6 +1836,7 @@ export class AudioCueMapper {
 		treasure: TreasureCueSource = NO_TREASURE_CUES,
 		pacts: PactFrameSource = NO_PACT_EVENTS,
 		golden: GoldenFrameSource = NO_GOLDEN_EVENTS,
+		rumour: GoldenRumourCueSource = NO_GOLDEN_RUMOUR_CUES,
 	): AudioCueList {
 		this.now = now;
 		this.pending = 0;
@@ -1918,6 +1982,8 @@ export class AudioCueMapper {
 		this.pactCues(pacts, localIndex);
 		// The Goldling (docs/FORTUNE.md FO9): its appearance, the hit ladder, the jackpot, the escape.
 		this.goldenCues(golden, localIndex);
+		// Its rumours (docs/GOLDLING_RUMOURS.md GR6): the floor's jingle, the room's (quieter from outside the room).
+		this.goldenRumourCues(rumour, state, localIndex);
 
 		this.keepOneJingle();
 		this.applyCap();

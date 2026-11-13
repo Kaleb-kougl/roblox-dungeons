@@ -137,7 +137,8 @@ describe("pellets: contract", () => {
 		]);
 		expect([...PELLET_SCORE_SOURCE_KEYS]).toEqual(["score.source.pellets", "score.source.sweep"]);
 		expect(PELLET_BESTIARY_KEY).toBe("bestiary.pellet.power");
-		expect(tail(BESTIARY_STRING_KEYS, 1)).toEqual([PELLET_BESTIARY_KEY]);
+		// docs/GOLDLING_RUMOURS.md GR7's card (bestiary.golden.rumour) comes after it
+		expect(tail(BESTIARY_STRING_KEYS, 1, 1)).toEqual([PELLET_BESTIARY_KEY]);
 		for (const k of [...PELLET_ROOM_CLEAR_KEYS, PELLET_BESTIARY_KEY]) {
 			expect([k, has(REQUIRED_STRING_KEYS, k)]).toEqual([k, true]);
 		}

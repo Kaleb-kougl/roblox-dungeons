@@ -27,6 +27,10 @@
  *            by step(), presentation only, not hashed) `hitSlots` and `brokenSlots` (slot per hit / break, in order).
  *   chest    a vault's chest (docs/TREASURE.md, BreakableKind.CHEST, hp CHEST_HP) blocks like any piece but is never
  *            damaged: no hit, event, score, loot or break from any source (bullets that reach it still stop).
+ *   golden   the Goldling's hiding place (docs/GOLDLING_RUMOURS.md GR2, RD13; the floor's last piece, SimConfig.golden
+ *            only): a barrel or crate like any other for the players, but enemy sources (enemy bullets, the boss's
+ *            slam, a Bomber's blast, a Charger's charge) never reach it, exactly like the chest (a Charger stuns on
+ *            it, a bullet stops); a player's break also releases the Goldling (golden/goldenHooks.ts goldenOnBreak).
  *
  * Co-op: the same rules for every player (bullets carry their owner; the team score gets the points). Everything here
  * is deterministic: fixed slot order, no rng, no trig.
@@ -42,6 +46,8 @@ import type { SimState } from "../state";
 import { breakableSlotAt } from "./cells";
 import { scoreBreakable } from "../score/score";
 import { dropsOnBreak } from "../drops/breakLoot";
+import { goldenGuardsPiece } from "../golden/golden";
+import { goldenOnBreak } from "../golden/goldenHooks";
 import { CHEST_HP } from "../treasure/treasureData";
 import { bindRollSmash, buildsOnPieceBroken } from "../builds/wrecker";
 import { PLAYER_RADIUS } from "../playerData";
@@ -193,10 +199,13 @@ export function clearBreakableEvents(b: BreakablesState): void {
 /**
  * Damages the intact piece in `slot` by `amount` from `source` (BreakableSource). A vault's chest (BreakableKind.CHEST,
  * docs/TREASURE.md correction 3) returns false before any of this: no hit event, hit slot, score, loot or break (a
- * bullet that reached it still stops: the callers consume it). Otherwise events.breakableHits += 1 and the
+ * bullet that reached it still stops: the callers consume it). So does the Goldling's piece (docs/GOLDLING_RUMOURS.md
+ * RD13, golden/golden.ts goldenGuardsPiece) for the enemy sources ENEMY_BULLET and SLAM (enemy bullets, the boss's slam,
+ * a Bomber's blast, a Charger's charge). Otherwise events.breakableHits += 1 and the
  * slot joins hitSlots; at hp <= 0 it breaks this tick: hp 0, brokenTick = state.tick, out of the lookup,
  * events.breakablesBroken += 1, brokenSlots; a player's break (MELEE / PLAYER_BULLET, and builds v2's ROLL / BUILD,
- * docs/BUILDS_V2.md BVD12) scores (scoreBreakable); a loaded piece releases its boost (dropsOnBreak, every source).
+ * docs/BUILDS_V2.md BVD12) scores (scoreBreakable) and releases a hiding Goldling from its piece (goldenOnBreak); a loaded
+ * piece releases its boost (dropsOnBreak, every source).
  * `owner` (docs/BUILDS_V2.md BV5): the party index of the player who broke it (-1: nobody, as for enemy bullets, the
  * boss's slam, a Bomber's blast or a Charger's charge) and `gen` the break's proc generation; a break with an owner
  * calls the leaf hook buildsOnPieceBroken (Wrecker / Powder Keg's smash proc; nothing without builds). Returns true
@@ -214,6 +223,12 @@ export function damageBreakable(
 	if (b === undefined) return false;
 	const p = b.pieces[slot];
 	if (p === undefined || p.brokenTick !== NOT_BROKEN || p.kind === BreakableKind.CHEST) return false;
+	const playerSource =
+		source === BreakableSource.MELEE ||
+		source === BreakableSource.PLAYER_BULLET ||
+		source === BreakableSource.ROLL ||
+		source === BreakableSource.BUILD;
+	if (!playerSource && goldenGuardsPiece(state, slot)) return false;
 	const ev = state.events;
 	ev.breakableHits += 1;
 	b.hitSlots.push(slot);
@@ -228,13 +243,10 @@ export function damageBreakable(
 	b.intact -= 1;
 	ev.breakablesBroken += 1;
 	b.brokenSlots.push(slot);
-	if (
-		source === BreakableSource.MELEE ||
-		source === BreakableSource.PLAYER_BULLET ||
-		source === BreakableSource.ROLL ||
-		source === BreakableSource.BUILD
-	)
+	if (playerSource) {
 		scoreBreakable(state, p.kind);
+		goldenOnBreak(state, slot);
+	}
 	dropsOnBreak(state, slot);
 	// Builds v2 (BV5): Wrecker / Powder Keg's smash proc for the piece's owner (a leaf; nothing without builds).
 	if (owner >= 0) buildsOnPieceBroken(state, slot, owner, gen);
@@ -332,7 +344,8 @@ export function meleeHitBreakables(
 /**
  * The boss's slam at (x, z): breaks every intact piece but a chest whose cell centre is within config.slamRadius.
  * `radius` (docs/NEW_ENEMIES.md NE1: the Bomber's blast, the Charger's charge) replaces config.slamRadius when given;
- * absent, exactly the boss's slam. A Charger's charge stops at a chest like at a wall (the mover), so it stuns.
+ * absent, exactly the boss's slam. A Charger's charge stops at a chest like at a wall (the mover), so it stuns; so it
+ * does at the Goldling's hidden piece, which damageBreakable refuses for SLAM (docs/GOLDLING_RUMOURS.md GR0).
  */
 export function slamBreakables(state: SimState, x: number, z: number, radius?: number): number {
 	const b = state.breakables;
