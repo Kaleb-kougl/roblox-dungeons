@@ -203,7 +203,12 @@ Per step (commits `665d70f`, `5be1d84`, `b30dd2e`, `f951bc8`, `51ef63d`, `c5b9c5
   Codex's tail too (`CODEX_AFTER`): a later feature appending to `REQUIRED_STRING_KEYS` / `PORT_AUDIO_EVENTS` must update
   `codex.spec`'s `tail` and those skips. Rebased onto main's floor modifiers (docs/FLOOR_MODIFIERS.md FM7), whose
   eleven strings and five stings sit just before the Codex's: floorModifiers.spec skips the Codex's tail (`CODEX_AFTER`)
-  and the other specs skip both; `SFX_PRIORITY` 46 for `sfx.codex.new` (the stings took 67, no collision).
+  and the other specs skip both; `SFX_PRIORITY` 46 for `sfx.codex.new` (the stings took 67, no collision). Then onto
+  main's Goldling rumours (docs/GOLDLING_RUMOURS.md GR6 / GR7): their two sounds and two chip strings sit between the
+  floor modifiers' and the Codex's (fortune.spec's rumour tails and floorModifiers.spec skip the Codex's too; priorities
+  45 / 66, no collision). The hidden Goldling is no actor until a player breaks its piece, so `enemy:golden` is seen
+  only once it is out (unchanged); the rumour card's sighting id `golden.rumour` maps to no entry (the seed drops it,
+  `codexSightingId` / `sightingChip` give nothing; doc.spec / tracker.spec pin it).
 - **CX6 Controller and store.** The tracker frame runs inside `SimController.pushToasts` (`ToastChipSource`), so chips
   match that frame's toasts. **Kills count one frame late**: FxTracker runs after the sim, so a kill or a
   `bossDefeated` lands in the next sim frame's update (the run's last update waits for that frame's FX instead: m4). **A first boost decorates `hud.toast.boost` with the chip**

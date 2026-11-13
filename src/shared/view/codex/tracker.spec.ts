@@ -617,13 +617,9 @@ describe("CodexTracker: the run summary", () => {
 		expect(["relic:hourglass", "curse:haste", "boost:fury", "enemy:imp", "affix:swift"].map(rank)).toEqual([
 			5, 5, 5, 5, 5,
 		]);
-		expect(["imp", "slime", "golden", "affix.vengeful", "pellet.power", "nope"].map(codexSightingId)).toEqual([
-			"enemy:imp",
-			"enemy:slime",
-			"enemy:golden",
-			"affix:vengeful",
-			undefined,
-			undefined,
-		]);
+		// the Goldling rumour's first-time card (docs/GOLDLING_RUMOURS.md GR7) is no entry: its card never wears the chip
+		expect(
+			["imp", "slime", "golden", "affix.vengeful", "pellet.power", "golden.rumour", "nope"].map(codexSightingId),
+		).toEqual(["enemy:imp", "enemy:slime", "enemy:golden", "affix:vengeful", undefined, undefined, undefined]);
 	});
 });

@@ -309,8 +309,9 @@ const AFFIX_SIGHTING_PREFIX = "affix.";
 /**
  * The one-time seed (CXD5, R5): the onboarding doc's `seen` sightings as tier-1 claims (floor 0), sorted by id and
  * distinct. Archetype sightings map through codexEnemyId (`imp` -> `enemy:imp`, the Goldling `golden` ->
- * `enemy:golden`); `affix.<id>` -> `affix:<id>`; anything else (`pellet.power`, unknown or non-string values) is
- * dropped.
+ * `enemy:golden`); `affix.<id>` -> `affix:<id>`; anything else (`pellet.power`, the Goldling rumour's first-time card
+ * `golden.rumour` (docs/GOLDLING_RUMOURS.md GR7: a rumour heard is not the Goldling seen), unknown or non-string values)
+ * is dropped.
  */
 export function seedFromSightings(seen: ReadonlyArray<unknown>): CodexClaim[] {
 	const ids: string[] = [];

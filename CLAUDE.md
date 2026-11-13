@@ -1373,10 +1373,11 @@ Decision log (deviations from `PLAN.md`):
   `CodexOutbox` (queue until loaded, batch, pace), `CodexController`, store slice `codex`, `CodexScreen` (MenuScreen
   `codex`, button after Leaderboard with `MenuButton.badge`), draft `NEW` tags after the flip, RunOverPanel
   `ROW.codex` (compact stats gap 6 -> 2 only while the row shows; the row drops icons, then wraps, to fit). Strings
-  `CODEX_STRING_KEYS` (54, spread last into `REQUIRED_STRING_KEYS`, after the floor modifiers'; `sfx.codex.new` last in
-  `PORT_AUDIO_EVENTS`, after their stings: a later feature appending there must update `codex.spec`'s tail and the
-  skips in the fortune / treasure / runRecap / boosts / audio / contract / floorModifiers specs); port audio id
-  `sfx.codex.new` SILENT, no fallback, `SFX_PRIORITY` 46;
+  `CODEX_STRING_KEYS` (54, spread last into `REQUIRED_STRING_KEYS`, after the floor modifiers' and the Goldling
+  rumours'; `sfx.codex.new` last in `PORT_AUDIO_EVENTS`, after their stings and rumours: a later feature appending there
+  must update `codex.spec`'s tail and the skips in the fortune / treasure / runRecap / boosts / audio / contract /
+  floorModifiers specs); port audio id `sfx.codex.new` SILENT, no fallback, `SFX_PRIORITY` 46; the rumours' first-time
+  card (sighting id `golden.rumour`) is no entry (the seed drops it, its card never wears the chip);
   `contract.luau` / `validate.luau` top-level locals now 187 / 197 (counted on out/). Debug `KV_FakeCodex` (Studio:
   `all` / `seen` / `none` / `unknown` / an id list). No setting. Studio check and the sound's audition / lock / build /
   upload (CX11) pending.

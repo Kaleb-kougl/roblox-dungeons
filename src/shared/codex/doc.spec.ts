@@ -441,8 +441,19 @@ describe("codex seed and counts", () => {
 			"enemy:summoner",
 			"enemy:warbanner",
 		]);
-		// pellet.power, unknown, junk and duplicates dropped
-		expect(seedFromSightings(["pellet.power", "affix.nope", "dragon", 5, "imp", "imp", "slime.small"])).toEqual([
+		// pellet.power, the rumour card golden.rumour (not the Goldling seen), unknown, junk and duplicates dropped
+		expect(
+			seedFromSightings([
+				"pellet.power",
+				"golden.rumour",
+				"affix.nope",
+				"dragon",
+				5,
+				"imp",
+				"imp",
+				"slime.small",
+			]),
+		).toEqual([
 			{ id: "enemy:imp", tier: 1, floor: 0 },
 			{ id: "enemy:slime", tier: 1, floor: 0 },
 		]);
