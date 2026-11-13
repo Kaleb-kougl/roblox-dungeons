@@ -453,3 +453,8 @@ Owner (2026-11-11, Kaleb):
 - Streaks, daily rewards or currencies; weekly seeds; seed sharing / custom seeds for players.
 - Daily-specific modifiers (a "mutator of the day"): a natural follow-up once the Daily exists.
 - Changing the unlock floors, weights or archetypes.
+
+## Secret rooms (2026-11-13)
+
+The Daily has secret rooms (docs/SECRET_ROOMS.md SRD13): the day's seed places them, so everyone hunts the same cracked
+wall. `DAILY.ruleset` 18 -> 19.

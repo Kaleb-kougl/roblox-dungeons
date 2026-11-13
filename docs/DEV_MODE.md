@@ -18,7 +18,9 @@ The chip shows `DEV · F<n> · GOD` during a dev run. The run is not paused whil
 `workspace:SetAttribute("KV_DevPanel", true)` opens the panel on join; `KV_Seed` sets the panel's first seed. `KV_FloorModifier` (a floor
 modifier's name, any case: `gilded`, `hoard`, `feast`, `plunder`, `blood moon`) forces it on every floor of the dev run
 where it is eligible, boss floors included, ignoring its chance and streak rules (docs/FLOOR_MODIFIERS.md; read when Go
-starts the run, R keeps it; like `KV_TreasureDebug` for vaults, docs/TREASURE.md TR5).
+starts the run, R keeps it; like `KV_TreasureDebug` for vaults, docs/TREASURE.md TR5). `KV_SecretDebug` (`every`, `legendary` / `rare`;
+docs/SECRET_ROOMS.md SR5) does the same for secret rooms (a secret on every floor from 2 that has a candidate, the
+chest's tier); `KV_SecretLabel` outlines the crack, chamber and front box.
 
 ## Who gets it
 

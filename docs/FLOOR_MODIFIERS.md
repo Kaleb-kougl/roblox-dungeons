@@ -357,3 +357,8 @@ the dev run, R keeps it), start floor 4 (`KV_Debug` for the logs):
   two in a row.
 - Reduced motion (cut, no pulse), touch layout (chip at the head of the strip), co-op (same banner on every client, no
   hold with a live world: the banner may not show then, the chip does), Daily (same banners for two accounts).
+
+## Secret rooms (2026-11-13)
+
+There is no secret-room modifier (docs/SECRET_ROOMS.md SRD14: announcing a secret would undo the feature). Secrets are
+placed last, after the modifier pick and its forced re-run, on their own stream, so a modifier floor may also hold one.

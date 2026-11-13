@@ -1485,3 +1485,10 @@ in its FM9 census) is `placeVault` with `VaultOverride.every` (under `KV_Treasur
 are kept). Only on floors whose own roll missed and whose `vaultRooms` is not empty, so it always adds a vault; the
 pact altars and the Goldling are placed again after its chest. Tier, lock and rewards are unchanged; the floor's status
 chip pulses when the vault arms (its room engages).
+
+## Secret rooms (2026-11-13)
+
+docs/SECRET_ROOMS.md's chest reuses the vault's: its grants through the core lifted unchanged into `sim/treasure/grants.ts`
+(`grantShares`; stepTreasure's draw order and every vault pin untouched), its tiers (Rare 65 / Legendary 35, no lock), its
+art and open (treasureBody.ts, now also holding the reward card helpers; a PedestalChestTracker plays the open) and its
+points into `ScoreSource.SECRET`. Its reward cards are titled `Secret cache` where a vault shows its kept line.

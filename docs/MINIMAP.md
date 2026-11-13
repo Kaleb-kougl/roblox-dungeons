@@ -457,3 +457,10 @@ Critical path: M0 -> M8 -> M9. M1-M6 are pure and headless and can go alongside 
   the same minimap; no tutorial lesson about it in v1. (Superseded 2026-11-01 for the lesson: docs/TUTORIAL_MAP.md
   adds step `map`, 11 of 17, open the full map; the minimap still shows from the first frame.)
 - **MD14. Boost drops in sight show on the map** (owner, 2026-10-27), as glints in `minimap.boost`. Breakables do not.
+
+## Secret rooms (2026-11-13)
+
+A secret room never shows on the map before it opens (docs/SECRET_ROOMS.md SRD4: the tiles stay the Forge grid's). At the
+open (or the first frame a late view finds it open) MinimapController applies `secretMapChange`, repaints the cells,
+reveals the whole chamber on the shared party fog (`FogOfWar.revealCells`) and draws the chest's mark like the vault's
+(`secretMarkStyle`, hollow once taken).

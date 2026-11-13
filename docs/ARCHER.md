@@ -1465,3 +1465,9 @@ animations (`attack.1` stream, `attack.2` charged shot) and the player rim. `val
 sheet and rim has an ID; animations `attack.1`, `attack.2`, `death`, `hit`, `idle`, `roll`, `run`) and still checks that
 a missing core sheet falls back to the placeholder. Studio item 5 (the Archer's own sprite and outline, the roll
 animation over the longer roll) is the next check.
+
+## Secret rooms (2026-11-13)
+
+The two characters get the same puzzle at a secret room's cracked wall (docs/SECRET_ROOMS.md SRD3): the Knight's swings
+1 and 2 knock and his combo's finisher opens it; the Archer's stream arrows knock and her charged (heavy) arrow opens it,
+or a Charger she baits. The first-knock card reads per character (`bestiary.secret.crack.archer`).

@@ -1,11 +1,13 @@
 # Secret rooms: a cracked wall, and what's behind it
 
-Status (2026-11-13): **SR0-SR5 built on branch `secret-rooms` (Track A: dungeon and sim, "As built" below); SR10 /
-SR11 / SRD12 (Track T: theme, art, Codex entry); SR6 and the pure parts of SR7-SR9 (Track V1: shared/view, "As built
-(Track V1)"); the client controllers (Track V2) and SR12-SR16 pending. Every decision answered by the owner (SRD1-SRD14, 2026-11-13):** a
-flat 25 % of floors, four openers (the Knight's combo finisher, the heavy arrow, the Wrecker roll, a Charger), crack +
-dust and nothing else before it opens, a first-time card, the chest (Rare 65 / Legendary 35), points on the open and
-from the chest, the recap highlight plus one Codex entry (see "Decisions"). Planned against `main` @ `c0a8de2` (the Codex merged; floor
+Status (2026-11-13): **built on branch `secret-rooms`; owner tasks SR14 (audio), SR15 (Studio check / playtest)
+pending; SR13 / SR16 optional, not built.** SR0-SR5 (Track A: dungeon and sim), SR10 / SR11 / SRD12 (Track T: theme,
+art, Codex entry), SR6 and the pure parts of SR7-SR9 (Track V1: shared/view), the client (Track V2: SR7-SR9's
+controllers, Design 12's debug wiring) and SR12 (docs), each in its "As built" section below.
+**Every decision answered by the owner (SRD1-SRD14, 2026-11-13):** a flat 25 % of floors, four openers (the Knight's
+combo finisher, the heavy arrow, the Wrecker roll, a Charger), crack + dust and nothing else before it opens, a
+first-time card, the chest (Rare 65 / Legendary 35), points on the open and from the chest, the recap highlight plus
+one Codex entry (see "Decisions"). Planned against `main` @ `c0a8de2` (the Codex merged; floor
 modifiers, the Goldling rumours, builds v2, the Archer and treasure rooms all in). Work it task by task like `PLAN.md`;
 each task ends with a **Verify**. Project copy: `claude/secret-rooms-plan.md`. Related: docs/TREASURE.md (the chest,
 its grants and art), docs/BUILDS_V2.md (Wrecker's roll smash, Ballista / Siege Bolt), docs/ARCHER.md (the heavy arrow
@@ -154,8 +156,8 @@ clone, hash, `secretsRunSummary`), `open.ts` (the openers), `stepSecrets.ts` (th
   blockers on `layout.secret?.dungeon ?? layout.dungeon` and passes `secret` to the sim world; `roomIdAt` and
   `EndlessRunFloor.dungeon` stay the Forge's. `DAILY.ruleset` 18 -> 19.
 - Dev: `SECRET_DEBUG_ATTRIBUTE` `KV_SecretDebug`, `parseSecretDebug` (`every`, `legendary` / `rare`),
-  `DevRunOptions.secret`, `EndlessRunOptions.secretOverride`. **Client wiring pending (view track):**
-  `DevModeController` must read the attribute and pass `secret` like `vault`.
+  `DevRunOptions.secret`, `EndlessRunOptions.secretOverride`. Client wiring done in Track V2: `DevModeController` reads
+  the attribute and passes `secret` like `vault` (SimController.startDev copies it).
 - `run/stageInput.ts` counts only `BREAKABLE_KINDS` as clutter (SR0).
 - `run/secrets.spec.ts`: the configs, the carved movers, the dev override, and a recorded Knight run (run seed 16:
   debug skip to floor 2, walk to the crack at (94, 8), hold FIRE: two swings knock, the finisher opens it at tick 1265,
@@ -419,7 +421,7 @@ the existing view modules. Every time is sim seconds on the views' clock (`(tick
 | **SightingController** | `FirstKnockLatch.reset()` on run exit | `latch.observe(run.secrets, localIndex)`; `withSecretSighting(withRumourSighting(found, ...), latch.knocked())`; the card's key `sightingCardKey(id, character, has)` (the local run character: the Archer reads `bestiary.secret.crack.archer`) |
 | **CodexController** | | after `readCodexFrame`: `readCodexSecrets(frame, run.secrets, localIndex)` (cleared by `clearCodexFrameEvents`) |
 | **RecapController** | `secrets: state.secrets !== undefined ? secretsRunSummary(state) : undefined` in RunRecapInput, beside `chests` | |
-| **DevModeController** | read `KV_SecretDebug` (`parseSecretDebug`) into DevRunOptions.secret, like `vault` (SR5's pending wiring) | |
+| **DevModeController** | read `KV_SecretDebug` (`parseSecretDebug`) into DevRunOptions.secret, like `vault` (done, Track V2) | |
 
 ### Modules
 
@@ -475,6 +477,53 @@ the existing view modules. Every time is sim seconds on the views' clock (`(tick
 - **Tile art** is the entry's name (a `label`), not the crack or the chest: the crack overlay is darkening on a
   transparent ground and the chest is the vault's, neither reads as the feature on a dark tile.
 
+## As built (Track V2: the client; SR7-SR9's controllers, Design 12, 2026-11-13)
+
+Presentation, client input and debug only (no sim, dungeon, lockstep, hash, replay, fixture or score change). Every
+controller below follows V1's table; the client code compiles, typechecks and lints clean but has not run in Studio
+(SR15).
+
+- **Plan access:** `SimController.getFloorSecret()` (the floor's FloorSecret, cached per run context) and the free
+  `floorSecretOf(ctx)` (WorldController, which builds inside the floor listener). The dev run's options carry `secret`
+  (`startDev` copies it; `DevModeController` reads `KV_SecretDebug` at Go like `KV_TreasureDebug`).
+- **World:** `client/controllers/game/worldSurfaces.ts` (`worldSurfaces`, `buildWorldSlabs`): WorldController's
+  surfaces and slab builder moved out unchanged, so the crack Part and the chamber are built by exactly the walls' and
+  floors' rule (material, colour, world-anchored texture: no seam). WorldController runs `secretWallMergeGrid` on its
+  merge copy. `BreakableRenderController` skips `isInertPieceKind`; `CollisionDebugController` draws
+  `collisionDebugDungeon(forge, getFloorSecret())`; `VoidController.sinkHeld(tiles)` lowers the plan's held columns
+  (their unsunk CFrames kept per floor).
+- **SecretRenderController** (`KV_Secret`, render step after the camera): per floor the crack Part (`secret.crack`'s
+  idle frame by the crack's cell, `secretCrackVariant`, on SurfaceGuis on the front and top faces in the wall colour
+  lerped `SECRET_VIEW.crack.darken` to black; without the art a band), the chamber in an unparented Folder (its floor
+  and the opened crack's floor slab, its own walls, the rubble: `secret.rubble` flat or `secretRubbleSpots` blocks, two
+  Neon torches with PointLights at DECOR_LIGHTS' range / brightness) parented at the open, the chest bodies, column and
+  cards (treasureBody.ts: the vault's reward card helpers moved there, TreasureRenderController unchanged in
+  behaviour). Per frame: `SecretViewTracker.update`, the dust billboard (`fx.secret.dust`, else a falling mote),
+  `ParticleController.secretPuff` per puff, at `openEdge` `secretBurst` + shards (`secretShardAt`), the solo freeze for
+  the view player's open, the `stamp` nudge and SECRET! (`secretShout`, only when it shows), the `[Secret]` line under
+  KV_Debug; the chest through a `PedestalChestTracker` (`reset([taken])` per floor: a late view sees it settled) and the
+  cards under `Secret cache` (`secretRewardTexts`) on its open age. A plan with no matching state (never on an endless
+  floor) keeps the crack drawn (the wall merge has its hole). Leaving the run keeps the crack / chamber (the world
+  stays under the menu) and drops shards, dust, cards and column.
+- **Minimap:** `FloorMap.secret`; `applySecret` once per floor the first frame the state has it OPEN / TAKEN (live or
+  late): `secretMapChange` + `applySecretMapChange`, the changed cells repainted, `fog.revealCells(reveal)`; a `secret`
+  marker in every layer (the vault mark's size and z) styled by `secretMarkStyle` at the chest's cell.
+- **HUD and audio:** TreasureToastController pushes `secretToast` (party runs, everyone but the finder; ids from
+  `SECRET_VIEW.toast.idBase` -(2^25)); SightingController observes a `FirstKnockLatch` every frame before its gates
+  (reset on run exit), queues `withSecretSighting(withRumourSighting(...))` and keys every card with
+  `sightingCardKey(id, ctx.character, pack.hasString)`; CodexController calls `readCodexSecrets(frame, view.secrets,
+  localIndex)` after `readCodexFrame`; RecapController sets `RunRecapInput.secrets` (`secretsRunSummary`);
+  AudioController steps its own `SecretCueTracker` (listener: the view index) into the mapper's trailing `secrets`,
+  reset with the vault's tracker.
+- **Debug:** `RUN_ATTRIBUTES.secretLabel` `KV_SecretLabel` (Studio or KV_Debug, live): SelectionBox outlines of the
+  crack, chamber, ring and front box (`secretFrontBox`) and a label `secretLabelText` (V1's `secretDebugLabel` plus
+  ` charger` when the crack's room plans one: the Studio check's Charger room).
+- **Shared additions** (presentation only): `SECRET_VIEW` client tunables (`crack`, `dustLook`, `rubble`, `torch`,
+  the burst's shard / chip shapes and seed salt 71, the knock puff and salt 72, `toast.idBase`, `debug`);
+  `shared/view/secrets/parts.ts` (`secretCrackRect`, `secretFaceName`, `secretCrackVariant`, `secretFrontBox`,
+  `secretShardAt`, `secretRubbleSpots`, `secretRoomPlansCharger`, `secretLabelText`) with parts.spec.ts.
+- **Not done here:** `npm run build:place` (no rojo in this container); the Studio check.
+
 ## Tasks
 
 - [x] **SR0. Confirm the code assumptions.** Each table row read or corrected here; in particular: the roll smash
@@ -509,25 +558,26 @@ the existing view modules. Every time is sim seconds on the views' clock (`(tick
   vault pins re-recorded only where a secret now stands; `DAILY.ruleset` 19; `KV_SecretDebug` dev only.
 - [x] **SR6. View core** (`shared/view/secrets`). → Verify (spec): looks per status, the throttle, the first-knock
   latch, frame events from replayed states. (Track V1: secrets.spec, play/secretsView.spec.)
-- [ ] **SR7. World render.** Crack Part, overlay, dust, knocks, burst, chamber reveal, void hold-out, decor keep-out.
+- [x] **SR7. World render.** Crack Part, overlay, dust, knocks, burst, chamber reveal, void hold-out, decor keep-out.
   → Verify: `planVoid` / `planDecor` byte-identical without a secret (their specs); with one, no column merges across
   the hold-out and no piece stands in the keep-out. Studio part in SR15. (Pure parts done, Track V1: holdOut.spec,
-  decorPlan.secret.spec, secrets/world.spec; the controllers are Track V2's.)
-- [ ] **SR8. Minimap.** → Verify (spec): the chamber unknown before the open, revealed whole at it, the chest mark.
-  (Pure parts done, Track V1: secrets/world.spec; MinimapController is Track V2's.)
-- [ ] **SR9. HUD, toasts, recap, first-time card, Codex.** → Verify: shout priority, co-op toast, the highlight in the
+  decorPlan.secret.spec, secrets/world.spec; the controllers: Track V2, parts.spec.)
+- [x] **SR8. Minimap.** → Verify (spec): the chamber unknown before the open, revealed whole at it, the chest mark.
+  (Pure parts: Track V1, secrets/world.spec; MinimapController: Track V2.)
+- [x] **SR9. HUD, toasts, recap, first-time card, Codex.** → Verify: shout priority, co-op toast, the highlight in the
   recap specs, the card once per player; the Codex entry seen at the first knock and found at an open (claims only from
   endless / the Daily, never dev or a debug run), the catalogue order lock at 87, the Codex screen's section on the
   smallest phone. (Pure parts done, Track V1: recap.spec, codex/secrets.spec, sighting.spec, secrets.spec; the
-  controllers and the screen check are Track V2's.)
-- [ ] **SR10. Theme.** → Verify: contract / validator specs, the role report, l10n check, codex.spec's tail and the
+  controllers: Track V2; the Codex screen on the smallest phone is SR15's look: the section's tile is a `label`, the
+  screen's grid draws every group generically.)
+- [x] **SR10. Theme.** → Verify: contract / validator specs, the role report, l10n check, codex.spec's tail and the
   listed specs' skips, Luau locals counted.
-- [ ] **SR11. Art.** → Verify: the sheet's lock; with and without the art (no art: the wall's own look with a darker
+- [x] **SR11. Art.** → Verify: the sheet's lock; with and without the art (no art: the wall's own look with a darker
   band and the dust, still readable).
-- [ ] **SR12. Docs.** This doc's as-built; CLAUDE.md docs row and decision log; cross references in TREASURE.md,
+- [x] **SR12. Docs.** This doc's as-built; CLAUDE.md docs row and decision log; cross references in TREASURE.md,
   BUILDS_V2.md, ARCHER.md, NEW_ENEMIES.md, DECOR.md, VOID_DECOR.md, MINIMAP.md, DAILY.md, DEV_MODE.md, RUN_RECAP.md,
   CODEX.md (the new category and entry), FLOOR_MODIFIERS.md (no secret modifier, SRD14).
-- [ ] **SR13. Bot census of discovery** (opt-in): the endless bot with an "investigate" option (walk the front box of
+- [ ] **SR13. Bot census of discovery** (opt-in; optional, not built): the endless bot with an "investigate" option (walk the front box of
   every crack it can see and try its weapon on it) per character and with / without Wrecker: share of secrets opened,
   time spent, for the Archer how often she needed a charged shot vs a Charger. → Verify: numbers recorded; SRD1 / SRD4 /
   SRD6 revisited with the owner.
@@ -535,7 +585,7 @@ the existing view modules. Every time is sim seconds on the views' clock (`(tick
   jingle carries the feature: short, bright, unmistakable, original.
 - [ ] **SR15. [owner] Studio check and playtest** (below). The question: does a new player notice the crack, try
   something on it, and tell someone about the room behind it?
-- [ ] **SR16. Telemetry (optional).** Per secret floor: found or not, opener, seconds from floor start, character,
+- [ ] **SR16. Telemetry (optional, not built).** Per secret floor: found or not, opener, seconds from floor start, character,
   chest taken.
 
 ## Decisions (all answered by the owner, 2026-11-13)
@@ -597,6 +647,14 @@ the existing view modules. Every time is sim seconds on the views' clock (`(tick
   chest in a vault room's wall reads like a second vault (the reward cards' `Secret cache` title separates them).
 
 ## Studio check
+
+**Look at first** (things the headless build cannot show; Track V2's assumptions): the crack Part against its wall
+neighbours (no seam in the texture, the same material and height); the `secret.crack` overlay's orientation on the top
+face of a crack running along Z (SecretRenderController turns it a quarter for a canvas taller than wide, assuming a
+Top-face SurfaceGui's width runs along X) and its contrast (`SECRET_VIEW.crack.darken`); the band fallback while the art
+is not uploaded; the chamber's walls appearing at the open while the rock still sinks (the rock's top is 0.85 of a
+wall); the torches' light (DECOR_LIGHTS' range) not lifting the floor past the bullet contrast rule; the chest facing
+the crack in both facings; the shards and the puffs reading as stone, not bullets.
 
 Dev panel (**F2**), `KV_SecretDebug` = `every` (optionally `every legendary`), `KV_SecretLabel` on, start floor 3,
 the Knight, then the Knight with Wrecker forced from the dev panel's boons, then the Archer:

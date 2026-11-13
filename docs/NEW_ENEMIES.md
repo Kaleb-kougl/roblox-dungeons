@@ -483,3 +483,9 @@ Details (taken 2026-11-02, all as recommended; the task in brackets builds it):
 - **Shieldbearer** (Imp 8 / Spawn 12 / Spawn 9, all with `Block`) and **Leaper** (Beast 5, `Jump`): good next roles.
 - Lords of Pain warrior / knight / fighter as "fallen adventurers" (small, dark; would need the outline pass).
 - Changing any existing archetype, weight or unlock floor.
+
+## Secret rooms (2026-11-13)
+
+A Charger's charge opens a secret room's cracked wall (docs/SECRET_ROOMS.md SR3, SRD8: `secretsChargeAt`, run just before
+`slamBreakables` on the charge tick), credited to nobody; a Bomber's blast and the boss's slam only knock.
+`KV_SecretLabel` marks a crack whose room plans a Charger.

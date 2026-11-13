@@ -457,3 +457,8 @@ RRD5, RRD6, RRD8, CMD2 and CMD4 are the owner's (2026-11-03); the rest are propo
 - Revives (own plan) and their moment.
 - Endless rank rung on run over (`312 from #14`); per-floor ghost splits; a shareable recap card; co-op MVP rows (built
   without the MVP as docs/RUN_CONTRIBUTION.md: the You / Team / Party tabs).
+
+## Secret rooms (2026-11-13)
+
+A new counting highlight `secrets` (`Secrets found`, priority 9, min 1, team in co-op; docs/SECRET_ROOMS.md SR9) from
+`RunRecapInput.secrets` (`secretsRunSummary`, only in runs with secret rooms); Chests and the later rows renumbered.
