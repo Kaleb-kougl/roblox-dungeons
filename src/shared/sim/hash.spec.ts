@@ -9,6 +9,7 @@ import {
 	DEV_SUBSYSTEM,
 	DROPS_SUBSYSTEM,
 	GOLDEN_SUBSYSTEM,
+	SECRETS_SUBSYSTEM,
 	ENDLESS_HASH_SUBSYSTEM,
 	HASH_SUBSYSTEMS,
 	PACTS_SUBSYSTEM,
@@ -125,7 +126,7 @@ describe("elite affixes are opt-in (docs/ENEMY_VARIANTS.md EV7)", () => {
 });
 
 describe("hash group order with every port group (docs/TREASURE.md TR2, docs/FORTUNE.md PS2 / GE2)", () => {
-	it("the six fixture groups, then endless .. pellets, treasure, pacts, golden LAST; the values are writeHashFields'", () => {
+	it("the six fixture groups, then endless .. pellets, treasure, pacts, golden, secrets LAST; the values are writeHashFields'", () => {
 		const setup = buildVaultRunConfig(4242, 2, { override: { every: true }, startFloor: 2 });
 		const config: SimConfig = { ...setup.config, tutorial: { harmless: false }, dev: { invulnerable: false } };
 		const s = createSimState(4242, setup.spawn!.x, setup.spawn!.z, config);
@@ -145,6 +146,7 @@ describe("hash group order with every port group (docs/TREASURE.md TR2, docs/FOR
 			TREASURE_SUBSYSTEM,
 			PACTS_SUBSYSTEM,
 			GOLDEN_SUBSYSTEM,
+			SECRETS_SUBSYSTEM, // docs/SECRET_ROOMS.md SR4: last
 		];
 		const frames: InputFrame[] = [EMPTY_INPUT, EMPTY_INPUT];
 		for (let t = 0; t < 30; t++) {

@@ -5,7 +5,8 @@
  *
  *   config   { endless: { runSeed, worldForFloor }, scoring: ENDLESS_SCORING, breakables: BREAKABLES_CONFIG,
  *              drops: ENDLESS_DROPS_CONFIG, affixes: AFFIXES_CONFIG, builds: BUILDS_CONFIG, pellets: PELLETS_CONFIG,
- *              treasure: ENDLESS_TREASURE_CONFIG, pacts: ENDLESS_PACTS_CONFIG, golden: ENDLESS_GOLDEN_CONFIG }
+ *              treasure: ENDLESS_TREASURE_CONFIG, pacts: ENDLESS_PACTS_CONFIG, golden: ENDLESS_GOLDEN_CONFIG,
+ *              secrets: SECRETS_CONFIG }
  *            (shared/sim endless.ts: every tick runs with the current floor; endless runs are ALWAYS scored, on client
  *            and server alike, and always have breakable barrels and crates (docs/DECOR.md D4), boost drops, from kills
  *            and from loaded barrels and crates (docs/BOOSTS.md B4, docs/BREAKABLE_DROPS.md BL4), elite affixes (docs/ENEMY_VARIANTS.md EV7), builds (docs/BUILDS.md BU1) and pellets (docs/PELLETS.md PL5:
@@ -13,12 +14,15 @@
  *            each floor's vault, if any, from its world, EndlessFloorWorld.vault, its chest a breakables piece), pacts
  *            (docs/FORTUNE.md PS5: each floor's altars come from its world, EndlessFloorWorld.pactAltars; the tutorial
  *            keeps the classic shrine) and the Goldling (docs/FORTUNE.md GE3: each floor's room, if any, from
- *            EndlessFloorWorld.golden))
- *   floor f  buildEndlessFloor(runSeed, f, ..., { vaults: true, modifiers: ENDLESS_MODIFIER_WORLD }) (shared/dungeon
+ *            EndlessFloorWorld.golden) and secret rooms (docs/SECRET_ROOMS.md SR5: each floor's crack, chamber and chest,
+ *            if any, from EndlessFloorWorld.secret, the movers built on its carved dungeon))
+ *   floor f  buildEndlessFloor(runSeed, f, ..., { vaults: true, modifiers: ENDLESS_MODIFIER_WORLD, secrets: true })
+ *            (shared/dungeon
  *            endless.ts: solid pillars, breakables, the vault, the pact altars, the Goldling's room, the floor modifier,
  *            docs/FLOOR_MODIFIERS.md FM4; the dev world's KV_TreasureDebug adds a VaultOverride and its KV_FloorModifier
- *            a FloorModifierOverride, run/dev.ts) + playerMover (the slide; ./playerMover.ts, docs/WALL_SLIDE.md) / bulletBlocker /
- *            actorMover / actorSteerMover (enemies walk around pillars) on its dungeon; built on first use, kept in a
+ *            a FloorModifierOverride and its KV_SecretDebug a SecretOverride, run/dev.ts) + playerMover (the slide; ./playerMover.ts, docs/WALL_SLIDE.md) / bulletBlocker /
+ *            actorMover / actorSteerMover (enemies walk around pillars) on its dungeon (a secret floor's carved copy,
+ *            layout.secret.dungeon); built on first use, kept in a
  *            per-config LRU (ENDLESS_FLOOR_CACHE_SIZE), the dungeons in a server-wide LRU (ENDLESS_DUNGEON_CACHE_SIZE)
  *            keyed by seed and room count
  *   spawn    floor 1's entrance spawn (the recording must start there)
@@ -46,6 +50,7 @@ import {
 	type FloorModifierOverride,
 	type FloorModifierWorld,
 	type ForgeParams,
+	type SecretOverride,
 	type VaultOverride,
 } from "shared/dungeon";
 import {
@@ -59,6 +64,7 @@ import {
 	MAX_PARTY_SIZE,
 	PELLETS_CONFIG,
 	ENDLESS_TREASURE_CONFIG,
+	SECRETS_CONFIG,
 	isValidPartySize,
 	type EndlessFloorWorld,
 	type ScoringConfig,
@@ -137,7 +143,8 @@ export const ENDLESS_MODIFIER_WORLD: FloorModifierWorld = table.freeze({
  * docs/FLOOR_MODIFIERS.md FM4); `vaultOverride`: the dev world's KV_TreasureDebug only; `mover`: the player's mover
  * (default: the current `playerMoverKind()`); `unlockFloors`: whether the seeded roster keeps the room kinds' unlock
  * floors (EndlessFloorOptions.unlockFloors; default ENDLESS_ROSTER_UNLOCK_FLOORS, false: every endless world's rule
- * since docs/DAILY.md DSD18); `modifierOverride`: the dev world's KV_FloorModifier only. Pure.
+ * since docs/DAILY.md DSD18); `modifierOverride`: the dev world's KV_FloorModifier only; secrets on (docs/SECRET_ROOMS.md
+ * SR5), `secretOverride`: the dev world's KV_SecretDebug only. Pure.
  */
 export function endlessRunFloor(
 	runSeed: number,
@@ -147,6 +154,7 @@ export function endlessRunFloor(
 	mover: PlayerMoverKind = playerMoverKind(),
 	unlockFloors: boolean = ENDLESS_ROSTER_UNLOCK_FLOORS,
 	modifierOverride?: FloorModifierOverride,
+	secretOverride?: SecretOverride,
 ): EndlessRunFloor {
 	return endlessFloorWorld(
 		buildEndlessFloor(runSeed, floor, endlessDungeon, partySize, {
@@ -155,6 +163,8 @@ export function endlessRunFloor(
 			unlockFloors,
 			modifiers: ENDLESS_MODIFIER_WORLD,
 			modifierOverride,
+			secrets: true,
+			secretOverride,
 		}),
 		mover,
 	);
@@ -164,19 +174,23 @@ export function endlessRunFloor(
  * The sim's world for a built floor layout: playerMover (the slide, docs/WALL_SLIDE.md; `mover` defaults to the
  * current `playerMoverKind()`) / bulletBlocker / actorMover / actorSteerMover on its dungeon and its encounter, its
  * spawns and stairwell. What every endless floor steps with; the tutorial (tutorial.ts) builds its hand-scripted floors
- * through it too, so they move, block and steer exactly like an endless floor. Pure.
+ * through it too, so they move, block and steer exactly like an endless floor. A secret floor (docs/SECRET_ROOMS.md
+ * SR5): the five movers and blockers are built on its carved dungeon (layout.secret.dungeon: the chamber and the crack
+ * cells FLOOR, the crack held shut by its pieces); `roomIdAt` and `dungeon` stay the Forge's (the chamber is in no room
+ * either way; the client draws the Forge's floor). Pure.
  */
 export function endlessFloorWorld(
 	layout: EndlessFloorLayout,
 	mover: PlayerMoverKind = playerMoverKind(),
 ): EndlessRunFloor {
 	const d = layout.dungeon;
+	const sim = layout.secret?.dungeon ?? d;
 	const config: SimConfig = {
-		moveResolver: playerMover(d, mover),
-		isBulletBlocked: bulletBlocker(d),
-		isBodyBlocked: bodyBlocker(d),
-		actorMover: actorMover(d),
-		actorSteerMover: actorSteerMover(d),
+		moveResolver: playerMover(sim, mover),
+		isBulletBlocked: bulletBlocker(sim),
+		isBodyBlocked: bodyBlocker(sim),
+		actorMover: actorMover(sim),
+		actorSteerMover: actorSteerMover(sim),
 		encounter: layout.encounter,
 	};
 	return {
@@ -198,6 +212,7 @@ export function endlessFloorWorld(
 		pactAltars: layout.pactAltars,
 		golden: layout.golden,
 		modifier: layout.modifier,
+		secret: layout.secret,
 		layout,
 		dungeon: d,
 	};
@@ -219,6 +234,7 @@ function floorCache(
 	vaultOverride: VaultOverride | undefined,
 	unlockFloors: boolean,
 	modifierOverride: FloorModifierOverride | undefined,
+	secretOverride: SecretOverride | undefined,
 ): (floor: number) => EndlessRunFloor {
 	const mover = playerMoverKind();
 	const floors: number[] = [];
@@ -229,7 +245,16 @@ function floorCache(
 		if (floor === lastFloor && last !== undefined) return last;
 		let w = worlds.get(floor);
 		if (w === undefined) {
-			w = endlessRunFloor(runSeed, floor, partySize, vaultOverride, mover, unlockFloors, modifierOverride);
+			w = endlessRunFloor(
+				runSeed,
+				floor,
+				partySize,
+				vaultOverride,
+				mover,
+				unlockFloors,
+				modifierOverride,
+				secretOverride,
+			);
 			worlds.set(floor, w);
 			floors.push(floor);
 			while (floors.size() > ENDLESS_FLOOR_CACHE_SIZE) {
@@ -274,6 +299,11 @@ export interface EndlessRunOptions {
 	 */
 	readonly modifierOverride?: FloorModifierOverride;
 	/**
+	 * Forces / fixes every floor's secret room (shared/dungeon SecretOverride, docs/SECRET_ROOMS.md SR5): the dev world's
+	 * KV_SecretDebug (run/dev.ts) and specs only. Absent: placeSecret's own draws.
+	 */
+	readonly secretOverride?: SecretOverride;
+	/**
 	 * docs/ARCHER.md AR4: the players' characters (index order; missing entries DEFAULT_CHARACTER's). Absent: no
 	 * characters at all (both weapons, no traits; tools and specs), not the Knight.
 	 */
@@ -308,6 +338,7 @@ export function buildEndlessRunConfig(
 		options.vaultOverride,
 		options.unlockFloors ?? ENDLESS_ROSTER_UNLOCK_FLOORS,
 		options.modifierOverride,
+		options.secretOverride,
 	);
 	const first = worldForFloor(ENDLESS_FIRST_FLOOR);
 	const base: SimConfig =
@@ -323,6 +354,7 @@ export function buildEndlessRunConfig(
 					treasure: ENDLESS_TREASURE_CONFIG,
 					pacts: ENDLESS_PACTS_CONFIG,
 					golden: ENDLESS_GOLDEN_CONFIG,
+					secrets: SECRETS_CONFIG,
 			  }
 			: {
 					endless: { runSeed, worldForFloor },
@@ -336,6 +368,7 @@ export function buildEndlessRunConfig(
 					treasure: ENDLESS_TREASURE_CONFIG,
 					pacts: ENDLESS_PACTS_CONFIG,
 					golden: ENDLESS_GOLDEN_CONFIG,
+					secrets: SECRETS_CONFIG,
 			  };
 	const characters = options.characters !== undefined ? partyCharacters(options.characters, partySize) : undefined;
 	const config =

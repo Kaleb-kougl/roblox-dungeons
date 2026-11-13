@@ -19,6 +19,7 @@
  * loads the presentation layer or the theme packs.
  */
 import {
+	BREAKABLE_KINDS,
 	ENDLESS_FIRST_FLOOR,
 	ENDLESS_ROOM_KINDS,
 	NO_POWER_PELLET,
@@ -133,7 +134,9 @@ export function stageInputOfLayout(
 	for (const room of layout.roomSpawns) foldSpawns(room, layout.spawn.x, layout.spawn.z, nearest);
 	let pieces = false;
 	for (const p of layout.breakables ?? []) {
-		if (p.kind !== "chest") {
+		// Clutter only (barrel / crate): a vault's or secret's chest and a secret's crack draw no breakable art
+		// (docs/SECRET_ROOMS.md SR0).
+		if ((BREAKABLE_KINDS as ReadonlyArray<string>).includes(p.kind)) {
 			pieces = true;
 			break;
 		}

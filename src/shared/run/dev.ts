@@ -10,7 +10,9 @@
  *            (docs/TREASURE.md TR5, correction 12: a VaultOverride into the dev world's own floor cache; never the
  *            server's, the world is refused there), or `options.modifier` (KV_FloorModifier,
  *            parseFloorModifierOverride) forces one floor modifier on every floor where it is eligible
- *            (docs/FLOOR_MODIFIERS.md FM4: a FloorModifierOverride into the same cache)
+ *            (docs/FLOOR_MODIFIERS.md FM4: a FloorModifierOverride into the same cache), or `options.secret`
+ *            (KV_SecretDebug, parseSecretDebug) forces / fixes the secret rooms (docs/SECRET_ROOMS.md SR5: a
+ *            SecretOverride into the same cache)
  *   Depth    as if every boss before `startFloor` had been killed (devStartDepth); no boons, relics or curses
  *
  * Characters (docs/ARCHER.md AR4): the picked character's loadout and traits like an endless run (the Knight when none is
@@ -30,6 +32,7 @@ import {
 	floorModifierKind,
 	isBossFloor,
 	type FloorModifierOverride,
+	type SecretOverride,
 	type VaultOverride,
 } from "shared/dungeon";
 import { DEFAULT_PARTY_SIZE, ENDLESS_FIRST_DEPTH, isIntegerNumber } from "shared/sim";
@@ -53,6 +56,11 @@ export interface DevRunOptions {
 	 * (KV_FloorModifier, parseFloorModifierOverride). Absent: the floors' own picks, as endless.
 	 */
 	readonly modifier?: FloorModifierOverride;
+	/**
+	 * Secret rooms (docs/SECRET_ROOMS.md SR5): force / fix every floor's secret (KV_SecretDebug, parseSecretDebug).
+	 * Absent: the floors' own draws, as endless.
+	 */
+	readonly secret?: SecretOverride;
 	/**
 	 * docs/ARCHER.md AR4: "Both weapons": the sword and the bow (DEFAULT_LOADOUT) with the picked character's roll
 	 * traits. Absent / false: the character's own loadout.
@@ -109,6 +117,28 @@ export function parseFloorModifierOverride(value: unknown): FloorModifierOverrid
 	return undefined;
 }
 
+/** Workspace string attribute read when a dev run starts (DevModeController): parseSecretDebug's words. */
+export const SECRET_DEBUG_ATTRIBUTE = "KV_SecretDebug";
+
+/**
+ * KV_SecretDebug's text -> a SecretOverride (docs/SECRET_ROOMS.md "Studio check"): words in any case, separated by
+ * anything that is not a letter: `every` (a secret on every floor from SECRET.fromFloor that has a candidate),
+ * `legendary` / `rare` (the chest's tier); the last of each kind wins, unknown words are ignored. Undefined when no word
+ * applies. Pure.
+ */
+export function parseSecretDebug(text: string | undefined): SecretOverride | undefined {
+	if (text === undefined) return undefined;
+	let every: boolean | undefined;
+	let tier: number | undefined;
+	for (const [word] of text.lower().gmatch("%a+")) {
+		if (word === "every") every = true;
+		else if (word === "legendary") tier = VaultTier.LEGENDARY;
+		else if (word === "rare") tier = VaultTier.RARE;
+	}
+	if (every === undefined && tier === undefined) return undefined;
+	return { every, tier };
+}
+
 /** A dev run with no choices made: DEV_MODE's defaults. */
 export const DEFAULT_DEV_RUN: DevRunOptions = table.freeze({
 	startFloor: DEV_MODE.defaultFloor,
@@ -146,6 +176,7 @@ export function buildDevRunConfig(
 	const base = buildEndlessRunConfig(runSeed, DEFAULT_PARTY_SIZE, {
 		vaultOverride: options.vault,
 		modifierOverride: options.modifier,
+		secretOverride: options.secret,
 		characters,
 		bothWeapons: options.bothWeapons,
 	});

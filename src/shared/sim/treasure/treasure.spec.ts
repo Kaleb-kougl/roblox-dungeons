@@ -129,7 +129,8 @@ describe("treasure: data shared with the dungeon", () => {
  * treasure's and their HORDE / GOLDEN sources pad TREASURE), so treasure stays the last group here: what it adds, alone.
  */
 function noFortune(config: SimConfig): SimConfig {
-	return { ...config, pacts: undefined, golden: undefined };
+	// Secret rooms (docs/SECRET_ROOMS.md SR5) too: their group follows the Goldling's, their SECRET source pads last.
+	return { ...config, pacts: undefined, golden: undefined, secrets: undefined };
 }
 
 describe("treasure: opt-in", () => {

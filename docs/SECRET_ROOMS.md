@@ -1,6 +1,7 @@
 # Secret rooms: a cracked wall, and what's behind it
 
-Status (2026-11-13): **planned, nothing built. Every decision answered by the owner (SRD1-SRD14, 2026-11-13):** a
+Status (2026-11-13): **SR0-SR5 built on branch `secret-rooms` (Track A: dungeon and sim, "As built" below); SR6 on
+(view, theme, art, Codex, docs) pending. Every decision answered by the owner (SRD1-SRD14, 2026-11-13):** a
 flat 25 % of floors, four openers (the Knight's combo finisher, the heavy arrow, the Wrecker roll, a Charger), crack +
 dust and nothing else before it opens, a first-time card, the chest (Rare 65 / Legendary 35), points on the open and
 from the chest, the recap highlight plus one Codex entry (see "Decisions"). Planned against `main` @ `c0a8de2` (the Codex merged; floor
@@ -90,6 +91,82 @@ Four shards of 15 run seeds (about 50 s each, only chance hits are built). Sums 
 - Boss floors with a secret: 75 (never the boss room). Crack rooms that are elite: 29 of 376.
 - **Crack rooms with a planned Charger** (the Archer's third key): 189 of 376 solo (50.3 %), 136 of 379 in a party of 3
   (35.9 %: the party's bigger budgets buy dearer kinds).
+
+### SR2: the inert kind and the knocks (`sim/breakables`)
+
+- `BreakableKind.CRACKED_WALL` 3, `CRACKED_WALL_HP` 1 (fixed, hashed), `inertPiece(kind)` (chest or crack).
+  `damageBreakable` returns before any bookkeeping for an inert piece; for a crack it first reports a **knock**.
+- **Knocks** (unhashed, per tick, cleared with `hitSlots`, copied by clone): `BreakablesState.knockSlots`,
+  `knockSources` (BreakableSource of the contact) and `knockPlayers` (the player behind it, -1 for enemy bullets,
+  slams, a Bomber's blast, a Charger). Every contact that reaches `damageBreakable` is one knock: player and enemy
+  bullets, the sword's melee pass (swings 1 and 2), slams (the boss's, a Bomber's, a Charger's radius), Demolition and
+  Siege's shock (their loops keep the chest-only skip on purpose). The guard, novas and Riposte waves never reach a
+  piece, so they never knock. A roll without Wrecker touches no piece.
+- `shared/sim/testing` `secretArena.ts`: a hand-built carved room with a crack, chamber and chest (`ARENA`,
+  `arenaConfig`, `arenaWorld`, `arenaSecret`) for the sim specs. `sim/breakables/crack.spec.ts`.
+
+### SR3 / SR4: the openers, the state, the chest (`sim/secrets/`)
+
+One commit for both (SR0: the openers need the state). Modules: `secretsData.ts` (`SecretsConfig`, `SECRETS_CONFIG`
+= the vault's reach / points / boosts plus `openPoints` `SECRET_POINTS` 600, `SECRETS_SALT` 0x4b565352, `SecretStatus`
+NONE / HIDDEN / OPEN / TAKEN, `SecretHow` FINISHER 0 / ROLL 1 / HEAVY 2 / CHARGER 3), `secrets.ts` (state, floor fill,
+clone, hash, `secretsRunSummary`), `open.ts` (the openers), `stepSecrets.ts` (the chest).
+
+- **Openers:** `secretsOpenPiece(state, slot, how, player)` from `meleeHitBreakables`' new trailing `finisher` flag
+  (passed only by `sweepArc`'s new trailing `finisher`, which only the sword's finisher call sets), from
+  `rollSmashBreakables` (a crack in reach opens instead of breaking; the roll smash is only called with Wrecker), and
+  from `playerBulletHit`'s piece branch (a crack + `isHeavyArrow`; Ballista's burst back as from a wall);
+  `secretsSlamAt(state, x, z, owner)` from Siege Bolt's slam (the slam point's cell or a 4-neighbour, before the shock's
+  pieces); `secretsChargeAt(state, x, z, r)` from the Charger's charge tick, **before** `slamBreakables` (SR0). A heavy
+  arrow carrying a pinned body usually reaches the crack itself first: HEAVY either way.
+- **The open** breaks every crack piece that tick (hp 0, `brokenTick`, out of `slotByCell`, `intact` down) with no
+  breakables bookkeeping (no `breakablesBroken` / `brokenSlots`, breakable points, loot, smash proc or Goldling
+  release), HIDDEN -> OPEN, `openTick`, `openedBy` (the credited player; -1 for a Charger), `openHow`, `found`,
+  `byHow[how]`, and pays `scoreSecret(secretOpenAwardPoints(600))`: floor(600 x floorScalePercent x Depth x (4 +
+  curses) / (4 x 100)), the combo fixed at x1.0.
+- **The chest** (`stepSecrets`, after `stepGolden` in `step` and `stepParty`): OPEN -> TAKEN when the first living
+  present player is within `reachTiles` (1.5) of its centre; the shares are the vault's grant core, lifted unchanged
+  into `sim/treasure/grants.ts` (`grantShares(state, rng, origin, tier, config, bonusDeals)`, `livingPresent`;
+  stepTreasure's `openChest` now calls it with the treasure state as stream and origin), drawn from the secrets' own
+  stream; a Legendary's bonus deal goes into `state.treasure.bonusDeals` (none without treasure or builds: the relic);
+  the chest's treasure points (`treasureAwardPoints(points[tier])`) into SECRET.
+- **Score:** `ScoreSource.SECRET` 16, `SECRET_SCORE_SOURCE_NAMES` `["secret"]`, `addSecretScoreSources` padded last in
+  createSimState (after OVERCAP): every endless run holds 17 sources.
+- **State and hash** (`secrets` group, appended after `golden`, last): `rngState`, `status`, `room`, `crackSlot`,
+  `cells`, `chestSlot`, `crackX`, `crackY`, `ax`, `az`, `x`, `z` (the chest's world centre), `fx`, `fz`, `tier`,
+  `openTick`, `openedBy`, `openHow`, `takenBy`, `found`, `taken`, then `byHow` (length + 4 values).
+  `EndlessFloorWorld.secret` (the plan); `secretsOnFloor` from createSimState and the floor change (after the Goldling)
+  checks the plan's slots against the pieces.
+- **Events for the view** (`SecretsState.events`, per tick, unhashed): `opened?: { tick, how, player (credited, -1
+  for a Charger), finder (the toast's player: the credited one, or the nearest living present player for a Charger),
+  slot (the crack's first slot), x, z (the crack's centre, world), points }`, `taken?: { opener, tier, points, grants:
+  TreasureGrant[] }`. Knocks: the breakables' feed above. Run counters: `secretsRunSummary(state)` -> `{ found, taken,
+  byHow }`.
+- Specs: `sim/secrets/openers.spec.ts` (every opener and non-opener of SR3's Verify but Thunder Guard's sparks, which are
+  bullets of their own kind and knock like any non-heavy bullet), `sim/secrets/secrets.spec.ts` (SR4's Verify).
+
+### SR5: the run configs (`shared/run`)
+
+- `buildEndlessRunConfig` sets `secrets: SECRETS_CONFIG` (solo and co-op), so endless, the Daily and dev have it (and the
+  server's registry and validator, which build through it); M1 and the tutorial do not. `endlessRunFloor` builds every
+  floor with `secrets: true` (and the dev world's `secretOverride`); `endlessFloorWorld` builds its five movers and
+  blockers on `layout.secret?.dungeon ?? layout.dungeon` and passes `secret` to the sim world; `roomIdAt` and
+  `EndlessRunFloor.dungeon` stay the Forge's. `DAILY.ruleset` 18 -> 19.
+- Dev: `SECRET_DEBUG_ATTRIBUTE` `KV_SecretDebug`, `parseSecretDebug` (`every`, `legendary` / `rare`),
+  `DevRunOptions.secret`, `EndlessRunOptions.secretOverride`. **Client wiring pending (view track):**
+  `DevModeController` must read the attribute and pass `secret` like `vault`.
+- `run/stageInput.ts` counts only `BREAKABLE_KINDS` as clutter (SR0).
+- `run/secrets.spec.ts`: the configs, the carved movers, the dev override, and a recorded Knight run (run seed 16:
+  debug skip to floor 2, walk to the crack at (94, 8), hold FIRE: two swings knock, the finisher opens it at tick 1265,
+  take the 5 x 4 chamber's chest; 1331 ticks) that replays and validates on the server (debug input allowed).
+- **Pins re-recorded** (only where a secret now stands): `sim/charger.spec` PIN_HASH e42f7fdf -> b44f15ea and
+  `sim/stormcaller.spec`'s run 4 pin 3/0/0406aa34 -> 3/0/6b926521: run 4's floor 3 (solo) holds a secret (room 0, crack
+  (44, 18)); their counts did not move; run 23's co-op floor 3 has none (its pin unchanged). The vault's specs and pins
+  (`sim/treasure/*`, the vault census) pass unchanged; `run/endless.spec`'s recorded 7-floor run is unchanged.
+- Structural specs updated for `secrets` as the last group and 17 score sources (or given `secrets: undefined` where
+  they isolate an earlier group): run `endless` / `affixes` / `partyProgression` / `dev` / `tutorial`, sim `hash` /
+  `breakables` / `builds` / `overcap` / `golden` / `payouts` / `pacts` / `pellets` / `progression` / `score` /
+  `treasure`; `daily.spec`'s ruleset pin 19.
 
 ## What the code gives us (read in the source at c0a8de2; SR0, 2026-11-13: every row marked **read** or **corrected**, the client and Codex rows left to their tracks)
 
@@ -277,21 +354,21 @@ SR0's design changes, each the smallest that keeps the plan's intent:
   over a minute): secret floors against SRD1's 25 %, chance hits with no candidate (by depth: do deep floors fit as
   well as shallow ones?), candidates per floor, chamber sizes, the share of crack rooms with a planned Charger (the
   Archer's third key).
-- [ ] **SR2. Inert kind and knocks.** → Verify: kinds 0-2 byte-identical (every breakables, siege, smash, treasure
+- [x] **SR2. Inert kind and knocks.** → Verify: kinds 0-2 byte-identical (every breakables, siege, smash, treasure
   spec; the determinism pins); a crack takes no damage from every bullet kind, slams, a Bomber blast, Demolition, a
   Siege shock; each such contact is one knock; a bullet stops on it; bodies and the Charger's plain move stop
   on it.
-- [ ] **SR3. Openers.** → Verify (specs on a built secret floor): a finisher opens it (from the front box and at its
+- [x] **SR3. Openers.** → Verify (specs on a built secret floor): a finisher opens it (from the front box and at its
   full reach, with and without the lunge closing in), swings 1 and 2 knock, the guard does nothing, a Riposte counter-wave and Thunder Guard sparks do not; a
   Wrecker roll opens it, a roll without Wrecker does
   not; a heavy arrow opens it (stream arrows, Volatile bolts and Ballista bursts do not), a Siege slam into it opens
   it; a Charger lured into it opens it, a Charger charging past it does not; one opening breaks both pieces the same
   tick; no breakable points, loot, smash proc or Goldling release.
-- [ ] **SR4. State, chest, score, hash.** The grant core moved, `stepSecrets`, SECRET score source, the `secrets`
+- [x] **SR4. State, chest, score, hash.** The grant core moved, `stepSecrets`, SECRET score source, the `secrets`
   group. → Verify: the vault's specs and pins pass unchanged; a chest open grants each living present player their
   share; Legendary's bonus deal is taken by the next draft; points into SECRET only with the flag; a scored run
   without it keeps its sources and hash.
-- [ ] **SR5. Run configs and replays.** → Verify: endless / daily / dev on, M1 / tutorial off; M1, every golden fixture
+- [x] **SR5. Run configs and replays.** → Verify: endless / daily / dev on, M1 / tutorial off; M1, every golden fixture
   and the tutorial bit for bit; the server validator replays a run that opened a secret; the charger / stormcaller /
   vault pins re-recorded only where a secret now stands; `DAILY.ruleset` 19; `KV_SecretDebug` dev only.
 - [ ] **SR6. View core** (`shared/view/secrets`). → Verify (spec): looks per status, the throttle, the first-knock

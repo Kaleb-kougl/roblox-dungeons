@@ -64,7 +64,9 @@ export const DAILY: DailyConfig = table.freeze({
 	// change from floor 2.
 	// 18: the Goldling hides in its own barrel or crate and comes out when a player breaks it (docs/GOLDLING_RUMOURS.md
 	// GR1-GR3, RD10 / RD11): Goldling floors gain a piece and the Goldling no longer appears 3 s into the fight.
-	ruleset: 18,
+	// 19: secret rooms (docs/SECRET_ROOMS.md SR5: a cracked far wall on about one floor in five from floor 2, its chamber
+	// and chest; the carved grid, the openers and the SECRET source change endless floors, play and scores).
+	ruleset: 19,
 	labelOffset: 1,
 	yesterdayCacheSeconds: 600,
 	minEntrantsForPercentile: 20,

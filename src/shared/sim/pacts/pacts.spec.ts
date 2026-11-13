@@ -65,7 +65,8 @@ function fresh(on: boolean, seed = SEED) {
  */
 function alone(on: boolean, seed = SEED) {
 	const base = pactsSetup(seed, 1, on);
-	const config: SimConfig = { ...base.config, golden: undefined };
+	// Secret rooms (docs/SECRET_ROOMS.md SR5) out too: their group follows the Goldling's.
+	const config: SimConfig = { ...base.config, golden: undefined, secrets: undefined };
 	return { setup: { ...base, config }, s: createSimState(seed, base.spawn!.x, base.spawn!.z, config) };
 }
 

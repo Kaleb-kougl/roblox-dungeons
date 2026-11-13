@@ -24,6 +24,8 @@ import {
 	PACTS_SUBSYSTEM,
 	ENDLESS_GOLDEN_CONFIG,
 	GOLDEN_SUBSYSTEM,
+	SECRETS_CONFIG,
+	SECRETS_SUBSYSTEM,
 	ENDLESS_DROPS_CONFIG,
 	ENDLESS_HASH_SUBSYSTEM,
 	RUN_SUBSYSTEM,
@@ -92,7 +94,7 @@ describe("buildEndlessRunConfig", () => {
 		const f1 = setup.endlessFloor(1);
 		const s = createSimState(1337, f1.spawnX, f1.spawnZ, setup.config);
 		const layout = hashLayout(s, true);
-		expect(layout.groups.size()).toBe(17);
+		expect(layout.groups.size()).toBe(18); // docs/SECRET_ROOMS.md SR5: `secrets` last
 		expect(layout.groups[9].name).toBe(BREAKABLES_SUBSYSTEM);
 		expect(layout.names[layout.groups[9].start]).toBe("breakables.length");
 		expect(layout.values[layout.groups[9].start]).toBe(f1.breakables!.size());
@@ -132,10 +134,14 @@ describe("buildEndlessRunConfig", () => {
 		expect(setup.config.pacts).toBe(ENDLESS_PACTS_CONFIG);
 		expect(layout.groups[15].name).toBe(PACTS_SUBSYSTEM);
 		expect(layout.names[layout.groups[15].start]).toBe("pacts.room");
-		// docs/FORTUNE.md GE3: endless runs have the Goldling (ENDLESS_GOLDEN_CONFIG), hashed after pacts (last).
+		// docs/FORTUNE.md GE3: endless runs have the Goldling (ENDLESS_GOLDEN_CONFIG), hashed after pacts.
 		expect(setup.config.golden).toBe(ENDLESS_GOLDEN_CONFIG);
 		expect(layout.groups[16].name).toBe(GOLDEN_SUBSYSTEM);
 		expect(layout.names[layout.groups[16].start]).toBe("golden.rngState");
+		// docs/SECRET_ROOMS.md SR5: endless runs have secret rooms (SECRETS_CONFIG), hashed after golden (last).
+		expect(setup.config.secrets).toBe(SECRETS_CONFIG);
+		expect(layout.groups[17].name).toBe(SECRETS_SUBSYSTEM);
+		expect(layout.names[layout.groups[17].start]).toBe("secrets.rngState");
 		const g = layout.groups[6];
 		expect(g.name).toBe(ENDLESS_HASH_SUBSYSTEM);
 		expect(layout.groups[7].name).toBe(SCORE_SUBSYSTEM);
@@ -176,17 +182,22 @@ describe("fortune: pacts and the Goldling together (docs/FORTUNE.md)", () => {
 			const s = createSimState(1337, f1.spawnX, f1.spawnZ, run.config);
 			const layout = hashLayout(s, true);
 			const names = layout.groups.map((g) => g.name);
+			// docs/SECRET_ROOMS.md SR5: secrets after golden, last.
 			expect([
+				names[names.size() - 5],
 				names[names.size() - 4],
 				names[names.size() - 3],
 				names[names.size() - 2],
 				names[names.size() - 1],
-			]).toEqual([PELLETS_SUBSYSTEM, TREASURE_SUBSYSTEM, PACTS_SUBSYSTEM, GOLDEN_SUBSYSTEM]);
+			]).toEqual([PELLETS_SUBSYSTEM, TREASURE_SUBSYSTEM, PACTS_SUBSYSTEM, GOLDEN_SUBSYSTEM, SECRETS_SUBSYSTEM]);
 			expect(layout.values).toEqual(writeHashFields(s, []));
 			expect([ScoreSource.TREASURE, ScoreSource.HORDE, ScoreSource.GOLDEN]).toEqual([12, 13, 14]);
-			// ... then the builds run's OVERCAP (docs/BUILDS_V2.md BV9): every endless world sets builds.
-			expect(s.score!.points.size()).toBe(ScoreSource.OVERCAP + 1);
-			expect(s.score!.counts.size()).toBe(ScoreSource.OVERCAP + 1);
+			// ... then the builds run's OVERCAP (docs/BUILDS_V2.md BV9): every endless world sets builds; then SECRET
+			// (docs/SECRET_ROOMS.md SR4): every endless world sets secrets.
+			expect(s.score!.points.size()).toBe(ScoreSource.SECRET + 1);
+			expect(s.score!.counts.size()).toBe(ScoreSource.SECRET + 1);
+			expect(layout.names.includes("score.points.overcap")).toBe(true);
+			expect(layout.names.includes("score.points.secret")).toBe(true);
 			expect(layout.names.includes("score.points.treasure")).toBe(true);
 			expect(layout.names.includes("score.points.horde")).toBe(true);
 			expect(layout.names.includes("score.points.golden")).toBe(true);
@@ -196,15 +207,16 @@ describe("fortune: pacts and the Goldling together (docs/FORTUNE.md)", () => {
 	it("any subset of treasure / pacts / golden pads up to its last gated source (12 entries with none)", () => {
 		const run = buildEndlessRunConfig(1337);
 		const f1 = run.endlessFloor(1);
-		// The matrix without builds: since docs/BUILDS_V2.md BV9 a builds run (every endless world) pads on to OVERCAP.
+		// The matrix without builds: since docs/BUILDS_V2.md BV9 a builds run (every endless world) pads on to OVERCAP;
+		// and without secrets, which pad on to SECRET last (docs/SECRET_ROOMS.md SR4).
 		const sources = (config: SimConfig) => {
-			const s = createSimState(1337, f1.spawnX, f1.spawnZ, { ...config, builds: undefined });
+			const s = createSimState(1337, f1.spawnX, f1.spawnZ, { ...config, builds: undefined, secrets: undefined });
 			const names = hashLayout(s, true).groups.map((g) => g.name);
 			return [s.score!.points.size(), s.score!.counts.size(), names[names.size() - 1]];
 		};
 		const c = run.config;
 		const built = createSimState(1337, f1.spawnX, f1.spawnZ, c);
-		expect([built.score!.points.size(), built.score!.counts.size()]).toEqual([16, 16]);
+		expect([built.score!.points.size(), built.score!.counts.size()]).toEqual([17, 17]);
 		expect(sources(c)).toEqual([15, 15, GOLDEN_SUBSYSTEM]);
 		expect(sources({ ...c, golden: undefined })).toEqual([14, 14, PACTS_SUBSYSTEM]);
 		expect(sources({ ...c, pacts: undefined })).toEqual([15, 15, GOLDEN_SUBSYSTEM]);

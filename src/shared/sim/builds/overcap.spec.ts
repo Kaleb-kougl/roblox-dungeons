@@ -113,14 +113,15 @@ describe("overcap points (BV9)", () => {
 	it("a builds run holds ScoreSource.OVERCAP 15 (16 sources); a scored run without builds keeps its 15, hash unchanged", () => {
 		expect([ScoreSource.OVERCAP, OVERCAP_POINTS, [...OVERCAP_SCORE_SOURCE_NAMES]]).toEqual([15, 10, ["overcap"]]);
 		const setup = buildEndlessRunConfig(SEED);
-		const built = createSimState(SEED, setup.spawn!.x, setup.spawn!.z, setup.config);
+		// Without secrets (docs/SECRET_ROOMS.md SR4: every endless world pads on to SECRET 16, last).
+		const built = createSimState(SEED, setup.spawn!.x, setup.spawn!.z, { ...setup.config, secrets: undefined });
 		expect([built.score!.points.size(), built.score!.counts.size()]).toEqual([16, 16]);
 		const names: string[] = [];
 		scoreHashNames(built.score!, names);
 		expect(names.includes("score.points.overcap")).toBe(true);
 		expect(names.includes("score.counts.overcap")).toBe(true);
 		// The same endless config without builds: GOLDEN is the last source, as before BV9.
-		const noBuilds: SimConfig = { ...setup.config, builds: undefined };
+		const noBuilds: SimConfig = { ...setup.config, builds: undefined, secrets: undefined };
 		const plain = createSimState(SEED, setup.spawn!.x, setup.spawn!.z, noBuilds);
 		expect([plain.score!.points.size(), plain.score!.counts.size()]).toEqual([
 			ScoreSource.GOLDEN + 1,
