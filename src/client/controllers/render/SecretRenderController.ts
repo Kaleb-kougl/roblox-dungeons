@@ -387,6 +387,7 @@ export class SecretRenderController implements OnStart {
 		janitor.Add(() => {
 			destroyPieceBody(scene.closed);
 			destroyPieceBody(scene.opened);
+			scene.crack.Destroy(); // unparented once open: not in the folder any more
 		}, true);
 		scene.rubble = this.buildRubble(pack, scene);
 		this.buildDust(pack, scene);
