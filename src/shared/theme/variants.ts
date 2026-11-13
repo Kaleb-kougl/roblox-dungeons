@@ -77,7 +77,8 @@ export const BESTIARY_ARCHETYPES = [
  * The first-sighting toast lines (EVD10, EV12): one short tell per new archetype (`bestiary.<archetype>`,
  * BESTIARY_ARCHETYPES order), then one per affix (`bestiary.affix.<id>`, AFFIX_IDS order), then the power pellet's
  * (`bestiary.pellet.power`, docs/PELLETS.md PL14), then the first Goldling rumour's (`bestiary.golden.rumour`,
- * docs/GOLDLING_RUMOURS.md GR7).
+ * docs/GOLDLING_RUMOURS.md GR7), then the first knock on a secret room's crack's (`bestiary.secret.crack`,
+ * docs/SECRET_ROOMS.md SR10).
  */
 export const BESTIARY_STRING_KEYS: ReadonlyArray<string> = [
 	"bestiary.imp",
@@ -99,6 +100,9 @@ export const BESTIARY_STRING_KEYS: ReadonlyArray<string> = [
 	// docs/GOLDLING_RUMOURS.md GR7: the first Goldling rumour (fortune.ts GOLDEN_RUMOUR_BESTIARY_KEY; sighting
 	// `golden.rumour`)
 	"bestiary.golden.rumour",
+	// docs/SECRET_ROOMS.md SR10 (SRD5): the first knock on a secret room's crack (secrets.ts SECRET_BESTIARY_KEY; sighting
+	// `secret.crack`; its Archer override is characters.ts CHARACTER_OVERRIDE_KEYS')
+	"bestiary.secret.crack",
 ];
 
 /** Every enemy-variant string key a pack must define (AFFIX_STRING_KEYS then BESTIARY_STRING_KEYS), for contract.ts. */

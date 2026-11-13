@@ -2977,5 +2977,43 @@
 			"kenney-candle-double-a": { "file": "kenney/candleDouble/double_a.png", "pivot": [8.5, 31.76], "outline": true },
 			"kenney-candle-double-b": { "file": "kenney/candleDouble/double_b.png", "pivot": [8.5, 31.44], "outline": true }
 		}
+	},
+	"secret": {
+		"$comment": [
+			"docs/SECRET_ROOMS.md SR11: the secret rooms' art, ORIGINAL greyscale pixel art drawn by scripts/art/gen-secret-art.js",
+			"(art:build and art:lock run it first) into art/vendor/kaleb-vale/secret/: secret.crack the crack overlay for a",
+			"2-cell wall face (2 x 1 tiles; its idle frames are three variants, split / impact / mortar, never played),",
+			"secret.rubble the 2 x 1 rubble pile seen from straight above (laid flat on the opened cells), fx.secret.dust a",
+			"6-frame trickle of grit falling from a joint (its pivot at the top). Greyscale: the view tints the crack and rubble",
+			"with the biome's wall colour (darkened) and the dust with secret.dust. Its OWN sheet art/build/<atlas>.png with",
+			"src/shared/theme/packs/vale/secretLayout.ts, so no other atlas repacks. pixelsPerTile: the density it was drawn at",
+			"(32, gen-secret-art.js TILE_PX). Build just this group: node scripts/art/build-atlases.js --only secret (and",
+			"--lock --only secret)."
+		],
+		"atlas": "secret",
+		"pixelsPerTile": 32,
+		"sets": {
+			"secret.crack": {
+				"canvas": [64, 32],
+				"pivot": [32, 16],
+				"animations": {
+					"idle": { "file": "kaleb-vale/secret/crack.png", "frames": 3, "fps": 1 }
+				}
+			},
+			"secret.rubble": {
+				"canvas": [64, 32],
+				"pivot": [32, 16],
+				"animations": {
+					"idle": { "file": "kaleb-vale/secret/rubble.png", "frames": 1, "fps": 1 }
+				}
+			},
+			"fx.secret.dust": {
+				"canvas": [12, 32],
+				"pivot": [6, 1],
+				"animations": {
+					"play": { "file": "kaleb-vale/secret/dust.png", "frames": 6, "fps": 10 }
+				}
+			}
+		}
 	}
 }

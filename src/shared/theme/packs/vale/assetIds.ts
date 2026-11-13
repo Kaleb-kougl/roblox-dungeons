@@ -166,6 +166,9 @@ import type { RobloxAssetId } from "../../types";
  * scripts/art/grim/gen_grim_tiles.py) and tile-biome5-floor.png / tile-biome5-wall.png (the verdant biome's, docs/ART.md
  * "As built: verdant tiles"; original art, scripts/art/verdant/gen_verdant_tiles.py) uploaded 2026-11-09 6:56 AM by
  * k9kbdev, transcribed from an Asset Manager screenshot.
+ * secret.png (the secret rooms' crack overlay, rubble and dust trickle, docs/SECRET_ROOMS.md SR11; original art,
+ * scripts/art/gen-secret-art.js, built by `node scripts/art/build-atlases.js --only secret`) is NOT uploaded yet: its ID
+ * goes here, which switches on `secret.crack`, `secret.rubble` and `fx.secret.dust` (until then the view's fallback).
  */
 export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"amb-b1.ogg": "rbxassetid://91158343621799",

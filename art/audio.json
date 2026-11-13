@@ -1095,6 +1095,34 @@
 			"notes": "docs/GOLDLING_RUMOURS.md GR6: the Goldling's room engaged (once per floor; the chip says It's hiding here!). The floor rumour's jingle, closer and brighter: candidate Bonus/Coin3 unfiltered, or Coin2 layered (a mix of two Coin2 taps). Category sfx (no duck, not a jingle), SFX_PRIORITY 66, cue volume 0.8 (GOLDEN_VIEW.rumour.roomVolume; x the teammate volume from outside the room). Must read apart from sfx.golden.hit's plain Coin.wav. Silent until GR10's audition: the score tick plays meanwhile (SFX_FALLBACK).",
 			"confirmed": false
 		},
+		"sfx.secret.knock": {
+			"silent": true,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Hit & Impact/Impact.wav",
+				"ninja-adventure/Audio/Sounds/Hit & Impact/Impact2.wav"
+			],
+			"notes": "docs/SECRET_ROOMS.md SR10: a wrong-way hit on a secret room's crack (sword swings 1 and 2, a stream arrow, an enemy bullet, a blast): HOLLOW, so the knock alone says \"different\" from sfx.breakable.hit's Impact4 and a plain wall. Category sfx (no duck, not a jingle), SFX_PRIORITY 31, the view throttles it (SECRET_VIEW knock throttle 0.25 s). Silent until SR14's audition: sfx.breakable.hit plays meanwhile (SFX_FALLBACK). Candidates are placeholders for the audition: a low, boomy, short hit (Impact / Impact2, maybe pitched down); the owner may pick an original.",
+			"confirmed": false
+		},
+		"sfx.secret.open": {
+			"silent": true,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Elemental/Explosion2.wav",
+				"ninja-adventure/Audio/Sounds/Hit & Impact/Impact3.wav"
+			],
+			"notes": "docs/SECRET_ROOMS.md SR10: the cracked wall bursts open (a finisher, a Wrecker roll, a heavy arrow or a Charger): a stone crumble, heavier and longer than sfx.breakable.break, with a short tail of falling pebbles. Category sfx, SFX_PRIORITY 48. Silent until SR14's audition: sfx.breakable.break plays meanwhile (SFX_FALLBACK).",
+			"confirmed": false
+		},
+		"sfx.jingle.secret": {
+			"silent": true,
+			"category": "jingle",
+			"alternates": [
+				"ninja-adventure/Audio/Jingles/Secret1.wav",
+				"ninja-adventure/Audio/Jingles/Secret2.wav"
+			],
+			"notes": "docs/SECRET_ROOMS.md SR10 / SR14: the discovery jingle, 0.4 s after the wall opens as the chamber appears. It carries the feature: short, bright, unmistakable, ideally original (SR14). A jingle (JINGLE_SFX, DUCKING_SFX: it ducks the music), SFX_PRIORITY 72, one under sfx.jingle.treasure. Must read apart from sfx.jingle.treasure (Secret4) and sfx.draft.legendary (Secret3). Silent until SR14: sfx.jingle.treasure plays meanwhile (SFX_FALLBACK).",
+			"confirmed": false
+		},
 		"music.menu": {
 			"category": "music",
 			"clips": [

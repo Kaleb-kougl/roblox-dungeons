@@ -256,6 +256,10 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"floorMod.feast": "#ffff00",
 		"floorMod.plunder": "#a8f03c",
 		"floorMod.bloodMoon": "#ff3348",
+		// Roblox port (docs/SECRET_ROOMS.md SR10): a secret room's dust, a pale dusty stone (the trickle from the crack,
+		// the knock's puff, the burst). 82.1 CIE76 from enemyBullet, 75.5 from its outline and 63.0 from the telegraph
+		// (the bar is 40, secretReport, printed by theme/secrets.spec.ts).
+		"secret.dust": "#c8bfae",
 	},
 	// Roblox port (docs/VOID_DECOR.md VD1): `shoulder` is the wall darkened in linear light (ancient x0.95, molten x0.75,
 	// frost x0.9, grim x0.8, verdant x0.9: as far as the "nearer the wall than the floor" rule lets each go; the ancient
@@ -547,6 +551,12 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"sfx.golden.rumour.room": SILENT,
 		// claude/codex-plan.md CX5: a codex toast's soft chime (CXD12). Silent until a clip is picked (CX11); no fallback
 		"sfx.codex.new": SILENT,
+		// docs/SECRET_ROOMS.md SR10: a secret room's hollow knock, the wall's crumble and the discovery jingle. Silent until
+		// clips are picked (SR14); they fall back to sfx.breakable.hit / sfx.breakable.break / sfx.jingle.treasure
+		// (shared/view/audio SFX_FALLBACK)
+		"sfx.secret.knock": SILENT,
+		"sfx.secret.open": SILENT,
+		"sfx.jingle.secret": SILENT,
 		"music.menu": SILENT,
 		"music.biome.1": SILENT,
 		"music.biome.2": SILENT,
@@ -833,6 +843,8 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"score.source.golden": "Goldling",
 		// Roblox port (docs/BUILDS_V2.md BV9): boss damage over the damage cap, paid as points.
 		"score.source.overcap": "Overcap",
+		// Roblox port (docs/SECRET_ROOMS.md SR10): the secret rooms opened and their chests.
+		"score.source.secret": "Secrets",
 		// M5: leaderboards.
 		"hud.pause.leaderboard": "Leaderboards",
 		"hud.leaderboard.title": "Leaderboards",
@@ -1447,6 +1459,12 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"bestiary.golden": "A Goldling! Catch it before it escapes!",
 		// docs/GOLDLING_RUMOURS.md GR7: the first Goldling rumour heard (its first-time card)
 		"bestiary.golden.rumour": "Hear coins? A Goldling is hiding in a barrel or crate on this floor. Find it!",
+		// docs/SECRET_ROOMS.md SR10 (SRD5): the first knock on a secret room's crack (its first-time card); the Archer's
+		// override names her charged arrow (docs/ARCHER.md "Text per character")
+		"bestiary.secret.crack":
+			"A hollow wall. A finishing blow, a Charger's charge or a Wrecker roll could break through.",
+		"bestiary.secret.crack.archer":
+			"A hollow wall. A charged arrow, a Charger's charge or a Wrecker roll could break through.",
 		// --- pact.* / Fortune (docs/FORTUNE.md FO6: the shrine room's two altars, their cards (`{curse}` the curse's name,
 		// `{key}` the shrine key) and the dimmed altar's lines; the Greed deal's draft title; the Horde's chip and floor
 		// shouts; the Goldling's shout and escape line, `{points}` formatted by the view) --------------------------------
@@ -1503,6 +1521,7 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"codex.group.enemies": "Enemies",
 		"codex.group.champions": "Champions",
 		"codex.group.bosses": "Bosses",
+		"codex.group.secrets": "Secrets",
 		"codex.unknown": "???",
 		"codex.state.seen": "Seen",
 		"codex.state.found": "Found on floor {floor} · {date}",
@@ -1527,11 +1546,13 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"codex.kind.enemy": "Enemy",
 		"codex.kind.champion": "Champion",
 		"codex.kind.boss": "Boss",
+		"codex.kind.secret": "Secret",
 		"codex.desc.enemy.swarmer": "Swarmer: rushes in packs, sidestep the lunge",
 		"codex.desc.enemy.sniper": "Sniper: step off its aim line before it fires",
 		"codex.desc.enemy.bruiser": "Bruiser: find the gap in its ring, then punish the pause",
 		"codex.desc.boss.act1": "Mother Mayhem: weave through her patterns, strike while she rests",
 		"codex.desc.boss.demonlord": "The Demon Lord: hunts you down, never stand next to him",
+		"codex.desc.secret.room": "Secret rooms: a cracked wall that knocks hollow hides a chamber and its chest",
 		"hud.codex.new": "NEW!",
 		"hud.codex.tag": "NEW",
 		"hud.codex.added": "Added to your Codex",
@@ -1819,5 +1840,12 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"treasure.reward.draft": "BONUS DRAFT next floor",
 		"treasure.reward.boosts": "BOOSTS +{count}",
 		"treasure.reward.points": "+{points}",
+		// --- secret rooms (docs/SECRET_ROOMS.md SR10: the SECRET! floor shout, the co-op toast (`{name}` the opener), the
+		// secret chest's reward cards' title, the recap highlight's label, the Codex entry's name) ---
+		"fx.secret.text": "SECRET!",
+		"hud.toast.secret": "Secret found by {name}",
+		"treasure.secret.title": "Secret cache",
+		"run.recap.hl.secrets": "Secrets found",
+		"secret.room.name": "Secret rooms",
 	},
 };

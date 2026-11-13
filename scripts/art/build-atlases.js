@@ -51,6 +51,9 @@
  *   -> src/shared/theme/packs/vale/duoIconLayout.ts generated (committed): the duo icon sheet (docs/BUILDS.md BU11,
  *                                        the duo part; config key `duoIcons`; section "Duo icon sheet" below), with
  *                                        its sheet art/build/duo-icons.png and contact sheet art/build/contact/duo-icons.png
+ *   -> src/shared/theme/packs/vale/secretLayout.ts generated (committed): the secret rooms' sheet (docs/SECRET_ROOMS.md
+ *                                        SR11; config key `secret`; section "Secret sheet" below), with its sheet
+ *                                        art/build/secret.png and contact sheet art/build/contact/secret.png
  *
  * World art (decor props, effects, breakables; docs/DECOR.md R5) has its own section below ("World art").
  *
@@ -133,6 +136,8 @@
  *        node scripts/art/build-atlases.js --lock --only hazards   HA2; needs only the generated strips)
  *        node scripts/art/build-atlases.js --only fortune          the same for the pact altar and coin burst sheets
  *        node scripts/art/build-atlases.js --lock --only fortune   (docs/FORTUNE.md FO10; needs only the generated frames)
+ *        node scripts/art/build-atlases.js --only secret           the same for the secret rooms' sheet (docs/SECRET_ROOMS.md
+ *        node scripts/art/build-atlases.js --lock --only secret    SR11; needs only the generated strips)
  *        node scripts/art/build-atlases.js --only boonIcons        the same for the boon icon sheet (docs/BUILDS.md BU11;
  *        node scripts/art/build-atlases.js --lock --only boonIcons needs only the generated icons)
  *        node scripts/art/build-atlases.js --only itemIcons        the same for the relic and curse icon sheet
@@ -642,6 +647,7 @@ function sourceFiles(config) {
 	for (const f of pipIconSourceFiles(config.pipIcons)) files.add(f);
 	for (const f of duoIconSourceFiles(config.duoIcons)) files.add(f);
 	for (const f of kenneySourceFiles(config.kenney)) files.add(f);
+	for (const f of secretSourceFiles(config.secret)) files.add(f);
 	return [...files].sort();
 }
 
@@ -4970,6 +4976,213 @@ function printFortune(t) {
 }
 
 // ---------------------------------------------------------------------------------------------
+// Secret sheet (docs/SECRET_ROOMS.md SR11; config key `secret`)
+//
+// The secret rooms' art: original greyscale pixel art drawn by scripts/art/gen-secret-art.js (art:build and art:lock run
+// it first) into art/vendor/kaleb-vale/secret/, packed into ONE sheet of its own (art/build/<atlas>.png, generated
+// src/shared/theme/packs/vale/secretLayout.ts), so no other atlas repacks. `secret`: { atlas, pixelsPerTile, sets: {
+// "<id>": { canvas [w, h] (every strip's frame size), pivot [x, y] (canvas px), animations: { name: { file, frames,
+// fps, loop? } } } } }. The world art (`secret.crack`, `secret.rubble`) has exactly one animation `idle` (the crack's
+// frames are its variants) and becomes a one-facing Pixelated world sprite layout; the dust (`fx.secret.dust`) exactly
+// one `play` and becomes an effect layout (grey: tinted at draw time). No crop and no recolour: every visible pixel must
+// already be grey, checked here. Packed by packFx (one band per set). Build just this group: node
+// scripts/art/build-atlases.js --only secret (and --lock --only secret).
+
+const SECRET_WORLD_IDS = ["secret.crack", "secret.rubble"];
+const SECRET_FX_IDS = ["fx.secret.dust"];
+const SECRET_IDS = [...SECRET_WORLD_IDS, ...SECRET_FX_IDS];
+const SECRET_GROUP_KEYS = new Set(["$comment", "atlas", "pixelsPerTile", "sets"]);
+const SECRET_SET_KEYS = new Set(["$comment", "canvas", "pivot", "animations"]);
+const SECRET_ANIM_KEYS = new Set(["$comment", "file", "frames", "fps", "loop"]);
+const SECRET_LAYOUT_FILE = path.join(LAYOUT_DIR, "secretLayout.ts");
+
+/** The group's set ids in SECRET_IDS order (throws on an unknown one). */
+function secretIds(group) {
+	const ids = group.sets && typeof group.sets === "object" ? Object.keys(group.sets).filter((k) => !k.startsWith("$")) : [];
+	for (const id of ids) if (!SECRET_IDS.includes(id)) throw new Error(`secret.sets: unknown set ${id} (one of ${SECRET_IDS.join(", ")})`);
+	return SECRET_IDS.filter((id) => ids.includes(id));
+}
+
+/** The one animation set `id` must define: `idle` for the world art, `play` for the effect. */
+function secretAnimName(id) {
+	return SECRET_FX_IDS.includes(id) ? "play" : "idle";
+}
+
+/** Set `id`'s animation def (throws unless it defines exactly its one animation). */
+function secretAnim(id, def) {
+	if (!def || !def.animations || typeof def.animations !== "object" || Array.isArray(def.animations)) throw new Error(`${id}: animations must be an object`);
+	const names = Object.keys(def.animations).filter((k) => !k.startsWith("$"));
+	const want = secretAnimName(id);
+	if (names.length !== 1 || names[0] !== want) throw new Error(`${id}: animations must be exactly { ${want} }, got ${JSON.stringify(names)}`);
+	const a = def.animations[want];
+	if (!a || typeof a.file !== "string" || a.file === "") throw new Error(`${id}.${want} needs a file`);
+	return a;
+}
+
+/** Every vendor file the secret group reads, sorted ([] without a group). */
+function secretSourceFiles(group) {
+	if (!group) return [];
+	const out = [];
+	for (const id of secretIds(group)) out.push(secretAnim(id, group.sets[id]).file);
+	return [...new Set(out)].sort();
+}
+
+/**
+ * Builds the secret sheet: { file, sets, packed, sheet, art, fx, pixelsPerTile } (`art`: world sprite layouts by id,
+ * `fx`: effect layouts by id). Throws on a bad config, a strip of the wrong size or a pixel not grey.
+ */
+function buildSecret(group) {
+	if (group === null || typeof group !== "object" || Array.isArray(group)) throw new Error("secret must be an object");
+	for (const k of Object.keys(group)) if (!SECRET_GROUP_KEYS.has(k)) throw new Error(`secret: unknown key ${k}`);
+	if (typeof group.atlas !== "string" || !/^[a-z0-9-]+$/.test(group.atlas)) throw new Error(`secret.atlas must be a file name without .png, got ${JSON.stringify(group.atlas)}`);
+	const ppt = group.pixelsPerTile;
+	if (typeof ppt !== "number" || !(ppt > 0)) throw new Error("secret.pixelsPerTile must be a positive number");
+	const ids = secretIds(group);
+	if (ids.length === 0) throw new Error("secret.sets holds no set");
+	const sets = ids.map((id) => {
+		const def = group.sets[id];
+		if (def === null || typeof def !== "object" || Array.isArray(def)) throw new Error(`${id}: the set must be an object`);
+		for (const k of Object.keys(def)) if (!SECRET_SET_KEYS.has(k)) throw new Error(`${id}: unknown set key ${k}`);
+		const [w, h] = hazardPair(`${id}.canvas`, def.canvas, true);
+		const [px, py] = hazardPair(`${id}.pivot`, def.pivot, false);
+		if (px > w || py > h) throw new Error(`${id}: pivot ${def.pivot} outside its ${w}x${h} canvas`);
+		const name = secretAnimName(id);
+		const a = secretAnim(id, def);
+		for (const k of Object.keys(a)) if (!SECRET_ANIM_KEYS.has(k)) throw new Error(`${id}.${name}: unknown key ${k}`);
+		if (!Number.isInteger(a.frames) || a.frames < 1) throw new Error(`${id}.${name}: frames must be a positive integer`);
+		if (typeof a.fps !== "number" || !(a.fps > 0)) throw new Error(`${id}.${name}: fps must be a positive number`);
+		const frames = stripFrames(`${id}.${name}`, { file: a.file, frameW: w, frames: a.frames });
+		for (const img of frames) {
+			if (img.h !== h) throw new Error(`${id}.${name}: ${a.file} is ${img.h} px tall, not ${h}`);
+			for (let i = 0; i < img.w * img.h; i++) {
+				const p = i * 4;
+				if (img.data[p + 3] === 0) continue;
+				if (img.data[p] !== img.data[p + 1] || img.data[p + 1] !== img.data[p + 2]) throw new Error(`${id}.${name}: ${a.file} has a pixel that is not grey (the renderer tints it)`);
+			}
+		}
+		return { id, frameW: w, frameH: h, frames, name, fps: a.fps, loop: a.loop === true, pivot: { x: px, y: py } };
+	});
+	const packed = packFx(sets, "secret");
+	const file = `${group.atlas}.png`;
+	const sheet = { file, w: packed.w, h: packed.h };
+	const art = {};
+	const fx = {};
+	for (const id of ids) {
+		const p = packed.placed.find((q) => q.s.id === id);
+		const s = p.s;
+		if (SECRET_FX_IDS.includes(id)) {
+			fx[id] = { frameW: s.frameW, frameH: s.frameH, pivot: s.pivot, start: p.start, frames: s.frames.length, fps: s.fps, loop: s.loop, grey: true };
+		} else {
+			art[id] = {
+				kind: "sprites",
+				frameW: s.frameW,
+				frameH: s.frameH,
+				pivot: s.pivot,
+				pixelsPerTile: ppt,
+				resample: "Pixelated",
+				facings: { count: 1, zeroDeg: 0, ccw: true },
+				sheets: [{ file, w: packed.w, h: packed.h }],
+				animations: { [s.name]: { sheet: 0, start: p.start, frames: s.frames.length, fps: s.fps, loop: s.loop } },
+			};
+		}
+	}
+	return { file, sets, packed, sheet, art, fx, pixelsPerTile: ppt };
+}
+
+/** packs/vale/secretLayout.ts: VALE_SECRET_SHEET, VALE_SECRET_ART_LAYOUTS and VALE_SECRET_FX_LAYOUTS (SR11). */
+function secretLayoutModule(t) {
+	const text = [
+		"// GENERATED by `npm run art:build` (scripts/art/build-atlases.js) from art/atlases.json. Do not edit.",
+		"",
+		"/**",
+		comment([
+			"Layout of the `vale` pack's secret-room art (docs/SECRET_ROOMS.md SR11): original greyscale pixel art by",
+			"scripts/art/gen-secret-art.js in its own sheet VALE_SECRET_SHEET. VALE_SECRET_ART_LAYOUTS hold `secret.crack`",
+			"(its `idle` frames are its variants, never played) and `secret.rubble`, one-facing world sprite sets;",
+			"VALE_SECRET_FX_LAYOUTS holds `fx.secret.dust`, an effect flipbook. Cells `start + f` of the SpriteSetAsset formula",
+			"(perRow = floor(sheet w / frameW)). Grey: tinted at draw time. No asset IDs: `file` names the PNG in art/build/ to",
+			"upload.",
+		]),
+		" */",
+		"",
+		'import type { ValeFxLayout } from "./fxLayout";',
+		'import type { ValeSheetFile, ValeWorldSpriteLayout } from "./layout";',
+		"",
+		`export const VALE_SECRET_SHEET: ValeSheetFile = ${tsValue(t.sheet, 0, PRINT_WIDTH)};`,
+		"",
+		`export const VALE_SECRET_ART_LAYOUTS: Record<string, ValeWorldSpriteLayout> = ${tsValue(t.art, 0, PRINT_WIDTH)};`,
+		"",
+		`export const VALE_SECRET_FX_LAYOUTS: Record<string, ValeFxLayout> = ${tsValue(t.fx, 0, PRINT_WIDTH)};`,
+		"",
+	].join("\n");
+	for (const line of text.split("\n")) {
+		if (line.replace(/\t/g, "    ").length > PRINT_WIDTH) throw new Error(`secretLayout.ts line over ${PRINT_WIDTH} columns: ${line}`);
+	}
+	return text;
+}
+
+/** Contact sheet of the secret sheet: every cell of every set read back through its layout (one set per row band). */
+function secretContact(t) {
+	const rows = [];
+	const add = (l, start, frames) => {
+		const perRow = Math.floor(t.packed.img.w / l.frameW);
+		const cells = [];
+		for (let f = 0; f < frames; f++) {
+			const c = start + f;
+			cells.push([t.packed.img, (c % perRow) * l.frameW, Math.floor(c / perRow) * l.frameH]);
+		}
+		rows.push(scaledContact(cells, l.frameW, l.frameH, l.pivot));
+	};
+	for (const id of Object.keys(t.art)) {
+		const l = t.art[id];
+		const a = l.animations.idle;
+		add(l, a.start, a.frames);
+	}
+	for (const id of Object.keys(t.fx)) add(t.fx[id], t.fx[id].start, t.fx[id].frames);
+	const w = Math.max(...rows.map((r) => r.w));
+	const out = raster(w, rows.reduce((n, r) => n + r.h, 0));
+	let y = 0;
+	for (const r of rows) {
+		blit(r, 0, 0, r.w, r.h, out, 0, y, 0);
+		y += r.h;
+	}
+	return out;
+}
+
+/** Log lines for a built secret sheet. */
+function printSecret(t) {
+	console.log(`secret: ${t.file} ${t.packed.w}x${t.packed.h}, ${t.sets.reduce((n, s) => n + s.frames.length, 0)} cells, ${t.pixelsPerTile} px/tile`);
+	for (const id of Object.keys(t.art)) {
+		const l = t.art[id];
+		const a = l.animations.idle;
+		console.log(`  ${id}: cell ${l.frameW}x${l.frameH}, pivot (${l.pivot.x}, ${l.pivot.y}), idle ${a.frames} from cell ${a.start}, ${l.resample}`);
+	}
+	for (const id of Object.keys(t.fx)) {
+		const l = t.fx[id];
+		console.log(`  ${id}: cell ${l.frameW}x${l.frameH}, pivot (${l.pivot.x}, ${l.pivot.y}), ${l.frames} frames @ ${l.fps} fps from cell ${l.start}${l.loop ? " loop" : ""}, grey`);
+	}
+}
+
+/**
+ * `--only secret` (docs/SECRET_ROOMS.md SR11): checks the secret strips against the lock, then writes ONLY
+ * art/build/<atlas>.png (and its art/upload copy), art/build/contact/<atlas>.png and packs/vale/secretLayout.ts, byte for
+ * byte what a full build writes for them. Nothing else is read, written or removed.
+ */
+function mainOnlySecret(config) {
+	if (!config.secret) fail("art/atlases.json has no `secret` group");
+	checkLock(config, secretSourceFiles(config.secret));
+	const t = buildSecret(config.secret);
+	let changed = 0;
+	const png = encodePng(t.packed.img);
+	if (writeIfChanged(path.join(BUILD, t.file), png)) changed++;
+	if (writeIfChanged(path.join(CONTACT, t.file), encodePng(secretContact(t)))) changed++;
+	if (writeIfChanged(path.join(UPLOAD, t.file), png)) changed++;
+	if (writeIfChanged(SECRET_LAYOUT_FILE, secretLayoutModule(t))) changed++;
+	printSecret(t);
+	console.log(`art:build --only secret: ${changed} file(s) updated`);
+}
+
+// ---------------------------------------------------------------------------------------------
 // Main
 
 function writeIfChanged(file, content) {
@@ -5052,6 +5265,7 @@ const ONLY_GROUPS = [
 	"pipIcons",
 	"duoIcons",
 	"kenney",
+	"secret",
 ];
 
 /** The vendor files `--lock --only <group>` re-hashes (a sprite set id: that set's own files, not its pixelsPerTileFrom's). */
@@ -5102,6 +5316,10 @@ function onlyGroupSourceFiles(config, group) {
 	if (group === "kenney") {
 		if (!config.kenney) fail("art/atlases.json has no `kenney` group");
 		return kenneySourceFiles(config.kenney);
+	}
+	if (group === "secret") {
+		if (!config.secret) fail("art/atlases.json has no `secret` group");
+		return secretSourceFiles(config.secret);
 	}
 	throw new Error(`no --only group ${group}`);
 }
@@ -5467,6 +5685,10 @@ function main() {
 		mainOnlyKenney(config);
 		return;
 	}
+	if (only === "secret") {
+		mainOnlySecret(config);
+		return;
+	}
 	checkLock(config);
 
 	const sets = buildSpriteSets(config.spriteSets);
@@ -5571,6 +5793,12 @@ function main() {
 		kenney = buildKenney(config.kenney, config.worldArt, sets);
 		for (const [dir, name, img] of kenneyOutputs(kenney)) emit(dir === "build" ? BUILD : CONTACT, name, img, dir === "build" ? builtFiles : contactFiles);
 	}
+	let secret;
+	if (config.secret) {
+		secret = buildSecret(config.secret);
+		emit(BUILD, secret.file, secret.packed.img, builtFiles);
+		emit(CONTACT, secret.file, secretContact(secret), contactFiles);
+	}
 	removeStale(BUILD, builtFiles);
 	removeStale(CONTACT, contactFiles);
 
@@ -5595,6 +5823,7 @@ function main() {
 	if (pipIcons && writeIfChanged(PIP_ICON_LAYOUT_FILE, pipIconLayoutModule(pipIcons))) changed++;
 	if (duoIcons && writeIfChanged(DUO_ICON_LAYOUT_FILE, duoIconLayoutModule(duoIcons))) changed++;
 	if (kenney && writeIfChanged(KENNEY_LAYOUT_FILE, kenneyLayoutModule(kenney))) changed++;
+	if (secret && writeIfChanged(SECRET_LAYOUT_FILE, secretLayoutModule(secret))) changed++;
 
 	for (const s of sets) printSpriteSet(s);
 	for (const i of images) {
@@ -5624,6 +5853,7 @@ function main() {
 	if (pipIcons) printPipIcons(pipIcons);
 	if (duoIcons) printDuoIcons(duoIcons);
 	if (kenney) printKenney(kenney);
+	if (secret) printSecret(secret);
 	if (icons) {
 		console.log(`ui icons: ${icons.file} ${icons.w}x${icons.h}, ${icons.pieces.length} icons, ${icons.gutter} px extruded gutter (contact numbers in id order)`);
 		Object.keys(icons.layouts)
@@ -5693,6 +5923,10 @@ module.exports = {
 	hazardContact,
 	hazardLayoutModule,
 	hazardSourceFiles,
+	buildSecret,
+	secretContact,
+	secretLayoutModule,
+	secretSourceFiles,
 	bulletContact,
 	bulletGates,
 	bulletLayoutModule,

@@ -27,7 +27,9 @@
  *   - likewise (docs/HAZARD_ART.md HA3), hazardArt.ts `hazardArtProblems`: the strike's and the embers' hazard sprites
  *     (one facing, short animations, the strike's hit rim / the ember's patch, a grey meanColor: tinted by their roles);
  *   - likewise (docs/CURSOR.md C2), cursorArt.ts `cursorArtProblems`: a hover cursor registers with `ui.cursor` (an
- *     image too, the same drawn size and pivot).
+ *     image too, the same drawn size and pivot);
+ *   - likewise (docs/SECRET_ROOMS.md SR10), secretColors.ts `secretReport`: the dust never reads as a bullet or a
+ *     telegraph; and secretArt.ts `secretArtProblems`: the crack / rubble art has one facing.
  */
 
 import { colorDifference, contrastRatio, isHexColor } from "./color";
@@ -44,6 +46,8 @@ import { bulletArtProblems } from "./bulletArt";
 import { gooArtProblems } from "./gooArt";
 import { hazardArtProblems } from "./hazardArt";
 import { cursorArtProblems } from "./cursorArt";
+import { secretReport } from "./secretColors";
+import { secretArtProblems } from "./secretArt";
 
 /** What a variant colour report checks against what, and the bars (AFFIX_COLOR_RULES, GOO_COLOR_RULES). */
 export interface VariantColorRules {
@@ -242,6 +246,9 @@ const WHY = {
 		panel: "a floor modifier's name must read as text on the floor card and the HUD panel",
 		apart: "a twist's colour must never read as a boon's (the danger banner is not good news)",
 	},
+	secret: {
+		difference: "a secret room's dust must never read as an enemy bullet or a telegraph",
+	},
 } as const;
 
 /**
@@ -260,9 +267,9 @@ interface ProblemEntry {
 }
 
 /**
- * Every failed affix, goo, aura, build effect, pellet, treasure, Fortune and floor modifier check as a validator message
- * (validateManifest adds them to its errors, path `colors.<role>`). `suffix(biome)` is the validator's forge-theme
- * suffix for a biome ID (" (crypt)").
+ * Every failed affix, goo, aura, build effect, pellet, treasure, Fortune, floor modifier and secret check as a validator
+ * message (validateManifest adds them to its errors, path `colors.<role>`). `suffix(biome)` is the validator's
+ * forge-theme suffix for a biome ID (" (crypt)").
  */
 export function variantColorProblems(manifest: unknown, suffix: (biome: string) => string): Array<VariantColorProblem> {
 	const out = new Array<VariantColorProblem>();
@@ -275,6 +282,7 @@ export function variantColorProblems(manifest: unknown, suffix: (biome: string) 
 		{ entries: treasureReport(manifest), why: WHY.treasure },
 		{ entries: fortuneReport(manifest), why: WHY.fortune },
 		{ entries: floorModifierReport(manifest), why: WHY.floorMod },
+		{ entries: secretReport(manifest), why: WHY.secret },
 	];
 	for (const report of reports) {
 		for (const c of report.entries) {
@@ -309,6 +317,9 @@ export function variantColorProblems(manifest: unknown, suffix: (biome: string) 
 		out.push(problem);
 	}
 	for (const problem of cursorArtProblems(manifest)) {
+		out.push(problem);
+	}
+	for (const problem of secretArtProblems(manifest)) {
 		out.push(problem);
 	}
 	return out;

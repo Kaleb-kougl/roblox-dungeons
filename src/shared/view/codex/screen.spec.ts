@@ -115,8 +115,9 @@ describe("codex grid", () => {
 		const items = codexGridGroups("items", undefined);
 		expect(items.map((g) => g.headerKey)).toEqual(["codex.group.relics", "codex.group.curses"]);
 		const beasts = codexGridGroups("bestiary", undefined);
-		expect(beasts.map((g) => g.group)).toEqual(["enemies", "champions", "bosses"]);
-		expect(beasts.map((g) => g.tiles.size())).toEqual([12, 4, 2]);
+		// docs/SECRET_ROOMS.md SRD12: the secret rooms' section after the bosses
+		expect(beasts.map((g) => g.group)).toEqual(["enemies", "champions", "bosses", "secrets"]);
+		expect(beasts.map((g) => g.tiles.size())).toEqual([12, 4, 2, 1]);
 		expect(beasts[2].tiles.map((t) => t.id)).toEqual(["boss:act1", "boss:demonlord"]);
 		let n = 0;
 		for (const tab of CODEX_TABS) n += codexGridIds(tab).size();

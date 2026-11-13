@@ -872,7 +872,8 @@ describe("audio: one jingle per frame", () => {
 		// docs/DRAFT_REVEAL.md DR4: the draft's legendary flare is a jingle too (played by the reveal controller)
 		// docs/NEW_BEST.md NB5: the record fanfare in the game-over jingle's slot, the new-best fanfare over the room's
 		// docs/TREASURE.md TR6: a Legendary chest's jingle between the new-best fanfare and the room's; docs/FORTUNE.md
-		// FO9: the Goldling's jackpot likewise (after it)
+		// FO9: the Goldling's jackpot likewise (after it); docs/SECRET_ROOMS.md SR10: the secret room's discovery jingle
+		// one under them, with the room's
 		const order = [
 			SFX.gameOver,
 			SFX.jingleRecord,
@@ -881,6 +882,7 @@ describe("audio: one jingle per frame", () => {
 			SFX.bestNew,
 			SFX.jingleTreasure,
 			SFX.goldenJackpot,
+			SFX.jingleSecret,
 			SFX.roomClear,
 			SFX.roomPerfect,
 			// docs/RUN_RECAP.md CM4: TEAM PERFECT, PERFECT's jingle in a party run
