@@ -42,7 +42,7 @@ function fakeSet(asked: Array<[string, number, number]>): CodexSpriteSource {
 		},
 		frame(anim, facing, index): CodexSpriteFrame {
 			asked.push([anim, facing, index]);
-			return { assetId: "rbxassetid://1", x: facing * 10, y: 0, w: 10, h: 12 };
+			return { assetId: "fake-sheet", x: facing * 10, y: 0, w: 10, h: 12 };
 		},
 	};
 }
@@ -126,7 +126,7 @@ describe("codex tile art", () => {
 		};
 		expect(codexTileArt(pack, "enemy:imp")).toEqual({
 			kind: "sprite",
-			frame: { assetId: "rbxassetid://1", x: 60, y: 0, w: 10, h: 12 },
+			frame: { assetId: "fake-sheet", x: 60, y: 0, w: 10, h: 12 },
 			pixelated: true,
 			silhouette: false,
 		});
