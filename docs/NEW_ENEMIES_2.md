@@ -268,6 +268,50 @@ Shieldwall), OC2 by NXD21 (as recommended and built).
   (NXD21, as built); OC3 a breaking hit deals 0 (NXD19, as built); OC4 the turn is fixed at 150 deg/s, Swift and the
   Warbanner aura do not speed it (NXD20, as built).
 
+### NX3 Chainhook (as built, 2026-11-14)
+
+- `archetypes/chainhook.ts`: keep range (the sniper's reposition, strafing at `strafeWeight` 0.8; v6 lost counter, leash
+  past `lostTicks`; the strafe side starts by actor id parity and flips on a wall stop and after every throw / drag / yank:
+  no draw). Throw: cooldown out + sight + within 8 -> heading locked in v3-4, the target's index + 1 in v6, the next
+  cooldown drawn (the throw's one draw; the first in `init`), aim 42 ticks standing still; on its last tick the target
+  dead or a full pool drops the throw, else one HOOK bullet (16 u/s, 0.5 s, 0 damage) and `CHAINHOOK_THROWN` until none
+  of its bullets is live (`activeCountFor`). Drag (`CHAINHOOK_DRAG`, aiTicks the drag ticks): per tick the hooked player
+  dead / rolling (`rollTicks > 0`) / out of sight breaks it, else `SimCtx.dragPlayer` (movePlayer with the floor's world
+  config) pulls `pullSpeed x SIM_DT` toward it, clamped at `pullStop` (a literal: Swift / the Warbanner aura do not speed
+  it); within pullStop (+ 1e-6 rounding) it arrives, at 36 drag ticks it times out (back to keep, no yank). `onHit` adds
+  the damage to v6 and breaks at `breakDamage` 3; `onDeath` breaks it. Arrival: the heading to the player locks in v3-4,
+  the yank telegraphs 18 ticks (`ring` at its feet), then the imp's fan down it. Leash waits for the drag's end.
+- The hook (`combat.ts` enemyBulletHit / enemyBulletHitParty, now taking the visitor's `emitter`): after Bastion's count
+  and Phantom Step, a HOOK goes to `chainhookStrike` instead of the hurt: not `SimCtx.playerHittable` -> it passes;
+  else it is consumed, and latches (v5 = index + 1, v6 = 0) only when the living Chainhook with that `emitterId` is still
+  THROWN and the player is the one it threw at (v6). Every other rule is the plain enemy bullet's (walls, pieces, grazes,
+  guard erase = `guardCancels` / the guard feed, power pellet, Hourglass), pinned in the spec where it matters.
+- `SimCtx.playerHittable(k)`: `isPlayerInvulnerable` false, **`rollTicks` 0** (the roll's tail after its i-frames dodges a
+  hook too: "a rolling player is never latched"), **dev god mode off** (a god-mode player is never latched; read only,
+  `dev.blockedHits` untouched since the hook deals no damage) and no living Chainhook already drags them
+  (`chainhookHolderOf`). `SimCtx.dragPlayer(k, dx, dz)`.
+- Reads of hashed state for NX7: `hookedPlayerOf(a)` (the player a living dragging Chainhook holds, else -1) and
+  `chainhookHolderOf(state, k)` (the slot of the Chainhook dragging player k, else -1).
+- Feed (unhashed): `SimEvents.hookLatched` / `hookBroken` (appended to `NEW_ENEMY_2_EVENT_FIELDS`; a break is an end of
+  reason ROLL or later) and `CombatState.hookEvents` (`combat/hookEvents.ts`: `latchPlayer` / `latchSlot`, `endPlayer` /
+  `endSlot` / `endReason` with `HookEnd` ARRIVED, TIMED_OUT, ROLL, SIGHT, DEATH, DAMAGE, PLAYER_DEAD; not in
+  `writeCombatHash`, cloned, cleared by step / stepParty). `combat.spec`'s hash-coverage walk skips `hookEvents`.
+- Specs `sim/chainhook.spec.ts` (18): timings, pull to pullStop in 23 ticks, the 0.6 s timeout with no yank, a roll sweep
+  (never latched while rolling; some rolls dodge), post-hit invulnerability and god mode, the guard's erase as a parry, a
+  dead thrower's hook, breaks by roll / death / 3 damage / the player's death / a raised pillar, a pool (the player never
+  overlaps a blocked cell, the drag times out), co-op (a moved player is always the one held; a latch is always on the
+  throw target; a teammate in the line takes the hook; a teammate's damage frees), a co-op determinism pair, the draws.
+  `newEnemies2.spec`'s no-draw case allows the Chainhook's init draw. No hash, replay or fixture moves: nothing recorded
+  spawns a Chainhook (not in `ENDLESS_ROOM_KINDS` until NX6; NXD4's floor-2 minimum is NX6's).
+- **Deviations:** v6 also holds the throw target while aiming / thrown (the Design's v6 drag ticks are `aiTicks`, NX0);
+  the latch is only on the player it threw at, so **a teammate standing in the line takes the hook** (consumed, nobody
+  moved): owner call OC5, settled by **NXD22** (the body block stays, as built); a rolling player is not hittable
+  for the whole roll, not only its i-frames; the fan locks its heading at arrival (not at its fire tick).
+- **Limits:** a Siege-pinned Chainhook does not step, so its drag pauses with the pin (a pinning heavy arrow deals >= 3,
+  which breaks it first, unless an affix shield absorbs the hit). A Chainhook freed without dying (a floor change) emits
+  no end event. The arrival / timeout ends and the yank are visible in state; the view's snap should play for
+  `hookEndBreaks` reasons only.
+
 ### NX4 Snatcher (as built, 2026-11-14)
 
 - `archetypes/snatcher.ts`: steal / flee / swallow / return as Design says, no draw on any stream (spec). Rules in the
@@ -357,50 +401,6 @@ Shieldwall), OC2 by NXD21 (as recommended and built).
 - **Owner calls (NX5), settled 2026-11-14:** PK1 withered pyres score 30 each and feed the combo (**NXD23**, as built:
   the summoner's precedent; the alternative was `killActor(..., true)`); PK2 a lone pyre's first shot on the tick it
   lights (**NXD24**, as built; the alternative was a full 2 s later).
-
-### NX3 Chainhook (as built, 2026-11-14)
-
-- `archetypes/chainhook.ts`: keep range (the sniper's reposition, strafing at `strafeWeight` 0.8; v6 lost counter, leash
-  past `lostTicks`; the strafe side starts by actor id parity and flips on a wall stop and after every throw / drag / yank:
-  no draw). Throw: cooldown out + sight + within 8 -> heading locked in v3-4, the target's index + 1 in v6, the next
-  cooldown drawn (the throw's one draw; the first in `init`), aim 42 ticks standing still; on its last tick the target
-  dead or a full pool drops the throw, else one HOOK bullet (16 u/s, 0.5 s, 0 damage) and `CHAINHOOK_THROWN` until none
-  of its bullets is live (`activeCountFor`). Drag (`CHAINHOOK_DRAG`, aiTicks the drag ticks): per tick the hooked player
-  dead / rolling (`rollTicks > 0`) / out of sight breaks it, else `SimCtx.dragPlayer` (movePlayer with the floor's world
-  config) pulls `pullSpeed x SIM_DT` toward it, clamped at `pullStop` (a literal: Swift / the Warbanner aura do not speed
-  it); within pullStop (+ 1e-6 rounding) it arrives, at 36 drag ticks it times out (back to keep, no yank). `onHit` adds
-  the damage to v6 and breaks at `breakDamage` 3; `onDeath` breaks it. Arrival: the heading to the player locks in v3-4,
-  the yank telegraphs 18 ticks (`ring` at its feet), then the imp's fan down it. Leash waits for the drag's end.
-- The hook (`combat.ts` enemyBulletHit / enemyBulletHitParty, now taking the visitor's `emitter`): after Bastion's count
-  and Phantom Step, a HOOK goes to `chainhookStrike` instead of the hurt: not `SimCtx.playerHittable` -> it passes;
-  else it is consumed, and latches (v5 = index + 1, v6 = 0) only when the living Chainhook with that `emitterId` is still
-  THROWN and the player is the one it threw at (v6). Every other rule is the plain enemy bullet's (walls, pieces, grazes,
-  guard erase = `guardCancels` / the guard feed, power pellet, Hourglass), pinned in the spec where it matters.
-- `SimCtx.playerHittable(k)`: `isPlayerInvulnerable` false, **`rollTicks` 0** (the roll's tail after its i-frames dodges a
-  hook too: "a rolling player is never latched"), **dev god mode off** (a god-mode player is never latched; read only,
-  `dev.blockedHits` untouched since the hook deals no damage) and no living Chainhook already drags them
-  (`chainhookHolderOf`). `SimCtx.dragPlayer(k, dx, dz)`.
-- Reads of hashed state for NX7: `hookedPlayerOf(a)` (the player a living dragging Chainhook holds, else -1) and
-  `chainhookHolderOf(state, k)` (the slot of the Chainhook dragging player k, else -1).
-- Feed (unhashed): `SimEvents.hookLatched` / `hookBroken` (appended to `NEW_ENEMY_2_EVENT_FIELDS`; a break is an end of
-  reason ROLL or later) and `CombatState.hookEvents` (`combat/hookEvents.ts`: `latchPlayer` / `latchSlot`, `endPlayer` /
-  `endSlot` / `endReason` with `HookEnd` ARRIVED, TIMED_OUT, ROLL, SIGHT, DEATH, DAMAGE, PLAYER_DEAD; not in
-  `writeCombatHash`, cloned, cleared by step / stepParty). `combat.spec`'s hash-coverage walk skips `hookEvents`.
-- Specs `sim/chainhook.spec.ts` (18): timings, pull to pullStop in 23 ticks, the 0.6 s timeout with no yank, a roll sweep
-  (never latched while rolling; some rolls dodge), post-hit invulnerability and god mode, the guard's erase as a parry, a
-  dead thrower's hook, breaks by roll / death / 3 damage / the player's death / a raised pillar, a pool (the player never
-  overlaps a blocked cell, the drag times out), co-op (a moved player is always the one held; a latch is always on the
-  throw target; a teammate in the line takes the hook; a teammate's damage frees), a co-op determinism pair, the draws.
-  `newEnemies2.spec`'s no-draw case allows the Chainhook's init draw. No hash, replay or fixture moves: nothing recorded
-  spawns a Chainhook (not in `ENDLESS_ROOM_KINDS` until NX6; NXD4's floor-2 minimum is NX6's).
-- **Deviations:** v6 also holds the throw target while aiming / thrown (the Design's v6 drag ticks are `aiTicks`, NX0);
-  the latch is only on the player it threw at, so **a teammate standing in the line takes the hook** (consumed, nobody
-  moved): owner call OC5, settled by **NXD22** (the body block stays, as built); a rolling player is not hittable
-  for the whole roll, not only its i-frames; the fan locks its heading at arrival (not at its fire tick).
-- **Limits:** a Siege-pinned Chainhook does not step, so its drag pauses with the pin (a pinning heavy arrow deals >= 3,
-  which breaks it first, unless an affix shield absorbs the hit). A Chainhook freed without dying (a floor change) emits
-  no end event. The arrival / timeout ends and the yank are visible in state; the view's snap should play for
-  `hookEndBreaks` reasons only.
 
 ### NX6 Room pool and roster (as built, 2026-11-14)
 

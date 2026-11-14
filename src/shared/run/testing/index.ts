@@ -26,3 +26,4 @@ export * from "./survivalBot";
 export * from "./denseFight";
 export * from "./snagCensus";
 export * from "./newEnemies2Census";
+export * from "./newEnemies2Tune";
