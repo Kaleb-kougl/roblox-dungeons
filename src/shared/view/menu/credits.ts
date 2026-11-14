@@ -106,6 +106,14 @@ export const CREDITS: ReadonlyArray<CreditEntry> = [
 		license: "CC0",
 	},
 	{ section: "audio", work: "open chest SFX", author: "Oiboo (OpenGameArt)", license: "CC0" },
+	{ section: "audio", work: "Breaking Rock", author: "themightyglider (OpenGameArt)", license: "CC0" },
+	{
+		section: "audio",
+		work: "8-Bit Sound Effects Library",
+		author: "Little Robot Sound Factory (www.littlerobotsoundfactory.com)",
+		license: "CC BY 3.0 - creativecommons.org/licenses/by/3.0",
+		modified: true,
+	},
 	{
 		section: "code",
 		work: "Dungeon Forge (threejs-procedural-dungeon)",

@@ -582,7 +582,13 @@ controller below follows V1's table; the client code compiles, typechecks and li
   time spent, for the Archer how often she needed a charged shot vs a Charger. → Verify: numbers recorded; SRD1 / SRD4 /
   SRD6 revisited with the owner.
 - [ ] **SR14. [owner] Audio:** pick the knock, the crumble and the discovery jingle (`art/audio-audition.html`). The
-  jingle carries the feature: short, bright, unmistakable, original.
+  jingle carries the feature: short, bright, unmistakable, original. *Sources picked by the owner (2026-11-13): the
+  crumble "Breaking Rock" by themightyglider (OpenGameArt, CC0; `art/vendor/oga-breaking-rock/rock_break.ogg`, 0.44 s),
+  the jingle from Little Robot Sound Factory's "8-Bit Sound Effects Library" (OpenGameArt, CC-BY 3.0, credited on the
+  Credits screen and in THIRD_PARTY_NOTICES.md; `art/vendor/lrsf-8bit/Wav/`: Jingle_Achievement_00 / _01, Jingle_Win_00
+  / _01 as the first alternates); the knock keeps its Ninja Adventure / Kenney Impact candidates. Left: run
+  `audio:audition` on the Mac, pick (move the pick into `clips`, drop `silent`, `confirmed: true`), `audio:lock`,
+  `audio:build`, upload the OGGs, ids into `packs/vale/assetIds.ts`.*
 - [ ] **SR15. [owner] Studio check and playtest** (below). The question: does a new player notice the crack, try
   something on it, and tell someone about the room behind it?
 - [ ] **SR16. Telemetry (optional, not built).** Per secret floor: found or not, opener, seconds from floor start, character,

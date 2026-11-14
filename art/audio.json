@@ -1107,20 +1107,25 @@
 		"sfx.secret.open": {
 			"silent": true,
 			"alternates": [
+				"oga-breaking-rock/rock_break.ogg",
 				"ninja-adventure/Audio/Sounds/Elemental/Explosion2.wav",
 				"ninja-adventure/Audio/Sounds/Hit & Impact/Impact3.wav"
 			],
-			"notes": "docs/SECRET_ROOMS.md SR10: the cracked wall bursts open (a finisher, a Wrecker roll, a heavy arrow or a Charger): a stone crumble, heavier and longer than sfx.breakable.break, with a short tail of falling pebbles. Category sfx, SFX_PRIORITY 48. Silent until SR14's audition: sfx.breakable.break plays meanwhile (SFX_FALLBACK).",
+			"notes": "docs/SECRET_ROOMS.md SR10: the cracked wall bursts open (a finisher, a Wrecker roll, a heavy arrow or a Charger): a stone crumble, heavier and longer than sfx.breakable.break, with a short tail of falling pebbles. Category sfx, SFX_PRIORITY 48. Silent until SR14's audition: sfx.breakable.break plays meanwhile (SFX_FALLBACK). 2026-11-13, owner's source pick: \"Breaking Rock\" by themightyglider, OpenGameArt, CC0 (rock_break.ogg: 0.44 s, 24 kHz stereo; derived from SoundCollectah's CC0 Freesound recording 109360), listed first: confirm it at the audition (move it into clips). If it is too short alone, layer Explosion2 or Impact3 under it.",
 			"confirmed": false
 		},
 		"sfx.jingle.secret": {
 			"silent": true,
 			"category": "jingle",
 			"alternates": [
+				"lrsf-8bit/Wav/Jingle_Achievement_00.wav",
+				"lrsf-8bit/Wav/Jingle_Achievement_01.wav",
+				"lrsf-8bit/Wav/Jingle_Win_00.wav",
+				"lrsf-8bit/Wav/Jingle_Win_01.wav",
 				"ninja-adventure/Audio/Jingles/Secret1.wav",
 				"ninja-adventure/Audio/Jingles/Secret2.wav"
 			],
-			"notes": "docs/SECRET_ROOMS.md SR10 / SR14: the discovery jingle, 0.4 s after the wall opens as the chamber appears. It carries the feature: short, bright, unmistakable, ideally original (SR14). A jingle (JINGLE_SFX, DUCKING_SFX: it ducks the music), SFX_PRIORITY 72, one under sfx.jingle.treasure. Must read apart from sfx.jingle.treasure (Secret4) and sfx.draft.legendary (Secret3). Silent until SR14: sfx.jingle.treasure plays meanwhile (SFX_FALLBACK).",
+			"notes": "docs/SECRET_ROOMS.md SR10 / SR14: the discovery jingle, 0.4 s after the wall opens as the chamber appears. It carries the feature: short, bright, unmistakable, ideally original (SR14). A jingle (JINGLE_SFX, DUCKING_SFX: it ducks the music), SFX_PRIORITY 72, one under sfx.jingle.treasure. Must read apart from sfx.jingle.treasure (Secret4) and sfx.draft.legendary (Secret3). Silent until SR14: sfx.jingle.treasure plays meanwhile (SFX_FALLBACK). 2026-11-13, owner's source pick: Little Robot Sound Factory's \"8-Bit Sound Effects Library\" (OpenGameArt, CC-BY 3.0: credit required, already on the Credits screen and in THIRD_PARTY_NOTICES.md), its four upbeat jingles listed first (Achievement_00 1.94 s, Achievement_01 2.28 s, Win_00 2.62 s, Win_01 3.48 s; 48 kHz stereo); pick one at the audition. The two Lose jingles are not candidates.",
 			"confirmed": false
 		},
 		"music.menu": {
