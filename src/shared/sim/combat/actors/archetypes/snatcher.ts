@@ -23,9 +23,13 @@
  *      stands facing its target (flee only, NXD10: no boost stealing).
  *   5. Fleeing or stealing, it then eats every stealable pellet of its record within eatRadius of its centre, in index
  *      order, while it carries fewer than `stomach` (pelletsSteal: taken = PELLET_STOLEN, events.stolen).
- * Death (onDeath): every PELLET_STOLEN pellet of its record goes back to 0 in place (pelletsReturn, events.returned:
- * collectable again; `left` was never changed). A Snatcher freed without dying (a floor change) takes nothing anywhere:
- * the floor's pellets are replaced.
+ * Death (onDeath): killed as its record's LAST living member (sim/pellets stepPellets.ts pelletRecordFalls: the room
+ * clears this tick, stepScore's own test), every PELLET_STOLEN pellet of its record is credited to the killer
+ * (ctx.playerIndex, the bound player) as that player's pickup (pelletsCreditCarried: taken = 1, `left` -= 1, the PELLETS
+ * points, events.eaten), so the clear's Sweep can still pay (NXD18: the kill lands in stepCombat, before stepPellets and
+ * stepScore). Otherwise (another member alive, the horde record waiting for its second wave, or a quiet death: nobody
+ * earned it) every one goes back to 0 in place (pelletsReturn, events.returned: collectable again; `left` was never
+ * changed). A Snatcher freed without dying (a floor change) takes nothing anywhere: the floor's pellets are replaced.
  *
  * View contract: states SNATCHER_STEAL (= STATE_ENGAGED) / SNATCHER_FLEE / AiState.TELEGRAPH (the swallow, aiTicks
  * counts it down); attack id SNATCHER_ATTACK_SWALLOW; v slots SNATCHER_CARRIED (the belly glow's count),
@@ -36,6 +40,7 @@
 import { GOLDEN_FLEE, type EncounterRoom } from "shared/dungeon";
 import { secondsToTicks } from "../../../playerData";
 import { PELLET_PICKUP_RADIUS, SNATCHER_KIND } from "../../../pellets/pelletsData";
+import { pelletRecordFalls, pelletsCreditCarried } from "../../../pellets/stepPellets";
 import {
 	pelletStealable,
 	pelletsDigest,
@@ -162,9 +167,12 @@ export const SNATCHER = registerArchetype<SnatcherData>({
 	onHit(ctx, a) {
 		engageOnHit(ctx, a);
 	},
-	onDeath(ctx, a) {
+	onDeath(ctx, a, quiet) {
 		alertOnDeath(ctx, a);
-		pelletsReturn(ctx.state, snatchRecordOf(ctx.state, a), a.x, a.z);
+		const rec = snatchRecordOf(ctx.state, a);
+		// NXD18: killed last, its pellets are the killer's pickups (the room clears this tick); else back on the floor.
+		if (!quiet && pelletRecordFalls(ctx.state, rec)) pelletsCreditCarried(ctx.state, rec, ctx.playerIndex);
+		else pelletsReturn(ctx.state, rec, a.x, a.z);
 		a.v[SNATCHER_CARRIED] = 0;
 		a.v[SNATCHER_SINCE] = 0;
 	},

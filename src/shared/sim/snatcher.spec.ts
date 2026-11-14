@@ -37,17 +37,23 @@ import {
 	engage,
 	hashState,
 	hordePhase,
+	partySize,
 	pelletsCarried,
 	playerAt,
 	snatchRecordOf,
 	snatcherFleeTarget,
+	scorePellet,
 	step,
+	stepParty,
+	Button,
 	type ActorState,
+	type InputFrame,
 	type SimConfig,
 	type SimState,
 } from "shared/sim";
 import { buildEndlessRunConfig, type EndlessRunFloor, type EndlessRunSetup } from "shared/run";
-import { altarFloor, pactsSetup, pressPact, skipToFloorAny, teleport } from "shared/run/testing";
+import { altarFloor, frame, pactsSetup, pressPact, skipToFloorAny, teleport } from "shared/run/testing";
+import { killActor } from "./combat/actors/actors";
 
 const SEED = 4242;
 const SWARMER = "swarmer";
@@ -105,18 +111,24 @@ function pelletRoom(base: EndlessRunSetup, min: number): number {
 	error(`no room with ${min} pellets`, 0);
 }
 
-function tick(x: Snatch | { s: SimState; config: SimConfig }): void {
+function tick(x: Snatch | { s: SimState; config: SimConfig }, input: Readonly<InputFrame> = EMPTY_INPUT): void {
 	const p = playerAt(x.s, 0);
 	if (p.dead === 0) p.hearts = p.heartsMax;
-	step(x.s, EMPTY_INPUT, x.config);
+	if (x.s.party === undefined) {
+		step(x.s, input, x.config);
+		return;
+	}
+	const inputs: Readonly<InputFrame>[] = [input];
+	for (let k = 1; k < partySize(x.s); k++) inputs.push(EMPTY_INPUT);
+	stepParty(x.s, inputs, x.config);
 }
 
 /**
  * Run SEED's floor 1 with a pellet room's planned spawns = a Snatcher on its first spawn tile and a dummy on its second;
  * the player walks in (the room spawns, its pellets go live), back to the entrance, and the Snatcher is engaged.
  */
-function snatchRun(min = 6): Snatch {
-	const base = buildEndlessRunConfig(SEED);
+function snatchRun(min = 6, partySize = 1): Snatch {
+	const base = buildEndlessRunConfig(SEED, partySize);
 	const id = pelletRoom(base, min);
 	const tiles = base.endlessFloor(1).roomSpawnTiles![id];
 	const { setup, world } = withSpawns(base, 1, id, [
@@ -126,7 +138,7 @@ function snatchRun(min = 6): Snatch {
 	const room = world.config.encounter!.rooms[id];
 	const s = createSimState(SEED, setup.spawn!.x, setup.spawn!.z, setup.config);
 	teleport(s, 0, room.cx, room.cz);
-	step(s, EMPTY_INPUT, setup.config);
+	tick({ s, config: setup.config });
 	teleport(s, 0, world.spawnX, world.spawnZ);
 	const snatcher = s.combat.actors.find((a) => a.kind === archetypeIndex(SNATCHER_KIND) && a.alive === 1)!;
 	const dummy = s.combat.actors.find((a) => a.kind === archetypeIndex(DUMMY_KIND) && a.alive === 1)!;
@@ -141,8 +153,10 @@ function snatchRun(min = 6): Snatch {
 	return x;
 }
 
-function kill(x: Snatch, a: ActorState): void {
+/** Kills `a` between ticks, the kill bound to player `killer` (ctx.playerIndex). */
+function kill(x: Snatch, a: ActorState, killer = 0): void {
 	const ctx = new SimCtx().bind(x.s, x.world.config, EMPTY_INPUT);
+	ctx.actingPlayer(killer);
 	ctx.killActor(a);
 }
 
@@ -338,7 +352,11 @@ describe("Snatcher: death returns the pellets", () => {
 		const carried: number[] = [];
 		for (const i of regular(x.s, x.rec)) if (p.taken[i] === PELLET_STOLEN) carried.push(i);
 		const [dx, dz] = [x.snatcher.x, x.snatcher.z];
-		kill(x, x.snatcher);
+		p.events.eaten.clear();
+		const pellets0 = x.s.score!.points[ScoreSource.PELLETS];
+		kill(x, x.snatcher); // the dummy still stands: the room stays open, nothing is credited (NXD18)
+		expect(p.events.eaten.size()).toBe(0);
+		expect(x.s.score!.points[ScoreSource.PELLETS]).toBe(pellets0);
 		expect(p.events.returned.map((e) => e.index)).toEqual(carried);
 		for (const e of p.events.returned) expect([e.fromX, e.fromZ]).toEqual([dx, dz]);
 		for (const i of carried) expect(p.taken[i]).toBe(0);
@@ -351,6 +369,135 @@ describe("Snatcher: death returns the pellets", () => {
 		tick(x);
 		expect([r.phase, r.swept]).toEqual([PelletPhase.GONE, 1]);
 		expect(x.s.score!.points[ScoreSource.SWEEP] > sweep0).toBe(true);
+	});
+});
+
+/** The record's carried pellets (taken = PELLET_STOLEN), ascending. */
+function stolen(x: Snatch): number[] {
+	const p = x.s.pellets!;
+	const out: number[] = [];
+	for (const i of regular(x.s, x.rec)) if (p.taken[i] === PELLET_STOLEN) out.push(i);
+	return out;
+}
+
+/**
+ * The Snatcher carrying at least `n`, then the dummy killed (the Snatcher is the room's last living member) and every
+ * pellet of the room still on the floor taken by a player (surgery: taken 1, left kept in step, no points), so only its
+ * belly stands between the room and its Sweep. Returns the carried pellets.
+ */
+function lastWithBelly(x: Snatch, n = 2): number[] {
+	runUntil(x, () => x.snatcher.v[SNATCHER_CARRIED] >= n);
+	const carried = stolen(x);
+	expect(carried.size() >= n).toBe(true);
+	kill(x, x.dummy);
+	const p = x.s.pellets!;
+	const r = p.rooms[x.rec];
+	for (const i of regular(x.s, x.rec))
+		if (p.taken[i] === 0) {
+			p.taken[i] = 1;
+			r.left -= 1;
+		}
+	expect(r.left).toBe(carried.size());
+	expect(x.s.score!.rooms[x.rec].cleared).toBe(0);
+	p.events.eaten.clear();
+	p.events.returned.clear();
+	return carried;
+}
+
+/** Checks the credit: `carried` taken by `player` (eaten events, one pellet's points each), none returned. */
+function expectCredited(x: Snatch, carried: ReadonlyArray<number>, player: number, pellets0: number): void {
+	const p = x.s.pellets!;
+	expect(p.events.returned.size()).toBe(0);
+	expect(p.events.eaten.map((e) => e.index)).toEqual([...carried]);
+	// pellets never feed the combo, so one more pellet now pays what each credited one paid
+	const each = scorePellet(cloneSimState(x.s), x.rec);
+	expect(each > 0).toBe(true);
+	for (const e of p.events.eaten)
+		expect([e.player, e.points, e.x, e.z]).toEqual([player, each, p.x[e.index], p.z[e.index]]);
+	for (const i of carried) expect(p.taken[i]).toBe(1);
+	expect(p.rooms[x.rec].left).toBe(0);
+	expect(x.s.score!.points[ScoreSource.PELLETS] - pellets0).toBe(each * carried.size());
+}
+
+describe("Snatcher killed last: its pellets are the killer's (NXD18)", () => {
+	it("credited as the killer's pickups (left, points, events), and the clear's Sweep pays", () => {
+		const x = snatchRun();
+		const carried = lastWithBelly(x);
+		const r = x.s.pellets!.rooms[x.rec];
+		const pellets0 = x.s.score!.points[ScoreSource.PELLETS];
+		kill(x, x.snatcher);
+		expectCredited(x, carried, 0, pellets0);
+		const sweep0 = x.s.score!.points[ScoreSource.SWEEP];
+		tick(x);
+		expect(x.s.score!.rooms[x.rec].cleared).toBe(1);
+		expect([r.phase, r.swept]).toEqual([PelletPhase.GONE, 1]);
+		expect(x.s.score!.points[ScoreSource.SWEEP] > sweep0).toBe(true);
+	});
+
+	it("a kill inside the tick (a sword swing during the swallow) is credited before that tick's clear pays the Sweep", () => {
+		const x = snatchRun();
+		const carried = lastWithBelly(x);
+		const a = x.snatcher;
+		const r = x.s.pellets!.rooms[x.rec];
+		// nothing left to steal: the belly timer starts the swallow, during which it stands still
+		runUntil(x, () => a.aiState === AiState.TELEGRAPH, SNATCHER.data.swallowAfterTicks + 10);
+		expect(a.aiState).toBe(AiState.TELEGRAPH);
+		a.hp = 1;
+		const open = x.world.config.isBodyBlocked!;
+		let placed = false;
+		for (const [ox, oz] of [
+			[1, 0],
+			[-1, 0],
+			[0, 1],
+			[0, -1],
+		]) {
+			if (placed || open(a.x + ox, a.z + oz)) continue;
+			teleport(x.s, 0, a.x + ox, a.z + oz);
+			placed = true;
+		}
+		expect(placed).toBe(true);
+		const pl = playerAt(x.s, 0);
+		const len = math.sqrt((a.x - pl.x) * (a.x - pl.x) + (a.z - pl.z) * (a.z - pl.z));
+		const pellets0 = x.s.score!.points[ScoreSource.PELLETS];
+		let t = 0;
+		while (a.alive !== 0 && t < SNATCHER.data.swallowTicks - 2) {
+			const buttons = t % 2 === 0 ? Button.FIRE : 0;
+			tick(x, frame(0, 0, buttons, (a.x - pl.x) / len, (a.z - pl.z) / len));
+			t++;
+		}
+		expect(a.alive).toBe(0);
+		// the kill (stepCombat), the credit, then stepPellets and stepScore's clear: all in this one tick
+		expectCredited(x, carried, 0, pellets0);
+		expect(x.s.score!.rooms[x.rec].cleared).toBe(1);
+		expect([r.phase, r.swept]).toEqual([PelletPhase.GONE, 1]);
+	});
+
+	it("a quiet death (nobody earned it) puts them back as before, and the room clears without its Sweep", () => {
+		const x = snatchRun();
+		const carried = lastWithBelly(x);
+		const p = x.s.pellets!;
+		const r = p.rooms[x.rec];
+		const ctx = new SimCtx().bind(x.s, x.world.config, EMPTY_INPUT);
+		killActor(ctx, x.snatcher, true);
+		expect(p.events.eaten.size()).toBe(0);
+		expect(p.events.returned.map((e) => e.index)).toEqual(carried);
+		for (const i of carried) expect(p.taken[i]).toBe(0);
+		expect(r.left).toBe(carried.size());
+		tick(x);
+		expect(x.s.score!.rooms[x.rec].cleared).toBe(1);
+		expect([r.phase, r.swept]).toEqual([PelletPhase.GONE, 0]);
+	});
+
+	it("co-op: credited to the killing player", () => {
+		const x = snatchRun(6, 2);
+		expect(partySize(x.s)).toBe(2);
+		const carried = lastWithBelly(x);
+		const r = x.s.pellets!.rooms[x.rec];
+		const pellets0 = x.s.score!.points[ScoreSource.PELLETS];
+		kill(x, x.snatcher, 1);
+		expectCredited(x, carried, 1, pellets0);
+		tick(x);
+		expect([r.phase, r.swept]).toEqual([PelletPhase.GONE, 1]);
 	});
 });
 
