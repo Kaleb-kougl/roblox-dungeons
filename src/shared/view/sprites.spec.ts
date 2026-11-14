@@ -1607,8 +1607,9 @@ describe("ACTOR_SPRITE_INPUTS", () => {
 	it("has builders for the swarmer, the sniper, turret.sniper, turret.sprayer, turret.caster, the bruiser, boss.act1, boss.demonlord and the enemy variants (other archetypes: none)", () => {
 		// The enemy variants' four (imp, slime, slime.small, summoner) are checked in variants.spec.ts, the second endless
 		// set's five (docs/NEW_ENEMIES.md NE8) in newEnemies.spec.ts, the Goldling (docs/FORTUNE.md FO8) in
-		// golden/golden.spec.ts, the training dummy (docs/DUMMY_ART.md) in dummy/dummy.spec.ts.
-		expect(ACTOR_SPRITE_INPUTS.size()).toBe(19);
+		// golden/golden.spec.ts, the training dummy (docs/DUMMY_ART.md) in dummy/dummy.spec.ts, the third endless set's five
+		// (docs/NEW_ENEMIES_2.md NX7) in newEnemies2.spec.ts.
+		expect(ACTOR_SPRITE_INPUTS.size()).toBe(24);
 		expect(ACTOR_SPRITE_INPUTS.get(SWARMER.id)).toBe(swarmerSpriteInput);
 		expect(ACTOR_SPRITE_INPUTS.get(SNIPER.id)).toBe(sniperSpriteInput);
 		expect(ACTOR_SPRITE_INPUTS.get(TURRET_SNIPER.id)).toBe(turretSniperSpriteInput);

@@ -103,6 +103,10 @@
  *   fuse lit), .blast (its detonation; a fizzle plays the death only), .charge (a Charger leaves its lane), .stun (it
  *   hit a wall), .strike (strike bullets fired: SimEvents.strikes; strikes never raise the enemy shot, like goo),
  *   .spin (a Reaper's spin starts).
+ *   The third endless set (docs/NEW_ENEMIES_2.md NX7) too: sfx.enemy.block (a shield block), .guardbreak, .hook (a
+ *   Chainhook's throw leaves its aim), .hooklatch, .pyrelight (a brazier spawned), .snatch (a Snatcher ate a pellet:
+ *   at NEW_ENEMY_2_AUDIO.snatchSpeed, pitched down, so its fallback, the chomp, reads as a theft), .swallow, and
+ *   sfx.pellet.return (stolen pellets back on the floor at its death; pellets credited to its killer chomp instead).
  *
  * The new-best celebration (docs/NEW_BEST.md NB5) comes from the frame's NewBestCueSource (shared/view/hud: the
  * client's NewBestTracker frame, stepped BEFORE the mapper in the same frame; NO_NEW_BEST_CUES by default, so every
@@ -242,6 +246,7 @@ import {
 	type NewBestCueSource,
 } from "../hud";
 import { AUDIO_VIEW } from "./config";
+import { NEW_ENEMY_2_AUDIO } from "../newEnemies2Config";
 import { StateWatch, SwingEdge } from "../watch";
 import {
 	NO_PELLET_EVENTS,
@@ -2098,6 +2103,17 @@ export class AudioCueMapper {
 		if (variants.stuns > 0) this.cue(SFX.enemyStun, 1);
 		if (variants.strikes > 0) this.cue(SFX.enemyStrike, 1);
 		if (variants.spins > 0) this.cue(SFX.enemySpin, 1);
+		// The third endless set (docs/NEW_ENEMIES_2.md NX7): from SimEvents, the per-tick transitions and PelletEvents.
+		if (variants.blocks > 0) this.cue(SFX.enemyBlock, 1);
+		if (variants.guardBreaks > 0) this.cue(SFX.enemyGuardBreak, 1);
+		if (variants.hookThrows > 0) this.cue(SFX.enemyHook, 1);
+		if (variants.hookLatches > 0) this.cue(SFX.enemyHookLatch, 1);
+		if (variants.pyreLights > 0) this.cue(SFX.enemyPyreLight, 1);
+		if (variants.snatches > 0) {
+			this.cue(SFX.enemySnatch, 1, priorityOf(SFX.enemySnatch), NEW_ENEMY_2_AUDIO.snatchSpeed);
+		}
+		if (variants.swallows > 0) this.cue(SFX.enemySwallow, 1);
+		if (variants.pelletReturns > 0) this.cue(SFX.pelletReturn, 1);
 		// The combo's tier sting and break (docs/COMBO.md CB4; a cut is silent, CD4).
 		const peakTier = comboTier(combo.peak);
 		if (peakTier > comboTier(combo.startCombo)) {

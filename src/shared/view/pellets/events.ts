@@ -33,6 +33,32 @@ export interface PelletPowerTaken {
 	readonly tick: number;
 }
 
+/** A pellet a Snatcher ate on `tick` (docs/NEW_ENEMIES_2.md NX7: the gulp at its cell). */
+export interface PelletStolenAt {
+	readonly index: number;
+	readonly x: number;
+	readonly z: number;
+	readonly tick: number;
+}
+
+/** A stolen pellet put back on `tick` at a Snatcher's death: it flies from (fromX, fromZ), the corpse, to its cell. */
+export interface PelletReturnedAt {
+	readonly index: number;
+	readonly fromX: number;
+	readonly fromZ: number;
+	readonly tick: number;
+}
+
+/** A Snatcher's swallow on `tick`: where it stood and each digested pellet's index and cell (the fizzles). */
+export interface PelletSwallowedAt {
+	readonly x: number;
+	readonly z: number;
+	readonly indices: ReadonlyArray<number>;
+	readonly cellX: ReadonlyArray<number>;
+	readonly cellZ: ReadonlyArray<number>;
+	readonly tick: number;
+}
+
 /** What the views read (PelletFrameEvents satisfies it). */
 export interface PelletFrameSource {
 	/** Pellets taken during the frame's ticks, in tick order. */
@@ -43,6 +69,13 @@ export interface PelletFrameSource {
 	readonly swept: ReadonlyArray<number>;
 	/** The power pellet taken (at most one per floor, so rarely more than one entry). */
 	readonly power: ReadonlyArray<PelletPowerTaken>;
+	/**
+	 * Snatchers (docs/NEW_ENEMIES_2.md NX4 / NX7): pellets eaten, put back at a death, and swallows. Pellets a Snatcher
+	 * killed last credits to its killer (NXD18) are `eaten` like any pickup (the ordinary chomp and pop).
+	 */
+	readonly stolen: ReadonlyArray<PelletStolenAt>;
+	readonly returned: ReadonlyArray<PelletReturnedAt>;
+	readonly swallowed: ReadonlyArray<PelletSwallowedAt>;
 }
 
 /** The pellet events of every tick a frame ran, in tick order. */
@@ -52,6 +85,9 @@ export class PelletFrameEvents implements PelletFrameSource {
 	readonly gone: PelletRoomEvent[] = [];
 	readonly swept: number[] = [];
 	readonly power: PelletPowerTaken[] = [];
+	readonly stolen: PelletStolenAt[] = [];
+	readonly returned: PelletReturnedAt[] = [];
+	readonly swallowed: PelletSwallowedAt[] = [];
 
 	/** A new frame: forget the last one's events. */
 	reset(): void {
@@ -60,11 +96,23 @@ export class PelletFrameEvents implements PelletFrameSource {
 		this.gone.clear();
 		this.swept.clear();
 		this.power.clear();
+		this.stolen.clear();
+		this.returned.clear();
+		this.swallowed.clear();
 	}
 
 	/** Every event of this frame (0: nothing happened). */
 	count(): number {
-		return this.eaten.size() + this.live.size() + this.gone.size() + this.swept.size() + this.power.size();
+		return (
+			this.eaten.size() +
+			this.live.size() +
+			this.gone.size() +
+			this.swept.size() +
+			this.power.size() +
+			this.stolen.size() +
+			this.returned.size() +
+			this.swallowed.size()
+		);
 	}
 
 	/** After every tick: appends that tick's events (no-op without pellets). Copies: the sim reuses its arrays. */
@@ -92,6 +140,17 @@ export class PelletFrameEvents implements PelletFrameSource {
 				points: power.points,
 				tick,
 			});
+		}
+		for (const e of ev.stolen) this.stolen.push({ index: e.index, x: e.x, z: e.z, tick });
+		for (const e of ev.returned) this.returned.push({ index: e.index, fromX: e.fromX, fromZ: e.fromZ, tick });
+		for (const w of ev.swallowed) {
+			const cellX: number[] = [];
+			const cellZ: number[] = [];
+			for (const i of w.indices) {
+				cellX.push(p.x[i] ?? w.x);
+				cellZ.push(p.z[i] ?? w.z);
+			}
+			this.swallowed.push({ x: w.x, z: w.z, indices: [...w.indices], cellX, cellZ, tick });
 		}
 	}
 }

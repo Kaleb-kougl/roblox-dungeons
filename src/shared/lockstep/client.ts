@@ -107,6 +107,7 @@ import {
 	RecapTally,
 	RoomClearEvents,
 	VariantCueEvents,
+	NewEnemy2FrameEvents,
 } from "shared/view/fx";
 import { DEFAULT_LOCKSTEP, PACING, type LockstepTunables } from "./config";
 import { LeadController, type LeadStats } from "./lead";
@@ -175,6 +176,8 @@ export class LockstepClient implements RunView, PredictionSource {
 	readonly nearMiss = new NearMissEvents();
 	/** Enemy-variant sound events of the ticks the last pump stepped (docs/ENEMY_VARIANTS.md; reset every pump). */
 	readonly variantCues = new VariantCueEvents();
+	/** The third endless set's effect events of the ticks run by the last pump (docs/NEW_ENEMIES_2.md NX7). */
+	readonly newEnemies2 = new NewEnemy2FrameEvents();
 	/** Build effects of the ticks the last pump stepped (docs/BUILDS.md BU8; reset every pump). */
 	readonly builds = new BuildFxEvents();
 	/** The pellet events of the ticks run by the last frame (docs/PELLETS.md PL7; reset every frame). */
@@ -542,6 +545,7 @@ export class LockstepClient implements RunView, PredictionSource {
 		this.combo.reset();
 		this.nearMiss.reset();
 		this.variantCues.reset();
+		this.newEnemies2.reset();
 		this.builds.reset();
 		this.pellets.reset();
 		this.treasure.reset();
@@ -623,6 +627,7 @@ export class LockstepClient implements RunView, PredictionSource {
 			this.combo.collect(state);
 			this.nearMiss.collect(state);
 			this.variantCues.collect(state);
+			this.newEnemies2.collect(state);
 			this.builds.collect(state);
 			this.pellets.collect(state);
 			this.recapTally.collect(state);

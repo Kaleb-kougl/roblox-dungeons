@@ -131,6 +131,7 @@ import {
 	stormcallerSpriteInput,
 	warbannerSpriteInput,
 } from "./newEnemySprites";
+import { withNewEnemy2SpriteInputs } from "./newEnemy2Sprites";
 import { dummySpriteInput } from "./dummy/sprite";
 import { goldenSpriteInput } from "./golden/sprite";
 import { degToRad, isoBasis, type IsoBasis } from "./iso";
@@ -666,6 +667,11 @@ export interface ActorSpriteInput {
 	readonly moveAnim?: string;
 	/** Roblox port (NE8): the idle loop's rate (the Reaper's dizzy plays it slowed). Unset: 1. */
 	readonly idleRate?: number;
+	/**
+	 * Roblox port (docs/NEW_ENEMIES_2.md NX7): a named loop played instead of `idle` when the set has it (the
+	 * Shieldwall's `block` while it guards standing still); unset or absent from the set: `idle`.
+	 */
+	readonly idleAnim?: string;
 	/**
 	 * Roblox port (docs/DUMMY_ART.md DD1): a view-side hit timeline, for a set whose `hit` outlasts the sim's 0.1 s
 	 * flash (the training dummy's wobble). The renderer fills it from HitReactSlots.hitAge for the archetypes in
@@ -1294,6 +1300,8 @@ export function chooseActorAnim(input: ActorSpriteInput, anims: SpriteAnimSource
 		const move = moveChoice(moveName, input.speed, input.refSpeed);
 		if (move !== undefined) return move;
 	}
+	const named = input.idleAnim;
+	if (named !== undefined && anims.animation(named) !== undefined) return clocked(named, input.idleRate ?? 1);
 	const idleRate = input.idleRate;
 	return idleRate !== undefined && idleRate !== 1 ? clocked(IDLE.anim, idleRate) : IDLE;
 }
@@ -1553,27 +1561,29 @@ export function bossSpriteLayout(layout: SpriteLayout, minDrawPx: number): Sprit
  * docs/BRAMBLE_ART.md BR6, docs/BOSS_DEMONLORD.md D7).
  */
 export const ACTOR_SPRITE_INPUTS: ReadonlyMap<string, (a: Readonly<ActorState>, alpha: number) => ActorSpriteInput> =
-	new Map([
-		[SWARMER.id, swarmerSpriteInput],
-		[SNIPER.id, sniperSpriteInput],
-		[TURRET_SNIPER.id, turretSniperSpriteInput],
-		[TURRET_SPRAYER.id, turretSprayerSpriteInput],
-		[TURRET_CASTER.id, turretCasterSpriteInput],
-		[BRUISER.id, bruiserSpriteInput],
-		[BOSS_ACT1_ID, bossAct1SpriteInput],
-		[BOSS_DEMONLORD_ID, demonlordSpriteInput],
-		[IMP.id, impSpriteInput],
-		[SLIME.id, slimeSpriteInput],
-		[SLIME_SMALL.id, slimeSmallSpriteInput],
-		[SUMMONER.id, summonerSpriteInput],
-		// docs/NEW_ENEMIES.md NE8 (newEnemySprites.ts: sprites.luau sits near Luau's 200 top-level locals)
-		["bomber", bomberSpriteInput],
-		["charger", chargerSpriteInput],
-		["stormcaller", stormcallerSpriteInput],
-		["warbanner", warbannerSpriteInput],
-		["reaper", reaperSpriteInput],
-		// docs/FORTUNE.md FO8: the Goldling (golden/sprite.ts, by file: sprites.luau sits near Luau's 200 top-level locals)
-		["golden", goldenSpriteInput],
-		// docs/DUMMY_ART.md DA3: the tutorial's training dummy (dummy/sprite.ts, by file, as the Goldling)
-		["dummy", dummySpriteInput],
-	]);
+	withNewEnemy2SpriteInputs(
+		new Map([
+			[SWARMER.id, swarmerSpriteInput],
+			[SNIPER.id, sniperSpriteInput],
+			[TURRET_SNIPER.id, turretSniperSpriteInput],
+			[TURRET_SPRAYER.id, turretSprayerSpriteInput],
+			[TURRET_CASTER.id, turretCasterSpriteInput],
+			[BRUISER.id, bruiserSpriteInput],
+			[BOSS_ACT1_ID, bossAct1SpriteInput],
+			[BOSS_DEMONLORD_ID, demonlordSpriteInput],
+			[IMP.id, impSpriteInput],
+			[SLIME.id, slimeSpriteInput],
+			[SLIME_SMALL.id, slimeSmallSpriteInput],
+			[SUMMONER.id, summonerSpriteInput],
+			// docs/NEW_ENEMIES.md NE8 (newEnemySprites.ts: sprites.luau sits near Luau's 200 top-level locals)
+			["bomber", bomberSpriteInput],
+			["charger", chargerSpriteInput],
+			["stormcaller", stormcallerSpriteInput],
+			["warbanner", warbannerSpriteInput],
+			["reaper", reaperSpriteInput],
+			// docs/FORTUNE.md FO8: the Goldling (golden/sprite.ts, by file: sprites.luau sits near Luau's 200 top-level locals)
+			["golden", goldenSpriteInput],
+			// docs/DUMMY_ART.md DA3: the tutorial's training dummy (dummy/sprite.ts, by file, as the Goldling)
+			["dummy", dummySpriteInput],
+		]),
+	); // docs/NEW_ENEMIES_2.md NX7: the third endless set's five (newEnemy2Sprites.ts, one import: sprites.luau's locals)

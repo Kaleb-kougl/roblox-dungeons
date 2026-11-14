@@ -1,5 +1,6 @@
-// Sprite bullets (docs/PROJECTILE_ART.md PA4): every BulletKind maps to one of the four enemy looks; each look's art
-// reference scale (the heavy flame stands for the bow's heavy arrow).
+// Sprite bullets (docs/PROJECTILE_ART.md PA4): every BulletKind maps to one of the enemy looks (docs/NEW_ENEMIES_2.md
+// NX7 added the hook and, by payload source, the brazier's flame); each look's art reference scale (the heavy flame
+// stands for the bow's heavy arrow).
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { BOW_DATA, BulletKind, BulletPayload } from "shared/sim";
 import { PLAYER_BULLET_LOOK_IDS, PlayerBulletLook, playerBulletLookOf } from "../buildBullets";
@@ -27,12 +28,12 @@ const EXPECTED: ReadonlyMap<number, number> = new Map([
 	[BulletKind.EMBER, EnemyBulletLook.SMALL],
 	[BulletKind.SPARK_BOLT, EnemyBulletLook.SMALL],
 	[BulletKind.STRIKE, EnemyBulletLook.SMALL],
-	// docs/NEW_ENEMIES_2.md NX1: the Chainhook's hook draws small until NX7 gives it its look
-	[BulletKind.HOOK, EnemyBulletLook.SMALL],
+	// docs/NEW_ENEMIES_2.md NX7: the Chainhook's hook has its own look (source 1 here: never the pyre's flame)
+	[BulletKind.HOOK, EnemyBulletLook.HOOK],
 ]);
 
 describe("sprite bullets: enemy looks", () => {
-	it("maps every BulletKind value: sniper needle, caster medium, boss large, every other kind small", () => {
+	it("maps every BulletKind value: sniper needle, caster medium, boss large, hook its own, every other kind small", () => {
 		const kinds = BulletKind as unknown as ReadonlyMap<string, number>;
 		let count = 0;
 		for (const [name, kind] of kinds) {
@@ -48,12 +49,14 @@ describe("sprite bullets: enemy looks", () => {
 		for (const kind of [14, 15]) expect(enemyBulletLookOf(payloadOf(kind))).toBe(EnemyBulletLook.SMALL);
 	});
 
-	it("names the four enemy theme IDs; look 0 is the visual every enemy bullet used before", () => {
+	it("names the six enemy theme IDs; look 0 is the visual every enemy bullet used before", () => {
 		expect([...ENEMY_BULLET_LOOK_IDS]).toEqual([
 			"bullet.enemy.small",
 			"bullet.enemy.medium",
 			"bullet.enemy.large",
 			"bullet.enemy.needle",
+			"bullet.enemy.flame",
+			"bullet.enemy.hook",
 		]);
 		expect(ENEMY_BULLET_LOOK_IDS[EnemyBulletLook.SMALL]).toBe(BULLET_VIEW.enemyVisualId);
 		const contract = BULLET_IDS as ReadonlyArray<string>;

@@ -75,9 +75,27 @@ function eaten(players: number[]): PelletFrameEvents {
 /** `s` with one pellet room of `count` regular pellets, `left` of them still on the floor (pellets 0..count-1). */
 function withRoom(s: SimState, count: number, left: number): SimState {
 	const rec: number[] = [];
-	for (let i = 0; i < count; i++) rec.push(0);
-	s.pellets = { rec, rooms: [{ first: 0, span: count, count, left, phase: 1, swept: 0 }] } as unknown as PelletsState;
+	const taken: number[] = [];
+	for (let i = 0; i < count; i++) {
+		rec.push(0);
+		taken.push(0);
+	}
+	s.pellets = {
+		rec,
+		taken,
+		power: -1,
+		rooms: [{ first: 0, span: count, count, left, phase: 1, swept: 0 }],
+	} as unknown as PelletsState;
+	setLeft(s, left);
 	return s;
+}
+
+/** The room's `left` and the pellets it leaves on the floor (the first count - left taken): the ladder counts both. */
+function setLeft(s: SimState, left: number): void {
+	const p = s.pellets!;
+	const room = p.rooms[0];
+	room.left = left;
+	for (let i = 0; i < room.count; i++) p.taken[i] = i < room.count - left ? 1 : 0;
 }
 
 describe("audio: pellets (docs/PELLETS.md PL7)", () => {
@@ -101,15 +119,15 @@ describe("audio: pellets (docs/PELLETS.md PL7)", () => {
 		const gap = PELLETS_VIEW.audio.eatMinIntervalSec;
 		expect(m.intervalOf(SFX.pelletEat)).toBe(gap);
 		// Three pellets on one frame: one chomp at the room's progress after the frame (3 of n taken).
-		s.pellets!.rooms[0].left = n - 3;
+		setLeft(s, n - 3);
 		expect(frame(m, 0, s, eaten([0, 0, 0]))).toEqual([[SFX.pelletEat, 1, pelletEatSpeed(3, n)]]);
 		// Inside the interval: nothing.
-		s.pellets!.rooms[0].left = n - 4;
+		setLeft(s, n - 4);
 		expect(frame(m, gap / 2, s, eaten([0]))).toEqual([]);
 		// Every later pellet a step higher, the last one the octave.
 		let prev = pelletEatSpeed(3, n);
 		for (let k = 5; k <= n; k++) {
-			s.pellets!.rooms[0].left = n - k;
+			setLeft(s, n - k);
 			const out = frame(m, k * gap, s, eaten([0]));
 			expect(out).toEqual([[SFX.pelletEat, 1, pelletEatSpeed(k, n)]]);
 			expect(out[0][2] > prev).toBe(true);

@@ -161,8 +161,10 @@ export const ENEMY: SlotContract = {
 	// cast (shared/view variantsConfig VARIANT_SPRITE_VIEW.summonerAnims). docs/NEW_ENEMIES.md NE8: `death.2`, a second
 	// death (falls back to `death`): the Bomber's detonation (Explode); `move.back`, a second move loop (falls back to
 	// `move`): the Warbanner backing away (Run Backwards) (shared/view newEnemiesConfig NEW_ENEMY_SPRITE_VIEW.anims).
+	// docs/NEW_ENEMIES_2.md NX7: `block`, a loop in place of `idle` (falls back to `idle`): the Shieldwall guarding
+	// (shared/view newEnemies2Config NEW_ENEMY_2_SPRITE_VIEW.anims).
 	// Inline, not a top-level constant: the compiled contract.luau sits near Luau's 200-locals limit.
-	optionalAnimations: ["attack.2", "death.2", "move.back"],
+	optionalAnimations: ["attack.2", "death.2", "move.back", "block"],
 };
 
 export const BOSS: SlotContract = {

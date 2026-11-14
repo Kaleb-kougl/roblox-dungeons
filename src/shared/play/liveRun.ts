@@ -75,6 +75,7 @@ import {
 	RecapTally,
 	RoomClearEvents,
 	VariantCueEvents,
+	NewEnemy2FrameEvents,
 	newFrameAdvance,
 	type BuildFxFrameSource,
 	type ComboFrameSource,
@@ -84,6 +85,7 @@ import {
 	type RecapTallySource,
 	type RoomClearSource,
 	type VariantCueSource,
+	type NewEnemy2FrameSource,
 } from "shared/view/fx";
 
 export interface LiveRunSetup {
@@ -176,6 +178,8 @@ export interface RunView {
 	readonly nearMiss: NearMissFrameSource;
 	/** The enemy-variant sound events of the last frame's ticks (docs/ENEMY_VARIANTS.md EV9 audio cues). */
 	readonly variantCues: VariantCueSource;
+	/** The third endless set's effect events of the last frame's ticks (docs/NEW_ENEMIES_2.md NX7). */
+	readonly newEnemies2: NewEnemy2FrameSource;
 	/** The build effects of the last frame's ticks, every player's (docs/BUILDS.md BU8). */
 	readonly builds: BuildFxFrameSource;
 	/** The pellet events of the last frame's ticks, every player's (docs/PELLETS.md PL7). */
@@ -339,6 +343,8 @@ export class LiveRun implements RunView {
 	readonly nearMiss = new NearMissEvents();
 	/** The enemy-variant sound events of the ticks run by the last frame() (docs/ENEMY_VARIANTS.md; reset every frame). */
 	readonly variantCues = new VariantCueEvents();
+	/** The third endless set's effect events of the ticks run by the last frame() (docs/NEW_ENEMIES_2.md NX7). */
+	readonly newEnemies2 = new NewEnemy2FrameEvents();
 	/** The build effects of the ticks run by the last frame() (docs/BUILDS.md BU8; reset every frame). */
 	readonly builds = new BuildFxEvents();
 	/** The pellet events of the ticks run by the last frame() (docs/PELLETS.md PL7; reset every frame). */
@@ -405,6 +411,7 @@ export class LiveRun implements RunView {
 		this.combo.reset();
 		this.nearMiss.reset();
 		this.variantCues.reset();
+		this.newEnemies2.reset();
 		this.builds.reset();
 		this.pellets.reset();
 		this.treasure.reset();
@@ -493,6 +500,7 @@ export class LiveRun implements RunView {
 		this.combo.collect(state);
 		this.nearMiss.collect(state);
 		this.variantCues.collect(state);
+		this.newEnemies2.collect(state);
 		this.builds.collect(state);
 		this.pellets.collect(state);
 		this.recapTally.collect(state);

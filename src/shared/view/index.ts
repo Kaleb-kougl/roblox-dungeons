@@ -112,6 +112,10 @@ export * from "./newEnemies";
 export * from "./hazardsConfig";
 export * from "./hazards";
 export * from "./newEnemySprites";
+// docs/NEW_ENEMIES_2.md NX7: the third endless set on screen (rules, tunables, sprite inputs).
+export * from "./newEnemies2Config";
+export * from "./newEnemies2";
+export * from "./newEnemy2Sprites";
 export * from "./spriteCell";
 export * from "./floorTexture";
 export * from "./wallTexture";

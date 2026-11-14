@@ -56,6 +56,7 @@ import {
 import {
 	DEV_GOD_BUTTON,
 	EMPTY_INPUT,
+	chainhookHolderOf,
 	copyInput,
 	isDraftOpen,
 	newPlayerState,
@@ -92,7 +93,14 @@ import {
 import { codexToastChip } from "shared/view/codex";
 import { HitstopClock, simPacerFor, type FrameAdvance, type FramePacer } from "shared/view/fx";
 import { GoldenRumourClock } from "shared/view/golden";
-import { PREDICTION_VIEW, PredictionSmoother, writeDrawnPlayer, type DrawnPlayerOf } from "shared/view/predict";
+import {
+	PREDICTION_VIEW,
+	PredictionResume,
+	PredictionSmoother,
+	blendTowardMerged,
+	writeDrawnPlayer,
+	type DrawnPlayerOf,
+} from "shared/view/predict";
 import { PROGRESSION_VIEW, boardFor, toastFor, type PendingRunClaim } from "shared/view/hud";
 import { afterRobloxMenuClosed, lobbyStartAccepted, restartForfeits } from "shared/view/menu";
 import { ENDLESS_FIRST_FLOOR, FloorModifier, type Dungeon, type FloorSecret } from "shared/dungeon";
@@ -514,6 +522,11 @@ export class SimController implements OnStart {
 	 * a draft, the stage cover), then every view gets the merged player exactly as before.
 	 */
 	private readonly smoother = new PredictionSmoother(PREDICTION_VIEW);
+	/**
+	 * docs/NEW_ENEMIES_2.md NX7: prediction suspended while merged state says a Chainhook drags the local player
+	 * (chainhookHolderOf), then blended back over PREDICTION_VIEW.resumeSec (shared/view/predict PredictionResume).
+	 */
+	private readonly predictResume = new PredictionResume(PREDICTION_VIEW);
 	private readonly drawnBody: PlayerState = newPlayerState(0, 0);
 	private drawnState: SimState | undefined;
 	private drawnIndex = -1;
@@ -1446,29 +1459,31 @@ export class SimController implements OnStart {
 	private updateDrawn(ctx: RunContext, coop: LockstepClient, dt: number, snap: boolean): void {
 		const viewingSelf = this.getViewPlayerIndex() === ctx.localIndex;
 		const covered = this.stage?.blocksInput() === true;
-		const head = viewingSelf && !covered ? coop.predicted() : undefined;
+		const index = ctx.localIndex;
+		// docs/NEW_ENEMIES_2.md NX7: a drag the predictor cannot mirror; drawn merged while hooked, then blended back.
+		if (snap) this.predictResume.reset();
+		const weight = this.predictResume.update(chainhookHolderOf(coop.state, index) >= 0, dt);
+		const head = viewingSelf && !covered && weight > 0 ? coop.predicted() : undefined;
 		if (snap) this.smoother.snap();
 		this.smoother.feed(head, head !== undefined ? coop.predictedPath() : undefined);
-		const pose = this.smoother.draw(coop.getAlpha(), dt);
+		const alpha = coop.getAlpha();
+		const pose = this.smoother.draw(alpha, dt);
 		if (head === undefined || pose === undefined) {
 			this.drawnActive = false;
 			this.drawnAheadTicks = 0;
 			return;
 		}
-		const index = ctx.localIndex;
-		writeDrawnPlayer(
-			this.drawnBody,
-			playerAt(coop.state, index),
-			head,
-			this.smoother.offsetX(),
-			this.smoother.offsetZ(),
-		);
+		const merged = playerAt(coop.state, index);
+		writeDrawnPlayer(this.drawnBody, merged, head, this.smoother.offsetX(), this.smoother.offsetZ());
+		blendTowardMerged(this.drawnBody, merged, weight);
 		this.drawnState = coop.state;
 		this.drawnIndex = index;
 		this.drawnActive = true;
-		this.drawnAheadTicks = coop.predictionHorizonTicks();
-		this.drawnX = pose.x;
-		this.drawnZ = pose.z;
+		this.drawnAheadTicks =
+			weight >= 1 ? coop.predictionHorizonTicks() : math.floor(coop.predictionHorizonTicks() * weight);
+		const body = this.drawnBody;
+		this.drawnX = weight >= 1 ? pose.x : body.prevX + (body.x - body.prevX) * alpha;
+		this.drawnZ = weight >= 1 ? pose.z : body.prevZ + (body.z - body.prevZ) * alpha;
 	}
 
 	/**
