@@ -173,8 +173,12 @@ describe("new enemies 2: bundled packs", () => {
 		for (const id of sortedKeys(THEME_PACKS)) {
 			const pack = THEME_PACKS[id];
 			const colors = pack.colors as unknown as Obj;
+			// vale draws the art once its sheets have IDs (NX8: the pyre on the uploaded decor brazier at once, the four
+			// rigs, the flame and the hook after their upload; packs/vale specs); every other pack keeps the placeholders
+			const art = (kind: string) =>
+				id === "vale" ? kind === "placeholder" || kind === "sprites" : kind === "placeholder";
 			for (const [a, name] of NAMES) {
-				expect([id, a, pack.assets[`enemy.${a}`].kind]).toEqual([id, a, "placeholder"]);
+				expect([id, a, art(pack.assets[`enemy.${a}`].kind)]).toEqual([id, a, true]);
 				expect([id, a, typeIs(colors[`enemy.${a}`], "string")]).toEqual([id, a, true]);
 				expect([id, a, pack.strings[`enemy.${a}.name`]]).toEqual([id, a, name]);
 			}
@@ -185,8 +189,7 @@ describe("new enemies 2: bundled packs", () => {
 				// "Name: tip" (l10n/context.json): the toast's name is the name string
 				expect([id, a, (line as string).sub(1, name.size() + 1)]).toEqual([id, a, `${name}:`]);
 			}
-			for (const b of NEW_ENEMY_2_BULLET_IDS)
-				expect([id, b, pack.assets[b].kind]).toEqual([id, b, "placeholder"]);
+			for (const b of NEW_ENEMY_2_BULLET_IDS) expect([id, b, art(pack.assets[b].kind)]).toEqual([id, b, true]);
 			for (const sfx of NEW_ENEMY_2_AUDIO_IDS)
 				expect([id, sfx, pack.assets[sfx].kind]).toEqual([id, sfx, "silent"]);
 			expect([id, typeIs(pack.colors[ENEMY_GUARD_ROLE], "string")]).toEqual([id, true]);

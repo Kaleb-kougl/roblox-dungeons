@@ -120,6 +120,7 @@ import { valeBulletAssets, type ValeBulletSource } from "./bullets";
 import { valeBoostAuraAssets, type ValeBoostAuraSource } from "./boostAuras";
 import { valeGooAsset, type ValeGooSource } from "./goo";
 import { valeHazardAssets, type ValeHazardSource } from "./hazards";
+import { VALE_PYRE_ART, valePyreAsset } from "./pyre";
 import { valeAmbientAssets, valeFxAssets, valeFxSources } from "./fx";
 import { VALE_TREASURE_CAGE_LAYOUT } from "./treasureLayout";
 import { VALE_PACT_ALTAR_LAYOUT } from "./fortuneLayout";
@@ -923,6 +924,10 @@ export function buildValeManifest(ids: AssetIds = VALE_ASSET_IDS, sources: ValeL
 	for (const id of sortedKeys(VALE_SPRITE_LAYOUTS)) {
 		manifest.assets[id] = valeSpriteAsset(id, VALE_SPRITE_LAYOUTS[id], ids) ?? { kind: "placeholder" };
 	}
+	// The Pyre-keeper's brazier (docs/NEW_ENEMIES_2.md NX8; pyre.ts): the decor brazier's cells in the enemy slot once
+	// decor-atlas.png has an ID, else the placeholder.
+	const pyre = valePyreAsset(ids);
+	if (pyre !== undefined) manifest.assets[VALE_PYRE_ART.id] = pyre;
 	const optional = new Set([...draftSkinIds(), ...uiSkinIds(), ...cursorOptionalIds()]);
 	for (const id of sortedKeys(images)) {
 		const layout = images[id];

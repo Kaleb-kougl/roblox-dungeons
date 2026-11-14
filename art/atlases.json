@@ -770,6 +770,157 @@
 				{ "name": "reaper-death", "animations": ["death"] }
 			]
 		},
+		"enemy.bulwark": {
+			"$comment": [
+				"The Shieldwall (archetype bulwark; docs/NEW_ENEMIES_2.md NX8, rig NXD2) as Demon Spawn 9, the red demon with a curved sword and a round shield on its off arm; same pack and format as enemy.summoner: body over Shadows/, no Effects/ (DEMON_ART DD3).",
+				"block = Block (7 frames, 896 px wide), kept 2, 3, 4: the sword raised across the body behind the shield (the guard pose, under 6 px change a frame), looped at fps 4 while it guards standing (NEW_ENEMY_2_SPRITE_VIEW.anims.block; f0-f1 / f5-f6 are the raise and the lowering, not kept).",
+				"attack = Attack 1, kept 0-7, stretched over the bash's 27-tick telegraph + 9-tick lunge (bulwarkAttack: one timeline of 36 ticks): f0-f5 the wind-up and coil (the sword drawn back, 46-67 px tall facing the camera), f6 the lunge with the sword out (58 px tall, 61 px wide in the profile row), f7 the follow-through.",
+				"Measured mark: the lunge frame is kept index 6 of 8 = 0.75 of the timeline, exactly where the telegraph ends (27 / 36), so the plain stretch lands it on the lunge (no segment needed). f8-f14 (the recovery to idle) are not kept.",
+				"hit = TakeDamage 1 (1, 3, 5, 7, 9, 11, 13: the recoil and the slow return, 6 px change a frame), also stretched over the 90-tick stagger (NEW_ENEMY_2_SPRITE_VIEW.anims.stagger), so it ends near the idle pose. death = Die 1 (0, 2, 4, 6, 9, 14), the bruiser's picks. Idle frame 14 duplicates frame 0 (the loop picks from 0-13).",
+				"Scale: bodyTiles 1.47 = the summoner's density 31.3 px/tile (same pack, same render scale, as the Stormcaller and the Reaper; pixelsPerTileFrom enemy.summoner needs Demon Spawn 10 on the building machine, bodyTiles gives the same density here): the idle body (alpha > 250, facing the camera) is 46 px tall -> 1.47 tiles, 41 px (1.31 tiles) wide with the shield against the r 0.45 hitbox.",
+				"cells \"perSheet\" (DD4): attack (attack + block), body (idle + move + hit), death; 3 atlases + 3 rims."
+			],
+			"source": { "type": "grid", "dir": "demons-topdown/Spritesheets with seperated shadows and effects/Demon Spawn 9", "frameW": 128, "frameH": 128, "layers": ["Shadows", ""] },
+			"facingCount": 8,
+			"rowForFacing": [0, 7, 6, 5, 4, 3, 2, 1],
+			"rowOrderEvidence": [
+				"Rows go CLOCKWISE from screen right, the knight's order (DEMON_ART DA1): output facing d = row (8 - d) % 8, as every Demons set. Checked by eye on this set's contact sheet."
+			],
+			"noiseAlpha": 2,
+			"pad": 3,
+			"pivot": { "measure": { "animation": "idle", "facing": 6, "frame": 0 }, "bodyAlpha": 250, "bodyMinRgb": 0, "footBand": 6 },
+			"pivotNote": "As enemy.summoner: alpha > 250 is exactly the body (the Shadows layer is drawn under it), so the pivot, the body height and the outline mask leave the shadow out. Measured on idle facing 6 (source row 2, towards the camera), frame 0.",
+			"outline": { "widthPx": 2 },
+			"outlineNote": "Enemy contrast rim (docs/OUTLINE.md, decision E4: 2 art px). pad 3 = widthPx + 1.",
+			"bodyTiles": 1.47,
+			"resample": "Default",
+			"cells": "perSheet",
+			"animations": {
+				"idle": { "file": "Idle.png", "frames": [0, 3, 7, 10], "fps": 6, "loop": true },
+				"move": { "file": "Walk.png", "frames": [0, 2, 4, 5, 7, 9, 11, 12], "fps": 10, "loop": true },
+				"attack": { "file": "Attack 1.png", "frames": [0, 1, 2, 3, 4, 5, 6, 7], "fps": 12, "loop": false },
+				"block": { "file": "Block.png", "frames": [2, 3, 4], "fps": 4, "loop": true },
+				"hit": { "file": "TakeDamage 1.png", "frames": [1, 3, 5, 7, 9, 11, 13], "fps": 12, "loop": false },
+				"death": { "file": "Die 1.png", "frames": [0, 2, 4, 6, 9, 14], "fps": 10, "loop": false }
+			},
+			"sheets": [
+				{ "name": "bulwark-attack", "animations": ["attack", "block"] },
+				{ "name": "bulwark-body", "animations": ["idle", "move", "hit"] },
+				{ "name": "bulwark-death", "animations": ["death"] }
+			]
+		},
+		"enemy.chainhook": {
+			"$comment": [
+				"The Chainhook (docs/NEW_ENEMIES_2.md NX8, rig NXD2) as Demon Spawn 4, the heavy armoured demon with a horned helm, a blade and a chain-mesh shield (the mesh reads as chains); same pack and format as enemy.bruiser: body over Shadows/, no Effects/ (DEMON_ART DD3).",
+				"attack = Attack 2, kept 0-5, stretched over the 42-tick aim (and the 18-tick yank telegraph; chainhookAttack): f0 standing, f1-f4 the blade arm drawn back behind the body (the wind-up; in the profile row the blade points away from the facing), f5 the arm thrown forward along the facing (the release).",
+				"Measured mark: the release is kept index 5 of 6, so it shows over the aim's last sixth (7 ticks) and the hook leaves on it; the yank plays the same pull. f6-f14 (the follow-through and the return) are not kept.",
+				"move = Walk (it keeps range at 2.2 u/s). hit = TakeDamage 1 (1, 3, 5, 8), death = Die 1 (0, 2, 4, 6, 9, 14): the bruiser's picks. Idle frame 14 duplicates frame 0 (the loop picks from 0-13).",
+				"Scale: bodyTiles 1.737 = the knight's density 38 px/tile, the heavy beasts' (enemy.bruiser / enemy.charger use pixelsPerTileFrom class.vanguard, whose pack is not needed here): the idle body is 66 px tall facing the camera, helm horns included -> 1.74 tiles, 54 px (1.42 tiles) wide with the shield against the r 0.45 hitbox (at the summoner's density it would stand 2.1 tiles).",
+				"cells \"perSheet\" (DD4): attack, body (idle + hit), move, death; 4 atlases + 4 rims (the walk's wide shield stride makes idle + move + hit 128 cells of 92x104, over one 1024 atlas's 99)."
+			],
+			"source": { "type": "grid", "dir": "demons-topdown/Spritesheets with seperated shadows and effects/Demon Spawn 4", "frameW": 128, "frameH": 128, "layers": ["Shadows", ""] },
+			"facingCount": 8,
+			"rowForFacing": [0, 7, 6, 5, 4, 3, 2, 1],
+			"rowOrderEvidence": [
+				"Rows go CLOCKWISE from screen right, the knight's order (DEMON_ART DA1): output facing d = row (8 - d) % 8, as every Demons set. Checked by eye on this set's contact sheet."
+			],
+			"noiseAlpha": 2,
+			"pad": 3,
+			"pivot": { "measure": { "animation": "idle", "facing": 6, "frame": 0 }, "bodyAlpha": 250, "bodyMinRgb": 0, "footBand": 6 },
+			"pivotNote": "As enemy.bruiser: alpha > 250 is exactly the body (the Shadows layer is drawn under it), so the pivot, the body height and the outline mask leave the shadow out. Measured on idle facing 6 (source row 2, towards the camera), frame 0.",
+			"outline": { "widthPx": 2 },
+			"outlineNote": "Enemy contrast rim (docs/OUTLINE.md, decision E4: 2 art px). pad 3 = widthPx + 1.",
+			"bodyTiles": 1.737,
+			"resample": "Default",
+			"cells": "perSheet",
+			"animations": {
+				"idle": { "file": "Idle.png", "frames": [0, 3, 7, 10], "fps": 6, "loop": true },
+				"move": { "file": "Walk.png", "frames": [0, 2, 4, 5, 7, 9, 11, 12], "fps": 10, "loop": true },
+				"attack": { "file": "Attack 2.png", "frames": [0, 1, 2, 3, 4, 5], "fps": 12, "loop": false },
+				"hit": { "file": "TakeDamage 1.png", "frames": [1, 3, 5, 8], "fps": 12, "loop": false },
+				"death": { "file": "Die 1.png", "frames": [0, 2, 4, 6, 9, 14], "fps": 10, "loop": false }
+			},
+			"sheets": [
+				{ "name": "chainhook-attack", "animations": ["attack"] },
+				{ "name": "chainhook-body", "animations": ["idle", "hit"] },
+				{ "name": "chainhook-move", "animations": ["move"] },
+				{ "name": "chainhook-death", "animations": ["death"] }
+			]
+		},
+		"enemy.snatcher": {
+			"$comment": [
+				"The Snatcher (docs/NEW_ENEMIES_2.md NX8, rig NXD2) as Imp 6, the small hooded red imp with a thin spear; same pack and format as enemy.imp: body over Shadows/, no Effects/ (DEMON_ART DD3).",
+				"move = Run (the crouched sprint) at fps 24: Imp 9's measured stride (~2.6 px per source frame, ~1.2 tiles a 15-frame cycle at this density), 8 kept frames in 0.33 s = 1.67 tiles at its 5 u/s (1.4x the art's stride; the imp's run 1.3x).",
+				"attack = Taunt, kept 0, 2, 4-10, 12, stretched over the 60-tick swallow (snatcherAttack, the gulp): f0-f4 standing (32-33 px tall facing the camera), f5-f10 hunched low over its belly (22-26 px), f11-f12 rising. Measured mark: it is low from kept index 3 to 8 (0.3-0.9 of the swallow).",
+				"hit = TakeDamage 1 (1, 3, 5, 8), death = Die 1 (0, 2, 4, 6, 9, 14): the bruiser's picks. Idle is still (32 px tall in every frame; 0, 3, 7, 10 as every set). Slide 1 / Crouch walk are not used (no view hook asks for them).",
+				"Scale: bodyTiles 1.0, between the Bomber (0.9) and the imp (1.2): a small thief against the r 0.3 hitbox; the idle body (alpha > 250, facing the camera) is 32 px tall -> 32 px/tile, 25 px (0.78 tiles) wide.",
+				"cells \"perSheet\" (DD4): attack, body (idle + move + hit), death; 3 atlases + 3 rims."
+			],
+			"source": { "type": "grid", "dir": "demons-topdown/Spritesheets with seperated shadows and effects/Imp 6", "frameW": 128, "frameH": 128, "layers": ["Shadows", ""] },
+			"facingCount": 8,
+			"rowForFacing": [0, 7, 6, 5, 4, 3, 2, 1],
+			"rowOrderEvidence": [
+				"Rows go CLOCKWISE from screen right, the knight's order (DEMON_ART DA1): output facing d = row (8 - d) % 8, as every Demons set. Checked by eye on this set's contact sheet."
+			],
+			"noiseAlpha": 2,
+			"pad": 3,
+			"pivot": { "measure": { "animation": "idle", "facing": 6, "frame": 0 }, "bodyAlpha": 250, "bodyMinRgb": 0, "footBand": 6 },
+			"pivotNote": "As enemy.imp: alpha > 250 is exactly the body (the Shadows layer is drawn under it), so the pivot, the body height and the outline mask leave the shadow out. Measured on idle facing 6 (source row 2, towards the camera), frame 0.",
+			"outline": { "widthPx": 2 },
+			"outlineNote": "Enemy contrast rim (docs/OUTLINE.md, decision E4: 2 art px). pad 3 = widthPx + 1.",
+			"bodyTiles": 1.0,
+			"resample": "Default",
+			"cells": "perSheet",
+			"animations": {
+				"idle": { "file": "Idle.png", "frames": [0, 3, 7, 10], "fps": 6, "loop": true },
+				"move": { "file": "Run.png", "frames": [0, 2, 4, 5, 7, 9, 11, 12], "fps": 24, "loop": true },
+				"attack": { "file": "Taunt.png", "frames": [0, 2, 4, 5, 6, 7, 8, 9, 10, 12], "fps": 12, "loop": false },
+				"hit": { "file": "TakeDamage 1.png", "frames": [1, 3, 5, 8], "fps": 12, "loop": false },
+				"death": { "file": "Die 1.png", "frames": [0, 2, 4, 6, 9, 14], "fps": 10, "loop": false }
+			},
+			"sheets": [
+				{ "name": "snatcher-attack", "animations": ["attack"] },
+				{ "name": "snatcher-body", "animations": ["idle", "move", "hit"] },
+				{ "name": "snatcher-death", "animations": ["death"] }
+			]
+		},
+		"enemy.pyrekeeper": {
+			"$comment": [
+				"The Pyre-keeper (docs/NEW_ENEMIES_2.md NX8, rig NXD2) as Demon spawn 1 (the folder's lower-case s), the hooded demon with a torch staff (NED2's spare Stormcaller rig); same pack and format as enemy.summoner: body over Shadows/, no Effects/ (DEMON_ART DD3).",
+				"attack = Attack 2, kept 0, 2, 4-10, 12, stretched over the 48-tick light telegraph (and the 30-tick panic; pyrekeeperAttack): f0-f5 the torch swung back and up, f6-f8 the torch thrust out at arm's length towards the landing cell (the profile row: 50+ px reach), f9-f12 back to holding it.",
+				"Measured mark: the thrust starts at kept index 4 of 10 = 0.4 of the light telegraph, where the view's torch arc leaves the hand (torchArcPoint: the telegraph's last 60 %), and holds to index 6 (0.7).",
+				"move = Walk (it keeps range at 2.4 u/s, as the Stormcaller). hit = TakeDamage 1 (1, 3, 5, 8), death = Die 1 (0, 2, 4, 6, 9, 14): the bruiser's picks. Idle 1 frame 14 duplicates frame 0 (the loop picks from 0-13).",
+				"Scale: bodyTiles 1.47 = the summoner's density 31.3 px/tile (as enemy.bulwark): the idle body is 46 px tall facing the camera, torch included -> 1.47 tiles, 38 px (1.21 tiles) wide against the r 0.35 hitbox.",
+				"cells \"perSheet\" (DD4): attack, body (idle + move + hit), death; 3 atlases + 3 rims."
+			],
+			"source": { "type": "grid", "dir": "demons-topdown/Spritesheets with seperated shadows and effects/Demon spawn 1", "frameW": 128, "frameH": 128, "layers": ["Shadows", ""] },
+			"facingCount": 8,
+			"rowForFacing": [0, 7, 6, 5, 4, 3, 2, 1],
+			"rowOrderEvidence": [
+				"Rows go CLOCKWISE from screen right, the knight's order (DEMON_ART DA1): output facing d = row (8 - d) % 8, as every Demons set. Checked by eye on this set's contact sheet."
+			],
+			"noiseAlpha": 2,
+			"pad": 3,
+			"pivot": { "measure": { "animation": "idle", "facing": 6, "frame": 0 }, "bodyAlpha": 250, "bodyMinRgb": 0, "footBand": 6 },
+			"pivotNote": "As enemy.summoner: alpha > 250 is exactly the body (the Shadows layer is drawn under it), so the pivot, the body height and the outline mask leave the shadow out. Measured on idle facing 6 (source row 2, towards the camera), frame 0.",
+			"outline": { "widthPx": 2 },
+			"outlineNote": "Enemy contrast rim (docs/OUTLINE.md, decision E4: 2 art px). pad 3 = widthPx + 1.",
+			"bodyTiles": 1.47,
+			"resample": "Default",
+			"cells": "perSheet",
+			"animations": {
+				"idle": { "file": "Idle 1.png", "frames": [0, 3, 7, 10], "fps": 6, "loop": true },
+				"move": { "file": "Walk.png", "frames": [0, 2, 4, 5, 7, 9, 11, 12], "fps": 10, "loop": true },
+				"attack": { "file": "Attack 2.png", "frames": [0, 2, 4, 5, 6, 7, 8, 9, 10, 12], "fps": 12, "loop": false },
+				"hit": { "file": "TakeDamage 1.png", "frames": [1, 3, 5, 8], "fps": 12, "loop": false },
+				"death": { "file": "Die 1.png", "frames": [0, 2, 4, 6, 9, 14], "fps": 10, "loop": false }
+			},
+			"sheets": [
+				{ "name": "pyrekeeper-attack", "animations": ["attack"] },
+				{ "name": "pyrekeeper-body", "animations": ["idle", "move", "hit"] },
+				{ "name": "pyrekeeper-death", "animations": ["death"] }
+			]
+		},
 		"boss.act1": {
 			"$comment": [
 				"Mother Bramble as Demon Elite 3 (docs/BRAMBLE_ART.md BR3, decision BD1), same pack and format as enemy.bruiser: body over Shadows/, no Effects/ (DD3).",
@@ -2436,8 +2587,47 @@
 				},
 				"recolorNote": "As the pack draws it (mean #efbd36) the bolt is 36.6 CIE76 from the telegraph orange #ff8a3d, under the player gate's 40: its amber edge pixels sit near the orange. Each of its five colours keeps its place and gets a little yellower: #bc5c0b (luminance 111) -> #c88a10, #e09514 (157) -> #ebb820, #f4c529 (193) -> #f8d22c, #ffe04c (216) -> #ffe24e, #ffee99 (233) -> #ffef9c; mean #f4ce3b, 44.8 from the telegraph. The thin yellow bolt (basic) passes as drawn (40.6)."
 			},
+			"bullet.enemy.flame": {
+				"$comment": "The Pyre-keeper's braziers' fireballs (EnemyBulletLook.FLAME, docs/NEW_ENEMIES_2.md NXD12 / NX8): the Hyper flame (the heavy arrow's strip, both 32x32 frames: the flicker), recoloured into the danger ramp. In a sheet of its own (own: bullets-2) so bullets.png and every uploaded bullet's cells stay as they are.",
+				"file": "player-bullets/P1_Hyper_Bullet.png",
+				"frameW": 32,
+				"frames": 2,
+				"own": "bullets-2",
+				"recolor": {
+					"ramp": [
+						[0, "#1a0610"],
+						[135, "#5a0a33"],
+						[166, "#d8287f"],
+						[204, "#ff3fa4"],
+						[216, "#ff52ad"],
+						[239, "#ff7cbf"],
+						[255, "#ffe0f0"]
+					]
+				},
+				"recolorNote": "Source levels (luminance x pixels, both frames): 135 x28 (the outer flicker), 166 x145, 204 x165, 216 x176, 239 x186 (frame 0's core; frame 1 has none). The rim -> the wine #5a0a33, 166 -> a deep pink, 204 on the role, 216 / 239 lighter pinks (the core): mean #f04da1, 8.8 CIE76 from the role, 3.35:1 on the lightest wall."
+			},
+			"bullet.enemy.hook": {
+				"$comment": "The Chainhook's hook (BulletKind.HOOK, EnemyBulletLook.HOOK, docs/NEW_ENEMIES_2.md NX8): the chevron's pink colourway (Alt2's right 13 px half, keep [1]: an arrowhead pointing along the flight, heading up), recoloured with a darker rim than the small chevron's so the two read apart at the same silhouette (the chain drawn to it tells them apart too). In bullets-2 with the flame.",
+				"file": "player-bullets/P1_Bullet_Alt2.png",
+				"frameW": 13,
+				"frames": 2,
+				"keep": [1],
+				"own": "bullets-2",
+				"recolor": {
+					"ramp": [
+						[0, "#1a0610"],
+						[49, "#7a1044"],
+						[79, "#e0308a"],
+						[88, "#ff3fa4"],
+						[164, "#ff5cb2"],
+						[185, "#ff8ac6"],
+						[255, "#ffe0f0"]
+					]
+				},
+				"recolorNote": "Source levels (luminance x pixels): 49 x16 (the purple outline), 79 x21, 88 x38 (the edge), 164 x35, 185 x28 (the light interior). The outline -> a dark wine #7a1044, the edge on a deep pink and the role, the interior lighter pinks: mean #eb4e9f, 10.9 CIE76 from the role, 3.27:1 on the lightest wall."
+			},
 			"bullet.enemy.small": {
-				"$comment": "SPRAYER / ENEMY / STRESS: the chevron's cyan colourway (Alt2's left 13 px half, keep [0]; content rows 4..18), recoloured. The pink half is not used (as it is: 25 CIE76 from the role, 2.6:1).",
+				"$comment": "SPRAYER / ENEMY / STRESS: the chevron's cyan colourway (Alt2's left 13 px half, keep [0]; content rows 4..18), recoloured. The pink half is the hook (bullet.enemy.hook, NX8; as the pack draws it: 25 CIE76 from the role, 2.6:1).",
 				"file": "player-bullets/P1_Bullet_Alt2.png",
 				"frameW": 13,
 				"frames": 2,

@@ -5,8 +5,9 @@
  * ONE bullet atlas VALE_BULLET_SHEET, cells `start + f` of the SpriteSetAsset formula (perRow = floor(sheet w /
  * frameW)). Each frame's art points screen-up (the direction of travel). `meanColor` is the alpha-weighted mean of the
  * set's opaque pixels (after `recolor`), held to the bullet colour rules (bulletArtReport). Effects that ride in the
- * same sheet (VALE_BULLET_FX_LAYOUTS, PA7) have the effects atlas's layout shape. No asset IDs: `file` names the PNG
- * in art/build/ to upload.
+ * same sheet (VALE_BULLET_FX_LAYOUTS, PA7) have the effects atlas's layout shape. A bullet with `sheet` sits in a sheet
+ * of its own instead (VALE_BULLET_OWN_SHEETS, by file; docs/NEW_ENEMIES_2.md NX8), cells by the same formula over that
+ * sheet. No asset IDs: `file` names the PNG in art/build/ to upload.
  */
 
 import type { HexColor, Pivot } from "../../types";
@@ -23,6 +24,8 @@ export interface ValeBulletLayout {
 	fps: number;
 	meanColor: HexColor;
 	pixelsPerTile: number;
+	/** Its own sheet's file (VALE_BULLET_OWN_SHEETS); absent: VALE_BULLET_SHEET. */
+	sheet?: string;
 }
 
 export const VALE_BULLET_SHEET: ValeSheetFile = {
@@ -32,6 +35,28 @@ export const VALE_BULLET_SHEET: ValeSheetFile = {
 };
 
 export const VALE_BULLET_LAYOUTS: Record<string, ValeBulletLayout> = {
+	"bullet.enemy.flame": {
+		frameW: 18,
+		frameH: 34,
+		pivot: { x: 9, y: 17 },
+		start: 0,
+		frames: 2,
+		fps: 10,
+		meanColor: "#f04da1",
+		pixelsPerTile: 29.6,
+		sheet: "bullets-2.png",
+	},
+	"bullet.enemy.hook": {
+		frameW: 15,
+		frameH: 17,
+		pivot: { x: 7.5, y: 8.5 },
+		start: 4,
+		frames: 1,
+		fps: 10,
+		meanColor: "#eb4e9f",
+		pixelsPerTile: 29.6,
+		sheet: "bullets-2.png",
+	},
 	"bullet.enemy.large": {
 		frameW: 10,
 		frameH: 17,
@@ -137,4 +162,9 @@ export const VALE_BULLET_FX_LAYOUTS: Record<string, ValeFxLayout> = {
 		grey: false,
 		meanColor: "#e9ad2d",
 	},
+};
+
+/** The bullets' own sheets by file (a layout's `sheet`; art/atlases.json bullets set `own`). */
+export const VALE_BULLET_OWN_SHEETS: Record<string, ValeSheetFile> = {
+	"bullets-2.png": { file: "bullets-2.png", w: 18, h: 85 },
 };
