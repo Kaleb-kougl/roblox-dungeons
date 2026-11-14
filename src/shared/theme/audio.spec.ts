@@ -180,6 +180,16 @@ describe("audio contract: port IDs and ambience", () => {
 			"sfx.secret.knock",
 			"sfx.secret.open",
 			"sfx.jingle.secret",
+			// docs/NEW_ENEMIES_2.md NX1: the third endless set's block / guard break, throw / latch, snatch / swallow, a
+			// stolen pellet's return, a brazier lighting
+			"sfx.enemy.block",
+			"sfx.enemy.guardbreak",
+			"sfx.enemy.hook",
+			"sfx.enemy.hooklatch",
+			"sfx.enemy.snatch",
+			"sfx.enemy.swallow",
+			"sfx.pellet.return",
+			"sfx.enemy.pyrelight",
 		]);
 		const web = new Set<string>([...AUDIO_EVENTS, ...BREAKABLE_AUDIO_EVENTS]);
 		for (const id of PORT_AUDIO_EVENTS) {

@@ -103,13 +103,16 @@ export {
 	AFFIX_COLOR_RULES,
 	AURA_COLOR_RULES,
 	GOO_COLOR_RULES,
+	GUARD_COLOR_RULES,
 	affixReport,
 	auraReport,
 	gooReport,
+	guardReport,
 	variantColorProblems,
 	type AffixEntry,
 	type AuraEntry,
 	type GooEntry,
+	type GuardEntry,
 	type VariantColorEntry,
 	type VariantColorProblem,
 	type VariantColorRules,
@@ -192,6 +195,7 @@ export * from "./codex";
 // Roblox port (docs/SECRET_ROOMS.md SR10): the secret rooms' strings, sounds, dust role and optional art ids, their
 // colour report and the art's facing rule.
 export * from "./secrets";
+export * from "./newEnemies2";
 export { SECRET_COLOR_RULES, secretReport, type SecretColorEntry, type SecretColorRules } from "./secretColors";
 export { secretArtProblems, type SecretArtProblem } from "./secretArt";
 // Roblox port (docs/PROJECTILE_ART.md PA3): the bullet sprite rules.

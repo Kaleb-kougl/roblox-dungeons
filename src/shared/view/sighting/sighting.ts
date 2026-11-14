@@ -63,6 +63,12 @@ export const ARCHETYPE_SIGHTINGS: ReadonlyMap<string, string> = new Map([
 	["reaper", "reaper"],
 	// docs/FORTUNE.md FO6: the Goldling
 	["golden", "golden"],
+	// docs/NEW_ENEMIES_2.md NX1 (NXD15): the third set; the brazier counts as its keeper (like slimelets as the Ooze)
+	["bulwark", "bulwark"],
+	["chainhook", "chainhook"],
+	["snatcher", "snatcher"],
+	["pyrekeeper", "pyrekeeper"],
+	["pyre", "pyrekeeper"],
 ]);
 
 /** Archetype index -> sighting id, built once (an unregistered id is left out). */

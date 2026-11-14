@@ -244,7 +244,8 @@ describe("golden: archetype and opt-in state (GE2)", () => {
 		expect(archetypeIndex(GOLDEN_KIND)).toBe(index);
 		expect(archetypeIds()[index]).toBe(GOLDEN_KIND);
 		expect(archetypeIndex(GOLDEN_KIND)).toBe(archetypeIndex("warbanner") + 1);
-		expect(archetypeIds().size()).toBe(index + 1);
+		// docs/NEW_ENEMIES_2.md NX1's band 6 (five ids) numbers after it.
+		expect(archetypeIds().size()).toBe(index + 1 + 5);
 		// GE4 tuned the plan's 10 to 24 (docs/FORTUNE.md GE4, run/goldenCensus.spec.ts).
 		expect(GOLDEN_HP).toBe(24);
 		expect([GOLDEN.data.hp, GOLDEN.data.radius, GOLDEN.data.speed, GOLDEN.data.contactDamage]).toEqual([

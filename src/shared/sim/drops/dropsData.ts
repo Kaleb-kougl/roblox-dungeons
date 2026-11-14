@@ -81,6 +81,12 @@ export const DROPS = {
 		["stormcaller", 8],
 		["warbanner", 10],
 		["reaper", 8],
+		// Roblox port: the third set (docs/NEW_ENEMIES_2.md NX1). The brazier (`pyre`) never rolls: it is in
+		// DROP_INELIGIBLE_ARCHETYPES (no draw, no pity), so it has no row.
+		["bulwark", 8],
+		["chainhook", 8],
+		["snatcher", 15],
+		["pyrekeeper", 8],
 	]) as ReadonlyMap<string, number>,
 	pityKills: 20,
 	groundSeconds: 10,
@@ -92,10 +98,11 @@ export const DROPS = {
 export const DROP_GROUND_TICKS = secondsToTicks(DROPS.groundSeconds);
 
 /**
- * Archetype ids whose kills never roll and never count toward pity (outside a guarantee): the training dummy, and the
- * Goldling (docs/FORTUNE.md: it lands its own jackpot boosts, kinds from its own stream).
+ * Archetype ids whose kills never roll and never count toward pity (outside a guarantee): the training dummy, the
+ * Goldling (docs/FORTUNE.md: it lands its own jackpot boosts, kinds from its own stream) and the Pyre-keeper's brazier
+ * (docs/NEW_ENEMIES_2.md NX1, `pyre`: a runtime child with no drop roll).
  */
-export const DROP_INELIGIBLE_ARCHETYPES: ReadonlyArray<string> = ["dummy", GOLDEN_KIND];
+export const DROP_INELIGIBLE_ARCHETYPES: ReadonlyArray<string> = ["dummy", GOLDEN_KIND, "pyre"];
 
 /** The encounter room type whose kills never roll on a floor whose encounter spawns a boss (the boss, its summons, the arena). */
 export const DROP_EXCLUDED_ROOM_TYPE = "boss";

@@ -191,12 +191,14 @@ describe("required IDs and strings", () => {
 		// .beam). + docs/FLOOR_MODIFIERS.md FM7: 5 port audio events (sfx.floor.modifier.*). + docs/GOLDLING_RUMOURS.md
 		// GR6: 2 port audio events (sfx.golden.rumour.floor / .room). + claude/codex-plan.md CX5: 1 port audio event
 		// (sfx.codex.new). + docs/SECRET_ROOMS.md SR10: 3 port audio events (sfx.secret.knock / .open, sfx.jingle.secret);
-		// its crack / rubble art and dust effect are optional, so not here.
+		// its crack / rubble art and dust effect are optional, so not here. + docs/NEW_ENEMIES_2.md NX1: 5 enemy archetypes,
+		// 2 bullet visuals (bullet.enemy.hook / .flame), 8 port audio events.
 		const assetsBefore =
 			60 + 1 + 2 + 2 + 37 + 5 + 4 + 2 + 1 + 5 + 2 + 4 + 9 + 2 + 1 + 5 + 1 + 6 + 3 + 2 + 2 + 4 + 3 + 1 + 8 + 1 + 2;
 		const codexSounds = 1;
 		const secretSounds = 3;
-		expect(REQUIRED_ASSET_IDS.size()).toBe(assetsBefore + 5 + 5 + 2 + codexSounds + secretSounds);
+		const newEnemies2 = 5 + 2 + 8;
+		expect(REQUIRED_ASSET_IDS.size()).toBe(assetsBefore + 5 + 5 + 2 + codexSounds + secretSounds + newEnemies2);
 		expect(AUDIO_EVENTS.size()).toBe(20);
 		expect(new Set(REQUIRED_ASSET_IDS).size()).toBe(REQUIRED_ASSET_IDS.size());
 		for (const id of REQUIRED_ASSET_IDS) {
@@ -233,9 +235,10 @@ describe("required IDs and strings", () => {
 		// + claude/codex-plan.md CX5: CODEX_STRING_KEYS (54)
 		// + docs/SECRET_ROOMS.md SR10: SECRET_STRING_KEYS (5), bestiary.secret.crack (BESTIARY_STRING_KEYS); SRD12: the
 		// Codex's secrets sub-header, kind line and description (CODEX_STRING_KEYS, 57)
-		expect(REQUIRED_STRING_KEYS.size()).toBe(
-			before + 28 + 1 + 1 + 4 + 16 + 1 + 19 + 1 + 1 + 3 + 18 + 17 + 5 + 45 + 7 + 11 + 2 + 1 + 54 + 5 + 1 + 3,
-		);
+		// + docs/NEW_ENEMIES_2.md NX1: 5 enemy.<id>.name, 4 bestiary.<id> (BESTIARY_STRING_KEYS)
+		const newEnemies2Strings = 5 + 4;
+		const earlier = 28 + 1 + 1 + 4 + 16 + 1 + 19 + 1 + 1 + 3 + 18 + 17 + 5 + 45 + 7 + 11 + 2 + 1;
+		expect(REQUIRED_STRING_KEYS.size()).toBe(before + earlier + 54 + 5 + 1 + 3 + newEnemies2Strings);
 		expect(new Set(REQUIRED_STRING_KEYS).size()).toBe(REQUIRED_STRING_KEYS.size());
 		expect(BIOMES.map((b) => b.forgeTheme)).toEqual(["ancient", "molten", "frost", "grim", "verdant"]);
 	});

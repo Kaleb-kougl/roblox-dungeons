@@ -45,6 +45,12 @@
 	"bestiary.bomber": {
 		"note": "First-sighting toast, shown once per account (top centre, during combat) the first time the player meets the Bomber (enemy.bomber.name). Format \"Name: short survival tip\"; the name before the colon must be the same word as that name string. Brief, direct, second person."
 	},
+	"bestiary.bulwark": {
+		"note": "First-sighting toast, shown once per account (top centre, during combat) the first time the player meets the Bulwark (enemy.bulwark.name). Format \"Name: short survival tip\"; the name before the colon must be the same word as that name string. Brief, direct, second person."
+	},
+	"bestiary.chainhook": {
+		"note": "First-sighting toast, shown once per account (top centre, during combat) the first time the player meets the Chainhook (enemy.chainhook.name). Format \"Name: short survival tip\"; the name before the colon must be the same word as that name string. \"Roll\" is the player's dodge roll, \"cut the hook\" means blocking it with the sword's guard. Brief, direct, second person."
+	},
 	"bestiary.charger": {
 		"note": "First-sighting toast, shown once per account (top centre, during combat) the first time the player meets the Charger (enemy.charger.name). Format \"Name: short survival tip\"; the name before the colon must be the same word as that name string. Brief, direct, second person."
 	},
@@ -62,6 +68,9 @@
 	"bestiary.pellet.power": {
 		"note": "First-sighting toast, shown once per account (top centre, during combat) the first time a power pellet (a rare, bigger green cube on the floor; walking over it turns every enemy bullet on the floor into points) appears in a run. Format \"Name: short tip\"; brief, direct, second person."
 	},
+	"bestiary.pyrekeeper": {
+		"note": "First-sighting toast, shown once per account (top centre, during combat) the first time the player meets the Pyre-keeper (enemy.pyrekeeper.name). Format \"Name: short survival tip\"; the name before the colon must be the same word as that name string; \"braziers\" are the fire bowls it lights (enemy.pyre.name). Brief, direct, second person."
+	},
 	"bestiary.reaper": {
 		"note": "First-sighting toast, shown once per account (top centre, during combat) the first time the player meets the Reaper (enemy.reaper.name). Format \"Name: short survival tip\"; the name before the colon must be the same word as that name string. Brief, direct, second person."
 	},
@@ -75,6 +84,9 @@
 	},
 	"bestiary.slime": {
 		"note": "First-sighting toast, shown once per account (top centre, during combat) the first time the player meets the Ooze (enemy.slime.name). Format \"Name: short survival tip\"; the name before the colon must be the same word as that name string. Brief, direct, second person."
+	},
+	"bestiary.snatcher": {
+		"note": "First-sighting toast, shown once per account (top centre, during combat) the first time the player meets the Snatcher (enemy.snatcher.name). Format \"Name: short survival tip\"; the name before the colon must be the same word as that name string. \"Pellets\" are the small collectible cubes on the floor. Brief, direct, second person."
 	},
 	"bestiary.stormcaller": {
 		"note": "First-sighting toast, shown once per account (top centre, during combat) the first time the player meets the Stormcaller (enemy.stormcaller.name). Format \"Name: short survival tip\"; the name before the colon must be the same word as that name string. Brief, direct, second person."
@@ -1467,8 +1479,14 @@
 	"enemy.bruiser.name": {
 		"note": "Enemy type name: a big, heavy melee brute that slams the ground and sends shockwaves. Shown in the stage card's roster line (the enemy kinds of a floor, joined with \" · \") and the main menu's Daily card. Singular noun, title case, used as a proper name; keep it short. Glossary term."
 	},
+	"enemy.bulwark.name": {
+		"note": "Enemy type name: an armoured demon behind a round shield that blocks shots from the front and covers the enemies behind it; you get round it or break its guard. Shown in the stage card's roster line (the enemy kinds of a floor, joined with \" · \") and the main menu's Daily card. Singular noun, title case, used as a proper name; keep it short. Glossary term."
+	},
 	"enemy.caster.name": {
 		"note": "Enemy type name: a stationary turret enemy that casts bullet patterns. Shown in the stage card's roster line (the enemy kinds of a floor, joined with \" · \") and the main menu's Daily card. Singular noun, title case, used as a proper name; keep it short. Glossary term."
+	},
+	"enemy.chainhook.name": {
+		"note": "Enemy type name: a heavy demon that throws a hook on a chain down a warning line and drags the player it catches to its feet. Shown in the stage card's roster line (the enemy kinds of a floor, joined with \" · \") and the main menu's Daily card. Singular noun, title case, used as a proper name; keep it short. Glossary term."
 	},
 	"enemy.charger.name": {
 		"note": "Enemy type name: a heavy blade-armed beast that charges in a straight line and is stunned when it hits a wall. Shown in the stage card's roster line (the enemy kinds of a floor, joined with \" · \") and the main menu's Daily card. Singular noun, title case, used as a proper name; keep it short. Glossary term."
@@ -1482,11 +1500,20 @@
 	"enemy.imp.name": {
 		"note": "Enemy type name: a small, quick demon that blinks (teleports) next to the player, landing inside a warning ring. Shown in the stage card's roster line (the enemy kinds of a floor, joined with \" · \") and the main menu's Daily card. Singular noun, title case, used as a proper name; keep it short. Glossary term."
 	},
+	"enemy.pyre.name": {
+		"note": "Name of the brazier a Pyre-keeper (enemy.pyrekeeper.name) lights: a fire bowl on the floor that shoots fireballs until its keeper dies. Singular noun, title case; keep it short. Glossary term."
+	},
+	"enemy.pyrekeeper.name": {
+		"note": "Enemy type name: a hooded demon with a torch staff that lights braziers (enemy.pyre.name) around the room; they go out when it dies. Written with a hyphen in English; shown in the stage card's roster line (the enemy kinds of a floor, joined with \" · \") and the main menu's Daily card. Singular noun, title case, used as a proper name; keep it short. Glossary term."
+	},
 	"enemy.reaper.name": {
 		"note": "Enemy type name: a demon with two sickles that closes in and spins, firing a spiral of bullets, then stands dizzy. Shown in the stage card's roster line (the enemy kinds of a floor, joined with \" · \") and the main menu's Daily card. Singular noun, title case, used as a proper name; keep it short. Glossary term."
 	},
 	"enemy.slime.name": {
 		"note": "Enemy type name: a blob enemy that leaves harmful goo on the floor and splits into small slimelets when it dies (internal id slime, English name Ooze). Shown in the stage card's roster line (the enemy kinds of a floor, joined with \" · \") and the main menu's Daily card. Singular noun, title case, used as a proper name; keep it short. Glossary term."
+	},
+	"enemy.snatcher.name": {
+		"note": "Enemy type name: a small harmless demon thief that eats the room's pellets (small collectible cubes) and runs away; killing it puts them back. Shown in the stage card's roster line (the enemy kinds of a floor, joined with \" · \") and the main menu's Daily card. Singular noun, title case, used as a proper name; keep it short. Glossary term."
 	},
 	"enemy.sniper.name": {
 		"note": "Enemy type name: an enemy that aims a long, telegraphed shot (an orange aim line) and then fires. Shown in the stage card's roster line (the enemy kinds of a floor, joined with \" · \") and the main menu's Daily card. Singular noun, title case, used as a proper name; keep it short. Glossary term."

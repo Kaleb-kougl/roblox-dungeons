@@ -20,6 +20,13 @@ export const ENCOUNTER_COST: ReadonlyMap<string, number> = new Map<string, numbe
 	["stormcaller", 3],
 	["warbanner", 2],
 	["reaper", 3],
+	// Roblox port: the third set (docs/NEW_ENEMIES_2.md NX1). Rows only: nothing buys them until NX6 appends them to
+	// ENDLESS_ROOM_KINDS. The Pyre-keeper's brazier (`pyre`) is never bought and is no room member, so (like
+	// `slime.small`) it has no row.
+	["bulwark", 3],
+	["chainhook", 3],
+	["snatcher", 2],
+	["pyrekeeper", 3],
 ]);
 /** Cost of an archetype id not in the table (never 0, so every spawn counts). */
 export const DEFAULT_ENCOUNTER_COST = 1;

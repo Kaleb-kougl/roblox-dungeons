@@ -487,6 +487,20 @@ export const SFX = {
 	secretKnock: "sfx.secret.knock",
 	secretOpen: "sfx.secret.open",
 	jingleSecret: "sfx.jingle.secret",
+	/**
+	 * docs/NEW_ENEMIES_2.md NX1 (the theme's NEW_ENEMY_2_AUDIO_IDS): a shot blocked by a Bulwark's shield, its guard
+	 * broken; a Chainhook's throw, its hook latching on; a Snatcher eating a pellet, swallowing what it carries; a stolen
+	 * pellet back on the floor; a Pyre-keeper's brazier flaring up. Registered only: NX7 maps them. Each plays its
+	 * SFX_FALLBACK while silent.
+	 */
+	enemyBlock: "sfx.enemy.block",
+	enemyGuardBreak: "sfx.enemy.guardbreak",
+	enemyHook: "sfx.enemy.hook",
+	enemyHookLatch: "sfx.enemy.hooklatch",
+	enemySnatch: "sfx.enemy.snatch",
+	enemySwallow: "sfx.enemy.swallow",
+	pelletReturn: "sfx.pellet.return",
+	enemyPyreLight: "sfx.enemy.pyrelight",
 } as const;
 export type SfxId = (typeof SFX)[keyof typeof SFX];
 
@@ -600,6 +614,14 @@ export const ALL_SFX: ReadonlyArray<SfxId> = [
 	SFX.secretKnock,
 	SFX.secretOpen,
 	SFX.jingleSecret,
+	SFX.enemyBlock,
+	SFX.enemyGuardBreak,
+	SFX.enemyHook,
+	SFX.enemyHookLatch,
+	SFX.enemySnatch,
+	SFX.enemySwallow,
+	SFX.pelletReturn,
+	SFX.enemyPyreLight,
 ];
 
 /** IDs this port added to the placeholder pack (not in the web contract's AUDIO_EVENTS; theme PORT_AUDIO_EVENTS). */
@@ -699,6 +721,14 @@ export const PORT_SFX: ReadonlyArray<SfxId> = [
 	SFX.secretKnock,
 	SFX.secretOpen,
 	SFX.jingleSecret,
+	SFX.enemyBlock,
+	SFX.enemyGuardBreak,
+	SFX.enemyHook,
+	SFX.enemyHookLatch,
+	SFX.enemySnatch,
+	SFX.enemySwallow,
+	SFX.pelletReturn,
+	SFX.enemyPyreLight,
 ];
 
 /**
@@ -858,6 +888,12 @@ export const SFX_MIN_INTERVAL: Readonly<Partial<Record<SfxId, number>>> = {
 	[SFX.treasureOpen]: 0.5,
 	/** docs/FORTUNE.md FO9: a flurry of hits on the Goldling is one climbing coin sound per interval, never a buzz. */
 	[SFX.goldenHit]: GOLDEN_VIEW.audio.hitMinIntervalSec,
+	/**
+	 * docs/NEW_ENEMIES_2.md NX1: a stream of arrows into a Bulwark's shield is one spark sound per interval, never a buzz;
+	 * a Snatcher eating along a line of pellets likewise.
+	 */
+	[SFX.enemyBlock]: 0.08,
+	[SFX.enemySnatch]: 0.1,
 };
 
 /**
@@ -990,6 +1026,23 @@ export const SFX_PRIORITY: Readonly<Record<SfxId, number>> = {
 	[SFX.secretKnock]: 31,
 	[SFX.secretOpen]: 48,
 	[SFX.jingleSecret]: 72,
+	/**
+	 * The third endless set (docs/NEW_ENEMIES_2.md NX1; starting ranks, NX10 / NX12 revisit them). The block is frequent
+	 * feedback, just over the breakable hit it falls back to (30); the guard break is a payoff over the Charger's stun
+	 * (45) it falls back to. The throw is an attack cue beside the Charger's charge (44) and the fuse (43); the latch is a
+	 * danger to the player, over the Siege pin it falls back to (53) and under the player's own hits. The snatch is a hint
+	 * like the knock (under the pellet chomp 53); the swallow is a loss, under the combo break (73) it falls back to and
+	 * over every enemy sound; a returned pellet just under the chomp. The brazier's light sits with the fuse it falls
+	 * back to.
+	 */
+	[SFX.enemyBlock]: 32,
+	[SFX.enemyGuardBreak]: 47,
+	[SFX.enemyHook]: 44,
+	[SFX.enemyHookLatch]: 54,
+	[SFX.enemySnatch]: 36,
+	[SFX.enemySwallow]: 60,
+	[SFX.pelletReturn]: 52,
+	[SFX.enemyPyreLight]: 43,
 	/**
 	 * A boost out of a broken piece (docs/BREAKABLE_DROPS.md BL6): just over a kill drop's landing (the rarer, chosen
 	 * reward), under the pickup; over the piece's own break (40), which plays on the same frame.
@@ -1269,6 +1322,21 @@ export const SFX_FALLBACK: Readonly<Partial<Record<SfxId, SfxId>>> = {
 	[SFX.secretKnock]: SFX.breakableHit,
 	[SFX.secretOpen]: SFX.breakableBreak,
 	[SFX.jingleSecret]: SFX.jingleTreasure,
+	/**
+	 * docs/NEW_ENEMIES_2.md NX1: until NX10 picks clips, a block plays the breakable hit (a struck surface), a guard break
+	 * the Charger's wall stun, a throw the Charger's charge whoosh, a latch the Siege Bolt's pin, a snatch and a returned
+	 * pellet the chomp (the plan's "pitched down" snatch is NX7's cue speed, not this table), a swallow the combo break
+	 * (a loss), a brazier lighting the Bomber's fuse. One step each: a target that is itself silent (every target in the
+	 * placeholder pack) plays nothing.
+	 */
+	[SFX.enemyBlock]: SFX.breakableHit,
+	[SFX.enemyGuardBreak]: SFX.enemyStun,
+	[SFX.enemyHook]: SFX.enemyCharge,
+	[SFX.enemyHookLatch]: SFX.buildPin,
+	[SFX.enemySnatch]: SFX.pelletEat,
+	[SFX.enemySwallow]: SFX.comboBreak,
+	[SFX.pelletReturn]: SFX.pelletEat,
+	[SFX.enemyPyreLight]: SFX.enemyFuse,
 };
 
 /** The floor modifier stings by shared/dungeon floorModifierKey (MODIFIERS.kinds' keys). */

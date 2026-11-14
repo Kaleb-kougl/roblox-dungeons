@@ -9,6 +9,7 @@ import { describe, expect, it } from "@rbxts/jest-globals";
 import { VaultLock, VaultTier } from "shared/dungeon";
 import { CODEX_AUDIO_IDS, CODEX_STRING_KEYS } from "./codex";
 import { SECRET_AUDIO_IDS, SECRET_ROLES, SECRET_STRING_KEYS } from "./secrets";
+import { NEW_ENEMY_2_AUDIO_IDS } from "./newEnemies2";
 import { colorDifference, contrastRatio } from "./color";
 import {
 	BIOMES,
@@ -100,7 +101,8 @@ const FORTUNE_AFTER = {
 		FLOOR_MODIFIER_AUDIO_IDS.size() +
 		GOLDEN_RUMOUR_AUDIO_IDS.size() +
 		CODEX_AUDIO_IDS.size() +
-		SECRET_AUDIO_IDS.size(),
+		SECRET_AUDIO_IDS.size() +
+		NEW_ENEMY_2_AUDIO_IDS.size(),
 	strings:
 		FORTUNE_STRING_KEYS.size() +
 		FLOOR_MODIFIER_STRING_KEYS.size() +

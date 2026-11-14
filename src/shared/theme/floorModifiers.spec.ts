@@ -7,6 +7,7 @@ import { describe, expect, it } from "@rbxts/jest-globals";
 import { FloorModifierClass, MODIFIERS } from "shared/dungeon";
 import { CODEX_AUDIO_IDS, CODEX_STRING_KEYS } from "./codex";
 import { SECRET_AUDIO_IDS, SECRET_ROLES, SECRET_STRING_KEYS } from "./secrets";
+import { NEW_ENEMY_2_AUDIO_IDS } from "./newEnemies2";
 import { colorDifference, contrastRatio } from "./color";
 import { PORT_AUDIO_EVENTS, REQUIRED_ASSET_IDS, REQUIRED_STRING_KEYS, slotFor } from "./contract";
 import {
@@ -59,7 +60,11 @@ function tail(list: ReadonlyArray<string>, n: number, skip = 0): string[] {
  * colour role (secrets.spec.ts).
  */
 const LATER_AFTER = {
-	audio: GOLDEN_RUMOUR_AUDIO_IDS.size() + CODEX_AUDIO_IDS.size() + SECRET_AUDIO_IDS.size(),
+	audio:
+		GOLDEN_RUMOUR_AUDIO_IDS.size() +
+		CODEX_AUDIO_IDS.size() +
+		SECRET_AUDIO_IDS.size() +
+		NEW_ENEMY_2_AUDIO_IDS.size(),
 	strings: GOLDEN_RUMOUR_STRING_KEYS.size() + CODEX_STRING_KEYS.size() + SECRET_STRING_KEYS.size(),
 	roles: SECRET_ROLES.size(),
 } as const;

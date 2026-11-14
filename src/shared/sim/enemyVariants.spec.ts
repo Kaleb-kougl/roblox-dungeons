@@ -77,6 +77,12 @@ describe("registry: PORT_BAND_ENEMIES", () => {
 			"stormcaller",
 			"warbanner",
 			"golden", // band PORT_BAND_FORTUNE (docs/FORTUNE.md): index 18
+			// band PORT_BAND_ENEMIES_3 (docs/NEW_ENEMIES_2.md): indices 19-23
+			"bulwark",
+			"chainhook",
+			"pyre",
+			"pyrekeeper",
+			"snatcher",
 		]);
 	});
 });

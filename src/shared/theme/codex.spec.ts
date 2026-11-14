@@ -22,6 +22,7 @@ import {
 } from "./codex";
 import { PORT_AUDIO_EVENTS, REQUIRED_ASSET_IDS, REQUIRED_STRING_KEYS, slotFor } from "./contract";
 import { SECRET_AUDIO_IDS, SECRET_STRING_KEYS } from "./secrets";
+import { NEW_ENEMY_2_AUDIO_IDS } from "./newEnemies2";
 import { ThemePack } from "./pack";
 import { THEME_PACKS } from "./packs";
 import { PLACEHOLDER_MANIFEST } from "./packs/placeholder";
@@ -36,7 +37,10 @@ function tail(list: ReadonlyArray<string>, n: number, skip = 0): string[] {
 }
 
 /** What docs/SECRET_ROOMS.md SR10 appends after the Codex's entries (its strings and sounds; secrets.spec.ts). */
-const SECRET_AFTER = { audio: SECRET_AUDIO_IDS.size(), strings: SECRET_STRING_KEYS.size() } as const;
+const SECRET_AFTER = {
+	audio: SECRET_AUDIO_IDS.size() + NEW_ENEMY_2_AUDIO_IDS.size(),
+	strings: SECRET_STRING_KEYS.size(),
+} as const;
 
 const quiet = () => {};
 

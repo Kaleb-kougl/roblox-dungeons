@@ -124,8 +124,9 @@ describe("boosts: contract", () => {
 	it("appends sfx.breakable.loot last (docs/BREAKABLE_DROPS.md BL5): required, sfx, SILENT in the placeholder, a sound in vale", () => {
 		// Last before docs/NEW_ENEMIES.md NE1's six enemy sounds (then docs/PELLETS.md PL6's three, docs/RUN_RECAP.md
 		// CM4's two, docs/TREASURE.md TR6's four, docs/FORTUNE.md FO6's eight, docs/FLOOR_MODIFIERS.md FM7's five,
-		// docs/GOLDLING_RUMOURS.md GR6's two, claude/codex-plan.md CX5's one, then docs/SECRET_ROOMS.md SR10's three).
-		const n = PORT_AUDIO_EVENTS.size() - 6 - 3 - 2 - 4 - 8 - 5 - 2 - 1 - 3;
+		// docs/GOLDLING_RUMOURS.md GR6's two, claude/codex-plan.md CX5's one, docs/SECRET_ROOMS.md SR10's three, then
+		// docs/NEW_ENEMIES_2.md NX1's eight).
+		const n = PORT_AUDIO_EVENTS.size() - 6 - 3 - 2 - 4 - 8 - 5 - 2 - 1 - 3 - 8;
 		expect([PORT_AUDIO_EVENTS[n - 2], PORT_AUDIO_EVENTS[n - 1]]).toEqual([
 			"sfx.friend.passed",
 			"sfx.breakable.loot",
@@ -331,7 +332,9 @@ describe("boosts: validator", () => {
 		const dim = clone();
 		colorsOf(dim)["boost.frenzy"] = "#3a5a1a";
 		expect(colorDifference("#3a5a1a", "#ff3fa4")).toBeGreaterThan(MIN_BOOST_BULLET_DIFFERENCE);
-		const dimErrors = validateManifest(dim);
+		// (other roles held apart from the boosts may flag the planted colour too: docs/NEW_ENEMIES_2.md's dull bronze
+		// guard, `colors.enemyGuard`, is 31.7 CIE76 from it; only the boost's own errors are counted here)
+		const dimErrors = validateManifest(dim).filter((e) => !startsWith(e, "colors.enemyGuard"));
 		expect(dimErrors.size()).toBe(BIOMES.size() * 2);
 		for (const e of dimErrors) expect([e, startsWith(e, 'colors["boost.frenzy"]: contrast: ')]).toEqual([e, true]);
 	});

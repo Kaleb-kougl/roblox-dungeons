@@ -16,7 +16,9 @@
  * of docs/ENEMY_VARIANTS.md are band PORT_BAND_ENEMIES = 3 (indices 9..12); the five of docs/NEW_ENEMIES.md are band
  * PORT_BAND_ENEMIES_2 = 4 (indices 13..17: `bomber, charger, reaper, stormcaller, warbanner`; in band 3 they would
  * have sorted between `imp` and the rest); the Goldling of docs/FORTUNE.md is band PORT_BAND_FORTUNE = 5 (index 18:
- * `golden`). A later addition takes the next band, so no index that a recording or fixture already holds ever moves. Specs may add test archetypes
+ * `golden`); the five of docs/NEW_ENEMIES_2.md are band PORT_BAND_ENEMIES_3 = 6 (indices 19..23: `bulwark, chainhook,
+ * pyre, pyrekeeper, snatcher`; compareIds puts the prefix `pyre` before `pyrekeeper`). A later addition takes the next
+ * band, so no index that a recording or fixture already holds ever moves. Specs may add test archetypes
  * (shared/sim/testing, band 0) in their own module world.
  */
 
@@ -47,6 +49,11 @@ export const PORT_BAND_ENEMIES_2 = 4;
  * and no recorded index moves.
  */
 export const PORT_BAND_FORTUNE = 5;
+/**
+ * ArchetypeDef.band of the third set of port room enemies (docs/NEW_ENEMIES_2.md NXD1): numbered after band 5, so
+ * `bulwark`, `chainhook`, `pyre`, `pyrekeeper`, `snatcher` take indices 19..23 and no recorded index moves.
+ */
+export const PORT_BAND_ENEMIES_3 = 6;
 
 const byId = new Map<string, ArchetypeDef>();
 let sorted: ArchetypeDef[] | undefined;

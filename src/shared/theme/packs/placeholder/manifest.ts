@@ -81,6 +81,15 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		// GOLDEN_ENEMY_COLOR_RULES), and is >= 43 from every other enemy colour but the boss accent (23.6: gold by nature,
 		// like the swarmer's 22.6).
 		"enemy.golden": "#f5c400",
+		// Roblox port (docs/NEW_ENEMIES_2.md NX1): the third endless set and its brazier, picked for distance from the
+		// crowded enemy palette: a grey armour Bulwark, a cold chain-steel Chainhook, a pale peach Snatcher, a dark plum
+		// Pyre-keeper, a dark bronze brazier. Each is >= 26.6 CIE76 from every other enemy colour, the boss accent and
+		// the player outline, and >= 40 from the pink enemy bullet, its outline, the telegraph orange and the outline red.
+		"enemy.bulwark": "#a8a898",
+		"enemy.chainhook": "#58d8f8",
+		"enemy.snatcher": "#f8b8a8",
+		"enemy.pyrekeeper": "#883868",
+		"enemy.pyre": "#585808",
 		boss: "#d9c24a",
 		telegraph: "#ff8a3d",
 		// Roblox port (enemy outline plan E1): hostile red, >= 3.4:1 on every biome floor and wall, CIE76 63 from
@@ -180,6 +189,10 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		// biome floor and >= 46 CIE76 from the enemy bullet roles, the telegraph, every boost and every affix colour
 		// (nearest: boost.aegis 46.5, enemyBullet 47.6) (auraReport).
 		enemyAura: "#a86078",
+		// Roblox port (docs/NEW_ENEMIES_2.md NX1): the Bulwark's guard, a dull bronze: >= 5.0:1 on every biome floor and
+		// >= 45 CIE76 from the enemy bullet roles, the goo, the telegraph, the outline red, every affix colour, the
+		// Shielded affix's shield segment and every boost (nearest: affix.hulking) (guardReport).
+		enemyGuard: "#949c6c",
 		// Roblox port (docs/NEW_BEST.md NB4): the new-best gold, a deep pure gold (the plan's #ffd75e was 14.8 CIE76 from
 		// ember, too close to the reach state's colour): 12.1:1 on uiPanel, >= 38 CIE76 from ember and every combo tier
 		// (nearest: ember) and >= 52 from the pink enemy bullet, its outline and the telegraph orange (nearest: the
@@ -334,6 +347,13 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"enemy.reaper": PLACEHOLDER,
 		// Roblox port (docs/FORTUNE.md FD9): the Goldling (a small gold block).
 		"enemy.golden": PLACEHOLDER,
+		// Roblox port (docs/NEW_ENEMIES_2.md NX1): Bulwark (a broad slab), Chainhook (a squat drum), Snatcher (the smallest
+		// cone), Pyre-keeper (a tall slim robe), the brazier (a low bowl).
+		"enemy.bulwark": PLACEHOLDER,
+		"enemy.chainhook": PLACEHOLDER,
+		"enemy.snatcher": PLACEHOLDER,
+		"enemy.pyrekeeper": PLACEHOLDER,
+		"enemy.pyre": PLACEHOLDER,
 		"boss.1": PLACEHOLDER,
 		"boss.2": PLACEHOLDER,
 		"boss.3": PLACEHOLDER,
@@ -351,6 +371,10 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"bullet.enemy.goo": PLACEHOLDER,
 		// Roblox port (docs/NEW_ENEMIES.md NE1): the Stormcaller's strike, a flat neon disc on the floor.
 		"bullet.enemy.strike": PLACEHOLDER,
+		// Roblox port (docs/NEW_ENEMIES_2.md NX1): the Chainhook's hook (a neon wedge) and the brazier's fireball (a neon
+		// ball until its flame art).
+		"bullet.enemy.hook": PLACEHOLDER,
+		"bullet.enemy.flame": PLACEHOLDER,
 		// Roblox port (docs/BUILDS.md BU1): the build effects' bullets (neon bolts; the ember a flat disc).
 		"bullet.player.burst": PLACEHOLDER,
 		"bullet.player.shard": PLACEHOLDER,
@@ -557,6 +581,15 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"sfx.secret.knock": SILENT,
 		"sfx.secret.open": SILENT,
 		"sfx.jingle.secret": SILENT,
+		// docs/NEW_ENEMIES_2.md NX1: the third endless set's eight (each falls back one step while silent: SFX_FALLBACK)
+		"sfx.enemy.block": SILENT,
+		"sfx.enemy.guardbreak": SILENT,
+		"sfx.enemy.hook": SILENT,
+		"sfx.enemy.hooklatch": SILENT,
+		"sfx.enemy.snatch": SILENT,
+		"sfx.enemy.swallow": SILENT,
+		"sfx.pellet.return": SILENT,
+		"sfx.enemy.pyrelight": SILENT,
 		"music.menu": SILENT,
 		"music.biome.1": SILENT,
 		"music.biome.2": SILENT,
@@ -606,6 +639,11 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"enemy.warbanner.name": "Warbanner",
 		"enemy.reaper.name": "Reaper",
 		"enemy.golden.name": "Goldling",
+		"enemy.bulwark.name": "Bulwark",
+		"enemy.chainhook.name": "Chainhook",
+		"enemy.snatcher.name": "Snatcher",
+		"enemy.pyrekeeper.name": "Pyre-keeper",
+		"enemy.pyre.name": "Brazier",
 		"breakable.barrel.name": "Barrel",
 		"breakable.crate.name": "Crate",
 		"boss.1.name": "Act I Boss",
@@ -1458,6 +1496,11 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"bestiary.pellet.power": "Power pellet: grab it to turn every enemy bullet into points",
 		// docs/FORTUNE.md FO6: the Goldling's first sighting
 		"bestiary.golden": "A Goldling! Catch it before it escapes!",
+		// docs/NEW_ENEMIES_2.md NX1 (NXD15): the third endless set's first sightings (none for the brazier)
+		"bestiary.bulwark": "Bulwark: its shield stops shots from the front, so flank it or break its guard",
+		"bestiary.chainhook": "Chainhook: roll the line or cut the hook, or it drags you in",
+		"bestiary.snatcher": "Snatcher: it eats your pellets, so kill it before it swallows them",
+		"bestiary.pyrekeeper": "Pyre-keeper: kill it and all its braziers go out",
 		// docs/GOLDLING_RUMOURS.md GR7: the first Goldling rumour heard (its first-time card)
 		"bestiary.golden.rumour": "Hear coins? A Goldling is hiding in a barrel or crate on this floor. Find it!",
 		// docs/SECRET_ROOMS.md SR10 (SRD5): the first knock on a secret room's crack (its first-time card); the Archer's

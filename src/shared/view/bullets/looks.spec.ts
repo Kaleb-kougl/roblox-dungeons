@@ -27,6 +27,8 @@ const EXPECTED: ReadonlyMap<number, number> = new Map([
 	[BulletKind.EMBER, EnemyBulletLook.SMALL],
 	[BulletKind.SPARK_BOLT, EnemyBulletLook.SMALL],
 	[BulletKind.STRIKE, EnemyBulletLook.SMALL],
+	// docs/NEW_ENEMIES_2.md NX1: the Chainhook's hook draws small until NX7 gives it its look
+	[BulletKind.HOOK, EnemyBulletLook.SMALL],
 ]);
 
 describe("sprite bullets: enemy looks", () => {
@@ -42,8 +44,8 @@ describe("sprite bullets: enemy looks", () => {
 		expect(count).toBe(EXPECTED.size());
 	});
 
-	it("free kinds (13..15) are small", () => {
-		for (const kind of [13, 14, 15]) expect(enemyBulletLookOf(payloadOf(kind))).toBe(EnemyBulletLook.SMALL);
+	it("free kinds (14..15) are small", () => {
+		for (const kind of [14, 15]) expect(enemyBulletLookOf(payloadOf(kind))).toBe(EnemyBulletLook.SMALL);
 	});
 
 	it("names the four enemy theme IDs; look 0 is the visual every enemy bullet used before", () => {
