@@ -25,6 +25,7 @@ import {
 	type RunTelemetryRecord,
 } from "shared/run";
 import { languageOverride, resolveDisplaySettings } from "shared/settings";
+import { describeEconomyEvent, type EconomyEventSpec } from "shared/wallet";
 import { RecordsService } from "./RecordsService";
 import { RunValidationService } from "./RunValidationService";
 import { SettingsService } from "./SettingsService";
@@ -67,6 +68,11 @@ const log = serverLogger("Telemetry");
  * (RUN_RECAP_RATE), re-read (readRunRecapReport) and taken at most once per run session RunSessionService issued to the
  * player (`runIssued` -> RunRecapGate), then logged as `RunRecap`.
  * Analytics only: nothing else reads it.
+ *
+ * Silver's economy (docs/SILVER.md SV10, shared/wallet analytics.ts): WalletService hands over `logEconomy` specs, one
+ * `LogEconomyEvent` Source per non-zero part of a grant (the run rows, Prospector and the top-up as Gameplay, the day
+ * bonuses as TimedReward) and one Sink per purchase (Shop), plus the `ArmoryPurchase` custom event through
+ * `logEvents`. Built from the transaction's result, never from a client claim.
  */
 @Service({})
 export class TelemetryService implements OnStart {
@@ -184,6 +190,29 @@ export class TelemetryService implements OnStart {
 	 */
 	logOnboarding(player: Player, specs: ReadonlyArray<AnalyticsEventSpec>): void {
 		this.logAll(player, specs, undefined);
+	}
+
+	/**
+	 * Silver's economy events (WalletService, shared/wallet grantEconomyEvents / purchaseEconomyEvent), in order; one
+	 * failing call never stops the rest. Echoed like every spec under ANALYTICS_DEBUG_ATTRIBUTE.
+	 */
+	logEconomy(player: Player, specs: ReadonlyArray<EconomyEventSpec>): void {
+		const echo = Workspace.GetAttribute(ANALYTICS_DEBUG_ATTRIBUTE) === true;
+		for (const spec of specs) {
+			if (echo) log.info("ANALYTICS", `${player.UserId} ${describeEconomyEvent(spec)}`);
+			const [ok, err] = pcall(() =>
+				AnalyticsService.LogEconomyEvent(
+					player,
+					spec.flow === "Source" ? Enum.AnalyticsEconomyFlowType.Source : Enum.AnalyticsEconomyFlowType.Sink,
+					spec.currency,
+					spec.amount,
+					spec.endingBalance,
+					spec.transactionType,
+					spec.itemSku,
+				),
+			);
+			if (!ok) log.warn("ANALYTICS_FAILED", `economy event: ${tostring(err)}`);
+		}
 	}
 
 	/** Logs specs in order; one failing call (bad field, throttling) never stops the rest. */

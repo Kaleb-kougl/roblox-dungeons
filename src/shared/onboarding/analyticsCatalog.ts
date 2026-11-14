@@ -2,7 +2,8 @@
  * The game's AnalyticsService catalog (docs/TUTORIAL_FUNNEL.md TF1): every funnel and custom event name the server
  * logs, with each event's custom field value sets, gathered from their owners (shared/run analytics.ts and
  * dailyAnalytics.ts and recapAnalytics.ts, shared/lobby analytics.ts, which also carries shared/invite's arrival
- * events, and this module's tutorial / onboarding events). Pure data plus counting; analyticsCatalog.spec.ts holds it
+ * events, shared/wallet analytics.ts's Armory purchase, and this module's tutorial / onboarding events). Silver's
+ * economy events (LogEconomyEvent) are not custom events and are bounded in shared/wallet (analytics.spec: SKUs). Pure data plus counting; analyticsCatalog.spec.ts holds it
  * to Roblox's limits: 10 funnels, 100 custom event names, 8,000 field value combinations per experience, step names
  * <= 32 chars.
  *
@@ -42,6 +43,7 @@ import {
 } from "shared/run";
 import { BOSS_FINAL_PHASE, archetypeIds } from "shared/sim";
 import { TUTORIAL_DEVICES, TUTORIAL_STEPS } from "shared/tutorial";
+import { WALLET_ANALYTICS_EVENT, armoryPurchaseFieldValues } from "shared/wallet";
 import {
 	ONBOARDING_FUNNEL,
 	TUTORIAL_ANALYTICS_EVENT,
@@ -231,6 +233,7 @@ function buildCatalog(): ReadonlyArray<AnalyticsCatalogEntry> {
 	const entries = TUTORIAL_ENTRIES.map((e) => e as string);
 	const devices = TUTORIAL_DEVICES.map((d) => d as string);
 	const outcomes = NEW_PLAYER_TUTORIAL_OUTCOMES.map((o) => o as string);
+	const armory = armoryPurchaseFieldValues();
 	const out: AnalyticsCatalogEntry[] = [
 		// --- Runs (server replay)
 		{ kind: "funnel", name: RUN_FUNNEL, owner: run, steps: RUN_FUNNEL_STEPS },
@@ -274,6 +277,12 @@ function buildCatalog(): ReadonlyArray<AnalyticsCatalogEntry> {
 			field01: set(labels(DAILY_ANALYTICS.scoreBuckets)),
 			field02: set(labels(DAILY_ANALYTICS.floorBuckets)),
 			field03: set(combos),
+		}),
+		// --- Silver (docs/SILVER.md SV10): one per Armory purchase, value = the price
+		custom(WALLET_ANALYTICS_EVENT.armoryPurchase, "shared/wallet analytics.ts", {
+			field01: set(armory.items),
+			field02: set(armory.tiers),
+			field03: set(armory.levels),
 		}),
 		// --- Lobbies, invites and parties
 		custom(LOBBY_ANALYTICS_EVENT.lobbyCreated, lobby, { field01: set(LOBBY_VISIBILITIES) }),

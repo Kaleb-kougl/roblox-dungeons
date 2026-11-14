@@ -37,6 +37,7 @@ import type {
 	StartRunRequest,
 } from "shared/run";
 import type { SettingsOverrides } from "shared/settings";
+import type { SilverGrantBreakdown, WalletStatus } from "shared/wallet";
 
 /**
  * Typed remotes between client and server (task 9). The only shared contract between `client/` and `server/`.
@@ -52,7 +53,8 @@ import type { SettingsOverrides } from "shared/settings";
  * `ONBOARDING_REQUEST_RATE` / `TUTORIAL_START_RATE` / `TUTORIAL_FINISH_RATE` / `TUTORIAL_STEP_RATE` /
  * `TUTORIAL_REPORT_RATE`, shared/records `RECORDS_REQUEST_RATE`,
  * shared/daily `DAILY_REQUEST_RATE`, shared/run `RUN_RECAP_RATE`, shared/codex `CODEX.claimRate` for each of
- * `requestCodex` / `codexClaim` / `codexViewed`).
+ * `requestCodex` / `codexClaim` / `codexViewed`, shared/wallet `WALLET.requestRate` for each of `requestWallet` /
+ * `walletBuy` / `walletEquip`).
  *
  * Bind side-specific handlers with `GlobalEvents.createServer` (src/server/network.ts) and `GlobalEvents.createClient`
  * (the client's network module, task 8), never here.
@@ -269,6 +271,14 @@ export interface RunFinishVerdict {
 	 * The verdict of a posting daily run waits for its writes (up to that long).
 	 */
 	daily?: DailyRunResult;
+	/**
+	 * Silver (docs/SILVER.md SV4): THIS recipient's grant of an accepted run that pays (shared/silver silverEligibility),
+	 * PREDICTED from the server's session copy of their wallet (the team's run rows, their own Prospector and day
+	 * bonuses), so the verdict is not held for the write. The `wallet` push after the grant's transaction carries the
+	 * settled breakdown (`WalletStatus.grant`, same runId); it differs only when another server took a day bonus first.
+	 * Absent on rejected / expired / non-paying runs and for members not credited.
+	 */
+	silver?: SilverGrantBreakdown;
 }
 
 export interface ClientToServerEvents {
@@ -436,6 +446,23 @@ export interface ClientToServerEvents {
 	 * before the load as `codexClaim`. Rate limited (CODEX.claimRate). No reply.
 	 */
 	codexViewed(ids: string[]): void;
+	/**
+	 * Silver (docs/SILVER.md "Remotes"): asks for this player's wallet; answered with `wallet` once the join load ended
+	 * (an earlier request is answered by the join-end push). Rate limited (WALLET.requestRate).
+	 */
+	requestWallet(): void;
+	/**
+	 * The Armory: buy the next level of catalogue item `itemId` (shared/wallet ARMORY_CATALOG). The price is the
+	 * server's (the item's tier); refused when the wallet is not loaded, while another request of this player is in
+	 * flight, or by the stored doc (unknown / maxed / poor / prerequisite). Answered with `wallet` (`result`). Rate
+	 * limited (WALLET.requestRate).
+	 */
+	walletBuy(itemId: string): void;
+	/**
+	 * The Armory: put owned cosmetic `itemId` into `slot` (WALLET.noItem "" empties it). Answered with `wallet`
+	 * (`result`). Rate limited (WALLET.requestRate).
+	 */
+	walletEquip(slot: string, itemId: string): void;
 }
 
 export interface ServerToClientEvents {
@@ -483,6 +510,14 @@ export interface ServerToClientEvents {
 	 * the load failed: the Codex is unavailable this session) and in answer to `requestCodex`; never before.
 	 */
 	codexStatus(status: CodexStatus): void;
+	/**
+	 * Silver (docs/SILVER.md SV3): this player's wallet (shared/wallet WalletStatus: balance, owned levels, equipped,
+	 * whether today's first-run and Daily bonuses are still open, the next goals). Sent once after the join load
+	 * (`loaded: false` when it failed: the Armory is greyed and only the Knight is offered this session), after every
+	 * transaction of theirs (a purchase or equip: `result`; a run's grant: `grant`, the settled breakdown), and in
+	 * answer to `requestWallet`.
+	 */
+	wallet(status: WalletStatus): void;
 	/** Co-op (M4): a party run starts (every member gets it, only after every member accepted the invite). */
 	partyRunStarted(start: PartyRunStart): void;
 	/** Lobbies: the lobbies this player may see and join (never closed ones), sorted. Throttled. */
