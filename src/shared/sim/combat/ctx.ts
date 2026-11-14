@@ -20,7 +20,7 @@
 
 import { Button, EMPTY_INPUT, type InputFrame } from "../input";
 import { rngInt, rngNext } from "../rng";
-import { damagePlayer } from "../player";
+import { damagePlayer, isPlayerInvulnerable, movePlayer } from "../player";
 import type { PlayerState, SimEvents, SimState } from "../state";
 import type { SimConfig } from "../step";
 import type { CombatState } from "./combat";
@@ -37,6 +37,7 @@ import type { WeaponSlotState, WeaponsState } from "./weapons/types";
 import { nearestLivingPlayer, playerAt, weaponsAt } from "../party";
 import { PERCENT } from "../progression/progressionData";
 import { WARBANNER, warbannerAuraMask } from "./actors/archetypes/warbanner";
+import { chainhookHolderOf } from "./actors/archetypes/chainhook";
 
 export class SimCtx {
 	/** The live state (mutable). */
@@ -249,6 +250,29 @@ export class SimCtx {
 		const landed = damagePlayer(this.state, halfHearts, playerAt(this.state, i), i);
 		if (landed) this.state.events.lastHitSource = source;
 		return landed;
+	}
+
+	/**
+	 * True when a Chainhook's hook may latch player `i` (docs/NEW_ENEMIES_2.md NX3): damagePlayer's i-frame / dead /
+	 * post-hit test (isPlayerInvulnerable) passes, the player is not rolling at all (rollTicks: the roll's tail after its
+	 * i-frames dodges a hook too), no living Chainhook already drags them, and developer god mode is off (a god-mode
+	 * player is never latched; read only, dev.blockedHits untouched: the hook deals no damage). Changes nothing.
+	 */
+	playerHittable(i: number): boolean {
+		const state = this.state;
+		const p = playerAt(state, i);
+		if (isPlayerInvulnerable(state, p) || p.rollTicks > 0) return false;
+		if (state.dev !== undefined && state.dev.invulnerable !== 0) return false;
+		return chainhookHolderOf(state, i) < 0;
+	}
+
+	/**
+	 * Moves player `i` by (dx, dz) through the floor's world config, exactly like a walk (movePlayer: the move resolver,
+	 * wall slide, intact pieces, sub-steps), so walls, pillars and pieces stop it. The Chainhook's drag only (NX3, from
+	 * its own step in stepActors, after stepPlayer); never hurts.
+	 */
+	dragPlayer(i: number, dx: number, dz: number): void {
+		movePlayer(this.state, dx, dz, this.config, playerAt(this.state, i));
 	}
 
 	// --- Bullets ------------------------------------------------------------------------------------

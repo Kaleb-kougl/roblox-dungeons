@@ -13,6 +13,7 @@ export * from "./stress";
 export * from "./payload";
 export { SimCtx } from "./ctx";
 export * from "./shield";
+export * from "./hookEvents";
 export * from "./actors";
 export * from "./weapons";
 export { compareIds, isValidRegistryId } from "./registryIds";

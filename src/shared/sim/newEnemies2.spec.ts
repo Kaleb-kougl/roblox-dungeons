@@ -224,7 +224,7 @@ describe("data blocks (the plan's Design tables)", () => {
 });
 
 describe("BulletKind.HOOK", () => {
-	it("HOOK is 13, fits the payload and hits at the enemy bullet's radius (no rules yet)", () => {
+	it("HOOK is 13, fits the payload and hits at the enemy bullet's radius (its rules: sim/chainhook.spec)", () => {
 		expect(BulletKind.HOOK).toBe(13);
 		expect(BulletKind.HOOK < BULLET_KIND_COUNT).toBe(true);
 		expect(enemyBulletHitRadius(BulletKind.HOOK)).toBe(ENEMY_BULLET_RADIUS);
@@ -253,11 +253,11 @@ describe("spawn and engage (NX1)", () => {
 		expect(by(BULWARK.id).v[BULWARK_GUARDING]).toBe(1);
 	});
 
-	it("no kind draws but the Bulwark's first cooldown (NX2: in init; it never comes within bash range here)", () => {
+	it("no kind draws but the Bulwark's and the Chainhook's first cooldowns (NX2 / NX3: in init; none runs out here)", () => {
 		const w = world();
 		spawn(w, BULWARK.id, -6, 0);
-		const before = w.s.rngState;
 		spawn(w, CHAINHOOK.id, 0, 6);
+		const before = w.s.rngState;
 		spawn(w, SNATCHER.id, 0, -6);
 		spawn(w, PYREKEEPER.id, 4, 4);
 		spawn(w, PYRE.id, -4, -4);
