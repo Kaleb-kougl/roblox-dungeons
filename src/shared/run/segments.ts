@@ -38,6 +38,7 @@ import {
 	type SimState,
 	runStartHalfHearts,
 } from "shared/sim";
+import { runSilver, silverRunInputOf, type RunSilver } from "shared/silver";
 import type { RunSetup } from "./config";
 import { DEFAULT_SEGMENT_LIMITS, MAX_RUN_ID_CHARS, type SegmentLimits } from "./limits";
 import type { ReplayHooks } from "./replay";
@@ -170,6 +171,12 @@ export interface SegmentedRunResult {
 	 * Co-op credit uses it (shared/leaderboard partyContributors: present through one full floor).
 	 */
 	firstFloorChangeTick?: number;
+	/**
+	 * Accepted runs only (docs/SILVER.md SV4, SVD28): the run's Silver rows read from the final replayed state
+	 * (readSilver). Every world gets them; whether they pay is shared/silver silverEligibility's call at the grant.
+	 * Undefined on every rejection.
+	 */
+	silver?: RunSilver;
 }
 
 export type SegmentOffer =
@@ -226,6 +233,19 @@ interface Mismatch {
 }
 
 const EMPTY_SUMMARY: Readonly<RunSummary> = table.freeze({ ticks: 0, kills: 0, bossDefeated: false, died: false });
+
+/**
+ * The run's Silver rows from its final replayed state (docs/SILVER.md SV4): shared/silver runSilver over
+ * silverRunInputOf, the summary's kills and the run config (a dev run's start floor and Depth). Read beside the score in
+ * the validator's final check, so nothing keeps the replay state alive for the verdict.
+ */
+export function readSilver(
+	state: Readonly<SimState>,
+	summary: Readonly<RunSummary>,
+	config: RunSetup["config"],
+): RunSilver {
+	return runSilver(silverRunInputOf(state, summary, config));
+}
 
 /** Multiples of `every` strictly between `startTick` and `endTick` (the checkpoint hashes a segment carries). */
 export function checkpointCount(startTick: number, endTick: number, every: number): number {
@@ -656,13 +676,16 @@ export class SegmentedValidator {
 		const state = this.state!;
 		const [ok, out] = pcall(() => {
 			const telemetry = this.telemetry!.finish();
-			return { telemetry, summary: summarizeRun(state, telemetry), score: this.readScore(state) };
+			const summary = summarizeRun(state, telemetry);
+			const silver = readSilver(state, summary, this.setup.config);
+			return { telemetry, summary, score: this.readScore(state), silver };
 		});
 		if (!ok) return this.rejectRun("replay_error", `replay error: ${errorMessage(out)}`);
-		const { telemetry, summary, score } = out as {
+		const { telemetry, summary, score, silver } = out as {
 			telemetry: RunTelemetryRecord;
 			summary: RunSummary;
 			score: RunScore;
+			silver: RunSilver;
 		};
 		const serverHash = hashState(state);
 		const done = { serverHash, summary, score, telemetry };
@@ -693,6 +716,7 @@ export class SegmentedValidator {
 			score: { score: score.score, floor: score.floor },
 			telemetry,
 			firstFloorChangeTick: this.firstFloorChange,
+			silver,
 		};
 		this.release();
 		return this.result;
