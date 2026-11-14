@@ -5,6 +5,7 @@ import {
 	selectGameActive,
 	selectMenuPointerSink,
 	selectMenuScreen,
+	selectSilverShopOpen,
 	selectTutorialActive,
 } from "client/store";
 import { useHudScale } from "client/ui/hud";
@@ -16,9 +17,11 @@ import { CodexScreen } from "./CodexScreen";
 import { CreditsScreen } from "./CreditsScreen";
 import { LobbyBrowser } from "./LobbyBrowser";
 import { LobbyRoom } from "./LobbyRoom";
+import { GetSilverPanel } from "./GetSilverPanel";
 import { MainMenu } from "./MainMenu";
 import { SilverWelcomeCard } from "./SilverWelcomeCard";
 import { InviteBadge, InviteToasts, NoticeToasts, useInviteToasts } from "./Toasts";
+import { useMenuActions } from "./actions";
 
 /**
  * The menu shell (tasks L3 / L5), its own ScreenGui between the HUD and the pause / settings layer
@@ -32,7 +35,8 @@ import { InviteBadge, InviteToasts, NoticeToasts, useInviteToasts } from "./Toas
  * take the player out of it). Same reference layout and UIScale as the HUD. The main menu's Y hands the pad to the
  * invite toasts (docs/GAMEPAD_MENUS.md GM6) while one is pending; B there hands it back. While a panel (Options,
  * leaderboards) is open over a screen, an invisible Active button covers it (PointerSink, shared/view/menu pointer.ts):
- * the panel's dim lets clicks through, and the main menu under Options stayed clickable.
+ * the panel's dim lets clicks through, and the main menu under Options stayed clickable. Over the main menu and the
+ * Armory, the Get Silver panel while it is open (docs/SILVER_SHOP.md SH6: GetSilverPanel, its own Active dim).
  */
 export function MenuLayer() {
 	const screen = useSelector(selectMenuScreen);
@@ -41,6 +45,14 @@ export function MenuLayer() {
 	const inTutorial = useSelector(selectTutorialActive);
 	const pointerSink = useSelector(selectMenuPointerSink);
 	const scale = useHudScale();
+	// docs/SILVER_SHOP.md SH6: the Get Silver panel lives only over the two screens whose Silver balance opens it (the
+	// main menu, the Armory; owner OC3); leaving them (Backspace, a run start, a lobby) closes it.
+	const actions = useMenuActions();
+	const shopOpen = useSelector(selectSilverShopOpen);
+	const shopScreen = screen === "main" || screen === "armory";
+	useEffect(() => {
+		if (shopOpen && !shopScreen) actions.closeSilverShop();
+	}, [shopOpen, shopScreen]);
 	// docs/GAMEPAD_MENUS.md GM6: the invite toasts take the pad only once the main menu's Y jumps to them, and give it
 	// back on B, when the last toast goes, or when the screen changes.
 	const invites = useInviteToasts();
@@ -100,6 +112,7 @@ export function MenuLayer() {
 								onLeave={() => setInvitesFocused(false)}
 							/>
 						) : undefined}
+						{body !== undefined && shopScreen ? <GetSilverPanel key="GetSilver" /> : undefined}
 						{body !== undefined && pointerSink ? (
 							// A panel (Options, leaderboards) is open over the screen: its dim is not Active, so this
 							// invisible Active button takes mouse / touch instead of the screen's buttons (pointer.ts).

@@ -38,6 +38,7 @@ import {
 	MENU_FIT,
 	MENU_VIEW,
 	ARMORY_SCREEN,
+	SILVER_SHOP_VIEW,
 	armoryContentHeight,
 	fitMenu,
 	lobbyRoomParts,
@@ -51,6 +52,8 @@ import {
 	ornamentOverhang,
 	runOverExitButtons,
 	runOverExitLayout,
+	silverShopLayout,
+	silverShopRows,
 	stepMenuFit,
 	type MenuFitInput,
 	type MenuFitResult,
@@ -58,6 +61,7 @@ import {
 	type MenuInsets,
 	type MenuSize,
 } from "shared/view/menu";
+import { shownSilverPacks } from "shared/wallet";
 import { SILVER_RECAP, silverRecapHeight } from "shared/view/silver";
 
 /**
@@ -154,10 +158,11 @@ function estimates(uiScale: number, compact: boolean): ReadonlyMap<string, Estim
 			? column([big, MENU_VIEW.smallButton.y, BUTTON, BUTTON, BUTTON, TWO_SMALL_LINES], BIG, uiScale) // Codex, Credits beside the reason
 			: // claude/codex-plan.md CX7: Tutorial, Options, Leaderboard, Codex, Credits under the invite reason; the Armory
 			  // after the Codex (docs/SILVER.md SV9).
+			  // docs/SILVER_SHOP.md SH6: the Silver line holds the shop's `+` (SILVER_SHOP_VIEW.plus).
 			  column(
 					[
 						big,
-						LINE(HUD_VIEW.smallText),
+						math.max(LINE(HUD_VIEW.smallText), SILVER_SHOP_VIEW.plus.y),
 						BUTTON,
 						BUTTON,
 						BUTTON,
@@ -293,6 +298,8 @@ function estimates(uiScale: number, compact: boolean): ReadonlyMap<string, Estim
 		ornament: false,
 		flex: { min: ARMORY_SCREEN.listMin, max: ARMORY_SCREEN.listHeight },
 	});
+	// docs/SILVER_SHOP.md SH6: the Get Silver panel over the main menu or the Armory (two columns of cards).
+	out.set("silverShop", silverShopEstimate(false, uiScale));
 	out.set("leaderboard", {
 		w: LEADERBOARD_VIEW.width,
 		h: column([title, BUTTON, LINE(HUD_VIEW.smallText), board, LINE(HUD_VIEW.smallText), BUTTON], BIG, uiScale),
@@ -300,6 +307,12 @@ function estimates(uiScale: number, compact: boolean): ReadonlyMap<string, Estim
 		flex: { min: MENU_FIT.listMin, max: board },
 	});
 	return out;
+}
+
+/** The Get Silver panel: its rows as drawn (shared/view/menu silverShopRows), the menus' padding. */
+function silverShopEstimate(narrow: boolean, uiScale: number): Estimate {
+	const l = silverShopLayout(narrow);
+	return { w: l.width, h: column(silverShopRows(l, shownSilverPacks().size()), BIG, uiScale), ornament: false };
 }
 
 function touchScale(s: Screen, percent = 100): number {
@@ -350,6 +363,7 @@ const SCREENS = [
 	"credits",
 	"codex",
 	"armory",
+	"silverShop",
 	"lobbyRoom",
 	"lobbyRoomInviting",
 	"tutorialOutro",
@@ -419,6 +433,16 @@ describe("menu fit on phones (docs/UI_ART.md Phones)", () => {
 		expect(2 * HUD_VIEW.buttonSize.x + HUD_VIEW.gap).toBeLessThanOrEqual(inner);
 	});
 
+	it("the phone's Silver line keeps room for the balance and the first-run line beside the `+` (SILVER_SHOP.md SH6)", () => {
+		const inner = MENU_FIT.mainCompactWidth - HUD_VIEW.pad * 4;
+		// The `+` and the Armory's small button, with the line's gaps (balance, `+`, first-run line, Armory).
+		const fixed = SILVER_SHOP_VIEW.plus.x + MENU_VIEW.smallButton.x + 3 * HUD_VIEW.gap;
+		// `Silver 9999` and `First run today: +50` at the small text size are about 300 px together.
+		expect(inner - fixed).toBeGreaterThanOrEqual(300);
+		// The `+` never makes the line taller than the Armory's small button already does.
+		expect(SILVER_SHOP_VIEW.plus.y).toBeLessThanOrEqual(MENU_VIEW.smallButton.y);
+	});
+
 	it("the main menu keeps its ornament on every phone; it never costs the panel any size", () => {
 		for (const s of PHONES) {
 			const u = touchScale(s);
@@ -481,6 +505,8 @@ function narrowEstimates(uiScale: number): ReadonlyMap<string, Estimate> {
 	const out = new Map<string, Estimate>();
 	const full = estimates(uiScale, false);
 	for (const name of SCREENS) out.set(name, full.get(name)!);
+	// docs/SILVER_SHOP.md SH6: the upright Get Silver panel, one column of cards.
+	out.set("silverShop", silverShopEstimate(true, uiScale));
 	const compactMain = estimates(uiScale, true).get("mainMenu")!;
 	// The stacked main menu with the Daily card and podium under Play solo's row (generously 240 tall).
 	out.set("mainMenu", { ...compactMain, h: compactMain.h + 240 });
