@@ -354,8 +354,9 @@ Shieldwall), OC2 by NXD21 (as recommended and built).
   the tick it lights. A pinned (Siege) pyre does not step and drifts. (2) No strafe coin in init (the side from the
   actor id), so init draws once as specified; flips and the panic draw as the summoner's. (3) A spent cast shows no
   telegraph.
-- **Owner calls (NX5):** PK1 withered pyres score 30 each and feed the combo (built, the summoner's precedent) or go
-  out quietly (`killActor(..., true)`); PK2 the first shot on the tick a lone pyre lights (built) or a full 2 s later.
+- **Owner calls (NX5), settled 2026-11-14:** PK1 withered pyres score 30 each and feed the combo (**NXD23**, as built:
+  the summoner's precedent; the alternative was `killActor(..., true)`); PK2 a lone pyre's first shot on the tick it
+  lights (**NXD24**, as built; the alternative was a full 2 s later).
 
 ### NX3 Chainhook (as built, 2026-11-14)
 
@@ -394,7 +395,7 @@ Shieldwall), OC2 by NXD21 (as recommended and built).
   spawns a Chainhook (not in `ENDLESS_ROOM_KINDS` until NX6; NXD4's floor-2 minimum is NX6's).
 - **Deviations:** v6 also holds the throw target while aiming / thrown (the Design's v6 drag ticks are `aiTicks`, NX0);
   the latch is only on the player it threw at, so **a teammate standing in the line takes the hook** (consumed, nobody
-  moved): owner call **OC5** (keep the body-block, or let it pass through teammates); a rolling player is not hittable
+  moved): owner call OC5, settled by **NXD22** (the body block stays, as built); a rolling player is not hittable
   for the whole roll, not only its i-frames; the fan locks its heading at arrival (not at its fire tick).
 - **Limits:** a Siege-pinned Chainhook does not step, so its drag pauses with the pin (a pinning heavy arrow deals >= 3,
   which breaks it first, unless an affix shield absorbs the hit). A Chainhook freed without dying (a floor change) emits
@@ -897,6 +898,15 @@ Owner calls settled 2026-11-14 (Kaleb):
 - **NXD20. The Shieldwall's turn is fixed at 150 deg/s** (OC4, as built): Swift and the Warbanner aura do not speed it.
 - **NXD21. The shield blocks every moving player bullet; embers pass** (OC2, as built): Mirror Cloak's reflections and
   the build effect bullets (burst, shard, spark bolt) included; EMBER (speed 0, a flame under its feet) is not stopped.
+
+Owner calls settled 2026-11-14 (Kaleb), all as built:
+
+- **NXD22. A teammate standing in a Chainhook's line absorbs the hook** (NX3 OC5): the hook latches only on the player it
+  was thrown at; any other hittable player it reaches consumes it (a body block) and nobody is dragged.
+- **NXD23. Withered pyres score 30 each and feed the combo** (NX5 PK1): the keeper's death kills them through
+  `ctx.killActor` (the summoner's `wither`), not quietly.
+- **NXD24. A lone pyre fires on the tick it lights** (NX5 PK2): with no living sibling its first shot is due at the end
+  of the 0.5 s lighting, not a full 2 s later.
 
 ## Risks
 

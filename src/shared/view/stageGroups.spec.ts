@@ -75,6 +75,8 @@ describe("stage groups (docs/STAGE_ASSETS.md SA1)", () => {
 		expect(STAGE_ASSETS.children.summoner).toEqual([summoner.summonKind]);
 		const slime = archetypeAt(archetypeIndex("slime")).data as unknown as { splitKind: string };
 		expect(STAGE_ASSETS.children.slime).toEqual([slime.splitKind]);
+		const keeper = archetypeAt(archetypeIndex("pyrekeeper")).data as unknown as { pyreKind: string };
+		expect(STAGE_ASSETS.children.pyrekeeper).toEqual([keeper.pyreKind]);
 	});
 
 	it("vale: actor and character groups list the drawn ids once", () => {

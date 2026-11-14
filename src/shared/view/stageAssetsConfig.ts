@@ -109,6 +109,8 @@ export const STAGE_ASSETS: StageAssetsConfig = {
 		summoner: ["swarmer"],
 		// shared/sim slime.ts splitKind (SLIME_SMALL_ID)
 		slime: ["slime.small"],
+		// shared/sim pyrekeeper.ts pyreKind (PYRE.id; docs/NEW_ENEMIES_2.md NX7 / NX11)
+		pyrekeeper: ["pyre"],
 		// shared/sim boss/act1.ts SUMMON_KIND, boss/demonlord.ts's summon spec
 		"boss.act1": ["swarmer"],
 		"boss.demonlord": ["swarmer"],
