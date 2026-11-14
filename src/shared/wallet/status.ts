@@ -7,6 +7,7 @@
  * is one granted Silver pack (docs/SILVER_SHOP.md SH2: the push after the receipt's transaction).
  */
 import type { ArmoryItem } from "./catalog";
+import type { SilverFakePrice } from "./shopServer";
 import { ARMORY_CATALOG } from "./catalog";
 import { ownedLevel, walletBalance, type WalletDoc } from "./doc";
 import type { SilverPackId, SilverPurchaseGrant } from "./shop";
@@ -69,6 +70,13 @@ export interface WalletStatus {
 	grant?: SilverGrantBreakdown;
 	/** A Silver pack just granted to this player (docs/SILVER_SHOP.md). */
 	purchase?: WalletPurchaseNotice;
+	/**
+	 * The Silver shop exists here (docs/SILVER_SHOP.md SH3: this universe has products, or the Studio fake KV_FakeShop
+	 * gives fake prices): the client shows the `+` beside the balance. Set on loaded statuses only.
+	 */
+	shopAvailable?: boolean;
+	/** Studio's fake prices (KV_FakeShop), in pack order: the panel shows these instead of Roblox's. */
+	fakePrices?: SilverFakePrice[];
 }
 
 /** The status of `doc` on UTC day `day` (`loaded` false, or no doc: `{ loaded: false }` alone). */
