@@ -2,7 +2,16 @@ import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { RunService, Workspace } from "@rbxts/services";
 import { STUDS_PER_TILE } from "shared/config";
-import { NO_KIND, SIM_HZ, hookedPlayerOf, partySize, simWorldConfig, type ActorState, type SimState } from "shared/sim";
+import {
+	NO_KIND,
+	SIM_HZ,
+	hookedPlayerOf,
+	partySize,
+	simWorldConfig,
+	type ActorState,
+	type SimState,
+	type Vec3 as SimVec3,
+} from "shared/sim";
 import { DECOR_FX_TINT, type ThemePack } from "shared/theme";
 import {
 	BELLY_VIEW,
@@ -73,6 +82,10 @@ export class NewEnemy2MarksController implements OnStart {
 	private readonly torch = newTorchPoint();
 	private readonly ahead = new BulletAhead();
 	private readonly pose = newAheadPose();
+	/** A hook's start-of-step position (reused every frame: no table per hook per frame). */
+	private readonly hookPrev: SimVec3 = { x: 0, y: 0, z: 0 };
+	/** The frame's flame / torch counts (reused every frame). */
+	private readonly used = { flames: 0, torches: 0 };
 	private readonly flames = new Array<Flame>();
 	private readonly torches = new Array<Flame>();
 	private readonly moveParts = new Array<BasePart>();
@@ -134,8 +147,10 @@ export class NewEnemy2MarksController implements OnStart {
 		chain: DashLayer,
 		belly: DashLayer,
 		stars: DashLayer,
-	): { flames: number; torches: number } {
-		const used = { flames: 0, torches: 0 };
+	): { readonly flames: number; readonly torches: number } {
+		const used = this.used;
+		used.flames = 0;
+		used.torches = 0;
 		const state = this.sim.getState();
 		if (state === undefined) return used;
 		const alpha = this.sim.getAlpha();
@@ -210,7 +225,7 @@ export class NewEnemy2MarksController implements OnStart {
 				tz = lerp(pose.prevZ, pose.z, alpha);
 			} else {
 				const cur = bullets.positionAt(slot);
-				const prev = bullets.previousPositionAt(slot, { x: 0, y: 0, z: 0 });
+				const prev = bullets.previousPositionAt(slot, this.hookPrev);
 				tx = lerp(prev.x, cur.x, alpha);
 				tz = lerp(prev.z, cur.z, alpha);
 			}
