@@ -83,6 +83,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/HAPTICS.md` | Haptics in play (a kill tick, a parry thump, the boss phase break's heavy hit, the boss death rumble and three hurt buzzes, on the view player's own events only, by priority with a kill gap / cap and a 40 % duty cap; pads through `SetMotor`, phones through `HapticEffect`; quiet in menus, spectating and after run over; `padVibration` for menus and play, a new `touchVibration` on Options > Controls > Touch; `KV_HapticDebug`; presentation only): plan, as built, tasks HP0-HP8, decisions HPD1-HPD12 |
 | `docs/SECRET_ROOMS.md` | Secret rooms (a cracked far wall that knocks hollow hides a small torch-lit chamber with a chest; about one endless floor in five from floor 2, nothing announces it; opened by the Knight's combo finisher, a heavy arrow / Siege slam, a Wrecker roll or a Charger's charge; the chest Rare 65 / Legendary 35 with the vault's grants; SECRET! shout, recap highlight, one Codex entry; gameplay, opt-in `SimConfig.secrets`, endless only): plan, as built (Tracks A / T / V1 / V2), Studio check, tasks SR0-SR16, decisions SRD1-SRD14 |
 | `docs/SILVER.md` | Silver, the cross-run currency (phase 1 built): earned per room cleared, per floor / boss / vault / secret / Goldling, from Silver in barrels and crates (floor-built, any break pays), a run minimum and day bonuses; server-owned wallet `KV_Wallet_v1` (transactions only); spent in the Armory on upgrades (Vigor / Deep Flask / Plating / Prospector) and the Archer unlock on one doubling price ladder; base hearts down by one (Knight 2, Archer 1 1/2) with half-heart containers: SV0 findings, plan, as built, tasks SV0-SV18 / SC1-SC4, decisions SVD1-SVD41 |
+| `docs/SILVER_SHOP.md` | Silver shop (Silver for Robux through developer products: four packs Pouch / Purse / Chest / Hoard, 150-2,500 Silver at 20 / 55 / 115 / 265 Robux by default, prices read from Roblox; one pool with earned Silver; a quiet `+` beside the Armory's and the main menu's balance only; each receipt one wallet transaction with a `PurchaseId` ring; `KV_FakeShop` in Studio; supersedes SVD1): plan, as built, tasks SH0-SH9, decisions SHD1-SHD11 |
 
 Decision log (deviations from `PLAN.md`):
 - **Art (docs/ART.md).** The theme contract gained a `"sprites"` kind (large pre-rendered cells, 1/4/8/16 screen-space
@@ -1488,6 +1489,30 @@ Decision log (deviations from `PLAN.md`):
   atlas group `silver` (`--only silver`, `packs/vale/silverLayout.ts`), two sheets of their own (`silver-icon.png`,
   `silver-coin.png`); `SilverHudController` draws the flipbook once downloaded, else the dots. Both sheets uploaded
   2026-11-14 (`assetIds.ts`), so the bundled vale pack draws them. Studio check and cosmetics pending.
+
+- **Silver shop (docs/SILVER_SHOP.md, 2026-11-14).** Server, wallet doc, client and presentation only (no sim, dungeon,
+  lockstep, hash, replay, fixture, score or leaderboard change; `DAILY.ruleset` unchanged). Supersedes docs/SILVER.md
+  SVD1: Silver can be bought with Robux, one pool with earned Silver (SHD1), and what play pays is unchanged (SHD3).
+  Wallet doc (still `v: 1`): optional `bought`, `receipts` (the last 128 granted `PurchaseId`s) and every unknown
+  top-level field kept and written back (`extra`); balance = earned + bought - spent; `earned` still means play.
+  **Rollout (SHD7): the codec must be live on every server before any product id is configured** (an older server
+  would erase `bought`). shared/wallet `shop.ts`: `SILVER_PACKS` (append-only, pouch 150 / purse 450 / chest 1,000 /
+  hoard 2,500 Silver; retired packs still grant), `SILVER_PRODUCTS` (game id -> pack -> product id, empty until the
+  owner creates the products), `applyPurchase` / `receiptDecision` (Processed only for a committed grant or a
+  duplicate), `WalletBook.purchase` (the per-player lock, counted in `pending()`); `shopServer.ts` (the receipt plan,
+  the Studio fake, the audit record). `SilverShopService`: one filtered `BindReceiptHandler` on the universe's product
+  ids (fallback `ProcessReceipt`, set once only if unset), grants whether or not the buyer is still here, a `wallet`
+  push with `purchase`, the IAP economy Source and `SilverShop` `granted` only while the buyer is here, a best-effort
+  audit entry in `KV_Purchases_v1` (`p_<PurchaseId>`). Remotes `silverShopReport` (funnel; custom event `SilverShop`,
+  39 of 100 names) and Studio-only `silverShopFakeBuy`; `WalletStatus.shopAvailable` / `fakePrices` / `purchase`.
+  Prices are Roblox's (default 20 / 55 / 115 / 265 Robux, read with `GetProductInfoAsync`; never in code, SHD8). Client:
+  `SilverShopController`, store slice `silverShop`, `GetSilverPanel` (MenuLayer), `SilverBalance` with a 28 x 28 `+` in
+  the Armory header and on the main menu only (`scripts/check-silver-shop-entry.test.js`); the Armory's focus scope
+  gained `memoryKey="armory"`; purchase toasts on negative lobby-notice ids. Theme: 12 strings `silver.shop.*`
+  (`SILVER_SHOP_STRING_KEYS`, spread last into `REQUIRED_STRING_KEYS`: a later feature appending there must update the
+  pinned tails again), optional `ui.icon.robux` (absent: "55 Robux"), no new audio id; `contract.luau` / `validate.luau`
+  top-level locals 189 / 192 (counted on out/). Debug `KV_FakeShop` (Studio: `off` or four prices). Pending: SH0
+  (Studio confirmations of the receipt API and enums) and SH9 (create the products, paste their ids, checks).
 
 ## Commands
 

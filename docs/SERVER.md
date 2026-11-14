@@ -1231,3 +1231,19 @@ check (`SegmentedRunResult.silver`) and granted in `conclude` to the credited me
 (a ring of the last 64), day bonuses decided inside the transaction. Budget: +1 GetAsync per join, +1 UpdateAsync per
 credited member per paying run and per purchase or equip. Remotes `wallet`, `requestWallet`, `walletBuy`, `walletEquip`
 (5 / 10 s each). `SilverAccessService` hands run starts and lobbies each member's upgrade levels and owned characters.
+
+## Silver shop receipts (2026-11-14)
+
+docs/SILVER_SHOP.md SH3: `SilverShopService` turns developer-product receipts into Silver. When the universe has Silver
+products (shared/wallet `SILVER_PRODUCTS`, keyed by `game.GameId`) it binds one filtered
+`MarketplaceService:BindReceiptHandler(DeveloperProduct, ...)` on their ids (fallback: `ProcessReceipt`, set once, only
+if nothing else set it). Each receipt is one wallet transaction (`WalletBook.purchase`, the per-player lock): the
+`PurchaseId` is recorded in the doc's `receipts` ring (128) in the same UpdateAsync that adds `bought`, so a redelivered
+receipt is a `duplicate`. The answer is `Processed` only for a committed grant or a duplicate; an unreadable receipt,
+someone else's product, a store failure after retries, a newer doc version or a receipt after BindToClose began answer
+`NotProcessedYet` (Roblox delivers it again). Grants land whether or not the buyer is still on the server or their join
+load worked. After a grant: a `wallet` push with `purchase`, the IAP economy Source and `SilverShop` `granted` (only
+while the buyer is here), and a best-effort audit entry in `KV_Purchases_v1` (`p_<PurchaseId>`, tagged with the user id;
+never decides the answer, never written from Studio). Remote `silverShopReport` (funnel, rate limited); Studio-only
+`silverShopFakeBuy` with `KV_FakeShop`. **Rollout:** the SH1 codec must be live on every server before any product id
+is configured (SHD7). Budget: +1 UpdateAsync and +1 SetAsync per purchase.
