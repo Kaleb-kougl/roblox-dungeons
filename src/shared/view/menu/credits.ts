@@ -99,6 +99,7 @@ export const CREDITS: ReadonlyArray<CreditEntry> = [
 		modified: true,
 	},
 	{ section: "audio", work: "Impact Sounds", author: "Kenney (kenney.nl)", license: "CC0" },
+	{ section: "audio", work: "Interface Sounds", author: "Kenney (kenney.nl)", license: "CC0" },
 	{
 		section: "audio",
 		work: "Their Coming (generic horn sound)",

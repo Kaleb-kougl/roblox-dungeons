@@ -1069,22 +1069,23 @@
 			"confirmed": false
 		},
 		"sfx.golden.rumour.floor": {
-			"silent": true,
-			"alternates": [
+			"category": "sfx",
+			"clips": [
 				{
 					"src": "ninja-adventure/Audio/Sounds/Bonus/Coin3.wav",
-					"lowpassHz": 2200,
-					"gainDb": -6
-				},
+					"gainDb": -6,
+					"lowpassHz": 2200
+				}
+			],
+			"alternates": [
 				"ninja-adventure/Audio/Sounds/Bonus/Coin3.wav"
 			],
 			"notes": "docs/GOLDLING_RUMOURS.md GR6: a Goldling hides on this floor (once per floor, 1 s after the floor's draft closed; the chip says Coins jingling...). A soft, muffled, far-off coin jingle: candidate Bonus/Coin3 low-passed ~2200 Hz at -6 dB (the plan's pick, first alternate). Category sfx (no duck, not a jingle), SFX_PRIORITY 45, cue volume 0.45 (GOLDEN_VIEW.rumour.floorVolume). Must read apart from sfx.golden.hit's plain Coin.wav. Silent until GR10's audition: the score tick plays meanwhile (SFX_FALLBACK).",
-			"confirmed": false
+			"confirmed": true
 		},
 		"sfx.golden.rumour.room": {
-			"silent": true,
-			"alternates": [
-				"ninja-adventure/Audio/Sounds/Bonus/Coin3.wav",
+			"category": "sfx",
+			"clips": [
 				{
 					"src": "ninja-adventure/Audio/Sounds/Bonus/Coin2.wav",
 					"mix": [
@@ -1092,8 +1093,11 @@
 					]
 				}
 			],
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Bonus/Coin3.wav"
+			],
 			"notes": "docs/GOLDLING_RUMOURS.md GR6: the Goldling's room engaged (once per floor; the chip says It's hiding here!). The floor rumour's jingle, closer and brighter: candidate Bonus/Coin3 unfiltered, or Coin2 layered (a mix of two Coin2 taps). Category sfx (no duck, not a jingle), SFX_PRIORITY 66, cue volume 0.8 (GOLDEN_VIEW.rumour.roomVolume; x the teammate volume from outside the room). Must read apart from sfx.golden.hit's plain Coin.wav. Silent until GR10's audition: the score tick plays meanwhile (SFX_FALLBACK).",
-			"confirmed": false
+			"confirmed": true
 		},
 		"sfx.secret.knock": {
 			"category": "sfx",
@@ -1702,54 +1706,58 @@
 		},
 		"sfx.silver.crate": {
 			"category": "sfx",
-			"silent": true,
+			"clips": [
+				"lrsf-8bit/Wav/Collect_Point_02.wav"
+			],
 			"alternates": [
 				"kenney-interface-sounds/glass_002.wav",
 				"kenney-interface-sounds/glass_003.wav",
-				"lrsf-8bit/Wav/Collect_Point_02.wav",
 				"kenney-impact-sounds/Audio/impactGlass_light_000.ogg",
 				"kenney-interface-sounds/glass_006.wav"
 			],
 			"notes": "docs/SILVER.md SC3 / SV8: a barrel or crate holding Silver breaks (any source). A short, bright, SILVERY clink (thinner and glassier than gold): the cue mapper steps its pitch up for quick successive breaks (SILVER_CRATE_FX clink step, cap 6), so no pitch jitter here and a clean single hit is best. Must read apart from the gold coins (sfx.golden.hit Ninja Bonus/Coin.wav, Coin2 / Coin3, the Pixabay retro coin) and sfx.breakable.loot. Category sfx, SFX_PRIORITY 41. Silent until the audition: sfx.breakable.loot plays meanwhile (SFX_FALLBACK). Candidates sourced 2026-11-14, not auditioned: Kenney Interface Sounds glass_002 / glass_003 / glass_006 (CC0, 0.13 s, ~2 kHz glass pings), Little Robot Sound Factory Collect_Point_02 (CC-BY 3.0, already credited; 0.13 s, 8-bit ding), Kenney Impact Sounds impactGlass_light_000 (CC0; light_002 is taken).",
-			"confirmed": false
+			"confirmed": true
 		},
 		"sfx.silver.gain": {
 			"category": "sfx",
-			"silent": true,
+			"clips": [
+				"kenney-interface-sounds/pluck_001.wav"
+			],
 			"alternates": [
 				"kenney-interface-sounds/select_003.wav",
-				"kenney-interface-sounds/pluck_001.wav",
 				"kenney-interface-sounds/glass_005.wav",
 				"lrsf-8bit/Wav/Pickup_00.wav"
 			],
 			"notes": "docs/SILVER.md SV8: the Silver counter ticks up for anything but a crate (+2 on a room clear, a floor, a boss, a vault, a secret, a Goldling). Small, soft and high: it plays often and under the room-clear and score sounds. Must read apart from sfx.score.tick and sfx.silver.crate. Category sfx, SFX_PRIORITY 44. Silent until the audition: sfx.score.tick plays meanwhile (SFX_FALLBACK). Candidates sourced 2026-11-14, not auditioned: Kenney Interface Sounds select_003 (0.18 s audible, 2.7 kHz), pluck_001 (0.07 s), glass_005 (0.05 s) (CC0); Little Robot Sound Factory Pickup_00 (CC-BY 3.0, already credited; 0.18 s).",
-			"confirmed": false
+			"confirmed": true
 		},
 		"sfx.shop.buy": {
 			"category": "sfx",
-			"silent": true,
+			"clips": [
+				"kenney-interface-sounds/maximize_007.wav"
+			],
 			"alternates": [
 				"kenney-interface-sounds/confirmation_002.wav",
 				"kenney-interface-sounds/confirmation_004.wav",
 				"kenney-interface-sounds/confirmation_003.wav",
-				"lrsf-8bit/Wav/Collect_Point_00.wav",
-				"kenney-interface-sounds/maximize_007.wav"
+				"lrsf-8bit/Wav/Collect_Point_00.wav"
 			],
 			"notes": "docs/SILVER.md SV9 / SV18: an Armory purchase (or the Archer unlock) went through: the pip fills / the card lights. A pleasant, satisfying confirm, a little bigger than sfx.ui.confirm (it is a reward), not a jingle (no duck). Category sfx, SFX_PRIORITY 47. Silent until the audition: sfx.relic.take plays meanwhile (SFX_FALLBACK). Candidates sourced 2026-11-14, not auditioned: Kenney Interface Sounds confirmation_002 (0.51 s), confirmation_004 (0.47 s), confirmation_003 (0.31 s, brighter), maximize_007 (0.17 s) (CC0); Little Robot Sound Factory Collect_Point_00 (CC-BY 3.0, already credited; 0.39 s).",
-			"confirmed": false
+			"confirmed": true
 		},
 		"sfx.shop.deny": {
 			"category": "sfx",
-			"silent": true,
+			"clips": [
+				"kenney-interface-sounds/error_008.wav"
+			],
 			"alternates": [
 				"kenney-interface-sounds/error_004.wav",
-				"kenney-interface-sounds/error_008.wav",
 				"kenney-interface-sounds/question_004.wav",
 				"kenney-interface-sounds/back_002.wav",
 				"kenney-interface-sounds/error_006.wav"
 			],
 			"notes": "docs/SILVER.md SV9 / SV18: an Armory purchase refused (not enough Silver, or the server said no) and Confirm on a locked character card. A gentle \"not yet\", never harsh (young players hear it while saving up). Category sfx, SFX_PRIORITY 46. Silent until the audition: sfx.ui.back plays meanwhile (SFX_FALLBACK). Candidates sourced 2026-11-14, not auditioned: Kenney Interface Sounds error_004 (0.10 s, 450 Hz), error_008 (0.14 s), question_004 (0.32 s, low 494 Hz tone), back_002 (0.05 s, low), error_006 (0.20 s) (CC0).",
-			"confirmed": false
+			"confirmed": true
 		}
 	}
 }

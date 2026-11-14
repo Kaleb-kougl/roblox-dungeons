@@ -428,12 +428,13 @@ docs/BOOKSHELVES.md). **Changes made:** rendered to 2D sprites
 - Author: Kenney (https://www.kenney.nl). Pack: "Interface Sounds" 1.0 (https://kenney.nl/assets/interface-sounds), taken
   from Hugo Locurcio's lossless WAV repackaging (https://github.com/Calinou/kenney-interface-sounds @ `4596a49`, the
   pack's own LICENSE.txt included).
-- Used for: candidates for the Silver sounds `sfx.silver.crate`, `sfx.silver.gain`, `sfx.shop.buy` and `sfx.shop.deny`
-  (docs/SILVER.md; sourced 2026-11-14, to be picked at the audition). Once picked, a clip is silence-trimmed,
-  downmixed to mono, loudness-normalised and encoded to OGG by `scripts/audio/build-audio.js`; only the built OGG is
-  uploaded to Roblox as an audio asset.
+- Used for: the Silver sounds `sfx.silver.gain` (`pluck_001`), `sfx.shop.buy` (`maximize_007`) and `sfx.shop.deny`
+  (`error_008`) (docs/SILVER.md; sourced and picked at the audition 2026-11-14). The clips are silence-trimmed,
+  downmixed to mono, loudness-normalised and encoded to OGG by `scripts/audio/build-audio.js`; only the built OGGs are
+  uploaded to Roblox as audio assets.
 - Raw files: `art/vendor/kenney-interface-sounds/` (gitignored).
-- License: CC0, public domain: no credit required. Credit it on the Credits screen once a clip is used.
+- License: CC0, public domain: no credit required. Credited anyway (Credits screen: "Interface Sounds", "by Kenney
+  (kenney.nl)", "CC0").
 
 ## "Their Coming (generic horn sound)" (OpenGameArt sound effect, CC0)
 
@@ -470,7 +471,8 @@ docs/BOOKSHELVES.md). **Changes made:** rendered to 2D sprites
   the WAVs kept).
 - Used for: the candidates for the secret-room discovery jingle `sfx.jingle.secret` (docs/SECRET_ROOMS.md SR14;
   owner's source pick 2026-11-13: `Jingle_Achievement_00` / `_01`, `Jingle_Win_00` / `_01`, one picked at the
-  audition). **Changes made:** silence-trimmed, downmixed to mono, loudness-normalised (EBU R128) and re-encoded to OGG
+  audition), and the Silver crate clink `sfx.silver.crate` (`Collect_Point_02`, docs/SILVER.md, picked at the audition
+  2026-11-14). **Changes made:** silence-trimmed, downmixed to mono, loudness-normalised (EBU R128) and re-encoded to OGG
   by `scripts/audio/build-audio.js`; only the built OGG is uploaded to Roblox as an audio asset.
 - Raw files: `art/vendor/lrsf-8bit/Wav/` (gitignored).
 - License: Creative Commons Attribution 3.0 Unported (https://creativecommons.org/licenses/by/3.0/). The author's

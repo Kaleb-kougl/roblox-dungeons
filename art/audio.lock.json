@@ -42,6 +42,21 @@
 			"bytes": 6146
 		},
 		{
+			"path": "kenney-interface-sounds/error_008.wav",
+			"sha256": "4b744634a2a860a5ec584fc5d8a73489756255297028509cc98c4c4dba18120c",
+			"bytes": 12366
+		},
+		{
+			"path": "kenney-interface-sounds/maximize_007.wav",
+			"sha256": "ef388248f8b2286e085e6975a347a76c6c7887f3e543cea705a8e2be5a6046bb",
+			"bytes": 17102
+		},
+		{
+			"path": "kenney-interface-sounds/pluck_001.wav",
+			"sha256": "7d676b0b09b56f7e5964ad274feb7e7307a4e552bed8cd98e1e3cecfb9c10c36",
+			"bytes": 19790
+		},
+		{
 			"path": "kenney-music-jingles/OGG/jingles_NES/jingles_NES00.ogg",
 			"sha256": "1010c9b566d6c090ff03a4aaaf7439e26eb4cc4f20373800d0b7e6a9057b795d",
 			"bytes": 39948
@@ -50,6 +65,11 @@
 			"path": "kenney-music-jingles/OGG/jingles_NES/jingles_NES05.ogg",
 			"sha256": "f488e856ca7e01df286c7e3edc853bfa7bfde91e1d39754f611bda2e844ef37d",
 			"bytes": 21439
+		},
+		{
+			"path": "lrsf-8bit/Wav/Collect_Point_02.wav",
+			"sha256": "024cbbc85bb2612efb66f56066efb4747da23eb30eeeb418b4cdcd16bcdcbbdf",
+			"bytes": 17532
 		},
 		{
 			"path": "lrsf-8bit/Wav/Jingle_Achievement_00.wav",
