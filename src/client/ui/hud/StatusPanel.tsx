@@ -12,11 +12,12 @@ import { FLOOR_MODIFIER_VIEW } from "shared/view/modifiers";
 import {
 	HUD_STRINGS,
 	HUD_VIEW,
+	HEART_FILL,
+	heartArt,
 	heartFills,
-	heartSkinState,
+	isHalfContainer,
 	pipArt,
 	pipArtSlot,
-	skinFor,
 	skinHasOf,
 	statusRowMaxWidth,
 	type HudPipKind,
@@ -49,6 +50,10 @@ export interface StatusSkin {
  * One heart: `fill` 0 (empty), 1 (half) or 2 (full) half hearts; the left half fills first (web PlayerHud Heart). With
  * the heart art (skinFor "heart": full / half / empty, all or none) the art fitted into the same HUD_VIEW.heartSize box
  * (ArtImage: whole screen px per art px); without, the flat heart.
+ *
+ * docs/SILVER.md SV16 (OC18): the half container of an odd maximum (heartFills' HALF_MAX_FULL / HALF_MAX_EMPTY) sits in
+ * the same box: the pack's container art (heartArt), else the whole heart art's left half (clipped), else a flat
+ * half-width container, filled while it holds its half heart. Never a half-filled heart.
  */
 export function Heart(props: {
 	order: number;
@@ -59,7 +64,8 @@ export function Heart(props: {
 }) {
 	const size = HUD_VIEW.heartSize;
 	const box = props.box ?? { w: size, h: size };
-	const art = props.skin !== undefined ? skinFor(props.skin.has, "heart", heartSkinState(props.fill)) : undefined;
+	const art = props.skin !== undefined ? heartArt(props.skin.has, props.fill) : undefined;
+	if (isHalfContainer(props.fill)) return <HalfContainer order={props.order} fill={props.fill} box={box} art={art} />;
 	const flat = (
 		<frame
 			LayoutOrder={props.order}
@@ -77,7 +83,56 @@ export function Heart(props: {
 		</frame>
 	);
 	if (art === undefined) return flat;
-	return <ArtImage id={art} box={box} order={props.order} fallback={flat} />;
+	return <ArtImage id={art.id} box={box} order={props.order} fallback={flat} />;
+}
+
+/** Heart's half container (docs/SILVER.md SV16): see Heart. */
+function HalfContainer(props: {
+	order: number;
+	fill: number;
+	box: { readonly w: number; readonly h: number };
+	art: ReturnType<typeof heartArt>;
+}) {
+	const box = props.box;
+	const full = props.fill === HEART_FILL.HALF_MAX_FULL;
+	// The flat container: the left half of the heart's box, its own outline, filled while it holds its half heart.
+	const flat = (
+		<frame
+			LayoutOrder={props.order}
+			Size={new UDim2(0, box.w, 0, box.h)}
+			BackgroundTransparency={HIDDEN}
+			BorderSizePixel={0}
+		>
+			<frame
+				Size={UDim2.fromScale(1 / HALVES, 1)}
+				BackgroundColor3={full ? role("uiHealth") : role("uiPanel")}
+				BorderSizePixel={0}
+			>
+				<uistroke Thickness={STROKE} Color={role("background")} />
+			</frame>
+		</frame>
+	);
+	const art = props.art;
+	if (art === undefined) return flat;
+	if (!art.leftHalf) return <ArtImage id={art.id} box={box} order={props.order} fallback={flat} />;
+	// The whole heart's art, only its left half shown (the box keeps its width, so the row is spaced as before).
+	return (
+		<frame
+			LayoutOrder={props.order}
+			Size={new UDim2(0, box.w, 0, box.h)}
+			BackgroundTransparency={HIDDEN}
+			BorderSizePixel={0}
+		>
+			<frame
+				Size={UDim2.fromScale(1 / HALVES, 1)}
+				BackgroundTransparency={HIDDEN}
+				BorderSizePixel={0}
+				ClipsDescendants={true}
+			>
+				<ArtImage id={art.id} box={box} order={0} fallback={flat} />
+			</frame>
+		</frame>
+	);
 }
 
 /** A pip's art (shared/view/hud pipArt) in its slot (pipArtSlot), or undefined: the flat pip. */

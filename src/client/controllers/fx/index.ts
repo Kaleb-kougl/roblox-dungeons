@@ -49,3 +49,5 @@ export * from "./OvercapPopController";
 export * from "./CodexController";
 // docs/HAPTICS.md HP2-HP4 / HP6: the one haptics controller (menu cues on the pad, play cues on the pad or the phone).
 export * from "./HapticsController";
+// docs/SILVER.md SV8: the Silver counter, the crate burst and the clink.
+export * from "./SilverHudController";

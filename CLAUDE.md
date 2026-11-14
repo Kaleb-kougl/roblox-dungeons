@@ -82,6 +82,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/CODEX.md` | Codex (a main-menu catalogue of 86 entries (87 with docs/SECRET_ROOMS.md's `secret:room`): boons, evolutions, duos, relics & curses, boosts, enemies, champions, bosses; each unknown / seen / found with a NEW dot, completion %; in-run NEW! chips on existing toasts, codex cards on the sighting slot under a 2-per-floor budget, NEW tags on unfound draft cards, a run-over row; client-claimed, server-stored `KV_Codex_v1`; presentation plus one server doc): plan, as built, tasks CX0-CX11, decisions CXD1-CXD15 / R1-R14 |
 | `docs/HAPTICS.md` | Haptics in play (a kill tick, a parry thump, the boss phase break's heavy hit, the boss death rumble and three hurt buzzes, on the view player's own events only, by priority with a kill gap / cap and a 40 % duty cap; pads through `SetMotor`, phones through `HapticEffect`; quiet in menus, spectating and after run over; `padVibration` for menus and play, a new `touchVibration` on Options > Controls > Touch; `KV_HapticDebug`; presentation only): plan, as built, tasks HP0-HP8, decisions HPD1-HPD12 |
 | `docs/SECRET_ROOMS.md` | Secret rooms (a cracked far wall that knocks hollow hides a small torch-lit chamber with a chest; about one endless floor in five from floor 2, nothing announces it; opened by the Knight's combo finisher, a heavy arrow / Siege slam, a Wrecker roll or a Charger's charge; the chest Rare 65 / Legendary 35 with the vault's grants; SECRET! shout, recap highlight, one Codex entry; gameplay, opt-in `SimConfig.secrets`, endless only): plan, as built (Tracks A / T / V1 / V2), Studio check, tasks SR0-SR16, decisions SRD1-SRD14 |
+| `docs/SILVER.md` | Silver, the cross-run currency (phase 1 built): earned per room cleared, per floor / boss / vault / secret / Goldling, from Silver in barrels and crates (floor-built, any break pays), a run minimum and day bonuses; server-owned wallet `KV_Wallet_v1` (transactions only); spent in the Armory on upgrades (Vigor / Deep Flask / Plating / Prospector) and the Archer unlock on one doubling price ladder; base hearts down by one (Knight 2, Archer 1 1/2) with half-heart containers: SV0 findings, plan, as built, tasks SV0-SV18 / SC1-SC4, decisions SVD1-SVD41 |
 
 Decision log (deviations from `PLAN.md`):
 - **Art (docs/ART.md).** The theme contract gained a `"sprites"` kind (large pre-rendered cells, 1/4/8/16 screen-space
@@ -1457,6 +1458,30 @@ Decision log (deviations from `PLAN.md`):
   `KV_SecretLabel` (`RUN_ATTRIBUTES.secretLabel`, Studio or KV_Debug: outlines and a label), the `[Secret]` line under
   KV_Debug. Pending: the sounds (SR14), the `secret.png` upload, the Studio check and playtest (SR15); the discovery
   bot census (SR13) and telemetry (SR16) optional, not built.
+
+- **Silver (docs/SILVER.md, 2026-11-14).** Gameplay (sim config, dungeon, a hashed group), a server doc and client.
+  **Heart cut:** the Knight's traits are `heartsMaxDelta` -2 (`KNIGHT_HEARTS_MAX_DELTA`; no longer `NEUTRAL_TRAITS`), the
+  Archer's -3 (4 / 3 half hearts); `START_HALF_HEARTS` stays 6, so M1 (no traits) and every golden fixture replay as
+  before with no setter; `TUTORIAL_START_HALF_HEARTS` 4 -> 2. Odd maxima end in a half container (`HEART_FILL` 3 / 4,
+  theme `ui.heart.halfmax` / `.halfmax.empty` from `scripts/art/gen-heart-halfmax.js`, atlas group `heartIcons`, own
+  sheet `heart-icons.png`, upload pending). **Upgrades:** `PlayerTraits.armorMaxDelta` / `flaskChargesDelta` (neutral 0),
+  shared/characters `UpgradeLevels` / `upgradeTraits`; the server reads each member's levels at the start
+  (`SilverAccessService`, wired by WalletService), stores them on the session and returns them
+  (`StartRunReply.upgrades`, `PartyRunStart.upgrades`); `upgradesApply`: endless and the Daily (SVD3), never M1 or the
+  tutorial. **Lock:** the Archer is an Armory unlock (`locked_character`, the lobby's `lockedCharacter`; an unknown
+  wallet plays the Knight only). **Crates:** shared/dungeon `placeBreakableSilver` (salt `0x4b56534c`, once, last, after
+  `placeSecret`), opt-in `SimConfig.silver` (`ENDLESS_SILVER_CONFIG`, every endless / daily / dev build), `state.silver`
+  hashed as the `silver` group appended LAST (after `secrets`), `silverOnBreak` after `dropsOnBreak` (any source), no rng,
+  no score source. **Wallet:** DataStore `KV_Wallet_v1` (`{ v: 1, earned, spent, own, eq?, runs, runDay?, dailyDay? }`),
+  every change an UpdateAsync transaction (shared/wallet `WalletBook`, server `WalletTransactions` / `WalletService`),
+  the run's rows read in `SegmentedValidator.decide()` (`readSilver`, `SegmentedRunResult.silver`), grants in `conclude`
+  for the credited members, day bonuses decided inside the transaction; remotes `wallet` / `requestWallet` / `walletBuy`
+  / `walletEquip`; economy events and `ArmoryPurchase` (38 of 100 names). Endless, daily, dev and tutorial replays and
+  scores changed (boards stay `_v1`); `DAILY.ruleset` 19 -> 20. Theme: `SILVER_STRING_KEYS` spread last into
+  `REQUIRED_STRING_KEYS`, role `silver`, port audio IDs `sfx.silver.gain` / `.crate`, `sfx.shop.buy` / `.deny` last in
+  `PORT_AUDIO_EVENTS` (SILENT; a later feature appending there must update codex.spec's tail and the listed skips);
+  `contract.luau` / `validate.luau` top-level locals 188 / 192 (counted on out/). Debug `KV_FakeWallet` (Studio),
+  `KV_SilverDebug` (dev), `KV_SilverLabel`. Studio check, sounds, art and cosmetics pending.
 
 ## Commands
 

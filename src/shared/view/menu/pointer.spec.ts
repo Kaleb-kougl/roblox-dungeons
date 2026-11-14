@@ -12,6 +12,7 @@ const SCREENS: Record<MenuScreen, true> = {
 	lobby: true,
 	credits: true,
 	codex: true,
+	armory: true,
 	character: true,
 };
 
@@ -27,7 +28,7 @@ const DEFAULT_ZINDEX = 1;
 describe("menu pointer sink", () => {
 	it("covers every menu screen while a panel is open over it", () => {
 		const screens = menuScreens();
-		expect(screens.size()).toBe(6);
+		expect(screens.size()).toBe(7);
 		for (const screen of screens) {
 			expect(menuPointerSinkShown({ screen, panelOpen: true })).toBe(true);
 			expect(menuScreenTakesPointer({ screen, panelOpen: true })).toBe(false);

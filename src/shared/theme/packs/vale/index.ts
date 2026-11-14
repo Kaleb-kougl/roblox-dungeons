@@ -13,6 +13,7 @@ export * from "./duoIconLayout";
 export * from "./itemIconLayout";
 export * from "./boostIconLayout";
 export * from "./pipIconLayout";
+export * from "./heartIconLayout";
 export * from "./fx";
 export * from "./bullets";
 export * from "./gooLayout";

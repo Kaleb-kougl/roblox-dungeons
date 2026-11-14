@@ -19,7 +19,7 @@ import { ENDLESS_ROSTER_UNLOCK_FLOORS, buildEndlessRunConfig } from "./endless";
 import { TUTORIAL_WORLD_KIND, buildTutorialRunConfig } from "./tutorial";
 import { DEV_WORLD_KIND, buildDevRunConfig, type DevRunOptions } from "./dev";
 import type { RunWorld } from "./limits";
-import type { CharacterId } from "shared/characters";
+import type { CharacterId, UpgradeLevels } from "shared/characters";
 
 /** A registered world's name ("game", "dungeonNoEncounter", "greybox", "endless", "daily", "tutorial", "dev"). */
 export type RunWorldKind = string;
@@ -65,6 +65,32 @@ export interface WorldBuildOptions {
 	 * `dungeonNoEncounter`, `greybox`: ignored (both weapons, no traits; ARD9). Echoed as RunSetup.characters.
 	 */
 	readonly characters?: ReadonlyArray<CharacterId>;
+	/**
+	 * docs/SILVER.md SV6: each player's Armory upgrade levels, index order (missing entries NO_UPGRADES). Applied where
+	 * upgradesApply(kind) (`endless`, `daily`: folded into the characters' traits); `dev` by its panel's
+	 * `DevRunOptions.upgrades` (`mine` reads entry 0); `tutorial` and the M1 worlds ignore them. Echoed as
+	 * RunSetup.upgrades where applied. The server fills them from the wallet (StartContext.upgrades), the client from
+	 * the run-start reply (StartRunReply.upgrades / PartyRunStart.upgrades), so both build the identical config.
+	 */
+	readonly upgrades?: ReadonlyArray<UpgradeLevels>;
+}
+
+/**
+ * docs/SILVER.md SV17: the world's run is played as its players' characters (WorldBuildOptions.characters builds
+ * their loadouts and traits): `endless`, `daily` and `dev`. The tutorial is always the Knight and M1's worlds play
+ * both weapons, so a character pick means nothing there and is never checked for ownership.
+ */
+export function charactersApply(kind: RunWorldKind): boolean {
+	return kind === ENDLESS_WORLD_KIND || kind === DAILY_WORLD_KIND || kind === DEV_WORLD_KIND;
+}
+
+/**
+ * docs/SILVER.md SV6 / SVD3: the world's run applies its players' Armory upgrades (their levels are read at the
+ * start and folded into the traits): the endless descent and the Daily, solo and co-op. False for every other world:
+ * `dev` decides through its own panel option (DevRunOptions.upgrades), the tutorial and M1's worlds never.
+ */
+export function upgradesApply(kind: RunWorldKind): boolean {
+	return kind === ENDLESS_WORLD_KIND || kind === DAILY_WORLD_KIND;
 }
 
 /** Builds a run's world from its seed. Pure and deterministic; may throw (a session start answers `config_error`). */
@@ -119,7 +145,7 @@ function registerBuiltinWorlds(): void {
 	// Endless mode (always scored; the boss door has no meaning there). One line per new world.
 	// docs/ARCHER.md AR4: endless / daily / dev build every player's character (the Knight for a missing pick).
 	registerRunWorld(ENDLESS_WORLD_KIND, (seed, o) =>
-		buildEndlessRunConfig(seed, o.partySize, { characters: o.characters ?? [] }),
+		buildEndlessRunConfig(seed, o.partySize, { characters: o.characters ?? [], upgrades: o.upgrades }),
 	);
 	// The Daily (docs/DAILY.md): the endless descent, identical setup for the same seed. The server picks its seed of
 	// the day (RunSessionDeps.dailySeed, a server-only secret); a server world (not SERVER_REFUSED_WORLDS).
@@ -127,6 +153,7 @@ function registerBuiltinWorlds(): void {
 	registerRunWorld(DAILY_WORLD_KIND, (seed, o) =>
 		buildEndlessRunConfig(seed, o.partySize, {
 			characters: o.characters ?? [],
+			upgrades: o.upgrades,
 			unlockFloors: rosterUnlockFloors(DAILY_WORLD_KIND),
 		}),
 	);
@@ -136,7 +163,10 @@ function registerBuiltinWorlds(): void {
 	registerRunWorld(TUTORIAL_WORLD_KIND, (_seed, o) => buildTutorialRunConfig(o.partySize));
 	// Developer mode (docs/DEV_MODE.md): an endless run started on any floor, optional god mode. Solo, client-only
 	// (SERVER_REFUSED_WORLDS), never leaderboard-eligible.
-	registerRunWorld(DEV_WORLD_KIND, (seed, o) => buildDevRunConfig(seed, o.dev, o.partySize, o.characters ?? []));
+	// docs/SILVER.md SV6: its upgrades by the panel's DevRunOptions.upgrades (`mine` = the player's own, o.upgrades[0]).
+	registerRunWorld(DEV_WORLD_KIND, (seed, o) =>
+		buildDevRunConfig(seed, o.dev, o.partySize, o.characters ?? [], o.upgrades?.[0]),
+	);
 }
 
 registerBuiltinWorlds();

@@ -47,6 +47,7 @@ import { gooArtProblems } from "./gooArt";
 import { hazardArtProblems } from "./hazardArt";
 import { cursorArtProblems } from "./cursorArt";
 import { secretReport } from "./secretColors";
+import { silverReport } from "./silverColors";
 import { secretArtProblems } from "./secretArt";
 
 /** What a variant colour report checks against what, and the bars (AFFIX_COLOR_RULES, GOO_COLOR_RULES). */
@@ -249,6 +250,11 @@ const WHY = {
 	secret: {
 		difference: "a secret room's dust must never read as an enemy bullet or a telegraph",
 	},
+	silver: {
+		panel: "Silver's counter and prices are text on panels",
+		difference: "a Silver pop or coin must never read as an enemy bullet or a telegraph",
+		apart: "Silver must never read as the score's gold (it is what you take home, not this run's score)",
+	},
 } as const;
 
 /**
@@ -283,6 +289,7 @@ export function variantColorProblems(manifest: unknown, suffix: (biome: string) 
 		{ entries: fortuneReport(manifest), why: WHY.fortune },
 		{ entries: floorModifierReport(manifest), why: WHY.floorMod },
 		{ entries: secretReport(manifest), why: WHY.secret },
+		{ entries: silverReport(manifest), why: WHY.silver },
 	];
 	for (const report of reports) {
 		for (const c of report.entries) {

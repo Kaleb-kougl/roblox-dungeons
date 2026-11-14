@@ -19,7 +19,8 @@
  *      debug skip included: debug runs never post), enemy and player bullets cleared, every actor freed (no
  *      onDeath), the next floor's world, the player at its entrance (hearts kept; armor, flask and Embers refilled: refillAtCheckpoint),
  *      the new floor's breakables (state.breakables, when the run has them) and their loot (drops/breakLoot.ts
- *      dropsOnFloorPieces, with DropsConfig.breakableLoot), the floor's initial spawns (the boss on
+ *      dropsOnFloorPieces, with DropsConfig.breakableLoot) and Silver (silver/silver.ts silverOnFloorPieces, with
+ *      SimConfig.silver), the floor's initial spawns (the boss on
  *      boss floors), scoring's room records rebuilt for the new floor
  *      (rebuildScoreRooms, deferred), then the floor's pellets on those records (pellets/pellets.ts pelletsOnFloor,
  *      with SimConfig.pellets), then its vault (treasure/treasure.ts treasureOnFloor, with SimConfig.treasure), the
@@ -48,6 +49,7 @@
 import type {
 	BreakableLoot,
 	BreakablePlacement,
+	BreakableSilver,
 	FloorGolden,
 	FloorSecret,
 	FloorPacts,
@@ -80,6 +82,7 @@ import { pactsOnFloor } from "./pacts/pacts";
 import { pactsOnRoomSpawned } from "./pacts/pactRooms";
 import { goldenOnFloor } from "./golden/golden";
 import { secretsOnFloor } from "./secrets/secrets";
+import { silverOnFloorPieces } from "./silver/silver";
 
 /** A candidate spawn position (structurally shared/dungeon's TileXZ). */
 export interface SpawnTile {
@@ -162,6 +165,12 @@ export interface EndlessFloorWorld {
 	 * were built on. Read only when the run's SimConfig.secrets is set (secrets/secrets.ts secretsOnFloor). Absent: none.
 	 */
 	readonly secret?: FloorSecret;
+	/**
+	 * The breakables that hold Silver (shared/dungeon placeBreakableSilver, docs/SILVER.md SC1): { slot into
+	 * `breakables`, amount }. Read only when the run's SimConfig.silver is set (silver/silver.ts silverOnFloorPieces).
+	 * Absent: none.
+	 */
+	readonly breakableSilver?: ReadonlyArray<BreakableSilver>;
 }
 
 /** SimConfig.endless. */
@@ -311,6 +320,9 @@ function nextFloor(state: SimState, input: Readonly<InputFrame>, endless: Endles
 	// Boosts from breakables (docs/BREAKABLE_DROPS.md): the new floor's loaded pieces (no-op unless the drops config
 	// has breakableLoot). No rng.
 	dropsOnFloorPieces(state, world.breakableLoot);
+	// Silver in crates (docs/SILVER.md SC2): the new floor's Silver pieces; the run's total carries over (no-op without
+	// state.silver). No rng.
+	silverOnFloorPieces(state, world.breakableSilver);
 
 	ctx.bind(state, world.config, input);
 	spawnAll(world.config.encounter?.spawns ?? []);

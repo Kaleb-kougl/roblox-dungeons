@@ -131,6 +131,27 @@ describe("stage floor inputs (docs/STAGE_ASSETS.md SA3)", () => {
 		expect(on > 0 && off > 0).toBe(true);
 	});
 
+	it("the glint (breakableLoot) on a floor with Silver and no boost loot (docs/SILVER.md SC3); off with neither", () => {
+		let silverOnly = 0;
+		for (let seed = 1; seed <= 12 && silverOnly === 0; seed++)
+			for (const floor of [1, 2, 3]) {
+				const layout = endlessRunFloor(seed, floor).layout;
+				const exact = stageInputOfLayout("endless", layout, STAGE_CHARACTERS);
+				const loot = (layout.breakableLoot?.size() ?? 0) > 0;
+				const silver = (layout.breakableSilver?.size() ?? 0) > 0;
+				expect(exact.features.breakableLoot).toBe(loot || silver);
+				if (silver && !loot) silverOnly++;
+				// Without Silver (and without loot) the glint stays off.
+				const bare = stageInputOfLayout(
+					"endless",
+					{ ...layout, breakableLoot: [], breakableSilver: undefined },
+					STAGE_CHARACTERS,
+				);
+				expect(bare.features.breakableLoot).toBe(false);
+			}
+		expect(silverOnly > 0).toBe(true);
+	});
+
 	it("stageInputOf reads an endless run's floor through its endlessFloor", () => {
 		let calls = 0;
 		const floorOf = (f: number) => {

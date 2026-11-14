@@ -100,6 +100,8 @@ import { TreasureFrameEvents } from "shared/view/treasure";
 import { PactFrameEvents } from "shared/view/pacts";
 import { GoldenFrameEvents } from "shared/view/golden";
 import { SecretFrameEvents } from "shared/view/secrets";
+// By file: the shared/view/silver barrel reaches shared/wallet -> shared/settings -> shared/play (a require cycle).
+import { SilverFrameEvents } from "shared/view/silver/events";
 import {
 	BuildFxEvents,
 	ComboEvents,
@@ -189,6 +191,8 @@ export class LockstepClient implements RunView, PredictionSource {
 	readonly golden = new GoldenFrameEvents();
 	/** The secret-room events (knocks, the open, the chest) of the ticks the last pump stepped (docs/SECRET_ROOMS.md SR6). */
 	readonly secrets = new SecretFrameEvents();
+	/** The Silver piece breaks of the ticks the last pump stepped (docs/SILVER.md SV8; reset every pump). */
+	readonly silver = new SilverFrameEvents();
 	/** Run totals for the HUD (kills, landed hits on the party). */
 	kills = 0;
 	hitsTaken = 0;
@@ -548,6 +552,7 @@ export class LockstepClient implements RunView, PredictionSource {
 		this.pacts.reset();
 		this.golden.reset();
 		this.secrets.reset();
+		this.silver.reset();
 		const inputs: OutgoingInputs[] = [];
 		const hashes: Array<{ tick: number; hash: string }> = [];
 		let final: RunFinal | undefined;
@@ -630,6 +635,7 @@ export class LockstepClient implements RunView, PredictionSource {
 			this.pacts.collect(state);
 			this.golden.collect(state);
 			this.secrets.collect(state);
+			this.silver.collect(state);
 			stepped++;
 			if (state.tick % this.tunables.hashEvery === 0 && !this.stopped) {
 				this.unackedTicks.push(state.tick);

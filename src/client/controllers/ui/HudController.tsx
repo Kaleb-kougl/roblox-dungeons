@@ -30,6 +30,7 @@ import { LobbyController } from "./LobbyController";
 import { MenuController } from "./MenuController";
 import { RebindController } from "./RebindController";
 import { SettingsController } from "./SettingsController";
+import { WalletController } from "./WalletController";
 
 /** Stock CoreGui that means nothing here (the player is a sim entity: no Humanoid health, no tools). */
 const HIDDEN_CORE_GUI = [Enum.CoreGuiType.Health, Enum.CoreGuiType.Backpack];
@@ -60,6 +61,7 @@ export class HudController implements OnStart {
 		private readonly recap: RecapController,
 		private readonly focus: FocusController,
 		private readonly codex: CodexController,
+		private readonly wallet: WalletController,
 	) {}
 
 	onStart(): void {
@@ -143,6 +145,10 @@ export class HudController implements OnStart {
 			openCredits: click(() => this.menu.openCredits()),
 			openCodex: click(() => this.menu.openCodex()),
 			codexViewed: (ids) => this.codex.sendViewed(ids),
+			openArmory: click(() => this.menu.openArmory()),
+			armoryBuy: (itemId: string) => this.wallet.buy(itemId),
+			armorySeen: (keys) => clientStore.setSeenAffordable(keys),
+			dismissSilverWelcome: click(() => this.settings.updateDisplay({ silverNoticeSeen: true })),
 			inviteFriends: click(() => this.menu.inviteFriends()),
 			playTutorial: click(() => this.tutorial.playTutorial("menu")),
 			back: click(() => this.menu.back()),

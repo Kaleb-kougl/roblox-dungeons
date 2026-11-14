@@ -39,6 +39,7 @@ import {
 import type { LobbyNotice, LobbyView } from "shared/network";
 import { SlidingWindowLimiter, type AnalyticsEventSpec } from "shared/run";
 import { RunSessionService, type LobbyRunStartResult } from "./RunSessionService";
+import { SilverAccessService } from "./SilverAccessService";
 import { TelemetryService } from "./TelemetryService";
 
 const log = serverLogger("Lobby");
@@ -124,7 +125,11 @@ export class LobbyService implements OnStart {
 	private nextTickAt = 0;
 	private nextListAt = 0;
 
-	constructor(private readonly runSessions: RunSessionService, private readonly telemetry: TelemetryService) {}
+	constructor(
+		private readonly runSessions: RunSessionService,
+		private readonly telemetry: TelemetryService,
+		private readonly silver: SilverAccessService,
+	) {}
 
 	onStart(): void {
 		const lookup = (lobbyId: string) => this.lobbies.get(lobbyId);
@@ -211,8 +216,11 @@ export class LobbyService implements OnStart {
 		this.janitor.Add(
 			Events.lobbySetReady.connect((player, ready, characterId) =>
 				this.request(player, "lobbySetReady", this.requestLimiter, () => {
-					// The pick is checked by Lobbies (an unknown id is a badRequest refusal); docs/ARCHER.md AR5.
-					const r = this.lobbies.setReady(player.UserId, ready, characterId);
+					// The pick is checked by Lobbies (an unknown id is a badRequest refusal); docs/ARCHER.md AR5. And
+					// (docs/SILVER.md SV17) readying as a character the player has not unlocked is `lockedCharacter`.
+					const r = this.lobbies.setReady(player.UserId, ready, characterId, (id, c) =>
+						this.silver.ownsCharacter(id, c),
+					);
 					if (!r.ok) return this.outbox.refused(player.UserId, "lobbySetReady", r);
 					this.outbox.lobby(r.lobby);
 					if (r.countdownCancelled) this.outbox.countdownCancelled(r.lobby, COUNTDOWN_CANCELLED_UNREADY);
@@ -259,6 +267,8 @@ export class LobbyService implements OnStart {
 			now: os.clock(),
 			busyReason: (id) => this.runSessions.busyReason(id),
 			areFriends: (a, b) => this.areFriends(a, b, confirmed),
+			// docs/SILVER.md SV17: a lobby Start refuses a pick its member has not unlocked.
+			ownsCharacter: (id, characterId) => this.silver.ownsCharacter(id, characterId),
 		};
 	}
 
@@ -567,7 +577,12 @@ export class LobbyService implements OnStart {
 		const now = os.clock();
 		if (now >= this.nextTickAt) {
 			this.nextTickAt = now + LOBBY_SERVICE.tickSeconds;
-			const result = this.lobbies.tick({ now, busyReason: (id) => this.runSessions.busyReason(id) });
+			// docs/SILVER.md SV17: a due countdown re-checks every member's pick against their wallet.
+			const result = this.lobbies.tick({
+				now,
+				busyReason: (id) => this.runSessions.busyReason(id),
+				ownsCharacter: (id, characterId) => this.silver.ownsCharacter(id, characterId),
+			});
 			this.outbox.tick(result, (id) => this.lobbies.get(id));
 			for (const inv of result.expiredInvites) this.track(inv.toUserId, analyticsForInviteAnswered("expire"));
 			for (const start of result.starts) this.startRun(start);

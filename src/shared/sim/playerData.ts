@@ -98,6 +98,16 @@ export interface PlayerTraits {
 	 * Archer's -2 = 2 hearts). Applied once, when createSimState builds the player (playerStartHalfHearts).
 	 */
 	readonly heartsMaxDelta: number;
+	/**
+	 * Armor pips added to START_ARMOR_MAX for the player's armor maximum, and their starting armor (docs/SILVER.md SV5:
+	 * the Plating upgrade; 0 = none, as today). Applied once in createSimState (playerStartArmorMax), never below 0.
+	 */
+	readonly armorMaxDelta: number;
+	/**
+	 * Flask charges added to FLASK_CHARGES for the player's flask maximum and starting charges (docs/SILVER.md SV5: the
+	 * Deep Flask upgrade; 0 = 3 charges, as today). Applied once in createSimState (playerStartFlaskMax), never below 0.
+	 */
+	readonly flaskChargesDelta: number;
 }
 
 /** A trait delta that changes nothing. */
@@ -111,10 +121,27 @@ export const NEUTRAL_TRAITS: PlayerTraits = table.freeze({
 	rollDashPercent: NEUTRAL_TRAIT_PERCENT,
 	rollIframePercent: NEUTRAL_TRAIT_PERCENT,
 	heartsMaxDelta: NEUTRAL_TRAIT_DELTA,
+	armorMaxDelta: NEUTRAL_TRAIT_DELTA,
+	flaskChargesDelta: NEUTRAL_TRAIT_DELTA,
 });
 
 /** A player's starting and maximum health in half hearts: START_HALF_HEARTS + the traits' delta, at least MIN_START_HALF_HEARTS. */
 export function playerStartHalfHearts(traits: Readonly<PlayerTraits>): number {
 	const n = START_HALF_HEARTS + traits.heartsMaxDelta;
 	return n < MIN_START_HALF_HEARTS ? MIN_START_HALF_HEARTS : n;
+}
+
+/** The least armor or flask maximum a trait delta can leave (playerStartArmorMax / playerStartFlaskMax). */
+export const MIN_TRAIT_MAXIMUM = 0;
+
+/** A player's armor maximum (and starting armor): START_ARMOR_MAX + the traits' delta, at least MIN_TRAIT_MAXIMUM. */
+export function playerStartArmorMax(traits: Readonly<PlayerTraits>): number {
+	const n = START_ARMOR_MAX + traits.armorMaxDelta;
+	return n < MIN_TRAIT_MAXIMUM ? MIN_TRAIT_MAXIMUM : n;
+}
+
+/** A player's flask maximum (and starting charges): FLASK_CHARGES + the traits' delta, at least MIN_TRAIT_MAXIMUM. */
+export function playerStartFlaskMax(traits: Readonly<PlayerTraits>): number {
+	const n = FLASK_CHARGES + traits.flaskChargesDelta;
+	return n < MIN_TRAIT_MAXIMUM ? MIN_TRAIT_MAXIMUM : n;
 }

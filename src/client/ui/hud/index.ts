@@ -38,6 +38,8 @@ export * from "./PadHintBar";
 export * from "./primitives";
 export * from "./recapBindings";
 export * from "./roomClearBindings";
+export * from "./silverBindings";
+export * from "./SilverCounter";
 export * from "./ScreenDim";
 export * from "./tenFoot";
 export * from "./tooltipTargets";

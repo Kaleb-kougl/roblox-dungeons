@@ -4,6 +4,7 @@
 // the plan's bars, every check printed. contract.ts names the IDs inline (its compiled Luau sits near the 200-locals
 // limit), so these specs are what keeps fortune.ts and contract.ts in step.
 import { describe, expect, it } from "@rbxts/jest-globals";
+import { SILVER_AUDIO_IDS, SILVER_ROLES, SILVER_STRING_KEYS } from "./silver";
 import { PACT_DIM_NAMES, PactDim } from "shared/sim";
 import { CODEX_AUDIO_IDS, CODEX_STRING_KEYS } from "./codex";
 import { SECRET_AUDIO_IDS, SECRET_ROLES, SECRET_STRING_KEYS } from "./secrets";
@@ -88,7 +89,7 @@ function tail(list: ReadonlyArray<string>, n: number, skip = 0): string[] {
 
 /** Entries docs/FLOOR_MODIFIERS.md FM7 appended after Fortune's (floorModifiers.spec.ts checks them). */
 const FLOOR_MOD_AFTER = {
-	roles: FLOOR_MODIFIER_ROLES.size() + SECRET_ROLES.size(),
+	roles: FLOOR_MODIFIER_ROLES.size() + SECRET_ROLES.size() + SILVER_ROLES.size(),
 	audio: FLOOR_MODIFIER_AUDIO_IDS.size(),
 	strings: FLOOR_MODIFIER_STRING_KEYS.size(),
 } as const;
@@ -98,8 +99,8 @@ const FLOOR_MOD_AFTER = {
  * docs/SECRET_ROOMS.md SR10's (secrets.spec.ts): the secret rooms' role (after the floor modifiers': FLOOR_MOD_AFTER).
  */
 const CODEX_AFTER = {
-	audio: CODEX_AUDIO_IDS.size() + SECRET_AUDIO_IDS.size(),
-	strings: CODEX_STRING_KEYS.size() + SECRET_STRING_KEYS.size(),
+	audio: CODEX_AUDIO_IDS.size() + SECRET_AUDIO_IDS.size() + SILVER_AUDIO_IDS.size(),
+	strings: CODEX_STRING_KEYS.size() + SECRET_STRING_KEYS.size() + SILVER_STRING_KEYS.size(),
 } as const;
 
 const clone = () => deepClone(PLACEHOLDER_MANIFEST) as unknown as Obj;

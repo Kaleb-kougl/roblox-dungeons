@@ -1617,6 +1617,16 @@
 			"bytes": 3039
 		},
 		{
+			"path": "kaleb-vale/heart-icons/heart_halfmax.png",
+			"sha256": "d482c5e74562788169d673e4942803d951c3c4611c597faf1b3a3708325c006d",
+			"bytes": 506
+		},
+		{
+			"path": "kaleb-vale/heart-icons/heart_halfmax_empty.png",
+			"sha256": "d3b4541a56a8d47e1c696119ac07a98111ead099798f281bacf76c8a9ac1a872",
+			"bytes": 478
+		},
+		{
 			"path": "kaleb-vale/item-icons/curse_frailty.png",
 			"sha256": "5e51bd322a8695b7dfed0c610e8bd0fd1edd199d8cb80aef38032472cc471b8d",
 			"bytes": 339

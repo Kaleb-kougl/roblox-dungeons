@@ -37,6 +37,8 @@ import {
 	DAILY_MENU,
 	MENU_FIT,
 	MENU_VIEW,
+	ARMORY_SCREEN,
+	armoryContentHeight,
 	fitMenu,
 	lobbyRoomParts,
 	menuArea,
@@ -56,6 +58,21 @@ import {
 	type MenuInsets,
 	type MenuSize,
 } from "shared/view/menu";
+import { SILVER_RECAP, silverRecapHeight } from "shared/view/silver";
+
+/**
+ * docs/SILVER.md SV8: the run-over panel's Silver rows at their tallest (SilverRecapBlock: SILVER_RECAP.perLine rows a
+ * line, at most SILVER_RECAP.maxLines; compact folds the bonuses, at no gap; wide / narrow at half a gap). They take
+ * the info line's place on the panel (the pause overlay keeps it): `infoOrSilver` is the taller of the two.
+ */
+function silverBlock(layout: "wide" | "narrow" | "compact"): number {
+	const line = LINE(HUD_VIEW.smallText);
+	return silverRecapHeight(SILVER_RECAP.maxLines[layout], line, layout === "compact" ? 0 : HUD_VIEW.gap / 2);
+}
+
+function infoOrSilver(layout: "wide" | "narrow" | "compact"): number {
+	return math.max(TWO_SMALL_LINES, silverBlock(layout));
+}
 
 /** The Roblox top bar under CoreUISafeInsets (pt): 58 on the owner's phone and on desktop (footprint HUD_TEST_TOP_INSET). */
 const TOP = 58;
@@ -132,11 +149,26 @@ function estimates(uiScale: number, compact: boolean): ReadonlyMap<string, Estim
 	const big = LINE(HUD_VIEW.bigText);
 	out.set("mainMenu", {
 		w: compact ? MENU_FIT.mainCompactWidth : MENU_VIEW.mainWidth,
+		// docs/SILVER.md SV9: the Silver line under the title (a phone: with the Armory's small button at its end).
 		h: compact
-			? column([big, BUTTON, BUTTON, BUTTON, TWO_SMALL_LINES], BIG, uiScale) // Codex, Credits beside the reason
-			: // claude/codex-plan.md CX7: Tutorial, Options, Leaderboard, Codex, Credits under the invite reason.
+			? column([big, MENU_VIEW.smallButton.y, BUTTON, BUTTON, BUTTON, TWO_SMALL_LINES], BIG, uiScale) // Codex, Credits beside the reason
+			: // claude/codex-plan.md CX7: Tutorial, Options, Leaderboard, Codex, Credits under the invite reason; the Armory
+			  // after the Codex (docs/SILVER.md SV9).
 			  column(
-					[big, BUTTON, BUTTON, BUTTON, TWO_SMALL_LINES, BUTTON, BUTTON, BUTTON, BUTTON, BUTTON],
+					[
+						big,
+						LINE(HUD_VIEW.smallText),
+						BUTTON,
+						BUTTON,
+						BUTTON,
+						TWO_SMALL_LINES,
+						BUTTON,
+						BUTTON,
+						BUTTON,
+						BUTTON,
+						BUTTON,
+						BUTTON,
+					],
 					BIG,
 					uiScale,
 			  ),
@@ -253,6 +285,14 @@ function estimates(uiScale: number, compact: boolean): ReadonlyMap<string, Estim
 		ornament: false,
 		flex: { min: CODEX_SCREEN.gridMin, max: CODEX_SCREEN.gridHeight },
 	});
+	// docs/SILVER.md SV9: the Armory: the title row, the tabs, the list (the flexible part; the detail beside it is as
+	// tall), Back (no key hint on touch).
+	out.set("armory", {
+		w: compact ? ARMORY_SCREEN.compactWidth : ARMORY_SCREEN.width,
+		h: column([title, ARMORY_SCREEN.tab.h, ARMORY_SCREEN.listHeight, MENU_VIEW.smallButton.y], BIG, uiScale),
+		ornament: false,
+		flex: { min: ARMORY_SCREEN.listMin, max: ARMORY_SCREEN.listHeight },
+	});
 	out.set("leaderboard", {
 		w: LEADERBOARD_VIEW.width,
 		h: column([title, BUTTON, LINE(HUD_VIEW.smallText), board, LINE(HUD_VIEW.smallText), BUTTON], BIG, uiScale),
@@ -309,6 +349,7 @@ const SCREENS = [
 	"lobbyBrowser",
 	"credits",
 	"codex",
+	"armory",
 	"lobbyRoom",
 	"lobbyRoomInviting",
 	"tutorialOutro",
@@ -443,6 +484,26 @@ function narrowEstimates(uiScale: number): ReadonlyMap<string, Estimate> {
 	const compactMain = estimates(uiScale, true).get("mainMenu")!;
 	// The stacked main menu with the Daily card and podium under Play solo's row (generously 240 tall).
 	out.set("mainMenu", { ...compactMain, h: compactMain.h + 240 });
+	// docs/SILVER.md SV9: the upright Armory, one column: the tabs, the list, the detail sheet under it.
+	out.set("armory", {
+		w: ARMORY_SCREEN.narrowWidth,
+		h:
+			column(
+				[
+					LINE(HUD_VIEW.titleText),
+					ARMORY_SCREEN.tab.h,
+					ARMORY_SCREEN.listHeight,
+					ARMORY_SCREEN.sheetHeight,
+					MENU_VIEW.smallButton.y,
+				],
+				BIG,
+				uiScale,
+			) +
+			ARMORY_SCREEN.detailGap -
+			HUD_VIEW.gap,
+		ornament: false,
+		flex: { min: ARMORY_SCREEN.listMin, max: ARMORY_SCREEN.listHeight },
+	});
 	// claude/codex-plan.md CX7: the upright Codex, one column: the scrolling tab row, the grid, the detail sheet under it.
 	out.set("codex", {
 		w: CODEX_SCREEN.narrowWidth,
@@ -569,6 +630,20 @@ describe("menu fit on a touchscreen and in portrait", () => {
 		const s: Screen = { name: "360x780", x: 360, y: 780, insets: { top: TOP, left: 0, right: 0, bottom: 34 } };
 		const u = computeHudScale(s.x, s.y, false, 100, true);
 		const e = narrowEstimates(u).get("codex")!;
+		const fit = narrowFit(s, e, u);
+		expect([fit.overflow, fit.factor]).toEqual([false, 1]);
+		expectInside(s, e, fit, u);
+	});
+
+	it("the upright Armory fits a 360 pt phone at the full touch scale (docs/SILVER.md SV9)", () => {
+		const s: Screen = { name: "360x780", x: 360, y: 780, insets: { top: TOP, left: 0, right: 0, bottom: 34 } };
+		const u = computeHudScale(s.x, s.y, false, 100, true);
+		const e = narrowEstimates(u).get("armory")!;
+		// The estimate is the screen's own content height (armoryContentHeight) and its padding.
+		const p = menuPad(BIG, u);
+		expect(e.h).toBe(
+			armoryContentHeight(true, ARMORY_SCREEN.listHeight, LINE(HUD_VIEW.titleText)) + p.top + p.bottom,
+		);
 		const fit = narrowFit(s, e, u);
 		expect([fit.overflow, fit.factor]).toEqual([false, 1]);
 		expectInside(s, e, fit, u);
@@ -874,7 +949,17 @@ function recapWorst(uiScale: number, layout: "compact" | "narrow" | "wide", part
 		const worstRow = codexWorstRow("compact", MENU_FIT.runOverLeftWidth);
 		expect(worstRow.lines).toBe(1);
 		const codexRow = codexRecapRowHeight("compact", HUD_VIEW.gap, worstRow);
-		const leftRows = [header, math.max(title, nearMiss), main, stats, codexRow, button, small, TWO_SMALL_LINES];
+		const leftRows = [
+			header,
+			math.max(title, nearMiss),
+			main,
+			stats,
+			codexRow,
+			button,
+			small,
+			// docs/SILVER.md SV8: the Silver rows take the info line's place (it stays in the pause overlay)
+			infoOrSilver("compact"),
+		];
 		let left = 0;
 		for (const r of leftRows) left += r;
 		left += (leftRows.size() - 1) * HUD_VIEW.gap;
@@ -891,7 +976,8 @@ function recapWorst(uiScale: number, layout: "compact" | "narrow" | "wide", part
 			ornament: false,
 		};
 	}
-	const rows = [header, title, main, stats, lineH, dim, grid, ...dailyRows, passed, small, TWO_SMALL_LINES];
+	// docs/SILVER.md SV8: the Silver rows in the info line's place.
+	const rows = [header, title, main, stats, lineH, dim, grid, ...dailyRows, passed, small, infoOrSilver(layout)];
 	// claude/codex-plan.md CX9: the Codex row under the daily block (one line wide, two narrow).
 	const inner = (layout === "narrow" ? MENU_FIT.runOverNarrowWidth : HUD_VIEW.panelWidth * 2) - HUD_VIEW.pad * 4;
 	rows.push(codexRecapRowHeight(layout, HUD_VIEW.gap, codexWorstRow(layout, inner)));
@@ -957,8 +1043,15 @@ describe("run-over recap fit (docs/RUN_RECAP.md RR5)", () => {
 			const daily = small + LINE(HUD_VIEW.titleText) + 2 * small + small + DAILY_RANK.passedHeadshotPx + small;
 			// claude/codex-plan.md CX9: the Codex row is drawn with or without the recap (one line on the wide panel).
 			const codexRow = codexRecapRowHeight("wide", HUD_VIEW.gap) + HUD_VIEW.gap;
+			// docs/SILVER.md SV8: the Silver rows (in the info line's place) are drawn with or without the recap too.
+			const silver = infoOrSilver("wide") - TWO_SMALL_LINES;
 			const today =
-				estimates(u, false).get("runOver")!.h + LINE(HUD_VIEW.textSize) + daily + 3 * HUD_VIEW.gap + codexRow;
+				estimates(u, false).get("runOver")!.h +
+				LINE(HUD_VIEW.textSize) +
+				daily +
+				3 * HUD_VIEW.gap +
+				codexRow +
+				silver;
 			expect([s.name, worst.h <= today]).toEqual([s.name, true]);
 		}
 	});
@@ -976,7 +1069,8 @@ describe("run-over recap fit (docs/RUN_RECAP.md RR5)", () => {
 				// claude/codex-plan.md CX9: the Codex row.
 				codexRecapRowHeight("wide", HUD_VIEW.gap),
 				LINE(HUD_VIEW.smallText),
-				TWO_SMALL_LINES,
+				// docs/SILVER.md SV8: the Silver rows in the info line's place.
+				infoOrSilver("wide"),
 				RECAP_UI.exits.wide.again.y,
 				// docs/ARCHER.md AR7: the exits' second row (Again and Character above Main menu and Details).
 				RECAP_UI.exits.wide.again.y,
@@ -1076,8 +1170,15 @@ describe("run-over contribution fit (docs/RUN_CONTRIBUTION.md CT5)", () => {
 			const daily = small + LINE(HUD_VIEW.titleText) + 2 * small + small + DAILY_RANK.passedHeadshotPx + small;
 			// claude/codex-plan.md CX9: the Codex row is drawn with or without the recap (one line on the wide panel).
 			const codexRow = codexRecapRowHeight("wide", HUD_VIEW.gap) + HUD_VIEW.gap;
+			// docs/SILVER.md SV8: the Silver rows (in the info line's place) are drawn with or without the recap too.
+			const silver = infoOrSilver("wide") - TWO_SMALL_LINES;
 			const today =
-				estimates(u, false).get("runOver")!.h + LINE(HUD_VIEW.textSize) + daily + 3 * HUD_VIEW.gap + codexRow;
+				estimates(u, false).get("runOver")!.h +
+				LINE(HUD_VIEW.textSize) +
+				daily +
+				3 * HUD_VIEW.gap +
+				codexRow +
+				silver;
 			expect([s.name, worst.h <= today]).toEqual([s.name, true]);
 		}
 	});
@@ -1095,7 +1196,8 @@ describe("run-over contribution fit (docs/RUN_CONTRIBUTION.md CT5)", () => {
 				// claude/codex-plan.md CX9: the Codex row.
 				codexRecapRowHeight("wide", HUD_VIEW.gap),
 				LINE(HUD_VIEW.smallText),
-				TWO_SMALL_LINES,
+				// docs/SILVER.md SV8: the Silver rows in the info line's place.
+				infoOrSilver("wide"),
 				RECAP_UI.exits.wide.again.y,
 			];
 			const room = menuArea(s.x, s.y, s.insets, u).h - 2 * MENU_FIT.margin;

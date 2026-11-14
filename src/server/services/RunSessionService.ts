@@ -9,6 +9,7 @@ import { boardForParty, dailyRunResult, partyContributors, type LeaderboardMembe
 import { LobbyRunTracker, type LobbyRunStart } from "shared/lobby";
 import type { LeaderboardPostStatus, RunFinishVerdict } from "shared/network";
 import type { RunRecordsResult } from "shared/records";
+import { planRunGrants, type SilverGrantBreakdown } from "shared/wallet";
 import {
 	DEFAULT_RUN_SCORE,
 	MAX_RUN_ID_CHARS,
@@ -48,7 +49,9 @@ import { LeaderboardService } from "./LeaderboardService";
 import { OnboardingService } from "./OnboardingService";
 import { RecordsService } from "./RecordsService";
 import { RunValidationService } from "./RunValidationService";
+import { SilverAccessService } from "./SilverAccessService";
 import { TelemetryService } from "./TelemetryService";
+import { WalletService } from "./WalletService";
 
 const log = serverLogger("RunSession");
 
@@ -69,18 +72,20 @@ interface SessionMeta {
 const NOT_LEFT = -1;
 
 /**
- * `verdict` with one recipient's personal records result and daily board result (a copy; the verdict itself when
- * there is neither).
+ * `verdict` with one recipient's personal records result, daily board result and predicted Silver grant (a copy; the
+ * verdict itself when there is none of them).
  */
 function forRecipient(
 	verdict: RunFinishVerdict,
 	records: RunRecordsResult | undefined,
 	daily: DailyRunResult | undefined,
+	silver: SilverGrantBreakdown | undefined,
 ): RunFinishVerdict {
-	if (records === undefined && daily === undefined) return verdict;
+	if (records === undefined && daily === undefined && silver === undefined) return verdict;
 	const out: RunFinishVerdict = { ...verdict };
 	if (records !== undefined) out.records = records;
 	if (daily !== undefined) out.daily = daily;
+	if (silver !== undefined) out.silver = silver;
 	return out;
 }
 
@@ -103,6 +108,9 @@ export type LobbyRunStartResult = { readonly ok: true } | { readonly ok: false; 
  *   finishRun      validator.finish -> decided once the last segment is replayed -> `runFinished` (accepted runs
  *                  go to LeaderboardService and RecordsService, and fire RunValidationService's accepted listeners:
  *                  telemetry). The verdict carries each recipient's own personal records result (`records`).
+ *                  Paying runs grant Silver through WalletService (docs/SILVER.md SV4: every credited member, the
+ *                  team's run rows from the replay, their own bonuses); the verdict carries each recipient's
+ *                  predicted grant (`silver`), the `wallet` push after the transaction the settled one.
  *
  * A rejection at any point rejects the whole run (`runFinished` with the code, failed segment and tick window).
  * Open sessions expire (sweep every RUN_SESSION_SWEEP_SECONDS) and are dropped when their player leaves; a session
@@ -183,12 +191,15 @@ export class RunSessionService implements OnStart {
 		private readonly records: RecordsService,
 		private readonly daily: DailyService,
 		private readonly telemetry: TelemetryService,
+		private readonly wallet: WalletService,
+		private readonly silver: SilverAccessService,
 	) {}
 
 	onStart(): void {
 		// BindToClose: the leaderboard flush waits for runs that may still post.
 		this.leaderboards.setPendingPosts(() => this.pendingPosts());
 		this.records.setPendingRuns(() => this.pendingPosts());
+		this.wallet.setPendingRuns(() => this.pendingPosts());
 		// A late `tutorialStarted` from a member of a party run must not mark them in the tutorial.
 		this.onboarding.setPartyRunCheck((p) => this.registry.busyReason(p.UserId) !== undefined);
 		this.janitor.Add(
@@ -297,6 +308,9 @@ export class RunSessionService implements OnStart {
 			daily: s.daily !== undefined ? { day: s.daily.day, ruleset: s.daily.ruleset } : undefined,
 			// docs/ARCHER.md AR5: the client builds its run with the character the session validates.
 			characterId: s.characters?.[0],
+			// docs/SILVER.md SV6: and with the upgrade levels it validates (an unknown wallet: none, and it says so).
+			upgrades: s.upgrades?.[0],
+			upgradesUnknown: s.upgradesUnknown.includes(s.ownerId) ? true : undefined,
 		};
 	}
 
@@ -313,6 +327,9 @@ export class RunSessionService implements OnStart {
 			allowDebugInput: limits.allowDebugInput,
 			partyConsent,
 			partyCharacters,
+			// docs/SILVER.md SV6 / SV17: each member's upgrade levels and owned characters, from the wallet seam.
+			upgrades: (id) => this.silver.upgradesFor(id),
+			ownsCharacter: (id, characterId) => this.silver.ownsCharacter(id, characterId),
 		};
 	}
 
@@ -508,6 +525,9 @@ export class RunSessionService implements OnStart {
 			members: [...s.members],
 			// docs/ARCHER.md AR5: every client builds the run with these (the validator's setup was built with them).
 			characters: s.characters !== undefined ? [...s.characters] : [],
+			// docs/SILVER.md SV6: and with each member's upgrade levels (the validator's setup was built with them).
+			upgrades: s.upgrades !== undefined ? [...s.upgrades] : [],
+			upgradesUnknown: [...s.upgradesUnknown],
 			// The old invite flow's field (removed with it, task L7): the lobby id, so it is never a stale invite's.
 			lobbyId,
 		};
@@ -747,6 +767,7 @@ export class RunSessionService implements OnStart {
 		if (lobbyId !== undefined) this.lobbyRunEnded(lobbyId, `run ${session.runId} concluded`);
 		let leaderboard: LeaderboardPostStatus | undefined;
 		let records: Map<number, RunRecordsResult> | undefined;
+		let silver: Map<number, SilverGrantBreakdown> | undefined;
 		const s = result.summary;
 		if (result.ok) {
 			log.info(
@@ -812,6 +833,25 @@ export class RunSessionService implements OnStart {
 			);
 			if (recordsOk) records = applied as Map<number, RunRecordsResult>;
 			else log.warn("RECORDS_FAILED", `run ${session.runId}: ${tostring(applied)}`);
+			// Silver (docs/SILVER.md SV4): the same credited members, the replay's rows; the first-run bonus on the UTC
+			// day now, a Daily's bonus on its start day. Never yields (the transactions are spawned).
+			const [silverOk, granted] = pcall(() => {
+				const plan = planRunGrants({
+					runId: session.runId,
+					ok: true,
+					silver: result.silver,
+					worldKind: session.worldKind,
+					debug: session.debug,
+					studio: RunService.IsStudio() && !this.wallet.fakeActive(),
+					creditedIds: credited.map((m) => m.userId),
+					unixNow: dailyClockNow(),
+					daily: session.daily,
+				});
+				if (plan.skip !== undefined) log.info("SILVER_SKIPPED", `run ${session.runId}: ${plan.skip}`);
+				return this.wallet.grantRun(plan);
+			});
+			if (silverOk) silver = granted as Map<number, SilverGrantBreakdown>;
+			else log.warn("SILVER_FAILED", `run ${session.runId}: ${tostring(granted)}`);
 			// The new-player window (docs/TUTORIAL_FUNNEL.md §7): NewPlayerRun per credited member (the replay's end
 			// reason, the score's deepest floor). Never yields.
 			const [newOk, newErr] = pcall(() =>
@@ -859,7 +899,10 @@ export class RunSessionService implements OnStart {
 		const deliver = (daily: Map<number, DailyRunResult> | undefined) => {
 			for (const p of recipients()) {
 				if (p.Parent === undefined) continue;
-				Events.runFinished.fire(p, forRecipient(verdict, records?.get(p.UserId), daily?.get(p.UserId)));
+				Events.runFinished.fire(
+					p,
+					forRecipient(verdict, records?.get(p.UserId), daily?.get(p.UserId), silver?.get(p.UserId)),
+				);
 			}
 		};
 		const key = session.daily;

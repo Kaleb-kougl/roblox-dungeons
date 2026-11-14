@@ -145,10 +145,23 @@ describe("the Archer's roll: distance (dash x 140 %)", () => {
 	it("without traits, with NEUTRAL_TRAITS, with the Knight's: exactly today's roll (same hash every tick)", () => {
 		const plain: SimConfig = {};
 		const a = createSimState(1, 0, 0, plain);
+		// docs/SILVER.md SV16: the Knight's traits differ from neutral in health only (heartsMaxDelta), so his roll is
+		// compared against a run with the same health and no other trait.
+		const knightHealth: SimConfig = { traits: { ...NEUTRAL_TRAITS, heartsMaxDelta: KNIGHT.heartsMaxDelta } };
+		const knight: SimConfig = { traits: KNIGHT };
+		const kh = createSimState(1, 0, 0, knightHealth);
+		const kn = createSimState(1, 0, 0, knight);
 		const others = [
 			{ traits: NEUTRAL_TRAITS },
-			{ traits: KNIGHT },
-			{ traits: { rollDashPercent: 100, rollIframePercent: 100, heartsMaxDelta: 0 } },
+			{
+				traits: {
+					rollDashPercent: 100,
+					rollIframePercent: 100,
+					heartsMaxDelta: 0,
+					armorMaxDelta: 0,
+					flaskChargesDelta: 0,
+				},
+			},
 		];
 		const states = others.map((c) => createSimState(1, 0, 0, c));
 		for (let t = 0; t < ROLL_TICKS + 5; t++) {
@@ -158,6 +171,14 @@ describe("the Archer's roll: distance (dash x 140 %)", () => {
 				step(states[k], input, others[k]);
 				expect([t, k, hashState(states[k])]).toEqual([t, k, hashState(a)]);
 			}
+			step(kh, input, knightHealth);
+			step(kn, input, knight);
+			expect([t, hashState(kn)]).toEqual([t, hashState(kh)]);
+			expect([kn.player.x, kn.player.z, kn.player.iframeTicks]).toEqual([
+				a.player.x,
+				a.player.z,
+				a.player.iframeTicks,
+			]);
 		}
 		expect(a.player.x).toBeCloseTo(ROLL_DISTANCE, 9);
 		expect(playerTraits(plain, 0)).toBe(NEUTRAL_TRAITS);

@@ -571,7 +571,7 @@ describe("characters (docs/ARCHER.md AR5)", () => {
 		const knight = started(reg, OWNER, ENDLESS, ctx());
 		expect(knight.characters).toEqual(["knight"]);
 		expect(knight.setup.config.loadout).toEqual(characterLoadout("knight"));
-		expect(knight.setup.config.traits).toEqual(NEUTRAL_TRAITS);
+		expect(knight.setup.config.traits).toEqual(characterTraits("knight"));
 		const archer = started(reg, FRIEND, { ...ENDLESS, characterId: "archer" }, ctx());
 		expect(archer.characters).toEqual(["archer"]);
 		expect(archer.setup.config.loadout).toEqual(characterLoadout("archer"));
@@ -616,7 +616,7 @@ describe("characters (docs/ARCHER.md AR5)", () => {
 			characterLoadout("knight"),
 			characterLoadout("archer"),
 		]);
-		expect(party.traits).toEqual([characterTraits("archer"), NEUTRAL_TRAITS, characterTraits("archer")]);
+		expect(party.traits).toEqual([characterTraits("archer"), characterTraits("knight"), characterTraits("archer")]);
 		// An unknown pick: bad_party, nothing created.
 		const bad = registry().start(OWNER, PARTY, partyCtx(["archer", "wizard", "knight"]));
 		expect(bad.ok ? "ok" : bad.code).toBe("bad_party");

@@ -2850,6 +2850,23 @@
 			"ui.pip.armor.empty": { "file": "kaleb-vale/pip-icons/pip_armor_empty.png", "rect": [0, 0, 16, 15] }
 		}
 	},
+	"heartIcons": {
+		"$comment": [
+			"The half-heart containers (docs/SILVER.md SV16 / OC18): the last heart of an ODD heart maximum (the Archer's 1 1/2",
+			"hearts, Vigor I's 2 1/2) drawn as half a container, never as the half-filled heart (ui.heart.half, which means hurt).",
+			"Cut from the UI sheet's own hearts by scripts/art/gen-heart-halfmax.js (art:build and art:lock run it first) into",
+			"art/vendor/kaleb-vale/heart-icons/: ui.heart.halfmax (holding its half) and ui.heart.halfmax.empty (spent), each on",
+			"the hearts' 18 x 15 canvas. Packed exactly like `pipIcons` (buildUiIcons) into a sheet of their OWN,",
+			"art/build/<atlas>.png with src/shared/theme/packs/vale/heartIconLayout.ts; both switch on with its one ID.",
+			"Build just this group: node scripts/art/build-atlases.js --only heartIcons (and --lock --only heartIcons)."
+		],
+		"atlas": "heart-icons",
+		"gutter": 1,
+		"icons": {
+			"ui.heart.halfmax": { "file": "kaleb-vale/heart-icons/heart_halfmax.png", "rect": [0, 0, 18, 15] },
+			"ui.heart.halfmax.empty": { "file": "kaleb-vale/heart-icons/heart_halfmax_empty.png", "rect": [0, 0, 18, 15] }
+		}
+	},
 	"duoIcons": {
 		"$comment": [
 			"The duo icons (docs/BUILDS.md BU11, the duo part): original 16 x 16 pixel art drawn by scripts/art/gen-duo-icons.js",

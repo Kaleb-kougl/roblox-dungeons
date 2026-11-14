@@ -94,7 +94,8 @@ describe("HUD helpers", () => {
 		expect(heartFills(5, 6)).toEqual([2, 2, 1]);
 		expect(heartFills(2, 6)).toEqual([2, 0, 0]);
 		expect(heartFills(0, 6)).toEqual([0, 0, 0]);
-		expect(heartFills(3, 5)).toEqual([2, 1, 0]);
+		// docs/SILVER.md SV16: an odd maximum ends in a half container (HEART_FILL 3 holding, 4 spent), never a 1.
+		expect(heartFills(3, 5)).toEqual([2, 1, 4]);
 	});
 
 	it("formats m:ss, phases in Roman numerals, verdict and ending keys, short hashes, bar fractions", () => {

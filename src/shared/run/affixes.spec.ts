@@ -14,6 +14,7 @@ import {
 	DROPS_SUBSYSTEM,
 	GOLDEN_SUBSYSTEM,
 	SECRETS_SUBSYSTEM,
+	SILVER_SUBSYSTEM,
 	PELLETS_SUBSYSTEM,
 	TREASURE_SUBSYSTEM,
 	PACTS_SUBSYSTEM,
@@ -44,7 +45,7 @@ import {
 import { Driver, distanceField, frame, walkDir, type Field } from "shared/run/testing";
 
 describe("endless worlds carry affixes", () => {
-	it("solo and co-op configs set AFFIXES_CONFIG; floors carry roomAffixes; the group is hashed before builds, pellets, treasure, pacts, golden, secrets", () => {
+	it("solo and co-op configs set AFFIXES_CONFIG; floors carry roomAffixes; the group is hashed before builds, pellets, treasure, pacts, golden, secrets, silver", () => {
 		for (const n of [1, 3]) {
 			const setup = buildEndlessRunConfig(1337, n);
 			expect(setup.config.affixes).toBe(AFFIXES_CONFIG);
@@ -54,15 +55,16 @@ describe("endless worlds carry affixes", () => {
 			const names = hashLayout(s).groups.map((g) => g.name);
 			// docs/BUILDS.md BU1: builds is appended after it; docs/PELLETS.md PL5: pellets after builds; docs/TREASURE.md
 			// TR5: treasure after pellets; docs/FORTUNE.md PS5 / GE3: pacts after treasure, then golden; docs/SECRET_ROOMS.md
-			// SR5: secrets (last).
-			expect(names[names.size() - 1]).toBe(SECRETS_SUBSYSTEM);
-			expect(names[names.size() - 2]).toBe(GOLDEN_SUBSYSTEM);
-			expect(names[names.size() - 3]).toBe(PACTS_SUBSYSTEM);
-			expect(names[names.size() - 4]).toBe(TREASURE_SUBSYSTEM);
-			expect(names[names.size() - 5]).toBe(PELLETS_SUBSYSTEM);
-			expect(names[names.size() - 6]).toBe(BUILDS_SUBSYSTEM);
-			expect(names[names.size() - 7]).toBe(AFFIXES_SUBSYSTEM);
-			expect(names[names.size() - 8]).toBe(DROPS_SUBSYSTEM);
+			// SR5: secrets; docs/SILVER.md SC2: silver (last).
+			expect(names[names.size() - 1]).toBe(SILVER_SUBSYSTEM);
+			expect(names[names.size() - 2]).toBe(SECRETS_SUBSYSTEM);
+			expect(names[names.size() - 3]).toBe(GOLDEN_SUBSYSTEM);
+			expect(names[names.size() - 4]).toBe(PACTS_SUBSYSTEM);
+			expect(names[names.size() - 5]).toBe(TREASURE_SUBSYSTEM);
+			expect(names[names.size() - 6]).toBe(PELLETS_SUBSYSTEM);
+			expect(names[names.size() - 7]).toBe(BUILDS_SUBSYSTEM);
+			expect(names[names.size() - 8]).toBe(AFFIXES_SUBSYSTEM);
+			expect(names[names.size() - 9]).toBe(DROPS_SUBSYSTEM);
 		}
 	});
 

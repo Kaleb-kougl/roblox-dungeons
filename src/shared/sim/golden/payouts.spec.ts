@@ -18,6 +18,7 @@ import {
 	GOLDEN_SCORE_SOURCE_NAMES,
 	GOLDEN_SUBSYSTEM,
 	SECRETS_SUBSYSTEM,
+	SILVER_SUBSYSTEM,
 	GoldenStatus,
 	NO_BOOST,
 	Rng,
@@ -142,8 +143,9 @@ describe("golden: the score source (GE3)", () => {
 		expect(names.includes("score.points.horde")).toBe(true);
 		expect(names.includes("score.points.golden")).toBe(true);
 		expect(names.includes("score.counts.golden")).toBe(true);
-		expect(layout.groups[layout.groups.size() - 2].name).toBe(GOLDEN_SUBSYSTEM);
-		expect(layout.groups[layout.groups.size() - 1].name).toBe(SECRETS_SUBSYSTEM);
+		expect(layout.groups[layout.groups.size() - 3].name).toBe(GOLDEN_SUBSYSTEM);
+		expect(layout.groups[layout.groups.size() - 2].name).toBe(SECRETS_SUBSYSTEM);
+		expect(layout.groups[layout.groups.size() - 1].name).toBe(SILVER_SUBSYSTEM); // docs/SILVER.md SC2
 		// Without the config: every endless world sets builds and secrets, so since docs/BUILDS_V2.md BV9 it pads GOLDEN
 		// (0) on its way to OVERCAP and SECRET: 17 sources, GOLDEN never paid.
 		const off = run(1, false).s.score!;

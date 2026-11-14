@@ -12,7 +12,8 @@
  *            parseFloorModifierOverride) forces one floor modifier on every floor where it is eligible
  *            (docs/FLOOR_MODIFIERS.md FM4: a FloorModifierOverride into the same cache), or `options.secret`
  *            (KV_SecretDebug, parseSecretDebug) forces / fixes the secret rooms (docs/SECRET_ROOMS.md SR5: a
- *            SecretOverride into the same cache)
+ *            SecretOverride into the same cache), or `options.silver` (KV_SilverDebug, parseSilverDebug) puts Silver in
+ *            every candidate barrel and crate (docs/SILVER.md SC1: a SilverOverride into the same cache)
  *   Depth    as if every boss before `startFloor` had been killed (devStartDepth); no boons, relics or curses
  *
  * Characters (docs/ARCHER.md AR4): the picked character's loadout and traits like an endless run (the Knight when none is
@@ -33,12 +34,13 @@ import {
 	isBossFloor,
 	type FloorModifierOverride,
 	type SecretOverride,
+	type SilverOverride,
 	type VaultOverride,
 } from "shared/dungeon";
 import { DEFAULT_PARTY_SIZE, ENDLESS_FIRST_DEPTH, isIntegerNumber } from "shared/sim";
 import type { RunSetup } from "./config";
 import { buildEndlessRunConfig } from "./endless";
-import type { CharacterId } from "shared/characters";
+import { NO_UPGRADES, UPGRADE_MAX_LEVELS, type CharacterId, type UpgradeLevels } from "shared/characters";
 
 /** The developer mode world's registry kind. */
 export const DEV_WORLD_KIND = "dev";
@@ -62,10 +64,44 @@ export interface DevRunOptions {
 	 */
 	readonly secret?: SecretOverride;
 	/**
+	 * Silver in crates (docs/SILVER.md SC1): every candidate barrel and crate holds Silver (KV_SilverDebug,
+	 * parseSilverDebug). Absent: the floors' own draws, as endless.
+	 */
+	readonly silver?: SilverOverride;
+	/**
 	 * docs/ARCHER.md AR4: "Both weapons": the sword and the bow (DEFAULT_LOADOUT) with the picked character's roll
 	 * traits. Absent / false: the character's own loadout.
 	 */
 	readonly bothWeapons?: boolean;
+	/**
+	 * docs/SILVER.md SV6: the dev panel's `Upgrades: none / mine / max` (DevUpgradesMode). Absent: DEV_UPGRADES_DEFAULT.
+	 * `mine` builds the player's own levels (buildDevRunConfig's `mine`, the wallet's), `max` every track at its
+	 * maximum, `none` no upgrades.
+	 */
+	readonly upgrades?: DevUpgradesMode;
+}
+
+/** The dev panel's upgrade choices, in panel order (docs/SILVER.md SV6). */
+export const DEV_UPGRADE_MODES = ["none", "mine", "max"] as const;
+export type DevUpgradesMode = (typeof DEV_UPGRADE_MODES)[number];
+/** A dev run without an upgrades choice: none (the character's own traits, as before upgrades existed). */
+export const DEV_UPGRADES_DEFAULT: DevUpgradesMode = "none";
+
+/** True for a DevUpgradesMode (an untrusted value: a panel setting, an attribute). */
+export function isDevUpgradesMode(x: unknown): x is DevUpgradesMode {
+	for (const m of DEV_UPGRADE_MODES) if (x === m) return true;
+	return false;
+}
+
+/**
+ * The upgrade levels a dev run builds for `mode` (absent: DEV_UPGRADES_DEFAULT): `none` NO_UPGRADES, `max`
+ * UPGRADE_MAX_LEVELS, `mine` the player's own `mine` (NO_UPGRADES when unknown). Pure.
+ */
+export function devUpgradeLevels(mode: DevUpgradesMode | undefined, mine: UpgradeLevels | undefined): UpgradeLevels {
+	const m = mode ?? DEV_UPGRADES_DEFAULT;
+	if (m === "max") return UPGRADE_MAX_LEVELS;
+	if (m === "mine") return mine ?? NO_UPGRADES;
+	return NO_UPGRADES;
 }
 
 /** Workspace string attribute read when a dev run starts (DevModeController): parseTreasureDebug's words. */
@@ -139,6 +175,22 @@ export function parseSecretDebug(text: string | undefined): SecretOverride | und
 	return { every, tier };
 }
 
+/** Workspace string attribute read when a dev run starts (DevModeController): parseSilverDebug's words. */
+export const SILVER_DEBUG_ATTRIBUTE = "KV_SilverDebug";
+
+/**
+ * KV_SilverDebug's text -> a SilverOverride (docs/SILVER.md SC1): words in any case, separated by anything that is not a
+ * letter: `every` (every candidate barrel and crate holds Silver: no boost, not the Goldling's); unknown words are
+ * ignored. Undefined when no word applies. Pure.
+ */
+export function parseSilverDebug(text: string | undefined): SilverOverride | undefined {
+	if (text === undefined) return undefined;
+	let every: boolean | undefined;
+	for (const [word] of text.lower().gmatch("%a+")) if (word === "every") every = true;
+	if (every === undefined) return undefined;
+	return { every };
+}
+
 /** A dev run with no choices made: DEV_MODE's defaults. */
 export const DEFAULT_DEV_RUN: DevRunOptions = table.freeze({
 	startFloor: DEV_MODE.defaultFloor,
@@ -159,14 +211,16 @@ export function devStartDepth(floor: number): number {
 }
 
 /**
- * The dev world's RunSetup for `runSeed` (see the file comment) as `characters[0]` (absent: DEFAULT_CHARACTER). Throws on
- * an invalid seed or a party.
+ * The dev world's RunSetup for `runSeed` (see the file comment) as `characters[0]` (absent: DEFAULT_CHARACTER), with
+ * the upgrades `options.upgrades` picks (devUpgradeLevels; `mine`: the player's own levels). Throws on an invalid seed
+ * or a party.
  */
 export function buildDevRunConfig(
 	runSeed: number,
 	options: Readonly<DevRunOptions> = DEFAULT_DEV_RUN,
 	partySize?: number,
 	characters: ReadonlyArray<CharacterId> = [],
+	mine?: UpgradeLevels,
 ): RunSetup {
 	if (partySize !== undefined && partySize !== 1) error(`dev world: solo only, got a party of ${partySize}`, 0);
 	if (!isIntegerNumber(options.startFloor)) {
@@ -177,8 +231,10 @@ export function buildDevRunConfig(
 		vaultOverride: options.vault,
 		modifierOverride: options.modifier,
 		secretOverride: options.secret,
+		silverOverride: options.silver,
 		characters,
 		bothWeapons: options.bothWeapons,
+		upgrades: [devUpgradeLevels(options.upgrades, mine)],
 	});
 	const endless = base.config.endless;
 	const endlessFloor = base.endlessFloor;
@@ -194,5 +250,6 @@ export function buildDevRunConfig(
 		dungeon: first.dungeon,
 		endlessFloor,
 		characters: base.characters,
+		upgrades: base.upgrades,
 	};
 }

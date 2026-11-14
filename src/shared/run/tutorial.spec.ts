@@ -175,7 +175,7 @@ describe("tutorial world: the lock", () => {
 		// treasure rooms (docs/TREASURE.md: never in the tutorial; its floors carry no vault). Pacts (docs/FORTUNE.md):
 		// never in the tutorial, which keeps the classic shrine (no altars on its floors either). No Goldling
 		// (docs/FORTUNE.md: endless only, the tutorial never sets SimConfig.golden). No secret rooms (docs/SECRET_ROOMS.md
-		// SR5: endless only).
+		// SR5: endless only). No Silver in crates (docs/SILVER.md SC2: never the tutorial).
 		const keys = configKeys(buildEndlessRunConfig(1).config).filter(
 			(k) =>
 				k !== "breakables" &&
@@ -184,7 +184,8 @@ describe("tutorial world: the lock", () => {
 				k !== "treasure" &&
 				k !== "pacts" &&
 				k !== "golden" &&
-				k !== "secrets",
+				k !== "secrets" &&
+				k !== "silver",
 		);
 		keys.push("tutorial");
 		// docs/ARCHER.md AR4: the tutorial is the Knight: his loadout and (neutral) traits are set; a tool's
@@ -195,6 +196,7 @@ describe("tutorial world: the lock", () => {
 		expect(setup.config.breakables).toBe(undefined);
 		expect(setup.config.golden).toBe(undefined);
 		expect(setup.config.secrets).toBe(undefined);
+		expect(setup.config.silver).toBe(undefined);
 		expect(setup.config.drops).toBe(TUTORIAL_DROPS_CONFIG);
 		expect(setup.config.drops).never.toBe(DROPS_CONFIG);
 		for (const f of [1, 2, 3]) expect(setup.endlessFloor(f).breakables).toBe(undefined);

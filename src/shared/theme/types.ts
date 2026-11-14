@@ -238,6 +238,10 @@ export const COLOR_ROLES = [
 	// crack's joints, the knock's puff, the burst; the tint of `fx.secret.dust`). Held to SECRET_COLOR_RULES by
 	// secretReport (secretColors.ts): >= 40 CIE76 from the enemy-bullet roles and telegraph, like the decor fx roles.
 	"secret.dust",
+	// Roblox port (docs/SILVER.md SV7): Silver (silver.ts SILVER_ROLE: the counter, its `+N`, the crate pops and coins,
+	// the recap rows, the Armory's prices). Held to SILVER_COLOR_RULES by silverReport (silverColors.ts): >= 4.5:1 on
+	// uiPanel, >= 40 CIE76 from the enemy-bullet roles, telegraph and the score's golds.
+	"silver",
 ] as const;
 
 export type ColorRole = (typeof COLOR_ROLES)[number];

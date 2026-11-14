@@ -2,7 +2,7 @@ import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { Players, RunService, SocialService, Workspace } from "@rbxts/services";
 import { Events } from "client/network";
-import { clientStore, selectSelectedCharacter } from "client/store";
+import { clientStore, selectPlayableCharacter } from "client/store";
 import { isCharacterId, type CharacterId } from "shared/characters";
 import { INVITE, INVITE_STUDIO_ATTRIBUTES } from "shared/invite";
 import { LOBBY, type LobbyVisibility, type LobbyWorld } from "shared/lobby";
@@ -283,7 +283,7 @@ export class LobbyController implements OnStart {
 	 * .setSelectedCharacter does).
 	 */
 	setReady(ready: boolean, characterId?: CharacterId): void {
-		const pick = characterId ?? selectSelectedCharacter(clientStore.getState());
+		const pick = characterId ?? selectPlayableCharacter(clientStore.getState());
 		Events.lobbySetReady.fire(ready, pick);
 	}
 

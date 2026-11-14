@@ -7,7 +7,7 @@ import {
 	selectMenuScreen,
 	selectMyLobby,
 	selectMyLobbyId,
-	selectSelectedCharacter,
+	selectPlayableCharacter,
 	selectSnapshot,
 	selectStageCovered,
 	type ClientState,
@@ -24,6 +24,7 @@ import {
 	PAD_KEYS,
 	afterRunPath,
 	characterBackAction,
+	characterPickAllowed,
 	characterConfirmPlan,
 	characterFocusStep,
 	characterInitialFocus,
@@ -238,6 +239,12 @@ export class MenuController implements OnStart {
 		const cs = st.menu.character;
 		if (cs === undefined || st.menu.nav.screen !== "character") return;
 		const pick = id !== undefined && isCharacterId(id) ? id : cs.focus;
+		// docs/SILVER.md SV18: a locked character is never started or readied (the server would refuse it); the card's
+		// own button buys it in place.
+		if (!characterPickAllowed(pick, st.wallet.status)) {
+			this.audio.playUi(SFX.shopDeny);
+			return;
+		}
 		const plan = characterConfirmPlan(cs.origin);
 		const dev = this.pendingDev;
 		this.audio.playUi(SFX.uiConfirm);
@@ -313,6 +320,11 @@ export class MenuController implements OnStart {
 	/** The Codex (claude/codex-plan.md CX7): a menu screen over the main menu (Back returns to it). */
 	openCodex(): void {
 		clientStore.menuNav({ kind: "open", screen: "codex" });
+	}
+
+	/** The Armory (docs/SILVER.md SV9): a menu screen over the main menu (Back returns to it). */
+	openArmory(): void {
+		clientStore.menuNav({ kind: "open", screen: "armory" });
 	}
 
 	back(): void {
@@ -400,7 +412,7 @@ export class MenuController implements OnStart {
 			clientStore.setCharacterScreen({ origin, focus: cs.focus });
 			return;
 		}
-		clientStore.setCharacterScreen({ origin, focus: characterInitialFocus(selectSelectedCharacter(st)) });
+		clientStore.setCharacterScreen({ origin, focus: characterInitialFocus(selectPlayableCharacter(st)) });
 		clientStore.menuNav({ kind: "open", screen: "character" });
 	}
 
@@ -421,7 +433,7 @@ export class MenuController implements OnStart {
 			return;
 		}
 		if (st.menu.nav.screen !== "lobby") return;
-		const pick = lobbyPickToSend(view, Players.LocalPlayer.UserId, selectSelectedCharacter(st));
+		const pick = lobbyPickToSend(view, Players.LocalPlayer.UserId, selectPlayableCharacter(st));
 		if (pick === undefined) return;
 		const key = `${view.lobbyId}|${pick}`;
 		if (this.pickSent === key) return;

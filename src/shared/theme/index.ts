@@ -76,6 +76,7 @@ export { DUO_ICON_PREFIX, duoIconId } from "./duoIcons";
 export { CURSE_ICON_PREFIX, RELIC_ICON_PREFIX, curseIconId, relicIconId } from "./itemIcons";
 export { BOOST_ICON_PREFIX, boostIconId } from "./boostIcons";
 export { PIP_ICON_IDS, PIP_ICON_PREFIX } from "./pipIcons";
+export { HEART_ICON_IDS, HEART_ICON_PREFIX } from "./heartIcons";
 export {
 	CURSOR_IMAGE_IDS,
 	CURSOR_STATES,
@@ -194,6 +195,9 @@ export * from "./codex";
 export * from "./secrets";
 export { SECRET_COLOR_RULES, secretReport, type SecretColorEntry, type SecretColorRules } from "./secretColors";
 export { secretArtProblems, type SecretArtProblem } from "./secretArt";
+// Roblox port (docs/SILVER.md SV7): Silver's strings, sounds, colour role and optional art ids, and its colour report
+export * from "./silver";
+export { SILVER_COLOR_RULES, silverReport, type SilverColorEntry, type SilverColorRules } from "./silverColors";
 // Roblox port (docs/PROJECTILE_ART.md PA3): the bullet sprite rules.
 export { bulletArtProblems, bulletArtReport, type BulletArtEntry, type BulletArtProblem } from "./bulletArt";
 export { GOO_ART_RULES, gooArtProblems, gooArtReport, type GooArtEntry, type GooArtProblem } from "./gooArt";

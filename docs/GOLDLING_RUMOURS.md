@@ -424,3 +424,8 @@ are grid (x, y); every Goldling piece is its floor's last breakables slot.
   on the touch strip.
 - Co-op (lobby run): a teammate enters the room while you are elsewhere (the quieter cue, your chip changes); a
   teammate breaks the piece (everyone sees it come out).
+
+## Silver (2026-11-14)
+
+The Goldling's own piece never holds Silver (docs/SILVER.md SC1); a twinkling piece can now hold a boost, Silver or the
+hiding Goldling, and `glintSlotCount` covers the Silver table too.

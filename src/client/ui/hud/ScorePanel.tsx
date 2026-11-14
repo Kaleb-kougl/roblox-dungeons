@@ -1,6 +1,6 @@
 import React from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
-import { selectSnapshot } from "client/store";
+import { selectSilverCounterShown, selectSnapshot } from "client/store";
 import { str, uiImage, useUiArt } from "client/ui/theme";
 import { HUD_SKIN, HUD_STRINGS, HUD_VIEW } from "shared/view/hud";
 import { BestTargetRow, ScoreNumber } from "./BestTargetRow";
@@ -8,6 +8,8 @@ import { ComboMeter } from "./ComboMeter";
 import { ComboRow } from "./ComboRow";
 import { ArtImage, Panel, Row, Text } from "./primitives";
 import { HighlightRing } from "./TutorialFx";
+import { SilverFloorRow } from "./SilverCounter";
+import { SILVER_UI } from "./silverBindings";
 
 /**
  * Top right, scored runs only (M2): the live score, the combo multiplier and its decay meter (the time left before
@@ -27,12 +29,17 @@ import { HighlightRing } from "./TutorialFx";
  * crossing. Both are drawn per frame from NEW_BEST_UI bindings that NewBestController writes; on a run without a target
  * (unranked, first record, records unknown) they look exactly as before.
  *
+ * docs/SILVER.md SV8 (OC20, the same five rows): on an endless run that pays Silver, row 5 is SilverFloorRow, the live
+ * Silver counter on the left of the floor / Depth line (which scales into the room the counter leaves); a room clear
+ * ticks the counter with a small `+N` beside it, never a tally line.
+ *
  * With the UI art (docs/UI_ART.md UA11) the score number has the coin (ui.icon.coin, fitted into HUD_SKIN.coinBox) on
  * its left: the two in a right-aligned Row, the number sized to its text; without the coin, the full-width line.
  */
 export function ScorePanel(props: { readonly highlight?: boolean }) {
 	useUiArt();
 	const s = useSelector(selectSnapshot);
+	const silver = useSelector(selectSilverCounterShown);
 	if (!s.scoring) return undefined;
 	const width = HUD_VIEW.scoreWidth;
 	const inner = width - HUD_VIEW.pad * 2;
@@ -56,7 +63,14 @@ export function ScorePanel(props: { readonly highlight?: boolean }) {
 			)}
 			<ComboRow order={3} width={inner} />
 			<ComboMeter order={4} width={inner} />
-			{s.floor > 0 ? (
+			{s.floor > 0 && silver ? (
+				<SilverFloorRow
+					order={5}
+					width={inner}
+					floorText={str(HUD_STRINGS.floor, { floor: s.floor, depth: s.depth })}
+					counterW={SILVER_UI.counterW.binding}
+				/>
+			) : s.floor > 0 ? (
 				<Text
 					order={5}
 					fill={true}

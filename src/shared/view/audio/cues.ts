@@ -487,6 +487,15 @@ export const SFX = {
 	secretKnock: "sfx.secret.knock",
 	secretOpen: "sfx.secret.open",
 	jingleSecret: "sfx.jingle.secret",
+	/**
+	 * Silver (docs/SILVER.md SV7; the theme's SILVER_AUDIO_IDS): the counter ticking on a room clear, a floor, a boss
+	 * (SilverHudController), a Silver piece's coin clink climbing for quick breaks (the crate burst), an Armory purchase
+	 * landing and one refused (the menus). Each plays its SFX_FALLBACK while silent.
+	 */
+	silverGain: "sfx.silver.gain",
+	silverCrate: "sfx.silver.crate",
+	shopBuy: "sfx.shop.buy",
+	shopDeny: "sfx.shop.deny",
 } as const;
 export type SfxId = (typeof SFX)[keyof typeof SFX];
 
@@ -600,6 +609,10 @@ export const ALL_SFX: ReadonlyArray<SfxId> = [
 	SFX.secretKnock,
 	SFX.secretOpen,
 	SFX.jingleSecret,
+	SFX.silverGain,
+	SFX.silverCrate,
+	SFX.shopBuy,
+	SFX.shopDeny,
 ];
 
 /** IDs this port added to the placeholder pack (not in the web contract's AUDIO_EVENTS; theme PORT_AUDIO_EVENTS). */
@@ -699,6 +712,10 @@ export const PORT_SFX: ReadonlyArray<SfxId> = [
 	SFX.secretKnock,
 	SFX.secretOpen,
 	SFX.jingleSecret,
+	SFX.silverGain,
+	SFX.silverCrate,
+	SFX.shopBuy,
+	SFX.shopDeny,
 ];
 
 /**
@@ -991,6 +1008,16 @@ export const SFX_PRIORITY: Readonly<Record<SfxId, number>> = {
 	[SFX.secretOpen]: 48,
 	[SFX.jingleSecret]: 72,
 	/**
+	 * Silver (docs/SILVER.md SV7): a reward cue, never a fight sound. The counter's tick sits with the score tick it
+	 * falls back to's rank band, just under the loot boost (63); the crate clink just over the piece's own break (40)
+	 * that plays on its frame, under the enemy and player sounds. The shop's two play in the menus (no frame to share);
+	 * ranked with the menu sounds like the codex chime.
+	 */
+	[SFX.silverGain]: 44,
+	[SFX.silverCrate]: 41,
+	[SFX.shopBuy]: 47,
+	[SFX.shopDeny]: 46,
+	/**
 	 * A boost out of a broken piece (docs/BREAKABLE_DROPS.md BL6): just over a kill drop's landing (the rarer, chosen
 	 * reward), under the pickup; over the piece's own break (40), which plays on the same frame.
 	 */
@@ -1269,6 +1296,15 @@ export const SFX_FALLBACK: Readonly<Partial<Record<SfxId, SfxId>>> = {
 	[SFX.secretKnock]: SFX.breakableHit,
 	[SFX.secretOpen]: SFX.breakableBreak,
 	[SFX.jingleSecret]: SFX.jingleTreasure,
+	/**
+	 * docs/SILVER.md SV7: until the Silver clips are picked (SV15), the counter's tick plays the score tick, the crate
+	 * clink a boost-from-a-piece's chime (the loot it shares a twinkle with), a purchase the relic take (a power-up) and
+	 * a refusal the menu's back. One step each.
+	 */
+	[SFX.silverGain]: SFX.scoreTick,
+	[SFX.silverCrate]: SFX.breakableLoot,
+	[SFX.shopBuy]: SFX.relicTake,
+	[SFX.shopDeny]: SFX.uiBack,
 };
 
 /** The floor modifier stings by shared/dungeon floorModifierKey (MODIFIERS.kinds' keys). */

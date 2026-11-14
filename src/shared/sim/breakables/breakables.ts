@@ -23,6 +23,8 @@
  *            BREAKABLE_POINTS[kind] x floor; it never feeds the combo and no room record sees it.
  *   loot     a piece that holds a boost (docs/BREAKABLE_DROPS.md, drops/breakLoot.ts) releases it when it breaks, from
  *            any source (dropsOnBreak, after the score); only with DropsConfig.breakableLoot.
+ *   silver   a piece that holds Silver (docs/SILVER.md SC2, silver/silver.ts) pays its stack into state.silver.total
+ *            when it breaks, from any source (silverOnBreak, right after dropsOnBreak); only with SimConfig.silver.
  *   events   SimEvents.breakableHits (every hit, the breaking one included) and .breakablesBroken; per tick (cleared
  *            by step(), presentation only, not hashed) `hitSlots` and `brokenSlots` (slot per hit / break, in order).
  *   chest    a vault's chest (docs/TREASURE.md, BreakableKind.CHEST, hp CHEST_HP) blocks like any piece but is never
@@ -52,6 +54,7 @@ import type { SimState } from "../state";
 import { breakableSlotAt } from "./cells";
 import { scoreBreakable } from "../score/score";
 import { dropsOnBreak } from "../drops/breakLoot";
+import { silverOnBreak } from "../silver/silver";
 import { goldenGuardsPiece } from "../golden/golden";
 import { goldenOnBreak } from "../golden/goldenHooks";
 import { CHEST_HP } from "../treasure/treasureData";
@@ -246,7 +249,7 @@ export function knockBreakable(b: BreakablesState, slot: number, source: number,
  * slot joins hitSlots; at hp <= 0 it breaks this tick: hp 0, brokenTick = state.tick, out of the lookup,
  * events.breakablesBroken += 1, brokenSlots; a player's break (MELEE / PLAYER_BULLET, and builds v2's ROLL / BUILD,
  * docs/BUILDS_V2.md BVD12) scores (scoreBreakable) and releases a hiding Goldling from its piece (goldenOnBreak); a loaded
- * piece releases its boost (dropsOnBreak, every source).
+ * piece releases its boost (dropsOnBreak, every source) and a Silver piece pays (silverOnBreak, every source).
  * `owner` (docs/BUILDS_V2.md BV5): the party index of the player who broke it (-1: nobody, as for enemy bullets, the
  * boss's slam, a Bomber's blast or a Charger's charge) and `gen` the break's proc generation; a break with an owner
  * calls the leaf hook buildsOnPieceBroken (Wrecker / Powder Keg's smash proc; nothing without builds). Returns true
@@ -294,6 +297,8 @@ export function damageBreakable(
 		goldenOnBreak(state, slot);
 	}
 	dropsOnBreak(state, slot);
+	// Silver in crates (docs/SILVER.md SC2): a Silver piece pays the team (a leaf; nothing without SimConfig.silver).
+	silverOnBreak(state, slot);
 	// Builds v2 (BV5): Wrecker / Powder Keg's smash proc for the piece's owner (a leaf; nothing without builds).
 	if (owner >= 0) buildsOnPieceBroken(state, slot, owner, gen);
 	return true;

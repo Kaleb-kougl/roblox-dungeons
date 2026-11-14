@@ -68,6 +68,8 @@ import { TreasureFrameEvents, type TreasureFrameSource } from "shared/view/treas
 import { PactFrameEvents, type PactFrameSource } from "shared/view/pacts";
 import { GoldenFrameEvents, type GoldenFrameSource } from "shared/view/golden";
 import { SecretFrameEvents, type SecretFrameSource } from "shared/view/secrets";
+// By file: the shared/view/silver barrel reaches shared/wallet -> shared/settings -> shared/play (a require cycle).
+import { SilverFrameEvents, type SilverFrameSource } from "shared/view/silver/events";
 import {
 	BuildFxEvents,
 	ComboEvents,
@@ -190,6 +192,10 @@ export interface RunView {
 	readonly golden: GoldenFrameSource;
 	/** The secret-room events of the last frame's ticks: knocks, the open, the chest (docs/SECRET_ROOMS.md SR6). */
 	readonly secrets: SecretFrameSource;
+	/** The Silver piece breaks of the last frame's ticks (docs/SILVER.md SV8: the crate burst, the counter). */
+	readonly silver: SilverFrameSource;
+	/** Enemies killed over the whole run so far (the run summary's kills: the Silver counter's kills row). */
+	readonly kills: number;
 	getAlpha(): number;
 }
 
@@ -353,6 +359,8 @@ export class LiveRun implements RunView {
 	readonly golden = new GoldenFrameEvents();
 	/** The secret-room events of the ticks run by the last frame() (docs/SECRET_ROOMS.md SR6; reset every frame). */
 	readonly secrets = new SecretFrameEvents();
+	/** The Silver piece breaks of the ticks run by the last frame() (docs/SILVER.md SV8; reset every frame). */
+	readonly silver = new SilverFrameEvents();
 	/** What the pacer made of the last unpaused frame (frozen, time scale); a plain pass-through without a pacer. */
 	readonly lastAdvance: FrameAdvance = newFrameAdvance();
 	/** Run totals for the HUD's post-run panel (the telemetry's kill / hit counts, read without finishing it). */
@@ -411,6 +419,7 @@ export class LiveRun implements RunView {
 		this.pacts.reset();
 		this.golden.reset();
 		this.secrets.reset();
+		this.silver.reset();
 		this.ticksThisFrame = 0;
 		if (this.forfeitPending) {
 			this.forfeitPending = false;
@@ -500,6 +509,7 @@ export class LiveRun implements RunView {
 		this.pacts.collect(state);
 		this.golden.collect(state);
 		this.secrets.collect(state);
+		this.silver.collect(state);
 		if (this.victoryTick === undefined && e.bossDefeated !== 0) this.victoryTick = state.tick;
 		if (this.deathTick === undefined && (e.playerDied !== 0 || state.player.dead !== 0)) {
 			this.deathTick = state.tick;

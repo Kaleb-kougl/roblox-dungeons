@@ -52,6 +52,10 @@
  *                 the vault and the altars; its crack pieces and chest are appended after every other piece and the
  *                 room spawn tiles are left as they were (the crack is on WALL cells, the chest in the void); nothing
  *                 above reads it
+ *   silver        opt-in (EndlessFloorOptions.silver; off: no draw, no `breakableSilver`): the barrels and crates that hold
+ *                 Silver (./breakableSilver.ts, docs/SILVER.md SC1), ONCE and LAST (after the secret, on the final
+ *                 parts: a modifier's loot included), from its own stream hash(floor seed, BREAKABLE_SILVER.salt),
+ *                 reading the clutter, the rooms and the loot; it adds no piece and takes no cell, so nothing above moves
  *   modifier      opt-in (EndlessFloorOptions.modifiers; off: no draw, `modifier` NONE, every output above as before):
  *                 the floor's modifier (./modifiers.ts, docs/FLOOR_MODIFIERS.md FM1 / FM2), from its own stream
  *                 hash(floor seed, MODIFIERS.salt) and floor n - 1's chance draw, reading the floor built so far
@@ -89,6 +93,7 @@ import { placeVault, vaultChest, type VaultOverride, type VaultPlan } from "./va
 import { placePactAltars, type FloorPacts } from "./pacts";
 import { goldenPiece, placeGolden, type FloorGolden } from "./golden";
 import { placeSecret, secretPieces, type FloorSecret, type SecretOverride } from "./secrets";
+import { placeBreakableSilver, type BreakableSilver, type SilverOverride } from "./breakableSilver";
 import { FloorModifier, MODIFIERS, type FloorModifierId } from "./modifiersData";
 import {
 	pickFloorModifier,
@@ -541,6 +546,12 @@ export interface EndlessFloorLayout {
 	 * none (EndlessFloorOptions.secrets off, below SECRET.fromFloor, a miss, no candidate, the tutorial's floors).
 	 */
 	readonly secret?: FloorSecret;
+	/**
+	 * The breakables that hold Silver (./breakableSilver.ts placeBreakableSilver, docs/SILVER.md SC1): { slot into
+	 * `breakables`, Silver }, slot order; never a loot slot, the Goldling's piece or an inert piece. Absent: none
+	 * (EndlessFloorOptions.silver off, the tutorial's floors).
+	 */
+	readonly breakableSilver?: ReadonlyArray<BreakableSilver>;
 }
 
 /** Opt-in parts of an endless floor (buildEndlessFloor). Absent or empty: the floor exactly as before them. */
@@ -570,6 +581,13 @@ export interface EndlessFloorOptions {
 	readonly secrets?: boolean;
 	/** With `secrets`: the dev world's KV_SecretDebug override. Ignored without `secrets`. */
 	readonly secretOverride?: SecretOverride;
+	/**
+	 * Place the floor's Silver pieces (docs/SILVER.md SC1: ./breakableSilver.ts): the endless worlds with SimConfig.silver
+	 * set it (shared/run endlessRunFloor). Absent: no draw, no `breakableSilver`, the floor exactly as before.
+	 */
+	readonly silver?: boolean;
+	/** With `silver`: the dev world's KV_SilverDebug override. Ignored without `silver`. */
+	readonly silverOverride?: SilverOverride;
 }
 
 /** What the modifier pick reads of floor `floor`'s place in the run `runSeed` (its seed, floor n - 1's seed). Pure. */
@@ -754,6 +772,16 @@ export function buildEndlessFloor(
 			? placeSecret({ ...input, pieces: floorPieces, vault, pactAltars }, floor, options.secretOverride)
 			: undefined;
 	const allPieces = secret !== undefined ? [...floorPieces, ...secretPieces(secret)] : floorPieces;
+	// Silver (docs/SILVER.md SC1) runs once, after everything, on its own stream (./breakableSilver.ts), reading the
+	// clutter (the first breakables.size() slots of allPieces) and the final loot: it adds no piece, nothing above moves.
+	const breakableSilver =
+		options?.silver === true
+			? placeBreakableSilver(
+					{ seed: params.seed, encounter, clutter: breakables, loot: breakableLoot },
+					floor,
+					options.silverOverride,
+			  )
+			: undefined;
 	return {
 		floor,
 		seed: params.seed,
@@ -776,5 +804,6 @@ export function buildEndlessFloor(
 		golden,
 		modifier,
 		secret,
+		breakableSilver,
 	};
 }

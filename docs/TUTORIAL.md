@@ -605,3 +605,9 @@ Critical path: T1 -> T2 -> T4 -> T6. T5 can run alongside T2-T4.
    the entrance, combat A-D (1-4), F (5), G (6), treasure 7, shrine 8, stairwell 9; lesson ids keep their names
    (ARD16). Step `bow`, its skills and the `cover` placement are gone; floor-1 seed 7574 -> 7511; funnel revision 4
    (17 lessons). The outro's Start my first run is to open the character screen (docs/ARCHER.md AR7).
+
+## Silver (2026-11-14)
+
+docs/SILVER.md OC11 / OC19: the tutorial's Knight has 2 hearts (the heart cut reaches it through TUTORIAL_CHARACTER)
+and starts wounded at 1 heart (`TUTORIAL_START_HALF_HEARTS` 4 -> 2), so the flask lesson still heals. The tutorial never
+pays Silver and ignores upgrades.

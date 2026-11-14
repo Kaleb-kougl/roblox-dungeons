@@ -1222,3 +1222,12 @@ player who left while their run validated), yielding replays and the queue under
    bar (`game:GetService("DataStoreService"):GetDataStore("PlayerSettings"):SetAsync("u_<your UserId>", { v = 1,
    juice = { particles = "low" } })`), join: Options > Juice shows Particles Low; rebind a key, leave: the stored
    value is now `{ v = 2, juice = { particles = "low" }, controls = { kbm = { ... } }, audio = {}, display = {} }`.
+
+## Silver wallet (2026-11-14)
+
+docs/SILVER.md "Wallet (server)" and "As built": DataStore `KV_Wallet_v1` (key `u_<UserId>`), changed only by UpdateAsync
+transactions (`WalletTransactions`, shared/wallet `WalletBook`); the run's Silver rows are read in the validator's final
+check (`SegmentedRunResult.silver`) and granted in `conclude` to the credited members, keyed on the server-issued run id
+(a ring of the last 64), day bonuses decided inside the transaction. Budget: +1 GetAsync per join, +1 UpdateAsync per
+credited member per paying run and per purchase or equip. Remotes `wallet`, `requestWallet`, `walletBuy`, `walletEquip`
+(5 / 10 s each). `SilverAccessService` hands run starts and lobbies each member's upgrade levels and owned characters.

@@ -16,6 +16,7 @@ import { spikesSlice } from "./spikes";
 import { stageSlice } from "./stage";
 import { tooltipSlice } from "./tooltip";
 import { tutorialSlice } from "./tutorial";
+import { walletSlice } from "./wallet";
 
 /**
  * Barrel for the client's Reflex store. Client-local state only (HUD, settings, spikes); the
@@ -33,7 +34,8 @@ import { tutorialSlice } from "./tutorial";
  * daily run passed (docs/DAILY.md DS10); the `l10n` slice the locale shown (docs/LOCALIZATION.md L6); the `recap` slice the
  * run-over recap's near-miss line, highlights, Details toggle and arm (docs/RUN_RECAP.md RR5); the `tooltip` slice the item
  * tooltip shown (docs/ITEM_TOOLTIPS.md IT4); the `codex` slice the Codex's load status, the local doc copy and the last
- * run's codex summary (claude/codex-plan.md CX6).
+ * run's codex summary (claude/codex-plan.md CX6); the `wallet` slice Silver: the latest wallet push, the settled grants,
+ * the Armory's purchase in flight and the last run's Silver preview (docs/SILVER.md SV8).
  *
  * Import through the directory (`client/store`), never the file.
  */
@@ -55,6 +57,7 @@ export * from "./spikes";
 export * from "./stage";
 export * from "./tooltip";
 export * from "./tutorial";
+export * from "./wallet";
 
 export const clientStore = combineProducers({
 	game: gameSlice,
@@ -74,6 +77,7 @@ export const clientStore = combineProducers({
 	l10n: l10nSlice,
 	tooltip: tooltipSlice,
 	codex: codexSlice,
+	wallet: walletSlice,
 });
 
 export type ClientStore = typeof clientStore;

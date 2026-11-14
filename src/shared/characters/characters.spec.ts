@@ -32,6 +32,7 @@ import {
 import { CLASS_IDS } from "shared/theme";
 import {
 	ARCHER_HEARTS_MAX_DELTA,
+	KNIGHT_HEARTS_MAX_DELTA,
 	ARCHER_ROLL_DASH_PERCENT,
 	ARCHER_ROLL_IFRAME_PERCENT,
 	CHARACTERS,
@@ -90,13 +91,17 @@ describe("characters", () => {
 		expect(DEFAULT_CHARACTER).toBe("knight");
 		expect(characterLoadout("knight")).toEqual([SWORD_WEAPON_ID]);
 		expect(characterLoadout("archer")).toEqual([BOW_WEAPON_ID]);
-		expect(characterTraits("knight")).toBe(NEUTRAL_TRAITS);
+		// docs/SILVER.md SV16: the Knight's roll is neutral, his health one heart under START_HALF_HEARTS.
+		expect(characterTraits("knight")).toEqual({ ...NEUTRAL_TRAITS, heartsMaxDelta: KNIGHT_HEARTS_MAX_DELTA });
 		expect(characterTraits("archer")).toEqual({
 			rollDashPercent: ARCHER_ROLL_DASH_PERCENT,
 			rollIframePercent: ARCHER_ROLL_IFRAME_PERCENT,
 			heartsMaxDelta: ARCHER_HEARTS_MAX_DELTA,
+			armorMaxDelta: 0,
+			flaskChargesDelta: 0,
 		});
-		expect([ARCHER_ROLL_DASH_PERCENT, ARCHER_ROLL_IFRAME_PERCENT, ARCHER_HEARTS_MAX_DELTA]).toEqual([140, 125, -2]);
+		expect([ARCHER_ROLL_DASH_PERCENT, ARCHER_ROLL_IFRAME_PERCENT, ARCHER_HEARTS_MAX_DELTA]).toEqual([140, 125, -3]);
+		expect(KNIGHT_HEARTS_MAX_DELTA).toBe(-2);
 		expect([NEUTRAL_TRAITS.rollDashPercent, NEUTRAL_TRAITS.rollIframePercent]).toEqual([PERCENT, PERCENT]);
 		expect(NEUTRAL_TRAITS.heartsMaxDelta).toBe(0);
 		expect([SWORD.id, BOW.id]).toEqual([SWORD_WEAPON_ID, BOW_WEAPON_ID]);

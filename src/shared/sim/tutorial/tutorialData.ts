@@ -4,10 +4,11 @@
  */
 
 /**
- * The tutorial's start health in half hearts (2 of 3 hearts at START_HALF_HEARTS = 6): wounded, so the flask lesson
- * can heal. The value the tutorial world passes as TutorialSimConfig.startHalfHearts.
+ * The tutorial's start health in half hearts: 1 heart of the Knight's 2 (docs/SILVER.md SV16, owner call OC19; it was
+ * 4, 2 of 3 hearts, before the heart cut): wounded, so the flask lesson can heal. The value the tutorial world passes as
+ * TutorialSimConfig.startHalfHearts.
  */
-export const TUTORIAL_START_HALF_HEARTS = 4;
+export const TUTORIAL_START_HALF_HEARTS = 2;
 
 /** TutorialSimConfig.startHalfHearts is clamped to [TUTORIAL_MIN_START_HALF_HEARTS, heartsMax]: never start dead. */
 export const TUTORIAL_MIN_START_HALF_HEARTS = 1;

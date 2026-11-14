@@ -11,7 +11,9 @@
  * the menu haptics' timeline (padFeedback.ts, GM7 / GM9). Headlessly tested (menu.spec.ts, pause.spec.ts, pointer.spec.ts, firstJoin.spec.ts, focus.spec.ts,
  * padActions.spec.ts, padNav.spec.ts, padFeedback.spec.ts; the string keys in shared/view/hud hud.spec.ts).
  */
+export * from "./armory";
 export * from "./character";
+export * from "./characterLock";
 export * from "./config";
 export * from "./credits";
 export * from "./daily";

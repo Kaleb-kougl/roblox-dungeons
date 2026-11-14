@@ -38,7 +38,7 @@
  * Pure and Roblox-API-free: ids, the clock, friendship and busy state are injected. The server passes client
  * values straight in, so every client-supplied argument is shape-checked (`badRequest`).
  */
-import { DEFAULT_CHARACTER, isCharacterId, type CharacterId } from "shared/characters";
+import { DEFAULT_CHARACTER, isCharacterId, isStarterCharacter, type CharacterId } from "shared/characters";
 import {
 	DEFAULT_LOBBY_NAME,
 	LOBBY,
@@ -131,11 +131,22 @@ export interface LobbySummary {
 	readonly hasFriend: boolean;
 }
 
+/**
+ * docs/SILVER.md SV17: whether a player owns a character (the server's wallet; an unknown wallet owns the Knight only).
+ * The starter characters (shared/characters STARTER_CHARACTERS) are never asked.
+ */
+export type OwnsCharacter = (userId: number, characterId: CharacterId) => boolean;
+
 export interface LobbyContext {
 	readonly now: number;
 	/** Why the player cannot group up now (in an unconcluded run, ...), or undefined. */
 	readonly busyReason: (userId: number) => string | undefined;
 	readonly areFriends: AreFriends;
+	/**
+	 * docs/SILVER.md SV17: `start` and a due countdown (`tick`) refuse / cancel when a member's pick is a character they
+	 * do not own. Absent: every character is owned.
+	 */
+	readonly ownsCharacter?: OwnsCharacter;
 }
 
 export type LobbyRefusal =
@@ -156,6 +167,8 @@ export type LobbyRefusal =
 	| "badName"
 	| "notReady"
 	| "notInRun"
+	/** docs/SILVER.md SV17: the pick is a character the player has not unlocked. */
+	| "lockedCharacter"
 	/** Set by the server (LobbyService), never by Lobbies: the player's request budget is spent. */
 	| "rateLimited";
 
@@ -203,10 +216,18 @@ export type LobbyRunStart =
 			readonly characters: ReadonlyArray<CharacterId>;
 	  };
 
+/** Why a due countdown was cancelled (LobbyTickResult.cancelled). */
+export type LobbyCancelCause = "busy" | "lockedCharacter";
+
 export interface LobbyTickResult {
 	readonly starts: ReadonlyArray<LobbyRunStart>;
 	/** Due countdowns that could not start (a member became busy); the lobby is back to `forming`. */
-	readonly cancelled: ReadonlyArray<{ readonly lobby: Lobby; readonly reason: string }>;
+	readonly cancelled: ReadonlyArray<{
+		readonly lobby: Lobby;
+		readonly reason: string;
+		/** docs/SILVER.md SV17: why: a member became busy, or a member no longer owns their pick. */
+		readonly cause: LobbyCancelCause;
+	}>;
 	readonly expiredInvites: ReadonlyArray<LobbyInvite>;
 }
 
@@ -251,6 +272,21 @@ export function memberCharacter(lobby: Lobby, userId: number): CharacterId {
 /** Every member's pick, in member (join) order: a party run's characters, the lobby view's `characters`. */
 export function memberCharacters(lobby: Lobby): CharacterId[] {
 	return lobby.members.map((id) => memberCharacter(lobby, id));
+}
+
+/**
+ * docs/SILVER.md SV17: the first member (join order) whose pick is a character they do not own, as a reason, or
+ * undefined (every pick owned, or no predicate). Starter characters always pass.
+ */
+export function lockedPickReason(lobby: Lobby, ownsCharacter: OwnsCharacter | undefined): string | undefined {
+	if (ownsCharacter === undefined) return undefined;
+	for (const id of lobby.members) {
+		const pick = memberCharacter(lobby, id);
+		if (!isStarterCharacter(pick) && ownsCharacter(id, pick) !== true) {
+			return `player ${id} has not unlocked ${pick}`;
+		}
+	}
+	return undefined;
 }
 
 function removeValue(arr: number[], value: number): boolean {
@@ -553,6 +589,8 @@ export class Lobbies {
 			const busy = ctx.busyReason(id);
 			if (busy !== undefined) return refuse("busy", busy);
 		}
+		const locked = lockedPickReason(lobby, ctx.ownsCharacter);
+		if (locked !== undefined) return refuse("lockedCharacter", locked);
 		lobby.phase = "countdown";
 		lobby.countdownEndsAt = ctx.now + this.config.countdownSeconds;
 		return { ok: true, lobby };
@@ -568,11 +606,16 @@ export class Lobbies {
 	 * and sends ANOTHER pick (ready or not) is un-readied instead: a pick change after Ready un-readies, so the run
 	 * only starts with picks readied as they stand. Un-readying during the countdown cancels it. `pickChanged`: the
 	 * stored pick moved.
+	 *
+	 * docs/SILVER.md SV17, with `ownsCharacter` (the server's wallet): readying as a character the player does not own
+	 * (the pick sent, or the stored pick when none is sent) is `lockedCharacter` and changes nothing; an un-ready always
+	 * goes through, and an unowned pick sent with it is not stored. Starter characters are always owned.
 	 */
 	setReady(
 		userId: number,
 		ready: boolean,
 		characterId?: unknown,
+		ownsCharacter?: OwnsCharacter,
 	): LobbyResult<{ lobby: Lobby; countdownCancelled: boolean; pickChanged: boolean }> {
 		if (!typeIs(ready, "boolean")) return refuse("badRequest", "ready must be a boolean");
 		if (characterId !== undefined && !isCharacterId(characterId)) return refuse("badRequest", "unknown character");
@@ -580,9 +623,18 @@ export class Lobbies {
 		if (lobby === undefined) return refuse("notMember", "not in a lobby");
 		if (lobby.phase === "inRun") return refuse("inRun", "the lobby is in a run");
 		const before = memberCharacter(lobby, userId);
-		const pick = characterId ?? before;
+		const sent = characterId as CharacterId | undefined;
+		// docs/SILVER.md SV17: a pick the player does not own is never stored; readying with it (sent now, or the stored
+		// pick when none is sent) is refused and changes nothing. An un-ready always goes through (its pick dropped).
+		const owns = (c: CharacterId) =>
+			ownsCharacter === undefined || isStarterCharacter(c) || ownsCharacter(userId, c) === true;
+		const sentLocked = sent !== undefined && !owns(sent);
+		if (ready && (sentLocked || (sent === undefined && !owns(before)))) {
+			return refuse("lockedCharacter", `${sent ?? before} is not unlocked`);
+		}
+		const pick = sent !== undefined && !sentLocked ? sent : before;
 		const pickChanged = pick !== before;
-		if (characterId !== undefined) lobby.characters.set(userId, pick);
+		if (sent !== undefined && !sentLocked) lobby.characters.set(userId, pick);
 		const wasReady = lobby.ready.includes(userId);
 		let countdownCancelled = false;
 		if (ready && !(wasReady && pickChanged)) {
@@ -598,7 +650,7 @@ export class Lobbies {
 	 * Call often (every second or so): ends due countdowns (each starts a run, or is cancelled when a member is busy)
 	 * and drops expired invites and kick cooldowns. Results are in creation order.
 	 */
-	tick(ctx: Pick<LobbyContext, "now" | "busyReason">): LobbyTickResult {
+	tick(ctx: Pick<LobbyContext, "now" | "busyReason" | "ownsCharacter">): LobbyTickResult {
 		const due: MutableLobby[] = [];
 		for (const [, lobby] of this.byId) {
 			for (const [userId, endsAt] of lobby.kickedUntil) if (ctx.now >= endsAt) lobby.kickedUntil.delete(userId);
@@ -612,7 +664,7 @@ export class Lobbies {
 		}
 		due.sort((a, b) => a.seq < b.seq);
 		const starts: LobbyRunStart[] = [];
-		const cancelled: { lobby: Lobby; reason: string }[] = [];
+		const cancelled: { lobby: Lobby; reason: string; cause: LobbyCancelCause }[] = [];
 		for (const lobby of due) {
 			let busy: string | undefined;
 			for (const id of lobby.members) {
@@ -621,7 +673,14 @@ export class Lobbies {
 			}
 			if (busy !== undefined) {
 				this.cancelCountdown(lobby);
-				cancelled.push({ lobby, reason: busy });
+				cancelled.push({ lobby, reason: busy, cause: "busy" });
+				continue;
+			}
+			// docs/SILVER.md SV17: a member who no longer owns their pick (a wallet turned unknown) cancels it.
+			const locked = lockedPickReason(lobby, ctx.ownsCharacter);
+			if (locked !== undefined) {
+				this.cancelCountdown(lobby);
+				cancelled.push({ lobby, reason: locked, cause: "lockedCharacter" });
 				continue;
 			}
 			lobby.phase = "inRun";

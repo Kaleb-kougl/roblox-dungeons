@@ -139,6 +139,9 @@ import type { RobloxAssetId } from "../../types";
  * original art, scripts/art/gen-pip-icons.js, built by `node scripts/art/build-atlases.js --only pipIcons`): the first
  * 9 x 9 sheet was uploaded 2026-11-08 (103884093874949) and is retired: the 16 x 15 sheet (the hearts' size) changed
  * every rect; the 16 x 15 sheet uploaded 2026-11-08, the ID given by the owner in chat.
+ * heart-icons.png (the half-heart containers ui.heart.halfmax / .halfmax.empty, docs/SILVER.md SV16; cut from the UI
+ * sheet's hearts by scripts/art/gen-heart-halfmax.js, built by `node scripts/art/build-atlases.js --only heartIcons`):
+ * not uploaded yet, so no ID below (the HUD cuts the whole heart art in half until it is).
  * duo-icons.png (one icon per duo, docs/BUILDS.md BU11; original art, scripts/art/gen-duo-icons.js, built by
  * `node scripts/art/build-atlases.js --only duoIcons`) and lop-patch-blotch1 / -2.png (the Lords of Pain floor blotches,
  * biome.1 floor patches 6 / 7, docs/KENNEY_DECOR.md; scripts/art/lop/floor_blotches.py) uploaded 2026-11-11, transcribed

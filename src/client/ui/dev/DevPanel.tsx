@@ -1,5 +1,6 @@
 import React from "@rbxts/react";
 import { DEV_PANEL_VIEW } from "shared/config";
+import { DEV_UPGRADE_MODES } from "shared/run";
 import { DEV_MONO_FONT, DEV_TEXT_FONT, role } from "client/ui/theme";
 
 const V = DEV_PANEL_VIEW;
@@ -21,6 +22,8 @@ export interface DevPanelProps {
 	readonly bothWeapons: boolean;
 	/** The current run is a dev run, on this floor (undefined outside one). */
 	readonly runFloor: number | undefined;
+	/** docs/SILVER.md SV6: the next Go's upgrades (none / mine: the wallet's levels / max). */
+	readonly upgrades: string;
 	readonly onToggleOpen: () => void;
 	readonly onFloorDelta: (delta: number) => void;
 	readonly onFloorText: (text: string) => void;
@@ -28,6 +31,8 @@ export interface DevPanelProps {
 	readonly onReroll: () => void;
 	readonly onToggleGod: () => void;
 	readonly onToggleBothWeapons: () => void;
+	/** Steps the upgrades choice (none -> mine -> max -> none). */
+	readonly onCycleUpgrades: () => void;
 	readonly onGo: () => void;
 	readonly onRestart: () => void;
 }
@@ -213,12 +218,18 @@ export function DevPanel(props: DevPanelProps) {
 					accent={props.bothWeapons}
 					onClick={props.onToggleBothWeapons}
 				/>
-				<Button order={9} text={string.format(S.go, props.floor)} accent={true} onClick={props.onGo} />
+				<Button
+					order={9}
+					text={string.format(S.upgrades, props.upgrades)}
+					accent={props.upgrades !== DEV_UPGRADE_MODES[0]}
+					onClick={props.onCycleUpgrades}
+				/>
+				<Button order={10} text={string.format(S.go, props.floor)} accent={true} onClick={props.onGo} />
 				{props.runFloor !== undefined ? (
-					<Button order={10} text={S.restart} onClick={props.onRestart} />
+					<Button order={11} text={S.restart} onClick={props.onRestart} />
 				) : undefined}
 				<Label
-					order={11}
+					order={12}
 					dim={true}
 					text={props.runFloor !== undefined ? string.format(S.inDevRun, props.runFloor) : S.notInDevRun}
 				/>

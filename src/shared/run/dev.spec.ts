@@ -26,6 +26,7 @@ import {
 	devStartDepth,
 	isRunWorldKind,
 	isServerRunWorld,
+	parseSilverDebug,
 	parseTreasureDebug,
 } from "shared/run";
 import {
@@ -37,6 +38,7 @@ import {
 	DEV_SUBSYSTEM,
 	GOLDEN_SUBSYSTEM,
 	SECRETS_SUBSYSTEM,
+	SILVER_SUBSYSTEM,
 	PELLETS_SUBSYSTEM,
 	TREASURE_SUBSYSTEM,
 	PACTS_SUBSYSTEM,
@@ -191,6 +193,30 @@ describe("dev world: KV_TreasureDebug (docs/TREASURE.md TR5)", () => {
 	});
 });
 
+describe("dev world: KV_SilverDebug (docs/SILVER.md SC1)", () => {
+	it("parseSilverDebug: `every` in any case and separator; anything else is no override", () => {
+		expect(parseSilverDebug(undefined)).toBe(undefined);
+		expect(parseSilverDebug("")).toBe(undefined);
+		expect(parseSilverDebug("nonsense, 42")).toBe(undefined);
+		expect(parseSilverDebug("EVERY")).toEqual({ every: true });
+		expect(parseSilverDebug(" foo;every ")).toEqual({ every: true });
+	});
+
+	it("a Silver override reaches the dev world's floors (more Silver pieces); without one they are the endless run's", () => {
+		const forced = buildDevRunConfig(SEED, { startFloor: 1, invulnerable: false, silver: { every: true } });
+		const plain = buildDevRunConfig(SEED, { startFloor: 1, invulnerable: false });
+		const endless = buildEndlessRunConfig(SEED);
+		for (let f = 1; f <= 4; f++) {
+			const every = forced.endlessFloor!(f).layout.breakableSilver ?? [];
+			const own = endless.endlessFloor(f).layout.breakableSilver ?? [];
+			expect(plain.endlessFloor!(f).layout.breakableSilver).toEqual(own);
+			expect(own.size() > 0).toBe(true);
+			expect(every.size() > own.size()).toBe(true);
+			expect(forced.endlessFloor!(f).layout.breakables).toEqual(endless.endlessFloor(f).layout.breakables);
+		}
+	});
+});
+
 describe("god mode", () => {
 	it("blocks every hit while on: no armor, hearts, hit event or i-frames; counted in dev.blockedHits", () => {
 		const state = devState(2, true);
@@ -236,17 +262,18 @@ describe("god mode", () => {
 		const a = devState(3, true);
 		const layout = hashLayout(a, true);
 		const names = layout.groups.map((g) => g.name);
-		// docs/SECRET_ROOMS.md SR5: secrets after golden, last.
-		expect(names[names.size() - 1]).toBe(SECRETS_SUBSYSTEM);
-		expect(names[names.size() - 2]).toBe(GOLDEN_SUBSYSTEM);
-		expect(names[names.size() - 3]).toBe(PACTS_SUBSYSTEM);
-		expect(names[names.size() - 4]).toBe(TREASURE_SUBSYSTEM);
-		expect(names[names.size() - 5]).toBe(PELLETS_SUBSYSTEM);
-		expect(names[names.size() - 6]).toBe(BUILDS_SUBSYSTEM);
-		expect(names[names.size() - 7]).toBe(DEV_SUBSYSTEM);
-		expect(names[names.size() - 8]).toBe(AFFIXES_SUBSYSTEM);
+		// docs/SECRET_ROOMS.md SR5: secrets after golden; docs/SILVER.md SC2: silver after secrets, last.
+		expect(names[names.size() - 1]).toBe(SILVER_SUBSYSTEM);
+		expect(names[names.size() - 2]).toBe(SECRETS_SUBSYSTEM);
+		expect(names[names.size() - 3]).toBe(GOLDEN_SUBSYSTEM);
+		expect(names[names.size() - 4]).toBe(PACTS_SUBSYSTEM);
+		expect(names[names.size() - 5]).toBe(TREASURE_SUBSYSTEM);
+		expect(names[names.size() - 6]).toBe(PELLETS_SUBSYSTEM);
+		expect(names[names.size() - 7]).toBe(BUILDS_SUBSYSTEM);
+		expect(names[names.size() - 8]).toBe(DEV_SUBSYSTEM);
+		expect(names[names.size() - 9]).toBe(AFFIXES_SUBSYSTEM);
 		expect(layout.values).toEqual(writeHashFields(a, []));
-		const dev = layout.groups[layout.groups.size() - 7];
+		const dev = layout.groups[layout.groups.size() - 8];
 		expect(layout.names[dev.finish - 1]).toBe("dev.toggles");
 		const b = devState(3, true);
 		const run = (s: SimState) => {
