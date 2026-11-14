@@ -401,6 +401,66 @@ Shieldwall), OC2 by NXD21 (as recommended and built).
   no end event. The arrival / timeout ends and the yank are visible in state; the view's snap should play for
   `hookEndBreaks` reasons only.
 
+### NX7 View (as built, 2026-11-14)
+
+Presentation and client timing only: no sim, hash, replay, wire or fixture change; `predictMotion.ts` and its parity
+spec untouched. Placeholder looks; NX8 brings the art.
+
+- Pure rules `shared/view/newEnemies2.ts` (tunables `newEnemies2Config.ts`): `bulwarkGuarding` (alive, v5 1) /
+  `guardArcSegments` (the sim's front cone, acos(frontCos) either side of the facing, at radius + 0.18), `staggerMarked`
+  (BULWARK_STAGGER: DIZZY_VIEW's stars), `chainTarget` (THROWN -> its HOOK by `hookBulletSlot`(emitter id); DRAG ->
+  `hookedPlayerOf`) / `chainSegments` (from its hand), `bellyPips` (v3, max 5) / `bellyPipSegments` / `bellyPulse`
+  (the swallow telegraph), `torchArcPoint` (the light telegraph's last 60 %, a parabola to v4-5, landing as the pyre
+  spawns), `pyreFlameScale` (grows over the 0.5 s lighting, flickers once lit; reduced motion steady), `newEnemy2Bursts`
+  / `NEW_ENEMY_2_BURST_LOOKS` (block sparks and guard breaks in `enemyGuard`, snaps in `enemyOutline`, gulps / fizzles in
+  `pellet.normal`, puffs in `DECOR_FX_TINT.flame`).
+- Per-tick feed `shared/view/fx/newEnemy2Events.ts` `NewEnemy2FrameEvents` (new `RunView.newEnemies2`, collected by
+  LiveRun and LockstepClient): block points (guardEvents), guard breaks (the Shieldwall's spot), snaps (drag ends with
+  `hookEndBreaks` only, at the chain's middle), pyre puffs (a per-slot alive -> dead diff: withered or killed).
+- Sprite inputs `newEnemy2Sprites.ts` (one import in sprites.ts, `withNewEnemy2SpriteInputs`): the Shieldwall's `block`
+  in place of idle while guarding (new optional enemy animation `block`, ENEMY.optionalAnimations; new
+  `ActorSpriteInput.idleAnim`), bash as `attack`, the stagger as `hit` stretched over 1.5 s; Chainhook aim / yank,
+  Snatcher swallow, Pyre-keeper light / panic as `attack`; the pyre idle (death = the unlit cell).
+- Bullets: `EnemyBulletLook` FLAME 4 (BulletKind.ENEMY with the pyre's payload `source`) and HOOK 5 (BulletKind.HOOK),
+  `ENEMY_BULLET_LOOK_IDS` += `bullet.enemy.flame` / `.hook`. BulletRenderController draws the hook with its own
+  placeholder (the wedge, 1.6 x the ball, turned along its flight: BulletPool's `orientLooks`); the flame is the small
+  ball until its art.
+- Pellets: `PelletFrameEvents` copies `stolen` / `returned` / `swallowed` (with the swallowed pellets' cells);
+  `PelletViewTracker` flies a returned pellet from the corpse to its cell (`PELLET_RETURN_VIEW` 0.35 s, a 0.6-tile hop;
+  `PelletLook.offX` / `offZ` / `hopTiles`), and the last-few hint and `pelletRoomProgress` (the chomp ladder) count
+  pellets ON THE FLOOR (`pelletsOnFloor`, taken 0, no power pellet; ladder = [count - left, that + on the floor]), so a
+  carried or swallowed pellet neither lights nor holds the hint. NXD18's credited pellets are `eaten`: ordinary chomps.
+- Prediction (`shared/view/predict/resume.ts`): `PredictionResume` weight 0 while merged `chainhookHolderOf(local) >= 0`
+  (`getDrawnPlayer` = merged, bullets drawn 0 ticks ahead), then back to 1 over `PREDICTION_VIEW.resumeSec` 0.25 s, at
+  most `blendMaxStep` 0.25 a frame; `blendTowardMerged` blends position and prev; enemy bullets ahead = floor(horizon x
+  weight). `suspendSec` 0 (merged at once at the latch, as planned; > 0 would blend in too).
+- Cues: VariantCueEvents counts `blocks` / `guardBreaks` / `hookLatches` / `pyreLights` (SimEvents), `hookThrows` (a
+  Chainhook TELEGRAPH -> THROWN) and `snatches` / `swallows` / `pelletReturns` (PelletEvents); the mapper plays the
+  eight rows, the snatch at `NEW_ENEMY_2_AUDIO.snatchSpeed` 0.67. First sightings: already mapped (NX1, `pyre` ->
+  `pyrekeeper`).
+- Client: new `NewEnemy2MarksController` (guard arc, stagger stars, chain to the hook (drawn ahead with BulletAhead in
+  co-op) or the dragged player (as drawn), belly pips, the torch flame, pyre flames with a PointLight, pool 12);
+  ParticleController (the bursts), PelletRenderController (the fly-home), BulletRenderController (the hook wedge),
+  SimController (`predictResume` in updateDrawn).
+- Specs: `view/newEnemies2.spec.ts`, `view/predict/resume.spec.ts`, `view/pellets/snatcher.spec.ts`,
+  `view/audio/newEnemy2Cues.spec.ts`; `pellets.spec` / `pelletCues.spec` now take pellets off the floor through
+  `taken` (the hint and the ladder no longer read `left`); `contract.spec`'s optional list gains `block`.
+- Top-level locals (counted on out/, `^local `): `contract.luau` 187, `validate.luau` 192 (both unchanged),
+  `sprites.luau` 195.
+- **Studio checklist** (NX13): the guard arc reads as the shield's facing on every biome and is faint beside bullets; it
+  vanishes in recovery / stagger and the stars show; block sparks on arrows and swings, a bigger burst on a guard break;
+  the hook wedge points along its flight; the chain follows the hook, then the dragged knight, with no gap at either end,
+  and snaps (burst) only on a roll / sight / death / damage break, never on an arrival or a timeout; co-op on a
+  simulated 4G link with prediction on: the knight snaps back to merged at the latch (up to the lead's walk, ~2 tiles at
+  20 ticks; if it reads badly, try `suspendSec` 0.08), follows the drag, and glides back after it without a jump; the
+  belly pips count up per steal (gulp at the cell), pulse during the swallow (fizzle on each cell), and on death the
+  pellets fly home (or chomp when killed last); the last-few pulse never points at a carried pellet and the chomp ladder
+  ends on the octave; the torch flies to the landing ring and lands as the brazier appears; the pyre flame grows while
+  lighting, flickers, its light does not wash out bullets (`DECOR_LIGHTS.maxBrightness`); a puff when a pyre withers or
+  dies; fireballs drawn as the flame look once NX8's art is in (small ball now); the eight cues silent in the
+  placeholder (their fallbacks play), the snatch pitched down; layering of the arc / chain / pips against the markings,
+  aura and affix rings; when NX8's pyre art lands, whether the view's flame part should go (the sprite's lit loop).
+
 ## Player experience
 
 1. **Shieldwall** (`bulwark`, NXD17). An armoured demon walks at you behind a round shield. Arrows and sword cuts that hit the shield spark
