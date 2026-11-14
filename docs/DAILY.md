@@ -458,3 +458,9 @@ Owner (2026-11-11, Kaleb):
 
 The Daily has secret rooms (docs/SECRET_ROOMS.md SRD13): the day's seed places them, so everyone hunts the same cracked
 wall. `DAILY.ruleset` 18 -> 19.
+
+## Silver (2026-11-14)
+
+`DAILY.ruleset` 19 -> 20 for docs/SILVER.md: the heart cut (Knight 2, Archer 1 1/2 hearts), Armory upgrades in the
+Daily (SVD3: entrants no longer share one kit), Silver in barrels and crates (the hashed `silver` group). A Daily finish
+also pays each credited player's once-a-day Daily bonus (+50, the day the run started; docs/SILVER.md SVD30).

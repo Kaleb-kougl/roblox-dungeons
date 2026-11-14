@@ -365,3 +365,9 @@ then loads one weighted piece (and draws its boost kind) in every room that hold
 only on floors with at least `MODIFIERS.plunder.minRooms` 3 such rooms. A Plunder floor loads 11.1 pieces on average
 (5-13) against 1.8 natural: open owner call OC2 there. Breaking, the drop, the ground cap of 4 and the fizzle are
 unchanged; the floor's status chip pulses on the first loaded piece broken.
+
+## Silver in crates (2026-11-14)
+
+docs/SILVER.md SC1-SC4: after every other floor part (after the secret room) a few clutter pieces without a boost hold
+Silver (`placeBreakableSilver`, its own stream); they twinkle exactly like loaded pieces (`pieceGlints`), so a twinkle
+now means a boost, Silver or the Goldling. A piece never holds both.

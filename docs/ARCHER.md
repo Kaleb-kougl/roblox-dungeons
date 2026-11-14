@@ -1471,3 +1471,11 @@ animation over the longer roll) is the next check.
 The two characters get the same puzzle at a secret room's cracked wall (docs/SECRET_ROOMS.md SRD3): the Knight's swings
 1 and 2 knock and his combo's finisher opens it; the Archer's stream arrows knock and her charged (heavy) arrow opens it,
 or a Charger she baits. The first-knock card reads per character (`bestiary.secret.crack.archer`).
+
+## Silver (2026-11-14)
+
+docs/SILVER.md SVD12 / SVD18: the Archer is an Armory unlock (tier 4, 300 Silver; `locked_character` / the lobby's
+`lockedCharacter`; an unknown wallet plays the Knight only) and every character starts one heart lower: the Knight's
+traits carry `heartsMaxDelta` -2 (`KNIGHT_HEARTS_MAX_DELTA`), the Archer's -3 (1 1/2 hearts), Vigor buys half hearts
+back. Survival census at the new hearts (12 runs each): Knight mean floor 4.1, 6 of 12 alive entering floor 5; Archer
+4.8, 8 of 12; both weapons without traits 4.7, 10 of 12.

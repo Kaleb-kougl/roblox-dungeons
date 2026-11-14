@@ -1,6 +1,7 @@
 # Silver: cross-run currency
 
-Status (2026-11-13): **SV0 done, nothing else built.** Branch `silver` from `secret-rooms` @ `dc2c4a56`. SV0 read the
+Status (2026-11-14): **phase 1 built** (SV1-SV10, SV16-SV18, SC1-SC4; see "As built"); cosmetics (SV11-SV13) and the
+owner's SV15 not started; nothing checked in Studio. Branch `silver` from `secret-rooms` @ `dc2c4a56`. SV0 read the
 code and confirmed or corrected every assumption (section "SV0 findings"; the plan below is edited to match). Owner
 answers (2026-11-13): **OC1** upgrades count in the Daily too (SVD3); **OC3** Silver is found in crates (SVD15, track
 SC); **OC6** base hearts down by one, the Archer at 1 1/2 (SVD18); **OC7** the Archer is a Silver unlock (SVD12);
@@ -171,6 +172,9 @@ state, so nothing is kept alive past `release()`.
 | OC18 | How does a half-heart container look (an odd heart max, SV0)? | **A half heart in the empty heart's outline**, its right half missing (not the half-*filled* heart, which means hurt). **Art made (2026-11-13):** `scripts/art/gen-heart-halfmax.js` cuts the UI sheet's own `ui.heart.full` / `ui.heart.empty` at their centre and closes the cut in each heart's edge colour: `ui.heart.halfmax` (holding its half) and `ui.heart.halfmax.empty`, 18 x 15 like the hearts, into gitignored `art/vendor/kaleb-vale/heart-icons/` (run by `art:build` / `art:lock`; `--contact` writes a review sheet). Not packed or uploaded yet: SV16 gives them a sheet of their own and theme ids | A full container with a "1/2" pip |
 | OC19 | The tutorial's wounded start at 2 hearts (SV0) | **1 heart** (`TUTORIAL_START_HALF_HEARTS` 4 -> 2), so the flask lesson still heals | Start full and drop the flask lesson's heal check |
 | OC20 | Where a room clear's +2 shows (SV0) | **On the Silver counter** (a small `+2`), not as a tally segment (the tally is score and already at its minimum text size) | A second, Silver-coloured tally row |
+| OC21 | The SV1 census: the fastest two-room run pays about 3,350 Silver an hour against about 990 for normal play (fact 9's guard fails) | **Answered (owner, 2026-11-13): fine as is.** No cap, `minimumRooms` stays 2 | A soft daily cap on top-ups, `minimumRooms` 3+, a minimum run length |
+| OC22 | The SV1 census: floor-1-2 and floor-3 runs pay 24-29 % under the targets (a weak player's day about 196, not 250) | **Answered (owner): fine as is.** `roomPay` stays 2 | More room pay |
+| OC23 | The SC4 census: a bot that never detours breaks 3 % of Silver pieces, so crates are 2.5 % of its run amount (target 25-40 %; 27-32 % if half the pieces are broken) | **Answered (owner): fine as is.** Players go for the twinkle; placement unchanged | Silver pieces nearer the fights |
 
 ## What already exists (and is reused)
 
@@ -508,78 +512,204 @@ ship before Vigor and the unlock can be bought); then SV7-SV8, SV10 and the cosm
   the unranked fallback and the lobby's pure Ready; the UTC day; the economy API; no room in the score panel's label
   row or the tally; the break line; placement after `placeSecret`; pieces per floor by band; the glint and the stage
   feature; the pins. New owner calls OC18-OC20.
-- [ ] **SV1. Earn function and census.** -> Verify: pure specs per row; the minimum applies at exactly 2 rooms and
+- [x] **SV1. Earn function and census.** -> Verify: pure specs per row; the minimum applies at exactly 2 rooms and
   never below; the boss row by the Depth reached; a secret pays once whether or not its chest is taken; the census
   (bots at 2 hearts, then at each Vigor level) meets the targets within 20 %, re-run after SC4 and SV16; a printed
   **pacing table**: days and runs to afford each tier for a floor-1-2, floor-3, floor-5 and floor-10 player with and
   without the day bonuses, checked against the ladder's column; a **farm table**: Silver per hour of the fastest
   two-room run, of die-at-once runs and of normal play, with the fastest farm below normal floor-3 play (fact 9); an
   idle run pays 0.
-- [ ] **SV2. Ladder, catalogue and wallet core.** -> Verify: every tier is 1.8 to 2.2 times the one before; every
+- [x] **SV2. Ladder, catalogue and wallet core.** -> Verify: every tier is 1.8 to 2.2 times the one before; every
   catalogue level names a tier, a track's levels rise by at least one tier; nothing with a sim lever sits above
   tier 5; `nextGoals`; codec round trip and junk; a missing doc is an empty wallet; `applyGrant`: idempotent per
   run id, the minimum, Prospector on the run amount only, each day bonus once per day and again the next day, a
   day number that goes backwards pays no bonus, two grants on the same day in either order give the same total;
   `applyBuy` refuses poor / maxed / unknown / missing prerequisite; transforms compose in any order; order lock.
-- [ ] **SV3. WalletService.** -> Verify: fakes; a buy before load is refused; a failed load greys the Armory and
+- [x] **SV3. WalletService.** -> Verify: fakes; a buy before load is refused; a failed load greys the Armory and
   still lets a grant land with its bonuses; two simulated servers' interleaved grants pay the day bonus once; a
   client-sent price is ignored.
-- [ ] **SV4. Grants at the verdict.** -> Verify: `SegmentedRunResult.silver` equals `runSilver` on the final state for
+- [x] **SV4. Grants at the verdict.** -> Verify: `SegmentedRunResult.silver` equals `runSilver` on the final state for
   solo and party replays, absent on rejections; grants for solo, party (each credited member: the team's run amount,
   their own bonuses and Prospector), abandoned, rejected, desync; both bonuses once per UTC day and across midnight (a
   Daily started before midnight pays its start day's bonus); a re-concluded session grants once; the settling push
   corrects a wrong prediction.
-- [ ] **SC1. Placement.** -> Verify: `roomPool.lock.spec` and every earlier output byte-identical on and off; never
+- [x] **SC1. Placement.** -> Verify: `roomPool.lock.spec` and every earlier output byte-identical on and off; never
   a loot piece, the Goldling's piece or an inert / secret piece; barrels and crates both picked, about 2 : 1; at most 2
   per room; counts and stacks in range over runs 1-40 x floors 1-20 per band; a Plunder floor's Silver avoids its
   loot; each floor modifier yields valid slots.
-- [ ] **SC2. Sim.** -> Verify: every break source pays once; a broken piece pays nothing again; `total` carries over
+- [x] **SC2. Sim.** -> Verify: every break source pays once; a broken piece pays nothing again; `total` carries over
   `nextFloor`; without the flag every hash is today's; determinism; pins re-recorded and listed; ruleset bumped.
-- [ ] **SC3. View and sound.** -> Verify: `pieceGlints` / `glintSlotCount` list intact Silver pieces with the loot
+- [x] **SC3. View and sound.** -> Verify: `pieceGlints` / `glintSlotCount` list intact Silver pieces with the loot
   look and drop them at the break; boost, Silver and Goldling pieces are indistinguishable in its output; the stage
   feature is on for a floor with Silver and no loot; `SilverCrateFx` specs; a far co-op break ticks the counter.
-- [ ] **SC4. Crate census.** -> Verify: the bot breaks at least half of Silver pieces without detouring; crates'
+- [x] **SC4. Crate census.** -> Verify: the bot breaks at least half of Silver pieces without detouring; crates'
   share of the run amount is 25-40 %; twinkling pieces per floor printed by band.
-- [ ] **SV5. Traits.** -> Verify: neutral deltas hash as today; each level's starting values; refills and revives
+- [x] **SV5. Traits.** -> Verify: neutral deltas hash as today; each level's starting values; refills and revives
   respect the new maxima; golden fixtures and `predictMotion.spec` untouched.
-- [ ] **SV6. Upgrades on the session.** -> Verify: client and server configs hash equal for every level set in
+- [x] **SV6. Upgrades on the session.** -> Verify: client and server configs hash equal for every level set in
   endless and the Daily, solo and party; the tutorial and M1 ignore upgrades; an unloaded wallet starts neutral and
   says so; a client that lies about levels fails its first segment; ruleset bumped.
-- [ ] **SV16. Heart cut.** -> Verify: Knight 4 / Archer 3 half hearts solo and per co-op player, with Vigor 5 / 6
+- [x] **SV16. Heart cut.** -> Verify: Knight 4 / Archer 3 half hearts solo and per co-op player, with Vigor 5 / 6
   and 4 / 5; `archerHearts.spec` and the character specs updated; a run without traits still 6 and the same hash;
   every golden fixture untouched with no setter; `heartFills` and the touch strip draw a half container for an odd
   max (full, hurt and empty), never a half-filled heart; the flask, Hearty, Lionheart, Fang, revive, Second Wind and
   the curse at odd maxima; the tutorial at 2 hearts starting at 1 heart, its flask lesson still healing, its lock spec
   and funnel pins re-recorded; the Archer survival census re-run and recorded in docs/ARCHER.md; ruleset bumped.
-- [ ] **SV17. Archer unlock, server.** -> Verify: solo start as an unowned Archer is `locked_character`; `setReady` as
+- [x] **SV17. Archer unlock, server.** -> Verify: solo start as an unowned Archer is `locked_character`; `setReady` as
   her is refused, a countdown whose member lost ownership is cancelled, and a party start re-checks; a buyer passes;
   an account with old records and no purchase is refused like a new one; unknown wallet = Knight only; old clients
   that send no `characterId` start as the Knight.
-- [ ] **SV18. Archer unlock, client.** -> Verify: pure card-state specs (locked poor / locked affordable / owned /
+- [x] **SV18. Archer unlock, client.** -> Verify: pure card-state specs (locked poor / locked affordable / owned /
   unavailable); buying lights the card and allows the pick in the same visit; a stored Archer pick without
   ownership reads as the Knight; a `locked_character` refusal starts the Knight, never an unranked Archer; lobby,
   run-over Character button and dev panel states; portrait fit; the returning-player card shows once for a
   pre-update account and never for a new one.
-- [ ] **SV7. Theme.** -> Verify: contract / placeholder / vale specs; the pinned tails updated; Luau top-level
+- [x] **SV7. Theme.** -> Verify: contract / placeholder / vale specs; the pinned tails updated; Luau top-level
   locals counted on out/ and still <= 200; `l10n:check`; the bonus and `to go` lines fit in every locale.
-- [ ] **SV8. Live counter, pops, recap rows.** -> Verify: `SilverTracker` specs (a room clear ticks once, a far
+- [x] **SV8. Live counter, pops, recap rows.** -> Verify: `SilverTracker` specs (a room clear ticks once, a far
   co-op clear too); the counter fits row 5 beside the floor / Depth text on the smallest phone and in portrait; the
   recap rows' dimmed -> settled states, the bonus and top-up rows only when they apply, the `to go` line; nothing in
   the tutorial or dev runs.
-- [ ] **SV9. Armory screen.** -> Verify: pure layout specs (tier sort, next-goal marks, dimming, the tier 6+
+- [x] **SV9. Armory screen.** -> Verify: pure layout specs (tier sort, next-goal marks, dimming, the tier 6+
   confirm); per-character effect lines; the first-run line shows until claimed; gamepad focus and hints;
   `KV_FakeWallet` poor / rich / unknown.
-- [ ] **SV10. Telemetry.** -> Verify: catalogue budget spec; one economy Source per non-zero grant row (amount > 0,
+- [x] **SV10. Telemetry.** -> Verify: catalogue budget spec; one economy Source per non-zero grant row (amount > 0,
   ending balance >= 0) and one Sink per purchase with its tier; daily finishes carry the upgrade total; the new-player
   events carry starting hearts; days and runs from first run to each tier's first purchase, split by the player's usual
   death floor; the share of runs paid at the minimum.
 - [ ] **SV11-SV13. Cosmetics** (catalogue with tiers and colour validation; equip and per-player looks; drawing the
   slots).
-- [ ] **SV14. Docs.** This doc's "As built", docs/SERVER.md, docs/CLIENT.md, docs/DAILY.md, docs/ARCHER.md,
+- [x] **SV14. Docs.** This doc's "As built", docs/SERVER.md, docs/CLIENT.md, docs/DAILY.md, docs/ARCHER.md,
   docs/ROOM_CLEAR.md (room clears tick the counter), docs/BREAKABLE_DROPS.md and docs/GOLDLING_RUMOURS.md (what a
   twinkle can hold), docs/TUTORIAL.md (the 1-heart start), the CLAUDE.md row and decision log.
 - [ ] **SV15. [owner] Studio check, sounds, the coin icon, the half container and burst art, tuning playtest (with
   young players if possible: the first hour's pacing above all).**
+
+## As built (phase 1, 2026-11-14)
+
+Built in four tracks, then merged and wired (the integration commit). Nothing has run in Studio: server and client code
+is typechecked, linted and built only; the pure cores are specced. The whole headless suite passes on the merged tracks
+(sim 1371, dungeon 396 of 397: the known x86 `forge.spec` NaN bit pattern, run 382, view 2625, the rest 1960).
+
+### Earn function, wallet, grants (SV1-SV4, SV10's server half)
+
+- **shared/silver** (never imported by the sim; must not import shared/run: segments.ts imports it): `SILVER` (roomPay
+  2, floorBase 5, bossPerDepth 40, vaultOpened 15, secretFound 25, goldlingCaught 30, killsPerSilver 10, runMinimum 20,
+  minimumRooms 2, firstRunBonus 50, dailyBonus 50, Prospector 5 % a level), `SILVER_ROWS`, `SILVER_PAYING_WORLDS`
+  (`"endless"` as a pinned literal, the Daily), `runSilver(input)` -> rows, sum, `qualifies`, `topUp`, `amount`;
+  `silverRunInputOf(state, summary, config?)` (config: a dev run's start floor / Depth), `crateSilverOf` =
+  `silverTotalOf`; `silverEligibility(worldKind, flags)` -> undefined (pays) or the reason (`world`, `unranked`, `debug`,
+  `dev`, `stress`, `studio`).
+- **shared/wallet**: `ARMORY_TIERS`, `POWER_TIER_CAP` 5, `CONFIRM_FROM_TIER` 6, `ARMORY_CATALOG` (append-only, order
+  lock; vigor tiers 1 / 3, deepFlask 3 / 5, plating 5, prospector 2-5, `character.archer` 4; total 2,970); the
+  `WalletDoc` codec (never throws; another version reads as empty; unknown item ids kept), `applyGrant` /
+  `grantBreakdown` / `applyBuy` / `applyEquip` / `nextGoals`, `walletTransaction` (refuses a newer doc version),
+  `walletBalance`, `ownsCharacter`, `walletUpgradeLevels` (`WalletUpgradeLevels` = shared/characters `UpgradeLevels`),
+  `parseFakeWallet`, `WalletStatus` / `walletStatusOf`; `WalletBook` (the pure service core: join load, per-player
+  transaction lock with retries, read copies, `notLoaded` / `busy` / `failed`), `MemoryWalletStore`; `planRunGrants`
+  (skip reasons), `grantContextOf`, `predictRunGrants`; economy analytics builders.
+- **Server**: `WalletTransactions` (UpdateAsync on `KV_Wallet_v1`), `WalletService` (join load + push; remotes
+  `requestWallet` / `walletBuy` / `walletEquip`, 5 / 10 s each; Studio transacts on a MemoryWalletStore seeded by
+  `KV_FakeWallet`, a change resets it; BindToClose waits for pending grants). `readSilver` in
+  `SegmentedValidator.decide()` -> `SegmentedRunResult.silver` (accepted runs). `conclude` plans grants for the credited
+  members and `grantRun` spawns one transaction each; `RunFinishVerdict.silver` is the prediction, the settled
+  breakdown is pushed as `WalletStatus.grant` (match on runId: for the Daily it can arrive before the verdict).
+  `TelemetryService.logEconomy`: one Source per non-zero part (the 8 rows, `prospectorBonus`, `runMinimum` as Gameplay;
+  `firstRunBonus` / `dailyBonus` as TimedReward), a Sink per purchase (Shop, SKU = item id), custom event
+  `ArmoryPurchase` (38 of 100 names).
+- **Wiring**: WalletService sets `SilverAccessService` at construction (no start sees the open default): upgrades =
+  `effectiveUpgrades` (undefined: unknown wallet, no upgrades), ownership = `ownsCharacter` (unknown: the Knight only).
+
+### Silver in crates (SC1-SC4)
+
+- **Placement** (shared/dungeon `breakableSilver.ts` / `breakableSilverData.ts`): `BREAKABLE_SILVER` salt `0x4b56534c`
+  ("KVSL"), bands 2-3 / 3-4 / 3-5 / 3-5 from floors 1 / 5 / 10 / 15, `maxPerRoom` 2, barrel 1 : crate 2, stacks 4-8
+  rising one every 2 floors (cap +10). Runs once, last, after `placeSecret`, on the final loot, behind
+  `EndlessFloorOptions.silver` (set by `endlessRunFloor`); candidates are the clutter slots only (`placeBreakables`'
+  pieces) without loot. `EndlessFloorLayout` / `EndlessFloorWorld.breakableSilver` (`{ slot, amount }[]`). Dev
+  `KV_SilverDebug` = `every`: every candidate holds Silver, no room cap (`SilverOverride`, `parseSilverDebug`).
+- **Sim** (`sim/silver`): `SimConfig.silver` (`ENDLESS_SILVER_CONFIG`, on every endless / daily / dev build, solo and
+  party; never M1 or the tutorial), `state.silver { config, total, pieces, events.breaks }` (the per-tick list lives on
+  the silver state: SimEvents holds numbers only), hash group `silver` LAST (after `secrets`: total, the pieces' length,
+  the pieces), `silverOnBreak` right after `dropsOnBreak` (every source), `silverTotalOf` / `silverPieceAt`. No pin
+  moved (charger / stormcaller build their own configs without the flag); the group-order specs of builds, breakables,
+  golden, progression, pellets, pacts, treasure and the run specs were updated (run/endless: 19 groups).
+- **View**: `pieceGlints` / `glintSlotCount` include Silver pieces; the stage feature `breakableLoot` is on for a
+  Silver-only floor; shared/view/silver `SilverFrameEvents`, `SilverCrateFx` (pops max 3 a frame, coins max 12, one
+  clink stepping within 0.6 s, reduced motion: no coins), `silverDebugText`.
+
+### Hearts, upgrades, the Archer lock (SV5, SV6, SV16, SV17)
+
+- **Traits**: `armorMaxDelta` / `flaskChargesDelta`, `playerStartArmorMax` / `playerStartFlaskMax`, set in
+  `createSimState` beside the hearts. shared/characters `upgrades.ts`: `UpgradeLevels`, `NO_UPGRADES`,
+  `UPGRADE_MAX_LEVELS` 2 / 2 / 1, `upgradeTraits(characterId, levels)`, `readUpgradeLevels`.
+- **Session**: `WorldBuildOptions.upgrades` -> `withCharacters`, `upgradesApply(kind)` (endless, daily), dev
+  `DevRunOptions.upgrades` none / mine / max; `StartContext.upgrades`, `RunSession.upgrades` / `upgradesUnknown`,
+  `StartRunReply.upgrades`, `PartyRunStart.upgrades`; SimController builds ranked and party runs with them (unranked:
+  none). Spec: every level set x character in endless and the Daily, solo and party, hashes equal; a lying client fails
+  segment 0.
+- **Heart cut**: `KNIGHT_HEARTS_MAX_DELTA` -2, `ARCHER_HEARTS_MAX_DELTA` -3, `TUTORIAL_START_HALF_HEARTS` 2; `HEART_FILL`
+  (EMPTY 0, HALF 1, FULL 2, HALF_MAX_FULL 3, HALF_MAX_EMPTY 4), `heartFills` ends an odd maximum in a half container,
+  `heartArt`; StatusPanel and the touch strip draw `ui.heart.halfmax` / `.halfmax.empty` (theme `heartIcons.ts`), else the
+  whole heart clipped to its left half, else a flat half box. Art pipeline group `heartIcons` -> `heart-icons.png`,
+  `packs/vale/heartIconLayout.ts` (written by hand; regenerate on the Mac), no asset id yet. No hash pin moved;
+  run/secrets.spec now picks the first of 6 seeds where the 2-heart bot opens its secret and lives.
+- **Lock**: `locked_character` (`RunSessionRegistry.start`, worlds with characters: endless, daily, dev), `Lobbies.setReady`
+  ownership predicate (`lockedCharacter`, string `lobby.err.lockedCharacter`), the countdown cancels when a pick is no
+  longer owned, `STARTER_CHARACTERS`; `SilverAccess` / `SilverAccessService`.
+- **Archer survival census** (12 runs each): Knight at 4 half hearts mean floor 4.1, 6 of 12 alive entering floor 5;
+  Archer at 3 half hearts 4.8, 8 of 12; both weapons without traits 4.7, 10 of 12.
+
+### Client and theme (SV7, SV8, SV9, SV18)
+
+- **Theme**: `shared/theme/silver.ts` / `silverColors.ts`: `SILVER_STRING_KEYS` (66, spread last into
+  `REQUIRED_STRING_KEYS`), role `silver` `#c4d0dc` (`silverReport`), optional `ui.icon.silver` (a silver chip without
+  it) and `fx.silver.coins`, port audio IDs `sfx.silver.gain` / `.crate` / `sfx.shop.buy` / `.deny` (last in
+  `PORT_AUDIO_EVENTS`, SILENT in both packs; fallbacks score tick, breakable loot, relic take, ui back).
+  `contract.luau` / `validate.luau` top-level locals 188 / 192. A later feature appending to the pinned tails must skip
+  Silver's entries too.
+- **In the run**: store slice `wallet`, `WalletController`; `RunView.silver` / `.kills`; `SilverTracker` (runSilver on
+  the view's reads), the counter on ScorePanel row 5 (`SilverFloorRow`, the floor / Depth text scaled beside it), the
+  `+N` chip, `SilverHudController` (crate pops that duck near bullets, coins flying to the counter as a ScreenGui layer,
+  the clink, `sfx.silver.gain`), `KV_SilverLabel` in BreakableRenderController; run-over `SilverRecapBlock` (dimmed client
+  figures, settled by the verdict, then by the grant with the same runId). The Silver rows replace the run-over panel's
+  info line (still in the pause overlay): one more row overflowed the smallest layouts.
+- **Armory**: `shared/view/menu/armory.ts` (tabs, tier sort, next / after marks, dimmed far tiers, the tier 6+ confirm,
+  per-character effect lines, `BuyHold` 0.4 s, the badge) and `ArmoryScreen`; the main menu's Silver line (balance,
+  `First run today: +50`), the Armory button after Codex (on phones a small button in the Silver line).
+- **Unlock**: `characterLock.ts` (`characterLockState`, `offeredCharacters`, `characterPickAllowed`); the character
+  screen's locked card with the hold-to-buy; `selectPlayableCharacter`; a `locked_character` reply restarts the ranked
+  request as the Knight (never an unranked Archer) and resets the stored pick; `makeRun` never builds an unowned
+  character for an unranked run. OC12's card (`SilverWelcomeCard`) shows once for a loaded wallet that never earned
+  and has personal records; `DisplaySettings.silverNoticeSeen` (only true stored). Dev panel: `Upgrades` cycle, Go
+  reads `KV_SilverDebug`.
+
+### Census (owner answers OC21-OC23: fine as is)
+
+At today's hearts (before the cut), 16 Knight seeds to floor 10 plus 6 immortal: run amounts floor 1-2 32 (target 45),
+floor 3 57 (75), floor 5 with its boss 205 (160), floor 10 434 (500). A floor-1-2 player's day is about 196 with the
+bonuses; the Archer in about 3 days, tier 8 in about 50. Farm: the fastest two-room run about 3,350 an hour, normal play
+about 990. Crates (SC4, runs 1-40 x floors 1-20): 2.5 / 3.5 / 4.0 / 4.1 Silver pieces and 16 / 31 / 45 / 57 Silver a
+floor by band, crates 65.5 % of the pieces; the honest bot breaks 3 % of them.
+
+### Decisions added in the build
+
+- **SVD31. A party run pays every credited member even below `COOP_MIN_PARTY`** (a solo run pays too).
+- **SVD32. The grant day is the Daily's clock** (`dailyClockNow()`, Workspace server time), so it agrees with the Daily's
+  own day.
+- **SVD33. The first-run bonus pays on any eligible accepted run, even one that earned 0** (SVD19).
+- **SVD34. A transaction on a stored doc of a newer version is refused** (logged; a grant there is lost, never a
+  downgrade).
+- **SVD35. `KV_SilverDebug` = `every` loads every candidate piece**, no room cap.
+- **SVD36. The run-over Silver rows take the info line's place** on the run-over panel; the compact panel folds the
+  bonuses, top-up and Prospector into one row.
+
+### Left for the owner (SV15) and later
+
+Studio check (the list below; first the pad's hold-to-buy and the coins' screen positions); the four sounds; art for
+`ui.icon.silver` / `fx.silver.coins`; on the Mac `npm run art:lock`, `node scripts/art/build-atlases.js --only
+heartIcons` (diff against the hand-written layout), upload `heart-icons.png`, its id in `assetIds.ts`; cosmetics
+(SV11-SV13); translations.
 
 ## Studio check
 
