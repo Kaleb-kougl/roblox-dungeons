@@ -4,6 +4,7 @@ import type { DailyRunResult } from "shared/daily";
 import type { RunRecordsResult } from "shared/records";
 import type { StringVars } from "shared/theme";
 import { latencyProbeViewsEqual, type LatencyProbeView } from "shared/view";
+import type { SilverGrantBreakdown } from "shared/wallet";
 
 /**
  * Client-local Reflex slice for the game HUD (task 8). Fed by the SimController's ~10 Hz snapshot (only when it
@@ -38,6 +39,13 @@ export interface VerdictView {
 	 * posted, improved, previous, the standing); new best's run-over record reads it in place of `records`.
 	 */
 	readonly daily?: DailyRunResult;
+	/**
+	 * docs/SILVER.md SV8: this player's predicted Silver grant (RunFinishVerdict.silver; absent on rejected or non-paying
+	 * runs and for members not credited). The run-over rows settle on it until the wallet's push for the run arrives.
+	 */
+	readonly silver?: SilverGrantBreakdown;
+	/** The server's run id of a ranked run (the wallet's settled grant names it). */
+	readonly runId?: string;
 }
 
 export interface ReplayCheckView {

@@ -56,6 +56,21 @@ import {
 	type MenuInsets,
 	type MenuSize,
 } from "shared/view/menu";
+import { SILVER_RECAP, silverRecapHeight } from "shared/view/silver";
+
+/**
+ * docs/SILVER.md SV8: the run-over panel's Silver rows at their tallest (SilverRecapBlock: SILVER_RECAP.perLine rows a
+ * line, at most SILVER_RECAP.maxLines; compact folds the bonuses, at no gap; wide / narrow at half a gap). They take
+ * the info line's place on the panel (the pause overlay keeps it): `infoOrSilver` is the taller of the two.
+ */
+function silverBlock(layout: "wide" | "narrow" | "compact"): number {
+	const line = LINE(HUD_VIEW.smallText);
+	return silverRecapHeight(SILVER_RECAP.maxLines[layout], line, layout === "compact" ? 0 : HUD_VIEW.gap / 2);
+}
+
+function infoOrSilver(layout: "wide" | "narrow" | "compact"): number {
+	return math.max(TWO_SMALL_LINES, silverBlock(layout));
+}
 
 /** The Roblox top bar under CoreUISafeInsets (pt): 58 on the owner's phone and on desktop (footprint HUD_TEST_TOP_INSET). */
 const TOP = 58;
@@ -874,7 +889,17 @@ function recapWorst(uiScale: number, layout: "compact" | "narrow" | "wide", part
 		const worstRow = codexWorstRow("compact", MENU_FIT.runOverLeftWidth);
 		expect(worstRow.lines).toBe(1);
 		const codexRow = codexRecapRowHeight("compact", HUD_VIEW.gap, worstRow);
-		const leftRows = [header, math.max(title, nearMiss), main, stats, codexRow, button, small, TWO_SMALL_LINES];
+		const leftRows = [
+			header,
+			math.max(title, nearMiss),
+			main,
+			stats,
+			codexRow,
+			button,
+			small,
+			// docs/SILVER.md SV8: the Silver rows take the info line's place (it stays in the pause overlay)
+			infoOrSilver("compact"),
+		];
 		let left = 0;
 		for (const r of leftRows) left += r;
 		left += (leftRows.size() - 1) * HUD_VIEW.gap;
@@ -891,7 +916,8 @@ function recapWorst(uiScale: number, layout: "compact" | "narrow" | "wide", part
 			ornament: false,
 		};
 	}
-	const rows = [header, title, main, stats, lineH, dim, grid, ...dailyRows, passed, small, TWO_SMALL_LINES];
+	// docs/SILVER.md SV8: the Silver rows in the info line's place.
+	const rows = [header, title, main, stats, lineH, dim, grid, ...dailyRows, passed, small, infoOrSilver(layout)];
 	// claude/codex-plan.md CX9: the Codex row under the daily block (one line wide, two narrow).
 	const inner = (layout === "narrow" ? MENU_FIT.runOverNarrowWidth : HUD_VIEW.panelWidth * 2) - HUD_VIEW.pad * 4;
 	rows.push(codexRecapRowHeight(layout, HUD_VIEW.gap, codexWorstRow(layout, inner)));
@@ -957,8 +983,15 @@ describe("run-over recap fit (docs/RUN_RECAP.md RR5)", () => {
 			const daily = small + LINE(HUD_VIEW.titleText) + 2 * small + small + DAILY_RANK.passedHeadshotPx + small;
 			// claude/codex-plan.md CX9: the Codex row is drawn with or without the recap (one line on the wide panel).
 			const codexRow = codexRecapRowHeight("wide", HUD_VIEW.gap) + HUD_VIEW.gap;
+			// docs/SILVER.md SV8: the Silver rows (in the info line's place) are drawn with or without the recap too.
+			const silver = infoOrSilver("wide") - TWO_SMALL_LINES;
 			const today =
-				estimates(u, false).get("runOver")!.h + LINE(HUD_VIEW.textSize) + daily + 3 * HUD_VIEW.gap + codexRow;
+				estimates(u, false).get("runOver")!.h +
+				LINE(HUD_VIEW.textSize) +
+				daily +
+				3 * HUD_VIEW.gap +
+				codexRow +
+				silver;
 			expect([s.name, worst.h <= today]).toEqual([s.name, true]);
 		}
 	});
@@ -976,7 +1009,8 @@ describe("run-over recap fit (docs/RUN_RECAP.md RR5)", () => {
 				// claude/codex-plan.md CX9: the Codex row.
 				codexRecapRowHeight("wide", HUD_VIEW.gap),
 				LINE(HUD_VIEW.smallText),
-				TWO_SMALL_LINES,
+				// docs/SILVER.md SV8: the Silver rows in the info line's place.
+				infoOrSilver("wide"),
 				RECAP_UI.exits.wide.again.y,
 				// docs/ARCHER.md AR7: the exits' second row (Again and Character above Main menu and Details).
 				RECAP_UI.exits.wide.again.y,
@@ -1076,8 +1110,15 @@ describe("run-over contribution fit (docs/RUN_CONTRIBUTION.md CT5)", () => {
 			const daily = small + LINE(HUD_VIEW.titleText) + 2 * small + small + DAILY_RANK.passedHeadshotPx + small;
 			// claude/codex-plan.md CX9: the Codex row is drawn with or without the recap (one line on the wide panel).
 			const codexRow = codexRecapRowHeight("wide", HUD_VIEW.gap) + HUD_VIEW.gap;
+			// docs/SILVER.md SV8: the Silver rows (in the info line's place) are drawn with or without the recap too.
+			const silver = infoOrSilver("wide") - TWO_SMALL_LINES;
 			const today =
-				estimates(u, false).get("runOver")!.h + LINE(HUD_VIEW.textSize) + daily + 3 * HUD_VIEW.gap + codexRow;
+				estimates(u, false).get("runOver")!.h +
+				LINE(HUD_VIEW.textSize) +
+				daily +
+				3 * HUD_VIEW.gap +
+				codexRow +
+				silver;
 			expect([s.name, worst.h <= today]).toEqual([s.name, true]);
 		}
 	});
@@ -1095,7 +1136,8 @@ describe("run-over contribution fit (docs/RUN_CONTRIBUTION.md CT5)", () => {
 				// claude/codex-plan.md CX9: the Codex row.
 				codexRecapRowHeight("wide", HUD_VIEW.gap),
 				LINE(HUD_VIEW.smallText),
-				TWO_SMALL_LINES,
+				// docs/SILVER.md SV8: the Silver rows in the info line's place.
+				infoOrSilver("wide"),
 				RECAP_UI.exits.wide.again.y,
 			];
 			const room = menuArea(s.x, s.y, s.insets, u).h - 2 * MENU_FIT.margin;

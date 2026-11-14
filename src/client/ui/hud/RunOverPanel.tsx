@@ -11,6 +11,7 @@ import {
 	selectRunBaseline,
 	selectRecap,
 	selectRunInfo,
+	selectSilverRun,
 	selectSnapshot,
 	selectVerdict,
 } from "client/store";
@@ -77,6 +78,7 @@ import { DailyPassedRow } from "./DailyPassedRow";
 import { RunInfoLine, verdictColor, verdictLine } from "./RunInfoLine";
 import { DetailsToggle, HighlightGrid, NearMissLine } from "./RecapBlocks";
 import { RecapTabBody } from "./ContributionBlocks";
+import { SilverRecapBlock } from "./SilverRecapBlock";
 
 const HIDDEN = 1;
 const STAT_WIDTH = 150;
@@ -104,6 +106,7 @@ const ROW = {
 	codex: 13,
 	exits: 14,
 	verdict: 15,
+	/** The run's info line, or in its place the Silver rows (docs/SILVER.md SV8, SilverRecapBlock) on a paying run. */
 	info: 16,
 	/** docs/GAMEPAD_MENUS.md GM7: the gamepad hint bar (gamepad only), last. */
 	padHints: 17,
@@ -475,6 +478,10 @@ function RunOverHeader(props: { order: number; victory: boolean; icon: string | 
  * focus brightens once armed; it goes through the recap's retry gate (HudActions.again: before the 0.6 s arm a press
  * skips the timeline). Runs without a recap keep exactly the old panel.
  *
+ * Silver (docs/SILVER.md SV8): on a run in a paying world the Silver rows (SilverRecapBlock) take the info line's place
+ * (the pause overlay keeps the info line; a fit spec holds every layout): wide four a line in two lines, narrow two a
+ * line, compact its bonuses folded into one row, two lines at most.
+ *
  * The Codex (claude/codex-plan.md CX9, R12): a row under the daily block (compact: above the exits, one line when it
  * fits the left column, else two) with this run's first-ever finds (CodexRunRow: the count, up to five icons and `+N`,
  * the completion), from the store's frozen summary; none for a run that found nothing new, could not claim or ran with
@@ -501,10 +508,13 @@ export function RunOverPanel() {
 	const menuScreen = useSelector(selectMenuScreen);
 	// claude/codex-plan.md CX9: the Codex row shows (CodexRunRow draws it; the compact stats tighten only then).
 	const codexRow = codexRecapRow(useSelector(selectCodexRunSummary), str) !== undefined;
+	// docs/SILVER.md SV8: the run's Silver rows show (a paying world's run the client froze figures for).
+	const silverRun = useSelector(selectSilverRun);
 	const actions = useHudActions();
 	const firstRef = useRef<TextButton>();
 	const partyListRef = useRef<ScrollingFrame>();
 	const over = s.outcome !== "playing";
+	const silverShown = silverRun !== undefined && silverRun.run === info.run && silverRun.paidWorld;
 
 	// docs/ARCHER.md AR7: the character screen (the Character button) hides the panel and takes the pad; its Back shows
 	// the panel again (Again focused, its retry gate and arm untouched: RecapController keeps them).
@@ -830,7 +840,12 @@ export function RunOverPanel() {
 										/>
 										{exitButtons("compact", legacyButton)}
 										{verdictRow}
-										<RunInfoLine order={ROW.info} />
+										{/* docs/SILVER.md SV8: compact, the Silver rows take the info line's place (the pause overlay keeps it). */}
+										{silverShown ? (
+											<SilverRecapBlock order={ROW.info} layout="compact" width={left} />
+										) : (
+											<RunInfoLine order={ROW.info} />
+										)}
 										{hints}
 									</Column>
 									{s.scoring ? (
@@ -931,7 +946,19 @@ export function RunOverPanel() {
 								}
 							/>
 							{verdictRow}
-							<RunInfoLine order={ROW.info} />
+							{/* docs/SILVER.md SV8: the Silver rows take the info line's place (the pause overlay keeps it). */}
+							{silverShown ? (
+								<SilverRecapBlock
+									order={ROW.info}
+									layout={narrow ? "narrow" : "wide"}
+									width={
+										(narrow ? MENU_FIT.runOverNarrowWidth : HUD_VIEW.panelWidth * 2) -
+										HUD_VIEW.pad * 4
+									}
+								/>
+							) : (
+								<RunInfoLine order={ROW.info} />
+							)}
 							{exitButtons(narrow ? "narrow" : "wide", narrow ? legacyButton : undefined)}
 							{hints}
 						</Panel>

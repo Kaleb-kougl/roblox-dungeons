@@ -47,3 +47,4 @@ export * from "./HappyHourController";
 export * from "./OvercapPopController";
 // claude/codex-plan.md CX6: the Codex tracker, claims and toast chips.
 export * from "./CodexController";
+export * from "./SilverHudController";

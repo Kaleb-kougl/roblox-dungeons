@@ -2,7 +2,7 @@ import { Controller, OnStart } from "@flamework/core";
 import { GuiService, Players, RunService, Workspace } from "@rbxts/services";
 import { Events } from "client/network";
 import { clientStore, selectDailyStatus, selectSelectedCharacter, type RunInfo, type VerdictView } from "client/store";
-import { isCharacterId, type CharacterId, type UpgradeLevels } from "shared/characters";
+import { DEFAULT_CHARACTER, isCharacterId, type CharacterId, type UpgradeLevels } from "shared/characters";
 import type { PartyRunStart, RunFinishVerdict, RunVerdict } from "shared/network";
 import {
 	ArrivalLog,
@@ -95,6 +95,8 @@ import { GoldenRumourClock } from "shared/view/golden";
 import { PREDICTION_VIEW, PredictionSmoother, writeDrawnPlayer, type DrawnPlayerOf } from "shared/view/predict";
 import { PROGRESSION_VIEW, boardFor, toastFor, type PendingRunClaim } from "shared/view/hud";
 import { afterRobloxMenuClosed, lobbyStartAccepted, restartForfeits } from "shared/view/menu";
+import { ownedCharacterOr, statusUpgrades } from "shared/view/silver";
+import type { WalletStatus } from "shared/wallet";
 import { ENDLESS_FIRST_FLOOR, FloorModifier, type Dungeon, type FloorSecret } from "shared/dungeon";
 import { InputController } from "./InputController";
 import { ThemeController } from "./ThemeController";
@@ -461,6 +463,8 @@ export class SimController implements OnStart {
 	 * server's echo (StartRunReply.characterId).
 	 */
 	private runCharacter: CharacterId = selectSelectedCharacter(clientStore.getState());
+	/** docs/SILVER.md SV18: told when a run start was refused as `locked_character` (onLockedCharacter). */
+	private readonly lockedListeners: Array<(refused: CharacterId) => void> = [];
 	/**
 	 * docs/SILVER.md SV6: the owner's upgrade levels the ranked session was built with (StartRunReply.upgrades), set
 	 * from the reply and used only for that ranked run's build (makeRun with a runId), so the client builds the
@@ -882,7 +886,9 @@ export class SimController implements OnStart {
 			vault: options.vault,
 			modifier: options.modifier,
 			secret: options.secret,
+			silver: options.silver,
 			bothWeapons: options.bothWeapons,
+			upgrades: options.upgrades,
 		};
 		this.devSeed = seed;
 		this.beginDev();
@@ -968,7 +974,8 @@ export class SimController implements OnStart {
 	 */
 	restartAs(character: CharacterId): void {
 		if (this.ctx?.coop !== undefined || !isCharacterId(character)) return;
-		this.runCharacter = character;
+		// docs/SILVER.md SV18: never a character the wallet does not own (the Knight instead).
+		this.runCharacter = ownedCharacterOr(this.walletStatus(), character);
 		this.requestRestart();
 	}
 
@@ -989,11 +996,30 @@ export class SimController implements OnStart {
 		this.beginRun();
 	}
 
-	/** `character` when it is a character id, else the selected one (client/store selectSelectedCharacter). */
+	/**
+	 * `character` when it is a character id, else the selected one (client/store selectSelectedCharacter); either way
+	 * the Knight when the wallet does not own it (docs/SILVER.md SV18: a stored pick of a locked character reads as the
+	 * Knight; an unknown wallet owns the Knight only).
+	 */
 	private pickCharacter(character: CharacterId | undefined): CharacterId {
-		return character !== undefined && isCharacterId(character)
-			? character
-			: selectSelectedCharacter(clientStore.getState());
+		const pick =
+			character !== undefined && isCharacterId(character)
+				? character
+				: selectSelectedCharacter(clientStore.getState());
+		return ownedCharacterOr(this.walletStatus(), pick);
+	}
+
+	/** The latest wallet push (client/store `wallet`; undefined until the first). */
+	private walletStatus(): WalletStatus | undefined {
+		return clientStore.getState().wallet.status;
+	}
+
+	/**
+	 * docs/SILVER.md SV18: a listener told when the server refused a run start with `locked_character` (the pick is then
+	 * reset to the Knight: WalletController resets the stored DisplaySettings.character through SettingsController).
+	 */
+	onLockedCharacter(listener: (refused: CharacterId) => void): void {
+		this.lockedListeners.push(listener);
 	}
 
 	/** The character the current or next solo run plays (docs/ARCHER.md AR5: Again / R keep it). */
@@ -1589,6 +1615,23 @@ export class SimController implements OnStart {
 				}
 				this.rankedUpgrades = reply.upgrades;
 				this.startRun(reply.seed, reply.atBossDoor === true, 0, world, reply.runId, "", false);
+			} else if (reply.code === "locked_character" && waiting.request.characterId !== DEFAULT_CHARACTER) {
+				// docs/SILVER.md SV18: the server says this player does not own the pick. Never the unranked fallback as
+				// that character: the pick resets to the Knight and the ranked start is asked again as the Knight.
+				const asked = waiting.request.characterId;
+				const refused: CharacterId = isCharacterId(asked) ? asked : DEFAULT_CHARACTER;
+				warn(`[Sim] ranked run refused (locked_character: ${reply.reason ?? ""}); starting as the Knight`);
+				this.runCharacter = DEFAULT_CHARACTER;
+				for (const l of this.lockedListeners) l(refused);
+				this.startRequests++;
+				const request: StartRunRequest = {
+					...waiting.request,
+					requestId: this.startRequests,
+					characterId: DEFAULT_CHARACTER,
+				};
+				this.awaitingStart = { ...waiting, requestId: this.startRequests, sentAt: os.clock(), request };
+				Events.startRun.fire(request);
+				return true;
 			} else {
 				warn(`[Sim] ranked run refused (${reply.code ?? "?"}: ${reply.reason ?? ""}); playing unranked`);
 				this.startRun(waiting.seed, waiting.atBossDoor, 0, waiting.world, undefined, "", false);
@@ -1833,13 +1876,22 @@ export class SimController implements OnStart {
 		const [ok, result] = pcall(() => {
 			const dev = world === DEV_WORLD_KIND ? this.devRun : undefined;
 			// docs/ARCHER.md AR5: the run's character (worlds without characters ignore it; the tutorial is the Knight's).
-			// docs/SILVER.md SV6: a ranked run is built with the session's upgrade levels; an unranked one with none.
+			// docs/SILVER.md SV6: a ranked run is built with the session's upgrade levels; an unranked one with none; a
+			// dev run with its panel's choice (`mine`: the wallet's own levels, buildDevRunConfig reads entry 0).
+			const wallet = this.walletStatus();
 			const upgrades =
-				runId !== undefined && this.rankedUpgrades !== undefined ? [this.rankedUpgrades] : undefined;
+				runId !== undefined && this.rankedUpgrades !== undefined
+					? [this.rankedUpgrades]
+					: dev !== undefined
+					? [statusUpgrades(wallet)]
+					: undefined;
+			// docs/SILVER.md SV18: a run the server did not issue (the unranked fallback, a debug or dev run) never builds
+			// a character the wallet does not own; a ranked run plays the server's own echo of the pick.
+			const character = runId !== undefined ? this.runCharacter : ownedCharacterOr(wallet, this.runCharacter);
 			const setup = buildWorldSetup(world, seed, {
 				atBossDoor,
 				dev,
-				characters: [this.runCharacter],
+				characters: [character],
 				upgrades,
 			});
 			const spawn = setup.spawn ?? { x: 0, z: 0 };
@@ -2246,6 +2298,8 @@ export class SimController implements OnStart {
 			serverScore: v.score.score,
 			serverFloor: v.score.floor,
 			daily: v.daily,
+			silver: v.silver,
+			runId: v.runId,
 		};
 		if (current) clientStore.setVerdict(view);
 		const where = v.failedSegment !== undefined ? ` (segment ${v.failedSegment})` : "";

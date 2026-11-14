@@ -5,7 +5,7 @@ import { DEV_MONO_FONT, createKvBillboardGui, createKvSurfaceGui } from "client/
 import { CAMERA_PITCH_DEG, CAMERA_YAW_DEG } from "shared/config";
 import { RUN_ATTRIBUTES } from "shared/play";
 import { BREAKABLE_KINDS, gridToWorld, type Dungeon } from "shared/dungeon";
-import { NO_BOOST, SIM_HZ, breakableLootAt, type SimState } from "shared/sim";
+import { NO_BOOST, SIM_HZ, breakableLootAt, silverPieceAt, type SimState } from "shared/sim";
 import {
 	BIOMES,
 	BREAKABLE_SHATTER_ANIMATION,
@@ -53,6 +53,7 @@ import {
 	lootGlintTransparency,
 	oneShotSec,
 	pieceGlints,
+	silverDebugText,
 	spriteBillboard,
 	ReadinessCursor,
 	type PieceTop,
@@ -61,6 +62,7 @@ import {
 	type SpriteLayout,
 } from "shared/view";
 import { burstSeed, motionScale } from "shared/view/fx";
+import { SILVER_CRATE_FX } from "shared/view/silver";
 import { PreloadController } from "../game/PreloadController";
 import { SimController, type RunContext } from "../game/SimController";
 import { ThemeController } from "../game/ThemeController";
@@ -234,6 +236,8 @@ export class BreakableRenderController implements OnStart {
 	/** KV_LootDebug's labels by slot (their anchor Parts), and whether it is on. */
 	private readonly lootLabels = new Map<number, Part>();
 	private lootDebug = false;
+	/** docs/SILVER.md SV8: KV_SilverLabel labels the intact Silver pieces with their stacks (in lootLabels too). */
+	private silverDebug = false;
 	private readonly slotScratch = new Array<number>();
 	/** The readiness flips this view has not handled yet (docs/STAGE_ASSETS.md SA18). */
 	private cursor: ReadinessCursor | undefined;
@@ -266,6 +270,9 @@ export class BreakableRenderController implements OnStart {
 		this.readLootDebug();
 		this.janitor.Add(
 			Workspace.GetAttributeChangedSignal(BREAKABLE_LOOT_VIEW.debugAttribute).Connect(() => this.readLootDebug()),
+		);
+		this.janitor.Add(
+			Workspace.GetAttributeChangedSignal(SILVER_CRATE_FX.labelAttribute).Connect(() => this.readLootDebug()),
 		);
 		this.janitor.Add(Workspace.GetAttributeChangedSignal(RUN_ATTRIBUTES.debug).Connect(() => this.readLootDebug()));
 
@@ -678,6 +685,16 @@ export class BreakableRenderController implements OnStart {
 		);
 	}
 
+	/** Slot `slot` is an intact piece of the layout drawn whose slot holds Silver (KV_SilverLabel's labels). */
+	private silvered(state: Readonly<SimState>, slot: number): boolean {
+		return this.views[slot] !== undefined && this.tracker.isIntact(slot) && silverPieceAt(state, slot) > 0;
+	}
+
+	/** Slot `slot` wears a debug label: KV_LootDebug's on a loaded piece, KV_SilverLabel's on a Silver piece. */
+	private labelled(state: Readonly<SimState>, slot: number): boolean {
+		return (this.lootDebug && this.loaded(state, slot)) || (this.silverDebug && this.silvered(state, slot));
+	}
+
 	/**
 	 * Slot `slot` is an intact piece of the layout drawn that glints: a loaded piece or the Goldling's hiding place
 	 * (shared/view pieceGlints, docs/GOLDLING_RUMOURS.md GR4).
@@ -699,15 +716,20 @@ export class BreakableRenderController implements OnStart {
 		for (const [slot] of this.glints) if (!this.glinting(state, slot)) gone.push(slot);
 		for (const slot of gone) this.releaseGlint(slot);
 		gone.clear();
-		for (const [slot] of this.lootLabels) if (!this.lootDebug || !this.loaded(state, slot)) gone.push(slot);
+		for (const [slot] of this.lootLabels) if (!this.labelled(state, slot)) gone.push(slot);
 		for (const slot of gone) this.removeLabel(slot);
 		gone.clear();
-		if (this.glintArt !== undefined || this.lootDebug) {
+		if (this.glintArt !== undefined || this.lootDebug || this.silverDebug) {
 			for (let slot = 0; slot < n; slot++) {
 				if (this.glintArt !== undefined && !this.glints.has(slot) && this.glinting(state, slot))
 					this.attachGlint(slot);
-				if (this.lootDebug && !this.lootLabels.has(slot) && this.loaded(state, slot))
-					this.addLabel(slot, breakableLootAt(state, slot));
+				if (!this.lootLabels.has(slot) && this.labelled(state, slot)) {
+					const loot = breakableLootAt(state, slot);
+					this.addLabel(
+						slot,
+						loot !== NO_BOOST ? lootDebugText(loot) : silverDebugText(silverPieceAt(state, slot)),
+					);
+				}
 			}
 		}
 		if (this.glints.size() === 0) return;
@@ -782,10 +804,11 @@ export class BreakableRenderController implements OnStart {
 	private readLootDebug(): void {
 		const allowed = RunService.IsStudio() || Workspace.GetAttribute(RUN_ATTRIBUTES.debug) === true;
 		this.lootDebug = allowed && Workspace.GetAttribute(BREAKABLE_LOOT_VIEW.debugAttribute) === true;
+		this.silverDebug = allowed && Workspace.GetAttribute(SILVER_CRATE_FX.labelAttribute) === true;
 	}
 
-	/** A debug label over slot `slot`'s piece naming Boost `kind` (developer English, AutoLocalize off). */
-	private addLabel(slot: number, kind: number): void {
+	/** A debug label `text` over slot `slot`'s piece (its boost, or its Silver: developer English, AutoLocalize off). */
+	private addLabel(slot: number, text: string): void {
 		const view = this.views[slot];
 		if (view === undefined) return;
 		const v = BREAKABLE_LOOT_VIEW;
@@ -808,7 +831,7 @@ export class BreakableRenderController implements OnStart {
 		label.TextSize = v.debugTextSize;
 		label.TextColor3 = this.pack!.color(v.debugRole);
 		label.TextStrokeTransparency = 0;
-		label.Text = lootDebugText(kind);
+		label.Text = text;
 		label.Parent = gui;
 		gui.Parent = anchor;
 		anchor.Parent = this.folder;

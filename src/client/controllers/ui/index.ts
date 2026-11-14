@@ -31,3 +31,4 @@ export * from "./ConsoleController";
 export * from "./TooltipController";
 export * from "./UiArtController";
 export * from "./CursorController";
+export * from "./WalletController";
