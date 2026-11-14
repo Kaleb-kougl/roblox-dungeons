@@ -164,6 +164,12 @@ export interface SimEvents {
 	// --- New enemies (docs/NEW_ENEMIES.md; always 0 without them). Not in SIM_EVENT_FIELDS.
 	/** Strikes (BulletKind.STRIKE) fired this tick; also in combat.enemySpawned, so the enemy-shoot sound skips them. */
 	strikes: number;
+
+	// --- New enemies 2 (docs/NEW_ENEMIES_2.md; always 0 without a Bulwark). Not in SIM_EVENT_FIELDS.
+	/** Hits a Bulwark's shield blocked this tick (combat/shield.ts; where: CombatState.guardEvents). */
+	shieldBlocks: number;
+	/** Bulwark guards broken this tick (NXD7; which: CombatState.guardEvents.breakSlot). */
+	guardBreaks: number;
 }
 
 /**
@@ -205,9 +211,12 @@ export const ENEMY_VARIANT_EVENT_FIELDS = ["gooSpawned"] as const;
 /** The new enemies' event fields (Roblox port, docs/NEW_ENEMIES.md), in declaration order. All default to 0. */
 export const NEW_ENEMY_EVENT_FIELDS = ["strikes"] as const;
 
+/** The second new enemies' event fields (Roblox port, docs/NEW_ENEMIES_2.md), in declaration order. All default to 0. */
+export const NEW_ENEMY_2_EVENT_FIELDS = ["shieldBlocks", "guardBreaks"] as const;
+
 /**
  * Every SimEvents field: SIM_EVENT_FIELDS, then ENDLESS_EVENT_FIELDS, then BREAKABLE_EVENT_FIELDS, then
- * ENEMY_VARIANT_EVENT_FIELDS, then NEW_ENEMY_EVENT_FIELDS.
+ * ENEMY_VARIANT_EVENT_FIELDS, then NEW_ENEMY_EVENT_FIELDS, then NEW_ENEMY_2_EVENT_FIELDS.
  */
 export const ALL_EVENT_FIELDS: ReadonlyArray<keyof SimEvents> = [
 	...SIM_EVENT_FIELDS,
@@ -215,6 +224,7 @@ export const ALL_EVENT_FIELDS: ReadonlyArray<keyof SimEvents> = [
 	...BREAKABLE_EVENT_FIELDS,
 	...ENEMY_VARIANT_EVENT_FIELDS,
 	...NEW_ENEMY_EVENT_FIELDS,
+	...NEW_ENEMY_2_EVENT_FIELDS,
 ];
 
 /** Default value of an event field: 0, except lastHitSource (-1). */
@@ -256,6 +266,8 @@ function emptyEvents(): SimEvents {
 		breakablesBroken: 0,
 		gooSpawned: 0,
 		strikes: 0,
+		shieldBlocks: 0,
+		guardBreaks: 0,
 	};
 }
 

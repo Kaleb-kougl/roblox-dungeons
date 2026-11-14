@@ -253,10 +253,10 @@ describe("spawn and engage (NX1)", () => {
 		expect(by(BULWARK.id).v[BULWARK_GUARDING]).toBe(1);
 	});
 
-	it("no kind draws: the rng word is where it was after the spawns, and the run replays bit for bit", () => {
+	it("no kind draws but the Bulwark's first cooldown (NX2: in init; it never comes within bash range here)", () => {
 		const w = world();
-		const before = w.s.rngState;
 		spawn(w, BULWARK.id, -6, 0);
+		const before = w.s.rngState;
 		spawn(w, CHAINHOOK.id, 0, 6);
 		spawn(w, SNATCHER.id, 0, -6);
 		spawn(w, PYREKEEPER.id, 4, 4);

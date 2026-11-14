@@ -219,6 +219,47 @@ OC2 the shield against effect bullets (recommended above).
   planted dim green counts only its own errors (the guard is 31.7 CIE76 from it).
 - `contract.luau` / `validate.luau` top-level locals 187 / 197, unchanged (counted on out/).
 
+## As built
+
+### NX2 Bulwark (as built, 2026-11-14)
+
+- `archetypes/bulwark.ts`: the bruiser's approach (lost counter, STEER walk at the target out of sight) and keep range
+  2-3 along the bearing; the facing turns by `turnFacing` (one literal (turnCos, turnSin) rotation through
+  `rotateDir`, a snap within 2.5 degrees; engaged only: a calm Bulwark still snaps to "watching" in `stepCalm`). Bash:
+  cooldown out + sight + within 1.8 -> heading locked in v6-7, the next cooldown drawn (the bash's one draw; the first in
+  `init`), telegraph 27 ticks (the facing turns toward the heading), the lunge from the telegraph's last tick (the
+  Charger's lane rule) 1.4 over 9 ticks on the plain mover (never scaled), one `HIT_NORMAL` per player per bash (the
+  bit set on the first overlap, landed or not), then recover 36 ticks with v5 0. `bulwarkGuardBreak`: engaged if calm,
+  stagger 90 ticks, v5 0, attack 0 (a telegraphed bash is cancelled; its drawn cooldown stands). A leash raises v5 again.
+- `combat/shield.ts` (new): the guard list `SimCtx.guards` (slots of living Bulwarks with v5 1 that no Siege pin holds),
+  built by `guardSlots` right after stepActors / stepAffixes, emptied by `bind`; every test re-reads alive and v5, so a
+  guard broken or a Bulwark killed earlier in the tick stops blocking at once. Empty list: every caller returns first.
+  - Bullets (`playerBulletHit`, after pieces and the Siege slam check, before the plain and piercing walks): any kind but
+    EMBER, within max(coverRadius 1.0, body + bullet radius) of the centre, inside the front cone **and heading into the
+    shield** (velocity . face < 0; deviation: a bullet that pierced its back and leaves through the front, or one fired
+    from behind, is not stopped). Consumed; a heavy arrow (`isHeavyArrow`, Ballista's included) breaks instead of a
+    block. With Ballista the stop is a wall (`buildsOnHeavyEnd(..., true)`: the back fan; a carrying Siege arrow slams
+    there). A blocked Siege arrow never reaches `siegeTryPin`. Edge: a bullet in the cover zone that also overlaps an
+    actor standing right in front of the shield is stopped by the shield.
+  - Melee (`sword.ts` hitSwing / hitFinisher, origin = the swinging player): a swing blocks (event at the shield's
+    front point), a finisher breaks. The guard sweep has no actor callback (unchanged).
+  - Siege slam (`siege.ts`, the shockwave only, origin = the slam point): from in front it breaks and deals nothing; the
+    pinned actor is never in the list.
+  - A breaking hit deals **nothing** (it is the blocked hit; the stagger opens the next ones). A block or break engages a
+    calm Bulwark. Wrecker rolls need no rule (rolls never hit enemies).
+- Feed (unhashed): `SimEvents.shieldBlocks` / `guardBreaks` (`NEW_ENEMY_2_EVENT_FIELDS`, after `NEW_ENEMY_EVENT_FIELDS`
+  in `ALL_EVENT_FIELDS`) and `CombatState.guardEvents` (`blockX` / `blockZ` / `blockSlot`, `breakSlot`; not in
+  `writeCombatHash`, copied by `cloneCombatState`, cleared by `step` / `stepParty` beside `clearEvents`).
+- Specs: `sim/bulwark.spec.ts` (21: front / back / cover / pierce / kinds / heading, 200 and 240 deg/s get behind, 120
+  never leaves the cone, 72 turn steps for 180 degrees, finisher / heavy arrow / Siege shockwave break, back shock
+  damages, blocked Siege arrow never pins, Wrecker roll does not, bash timings and one hit per player solo and co-op,
+  draws, a determinism pair); `newEnemies2.spec`'s no-draw case now allows the Bulwark's init draw; `combat.spec`'s
+  hash-coverage walk skips `guardEvents` (an unhashed feed); `warbanner.spec`'s aura-target list gains NX1's four room
+  enemies (it failed since NX1, the Design's "the Warbanner's aura applies"). No hash, replay or
+  fixture moves: no recorded run spawns a Bulwark (not in `ENDLESS_ROOM_KINDS` until NX6).
+- Owner calls: OC1 (two Bulwarks) open; **OC3** a breaking hit deals 0 (built) or its full damage too; **OC4** Swift /
+  the Warbanner aura do not speed the turn (built: the turn is a literal).
+
 ## Player experience
 
 1. **Bulwark.** An armoured demon walks at you behind a round shield. Arrows and sword cuts that hit the shield spark

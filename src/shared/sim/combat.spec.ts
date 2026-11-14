@@ -472,7 +472,8 @@ describe("combat state hashing and cloning", () => {
 		const s = createSimState(1, 0, 0, config);
 		const base = hashState(s);
 		const c = s.combat as unknown as Record<string, unknown>;
-		const nested = new Set(["enemyBullets", "playerBullets", "actors", "weapons"]);
+		// guardEvents: the Bulwark's unhashed per-tick feed for the view (docs/NEW_ENEMIES_2.md NX2), like ScoreEvents.
+		const nested = new Set(["enemyBullets", "playerBullets", "actors", "weapons", "guardEvents"]);
 		let plain = 0;
 		for (const [k, v] of c as unknown as ReadonlyMap<string, unknown>) {
 			if (nested.has(k)) continue;

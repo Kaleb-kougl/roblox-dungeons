@@ -1,40 +1,50 @@
 /**
- * 'bulwark' (Roblox port, docs/NEW_ENEMIES_2.md; no web source): an armoured demon behind a round shield that guards
+ * 'bulwark' (Roblox port, docs/NEW_ENEMIES_2.md NX2; no web source): an armoured demon behind a round shield that guards
  * its front and the allies behind it. 10 hp, contact damage 0 (its bash lands through its own overlap check,
- * `ctx.hurtPlayerAt`). Engaged, it walks to keepMin-keepMax from its target with the shield toward it.
+ * `ctx.hurtPlayerAt`).
  *
- * Planned (NX2, not built yet): the facing turns toward the target by at most one (turnCos, turnSin) rotation a tick
- * (2.5 degrees: 150 degrees a second), so a player who circles faster gets behind it. While GUARDING (v[BULWARK_GUARDING]
- * 1: every state but BULWARK_RECOVER and BULWARK_STAGGER) a hit whose origin is inside the front cone (dot(face,
- * origin - centre) >= frontCos x the distance) is blocked (0 damage, the bullet consumed, a swing does nothing to it),
- * and a player bullet passing within coverRadius of its centre inside the cone stops there (NXD6: the allies behind it
- * are covered). A blocked sword finisher, heavy arrow or Siege slam breaks the guard instead (NXD7): BULWARK_STAGGER
- * for staggerTicks. Bash: target within bashRange and the cooldown out (bashCooldownMin-Max, `enemyCooldown`) ->
- * bashTelegraphTicks (attack BULWARK_ATTACK_BASH; the `aimLine` hint, bashLineLength long, heading locked at the
- * telegraph's start in v[BULWARK_DIR_*]), then BULWARK_BASH: a lunge of bashLunge units over bashLungeTicks, the first
- * overlap with each player hurts bashDamage once (BULWARK_HIT_BITS), then BULWARK_RECOVER for recoverTicks with the
- * shield down. Draws: the first cooldown in init, one per bash.
+ * Engaged (BULWARK_GUARD) it keeps keepMin-keepMax from its target along the target's bearing (the bruiser's approach:
+ * out of sight it walks at the target to find a line (STEER) and leashes after lostTicks, v[BULWARK_LOST]), while its
+ * facing (= the shield) turns toward the target by at most one (turnCos, turnSin) rotation a tick (2.5 degrees: 150
+ * degrees a second; `turnFacing`, a literal rotation, no trig), so a player who circles faster gets behind it. Its
+ * cooldown counts down only here. At 0, with line of sight and the target within bashRange, the **bash** telegraph starts
+ * (AiState.TELEGRAPH, attack BULWARK_ATTACK_BASH, bashTelegraphTicks): the heading locks toward the target in
+ * v[BULWARK_DIR_*] (the `aimLine` hint), the next cooldown is drawn (`enemyCooldown`: the attack's ONE draw; the first is
+ * drawn in init) and it stands, its facing turning toward the locked heading. From the telegraph's last tick, BULWARK_BASH:
+ * bashLunge / bashLungeTicks along the heading a tick for bashLungeTicks ticks (never scaled, EVD9; the plain mover: a
+ * wall stops it), and the first overlap with each living player hurts bashDamage once (the bit in v[BULWARK_HIT_BITS] is
+ * set on the first overlap whether or not the hit lands, so a roll through it dodges the whole bash). Then
+ * BULWARK_RECOVER for recoverTicks: still, the shield down.
  *
- * NX1 skeleton: the data block and a minimal step (calm / leash / engage, then keep range straight along the target's
- * bearing, facing it at once); no turn limit, no shield, no bash, no draws. v[BULWARK_GUARDING] is set to 1 at spawn
- * and never read yet.
+ * **The shield** (../../shield.ts, NX0 "the damageActor callers"): v[BULWARK_GUARDING] is 1 in every state but
+ * BULWARK_RECOVER and BULWARK_STAGGER. A guarding Bulwark (not pinned by a Siege Bolt) blocks a hit whose origin is
+ * inside its front cone (dot(face, origin - centre) >= frontCos x the distance): a moving player bullet within
+ * max(coverRadius, its body's hit radius) of its centre heading into the shield (NXD6: allies behind it are covered), a
+ * sword swing from a player in front, a Siege slam's shockwave from in front. A block deals nothing. A blocked sword
+ * finisher, heavy arrow or Siege shockwave breaks the guard instead (NXD7, `bulwarkGuardBreak`): BULWARK_STAGGER for
+ * staggerTicks, still, the shield down, a telegraphed bash cancelled. Effects that call damageActor directly ignore it.
  *
  * View contract: states BULWARK_GUARD (= STATE_ENGAGED) / AiState.TELEGRAPH (the bash) / BULWARK_BASH /
- * BULWARK_RECOVER / BULWARK_STAGGER (each counts down aiTicks); attack id BULWARK_ATTACK_BASH; v slots BULWARK_LOST
- * (ticks without sight), BULWARK_HIT_BITS (players already hit by this bash, one bit per party index),
- * BULWARK_GUARDING (1 while the shield is up), BULWARK_DIR_X / _Z (the locked bash heading).
+ * BULWARK_RECOVER / BULWARK_STAGGER (each counts down aiTicks); attack id BULWARK_ATTACK_BASH (telegraph only); facing
+ * faceX / faceZ = the shield; v slots BULWARK_LOST (ticks without sight), BULWARK_HIT_BITS (players already hit by this
+ * bash, one bit per party index), BULWARK_GUARDING (1 while the shield is up), BULWARK_DIR_X / _Z (the locked bash
+ * heading). Blocks and breaks: SimEvents.shieldBlocks / guardBreaks and CombatState.guardEvents (../../shield.ts).
  */
 
-import { HIT_NORMAL, secondsToTicks } from "../../../playerData";
+import { HIT_NORMAL, PLAYER_RADIUS, secondsToTicks } from "../../../playerData";
+import { partySize, playerAt } from "../../../party";
+import { rotateDir, type Dir } from "../../patterns";
 import type { SimCtx } from "../../ctx";
-import { walkStep } from "../actorMods";
-import { faceToward, moveActor, toPlayer } from "../helpers";
+import { enemyCooldown, walkStep } from "../actorMods";
+import { moveActor, toPlayer } from "../helpers";
 import { PORT_BAND_ENEMIES_3, registerArchetype } from "../registry";
 import { AiState, type ActorState } from "../types";
 import {
 	STATE_ENGAGED,
 	STEER,
+	V_AGGRO,
 	alertOnDeath,
+	engage,
 	engageOnHit,
 	initRoomEnemy,
 	leash,
@@ -148,18 +158,25 @@ export const BULWARK = registerArchetype<BulwarkData>({
 			},
 		},
 	},
-	init(_ctx, a) {
+	init(ctx, a) {
 		initRoomEnemy(a);
 		a.v[BULWARK_GUARDING] = 1;
+		const d = ctx.data<BulwarkData>(a);
+		a.cooldown = enemyCooldown(ctx, a, d.bashCooldownMin, d.bashCooldownMax);
 	},
 	step(ctx, a) {
 		const d = ctx.data<BulwarkData>(a);
 		if (stepCalm(ctx, a)) return;
 		if (shouldLeash(ctx, a)) {
 			leash(a);
+			a.v[BULWARK_GUARDING] = 1; // a leash out of a stagger / recover raises the shield again
 			return;
 		}
-		keepRange(ctx, a, d);
+		const st = a.aiState;
+		if (st === AiState.TELEGRAPH) windUp(ctx, a, d);
+		else if (st === BULWARK_BASH) bashing(ctx, a, d);
+		else if (st === BULWARK_RECOVER || st === BULWARK_STAGGER) standing(a);
+		else guard(ctx, a, d);
 	},
 	onHit(ctx, a) {
 		engageOnHit(ctx, a);
@@ -169,14 +186,138 @@ export const BULWARK = registerArchetype<BulwarkData>({
 	},
 });
 
-/** NX1 skeleton: backs off inside keepMin, closes in past keepMax, else stands facing its target (no turn limit). */
-function keepRange(ctx: SimCtx, a: ActorState, d: BulwarkData): void {
+const turnScratch: Dir = { x: 0, z: 1 };
+/** A facing shorter than this (squared) is no facing: turnFacing snaps to the target. */
+const FACE_EPS2 = 1e-12;
+
+/**
+ * Turns `a`'s facing toward the unit direction (tx, tz) by at most the rotation (cos, sin): within that angle it faces
+ * (tx, tz) exactly, else it turns one step the side the target is on (patterns.ts rotateDir with +sin turns clockwise,
+ * cross(f, f') = -sin; a target straight behind turns counter-clockwise). No trig: a literal rotation pair.
+ */
+export function turnFacing(a: ActorState, tx: number, tz: number, cos: number, sin: number): void {
+	const fx = a.faceX;
+	const fz = a.faceZ;
+	if (fx * fx + fz * fz <= FACE_EPS2 || fx * tx + fz * tz >= cos) {
+		a.faceX = tx;
+		a.faceZ = tz;
+		return;
+	}
+	const cross = fx * tz - fz * tx;
+	rotateDir(fx, fz, cos, cross >= 0 ? -sin : sin, turnScratch);
+	a.faceX = turnScratch.x;
+	a.faceZ = turnScratch.z;
+}
+
+/** Keeps range with the shield turning toward its target; starts the bash when the cooldown is out. */
+function guard(ctx: SimCtx, a: ActorState, d: BulwarkData): void {
+	const p = ctx.player;
 	const tp = toPlayer(ctx, a);
+	const dist = tp.dist;
 	const dirX = tp.dirX;
 	const dirZ = tp.dirZ;
-	faceToward(a, dirX, dirZ);
-	const radial = tp.dist < d.keepMin ? -1 : tp.dist > d.keepMax ? 1 : 0;
+	const los = ctx.lineOfSight(a.x, a.z, p.x, p.z);
+	if (los) {
+		a.v[BULWARK_LOST] = 0;
+	} else {
+		a.v[BULWARK_LOST] += 1;
+		if (a.v[BULWARK_LOST] > d.lostTicks) {
+			leash(a);
+			return;
+		}
+	}
+	if (a.cooldown > 0) a.cooldown--;
+	if (los && a.cooldown <= 0 && dist <= d.bashRange) {
+		startBash(ctx, a, d, dirX, dirZ);
+		return;
+	}
+	turnFacing(a, dirX, dirZ, d.turnCos, d.turnSin);
+	const stepLen = walkStep(ctx, a);
+	if (!los) {
+		// Finds a line (the bruiser's walk at the target), the shield still turning on its own.
+		const k = dist < stepLen ? dist : stepLen;
+		moveActor(ctx, a, dirX * k, dirZ * k, STEER);
+		return;
+	}
+	const radial = dist < d.keepMin ? -1 : dist > d.keepMax ? 1 : 0;
 	if (radial === 0) return;
-	const stepLen = walkStep(ctx, a) * radial;
-	moveActor(ctx, a, dirX * stepLen, dirZ * stepLen, STEER);
+	const k = stepLen * radial;
+	moveActor(ctx, a, dirX * k, dirZ * k, STEER);
+}
+
+/** Locks the heading, draws the next cooldown (the bash's one draw) and telegraphs. */
+function startBash(ctx: SimCtx, a: ActorState, d: BulwarkData, dirX: number, dirZ: number): void {
+	a.v[BULWARK_DIR_X] = dirX;
+	a.v[BULWARK_DIR_Z] = dirZ;
+	a.v[BULWARK_HIT_BITS] = 0;
+	turnFacing(a, dirX, dirZ, d.turnCos, d.turnSin);
+	a.cooldown = enemyCooldown(ctx, a, d.bashCooldownMin, d.bashCooldownMax);
+	ctx.telegraph(a, d.bashTelegraphTicks, BULWARK_ATTACK_BASH);
+}
+
+/** The telegraph: stands, the shield turning toward the locked heading; on the last tick the lunge starts (and steps). */
+function windUp(ctx: SimCtx, a: ActorState, d: BulwarkData): void {
+	turnFacing(a, a.v[BULWARK_DIR_X], a.v[BULWARK_DIR_Z], d.turnCos, d.turnSin);
+	a.aiTicks--;
+	if (a.aiTicks > 0) return;
+	a.aiState = BULWARK_BASH;
+	a.aiTicks = d.bashLungeTicks;
+	a.attack = 0;
+	bashing(ctx, a, d);
+}
+
+/** One lunge tick (the plain mover, never scaled), then its hits; the last one starts the recover (shield down). */
+function bashing(ctx: SimCtx, a: ActorState, d: BulwarkData): void {
+	const dirX = a.v[BULWARK_DIR_X];
+	const dirZ = a.v[BULWARK_DIR_Z];
+	turnFacing(a, dirX, dirZ, d.turnCos, d.turnSin);
+	const len = d.bashLunge / d.bashLungeTicks;
+	moveActor(ctx, a, dirX * len, dirZ * len);
+	bashHits(ctx, a, d);
+	a.aiTicks--;
+	if (a.aiTicks > 0) return;
+	a.aiState = BULWARK_RECOVER;
+	a.aiTicks = d.recoverTicks;
+	a.v[BULWARK_GUARDING] = 0;
+}
+
+/** The first overlap with each living player this bash hurts them once (bit k of v[BULWARK_HIT_BITS]). */
+function bashHits(ctx: SimCtx, a: ActorState, d: BulwarkData): void {
+	const n = partySize(ctx.state);
+	const reach = a.radius + PLAYER_RADIUS;
+	const reach2 = reach * reach;
+	for (let k = 0; k < n; k++) {
+		const bit = bit32.lshift(1, k);
+		if (bit32.band(a.v[BULWARK_HIT_BITS], bit) !== 0) continue;
+		const p = playerAt(ctx.state, k);
+		if (p.dead !== 0) continue;
+		const dx = p.x - a.x;
+		const dz = p.z - a.z;
+		if (dx * dx + dz * dz >= reach2) continue;
+		a.v[BULWARK_HIT_BITS] = bit32.bor(a.v[BULWARK_HIT_BITS], bit);
+		ctx.hurtPlayerAt(k, d.bashDamage, a.kind);
+	}
+}
+
+/** Recover / stagger: stands with the shield down, then guards again. */
+function standing(a: ActorState): void {
+	a.aiTicks--;
+	if (a.aiTicks > 0) return;
+	a.aiState = BULWARK_GUARD;
+	a.aiTicks = 0;
+	a.v[BULWARK_GUARDING] = 1;
+	a.v[BULWARK_LOST] = 0;
+}
+
+/**
+ * NXD7: the guard breaks (a blocked sword finisher, heavy arrow or Siege shockwave; ../../shield.ts): engaged if it was
+ * calm, BULWARK_STAGGER for staggerTicks with the shield down (a telegraphed bash is cancelled; its drawn cooldown
+ * stands). No draw.
+ */
+export function bulwarkGuardBreak(a: ActorState): void {
+	if (a.v[V_AGGRO] === 0) engage(a);
+	a.aiState = BULWARK_STAGGER;
+	a.aiTicks = BULWARK.data.staggerTicks;
+	a.attack = 0;
+	a.v[BULWARK_GUARDING] = 0;
 }

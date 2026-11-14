@@ -93,6 +93,12 @@ export class SimCtx {
 	 * from state.builds.pins (carrying records only; a pure function of hashed state), bind() empties it.
 	 */
 	readonly pinMask = new Map<ActorState, number>();
+	/**
+	 * The Bulwark's guard list (docs/NEW_ENEMIES_2.md NX2, ../shield.ts): the actor slots of every guarding Bulwark no pin
+	 * holds. Transient, never hashed: combat.ts fills it right after the actor phase (shield.ts guardSlots, a pure
+	 * function of the hashed pool), bind() empties it, so a ctx that never steps combat sees no shield.
+	 */
+	readonly guards: number[] = [];
 
 	bind(state: SimState, config: Readonly<SimConfig>, input: Readonly<InputFrame>): this {
 		this.state = state;
@@ -111,6 +117,7 @@ export class SimCtx {
 		this.killCarry = 0;
 		this.auraMask.clear();
 		this.pinMask.clear();
+		this.guards.clear();
 		return this;
 	}
 
