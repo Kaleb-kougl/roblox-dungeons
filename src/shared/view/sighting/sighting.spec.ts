@@ -3,7 +3,7 @@
 // set (nothing before a loaded status, a later status never forgets, a run exit drops what was never shown).
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { AffixKind, type FloorPellets } from "shared/dungeon";
-import { SIGHTING_IDS } from "shared/onboarding";
+import { SIGHTING_IDS, type OnboardingStatus } from "shared/onboarding";
 import {
 	AFFIXES_CONFIG,
 	NO_KIND,
@@ -21,10 +21,15 @@ import {
 	ARCHETYPE_SIGHTINGS,
 	POWER_PELLET_SIGHTING,
 	SIGHTING_VIEW,
+	SECRET_CRACK_SIGHTING,
 	SightingQueue,
 	affixSighting,
+	sightingCardKey,
 	sightingsInView,
+	withRumourSighting,
+	withSecretSighting,
 } from ".";
+import { PLACEHOLDER_MANIFEST, ThemePack } from "shared/theme";
 
 function config(spawns: ActorSpawn[], extra: Partial<SimConfig> = {}): SimConfig {
 	return { encounter: { spawns, rooms: [], entranceRoom: -1, bossRoom: -1 }, ...extra };
@@ -240,5 +245,35 @@ describe("SightingQueue", () => {
 		expect(q.next(span, true)).toBe("imp");
 		expect(q.claimSlot(span + 1, true)).toBe(false);
 		expect(q.claimSlot(2 * span, true)).toBe(true);
+	});
+});
+
+describe("the secret crack's first-time card (docs/SECRET_ROOMS.md SR9, SRD5)", () => {
+	it("withSecretSighting adds secret.crack (SIGHTING_IDS' last) once knocked, after the rumour's", () => {
+		expect(SIGHTING_IDS[SIGHTING_IDS.size() - 1]).toBe(SECRET_CRACK_SIGHTING);
+		expect(withSecretSighting(["imp"], false)).toEqual(["imp"]);
+		const out = withSecretSighting(withRumourSighting(["imp"], true), true);
+		expect(out).toEqual(["imp", "golden.rumour", SECRET_CRACK_SIGHTING]);
+		expect(withSecretSighting(out, true)).toEqual(["imp", "golden.rumour", SECRET_CRACK_SIGHTING]);
+		// The queue shows it once per account.
+		const q = new SightingQueue();
+		const status: OnboardingStatus = { loaded: true, tutorialDone: true, seen: [] };
+		q.receive(status);
+		q.observe(withSecretSighting([], true));
+		expect(q.next(0, true)).toBe(SECRET_CRACK_SIGHTING);
+		q.observe(withSecretSighting([], true));
+		expect(q.next(100, true)).toBe(undefined);
+	});
+
+	it("sightingCardKey reads the local character's override: the Archer's text names the charged arrow", () => {
+		const pack = new ThemePack(PLACEHOLDER_MANIFEST, { warn: () => undefined });
+		const has = (k: string) => pack.hasString(k);
+		expect(sightingCardKey(SECRET_CRACK_SIGHTING, "archer", has)).toBe("bestiary.secret.crack.archer");
+		expect(sightingCardKey(SECRET_CRACK_SIGHTING, "knight", has)).toBe("bestiary.secret.crack");
+		expect(sightingCardKey(SECRET_CRACK_SIGHTING, undefined, has)).toBe("bestiary.secret.crack");
+		expect(sightingCardKey("imp", "archer", has)).toBe("bestiary.imp");
+		expect(pack.str(sightingCardKey(SECRET_CRACK_SIGHTING, "archer", has))).never.toBe(
+			pack.str(sightingCardKey(SECRET_CRACK_SIGHTING, "knight", has)),
+		);
 	});
 });

@@ -49,6 +49,7 @@ import {
 	type ParticleWriter,
 } from "shared/view/fx";
 import { PELLETS_VIEW, PelletFlyIns, type PelletPowerTaken } from "shared/view/pellets";
+import { SECRET_VIEW } from "shared/view/secrets";
 import { TREASURE_VIEW } from "shared/view/treasure";
 import { GOLDEN_VIEW, goldenKind, type GoldenBurstView } from "shared/view/golden";
 import { SimController } from "../game/SimController";
@@ -167,6 +168,10 @@ export class ParticleController implements OnStart, ParticleWriter {
 	private goldenCoinColor = PAL_SPARK;
 	/** Wrecker's smash chips' palette index (docs/BUILDS_V2.md BV11d: BUILDS_V2_FX.smash.ring.role, build.shard). */
 	private smashChipColor = PAL_SPARK;
+	/** A secret room's dust (docs/SECRET_ROOMS.md SR7: the knock puff, the open's burst): secret.dust's palette index. */
+	private secretDustColor = PAL_SPARK;
+	private secretPuffShape: ChipBurst | undefined;
+	private secretBurstShape: ChipBurst | undefined;
 	private readonly moveParts = new Array<BasePart>();
 	private readonly moveCFrames = new Array<CFrame>();
 	private folder: Folder | undefined;
@@ -235,6 +240,11 @@ export class ParticleController implements OnStart, ParticleWriter {
 		// Wrecker's smash chips (docs/BUILDS_V2.md BV11d), appended last.
 		this.smashChipColor = this.palette.size();
 		this.palette.push(pack.color(BUILDS_V2_FX.smash.ring.role));
+		// A secret room's dust (docs/SECRET_ROOMS.md SR7), appended after the smash chips.
+		this.secretDustColor = this.palette.size();
+		this.palette.push(pack.color(SECRET_VIEW.dustLook.role));
+		this.secretPuffShape = chipBurstOf(SECRET_VIEW.knock.puff);
+		this.secretBurstShape = chipBurstOf(SECRET_VIEW.burst.chips);
 
 		this.nearMiss.onFrame((frame, settings) => this.nearMissFrame(frame, settings));
 		const [impOk, impKind] = pcall(() => archetypeIndex(IMP.id));
@@ -428,6 +438,23 @@ export class ParticleController implements OnStart, ParticleWriter {
 	 */
 	buildSmashChips(x: number, z: number, shape: Readonly<ChipBurst>, seed: number): void {
 		this.system.chips(x, z, this.smashChipColor, shape, seed, this.fx.settings());
+	}
+
+	/**
+	 * A knock on a secret room's crack at sim (x, z), its face (docs/SECRET_ROOMS.md SR7: SecretRenderController, one
+	 * per throttled knock): a small dust puff, SECRET_VIEW.knock.puff in secret.dust.
+	 */
+	secretPuff(x: number, z: number, seed: number): void {
+		const shape = this.secretPuffShape;
+		if (shape === undefined) return;
+		this.system.chips(x, z, this.secretDustColor, shape, seed, this.fx.settings());
+	}
+
+	/** A secret room's crack burst open at sim (x, z) (SR7): SECRET_VIEW.burst.chips in secret.dust. */
+	secretBurst(x: number, z: number, seed: number): void {
+		const shape = this.secretBurstShape;
+		if (shape === undefined) return;
+		this.system.chips(x, z, this.secretDustColor, shape, seed, this.fx.settings());
 	}
 
 	/** A frame's graze sparks and parry bursts (the frame object is reused: read now, never kept). */

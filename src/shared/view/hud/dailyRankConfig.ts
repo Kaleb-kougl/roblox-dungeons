@@ -21,7 +21,9 @@ export const DAILY_RANK_ROLE = "newBest";
  * on the player's own move like BRACED, but its payoff: they rank between BRACED / a tier (0) and the rank threshold
  * (1), at 0.5, so a COUNTER replaces the BRACED of the Rebuke that fired it, a SLAM the PINNED before it (a tie: the
  * later wins), and any news (a rank threshold, the Horde, new best, the Goldling) replaces them and is never replaced
- * by one: they come with every guard and every Siege Bolt, the news once a run.
+ * by one: they come with every guard and every Siege Bolt, the news once a run. A secret room's SECRET!
+ * (docs/SECRET_ROOMS.md SR9) is a discovery: over the new best (a run's best can wait a second), under the Goldling's
+ * appearance (its 10 s are running), at 3.5.
  */
 export const FLOOR_SHOUT_PRIORITY = {
 	comboTier: 0,
@@ -30,6 +32,8 @@ export const FLOOR_SHOUT_PRIORITY = {
 	horde: 2,
 	newBest: 3,
 	goldenAppear: 4,
+	/** docs/SECRET_ROOMS.md SR9: SECRET! at a secret room's open (see above). */
+	secret: 3.5,
 	goldenEscaped: 1,
 	/** docs/BUILDS_V2.md BV11: Riposte's COUNTER xN, Siege Bolt's PINNED and SLAM (see above). */
 	counter: 0.5,

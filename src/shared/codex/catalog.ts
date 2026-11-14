@@ -17,6 +17,7 @@
  *                then the Goldling GOLDEN_KIND)
  *   affix:<k>    theme AFFIX_IDS (AffixKind - 1)     affix:hulking
  *   boss:<k>     ENDLESS_BOSSES kind `boss.<k>`      boss:act1 (Mother Mayhem), boss:demonlord
+ *   secret:<k>   the secret rooms (theme `secret.<k>`) secret:room (docs/SECRET_ROOMS.md SRD12: the feature as a whole)
  *
  * Ids are stored in players' Codex docs (KV_Codex_v1): never rename one. The catalog order is APPEND ONLY per group
  * (catalog.spec.ts holds the lock list): the source tables are append-only, so a new boon / duo / room kind lands at its
@@ -28,6 +29,14 @@
  *
  * Descriptions (R6): the existing line where one exists (the draft text, the evolution text, `bestiary.<id>`), else a
  * codex-only key `codex.desc.<category>.<key>` (codexDescKeys lists them; the theme adds the strings, CX5).
+ *
+ * Secrets (docs/SECRET_ROOMS.md SRD12): ONE entry `secret:room` in its own group `secrets`, a section of the last tab
+ * (the Bestiary, after the bosses), so it comes after every existing entry (the order lock grows 86 -> 87) and the
+ * desktop tab row keeps fitting without a scroll (a seventh tab would not: view/codex screen.spec). Its name is the theme's `secret.room.name`,
+ * its description the codex-only `codex.desc.secret.room`, its art `{ kind: "secret" }` (the view draws it, SR9). It is
+ * seen at a player's first knock on a crack (the first-time card's sighting id `secret.crack` maps to it:
+ * CODEX_SIGHTING_ENTRIES, read by the seed and the tracker's codexSightingId) and found at the first secret the player
+ * opens or is present for (the view track's claim, SR9).
  */
 import { CHARACTERS, type CharacterId } from "shared/characters";
 import { AFFIXES, BOSS_FLOOR_EVERY, ENDLESS_BOSSES, ENDLESS_ROOM_KINDS, affixThemeIndex } from "shared/dungeon";
@@ -61,7 +70,10 @@ import {
 export const CODEX_TABS = ["boons", "evolutions", "duos", "items", "boosts", "bestiary"] as const;
 export type CodexTab = (typeof CODEX_TABS)[number];
 
-/** Sub-groups inside a tab (the items tab: relics then curses; the bestiary: enemies, champions, bosses). */
+/**
+ * Sub-groups inside a tab (the items tab: relics then curses; the bestiary: enemies, champions, bosses, then the secret
+ * rooms' section, docs/SECRET_ROOMS.md SRD12).
+ */
 export const CODEX_GROUPS = [
 	"boons",
 	"evolutions",
@@ -72,6 +84,7 @@ export const CODEX_GROUPS = [
 	"enemies",
 	"champions",
 	"bosses",
+	"secrets",
 ] as const;
 export type CodexGroup = (typeof CODEX_GROUPS)[number];
 
@@ -82,7 +95,7 @@ export const CODEX_TAB_GROUPS: { readonly [K in CodexTab]: ReadonlyArray<CodexGr
 	duos: ["duos"],
 	items: ["relics", "curses"],
 	boosts: ["boosts"],
-	bestiary: ["enemies", "champions", "bosses"],
+	bestiary: ["enemies", "champions", "bosses", "secrets"],
 });
 
 /** Separator between an id's category and its key (`boon:volatile`). */
@@ -106,6 +119,7 @@ export const CODEX_ID_CATEGORY = table.freeze({
 	enemy: "enemy",
 	affix: "affix",
 	boss: "boss",
+	secret: "secret",
 });
 
 /** Prefix of the codex-only description keys (R6): `codex.desc.<category>.<key>`. */
@@ -134,11 +148,14 @@ export type CodexHint =
  *                                             evolved frame; boost: the Boost index)
  *   actor                                     the archetype's sprite (`archetypeAt(archetypeIndex(id)).spriteId`)
  *   affix                                     the affix's look (theme `affix.<id>` role)
+ *   secret                                    the secret rooms' look (docs/SECRET_ROOMS.md SR9: the view's, e.g. the
+ *                                             crack or the chest; until it has one, the unknown glyph)
  */
 export type CodexArtRef =
 	| { readonly kind: "boon" | "evo" | "duo" | "relic" | "curse" | "boost"; readonly index: number }
 	| { readonly kind: "actor"; readonly archetype: string }
-	| { readonly kind: "affix"; readonly affix: AffixId };
+	| { readonly kind: "affix"; readonly affix: AffixId }
+	| { readonly kind: "secret" };
 
 export interface CodexEntry {
 	/** Stable id (`boon:volatile`): the key in the Codex doc. */
@@ -161,6 +178,20 @@ export interface CodexEntry {
  * dummy, bosses: use codexBossId) has no enemy entry.
  */
 export const CODEX_FOLDED_ARCHETYPES: ReadonlyMap<string, string> = new Map([[SLIME_SMALL_ID, SLIME_ID]]);
+
+/** The theme id of the secret rooms' entry (`secret.room`: name `secret.room.name`, id `secret:room`). */
+const SECRET_ROOM_THEME_ID = "secret.room";
+
+/** The secret rooms' entry id (docs/SECRET_ROOMS.md SRD12). */
+export const CODEX_SECRET_ID = "secret:room";
+
+/**
+ * First-time cards whose sighting id (shared/onboarding SIGHTING_IDS) is an entry of its own rather than an archetype's
+ * or an affix's: the first knock on a secret room's crack (`secret.crack`) sees `secret:room` (SRD12). Read by the seed
+ * (doc.ts seedFromSightings) and so by the tracker's codexSightingId. Other non-archetype sightings (`pellet.power`,
+ * `golden.rumour`) stay no entry.
+ */
+export const CODEX_SIGHTING_ENTRIES: ReadonlyMap<string, string> = new Map([["secret.crack", CODEX_SECRET_ID]]);
 
 // --- Building ------------------------------------------------------------------------------------------------------
 
@@ -365,6 +396,18 @@ function buildRows(): Row[] {
 			hint: { kind: "boss", every: BOSS_FLOOR_EVERY },
 		});
 	}
+	// docs/SECRET_ROOMS.md SRD12: the secret rooms, one entry (no hint: an unknown tile reads `???`)
+	const secretKey = themeKey(SECRET_ROOM_THEME_ID);
+	const secretId = codexId(C.secret, secretKey);
+	if (secretId !== CODEX_SECRET_ID) error(`codex: the secret entry is '${secretId}', not '${CODEX_SECRET_ID}'`, 0);
+	rows.push({
+		id: secretId,
+		group: "secrets",
+		nameKey: nameKeyOf(SECRET_ROOM_THEME_ID),
+		descKey: codexDescKey(C.secret, secretKey),
+		artRef: { kind: "secret" },
+		hint: NO_HINT,
+	});
 	return rows;
 }
 
@@ -509,4 +552,9 @@ export function codexAffixId(affix: number): string | undefined {
 /** The boss entry of archetype id `archetype` (`boss.act1`), or undefined (not an endless boss). */
 export function codexBossId(archetype: string): string | undefined {
 	return BOSS_BY_ARCHETYPE.get(archetype);
+}
+
+/** The secret rooms' entry id (`secret:room`, docs/SECRET_ROOMS.md SRD12): seen at a first knock, found at an open. */
+export function codexSecretId(): string {
+	return CODEX_SECRET_ID;
 }

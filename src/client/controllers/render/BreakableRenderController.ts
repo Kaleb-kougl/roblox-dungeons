@@ -39,7 +39,7 @@ import {
 	breakableShakeStuds,
 	debrisVariant,
 	degToRad,
-	isChestPiece,
+	isInertPieceKind,
 	floorImageOffset,
 	floorImageSize,
 	glintSlotCount,
@@ -190,7 +190,8 @@ const EMPTY_BOARD: SpriteBillboard = { w: 0, h: 0, offsetX: 0, offsetY: 0, offse
  * art, tint, cadence and per-cell phase are the loot glint's, and it goes the frame the piece breaks. Debug: KV_LootDebug (Workspace boolean, Studio or KV_Debug,
  * off by default) labels every loaded intact piece with its boost kind (lootDebugText, developer English).
  *
- * A vault's chest slot (isChestPiece, docs/TREASURE.md TR7) gets no view at all: TreasureRenderController draws it.
+ * An inert slot (isInertPieceKind) gets no view at all: a vault's chest (docs/TREASURE.md TR7) is
+ * TreasureRenderController's, a secret room's crack and chest (docs/SECRET_ROOMS.md SR7) SecretRenderController's.
  *
  * Bodies are pooled per kind and reused across floors (parked far below when unused); debris decals belong to the
  * floor's Janitor (cleaned on every new layout and when the run ends). Static pieces are placed once; only shaking
@@ -378,9 +379,10 @@ export class BreakableRenderController implements OnStart {
 		this.resolveDebris(dungeon);
 		const t = this.tracker;
 		for (let slot = 0; slot < t.count(); slot++) {
-			// A vault's chest (docs/TREASURE.md TR7): TreasureRenderController draws it; no view here (so no hit, break,
-			// glint or debris either).
-			if (isChestPiece(t.kindAt(slot))) continue;
+			// An inert piece: a chest (docs/TREASURE.md TR7: TreasureRenderController draws a vault's, SecretRenderController
+			// a secret room's) or a secret's crack (docs/SECRET_ROOMS.md SR7: SecretRenderController); no view here (so no
+			// hit, break, glint or debris either).
+			if (isInertPieceKind(t.kindAt(slot))) continue;
 			const [x, y, z] = breakableBaseStuds(t.cellX(slot), t.cellY(slot));
 			const view: PieceView = {
 				slot,

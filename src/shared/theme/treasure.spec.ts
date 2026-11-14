@@ -8,6 +8,7 @@
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { VaultLock, VaultTier } from "shared/dungeon";
 import { CODEX_AUDIO_IDS, CODEX_STRING_KEYS } from "./codex";
+import { SECRET_AUDIO_IDS, SECRET_ROLES, SECRET_STRING_KEYS } from "./secrets";
 import { colorDifference, contrastRatio } from "./color";
 import {
 	BIOMES,
@@ -88,21 +89,24 @@ function tail(list: ReadonlyArray<string>, n: number, skip = 0): string[] {
 /**
  * Entries docs/FORTUNE.md FO6 appended after the treasure rooms' (fortune.spec.ts checks them), then docs/FLOOR_MODIFIERS.md
  * FM7's (floorModifiers.spec.ts), then docs/GOLDLING_RUMOURS.md GR6's two sounds and GR7's two strings, then
- * claude/codex-plan.md CX5's sound and strings (codex.spec.ts).
+ * claude/codex-plan.md CX5's sound and strings (codex.spec.ts), then docs/SECRET_ROOMS.md SR10's sounds, strings and
+ * colour role (secrets.spec.ts).
  */
 const FORTUNE_AFTER = {
 	assets: 1,
-	roles: FORTUNE_ROLES.size() + FLOOR_MODIFIER_ROLES.size(),
+	roles: FORTUNE_ROLES.size() + FLOOR_MODIFIER_ROLES.size() + SECRET_ROLES.size(),
 	audio:
 		FORTUNE_AUDIO_IDS.size() +
 		FLOOR_MODIFIER_AUDIO_IDS.size() +
 		GOLDEN_RUMOUR_AUDIO_IDS.size() +
-		CODEX_AUDIO_IDS.size(),
+		CODEX_AUDIO_IDS.size() +
+		SECRET_AUDIO_IDS.size(),
 	strings:
 		FORTUNE_STRING_KEYS.size() +
 		FLOOR_MODIFIER_STRING_KEYS.size() +
 		GOLDEN_RUMOUR_STRING_KEYS.size() +
-		CODEX_STRING_KEYS.size(),
+		CODEX_STRING_KEYS.size() +
+		SECRET_STRING_KEYS.size(),
 } as const;
 
 function printEntry(tag: string, id: string, e: ReturnType<typeof treasureReport>[number]): void {
@@ -149,8 +153,9 @@ describe("treasure: contract", () => {
 		expect([TREASURE_COLUMN_FX_ID, slotFor(TREASURE_COLUMN_FX_ID)?.slot]).toEqual(["fx.treasure.column", "fx"]);
 	});
 
-	it("the light column is FX_IDS' last entry, optional: vale draws it (TR9) once its own sheet has an ID", () => {
-		expect(tail(FX_IDS, 1)).toEqual([TREASURE_COLUMN_FX_ID]);
+	it("the light column is FX_IDS' last entry before the secret rooms' dust, optional: vale draws it (TR9) once its own sheet has an ID", () => {
+		// docs/SECRET_ROOMS.md SR10's fx.secret.dust comes after it (secrets.spec.ts)
+		expect(tail(FX_IDS, 1, 1)).toEqual([TREASURE_COLUMN_FX_ID]);
 		expect(isFxId(TREASURE_COLUMN_FX_ID)).toBe(true);
 		expect(has(REQUIRED_ASSET_IDS, TREASURE_COLUMN_FX_ID)).toBe(false);
 		expect(VALE_FX_PENDING.includes(TREASURE_COLUMN_FX_ID)).toBe(false);

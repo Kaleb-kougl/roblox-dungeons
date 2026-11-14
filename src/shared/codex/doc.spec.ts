@@ -440,7 +440,10 @@ describe("codex seed and counts", () => {
 			"enemy:stormcaller",
 			"enemy:summoner",
 			"enemy:warbanner",
+			// docs/SECRET_ROOMS.md SRD12: the first knock's card (sighting secret.crack) sees the secret rooms' entry
+			"secret:room",
 		]);
+		expect(seedFromSightings(["secret.crack"])).toEqual([{ id: "secret:room", tier: 1, floor: 0 }]);
 		// pellet.power, the rumour card golden.rumour (not the Goldling seen), unknown, junk and duplicates dropped
 		expect(
 			seedFromSightings([
@@ -458,7 +461,7 @@ describe("codex seed and counts", () => {
 			{ id: "enemy:slime", tier: 1, floor: 0 },
 		]);
 		const seeded = applyClaims(emptyCodexDoc(), claims, 20000);
-		expect(seeded.e.size()).toBe(13);
+		expect(seeded.e.size()).toBe(14);
 		expect(codexFoundCount(seeded)).toBe(0);
 	});
 

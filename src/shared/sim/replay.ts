@@ -28,6 +28,7 @@ import { writePelletsHash } from "./pellets/pellets";
 import { writeTreasureHash } from "./treasure/treasure";
 import { writePactsHash } from "./pacts/pacts";
 import { writeGoldenHash } from "./golden/golden";
+import { writeSecretsHash } from "./secrets/secrets";
 import { isFiniteNumber, isIntegerNumber, numberToJsString } from "./jsnum";
 import { isJsonArray, isJsonObject, jsonToJsString, parseJson, type JsonValue } from "./json";
 import { jsMin } from "shared/jsmath";
@@ -200,8 +201,10 @@ export function writeHashFields(state: Readonly<SimState>, out: number[]): numbe
 	if (state.treasure !== undefined) writeTreasureHash(state.treasure, out);
 	// Pacts (docs/FORTUNE.md PS2), only when the run has them, after treasure.
 	if (state.pacts !== undefined) writePactsHash(state.pacts, out);
-	// The Goldling (docs/FORTUNE.md GE2), only when the run has it, appended last (after pacts).
+	// The Goldling (docs/FORTUNE.md GE2), only when the run has it, after pacts.
 	if (state.golden !== undefined) writeGoldenHash(state.golden, out);
+	// Secret rooms (docs/SECRET_ROOMS.md SR4), only when the run has them, appended last (after golden).
+	if (state.secrets !== undefined) writeSecretsHash(state.secrets, out);
 	return out;
 }
 

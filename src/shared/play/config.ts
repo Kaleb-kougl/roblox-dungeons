@@ -101,6 +101,12 @@ export const RUN_ATTRIBUTES = {
 	 * cursor. The gamepad rule (no pointer while on a pad) still applies. Off by default.
 	 */
 	systemCursor: "KV_SystemCursor",
+	/**
+	 * Boolean, Studio or with KV_Debug (docs/SECRET_ROOMS.md Design 12): SecretRenderController outlines the floor's
+	 * crack, chamber and front box and labels the crack with the chest's tier and the secret's status. Presentation only,
+	 * read live; off by default.
+	 */
+	secretLabel: "KV_SecretLabel",
 } as const;
 
 /** The web build's DEFAULT_SEED (`?seed=` absent). */

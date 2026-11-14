@@ -38,6 +38,7 @@ import {
 } from "shared/view/audio";
 import { audibleBuilds, audibleCombo, audibleVariantCues, comboQuiet } from "shared/view/fx";
 import { NO_DAILY_RANK_CUES, NO_NEW_BEST_CUES, type DailyRankCueSource, type NewBestCueSource } from "shared/view/hud";
+import { SecretCueTracker } from "shared/view/secrets";
 import { TreasureCueTracker } from "shared/view/treasure";
 import { SIM_HZ } from "shared/sim";
 import { PreloadController } from "../game/PreloadController";
@@ -153,7 +154,10 @@ class LoopChannel {
  *                `treasure` events into the look's edges on the sim clock (the crack, the bars' sink 0.6 s after the
  *                clear, the lid's pop 0.25 s after the open), reset on run start / floor change / exit. The Goldling's
  *                rumours (docs/GOLDLING_RUMOURS.md GR6): SimController's GoldenRumourClock edges of this frame (held
- *                under a draft, the cover, a pause and run over by the clock itself). The mapper is given `playable` (the ID has an assetId): a silent
+ *                under a draft, the cover, a pause and run over by the clock itself). Secret rooms (docs/SECRET_ROOMS.md
+ *                SR9): a shared/view/secrets SecretCueTracker of its own (the knock through its throttle, the crumble
+ *                at the open, the jingle at the reveal, the chest lid's pop: the vault's open sting by tier), reset
+ *                like the vault's. The mapper is given `playable` (the ID has an assetId): a silent
  *                ID with an SFX_FALLBACK cues that instead (no finisher clip: the swing), one without never becomes a
  *                cue (no cap slot, no cooldown).
  *   duck         a DUCKING_SFX sound (jingles, the Ember) dips the music group to AUDIO_VIEW.duck.level for the
@@ -205,6 +209,8 @@ export class AudioController implements OnStart {
 	private rankCues: () => DailyRankCueSource = () => NO_DAILY_RANK_CUES;
 	/** The vault's sound edges (docs/TREASURE.md TR8): its own look of the run view's vault events, stepped here. */
 	private readonly treasure = new TreasureCueTracker();
+	/** A secret room's sound edges (docs/SECRET_ROOMS.md SR6 / SR9): its own look of the run view's secret events. */
+	private readonly secrets = new SecretCueTracker();
 
 	constructor(
 		private readonly sim: SimController,
@@ -251,6 +257,8 @@ export class AudioController implements OnStart {
 			const state = ctx.run.state;
 			const simSec = (state.tick + this.sim.getAlpha()) / SIM_HZ;
 			const treasure = this.treasure.update(state, ctx.run.treasure, simSec);
+			// docs/SECRET_ROOMS.md SR9: the knock, the crumble, the jingle, the chest's open sting (the listener: the view player)
+			const secrets = this.secrets.update(state, this.sim.getFloorSecret(), ctx.run.secrets, simSec, viewIndex);
 			this.mapper.frame(
 				os.clock(),
 				ctx.run.frameEvents,
@@ -273,6 +281,7 @@ export class AudioController implements OnStart {
 				ctx.run.golden,
 				// docs/GOLDLING_RUMOURS.md GR6: this frame's rumour edges (SimController stepped the clock after the ticks)
 				this.sim.getGoldenRumour(),
+				secrets,
 			);
 			for (let i = 0; i < this.cues.size(); i++) {
 				this.play(this.cues.id(i), this.cues.volume(i), this.cues.speed(i));
@@ -323,13 +332,18 @@ export class AudioController implements OnStart {
 		// Preload: every run start (all sound effects + the floor's beds) and every floor change (its beds).
 		this.sim.onRunStarted((ctx) => {
 			this.treasure.reset();
+			this.secrets.reset();
 			this.preload(ctx, true);
 		});
 		this.sim.onFloorChanged((ctx) => {
 			this.treasure.reset();
+			this.secrets.reset();
 			this.preload(ctx, false);
 		});
-		this.sim.onRunExited(() => this.treasure.reset());
+		this.sim.onRunExited(() => {
+			this.treasure.reset();
+			this.secrets.reset();
+		});
 
 		// Gamepad focus moves: a quiet, rate-limited tick.
 		let selected = GuiService.SelectedObject;

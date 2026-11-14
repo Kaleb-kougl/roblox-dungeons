@@ -49,6 +49,7 @@ import type {
 	BreakableLoot,
 	BreakablePlacement,
 	FloorGolden,
+	FloorSecret,
 	FloorPacts,
 	FloorPellets,
 	VaultPlan,
@@ -78,6 +79,7 @@ import { treasureOnFloor } from "./treasure/treasure";
 import { pactsOnFloor } from "./pacts/pacts";
 import { pactsOnRoomSpawned } from "./pacts/pactRooms";
 import { goldenOnFloor } from "./golden/golden";
+import { secretsOnFloor } from "./secrets/secrets";
 
 /** A candidate spawn position (structurally shared/dungeon's TileXZ). */
 export interface SpawnTile {
@@ -154,6 +156,12 @@ export interface EndlessFloorWorld {
 	 * the floor-built parts above) and it is in no hash group.
 	 */
 	readonly modifier?: number;
+	/**
+	 * The floor's secret room (shared/dungeon placeSecret, docs/SECRET_ROOMS.md SR1): the crack's and chest's slots in
+	 * `breakables`, the chamber, the chest's cell and tier, and the carved dungeon this world's movers and blockers
+	 * were built on. Read only when the run's SimConfig.secrets is set (secrets/secrets.ts secretsOnFloor). Absent: none.
+	 */
+	readonly secret?: FloorSecret;
 }
 
 /** SimConfig.endless. */
@@ -317,6 +325,9 @@ function nextFloor(state: SimState, input: Readonly<InputFrame>, endless: Endles
 	pactsOnFloor(state, world.pactAltars);
 	// The Goldling (docs/FORTUNE.md GE2): the new floor's room, after the records (no-op without it). No rng.
 	goldenOnFloor(state, world.golden);
+	// Secret rooms (docs/SECRET_ROOMS.md SR4): the new floor's secret on its pieces; a secret of the old floor is gone
+	// (no-op without them). No rng.
+	secretsOnFloor(state, world.secret);
 	state.events.floorChanged = e.floor;
 }
 

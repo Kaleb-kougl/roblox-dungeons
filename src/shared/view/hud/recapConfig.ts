@@ -4,6 +4,7 @@
  * run-over frame; thresholds are tuned at RR10. Owner decisions: RRD6 (the 0.6 s arm), RRD8 (boss <= 25 %, score gap
  * <= 15 %, <= 2 rooms).
  */
+import { SECRET_RECAP_KEY } from "shared/theme";
 
 export interface RecapConfig {
 	/** A confirm / FIRE press before this skips the timeline instead of retrying (RRD6). */
@@ -139,6 +140,7 @@ export type RecapHighlightId =
 	| "parries"
 	| "syncParries"
 	| "sweeps"
+	| "secrets"
 	| "chests"
 	| "grazes"
 	| "jackpots"
@@ -194,15 +196,19 @@ export const RECAP_HIGHLIGHTS: ReadonlyArray<RecapHighlightDef> = [
 	{ priority: 6, id: "parries", key: RECAP_STRINGS.hlParries, min: 5, coop: "you" },
 	{ priority: 7, id: "syncParries", key: RECAP_STRINGS.hlSyncParries, min: 1, coopOnly: true, coop: "label" },
 	{ priority: 8, id: "sweeps", key: RECAP_STRINGS.hlSweeps, min: 1, coop: "team" },
+	// docs/SECRET_ROOMS.md SR9 (SRD12): secret rooms opened this run (secretsRunSummary's `found`, the party's), before
+	// the vault chests: a secret is the rarer find. Its label is the theme's SECRET_RECAP_KEY (`run.recap.hl.secrets`,
+	// required with the secret-room strings, not in RECAP_STRING_KEYS).
+	{ priority: 9, id: "secrets", key: SECRET_RECAP_KEY, min: 1, coop: "team" },
 	// The slot docs/RUN_RECAP.md reserved for treasure rooms (docs/TREASURE.md: treasureRunSummary's `opened`).
-	{ priority: 9, id: "chests", key: RECAP_STRINGS.hlChests, min: 1, coop: "team" },
-	{ priority: 10, id: "grazes", key: RECAP_STRINGS.hlGrazes, min: 50, coop: "you" },
-	{ priority: 11, id: "jackpots", key: RECAP_STRINGS.hlJackpots, min: 1, coop: "team" },
-	{ priority: 12, id: "speed", key: RECAP_STRINGS.hlSpeed, min: 3, coop: "team" },
+	{ priority: 10, id: "chests", key: RECAP_STRINGS.hlChests, min: 1, coop: "team" },
+	{ priority: 11, id: "grazes", key: RECAP_STRINGS.hlGrazes, min: 50, coop: "you" },
+	{ priority: 12, id: "jackpots", key: RECAP_STRINGS.hlJackpots, min: 1, coop: "team" },
+	{ priority: 13, id: "speed", key: RECAP_STRINGS.hlSpeed, min: 3, coop: "team" },
 ];
 
 /** The fill rows (in order) that bring a short run's grid up to RECAP.minHighlights; never notable-tested. */
 export const RECAP_FILL: ReadonlyArray<RecapHighlightDef> = [
-	{ priority: 13, id: "kills", key: RECAP_STRINGS.hlKills, min: 0, coop: "team" },
-	{ priority: 14, id: "rooms", key: RECAP_STRINGS.hlRooms, min: 0, coop: "team" },
+	{ priority: 14, id: "kills", key: RECAP_STRINGS.hlKills, min: 0, coop: "team" },
+	{ priority: 15, id: "rooms", key: RECAP_STRINGS.hlRooms, min: 0, coop: "team" },
 ];

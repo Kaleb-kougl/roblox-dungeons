@@ -9,10 +9,12 @@ import { isBossFloor } from "shared/dungeon";
 import { RUN_ATTRIBUTES } from "shared/play";
 import {
 	FLOOR_MODIFIER_ATTRIBUTE,
+	SECRET_DEBUG_ATTRIBUTE,
 	TREASURE_DEBUG_ATTRIBUTE,
 	clampDevFloor,
 	isValidRunSeed,
 	parseFloorModifierOverride,
+	parseSecretDebug,
 	parseTreasureDebug,
 } from "shared/run";
 import { SimController } from "../game/SimController";
@@ -46,7 +48,9 @@ interface Shown {
  * shared/run parseTreasureDebug) into the dev run's vault override; R / Restart keep it. Floor modifiers
  * (docs/FLOOR_MODIFIERS.md FM4): Go reads the Workspace attribute KV_FloorModifier (a kind's key in any case, "blood
  * moon", or a FloorModifier id; shared/run parseFloorModifierOverride) into the dev run's modifier override (that kind
- * on every floor where it is eligible); R / Restart keep it. Dev runs are never counted.
+ * on every floor where it is eligible); R / Restart keep it. Secret rooms (docs/SECRET_ROOMS.md SR5): Go reads the
+ * Workspace string KV_SecretDebug ("every", "every legendary", "rare"; shared/run parseSecretDebug) into the dev run's
+ * secret override; R / Restart keep it. Dev runs are never counted.
  */
 @Controller({})
 export class DevModeController implements OnStart {
@@ -137,7 +141,18 @@ export class DevModeController implements OnStart {
 		// docs/FLOOR_MODIFIERS.md FM4 / FM5: KV_FloorModifier ("gilded", "blood moon", a FloorModifier id) forces
 		// that kind
 		const modifier = parseFloorModifierOverride(Workspace.GetAttribute(FLOOR_MODIFIER_ATTRIBUTE));
-		const options = { startFloor: this.floor, invulnerable: god, vault, modifier, bothWeapons: this.bothWeapons };
+		// docs/SECRET_ROOMS.md SR5 / Design 12: KV_SecretDebug ("every", "every legendary", "rare") forces / fixes the
+		// floors' secret rooms
+		const rawSecret = Workspace.GetAttribute(SECRET_DEBUG_ATTRIBUTE);
+		const secret = parseSecretDebug(typeIs(rawSecret, "string") ? rawSecret : undefined);
+		const options = {
+			startFloor: this.floor,
+			invulnerable: god,
+			vault,
+			modifier,
+			secret,
+			bothWeapons: this.bothWeapons,
+		};
 		const seed = this.seed;
 		// docs/ARCHER.md AR7: the character screen first; its Confirm starts the run as the pick.
 		this.menu.devStart((character) => this.sim.startDev(options, seed, character));

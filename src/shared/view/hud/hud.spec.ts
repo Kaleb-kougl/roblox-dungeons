@@ -140,8 +140,9 @@ describe("HUD helpers", () => {
 		// ... breakables (docs/DECOR.md D4), then the build-only jackpot (docs/BUILDS.md BU5, builds runs only), then the
 		// pellet-only pellets / sweep (docs/PELLETS.md PL7, pellet runs only), then the vault-only treasure
 		// (docs/TREASURE.md TR6, ScoreSource.TREASURE 12, vault runs only), then Fortune's horde / golden
-		// (docs/FORTUNE.md FO6, 13 / 14), then the builds-only overcap (docs/BUILDS_V2.md BV9, 15).
-		expect(SCORE_SOURCE_KEYS.size()).toBe(16);
+		// (docs/FORTUNE.md FO6, 13 / 14), then the builds-only overcap (docs/BUILDS_V2.md BV9, 15), then the secret rooms'
+		// (docs/SECRET_ROOMS.md SR4, ScoreSource.SECRET 16, secret runs only).
+		expect(SCORE_SOURCE_KEYS.size()).toBe(17);
 		expect([
 			SCORE_SOURCE_KEYS[8],
 			SCORE_SOURCE_KEYS[9],
@@ -167,6 +168,10 @@ describe("HUD helpers", () => {
 		expect(pack.str(SCORE_SOURCE_KEYS[9], {})).toBe("Jackpot");
 		expect(pack.str(SCORE_SOURCE_KEYS[12], {})).toBe("Vaults");
 		expect(pack.str(SCORE_SOURCE_KEYS[15], {})).toBe("Overcap"); // docs/BUILDS_V2.md BV9
+		expect([SCORE_SOURCE_KEYS[ScoreSource.SECRET], pack.str(SCORE_SOURCE_KEYS[ScoreSource.SECRET], {})]).toEqual([
+			"score.source.secret",
+			"Secrets",
+		]);
 		expect(pack.str(HUD_STRINGS.combo, { combo: "1.3" })).toBe("x1.3");
 		expect(warnings).toEqual([]);
 	});
@@ -216,8 +221,12 @@ describe("HUD helpers", () => {
 		const overcap = scoreBreakdownRows([...fortune, 120]);
 		expect([overcap.size(), overcap[15].key, overcap[15].points]).toEqual([16, "score.source.overcap", 120]);
 		expect(scoreBreakdownRows([...fortune, 0]).size()).toBe(15);
+		// docs/SECRET_ROOMS.md SR4: Secrets 16 (secret runs), shown only when it scored.
+		const secrets = scoreBreakdownRows([...fortune, 0, 600]);
+		expect([secrets.size(), secrets[15].key, secrets[15].points]).toEqual([16, "score.source.secret", 600]);
+		expect(scoreBreakdownRows([...fortune, 0, 0]).size()).toBe(15);
 		// An index past every key (a future source without a label) is skipped, never a blank row.
-		expect(scoreBreakdownRows([...fortune, 5, 7]).size()).toBe(16);
+		expect(scoreBreakdownRows([...fortune, 5, 7, 9]).size()).toBe(17);
 		// The port-only rows show only when they scored: a pellet run without builds (Jackpot padded 0), no Sweep.
 		expect(scoreBreakdownRows([...plain, 0, 120, 0]).map((r) => r.index)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 10]);
 		// The nine classic sources always show, 0 or not.

@@ -67,6 +67,7 @@ import { PelletFrameEvents, type PelletFrameSource } from "shared/view/pellets";
 import { TreasureFrameEvents, type TreasureFrameSource } from "shared/view/treasure";
 import { PactFrameEvents, type PactFrameSource } from "shared/view/pacts";
 import { GoldenFrameEvents, type GoldenFrameSource } from "shared/view/golden";
+import { SecretFrameEvents, type SecretFrameSource } from "shared/view/secrets";
 import {
 	BuildFxEvents,
 	ComboEvents,
@@ -187,6 +188,8 @@ export interface RunView {
 	readonly pacts: PactFrameSource;
 	/** The Goldling events of the last frame's ticks (docs/FORTUNE.md FO8). */
 	readonly golden: GoldenFrameSource;
+	/** The secret-room events of the last frame's ticks: knocks, the open, the chest (docs/SECRET_ROOMS.md SR6). */
+	readonly secrets: SecretFrameSource;
 	getAlpha(): number;
 }
 
@@ -348,6 +351,8 @@ export class LiveRun implements RunView {
 	readonly pacts = new PactFrameEvents();
 	/** The Goldling events of the ticks run by the last frame() (docs/FORTUNE.md FO8; reset every frame). */
 	readonly golden = new GoldenFrameEvents();
+	/** The secret-room events of the ticks run by the last frame() (docs/SECRET_ROOMS.md SR6; reset every frame). */
+	readonly secrets = new SecretFrameEvents();
 	/** What the pacer made of the last unpaused frame (frozen, time scale); a plain pass-through without a pacer. */
 	readonly lastAdvance: FrameAdvance = newFrameAdvance();
 	/** Run totals for the HUD's post-run panel (the telemetry's kill / hit counts, read without finishing it). */
@@ -405,6 +410,7 @@ export class LiveRun implements RunView {
 		this.treasure.reset();
 		this.pacts.reset();
 		this.golden.reset();
+		this.secrets.reset();
 		this.ticksThisFrame = 0;
 		if (this.forfeitPending) {
 			this.forfeitPending = false;
@@ -493,6 +499,7 @@ export class LiveRun implements RunView {
 		this.treasure.collect(state);
 		this.pacts.collect(state);
 		this.golden.collect(state);
+		this.secrets.collect(state);
 		if (this.victoryTick === undefined && e.bossDefeated !== 0) this.victoryTick = state.tick;
 		if (this.deathTick === undefined && (e.playerDied !== 0 || state.player.dead !== 0)) {
 			this.deathTick = state.tick;

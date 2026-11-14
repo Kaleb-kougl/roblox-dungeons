@@ -116,9 +116,11 @@ describe("Goldling rumour chip: the snapshot (GR7)", () => {
 });
 
 describe("Goldling rumour: the first-time card (GR7, RD7)", () => {
-	it("is SIGHTING_IDS' last id, its line bestiary.golden.rumour", () => {
+	it("is SIGHTING_IDS' last id but the secret crack's, its line bestiary.golden.rumour", () => {
 		expect(GOLDEN_RUMOUR_SIGHTING).toBe("golden.rumour");
-		expect(SIGHTING_IDS[SIGHTING_IDS.size() - 1]).toBe(GOLDEN_RUMOUR_SIGHTING);
+		// docs/SECRET_ROOMS.md SR10 appended `secret.crack` after it (withSecretSighting runs after withRumourSighting)
+		expect(SIGHTING_IDS[SIGHTING_IDS.size() - 2]).toBe(GOLDEN_RUMOUR_SIGHTING);
+		expect(SIGHTING_IDS[SIGHTING_IDS.size() - 1]).toBe("secret.crack");
 		expect(sightingStringKey(GOLDEN_RUMOUR_SIGHTING)).toBe(GOLDEN_RUMOUR_BESTIARY_KEY);
 	});
 

@@ -30,6 +30,7 @@ import { pelletsHashNames, writePelletsHash } from "./pellets/pellets";
 import { treasureHashNames, writeTreasureHash } from "./treasure/treasure";
 import { pactsHashNames, writePactsHash } from "./pacts/pacts";
 import { goldenHashNames, writeGoldenHash } from "./golden/golden";
+import { secretsHashNames, writeSecretsHash } from "./secrets/secrets";
 
 /** The fixtures' subsystem groups, in hash order. */
 export const HASH_SUBSYSTEMS = ["core", "combatHeader", "actors", "weapons", "enemyBullets", "playerBullets"] as const;
@@ -59,8 +60,11 @@ export type HashSubsystem = (typeof HASH_SUBSYSTEMS)[number];
  *   pacts    pacts (docs/FORTUNE.md PS2: the floor's altars, per player takes and draft kind, the Horde and its second
  *            wave, the run counters), when state.pacts exists
  *   golden   the Goldling (docs/FORTUNE.md GE2: its stream, status, room / record, engage / appear ticks, actor slot / id,
- *            coins, hits, the run counters, the flee field's source tick and cells), when state.golden exists; the LAST
- *            group (after pacts)
+ *            coins, hits, the run counters, the flee field's source tick and cells), when state.golden exists (after
+ *            pacts)
+ *   secrets  secret rooms (docs/SECRET_ROOMS.md SR4: its stream, this floor's secret (status, room, crack / chest slots,
+ *            chest centre, facing, tier, the open's tick / credit / kind, who took the chest), the run counters), when
+ *            state.secrets exists; the LAST group (after golden)
  */
 export const ENDLESS_HASH_SUBSYSTEM = "endless";
 export const SCORE_SUBSYSTEM = "score";
@@ -76,6 +80,7 @@ export const PELLETS_SUBSYSTEM = "pellets";
 export const TREASURE_SUBSYSTEM = "treasure";
 export const PACTS_SUBSYSTEM = "pacts";
 export const GOLDEN_SUBSYSTEM = "golden";
+export const SECRETS_SUBSYSTEM = "secrets";
 /** Every group name a layout can have. */
 export type HashGroupName =
 	| HashSubsystem
@@ -92,7 +97,8 @@ export type HashGroupName =
 	| typeof PELLETS_SUBSYSTEM
 	| typeof TREASURE_SUBSYSTEM
 	| typeof PACTS_SUBSYSTEM
-	| typeof GOLDEN_SUBSYSTEM;
+	| typeof GOLDEN_SUBSYSTEM
+	| typeof SECRETS_SUBSYSTEM;
 
 export interface HashGroup {
 	readonly name: HashGroupName;
@@ -252,6 +258,13 @@ export function hashLayout(state: Readonly<SimState>, withNames = false): HashLa
 		writeGoldenHash(golden, values);
 		if (withNames) goldenHashNames(golden, names);
 		close(GOLDEN_SUBSYSTEM);
+	}
+
+	const secrets = state.secrets;
+	if (secrets !== undefined) {
+		writeSecretsHash(secrets, values);
+		if (withNames) secretsHashNames(secrets, names);
+		close(SECRETS_SUBSYSTEM);
 	}
 
 	return { values, names, groups };

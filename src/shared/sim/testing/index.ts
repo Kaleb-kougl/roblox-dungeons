@@ -3,3 +3,4 @@
  * (`test.dummy`, `test.chaser`, `test.boss`) in that spec's module world; see testArchetypes.ts.
  */
 export * from "./testArchetypes";
+export * from "./secretArena";

@@ -277,7 +277,7 @@ too heavy for this headless budget), so the Risks' Blood Moon watch is still ope
   catch is 1500 x floor scale). → Verify: numbers recorded; FMD2 /
   FMD6 tuned. *Done: numbers in "As built" (FM9 census); FMD2 / FMD6 kept, Plunder's strength (OC2) and the mix
   (OC3) left to the owner; Blood Moon's bot deaths / clear time and the score per kind not measured.*
-- [ ] **FM10. [owner] Audio:** pick the five stings (`art/audio-audition.html`): boons bright, the twist ominous.
+- [x] **FM10. [owner] Audio:** pick the five stings (`art/audio-audition.html`): boons bright, the twist ominous. *Done: built and uploaded 2026-11-13 (IDs in `packs/vale/assetIds.ts`).*
 - [ ] **FM11. Icons (optional).** → Verify: the sheet's lock, the card and chip with and without the art.
 - [ ] **FM12. [owner] Studio check and playtest** (below). The question: do players read the banner, and do they change
   how they play the floor?
@@ -357,3 +357,8 @@ the dev run, R keeps it), start floor 4 (`KV_Debug` for the logs):
   two in a row.
 - Reduced motion (cut, no pulse), touch layout (chip at the head of the strip), co-op (same banner on every client, no
   hold with a live world: the banner may not show then, the chip does), Daily (same banners for two accounts).
+
+## Secret rooms (2026-11-13)
+
+There is no secret-room modifier (docs/SECRET_ROOMS.md SRD14: announcing a secret would undo the feature). Secrets are
+placed last, after the modifier pick and its forced re-run, on their own stream, so a modifier floor may also hold one.

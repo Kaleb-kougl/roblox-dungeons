@@ -72,10 +72,11 @@ function tail(list: ReadonlyArray<string>, n: number, skip = 0): string[] {
 
 /**
  * Entries appended after the pellets': docs/TREASURE.md TR6's 3 asset IDs and 5 colour roles, then docs/FORTUNE.md
- * FO6's 1 asset ID, 4 colour roles and 1 tally segment, then docs/FLOOR_MODIFIERS.md FM7's 5 colour roles
- * (treasure.spec.ts / fortune.spec.ts / floorModifiers.spec.ts check them).
+ * FO6's 1 asset ID, 4 colour roles and 1 tally segment, then docs/FLOOR_MODIFIERS.md FM7's 5 colour roles, then
+ * docs/SECRET_ROOMS.md SR10's 1 colour role (treasure.spec.ts / fortune.spec.ts / floorModifiers.spec.ts /
+ * secrets.spec.ts check them).
  */
-const AFTER = { assets: 3 + 1, roles: 5 + 4 + 5, roomClear: 1 } as const;
+const AFTER = { assets: 3 + 1, roles: 5 + 4 + 5 + 1, roomClear: 1 } as const;
 
 describe("pellets: contract", () => {
 	it("two kinds, normal and power; their asset and colour role IDs are `pellet.<kind>`", () => {
@@ -137,8 +138,9 @@ describe("pellets: contract", () => {
 		]);
 		expect([...PELLET_SCORE_SOURCE_KEYS]).toEqual(["score.source.pellets", "score.source.sweep"]);
 		expect(PELLET_BESTIARY_KEY).toBe("bestiary.pellet.power");
-		// docs/GOLDLING_RUMOURS.md GR7's card (bestiary.golden.rumour) comes after it
-		expect(tail(BESTIARY_STRING_KEYS, 1, 1)).toEqual([PELLET_BESTIARY_KEY]);
+		// docs/GOLDLING_RUMOURS.md GR7's card (bestiary.golden.rumour), then docs/SECRET_ROOMS.md SR10's
+		// (bestiary.secret.crack) come after it
+		expect(tail(BESTIARY_STRING_KEYS, 1, 2)).toEqual([PELLET_BESTIARY_KEY]);
 		for (const k of [...PELLET_ROOM_CLEAR_KEYS, PELLET_BESTIARY_KEY]) {
 			expect([k, has(REQUIRED_STRING_KEYS, k)]).toEqual([k, true]);
 		}

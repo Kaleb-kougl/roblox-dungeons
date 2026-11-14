@@ -19,10 +19,23 @@ import { BOW_DATA } from "../combat/weapons/defs/bow";
 
 /**
  * Kind index of a piece (shared/dungeon BREAKABLE_PIECE_KINDS order: the clutter BREAKABLE_KINDS, then the vault's
- * chest, docs/TREASURE.md correction 2). Hashed. The CHEST is unbreakable (breakables.ts damageBreakable).
+ * chest, docs/TREASURE.md correction 2, then a secret room's cracked wall, docs/SECRET_ROOMS.md SR2). Hashed. The CHEST
+ * and the CRACKED_WALL are inert (inertPiece): no damage from any source (breakables.ts damageBreakable); a crack opens
+ * only through its openers (sim/secrets).
  */
-export const BreakableKind = { BARREL: 0, CRATE: 1, CHEST: 2 } as const;
+export const BreakableKind = { BARREL: 0, CRATE: 1, CHEST: 2, CRACKED_WALL: 3 } as const;
 export type BreakableKindId = (typeof BreakableKind)[keyof typeof BreakableKind];
+
+/**
+ * An inert piece (docs/SECRET_ROOMS.md Design 2): a vault's or a secret's chest, or a secret room's cracked wall. It
+ * blocks bodies and bullets like any piece but no damage path ever hits or breaks it. False for the clutter kinds.
+ */
+export function inertPiece(kind: number): boolean {
+	return kind === BreakableKind.CHEST || kind === BreakableKind.CRACKED_WALL;
+}
+
+/** A cracked wall's fixed hp (hashed; it never takes damage: an opening sets it to 0 with the break). */
+export const CRACKED_WALL_HP = 1;
 
 /**
  * What dealt a piece's damage (presentation and scoring: only players' breaks score). Append only. ROLL and BUILD are

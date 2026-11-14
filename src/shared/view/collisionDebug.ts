@@ -7,6 +7,9 @@
  *   inputMagnitude                        the move input's length as the sim uses it (unit, clamped to 1)
  *   StallDetector                         the stall flash: input held, body (almost) not moving; one event per episode
  *   stallLine                             the `[collision] stall ...` output line
+ *   collisionDebugDungeon                 the grid the sim moves on: a secret floor's carved copy (docs/SECRET_ROOMS.md
+ *                                         SR5: the chamber and the crack FLOOR, the crack held shut by its intact pieces
+ *                                         in `solid`), else the floor's own
  *
  * Presentation only: it reads a Dungeon and SolidCells the sim already uses and never writes anything back.
  */
@@ -21,6 +24,17 @@ import {
 } from "shared/dungeon";
 import { AXIS_MAX, PLAYER_SPEED, SIM_HZ, type PlayerState } from "shared/sim";
 import { COLLISION_DEBUG } from "./collisionDebugConfig";
+
+/**
+ * The Dungeon the overlay reads for a floor drawn from `forge` (EndlessRunFloor.dungeon, the Forge's grid the view
+ * draws): the sim's carved copy when the floor has a secret room (`secret`: EndlessRunFloor.secret / the layout's,
+ * FloorSecret.dungeon; shared/run endlessFloorWorld builds the movers on it), else `forge` itself. Pass the result with
+ * the sim's solidCells(state): an unopened crack blocks through its pieces (a `solid` cell), an opened one not at all,
+ * and the chamber is walkable, exactly as the player's mover sees them.
+ */
+export function collisionDebugDungeon(forge: Dungeon, secret: { readonly dungeon: Dungeon } | undefined): Dungeon {
+	return secret?.dungeon ?? forge;
+}
 
 /**
  * True when grid cell (gx, gy) stops a body: a tile other than FLOOR (WALL, VOID, POOL, anything outside the grid), or

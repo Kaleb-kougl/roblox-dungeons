@@ -11,10 +11,11 @@ import {
 } from "client/store";
 import { cornerMapShown, minimapHostFrame, MINIMAP_HOSTS, type MinimapHost } from "client/ui";
 import { CAMERA_YAW_DEG } from "shared/config";
-import { RoomType, TILE_SIZE, worldToGrid, type WorldXZ } from "shared/dungeon";
+import { RoomType, TILE_SIZE, gridToWorld, worldToGrid, type FloorSecret, type WorldXZ } from "shared/dungeon";
 import {
 	NO_BOOST,
 	NO_KIND,
+	SecretStatus,
 	VaultStatus,
 	archetypeAt,
 	buildScoreRooms,
@@ -44,6 +45,7 @@ import {
 	type MinimapRgb,
 	type MinimapTiles,
 } from "shared/view/minimap";
+import { applySecretMapChange, secretMapChange, secretMarkStyle, secretMatchesPlan } from "shared/view/secrets";
 import { vaultMarkStyle } from "shared/view/treasure";
 import { GOLDEN_VIEW, goldenBlipSlot, isGoldenKind } from "shared/view/golden";
 import { InputController } from "../game/InputController";
@@ -186,6 +188,9 @@ interface FloorMap {
 	/** The floor's centre, world: the full map's centre. */
 	readonly centreX: number;
 	readonly centreZ: number;
+	/** The floor's secret room (docs/SECRET_ROOMS.md SR8), and whether its open has been applied to the tiles. */
+	readonly secret: FloorSecret | undefined;
+	secretApplied: boolean;
 	/** Pixels changed since the last upload. */
 	pending: boolean;
 	lastWrite: number;
@@ -221,6 +226,12 @@ interface FrameMarks {
 	vaultZ: number;
 	vaultRole: ColorRole;
 	vaultStyle: "fill" | "hollow";
+	/** A secret room's chest mark (secretMarkStyle, docs/SECRET_ROOMS.md SR8): shown once open, where, its look. */
+	secretShown: boolean;
+	secretX: number;
+	secretZ: number;
+	secretRole: ColorRole;
+	secretStyle: "fill" | "hollow";
 }
 
 /**
@@ -240,6 +251,8 @@ class MapLayer {
 	private readonly rooms: Marker[] = [];
 	private readonly stairs: Marker;
 	private readonly vault: Marker;
+	/** A secret room's chest (docs/SECRET_ROOMS.md SR8), the vault mark's look. */
+	private readonly secret: Marker;
 	/** The Goldling's gold blip (docs/FORTUNE.md FO8), over the enemy dots. */
 	private readonly golden: Marker;
 	private readonly layout: GridImageLayout = {
@@ -277,6 +290,7 @@ class MapLayer {
 		this.image = image;
 		for (let i = 0; i < floor.marks.size(); i++) this.rooms.push(makeMarker(root, LAYER_Z.room, "square"));
 		this.vault = makeMarker(root, LAYER_Z.vault, "square");
+		this.secret = makeMarker(root, LAYER_Z.vault, "square");
 		this.stairs = makeMarker(root, LAYER_Z.stairs, "diamond");
 		this.golden = makeMarker(root, LAYER_Z.golden, "diamond");
 		for (let i = 0; i < MINIMAP_VIEW.markerPool; i++) this.enemies.push(makeMarker(root, LAYER_Z.enemy, "dot"));
@@ -345,6 +359,12 @@ class MapLayer {
 			const color = colors.role(marks.vaultRole);
 			showMarker(this.vault, pt.u, pt.v, invW, invH, m.vault, color, marks.vaultStyle, edge);
 		} else hideMarker(this.vault);
+		// A secret room's chest once open (docs/SECRET_ROOMS.md SR8): the tier's floor colour, a ring once taken.
+		if (marks.secretShown) {
+			worldToMap(basis, marks.secretX, marks.secretZ, cx, cz, ppt, pt);
+			const color = colors.role(marks.secretRole);
+			showMarker(this.secret, pt.u, pt.v, invW, invH, m.vault, color, marks.secretStyle, edge);
+		} else hideMarker(this.secret);
 		// The stairwell once seen (MD4): filled (with the dark edge) when open, hollow while closed.
 		if (marks.stairShown && floor.stair !== undefined) {
 			worldToMap(basis, floor.stair.x, floor.stair.z, cx, cz, ppt, pt);
@@ -487,7 +507,10 @@ class MinimapColors {
  * sight, the running Goldling's gold blip in sight (docs/FORTUNE.md FO8; never an enemy dot), the stairwell once its cell
  * is not UNKNOWN (hollow while closed), treasure / shrine marks once revealed, the vault's chest once revealed
  * (docs/TREASURE.md TR8: shared/view/treasure vaultMarkStyle, the tier's floor colour, recoloured by a crack, hollow
- * once opened).
+ * once opened). A secret room (docs/SECRET_ROOMS.md SR8): the tiles stay the Forge grid's until its open; the first
+ * frame the state has it open the crack and chamber take their carved tiles (shared/view/secrets secretMapChange /
+ * applySecretMapChange, repainted), the whole chamber is revealed on the shared fog (FogOfWar.revealCells) and the
+ * chest's mark shows (secretMarkStyle: the tier's floor colour, hollow once taken).
  *
  * The full map: `InputController.onMapAction` toggles Reflex `game.map.open` (opening needs a playing run with no menu
  * open, client/store selectMenuOpen, and an unfrozen sim; closing always works); it closes on a floor change, run over
@@ -532,6 +555,11 @@ export class MinimapController implements OnStart {
 		vaultZ: 0,
 		vaultRole: "minimap.floor",
 		vaultStyle: "fill",
+		secretShown: false,
+		secretX: 0,
+		secretZ: 0,
+		secretRole: "minimap.floor",
+		secretStyle: "fill",
 	};
 	private readonly hostSize = { w: 0, h: 0 };
 	private floor: FloorMap | undefined;
@@ -650,10 +678,15 @@ export class MinimapController implements OnStart {
 			stair,
 			centreX: ((tiles.W - 1) / 2) * TILE_SIZE,
 			centreZ: ((tiles.H - 1) / 2) * TILE_SIZE,
+			secret: this.sim.getFloorSecret(),
+			secretApplied: false,
 			pending: true,
 			lastWrite: -math.huge,
 		};
-		if (state !== undefined) this.refreshRooms(floor, state, ctx);
+		if (state !== undefined) {
+			this.refreshRooms(floor, state, ctx);
+			this.applySecret(floor, state); // a floor met with its secret already open (a late view)
+		}
 		paintAll(tiles, fog, roomLook, palette, buf);
 		fog.drainDirty();
 		this.floor = floor;
@@ -695,6 +728,7 @@ export class MinimapController implements OnStart {
 		if (map.open && outcome !== "playing") this.setMap(true, false);
 
 		const alpha = this.sim.getAlpha();
+		this.applySecret(floor, state);
 		this.updateFog(floor, state, alpha);
 		this.refreshRooms(floor, state, ctx);
 		const dirty = floor.fog.drainDirty();
@@ -726,6 +760,24 @@ export class MinimapController implements OnStart {
 			const ppt = this.fitPxPerTile(floor.tiles);
 			layer.draw(floor, marks, this.colors, floor.centreX, floor.centreZ, ppt, size.w, size.h, this.basis);
 		}
+	}
+
+	/**
+	 * A secret room's open on the map (docs/SECRET_ROOMS.md SR8), once per floor: the first frame the state has it open
+	 * (its own open, or a late view's), the crack and chamber cells take their carved tiles (repainted; the fog's sight
+	 * reads the same tiles, so it sees in from then on) and the whole chamber is revealed on the shared party map.
+	 */
+	private applySecret(floor: FloorMap, state: SimState): void {
+		const plan = floor.secret;
+		if (floor.secretApplied || plan === undefined || !secretMatchesPlan(state, plan)) return;
+		const status = state.secrets!.status;
+		if (status !== SecretStatus.OPEN && status !== SecretStatus.TAKEN) return;
+		floor.secretApplied = true;
+		const change = secretMapChange(floor.tiles, plan);
+		const cells = applySecretMapChange(floor.tiles, change);
+		paintCells(floor.tiles, floor.fog, floor.roomLook, floor.palette, cells, floor.buf);
+		floor.fog.revealCells(change.reveal);
+		floor.pending = true;
 	}
 
 	/** One fog update from every party slot: a living player's interpolated position, false when dead or gone. */
@@ -895,6 +947,22 @@ export class MinimapController implements OnStart {
 		marks.stairShown = tiles.stairCell !== MAP_NO_CELL && fog.state(tiles.stairCell) !== FogState.UNKNOWN;
 		marks.stairOpen = state.endless !== undefined && state.endless.stairsOpen !== 0;
 		this.gatherVault(fog, tiles, state);
+		this.gatherSecret(floor, state);
+	}
+
+	/** A secret room's chest mark (docs/SECRET_ROOMS.md SR8): none before the open (SRD4), then shared/view/secrets secretMarkStyle. */
+	private gatherSecret(floor: FloorMap, state: SimState): void {
+		const marks = this.marks;
+		const plan = floor.secret;
+		marks.secretShown = false;
+		if (plan === undefined || !secretMatchesPlan(state, plan)) return;
+		const look = secretMarkStyle(state.secrets!.status, plan.tier);
+		if (look === undefined) return;
+		marks.secretShown = true;
+		marks.secretX = gridToWorld(plan.chestX);
+		marks.secretZ = gridToWorld(plan.chestY);
+		marks.secretRole = look.role;
+		marks.secretStyle = look.style;
 	}
 
 	/**

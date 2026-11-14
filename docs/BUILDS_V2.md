@@ -1559,3 +1559,9 @@ bullets go on screen.
    source (a score change: endless scores and replays change).
 6. **Bastion + Riposte duo:** yes, designed as part of the wave 1 plan (Riposte lands in wave 1; the duo's rule is open,
    for example a brace also fires Riposte's counter-wave as a full ring).
+
+## Secret rooms (2026-11-13)
+
+Wrecker's roll smash opens a secret room's cracked wall instead of breaking it (docs/SECRET_ROOMS.md SR3,
+`rollSmashBreakables`), and a Siege Bolt slam into the crack opens it as a heavy arrow (`secretsSlamAt`). Ballista's
+bolts, Demolition's chain and Siege's shock only knock; Ballista bursts back from an opened crack as from a wall.

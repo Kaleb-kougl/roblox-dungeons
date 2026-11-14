@@ -95,7 +95,7 @@ import { GoldenRumourClock } from "shared/view/golden";
 import { PREDICTION_VIEW, PredictionSmoother, writeDrawnPlayer, type DrawnPlayerOf } from "shared/view/predict";
 import { PROGRESSION_VIEW, boardFor, toastFor, type PendingRunClaim } from "shared/view/hud";
 import { afterRobloxMenuClosed, lobbyStartAccepted, restartForfeits } from "shared/view/menu";
-import { ENDLESS_FIRST_FLOOR, FloorModifier, type Dungeon } from "shared/dungeon";
+import { ENDLESS_FIRST_FLOOR, FloorModifier, type Dungeon, type FloorSecret } from "shared/dungeon";
 import { InputController } from "./InputController";
 import { ThemeController } from "./ThemeController";
 
@@ -301,6 +301,14 @@ function readSeed(): number {
 	return DEFAULT_RUN_SEED;
 }
 
+/**
+ * The secret room plan of `ctx`'s floor (docs/SECRET_ROOMS.md SR7): EndlessRunFloor.secret of an endless floor, else
+ * undefined. Read it once per floor (the floor builder caches only its last floor); SimController.getFloorSecret caches it.
+ */
+export function floorSecretOf(ctx: RunContext): FloorSecret | undefined {
+	return ctx.endlessFloor !== undefined && ctx.floor > 0 ? ctx.endlessFloor(ctx.floor).secret : undefined;
+}
+
 function placeKeyFor(pack: ThemePack, dungeon: Dungeon | undefined): string {
 	if (dungeon === undefined) return "";
 	const biome = BIOMES.find((b) => b.forgeTheme === dungeon.params.themeKey);
@@ -495,6 +503,9 @@ export class SimController implements OnStart {
 	/** The Goldling rumour clock (getGoldenRumour) and the run context it was last stepped for. */
 	private readonly rumour = new GoldenRumourClock();
 	private rumourCtx: RunContext | undefined;
+	/** getFloorSecret's cache: the context it was read for and its plan. */
+	private secretCtx: RunContext | undefined;
+	private secretPlan: FloorSecret | undefined;
 
 	/**
 	 * Local prediction on screen (docs/LOCAL_PREDICTION.md LP5): the co-op client's predicted head smoothed into the
@@ -595,6 +606,20 @@ export class SimController implements OnStart {
 	 */
 	getGoldenRumour(): GoldenRumourClock {
 		return this.rumour;
+	}
+
+	/**
+	 * The current floor's secret room plan (docs/SECRET_ROOMS.md SR7: the layout's FloorSecret, its carved dungeon the
+	 * sim's movers run on), or undefined (no run, not an endless floor, no secret rolled). Cached per run context, so
+	 * per-frame readers never ask the run's floor builder again.
+	 */
+	getFloorSecret(): FloorSecret | undefined {
+		const ctx = this.ctx;
+		if (ctx !== this.secretCtx) {
+			this.secretCtx = ctx;
+			this.secretPlan = ctx !== undefined ? floorSecretOf(ctx) : undefined;
+		}
+		return this.secretPlan;
 	}
 
 	private stepRumour(dt: number): void {
@@ -850,6 +875,7 @@ export class SimController implements OnStart {
 			invulnerable: options.invulnerable,
 			vault: options.vault,
 			modifier: options.modifier,
+			secret: options.secret,
 			bothWeapons: options.bothWeapons,
 		};
 		this.devSeed = seed;

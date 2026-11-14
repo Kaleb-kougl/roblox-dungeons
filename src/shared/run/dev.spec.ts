@@ -36,6 +36,7 @@ import {
 	DEV_GOD_BUTTON,
 	DEV_SUBSYSTEM,
 	GOLDEN_SUBSYSTEM,
+	SECRETS_SUBSYSTEM,
 	PELLETS_SUBSYSTEM,
 	TREASURE_SUBSYSTEM,
 	PACTS_SUBSYSTEM,
@@ -231,19 +232,21 @@ describe("god mode", () => {
 		expect(state.player.armor + state.player.hearts).toBeLessThan(armorHearts);
 	});
 
-	it("is hashed as the `dev` group, after affixes and before builds, pellets, treasure, pacts and golden (the endless world's, the last group), and replays bit for bit", () => {
+	it("is hashed as the `dev` group, after affixes and before builds, pellets, treasure, pacts, golden and secrets (the endless world's, the last group), and replays bit for bit", () => {
 		const a = devState(3, true);
 		const layout = hashLayout(a, true);
 		const names = layout.groups.map((g) => g.name);
-		expect(names[names.size() - 1]).toBe(GOLDEN_SUBSYSTEM);
-		expect(names[names.size() - 2]).toBe(PACTS_SUBSYSTEM);
-		expect(names[names.size() - 3]).toBe(TREASURE_SUBSYSTEM);
-		expect(names[names.size() - 4]).toBe(PELLETS_SUBSYSTEM);
-		expect(names[names.size() - 5]).toBe(BUILDS_SUBSYSTEM);
-		expect(names[names.size() - 6]).toBe(DEV_SUBSYSTEM);
-		expect(names[names.size() - 7]).toBe(AFFIXES_SUBSYSTEM);
+		// docs/SECRET_ROOMS.md SR5: secrets after golden, last.
+		expect(names[names.size() - 1]).toBe(SECRETS_SUBSYSTEM);
+		expect(names[names.size() - 2]).toBe(GOLDEN_SUBSYSTEM);
+		expect(names[names.size() - 3]).toBe(PACTS_SUBSYSTEM);
+		expect(names[names.size() - 4]).toBe(TREASURE_SUBSYSTEM);
+		expect(names[names.size() - 5]).toBe(PELLETS_SUBSYSTEM);
+		expect(names[names.size() - 6]).toBe(BUILDS_SUBSYSTEM);
+		expect(names[names.size() - 7]).toBe(DEV_SUBSYSTEM);
+		expect(names[names.size() - 8]).toBe(AFFIXES_SUBSYSTEM);
 		expect(layout.values).toEqual(writeHashFields(a, []));
-		const dev = layout.groups[layout.groups.size() - 6];
+		const dev = layout.groups[layout.groups.size() - 7];
 		expect(layout.names[dev.finish - 1]).toBe("dev.toggles");
 		const b = devState(3, true);
 		const run = (s: SimState) => {

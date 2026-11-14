@@ -174,7 +174,8 @@ describe("tutorial world: the lock", () => {
 		// Pellets are the endless rules (docs/PELLETS.md PL11), but only combat G's floor-1 pellets lie anywhere. No
 		// treasure rooms (docs/TREASURE.md: never in the tutorial; its floors carry no vault). Pacts (docs/FORTUNE.md):
 		// never in the tutorial, which keeps the classic shrine (no altars on its floors either). No Goldling
-		// (docs/FORTUNE.md: endless only, the tutorial never sets SimConfig.golden).
+		// (docs/FORTUNE.md: endless only, the tutorial never sets SimConfig.golden). No secret rooms (docs/SECRET_ROOMS.md
+		// SR5: endless only).
 		const keys = configKeys(buildEndlessRunConfig(1).config).filter(
 			(k) =>
 				k !== "breakables" &&
@@ -182,7 +183,8 @@ describe("tutorial world: the lock", () => {
 				k !== "builds" &&
 				k !== "treasure" &&
 				k !== "pacts" &&
-				k !== "golden",
+				k !== "golden" &&
+				k !== "secrets",
 		);
 		keys.push("tutorial");
 		// docs/ARCHER.md AR4: the tutorial is the Knight: his loadout and (neutral) traits are set; a tool's
@@ -192,6 +194,7 @@ describe("tutorial world: the lock", () => {
 		expect(configKeys(setup.config)).toEqual(keys);
 		expect(setup.config.breakables).toBe(undefined);
 		expect(setup.config.golden).toBe(undefined);
+		expect(setup.config.secrets).toBe(undefined);
 		expect(setup.config.drops).toBe(TUTORIAL_DROPS_CONFIG);
 		expect(setup.config.drops).never.toBe(DROPS_CONFIG);
 		for (const f of [1, 2, 3]) expect(setup.endlessFloor(f).breakables).toBe(undefined);

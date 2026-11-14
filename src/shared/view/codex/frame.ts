@@ -10,8 +10,9 @@
  *                           player (state, never the snapshot's `boosts`: those follow the view player, CX0 #15)
  *   the caller              what only the frame's events know: `deaths` (FxTracker `killed` events since the last frame,
  *                           pushCodexDeath), `pedestalRelics` (this frame's `relic` run events: the relics whose toast
- *                           is on screen), `bossEngaged` / `bossDefeated` (the frame's boss events) and `runOver`
- *                           (SimController.isRunOver)
+ *                           is on screen), `bossEngaged` / `bossDefeated` (the frame's boss events), `secretKnocked` /
+ *                           `secretOpened` (RunView.secrets through readCodexSecrets, docs/SECRET_ROOMS.md SR9) and
+ *                           `runOver` (SimController.isRunOver)
  *
  * Sightings follow the view player (the spectated teammate after a co-op death); finds are the local player's own,
  * plus party kills while the local player is in the run. Read-only on the sim; presentation only.
@@ -42,6 +43,8 @@ import {
 } from "shared/sim";
 import { pactCardsNear } from "../pacts";
 import { SIGHTING_VIEW } from "../sighting";
+import type { SecretFrameSource } from "../secrets/events";
+import { localKnocked } from "../secrets/knock";
 
 /** An actor as the tracker reads it: its archetype id (`archetypeAt(kind).id`) and shared/dungeon AffixKind (NONE: no affix). */
 export interface CodexActorView {
@@ -91,6 +94,13 @@ export interface CodexFrame {
 	readonly bossEngaged: string | undefined;
 	/** The archetype id of a boss that died this frame, undefined none. */
 	readonly bossDefeated: string | undefined;
+	/**
+	 * docs/SECRET_ROOMS.md SR9 / SRD12: the LOCAL player knocked on a secret room's crack this frame (the first-time
+	 * card's moment: `secret:room` seen). Absent: false (hand-built frames).
+	 */
+	readonly secretKnocked?: boolean;
+	/** A secret room opened this frame while the local player is in the run (`secret:room` found). Absent: false. */
+	readonly secretOpened?: boolean;
 }
 
 /** A pooled actor view (CodexFrameBuffer's pools): rewritten in place, never allocated per frame. */
@@ -126,6 +136,8 @@ export interface CodexFrameBuffer extends CodexFrame {
 	readonly deaths: CodexActorView[];
 	bossEngaged: string | undefined;
 	bossDefeated: string | undefined;
+	secretKnocked: boolean;
+	secretOpened: boolean;
 	/** The views `actors` reuses (index i serves actors[i]). */
 	readonly actorPool: PooledActorView[];
 	/** The views `deaths` reuses. */
@@ -158,6 +170,8 @@ export function newCodexFrame(): CodexFrameBuffer {
 		deaths: [],
 		bossEngaged: undefined,
 		bossDefeated: undefined,
+		secretKnocked: false,
+		secretOpened: false,
 		actorPool: [],
 		deathPool: [],
 	};
@@ -176,12 +190,28 @@ function pooledView(pool: PooledActorView[], i: number, archetype: string, affix
 	return v;
 }
 
-/** Clears the fields only the caller fills (deaths, pedestal relics, boss events); readCodexFrame keeps the rest. */
+/**
+ * Clears the fields only the caller fills (deaths, pedestal relics, boss and secret events); readCodexFrame keeps the
+ * rest.
+ */
 export function clearCodexFrameEvents(out: CodexFrameBuffer): void {
 	out.deaths.clear();
 	out.pedestalRelics.clear();
 	out.bossEngaged = undefined;
 	out.bossDefeated = undefined;
+	out.secretKnocked = false;
+	out.secretOpened = false;
+}
+
+/**
+ * The frame's secret-room fields (docs/SECRET_ROOMS.md SR9, SRD12) from the run view's events (RunView.secrets):
+ * `secretKnocked` when the LOCAL player `localIndex` knocked on a crack (seen: the first-time card's moment; a
+ * teammate's or an enemy's knock is not yours), `secretOpened` when a crack opened (found: whoever opened it, the local
+ * player is in the run; the tracker stops counting once they left). OR-ed in, so several calls in a frame add up.
+ */
+export function readCodexSecrets(out: CodexFrameBuffer, events: SecretFrameSource, localIndex: number): void {
+	if (localKnocked(events, localIndex)) out.secretKnocked = true;
+	if (events.opened.size() > 0) out.secretOpened = true;
 }
 
 function copyInto(out: number[], from: ReadonlyArray<number> | undefined): void {

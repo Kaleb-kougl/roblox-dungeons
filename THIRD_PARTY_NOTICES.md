@@ -440,3 +440,29 @@ docs/BOOKSHELVES.md). **Changes made:** rendered to 2D sprites
   remaining silent IDs").
 - Raw file: `art/vendor/oga-open-chest/` (gitignored).
 - License: CC0, public domain: no credit required. Credited anyway (Credits screen).
+
+## "Breaking Rock" (OpenGameArt sound effect, CC0)
+
+- Author: themightyglider. Source: https://opengameart.org/node/109952 (`rock_break.ogg`), itself derived from "stone
+  falls and breaks low pitch.aiff" by SoundCollectah, Freesound, CC0 (https://freesound.org/s/109360).
+- Used for: the candidate for `sfx.secret.open` (docs/SECRET_ROOMS.md SR14; owner's source pick 2026-11-13, to be
+  confirmed at the audition). Once picked, the clip is silence-trimmed, downmixed to mono, loudness-normalised and
+  encoded to OGG by `scripts/audio/build-audio.js`; only the built OGG is uploaded to Roblox as an audio asset.
+- Raw file: `art/vendor/oga-breaking-rock/` (gitignored).
+- License: CC0, public domain: no credit required. Credited anyway (Credits screen).
+
+## 8-Bit Sound Effects Library (audio) by Little Robot Sound Factory (CC-BY 3.0) - ATTRIBUTION REQUIRED
+
+- Author: Little Robot Sound Factory (www.littlerobotsoundfactory.com). Source:
+  https://opengameart.org/content/8-bit-sound-effects-library (`8-Bit Sound Library.zip`, 40 sounds in WAV and MP3;
+  the WAVs kept).
+- Used for: the candidates for the secret-room discovery jingle `sfx.jingle.secret` (docs/SECRET_ROOMS.md SR14;
+  owner's source pick 2026-11-13: `Jingle_Achievement_00` / `_01`, `Jingle_Win_00` / `_01`, one picked at the
+  audition). **Changes made:** silence-trimmed, downmixed to mono, loudness-normalised (EBU R128) and re-encoded to OGG
+  by `scripts/audio/build-audio.js`; only the built OGG is uploaded to Roblox as an audio asset.
+- Raw files: `art/vendor/lrsf-8bit/Wav/` (gitignored).
+- License: Creative Commons Attribution 3.0 Unported (https://creativecommons.org/licenses/by/3.0/). The author's
+  notice: "Attribute Little Robot Sound Factory, and provide this link where possible: www.littlerobotsoundfactory.com".
+  **Attribution is required where players can see it**: the main menu's Credits screen (shared/view/menu `CREDITS`)
+  shows the title, "by Little Robot Sound Factory (www.littlerobotsoundfactory.com)", "CC BY 3.0 -
+  creativecommons.org/licenses/by/3.0" and the change note.

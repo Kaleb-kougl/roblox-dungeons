@@ -24,7 +24,7 @@ import {
 	type RunRecapReport,
 } from "shared/run";
 import type { JuiceSettings } from "shared/settings";
-import { BOON_MAX_LEVEL, floorRoomTally, partySize, playerAt, treasureRunSummary } from "shared/sim";
+import { BOON_MAX_LEVEL, floorRoomTally, partySize, playerAt, secretsRunSummary, treasureRunSummary } from "shared/sim";
 import type { ColorRole, StringVars } from "shared/theme";
 import { SFX, recapCue, type RecapCue } from "shared/view/audio";
 import {
@@ -753,6 +753,8 @@ export class RecapController implements OnStart {
 			team: this.teamProvider?.(ctx) ?? NO_TEAM_MOMENTS,
 			// docs/TREASURE.md: the reserved Chests highlight, only in runs with treasure rooms (presentation only)
 			chests: state.treasure !== undefined ? treasureRunSummary(state) : undefined,
+			// docs/SECRET_ROOMS.md SR9: the Secrets found highlight, only in runs with secret rooms (presentation only)
+			secrets: state.secrets !== undefined ? secretsRunSummary(state) : undefined,
 		};
 	}
 }

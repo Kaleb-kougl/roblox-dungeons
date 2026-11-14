@@ -10,7 +10,10 @@
  *            (CODEX_ART.stillAnim / stillFacingDeg; the frame's ImageRectOffset / Size from the set's layout).
  *            Unknown tiles draw it as a dark silhouette (CODEX_ART.silhouette*: a tease, not readable art)
  *   ring     a champion affix: a ring in the affix's colour (its floor ring's look) with its name's label
- *   label    an enemy or boss without a sprite set (the placeholder pack): its name as text on its colour
+ *   label    an enemy or boss without a sprite set (the placeholder pack): its name as text on its colour; the secret
+ *            rooms' entry (docs/SECRET_ROOMS.md SR9) always: its name in the dust's pale stone (`secret.dust`). The
+ *            crack overlay is greyscale darkening on a transparent ground and the chest is the vault's, so neither reads
+ *            as the feature on a dark tile; the name does
  *   unknown  any other unknown tile: the `ui.icon.help` glyph, or the `???` text without the icon
  * The pack is read through CodexArtPack (the client: uiImage readiness for ui images, the theme's sprite sets), so the
  * same rules hold headlessly. Kept out of shared/view sprites.ts (its compiled Luau sits near the 200-locals limit).
@@ -19,6 +22,7 @@ import { codexEntry, type CodexEntry } from "shared/codex";
 import { DUOS, archetypeAt, archetypeIndex, hasArchetype } from "shared/sim";
 import {
 	BOOST_KINDS,
+	SECRET_DUST_ROLE,
 	affixNameKey,
 	affixRole,
 	boostIconId,
@@ -176,6 +180,8 @@ export function codexTileArt(
 		}
 		case "affix":
 			return { kind: "ring", role: affixRole(a.affix), labelKey: affixNameKey(a.affix) };
+		case "secret":
+			return { kind: "label", key: e.nameKey, role: SECRET_DUST_ROLE };
 	}
 	return unknownArt(pack);
 }

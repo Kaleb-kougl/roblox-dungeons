@@ -22,6 +22,7 @@ export const STAGE_FEATURES = [
 	"pedestals",
 	"pacts",
 	"golden",
+	"secret",
 ] as const;
 export type StageFeatureName = (typeof STAGE_FEATURES)[number];
 
@@ -125,6 +126,8 @@ export const STAGE_ASSETS: StageAssetsConfig = {
 		pacts: ["pact."],
 		// docs/FORTUNE.md GE: the Goldling and its coin burst (a runtime spawn, so a feature, not a planned kind)
 		golden: ["enemy.golden", "fx.golden.coin"],
+		// docs/SECRET_ROOMS.md SR6 / SR11: the crack overlay and rubble, the dust trickle, and the chest (the vault's art)
+		secret: ["secret.", "fx.secret.dust", "treasure.chest", "treasure.chestopen", "fx.treasure.column"],
 	},
 	worlds: {
 		// shared/run TUTORIAL_WORLD_KIND (pinned by stageInput.spec): the dummy and the tutorial's track

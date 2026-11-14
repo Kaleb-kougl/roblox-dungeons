@@ -317,3 +317,19 @@ export function vaultChest(plan: VaultPlan): BreakablePlacement {
 export function vaultCentre(plan: VaultPlan): { x: number; z: number } {
 	return { x: gridToWorld(plan.x), z: gridToWorld(plan.y) };
 }
+
+/**
+ * The chest's front box (cellKeys): its cell row and the VAULT.wallClearTiles rows in front of it, VAULT.sideClearTiles
+ * cells to each side (the cells the vault kept FLOOR and free of pieces). The Goldling's piece (./golden.ts) and a
+ * secret's front box (./secrets.ts) keep out of it. Pure.
+ */
+export function vaultFrontCells(plan: VaultPlan): Set<number> {
+	const out = new Set<number>();
+	// Across the facing: (1, 0) -> (0, 1), (0, 1) -> (1, 0) (facingOk).
+	const px = math.abs(plan.fz);
+	const pz = math.abs(plan.fx);
+	for (let a = 0; a <= VAULT.wallClearTiles; a++)
+		for (let b = -VAULT.sideClearTiles; b <= VAULT.sideClearTiles; b++)
+			out.add(cellKey(plan.x + plan.fx * a + px * b, plan.y + plan.fz * a + pz * b));
+	return out;
+}

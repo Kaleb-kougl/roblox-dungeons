@@ -3,15 +3,23 @@ import { RunService } from "@rbxts/services";
 import { Events } from "client/network";
 import { clientStore } from "client/store";
 import { codexDocOfStatus } from "shared/codex";
-import { sightingStringKey } from "shared/onboarding";
 import { isDraftOpen } from "shared/sim";
 import { RENDER_ORDER } from "shared/view";
 import { SFX } from "shared/view/audio";
 import { CODEX_HUD_STRINGS, codexSeenSightings, codexToastNameKey } from "shared/view/codex";
-import { SIGHTING_VIEW, SightingQueue, sightingsInView, withRumourSighting } from "shared/view/sighting";
+import { FirstKnockLatch } from "shared/view/secrets";
+import {
+	SIGHTING_VIEW,
+	SightingQueue,
+	sightingCardKey,
+	sightingsInView,
+	withRumourSighting,
+	withSecretSighting,
+} from "shared/view/sighting";
 import { AudioController } from "../audio/AudioController";
 import { CodexController } from "../fx/CodexController";
 import { SimController } from "./SimController";
+import { ThemeController } from "./ThemeController";
 
 const RENDER_STEP = "KV_Sightings";
 
@@ -27,7 +35,10 @@ const RENDER_STEP = "KV_Sightings";
  * after toastSeconds and reports the id
  * (`bestiarySeen`; the server validates and stores it). The Goldling rumours' card (`golden.rumour`, docs/
  * GOLDLING_RUMOURS.md GR7) is found once this floor's first rumour cue played (SimController's GoldenRumourClock.heard,
- * shared/view/sighting withRumourSighting): one card at a time, so never on top of the Goldling's own. Never in the tutorial, under the stage cover or after the run
+ * shared/view/sighting withRumourSighting): one card at a time, so never on top of the Goldling's own. A secret room's
+ * crack card (`secret.crack`, docs/SECRET_ROOMS.md SR9 / SRD5) is found from the local player's first knock (a
+ * shared/view/secrets FirstKnockLatch, reset on run exit; withSecretSighting); every card's text is read as the local
+ * player's character (sightingCardKey: the Archer's `bestiary.secret.crack.archer`). Never in the tutorial, under the stage cover or after the run
  * is over (no scan at all); a toast waits while a boon draft is open or the solo run is paused. A run exit drops the
  * queued ids that were never shown. Nothing at all until a LOADED status arrived (a failed join load: the stored set is
  * unknown).
@@ -44,12 +55,16 @@ const RENDER_STEP = "KV_Sightings";
 export class SightingController implements OnStart {
 	private readonly queue = new SightingQueue();
 	private readonly found = new Array<string>();
+	/** The local player's first knock on a secret room's crack this session (docs/SECRET_ROOMS.md SR9). */
+	private readonly knock = new FirstKnockLatch();
+	private readonly hasString = (key: string) => this.theme.getPack().hasString(key);
 	private serial = 0;
 
 	constructor(
 		private readonly sim: SimController,
 		private readonly codex: CodexController,
 		private readonly audio: AudioController,
+		private readonly theme: ThemeController,
 	) {}
 
 	onStart(): void {
@@ -58,6 +73,7 @@ export class SightingController implements OnStart {
 		Events.requestOnboarding.fire();
 		this.sim.onRunExited(() => {
 			this.queue.clear();
+			this.knock.reset();
 			clientStore.setSighting(undefined);
 		});
 		RunService.BindToRenderStep(RENDER_STEP, Enum.RenderPriority.Input.Value + RENDER_ORDER.tutorialAfterFx, () =>
@@ -71,19 +87,25 @@ export class SightingController implements OnStart {
 		if (shown !== undefined && (shown.until <= now || this.sim.isRunOver())) clientStore.setSighting(undefined);
 		const ctx = this.sim.getContext();
 		if (ctx === undefined || ctx.tutorial) return;
+		// docs/SECRET_ROOMS.md SR9: every frame's knocks (the run view's events are this frame's only), before any gate
+		this.knock.observe(ctx.run.secrets, ctx.localIndex);
 		if (this.sim.isInputCovered() || this.sim.isRunOver()) return;
 		const state = ctx.run.state;
 		const canShow = !isDraftOpen(state) && ctx.live?.isPaused() !== true;
 		if (this.queue.isLoaded()) {
 			const found = sightingsInView(state, this.sim.getViewPlayerIndex(), this.found);
 			// docs/GOLDLING_RUMOURS.md GR7: the rumours' first-time card, queued on this floor's first rumour cue
-			this.queue.observe(withRumourSighting(found, this.sim.getGoldenRumour().heard()));
+			this.queue.observe(
+				// docs/SECRET_ROOMS.md SR9 / SRD5: the crack's first-time card from the local player's first knock
+				withSecretSighting(withRumourSighting(found, this.sim.getGoldenRumour().heard()), this.knock.knocked()),
+			);
 			const id = this.queue.next(now, canShow);
 			if (id !== undefined) {
 				this.serial++;
 				const card = {
 					id: SIGHTING_VIEW.toastIdBase - this.serial,
-					key: sightingStringKey(id),
+					// the local player's character's text (the Archer's crack card names the charged arrow)
+					key: sightingCardKey(id, ctx.character, this.hasString),
 					until: now + SIGHTING_VIEW.toastSeconds,
 				};
 				clientStore.setSighting(this.codex.sightingChip(id) ? { ...card, codexNew: true } : card);

@@ -39,6 +39,10 @@
  * Roblox-port slot (docs/FORTUNE.md FO6): PACT (`pact.altar`, required: a pact altar is a gameplay object), free-size
  * world art like PELLET, inline in SLOTS; Fortune's roles, sounds, strings and optional coin effect: fortune.ts (named
  * inline here, like the pellets').
+ *
+ * Roblox-port slot (docs/SECRET_ROOMS.md SR10): SECRET (`secret.crack` / `secret.rubble`, OPTIONAL: the view draws its
+ * fallback without them, so there is no placeholder kind), free-size world art like PACT, inline in SLOTS; the secret
+ * rooms' role, sounds, strings and optional dust effect: secrets.ts (named inline here, like Fortune's).
  */
 
 import type { AssetKind, ColorRole, ParticleFlipbookMode, Pivot } from "./types";
@@ -373,16 +377,37 @@ export const SLOTS: ReadonlyArray<SlotContract> = [
 		facings: [],
 		baseAnimations: ["idle"],
 	},
+	/**
+	 * Roblox port (docs/SECRET_ROOMS.md SR10): SECRET, a secret room's crack overlay and the rubble left after the open
+	 * (secrets.ts SECRET_ART_IDS: `secret.crack`, `secret.rubble`). OPTIONAL like decor: a pack without them draws the
+	 * view's fallback, so there is no placeholder kind. Free-size world art like PACT: `image` (with `pixelsPerTile`) or
+	 * a one-facing `sprites` set (`idle`; secretArt.ts holds the facing). Any other `secret.` ID is an error. Written
+	 * inline, like PACT (contract.luau's 200-locals limit).
+	 */
+	{
+		slot: "secret",
+		prefix: "secret.",
+		kinds: ["image", "sprites"],
+		facings: [],
+		baseAnimations: ["idle"],
+	},
 ];
 
 /**
  * Slots whose images are free-size world art drawn at `pixelsPerTile` (decor pieces, breakables, boost drops, pellets,
- * the vault's chest and cage, pact altars), in SLOTS order. Built inside a function: the filter's Luau temporaries
- * would be top-level locals.
+ * the vault's chest and cage, pact altars, a secret room's crack and rubble), in SLOTS order. Built inside a function:
+ * the filter's Luau temporaries would be top-level locals.
  */
 export const WORLD_ART_SLOTS: ReadonlyArray<SlotContract> = ((): SlotContract[] =>
 	SLOTS.filter(
-		(s) => s === DECOR || s === BREAKABLE || s === BOOST || s === PELLET || s === TREASURE || s.slot === "pact",
+		(s) =>
+			s === DECOR ||
+			s === BREAKABLE ||
+			s === BOOST ||
+			s === PELLET ||
+			s === TREASURE ||
+			s.slot === "pact" ||
+			s.slot === "secret",
 	))();
 
 /** The slot an asset ID belongs to, by prefix. */
@@ -810,7 +835,9 @@ export const BOOST_BEAM_IMAGE_ID = "ui.marker.boost";
  * (docs/FLOOR_MODIFIERS.md FM7, floorModifiers.ts FLOOR_MODIFIER_AUDIO_IDS): one sting per kind on the floor card
  * banner's stamp (a boon falls back to sfx.jingle.treasure, the twist to sfx.horde.horn). Then the Codex's one
  * (claude/codex-plan.md CX5, codex.ts CODEX_AUDIO_IDS): a codex toast's chime (no fallback: silent until a clip is
- * picked, CXD12).
+ * picked, CXD12). Then the secret rooms' three (docs/SECRET_ROOMS.md SR10, secrets.ts SECRET_AUDIO_IDS): the crack's
+ * hollow knock, the wall's crumble, the discovery jingle (falling back to sfx.breakable.hit / sfx.breakable.break /
+ * sfx.jingle.treasure while silent).
  */
 export const PORT_AUDIO_EVENTS = [
 	"sfx.player.swing",
@@ -948,6 +975,11 @@ export const PORT_AUDIO_EVENTS = [
 	"sfx.golden.rumour.room",
 	// claude/codex-plan.md CX5 (codex.ts CODEX_AUDIO_IDS, the same list): a codex toast's soft chime (CXD12; no fallback)
 	"sfx.codex.new",
+	// docs/SECRET_ROOMS.md SR10 (secrets.ts SECRET_AUDIO_IDS, the same list): a wrong-way hit on the crack (a hollow
+	// knock), the wall bursting open (a crumble), the discovery jingle on the reveal
+	"sfx.secret.knock",
+	"sfx.secret.open",
+	"sfx.jingle.secret",
 ] as const;
 
 /**
@@ -1335,6 +1367,13 @@ export const REQUIRED_STRING_KEYS: ReadonlyArray<string> = ((): string[] => [
 	// claude/codex-plan.md CX5: the Codex screen, its states, hints, kind lines and descriptions, the in-run chip / tag /
 	// toast lines, the run-over line and the menu button (codex.ts CODEX_STRING_KEYS)
 	...CODEX_STRING_KEYS,
+	// docs/SECRET_ROOMS.md SR10: secrets.ts SECRET_STRING_KEYS, written out (no new top-level local): the SECRET! shout,
+	// the co-op toast, the secret chest's card title, the recap highlight, the Codex entry's name
+	"fx.secret.text",
+	"hud.toast.secret",
+	"treasure.secret.title",
+	"run.recap.hl.secrets",
+	"secret.room.name",
 ])();
 
 /**
@@ -2186,7 +2225,8 @@ export const SOUND_PITCH_LIMITS = { min: 0.5, max: 2 } as const;
  * the fx tint rule); then a player bullet's impact burst (docs/PROJECTILE_ART.md PA7, BULLET_ART.hitFx; untinted, its
  * meanColor under the fx rule); then the boost drops' pickup burst and per-kind aura (BOOST_FX_IDS, docs/BOOSTS.md B5); then a
  * vault chest's light column (docs/TREASURE.md TR6, treasure.ts TREASURE_COLUMN_FX_ID; tinted by the opened tier's
- * floor role). Built inside a function like REQUIRED_ASSET_IDS: an entry after the spread costs a top-level length
+ * floor role); then a secret room's dust trickle (docs/SECRET_ROOMS.md SR10, secrets.ts SECRET_DUST_FX_ID; tinted by
+ * `secret.dust`). Built inside a function like REQUIRED_ASSET_IDS: an entry after the spread costs a top-level length
  * local in contract.luau.
  */
 export const FX_IDS = (() =>
@@ -2214,6 +2254,8 @@ export const FX_IDS = (() =>
 		"fx.bullet.hit",
 		...BOOST_FX_IDS,
 		"fx.treasure.column",
+		// docs/SECRET_ROOMS.md SR10 (secrets.ts SECRET_DUST_FX_ID): a secret room's dust trickle
+		"fx.secret.dust",
 	] as const)();
 export type FxId = (typeof FX_IDS)[number];
 

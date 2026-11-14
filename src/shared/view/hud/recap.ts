@@ -90,6 +90,12 @@ export interface RecapChestsInput {
 	readonly legendary: number;
 }
 
+/** The run's secret rooms (docs/SECRET_ROOMS.md SR9, shared/sim secretsRunSummary: the party's opens and chests). */
+export interface RecapSecretsInput {
+	readonly found: number;
+	readonly taken: number;
+}
+
 /** Everything the recap reads, gathered once at run over (and again on a verdict with other numbers). */
 export interface RunRecapInput {
 	readonly world: RecapWorld;
@@ -133,6 +139,11 @@ export interface RunRecapInput {
 	readonly team?: RecapTeamInput;
 	/** The run's chests (treasureRunSummary); undefined: a run without treasure rooms (no Chests highlight at all). */
 	readonly chests?: RecapChestsInput;
+	/**
+	 * The run's secret rooms (secretsRunSummary(state) when state.secrets exists); undefined: a run without secrets (M1,
+	 * the tutorial: no Secrets highlight at all).
+	 */
+	readonly secrets?: RecapSecretsInput;
 }
 
 /** A score source's count, 0 when the run has no such source (JACKPOT / PELLETS / SWEEP exist in some runs only). */
@@ -367,6 +378,8 @@ function evaluate(def: RecapHighlightDef, input: RunRecapInput, coop: boolean): 
 			return plain(team.syncParries, def.min);
 		case "sweeps":
 			return hasSource(s, ScoreSource.SWEEP) ? plain(countOf(s, ScoreSource.SWEEP), def.min) : undefined;
+		case "secrets":
+			return input.secrets !== undefined ? plain(input.secrets.found, def.min) : undefined;
 		case "chests":
 			return input.chests !== undefined ? plain(input.chests.opened, def.min) : undefined;
 		case "grazes":

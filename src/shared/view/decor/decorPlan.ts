@@ -85,6 +85,12 @@
  *              room's FLOOR whose ring is FLOOR too, with no flat piece on any of them and the block not kept out,
  *              lowest block hash first, spacingTiles apart. Source "scatter".
  *
+ *   keepOut    docs/SECRET_ROOMS.md SR7, only with DecorPlanInput.keepOut (a secret room's chamber and ring, the crack
+ *              on its edge; decorInputOfLayout passes it on a secret floor): no tall or dressing piece stands on a cell
+ *              in it, no banner hangs there (Forge banners drop as `secret`, room banners skip it), and no void set
+ *              piece stands, lies or reaches into it. Torches keep their cells (the Forge's light; SR1 keeps them off
+ *              and away from the crack). Absent: the plan is exactly the one without it.
+ *
  * Coordinates: grid cell (gx, gy) is world (x, z) = (gx, gy) (TILE_SIZE 1, shared/dungeon collision.ts); heights in
  * tiles above the floor. Entries carry world positions in sim units; the renderer converts with studsX / studsY /
  * studsZ.
@@ -117,6 +123,8 @@ import {
 	type VoidDecorKind,
 } from "shared/theme";
 import { BULLET_VIEW, GAME_WORLD } from "../config";
+// By file: a leaf (the shared/view/secrets barrel reaches back into the decor plan's users).
+import { inCellRect, secretRingRect, type CellRect } from "../secrets/geometry";
 import { floorClearanceStuds } from "../sprites";
 import type { IsoBasis } from "../iso";
 // The void's config and layers by file, not the voidDecor barrel: voidDecor/plan.ts imports this folder's barrel.
@@ -345,7 +353,9 @@ export type DecorDropReason =
 	 * on the wall cell right behind a bookcase (docs/BOOKSHELVES.md: the case's top rises over it), or on a wall cell
 	 * screen-up of a stockpile (docs/KENNEY_DECOR.md KN9: its scaffold rises over the far walls beside it)
 	 */
-	| "behindShelf";
+	| "behindShelf"
+	/** docs/SECRET_ROOMS.md SR7: a Forge banner on a cell of DecorPlanInput.keepOut (a secret room's chamber or ring) */
+	| "secret";
 
 /** Every DecorDropReason, in report order. */
 export const DECOR_DROP_REASONS: ReadonlyArray<DecorDropReason> = [
@@ -362,6 +372,7 @@ export const DECOR_DROP_REASONS: ReadonlyArray<DecorDropReason> = [
 	"hiddenFace",
 	"underTall",
 	"behindShelf",
+	"secret",
 ];
 
 /** One drawn piece. World positions in sim units (tiles; x = grid x, z = grid y, y = height above the floor). */
@@ -479,10 +490,19 @@ export interface DecorPlanInput {
 	 * planned when the pack has art for it (it is optional extra art, unlike the standard kinds); absent: none.
 	 */
 	readonly voidVariants?: (kind: VoidDecorKind) => number;
+	/**
+	 * docs/SECRET_ROOMS.md SR7: cells no standing, dressing, banner or void piece takes (the `keepOut` rule; a secret
+	 * room's ring, shared/view/secrets secretRingRect). Absent: the plan is exactly the one without it.
+	 */
+	readonly keepOut?: CellRect;
 }
 
-/** planDecor's input for an endless floor layout (its seed, floor, breakables, spawn and stairwell). */
+/**
+ * planDecor's input for an endless floor layout (its seed, floor, breakables, spawn and stairwell; a secret floor's
+ * chamber and ring as the keep-out, docs/SECRET_ROOMS.md SR7).
+ */
 export function decorInputOfLayout(layout: EndlessFloorLayout, depth?: number): DecorPlanInput {
+	const secret = layout.secret;
 	return {
 		dungeon: layout.dungeon,
 		floorSeed: layout.seed,
@@ -491,6 +511,7 @@ export function decorInputOfLayout(layout: EndlessFloorLayout, depth?: number): 
 		breakables: layout.breakables,
 		spawn: layout.spawn,
 		stairwell: layout.stairwell,
+		keepOut: secret !== undefined ? secretRingRect(secret) : undefined,
 	};
 }
 
@@ -755,6 +776,7 @@ export function planDecor(input: DecorPlanInput): DecorPlan {
 	const top = GAME_WORLD.wallHeightTiles;
 	const roomCount = d.rooms.size();
 
+	const keep = input.keepOut;
 	const dropped = new Map<DecorDropReason, number>();
 	for (const r of DECOR_DROP_REASONS) dropped.set(r, 0);
 	const drop = (r: DecorDropReason) => dropped.set(r, (dropped.get(r) ?? 0) + 1);
@@ -935,6 +957,7 @@ export function planDecor(input: DecorPlanInput): DecorPlan {
 		for (const c of cells) {
 			if (tallCell.has(c)) return false;
 			if (keptOut(c % W, math.floor(c / W), ignoreDoor, false) !== undefined) return false;
+			if (keep !== undefined && inCellRect(keep, c % W, math.floor(c / W))) return false;
 		}
 		if (!spacedOk(f) || !legal(f, kind)) return false;
 		for (const c of cells) tallCell.add(c);
@@ -1219,6 +1242,10 @@ export function planDecor(input: DecorPlanInput): DecorPlan {
 			drop(why);
 			continue;
 		}
+		if (h.kind === "banner" && inCellRect(keep, h.x, h.y)) {
+			drop("secret");
+			continue;
+		}
 		wallTaken.add(c);
 		const [fx, fz] = face;
 		const front = (h.y + fz) * W + h.x + fx;
@@ -1296,7 +1323,12 @@ export function planDecor(input: DecorPlanInput): DecorPlan {
 		};
 		const free = (fw: FarWall) => {
 			const c = fw.y * W + fw.x;
-			return !wallTaken.has(c) && !tallCell.has(c) && keptOut(fw.x, fw.y, false, false) === undefined;
+			return (
+				!wallTaken.has(c) &&
+				!tallCell.has(c) &&
+				keptOut(fw.x, fw.y, false, false) === undefined &&
+				!inCellRect(keep, fw.x, fw.y)
+			);
 		};
 		for (const piece of d.solidDecor ?? []) {
 			if (piece.kind !== "throne" || piece.room < 0 || piece.room >= roomCount) continue;
@@ -2189,6 +2221,11 @@ function addVoidPieces(
 
 	// --- standing pieces ---------------------------------------------------------------------------
 	const taken = new Array<boolean>(n, false);
+	// docs/SECRET_ROOMS.md SR7: the keep-out's cells are taken before any piece (nothing stands or lies there).
+	const keep = input.keepOut;
+	if (keep !== undefined)
+		for (let y = math.max(0, keep.y0); y <= math.min(H - 1, keep.y1); y++)
+			for (let x = math.max(0, keep.x0); x <= math.min(W - 1, keep.x1); x++) taken[y * W + x] = true;
 	const placed: Placed[] = [];
 	/** Standing void pieces per room (VOID_PIECES.tallPerRoom). */
 	const perRoom = new Map<number, number>();
@@ -2345,7 +2382,7 @@ function addVoidPieces(
 			if (px < 0 || py < 0 || px >= W || py >= H) fits = false;
 			else {
 				const j = py * W + px;
-				fits = layer[j] === l && vtop[j] === t;
+				fits = layer[j] === l && vtop[j] === t && !inCellRect(keep, px, py);
 			}
 		}
 		if (!fits) continue; // the gap stays spent: the next eligible cell tries

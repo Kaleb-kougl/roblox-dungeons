@@ -52,6 +52,11 @@
 			"bytes": 21439
 		},
 		{
+			"path": "lrsf-8bit/Wav/Jingle_Achievement_00.wav",
+			"sha256": "ed057b699064a9708ba46ac11caa177f74f5b43ae8e6c841b83426f37f6a2f3f",
+			"bytes": 586304
+		},
+		{
 			"path": "ninja-adventure/Audio/Jingles/GameOver.wav",
 			"sha256": "e12fc497fbf2a3a7d787167f8fe8c0de542d4f9ad950be67ac4036c16477d1fc",
 			"bytes": 353012
@@ -545,6 +550,11 @@
 			"path": "ninja-adventure/Audio/Sounds/Whoosh & Slash/Whoosh2.wav",
 			"sha256": "7ba3cc15a17cf9dd7e2da8dec4d5f8d5e73a7d5e316c213a52731f71c484abec",
 			"bytes": 78332
+		},
+		{
+			"path": "oga-breaking-rock/rock_break.ogg",
+			"sha256": "b645f35d21194e7855dd4a5405b1e8e6bec070731b92df6abcb202676b8e9f2e",
+			"bytes": 8852
 		},
 		{
 			"path": "oga-fire-loop/qubodupFireLoop.ogg",

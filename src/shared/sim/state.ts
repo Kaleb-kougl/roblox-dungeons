@@ -19,6 +19,7 @@ import {
 	addPactScoreSources,
 	addGoldenScoreSources,
 	addOvercapScoreSources,
+	addSecretScoreSources,
 	addPelletScoreSources,
 	addTreasureScoreSources,
 	cloneScoreState,
@@ -44,6 +45,7 @@ import { clonePelletsState, createPelletsState, pelletsOnFloor, type PelletsStat
 import { cloneTreasureState, createTreasureState, treasureOnFloor, type TreasureState } from "./treasure/treasure";
 import { clonePactsState, createPactsState, pactsOnFloor, type PactsState } from "./pacts/pacts";
 import { cloneGoldenState, createGoldenState, goldenOnFloor, type GoldenState } from "./golden/golden";
+import { cloneSecretsState, createSecretsState, secretsOnFloor, type SecretsState } from "./secrets/secrets";
 
 export interface PlayerState {
 	x: number;
@@ -341,6 +343,14 @@ export interface SimState {
 	 * other group (after "pacts"). See golden/golden.ts.
 	 */
 	golden?: GoldenState;
+	/**
+	 * Secret rooms (docs/SECRET_ROOMS.md SR4), only when SimConfig.secrets is set: its own rng stream (the chest's
+	 * draws), this floor's secret (status hidden / open / taken, its room, crack and chest slots, the chest's centre,
+	 * facing and tier, the open's tick, credit and opener kind, who took the chest) and the run counters (found, taken,
+	 * opens by kind). Hashed as the "secrets" subsystem, appended after every other group (after "golden"). See
+	 * secrets/secrets.ts.
+	 */
+	secrets?: SecretsState;
 }
 
 /**
@@ -372,6 +382,9 @@ export interface SimState {
  * (addGoldenScoreSources).
  * With `config.builds`, a scored run's points / counts finally gain OVERCAP (docs/BUILDS_V2.md BV9,
  * addOvercapScoreSources, padding every earlier gated source).
+ * With `config.secrets`, `secrets` state is created last (its own stream from `seed`; the first floor's secret in
+ * endless mode, none otherwise; it reads the breakables' pieces), and a scored run's points / counts gain SECRET last
+ * (docs/SECRET_ROOMS.md SR4, addSecretScoreSources, padding every earlier gated source, OVERCAP included).
  */
 export function createSimState(
 	seed: number,
@@ -487,6 +500,14 @@ export function createSimState(
 	// Overcap points (docs/BUILDS_V2.md BV9): builds runs' last gated source (OVERCAP; every earlier one padded), so
 	// it hashes only in builds runs.
 	if (config.builds !== undefined && state.score !== undefined) addOvercapScoreSources(state.score);
+	// Secret rooms (docs/SECRET_ROOMS.md SR4): its own stream (seed ^ SECRETS_SALT), after the breakables (its pieces).
+	// No sim rng. Its score source last (SECRET; every earlier gated one padded), so it hashes only here.
+	const secrets = config.secrets;
+	if (secrets !== undefined) {
+		state.secrets = createSecretsState(secrets, seed);
+		secretsOnFloor(state, firstFloor?.secret);
+		if (state.score !== undefined) addSecretScoreSources(state.score);
+	}
 	return state;
 }
 
@@ -520,6 +541,7 @@ export function cloneSimState(s: Readonly<SimState>): SimState {
 		treasure: s.treasure !== undefined ? cloneTreasureState(s.treasure) : undefined,
 		pacts: s.pacts !== undefined ? clonePactsState(s.pacts) : undefined,
 		golden: s.golden !== undefined ? cloneGoldenState(s.golden) : undefined,
+		secrets: s.secrets !== undefined ? cloneSecretsState(s.secrets) : undefined,
 	};
 	if (s.party !== undefined) clone.party = cloneParty(s.party, clone);
 	return clone;

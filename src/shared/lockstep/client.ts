@@ -99,6 +99,7 @@ import { PelletFrameEvents } from "shared/view/pellets";
 import { TreasureFrameEvents } from "shared/view/treasure";
 import { PactFrameEvents } from "shared/view/pacts";
 import { GoldenFrameEvents } from "shared/view/golden";
+import { SecretFrameEvents } from "shared/view/secrets";
 import {
 	BuildFxEvents,
 	ComboEvents,
@@ -186,6 +187,8 @@ export class LockstepClient implements RunView, PredictionSource {
 	readonly pacts = new PactFrameEvents();
 	/** The Goldling events of the ticks the last pump stepped (docs/FORTUNE.md FO8; reset every pump). */
 	readonly golden = new GoldenFrameEvents();
+	/** The secret-room events (knocks, the open, the chest) of the ticks the last pump stepped (docs/SECRET_ROOMS.md SR6). */
+	readonly secrets = new SecretFrameEvents();
 	/** Run totals for the HUD (kills, landed hits on the party). */
 	kills = 0;
 	hitsTaken = 0;
@@ -544,6 +547,7 @@ export class LockstepClient implements RunView, PredictionSource {
 		this.treasure.reset();
 		this.pacts.reset();
 		this.golden.reset();
+		this.secrets.reset();
 		const inputs: OutgoingInputs[] = [];
 		const hashes: Array<{ tick: number; hash: string }> = [];
 		let final: RunFinal | undefined;
@@ -625,6 +629,7 @@ export class LockstepClient implements RunView, PredictionSource {
 			this.treasure.collect(state);
 			this.pacts.collect(state);
 			this.golden.collect(state);
+			this.secrets.collect(state);
 			stepped++;
 			if (state.tick % this.tunables.hashEvery === 0 && !this.stopped) {
 				this.unackedTicks.push(state.tick);

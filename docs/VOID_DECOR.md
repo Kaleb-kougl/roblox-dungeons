@@ -447,3 +447,9 @@ for the decor atlas upload; VD7 any time. VD10 lands with the code; VD11 last.
   and let the colour ramp do the rest.
 - **Floor-change hitch.** The planner runs per floor (field BFS over ~13k cells plus footprint checks); keep it behind
   the stage cover and under ~15 ms, like the decor plan.
+
+## Secret rooms (2026-11-13)
+
+`planVoid`'s optional hold-out (`VoidPlanInput.holdOut`, docs/SECRET_ROOMS.md SR7) keeps a secret room's chamber and ring
+as columns of their own (`VoidPlan.held`; absent: the plan exactly as before); before the open it is the same void rock as
+anywhere, at the open VoidController sinks it (`sinkHeld`, `SECRET_VIEW.sink`: at once under reduced motion).

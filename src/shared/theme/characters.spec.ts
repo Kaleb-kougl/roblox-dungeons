@@ -69,7 +69,7 @@ describe("character strings (docs/ARCHER.md AR11)", () => {
 		]);
 	});
 
-	it("the five overridden items (the plan's table), in both packs, never required", () => {
+	it("the five overridden items (the plan's table) and the secret room's first-knock card, in both packs, never required", () => {
 		const s = PLACEHOLDER_MANIFEST.strings;
 		const rows: ReadonlyArray<[string, string, string]> = [
 			["boon.swiftStrikes.evo.desc", "archer", "40% faster; arrows fly in threes"],
@@ -79,6 +79,12 @@ describe("character strings (docs/ARCHER.md AR11)", () => {
 			["duo.fullHeart.desc", "knight", "At full hearts, finishers fire a beam"],
 			["duo.fullHeart.desc", "archer", "At full hearts, charged arrows fire a beam"],
 			["duo.citadel.desc", "archer", "Every roll through 8 bullets restores a pip"],
+			// docs/SECRET_ROOMS.md SR10 (SRD5): the first-knock card names the charged arrow
+			[
+				"bestiary.secret.crack",
+				"archer",
+				"A hollow wall. A charged arrow, a Charger's charge or a Wrecker roll could break through.",
+			],
 		];
 		expect(rows.map(([k, c]) => characterOverrideKey(k, c))).toEqual([...CHARACTER_OVERRIDE_KEYS]);
 		for (const [key, character, text] of rows) {
@@ -88,7 +94,7 @@ describe("character strings (docs/ARCHER.md AR11)", () => {
 		}
 		const bases = new Set<string>();
 		for (const [key] of rows) bases.add(key);
-		expect(bases.size()).toBe(5);
+		expect(bases.size()).toBe(6);
 		// The Knight's Swift Strikes evolution, Bastion and Citadel lines are the base keys (unchanged).
 		expect(s["boon.swiftStrikes.evo.desc.knight"]).toBe(undefined);
 		expect(s["boon.bastion.desc.knight"]).toBe(undefined);

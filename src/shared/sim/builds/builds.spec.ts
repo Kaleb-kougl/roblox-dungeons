@@ -14,6 +14,7 @@ import {
 	BUILDS_CONFIG,
 	BUILDS_SUBSYSTEM,
 	GOLDEN_SUBSYSTEM,
+	SECRETS_SUBSYSTEM,
 	PELLETS_SUBSYSTEM,
 	PACTS_SUBSYSTEM,
 	BUILD_PLAYER_SCALARS,
@@ -325,7 +326,9 @@ describe("opt-in state and the builds hash group (BU1)", () => {
 			const s = createSimState(1337, f1.spawnX, f1.spawnZ, setup.config);
 			const layout = hashLayout(s, true);
 			const names = layout.groups.map((g) => g.name);
+			// docs/SECRET_ROOMS.md SR5: secrets after golden, last.
 			expect([
+				names[names.size() - 7],
 				names[names.size() - 6],
 				names[names.size() - 5],
 				names[names.size() - 4],
@@ -339,8 +342,9 @@ describe("opt-in state and the builds hash group (BU1)", () => {
 				TREASURE_SUBSYSTEM,
 				PACTS_SUBSYSTEM,
 				GOLDEN_SUBSYSTEM,
+				SECRETS_SUBSYSTEM,
 			]);
-			const g = layout.groups[layout.groups.size() - 5];
+			const g = layout.groups[layout.groups.size() - 6];
 			expect([layout.names[g.start], layout.values[g.start]]).toEqual(["builds.players.length", n]);
 			expect(layout.names[g.start + 1]).toBe("builds.players[0].levels.length");
 			expect(layout.values[g.start + 1]).toBe(BOON_COUNT);
@@ -380,13 +384,15 @@ describe("opt-in state and the builds hash group (BU1)", () => {
 		const setup = buildEndlessRunConfig(SEED);
 		const spawn = setup.spawn!;
 		// Pellets (docs/PELLETS.md PL5), treasure (docs/TREASURE.md TR5), pacts (docs/FORTUNE.md PS5) and the Goldling
-		// (docs/FORTUNE.md GE3) left out of both: they would pad the Jackpot source without builds too.
+		// (docs/FORTUNE.md GE3), secret rooms (docs/SECRET_ROOMS.md SR5) left out of both: they would pad the Jackpot
+		// source without builds too.
 		const withConfig: SimConfig = {
 			...setup.config,
 			pellets: undefined,
 			treasure: undefined,
 			pacts: undefined,
 			golden: undefined,
+			secrets: undefined,
 		};
 		const without: SimConfig = {
 			...setup.config,
@@ -395,6 +401,7 @@ describe("opt-in state and the builds hash group (BU1)", () => {
 			treasure: undefined,
 			pacts: undefined,
 			golden: undefined,
+			secrets: undefined,
 		};
 		const a = createSimState(SEED, spawn.x, spawn.z, without);
 		const b = createSimState(SEED, spawn.x, spawn.z, withConfig);
@@ -761,9 +768,10 @@ describe("builds v2, wave 1 (docs/BUILDS_V2.md BV1): data and scaffolding, no ru
 		expect([ProcKind.KILL, ProcKind.SMASH]).toEqual([0, 1]);
 		expect([BreakableSource.ROLL, BreakableSource.BUILD]).toEqual([4, 5]);
 		expect([ScoreSource.OVERCAP, OVERCAP_POINTS]).toEqual([15, 10]);
-		// BV9 adds the source: an endless (builds) run's points / counts end at OVERCAP (16 entries, 0..15).
+		// BV9 adds the source: an endless (builds) run's points / counts end at OVERCAP (16 entries, 0..15) without
+		// secrets (docs/SECRET_ROOMS.md SR4: SECRET 16 pads after it).
 		const setup = buildEndlessRunConfig(SEED);
-		const s = createSimState(SEED, setup.spawn!.x, setup.spawn!.z, setup.config);
+		const s = createSimState(SEED, setup.spawn!.x, setup.spawn!.z, { ...setup.config, secrets: undefined });
 		expect([s.score!.points.size(), s.score!.counts.size()]).toEqual([
 			ScoreSource.OVERCAP + 1,
 			ScoreSource.OVERCAP + 1,

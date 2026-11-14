@@ -20,6 +20,7 @@ import {
 	newCodexFrame,
 	pushCodexDeath,
 	readCodexFrame,
+	readCodexSecrets,
 	type CodexRunSummary,
 	type CodexTrackerOutput,
 } from "shared/view/codex";
@@ -148,6 +149,8 @@ export class CodexController implements OnStart, ToastChipSource {
 		// Not counting (an ineligible run, a failed load): only the run's end matters, so the state is not read.
 		if (counting) {
 			readCodexFrame(state, ctx.config, this.sim.getLocalPlayerIndex(), this.sim.getViewPlayerIndex(), f);
+			// docs/SECRET_ROOMS.md SRD12: the local player's first knock (seen) and any open this frame (found)
+			readCodexSecrets(f, view.secrets, this.sim.getLocalPlayerIndex());
 		}
 		f.runOver = this.sim.isRunOver();
 		if (f.runOver || f.left) {

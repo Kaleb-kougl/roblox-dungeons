@@ -67,3 +67,4 @@ export * from "./pellets";
 export * from "./treasure";
 export * from "./pacts";
 export * from "./golden";
+export * from "./secrets";

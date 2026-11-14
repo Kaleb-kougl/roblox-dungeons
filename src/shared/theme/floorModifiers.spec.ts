@@ -6,6 +6,7 @@
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { FloorModifierClass, MODIFIERS } from "shared/dungeon";
 import { CODEX_AUDIO_IDS, CODEX_STRING_KEYS } from "./codex";
+import { SECRET_AUDIO_IDS, SECRET_ROLES, SECRET_STRING_KEYS } from "./secrets";
 import { colorDifference, contrastRatio } from "./color";
 import { PORT_AUDIO_EVENTS, REQUIRED_ASSET_IDS, REQUIRED_STRING_KEYS, slotFor } from "./contract";
 import {
@@ -54,11 +55,13 @@ function tail(list: ReadonlyArray<string>, n: number, skip = 0): string[] {
 
 /**
  * What comes after the floor modifiers' entries: docs/GOLDLING_RUMOURS.md GR6 / GR7's two sounds and two strings, then
- * claude/codex-plan.md CX5's sound and strings (codex.spec.ts).
+ * claude/codex-plan.md CX5's sound and strings (codex.spec.ts), then docs/SECRET_ROOMS.md SR10's sounds, strings and
+ * colour role (secrets.spec.ts).
  */
 const LATER_AFTER = {
-	audio: GOLDEN_RUMOUR_AUDIO_IDS.size() + CODEX_AUDIO_IDS.size(),
-	strings: GOLDEN_RUMOUR_STRING_KEYS.size() + CODEX_STRING_KEYS.size(),
+	audio: GOLDEN_RUMOUR_AUDIO_IDS.size() + CODEX_AUDIO_IDS.size() + SECRET_AUDIO_IDS.size(),
+	strings: GOLDEN_RUMOUR_STRING_KEYS.size() + CODEX_STRING_KEYS.size() + SECRET_STRING_KEYS.size(),
+	roles: SECRET_ROLES.size(),
 } as const;
 
 describe("floor modifiers: theme keys", () => {
@@ -127,9 +130,9 @@ describe("floor modifiers: theme keys", () => {
 			"floorMod.plunder",
 			"floorMod.bloodMoon",
 		]);
-		expect(tail(COLOR_ROLES as unknown as ReadonlyArray<string>, FLOOR_MODIFIER_ROLES.size())).toEqual([
-			...FLOOR_MODIFIER_ROLES,
-		]);
+		expect(
+			tail(COLOR_ROLES as unknown as ReadonlyArray<string>, FLOOR_MODIFIER_ROLES.size(), LATER_AFTER.roles),
+		).toEqual([...FLOOR_MODIFIER_ROLES]);
 		for (const id of sortedKeys(THEME_PACKS)) {
 			const c = THEME_PACKS[id].colors as unknown as Obj;
 			expect([id, c["floorMod.gilded"], c["floorMod.hoard"], c["floorMod.feast"], c["floorMod.plunder"]]).toEqual(
@@ -139,7 +142,7 @@ describe("floor modifiers: theme keys", () => {
 		}
 	});
 
-	it("appends the five stings to PORT_AUDIO_EVENTS before the Goldling rumours' (lowercase: bloodmoon): required, sfx; SILENT in every bundled pack", () => {
+	it("appends the five stings to PORT_AUDIO_EVENTS before the Goldling rumours' (lowercase: bloodmoon): required, sfx; SILENT in the placeholder, uploaded in vale (FM10, 2026-11-13)", () => {
 		expect(FLOOR_MODIFIER_KEYS.map((k) => floorModifierAudioId(k))).toEqual([...FLOOR_MODIFIER_AUDIO_IDS]);
 		expect([...FLOOR_MODIFIER_AUDIO_IDS]).toEqual([
 			"sfx.floor.modifier.gilded",
@@ -155,7 +158,7 @@ describe("floor modifiers: theme keys", () => {
 		for (const id of FLOOR_MODIFIER_AUDIO_IDS) {
 			expect([id, has(REQUIRED_ASSET_IDS, id), slotFor(id)?.soundGroup]).toEqual([id, true, "sfx"]);
 			for (const p of sortedKeys(THEME_PACKS))
-				expect([p, id, THEME_PACKS[p].assets[id].kind]).toEqual([p, id, "silent"]);
+				expect([p, id, THEME_PACKS[p].assets[id].kind]).toEqual([p, id, p === "vale" ? "sound" : "silent"]);
 		}
 		// a missing sting fails like any required sound
 		const m = clone();

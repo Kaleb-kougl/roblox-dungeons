@@ -17,6 +17,7 @@ import {
 	GOLDEN_BOOST_RING,
 	GOLDEN_SCORE_SOURCE_NAMES,
 	GOLDEN_SUBSYSTEM,
+	SECRETS_SUBSYSTEM,
 	GoldenStatus,
 	NO_BOOST,
 	Rng,
@@ -131,8 +132,9 @@ describe("golden: the score source (GE3)", () => {
 		expect([...GOLDEN_SCORE_SOURCE_NAMES]).toEqual(["golden"]);
 		const r = run();
 		const sc = r.s.score!;
-		// 15 up to GOLDEN, then the builds run's OVERCAP (docs/BUILDS_V2.md BV9): 16.
-		expect([sc.points.size(), sc.counts.size()]).toEqual([16, 16]);
+		// 15 up to GOLDEN, then the builds run's OVERCAP (docs/BUILDS_V2.md BV9): 16, then SECRET (docs/SECRET_ROOMS.md
+		// SR4, every endless world): 17.
+		expect([sc.points.size(), sc.counts.size()]).toEqual([17, 17]);
 		const layout = hashLayout(r.s, true);
 		const score = layout.groups.find((gr) => gr.name === SCORE_SUBSYSTEM)!;
 		const names: string[] = [];
@@ -140,11 +142,12 @@ describe("golden: the score source (GE3)", () => {
 		expect(names.includes("score.points.horde")).toBe(true);
 		expect(names.includes("score.points.golden")).toBe(true);
 		expect(names.includes("score.counts.golden")).toBe(true);
-		expect(layout.groups[layout.groups.size() - 1].name).toBe(GOLDEN_SUBSYSTEM);
-		// Without the config: every endless world sets builds, so since docs/BUILDS_V2.md BV9 it pads GOLDEN (0) on its
-		// way to OVERCAP: 16 sources, GOLDEN never paid.
+		expect(layout.groups[layout.groups.size() - 2].name).toBe(GOLDEN_SUBSYSTEM);
+		expect(layout.groups[layout.groups.size() - 1].name).toBe(SECRETS_SUBSYSTEM);
+		// Without the config: every endless world sets builds and secrets, so since docs/BUILDS_V2.md BV9 it pads GOLDEN
+		// (0) on its way to OVERCAP and SECRET: 17 sources, GOLDEN never paid.
 		const off = run(1, false).s.score!;
-		expect([off.points.size(), off.points[ScoreSource.GOLDEN], off.counts[ScoreSource.GOLDEN]]).toEqual([16, 0, 0]);
+		expect([off.points.size(), off.points[ScoreSource.GOLDEN], off.counts[ScoreSource.GOLDEN]]).toEqual([17, 0, 0]);
 	});
 
 	it("every endless world sets ENDLESS_GOLDEN_CONFIG (solo, co-op, daily, dev)", () => {

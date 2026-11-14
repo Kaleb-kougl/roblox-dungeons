@@ -79,8 +79,9 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/BUILDS_V2.md` | Builds v2, wave 1 (Riposte: a guard that erases bullets answers with a counter-wave, Counterstrike ring and returns; Ballista: the heavy arrow bursts into bolts, Siege Bolt pins and drags an enemy into a wall; Wrecker: rolls smash breakables, every piece you break fires splinters, Demolition chains them; duos Thunder Guard / Stillwater / Rebuke (Bastion + Riposte) / Dragon Bolt / Powder Keg / Full Heart / Happy Hour; the duo hint on New cards; overcap boss points `ScoreSource.OVERCAP`; gameplay, opt-in `SimConfig.builds`; wave 2 and the proposal in its appendix): plan, tasks BV0-BV13, decisions BVD1-BVD20 |
 | `docs/ARCHER.md` | The Archer (the bow split off the knight into its own character: Knight = sword, Archer = bow and a longer roll, one weapon set each; weapon-tagged boons / relics dealt only to the character who carries the weapon; a character screen every run; Knight-only tutorial without the bow room; shared boards with the character shown; SmallScaleInt Archer art): plan, tasks AR0-AR14, decisions ARD1-ARD17 |
 | `docs/FLOOR_MODIFIERS.md` | Floor modifiers (about one endless non-boss floor in five from floor 2 is special and the floor card says so: Gilded = a certain Goldling, Hoard = a certain vault, Feast = a certain power pellet, Plunder = a boost in every room's barrels, Blood Moon = twice the elites; only where true, never on boss floors, never two in a row; a banner on the card, a status chip and a pause line; gameplay, floor-built, opt-in `EndlessFloorOptions.modifiers`, endless only): plan, as built, FM9 census, open owner calls OC1-OC3, Studio check, tasks FM0-FM13, decisions FMD1-FMD12 |
-| `docs/CODEX.md` | Codex (a main-menu catalogue of 86 entries: boons, evolutions, duos, relics & curses, boosts, enemies, champions, bosses; each unknown / seen / found with a NEW dot, completion %; in-run NEW! chips on existing toasts, codex cards on the sighting slot under a 2-per-floor budget, NEW tags on unfound draft cards, a run-over row; client-claimed, server-stored `KV_Codex_v1`; presentation plus one server doc): plan, as built, tasks CX0-CX11, decisions CXD1-CXD15 / R1-R14 |
+| `docs/CODEX.md` | Codex (a main-menu catalogue of 86 entries (87 with docs/SECRET_ROOMS.md's `secret:room`): boons, evolutions, duos, relics & curses, boosts, enemies, champions, bosses; each unknown / seen / found with a NEW dot, completion %; in-run NEW! chips on existing toasts, codex cards on the sighting slot under a 2-per-floor budget, NEW tags on unfound draft cards, a run-over row; client-claimed, server-stored `KV_Codex_v1`; presentation plus one server doc): plan, as built, tasks CX0-CX11, decisions CXD1-CXD15 / R1-R14 |
 | `docs/HAPTICS.md` | Haptics in play (a kill tick, a parry thump, the boss phase break's heavy hit, the boss death rumble and three hurt buzzes, on the view player's own events only, by priority with a kill gap / cap and a 40 % duty cap; pads through `SetMotor`, phones through `HapticEffect`; quiet in menus, spectating and after run over; `padVibration` for menus and play, a new `touchVibration` on Options > Controls > Touch; `KV_HapticDebug`; presentation only): plan, as built, tasks HP0-HP8, decisions HPD1-HPD12 |
+| `docs/SECRET_ROOMS.md` | Secret rooms (a cracked far wall that knocks hollow hides a small torch-lit chamber with a chest; about one endless floor in five from floor 2, nothing announces it; opened by the Knight's combo finisher, a heavy arrow / Siege slam, a Wrecker roll or a Charger's charge; the chest Rare 65 / Legendary 35 with the vault's grants; SECRET! shout, recap highlight, one Codex entry; gameplay, opt-in `SimConfig.secrets`, endless only): plan, as built (Tracks A / T / V1 / V2), Studio check, tasks SR0-SR16, decisions SRD1-SRD14 |
 
 Decision log (deviations from `PLAN.md`):
 - **Art (docs/ART.md).** The theme contract gained a `"sprites"` kind (large pre-rendered cells, 1/4/8/16 screen-space
@@ -1405,6 +1406,57 @@ Decision log (deviations from `PLAN.md`):
   string `options.device.touch`; no pad X Reset there, `PadCondition` `canReset`; opens there for a touch player);
   `padVibration` now covers menus and play (HPD6); reduced motion changes nothing (HPD8). Debug `KV_HapticDebug`
   (prints, test cues 1-7). HP0 (the device spike, docs/SPIKES.md) and HP8 (device check + tune) pending.
+
+- **Secret rooms (docs/SECRET_ROOMS.md).** Gameplay, opt-in `SimConfig.secrets` (`SECRETS_CONFIG`; endless solo / co-op,
+  the Daily, dev, the server's registry and validator through `buildEndlessRunConfig`; never M1 or the tutorial).
+  Floor-built: shared/dungeon `placeSecret` (`secrets.ts` / `secretsData.ts`, its own stream `floorSeed ^ SECRET.salt`
+  0x4b565343, 0 / 1 / 3 draws: chance 25 % from floor 2 (no bands, boss floors allowed, never the boss room), one
+  uniform pick over every candidate, the chest's tier Rare 65 / Legendary 35) runs LAST in `buildEndlessFloor`
+  (`EndlessFloorOptions.secrets`, dev `secretOverride`): a 2-cell crack on an outer far wall of a combat / elite room
+  with VOID behind, a 3-deep front box, a 5x4 / 4x4 / 4x3 / 3x3 chamber dug into the void with a clear halo, the chest
+  on its back row facing the crack; census 21.6 % of floors (runs 1-60 x floors 2-30). The crack's pieces (kind
+  `crackedWall`, `BREAKABLE_PIECE_KINDS` index 3) then the chest are appended after every other piece, so no earlier
+  output, digest or slot moves; `EndlessFloorLayout` / `EndlessFloorWorld.secret` (`FloorSecret`) carries the carved
+  `dungeon` (a new `grid`: chamber FLOOR, ring WALL, crack FLOOR under its pieces; `bfs` / stats the Forge's), which
+  only the sim's five movers / blockers use (`endlessFloorWorld`); every view draws the Forge grid until the open.
+  Sim: `BreakableKind.CRACKED_WALL` 3, inert like the chest (`inertPiece(kind)` replaces every chest test, kinds 0-2
+  byte-identical); every contact that reaches `damageBreakable` is an unhashed per-tick knock (`BreakablesState`
+  `knockSlots` / `knockSources` / `knockPlayers`). Four openers (`sim/secrets/open.ts`): the sword's finisher (a trailing
+  `finisher` flag on `sweepArc` / `meleeHitBreakables`, swings 1 and 2 knock), a Wrecker roll (`rollSmashBreakables`),
+  a heavy arrow stopped by a piece or a Siege slam (`secretsSlamAt`), a Charger's charge tick (`secretsChargeAt`,
+  before `slamBreakables`); the open breaks every crack piece that tick with no breakables bookkeeping and pays
+  `ScoreSource.SECRET` 16 (600 x the kills' floor scale, combo-neutral; `addSecretScoreSources` padded last: every
+  endless run holds 17 sources). The chest opens on reach with the vault's grants, lifted unchanged into
+  `sim/treasure/grants.ts` (`grantShares`, the vault's draws and pins untouched), from the secrets' own rng word
+  (`seedToState(seed) ^ 0x4b565352`); its treasure points into SECRET. `state.secrets` hashed as the `secrets` group
+  appended LAST (after `golden`); events `opened` / `taken` per tick, `secretsRunSummary`. M1, every golden fixture and
+  the tutorial replay exactly as before; endless / daily / dev replays and scores changed (boards stay `_v1`),
+  `DAILY.ruleset` 18 -> 19; pins re-recorded only where a secret now stands (`sim/charger.spec` PIN_HASH e42f7fdf ->
+  b44f15ea, `sim/stormcaller.spec` run 4 floor 3 0406aa34 -> 6b926521); `run/stageInput.ts` counts clutter as
+  `BREAKABLE_KINDS`. Theme (`shared/theme/secrets.ts`): strings `SECRET_STRING_KEYS` (SECRET!, `Secret found by
+  {name}`, `Secret cache`, `Secrets found`, the Codex name) written out last in `REQUIRED_STRING_KEYS`, the first-knock
+  card `bestiary.secret.crack` (sighting `secret.crack`, SIGHTING_IDS' last) with the Archer's override
+  `bestiary.secret.crack.archer`, `score.source.secret`; port audio IDs `sfx.secret.knock` / `.open` /
+  `sfx.jingle.secret` after `sfx.codex.new` (SILENT in both packs, `SFX_FALLBACK` to the breakable hit / break and the
+  treasure jingle; codex.spec's tail and the listed specs' skips updated: a later feature appending there must update
+  them again); role `secret.dust` `#c8bfae` (`secretReport`); optional world art `secret.crack` / `secret.rubble` (slot
+  `secret`, one facing) and fx `fx.secret.dust`: original art by `scripts/art/gen-secret-art.js` in its own sheet
+  `secret.png` (`--only secret`, `packs/vale/secretLayout.ts`), uploaded 2026-11-13; stage feature `secret`. Codex: entry
+  `secret:room` (group `secrets`, the Bestiary tab's last section; catalogue 86 -> 87, order lock updated), seen at the
+  local player's first knock, found at an open. `contract.luau` / `validate.luau` top-level locals 187 / 197 (counted
+  on out/, unchanged). View (presentation only): shared/view/secrets (`SECRET_VIEW`, `SecretFrameEvents` on every
+  RunView as `secrets`, `secretLook` / `SecretViewTracker`, `KnockThrottle` 0.2 s, `FirstKnockLatch`, `SecretCueTracker`,
+  the merge hole / chamber build / map change / news / drawn parts), `planVoid`'s hold-out (`VoidPlan.held`) and
+  `planDecor`'s keep-out (both byte-identical without a secret), `FLOOR_SHOUT_PRIORITY.secret` 3.5, recap highlight
+  `secrets`; client `SecretRenderController` (crack Part in the wall's look through the new `game/worldSurfaces.ts`,
+  overlay or a darker band, dust, puffs, burst, the chamber built hidden and shown at the open, the chest through
+  `treasureBody` with the vault's open, column and `Secret cache` cards), WorldController's crack hole,
+  `VoidController.sinkHeld`, MinimapController's open / reveal / chest mark, the co-op toast (TreasureToastController),
+  the first-time card (SightingController, `sightingCardKey` with the local character), the Codex claims, the recap
+  input and the cue mapper's `secrets`. Debug: `KV_SecretDebug` (dev world: `every`, `legendary` / `rare`),
+  `KV_SecretLabel` (`RUN_ATTRIBUTES.secretLabel`, Studio or KV_Debug: outlines and a label), the `[Secret]` line under
+  KV_Debug. Pending: the sounds (SR14), the `secret.png` upload, the Studio check and playtest (SR15); the discovery
+  bot census (SR13) and telemetry (SR16) optional, not built.
 
 ## Commands
 

@@ -143,6 +143,7 @@ import {
 	GOLDEN_SCORE_SOURCE_NAMES,
 	OVERCAP_POINTS,
 	OVERCAP_SCORE_SOURCE_NAMES,
+	SECRET_SCORE_SOURCE_NAMES,
 	PELLET_SCORE_SOURCE_NAMES,
 	TREASURE_SCORE_SOURCE_NAMES,
 	SCORE_SOURCE_COUNT,
@@ -1041,6 +1042,39 @@ export function scoreOvercap(state: SimState): number {
 	return award(state, s, ScoreSource.OVERCAP, OVERCAP_POINTS, floorScalePercent(scoreFloor(state)));
 }
 
+/**
+ * Secrets runs (docs/SECRET_ROOMS.md SR4, state.ts createSimState, after every other padding): pads points / counts to
+ * every source up to SECRET_SCORE_SOURCE_NAMES (OVERCAP and every earlier gated source included when the run lacks
+ * them: they stay 0), so SECRET hashes only in secrets runs. Idempotent.
+ */
+export function addSecretScoreSources(s: ScoreState): void {
+	const total = ScoreSource.SECRET + SECRET_SCORE_SOURCE_NAMES.size();
+	while (s.points.size() < total) s.points.push(0);
+	while (s.counts.size() < total) s.counts.push(0);
+}
+
+/**
+ * The SECRET award of a crack's open (SRD7): floor(base x floorScalePercent(floor) / 100 x depth x (4 + curses) / 4),
+ * the treasure award's multipliers (the combo fixed at x1.0) with the kills' floor scaling, as exact integer
+ * arithmetic. Pure.
+ */
+export function secretOpenAwardPoints(state: Readonly<SimState>, s: Readonly<ScoreState>, base: number): number {
+	const num = base * floorScalePercent(scoreFloor(state)) * scoreDepth(state) * (CURSE_BASE + s.curses * CURSE_STEP);
+	const den = CURSE_DENOMINATOR * FLOOR_SCALE_DENOMINATOR;
+	return (num - (num % den)) / den;
+}
+
+/**
+ * Secret hook (sim/secrets, docs/SECRET_ROOMS.md SR4): `points` (secretOpenAwardPoints for the open,
+ * treasureAwardPoints for the chest) into ScoreSource.SECRET; never feeds the combo or its timer, touches no room record.
+ * Returns the points (0 without scoring, the secrets state or its source: addSecretScoreSources).
+ */
+export function scoreSecret(state: SimState, points: number): number {
+	const s = state.score;
+	if (s === undefined || state.secrets === undefined || s.points.size() <= ScoreSource.SECRET) return 0;
+	return credit(s, ScoreSource.SECRET, points);
+}
+
 /** Sword guard hook: `n` enemy bullets erased by this tick's guard sweep. One award per bullet. */
 export function scoreGuardCancels(state: SimState, n: number): void {
 	const s = state.score;
@@ -1344,7 +1378,9 @@ function sourceName(k: number): string {
 	if (pact < PACT_SCORE_SOURCE_NAMES.size()) return PACT_SCORE_SOURCE_NAMES[pact];
 	const golden = pact - PACT_SCORE_SOURCE_NAMES.size();
 	if (golden < GOLDEN_SCORE_SOURCE_NAMES.size()) return GOLDEN_SCORE_SOURCE_NAMES[golden];
-	return OVERCAP_SCORE_SOURCE_NAMES[golden - GOLDEN_SCORE_SOURCE_NAMES.size()];
+	const overcap = golden - GOLDEN_SCORE_SOURCE_NAMES.size();
+	if (overcap < OVERCAP_SCORE_SOURCE_NAMES.size()) return OVERCAP_SCORE_SOURCE_NAMES[overcap];
+	return SECRET_SCORE_SOURCE_NAMES[overcap - OVERCAP_SCORE_SOURCE_NAMES.size()];
 }
 
 /** Dump names for writeScoreHash, same order (`score.total`, `score.points.kills`, `score.rooms[0].cleared`, ...). */

@@ -114,6 +114,21 @@ describe("stage floor inputs (docs/STAGE_ASSETS.md SA3)", () => {
 		expect(exact.features.breakables).toBe((layout.breakables?.size() ?? 0) > 0);
 		expect(exact.features.vault).toBe(layout.vault !== undefined);
 		expect(exact.features.golden).toBe(layout.golden !== undefined);
+		expect(exact.features.secret).toBe(layout.secret !== undefined);
+	});
+
+	it("the secret feature only on a floor that holds one (docs/SECRET_ROOMS.md SR6); the forecast always lists it", () => {
+		let on = 0;
+		let off = 0;
+		for (let seed = 1; seed <= 12; seed++) {
+			const layout = endlessRunFloor(seed, 3).layout;
+			const exact = stageInputOfLayout("endless", layout, STAGE_CHARACTERS);
+			expect(exact.features.secret).toBe(layout.secret !== undefined);
+			if (exact.features.secret) on++;
+			else off++;
+			expect(forecastStageInput(seed, 3, STAGE_CHARACTERS).features.secret).toBe(true);
+		}
+		expect(on > 0 && off > 0).toBe(true);
 	});
 
 	it("stageInputOf reads an endless run's floor through its endlessFloor", () => {

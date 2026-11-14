@@ -586,6 +586,7 @@ describe("treasure score source (docs/TREASURE.md TR2, TRD11 / correction 5)", (
 			treasure: treasure ? ENDLESS_TREASURE_CONFIG : undefined,
 			pacts: undefined,
 			golden: undefined,
+			secrets: undefined, // docs/SECRET_ROOMS.md SR4: SECRET would pad every subset to 17
 		};
 	}
 	const make = (config: SimConfig) => createSimState(SEED, setup.spawn!.x, setup.spawn!.z, config);

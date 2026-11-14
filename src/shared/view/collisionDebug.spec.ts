@@ -1,13 +1,15 @@
 // KV_CollisionDebug (docs/WALL_SLIDE.md WS6): the blocking cells near the watched player (isolated 1x1 blockers
 // apart), the input magnitude, the stall detector's episodes and its log line, on small hand-made grids.
 import { describe, expect, it } from "@rbxts/jest-globals";
-import { TileType, cellKey, type Dungeon, type SolidCells } from "shared/dungeon";
-import { AXIS_MAX, PLAYER_SPEED, SIM_HZ } from "shared/sim";
+import { TileType, cellKey, secretCrackCells, type Dungeon, type SolidCells } from "shared/dungeon";
+import { endlessRunFloor } from "shared/run";
+import { AXIS_MAX, BREAKABLES_CONFIG, PLAYER_SPEED, SIM_HZ, createBreakablesState } from "shared/sim";
 import {
 	COLLISION_DEBUG,
 	StallDetector,
 	blockingCellsNear,
 	collisionBlocks,
+	collisionDebugDungeon,
 	inputMagnitude,
 	isIsolatedBlocker,
 	stallLine,
@@ -242,5 +244,31 @@ describe("stallLine", () => {
 	it("prints the position, its grid cell and the unit input", () => {
 		expect(stallLine(12.346, 5.6, 707, -707)).toBe("[collision] stall at 12.35,5.60 (12,6) input 0.71,-0.71");
 		expect(stallLine(0.49, -0.5, AXIS_MAX, 0)).toBe("[collision] stall at 0.49,-0.50 (0,0) input 1.00,0.00");
+	});
+});
+
+describe("collisionDebugDungeon: a secret floor's carved grid (docs/SECRET_ROOMS.md SR5)", () => {
+	it("the crack blocks through its pieces until the open, the chamber is walkable; other floors keep the Forge's", () => {
+		let seed = 1;
+		while (endlessRunFloor(seed, 3).layout.secret === undefined) seed++;
+		const w = endlessRunFloor(seed, 3);
+		const plan = w.secret!;
+		const d = collisionDebugDungeon(w.dungeon, w.secret);
+		expect(d).toBe(plan.dungeon);
+		expect(collisionDebugDungeon(w.dungeon, undefined)).toBe(w.dungeon);
+		const b = createBreakablesState(BREAKABLES_CONFIG, w.layout.breakables!);
+		const solid: SolidCells = b.slotByCell;
+		for (const c of secretCrackCells(plan)) {
+			// The Forge's grid: a wall. The sim's: FLOOR held shut by an intact piece, then open.
+			expect(collisionBlocks(w.dungeon, c.x, c.y, solid)).toBe(true);
+			expect(collisionBlocks(d, c.x, c.y, solid)).toBe(true);
+			const near = blockingCellsNear(d, c.x, c.y + plan.fz, solid, 1);
+			expect(near.find((n) => n.gx === c.x && n.gy === c.y)?.solid).toBe(true);
+			expect(collisionBlocks(d, c.x, c.y, undefined)).toBe(false);
+		}
+		expect(collisionBlocks(w.dungeon, plan.chestX, plan.chestY - plan.fz, solid)).toBe(true);
+		expect(collisionBlocks(d, plan.chestX + plan.ax, plan.chestY + plan.az, solid)).toBe(false);
+		// The chest's own cell holds its piece (an intact chest blocks like any piece).
+		expect(collisionBlocks(d, plan.chestX, plan.chestY, solid)).toBe(true);
 	});
 });

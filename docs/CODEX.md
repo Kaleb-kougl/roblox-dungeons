@@ -390,3 +390,11 @@ Lead resolutions of the CX0 findings (2026-11-12):
 - More categories: chests and vault tiers, pacts, the power pellet, characters, weapons and skins.
 - Pause-menu access, a "new this week" tab, telemetry for Codex opens and completion, lore lines per entry.
 - Grid focus wrap, names under tiles, true desaturation for seen tiles.
+
+## Secret rooms (2026-11-13)
+
+docs/SECRET_ROOMS.md SRD12 appends ONE entry `secret:room` ("Secret rooms") in a new group `secrets`, the Bestiary tab's
+last section (a seventh tab did not fit the desktop row); the catalogue is 87 entries (order lock updated). Seen at the
+local player's first knock on a crack (`CodexFrame.secretKnocked`; the sighting `secret.crack` maps to it), found at an
+open (`secretOpened`), both from `readCodexSecrets`; its tile is a `label`. Its sounds follow `sfx.codex.new` in
+`PORT_AUDIO_EVENTS` (codex.spec's tail updated).

@@ -13,12 +13,14 @@
  */
 import { BOOST_COLLECT_FX_ID, BOOST_FX_IDS, FX_IDS, type BoostFxId, type FxId } from "../../contract";
 import { GOLDEN_COIN_ROLE } from "../../fortune";
+import { SECRET_DUST_ROLE } from "../../secrets";
 import type { ColorRole, ImageAsset, SpriteSetAsset } from "../../types";
 import { sortedKeys } from "../../util";
 import { VALE_BULLET_SOURCE, type ValeBulletSource } from "./bullets";
 import { VALE_FORTUNE_FX_LAYOUTS, VALE_FORTUNE_FX_SHEET } from "./fortuneLayout";
 import { VALE_AMBIENT_LAYOUTS, VALE_FX_LAYOUTS, VALE_FX_SHEET, type ValeFxLayout } from "./fxLayout";
 import type { ValeSheetFile } from "./layout";
+import { VALE_SECRET_FX_LAYOUTS, VALE_SECRET_SHEET } from "./secretLayout";
 import { VALE_TREASURE_FX_LAYOUTS, VALE_TREASURE_FX_SHEET } from "./treasureLayout";
 
 type AssetIds = Readonly<Record<string, string>>;
@@ -56,8 +58,9 @@ export interface ValeFxSource {
  * Every sheet vale's effects live in: the effects atlas (fxLayout.ts), the bullet atlas (`bullets`, default the
  * generated VALE_BULLET_SOURCE: its `fx`, bulletLayout.ts's VALE_BULLET_FX_LAYOUTS, i.e. fx.bullet.hit) and the vault's
  * light column sheet (treasureLayout.ts, docs/TREASURE.md TR9: fx.treasure.column, its own sheet so the effects atlas
- * never repacks) and the Goldling's coin burst sheet (fortuneLayout.ts, docs/FORTUNE.md FO10: fx.golden.coin, likewise).
- * An fx ID is in exactly one of them (fx.spec).
+ * never repacks) and the Goldling's coin burst sheet (fortuneLayout.ts, docs/FORTUNE.md FO10: fx.golden.coin, likewise)
+ * and the secret rooms' sheet (secretLayout.ts, docs/SECRET_ROOMS.md SR11: fx.secret.dust rides with the crack and the
+ * rubble). An fx ID is in exactly one of them (fx.spec).
  */
 export function valeFxSources(bullets: ValeBulletSource = VALE_BULLET_SOURCE): ReadonlyArray<ValeFxSource> {
 	return [
@@ -65,6 +68,7 @@ export function valeFxSources(bullets: ValeBulletSource = VALE_BULLET_SOURCE): R
 		{ sheet: bullets.sheet, layouts: bullets.fx ?? {} },
 		{ sheet: VALE_TREASURE_FX_SHEET, layouts: VALE_TREASURE_FX_LAYOUTS },
 		{ sheet: VALE_FORTUNE_FX_SHEET, layouts: VALE_FORTUNE_FX_LAYOUTS },
+		{ sheet: VALE_SECRET_SHEET, layouts: VALE_SECRET_FX_LAYOUTS },
 	];
 }
 
@@ -113,6 +117,9 @@ export const VALE_FX: Readonly<Record<ValeFxId, ValeFxLook>> = {
 	// docs/FORTUNE.md FO10: the Goldling's coin burst (original art, gen-fortune-art.js): solid coins (not additive: their
 	// dark rims would vanish), tinted golden.coin; GoldenRenderController plays it x GOLDEN_VIEW.fountainFxScale on a catch
 	"fx.golden.coin": { sizeTiles: 1, tint: GOLDEN_COIN_ROLE, additive: false },
+	// docs/SECRET_ROOMS.md SR10 / SR11: a secret room's dust trickle (original art, gen-secret-art.js): solid grey motes
+	// (not additive: dust is not light), tinted secret.dust; the view drops it down the crack's face
+	"fx.secret.dust": { sizeTiles: 1, tint: SECRET_DUST_ROLE, additive: false },
 };
 
 /** Ambient textures that glow (LightEmission 1): molten embers. */

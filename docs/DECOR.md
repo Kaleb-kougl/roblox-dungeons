@@ -696,3 +696,9 @@ follow R3 / R4; R9 follows R4 and R5. R14 lands with R12; R15 last.
   caps, and `motionScale` keep them below the bullets; judge it at the abyss band, the busiest.
 - **Performance.** The light pool, emitters and per-bullet cell lookups: measure on the phone emulator (R9, R13) and
   with the server replay bench (R12).
+
+## Secret rooms (2026-11-13)
+
+A secret room's crack is a new inert piece kind (`crackedWall`, docs/SECRET_ROOMS.md SR2; drawn by SecretRenderController,
+never as a barrel) on an outer far wall kept clear of Forge torches, banners and wall-top props; `planDecor`'s keep-out
+(`DecorPlanInput.keepOut`, drop reason `secret`) puts no void piece, wall-top piece or banner on its chamber and ring.
