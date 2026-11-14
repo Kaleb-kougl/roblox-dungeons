@@ -5114,5 +5114,64 @@
 	"silver.welcome.ok": {
 		"note": "Main menu, a one-time card for players who played before the Silver update: closes it.",
 		"max": 12
+	},
+	"silver.shop.title": {
+		"note": "Main menu and Armory, the Get Silver panel (the player buys Silver, the game's currency kept between runs, with Robux through Roblox's own purchase prompt): its title.",
+		"max": 24,
+		"example": "Get Silver"
+	},
+	"silver.shop.open": {
+		"note": "Main menu and Armory: a small square button beside the player's Silver balance that opens the Get Silver panel. Keep it a single plus sign (or your language's shortest equivalent).",
+		"max": 2,
+		"example": "+"
+	},
+	"silver.shop.pack": {
+		"note": "Main menu and Armory, the Get Silver panel (the player buys Silver, the game's currency kept between runs, with Robux through Roblox's own purchase prompt): a pack's amount on its card. {silver} is a whole number.",
+		"max": 20,
+		"example": "450 Silver"
+	},
+	"silver.shop.price": {
+		"note": "Main menu and Armory, the Get Silver panel (the player buys Silver, the game's currency kept between runs, with Robux through Roblox's own purchase prompt): a card's price in Robux (Roblox's currency, keep the word Robux). {robux} is a whole number.",
+		"max": 16,
+		"example": "55 Robux"
+	},
+	"silver.shop.priceIcon": {
+		"note": "Main menu and Armory, the Get Silver panel (the player buys Silver, the game's currency kept between runs, with Robux through Roblox's own purchase prompt): a card's price shown beside Roblox's Robux icon: only the number. {robux} is a whole number; keep just the placeholder unless your language needs a symbol around it.",
+		"max": 10,
+		"example": "55"
+	},
+	"silver.shop.loading": {
+		"note": "Main menu and Armory, the Get Silver panel (the player buys Silver, the game's currency kept between runs, with Robux through Roblox's own purchase prompt): shown on a card while its price is loading (an ellipsis).",
+		"max": 6,
+		"example": "..."
+	},
+	"silver.shop.unavailable": {
+		"note": "Main menu and Armory, the Get Silver panel (the player buys Silver, the game's currency kept between runs, with Robux through Roblox's own purchase prompt): a card whose price could not be loaded; it cannot be pressed.",
+		"max": 16,
+		"example": "Unavailable"
+	},
+	"silver.shop.adding": {
+		"note": "Main menu and Armory, the Get Silver panel (the player buys Silver, the game's currency kept between runs, with Robux through Roblox's own purchase prompt): a card after a purchase, while the Silver is being added.",
+		"max": 18,
+		"example": "Adding Silver..."
+	},
+	"silver.shop.added": {
+		"note": "Main menu and Armory, the Get Silver panel (the player buys Silver, the game's currency kept between runs, with Robux through Roblox's own purchase prompt) and a short notice: the Silver was added. {silver} is a whole number.",
+		"max": 18,
+		"example": "+450 Silver"
+	},
+	"silver.shop.onItsWay": {
+		"note": "Main menu and Armory, the Get Silver panel (the player buys Silver, the game's currency kept between runs, with Robux through Roblox's own purchase prompt): shown when the bought Silver takes longer than usual to arrive (it will arrive).",
+		"max": 36,
+		"example": "Your Silver is on its way"
+	},
+	"silver.shop.footnote": {
+		"note": "Main menu and Armory, the Get Silver panel (the player buys Silver, the game's currency kept between runs, with Robux through Roblox's own purchase prompt): a calm line under the cards. Bought Silver is the same as Silver found in the game; a purchase cannot be refunded. Wraps over two or three lines.",
+		"max": 110
+	},
+	"silver.shop.close": {
+		"note": "Main menu and Armory, the Get Silver panel (the player buys Silver, the game's currency kept between runs, with Robux through Roblox's own purchase prompt): closes the panel.",
+		"max": 12,
+		"example": "Close"
 	}
 }
