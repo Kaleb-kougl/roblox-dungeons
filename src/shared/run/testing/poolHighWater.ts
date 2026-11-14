@@ -4,8 +4,10 @@
  * buildEndlessFloor makes), without stepping the sim.
  *
  * Per room, from its bought spawns:
- *   alive  bought + slimes x (splitCount - 1) + summoners x summonMaxAlive: every planned enemy alive at once, every
- *          Ooze already split (its two slimelets replace it) and every summoner at its cap of live summons
+ *   alive  bought + slimes x (splitCount - 1) + summoners x summonMaxAlive + Pyre-keepers x maxAlive: every planned
+ *          enemy alive at once, every Ooze already split (its two slimelets replace it), every summoner at its cap of
+ *          live summons and every Pyre-keeper at its cap of lit pyres (docs/NEW_ENEMIES_2.md NX6; a pyre's corpse
+ *          lasts CORPSE_TICKS 0.5 s, far under the 4-5 s between two lights, so it adds no slot of its own)
  *   slots  alive + slimes (an Ooze's corpse keeps its pool slot for CORPSE_TICKS while its children live) + summoners x
  *          summonPerCast (the corpses of one cast's summons, killed while the next ones are alive): the pool slots a
  *          room can hold at its worst instant (dead bought enemies hold their own slot as corpses, already counted)
@@ -21,7 +23,7 @@ import {
 	roomEncounterBudget,
 	type ActorSpawn,
 } from "shared/dungeon";
-import { SLIME, SUMMONER } from "shared/sim";
+import { PYREKEEPER, SLIME, SUMMONER } from "shared/sim";
 
 /** The EV13 target for one room's worst case. */
 export const POOL_ROOM_TARGET = 48;
@@ -30,6 +32,7 @@ export interface RoomLoad {
 	readonly bought: number;
 	readonly slimes: number;
 	readonly summoners: number;
+	readonly pyrekeepers: number;
 	readonly alive: number;
 	readonly slots: number;
 }
@@ -38,14 +41,20 @@ export interface RoomLoad {
 export function roomLoad(spawns: ReadonlyArray<ActorSpawn>): RoomLoad {
 	let slimes = 0;
 	let summoners = 0;
+	let pyrekeepers = 0;
 	for (const s of spawns) {
 		if (s.kind === SLIME.id) slimes++;
 		else if (s.kind === SUMMONER.id) summoners++;
+		else if (s.kind === PYREKEEPER.id) pyrekeepers++;
 	}
 	const bought = spawns.size();
-	const alive = bought + slimes * (SLIME.data.splitCount - 1) + summoners * SUMMONER.data.summonMaxAlive;
+	const alive =
+		bought +
+		slimes * (SLIME.data.splitCount - 1) +
+		summoners * SUMMONER.data.summonMaxAlive +
+		pyrekeepers * PYREKEEPER.data.maxAlive;
 	const slots = alive + slimes + summoners * SUMMONER.data.summonPerCast;
-	return { bought, slimes, summoners, alive, slots };
+	return { bought, slimes, summoners, pyrekeepers, alive, slots };
 }
 
 /** The worst room seen (by slots), where it is and what it holds. */
@@ -80,13 +89,18 @@ function kindsOf(spawns: ReadonlyArray<ActorSpawn>): string {
 	return order.map((k) => `${counts.get(k)} ${k}`).join(", ");
 }
 
-/** Rows for floors firstFloor..lastFloor, run seeds firstRun..lastRun, one row per (floor, party) of `parties`. */
+/**
+ * Rows for floors firstFloor..lastFloor, run seeds firstRun..lastRun, one row per (floor, party) of `parties`.
+ * `unlockFloors` (default true, the rule these specs were written for; false: every endless world's, docs/DAILY.md
+ * DSD18) picks the roster and spender rule.
+ */
 export function poolHighWater(
 	firstFloor: number,
 	lastFloor: number,
 	firstRun: number,
 	lastRun: number,
 	parties: ReadonlyArray<number>,
+	unlockFloors = true,
 ): HighWaterRow[] {
 	const rows: HighWaterRow[] = [];
 	for (let floor = firstFloor; floor <= lastFloor; floor++) {
@@ -107,9 +121,9 @@ export function poolHighWater(
 			// The layout does not depend on the party size: one Forge floor serves every party row.
 			const d = generateDungeon(endlessFloorParams(run, floor));
 			const rooms = encounterRooms(d);
-			const roster = endlessRoster(run, floor);
+			const roster = endlessRoster(run, floor, unlockFloors);
 			for (const row of byParty) {
-				const spawns = endlessRoomSpawns(d, floor, row.party, roster);
+				const spawns = endlessRoomSpawns(d, floor, row.party, roster, unlockFloors);
 				row.runs++;
 				let floorAlive = 0;
 				for (const room of rooms) {

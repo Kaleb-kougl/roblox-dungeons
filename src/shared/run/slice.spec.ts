@@ -415,12 +415,14 @@ describe("the endless run, segmented per floor, validates on the server", () => 
 		// Located to the checkpoint window of the first edited tick: the last checkpoint at or before it, or the segment
 		// start. (Wall slide, docs/WALL_SLIDE.md WS4: the re-recorded run's floor-6 segment starts at tick 2953 and its
 		// first walking frame comes after the tick-3000 checkpoint, so that checkpoint still matches; before, the
-		// edit fell in the segment's first window and this pinned seg.startTick.)
+		// edit fell in the segment's first window and this pinned seg.startTick.) Re-recorded for docs/NEW_ENEMIES_2.md
+		// NX6: the bot's floors 1-5 buy other kinds (four more room kinds, a reshuffled roster), so the floor-6 segment
+		// starts at tick 2962 (was 2953); its first walking frame still follows the tick-3000 checkpoint.
 		const lastGood = math.max(
 			seg.startTick,
 			math.floor((seg.startTick + at) / SEGMENT_CHECKPOINT_TICKS) * SEGMENT_CHECKPOINT_TICKS,
 		);
-		expect([seg.startTick, lastGood]).toEqual([2953, 3000]);
+		expect([seg.startTick, lastGood]).toEqual([2962, 3000]);
 		expect(bad.matchedThroughTick).toBe(lastGood);
 		// Further segments are refused.
 		expect(w.offer(sent[k + 1], LATE).ok).toBe(false);

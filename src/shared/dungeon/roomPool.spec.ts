@@ -18,6 +18,7 @@ import {
 	isOpenTile,
 	populateEndlessRoom,
 	roomFloorTiles,
+	roomKindMinFloor,
 	spendEncounterBudget,
 	worldToGrid,
 	type Dungeon,
@@ -54,7 +55,7 @@ function count(kinds: ReadonlyArray<string>, kind: string): number {
 }
 
 describe("ENDLESS_ROOM_KINDS", () => {
-	it("keeps the original three and their weights first, then imp / slime / summoner (EVD2), then the NE7 five", () => {
+	it("keeps the original three and their weights first, then imp / slime / summoner (EVD2), the NE7 five, the NX6 four", () => {
 		const rows = ENDLESS_ROOM_KINDS.map((k) => [k.kind, k.weight, k.fromFloor ?? 1, k.maxPerRoom ?? 0]);
 		expect(rows).toEqual([
 			["swarmer", 3, 1, 0],
@@ -69,8 +70,22 @@ describe("ENDLESS_ROOM_KINDS", () => {
 			["stormcaller", 1, 2, 2],
 			["warbanner", 1, 2, 1],
 			["reaper", 1, 2, 2],
+			// docs/NEW_ENEMIES_2.md NXD5 / NXD9: weights 1, caps 2 / 1 / 1 / 1, appended in this order; their unlock floor 2
+			// holds only with unlock floors (specs and tools: floor 1 without a roster spends as before).
+			["bulwark", 1, 2, 2],
+			["chainhook", 1, 2, 1],
+			["snatcher", 1, 2, 1],
+			["pyrekeeper", 1, 2, 1],
 		]);
-		expect(ENDLESS_ROOM_KINDS.filter((k) => k.needsCompany === true).map((k) => k.kind)).toEqual(["warbanner"]);
+		expect(ENDLESS_ROOM_KINDS.filter((k) => k.needsCompany === true).map((k) => k.kind)).toEqual([
+			"warbanner",
+			"snatcher",
+		]);
+		// NXD4: the Chainhook's minimum floor holds in every world, unlock floors on or off.
+		const minFloors = ENDLESS_ROOM_KINDS.map((k) => roomKindMinFloor(k.kind));
+		expect(
+			ENDLESS_ROOM_KINDS.filter((k, i) => minFloors[i] !== 1).map((k) => [k.kind, roomKindMinFloor(k.kind)]),
+		).toEqual([["chainhook", 2]]);
 		expect([ROOM_KIND_UNLOCK_FLOOR.imp, ROOM_KIND_UNLOCK_FLOOR.slime, ROOM_KIND_UNLOCK_FLOOR.summoner]).toEqual([
 			2, 4, 6,
 		]);

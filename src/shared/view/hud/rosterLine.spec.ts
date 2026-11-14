@@ -60,26 +60,31 @@ describe("roster line: strings", () => {
 
 describe("roster line per floor", () => {
 	it("run start: every kind of floor 1's roster (swarmers first)", () => {
-		expect(cardText(1337, 1)).toBe("Swarmer · Bomber");
+		expect(cardText(1337, 1)).toBe("Swarmer · Bruiser"); // re-recorded for docs/NEW_ENEMIES_2.md NX6 (was Bomber)
 		const line = stageRosterLine(["swarmer", "bruiser"], undefined, str);
 		expect(line).toEqual({ key: ROSTER_STRINGS.line, args: { names: "Swarmer · Bruiser" }, gold: false });
 	});
 
-	it("a floor where kinds joined: New: <names>; other floors: none (run 1337, floors 1-12)", () => {
-		// Run 1337's order: bomber, stormcaller, bruiser, charger, reaper, sniper, warbanner, summoner, slime, imp
-		// (shared/dungeon roster.spec; re-recorded for docs/NEW_ENEMIES.md NE7, then docs/DAILY.md DSD18: no unlock
-		// floors and one new kind a floor, so the roster is full on floor 10 and floors 11-12 add none).
+	it("a floor where kinds joined: New: <names>; other floors: none (run 1337, floors 1-16)", () => {
+		// Run 1337's order: bruiser, pyrekeeper, bulwark, stormcaller, reaper, warbanner, imp, chainhook, snatcher, sniper,
+		// bomber, charger, summoner, slime (shared/dungeon roster.spec; re-recorded for docs/NEW_ENEMIES.md NE7, then
+		// docs/DAILY.md DSD18: no unlock floors and one new kind a floor; re-recorded for docs/NEW_ENEMIES_2.md NX6: 14
+		// kinds, so the roster is full on floor 14 and floors 15-16 add none; the `bulwark` reads Shieldwall, NXD17).
 		const want: Array<string | undefined> = [
-			"Swarmer · Bomber",
+			"Swarmer · Bruiser",
+			"New: Pyre-keeper",
+			"New: Shieldwall",
 			"New: Stormcaller",
-			"New: Bruiser",
-			"New: Charger",
 			"New: Reaper",
-			"New: Sniper",
 			"New: Warbanner",
+			"New: Imp",
+			"New: Chainhook",
+			"New: Snatcher",
+			"New: Sniper",
+			"New: Bomber",
+			"New: Charger",
 			"New: Summoner",
 			"New: Ooze",
-			"New: Imp",
 			undefined,
 			undefined,
 		];
@@ -102,7 +107,8 @@ describe("roster line per floor", () => {
 	it("reads the built floor's roster (EndlessFloorLayout.roster)", () => {
 		const l = buildEndlessFloor(1337, 3, generateDungeon, 1, { unlockFloors: false });
 		const line = stageRosterLine(l.roster, endlessRoster(1337, 2, false), str);
-		expect(line === undefined ? undefined : str(line.key, line.args)).toBe("New: Bruiser");
+		// re-recorded for docs/NEW_ENEMIES_2.md NX6 (was New: Bruiser)
+		expect(line === undefined ? undefined : str(line.key, line.args)).toBe("New: Shieldwall");
 	});
 });
 

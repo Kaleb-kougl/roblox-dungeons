@@ -66,7 +66,9 @@ export const DAILY: DailyConfig = table.freeze({
 	// GR1-GR3, RD10 / RD11): Goldling floors gain a piece and the Goldling no longer appears 3 s into the fight.
 	// 19: secret rooms (docs/SECRET_ROOMS.md SR5: a cracked far wall on about one floor in five from floor 2, its chamber
 	// and chest; the carved grid, the openers and the SECRET source change endless floors, play and scores).
-	ruleset: 19,
+	// 20: new enemies 2 (docs/NEW_ENEMIES_2.md NX6, NXD16: the Shieldwall, Chainhook, Snatcher and Pyre-keeper join the
+	// endless room pool; 14 seeded kinds reshuffle every roster, the Chainhook never on floor 1).
+	ruleset: 20,
 	labelOffset: 1,
 	yesterdayCacheSeconds: 600,
 	minEntrantsForPercentile: 20,

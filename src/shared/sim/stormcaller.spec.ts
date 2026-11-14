@@ -695,6 +695,9 @@ describe("stormcaller: strikes on real endless floors", () => {
 		// Re-recorded for secret rooms (docs/SECRET_ROOMS.md SR5): run 4's floor 3 holds a secret (its crack and chest
 		// appended pieces, the movers on the carved grid); strike and skip counts unchanged; run 23's co-op floor 3 has
 		// none (untouched). Before: 3/0/0406aa34.
-		expect(pins).toEqual(["3/0/6b926521", "6/0/346b5428"]); // check-asset-ids: allow (state hashes)
+		// Re-recorded for docs/NEW_ENEMIES_2.md NX6: four more room kinds and a reshuffled roster (14 seeded kinds), so
+		// both scenes' floor 3 rooms buy other kinds (spawns, breakables and state hashes moved); the layouts did not, and
+		// the scenes' strike and skip counts are unchanged. Before: 3/0/6b926521, 6/0/346b5428.
+		expect(pins).toEqual(["3/0/04cfeefe", "6/0/71038c42"]); // check-asset-ids: allow (state hashes)
 	});
 });

@@ -1,9 +1,9 @@
 // docs/NEW_ENEMIES_2.md NX1 skeleton: band 6 for the third set of room enemies and the Pyre-keeper's brazier (indices
 // 19-23; every older index unchanged), their data blocks and rows (the plan's Design tables), BulletKind.HOOK (13, no
-// rules yet: the enemy bullet's radius), the room pool untouched (NX6 appends them), and that every kind spawns, engages
+// rules yet: the enemy bullet's radius), the room pool rows (appended at NX6), and that every kind spawns, engages
 // (the four room enemies; the brazier stands) and replays bit for bit without a draw.
 import { describe, expect, it } from "@rbxts/jest-globals";
-import { ENCOUNTER_COST, ENDLESS_ROOM_KINDS, encounterCost } from "shared/dungeon";
+import { ENCOUNTER_COST, ENDLESS_ROOM_KINDS, encounterCost, roomKindMinFloor } from "shared/dungeon";
 import {
 	BULLET_KIND_COUNT,
 	BULWARK,
@@ -218,8 +218,23 @@ describe("data blocks (the plan's Design tables)", () => {
 		expect(DROP_INELIGIBLE_ARCHETYPES.includes(PYRE.id)).toBe(true);
 	});
 
-	it("NX1 leaves the room pool alone: none of them is bought yet (NX6)", () => {
-		for (const k of ENDLESS_ROOM_KINDS) expect([k.kind, NEW_IDS.includes(k.kind)]).toEqual([k.kind, false]);
+	it("NX6 appends the four room enemies to the room pool, never the brazier (NXD5, NXD9, NXD4)", () => {
+		const n = ENDLESS_ROOM_KINDS.size();
+		const tail: unknown[][] = [];
+		for (let i = n - 4; i < n; i++) {
+			const k = ENDLESS_ROOM_KINDS[i];
+			tail.push([k.kind, k.weight, k.maxPerRoom, k.needsCompany === true]);
+		}
+		expect(tail).toEqual([
+			[BULWARK.id, 1, 2, false],
+			[CHAINHOOK.id, 1, 1, false],
+			[SNATCHER.id, 1, 1, true],
+			[PYREKEEPER.id, 1, 1, false],
+		]);
+		for (const k of ENDLESS_ROOM_KINDS) expect([k.kind, k.kind === PYRE.id]).toEqual([k.kind, false]);
+		expect([roomKindMinFloor(CHAINHOOK.id), roomKindMinFloor(BULWARK.id), roomKindMinFloor(PYREKEEPER.id)]).toEqual(
+			[2, 1, 1],
+		);
 	});
 });
 
