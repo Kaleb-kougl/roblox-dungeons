@@ -1464,7 +1464,7 @@ Decision log (deviations from `PLAN.md`):
   Archer's -3 (4 / 3 half hearts); `START_HALF_HEARTS` stays 6, so M1 (no traits) and every golden fixture replay as
   before with no setter; `TUTORIAL_START_HALF_HEARTS` 4 -> 2. Odd maxima end in a half container (`HEART_FILL` 3 / 4,
   theme `ui.heart.halfmax` / `.halfmax.empty` from `scripts/art/gen-heart-halfmax.js`, atlas group `heartIcons`, own
-  sheet `heart-icons.png`, upload pending). **Upgrades:** `PlayerTraits.armorMaxDelta` / `flaskChargesDelta` (neutral 0),
+  sheet `heart-icons.png`, uploaded 2026-11-14). **Upgrades:** `PlayerTraits.armorMaxDelta` / `flaskChargesDelta` (neutral 0),
   shared/characters `UpgradeLevels` / `upgradeTraits`; the server reads each member's levels at the start
   (`SilverAccessService`, wired by WalletService), stores them on the session and returns them
   (`StartRunReply.upgrades`, `PartyRunStart.upgrades`); `upgradesApply`: endless and the Daily (SVD3), never M1 or the

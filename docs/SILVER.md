@@ -652,7 +652,7 @@ is typechecked, linted and built only; the pure cores are specced. The whole hea
   (EMPTY 0, HALF 1, FULL 2, HALF_MAX_FULL 3, HALF_MAX_EMPTY 4), `heartFills` ends an odd maximum in a half container,
   `heartArt`; StatusPanel and the touch strip draw `ui.heart.halfmax` / `.halfmax.empty` (theme `heartIcons.ts`), else the
   whole heart clipped to its left half, else a flat half box. Art pipeline group `heartIcons` -> `heart-icons.png`,
-  `packs/vale/heartIconLayout.ts` (written by hand; regenerate on the Mac), no asset id yet. No hash pin moved;
+  `packs/vale/heartIconLayout.ts` (written by hand; the Mac build matched it), uploaded 2026-11-14. No hash pin moved;
   run/secrets.spec now picks the first of 6 seeds where the 2-heart bot opens its secret and lives.
 - **Lock**: `locked_character` (`RunSessionRegistry.start`, worlds with characters: endless, daily, dev), `Lobbies.setReady`
   ownership predicate (`lockedCharacter`, string `lobby.err.lockedCharacter`), the countdown cancels when a pick is no
@@ -721,9 +721,9 @@ floor by band, crates 65.5 % of the pieces; the honest bot breaks 3 % of them.
 ### Left for the owner (SV15) and later
 
 Studio check (the list below; first the pad's hold-to-buy and the coins' screen positions); the four sounds; art for
-`ui.icon.silver` / `fx.silver.coins`; on the Mac `npm run art:lock`, `node scripts/art/build-atlases.js --only
-heartIcons` (diff against the hand-written layout), upload `heart-icons.png`, its id in `assetIds.ts`; cosmetics
-(SV11-SV13); translations.
+`ui.icon.silver` / `fx.silver.coins`; cosmetics (SV11-SV13); translations. Done since: the heart containers locked and
+built on the Mac (the hand-written layout matched), `heart-icons.png` uploaded 2026-11-14 (133175128335720, in
+`assetIds.ts`), so the bundled vale pack draws them; Silver merged into main.
 
 ## Studio check
 
