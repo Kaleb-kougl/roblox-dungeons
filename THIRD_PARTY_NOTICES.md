@@ -423,6 +423,18 @@ docs/BOOKSHELVES.md). **Changes made:** rendered to 2D sprites
 - License: CC0, public domain: no restriction and no credit required. Credited anyway (Credits screen: "Impact
   Sounds", "by Kenney (kenney.nl)", "CC0").
 
+## Kenney Interface Sounds (audio, CC0)
+
+- Author: Kenney (https://www.kenney.nl). Pack: "Interface Sounds" 1.0 (https://kenney.nl/assets/interface-sounds), taken
+  from Hugo Locurcio's lossless WAV repackaging (https://github.com/Calinou/kenney-interface-sounds @ `4596a49`, the
+  pack's own LICENSE.txt included).
+- Used for: candidates for the Silver sounds `sfx.silver.crate`, `sfx.silver.gain`, `sfx.shop.buy` and `sfx.shop.deny`
+  (docs/SILVER.md; sourced 2026-11-14, to be picked at the audition). Once picked, a clip is silence-trimmed,
+  downmixed to mono, loudness-normalised and encoded to OGG by `scripts/audio/build-audio.js`; only the built OGG is
+  uploaded to Roblox as an audio asset.
+- Raw files: `art/vendor/kenney-interface-sounds/` (gitignored).
+- License: CC0, public domain: no credit required. Credit it on the Credits screen once a clip is used.
+
 ## "Their Coming (generic horn sound)" (OpenGameArt sound effect, CC0)
 
 - Author: StumpyStrust. Source: https://opengameart.org/content/their-coming-generic-horn-sound (`theircoming3.ogg`).
