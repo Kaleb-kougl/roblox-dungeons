@@ -172,6 +172,9 @@ import type { RobloxAssetId } from "../../types";
  * The floor modifier stings (docs/FLOOR_MODIFIERS.md FM10: sfx-floor-modifier-gilded / -hoard / -feast / -plunder /
  * -bloodmoon) and the secret rooms' sounds (docs/SECRET_ROOMS.md SR14: sfx-secret-knock, sfx-secret-open,
  * sfx-jingle-secret) uploaded 2026-11-13 as built by audio:build, transcribed from an Asset Manager screenshot.
+ * The four room enemies of docs/NEW_ENEMIES_2.md (NX8: bulwark-* / chainhook-* / snatcher-* / pyrekeeper-* sheets with
+ * their -outline rims, Demon Spawn 9 / Spawn 4 / Imp 6 / Spawn 1) and bullets-2.png (the flame and hook bullets, their
+ * own sheet) uploaded 2026-11-14 3:28 PM by k9kbdev, transcribed from Asset Manager screenshots.
  */
 export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"amb-b1.ogg": "rbxassetid://91158343621799",
@@ -584,6 +587,33 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"warbanner-body.png": "rbxassetid://125690549403530",
 	"warbanner-death-outline.png": "rbxassetid://87407464541596",
 	"warbanner-death.png": "rbxassetid://83864438929127",
+	"chainhook-death.png": "rbxassetid://119305560778614",
+	"pyrekeeper-death.png": "rbxassetid://110438728889861",
+	"bullets-2.png": "rbxassetid://115441648353626",
+	"bulwark-death-outline.png": "rbxassetid://123106695134496",
+	"chainhook-move.png": "rbxassetid://126460734244096",
+	"chainhook-body-outline.png": "rbxassetid://118517695487902",
+	"chainhook-death-outline.png": "rbxassetid://72913111436360",
+	"pyrekeeper-death-outline.png": "rbxassetid://117035604722445",
+	"snatcher-death-outline.png": "rbxassetid://79095102030430",
+	"pyrekeeper-attack-outline.png": "rbxassetid://118869156281761",
+	"bulwark-body-outline.png": "rbxassetid://125598907606576",
+	"snatcher-body-outline.png": "rbxassetid://115184112529919",
+	"bulwark-attack-outline.png": "rbxassetid://135387736824253",
+	"chainhook-move-outline.png": "rbxassetid://124506099366735",
+	"pyrekeeper-body.png": "rbxassetid://125658218477713",
+	"snatcher-body.png": "rbxassetid://104898944120584",
+	"snatcher-attack.png": "rbxassetid://127507995515714",
+	"pyrekeeper-attack.png": "rbxassetid://105982666599389",
+	"chainhook-body.png": "rbxassetid://91942181947359",
+	"snatcher-attack-outline.png": "rbxassetid://86054901648023",
+	"pyrekeeper-body-outline.png": "rbxassetid://118480680206372",
+	"bulwark-attack.png": "rbxassetid://96740184482792",
+	"snatcher-death.png": "rbxassetid://124440629866025",
+	"bulwark-death.png": "rbxassetid://125023275245527",
+	"bulwark-body.png": "rbxassetid://94821812942686",
+	"chainhook-attack-outline.png": "rbxassetid://121610284326343",
+	"chainhook-attack.png": "rbxassetid://120743899035032",
 };
 
 /**

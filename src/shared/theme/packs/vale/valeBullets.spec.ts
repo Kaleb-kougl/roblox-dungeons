@@ -271,8 +271,12 @@ describe("vale bullets (docs/PROJECTILE_ART.md PA6)", () => {
 		}
 		const file = VALE_BULLET_LAYOUTS["bullet.enemy.flame"].sheet!;
 		const sheet = VALE_BULLET_OWN_SHEETS[file];
-		// bullets.png alone: the two stay placeholders, every other mapped bullet draws
-		const main = buildValeManifest({ ...VALE_ASSET_IDS, [VALE_BULLET_SHEET.file]: SHEET_ID });
+		// bullets.png alone (the uploaded bullets-2.png left out): the two stay placeholders, every other mapped bullet draws
+		const withoutOwn: Record<string, string> = {};
+		for (const f of sortedKeys(VALE_ASSET_IDS)) {
+			if (f !== file) withoutOwn[f] = VALE_ASSET_IDS[f];
+		}
+		const main = buildValeManifest({ ...withoutOwn, [VALE_BULLET_SHEET.file]: SHEET_ID });
 		for (const id of ownIds) expect([id, main.assets[id]]).toEqual([id, PLACEHOLDER_MANIFEST.assets[id]]);
 		// the own sheet alone: only the two draw, over it
 		const without: Record<string, string> = {};
