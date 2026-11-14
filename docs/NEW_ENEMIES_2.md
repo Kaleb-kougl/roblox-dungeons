@@ -461,6 +461,75 @@ spec untouched. Placeholder looks; NX8 brings the art.
   placeholder (their fallbacks play), the snatch pitched down; layering of the arc / chain / pips against the markings,
   aura and affix rings; when NX8's pyre art lands, whether the view's flame part should go (the sprite's lit loop).
 
+### NX8 Art (as built, 2026-11-14)
+
+Presentation only: no sim, dungeon, lockstep, hash, replay, fixture or score change. Built on a machine holding only the
+four rigs' folders and `art/vendor/player-bullets/`, so every build was `--only` (never a whole `art:build`); the lock
+was rewritten with `--lock --only <set>` (`art/vendor.lock.json` + 42 files, additions only).
+
+- **Four sprite sets** in `art/atlases.json` (NE9's recipe: grid 128, body over `Shadows/`, no `Effects/`,
+  `rowForFacing` clockwise, `noiseAlpha` 2, pad 3, 2 px rim sheets, `cells: "perSheet"`, pivot on idle facing 6
+  frame 0). Frames picked on contact sheets (PIL, `art/build/contact/nx8-rig-*.png` / `nx8-z-*.png`, then the
+  pipeline's own `art/build/contact/enemy.<id>.png`), checked by eye. `layout.ts` gains the four entries only (186
+  lines added, none changed).
+
+  | Set | Rig | Animations (source file: kept frames) | Measured marks | Scale | Sheets |
+  |---|---|---|---|---|---|
+  | `enemy.bulwark` (Shieldwall) | Demon Spawn 9 | idle `Idle` 0, 3, 7, 10; move `Walk` (8, fps 10); attack `Attack 1` 0-7; **block** `Block` 2, 3, 4 (loop, fps 4: the guard pose); hit `TakeDamage 1` 1, 3, 5, 7, 9, 11, 13 (also the 1.5 s stagger); death `Die 1` 0, 2, 4, 6, 9, 14 | the lunge frame (f6, sword out) is kept index 6 of 8 = 0.75 of the bash timeline = 27 / 36 ticks (telegraph / lunge), so the plain stretch lands it on the lunge | bodyTiles **1.47** = 31.3 px/tile, the summoner's density (idle 46 px tall, 1.47 tiles) | attack (+ block) 902x776, body 980x825, death 392x996 |
+  | `enemy.chainhook` | Demon Spawn 4 | idle `Idle`; move `Walk` (8, fps 10); attack `Attack 2` 0-5; hit `TakeDamage 1` 1, 3, 5, 8; death `Die 1` | the release (f5, the blade arm thrown forward along the facing after f1-f4 draw it back) is kept index 5 of 6: the aim's last 7 ticks of 42; the yank (18 ticks) plays the same pull | bodyTiles **1.737** = 38 px/tile, the knight's density like the bruiser / charger (idle 66 px, horns included: 1.74 tiles; 2.1 at the summoner's) | attack 468x888, body (idle + hit) 736x832, **move** 656x760, death 720x872 (idle + move + hit in one sheet would be 128 cells of 92x104, over a 1024 atlas's 99) |
+  | `enemy.snatcher` | Imp 6 | idle `Idle`; move `Run` (8, **fps 24**); attack `Taunt` 0, 2, 4-10, 12 (the gulp); hit `TakeDamage 1`; death `Die 1` | hunched low from kept index 3 to 8 (0.3-0.9 of the 60-tick swallow); the run: Imp 9's measured stride, 1.67 tiles a 0.33 s cycle at 5 u/s (1.4x the art's stride) | bodyTiles **1.0** (idle 32 px: between the Bomber 0.9 and the imp 1.2) | attack 330x992, body 740x845, death 268x780 |
+  | `enemy.pyrekeeper` | Demon spawn 1 | idle `Idle 1`; move `Walk` (8, fps 10); attack `Attack 2` 0, 2, 4-10, 12; hit `TakeDamage 1`; death `Die 1` | the torch thrust (f6-f8, at arm's length towards the target) starts at kept index 4 of 10 = 0.4 of the 48-tick light telegraph, where `torchArcPoint`'s arc leaves the hand, held to 0.7 | bodyTiles **1.47** = 31.3 px/tile (idle 46 px with the torch) | attack 640x930, body 780x1014, death 600x696 |
+
+  No view code needed a mark: every attack is one stretched timeline (newEnemy2Sprites.ts), so the marks above are
+  frame choices, not `segment` constants. `pixelsPerTileFrom` (the NE9 sets' way of sharing a density) needs the
+  referenced set's pack on the building machine, so the densities are reproduced with `bodyTiles` (31.3 and 38.0
+  exactly). Source note: Spawn 4's `Attack 2` f5 touches the 128 cell's top edge in rows 4 / 5 (facings 4 and 3: the
+  blade tip, at most a pixel clipped in the source; the set's source box is 7,0..120,117).
+- **`enemy.pyre`** (NX0 correction 6): new `packs/vale/pyre.ts` `valePyreAsset` (manifest, after the sprite layouts):
+  the decor `brazier`'s own `sprites` set in `decor-atlas.png`, idle / move / attack / hit = its 8 `lit` cells (hit
+  not looping), death = its unlit cell 592; sheet, cell 27 x 37, pivot (16, 35), 29.6 px/tile and the one facing
+  exactly the brazier's; no glow / glowAt / outlines / layer (decor-only; the flame glow and light are NX7's view); no
+  rim. No new pixels, no repack, no contract or validator change (the enemy slot already takes a one-facing set and
+  needs >= 1 frame per animation). `decor-atlas.png` is uploaded, so the bundled vale pack draws the pyre now.
+  Spec `packs/vale/pyre.spec.ts`; `newEnemies2.spec`'s bundled-pack row lets vale's five ids and two bullets be
+  `sprites` (every other pack: placeholders).
+- **Bullet looks** in a sheet of their own, `bullets-2.png` (18 x 85), NOT in `bullets.png`: `packFx` packs by frame
+  height and picks the smallest width, so adding the 18 x 34 flame would have moved every uploaded cell and made the
+  uploaded `bullets.png` ID wrong until a re-upload. The pipeline gained a bullet set key **`own`** (a file name; the
+  set packs with every set naming it into `<own>.png`, with its own contact sheet and upload copy; its layout entry
+  carries `sheet`, `VALE_BULLET_OWN_SHEETS` gives the size; gates as for any set); `bullets.png`, its contact sheet and
+  every older layout entry are byte-identical (sha256 `a9763016...` before and after), and `bullets.ts` draws a layout
+  over its own sheet once that has an ID. `bullet.enemy.flame` = `P1_Hyper_Bullet.png` (both frames, 18 x 34 cells),
+  ramp 135 -> `#5a0a33`, 166 -> `#d8287f`, 204 -> `#ff3fa4`, 216 -> `#ff52ad`, 239 -> `#ff7cbf`: mean `#f04da1`,
+  **8.8 CIE76** from `enemyBullet`, worst **3.35:1** (on `#3a3a46`). `bullet.enemy.hook` = `P1_Bullet_Alt2.png`'s pink
+  half (keep [1], the chevron pointing along the flight, heading up), ramp 49 -> `#7a1044`, 79 -> `#e0308a`, 88 ->
+  `#ff3fa4`, 164 -> `#ff5cb2`, 185 -> `#ff8ac6`: mean `#eb4e9f`, **10.9 CIE76**, worst **3.27:1**. The hook shares
+  the small bullet's silhouette (the same chevron, a darker rim); the chain drawn to it tells them apart. The flame is
+  the heavy arrow's size (0.6 x 1.15 tiles): Studio check whether it reads too big for a fireball.
+- **Checks:** `npm run test:art` 303 pass (new `bullets.test.js` cases for `own`); two consecutive `--only` builds and
+  a clean rebuild of the four sets and `bullets` byte-identical (36 outputs); `npm run build` then `npm run test:only
+  -- theme view run/stageInput codex/catalog`; typecheck and lint clean.
+- **Upload (owner):** every PNG below from `art/build/` (copies in `art/upload/`), then each ID into
+  `packs/vale/assetIds.ts`; a set switches on once its required sheets have IDs, its rims as they arrive.
+  - Shieldwall: `bulwark-attack.png`, `bulwark-attack-outline.png`, `bulwark-body.png`, `bulwark-body-outline.png`,
+    `bulwark-death.png`, `bulwark-death-outline.png`
+  - Chainhook: `chainhook-attack.png`, `chainhook-attack-outline.png`, `chainhook-body.png`,
+    `chainhook-body-outline.png`, `chainhook-move.png`, `chainhook-move-outline.png`, `chainhook-death.png`,
+    `chainhook-death-outline.png`
+  - Snatcher: `snatcher-attack.png`, `snatcher-attack-outline.png`, `snatcher-body.png`, `snatcher-body-outline.png`,
+    `snatcher-death.png`, `snatcher-death-outline.png`
+  - Pyre-keeper: `pyrekeeper-attack.png`, `pyrekeeper-attack-outline.png`, `pyrekeeper-body.png`,
+    `pyrekeeper-body-outline.png`, `pyrekeeper-death.png`, `pyrekeeper-death-outline.png`
+  - Bullets: `bullets-2.png` (the flame and the hook). `bullets.png` is unchanged: no re-upload.
+  - The pyre: nothing (decor-atlas.png's cells).
+- **Contact sheets:** `art/build/contact/enemy.bulwark.png`, `enemy.chainhook.png`, `enemy.snatcher.png`,
+  `enemy.pyrekeeper.png`, `bullets-2.png`; the rig surveys `nx8-rig-spawn9.png` / `-spawn4` / `-imp6` / `-spawn1` and
+  the zooms `nx8-z-*.png` (scratch, not pipeline outputs).
+- **Studio check (NX13) adds:** the four at their scales beside the knight (the Chainhook at 1.74 tiles is the
+  largest room enemy after the bruiser / charger; the Shieldwall and the keeper 1.47), the block loop reading as a
+  raised guard, the Snatcher's 24 fps run, the pyre's lit loop with NX7's flame part on top (drop the view's flame if
+  the sprite's own is enough), the flame and hook looks on every biome.
+
 ## Player experience
 
 1. **Shieldwall** (`bulwark`, NXD17). An armoured demon walks at you behind a round shield. Arrows and sword cuts that hit the shield spark
