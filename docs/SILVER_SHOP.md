@@ -151,8 +151,8 @@ conflicts.
 
 - **Theme** (`shared/theme/silverShop.ts`): 12 keys `silver.shop.*`, spread last into `REQUIRED_STRING_KEYS` (the prefix
   is `silver.shop`, not `silverShop`, because the validator refuses a capital letter in a key's first segment); English
-  in the placeholder manifest; `l10n/context.json` entries; optional `ui.icon.robux` (`ROBUX_ICON_ID`): no pack has it,
-  so prices read `55 Robux`. No new audio id. Pinned tails updated (codex, fortune, floorModifiers, treasure, runRecap,
+  in the placeholder manifest; `l10n/context.json` entries; optional `ui.icon.robux` (`ROBUX_ICON_ID`): without it
+  prices read `55 Robux` (vale wires it, "Robux icon" below). No new audio id. Pinned tails updated (codex, fortune, floorModifiers, treasure, runRecap,
   secrets, silver, contract specs). Luau top-level locals on out/: contract.luau 189 (was 188), validate.luau 192.
 - **Flow** (`shared/view/menu/silverShop.ts`): `silverShopEntryShown` (loaded and `shopAvailable`),
   `SILVER_SHOP_ENTRY_POINTS`, the flow (`shopOpen` / `shopClose` / `shopPrompt` / `shopPromptFinished` /
@@ -171,6 +171,29 @@ conflicts.
 - **Entry-point guard**: `scripts/check-silver-shop-entry.test.js` (in `test:checks`) fails if anything but
   `SilverBalance` opens the panel, any screen but the main menu and the Armory draws the `+`, or anything but
   `MenuLayer` mounts the panel. The panel is in every phone / portrait fit check.
+
+### Robux icon (SH10)
+
+- **Roblox's own icon, never redrawn.** The Robux icon is Roblox's mark, so the pack uses Roblox's official white icon
+  from the Roblox Studio install (`content/textures/ui/common/robux@3x.png`), copied by the owner into
+  `art/vendor/roblox/` (gitignored, like every vendor file). The theme takes uploaded images only (`rbxassetid://`;
+  local `rbxasset://` content is refused), so it is uploaded like any other ui image.
+- `scripts/art/roblox/prep_robux_icon.py` (python3 + Pillow, not run by art:build): crop to the visible pixels, centre
+  on a square, Lanczos on premultiplied alpha down to 12 x 12 (the UI sheet's glyphs are 11-14 art px; the button's
+  glyph box is 16 reference px), white with its alpha, edges hardened at alpha 128 (the menus draw art Pixelated;
+  `--soft` keeps them) -> `art/vendor/roblox/robux-icon.png`.
+- `art/atlases.json` `images` entry `ui.icon.robux` (`crop: none`, `rgb: white`, name `ui-robux`) -> `art/upload/ui-robux.png`
+  and the `VALE_IMAGE_LAYOUTS` entry (12 x 12; written by hand to match what `--only ui.icon.robux` generates).
+- vale manifest: `ROBUX_ICON_ID` is an optional image (absent until `ui-robux.png` has an id in `assetIds.ts`, never a
+  placeholder). `valeRobuxIcon.spec.ts` pins the layout, the absent and uploaded cases and the bundled state.
+- Drawn by the existing path: `GetSilverPanel` shows it when the pack has it and the buttons are on their art; it is
+  the skinned button's glyph (`IconLabel`, tinted like the text) and the label drops the word Robux (`55`).
+- Owner steps: (1) `mkdir -p art/vendor/roblox && cp
+  /Applications/RobloxStudio.app/Contents/Resources/content/textures/ui/common/robux@3x.png art/vendor/roblox/`;
+  (2) `python3 scripts/art/roblox/prep_robux_icon.py`; (3) `node scripts/art/build-atlases.js --only ui.icon.robux` and
+  `--lock --only ui.icon.robux` (if the generated layout differs from the hand-written 12 x 12, keep the generated one);
+  (4) upload `art/upload/ui-robux.png`, paste its id into `packs/vale/assetIds.ts` as `"ui-robux.png"`; (5) Studio: the
+  icon beside each price, white and crisp at every HUD scale.
 
 ### Changed and not changed
 
@@ -201,6 +224,8 @@ sim / dungeon (unchanged).
 - [x] **SH6. Get Silver panel and the two `+` buttons.**
 - [x] **SH7. Telemetry.**
 - [x] **SH8. Docs.** This file, docs/SILVER.md, docs/SERVER.md, docs/CLIENT.md, CLAUDE.md.
+- [ ] **SH10. Robux icon.** Wired (prep script, atlas entry, layout, manifest, spec); the owner's copy, build and upload
+  pending ("Robux icon" above).
 - [ ] **SH9. [owner] Products and checks.** **First ship the codec (SH1) and restart every server** (SHD7). Then create
   the four developer products in Creator Hub (name, icon, description, translations) at 20 / 55 / 115 / 265 Robux;
   paste their ids into `SILVER_PRODUCTS` under the universe's `GameId` (shared/wallet `shop.ts`); publish; run the

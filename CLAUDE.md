@@ -1510,7 +1510,7 @@ Decision log (deviations from `PLAN.md`):
   the Armory header and on the main menu only (`scripts/check-silver-shop-entry.test.js`); the Armory's focus scope
   gained `memoryKey="armory"`; purchase toasts on negative lobby-notice ids. Theme: 12 strings `silver.shop.*`
   (`SILVER_SHOP_STRING_KEYS`, spread last into `REQUIRED_STRING_KEYS`: a later feature appending there must update the
-  pinned tails again), optional `ui.icon.robux` (absent: "55 Robux"), no new audio id; `contract.luau` / `validate.luau`
+  pinned tails again), optional `ui.icon.robux` (absent: "55 Robux"; vale: Roblox's own icon from the Studio install, made a 12 x 12 white glyph by `scripts/art/roblox/prep_robux_icon.py`, image `ui-robux.png`, upload pending), no new audio id; `contract.luau` / `validate.luau`
   top-level locals 189 / 192 (counted on out/). Debug `KV_FakeShop` (Studio: `off` or four prices). Pending: SH0
   (Studio confirmations of the receipt API and enums) and SH9 (create the products, paste their ids, checks).
 

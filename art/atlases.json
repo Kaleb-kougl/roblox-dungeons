@@ -947,6 +947,13 @@
 			"pivot": { "x": 53, "y": 54 },
 			"sameCropAs": "ui.cursor"
 		},
+		"ui.icon.robux": {
+			"$comment": "docs/SILVER_SHOP.md \"Robux icon\": Roblox's own white Robux icon beside the Get Silver prices (ROBUX_ICON_ID). Never redrawn: the owner copies robux@3x.png out of the Roblox Studio install into art/vendor/roblox/, and scripts/art/roblox/prep_robux_icon.py (not run by art:build) makes this 12 x 12 white, hard-edged glyph from it; tinted like the button's text. Build just it: node scripts/art/build-atlases.js --only ui.icon.robux (and --lock --only ui.icon.robux).",
+			"file": "roblox/robux-icon.png",
+			"name": "ui-robux",
+			"crop": "none",
+			"rgb": "white"
+		},
 		"ui.ring.player": {
 			"$comment": "Soft ring; cropped to alpha > noiseAlpha + pad. Pivot = centre of the crop (the ring sits centred under the player).",
 			"file": "lords-of-pain-demo/user interface/highlight/highlight_yellow.png",
