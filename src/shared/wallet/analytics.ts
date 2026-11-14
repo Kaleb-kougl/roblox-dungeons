@@ -8,6 +8,9 @@
  *             plus everything so far), so the last equals the grant's `balance`.
  *   purchase  one economy Sink (itemSku = the catalogue id, transactionType Shop) and one `ArmoryPurchase` custom
  *             event (value = the price; field01 the item, field02 its tier, field03 the level bought).
+ *   pack      (docs/SILVER_SHOP.md SH7) one economy Source per granted Silver pack (itemSku `silverPack.<id>`,
+ *             transactionType IAP, apart from Gameplay / TimedReward) and one `SilverShop` custom event, step `granted`
+ *             (shopAnalytics.ts holds the funnel's client steps).
  *
  * Roblox's limits: amount > 0, ending balance >= 0, 5 currency types (Silver is one), 20 transaction types, about 100
  * SKUs (ECONOMY_SKUS; analytics.spec holds them under it).
@@ -15,13 +18,14 @@
 import type { AnalyticsEventSpec } from "shared/run";
 import { SILVER_ROWS } from "shared/silver";
 import { ARMORY_CATALOG, ARMORY_TIERS, type ArmoryItem } from "./catalog";
+import { SILVER_PACKS, type SilverPack, type SilverPackId, type SilverPurchaseGrant } from "./shop";
 import type { SilverGrantBreakdown, WalletPurchase } from "./transforms";
 
 /** The currency's name in the economy events. */
 export const SILVER_CURRENCY = "Silver";
 
 /** AnalyticsService economy transaction types (the `Enum.AnalyticsEconomyTransactionType` names Silver uses). */
-export type EconomyTransactionType = "Gameplay" | "TimedReward" | "Shop";
+export type EconomyTransactionType = "Gameplay" | "TimedReward" | "Shop" | "IAP";
 
 /** One `AnalyticsService:LogEconomyEvent` call. */
 export interface EconomyEventSpec {
@@ -41,8 +45,13 @@ export const GRANT_SKU = table.freeze({
 	dailyBonus: "dailyBonus",
 });
 
-/** The Armory's custom event. */
-export const WALLET_ANALYTICS_EVENT = table.freeze({ armoryPurchase: "ArmoryPurchase" });
+/** The Armory's and the Silver shop's custom events. */
+export const WALLET_ANALYTICS_EVENT = table.freeze({ armoryPurchase: "ArmoryPurchase", silverShop: "SilverShop" });
+
+/** A Silver pack's economy SKU. */
+export function silverPackSku(id: SilverPackId): string {
+	return `silverPack.${id}`;
+}
 
 /** ArmoryPurchase's field02 / field03 values. */
 export function tierLabel(tier: number): string {
@@ -53,11 +62,15 @@ export function levelLabel(level: number): string {
 	return `level${level}`;
 }
 
-/** Every SKU Silver's economy events may carry: the run rows, the grant parts, every catalogue item. */
-export function economySkus(catalog: ReadonlyArray<ArmoryItem> = ARMORY_CATALOG): string[] {
+/** Every SKU Silver's economy events may carry: the run rows, the grant parts, every catalogue item, every pack. */
+export function economySkus(
+	catalog: ReadonlyArray<ArmoryItem> = ARMORY_CATALOG,
+	packs: ReadonlyArray<SilverPack> = SILVER_PACKS,
+): string[] {
 	const out: string[] = [...SILVER_ROWS];
 	out.push(GRANT_SKU.prospector, GRANT_SKU.topUp, GRANT_SKU.firstRunBonus, GRANT_SKU.dailyBonus);
 	for (const i of catalog) out.push(i.id);
+	for (const p of packs) out.push(silverPackSku(p.id));
 	return out;
 }
 
@@ -120,6 +133,18 @@ export function armoryPurchaseEvent(p: Readonly<WalletPurchase>): AnalyticsEvent
 		name: WALLET_ANALYTICS_EVENT.armoryPurchase,
 		value: p.price,
 		fields: { field01: p.itemId, field02: tierLabel(p.tier), field03: levelLabel(p.level) },
+	};
+}
+
+/** The Source event of one granted Silver pack (IAP; its ending balance is the grant's). */
+export function silverPackEconomyEvent(g: Readonly<SilverPurchaseGrant>): EconomyEventSpec {
+	return {
+		flow: "Source",
+		currency: SILVER_CURRENCY,
+		amount: g.silver,
+		endingBalance: math.max(0, g.balance),
+		transactionType: "IAP",
+		itemSku: silverPackSku(g.packId),
 	};
 }
 

@@ -114,8 +114,9 @@ describe("analytics catalog limits", () => {
 		for (const [, n] of pairs(TUTORIAL_ANALYTICS_EVENT)) expect(names.has(n)).toBe(true);
 		for (const [, n] of pairs(WALLET_ANALYTICS_EVENT)) expect(names.has(n)).toBe(true);
 		// 36 before the run-over recap's RunRecap (docs/RUN_RECAP.md RR9); its views row (docs/RUN_CONTRIBUTION.md CT8) is
-		// a row kind on that event, not a new name. 38 with Silver's ArmoryPurchase (docs/SILVER.md SV10).
-		expect(custom.size()).toBe(38);
+		// a row kind on that event, not a new name. 38 with Silver's ArmoryPurchase (docs/SILVER.md SV10), 39 with the
+		// Silver shop's SilverShop (docs/SILVER_SHOP.md SH7).
+		expect(custom.size()).toBe(39);
 		expect(custom.size() <= ROBLOX_MAX_CUSTOM_EVENT_NAMES).toBe(true);
 	});
 

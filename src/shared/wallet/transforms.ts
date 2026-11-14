@@ -13,6 +13,7 @@
  *               balance is short of the price read from the catalogue (the client never sends one).
  *   applyEquip  a cosmetic into its slot ("" empties the slot): the item must be owned and fit the slot.
  *   nextGoals   the next levels to buy, cheapest first (the Armory's marks and the recap's `to go` line, SVD24).
+ *   silverPurchase (op) one developer-product receipt (shop.ts applyPurchase, docs/SILVER_SHOP.md SH2).
  *
  * walletTransaction(stored, op) wraps one of them for a store transform: it decodes, refuses a NEWER doc version
  * (`newerVersion`: never written over), and gives the value to write (undefined: cancel the write).
@@ -30,6 +31,7 @@ import {
 	walletDocsEqual,
 	type WalletDoc,
 } from "./doc";
+import { applyPurchase, type SilverPack, type SilverPurchaseGrant, type SilverReceipt } from "./shop";
 
 /** A run's Silver as a grant (RunSessionService.conclude -> WalletService.grantRun). */
 export interface WalletGrant {
@@ -82,7 +84,11 @@ export type WalletRefusal =
 	| "badSlot"
 	| "newerVersion"
 	/** A buy whose expected level is not the stored next level (it went through already, or the copy was behind). */
-	| "stale";
+	| "stale"
+	/** A receipt for a product that is not a Silver pack here (docs/SILVER_SHOP.md SH2; Roblox delivers it again). */
+	| "unknownProduct"
+	/** A receipt without a usable PurchaseId. */
+	| "badPurchaseId";
 
 export type WalletGrantResult =
 	| { readonly ok: true; readonly doc: WalletDoc; readonly breakdown: SilverGrantBreakdown }
@@ -261,7 +267,9 @@ export function nextGoals(
 export type WalletOp =
 	| { readonly kind: "grant"; readonly grant: WalletGrant; readonly ctx: WalletGrantContext }
 	| { readonly kind: "buy"; readonly itemId: string; readonly level?: number }
-	| { readonly kind: "equip"; readonly slot: string; readonly itemId: string };
+	| { readonly kind: "equip"; readonly slot: string; readonly itemId: string }
+	/** A developer-product receipt (`pack` undefined: not a Silver pack here). */
+	| { readonly kind: "silverPurchase"; readonly receipt: SilverReceipt; readonly pack?: SilverPack };
 
 /** A transaction's outcome. `write` is the value to store (undefined: cancel the write). */
 export interface WalletTxOutcome {
@@ -272,6 +280,8 @@ export interface WalletTxOutcome {
 	readonly write?: unknown;
 	readonly breakdown?: SilverGrantBreakdown;
 	readonly purchase?: WalletPurchase;
+	/** A granted receipt (op `silverPurchase`). */
+	readonly silverPurchase?: SilverPurchaseGrant;
 }
 
 /** `op` on the stored value `stored` (module comment). Never throws. */
@@ -292,6 +302,11 @@ export function walletTransaction(
 		const r = applyBuy(doc, op.itemId, catalog, op.level);
 		if (!r.ok) return { ok: false, reason: r.reason, doc };
 		return { ok: true, doc: r.doc, write: encodeWalletDoc(r.doc), purchase: r.purchase };
+	}
+	if (op.kind === "silverPurchase") {
+		const r = applyPurchase(doc, op.receipt, op.pack);
+		if (!r.ok) return { ok: false, reason: r.reason, doc };
+		return { ok: true, doc: r.doc, write: encodeWalletDoc(r.doc), silverPurchase: r.grant };
 	}
 	const r = applyEquip(doc, op.slot, op.itemId, catalog);
 	if (!r.ok) return { ok: false, reason: r.reason, doc };
