@@ -29,6 +29,7 @@ import {
 	type WalletUpgradeLevels,
 } from "shared/wallet";
 import { WalletTransactions } from "./data/WalletTransactions";
+import { SilverAccessService } from "./SilverAccessService";
 import { TelemetryService } from "./TelemetryService";
 
 const log = serverLogger("Wallet");
@@ -89,10 +90,19 @@ export class WalletService implements OnStart {
 	/** Studio: the in-memory store the book transacts on. */
 	private memory: MemoryWalletStore | undefined;
 
-	constructor(private readonly telemetry: TelemetryService) {
+	constructor(
+		private readonly telemetry: TelemetryService,
+		private readonly silverAccess: SilverAccessService,
+	) {
 		this.book = new WalletBook(this.createStore(), {
 			keyOf: playerDataKey,
 			wait: (s) => task.wait(s),
+		});
+		// docs/SILVER.md SV6 / SV17: run starts and lobbies read each member's upgrade levels and owned characters here
+		// (an unknown wallet: no upgrades, the Knight only), wired at construction so no start sees the open default.
+		this.silverAccess.setSilverAccess({
+			upgradesFor: (userId) => this.effectiveUpgrades(userId),
+			ownsCharacter: (userId, characterId) => this.ownsCharacter(userId, characterId),
 		});
 	}
 

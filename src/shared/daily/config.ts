@@ -66,7 +66,9 @@ export const DAILY: DailyConfig = table.freeze({
 	// GR1-GR3, RD10 / RD11): Goldling floors gain a piece and the Goldling no longer appears 3 s into the fight.
 	// 19: secret rooms (docs/SECRET_ROOMS.md SR5: a cracked far wall on about one floor in five from floor 2, its chamber
 	// and chest; the carved grid, the openers and the SECRET source change endless floors, play and scores).
-	ruleset: 19,
+	// 20: Silver (docs/SILVER.md: the heart cut, Knight 2 and Archer 1 1/2 hearts; Armory upgrades in every ranked world;
+	// Silver in barrels and crates, the hashed `silver` group): daily play, hashes and scores change.
+	ruleset: 20,
 	labelOffset: 1,
 	yesterdayCacheSeconds: 600,
 	minEntrantsForPercentile: 20,

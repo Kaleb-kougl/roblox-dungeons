@@ -25,6 +25,7 @@ import {
 	ScoreSource,
 	endlessStartFloor,
 	secretsRunSummary,
+	silverTotalOf,
 	type SimConfig,
 	type SimState,
 } from "shared/sim";
@@ -147,13 +148,9 @@ export function silverRowOf(run: Readonly<RunSilver>, row: SilverRowId): number 
 	return 0;
 }
 
-/**
- * Silver from broken barrels and crates. SC2 seam: state.silver.total (track SC adds `state.silver`); until then no
- * piece holds Silver, so every run reads 0.
- */
-export function crateSilverOf(_state: Readonly<SimState>): number {
-	// SC2 seam: state.silver.total
-	return 0;
+/** Silver from broken barrels and crates: state.silver.total (docs/SILVER.md SC2; 0 in a run without SimConfig.silver). */
+export function crateSilverOf(state: Readonly<SimState>): number {
+	return silverTotalOf(state);
 }
 
 /**

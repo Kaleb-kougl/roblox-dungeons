@@ -14,7 +14,7 @@
  *   dailyDay        shared/daily dailyDay of the last Daily bonus
  * In memory `own` and `eq` are Maps (a Map is a plain Luau table; encode copies it into one with sorted iteration).
  */
-import { DEFAULT_CHARACTER, type CharacterId } from "shared/characters";
+import { DEFAULT_CHARACTER, type CharacterId, type UpgradeLevels } from "shared/characters";
 import { ARMORY_CATALOG, UPGRADE_ITEM, armoryItem, characterUnlock, type ArmoryItem } from "./catalog";
 import { WALLET, WALLET_DOC_VERSION } from "./config";
 
@@ -29,12 +29,8 @@ export interface WalletDoc {
 	dailyDay?: number;
 }
 
-/** The levels of the upgrade tracks with a sim lever (shared/characters UpgradeLevels: the same shape). */
-export interface WalletUpgradeLevels {
-	readonly vigor: number;
-	readonly deepFlask: number;
-	readonly plating: number;
-}
+/** The levels of the upgrade tracks with a sim lever: shared/characters UpgradeLevels (the run session's input). */
+export type WalletUpgradeLevels = UpgradeLevels;
 
 export function emptyWalletDoc(): WalletDoc {
 	return { v: WALLET_DOC_VERSION, earned: 0, spent: 0, own: new Map(), runs: [] };

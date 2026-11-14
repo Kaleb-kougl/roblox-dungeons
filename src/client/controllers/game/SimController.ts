@@ -2,7 +2,7 @@ import { Controller, OnStart } from "@flamework/core";
 import { GuiService, Players, RunService, Workspace } from "@rbxts/services";
 import { Events } from "client/network";
 import { clientStore, selectDailyStatus, selectSelectedCharacter, type RunInfo, type VerdictView } from "client/store";
-import { isCharacterId, type CharacterId } from "shared/characters";
+import { isCharacterId, type CharacterId, type UpgradeLevels } from "shared/characters";
 import type { PartyRunStart, RunFinishVerdict, RunVerdict } from "shared/network";
 import {
 	ArrivalLog,
@@ -461,6 +461,12 @@ export class SimController implements OnStart {
 	 * server's echo (StartRunReply.characterId).
 	 */
 	private runCharacter: CharacterId = selectSelectedCharacter(clientStore.getState());
+	/**
+	 * docs/SILVER.md SV6: the owner's upgrade levels the ranked session was built with (StartRunReply.upgrades), set
+	 * from the reply and used only for that ranked run's build (makeRun with a runId), so the client builds the
+	 * server's config. Undefined: no upgrades (an unranked run, or a world without them).
+	 */
+	private rankedUpgrades: UpgradeLevels | undefined;
 	private readonly exitListeners = new Array<RunExitListener>();
 
 	/** Co-op: neutral input while a menu owns the controls (a party run never pauses under one). */
@@ -1230,6 +1236,8 @@ export class SimController implements OnStart {
 				atBossDoor: false,
 				partySize: start.members.size(),
 				characters,
+				// docs/SILVER.md SV6: every member's levels as the server built the session.
+				upgrades: start.upgrades,
 			}),
 		);
 		if (!ok) {
@@ -1579,6 +1587,7 @@ export class SimController implements OnStart {
 				if (reply.characterId !== undefined && isCharacterId(reply.characterId)) {
 					this.runCharacter = reply.characterId;
 				}
+				this.rankedUpgrades = reply.upgrades;
 				this.startRun(reply.seed, reply.atBossDoor === true, 0, world, reply.runId, "", false);
 			} else {
 				warn(`[Sim] ranked run refused (${reply.code ?? "?"}: ${reply.reason ?? ""}); playing unranked`);
@@ -1824,7 +1833,14 @@ export class SimController implements OnStart {
 		const [ok, result] = pcall(() => {
 			const dev = world === DEV_WORLD_KIND ? this.devRun : undefined;
 			// docs/ARCHER.md AR5: the run's character (worlds without characters ignore it; the tutorial is the Knight's).
-			const setup = buildWorldSetup(world, seed, { atBossDoor, dev, characters: [this.runCharacter] });
+			// docs/SILVER.md SV6: a ranked run is built with the session's upgrade levels; an unranked one with none.
+			const upgrades = runId !== undefined && this.rankedUpgrades !== undefined ? [this.rankedUpgrades] : undefined;
+			const setup = buildWorldSetup(world, seed, {
+				atBossDoor,
+				dev,
+				characters: [this.runCharacter],
+				upgrades,
+			});
 			const spawn = setup.spawn ?? { x: 0, z: 0 };
 			const stressCfg = stressConfig(stress, spawn.x, spawn.z);
 			const config: Readonly<SimConfig> =
