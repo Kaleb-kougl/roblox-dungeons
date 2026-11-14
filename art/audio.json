@@ -1699,6 +1699,124 @@
 			],
 			"notes": "CC0 candidates from the Ninja Adventure pack, sourced 2026-11-11, not auditioned: pick by ear, move the pick into \"clips\", drop \"silent\", set \"confirmed\": true. The Goldling escaping (docs/FORTUNE.md FO10): a let-down.",
 			"confirmed": true
+		},
+		"sfx.enemy.block": {
+			"category": "sfx",
+			"clips": [
+				"kenney-impact-sounds/Audio/impactMetal_light_001.ogg",
+				"kenney-impact-sounds/Audio/impactMetal_light_003.ogg",
+				"kenney-impact-sounds/Audio/impactMetal_light_004.ogg"
+			],
+			"pitch": [
+				0.95,
+				1.05
+			],
+			"alternates": [
+				"kenney-impact-sounds/Audio/impactPlate_light_000.ogg",
+				"kenney-impact-sounds/Audio/impactTin_medium_000.ogg"
+			],
+			"notes": "docs/NEW_ENEMIES_2.md NX10, sourced 2026-11-14, CC0, not auditioned yet: pick by ear at the audition, move the pick into \"clips\", set \"confirmed\": true. A Shieldwall's shield stops a bullet or a swing: a short, light metal tick (it can fire often; SFX_MIN_INTERVAL 0.08 s), three Kenney variants round-robin."
+		},
+		"sfx.enemy.guardbreak": {
+			"category": "sfx",
+			"clips": [
+				"kenney-impact-sounds/Audio/impactPlate_heavy_000.ogg"
+			],
+			"alternates": [
+				"kenney-impact-sounds/Audio/impactPlate_heavy_002.ogg",
+				"kenney-impact-sounds/Audio/impactMetal_heavy_002.ogg",
+				"ninja-adventure/Audio/Sounds/Hit & Impact/Impact5.wav"
+			],
+			"notes": "docs/NEW_ENEMIES_2.md NX10, sourced 2026-11-14, CC0, not auditioned yet: pick by ear at the audition, move the pick into \"clips\", set \"confirmed\": true. The Shieldwall's guard breaks (finisher, heavy arrow, Siege slam): a heavy plate clang, clearly bigger than the block."
+		},
+		"sfx.enemy.hook": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Whoosh & Slash/Launch.wav"
+			],
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Whoosh & Slash/Whoosh.wav",
+				{
+					"src": "oga-chain-winch/winch - Marker #7.wav",
+					"trim": [
+						0.25,
+						0.75
+					],
+					"fadeOutSec": 0.15
+				}
+			],
+			"notes": "docs/NEW_ENEMIES_2.md NX10, sourced 2026-11-14, CC0, not auditioned yet: pick by ear at the audition, move the pick into \"clips\", set \"confirmed\": true. The Chainhook throws its hook down the lane: a launch whoosh (the alternate is a slice of bart's chain winch rattle)."
+		},
+		"sfx.enemy.hooklatch": {
+			"category": "sfx",
+			"clips": [
+				{
+					"src": "oga-chain-winch/winch - Marker #5.wav",
+					"trim": [
+						0.7,
+						1.05
+					],
+					"fadeOutSec": 0.1
+				}
+			],
+			"alternates": [
+				{
+					"src": "oga-chain-winch/winch - Region #1.wav",
+					"trim": [
+						0.5,
+						0.8
+					],
+					"fadeOutSec": 0.1
+				},
+				"kenney-impact-sounds/Audio/impactMetal_heavy_001.ogg"
+			],
+			"notes": "docs/NEW_ENEMIES_2.md NX10, sourced 2026-11-14, CC0, not auditioned yet: pick by ear at the audition, move the pick into \"clips\", set \"confirmed\": true. The hook catches the player and the chain snaps taut: a short chain clatter cut from \"Chain winch sounds\" by bart (OpenGameArt, CC0, credit appreciated); the trims are first guesses from the envelope, adjust at the audition."
+		},
+		"sfx.enemy.snatch": {
+			"category": "sfx",
+			"clips": [
+				"oga-creature-sfx/eat_03.ogg"
+			],
+			"alternates": [
+				"oga-creature-sfx/eat_02.ogg",
+				"oga-creature-sfx/eat_01.ogg",
+				"oga-creature-sfx/eat_04.ogg"
+			],
+			"notes": "docs/NEW_ENEMIES_2.md NX10, sourced 2026-11-14, CC0, not auditioned yet: pick by ear at the audition, move the pick into \"clips\", set \"confirmed\": true. The Snatcher grabs a pellet: a tiny bite from \"80 CC0 creature SFX\" by rubberduck (OpenGameArt, CC0); the view plays it at cue speed 0.67 (pitched down), SFX_MIN_INTERVAL 0.1 s."
+		},
+		"sfx.enemy.swallow": {
+			"category": "sfx",
+			"clips": [
+				"oga-creature-sfx/burble_02.ogg"
+			],
+			"alternates": [
+				"oga-creature-sfx/burp_01.ogg",
+				"oga-creature-sfx/burble_01.ogg",
+				"oga-creature-sfx/burp_02.ogg"
+			],
+			"notes": "docs/NEW_ENEMIES_2.md NX10, sourced 2026-11-14, CC0, not auditioned yet: pick by ear at the audition, move the pick into \"clips\", set \"confirmed\": true. The Snatcher swallows what it carries (the room's Sweep is lost): a wet gulp / burble from rubberduck's creature pack (CC0)."
+		},
+		"sfx.pellet.return": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Magic & Skill/Magic3.wav"
+			],
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Jump & Bounce/Bounce3.wav",
+				"ninja-adventure/Audio/Sounds/Menu/Accept4.wav"
+			],
+			"notes": "docs/NEW_ENEMIES_2.md NX10, sourced 2026-11-14, CC0, not auditioned yet: pick by ear at the audition, move the pick into \"clips\", set \"confirmed\": true. A dead Snatcher's pellets fly back to their cells: a light magical pop, apart from the chomp of sfx.pellet.eat."
+		},
+		"sfx.enemy.pyrelight": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Elemental/Fireball.wav"
+			],
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Elemental/Fireball2.wav",
+				"ninja-adventure/Audio/Sounds/Elemental/Fire3.wav"
+			],
+			"notes": "docs/NEW_ENEMIES_2.md NX10, sourced 2026-11-14, CC0, not auditioned yet: pick by ear at the audition, move the pick into \"clips\", set \"confirmed\": true. A Pyre-keeper's brazier lands and flares up: a fire whoosh (sfx.enemy.fuse already uses Fire, so Fireball here)."
 		}
 	}
 }
