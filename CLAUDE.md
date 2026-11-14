@@ -1417,7 +1417,7 @@ Decision log (deviations from `PLAN.md`):
   treasure jingle; codex.spec's tail and the listed specs' skips updated: a later feature appending there must update
   them again); role `secret.dust` `#c8bfae` (`secretReport`); optional world art `secret.crack` / `secret.rubble` (slot
   `secret`, one facing) and fx `fx.secret.dust`: original art by `scripts/art/gen-secret-art.js` in its own sheet
-  `secret.png` (`--only secret`, `packs/vale/secretLayout.ts`), not uploaded; stage feature `secret`. Codex: entry
+  `secret.png` (`--only secret`, `packs/vale/secretLayout.ts`), uploaded 2026-11-13; stage feature `secret`. Codex: entry
   `secret:room` (group `secrets`, the Bestiary tab's last section; catalogue 86 -> 87, order lock updated), seen at the
   local player's first knock, found at an open. `contract.luau` / `validate.luau` top-level locals 187 / 197 (counted
   on out/, unchanged). View (presentation only): shared/view/secrets (`SECRET_VIEW`, `SecretFrameEvents` on every

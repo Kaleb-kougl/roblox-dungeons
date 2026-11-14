@@ -389,7 +389,7 @@ For the view track. Presentation data only (no sim, dungeon, hash or replay chan
   6 frames at 10 fps, one-shot, pivot (6, 1) on the joint at the top (`fx.secret.dust` look: sizeTiles 1, not
   additive). Its own sheet **`secret.png`** (72 x 160, atlas group `secret`, `--only secret`), layout
   `packs/vale/secretLayout.ts` (`VALE_SECRET_SHEET`, `VALE_SECRET_ART_LAYOUTS`, `VALE_SECRET_FX_LAYOUTS`). Vale switches
-  all three on once `secret.png` has an ID in `assetIds.ts` (not uploaded: the owner's step); when it does, the stage
+  all three on once `secret.png` has an ID in `assetIds.ts` (uploaded 2026-11-13, so they are on); when it does, the stage
   manifest (shared/view `STAGE_ASSETS`) must list `secret.` or `stageAssets.coverage.spec` fails.
 - **Codex (SRD12):** entry `secret:room` (`CODEX_SECRET_ID`, `codexSecretId()`), group `secrets` (the Bestiary's last
   section, see Design 9), name `secret.room.name`, description `codex.desc.secret.room` ("Secret rooms: a cracked wall

@@ -39,6 +39,7 @@ import { VALE_FORTUNE_FX_SHEET, VALE_PACT_ALTAR_LAYOUT } from "./fortuneLayout";
 import { VALE_AMBIENT_LAYOUTS, VALE_FX_SHEET } from "./fxLayout";
 import { VALE_GOO_SHEET } from "./gooLayout";
 import { VALE_HAZARD_SHEET } from "./hazardLayout";
+import { VALE_SECRET_SHEET } from "./secretLayout";
 import { VALE_TREASURE_CAGE_LAYOUT, VALE_TREASURE_FX_SHEET } from "./treasureLayout";
 import { VALE_UI_ICON_FILE } from "./uiIconLayout";
 import {
@@ -134,7 +135,8 @@ describe("vale pack", () => {
 		// docs/FORTUNE.md FO10), the boon icon sheet (boonIconLayout.ts, docs/BUILDS.md BU11), the relic and curse
 		// icon sheet (itemIconLayout.ts, BU11), the boost icon sheet (boostIconLayout.ts, docs/BOOSTS.md B7) and the
 		// armor pip sheet (pipIconLayout.ts, docs/UI_ART.md), the duo icon sheet (duoIconLayout.ts, BU11) and the Kenney
-		// Forge pieces' sheet (kenneyLayout.ts, docs/KENNEY_DECOR.md KN9) are art/build files too
+		// Forge pieces' sheet (kenneyLayout.ts, docs/KENNEY_DECOR.md KN9) and the secret rooms' sheet (secretLayout.ts,
+		// docs/SECRET_ROOMS.md SR11) are art/build files too
 		const files = allFiles();
 		files.push(VALE_FX_SHEET.file);
 		files.push(VALE_BULLET_SHEET.file);
@@ -150,6 +152,7 @@ describe("vale pack", () => {
 		files.push(VALE_BOOST_ICON_FILE);
 		files.push(VALE_PIP_ICON_FILE);
 		files.push(VALE_DUO_ICON_FILE);
+		files.push(VALE_SECRET_SHEET.file);
 		for (const file of VALE_KENNEY_SHEETS) files.push(file);
 		for (const id of sortedKeys(VALE_AMBIENT_LAYOUTS)) files.push(VALE_AMBIENT_LAYOUTS[id].file);
 		for (const file of sortedKeys(VALE_ASSET_IDS)) {

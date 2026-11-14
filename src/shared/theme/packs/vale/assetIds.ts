@@ -167,8 +167,8 @@ import type { RobloxAssetId } from "../../types";
  * "As built: verdant tiles"; original art, scripts/art/verdant/gen_verdant_tiles.py) uploaded 2026-11-09 6:56 AM by
  * k9kbdev, transcribed from an Asset Manager screenshot.
  * secret.png (the secret rooms' crack overlay, rubble and dust trickle, docs/SECRET_ROOMS.md SR11; original art,
- * scripts/art/gen-secret-art.js, built by `node scripts/art/build-atlases.js --only secret`) is NOT uploaded yet: its ID
- * goes here, which switches on `secret.crack`, `secret.rubble` and `fx.secret.dust` (until then the view's fallback).
+ * scripts/art/gen-secret-art.js, built by `node scripts/art/build-atlases.js --only secret`) uploaded 2026-11-13, the ID
+ * given by the owner in chat: it switches on `secret.crack`, `secret.rubble` and `fx.secret.dust`.
  */
 export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"amb-b1.ogg": "rbxassetid://91158343621799",
@@ -358,6 +358,7 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"reaper-body.png": "rbxassetid://75857827785103",
 	"reaper-death-outline.png": "rbxassetid://138125634876332",
 	"reaper-death.png": "rbxassetid://117603043827937",
+	"secret.png": "rbxassetid://94136627623334",
 	"sfx-affix-shieldbreak.ogg": "rbxassetid://116871435989650",
 	"sfx-affix-vengeful.ogg": "rbxassetid://122645585698044",
 	"sfx-best-new.ogg": "rbxassetid://139947943484777",

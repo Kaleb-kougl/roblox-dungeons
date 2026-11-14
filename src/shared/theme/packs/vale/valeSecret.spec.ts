@@ -59,13 +59,18 @@ describe("vale secret-room art (secret.crack, secret.rubble, fx.secret.dust)", (
 		expect(look.sizeTiles > 0 && look.sizeTiles <= FX_SPRITE_MAX_TILES).toBe(true);
 	});
 
-	it("as bundled (secret.png not uploaded) and without IDs: no crack, rubble or dust (the view's fallback)", () => {
-		expect(VALE_ASSET_IDS[FILE]).toBe(undefined);
-		for (const m of [VALE_MANIFEST, buildValeManifest({})]) {
-			for (const id of [...SECRET_ART_IDS, SECRET_DUST_FX_ID])
-				expect([id, m.assets[id]]).toEqual([id, undefined]);
-		}
-		const pack = new ThemePack(VALE_MANIFEST, { warn: quiet });
+	it("as bundled (secret.png uploaded 2026-11-13) draws all three; without IDs none (the view's fallback)", () => {
+		expect(VALE_ASSET_IDS[FILE] !== undefined).toBe(true);
+		for (const id of [...SECRET_ART_IDS, SECRET_DUST_FX_ID])
+			expect([id, VALE_MANIFEST.assets[id] !== undefined]).toEqual([id, true]);
+		const bundled = new ThemePack(VALE_MANIFEST, { warn: quiet });
+		expect([bundled.sprites(SECRET_CRACK_ID) !== undefined, bundled.fx(SECRET_DUST_FX_ID) !== undefined]).toEqual([
+			true,
+			true,
+		]);
+		const bare = buildValeManifest({});
+		for (const id of [...SECRET_ART_IDS, SECRET_DUST_FX_ID]) expect([id, bare.assets[id]]).toEqual([id, undefined]);
+		const pack = new ThemePack(bare, { warn: quiet });
 		expect([pack.sprites(SECRET_CRACK_ID), pack.fx(SECRET_DUST_FX_ID)]).toEqual([undefined, undefined]);
 	});
 
