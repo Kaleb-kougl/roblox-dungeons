@@ -30,15 +30,24 @@ and scores change (all-time boards stay `_v1`; `DAILY.ruleset` 19 -> 20, or the 
 
 ## Status (2026-11-14)
 
-**NX0, NX1, NX2 (the Shieldwall) and NX4 (the Snatcher) done on branch `new-enemies-2`** (from `main` @ `152553c`; "NX0
-findings", "NX1 skeleton", "As built"); NX3 (Chainhook) and NX5 (Pyre-keeper) under way on their own branches, NX6 next. NXD1-NXD16 taken by
-the owner on 2026-11-13 (see Decisions): every one as recommended except **NXD1** (the shield enemy's id is `bulwark`,
-not "Shieldbearer", to keep clear of the Shielded affix) and **NXD12** (the pyre's fireballs get a **new flame bullet
-look** now, not the caster's). NXD17-NXD21 settle the NX2 / NX4 owner calls on 2026-11-14: the shield enemy is shown as
-the **Shieldwall** (NXD17: Warding's evolution keeps "Bulwark"; the id stays `bulwark` everywhere in code), a Snatcher
-killed last hands its pellets to its killer (NXD18), and OC2-OC4 stand as built (NXD19-NXD21). Where this doc says
-"Bulwark" it means the archetype `bulwark`. The code facts below were read on `silver` @ `07623092`; NX0 re-checked them
-on the branch point (corrections in "NX0 findings").
+**Built on branch `new-enemies-2`: NX0-NX9 and NX11** ("NX0 findings", "NX1 skeleton", "As built"): the Shieldwall
+(`bulwark`), the Chainhook, the Snatcher, the Pyre-keeper and its `pyre` in the sim, the room pool and roster, the view
+(placeholder looks), the art sets (built, not uploaded), the Codex entries, the systems pass (specs per interaction, a
+recorded run per kind validating on the server) and an NX12-lite measurement (no retune). Decisions NXD1-NXD24 taken by
+the owner (2026-11-13 / 2026-11-14): every one as recommended or as built except NXD1 (the id is `bulwark`, not
+"Shieldbearer") and NXD12 (a new flame bullet look now); the shield enemy is shown as the **Shieldwall** (NXD17; the id
+stays `bulwark` everywhere in code). Where this doc says "Bulwark" it means the archetype `bulwark`.
+
+**Pending:**
+
+- **NX8 upload** (owner): the 27 PNGs listed in "NX8 Art" (six each for the Shieldwall, the Snatcher and the Pyre-keeper, eight for the Chainhook, and
+  `bullets-2.png`), each ID into `packs/vale/assetIds.ts`.
+- **NX10 audio**: the eight SILENT sounds (audition, lock, build, upload).
+- **NX12 full tuning**: room time against par, the Sweep rate in Snatcher rooms on real floors, how often a drag ends in a
+  yank; the options T1-T6 in "NX11 / NX12 systems and tuning". The loosened `sim/archer.ttk.builds` gate (the Archer may
+  time out on the floor-20 census room) stands until then.
+- **NX13 Studio check** (the NX7 / NX8 checklists).
+- **Owner calls** OC1-OC6 of "NX11 / NX12 systems and tuning".
 
 ## What the code gives us
 
@@ -460,11 +469,11 @@ runs 1-20 on five floors, `--census` runs 1-60 on floors 2-20; 20 s, god mode; p
 | 20 | run 3 room 11, 15 enemies (43) | 71 / 34.1 (3) | 48 / 22.0 (3) | no |
 
 Peak 71; NE7's `run/enemyBullets.census` (every floor's dearest room, runs 1-20) now peaks at 76 (floor 12, passive;
-105 at NE7), far under the 2048 pool; nothing dropped. Floor 10's keeper lit no pyre in 20 s
-(not investigated: NX12).
+105 at NE7), far under the 2048 pool; nothing dropped. Floor 10's keeper lit no pyre in 20 s: it never engaged (not a
+bug; see "NX11 / NX12 systems and tuning").
 
-**Left for the view (NX7, shared/view):** `STAGE_ASSETS.children` has no `pyrekeeper: ["pyre"]`, so a Pyre-keeper
-floor does not prefetch `enemy.pyre` (stand-in until it loads).
+**Left for the view (NX7, shared/view):** `STAGE_ASSETS.children` had no `pyrekeeper: ["pyre"]`, so a Pyre-keeper
+floor did not prefetch `enemy.pyre`. Added in NX11.
 
 ### NX7 View (as built, 2026-11-14)
 
@@ -607,6 +616,146 @@ was rewritten with `--lock --only <set>` (`art/vendor.lock.json` + 42 files, add
   four sighting ids (and `pyre`).
 - Specs: `catalog.spec` (order lock + the four after `enemy:golden`, the first-87 lock, the appended tail, the grid),
   `doc.spec` (the seed: 18 entries), `view/codex/screen.spec` (Enemies 16 tiles).
+
+### NX11 / NX12 systems and tuning (as built, 2026-11-14)
+
+**NX7 leftover fixed:** `STAGE_ASSETS.children` gains `pyrekeeper: ["pyre"]` (`shared/view/stageAssetsConfig.ts`), so a
+Pyre-keeper floor prefetches `enemy.pyre` (`stageGroups.spec` pins it to the archetype's `pyreKind`). No other new kind
+spawns a runtime child.
+
+**Systems pass (NX11).** Specs `sim/newEnemies2.systems.spec.ts` (15) and `run/newEnemies2.validate.spec.ts` (4); no sim
+code changed, no bug found that needed a fix. Every interaction with a rule:
+
+| Interaction | Rule (as built) | Pinned by |
+|---|---|---|
+| Chain Spark / Overkill (sparks, forks, streaks) into a guarding Shieldwall | they call `damageActor` (no origin): they land through the front | systems spec |
+| Soul Shards / effect bullets (burst, shard, spark bolt) | bullets: a shard from a corpse in front stops on the shield, one from behind lands (NXD21); embers pass | systems spec; `bulwark.spec` (kinds) |
+| Executioner | a blocked hit never reaches `damageActor`: no execute through the front; from behind a 15 % Shieldwall is executed | systems spec |
+| Siege Bolt on a Shieldwall | from the front: a guard break, never a pin (`bulwark.spec`); from behind it pins, and a pinned Shieldwall is out of the guard list (its front takes arrows while carried) | systems spec, `bulwark.spec` |
+| Siege Bolt on a dragging Chainhook | the pinning hit (>= 3) breaks the drag (DAMAGE) before the pin; the player is never pulled while it is carried | systems spec |
+| Shielded Chainhook | damage its affix shield absorbs does not count toward breakDamage (`onHit` gets the post-absorb damage): a teammate must break the affix shield first | systems spec (as built; owner call OC1 below) |
+| Riposte waves, smash procs, Full Heart's beam, duo strikes | `damageActor` direct, like the sparks: no shield | the sparks' case (same path, NX0 table) |
+| Treasure UNTOUCHED / PERFECT | a latch and a drag land no hit (`score.hitsTaken` unchanged); the yank fan, the bash and the pyres' shots are ordinary hits | systems spec |
+| Horde wave 2 | copies the Pyre-keeper, the Chainhook and the Shieldwall (par grows by their cost); only the Snatcher is skipped (NXD9) | systems spec; `snatcher.spec` |
+| Co-op | a teammate behind a Shieldwall lands arrows while its shield faces its target; a teammate in the hook's line absorbs it (NXD22); a teammate's 3 damage frees the hooked player; the Snatcher's pellets credit the killer (NXD18) | systems spec; `chainhook.spec`, `snatcher.spec` |
+| Secret rooms | a heavy arrow stopped by a guarding Shieldwall in front of the crack breaks the guard and never opens it; the next one pierces the staggered Shieldwall and opens it (HEAVY). Pieces are tested before the shield, so an arrow touching the crack and the cover zone in one tick opens it | systems spec |
+| Affixes / Blood Moon | a Shielded Shieldwall's guard blocks before the affix shield (from behind the affix shield absorbs first); Swift and the Warbanner aura shorten the Chainhook's throw cooldown but not its pull (the literal 10 u/s) and do not speed the Shieldwall's turn (NXD20) | systems spec |
+| Feast's power pellet | erases a flying hook (no latch, the Chainhook back to keep) and a pyre's fireball | systems spec |
+| Pacts' freeze (`holdAbsoluteTimers`) | nothing to hold: every new timer is `aiTicks` / `v[]` / `cooldown`, advanced only by stepActors; the only absolute read is `staggerDelay`'s "spawned this tick" (`spawnTick === tick`), never across a freeze. A frozen tick leaves the five kinds' state as it was | systems spec |
+| Server validation | a recorded endless run with each kind (debug-skip to the first floor 2-6 planning it, 8 s passive so it acts, then a sword fight to 20 s) replays to the same hash and `validateRun` accepts it (endless world, debug input allowed) | `run/newEnemies2.validate.spec` |
+
+No rule, notes only:
+
+- **Wrecker near pyres.** Rolls never hit actors; a pyre is an actor, not a piece (it blocks nothing and is never smashed).
+  Demolition's blasts / splinters are effect bullets: they hit pyres like any enemy and a guarding Shieldwall's front
+  stops them (NXD21). A pyre's landing cell avoids intact pieces only at the cast.
+- **Siege Bolt on a pyre or a Snatcher.** Both are pinnable (no boss, reviver or dummy): a pinned pyre does not step (no
+  shots while carried), a Snatcher carried out of its room steals only from its own record and flees straight away
+  outside its rectangle until it walks back (NX4's fallback).
+- **Withered pyres** (NXD23) score and feed the combo but never proc builds (withers go through `killActor`, not the
+  `damageActor` kill line); a pyre the player kills procs like any kill.
+- **Mirror Cloak** reflects a guard-erased hook as a plain damaging player bullet (`MIRROR_BULLET_DAMAGE`); a reflection
+  into a guarding Shieldwall's front is blocked (NXD21). A guard that erases the hook counts for Riposte and Bastion's
+  brace like any erased bullet.
+- **The Goldling in a Snatcher's room.** Separate flee fields (the Snatcher's memo is keyed per encounter room and reads
+  the Goldling's hidden piece as an intact piece, i.e. blocked); the Snatcher never touches pieces, so it can never
+  release the Goldling (only players can, docs/GOLDLING_RUMOURS.md RD13).
+- **The Daily.** The same SimConfig as endless; the roster rule (`rosterUnlockFloors` false) keeps the Chainhook off
+  floor 1 through `ROOM_KIND_MIN_FLOOR` in every world (`dungeon/roster.spec`, NX6).
+- **Dev god mode.** The hook passes a god-mode player without a blocked hit (`chainhook.spec`); the bash, the yank fan and
+  the pyres' shots go through `damagePlayer` and are counted in `dev.blockedHits` like every enemy hit.
+- **Plunder / Gilded / Hoard.** No rule: the Snatcher steals pellets only (NXD10), never boosts or loot; a pyre never lands
+  on an intact (loaded) piece.
+- **A drag into a cracked wall.** Crack pieces are intact pieces: `movePlayer` stops the pull at them like a wall; a
+  dragged player is no opener (only the finisher, a Wrecker roll, a heavy arrow / Siege slam and a Charger's charge).
+
+**The floor-10 keeper that lit no pyre (NX6 bullet census).** Not a bug. `run 8 floor 10 room 0`'s keeper spawns 12.2
+from the arena's centre (the room centred on its planned spawns); its `aggroRange` is 9 and its `alertRange` 4.5, the
+passive bot circles the nearest enemy near the centre (11-17 from the keeper over the 20 s) and the sword bot never
+killed the keeper's neighbours, so it stayed IDLE (`aiState` 0, its first cooldown 278 never counting: the cooldown
+runs only while it keeps range). Every room enemy engages that way (sight or a neighbour's alert); a real room's keeper
+engages when the player walks within 9 or kills a neighbour within 4.5 of it.
+
+**NX12-lite measurements** (`run/newEnemies2.tuning.spec`, shared/run/testing `newEnemies2Tune.ts`: AR13's arena
+fighters, open arena, god mode, no build; `--census` for the full sample). Per-kind rooms, seeds 1-3, mean per fight
+(TTK s / hits taken; for the Archer also bullets fired, heavies, blocks / guard breaks):
+
+| room | f6 Knight | f6 Archer | f11 Knight | f11 Archer | Archer f11: bullets, heavies, blocks / breaks |
+|---|---|---|---|---|---|
+| 2 Shieldwall | 7.1 / 0 | 11.6 / 0 | 13.5 / 1.0 | 20.8 / 0 | 34, 33, 0 / 20 |
+| 1 Chainhook | 2.5 / 0 | 2.6 / 0 | 3.9 / 0 | 5.1 / 0 | 8, 8, - |
+| 1 Snatcher | 2.0 / 0 | 1.4 / 0 | 2.4 / 0 | 2.0 / 0 | 3, 3, - |
+| 1 Pyre-keeper | 2.1 / 0 | 2.1 / 0 | 3.2 / 0 | 3.3 / 0 | 5, 5, - |
+| Shieldwall + 2 sniper behind | 7.7 / 0.3 | 13.0 / 0 | 14.4 / 1.0 | 19.4 / 0 | 33, 19, 9.3 / 5.3 |
+| 3 sniper (baseline) | 4.5 / 0 | 6.3 / 0 | 7.2 / 0.3 | 12.4 / 0 | 19, 12.7, - |
+
+- **Shieldwall:** the Knight's finisher breaks it once per combo (6 breaks, 10 blocks for two at f11); the Archer's charged
+  shots alternate break / land: **59 % of its heavies at two Shieldwalls deal 0** (20 of 34), so two cost the Archer 20.8 s
+  at f11 (1.5x the Knight) and a Shieldwall with snipers behind it 19.4 s (the snipers alone: 12.4 s). The bots never
+  flank (a real player can).
+- **Chainhook and Pyre-keeper die before they act** when alone: their first throw / light waits the full 4-5 s cooldown
+  (the summoner's first summon waits 1-2 s), and the Knight kills them in 2.5-3.9 s, the Archer in 2.6-5.1 s: 0 throws,
+  0 pyres.
+- **Snatcher:** 1.4-2.4 s alone (it flees in the open arena into a wall); the arena has no room, so no pellets: its
+  Sweep effect is not measured here (NX12 full).
+
+The floor-20 census room of `sim/archer.ttk.builds` (`tuneCensusRoom(20, 1, 10)` = run 3 room 11, 15 enemies: 2
+Shieldwalls, a Chainhook, a Pyre-keeper, a Vengeful Snatcher, chargers, reapers, bruisers, a summoner, an Ooze, a bomber,
+a sniper, a swarmer; floor 20 hp x8.5), seeds 1-2, no build, whole and with each new kind taken out (Knight at the AR13
+cap 180 s; the Archer at 180 s and again with a 480 s cap):
+
+| room | Knight s | Archer s (cap 480) | Archer: bullets / heavies, blocks / breaks | throws / latches / arrivals (K, A) | pyres lit / shots (K, A) | mean life s Shieldwall / Chainhook / Snatcher / keeper (Archer) |
+|---|---|---|---|---|---|---|
+| whole | 142.1 | 256.9 (t/o at 180) | 614 / 199, 51 / 38 | 14 / 2 / 1.5, 23.5 / 2 / 0 | 4.5 / 138, 4.5 / 347 | 229 / 182 / 176 / 251 |
+| - Shieldwalls | 128.6 | 199.5 | 428 / 174, - | 15 / 1 / 1, 17.5 / 1 / 0 | 6 / 116, 5.5 / 248 | - / 151 / 160 / 179 |
+| - Chainhook | 147.5 | 307.1 | 734 / 198, 48 / 43 | - | 6 / 171, 6 / 415 | 289 / - / 232 / 301 |
+| - Pyre-keeper | 124.1 | 231.1 | 513 / 198, 65 / 42 | 12.5 / 1 / 0, 23 / 1.5 / 0 | - | 206 / 202 / 191 / - |
+| - Snatcher | 151.0 | 299.6 | 727 / 210, 130 / 50 | 10.5 / 1.5 / 1, 26.5 / 1.5 / 0 | 6 / 155, 5 / 386 | 228 / 284 / - / 272 |
+| - all four | 87.7 | 139.6 | 276 / 148, - | - | - | - |
+
+**Why the Archer times out** (the loosened `archer.ttk.builds` gate is kept as is for now: the Archer may time out on
+this room; every other fight must be won). The four add 117 s for the Archer (139.6 -> 256.9 s) and 54 s for the Knight
+(87.7 -> 142.1 s); with two seeds the single-kind removals are noisy (the room's order of kills changes: taking out the
+Chainhook or the Snatcher made the Archer slower), but two causes stand out:
+
+1. **The Shieldwalls** (the largest single cut: -57 s Archer, -14 s Knight). At floor 20 a Shieldwall has 85 hp; the
+   Archer's bot aims at the nearest enemy, the Shieldwalls keep 2-3 from it, so they are the nearest most of the fight:
+   38 of its 199 heavies broke a guard and dealt nothing, 51 stream arrows were blocked, and the Shieldwalls lived 229 s
+   on average. They also cover the enemies behind them (NXD6).
+2. **The Pyre-keeper's pyres** (-26 s Archer, -18 s Knight). The keeper keeps 6-9 away and is rarely the nearest; it
+   lived 251 s, lit 4.5 pyres (the 6-per-life cap nearly spent) and its pyres fired **347 shots** at the Archer (1.4 a
+   second; the Knight 138 over the keeper's 138 s, 1.0 a second). A pyre is a runtime spawn, so endless hp scaling
+   applies to it: **34 hp at floor 20** (4 x 8.5; the Snatcher has 25.5); the bots killed 2-3 pyres a fight.
+3. The **Snatcher** (a Vengeful one here) and the **Chainhook** cost little directly: the Snatcher flees and lives long
+   (176 s Archer, 109 s Knight: the bots only aim at the nearest enemy, so it is chased last), the Chainhook threw 14-24 times but latched 2 (the bots
+   roll under fire and are often in post-hit invulnerability, which the hook passes), arriving 0-1.5 times.
+
+**Proposed tuning options** (numbers for the owner; nothing changed):
+
+- T1 **Pyre hp not floor-scaled**, or scaled from a lower base: pyres at a flat 4 x `endlessActorHp(1, ...)` capped at
+  x3 (12 hp at floor 20), or `PYRE` hp 2 (17 at floor 20). A sim change (endless replays).
+- T2 **The keeper's light cooldown** 4.0-5.0 s -> 5.5-6.5 s and `perLife` 6 -> 4 (cuts the floor-20 crossfire by about a
+  third), and/or the pyre's `fireTicks` 2.0 s -> 2.5 s.
+- T3 **Shieldwall vs the heavy arrow:** let a guard-breaking heavy arrow deal half its damage (NXD19 says 0: an owner
+  call), or lengthen the stagger 1.5 -> 2.0 s so the Archer's follow-up lands more; or hp 10 -> 8.
+- T4 **First cooldowns** for the Chainhook and the Pyre-keeper like the summoner's / sniper's first-attack fields:
+  `firstThrowMin/Max` 1.5-2.5 s, `firstLightMin/Max` 1.0-2.0 s (the same single init draw), so a lone one acts before
+  it dies (today 0 throws / 0 pyres alone).
+- T5 **Swift on the Snatcher:** 5.0 x Swift 135 % = 6.75 u/s, faster than the player's 6.0 (the Warbanner's aura: 6.25;
+  both 8.4). Exclude `snatcher` from Swift (an `AFFIXES` per-kind exclusion), or cap its walk at 5.9.
+- T6 Keep the Archer's floor-20 gate loosened until T1-T3 are decided; re-measure with `--census run/newEnemies2.tuning
+  sim/archer.ttk.builds`.
+
+**Owner calls (NX11 / NX12):**
+
+- **OC1** A Shielded Chainhook: should damage its affix shield absorbs count toward `breakDamage` (a teammate's 3 hits
+  free the player whatever the shield), or stay as built (the shield first)?
+- **OC2** A Vengeful Snatcher's corpse fires the Vengeful ring: the "harmless" thief hurts in death. Keep (Blood Moon's
+  point), or exclude Vengeful (or every affix) on the Snatcher?
+- **OC3** Swift Snatcher outruns the player (T5).
+- **OC4** Pyre hp scaling (T1) and the keeper's output (T2).
+- **OC5** The Shieldwall against the Archer (T3; reopens NXD19 for the heavy arrow only).
+- **OC6** First cooldowns (T4).
 
 ## Player experience
 

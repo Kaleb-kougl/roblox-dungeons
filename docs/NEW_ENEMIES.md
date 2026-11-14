@@ -481,6 +481,8 @@ Details (taken 2026-11-02, all as recommended; the task in brackets builds it):
 - **A third endless boss** (Elite 4 or winged Beast 4, which has `Eat`).
 - **Biome look variants** of today's archetypes.
 - **Shieldbearer** (Imp 8 / Spawn 12 / Spawn 9, all with `Block`) and **Leaper** (Beast 5, `Jump`): good next roles.
+  The shield enemy is built as the **Shieldwall** (`bulwark`, Spawn 9) in docs/NEW_ENEMIES_2.md, with the Chainhook,
+  the Snatcher and the Pyre-keeper; the Leaper stays out of scope there too.
 - Lords of Pain warrior / knight / fighter as "fallen adventurers" (small, dark; would need the outline pass).
 - Changing any existing archetype, weight or unlock floor.
 
