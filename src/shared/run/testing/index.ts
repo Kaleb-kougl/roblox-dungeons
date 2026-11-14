@@ -9,7 +9,7 @@
  * docs/ARCHER.md AR13's per-character tuning (characterTune.ts: the character dimension, the fighter bot with its bow
  * mode, rooms by kind, the roll's reach; survivalBot.ts: the endless survival census),
  * the dense fight setup of the replay bench (denseFight.ts), and docs/WALL_SLIDE.md WS5's snag census (snagCensus.ts,
- * split over its shard specs).
+ * split over its shard specs), and docs/NEW_ENEMIES_2.md NX6's room pool census (newEnemies2Census.ts).
  */
 export * from "./endlessBot";
 export * from "./partyBot";
@@ -25,3 +25,4 @@ export * from "./characterTune";
 export * from "./survivalBot";
 export * from "./denseFight";
 export * from "./snagCensus";
+export * from "./newEnemies2Census";

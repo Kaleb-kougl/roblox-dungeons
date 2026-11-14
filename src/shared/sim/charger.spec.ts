@@ -727,6 +727,9 @@ const PIN_COUNTS = [3, 0, 2, 3, 0];
 // Re-recorded for secret rooms (docs/SECRET_ROOMS.md SR5): run 4's floor 3 holds a secret (room 0, its crack at
 // (44, 18): two crackedWall pieces and a chest appended after the Goldling's piece, the movers on the carved grid); the
 // counts did not move. Before: e42f7fdf.
-const PIN_HASH = "b44f15ea"; // check-asset-ids: allow (state hash)
+// Re-recorded for docs/NEW_ENEMIES_2.md NX6: four more room kinds and a reshuffled roster (14 seeded kinds), so floor 3's
+// other rooms buy other kinds (spawns, breakables and the state hash moved); the layout and the counts did not. Before:
+// b44f15ea.
+const PIN_HASH = "2fcc46ea"; // check-asset-ids: allow (state hash)
 const PIN_ARENA = [12, STATE_RETURN, 11.062568325627446, 8, 3663131635];
 const PIN_ARENA_HASH = "80069968"; // check-asset-ids: allow (state hash)

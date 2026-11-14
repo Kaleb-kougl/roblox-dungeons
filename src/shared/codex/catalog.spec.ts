@@ -24,6 +24,8 @@ import {
 	DUO_CARD_BASE,
 	GOLDEN_KIND,
 	NO_BOOST,
+	PYRE,
+	PYREKEEPER,
 	RELICS,
 	boonCard,
 	boonMaxLevel,
@@ -35,6 +37,8 @@ import { boonEvoDescKey, boonEvoNameKey, enemyNameKey, itemDescKey, itemNameKey 
 import {
 	CODEX_CATALOG,
 	CODEX_DESC_PREFIX,
+	CODEX_FIRST_ROOM_KINDS,
+	CODEX_FOLDED_ARCHETYPES,
 	CODEX_GROUPS,
 	CODEX_SECRET_ID,
 	CODEX_SIGHTING_ENTRIES,
@@ -57,6 +61,7 @@ import {
 	codexSecretId,
 	codexTabEntries,
 	isCodexId,
+	seedFromSightings,
 	type CodexGroup,
 } from "shared/codex";
 
@@ -143,6 +148,11 @@ const ORDER_LOCK: { readonly [K in CodexGroup]: ReadonlyArray<string> } = {
 		"enemy:warbanner",
 		"enemy:reaper",
 		"enemy:golden",
+		// docs/NEW_ENEMIES_2.md NXD14: appended after the Goldling in the group (the catalog lists them after secret:room)
+		"enemy:bulwark",
+		"enemy:chainhook",
+		"enemy:snatcher",
+		"enemy:pyrekeeper",
 	],
 	champions: ["affix:hulking", "affix:swift", "affix:shielded", "affix:vengeful"],
 	bosses: ["boss:act1", "boss:demonlord"],
@@ -150,8 +160,17 @@ const ORDER_LOCK: { readonly [K in CodexGroup]: ReadonlyArray<string> } = {
 	secrets: ["secret:room"],
 };
 
-/** Every group's lock in catalog order: the whole catalog's (87 entries since the secret rooms). */
-const LOCK_TOTAL = 87;
+/** Every group's lock in catalog order: the whole catalog's (87 entries since the secret rooms, 91 since NX9). */
+const LOCK_TOTAL = 91;
+
+/**
+ * The whole catalog's order up to `secret:room` (87 entries, every group's lock above in CODEX_TAB_GROUPS order): an
+ * entry added after it lands after `secret:room` (docs/NEW_ENEMIES_2.md NXD14), never before.
+ */
+const SECRET_ROOMS_TOTAL = 87;
+
+/** The later room enemies' entries, in catalog order after `secret:room` (NXD14, NX9). */
+const APPENDED_ENEMIES = ["enemy:bulwark", "enemy:chainhook", "enemy:snatcher", "enemy:pyrekeeper"];
 
 /** Why `ids` breaks the lock (undefined: it holds): every locked id at its place; extra ids only after them. */
 function lockProblem(ids: ReadonlyArray<string>, lock: ReadonlyArray<string>): string | undefined {
@@ -159,6 +178,13 @@ function lockProblem(ids: ReadonlyArray<string>, lock: ReadonlyArray<string>): s
 		if (ids[i] !== lock[i]) return `position ${i}: expected ${lock[i]}, got ${tostring(ids[i])}`;
 	}
 	return undefined;
+}
+
+/** Tab `tab`'s ids in grid order (`order`). */
+function codexGridOrder(tab: (typeof CODEX_TABS)[number]): string[] {
+	const entries = codexTabEntries(tab);
+	entries.sort((a, b) => a.order < b.order);
+	return entries.map((e) => e.id);
 }
 
 function groupIds(group: CodexGroup): string[] {
@@ -176,12 +202,64 @@ describe("codex catalog: order lock", () => {
 		expect([locked, CODEX_CATALOG.size()]).toEqual([LOCK_TOTAL, LOCK_TOTAL]);
 	});
 
-	it("appends the secret rooms last: a group (the last tab's last section) and entry after every other (docs/SECRET_ROOMS.md SRD12)", () => {
+	it("keeps the whole catalog's first 87 entries in place: every group's lock, in tab / group order", () => {
+		const want: string[] = [];
+		for (const tab of CODEX_TABS)
+			for (const group of CODEX_TAB_GROUPS[tab])
+				for (const id of ORDER_LOCK[group]) if (!APPENDED_ENEMIES.includes(id)) want.push(id);
+		expect(want.size()).toBe(SECRET_ROOMS_TOTAL);
+		const got: string[] = [];
+		for (let i = 0; i < SECRET_ROOMS_TOTAL; i++) got.push(CODEX_CATALOG[i].id);
+		expect(got).toEqual(want);
+	});
+
+	it("appends the later room enemies after secret:room, in the Enemies section's grid after the Goldling (docs/NEW_ENEMIES_2.md NXD14)", () => {
+		const tail: string[] = [];
+		for (let i = SECRET_ROOMS_TOTAL; i < CODEX_CATALOG.size(); i++) tail.push(CODEX_CATALOG[i].id);
+		expect(tail).toEqual(APPENDED_ENEMIES);
+		expect(CODEX_CATALOG[SECRET_ROOMS_TOTAL - 1].id).toBe(CODEX_SECRET_ID);
+		expect(CODEX_FIRST_ROOM_KINDS).toBe(11);
+		const golden = codexEntry("enemy:golden")!;
+		for (let i = 0; i < APPENDED_ENEMIES.size(); i++) {
+			const e = codexEntry(APPENDED_ENEMIES[i])!;
+			const kind = ENDLESS_ROOM_KINDS[CODEX_FIRST_ROOM_KINDS + i].kind;
+			expect([e.id, e.tab, e.group, e.order, e.nameKey, e.descKey, e.artRef, e.hint]).toEqual([
+				`enemy:${kind}`,
+				"bestiary",
+				"enemies",
+				golden.order + 1 + i,
+				`enemy.${kind}.name`,
+				`bestiary.${kind}`,
+				{ kind: "actor", archetype: kind },
+				{ kind: "enemy" },
+			]);
+			expect(codexEnemyId(kind)).toBe(e.id);
+		}
+		// the brazier is its keeper's (NXD15), like slimelets the Ooze's
+		expect(CODEX_FOLDED_ARCHETYPES.get(PYRE.id)).toBe(PYREKEEPER.id);
+		expect(codexEnemyId(PYRE.id)).toBe("enemy:pyrekeeper");
+		expect(codexEntry("enemy:pyre")).toBeUndefined();
+		// their first-time cards (shared/onboarding SIGHTING_IDS = the archetype ids) seed the entries as seen
+		for (const kind of ["bulwark", "chainhook", "snatcher", "pyrekeeper"]) {
+			expect([kind, SIGHTING_IDS.includes(kind)]).toEqual([kind, true]);
+			expect(seedFromSightings([kind])).toEqual([{ id: `enemy:${kind}`, tier: 1, floor: 0 }]);
+		}
+		// the grid shows them at the Enemies section's end, before the Champions
+		const grid = codexGridOrder("bestiary");
+		const at = grid.indexOf("enemy:golden");
+		expect([grid[at + 1], grid[at + 2], grid[at + 3], grid[at + 4], grid[at + 5]]).toEqual([
+			...APPENDED_ENEMIES,
+			"affix:hulking",
+		]);
+	});
+
+	it("appends the secret rooms last in the grid: a group (the last tab's last section) after every other (docs/SECRET_ROOMS.md SRD12)", () => {
 		expect(CODEX_TABS[CODEX_TABS.size() - 1]).toBe("bestiary");
 		expect(CODEX_GROUPS[CODEX_GROUPS.size() - 1]).toBe("secrets");
 		expect([...CODEX_TAB_GROUPS.bestiary]).toEqual(["enemies", "champions", "bosses", "secrets"]);
 		expect(codexGroupTab("secrets")).toBe("bestiary");
-		const last = CODEX_CATALOG[CODEX_CATALOG.size() - 1];
+		// the catalog's 87th entry (the later room enemies come after it, NXD14), the grid's last tile
+		const last = CODEX_CATALOG[SECRET_ROOMS_TOTAL - 1];
 		expect([last.id, last.tab, last.group, last.order]).toEqual([
 			CODEX_SECRET_ID,
 			"bestiary",
@@ -236,9 +314,12 @@ describe("codex catalog: content", () => {
 			const entries = codexTabEntries(tab);
 			expect(catalogTotal(tab)).toBe(entries.size());
 			total += entries.size();
+			// In grid order (`order`): the appended rows (NXD14) sit at their group's end, not at the catalog's.
+			const grid = [...entries];
+			grid.sort((a, b) => a.order < b.order);
 			let group = 0;
-			for (let i = 0; i < entries.size(); i++) {
-				const e = entries[i];
+			for (let i = 0; i < grid.size(); i++) {
+				const e = grid[i];
 				expect([e.id, e.order, e.tab]).toEqual([e.id, i, tab]);
 				// groups contiguous, in CODEX_TAB_GROUPS order
 				while (CODEX_TAB_GROUPS[tab][group] !== e.group) {
@@ -261,7 +342,7 @@ describe("codex catalog: content", () => {
 		expect(catalogTotal("duos")).toBe(DUOS.size());
 		expect(catalogTotal("items")).toBe(RELICS.size() + CURSES.size());
 		expect(catalogTotal("boosts")).toBe(BOOST_KINDS.size());
-		// + docs/SECRET_ROOMS.md SRD12's secret rooms (the Bestiary's last section)
+		// + docs/SECRET_ROOMS.md SRD12's secret rooms (the Bestiary's last section); the room kinds include NX9's four
 		expect(catalogTotal("bestiary")).toBe(
 			ENDLESS_ROOM_KINDS.size() + 1 + AFFIXES.unlocks.size() + ENDLESS_BOSSES.size() + 1,
 		);
@@ -304,6 +385,7 @@ describe("codex catalog: content", () => {
 		for (const kind of TEST_TURRET_KINDS) expect([kind, codexEnemyId(kind)]).toEqual([kind, undefined]);
 		expect(codexEnemyId(DUMMY_KIND)).toBeUndefined();
 		expect(codexEnemyId("slime.small")).toBe("enemy:slime");
+		expect(codexEnemyId("pyre")).toBe("enemy:pyrekeeper");
 		for (const b of ENDLESS_BOSSES) expect(codexEnemyId(b.kind)).toBeUndefined();
 		expect(codexBossId("swarmer")).toBeUndefined();
 		for (const e of CODEX_CATALOG) {

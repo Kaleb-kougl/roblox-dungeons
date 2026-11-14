@@ -124,7 +124,22 @@ export const ROOM_KIND_UNLOCK_FLOOR = table.freeze({
 	stormcaller: 2,
 	warbanner: 2,
 	reaper: 2,
+	// docs/NEW_ENEMIES_2.md NX6: the third set, from floor 2 when unlock floors apply (specs and tools only, so floor 1
+	// without a roster spends as before); every endless world ignores these (DSD17 / DSD18), so NXD4's "any floor"
+	// holds there. The Chainhook's floor-2 rule in every world is ROOM_KIND_MIN_FLOOR, not this.
+	bulwark: 2,
+	chainhook: 2,
+	snatcher: 2,
+	pyrekeeper: 2,
 });
+
+/**
+ * The first floor a room kind may appear on in EVERY world, unlock floors on or off (docs/NEW_ENEMIES_2.md NXD4, NX6):
+ * the Chainhook never meets a floor-1 player. roomKindOpen closes the kind below it (no draw), and endlessRoster's join
+ * scan passes over it until a floor at or past it (the order is one shuffle: no draw moves), so floor 1 always gets a
+ * seeded kind. Kinds without an entry have no minimum.
+ */
+export const ROOM_KIND_MIN_FLOOR: ReadonlyMap<string, number> = new Map<string, number>([["chainhook", 2]]);
 
 /** Summoners one room buys at most (EVD3: one support per room, whatever the budget or the party size). */
 export const SUMMONERS_PER_ROOM = 1;
@@ -144,10 +159,16 @@ export const OOZES_PER_ROOM = 8;
 export const NEW_KIND_MAX_PER_ROOM = table.freeze({ bomber: 4, charger: 2, stormcaller: 2, warbanner: 1, reaper: 2 });
 
 /**
+ * Room maxima of the docs/NEW_ENEMIES_2.md room enemies (NXD5, NX6): Bulwarks 2, one Chainhook, one Snatcher (NXD9: its
+ * room's stolen pellets are its own; never a room's first buy) and one Pyre-keeper (its pyres are not room kinds).
+ */
+export const NEW_KIND_2_MAX_PER_ROOM = table.freeze({ bulwark: 2, chainhook: 1, snatcher: 1, pyrekeeper: 1 });
+
+/**
  * The room enemies of endless floors, in draw order. Turrets and the boss are not bought with room budgets. The first
  * three (and their weights 3 / 2 / 1) are the original pool and never change; the docs/ENEMY_VARIANTS.md kinds are
- * appended after them (EVD2), then the docs/NEW_ENEMIES.md kinds (NE7), and join only from their unlock floor, so
- * floors below every unlock spend as before.
+ * appended after them (EVD2), then the docs/NEW_ENEMIES.md kinds (NE7), then the docs/NEW_ENEMIES_2.md kinds (NX6),
+ * and join only from their unlock floor, so floors below every unlock spend as before.
  * Endless floors buy only the kinds of the run's seeded roster (ROSTER, ./endless.ts endlessRoster; docs/DAILY.md DS1).
  */
 export const ENDLESS_ROOM_KINDS: ReadonlyArray<EndlessRoomKind> = [
@@ -179,6 +200,32 @@ export const ENDLESS_ROOM_KINDS: ReadonlyArray<EndlessRoomKind> = [
 		needsCompany: true,
 	},
 	{ kind: "reaper", weight: 1, fromFloor: ROOM_KIND_UNLOCK_FLOOR.reaper, maxPerRoom: NEW_KIND_MAX_PER_ROOM.reaper },
+	// docs/NEW_ENEMIES_2.md NX6 (NXD5 weights 1 / 1 / 1 / 1, NXD9 the Snatcher never a room's first buy).
+	{
+		kind: "bulwark",
+		weight: 1,
+		fromFloor: ROOM_KIND_UNLOCK_FLOOR.bulwark,
+		maxPerRoom: NEW_KIND_2_MAX_PER_ROOM.bulwark,
+	},
+	{
+		kind: "chainhook",
+		weight: 1,
+		fromFloor: ROOM_KIND_UNLOCK_FLOOR.chainhook,
+		maxPerRoom: NEW_KIND_2_MAX_PER_ROOM.chainhook,
+	},
+	{
+		kind: "snatcher",
+		weight: 1,
+		fromFloor: ROOM_KIND_UNLOCK_FLOOR.snatcher,
+		maxPerRoom: NEW_KIND_2_MAX_PER_ROOM.snatcher,
+		needsCompany: true,
+	},
+	{
+		kind: "pyrekeeper",
+		weight: 1,
+		fromFloor: ROOM_KIND_UNLOCK_FLOOR.pyrekeeper,
+		maxPerRoom: NEW_KIND_2_MAX_PER_ROOM.pyrekeeper,
+	},
 ];
 
 /** Tunables of the seeded roster (docs/DAILY.md DS1, DSD1 / DSD2 / DSD9): which room kinds a run meets per floor. */

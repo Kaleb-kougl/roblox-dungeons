@@ -6,7 +6,8 @@
 // the Daily since DSD17, endless and dev since DSD18): each join is the next kind of the shuffle, floor 1's seeded kind
 // any of the ten. The roster closes kinds in the spender only, so the layout, its digest, the props, the boss pick, the
 // spawn and the stairwell are the floor built without it; room spawns (and the breakables and affixes placed from
-// them) change by design.
+// them) change by design. Fourteen seeded kinds since docs/NEW_ENEMIES_2.md NX6 (full on floor 14); the Chainhook's
+// minimum floor (NXD4, ROOM_KIND_MIN_FLOOR 2) holds in every world: the join scan passes over it on floor 1.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import {
 	AFFIXES,
@@ -28,6 +29,7 @@ import {
 	rosterOrder,
 	rosterSeed,
 	rosterTargetSize,
+	roomKindMinFloor,
 	spendEncounterBudget,
 	type Dungeon,
 	type ForgeParams,
@@ -48,8 +50,16 @@ function dungeonFor(p: ForgeParams): Dungeon {
 const SEEDED = ENDLESS_ROOM_KINDS.filter((k) => k.kind !== ROSTER.always).map((k) => k.kind);
 const SEEDS = 500;
 const FLOORS = 24;
-/** The first floor every roster is full (10 seeded kinds, one a floor: docs/DAILY.md DSD18; was 19, NED11). */
-const FULL_FLOOR = 10;
+/**
+ * The first floor every roster is full (14 seeded kinds since docs/NEW_ENEMIES_2.md NX6, one a floor: docs/DAILY.md
+ * DSD18; 10 at NE7; was 19, NED11).
+ */
+const FULL_FLOOR = 14;
+
+/** A kind may join on floor f: its minimum floor (every world) and, with unlock floors, its unlock floor. */
+function joinable(kind: string, f: number, unlockFloors: boolean): boolean {
+	return roomKindMinFloor(kind) <= f && (!unlockFloors || unlockOf(kind) <= f);
+}
 
 function unlockOf(kind: string): number {
 	for (const k of ENDLESS_ROOM_KINDS) if (k.kind === kind) return k.fromFloor ?? ENDLESS_FIRST_FLOOR;
@@ -70,6 +80,10 @@ describe("seeded roster: data and order", () => {
 			"stormcaller",
 			"warbanner",
 			"reaper",
+			"bulwark",
+			"chainhook",
+			"snatcher",
+			"pyrekeeper",
 		]);
 		for (const other of [BOSS_PICK.salt, BREAKABLE.salt, AFFIXES.salt, DROPS.salt])
 			expect(ROSTER.salt).never.toBe(other);
@@ -77,7 +91,7 @@ describe("seeded roster: data and order", () => {
 		expect(rosterSeed(-1)).toBe(bit32.bxor(4294967295, 0x165667b1));
 	});
 
-	it("rosterOrder is one Fisher-Yates shuffle of the seeded kinds (9 draws, j = int(0, i) from the last index)", () => {
+	it("rosterOrder is one Fisher-Yates shuffle of the seeded kinds (13 draws, j = int(0, i) from the last index)", () => {
 		// Failures collect into one list (one expect per check would take most of a minute headless).
 		const bad: string[] = [];
 		for (let seed = 0; seed < SEEDS; seed++) {
@@ -93,63 +107,71 @@ describe("seeded roster: data and order", () => {
 			if (got.join(",") !== want.join(",")) bad.push(`run ${seed}: ${got.join(", ")}`);
 		}
 		expect(bad).toEqual([]);
-		// Pinned, so a change to the stream or the shuffle shows up here first. Re-recorded for docs/NEW_ENEMIES.md NE7
-		// (10 seeded kinds: every run's order reshuffled; before: run 1 sniper, slime, summoner, imp, bruiser).
+		// Pinned, so a change to the stream or the shuffle shows up here first. Re-recorded for docs/NEW_ENEMIES_2.md NX6
+		// (14 seeded kinds: every run's order reshuffled; at NE7 run 1 was bruiser, slime, charger, warbanner, sniper,
+		// stormcaller, summoner, reaper, bomber, imp; before NE7: sniper, slime, summoner, imp, bruiser).
 		expect(rosterOrder(1)).toEqual([
-			"bruiser",
 			"slime",
-			"charger",
-			"warbanner",
-			"sniper",
+			"pyrekeeper",
 			"stormcaller",
-			"summoner",
+			"snatcher",
 			"reaper",
+			"bulwark",
+			"bruiser",
 			"bomber",
+			"sniper",
+			"chainhook",
+			"charger",
+			"summoner",
+			"warbanner",
 			"imp",
 		]);
 		expect(rosterOrder(1337)).toEqual([
-			"bomber",
-			"stormcaller",
 			"bruiser",
-			"charger",
+			"pyrekeeper",
+			"bulwark",
+			"stormcaller",
 			"reaper",
-			"sniper",
 			"warbanner",
+			"imp",
+			"chainhook",
+			"snatcher",
+			"sniper",
+			"bomber",
+			"charger",
 			"summoner",
 			"slime",
-			"imp",
 		]);
-		// Without unlock floors (every endless world, DSD18) run 1337's floor 1 is its order's first kind, the bomber.
-		expect(endlessRoster(1337, 1, false)).toEqual(["swarmer", "bomber"]);
-		expect(endlessRoster(1337, 3, false)).toEqual(["swarmer", "bomber", "stormcaller", "bruiser"]);
-		// With them (DSD9): bomber and stormcaller come first but are locked on floor 1, so the bruiser is its floor-1
-		// kind.
+		// Without unlock floors (every endless world, DSD18) run 1337's floor 1 is its order's first kind, the bruiser.
+		expect(endlessRoster(1337, 1, false)).toEqual(["swarmer", "bruiser"]);
+		expect(endlessRoster(1337, 3, false)).toEqual(["swarmer", "bruiser", "pyrekeeper", "bulwark"]);
+		// With them (DSD9): the bruiser is unlocked on floor 1, so run 1337 reads the same either way.
 		expect(endlessRoster(1337, 1)).toEqual(["swarmer", "bruiser"]);
-		expect(endlessRoster(1337, 3)).toEqual(["swarmer", "bruiser", "bomber", "stormcaller"]);
-		expect(endlessRoster(1337, 5)).toEqual(["swarmer", "bruiser", "bomber", "stormcaller", "charger", "reaper"]);
-		expect(endlessRoster(1337, FULL_FLOOR)).toEqual([
+		expect(endlessRoster(1337, 3)).toEqual(["swarmer", "bruiser", "pyrekeeper", "bulwark"]);
+		expect(endlessRoster(1337, 5)).toEqual([
 			"swarmer",
 			"bruiser",
-			"bomber",
+			"pyrekeeper",
+			"bulwark",
 			"stormcaller",
-			"charger",
 			"reaper",
-			"sniper",
-			"warbanner",
-			"summoner",
-			"slime",
-			"imp",
 		]);
-		// Run 1: slime comes before charger in the order but is locked until floor 4, so charger and warbanner join on
-		// 2 and 3 and slime on 4.
-		expect(endlessRoster(1, 2)).toEqual(["swarmer", "bruiser", "charger"]);
-		expect(endlessRoster(1, 3)).toEqual(["swarmer", "bruiser", "charger", "warbanner"]);
-		expect(endlessRoster(1, 4)).toEqual(["swarmer", "bruiser", "charger", "warbanner", "slime"]);
-		expect(endlessRoster(1, 4, false)).toEqual(["swarmer", "bruiser", "slime", "charger", "warbanner"]);
+		expect(endlessRoster(1337, FULL_FLOOR)).toEqual(["swarmer", ...rosterOrder(1337)]);
+		// Run 1: slime comes first in the order but is locked until floor 4 (and the Pyre-keeper until 2) with unlock
+		// floors, so the bruiser is its floor-1 kind, the Pyre-keeper and the Stormcaller join on 2 and 3 and slime on 4.
+		expect(endlessRoster(1, 2)).toEqual(["swarmer", "bruiser", "pyrekeeper"]);
+		expect(endlessRoster(1, 3)).toEqual(["swarmer", "bruiser", "pyrekeeper", "stormcaller"]);
+		expect(endlessRoster(1, 4)).toEqual(["swarmer", "bruiser", "pyrekeeper", "stormcaller", "slime"]);
+		expect(endlessRoster(1, 4, false)).toEqual(["swarmer", "slime", "pyrekeeper", "stormcaller", "snatcher"]);
+		// NXD4: run 5's order starts with the Chainhook, so floor 1 takes its second kind and the Chainhook joins on 2.
+		const five = rosterOrder(5);
+		expect(five[0]).toBe("chainhook");
+		expect(endlessRoster(5, 1, false)).toEqual(["swarmer", five[1]]);
+		expect(endlessRoster(5, 2, false)).toEqual(["swarmer", five[1], "chainhook"]);
 	});
 
-	it("target sizes: f seeded kinds on floor f, capped at 10 (full on floor 10, DSD18)", () => {
-		const want = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 10, 10];
+	it("target sizes: f seeded kinds on floor f, capped at 14 (full on floor 14, DSD18 with NX6's 14 kinds)", () => {
+		const want = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 14, 14, 14];
 		for (let f = 1; f <= want.size(); f++)
 			expect([f, rosterTargetSize(f, SEEDED.size())]).toEqual([f, want[f - 1]]);
 		expect(rosterTargetSize(100, SEEDED.size())).toBe(SEEDED.size());
@@ -167,12 +189,12 @@ describe("seeded roster: rules (run seeds 0-499, floors 1-24)", () => {
 				const at = `run ${seed} floor ${f}`;
 				if (r[0] !== ROSTER.always) bad.push(`${at}: starts with ${r[0]}`);
 				// Every unlocked kind can always join, so the size is the target or every unlocked kind.
-				const unlocked = SEEDED.filter((k) => unlockOf(k) <= f).size();
+				const unlocked = SEEDED.filter((k) => joinable(k, f, true)).size();
 				const want = math.min(rosterTargetSize(f, SEEDED.size()), unlocked);
 				if (r.size() - 1 !== want) bad.push(`${at}: ${r.size() - 1} seeded kinds, want ${want}`);
 				for (let i = 1; i < r.size(); i++) {
 					if (!SEEDED.includes(r[i])) bad.push(`${at}: ${r[i]} is not a seeded kind`);
-					if (unlockOf(r[i]) > f) bad.push(`${at}: ${r[i]} before its unlock floor`);
+					if (!joinable(r[i], f, true)) bad.push(`${at}: ${r[i]} before its unlock floor`);
 					for (let j = 0; j < i; j++) if (r[j] === r[i]) bad.push(`${at}: ${r[i]} twice`);
 				}
 				// A kind never leaves: the floor before is a prefix.
@@ -195,7 +217,7 @@ describe("seeded roster: rules (run seeds 0-499, floors 1-24)", () => {
 		expect(sniper > 0 && bruiser > 0).toBe(true);
 	});
 
-	it("joins follow the shuffled order among the kinds unlocked on the floor", () => {
+	it("joins follow the shuffled order among the kinds unlocked (and at their minimum floor) on the floor", () => {
 		const bad: string[] = [];
 		for (let seed = 0; seed < SEEDS; seed++) {
 			const order = rosterOrder(seed);
@@ -204,7 +226,9 @@ describe("seeded roster: rules (run seeds 0-499, floors 1-24)", () => {
 				const r = endlessRoster(seed, f);
 				for (let i = before.size(); i < r.size(); i++) {
 					// The joiner is the first kind of the order not in yet (not among r's first i) and unlocked on f.
-					const want = order.filter((k) => unlockOf(k) <= f && (r.indexOf(k) < 0 || r.indexOf(k) >= i))[0];
+					const want = order.filter(
+						(k) => joinable(k, f, true) && (r.indexOf(k) < 0 || r.indexOf(k) >= i),
+					)[0];
 					if (r[i] !== want) bad.push(`run ${seed} floor ${f}: ${r[i]} joined, want ${want}`);
 				}
 			}
@@ -219,7 +243,7 @@ describe("seeded roster: rules (run seeds 0-499, floors 1-24)", () => {
 		expect(endlessRoster(7, 0)).toEqual([ROSTER.always]);
 	});
 
-	it("prints how often each kind is in on floors 1-10 (run seeds 0-499)", () => {
+	it("prints how often each kind is in on floors 1-14 (run seeds 0-499)", () => {
 		for (let f = 1; f <= FULL_FLOOR; f++) {
 			const counts = SEEDED.map(() => 0);
 			for (let seed = 0; seed < SEEDS; seed++) {
@@ -259,18 +283,29 @@ describe("seeded roster in the spender", () => {
 
 describe("every endless world's roster: no unlock floors (docs/DAILY.md DSD17 / DSD18, unlockFloors false)", () => {
 	it("every join is the next kind of the shuffle: roster(f) = swarmers + the first target(f) kinds of the order", () => {
+		// docs/NEW_ENEMIES_2.md NXD4: when the order starts with the Chainhook, floor 1 takes the second kind and the
+		// Chainhook joins on floor 2 (so from floor 2 the roster holds the same kinds, the first two swapped).
+		let chainhookFirst = 0;
 		for (let run = 0; run < SEEDS; run++) {
 			const order = rosterOrder(run);
+			const swap = order[0] === "chainhook";
+			if (swap) chainhookFirst++;
 			for (let f = ENDLESS_FIRST_FLOOR; f <= FLOORS; f++) {
 				const want = [ROSTER.always];
 				const target = rosterTargetSize(f, order.size());
 				for (let i = 0; i < target; i++) want.push(order[i]);
+				if (swap) {
+					want[1] = order[1];
+					if (target >= 2) want[2] = order[0];
+				}
 				expect([run, f, endlessRoster(run, f, false)]).toEqual([run, f, want]);
 			}
 		}
+		print(`[roster] the Chainhook first in the order on ${chainhookFirst} of ${SEEDS} runs`);
+		expect(chainhookFirst > 0).toBe(true);
 	});
 
-	it("floor 1's seeded kind can be any of the ten; the default (true) keeps the unlock floors", () => {
+	it("floor 1's seeded kind can be any of the thirteen but the Chainhook; the default (true) keeps the unlock floors", () => {
 		const seen = new Set<string>();
 		for (let run = 0; run < SEEDS; run++) {
 			const r = endlessRoster(run, 1, false);
@@ -279,7 +314,57 @@ describe("every endless world's roster: no unlock floors (docs/DAILY.md DSD17 / 
 			expect(endlessRoster(run, 1, true)).toEqual(endlessRoster(run, 1));
 			expect(unlockOf(endlessRoster(run, 1)[1])).toBe(ENDLESS_FIRST_FLOOR);
 		}
-		for (const k of SEEDED) expect([k, seen.has(k)]).toEqual([k, true]);
+		for (const k of SEEDED) expect([k, seen.has(k)]).toEqual([k, k !== "chainhook"]);
+	});
+
+	it("no floor-1 room ever buys a Chainhook, in every world (docs/NEW_ENEMIES_2.md NXD4); floor 2 may", () => {
+		// The spender closes it below floor 2 whatever the roster says, unlock floors on or off, with no draw: a floor-1
+		// roster naming it spends draw for draw as the roster without it.
+		for (let seed = 1; seed <= 40; seed++) {
+			for (const budget of [6, 13.2, 30]) {
+				for (const unlock of [true, false]) {
+					const named = spendEncounterBudget(
+						new EncounterRng(seed),
+						budget,
+						1,
+						undefined,
+						["swarmer", "chainhook", "sniper"],
+						unlock,
+					);
+					const plain = spendEncounterBudget(
+						new EncounterRng(seed),
+						budget,
+						1,
+						undefined,
+						["swarmer", "sniper"],
+						unlock,
+					);
+					expect([seed, budget, unlock, named]).toEqual([seed, budget, unlock, plain]);
+				}
+			}
+		}
+		let floor2 = 0;
+		for (let run = 1; run <= 100; run++) {
+			for (const [party, unlockFloors] of [
+				[1, false],
+				[4, false],
+				[1, true],
+			] as const) {
+				{
+					const l = buildEndlessFloor(run, 1, dungeonFor, party, { unlockFloors });
+					expect([run, l.roster!.includes("chainhook")]).toEqual([run, false]);
+					for (const room of l.roomSpawns)
+						for (const sp of room) expect([run, party, sp.kind]).never.toEqual([run, party, "chainhook"]);
+				}
+			}
+			if (rosterOrder(run)[0] === "chainhook") {
+				expect(endlessRoster(run, 2, false)[2]).toBe("chainhook");
+				const l = buildEndlessFloor(run, 2, dungeonFor, 1, { unlockFloors: false });
+				for (const room of l.roomSpawns) for (const sp of room) if (sp.kind === "chainhook") floor2++;
+			}
+		}
+		print(`[roster] Chainhooks on floor 2 of the runs whose order starts with it: ${floor2}`);
+		expect(floor2 > 0).toBe(true);
 	});
 
 	it("the spender opens a roster kind before its unlock floor only without unlock floors", () => {

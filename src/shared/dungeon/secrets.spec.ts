@@ -108,6 +108,11 @@ function inRect(s: FloorSecret, x: number, y: number, g: number): boolean {
 	return x >= s.x0 - g && x < s.x0 + s.w + g && y >= s.y0 - g && y < s.y0 + s.h + g;
 }
 
+/** The cell's place along the wall is within the ring's columns (the chamber's, grown by 1). */
+function alongInRing(s: FloorSecret, x: number, y: number): boolean {
+	return s.fx !== 0 ? y >= s.y0 - 1 && y <= s.y0 + s.h : x >= s.x0 - 1 && x <= s.x0 + s.w;
+}
+
 /** The cell's depth behind the wall line (0 on it, > 0 behind, < 0 in front). */
 function depthOf(s: FloorSecret, x: number, y: number): number {
 	return s.fx !== 0 ? s.x - x : s.y - y;
@@ -310,6 +315,13 @@ describe("secrets: the crack, the front box and the chamber (every secret of the
 							if (t === TileType.POOL) expect(wallLine).toBe(true);
 							if (t !== TileType.FLOOR) continue;
 							expect(wallLine).toBe(true);
+							// The wall line's two end cells are outer wall the carve never touches; the placer checks the
+							// row in front of the wall line over the ring's columns only (secrets.ts chamberOk: k = -1,
+							// i = -1 .. along), so the cell diagonally in front of an end may be a neighbouring room's
+							// floor at a wall corner (docs/NEW_ENEMIES_2.md NX6: run 3 floor 5's pick, room 4 beside room
+							// 9's corner, came up when the new room kinds moved the floor's pieces and so the `every`
+							// override's pick). The chamber and its void ring still touch no other floor.
+							if (depthOf(s, nx, ny) === -1 && !alongInRing(s, nx, ny)) continue;
 							expect(d.roomId[ny * d.W + nx]).toBe(s.room);
 							expect(d.corridor[ny * d.W + nx]).toBe(0);
 						}

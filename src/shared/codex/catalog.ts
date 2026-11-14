@@ -13,8 +13,10 @@
  *   relic:<k>    RELICS[i].id `relic.<k>`            relic:mirrorCloak
  *   curse:<k>    CURSES[i].id `curse.<k>`            curse:frailty
  *   boost:<k>    theme BOOST_KINDS (Boost order)     boost:fury
- *   enemy:<k>    archetype id (ENDLESS_ROOM_KINDS,   enemy:swarmer, enemy:slime (slimelets fold in), enemy:golden
- *                then the Goldling GOLDEN_KIND)
+ *   enemy:<k>    archetype id (ENDLESS_ROOM_KINDS'   enemy:swarmer, enemy:slime (slimelets fold in), enemy:golden,
+ *                first eleven, the Goldling          enemy:pyrekeeper (its braziers fold in)
+ *                GOLDEN_KIND; later kinds appended
+ *                after secret:room)
  *   affix:<k>    theme AFFIX_IDS (AffixKind - 1)     affix:hulking
  *   boss:<k>     ENDLESS_BOSSES kind `boss.<k>`      boss:act1 (Mother Mayhem), boss:demonlord
  *   secret:<k>   the secret rooms (theme `secret.<k>`) secret:room (docs/SECRET_ROOMS.md SRD12: the feature as a whole)
@@ -37,6 +39,12 @@
  * seen at a player's first knock on a crack (the first-time card's sighting id `secret.crack` maps to it:
  * CODEX_SIGHTING_ENTRIES, read by the seed and the tracker's codexSightingId) and found at the first secret the player
  * opens or is present for (the view track's claim, SR9).
+ *
+ * Later room enemies (docs/NEW_ENEMIES_2.md NXD14, NX9): the room kinds past ENDLESS_ROOM_KINDS' first
+ * CODEX_FIRST_ROOM_KINDS (the Shieldwall `bulwark`, the Chainhook, the Snatcher, the Pyre-keeper, then any later
+ * append) are a second list: their `enemy:` rows are appended to the catalog AFTER `secret:room`, so every earlier entry
+ * keeps its catalog position. They are still group `enemies`: the grid (CODEX_TAB_GROUPS, `order`) shows them at the end
+ * of the Enemies section, after the Goldling.
  */
 import { CHARACTERS, type CharacterId } from "shared/characters";
 import { AFFIXES, BOSS_FLOOR_EVERY, ENDLESS_BOSSES, ENDLESS_ROOM_KINDS, affixThemeIndex } from "shared/dungeon";
@@ -47,6 +55,8 @@ import {
 	CardKind,
 	DUOS,
 	GOLDEN_KIND,
+	PYRE,
+	PYREKEEPER,
 	RELICS,
 	SLIME_ID,
 	SLIME_SMALL_ID,
@@ -162,7 +172,10 @@ export interface CodexEntry {
 	readonly id: string;
 	readonly tab: CodexTab;
 	readonly group: CodexGroup;
-	/** Position in its tab (0-based, grid order: groups in CODEX_TAB_GROUPS order, then data order). */
+	/**
+	 * Position in its tab (0-based, grid order: groups in CODEX_TAB_GROUPS order, then catalog order within a group). The
+	 * appended rows (the later room enemies, NXD14) sit at their group's end here although CODEX_CATALOG lists them last.
+	 */
 	readonly order: number;
 	/** Theme string keys of the name and the description / tell. */
 	readonly nameKey: string;
@@ -174,10 +187,20 @@ export interface CodexEntry {
 }
 
 /**
- * Archetypes that count as another entry's (a slimelet is an Ooze). Anything else outside the catalog (turrets, the
- * dummy, bosses: use codexBossId) has no enemy entry.
+ * Archetypes that count as another entry's (a slimelet is an Ooze; a brazier is its Pyre-keeper's, docs/NEW_ENEMIES_2.md
+ * NXD15). Anything else outside the catalog (turrets, the dummy, bosses: use codexBossId) has no enemy entry.
  */
-export const CODEX_FOLDED_ARCHETYPES: ReadonlyMap<string, string> = new Map([[SLIME_SMALL_ID, SLIME_ID]]);
+export const CODEX_FOLDED_ARCHETYPES: ReadonlyMap<string, string> = new Map([
+	[SLIME_SMALL_ID, SLIME_ID],
+	[PYRE.id, PYREKEEPER.id],
+]);
+
+/**
+ * How many of ENDLESS_ROOM_KINDS' rows list their `enemy:` entries before the Goldling (the room kinds up to
+ * docs/NEW_ENEMIES.md's, 11). Every later row is appended after `secret:room` (docs/NEW_ENEMIES_2.md NXD14), in
+ * ENDLESS_ROOM_KINDS order. Never change it: it fixes the catalog positions stored ids are listed in.
+ */
+export const CODEX_FIRST_ROOM_KINDS = 11;
 
 /** The theme id of the secret rooms' entry (`secret.room`: name `secret.room.name`, id `secret:room`). */
 const SECRET_ROOM_THEME_ID = "secret.room";
@@ -244,6 +267,12 @@ const ENEMY_HINT: CodexHint = table.freeze({ kind: "enemy" });
 
 type Row = Omit<CodexEntry, "order" | "tab">;
 
+/** The catalog's rows in data order, and the rows appended after every one of them (NXD14). */
+interface Rows {
+	readonly rows: Row[];
+	readonly appended: Row[];
+}
+
 const GROUP_TAB = ((): ReadonlyMap<CodexGroup, CodexTab> => {
 	const m = new Map<CodexGroup, CodexTab>();
 	for (const tab of CODEX_TABS) for (const g of CODEX_TAB_GROUPS[tab]) m.set(g, tab);
@@ -261,8 +290,25 @@ const AFFIX_BY_KIND = new Map<number, string>();
 const ENEMY_BY_ARCHETYPE = new Map<string, string>();
 const BOSS_BY_ARCHETYPE = new Map<string, string>();
 
-function buildRows(): Row[] {
+function enemyRow(archetype: string): Row {
+	const id = codexId(CODEX_ID_CATEGORY.enemy, archetype);
+	ENEMY_BY_ARCHETYPE.set(archetype, id);
+	const tell = (BESTIARY_ARCHETYPES as ReadonlyArray<string>).includes(archetype);
+	return {
+		id,
+		group: "enemies",
+		nameKey: `enemy.${archetype}.name`,
+		descKey: tell
+			? bestiaryArchetypeKey(archetype as (typeof BESTIARY_ARCHETYPES)[number])
+			: codexDescKey(CODEX_ID_CATEGORY.enemy, archetype),
+		artRef: { kind: "actor", archetype },
+		hint: ENEMY_HINT,
+	};
+}
+
+function buildRows(): Rows {
 	const rows: Row[] = [];
+	const appended: Row[] = [];
 	const C = CODEX_ID_CATEGORY;
 	const boonGates: (CharacterId | undefined)[] = [];
 	for (let i = 0; i < BOONS.size(); i++) {
@@ -351,24 +397,9 @@ function buildRows(): Row[] {
 			hint: NO_HINT,
 		});
 	}
-	const enemyKinds: string[] = [];
-	for (const k of ENDLESS_ROOM_KINDS) enemyKinds.push(k.kind);
-	enemyKinds.push(GOLDEN_KIND);
-	for (const archetype of enemyKinds) {
-		const id = codexId(C.enemy, archetype);
-		ENEMY_BY_ARCHETYPE.set(archetype, id);
-		const tell = (BESTIARY_ARCHETYPES as ReadonlyArray<string>).includes(archetype);
-		rows.push({
-			id,
-			group: "enemies",
-			nameKey: `enemy.${archetype}.name`,
-			descKey: tell
-				? bestiaryArchetypeKey(archetype as (typeof BESTIARY_ARCHETYPES)[number])
-				: codexDescKey(C.enemy, archetype),
-			artRef: { kind: "actor", archetype },
-			hint: ENEMY_HINT,
-		});
-	}
+	for (let i = 0; i < math.min(CODEX_FIRST_ROOM_KINDS, ENDLESS_ROOM_KINDS.size()); i++)
+		rows.push(enemyRow(ENDLESS_ROOM_KINDS[i].kind));
+	rows.push(enemyRow(GOLDEN_KIND));
 	for (const unlock of AFFIXES.unlocks) {
 		const affix = AFFIX_IDS[affixThemeIndex(unlock.kind)];
 		if (affix === undefined) error(`codex: affix kind ${unlock.kind} has no theme id`, 0);
@@ -408,27 +439,49 @@ function buildRows(): Row[] {
 		artRef: { kind: "secret" },
 		hint: NO_HINT,
 	});
-	return rows;
+	// docs/NEW_ENEMIES_2.md NXD14: the later room kinds, after secret:room (the second list).
+	for (let i = CODEX_FIRST_ROOM_KINDS; i < ENDLESS_ROOM_KINDS.size(); i++)
+		appended.push(enemyRow(ENDLESS_ROOM_KINDS[i].kind));
+	return { rows, appended };
 }
 
-/** Rows grouped in tab / group order, each with its tab and its place in the tab. Throws on a duplicate id. */
+/**
+ * The rows grouped in tab / group order, then the appended rows (NXD14) in their order, each with its tab and its place
+ * in the tab's grid (its group's rows, then its group's appended rows). Throws on a duplicate id.
+ */
 function buildCatalog(): ReadonlyArray<CodexEntry> {
-	const rows = buildRows();
-	const out: CodexEntry[] = [];
-	const ids = new Set<string>();
+	const { rows, appended } = buildRows();
+	const orders = new Map<string, number>();
+	const tabs = new Map<string, CodexTab>();
 	for (const tab of CODEX_TABS) {
 		let order = 0;
 		for (const group of CODEX_TAB_GROUPS[tab]) {
-			for (const row of rows) {
-				if (row.group !== group) continue;
-				if (ids.has(row.id)) error(`codex: duplicate entry id '${row.id}'`, 0);
-				ids.add(row.id);
-				out.push(table.freeze({ ...row, tab, order }));
-				order++;
+			for (const list of [rows, appended]) {
+				for (const row of list) {
+					if (row.group !== group) continue;
+					if (orders.has(row.id)) error(`codex: duplicate entry id '${row.id}'`, 0);
+					orders.set(row.id, order);
+					tabs.set(row.id, tab);
+					order++;
+				}
 			}
 		}
 	}
-	if (out.size() !== rows.size()) error("codex: a row's group belongs to no tab", 0);
+	const out: CodexEntry[] = [];
+	for (const tab of CODEX_TABS) {
+		for (const group of CODEX_TAB_GROUPS[tab]) {
+			for (const row of rows) {
+				if (row.group !== group) continue;
+				out.push(table.freeze({ ...row, tab, order: orders.get(row.id) as number }));
+			}
+		}
+	}
+	for (const row of appended) {
+		const tab = tabs.get(row.id);
+		if (tab === undefined) error("codex: an appended row's group belongs to no tab", 0);
+		out.push(table.freeze({ ...row, tab, order: orders.get(row.id) as number }));
+	}
+	if (out.size() !== rows.size() + appended.size()) error("codex: a row's group belongs to no tab", 0);
 	return table.freeze(out);
 }
 

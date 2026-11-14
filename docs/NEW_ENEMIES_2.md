@@ -401,6 +401,70 @@ Shieldwall), OC2 by NXD21 (as recommended and built).
   no end event. The arrival / timeout ends and the yank are visible in state; the view's snap should play for
   `hookEndBreaks` reasons only.
 
+### NX6 Room pool and roster (as built, 2026-11-14)
+
+- `ENDLESS_ROOM_KINDS` + four rows, appended (`endlessData.ts`, `NEW_KIND_2_MAX_PER_ROOM`): bulwark 1 / max 2, chainhook
+  1 / 1, snatcher 1 / 1 `needsCompany`, pyrekeeper 1 / 1; the pyre is no room kind. Each has `fromFloor` 2
+  (`ROOM_KIND_UNLOCK_FLOOR`): read only with unlock floors (specs and tools), so floor 1 without a roster spends draw for
+  draw as before; every endless world ignores it (DSD17 / DSD18), so NXD4's "any floor" holds for the other three.
+- NXD4: `ROOM_KIND_MIN_FLOOR` (chainhook 2) and `roomKindMinFloor(kind)`, checked in `roomKindOpen` (no draw) and in
+  `endlessRoster`'s join scan, unlock floors on or off: a run whose order starts with the Chainhook (runs 5, 62, 64 of
+  0-99) takes the order's second kind on floor 1 and the Chainhook on floor 2. `rosterOrder` shuffles 14 kinds (13
+  draws); full roster on floor 14.
+- `DAILY.ruleset` 19 -> 20. Horde (NXD9): `telegraphWave` already skips `snatcher` (NX4); the pool now buys it.
+- Census helpers: `dungeon/testing` poolCensus takes the roster rule (`unlockFloors`, default true; min floors either
+  way); `run/testing` `roomLoad` counts a Pyre-keeper's 3 pyres as alive slots (a pyre corpse lasts 0.5 s, far under the
+  4-5 s between lights), `poolHighWater(..., unlockFloors)`, `dearestRoom(..., withKind)`, `BulletPeak.pyres`.
+
+Re-pinned ("re-recorded for docs/NEW_ENEMIES_2.md NX6"); every move is the four kinds in the draw or the 14-kind
+reshuffle, no layout moved: `dungeon/roomPool.lock` (no roster floors 2-6: the four join the draw there; every roster
+digest; floor 1 without a roster unchanged), `roster.spec` (orders, joins, full floor 14, NXD4 cases),
+`roomPool.spec` (rows), `view/hud/rosterLine.spec` (run 1337's floors), `sim/charger.spec` PIN_HASH 2fcc46ea and
+`sim/stormcaller.spec` 3/0/04cfeefe, 6/0/71038c42 (counts unchanged), `run/slice.spec` (the bot's floor-6 segment starts
+at tick 2962, was 2953), `daily.spec`, `sim/newEnemies2.spec` (the rows).
+Not pins: `dungeon/secrets.spec`'s ring rule skips the cell diagonally in front of a wall-line end (the placer checks the
+front row over the ring's columns only; run 3 floor 5's `every` pick, which the new spawns moved, has room 4's floor
+there); `sim/archer.ttk.builds.spec` lets the Archer time out on the floor-20 census room (now 15 enemies with two
+Shieldwalls, a Chainhook, a Pyre-keeper, a Snatcher; 150 s without the four, cap 180 s): an NX12 / owner item.
+M1, the golden fixtures and the tutorial did not move.
+
+Census (`run/newEnemies2Pool.<1-5>.spec`, by floors; solo, run seeds 1-60, the live rule; means per populated room;
+p4 = party 4's worst room by pool slots and the rooms holding a Pyre-keeper):
+
+| floor | enemies | kinds | bul | cha | sna | pyr | cost / budget | p4 max slots / alive | p4 keeper rooms (max slots) |
+|---|---|---|---|---|---|---|---|---|---|
+| 1 | 5.04 | 1.70 | 0.03 | 0.00 | 0.05 | 0.06 | 6.50 / 6.50 | 21 / 19 | 36 (19) |
+| 2 | 5.02 | 2.29 | 0.08 | 0.04 | 0.08 | 0.11 | 7.59 / 7.91 | 25 / 22 | 64 (24) |
+| 3 | 5.24 | 2.72 | 0.09 | 0.07 | 0.10 | 0.12 | 8.67 / 9.10 | 27 / 22 | 93 (25) |
+| 6 | 6.65 | 4.04 | 0.26 | 0.17 | 0.20 | 0.17 | 12.85 / 12.85 | 30 / 24 | 153 (30) |
+| 10 | 7.97 | 5.67 | 0.36 | 0.25 | 0.27 | 0.29 | 17.49 / 18.19 | 40 / 30 | 228 (40) |
+| 14 | 9.66 | 7.36 | 0.51 | 0.41 | 0.38 | 0.41 | 22.49 / 23.06 | 35 / 27 | 430 (35) |
+| 15 | 10.17 | 7.68 | 0.57 | 0.46 | 0.39 | 0.49 | 23.97 / 24.67 | 36 / 28 | 444 (36) |
+| 20 | 12.21 | 8.70 | 0.78 | 0.54 | 0.44 | 0.59 | 29.92 / 30.64 | 16 / 16 | 0 (0) |
+
+Party 4's worst room is 40 slots (floors 8-11: 8 Oozes, a summoner, a Pyre-keeper among them), under the 48 target.
+From floor 16 every party-4 room saturates and the no-draw fallback buys 16 Bruisers (the first cost-3 kind, EV13's
+spender fallback), so no Pyre-keeper there. Floor 1 never buys a Chainhook (gate); it bought 14 Shieldwalls, 21
+Snatchers and 27 Pyre-keepers over the sample. Every caps, company and roster rule held.
+
+Enemy bullets with pyres (`run/enemyBullets.pyre.census.spec`, the dearest room holding a Pyre-keeper; default sample
+runs 1-20 on five floors, `--census` runs 1-60 on floors 2-20; 20 s, god mode; peak / mean, the most pyres at once):
+
+| floor | room (cost) | passive | sword | sword cleared |
+|---|---|---|---|---|
+| 2 | run 1 room 11, 1 swarmer, keeper, 2 slime (10) | 15 / 10.6 (3) | 3 / 0.2 (0) | 5.5 s |
+| 6 | run 17 room 10, 9 enemies (18) | 71 / 17.6 (3) | 20 / 4.6 (1) | 11.5 s |
+| 10 | run 8 room 0, 12 enemies (25) | 27 / 5.2 (0) | 20 / 4.5 (0) | no |
+| 14 | run 2 room 6, 14 enemies (32) | 37 / 16.5 (3) | 38 / 8.0 (2) | no |
+| 20 | run 3 room 11, 15 enemies (43) | 71 / 34.1 (3) | 48 / 22.0 (3) | no |
+
+Peak 71; NE7's `run/enemyBullets.census` (every floor's dearest room, runs 1-20) now peaks at 76 (floor 12, passive;
+105 at NE7), far under the 2048 pool; nothing dropped. Floor 10's keeper lit no pyre in 20 s
+(not investigated: NX12).
+
+**Left for the view (NX7, shared/view):** `STAGE_ASSETS.children` has no `pyrekeeper: ["pyre"]`, so a Pyre-keeper
+floor does not prefetch `enemy.pyre` (stand-in until it loads).
+
 ### NX7 View (as built, 2026-11-14)
 
 Presentation and client timing only: no sim, hash, replay, wire or fixture change; `predictMotion.ts` and its parity
@@ -529,6 +593,19 @@ was rewritten with `--lock --only <set>` (`art/vendor.lock.json` + 42 files, add
   largest room enemy after the bruiser / charger; the Shieldwall and the keeper 1.47), the block loop reading as a
   raised guard, the Snatcher's 24 fps run, the pyre's lit loop with NX7's flame part on top (drop the view's flame if
   the sprite's own is enough), the flame and hook looks on every biome.
+
+### NX9 Codex (as built, 2026-11-14)
+
+- `codex/catalog.ts`: `enemy:` rows from ENDLESS_ROOM_KINDS' first `CODEX_FIRST_ROOM_KINDS` (11) then `enemy:golden`;
+  the later rows (bulwark, chainhook, snatcher, pyrekeeper, and any later append) are a second list built after
+  `secret:room` (catalogue 87 -> 91; the first 87 keep their positions, a spec). Still group `enemies`: `order` is the
+  grid position, so the Bestiary shows them after the Goldling (`codexTabEntries` keeps catalog order, the grid groups).
+  Names `enemy.<id>.name` (the bulwark reads Shieldwall), descriptions `bestiary.<id>` (NX1), hint `enemy`; no new
+  string, no l10n entry.
+- `CODEX_FOLDED_ARCHETYPES` + `pyre` -> `pyrekeeper`; `seedFromSightings` / the tracker's `codexSightingId` resolve the
+  four sighting ids (and `pyre`).
+- Specs: `catalog.spec` (order lock + the four after `enemy:golden`, the first-87 lock, the appended tail, the grid),
+  `doc.spec` (the seed: 18 entries), `view/codex/screen.spec` (Enemies 16 tiles).
 
 ## Player experience
 
