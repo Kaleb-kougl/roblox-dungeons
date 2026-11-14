@@ -1,6 +1,7 @@
 import { createProducer } from "@rbxts/reflex";
 import type { CharacterId } from "shared/characters";
-import { walletShown, type SilverFigures, type WalletShown } from "shared/view/silver";
+import { ownedCharacterOr, walletShown, type SilverFigures, type WalletShown } from "shared/view/silver";
+import { selectSelectedCharacter, type SettingsState } from "./settings";
 import type { SilverGrantBreakdown, WalletActionResult, WalletStatus } from "shared/wallet";
 
 /**
@@ -108,3 +109,10 @@ export const selectSilverRun = (state: { wallet: WalletState }) => state.wallet.
 export const selectWalletGrants = (state: { wallet: WalletState }) => state.wallet.grants;
 export const selectWalletBuying = (state: { wallet: WalletState }) => state.wallet.buying;
 export const selectSilverCounterShown = (state: { wallet: WalletState }) => state.wallet.counterShown;
+
+/**
+ * docs/SILVER.md SV18: the remembered pick (DisplaySettings.character) when the wallet owns it, else the Knight (a
+ * stored pick of a locked character, or an unknown wallet, reads as the Knight).
+ */
+export const selectPlayableCharacter = (state: { settings: SettingsState; wallet: WalletState }): CharacterId =>
+	ownedCharacterOr(state.wallet.status, selectSelectedCharacter(state));

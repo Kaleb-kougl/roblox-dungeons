@@ -45,6 +45,8 @@ export interface MenuActions {
 	readonly armoryBuy: (itemId: string) => boolean;
 	/** The Armory showed these affordable next levels (`<itemId>:<level>`): the main menu's badge dot clears for them. */
 	readonly armorySeen: (keys: ReadonlyArray<string>) => void;
+	/** The returning-player card's Got it (docs/SILVER.md OC12): it never shows again (DisplaySettings.silverNoticeSeen). */
+	readonly dismissSilverWelcome: () => void;
 	/** Roblox's invite prompt without a lobby (docs/INVITES.md ID7). */
 	readonly inviteFriends: () => void;
 	/** One screen back (the Back buttons). */
@@ -103,6 +105,7 @@ const NOOP: MenuActions = {
 	openArmory: nothing,
 	armoryBuy: () => false,
 	armorySeen: nothing,
+	dismissSilverWelcome: nothing,
 	inviteFriends: nothing,
 	back: nothing,
 	screenBack: nothing,

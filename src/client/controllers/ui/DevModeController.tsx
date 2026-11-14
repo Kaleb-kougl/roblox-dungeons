@@ -10,11 +10,17 @@ import { RUN_ATTRIBUTES } from "shared/play";
 import {
 	FLOOR_MODIFIER_ATTRIBUTE,
 	SECRET_DEBUG_ATTRIBUTE,
+	SILVER_DEBUG_ATTRIBUTE,
+	DEV_UPGRADE_MODES,
+	DEV_UPGRADES_DEFAULT,
+	type DevRunOptions,
+	type DevUpgradesMode,
 	TREASURE_DEBUG_ATTRIBUTE,
 	clampDevFloor,
 	isValidRunSeed,
 	parseFloorModifierOverride,
 	parseSecretDebug,
+	parseSilverDebug,
 	parseTreasureDebug,
 } from "shared/run";
 import { SimController } from "../game/SimController";
@@ -30,6 +36,7 @@ interface Shown {
 	god: boolean;
 	godPending: boolean;
 	bothWeapons: boolean;
+	upgrades: DevUpgradesMode;
 	runFloor: number | undefined;
 }
 
@@ -50,7 +57,9 @@ interface Shown {
  * moon", or a FloorModifier id; shared/run parseFloorModifierOverride) into the dev run's modifier override (that kind
  * on every floor where it is eligible); R / Restart keep it. Secret rooms (docs/SECRET_ROOMS.md SR5): Go reads the
  * Workspace string KV_SecretDebug ("every", "every legendary", "rare"; shared/run parseSecretDebug) into the dev run's
- * secret override; R / Restart keep it. Dev runs are never counted.
+ * secret override; R / Restart keep it. Silver (docs/SILVER.md SC1 / SV6): Go reads KV_SilverDebug ("every"; shared/run
+ * parseSilverDebug) into the dev run's Silver override, and the panel's `Upgrades: none / mine / max` (DevUpgradesMode;
+ * `mine`: the wallet's own levels) into its upgrades; R / Restart keep both. Dev runs are never counted.
  */
 @Controller({})
 export class DevModeController implements OnStart {
@@ -62,6 +71,8 @@ export class DevModeController implements OnStart {
 	private god: boolean = DEV_MODE.defaultInvulnerable;
 	/** The next Go's "Both weapons" (docs/ARCHER.md AR4: DEFAULT_LOADOUT with the picked character's roll). */
 	private bothWeapons = false;
+	/** docs/SILVER.md SV6: the next Go's upgrades (`mine`: the wallet's levels, SimController builds them). */
+	private upgrades: DevUpgradesMode = DEV_UPGRADES_DEFAULT;
 	private readonly random = new Random();
 	private shown: Shown | undefined;
 	private pollTimer = 0;
@@ -145,13 +156,18 @@ export class DevModeController implements OnStart {
 		// floors' secret rooms
 		const rawSecret = Workspace.GetAttribute(SECRET_DEBUG_ATTRIBUTE);
 		const secret = parseSecretDebug(typeIs(rawSecret, "string") ? rawSecret : undefined);
-		const options = {
+		// docs/SILVER.md SC1: KV_SilverDebug ("every") puts Silver in every candidate barrel and crate
+		const rawSilver = Workspace.GetAttribute(SILVER_DEBUG_ATTRIBUTE);
+		const silver = parseSilverDebug(typeIs(rawSilver, "string") ? rawSilver : undefined);
+		const options: DevRunOptions = {
 			startFloor: this.floor,
 			invulnerable: god,
 			vault,
 			modifier,
 			secret,
+			silver,
 			bothWeapons: this.bothWeapons,
+			upgrades: this.upgrades,
 		};
 		const seed = this.seed;
 		// docs/ARCHER.md AR7: the character screen first; its Confirm starts the run as the pick.
@@ -191,6 +207,7 @@ export class DevModeController implements OnStart {
 			god: running ?? this.god,
 			godPending: this.sim.isGodTogglePending(),
 			bothWeapons: this.bothWeapons,
+			upgrades: this.upgrades,
 			runFloor,
 		};
 		const last = this.shown;
@@ -203,6 +220,7 @@ export class DevModeController implements OnStart {
 			last.god === view.god &&
 			last.godPending === view.godPending &&
 			last.bothWeapons === view.bothWeapons &&
+			last.upgrades === view.upgrades &&
 			last.runFloor === view.runFloor
 		) {
 			return;
@@ -222,6 +240,11 @@ export class DevModeController implements OnStart {
 			onToggleGod: () => this.toggleGod(),
 			onToggleBothWeapons: () => {
 				this.bothWeapons = !this.bothWeapons;
+				this.render();
+			},
+			onCycleUpgrades: () => {
+				const i = DEV_UPGRADE_MODES.indexOf(this.upgrades);
+				this.upgrades = DEV_UPGRADE_MODES[(i + 1) % DEV_UPGRADE_MODES.size()];
 				this.render();
 			},
 			onGo: () => this.go(),

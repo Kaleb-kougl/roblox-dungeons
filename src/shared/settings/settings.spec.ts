@@ -304,6 +304,7 @@ describe("display: room edges (docs/ROOM_EDGES.md RE6)", () => {
 			padVibration: DEFAULT_PAD_VIBRATION,
 			character: DEFAULT_CHARACTER,
 			cursorSize: DEFAULT_CURSOR_SIZE,
+			silverNoticeSeen: false,
 		});
 	});
 
@@ -350,6 +351,7 @@ describe("display: room edges (docs/ROOM_EDGES.md RE6)", () => {
 			padVibration: DEFAULT_PAD_VIBRATION,
 			character: DEFAULT_CHARACTER,
 			cursorSize: DEFAULT_CURSOR_SIZE,
+			silverNoticeSeen: false,
 		});
 		expect(resolveDisplaySettings(decodeSettingsDoc({ v: 2 }).display).roomEdges).toBe(true);
 		expect(resolveDisplaySettings(decodeSettingsDoc({ v: SETTINGS_DOC_V1, juice: {} }).display).roomEdges).toBe(
@@ -459,6 +461,7 @@ describe("display: minimap (docs/MINIMAP.md M10)", () => {
 			padVibration: DEFAULT_PAD_VIBRATION,
 			character: DEFAULT_CHARACTER,
 			cursorSize: DEFAULT_CURSOR_SIZE,
+			silverNoticeSeen: false,
 		});
 	});
 
@@ -506,6 +509,7 @@ describe("display: minimap (docs/MINIMAP.md M10)", () => {
 			padVibration: DEFAULT_PAD_VIBRATION,
 			character: DEFAULT_CHARACTER,
 			cursorSize: DEFAULT_CURSOR_SIZE,
+			silverNoticeSeen: false,
 		});
 		expect(resolveDisplaySettings(decodeSettingsDoc({ v: 2 }).display).minimap).toBe(true);
 		expect(resolveDisplaySettings(decodeSettingsDoc({ v: SETTINGS_DOC_V1, juice: {} }).display).minimap).toBe(true);
@@ -743,6 +747,7 @@ describe("display: player outline (docs/PLAYER_OUTLINE.md P4)", () => {
 			padVibration: DEFAULT_PAD_VIBRATION,
 			character: DEFAULT_CHARACTER,
 			cursorSize: DEFAULT_CURSOR_SIZE,
+			silverNoticeSeen: false,
 		});
 	});
 
@@ -826,6 +831,7 @@ describe("display: touch controls (docs/MOBILE.md MB7)", () => {
 			padVibration: DEFAULT_PAD_VIBRATION,
 			character: DEFAULT_CHARACTER,
 			cursorSize: DEFAULT_CURSOR_SIZE,
+			silverNoticeSeen: false,
 		});
 	});
 
@@ -946,6 +952,7 @@ describe("display: gamepad menu vibration (docs/GAMEPAD_MENUS.md GM9)", () => {
 			padVibration: false,
 			character: DEFAULT_CHARACTER,
 			cursorSize: DEFAULT_CURSOR_SIZE,
+			silverNoticeSeen: false,
 		});
 	});
 

@@ -17,6 +17,7 @@ import { CreditsScreen } from "./CreditsScreen";
 import { LobbyBrowser } from "./LobbyBrowser";
 import { LobbyRoom } from "./LobbyRoom";
 import { MainMenu } from "./MainMenu";
+import { SilverWelcomeCard } from "./SilverWelcomeCard";
 import { InviteBadge, InviteToasts, NoticeToasts, useInviteToasts } from "./Toasts";
 
 /**
@@ -89,6 +90,8 @@ export function MenuLayer() {
 				{backdrop ? (
 					<frame key="Screen" Size={UDim2.fromScale(1, 1)} BackgroundTransparency={1} BorderSizePixel={0}>
 						{body}
+						{/* docs/SILVER.md OC12: the one-time card for accounts from before the update, over the main menu */}
+						{screen === "main" ? <SilverWelcomeCard key="SilverWelcome" /> : undefined}
 						{body !== undefined ? (
 							<InviteToasts
 								key="Invites"

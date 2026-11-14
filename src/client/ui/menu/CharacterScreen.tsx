@@ -1,13 +1,15 @@
 import React, { useBinding, useEffect, useRef, useState } from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
-import { RunService } from "@rbxts/services";
-import { selectCharacterScreen, selectInputDevice, selectJuice } from "client/store";
+import { GuiService, RunService, UserInputService } from "@rbxts/services";
+import { selectCharacterScreen, selectInputDevice, selectJuice, selectWallet, selectWalletState } from "client/store";
 import { FocusScope } from "client/ui/focus";
-import { MenuButton, MenuFit, PadHintBar, Panel, Row, Text } from "client/ui/hud";
+import { MenuButton, MenuFit, PadHintBar, Panel, Row, SilverAmount, Text } from "client/ui/hud";
 import { role, str, themePack } from "client/ui/theme";
 import { keyDevice } from "shared/play";
 import { SFX } from "shared/view/audio";
-import { CHARACTER_SCREEN_STRINGS, type ColorRole } from "shared/theme";
+import { ARMORY_KEYS, CHARACTER_LOCK_KEYS, CHARACTER_SCREEN_STRINGS, SILVER_ROLE, type ColorRole } from "shared/theme";
+import { statusBalance, walletShown } from "shared/view/silver";
+import { characterUnlockId } from "shared/wallet";
 import { HUD_VIEW } from "shared/view/hud";
 import {
 	CHARACTER_VIEW,
@@ -23,6 +25,12 @@ import {
 	screenSkin,
 	type CharacterCard,
 	type CharacterLayout,
+	BuyHold,
+	characterLockState,
+	characterPickAllowed,
+	offeredCharacters,
+	upgradesLine,
+	type CharacterLockState,
 } from "shared/view/menu";
 import { useMenuActions } from "./actions";
 
@@ -30,6 +38,8 @@ const HIDDEN = 1;
 const HALF = 0.5;
 const IDLE = "idle";
 const V = CHARACTER_VIEW;
+/** Between the item labels of the upgrades line. */
+const UPGRADES_SEPARATOR = " · ";
 
 /**
  * A character's idle animation facing the camera, drawn from its theme sprite set (`class.vanguard` / `class.ranger`)
@@ -37,7 +47,15 @@ const V = CHARACTER_VIEW;
  * an idle animation (the Archer until its art is uploaded, the placeholder pack) the class colour's capsule. The
  * frame is written through a binding on Heartbeat (no re-render per frame); reduced motion holds frame 0.
  */
-function CharacterPreview(props: { visualId: string; color: ColorRole; box: number; reducedMotion: boolean }) {
+function CharacterPreview(props: {
+	visualId: string;
+	color: ColorRole;
+	box: number;
+	reducedMotion: boolean;
+	/** docs/SILVER.md SV18: a locked character's art is dimmed (0 = full). */
+	dim?: number;
+}) {
+	const dim = props.dim ?? 0;
 	const set = themePack()?.sprites(props.visualId);
 	const idle = set !== undefined && set.has(IDLE) ? set.animation(IDLE) : undefined;
 	const [frame, setFrame] = useBinding(0);
@@ -69,6 +87,7 @@ function CharacterPreview(props: { visualId: string; color: ColorRole; box: numb
 				Position={UDim2.fromScale(HALF, HALF)}
 				Size={UDim2.fromOffset(math.floor(box * V.capsule.w), math.floor(box * V.capsule.h))}
 				BackgroundColor3={role(props.color)}
+				BackgroundTransparency={dim}
 				BorderSizePixel={0}
 			>
 				<uicorner CornerRadius={new UDim(HALF, 0)} />
@@ -87,6 +106,7 @@ function CharacterPreview(props: { visualId: string; color: ColorRole; box: numb
 			Size={UDim2.fromOffset(size.w, size.h)}
 			BackgroundTransparency={HIDDEN}
 			Image={first.image}
+			ImageTransparency={dim}
 			ImageRectSize={first.size}
 			ImageRectOffset={frame.map((i) => set.frame(IDLE, facing, i).offset)}
 			ResampleMode={Enum.ResamplerMode[set.resample]}
@@ -112,6 +132,12 @@ function CardButton(props: {
 	/** A tap or click. */
 	onTap: () => void;
 	onConfirm: () => void;
+	/** docs/SILVER.md SV18: the card's lock (open / locked / unavailable) and the upgrades line under it. */
+	lock: CharacterLockState;
+	upgrades: string;
+	/** The card was just bought in this visit (it lights). */
+	lit: boolean;
+	onBuy: (itemId: string) => void;
 }) {
 	const l = props.layout;
 	const inner = l.cardW - 2 * V.cardPad;
@@ -156,6 +182,7 @@ function CardButton(props: {
 				color={c.role}
 				box={l.previewPx}
 				reducedMotion={props.reducedMotion}
+				dim={props.lock.kind === "open" ? 0 : V.lockedArtTransparency}
 			/>
 			<Text
 				order={2}
@@ -179,7 +206,129 @@ function CardButton(props: {
 					text={str(key)}
 				/>
 			))}
+			<LockRow key="Lock" order={3 + c.lineKeys.size()} width={inner} lock={props.lock} onBuy={props.onBuy} />
+			<Text
+				key="Upgrades"
+				order={4 + c.lineKeys.size()}
+				width={inner}
+				size={HUD_VIEW.smallText}
+				color={SILVER_ROLE}
+				align={Enum.TextXAlignment.Center}
+				transparency={dim}
+				text={props.upgrades}
+			/>
+			{props.lit ? (
+				<uistroke
+					key="Lit"
+					ApplyStrokeMode={Enum.ApplyStrokeMode.Border}
+					Thickness={V.focusStroke}
+					Color={role(SILVER_ROLE)}
+				/>
+			) : undefined}
 		</textbutton>
+	);
+}
+
+/**
+ * docs/SILVER.md SV18: a card's lock row, always its room (the cards stay one size): nothing for an open card; for a
+ * locked one the `Unlock 300` hold button when the balance covers it (0.4 s, mouse / touch / the pad's A: BuyHold,
+ * then the wallet's push answers with sfx.shop.buy), else `Unlock 300` and `Need 140 more`.
+ */
+function LockRow(props: { order: number; width: number; lock: CharacterLockState; onBuy: (itemId: string) => void }) {
+	const lock = props.lock;
+	const ref = useRef<TextButton>();
+	const hold = useRef(new BuyHold());
+	const [fill, setFill] = useBinding(0);
+	const itemId = lock.kind === "locked" && lock.canBuy ? lock.itemId : undefined;
+	useEffect(() => {
+		if (itemId === undefined) return;
+		const conns = new Array<RBXScriptConnection>();
+		const button = ref.current;
+		const begin = () => hold.current.press(os.clock());
+		const finish = () => hold.current.release();
+		if (button !== undefined) {
+			conns.push(
+				button.InputBegan.Connect((input) => {
+					const t = input.UserInputType;
+					if (t === Enum.UserInputType.MouseButton1 || t === Enum.UserInputType.Touch) begin();
+				}),
+			);
+			conns.push(button.InputEnded.Connect(finish));
+			conns.push(button.MouseLeave.Connect(finish));
+		}
+		conns.push(
+			UserInputService.InputBegan.Connect((input) => {
+				if (input.KeyCode === Enum.KeyCode.ButtonA && GuiService.SelectedObject === ref.current) begin();
+			}),
+		);
+		conns.push(
+			UserInputService.InputEnded.Connect((input) => {
+				if (input.KeyCode === Enum.KeyCode.ButtonA) finish();
+			}),
+		);
+		conns.push(
+			RunService.Heartbeat.Connect(() => {
+				const now = os.clock();
+				const step = hold.current.step(now);
+				setFill(hold.current.progress(now));
+				if (step === "complete") {
+					hold.current.release();
+					setFill(0);
+					props.onBuy(itemId);
+				}
+			}),
+		);
+		return () => {
+			for (const c of conns) c.Disconnect();
+		};
+	}, [itemId]);
+	const h = V.lockRow;
+	let body: React.Element | undefined;
+	if (lock.kind === "locked" && lock.canBuy) {
+		body = (
+			<MenuButton
+				ref={ref}
+				order={1}
+				name="Unlock"
+				size={new Vector2(math.min(props.width, V.startButton.x), h)}
+				textSize={HUD_VIEW.smallText}
+				text={str(CHARACTER_LOCK_KEYS.unlock, { price: lock.price })}
+				fill={fill}
+				onActivated={() => undefined}
+			/>
+		);
+	} else if (lock.kind === "locked") {
+		body = (
+			<Row order={1} align={Enum.HorizontalAlignment.Center}>
+				<SilverAmount
+					order={1}
+					size={HUD_VIEW.smallText}
+					text={str(CHARACTER_LOCK_KEYS.unlock, { price: lock.price })}
+				/>
+				<Text
+					order={2}
+					size={HUD_VIEW.smallText}
+					color="uiTextDim"
+					text={str(CHARACTER_LOCK_KEYS.need, { silver: lock.need })}
+				/>
+			</Row>
+		);
+	}
+	return (
+		<frame
+			key="LockRow"
+			LayoutOrder={props.order}
+			Size={UDim2.fromOffset(props.width, h)}
+			BackgroundTransparency={HIDDEN}
+		>
+			<uilistlayout
+				FillDirection={Enum.FillDirection.Vertical}
+				HorizontalAlignment={Enum.HorizontalAlignment.Center}
+				VerticalAlignment={Enum.VerticalAlignment.Center}
+				SortOrder={Enum.SortOrder.LayoutOrder}
+			/>
+			{body}
+		</frame>
 	);
 }
 
@@ -198,11 +347,25 @@ export function CharacterScreen() {
 	const device = useSelector(selectInputDevice);
 	const screen = useSelector(selectCharacterScreen);
 	const reducedMotion = useSelector(selectJuice).reducedMotion;
+	// docs/SILVER.md SV18: the wallet (locks, the balance, the upgrades line) and a card bought in this visit.
+	const wallet = useSelector(selectWallet);
+	const walletState = useSelector(selectWalletState);
+	const [litId, setLitId] = useState<string | undefined>(undefined);
+	const resultSeen = useRef(walletState.resultVersion);
+	useEffect(() => {
+		if (walletState.resultVersion === resultSeen.current) return;
+		resultSeen.current = walletState.resultVersion;
+		const r = walletState.result;
+		if (r !== undefined && r.action === "buy" && r.ok) setLitId(r.itemId);
+	}, [walletState.resultVersion]);
 	const defaultRef = useRef<TextButton>();
 	// The pad starts on the card focused when the screen opened (the last pick).
 	const [opened] = useState(() => screen?.focus);
 	if (screen === undefined) return undefined;
-	const cards = characterCards();
+	const offered = offeredCharacters(wallet);
+	const cards = characterCards().filter((c) => offered.includes(c.id));
+	const upgrades = upgradesLine(wallet, str, UPGRADES_SEPARATOR);
+	const focusLocked = !characterPickAllowed(screen.focus, wallet);
 	const pad = device === "gamepad";
 	return (
 		<FocusScope
@@ -227,17 +390,32 @@ export function CharacterScreen() {
 							skin={screenSkin("character")}
 							name="Character"
 						>
-							<Text
-								fill={true}
-								order={1}
-								size={HUD_VIEW.titleText}
-								color="uiAccent"
-								align={Enum.TextXAlignment.Center}
-								text={str(CHARACTER_SCREEN_STRINGS.title)}
-							/>
+							{/* docs/SILVER.md SV18: beside the title, the balance or that only the Knight can be offered. */}
+							<Row key="Title" order={1} align={Enum.HorizontalAlignment.Center}>
+								<Text
+									order={1}
+									size={HUD_VIEW.titleText}
+									color="uiAccent"
+									text={str(CHARACTER_SCREEN_STRINGS.title)}
+								/>
+								{walletShown(wallet) === "loaded" ? (
+									<SilverAmount
+										order={2}
+										size={HUD_VIEW.smallText}
+										text={str(ARMORY_KEYS.balance, { silver: statusBalance(wallet) })}
+									/>
+								) : (
+									<Text
+										order={2}
+										size={HUD_VIEW.smallText}
+										color="uiTextDim"
+										text={str(CHARACTER_LOCK_KEYS.unavailable)}
+									/>
+								)}
+							</Row>
 							<frame
 								key="Cards"
-								LayoutOrder={2}
+								LayoutOrder={3}
 								Size={new UDim2()}
 								AutomaticSize={Enum.AutomaticSize.XY}
 								BackgroundTransparency={HIDDEN}
@@ -264,15 +442,22 @@ export function CharacterScreen() {
 											actions.focusCharacter(c.id);
 										}}
 										onConfirm={() => actions.confirmCharacter(c.id)}
+										lock={characterLockState(c.id, wallet)}
+										upgrades={upgrades}
+										lit={litId !== undefined && litId === characterUnlockId(c.id)}
+										onBuy={(itemId) => {
+											if (actions.armoryBuy(itemId)) actions.playUi(SFX.uiConfirm);
+										}}
 									/>
 								))}
 							</frame>
-							<Row order={3} align={Enum.HorizontalAlignment.Center}>
+							<Row order={4} align={Enum.HorizontalAlignment.Center}>
 								<MenuButton
 									order={1}
 									name="Start"
 									size={new Vector2(V.startButton.x, V.startButton.y)}
 									text={str(characterConfirmKey(screen.origin))}
+									disabled={focusLocked}
 									onActivated={() => actions.confirmCharacter()}
 								/>
 								<MenuButton
@@ -285,11 +470,11 @@ export function CharacterScreen() {
 								/>
 							</Row>
 							{pad ? (
-								<PadHintBar order={4} surface="character" />
+								<PadHintBar order={5} surface="character" />
 							) : device === "touch" ? undefined : (
 								<Text
 									fill={true}
-									order={4}
+									order={5}
 									size={HUD_VIEW.smallText}
 									color="uiTextDim"
 									align={Enum.TextXAlignment.Center}

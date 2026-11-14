@@ -79,6 +79,8 @@ export const DEV_PANEL_VIEW = {
 		godPending: "God mode: switching...",
 		bothOn: "Both weapons: ON",
 		bothOff: "Both weapons: OFF",
+		/** docs/SILVER.md SV6: the dev run's upgrades (DevUpgradesMode none / mine / max): `Upgrades: %s`. */
+		upgrades: "Upgrades: %s",
 		go: "Go to floor %d",
 		restart: "Restart (R)",
 		bossFloor: "boss floor",

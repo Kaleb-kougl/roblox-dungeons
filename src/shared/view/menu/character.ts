@@ -187,6 +187,9 @@ export const CHARACTER_VIEW = {
 	capsule: { w: 0.38, h: 0.8 },
 	/** The screen panel's padding (HUD_VIEW.pad x 2, like the other menu screens). */
 	panelPad: HUD_VIEW.pad * 2,
+	/** docs/SILVER.md SV18: the lock row's height (the unlock hold button) and the locked card's art transparency. */
+	lockRow: MENU_VIEW.smallButton.y,
+	lockedArtTransparency: 0.6,
 } as const;
 
 /** How the cards are arranged: side by side, side by side with a smaller preview (a short safe area), or stacked. */
@@ -211,12 +214,17 @@ function line(size: number): number {
 	return size + CHARACTER_VIEW.lineExtra;
 }
 
-/** A card's height: the preview, the name, the summary lines (each given summaryRows lines of small text). */
+/**
+ * A card's height: the preview, the name, the summary lines (each given summaryRows lines of small text), then (docs/
+ * SILVER.md SV18) the lock row (the Archer's `Unlock 300` hold or `Need N more`; every card keeps its room so the
+ * cards stay one size) and the upgrades line (the upgrades the next run applies).
+ */
 export function characterCardHeight(previewPx: number): number {
 	const v = CHARACTER_VIEW;
 	const summary =
 		CHARACTER_SUMMARY_LINES * v.summaryRows * HUD_VIEW.smallText + CHARACTER_SUMMARY_LINES * v.lineExtra;
-	return 2 * v.cardPad + previewPx + HUD_VIEW.gap + line(HUD_VIEW.titleText) + HUD_VIEW.gap + summary;
+	const silver = HUD_VIEW.gap + v.lockRow + HUD_VIEW.gap + line(HUD_VIEW.smallText);
+	return 2 * v.cardPad + previewPx + HUD_VIEW.gap + line(HUD_VIEW.titleText) + HUD_VIEW.gap + summary + silver;
 }
 
 /** The layout of `arrangement`. */
@@ -236,7 +244,7 @@ export function characterLayout(arrangement: CharacterArrangement): CharacterLay
 }
 
 /**
- * The panel's size as drawn (reference px, before any fit), for the fit specs: the title, the cards (a column stacks
+ * The panel's size as drawn (reference px, before any fit), for the fit specs: the title (the balance beside it), the cards (a column stacks
  * them with the card gap), the buttons row, and on a desktop / pad the key hint or hint bar line; the vertical padding
  * is the caller's (it depends on the frame art's snapped scale).
  */
@@ -244,6 +252,7 @@ export function characterContentHeight(arrangement: CharacterArrangement, hintLi
 	const l = characterLayout(arrangement);
 	const n = CHARACTER_IDS.size();
 	const cards = arrangement === "column" ? n * l.cardH + (n - 1) * CHARACTER_VIEW.cardGap : l.cardH;
+	// docs/SILVER.md SV18: the balance (or `Characters unavailable`) sits beside the title, in its row.
 	const rows = [line(HUD_VIEW.titleText), cards, CHARACTER_VIEW.startButton.y];
 	if (hintLine) rows.push(line(HUD_VIEW.smallText));
 	let h = 0;

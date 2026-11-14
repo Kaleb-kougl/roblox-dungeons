@@ -79,6 +79,11 @@ export interface DisplaySettings {
 	 * DEFAULT_CURSOR_SIZE ("normal"): only "small" or "large" is ever stored.
 	 */
 	cursorSize: CursorSize;
+	/**
+	 * docs/SILVER.md SV18 (OC12): the one-time main-menu card for accounts that played before the Silver update was
+	 * shown and dismissed. Default false: only true is ever stored. Not on the Display tab (DISPLAY_RESET_KEEPS).
+	 */
+	silverNoticeSeen: boolean;
 }
 
 export type DisplayOverrides = Partial<DisplaySettings>;
@@ -99,6 +104,7 @@ export const DISPLAY_SETTING_KEYS: ReadonlyArray<keyof DisplaySettings> = [
 	"padVibration",
 	"character",
 	"cursorSize",
+	"silverNoticeSeen",
 ];
 
 export function defaultDisplaySettings(): DisplaySettings {
@@ -118,6 +124,7 @@ export function defaultDisplaySettings(): DisplaySettings {
 		padVibration: DEFAULT_PAD_VIBRATION,
 		character: DEFAULT_CHARACTER,
 		cursorSize: DEFAULT_CURSOR_SIZE,
+		silverNoticeSeen: false,
 	};
 }
 
@@ -128,8 +135,8 @@ export function defaultDisplaySettings(): DisplaySettings {
  * from its list and not the default; a touchAutoTarget / touchLeftHanded that is a boolean other than the default; a
  * language that is a known locale code (stored as LOCALES spells it; "auto" and unknown codes are dropped); a
  * padVibration that is a boolean other than the default (so only `false`); a character that is a character id other
- * than DEFAULT_CHARACTER; a cursorSize from CURSOR_SIZES other than the default (so only "small" / "large"). Never
- * throws.
+ * than DEFAULT_CHARACTER; a cursorSize from CURSOR_SIZES other than the default (so only "small" / "large"); a
+ * silverNoticeSeen that is true. Never throws.
  */
 export function sanitizeDisplayOverrides(raw: unknown): DisplayOverrides {
 	const out: DisplayOverrides = {};
@@ -192,6 +199,8 @@ export function sanitizeDisplayOverrides(raw: unknown): DisplayOverrides {
 	) {
 		out.cursorSize = cursorSize as CursorSize;
 	}
+	const silverNotice = t.silverNoticeSeen;
+	if (silverNotice === true) out.silverNoticeSeen = true;
 	return out;
 }
 
@@ -199,7 +208,11 @@ export function sanitizeDisplayOverrides(raw: unknown): DisplayOverrides {
  * Display settings shown elsewhere, which the Display tab's Reset (and Options X there) keeps: `padVibration` sits on
  * Controls > Gamepad (docs/GAMEPAD_MENUS.md GM9), `character` is the character screen's pick (docs/ARCHER.md AR5).
  */
-export const DISPLAY_RESET_KEEPS: ReadonlyArray<keyof DisplaySettings> = ["padVibration", "character"];
+export const DISPLAY_RESET_KEEPS: ReadonlyArray<keyof DisplaySettings> = [
+	"padVibration",
+	"character",
+	"silverNoticeSeen",
+];
 
 /** The display group after the Display tab's Reset: every override dropped but DISPLAY_RESET_KEEPS' (sanitized). */
 export function displayResetOverrides(current: unknown): DisplayOverrides {

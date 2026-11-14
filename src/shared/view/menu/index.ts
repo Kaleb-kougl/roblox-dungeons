@@ -13,6 +13,7 @@
  */
 export * from "./armory";
 export * from "./character";
+export * from "./characterLock";
 export * from "./config";
 export * from "./credits";
 export * from "./daily";
