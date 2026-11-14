@@ -172,7 +172,7 @@ state, so nothing is kept alive past `release()`.
 | OC18 | How does a half-heart container look (an odd heart max, SV0)? | **A half heart in the empty heart's outline**, its right half missing (not the half-*filled* heart, which means hurt). **Art made (2026-11-13):** `scripts/art/gen-heart-halfmax.js` cuts the UI sheet's own `ui.heart.full` / `ui.heart.empty` at their centre and closes the cut in each heart's edge colour: `ui.heart.halfmax` (holding its half) and `ui.heart.halfmax.empty`, 18 x 15 like the hearts, into gitignored `art/vendor/kaleb-vale/heart-icons/` (run by `art:build` / `art:lock`; `--contact` writes a review sheet). Not packed or uploaded yet: SV16 gives them a sheet of their own and theme ids | A full container with a "1/2" pip |
 | OC19 | The tutorial's wounded start at 2 hearts (SV0) | **1 heart** (`TUTORIAL_START_HALF_HEARTS` 4 -> 2), so the flask lesson still heals | Start full and drop the flask lesson's heal check |
 | OC20 | Where a room clear's +2 shows (SV0) | **On the Silver counter** (a small `+2`), not as a tally segment (the tally is score and already at its minimum text size) | A second, Silver-coloured tally row |
-| OC21 | The SV1 census: the fastest two-room run pays about 3,350 Silver an hour against about 990 for normal play (fact 9's guard fails) | **Answered (owner, 2026-11-13): fine as is.** No cap, `minimumRooms` stays 2 | A soft daily cap on top-ups, `minimumRooms` 3+, a minimum run length |
+| OC21 | The SV1 census: the fastest two-room run pays about 3,350 Silver an hour against about 990 for normal play (fact 9's guard fails) | **Answered (owner, 2026-11-13): fine as is.** No cap, `minimumRooms` stays 2. (The review adds: a ranked restart, R, forfeits as a death, so the loop is clear two rooms, press R; `RUN_START_RATE` does not slow it.) | A soft daily cap on top-ups, `minimumRooms` 3+, a minimum run length |
 | OC22 | The SV1 census: floor-1-2 and floor-3 runs pay 24-29 % under the targets (a weak player's day about 196, not 250) | **Answered (owner): fine as is.** `roomPay` stays 2 | More room pay |
 | OC23 | The SC4 census: a bot that never detours breaks 3 % of Silver pieces, so crates are 2.5 % of its run amount (target 25-40 %; 27-32 % if half the pieces are broken) | **Answered (owner): fine as is.** Players go for the twinkle; placement unchanged | Silver pieces nearer the fights |
 
@@ -701,6 +701,20 @@ floor by band, crates 65.5 % of the pieces; the honest bot breaks 3 % of them.
 - **SVD34. A transaction on a stored doc of a newer version is refused** (logged; a grant there is lost, never a
   downgrade).
 - **SVD35. `KV_SilverDebug` = `every` loads every candidate piece**, no room cap.
+- **SVD37. A failed grant is retried** (review): a grant whose DataStore call failed every retry waits
+  `WALLET.grantRetrySeconds` (30) and is tried again, up to `grantRetryMax` (10) times and once more at BindToClose; the
+  run-id ring makes a retry safe. The run-over rows stay dimmed until the settled grant arrives (the verdict's figure
+  is a prediction).
+- **SVD38. A buy carries the level the player chose** (review): a retried UpdateAsync that already committed answers
+  `stale`, reported as the purchase it was, never a second level.
+- **SVD39. Stored levels are kept as written and capped on read** (review): an older server in a rolling update never
+  rewrites a newer catalogue's levels down; a doc of a newer version loads as unknown (Knight only, no upgrades), never
+  as an empty wallet.
+- **SVD40. The server's access default is Knight-only** (review, `LOCKED_SILVER_ACCESS`): a wiring mistake locks the
+  Archer instead of giving her away. The client keeps the stored pick until the first wallet push (the server decides a
+  ranked start or a Ready), and builds a run the server never sees only with a character it owns.
+- **SVD41. The returning-player card is decided once, at join** (review): when both the wallet and the records pushes
+  are in (`silverWelcomeDecision`, latched in the store), so a new player's first run never turns it on.
 - **SVD36. The run-over Silver rows take the info line's place** on the run-over panel; the compact panel folds the
   bonuses, top-up and Prospector into one row.
 
