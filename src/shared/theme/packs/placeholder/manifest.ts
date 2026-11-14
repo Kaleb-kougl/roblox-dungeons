@@ -975,6 +975,7 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"lobby.err.badName": "That name is not available",
 		"lobby.err.notReady": "Not everyone is ready",
 		"lobby.err.notInRun": "You are not in that run",
+		"lobby.err.lockedCharacter": "Unlock that character first",
 		"lobby.err.inviteGone": "That lobby has closed",
 		"lobby.err.partyFull": "Your party's lobby is full",
 		// --- end of menu.* / lobby.* --------------------------------------------------------------

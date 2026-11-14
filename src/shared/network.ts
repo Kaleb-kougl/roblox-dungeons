@@ -1,5 +1,5 @@
 import { Networking } from "@flamework/networking";
-import type { CharacterId } from "shared/characters";
+import type { CharacterId, UpgradeLevels } from "shared/characters";
 import type { CodexClaim, CodexStatus } from "shared/codex";
 import type { DailyRunResult, DailyStatus } from "shared/daily";
 import type { LeaderboardRequest, LeaderboardView } from "shared/leaderboard";
@@ -94,6 +94,14 @@ export interface PartyRunStart {
 	 * the server's validator setup. Empty for a world without characters.
 	 */
 	characters: CharacterId[];
+	/**
+	 * docs/SILVER.md SV6: each member's Armory upgrade levels in the same order (RunSession.upgrades): every client
+	 * passes them as `buildWorldSetup`'s `upgrades`, exactly the validator's setup. Empty for a world without upgrades
+	 * (shared/run upgradesApply false).
+	 */
+	upgrades: UpgradeLevels[];
+	/** Members whose wallet was unknown at the start (they play with no upgrades; RunSession.upgradesUnknown). */
+	upgradesUnknown: number[];
 	/**
 	 * The lobby whose Start began this run (shared/lobby). A client switches to the run only when this is the lobby it
 	 * is in.

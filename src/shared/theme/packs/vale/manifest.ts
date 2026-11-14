@@ -141,6 +141,7 @@ import { VALE_DUO_ICONS, VALE_DUO_ICON_ATLAS, VALE_DUO_ICON_FILE } from "./duoIc
 import { VALE_ITEM_ICONS, VALE_ITEM_ICON_ATLAS, VALE_ITEM_ICON_FILE } from "./itemIconLayout";
 import { VALE_BOOST_ICONS, VALE_BOOST_ICON_ATLAS, VALE_BOOST_ICON_FILE } from "./boostIconLayout";
 import { VALE_PIP_ICONS, VALE_PIP_ICON_ATLAS, VALE_PIP_ICON_FILE } from "./pipIconLayout";
+import { VALE_HEART_ICONS, VALE_HEART_ICON_ATLAS, VALE_HEART_ICON_FILE } from "./heartIconLayout";
 
 type AssetIds = Readonly<Record<string, string>>;
 
@@ -824,6 +825,13 @@ export const VALE_PIP_ICON_SOURCE: ValeUiIconSource = {
 	icons: VALE_PIP_ICONS,
 };
 
+/** The half-heart container sheet as generated (heartIconLayout.ts, docs/SILVER.md SV16), in the icon atlas's shape. */
+export const VALE_HEART_ICON_SOURCE: ValeUiIconSource = {
+	file: VALE_HEART_ICON_FILE,
+	atlas: VALE_HEART_ICON_ATLAS,
+	icons: VALE_HEART_ICONS,
+};
+
 /**
  * The UI icons (contract.ts uiIconIds) of one uploaded icon atlas: every piece of `icons` as an `image` of the whole
  * atlas (`assetId`, `atlas` w / h) with its `rect` and `pivot`. All or nothing: no `assetId` (the atlas is not uploaded
@@ -892,6 +900,8 @@ export interface ValeLayoutSources {
 	readonly boostIcons?: ValeUiIconSource;
 	/** VALE_PIP_ICON_SOURCE (pipIconLayout.ts: the armor pip sheet). */
 	readonly pipIcons?: ValeUiIconSource;
+	/** VALE_HEART_ICON_SOURCE (heartIconLayout.ts: the half-heart container sheet). */
+	readonly heartIcons?: ValeUiIconSource;
 	/** VALE_BULLET_SOURCE (bullets.ts: the bullet atlas and bulletLayout.ts). */
 	readonly bullets?: ValeBulletSource;
 	/** VALE_GOO_SOURCE (goo.ts: the goo sheet and gooLayout.ts). */
@@ -915,6 +925,7 @@ export function buildValeManifest(ids: AssetIds = VALE_ASSET_IDS, sources: ValeL
 	const itemIcons = sources.itemIcons ?? VALE_ITEM_ICON_SOURCE;
 	const boostIcons = sources.boostIcons ?? VALE_BOOST_ICON_SOURCE;
 	const pipIcons = sources.pipIcons ?? VALE_PIP_ICON_SOURCE;
+	const heartIcons = sources.heartIcons ?? VALE_HEART_ICON_SOURCE;
 	const manifest = deepClone(PLACEHOLDER_MANIFEST);
 	manifest.id = "vale";
 	manifest.name = "Vale";
@@ -987,6 +998,11 @@ export function buildValeManifest(ids: AssetIds = VALE_ASSET_IDS, sources: ValeL
 	const pipArtImages = valeUiIconImages(pipIcons.icons, pipIcons.atlas, ids[pipIcons.file]);
 	for (const id of sortedKeys(pipArtImages)) {
 		manifest.assets[id] = pipArtImages[id];
+	}
+	// The half-heart container sheet (docs/SILVER.md SV16): both containers once uploaded, none before.
+	const heartArtImages = valeUiIconImages(heartIcons.icons, heartIcons.atlas, ids[heartIcons.file]);
+	for (const id of sortedKeys(heartArtImages)) {
+		manifest.assets[id] = heartArtImages[id];
 	}
 	for (const id of sortedKeys(VALE_UI_REQUIRED_ART)) {
 		const art = manifest.assets[VALE_UI_REQUIRED_ART[id]];

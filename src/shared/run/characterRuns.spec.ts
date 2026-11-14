@@ -9,7 +9,6 @@ import {
 	Button,
 	DEFAULT_LOADOUT,
 	EMPTY_INPUT,
-	NEUTRAL_TRAITS,
 	NO_WEAPON,
 	SWORD_WEAPON_ID,
 	createSimState,
@@ -81,7 +80,7 @@ describe("run configs: characters per world (AR4)", () => {
 			const none = setupOf(kind);
 			expect([none.config.loadout, none.config.traits, none.characters]).toEqual([
 				characterLoadout("knight"),
-				NEUTRAL_TRAITS,
+				characterTraits("knight"),
 				["knight"],
 			]);
 		});
@@ -182,7 +181,7 @@ describe("run configs: characters per world (AR4)", () => {
 		const solo = withCharacters({}, ["archer"]);
 		expect([solo.loadout, solo.traits]).toEqual([[BOW_WEAPON_ID], characterTraits("archer")]);
 		const both = withCharacters({}, ["knight"], { bothWeapons: true });
-		expect([both.loadout, both.traits]).toEqual([DEFAULT_LOADOUT, NEUTRAL_TRAITS]);
+		expect([both.loadout, both.traits]).toEqual([DEFAULT_LOADOUT, characterTraits("knight")]);
 		expect(withCharacters({ party: { size: 1 } }, ["knight"]).loadout).toEqual([SWORD_WEAPON_ID]);
 	});
 });

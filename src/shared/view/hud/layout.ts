@@ -139,11 +139,40 @@ export function computeHudScale(
 	return touch && viewportH > viewportW ? math.min(scale, viewportW / HUD_VIEW.touchUprightWidth) : scale;
 }
 
-/** Splits half-heart health into per-heart fills (2 full, 1 half, 0 empty), one entry per heart of heartsMax. */
+/** heartFills' entries: a whole heart's half hearts (0 / 1 / 2), or the half container of an odd maximum. */
+export const HEART_FILL = {
+	EMPTY: 0,
+	HALF: 1,
+	FULL: 2,
+	/** The last heart of an ODD heartsMax holding its half heart: a half container (docs/SILVER.md SV16, OC18). */
+	HALF_MAX_FULL: 3,
+	/** The last heart of an odd heartsMax, spent: the half container, empty. */
+	HALF_MAX_EMPTY: 4,
+} as const;
+
+/** Half hearts in a whole heart. */
+const HALVES_PER_HEART = 2;
+
+/** A heartFills entry is the half container of an odd maximum (HALF_MAX_FULL or HALF_MAX_EMPTY). */
+export function isHalfContainer(fill: number): boolean {
+	return fill === HEART_FILL.HALF_MAX_FULL || fill === HEART_FILL.HALF_MAX_EMPTY;
+}
+
+/**
+ * Splits half-heart health into per-heart fills, one entry per heart of heartsMax (ceil(heartsMax / 2)): 2 full, 1 half,
+ * 0 empty (web PlayerHud). docs/SILVER.md SV16 (OC18): with an ODD heartsMax the last entry is a half container,
+ * HALF_MAX_FULL while it holds its half heart (hearts >= heartsMax) and HALF_MAX_EMPTY once spent, never a half-filled
+ * heart (which means hurt). Even maxima are exactly the web split.
+ */
 export function heartFills(hearts: number, heartsMax: number): number[] {
-	const n = math.ceil(heartsMax / 2);
+	const n = math.ceil(heartsMax / HALVES_PER_HEART);
+	const odd = heartsMax % HALVES_PER_HEART === 1;
 	const out: number[] = [];
-	for (let i = 0; i < n; i++) out.push(math.max(0, math.min(2, hearts - i * 2)));
+	for (let i = 0; i < n; i++) {
+		const held = hearts - i * HALVES_PER_HEART;
+		if (odd && i === n - 1) out.push(held >= 1 ? HEART_FILL.HALF_MAX_FULL : HEART_FILL.HALF_MAX_EMPTY);
+		else out.push(math.max(HEART_FILL.EMPTY, math.min(HEART_FILL.FULL, held)));
+	}
 	return out;
 }
 

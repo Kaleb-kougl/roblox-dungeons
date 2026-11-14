@@ -6,6 +6,7 @@
 // sweep lock (docs/PELLETS.md PL12: its twin, released by the room's last pellet; the real-world run with weapons, the
 // pickups and the last pickup on a lethal hit's tick is in shared/run tutorial.spec.ts).
 import { describe, expect, it } from "@rbxts/jest-globals";
+import { characterTraits } from "shared/characters";
 import { TEST_CHASER } from "shared/sim/testing";
 import {
 	AXIS_MAX,
@@ -26,6 +27,7 @@ import {
 	Relic,
 	SOLO_PLAYER,
 	START_HALF_HEARTS,
+	playerStartHalfHearts,
 	TUTORIAL_MIN_START_HALF_HEARTS,
 	TUTORIAL_START_HALF_HEARTS,
 	TUTORIAL_SUBSYSTEM,
@@ -408,17 +410,21 @@ describe("startHalfHearts", () => {
 	});
 
 	it("the flask heals from the wounded start back up to the maximum", () => {
-		// The tutorial's numbers: one flask fills the wounded start exactly.
-		expect(TUTORIAL_START_HALF_HEARTS + FLASK_HEAL_HALF_HEARTS).toBe(START_HALF_HEARTS);
-		const s = createSimState(1, 0, 0, WOUNDED);
+		// The tutorial's numbers (docs/SILVER.md SV16, OC19): the Knight's 2 hearts, a 1-heart start; one flask fills
+		// the wounded start exactly.
+		const knight: SimConfig = { ...WOUNDED, traits: characterTraits("knight") };
+		const max = playerStartHalfHearts(characterTraits("knight"));
+		expect(TUTORIAL_START_HALF_HEARTS + FLASK_HEAL_HALF_HEARTS).toBe(max);
+		const s = createSimState(1, 0, 0, knight);
+		expect([s.player.hearts, s.player.heartsMax]).toEqual([TUTORIAL_START_HALF_HEARTS, max]);
 		const flask = frame(0, 0, Button.FLASK);
 		const charges = s.player.flask;
-		step(s, flask, WOUNDED);
+		step(s, flask, knight);
 		expect(s.events.flaskUsed).toBe(1);
-		expect([s.player.hearts, s.player.flask]).toEqual([START_HALF_HEARTS, charges - 1]);
-		for (let t = 0; t < FLASK_USE_TICKS; t++) step(s, IDLE, WOUNDED);
-		step(s, flask, WOUNDED); // full: the flask does nothing
-		expect([s.events.flaskUsed, s.player.hearts, s.player.flask]).toEqual([0, START_HALF_HEARTS, charges - 1]);
+		expect([s.player.hearts, s.player.flask]).toEqual([max, charges - 1]);
+		for (let t = 0; t < FLASK_USE_TICKS; t++) step(s, IDLE, knight);
+		step(s, flask, knight); // full: the flask does nothing
+		expect([s.events.flaskUsed, s.player.hearts, s.player.flask]).toEqual([0, max, charges - 1]);
 		// From 1 half heart: two flasks heal 1 -> 3 -> 5.
 		const low: SimConfig = { tutorial: { harmless: true, startHalfHearts: 1 } };
 		const l = createSimState(1, 0, 0, low);
@@ -714,7 +720,8 @@ describe("replay", () => {
 		}
 		expect(s.tutorial!.harmlessHits).toBeGreaterThan(3);
 		expect(s.score!.hitsTaken).toBe(s.tutorial!.harmlessHits);
-		expect([s.player.hearts, s.player.dead]).toEqual([START_HALF_HEARTS, 0]); // the flask at 300 healed 4 -> 6
+		// The flask at 300 healed the wounded start by one heart (2 -> 4 of START_HALF_HEARTS: no traits here).
+		expect([s.player.hearts, s.player.dead]).toEqual([TUTORIAL_START_HALF_HEARTS + FLASK_HEAL_HALF_HEARTS, 0]);
 		const recording = rec.getRecording();
 		const replayed = runReplay(recording, config);
 		expect(hashState(replayed)).toBe(hashState(s));

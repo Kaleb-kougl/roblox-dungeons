@@ -76,6 +76,7 @@ export { DUO_ICON_PREFIX, duoIconId } from "./duoIcons";
 export { CURSE_ICON_PREFIX, RELIC_ICON_PREFIX, curseIconId, relicIconId } from "./itemIcons";
 export { BOOST_ICON_PREFIX, boostIconId } from "./boostIcons";
 export { PIP_ICON_IDS, PIP_ICON_PREFIX } from "./pipIcons";
+export { HEART_ICON_IDS, HEART_ICON_PREFIX } from "./heartIcons";
 export {
 	CURSOR_IMAGE_IDS,
 	CURSOR_STATES,

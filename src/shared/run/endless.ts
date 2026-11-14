@@ -78,8 +78,8 @@ import { ENDLESS_DUNGEON_CACHE_SIZE, ENDLESS_FLOOR_CACHE_SIZE } from "./limits";
 import { isValidRunSeed } from "./seed";
 import type { RunSetup } from "./config";
 import { playerMover, playerMoverKind, type PlayerMoverKind } from "./playerMover";
-import { partyCharacters, withCharacters } from "./characters";
-import type { CharacterId } from "shared/characters";
+import { partyCharacters, partyUpgrades, withCharacters } from "./characters";
+import type { CharacterId, UpgradeLevels } from "shared/characters";
 
 // ---------------------------------------------------------------------------------------------
 // Dungeon cache (least recently used out first). Dungeons are never mutated.
@@ -327,6 +327,12 @@ export interface EndlessRunOptions {
 	/** With `characters`: every player carries both weapons with their character's traits (the dev world's option). */
 	readonly bothWeapons?: boolean;
 	/**
+	 * docs/SILVER.md SV6, with `characters` only (ignored without them): each player's Armory upgrade levels, index
+	 * order (missing entries NO_UPGRADES; a junk entry throws), folded into their character's traits. Echoed as
+	 * RunSetup.upgrades.
+	 */
+	readonly upgrades?: ReadonlyArray<UpgradeLevels>;
+	/**
 	 * Whether the seeded roster keeps the room kinds' unlock floors (shared/dungeon EndlessFloorOptions.unlockFloors;
 	 * ./worlds.ts rosterUnlockFloors). Absent: ENDLESS_ROSTER_UNLOCK_FLOORS (false). True: the DSD9 rule (specs only).
 	 */
@@ -390,13 +396,17 @@ export function buildEndlessRunConfig(
 					silver: ENDLESS_SILVER_CONFIG,
 			  };
 	const characters = options.characters !== undefined ? partyCharacters(options.characters, partySize) : undefined;
+	const upgrades = characters !== undefined ? partyUpgrades(options.upgrades, partySize) : undefined;
 	const config =
-		characters !== undefined ? withCharacters(base, characters, { bothWeapons: options.bothWeapons }) : base;
+		characters !== undefined
+			? withCharacters(base, characters, { bothWeapons: options.bothWeapons, upgrades })
+			: base;
 	return {
 		config,
 		spawn: { x: first.spawnX, z: first.spawnZ },
 		dungeon: first.dungeon,
 		endlessFloor: worldForFloor,
 		characters,
+		upgrades,
 	};
 }

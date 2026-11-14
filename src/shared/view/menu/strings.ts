@@ -118,6 +118,7 @@ export const LOBBY_REFUSALS: ReadonlyArray<LobbyRefusal> = [
 	"badName",
 	"notReady",
 	"notInRun",
+	"lockedCharacter",
 ];
 
 /** Compile-time check that LOBBY_REFUSALS lists every LobbyRefusal (a new code without a string fails typecheck). */

@@ -124,7 +124,10 @@ export interface TouchStripGeometry {
 
 /** What the strip shows (the snapshot's counts), so its widths can be estimated. */
 export interface TouchStripContent {
-	/** Half hearts (heartFills draws ceil(heartsMax / 2) hearts). */
+	/**
+	 * Half hearts (heartFills draws ceil(heartsMax / 2) hearts; an odd maximum's last one is a half container,
+	 * docs/SILVER.md SV16, in a whole heart slot like the others).
+	 */
 	readonly heartsMax: number;
 	/** The tutorial's ghost half heart after the hearts. */
 	readonly ghost: boolean;

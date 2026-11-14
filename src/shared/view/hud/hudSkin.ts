@@ -5,8 +5,8 @@
  * skinConfig.ts (UA5), whose skinFor chains decide whether the pack has the art at all. Every function returns
  * undefined (or a flat value) when the art is absent, so the client draws exactly today's flat HUD. Presentation only.
  */
-import { PIP_ICON_IDS, type SliceInsets } from "shared/theme";
-import { HUD_VIEW } from "./layout";
+import { HEART_ICON_IDS, PIP_ICON_IDS, type SliceInsets } from "shared/theme";
+import { HEART_FILL, HUD_VIEW, isHalfContainer } from "./layout";
 import { fitArt, skinFor, skinPadding, uniformPadding, type ArtFit, type SkinHas, type SkinPadding } from "./skin";
 import { UI_ART } from "./skinConfig";
 import { TOUCH_LAYOUT, type TouchButtonId } from "./touchLayout";
@@ -110,9 +110,40 @@ export const HUD_SKIN = {
 	},
 } as const;
 
-/** skinFor's heart state for a heartFills entry: 2 full, 1 half, 0 empty. */
+/**
+ * skinFor's heart state for a heartFills entry: 2 full, 1 half, 0 empty; a half container (docs/SILVER.md SV16) is its
+ * whole heart's art: HALF_MAX_FULL full, HALF_MAX_EMPTY empty (heartArt cuts it in half when the pack has no half
+ * container art).
+ */
 export function heartSkinState(fill: number): "full" | "half" | "empty" {
-	return fill >= 2 ? "full" : fill >= 1 ? "half" : "empty";
+	if (fill === HEART_FILL.HALF_MAX_FULL) return "full";
+	if (fill === HEART_FILL.HALF_MAX_EMPTY) return "empty";
+	return fill >= HEART_FILL.FULL ? "full" : fill >= HEART_FILL.HALF ? "half" : "empty";
+}
+
+/** What a heart draws with the pack's art: the ui id, and whether only its left half shows (the clip fallback). */
+export interface HeartArt {
+	readonly id: string;
+	/** Draw only the art's left half (a half container cut from the whole heart: the pack lacks the container art). */
+	readonly leftHalf: boolean;
+}
+
+/**
+ * The art for a heartFills entry, or undefined (the pack lacks the heart art: the flat heart). A whole heart: skinFor
+ * "heart" (full / half / empty, all three or none). A half container (docs/SILVER.md SV16, OC18), only over the whole
+ * heart art (a row never mixes art and flat hearts): the pack's own `ui.heart.halfmax` / `.halfmax.empty` when it has
+ * both (shared/theme HEART_ICON_IDS), else the whole full / empty heart with `leftHalf` (the client shows its left half:
+ * the containers are cut from the hearts the same way).
+ */
+export function heartArt(has: SkinHas, fill: number): HeartArt | undefined {
+	const base = skinFor(has, "heart", heartSkinState(fill));
+	if (base === undefined) return undefined;
+	if (!isHalfContainer(fill)) return { id: base, leftHalf: false };
+	if (has(HEART_ICON_IDS.halfmax) && has(HEART_ICON_IDS.halfmaxEmpty)) {
+		const full = fill === HEART_FILL.HALF_MAX_FULL;
+		return { id: full ? HEART_ICON_IDS.halfmax : HEART_ICON_IDS.halfmaxEmpty, leftHalf: false };
+	}
+	return { id: base, leftHalf: true };
 }
 
 /** What a status pip draws: the art id, its ImageTransparency, and whether it takes the pip's colour role as a tint. */

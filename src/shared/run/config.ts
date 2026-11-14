@@ -30,7 +30,7 @@ import { DUNGEON_CACHE_SIZE, type RunWorld } from "./limits";
 import { isValidRunSeed } from "./seed";
 import { buildEndlessRunConfig, type EndlessRunFloor } from "./endless";
 import { playerMover } from "./playerMover";
-import type { CharacterId } from "shared/characters";
+import type { CharacterId, UpgradeLevels } from "shared/characters";
 
 export { isValidRunSeed };
 
@@ -74,6 +74,12 @@ export interface RunSetup {
 	 * calling buildEndlessRunConfig without them: both weapons, no traits).
 	 */
 	characters?: ReadonlyArray<CharacterId>;
+	/**
+	 * docs/SILVER.md SV6: each player's Armory upgrade levels the run was built with, index order (NO_UPGRADES filled
+	 * in), for the view. Undefined for a run built without them (worlds.ts upgradesApply false: M1's worlds, the
+	 * tutorial; tools calling buildEndlessRunConfig without characters).
+	 */
+	upgrades?: ReadonlyArray<UpgradeLevels>;
 }
 
 // ---------------------------------------------------------------------------------------------

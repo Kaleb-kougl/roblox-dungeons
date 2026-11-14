@@ -145,27 +145,35 @@ function walk(drv: Driver, secret: FloorSecret, tx: number, tz: number, done: ()
 describe("secrets: a recorded run that opens one validates on the server", () => {
 	// A Knight run: debug-skip to floor 2 (a secret floor), walk to the crack, hold FIRE (swings knock, the finisher
 	// opens), walk into the chamber to the chest. The room's enemies may join in: the run is honest either way.
-	const { seed, secret } = secretSeed(2);
-	const setup = buildEndlessRunConfig(seed, 1, { characters: ["knight"] });
-	const drv = new Driver(setup, seed);
-	drv.skipFloor();
-	const s = drv.state;
-	const crack = secretCrackCells(secret);
-	const cx = (gridToWorld(crack[0].x) + gridToWorld(crack[crack.size() - 1].x)) / 2;
-	const cz = (gridToWorld(crack[0].y) + gridToWorld(crack[crack.size() - 1].y)) / 2;
-	const fx = secret.fx;
-	const fz = secret.fz;
-	// One and a half cells in front of the crack: in the front box, the swings in reach.
-	walk(drv, secret, cx + fx * 1.5, cz + fz * 1.5, () => false, 1200);
-	for (let t = 0; t < 240 && s.secrets!.status === SecretStatus.HIDDEN && s.player.dead === 0; t++)
-		drv.tick(frame(0, 0, drv.assisted(Button.FIRE), -fx, -fz));
-	const opened = s.secrets!.status !== SecretStatus.HIDDEN;
-	const chestX = gridToWorld(secret.chestX) + fx;
-	const chestZ = gridToWorld(secret.chestY) + fz;
-	walk(drv, secret, chestX, chestZ, () => s.secrets!.status === SecretStatus.TAKEN, 1200);
-	for (let t = 0; t < 30; t++) drv.tick(frame(0, 0));
-	const recording = drv.recorder.getRecording();
-	const finalHash = hashState(s);
+	// docs/SILVER.md SV16: at the Knight's 2 hearts the bot can die before the open, so the run takes the first secret
+	// floor-2 seed (of up to SEED_TRIES) where the bot opens the secret and lives (run 16 dies; the next is taken).
+	const SEED_TRIES = 6;
+	function attempt(from: number) {
+		const { seed, secret } = secretSeed(2, from);
+		const setup = buildEndlessRunConfig(seed, 1, { characters: ["knight"] });
+		const drv = new Driver(setup, seed);
+		drv.skipFloor();
+		const s = drv.state;
+		const crack = secretCrackCells(secret);
+		const cx = (gridToWorld(crack[0].x) + gridToWorld(crack[crack.size() - 1].x)) / 2;
+		const cz = (gridToWorld(crack[0].y) + gridToWorld(crack[crack.size() - 1].y)) / 2;
+		const fx = secret.fx;
+		const fz = secret.fz;
+		// One and a half cells in front of the crack: in the front box, the swings in reach.
+		walk(drv, secret, cx + fx * 1.5, cz + fz * 1.5, () => false, 1200);
+		for (let t = 0; t < 240 && s.secrets!.status === SecretStatus.HIDDEN && s.player.dead === 0; t++)
+			drv.tick(frame(0, 0, drv.assisted(Button.FIRE), -fx, -fz));
+		const opened = s.secrets!.status !== SecretStatus.HIDDEN;
+		const chestX = gridToWorld(secret.chestX) + fx;
+		const chestZ = gridToWorld(secret.chestY) + fz;
+		walk(drv, secret, chestX, chestZ, () => s.secrets!.status === SecretStatus.TAKEN, 1200);
+		for (let t = 0; t < 30; t++) drv.tick(frame(0, 0));
+		return { seed, secret, drv, s, opened, recording: drv.recorder.getRecording(), finalHash: hashState(s) };
+	}
+	let run = attempt(1);
+	for (let k = 1; k < SEED_TRIES && (run.s.secrets!.status !== SecretStatus.TAKEN || run.s.player.dead !== 0); k++)
+		run = attempt(run.seed + 1);
+	const { seed, secret, s, opened, recording, finalHash } = run;
 
 	it("the secret opened (the finisher) and its chest was taken", () => {
 		print(

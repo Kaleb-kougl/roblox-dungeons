@@ -16,11 +16,29 @@
  * party run as the lobby's member picks in member order (`StartContext.partyCharacters`); the session's setup (what
  * every segment is replayed against) is built with them, so a run uploaded as another character fails validation.
  *
+ * Upgrades (docs/SILVER.md SV6): in a world where they apply (worlds.ts upgradesApply: endless and the Daily, solo and
+ * co-op) each member's Armory levels come from the wallet at the start (`StartContext.upgrades`; an unknown wallet
+ * plays with none and is listed in `upgradesUnknown`), are stored on the session and returned with the start
+ * (`StartRunReply.upgrades`, PartyRunStart), and the setup is built with them, so a client that builds other levels
+ * fails its first segment.
+ *
+ * The Archer unlock (docs/SILVER.md SV17): in a world that plays characters (worlds.ts charactersApply) every member
+ * must own the character they play (`StartContext.ownsCharacter`, the wallet's; the Knight always), else the start is
+ * `locked_character`. An old client that sends no `characterId` plays the Knight.
+ *
  * Pure and Roblox-API-free: the runId generator, the seed pickers and the clocks are injected (HttpService GUIDs,
  * Random, the secret daily seed, os.clock and os.time on the server; counters in tests). The world comes from the
  * registry (worlds.ts).
  */
-import { DEFAULT_CHARACTER, isCharacterId, type CharacterId } from "shared/characters";
+import {
+	DEFAULT_CHARACTER,
+	NO_UPGRADES,
+	isCharacterId,
+	isStarterCharacter,
+	readUpgradeLevels,
+	type CharacterId,
+	type UpgradeLevels,
+} from "shared/characters";
 import { DAILY, DAILY_WORLD_KIND, dailyDay, type DailyRunKey } from "shared/daily";
 import { isValidRunSeed, type RunSetup } from "./config";
 import {
@@ -34,7 +52,14 @@ import {
 import type { RunScoreReader } from "./score";
 import { SegmentedValidator, type SegmentRejectCode, type SegmentedRunResult } from "./segments";
 import { errorMessage, isFiniteValue, isWireUserId, truncateReason } from "./validate";
-import { buildWorldSetup, isRunWorldKind, isServerRunWorld, type RunWorldKind } from "./worlds";
+import {
+	buildWorldSetup,
+	charactersApply,
+	isRunWorldKind,
+	isServerRunWorld,
+	upgradesApply,
+	type RunWorldKind,
+} from "./worlds";
 
 /** `startRun` (shared/network). */
 export interface StartRunRequest {
@@ -61,7 +86,9 @@ export type StartRunRejectCode =
 	| "bad_party"
 	| "busy"
 	| "config_error"
-	| "rate_limited";
+	| "rate_limited"
+	/** docs/SILVER.md SV17: a member would play a character they do not own (StartContext.ownsCharacter). */
+	| "locked_character";
 
 /** `runStarted` (shared/network): the server's answer to `startRun`. */
 export interface StartRunReply {
@@ -80,6 +107,16 @@ export interface StartRunReply {
 	 * Absent for a world without characters (M1's `game`).
 	 */
 	characterId?: CharacterId;
+	/**
+	 * docs/SILVER.md SV6: the owner's upgrade levels the session was built with (RunSession.upgrades[0]); the client
+	 * builds its run with them (WorldBuildOptions.upgrades). Absent for a world without upgrades (upgradesApply false).
+	 */
+	upgrades?: UpgradeLevels;
+	/**
+	 * docs/SILVER.md SV6: true when the owner's wallet was unknown at the start (not loaded this session): the run plays
+	 * with no upgrades (`upgrades` is NO_UPGRADES). Absent otherwise.
+	 */
+	upgradesUnknown?: boolean;
 	code?: StartRunRejectCode;
 	reason?: string;
 }
@@ -97,6 +134,13 @@ export interface RunSession {
 	 * both weapons there. A member who leaves keeps their slot and character.
 	 */
 	readonly characters: ReadonlyArray<CharacterId> | undefined;
+	/**
+	 * docs/SILVER.md SV6: each member's Armory upgrade levels, in member order, what the run is validated with (read at
+	 * the start; a purchase applies from the next run, SVD9). Undefined for a world without upgrades (upgradesApply).
+	 */
+	readonly upgrades: ReadonlyArray<UpgradeLevels> | undefined;
+	/** Members whose wallet was unknown at the start (they play with NO_UPGRADES), in member order. */
+	readonly upgradesUnknown: ReadonlyArray<number>;
 	readonly atBossDoor: boolean;
 	/** Debug limits were in force (debug input or boss door allowed): never posts to a leaderboard. */
 	readonly debug: boolean;
@@ -141,6 +185,20 @@ export interface StartContext {
 	 * the owner, who plays the request's. Each entry must be a character id (else `bad_party`).
 	 */
 	readonly partyCharacters?: ReadonlyArray<string>;
+	/**
+	 * docs/SILVER.md SV6: a member's Armory upgrade levels (the server's wallet: SilverAccess.upgradesFor), or undefined
+	 * when their wallet is unknown this session (they play with none; the start says so). Read only for a world where
+	 * upgrades apply. An answer that is not a valid UpgradeLevels counts as unknown. Absent: nobody has upgrades.
+	 */
+	readonly upgrades?: (userId: number) => UpgradeLevels | undefined;
+	/**
+	 * docs/SILVER.md SV17: whether a member owns a character (the server's wallet: SilverAccess.ownsCharacter; an
+	 * unknown wallet owns the Knight only). Checked for every member of a world that plays characters
+	 * (charactersApply), solo and party: a member playing a character they do not own refuses the start with
+	 * `locked_character`. The starter characters (shared/characters STARTER_CHARACTERS) are never asked. Absent:
+	 * every character is owned (tests, tools).
+	 */
+	readonly ownsCharacter?: (userId: number, characterId: CharacterId) => boolean;
 }
 
 export type StartRunResult =
@@ -241,6 +299,48 @@ export function sessionCharacters(
 	return out;
 }
 
+/**
+ * Each member's upgrade levels for a start (docs/SILVER.md SV6), in member order: `lookup(id)` checked with
+ * readUpgradeLevels, NO_UPGRADES for a member whose answer is undefined or invalid (listed in `unknown`). Without a
+ * lookup every member has NO_UPGRADES and none is unknown.
+ */
+export function sessionUpgrades(
+	members: ReadonlyArray<number>,
+	lookup: ((userId: number) => UpgradeLevels | undefined) | undefined,
+): { readonly levels: UpgradeLevels[]; readonly unknown: number[] } {
+	const levels: UpgradeLevels[] = [];
+	const unknown: number[] = [];
+	for (const id of members) {
+		if (lookup === undefined) {
+			levels.push(NO_UPGRADES);
+			continue;
+		}
+		const levelsOf = readUpgradeLevels(lookup(id));
+		if (levelsOf === undefined) unknown.push(id);
+		levels.push(levelsOf ?? NO_UPGRADES);
+	}
+	return { levels, unknown };
+}
+
+/**
+ * docs/SILVER.md SV17: the first member (member order) who would play a character they do not own, as a refusal
+ * reason, or undefined when every member owns their pick. Starter characters always pass; without a predicate every
+ * character does.
+ */
+export function lockedCharacterReason(
+	members: ReadonlyArray<number>,
+	characters: ReadonlyArray<CharacterId>,
+	ownsCharacter: ((userId: number, characterId: CharacterId) => boolean) | undefined,
+): string | undefined {
+	if (ownsCharacter === undefined) return undefined;
+	for (let i = 0; i < members.size(); i++) {
+		const c = characters[i] ?? DEFAULT_CHARACTER;
+		if (isStarterCharacter(c)) continue;
+		if (ownsCharacter(members[i], c) !== true) return `player ${members[i]} has not unlocked ${c}`;
+	}
+	return undefined;
+}
+
 /** A party run (2+ members) still being played or decided: never replaced by its owner's new start. */
 function isUnconcludedParty(s: RunSession): boolean {
 	if (s.members.size() < 2) return false;
@@ -300,6 +400,14 @@ export class RunSessionRegistry {
 		}
 		const characters = sessionCharacters(request, party.size(), ctx.partyCharacters);
 		if (typeIs(characters, "string")) return { ok: false, code: "bad_party", reason: `bad party: ${characters}` };
+		// docs/SILVER.md SV17: every member owns the character they would play (a party start re-checks the lobby's
+		// picks here too: a wallet can turn unknown between the Ready and the start).
+		if (charactersApply(request.worldKind)) {
+			const locked = lockedCharacterReason(party, characters, ctx.ownsCharacter);
+			if (locked !== undefined) return { ok: false, code: "locked_character", reason: `locked: ${locked}` };
+		}
+		// docs/SILVER.md SV6: the members' upgrade levels, read now (a purchase applies from the next run).
+		const upgrades = upgradesApply(request.worldKind) ? sessionUpgrades(party, ctx.upgrades) : undefined;
 
 		const picked = this.pickSeed(request.worldKind, ctx.unixNow);
 		if (typeIs(picked, "string")) return { ok: false, code: "config_error", reason: `config error: ${picked}` };
@@ -308,7 +416,12 @@ export class RunSessionRegistry {
 		// Co-op (M4): the world is built for the whole party (enemy hp / room budgets scale with its size), each player
 		// with their character's loadout and roll (docs/ARCHER.md AR5; worlds without characters ignore them).
 		const [built, setupOrErr] = pcall(() =>
-			buildWorldSetup(request.worldKind, seed, { atBossDoor, partySize: party.size(), characters }),
+			buildWorldSetup(request.worldKind, seed, {
+				atBossDoor,
+				partySize: party.size(),
+				characters,
+				upgrades: upgrades?.levels,
+			}),
 		);
 		if (!built) {
 			return {
@@ -329,6 +442,8 @@ export class RunSessionRegistry {
 			ownerId,
 			members: party,
 			characters: setup.characters,
+			upgrades: upgrades?.levels,
+			upgradesUnknown: upgrades?.unknown ?? [],
 			atBossDoor,
 			debug: ctx.allowDebugInput || atBossDoor,
 			daily,

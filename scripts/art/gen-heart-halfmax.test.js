@@ -93,3 +93,58 @@ describe("the real pieces (needs the ToffeeCraft sheet in art/vendor)", { skip: 
 		for (const id of G.HEART_IDS) assert.deepEqual(again[id], pieces[id]);
 	});
 });
+
+describe("the heartIcons atlas group (docs/SILVER.md SV16)", () => {
+	const fs = require("node:fs");
+	const path = require("node:path");
+	const A = require("./build-atlases.js");
+	const ROOT = path.join(__dirname, "..", "..");
+	const CONFIG = JSON.parse(fs.readFileSync(path.join(ROOT, "art", "atlases.json"), "utf8"));
+	const LAYOUT = path.join(ROOT, "src", "shared", "theme", "packs", "vale", "heartIconLayout.ts");
+	const vendorFile = (file) => `kaleb-vale/heart-icons/${file}`;
+
+	it("lists both containers once, as the whole 18 x 15 canvas, matching shared/theme HEART_ICON_IDS", () => {
+		const group = CONFIG.heartIcons;
+		assert.equal(group.atlas, "heart-icons");
+		assert.deepEqual(Object.keys(group.icons).sort(), [...G.HEART_IDS].sort());
+		for (const [id, , file] of G.ICONS) assert.deepEqual(group.icons[id], { file: vendorFile(file), rect: [0, 0, W, H] });
+		assert.deepEqual(A.heartIconSourceFiles(group), G.ICONS.map((e) => vendorFile(e[2])).sort());
+		assert.ok(A.sourceFiles(CONFIG).includes(vendorFile(G.ICONS[0][2])));
+		assert.equal(A.onlyGroup(["node", "x", "--only", "heartIcons"]), "heartIcons");
+		assert.deepEqual(A.heartIconSourceFiles(undefined), []);
+		const src = fs.readFileSync(path.join(ROOT, "src", "shared", "theme", "heartIcons.ts"), "utf8");
+		for (const id of G.HEART_IDS) assert.ok(src.includes(`"${id}"`), `${id} not in heartIcons.ts`);
+	});
+
+	it("builds the committed heartIconLayout.ts from two containers, each read back intact", () => {
+		const pieces = {};
+		for (const [id, , file] of G.ICONS) {
+			pieces[id] = G.halfContainer(synthetic());
+			A.sourceCache.set(vendorFile(file), { w: W, h: H, data: new Uint8Array(pieces[id]) });
+		}
+		const icons = A.buildHeartIcons(CONFIG.heartIcons);
+		assert.equal(icons.file, "heart-icons.png");
+		assert.equal(A.heartIconLayoutModule(icons), fs.readFileSync(LAYOUT, "utf8"));
+		for (const id of G.HEART_IDS) {
+			const r = icons.layouts[id].rect;
+			assert.deepEqual([r.w, r.h], [W, H]);
+			for (let y = 0; y < H; y++) {
+				for (let x = 0; x < W; x++) {
+					const a = ((r.y + y) * icons.w + r.x + x) * 4;
+					const want = at(pieces[id], x, y);
+					if (want[3] === 0) assert.equal(icons.img.data[a + 3], 0, `${id} (${x}, ${y})`);
+					else assert.deepEqual([...icons.img.data.subarray(a, a + 4)], want, `${id} (${x}, ${y})`);
+				}
+			}
+		}
+		for (const [, , file] of G.ICONS) A.sourceCache.delete(vendorFile(file));
+	});
+
+	it("takes ui.heart.halfmax* ids only", () => {
+		A.sourceCache.set("synthetic/heart.png", { w: W, h: H, data: new Uint8Array(synthetic()) });
+		const section = (id) => ({ atlas: "heart-test", icons: { [id]: { file: "synthetic/heart.png", rect: [0, 0, W, H] } } });
+		assert.throws(() => A.buildHeartIcons(section("ui.heart.full")), /heart icon ids start with/);
+		assert.doesNotThrow(() => A.buildHeartIcons(section("ui.heart.halfmax.test")));
+		A.sourceCache.delete("synthetic/heart.png");
+	});
+});

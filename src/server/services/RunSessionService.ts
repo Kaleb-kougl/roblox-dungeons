@@ -49,6 +49,7 @@ import { LeaderboardService } from "./LeaderboardService";
 import { OnboardingService } from "./OnboardingService";
 import { RecordsService } from "./RecordsService";
 import { RunValidationService } from "./RunValidationService";
+import { SilverAccessService } from "./SilverAccessService";
 import { TelemetryService } from "./TelemetryService";
 import { WalletService } from "./WalletService";
 
@@ -191,6 +192,7 @@ export class RunSessionService implements OnStart {
 		private readonly daily: DailyService,
 		private readonly telemetry: TelemetryService,
 		private readonly wallet: WalletService,
+		private readonly silver: SilverAccessService,
 	) {}
 
 	onStart(): void {
@@ -306,6 +308,9 @@ export class RunSessionService implements OnStart {
 			daily: s.daily !== undefined ? { day: s.daily.day, ruleset: s.daily.ruleset } : undefined,
 			// docs/ARCHER.md AR5: the client builds its run with the character the session validates.
 			characterId: s.characters?.[0],
+			// docs/SILVER.md SV6: and with the upgrade levels it validates (an unknown wallet: none, and it says so).
+			upgrades: s.upgrades?.[0],
+			upgradesUnknown: s.upgradesUnknown.includes(s.ownerId) ? true : undefined,
 		};
 	}
 
@@ -322,6 +327,9 @@ export class RunSessionService implements OnStart {
 			allowDebugInput: limits.allowDebugInput,
 			partyConsent,
 			partyCharacters,
+			// docs/SILVER.md SV6 / SV17: each member's upgrade levels and owned characters, from the wallet seam.
+			upgrades: (id) => this.silver.upgradesFor(id),
+			ownsCharacter: (id, characterId) => this.silver.ownsCharacter(id, characterId),
 		};
 	}
 
@@ -517,6 +525,9 @@ export class RunSessionService implements OnStart {
 			members: [...s.members],
 			// docs/ARCHER.md AR5: every client builds the run with these (the validator's setup was built with them).
 			characters: s.characters !== undefined ? [...s.characters] : [],
+			// docs/SILVER.md SV6: and with each member's upgrade levels (the validator's setup was built with them).
+			upgrades: s.upgrades !== undefined ? [...s.upgrades] : [],
+			upgradesUnknown: [...s.upgradesUnknown],
 			// The old invite flow's field (removed with it, task L7): the lobby id, so it is never a stale invite's.
 			lobbyId,
 		};

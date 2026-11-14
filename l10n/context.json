@@ -2776,6 +2776,9 @@
 	"lobby.err.notInRun": {
 		"note": "Error notice (top centre, 520 px) after a lobby action was refused: the player is not part of that run. Short sentence, neutral tone."
 	},
+	"lobby.err.lockedCharacter": {
+		"note": "Error notice (top centre, 520 px) after a lobby action was refused: the player tried to ready as a character they have not unlocked with Silver yet (the Archer). Short sentence, neutral tone."
+	},
 	"lobby.err.notInvited": {
 		"note": "Error notice (top centre, 520 px) after a lobby action was refused: the invitation is no longer valid. Short sentence, neutral tone."
 	},

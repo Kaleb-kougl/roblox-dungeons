@@ -9,6 +9,7 @@
 import {
 	BOW_WEAPON_ID,
 	NEUTRAL_TRAITS,
+	NEUTRAL_TRAIT_DELTA,
 	NO_WEAPON,
 	SWORD_WEAPON_ID,
 	WEAPON_SETS,
@@ -23,8 +24,17 @@ export type CharacterId = "knight" | "archer";
 export const ARCHER_ROLL_DASH_PERCENT = 140;
 /** The Archer's roll i-frames: 125 % (12 -> 15 ticks; owner answer 9). */
 export const ARCHER_ROLL_IFRAME_PERCENT = 125;
-/** The Archer's health: one heart less than the Knight (half hearts: 6 -> 4, 3 -> 2 hearts; owner, 2026-11-09). */
-export const ARCHER_HEARTS_MAX_DELTA = -2;
+/**
+ * The Knight's health (docs/SILVER.md SV16, SVD18): one heart under START_HALF_HEARTS (half hearts 6 -> 4: 2 hearts);
+ * the Armory's Vigor buys it back. A trait, not a sim constant, so a run without traits (M1, every golden fixture)
+ * keeps START_HALF_HEARTS.
+ */
+export const KNIGHT_HEARTS_MAX_DELTA = -2;
+/**
+ * The Archer's health: half a heart under the Knight (half hearts 6 -> 3: 1 1/2 hearts; docs/SILVER.md SV16, SVD18;
+ * it was -2, one heart under the Knight's 3, owner 2026-11-09).
+ */
+export const ARCHER_HEARTS_MAX_DELTA = -3;
 
 export interface CharacterDef {
 	readonly id: CharacterId;
@@ -38,7 +48,13 @@ export interface CharacterDef {
 
 /** Every character, in pick order (the character screen's card order). Append only. */
 export const CHARACTERS: ReadonlyArray<CharacterDef> = [
-	{ id: "knight", visualId: "class.vanguard", loadout: [SWORD_WEAPON_ID], traits: NEUTRAL_TRAITS },
+	{
+		id: "knight",
+		visualId: "class.vanguard",
+		loadout: [SWORD_WEAPON_ID],
+		// docs/SILVER.md SV16: the neutral roll with one heart less.
+		traits: table.freeze({ ...NEUTRAL_TRAITS, heartsMaxDelta: KNIGHT_HEARTS_MAX_DELTA }),
+	},
 	{
 		id: "archer",
 		visualId: "class.ranger",
@@ -47,12 +63,25 @@ export const CHARACTERS: ReadonlyArray<CharacterDef> = [
 			rollDashPercent: ARCHER_ROLL_DASH_PERCENT,
 			rollIframePercent: ARCHER_ROLL_IFRAME_PERCENT,
 			heartsMaxDelta: ARCHER_HEARTS_MAX_DELTA,
+			armorMaxDelta: NEUTRAL_TRAIT_DELTA,
+			flaskChargesDelta: NEUTRAL_TRAIT_DELTA,
 		}),
 	},
 ];
 
 /** The character of a run nobody picked one for (a missing pick, an old client): the Knight. */
 export const DEFAULT_CHARACTER: CharacterId = "knight";
+
+/**
+ * docs/SILVER.md SV17: the characters every account owns (the Knight). Any other is a Silver unlock: run starts and
+ * lobby Readies check the wallet's ownership (shared/run SilverAccess), and an unknown wallet owns only these.
+ */
+export const STARTER_CHARACTERS: ReadonlyArray<CharacterId> = [DEFAULT_CHARACTER];
+
+/** True for a character every account owns (STARTER_CHARACTERS). */
+export function isStarterCharacter(id: CharacterId): boolean {
+	return STARTER_CHARACTERS.includes(id);
+}
 
 /** Every character id, in CHARACTERS order. */
 export const CHARACTER_IDS: ReadonlyArray<CharacterId> = CHARACTERS.map((c) => c.id);
