@@ -43,10 +43,12 @@ describe("silver shop: strings", () => {
 		);
 	});
 
-	it("the Robux icon is optional: no bundled pack has it, so prices read `{robux} Robux`", () => {
+	it("the Robux icon is optional: the placeholder lacks it (prices read `{robux} Robux`), vale draws its upload", () => {
+		// vale: ui-robux.png uploaded 2026-11-14 (docs/SILVER_SHOP.md "Robux icon"); every other pack goes without
+		const expected = new Map<string, boolean>([["vale", true]]);
 		for (const p of sortedKeys(THEME_PACKS)) {
 			const pack = new ThemePack(THEME_PACKS[p], { warn: quiet });
-			expect([p, pack.image(ROBUX_ICON_ID) !== undefined]).toEqual([p, false]);
+			expect([p, pack.image(ROBUX_ICON_ID) !== undefined]).toEqual([p, expected.get(p) ?? false]);
 		}
 	});
 });

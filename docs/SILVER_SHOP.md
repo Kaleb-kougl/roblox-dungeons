@@ -188,7 +188,9 @@ conflicts.
   placeholder). `valeRobuxIcon.spec.ts` pins the layout, the absent and uploaded cases and the bundled state.
 - Drawn by the existing path: `GetSilverPanel` shows it when the pack has it and the buttons are on their art; it is
   the skinned button's glyph (`IconLabel`, tinted like the text) and the label drops the word Robux (`55`).
-- Owner steps: (1) `mkdir -p art/vendor/roblox && cp
+- Done 2026-11-14: the owner copied robux@3x.png (108 x 108); built at 14 x 14 (12 broke the hexagon ring at its
+  corners, soft edges read grey); `ui-robux.png` uploaded and in `assetIds.ts`, so the bundled vale pack draws it. To
+  rebuild: (1) `mkdir -p art/vendor/roblox && cp
   /Applications/RobloxStudio.app/Contents/Resources/content/textures/ui/common/robux@3x.png art/vendor/roblox/`;
   (2) `python3 scripts/art/roblox/prep_robux_icon.py`; (3) `node scripts/art/build-atlases.js --only ui.icon.robux` and
   `--lock --only ui.icon.robux` (if the generated layout differs from the hand-written 14 x 14, keep the generated one);
@@ -224,8 +226,8 @@ sim / dungeon (unchanged).
 - [x] **SH6. Get Silver panel and the two `+` buttons.**
 - [x] **SH7. Telemetry.**
 - [x] **SH8. Docs.** This file, docs/SILVER.md, docs/SERVER.md, docs/CLIENT.md, CLAUDE.md.
-- [ ] **SH10. Robux icon.** Wired (prep script, atlas entry, layout, manifest, spec); the owner's copy, build and upload
-  pending ("Robux icon" above).
+- [x] **SH10. Robux icon.** Wired (prep script, atlas entry, layout, manifest, spec), built at 14 x 14 and uploaded
+  2026-11-14 (`ui-robux.png`, `assetIds.ts`); the Studio look is part of the Studio check.
 - [ ] **SH9. [owner] Products and checks.** **First ship the codec (SH1) and restart every server** (SHD7). Then create
   the four developer products in Creator Hub (name, icon, description, translations) at 20 / 55 / 115 / 265 Robux;
   paste their ids into `SILVER_PRODUCTS` under the universe's `GameId` (shared/wallet `shop.ts`); publish; run the
