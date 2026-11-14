@@ -291,6 +291,46 @@ OC2 the shield against effect bullets (recommended above).
   the room before anyone can pick them up and the Sweep is lost (the clear judges `left`). Kill it first (the lesson) or
   change the rule (e.g. the clear waits for returned pellets, or they count as picked up by the killer).
 
+### NX5 Pyre-keeper (as built, 2026-11-14)
+
+- `archetypes/pyrekeeper.ts`: the summoner's keep range (6-9 from its target, the nearest living player; strafe flips
+  on a wall and every 0.8-2.2 s in aiTicks) and panic (target in sight within 2.5 as the cooldown runs out: 0.5 s
+  telegraph, the bruiser's gapped ring, 0.8 s back-off; v7 latched from the telegraph to the end of the back-off).
+  Light decision: **two draws at every decision** (cooldown, start index 0..7), also when capped or when no cell is
+  valid, so the count never depends on its pyres or the layout (the summoner's rule). It casts with < 3 of its pyres
+  alive and < 6 lit this life (v3): `pyrekeeperLanding` takes the first valid compass point from the start index around
+  its target, snapped to the cell centre (v4-5): FLOOR (`isBodyBlocked`: no wall / void / pool / solid decor), no intact
+  piece, no pellet in play (taken 0 or a Snatcher's PELLET_STOLEN), the room holding its home (the imp's blink rule,
+  encounter boxes), >= 2 from every living player and from its living pyres. None valid: spent, no telegraph, nothing
+  lit. Else 0.8 s telegraph (attack LIGHT, the `ring` hint), then `lightPyre` spawns the pyre (not re-validated: actors
+  block nothing); a full pool costs nothing (not lit). Its pyres are a pool scan (`v[PYRE_KEEPER] === id`) at a
+  decision, a spawn and its death. Killed mid-telegraph: no pyre, `attack` cleared.
+- `archetypes/pyre.ts`: not a room enemy, no draws. aiTicks counts the 0.5 s lighting (0 = lit, the view's flag; no
+  spawnTick arithmetic, so a pacts freeze needs nothing in `holdAbsoluteTimers`), v3 the ticks to the next shot; at 0 it
+  fires `shot` at `pyreTarget` (the nearest living player in sight, index order on ties) and reloads 2.0 s even with
+  no one in sight (the shot skipped, the phase kept). Never affixed (runtime spawn), never a member, no drop roll
+  (ineligible: no pity count), 30 points.
+- Wither: the keeper's onDeath kills every living pyre naming it through `ctx.killActor` (the summoner's `wither`:
+  scored, combo fed, no drop). No separate room-clear hook: the keeper is a member of its record, so the record cannot
+  clear before it dies, and its death withers them earlier in the same tick (before stepScore). A pyre with no keeper
+  (spec / sandbox only) never withers.
+- Feed (unhashed): `SimEvents.pyresLanded` / `pyresWithered` (appended to `NEW_ENEMY_2_EVENT_FIELDS`).
+- Specs `sim/pyrekeeper.spec.ts` (15: draws, caps, telegraph, mid-telegraph death, clearances solo and co-op, fire
+  timing, targeting, stagger, wither of its own only, an endless-floor landing census against a written-out oracle
+  (4 seeds x 40 casts: every landing the first valid point, rejections by tile / piece / pellet / room / clearance all
+  seen), the room clearing with a stray pyre alive, no drop / no affix, a determinism pair). `newEnemies2.spec`'s
+  no-draw case drops the keeper (it draws since NX5). No hash, replay or fixture moves: nothing recorded spawns a
+  Pyre-keeper (not in `ENDLESS_ROOM_KINDS` until NX6).
+- **Deviations:** (1) the stagger. "0.6 s x its index" from landing does not keep shots apart (casts are 4.8-5.8 s
+  apart, so phases land anywhere on the 2 s period). Built: a pyre takes the lowest free stagger slot 0..2 (v5
+  `PYRE_STAGGER`) and its first shot (>= the 0.5 s lighting) is aligned on a living sibling's period at 0.6 s x the slot
+  difference, so a keeper's pyres fire 0.6 / 0.6 / 0.8 s apart and never together (spec); without siblings it fires on
+  the tick it lights. A pinned (Siege) pyre does not step and drifts. (2) No strafe coin in init (the side from the
+  actor id), so init draws once as specified; flips and the panic draw as the summoner's. (3) A spent cast shows no
+  telegraph.
+- **Owner calls (NX5):** PK1 withered pyres score 30 each and feed the combo (built, the summoner's precedent) or go
+  out quietly (`killActor(..., true)`); PK2 the first shot on the tick a lone pyre lights (built) or a full 2 s later.
+
 ## Player experience
 
 1. **Bulwark.** An armoured demon walks at you behind a round shield. Arrows and sword cuts that hit the shield spark
