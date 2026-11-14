@@ -34,4 +34,6 @@ export * from "./modifiersData";
 export * from "./modifiers";
 export * from "./secretsData";
 export * from "./secrets";
+export * from "./breakableSilverData";
+export * from "./breakableSilver";
 export * from "./pathField";

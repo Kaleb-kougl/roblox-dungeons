@@ -156,7 +156,8 @@ export function stageInputOfLayout(
 		bossKind: layout.bossKind,
 		features: {
 			breakables: pieces,
-			breakableLoot: (layout.breakableLoot?.size() ?? 0) > 0,
+			// docs/SILVER.md SC3: Silver pieces glint like loaded ones, so a floor with Silver and no loot loads the glint
+			breakableLoot: (layout.breakableLoot?.size() ?? 0) > 0 || (layout.breakableSilver?.size() ?? 0) > 0,
 			pellets: regular,
 			powerPellet: power,
 			vault: layout.vault !== undefined,

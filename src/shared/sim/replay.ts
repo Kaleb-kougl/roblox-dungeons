@@ -29,6 +29,7 @@ import { writeTreasureHash } from "./treasure/treasure";
 import { writePactsHash } from "./pacts/pacts";
 import { writeGoldenHash } from "./golden/golden";
 import { writeSecretsHash } from "./secrets/secrets";
+import { writeSilverHash } from "./silver/silver";
 import { isFiniteNumber, isIntegerNumber, numberToJsString } from "./jsnum";
 import { isJsonArray, isJsonObject, jsonToJsString, parseJson, type JsonValue } from "./json";
 import { jsMin } from "shared/jsmath";
@@ -205,6 +206,7 @@ export function writeHashFields(state: Readonly<SimState>, out: number[]): numbe
 	if (state.golden !== undefined) writeGoldenHash(state.golden, out);
 	// Secret rooms (docs/SECRET_ROOMS.md SR4), only when the run has them, appended last (after golden).
 	if (state.secrets !== undefined) writeSecretsHash(state.secrets, out);
+	if (state.silver !== undefined) writeSilverHash(state.silver, out);
 	return out;
 }
 

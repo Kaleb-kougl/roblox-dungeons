@@ -46,6 +46,7 @@ import { cloneTreasureState, createTreasureState, treasureOnFloor, type Treasure
 import { clonePactsState, createPactsState, pactsOnFloor, type PactsState } from "./pacts/pacts";
 import { cloneGoldenState, createGoldenState, goldenOnFloor, type GoldenState } from "./golden/golden";
 import { cloneSecretsState, createSecretsState, secretsOnFloor, type SecretsState } from "./secrets/secrets";
+import { cloneSilverState, createSilverState, silverOnFloorPieces, type SilverState } from "./silver/silver";
 
 export interface PlayerState {
 	x: number;
@@ -351,6 +352,12 @@ export interface SimState {
 	 * secrets/secrets.ts.
 	 */
 	secrets?: SecretsState;
+	/**
+	 * Silver in crates (docs/SILVER.md SC2), only when SimConfig.silver is set: the run's total from broken Silver pieces
+	 * and the current floor's Silver per breakables slot. No rng. Hashed as the "silver" subsystem, appended after every
+	 * other group (after "secrets"). See silver/silver.ts.
+	 */
+	silver?: SilverState;
 }
 
 /**
@@ -385,6 +392,8 @@ export interface SimState {
  * With `config.secrets`, `secrets` state is created last (its own stream from `seed`; the first floor's secret in
  * endless mode, none otherwise; it reads the breakables' pieces), and a scored run's points / counts gain SECRET last
  * (docs/SECRET_ROOMS.md SR4, addSecretScoreSources, padding every earlier gated source, OVERCAP included).
+ * With `config.silver`, `silver` state is created after that (docs/SILVER.md SC2): the first floor's Silver pieces
+ * (endless: its world's, dev mode's startFloor included; else `config.silver.floor`). No score source.
  */
 export function createSimState(
 	seed: number,
@@ -508,6 +517,12 @@ export function createSimState(
 		secretsOnFloor(state, firstFloor?.secret);
 		if (state.score !== undefined) addSecretScoreSources(state.score);
 	}
+	// Silver in crates (docs/SILVER.md SC2): after the breakables (its pieces). No rng, no score source.
+	const silver = config.silver;
+	if (silver !== undefined) {
+		state.silver = createSilverState(silver);
+		silverOnFloorPieces(state, firstFloor !== undefined ? firstFloor.breakableSilver : silver.floor);
+	}
 	return state;
 }
 
@@ -542,6 +557,7 @@ export function cloneSimState(s: Readonly<SimState>): SimState {
 		pacts: s.pacts !== undefined ? clonePactsState(s.pacts) : undefined,
 		golden: s.golden !== undefined ? cloneGoldenState(s.golden) : undefined,
 		secrets: s.secrets !== undefined ? cloneSecretsState(s.secrets) : undefined,
+		silver: s.silver !== undefined ? cloneSilverState(s.silver) : undefined,
 	};
 	if (s.party !== undefined) clone.party = cloneParty(s.party, clone);
 	return clone;

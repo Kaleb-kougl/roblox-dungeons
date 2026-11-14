@@ -11,6 +11,7 @@ import {
 	BUILDS_SUBSYSTEM,
 	GOLDEN_SUBSYSTEM,
 	SECRETS_SUBSYSTEM,
+	SILVER_SUBSYSTEM,
 	PELLETS_SUBSYSTEM,
 	TREASURE_SUBSYSTEM,
 	PACTS_SUBSYSTEM,
@@ -275,7 +276,8 @@ describe("a 2-player endless run with per-player progression", () => {
 			TREASURE_SUBSYSTEM,
 			PACTS_SUBSYSTEM,
 			GOLDEN_SUBSYSTEM,
-			SECRETS_SUBSYSTEM, // docs/SECRET_ROOMS.md SR5: last
+			SECRETS_SUBSYSTEM, // docs/SECRET_ROOMS.md SR5
+			SILVER_SUBSYSTEM, // docs/SILVER.md SC2: last
 		]);
 		const runGroup = layout.groups[names.indexOf(RUN_SUBSYSTEM)];
 		expect([layout.names[runGroup.start], layout.values[runGroup.start]]).toEqual(["run.players.length", N]);

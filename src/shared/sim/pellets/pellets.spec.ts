@@ -50,13 +50,15 @@ const SETUP: EndlessRunSetup = buildEndlessRunConfig(SEED);
  * every endless world sets them too; their groups follow pellets and their TREASURE / HORDE / GOLDEN sources pad the
  * score past these), so pellets stay the last group and their sources the last ones here: what pellets add, alone.
  */
-// Secret rooms (docs/SECRET_ROOMS.md SR5) out too: their group and SECRET source would follow (last).
+// Secret rooms (docs/SECRET_ROOMS.md SR5) out too: their group and SECRET source would follow (last); and Silver in
+// crates (docs/SILVER.md SC2: its group would follow theirs).
 const BASE: SimConfig = {
 	...SETUP.config,
 	treasure: undefined,
 	pacts: undefined,
 	golden: undefined,
 	secrets: undefined,
+	silver: undefined,
 };
 const WITH: SimConfig = { ...BASE, pellets: PELLETS_CONFIG };
 /** The endless config without pellets (every endless world sets them since PL5), nor treasure, pacts or the Goldling. */

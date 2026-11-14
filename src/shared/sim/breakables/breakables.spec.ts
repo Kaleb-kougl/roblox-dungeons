@@ -21,6 +21,7 @@ import {
 	BUILDS_SUBSYSTEM,
 	GOLDEN_SUBSYSTEM,
 	SECRETS_SUBSYSTEM,
+	SILVER_SUBSYSTEM,
 	PELLETS_SUBSYSTEM,
 	TREASURE_SUBSYSTEM,
 	PACTS_SUBSYSTEM,
@@ -617,17 +618,19 @@ describe("breakables: endless runs, co-op, replays", () => {
 		expect(s.breakables!.intact).toBe(f2.size());
 		// Breakables come last but for drops (docs/BOOSTS.md B4: endless runs drop boosts too), elite affixes
 		// (docs/ENEMY_VARIANTS.md EV7), builds (docs/BUILDS.md BU1), pellets (docs/PELLETS.md PL5), pacts
-		// (docs/FORTUNE.md PS5), the Goldling (docs/FORTUNE.md GE3) and secret rooms (docs/SECRET_ROOMS.md SR5).
+		// (docs/FORTUNE.md PS5), the Goldling (docs/FORTUNE.md GE3), secret rooms (docs/SECRET_ROOMS.md SR5) and Silver
+		// in crates (docs/SILVER.md SC2).
 		const groups = hashLayout(s).groups.map((g) => g.name);
-		expect(groups[groups.size() - 9]).toBe(BREAKABLES_SUBSYSTEM);
-		expect(groups[groups.size() - 8]).toBe(DROPS_SUBSYSTEM);
-		expect(groups[groups.size() - 7]).toBe(AFFIXES_SUBSYSTEM);
-		expect(groups[groups.size() - 6]).toBe(BUILDS_SUBSYSTEM);
-		expect(groups[groups.size() - 5]).toBe(PELLETS_SUBSYSTEM);
-		expect(groups[groups.size() - 4]).toBe(TREASURE_SUBSYSTEM);
-		expect(groups[groups.size() - 3]).toBe(PACTS_SUBSYSTEM);
-		expect(groups[groups.size() - 2]).toBe(GOLDEN_SUBSYSTEM);
-		expect(groups[groups.size() - 1]).toBe(SECRETS_SUBSYSTEM);
+		expect(groups[groups.size() - 10]).toBe(BREAKABLES_SUBSYSTEM);
+		expect(groups[groups.size() - 9]).toBe(DROPS_SUBSYSTEM);
+		expect(groups[groups.size() - 8]).toBe(AFFIXES_SUBSYSTEM);
+		expect(groups[groups.size() - 7]).toBe(BUILDS_SUBSYSTEM);
+		expect(groups[groups.size() - 6]).toBe(PELLETS_SUBSYSTEM);
+		expect(groups[groups.size() - 5]).toBe(TREASURE_SUBSYSTEM);
+		expect(groups[groups.size() - 4]).toBe(PACTS_SUBSYSTEM);
+		expect(groups[groups.size() - 3]).toBe(GOLDEN_SUBSYSTEM);
+		expect(groups[groups.size() - 2]).toBe(SECRETS_SUBSYSTEM);
+		expect(groups[groups.size() - 1]).toBe(SILVER_SUBSYSTEM);
 	});
 
 	it("co-op: every player's bullets and swings break them, deterministically (stepParty twice, same hashes)", () => {

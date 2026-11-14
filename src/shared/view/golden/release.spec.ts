@@ -12,12 +12,14 @@ import {
 	ENDLESS_GOLDEN_CONFIG,
 	GoldenStatus,
 	NO_BOOST,
+	NO_SILVER,
 	SIM_HZ,
 	breakableLootAt,
 	createSimState,
 	damageBreakable,
 	goldenPieceAt,
 	goldenPieceCentre,
+	silverPieceAt,
 	step,
 	type SimConfig,
 	type SimState,
@@ -62,11 +64,15 @@ function pieceSlot(): number {
 	return buildEndlessRunConfig(SEED).endlessFloor(FLOOR).golden!.piece;
 }
 
-/** The loaded pieces of the floor (their slots), in slot order. */
+/**
+ * The loaded pieces of the floor (their slots), in slot order: a boost, or Silver (docs/SILVER.md SC3: Silver pieces
+ * glint exactly like boost pieces).
+ */
 function loadedSlots(s: SimState): number[] {
 	const out: number[] = [];
 	const n = s.breakables!.pieces.size();
-	for (let k = 0; k < n; k++) if (breakableLootAt(s, k) !== NO_BOOST) out.push(k);
+	for (let k = 0; k < n; k++)
+		if (breakableLootAt(s, k) !== NO_BOOST || silverPieceAt(s, k) !== NO_SILVER) out.push(k);
 	return out;
 }
 
@@ -119,7 +125,7 @@ describe("Goldling hiding place: the glint (GR4, RD14)", () => {
 		tick(r);
 		expect(g.status).toBe(GoldenStatus.RUNNING);
 		expect(pieceGlints(r.s, slot)).toBe(false);
-		expect(glintSlotCount(r.s)).toBe(r.s.drops?.pieceLoot.size() ?? 0);
+		expect(glintSlotCount(r.s)).toBe(math.max(r.s.drops?.pieceLoot.size() ?? 0, r.s.silver?.pieces.size() ?? 0));
 		for (const k of loaded) expect(pieceGlints(r.s, k)).toBe(true);
 	});
 

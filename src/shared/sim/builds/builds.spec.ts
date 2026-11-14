@@ -15,6 +15,7 @@ import {
 	BUILDS_SUBSYSTEM,
 	GOLDEN_SUBSYSTEM,
 	SECRETS_SUBSYSTEM,
+	SILVER_SUBSYSTEM,
 	PELLETS_SUBSYSTEM,
 	PACTS_SUBSYSTEM,
 	BUILD_PLAYER_SCALARS,
@@ -326,8 +327,9 @@ describe("opt-in state and the builds hash group (BU1)", () => {
 			const s = createSimState(1337, f1.spawnX, f1.spawnZ, setup.config);
 			const layout = hashLayout(s, true);
 			const names = layout.groups.map((g) => g.name);
-			// docs/SECRET_ROOMS.md SR5: secrets after golden, last.
+			// docs/SECRET_ROOMS.md SR5: secrets after golden; docs/SILVER.md SC2: silver after secrets, last.
 			expect([
+				names[names.size() - 8],
 				names[names.size() - 7],
 				names[names.size() - 6],
 				names[names.size() - 5],
@@ -343,8 +345,9 @@ describe("opt-in state and the builds hash group (BU1)", () => {
 				PACTS_SUBSYSTEM,
 				GOLDEN_SUBSYSTEM,
 				SECRETS_SUBSYSTEM,
+				SILVER_SUBSYSTEM,
 			]);
-			const g = layout.groups[layout.groups.size() - 6];
+			const g = layout.groups[layout.groups.size() - 7];
 			expect([layout.names[g.start], layout.values[g.start]]).toEqual(["builds.players.length", n]);
 			expect(layout.names[g.start + 1]).toBe("builds.players[0].levels.length");
 			expect(layout.values[g.start + 1]).toBe(BOON_COUNT);
@@ -385,7 +388,7 @@ describe("opt-in state and the builds hash group (BU1)", () => {
 		const spawn = setup.spawn!;
 		// Pellets (docs/PELLETS.md PL5), treasure (docs/TREASURE.md TR5), pacts (docs/FORTUNE.md PS5) and the Goldling
 		// (docs/FORTUNE.md GE3), secret rooms (docs/SECRET_ROOMS.md SR5) left out of both: they would pad the Jackpot
-		// source without builds too.
+		// source without builds too. Silver in crates (docs/SILVER.md SC2) too: its group would come after builds.
 		const withConfig: SimConfig = {
 			...setup.config,
 			pellets: undefined,
@@ -393,6 +396,7 @@ describe("opt-in state and the builds hash group (BU1)", () => {
 			pacts: undefined,
 			golden: undefined,
 			secrets: undefined,
+			silver: undefined,
 		};
 		const without: SimConfig = {
 			...setup.config,
@@ -402,6 +406,7 @@ describe("opt-in state and the builds hash group (BU1)", () => {
 			pacts: undefined,
 			golden: undefined,
 			secrets: undefined,
+			silver: undefined,
 		};
 		const a = createSimState(SEED, spawn.x, spawn.z, without);
 		const b = createSimState(SEED, spawn.x, spawn.z, withConfig);

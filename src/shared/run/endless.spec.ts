@@ -26,6 +26,8 @@ import {
 	GOLDEN_SUBSYSTEM,
 	SECRETS_CONFIG,
 	SECRETS_SUBSYSTEM,
+	SILVER_SUBSYSTEM,
+	ENDLESS_SILVER_CONFIG,
 	ENDLESS_DROPS_CONFIG,
 	ENDLESS_HASH_SUBSYSTEM,
 	RUN_SUBSYSTEM,
@@ -94,7 +96,7 @@ describe("buildEndlessRunConfig", () => {
 		const f1 = setup.endlessFloor(1);
 		const s = createSimState(1337, f1.spawnX, f1.spawnZ, setup.config);
 		const layout = hashLayout(s, true);
-		expect(layout.groups.size()).toBe(18); // docs/SECRET_ROOMS.md SR5: `secrets` last
+		expect(layout.groups.size()).toBe(19); // docs/SILVER.md SC2: `silver` last, after `secrets`
 		expect(layout.groups[9].name).toBe(BREAKABLES_SUBSYSTEM);
 		expect(layout.names[layout.groups[9].start]).toBe("breakables.length");
 		expect(layout.values[layout.groups[9].start]).toBe(f1.breakables!.size());
@@ -142,6 +144,12 @@ describe("buildEndlessRunConfig", () => {
 		expect(setup.config.secrets).toBe(SECRETS_CONFIG);
 		expect(layout.groups[17].name).toBe(SECRETS_SUBSYSTEM);
 		expect(layout.names[layout.groups[17].start]).toBe("secrets.rngState");
+		// docs/SILVER.md SC2: endless runs have Silver in crates (ENDLESS_SILVER_CONFIG), hashed after secrets (last).
+		expect(setup.config.silver).toBe(ENDLESS_SILVER_CONFIG);
+		expect(layout.groups[18].name).toBe(SILVER_SUBSYSTEM);
+		expect(layout.names[layout.groups[18].start]).toBe("silver.total");
+		expect(layout.names[layout.groups[18].start + 1]).toBe("silver.pieces.length");
+		expect(layout.values[layout.groups[18].start + 1]).toBe(f1.breakables!.size());
 		const g = layout.groups[6];
 		expect(g.name).toBe(ENDLESS_HASH_SUBSYSTEM);
 		expect(layout.groups[7].name).toBe(SCORE_SUBSYSTEM);
@@ -161,6 +169,7 @@ describe("buildEndlessRunConfig", () => {
 		expect(plain.breakables).toBe(undefined);
 		expect(plain.drops).toBe(undefined);
 		expect(plain.affixes).toBe(undefined);
+		expect(plain.silver).toBe(undefined);
 		expect(subsystemHashes(plain).endless).toBe(undefined);
 		expect(subsystemHashes(plain).run).toBe(undefined);
 	});
@@ -182,14 +191,22 @@ describe("fortune: pacts and the Goldling together (docs/FORTUNE.md)", () => {
 			const s = createSimState(1337, f1.spawnX, f1.spawnZ, run.config);
 			const layout = hashLayout(s, true);
 			const names = layout.groups.map((g) => g.name);
-			// docs/SECRET_ROOMS.md SR5: secrets after golden, last.
+			// docs/SECRET_ROOMS.md SR5: secrets after golden; docs/SILVER.md SC2: silver after secrets, last.
 			expect([
+				names[names.size() - 6],
 				names[names.size() - 5],
 				names[names.size() - 4],
 				names[names.size() - 3],
 				names[names.size() - 2],
 				names[names.size() - 1],
-			]).toEqual([PELLETS_SUBSYSTEM, TREASURE_SUBSYSTEM, PACTS_SUBSYSTEM, GOLDEN_SUBSYSTEM, SECRETS_SUBSYSTEM]);
+			]).toEqual([
+				PELLETS_SUBSYSTEM,
+				TREASURE_SUBSYSTEM,
+				PACTS_SUBSYSTEM,
+				GOLDEN_SUBSYSTEM,
+				SECRETS_SUBSYSTEM,
+				SILVER_SUBSYSTEM,
+			]);
 			expect(layout.values).toEqual(writeHashFields(s, []));
 			expect([ScoreSource.TREASURE, ScoreSource.HORDE, ScoreSource.GOLDEN]).toEqual([12, 13, 14]);
 			// ... then the builds run's OVERCAP (docs/BUILDS_V2.md BV9): every endless world sets builds; then SECRET
@@ -208,9 +225,15 @@ describe("fortune: pacts and the Goldling together (docs/FORTUNE.md)", () => {
 		const run = buildEndlessRunConfig(1337);
 		const f1 = run.endlessFloor(1);
 		// The matrix without builds: since docs/BUILDS_V2.md BV9 a builds run (every endless world) pads on to OVERCAP;
-		// and without secrets, which pad on to SECRET last (docs/SECRET_ROOMS.md SR4).
+		// and without secrets, which pad on to SECRET last (docs/SECRET_ROOMS.md SR4); without Silver in crates, whose
+		// group would come last (docs/SILVER.md SC2; it adds no score source).
 		const sources = (config: SimConfig) => {
-			const s = createSimState(1337, f1.spawnX, f1.spawnZ, { ...config, builds: undefined, secrets: undefined });
+			const s = createSimState(1337, f1.spawnX, f1.spawnZ, {
+				...config,
+				builds: undefined,
+				secrets: undefined,
+				silver: undefined,
+			});
 			const names = hashLayout(s, true).groups.map((g) => g.name);
 			return [s.score!.points.size(), s.score!.counts.size(), names[names.size() - 1]];
 		};

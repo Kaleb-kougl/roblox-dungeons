@@ -97,11 +97,13 @@ interface Run {
 /** A god-mode dev run of SEED from FLOOR, with the Goldling config on (or off); the Archer's bow with `archer`. */
 function devRun(golden = true, archer = false): Run {
 	const dev = buildDevRunConfig(SEED, { startFloor: FLOOR, invulnerable: true }, undefined, archer ? ["archer"] : []);
-	// Without secret rooms (docs/SECRET_ROOMS.md SR5: their group would follow the Goldling's, last).
+	// Without secret rooms (docs/SECRET_ROOMS.md SR5: their group would follow the Goldling's, last), nor Silver in
+	// crates (docs/SILVER.md SC2: its group would follow theirs).
 	const config: SimConfig = {
 		...dev.config,
 		golden: golden ? ENDLESS_GOLDEN_CONFIG : undefined,
 		secrets: undefined,
+		silver: undefined,
 	};
 	const s = createSimState(SEED, dev.spawn!.x, dev.spawn!.z, config);
 	return { config, s, world: buildEndlessRunConfig(SEED).endlessFloor(FLOOR) };

@@ -8,15 +8,17 @@
  *             sim time, phased by its cell hash (deterministic: every client sees the same sparkle at the same tick);
  *             a still frame under reduced motion; its billboard on the piece's top as drawn (art or placeholder box);
  *             hidden while an enemy bullet is near (never over a bullet). The Goldling's hiding place glints exactly
- *             the same way while it hides (docs/GOLDLING_RUMOURS.md RD14, GR4: shared/sim goldenPieceAt): pieceGlints
- *             is the one test, glintSlotCount the slots to scan
+ *             the same way while it hides (docs/GOLDLING_RUMOURS.md RD14, GR4: shared/sim goldenPieceAt), and so does a
+ *             piece holding Silver until it breaks (docs/SILVER.md SC3, OC8 / SVD21: shared/sim silverPieceAt):
+ *             pieceGlints is the one test, glintSlotCount the slots to scan
  *   hop       a released boost's height over the floor: the piece's top -> the floor in an arc over hopSeconds, then
  *             the drop's ordinary bob counted from the landing
- *   debug     the label text of a loaded piece (developer text, English)
+ *   debug     the label text of a loaded piece and of a Silver piece (developer text, English; KV_LootDebug and
+ *             KV_SilverLabel)
  */
 import { CAMERA_PITCH_DEG, STUDS_PER_TILE } from "shared/config";
 import { TILE_SIZE, cellKey } from "shared/dungeon";
-import { NO_BOOST, breakableLootAt, goldenPieceAt, type SimState } from "shared/sim";
+import { NO_BOOST, NO_SILVER, breakableLootAt, goldenPieceAt, silverPieceAt, type SimState } from "shared/sim";
 import { BOOST_KINDS } from "shared/theme";
 import { BREAKABLE_LOOT_VIEW } from "./breakableLootConfig";
 import { degToRad } from "./iso";
@@ -32,23 +34,30 @@ export const LOOT_GLINT_HIDDEN = -1;
 
 /**
  * Breakables slot `slot` glints (the caller also checks the piece is drawn and intact): it holds a boost
- * (breakableLootAt) or it is the Goldling's piece while the Goldling hides in it (goldenPieceAt, docs/GOLDLING_RUMOURS.md
- * RD14). Both glint with the same art, tint, cadence and per-cell phase (lootGlintPhaseSec), so nobody can tell a
- * Goldling's crate from a loaded one until it breaks. Read-only.
+ * (breakableLootAt), it holds Silver (silverPieceAt, docs/SILVER.md SC3: zeroed the tick it breaks), or it is the
+ * Goldling's piece while the Goldling hides in it (goldenPieceAt, docs/GOLDLING_RUMOURS.md RD14). All three glint with
+ * the same art, tint, cadence and per-cell phase (lootGlintPhaseSec), so nobody can tell a Silver crate or a Goldling's
+ * crate from a loaded one until it breaks (OC8 / SVD21). Read-only.
  */
 export function pieceGlints(state: Readonly<SimState>, slot: number): boolean {
-	return breakableLootAt(state, slot) !== NO_BOOST || goldenPieceAt(state, slot);
+	return (
+		breakableLootAt(state, slot) !== NO_BOOST ||
+		silverPieceAt(state, slot) !== NO_SILVER ||
+		goldenPieceAt(state, slot)
+	);
 }
 
 /**
- * How many breakables slots the glint scans from 0: the loot table's size, or one past the Goldling's piece while it
- * hides there (its piece is the floor's last piece, past every loot slot). 0: nothing can glint.
+ * How many breakables slots the glint scans from 0: the loot table's size, the Silver table's (docs/SILVER.md SC3: one
+ * entry per piece, like the loot's), or one past the Goldling's piece while it hides there (its piece is the floor's
+ * last clutter-like piece, past every loot and Silver slot). 0: nothing can glint.
  */
 export function glintSlotCount(state: Readonly<SimState>): number {
 	const loot = state.drops?.pieceLoot.size() ?? 0;
+	const silver = state.silver?.pieces.size() ?? 0;
 	const g = state.golden;
 	const piece = g !== undefined && g.piece >= 0 && goldenPieceAt(state, g.piece) ? g.piece + 1 : 0;
-	return math.max(loot, piece);
+	return math.max(loot, silver, piece);
 }
 
 /**
@@ -196,4 +205,12 @@ export function lootSettledAgeSec(ageSec: number, hopped: boolean): number {
 /** The debug label of a piece holding Boost `kind` (developer text, English): `loot: <kind>`. */
 export function lootDebugText(kind: number): string {
 	return `loot: ${BOOST_KINDS[kind] ?? tostring(kind)}`;
+}
+
+// ---------------------------------------------------------------------------------------------
+// KV_SilverLabel (docs/SILVER.md "Debug"; the attribute: shared/view/silver SILVER_CRATE_FX.labelAttribute)
+
+/** The debug label of a piece holding `amount` Silver (developer text, English): `silver: <amount>`. */
+export function silverDebugText(amount: number): string {
+	return `silver: ${amount}`;
 }

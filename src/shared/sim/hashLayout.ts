@@ -31,6 +31,7 @@ import { treasureHashNames, writeTreasureHash } from "./treasure/treasure";
 import { pactsHashNames, writePactsHash } from "./pacts/pacts";
 import { goldenHashNames, writeGoldenHash } from "./golden/golden";
 import { secretsHashNames, writeSecretsHash } from "./secrets/secrets";
+import { silverHashNames, writeSilverHash } from "./silver/silver";
 
 /** The fixtures' subsystem groups, in hash order. */
 export const HASH_SUBSYSTEMS = ["core", "combatHeader", "actors", "weapons", "enemyBullets", "playerBullets"] as const;
@@ -64,7 +65,9 @@ export type HashSubsystem = (typeof HASH_SUBSYSTEMS)[number];
  *            pacts)
  *   secrets  secret rooms (docs/SECRET_ROOMS.md SR4: its stream, this floor's secret (status, room, crack / chest slots,
  *            chest centre, facing, tier, the open's tick / credit / kind, who took the chest), the run counters), when
- *            state.secrets exists; the LAST group (after golden)
+ *            state.secrets exists (after golden)
+ *   silver   Silver in crates (docs/SILVER.md SC2: the run's total, the floor's Silver per breakables slot), when
+ *            state.silver exists; the LAST group (after secrets)
  */
 export const ENDLESS_HASH_SUBSYSTEM = "endless";
 export const SCORE_SUBSYSTEM = "score";
@@ -81,6 +84,7 @@ export const TREASURE_SUBSYSTEM = "treasure";
 export const PACTS_SUBSYSTEM = "pacts";
 export const GOLDEN_SUBSYSTEM = "golden";
 export const SECRETS_SUBSYSTEM = "secrets";
+export const SILVER_SUBSYSTEM = "silver";
 /** Every group name a layout can have. */
 export type HashGroupName =
 	| HashSubsystem
@@ -98,7 +102,8 @@ export type HashGroupName =
 	| typeof TREASURE_SUBSYSTEM
 	| typeof PACTS_SUBSYSTEM
 	| typeof GOLDEN_SUBSYSTEM
-	| typeof SECRETS_SUBSYSTEM;
+	| typeof SECRETS_SUBSYSTEM
+	| typeof SILVER_SUBSYSTEM;
 
 export interface HashGroup {
 	readonly name: HashGroupName;
@@ -265,6 +270,13 @@ export function hashLayout(state: Readonly<SimState>, withNames = false): HashLa
 		writeSecretsHash(secrets, values);
 		if (withNames) secretsHashNames(secrets, names);
 		close(SECRETS_SUBSYSTEM);
+	}
+
+	const silver = state.silver;
+	if (silver !== undefined) {
+		writeSilverHash(silver, values);
+		if (withNames) silverHashNames(silver, names);
+		close(SILVER_SUBSYSTEM);
 	}
 
 	return { values, names, groups };

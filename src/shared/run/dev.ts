@@ -12,7 +12,8 @@
  *            parseFloorModifierOverride) forces one floor modifier on every floor where it is eligible
  *            (docs/FLOOR_MODIFIERS.md FM4: a FloorModifierOverride into the same cache), or `options.secret`
  *            (KV_SecretDebug, parseSecretDebug) forces / fixes the secret rooms (docs/SECRET_ROOMS.md SR5: a
- *            SecretOverride into the same cache)
+ *            SecretOverride into the same cache), or `options.silver` (KV_SilverDebug, parseSilverDebug) puts Silver in
+ *            every candidate barrel and crate (docs/SILVER.md SC1: a SilverOverride into the same cache)
  *   Depth    as if every boss before `startFloor` had been killed (devStartDepth); no boons, relics or curses
  *
  * Characters (docs/ARCHER.md AR4): the picked character's loadout and traits like an endless run (the Knight when none is
@@ -33,6 +34,7 @@ import {
 	isBossFloor,
 	type FloorModifierOverride,
 	type SecretOverride,
+	type SilverOverride,
 	type VaultOverride,
 } from "shared/dungeon";
 import { DEFAULT_PARTY_SIZE, ENDLESS_FIRST_DEPTH, isIntegerNumber } from "shared/sim";
@@ -61,6 +63,11 @@ export interface DevRunOptions {
 	 * Absent: the floors' own draws, as endless.
 	 */
 	readonly secret?: SecretOverride;
+	/**
+	 * Silver in crates (docs/SILVER.md SC1): every candidate barrel and crate holds Silver (KV_SilverDebug,
+	 * parseSilverDebug). Absent: the floors' own draws, as endless.
+	 */
+	readonly silver?: SilverOverride;
 	/**
 	 * docs/ARCHER.md AR4: "Both weapons": the sword and the bow (DEFAULT_LOADOUT) with the picked character's roll
 	 * traits. Absent / false: the character's own loadout.
@@ -139,6 +146,22 @@ export function parseSecretDebug(text: string | undefined): SecretOverride | und
 	return { every, tier };
 }
 
+/** Workspace string attribute read when a dev run starts (DevModeController): parseSilverDebug's words. */
+export const SILVER_DEBUG_ATTRIBUTE = "KV_SilverDebug";
+
+/**
+ * KV_SilverDebug's text -> a SilverOverride (docs/SILVER.md SC1): words in any case, separated by anything that is not a
+ * letter: `every` (every candidate barrel and crate holds Silver: no boost, not the Goldling's); unknown words are
+ * ignored. Undefined when no word applies. Pure.
+ */
+export function parseSilverDebug(text: string | undefined): SilverOverride | undefined {
+	if (text === undefined) return undefined;
+	let every: boolean | undefined;
+	for (const [word] of text.lower().gmatch("%a+")) if (word === "every") every = true;
+	if (every === undefined) return undefined;
+	return { every };
+}
+
 /** A dev run with no choices made: DEV_MODE's defaults. */
 export const DEFAULT_DEV_RUN: DevRunOptions = table.freeze({
 	startFloor: DEV_MODE.defaultFloor,
@@ -177,6 +200,7 @@ export function buildDevRunConfig(
 		vaultOverride: options.vault,
 		modifierOverride: options.modifier,
 		secretOverride: options.secret,
+		silverOverride: options.silver,
 		characters,
 		bothWeapons: options.bothWeapons,
 	});

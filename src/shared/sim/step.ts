@@ -39,6 +39,7 @@ import { stepGolden } from "./golden/stepGolden";
 import { clearSecretsEvents } from "./secrets/secrets";
 import { stepSecrets } from "./secrets/stepSecrets";
 import type { SecretsConfig } from "./secrets/secretsData";
+import { clearSilverEvents, type SilverConfig } from "./silver/silver";
 import type { SolidCells } from "shared/dungeon";
 import type { PlayerTraits } from "./playerData";
 
@@ -246,6 +247,15 @@ export interface SimConfig {
 	 * other group (after "golden"), and a scored run's points / counts gain SECRET last.
 	 */
 	secrets?: SecretsConfig;
+	/**
+	 * Silver in crates (docs/SILVER.md SC2, silver/silver.ts): presence turns it on (ENDLESS_SILVER_CONFIG is the game's);
+	 * which pieces hold how much comes from each endless floor's world (EndlessFloorWorld.breakableSilver). Absent: no
+	 * silver state, nothing extra hashed (every fixture, M1, the tutorial). Present: state.silver is created, a Silver
+	 * piece pays its stack into state.silver.total when it breaks (any source; silverOnBreak on damageBreakable's break
+	 * line), and it is hashed as the "silver" subsystem, appended after every other group (after "secrets"). No score
+	 * source, no rng.
+	 */
+	silver?: SilverConfig;
 }
 
 /** Matches the 16x16 greybox room: inner wall faces at +/-7.75, minus the 0.4 player half-width (rounded). */
@@ -271,7 +281,7 @@ const partyPrev: number[] = [];
  *
  * Tick order (fixed; part of the determinism contract):
  *   1. clear per-tick events (and the score's, the breakables', the drops', the affixes', the builds', the pellets',
- *      the treasure's, the pacts', the Goldling's, the secrets'); then FORFEIT_BUTTON ("Leave run") -> forfeitSoloRun:
+ *      the treasure's, the pacts', the Goldling's, the secrets', the Silver's); then FORFEIT_BUTTON ("Leave run") -> forfeitSoloRun:
  *      the player dies at this tick; then (dev runs only) a DEV_GOD_BUTTON edge toggles god mode (stepDevToggle)
  *   2. stepPlayer  (movement, facing, roll, hearts, flask, Ember)
  *   3. stepCombat   (Ember clear, actors act, the player's weapons, bullets step, hits, contact damage)
@@ -327,6 +337,7 @@ export function step(
 	if (state.pacts !== undefined) clearPactsEvents(state.pacts);
 	if (state.golden !== undefined) clearGoldenEvents(state.golden);
 	if (state.secrets !== undefined) clearSecretsEvents(state.secrets);
+	if (state.silver !== undefined) clearSilverEvents(state.silver);
 	const run = state.run;
 	// Read before the forfeit, which closes an open draft: that tick stays a frozen draft tick.
 	const frozen = run !== undefined && isDraftOpen(state);
@@ -425,6 +436,7 @@ export function stepParty(
 	if (state.pacts !== undefined) clearPactsEvents(state.pacts);
 	if (state.golden !== undefined) clearGoldenEvents(state.golden);
 	if (state.secrets !== undefined) clearSecretsEvents(state.secrets);
+	if (state.silver !== undefined) clearSilverEvents(state.silver);
 	for (let i = 0; i < n; i++) if (hasLeftBit(inputs[i].buttons)) markPlayerLeft(state, i);
 	if (state.dev !== undefined) stepDevToggle(state, inputs, partyPrev);
 	const run = state.run;
