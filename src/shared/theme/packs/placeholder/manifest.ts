@@ -1928,5 +1928,18 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"silver.welcome.body":
 			"Every run now pays Silver. Everyone starts with 2 hearts and the Knight: spend Silver in the Armory on Vigor to win hearts back, and on the Archer.",
 		"silver.welcome.ok": "Got it",
+		// docs/SILVER_SHOP.md SH4: the Get Silver panel and the `+` beside a Silver balance.
+		"silver.shop.title": "Get Silver",
+		"silver.shop.open": "+",
+		"silver.shop.pack": "{silver} Silver",
+		"silver.shop.price": "{robux} Robux",
+		"silver.shop.priceIcon": "{robux}",
+		"silver.shop.loading": "...",
+		"silver.shop.unavailable": "Unavailable",
+		"silver.shop.adding": "Adding Silver...",
+		"silver.shop.added": "+{silver} Silver",
+		"silver.shop.onItsWay": "Your Silver is on its way",
+		"silver.shop.footnote": "Silver bought with Robux works like Silver you find. Purchases can't be undone.",
+		"silver.shop.close": "Close",
 	},
 };

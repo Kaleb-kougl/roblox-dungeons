@@ -7,6 +7,7 @@
 // step.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { SILVER_AUDIO_IDS, SILVER_ROLES, SILVER_STRING_KEYS } from "./silver";
+import { SILVER_SHOP_STRING_KEYS } from "./silverShop";
 import { VaultLock, VaultTier } from "shared/dungeon";
 import { CODEX_AUDIO_IDS, CODEX_STRING_KEYS } from "./codex";
 import { SECRET_AUDIO_IDS, SECRET_ROLES, SECRET_STRING_KEYS } from "./secrets";
@@ -109,7 +110,8 @@ const FORTUNE_AFTER = {
 		GOLDEN_RUMOUR_STRING_KEYS.size() +
 		CODEX_STRING_KEYS.size() +
 		SECRET_STRING_KEYS.size() +
-		SILVER_STRING_KEYS.size(),
+		SILVER_STRING_KEYS.size() +
+		SILVER_SHOP_STRING_KEYS.size(),
 } as const;
 
 function printEntry(tag: string, id: string, e: ReturnType<typeof treasureReport>[number]): void {

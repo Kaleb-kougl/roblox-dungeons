@@ -48,6 +48,7 @@
 import type { AssetKind, ColorRole, ParticleFlipbookMode, Pivot } from "./types";
 import { CODEX_STRING_KEYS } from "./codex";
 import { silverStringKeys } from "./silver";
+import { silverShopStringKeys } from "./silverShop";
 import { DAILY_STRING_KEYS } from "./daily";
 import { DAILY_RANK_STRING_KEYS } from "./dailyRank";
 import { NEW_BEST_STRING_KEYS } from "./newBest";
@@ -1384,6 +1385,9 @@ export const REQUIRED_STRING_KEYS: ReadonlyArray<string> = ((): string[] => [
 	// docs/SILVER.md SV7: silver.ts SILVER_STRING_KEYS (built inside its own function): the counter's pop, the run-over
 	// rows, the Armory, the main menu's balance, the character screen's lock and the returning-player card
 	...silverStringKeys(),
+	// docs/SILVER_SHOP.md SH4: silverShop.ts SILVER_SHOP_STRING_KEYS (built inside its own function): the Get Silver
+	// panel and the `+` beside a Silver balance
+	...silverShopStringKeys(),
 ])();
 
 /**

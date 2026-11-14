@@ -30,6 +30,7 @@ import {
 } from "shared/view/menu";
 import { SILVER_SHOP, armoryItemLabel, statusBalance, walletShown } from "shared/view/silver";
 import { useMenuActions } from "./actions";
+import { SilverBalance } from "./SilverBalance";
 
 const HIDDEN = 1;
 const STROKE = 1;
@@ -431,6 +432,7 @@ export function ArmoryScreen() {
 			layer="screen"
 			surface="armory"
 			defaultRef={firstRef}
+			memoryKey="armory"
 			padContext={padContext}
 			scrollRef={listRef}
 			onPadAction={(action) => {
@@ -539,8 +541,10 @@ export function ArmoryScreen() {
 									text={str(shown === "unavailable" ? ARMORY_KEYS.unavailable : ARMORY_KEYS.title)}
 								/>
 								{shown === "loaded" ? (
-									<SilverAmount
+									// docs/SILVER_SHOP.md SH6: the balance with the Silver shop's `+` (SilverBalance)
+									<SilverBalance
 										order={2}
+										from="armory"
 										text={str(ARMORY_KEYS.balance, { silver: statusBalance(status) })}
 									/>
 								) : undefined}
