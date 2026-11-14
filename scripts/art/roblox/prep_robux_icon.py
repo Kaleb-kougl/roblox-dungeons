@@ -7,7 +7,7 @@ Roblox Studio install (macOS: /Applications/RobloxStudio.app/Contents/Resources/
 into art/vendor/roblox/ (gitignored: not ours to redistribute), and this script makes the button-glyph version of it:
 
   - crop to its visible pixels (alpha > NOISE_ALPHA), centred on a square canvas (aspect kept);
-  - downsample to SIZE x SIZE with Lanczos on premultiplied alpha (no dark fringe);
+  - downsample to SIZE x SIZE (14) with Lanczos on premultiplied alpha (no dark fringe);
   - every pixel white with its alpha kept (the button tints it like its text, UI_ART's white glyph set);
   - alpha hardened to 0 / 255 at HARD_ALPHA (the menus draw art Pixelated, 2 screen px per art px: a soft edge would
     read as blocky grey), unless --soft.
@@ -28,8 +28,9 @@ from PIL import Image
 REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 DEFAULT_SRC = os.path.join(REPO, "art", "vendor", "roblox", "robux@3x.png")
 DEFAULT_OUT = os.path.join(REPO, "art", "vendor", "roblox", "robux-icon.png")
-# The glyph size: UI_ART.iconBox.glyph is 16 reference px; the UI sheet's glyphs (gear, mute) are 11-14 art px.
-SIZE = 12
+# The glyph size: UI_ART.iconBox.glyph is 16 reference px; the UI sheet's glyphs (gear, mute, check) are 11-14 art px.
+# 14 hard-edged keeps the hexagon ring whole on Roblox's icon (12 breaks it at the corners; soft edges read grey).
+SIZE = 14
 # Source pixels at or below this alpha are noise (left out of the crop).
 NOISE_ALPHA = 8
 # The hard edge: a downsampled pixel at or above this alpha is opaque, below it clear.

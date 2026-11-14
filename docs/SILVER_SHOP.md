@@ -179,11 +179,11 @@ conflicts.
   `art/vendor/roblox/` (gitignored, like every vendor file). The theme takes uploaded images only (`rbxassetid://`;
   local `rbxasset://` content is refused), so it is uploaded like any other ui image.
 - `scripts/art/roblox/prep_robux_icon.py` (python3 + Pillow, not run by art:build): crop to the visible pixels, centre
-  on a square, Lanczos on premultiplied alpha down to 12 x 12 (the UI sheet's glyphs are 11-14 art px; the button's
+  on a square, Lanczos on premultiplied alpha down to 14 x 14 (the UI sheet's glyphs are 11-14 art px; the button's
   glyph box is 16 reference px), white with its alpha, edges hardened at alpha 128 (the menus draw art Pixelated;
   `--soft` keeps them) -> `art/vendor/roblox/robux-icon.png`.
 - `art/atlases.json` `images` entry `ui.icon.robux` (`crop: none`, `rgb: white`, name `ui-robux`) -> `art/upload/ui-robux.png`
-  and the `VALE_IMAGE_LAYOUTS` entry (12 x 12; written by hand to match what `--only ui.icon.robux` generates).
+  and the `VALE_IMAGE_LAYOUTS` entry (14 x 14; written by hand to match what `--only ui.icon.robux` generates).
 - vale manifest: `ROBUX_ICON_ID` is an optional image (absent until `ui-robux.png` has an id in `assetIds.ts`, never a
   placeholder). `valeRobuxIcon.spec.ts` pins the layout, the absent and uploaded cases and the bundled state.
 - Drawn by the existing path: `GetSilverPanel` shows it when the pack has it and the buttons are on their art; it is
@@ -191,7 +191,7 @@ conflicts.
 - Owner steps: (1) `mkdir -p art/vendor/roblox && cp
   /Applications/RobloxStudio.app/Contents/Resources/content/textures/ui/common/robux@3x.png art/vendor/roblox/`;
   (2) `python3 scripts/art/roblox/prep_robux_icon.py`; (3) `node scripts/art/build-atlases.js --only ui.icon.robux` and
-  `--lock --only ui.icon.robux` (if the generated layout differs from the hand-written 12 x 12, keep the generated one);
+  `--lock --only ui.icon.robux` (if the generated layout differs from the hand-written 14 x 14, keep the generated one);
   (4) upload `art/upload/ui-robux.png`, paste its id into `packs/vale/assetIds.ts` as `"ui-robux.png"`; (5) Studio: the
   icon beside each price, white and crisp at every HUD scale.
 

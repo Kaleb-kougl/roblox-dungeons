@@ -844,11 +844,7 @@ export const VALE_IMAGE_LAYOUTS: Record<string, ValeImageLayout> = {
 		h: 18,
 		pivot: { x: 14, y: 5 },
 	},
-	"ui.icon.robux": {
-		file: "ui-robux.png",
-		w: 12,
-		h: 12,
-	},
+	"ui.icon.robux": { file: "ui-robux.png", w: 14, h: 14 },
 	"ui.marker.boost": {
 		file: "ui-marker-boost.png",
 		w: 8,

@@ -1,5 +1,5 @@
 // The vale pack's Robux icon (docs/SILVER_SHOP.md "Robux icon"): ui.icon.robux (ui-robux.png, Roblox's own icon made a
-// 12 x 12 white glyph by scripts/art/roblox/prep_robux_icon.py) is an image once its file has an ID, else absent, so the
+// 14 x 14 white glyph by scripts/art/roblox/prep_robux_icon.py) is an image once its file has an ID, else absent, so the
 // Get Silver prices read `55 Robux` until then.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { ThemePack } from "../../pack";
@@ -14,9 +14,9 @@ const quiet = () => undefined;
 const FILE = "ui-robux.png";
 
 describe("vale Robux icon", () => {
-	it("generates a 12 x 12 layout for ui-robux.png", () => {
+	it("generates a 14 x 14 layout for ui-robux.png", () => {
 		const l = VALE_IMAGE_LAYOUTS[ROBUX_ICON_ID];
-		expect([l.file, l.w, l.h]).toEqual([FILE, 12, 12]);
+		expect([l.file, l.w, l.h]).toEqual([FILE, 14, 14]);
 		expect(l.pivot).toBe(undefined);
 		expect(l.slice).toBe(undefined);
 	});
@@ -33,8 +33,8 @@ describe("vale Robux icon", () => {
 		expect(m.assets[ROBUX_ICON_ID]).toEqual({
 			kind: "image",
 			assetId: "rbxassetid://5300",
-			w: 12,
-			h: 12,
+			w: 14,
+			h: 14,
 		} as ImageAsset);
 		expect(validateManifest(m, { packId: "vale" })).toEqual([]);
 	});
