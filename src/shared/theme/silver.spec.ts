@@ -95,13 +95,14 @@ describe("silver: strings", () => {
 });
 
 describe("silver: sounds", () => {
-	it("are PORT_AUDIO_EVENTS' last four: required, sfx; SILENT in both bundled packs", () => {
+	it("are PORT_AUDIO_EVENTS' last four: required, sfx; SILENT in the placeholder, vale plays them", () => {
 		expect([...SILVER_AUDIO_IDS]).toEqual(["sfx.silver.gain", "sfx.silver.crate", "sfx.shop.buy", "sfx.shop.deny"]);
 		expect(tail(PORT_AUDIO_EVENTS, SILVER_AUDIO_IDS.size())).toEqual([...SILVER_AUDIO_IDS]);
 		for (const id of SILVER_AUDIO_IDS) {
 			expect([id, has(REQUIRED_ASSET_IDS, id), slotFor(id)?.soundGroup]).toEqual([id, true, "sfx"]);
+			// vale plays them: picked at the audition and uploaded 2026-11-14 (docs/SILVER.md)
 			for (const p of sortedKeys(THEME_PACKS))
-				expect([p, id, THEME_PACKS[p].assets[id].kind]).toEqual([p, id, "silent"]);
+				expect([p, id, THEME_PACKS[p].assets[id].kind]).toEqual([p, id, p === "vale" ? "sound" : "silent"]);
 		}
 	});
 

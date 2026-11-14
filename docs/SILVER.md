@@ -720,13 +720,17 @@ floor by band, crates 65.5 % of the pieces; the honest bot breaks 3 % of them.
 
 ### Left for the owner (SV15) and later
 
-Studio check (the list below; first the pad's hold-to-buy and the coins' screen positions); the four sounds; art for
+Studio check (the list below; first the pad's hold-to-buy and the coins' screen positions); the four sounds' volumes
+(each is 1 until the mix pass); art for
 `ui.icon.silver` / `fx.silver.coins`; cosmetics (SV11-SV13); translations. Done since: the heart containers locked and
 built on the Mac (the hand-written layout matched), `heart-icons.png` uploaded 2026-11-14 (133175128335720, in
 `assetIds.ts`), so the bundled vale pack draws them; Silver merged into main. The four sounds' candidates sourced
 2026-11-14 (art/audio.json, silent until the audition): Kenney Interface Sounds (CC0, new in
 `art/vendor/kenney-interface-sounds/`) glass / select / pluck / confirmation / error clips, plus Little Robot Sound
-Factory and Kenney Impact clips already in the vendor folder; none reuses a gold coin sound.
+Factory and Kenney Impact clips already in the vendor folder; none reuses a gold coin sound. Picked at the audition
+2026-11-14: `sfx.silver.crate` LRSF `Collect_Point_02`, `sfx.silver.gain` Interface `pluck_001`, `sfx.shop.buy`
+`maximize_007`, `sfx.shop.deny` `error_008`; built and uploaded 2026-11-14 (`assetIds.ts`), so the bundled vale pack
+plays them.
 
 ## Studio check
 

@@ -1,6 +1,6 @@
 # Goldling rumours: hear it, find its hiding place, catch it
 
-Status (2026-11-12): **built on branch `goldling-rumours` (GR0-GR9); owner tasks GR10 (audio audition), GR11
+Status (2026-11-12): **built on branch `goldling-rumours` (GR0-GR9); GR10 (audio audition) done 2026-11-14; owner tasks GR11
 (Studio check / playtest), GR12 (telemetry, optional) and the confirmation of RD3-RD7 / RD9 pending** (see "As built").
 Plan revision 3: the owner (Kaleb) confirmed RD1, RD2, RD8 and RD10-RD15 (see "Decisions"): the Goldling **brings its
 own barrel or crate** into its room, the piece **glints like a loot piece**, **only players** can break it open, it
@@ -163,7 +163,8 @@ and missing it costs nothing (RD12): you keep everything else the floor gives.
 - [x] **GR9. Docs.** FORTUNE.md ("Hiding places and rumours", as built), DECOR.md / BREAKABLE_DROPS.md (the appended
   piece, the shared glint), FX_AUDIO.md, CLIENT.md, DAILY.md (the bump), the CLAUDE.md docs row and log; seeds for the
   Studio check.
-- [ ] **GR10. [owner] Audio audition** (`art/audio-audition.html`).
+- [x] **GR10. [owner] Audio audition** (`art/audio-audition.html`). Done 2026-11-14: floor `Bonus/Coin3` (`gainDb` -6,
+  `lowpassHz` 2200), room `Bonus/Coin2` doubled; built and uploaded (`assetIds.ts`), so the vale pack plays them.
 - [ ] **GR11. [owner] Studio check and playtest.** The questions: do players go looking, do kids get "it's in the
   glinting crate", and is a calm catch after the clear too easy?
 - [ ] **GR12. Telemetry (optional, folds into FORTUNE.md FO11).** Per Goldling floor: found or not, during the fight or

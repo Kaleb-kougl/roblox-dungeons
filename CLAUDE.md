@@ -1360,7 +1360,8 @@ Decision log (deviations from `PLAN.md`):
   186 / 192 top-level locals (counted on out/). GR8 hunt census (`run/goldenCensus.spec.ts`, `--census`; its bow rows
   now the Archer's): solo sword 17 / 18 focused and during the fight, 18 / 18 after the clear (it comes out within sword
   reach; GE4: 15 / 18 and 6 / 18), Archer bow 6 / 18 focused and 7 / 18 after the clear (the stream's 5 hp / s caps it past floor 2), party of 2 16 / 18 (every sword miss SKIPPED on a full
-  pool). Pending: RD3-RD7 / RD9 confirmation, the audio audition (GR10), the Studio check and playtest (GR11),
+  pool). The rumour clips auditioned and uploaded 2026-11-14 (GR10; vale plays them). Pending: RD3-RD7 / RD9
+  confirmation, the Studio check and playtest (GR11),
   telemetry (GR12, optional) and docs/FORTUNE.md's open calls 2 / 3 with the GR8 numbers.
 
 - **Codex (docs/CODEX.md).** Presentation plus one server doc (no sim, dungeon, lockstep, hash, replay, fixture or score
@@ -1481,7 +1482,8 @@ Decision log (deviations from `PLAN.md`):
   `REQUIRED_STRING_KEYS`, role `silver`, port audio IDs `sfx.silver.gain` / `.crate`, `sfx.shop.buy` / `.deny` last in
   `PORT_AUDIO_EVENTS` (SILENT; a later feature appending there must update codex.spec's tail and the listed skips);
   `contract.luau` / `validate.luau` top-level locals 188 / 192 (counted on out/). Debug `KV_FakeWallet` (Studio),
-  `KV_SilverDebug` (dev), `KV_SilverLabel`. Studio check, sounds, art and cosmetics pending.
+  `KV_SilverDebug` (dev), `KV_SilverLabel`. The four sounds picked and uploaded 2026-11-14 (vale plays them; volumes
+  1 until the mix pass). Studio check, art and cosmetics pending.
 
 ## Commands
 

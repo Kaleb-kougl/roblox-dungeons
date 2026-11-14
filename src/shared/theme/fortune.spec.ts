@@ -172,15 +172,16 @@ describe("fortune: contract", () => {
 		}
 	});
 
-	it("appends the Goldling's two rumours last before the Codex's (docs/GOLDLING_RUMOURS.md GR6): required, sfx; SILENT in every pack", () => {
+	it("appends the Goldling's two rumours last before the Codex's (docs/GOLDLING_RUMOURS.md GR6): required, sfx; SILENT in the placeholder, vale plays them", () => {
 		expect([...GOLDEN_RUMOUR_AUDIO_IDS]).toEqual(["sfx.golden.rumour.floor", "sfx.golden.rumour.room"]);
 		expect(tail(PORT_AUDIO_EVENTS, GOLDEN_RUMOUR_AUDIO_IDS.size(), CODEX_AFTER.audio)).toEqual([
 			...GOLDEN_RUMOUR_AUDIO_IDS,
 		]);
 		for (const id of GOLDEN_RUMOUR_AUDIO_IDS) {
 			expect([id, has(REQUIRED_ASSET_IDS, id), slotFor(id)?.soundGroup]).toEqual([id, true, "sfx"]);
+			// vale plays them: auditioned (GR10) and uploaded 2026-11-14
 			for (const p of sortedKeys(THEME_PACKS))
-				expect([p, id, THEME_PACKS[p].assets[id].kind]).toEqual([p, id, "silent"]);
+				expect([p, id, THEME_PACKS[p].assets[id].kind]).toEqual([p, id, p === "vale" ? "sound" : "silent"]);
 		}
 		// a pack without them still fails validation (required), and the placeholder validates with them silent
 		expect(validateManifest(clone())).toEqual([]);
