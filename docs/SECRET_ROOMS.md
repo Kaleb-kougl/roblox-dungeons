@@ -581,7 +581,7 @@ controller below follows V1's table; the client code compiles, typechecks and li
   every crack it can see and try its weapon on it) per character and with / without Wrecker: share of secrets opened,
   time spent, for the Archer how often she needed a charged shot vs a Charger. → Verify: numbers recorded; SRD1 / SRD4 /
   SRD6 revisited with the owner.
-- [ ] **SR14. [owner] Audio:** pick the knock, the crumble and the discovery jingle (`art/audio-audition.html`). The
+- [x] **SR14. [owner] Audio:** (done 2026-11-13: knock Ninja Adventure Impact, crumble Breaking Rock, jingle LRSF Jingle_Achievement_00; built and uploaded, IDs in `packs/vale/assetIds.ts`) pick the knock, the crumble and the discovery jingle (`art/audio-audition.html`). The
   jingle carries the feature: short, bright, unmistakable, original. *Sources picked by the owner (2026-11-13): the
   crumble "Breaking Rock" by themightyglider (OpenGameArt, CC0; `art/vendor/oga-breaking-rock/rock_break.ogg`, 0.44 s),
   the jingle from Little Robot Sound Factory's "8-Bit Sound Effects Library" (OpenGameArt, CC-BY 3.0, credited on the

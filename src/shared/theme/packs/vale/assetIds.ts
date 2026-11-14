@@ -169,6 +169,9 @@ import type { RobloxAssetId } from "../../types";
  * secret.png (the secret rooms' crack overlay, rubble and dust trickle, docs/SECRET_ROOMS.md SR11; original art,
  * scripts/art/gen-secret-art.js, built by `node scripts/art/build-atlases.js --only secret`) uploaded 2026-11-13, the ID
  * given by the owner in chat: it switches on `secret.crack`, `secret.rubble` and `fx.secret.dust`.
+ * The floor modifier stings (docs/FLOOR_MODIFIERS.md FM10: sfx-floor-modifier-gilded / -hoard / -feast / -plunder /
+ * -bloodmoon) and the secret rooms' sounds (docs/SECRET_ROOMS.md SR14: sfx-secret-knock, sfx-secret-open,
+ * sfx-jingle-secret) uploaded 2026-11-13 as built by audio:build, transcribed from an Asset Manager screenshot.
  */
 export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"amb-b1.ogg": "rbxassetid://91158343621799",
@@ -473,6 +476,14 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"sfx-treasure-crack.ogg": "rbxassetid://129473916727514",
 	"sfx-treasure-open.ogg": "rbxassetid://91726633163994",
 	"sfx-treasure-unlock.ogg": "rbxassetid://134958985801748",
+	"sfx-floor-modifier-bloodmoon.ogg": "rbxassetid://83853491859963",
+	"sfx-floor-modifier-feast.ogg": "rbxassetid://83948020310759",
+	"sfx-floor-modifier-gilded.ogg": "rbxassetid://103239728071115",
+	"sfx-floor-modifier-hoard.ogg": "rbxassetid://87311550138224",
+	"sfx-floor-modifier-plunder.ogg": "rbxassetid://130331294126570",
+	"sfx-jingle-secret.ogg": "rbxassetid://114009226023976",
+	"sfx-secret-knock.ogg": "rbxassetid://123265297415244",
+	"sfx-secret-open.ogg": "rbxassetid://111183685070047",
 	"slime-body-outline.png": "rbxassetid://125641170965641",
 	"slime-body.png": "rbxassetid://105955364807363",
 	"sniper-idle-outline.png": "rbxassetid://72531972026139",

@@ -277,7 +277,7 @@ too heavy for this headless budget), so the Risks' Blood Moon watch is still ope
   catch is 1500 x floor scale). → Verify: numbers recorded; FMD2 /
   FMD6 tuned. *Done: numbers in "As built" (FM9 census); FMD2 / FMD6 kept, Plunder's strength (OC2) and the mix
   (OC3) left to the owner; Blood Moon's bot deaths / clear time and the score per kind not measured.*
-- [ ] **FM10. [owner] Audio:** pick the five stings (`art/audio-audition.html`): boons bright, the twist ominous.
+- [x] **FM10. [owner] Audio:** pick the five stings (`art/audio-audition.html`): boons bright, the twist ominous. *Done: built and uploaded 2026-11-13 (IDs in `packs/vale/assetIds.ts`).*
 - [ ] **FM11. Icons (optional).** → Verify: the sheet's lock, the card and chip with and without the art.
 - [ ] **FM12. [owner] Studio check and playtest** (below). The question: do players read the banner, and do they change
   how they play the floor?

@@ -163,14 +163,14 @@ describe("secret rooms: strings", () => {
 });
 
 describe("secret rooms: sounds", () => {
-	it("are PORT_AUDIO_EVENTS' last three: required, sfx; SILENT in every bundled pack (SR14 picks clips)", () => {
+	it("are PORT_AUDIO_EVENTS' last three: required, sfx; SILENT in the placeholder, uploaded in vale (SR14, 2026-11-13)", () => {
 		expect([...SECRET_AUDIO_IDS]).toEqual(["sfx.secret.knock", "sfx.secret.open", "sfx.jingle.secret"]);
 		expect([SECRET_KNOCK_SOUND, SECRET_OPEN_SOUND, SECRET_JINGLE_SOUND]).toEqual([...SECRET_AUDIO_IDS]);
 		expect(tail(PORT_AUDIO_EVENTS, SECRET_AUDIO_IDS.size())).toEqual([...SECRET_AUDIO_IDS]);
 		for (const id of SECRET_AUDIO_IDS) {
 			expect([id, has(REQUIRED_ASSET_IDS, id), slotFor(id)?.soundGroup]).toEqual([id, true, "sfx"]);
 			for (const p of sortedKeys(THEME_PACKS))
-				expect([p, id, THEME_PACKS[p].assets[id].kind]).toEqual([p, id, "silent"]);
+				expect([p, id, THEME_PACKS[p].assets[id].kind]).toEqual([p, id, p === "vale" ? "sound" : "silent"]);
 		}
 		const m = clone();
 		(m.assets as Obj)[SECRET_OPEN_SOUND] = undefined;

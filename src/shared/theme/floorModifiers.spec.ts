@@ -142,7 +142,7 @@ describe("floor modifiers: theme keys", () => {
 		}
 	});
 
-	it("appends the five stings to PORT_AUDIO_EVENTS before the Goldling rumours' (lowercase: bloodmoon): required, sfx; SILENT in every bundled pack", () => {
+	it("appends the five stings to PORT_AUDIO_EVENTS before the Goldling rumours' (lowercase: bloodmoon): required, sfx; SILENT in the placeholder, uploaded in vale (FM10, 2026-11-13)", () => {
 		expect(FLOOR_MODIFIER_KEYS.map((k) => floorModifierAudioId(k))).toEqual([...FLOOR_MODIFIER_AUDIO_IDS]);
 		expect([...FLOOR_MODIFIER_AUDIO_IDS]).toEqual([
 			"sfx.floor.modifier.gilded",
@@ -158,7 +158,7 @@ describe("floor modifiers: theme keys", () => {
 		for (const id of FLOOR_MODIFIER_AUDIO_IDS) {
 			expect([id, has(REQUIRED_ASSET_IDS, id), slotFor(id)?.soundGroup]).toEqual([id, true, "sfx"]);
 			for (const p of sortedKeys(THEME_PACKS))
-				expect([p, id, THEME_PACKS[p].assets[id].kind]).toEqual([p, id, "silent"]);
+				expect([p, id, THEME_PACKS[p].assets[id].kind]).toEqual([p, id, p === "vale" ? "sound" : "silent"]);
 		}
 		// a missing sting fails like any required sound
 		const m = clone();
