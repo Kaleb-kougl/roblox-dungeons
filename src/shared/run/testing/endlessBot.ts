@@ -162,6 +162,8 @@ export class Driver {
 	readonly depthTicks: number[] = [];
 	readonly stairwellEntries: number[] = [];
 	readonly hashes = new Map<number, string>();
+	/** Called after every step with the input (census specs' observers, e.g. docs/SILVER.md SV1). */
+	onStep: ((s: SimState, input: InputFrame) => void) | undefined;
 	/** Boons taken (Boon indices), in draft order. */
 	readonly drafted: number[] = [];
 	bossKills = 0;
@@ -210,6 +212,7 @@ export class Driver {
 		for (const a of s.combat.actors) if (a.kind !== NO_KIND) present++;
 		if (present > this.maxActors) this.maxActors = present;
 		if (s.tick % 97 === 0) this.hashes.set(s.tick, hashState(s));
+		this.onStep?.(s, input);
 	}
 
 	/** `buttons` plus a careful player's reflexes: a flask at <= 3 half hearts, an Ember at <= 2 (press edges). */

@@ -40,6 +40,7 @@ import {
 	draftCardFor,
 	isDraftOpen,
 	type ActorState,
+	type InputFrame,
 	type RoomScore,
 	type SimState,
 } from "shared/sim";
@@ -109,6 +110,10 @@ export interface SurvivalRun {
 
 export interface SurvivalOptions {
 	readonly maxFloor: number;
+	/** Called after every step (Driver.onStep): a census's observer (docs/SILVER.md SV1). */
+	readonly onStep?: (s: SimState, input: InputFrame) => void;
+	/** Census only: hearts topped up before every tick (Driver's `immortal`), so the run reaches maxFloor. */
+	readonly immortal?: boolean;
 }
 
 /** The fight environment of the driver's current floor: sight through its bullet blocker, BFS fields cached by cell. */
@@ -194,7 +199,8 @@ function resolveGreedy(drv: Driver, rng: Rng): void {
 export function survivalRun(seed: number, who: TuneCharacter, options: SurvivalOptions): SurvivalRun {
 	const setup =
 		who === "both" ? buildEndlessRunConfig(seed, 1) : buildEndlessRunConfig(seed, 1, { characters: [who] });
-	const drv = new Driver(setup, seed);
+	const drv = new Driver(setup, seed, options.immortal === true);
+	drv.onStep = options.onStep;
 	const s = drv.state;
 	const mode = fighterModeOf(who);
 	const mem = newFighterMemory();
