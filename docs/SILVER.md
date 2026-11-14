@@ -435,6 +435,9 @@ run start (unhashed, presentation only). Later characters enter at tier 6, then 
   Balance = `earned - spent` (never stored). `runs` = a ring of the last 64 granted run ids. `runDay` / `dailyDay`
   = the UTC day number (shared/daily `dailyDay`) of the last first-run bonus / Daily bonus. Decoding never throws; a
   missing doc is an empty wallet.
+- **Silver shop fields (docs/SILVER_SHOP.md SH1, 2026-11-14):** optional `bought` (Silver bought with Robux) and
+  `receipts` (the last 128 granted `PurchaseId`s), and every unknown top-level field is kept and written back (so an
+  older server never erases a newer one's fields). Balance = `earned + bought - spent`; `earned` still means play.
 - **Every change is a transaction** (`WalletTransactions`, an `UpdateAsync` wrapper beside `MergeKeyValue`); the
   transform re-reads the stored doc, so concurrent servers compose:
   - `grant(runId, run, ctx)`: cancels if `runId` is in `runs`. Otherwise, **inside the transform** (`applyGrant`,
@@ -783,7 +786,9 @@ Studio check pending (the coins still fly into the icon; the icon crisp in the c
 
 ## Decisions
 
-- **SVD1. One currency, earned only by play.** No premium currency, no Robux purchase of Silver in v1.
+- **SVD1. One currency, earned only by play.** No premium currency, no Robux purchase of Silver in v1. **Superseded
+  (2026-11-14) by docs/SILVER_SHOP.md:** Silver can be bought with Robux (developer products), one pool with earned
+  Silver; still one currency, and what play pays is unchanged (SHD3).
 - **SVD2. Silver's run amount is a pure function of the replayed run** (`runSilver`, read in the validator's final
   check); the server's number is the only one that counts. Crate Silver and room clears are part of that state.
 - **SVD3. Upgrades apply in every ranked world: endless, co-op and the Daily** (owner, 2026-11-13).

@@ -11312,6 +11312,11 @@
 			"bytes": 405
 		},
 		{
+			"path": "roblox/robux-icon.png",
+			"sha256": "6bcfc5a0f67e8c8ba169418ae6664e2409c9b46435b5c8b5e6697a0644bbaf86",
+			"bytes": 156
+		},
+		{
 			"path": "smallscale-archer/Attack1/E/Attack1_0_003.png",
 			"sha256": "f013386577d5874a0845e6c026f9afa3ccf58f263a5b8ba3334e8d947f8f9847",
 			"bytes": 10759

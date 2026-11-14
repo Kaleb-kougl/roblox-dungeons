@@ -178,6 +178,9 @@ import type { RobloxAssetId } from "../../types";
  * The floor modifier stings (docs/FLOOR_MODIFIERS.md FM10: sfx-floor-modifier-gilded / -hoard / -feast / -plunder /
  * -bloodmoon) and the secret rooms' sounds (docs/SECRET_ROOMS.md SR14: sfx-secret-knock, sfx-secret-open,
  * sfx-jingle-secret) uploaded 2026-11-13 as built by audio:build, transcribed from an Asset Manager screenshot.
+ * ui-robux.png (Roblox's own Robux icon as a 14 x 14 white glyph beside the Get Silver prices, docs/SILVER_SHOP.md
+ * "Robux icon"; scripts/art/roblox/prep_robux_icon.py, `node scripts/art/build-atlases.js --only ui.icon.robux`) uploaded
+ * 2026-11-14, transcribed from an Asset Manager screenshot: it switches on `ui.icon.robux`.
  */
 export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"amb-b1.ogg": "rbxassetid://91158343621799",
@@ -547,6 +550,7 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"ui-draft-skull-left.png": "rbxassetid://116162957164169",
 	"ui-draft-skull-right.png": "rbxassetid://73547490089053",
 	"ui-icons.png": "rbxassetid://81953401024187",
+	"ui-robux.png": "rbxassetid://73892929538123",
 	"ui-marker-boost.png": "rbxassetid://112357573917505",
 	"ui-marker-pedestal.png": "rbxassetid://126528421886645",
 	"ui-option-off.png": "rbxassetid://73639480231098",

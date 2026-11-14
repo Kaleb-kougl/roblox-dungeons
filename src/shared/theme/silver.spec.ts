@@ -34,6 +34,7 @@ import {
 	silverStringKeys,
 } from "./silver";
 import { SILVER_COLOR_RULES, silverReport } from "./silverColors";
+import { SILVER_SHOP_STRING_KEYS } from "./silverShop";
 import { COLOR_ROLES } from "./types";
 import { deepClone, sortedKeys, type Obj } from "./util";
 import { validateManifest } from "./validate";
@@ -53,10 +54,13 @@ function tail(list: ReadonlyArray<string>, n: number, skip = 0): string[] {
 }
 
 describe("silver: strings", () => {
-	it("are REQUIRED_STRING_KEYS' last ones, distinct, sorted, in every bundled pack", () => {
+	it("are REQUIRED_STRING_KEYS' last ones before the Silver shop's, distinct, sorted, in every bundled pack", () => {
 		expect(SILVER_STRING_KEYS.size() > 0).toBe(true);
 		expect([...silverStringKeys()]).toEqual([...SILVER_STRING_KEYS]);
-		expect(tail(REQUIRED_STRING_KEYS, SILVER_STRING_KEYS.size())).toEqual([...SILVER_STRING_KEYS]);
+		// docs/SILVER_SHOP.md SH4's keys come after them.
+		expect(tail(REQUIRED_STRING_KEYS, SILVER_STRING_KEYS.size(), SILVER_SHOP_STRING_KEYS.size())).toEqual([
+			...SILVER_STRING_KEYS,
+		]);
 		expect(new Set(REQUIRED_STRING_KEYS).size()).toBe(REQUIRED_STRING_KEYS.size());
 		for (const p of sortedKeys(THEME_PACKS))
 			for (const key of SILVER_STRING_KEYS)

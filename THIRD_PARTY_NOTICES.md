@@ -480,3 +480,13 @@ docs/BOOKSHELVES.md). **Changes made:** rendered to 2D sprites
   **Attribution is required where players can see it**: the main menu's Credits screen (shared/view/menu `CREDITS`)
   shows the title, "by Little Robot Sound Factory (www.littlerobotsoundfactory.com)", "CC BY 3.0 -
   creativecommons.org/licenses/by/3.0" and the change note.
+
+## Robux icon (Roblox Corporation)
+
+- Owner: Roblox Corporation. "Robux" and the Robux icon are Roblox's trademarks.
+- Used for: the Robux icon beside the prices on the Get Silver panel (`ui.icon.robux`, docs/SILVER_SHOP.md "Robux
+  icon"), where Roblox expects experiences to show Robux prices. Taken from Roblox's own client content
+  (`content/textures/ui/common/robux@3x.png` in the Roblox Studio install), resized to a 14 x 14 white glyph by
+  `scripts/art/roblox/prep_robux_icon.py` and uploaded to Roblox as a ui image; never redrawn or altered beyond the
+  resize.
+- Raw file: `art/vendor/roblox/` (gitignored: not redistributed here).

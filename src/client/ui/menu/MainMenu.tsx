@@ -10,7 +10,7 @@ import {
 	selectWalletState,
 } from "client/store";
 import { FocusScope } from "client/ui/focus";
-import { MenuButton, MenuFit, PadHintBar, Panel, Row, SilverAmount, Text } from "client/ui/hud";
+import { MenuButton, MenuFit, PadHintBar, Panel, Row, Text } from "client/ui/hud";
 import { str } from "client/ui/theme";
 import { SFX } from "shared/view/audio";
 import { HUD_STRINGS, HUD_VIEW, NEW_BEST_STRINGS, UI_ART, bestText } from "shared/view/hud";
@@ -33,6 +33,7 @@ import {
 } from "shared/view/menu";
 import { useMenuActions } from "./actions";
 import { DailyCard, DailyPodiumStrip } from "./DailyCard";
+import { SilverBalance } from "./SilverBalance";
 
 const SMALL = new Vector2(MENU_VIEW.smallButton.x, MENU_VIEW.smallButton.y);
 
@@ -55,7 +56,8 @@ const SMALL = new Vector2(MENU_VIEW.smallButton.x, MENU_VIEW.smallButton.y);
  *
  * Silver (docs/SILVER.md SV9): under the title the Silver balance and `First run today: +50` until today's first paying
  * run (a phone: the Armory's small button at the line's end; the desktop column has the Armory as a full button after
- * the Codex), its badge a dot while a next level the balance covers is unseen in the Armory.
+ * the Codex), its badge a dot while a next level the balance covers is unseen in the Armory. Beside the balance the
+ * Silver shop's quiet `+` (docs/SILVER_SHOP.md SH6: SilverBalance; the Get Silver panel over the menu).
  */
 export function MainMenu(props: {
 	/** An invite toast is on screen (the pad's Y jumps to it, docs/GAMEPAD_MENUS.md GM6). */
@@ -224,8 +226,11 @@ export function MainMenu(props: {
 		walletStatus === "loaded" || stacked ? (
 			<Row key="Silver" order={1} align={Enum.HorizontalAlignment.Center}>
 				{walletStatus === "loaded" ? (
-					<SilverAmount
+					// docs/SILVER_SHOP.md SH6 (owner OC3): the Silver shop's `+` beside the balance, on its own row
+					// (Play / Daily never move)
+					<SilverBalance
 						order={1}
+						from="mainMenu"
 						size={HUD_VIEW.smallText}
 						text={str(ARMORY_KEYS.balance, { silver: statusBalance(wallet) })}
 					/>

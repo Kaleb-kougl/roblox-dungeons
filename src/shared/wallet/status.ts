@@ -3,11 +3,14 @@
  *
  * `own` and `equipped` are lists (a Map is no remote-friendly shape for Flamework's guard), sorted by id / slot.
  * `loaded` false (a failed join load, or the Studio fake `unknown`) carries nothing else. `result` answers a
- * `walletBuy` / `walletEquip`; `grant` is a run's settled breakdown (the push after the grant's transaction).
+ * `walletBuy` / `walletEquip`; `grant` is a run's settled breakdown (the push after the grant's transaction); `purchase`
+ * is one granted Silver pack (docs/SILVER_SHOP.md SH2: the push after the receipt's transaction).
  */
 import type { ArmoryItem } from "./catalog";
+import type { SilverFakePrice } from "./shopServer";
 import { ARMORY_CATALOG } from "./catalog";
 import { ownedLevel, walletBalance, type WalletDoc } from "./doc";
+import type { SilverPackId, SilverPurchaseGrant } from "./shop";
 import { nextGoals, type SilverGrantBreakdown, type WalletGoal, type WalletRefusal } from "./transforms";
 
 export interface WalletOwnedEntry {
@@ -32,11 +35,26 @@ export interface WalletActionResult {
 	price?: number;
 }
 
+/** One granted Silver pack, as the buyer's client sees it (no PurchaseId: the client never needs it). */
+export interface WalletPurchaseNotice {
+	productId: number;
+	packId: SilverPackId;
+	silver: number;
+	/** The balance after it. */
+	balance: number;
+}
+
+export function walletPurchaseNotice(g: Readonly<SilverPurchaseGrant>): WalletPurchaseNotice {
+	return { productId: g.productId, packId: g.packId, silver: g.silver, balance: g.balance };
+}
+
 /** The `wallet` payload (server -> client). */
 export interface WalletStatus {
 	/** False when the join load failed (or the Studio fake says `unknown`): the Armory is greyed, the Knight only. */
 	loaded: boolean;
+	/** earned + bought - spent. */
 	balance?: number;
+	/** Silver earned by play only (never bought Silver). */
 	earned?: number;
 	/** Items owned (absent when none), sorted by id. */
 	own?: WalletOwnedEntry[];
@@ -50,6 +68,15 @@ export interface WalletStatus {
 	goals?: WalletGoal[];
 	result?: WalletActionResult;
 	grant?: SilverGrantBreakdown;
+	/** A Silver pack just granted to this player (docs/SILVER_SHOP.md). */
+	purchase?: WalletPurchaseNotice;
+	/**
+	 * The Silver shop exists here (docs/SILVER_SHOP.md SH3: this universe has products, or the Studio fake KV_FakeShop
+	 * gives fake prices): the client shows the `+` beside the balance. Set on loaded statuses only.
+	 */
+	shopAvailable?: boolean;
+	/** Studio's fake prices (KV_FakeShop), in pack order: the panel shows these instead of Roblox's. */
+	fakePrices?: SilverFakePrice[];
 }
 
 /** The status of `doc` on UTC day `day` (`loaded` false, or no doc: `{ loaded: false }` alone). */

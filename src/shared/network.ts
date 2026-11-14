@@ -37,7 +37,7 @@ import type {
 	StartRunRequest,
 } from "shared/run";
 import type { SettingsOverrides } from "shared/settings";
-import type { SilverGrantBreakdown, WalletStatus } from "shared/wallet";
+import type { SilverGrantBreakdown, SilverShopReport, WalletStatus } from "shared/wallet";
 
 /**
  * Typed remotes between client and server (task 9). The only shared contract between `client/` and `server/`.
@@ -54,7 +54,7 @@ import type { SilverGrantBreakdown, WalletStatus } from "shared/wallet";
  * `TUTORIAL_REPORT_RATE`, shared/records `RECORDS_REQUEST_RATE`,
  * shared/daily `DAILY_REQUEST_RATE`, shared/run `RUN_RECAP_RATE`, shared/codex `CODEX.claimRate` for each of
  * `requestCodex` / `codexClaim` / `codexViewed`, shared/wallet `WALLET.requestRate` for each of `requestWallet` /
- * `walletBuy` / `walletEquip`).
+ * `walletBuy` / `walletEquip`, shared/wallet `SILVER_SHOP.reportRate` for each of `silverShopReport` / `silverShopFakeBuy`).
  *
  * Bind side-specific handlers with `GlobalEvents.createServer` (src/server/network.ts) and `GlobalEvents.createClient`
  * (the client's network module, task 8), never here.
@@ -471,6 +471,20 @@ export interface ClientToServerEvents {
 	 * (`result`). Rate limited (WALLET.requestRate).
 	 */
 	walletEquip(slot: string, itemId: string): void;
+	/**
+	 * The Silver shop's funnel telemetry (docs/SILVER_SHOP.md SH7): one client step of the Get Silver panel (opened /
+	 * prompted / bought / cancelled / settled / pricesFailed, where it was opened from, the pack). Re-read with
+	 * shared/wallet readSilverShopReport, rate limited (SILVER_SHOP.reportRate), logged as `SilverShop` and used for
+	 * nothing else (purchases are granted only from Roblox's receipts). No reply.
+	 */
+	silverShopReport(report: SilverShopReport): void;
+	/**
+	 * Studio only (docs/SILVER_SHOP.md SH3): a fake purchase of shown pack `packId` while the Workspace attribute
+	 * KV_FakeShop gives fake prices, granted through the same receipt transform with a fake purchase id (shared/wallet
+	 * fakeSilverReceipt) and answered like a real one (`wallet` with `purchase`). Ignored on live servers and with the
+	 * fake off. Rate limited (SILVER_SHOP.reportRate).
+	 */
+	silverShopFakeBuy(packId: string): void;
 }
 
 export interface ServerToClientEvents {

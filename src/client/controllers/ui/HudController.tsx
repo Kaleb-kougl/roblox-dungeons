@@ -30,7 +30,9 @@ import { LobbyController } from "./LobbyController";
 import { MenuController } from "./MenuController";
 import { RebindController } from "./RebindController";
 import { SettingsController } from "./SettingsController";
+import { SilverShopController } from "./SilverShopController";
 import { WalletController } from "./WalletController";
+import type { SilverPackId, SilverShopFrom } from "shared/wallet";
 
 /** Stock CoreGui that means nothing here (the player is a sim entity: no Humanoid health, no tools). */
 const HIDDEN_CORE_GUI = [Enum.CoreGuiType.Health, Enum.CoreGuiType.Backpack];
@@ -62,6 +64,7 @@ export class HudController implements OnStart {
 		private readonly focus: FocusController,
 		private readonly codex: CodexController,
 		private readonly wallet: WalletController,
+		private readonly silverShop: SilverShopController,
 	) {}
 
 	onStart(): void {
@@ -149,6 +152,9 @@ export class HudController implements OnStart {
 			armoryBuy: (itemId: string) => this.wallet.buy(itemId),
 			armorySeen: (keys) => clientStore.setSeenAffordable(keys),
 			dismissSilverWelcome: click(() => this.settings.updateDisplay({ silverNoticeSeen: true })),
+			openSilverShop: click((from: SilverShopFrom) => this.silverShop.open(from)),
+			closeSilverShop: click(() => this.silverShop.close()),
+			buySilver: click((packId: SilverPackId) => this.silverShop.buy(packId)),
 			inviteFriends: click(() => this.menu.inviteFriends()),
 			playTutorial: click(() => this.tutorial.playTutorial("menu")),
 			back: click(() => this.menu.back()),

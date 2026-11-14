@@ -36,6 +36,7 @@ import {
 } from "./contract";
 import { sortedKeys } from "./util";
 import { SILVER_STRING_KEYS } from "./silver";
+import { SILVER_SHOP_STRING_KEYS } from "./silverShop";
 
 describe("sprite contract", () => {
 	it("keeps the web build's cells, pivots, frame counts and facings", () => {
@@ -237,6 +238,7 @@ describe("required IDs and strings", () => {
 		// + docs/SECRET_ROOMS.md SR10: SECRET_STRING_KEYS (5), bestiary.secret.crack (BESTIARY_STRING_KEYS); SRD12: the
 		// Codex's secrets sub-header, kind line and description (CODEX_STRING_KEYS, 57)
 		// + docs/SILVER.md SV7: SILVER_STRING_KEYS
+		// + docs/SILVER_SHOP.md SH4: SILVER_SHOP_STRING_KEYS
 		expect(REQUIRED_STRING_KEYS.size()).toBe(
 			before +
 				28 +
@@ -261,7 +263,8 @@ describe("required IDs and strings", () => {
 				5 +
 				1 +
 				3 +
-				SILVER_STRING_KEYS.size(),
+				SILVER_STRING_KEYS.size() +
+				SILVER_SHOP_STRING_KEYS.size(),
 		);
 		expect(new Set(REQUIRED_STRING_KEYS).size()).toBe(REQUIRED_STRING_KEYS.size());
 		expect(BIOMES.map((b) => b.forgeTheme)).toEqual(["ancient", "molten", "frost", "grim", "verdant"]);

@@ -113,6 +113,7 @@ import { TREASURE_CAGE_ID, TREASURE_IDS } from "../../treasure";
 import { PACT_ALTAR_ID } from "../../fortune";
 import { SECRET_ART_IDS } from "../../secrets";
 import { cursorOptionalIds } from "../../cursorArt";
+import { ROBUX_ICON_ID } from "../../silverShop";
 import { PLACEHOLDER_MANIFEST } from "../placeholder";
 import { VALE_ASSET_IDS, VALE_UPLOADED_SIZES } from "./assetIds";
 import { VALE_SOUND_LAYOUTS, type ValeSoundLayout } from "./audioLayout";
@@ -945,14 +946,14 @@ export function buildValeManifest(ids: AssetIds = VALE_ASSET_IDS, sources: ValeL
 	for (const id of sortedKeys(VALE_SPRITE_LAYOUTS)) {
 		manifest.assets[id] = valeSpriteAsset(id, VALE_SPRITE_LAYOUTS[id], ids) ?? { kind: "placeholder" };
 	}
-	const optional = new Set([...draftSkinIds(), ...uiSkinIds(), ...cursorOptionalIds()]);
+	const optional = new Set([...draftSkinIds(), ...uiSkinIds(), ...cursorOptionalIds(), ROBUX_ICON_ID]);
 	for (const id of sortedKeys(images)) {
 		const layout = images[id];
 		const assetId = ids[layout.file];
 		if (assetId === undefined) {
 			// an optional draft skin image (docs/DRAFT_REVEAL.md DR3), UI skin piece (docs/UI_ART.md UA4) or the hover
 			// cursor (docs/CURSOR.md C2) is simply absent: the overlay / primitive draws the flat look, the cursor the
-			// plain gauntlet
+			// plain gauntlet; so is Roblox's Robux icon (docs/SILVER_SHOP.md): the Get Silver prices read `55 Robux`
 			if (!optional.has(id)) {
 				manifest.assets[id] = { kind: "placeholder" };
 			}

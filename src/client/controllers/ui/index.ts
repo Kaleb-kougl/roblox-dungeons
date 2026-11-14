@@ -13,6 +13,7 @@
  * MouseIconEnabled, the pointer hidden while on a gamepad included (CursorController).
  */
 export * from "./SettingsController";
+export * from "./SilverShopController";
 export * from "./RebindController";
 export * from "./LeaderboardController";
 export * from "./LobbyController";

@@ -5,6 +5,7 @@
 // characters agree with shared/codex and shared/characters, and every codex-only description the catalog names exists.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { SILVER_AUDIO_IDS, SILVER_ROLES, SILVER_STRING_KEYS } from "./silver";
+import { SILVER_SHOP_STRING_KEYS } from "./silverShop";
 import { CHARACTERS } from "shared/characters";
 import { CODEX_GROUPS, CODEX_TABS, CODEX_TAB_GROUPS, codexDescKeys } from "shared/codex";
 import { SFX_FALLBACK } from "shared/view/audio";
@@ -39,7 +40,7 @@ function tail(list: ReadonlyArray<string>, n: number, skip = 0): string[] {
 /** What docs/SECRET_ROOMS.md SR10 appends after the Codex's entries (secrets.spec.ts), then docs/SILVER.md SV7's (silver.spec.ts). */
 const SECRET_AFTER = {
 	audio: SECRET_AUDIO_IDS.size() + SILVER_AUDIO_IDS.size(),
-	strings: SECRET_STRING_KEYS.size() + SILVER_STRING_KEYS.size(),
+	strings: SECRET_STRING_KEYS.size() + SILVER_STRING_KEYS.size() + SILVER_SHOP_STRING_KEYS.size(),
 } as const;
 
 const quiet = () => {};

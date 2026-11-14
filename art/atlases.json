@@ -947,6 +947,13 @@
 			"pivot": { "x": 53, "y": 54 },
 			"sameCropAs": "ui.cursor"
 		},
+		"ui.icon.robux": {
+			"$comment": "docs/SILVER_SHOP.md \"Robux icon\": Roblox's own white Robux icon beside the Get Silver prices (ROBUX_ICON_ID). Never redrawn: the owner copies robux@3x.png out of the Roblox Studio install into art/vendor/roblox/, and scripts/art/roblox/prep_robux_icon.py (not run by art:build) makes this 14 x 14 white, hard-edged glyph from it; tinted like the button's text. Build just it: node scripts/art/build-atlases.js --only ui.icon.robux (and --lock --only ui.icon.robux).",
+			"file": "roblox/robux-icon.png",
+			"name": "ui-robux",
+			"crop": "none",
+			"rgb": "white"
+		},
 		"ui.ring.player": {
 			"$comment": "Soft ring; cropped to alpha > noiseAlpha + pad. Pivot = centre of the crop (the ring sits centred under the player).",
 			"file": "lords-of-pain-demo/user interface/highlight/highlight_yellow.png",
@@ -1285,7 +1292,7 @@
 				"cutout": { "outlineRgb": 0 }
 			},
 			"ui.icon.gear": {
-				"$comment": "Beside the Options label: the bare gear of the white #f0f0f0 glyph set (12 x 12), made pure white (rgb white) for tinting.",
+				"$comment": "Beside the Options label: the bare gear of the white #f0f0f0 glyph set (14 x 14), made pure white (rgb white) for tinting.",
 				"rect": [465, 402, 12, 12],
 				"rgb": "white"
 			},
@@ -3037,7 +3044,7 @@
 		"$comment": [
 			"docs/SILVER.md SV7: Silver's two optional pieces, ORIGINAL pixel art drawn by scripts/art/gen-silver-art.js",
 			"(art:build and art:lock run it first) into art/vendor/kaleb-vale/silver/, each in a sheet of its own (so no other",
-			"sheet repacks). icon: ui.icon.silver, the counter's 12 x 12 octagonal silver coin stamped with a crescent (never",
+			"sheet repacks). icon: ui.icon.silver, the counter's 14 x 14 octagonal silver coin stamped with a crescent (never",
 			"the score's round gold coin), full colour, packed like `heartIcons` (buildUiIcons) into <icon.atlas>.png. coin:",
 			"fx.silver.coins, the crate burst's coin in flight, an 8-frame greyscale turn (face, oblique, edge, back) looped,",
 			"tinted by `silver` at draw time, alone in <coin.atlas>.png. Both with src/shared/theme/packs/vale/silverLayout.ts.",
