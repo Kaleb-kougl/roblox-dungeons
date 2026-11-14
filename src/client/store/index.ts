@@ -12,6 +12,7 @@ import { optionsSlice } from "./options";
 import { recapSlice } from "./recap";
 import { recordsSlice } from "./records";
 import { settingsSlice } from "./settings";
+import { silverShopSlice } from "./silverShop";
 import { spikesSlice } from "./spikes";
 import { stageSlice } from "./stage";
 import { tooltipSlice } from "./tooltip";
@@ -35,7 +36,8 @@ import { walletSlice } from "./wallet";
  * run-over recap's near-miss line, highlights, Details toggle and arm (docs/RUN_RECAP.md RR5); the `tooltip` slice the item
  * tooltip shown (docs/ITEM_TOOLTIPS.md IT4); the `codex` slice the Codex's load status, the local doc copy and the last
  * run's codex summary (claude/codex-plan.md CX6); the `wallet` slice Silver: the latest wallet push, the settled grants,
- * the Armory's purchase in flight and the last run's Silver preview (docs/SILVER.md SV8).
+ * the Armory's purchase in flight and the last run's Silver preview (docs/SILVER.md SV8); the `silverShop` slice the
+ * Get Silver panel: its flow, Roblox's prices and the on-its-way notice (docs/SILVER_SHOP.md SH5).
  *
  * Import through the directory (`client/store`), never the file.
  */
@@ -53,6 +55,7 @@ export * from "./recap";
 export * from "./records";
 export * from "./selectors";
 export * from "./settings";
+export * from "./silverShop";
 export * from "./spikes";
 export * from "./stage";
 export * from "./tooltip";
@@ -78,6 +81,7 @@ export const clientStore = combineProducers({
 	tooltip: tooltipSlice,
 	codex: codexSlice,
 	wallet: walletSlice,
+	silverShop: silverShopSlice,
 });
 
 export type ClientStore = typeof clientStore;

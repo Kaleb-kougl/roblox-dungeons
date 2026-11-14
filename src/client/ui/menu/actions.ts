@@ -1,6 +1,7 @@
 import React, { useContext } from "@rbxts/react";
 import type { CharacterId } from "shared/characters";
 import type { LobbyVisibility, LobbyWorld } from "shared/lobby";
+import type { SilverPackId, SilverShopFrom } from "shared/wallet";
 
 /**
  * What the menu shell and the lobby screens can do (tasks L3 / L5). HudController builds it from MenuController and
@@ -47,6 +48,14 @@ export interface MenuActions {
 	readonly armorySeen: (keys: ReadonlyArray<string>) => void;
 	/** The returning-player card's Got it (docs/SILVER.md OC12): it never shows again (DisplaySettings.silverNoticeSeen). */
 	readonly dismissSilverWelcome: () => void;
+	/**
+	 * The `+` beside a Silver balance (docs/SILVER_SHOP.md SH6): the Get Silver panel over that screen. Only the Armory's
+	 * header and the main menu call it (owner OC3; scripts/check-silver-shop-entry.test.js holds the callers to them).
+	 */
+	readonly openSilverShop: (from: SilverShopFrom) => void;
+	readonly closeSilverShop: () => void;
+	/** A Get Silver card: Roblox's purchase prompt for the pack (SilverShopController.buy: one at a time). */
+	readonly buySilver: (packId: SilverPackId) => void;
 	/** Roblox's invite prompt without a lobby (docs/INVITES.md ID7). */
 	readonly inviteFriends: () => void;
 	/** One screen back (the Back buttons). */
@@ -106,6 +115,9 @@ const NOOP: MenuActions = {
 	armoryBuy: () => false,
 	armorySeen: nothing,
 	dismissSilverWelcome: nothing,
+	openSilverShop: nothing,
+	closeSilverShop: nothing,
+	buySilver: nothing,
 	inviteFriends: nothing,
 	back: nothing,
 	screenBack: nothing,
