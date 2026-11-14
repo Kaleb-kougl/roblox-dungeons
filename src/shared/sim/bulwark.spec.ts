@@ -27,14 +27,18 @@ import {
 	BulletKind,
 	Button,
 	DEFAULT_SIM_CONFIG,
+	Duo,
 	EMPTY_INPUT,
 	PORT_BAND_ENEMIES_3,
 	Rng,
 	SIEGE_SHOCK_DAMAGE,
 	SIM_DT,
+	SWORD_FINISHER,
+	SWORD_V_LAST,
 	SimCtx,
 	archetypeIndex,
 	createSimState,
+	duoCard,
 	fireBurstRaw,
 	grantCard,
 	hashState,
@@ -562,6 +566,100 @@ describe("Bulwark: the guard break with builds", () => {
 		}
 		expect([starts, t.breaks, a.hp, behind.hp, fans]).toEqual([0, 1, D.hp, 100, 1]);
 		expect(w.s.builds!.pins.size()).toBe(0);
+	});
+
+	it("a carrying Siege arrow stopped by a guarding front: the guard breaks and the slam's shockwave spares it (NXD19)", () => {
+		// The pinned dummy is carried east along the lane into a guarding Bulwark facing it: the shield stops the
+		// heavy arrow (a guard break, the hit dealing nothing) and the arrow slams its carried dummy right there, in
+		// front of the Bulwark and inside the shock radius. The Bulwark whose guard this tick broke takes no shock.
+		const w = buildsWorld(["weapon.bow"]);
+		for (let k = 0; k < 3; k++) grantCard(w.s, 0, Boon.BALLISTA);
+		const pinned = buildsSpawn(w, "test.dummy", 26, LANE);
+		pinned.hp = 100;
+		pinned.hpMax = 100;
+		const a = buildsSpawn(w, "bulwark", 31, LANE);
+		a.cooldown = 1e6;
+		a.faceX = -1;
+		a.faceZ = 0;
+		heavy(w.s, 23, LANE, 1, 0);
+		const t = tally();
+		let starts = 0;
+		let slams = 0;
+		for (let k = 0; k < 40; k++) {
+			step(w.s, EMPTY_INPUT, w.config);
+			collect(w.s, t);
+			const e = w.s.builds!.events;
+			starts += e.pinStartSlot.size();
+			slams += e.slamX.size();
+		}
+		expect([starts, slams, t.breaks]).toEqual([1, 1, 1]);
+		expect([a.hp, a.aiState]).toEqual([D.hp, BULWARK_STAGGER]);
+		expect(pinned.hp < 100).toBe(true); // the slam itself landed on the carried dummy
+	});
+
+	/**
+	 * A Storm Blade knight (Chain Spark + Swift Strikes + the duo) at (20, LANE) swings east at a guarding Bulwark 2.2
+	 * away facing it; an ally dummy 2.8 behind it (out of the sword's reach, inside a spark's range). With `side`, an
+	 * unshielded dummy in the finisher's arc too (spawned after the Bulwark: the sweep reaches the Bulwark first).
+	 * Steps through the first finisher and returns the spark segments' starts and the dummies.
+	 */
+	function stormBlade(side: boolean): {
+		starts: Array<[number, number]>;
+		procs: number;
+		t: Tally;
+		ally: ActorState;
+		other?: ActorState;
+	} {
+		const w = buildsWorld(["weapon.sword"]);
+		grantCard(w.s, 0, Boon.CHAIN_SPARK);
+		grantCard(w.s, 0, Boon.SWIFT_STRIKES);
+		grantCard(w.s, 0, duoCard(Duo.STORM_BLADE));
+		put(w.s, 0, 20, LANE);
+		const a = buildsSpawn(w, "bulwark", 22.2, LANE);
+		a.cooldown = 1e6;
+		a.faceX = -1;
+		a.faceZ = 0;
+		const ally = buildsSpawn(w, "test.dummy", 25, LANE);
+		ally.hp = 1000;
+		ally.hpMax = 1000;
+		let other: ActorState | undefined;
+		if (side) {
+			other = buildsSpawn(w, "test.dummy", 21.3, LANE + 1.3);
+			other.hp = 1000;
+			other.hpMax = 1000;
+		}
+		const swingEast: InputFrame = { moveX: 0, moveZ: 0, aimX: 1000, aimZ: 0, buttons: Button.FIRE };
+		const t = tally();
+		const starts: Array<[number, number]> = [];
+		let procs = 0;
+		let finished = -1;
+		for (let k = 0; k < 160 && (finished < 0 || k < finished + 15); k++) {
+			const tick = w.s.tick;
+			step(w.s, finished < 0 ? swingEast : EMPTY_INPUT, w.config);
+			collect(w.s, t);
+			const wp = w.s.combat.weapons;
+			if (finished < 0 && wp.swingTick === tick && wp.sets[wp.activeSet].v[SWORD_V_LAST] === SWORD_FINISHER)
+				finished = k;
+			const e = w.s.builds!.events;
+			for (let j = 0; j < e.sparkX1.size(); j++) starts.push([e.sparkX1[j], e.sparkZ1[j]]);
+			for (let j = 0; j < e.duoProcDuo.size(); j++) if (e.duoProcDuo[j] === Duo.STORM_BLADE) procs++;
+		}
+		expect(finished >= 0).toBe(true);
+		return { starts, procs, t, ally, other };
+	}
+
+	it("a Storm Blade finisher fully blocked by a guarding front procs nothing (its guard breaks; the ally is untouched)", () => {
+		const r = stormBlade(false);
+		expect([r.t.breaks, r.procs, r.starts.size(), r.ally.hp]).toEqual([1, 0, 0, 1000]);
+	});
+
+	it("a Storm Blade finisher that also hits an unshielded enemy sparks from that enemy", () => {
+		const r = stormBlade(true);
+		const other = r.other!;
+		expect([r.t.breaks, r.procs]).toEqual([1, 1]);
+		expect(r.starts.size() > 0).toBe(true);
+		expect(r.starts[0]).toEqual([other.x, other.z]);
+		expect(other.hp < 1000).toBe(true);
 	});
 
 	it("a Wrecker roll into its front does not break the guard (rolls never hit enemies)", () => {

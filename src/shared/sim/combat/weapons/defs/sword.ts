@@ -162,11 +162,19 @@ const hitSwing: ArcActorHit = (ctx, actor) => {
 	if (shieldStopsMelee(ctx, actor, false)) return;
 	ctx.damageActor(actor, playerHitDamage(ctx.state, ctx.playerIndex, SWORD_DATA.damage));
 };
-/** The first actor the finisher being swept hit (builds' Storm Blade, docs/BUILDS.md BU6); undefined otherwise. */
+/**
+ * The first actor the finisher being swept hit (builds' Storm Blade, docs/BUILDS.md BU6); undefined otherwise. A guarding
+ * Bulwark whose shield takes the finisher (its guard breaks, it takes nothing: NXD19) is not hit: it is never `first`
+ * and never counted in `finisherHits`, so a fully blocked finisher procs no Storm Blade. Without a guarding Bulwark
+ * every actor in the arc is hit, so `finisherHits` equals sweepArc's count and `first` its first actor, as before.
+ */
 let finisherFirst: ActorState | undefined;
+/** How many actors the finisher being swept hit (shield blocks excluded; see finisherFirst). */
+let finisherHits = 0;
 const hitFinisher: ArcActorHit = (ctx, actor) => {
-	if (finisherFirst === undefined) finisherFirst = actor;
 	if (shieldStopsMelee(ctx, actor, true)) return;
+	if (finisherFirst === undefined) finisherFirst = actor;
+	finisherHits++;
 	ctx.damageActor(actor, playerHitDamage(ctx.state, ctx.playerIndex, SWORD_DATA.finisherDamage));
 };
 
@@ -188,7 +196,8 @@ function swing(ctx: SimCtx, v: number[], n: number): void {
 	const p = ctx.player;
 	if (n === SWORD_FINISHER) {
 		finisherFirst = undefined;
-		const hits = sweepArc(
+		finisherHits = 0;
+		sweepArc(
 			ctx,
 			p.x,
 			p.z,
@@ -206,8 +215,9 @@ function swing(ctx: SimCtx, v: number[], n: number): void {
 			true, // the finisher: a secret's crack in its arc opens (docs/SECRET_ROOMS.md SR3)
 		);
 		// Builds (docs/BUILDS.md BU5 / BU6, opt-in): the finisher hook (Flurry's crescent, Storm Blade's spark).
-		if (ctx.state.builds !== undefined) buildsOnFinisher(ctx, hits, finisherFirst);
+		if (ctx.state.builds !== undefined) buildsOnFinisher(ctx, finisherHits, finisherFirst);
 		finisherFirst = undefined;
+		finisherHits = 0;
 		v[SWORD_V_STEP] = 0;
 		v[SWORD_V_BUSY] = attackTicks(ctx.state, ctx.playerIndex, SWORD_DATA.finisherRecoveryTicks);
 	} else {

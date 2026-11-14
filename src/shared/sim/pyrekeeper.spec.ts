@@ -1,7 +1,7 @@
 // docs/NEW_ENEMIES_2.md NX5: the Pyre-keeper (`pyrekeeper`) and its brazier (`pyre`). The light cast (two draws at
 // every decision, the first cooldown the only draw in init), the landing cell rule (the first valid compass point from
 // the drawn start index: FLOOR, no intact piece, no pellet in play, the keeper's own room, >= 2 from every living
-// player and from its other pyres; none: the cast is spent), the caps (3 of its pyres alive, 6 per life), the pyre's
+// player and from every other living pyre, any keeper's; none: the cast is spent), the caps (3 of its pyres alive, 6 per life), the pyre's
 // fire (lit 0.5 s after it lands, one aimed shot every 2 s at the nearest living player in sight, staggered so a
 // keeper's pyres never fire together), the wither at the keeper's death (its own pyres only; a light telegraph is
 // spent with it), the room clearing without the pyres (never members), no drop roll, no affix, and determinism.
@@ -313,6 +313,49 @@ describe("Pyre-keeper: caps and the light", () => {
 	});
 });
 
+describe("Pyre-keeper: two keepers in one room", () => {
+	it("each keeps its landings >= 2 from every living pyre, the other keeper's too; still two draws a decision", () => {
+		// Both light around the same target (the player at the origin), so with only their own pyres kept clear they
+		// would land on each other's compass points.
+		const w = open();
+		const a = keeper(w, 0, 9);
+		const b = keeper(w, 0, -9);
+		const all = () => w.s.combat.actors.filter((o) => o.kind === PYRE_KIND && o.alive !== 0);
+		const lit = [0, 0];
+		for (let k = 0; k < 60; k++) {
+			const me = k % 2 === 0 ? a : b;
+			const other = me === a ? b : a;
+			const live = pyresOf(w.s, me);
+			if (live.size() === K.maxAlive) ctxOf(w).killActor(live[0]);
+			me.v[PYREKEEPER_LIT] = 0;
+			// The other keeper idles (no decision, no strafe flip): this tick's draws are the decision's alone.
+			other.cooldown = 1e6;
+			other.aiTicks = 1e6;
+			me.cooldown = 0;
+			me.aiTicks = 1e6;
+			me.aiState = STATE_ENGAGED;
+			const before = w.s.rngState;
+			tick(w);
+			expect(w.s.rngState).toBe(advanced(before, 2));
+			if (me.aiState !== AiState.TELEGRAPH || me.attack !== PYREKEEPER_ATTACK_LIGHT) continue;
+			const ids = new Set<number>();
+			for (const o of all()) ids.add(o.id);
+			me.aiTicks = 1;
+			tick(w);
+			const p = all().find((o) => !ids.has(o.id));
+			if (p === undefined) continue;
+			expect(p.v[PYRE_KEEPER]).toBe(me.id);
+			lit[me === a ? 0 : 1]++;
+			for (const o of all()) {
+				if (o === p) continue;
+				const d2 = (o.x - p.x) * (o.x - p.x) + (o.z - p.z) * (o.z - p.z);
+				expect(d2 >= K.landingPyreClear * K.landingPyreClear).toBe(true);
+			}
+		}
+		expect(lit[0] > 5 && lit[1] > 5).toBe(true);
+	});
+});
+
 describe("pyre: fire", () => {
 	it("lit 0.5 s after it lands, then one aimed shot every 2 s at the nearest living player in sight", () => {
 		const w = open();
@@ -495,8 +538,10 @@ function why(x: Keep, gx: number, gz: number): Reason | undefined {
 	if (firstRoom(cx, cz) !== firstRoom(x.keeper.v[V_HOME_X], x.keeper.v[V_HOME_Z])) return "room";
 	const p = playerAt(s, 0);
 	if ((p.x - cx) * (p.x - cx) + (p.z - cz) * (p.z - cz) < K.landingPlayerClear * K.landingPlayerClear) return "clear";
-	for (const o of pyresOf(s, x.keeper))
+	for (const o of s.combat.actors) {
+		if (o.kind !== PYRE_KIND || o.alive === 0) continue; // every living pyre, any keeper's
 		if ((o.x - cx) * (o.x - cx) + (o.z - cz) * (o.z - cz) < K.landingPyreClear * K.landingPyreClear) return "clear";
+	}
 	return undefined;
 }
 

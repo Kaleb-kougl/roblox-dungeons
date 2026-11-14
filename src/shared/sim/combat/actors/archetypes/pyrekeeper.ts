@@ -18,7 +18,7 @@
  *     literals) at landingDistance from its target, tried in order from the start index, whose cell is valid (cell
  *     centre: FLOOR, so no wall / void / pool / solid decor; no intact piece; no pellet still in play; in the room
  *     holding its home, as the imp's blink; >= landingPlayerClear from every living player and >= landingPyreClear from
- *     its living pyres). None valid: the cast is spent with no pyre and no telegraph. Found: v[PYREKEEPER_LAND_X / _Z] =
+ *     every living pyre, any keeper's). None valid: the cast is spent with no pyre and no telegraph. Found: v[PYREKEEPER_LAND_X / _Z] =
  *     the cell centre, the telegraph lightTelegraphTicks (attack PYREKEEPER_ATTACK_LIGHT, the `ring` hint), then the
  *     pyre spawns there (`lightPyre`; v[PYREKEEPER_LIT] + 1, SimEvents.pyresLanded) with its keeper id, a free stagger
  *     slot and its first shot aligned on its living siblings' period (`staggerDelay`). Not re-validated at the spawn: a
@@ -263,8 +263,11 @@ function pelletCell(ctx: SimCtx, gx: number, gz: number): boolean {
 	return taken === 0 || taken === PELLET_STOLEN;
 }
 
-/** True when (x, z) keeps at least `clear` from every living player and from every living pyre of keeper `a`. */
-function landingClear(ctx: SimCtx, a: Readonly<ActorState>, d: PyrekeeperData, x: number, z: number): boolean {
+/**
+ * True when (x, z) keeps at least `clear` from every living player and from every living pyre, any keeper's (two
+ * keepers can share a room: a Horde's second wave copies one).
+ */
+function landingClear(ctx: SimCtx, d: PyrekeeperData, x: number, z: number): boolean {
 	const n = partySize(ctx.state);
 	const p2 = d.landingPlayerClear * d.landingPlayerClear;
 	for (let i = 0; i < n; i++) {
@@ -279,7 +282,7 @@ function landingClear(ctx: SimCtx, a: Readonly<ActorState>, d: PyrekeeperData, x
 	const actors = ctx.actors;
 	for (let i = 0; i < actors.size(); i++) {
 		const o = actors[i];
-		if (!isPyreOf(o, kind, a.id)) continue;
+		if (o.kind !== kind || o.alive === 0) continue;
 		const dx = o.x - x;
 		const dz = o.z - z;
 		if (dx * dx + dz * dz < q2) return false;
@@ -295,7 +298,7 @@ export function pyrekeeperLandingValid(ctx: SimCtx, a: Readonly<ActorState>, gx:
 	const home = ctx.roomAt(a.v[V_HOME_X], a.v[V_HOME_Z]);
 	const there = ctx.roomAt(x, z);
 	if (home === undefined ? there !== undefined : there === undefined || there.id !== home.id) return false;
-	return landingClear(ctx, a, ctx.data<PyrekeeperData>(a), x, z);
+	return landingClear(ctx, ctx.data<PyrekeeperData>(a), x, z);
 }
 
 /**

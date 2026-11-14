@@ -7,7 +7,8 @@
  *
  * Hooks called during the phases of stepCombat (generic, so BU6's duos can reuse them):
  *   buildsOnFinisher(ctx, hits, first)   sword.ts, after a finisher's sweep (`hits` actors hit, `first` the first of
- *                                   them). Flurry (Swift Strikes III): FLURRY_CRESCENT from the player along the
+ *                                   them; a guarding Bulwark whose shield took it is not hit, docs/NEW_ENEMIES_2.md
+ *                                   review fixes). Flurry (Swift Strikes III): FLURRY_CRESCENT from the player along the
  *                                   facing (fireEffect FLURRY, gen 0; first moves this tick, like an arrow). BU6 Storm
  *                                   Blade (./duos.ts stormBladeFinisher): a finisher that hit queues a spark.
  *                                   docs/BUILDS_V2.md BV7 Full Heart (./fullHeart.ts fullHeartBeam): at full hearts,

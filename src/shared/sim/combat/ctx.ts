@@ -100,6 +100,13 @@ export class SimCtx {
 	 * function of the hashed pool), bind() empties it, so a ctx that never steps combat sees no shield.
 	 */
 	readonly guards: number[] = [];
+	/**
+	 * The actor slots of the Bulwarks whose guard broke this tick (docs/NEW_ENEMIES_2.md review fixes, ../shield.ts
+	 * shieldStopsSlam: a Siege slam's shockwave from in front spares them for the rest of the tick, so a carrying Siege
+	 * arrow that broke the guard cannot hurt it with its own slam: NXD19). Transient, never hashed: shield.ts guardSlots
+	 * empties it with the guard list, breakGuard appends, bind() empties it.
+	 */
+	readonly guardsBroken: number[] = [];
 
 	bind(state: SimState, config: Readonly<SimConfig>, input: Readonly<InputFrame>): this {
 		this.state = state;
@@ -119,6 +126,7 @@ export class SimCtx {
 		this.auraMask.clear();
 		this.pinMask.clear();
 		this.guards.clear();
+		this.guardsBroken.clear();
 		return this;
 	}
 
