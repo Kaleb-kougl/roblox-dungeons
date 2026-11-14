@@ -17,6 +17,7 @@ export * from "./DailyService";
 export * from "./DailyFriendsService";
 export * from "./WalletService";
 export * from "./SilverAccessService";
+export * from "./SilverShopService";
 export * from "./data/DataStoreKeyValue";
 export * from "./data/MergeKeyValue";
 export * from "./data/OrderedDataStoreScores";

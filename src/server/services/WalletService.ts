@@ -11,13 +11,22 @@ import { playerDataKey } from "shared/settings";
 import {
 	MemoryWalletStore,
 	WALLET,
+	SILVER_SHOP_FAKE_ATTRIBUTE,
 	WALLET_FAKE_ATTRIBUTE,
 	WalletBook,
 	armoryPurchaseEvent,
 	encodeWalletDoc,
 	grantEconomyEvents,
+	parseFakeShop,
 	parseFakeWallet,
 	predictRunGrants,
+	silverShopStatusFields,
+	walletPurchaseNotice,
+	type FakeShop,
+	type SilverPack,
+	type SilverPurchaseBookResult,
+	type SilverPurchaseGrant,
+	type SilverReceipt,
 	purchaseEconomyEvent,
 	type FakeWallet,
 	type RunGrantPlan,
@@ -73,7 +82,9 @@ interface PendingGrant {
  * only) replaces every player's stored doc in that memory store (`unknown`: the wallet unknown for the session); a
  * change of the attribute resets the memory store, reloads every player and pushes their status.
  *
- * Seams for other services (Track H): `effectiveUpgrades(userId)`, `ownsCharacter(userId, characterId)`.
+ * Seams for other services (Track H): `effectiveUpgrades(userId)`, `ownsCharacter(userId, characterId)`; for the
+ * Silver shop (docs/SILVER_SHOP.md SH3, SilverShopService): `purchaseSilver(receipt, pack)`, `pushPurchase(userId,
+ * grant)`, `fakeShop()`. Every loaded status carries `shopAvailable` (and Studio's `fakePrices`).
  */
 @Service({})
 export class WalletService implements OnStart {
@@ -123,6 +134,12 @@ export class WalletService implements OnStart {
 		if (RunService.IsStudio()) {
 			this.janitor.Add(
 				Workspace.GetAttributeChangedSignal(WALLET_FAKE_ATTRIBUTE).Connect(() => this.resetFake()),
+			);
+			// docs/SILVER_SHOP.md SH3: the shop fields (shopAvailable / fakePrices) follow KV_FakeShop live.
+			this.janitor.Add(
+				Workspace.GetAttributeChangedSignal(SILVER_SHOP_FAKE_ATTRIBUTE).Connect(() => {
+					for (const player of Players.GetPlayers()) this.send(player);
+				}),
 			);
 		}
 
@@ -184,6 +201,37 @@ export class WalletService implements OnStart {
 	/** Whether `userId` may play `characterId` (the Knight always; an unknown wallet: the Knight only). Never yields. */
 	ownsCharacter(userId: number, characterId: CharacterId): boolean {
 		return this.book.ownsCharacter(userId, characterId);
+	}
+
+	/**
+	 * SilverShopService (docs/SILVER_SHOP.md SH3): one developer-product receipt for `receipt.playerId` through the
+	 * book (the same per-player lock and retries; loaded or not, on this server or not, SHD4). `pack` undefined: not a
+	 * Silver pack. In Studio it runs on the memory store like every other change. May yield.
+	 */
+	purchaseSilver(receipt: SilverReceipt, pack: SilverPack | undefined): SilverPurchaseBookResult {
+		return this.book.purchase(receipt.playerId, receipt, pack);
+	}
+
+	/** SilverShopService: the buyer (if here and loaded) gets a `wallet` push with the grant as `purchase`. */
+	pushPurchase(userId: number, grant: SilverPurchaseGrant): void {
+		const player = Players.GetPlayerByUserId(userId);
+		if (player === undefined || player.Parent === undefined || !this.ready.has(player)) return;
+		const status = this.status(player);
+		status.purchase = walletPurchaseNotice(grant);
+		Events.wallet.fire(player, status);
+	}
+
+	/**
+	 * The Studio shop fake in force (SILVER_SHOP_FAKE_ATTRIBUTE, parseFakeShop), or undefined (live servers, unset or
+	 * unparsable).
+	 */
+	fakeShop(): FakeShop | undefined {
+		if (!RunService.IsStudio()) return undefined;
+		const raw = Workspace.GetAttribute(SILVER_SHOP_FAKE_ATTRIBUTE);
+		if (raw === undefined) return undefined;
+		const fake = parseFakeShop(raw);
+		if (fake === undefined) log.warn("BAD_FAKE", `${SILVER_SHOP_FAKE_ATTRIBUTE} = ${tostring(raw)} ignored`);
+		return fake;
 	}
 
 	/** Studio with KV_FakeWallet set: such runs pay (into the fake), so the grant path can be tested in Studio. */
@@ -268,7 +316,14 @@ export class WalletService implements OnStart {
 	}
 
 	private status(player: Player): WalletStatus {
-		return this.book.status(player.UserId, this.day());
+		const status = this.book.status(player.UserId, this.day());
+		if (status.loaded) {
+			// docs/SILVER_SHOP.md SH3: whether the client shows the `+` (and Studio's fake prices).
+			const shop = silverShopStatusFields(game.GameId, this.fakeShop());
+			status.shopAvailable = shop.shopAvailable;
+			if (shop.fakePrices !== undefined) status.fakePrices = shop.fakePrices;
+		}
+		return status;
 	}
 
 	/** Sends the player's status, only once their join load ended. */
