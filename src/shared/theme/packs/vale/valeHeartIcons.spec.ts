@@ -1,8 +1,8 @@
 // The vale pack's half-heart containers (docs/SILVER.md SV16, OC18): the generated sheet (heartIconLayout.ts,
 // scripts/art/gen-heart-halfmax.js via art/atlases.json `heartIcons`) holds the two 18 x 15 containers under shared/theme
 // HEART_ICON_IDS; both switch on with the sheet's one ID (all or nothing, like the armor pips), validate, are one
-// content id, and once in the pack the HUD's heartArt picks them over the cut whole heart. Not uploaded yet: the bundled
-// pack has neither.
+// content id, and once in the pack the HUD's heartArt picks them over the cut whole heart. Uploaded 2026-11-14: the bundled
+// pack draws both.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { HEART_FILL, heartArt, skinHasOf } from "shared/view/hud";
 import { HEART_ICON_IDS, HEART_ICON_PREFIX } from "../../heartIcons";
@@ -47,8 +47,14 @@ describe("vale half-heart containers: the generated sheet", () => {
 		expect(a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h).toBe(false);
 	});
 
-	it("is not uploaded yet: the bundled pack has no container (the HUD cuts the whole hearts)", () => {
-		expect(VALE_ASSET_IDS[VALE_HEART_ICON_FILE]).toBe(undefined);
+	it("is uploaded: the bundled pack has both containers on the sheet's one ID", () => {
+		const id = VALE_ASSET_IDS[VALE_HEART_ICON_FILE];
+		expect(id).toBe("rbxassetid://133175128335720");
+		const m = buildValeManifest(VALE_ASSET_IDS);
+		for (const h of heartIds()) {
+			const a = m.assets[h];
+			expect([h, a !== undefined && a.kind === "image" ? a.assetId : undefined]).toEqual([h, id]);
+		}
 	});
 });
 

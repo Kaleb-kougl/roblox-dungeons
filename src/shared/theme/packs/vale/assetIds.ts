@@ -141,7 +141,7 @@ import type { RobloxAssetId } from "../../types";
  * every rect; the 16 x 15 sheet uploaded 2026-11-08, the ID given by the owner in chat.
  * heart-icons.png (the half-heart containers ui.heart.halfmax / .halfmax.empty, docs/SILVER.md SV16; cut from the UI
  * sheet's hearts by scripts/art/gen-heart-halfmax.js, built by `node scripts/art/build-atlases.js --only heartIcons`):
- * not uploaded yet, so no ID below (the HUD cuts the whole heart art in half until it is).
+ * uploaded 2026-11-14, the ID given by the owner in chat (an Asset Manager screenshot).
  * duo-icons.png (one icon per duo, docs/BUILDS.md BU11; original art, scripts/art/gen-duo-icons.js, built by
  * `node scripts/art/build-atlases.js --only duoIcons`) and lop-patch-blotch1 / -2.png (the Lords of Pain floor blotches,
  * biome.1 floor patches 6 / 7, docs/KENNEY_DECOR.md; scripts/art/lop/floor_blotches.py) uploaded 2026-11-11, transcribed
@@ -242,6 +242,7 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"grave-rounded.png": "rbxassetid://105320544067356",
 	"grave-skull.png": "rbxassetid://113527738840348",
 	"hazards.png": "rbxassetid://121912104813388",
+	"heart-icons.png": "rbxassetid://133175128335720",
 	"item-icons.png": "rbxassetid://82172693899829",
 	"imp-attack-outline.png": "rbxassetid://87826495349638",
 	"imp-attack.png": "rbxassetid://106802821695726",
