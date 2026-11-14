@@ -9,7 +9,9 @@
  *                     with a loaded wallet (an unknown wallet: the Knight only, docs/SILVER.md "The Archer unlock")
  *   statusUpgrades    the sim-lever upgrade levels (shared/characters UpgradeLevels; no wallet: NO_UPGRADES)
  *   statusBalance     the Silver balance (0 when not loaded)
- *   ownedCharacterOr  a pick the player owns, else the default character (the stored DisplaySettings.character)
+ *   ownedCharacterOr  a pick the player owns, else the default character (the stored DisplaySettings.character);
+ *                     before the first payload (pending) the pick stands (the server decides: a `locked_character`
+ *                     reply falls back to the Knight), unless `strict` (a run the server never sees: the Knight)
  */
 import {
 	DEFAULT_CHARACTER,
@@ -59,7 +61,16 @@ export function statusBalance(status: Readonly<WalletStatus> | undefined): numbe
 	return math.max(0, status.balance ?? 0);
 }
 
-/** `pick` when the player owns it, else the default character (the Knight). */
-export function ownedCharacterOr(status: Readonly<WalletStatus> | undefined, pick: CharacterId): CharacterId {
+/**
+ * `pick` when the player owns it, else the default character (the Knight). Before the first payload (`status`
+ * undefined) the pick stands unless `strict`: the server checks a ranked start or a Ready itself, so an owner is not
+ * turned into the Knight in the seconds before the join push; a run the server never sees passes `strict`.
+ */
+export function ownedCharacterOr(
+	status: Readonly<WalletStatus> | undefined,
+	pick: CharacterId,
+	strict = false,
+): CharacterId {
+	if (status === undefined && !strict) return pick;
 	return statusOwns(status, pick) ? pick : DEFAULT_CHARACTER;
 }

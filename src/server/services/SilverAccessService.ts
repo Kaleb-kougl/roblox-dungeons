@@ -1,6 +1,6 @@
 import { Service } from "@flamework/core";
 import { serverLogger } from "server/log";
-import { OPEN_SILVER_ACCESS, accessOwnsCharacter, accessUpgrades, type SilverAccess } from "shared/run";
+import { LOCKED_SILVER_ACCESS, accessOwnsCharacter, accessUpgrades, type SilverAccess } from "shared/run";
 import type { CharacterId, UpgradeLevels } from "shared/characters";
 
 const log = serverLogger("SilverAccess");
@@ -9,12 +9,12 @@ const log = serverLogger("SilverAccess");
  * The Silver wallet seam for run starts and lobbies (docs/SILVER.md SV6 / SV17; pure rules in shared/run
  * silverAccess.ts). RunSessionService reads each member's upgrade levels at a start and checks the characters they
  * play; LobbyService checks a Ready's pick and re-checks at the countdown's end. The wallet (WalletService) wires itself
- * in once with `setSilverAccess`; until then OPEN_SILVER_ACCESS (no upgrades, every character owned) keeps the build
- * as it was before Silver. No DataStore work of its own: never yields.
+ * in once with `setSilverAccess`, at its construction; until then LOCKED_SILVER_ACCESS (no upgrades, the starters
+ * only), so a wiring mistake locks the Archer rather than giving her away. No DataStore work of its own: never yields.
  */
 @Service({})
 export class SilverAccessService {
-	private access: SilverAccess = OPEN_SILVER_ACCESS;
+	private access: SilverAccess = LOCKED_SILVER_ACCESS;
 	private wired = false;
 
 	/** Wires the wallet in. Once: a second call is refused (logged) and keeps the first. */

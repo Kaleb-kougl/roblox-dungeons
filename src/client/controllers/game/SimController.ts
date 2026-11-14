@@ -1887,7 +1887,8 @@ export class SimController implements OnStart {
 					: undefined;
 			// docs/SILVER.md SV18: a run the server did not issue (the unranked fallback, a debug or dev run) never builds
 			// a character the wallet does not own; a ranked run plays the server's own echo of the pick.
-			const character = runId !== undefined ? this.runCharacter : ownedCharacterOr(wallet, this.runCharacter);
+			const character =
+				runId !== undefined ? this.runCharacter : ownedCharacterOr(wallet, this.runCharacter, true);
 			const setup = buildWorldSetup(world, seed, {
 				atBossDoor,
 				dev,

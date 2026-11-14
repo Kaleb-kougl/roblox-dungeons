@@ -36,6 +36,15 @@ export const OPEN_SILVER_ACCESS: SilverAccess = table.freeze({
 	ownsCharacter: () => true,
 });
 
+/**
+ * The server's default before the wallet is wired (SilverAccessService): no upgrades, starters only (accessOwnsCharacter
+ * always grants the starters), so a wiring mistake locks the Archer rather than giving her away.
+ */
+export const LOCKED_SILVER_ACCESS: SilverAccess = table.freeze({
+	upgradesFor: () => undefined,
+	ownsCharacter: () => false,
+});
+
 /** `access.upgradesFor(userId)`, checked: undefined when it errors or answers anything but valid UpgradeLevels. */
 export function accessUpgrades(access: SilverAccess, userId: number): UpgradeLevels | undefined {
 	const [ok, answer] = pcall(() => access.upgradesFor(userId));

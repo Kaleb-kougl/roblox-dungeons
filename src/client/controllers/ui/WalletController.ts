@@ -2,9 +2,10 @@ import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { RunService } from "@rbxts/services";
 import { Events } from "client/network";
-import { clientStore } from "client/store";
+import { clientStore, selectRecordsStatus, selectWallet } from "client/store";
 import { DEFAULT_CHARACTER } from "shared/characters";
 import { SFX } from "shared/view/audio";
+import { silverWelcomeDecision } from "shared/view/menu";
 import { SILVER_SHOP, walletShown } from "shared/view/silver";
 import type { WalletStatus } from "shared/wallet";
 import { AudioController } from "../audio/AudioController";
@@ -42,6 +43,16 @@ export class WalletController implements OnStart {
 			this.settings.setSelectedCharacter(DEFAULT_CHARACTER);
 		});
 		this.janitor.Add(RunService.Heartbeat.Connect(() => this.expireBuy()));
+		// docs/SILVER.md OC12: the returning-player card's decision, latched once both join pushes are in.
+		const latch = () => {
+			const st = clientStore.getState();
+			if (st.wallet.welcome !== undefined) return;
+			const show = silverWelcomeDecision(selectWallet(st), selectRecordsStatus(st));
+			if (show !== undefined) clientStore.latchSilverWelcome(show);
+		};
+		this.janitor.Add(clientStore.subscribe(selectWallet, latch));
+		this.janitor.Add(clientStore.subscribe(selectRecordsStatus, latch));
+		latch();
 	}
 
 	/** The latest push (undefined until the first). */

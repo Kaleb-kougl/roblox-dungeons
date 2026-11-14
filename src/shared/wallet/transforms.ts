@@ -80,7 +80,9 @@ export type WalletRefusal =
 	| "notOwned"
 	| "wrongSlot"
 	| "badSlot"
-	| "newerVersion";
+	| "newerVersion"
+	/** A buy whose expected level is not the stored next level (it went through already, or the copy was behind). */
+	| "stale";
 
 export type WalletGrantResult =
 	| { readonly ok: true; readonly doc: WalletDoc; readonly breakdown: SilverGrantBreakdown }
@@ -174,10 +176,14 @@ export function applyBuy(
 	doc: Readonly<WalletDoc>,
 	itemId: string,
 	catalog: ReadonlyArray<ArmoryItem> = ARMORY_CATALOG,
+	expectLevel?: number,
 ): WalletBuyResult {
 	const it = typeIs(itemId, "string") ? armoryItem(itemId, catalog) : undefined;
 	if (it === undefined) return { ok: false, reason: "unknown", doc };
-	const level = ownedLevel(doc, it.id) + 1;
+	const level = ownedLevel(doc, it.id, catalog) + 1;
+	// The level the player chose to buy (the session copy's next level): a retried UpdateAsync that already committed,
+	// or a copy behind the store, never buys a second level the player did not choose.
+	if (expectLevel !== undefined && level !== expectLevel) return { ok: false, reason: "stale", doc };
 	const tier = itemTier(it, level);
 	const price = tier !== undefined ? tierPrice(tier) : undefined;
 	if (tier === undefined || price === undefined) return { ok: false, reason: "maxed", doc };
@@ -254,7 +260,7 @@ export function nextGoals(
 /** One wallet change, as WalletService runs it inside a store transform. */
 export type WalletOp =
 	| { readonly kind: "grant"; readonly grant: WalletGrant; readonly ctx: WalletGrantContext }
-	| { readonly kind: "buy"; readonly itemId: string }
+	| { readonly kind: "buy"; readonly itemId: string; readonly level?: number }
 	| { readonly kind: "equip"; readonly slot: string; readonly itemId: string };
 
 /** A transaction's outcome. `write` is the value to store (undefined: cancel the write). */
@@ -283,7 +289,7 @@ export function walletTransaction(
 		return { ok: true, doc: r.doc, write: encodeWalletDoc(r.doc), breakdown: r.breakdown };
 	}
 	if (op.kind === "buy") {
-		const r = applyBuy(doc, op.itemId, catalog);
+		const r = applyBuy(doc, op.itemId, catalog, op.level);
 		if (!r.ok) return { ok: false, reason: r.reason, doc };
 		return { ok: true, doc: r.doc, write: encodeWalletDoc(r.doc), purchase: r.purchase };
 	}

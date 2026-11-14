@@ -226,11 +226,11 @@ describe("silver: the run-over rows", () => {
 		]);
 	});
 
-	it("settles on the verdict's prediction, then the wallet's grant; bonus rows only when they apply", () => {
+	it("shows the verdict's prediction still dimmed, then settles undimmed on the wallet's grant; bonus rows only when they apply", () => {
 		const predicted = breakdown({ sum: 60, firstRunBonus: 50, total: 110, balance: 210 });
 		const m = silverRecapModel({ ...base, verdict: "accepted", predicted }, s);
 		expect(ids(m)).toEqual(["run", "firstRun", "total", "goal"]);
-		if (m.kind === "rows") expect([m.dim, m.runAmount]).toEqual([false, 60]);
+		if (m.kind === "rows") expect([m.dim, m.runAmount]).toEqual([true, 60]);
 		// another server took the day's bonus first: the settled grant has none
 		const settled = breakdown({ sum: 60, total: 60, balance: 160 });
 		const n = silverRecapModel({ ...base, verdict: "accepted", predicted, settled }, s);
@@ -317,6 +317,10 @@ describe("silver: the wallet reads", () => {
 		expect([statusBalance(archer), statusBalance(undefined)]).toEqual([5, 0]);
 		expect(ownedCharacterOr(LOADED, "archer")).toBe(DEFAULT_CHARACTER);
 		expect(ownedCharacterOr(archer, "archer")).toBe("archer");
+		// before the first payload the pick stands (the server decides), unless strict
+		expect(ownedCharacterOr(undefined, "archer")).toBe("archer");
+		expect(ownedCharacterOr(undefined, "archer", true)).toBe(DEFAULT_CHARACTER);
+		expect(ownedCharacterOr({ loaded: false }, "archer")).toBe(DEFAULT_CHARACTER);
 	});
 
 	it("item labels: a level in Roman numerals when the item has several, the name alone otherwise", () => {

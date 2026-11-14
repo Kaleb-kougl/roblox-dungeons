@@ -22,6 +22,12 @@ export interface WalletTunables {
 	readonly noItem: string;
 	/** BindToClose: give up waiting for the last transactions after this many seconds (Roblox allows about 30). */
 	readonly shutdownSeconds: number;
+	/**
+	 * A grant whose transaction failed (every retry of the DataStore call errored) waits this many seconds and is tried
+	 * again, up to `grantRetryMax` more times (the run-id ring makes a retry safe), and once more at BindToClose.
+	 */
+	readonly grantRetrySeconds: number;
+	readonly grantRetryMax: number;
 	/** BindToClose: how often it re-checks the pending transactions. */
 	readonly shutdownPollSeconds: number;
 	/** How many next goals `nextGoals` returns by default (the next one and the one after, SVD24). */
@@ -36,6 +42,8 @@ export const WALLET: WalletTunables = table.freeze({
 	writeFromStudio: false,
 	noItem: "",
 	shutdownSeconds: 25,
+	grantRetrySeconds: 30,
+	grantRetryMax: 10,
 	shutdownPollSeconds: 0.1,
 	goals: 2,
 });

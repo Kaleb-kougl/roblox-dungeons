@@ -18,8 +18,17 @@
  */
 import { withRetries, type RetryPolicy } from "shared/settings";
 import type { CharacterId } from "shared/characters";
-import { WALLET, WALLET_RETRY } from "./config";
-import { decodeWalletDoc, ownsCharacter, walletUpgradeLevels, type WalletDoc, type WalletUpgradeLevels } from "./doc";
+import { WALLET, WALLET_DOC_VERSION, WALLET_RETRY } from "./config";
+import {
+	decodeWalletDoc,
+	ownedLevel,
+	ownsCharacter,
+	walletDocVersionOf,
+	walletUpgradeLevels,
+	type WalletDoc,
+	type WalletUpgradeLevels,
+} from "./doc";
+import { armoryItem, itemTier, tierPrice } from "./catalog";
 import { walletStatusOf, type WalletActionResult, type WalletStatus } from "./status";
 import {
 	walletTransaction,
@@ -117,6 +126,13 @@ export class WalletBook {
 			this.copies.set(userId, { loaded: false });
 			return false;
 		}
+		// A doc written by a newer build (a rolling update): unknown here, never shown as an empty wallet (its
+		// transactions refuse it too, walletTransaction's newerVersion).
+		const version = walletDocVersionOf(r.value);
+		if (version !== undefined && version > WALLET_DOC_VERSION) {
+			this.copies.set(userId, { loaded: false });
+			return false;
+		}
 		this.copies.set(userId, { loaded: true, doc: decodeWalletDoc(r.value) });
 		return true;
 	}
@@ -210,7 +226,10 @@ export class WalletBook {
 
 	/** A client's `walletBuy`. May yield. */
 	buy(userId: number, itemId: string): { readonly result: WalletActionResult; readonly outcome?: WalletTxOutcome } {
-		return this.request(userId, "buy", itemId, { kind: "buy", itemId });
+		// The level the player chose (the session copy's next one): a retried write that already committed answers
+		// `stale`, which is reported as the purchase it was (request below).
+		const level = ownedLevel(this.doc(userId), typeIs(itemId, "string") ? itemId : "") + 1;
+		return this.request(userId, "buy", itemId, { kind: "buy", itemId, level });
 	}
 
 	/** A client's `walletEquip` (`itemId` WALLET.noItem empties the slot). May yield. */
@@ -236,6 +255,14 @@ export class WalletBook {
 		this.requesting.delete(userId);
 		if (!r.ok) return { result: { action, itemId: id, ok: false, reason: "failed" } };
 		const o = r.outcome;
+		// A stale buy whose level is already in the stored doc went through on an earlier try of the same request.
+		if (op.kind === "buy" && o.reason === "stale" && op.level !== undefined && ownedLevel(o.doc, id) >= op.level) {
+			const it = armoryItem(id);
+			const tier = it !== undefined ? itemTier(it, op.level) : undefined;
+			const done: WalletActionResult = { action, itemId: id, ok: true, level: op.level };
+			if (tier !== undefined) done.price = tierPrice(tier);
+			return { result: done, outcome: o };
+		}
 		const result: WalletActionResult = { action, itemId: id, ok: o.ok };
 		if (o.reason !== undefined) result.reason = o.reason;
 		if (o.purchase !== undefined) {

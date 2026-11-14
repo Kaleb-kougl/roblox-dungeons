@@ -1,12 +1,12 @@
 import React, { useRef } from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
-import { selectDisplay, selectRecordsStatus, selectWallet } from "client/store";
+import { selectDisplay, selectSilverWelcome } from "client/store";
 import { FocusScope } from "client/ui/focus";
 import { MenuButton, Panel, Text } from "client/ui/hud";
 import { SILVER_WELCOME_KEYS } from "shared/theme";
 import { SFX } from "shared/view/audio";
 import { HUD_VIEW } from "shared/view/hud";
-import { MENU_VIEW, screenSkin, silverWelcomeShown } from "shared/view/menu";
+import { MENU_VIEW, screenSkin } from "shared/view/menu";
 import { role, str } from "client/ui/theme";
 import { useMenuActions } from "./actions";
 
@@ -20,17 +20,18 @@ const HALF = 0.5;
 /**
  * The one-time main-menu card for accounts that played before the Silver update (docs/SILVER.md SV18, OC12): what
  * changed (Silver, the Armory, 2 hearts and the Knight to start). Shown over the main menu while shared/view/menu
- * silverWelcomeShown says so (a loaded wallet that never earned, personal records from before it, not dismissed yet);
+ * silverWelcomeDecision, latched at join, says so (a loaded wallet that never earned, personal records from before it, not dismissed yet);
  * Got it (or pad B) stores DisplaySettings.silverNoticeSeen, so it never shows again. A `confirm` focus scope: the pad
  * starts on Got it.
  */
 export function SilverWelcomeCard() {
 	const actions = useMenuActions();
-	const wallet = useSelector(selectWallet);
-	const records = useSelector(selectRecordsStatus);
+	// The session's decision (latched at join by WalletController: silverWelcomeDecision), so a new player's first run
+	// never turns the card on.
+	const welcome = useSelector(selectSilverWelcome);
 	const seen = useSelector(selectDisplay).silverNoticeSeen;
 	const okRef = useRef<TextButton>();
-	if (!silverWelcomeShown({ wallet, records, seen })) return undefined;
+	if (welcome !== true || seen) return undefined;
 	const dismiss = () => {
 		actions.playUi(SFX.uiConfirm);
 		actions.dismissSilverWelcome();

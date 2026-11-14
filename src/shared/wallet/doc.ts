@@ -86,8 +86,9 @@ export function decodeWalletDoc(raw: unknown, catalog: ReadonlyArray<ArmoryItem>
 	if (typeIs(own, "table")) {
 		for (const [k, v] of pairs(own as unknown as ReadonlyMap<unknown, unknown>)) {
 			if (!isId(k) || !isInteger(v) || v < 1) continue;
-			const it = armoryItem(k, catalog);
-			doc.own.set(k, it !== undefined ? math.min(v, it.tiers.size()) : v);
+			// Kept exactly as stored (a newer catalogue may have more levels; a rewrite here must not take them away):
+			// reads cap it (ownedLevel).
+			doc.own.set(k, v);
 		}
 	}
 	const eq = r.eq;
@@ -165,8 +166,14 @@ export function walletBalance(d: Readonly<WalletDoc>): number {
 }
 
 /** The level of item `id` owned (0: none). */
-export function ownedLevel(d: Readonly<WalletDoc> | undefined, id: string): number {
-	return d?.own.get(id) ?? 0;
+export function ownedLevel(
+	d: Readonly<WalletDoc> | undefined,
+	id: string,
+	catalog: ReadonlyArray<ArmoryItem> = ARMORY_CATALOG,
+): number {
+	const v = d?.own.get(id) ?? 0;
+	const it = armoryItem(id, catalog);
+	return it !== undefined ? math.min(v, it.tiers.size()) : v;
 }
 
 /** The player may pick character `id`: the Knight always; any other by its unlock item. No wallet: the Knight only. */

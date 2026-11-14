@@ -7,7 +7,7 @@
  */
 import type { ArmoryItem } from "./catalog";
 import { ARMORY_CATALOG } from "./catalog";
-import { walletBalance, type WalletDoc } from "./doc";
+import { ownedLevel, walletBalance, type WalletDoc } from "./doc";
 import { nextGoals, type SilverGrantBreakdown, type WalletGoal, type WalletRefusal } from "./transforms";
 
 export interface WalletOwnedEntry {
@@ -69,7 +69,7 @@ export function walletStatusOf(
 		goals: nextGoals(doc, undefined, catalog),
 	};
 	const own: WalletOwnedEntry[] = [];
-	for (const [itemId, level] of doc.own) own.push({ itemId, level });
+	for (const [itemId] of doc.own) own.push({ itemId, level: ownedLevel(doc, itemId, catalog) });
 	own.sort((a, b) => a.itemId < b.itemId);
 	if (own.size() > 0) status.own = own;
 	if (doc.eq !== undefined) {

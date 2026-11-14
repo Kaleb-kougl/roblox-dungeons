@@ -33,6 +33,11 @@ export interface WalletState {
 	readonly justUnlocked: CharacterId | undefined;
 	/** The run on screen shows the live Silver counter (silverCounterShown; set at each run start). */
 	readonly counterShown: boolean;
+	/**
+	 * docs/SILVER.md OC12: the returning-player card's decision for this session, latched once both join pushes are in
+	 * (shared/view/menu silverWelcomeDecision; WalletController); undefined until then.
+	 */
+	readonly welcome: boolean | undefined;
 }
 
 /** The finished run's Silver as the client saw it (RunOverPanel reads it with the verdict and the grants). */
@@ -66,6 +71,7 @@ const initialState: WalletState = {
 	seenAffordable: [],
 	justUnlocked: undefined,
 	counterShown: false,
+	welcome: undefined,
 };
 
 export const walletSlice = createProducer(initialState, {
@@ -98,6 +104,8 @@ export const walletSlice = createProducer(initialState, {
 	setSeenAffordable: (state, ids: ReadonlyArray<string>): WalletState => ({ ...state, seenAffordable: ids }),
 	setSilverCounterShown: (state, shown: boolean): WalletState =>
 		state.counterShown === shown ? state : { ...state, counterShown: shown },
+	latchSilverWelcome: (state, show: boolean): WalletState =>
+		state.welcome !== undefined ? state : { ...state, welcome: show },
 	setJustUnlocked: (state, id: CharacterId | undefined): WalletState =>
 		state.justUnlocked === id ? state : { ...state, justUnlocked: id },
 });
@@ -109,6 +117,7 @@ export const selectSilverRun = (state: { wallet: WalletState }) => state.wallet.
 export const selectWalletGrants = (state: { wallet: WalletState }) => state.wallet.grants;
 export const selectWalletBuying = (state: { wallet: WalletState }) => state.wallet.buying;
 export const selectSilverCounterShown = (state: { wallet: WalletState }) => state.wallet.counterShown;
+export const selectSilverWelcome = (state: { wallet: WalletState }) => state.wallet.welcome;
 
 /**
  * docs/SILVER.md SV18: the remembered pick (DisplaySettings.character) when the wallet owns it, else the Knight (a

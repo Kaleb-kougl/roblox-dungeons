@@ -5,7 +5,13 @@ import { describe, expect, it } from "@rbxts/jest-globals";
 import { DEFAULT_CHARACTER } from "shared/characters";
 import { ARMORY_TIERS, type WalletStatus } from "shared/wallet";
 import { ownedCharacterOr } from "shared/view/silver";
-import { characterLockState, characterPickAllowed, offeredCharacters, silverWelcomeShown } from "./characterLock";
+import {
+	characterLockState,
+	characterPickAllowed,
+	offeredCharacters,
+	silverWelcomeDecision,
+	silverWelcomeShown,
+} from "./characterLock";
 
 const ARCHER_PRICE = ARMORY_TIERS[3];
 const poor: WalletStatus = { loaded: true, balance: 160, earned: 160 };
@@ -61,5 +67,14 @@ describe("character lock: the returning-player card (OC12)", () => {
 		expect(silverWelcomeShown({ wallet: { loaded: false }, records, seen: false })).toBe(false);
 		expect(silverWelcomeShown({ wallet: fresh, records: { loaded: false }, seen: false })).toBe(false);
 		expect(silverWelcomeShown({ wallet: undefined, records, seen: false })).toBe(false);
+	});
+
+	it("the session's decision waits for both join pushes, then follows the rule (latched by the client)", () => {
+		const fresh: WalletStatus = { loaded: true, balance: 0, earned: 0 };
+		expect(silverWelcomeDecision(undefined, records)).toBe(undefined);
+		expect(silverWelcomeDecision(fresh, undefined)).toBe(undefined);
+		expect(silverWelcomeDecision(fresh, records)).toBe(true);
+		expect(silverWelcomeDecision(fresh, { loaded: true })).toBe(false);
+		expect(silverWelcomeDecision({ loaded: false }, records)).toBe(false);
 	});
 });

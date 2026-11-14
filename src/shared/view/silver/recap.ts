@@ -152,7 +152,9 @@ export function silverRecapModel(input: Readonly<SilverRecapInput>, s: SilverStr
 				: { id: "goal", key: SILVER_RECAP_KEYS.ready, vars: { item } },
 		);
 	}
-	return { kind: "rows", rows, dim: server === undefined, runAmount: f.sum };
+	// Only the wallet's settled grant is undimmed: the verdict's figure is a prediction, and a grant can still fail
+	// or be refused (the server retries a failed one).
+	return { kind: "rows", rows, dim: input.settled === undefined, runAmount: f.sum };
 }
 
 /** The run row's shown number `elapsedSec` after the panel opened: an ease-out count from 0 to `target`. */

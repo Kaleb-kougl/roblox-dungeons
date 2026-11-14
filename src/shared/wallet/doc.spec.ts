@@ -9,6 +9,7 @@ import {
 	walletBalance,
 	walletDocsEqual,
 	walletStatusOf,
+	ownedLevel,
 	walletUpgradeLevels,
 	type WalletDoc,
 } from "shared/wallet";
@@ -66,9 +67,12 @@ describe("WalletDoc codec", () => {
 		expect(decodeWalletDoc({ v: 2, earned: 10 }).earned).toBe(0); // another version reads as empty
 	});
 
-	it("catalogue levels are clamped; ids a newer catalogue added are kept", () => {
+	it("levels are kept as stored (a newer catalogue's) and capped on read; ids a newer catalogue added are kept", () => {
 		const d = decodeWalletDoc({ v: 1, earned: 0, spent: 0, own: { vigor: 9, "cosmetic.future": 3 }, runs: [] });
-		expect(d.own.get("vigor")).toBe(2);
+		expect(d.own.get("vigor")).toBe(9);
+		expect(decodeWalletDoc(encodeWalletDoc(d)).own.get("vigor")).toBe(9); // a rewrite never takes a level away
+		expect(ownedLevel(d, "vigor")).toBe(2);
+		expect(walletUpgradeLevels(d).vigor).toBe(2);
 		expect(d.own.get("cosmetic.future")).toBe(3);
 		expect(decodeWalletDoc(encodeWalletDoc(d)).own.get("cosmetic.future")).toBe(3);
 	});

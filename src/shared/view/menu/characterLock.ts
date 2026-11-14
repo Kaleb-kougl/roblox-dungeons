@@ -62,6 +62,19 @@ export interface SilverWelcomeFacts {
 	readonly seen: boolean;
 }
 
+/**
+ * The session's decision for the card, made ONCE, at the first moment both join pushes are in (WalletController latches
+ * it): undefined while either payload is missing, else silverWelcomeShown's rule without the dismissal. Latched at
+ * join, so a new player's first run (its records push racing its first grant) never turns the card on.
+ */
+export function silverWelcomeDecision(
+	wallet: Readonly<WalletStatus> | undefined,
+	records: Readonly<RecordsStatus> | undefined,
+): boolean | undefined {
+	if (wallet === undefined || records === undefined) return undefined;
+	return silverWelcomeShown({ wallet, records, seen: false });
+}
+
 /** The one-time card shows now (see the file comment). */
 export function silverWelcomeShown(f: Readonly<SilverWelcomeFacts>): boolean {
 	if (f.seen) return false;

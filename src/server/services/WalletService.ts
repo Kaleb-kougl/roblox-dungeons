@@ -21,6 +21,8 @@ import {
 	purchaseEconomyEvent,
 	type FakeWallet,
 	type RunGrantPlan,
+	type WalletGrant,
+	type WalletGrantContext,
 	type SilverGrantBreakdown,
 	type WalletActionResult,
 	type WalletStatus,
@@ -33,6 +35,15 @@ import { SilverAccessService } from "./SilverAccessService";
 import { TelemetryService } from "./TelemetryService";
 
 const log = serverLogger("Wallet");
+
+/** A member's grant waiting for another try (WalletService.runGrant). */
+interface PendingGrant {
+	readonly userId: number;
+	readonly grant: WalletGrant;
+	readonly ctx: WalletGrantContext;
+	/** Retries already made after the first try. */
+	readonly tries: number;
+}
 
 /**
  * Silver's wallet, server side (docs/SILVER.md "Wallet (server)", SV3; docs/SERVER.md "Wallet"): each player's balance,
@@ -83,6 +94,8 @@ export class WalletService implements OnStart {
 	);
 	/** Players whose join load ended: only they are sent `wallet`. */
 	private readonly ready = new Set<Player>();
+	/** Grants whose transaction failed, waiting for their next try (runGrant). */
+	private retries = new Array<PendingGrant>();
 	/** RunSessionService: runs still validating whose verdict may grant (BindToClose waits for them). */
 	private pendingRuns: () => number = () => 0;
 	/** The Studio fake's attribute value the memory store was made for. */
@@ -146,6 +159,12 @@ export class WalletService implements OnStart {
 			}),
 		);
 		game.BindToClose(() => this.waitOnClose());
+		task.spawn(() => {
+			for (;;) {
+				task.wait(WALLET.grantRetrySeconds);
+				if (this.retries.size() > 0) this.retryGrants();
+			}
+		});
 	}
 
 	/** RunSessionService: how many of its runs may still produce a verdict (BindToClose waits for them first). */
@@ -180,31 +199,49 @@ export class WalletService implements OnStart {
 		const grant = plan.grant;
 		if (grant === undefined) return new Map();
 		const predicted = predictRunGrants(plan, (id) => this.book.doc(id));
-		for (const userId of plan.userIds) {
-			task.spawn(() => {
-				const r = this.book.grant(userId, grant, plan.ctx);
-				if (!r.ok) {
-					log.warn("GRANT_FAILED", `${userId} run ${grant.runId}: ${r.error}`);
-					return;
-				}
-				const o = r.outcome;
-				if (!o.ok) {
-					log.info("GRANT_REFUSED", `${userId} run ${grant.runId}: ${o.reason ?? "?"}`);
-					return;
-				}
-				const b = o.breakdown!;
-				log.info("GRANT", `${userId} run ${grant.runId}: +${b.total} (balance ${b.balance})`);
-				const player = Players.GetPlayerByUserId(userId);
-				if (player === undefined) return;
-				this.telemetry.logEconomy(player, grantEconomyEvents(b));
-				if (player.Parent !== undefined && this.ready.has(player)) {
-					const status = this.status(player);
-					status.grant = b;
-					Events.wallet.fire(player, status);
-				}
-			});
-		}
+		for (const userId of plan.userIds) task.spawn(() => this.runGrant({ userId, grant, ctx: plan.ctx, tries: 0 }));
 		return predicted;
+	}
+
+	/**
+	 * One member's grant transaction. A DataStore failure (every retry errored) queues it for a later try
+	 * (WALLET.grantRetrySeconds, at most WALLET.grantRetryMax more, and once more at BindToClose): the run-id ring
+	 * refuses a second grant of the same run, so a retry is always safe. Yields.
+	 */
+	private runGrant(job: PendingGrant): void {
+		const { userId, grant } = job;
+		const r = this.book.grant(userId, grant, job.ctx);
+		if (!r.ok) {
+			if (job.tries < WALLET.grantRetryMax) {
+				log.warn("GRANT_FAILED", `${userId} run ${grant.runId}: ${r.error} (queued, try ${job.tries + 1})`);
+				this.retries.push({ ...job, tries: job.tries + 1 });
+			} else {
+				log.warn("GRANT_LOST", `${userId} run ${grant.runId}: ${r.error} (gave up after ${job.tries} retries)`);
+			}
+			return;
+		}
+		const o = r.outcome;
+		if (!o.ok) {
+			log.info("GRANT_REFUSED", `${userId} run ${grant.runId}: ${o.reason ?? "?"}`);
+			return;
+		}
+		const b = o.breakdown!;
+		log.info("GRANT", `${userId} run ${grant.runId}: +${b.total} (balance ${b.balance})`);
+		const player = Players.GetPlayerByUserId(userId);
+		if (player === undefined) return;
+		this.telemetry.logEconomy(player, grantEconomyEvents(b));
+		if (player.Parent !== undefined && this.ready.has(player)) {
+			const status = this.status(player);
+			status.grant = b;
+			Events.wallet.fire(player, status);
+		}
+	}
+
+	/** Tries every queued grant once (the retry loop and BindToClose). Yields. */
+	private retryGrants(): void {
+		const due = this.retries;
+		this.retries = [];
+		for (const job of due) this.runGrant(job);
 	}
 
 	private afterRequest(player: Player, result: WalletActionResult, outcome: WalletTxOutcome | undefined): void {
@@ -312,6 +349,8 @@ export class WalletService implements OnStart {
 		while ((this.pendingRuns() > 0 || this.book.pending() > 0) && os.clock() < deadline) {
 			task.wait(WALLET.shutdownPollSeconds);
 		}
+		// Queued failed grants get one last try (bounded by the same deadline's spirit: each is one transaction).
+		if (this.retries.size() > 0 && os.clock() < deadline) this.retryGrants();
 		if (this.book.pending() > 0) log.warn("SHUTDOWN_TIMEOUT", `${this.book.pending()} transactions still running`);
 	}
 }

@@ -8,6 +8,7 @@ import {
 	WalletBook,
 	decodeWalletDoc,
 	encodeWalletDoc,
+	ownedLevel,
 	parseFakeWallet,
 	walletBalance,
 	type WalletGrant,
@@ -145,6 +146,41 @@ describe("WalletBook (SV3)", () => {
 		book2.load(ME);
 		expect(book2.buy(ME, "vigor").result.reason).toBe("failed");
 		expect(book2.pending()).toBe(0);
+	});
+
+	it("a buy whose write committed before an error is not bought twice on the retry (the expected level: stale)", () => {
+		/** Commits the first write, then throws as if the reply was lost; later writes work. */
+		class CommitThenThrow implements WalletStore {
+			readonly inner = new MemoryWalletStore();
+			private thrown = false;
+			get(key: string): unknown {
+				return this.inner.get(key);
+			}
+			update(key: string, transform: (stored: unknown) => unknown): void {
+				this.inner.update(key, transform);
+				if (!this.thrown) {
+					this.thrown = true;
+					error("lost reply", 0);
+				}
+			}
+		}
+		const store = new CommitThenThrow();
+		const book = new WalletBook(store, { keyOf, retry: { attempts: 3, baseDelaySeconds: 0 } });
+		store.inner.update(keyOf(ME), () => encodeWalletDoc({ ...decodeWalletDoc(undefined), earned: 1000 }));
+		book.load(ME);
+		const r = book.buy(ME, "vigor");
+		expect([r.result.ok, r.result.level]).toEqual([true, 1]);
+		const stored = decodeWalletDoc(store.inner.get(keyOf(ME)));
+		expect([ownedLevel(stored, "vigor"), stored.spent]).toEqual([1, 40]);
+	});
+
+	it("a doc written by a newer build loads as unknown, never as an empty wallet", () => {
+		const store = new MemoryWalletStore();
+		store.update(keyOf(ME), () => ({ v: 99, earned: 500, spent: 0, own: {}, runs: [] }));
+		const book = new WalletBook(store, { keyOf, retry: { attempts: 1, baseDelaySeconds: 0 } });
+		expect(book.load(ME)).toBe(false);
+		expect(book.status(ME, DAY).loaded).toBe(false);
+		expect(book.effectiveUpgrades(ME)).toBe(undefined);
 	});
 
 	it("the Studio fake: a seeded in-memory store, `unknown` marks the session unknown, the Archer owned by the fake", () => {
