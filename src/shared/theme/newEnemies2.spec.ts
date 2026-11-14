@@ -169,7 +169,7 @@ describe("new enemies 2: contract", () => {
 });
 
 describe("new enemies 2: bundled packs", () => {
-	it("every bundled pack fills every new slot (placeholders, silent sounds) and validates", () => {
+	it("every bundled pack fills every new slot (placeholders, silent sounds; vale its art and sounds once uploaded) and validates", () => {
 		for (const id of sortedKeys(THEME_PACKS)) {
 			const pack = THEME_PACKS[id];
 			const colors = pack.colors as unknown as Obj;
@@ -190,8 +190,15 @@ describe("new enemies 2: bundled packs", () => {
 				expect([id, a, (line as string).sub(1, name.size() + 1)]).toEqual([id, a, `${name}:`]);
 			}
 			for (const b of NEW_ENEMY_2_BULLET_IDS) expect([id, b, art(pack.assets[b].kind)]).toEqual([id, b, true]);
-			for (const sfx of NEW_ENEMY_2_AUDIO_IDS)
-				expect([id, sfx, pack.assets[sfx].kind]).toEqual([id, sfx, "silent"]);
+			// vale plays them once their clips have IDs (NX10: built and uploaded 2026-11-14); every other pack keeps them silent
+			for (const sfx of NEW_ENEMY_2_AUDIO_IDS) {
+				const kind = pack.assets[sfx].kind;
+				expect([id, sfx, id === "vale" ? kind === "silent" || kind === "sound" : kind === "silent"]).toEqual([
+					id,
+					sfx,
+					true,
+				]);
+			}
 			expect([id, typeIs(pack.colors[ENEMY_GUARD_ROLE], "string")]).toEqual([id, true]);
 			expect([id, validateManifest(pack, { packId: id })]).toEqual([id, []]);
 		}

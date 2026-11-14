@@ -40,9 +40,13 @@ stays `bulwark` everywhere in code). Where this doc says "Bulwark" it means the 
 
 **Pending:**
 
-- **NX8 upload** (owner): the 27 PNGs listed in "NX8 Art" (six each for the Shieldwall, the Snatcher and the Pyre-keeper, eight for the Chainhook, and
-  `bullets-2.png`), each ID into `packs/vale/assetIds.ts`.
-- **NX10 audio**: the eight SILENT sounds (audition, lock, build, upload).
+- ~~NX8 upload~~ **done 2026-11-14**: the 27 PNGs uploaded, ids in `packs/vale/assetIds.ts` (the bundled vale pack draws
+  the four rigs and the flame / hook bullets).
+- ~~NX10 audio~~ **built and uploaded 2026-11-14**: CC0 picks in `art/audio.json` (Kenney Impact Sounds, Ninja Adventure,
+  bart's "Chain winch sounds", rubberduck's "80 CC0 creature SFX"; THIRD_PARTY_NOTICES and Credits), `audio:build` on the
+  owner's Mac, the ten clips' ids in `assetIds.ts`, so vale plays all eight. Still `"confirmed": false` in
+  `art/audio.json`: confirm or swap at the audition page (`sfx-pellet-return.ogg` came out 2.7 s long, Magic3's tail:
+  likely a trim or a swap to `Bounce3`).
 - **NX12 full tuning**: room time against par, the Sweep rate in Snatcher rooms on real floors, how often a drag ends in a
   yank; the options T1-T6 in "NX11 / NX12 systems and tuning". The loosened `sim/archer.ttk.builds` gate (the Archer may
   time out on the floor-20 census room with no build, Storm Blade, Soul Swarm or Fire Arrows) stands until then.

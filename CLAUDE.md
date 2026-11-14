@@ -1487,7 +1487,9 @@ Decision log (deviations from `PLAN.md`):
   sheet `bullets-2.png`, the pipeline's bullet set key `own`; `bullets.png` byte-identical), eight SILENT port audio IDs
   after `sfx.jingle.secret` (`SFX_FALLBACK`s; a later feature appending there must update codex.spec's tail and the
   listed skips), the optional enemy animation `block`, `bestiary.<id>` lines and sightings for the four. Art sets built
-  (Demon Spawn 9 / Spawn 4 / Imp 6 / Spawn 1), upload (27 PNGs), audio (NX10), full tuning (NX12, the loosened Archer
+  (Demon Spawn 9 / Spawn 4 / Imp 6 / Spawn 1) and uploaded 2026-11-14 (27 PNGs, `assetIds.ts`); the eight sounds are
+  CC0 picks (Kenney, Ninja Adventure, bart's "Chain winch sounds", rubberduck's "80 CC0 creature SFX"; notices and
+  Credits), built and uploaded 2026-11-14 but not confirmed by ear; full tuning (NX12, the loosened Archer
   floor-20 gate in `sim/archer.ttk.builds`, limited to the builds that time out there) and the Studio check (NX13)
   pending; `contract.luau` / `validate.luau` /
   `sprites.luau` top-level locals 187 / 192 / 195 (counted on out/). NX11's systems pass: `sim/newEnemies2.systems.spec`,
