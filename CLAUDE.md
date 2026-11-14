@@ -1481,15 +1481,21 @@ Decision log (deviations from `PLAN.md`):
   appended after `secret:room` (`CODEX_FIRST_ROOM_KINDS` 11; `pyre` folds into `enemy:pyrekeeper`). `DAILY.ruleset`
   19 -> 20. M1, every golden fixture and the tutorial replay exactly as before; endless / daily / dev replays and scores
   changed (boards stay `_v1`); re-recorded pins: `sim/charger.spec`, `sim/stormcaller.spec`, `dungeon/roomPool.lock`,
-  `roster.spec`, `view/hud/rosterLine.spec`, `run/slice.spec`. Theme: role `enemyGuard` (`guardReport`), five
+  `roster.spec`, `view/hud/rosterLine.spec`, `run/slice.spec`, and `dungeon/secrets.spec`'s ring check relaxed for a
+  diagonal cell at a wall-line end, which the placer already allowed. Theme: role `enemyGuard` (`guardReport`), five
   `ENEMY_ARCHETYPES` (vale `enemy.pyre` on the decor brazier's cells), `bullet.enemy.hook` / `.flame` (vale: their own
   sheet `bullets-2.png`, the pipeline's bullet set key `own`; `bullets.png` byte-identical), eight SILENT port audio IDs
   after `sfx.jingle.secret` (`SFX_FALLBACK`s; a later feature appending there must update codex.spec's tail and the
   listed skips), the optional enemy animation `block`, `bestiary.<id>` lines and sightings for the four. Art sets built
   (Demon Spawn 9 / Spawn 4 / Imp 6 / Spawn 1), upload (27 PNGs), audio (NX10), full tuning (NX12, the loosened Archer
-  floor-20 gate in `sim/archer.ttk.builds`) and the Studio check (NX13) pending; `contract.luau` / `validate.luau` /
+  floor-20 gate in `sim/archer.ttk.builds`, limited to the builds that time out there) and the Studio check (NX13)
+  pending; `contract.luau` / `validate.luau` /
   `sprites.luau` top-level locals 187 / 192 / 195 (counted on out/). NX11's systems pass: `sim/newEnemies2.systems.spec`,
-  `run/newEnemies2.validate.spec`; NX12-lite measurements `run/newEnemies2.tuning.spec` (`--census`).
+  `run/newEnemies2.validate.spec`; NX12-lite measurements `run/newEnemies2.tuning.spec` (`--census`). Review fixes
+  (2026-11-14): a sword finisher's Storm Blade counts only unblocked hits (sword.ts `finisherHits`), a Shieldwall whose
+  guard broke this tick is spared by that tick's Siege shockwave from in front (`SimCtx.guardsBroken`, transient), and a
+  Pyre-keeper's landing keeps clear of every living pyre, any keeper's; byte-identical without a Shieldwall or a second
+  keeper.
 
 ## Commands
 

@@ -45,7 +45,7 @@ stays `bulwark` everywhere in code). Where this doc says "Bulwark" it means the 
 - **NX10 audio**: the eight SILENT sounds (audition, lock, build, upload).
 - **NX12 full tuning**: room time against par, the Sweep rate in Snatcher rooms on real floors, how often a drag ends in a
   yank; the options T1-T6 in "NX11 / NX12 systems and tuning". The loosened `sim/archer.ttk.builds` gate (the Archer may
-  time out on the floor-20 census room) stands until then.
+  time out on the floor-20 census room with no build, Storm Blade, Soul Swarm or Fire Arrows) stands until then.
 - **NX13 Studio check** (the NX7 / NX8 checklists).
 - **Owner calls** OC1-OC6 of "NX11 / NX12 systems and tuning".
 
@@ -257,9 +257,11 @@ Shieldwall), OC2 by NXD21 (as recommended and built).
     there). A blocked Siege arrow never reaches `siegeTryPin`. Edge: a bullet in the cover zone that also overlaps an
     actor standing right in front of the shield is stopped by the shield.
   - Melee (`sword.ts` hitSwing / hitFinisher, origin = the swinging player): a swing blocks (event at the shield's
-    front point), a finisher breaks. The guard sweep has no actor callback (unchanged).
+    front point), a finisher breaks. The guard sweep has no actor callback (unchanged). A finisher's shield-stopped
+    actor is no hit for builds (Storm Blade counts the finisher's own unblocked hits, `finisherHits`; review fixes).
   - Siege slam (`siege.ts`, the shockwave only, origin = the slam point): from in front it breaks and deals nothing; the
-    pinned actor is never in the list.
+    pinned actor is never in the list. A Bulwark whose guard already broke this tick is spared by a shockwave from in
+    front (`SimCtx.guardsBroken`; review fixes).
   - A breaking hit deals **nothing** (it is the blocked hit; the stagger opens the next ones). A block or break engages a
     calm Bulwark. Wrecker rolls need no rule (rolls never hit enemies).
 - Feed (unhashed): `SimEvents.shieldBlocks` / `guardBreaks` (`NEW_ENEMY_2_EVENT_FIELDS`, after `NEW_ENEMY_EVENT_FIELDS`
@@ -380,10 +382,11 @@ Shieldwall), OC2 by NXD21 (as recommended and built).
   alive and < 6 lit this life (v3): `pyrekeeperLanding` takes the first valid compass point from the start index around
   its target, snapped to the cell centre (v4-5): FLOOR (`isBodyBlocked`: no wall / void / pool / solid decor), no intact
   piece, no pellet in play (taken 0 or a Snatcher's PELLET_STOLEN), the room holding its home (the imp's blink rule,
-  encounter boxes), >= 2 from every living player and from its living pyres. None valid: spent, no telegraph, nothing
-  lit. Else 0.8 s telegraph (attack LIGHT, the `ring` hint), then `lightPyre` spawns the pyre (not re-validated: actors
-  block nothing); a full pool costs nothing (not lit). Its pyres are a pool scan (`v[PYRE_KEEPER] === id`) at a
-  decision, a spawn and its death. Killed mid-telegraph: no pyre, `attack` cleared.
+  encounter boxes), >= 2 from every living player and from every living pyre, any keeper's (review fixes; was its own
+  only). None valid: spent, no telegraph, nothing lit. Else 0.8 s telegraph (attack LIGHT, the `ring` hint), then
+  `lightPyre` spawns the pyre (not re-validated: actors block nothing); a full pool costs nothing (not lit). Its pyres
+  are a pool scan (`v[PYRE_KEEPER] === id`) at a decision, a spawn and its death. Killed mid-telegraph: no pyre,
+  `attack` cleared.
 - `archetypes/pyre.ts`: not a room enemy, no draws. aiTicks counts the 0.5 s lighting (0 = lit, the view's flag; no
   spawnTick arithmetic, so a pacts freeze needs nothing in `holdAbsoluteTimers`), v3 the ticks to the next shot; at 0 it
   fires `shot` at `pyreTarget` (the nearest living player in sight, index order on ties) and reloads 2.0 s even with
@@ -435,7 +438,8 @@ at tick 2962, was 2953), `daily.spec`, `sim/newEnemies2.spec` (the rows).
 Not pins: `dungeon/secrets.spec`'s ring rule skips the cell diagonally in front of a wall-line end (the placer checks the
 front row over the ring's columns only; run 3 floor 5's `every` pick, which the new spawns moved, has room 4's floor
 there); `sim/archer.ttk.builds.spec` lets the Archer time out on the floor-20 census room (now 15 enemies with two
-Shieldwalls, a Chainhook, a Pyre-keeper, a Snatcher; 150 s without the four, cap 180 s): an NX12 / owner item.
+Shieldwalls, a Chainhook, a Pyre-keeper, a Snatcher; 150 s without the four, cap 180 s): an NX12 / owner item; since the
+review fixes only with the four builds that do (no build, Storm Blade, Soul Swarm, Fire Arrows).
 M1, the golden fixtures and the tutorial did not move.
 
 Census (`run/newEnemies2Pool.<1-5>.spec`, by floors; solo, run seeds 1-60, the live rule; means per populated room;
@@ -534,6 +538,9 @@ spec untouched. Placeholder looks; NX8 brings the art.
   dies; fireballs drawn as the flame look once NX8's art is in (small ball now); the eight cues silent in the
   placeholder (their fallbacks play), the snatch pitched down; layering of the arc / chain / pips against the markings,
   aura and affix rings; when NX8's pyre art lands, whether the view's flame part should go (the sprite's lit loop).
+  **Known limit** (no code change): a Siege-pinned Chainhook does not step, so a drag already on keeps holding its
+  player (not pulled, the chain drawn) for the pin's whole duration, the 36-tick timeout included; it ends when the pin
+  does or the Chainhook dies (a pinning hit of >= 3 breaks the drag first unless an affix shield absorbs it, NX3).
 
 ### NX8 Art (as built, 2026-11-14)
 
@@ -713,10 +720,11 @@ cap 180 s; the Archer at 180 s and again with a 480 s cap):
 | - Snatcher | 151.0 | 299.6 | 727 / 210, 130 / 50 | 10.5 / 1.5 / 1, 26.5 / 1.5 / 0 | 6 / 155, 5 / 386 | 228 / 284 / - / 272 |
 | - all four | 87.7 | 139.6 | 276 / 148, - | - | - | - |
 
-**Why the Archer times out** (the loosened `archer.ttk.builds` gate is kept as is for now: the Archer may time out on
-this room; every other fight must be won). The four add 117 s for the Archer (139.6 -> 256.9 s) and 54 s for the Knight
-(87.7 -> 142.1 s); with two seeds the single-kind removals are noisy (the room's order of kills changes: taking out the
-Chainhook or the Snatcher made the Archer slower), but two causes stand out:
+**Why the Archer times out** (the loosened `archer.ttk.builds` gate is kept for now: the Archer may time out on this
+room with no build, Storm Blade, Soul Swarm or Fire Arrows, the rows that do; with Executioner and Siege Bolt it wins
+(141.7 / 99.9 s) and must; every other fight must be won). The four add 117 s for the Archer (139.6 -> 256.9 s) and
+54 s for the Knight (87.7 -> 142.1 s); with two seeds the single-kind removals are noisy (the room's order of kills
+changes: taking out the Chainhook or the Snatcher made the Archer slower), but two causes stand out:
 
 1. **The Shieldwalls** (the largest single cut: -57 s Archer, -14 s Knight). At floor 20 a Shieldwall has 85 hp; the
    Archer's bot aims at the nearest enemy, the Shieldwalls keep 2-3 from it, so they are the nearest most of the fight:
@@ -756,6 +764,38 @@ Chainhook or the Snatcher made the Archer slower), but two causes stand out:
 - **OC4** Pyre hp scaling (T1) and the keeper's output (T2).
 - **OC5** The Shieldwall against the Archer (T3; reopens NXD19 for the heavy arrow only).
 - **OC6** First cooldowns (T4).
+
+### Review fixes (2026-11-14)
+
+An independent review of the build; each rule fix with a spec that failed before. A sim change only where a
+Shieldwall or a second Pyre-keeper is in play: M1, the golden fixtures and the tutorial unchanged, every existing pin
+passes.
+
+- **A blocked finisher procs no Storm Blade.** `sword.ts` hitFinisher sets `finisherFirst` and counts `finisherHits`
+  only after `shieldStopsMelee` returns false, and passes `finisherHits` (not sweepArc's count) to
+  `buildsOnFinisher`. A finisher that only broke a guard sparked from the Shieldwall into the allies it covers. Without
+  a guarding Shieldwall every callback is a hit, so the count and the first actor are as before. Specs
+  (`sim/bulwark.spec`): a fully blocked Storm Blade finisher procs nothing and leaves the ally behind untouched; one
+  that also hits an unshielded enemy (spawned after the Shieldwall) sparks from that enemy.
+- **A carrying Siege arrow's own slam spares the Shieldwall it broke (NXD19).** The shield stopping a carrying Siege
+  arrow breaks the guard, then the arrow slams its carried actor there, in front of it; the shockwave saw the guard down
+  and hit it. `SimCtx.guardsBroken` (transient, never hashed: emptied by `guardSlots` and `bind`, appended by
+  `breakGuard`): `shieldStopsSlam` spares a Bulwark broken earlier this tick from a shockwave in front of it (no second
+  break event). Spec (`sim/bulwark.spec`): guard broken once, the slam on the carried dummy lands, the Shieldwall keeps
+  its hp. Limit: any shockwave from in front later in the same tick is spared too (a finisher break, then another
+  arrow's slam the same tick).
+- **Two Pyre-keepers keep clear of each other's pyres.** `landingClear` tests >= `landingPyreClear` against every living
+  pyre (any keeper's); still two draws per light decision. Spec (`sim/pyrekeeper.spec`, "two keepers in one room"): 60
+  alternating casts around one target, each landing >= 2 from every living pyre, two draws a decision; the census
+  oracle reads every pyre too.
+- **The Archer's floor-20 allowance** (`sim/archer.ttk.builds`) is limited to the builds that time out there (no build,
+  Storm Blade, Soul Swarm, Fire Arrows, measured after these fixes: unchanged); Executioner (141.7 s) and Siege Bolt
+  (99.9 s) must win. The header no longer says every fight is won. A guard spec pins the four labels.
+- Docs and comments: CLAUDE.md's entry names `dungeon/secrets.spec`'s relaxed ring check (NX6 above); `shield.ts`'s
+  comments name `guardSlots` (called from combat.ts stepCombat) instead of a `SimCtx.rebuildGuards` that does not
+  exist; the Siege-pinned Chainhook's held drag is in the NX13 checklist as a known limit.
+- View: `NewEnemy2MarksController` reuses its frame counts and the hook's previous-position table (no allocation per
+  frame or per hook).
 
 ## Player experience
 
