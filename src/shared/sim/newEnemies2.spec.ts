@@ -254,12 +254,12 @@ describe("spawn and engage (NX1)", () => {
 	});
 
 	it("no kind draws but the Bulwark's first cooldown (NX2: in init; it never comes within bash range here)", () => {
+		// The Pyre-keeper draws since NX5 (its first cooldown, strafe flips: sim/pyrekeeper.spec.ts); the brazier never.
 		const w = world();
 		spawn(w, BULWARK.id, -6, 0);
 		const before = w.s.rngState;
 		spawn(w, CHAINHOOK.id, 0, 6);
 		spawn(w, SNATCHER.id, 0, -6);
-		spawn(w, PYREKEEPER.id, 4, 4);
 		spawn(w, PYRE.id, -4, -4);
 		for (let t = 0; t < 120; t++) step(w.s, EMPTY_INPUT, w.config);
 		expect(w.s.rngState).toBe(before);

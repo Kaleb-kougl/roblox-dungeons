@@ -1,24 +1,39 @@
 /**
- * 'pyre' (Roblox port, docs/NEW_ENEMIES_2.md; no web source): the brazier a Pyre-keeper lights (./pyrekeeper.ts), a
- * runtime child only: never planned, never bought, never a room member (NXD13: the room clears without it), never an
- * affix, no drop roll. 4 hp, still (speed 0), contact damage 0. Not a room enemy (no aggro, pack alerts or leash).
+ * 'pyre' (Roblox port, docs/NEW_ENEMIES_2.md "Design > Pyre-keeper and pyre", NX5; no web source): the brazier a
+ * Pyre-keeper lights (./pyrekeeper.ts), a runtime child only: never planned, never bought (no ENCOUNTER_COST row),
+ * never a room member (NXD13: the room clears without it), never an affix (spawned through ctx.spawnActor), no drop
+ * roll (DROP_INELIGIBLE_ARCHETYPES). 4 hp, still (speed 0), contact damage 0. Not a room enemy (no aggro, pack alerts or
+ * leash): it fires from the tick it is lit, whatever the room is doing. No draws.
  *
- * Planned (NX5, not built yet): lit litTicks after it lands (no fire while lighting), then every fireTicks one aimed
- * `shot` at the nearest living player in sight (drawn with the `flame` look, NXD12); its first shot is offset by
- * shotStaggerTicks x its index among its keeper's pyres, so three never fire together (v[PYRE_FIRE] counts down to the
- * next shot). It withers at its keeper's death (v[PYRE_KEEPER] names the keeper by actor id) or at its room's clear.
- * No draws.
+ * Its keeper sets it up on the spawn tick (pyrekeeper.ts `lightPyre`): v[PYRE_KEEPER] = the keeper's actor id (ids are
+ * never reused in a run), v[PYRE_STAGGER] = its stagger slot, v[PYRE_FIRE] = the ticks to its first shot (litTicks plus
+ * the stagger delay). Each step:
+ *   1. Lighting: aiTicks counts litTicks down (0 = lit); v[PYRE_FIRE] >= aiTicks always, so it never fires while it
+ *      lights.
+ *   2. v[PYRE_FIRE] counts down; at 0 it fires `shot` (one aimed bullet, BulletKind.ENEMY; the view's `flame` look is
+ *      NX7's, by the payload's source) at the nearest living player in sight (`pyreTarget`; none: the shot is skipped)
+ *      and reloads fireTicks either way, so its phase never drifts.
+ * The stagger: a keeper's living pyres hold distinct slots 0..maxAlive-1 and fire shotStaggerTicks x (slot difference)
+ * apart on the shared fireTicks period (pyrekeeper.ts `staggerDelay`), so three never fire on one tick.
+ * It withers (ctx.killActor: scored, combo, no drop) at its keeper's death (the keeper's onDeath scans the pool for
+ * `v[PYRE_KEEPER] === id`). The room clear needs no hook of its own: the keeper is a member of that record, so the
+ * record cannot clear before it dies, and its death withers them first (same tick, before stepScore).
  *
- * NX1 skeleton: the data block and a step that does nothing (it stands; it fires nothing).
+ * A pyre spawned without a keeper (specs, NX1's sandbox) has v[PYRE_KEEPER] 0, lights litTicks after it lands and fires
+ * from then on (slot 0, no stagger); it never withers.
  *
- * View contract: v slots PYRE_FIRE (ticks to the next shot), PYRE_KEEPER (its keeper's actor id); lit once
- * tick - spawnTick >= litTicks.
+ * View contract: lit once aiTicks is 0; v slots PYRE_FIRE (ticks to the next shot), PYRE_KEEPER (its keeper's actor
+ * id), PYRE_STAGGER (its slot); SimEvents.pyresLanded on its spawn tick, pyresWithered on a wither.
  */
 
 import { HIT_NORMAL, secondsToTicks } from "../../../playerData";
+import { partySize, playerAt } from "../../../party";
+import type { PlayerState } from "../../../state";
+import type { SimCtx } from "../../ctx";
 import { BulletKind, type BurstSpec } from "../../patterns";
+import { faceToward } from "../helpers";
 import { PORT_BAND_ENEMIES_3, registerArchetype } from "../registry";
-import type { ArchetypeData } from "../types";
+import type { ActorState, ArchetypeData } from "../types";
 
 export interface PyreData extends ArchetypeData {
 	/** Lighting: no fire for this many ticks after it lands. */
@@ -33,8 +48,10 @@ export interface PyreData extends ArchetypeData {
 // --- v[] slots (no shared room-enemy layout: it is not a room enemy)
 /** Ticks to its next shot. */
 export const PYRE_FIRE = 3;
-/** Its keeper's actor id (actor ids are never reused in a run). */
+/** Its keeper's actor id (actor ids are never reused in a run; 0 = none). */
 export const PYRE_KEEPER = 4;
+/** Its stagger slot among its keeper's living pyres (0..maxAlive-1). */
+export const PYRE_STAGGER = 5;
 
 export const PYRE = registerArchetype<PyreData>({
 	id: "pyre",
@@ -57,7 +74,54 @@ export const PYRE = registerArchetype<PyreData>({
 			kind: BulletKind.ENEMY,
 		},
 	},
-	step() {
-		// NX1 skeleton: it stands and fires nothing (NX5).
+	init(ctx, a) {
+		const d = ctx.data<PyreData>(a);
+		a.aiTicks = d.litTicks;
+		a.v[PYRE_FIRE] = d.litTicks;
+		a.v[PYRE_KEEPER] = 0;
+		a.v[PYRE_STAGGER] = 0;
+	},
+	step(ctx, a) {
+		stepPyre(ctx, a, ctx.data<PyreData>(a));
 	},
 });
+
+/** Below this squared length a vector has no direction. */
+const EPS2 = 1e-12;
+
+/**
+ * The nearest living player in line of sight of (x, z), ties to the lower index; undefined when none is (solo: the
+ * player, when alive and in sight).
+ */
+export function pyreTarget(ctx: SimCtx, x: number, z: number): PlayerState | undefined {
+	const n = partySize(ctx.state);
+	let best: PlayerState | undefined;
+	let best2 = math.huge;
+	for (let i = 0; i < n; i++) {
+		const p = playerAt(ctx.state, i);
+		if (p.dead !== 0) continue;
+		const dx = p.x - x;
+		const dz = p.z - z;
+		const d2 = dx * dx + dz * dz;
+		if (d2 >= best2 || !ctx.lineOfSight(x, z, p.x, p.z)) continue;
+		best = p;
+		best2 = d2;
+	}
+	return best;
+}
+
+function stepPyre(ctx: SimCtx, a: ActorState, d: PyreData): void {
+	if (a.aiTicks > 0) a.aiTicks -= 1;
+	a.v[PYRE_FIRE] -= 1;
+	if (a.v[PYRE_FIRE] > 0) return;
+	a.v[PYRE_FIRE] = d.fireTicks;
+	const p = pyreTarget(ctx, a.x, a.z);
+	if (p === undefined) return; // no one in sight: the shot is skipped, the period kept
+	const dx = p.x - a.x;
+	const dz = p.z - a.z;
+	const d2 = dx * dx + dz * dz;
+	if (d2 <= EPS2) return;
+	const inv = 1 / math.sqrt(d2);
+	faceToward(a, dx, dz);
+	ctx.fireEnemy(a, dx * inv, dz * inv, d.shot);
+}
