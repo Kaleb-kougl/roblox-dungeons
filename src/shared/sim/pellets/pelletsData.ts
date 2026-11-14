@@ -25,3 +25,19 @@ export const PelletPhase = {
 	/** Cleared: what was left is gone. */
 	GONE: 2,
 } as const;
+
+/**
+ * PelletsState.taken values the Snatcher writes (docs/NEW_ENEMIES_2.md NX4; today's 0 = on the floor and 1 = taken by a
+ * player stay as they are). Every reader treats any value but 0 as "not on the floor" (NX0's reader list), and neither
+ * value ever touches PelletRoom.left: a STOLEN pellet is carried in a Snatcher's belly (back to 0 in place at its
+ * death: collectable again), a DIGESTED one is gone for good (swallowed: the room's Sweep can no longer pay, NXD11).
+ * Without a Snatcher no pellet ever holds either value, so every pellets hash is unchanged.
+ */
+export const PELLET_STOLEN = 2;
+export const PELLET_DIGESTED = 3;
+
+/**
+ * The pellet thief's archetype id (combat/actors/archetypes/snatcher.ts registers it; a leaf constant so pacts' Horde,
+ * which never buys one for its second wave (NXD9), reads it without importing the archetype).
+ */
+export const SNATCHER_KIND = "snatcher";

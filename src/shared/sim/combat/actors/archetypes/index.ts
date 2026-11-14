@@ -52,3 +52,4 @@ export * from "./chainhook";
 export * from "./pyre";
 export * from "./pyrekeeper";
 export * from "./snatcher";
+export * from "./snatcherField";
