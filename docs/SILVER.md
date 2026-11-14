@@ -721,8 +721,8 @@ floor by band, crates 65.5 % of the pieces; the honest bot breaks 3 % of them.
 ### Left for the owner (SV15) and later
 
 Studio check (the list below; first the pad's hold-to-buy and the coins' screen positions); the four sounds' volumes
-(each is 1 until the mix pass); art for
-`ui.icon.silver` / `fx.silver.coins`; cosmetics (SV11-SV13); translations. Done since: the heart containers locked and
+(each is 1 until the mix pass); uploading Silver's art (`art/upload/silver-icon.png`, `silver-coin.png`, then their
+IDs into `assetIds.ts`); cosmetics (SV11-SV13); translations. Done since: the heart containers locked and
 built on the Mac (the hand-written layout matched), `heart-icons.png` uploaded 2026-11-14 (133175128335720, in
 `assetIds.ts`), so the bundled vale pack draws them; Silver merged into main. The four sounds' candidates sourced
 2026-11-14 (art/audio.json, silent until the audition): Kenney Interface Sounds (CC0, new in
@@ -731,6 +731,26 @@ Factory and Kenney Impact clips already in the vendor folder; none reuses a gold
 2026-11-14: `sfx.silver.crate` LRSF `Collect_Point_02`, `sfx.silver.gain` Interface `pluck_001`, `sfx.shop.buy`
 `maximize_007`, `sfx.shop.deny` `error_008`; built and uploaded 2026-11-14 (`assetIds.ts`), so the bundled vale pack
 plays them.
+
+### As built: Silver's art (2026-11-14)
+
+Presentation only. Both optional pieces are ORIGINAL pixel art by `scripts/art/gen-silver-art.js` (run by `art:build`
+/ `art:lock`) into `art/vendor/kaleb-vale/silver/`, packed by a new atlas group `silver` (`--only silver`, generated
+`packs/vale/silverLayout.ts`) into two sheets of their own, so no uploaded sheet repacks:
+
+- `ui.icon.silver` (`silver-icon.png`): the counter's 12 x 12 icon (SILVER_COUNTER.iconPx, so it draws at whole steps):
+  an **octagonal** coin in a cool silver ramp around the `silver` role, lit from the top left, stamped with a crescent
+  (the alchemists' sign for silver), outlined in the boon icons' near black; never the score's round gold coin. Vale
+  `VALE_SILVER_ICON_SOURCE` (all or nothing on the sheet's one ID, like the heart containers). `SilverIcon` now wraps
+  the art or the chip in one box that carries `iconRef`, so the crate coins still fly to the icon once the art draws.
+- `fx.silver.coins` (`silver-coin.png`): the crate burst's coin in flight, an 8-frame greyscale turn (face with a
+  shine, oblique, a 2 px milled edge, the back a step darker) looped at 12 fps, tinted `silver`, cells 11 x 11. Vale
+  draws it (`VALE_FX`, no longer in `VALE_FX_PENDING`); `SilverHudController` shows it in the coin layer at
+  `SILVER_BURST_VIEW.coinArtScale` (1) screen px per art px, each pooled coin phased by its slot
+  (`silverCoinArtFrame`), once it has downloaded on the device (`PreloadController.isArtReady`); before, the dots.
+
+Without the sheets' IDs every screen is exactly as before (the chip, the dots). Specs: `valeSilverArt.spec.ts`,
+`gen-silver-art.test.js`, `silver.spec.ts` (`silverCoinArtFrame`). Upload of both PNGs and the Studio check pending.
 
 ## Studio check
 

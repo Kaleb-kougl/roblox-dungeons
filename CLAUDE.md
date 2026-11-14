@@ -1483,7 +1483,11 @@ Decision log (deviations from `PLAN.md`):
   `PORT_AUDIO_EVENTS` (SILENT; a later feature appending there must update codex.spec's tail and the listed skips);
   `contract.luau` / `validate.luau` top-level locals 188 / 192 (counted on out/). Debug `KV_FakeWallet` (Studio),
   `KV_SilverDebug` (dev), `KV_SilverLabel`. The four sounds picked and uploaded 2026-11-14 (vale plays them; volumes
-  1 until the mix pass). Studio check, art and cosmetics pending.
+  1 until the mix pass). Art built 2026-11-14 (presentation only): `ui.icon.silver` (an octagonal coin with a crescent)
+  and `fx.silver.coins` (a looping 8-frame turn, tinted `silver`) as original pixel art by `scripts/art/gen-silver-art.js`,
+  atlas group `silver` (`--only silver`, `packs/vale/silverLayout.ts`), two sheets of their own (`silver-icon.png`,
+  `silver-coin.png`); `SilverHudController` draws the flipbook once downloaded, else the dots. Upload of both sheets,
+  the Studio check and cosmetics pending.
 
 ## Commands
 

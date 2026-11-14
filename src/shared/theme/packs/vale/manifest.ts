@@ -142,6 +142,7 @@ import { VALE_ITEM_ICONS, VALE_ITEM_ICON_ATLAS, VALE_ITEM_ICON_FILE } from "./it
 import { VALE_BOOST_ICONS, VALE_BOOST_ICON_ATLAS, VALE_BOOST_ICON_FILE } from "./boostIconLayout";
 import { VALE_PIP_ICONS, VALE_PIP_ICON_ATLAS, VALE_PIP_ICON_FILE } from "./pipIconLayout";
 import { VALE_HEART_ICONS, VALE_HEART_ICON_ATLAS, VALE_HEART_ICON_FILE } from "./heartIconLayout";
+import { VALE_SILVER_ICONS, VALE_SILVER_ICON_ATLAS, VALE_SILVER_ICON_FILE } from "./silverLayout";
 
 type AssetIds = Readonly<Record<string, string>>;
 
@@ -832,6 +833,13 @@ export const VALE_HEART_ICON_SOURCE: ValeUiIconSource = {
 	icons: VALE_HEART_ICONS,
 };
 
+/** Silver's counter icon sheet as generated (silverLayout.ts, docs/SILVER.md SV7), in the icon atlas's shape. */
+export const VALE_SILVER_ICON_SOURCE: ValeUiIconSource = {
+	file: VALE_SILVER_ICON_FILE,
+	atlas: VALE_SILVER_ICON_ATLAS,
+	icons: VALE_SILVER_ICONS,
+};
+
 /**
  * The UI icons (contract.ts uiIconIds) of one uploaded icon atlas: every piece of `icons` as an `image` of the whole
  * atlas (`assetId`, `atlas` w / h) with its `rect` and `pivot`. All or nothing: no `assetId` (the atlas is not uploaded
@@ -902,6 +910,8 @@ export interface ValeLayoutSources {
 	readonly pipIcons?: ValeUiIconSource;
 	/** VALE_HEART_ICON_SOURCE (heartIconLayout.ts: the half-heart container sheet). */
 	readonly heartIcons?: ValeUiIconSource;
+	/** VALE_SILVER_ICON_SOURCE (silverLayout.ts: Silver's counter icon sheet). */
+	readonly silverIcons?: ValeUiIconSource;
 	/** VALE_BULLET_SOURCE (bullets.ts: the bullet atlas and bulletLayout.ts). */
 	readonly bullets?: ValeBulletSource;
 	/** VALE_GOO_SOURCE (goo.ts: the goo sheet and gooLayout.ts). */
@@ -926,6 +936,7 @@ export function buildValeManifest(ids: AssetIds = VALE_ASSET_IDS, sources: ValeL
 	const boostIcons = sources.boostIcons ?? VALE_BOOST_ICON_SOURCE;
 	const pipIcons = sources.pipIcons ?? VALE_PIP_ICON_SOURCE;
 	const heartIcons = sources.heartIcons ?? VALE_HEART_ICON_SOURCE;
+	const silverIcons = sources.silverIcons ?? VALE_SILVER_ICON_SOURCE;
 	const manifest = deepClone(PLACEHOLDER_MANIFEST);
 	manifest.id = "vale";
 	manifest.name = "Vale";
@@ -1003,6 +1014,11 @@ export function buildValeManifest(ids: AssetIds = VALE_ASSET_IDS, sources: ValeL
 	const heartArtImages = valeUiIconImages(heartIcons.icons, heartIcons.atlas, ids[heartIcons.file]);
 	for (const id of sortedKeys(heartArtImages)) {
 		manifest.assets[id] = heartArtImages[id];
+	}
+	// Silver's counter icon (docs/SILVER.md SV7): once its sheet is uploaded; before, SilverIcon draws its chip.
+	const silverArtImages = valeUiIconImages(silverIcons.icons, silverIcons.atlas, ids[silverIcons.file]);
+	for (const id of sortedKeys(silverArtImages)) {
+		manifest.assets[id] = silverArtImages[id];
 	}
 	for (const id of sortedKeys(VALE_UI_REQUIRED_ART)) {
 		const art = manifest.assets[VALE_UI_REQUIRED_ART[id]];

@@ -14,7 +14,7 @@
 import { BOOST_COLLECT_FX_ID, BOOST_FX_IDS, FX_IDS, type BoostFxId, type FxId } from "../../contract";
 import { GOLDEN_COIN_ROLE } from "../../fortune";
 import { SECRET_DUST_ROLE } from "../../secrets";
-import { SILVER_COINS_FX_ID } from "../../silver";
+import { SILVER_ROLE } from "../../silver";
 import type { ColorRole, ImageAsset, SpriteSetAsset } from "../../types";
 import { sortedKeys } from "../../util";
 import { VALE_BULLET_SOURCE, type ValeBulletSource } from "./bullets";
@@ -22,6 +22,7 @@ import { VALE_FORTUNE_FX_LAYOUTS, VALE_FORTUNE_FX_SHEET } from "./fortuneLayout"
 import { VALE_AMBIENT_LAYOUTS, VALE_FX_LAYOUTS, VALE_FX_SHEET, type ValeFxLayout } from "./fxLayout";
 import type { ValeSheetFile } from "./layout";
 import { VALE_SECRET_FX_LAYOUTS, VALE_SECRET_SHEET } from "./secretLayout";
+import { VALE_SILVER_FX_LAYOUTS, VALE_SILVER_FX_SHEET } from "./silverLayout";
 import { VALE_TREASURE_FX_LAYOUTS, VALE_TREASURE_FX_SHEET } from "./treasureLayout";
 
 type AssetIds = Readonly<Record<string, string>>;
@@ -40,15 +41,14 @@ const DUST: ColorRole = "uiTextDim";
  * The fx IDs vale draws: every FX_IDS entry but the boost drops' effects (the pickup burst: no art yet,
  * docs/BOOSTS.md B8; the auras: their own sheet, boostAuras.ts, docs/BOOST_ART.md BAD3).
  */
-export type ValeFxId = Exclude<FxId, BoostFxId | typeof SILVER_COINS_FX_ID>;
+export type ValeFxId = Exclude<FxId, BoostFxId>;
 
 /**
  * FX_IDS that vale has no art for yet (absent from the pack: not drawn). docs/BOOSTS.md B8 vendors and maps the boost
  * pickup burst. The boost auras are neither here nor in VALE_FX_IDS: boostAuras.ts draws them (VALE_BOOST_AURA_IDS)
- * once boost-auras.png has an ID. docs/SILVER.md SV7: the Silver crate burst's coin has no art yet (the view draws
- * discs).
+ * once boost-auras.png has an ID.
  */
-export const VALE_FX_PENDING: ReadonlyArray<FxId> = [BOOST_COLLECT_FX_ID, SILVER_COINS_FX_ID];
+export const VALE_FX_PENDING: ReadonlyArray<FxId> = [BOOST_COLLECT_FX_ID];
 
 /** One sheet of effects: the PNG and the effects packed into it (cells `start + f`, floor(sheet w / frameW) per row). */
 export interface ValeFxSource {
@@ -62,7 +62,8 @@ export interface ValeFxSource {
  * light column sheet (treasureLayout.ts, docs/TREASURE.md TR9: fx.treasure.column, its own sheet so the effects atlas
  * never repacks) and the Goldling's coin burst sheet (fortuneLayout.ts, docs/FORTUNE.md FO10: fx.golden.coin, likewise)
  * and the secret rooms' sheet (secretLayout.ts, docs/SECRET_ROOMS.md SR11: fx.secret.dust rides with the crack and the
- * rubble). An fx ID is in exactly one of them (fx.spec).
+ * rubble) and Silver's coin sheet (silverLayout.ts, docs/SILVER.md SV7: fx.silver.coins). An fx ID is in exactly one of
+ * them (fx.spec).
  */
 export function valeFxSources(bullets: ValeBulletSource = VALE_BULLET_SOURCE): ReadonlyArray<ValeFxSource> {
 	return [
@@ -71,6 +72,7 @@ export function valeFxSources(bullets: ValeBulletSource = VALE_BULLET_SOURCE): R
 		{ sheet: VALE_TREASURE_FX_SHEET, layouts: VALE_TREASURE_FX_LAYOUTS },
 		{ sheet: VALE_FORTUNE_FX_SHEET, layouts: VALE_FORTUNE_FX_LAYOUTS },
 		{ sheet: VALE_SECRET_SHEET, layouts: VALE_SECRET_FX_LAYOUTS },
+		{ sheet: VALE_SILVER_FX_SHEET, layouts: VALE_SILVER_FX_LAYOUTS },
 	];
 }
 
@@ -122,6 +124,10 @@ export const VALE_FX: Readonly<Record<ValeFxId, ValeFxLook>> = {
 	// docs/SECRET_ROOMS.md SR10 / SR11: a secret room's dust trickle (original art, gen-secret-art.js): solid grey motes
 	// (not additive: dust is not light), tinted secret.dust; the view drops it down the crack's face
 	"fx.secret.dust": { sizeTiles: 1, tint: SECRET_DUST_ROLE, additive: false },
+	// docs/SILVER.md SV7: the crate burst's coin in flight (original art, gen-silver-art.js): a solid coin (not additive:
+	// its dark rim would vanish), tinted silver. SilverHudController draws it in its screen-space coin layer at
+	// SILVER_BURST_VIEW.coinArtScale x its cell, so sizeTiles only holds it to the fx rules.
+	"fx.silver.coins": { sizeTiles: 0.4, tint: SILVER_ROLE, additive: false },
 };
 
 /** Ambient textures that glow (LightEmission 1): molten embers. */

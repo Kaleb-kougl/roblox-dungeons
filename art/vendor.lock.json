@@ -1762,6 +1762,16 @@
 			"bytes": 2502
 		},
 		{
+			"path": "kaleb-vale/silver/coin.png",
+			"sha256": "ee189664d6a43f99d34f32e6de5660760773d033b23dbdad30813cff7f7a96ff",
+			"bytes": 589
+		},
+		{
+			"path": "kaleb-vale/silver/icon.png",
+			"sha256": "b7f3184d28879fcca6e3c07927df01acead194024eab9b85e16dda05b057bb9a",
+			"bytes": 320
+		},
+		{
 			"path": "kaleb-vale/treasure-column/column.png",
 			"sha256": "504e863028aa906e432c4e153d07d1f91c90d29a2c7d87263ca2acdd82d7e768",
 			"bytes": 24067

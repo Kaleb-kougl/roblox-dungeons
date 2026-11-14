@@ -14,6 +14,7 @@ export * from "./itemIconLayout";
 export * from "./boostIconLayout";
 export * from "./pipIconLayout";
 export * from "./heartIconLayout";
+export * from "./silverLayout";
 export * from "./fx";
 export * from "./bullets";
 export * from "./gooLayout";

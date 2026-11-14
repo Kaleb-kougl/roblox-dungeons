@@ -6,7 +6,7 @@ import { SILVER_UI, createKvBillboardGui, createKvScreenGui, silverCounterTarget
 import { currentHudFont, onLocaleChanged } from "client/ui/theme";
 import { charCount } from "shared/l10n";
 import { SILVER_PAYING_WORLDS, runSilver, silverRunInputOf } from "shared/silver";
-import { SILVER_POP_KEY, SILVER_ROLE } from "shared/theme";
+import { SILVER_COINS_FX_ID, SILVER_POP_KEY, SILVER_ROLE, type FxId, type FxSprite } from "shared/theme";
 import { RENDER_ORDER } from "shared/view";
 import { SFX } from "shared/view/audio";
 import { FX_VIEW, SCORE_POP_BASE_PX, SCORE_POP_GLYPH_PX, motionScale } from "shared/view/fx";
@@ -18,6 +18,7 @@ import {
 	SilverCrateFx,
 	SilverTracker,
 	silverClientFigures,
+	silverCoinArtFrame,
 	silverCoinFlight,
 	silverCoinHop,
 	silverCounterShown,
@@ -30,6 +31,7 @@ import {
 import { DAILY_WORLD_KIND } from "shared/daily";
 import { AudioController } from "../audio/AudioController";
 import { SimController, type RunContext } from "../game/SimController";
+import { PreloadController } from "../game/PreloadController";
 import { ThemeController } from "../game/ThemeController";
 import { FxTrackerController } from "./FxTrackerController";
 import { attachmentHolder, floorPoint, fxFolder } from "./fxHelpers";
@@ -81,11 +83,17 @@ class PopLabel {
 	}
 }
 
-/** One pooled coin: a small round frame in the coin layer. */
+/**
+ * One pooled coin in the coin layer: a small round frame, or, with the pack's `fx.silver.coins` downloaded, that
+ * flipbook in an ImageLabel (one of the two shown).
+ */
 interface CoinDot {
 	readonly frame: Frame;
+	readonly art: ImageLabel;
+	readonly phase: number;
 	view: SilverCoinView | undefined;
 	born: number;
+	shownFrame: number;
 }
 
 /**
@@ -105,7 +113,9 @@ interface CoinDot {
  *   run over the client's figures are frozen into the store (setSilverRun) for the run-over rows, once per run
  *
  * The coin layer is a GUI over the world: small (SILVER_BURST_VIEW.coinPx), short and capped (maxCoinsPerFrame, alive
- * at most maxAliveCoins). Presentation only; read-only on the sim.
+ * at most maxAliveCoins). A coin is the pack's `fx.silver.coins` turning (tinted silver, coinArtScale screen px per art
+ * px) once it has downloaded on this device (PreloadController.isArtReady), else a round dot. Presentation only;
+ * read-only on the sim.
  */
 @Controller({})
 export class SilverHudController implements OnStart {
@@ -117,6 +127,7 @@ export class SilverHudController implements OnStart {
 	private readonly coins = new Array<CoinDot>();
 	private readonly box: ShoutBox = { x: 0, z: 0, rightX: 0, rightZ: 0, halfWidth: 0, halfDepth: 0 };
 	private coinLayer!: ScreenGui;
+	private coinFx: FxSprite | undefined;
 	private counterOn = false;
 	private facts: SilverRunFacts | undefined;
 	private frozenRun = -1;
@@ -128,6 +139,7 @@ export class SilverHudController implements OnStart {
 		private readonly theme: ThemeController,
 		private readonly fx: FxTrackerController,
 		private readonly audio: AudioController,
+		private readonly preload: PreloadController,
 	) {}
 
 	onStart(): void {
@@ -147,6 +159,9 @@ export class SilverHudController implements OnStart {
 				Parent: Players.LocalPlayer.WaitForChild("PlayerGui"),
 			}),
 		);
+		const coinFx = pack.fx(SILVER_COINS_FX_ID as FxId);
+		this.coinFx = coinFx;
+		const artSide = coinFx !== undefined ? coinFx.frame(0).size.mul(SILVER_BURST_VIEW.coinArtScale) : Vector2.zero;
 		for (let i = 0; i < SILVER_BURST_VIEW.maxAliveCoins; i++) {
 			const frame = new Instance("Frame");
 			frame.Name = `Coin${i}`;
@@ -162,7 +177,17 @@ export class SilverHudController implements OnStart {
 			rim.Color = stroke;
 			rim.Parent = frame;
 			frame.Parent = this.coinLayer;
-			this.coins.push({ frame, view: undefined, born: 0 });
+			const art = new Instance("ImageLabel");
+			art.Name = `CoinArt${i}`;
+			art.AnchorPoint = new Vector2(HALF, HALF);
+			art.Size = UDim2.fromOffset(artSide.X, artSide.Y);
+			art.BackgroundTransparency = HIDDEN;
+			art.BorderSizePixel = 0;
+			art.ResampleMode = Enum.ResamplerMode.Pixelated;
+			art.ImageColor3 = coinFx !== undefined ? coinFx.color : color;
+			art.Visible = false;
+			art.Parent = this.coinLayer;
+			this.coins.push({ frame, art, phase: i, view: undefined, born: 0, shownFrame: -1 });
 		}
 		this.janitor.Add(
 			onLocaleChanged(() => {
@@ -208,6 +233,7 @@ export class SilverHudController implements OnStart {
 		for (const c of this.coins) {
 			c.view = undefined;
 			c.frame.Visible = false;
+			c.art.Visible = false;
 		}
 	}
 
@@ -313,10 +339,17 @@ export class SilverHudController implements OnStart {
 		}
 	}
 
+	/** The flipbook, when the pack has it and it has downloaded on this device (docs/STAGE_ASSETS.md SA18). */
+	private coinArt(): FxSprite | undefined {
+		const fx = this.coinFx;
+		return fx !== undefined && this.preload.isArtReady(SILVER_COINS_FX_ID) ? fx : undefined;
+	}
+
 	/** The coins: the hop in the world (projected to the GUI), then the flight to the counter's icon. */
 	private stepCoins(now: number): void {
 		const camera = Workspace.CurrentCamera;
 		if (camera === undefined) return;
+		const art = this.coinArt();
 		const layer = this.coinLayer.AbsolutePosition;
 		const target = silverCounterTarget();
 		const goal =
@@ -340,11 +373,28 @@ export class SilverHudController implements OnStart {
 			if (f >= 1) {
 				c.view = undefined;
 				c.frame.Visible = false;
+				c.art.Visible = false;
 				continue;
 			}
 			if (f > 0) p = p.Lerp(goal, f);
-			c.frame.Position = UDim2.fromOffset(p.X - layer.X, p.Y - layer.Y);
-			c.frame.Visible = true;
+			const at = UDim2.fromOffset(p.X - layer.X, p.Y - layer.Y);
+			if (art !== undefined) {
+				const k = silverCoinArtFrame(age, art.fps, art.frames, c.phase);
+				if (k !== c.shownFrame) {
+					c.shownFrame = k;
+					const cell = art.frame(k);
+					if (c.art.Image !== cell.image) c.art.Image = cell.image;
+					c.art.ImageRectOffset = cell.offset;
+					c.art.ImageRectSize = cell.size;
+				}
+				c.art.Position = at;
+				c.art.Visible = true;
+				c.frame.Visible = false;
+			} else {
+				c.frame.Position = at;
+				c.frame.Visible = true;
+				c.art.Visible = false;
+			}
 		}
 	}
 }

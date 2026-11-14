@@ -31,6 +31,7 @@ import {
 	silverClinkSemitones,
 	silverClinkSpeed,
 	silverCoinCount,
+	silverCoinArtFrame,
 	silverCoinFlight,
 	silverCoinHop,
 	silverPopLook,
@@ -158,6 +159,12 @@ describe("silver: the crate burst (SilverCrateFx)", () => {
 		const f = silverCoinFlight(V.hopSeconds + V.flySeconds / 2, 0);
 		expect(f > 0 && f < 1).toBe(true);
 		expect(silverCoinFlight(V.hopSeconds + V.flySeconds + 1, 0)).toBe(1);
+		// the flying coin's flipbook (fx.silver.coins): one frame per 1 / fps, looping, phased, never negative
+		expect([0, 0.05, 0.1, 0.5, 0.7].map((t) => silverCoinArtFrame(t, 10, 4, 0))).toEqual([0, 0, 1, 1, 3]);
+		expect(silverCoinArtFrame(0, 10, 4, 3)).toBe(3);
+		expect(silverCoinArtFrame(0.1, 10, 4, 3)).toBe(0);
+		expect(silverCoinArtFrame(-1, 10, 4, 1)).toBe(1);
+		expect(silverCoinArtFrame(1, 10, 0, 2)).toBe(0);
 	});
 
 	it("one break: the counter's gain, a pop at the cell, its coins hopping near it, one clink at step 0", () => {

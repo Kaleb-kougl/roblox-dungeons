@@ -122,6 +122,16 @@ export function silverCoinHop(ageSec: number, studsPerTile: number = STUDS_PER_T
 }
 
 /**
+ * The flying coin's flipbook frame (the pack's `fx.silver.coins`, a looping turn): `ageSec` into its life at `fps`,
+ * `phase` frames on, so a burst's coins do not turn in step. 0 with no frames.
+ */
+export function silverCoinArtFrame(ageSec: number, fps: number, frames: number, phase: number): number {
+	if (!(frames > 0)) return 0;
+	const f = math.floor(math.max(0, ageSec) * fps) + phase;
+	return ((f % frames) + frames) % frames;
+}
+
+/**
  * The flight's share (0..1) of a coin `ageSec` after it started, with its `flyDelaySec`: 0 through the hop and its
  * delay, then an ease-in to 1 over flySeconds (1: it reached the counter; the controller frees it and may flash it).
  */

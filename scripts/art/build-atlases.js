@@ -58,6 +58,10 @@
  *   -> src/shared/theme/packs/vale/secretLayout.ts generated (committed): the secret rooms' sheet (docs/SECRET_ROOMS.md
  *                                        SR11; config key `secret`; section "Secret sheet" below), with its sheet
  *                                        art/build/secret.png and contact sheet art/build/contact/secret.png
+ *   -> src/shared/theme/packs/vale/silverLayout.ts generated (committed): Silver's icon and flying coin
+ *                                        (docs/SILVER.md SV7; config key `silver`; section "Silver sheets" below),
+ *                                        with its sheets art/build/silver-icon.png / silver-coin.png and their contact
+ *                                        sheets
  *
  * World art (decor props, effects, breakables; docs/DECOR.md R5) has its own section below ("World art").
  *
@@ -152,6 +156,8 @@
  *        node scripts/art/build-atlases.js --lock --only pipIcons  needs only the generated icons)
  *        node scripts/art/build-atlases.js --only heartIcons       the same for the half-heart containers (docs/SILVER.md
  *        node scripts/art/build-atlases.js --lock --only heartIcons SV16; needs only the generated containers)
+ *        node scripts/art/build-atlases.js --only silver           the same for Silver's icon and flying coin
+ *        node scripts/art/build-atlases.js --lock --only silver    (docs/SILVER.md SV7; needs only the generated art)
  *        node scripts/art/build-atlases.js --only duoIcons         the same for the duo icon sheet (docs/BUILDS.md BU11;
  *        node scripts/art/build-atlases.js --lock --only duoIcons  needs only the generated icons)
  *        node scripts/art/build-atlases.js --only kenney           the same for the Kenney decor sheet
@@ -198,6 +204,7 @@ const BOOST_ICON_LAYOUT_FILE = path.join(LAYOUT_DIR, "boostIconLayout.ts");
 const PIP_ICON_LAYOUT_FILE = path.join(LAYOUT_DIR, "pipIconLayout.ts");
 const HEART_ICON_LAYOUT_FILE = path.join(LAYOUT_DIR, "heartIconLayout.ts");
 const DUO_ICON_LAYOUT_FILE = path.join(LAYOUT_DIR, "duoIconLayout.ts");
+const SILVER_LAYOUT_FILE = path.join(LAYOUT_DIR, "silverLayout.ts");
 
 /** Roblox stores images at most this many pixels on a side. */
 const MAX_ATLAS = 1024;
@@ -656,6 +663,7 @@ function sourceFiles(config) {
 	for (const f of duoIconSourceFiles(config.duoIcons)) files.add(f);
 	for (const f of kenneySourceFiles(config.kenney)) files.add(f);
 	for (const f of secretSourceFiles(config.secret)) files.add(f);
+	for (const f of silverSourceFiles(config.silver)) files.add(f);
 	return [...files].sort();
 }
 
@@ -3521,6 +3529,158 @@ function printHeartIcons(icons) {
 }
 
 // ---------------------------------------------------------------------------------------------
+// Silver sheets (docs/SILVER.md SV7; config key `silver`)
+//
+// Silver's two optional pieces, original pixel art drawn by scripts/art/gen-silver-art.js (art:build and art:lock run it
+// first) into art/vendor/kaleb-vale/silver/, each in a sheet of its own so no other sheet repacks. `silver`: { icon,
+// coin }.
+//   icon  a `uiIcons`-shaped section (atlas, gutter, icons: { ui.icon.silver: { file, rect } }), built and packed by
+//         buildUiIcons like the heart icon sheet; every id starts with SILVER_ICON_PREFIXES.
+//   coin  an effect strip (the fortune coin's keys: atlas, pad, file, frameW, frames, fps, loop, grey; buildFxSet), alone
+//         in <atlas>.png (packFx): fx.silver.coins, the crate burst's coin in flight.
+// Outputs: art/build/<icon atlas>.png and <coin atlas>.png (also copied to art/upload/), contact sheets
+// art/build/contact/<icon atlas>.png / fx.silver.coins.png, and src/shared/theme/packs/vale/silverLayout.ts
+// (VALE_SILVER_ICON_FILE / _ATLAS, VALE_SILVER_ICONS, VALE_SILVER_FX_SHEET, VALE_SILVER_FX_LAYOUTS). Build just this
+// group: node scripts/art/build-atlases.js --only silver (and --lock --only silver).
+
+const SILVER_ICON_PREFIXES = ["ui.icon.silver"];
+const SILVER_COIN_ID = "fx.silver.coins";
+const SILVER_GROUP_KEYS = new Set(["$comment", "icon", "coin"]);
+const SILVER_COIN_KEYS = new Set(["$comment", "atlas", "pad", "file", "frameW", "frames", "fps", "loop", "grey"]);
+
+/** Every vendor file the silver group reads, sorted ([] without a group). */
+function silverSourceFiles(group) {
+	if (!group) return [];
+	if (!group.icon) throw new Error("silver.icon is missing");
+	if (!group.coin || typeof group.coin.file !== "string" || group.coin.file === "") throw new Error("silver.coin needs a file");
+	const files = new Set(uiIconIds(group.icon).map((id) => uiIconFile(group.icon, id)));
+	files.add(group.coin.file);
+	return [...files].sort();
+}
+
+/** Builds the silver sheets: { icon (buildUiIcons' result), coin: { set, packed, sheet, layout } }. */
+function buildSilver(group) {
+	if (group === null || typeof group !== "object" || Array.isArray(group)) throw new Error("silver must be an object");
+	for (const k of Object.keys(group)) if (!SILVER_GROUP_KEYS.has(k)) throw new Error(`silver: unknown key ${k}`);
+	if (!group.icon) throw new Error("silver.icon is missing");
+	for (const id of uiIconIds(group.icon)) {
+		if (!SILVER_ICON_PREFIXES.some((p) => id.startsWith(p))) {
+			throw new Error(`${id}: silver icon ids start with "${SILVER_ICON_PREFIXES.join('" or "')}"`);
+		}
+	}
+	const icon = buildUiIcons(group.icon);
+	const cdef = group.coin;
+	if (!cdef) throw new Error("silver.coin is missing");
+	for (const k of Object.keys(cdef)) if (!SILVER_COIN_KEYS.has(k)) throw new Error(`${SILVER_COIN_ID}: unknown key ${k}`);
+	if (typeof cdef.atlas !== "string" || !/^[a-z0-9-]+$/.test(cdef.atlas)) throw new Error(`${SILVER_COIN_ID}: atlas must be a file name without .png`);
+	if (`${cdef.atlas}.png` === icon.file) throw new Error(`silver: the icon and the coin cannot share ${icon.file}`);
+	const pad = cdef.pad === undefined ? 0 : cdef.pad;
+	if (!Number.isInteger(pad) || pad < 0) throw new Error(`${SILVER_COIN_ID}: pad must be a non-negative integer`);
+	if (typeof cdef.fps !== "number" || !(cdef.fps > 0)) throw new Error(`${SILVER_COIN_ID}: fps must be a positive number`);
+	const set = buildFxSet(SILVER_COIN_ID, cdef, pad);
+	const packed = packFx([set], "silver");
+	const layout = fxLayoutOf(packed.placed[0]);
+	const sheet = { file: `${cdef.atlas}.png`, w: packed.w, h: packed.h };
+	return { icon, coin: { set, packed, sheet, layout } };
+}
+
+/** packs/vale/silverLayout.ts: the icon sheet (ValeUiIconLayout by id) and the coin's effect sheet. */
+function silverLayoutModule(t) {
+	const icons = t.icon;
+	const xy = (p) => `{ x: ${p.x}, y: ${p.y} }`;
+	const entry = (id) => {
+		const l = icons.layouts[id];
+		const r = l.rect;
+		return `\t${JSON.stringify(id)}: { rect: { x: ${r.x}, y: ${r.y}, w: ${r.w}, h: ${r.h} }${l.pivot ? `, pivot: ${xy(l.pivot)}` : ""} },`;
+	};
+	const text = [
+		"// GENERATED by `npm run art:build` (scripts/art/build-atlases.js) from art/atlases.json. Do not edit.",
+		"",
+		"/**",
+		comment([
+			"Layout of the `vale` pack's Silver art (docs/SILVER.md SV7): original pixel art by scripts/art/gen-silver-art.js,",
+			"each in a sheet of its own. VALE_SILVER_ICONS hold `ui.icon.silver` (the counter's octagonal coin) on the icon",
+			"sheet; VALE_SILVER_FX_SHEET / VALE_SILVER_FX_LAYOUTS hold `fx.silver.coins`, a greyscale effect flipbook (cells",
+			"`start + f` of the SpriteSetAsset formula, perRow = floor(sheet w / frameW)) tinted at draw time. No asset IDs:",
+			"`file` names the PNG in art/build/ to upload.",
+		]),
+		" */",
+		"",
+		'import type { ValeFxLayout } from "./fxLayout";',
+		'import type { ValeSheetFile } from "./layout";',
+		'import type { ValeUiIconLayout } from "./uiIconLayout";',
+		"",
+		"/** The icon sheet's file name (the key of its id in assetIds.ts). */",
+		`export const VALE_SILVER_ICON_FILE = ${JSON.stringify(icons.file)};`,
+		"/** The icon sheet's size, pixels. */",
+		`export const VALE_SILVER_ICON_ATLAS = { w: ${icons.w}, h: ${icons.h} } as const;`,
+		"export const VALE_SILVER_ICONS: Record<string, ValeUiIconLayout> = {",
+		...Object.keys(icons.layouts).sort().map(entry),
+		"};",
+		"",
+		`export const VALE_SILVER_FX_SHEET: ValeSheetFile = ${tsValue(t.coin.sheet, 0, PRINT_WIDTH)};`,
+		"",
+		`export const VALE_SILVER_FX_LAYOUTS: Record<string, ValeFxLayout> = ${tsValue({ [SILVER_COIN_ID]: t.coin.layout }, 0, PRINT_WIDTH)};`,
+		"",
+	].join("\n");
+	for (const line of text.split("\n")) {
+		if (line.replace(/\t/g, "    ").length > PRINT_WIDTH) throw new Error(`silverLayout.ts line over ${PRINT_WIDTH} columns: ${line}`);
+	}
+	return text;
+}
+
+/** The flying coin's contact sheet: every frame read back through its layout. */
+function silverCoinContact(t) {
+	const l = t.coin.layout;
+	const cells = [];
+	for (let f = 0; f < l.frames; f++) cells.push([t.coin.packed.img, ...fxCellAt(t.coin.packed.w, l, f)]);
+	return scaledContact(cells, l.frameW, l.frameH, l.pivot);
+}
+
+/** Every output of the silver group: [dir, name, img]. */
+function silverOutputs(t) {
+	return [
+		["build", t.icon.file, t.icon.img],
+		["build", t.coin.sheet.file, t.coin.packed.img],
+		["contact", t.icon.file, uiIconContact(t.icon)],
+		["contact", `${SILVER_COIN_ID}.png`, silverCoinContact(t)],
+	];
+}
+
+/** Log lines for the built silver sheets. */
+function printSilver(t) {
+	const l = t.coin.layout;
+	console.log(`silver: ${t.icon.file} ${t.icon.w}x${t.icon.h}, ${t.icon.pieces.length} icon(s), ${t.icon.gutter} px extruded gutter`);
+	Object.keys(t.icon.layouts)
+		.sort()
+		.forEach((id) => {
+			const r = t.icon.layouts[id].rect;
+			console.log(`  ${id}: rect ${r.x},${r.y} ${r.w}x${r.h}`);
+		});
+	console.log(`  ${SILVER_COIN_ID}: ${t.coin.sheet.file} ${t.coin.sheet.w}x${t.coin.sheet.h}, cell ${l.frameW}x${l.frameH}, ${l.frames} frames @ ${l.fps} fps${l.loop ? " loop" : ""}, ${l.grey ? "grey" : `mean ${l.meanColor}`}`);
+}
+
+/**
+ * `--only silver` (docs/SILVER.md SV7): checks the silver group's files against the lock, then writes ONLY its two
+ * sheets (and their art/upload copies), their contact sheets and packs/vale/silverLayout.ts, byte for byte what a full
+ * build writes for them. Nothing else is read, written or removed.
+ */
+function mainOnlySilver(config) {
+	if (!config.silver) fail("art/atlases.json has no `silver` group");
+	checkLock(config, silverSourceFiles(config.silver));
+	const t = buildSilver(config.silver);
+	let changed = 0;
+	for (const [dir, name, img] of silverOutputs(t)) {
+		const png = encodePng(img);
+		if (writeIfChanged(path.join(dir === "build" ? BUILD : CONTACT, name), png)) changed++;
+		if (dir === "build" && writeIfChanged(path.join(UPLOAD, name), png)) changed++;
+	}
+	if (writeIfChanged(SILVER_LAYOUT_FILE, silverLayoutModule(t))) changed++;
+	printSilver(t);
+	console.log(`art:build --only silver: ${changed} file(s) updated`);
+}
+
+// ---------------------------------------------------------------------------------------------
 // Duo icon sheet (docs/BUILDS.md BU11, the duo part; config key `duoIcons`)
 //
 // The duo icons (ORIGINAL art, scripts/art/gen-duo-icons.js: ui.duo.<name>, one per duo) in a sheet of their own,
@@ -5339,6 +5499,7 @@ const ONLY_GROUPS = [
 	"duoIcons",
 	"kenney",
 	"secret",
+	"silver",
 ];
 
 /** The vendor files `--lock --only <group>` re-hashes (a sprite set id: that set's own files, not its pixelsPerTileFrom's). */
@@ -5397,6 +5558,10 @@ function onlyGroupSourceFiles(config, group) {
 	if (group === "secret") {
 		if (!config.secret) fail("art/atlases.json has no `secret` group");
 		return secretSourceFiles(config.secret);
+	}
+	if (group === "silver") {
+		if (!config.silver) fail("art/atlases.json has no `silver` group");
+		return silverSourceFiles(config.silver);
 	}
 	throw new Error(`no --only group ${group}`);
 }
@@ -5789,6 +5954,10 @@ function main() {
 		mainOnlySecret(config);
 		return;
 	}
+	if (only === "silver") {
+		mainOnlySilver(config);
+		return;
+	}
 	checkLock(config);
 
 	const sets = buildSpriteSets(config.spriteSets);
@@ -5905,6 +6074,11 @@ function main() {
 		emit(BUILD, secret.file, secret.packed.img, builtFiles);
 		emit(CONTACT, secret.file, secretContact(secret), contactFiles);
 	}
+	let silver;
+	if (config.silver) {
+		silver = buildSilver(config.silver);
+		for (const [dir, name, img] of silverOutputs(silver)) emit(dir === "build" ? BUILD : CONTACT, name, img, dir === "build" ? builtFiles : contactFiles);
+	}
 	removeStale(BUILD, builtFiles);
 	removeStale(CONTACT, contactFiles);
 
@@ -5931,6 +6105,7 @@ function main() {
 	if (duoIcons && writeIfChanged(DUO_ICON_LAYOUT_FILE, duoIconLayoutModule(duoIcons))) changed++;
 	if (kenney && writeIfChanged(KENNEY_LAYOUT_FILE, kenneyLayoutModule(kenney))) changed++;
 	if (secret && writeIfChanged(SECRET_LAYOUT_FILE, secretLayoutModule(secret))) changed++;
+	if (silver && writeIfChanged(SILVER_LAYOUT_FILE, silverLayoutModule(silver))) changed++;
 
 	for (const s of sets) printSpriteSet(s);
 	for (const i of images) {
@@ -5962,6 +6137,7 @@ function main() {
 	if (duoIcons) printDuoIcons(duoIcons);
 	if (kenney) printKenney(kenney);
 	if (secret) printSecret(secret);
+	if (silver) printSilver(silver);
 	if (icons) {
 		console.log(`ui icons: ${icons.file} ${icons.w}x${icons.h}, ${icons.pieces.length} icons, ${icons.gutter} px extruded gutter (contact numbers in id order)`);
 		Object.keys(icons.layouts)
@@ -6058,6 +6234,9 @@ module.exports = {
 	buildHeartIcons,
 	heartIconLayoutModule,
 	heartIconSourceFiles,
+	buildSilver,
+	silverLayoutModule,
+	silverSourceFiles,
 	buildDuoIcons,
 	duoIconLayoutModule,
 	duoIconSourceFiles,

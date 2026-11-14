@@ -34,6 +34,7 @@ import { VALE_ITEM_ICON_FILE } from "./itemIconLayout";
 import { VALE_BOOST_ICON_FILE } from "./boostIconLayout";
 import { VALE_PIP_ICON_FILE } from "./pipIconLayout";
 import { VALE_HEART_ICON_FILE } from "./heartIconLayout";
+import { VALE_SILVER_FX_SHEET, VALE_SILVER_ICON_FILE } from "./silverLayout";
 import { VALE_BOOST_AURA_SHEET } from "./boostAuraLayout";
 import { VALE_BULLET_SHEET } from "./bulletLayout";
 import { VALE_FORTUNE_FX_SHEET, VALE_PACT_ALTAR_LAYOUT } from "./fortuneLayout";
@@ -137,8 +138,8 @@ describe("vale pack", () => {
 		// icon sheet (itemIconLayout.ts, BU11), the boost icon sheet (boostIconLayout.ts, docs/BOOSTS.md B7) and the
 		// armor pip sheet (pipIconLayout.ts, docs/UI_ART.md), the duo icon sheet (duoIconLayout.ts, BU11) and the Kenney
 		// Forge pieces' sheet (kenneyLayout.ts, docs/KENNEY_DECOR.md KN9), the secret rooms' sheet (secretLayout.ts,
-		// docs/SECRET_ROOMS.md SR11) and the half-heart container sheet (heartIconLayout.ts, docs/SILVER.md SV16) are
-		// art/build files too
+		// docs/SECRET_ROOMS.md SR11), the half-heart container sheet (heartIconLayout.ts, docs/SILVER.md SV16) and Silver's
+		// icon and coin sheets (silverLayout.ts, docs/SILVER.md SV7) are art/build files too
 		const files = allFiles();
 		files.push(VALE_FX_SHEET.file);
 		files.push(VALE_BULLET_SHEET.file);
@@ -154,6 +155,8 @@ describe("vale pack", () => {
 		files.push(VALE_BOOST_ICON_FILE);
 		files.push(VALE_PIP_ICON_FILE);
 		files.push(VALE_HEART_ICON_FILE);
+		files.push(VALE_SILVER_ICON_FILE);
+		files.push(VALE_SILVER_FX_SHEET.file);
 		files.push(VALE_DUO_ICON_FILE);
 		files.push(VALE_SECRET_SHEET.file);
 		for (const file of VALE_KENNEY_SHEETS) files.push(file);

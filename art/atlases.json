@@ -3032,5 +3032,33 @@
 				}
 			}
 		}
+	},
+	"silver": {
+		"$comment": [
+			"docs/SILVER.md SV7: Silver's two optional pieces, ORIGINAL pixel art drawn by scripts/art/gen-silver-art.js",
+			"(art:build and art:lock run it first) into art/vendor/kaleb-vale/silver/, each in a sheet of its own (so no other",
+			"sheet repacks). icon: ui.icon.silver, the counter's 12 x 12 octagonal silver coin stamped with a crescent (never",
+			"the score's round gold coin), full colour, packed like `heartIcons` (buildUiIcons) into <icon.atlas>.png. coin:",
+			"fx.silver.coins, the crate burst's coin in flight, an 8-frame greyscale turn (face, oblique, edge, back) looped,",
+			"tinted by `silver` at draw time, alone in <coin.atlas>.png. Both with src/shared/theme/packs/vale/silverLayout.ts.",
+			"Build just this group: node scripts/art/build-atlases.js --only silver (and --lock --only silver)."
+		],
+		"icon": {
+			"atlas": "silver-icon",
+			"gutter": 1,
+			"icons": {
+				"ui.icon.silver": { "file": "kaleb-vale/silver/icon.png", "rect": [0, 0, 12, 12] }
+			}
+		},
+		"coin": {
+			"atlas": "silver-coin",
+			"pad": 1,
+			"file": "kaleb-vale/silver/coin.png",
+			"frameW": 9,
+			"frames": 8,
+			"fps": 12,
+			"loop": true,
+			"grey": true
+		}
 	}
 }

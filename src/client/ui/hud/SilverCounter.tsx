@@ -14,15 +14,14 @@ const SHINE = { share: 0.4, offset: 0.3 } as const;
 
 /**
  * Silver's icon (docs/SILVER.md SV7): the pack's optional `ui.icon.silver` in a `px` box, else a round chip in the
- * `silver` role with a dark rim and a small highlight (never the score's gold coin).
+ * `silver` role with a dark rim and a small highlight (never the score's gold coin). Either sits in one `px` box that
+ * carries `iconRef`, so the crate burst's coins fly to the icon whichever is drawn.
  */
 export function SilverIcon(props: { order?: number; px: number; iconRef?: React.Ref<Frame> }) {
 	const px = props.px;
 	const chip = (
 		<frame
 			key="SilverChip"
-			ref={props.iconRef}
-			LayoutOrder={props.order ?? 0}
 			Size={UDim2.fromOffset(px, px)}
 			BackgroundColor3={role(SILVER_ROLE)}
 			BorderSizePixel={0}
@@ -43,7 +42,18 @@ export function SilverIcon(props: { order?: number; px: number; iconRef?: React.
 			</frame>
 		</frame>
 	);
-	return <ArtImage id={SILVER_ICON_ID} order={props.order} box={{ w: px, h: px }} fallback={chip} />;
+	return (
+		<frame
+			key="SilverIcon"
+			ref={props.iconRef}
+			LayoutOrder={props.order ?? 0}
+			Size={UDim2.fromOffset(px, px)}
+			BackgroundTransparency={HIDDEN}
+			Active={false}
+		>
+			<ArtImage id={SILVER_ICON_ID} box={{ w: px, h: px }} fallback={chip} />
+		</frame>
+	);
 }
 
 /**

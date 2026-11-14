@@ -162,6 +162,11 @@ export interface SilverBurstViewTunables {
 	readonly maxAliveCoins: number;
 	/** A coin's side on screen (px) and its rim. */
 	readonly coinPx: number;
+	/**
+	 * With the pack's `fx.silver.coins` downloaded the coin is that flipbook instead: its cell at this many screen px per
+	 * art px (whole, Pixelated; the art is drawn at the in-run frames' density, docs/UI_ART.md).
+	 */
+	readonly coinArtScale: number;
 	/** The pop's glyphs, a share of the kill score pops' (SCORE_POP_GLYPH_PX). */
 	readonly popScale: number;
 	/** Where coins fly with no counter on screen: this far in from the coin layer's top-right corner (px). */
@@ -176,6 +181,7 @@ export const SILVER_BURST_VIEW: SilverBurstViewTunables = table.freeze({
 	maxAlivePops: 8,
 	maxAliveCoins: 32,
 	coinPx: 7,
+	coinArtScale: 1,
 	popScale: 0.85,
 	cornerInsetPx: 48,
 	coinDisplayOrder: 5,
