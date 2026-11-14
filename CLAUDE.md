@@ -1486,8 +1486,8 @@ Decision log (deviations from `PLAN.md`):
   1 until the mix pass). Art built 2026-11-14 (presentation only): `ui.icon.silver` (an octagonal coin with a crescent)
   and `fx.silver.coins` (a looping 8-frame turn, tinted `silver`) as original pixel art by `scripts/art/gen-silver-art.js`,
   atlas group `silver` (`--only silver`, `packs/vale/silverLayout.ts`), two sheets of their own (`silver-icon.png`,
-  `silver-coin.png`); `SilverHudController` draws the flipbook once downloaded, else the dots. Upload of both sheets,
-  the Studio check and cosmetics pending.
+  `silver-coin.png`); `SilverHudController` draws the flipbook once downloaded, else the dots. Both sheets uploaded
+  2026-11-14 (`assetIds.ts`), so the bundled vale pack draws them. Studio check and cosmetics pending.
 
 ## Commands
 

@@ -721,8 +721,7 @@ floor by band, crates 65.5 % of the pieces; the honest bot breaks 3 % of them.
 ### Left for the owner (SV15) and later
 
 Studio check (the list below; first the pad's hold-to-buy and the coins' screen positions); the four sounds' volumes
-(each is 1 until the mix pass); uploading Silver's art (`art/upload/silver-icon.png`, `silver-coin.png`, then their
-IDs into `assetIds.ts`); cosmetics (SV11-SV13); translations. Done since: the heart containers locked and
+(each is 1 until the mix pass); cosmetics (SV11-SV13); translations. Done since: the heart containers locked and
 built on the Mac (the hand-written layout matched), `heart-icons.png` uploaded 2026-11-14 (133175128335720, in
 `assetIds.ts`), so the bundled vale pack draws them; Silver merged into main. The four sounds' candidates sourced
 2026-11-14 (art/audio.json, silent until the audition): Kenney Interface Sounds (CC0, new in
@@ -750,7 +749,9 @@ Presentation only. Both optional pieces are ORIGINAL pixel art by `scripts/art/g
   (`silverCoinArtFrame`), once it has downloaded on the device (`PreloadController.isArtReady`); before, the dots.
 
 Without the sheets' IDs every screen is exactly as before (the chip, the dots). Specs: `valeSilverArt.spec.ts`,
-`gen-silver-art.test.js`, `silver.spec.ts` (`silverCoinArtFrame`). Upload of both PNGs and the Studio check pending.
+`gen-silver-art.test.js`, `silver.spec.ts` (`silverCoinArtFrame`). Both PNGs uploaded 2026-11-14 (`silver-icon.png`
+106444206037710, `silver-coin.png` 111342292690960, in `assetIds.ts`), so the bundled vale pack draws them; the
+Studio check pending (the coins still fly into the icon; the icon crisp in the counter, the main menu and the Armory).
 
 ## Studio check
 

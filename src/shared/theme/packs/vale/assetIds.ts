@@ -142,6 +142,9 @@ import type { RobloxAssetId } from "../../types";
  * heart-icons.png (the half-heart containers ui.heart.halfmax / .halfmax.empty, docs/SILVER.md SV16; cut from the UI
  * sheet's hearts by scripts/art/gen-heart-halfmax.js, built by `node scripts/art/build-atlases.js --only heartIcons`):
  * uploaded 2026-11-14, the ID given by the owner in chat (an Asset Manager screenshot).
+ * silver-icon.png / silver-coin.png (Silver's counter icon ui.icon.silver and the crate burst's flying coin
+ * fx.silver.coins, docs/SILVER.md SV7; original art, scripts/art/gen-silver-art.js, built by
+ * `node scripts/art/build-atlases.js --only silver`) uploaded 2026-11-14, transcribed from an Asset Manager screenshot.
  * duo-icons.png (one icon per duo, docs/BUILDS.md BU11; original art, scripts/art/gen-duo-icons.js, built by
  * `node scripts/art/build-atlases.js --only duoIcons`) and lop-patch-blotch1 / -2.png (the Lords of Pain floor blotches,
  * biome.1 floor patches 6 / 7, docs/KENNEY_DECOR.md; scripts/art/lop/floor_blotches.py) uploaded 2026-11-11, transcribed
@@ -243,6 +246,8 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"grave-skull.png": "rbxassetid://113527738840348",
 	"hazards.png": "rbxassetid://121912104813388",
 	"heart-icons.png": "rbxassetid://133175128335720",
+	"silver-coin.png": "rbxassetid://111342292690960",
+	"silver-icon.png": "rbxassetid://106444206037710",
 	"item-icons.png": "rbxassetid://82172693899829",
 	"imp-attack-outline.png": "rbxassetid://87826495349638",
 	"imp-attack.png": "rbxassetid://106802821695726",

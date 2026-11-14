@@ -3,6 +3,7 @@
 // the counter's box) switches on with the icon sheet's ID; the crate burst's flying coin `fx.silver.coins` (a grey
 // looping turn, tinted silver) with the coin sheet's. Neither is in the pack before its PNG has an ID (the counter draws
 // its chip, the coin layer its discs); with both, the manifest validates and the pack hands the HUD what it expects.
+// Both uploaded 2026-11-14: the bundled pack draws them.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { SILVER_COUNTER } from "shared/view/silver";
 import { FX_SPRITE_MAX_TILES } from "../../contract";
@@ -59,6 +60,17 @@ describe("vale Silver art: the generated sheets", () => {
 });
 
 describe("vale Silver art: the manifest", () => {
+	it("is uploaded: the bundled pack has the icon and the flying coin on their sheets' IDs", () => {
+		const iconId = VALE_ASSET_IDS[VALE_SILVER_ICON_FILE];
+		const coinId = VALE_ASSET_IDS[VALE_SILVER_FX_SHEET.file];
+		expect([iconId, coinId]).toEqual(["rbxassetid://106444206037710", "rbxassetid://111342292690960"]);
+		const m = buildValeManifest(VALE_ASSET_IDS);
+		const icon = m.assets[SILVER_ICON_ID];
+		expect(icon !== undefined && icon.kind === "image" ? icon.assetId : undefined).toBe(iconId);
+		const fx = new ThemePack(m, { warn: quiet }).fx(SILVER_COINS_FX_ID);
+		expect(fx?.frame(0).image).toBe(coinId);
+	});
+
 	it("without the sheets' IDs neither is in the pack and the pack validates", () => {
 		const m = buildValeManifest(idsWith(false, false));
 		expect(m.assets[SILVER_ICON_ID]).toBe(undefined);
