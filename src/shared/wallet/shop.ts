@@ -53,11 +53,26 @@ export function shownSilverPacks(packs: ReadonlyArray<SilverPack> = SILVER_PACKS
 /** Per universe (game.GameId): pack -> developer product id. */
 export type SilverProductTable = ReadonlyMap<number, ReadonlyMap<SilverPackId, number>>;
 
+/** Roblox Dungeons' universe (game.GameId, as the server logs it). */
+const ROBLOX_DUNGEONS_GAME_ID = 10773051289;
+
 /**
- * The developer products of each universe. EMPTY until the owner creates the products (docs/SILVER_SHOP.md SH9): with
- * no entry for a universe the shop is off there (no `+`, no receipt handler).
+ * The developer products of each universe (docs/SILVER_SHOP.md SH9): with no entry for a universe the shop is off
+ * there (no `+`, no receipt handler). Roblox Dungeons' four, created 2026-11-14 in Creator Hub (Managed Pricing on;
+ * default prices 20 / 55 / 115 / 265 Robux, read from Roblox at run time, never from here): Small / Medium / Large /
+ * Extra Large Silver.
  */
-export const SILVER_PRODUCTS: SilverProductTable = new Map<number, ReadonlyMap<SilverPackId, number>>();
+export const SILVER_PRODUCTS: SilverProductTable = new Map<number, ReadonlyMap<SilverPackId, number>>([
+	[
+		ROBLOX_DUNGEONS_GAME_ID,
+		new Map<SilverPackId, number>([
+			["pouch", 3731496240],
+			["purse", 3731496417],
+			["chest", 3731496583],
+			["hoard", 3731496818],
+		]),
+	],
+]);
 
 /** This universe's pack -> product id map (undefined: no shop here). */
 export function silverProductsFor(

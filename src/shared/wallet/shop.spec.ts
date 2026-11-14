@@ -67,8 +67,19 @@ describe("Silver packs (SH2)", () => {
 		expect(silverPackForProduct(GAME, 3001, PRODUCTS, packs)?.id).toBe("pouch");
 	});
 
-	it("products per universe: none shipped yet, so no shop anywhere until SH9", () => {
-		expect(SILVER_PRODUCTS.size()).toBe(0);
+	it("products per universe: Roblox Dungeons sells all four packs, each its own product; no other universe sells", () => {
+		const dungeons = 10773051289;
+		expect(SILVER_PRODUCTS.size()).toBe(1);
+		expect(silverShopAvailable(dungeons)).toBe(true);
+		const ids = silverProductIdsFor(dungeons);
+		expect(ids.size()).toBe(SILVER_PACKS.size());
+		expect(new Set(ids).size()).toBe(ids.size());
+		for (const p of SILVER_PACKS) {
+			const id = silverProductsFor(dungeons)!.get(p.id)!;
+			expect(silverPackForProduct(dungeons, id)?.id).toBe(p.id);
+		}
+		expect(silverPackForProduct(dungeons, 3731496240)?.silver).toBe(150);
+		expect(silverPackForProduct(dungeons, 3731496818)?.silver).toBe(2500);
 		expect(silverShopAvailable(GAME)).toBe(false);
 		expect(silverProductsFor(GAME)).toBe(undefined);
 	});
