@@ -22,6 +22,7 @@ export type PadSurface =
 	| "lobby"
 	| "credits"
 	| "codex"
+	| "armory"
 	| "character"
 	| "invites"
 	| "options"
@@ -221,6 +222,9 @@ export const PAD_SURFACES: { readonly [K in PadSurface]: PadSurfaceDef } = {
 	credits: { layer: "screen", select: true, back: "back", rows: [SCROLL] },
 	// claude/codex-plan.md CX7: LB / RB step the Codex's tabs, the right stick scrolls its grid.
 	codex: { layer: "screen", select: true, back: "back", rows: [TABS, SCROLL] },
+	// docs/SILVER.md SV9: LB / RB step the Armory's tabs, the right stick scrolls its list; holding A on the buy button
+	// buys (the button's own hold, not a pad row).
+	armory: { layer: "screen", select: true, back: "back", rows: [TABS, SCROLL] },
 	// docs/ARCHER.md AR7: the D-pad / stick move between the cards (the engine), A confirms the selected card, B back.
 	character: { layer: "screen", select: true, back: "back", rows: [] },
 	invites: { layer: "invites", select: true, back: "back", rows: [] },
@@ -265,6 +269,7 @@ export const PAD_SURFACE_IDS: ReadonlyArray<PadSurface> = [
 	"lobby",
 	"credits",
 	"codex",
+	"armory",
 	"character",
 	"invites",
 	"options",

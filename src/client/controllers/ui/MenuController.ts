@@ -315,6 +315,11 @@ export class MenuController implements OnStart {
 		clientStore.menuNav({ kind: "open", screen: "codex" });
 	}
 
+	/** The Armory (docs/SILVER.md SV9): a menu screen over the main menu (Back returns to it). */
+	openArmory(): void {
+		clientStore.menuNav({ kind: "open", screen: "armory" });
+	}
+
 	back(): void {
 		clientStore.menuNav({ kind: "back" });
 	}

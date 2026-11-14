@@ -36,6 +36,15 @@ export interface MenuActions {
 	 * sendViewed: the store's copy now, `codexViewed` soon.
 	 */
 	readonly codexViewed: (ids: ReadonlyArray<string>) => void;
+	/** The Armory screen (docs/SILVER.md SV9). */
+	readonly openArmory: () => void;
+	/**
+	 * Buys the next level of Armory item `itemId` (WalletController.buy: one purchase in flight; the server prices and
+	 * checks it). False when nothing was sent (another purchase in flight, the wallet not loaded).
+	 */
+	readonly armoryBuy: (itemId: string) => boolean;
+	/** The Armory showed these affordable next levels (`<itemId>:<level>`): the main menu's badge dot clears for them. */
+	readonly armorySeen: (keys: ReadonlyArray<string>) => void;
 	/** Roblox's invite prompt without a lobby (docs/INVITES.md ID7). */
 	readonly inviteFriends: () => void;
 	/** One screen back (the Back buttons). */
@@ -91,6 +100,9 @@ const NOOP: MenuActions = {
 	openCredits: nothing,
 	openCodex: nothing,
 	codexViewed: nothing,
+	openArmory: nothing,
+	armoryBuy: () => false,
+	armorySeen: nothing,
 	inviteFriends: nothing,
 	back: nothing,
 	screenBack: nothing,

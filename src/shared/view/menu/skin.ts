@@ -14,6 +14,7 @@ export type UiScreen =
 	| "lobbyBrowser"
 	| "credits"
 	| "codex"
+	| "armory"
 	| "character"
 	| "lobbyRoom"
 	| "lobbyInvites"
@@ -54,6 +55,7 @@ export const UI_SCREEN_SKINS: Readonly<Record<UiScreen, UiScreenSkin>> = {
 	lobbyBrowser: MENU,
 	credits: MENU,
 	codex: MENU,
+	armory: MENU,
 	character: MENU,
 	lobbyRoom: MENU,
 	lobbyInvites: { skin: "list", ornament: false, dividers: false },

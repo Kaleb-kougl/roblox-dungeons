@@ -6,20 +6,26 @@ import {
 	selectInviteEligible,
 	selectMyLobbyId,
 	selectSoloBest,
+	selectWallet,
+	selectWalletState,
 } from "client/store";
 import { FocusScope } from "client/ui/focus";
-import { MenuButton, MenuFit, PadHintBar, Panel, Row, Text } from "client/ui/hud";
+import { MenuButton, MenuFit, PadHintBar, Panel, Row, SilverAmount, Text } from "client/ui/hud";
 import { str } from "client/ui/theme";
 import { SFX } from "shared/view/audio";
 import { HUD_STRINGS, HUD_VIEW, NEW_BEST_STRINGS, UI_ART, bestText } from "shared/view/hud";
 import { TUTORIAL_STRINGS } from "shared/tutorial";
 import { CODEX_SCREEN_STRINGS, codexBadgeText } from "shared/view/codex";
+import { SILVER } from "shared/silver";
+import { ARMORY_KEYS } from "shared/theme";
+import { statusBalance, walletShown } from "shared/view/silver";
 import {
 	CREDIT_STRINGS,
 	DAILY_MENU,
 	MENU_FIT,
 	MENU_STRINGS,
 	MENU_VIEW,
+	armoryBadge,
 	mainMenuLobbyKey,
 	platformInviteButton,
 	screenOrnament,
@@ -46,6 +52,10 @@ const SMALL = new Vector2(MENU_VIEW.smallButton.x, MENU_VIEW.smallButton.y);
  * selection; the card never blocks it. A `screen` focus scope with memory (docs/GAMEPAD_MENUS.md GM2): back from
  * Lobbies or Credits, or a panel closing, lands on the button that opened it. B does nothing at the root; Y jumps to
  * the newest invite toast while one is pending (GM6); on a gamepad the hint bar sits at the panel's bottom (GM7).
+ *
+ * Silver (docs/SILVER.md SV9): under the title the Silver balance and `First run today: +50` until today's first paying
+ * run (a phone: the Armory's small button at the line's end; the desktop column has the Armory as a full button after
+ * the Codex), its badge a dot while a next level the balance covers is unseen in the Armory.
  */
 export function MainMenu(props: {
 	/** An invite toast is on screen (the pad's Y jumps to it, docs/GAMEPAD_MENUS.md GM6). */
@@ -61,6 +71,11 @@ export function MainMenu(props: {
 	const codexNew = useSelector(selectCodexNewCount);
 	const codexUnavailable = useSelector(selectCodexStatus) === "unavailable";
 	const invite = platformInviteButton(eligible);
+	// docs/SILVER.md SV9: the Silver balance, today's first-run bonus while open, the Armory button and its dot.
+	const wallet = useSelector(selectWallet);
+	const walletState = useSelector(selectWalletState);
+	const walletStatus = walletShown(wallet);
+	const armoryDot = armoryBadge(wallet, walletState.seenAffordable);
 	const playRef = useRef<TextButton>();
 	const inLobby = myLobby !== undefined;
 	const play = (
@@ -183,6 +198,49 @@ export function MainMenu(props: {
 			}}
 		/>
 	);
+	// docs/SILVER.md SV9: the Armory after the Codex (desktop: a full button; a phone: a small one in the Silver line
+	// under the title), its badge a dot while a next level the balance covers is unseen; greyed (desktop: `Armory
+	// unavailable`) when the wallet could not be loaded this session.
+	const armoryUnavailable = walletStatus === "unavailable";
+	const armory = (small: boolean, order: number) => (
+		<MenuButton
+			key="Armory"
+			order={order}
+			name="Armory"
+			size={small ? SMALL : undefined}
+			textSize={small ? HUD_VIEW.smallText : undefined}
+			text={str(armoryUnavailable && !small ? ARMORY_KEYS.unavailable : ARMORY_KEYS.menu)}
+			disabled={armoryUnavailable}
+			badge={!armoryUnavailable && armoryDot ? " " : undefined}
+			onActivated={() => {
+				actions.playUi(SFX.uiClick);
+				actions.openArmory();
+			}}
+		/>
+	);
+	// The Silver line under the title: the balance and, until today's first paying run, `First run today: +50`
+	// (a phone: the Armory's small button at its end). Nothing while the wallet is not loaded.
+	const silverLine = (stacked: boolean) =>
+		walletStatus === "loaded" || stacked ? (
+			<Row key="Silver" order={1} align={Enum.HorizontalAlignment.Center}>
+				{walletStatus === "loaded" ? (
+					<SilverAmount
+						order={1}
+						size={HUD_VIEW.smallText}
+						text={str(ARMORY_KEYS.balance, { silver: statusBalance(wallet) })}
+					/>
+				) : undefined}
+				{walletStatus === "loaded" && wallet?.firstRunBonusOpen === true ? (
+					<Text
+						order={2}
+						size={HUD_VIEW.smallText}
+						color="uiTextDim"
+						text={str(ARMORY_KEYS.firstRunOpen, { silver: SILVER.firstRunBonus })}
+					/>
+				) : undefined}
+				{stacked ? armory(true, 3) : undefined}
+			</Row>
+		) : undefined;
 	// Credits: a full button in the desktop column; on a phone a small one beside the invite reason (its own row
 	// would cost the smallest phone the ornament, fit.spec.ts).
 	const credits = (small: boolean, order: number) => (
@@ -237,12 +295,13 @@ export function MainMenu(props: {
 						>
 							<Text
 								fill={true}
-								order={1}
+								order={0}
 								size={HUD_VIEW.bigText}
 								color="uiAccent"
 								align={Enum.TextXAlignment.Center}
 								text={str(HUD_STRINGS.title)}
 							/>
+							{silverLine(stacked)}
 							{stacked ? (
 								<>
 									<Row key="Row1" order={2}>
@@ -250,17 +309,17 @@ export function MainMenu(props: {
 										{lobbies}
 									</Row>
 									{best}
-									<DailyCard key="Daily" order={4} width={compactInner} compact={true} />
-									<DailyPodiumStrip key="Podium" order={5} width={compactInner} compact={true} />
-									<Row key="Row2" order={6}>
+									<DailyCard key="Daily" order={5} width={compactInner} compact={true} />
+									<DailyPodiumStrip key="Podium" order={6} width={compactInner} compact={true} />
+									<Row key="Row2" order={7}>
 										{inviteButton}
 										{tutorial}
 									</Row>
-									<Row key="Row3" order={7}>
+									<Row key="Row3" order={8}>
 										{options}
 										{leaderboard}
 									</Row>
-									<Row key="Row4" order={8}>
+									<Row key="Row4" order={9}>
 										{invite.reasonKey !== undefined ? (
 											<Text
 												key="InviteReason"
@@ -289,7 +348,8 @@ export function MainMenu(props: {
 										{options}
 										{leaderboard}
 										{codex(false, 10)}
-										{credits(false, 11)}
+										{armory(false, 11)}
+										{credits(false, 12)}
 									</Column>
 									<Column key="Daily" order={2} width={DAILY_MENU.cardWidth}>
 										<DailyCard key="Card" order={1} width={DAILY_MENU.cardWidth} compact={false} />
@@ -302,7 +362,7 @@ export function MainMenu(props: {
 									</Column>
 								</Columns>
 							)}
-							<PadHintBar order={9} surface="main" context={padContext} />
+							<PadHintBar order={10} surface="main" context={padContext} />
 						</Panel>
 					);
 				}}

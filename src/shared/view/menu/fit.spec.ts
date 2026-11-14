@@ -37,6 +37,8 @@ import {
 	DAILY_MENU,
 	MENU_FIT,
 	MENU_VIEW,
+	ARMORY_SCREEN,
+	armoryContentHeight,
 	fitMenu,
 	lobbyRoomParts,
 	menuArea,
@@ -147,11 +149,26 @@ function estimates(uiScale: number, compact: boolean): ReadonlyMap<string, Estim
 	const big = LINE(HUD_VIEW.bigText);
 	out.set("mainMenu", {
 		w: compact ? MENU_FIT.mainCompactWidth : MENU_VIEW.mainWidth,
+		// docs/SILVER.md SV9: the Silver line under the title (a phone: with the Armory's small button at its end).
 		h: compact
-			? column([big, BUTTON, BUTTON, BUTTON, TWO_SMALL_LINES], BIG, uiScale) // Codex, Credits beside the reason
-			: // claude/codex-plan.md CX7: Tutorial, Options, Leaderboard, Codex, Credits under the invite reason.
+			? column([big, MENU_VIEW.smallButton.y, BUTTON, BUTTON, BUTTON, TWO_SMALL_LINES], BIG, uiScale) // Codex, Credits beside the reason
+			: // claude/codex-plan.md CX7: Tutorial, Options, Leaderboard, Codex, Credits under the invite reason; the Armory
+			  // after the Codex (docs/SILVER.md SV9).
 			  column(
-					[big, BUTTON, BUTTON, BUTTON, TWO_SMALL_LINES, BUTTON, BUTTON, BUTTON, BUTTON, BUTTON],
+					[
+						big,
+						LINE(HUD_VIEW.smallText),
+						BUTTON,
+						BUTTON,
+						BUTTON,
+						TWO_SMALL_LINES,
+						BUTTON,
+						BUTTON,
+						BUTTON,
+						BUTTON,
+						BUTTON,
+						BUTTON,
+					],
 					BIG,
 					uiScale,
 			  ),
@@ -268,6 +285,14 @@ function estimates(uiScale: number, compact: boolean): ReadonlyMap<string, Estim
 		ornament: false,
 		flex: { min: CODEX_SCREEN.gridMin, max: CODEX_SCREEN.gridHeight },
 	});
+	// docs/SILVER.md SV9: the Armory: the title row, the tabs, the list (the flexible part; the detail beside it is as
+	// tall), Back (no key hint on touch).
+	out.set("armory", {
+		w: compact ? ARMORY_SCREEN.compactWidth : ARMORY_SCREEN.width,
+		h: column([title, ARMORY_SCREEN.tab.h, ARMORY_SCREEN.listHeight, MENU_VIEW.smallButton.y], BIG, uiScale),
+		ornament: false,
+		flex: { min: ARMORY_SCREEN.listMin, max: ARMORY_SCREEN.listHeight },
+	});
 	out.set("leaderboard", {
 		w: LEADERBOARD_VIEW.width,
 		h: column([title, BUTTON, LINE(HUD_VIEW.smallText), board, LINE(HUD_VIEW.smallText), BUTTON], BIG, uiScale),
@@ -324,6 +349,7 @@ const SCREENS = [
 	"lobbyBrowser",
 	"credits",
 	"codex",
+	"armory",
 	"lobbyRoom",
 	"lobbyRoomInviting",
 	"tutorialOutro",
@@ -458,6 +484,26 @@ function narrowEstimates(uiScale: number): ReadonlyMap<string, Estimate> {
 	const compactMain = estimates(uiScale, true).get("mainMenu")!;
 	// The stacked main menu with the Daily card and podium under Play solo's row (generously 240 tall).
 	out.set("mainMenu", { ...compactMain, h: compactMain.h + 240 });
+	// docs/SILVER.md SV9: the upright Armory, one column: the tabs, the list, the detail sheet under it.
+	out.set("armory", {
+		w: ARMORY_SCREEN.narrowWidth,
+		h:
+			column(
+				[
+					LINE(HUD_VIEW.titleText),
+					ARMORY_SCREEN.tab.h,
+					ARMORY_SCREEN.listHeight,
+					ARMORY_SCREEN.sheetHeight,
+					MENU_VIEW.smallButton.y,
+				],
+				BIG,
+				uiScale,
+			) +
+			ARMORY_SCREEN.detailGap -
+			HUD_VIEW.gap,
+		ornament: false,
+		flex: { min: ARMORY_SCREEN.listMin, max: ARMORY_SCREEN.listHeight },
+	});
 	// claude/codex-plan.md CX7: the upright Codex, one column: the scrolling tab row, the grid, the detail sheet under it.
 	out.set("codex", {
 		w: CODEX_SCREEN.narrowWidth,
@@ -584,6 +630,20 @@ describe("menu fit on a touchscreen and in portrait", () => {
 		const s: Screen = { name: "360x780", x: 360, y: 780, insets: { top: TOP, left: 0, right: 0, bottom: 34 } };
 		const u = computeHudScale(s.x, s.y, false, 100, true);
 		const e = narrowEstimates(u).get("codex")!;
+		const fit = narrowFit(s, e, u);
+		expect([fit.overflow, fit.factor]).toEqual([false, 1]);
+		expectInside(s, e, fit, u);
+	});
+
+	it("the upright Armory fits a 360 pt phone at the full touch scale (docs/SILVER.md SV9)", () => {
+		const s: Screen = { name: "360x780", x: 360, y: 780, insets: { top: TOP, left: 0, right: 0, bottom: 34 } };
+		const u = computeHudScale(s.x, s.y, false, 100, true);
+		const e = narrowEstimates(u).get("armory")!;
+		// The estimate is the screen's own content height (armoryContentHeight) and its padding.
+		const p = menuPad(BIG, u);
+		expect(e.h).toBe(
+			armoryContentHeight(true, ARMORY_SCREEN.listHeight, LINE(HUD_VIEW.titleText)) + p.top + p.bottom,
+		);
 		const fit = narrowFit(s, e, u);
 		expect([fit.overflow, fit.factor]).toEqual([false, 1]);
 		expectInside(s, e, fit, u);

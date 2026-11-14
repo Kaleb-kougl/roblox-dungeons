@@ -11,6 +11,7 @@ import { useHudScale } from "client/ui/hud";
 import { role } from "client/ui/theme";
 import { MENU_VIEW } from "shared/view/menu";
 import { CharacterScreen } from "./CharacterScreen";
+import { ArmoryScreen } from "./ArmoryScreen";
 import { CodexScreen } from "./CodexScreen";
 import { CreditsScreen } from "./CreditsScreen";
 import { LobbyBrowser } from "./LobbyBrowser";
@@ -54,6 +55,7 @@ export function MenuLayer() {
 	else if (screen === "lobby") body = <LobbyRoom key="Lobby" />;
 	else if (screen === "credits") body = <CreditsScreen key="Credits" />;
 	else if (screen === "codex") body = <CodexScreen key="Codex" />;
+	else if (screen === "armory") body = <ArmoryScreen key="Armory" />;
 	else if (screen === "character") body = <CharacterScreen key="Character" />;
 	const backdrop = body !== undefined || (awaitingFirstRun && !active);
 	return (

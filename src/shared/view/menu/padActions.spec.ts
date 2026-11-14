@@ -189,8 +189,9 @@ describe("menuPadAction (section 3, 4.3)", () => {
 		}
 		for (const s of PAD_SURFACE_IDS) {
 			if (s === "options" || s === "leaderboard") continue;
-			// claude/codex-plan.md CX7: the Codex's bumpers step its tabs (below); its triggers do nothing.
-			if (s === "codex") {
+			// claude/codex-plan.md CX7: the Codex's bumpers step its tabs (below); its triggers do nothing. The Armory's
+			// likewise (docs/SILVER.md SV9).
+			if (s === "codex" || s === "armory") {
 				expect(menuPadAction(s, PAD_KEYS.lb, NOTHING).kind).toBe("tabPrev");
 				expect(menuPadAction(s, PAD_KEYS.rb, NOTHING).kind).toBe("tabNext");
 				for (const k of [PAD_KEYS.lt, PAD_KEYS.rt]) {
