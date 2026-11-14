@@ -46,7 +46,7 @@
 		"note": "First-sighting toast, shown once per account (top centre, during combat) the first time the player meets the Bomber (enemy.bomber.name). Format \"Name: short survival tip\"; the name before the colon must be the same word as that name string. Brief, direct, second person."
 	},
 	"bestiary.bulwark": {
-		"note": "First-sighting toast, shown once per account (top centre, during combat) the first time the player meets the Bulwark (enemy.bulwark.name). Format \"Name: short survival tip\"; the name before the colon must be the same word as that name string. Brief, direct, second person."
+		"note": "First-sighting toast, shown once per account (top centre, during combat) the first time the player meets the Shieldwall (enemy.bulwark.name). Format \"Name: short survival tip\"; the name before the colon must be the same word as that name string. Brief, direct, second person."
 	},
 	"bestiary.chainhook": {
 		"note": "First-sighting toast, shown once per account (top centre, during combat) the first time the player meets the Chainhook (enemy.chainhook.name). Format \"Name: short survival tip\"; the name before the colon must be the same word as that name string. \"Roll\" is the player's dodge roll, \"cut the hook\" means blocking it with the sword's guard. Brief, direct, second person."
@@ -1480,7 +1480,7 @@
 		"note": "Enemy type name: a big, heavy melee brute that slams the ground and sends shockwaves. Shown in the stage card's roster line (the enemy kinds of a floor, joined with \" · \") and the main menu's Daily card. Singular noun, title case, used as a proper name; keep it short. Glossary term."
 	},
 	"enemy.bulwark.name": {
-		"note": "Enemy type name: an armoured demon behind a round shield that blocks shots from the front and covers the enemies behind it; you get round it or break its guard. Shown in the stage card's roster line (the enemy kinds of a floor, joined with \" · \") and the main menu's Daily card. Singular noun, title case, used as a proper name; keep it short. Glossary term."
+		"note": "Enemy type name: an armoured demon behind a round shield that blocks shots from the front and covers the enemies behind it; you get round it or break its guard. Must not read the same as the Warding boon's evolved form (boon.warding.evo.name, English Bulwark). Shown in the stage card's roster line (the enemy kinds of a floor, joined with \" · \") and the main menu's Daily card. Singular noun, title case, used as a proper name; keep it short. Glossary term."
 	},
 	"enemy.caster.name": {
 		"note": "Enemy type name: a stationary turret enemy that casts bullet patterns. Shown in the stage card's roster line (the enemy kinds of a floor, joined with \" · \") and the main menu's Daily card. Singular noun, title case, used as a proper name; keep it short. Glossary term."

@@ -639,7 +639,7 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"enemy.warbanner.name": "Warbanner",
 		"enemy.reaper.name": "Reaper",
 		"enemy.golden.name": "Goldling",
-		"enemy.bulwark.name": "Bulwark",
+		"enemy.bulwark.name": "Shieldwall", // NXD17 (id `bulwark`; Warding's evolution keeps "Bulwark")
 		"enemy.chainhook.name": "Chainhook",
 		"enemy.snatcher.name": "Snatcher",
 		"enemy.pyrekeeper.name": "Pyre-keeper",
@@ -1497,7 +1497,7 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		// docs/FORTUNE.md FO6: the Goldling's first sighting
 		"bestiary.golden": "A Goldling! Catch it before it escapes!",
 		// docs/NEW_ENEMIES_2.md NX1 (NXD15): the third endless set's first sightings (none for the brazier)
-		"bestiary.bulwark": "Bulwark: its shield stops shots from the front, so flank it or break its guard",
+		"bestiary.bulwark": "Shieldwall: its shield stops shots from the front, so flank it or break its guard",
 		"bestiary.chainhook": "Chainhook: roll the line or cut the hook, or it drags you in",
 		"bestiary.snatcher": "Snatcher: it eats your pellets, so kill it before it swallows them",
 		"bestiary.pyrekeeper": "Pyre-keeper: kill it and all its braziers go out",

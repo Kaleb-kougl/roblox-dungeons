@@ -50,7 +50,7 @@ const SHAPES: ReadonlyArray<[string, string]> = [
 	["pyre", "Cylinder"],
 ];
 const NAMES: ReadonlyArray<[string, string]> = [
-	["bulwark", "Bulwark"],
+	["bulwark", "Shieldwall"], // NXD17: the display name; Warding's evolution keeps "Bulwark"
 	["chainhook", "Chainhook"],
 	["snatcher", "Snatcher"],
 	["pyrekeeper", "Pyre-keeper"],
