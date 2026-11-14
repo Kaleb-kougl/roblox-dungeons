@@ -180,6 +180,11 @@ describe("audio contract: port IDs and ambience", () => {
 			"sfx.secret.knock",
 			"sfx.secret.open",
 			"sfx.jingle.secret",
+			// docs/SILVER.md SV7: the Silver counter's tick, a Silver piece's clink, an Armory purchase and a refusal
+			"sfx.silver.gain",
+			"sfx.silver.crate",
+			"sfx.shop.buy",
+			"sfx.shop.deny",
 		]);
 		const web = new Set<string>([...AUDIO_EVENTS, ...BREAKABLE_AUDIO_EVENTS]);
 		for (const id of PORT_AUDIO_EVENTS) {

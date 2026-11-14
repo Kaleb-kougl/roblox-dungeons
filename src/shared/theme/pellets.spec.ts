@@ -4,6 +4,7 @@
 // check printed). contract.ts names the IDs inline (its compiled Luau sits near the 200-locals limit), so these specs
 // are what keeps pellets.ts and contract.ts in step.
 import { describe, expect, it } from "@rbxts/jest-globals";
+import { SILVER_AUDIO_IDS, SILVER_ROLES, SILVER_STRING_KEYS } from "./silver";
 import { colorDifference, contrastRatio } from "./color";
 import {
 	BIOMES,
@@ -76,7 +77,7 @@ function tail(list: ReadonlyArray<string>, n: number, skip = 0): string[] {
  * docs/SECRET_ROOMS.md SR10's 1 colour role (treasure.spec.ts / fortune.spec.ts / floorModifiers.spec.ts /
  * secrets.spec.ts check them).
  */
-const AFTER = { assets: 3 + 1, roles: 5 + 4 + 5 + 1, roomClear: 1 } as const;
+const AFTER = { assets: 3 + 1, roles: 5 + 4 + 5 + 1 + SILVER_ROLES.size(), roomClear: 1 } as const;
 
 describe("pellets: contract", () => {
 	it("two kinds, normal and power; their asset and colour role IDs are `pellet.<kind>`", () => {

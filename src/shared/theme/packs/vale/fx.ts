@@ -14,6 +14,7 @@
 import { BOOST_COLLECT_FX_ID, BOOST_FX_IDS, FX_IDS, type BoostFxId, type FxId } from "../../contract";
 import { GOLDEN_COIN_ROLE } from "../../fortune";
 import { SECRET_DUST_ROLE } from "../../secrets";
+import { SILVER_COINS_FX_ID } from "../../silver";
 import type { ColorRole, ImageAsset, SpriteSetAsset } from "../../types";
 import { sortedKeys } from "../../util";
 import { VALE_BULLET_SOURCE, type ValeBulletSource } from "./bullets";
@@ -39,14 +40,15 @@ const DUST: ColorRole = "uiTextDim";
  * The fx IDs vale draws: every FX_IDS entry but the boost drops' effects (the pickup burst: no art yet,
  * docs/BOOSTS.md B8; the auras: their own sheet, boostAuras.ts, docs/BOOST_ART.md BAD3).
  */
-export type ValeFxId = Exclude<FxId, BoostFxId>;
+export type ValeFxId = Exclude<FxId, BoostFxId | typeof SILVER_COINS_FX_ID>;
 
 /**
  * FX_IDS that vale has no art for yet (absent from the pack: not drawn). docs/BOOSTS.md B8 vendors and maps the boost
  * pickup burst. The boost auras are neither here nor in VALE_FX_IDS: boostAuras.ts draws them (VALE_BOOST_AURA_IDS)
- * once boost-auras.png has an ID.
+ * once boost-auras.png has an ID. docs/SILVER.md SV7: the Silver crate burst's coin has no art yet (the view draws
+ * discs).
  */
-export const VALE_FX_PENDING: ReadonlyArray<FxId> = [BOOST_COLLECT_FX_ID];
+export const VALE_FX_PENDING: ReadonlyArray<FxId> = [BOOST_COLLECT_FX_ID, SILVER_COINS_FX_ID];
 
 /** One sheet of effects: the PNG and the effects packed into it (cells `start + f`, floor(sheet w / frameW) per row). */
 export interface ValeFxSource {

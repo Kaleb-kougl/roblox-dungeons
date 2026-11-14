@@ -4,6 +4,7 @@
 // secretReport / secretArtProblems hold the dust colour and the art to their bars. contract.ts names the keys inline
 // (its compiled Luau sits near the 200-locals limit), so these specs are what keeps secrets.ts and contract.ts in step.
 import { describe, expect, it } from "@rbxts/jest-globals";
+import { SILVER_AUDIO_IDS, SILVER_ROLES, SILVER_STRING_KEYS } from "./silver";
 import { SFX, SFX_FALLBACK, SFX_PRIORITY, ALL_SFX, PORT_SFX, JINGLE_SFX, DUCKING_SFX } from "shared/view/audio";
 import { CHARACTER_OVERRIDE_KEYS, THEME_CHARACTER_IDS, characterOverrideKey } from "./characters";
 import { colorDifference } from "./color";
@@ -98,7 +99,9 @@ describe("secret rooms: strings", () => {
 			SECRET_RECAP_KEY,
 			SECRET_CODEX_NAME_KEY,
 		]).toEqual([...SECRET_STRING_KEYS]);
-		expect(tail(REQUIRED_STRING_KEYS, SECRET_STRING_KEYS.size())).toEqual([...SECRET_STRING_KEYS]);
+		expect(tail(REQUIRED_STRING_KEYS, SECRET_STRING_KEYS.size(), SILVER_STRING_KEYS.size())).toEqual([
+			...SECRET_STRING_KEYS,
+		]);
 		expect(new Set(REQUIRED_STRING_KEYS).size()).toBe(REQUIRED_STRING_KEYS.size());
 		for (const p of sortedKeys(THEME_PACKS))
 			for (const key of SECRET_STRING_KEYS)
@@ -166,7 +169,9 @@ describe("secret rooms: sounds", () => {
 	it("are PORT_AUDIO_EVENTS' last three: required, sfx; SILENT in the placeholder, uploaded in vale (SR14, 2026-11-13)", () => {
 		expect([...SECRET_AUDIO_IDS]).toEqual(["sfx.secret.knock", "sfx.secret.open", "sfx.jingle.secret"]);
 		expect([SECRET_KNOCK_SOUND, SECRET_OPEN_SOUND, SECRET_JINGLE_SOUND]).toEqual([...SECRET_AUDIO_IDS]);
-		expect(tail(PORT_AUDIO_EVENTS, SECRET_AUDIO_IDS.size())).toEqual([...SECRET_AUDIO_IDS]);
+		expect(tail(PORT_AUDIO_EVENTS, SECRET_AUDIO_IDS.size(), SILVER_AUDIO_IDS.size())).toEqual([
+			...SECRET_AUDIO_IDS,
+		]);
 		for (const id of SECRET_AUDIO_IDS) {
 			expect([id, has(REQUIRED_ASSET_IDS, id), slotFor(id)?.soundGroup]).toEqual([id, true, "sfx"]);
 			for (const p of sortedKeys(THEME_PACKS))
@@ -214,7 +219,9 @@ describe("secret rooms: the dust's colour role", () => {
 	it("is COLOR_ROLES' last, in every bundled pack, a pale dusty stone in the placeholder", () => {
 		expect([...SECRET_ROLES]).toEqual([SECRET_DUST_ROLE]);
 		expect(SECRET_DUST_ROLE).toBe("secret.dust");
-		expect(tail(COLOR_ROLES as unknown as ReadonlyArray<string>, SECRET_ROLES.size())).toEqual([...SECRET_ROLES]);
+		expect(tail(COLOR_ROLES as unknown as ReadonlyArray<string>, SECRET_ROLES.size(), SILVER_ROLES.size())).toEqual(
+			[...SECRET_ROLES],
+		);
 		expect(PLACEHOLDER_MANIFEST.colors[SECRET_DUST_ROLE]).toBe("#c8bfae");
 		for (const p of sortedKeys(THEME_PACKS))
 			expect([p, typeIs(THEME_PACKS[p].colors[SECRET_DUST_ROLE], "string")]).toEqual([p, true]);
@@ -292,7 +299,7 @@ describe("secret rooms: optional art", () => {
 
 	it("the dust trickle is an optional fx ID (FX_IDS' last), tinted by secret.dust under the fx rule", () => {
 		expect(SECRET_DUST_FX_ID).toBe("fx.secret.dust");
-		expect([isFxId(SECRET_DUST_FX_ID), slotFor(SECRET_DUST_FX_ID), FX_IDS[FX_IDS.size() - 1]]).toEqual([
+		expect([isFxId(SECRET_DUST_FX_ID), slotFor(SECRET_DUST_FX_ID), FX_IDS[FX_IDS.size() - 2]]).toEqual([
 			true,
 			FX,
 			SECRET_DUST_FX_ID,

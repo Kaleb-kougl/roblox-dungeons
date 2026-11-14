@@ -4823,5 +4823,292 @@
 	"weapon.sword.name": {
 		"note": "Weapon name, shown inside a compact weapon slot of the in-run weapon panel (bottom left, 108 x 30 px, small text). One short word.",
 		"max": 9
+	},
+	"silver.pop": {
+		"note": "In a run: a small number that rises from a broken barrel or crate holding Silver (a currency kept between runs: earned by playing, spent in the Armory, a main-menu shop of permanent upgrades and unlocks; not the run's score, which is gold), and the one beside the Silver counter when it grows. {silver} is a whole number. Keep the plus sign.",
+		"max": 8,
+		"example": "+6"
+	},
+	"silver.recap.run": {
+		"note": "Run-over panel, the Silver rows under the score (Silver: a currency kept between runs, earned by playing): the Silver this run earned, counting up. {silver} is a whole number.",
+		"max": 28,
+		"example": "Silver +46"
+	},
+	"silver.recap.prospector": {
+		"note": "Run-over panel, the Silver rows under the score (Silver: a currency kept between runs, earned by playing): the extra Silver the Prospector upgrade (a permanent upgrade that adds a share of every run's Silver) added. {silver} is a whole number. Prospector must match armory.item.prospector.",
+		"max": 28,
+		"example": "Prospector +4"
+	},
+	"silver.recap.topUp": {
+		"note": "Run-over panel, the Silver rows under the score (Silver: a currency kept between runs, earned by playing): a short run that cleared at least two rooms was raised to the minimum pay. {silver} is the minimum (a whole number).",
+		"max": 28,
+		"example": "Topped up to 20"
+	},
+	"silver.recap.firstRun": {
+		"note": "Run-over panel, the Silver rows under the score (Silver: a currency kept between runs, earned by playing): the bonus for the player's first paying run of the day (UTC). {silver} is a whole number.",
+		"max": 30,
+		"example": "First run today +50"
+	},
+	"silver.recap.daily": {
+		"note": "Run-over panel, the Silver rows under the score (Silver: a currency kept between runs, earned by playing): the bonus for the first Daily run (the Daily: one dungeon shared by everyone each day) the player finished today. {silver} is a whole number.",
+		"max": 28,
+		"example": "Daily bonus +50"
+	},
+	"silver.recap.bonuses": {
+		"note": "Run-over panel, the Silver rows under the score (Silver: a currency kept between runs, earned by playing), small phones: one row adding up the day bonuses and the minimum's top-up. {silver} is a whole number.",
+		"max": 28,
+		"example": "Bonuses +100"
+	},
+	"silver.recap.total": {
+		"note": "Run-over panel, the Silver rows under the score (Silver: a currency kept between runs, earned by playing): the player's Silver after this run (their balance). {silver} is a whole number.",
+		"max": 24,
+		"example": "Total 310"
+	},
+	"silver.recap.toGo": {
+		"note": "Run-over panel, the Silver rows under the score (Silver: a currency kept between runs, earned by playing): how much more Silver the next thing in the Armory needs. {item} is an Armory item's name, maybe with a Roman level (armory.item.level, e.g. \"Vigor II\"); {silver} is a whole number.",
+		"max": 36,
+		"example": "Vigor II: 66 to go"
+	},
+	"silver.recap.ready": {
+		"note": "Run-over panel, the Silver rows under the score (Silver: a currency kept between runs, earned by playing): the next thing in the Armory can be bought now. {item} is an Armory item's name, maybe with a Roman level.",
+		"max": 36,
+		"example": "Vigor I: ready to buy"
+	},
+	"silver.recap.none": {
+		"note": "Run-over panel, the Silver rows under the score (Silver: a currency kept between runs, earned by playing): this run paid no Silver because it was not counted (unranked: the server could not check it).",
+		"max": 32
+	},
+	"armory.item.vigor": {
+		"note": "Armory screen (the Armory: a main-menu shop where the player spends Silver, a currency kept between runs, on permanent upgrades and unlocks): the name of an Armory item, a permanent upgrade: more maximum hearts (health) at the start of every run. Title case, short; also used in \"{item}: 66 to go\" lines.",
+		"max": 18
+	},
+	"armory.item.deepFlask": {
+		"note": "Armory screen (the Armory: a main-menu shop where the player spends Silver, a currency kept between runs, on permanent upgrades and unlocks): the name of an Armory item, a permanent upgrade: more charges of the healing flask. Title case, short; also used in \"{item}: 66 to go\" lines.",
+		"max": 18
+	},
+	"armory.item.plating": {
+		"note": "Armory screen (the Armory: a main-menu shop where the player spends Silver, a currency kept between runs, on permanent upgrades and unlocks): the name of an Armory item, a permanent upgrade: start every run with one armor pip (a shield point that takes a hit before the hearts). Title case, short; also used in \"{item}: 66 to go\" lines.",
+		"max": 18
+	},
+	"armory.item.prospector": {
+		"note": "Armory screen (the Armory: a main-menu shop where the player spends Silver, a currency kept between runs, on permanent upgrades and unlocks): the name of an Armory item, a permanent upgrade: more Silver from every run. Title case, short; also used in \"{item}: 66 to go\" lines.",
+		"max": 18
+	},
+	"armory.item.character.archer": {
+		"note": "Armory screen (the Armory: a main-menu shop where the player spends Silver, a currency kept between runs, on permanent upgrades and unlocks): the name of an Armory item, an unlock: the Archer, the bow-wielding character (the other is the Knight). Same name as class.ranger.name with an article. Title case, short; also used in \"{item}: 66 to go\" lines.",
+		"max": 18
+	},
+	"armory.desc.vigor": {
+		"note": "Armory screen (the Armory: a main-menu shop where the player spends Silver, a currency kept between runs, on permanent upgrades and unlocks): what the Vigor upgrade does (a half heart is half of one health heart). Brief.",
+		"max": 64
+	},
+	"armory.desc.deepFlask": {
+		"note": "Armory screen (the Armory: a main-menu shop where the player spends Silver, a currency kept between runs, on permanent upgrades and unlocks): what the Deep Flask upgrade does (the flask heals; a charge is one use per checkpoint). Brief.",
+		"max": 64
+	},
+	"armory.desc.plating": {
+		"note": "Armory screen (the Armory: a main-menu shop where the player spends Silver, a currency kept between runs, on permanent upgrades and unlocks): what the Plating upgrade does (an armor pip is a shield point that takes a hit before the hearts; checkpoints refill it). Brief.",
+		"max": 64
+	},
+	"armory.desc.prospector": {
+		"note": "Armory screen (the Armory: a main-menu shop where the player spends Silver, a currency kept between runs, on permanent upgrades and unlocks): what the Prospector upgrade does. {percent} is a whole number; keep the space before the % sign as your language writes percentages.",
+		"max": 64,
+		"example": "+5 % Silver on every run's amount, per level."
+	},
+	"armory.desc.character.archer": {
+		"note": "Armory screen (the Armory: a main-menu shop where the player spends Silver, a currency kept between runs, on permanent upgrades and unlocks): what unlocking the Archer gives (a playable character with a bow and a longer dodge roll). Brief.",
+		"max": 64
+	},
+	"armory.title": {
+		"note": "Armory screen (the Armory: a main-menu shop where the player spends Silver, a currency kept between runs, on permanent upgrades and unlocks): the screen's title. One word (the armoury where gear is bought).",
+		"max": 16
+	},
+	"armory.balance": {
+		"note": "Armory screen (the Armory: a main-menu shop where the player spends Silver, a currency kept between runs, on permanent upgrades and unlocks), main menu and character screen: the player's Silver balance. {silver} is a whole number.",
+		"max": 20,
+		"example": "Silver 460"
+	},
+	"armory.tab.upgrades": {
+		"note": "Armory screen (the Armory: a main-menu shop where the player spends Silver, a currency kept between runs, on permanent upgrades and unlocks): tab with the permanent upgrades. Plural noun.",
+		"max": 14
+	},
+	"armory.tab.unlocks": {
+		"note": "Armory screen (the Armory: a main-menu shop where the player spends Silver, a currency kept between runs, on permanent upgrades and unlocks): tab with the unlocks (new characters). Plural noun.",
+		"max": 14
+	},
+	"armory.tab.cosmetics": {
+		"note": "Armory screen (the Armory: a main-menu shop where the player spends Silver, a currency kept between runs, on permanent upgrades and unlocks): tab with cosmetics (looks only: colours, trails, titles). Plural noun.",
+		"max": 14
+	},
+	"armory.cosmetics.later": {
+		"note": "Armory screen (the Armory: a main-menu shop where the player spends Silver, a currency kept between runs, on permanent upgrades and unlocks): the Cosmetics tab, still empty: says they will come later.",
+		"max": 60
+	},
+	"armory.unavailable": {
+		"note": "Armory screen (the Armory: a main-menu shop where the player spends Silver, a currency kept between runs, on permanent upgrades and unlocks) and the main menu's button: the Armory cannot be used this session (the player's Silver failed to load).",
+		"max": 24
+	},
+	"armory.unavailable.body": {
+		"note": "Armory screen (the Armory: a main-menu shop where the player spends Silver, a currency kept between runs, on permanent upgrades and unlocks): under the unavailable title: the Silver failed to load; runs still earn it; try later.",
+		"max": 96
+	},
+	"armory.item.level": {
+		"note": "Armory screen (the Armory: a main-menu shop where the player spends Silver, a currency kept between runs, on permanent upgrades and unlocks): an item at a level. {name} is the item's name (armory.item.*), {level} a Roman numeral (I, II, III, IV). Reorder if your language puts the numeral first.",
+		"max": 24,
+		"example": "Vigor II"
+	},
+	"armory.tier": {
+		"note": "Armory screen (the Armory: a main-menu shop where the player spends Silver, a currency kept between runs, on permanent upgrades and unlocks): the price tier of an item (1 to 8, each tier costs about twice the last). {tier} is a whole number.",
+		"max": 10,
+		"example": "Tier 5"
+	},
+	"armory.toGo": {
+		"note": "Armory screen (the Armory: a main-menu shop where the player spends Silver, a currency kept between runs, on permanent upgrades and unlocks): how much more Silver an item needs. {silver} is a whole number.",
+		"max": 16,
+		"example": "140 to go"
+	},
+	"armory.mark.next": {
+		"note": "Armory screen (the Armory: a main-menu shop where the player spends Silver, a currency kept between runs, on permanent upgrades and unlocks): a small mark on the cheapest item the player cannot afford yet (their next goal).",
+		"max": 10
+	},
+	"armory.mark.after": {
+		"note": "Armory screen (the Armory: a main-menu shop where the player spends Silver, a currency kept between runs, on permanent upgrades and unlocks): a small mark on the goal after the next one.",
+		"max": 12
+	},
+	"armory.owned": {
+		"note": "Armory screen (the Armory: a main-menu shop where the player spends Silver, a currency kept between runs, on permanent upgrades and unlocks): an unlock already owned.",
+		"max": 10
+	},
+	"armory.maxed": {
+		"note": "Armory screen (the Armory: a main-menu shop where the player spends Silver, a currency kept between runs, on permanent upgrades and unlocks): an upgrade at its highest level.",
+		"max": 12
+	},
+	"armory.levels": {
+		"note": "Armory screen (the Armory: a main-menu shop where the player spends Silver, a currency kept between runs, on permanent upgrades and unlocks): an upgrade's level out of its maximum. {level} and {max} are whole numbers.",
+		"max": 14,
+		"example": "Level 1/2"
+	},
+	"armory.hold": {
+		"note": "Armory screen (the Armory: a main-menu shop where the player spends Silver, a currency kept between runs, on permanent upgrades and unlocks): the buy button's label; the player must press and hold it briefly to buy.",
+		"max": 16
+	},
+	"armory.buying": {
+		"note": "Armory screen (the Armory: a main-menu shop where the player spends Silver, a currency kept between runs, on permanent upgrades and unlocks): the buy button while the server answers.",
+		"max": 14
+	},
+	"armory.confirm": {
+		"note": "Armory screen (the Armory: a main-menu shop where the player spends Silver, a currency kept between runs, on permanent upgrades and unlocks): a question before an expensive purchase. {price} is a whole number of Silver.",
+		"max": 28,
+		"example": "Spend 2500 Silver?"
+	},
+	"armory.confirm.yes": {
+		"note": "Armory screen (the Armory: a main-menu shop where the player spends Silver, a currency kept between runs, on permanent upgrades and unlocks): confirms the expensive purchase. A verb.",
+		"max": 10
+	},
+	"armory.confirm.no": {
+		"note": "Armory screen (the Armory: a main-menu shop where the player spends Silver, a currency kept between runs, on permanent upgrades and unlocks): cancels the expensive purchase.",
+		"max": 10
+	},
+	"armory.result.bought": {
+		"note": "Armory screen (the Armory: a main-menu shop where the player spends Silver, a currency kept between runs, on permanent upgrades and unlocks): shown after a purchase. {item} is the item's name, maybe with a Roman level.",
+		"max": 32,
+		"example": "Bought Vigor II"
+	},
+	"armory.result.poor": {
+		"note": "Armory screen (the Armory: a main-menu shop where the player spends Silver, a currency kept between runs, on permanent upgrades and unlocks): a purchase refused: not enough Silver.",
+		"max": 28
+	},
+	"armory.result.failed": {
+		"note": "Armory screen (the Armory: a main-menu shop where the player spends Silver, a currency kept between runs, on permanent upgrades and unlocks): a purchase failed for another reason (a server error).",
+		"max": 32
+	},
+	"armory.nextRun": {
+		"note": "Armory screen (the Armory: a main-menu shop where the player spends Silver, a currency kept between runs, on permanent upgrades and unlocks): when a purchase takes effect: from the next run, in the endless mode, co-op and the Daily (game modes).",
+		"max": 60
+	},
+	"armory.effect.change": {
+		"note": "Armory screen (the Armory: a main-menu shop where the player spends Silver, a currency kept between runs, on permanent upgrades and unlocks): what an upgrade changes now and at its next level. {label} is a character's name (Knight / Archer) or a stat (armory.label.*), {from} and {to} are values. Keep the arrow as ->.",
+		"max": 28,
+		"example": "Knight 2 1/2 -> 3"
+	},
+	"armory.effect.now": {
+		"note": "Armory screen (the Armory: a main-menu shop where the player spends Silver, a currency kept between runs, on permanent upgrades and unlocks): an upgrade's current effect at its highest level. {label} is a character's name or a stat, {now} the value.",
+		"max": 24,
+		"example": "Knight 3"
+	},
+	"armory.label.flask": {
+		"note": "Armory screen (the Armory: a main-menu shop where the player spends Silver, a currency kept between runs, on permanent upgrades and unlocks): label of the flask charges value in an effect line (\"Flask 3 -> 4\").",
+		"max": 10
+	},
+	"armory.label.armor": {
+		"note": "Armory screen (the Armory: a main-menu shop where the player spends Silver, a currency kept between runs, on permanent upgrades and unlocks): label of the armor pips value in an effect line (\"Armor 0 -> 1\").",
+		"max": 10
+	},
+	"armory.label.silver": {
+		"note": "Armory screen (the Armory: a main-menu shop where the player spends Silver, a currency kept between runs, on permanent upgrades and unlocks): label of the extra Silver share in an effect line (\"Silver +5 % -> +10 %\").",
+		"max": 10
+	},
+	"armory.value.hearts": {
+		"note": "Armory screen (the Armory: a main-menu shop where the player spends Silver, a currency kept between runs, on permanent upgrades and unlocks): a number of hearts (health), whole. {n} is a whole number.",
+		"max": 6,
+		"example": "3"
+	},
+	"armory.value.heartsHalf": {
+		"note": "Armory screen (the Armory: a main-menu shop where the player spends Silver, a currency kept between runs, on permanent upgrades and unlocks): a number of hearts and a half (health). {n} is a whole number; 1/2 is one half.",
+		"max": 8,
+		"example": "2 1/2"
+	},
+	"armory.value.heartHalf": {
+		"note": "Armory screen (the Armory: a main-menu shop where the player spends Silver, a currency kept between runs, on permanent upgrades and unlocks): half a heart alone (health).",
+		"max": 6
+	},
+	"armory.value.percent": {
+		"note": "Armory screen (the Armory: a main-menu shop where the player spends Silver, a currency kept between runs, on permanent upgrades and unlocks): a percentage bonus. {n} is a whole number; write the percent sign as your language does.",
+		"max": 8,
+		"example": "+5 %"
+	},
+	"menu.armory": {
+		"note": "Main menu: the button opening the Armory screen (the Armory: a main-menu shop where the player spends Silver, a currency kept between runs, on permanent upgrades and unlocks).",
+		"max": 14
+	},
+	"menu.firstRunBonus": {
+		"note": "Main menu, under the Silver balance: the bonus the player's first paying run today will add. {silver} is a whole number.",
+		"max": 30,
+		"example": "First run today: +50"
+	},
+	"character.locked.unlock": {
+		"note": "Character screen (picked before each run: the Knight or the Archer): a locked character's buy button (bought with Silver, a currency kept between runs). {price} is a whole number.",
+		"max": 16,
+		"example": "Unlock 300"
+	},
+	"character.locked.need": {
+		"note": "Character screen (picked before each run: the Knight or the Archer): a locked character the player cannot afford yet. {silver} is how much more Silver they need.",
+		"max": 18,
+		"example": "Need 140 more"
+	},
+	"character.unavailable": {
+		"note": "Character screen (picked before each run: the Knight or the Archer): only the Knight can be picked this session (the player's unlocks failed to load).",
+		"max": 30
+	},
+	"character.upgrades": {
+		"note": "Character screen (picked before each run: the Knight or the Archer): under each character card, the permanent upgrades the next run will apply. {list} is item names with Roman levels joined by \" · \".",
+		"max": 44,
+		"example": "Upgrades: Vigor II · Prospector I"
+	},
+	"character.upgrades.none": {
+		"note": "Character screen (picked before each run: the Knight or the Archer): under each character card when the player owns no upgrades yet.",
+		"max": 24
+	},
+	"silver.welcome.title": {
+		"note": "Main menu, a one-time card for players who played before the Silver update: its title. Silver is a currency kept between runs; the Armory is a main-menu shop.",
+		"max": 36
+	},
+	"silver.welcome.body": {
+		"note": "Main menu, a one-time card for players who played before the Silver update: what changed: every run pays Silver; everyone now starts with 2 hearts (health) and only the Knight; the Vigor upgrade (armory.item.vigor) wins hearts back and the Archer is bought with Silver. Two short sentences.",
+		"max": 200
+	},
+	"silver.welcome.ok": {
+		"note": "Main menu, a one-time card for players who played before the Silver update: closes it.",
+		"max": 12
 	}
 }

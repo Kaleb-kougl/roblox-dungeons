@@ -4,6 +4,7 @@
 // uiPanel, the twist apart from every boon), every check printed. contract.ts names the IDs inline (its compiled Luau
 // sits near the 200-locals limit), so these specs are what keeps floorModifiers.ts and contract.ts in step.
 import { describe, expect, it } from "@rbxts/jest-globals";
+import { SILVER_AUDIO_IDS, SILVER_ROLES, SILVER_STRING_KEYS } from "./silver";
 import { FloorModifierClass, MODIFIERS } from "shared/dungeon";
 import { CODEX_AUDIO_IDS, CODEX_STRING_KEYS } from "./codex";
 import { SECRET_AUDIO_IDS, SECRET_ROLES, SECRET_STRING_KEYS } from "./secrets";
@@ -59,9 +60,13 @@ function tail(list: ReadonlyArray<string>, n: number, skip = 0): string[] {
  * colour role (secrets.spec.ts).
  */
 const LATER_AFTER = {
-	audio: GOLDEN_RUMOUR_AUDIO_IDS.size() + CODEX_AUDIO_IDS.size() + SECRET_AUDIO_IDS.size(),
-	strings: GOLDEN_RUMOUR_STRING_KEYS.size() + CODEX_STRING_KEYS.size() + SECRET_STRING_KEYS.size(),
-	roles: SECRET_ROLES.size(),
+	audio: GOLDEN_RUMOUR_AUDIO_IDS.size() + CODEX_AUDIO_IDS.size() + SECRET_AUDIO_IDS.size() + SILVER_AUDIO_IDS.size(),
+	strings:
+		GOLDEN_RUMOUR_STRING_KEYS.size() +
+		CODEX_STRING_KEYS.size() +
+		SECRET_STRING_KEYS.size() +
+		SILVER_STRING_KEYS.size(),
+	roles: SECRET_ROLES.size() + SILVER_ROLES.size(),
 } as const;
 
 describe("floor modifiers: theme keys", () => {

@@ -35,6 +35,7 @@ import {
 	slotFor,
 } from "./contract";
 import { sortedKeys } from "./util";
+import { SILVER_STRING_KEYS } from "./silver";
 
 describe("sprite contract", () => {
 	it("keeps the web build's cells, pivots, frame counts and facings", () => {
@@ -191,12 +192,14 @@ describe("required IDs and strings", () => {
 		// .beam). + docs/FLOOR_MODIFIERS.md FM7: 5 port audio events (sfx.floor.modifier.*). + docs/GOLDLING_RUMOURS.md
 		// GR6: 2 port audio events (sfx.golden.rumour.floor / .room). + claude/codex-plan.md CX5: 1 port audio event
 		// (sfx.codex.new). + docs/SECRET_ROOMS.md SR10: 3 port audio events (sfx.secret.knock / .open, sfx.jingle.secret);
-		// its crack / rubble art and dust effect are optional, so not here.
+		// its crack / rubble art and dust effect are optional, so not here. + docs/SILVER.md SV7: 4 port audio events
+		// (sfx.silver.gain / .crate, sfx.shop.buy / .deny); the icon and the coin effect are optional.
 		const assetsBefore =
 			60 + 1 + 2 + 2 + 37 + 5 + 4 + 2 + 1 + 5 + 2 + 4 + 9 + 2 + 1 + 5 + 1 + 6 + 3 + 2 + 2 + 4 + 3 + 1 + 8 + 1 + 2;
 		const codexSounds = 1;
 		const secretSounds = 3;
-		expect(REQUIRED_ASSET_IDS.size()).toBe(assetsBefore + 5 + 5 + 2 + codexSounds + secretSounds);
+		const silverSounds = 4;
+		expect(REQUIRED_ASSET_IDS.size()).toBe(assetsBefore + 5 + 5 + 2 + codexSounds + secretSounds + silverSounds);
 		expect(AUDIO_EVENTS.size()).toBe(20);
 		expect(new Set(REQUIRED_ASSET_IDS).size()).toBe(REQUIRED_ASSET_IDS.size());
 		for (const id of REQUIRED_ASSET_IDS) {
@@ -233,8 +236,32 @@ describe("required IDs and strings", () => {
 		// + claude/codex-plan.md CX5: CODEX_STRING_KEYS (54)
 		// + docs/SECRET_ROOMS.md SR10: SECRET_STRING_KEYS (5), bestiary.secret.crack (BESTIARY_STRING_KEYS); SRD12: the
 		// Codex's secrets sub-header, kind line and description (CODEX_STRING_KEYS, 57)
+		// + docs/SILVER.md SV7: SILVER_STRING_KEYS
 		expect(REQUIRED_STRING_KEYS.size()).toBe(
-			before + 28 + 1 + 1 + 4 + 16 + 1 + 19 + 1 + 1 + 3 + 18 + 17 + 5 + 45 + 7 + 11 + 2 + 1 + 54 + 5 + 1 + 3,
+			before +
+				28 +
+				1 +
+				1 +
+				4 +
+				16 +
+				1 +
+				19 +
+				1 +
+				1 +
+				3 +
+				18 +
+				17 +
+				5 +
+				45 +
+				7 +
+				11 +
+				2 +
+				1 +
+				54 +
+				5 +
+				1 +
+				3 +
+				SILVER_STRING_KEYS.size(),
 		);
 		expect(new Set(REQUIRED_STRING_KEYS).size()).toBe(REQUIRED_STRING_KEYS.size());
 		expect(BIOMES.map((b) => b.forgeTheme)).toEqual(["ancient", "molten", "frost", "grim", "verdant"]);

@@ -47,6 +47,7 @@
 
 import type { AssetKind, ColorRole, ParticleFlipbookMode, Pivot } from "./types";
 import { CODEX_STRING_KEYS } from "./codex";
+import { silverStringKeys } from "./silver";
 import { DAILY_STRING_KEYS } from "./daily";
 import { DAILY_RANK_STRING_KEYS } from "./dailyRank";
 import { NEW_BEST_STRING_KEYS } from "./newBest";
@@ -980,6 +981,12 @@ export const PORT_AUDIO_EVENTS = [
 	"sfx.secret.knock",
 	"sfx.secret.open",
 	"sfx.jingle.secret",
+	// docs/SILVER.md SV7 (silver.ts SILVER_AUDIO_IDS, the same list): the Silver counter ticking, a Silver piece's coin
+	// clink, an Armory purchase landing and one refused
+	"sfx.silver.gain",
+	"sfx.silver.crate",
+	"sfx.shop.buy",
+	"sfx.shop.deny",
 ] as const;
 
 /**
@@ -1374,6 +1381,9 @@ export const REQUIRED_STRING_KEYS: ReadonlyArray<string> = ((): string[] => [
 	"treasure.secret.title",
 	"run.recap.hl.secrets",
 	"secret.room.name",
+	// docs/SILVER.md SV7: silver.ts SILVER_STRING_KEYS (built inside its own function): the counter's pop, the run-over
+	// rows, the Armory, the main menu's balance, the character screen's lock and the returning-player card
+	...silverStringKeys(),
 ])();
 
 /**
@@ -2256,6 +2266,8 @@ export const FX_IDS = (() =>
 		"fx.treasure.column",
 		// docs/SECRET_ROOMS.md SR10 (secrets.ts SECRET_DUST_FX_ID): a secret room's dust trickle
 		"fx.secret.dust",
+		// docs/SILVER.md SV7 (silver.ts SILVER_COINS_FX_ID): the Silver crate burst's coin, tinted by `silver`
+		"fx.silver.coins",
 	] as const)();
 export type FxId = (typeof FX_IDS)[number];
 

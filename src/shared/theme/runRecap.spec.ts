@@ -4,6 +4,7 @@
 // silent everywhere until clips exist. contract.ts names the keys inline (its compiled Luau sits near the 200-locals
 // limit), so these specs are what keeps runRecap.ts and contract.ts in step.
 import { describe, expect, it } from "@rbxts/jest-globals";
+import { SILVER_AUDIO_IDS, SILVER_ROLES, SILVER_STRING_KEYS } from "./silver";
 import { CODEX_AUDIO_IDS, CODEX_STRING_KEYS } from "./codex";
 import { SECRET_AUDIO_IDS, SECRET_STRING_KEYS } from "./secrets";
 import { PORT_AUDIO_EVENTS, REQUIRED_ASSET_IDS, REQUIRED_STRING_KEYS, slotFor } from "./contract";
@@ -131,7 +132,8 @@ describe("run recap and co-op moments: contract", () => {
 			FLOOR_MODIFIER_STRING_KEYS.size() +
 			GOLDEN_RUMOUR_STRING_KEYS.size() +
 			CODEX_STRING_KEYS.size() +
-			SECRET_STRING_KEYS.size();
+			SECRET_STRING_KEYS.size() +
+			SILVER_STRING_KEYS.size();
 		expect(tail(REQUIRED_STRING_KEYS, all.size(), after)).toEqual(all);
 		expect(new Set(REQUIRED_STRING_KEYS).size()).toBe(REQUIRED_STRING_KEYS.size());
 	});
@@ -146,7 +148,8 @@ describe("run recap and co-op moments: contract", () => {
 			FLOOR_MODIFIER_AUDIO_IDS.size() +
 			GOLDEN_RUMOUR_AUDIO_IDS.size() +
 			CODEX_AUDIO_IDS.size() +
-			SECRET_AUDIO_IDS.size();
+			SECRET_AUDIO_IDS.size() +
+			SILVER_AUDIO_IDS.size();
 		expect(tail(PORT_AUDIO_EVENTS, TEAM_MOMENT_AUDIO_IDS.size(), skip)).toEqual([...TEAM_MOMENT_AUDIO_IDS]);
 		for (const id of TEAM_MOMENT_AUDIO_IDS) {
 			expect([id, has(REQUIRED_ASSET_IDS, id), slotFor(id)?.soundGroup]).toEqual([id, true, "sfx"]);
