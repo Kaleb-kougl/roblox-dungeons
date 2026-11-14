@@ -1834,7 +1834,8 @@ export class SimController implements OnStart {
 			const dev = world === DEV_WORLD_KIND ? this.devRun : undefined;
 			// docs/ARCHER.md AR5: the run's character (worlds without characters ignore it; the tutorial is the Knight's).
 			// docs/SILVER.md SV6: a ranked run is built with the session's upgrade levels; an unranked one with none.
-			const upgrades = runId !== undefined && this.rankedUpgrades !== undefined ? [this.rankedUpgrades] : undefined;
+			const upgrades =
+				runId !== undefined && this.rankedUpgrades !== undefined ? [this.rankedUpgrades] : undefined;
 			const setup = buildWorldSetup(world, seed, {
 				atBossDoor,
 				dev,

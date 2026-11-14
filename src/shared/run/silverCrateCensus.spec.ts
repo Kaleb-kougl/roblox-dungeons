@@ -1,4 +1,4 @@
-// Silver in crates census (docs/SILVER.md SC4, the bot half; npm run test:only -- --census run/silverCrateCensus): an honest solo endless descent per run seed
+// Silver in crates census (docs/SILVER.md SC4, the bot half): an honest solo endless descent per run seed
 // (shared/run/testing survivalBot.ts: the Knight fights every room with planned spawns and the boss, then takes the
 // stairs; it never detours for a barrel or crate), counting per floor the Silver pieces and Silver the floor holds and
 // how many the bot's fights break (any source: its swings and arrows, enemy bullets, slams, Chargers, Bombers), and an
@@ -7,6 +7,7 @@
 // runSilver is Track W's and not read here), so crates' share of the run amount can be read off the log. Printed with
 // loose bounds only. OPT-IN size: without `--census` a smoke sample (run seed 1 to floor 2); with it run seeds 1-8 to
 // floor 10 (several minutes).
+// Run: npm run test:only -- --census run/silverCrateCensus (the smoke sample without --census).
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { ScoreSource, SIM_HZ, secretsRunSummary, silverTotalOf, type SimState } from "shared/sim";
 import { buildEndlessRunConfig } from "shared/run";

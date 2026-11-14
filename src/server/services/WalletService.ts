@@ -90,10 +90,7 @@ export class WalletService implements OnStart {
 	/** Studio: the in-memory store the book transacts on. */
 	private memory: MemoryWalletStore | undefined;
 
-	constructor(
-		private readonly telemetry: TelemetryService,
-		private readonly silverAccess: SilverAccessService,
-	) {
+	constructor(private readonly telemetry: TelemetryService, private readonly silverAccess: SilverAccessService) {
 		this.book = new WalletBook(this.createStore(), {
 			keyOf: playerDataKey,
 			wait: (s) => task.wait(s),
