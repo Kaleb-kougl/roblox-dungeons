@@ -260,6 +260,37 @@ OC2 the shield against effect bullets (recommended above).
 - Owner calls: OC1 (two Bulwarks) open; **OC3** a breaking hit deals 0 (built) or its full damage too; **OC4** Swift /
   the Warbanner aura do not speed the turn (built: the turn is a literal).
 
+### NX4 Snatcher (as built, 2026-11-14)
+
+- `archetypes/snatcher.ts`: steal / flee / swallow / return as Design says, no draw on any stream (spec). Rules in the
+  file comment. Its pellets are its own score record's (`snatchRecordOf`: the record holding its slot and id, the
+  corpse's at death), only while that room's pellets are LIVE. Eats on contact (`eatRadius` = the pickup reach) in both
+  STEAL and FLEE, index order, up to the stomach. The swallow check runs before the flee, so a full belly stands still
+  even with a player beside it. Phase ticks are `aiTicks` (`ctx.telegraph`), v3 carried, v4 belly ticks, v6 fleeing
+  (NX0 correction 4; v5 / v7 free).
+- `sim/pellets` `pelletsData.ts`: `PELLET_STOLEN` 2, `PELLET_DIGESTED` 3, `SNATCHER_KIND`; `snatch.ts` (a leaf):
+  `snatchRecordOf`, `pelletStealable`, `pelletsNearestLive` (ties to the lower index, never the power pellet),
+  `pelletsSteal`, `pelletsCarried`, `pelletsDigest(rec)`, `pelletsReturn(rec)`. None touches `left` (NXD11).
+  `PelletEvents` gains unhashed `stolen` {index, x, z}, `returned` {index, fromX, fromZ} (the corpse) and `swallowed`
+  {x, z, indices}; cleared and cloned with the rest.
+- Flee field `archetypes/snatcherField.ts`: `fleeField` over the room's floor rectangle (`roomGridRect`), open = not
+  `isBodyBlocked` and no intact piece; sources = living players within `SNATCHER_SOURCE_MARGIN_CELLS` 2 of the box,
+  clamped onto it. Read fresh each fleeing tick from hashed state (no v slot for a field tick); the cache is a memo per
+  encounter room id keyed on everything it reads (room, world config, pieces + intact, factor, sources), so clones and
+  replays get the field they would build from scratch (spec). Allocates only for a new room id or a bigger box.
+  Fallback to walking straight away (steer mover) when it stands outside the rectangle, on an unreached cell (no player
+  near the room on an open cell) or in no room (the NX1 sandbox).
+- Horde (NXD9): `stepPacts.ts` `telegraphWave` skips `SNATCHER_KIND` and caps over the kept entries (a while loop, the
+  same entries as before without one; spec: 5 planned with a Snatcher -> 4, 12 with a Snatcher first -> 10).
+- Specs `sim/snatcher.spec.ts` (an endless floor-1 room's planned spawns replaced by a Snatcher and a dummy).
+- **Deviation:** it leashes only when every player is dead (no distance leash): its walks stay in its room by
+  construction, and the 16-unit leash cut flights short in doubled endless rooms.
+- **Not built / limits:** a Snatcher freed without dying (a floor change) returns nothing (the floor's pellets are
+  replaced anyway). Two Snatchers in one room (not possible after NX6's cap) would share the record's carried pellets.
+- **Owner call (NX4):** a Snatcher killed as the room's LAST member returns its pellets on the clear tick, so they go with
+  the room before anyone can pick them up and the Sweep is lost (the clear judges `left`). Kill it first (the lesson) or
+  change the rule (e.g. the clear waits for returned pellets, or they count as picked up by the killer).
+
 ## Player experience
 
 1. **Bulwark.** An armoured demon walks at you behind a round shield. Arrows and sword cuts that hit the shield spark

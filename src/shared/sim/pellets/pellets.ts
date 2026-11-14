@@ -96,6 +96,30 @@ export interface PelletPowerEvent {
 	points: number;
 }
 
+/** A pellet a Snatcher ate this tick (docs/NEW_ENEMIES_2.md NX4; presentation: the gulp): its index and centre. */
+export interface PelletStolen {
+	readonly index: number;
+	readonly x: number;
+	readonly z: number;
+}
+
+/** A pellet a Snatcher's death put back this tick (presentation: the fly-back from its corpse to the pellet's cell). */
+export interface PelletReturned {
+	readonly index: number;
+	/** Where it flies from: the Snatcher's position at its death. */
+	readonly fromX: number;
+	readonly fromZ: number;
+}
+
+/** A Snatcher's swallow this tick (presentation: the gulp, a fizzle on each digested pellet's cell). */
+export interface PelletSwallowed {
+	/** The Snatcher's position. */
+	readonly x: number;
+	readonly z: number;
+	/** The pellets digested (taken = PELLET_DIGESTED), ascending. */
+	readonly indices: number[];
+}
+
 /** Per-tick pellet events for presentation. Cleared at the start of every tick; NOT hashed. */
 export interface PelletEvents {
 	eaten: PelletEaten[];
@@ -107,6 +131,10 @@ export interface PelletEvents {
 	swept: number[];
 	/** The power pellet's conversion this tick, if any. */
 	power?: PelletPowerEvent;
+	/** Snatchers (docs/NEW_ENEMIES_2.md NX4): pellets eaten, put back at a death, and swallows, this tick. */
+	stolen: PelletStolen[];
+	returned: PelletReturned[];
+	swallowed: PelletSwallowed[];
 }
 
 /** SimState.pellets: plain numbers (hashed: taken, power, per room left / phase / swept) plus floor data. */
@@ -116,7 +144,10 @@ export interface PelletsState {
 	x: number[];
 	z: number[];
 	rec: number[];
-	/** Per pellet: 1 once taken. */
+	/**
+	 * Per pellet: 0 on the floor, 1 once taken by a player; a Snatcher's PELLET_STOLEN (carried) / PELLET_DIGESTED
+	 * (swallowed) (pelletsData.ts, snatch.ts). Anything but 0 is off the floor.
+	 */
 	taken: number[];
 	/** Index of the power pellet, or NO_POWER_PELLET (shared/dungeon). */
 	power: number;
@@ -129,7 +160,7 @@ export interface PelletsState {
 }
 
 function emptyEvents(): PelletEvents {
-	return { eaten: [], live: [], gone: [], swept: [], power: undefined };
+	return { eaten: [], live: [], gone: [], swept: [], power: undefined, stolen: [], returned: [], swallowed: [] };
 }
 
 /** An empty pellets state (no floor yet: pelletsOnFloor fills it). No rng. */
@@ -207,6 +238,9 @@ export function clearPelletsEvents(p: PelletsState): void {
 	e.gone.clear();
 	e.swept.clear();
 	e.power = undefined;
+	e.stolen.clear();
+	e.returned.clear();
+	e.swallowed.clear();
 }
 
 export function clonePelletsState(p: Readonly<PelletsState>): PelletsState {
@@ -229,6 +263,9 @@ export function clonePelletsState(p: Readonly<PelletsState>): PelletsState {
 			gone: [...e.gone],
 			swept: [...e.swept],
 			power: power !== undefined ? { ...power, x: [...power.x], z: [...power.z] } : undefined,
+			stolen: [...e.stolen],
+			returned: [...e.returned],
+			swallowed: e.swallowed.map((w) => ({ ...w, indices: [...w.indices] })),
 		},
 	};
 }

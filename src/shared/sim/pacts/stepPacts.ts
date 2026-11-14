@@ -21,7 +21,8 @@
  * stepPactsWave (a roused horde room whose second wave has not spawned; someone alive):
  *   trigger   no telegraph yet and the record's living first-wave members (entries 0 .. firstWave - 1; a member gone or
  *             dead is down) number at most floor(firstWave / 2) (a one-enemy room: when it dies): the room's planned
- *             spawns again (EndlessFloorWorld.roomSpawns, in order, the first config.hordeMaxWave of them) through
+ *             spawns again (EndlessFloorWorld.roomSpawns, in order, the first config.hordeMaxWave of them, every
+ *             Snatcher skipped and not counted: docs/NEW_ENEMIES_2.md NXD9) through
  *             safeRoomSpawns (kept off the living players as a room's spawns are) give wave 2's kinds and tiles (stored);
  *             waveDueTick = tick + config.waveTelegraphTicks. No draw.
  *   spawn     at waveDueTick: each wave entry in order through spawnActor with NO affix (a full pool drops the rest; init
@@ -71,6 +72,7 @@ import {
 	type PactKindId,
 } from "./pactsData";
 import type { PactsState } from "./pacts";
+import { SNATCHER_KIND } from "../pellets/pelletsData";
 
 const ctx = new SimCtx();
 
@@ -349,7 +351,13 @@ function telegraphWave(state: SimState, p: PactsState, config: Readonly<SimConfi
 	if (world === undefined) return false;
 	const planned = world.roomSpawns[h.room] ?? [];
 	const cut: ActorSpawn[] = [];
-	for (let k = 0; k < planned.size() && k < p.config.hordeMaxWave; k++) cut.push(planned[k]);
+	// docs/NEW_ENEMIES_2.md NXD9: the wave never buys a Snatcher (one pellet thief per room); the cap counts the kept
+	// entries, so a room without one builds exactly the wave it always did.
+	let k = 0;
+	while (k < planned.size() && cut.size() < p.config.hordeMaxWave) {
+		if (planned[k].kind !== SNATCHER_KIND) cut.push(planned[k]);
+		k++;
+	}
 	const tiles = world.roomSpawnTiles?.[h.room];
 	const placed = tiles !== undefined ? safeRoomSpawns(state, cut, tiles) : cut;
 	h.waveKinds.clear();
