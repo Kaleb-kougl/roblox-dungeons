@@ -432,11 +432,16 @@ describe("codex seed and counts", () => {
 			"affix:swift",
 			"affix:vengeful",
 			"enemy:bomber",
+			// docs/NEW_ENEMIES_2.md NX9: their first-time cards seed their entries
+			"enemy:bulwark",
+			"enemy:chainhook",
 			"enemy:charger",
 			"enemy:golden",
 			"enemy:imp",
+			"enemy:pyrekeeper",
 			"enemy:reaper",
 			"enemy:slime",
+			"enemy:snatcher",
 			"enemy:stormcaller",
 			"enemy:summoner",
 			"enemy:warbanner",
@@ -455,13 +460,16 @@ describe("codex seed and counts", () => {
 				"imp",
 				"imp",
 				"slime.small",
+				"pyre",
 			]),
 		).toEqual([
 			{ id: "enemy:imp", tier: 1, floor: 0 },
+			// a brazier folds into its keeper (docs/NEW_ENEMIES_2.md NXD15), like a slimelet into the Ooze
+			{ id: "enemy:pyrekeeper", tier: 1, floor: 0 },
 			{ id: "enemy:slime", tier: 1, floor: 0 },
 		]);
 		const seeded = applyClaims(emptyCodexDoc(), claims, 20000);
-		expect(seeded.e.size()).toBe(14);
+		expect(seeded.e.size()).toBe(18);
 		expect(codexFoundCount(seeded)).toBe(0);
 	});
 
