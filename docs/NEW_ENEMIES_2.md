@@ -28,13 +28,17 @@ entries. **No new hash group**: every new piece of state is actor scratch (`v[]`
 (`KALEB_VALE_MVP_PARAMS`), every golden fixture and the tutorial replay exactly as before; endless / daily / dev replays
 and scores change (all-time boards stay `_v1`; `DAILY.ruleset` 19 -> 20, or the next free number when this lands).
 
-## Status (2026-11-13)
+## Status (2026-11-14)
 
-**Decisions taken; NX0 and NX1 done on branch `new-enemies-2`** (from `main` @ `152553c`; "NX0 findings", "NX1
-skeleton"); NX2 next. NXD1-NXD16 taken by the owner on 2026-11-13 (see Decisions): every one as recommended except
-**NXD1** (the shield enemy is the **Bulwark**, id `bulwark`, not "Shieldbearer", to keep clear of the Shielded affix) and
-**NXD12** (the pyre's fireballs get a **new flame bullet look** now, not the caster's). The code facts below were read on
-`silver` @ `07623092`; NX0 re-checked them on the branch point (corrections in "NX0 findings").
+**NX0, NX1, NX2 (the Shieldwall) and NX4 (the Snatcher) done on branch `new-enemies-2`** (from `main` @ `152553c`; "NX0
+findings", "NX1 skeleton", "As built"); NX3 (Chainhook) and NX5 (Pyre-keeper) under way on their own branches, NX6 next. NXD1-NXD16 taken by
+the owner on 2026-11-13 (see Decisions): every one as recommended except **NXD1** (the shield enemy's id is `bulwark`,
+not "Shieldbearer", to keep clear of the Shielded affix) and **NXD12** (the pyre's fireballs get a **new flame bullet
+look** now, not the caster's). NXD17-NXD21 settle the NX2 / NX4 owner calls on 2026-11-14: the shield enemy is shown as
+the **Shieldwall** (NXD17: Warding's evolution keeps "Bulwark"; the id stays `bulwark` everywhere in code), a Snatcher
+killed last hands its pellets to its killer (NXD18), and OC2-OC4 stand as built (NXD19-NXD21). Where this doc says
+"Bulwark" it means the archetype `bulwark`. The code facts below were read on `silver` @ `07623092`; NX0 re-checked them
+on the branch point (corrections in "NX0 findings").
 
 ## What the code gives us
 
@@ -75,7 +79,8 @@ otherwise. Every row of "What the code gives us" holds except the corrections be
    the four boosts. A Shielded Bulwark shows both.
 2. **A second "Bulwark".** Warding's evolution is already shown as "Bulwark" (`boon.warding.evo.name`: draft, items row,
    Codex). Ids do not clash (`enemy.bulwark` vs `boon.warding.evo`; the sim's `bulwarkPending` is a builds field), but
-   players see two Bulwarks, in the Codex too. Owner call OC1 below; NX1 ships "Bulwark" as NXD1 says.
+   players see two Bulwarks, in the Codex too. Owner call OC1 below; NX1 ships "Bulwark" as NXD1 says. **Settled by
+   NXD17:** the enemy is shown as "Shieldwall" (`enemy.bulwark.name`, `bestiary.bulwark`), the id stays `bulwark`.
 3. **Indices** as guessed: `compareIds` is byte order, a prefix first: bulwark 19, chainhook 20, pyre 21, pyrekeeper
    22, snatcher 23.
 4. **v[] budgets** do not fit the shapes they copy. Phase / drag / swallow ticks are the state's own `aiTicks` (every
@@ -181,7 +186,8 @@ Codex entries, `seedFromSightings` / `codexSightingId` drop an id the catalogue 
 nothing; and nothing can be sighted before NX6 buys them.
 
 **Owner calls:** OC1 the two Bulwarks (enemy and Warding's evolution): keep both, or rename one display name (ids stay).
-OC2 the shield against effect bullets (recommended above).
+OC2 the shield against effect bullets (recommended above). Both settled on 2026-11-14: OC1 by NXD17 (the enemy is the
+Shieldwall), OC2 by NXD21 (as recommended and built).
 
 ## NX1 skeleton (as built, 2026-11-13)
 
@@ -257,8 +263,10 @@ OC2 the shield against effect bullets (recommended above).
   hash-coverage walk skips `guardEvents` (an unhashed feed); `warbanner.spec`'s aura-target list gains NX1's four room
   enemies (it failed since NX1, the Design's "the Warbanner's aura applies"). No hash, replay or
   fixture moves: no recorded run spawns a Bulwark (not in `ENDLESS_ROOM_KINDS` until NX6).
-- Owner calls: OC1 (two Bulwarks) open; **OC3** a breaking hit deals 0 (built) or its full damage too; **OC4** Swift /
-  the Warbanner aura do not speed the turn (built: the turn is a literal).
+- Owner calls, settled 2026-11-14: OC1 the display name is **Shieldwall** (NXD17; `enemy.bulwark.name` and the
+  `bestiary.bulwark` line, the id `bulwark` unchanged); OC2 the shield blocks every moving player bullet, embers pass
+  (NXD21, as built); OC3 a breaking hit deals 0 (NXD19, as built); OC4 the turn is fixed at 150 deg/s, Swift and the
+  Warbanner aura do not speed it (NXD20, as built).
 
 ### NX4 Snatcher (as built, 2026-11-14)
 
@@ -287,13 +295,31 @@ OC2 the shield against effect bullets (recommended above).
   construction, and the 16-unit leash cut flights short in doubled endless rooms.
 - **Not built / limits:** a Snatcher freed without dying (a floor change) returns nothing (the floor's pellets are
   replaced anyway). Two Snatchers in one room (not possible after NX6's cap) would share the record's carried pellets.
-- **Owner call (NX4):** a Snatcher killed as the room's LAST member returns its pellets on the clear tick, so they go with
-  the room before anyone can pick them up and the Sweep is lost (the clear judges `left`). Kill it first (the lesson) or
-  change the rule (e.g. the clear waits for returned pellets, or they count as picked up by the killer).
+- **Owner call (NX4), settled by NXD18 (2026-11-14):** killed as its record's LAST living member, its pellets no longer
+  return (they would go with the room on the clear tick, the Sweep lost): they are **credited to the killer**. As built:
+  `onDeath` gets killActor's `quiet` flag (a new third argument of the hook; every other archetype ignores it) and asks
+  `pelletRecordFalls(state, rec)` (sim/pellets stepPellets.ts: stepScore's own clear test, `scoreRoomDown` and not pacts'
+  horde record waiting for its second wave). True and not quiet: `pelletsCreditCarried(state, rec, ctx.playerIndex)`
+  turns every carried pellet (`PELLET_STOLEN`, index order) into that player's pickup through `takeRegular`, the one
+  pickup helper stepPellets uses too (`taken = 1`, `left` -= 1, `scorePellet` at the kills' floor scale (a horde
+  record's x2 included), `events.eaten` with the player, the tutorial's sweep-lock hook): the view chomps, and the clear
+  pays the Sweep when every other pellet was taken. Otherwise (another member alive, the horde wave pending, a quiet
+  death) `pelletsReturn` as before. **Tick order** (step.ts / stepParty): every Snatcher kill lands inside stepCombat
+  (`damageActor`'s kill line; the only quiet `killActor` caller is the Bomber's own blast, and the withers / boss sweeps
+  never reach a Snatcher), and stepCombat runs before stepPellets and stepScore (stepRun / stepPacts / stepDrops between
+  them kill nothing), so the clear in stepScore (`clearRoom` -> `pelletRoomClear`, judged on `left`) sees the lowered
+  `left` the same tick; nothing after stepScore (treasure, golden, secrets) kills an actor. The killer is whoever the
+  kill is bound to (a bullet's owner, the swinging player, a proc's owner), dead or alive. **Limit:** "last" is judged at
+  the Snatcher's own death: if one hit kills the Snatcher and then the room's last other member later in the same tick
+  (a piercing arrow or a swing reaching both in that order), its pellets were already returned and go with the room.
+  Specs (`sim/snatcher.spec.ts`): killed last between ticks (credited, `left` 0, one pellet's points each, the Sweep
+  pays), a sword kill inside the tick during the swallow (credited and swept in that tick), a quiet death (returned, no
+  Sweep), co-op (credited to player 1), and the existing "killed with the dummy alive" case (returned, nothing credited).
+  No hash or fixture moves: no recorded run spawns a Snatcher (not in `ENDLESS_ROOM_KINDS` until NX6).
 
 ## Player experience
 
-1. **Bulwark.** An armoured demon walks at you behind a round shield. Arrows and sword cuts that hit the shield spark
+1. **Shieldwall** (`bulwark`, NXD17). An armoured demon walks at you behind a round shield. Arrows and sword cuts that hit the shield spark
    off; so do arrows aimed at the sniper standing behind it. It turns to keep the shield on you, but slowly: step round
    it, or let a teammate take its back. When you get close it shoves the shield into you; after the shove the shield is
    down for a moment. A sword finisher, a charged arrow or a Siege slam knocks the guard open and it staggers.
@@ -304,8 +330,9 @@ OC2 the shield against effect bullets (recommended above).
    never appears on floor 1.
    Lesson: roll the line, and never let it pull you into a Bomber.
 3. **Snatcher.** A small bare-handed imp darts out and starts eating the floor's pellets, fleeing from anyone who comes
-   near. Its belly glows with what it carries. Kill it and the pellets pop back into place. Let it fill up and it
-   swallows: those pellets are gone, and so is the room's Sweep. It never hurts you.
+   near. Its belly glows with what it carries. Kill it and the pellets pop back into place (kill it last and they are
+   yours at once, NXD18). Let it fill up and it swallows: those pellets are gone, and so is the room's Sweep. It never
+   hurts you.
    Lesson: kill the thief first if you want the Sweep.
 4. **Pyre-keeper.** A hooded demon with a torch staff hangs back and throws torches; where each lands a brazier flares
    up and starts lobbing fireballs at you. Three of them make a crossfire. Snuff a brazier, or kill the keeper and
@@ -319,7 +346,7 @@ All four are room enemies (`RoomEnemyData`, `stepCalm` / leash / pack alerts, `w
 Warbanner's aura and the affixes apply) and start every attack through `ctx.telegraph`. Numbers are starting values,
 tuned in NX12. Speeds are units per second; angles are given as cosines (literals, no trig in the sim).
 
-### Bulwark
+### Bulwark (shown as the Shieldwall, NXD17)
 
 | | |
 |---|---|
@@ -360,9 +387,9 @@ hashed, a pure function of hashed state. Without a Bulwark the list is empty and
 | Body | 3 hp, r 0.3, 5.0 (the Goldling's 5.1 less a hair), contact 0, harmless |
 | Behaviour | Engages with its room like any member. **Steal**: walks (steer mover) to the nearest live pellet of its room (`rec` = its room's record, `taken` 0, never the power pellet) and eats it on contact: `taken = 2`, `v` counts it. **Flee**: any living player within `fleeRadius` 3 -> runs on `fleeField` over its room box (factor 1.2, the Goldling's) until none is within 4.5 |
 | Swallow | At `stomach` 5 carried pellets, or 8 s after its first steal: **swallow** 1.0 s telegraph (belly glow; it stands still: the window to kill it), then every carried pellet becomes `taken = 3` (gone for good, `left` unchanged, so the room's Sweep is lost; NXD11). The count resets and it starts stealing again |
-| Death | Every pellet of its room with `taken = 2` goes back to `taken = 0` in place (it never decrements `left`, so nothing else changes). One Snatcher per room (NXD9), so the room's `taken = 2` pellets are its own. Points: its own kill points only (the returned pellets pay when picked up) |
+| Death | Every pellet of its room with `taken = 2` goes back to `taken = 0` in place (it never decrements `left`, so nothing else changes). One Snatcher per room (NXD9), so the room's `taken = 2` pellets are its own. Points: its own kill points only (the returned pellets pay when picked up). **Killed last** (NXD18: no other living member, the room clears this tick): they are credited to the killer as their pickups instead (`taken = 1`, `left` decremented, the pellet points), so the Sweep can still pay |
 | No pellets | A room with no live pellets (none placed, all taken, the room not engaged): it flees only. No ground-boost stealing in v1 (NXD10) |
-| Room clear | It is a member: the room cannot clear while it lives, so carried pellets are always either returned or swallowed before the clear |
+| Room clear | It is a member: the room cannot clear while it lives, so carried pellets are always returned, credited to its killer (killed last, NXD18) or swallowed before the clear |
 | Draws | None (no cooldown, nearest pellet by index order on ties) |
 | v[] (3-7) | 3 carried count, 4 ticks since first steal, 5 phase ticks (swallow), 6 flee flag, 7 free |
 | Cost / points / drop % | 2 / 150 / 15 |
@@ -423,8 +450,8 @@ apply to all four as planned spawns (a Hulking Bulwark, a Swift Snatcher; a Shie
 ### 3. Theme contract
 
 - `ENEMY_ARCHETYPES` += the five ids (asset, colour role, `.name`); placeholders from the enemy palette (a disc with a
-  flat front plate, a squat drum with a hook, a small cone, a tall robe cylinder, a low bowl). Display names Bulwark,
-  Chainhook, Snatcher, Pyre-keeper, Brazier.
+  flat front plate, a squat drum with a hook, a small cone, a tall robe cylinder, a low bowl). Display names Shieldwall
+  (NXD17; NX1 shipped Bulwark), Chainhook, Snatcher, Pyre-keeper, Brazier.
 - One colour role `enemyShield` (the guard arc and the block sparks): in an existing report module, >= 40 CIE76 from the
   enemy-bullet roles, `telegraph`, `enemyOutline`, the affix Shielded role and the boosts. The chain draws in
   `enemyOutline` (no new role) unless NX8 shows it needs one.
@@ -566,6 +593,20 @@ apply to all four as planned spawns (a Hulking Bulwark, a Swift Snatcher; a Shie
 - **NXD14. Codex:** the four entries are appended after `secret:room`; the order lock is extended, never reordered.
 - **NXD15. First-sighting toast and Codex entry for all four** (not for the pyre).
 - **NXD16. Boards stay `_v1`; `DAILY.ruleset` 19 -> 20.**
+
+Owner calls settled 2026-11-14 (Kaleb):
+
+- **NXD17. The shield enemy's display name is "Shieldwall"** (OC1): `enemy.bulwark.name` and the `bestiary.bulwark`
+  line; Warding's evolution keeps "Bulwark". The id stays `bulwark` everywhere in code (archetype, theme ids, sighting
+  ids, file names).
+- **NXD18. A Snatcher killed as its room's last living member credits its pellets to the killer** (the NX4 owner call):
+  every carried pellet becomes the killing player's pickup (`taken = 1`, `left` decremented, the pellet points, an
+  `eaten` event), so the room's Sweep can still pay on that tick's clear. With other members alive (or a quiet death)
+  they return to the floor as before.
+- **NXD19. A guard-breaking hit deals 0** (OC3, as built): it is the blocked hit; the stagger opens the next ones.
+- **NXD20. The Shieldwall's turn is fixed at 150 deg/s** (OC4, as built): Swift and the Warbanner aura do not speed it.
+- **NXD21. The shield blocks every moving player bullet; embers pass** (OC2, as built): Mirror Cloak's reflections and
+  the build effect bullets (burst, shard, spark bolt) included; EMBER (speed 0, a flame under its feet) is not stopped.
 
 ## Risks
 
