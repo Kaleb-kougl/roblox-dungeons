@@ -165,7 +165,7 @@ export interface SimEvents {
 	/** Strikes (BulletKind.STRIKE) fired this tick; also in combat.enemySpawned, so the enemy-shoot sound skips them. */
 	strikes: number;
 
-	// --- New enemies 2 (docs/NEW_ENEMIES_2.md; always 0 without a Bulwark or a Pyre-keeper). Not in SIM_EVENT_FIELDS.
+	// --- New enemies 2 (docs/NEW_ENEMIES_2.md; always 0 without a Bulwark, Chainhook or Pyre-keeper). Not in SIM_EVENT_FIELDS.
 	/** Hits a Bulwark's shield blocked this tick (combat/shield.ts; where: CombatState.guardEvents). */
 	shieldBlocks: number;
 	/** Bulwark guards broken this tick (NXD7; which: CombatState.guardEvents.breakSlot). */
@@ -174,6 +174,10 @@ export interface SimEvents {
 	pyresLanded: number;
 	/** Pyres withered this tick (their keeper died; a pyre killed by a player is not counted). */
 	pyresWithered: number;
+	/** Chainhook latches this tick (NX3; who and by which slot: CombatState.hookEvents). */
+	hookLatched: number;
+	/** Chainhook drags broken this tick (a roll, lost sight, its death, breakDamage, the player's death; NX3). */
+	hookBroken: number;
 }
 
 /**
@@ -216,7 +220,14 @@ export const ENEMY_VARIANT_EVENT_FIELDS = ["gooSpawned"] as const;
 export const NEW_ENEMY_EVENT_FIELDS = ["strikes"] as const;
 
 /** The second new enemies' event fields (Roblox port, docs/NEW_ENEMIES_2.md), in declaration order. All default to 0. */
-export const NEW_ENEMY_2_EVENT_FIELDS = ["shieldBlocks", "guardBreaks", "pyresLanded", "pyresWithered"] as const;
+export const NEW_ENEMY_2_EVENT_FIELDS = [
+	"shieldBlocks",
+	"guardBreaks",
+	"pyresLanded",
+	"pyresWithered",
+	"hookLatched",
+	"hookBroken",
+] as const;
 
 /**
  * Every SimEvents field: SIM_EVENT_FIELDS, then ENDLESS_EVENT_FIELDS, then BREAKABLE_EVENT_FIELDS, then
@@ -274,6 +285,8 @@ function emptyEvents(): SimEvents {
 		guardBreaks: 0,
 		pyresLanded: 0,
 		pyresWithered: 0,
+		hookLatched: 0,
+		hookBroken: 0,
 	};
 }
 

@@ -16,7 +16,9 @@
  *      expired arrows and drags each pinned actor onto its arrow (nothing spawns a player bullet between 5 and 6)
  *   6. collisions, one forEachActive walk per simulation:
  *        enemy bullets:  wall (consume) -> [breakables: an intact piece's cell (consume, damage it)] -> [scoring:
- *                        graze flags] -> player circle -> ctx.hurtPlayer; consumed ONLY if the hit landed
+ *                        graze flags] -> player circle -> ctx.hurtPlayer; consumed ONLY if the hit landed (a HOOK,
+ *                        docs/NEW_ENEMIES_2.md NX3: chainhookStrike instead, consumed on a hittable player, a latch
+ *                        only on its thrower's target)
  *        player bullets: wall (consume) -> [breakables: an intact piece's cell: its payload damage; consumed unless
  *                        piercing AND it broke the piece] -> [a guarding Bulwark's shield (consume; ./shield.ts)] ->
  *                        first live actor in range, slot order (ctx.damageActor,
@@ -104,6 +106,8 @@ import {
 import { archetypeIndex, sealArchetypes } from "./actors/registry";
 import { NO_KIND, type ActorState } from "./actors/types";
 import { cloneGuardEvents, createGuardEvents, guardSlots, shieldStopsBullet, type GuardEvents } from "./shield";
+import { cloneHookEvents, createHookEvents, type HookEvents } from "./hookEvents";
+import { chainhookStrike } from "./actors/archetypes/chainhook";
 import {
 	cloneWeaponsState,
 	createWeaponsState,
@@ -169,6 +173,11 @@ export interface CombatState {
 	 * view, cleared by step / stepParty. Not in writeCombatHash.
 	 */
 	guardEvents: GuardEvents;
+	/**
+	 * The Chainhook's latches and drag ends this tick (docs/NEW_ENEMIES_2.md NX3, ./hookEvents.ts): an unhashed feed for
+	 * the view, cleared by step / stepParty. Not in writeCombatHash.
+	 */
+	hookEvents: HookEvents;
 }
 
 interface Sims {
@@ -234,6 +243,7 @@ export function createCombatState(
 		playerSpawned: 0,
 		dropped: 0,
 		guardEvents: createGuardEvents(),
+		hookEvents: createHookEvents(),
 	};
 }
 
@@ -280,6 +290,7 @@ export function cloneCombatState(c: Readonly<CombatState>): CombatState {
 		actors: c.actors.map(cloneActor),
 		weapons: cloneWeaponsState(c.weapons),
 		guardEvents: cloneGuardEvents(c.guardEvents),
+		hookEvents: cloneHookEvents(c.hookEvents),
 	};
 }
 
@@ -397,7 +408,7 @@ function bastionRollThrough(state: SimState, i: number, payload: number, k: numb
 	return marked;
 }
 
-function enemyBulletHit(i: number, pos: Readonly<Vec3>, payload: number): boolean {
+function enemyBulletHit(i: number, pos: Readonly<Vec3>, payload: number, emitter: number): boolean {
 	if (hitBlocked !== undefined && hitBlocked(pos.x, pos.z)) return true;
 	const kind = BulletPayload.get(payload, "kind");
 	// Goo (docs/ENEMY_VARIANTS.md EVD14) and strikes (docs/NEW_ENEMIES.md NE5) ignore breakables and never graze.
@@ -420,6 +431,9 @@ function enemyBulletHit(i: number, pos: Readonly<Vec3>, payload: number): boolea
 		phantomStepErased(ctx.state, SOLO_PLAYER, goo, pos.x, pos.z);
 		return true;
 	}
+	// The Chainhook's hook (docs/NEW_ENEMIES_2.md NX3): latches instead of hurting (consumed), or passes a player who is
+	// not hittable.
+	if (kind === BulletKind.HOOK) return chainhookStrike(ctx, emitter, SOLO_PLAYER);
 	// Consumed only if the hit landed: i-frames, post-hit invulnerability, death and 0-damage bullets pass through.
 	const landed = ctx.hurtPlayer(BulletPayload.get(payload, "damage"), BulletPayload.get(payload, "source") - 1);
 	return landed || (strike && strikeHoldSpent(i, payload));
@@ -429,7 +443,7 @@ function enemyBulletHit(i: number, pos: Readonly<Vec3>, payload: number): boolea
  * Co-op enemyBulletHit: graze against the nearest living player (with THEIR graze radius: M2 Daredevil is personal),
  * then a hit on the first player (index order).
  */
-function enemyBulletHitParty(i: number, pos: Readonly<Vec3>, payload: number): boolean {
+function enemyBulletHitParty(i: number, pos: Readonly<Vec3>, payload: number, emitter: number): boolean {
 	if (hitBlocked !== undefined && hitBlocked(pos.x, pos.z)) return true;
 	const kind = BulletPayload.get(payload, "kind");
 	// Goo (docs/ENEMY_VARIANTS.md EVD14) and strikes (docs/NEW_ENEMIES.md NE5) ignore breakables and never graze.
@@ -470,6 +484,11 @@ function enemyBulletHitParty(i: number, pos: Readonly<Vec3>, payload: number): b
 		if (phantomAny && phantom[k] && !strike) {
 			phantomStepErased(state, k, goo, pos.x, pos.z);
 			return true;
+		}
+		// The Chainhook's hook (NX3): consumed on the first hittable player it overlaps (a latch only on its target).
+		if (kind === BulletKind.HOOK) {
+			if (chainhookStrike(ctx, emitter, k)) return true;
+			continue;
 		}
 		if (ctx.hurtPlayerAt(k, BulletPayload.get(payload, "damage"), BulletPayload.get(payload, "source") - 1)) {
 			return true;
