@@ -4,8 +4,12 @@
  * old-shaped value reads as an empty wallet.
  *
  * Stored as `{ v: 1, earned, spent, own: { [itemId]: level }, eq?: { [slot]: itemId }, runs: string[], runDay?,
- * dailyDay? }`:
- *   earned / spent  non-negative integers; the balance is earned - spent (never stored, never below 0)
+ * dailyDay?, bought?, receipts? }` plus any field a newer build added:
+ *   earned / spent  non-negative integers; earned is Silver from PLAY only (grants); the balance is
+ *                   earned + bought - spent (never stored, never below 0)
+ *   bought          Silver bought with Robux (docs/SILVER_SHOP.md SHD9; absent = 0)
+ *   receipts        the last SILVER_SHOP.receiptRing granted developer-product PurchaseIds, oldest first (SHD2: a
+ *                   receipt whose id is in it is a duplicate)
  *   own             item id -> level owned (>= 1); a catalogue item is clamped to its levels, an id the catalogue does
  *                   not know (a newer server's item) is kept as stored, so a transaction never deletes it
  *   eq              slot -> item id (cosmetics, phase 2)
@@ -13,10 +17,14 @@
  *   runDay          shared/daily dailyDay of the last first-run bonus
  *   dailyDay        shared/daily dailyDay of the last Daily bonus
  * In memory `own` and `eq` are Maps (a Map is a plain Luau table; encode copies it into one with sorted iteration).
+ *
+ * Forward compatibility (docs/SILVER_SHOP.md SH1, SHD7): every top-level field this build does not know is kept in
+ * `extra` exactly as stored and written back by encode, so an older server's transaction never erases a newer server's
+ * fields. A known field with a malformed value is dropped as before (it is not "unknown").
  */
 import { DEFAULT_CHARACTER, type CharacterId, type UpgradeLevels } from "shared/characters";
 import { ARMORY_CATALOG, UPGRADE_ITEM, armoryItem, characterUnlock, type ArmoryItem } from "./catalog";
-import { WALLET, WALLET_DOC_VERSION } from "./config";
+import { SILVER_SHOP, WALLET, WALLET_DOC_VERSION } from "./config";
 
 export interface WalletDoc {
 	v: typeof WALLET_DOC_VERSION;
@@ -27,7 +35,27 @@ export interface WalletDoc {
 	runs: string[];
 	runDay?: number;
 	dailyDay?: number;
+	/** Silver bought with Robux (absent: 0). */
+	bought?: number;
+	/** The last granted PurchaseIds, oldest first (absent: none). */
+	receipts?: string[];
+	/** Top-level fields this build does not know, kept as stored (absent: none). */
+	extra?: Map<string, unknown>;
 }
+
+/** The top-level fields this build reads (anything else goes to `extra`). */
+const KNOWN_FIELDS: ReadonlySet<string> = new Set([
+	"v",
+	"earned",
+	"spent",
+	"own",
+	"eq",
+	"runs",
+	"runDay",
+	"dailyDay",
+	"bought",
+	"receipts",
+]);
 
 /** The levels of the upgrade tracks with a sim lever: shared/characters UpgradeLevels (the run session's input). */
 export type WalletUpgradeLevels = UpgradeLevels;
@@ -53,6 +81,9 @@ export function cloneWalletDoc(d: Readonly<WalletDoc>): WalletDoc {
 	if (d.eq !== undefined) out.eq = copyMap(d.eq);
 	if (d.runDay !== undefined) out.runDay = d.runDay;
 	if (d.dailyDay !== undefined) out.dailyDay = d.dailyDay;
+	if (d.bought !== undefined) out.bought = d.bought;
+	if (d.receipts !== undefined) out.receipts = [...d.receipts];
+	if (d.extra !== undefined) out.extra = copyMap(d.extra);
 	return out;
 }
 
@@ -110,6 +141,24 @@ export function decodeWalletDoc(raw: unknown, catalog: ReadonlyArray<ArmoryItem>
 	}
 	if (isInteger(r.runDay)) doc.runDay = r.runDay;
 	if (isInteger(r.dailyDay)) doc.dailyDay = r.dailyDay;
+	const bought = count(r.bought);
+	if (bought > 0) doc.bought = bought;
+	const receipts = r.receipts;
+	if (typeIs(receipts, "table")) {
+		const list = receipts as unknown as ReadonlyArray<unknown>;
+		const kept: string[] = [];
+		for (let i = 0; i < list.size(); i++) {
+			const id = list[i];
+			if (isId(id)) kept.push(id);
+		}
+		while (kept.size() > SILVER_SHOP.receiptRing) kept.remove(0);
+		if (kept.size() > 0) doc.receipts = kept;
+	}
+	const extra = new Map<string, unknown>();
+	for (const [k, v] of pairs(r as unknown as ReadonlyMap<unknown, unknown>)) {
+		if (typeIs(k, "string") && !KNOWN_FIELDS.has(k)) extra.set(k, v);
+	}
+	if (extra.size() > 0) doc.extra = extra;
 	return doc;
 }
 
@@ -122,15 +171,16 @@ function sortedKeys<V>(m: ReadonlyMap<string, V>): string[] {
 
 /** Document -> the stored value (plain tables only). */
 export function encodeWalletDoc(d: Readonly<WalletDoc>): unknown {
+	const out: Record<string, unknown> = {};
+	// Unknown fields first, so a known field always wins (decode never puts a known key in `extra` anyway).
+	if (d.extra !== undefined) for (const k of sortedKeys(d.extra)) out[k] = d.extra.get(k);
 	const own: Record<string, number> = {};
 	for (const k of sortedKeys(d.own)) own[k] = d.own.get(k)!;
-	const out: Record<string, unknown> = {
-		v: WALLET_DOC_VERSION,
-		earned: d.earned,
-		spent: d.spent,
-		own,
-		runs: [...d.runs],
-	};
+	out.v = WALLET_DOC_VERSION;
+	out.earned = d.earned;
+	out.spent = d.spent;
+	out.own = own;
+	out.runs = [...d.runs];
 	if (d.eq !== undefined && d.eq.size() > 0) {
 		const eq: Record<string, string> = {};
 		for (const k of sortedKeys(d.eq)) eq[k] = d.eq.get(k)!;
@@ -138,6 +188,8 @@ export function encodeWalletDoc(d: Readonly<WalletDoc>): unknown {
 	}
 	if (d.runDay !== undefined) out.runDay = d.runDay;
 	if (d.dailyDay !== undefined) out.dailyDay = d.dailyDay;
+	if (d.bought !== undefined && d.bought > 0) out.bought = d.bought;
+	if (d.receipts !== undefined && d.receipts.size() > 0) out.receipts = [...d.receipts];
 	return out;
 }
 
@@ -154,15 +206,21 @@ export function walletDocsEqual(a: Readonly<WalletDoc>, b: Readonly<WalletDoc>):
 	if (a.earned !== b.earned || a.spent !== b.spent || a.runDay !== b.runDay || a.dailyDay !== b.dailyDay) {
 		return false;
 	}
-	if (!mapsEqual(a.own, b.own) || !mapsEqual(a.eq, b.eq)) return false;
-	if (a.runs.size() !== b.runs.size()) return false;
-	for (let i = 0; i < a.runs.size(); i++) if (a.runs[i] !== b.runs[i]) return false;
+	if (!mapsEqual(a.own, b.own) || !mapsEqual(a.eq, b.eq) || !mapsEqual(a.extra, b.extra)) return false;
+	if ((a.bought ?? 0) !== (b.bought ?? 0)) return false;
+	if (!listsEqual(a.runs, b.runs) || !listsEqual(a.receipts ?? [], b.receipts ?? [])) return false;
 	return true;
 }
 
-/** Silver available: earned - spent, never below 0. */
+function listsEqual(a: ReadonlyArray<string>, b: ReadonlyArray<string>): boolean {
+	if (a.size() !== b.size()) return false;
+	for (let i = 0; i < a.size(); i++) if (a[i] !== b[i]) return false;
+	return true;
+}
+
+/** Silver available: earned + bought - spent, never below 0. */
 export function walletBalance(d: Readonly<WalletDoc>): number {
-	return math.max(0, d.earned - d.spent);
+	return math.max(0, d.earned + (d.bought ?? 0) - d.spent);
 }
 
 /** The level of item `id` owned (0: none). */

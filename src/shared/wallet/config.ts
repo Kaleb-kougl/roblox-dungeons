@@ -64,3 +64,40 @@ export const WALLET_FAKE_ATTRIBUTE = "KV_FakeWallet";
 
 /** Keywords of WALLET_FAKE_ATTRIBUTE (compared lower-cased; item ids are case-sensitive). */
 export const WALLET_FAKE_KEYWORDS = table.freeze({ unknown: "unknown", claimed: "claimed" });
+
+/** The Silver shop's tunables (docs/SILVER_SHOP.md): Silver for Robux through developer products. Data only. */
+export interface SilverShopTunables {
+	/** Granted PurchaseIds kept in the wallet doc (`receipts`), oldest dropped first (SHD2). */
+	readonly receiptRing: number;
+	/** The client shows "Your Silver is on its way" after this many seconds without the grant's push. */
+	readonly pendingNoticeSec: number;
+	/** DataStore of the best-effort purchase audit log (key `p_<PurchaseId>`; support only, never decides a grant). */
+	readonly auditStore: string;
+	/** The audit log's key prefix. */
+	readonly auditKeyPrefix: string;
+	/** Per-player budget for `silverShopReport` (funnel telemetry). */
+	readonly reportRate: { readonly count: number; readonly windowSeconds: number };
+	/** A funnel report's `seconds` (prompt -> settled) is clamped to this and rounded to `reportSecondsStep`. */
+	readonly maxReportSeconds: number;
+	readonly reportSecondsStep: number;
+}
+
+export const SILVER_SHOP: SilverShopTunables = table.freeze({
+	receiptRing: 128,
+	pendingNoticeSec: 15,
+	auditStore: "KV_Purchases_v1",
+	auditKeyPrefix: "p_",
+	reportRate: table.freeze({ count: 10, windowSeconds: 10 }),
+	maxReportSeconds: 600,
+	reportSecondsStep: 0.1,
+});
+
+/**
+ * Studio-only Workspace attribute (String): fake the shop (parseFakeShop). `off` hides it; four whole Robux prices in
+ * shown-pack order (`20,55,115,265`) turn it on with those prices and grant a press straight into the Studio memory
+ * store through the same transform, so the panel can be laid out before the products exist. Ignored on live servers.
+ */
+export const SILVER_SHOP_FAKE_ATTRIBUTE = "KV_FakeShop";
+
+/** Keywords of SILVER_SHOP_FAKE_ATTRIBUTE (compared lower-cased). */
+export const SILVER_SHOP_FAKE_KEYWORDS = table.freeze({ off: "off" });
