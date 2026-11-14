@@ -175,6 +175,9 @@ import type { RobloxAssetId } from "../../types";
  * The four room enemies of docs/NEW_ENEMIES_2.md (NX8: bulwark-* / chainhook-* / snatcher-* / pyrekeeper-* sheets with
  * their -outline rims, Demon Spawn 9 / Spawn 4 / Imp 6 / Spawn 1) and bullets-2.png (the flame and hook bullets, their
  * own sheet) uploaded 2026-11-14 3:28 PM by k9kbdev, transcribed from Asset Manager screenshots.
+ * The eight sounds of docs/NEW_ENEMIES_2.md NX10 (sfx-enemy-block-1..3 / -guardbreak / -hook / -hooklatch / -snatch /
+ * -swallow / -pyrelight, sfx-pellet-return; built by audio:build on the owner's Mac) uploaded 2026-11-14 3:46 PM by
+ * k9kbdev, transcribed from an Asset Manager screenshot.
  */
 export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"amb-b1.ogg": "rbxassetid://91158343621799",
@@ -614,6 +617,16 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"bulwark-body.png": "rbxassetid://94821812942686",
 	"chainhook-attack-outline.png": "rbxassetid://121610284326343",
 	"chainhook-attack.png": "rbxassetid://120743899035032",
+	"sfx-enemy-block-1.ogg": "rbxassetid://112415341075307",
+	"sfx-enemy-block-2.ogg": "rbxassetid://107871227666641",
+	"sfx-enemy-block-3.ogg": "rbxassetid://131896074448924",
+	"sfx-enemy-guardbreak.ogg": "rbxassetid://112529280947578",
+	"sfx-enemy-hook.ogg": "rbxassetid://88047484842719",
+	"sfx-enemy-hooklatch.ogg": "rbxassetid://120843277220908",
+	"sfx-enemy-pyrelight.ogg": "rbxassetid://125502836903287",
+	"sfx-enemy-snatch.ogg": "rbxassetid://122968578610202",
+	"sfx-enemy-swallow.ogg": "rbxassetid://132944120706998",
+	"sfx-pellet-return.ogg": "rbxassetid://84330273933683",
 };
 
 /**
