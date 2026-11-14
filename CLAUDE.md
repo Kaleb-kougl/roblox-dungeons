@@ -58,7 +58,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/LOCALIZATION.md` | Language localization (the 17 languages Roblox auto-translates; player's Roblox language by default, a Language override in Options; translations from the Roblox cloud table, imported into validated generated tables; AutoLocalize off on every GUI; fonts per script; pseudo-locale `en-XA`): plan, as built, tasks L0-L15, decisions LD1-LD14 |
 | `docs/PORTRAIT.md` | Portrait play (phones turn either way, `Sensor`; upright the view keeps the short side at `VIEW_TILES_HIGH` with the player lifted above the thumbs, touch controls in a bottom band, pause map on top, the draft in a column, the HUD scale capped to the width): plan, tasks PT1-PT9, decisions PD1-PD7 |
 | `docs/NEW_ENEMIES.md` | New enemies (five endless room archetypes from floor 2: Bomber rusher that blows up, Charger lane charge stunned by walls, Stormcaller lightning strike rows, Warbanner aura support, Reaper bullet spiral; band 4, `BulletKind.STRIKE`, the Warbanner aura in `actorMods`; gameplay): plan, NE0 findings, tasks NE0-NE14, decisions NED1-NED14 |
-| `docs/NEW_ENEMIES_2.md` | New enemies 2 (four endless room archetypes and a child: Bulwark front shield that covers allies behind it, broken by the finisher / heavy arrow / Siege slam; Chainhook `BulletKind.HOOK` that drags the player, never on floor 1; Snatcher harmless pellet thief that flees, swallowing loses the Sweep; Pyre-keeper lighting `pyre` braziers that fire flame bullets; band 6, no new hash group; gameplay): plan, tasks NX0-NX14, decisions NXD1-NXD16 |
+| `docs/NEW_ENEMIES_2.md` | New enemies 2 (four endless room archetypes and a child, band 6: Shieldwall (`bulwark`) front shield that covers allies behind it, broken by the finisher / heavy arrow / Siege slam; Chainhook `BulletKind.HOOK` that drags the player, never on floor 1; Snatcher harmless pellet thief that flees, swallowing loses the Sweep; Pyre-keeper lighting `pyre` braziers that fire flame bullets; no new hash group; gameplay): plan, NX0 findings, as built NX1-NX9 and NX11 / NX12-lite, tasks NX0-NX14, decisions NXD1-NXD24 |
 | `docs/PELLETS.md` | Pellets (Pac-Man lines of small cubes laid on a fight's floor, collected while enemies live, a Sweep bonus for every one, a rare power pellet that turns every enemy bullet on the floor into points; tutorial room G with a sweep lock; gameplay): plan, as built, open owner calls, tasks PL0-PL15, decisions PD1-PD16 |
 | `docs/RUN_RECAP.md` | Run-over recap and co-op moments (one honest near-miss line, up to four counting highlights, Again in one press armed at 0.6 s and a faster retry; co-op TEAM PERFECT stamp / chip / streak / pulse rings and SYNC! parries; revives reserved; presentation only): plan, tasks RR0-RR11 / CM1-CM7, decisions RRD1-RRD11 / CMD1-CMD7 |
 | `docs/RUN_CONTRIBUTION.md` | Co-op contribution on the run-over screen (a `You / Team / Party` tab strip in party runs, opening on You: your damage / kills / boss-damage share, parries, grazes, hits, pickups and standing; every player's row in index order with one positive title; the `You` rows fixed to the local player; one unhashed `ScoreEvents` feed, otherwise presentation only): plan, tasks CT0-CT10, decisions CTD1-CTD7 |
@@ -1458,6 +1458,38 @@ Decision log (deviations from `PLAN.md`):
   `KV_SecretLabel` (`RUN_ATTRIBUTES.secretLabel`, Studio or KV_Debug: outlines and a label), the `[Secret]` line under
   KV_Debug. Pending: the sounds (SR14), the `secret.png` upload, the Studio check and playtest (SR15); the discovery
   bot census (SR13) and telemetry (SR16) optional, not built.
+- **New enemies 2 (docs/NEW_ENEMIES_2.md).** Gameplay. Four endless room archetypes and a child in band 6
+  (`PORT_BAND_ENEMIES_3`, indices 19-23; no older index moves): `bulwark` (shown as the **Shieldwall**, NXD17: Warding's
+  evolution keeps "Bulwark"; a front shield turning at a literal 150 deg/s that also covers allies behind it, a bash,
+  guard breaks on the sword finisher / any heavy arrow / a Siege slam's shockwave, a 1.5 s stagger; a breaking hit deals
+  0, NXD19), `chainhook` (a `BulletKind.HOOK` 13 bullet down a telegraphed line that latches the player it was thrown at
+  and drags them through `movePlayer` from its actor step, broken by a roll / sight / its death / 3 damage, then a yank
+  fan; a teammate in the line absorbs the hook, NXD22), `snatcher` (harmless: steals its room's live pellets as
+  `taken` 2, swallows them as 3 so the Sweep is lost, returns them on death, credits them to the killer when killed last,
+  NXD18; one per room, `needsCompany`, never in Horde's wave 2, NXD9) and `pyrekeeper` with its runtime `pyre` (lights up
+  to 3 braziers, 6 a life, on validated landing cells; the pyres fire staggered aimed shots, wither at its death scoring
+  30 and feeding the combo, NXD23; a lone pyre fires on the tick it lights, NXD24; never members, never affixed, drop
+  ineligible). **No new hash group:** actor `v[]`, pellet `taken` 2 / 3 and transient lists rebuilt from hashed state
+  (`SimCtx.guards` after stepActors). The shield is tested at the hit sites that know an origin (the player bullet walk
+  before the actor walks, the sword's sweep callbacks, the Siege shockwave): every moving player bullet stops on it,
+  embers pass (NXD21); sparks, Overkill, Riposte waves, smash procs and duo strikes call `damageActor` and ignore it.
+  Prediction is suspended while the local player is hooked (`chainhookHolderOf`, shared/view/predict `PredictionResume`);
+  `predictMotion` and its parity spec are untouched. The pyre's fireball is BulletKind.ENEMY drawn with the new `flame`
+  look by its payload source; the hook its own `HOOK` look. `ENDLESS_ROOM_KINDS` appended (weights 1, caps 2 / 1 / 1 / 1,
+  `fromFloor` 2 on the new rows; `ROOM_KIND_MIN_FLOOR` chainhook 2 honoured in every world, the roster's join included,
+  NXD4), 14 seeded kinds, full roster on floor 14; `STAGE_ASSETS.children` pyrekeeper -> pyre. Codex 87 -> 91: the four
+  appended after `secret:room` (`CODEX_FIRST_ROOM_KINDS` 11; `pyre` folds into `enemy:pyrekeeper`). `DAILY.ruleset`
+  19 -> 20. M1, every golden fixture and the tutorial replay exactly as before; endless / daily / dev replays and scores
+  changed (boards stay `_v1`); re-recorded pins: `sim/charger.spec`, `sim/stormcaller.spec`, `dungeon/roomPool.lock`,
+  `roster.spec`, `view/hud/rosterLine.spec`, `run/slice.spec`. Theme: role `enemyGuard` (`guardReport`), five
+  `ENEMY_ARCHETYPES` (vale `enemy.pyre` on the decor brazier's cells), `bullet.enemy.hook` / `.flame` (vale: their own
+  sheet `bullets-2.png`, the pipeline's bullet set key `own`; `bullets.png` byte-identical), eight SILENT port audio IDs
+  after `sfx.jingle.secret` (`SFX_FALLBACK`s; a later feature appending there must update codex.spec's tail and the
+  listed skips), the optional enemy animation `block`, `bestiary.<id>` lines and sightings for the four. Art sets built
+  (Demon Spawn 9 / Spawn 4 / Imp 6 / Spawn 1), upload (27 PNGs), audio (NX10), full tuning (NX12, the loosened Archer
+  floor-20 gate in `sim/archer.ttk.builds`) and the Studio check (NX13) pending; `contract.luau` / `validate.luau` /
+  `sprites.luau` top-level locals 187 / 192 / 195 (counted on out/). NX11's systems pass: `sim/newEnemies2.systems.spec`,
+  `run/newEnemies2.validate.spec`; NX12-lite measurements `run/newEnemies2.tuning.spec` (`--census`).
 
 ## Commands
 
