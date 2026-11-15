@@ -26,6 +26,7 @@
 import { secondsToTicks } from "../../../playerData";
 import { movePlayer } from "../../../player";
 import { sweepArc, type ArcActorHit, type ArcEraseSink } from "../melee";
+import { shieldStopsMelee } from "../../shield";
 import { buildsOnFinisher } from "../../../builds/evolutions";
 import { registerWeapon } from "../registry";
 import type { WeaponData, WeaponSlotState } from "../types";
@@ -155,14 +156,25 @@ export const SWORD_STEP_WINDUP = 3;
 /** SWORD_V_LAST of a finisher. */
 export const SWORD_FINISHER = 3;
 
-// Module-level hit callbacks (no closure per swing).
+// Module-level hit callbacks (no closure per swing). A guarding Bulwark facing the swinging player takes neither: a
+// swing does nothing to it, a finisher breaks its guard (docs/NEW_ENEMIES_2.md NX2, ../../shield.ts).
 const hitSwing: ArcActorHit = (ctx, actor) => {
+	if (shieldStopsMelee(ctx, actor, false)) return;
 	ctx.damageActor(actor, playerHitDamage(ctx.state, ctx.playerIndex, SWORD_DATA.damage));
 };
-/** The first actor the finisher being swept hit (builds' Storm Blade, docs/BUILDS.md BU6); undefined otherwise. */
+/**
+ * The first actor the finisher being swept hit (builds' Storm Blade, docs/BUILDS.md BU6); undefined otherwise. A guarding
+ * Bulwark whose shield takes the finisher (its guard breaks, it takes nothing: NXD19) is not hit: it is never `first`
+ * and never counted in `finisherHits`, so a fully blocked finisher procs no Storm Blade. Without a guarding Bulwark
+ * every actor in the arc is hit, so `finisherHits` equals sweepArc's count and `first` its first actor, as before.
+ */
 let finisherFirst: ActorState | undefined;
+/** How many actors the finisher being swept hit (shield blocks excluded; see finisherFirst). */
+let finisherHits = 0;
 const hitFinisher: ArcActorHit = (ctx, actor) => {
+	if (shieldStopsMelee(ctx, actor, true)) return;
 	if (finisherFirst === undefined) finisherFirst = actor;
+	finisherHits++;
 	ctx.damageActor(actor, playerHitDamage(ctx.state, ctx.playerIndex, SWORD_DATA.finisherDamage));
 };
 
@@ -184,7 +196,8 @@ function swing(ctx: SimCtx, v: number[], n: number): void {
 	const p = ctx.player;
 	if (n === SWORD_FINISHER) {
 		finisherFirst = undefined;
-		const hits = sweepArc(
+		finisherHits = 0;
+		sweepArc(
 			ctx,
 			p.x,
 			p.z,
@@ -202,8 +215,9 @@ function swing(ctx: SimCtx, v: number[], n: number): void {
 			true, // the finisher: a secret's crack in its arc opens (docs/SECRET_ROOMS.md SR3)
 		);
 		// Builds (docs/BUILDS.md BU5 / BU6, opt-in): the finisher hook (Flurry's crescent, Storm Blade's spark).
-		if (ctx.state.builds !== undefined) buildsOnFinisher(ctx, hits, finisherFirst);
+		if (ctx.state.builds !== undefined) buildsOnFinisher(ctx, finisherHits, finisherFirst);
 		finisherFirst = undefined;
+		finisherHits = 0;
 		v[SWORD_V_STEP] = 0;
 		v[SWORD_V_BUSY] = attackTicks(ctx.state, ctx.playerIndex, SWORD_DATA.finisherRecoveryTicks);
 	} else {

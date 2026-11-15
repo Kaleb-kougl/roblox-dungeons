@@ -103,6 +103,10 @@
  *   fuse lit), .blast (its detonation; a fizzle plays the death only), .charge (a Charger leaves its lane), .stun (it
  *   hit a wall), .strike (strike bullets fired: SimEvents.strikes; strikes never raise the enemy shot, like goo),
  *   .spin (a Reaper's spin starts).
+ *   The third endless set (docs/NEW_ENEMIES_2.md NX7) too: sfx.enemy.block (a shield block), .guardbreak, .hook (a
+ *   Chainhook's throw leaves its aim), .hooklatch, .pyrelight (a brazier spawned), .snatch (a Snatcher ate a pellet:
+ *   at NEW_ENEMY_2_AUDIO.snatchSpeed, pitched down, so its fallback, the chomp, reads as a theft), .swallow, and
+ *   sfx.pellet.return (stolen pellets back on the floor at its death; pellets credited to its killer chomp instead).
  *
  * The new-best celebration (docs/NEW_BEST.md NB5) comes from the frame's NewBestCueSource (shared/view/hud: the
  * client's NewBestTracker frame, stepped BEFORE the mapper in the same frame; NO_NEW_BEST_CUES by default, so every
@@ -242,6 +246,7 @@ import {
 	type NewBestCueSource,
 } from "../hud";
 import { AUDIO_VIEW } from "./config";
+import { NEW_ENEMY_2_AUDIO } from "../newEnemies2Config";
 import { StateWatch, SwingEdge } from "../watch";
 import {
 	NO_PELLET_EVENTS,
@@ -496,6 +501,20 @@ export const SFX = {
 	silverCrate: "sfx.silver.crate",
 	shopBuy: "sfx.shop.buy",
 	shopDeny: "sfx.shop.deny",
+	/**
+	 * docs/NEW_ENEMIES_2.md NX1 (the theme's NEW_ENEMY_2_AUDIO_IDS): a shot blocked by a Bulwark's shield, its guard
+	 * broken; a Chainhook's throw, its hook latching on; a Snatcher eating a pellet, swallowing what it carries; a stolen
+	 * pellet back on the floor; a Pyre-keeper's brazier flaring up. Registered only: NX7 maps them. Each plays its
+	 * SFX_FALLBACK while silent.
+	 */
+	enemyBlock: "sfx.enemy.block",
+	enemyGuardBreak: "sfx.enemy.guardbreak",
+	enemyHook: "sfx.enemy.hook",
+	enemyHookLatch: "sfx.enemy.hooklatch",
+	enemySnatch: "sfx.enemy.snatch",
+	enemySwallow: "sfx.enemy.swallow",
+	pelletReturn: "sfx.pellet.return",
+	enemyPyreLight: "sfx.enemy.pyrelight",
 } as const;
 export type SfxId = (typeof SFX)[keyof typeof SFX];
 
@@ -613,6 +632,14 @@ export const ALL_SFX: ReadonlyArray<SfxId> = [
 	SFX.silverCrate,
 	SFX.shopBuy,
 	SFX.shopDeny,
+	SFX.enemyBlock,
+	SFX.enemyGuardBreak,
+	SFX.enemyHook,
+	SFX.enemyHookLatch,
+	SFX.enemySnatch,
+	SFX.enemySwallow,
+	SFX.pelletReturn,
+	SFX.enemyPyreLight,
 ];
 
 /** IDs this port added to the placeholder pack (not in the web contract's AUDIO_EVENTS; theme PORT_AUDIO_EVENTS). */
@@ -716,6 +743,14 @@ export const PORT_SFX: ReadonlyArray<SfxId> = [
 	SFX.silverCrate,
 	SFX.shopBuy,
 	SFX.shopDeny,
+	SFX.enemyBlock,
+	SFX.enemyGuardBreak,
+	SFX.enemyHook,
+	SFX.enemyHookLatch,
+	SFX.enemySnatch,
+	SFX.enemySwallow,
+	SFX.pelletReturn,
+	SFX.enemyPyreLight,
 ];
 
 /**
@@ -875,6 +910,12 @@ export const SFX_MIN_INTERVAL: Readonly<Partial<Record<SfxId, number>>> = {
 	[SFX.treasureOpen]: 0.5,
 	/** docs/FORTUNE.md FO9: a flurry of hits on the Goldling is one climbing coin sound per interval, never a buzz. */
 	[SFX.goldenHit]: GOLDEN_VIEW.audio.hitMinIntervalSec,
+	/**
+	 * docs/NEW_ENEMIES_2.md NX1: a stream of arrows into a Bulwark's shield is one spark sound per interval, never a buzz;
+	 * a Snatcher eating along a line of pellets likewise.
+	 */
+	[SFX.enemyBlock]: 0.08,
+	[SFX.enemySnatch]: 0.1,
 };
 
 /**
@@ -1017,6 +1058,23 @@ export const SFX_PRIORITY: Readonly<Record<SfxId, number>> = {
 	[SFX.silverCrate]: 41,
 	[SFX.shopBuy]: 47,
 	[SFX.shopDeny]: 46,
+	/**
+	 * The third endless set (docs/NEW_ENEMIES_2.md NX1; starting ranks, NX10 / NX12 revisit them). The block is frequent
+	 * feedback, just over the breakable hit it falls back to (30); the guard break is a payoff over the Charger's stun
+	 * (45) it falls back to. The throw is an attack cue beside the Charger's charge (44) and the fuse (43); the latch is a
+	 * danger to the player, over the Siege pin it falls back to (53) and under the player's own hits. The snatch is a hint
+	 * like the knock (under the pellet chomp 53); the swallow is a loss, under the combo break (73) it falls back to and
+	 * over every enemy sound; a returned pellet just under the chomp. The brazier's light sits with the fuse it falls
+	 * back to.
+	 */
+	[SFX.enemyBlock]: 32,
+	[SFX.enemyGuardBreak]: 47,
+	[SFX.enemyHook]: 44,
+	[SFX.enemyHookLatch]: 54,
+	[SFX.enemySnatch]: 36,
+	[SFX.enemySwallow]: 60,
+	[SFX.pelletReturn]: 52,
+	[SFX.enemyPyreLight]: 43,
 	/**
 	 * A boost out of a broken piece (docs/BREAKABLE_DROPS.md BL6): just over a kill drop's landing (the rarer, chosen
 	 * reward), under the pickup; over the piece's own break (40), which plays on the same frame.
@@ -1305,6 +1363,21 @@ export const SFX_FALLBACK: Readonly<Partial<Record<SfxId, SfxId>>> = {
 	[SFX.silverCrate]: SFX.breakableLoot,
 	[SFX.shopBuy]: SFX.relicTake,
 	[SFX.shopDeny]: SFX.uiBack,
+	/**
+	 * docs/NEW_ENEMIES_2.md NX1: until NX10 picks clips, a block plays the breakable hit (a struck surface), a guard break
+	 * the Charger's wall stun, a throw the Charger's charge whoosh, a latch the Siege Bolt's pin, a snatch and a returned
+	 * pellet the chomp (the plan's "pitched down" snatch is NX7's cue speed, not this table), a swallow the combo break
+	 * (a loss), a brazier lighting the Bomber's fuse. One step each: a target that is itself silent (every target in the
+	 * placeholder pack) plays nothing.
+	 */
+	[SFX.enemyBlock]: SFX.breakableHit,
+	[SFX.enemyGuardBreak]: SFX.enemyStun,
+	[SFX.enemyHook]: SFX.enemyCharge,
+	[SFX.enemyHookLatch]: SFX.buildPin,
+	[SFX.enemySnatch]: SFX.pelletEat,
+	[SFX.enemySwallow]: SFX.comboBreak,
+	[SFX.pelletReturn]: SFX.pelletEat,
+	[SFX.enemyPyreLight]: SFX.enemyFuse,
 };
 
 /** The floor modifier stings by shared/dungeon floorModifierKey (MODIFIERS.kinds' keys). */
@@ -2066,6 +2139,17 @@ export class AudioCueMapper {
 		if (variants.stuns > 0) this.cue(SFX.enemyStun, 1);
 		if (variants.strikes > 0) this.cue(SFX.enemyStrike, 1);
 		if (variants.spins > 0) this.cue(SFX.enemySpin, 1);
+		// The third endless set (docs/NEW_ENEMIES_2.md NX7): from SimEvents, the per-tick transitions and PelletEvents.
+		if (variants.blocks > 0) this.cue(SFX.enemyBlock, 1);
+		if (variants.guardBreaks > 0) this.cue(SFX.enemyGuardBreak, 1);
+		if (variants.hookThrows > 0) this.cue(SFX.enemyHook, 1);
+		if (variants.hookLatches > 0) this.cue(SFX.enemyHookLatch, 1);
+		if (variants.pyreLights > 0) this.cue(SFX.enemyPyreLight, 1);
+		if (variants.snatches > 0) {
+			this.cue(SFX.enemySnatch, 1, priorityOf(SFX.enemySnatch), NEW_ENEMY_2_AUDIO.snatchSpeed);
+		}
+		if (variants.swallows > 0) this.cue(SFX.enemySwallow, 1);
+		if (variants.pelletReturns > 0) this.cue(SFX.pelletReturn, 1);
 		// The combo's tier sting and break (docs/COMBO.md CB4; a cut is silent, CD4).
 		const peakTier = comboTier(combo.peak);
 		if (peakTier > comboTier(combo.startCombo)) {

@@ -9,12 +9,24 @@ export interface PredictionViewTunables {
 	readonly snapTiles: number;
 	/** The drawn body is never farther than this (tiles) from the prediction. */
 	readonly maxOffsetTiles: number;
+	/**
+	 * docs/NEW_ENEMIES_2.md NX7: while the local player is hooked (a Chainhook drags them, merged state) prediction is
+	 * suspended and the knight is drawn merged; after the drag it blends back to the prediction over resumeSec of real
+	 * time (no snap). suspendSec: the blend INTO merged at the latch (0: at once, the plan's "merged while hooked").
+	 */
+	readonly resumeSec: number;
+	readonly suspendSec: number;
+	/** Either blend moves at most this share of the way in one frame (a long frame never jumps the whole gap). */
+	readonly blendMaxStep: number;
 }
 
 export const PREDICTION_VIEW: PredictionViewTunables = table.freeze({
 	halfLifeSec: 0.06,
 	snapTiles: 1.0,
 	maxOffsetTiles: 1.0,
+	resumeSec: 0.25,
+	suspendSec: 0,
+	blendMaxStep: 0.25,
 });
 
 /**

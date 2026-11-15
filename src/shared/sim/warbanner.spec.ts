@@ -147,6 +147,11 @@ describe("warbanner: data", () => {
 			"charger",
 			"reaper",
 			"stormcaller",
+			// docs/NEW_ENEMIES_2.md (Design: the Warbanner's aura applies to all four; the brazier is no room enemy)
+			"bulwark",
+			"chainhook",
+			"pyrekeeper",
+			"snatcher",
 		]);
 		expect(isWarbannerAuraTarget(NO_KIND)).toBe(false);
 	});

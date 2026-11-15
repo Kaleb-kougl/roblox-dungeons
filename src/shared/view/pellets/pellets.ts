@@ -13,6 +13,7 @@ import { PelletPhase, SIM_HZ, type PelletEaten, type SimState } from "shared/sim
 import type { JuiceSettings } from "shared/settings";
 import { easeOutBack, freezeFrameOn } from "shared/view/fx";
 import { PELLETS_VIEW } from "./config";
+import { PELLET_RETURN_VIEW } from "../newEnemies2Config";
 import type { PelletFrameSource, PelletPowerTaken } from "./events";
 
 const TAU = 2 * math.pi;
@@ -39,10 +40,59 @@ export interface PelletLook {
 	transparency: number;
 	/** 0..1 of the way from the kind's colour to PELLETS_VIEW.glowRole (the last-few hint, the power pulse). */
 	glow: number;
+	/**
+	 * Where it is drawn off its own cell (sim units) and how high (tiles): a stolen pellet flying home from a dead
+	 * Snatcher (docs/NEW_ENEMIES_2.md NX7, PELLET_RETURN_VIEW); 0 otherwise.
+	 */
+	offX: number;
+	offZ: number;
+	hopTiles: number;
 }
 
 export function newPelletLook(): PelletLook {
-	return { shown: false, scale: 1, transparency: 0, glow: 0 };
+	return { shown: false, scale: 1, transparency: 0, glow: 0, offX: 0, offZ: 0, hopTiles: 0 };
+}
+
+/**
+ * The fly-home of a pellet put back `since` sim seconds ago from (fromX, fromZ) to its cell (cx, cz): the offset from
+ * its cell and the hop (PELLET_RETURN_VIEW: ease-out over flySec, a parabola peaking at hopTiles). Over (or reduced
+ * motion): at its cell. Writes `out` and returns it.
+ */
+export function pelletReturnFlight(
+	since: number,
+	fromX: number,
+	fromZ: number,
+	cx: number,
+	cz: number,
+	motion: number,
+	out: PelletLook,
+): PelletLook {
+	out.offX = 0;
+	out.offZ = 0;
+	out.hopTiles = 0;
+	const sec = PELLET_RETURN_VIEW.flySec;
+	if (motion <= 0 || !(sec > 0) || !(since >= 0) || since >= sec) return out;
+	const u = since / sec;
+	const left = (1 - u) * (1 - u);
+	out.offX = (fromX - cx) * left;
+	out.offZ = (fromZ - cz) * left;
+	out.hopTiles = PELLET_RETURN_VIEW.hopTiles * 4 * u * (1 - u) * motion;
+	return out;
+}
+
+/**
+ * Regular pellets of record `rec` ON THE FLOOR (taken 0, the power pellet left out): the last-few hint and the chomp
+ * ladder count these, not PelletRoom.left, which still counts the pellets a Snatcher carries (taken 2) or swallowed
+ * (taken 3) (docs/NEW_ENEMIES_2.md NX0, NXD11). 0 for an unknown record.
+ */
+export function pelletsOnFloor(state: Readonly<SimState>, rec: number): number {
+	const p = state.pellets;
+	const room = p !== undefined && rec >= 0 ? p.rooms[rec] : undefined;
+	if (p === undefined || room === undefined) return 0;
+	let n = 0;
+	const last = room.first + room.span - 1;
+	for (let i = room.first; i <= last; i++) if (i !== p.power && p.rec[i] === rec && p.taken[i] === 0) n++;
+	return n;
 }
 
 /**
@@ -138,6 +188,14 @@ export class PelletViewTracker {
 	static readonly NOT_SEEN = -1;
 	private readonly liveAt: number[] = [];
 	private readonly goneAt: number[] = [];
+	/** Pellets put back by a dead Snatcher (NX7): pellet index -> when (sim seconds) and where it flies from. */
+	private readonly returnAt = new Map<number, number>();
+	private readonly returnFromX = new Map<number, number>();
+	private readonly returnFromZ = new Map<number, number>();
+	/** Per record, its regular pellets on the floor (pelletsOnFloor), for `floorState` at `floorTick`. */
+	private readonly onFloor: number[] = [];
+	private floorState: Readonly<SimState> | undefined;
+	private floorTick = -1;
 	private floor = -1;
 	private pellets = -1;
 	private records = -1;
@@ -150,6 +208,14 @@ export class PelletViewTracker {
 		this.lastTick = -1;
 		this.liveAt.clear();
 		this.goneAt.clear();
+		this.forgetReturns();
+		this.floorState = undefined;
+	}
+
+	private forgetReturns(): void {
+		this.returnAt.clear();
+		this.returnFromX.clear();
+		this.returnFromZ.clear();
 	}
 
 	/** True when this frame's state is another floor than the last one synced (the renderer rebuilds then). */
@@ -175,6 +241,7 @@ export class PelletViewTracker {
 			this.records = p !== undefined ? p.rooms.size() : 0;
 			this.liveAt.clear();
 			this.goneAt.clear();
+			this.forgetReturns();
 			for (let k = 0; k < this.records; k++) {
 				this.liveAt.push(PelletViewTracker.NOT_SEEN);
 				this.goneAt.push(PelletViewTracker.NOT_SEEN);
@@ -183,7 +250,30 @@ export class PelletViewTracker {
 		this.lastTick = state.tick;
 		for (const e of events.live) if (e.rec >= 0 && e.rec < this.records) this.liveAt[e.rec] = e.tick / SIM_HZ;
 		for (const e of events.gone) if (e.rec >= 0 && e.rec < this.records) this.goneAt[e.rec] = e.tick / SIM_HZ;
+		for (const e of events.returned) {
+			this.returnAt.set(e.index, e.tick / SIM_HZ);
+			this.returnFromX.set(e.index, e.fromX);
+			this.returnFromZ.set(e.index, e.fromZ);
+		}
 		return fresh;
+	}
+
+	/** Record `rec`'s regular pellets on the floor in `state` (pelletsOnFloor, counted once per state tick). */
+	floorLeft(state: Readonly<SimState>, rec: number): number {
+		const p = state.pellets;
+		if (p === undefined) return 0;
+		if (state !== this.floorState || state.tick !== this.floorTick || this.onFloor.size() !== p.rooms.size()) {
+			this.floorState = state;
+			this.floorTick = state.tick;
+			this.onFloor.clear();
+			for (let k = 0; k < p.rooms.size(); k++) this.onFloor.push(0);
+			for (let i = 0; i < p.x.size(); i++) {
+				const r = p.rec[i];
+				if (i === p.power || p.taken[i] !== 0 || r < 0 || r >= p.rooms.size()) continue;
+				this.onFloor[r] += 1;
+			}
+		}
+		return this.onFloor[rec] ?? 0;
 	}
 
 	/** When record `rec` went live / gone (sim seconds), or NOT_SEEN. */
@@ -208,6 +298,9 @@ export class PelletViewTracker {
 		out.scale = 1;
 		out.transparency = 0;
 		out.glow = 0;
+		out.offX = 0;
+		out.offZ = 0;
+		out.hopTiles = 0;
 		const p = state.pellets;
 		if (p === undefined || i < 0 || i >= p.x.size() || p.taken[i] !== 0) return out;
 		const rec = p.rec[i];
@@ -237,10 +330,24 @@ export class PelletViewTracker {
 			const w = powerPelletPulse(now, motion, PULSE_SCRATCH);
 			scale *= w.scale;
 			out.glow = w.glow;
-		} else if (room.left > 0 && room.left <= PELLETS_VIEW.lastFewHint) {
-			const w = pelletLastFew(now, motion, PULSE_SCRATCH);
-			scale *= w.scale;
-			out.glow = w.glow;
+		} else {
+			// The hint counts the pellets on the floor: not those a Snatcher carries or swallowed (NX7).
+			const left = this.floorLeft(state, rec);
+			if (left > 0 && left <= PELLETS_VIEW.lastFewHint) {
+				const w = pelletLastFew(now, motion, PULSE_SCRATCH);
+				scale *= w.scale;
+				out.glow = w.glow;
+			}
+		}
+		const back = this.returnAt.get(i);
+		if (back !== undefined) {
+			const since = now - back;
+			if (since >= PELLET_RETURN_VIEW.flySec || since < 0) this.returnAt.delete(i);
+			else {
+				const fx = this.returnFromX.get(i) ?? p.x[i];
+				const fz = this.returnFromZ.get(i) ?? p.z[i];
+				pelletReturnFlight(since, fx, fz, p.x[i], p.z[i], motion, out);
+			}
 		}
 		out.shown = true;
 		out.scale = scale;
@@ -461,13 +568,19 @@ export function pelletEatSpeed(taken: number, count: number): number {
 }
 
 /**
- * The ladder position of an eaten pellet after the frame's ticks: [taken, count] of its room's regular pellets
- * (count - left, count), or undefined when the pellet or its room is unknown.
+ * The ladder position of an eaten pellet after the frame's ticks: [taken, taken + on the floor] of its room's regular
+ * pellets (taken = count - left, the players' pickups; on the floor = pelletsOnFloor, docs/NEW_ENEMIES_2.md NX7), so
+ * the last pellet left on the floor plays the octave even when a Snatcher carries or swallowed some (without one this
+ * is (count - left, count) exactly); undefined when the pellet or its room is unknown or nothing is left to count.
  */
 export function pelletRoomProgress(state: Readonly<SimState>, index: number): [number, number] | undefined {
 	const p = state.pellets;
 	if (p === undefined || index < 0 || index >= p.rec.size()) return undefined;
-	const room = p.rooms[p.rec[index]];
+	const rec = p.rec[index];
+	const room = p.rooms[rec];
 	if (room === undefined || room.count <= 0) return undefined;
-	return [room.count - room.left, room.count];
+	const taken = room.count - room.left;
+	const total = taken + pelletsOnFloor(state, rec);
+	if (total <= 0) return undefined;
+	return [taken, total];
 }

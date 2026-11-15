@@ -163,8 +163,10 @@ export const ENEMY: SlotContract = {
 	// cast (shared/view variantsConfig VARIANT_SPRITE_VIEW.summonerAnims). docs/NEW_ENEMIES.md NE8: `death.2`, a second
 	// death (falls back to `death`): the Bomber's detonation (Explode); `move.back`, a second move loop (falls back to
 	// `move`): the Warbanner backing away (Run Backwards) (shared/view newEnemiesConfig NEW_ENEMY_SPRITE_VIEW.anims).
+	// docs/NEW_ENEMIES_2.md NX7: `block`, a loop in place of `idle` (falls back to `idle`): the Shieldwall guarding
+	// (shared/view newEnemies2Config NEW_ENEMY_2_SPRITE_VIEW.anims).
 	// Inline, not a top-level constant: the compiled contract.luau sits near Luau's 200-locals limit.
-	optionalAnimations: ["attack.2", "death.2", "move.back"],
+	optionalAnimations: ["attack.2", "death.2", "move.back", "block"],
 };
 
 export const BOSS: SlotContract = {
@@ -511,7 +513,9 @@ export type ClassId = (typeof CLASS_IDS)[number];
  * small cone and a low dome). The Summoner fills the web build's existing `summoner`. Then the second endless set of
  * docs/NEW_ENEMIES.md NE1: `bomber`, `charger`, `stormcaller`, `warbanner`, `reaper` (placeholders: a small cone, a
  * long wedge, a tall slim drum, a thin post, a flat disc). Then the Goldling of docs/FORTUNE.md (`golden`, a rare
- * harmless gold runner; placeholder: a small gold block).
+ * harmless gold runner; placeholder: a small gold block). Then the third endless set of docs/NEW_ENEMIES_2.md NX1
+ * (newEnemies2.ts NEW_ENEMY_2_ARCHETYPES): `bulwark`, `chainhook`, `snatcher`, `pyrekeeper` and the Pyre-keeper's
+ * brazier `pyre` (placeholders: a disc behind a front plate, a squat drum, a small cone, a tall robe, a low bowl).
  */
 export const ENEMY_ARCHETYPES = [
 	"swarmer",
@@ -529,6 +533,11 @@ export const ENEMY_ARCHETYPES = [
 	"warbanner",
 	"reaper",
 	"golden",
+	"bulwark",
+	"chainhook",
+	"snatcher",
+	"pyrekeeper",
+	"pyre",
 ] as const;
 export type EnemyArchetype = (typeof ENEMY_ARCHETYPES)[number];
 
@@ -618,6 +627,10 @@ export const BULLET_IDS = [
 	// Roblox port (docs/NEW_ENEMIES.md NE1): the Stormcaller's lightning strike (variants.ts STRIKE_BULLET_ID,
 	// BulletKind.STRIKE), a stationary bullet drawn as a short bolt flash on its marked circle (NE8)
 	"bullet.enemy.strike",
+	// Roblox port (docs/NEW_ENEMIES_2.md NX1): the Chainhook's hook (newEnemies2.ts HOOK_BULLET_ID, BulletKind.HOOK) and
+	// the brazier's fireball look (FLAME_BULLET_ID, NXD12; held to the danger pink like every enemy look)
+	"bullet.enemy.hook",
+	"bullet.enemy.flame",
 	// Roblox port (docs/BUILDS.md BU1): the build effects' player bullets (builds.ts BUILD_BULLET_IDS, the same list):
 	// Volatile's bolts, Soul Shards, embers (a flat floor flame), Flurry / Thrill Seeker bolts
 	"bullet.player.burst",
@@ -839,7 +852,10 @@ export const BOOST_BEAM_IMAGE_ID = "ui.marker.boost";
  * (claude/codex-plan.md CX5, codex.ts CODEX_AUDIO_IDS): a codex toast's chime (no fallback: silent until a clip is
  * picked, CXD12). Then the secret rooms' three (docs/SECRET_ROOMS.md SR10, secrets.ts SECRET_AUDIO_IDS): the crack's
  * hollow knock, the wall's crumble, the discovery jingle (falling back to sfx.breakable.hit / sfx.breakable.break /
- * sfx.jingle.treasure while silent).
+ * sfx.jingle.treasure while silent). Then Silver's four (docs/SILVER.md SV7, silver.ts SILVER_AUDIO_IDS): the counter's
+ * tick, a Silver piece's clink, an Armory purchase and a refusal. Then the third endless set's eight (docs/NEW_ENEMIES_2.md NX1, newEnemies2.ts
+ * NEW_ENEMY_2_AUDIO_IDS): the Bulwark's block and guard break, the Chainhook's throw and latch, the Snatcher's snatch and
+ * swallow, a stolen pellet's return, a brazier lighting (each with a one-step SFX_FALLBACK while silent).
  */
 export const PORT_AUDIO_EVENTS = [
 	"sfx.player.swing",
@@ -988,6 +1004,17 @@ export const PORT_AUDIO_EVENTS = [
 	"sfx.silver.crate",
 	"sfx.shop.buy",
 	"sfx.shop.deny",
+	// docs/NEW_ENEMIES_2.md NX1 (newEnemies2.ts NEW_ENEMY_2_AUDIO_IDS): a shot blocked by a Bulwark's shield / its guard
+	// broken; a Chainhook's throw / its hook latching; a Snatcher eating a pellet / swallowing; a stolen pellet back on the
+	// floor; a Pyre-keeper's brazier flaring up
+	"sfx.enemy.block",
+	"sfx.enemy.guardbreak",
+	"sfx.enemy.hook",
+	"sfx.enemy.hooklatch",
+	"sfx.enemy.snatch",
+	"sfx.enemy.swallow",
+	"sfx.pellet.return",
+	"sfx.enemy.pyrelight",
 ] as const;
 
 /**

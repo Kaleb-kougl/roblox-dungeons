@@ -19,6 +19,7 @@ import {
 import {
 	CODEX_AUDIO_IDS,
 	GOLDEN_RUMOUR_AUDIO_IDS,
+	NEW_ENEMY_2_AUDIO_IDS,
 	SILVER_AUDIO_IDS,
 	PORT_AUDIO_EVENTS,
 	REQUIRED_ASSET_IDS,
@@ -142,9 +143,14 @@ describe("audio: the Goldling's rumours (docs/GOLDLING_RUMOURS.md GR6)", () => {
 	it("the IDs: the theme's two rumours, last in PORT_AUDIO_EVENTS before the Codex's, in ALL_SFX and PORT_SFX, required", () => {
 		expect([...RUMOURS]).toEqual(["sfx.golden.rumour.floor", "sfx.golden.rumour.room"]);
 		expect([...RUMOURS]).toEqual([...GOLDEN_RUMOUR_AUDIO_IDS]);
-		// claude/codex-plan.md CX5's sound comes after them (codex.spec.ts), then docs/SECRET_ROOMS.md SR10's three and
-		// docs/SILVER.md SV7's four
-		const n = PORT_AUDIO_EVENTS.size() - CODEX_AUDIO_IDS.size() - SECRET_AUDIO_IDS.size() - SILVER_AUDIO_IDS.size();
+		// claude/codex-plan.md CX5's sound comes after them (codex.spec.ts), then docs/SECRET_ROOMS.md SR10's three,
+		// docs/SILVER.md SV7's four and docs/NEW_ENEMIES_2.md NX1's eight
+		const n =
+			PORT_AUDIO_EVENTS.size() -
+			CODEX_AUDIO_IDS.size() -
+			SECRET_AUDIO_IDS.size() -
+			SILVER_AUDIO_IDS.size() -
+			NEW_ENEMY_2_AUDIO_IDS.size();
 		expect([PORT_AUDIO_EVENTS[n - 2], PORT_AUDIO_EVENTS[n - 1]]).toEqual([...RUMOURS]);
 		for (const id of RUMOURS) {
 			expect([id, ALL_SFX.includes(id), PORT_SFX.includes(id), REQUIRED_ASSET_IDS.includes(id)]).toEqual([

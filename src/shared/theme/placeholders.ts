@@ -46,6 +46,7 @@ import {
 import type { BiomeTileKey, ColorRole } from "./types";
 import { startsWith } from "./util";
 import { GOO_BULLET_ID, STRIKE_BULLET_ID } from "./variants";
+import { FLAME_BULLET_ID, HOOK_BULLET_ID } from "./newEnemies2";
 import { pelletId } from "./pellets";
 import { TREASURE_CAGE_ID, TREASURE_CHEST_ID, TREASURE_CHEST_OPEN_ID } from "./treasure";
 import { PACT_ALTAR_ID } from "./fortune";
@@ -139,6 +140,16 @@ export const PLACEHOLDER_PROPORTIONS = {
 	reaper: [0.875, 0.25, 0.875],
 	/** Goldling (docs/FORTUNE.md FD9): a small gold block, smaller than the bomber (1.5 x 1.5 x 1.5 studs). */
 	golden: [0.375, 0.375, 0.375],
+	/** Bulwark (docs/NEW_ENEMIES_2.md NX1): a broad shallow slab, its shield, turned toward its target (3.5 x 3 x 2 studs). */
+	bulwark: [0.875, 0.75, 0.5],
+	/** Chainhook (NX1): a squat wide drum, heavier than the sprayer's (3.5 x 2.5 x 3.5 studs). */
+	chainhook: [0.875, 0.625, 0.875],
+	/** Snatcher (NX1): the smallest cone, under the bomber's (1.25 x 1.5 x 1.25 studs). */
+	snatcher: [0.3125, 0.375, 0.3125],
+	/** Pyre-keeper (NX1): a tall slim robe, slimmer than the caster's capsule (2 x 4 x 2 studs). */
+	pyrekeeper: [0.5, 1, 0.5],
+	/** The Pyre-keeper's brazier (`pyre`, NX1): a low wide bowl (2.5 x 1.5 x 2.5 studs). */
+	pyre: [0.625, 0.375, 0.625],
 	/** Bosses: a large block, the full 48 x 48 cell wide, 3/4 tall (Mother Mayhem, boss.act1, and boss.1..5). */
 	boss: [1, 0.75, 1],
 	/**
@@ -153,6 +164,8 @@ export const PLACEHOLDER_PROPORTIONS = {
 	 * on the floor (the renderer scales it to the gameplay radius).
 	 */
 	goo: [1, 1 / 8, 1],
+	/** The Chainhook's hook (`bullet.enemy.hook`, docs/NEW_ENEMIES_2.md NX1): a neon wedge along the velocity. */
+	hook: [0.625, 0.5, 1],
 	/** Needle bullets: a thin neon sliver along the velocity. */
 	needle: [0.25, 0.25, 1],
 	/** Player bullets: a thin bolt along the velocity. */
@@ -295,6 +308,11 @@ const ENEMY_SHAPES: Record<EnemyArchetype, { shape: PlaceholderShape; proportion
 	warbanner: { shape: "Cylinder", proportions: PLACEHOLDER_PROPORTIONS.warbanner },
 	reaper: { shape: "Cylinder", proportions: PLACEHOLDER_PROPORTIONS.reaper },
 	golden: { shape: "Block", proportions: PLACEHOLDER_PROPORTIONS.golden },
+	bulwark: { shape: "Block", proportions: PLACEHOLDER_PROPORTIONS.bulwark },
+	chainhook: { shape: "Cylinder", proportions: PLACEHOLDER_PROPORTIONS.chainhook },
+	snatcher: { shape: "Cone", proportions: PLACEHOLDER_PROPORTIONS.snatcher },
+	pyrekeeper: { shape: "Capsule", proportions: PLACEHOLDER_PROPORTIONS.pyrekeeper },
+	pyre: { shape: "Cylinder", proportions: PLACEHOLDER_PROPORTIONS.pyre },
 };
 
 const enemyVisual = (archetype: EnemyArchetype): PlaceholderVisual =>
@@ -426,6 +444,10 @@ function buildTable(): Record<string, PlaceholderVisual> {
 		outline: "enemyBulletOutline",
 		material: "Neon",
 	});
+	// docs/NEW_ENEMIES_2.md NX1: the Chainhook's hook, a neon wedge pointing along its flight (the chain is NX7's); the
+	// brazier's fireball a neon ball like every enemy look until its flame art (NX8)
+	t[HOOK_BULLET_ID] = enemyBulletVisual("Wedge", PLACEHOLDER_PROPORTIONS.hook);
+	t[FLAME_BULLET_ID] = enemyBulletVisual("Ball", PLACEHOLDER_PROPORTIONS.enemyBullet);
 	t["bullet.player.basic"] = playerBulletVisual(PLACEHOLDER_PROPORTIONS.playerBolt);
 	t["bullet.player.heavy"] = playerBulletVisual(PLACEHOLDER_PROPORTIONS.playerHeavyBolt);
 	// Build effects (Roblox port, docs/BUILDS.md BU1): small neon bolts in their effect colours; the ember a flat disc

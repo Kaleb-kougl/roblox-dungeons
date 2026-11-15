@@ -1,0 +1,1134 @@
+# New enemies 2: Bulwark, Chainhook, Snatcher, Pyre-keeper
+
+Endless rooms buy eleven room enemies today (swarmer, sniper, bruiser; imp / Ooze / summoner from
+docs/ENEMY_VARIANTS.md; bomber / charger / stormcaller / warbanner / reaper from docs/NEW_ENEMIES.md). They cover
+rushing, sniping, slams, rings and spirals, blinks, goo, summons, explosions, lane charges, floor strikes and auras.
+None of them **defends itself**, **moves the player**, **contests the room's loot** or **builds a battlefield**. This
+plan adds four room archetypes (plus one child actor) that fill those gaps, each drawn by an unused 2D Demons rig
+already in `art/vendor/demons-topdown/` (23 of its 34 rigs are unused today):
+
+| Id | Role | Rig (NXD2) | Why this rig |
+|---|---|---|---|
+| `bulwark` | guards its front and the allies behind it; you flank it or break its guard | **Demon Spawn 9** (dark armour, curved sword, round shield) | `Block` holds the shield up; `Attack` is a shield-side swing for the bash; `TakeDamage` for the guard break |
+| `chainhook` | throws a hook down a telegraphed line and drags you to it | **Demon Spawn 4** (heavy armour, chain-mesh shield, horned helm) | the chain mesh reads as "chains"; heavy build sells the yank; `Attack` / `Run Attack` for the throw |
+| `snatcher` | harmless thief: eats the room's pellets and flees; kill it to get them back | **Imp 6** (small, bare-handed, horned) | the only empty-handed imp: reads as a pickpocket; `Run`, `Slide`, `Crouch walk`, `Taunt` |
+| `pyrekeeper` | lights braziers around the room that fire at you; they go out when it dies | **Demon spawn 1** (hooded, torch staff) | the torch staff; `Attack` raises it for the throw; NED2's spare stormcaller rig |
+| `pyre` (child) | the brazier a Pyre-keeper lights | the vale **decor brazier** art (`decor.*` `brazier`, flame + glow) | already drawn, lit and glowing in boss / entrance rooms |
+
+Alternates kept for a swap after the Studio check: Bulwark **Imp 8** (same weapons, smaller) or **Spawn 12** (bone
+armour, large shield); Chainhook **Spawn 12**; Snatcher **Imp 4** (small, dagger).
+
+Work it task by task, like `PLAN.md`; each task ends with a **Verify**.
+
+This is **gameplay**: the archetypes live in the sim, replay, validate on the server and step in lockstep. It follows
+docs/NEW_ENEMIES.md's patterns: a new registry band (no recorded index moves), kinds appended to `ENDLESS_ROOM_KINDS`,
+the per-sheet Demons pipeline for the art, SILENT port audio IDs in the placeholder, first-sighting lines and Codex
+entries. **No new hash group**: every new piece of state is actor scratch (`v[]`, hashed), a pellet's `taken` value
+(hashed) or a transient per-tick list rebuilt from hashed state (the Warbanner aura's pattern). M1
+(`KALEB_VALE_MVP_PARAMS`), every golden fixture and the tutorial replay exactly as before; endless / daily / dev replays
+and scores change (all-time boards stay `_v1`; `DAILY.ruleset` 20 -> 21: docs/SILVER.md took 20 first).
+
+## Status (2026-11-14)
+
+**Built on branch `new-enemies-2`: NX0-NX9 and NX11** ("NX0 findings", "NX1 skeleton", "As built"): the Shieldwall
+(`bulwark`), the Chainhook, the Snatcher, the Pyre-keeper and its `pyre` in the sim, the room pool and roster, the view
+(placeholder looks), the art sets (built, not uploaded), the Codex entries, the systems pass (specs per interaction, a
+recorded run per kind validating on the server) and an NX12-lite measurement (no retune). Decisions NXD1-NXD24 taken by
+the owner (2026-11-13 / 2026-11-14): every one as recommended or as built except NXD1 (the id is `bulwark`, not
+"Shieldbearer") and NXD12 (a new flame bullet look now); the shield enemy is shown as the **Shieldwall** (NXD17; the id
+stays `bulwark` everywhere in code). Where this doc says "Bulwark" it means the archetype `bulwark`.
+Merged into `main` 2026-11-14 after docs/SILVER.md: `DAILY.ruleset` 20 -> 21 (Silver took 20), the eight port
+audio IDs after Silver's, the Codex entries after `secret:room`.
+
+**Pending:**
+
+- ~~NX8 upload~~ **done 2026-11-14**: the 27 PNGs uploaded, ids in `packs/vale/assetIds.ts` (the bundled vale pack draws
+  the four rigs and the flame / hook bullets).
+- ~~NX10 audio~~ **built and uploaded 2026-11-14**: CC0 picks in `art/audio.json` (Kenney Impact Sounds, Ninja Adventure,
+  bart's "Chain winch sounds", rubberduck's "80 CC0 creature SFX"; THIRD_PARTY_NOTICES and Credits), `audio:build` on the
+  owner's Mac, the ten clips' ids in `assetIds.ts`, so vale plays all eight. Still `"confirmed": false` in
+  `art/audio.json`: confirm or swap at the audition page (`sfx-pellet-return.ogg` came out 2.7 s long, Magic3's tail:
+  likely a trim or a swap to `Bounce3`).
+- **NX12 full tuning**: room time against par, the Sweep rate in Snatcher rooms on real floors, how often a drag ends in a
+  yank; the options T1-T6 in "NX11 / NX12 systems and tuning". The loosened `sim/archer.ttk.builds` gate (the Archer may
+  time out on the floor-20 census room with no build, Storm Blade, Soul Swarm or Fire Arrows) stands until then.
+- **NX13 Studio check** (the NX7 / NX8 checklists).
+- **Owner calls** OC1-OC6 of "NX11 / NX12 systems and tuning".
+
+## What the code gives us
+
+Paths under `src/shared/` unless they say otherwise.
+
+| Fact | Where | Consequence |
+|---|---|---|
+| Bands 0-5 are taken; band 5 (`PORT_BAND_FORTUNE`) holds `golden` 18 | `sim/combat/actors/registry.ts` | New band 6 `PORT_BAND_ENEMIES_3`. If `compareIds` is plain string order: `bulwark` 19, `chainhook` 20, `pyre` 21, `pyrekeeper` 22, `snatcher` 23. No older index moves |
+| `ACTOR_SCRATCH_SLOTS` = 8, 0-2 shared | `sim/combat/actors/types.ts` | Each kind gets v3-v7 (budgets in Design). `ActorState` has `faceX` / `faceZ` (hashed): the shield's facing is the actor's facing, no new field |
+| `damageActor(ctx, a, amount)` carries no hit origin or hit type; `filterDamage` sees only the amount | `sim/combat/actors/actors.ts` | The shield is NOT a `filterDamage`: it is tested at the hit sites, which know the origin. Three sites: the plain bullet loop and `piercingBulletHit` (`combat/combat.ts`) and the sword's `sweepArc` callbacks (`weapons/defs/sword.ts`, `weapons/melee.ts`). Effects that call `damageActor` directly (Overkill streaks, Riposte waves, Siege slams, smash procs, duos) are not stopped by the shield |
+| `sweepArc` already takes a trailing `finisher` flag (docs/SECRET_ROOMS.md); `isHeavyArrow(payload, vx, vz)` exists | `combat/weapons/melee.ts`, `combat/combat.ts` | The guard break (finisher, heavy arrow) reads facts the sim already has |
+| Enemy bullets test players in index order and call `ctx.hurtPlayerAt(k, damage, source)`; a rolling (i-framed) player is passed through; Phantom Step / Bastion branches sit right there; `STRIKE` shows how a kind gets its own rules in that loop | `combat/combat.ts` (~430-470) | The hook is an enemy bullet of a new kind `BulletKind.HOOK` = 13 (13-15 free): walls stop it, rolls dodge it, the sword's guard erases it (a parry, NXD8), the Hourglass slows it, the power pellet erases it, it grazes. On a hit it latches instead of hurting |
+| `movePlayer(state, dx, dz, config, p)` moves a player through `config.moveResolver` (wall slide included) in sub-steps; exported for the sword's lunge | `sim/player.ts` | The drag reuses it: walls, pillars and pieces stop the pull exactly as they stop walking. No new mover. **No actor moves a player today**: NX0 audits the order (stepPlayer runs before stepCombat) |
+| Local prediction mirrors `stepPlayer`'s motion (`predictMotion.ts`, pinned by `predictMotion.spec.ts`); any sim change to player motion must update the mirror | docs/LOCAL_PREDICTION.md | The drag does NOT go into `stepPlayer`, so the mirror and its parity spec are untouched. The view instead **suspends prediction while the local player is hooked** (merged state says so): see Architecture 4 |
+| Pellets: `PelletsState.taken[k]` 0 / 1 (hashed), `PelletRoom.left` counts regular pellets not taken; Sweep = `left === 0 && count > 0` at the clear; `stepPellets` skips `taken !== 0` | `sim/pellets/` | A stolen pellet is `taken = 2` (carried), a digested one `taken = 3` (gone). Neither decrements `left`, so a digested pellet makes the room's Sweep impossible (NXD11) and a returned one (`taken = 0`) is collectable again. Without a Snatcher no pellet ever holds 2 or 3, so every hash is unchanged |
+| Pellets are placed after the Forge (`placePellets`, off planned spawns); room spending runs before it | `shared/dungeon` | The room spender cannot know whether a room has pellets. A Snatcher with nothing to steal just flees (NXD10: no boost stealing in v1) |
+| `fleeField` (allocation-free flee field over a room box) is shared/dungeon; the Goldling uses it through `goldenField` | `sim/golden/goldenField.ts` | The Snatcher flees on the same function, with its own cache per room (one Snatcher per room, NXD9) |
+| Summoner: tracks its summons' ids in v slots, an alive cap and a per-life cap; `wither` kills them at its death; `adoptScoreRoomMember` keeps a room open for runtime children | `archetypes/summoner.ts`, `sim/score/score.ts` | The Pyre-keeper copies the shape for its braziers, but braziers are **not** adopted as members (NXD13: the room clears on the keeper and members; braziers wither) |
+| `ENDLESS_ROOM_KINDS` (11 rows), `roomKindOpen(k, floor, bought, total, roster, unlockFloors)`, `maxPerRoom`, `needsCompany`; the roster shuffles every kind but the swarmer from the run seed, one more per floor (`ROSTER.floorsPerKind` 1, DSD18), unlock floors ignored in every world (DSD17 / DSD18) | `dungeon/endlessData.ts`, `dungeon/endless.ts` | Appending four rows reshuffles **every** run's roster (14 seeded kinds, full on floor 14). With unlock floors ignored, any new kind could be floor 1's seeded kind: NXD4 keeps the Chainhook off floor 1 with a minimum floor the spender always honours |
+| Codex enemy entries are built from `ENDLESS_ROOM_KINDS` in order, then `enemy:golden`; the catalogue has an append-only order lock (`codex/catalog.spec`) | `codex/catalog.ts` | Appending to `ENDLESS_ROOM_KINDS` would insert four entries before `enemy:golden` and every later entry, breaking the lock. NXD14: the catalogue builder takes the four new kinds from a second list and appends their entries after `secret:room`. `pyre` folds into `enemy:pyrekeeper` like slimelets into `enemy:slime` |
+| `enemyBulletLookOf` picks an enemy bullet's look per archetype (sniper needle / caster medium / boss large / else small); enemy bullet art must stay in the danger pink (means <= 12 CIE76 from `enemyBullet`, >= 3:1 on every floor and wall; `bulletArtReport`) | docs/PROJECTILE_ART.md, `shared/view/bullets` | NXD12: a new look `flame` for the pyre's fireballs, recoloured into the danger pink like the other enemy looks |
+| `contract.luau` / `validate.luau` top-level locals 187 / 197 (CLAUDE.md, counted on out/) | CLAUDE.md (Codex) | Appending to `ENEMY_ARCHETYPES`, strings and `PORT_AUDIO_EVENTS` costs no locals; any new validator report folds into an existing module |
+| `PORT_AUDIO_EVENTS` tail is pinned by `codex.spec` and skipped in a list of specs (fortune / treasure / runRecap / boosts / audio / contract / floorModifiers) | CLAUDE.md (Codex, Secret rooms) | New sounds are appended after `sfx.jingle.secret`; NX1 updates `codex.spec`'s tail and those skips |
+| vale has a `brazier` decor piece (art, flame `glowAt`, glow, light pool) | `theme/packs/vale/manifest.ts`, `layout.ts` | `enemy.pyre` can point at the brazier's art; NX0 confirms the enemy slot accepts a one-facing world image or the brazier needs a one-facing sprite set |
+
+## NX0 findings (2026-11-13)
+
+Read on `new-enemies-2` @ `6ae9fcb` (main @ `152553c` + this plan). Paths under `src/shared/` unless they say
+otherwise. Every row of "What the code gives us" holds except the corrections below. Skipped: the rigs' contact sheet
+(no `art/vendor/` in this workspace): NX8 makes it.
+
+**NX0 corrections** (the build follows these, not the rows above):
+
+1. **`enemyShield` is taken.** It is the Shielded affix's shield segment (COLOR_ROLES, `AFFIX_COLOR_RULES`, the health
+   bar's shield row, the shield-hit flash). The guard gets its own role **`enemyGuard`** (theme `newEnemies2.ts`
+   ENEMY_GUARD_ROLE), held by `guardReport` (`variantColors.ts` GUARD_COLOR_RULES): >= 3:1 on every biome floor, >= 40
+   CIE76 from the enemy-bullet roles, `enemyGoo`, `telegraph`, `enemyOutline`, the four affix rings, `enemyShield` and
+   the four boosts. A Shielded Bulwark shows both.
+2. **A second "Bulwark".** Warding's evolution is already shown as "Bulwark" (`boon.warding.evo.name`: draft, items row,
+   Codex). Ids do not clash (`enemy.bulwark` vs `boon.warding.evo`; the sim's `bulwarkPending` is a builds field), but
+   players see two Bulwarks, in the Codex too. Owner call OC1 below; NX1 ships "Bulwark" as NXD1 says. **Settled by
+   NXD17:** the enemy is shown as "Shieldwall" (`enemy.bulwark.name`, `bestiary.bulwark`), the id stays `bulwark`.
+3. **Indices** as guessed: `compareIds` is byte order, a prefix first: bulwark 19, chainhook 20, pyre 21, pyrekeeper
+   22, snatcher 23.
+4. **v[] budgets** do not fit the shapes they copy. Phase / drag / swallow ticks are the state's own `aiTicks` (every
+   state counts it; `ctx.telegraph` sets it), which frees slots:
+   - Bulwark: the bruiser's approach needs a lost counter. v3 lost, v4 hit bits, v5 guarding, v6-7 the bash heading
+     locked at the telegraph (the `aimLine` hint reads a v-slot direction; the facing turns, so not faceX / faceZ).
+   - Chainhook: the sniper's reposition needs a lost counter and a strafe side. v3-4 heading, v5 hooked + 1, v6 shared
+     by state (lost ticks while keeping range, damage since the latch while dragging), v7 strafe.
+   - Snatcher: v3 carried, v4 ticks since the first steal, v6 fleeing (v5, v7 free).
+   - Pyre-keeper: the light's `ring` hint needs the landing point in two slots (`xSlot` / `zSlot`); 3 pyre ids + lit +
+     panic leave none. The keeper keeps no pyre ids: each pyre's v4 (`PYRE_KEEPER`) names its keeper's actor id (ids
+     are never reused in a run, `nextActorId`), so the alive cap, the stagger index and the wither scan the pool (at a
+     cast decision and at death only). Keeper: v3 lit this life, v4-5 landing point, v6 strafe (the summoner's
+     keepRange strafes), v7 panic latch.
+5. **The flame look is per BulletKind, not per archetype.** `enemyBulletLookOf` (`view/bullets/looks.ts`) reads the
+   payload's kind (SNIPER needle, CASTER medium, BOSS large, else small). The pyre fires BulletKind.ENEMY; NX7 maps it by
+   the payload's `source` (archetype index + 1, stamped by `ctx.fireEnemy`) to a new `EnemyBulletLook` FLAME, so no
+   BulletKind is spent (14-15 stay free). NX1: `bullet.enemy.flame` is a contract id and a placeholder only.
+6. **The brazier in the enemy slot.** vale's `brazier` (`packs/vale/layout.ts`) is a one-facing `sprites` set in
+   `decor-atlas.png` (cell 592 idle, 593-600 `lit`, 27 x 37, pivot (16, 35), 29.6 px a tile) with `glow` / `glowAt`. The
+   ENEMY slot takes one-facing sets (the dummy) but requires `idle` / `move` / `attack` / `hit` / `death`, and `glow` /
+   `glowAt` are decor-only. NX8: an `enemy.pyre` set on the same sheet and cells, every required animation aliased
+   (idle / move / attack / hit = the 8 `lit` cells, death = the unlit 592; the turrets' alias pattern): no new pixels,
+   no repack. No rim (decor-atlas has no outline sheet; it draws rimless) unless NX8 bakes one; the flame glow and light
+   pool are the view's (NX7), not the slot's.
+7. **The pyre has no ENCOUNTER_COST row** (like `slime.small`: costs buy spawns and size a room's par; a pyre is
+   neither) and no 0 % drop row: it goes into `DROP_INELIGIBLE_ARCHETYPES` (`sim/drops/dropsData.ts`). A 0 % kill still
+   counts as a dry kill (`killsSinceDrop`) and could trip the pity; an ineligible kill skips both.
+8. `isHeavyArrow` lives in `sim/builds/duos.ts` (combat.ts imports it), not combat.ts.
+9. **Effect bullets hit through the same loops.** BURST / SHARD / SPARK_BOLT / EMBER (BulletKind 8-11) are player
+   bullets: the two loops see them, so the shield blocks them unless NX2 says otherwise. Recommend (OC2): block every
+   moving player bullet (Mirror Cloak's reflections included: BulletKind.PLAYER), let EMBER (speed 0, a flame under its
+   feet) through.
+10. **The roster can still put the Chainhook on floor 1** (NXD4). `roomKindOpen` (`dungeon/endless.ts`) is a pure gate
+    in both spender loops, so a `ROOM_KIND_MIN_FLOOR` test there closes it below floor 2 in every world with no draw and
+    no change for any other kind. But with unlock floors off, `endlessRoster` may make the Chainhook floor 1's ONE seeded
+    kind (about 1 run in 13), leaving floor 1 swarmers only. NX6 honours the minimum in `endlessRoster`'s join scan too
+    (the next kind of `rosterOrder` at or past its minimum; the order is one shuffle, so no draw moves): floor 1 always
+    has a seeded kind and the Chainhook joins on floor 2.
+
+**`damageActor` callers and the shield** (NX2):
+
+| Caller | Hit origin | Shield |
+|---|---|---|
+| `combat/combat.ts` plain player-bullet loop | the bullet | blocks (consumed); a heavy arrow breaks the guard |
+| `combat/combat.ts` `piercingBulletHit` | the bullet | stops it (pierce ends there, the actors behind untouched); heavy breaks; a blocked Siege arrow never pins (`siegeTryPin` follows the hit) |
+| `combat/weapons/defs/sword.ts` `hitSwing` / `hitFinisher` (sweepArc callbacks) | the swinging player (sweepArc's x, z) | a swing does nothing to it; the finisher breaks (sweepArc's `finisher` flag already exists) |
+| `builds/siege.ts` slam, the pinned actor | none (the wall's) | no |
+| `builds/siege.ts` slam, the shockwave | the slam point | breaks the guard (NXD7) |
+| `builds/onKill.ts` (sparks, forks, Overkill streak), `duos.ts` (Conductor, Thunder Guard), `riposte.ts`, `smash.ts`, `fullHeart.ts` | none | no (the plan's "not from anywhere") |
+| `weapons/defs/testMelee.ts` | specs only | n/a |
+
+**The shield's transient list** is built once right after stepActors (end of stepCombat phase 2), not at the start of
+the bullet phase: the sword's sweep (phase 4) and the Siege slam (5b `stepPins`, 6) read it too. A pure function of the
+hashed pool after the actor step, like `SimCtx.rebuildAura` / `rebuildPins`.
+
+**`PelletsState.taken` readers.** Every one treats `!== 0` as off the floor, so 2 / 3 need no change there:
+`sim/pellets/pellets.ts` (reset, fill with 0, clone, hash: the value as is), `sim/pellets/stepPellets.ts` (pickups skip
+`!== 0`, set 1; the power pellet's erase reads no `taken`), `view/pellets/pellets.ts` (the drawn look and
+`livePowerPellet` skip `!== 0`: a carried pellet is hidden, as the plan wants), `run/testing/tutorialBot.ts` (`=== 0`
+targets; no Snatcher in the tutorial). `sim/pellets/pelletRooms.ts` judges the Sweep on `left` / `count` only, so a
+digested pellet loses it (NXD11) and a returned one is collectable again. View events come from the sim's `eaten` /
+`power` lists, not `taken`. What 2 / 3 do touch, through `left`: `view/pellets/pellets.ts`'s last-few hint (`left` in
+(0, lastFewHint]) would point at pellets in a belly and stay lit after a swallow, and the chomp ladder (`count - left`):
+NX7 counts pellets on the floor (taken 0) for the hint.
+
+**Emitter -> actor.** No index exists. Every actor takes a fresh emitter id at spawn (`acquireEmitter`: monotonic; a
+freed actor's id is never reissued), and the enemy pool's visitor already gets `emitter` as its 4th argument
+(`BulletVisitor`; `enemyBulletHit` / `enemyBulletHitParty` ignore it today: NX3 adds the parameter). A HOOK hit scans the
+actor slots for `emitterId === emitter`, kind chainhook, alive (a hook from a dead or freed thrower latches nothing).
+Only on a HOOK hit, so a normal tick pays nothing.
+
+**The drag in the tick.** stepPlayer (prevX = x, walk, roll) for every player, then stepCombat: 2 stepActors (the
+drag) -> 4 weapons (the sword's lunge, the other `movePlayer` from inside combat) -> 5 bullet steps -> 6 collisions -> 7
+contact; then run / pacts / drops / pellets / score / treasure / golden. So the drag: lands after prevX (drawn
+interpolated, like the lunge); is seen by everything after it at the dragged position (bullets, contact, pickups, room
+entry, the stairs); runs in actor slot order inside stepActors on every client (state is hashed after the tick, so no
+new order for co-op; actors earlier in the slot order saw the undragged player, later ones the dragged one, the same
+everywhere); reads this tick's own walk and a roll pressed this tick (stepPlayer ran first), so "walking away slows it"
+and "a roll breaks it" hold at once. `movePlayer(state, dx, dz, ctx.config, p)` uses the floor's world config and
+`solidCells` (the sword does the same). The one difference from the lunge: `lockstep/predictMotion.ts` mirrors the lunge
+(the local player's own input) but cannot mirror a drag, so the view suspends prediction (Architecture 4) and the mirror
+and its parity spec stay untouched.
+
+**The hook in the enemy loops** gets most rules for free: walls and intact pieces (it is not `quiet`), grazes,
+Bastion's roll count, Phantom Step's erase, the guard erase (`bulletInArc` exempts only STRIKE; a guard counts it in
+`deleted`, the parry feed), the power pellet (`eraseVisit` exempts GOO / STRIKE only), the Hourglass (the pool's step
+scale). Mirror Cloak reflects it as a plain player bullet (NX11 note). The latch branch goes before `ctx.hurtPlayer`
+(solo) and `ctx.hurtPlayerAt` (co-op). `playerHittable(k)`: `isPlayerInvulnerable` (dead, roll i-frames, post-hit
+`hurtTicks`) and not hooked; NX3 decides dev god mode (`devBlocksHit`; a drag hurts nothing).
+
+**Horde (NXD9).** `sim/pacts/stepPacts.ts` `telegraphWave`: wave 2 = the first `hordeMaxWave` of
+`world.roomSpawns[h.room]` in order, through `safeRoomSpawns`. NX4 skips `snatcher` there and counts the cap over the
+kept entries (its own counter, not `k`): no draw either way, and a room without a Snatcher builds the same wave.
+
+**Codex.** `codex/catalog.ts` builds `enemy:` entries from ENDLESS_ROOM_KINDS order, then `enemy:golden` (confirmed):
+NXD14's second list lands with NX6 / NX9.
+
+**Sightings now, Codex later.** BESTIARY_STRING_KEYS must equal shared/onboarding SIGHTING_IDS (a spec), so NX1's four
+`bestiary.<id>` lines bring their sighting ids (before the affix ids, NE1's rule) and `view/sighting`
+ARCHETYPE_SIGHTINGS maps the four plus `pyre` -> `pyrekeeper` (as slimelets read as the Ooze). Until NX9 adds their
+Codex entries, `seedFromSightings` / `codexSightingId` drop an id the catalogue lacks (`isCodexId`), so a sighting claims
+nothing; and nothing can be sighted before NX6 buys them.
+
+**Owner calls:** OC1 the two Bulwarks (enemy and Warding's evolution): keep both, or rename one display name (ids stay).
+OC2 the shield against effect bullets (recommended above). Both settled on 2026-11-14: OC1 by NXD17 (the enemy is the
+Shieldwall), OC2 by NXD21 (as recommended and built).
+
+## NX1 skeleton (as built, 2026-11-13)
+
+- Registry: `PORT_BAND_ENEMIES_3` = 6; `bulwark` 19, `chainhook` 20, `pyre` 21, `pyrekeeper` 22, `snatcher` 23; every
+  older index unchanged (`sim/newEnemies2.spec.ts` and the id-list specs: actors, demonlord, dummy, encounterRun,
+  enemyVariants, newEnemies).
+- `archetypes/{bulwark,chainhook,snatcher,pyrekeeper,pyre}.ts`: full `data` blocks (the Design tables as named fields
+  and constants, the v slots of NX0 correction 4, `fx` hints: the Bulwark's bash and the Chainhook's throw `aimLine`, the
+  yank `ring`, the light `ring` on v[`PYREKEEPER_LAND_*`]) and stub steps: calm / leash / engage, then the Bulwark,
+  Chainhook and Pyre-keeper keep their band straight along the bearing (facing at once: no turn limit yet), the
+  Snatcher walks straight away inside fleeRadius, the brazier stands. No attack, no shield, no hook rule, no draw (a
+  spec checks the rng word). The Bulwark's bash lunge time is a starting value of NX1's (`bashLungeTicks` 9, 0.15 s;
+  the plan gives the distance only). The Chainhook's `yankFan` is the imp's spec object; the Pyre-keeper's panic ring
+  the bruiser's.
+- Rows: `ENCOUNTER_COST` (bulwark 3, chainhook 3, snatcher 2, pyrekeeper 3; no row for `pyre`), `KILL_POINTS` (200 /
+  200 / 150 / 180, pyre 30), `DROPS.chanceByArchetype` (8 / 8 / 15 / 8; `pyre` in `DROP_INELIGIBLE_ARCHETYPES`).
+  `ENDLESS_ROOM_KINDS` untouched (NX6): endless rooms spend exactly as before, no replay or hash moves.
+- `BulletKind.HOOK` = 13 (14-15 free), the enemy bullet's hit radius (no row); no rules yet (NX3).
+- Theme: `ENEMY_ARCHETYPES` + five (placeholders: a broad Block slab, a squat Cylinder drum, the smallest Cone, a slim
+  Capsule robe, a low Cylinder bowl; colours `#a8a898`, `#58d8f8`, `#f8b8a8`, `#883868`, `#585808`, >= 26.6 CIE76 from
+  every other enemy colour, the boss accent and the player outline, >= 40 from the danger roles; names Bulwark,
+  Chainhook, Snatcher, Pyre-keeper, Brazier); `bullet.enemy.hook` (a neon Wedge) and `bullet.enemy.flame` (the small
+  ball; not mapped to the pyre yet: NX7) after `bullet.enemy.strike`; role `enemyGuard` `#949c6c` (a dull bronze;
+  `guardReport` in `variantColors.ts`: lowest floor 5.04:1, nearest `affix.hulking` 45.2); the eight SILENT sounds last
+  in PORT_AUDIO_EVENTS (`newEnemies2.ts` NEW_ENEMY_2_AUDIO_IDS) with `shared/view/audio` SFX entries, ALL_SFX /
+  PORT_SFX, `SFX_PRIORITY` (block 32, guard break 47, throw 44, latch 54, snatch 36, swallow 60, return 52, light 43),
+  `SFX_MIN_INTERVAL` (block 0.08 s, snatch 0.1 s) and the plan's one-step `SFX_FALLBACK`s (the snatch's "pitched down"
+  is a cue speed for NX7); no `art/audio.json` entries yet (NX10). `bestiary.<id>` for the four (in the archetypes'
+  block, before the affixes) with their shared/onboarding sighting ids and `view/sighting` ARCHETYPE_SIGHTINGS (`pyre`
+  reads as `pyrekeeper`), so the first-sighting wiring is done; their Codex entries are NX9. `l10n/context.json`
+  entries for the nine strings. Vale inherits every entry from the placeholder.
+- Tail / count specs updated for the eight sounds (codex, secrets, fortune, treasure, runRecap, boosts, audio,
+  contract, floorModifiers, view/audio goldenRumourCues), the five archetypes (newEnemies, fortune, enemyVariants,
+  contract), the two bullet ids (enemyVariants) and the four bestiary lines (enemyVariants, fortune); boosts.spec's
+  planted dim green counts only its own errors (the guard is 31.7 CIE76 from it).
+- `contract.luau` / `validate.luau` top-level locals 187 / 197, unchanged (counted on out/).
+
+## As built
+
+### NX2 Bulwark (as built, 2026-11-14)
+
+- `archetypes/bulwark.ts`: the bruiser's approach (lost counter, STEER walk at the target out of sight) and keep range
+  2-3 along the bearing; the facing turns by `turnFacing` (one literal (turnCos, turnSin) rotation through
+  `rotateDir`, a snap within 2.5 degrees; engaged only: a calm Bulwark still snaps to "watching" in `stepCalm`). Bash:
+  cooldown out + sight + within 1.8 -> heading locked in v6-7, the next cooldown drawn (the bash's one draw; the first in
+  `init`), telegraph 27 ticks (the facing turns toward the heading), the lunge from the telegraph's last tick (the
+  Charger's lane rule) 1.4 over 9 ticks on the plain mover (never scaled), one `HIT_NORMAL` per player per bash (the
+  bit set on the first overlap, landed or not), then recover 36 ticks with v5 0. `bulwarkGuardBreak`: engaged if calm,
+  stagger 90 ticks, v5 0, attack 0 (a telegraphed bash is cancelled; its drawn cooldown stands). A leash raises v5 again.
+- `combat/shield.ts` (new): the guard list `SimCtx.guards` (slots of living Bulwarks with v5 1 that no Siege pin holds),
+  built by `guardSlots` right after stepActors / stepAffixes, emptied by `bind`; every test re-reads alive and v5, so a
+  guard broken or a Bulwark killed earlier in the tick stops blocking at once. Empty list: every caller returns first.
+  - Bullets (`playerBulletHit`, after pieces and the Siege slam check, before the plain and piercing walks): any kind but
+    EMBER, within max(coverRadius 1.0, body + bullet radius) of the centre, inside the front cone **and heading into the
+    shield** (velocity . face < 0; deviation: a bullet that pierced its back and leaves through the front, or one fired
+    from behind, is not stopped). Consumed; a heavy arrow (`isHeavyArrow`, Ballista's included) breaks instead of a
+    block. With Ballista the stop is a wall (`buildsOnHeavyEnd(..., true)`: the back fan; a carrying Siege arrow slams
+    there). A blocked Siege arrow never reaches `siegeTryPin`. Edge: a bullet in the cover zone that also overlaps an
+    actor standing right in front of the shield is stopped by the shield.
+  - Melee (`sword.ts` hitSwing / hitFinisher, origin = the swinging player): a swing blocks (event at the shield's
+    front point), a finisher breaks. The guard sweep has no actor callback (unchanged). A finisher's shield-stopped
+    actor is no hit for builds (Storm Blade counts the finisher's own unblocked hits, `finisherHits`; review fixes).
+  - Siege slam (`siege.ts`, the shockwave only, origin = the slam point): from in front it breaks and deals nothing; the
+    pinned actor is never in the list. A Bulwark whose guard already broke this tick is spared by a shockwave from in
+    front (`SimCtx.guardsBroken`; review fixes).
+  - A breaking hit deals **nothing** (it is the blocked hit; the stagger opens the next ones). A block or break engages a
+    calm Bulwark. Wrecker rolls need no rule (rolls never hit enemies).
+- Feed (unhashed): `SimEvents.shieldBlocks` / `guardBreaks` (`NEW_ENEMY_2_EVENT_FIELDS`, after `NEW_ENEMY_EVENT_FIELDS`
+  in `ALL_EVENT_FIELDS`) and `CombatState.guardEvents` (`blockX` / `blockZ` / `blockSlot`, `breakSlot`; not in
+  `writeCombatHash`, copied by `cloneCombatState`, cleared by `step` / `stepParty` beside `clearEvents`).
+- Specs: `sim/bulwark.spec.ts` (21: front / back / cover / pierce / kinds / heading, 200 and 240 deg/s get behind, 120
+  never leaves the cone, 72 turn steps for 180 degrees, finisher / heavy arrow / Siege shockwave break, back shock
+  damages, blocked Siege arrow never pins, Wrecker roll does not, bash timings and one hit per player solo and co-op,
+  draws, a determinism pair); `newEnemies2.spec`'s no-draw case now allows the Bulwark's init draw; `combat.spec`'s
+  hash-coverage walk skips `guardEvents` (an unhashed feed); `warbanner.spec`'s aura-target list gains NX1's four room
+  enemies (it failed since NX1, the Design's "the Warbanner's aura applies"). No hash, replay or
+  fixture moves: no recorded run spawns a Bulwark (not in `ENDLESS_ROOM_KINDS` until NX6).
+- Owner calls, settled 2026-11-14: OC1 the display name is **Shieldwall** (NXD17; `enemy.bulwark.name` and the
+  `bestiary.bulwark` line, the id `bulwark` unchanged); OC2 the shield blocks every moving player bullet, embers pass
+  (NXD21, as built); OC3 a breaking hit deals 0 (NXD19, as built); OC4 the turn is fixed at 150 deg/s, Swift and the
+  Warbanner aura do not speed it (NXD20, as built).
+
+### NX3 Chainhook (as built, 2026-11-14)
+
+- `archetypes/chainhook.ts`: keep range (the sniper's reposition, strafing at `strafeWeight` 0.8; v6 lost counter, leash
+  past `lostTicks`; the strafe side starts by actor id parity and flips on a wall stop and after every throw / drag / yank:
+  no draw). Throw: cooldown out + sight + within 8 -> heading locked in v3-4, the target's index + 1 in v6, the next
+  cooldown drawn (the throw's one draw; the first in `init`), aim 42 ticks standing still; on its last tick the target
+  dead or a full pool drops the throw, else one HOOK bullet (16 u/s, 0.5 s, 0 damage) and `CHAINHOOK_THROWN` until none
+  of its bullets is live (`activeCountFor`). Drag (`CHAINHOOK_DRAG`, aiTicks the drag ticks): per tick the hooked player
+  dead / rolling (`rollTicks > 0`) / out of sight breaks it, else `SimCtx.dragPlayer` (movePlayer with the floor's world
+  config) pulls `pullSpeed x SIM_DT` toward it, clamped at `pullStop` (a literal: Swift / the Warbanner aura do not speed
+  it); within pullStop (+ 1e-6 rounding) it arrives, at 36 drag ticks it times out (back to keep, no yank). `onHit` adds
+  the damage to v6 and breaks at `breakDamage` 3; `onDeath` breaks it. Arrival: the heading to the player locks in v3-4,
+  the yank telegraphs 18 ticks (`ring` at its feet), then the imp's fan down it. Leash waits for the drag's end.
+- The hook (`combat.ts` enemyBulletHit / enemyBulletHitParty, now taking the visitor's `emitter`): after Bastion's count
+  and Phantom Step, a HOOK goes to `chainhookStrike` instead of the hurt: not `SimCtx.playerHittable` -> it passes;
+  else it is consumed, and latches (v5 = index + 1, v6 = 0) only when the living Chainhook with that `emitterId` is still
+  THROWN and the player is the one it threw at (v6). Every other rule is the plain enemy bullet's (walls, pieces, grazes,
+  guard erase = `guardCancels` / the guard feed, power pellet, Hourglass), pinned in the spec where it matters.
+- `SimCtx.playerHittable(k)`: `isPlayerInvulnerable` false, **`rollTicks` 0** (the roll's tail after its i-frames dodges a
+  hook too: "a rolling player is never latched"), **dev god mode off** (a god-mode player is never latched; read only,
+  `dev.blockedHits` untouched since the hook deals no damage) and no living Chainhook already drags them
+  (`chainhookHolderOf`). `SimCtx.dragPlayer(k, dx, dz)`.
+- Reads of hashed state for NX7: `hookedPlayerOf(a)` (the player a living dragging Chainhook holds, else -1) and
+  `chainhookHolderOf(state, k)` (the slot of the Chainhook dragging player k, else -1).
+- Feed (unhashed): `SimEvents.hookLatched` / `hookBroken` (appended to `NEW_ENEMY_2_EVENT_FIELDS`; a break is an end of
+  reason ROLL or later) and `CombatState.hookEvents` (`combat/hookEvents.ts`: `latchPlayer` / `latchSlot`, `endPlayer` /
+  `endSlot` / `endReason` with `HookEnd` ARRIVED, TIMED_OUT, ROLL, SIGHT, DEATH, DAMAGE, PLAYER_DEAD; not in
+  `writeCombatHash`, cloned, cleared by step / stepParty). `combat.spec`'s hash-coverage walk skips `hookEvents`.
+- Specs `sim/chainhook.spec.ts` (18): timings, pull to pullStop in 23 ticks, the 0.6 s timeout with no yank, a roll sweep
+  (never latched while rolling; some rolls dodge), post-hit invulnerability and god mode, the guard's erase as a parry, a
+  dead thrower's hook, breaks by roll / death / 3 damage / the player's death / a raised pillar, a pool (the player never
+  overlaps a blocked cell, the drag times out), co-op (a moved player is always the one held; a latch is always on the
+  throw target; a teammate in the line takes the hook; a teammate's damage frees), a co-op determinism pair, the draws.
+  `newEnemies2.spec`'s no-draw case allows the Chainhook's init draw. No hash, replay or fixture moves: nothing recorded
+  spawns a Chainhook (not in `ENDLESS_ROOM_KINDS` until NX6; NXD4's floor-2 minimum is NX6's).
+- **Deviations:** v6 also holds the throw target while aiming / thrown (the Design's v6 drag ticks are `aiTicks`, NX0);
+  the latch is only on the player it threw at, so **a teammate standing in the line takes the hook** (consumed, nobody
+  moved): owner call OC5, settled by **NXD22** (the body block stays, as built); a rolling player is not hittable
+  for the whole roll, not only its i-frames; the fan locks its heading at arrival (not at its fire tick).
+- **Limits:** a Siege-pinned Chainhook does not step, so its drag pauses with the pin (a pinning heavy arrow deals >= 3,
+  which breaks it first, unless an affix shield absorbs the hit). A Chainhook freed without dying (a floor change) emits
+  no end event. The arrival / timeout ends and the yank are visible in state; the view's snap should play for
+  `hookEndBreaks` reasons only.
+
+### NX4 Snatcher (as built, 2026-11-14)
+
+- `archetypes/snatcher.ts`: steal / flee / swallow / return as Design says, no draw on any stream (spec). Rules in the
+  file comment. Its pellets are its own score record's (`snatchRecordOf`: the record holding its slot and id, the
+  corpse's at death), only while that room's pellets are LIVE. Eats on contact (`eatRadius` = the pickup reach) in both
+  STEAL and FLEE, index order, up to the stomach. The swallow check runs before the flee, so a full belly stands still
+  even with a player beside it. Phase ticks are `aiTicks` (`ctx.telegraph`), v3 carried, v4 belly ticks, v6 fleeing
+  (NX0 correction 4; v5 / v7 free).
+- `sim/pellets` `pelletsData.ts`: `PELLET_STOLEN` 2, `PELLET_DIGESTED` 3, `SNATCHER_KIND`; `snatch.ts` (a leaf):
+  `snatchRecordOf`, `pelletStealable`, `pelletsNearestLive` (ties to the lower index, never the power pellet),
+  `pelletsSteal`, `pelletsCarried`, `pelletsDigest(rec)`, `pelletsReturn(rec)`. None touches `left` (NXD11).
+  `PelletEvents` gains unhashed `stolen` {index, x, z}, `returned` {index, fromX, fromZ} (the corpse) and `swallowed`
+  {x, z, indices}; cleared and cloned with the rest.
+- Flee field `archetypes/snatcherField.ts`: `fleeField` over the room's floor rectangle (`roomGridRect`), open = not
+  `isBodyBlocked` and no intact piece; sources = living players within `SNATCHER_SOURCE_MARGIN_CELLS` 2 of the box,
+  clamped onto it. Read fresh each fleeing tick from hashed state (no v slot for a field tick); the cache is a memo per
+  encounter room id keyed on everything it reads (room, world config, pieces + intact, factor, sources), so clones and
+  replays get the field they would build from scratch (spec). Allocates only for a new room id or a bigger box.
+  Fallback to walking straight away (steer mover) when it stands outside the rectangle, on an unreached cell (no player
+  near the room on an open cell) or in no room (the NX1 sandbox).
+- Horde (NXD9): `stepPacts.ts` `telegraphWave` skips `SNATCHER_KIND` and caps over the kept entries (a while loop, the
+  same entries as before without one; spec: 5 planned with a Snatcher -> 4, 12 with a Snatcher first -> 10).
+- Specs `sim/snatcher.spec.ts` (an endless floor-1 room's planned spawns replaced by a Snatcher and a dummy).
+- **Deviation:** it leashes only when every player is dead (no distance leash): its walks stay in its room by
+  construction, and the 16-unit leash cut flights short in doubled endless rooms.
+- **Not built / limits:** a Snatcher freed without dying (a floor change) returns nothing (the floor's pellets are
+  replaced anyway). Two Snatchers in one room (not possible after NX6's cap) would share the record's carried pellets.
+- **Owner call (NX4), settled by NXD18 (2026-11-14):** killed as its record's LAST living member, its pellets no longer
+  return (they would go with the room on the clear tick, the Sweep lost): they are **credited to the killer**. As built:
+  `onDeath` gets killActor's `quiet` flag (a new third argument of the hook; every other archetype ignores it) and asks
+  `pelletRecordFalls(state, rec)` (sim/pellets stepPellets.ts: stepScore's own clear test, `scoreRoomDown` and not pacts'
+  horde record waiting for its second wave). True and not quiet: `pelletsCreditCarried(state, rec, ctx.playerIndex)`
+  turns every carried pellet (`PELLET_STOLEN`, index order) into that player's pickup through `takeRegular`, the one
+  pickup helper stepPellets uses too (`taken = 1`, `left` -= 1, `scorePellet` at the kills' floor scale (a horde
+  record's x2 included), `events.eaten` with the player, the tutorial's sweep-lock hook): the view chomps, and the clear
+  pays the Sweep when every other pellet was taken. Otherwise (another member alive, the horde wave pending, a quiet
+  death) `pelletsReturn` as before. **Tick order** (step.ts / stepParty): every Snatcher kill lands inside stepCombat
+  (`damageActor`'s kill line; the only quiet `killActor` caller is the Bomber's own blast, and the withers / boss sweeps
+  never reach a Snatcher), and stepCombat runs before stepPellets and stepScore (stepRun / stepPacts / stepDrops between
+  them kill nothing), so the clear in stepScore (`clearRoom` -> `pelletRoomClear`, judged on `left`) sees the lowered
+  `left` the same tick; nothing after stepScore (treasure, golden, secrets) kills an actor. The killer is whoever the
+  kill is bound to (a bullet's owner, the swinging player, a proc's owner), dead or alive. **Limit:** "last" is judged at
+  the Snatcher's own death: if one hit kills the Snatcher and then the room's last other member later in the same tick
+  (a piercing arrow or a swing reaching both in that order), its pellets were already returned and go with the room.
+  Specs (`sim/snatcher.spec.ts`): killed last between ticks (credited, `left` 0, one pellet's points each, the Sweep
+  pays), a sword kill inside the tick during the swallow (credited and swept in that tick), a quiet death (returned, no
+  Sweep), co-op (credited to player 1), and the existing "killed with the dummy alive" case (returned, nothing credited).
+  No hash or fixture moves: no recorded run spawns a Snatcher (not in `ENDLESS_ROOM_KINDS` until NX6).
+
+### NX5 Pyre-keeper (as built, 2026-11-14)
+
+- `archetypes/pyrekeeper.ts`: the summoner's keep range (6-9 from its target, the nearest living player; strafe flips
+  on a wall and every 0.8-2.2 s in aiTicks) and panic (target in sight within 2.5 as the cooldown runs out: 0.5 s
+  telegraph, the bruiser's gapped ring, 0.8 s back-off; v7 latched from the telegraph to the end of the back-off).
+  Light decision: **two draws at every decision** (cooldown, start index 0..7), also when capped or when no cell is
+  valid, so the count never depends on its pyres or the layout (the summoner's rule). It casts with < 3 of its pyres
+  alive and < 6 lit this life (v3): `pyrekeeperLanding` takes the first valid compass point from the start index around
+  its target, snapped to the cell centre (v4-5): FLOOR (`isBodyBlocked`: no wall / void / pool / solid decor), no intact
+  piece, no pellet in play (taken 0 or a Snatcher's PELLET_STOLEN), the room holding its home (the imp's blink rule,
+  encounter boxes), >= 2 from every living player and from every living pyre, any keeper's (review fixes; was its own
+  only). None valid: spent, no telegraph, nothing lit. Else 0.8 s telegraph (attack LIGHT, the `ring` hint), then
+  `lightPyre` spawns the pyre (not re-validated: actors block nothing); a full pool costs nothing (not lit). Its pyres
+  are a pool scan (`v[PYRE_KEEPER] === id`) at a decision, a spawn and its death. Killed mid-telegraph: no pyre,
+  `attack` cleared.
+- `archetypes/pyre.ts`: not a room enemy, no draws. aiTicks counts the 0.5 s lighting (0 = lit, the view's flag; no
+  spawnTick arithmetic, so a pacts freeze needs nothing in `holdAbsoluteTimers`), v3 the ticks to the next shot; at 0 it
+  fires `shot` at `pyreTarget` (the nearest living player in sight, index order on ties) and reloads 2.0 s even with
+  no one in sight (the shot skipped, the phase kept). Never affixed (runtime spawn), never a member, no drop roll
+  (ineligible: no pity count), 30 points.
+- Wither: the keeper's onDeath kills every living pyre naming it through `ctx.killActor` (the summoner's `wither`:
+  scored, combo fed, no drop). No separate room-clear hook: the keeper is a member of its record, so the record cannot
+  clear before it dies, and its death withers them earlier in the same tick (before stepScore). A pyre with no keeper
+  (spec / sandbox only) never withers.
+- Feed (unhashed): `SimEvents.pyresLanded` / `pyresWithered` (appended to `NEW_ENEMY_2_EVENT_FIELDS`).
+- Specs `sim/pyrekeeper.spec.ts` (15: draws, caps, telegraph, mid-telegraph death, clearances solo and co-op, fire
+  timing, targeting, stagger, wither of its own only, an endless-floor landing census against a written-out oracle
+  (4 seeds x 40 casts: every landing the first valid point, rejections by tile / piece / pellet / room / clearance all
+  seen), the room clearing with a stray pyre alive, no drop / no affix, a determinism pair). `newEnemies2.spec`'s
+  no-draw case drops the keeper (it draws since NX5). No hash, replay or fixture moves: nothing recorded spawns a
+  Pyre-keeper (not in `ENDLESS_ROOM_KINDS` until NX6).
+- **Deviations:** (1) the stagger. "0.6 s x its index" from landing does not keep shots apart (casts are 4.8-5.8 s
+  apart, so phases land anywhere on the 2 s period). Built: a pyre takes the lowest free stagger slot 0..2 (v5
+  `PYRE_STAGGER`) and its first shot (>= the 0.5 s lighting) is aligned on a living sibling's period at 0.6 s x the slot
+  difference, so a keeper's pyres fire 0.6 / 0.6 / 0.8 s apart and never together (spec); without siblings it fires on
+  the tick it lights. A pinned (Siege) pyre does not step and drifts. (2) No strafe coin in init (the side from the
+  actor id), so init draws once as specified; flips and the panic draw as the summoner's. (3) A spent cast shows no
+  telegraph.
+- **Owner calls (NX5), settled 2026-11-14:** PK1 withered pyres score 30 each and feed the combo (**NXD23**, as built:
+  the summoner's precedent; the alternative was `killActor(..., true)`); PK2 a lone pyre's first shot on the tick it
+  lights (**NXD24**, as built; the alternative was a full 2 s later).
+
+### NX6 Room pool and roster (as built, 2026-11-14)
+
+- `ENDLESS_ROOM_KINDS` + four rows, appended (`endlessData.ts`, `NEW_KIND_2_MAX_PER_ROOM`): bulwark 1 / max 2, chainhook
+  1 / 1, snatcher 1 / 1 `needsCompany`, pyrekeeper 1 / 1; the pyre is no room kind. Each has `fromFloor` 2
+  (`ROOM_KIND_UNLOCK_FLOOR`): read only with unlock floors (specs and tools), so floor 1 without a roster spends draw for
+  draw as before; every endless world ignores it (DSD17 / DSD18), so NXD4's "any floor" holds for the other three.
+- NXD4: `ROOM_KIND_MIN_FLOOR` (chainhook 2) and `roomKindMinFloor(kind)`, checked in `roomKindOpen` (no draw) and in
+  `endlessRoster`'s join scan, unlock floors on or off: a run whose order starts with the Chainhook (runs 5, 62, 64 of
+  0-99) takes the order's second kind on floor 1 and the Chainhook on floor 2. `rosterOrder` shuffles 14 kinds (13
+  draws); full roster on floor 14.
+- `DAILY.ruleset` 20 -> 21 (docs/SILVER.md took 20 first; the branch's own 19 -> 20 never shipped). Horde (NXD9): `telegraphWave` already skips `snatcher` (NX4); the pool now buys it.
+- Census helpers: `dungeon/testing` poolCensus takes the roster rule (`unlockFloors`, default true; min floors either
+  way); `run/testing` `roomLoad` counts a Pyre-keeper's 3 pyres as alive slots (a pyre corpse lasts 0.5 s, far under the
+  4-5 s between lights), `poolHighWater(..., unlockFloors)`, `dearestRoom(..., withKind)`, `BulletPeak.pyres`.
+
+Re-pinned ("re-recorded for docs/NEW_ENEMIES_2.md NX6"); every move is the four kinds in the draw or the 14-kind
+reshuffle, no layout moved: `dungeon/roomPool.lock` (no roster floors 2-6: the four join the draw there; every roster
+digest; floor 1 without a roster unchanged), `roster.spec` (orders, joins, full floor 14, NXD4 cases),
+`roomPool.spec` (rows), `view/hud/rosterLine.spec` (run 1337's floors), `sim/charger.spec` PIN_HASH 2fcc46ea and
+`sim/stormcaller.spec` 3/0/04cfeefe, 6/0/71038c42 (counts unchanged), `run/slice.spec` (the bot's floor-6 segment starts
+at tick 2962, was 2953), `daily.spec`, `sim/newEnemies2.spec` (the rows).
+Not pins: `dungeon/secrets.spec`'s ring rule skips the cell diagonally in front of a wall-line end (the placer checks the
+front row over the ring's columns only; run 3 floor 5's `every` pick, which the new spawns moved, has room 4's floor
+there); `sim/archer.ttk.builds.spec` lets the Archer time out on the floor-20 census room (now 15 enemies with two
+Shieldwalls, a Chainhook, a Pyre-keeper, a Snatcher; 150 s without the four, cap 180 s): an NX12 / owner item; since the
+review fixes only with the four builds that do (no build, Storm Blade, Soul Swarm, Fire Arrows).
+M1, the golden fixtures and the tutorial did not move.
+
+Census (`run/newEnemies2Pool.<1-5>.spec`, by floors; solo, run seeds 1-60, the live rule; means per populated room;
+p4 = party 4's worst room by pool slots and the rooms holding a Pyre-keeper):
+
+| floor | enemies | kinds | bul | cha | sna | pyr | cost / budget | p4 max slots / alive | p4 keeper rooms (max slots) |
+|---|---|---|---|---|---|---|---|---|---|
+| 1 | 5.04 | 1.70 | 0.03 | 0.00 | 0.05 | 0.06 | 6.50 / 6.50 | 21 / 19 | 36 (19) |
+| 2 | 5.02 | 2.29 | 0.08 | 0.04 | 0.08 | 0.11 | 7.59 / 7.91 | 25 / 22 | 64 (24) |
+| 3 | 5.24 | 2.72 | 0.09 | 0.07 | 0.10 | 0.12 | 8.67 / 9.10 | 27 / 22 | 93 (25) |
+| 6 | 6.65 | 4.04 | 0.26 | 0.17 | 0.20 | 0.17 | 12.85 / 12.85 | 30 / 24 | 153 (30) |
+| 10 | 7.97 | 5.67 | 0.36 | 0.25 | 0.27 | 0.29 | 17.49 / 18.19 | 40 / 30 | 228 (40) |
+| 14 | 9.66 | 7.36 | 0.51 | 0.41 | 0.38 | 0.41 | 22.49 / 23.06 | 35 / 27 | 430 (35) |
+| 15 | 10.17 | 7.68 | 0.57 | 0.46 | 0.39 | 0.49 | 23.97 / 24.67 | 36 / 28 | 444 (36) |
+| 20 | 12.21 | 8.70 | 0.78 | 0.54 | 0.44 | 0.59 | 29.92 / 30.64 | 16 / 16 | 0 (0) |
+
+Party 4's worst room is 40 slots (floors 8-11: 8 Oozes, a summoner, a Pyre-keeper among them), under the 48 target.
+From floor 16 every party-4 room saturates and the no-draw fallback buys 16 Bruisers (the first cost-3 kind, EV13's
+spender fallback), so no Pyre-keeper there. Floor 1 never buys a Chainhook (gate); it bought 14 Shieldwalls, 21
+Snatchers and 27 Pyre-keepers over the sample. Every caps, company and roster rule held.
+
+Enemy bullets with pyres (`run/enemyBullets.pyre.census.spec`, the dearest room holding a Pyre-keeper; default sample
+runs 1-20 on five floors, `--census` runs 1-60 on floors 2-20; 20 s, god mode; peak / mean, the most pyres at once):
+
+| floor | room (cost) | passive | sword | sword cleared |
+|---|---|---|---|---|
+| 2 | run 1 room 11, 1 swarmer, keeper, 2 slime (10) | 15 / 10.6 (3) | 3 / 0.2 (0) | 5.5 s |
+| 6 | run 17 room 10, 9 enemies (18) | 71 / 17.6 (3) | 20 / 4.6 (1) | 11.5 s |
+| 10 | run 8 room 0, 12 enemies (25) | 27 / 5.2 (0) | 20 / 4.5 (0) | no |
+| 14 | run 2 room 6, 14 enemies (32) | 37 / 16.5 (3) | 38 / 8.0 (2) | no |
+| 20 | run 3 room 11, 15 enemies (43) | 71 / 34.1 (3) | 48 / 22.0 (3) | no |
+
+Peak 71; NE7's `run/enemyBullets.census` (every floor's dearest room, runs 1-20) now peaks at 76 (floor 12, passive;
+105 at NE7), far under the 2048 pool; nothing dropped. Floor 10's keeper lit no pyre in 20 s: it never engaged (not a
+bug; see "NX11 / NX12 systems and tuning").
+
+**Left for the view (NX7, shared/view):** `STAGE_ASSETS.children` had no `pyrekeeper: ["pyre"]`, so a Pyre-keeper
+floor did not prefetch `enemy.pyre`. Added in NX11.
+
+### NX7 View (as built, 2026-11-14)
+
+Presentation and client timing only: no sim, hash, replay, wire or fixture change; `predictMotion.ts` and its parity
+spec untouched. Placeholder looks; NX8 brings the art.
+
+- Pure rules `shared/view/newEnemies2.ts` (tunables `newEnemies2Config.ts`): `bulwarkGuarding` (alive, v5 1) /
+  `guardArcSegments` (the sim's front cone, acos(frontCos) either side of the facing, at radius + 0.18), `staggerMarked`
+  (BULWARK_STAGGER: DIZZY_VIEW's stars), `chainTarget` (THROWN -> its HOOK by `hookBulletSlot`(emitter id); DRAG ->
+  `hookedPlayerOf`) / `chainSegments` (from its hand), `bellyPips` (v3, max 5) / `bellyPipSegments` / `bellyPulse`
+  (the swallow telegraph), `torchArcPoint` (the light telegraph's last 60 %, a parabola to v4-5, landing as the pyre
+  spawns), `pyreFlameScale` (grows over the 0.5 s lighting, flickers once lit; reduced motion steady), `newEnemy2Bursts`
+  / `NEW_ENEMY_2_BURST_LOOKS` (block sparks and guard breaks in `enemyGuard`, snaps in `enemyOutline`, gulps / fizzles in
+  `pellet.normal`, puffs in `DECOR_FX_TINT.flame`).
+- Per-tick feed `shared/view/fx/newEnemy2Events.ts` `NewEnemy2FrameEvents` (new `RunView.newEnemies2`, collected by
+  LiveRun and LockstepClient): block points (guardEvents), guard breaks (the Shieldwall's spot), snaps (drag ends with
+  `hookEndBreaks` only, at the chain's middle), pyre puffs (a per-slot alive -> dead diff: withered or killed).
+- Sprite inputs `newEnemy2Sprites.ts` (one import in sprites.ts, `withNewEnemy2SpriteInputs`): the Shieldwall's `block`
+  in place of idle while guarding (new optional enemy animation `block`, ENEMY.optionalAnimations; new
+  `ActorSpriteInput.idleAnim`), bash as `attack`, the stagger as `hit` stretched over 1.5 s; Chainhook aim / yank,
+  Snatcher swallow, Pyre-keeper light / panic as `attack`; the pyre idle (death = the unlit cell).
+- Bullets: `EnemyBulletLook` FLAME 4 (BulletKind.ENEMY with the pyre's payload `source`) and HOOK 5 (BulletKind.HOOK),
+  `ENEMY_BULLET_LOOK_IDS` += `bullet.enemy.flame` / `.hook`. BulletRenderController draws the hook with its own
+  placeholder (the wedge, 1.6 x the ball, turned along its flight: BulletPool's `orientLooks`); the flame is the small
+  ball until its art.
+- Pellets: `PelletFrameEvents` copies `stolen` / `returned` / `swallowed` (with the swallowed pellets' cells);
+  `PelletViewTracker` flies a returned pellet from the corpse to its cell (`PELLET_RETURN_VIEW` 0.35 s, a 0.6-tile hop;
+  `PelletLook.offX` / `offZ` / `hopTiles`), and the last-few hint and `pelletRoomProgress` (the chomp ladder) count
+  pellets ON THE FLOOR (`pelletsOnFloor`, taken 0, no power pellet; ladder = [count - left, that + on the floor]), so a
+  carried or swallowed pellet neither lights nor holds the hint. NXD18's credited pellets are `eaten`: ordinary chomps.
+- Prediction (`shared/view/predict/resume.ts`): `PredictionResume` weight 0 while merged `chainhookHolderOf(local) >= 0`
+  (`getDrawnPlayer` = merged, bullets drawn 0 ticks ahead), then back to 1 over `PREDICTION_VIEW.resumeSec` 0.25 s, at
+  most `blendMaxStep` 0.25 a frame; `blendTowardMerged` blends position and prev; enemy bullets ahead = floor(horizon x
+  weight). `suspendSec` 0 (merged at once at the latch, as planned; > 0 would blend in too).
+- Cues: VariantCueEvents counts `blocks` / `guardBreaks` / `hookLatches` / `pyreLights` (SimEvents), `hookThrows` (a
+  Chainhook TELEGRAPH -> THROWN) and `snatches` / `swallows` / `pelletReturns` (PelletEvents); the mapper plays the
+  eight rows, the snatch at `NEW_ENEMY_2_AUDIO.snatchSpeed` 0.67. First sightings: already mapped (NX1, `pyre` ->
+  `pyrekeeper`).
+- Client: new `NewEnemy2MarksController` (guard arc, stagger stars, chain to the hook (drawn ahead with BulletAhead in
+  co-op) or the dragged player (as drawn), belly pips, the torch flame, pyre flames with a PointLight, pool 12);
+  ParticleController (the bursts), PelletRenderController (the fly-home), BulletRenderController (the hook wedge),
+  SimController (`predictResume` in updateDrawn).
+- Specs: `view/newEnemies2.spec.ts`, `view/predict/resume.spec.ts`, `view/pellets/snatcher.spec.ts`,
+  `view/audio/newEnemy2Cues.spec.ts`; `pellets.spec` / `pelletCues.spec` now take pellets off the floor through
+  `taken` (the hint and the ladder no longer read `left`); `contract.spec`'s optional list gains `block`.
+- Top-level locals (counted on out/, `^local `): `contract.luau` 187, `validate.luau` 192 (both unchanged),
+  `sprites.luau` 195.
+- **Studio checklist** (NX13): the guard arc reads as the shield's facing on every biome and is faint beside bullets; it
+  vanishes in recovery / stagger and the stars show; block sparks on arrows and swings, a bigger burst on a guard break;
+  the hook wedge points along its flight; the chain follows the hook, then the dragged knight, with no gap at either end,
+  and snaps (burst) only on a roll / sight / death / damage break, never on an arrival or a timeout; co-op on a
+  simulated 4G link with prediction on: the knight snaps back to merged at the latch (up to the lead's walk, ~2 tiles at
+  20 ticks; if it reads badly, try `suspendSec` 0.08), follows the drag, and glides back after it without a jump; the
+  belly pips count up per steal (gulp at the cell), pulse during the swallow (fizzle on each cell), and on death the
+  pellets fly home (or chomp when killed last); the last-few pulse never points at a carried pellet and the chomp ladder
+  ends on the octave; the torch flies to the landing ring and lands as the brazier appears; the pyre flame grows while
+  lighting, flickers, its light does not wash out bullets (`DECOR_LIGHTS.maxBrightness`); a puff when a pyre withers or
+  dies; fireballs drawn as the flame look once NX8's art is in (small ball now); the eight cues silent in the
+  placeholder (their fallbacks play), the snatch pitched down; layering of the arc / chain / pips against the markings,
+  aura and affix rings; when NX8's pyre art lands, whether the view's flame part should go (the sprite's lit loop).
+  **Known limit** (no code change): a Siege-pinned Chainhook does not step, so a drag already on keeps holding its
+  player (not pulled, the chain drawn) for the pin's whole duration, the 36-tick timeout included; it ends when the pin
+  does or the Chainhook dies (a pinning hit of >= 3 breaks the drag first unless an affix shield absorbs it, NX3).
+
+### NX8 Art (as built, 2026-11-14)
+
+Presentation only: no sim, dungeon, lockstep, hash, replay, fixture or score change. Built on a machine holding only the
+four rigs' folders and `art/vendor/player-bullets/`, so every build was `--only` (never a whole `art:build`); the lock
+was rewritten with `--lock --only <set>` (`art/vendor.lock.json` + 42 files, additions only).
+
+- **Four sprite sets** in `art/atlases.json` (NE9's recipe: grid 128, body over `Shadows/`, no `Effects/`,
+  `rowForFacing` clockwise, `noiseAlpha` 2, pad 3, 2 px rim sheets, `cells: "perSheet"`, pivot on idle facing 6
+  frame 0). Frames picked on contact sheets (PIL, `art/build/contact/nx8-rig-*.png` / `nx8-z-*.png`, then the
+  pipeline's own `art/build/contact/enemy.<id>.png`), checked by eye. `layout.ts` gains the four entries only (186
+  lines added, none changed).
+
+  | Set | Rig | Animations (source file: kept frames) | Measured marks | Scale | Sheets |
+  |---|---|---|---|---|---|
+  | `enemy.bulwark` (Shieldwall) | Demon Spawn 9 | idle `Idle` 0, 3, 7, 10; move `Walk` (8, fps 10); attack `Attack 1` 0-7; **block** `Block` 2, 3, 4 (loop, fps 4: the guard pose); hit `TakeDamage 1` 1, 3, 5, 7, 9, 11, 13 (also the 1.5 s stagger); death `Die 1` 0, 2, 4, 6, 9, 14 | the lunge frame (f6, sword out) is kept index 6 of 8 = 0.75 of the bash timeline = 27 / 36 ticks (telegraph / lunge), so the plain stretch lands it on the lunge | bodyTiles **1.47** = 31.3 px/tile, the summoner's density (idle 46 px tall, 1.47 tiles) | attack (+ block) 902x776, body 980x825, death 392x996 |
+  | `enemy.chainhook` | Demon Spawn 4 | idle `Idle`; move `Walk` (8, fps 10); attack `Attack 2` 0-5; hit `TakeDamage 1` 1, 3, 5, 8; death `Die 1` | the release (f5, the blade arm thrown forward along the facing after f1-f4 draw it back) is kept index 5 of 6: the aim's last 7 ticks of 42; the yank (18 ticks) plays the same pull | bodyTiles **1.737** = 38 px/tile, the knight's density like the bruiser / charger (idle 66 px, horns included: 1.74 tiles; 2.1 at the summoner's) | attack 468x888, body (idle + hit) 736x832, **move** 656x760, death 720x872 (idle + move + hit in one sheet would be 128 cells of 92x104, over a 1024 atlas's 99) |
+  | `enemy.snatcher` | Imp 6 | idle `Idle`; move `Run` (8, **fps 24**); attack `Taunt` 0, 2, 4-10, 12 (the gulp); hit `TakeDamage 1`; death `Die 1` | hunched low from kept index 3 to 8 (0.3-0.9 of the 60-tick swallow); the run: Imp 9's measured stride, 1.67 tiles a 0.33 s cycle at 5 u/s (1.4x the art's stride) | bodyTiles **1.0** (idle 32 px: between the Bomber 0.9 and the imp 1.2) | attack 330x992, body 740x845, death 268x780 |
+  | `enemy.pyrekeeper` | Demon spawn 1 | idle `Idle 1`; move `Walk` (8, fps 10); attack `Attack 2` 0, 2, 4-10, 12; hit `TakeDamage 1`; death `Die 1` | the torch thrust (f6-f8, at arm's length towards the target) starts at kept index 4 of 10 = 0.4 of the 48-tick light telegraph, where `torchArcPoint`'s arc leaves the hand, held to 0.7 | bodyTiles **1.47** = 31.3 px/tile (idle 46 px with the torch) | attack 640x930, body 780x1014, death 600x696 |
+
+  No view code needed a mark: every attack is one stretched timeline (newEnemy2Sprites.ts), so the marks above are
+  frame choices, not `segment` constants. `pixelsPerTileFrom` (the NE9 sets' way of sharing a density) needs the
+  referenced set's pack on the building machine, so the densities are reproduced with `bodyTiles` (31.3 and 38.0
+  exactly). Source note: Spawn 4's `Attack 2` f5 touches the 128 cell's top edge in rows 4 / 5 (facings 4 and 3: the
+  blade tip, at most a pixel clipped in the source; the set's source box is 7,0..120,117).
+- **`enemy.pyre`** (NX0 correction 6): new `packs/vale/pyre.ts` `valePyreAsset` (manifest, after the sprite layouts):
+  the decor `brazier`'s own `sprites` set in `decor-atlas.png`, idle / move / attack / hit = its 8 `lit` cells (hit
+  not looping), death = its unlit cell 592; sheet, cell 27 x 37, pivot (16, 35), 29.6 px/tile and the one facing
+  exactly the brazier's; no glow / glowAt / outlines / layer (decor-only; the flame glow and light are NX7's view); no
+  rim. No new pixels, no repack, no contract or validator change (the enemy slot already takes a one-facing set and
+  needs >= 1 frame per animation). `decor-atlas.png` is uploaded, so the bundled vale pack draws the pyre now.
+  Spec `packs/vale/pyre.spec.ts`; `newEnemies2.spec`'s bundled-pack row lets vale's five ids and two bullets be
+  `sprites` (every other pack: placeholders).
+- **Bullet looks** in a sheet of their own, `bullets-2.png` (18 x 85), NOT in `bullets.png`: `packFx` packs by frame
+  height and picks the smallest width, so adding the 18 x 34 flame would have moved every uploaded cell and made the
+  uploaded `bullets.png` ID wrong until a re-upload. The pipeline gained a bullet set key **`own`** (a file name; the
+  set packs with every set naming it into `<own>.png`, with its own contact sheet and upload copy; its layout entry
+  carries `sheet`, `VALE_BULLET_OWN_SHEETS` gives the size; gates as for any set); `bullets.png`, its contact sheet and
+  every older layout entry are byte-identical (sha256 `a9763016...` before and after), and `bullets.ts` draws a layout
+  over its own sheet once that has an ID. `bullet.enemy.flame` = `P1_Hyper_Bullet.png` (both frames, 18 x 34 cells),
+  ramp 135 -> `#5a0a33`, 166 -> `#d8287f`, 204 -> `#ff3fa4`, 216 -> `#ff52ad`, 239 -> `#ff7cbf`: mean `#f04da1`,
+  **8.8 CIE76** from `enemyBullet`, worst **3.35:1** (on `#3a3a46`). `bullet.enemy.hook` = `P1_Bullet_Alt2.png`'s pink
+  half (keep [1], the chevron pointing along the flight, heading up), ramp 49 -> `#7a1044`, 79 -> `#e0308a`, 88 ->
+  `#ff3fa4`, 164 -> `#ff5cb2`, 185 -> `#ff8ac6`: mean `#eb4e9f`, **10.9 CIE76**, worst **3.27:1**. The hook shares
+  the small bullet's silhouette (the same chevron, a darker rim); the chain drawn to it tells them apart. The flame is
+  the heavy arrow's size (0.6 x 1.15 tiles): Studio check whether it reads too big for a fireball.
+- **Checks:** `npm run test:art` 303 pass (new `bullets.test.js` cases for `own`); two consecutive `--only` builds and
+  a clean rebuild of the four sets and `bullets` byte-identical (36 outputs); `npm run build` then `npm run test:only
+  -- theme view run/stageInput codex/catalog`; typecheck and lint clean.
+- **Upload (owner):** every PNG below from `art/build/` (copies in `art/upload/`), then each ID into
+  `packs/vale/assetIds.ts`; a set switches on once its required sheets have IDs, its rims as they arrive.
+  - Shieldwall: `bulwark-attack.png`, `bulwark-attack-outline.png`, `bulwark-body.png`, `bulwark-body-outline.png`,
+    `bulwark-death.png`, `bulwark-death-outline.png`
+  - Chainhook: `chainhook-attack.png`, `chainhook-attack-outline.png`, `chainhook-body.png`,
+    `chainhook-body-outline.png`, `chainhook-move.png`, `chainhook-move-outline.png`, `chainhook-death.png`,
+    `chainhook-death-outline.png`
+  - Snatcher: `snatcher-attack.png`, `snatcher-attack-outline.png`, `snatcher-body.png`, `snatcher-body-outline.png`,
+    `snatcher-death.png`, `snatcher-death-outline.png`
+  - Pyre-keeper: `pyrekeeper-attack.png`, `pyrekeeper-attack-outline.png`, `pyrekeeper-body.png`,
+    `pyrekeeper-body-outline.png`, `pyrekeeper-death.png`, `pyrekeeper-death-outline.png`
+  - Bullets: `bullets-2.png` (the flame and the hook). `bullets.png` is unchanged: no re-upload.
+  - The pyre: nothing (decor-atlas.png's cells).
+- **Contact sheets:** `art/build/contact/enemy.bulwark.png`, `enemy.chainhook.png`, `enemy.snatcher.png`,
+  `enemy.pyrekeeper.png`, `bullets-2.png`; the rig surveys `nx8-rig-spawn9.png` / `-spawn4` / `-imp6` / `-spawn1` and
+  the zooms `nx8-z-*.png` (scratch, not pipeline outputs).
+- **Studio check (NX13) adds:** the four at their scales beside the knight (the Chainhook at 1.74 tiles is the
+  largest room enemy after the bruiser / charger; the Shieldwall and the keeper 1.47), the block loop reading as a
+  raised guard, the Snatcher's 24 fps run, the pyre's lit loop with NX7's flame part on top (drop the view's flame if
+  the sprite's own is enough), the flame and hook looks on every biome.
+
+### NX9 Codex (as built, 2026-11-14)
+
+- `codex/catalog.ts`: `enemy:` rows from ENDLESS_ROOM_KINDS' first `CODEX_FIRST_ROOM_KINDS` (11) then `enemy:golden`;
+  the later rows (bulwark, chainhook, snatcher, pyrekeeper, and any later append) are a second list built after
+  `secret:room` (catalogue 87 -> 91; the first 87 keep their positions, a spec). Still group `enemies`: `order` is the
+  grid position, so the Bestiary shows them after the Goldling (`codexTabEntries` keeps catalog order, the grid groups).
+  Names `enemy.<id>.name` (the bulwark reads Shieldwall), descriptions `bestiary.<id>` (NX1), hint `enemy`; no new
+  string, no l10n entry.
+- `CODEX_FOLDED_ARCHETYPES` + `pyre` -> `pyrekeeper`; `seedFromSightings` / the tracker's `codexSightingId` resolve the
+  four sighting ids (and `pyre`).
+- Specs: `catalog.spec` (order lock + the four after `enemy:golden`, the first-87 lock, the appended tail, the grid),
+  `doc.spec` (the seed: 18 entries), `view/codex/screen.spec` (Enemies 16 tiles).
+
+### NX11 / NX12 systems and tuning (as built, 2026-11-14)
+
+**NX7 leftover fixed:** `STAGE_ASSETS.children` gains `pyrekeeper: ["pyre"]` (`shared/view/stageAssetsConfig.ts`), so a
+Pyre-keeper floor prefetches `enemy.pyre` (`stageGroups.spec` pins it to the archetype's `pyreKind`). No other new kind
+spawns a runtime child.
+
+**Systems pass (NX11).** Specs `sim/newEnemies2.systems.spec.ts` (15) and `run/newEnemies2.validate.spec.ts` (4); no sim
+code changed, no bug found that needed a fix. Every interaction with a rule:
+
+| Interaction | Rule (as built) | Pinned by |
+|---|---|---|
+| Chain Spark / Overkill (sparks, forks, streaks) into a guarding Shieldwall | they call `damageActor` (no origin): they land through the front | systems spec |
+| Soul Shards / effect bullets (burst, shard, spark bolt) | bullets: a shard from a corpse in front stops on the shield, one from behind lands (NXD21); embers pass | systems spec; `bulwark.spec` (kinds) |
+| Executioner | a blocked hit never reaches `damageActor`: no execute through the front; from behind a 15 % Shieldwall is executed | systems spec |
+| Siege Bolt on a Shieldwall | from the front: a guard break, never a pin (`bulwark.spec`); from behind it pins, and a pinned Shieldwall is out of the guard list (its front takes arrows while carried) | systems spec, `bulwark.spec` |
+| Siege Bolt on a dragging Chainhook | the pinning hit (>= 3) breaks the drag (DAMAGE) before the pin; the player is never pulled while it is carried | systems spec |
+| Shielded Chainhook | damage its affix shield absorbs does not count toward breakDamage (`onHit` gets the post-absorb damage): a teammate must break the affix shield first | systems spec (as built; owner call OC1 below) |
+| Riposte waves, smash procs, Full Heart's beam, duo strikes | `damageActor` direct, like the sparks: no shield | the sparks' case (same path, NX0 table) |
+| Treasure UNTOUCHED / PERFECT | a latch and a drag land no hit (`score.hitsTaken` unchanged); the yank fan, the bash and the pyres' shots are ordinary hits | systems spec |
+| Horde wave 2 | copies the Pyre-keeper, the Chainhook and the Shieldwall (par grows by their cost); only the Snatcher is skipped (NXD9) | systems spec; `snatcher.spec` |
+| Co-op | a teammate behind a Shieldwall lands arrows while its shield faces its target; a teammate in the hook's line absorbs it (NXD22); a teammate's 3 damage frees the hooked player; the Snatcher's pellets credit the killer (NXD18) | systems spec; `chainhook.spec`, `snatcher.spec` |
+| Secret rooms | a heavy arrow stopped by a guarding Shieldwall in front of the crack breaks the guard and never opens it; the next one pierces the staggered Shieldwall and opens it (HEAVY). Pieces are tested before the shield, so an arrow touching the crack and the cover zone in one tick opens it | systems spec |
+| Affixes / Blood Moon | a Shielded Shieldwall's guard blocks before the affix shield (from behind the affix shield absorbs first); Swift and the Warbanner aura shorten the Chainhook's throw cooldown but not its pull (the literal 10 u/s) and do not speed the Shieldwall's turn (NXD20) | systems spec |
+| Feast's power pellet | erases a flying hook (no latch, the Chainhook back to keep) and a pyre's fireball | systems spec |
+| Pacts' freeze (`holdAbsoluteTimers`) | nothing to hold: every new timer is `aiTicks` / `v[]` / `cooldown`, advanced only by stepActors; the only absolute read is `staggerDelay`'s "spawned this tick" (`spawnTick === tick`), never across a freeze. A frozen tick leaves the five kinds' state as it was | systems spec |
+| Server validation | a recorded endless run with each kind (debug-skip to the first floor 2-6 planning it, 8 s passive so it acts, then a sword fight to 20 s) replays to the same hash and `validateRun` accepts it (endless world, debug input allowed) | `run/newEnemies2.validate.spec` |
+
+No rule, notes only:
+
+- **Wrecker near pyres.** Rolls never hit actors; a pyre is an actor, not a piece (it blocks nothing and is never smashed).
+  Demolition's blasts / splinters are effect bullets: they hit pyres like any enemy and a guarding Shieldwall's front
+  stops them (NXD21). A pyre's landing cell avoids intact pieces only at the cast.
+- **Siege Bolt on a pyre or a Snatcher.** Both are pinnable (no boss, reviver or dummy): a pinned pyre does not step (no
+  shots while carried), a Snatcher carried out of its room steals only from its own record and flees straight away
+  outside its rectangle until it walks back (NX4's fallback).
+- **Withered pyres** (NXD23) score and feed the combo but never proc builds (withers go through `killActor`, not the
+  `damageActor` kill line); a pyre the player kills procs like any kill.
+- **Mirror Cloak** reflects a guard-erased hook as a plain damaging player bullet (`MIRROR_BULLET_DAMAGE`); a reflection
+  into a guarding Shieldwall's front is blocked (NXD21). A guard that erases the hook counts for Riposte and Bastion's
+  brace like any erased bullet.
+- **The Goldling in a Snatcher's room.** Separate flee fields (the Snatcher's memo is keyed per encounter room and reads
+  the Goldling's hidden piece as an intact piece, i.e. blocked); the Snatcher never touches pieces, so it can never
+  release the Goldling (only players can, docs/GOLDLING_RUMOURS.md RD13).
+- **The Daily.** The same SimConfig as endless; the roster rule (`rosterUnlockFloors` false) keeps the Chainhook off
+  floor 1 through `ROOM_KIND_MIN_FLOOR` in every world (`dungeon/roster.spec`, NX6).
+- **Dev god mode.** The hook passes a god-mode player without a blocked hit (`chainhook.spec`); the bash, the yank fan and
+  the pyres' shots go through `damagePlayer` and are counted in `dev.blockedHits` like every enemy hit.
+- **Plunder / Gilded / Hoard.** No rule: the Snatcher steals pellets only (NXD10), never boosts or loot; a pyre never lands
+  on an intact (loaded) piece.
+- **A drag into a cracked wall.** Crack pieces are intact pieces: `movePlayer` stops the pull at them like a wall; a
+  dragged player is no opener (only the finisher, a Wrecker roll, a heavy arrow / Siege slam and a Charger's charge).
+
+**The floor-10 keeper that lit no pyre (NX6 bullet census).** Not a bug. `run 8 floor 10 room 0`'s keeper spawns 12.2
+from the arena's centre (the room centred on its planned spawns); its `aggroRange` is 9 and its `alertRange` 4.5, the
+passive bot circles the nearest enemy near the centre (11-17 from the keeper over the 20 s) and the sword bot never
+killed the keeper's neighbours, so it stayed IDLE (`aiState` 0, its first cooldown 278 never counting: the cooldown
+runs only while it keeps range). Every room enemy engages that way (sight or a neighbour's alert); a real room's keeper
+engages when the player walks within 9 or kills a neighbour within 4.5 of it.
+
+**NX12-lite measurements** (`run/newEnemies2.tuning.spec`, shared/run/testing `newEnemies2Tune.ts`: AR13's arena
+fighters, open arena, god mode, no build; `--census` for the full sample). Per-kind rooms, seeds 1-3, mean per fight
+(TTK s / hits taken; for the Archer also bullets fired, heavies, blocks / guard breaks):
+
+| room | f6 Knight | f6 Archer | f11 Knight | f11 Archer | Archer f11: bullets, heavies, blocks / breaks |
+|---|---|---|---|---|---|
+| 2 Shieldwall | 7.1 / 0 | 11.6 / 0 | 13.5 / 1.0 | 20.8 / 0 | 34, 33, 0 / 20 |
+| 1 Chainhook | 2.5 / 0 | 2.6 / 0 | 3.9 / 0 | 5.1 / 0 | 8, 8, - |
+| 1 Snatcher | 2.0 / 0 | 1.4 / 0 | 2.4 / 0 | 2.0 / 0 | 3, 3, - |
+| 1 Pyre-keeper | 2.1 / 0 | 2.1 / 0 | 3.2 / 0 | 3.3 / 0 | 5, 5, - |
+| Shieldwall + 2 sniper behind | 7.7 / 0.3 | 13.0 / 0 | 14.4 / 1.0 | 19.4 / 0 | 33, 19, 9.3 / 5.3 |
+| 3 sniper (baseline) | 4.5 / 0 | 6.3 / 0 | 7.2 / 0.3 | 12.4 / 0 | 19, 12.7, - |
+
+- **Shieldwall:** the Knight's finisher breaks it once per combo (6 breaks, 10 blocks for two at f11); the Archer's charged
+  shots alternate break / land: **59 % of its heavies at two Shieldwalls deal 0** (20 of 34), so two cost the Archer 20.8 s
+  at f11 (1.5x the Knight) and a Shieldwall with snipers behind it 19.4 s (the snipers alone: 12.4 s). The bots never
+  flank (a real player can).
+- **Chainhook and Pyre-keeper die before they act** when alone: their first throw / light waits the full 4-5 s cooldown
+  (the summoner's first summon waits 1-2 s), and the Knight kills them in 2.5-3.9 s, the Archer in 2.6-5.1 s: 0 throws,
+  0 pyres.
+- **Snatcher:** 1.4-2.4 s alone (it flees in the open arena into a wall); the arena has no room, so no pellets: its
+  Sweep effect is not measured here (NX12 full).
+
+The floor-20 census room of `sim/archer.ttk.builds` (`tuneCensusRoom(20, 1, 10)` = run 3 room 11, 15 enemies: 2
+Shieldwalls, a Chainhook, a Pyre-keeper, a Vengeful Snatcher, chargers, reapers, bruisers, a summoner, an Ooze, a bomber,
+a sniper, a swarmer; floor 20 hp x8.5), seeds 1-2, no build, whole and with each new kind taken out (Knight at the AR13
+cap 180 s; the Archer at 180 s and again with a 480 s cap):
+
+| room | Knight s | Archer s (cap 480) | Archer: bullets / heavies, blocks / breaks | throws / latches / arrivals (K, A) | pyres lit / shots (K, A) | mean life s Shieldwall / Chainhook / Snatcher / keeper (Archer) |
+|---|---|---|---|---|---|---|
+| whole | 142.1 | 256.9 (t/o at 180) | 614 / 199, 51 / 38 | 14 / 2 / 1.5, 23.5 / 2 / 0 | 4.5 / 138, 4.5 / 347 | 229 / 182 / 176 / 251 |
+| - Shieldwalls | 128.6 | 199.5 | 428 / 174, - | 15 / 1 / 1, 17.5 / 1 / 0 | 6 / 116, 5.5 / 248 | - / 151 / 160 / 179 |
+| - Chainhook | 147.5 | 307.1 | 734 / 198, 48 / 43 | - | 6 / 171, 6 / 415 | 289 / - / 232 / 301 |
+| - Pyre-keeper | 124.1 | 231.1 | 513 / 198, 65 / 42 | 12.5 / 1 / 0, 23 / 1.5 / 0 | - | 206 / 202 / 191 / - |
+| - Snatcher | 151.0 | 299.6 | 727 / 210, 130 / 50 | 10.5 / 1.5 / 1, 26.5 / 1.5 / 0 | 6 / 155, 5 / 386 | 228 / 284 / - / 272 |
+| - all four | 87.7 | 139.6 | 276 / 148, - | - | - | - |
+
+**Why the Archer times out** (the loosened `archer.ttk.builds` gate is kept for now: the Archer may time out on this
+room with no build, Storm Blade, Soul Swarm or Fire Arrows, the rows that do; with Executioner and Siege Bolt it wins
+(141.7 / 99.9 s) and must; every other fight must be won). The four add 117 s for the Archer (139.6 -> 256.9 s) and
+54 s for the Knight (87.7 -> 142.1 s); with two seeds the single-kind removals are noisy (the room's order of kills
+changes: taking out the Chainhook or the Snatcher made the Archer slower), but two causes stand out:
+
+1. **The Shieldwalls** (the largest single cut: -57 s Archer, -14 s Knight). At floor 20 a Shieldwall has 85 hp; the
+   Archer's bot aims at the nearest enemy, the Shieldwalls keep 2-3 from it, so they are the nearest most of the fight:
+   38 of its 199 heavies broke a guard and dealt nothing, 51 stream arrows were blocked, and the Shieldwalls lived 229 s
+   on average. They also cover the enemies behind them (NXD6).
+2. **The Pyre-keeper's pyres** (-26 s Archer, -18 s Knight). The keeper keeps 6-9 away and is rarely the nearest; it
+   lived 251 s, lit 4.5 pyres (the 6-per-life cap nearly spent) and its pyres fired **347 shots** at the Archer (1.4 a
+   second; the Knight 138 over the keeper's 138 s, 1.0 a second). A pyre is a runtime spawn, so endless hp scaling
+   applies to it: **34 hp at floor 20** (4 x 8.5; the Snatcher has 25.5); the bots killed 2-3 pyres a fight.
+3. The **Snatcher** (a Vengeful one here) and the **Chainhook** cost little directly: the Snatcher flees and lives long
+   (176 s Archer, 109 s Knight: the bots only aim at the nearest enemy, so it is chased last), the Chainhook threw 14-24 times but latched 2 (the bots
+   roll under fire and are often in post-hit invulnerability, which the hook passes), arriving 0-1.5 times.
+
+**Proposed tuning options** (numbers for the owner; nothing changed):
+
+- T1 **Pyre hp not floor-scaled**, or scaled from a lower base: pyres at a flat 4 x `endlessActorHp(1, ...)` capped at
+  x3 (12 hp at floor 20), or `PYRE` hp 2 (17 at floor 20). A sim change (endless replays).
+- T2 **The keeper's light cooldown** 4.0-5.0 s -> 5.5-6.5 s and `perLife` 6 -> 4 (cuts the floor-20 crossfire by about a
+  third), and/or the pyre's `fireTicks` 2.0 s -> 2.5 s.
+- T3 **Shieldwall vs the heavy arrow:** let a guard-breaking heavy arrow deal half its damage (NXD19 says 0: an owner
+  call), or lengthen the stagger 1.5 -> 2.0 s so the Archer's follow-up lands more; or hp 10 -> 8.
+- T4 **First cooldowns** for the Chainhook and the Pyre-keeper like the summoner's / sniper's first-attack fields:
+  `firstThrowMin/Max` 1.5-2.5 s, `firstLightMin/Max` 1.0-2.0 s (the same single init draw), so a lone one acts before
+  it dies (today 0 throws / 0 pyres alone).
+- T5 **Swift on the Snatcher:** 5.0 x Swift 135 % = 6.75 u/s, faster than the player's 6.0 (the Warbanner's aura: 6.25;
+  both 8.4). Exclude `snatcher` from Swift (an `AFFIXES` per-kind exclusion), or cap its walk at 5.9.
+- T6 Keep the Archer's floor-20 gate loosened until T1-T3 are decided; re-measure with `--census run/newEnemies2.tuning
+  sim/archer.ttk.builds`.
+
+**Owner calls (NX11 / NX12):**
+
+- **OC1** A Shielded Chainhook: should damage its affix shield absorbs count toward `breakDamage` (a teammate's 3 hits
+  free the player whatever the shield), or stay as built (the shield first)?
+- **OC2** A Vengeful Snatcher's corpse fires the Vengeful ring: the "harmless" thief hurts in death. Keep (Blood Moon's
+  point), or exclude Vengeful (or every affix) on the Snatcher?
+- **OC3** Swift Snatcher outruns the player (T5).
+- **OC4** Pyre hp scaling (T1) and the keeper's output (T2).
+- **OC5** The Shieldwall against the Archer (T3; reopens NXD19 for the heavy arrow only).
+- **OC6** First cooldowns (T4).
+
+### Review fixes (2026-11-14)
+
+An independent review of the build; each rule fix with a spec that failed before. A sim change only where a
+Shieldwall or a second Pyre-keeper is in play: M1, the golden fixtures and the tutorial unchanged, every existing pin
+passes.
+
+- **A blocked finisher procs no Storm Blade.** `sword.ts` hitFinisher sets `finisherFirst` and counts `finisherHits`
+  only after `shieldStopsMelee` returns false, and passes `finisherHits` (not sweepArc's count) to
+  `buildsOnFinisher`. A finisher that only broke a guard sparked from the Shieldwall into the allies it covers. Without
+  a guarding Shieldwall every callback is a hit, so the count and the first actor are as before. Specs
+  (`sim/bulwark.spec`): a fully blocked Storm Blade finisher procs nothing and leaves the ally behind untouched; one
+  that also hits an unshielded enemy (spawned after the Shieldwall) sparks from that enemy.
+- **A carrying Siege arrow's own slam spares the Shieldwall it broke (NXD19).** The shield stopping a carrying Siege
+  arrow breaks the guard, then the arrow slams its carried actor there, in front of it; the shockwave saw the guard down
+  and hit it. `SimCtx.guardsBroken` (transient, never hashed: emptied by `guardSlots` and `bind`, appended by
+  `breakGuard`): `shieldStopsSlam` spares a Bulwark broken earlier this tick from a shockwave in front of it (no second
+  break event). Spec (`sim/bulwark.spec`): guard broken once, the slam on the carried dummy lands, the Shieldwall keeps
+  its hp. Limit: any shockwave from in front later in the same tick is spared too (a finisher break, then another
+  arrow's slam the same tick).
+- **Two Pyre-keepers keep clear of each other's pyres.** `landingClear` tests >= `landingPyreClear` against every living
+  pyre (any keeper's); still two draws per light decision. Spec (`sim/pyrekeeper.spec`, "two keepers in one room"): 60
+  alternating casts around one target, each landing >= 2 from every living pyre, two draws a decision; the census
+  oracle reads every pyre too.
+- **The Archer's floor-20 allowance** (`sim/archer.ttk.builds`) is limited to the builds that time out there (no build,
+  Storm Blade, Soul Swarm, Fire Arrows, measured after these fixes: unchanged); Executioner (141.7 s) and Siege Bolt
+  (99.9 s) must win. The header no longer says every fight is won. A guard spec pins the four labels.
+- Docs and comments: CLAUDE.md's entry names `dungeon/secrets.spec`'s relaxed ring check (NX6 above); `shield.ts`'s
+  comments name `guardSlots` (called from combat.ts stepCombat) instead of a `SimCtx.rebuildGuards` that does not
+  exist; the Siege-pinned Chainhook's held drag is in the NX13 checklist as a known limit.
+- View: `NewEnemy2MarksController` reuses its frame counts and the hook's previous-position table (no allocation per
+  frame or per hook).
+
+## Player experience
+
+1. **Shieldwall** (`bulwark`, NXD17). An armoured demon walks at you behind a round shield. Arrows and sword cuts that hit the shield spark
+   off; so do arrows aimed at the sniper standing behind it. It turns to keep the shield on you, but slowly: step round
+   it, or let a teammate take its back. When you get close it shoves the shield into you; after the shove the shield is
+   down for a moment. A sword finisher, a charged arrow or a Siege slam knocks the guard open and it staggers.
+   Lesson: flank it, or break the guard.
+2. **Chainhook.** A heavy demon plants its feet and a line lights up from it to you. A hook flies down the line. If it
+   catches you, a chain snaps taut and drags you across the floor to its feet, where it swings. Roll the throw, cut
+   the hook out of the air with a guard, or roll mid-drag to break free. A teammate can free you by hitting it. It
+   never appears on floor 1.
+   Lesson: roll the line, and never let it pull you into a Bomber.
+3. **Snatcher.** A small bare-handed imp darts out and starts eating the floor's pellets, fleeing from anyone who comes
+   near. Its belly glows with what it carries. Kill it and the pellets pop back into place (kill it last and they are
+   yours at once, NXD18). Let it fill up and it swallows: those pellets are gone, and so is the room's Sweep. It never
+   hurts you.
+   Lesson: kill the thief first if you want the Sweep.
+4. **Pyre-keeper.** A hooded demon with a torch staff hangs back and throws torches; where each lands a brazier flares
+   up and starts lobbing fireballs at you. Three of them make a crossfire. Snuff a brazier, or kill the keeper and
+   every one of its braziers goes out at once.
+   Lesson: kill the keeper, not the fires.
+5. **First sighting** (EVD10's toast) and a Codex entry for each of the four.
+
+## Design
+
+All four are room enemies (`RoomEnemyData`, `stepCalm` / leash / pack alerts, `walkStep` / `enemyCooldown`, the
+Warbanner's aura and the affixes apply) and start every attack through `ctx.telegraph`. Numbers are starting values,
+tuned in NX12. Speeds are units per second; angles are given as cosines (literals, no trig in the sim).
+
+### Bulwark (shown as the Shieldwall, NXD17)
+
+| | |
+|---|---|
+| Body | 10 hp, r 0.45, 2.0, contact 0 |
+| Engaged | Walks to 2-3 from its target with the shield toward it. The facing turns toward the target by at most `turnStep` a tick (a literal rotation: `turnCos` / `turnSin` for 2.5 degrees, 150 deg/s), so a player who circles faster than that gets behind it |
+| Shield | While **guarding** (every state but bash recovery and stagger), a hit is **blocked** when its origin is inside the front cone (`dot(face, origin - centre) >= frontCos` 0.34 of the distance, ~140 degrees wide). Blocked: 0 damage, the bullet is consumed (a piercing arrow stops), a sword swing does nothing to it (other actors in the arc still take it). **Cover arc** (NXD6): a player bullet that comes within `coverRadius` 1.0 of the centre and inside the front cone is also stopped, so allies behind it are covered. The Bulwark's own body is still a target from the sides and back |
+| Guard break (NXD7) | A blocked hit by a **sword finisher**, a **heavy arrow** (Ballista's included) or a **Siege slam** breaks the guard instead: **stagger** 1.5 s (shield down, still, takes full damage). A Wrecker roll does not (rolls never damage enemies). Riposte's counter-wave and every effect that calls `damageActor` directly ignore the shield (they are not "from" anywhere) |
+| Attack | **Bash**: target within 1.8 and cooldown out (2.5-3.5 s): 0.45 s telegraph (`aimLine` length 1.6), lunge 1.4 units, the first overlap with each player hurts `HIT_NORMAL` once. Then **recover** 0.6 s with the shield down: the Knight's opening |
+| Draws | First cooldown in `init`, one per bash |
+| v[] (3-7) | 3 phase ticks (recover / stagger), 4 hit bits (bash), 5 guard flag (1 guarding), 6-7 free |
+| Cost / points / drop % | 3 / 200 / 8 |
+| Unlock / weight / per room | any floor / 1 / 2 |
+
+The shield and cover tests are a **transient per-tick list** of guarding Bulwarks (position, facing), built at the start
+of the player-bullet phase from tick-start hashed state, like the Warbanner's aura mask (`SimCtx.rebuildAura`): never
+hashed, a pure function of hashed state. Without a Bulwark the list is empty and every hit site runs exactly as today.
+
+### Chainhook
+
+| | |
+|---|---|
+| Body | 9 hp, r 0.45, 2.2, contact 0 |
+| Engaged | Keeps 4-7 from its target with line of sight (the sniper's `reposition`) |
+| Throw | Cooldown 4.0-5.0 s, target within 8 and in sight: **aim** 0.7 s (`aimLine` at a heading locked at telegraph start, length 8). Then one `HOOK` bullet: speed 16, life 0.5 s (8 units), hit radius the enemy bullet's |
+| Hook rules | Like a normal enemy bullet: walls and intact pieces stop it, a rolling player is passed through, the sword's guard erases it (counts as a parry, feeds the near-miss director; NXD8), the power pellet erases it, the Hourglass slows it, it grazes. **On a hit** it does not call `hurtPlayerAt`: if the player is hittable (not i-framed, not dead, not already hooked) it is consumed and **latches** (the Chainhook's v slots record the player). Finding the thrower: the bullet's emitter id -> the actor with that `emitterId` (NX0 checks whether a lookup exists; a scan of the actor slots is fine at this count) |
+| Drag | While latched: each tick the Chainhook stands still and moves the hooked player toward itself by `pullSpeed` 10 u/s through `movePlayer` (the player's own walk still applies, so walking away slows the pull), until the player is within `pullStop` 1.3, 0.6 s pass, or the drag is **broken**: the player rolls (rollTicks > 0), the Chainhook loses sight of the player (a pillar between them), it dies, or it takes >= 3 damage since the latch (a teammate freed you). The drag never hurts |
+| Yank strike | If the drag ends by arrival: 0.3 s telegraph (`ring` at its feet, radius 1.6), then a 5-bullet fan at the player (the imp's port row 5 @ 0.7), `HIT_NORMAL`. Roll out of it |
+| Co-op | One player at a time (its aggro target). Teammates are never moved |
+| Draws | First cooldown in `init`, one per throw |
+| v[] (3-7) | 3-4 heading, 5 hooked player + 1 (0 none), 6 drag ticks, 7 damage since latch |
+| Cost / points / drop % | 3 / 200 / 8 |
+| Unlock / weight / per room | **floor 2** (NXD4: `ROOM_KIND_MIN_FLOOR`, honoured even with unlock floors off) / 1 / 1 |
+
+### Snatcher
+
+| | |
+|---|---|
+| Body | 3 hp, r 0.3, 5.0 (the Goldling's 5.1 less a hair), contact 0, harmless |
+| Behaviour | Engages with its room like any member. **Steal**: walks (steer mover) to the nearest live pellet of its room (`rec` = its room's record, `taken` 0, never the power pellet) and eats it on contact: `taken = 2`, `v` counts it. **Flee**: any living player within `fleeRadius` 3 -> runs on `fleeField` over its room box (factor 1.2, the Goldling's) until none is within 4.5 |
+| Swallow | At `stomach` 5 carried pellets, or 8 s after its first steal: **swallow** 1.0 s telegraph (belly glow; it stands still: the window to kill it), then every carried pellet becomes `taken = 3` (gone for good, `left` unchanged, so the room's Sweep is lost; NXD11). The count resets and it starts stealing again |
+| Death | Every pellet of its room with `taken = 2` goes back to `taken = 0` in place (it never decrements `left`, so nothing else changes). One Snatcher per room (NXD9), so the room's `taken = 2` pellets are its own. Points: its own kill points only (the returned pellets pay when picked up). **Killed last** (NXD18: no other living member, the room clears this tick): they are credited to the killer as their pickups instead (`taken = 1`, `left` decremented, the pellet points), so the Sweep can still pay |
+| No pellets | A room with no live pellets (none placed, all taken, the room not engaged): it flees only. No ground-boost stealing in v1 (NXD10) |
+| Room clear | It is a member: the room cannot clear while it lives, so carried pellets are always returned, credited to its killer (killed last, NXD18) or swallowed before the clear |
+| Draws | None (no cooldown, nearest pellet by index order on ties) |
+| v[] (3-7) | 3 carried count, 4 ticks since first steal, 5 phase ticks (swallow), 6 flee flag, 7 free |
+| Cost / points / drop % | 2 / 150 / 15 |
+| Unlock / weight / per room | any floor / 1 / **1, never the room's first buy** (`needsCompany`); Horde's second wave never buys one (NXD9) |
+
+### Pyre-keeper and `pyre`
+
+| | **Pyre-keeper** | **pyre** (child) |
+|---|---|---|
+| Body | 6 hp, r 0.35, 2.4, contact 0 | 4 hp, r 0.4, 0 (still), contact 0 |
+| Engaged | Keeps 6-9 from every living player (the summoner's `keepRange`); panic within 2.5 (the summoner's) | Lit 0.5 s after it lands (no fire while lighting) |
+| Attack | **Light**: fewer than `maxAlive` 3 of its pyres alive, `perLife` 6 not spent, cooldown 4.0-5.0 s out: 0.8 s telegraph (`ring` radius 0.8 on the landing cell), then the pyre spawns there | **Fire**: every 2.0 s one aimed bullet at the nearest living player in sight, speed 4.5, life 2.5 s, `HIT_NORMAL`, drawn with the new `flame` look (NXD12); the first shot offset by 0.6 s x its index among the keeper's pyres, so three never fire together |
+| Landing cell | 8 compass offsets at 3.5 units from its **target** (unit vectors as literals, 0.7071...), tried in order from a start index drawn once per cast; the first FLOOR cell inside the keeper's room, off solid decor / intact pieces / pellets, >= 2 from every living player and >= 2 from its other pyres. None valid: the cast is spent with no pyre | |
+| Death | Its pyres wither (the summoner's `wither`) | Not a room member (NXD13: the room clears without it); withers at its keeper's death or the room clear; killing one gives 30 points, no drop roll |
+| Draws | First cooldown in `init`, two per cast (cooldown, start index) | None |
+| v[] (3-7) | 3-5 pyre ids (summoner-style slots), 6 lit count this life, 7 panic latch | 3 fire timer, 4 keeper id |
+| Cost / points / drop % | 3 / 180 / 8 | 0 / 30 / 0 |
+| Unlock / weight / per room | any floor / 1 / 1 | runtime only |
+
+Shared safety rules (docs/NEW_ENEMIES.md's): no hook line, landing cell or pull is placed by a draw beyond the documented
+draws per attack, so the draw count never depends on the layout. Every rule keys off the actor's aggro target. Affixes
+apply to all four as planned spawns (a Hulking Bulwark, a Swift Snatcher; a Shielded Bulwark is legal); never to a pyre
+(runtime spawn).
+
+## Architecture
+
+### 1. Sim
+
+- `sim/combat/actors/archetypes/{bulwark,chainhook,snatcher,pyrekeeper,pyre}.ts`, each a copy of the nearest shape
+  (never an import): bulwark <- bruiser (approach) + charger (lunge, hit bits); chainhook <- sniper (reposition,
+  aimLine) + imp (fan); snatcher <- golden (flee) + swarmer (chase); pyrekeeper <- summoner; pyre <- the turrets' fire
+  loop.
+- `registry.ts`: `PORT_BAND_ENEMIES_3 = 6`, band comment updated.
+- `combat/patterns.ts`: `BulletKind.HOOK = 13`. `combat.ts`'s enemy-bullet-vs-player loop: a HOOK branch before
+  `hurtPlayerAt` (latch via a new `ctx.playerHittable(k)`: the same i-frame / dead test `hurtPlayerAt` makes, plus "not
+  already hooked").
+- **Shield**: `combat/shield.ts` (new): `rebuildShields(ctx)` at the start of the player-bullet phase; `shieldBlocks(ctx,
+  x, z)` -> the blocking Bulwark's slot or -1; `shieldBreaks(...)`. Called from the plain bullet loop,
+  `piercingBulletHit` and the sword's sweep callback (with the swinging player's position as the origin and the
+  `finisher` flag), and from the Siege slam's hit. Unhashed events `shieldBlocks` (x, z) / `guardBreaks` for the view.
+- **Drag**: `SimCtx.dragPlayer(k, dx, dz)` -> `movePlayer(state, dx, dz, config, playerAt(state, k))`. Only the
+  Chainhook calls it, from its own step (stepActors, after stepPlayer). Unhashed events `hookLatched` / `hookBroken`.
+- **Pellets**: `PELLET_STOLEN = 2`, `PELLET_DIGESTED = 3` beside today's 0 / 1 in `sim/pellets`; `pelletsSteal`,
+  `pelletsReturn(record)`, `pelletsDigest(record)`. `stepPellets`, the power pellet and the view all read `taken !== 0`
+  as "not on the floor" already (NX0 confirms every reader).
+- Data rows: `ENCOUNTER_COST`, `KILL_POINTS`, `DROPS.chanceByArchetype`.
+
+### 2. Dungeon (`shared/dungeon`)
+
+- `ENDLESS_ROOM_KINDS` appended (never reordered): bulwark 1, chainhook 1, snatcher 1 (`needsCompany`), pyrekeeper 1;
+  `maxPerRoom` 2 / 1 / 1 / 1 (NXD5). `rosterOrder` shuffles 14 kinds (13 draws).
+- NXD4: `ROOM_KIND_MIN_FLOOR` (new, `endlessData.ts`): `chainhook` 2. `roomKindOpen` closes a kind below its minimum
+  floor in every world, unlock floors on or off (no draw). Every other kind has no minimum, so nothing else moves.
+- Horde's second wave (docs/FORTUNE.md) skips `snatcher` when it copies the planned kinds (NXD9).
+- `roomPool.lock.spec` (floor 1 without a roster unchanged), `roster.spec`, `rosterLine.spec`, `daily.spec` and the
+  determinism pins that record endless floors re-pinned. `DAILY.ruleset` 20 -> 21 (NXD16; Silver took 20 first).
+
+### 3. Theme contract
+
+- `ENEMY_ARCHETYPES` += the five ids (asset, colour role, `.name`); placeholders from the enemy palette (a disc with a
+  flat front plate, a squat drum with a hook, a small cone, a tall robe cylinder, a low bowl). Display names Shieldwall
+  (NXD17; NX1 shipped Bulwark), Chainhook, Snatcher, Pyre-keeper, Brazier.
+- One colour role `enemyShield` (the guard arc and the block sparks): in an existing report module, >= 40 CIE76 from the
+  enemy-bullet roles, `telegraph`, `enemyOutline`, the affix Shielded role and the boosts. The chain draws in
+  `enemyOutline` (no new role) unless NX8 shows it needs one.
+- Bullet visuals: `bullet.enemy.hook` (a hook sprite with `heading`, per docs/PROJECTILE_ART.md) and the new
+  `bullet.enemy.flame` (NXD12): `enemyBulletLookOf` maps the `pyre` to `flame`. Art: the Player Bullets pack's Hyper
+  flame (already in `art/vendor/player-bullets/`) recoloured into the danger pink ramp, packed into `bullets.png`
+  (`--only bullets`), held to `bulletArtReport` (mean <= 12 CIE76 from `enemyBullet`, >= 3:1 on every floor and wall).
+  Until uploaded it draws the small ball placeholder like every enemy look.
+- Port audio IDs, appended after `sfx.jingle.secret`, SILENT in the placeholder with `SFX_FALLBACK`s:
+  `sfx.enemy.block` (-> breakable hit), `sfx.enemy.guardbreak` (-> Charger stun), `sfx.enemy.hook` (-> charge),
+  `sfx.enemy.hooklatch` (-> Siege pin), `sfx.enemy.snatch` (-> pellet eat, pitched down), `sfx.enemy.swallow`
+  (-> combo break), `sfx.pellet.return` (-> pellet eat), `sfx.enemy.pyrelight` (-> fuse).
+- Strings: five `enemy.<id>.name`, four `bestiary.<id>` (none for `pyre`, NXD15), each with an `l10n/context.json`
+  entry.
+
+### 4. View and client
+
+- Bulwark: a faint guard arc in `enemyShield` in front of a guarding Bulwark (so the facing reads at a glance), a spark
+  at each block, stars on a stagger; `Block` held while guarding, `TakeDamage` slowed for the stagger.
+- Chainhook: the `aimLine`; a chain drawn from its hand to the flying hook, then to the hooked player (one Beam or a
+  run of small parts, pooled); a snap when it breaks. **Prediction**: while merged state says the local player is
+  hooked (a Chainhook's v5), `SimController.getDrawnPlayer` draws the merged position (prediction suspended) and the
+  `PredictionSmoother` blends back for `PREDICTION_VIEW.resumeSec` after the drag ends (no snap); the camera follows
+  the drawn player as today. `predictMotion` and its parity spec are untouched.
+- Snatcher: belly glow scaled by its carried count (5 pips), a gulp on each steal, the swallow telegraph pulsing; on
+  death the carried pellets fly from the corpse back to their cells (`PelletRenderController` draws a `taken = 2`
+  pellet hidden, a 0 one as today); a fizzle on each digested pellet's cell. The room-clear tally's `sweep` segment is
+  unchanged (the sim just never pays it).
+- Pyre-keeper: the ring on the landing cell, a torch arc flying to it (view-only), the brazier's flame and glow from
+  the decor piece, a puff when a pyre dies or withers; fireballs in the `flame` look.
+- Cue mapper rows for the eight sounds; `minInterval` on block (0.08 s) and snatch.
+- First sighting: four ids into `SIGHTING_IDS` / `ARCHETYPE_SIGHTINGS` before the affix ids (NE1's rule).
+- Codex: four `enemy:<id>` entries appended after `secret:room` (NXD14; catalogue 87 -> 91, order lock extended).
+
+## Tasks
+
+- **NX0. Audit (read-only).** Confirm every row of "What the code gives us" on the branch point; list every reader of
+  `PelletsState.taken` (sim and view) and check each treats 2 / 3 as "not on the floor"; the emitter -> actor lookup;
+  where in the tick a drag should run (stepActors after stepPlayer: the player's `prevX` / camera and the co-op hash
+  order) and whether `movePlayer` from an actor step breaks anything the lunge does not; every `damageActor` caller and
+  which hit sites need the shield (the Siege slam's included); whether the enemy slot takes the brazier's world art;
+  how Horde copies planned kinds (for NXD9's skip). Contact sheet of the four rigs' `Idle` / `Walk` / `Run` /
+  `Attack 1-4` / `Block` / `Taunt` / `TakeDamage` (gitignored `art/build/contact/`). Add this doc's row to CLAUDE.md's
+  Documents table.
+  **Verify:** findings written under "NX0 findings".
+- **NX1. Registry, data and contract skeleton.** Band 6, five ids with stub steps, data rows, `BulletKind.HOOK`,
+  `ENEMY_ARCHETYPES` + placeholders + strings, `enemyShield`, `bullet.enemy.hook` / `bullet.enemy.flame` (placeholder
+  looks), the eight SILENT sounds (`codex.spec` tail and the listed skips updated).
+  **Verify:** indices 19-23 and every older index unchanged; `contract.luau` / `validate.luau` compile under Lune within
+  200 locals; `npm run verify` green; every fixture, M1 and tutorial lock unchanged.
+- **NX2. Bulwark.** Facing turn, guard, cover arc, the hit sites, guard break, bash, recover.
+  **Verify:** specs: a bullet from the front never damages it, one from behind does; a bullet passing in front toward an
+  ally behind it stops; a piercing arrow stops on the shield; a finisher / heavy arrow / Siege slam staggers it, a
+  Wrecker roll does not; a circling player faster than 150 deg/s gets behind it; without a Bulwark every hit site is
+  byte-identical (a refactor spec over a recorded endless floor's hash).
+- **NX3. Chainhook and `HOOK`.** Aim, throw, latch, drag, every break rule, yank fan, the floor-2 minimum.
+  **Verify:** specs: a rolling player is never latched; a guard erases the hook and counts a parry; walls stop the drag
+  (the player never enters a wall: `movePlayer`'s guarantee); a roll, a pillar, its death or 3 damage break it; only
+  the aggro target is ever moved; no extra draws; no floor-1 room ever buys one, in every world.
+- **NX4. Snatcher.** Steal, flee, swallow, return on death, no-pellet flee, Horde skip.
+  **Verify:** specs: a returned pellet is collectable and the Sweep still pays; a swallowed one makes the Sweep
+  impossible; it never eats the power pellet or another room's pellet; `left` is never changed by it; a Horde wave
+  never adds one; a room without a Snatcher hashes as before.
+- **NX5. Pyre-keeper and `pyre`.** Light cast, landing cell rule, pyre fire loop, alive / per-life caps, wither.
+  **Verify:** specs: no pyre on a non-floor / decor / piece / pellet cell or within 2 of a player; at most 3 alive and 6
+  per life; the room clears with pyres alive (they wither); exactly two draws per cast.
+- **NX6. Room pool and roster.** Append the kinds, caps, `needsCompany`, `ROOM_KIND_MIN_FLOOR`; re-pin locks; ruleset
+  bump; census of floors 1-20 x run seeds 1-60 (kinds per room, room cost, peak enemy bullets with three pyres per
+  keeper), like NE7.
+  **Verify:** floor 1 spends draw for draw as before without a roster; census table written.
+- **NX7. View (placeholders).** Guard arc, sparks, stagger stars, chain, prediction suspension, belly glow, pellet
+  return fly-in, landing ring and torch arc, the `flame` look mapping, cue rows.
+  **Verify:** view specs (guard arc only on guarding Bulwarks; the drawn player equals merged while hooked and the blend
+  never jumps over a tile; a `taken = 2` pellet is not drawn; `enemyBulletLookOf` gives the pyre `flame`).
+- **NX8. Art.** Four sets in `art/atlases.json` (the NE9 recipe: grid 128, body over `Shadows/`, pad 3, 2 px rim,
+  per-sheet cells), marks measured on the frames, `bodyTiles` against the knight; the pyre on the decor brazier; the
+  hook bullet art; the flame bullet (Hyper flame, danger-pink recolour) into `bullets.png`.
+  **Verify:** `test:art`, two `art:build`s byte-identical, older outputs unchanged, `bulletArtReport` passes,
+  `vale.spec` cases; upload list.
+- **NX9. Strings, first sighting, Codex.** `bestiary.<id>`, l10n context, sightings, four Codex entries after
+  `secret:room` (the catalogue builder's second list).
+  **Verify:** `l10n:check`, `check:autolocalize`, `catalog.spec` green (the lock extended, never reordered).
+- **NX10. Audio.** Candidates from Ninja Adventure (Hit & Impact for the block, Whoosh for the throw, metal for the
+  latch, Fire for the pyre) and Kenney impact sounds; `audio:audition`, `audio:lock`, `audio:build`.
+  **Verify:** `audio.lock.json` updated; vale sounds switch on only with every file's id.
+- **NX11. Builds and systems pass.** Check each kind against builds (Chain Spark / Overkill through a shield, Siege Bolt
+  on a Bulwark, Wrecker near pyres), treasure locks (a drag is not a hit; the yank fan is), Horde waves, the Daily,
+  co-op (a teammate freeing a hooked player), secret rooms (a heavy arrow into a guarding Bulwark near a crack).
+  **Verify:** a spec per interaction that has a rule; a note per one that does not.
+- **NX12. Tuning.** Bot / census runs: room time against par, TTK per kind for Knight and Archer, hits per kind, the
+  Sweep rate in Snatcher rooms (target: lost in about a third of them for a passive bot, never for a bot that targets
+  it), how often a drag ends in a yank.
+  **Verify:** "NX12 tuning (as built)" table; owner calls listed.
+- **NX13. Upload and Studio check.** Owner uploads (art, audio); checklist per kind (guard arc readable on every
+  biome, the chain and the drag feel on a simulated 4G link with prediction on, pellet return readable, pyre crossfire
+  and the flame look on a phone).
+- **NX14. Docs.** CLAUDE.md decision log entry, this doc's "as built" notes, docs/NEW_ENEMIES.md cross-link.
+
+## Edge cases
+
+- **Bulwark vs the Archer.** The heavy arrow's aim assist flies at the nearest bearing: into the shield, which then
+  staggers (by design, NXD7). A stream of normal arrows into the front does nothing: the Archer must reposition.
+- **Two Bulwarks back to back.** Each covers the other's back; the guard break is the answer. Cap 2 per room.
+- **Shield and the power pellet / Nova / Phantom Step.** Unaffected (they act on enemy bullets).
+- **Chainhook pulling through a doorway.** `movePlayer` slides along walls; a pull across a corridor mouth ends at the
+  wall if the line is blocked (the sight test breaks the drag).
+- **Chainhook while the player is in a boon draft or the floor changes.** Drafts freeze the sim; a floor change frees
+  every actor slot (the drag ends with it).
+- **A hooked player dies to something else mid-drag.** `dead` -> the drag ends.
+- **Two Chainhooks hooking the same player.** Cap 1 per room; across rooms, a latch on an already-hooked player is
+  refused (`playerHittable`'s hooked test).
+- **Snatcher and Horde.** Horde's second wave never buys a Snatcher (NXD9), so one carrier per room always holds.
+- **Snatcher vs the Goldling.** Separate rooms (the Goldling's room is drawn last and independent); if they share a room
+  both flee on their own fields.
+- **Pyre on a cell later covered by a breakable's debris or a pellet.** Pyres are actors: they do not block cells.
+- **Pyre-keeper killed during a light telegraph.** The cast is spent, no pyre.
+- **M1 and the tutorial.** No new kind is in their pools; nothing changes.
+
+## Decisions (2026-11-13, Kaleb)
+
+- **NXD1. Ids and band:** `bulwark`, `chainhook`, `snatcher`, `pyrekeeper`, `pyre`; band 6 (indices 19-23). The shield
+  enemy is the **Bulwark** (renamed from "Shieldbearer" to keep clear of the Shielded affix; a Shielded Bulwark is
+  legal).
+- **NXD2. Rigs:** Spawn 9 (Bulwark), Spawn 4 (Chainhook), Imp 6 (Snatcher), Spawn 1 (Pyre-keeper), the decor brazier
+  (pyre); alternates kept for a swap after the Studio check.
+- **NXD3. Scope:** these four only; the rest of the brainstorm stays out of scope.
+- **NXD4. Floor 1:** the Bulwark, Snatcher and Pyre-keeper may appear on floor 1; the **Chainhook never does**
+  (`ROOM_KIND_MIN_FLOOR` 2, honoured in every world even with unlock floors off).
+- **NXD5. Weights 1 / 1 / 1 / 1 appended, caps 2 / 1 / 1 / 1;** the existing eleven weights never change.
+- **NXD6. The Bulwark's shield covers allies behind it** (cover arc 1.0).
+- **NXD7. Guard breaks on the sword finisher, any heavy arrow and a Siege slam;** not on a Wrecker roll.
+- **NXD8. The hook is a `HOOK` enemy bullet the sword's guard erases** (counts as a parry).
+- **NXD9. One Snatcher per room;** stolen pellets hold `taken = 2`; Horde's second wave never buys one.
+- **NXD10. Pellets only in v1;** no ground-boost stealing.
+- **NXD11. Swallowed pellets lose the room's Sweep.**
+- **NXD12. The pyre's fireballs get a new `flame` bullet look now** (the Hyper flame recoloured into the danger pink),
+  not the caster's.
+- **NXD13. Pyres are not room members** and wither with their keeper or the room clear.
+- **NXD14. Codex:** the four entries are appended after `secret:room`; the order lock is extended, never reordered.
+- **NXD15. First-sighting toast and Codex entry for all four** (not for the pyre).
+- **NXD16. Boards stay `_v1`; `DAILY.ruleset` 20 -> 21** (planned 19 -> 20; docs/SILVER.md took 20 first, merged 2026-11-14).
+
+Owner calls settled 2026-11-14 (Kaleb):
+
+- **NXD17. The shield enemy's display name is "Shieldwall"** (OC1): `enemy.bulwark.name` and the `bestiary.bulwark`
+  line; Warding's evolution keeps "Bulwark". The id stays `bulwark` everywhere in code (archetype, theme ids, sighting
+  ids, file names).
+- **NXD18. A Snatcher killed as its room's last living member credits its pellets to the killer** (the NX4 owner call):
+  every carried pellet becomes the killing player's pickup (`taken = 1`, `left` decremented, the pellet points, an
+  `eaten` event), so the room's Sweep can still pay on that tick's clear. With other members alive (or a quiet death)
+  they return to the floor as before.
+- **NXD19. A guard-breaking hit deals 0** (OC3, as built): it is the blocked hit; the stagger opens the next ones.
+- **NXD20. The Shieldwall's turn is fixed at 150 deg/s** (OC4, as built): Swift and the Warbanner aura do not speed it.
+- **NXD21. The shield blocks every moving player bullet; embers pass** (OC2, as built): Mirror Cloak's reflections and
+  the build effect bullets (burst, shard, spark bolt) included; EMBER (speed 0, a flame under its feet) is not stopped.
+
+Owner calls settled 2026-11-14 (Kaleb), all as built:
+
+- **NXD22. A teammate standing in a Chainhook's line absorbs the hook** (NX3 OC5): the hook latches only on the player it
+  was thrown at; any other hittable player it reaches consumes it (a body block) and nobody is dragged.
+- **NXD23. Withered pyres score 30 each and feed the combo** (NX5 PK1): the keeper's death kills them through
+  `ctx.killActor` (the summoner's `wither`), not quietly.
+- **NXD24. A lone pyre fires on the tick it lights** (NX5 PK2): with no living sibling its first shot is due at the end
+  of the 0.5 s lighting, not a full 2 s later.
+
+## Risks
+
+- **The drag in co-op.** The pull lands in merged state one lead late, and prediction is suspended while it runs. On a
+  4G link that is up to 20 ticks of the knight not following your input. Mitigation: the drag is short (<= 0.6 s), the
+  smoother blends, NX13 checks it on a simulated link; fallback: shorter drag, or a "hooked" status without movement.
+- **First actor that moves a player.** Ordering, `prevX` interpolation and the camera all assume only stepPlayer and
+  the lunge move players. NX0 audits; NX3's specs pin it.
+- **Shield cost on the bullet loop.** One extra test per player bullet per guarding Bulwark (at most 2 per room).
+  Measured in NX12 against the stress spec.
+- **Archer frustration.** The Bulwark is built to resist the Archer's main tool. Mitigation: the heavy arrow breaks the
+  guard, the Archer's longer roll flanks, and NX12 measures Archer TTK per kind.
+- **Snatcher vs the room-clear feel.** A fleeing harmless enemy can drag a clear out. Mitigation: 3 hp, it stands
+  still during the swallow, and it only exists where it has company.
+- **Clutter.** Pyres add aimed fire. Mitigation: 3 alive per keeper, 1 keeper per room, staggered shots, NX6's bullet
+  peak.
+- **Flame look vs danger pink.** A fire bullet tempts orange; it must stay in the enemy-bullet pink to read as danger
+  (`bulletArtReport` enforces it). If the flame no longer reads as fire once recoloured, NX13 decides.
+- **Roster churn.** Every endless seed's roster reshuffles again and a new daily ruleset starts new day boards.
+  Expected.
+- **Codex order lock** and the `PORT_AUDIO_EVENTS` tail specs: NX1 / NX9 own them.
+
+## Out of scope (later plans; art noted)
+
+- The rest of the brainstorm: **Glutton** (Beast 4, `Eat`: eats corpses to heal and grow), **Harrier** (Spawn 3,
+  winged swoops), **Void Wing** (Beast 2, attacks from the void), **Skirmisher pack** (Imp 1 / Imp 10, strafing trios),
+  **Leaper** (Beast 5, `Jump`), **Duelist** (Spawn 13, parries your swings), **Reflector** (Spawn 4 alternate: arrows
+  bounce back), **Javelineer** (Spawn 6 / Imp 7: a spear that sticks in the floor as cover).
+- The Snatcher stealing ground boosts (NXD10).
+- Warden mini-bosses on the five unused Elites.

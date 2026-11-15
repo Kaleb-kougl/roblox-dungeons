@@ -14,12 +14,14 @@ import {
 	type BulletSimulation,
 	type Vec3 as SimVec3,
 } from "shared/sim";
-import { GOO_BULLET_ID, STRIKE_BULLET_ID, type PlaceholderVisual, type ThemePack } from "shared/theme";
+import { GOO_BULLET_ID, HOOK_BULLET_ID, STRIKE_BULLET_ID, type PlaceholderVisual, type ThemePack } from "shared/theme";
 import {
 	BULLET_ART_VIEW,
 	BUILD_BULLET_VIEW,
 	BULLET_VIEW,
+	CHAIN_VIEW,
 	ENEMY_BULLET_LOOK_IDS,
+	EnemyBulletLook,
 	GOO_ART_VIEW,
 	GOO_VIEW,
 	HAZARD_ART_VIEW,
@@ -120,6 +122,11 @@ class BulletPool {
 		private readonly lookOf?: (payload: number, scale: number) => number,
 		/** Trails by look index (absent / undefined entry: no trail). */
 		private readonly trails?: ReadonlyArray<TrailLook | undefined>,
+		/**
+		 * Looks turned along the velocity even when `orient` is false, by look index (the Chainhook's hook wedge among
+		 * the enemy balls, docs/NEW_ENEMIES_2.md NX7). Absent: `orient` alone.
+		 */
+		private readonly orientLooks?: ReadonlyArray<boolean>,
 	) {
 		this.trailParts = new BulletTrails(folder, name, PARKED);
 	}
@@ -175,7 +182,7 @@ class BulletPool {
 					part.Transparency = t;
 				}
 				let cf: CFrame;
-				if (this.orient) {
+				if (this.orient || this.orientLooks?.[look] === true) {
 					const v = sim.velocityAt(i);
 					const len = math.sqrt(v.x * v.x + v.z * v.z);
 					cf =
@@ -237,7 +244,7 @@ class BulletPool {
 		const v = look.visual;
 		const part = renderPart("Part", false);
 		part.Name = this.name;
-		if (v.shape === "Ball") part.Shape = Enum.PartType.Ball;
+		part.Shape = partShapeOf(v.shape);
 		part.Color = look.color;
 		part.Material = look.material;
 		part.CFrame = PARKED;
@@ -262,12 +269,19 @@ class BulletPool {
 		if (look !== was) {
 			part.Color = look.color;
 			part.Material = look.material;
-			(part as Part).Shape = look.visual.shape === "Ball" ? Enum.PartType.Ball : Enum.PartType.Block;
+			(part as Part).Shape = partShapeOf(look.visual.shape);
 		}
 		const [sx, sy, sz] = look.visual.size;
 		const k = look.baseScale * key;
 		part.Size = new Vector3(sx * k, sy * k, sz * k);
 	}
+}
+
+/** A bullet placeholder's Part shape: a ball, the hook's wedge (docs/NEW_ENEMIES_2.md NX7), else a block. */
+function partShapeOf(shape: string): Enum.PartType {
+	if (shape === "Ball") return Enum.PartType.Ball;
+	if (shape === "Wedge") return Enum.PartType.Wedge;
+	return Enum.PartType.Block;
 }
 
 /** What a floor decal pool draws: which bullets, their look over life, and where on the floor. */
@@ -563,13 +577,18 @@ export class BulletRenderController implements OnStart {
 				: undefined;
 		if (enemySprites !== undefined) enemySprites.ready = enemyReady;
 		this.enemySprites = enemySprites;
+		// docs/NEW_ENEMIES_2.md NX7: the Chainhook's hook keeps its own placeholder (a wedge turned along its flight); the
+		// brazier's flame is the small ball like every other look until its art.
+		const hook = bulletLook(pack, HOOK_BULLET_ID, enemyDiameter * CHAIN_VIEW.hookLengthScale, 2);
 		const enemy = new BulletPool(
 			folder,
 			"EnemyBullet",
-			ENEMY_BULLET_LOOK_IDS.map(() => small),
+			ENEMY_BULLET_LOOK_IDS.map((_, i) => (i === EnemyBulletLook.HOOK ? hook : small)),
 			false,
 			withSprites(skip, enemySprites),
 			enemyBulletLookOf,
+			undefined,
+			ENEMY_BULLET_LOOK_IDS.map((_, i) => i === EnemyBulletLook.HOOK),
 		);
 		let strike: DecalPool | undefined;
 		if (strikeDecal) {

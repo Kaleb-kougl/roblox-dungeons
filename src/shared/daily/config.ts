@@ -68,7 +68,9 @@ export const DAILY: DailyConfig = table.freeze({
 	// and chest; the carved grid, the openers and the SECRET source change endless floors, play and scores).
 	// 20: Silver (docs/SILVER.md: the heart cut, Knight 2 and Archer 1 1/2 hearts; Armory upgrades in every ranked world;
 	// Silver in barrels and crates, the hashed `silver` group): daily play, hashes and scores change.
-	ruleset: 20,
+	// 21: new enemies 2 (docs/NEW_ENEMIES_2.md NX6, NXD16: the Shieldwall, Chainhook, Snatcher and Pyre-keeper join the
+	// endless room pool; 14 seeded kinds reshuffle every roster, the Chainhook never on floor 1).
+	ruleset: 21,
 	labelOffset: 1,
 	yesterdayCacheSeconds: 600,
 	minEntrantsForPercentile: 20,

@@ -23,7 +23,8 @@
  *   -> src/shared/theme/packs/vale/bulletLayout.ts generated (committed): the bullet atlas (docs/PROJECTILE_ART.md
  *                                        PA2; config key `bullets`; section "Bullet atlas" below), with its sheet
  *                                        art/build/bullets.png and contact sheet art/build/contact/bullets.png; the
- *                                        group's `fx` sets (PA7: fx.bullet.hit) ride in the same sheet
+ *                                        group's `fx` sets (PA7: fx.bullet.hit) ride in the same sheet, a set with
+ *                                        `own` in a sheet of its own (NX8: art/build/bullets-2.png, the flame and hook)
  *   -> src/shared/theme/packs/vale/gooLayout.ts generated (committed): the goo puddle sheet (docs/GOO_ART.md GA1;
  *                                        config key `goo`; section "Goo atlas" below), with its sheet
  *                                        art/build/goo.png and contact sheet art/build/contact/goo.png
@@ -3772,8 +3773,15 @@ function printDuoIcons(icons) {
 // group's `fx` sets) >= gates.fx.minDifference from every gates.fx.from colour (the theme's fx rule, fxColorReport:
 // the enemy-bullet roles; gates.fx is required only when there are fx sets); any other id fails. The colour maths
 // mirror shared/theme color.ts (colorDifference, contrastRatio).
+//
+// Own sheets (a set's optional `own`: a file name without .png, not the group's atlas; docs/NEW_ENEMIES_2.md NX8): the
+// set is packed, with every other set naming the same `own`, into art/build/<own>.png (packFx on those sets alone;
+// also copied to art/upload/, its contact sheet art/build/contact/<own>.png) instead of the group's atlas, and its
+// layout entry carries `sheet: "<own>.png"` (VALE_BULLET_OWN_SHEETS gives that sheet's size). So a look added later
+// never repacks the uploaded atlas: every set without `own` (and every fx set) packs exactly as before. Gates as for
+// any set. Absent: the group's atlas.
 
-const BULLET_SET_KEYS = new Set(["$comment", "file", "frameW", "frames", "keep", "fps", "recolor", "recolorNote"]);
+const BULLET_SET_KEYS = new Set(["$comment", "file", "frameW", "frames", "keep", "fps", "recolor", "recolorNote", "own"]);
 const BULLET_GROUP_KEYS = new Set(["$comment", "atlas", "pad", "fps", "pixelsPerTile", "pixelsPerTileFrom", "gates", "lockAlso", "sets", "fx"]);
 const BULLET_FX_KEYS = new Set(["$comment", "file", "frameW", "frames", "keep", "fps", "loop"]);
 const BULLET_CONTACT_SCALE = 8;
@@ -3850,6 +3858,9 @@ function buildBulletSet(id, def, group) {
 	if (!Number.isInteger(pad) || pad < 0) throw new Error(`bullets.pad must be a non-negative integer, got ${JSON.stringify(group.pad)}`);
 	const fps = def.fps !== undefined ? def.fps : group.fps;
 	if (typeof fps !== "number" || !(fps > 0)) throw new Error(`${id}: fps (its own or bullets.fps) must be a positive number`);
+	if (def.own !== undefined && (typeof def.own !== "string" || !/^[a-z0-9-]+$/.test(def.own) || def.own === group.atlas)) {
+		throw new Error(`${id}: own must be a file name without .png other than bullets.atlas, got ${JSON.stringify(def.own)}`);
+	}
 	const lut = recolorLut(id, def.recolor);
 	let raw = stripFrames(id, def);
 	if (lut) raw = raw.map((img) => recolorRegion({ img, x: 0, y: 0, w: img.w, h: img.h }, lut).img);
@@ -3863,7 +3874,7 @@ function buildBulletSet(id, def, group) {
 		blit(img, box[0] - pad, box[1] - pad, frameW, frameH, cell, 0, 0, 0);
 		return cell;
 	});
-	return { id, def, frames, frameW, frameH, fps, meanColor: meanColor(frames), box, sourceH: raw[0].h, recolorStops: lut ? def.recolor.ramp.length : 0 };
+	return { id, def, frames, frameW, frameH, fps, meanColor: meanColor(frames), box, sourceH: raw[0].h, recolorStops: lut ? def.recolor.ramp.length : 0, own: def.own };
 }
 
 /** One effect of the bullet group (`fx`): an untinted strip, cropped like an effects-atlas set (buildFxSet). */
@@ -3981,35 +3992,47 @@ function buildBullets(group, spriteSets) {
 	const gates = bulletGates([...sets, ...fxSets], group.gates);
 	const failed = gates.filter((r) => !r.ok);
 	if (failed.length > 0) throw new Error(`bullets: colour gates failed:\n  ${failed.map((r) => bulletGateLine(r, group.gates)).join("\n  ")}`);
-	const packed = packFx([...sets, ...fxSets], "bullets");
+	const packed = packFx([...sets.filter((s) => s.own === undefined), ...fxSets], "bullets");
 	const file = `${group.atlas}.png`;
+	const ownNames = [...new Set(sets.filter((s) => s.own !== undefined).map((s) => s.own))].sort();
+	const own = ownNames.map((name) => {
+		const p = packFx(sets.filter((s) => s.own === name), `bullets ${name}`);
+		return { name, file: `${name}.png`, packed: p, sheet: { file: `${name}.png`, w: p.w, h: p.h } };
+	});
 	const layouts = {};
 	const fxLayouts = {};
-	for (const p of [...packed.placed].sort((a, b) => (a.s.id < b.s.id ? -1 : 1))) {
-		const s = p.s;
-		if (fxSets.includes(s)) {
-			fxLayouts[s.id] = fxLayoutOf(p);
-			continue;
+	for (const sheetPack of [{ file: undefined, packed }, ...own]) {
+		for (const p of [...sheetPack.packed.placed].sort((a, b) => (a.s.id < b.s.id ? -1 : 1))) {
+			const s = p.s;
+			if (fxSets.includes(s)) {
+				fxLayouts[s.id] = fxLayoutOf(p);
+				continue;
+			}
+			layouts[s.id] = {
+				frameW: s.frameW,
+				frameH: s.frameH,
+				pivot: { x: s.frameW / 2, y: s.frameH / 2 },
+				start: p.start,
+				frames: s.frames.length,
+				fps: s.fps,
+				meanColor: s.meanColor,
+				pixelsPerTile: ppt,
+			};
+			if (sheetPack.file !== undefined) layouts[s.id].sheet = sheetPack.file;
 		}
-		layouts[s.id] = {
-			frameW: s.frameW,
-			frameH: s.frameH,
-			pivot: { x: s.frameW / 2, y: s.frameH / 2 },
-			start: p.start,
-			frames: s.frames.length,
-			fps: s.fps,
-			meanColor: s.meanColor,
-			pixelsPerTile: ppt,
-		};
 	}
-	return { file, sets, fxSets, packed, sheet: { file, w: packed.w, h: packed.h }, layouts, fxLayouts, gates, pixelsPerTileFrom };
+	const sortedLayouts = {};
+	for (const id of Object.keys(layouts).sort()) sortedLayouts[id] = layouts[id];
+	const ownSheets = {};
+	for (const o of own) ownSheets[o.file] = o.sheet;
+	return { file, sets, fxSets, packed, sheet: { file, w: packed.w, h: packed.h }, layouts: sortedLayouts, fxLayouts, gates, pixelsPerTileFrom, own, ownSheets };
 }
 
 /**
  * packs/vale/bulletLayout.ts: the shape of the PA stub (ValeBulletLayout, VALE_BULLET_SHEET, VALE_BULLET_LAYOUTS),
  * then the effects in the same sheet (VALE_BULLET_FX_LAYOUTS, fxLayout.ts's ValeFxLayout; `{}` without any).
  */
-function bulletLayoutModule(sheet, layouts, fxLayouts = {}) {
+function bulletLayoutModule(sheet, layouts, fxLayouts = {}, ownSheets = {}) {
 	const text = [
 		"// GENERATED by `npm run art:build` (scripts/art/build-atlases.js) from art/atlases.json. Do not edit.",
 		"",
@@ -4019,8 +4042,9 @@ function bulletLayoutModule(sheet, layouts, fxLayouts = {}) {
 			"ONE bullet atlas VALE_BULLET_SHEET, cells `start + f` of the SpriteSetAsset formula (perRow = floor(sheet w /",
 			"frameW)). Each frame's art points screen-up (the direction of travel). `meanColor` is the alpha-weighted mean of the",
 			"set's opaque pixels (after `recolor`), held to the bullet colour rules (bulletArtReport). Effects that ride in the",
-			"same sheet (VALE_BULLET_FX_LAYOUTS, PA7) have the effects atlas's layout shape. No asset IDs: `file` names the PNG",
-			"in art/build/ to upload.",
+			"same sheet (VALE_BULLET_FX_LAYOUTS, PA7) have the effects atlas's layout shape. A bullet with `sheet` sits in a sheet",
+			"of its own instead (VALE_BULLET_OWN_SHEETS, by file; docs/NEW_ENEMIES_2.md NX8), cells by the same formula over that",
+			"sheet. No asset IDs: `file` names the PNG in art/build/ to upload.",
 		]),
 		" */",
 		"",
@@ -4038,6 +4062,8 @@ function bulletLayoutModule(sheet, layouts, fxLayouts = {}) {
 		"\tfps: number;",
 		"\tmeanColor: HexColor;",
 		"\tpixelsPerTile: number;",
+		"\t/** Its own sheet's file (VALE_BULLET_OWN_SHEETS); absent: VALE_BULLET_SHEET. */",
+		"\tsheet?: string;",
 		"}",
 		"",
 		`export const VALE_BULLET_SHEET: ValeSheetFile = ${tsValue(sheet, 0, PRINT_WIDTH)};`,
@@ -4046,6 +4072,9 @@ function bulletLayoutModule(sheet, layouts, fxLayouts = {}) {
 		"",
 		"/** Effects in VALE_BULLET_SHEET (fx.* ids; cells by the same formula). */",
 		`export const VALE_BULLET_FX_LAYOUTS: Record<string, ValeFxLayout> = ${Object.keys(fxLayouts).length === 0 ? "{}" : tsValue(fxLayouts, 0, PRINT_WIDTH)};`,
+		"",
+		"/** The bullets' own sheets by file (a layout's `sheet`; art/atlases.json bullets set `own`). */",
+		`export const VALE_BULLET_OWN_SHEETS: Record<string, ValeSheetFile> = ${Object.keys(ownSheets).length === 0 ? "{}" : tsValue(ownSheets, 0, PRINT_WIDTH)};`,
 		"",
 	].join("\n");
 	for (const line of text.split("\n")) {
@@ -4059,12 +4088,14 @@ function bulletLayoutModule(sheet, layouts, fxLayouts = {}) {
  * every frame read back from the atlas through the layout's cell formula, x BULLET_CONTACT_SCALE on a dark ground,
  * each cell's area a shade lighter so the pad shows.
  */
-function bulletContact(result) {
+function bulletContact(result, own) {
 	const S = BULLET_CONTACT_SCALE;
 	const gap = FX_CONTACT_GAP;
 	const labelW = 4 * 2 * 2 + gap;
 	const all = { ...result.layouts, ...(result.fxLayouts || {}) };
-	const ids = [...Object.keys(result.layouts).sort(), ...Object.keys(result.fxLayouts || {}).sort()];
+	const onSheet = (id) => result.layouts[id].sheet === (own ? own.file : undefined);
+	const ids = [...Object.keys(result.layouts).filter(onSheet).sort(), ...(own ? [] : Object.keys(result.fxLayouts || {}).sort())];
+	const packed = own ? own.packed : result.packed;
 	let w = 0;
 	let h = gap;
 	for (const id of ids) {
@@ -4081,9 +4112,9 @@ function bulletContact(result) {
 		for (let f = 0; f < l.frames; f++) {
 			const x = gap + labelW + f * (l.frameW * S + gap);
 			fillRect(out, x, y, l.frameW * S, l.frameH * S, BULLET_CONTACT_CELL);
-			const [cx, cy] = fxCellAt(result.packed.w, l, f);
+			const [cx, cy] = fxCellAt(packed.w, l, f);
 			const cut = raster(l.frameW, l.frameH);
-			blit(result.packed.img, cx, cy, l.frameW, l.frameH, cut, 0, 0, -1);
+			blit(packed.img, cx, cy, l.frameW, l.frameH, cut, 0, 0, -1);
 			overScaled(cut, S, out, x, y);
 		}
 		y += l.frameH * S + gap;
@@ -4096,9 +4127,10 @@ function printBullets(b, group) {
 	const fill = (100 * b.packed.used) / (b.packed.w * b.packed.h);
 	const from = b.pixelsPerTileFrom ? ` (pixelsPerTileFrom ${b.pixelsPerTileFrom.id}: ${b.pixelsPerTileFrom.checked ? "equal" : "unchecked, its set is not built by --only"})` : "";
 	console.log(`bullets: ${b.file} ${b.packed.w}x${b.packed.h}, ${b.sets.length} sets, ${fill.toFixed(1)}% of its area in cells, ${group.pixelsPerTile} px/tile${from}`);
+	for (const o of b.own || []) console.log(`bullets: own sheet ${o.file} ${o.packed.w}x${o.packed.h} (${o.packed.placed.map((p) => p.s.id).join(", ")})`);
 	b.sets.forEach((s, n) => {
 		const l = b.layouts[s.id];
-		console.log(`  #${n} ${s.id}: ${s.def.file.split("/").slice(-1)[0]} ${s.def.frames} x ${s.def.frameW}x${s.sourceH}${s.def.keep ? ` keep ${s.def.keep.join(",")}` : ""} (box ${s.box.join(",")}) -> cell ${l.frameW}x${l.frameH}, start ${l.start}, ${l.frames} frame(s) @ ${l.fps} fps${s.recolorStops ? `, recoloured (${s.recolorStops}-stop ramp)` : ""}`);
+		console.log(`  #${n} ${s.id}: ${s.def.file.split("/").slice(-1)[0]} ${s.def.frames} x ${s.def.frameW}x${s.sourceH}${s.def.keep ? ` keep ${s.def.keep.join(",")}` : ""} (box ${s.box.join(",")}) -> ${l.sheet ? `${l.sheet} ` : ""}cell ${l.frameW}x${l.frameH}, start ${l.start}, ${l.frames} frame(s) @ ${l.fps} fps${s.recolorStops ? `, recoloured (${s.recolorStops}-stop ramp)` : ""}`);
 	});
 	(b.fxSets || []).forEach((s, k) => {
 		const l = b.fxLayouts[s.id];
@@ -5580,7 +5612,13 @@ function mainOnlyBullets(config) {
 	if (writeIfChanged(path.join(BUILD, bullets.file), png)) changed++;
 	if (writeIfChanged(path.join(CONTACT, bullets.file), encodePng(bulletContact(bullets)))) changed++;
 	if (writeIfChanged(path.join(UPLOAD, bullets.file), png)) changed++;
-	if (writeIfChanged(BULLET_LAYOUT_FILE, bulletLayoutModule(bullets.sheet, bullets.layouts, bullets.fxLayouts))) changed++;
+	for (const o of bullets.own) {
+		const ownPng = encodePng(o.packed.img);
+		if (writeIfChanged(path.join(BUILD, o.file), ownPng)) changed++;
+		if (writeIfChanged(path.join(CONTACT, o.file), encodePng(bulletContact(bullets, o)))) changed++;
+		if (writeIfChanged(path.join(UPLOAD, o.file), ownPng)) changed++;
+	}
+	if (writeIfChanged(BULLET_LAYOUT_FILE, bulletLayoutModule(bullets.sheet, bullets.layouts, bullets.fxLayouts, bullets.ownSheets))) changed++;
 	printBullets(bullets, config.bullets);
 	console.log(`art:build --only bullets: ${changed} file(s) updated`);
 }
@@ -5998,6 +6036,10 @@ function main() {
 		bullets = buildBullets(config.bullets, sets);
 		emit(BUILD, bullets.file, bullets.packed.img, builtFiles);
 		emit(CONTACT, bullets.file, bulletContact(bullets), contactFiles);
+		for (const o of bullets.own) {
+			emit(BUILD, o.file, o.packed.img, builtFiles);
+			emit(CONTACT, o.file, bulletContact(bullets, o), contactFiles);
+		}
 	}
 	let goo;
 	if (config.goo) {
@@ -6091,7 +6133,7 @@ function main() {
 	if (writeIfChanged(LAYOUT_FILE, layoutModule(sets, images, floor.meanHex, world))) changed++;
 	if (fx && writeIfChanged(FX_LAYOUT_FILE, fxLayoutModule(fx.atlas, fx.fxLayouts, fx.ambientLayouts))) changed++;
 	if (icons && writeIfChanged(UI_ICON_LAYOUT_FILE, uiIconLayoutModule(icons))) changed++;
-	if (bullets && writeIfChanged(BULLET_LAYOUT_FILE, bulletLayoutModule(bullets.sheet, bullets.layouts, bullets.fxLayouts))) changed++;
+	if (bullets && writeIfChanged(BULLET_LAYOUT_FILE, bulletLayoutModule(bullets.sheet, bullets.layouts, bullets.fxLayouts, bullets.ownSheets))) changed++;
 	if (goo && writeIfChanged(GOO_LAYOUT_FILE, gooLayoutModule(goo.sheet, goo.layout))) changed++;
 	if (auras && writeIfChanged(BOOST_AURA_LAYOUT_FILE, boostAuraLayoutModule(auras.sheet, auras.layouts))) changed++;
 	if (treasure && writeIfChanged(TREASURE_LAYOUT_FILE, treasureLayoutModule(treasure))) changed++;

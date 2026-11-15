@@ -47,6 +47,11 @@ function enemyStrip(rel) {
 	});
 }
 
+/** bulletLayoutModule's trailer without any `own` set (docs/NEW_ENEMIES_2.md NX8). */
+const OWN_SHEETS_NONE =
+	"\n/** The bullets' own sheets by file (a layout's `sheet`; art/atlases.json bullets set `own`). */\n" +
+	"export const VALE_BULLET_OWN_SHEETS: Record<string, ValeSheetFile> = {};\n";
+
 const RAMP = [
 	[0, "#1a0610"],
 	[60, "#c0206f"],
@@ -275,7 +280,8 @@ describe("bulletLayoutModule", () => {
 		assert.ok(
 			empty.endsWith(
 				'export const VALE_BULLET_SHEET: ValeSheetFile = {\n\tfile: "bullets.png",\n\tw: 0,\n\th: 0,\n};\n\nexport const VALE_BULLET_LAYOUTS: Record<string, ValeBulletLayout> = {};\n\n' +
-					"/** Effects in VALE_BULLET_SHEET (fx.* ids; cells by the same formula). */\nexport const VALE_BULLET_FX_LAYOUTS: Record<string, ValeFxLayout> = {};\n",
+					"/** Effects in VALE_BULLET_SHEET (fx.* ids; cells by the same formula). */\nexport const VALE_BULLET_FX_LAYOUTS: Record<string, ValeFxLayout> = {};\n" +
+						OWN_SHEETS_NONE,
 			),
 		);
 		assert.equal(head(empty), head(committed));
@@ -346,7 +352,7 @@ describe("bullet group effects (`fx`, docs/PROJECTILE_ART.md PA7)", () => {
 		assert.equal(row.ok, true);
 		const text = A.bulletLayoutModule(b.sheet, b.layouts, b.fxLayouts);
 		assert.match(text, /import type \{ ValeFxLayout \} from "\.\/fxLayout";/);
-		assert.match(text, /export const VALE_BULLET_FX_LAYOUTS: Record<string, ValeFxLayout> = \{\n\t"fx\.bullet\.hit": \{\n\t\tframeW: 4,\n\t\tframeH: 6,\n\t\tpivot: \{ x: 2, y: 3 \},\n\t\tstart: \d+,\n\t\tframes: 3,\n\t\tfps: 20,\n\t\tloop: false,\n\t\tgrey: false,\n\t\tmeanColor: "#e8ad2c",\n\t\},\n\};\n$/);
+		assert.match(text, /export const VALE_BULLET_FX_LAYOUTS: Record<string, ValeFxLayout> = \{\n\t"fx\.bullet\.hit": \{\n\t\tframeW: 4,\n\t\tframeH: 6,\n\t\tpivot: \{ x: 2, y: 3 \},\n\t\tstart: \d+,\n\t\tframes: 3,\n\t\tfps: 20,\n\t\tloop: false,\n\t\tgrey: false,\n\t\tmeanColor: "#e8ad2c",\n\t\},\n\};\n\n\/\*\* The bullets' own sheets by file[^\n]*\nexport const VALE_BULLET_OWN_SHEETS: Record<string, ValeSheetFile> = \{\};\n$/);
 		// the contact sheet has a row for the effect too (taller than without it)
 		assert.ok(A.bulletContact(b).h > A.bulletContact(plain).h);
 		// sources: the effect's file is read (locked) once
@@ -417,5 +423,62 @@ describe("sources, the scoped lock and --only", () => {
 		assert.equal(A.onlyGroup(["node", "build-atlases.js"]), undefined);
 		assert.equal(A.onlyGroup(["node", "build-atlases.js", "--only", "bullets"]), "bullets");
 		assert.equal(A.onlyGroup(["node", "build-atlases.js", "--lock", "--only", "bullets"]), "bullets");
+	});
+});
+
+describe("bullet sets with `own` (docs/NEW_ENEMIES_2.md NX8)", () => {
+	const ownGroup = () => {
+		const g = group();
+		g.sets["bullet.enemy.hook"] = { file: "t/grey.png", frameW: 8, frames: 2, keep: [0], recolor: { ramp: RAMP }, own: "bullets-2" };
+		g.sets["bullet.enemy.flame"] = { file: "t/grey.png", frameW: 8, frames: 2, keep: [0], recolor: { ramp: RAMP }, own: "bullets-2" };
+		return g;
+	};
+
+	it("packs them into their own sheet: the group's atlas, its contact sheet and every other layout byte-identical", () => {
+		const plain = A.buildBullets(group(), undefined);
+		const b = A.buildBullets(ownGroup(), undefined);
+		assert.ok(Buffer.compare(A.encodePng(plain.packed.img), A.encodePng(b.packed.img)) === 0);
+		assert.ok(Buffer.compare(A.encodePng(A.bulletContact(plain)), A.encodePng(A.bulletContact(b))) === 0);
+		assert.deepEqual(b.sheet, plain.sheet);
+		for (const id of Object.keys(plain.layouts)) assert.deepEqual(b.layouts[id], plain.layouts[id]);
+		assert.deepEqual(Object.keys(b.layouts), [...Object.keys(plain.layouts), "bullet.enemy.flame", "bullet.enemy.hook"].sort());
+		assert.deepEqual(b.own.map((o) => o.file), ["bullets-2.png"]);
+		const o = b.own[0];
+		assert.deepEqual(b.ownSheets, { "bullets-2.png": { file: "bullets-2.png", w: o.packed.w, h: o.packed.h } });
+		for (const id of ["bullet.enemy.flame", "bullet.enemy.hook"]) {
+			const l = b.layouts[id];
+			assert.equal(l.sheet, "bullets-2.png");
+			const s = b.sets.find((x) => x.id === id);
+			const perRow = Math.floor(o.packed.w / l.frameW);
+			for (let f = 0; f < l.frames; f++) {
+				const c = l.start + f;
+				const x0 = (c % perRow) * l.frameW;
+				const y0 = Math.floor(c / perRow) * l.frameH;
+				for (let y = 0; y < l.frameH; y++) {
+					for (let x = 0; x < l.frameW; x++) {
+						const want = rgbaAt(s.frames[f], x, y);
+						const got = rgbaAt(o.packed.img, x0 + x, y0 + y);
+						assert.equal(got[3], want[3]);
+						if (want[3] > 0) assert.deepEqual(got, want);
+					}
+				}
+			}
+		}
+		const contact = A.bulletContact(b, o);
+		assert.ok(contact.w > 0 && contact.h > 0);
+		const text = A.bulletLayoutModule(b.sheet, b.layouts, b.fxLayouts, b.ownSheets);
+		assert.match(text, /\t\tsheet: "bullets-2\.png",\n\t\},/);
+		assert.match(text, /export const VALE_BULLET_OWN_SHEETS: Record<string, ValeSheetFile> = \{\n\t"bullets-2\.png": \{ file: "bullets-2\.png", w: \d+, h: \d+ \},\n\};\n$/);
+	});
+
+	it("still gates them, and refuses a bad `own`", () => {
+		const g = ownGroup();
+		delete g.sets["bullet.enemy.flame"].recolor;
+		assert.throws(() => A.buildBullets(g, undefined), /colour gates failed:\n {2}bullet\.enemy\.flame: mean #808080.*FAIL/);
+		for (const bad of ["bullets", "Bullets-2", "", 3]) {
+			const h = ownGroup();
+			h.sets["bullet.enemy.hook"].own = bad;
+			assert.throws(() => A.buildBullets(h, undefined), /bullet\.enemy\.hook: own must be a file name/);
+		}
 	});
 });

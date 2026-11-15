@@ -76,6 +76,13 @@ export const COLOR_ROLES = [
 	"enemy.reaper",
 	// Roblox port (docs/FORTUNE.md FD9): the Goldling (contract.ts ENEMY_ARCHETYPES)
 	"enemy.golden",
+	// Roblox port (docs/NEW_ENEMIES_2.md NX1): the third endless set and the Pyre-keeper's brazier (contract.ts
+	// ENEMY_ARCHETYPES)
+	"enemy.bulwark",
+	"enemy.chainhook",
+	"enemy.snatcher",
+	"enemy.pyrekeeper",
+	"enemy.pyre",
 	// Bosses share one accent
 	"boss",
 	// Enemy attack warnings (telegraph lines, slam shockwaves): hot like enemy bullets, but not a bullet
@@ -181,6 +188,12 @@ export const COLOR_ROLES = [
 	// every enemy it buffs; variants.ts ENEMY_AURA_ROLE). Held to AURA_COLOR_RULES by auraReport (variantColors.ts):
 	// >= 3:1 on every biome floor and (CIE76) away from the enemy-bullet roles, telegraph, every boost and affix colour.
 	"enemyAura",
+	// Roblox port (docs/NEW_ENEMIES_2.md NX1): the Bulwark's guard (the faint arc in front of a guarding Bulwark, the
+	// block sparks; newEnemies2.ts ENEMY_GUARD_ROLE). Not `enemyShield`, which is the Shielded affix's shield segment
+	// (NXD1 keeps the two apart). Held to GUARD_COLOR_RULES by guardReport (variantColors.ts): >= 3:1 on every biome
+	// floor and (CIE76) away from the enemy-bullet roles, telegraph, the enemy outline, every affix colour with the
+	// shield segment's, and every boost colour.
+	"enemyGuard",
 	// Roblox port (docs/NEW_BEST.md NB4): the new-best gold (the passed target row, the gold score number, the NEW BEST!
 	// floor shout, the confetti, NEW DEEPEST on the stairwell card, the run-over ribbon). Held to NEW_BEST_COLOR_RULES by
 	// newBestReport (newBestColors.ts): >= 3:1 on uiPanel, (CIE76) apart from ember and every combo tier, and away from

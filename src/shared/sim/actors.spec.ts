@@ -103,6 +103,12 @@ describe("archetype registry", () => {
 			"stormcaller",
 			"warbanner",
 			"golden", // band PORT_BAND_FORTUNE (docs/FORTUNE.md): index 18
+			// band PORT_BAND_ENEMIES_3 (docs/NEW_ENEMIES_2.md): indices 19-23
+			"bulwark",
+			"chainhook",
+			"pyre",
+			"pyrekeeper",
+			"snatcher",
 		]);
 		expect(band(DUMMY_KIND)).toBe(PORT_BAND_TUTORIAL);
 		expect(band(BOSS_DEMONLORD_ID)).toBe(PORT_BAND_BOSSES);

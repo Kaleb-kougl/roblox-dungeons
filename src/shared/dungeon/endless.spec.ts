@@ -102,7 +102,7 @@ describe("endless floor derivation", () => {
 		expect(encounterCost("slime.small")).toBe(DEFAULT_ENCOUNTER_COST);
 		// docs/NEW_ENEMIES.md NE1: bomber 2, charger 3, stormcaller 3, warbanner 2, reaper 3 (rows only until NE7).
 		expect(["bomber", "charger", "stormcaller", "warbanner", "reaper"].map(encounterCost)).toEqual([2, 3, 3, 2, 3]);
-		expect(ENCOUNTER_COST.size()).toBe(14);
+		expect(ENCOUNTER_COST.size()).toBe(18); // + docs/NEW_ENEMIES_2.md NX1's four
 	});
 });
 

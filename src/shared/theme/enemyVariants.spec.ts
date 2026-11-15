@@ -156,6 +156,12 @@ describe("enemy variants: contract", () => {
 			"reaper",
 			// docs/FORTUNE.md FD9: the Goldling
 			"golden",
+			// docs/NEW_ENEMIES_2.md NX1 (newEnemies2.spec.ts): the third set and the Pyre-keeper's brazier
+			"bulwark",
+			"chainhook",
+			"snatcher",
+			"pyrekeeper",
+			"pyre",
 		]);
 		for (const a of NEW_ARCHETYPES) {
 			expect([a, has(REQUIRED_ASSET_IDS, `enemy.${a}`), slotFor(`enemy.${a}`)?.slot]).toEqual([a, true, "enemy"]);
@@ -166,9 +172,11 @@ describe("enemy variants: contract", () => {
 
 	it("adds the goo puddle: a required bullet visual and the enemyGoo colour role", () => {
 		expect(GOO_BULLET_ID).toBe("bullet.enemy.goo");
-		// After the web build's six; only docs/NEW_ENEMIES.md's strike and docs/BUILDS.md's effect bullets come after it.
-		expect(BULLET_IDS[BULLET_IDS.size() - 2 - BUILD_BULLET_IDS.size()]).toBe(GOO_BULLET_ID);
-		expect(BULLET_IDS[BULLET_IDS.size() - 1 - BUILD_BULLET_IDS.size()]).toBe("bullet.enemy.strike");
+		// After the web build's six; only docs/NEW_ENEMIES.md's strike, docs/NEW_ENEMIES_2.md's hook and flame and
+		// docs/BUILDS.md's effect bullets come after it.
+		const later = 2 + BUILD_BULLET_IDS.size();
+		expect(BULLET_IDS[BULLET_IDS.size() - 2 - later]).toBe(GOO_BULLET_ID);
+		expect(BULLET_IDS[BULLET_IDS.size() - 1 - later]).toBe("bullet.enemy.strike");
 		expect([has(REQUIRED_ASSET_IDS, GOO_BULLET_ID), slotFor(GOO_BULLET_ID)?.slot]).toEqual([true, "bullet"]);
 		expect([ENEMY_GOO_ROLE, has(COLOR_ROLES, ENEMY_GOO_ROLE)]).toEqual(["enemyGoo", true]);
 	});
@@ -201,6 +209,11 @@ describe("enemy variants: contract", () => {
 			"reaper",
 			// docs/FORTUNE.md FO6: the Goldling
 			"golden",
+			// docs/NEW_ENEMIES_2.md NX1 (NXD15; not the brazier)
+			"bulwark",
+			"chainhook",
+			"snatcher",
+			"pyrekeeper",
 		]);
 		expect([...BESTIARY_STRING_KEYS]).toEqual([
 			...BESTIARY_ARCHETYPES.map((a) => bestiaryArchetypeKey(a)),
@@ -222,6 +235,10 @@ describe("enemy variants: contract", () => {
 			"bestiary.warbanner",
 			"bestiary.reaper",
 			"bestiary.golden",
+			"bestiary.bulwark",
+			"bestiary.chainhook",
+			"bestiary.snatcher",
+			"bestiary.pyrekeeper",
 			"bestiary.affix.hulking",
 			"bestiary.affix.swift",
 			"bestiary.affix.shielded",

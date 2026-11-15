@@ -204,14 +204,17 @@ describe("PelletViewTracker", () => {
 		room.phase = PelletPhase.LIVE;
 		const half = V.lastFew.periodSec / 2;
 		expect(t.look(s, 0, half, 1, look).glow).toBe(0); // 5 left
+		// docs/NEW_ENEMIES_2.md NX7: the hint counts the pellets on the floor (taken 0), so take two of the five.
+		const p = s.pellets!;
+		p.taken[3] = 1;
+		p.taken[4] = 1;
 		room.left = V.lastFewHint;
+		s.tick += 1;
 		t.look(s, 0, half, 1, look);
 		expect(look.glow).toBeCloseTo(V.lastFew.glowMax, 9);
 		expect(look.scale).toBeCloseTo(1 + V.lastFew.scaleAmp, 9);
 		t.look(s, 0, half, 0, look);
 		expect([look.glow, look.scale]).toEqual([V.lastFew.glowMax, 1]);
-		room.left = 0;
-		expect(t.look(s, 0, half, 1, look).glow).toBe(0);
 	});
 
 	it("the power pellet pulses slowly (never the last-few hint); reduced motion: still", () => {

@@ -273,7 +273,7 @@ export function killActor(ctx: SimCtx, a: ActorState, quiet = false): void {
 		// Elite affixes (opt-in): a Vengeful corpse arms its ring (fired by stepAffixes).
 		if (ctx.state.affixes !== undefined) affixesOnKill(ctx.state, a);
 	}
-	if (def.onDeath !== undefined) def.onDeath(ctx, a);
+	if (def.onDeath !== undefined) def.onDeath(ctx, a, quiet);
 }
 
 /** Revives a dead actor in place with full hp. */

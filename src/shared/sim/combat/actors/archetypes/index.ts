@@ -44,3 +44,12 @@ export * from "./warbanner";
 
 // --- Roblox port: the Goldling (band PORT_BAND_FORTUNE: numbered after band 4; docs/FORTUNE.md)
 export * from "./golden";
+
+// --- Roblox port: the third set of endless room enemies and the Pyre-keeper's brazier (band PORT_BAND_ENEMIES_3:
+// numbered after band 5; docs/NEW_ENEMIES_2.md)
+export * from "./bulwark";
+export * from "./chainhook";
+export * from "./pyre";
+export * from "./pyrekeeper";
+export * from "./snatcher";
+export * from "./snatcherField";

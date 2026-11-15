@@ -149,6 +149,9 @@ export interface ArchetypeDef<D extends ArchetypeData = ArchetypeData> {
 	filterDamage?(ctx: SimCtx, actor: ActorState, damage: number): number;
 	/** After damage was applied (damage = what actually came off hp, may be 0 when capped), before a death check. */
 	onHit?(ctx: SimCtx, actor: ActorState, damage: number): void;
-	/** When hp reaches 0 (alive is already 0). */
-	onDeath?(ctx: SimCtx, actor: ActorState): void;
+	/**
+	 * When hp reaches 0 (alive is already 0). `quiet`: killActor's quiet death (nobody earned it; the killer in
+	 * ctx.playerIndex is meaningless then).
+	 */
+	onDeath?(ctx: SimCtx, actor: ActorState, quiet: boolean): void;
 }

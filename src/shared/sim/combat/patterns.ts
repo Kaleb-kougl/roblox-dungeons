@@ -60,9 +60,17 @@ export const BulletKind = {
 	 * A lightning strike (Roblox port, docs/NEW_ENEMIES.md NE1 / NE5, NED7): the Stormcaller's stationary enemy bullet,
 	 * one per marked point, with a short life and a wide hit radius (enemyBulletHitRadius, STRIKE_BULLET_RADIUS). NE1
 	 * only reserves the kind and its radius; NE5 adds its rules (GOO's exclusions: no grazes, no shoot cue, but the
-	 * sword guard does NOT erase it). 13..15 stay free.
+	 * sword guard does NOT erase it).
 	 */
 	STRIKE: 12,
+	/**
+	 * A chain hook (Roblox port, docs/NEW_ENEMIES_2.md NX1 / NX3, NXD8): the Chainhook's thrown hook, an enemy bullet
+	 * that latches on instead of hurting. NX1 only reserves the kind (no rules yet: it hits at ENEMY_BULLET_RADIUS and,
+	 * fired with 0 damage, passes through like any 0-damage bullet); NX3 adds the latch in the enemy-bullet loops. Walls,
+	 * pieces, rolls, the guard (a parry), the power pellet and the Hourglass treat it as an ordinary enemy bullet.
+	 * 14..15 stay free.
+	 */
+	HOOK: 13,
 } as const;
 
 /**

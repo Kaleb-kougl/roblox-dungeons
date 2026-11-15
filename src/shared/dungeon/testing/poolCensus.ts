@@ -9,6 +9,10 @@
  * "cheap" rosters (no kind of the dearest room cost), and the roster rules break a row too (a spawn outside its
  * roster, a roster that is not swarmers first + the expected size, or that drops a kind of the floor before). Test
  * support only.
+ *
+ * `unlockFloors` (default true: the DSD9 rule these specs were written for) picks the roster and spender rule; false is
+ * every endless world's live rule since docs/DAILY.md DSD18 (docs/NEW_ENEMIES_2.md NX6's census): no unlock floors, only
+ * a kind's roomKindMinFloor (the Chainhook's 2, NXD4) holds, in the roster and in every room.
  */
 import {
 	ENDLESS_FIRST_FLOOR,
@@ -27,13 +31,17 @@ import {
 	isAffixExcluded,
 	isOpenTile,
 	roomEncounterBudget,
+	roomKindMinFloor,
 	rosterTargetSize,
+	type Dungeon,
 } from "shared/dungeon";
 
 /** One census row: totals over every populated room of one floor across the sampled runs. */
 export interface PoolCensusRow {
 	readonly floor: number;
 	readonly party: number;
+	/** The roster / spender rule (see the file comment). */
+	readonly unlockFloors: boolean;
 	runs: number;
 	/** Rooms with a budget (combat / elite, not the entrance or the boss room). */
 	rooms: number;
@@ -62,10 +70,11 @@ export interface PoolCensusRow {
 	readonly breaks: string[];
 }
 
-export function newCensusRow(floor: number, party: number): PoolCensusRow {
+export function newCensusRow(floor: number, party: number, unlockFloors = true): PoolCensusRow {
 	return {
 		floor,
 		party,
+		unlockFloors,
 		runs: 0,
 		rooms: 0,
 		enemies: 0,
@@ -101,45 +110,55 @@ function costRange(): [number, number] {
 	return [lo, hi];
 }
 
+/** The first floor kind row `k` may be on: its minimum floor and, with unlock floors, its unlock floor. */
+function kindFloor(k: number, unlockFloors: boolean): number {
+	const kind = ENDLESS_ROOM_KINDS[k];
+	const min = roomKindMinFloor(kind.kind);
+	return unlockFloors ? math.max(min, kind.fromFloor ?? ENDLESS_FIRST_FLOOR) : min;
+}
+
 /**
  * The roster rules of run `run` on `floor` (docs/DAILY.md DS1), as rule breaks: swarmers first; as many seeded kinds
  * as the floor wants, or every kind unlocked on it if fewer (an unlocked kind left out could always join); none
- * before its unlock floor; no duplicate; the roster of the floor before is a prefix (a kind never leaves).
+ * before its unlock floor (its minimum floor without unlock floors); no duplicate; the roster of the floor before is a
+ * prefix (a kind never leaves).
  */
-export function rosterBreaks(run: number, floor: number): string[] {
+export function rosterBreaks(run: number, floor: number, unlockFloors = true): string[] {
 	const out: string[] = [];
-	const roster = endlessRoster(run, floor);
+	const roster = endlessRoster(run, floor, unlockFloors);
 	const where = `run ${run} floor ${floor}`;
 	if (roster[0] !== ROSTER.always) out.push(`${where}: roster starts with '${roster[0]}'`);
 	let unlocked = 0;
-	for (const k of ENDLESS_ROOM_KINDS)
-		if (k.kind !== ROSTER.always && (k.fromFloor ?? ENDLESS_FIRST_FLOOR) <= floor) unlocked++;
+	for (let k = 0; k < ENDLESS_ROOM_KINDS.size(); k++)
+		if (ENDLESS_ROOM_KINDS[k].kind !== ROSTER.always && kindFloor(k, unlockFloors) <= floor) unlocked++;
 	const want = math.min(rosterTargetSize(floor, ENDLESS_ROOM_KINDS.size() - 1), unlocked);
 	if (roster.size() - 1 !== want) out.push(`${where}: ${roster.size() - 1} seeded kinds, want ${want}`);
 	for (let i = 0; i < roster.size(); i++) {
 		const kind = roster[i];
 		const k = kindIndex(kind);
 		if (k < 0) out.push(`${where}: roster kind '${kind}' is not a room kind`);
-		else if ((ENDLESS_ROOM_KINDS[k].fromFloor ?? ENDLESS_FIRST_FLOOR) > floor)
-			out.push(`${where}: roster '${kind}' before its floor`);
+		else if (kindFloor(k, unlockFloors) > floor) out.push(`${where}: roster '${kind}' before its floor`);
 		for (let j = 0; j < i; j++) if (roster[j] === kind) out.push(`${where}: roster '${kind}' twice`);
 	}
 	if (floor > ENDLESS_FIRST_FLOOR) {
-		const before = endlessRoster(run, floor - 1);
+		const before = endlessRoster(run, floor - 1, unlockFloors);
 		for (let i = 0; i < before.size(); i++)
 			if (roster[i] !== before[i]) out.push(`${where}: roster dropped or moved '${before[i]}'`);
 	}
 	return out;
 }
 
-/** Adds floor `row.floor` of run `run` (party `row.party`) to `row`. */
-export function censusFloor(row: PoolCensusRow, run: number): void {
+/**
+ * Adds floor `row.floor` of run `run` (party `row.party`, rule `row.unlockFloors`) to `row`; `dungeon` is that floor's
+ * Forge layout when the caller has it (generated otherwise).
+ */
+export function censusFloor(row: PoolCensusRow, run: number, dungeon?: Dungeon): void {
 	const floor = row.floor;
 	const params = endlessFloorParams(run, floor);
-	const d = generateDungeon(params);
+	const d = dungeon ?? generateDungeon(params);
 	const rooms = encounterRooms(d);
-	const roster = endlessRoster(run, floor);
-	const spawns = endlessRoomSpawns(d, floor, row.party, roster);
+	const roster = endlessRoster(run, floor, row.unlockFloors);
+	const spawns = endlessRoomSpawns(d, floor, row.party, roster, row.unlockFloors);
 	const affixes = assignAffixes(params.seed, floor, rooms, spawns);
 	const [cheapest, dearest] = costRange();
 	let rosterDearest = 0;
@@ -148,7 +167,7 @@ export function censusFloor(row: PoolCensusRow, run: number): void {
 	row.runs++;
 	for (let k = 0; k < ENDLESS_ROOM_KINDS.size(); k++)
 		if (roster.includes(ENDLESS_ROOM_KINDS[k].kind)) row.rosterRuns[k]++;
-	for (const b of rosterBreaks(run, floor)) row.breaks.push(b);
+	for (const b of rosterBreaks(run, floor, row.unlockFloors)) row.breaks.push(b);
 	for (const room of rooms) {
 		const budget = roomEncounterBudget(floor, room.type, row.party);
 		if (budget <= 0 || room.id === d.entrance || room.id === d.boss) continue;
@@ -171,8 +190,8 @@ export function censusFloor(row: PoolCensusRow, run: number): void {
 			roomCost += encounterCost(s.kind);
 			if (!roster.includes(s.kind))
 				row.breaks.push(`run ${run} floor ${floor} room ${room.id}: '${s.kind}' outside the roster`);
-			const from = ENDLESS_ROOM_KINDS[k].fromFloor;
-			if (from !== undefined && floor < from)
+			const from = kindFloor(k, row.unlockFloors);
+			if (floor < from)
 				row.breaks.push(`run ${run} floor ${floor} room ${room.id}: '${s.kind}' before floor ${from}`);
 			if (WIDE_BODY_KINDS.has(s.kind) && !isOpenTile(d, s))
 				row.breaks.push(`run ${run} floor ${floor} room ${room.id}: wide '${s.kind}' beside a wall`);
@@ -232,7 +251,7 @@ export function censusViolations(rows: ReadonlyArray<PoolCensusRow>, appears: bo
 		if (row.cost > row.budget) out.push(`floor ${row.floor}: cost ${row.cost} > budget ${row.budget}`);
 		for (let k = 0; k < ENDLESS_ROOM_KINDS.size(); k++) {
 			const kind = ENDLESS_ROOM_KINDS[k];
-			const from = kind.fromFloor ?? 1;
+			const from = kindFloor(k, row.unlockFloors);
 			if (row.floor < from && row.byKind[k] > 0) out.push(`floor ${row.floor}: ${row.byKind[k]} '${kind.kind}'`);
 			if (row.rosterRuns[k] === 0 && row.byKind[k] > 0)
 				out.push(`floor ${row.floor}: ${row.byKind[k]} '${kind.kind}' in no roster`);

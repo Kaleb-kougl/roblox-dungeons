@@ -21,15 +21,20 @@
  *
  * In a tutorial run (state.tutorial) a room's last regular pickup calls tutorialOnPelletsSwept (tutorial/tutorial.ts, a
  * leaf: no require cycle), which releases the pellet lesson's sweep lock (docs/PELLETS.md PL12).
+ *
+ * A Snatcher killed as its record's last living member (docs/NEW_ENEMIES_2.md NXD18) hands what it carried to its
+ * killer through the same pickup (pelletsCreditCarried, from the archetype's onDeath): the kill lands in stepCombat,
+ * before stepPellets and stepScore, so the clear's Sweep test in stepScore sees the lowered `left` that same tick.
  */
 import { cellKey, worldToGrid } from "shared/dungeon";
 import type { SimState } from "../state";
 import type { Vec3 } from "../combat/bullets";
 import { BulletKind, BulletPayload } from "../combat/patterns";
 import { partySize, playerAt } from "../party";
-import { scorePellet, scorePowerBullets } from "../score/score";
+import { scorePellet, scorePowerBullets, scoreRoomDown } from "../score/score";
 import { tutorialOnPelletsSwept } from "../tutorial/tutorial";
-import { PelletPhase } from "./pelletsData";
+import { pactHoldsRoom } from "../pacts/pactRooms";
+import { PELLET_STOLEN, PelletPhase } from "./pelletsData";
 import { NO_PELLET_RECORD, type PelletsState } from "./pellets";
 
 /** Scratch: the pellet indices around one player, ascending (at most 9). */
@@ -89,6 +94,54 @@ function anyLive(p: Readonly<PelletsState>): boolean {
 	return false;
 }
 
+/**
+ * Player `player`'s pickup of regular pellet `k` (never the power pellet) of live record `rec`: taken = 1, the room's
+ * left -= 1, scorePellet (pacts' Horde: a pellet of the horde record pays x2), events.eaten and, in a tutorial run, the
+ * room's last pellet releases the pellet lesson's sweep lock (docs/PELLETS.md PL12). stepPellets' pickups and the
+ * Snatcher's killed-last credit (pelletsCreditCarried) both go through it.
+ */
+function takeRegular(state: SimState, p: PelletsState, k: number, rec: number, player: number): void {
+	const room = p.rooms[rec];
+	p.taken[k] = 1;
+	room.left -= 1;
+	const points = scorePellet(state, rec);
+	p.events.eaten.push({ index: k, x: p.x[k], z: p.z[k], player, points });
+	if (room.left === 0 && state.tutorial !== undefined) tutorialOnPelletsSwept(state, rec);
+}
+
+/**
+ * True when score record `rec` clears this tick unless something revives it: no member present and alive
+ * (scoreRoomDown) and not pacts' horde record waiting for its second wave (pactHoldsRoom): stepScore's own clear test.
+ * False for -1 or without scoring.
+ */
+export function pelletRecordFalls(state: Readonly<SimState>, rec: number): boolean {
+	const r = rec >= 0 ? state.score?.rooms[rec] : undefined;
+	if (r === undefined || r.cleared !== 0) return false;
+	return scoreRoomDown(state, r) && !(state.pacts !== undefined && pactHoldsRoom(state, rec));
+}
+
+/**
+ * A Snatcher killed as its record's last living member (docs/NEW_ENEMIES_2.md NXD18; its onDeath, when
+ * pelletRecordFalls): every pellet of record `rec` it carried (taken = PELLET_STOLEN) is credited to `player` (the
+ * killer, ctx.playerIndex) as that player's pickup (takeRegular: taken = 1, left -= 1, the PELLETS points,
+ * events.eaten), in index order, so the clear's Sweep can still pay this tick (stepScore runs after the kill). Only
+ * while the record's pellets are LIVE. Returns how many. No-op (0) without state.pellets.
+ */
+export function pelletsCreditCarried(state: SimState, rec: number, player: number): number {
+	const p = state.pellets;
+	if (p === undefined || rec < 0) return 0;
+	const r = p.rooms[rec];
+	if (r === undefined || r.phase !== PelletPhase.LIVE) return 0;
+	let n = 0;
+	const last = r.first + r.span - 1;
+	for (let k = r.first; k <= last; k++) {
+		if (p.taken[k] !== PELLET_STOLEN || k === p.power) continue;
+		takeRegular(state, p, k, rec, player);
+		n += 1;
+	}
+	return n;
+}
+
 /** One tick of pickups (see the file comment). No-op without state.pellets or while no room is live. */
 export function stepPellets(state: SimState): void {
 	const p = state.pellets;
@@ -109,16 +162,12 @@ export function stepPellets(state: SimState): void {
 			const dx = pl.x - p.x[k];
 			const dz = pl.z - p.z[k];
 			if (dx * dx + dz * dz > reach2) continue;
-			p.taken[k] = 1;
 			if (k === p.power) {
+				p.taken[k] = 1;
 				pelletsPower(state, i);
 				continue;
 			}
-			room.left -= 1;
-			const points = scorePellet(state, rec); // pacts' Horde: a pellet of the horde record pays x2
-			p.events.eaten.push({ index: k, x: p.x[k], z: p.z[k], player: i, points });
-			// The tutorial's pellet lesson (docs/PELLETS.md PL12): the room's last pellet releases its sweep lock.
-			if (room.left === 0 && state.tutorial !== undefined) tutorialOnPelletsSwept(state, rec);
+			takeRegular(state, p, k, rec, i);
 		}
 	}
 }

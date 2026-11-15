@@ -29,6 +29,13 @@
  *     CHARGER_STUN, `spins` a Reaper entering REAPER_SPIN; `strikes` the tick's SimEvents.strikes (strike bullets
  *     fired, NE5). A frozen tick (a boon draft) changes no state, so no transition repeats.
  *
+ *   - The third endless set (docs/NEW_ENEMIES_2.md NX7): `blocks` / `guardBreaks` (SimEvents.shieldBlocks /
+ *     guardBreaks), `hookThrows` a Chainhook leaving its aim telegraph into CHAINHOOK_THROWN (the per-slot transitions
+ *     above; a throw dropped on its last aim tick goes back to keeping range: no sound), `hookLatches`
+ *     (SimEvents.hookLatched), `pyreLights` (SimEvents.pyresLanded: a brazier spawned), and the Snatcher's pellet
+ *     moments from the tick's PelletEvents: `snatches` (stolen), `swallows` (swallowed) and `pelletReturns` (returned
+ *     to the floor at its death; pellets credited to its killer, NXD18, are `eaten` and chomp instead).
+ *
  * Counts per frame (the mapper only asks > 0: several imps landing on one frame are one sound). Read-only on the sim,
  * no allocation per tick. Presentation only: nothing here is hashed or written back.
  */
@@ -38,6 +45,8 @@ import {
 	BOMBER_ATTACK_FUSE,
 	BOMBER_DETONATED,
 	BOMBER_FUSED,
+	CHAINHOOK,
+	CHAINHOOK_THROWN,
 	CHARGER,
 	CHARGER_CHARGE,
 	CHARGER_RECOVER,
@@ -78,6 +87,16 @@ export interface VariantCueSource {
 	readonly spins: number;
 	/** Strike bullets fired this frame (SimEvents.strikes). */
 	readonly strikes: number;
+	/** docs/NEW_ENEMIES_2.md NX7: shield blocks, guard breaks, hooks thrown and latched, braziers lit. */
+	readonly blocks: number;
+	readonly guardBreaks: number;
+	readonly hookThrows: number;
+	readonly hookLatches: number;
+	readonly pyreLights: number;
+	/** Pellets a Snatcher ate, swallows, and stolen pellets put back on the floor (PelletEvents). */
+	readonly snatches: number;
+	readonly swallows: number;
+	readonly pelletReturns: number;
 }
 
 /** Nothing happened (no run, or audibleVariantCues while quiet). */
@@ -93,6 +112,14 @@ export const NO_VARIANT_CUES: VariantCueSource = table.freeze({
 	stuns: 0,
 	spins: 0,
 	strikes: 0,
+	blocks: 0,
+	guardBreaks: 0,
+	hookThrows: 0,
+	hookLatches: 0,
+	pyreLights: 0,
+	snatches: 0,
+	swallows: 0,
+	pelletReturns: 0,
 });
 
 /** A slot's previous state when it held another actor (or none): no state at all. */
@@ -132,12 +159,21 @@ export class VariantCueEvents implements VariantCueSource {
 	stuns = 0;
 	spins = 0;
 	strikes = 0;
+	blocks = 0;
+	guardBreaks = 0;
+	hookThrows = 0;
+	hookLatches = 0;
+	pyreLights = 0;
+	snatches = 0;
+	swallows = 0;
+	pelletReturns = 0;
 	private readonly impKind = kindOf(IMP.id);
 	private readonly smallKind = kindOf(SLIME_SMALL_ID);
 	private readonly summonerKind = kindOf(SUMMONER.id);
 	private readonly bomberKind = kindOf(BOMBER.id);
 	private readonly chargerKind = kindOf(CHARGER.id);
 	private readonly reaperKind = kindOf(REAPER.id);
+	private readonly chainhookKind = kindOf(CHAINHOOK.id);
 	/** Per slot, the previous tick's actor id, aiState and liveness (the NE8 transitions). */
 	private readonly slotIds: number[] = [];
 	private readonly slotStates: number[] = [];
@@ -158,6 +194,14 @@ export class VariantCueEvents implements VariantCueSource {
 		this.stuns = 0;
 		this.spins = 0;
 		this.strikes = 0;
+		this.blocks = 0;
+		this.guardBreaks = 0;
+		this.hookThrows = 0;
+		this.hookLatches = 0;
+		this.pyreLights = 0;
+		this.snatches = 0;
+		this.swallows = 0;
+		this.pelletReturns = 0;
 	}
 
 	/** Every event of this frame (0: nothing happened). */
@@ -173,7 +217,15 @@ export class VariantCueEvents implements VariantCueSource {
 			this.charges +
 			this.stuns +
 			this.spins +
-			this.strikes
+			this.strikes +
+			this.blocks +
+			this.guardBreaks +
+			this.hookThrows +
+			this.hookLatches +
+			this.pyreLights +
+			this.snatches +
+			this.swallows +
+			this.pelletReturns
 		);
 	}
 
@@ -211,13 +263,26 @@ export class VariantCueEvents implements VariantCueSource {
 					if (st === CHARGER_STUN && prev !== CHARGER_STUN) this.stuns++;
 				} else if (a.kind === this.reaperKind && alive) {
 					if (st === REAPER_SPIN && prev !== REAPER_SPIN) this.spins++;
+				} else if (a.kind === this.chainhookKind && alive) {
+					if (st === CHAINHOOK_THROWN && prev === AiState.TELEGRAPH) this.hookThrows++;
 				}
 			}
 			this.slotIds[i] = a.kind !== NO_KIND ? a.id : 0;
 			this.slotStates[i] = a.aiState;
 			this.slotAlive[i] = alive;
 		}
-		this.strikes += state.events.strikes;
+		const e = state.events;
+		this.strikes += e.strikes;
+		this.blocks += e.shieldBlocks;
+		this.guardBreaks += e.guardBreaks;
+		this.hookLatches += e.hookLatched;
+		this.pyreLights += e.pyresLanded;
+		const pe = state.pellets?.events;
+		if (pe !== undefined) {
+			this.snatches += pe.stolen.size();
+			this.swallows += pe.swallowed.size();
+			this.pelletReturns += pe.returned.size();
+		}
 	}
 
 	/** Adds the tick just stepped (call after every step / stepParty). */

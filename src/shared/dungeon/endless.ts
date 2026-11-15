@@ -121,6 +121,7 @@ import {
 	ENDLESS_SOLID_PILLARS,
 	FLOOR_SEED_MUL,
 	PARTY_BUDGET_MULTIPLIERS,
+	ROOM_KIND_MIN_FLOOR,
 	ROSTER,
 	WIDE_BODY_KINDS,
 	type EndlessRoomKind,
@@ -200,8 +201,8 @@ export function rosterSeed(runSeed: number): number {
 /**
  * The order in which the seeded kinds of run `runSeed` join its roster: the room kinds other than ROSTER.always
  * (ENDLESS_ROOM_KINDS order) after one Fisher-Yates shuffle from new EncounterRng(rosterSeed(runSeed)): for i from
- * the last index down to 1, j = rng.int(0, i), swap i and j (one draw per step: 9 draws for the 10 seeded kinds since
- * docs/NEW_ENEMIES.md NE7, which reshuffled every run's order). Pure.
+ * the last index down to 1, j = rng.int(0, i), swap i and j (one draw per step: 13 draws for the 14 seeded kinds since
+ * docs/NEW_ENEMIES_2.md NX6, which reshuffled every run's order again; 9 for 10 at docs/NEW_ENEMIES.md NE7). Pure.
  */
 export function rosterOrder(runSeed: number): string[] {
 	const order: string[] = [];
@@ -228,6 +229,14 @@ function kindUnlockFloor(kind: string): number {
 }
 
 /**
+ * The first floor room kind `kind` may appear on in every world (ROOM_KIND_MIN_FLOOR, docs/NEW_ENEMIES_2.md NXD4;
+ * ENDLESS_FIRST_FLOOR without an entry), unlock floors on or off.
+ */
+export function roomKindMinFloor(kind: string): number {
+	return ROOM_KIND_MIN_FLOOR.get(kind) ?? ENDLESS_FIRST_FLOOR;
+}
+
+/**
  * The seeded roster of run `runSeed` on `floor` (docs/DAILY.md DS1, DSD2 / DSD9): the room kinds its rooms may buy,
  * in join order. ROSTER.always (swarmers) first, always in; then, floor by floor from ENDLESS_FIRST_FLOOR, while the
  * roster holds fewer seeded kinds than rosterTargetSize(f), the first kind of rosterOrder(runSeed) that is not in yet
@@ -239,6 +248,10 @@ function kindUnlockFloor(kind: string): number {
  * `unlockFloors` false (every endless world since docs/DAILY.md DSD18: shared/run rosterUnlockFloors): the unlock
  * floors are ignored, so each join is simply the next kind of rosterOrder(runSeed) and floor 1's seeded kind may be
  * any of them; the roster never waits. True (the default, specs and tools only): exactly the rule above.
+ *
+ * Either way a kind joins only on a floor at or past its roomKindMinFloor (docs/NEW_ENEMIES_2.md NXD4, NX0 correction
+ * 10): the scan passes over the Chainhook on floor 1 and takes the next kind of the order, so floor 1 always holds a
+ * seeded kind; the Chainhook joins on the first later floor whose join reaches it (floor 2 when it was skipped).
  */
 export function endlessRoster(runSeed: number, floor: number, unlockFloors = true): string[] {
 	const order = rosterOrder(runSeed);
@@ -249,7 +262,11 @@ export function endlessRoster(runSeed: number, floor: number, unlockFloors = tru
 		while (roster.size() - 1 < target) {
 			let joined: string | undefined;
 			for (const kind of order) {
-				if (!roster.includes(kind) && (!unlockFloors || kindUnlockFloor(kind) <= f)) {
+				if (
+					!roster.includes(kind) &&
+					roomKindMinFloor(kind) <= f &&
+					(!unlockFloors || kindUnlockFloor(kind) <= f)
+				) {
 					joined = kind;
 					break;
 				}
@@ -265,7 +282,8 @@ export function endlessRoster(runSeed: number, floor: number, unlockFloors = tru
  * True when a room on `floor` that has already bought `bought` (count per kind; `boughtTotal` enemies in all) may buy
  * kind `k`: from its unlock floor (EndlessRoomKind.fromFloor), below its room maximum (maxPerRoom), not as the room's
  * first buy when it needsCompany (docs/NEW_ENEMIES.md NED9) and, with a `roster` (endlessRoster), in it. Draws nothing.
- * `unlockFloors` false (every endless world): the unlock floor is not checked (the roster alone gates the kind).
+ * `unlockFloors` false (every endless world): the unlock floor is not checked (the roster alone gates the kind). The
+ * kind's roomKindMinFloor (docs/NEW_ENEMIES_2.md NXD4) is checked in every case.
  */
 function roomKindOpen(
 	k: EndlessRoomKind,
@@ -276,6 +294,7 @@ function roomKindOpen(
 	unlockFloors: boolean,
 ): boolean {
 	if (unlockFloors && k.fromFloor !== undefined && floor < k.fromFloor) return false;
+	if (floor < roomKindMinFloor(k.kind)) return false;
 	if (k.needsCompany === true && boughtTotal < 1) return false;
 	if (roster !== undefined && !roster.includes(k.kind)) return false;
 	return k.maxPerRoom === undefined || (bought.get(k.kind) ?? 0) < k.maxPerRoom;

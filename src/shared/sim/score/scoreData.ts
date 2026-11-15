@@ -36,6 +36,13 @@ export const KILL_POINTS: ReadonlyMap<string, number> = new Map<string, number>(
 	["stormcaller", 180],
 	["warbanner", 160],
 	["reaper", 200],
+	// Roblox port: the third set (docs/NEW_ENEMIES_2.md NX1). The Snatcher's returned pellets pay when picked up, not
+	// here; the Pyre-keeper's brazier (`pyre`, a runtime child) pays its own small row.
+	["bulwark", 200],
+	["chainhook", 200],
+	["snatcher", 150],
+	["pyrekeeper", 180],
+	["pyre", 30],
 ]);
 /** Kill points of an archetype id not in the table (test archetypes). */
 export const DEFAULT_KILL_POINTS = 50;

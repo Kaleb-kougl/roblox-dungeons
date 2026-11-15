@@ -12,6 +12,8 @@ import { EMPTY_INPUT, type InputFrame } from "./input";
 import { clearEvents, type SimState } from "./state";
 import { killPlayerState, playerTraits, stepPlayer } from "./player";
 import { stepCombat } from "./combat/combat";
+import { clearGuardEvents } from "./combat/shield";
+import { clearHookEvents } from "./combat/hookEvents";
 import { simWorldConfig, stepEndless, type EndlessConfig } from "./endless";
 import type { EncounterConfig } from "./combat/actors/encounter";
 import { clearScoreEvents, stepScore, type ScoringConfig } from "./score/score";
@@ -325,6 +327,8 @@ export function step(
 	soloPrev[0] = state.player.prevButtons;
 	soloInputs[0] = input;
 	clearEvents(state.events);
+	clearGuardEvents(state.combat.guardEvents);
+	clearHookEvents(state.combat.hookEvents);
 	const score = state.score;
 	if (score !== undefined) clearScoreEvents(score);
 	if (state.breakables !== undefined) clearBreakableEvents(state.breakables);
@@ -424,6 +428,8 @@ export function stepParty(
 	const world = simWorldConfig(state, config);
 	for (let i = 0; i < n; i++) partyPrev[i] = playerAt(state, i).prevButtons;
 	clearEvents(state.events);
+	clearGuardEvents(state.combat.guardEvents);
+	clearHookEvents(state.combat.hookEvents);
 	const score = state.score;
 	if (score !== undefined) clearScoreEvents(score);
 	if (state.breakables !== undefined) clearBreakableEvents(state.breakables);

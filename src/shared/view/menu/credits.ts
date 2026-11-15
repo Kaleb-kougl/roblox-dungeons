@@ -108,6 +108,8 @@ export const CREDITS: ReadonlyArray<CreditEntry> = [
 	},
 	{ section: "audio", work: "open chest SFX", author: "Oiboo (OpenGameArt)", license: "CC0" },
 	{ section: "audio", work: "Breaking Rock", author: "themightyglider (OpenGameArt)", license: "CC0" },
+	{ section: "audio", work: "Chain winch sounds", author: "bart (OpenGameArt)", license: "CC0" },
+	{ section: "audio", work: "80 CC0 creature SFX", author: "rubberduck (OpenGameArt)", license: "CC0" },
 	{
 		section: "audio",
 		work: "8-Bit Sound Effects Library",

@@ -20,7 +20,7 @@
 
 import { Button, EMPTY_INPUT, type InputFrame } from "../input";
 import { rngInt, rngNext } from "../rng";
-import { damagePlayer } from "../player";
+import { damagePlayer, isPlayerInvulnerable, movePlayer } from "../player";
 import type { PlayerState, SimEvents, SimState } from "../state";
 import type { SimConfig } from "../step";
 import type { CombatState } from "./combat";
@@ -37,6 +37,7 @@ import type { WeaponSlotState, WeaponsState } from "./weapons/types";
 import { nearestLivingPlayer, playerAt, weaponsAt } from "../party";
 import { PERCENT } from "../progression/progressionData";
 import { WARBANNER, warbannerAuraMask } from "./actors/archetypes/warbanner";
+import { chainhookHolderOf } from "./actors/archetypes/chainhook";
 
 export class SimCtx {
 	/** The live state (mutable). */
@@ -93,6 +94,19 @@ export class SimCtx {
 	 * from state.builds.pins (carrying records only; a pure function of hashed state), bind() empties it.
 	 */
 	readonly pinMask = new Map<ActorState, number>();
+	/**
+	 * The Bulwark's guard list (docs/NEW_ENEMIES_2.md NX2, ../shield.ts): the actor slots of every guarding Bulwark no pin
+	 * holds. Transient, never hashed: combat.ts fills it right after the actor phase (shield.ts guardSlots, a pure
+	 * function of the hashed pool), bind() empties it, so a ctx that never steps combat sees no shield.
+	 */
+	readonly guards: number[] = [];
+	/**
+	 * The actor slots of the Bulwarks whose guard broke this tick (docs/NEW_ENEMIES_2.md review fixes, ../shield.ts
+	 * shieldStopsSlam: a Siege slam's shockwave from in front spares them for the rest of the tick, so a carrying Siege
+	 * arrow that broke the guard cannot hurt it with its own slam: NXD19). Transient, never hashed: shield.ts guardSlots
+	 * empties it with the guard list, breakGuard appends, bind() empties it.
+	 */
+	readonly guardsBroken: number[] = [];
 
 	bind(state: SimState, config: Readonly<SimConfig>, input: Readonly<InputFrame>): this {
 		this.state = state;
@@ -111,6 +125,8 @@ export class SimCtx {
 		this.killCarry = 0;
 		this.auraMask.clear();
 		this.pinMask.clear();
+		this.guards.clear();
+		this.guardsBroken.clear();
 		return this;
 	}
 
@@ -242,6 +258,29 @@ export class SimCtx {
 		const landed = damagePlayer(this.state, halfHearts, playerAt(this.state, i), i);
 		if (landed) this.state.events.lastHitSource = source;
 		return landed;
+	}
+
+	/**
+	 * True when a Chainhook's hook may latch player `i` (docs/NEW_ENEMIES_2.md NX3): damagePlayer's i-frame / dead /
+	 * post-hit test (isPlayerInvulnerable) passes, the player is not rolling at all (rollTicks: the roll's tail after its
+	 * i-frames dodges a hook too), no living Chainhook already drags them, and developer god mode is off (a god-mode
+	 * player is never latched; read only, dev.blockedHits untouched: the hook deals no damage). Changes nothing.
+	 */
+	playerHittable(i: number): boolean {
+		const state = this.state;
+		const p = playerAt(state, i);
+		if (isPlayerInvulnerable(state, p) || p.rollTicks > 0) return false;
+		if (state.dev !== undefined && state.dev.invulnerable !== 0) return false;
+		return chainhookHolderOf(state, i) < 0;
+	}
+
+	/**
+	 * Moves player `i` by (dx, dz) through the floor's world config, exactly like a walk (movePlayer: the move resolver,
+	 * wall slide, intact pieces, sub-steps), so walls, pillars and pieces stop it. The Chainhook's drag only (NX3, from
+	 * its own step in stepActors, after stepPlayer); never hurts.
+	 */
+	dragPlayer(i: number, dx: number, dz: number): void {
+		movePlayer(this.state, dx, dz, this.config, playerAt(this.state, i));
 	}
 
 	// --- Bullets ------------------------------------------------------------------------------------

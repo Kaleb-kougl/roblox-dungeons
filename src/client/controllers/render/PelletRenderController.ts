@@ -3,6 +3,7 @@ import { Janitor } from "@rbxts/janitor";
 import { RunService, Workspace } from "@rbxts/services";
 import { DEV_MONO_FONT, createKvBillboardGui } from "client/ui";
 import { RUN_ATTRIBUTES } from "shared/play";
+import { STUDS_PER_TILE } from "shared/config";
 import { PelletPhase, SIM_HZ, partySize, type SimState } from "shared/sim";
 import { PELLET_KINDS, type Pellet, type PelletKind, type ThemePack } from "shared/theme";
 import {
@@ -71,6 +72,10 @@ interface PelletView {
 	readonly lifted: CFrame;
 	/** Placed at its spot since it was attached (false: the next apply moves it whatever its scale). */
 	placed: boolean;
+	/** The fly-home offset last placed (docs/NEW_ENEMIES_2.md NX7: a pellet a dead Snatcher put back), sim units / tiles. */
+	offX: number;
+	offZ: number;
+	hop: number;
 }
 
 /**
@@ -274,7 +279,7 @@ export class PelletRenderController implements OnStart {
 		}
 		if (body === undefined) body = this.build(kind);
 		const lifted = new CFrame(studsX(x), floorStudsY() + PELLETS_VIEW.liftStuds, studsZ(z));
-		const view: PelletView = { body, lifted, placed: false };
+		const view: PelletView = { body, lifted, placed: false, offX: 0, offZ: 0, hop: 0 };
 		this.views.set(i, view);
 		if (body.art !== undefined) body.art.label.Visible = true;
 		return view;
@@ -363,9 +368,21 @@ export class PelletRenderController implements OnStart {
 			const art = body.art;
 			if (art !== undefined) art.part.Size = new Vector3(art.size.X * s, art.size.Y, art.size.Z * s);
 		}
+		// NX7: a pellet flying home from a dead Snatcher moves every frame of its flight, then once more onto its cell.
+		if (look.offX !== view.offX || look.offZ !== view.offZ || look.hopTiles !== view.hop) {
+			view.offX = look.offX;
+			view.offZ = look.offZ;
+			view.hop = look.hopTiles;
+			moved = true;
+		}
 		if (!moved) return;
 		view.placed = true;
-		this.place(body, view.lifted);
+		const flying = view.offX !== 0 || view.offZ !== 0 || view.hop !== 0;
+		const S = STUDS_PER_TILE;
+		this.place(
+			body,
+			flying ? view.lifted.add(new Vector3(view.offX * S, view.hop * S, view.offZ * S)) : view.lifted,
+		);
 	}
 
 	/** Moves the body to `origin` (the model's pieces at their offsets scaled with it; the art at its floor frame). */

@@ -2,7 +2,8 @@
  * First sightings (docs/ENEMY_VARIANTS.md EV12, EVD10): the ids an account can have "seen", once each, stored in the
  * onboarding document's optional `seen` list (doc.ts) and named by the client's first-sighting toast. A sighting id is a
  * new archetype's id (`imp`, `slime`, `summoner`; a `slime.small` counts as `slime`; docs/NEW_ENEMIES.md's `bomber`,
- * `charger`, `stormcaller`, `warbanner`, `reaper`; docs/FORTUNE.md's Goldling `golden`) or `affix.<id>` for an elite affix
+ * `charger`, `stormcaller`, `warbanner`, `reaper`; docs/FORTUNE.md's Goldling `golden`; docs/NEW_ENEMIES_2.md's
+ * `bulwark`, `chainhook`, `snatcher`, `pyrekeeper`) or `affix.<id>` for an elite affix
  * (`affix.hulking`, ...), or `pellet.power` for the power pellet (docs/PELLETS.md PL14), or `golden.rumour` for the first
  * Goldling rumour heard (docs/GOLDLING_RUMOURS.md GR7), or `secret.crack` for the first knock on a secret room's
  * crack (docs/SECRET_ROOMS.md SRD5). Its toast line is the theme string `bestiary.<sighting id>` (shared/theme
@@ -23,6 +24,11 @@ export const SIGHTING_IDS: ReadonlyArray<string> = [
 	"reaper",
 	// docs/FORTUNE.md FO6: the Goldling (an archetype: with the others, before the affixes, like NED13's five)
 	"golden",
+	// docs/NEW_ENEMIES_2.md NX1 (NXD15): the third endless set (archetypes: before the affixes; the brazier `pyre` has none)
+	"bulwark",
+	"chainhook",
+	"snatcher",
+	"pyrekeeper",
 	"affix.hulking",
 	"affix.swift",
 	"affix.shielded",

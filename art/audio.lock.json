@@ -17,9 +17,29 @@
 			"bytes": 6110
 		},
 		{
+			"path": "kenney-impact-sounds/Audio/impactMetal_light_001.ogg",
+			"sha256": "fba69c467ddd85da7b1d82e259f936b876d9ba6a3d6f1b24bdd10468e46bfe08",
+			"bytes": 6967
+		},
+		{
+			"path": "kenney-impact-sounds/Audio/impactMetal_light_003.ogg",
+			"sha256": "92d5db6bfc672d9dc1b4f390b2900504f013187fa36335472554fafefa9050b1",
+			"bytes": 9023
+		},
+		{
+			"path": "kenney-impact-sounds/Audio/impactMetal_light_004.ogg",
+			"sha256": "9b1c35820fba507081261f19ab5f461f69a5e2627a7d91acdb73ca3cfc997979",
+			"bytes": 6675
+		},
+		{
 			"path": "kenney-impact-sounds/Audio/impactPlank_medium_000.ogg",
 			"sha256": "8403cd7a043f0391574c88c55dd205743725b5363d2407f6de145f201690b68f",
 			"bytes": 12016
+		},
+		{
+			"path": "kenney-impact-sounds/Audio/impactPlate_heavy_000.ogg",
+			"sha256": "112d4f93ddcc370b410630f971c0f5d991856102da9c76bc5c5540d388e75aaa",
+			"bytes": 10032
 		},
 		{
 			"path": "kenney-impact-sounds/Audio/impactPunch_heavy_000.ogg",
@@ -575,6 +595,21 @@
 			"path": "oga-breaking-rock/rock_break.ogg",
 			"sha256": "b645f35d21194e7855dd4a5405b1e8e6bec070731b92df6abcb202676b8e9f2e",
 			"bytes": 8852
+		},
+		{
+			"path": "oga-chain-winch/winch - Marker #5.wav",
+			"sha256": "081144e8801e1bf9516813bcdc6bda488338b9042fd71bf2f3f75c5581baa667",
+			"bytes": 645012
+		},
+		{
+			"path": "oga-creature-sfx/burble_02.ogg",
+			"sha256": "7cc51b6cf28a5d0ac13f34e54cb18ebb8d2b66aa144281d321d0af826f56a85b",
+			"bytes": 43100
+		},
+		{
+			"path": "oga-creature-sfx/eat_03.ogg",
+			"sha256": "3e7425cdf2cba7fe9c42e8306dc303a2c4f9a4f02358ee19329b734bf06591dd",
+			"bytes": 12484
 		},
 		{
 			"path": "oga-fire-loop/qubodupFireLoop.ogg",

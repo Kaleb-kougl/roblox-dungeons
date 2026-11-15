@@ -6,7 +6,8 @@
  * stepCombat order (fixed; part of the determinism contract):
  *   1. Ember: events.emberUsed -> enemyBullets.clear() (every enemy bullet)
  *   2. actors, in slot order (stepActors): AI, movement, firing, runtime spawns (stepped from the next tick on); then
- *      (elite affixes, only with state.affixes) the affix phase (stepAffixes: shield refills, Vengeful rings)
+ *      (elite affixes, only with state.affixes) the affix phase (stepAffixes: shield refills, Vengeful rings); then the
+ *      Bulwark's guard list (./shield.ts guardSlots into ctx.guards, docs/NEW_ENEMIES_2.md NX2; empty without one)
  *   3. the stress emitter
  *   4. the player's weapons (stepWeapons: cooldowns, SWAP, trigger -> fire / melee sweep)
  *   5. step both simulations by SIM_DT (./bullets.ts, the ported r3f-projectiles pool); M2 Hourglass (endless runs):
@@ -15,9 +16,12 @@
  *      expired arrows and drags each pinned actor onto its arrow (nothing spawns a player bullet between 5 and 6)
  *   6. collisions, one forEachActive walk per simulation:
  *        enemy bullets:  wall (consume) -> [breakables: an intact piece's cell (consume, damage it)] -> [scoring:
- *                        graze flags] -> player circle -> ctx.hurtPlayer; consumed ONLY if the hit landed
+ *                        graze flags] -> player circle -> ctx.hurtPlayer; consumed ONLY if the hit landed (a HOOK,
+ *                        docs/NEW_ENEMIES_2.md NX3: chainhookStrike instead, consumed on a hittable player, a latch
+ *                        only on its thrower's target)
  *        player bullets: wall (consume) -> [breakables: an intact piece's cell: its payload damage; consumed unless
- *                        piercing AND it broke the piece] -> first live actor in range, slot order (ctx.damageActor,
+ *                        piercing AND it broke the piece] -> [a guarding Bulwark's shield (consume; ./shield.ts)] ->
+ *                        first live actor in range, slot order (ctx.damageActor,
  *                        consume); piercing ones pass through actors (piercingBulletHit). M2 Sharpened (endless
  *                        runs): the payload damage x 1.25 when it hits (playerHitDamage)
  *   6b. builds (only with state.builds, docs/BUILDS.md BU3 / BU5): sim/builds procs.ts stepBuilds: the evolutions'
@@ -101,6 +105,9 @@ import {
 } from "./actors/actors";
 import { archetypeIndex, sealArchetypes } from "./actors/registry";
 import { NO_KIND, type ActorState } from "./actors/types";
+import { cloneGuardEvents, createGuardEvents, guardSlots, shieldStopsBullet, type GuardEvents } from "./shield";
+import { cloneHookEvents, createHookEvents, type HookEvents } from "./hookEvents";
+import { chainhookStrike } from "./actors/archetypes/chainhook";
 import {
 	cloneWeaponsState,
 	createWeaponsState,
@@ -160,6 +167,17 @@ export interface CombatState {
 	enemySpawned: number;
 	playerSpawned: number;
 	dropped: number;
+
+	/**
+	 * The Bulwark's blocks and guard breaks this tick (docs/NEW_ENEMIES_2.md NX2, ./shield.ts): an unhashed feed for the
+	 * view, cleared by step / stepParty. Not in writeCombatHash.
+	 */
+	guardEvents: GuardEvents;
+	/**
+	 * The Chainhook's latches and drag ends this tick (docs/NEW_ENEMIES_2.md NX3, ./hookEvents.ts): an unhashed feed for
+	 * the view, cleared by step / stepParty. Not in writeCombatHash.
+	 */
+	hookEvents: HookEvents;
 }
 
 interface Sims {
@@ -224,6 +242,8 @@ export function createCombatState(
 		enemySpawned: 0,
 		playerSpawned: 0,
 		dropped: 0,
+		guardEvents: createGuardEvents(),
+		hookEvents: createHookEvents(),
 	};
 }
 
@@ -269,6 +289,8 @@ export function cloneCombatState(c: Readonly<CombatState>): CombatState {
 		playerBullets: sims.playerBullets,
 		actors: c.actors.map(cloneActor),
 		weapons: cloneWeaponsState(c.weapons),
+		guardEvents: cloneGuardEvents(c.guardEvents),
+		hookEvents: cloneHookEvents(c.hookEvents),
 	};
 }
 
@@ -334,6 +356,8 @@ let buildsOn = false;
  * (sim/builds ballista.ts ballistaActive): heavy arrows burst, pin, plow and slam in the player bullet walk.
  */
 let ballistaOn = false;
+/** Some Bulwark guards this tick (ctx.guards is not empty: docs/NEW_ENEMIES_2.md NX2, ./shield.ts). */
+let guardsOn = false;
 /**
  * Builds (docs/BUILDS.md BU5, Phantom Step): per player, enemy bullets inside their hit circle are erased this tick
  * (sim/builds evolutions.ts phantomStepOn: Slippery III, rolling with i-frames). phantomAny: any of them.
@@ -384,7 +408,7 @@ function bastionRollThrough(state: SimState, i: number, payload: number, k: numb
 	return marked;
 }
 
-function enemyBulletHit(i: number, pos: Readonly<Vec3>, payload: number): boolean {
+function enemyBulletHit(i: number, pos: Readonly<Vec3>, payload: number, emitter: number): boolean {
 	if (hitBlocked !== undefined && hitBlocked(pos.x, pos.z)) return true;
 	const kind = BulletPayload.get(payload, "kind");
 	// Goo (docs/ENEMY_VARIANTS.md EVD14) and strikes (docs/NEW_ENEMIES.md NE5) ignore breakables and never graze.
@@ -407,6 +431,9 @@ function enemyBulletHit(i: number, pos: Readonly<Vec3>, payload: number): boolea
 		phantomStepErased(ctx.state, SOLO_PLAYER, goo, pos.x, pos.z);
 		return true;
 	}
+	// The Chainhook's hook (docs/NEW_ENEMIES_2.md NX3): latches instead of hurting (consumed), or passes a player who is
+	// not hittable.
+	if (kind === BulletKind.HOOK) return chainhookStrike(ctx, emitter, SOLO_PLAYER);
 	// Consumed only if the hit landed: i-frames, post-hit invulnerability, death and 0-damage bullets pass through.
 	const landed = ctx.hurtPlayer(BulletPayload.get(payload, "damage"), BulletPayload.get(payload, "source") - 1);
 	return landed || (strike && strikeHoldSpent(i, payload));
@@ -416,7 +443,7 @@ function enemyBulletHit(i: number, pos: Readonly<Vec3>, payload: number): boolea
  * Co-op enemyBulletHit: graze against the nearest living player (with THEIR graze radius: M2 Daredevil is personal),
  * then a hit on the first player (index order).
  */
-function enemyBulletHitParty(i: number, pos: Readonly<Vec3>, payload: number): boolean {
+function enemyBulletHitParty(i: number, pos: Readonly<Vec3>, payload: number, emitter: number): boolean {
 	if (hitBlocked !== undefined && hitBlocked(pos.x, pos.z)) return true;
 	const kind = BulletPayload.get(payload, "kind");
 	// Goo (docs/ENEMY_VARIANTS.md EVD14) and strikes (docs/NEW_ENEMIES.md NE5) ignore breakables and never graze.
@@ -457,6 +484,11 @@ function enemyBulletHitParty(i: number, pos: Readonly<Vec3>, payload: number): b
 		if (phantomAny && phantom[k] && !strike) {
 			phantomStepErased(state, k, goo, pos.x, pos.z);
 			return true;
+		}
+		// The Chainhook's hook (NX3): consumed on the first hittable player it overlaps (a latch only on its target).
+		if (kind === BulletKind.HOOK) {
+			if (chainhookStrike(ctx, emitter, k)) return true;
+			continue;
 		}
 		if (ctx.hurtPlayerAt(k, BulletPayload.get(payload, "damage"), BulletPayload.get(payload, "source") - 1)) {
 			return true;
@@ -588,6 +620,13 @@ function playerBulletHit(i: number, pos: Readonly<Vec3>, payload: number): boole
 		buildsOnHeavyEnd(ctx, i, pos, payload, true);
 		return true;
 	}
+	// The Bulwark's shield (docs/NEW_ENEMIES_2.md NX2, ./shield.ts): a guarding front stops it before any actor (the
+	// cover arc, NXD6; a piercing arrow stops, a Siege arrow never pins); a heavy arrow breaks the guard. Ballista: the
+	// shield stops a heavy arrow like a wall (its back fan; Siege Bolt: the carried actor slams on it).
+	if (guardsOn && shieldStopsBullet(ctx, i, pos, payload)) {
+		if (ballistaOn) buildsOnHeavyEnd(ctx, i, pos, payload, true);
+		return true;
+	}
 	if (piercing) return piercingBulletHit(i, pos, payload);
 	for (const a of ctx.state.combat.actors) {
 		if (a.kind === NO_KIND || a.alive === 0) continue;
@@ -646,6 +685,8 @@ export function stepCombat(
 	// 2-4. Act.
 	stepActors(ctx);
 	if (state.affixes !== undefined) stepAffixes(ctx);
+	// The Bulwark's guard list (docs/NEW_ENEMIES_2.md NX2): from the pool as the actors left it, for phases 4-6.
+	guardSlots(ctx, ctx.guards);
 	if (c.stressTarget > 0) stepStress(c);
 	if (party) stepPartyWeapons(state, inputs);
 	else stepWeapons(ctx);
@@ -663,6 +704,7 @@ export function stepCombat(
 	grazeOn = state.score !== undefined;
 	grazeR2 = runMods(state, SOLO_PLAYER).grazeR2;
 	buildsOn = state.builds !== undefined;
+	guardsOn = ctx.guards.size() > 0;
 	if (buildsOn) {
 		computePhantom(state);
 		computeBastion(state);
@@ -680,6 +722,7 @@ export function stepCombat(
 	hitBlocked = undefined;
 	hitPieces = undefined;
 	grazeOn = false;
+	guardsOn = false;
 	if (buildsOn) {
 		ctx.procGen = 0;
 		ctx.procCause = KillCause.NONE;

@@ -11,7 +11,13 @@ import { sortedKeys } from "../../util";
 import { fxColorReport, validateManifest } from "../../validate";
 import { VALE_ASSET_IDS } from "./assetIds";
 import { VALE_BULLET_SOURCE, valeBulletAssets, type ValeBulletSource } from "./bullets";
-import { VALE_BULLET_FX_LAYOUTS, VALE_BULLET_LAYOUTS, VALE_BULLET_SHEET, type ValeBulletLayout } from "./bulletLayout";
+import {
+	VALE_BULLET_FX_LAYOUTS,
+	VALE_BULLET_LAYOUTS,
+	VALE_BULLET_OWN_SHEETS,
+	VALE_BULLET_SHEET,
+	type ValeBulletLayout,
+} from "./bulletLayout";
 import { VALE_FX } from "./fx";
 import { VALE_GOO_SHEET } from "./gooLayout";
 import { VALE_HAZARD_SHEET } from "./hazardLayout";
@@ -20,6 +26,8 @@ import { VALE_MANIFEST, buildValeManifest } from "./manifest";
 const quiet = () => undefined;
 /** A fake upload (test vector) for the bullet atlas. */
 const SHEET_ID = "rbxassetid://7300";
+/** A fake upload (test vector) for a bullet sheet of its own (docs/NEW_ENEMIES_2.md NX8). */
+const OWN_ID = "rbxassetid://7301";
 const PPT = 29.6;
 
 const layout = (
@@ -181,7 +189,9 @@ describe("vale bullets (docs/PROJECTILE_ART.md PA6)", () => {
 	});
 
 	it("the generated layouts, once uploaded, pass the validator and draw (empty until PA2 generates them)", () => {
-		const m = buildValeManifest({ ...VALE_ASSET_IDS, [VALE_BULLET_SHEET.file]: SHEET_ID });
+		const own: Record<string, string> = {};
+		for (const file of sortedKeys(VALE_BULLET_OWN_SHEETS)) own[file] = OWN_ID;
+		const m = buildValeManifest({ ...VALE_ASSET_IDS, [VALE_BULLET_SHEET.file]: SHEET_ID, ...own });
 		expect(validateManifest(m, { packId: "vale" })).toEqual([]);
 		// the real art's colours: every mapped bullet passes bulletArtReport
 		const seen = new Set<string>();
@@ -246,6 +256,62 @@ describe("vale bullets (docs/PROJECTILE_ART.md PA6)", () => {
 				(c % perRow) * l.frameW,
 				math.floor(c / perRow) * l.frameH,
 			]);
+		}
+	});
+	it("a layout with `sheet` draws over its own sheet once that has an ID, independently of bullets.png (NX8)", () => {
+		// the generated flame and hook (docs/NEW_ENEMIES_2.md NX8) sit in bullets-2.png, so bullets.png never repacked
+		const ownIds = ["bullet.enemy.flame", "bullet.enemy.hook"];
+		for (const id of ownIds) {
+			const l = VALE_BULLET_LAYOUTS[id];
+			expect([id, l !== undefined && l.sheet !== undefined]).toEqual([id, true]);
+			expect([id, VALE_BULLET_OWN_SHEETS[l.sheet!] !== undefined]).toEqual([id, true]);
+		}
+		for (const id of sortedKeys(VALE_BULLET_LAYOUTS)) {
+			if (!ownIds.includes(id)) expect([id, VALE_BULLET_LAYOUTS[id].sheet]).toEqual([id, undefined]);
+		}
+		const file = VALE_BULLET_LAYOUTS["bullet.enemy.flame"].sheet!;
+		const sheet = VALE_BULLET_OWN_SHEETS[file];
+		// bullets.png alone (the uploaded bullets-2.png left out): the two stay placeholders, every other mapped bullet draws
+		const withoutOwn: Record<string, string> = {};
+		for (const f of sortedKeys(VALE_ASSET_IDS)) {
+			if (f !== file) withoutOwn[f] = VALE_ASSET_IDS[f];
+		}
+		const main = buildValeManifest({ ...withoutOwn, [VALE_BULLET_SHEET.file]: SHEET_ID });
+		for (const id of ownIds) expect([id, main.assets[id]]).toEqual([id, PLACEHOLDER_MANIFEST.assets[id]]);
+		// the own sheet alone: only the two draw, over it
+		const without: Record<string, string> = {};
+		for (const f of sortedKeys(VALE_ASSET_IDS)) {
+			if (f !== VALE_BULLET_SHEET.file) without[f] = VALE_ASSET_IDS[f];
+		}
+		const m = buildValeManifest({ ...without, [file]: OWN_ID });
+		expect(validateManifest(m, { packId: "vale" })).toEqual([]);
+		for (const id of BULLET_IDS) {
+			const drawn = ownIds.includes(id);
+			if (!drawn && VALE_BULLET_LAYOUTS[id] !== undefined)
+				expect([id, m.assets[id]]).toEqual([id, PLACEHOLDER_MANIFEST.assets[id]]);
+		}
+		for (const e of bulletArtReport(m)) {
+			expect([e.id, e.check, e.against, e.surface, e.ok]).toEqual([e.id, e.check, e.against, e.surface, true]);
+		}
+		const pack = new ThemePack(m, { warn: quiet });
+		for (const id of ownIds) {
+			const l = VALE_BULLET_LAYOUTS[id];
+			const set = m.assets[id] as SpriteSetAsset;
+			expect([id, set.kind, set.sheets]).toEqual([id, "sprites", [{ assetId: OWN_ID, w: sheet.w, h: sheet.h }]]);
+			const b = pack.bullet(id)!;
+			const perRow = math.floor(sheet.w / l.frameW);
+			for (let f = 0; f < l.frames; f++) {
+				const r = b.frame(f);
+				const c = l.start + f;
+				expect([id, f, r.image, r.offset.X, r.offset.Y]).toEqual([
+					id,
+					f,
+					OWN_ID,
+					(c % perRow) * l.frameW,
+					math.floor(c / perRow) * l.frameH,
+				]);
+				expect([id, f, r.offset.Y + l.frameH <= sheet.h]).toEqual([id, f, true]);
+			}
 		}
 	});
 });

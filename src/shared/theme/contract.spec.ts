@@ -141,13 +141,13 @@ describe("sprite contract", () => {
 		}
 	});
 
-	it("v2: names the optional sprite-set animations: class attack.1..3; enemy attack.2 (ENEMY_VARIANTS EV10), death.2 / move.back (NEW_ENEMIES NE8); boss attack.2..4 / intro / taunt (BRAMBLE_ART BR2, BOSS_DEMONLORD D2)", () => {
+	it("v2: names the optional sprite-set animations: class attack.1..3; enemy attack.2 (ENEMY_VARIANTS EV10), death.2 / move.back (NEW_ENEMIES NE8), block (NEW_ENEMIES_2 NX7); boss attack.2..4 / intro / taunt (BRAMBLE_ART BR2, BOSS_DEMONLORD D2)", () => {
 		expect(optionalBaseAnimations(CHARACTER)).toEqual(["attack.1", "attack.2", "attack.3"]);
-		expect(optionalBaseAnimations(ENEMY)).toEqual(["attack.2", "death.2", "move.back"]);
+		expect(optionalBaseAnimations(ENEMY)).toEqual(["attack.2", "death.2", "move.back", "block"]);
 		expect(optionalBaseAnimations(BOSS)).toEqual(["attack.2", "attack.3", "attack.4", "intro", "taunt"]);
 		expect([CHARACTER.optionalAnimations, ENEMY.optionalAnimations, BOSS.optionalAnimations]).toEqual([
 			CLASS_OPTIONAL_ANIMATIONS,
-			["attack.2", "death.2", "move.back"],
+			["attack.2", "death.2", "move.back", "block"],
 			BOSS_OPTIONAL_ANIMATIONS,
 		]);
 		for (const slot of SLOTS) {
@@ -195,12 +195,17 @@ describe("required IDs and strings", () => {
 		// (sfx.codex.new). + docs/SECRET_ROOMS.md SR10: 3 port audio events (sfx.secret.knock / .open, sfx.jingle.secret);
 		// its crack / rubble art and dust effect are optional, so not here. + docs/SILVER.md SV7: 4 port audio events
 		// (sfx.silver.gain / .crate, sfx.shop.buy / .deny); the icon and the coin effect are optional.
+		// + docs/NEW_ENEMIES_2.md NX1: 5 enemy archetypes, 2 bullet visuals (bullet.enemy.hook / .flame), 8 port audio
+		// events.
 		const assetsBefore =
 			60 + 1 + 2 + 2 + 37 + 5 + 4 + 2 + 1 + 5 + 2 + 4 + 9 + 2 + 1 + 5 + 1 + 6 + 3 + 2 + 2 + 4 + 3 + 1 + 8 + 1 + 2;
 		const codexSounds = 1;
 		const secretSounds = 3;
 		const silverSounds = 4;
-		expect(REQUIRED_ASSET_IDS.size()).toBe(assetsBefore + 5 + 5 + 2 + codexSounds + secretSounds + silverSounds);
+		const newEnemies2 = 5 + 2 + 8;
+		expect(REQUIRED_ASSET_IDS.size()).toBe(
+			assetsBefore + 5 + 5 + 2 + codexSounds + secretSounds + silverSounds + newEnemies2,
+		);
 		expect(AUDIO_EVENTS.size()).toBe(20);
 		expect(new Set(REQUIRED_ASSET_IDS).size()).toBe(REQUIRED_ASSET_IDS.size());
 		for (const id of REQUIRED_ASSET_IDS) {
@@ -239,32 +244,19 @@ describe("required IDs and strings", () => {
 		// Codex's secrets sub-header, kind line and description (CODEX_STRING_KEYS, 57)
 		// + docs/SILVER.md SV7: SILVER_STRING_KEYS
 		// + docs/SILVER_SHOP.md SH4: SILVER_SHOP_STRING_KEYS
+		// + docs/NEW_ENEMIES_2.md NX1: 5 enemy.<id>.name, 4 bestiary.<id> (BESTIARY_STRING_KEYS)
+		const newEnemies2Strings = 5 + 4;
+		const earlier = 28 + 1 + 1 + 4 + 16 + 1 + 19 + 1 + 1 + 3 + 18 + 17 + 5 + 45 + 7 + 11 + 2 + 1;
 		expect(REQUIRED_STRING_KEYS.size()).toBe(
 			before +
-				28 +
-				1 +
-				1 +
-				4 +
-				16 +
-				1 +
-				19 +
-				1 +
-				1 +
-				3 +
-				18 +
-				17 +
-				5 +
-				45 +
-				7 +
-				11 +
-				2 +
-				1 +
+				earlier +
 				54 +
 				5 +
 				1 +
 				3 +
 				SILVER_STRING_KEYS.size() +
-				SILVER_SHOP_STRING_KEYS.size(),
+				SILVER_SHOP_STRING_KEYS.size() +
+				newEnemies2Strings,
 		);
 		expect(new Set(REQUIRED_STRING_KEYS).size()).toBe(REQUIRED_STRING_KEYS.size());
 		expect(BIOMES.map((b) => b.forgeTheme)).toEqual(["ancient", "molten", "frost", "grim", "verdant"]);

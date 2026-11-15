@@ -20,7 +20,11 @@ import {
 	BlinkWatch,
 	DETONATION_VIEW,
 	DetonationWatch,
+	NEW_ENEMY_2_BURST_LOOKS,
 	RENDER_ORDER,
+	newEnemy2Bursts,
+	type NewEnemy2BurstAt,
+	type SnatcherPelletSource,
 	degToRad,
 	floorStudsY,
 	studsX,
@@ -46,6 +50,7 @@ import {
 	particleColorRole,
 	type ChipBurst,
 	type NearMissFrame,
+	type NewEnemy2FrameSource,
 	type ParticleWriter,
 } from "shared/view/fx";
 import { PELLETS_VIEW, PelletFlyIns, type PelletPowerTaken } from "shared/view/pellets";
@@ -172,6 +177,12 @@ export class ParticleController implements OnStart, ParticleWriter {
 	private secretDustColor = PAL_SPARK;
 	private secretPuffShape: ChipBurst | undefined;
 	private secretBurstShape: ChipBurst | undefined;
+	/**
+	 * The third endless set's bursts (docs/NEW_ENEMIES_2.md NX7; shared/view newEnemy2Bursts from the run view's
+	 * `newEnemies2` and `pellets` events): per NewEnemy2Burst kind, its palette index (NEW_ENEMY_2_BURST_LOOKS).
+	 */
+	private readonly newEnemy2Colors = new Array<number>();
+	private readonly newEnemy2Scratch = new Array<NewEnemy2BurstAt>();
 	private readonly moveParts = new Array<BasePart>();
 	private readonly moveCFrames = new Array<CFrame>();
 	private folder: Folder | undefined;
@@ -245,6 +256,11 @@ export class ParticleController implements OnStart, ParticleWriter {
 		this.palette.push(pack.color(SECRET_VIEW.dustLook.role));
 		this.secretPuffShape = chipBurstOf(SECRET_VIEW.knock.puff);
 		this.secretBurstShape = chipBurstOf(SECRET_VIEW.burst.chips);
+		// The third endless set's bursts (docs/NEW_ENEMIES_2.md NX7), one palette entry per burst kind, appended last.
+		for (const look of NEW_ENEMY_2_BURST_LOOKS) {
+			this.newEnemy2Colors.push(this.palette.size());
+			this.palette.push(pack.color(look.role));
+		}
 
 		this.nearMiss.onFrame((frame, settings) => this.nearMissFrame(frame, settings));
 		const [impOk, impKind] = pcall(() => archetypeIndex(IMP.id));
@@ -502,6 +518,7 @@ export class ParticleController implements OnStart, ParticleWriter {
 				: math.min(math.max(rawDt, 0), FX_VIEW.maxParticleDt) * this.sim.hitstop.timeScale();
 		this.blinkPuffs(ctx.run.state, settings);
 		this.detonationBursts(ctx.run.state, settings);
+		this.newEnemy2Frame(ctx.run.newEnemies2, ctx.run.pellets, ctx.run.state.tick, settings);
 		this.system.update(dt, settings);
 		this.flyIns.update(dt);
 		this.used = 0;
@@ -571,6 +588,27 @@ export class ParticleController implements OnStart, ParticleWriter {
 				burstSeed(d.actorId, state.tick, DETONATION_VIEW.seedSalt),
 				settings,
 			);
+		}
+	}
+
+	/**
+	 * The third endless set's bursts this frame (docs/NEW_ENEMIES_2.md NX7): block sparks and guard breaks in
+	 * enemyGuard, chain snaps in enemyOutline, gulps and swallow fizzles in pellet.normal, pyre puffs in the flame tint.
+	 */
+	private newEnemy2Frame(
+		events: NewEnemy2FrameSource,
+		pellets: SnatcherPelletSource,
+		tick: number,
+		settings: Readonly<JuiceSettings>,
+	): void {
+		const out = this.newEnemy2Scratch;
+		const n = newEnemy2Bursts(events, pellets, out);
+		for (let i = 0; i < n; i++) {
+			const b = out[i];
+			const look = NEW_ENEMY_2_BURST_LOOKS[b.kind];
+			const color = this.newEnemy2Colors[b.kind];
+			if (look === undefined || color === undefined) continue;
+			this.system.chips(b.x, b.z, color, look.shape, burstSeed(i, tick, look.salt), settings);
 		}
 	}
 

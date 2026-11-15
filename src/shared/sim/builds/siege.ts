@@ -73,6 +73,7 @@ import {
 import { isHeavyArrow } from "./duos";
 import { buildPlayerLeft, isEvolved } from "./hooks";
 import { secretsSlamAt } from "../secrets/open";
+import { shieldStopsSlam } from "../combat/shield";
 
 const SLAM_SHORT2 = SIEGE_SLAM_SHORT * SIEGE_SLAM_SHORT;
 const SHOCK_RADIUS2 = SIEGE_SHOCK_RADIUS * SIEGE_SHOCK_RADIUS;
@@ -261,7 +262,8 @@ function slam(ctx: SimCtx, s: BuildsState, pin: Readonly<BuildPin>, a: ActorStat
 		const dx = b.x - x;
 		const dz = b.z - z;
 		if (dx * dx + dz * dz > SHOCK_RADIUS2) continue;
-		ctx.damageActor(b, shock);
+		// docs/NEW_ENEMIES_2.md NX2 (NXD7): a guarding Bulwark facing the slam takes nothing; its guard breaks.
+		if (!shieldStopsSlam(ctx, b, x, z)) ctx.damageActor(b, shock);
 		struck++;
 	}
 	ctx.procGen = gen;

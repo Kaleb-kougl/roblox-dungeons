@@ -464,6 +464,26 @@ docs/BOOKSHELVES.md). **Changes made:** rendered to 2D sprites
 - Raw file: `art/vendor/oga-breaking-rock/` (gitignored).
 - License: CC0, public domain: no credit required. Credited anyway (Credits screen).
 
+## "Chain winch sounds" (OpenGameArt sound effect, CC0)
+
+- Author: bart (Bart Kelsey). Source: https://opengameart.org/content/chain-winch-sounds (`winch.zip`, 9 WAVs).
+- Used for: the candidates for `sfx.enemy.hooklatch` and an alternate for `sfx.enemy.hook` (docs/NEW_ENEMIES_2.md NX10;
+  owner's source pick 2026-11-14, to be confirmed at the audition). **Changes made:** a short slice trimmed and faded,
+  downmixed to mono, loudness-normalised and encoded to OGG by `scripts/audio/build-audio.js`; only the built OGG is
+  uploaded to Roblox as an audio asset.
+- Raw files: `art/vendor/oga-chain-winch/` (gitignored).
+- License: CC0, public domain: no credit required ("Credit appreciated"). Credited (Credits screen).
+
+## "80 CC0 creature SFX" (OpenGameArt sound effects, CC0)
+
+- Author: rubberduck. Source: https://opengameart.org/content/80-cc0-creature-sfx (`80-CC0-creature-SFX.zip`, 80 OGGs).
+- Used for: the candidates for `sfx.enemy.snatch` (the `eat_*` clips) and `sfx.enemy.swallow` (`burble_*` / `burp_*`)
+  (docs/NEW_ENEMIES_2.md NX10; owner's source pick 2026-11-14, to be confirmed at the audition). The clips are
+  silence-trimmed, downmixed to mono, loudness-normalised and encoded to OGG by `scripts/audio/build-audio.js`; only the
+  built OGGs are uploaded to Roblox as audio assets.
+- Raw files: `art/vendor/oga-creature-sfx/` (gitignored).
+- License: CC0, public domain: no credit required. Credited anyway (Credits screen).
+
 ## 8-Bit Sound Effects Library (audio) by Little Robot Sound Factory (CC-BY 3.0) - ATTRIBUTION REQUIRED
 
 - Author: Little Robot Sound Factory (www.littlerobotsoundfactory.com). Source:

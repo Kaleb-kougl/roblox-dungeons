@@ -51,6 +51,7 @@ import {
 	NO_KIND,
 	PLAYER_BULLET_CAPACITY,
 	PROC_INELIGIBLE_ARCHETYPES,
+	PYRE,
 	SIM_HZ,
 	SPAWN_SAFE_RADIUS,
 	SWARMER,
@@ -913,14 +914,19 @@ export interface DearRoom {
 /**
  * The dearest room (summed encounter cost of its planned spawns) of floor `floor` over solo run seeds
  * `firstRun`..`lastRun`; ties: more distinct kinds, then the lower run, then the lower room id. Planned affixes kept.
+ * With `withKind`, only rooms holding that kind take part (docs/NEW_ENEMIES_2.md NX6: the dearest Pyre-keeper room);
+ * undefined when none does.
  */
-export function dearestRoom(floor: number, firstRun: number, lastRun: number): DearRoom {
+export function dearestRoom(floor: number, firstRun: number, lastRun: number): DearRoom;
+export function dearestRoom(floor: number, firstRun: number, lastRun: number, withKind: string): DearRoom | undefined;
+export function dearestRoom(floor: number, firstRun: number, lastRun: number, withKind?: string): DearRoom | undefined {
 	let best: { run: number; room: number; cost: number; distinct: number; spawns: TuneSpawn[] } | undefined;
 	for (let run = firstRun; run <= lastRun; run++) {
 		const world = buildEndlessRunConfig(run, 1).endlessFloor(floor);
 		for (let id = 0; id < world.roomSpawns.size(); id++) {
 			const planned = world.roomSpawns[id];
 			if (planned.size() === 0) continue;
+			if (withKind !== undefined && !planned.some((sp) => sp.kind === withKind)) continue;
 			let cost = 0;
 			for (const sp of planned) cost += encounterCost(sp.kind);
 			const distinct = distinctKinds(planned);
@@ -932,7 +938,10 @@ export function dearestRoom(floor: number, firstRun: number, lastRun: number): D
 			best = { run, room: id, cost, distinct, spawns };
 		}
 	}
-	if (best === undefined) error(`dearestRoom: no room on floor ${floor}`, 0);
+	if (best === undefined) {
+		if (withKind !== undefined) return undefined;
+		error(`dearestRoom: no room on floor ${floor}`, 0);
+	}
 	const kinds = kindsOf(best.spawns);
 	return {
 		run: best.run,
@@ -953,6 +962,8 @@ export interface BulletPeak {
 	readonly dropped: number;
 	readonly kills: number;
 	readonly cleared: number;
+	/** The most living pyres (docs/NEW_ENEMIES_2.md's Pyre-keeper braziers) at once. */
+	readonly pyres: number;
 }
 
 /**
@@ -977,6 +988,8 @@ export function enemyBulletPeak(
 	let sum = 0;
 	let kills = 0;
 	let cleared = -1;
+	let pyres = 0;
+	const pyreKind = archetypeIndex(PYRE.id);
 	const ticks = seconds * SIM_HZ;
 	for (let k = 0; k < ticks; k++) {
 		const p = s.player;
@@ -1011,7 +1024,10 @@ export function enemyBulletPeak(
 		const n = s.combat.enemyBullets.activeCount;
 		peak = math.max(peak, n);
 		sum += n;
+		let lit = 0;
+		for (const a of s.combat.actors) if (a.kind === pyreKind && a.alive !== 0) lit++;
+		pyres = math.max(pyres, lit);
 		if (cleared < 0 && !anyLiving(s)) cleared = (k + 1) / SIM_HZ;
 	}
-	return { peak, mean: sum / ticks, dropped: s.combat.dropped - droppedBefore, kills, cleared };
+	return { peak, mean: sum / ticks, dropped: s.combat.dropped - droppedBefore, kills, cleared, pyres };
 }
