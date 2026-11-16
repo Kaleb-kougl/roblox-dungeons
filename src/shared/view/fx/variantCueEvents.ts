@@ -27,7 +27,8 @@
  *     BOMBER_DETONATED: a fizzle is the death sound only), `charges` a Charger leaving its lane telegraph into the
  *     charge (or straight into a stun / recover when the first step is blocked), `stuns` a Charger entering
  *     CHARGER_STUN, `spins` a Reaper entering REAPER_SPIN; `strikes` the tick's SimEvents.strikes (strike bullets
- *     fired, NE5). A frozen tick (a boon draft) changes no state, so no transition repeats.
+ *     fired, NE5) less its SimEvents.shells (docs/NEW_ENEMIES_3.md NT2: a Mortar's shell is a STRIKE but never the
+ *     Stormcaller's lightning). A frozen tick (a boon draft) changes no state, so no transition repeats.
  *
  *   - The third endless set (docs/NEW_ENEMIES_2.md NX7): `blocks` / `guardBreaks` (SimEvents.shieldBlocks /
  *     guardBreaks), `hookThrows` a Chainhook leaving its aim telegraph into CHAINHOOK_THROWN (the per-slot transitions
@@ -85,7 +86,7 @@ export interface VariantCueSource {
 	readonly charges: number;
 	readonly stuns: number;
 	readonly spins: number;
-	/** Strike bullets fired this frame (SimEvents.strikes). */
+	/** Lightning strike bullets fired this frame (SimEvents.strikes less SimEvents.shells: a Mortar's shell is not one). */
 	readonly strikes: number;
 	/** docs/NEW_ENEMIES_2.md NX7: shield blocks, guard breaks, hooks thrown and latched, braziers lit. */
 	readonly blocks: number;
@@ -272,7 +273,8 @@ export class VariantCueEvents implements VariantCueSource {
 			this.slotAlive[i] = alive;
 		}
 		const e = state.events;
-		this.strikes += e.strikes;
+		// docs/NEW_ENEMIES_3.md NT2: a Mortar's shell is a STRIKE too (in e.strikes); only lightning plays the strike cue.
+		this.strikes += e.strikes - e.shells;
 		this.blocks += e.shieldBlocks;
 		this.guardBreaks += e.guardBreaks;
 		this.hookLatches += e.hookLatched;

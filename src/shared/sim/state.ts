@@ -179,6 +179,13 @@ export interface SimEvents {
 	hookLatched: number;
 	/** Chainhook drags broken this tick (a roll, lost sight, its death, breakDamage, the player's death; NX3). */
 	hookBroken: number;
+
+	// --- New enemies 3 (docs/NEW_ENEMIES_3.md; always 0 without a Mortar). Not in SIM_EVENT_FIELDS.
+	/**
+	 * Mortar shells (a BulletKind.STRIKE fired by a Mortar, living or its corpse, NT2) landed this tick; also counted in
+	 * `strikes`, so the view plays the Stormcaller's lightning only for `strikes - shells` (NT0 finding 3).
+	 */
+	shells: number;
 }
 
 /**
@@ -230,9 +237,12 @@ export const NEW_ENEMY_2_EVENT_FIELDS = [
 	"hookBroken",
 ] as const;
 
+/** The third new enemies' event fields (Roblox port, docs/NEW_ENEMIES_3.md), in declaration order. All default to 0. */
+export const NEW_ENEMY_3_EVENT_FIELDS = ["shells"] as const;
+
 /**
  * Every SimEvents field: SIM_EVENT_FIELDS, then ENDLESS_EVENT_FIELDS, then BREAKABLE_EVENT_FIELDS, then
- * ENEMY_VARIANT_EVENT_FIELDS, then NEW_ENEMY_EVENT_FIELDS, then NEW_ENEMY_2_EVENT_FIELDS.
+ * ENEMY_VARIANT_EVENT_FIELDS, then NEW_ENEMY_EVENT_FIELDS, then NEW_ENEMY_2_EVENT_FIELDS, then NEW_ENEMY_3_EVENT_FIELDS.
  */
 export const ALL_EVENT_FIELDS: ReadonlyArray<keyof SimEvents> = [
 	...SIM_EVENT_FIELDS,
@@ -241,6 +251,7 @@ export const ALL_EVENT_FIELDS: ReadonlyArray<keyof SimEvents> = [
 	...ENEMY_VARIANT_EVENT_FIELDS,
 	...NEW_ENEMY_EVENT_FIELDS,
 	...NEW_ENEMY_2_EVENT_FIELDS,
+	...NEW_ENEMY_3_EVENT_FIELDS,
 ];
 
 /** Default value of an event field: 0, except lastHitSource (-1). */
@@ -288,6 +299,7 @@ function emptyEvents(): SimEvents {
 		pyresWithered: 0,
 		hookLatched: 0,
 		hookBroken: 0,
+		shells: 0,
 	};
 }
 

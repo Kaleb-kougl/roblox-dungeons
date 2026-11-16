@@ -238,12 +238,17 @@ describe("spawn and engage (NT1 stubs)", () => {
 		return w.s;
 	}
 
-	it("all engage, live and stand where they spawned facing the player (no behaviour yet)", () => {
+	it("all engage and live; the stubs stand where they spawned facing the player (the Mortar is NT2's: mortar.spec)", () => {
 		const s = run();
 		let n = 0;
+		const mortar = archetypeIndex(MORTAR.id);
 		for (const a of s.combat.actors) {
 			if (a.kind < FIRST) continue;
 			n++;
+			if (a.kind === mortar) {
+				expect([a.alive, a.v[0]]).toEqual([1, 1]);
+				continue;
+			}
 			expect([a.alive, a.v[0], a.x === a.v[1] && a.z === a.v[2]]).toEqual([1, 1, true]); // alive, engaged, home
 			const len = math.sqrt(a.x * a.x + a.z * a.z);
 			expect(math.abs(a.faceX + a.x / len) < 1e-9 && math.abs(a.faceZ + a.z / len) < 1e-9).toBe(true);
@@ -251,10 +256,9 @@ describe("spawn and engage (NT1 stubs)", () => {
 		expect(n).toBe(4);
 	});
 
-	it("no kind draws yet (the first cooldowns come with NT2-NT4), and the run replays bit for bit", () => {
+	it("the stubs draw nothing yet (NT3-NT4; the Mortar's draws are mortar.spec's), and the run replays bit for bit", () => {
 		const w = world();
 		const before = w.s.rngState;
-		spawn(w, MORTAR.id, -6, 0);
 		spawn(w, MENDER.id, 0, 6);
 		spawn(w, JACKAL.id, 0, -5);
 		for (let t = 0; t < 120; t++) step(w.s, EMPTY_INPUT, w.config);

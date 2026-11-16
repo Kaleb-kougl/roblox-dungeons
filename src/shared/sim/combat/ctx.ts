@@ -370,6 +370,14 @@ export class SimCtx {
 	lineOfSight(x0: number, z0: number, x1: number, z1: number): boolean {
 		return lineOfSight(this.config.isBulletBlocked, x0, z0, x1, z1);
 	}
+	/**
+	 * The room id of the FLOOR cell under (x, z) (config.roomIdAt: the exact cell rule, a doorway or corridor cell is
+	 * -1), or -1 without the callback (docs/NEW_ENEMIES_3.md NT2).
+	 */
+	roomIdAt(x: number, z: number): number {
+		const f = this.config.roomIdAt;
+		return f !== undefined ? f(x, z) : -1;
+	}
 	/** The encounter room containing (x, z), or undefined. */
 	roomAt(x: number, z: number): EncounterRoom | undefined {
 		return roomAt(this.encounter, x, z);

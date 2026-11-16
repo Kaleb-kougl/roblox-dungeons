@@ -11,6 +11,7 @@ import {
 	IMP_ATTACK_BLINK,
 	IMP_ATTACK_FAN,
 	IMP_LAND_AIM_TICKS,
+	MORTAR,
 	NO_KIND,
 	SLIME_ID,
 	SLIME_SMALL_ID,
@@ -19,6 +20,8 @@ import {
 	archetypeAt,
 	archetypeIndex,
 	createSimState,
+	partySize,
+	playerAt,
 	step,
 	type ActorSpawn,
 	type ActorState,
@@ -174,6 +177,40 @@ describe("VariantCueEvents: affix events", () => {
 		const ev = new VariantCueEvents();
 		ev.collect(s);
 		expect(ev.count()).toBe(0);
+	});
+});
+
+describe("VariantCueEvents: strikes are lightning only (docs/NEW_ENEMIES_3.md NT2)", () => {
+	it("counts SimEvents.strikes less SimEvents.shells", () => {
+		const s = createSimState(1, 0, 0, openConfig([]));
+		const ev = new VariantCueEvents();
+		s.events.strikes = 3;
+		s.events.shells = 1;
+		ev.collect(s);
+		expect(ev.strikes).toBe(2);
+		ev.reset();
+		s.events.strikes = 1;
+		ev.collect(s);
+		expect([ev.strikes, ev.count()]).toEqual([0, 0]);
+	});
+
+	it("a real Mortar's shells never count as lightning", () => {
+		const config = openConfig([{ kind: MORTAR.id, x: 0, z: 7 }]);
+		const s = createSimState(5, 0, 0, config);
+		for (let i = 0; i < partySize(s); i++) playerAt(s, i).hurtTicks = 1e6;
+		const ev = new VariantCueEvents();
+		let shells = 0;
+		let counted = 0;
+		for (let t = 0; t < 900; t++) {
+			ev.reset();
+			step(s, EMPTY_INPUT, config);
+			ev.collect(s);
+			expect(s.events.strikes).toBe(s.events.shells);
+			shells += s.events.shells;
+			counted += ev.strikes;
+		}
+		expect(shells).toBeGreaterThanOrEqual(2);
+		expect(counted).toBe(0);
 	});
 });
 

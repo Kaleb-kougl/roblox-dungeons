@@ -295,7 +295,8 @@ export function freeActor(ctx: SimCtx, a: ActorState): void {
 /**
  * The actor phase of stepCombat: every present actor in slot order, except those spawned this tick.
  * prev = position; flash counts down; alive -> def.step; dead -> deadTicks += 1, then def.stepDead or the corpse timer (elite affixes: a Vengeful corpse whose ring is pending
- * is held past it, affixHoldsCorpse; never through def.stepDead, which marks a reviver).
+ * is held past it, affixHoldsCorpse; never through def.stepDead, which marks a reviver). Without stepDead, an optional
+ * def.stepCorpse runs first and may hold the slot past the timer too (docs/NEW_ENEMIES_3.md NT2: a dead Mortar's shell).
  * A `while` loop: archetypes may append slots mid-loop (runtime spawns), and the bound must be re-read like JS does
  * (the new slots are skipped anyway: spawnTick === tick).
  */
@@ -327,6 +328,8 @@ export function stepActors(ctx: SimCtx): void {
 			a.deadTicks++;
 			if (def.stepDead !== undefined) def.stepDead(ctx, a);
 			else if (
+				// docs/NEW_ENEMIES_3.md NT2 (NTD5): a corpse hook that may hold the slot (the Mortar's shell in flight).
+				!(def.stepCorpse !== undefined && def.stepCorpse(ctx, a)) &&
 				a.deadTicks >= (def.data.corpseTicks ?? CORPSE_TICKS) &&
 				!(affixes && affixHoldsCorpse(ctx.state, slot, a))
 			)

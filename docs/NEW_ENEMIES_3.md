@@ -37,7 +37,9 @@ lands.
 
 ## Status (2026-11-16)
 
-**NT0 and NT1 done** (see "NT0 findings": four small Design changes, no decision changed; "NT1 skeleton (as built)").
+**NT0, NT1 and NT2 done** (see "NT0 findings": four small Design changes, no decision changed; "NT1 skeleton (as
+built)"; "NT2 Mortar (as built)": the Mortar's behaviour, `ArchetypeDef.stepCorpse`, `SimConfig.roomIdAt`,
+`events.shells`).
 Read on `main` @ `80f57769`. NTD1-NTD14 taken by the owner on
 2026-11-16 (see Decisions): every one as recommended except **NTD3** (the Mortar fires only while its target is in the
 Mortar's own room), **NTD9** (a guard that stops a Jackal's lunge counts as a parry) and **NTD10** (the last Jackal of a
@@ -135,6 +137,62 @@ faithful readings of the taken decisions and the Risks' own mitigation; flag any
   planted dim green counts only its own errors (the heal is near it too).
 - `contract.luau` / `validate.luau` / `sprites.luau` top-level locals unchanged: 189 / 192 / 195 lines (189 / 197 / 195
   names), counted on out/.
+
+## NT2 Mortar (as built, 2026-11-16)
+
+Gameplay (sim), no hash group, no bullet kind, no theme change; the Mortar is still outside the room pool (NT6), so no
+endless replay moves yet. Files: `sim/combat/actors/archetypes/mortar.ts` (the behaviour and two exported tests,
+`mortarRoomHolds` and `mortarPointOpen`), `actors/types.ts` + `actors/actors.ts` (`stepCorpse`), `sim/step.ts` +
+`combat/ctx.ts` (`SimConfig.roomIdAt`, `SimCtx.roomIdAt`), `run/endless.ts` (`endlessFloorWorld` sets it to the world's
+own `roomIdAt`, one closure shared with `EndlessRunFloor.roomIdAt`), `sim/state.ts` (`events.shells`,
+`NEW_ENEMY_3_EVENT_FIELDS`, appended last to `ALL_EVENT_FIELDS`), `view/fx/variantCueEvents.ts` (the lightning cue counts
+`strikes - shells`). Specs: `sim/mortar.spec.ts` (21 cases), `view/fx/variantCueEvents.spec.ts` (+2), and
+`sim/newEnemies3.spec.ts`'s stub cases now leave the Mortar out.
+
+- **`stepCorpse`.** In `stepActors`' dead branch, when `stepDead` is absent: `stepCorpse` runs first and a true holds the
+  slot this tick; otherwise the corpse timer and the Vengeful hold (`affixHoldsCorpse`) decide exactly as before. No
+  other archetype defines it (a spec walks the registry), so every other corpse is byte for byte as before.
+- **Room test (NTD3).** The room is `ctx.roomIdAt(home)`; the target (and the Mortar's own position) is inside iff its
+  cell's id matches, so a doorway and every corridor cell are outside. Two fallbacks the plan left open: a home outside
+  every room by `roomIdAt` (never on a real floor: homes are room spawn tiles) or no callback uses the encounter
+  rectangle holding the home; with no such rectangle either (a hand-built arena without rooms) everything counts as
+  inside, so the specs' open arenas fire.
+- **The release re-checks the room.** The lob starts only with the target in the room (and 3-10 away), and the release
+  checks the room again: a target that stepped out during the 0.35 s draw is not fired at (no ring, no shell). The
+  cooldown drawn at the draw's start stays spent (the Stormcaller's rule: one draw per lob whatever the lob does).
+  Range is not re-checked at the release (the point is fixed there, as planned).
+- **Staying in its room.** A keep-range move whose end leaves the room is undone and the strafe side flips (the
+  Stormcaller's wall flip); a Mortar standing outside its room (only a Siege pin can drag it there) walks home on the
+  steer mover before anything else. A far target pulls it to the room's edge, never past it.
+- **Keep range without sight.** The Stormcaller's approach / back-off / strafe, minus the sight branch: no
+  walk-to-find-a-line, no `lostTicks` leash (`lostTicks` stays 0, unused). It still engages like every room enemy
+  (`stepCalm`: sight within aggro range, an alert, a hit).
+- **Too close.** Within `tooClose` 3: a straight back-off (no strafe) at its walk speed, no lob.
+- **The flight.** `v[MORTAR_FLIGHT_TICKS]` = 60 at the release and `aiTicks` mirrors it (the `ring` hint fills on
+  `aiTicks`). While the shell flies the Mortar keeps range (no new lob) and **neither leashes nor goes calm** until the
+  shell has landed, so a drawn ring always gets its shell. The cooldown counts down while keeping range and in flight,
+  not during the draw.
+- **The impact.** `ctx.fireEnemy` fires the shell (STRIKE, `events.strikes` as before) and `events.shells` adds what it
+  fired; then the shrapnel ring from the point, oriented along the Mortar's facing at that tick (a corpse's last
+  facing). The point is not re-tested at the impact (fixed and floor at the release; pieces only ever break). Collision
+  order: on the impact tick a standing target is hit by ONE of the seven bullets, which may be a shrapnel bullet rather
+  than the strike (the i-frames let the rest pass): still one `HIT_NORMAL` (NT11: a shell is a hit for UNTOUCHED either
+  way).
+- **The corpse (NTD5).** `stepCorpse` counts the flight down on the corpse (no draw) and lands the shell on its planned
+  tick, holding the slot until then; afterwards the corpse timer frees it (on the landing tick if the timer already ran
+  out). A Mortar killed during the draw has no flight: an ordinary corpse.
+- **`events.shells`.** Unhashed, cleared per tick (`clearEvents` / `ALL_EVENT_FIELDS`; LiveRun's frame totals add it).
+  `events.strikes` still counts a shell, so the enemy-shoot cue's skip (`gooSpawned + strikes`) is unchanged; the
+  shrapnel ring still plays `sfx.enemy.shoot` on the impact tick (NT7 decides). The lightning cue
+  (`VariantCueEvents.strikes`) is now `strikes - shells` (spec'd with a real Mortar: 0 lightning over its shells);
+  NT7 adds the shell's own cue and every strike reader's look by payload source.
+- **Draws.** Exactly one in `init` and one per lob at the draw's start (spec'd tick by tick over 2,400 ticks); none for
+  the landing point, the fallback, a call-off or the corpse.
+- **Byte for byte without a Mortar.** Run green on the change: `sim/determinism`, `enemies.determinism`,
+  `combat.determinism`, `encounterRun`, `runFull`, `runBoss`, `runBullets`, `runPlayer`, `runPlayerDungeon`, `actors`,
+  `hash`, `step`, `smoke`, `affixes/affixes`, `run/affixes`, `run/endless`, `run/validate`, `run/slice`, `run/tutorial`,
+  `tutorial/*`, `sim/tutorial`, `dungeon/roomPool.lock`, `stormcaller`, `bomber`, `charger`, `summoner`, `slime`,
+  `dummy`, `pyrekeeper`, `party`, `enemyVariants`, `newEnemies`, `newEnemies2`, `view/audio/*`, `play/liveRun*`.
 
 ## Player experience
 
