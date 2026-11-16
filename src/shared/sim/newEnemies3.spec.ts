@@ -190,7 +190,9 @@ describe("data blocks (the plan's Design tables)", () => {
 
 	it("Jackal: circling band, separation, the two cosines, wind-up, lunge, recover, spook, stagger, cooldowns, aim line", () => {
 		const d = JACKAL.data;
-		expect([d.circleMin, d.circleMax, d.separation, d.frontCos, d.spookCos]).toEqual([3, 3.6, 1.4, 0.34, 0.5]);
+		expect([d.circleMin, d.circleMax, d.separation, d.frontCos, d.spookCos, d.lungeRange]).toEqual([
+			3, 3.6, 1.4, 0.34, 0.5, 3.4,
+		]);
 		expect([d.windupTicks, d.lungeDistance, d.lungeTicks, d.lungeDamage, d.recoverTicks]).toEqual([
 			21,
 			2.8,
@@ -228,7 +230,7 @@ describe("data blocks (the plan's Design tables)", () => {
 	});
 });
 
-describe("spawn and engage (NT1 stubs)", () => {
+describe("spawn and engage", () => {
 	function run(): SimState {
 		const w = world();
 		// Player at the origin; each kind on its own spoke inside every aggro range.
@@ -240,31 +242,18 @@ describe("spawn and engage (NT1 stubs)", () => {
 		return w.s;
 	}
 
-	it("all engage and live; the stubs stand where they spawned facing the player (Mortar / Mender: their own specs)", () => {
+	it("all engage (the behaviours are their own specs': mortar, mender, jackal)", () => {
 		const s = run();
 		let n = 0;
-		const mortar = archetypeIndex(MORTAR.id);
-		const mender = archetypeIndex(MENDER.id);
 		for (const a of s.combat.actors) {
 			if (a.kind < FIRST) continue;
 			n++;
-			if (a.kind === mortar || a.kind === mender) {
-				expect([a.alive, a.v[0]]).toEqual([1, 1]);
-				continue;
-			}
-			expect([a.alive, a.v[0], a.x === a.v[1] && a.z === a.v[2]]).toEqual([1, 1, true]); // alive, engaged, home
-			const len = math.sqrt(a.x * a.x + a.z * a.z);
-			expect(math.abs(a.faceX + a.x / len) < 1e-9 && math.abs(a.faceZ + a.z / len) < 1e-9).toBe(true);
+			expect(a.v[0]).toBe(1);
 		}
 		expect(n).toBe(4);
 	});
 
-	it("the stub draws nothing yet (NT4; the Mortar's and Mender's draws are their specs'), and the run replays bit for bit", () => {
-		const w = world();
-		const before = w.s.rngState;
-		spawn(w, JACKAL.id, 0, -5);
-		for (let t = 0; t < 120; t++) step(w.s, EMPTY_INPUT, w.config);
-		expect(w.s.rngState).toBe(before);
+	it("the run replays bit for bit", () => {
 		expect(hashState(run())).toBe(hashState(run()));
 	});
 });

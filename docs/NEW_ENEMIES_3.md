@@ -37,10 +37,11 @@ lands.
 
 ## Status (2026-11-16)
 
-**NT0, NT1, NT2 and NT3 done** (see "NT0 findings": four small Design changes, no decision changed; "NT1 skeleton (as
+**NT0-NT4 done** (see "NT0 findings": four small Design changes, no decision changed; "NT1 skeleton (as
 built)"; "NT2 Mortar (as built)": the Mortar's behaviour, `ArchetypeDef.stepCorpse`, `SimConfig.roomIdAt`,
 `events.shells`; "NT3 Mender (as built)": the Mender's behaviour, `healActor`, `events.heals` / `healCuts` and
-`CombatState.healEvents`, two data fields the plan left open).
+`CombatState.healEvents`, two data fields the plan left open; "NT4 Jackal (as built)": the Jackal's behaviour, the
+locked target `JACKAL_TARGET` (a co-op finding), `lungeRange`, `events.lunges` / `spooks`).
 Read on `main` @ `80f57769`. NTD1-NTD14 taken by the owner on
 2026-11-16 (see Decisions): every one as recommended except **NTD3** (the Mortar fires only while its target is in the
 Mortar's own room), **NTD9** (a guard that stops a Jackal's lunge counts as a parry) and **NTD10** (the last Jackal of a
@@ -269,6 +270,71 @@ fields pinned).
   `slime`, `dummy`, `pyrekeeper`, `party`, `enemyVariants`, `newEnemies`, `newEnemies2*`, `newEnemies3`, `mortar`,
   `view/audio/*`, `view/fx/variantCueEvents`, `play/liveRun*` (818 tests in 66 files; with `mender` 837 in 67).
 
+## NT4 Jackal (as built, 2026-11-16)
+
+Gameplay (sim), no hash group, no bullet kind, no theme change; the Jackal is still outside the room pool (NT6), so no
+endless replay moves yet. Files: `sim/combat/actors/archetypes/jackal.ts` (the behaviour; exported `jackalBehind`,
+`jackalHoldsToken`, `jackalTokenFree`, `jackalGuardStops`, v slot `JACKAL_TARGET`), `sim/state.ts` (`events.lunges`,
+`events.spooks`, appended to `NEW_ENEMY_3_EVENT_FIELDS` after `healCuts`), `sim/score/score.ts` (the `guardX` comment).
+Specs: `sim/jackal.spec.ts` (17 cases), `sim/newEnemies3.spec.ts` (the NT1 stub cases are gone: every kind has its own
+spec now; `lungeRange` pinned).
+
+- **Circling.** The tangent (side from the actor id's parity) plus a radial pull `(dist - mid) / half` toward the middle
+  of the 3.0-3.6 band (decision: "a pull back into the band" read as a pull to its middle, equal to the tangent at the
+  band's edges and dominant far out; a pull that starts only outside the band leaves a circling Jackal at ~3.61, where
+  the lunge misses a standing player), plus the separation push (each Jackal within 1.4 by its overlap share, slot
+  order, exactly stacked split along X by id). **Normalised to at most unit length** (decision): a sum longer than 1
+  walks one step its way, a shorter one walks that share of a step. Normalising every sum to one step made a follower
+  walk as fast as its leader, so two Jackals going the same way never spread (spec'd: a stacked pack spreads, no pair
+  within 0.5 for 40 ticks). It faces the way it walks. Without sight of its target it walks straight at it on the steer
+  mover and leashes after `lostTicks` (aiTicks counts them, the Mender's way). Its cooldown counts down only while
+  circling.
+- **Starting a wind-up** needs, besides the plan's three (cooldown out, token free, outside the front cone): its target
+  in sight and within a new data field **`lungeRange` 3.4** (the plan is silent; the lunge's 2.8 plus the overlap reach
+  0.67 is 3.47, so a lunge from there reaches a player who stands). The front-cone test is `jackalBehind` (no sqrt:
+  both sides squared, the sign checked; a point on the player is never behind).
+- **The token and co-op (finding).** NT0 finding 15's "same target" (each other Jackal's nearest living player, read
+  in the scan) breaks in co-op: a lunging Jackal's nearest player can change mid-attack (it lunges past one player
+  toward another, or a teammate walks up), so two Jackals ended up winding up / lunging at one player (the co-op
+  endless spec caught it). Smallest faithful fix: the wind-up locks its target (its nearest living player then) in the
+  free slot **v7 `JACKAL_TARGET`**, and the token compares the holders' locked targets. The spook reads the LOCKED
+  target's facing too (a teammate turning onto a Jackal that is attacking someone else does not spook it; a dead target
+  never spooks). The hit test still covers every player (bit per player). Solo is unchanged by this (target 0 always).
+- **Spook.** On any wind-up tick, when the locked target faces it (`dot >= spookCos` x the distance): `JACKAL_HOP`,
+  `hopDistance` back along the locked heading over `hopTicks` (the plain mover; the call-off tick stands, the hop moves
+  from the next), then `spookCooldownTicks` through `enemyCooldownFixed` (no draw). `events.spooks` += 1.
+- **Lunge.** The wind-up's last tick turns it into `JACKAL_LUNGE` and **draws the next cooldown there** (the plan's
+  "one per lunge": a wind-up that ends in a spook has drawn nothing), `events.lunges` += 1; it moves from the next tick,
+  `lungeDistance / lungeTicks` a tick on the plain mover (under half a step is a wall: it ends early, the swarmer's
+  rule), then the hit test after every move: the first overlap with each living player (`radius + PLAYER_RADIUS`) sets
+  that player's bit in v6 and hurts `HIT_NORMAL` through `ctx.hurtPlayerAt` (NT0 correction 1), unless the guard stops
+  it. Then `JACKAL_RECOVER` 0.5 s. `attack` stays `JACKAL_ATTACK_LUNGE` through the lunge (the swarmer's view contract).
+  v3 counts the hop / recover / stagger; aiTicks the wind-up and the lunge.
+- **Guard stop (NTD9).** `jackalGuardStops` reads NT0 finding 8 exactly: not rolling, the active slot is the sword with
+  `v[SWORD_V_GUARD] > 0`, the Jackal within `guardReach` and `dot >= swordGuardSweepCos x the distance` (melee.ts
+  `inCone`'s test, one sqrt; Bastion's ring always holds). The stop sets the bit, staggers it `staggerTicks` (standing),
+  ends the lunge, and in a scored run pushes ONE `guardX / guardZ` (the contact point: on the player's rim toward the
+  Jackal) and `guardPlayer` entry: no `scoreGuardCancels`, no brace / Riposte count (spec'd: GUARD points and counts
+  0, `guardCancels` 0, and the hashed score group, `writeScoreHash`, the start's every tick of a stop scenario). The
+  feed's `size() === guardCancels` comment in score.ts now says the Jackal adds entries. A guard from straight behind
+  (dot -1 < -0.2) is no stop and a rolling player's guard is no parry (spec'd: no stagger, no feed; the roll's i-frames
+  take the hit).
+- **NTD10.** No exception anywhere: a lone Jackal starts a wind-up only from outside its target's front cone (spec'd at
+  every wind-up start of a slowly turning player and in every other scenario).
+- **Draws.** Exactly one in `init` and one per lunge at its start; none for the wind-up, a spook, the circling, a
+  stagger or the death (spec'd on every tick of every scenario, the real endless floors included).
+- **Pinned (note for NT11).** A pinned Jackal does not step: a wind-up it was pinned in waits, and it keeps its
+  target's token while held, so its packmates do not lunge at that player until it is released or dies.
+- **Feeds** (unhashed, cleared per tick): `events.lunges`, `events.spooks` for NT7's `sfx.enemy.lunge` /
+  `sfx.enemy.spooked`; the stagger's parry through the guard feed.
+- **Byte for byte without a Jackal.** Run green on the change (990 tests in 83 files): `sim/determinism`,
+  `enemies.determinism`, `combat.determinism`, `encounterRun`, `runFull`, `runBoss`, `runBullets`, `runPlayer`,
+  `runPlayerDungeon`, `actors`, `hash`, `step`, `smoke`, `affixes/affixes`, `run/affixes`, `run/endless*`,
+  `run/validate`, `run/slice`, `run/tutorial`, `tutorial/*`, `sim/tutorial`, `dungeon/roomPool.lock`, `stormcaller`,
+  `bomber`, `charger`, `chainhook`, `summoner`, `slime`, `dummy`, `pyrekeeper`, `party`, `enemyVariants`,
+  `newEnemies*`, `mortar`, `mender`, `jackal`, `view/audio/*`, `view/fx/variantCueEvents`, `play/liveRun*`,
+  `score/nearMissFeed`, `score/score`.
+
 ## Player experience
 
 1. **Mortar.** A lean demon at the back of the room draws its bow straight up. A ring lights up on the floor ahead of
@@ -345,7 +411,7 @@ points once. Unhashed `events.heals` (ally slot, amount) feeds the view's `+` sp
 | Guard (NTD9) | A sword guard that is up while the lunging Jackal overlaps the player, with the Jackal inside the guard's sweep, refuses the hit and **staggers** it 1.0 s (still, takes full damage). It **counts as a parry**: the stop pushes the guard's entry on the unhashed `ScoreEvents` feed (`guardX/Z/Player`, the feed the sword's bullet erases use, docs/GRAZE_PARRY.md), so the near-miss director, the parry sparks, the PARRY! floor text and its solo freeze, the recap's and contribution screen's parry counts and the parry haptic all see it with no new path. Scored runs only, like every parry |
 | Last of the pack (NTD10) | **Keeps the back-only rule**: a lone Jackal still lunges only from outside its target's front cone. Facing it holds it off; it dies to 3 hp of damage like any Jackal |
 | Draws | First cooldown in `init`; one per lunge (cooldown 1.4-2.0 s). A spook draws nothing |
-| v[] (3-7) | 3 phase ticks (hop / recover / stagger), 4-5 lunge heading, 6 hit bit, 7 free |
+| v[] (3-7) | 3 phase ticks (hop / recover / stagger), 4-5 lunge heading, 6 hit bit, 7 the target locked at the wind-up (NT4: the token's and the spook's target, a co-op finding) |
 | Cost / points / drop % | 1 each (a pack is 3) / 70 each / 4 |
 | Unlock / weight / per room | NTD7 / 1 / **1 pack** |
 

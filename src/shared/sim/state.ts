@@ -180,7 +180,7 @@ export interface SimEvents {
 	/** Chainhook drags broken this tick (a roll, lost sight, its death, breakDamage, the player's death; NX3). */
 	hookBroken: number;
 
-	// --- New enemies 3 (docs/NEW_ENEMIES_3.md; always 0 without a Mortar or a Mender). Not in SIM_EVENT_FIELDS.
+	// --- New enemies 3 (docs/NEW_ENEMIES_3.md; always 0 without a Mortar, a Mender or a Jackal). Not in SIM_EVENT_FIELDS.
 	/**
 	 * Mortar shells (a BulletKind.STRIKE fired by a Mortar, living or its corpse, NT2) landed this tick; also counted in
 	 * `strikes`, so the view plays the Stormcaller's lightning only for `strikes - shells` (NT0 finding 3).
@@ -193,6 +193,10 @@ export interface SimEvents {
 	heals: number;
 	/** Mender channels cut this tick (healEndCuts: sight lost, a body on the beam, a hit; why: CombatState.healEvents). */
 	healCuts: number;
+	/** Jackal lunges started this tick (the wind-up ran out, NT4; the view's `sfx.enemy.lunge`). */
+	lunges: number;
+	/** Jackal wind-ups called off this tick (the target faced it, NT4; the hop back, `sfx.enemy.spooked`). */
+	spooks: number;
 }
 
 /**
@@ -245,7 +249,7 @@ export const NEW_ENEMY_2_EVENT_FIELDS = [
 ] as const;
 
 /** The third new enemies' event fields (Roblox port, docs/NEW_ENEMIES_3.md), in declaration order. All default to 0. */
-export const NEW_ENEMY_3_EVENT_FIELDS = ["shells", "heals", "healCuts"] as const;
+export const NEW_ENEMY_3_EVENT_FIELDS = ["shells", "heals", "healCuts", "lunges", "spooks"] as const;
 
 /**
  * Every SimEvents field: SIM_EVENT_FIELDS, then ENDLESS_EVENT_FIELDS, then BREAKABLE_EVENT_FIELDS, then
@@ -309,6 +313,8 @@ function emptyEvents(): SimEvents {
 		shells: 0,
 		heals: 0,
 		healCuts: 0,
+		lunges: 0,
+		spooks: 0,
 	};
 }
 
