@@ -11,13 +11,15 @@ import {
 	selectRunInfo,
 	selectSnapshot,
 	selectTutorialEnded,
+	selectTutorialPrompt,
 } from "client/store";
 import { role } from "client/ui/theme";
 import { SFX } from "shared/view/audio";
-import { UI_ART } from "shared/view/hud";
+import { UI_ART, pauseButtonRinged } from "shared/view/hud";
 import { PAUSE_BUTTON_VIEW, pauseButtonShown, pauseButtonSlot } from "shared/view/menu";
 import { useHudActions } from "./actions";
 import { ArtImage } from "./primitives";
+import { HighlightRing } from "./TutorialFx";
 
 const HALF = 0.5;
 const ROUND = new UDim(HALF, 0);
@@ -81,6 +83,8 @@ export function PauseButton() {
 	const actions = useHudActions();
 	const inset = useTopbarInset();
 	const touch = useSelector(selectInputDevice) === "touch";
+	// On touch the tutorial's map prompt ("Tap the pause button") rings this button (shared/view/hud touchTutorialRing).
+	const ringed = pauseButtonRinged(useSelector(selectTutorialPrompt), touch);
 	const [hover, setHover] = useState(false);
 
 	const shown = pauseButtonShown({
@@ -126,11 +130,15 @@ export function PauseButton() {
 			}}
 		>
 			<uicorner CornerRadius={ROUND} />
-			<uistroke
-				ApplyStrokeMode={Enum.ApplyStrokeMode.Border}
-				Thickness={view.strokeThickness}
-				Color={role(hover ? "uiAccent" : "uiTextDim")}
-			/>
+			{ringed ? (
+				<HighlightRing />
+			) : (
+				<uistroke
+					ApplyStrokeMode={Enum.ApplyStrokeMode.Border}
+					Thickness={view.strokeThickness}
+					Color={role(hover ? "uiAccent" : "uiTextDim")}
+				/>
+			)}
 			<ArtImage
 				name="Icon"
 				id={UI_ART.ids.iconPause}

@@ -6,10 +6,12 @@ import {
 	selectDisplay,
 	selectGameActive,
 	selectInputDevice,
+	selectJuice,
 	selectMapView,
 	selectMenuOpen,
 	selectRobloxMenuOpen,
 	selectSnapshot,
+	selectTutorialPrompt,
 } from "client/store";
 import {
 	currentHudFont,
@@ -26,10 +28,14 @@ import type { DisplaySettings } from "shared/settings";
 import type { ImageRef } from "shared/theme";
 import { stickVector, touchMode, type GameSnapshot, type TouchControls, type TouchMode } from "shared/play";
 import { PORTRAIT, RENDER_ORDER, floorStudsY, studsX, studsZ } from "shared/view";
+import { motionScale } from "shared/view/fx";
 import { pactRole } from "shared/view/pacts";
 import {
 	HUD_SKIN,
 	TOUCH_LAYOUT,
+	TUTORIAL_VIEW,
+	TouchRingTracker,
+	touchRingLookFor,
 	TOUCH_STRIP_GUI,
 	hasSwapTarget,
 	pickTouchTarget,
@@ -50,6 +56,8 @@ import {
 	type TouchButtonId,
 	type TouchLayoutResult,
 	type TouchTargetId,
+	type RingLook,
+	type TouchRingFrame,
 } from "shared/view/hud";
 import { InputController } from "./InputController";
 import { SimController } from "./SimController";
@@ -94,6 +102,8 @@ interface Control {
 	readonly iconArt: { readonly w: number; readonly h: number } | undefined;
 	/** Flask / Ember: the label carries the count. */
 	readonly counted: boolean;
+	/** The tutorial's highlight ring round the button (touchTutorialRing), off unless the prompt names it. */
+	readonly ring: UIStroke;
 	/** The face the last layout gave it (what the label shows: word, word and count, or the count by the icon). */
 	face: TouchFace["kind"];
 	/** The label without the count (the theme string of touch.<id>; re-read on a locale switch). */
@@ -132,6 +142,8 @@ interface Ui {
 	/** The move base's ring art (docs/UI_ART.md UA13), replacing moveRing when the pack has it. */
 	readonly moveArt: ControlArt | undefined;
 	readonly moveKnob: Frame;
+	/** The tutorial's highlight ring round the move stick's base (touchTutorialRing "move"), off unless named. */
+	readonly moveHighlight: UIStroke;
 	readonly markerFolder: Folder;
 	readonly marker: Part;
 }
@@ -229,6 +241,28 @@ function touchArtKey(): string {
 	return key;
 }
 
+/**
+ * The tutorial's highlight ring (client/ui/hud HighlightRing's look, written per frame by updateRing): a Border stroke
+ * on its own round, transparent frame filling `parent`, so it never meets a stroke the control already has (the move
+ * base's ring) and follows the circle.
+ */
+function makeHighlightRing(parent: GuiObject): UIStroke {
+	const holder = new Instance("Frame");
+	holder.Name = "TutorialHighlight";
+	holder.Size = UDim2.fromScale(1, 1);
+	holder.BackgroundTransparency = HIDDEN;
+	holder.BorderSizePixel = 0;
+	holder.Active = false;
+	roundCorners(holder);
+	const ring = new Instance("UIStroke");
+	ring.ApplyStrokeMode = Enum.ApplyStrokeMode.Border;
+	ring.Color = role(TUTORIAL_VIEW.ringRole);
+	ring.Enabled = false;
+	ring.Parent = holder;
+	holder.Parent = parent;
+	return ring;
+}
+
 function makeControl(id: TouchButtonId, gui: ScreenGui): Control {
 	const name = str(touchButtonLabelKey(id));
 	const button = new Instance("TextButton");
@@ -255,6 +289,7 @@ function makeControl(id: TouchButtonId, gui: ScreenGui): Control {
 	}
 	const knob = id === "attack" || id === "alt" ? makeKnob(button) : undefined;
 	if (knob !== undefined) knob.ZIndex = ART_Z.knob;
+	const ring = makeHighlightRing(button);
 	button.Parent = gui;
 	return {
 		id,
@@ -266,6 +301,7 @@ function makeControl(id: TouchButtonId, gui: ScreenGui): Control {
 		icon,
 		iconArt,
 		counted: id === "flask" || id === "ember",
+		ring,
 		face: "word",
 		name,
 		placed: false,
@@ -273,6 +309,15 @@ function makeControl(id: TouchButtonId, gui: ScreenGui): Control {
 		textT: NOT_SET,
 		label: name,
 	};
+}
+
+/** Shows `ring` with `look`, or hides it (undefined). */
+function writeRing(ring: UIStroke, look: RingLook | undefined): void {
+	const on = look !== undefined;
+	if (ring.Enabled !== on) ring.Enabled = on;
+	if (look === undefined) return;
+	ring.Thickness = look.thickness;
+	ring.Transparency = look.transparency;
 }
 
 /** Puts a control's label (and icon) where touchFace says for a `diameter` px control. */
@@ -369,6 +414,8 @@ export class TouchControlsController implements OnStart {
 	/** touchArtKey() of the controls built; a change waits for every finger to lift, then rebuilds. */
 	private artKey = "";
 	private rebuildWanted = false;
+	/** The tutorial's ring: which control and its pulse (shared/view/hud touchTutorial). */
+	private readonly rings = new TouchRingTracker();
 
 	constructor(private readonly input: InputController, private readonly sim: SimController) {}
 
@@ -484,6 +531,7 @@ export class TouchControlsController implements OnStart {
 		if (moveArt !== undefined) moveRing.Enabled = false;
 		const moveKnob = makeKnob(moveBase);
 		if (moveArt !== undefined) moveKnob.ZIndex = ART_Z.knob;
+		const moveHighlight = makeHighlightRing(moveBase);
 		moveBase.Parent = gui;
 
 		const controls = new Map<TouchButtonId, Control>();
@@ -521,7 +569,7 @@ export class TouchControlsController implements OnStart {
 			);
 		}
 
-		return { gui, controls, moveZone, moveBase, moveRing, moveArt, moveKnob, markerFolder, marker };
+		return { gui, controls, moveZone, moveBase, moveRing, moveArt, moveKnob, moveHighlight, markerFolder, marker };
 	}
 
 	// --- touches -----------------------------------------------------------------------------------------
@@ -627,6 +675,7 @@ export class TouchControlsController implements OnStart {
 		this.sweepEnded();
 		this.resolvePending(ui, layout, touch);
 		this.updateButtons(ui, layout, snapshot, display, touch);
+		this.updateRing(ui, this.rings.frame(selectTutorialPrompt(store), os.clock(), motionScale(selectJuice(store))));
 		this.updateMove(ui, layout, display, touch);
 		this.updateTarget(ui);
 	}
@@ -729,6 +778,16 @@ export class TouchControlsController implements OnStart {
 				c.knob.Position = new UDim2(HALF, dx, HALF, dy);
 			}
 		}
+	}
+
+	/**
+	 * The tutorial's highlight ring on the control the prompt names (touchTutorialRing: Flask, Attack, Roll, Alt, Ember,
+	 * Accept, the move stick; the pause button rings itself, PauseButton), pulsing like the HUD's HighlightRing
+	 * (TouchRingTracker: from when the ring appeared; reduced motion: a static ring).
+	 */
+	private updateRing(ui: Ui, frame: TouchRingFrame | undefined): void {
+		for (const [id, c] of ui.controls) writeRing(c.ring, touchRingLookFor(frame, id));
+		writeRing(ui.moveHighlight, touchRingLookFor(frame, "move"));
 	}
 
 	/**

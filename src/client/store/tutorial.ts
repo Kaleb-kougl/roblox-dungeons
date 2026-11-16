@@ -119,6 +119,8 @@ export const tutorialSlice = createProducer(initialState, {
 export const selectTutorial = (state: { tutorial: TutorialState }) => state.tutorial;
 export const selectTutorialActive = (state: { tutorial: TutorialState }) => state.tutorial.active;
 export const selectTutorialHighlight = (state: { tutorial: TutorialState }) => state.tutorial.highlight;
+/** The prompt id on screen ("" none; not resolved per device): the touch controls ring the control it names. */
+export const selectTutorialPrompt = (state: { tutorial: TutorialState }) => state.tutorial.prompt;
 export const selectTutorialEnded = (state: { tutorial: TutorialState }) => state.tutorial.ended;
 export const selectTutorialOutroOpen = (state: { tutorial: TutorialState }) => state.tutorial.outroOpen;
 export const selectTutorialSkipConfirm = (state: { tutorial: TutorialState }) => state.tutorial.skipConfirmOpen;
