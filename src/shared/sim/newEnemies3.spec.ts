@@ -172,6 +172,8 @@ describe("data blocks (the plan's Design tables)", () => {
 			5, 8, 6, 15, 24, 180,
 		]);
 		expect([d.pulseTicks, d.healAmount, d.beamBlockPad, d.flinchTicks]).toEqual([30, 1, 0.15, 24]);
+		// NT3's two additions (the plan is silent): the follow margin and the bolt's wind-up.
+		expect([d.followSlack, d.boltWindupTicks]).toEqual([1, 18]);
 		expect([d.channelCooldownMin, d.channelCooldownMax, d.boltRange, d.boltCooldownMin, d.boltCooldownMax]).toEqual(
 			[72, 96, 9, 132, 168],
 		);
@@ -238,14 +240,15 @@ describe("spawn and engage (NT1 stubs)", () => {
 		return w.s;
 	}
 
-	it("all engage and live; the stubs stand where they spawned facing the player (the Mortar is NT2's: mortar.spec)", () => {
+	it("all engage and live; the stubs stand where they spawned facing the player (Mortar / Mender: their own specs)", () => {
 		const s = run();
 		let n = 0;
 		const mortar = archetypeIndex(MORTAR.id);
+		const mender = archetypeIndex(MENDER.id);
 		for (const a of s.combat.actors) {
 			if (a.kind < FIRST) continue;
 			n++;
-			if (a.kind === mortar) {
+			if (a.kind === mortar || a.kind === mender) {
 				expect([a.alive, a.v[0]]).toEqual([1, 1]);
 				continue;
 			}
@@ -256,10 +259,9 @@ describe("spawn and engage (NT1 stubs)", () => {
 		expect(n).toBe(4);
 	});
 
-	it("the stubs draw nothing yet (NT3-NT4; the Mortar's draws are mortar.spec's), and the run replays bit for bit", () => {
+	it("the stub draws nothing yet (NT4; the Mortar's and Mender's draws are their specs'), and the run replays bit for bit", () => {
 		const w = world();
 		const before = w.s.rngState;
-		spawn(w, MENDER.id, 0, 6);
 		spawn(w, JACKAL.id, 0, -5);
 		for (let t = 0; t < 120; t++) step(w.s, EMPTY_INPUT, w.config);
 		expect(w.s.rngState).toBe(before);

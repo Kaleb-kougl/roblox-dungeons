@@ -30,7 +30,7 @@ import { tutorialScalingFloor } from "../tutorial/tutorial";
 import { archetypeAt, archetypeIndex } from "./actors/registry";
 import { AiState, type ActorState, type ArchetypeData, type ArchetypeDef } from "./actors/types";
 import { EMPTY_ENCOUNTER, roomAt, type EncounterConfig, type EncounterRoom } from "./actors/encounter";
-import { damageActor, freeActor, killActor, reviveActor, spawnActor } from "./actors/actors";
+import { damageActor, freeActor, healActor, killActor, reviveActor, spawnActor } from "./actors/actors";
 import { lineOfSight } from "./actors/helpers";
 import { teamEnemyBulletSpeedMultiplier } from "../progression/runMods";
 import type { WeaponSlotState, WeaponsState } from "./weapons/types";
@@ -226,6 +226,13 @@ export class SimCtx {
 	/** Damages a live actor (filterDamage -> damage cap -> hp -> flash -> onHit -> death). Returns hp removed. */
 	damageActor(actor: ActorState, amount: number): number {
 		return damageActor(this, actor, amount);
+	}
+	/**
+	 * Heals a live actor by `amount`, never above hpMax (the Mender, docs/NEW_ENEMIES_3.md NT3). Never through
+	 * damageActor (no cap, flash, score, combo or proc); events.heals and CombatState.healEvents. Returns hp restored.
+	 */
+	healActor(actor: ActorState, amount: number): number {
+		return healActor(this, actor, amount);
 	}
 	/** Kills a live actor at once (hp 0, onDeath, events.actorsKilled). */
 	killActor(actor: ActorState): void {

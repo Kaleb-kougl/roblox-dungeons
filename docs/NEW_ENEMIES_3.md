@@ -37,9 +37,10 @@ lands.
 
 ## Status (2026-11-16)
 
-**NT0, NT1 and NT2 done** (see "NT0 findings": four small Design changes, no decision changed; "NT1 skeleton (as
+**NT0, NT1, NT2 and NT3 done** (see "NT0 findings": four small Design changes, no decision changed; "NT1 skeleton (as
 built)"; "NT2 Mortar (as built)": the Mortar's behaviour, `ArchetypeDef.stepCorpse`, `SimConfig.roomIdAt`,
-`events.shells`).
+`events.shells`; "NT3 Mender (as built)": the Mender's behaviour, `healActor`, `events.heals` / `healCuts` and
+`CombatState.healEvents`, two data fields the plan left open).
 Read on `main` @ `80f57769`. NTD1-NTD14 taken by the owner on
 2026-11-16 (see Decisions): every one as recommended except **NTD3** (the Mortar fires only while its target is in the
 Mortar's own room), **NTD9** (a guard that stops a Jackal's lunge counts as a parry) and **NTD10** (the last Jackal of a
@@ -193,6 +194,80 @@ own `roomIdAt`, one closure shared with `EndlessRunFloor.roomIdAt`), `sim/state.
   `hash`, `step`, `smoke`, `affixes/affixes`, `run/affixes`, `run/endless`, `run/validate`, `run/slice`, `run/tutorial`,
   `tutorial/*`, `sim/tutorial`, `dungeon/roomPool.lock`, `stormcaller`, `bomber`, `charger`, `summoner`, `slime`,
   `dummy`, `pyrekeeper`, `party`, `enemyVariants`, `newEnemies`, `newEnemies2`, `view/audio/*`, `play/liveRun*`.
+
+## NT3 Mender (as built, 2026-11-16)
+
+Gameplay (sim), no hash group, no bullet kind, no theme change; the Mender is still outside the room pool (NT6), so no
+endless replay moves yet. Files: `sim/combat/actors/archetypes/mender.ts` (the behaviour; exported `isMenderHealTarget`,
+`menderPick`, `menderBeamBlocker`, `menderAllyOf`, `menderLinked`), `actors/actors.ts` + `combat/ctx.ts` (`healActor`,
+`SimCtx.healActor`), `combat/healEvents.ts` (new: `HealEnd`, `healEndCuts`, `HealEvents`), `combat/combat.ts`
+(`CombatState.healEvents`, created / cloned like `hookEvents`), `sim/step.ts` (cleared beside `hookEvents`),
+`sim/state.ts` (`events.heals`, `events.healCuts`, appended to `NEW_ENEMY_3_EVENT_FIELDS` after `shells`). Specs:
+`sim/mender.spec.ts` (19 cases), `sim/newEnemies3.spec.ts` (the stub cases leave the Mender out; the two new data
+fields pinned).
+
+- **The heal.** `healActor(ctx, a, n)` (actors.ts, through `SimCtx.healActor`): a live actor only, `hp = min(hpMax, hp +
+  n)`, returns what it restored; `events.heals` += it and one `CombatState.healEvents` entry (the actor's slot, the hp).
+  It never calls `damageActor`, so no cap bucket, flash, `onHit`, score, combo, Vampire Fang, drop or build proc sees it
+  (spec'd in an endless arena with scoring, builds, drops and affixes on); a healed ally pays its normal kill points
+  once (spec'd equal to an unhealed twin's).
+- **The feed.** The plan's "`events.heals` (ally slot, amount)" is two parts, as the Chainhook's is: the scalar
+  `events.heals` (hp healed this tick; `SimEvents` holds numbers only) and the lists in `CombatState.healEvents`
+  (`healSlot` / `healAmount` per pulse, `endSlot` / `endReason` per link or channel end, `HealEnd` FULL / TIME /
+  ALLY_GONE / LEASH / DEATH / SIGHT / BLOCKED / DAMAGE). `events.healCuts` counts the ends that are cuts
+  (`healEndCuts`: SIGHT, BLOCKED, DAMAGE), so NT7's snap and `sfx.enemy.healcut` need no state diffing. Unhashed,
+  cleared per tick, never read back by the sim.
+- **NTD8.** `isMenderHealTarget(kind)` = `isRoomEnemyData(data) && data.boss !== true && kind !== mender` (warbanner.ts
+  `isWarbannerAuraTarget`'s shape, NT0 finding 4). A registry walk pins it; the Goldling, the dummy, a pyre, both
+  bosses, the turrets and another Mender are never picked (spec'd with wounded look-alikes beside a Mender for 600 ticks:
+  no heal, only bolts).
+- **The pick.** Every `pickEveryTicks` (15) while keeping range (v5 is the pick timer outside the channel, the pulse
+  timer inside it): the lowest `hp / hpMax` by cross-multiplication, ties by slot order, among living heal targets below
+  hpMax within `healRange` (inclusive) and in sight. The pick is kept in v3 between picks (it is the ally the Mender
+  follows), dropped at once when that ally dies or is full again.
+- **One cooldown for both actions (decision; the plan is silent).** `a.cooldown` gates the link and the bolt alike, so the
+  Mender does one thing at a time: init draws the first (a bolt's range, 2.2-2.8 s), a channel end draws 1.2-1.6 s, a
+  bolt 2.2-2.8 s. So a heal can wait up to 2.8 s after a bolt: a window to finish a freshly wounded ally. The cooldown
+  counts down while keeping range and flinching, not while linking, channelling or winding up a bolt.
+- **The link** starts when the cooldown is out and the picked ally is still wounded, within `healRange`, in sight and
+  not body-blocked (the end rules are checked first, so a link never starts already cut), then `ctx.telegraph`
+  `linkTicks` (24) with `MENDER_ATTACK_HEAL`. The link and the channel stand still facing the ally. Range is not an end
+  rule (the plan's list): an ally that walks off keeps its beam while sight and the body rule allow.
+- **The channel.** The first pulse 30 ticks after the link, then every 30 (6 in the 180), `healAmount` 1 each, clamped
+  (spec'd: 7.5 / 10 heals 1, 1, 0.5 and ends FULL on the pulse that fills it). End rules, checked every link and channel
+  tick in this order: the ally dead or gone, full, sight lost (`ctx.lineOfSight`: walls and pillars; breakables never
+  block sight, so a crate does not cut it), a living player's centre within `PLAYER_RADIUS` + `beamBlockPad` of the
+  segment where it projects between the two ends (`menderBeamBlocker`; any player, so a teammate body-blocks in co-op,
+  spec'd; a dead one does not), then the 180 ticks up. A hit is `onHit`'s (below); a leash ends it (`HealEnd.LEASH`).
+  Every end but the Mender's death draws ONE cooldown (`channelCooldownMin`-`Max`), clears the ally and re-picks on the
+  next keep tick.
+- **A hit (decision).** Any hit that reaches `damageActor` cuts the link or the channel (`HealEnd.DAMAGE`), including
+  one a Shielded affix soaks up whole (`onHit` with 0 damage): "hit the Mender and the beam snaps". A hit that a
+  Shieldwall's shield stops never reaches `damageActor` and cuts nothing (NT11). Then `MENDER_FLINCH` for `flinchTicks`
+  (24), standing still. A killing hit is the death: `onDeath` pushes `HealEnd.DEATH`, no draw, and clears v3 / the
+  state, so the corpse never reads as linked.
+- **The bolt.** Cooldown out, no ally, its target alive, in sight and within `boltRange` 9: one cooldown draw, a short
+  wind-up (decision: a new data field `boltWindupTicks` 18 = 0.3 s through `ctx.telegraph` with `MENDER_ATTACK_BOLT`,
+  since every attack starts through a telegraph and the view needs a pose), then one aimed `BulletKind.CASTER` at the
+  target's position at the release (sight not re-checked). The strafe side flips after every bolt.
+- **Movement (decision on "stay within healRange").** Without an ally: keep 5-8 with the summoner's strafe; without
+  sight of its target it walks toward it to find a line and leashes after `lostTicks` 2.5 s (aiTicks counts them, the
+  Stormcaller's way). With an ally: a new data field `followSlack` 1, it walks to the ally (steer mover) while farther
+  than `healRange - followSlack` (5), so the next pick still finds it in range; nearer, it keeps its range from the
+  target but undoes a move that would take it past 5 from the ally (the strafe side flips). An ally keeps it from
+  leashing for lost sight of the target.
+- **Pinned (decision).** A Siege-pinned Mender does not step (every actor's rule): its link, channel, flinch and cooldown
+  wait while it is held. The pinning arrow hits it first, so a channel is cut (DAMAGE) before the pin holds it; no
+  special case. NT11 checks it in play.
+- **Draws.** Exactly one in `init`, one per channel end (any reason but its death; also a hit from outside the actor
+  phase, drawn where `onHit` runs) and one per bolt at the wind-up's start; none for the pick, the heal, the movement or
+  the death. The spec checks this on every tick of every scenario (the allies frozen so only the Mender draws).
+- **Byte for byte without a Mender.** Run green on the change: `sim/determinism`, `enemies.determinism`,
+  `combat.determinism`, `encounterRun`, `runFull`, `runBoss`, `runBullets`, `runPlayer`, `runPlayerDungeon`, `actors`,
+  `hash`, `step`, `smoke`, `affixes/affixes`, `run/affixes`, `run/endless*`, `run/validate`, `run/slice`, `run/tutorial`,
+  `tutorial/*`, `sim/tutorial`, `dungeon/roomPool.lock`, `stormcaller`, `bomber`, `charger`, `chainhook`, `summoner`,
+  `slime`, `dummy`, `pyrekeeper`, `party`, `enemyVariants`, `newEnemies`, `newEnemies2*`, `newEnemies3`, `mortar`,
+  `view/audio/*`, `view/fx/variantCueEvents`, `play/liveRun*` (818 tests in 66 files; with `mender` 837 in 67).
 
 ## Player experience
 

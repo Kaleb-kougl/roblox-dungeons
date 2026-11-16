@@ -14,6 +14,7 @@ import { killPlayerState, playerTraits, stepPlayer } from "./player";
 import { stepCombat } from "./combat/combat";
 import { clearGuardEvents } from "./combat/shield";
 import { clearHookEvents } from "./combat/hookEvents";
+import { clearHealEvents } from "./combat/healEvents";
 import { simWorldConfig, stepEndless, type EndlessConfig } from "./endless";
 import type { EncounterConfig } from "./combat/actors/encounter";
 import { clearScoreEvents, stepScore, type ScoringConfig } from "./score/score";
@@ -338,6 +339,7 @@ export function step(
 	clearEvents(state.events);
 	clearGuardEvents(state.combat.guardEvents);
 	clearHookEvents(state.combat.hookEvents);
+	clearHealEvents(state.combat.healEvents);
 	const score = state.score;
 	if (score !== undefined) clearScoreEvents(score);
 	if (state.breakables !== undefined) clearBreakableEvents(state.breakables);
@@ -439,6 +441,7 @@ export function stepParty(
 	clearEvents(state.events);
 	clearGuardEvents(state.combat.guardEvents);
 	clearHookEvents(state.combat.hookEvents);
+	clearHealEvents(state.combat.healEvents);
 	const score = state.score;
 	if (score !== undefined) clearScoreEvents(score);
 	if (state.breakables !== undefined) clearBreakableEvents(state.breakables);

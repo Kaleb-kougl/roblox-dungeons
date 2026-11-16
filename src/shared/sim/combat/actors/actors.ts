@@ -276,6 +276,34 @@ export function killActor(ctx: SimCtx, a: ActorState, quiet = false): void {
 	if (def.onDeath !== undefined) def.onDeath(ctx, a, quiet);
 }
 
+/**
+ * Heals a live actor by `amount` hp, never above hpMax (docs/NEW_ENEMIES_3.md NT3: the Mender's pulse, its only
+ * caller); see SimCtx.healActor. Returns the hp restored (0 for a free slot, a corpse, a full actor or amount <= 0).
+ * A plain write to the hashed hp: never through damageActor, so no damage cap bucket, hit flash, onHit, score, combo,
+ * Vampire Fang or build proc sees it (a healed enemy pays its kill points once, when it dies). Feed (unhashed):
+ * events.heals += the hp restored, one CombatState.healEvents entry (the actor's slot, the hp).
+ */
+export function healActor(ctx: SimCtx, a: ActorState, amount: number): number {
+	if (a.kind === NO_KIND || a.alive === 0 || !(amount > 0)) return 0;
+	const room = a.hpMax - a.hp;
+	if (!(room > 0)) return 0;
+	const n = amount < room ? amount : room;
+	a.hp += n;
+	ctx.events.heals += n;
+	const actors = ctx.combat.actors;
+	let slot = -1;
+	for (let i = 0; i < actors.size(); i++) {
+		if (actors[i] === a) {
+			slot = i;
+			break;
+		}
+	}
+	const e = ctx.combat.healEvents;
+	e.healSlot.push(slot);
+	e.healAmount.push(n);
+	return n;
+}
+
 /** Revives a dead actor in place with full hp. */
 export function reviveActor(a: ActorState): void {
 	if (a.kind === NO_KIND) return;
