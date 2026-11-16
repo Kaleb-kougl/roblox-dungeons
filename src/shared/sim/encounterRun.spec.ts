@@ -47,6 +47,10 @@ describe("encounter kinds are registered archetypes", () => {
 			"pyre",
 			"pyrekeeper",
 			"snatcher",
+			// band PORT_BAND_ENEMIES_4 (docs/NEW_ENEMIES_3.md): indices 24-26
+			"jackal",
+			"mender",
+			"mortar",
 		]);
 		for (const k of TEST_TURRET_KINDS) expect([k, hasArchetype(k)]).toEqual([k, true]);
 		expect(hasArchetype(DEFAULT_ENCOUNTER.boss!)).toBe(true);

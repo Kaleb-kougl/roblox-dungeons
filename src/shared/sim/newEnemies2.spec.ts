@@ -114,7 +114,8 @@ describe("registry: PORT_BAND_ENEMIES_3 (NXD1)", () => {
 			"warbanner",
 			"golden",
 		]);
-		expect(ids.size()).toBe(FIRST + NEW_IDS.size());
+		// docs/NEW_ENEMIES_3.md NT1: band 7's three (jackal, mender, mortar) number after them.
+		expect(ids.size()).toBe(FIRST + NEW_IDS.size() + 3);
 	});
 });
 

@@ -90,6 +90,14 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"enemy.snatcher": "#f8b8a8",
 		"enemy.pyrekeeper": "#883868",
 		"enemy.pyre": "#585808",
+		// Roblox port (docs/NEW_ENEMIES_3.md NT1): the fourth endless set, picked for distance from the crowded enemy
+		// palette: a dark crimson Mortar, an indigo Mender, a coral Jackal. Each is >= 26.6 CIE76 from every other enemy
+		// colour, the boss accent and the player outline (nearest: the Jackal and the Imp, 26.6), and >= 40 from the pink
+		// enemy bullet, its outline, the telegraph orange and the outline red (nearest: the Mortar and the outline red,
+		// 40.3).
+		"enemy.mortar": "#b01840",
+		"enemy.mender": "#3848c8",
+		"enemy.jackal": "#f87880",
 		boss: "#d9c24a",
 		telegraph: "#ff8a3d",
 		// Roblox port (enemy outline plan E1): hostile red, >= 3.4:1 on every biome floor and wall, CIE76 63 from
@@ -193,6 +201,11 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		// >= 45 CIE76 from the enemy bullet roles, the goo, the telegraph, the outline red, every affix colour, the
 		// Shielded affix's shield segment and every boost (nearest: affix.hulking) (guardReport).
 		enemyGuard: "#949c6c",
+		// Roblox port (docs/NEW_ENEMIES_3.md NT1): the Mender's heal beam and its `+` sparks, a bilious moss green: >= 3.6:1
+		// on every biome floor and >= 40 CIE76 from the enemy bullet roles, the telegraph, the outline red, the aura, the
+		// guard, the player's own heal, Riposte's counter-wave and every boost (nearest: enemyGuard 40.3, fx.heal 40.9,
+		// boost.frenzy 41.1) (healReport). The greens are crowded: this is the farthest green that clears 40 from all.
+		enemyHeal: "#608c00",
 		// Roblox port (docs/NEW_BEST.md NB4): the new-best gold, a deep pure gold (the plan's #ffd75e was 14.8 CIE76 from
 		// ember, too close to the reach state's colour): 12.1:1 on uiPanel, >= 38 CIE76 from ember and every combo tier
 		// (nearest: ember) and >= 52 from the pink enemy bullet, its outline and the telegraph orange (nearest: the
@@ -358,6 +371,10 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"enemy.snatcher": PLACEHOLDER,
 		"enemy.pyrekeeper": PLACEHOLDER,
 		"enemy.pyre": PLACEHOLDER,
+		// Roblox port (docs/NEW_ENEMIES_3.md NT1): Mortar (a thin post), Mender (a short robe), Jackal (a low wedge).
+		"enemy.mortar": PLACEHOLDER,
+		"enemy.mender": PLACEHOLDER,
+		"enemy.jackal": PLACEHOLDER,
 		"boss.1": PLACEHOLDER,
 		"boss.2": PLACEHOLDER,
 		"boss.3": PLACEHOLDER,
@@ -601,6 +618,13 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"sfx.enemy.swallow": SILENT,
 		"sfx.pellet.return": SILENT,
 		"sfx.enemy.pyrelight": SILENT,
+		// docs/NEW_ENEMIES_3.md NT1: the fourth endless set's six (four fall back one step while silent: SFX_FALLBACK)
+		"sfx.enemy.lob": SILENT,
+		"sfx.enemy.shell": SILENT,
+		"sfx.enemy.heal": SILENT,
+		"sfx.enemy.healcut": SILENT,
+		"sfx.enemy.lunge": SILENT,
+		"sfx.enemy.spooked": SILENT,
 		"music.menu": SILENT,
 		"music.biome.1": SILENT,
 		"music.biome.2": SILENT,
@@ -655,6 +679,9 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"enemy.snatcher.name": "Snatcher",
 		"enemy.pyrekeeper.name": "Pyre-keeper",
 		"enemy.pyre.name": "Brazier",
+		"enemy.mortar.name": "Mortar",
+		"enemy.mender.name": "Mender",
+		"enemy.jackal.name": "Jackal",
 		"breakable.barrel.name": "Barrel",
 		"breakable.crate.name": "Crate",
 		"boss.1.name": "Act I Boss",
@@ -1513,6 +1540,10 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"bestiary.chainhook": "Chainhook: roll the line or cut the hook, or it drags you in",
 		"bestiary.snatcher": "Snatcher: it eats your pellets, so kill it before it swallows them",
 		"bestiary.pyrekeeper": "Pyre-keeper: kill it and all its braziers go out",
+		// docs/NEW_ENEMIES_3.md NT1 (NTD13): the fourth endless set's first sightings
+		"bestiary.mortar": "Mortar: its shells fly over cover to where you are heading, so keep moving",
+		"bestiary.mender": "Mender: it heals its allies, so kill it first or cut its beam",
+		"bestiary.jackal": "Jackal: it strikes at your back, so turn to face it when it crouches",
 		// docs/GOLDLING_RUMOURS.md GR7: the first Goldling rumour heard (its first-time card)
 		"bestiary.golden.rumour": "Hear coins? A Goldling is hiding in a barrel or crate on this floor. Find it!",
 		// docs/SECRET_ROOMS.md SR10 (SRD5): the first knock on a secret room's crack (its first-time card); the Archer's

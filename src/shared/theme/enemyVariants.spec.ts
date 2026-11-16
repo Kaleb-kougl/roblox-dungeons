@@ -162,6 +162,10 @@ describe("enemy variants: contract", () => {
 			"snatcher",
 			"pyrekeeper",
 			"pyre",
+			// docs/NEW_ENEMIES_3.md NT1 (newEnemies3.spec.ts): the fourth set
+			"mortar",
+			"mender",
+			"jackal",
 		]);
 		for (const a of NEW_ARCHETYPES) {
 			expect([a, has(REQUIRED_ASSET_IDS, `enemy.${a}`), slotFor(`enemy.${a}`)?.slot]).toEqual([a, true, "enemy"]);
@@ -214,6 +218,10 @@ describe("enemy variants: contract", () => {
 			"chainhook",
 			"snatcher",
 			"pyrekeeper",
+			// docs/NEW_ENEMIES_3.md NT1 (NTD13)
+			"mortar",
+			"mender",
+			"jackal",
 		]);
 		expect([...BESTIARY_STRING_KEYS]).toEqual([
 			...BESTIARY_ARCHETYPES.map((a) => bestiaryArchetypeKey(a)),
@@ -239,6 +247,9 @@ describe("enemy variants: contract", () => {
 			"bestiary.chainhook",
 			"bestiary.snatcher",
 			"bestiary.pyrekeeper",
+			"bestiary.mortar",
+			"bestiary.mender",
+			"bestiary.jackal",
 			"bestiary.affix.hulking",
 			"bestiary.affix.swift",
 			"bestiary.affix.shielded",

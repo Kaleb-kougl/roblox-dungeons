@@ -27,6 +27,12 @@ export const ENCOUNTER_COST: ReadonlyMap<string, number> = new Map<string, numbe
 	["chainhook", 3],
 	["snatcher", 2],
 	["pyrekeeper", 3],
+	// Roblox port: the fourth set (docs/NEW_ENEMIES_3.md NT1). Rows only: nothing buys them until NT6 appends them to
+	// ENDLESS_ROOM_KINDS. A Jackal costs 1 EACH: every reader but the spender is per spawn (the room record's par, the
+	// Horde wave's, the SWIFT countdown), so a pack of three is 3; the spender prices a pack at packOf x this (NT5).
+	["mortar", 2],
+	["mender", 2],
+	["jackal", 1],
 ]);
 /** Cost of an archetype id not in the table (never 0, so every spawn counts). */
 export const DEFAULT_ENCOUNTER_COST = 1;

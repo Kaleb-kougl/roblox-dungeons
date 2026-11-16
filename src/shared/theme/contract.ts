@@ -516,6 +516,8 @@ export type ClassId = (typeof CLASS_IDS)[number];
  * harmless gold runner; placeholder: a small gold block). Then the third endless set of docs/NEW_ENEMIES_2.md NX1
  * (newEnemies2.ts NEW_ENEMY_2_ARCHETYPES): `bulwark`, `chainhook`, `snatcher`, `pyrekeeper` and the Pyre-keeper's
  * brazier `pyre` (placeholders: a disc behind a front plate, a squat drum, a small cone, a tall robe, a low bowl).
+ * Then the fourth endless set of docs/NEW_ENEMIES_3.md NT1 (newEnemies3.ts NEW_ENEMY_3_ARCHETYPES): `mortar`, `mender`,
+ * `jackal` (placeholders: a thin post, a short robe, a low wedge).
  */
 export const ENEMY_ARCHETYPES = [
 	"swarmer",
@@ -538,6 +540,9 @@ export const ENEMY_ARCHETYPES = [
 	"snatcher",
 	"pyrekeeper",
 	"pyre",
+	"mortar",
+	"mender",
+	"jackal",
 ] as const;
 export type EnemyArchetype = (typeof ENEMY_ARCHETYPES)[number];
 
@@ -1015,6 +1020,14 @@ export const PORT_AUDIO_EVENTS = [
 	"sfx.enemy.swallow",
 	"sfx.pellet.return",
 	"sfx.enemy.pyrelight",
+	// docs/NEW_ENEMIES_3.md NT1 (newEnemies3.ts NEW_ENEMY_3_AUDIO_IDS): a Mortar's lob / its shell landing; a Mender's
+	// heal pulse / its beam cut; a Jackal's lunge / its spooked hop
+	"sfx.enemy.lob",
+	"sfx.enemy.shell",
+	"sfx.enemy.heal",
+	"sfx.enemy.healcut",
+	"sfx.enemy.lunge",
+	"sfx.enemy.spooked",
 ] as const;
 
 /**

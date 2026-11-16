@@ -78,6 +78,10 @@ describe("dummy: registry", () => {
 			"pyre",
 			"pyrekeeper",
 			"snatcher",
+			// band PORT_BAND_ENEMIES_4 (docs/NEW_ENEMIES_3.md): indices 24-26
+			"jackal",
+			"mender",
+			"mortar",
 		]); // band-3 room enemies (docs/ENEMY_VARIANTS.md), then band 4
 		for (let i = 0; i < WEB_TABLE.size(); i++)
 			expect([WEB_TABLE[i], archetypeIndex(WEB_TABLE[i])]).toEqual([WEB_TABLE[i], i]);

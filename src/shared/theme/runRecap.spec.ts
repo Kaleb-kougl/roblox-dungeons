@@ -9,6 +9,7 @@ import { SILVER_SHOP_STRING_KEYS } from "./silverShop";
 import { CODEX_AUDIO_IDS, CODEX_STRING_KEYS } from "./codex";
 import { SECRET_AUDIO_IDS, SECRET_STRING_KEYS } from "./secrets";
 import { NEW_ENEMY_2_AUDIO_IDS } from "./newEnemies2";
+import { NEW_ENEMY_3_AUDIO_IDS } from "./newEnemies3";
 import { PORT_AUDIO_EVENTS, REQUIRED_ASSET_IDS, REQUIRED_STRING_KEYS, slotFor } from "./contract";
 import { THEME_PACKS } from "./packs";
 import { PLACEHOLDER_MANIFEST } from "./packs/placeholder";
@@ -153,7 +154,8 @@ describe("run recap and co-op moments: contract", () => {
 			CODEX_AUDIO_IDS.size() +
 			SECRET_AUDIO_IDS.size() +
 			SILVER_AUDIO_IDS.size() +
-			NEW_ENEMY_2_AUDIO_IDS.size();
+			NEW_ENEMY_2_AUDIO_IDS.size() +
+			NEW_ENEMY_3_AUDIO_IDS.size();
 		expect(tail(PORT_AUDIO_EVENTS, TEAM_MOMENT_AUDIO_IDS.size(), skip)).toEqual([...TEAM_MOMENT_AUDIO_IDS]);
 		for (const id of TEAM_MOMENT_AUDIO_IDS) {
 			expect([id, has(REQUIRED_ASSET_IDS, id), slotFor(id)?.soundGroup]).toEqual([id, true, "sfx"]);

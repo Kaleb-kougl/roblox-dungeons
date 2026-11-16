@@ -69,6 +69,10 @@ export const ARCHETYPE_SIGHTINGS: ReadonlyMap<string, string> = new Map([
 	["snatcher", "snatcher"],
 	["pyrekeeper", "pyrekeeper"],
 	["pyre", "pyrekeeper"],
+	// docs/NEW_ENEMIES_3.md NT1 (NTD13): the fourth set
+	["mortar", "mortar"],
+	["mender", "mender"],
+	["jackal", "jackal"],
 ]);
 
 /** Archetype index -> sighting id, built once (an unregistered id is left out). */

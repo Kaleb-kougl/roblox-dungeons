@@ -52,6 +52,7 @@ import {
 	isSecretArtId,
 } from "./secrets";
 import { NEW_ENEMY_2_AUDIO_IDS } from "./newEnemies2";
+import { NEW_ENEMY_3_AUDIO_IDS } from "./newEnemies3";
 import { COLOR_ROLES } from "./types";
 import { deepClone, sortedKeys, type Obj } from "./util";
 import { validateManifest } from "./validate";
@@ -178,7 +179,11 @@ describe("secret rooms: sounds", () => {
 		// docs/SILVER.md SV7's four, then docs/NEW_ENEMIES_2.md NX1's eight come after them (silver.spec.ts,
 		// newEnemies2.spec.ts)
 		expect(
-			tail(PORT_AUDIO_EVENTS, SECRET_AUDIO_IDS.size(), SILVER_AUDIO_IDS.size() + NEW_ENEMY_2_AUDIO_IDS.size()),
+			tail(
+				PORT_AUDIO_EVENTS,
+				SECRET_AUDIO_IDS.size(),
+				SILVER_AUDIO_IDS.size() + NEW_ENEMY_2_AUDIO_IDS.size() + NEW_ENEMY_3_AUDIO_IDS.size(),
+			),
 		).toEqual([...SECRET_AUDIO_IDS]);
 		for (const id of SECRET_AUDIO_IDS) {
 			expect([id, has(REQUIRED_ASSET_IDS, id), slotFor(id)?.soundGroup]).toEqual([id, true, "sfx"]);

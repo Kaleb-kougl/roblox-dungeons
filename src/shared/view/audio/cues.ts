@@ -515,6 +515,17 @@ export const SFX = {
 	enemySwallow: "sfx.enemy.swallow",
 	pelletReturn: "sfx.pellet.return",
 	enemyPyreLight: "sfx.enemy.pyrelight",
+	/**
+	 * docs/NEW_ENEMIES_3.md NT1 (the theme's NEW_ENEMY_3_AUDIO_IDS): a Mortar's lob, its shell landing; a Mender's heal
+	 * pulse, its beam cut; a Jackal's lunge, a Jackal spooked. Registered only: NT7 maps them. Four play their
+	 * SFX_FALLBACK while silent; the heal pulse and the spook have none.
+	 */
+	enemyLob: "sfx.enemy.lob",
+	enemyShell: "sfx.enemy.shell",
+	enemyHeal: "sfx.enemy.heal",
+	enemyHealCut: "sfx.enemy.healcut",
+	enemyLunge: "sfx.enemy.lunge",
+	enemySpooked: "sfx.enemy.spooked",
 } as const;
 export type SfxId = (typeof SFX)[keyof typeof SFX];
 
@@ -640,6 +651,12 @@ export const ALL_SFX: ReadonlyArray<SfxId> = [
 	SFX.enemySwallow,
 	SFX.pelletReturn,
 	SFX.enemyPyreLight,
+	SFX.enemyLob,
+	SFX.enemyShell,
+	SFX.enemyHeal,
+	SFX.enemyHealCut,
+	SFX.enemyLunge,
+	SFX.enemySpooked,
 ];
 
 /** IDs this port added to the placeholder pack (not in the web contract's AUDIO_EVENTS; theme PORT_AUDIO_EVENTS). */
@@ -751,6 +768,12 @@ export const PORT_SFX: ReadonlyArray<SfxId> = [
 	SFX.enemySwallow,
 	SFX.pelletReturn,
 	SFX.enemyPyreLight,
+	SFX.enemyLob,
+	SFX.enemyShell,
+	SFX.enemyHeal,
+	SFX.enemyHealCut,
+	SFX.enemyLunge,
+	SFX.enemySpooked,
 ];
 
 /**
@@ -916,6 +939,9 @@ export const SFX_MIN_INTERVAL: Readonly<Partial<Record<SfxId, number>>> = {
 	 */
 	[SFX.enemyBlock]: 0.08,
 	[SFX.enemySnatch]: 0.1,
+	/** docs/NEW_ENEMIES_3.md NT1: a pack's lunges a moment apart are one sound; so are cuts of one beam (a hit, then a body). */
+	[SFX.enemyLunge]: 0.1,
+	[SFX.enemyHealCut]: 0.15,
 };
 
 /**
@@ -1075,6 +1101,19 @@ export const SFX_PRIORITY: Readonly<Record<SfxId, number>> = {
 	[SFX.enemySwallow]: 60,
 	[SFX.pelletReturn]: 52,
 	[SFX.enemyPyreLight]: 43,
+	/**
+	 * The fourth endless set (docs/NEW_ENEMIES_3.md NT1; starting ranks, NT10 / NT12 revisit them). The lob is an attack
+	 * cue with the Chainhook's throw it falls back to; the shell hurts where it lands, with the Bomber's blast it falls
+	 * back to; a lunge at the player's back is danger, over the Charger's charge it falls back to. The beam cut is the
+	 * player's payoff, over the block it falls back to; the spook a small payoff beside it; the heal pulse a quiet hint
+	 * under both.
+	 */
+	[SFX.enemyLob]: 44,
+	[SFX.enemyShell]: 48,
+	[SFX.enemyLunge]: 46,
+	[SFX.enemyHealCut]: 41,
+	[SFX.enemySpooked]: 40,
+	[SFX.enemyHeal]: 37,
 	/**
 	 * A boost out of a broken piece (docs/BREAKABLE_DROPS.md BL6): just over a kill drop's landing (the rarer, chosen
 	 * reward), under the pickup; over the piece's own break (40), which plays on the same frame.
@@ -1378,6 +1417,15 @@ export const SFX_FALLBACK: Readonly<Partial<Record<SfxId, SfxId>>> = {
 	[SFX.enemySwallow]: SFX.comboBreak,
 	[SFX.pelletReturn]: SFX.pelletEat,
 	[SFX.enemyPyreLight]: SFX.enemyFuse,
+	/**
+	 * docs/NEW_ENEMIES_3.md NT1: until NT10 picks clips, a lob plays the Chainhook's throw, a shell the Bomber's blast, a
+	 * beam cut the Shieldwall's block, a lunge the Charger's charge. The heal pulse (the beam carries it) and the spook
+	 * have no fallback. One step each, as above.
+	 */
+	[SFX.enemyLob]: SFX.enemyHook,
+	[SFX.enemyShell]: SFX.enemyBlast,
+	[SFX.enemyHealCut]: SFX.enemyBlock,
+	[SFX.enemyLunge]: SFX.enemyCharge,
 };
 
 /** The floor modifier stings by shared/dungeon floorModifierKey (MODIFIERS.kinds' keys). */

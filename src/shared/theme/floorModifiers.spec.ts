@@ -10,6 +10,7 @@ import { FloorModifierClass, MODIFIERS } from "shared/dungeon";
 import { CODEX_AUDIO_IDS, CODEX_STRING_KEYS } from "./codex";
 import { SECRET_AUDIO_IDS, SECRET_ROLES, SECRET_STRING_KEYS } from "./secrets";
 import { NEW_ENEMY_2_AUDIO_IDS } from "./newEnemies2";
+import { NEW_ENEMY_3_AUDIO_IDS } from "./newEnemies3";
 import { colorDifference, contrastRatio } from "./color";
 import { PORT_AUDIO_EVENTS, REQUIRED_ASSET_IDS, REQUIRED_STRING_KEYS, slotFor } from "./contract";
 import {
@@ -67,7 +68,8 @@ const LATER_AFTER = {
 		CODEX_AUDIO_IDS.size() +
 		SECRET_AUDIO_IDS.size() +
 		SILVER_AUDIO_IDS.size() +
-		NEW_ENEMY_2_AUDIO_IDS.size(),
+		NEW_ENEMY_2_AUDIO_IDS.size() +
+		NEW_ENEMY_3_AUDIO_IDS.size(),
 	strings:
 		GOLDEN_RUMOUR_STRING_KEYS.size() +
 		CODEX_STRING_KEYS.size() +

@@ -65,6 +65,15 @@
 	"bestiary.imp": {
 		"note": "First-sighting toast, shown once per account (top centre, during combat) the first time the player meets the Imp (enemy.imp.name). Format \"Name: short survival tip\"; the name before the colon must be the same word as that name string. Brief, direct, second person."
 	},
+	"bestiary.jackal": {
+		"note": "First-sighting toast, shown once per account (top centre, during combat) the first time the player meets the Jackal (enemy.jackal.name: a beast that comes in packs of three, circles the player and lunges at their back). Format \"Name: short survival tip\"; the name before the colon must be the same word as that name string; \"crouches\" is its short wind-up before the lunge. Brief, direct, second person."
+	},
+	"bestiary.mender": {
+		"note": "First-sighting toast, shown once per account (top centre, during combat) the first time the player meets the Mender (enemy.mender.name: a small demon that heals the other demons with a beam). Format \"Name: short survival tip\"; the name before the colon must be the same word as that name string; \"its beam\" is the healing line from it to the demon it heals, broken by stepping into it. Brief, direct, second person."
+	},
+	"bestiary.mortar": {
+		"note": "First-sighting toast, shown once per account (top centre, during combat) the first time the player meets the Mortar (enemy.mortar.name: a demon that lobs shells over walls at where the player is walking). Format \"Name: short survival tip\"; the name before the colon must be the same word as that name string; \"shells\" are what it fires, which land after a moment. Brief, direct, second person."
+	},
 	"bestiary.pellet.power": {
 		"note": "First-sighting toast, shown once per account (top centre, during combat) the first time a power pellet (a rare, bigger green cube on the floor; walking over it turns every enemy bullet on the floor into points) appears in a run. Format \"Name: short tip\"; brief, direct, second person."
 	},
@@ -1499,6 +1508,15 @@
 	},
 	"enemy.imp.name": {
 		"note": "Enemy type name: a small, quick demon that blinks (teleports) next to the player, landing inside a warning ring. Shown in the stage card's roster line (the enemy kinds of a floor, joined with \" · \") and the main menu's Daily card. Singular noun, title case, used as a proper name; keep it short. Glossary term."
+	},
+	"enemy.jackal.name": {
+		"note": "Enemy type name: a lanky clawed beast that hunts in packs of three, circling the player and lunging at their back (named after the wild dog). Shown in the stage card's roster line (the enemy kinds of a floor, joined with \" · \") and the main menu's Daily card. Singular noun, title case, used as a proper name; keep it short. Glossary term."
+	},
+	"enemy.mender.name": {
+		"note": "Enemy type name: a small demon healer that channels a beam into a wounded demon to restore its health. Shown in the stage card's roster line (the enemy kinds of a floor, joined with \" · \") and the main menu's Daily card. Singular noun, title case, used as a proper name; keep it short. Glossary term."
+	},
+	"enemy.mortar.name": {
+		"note": "Enemy type name: a lean demon with a bow that lobs shells high over walls and pillars, landing where the player is heading (like an artillery mortar). Shown in the stage card's roster line (the enemy kinds of a floor, joined with \" · \") and the main menu's Daily card. Singular noun, title case, used as a proper name; keep it short. Glossary term."
 	},
 	"enemy.pyre.name": {
 		"note": "Name of the brazier a Pyre-keeper (enemy.pyrekeeper.name) lights: a fire bowl on the floor that shoots fireballs until its keeper dies. Singular noun, title case; keep it short. Glossary term."

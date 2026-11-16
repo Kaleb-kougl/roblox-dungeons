@@ -61,7 +61,8 @@ export const AFFIX_STRING_KEYS: ReadonlyArray<string> = [
  * The new archetypes a first sighting announces (EVD10): the Imp, the Ooze and the Summoner, then the second endless set
  * (docs/NEW_ENEMIES.md NED13): Bomber, Charger, Stormcaller, Warbanner, Reaper, then the Goldling (docs/FORTUNE.md FO6),
  * then the third endless set (docs/NEW_ENEMIES_2.md NX1, NXD15; newEnemies2.ts NEW_ENEMY_2_BESTIARY): Bulwark,
- * Chainhook, Snatcher, Pyre-keeper (not the brazier).
+ * Chainhook, Snatcher, Pyre-keeper (not the brazier), then the fourth (docs/NEW_ENEMIES_3.md NT1, NTD13;
+ * newEnemies3.ts NEW_ENEMY_3_ARCHETYPES): Mortar, Mender, Jackal.
  */
 export const BESTIARY_ARCHETYPES = [
 	"imp",
@@ -77,6 +78,9 @@ export const BESTIARY_ARCHETYPES = [
 	"chainhook",
 	"snatcher",
 	"pyrekeeper",
+	"mortar",
+	"mender",
+	"jackal",
 ] as const;
 
 /**
@@ -103,6 +107,11 @@ export const BESTIARY_STRING_KEYS: ReadonlyArray<string> = [
 	"bestiary.chainhook",
 	"bestiary.snatcher",
 	"bestiary.pyrekeeper",
+	// docs/NEW_ENEMIES_3.md NT1 (NTD13): the fourth endless set (shared/onboarding sightings of the same ids; before the
+	// affixes)
+	"bestiary.mortar",
+	"bestiary.mender",
+	"bestiary.jackal",
 	"bestiary.affix.hulking",
 	"bestiary.affix.swift",
 	"bestiary.affix.shielded",

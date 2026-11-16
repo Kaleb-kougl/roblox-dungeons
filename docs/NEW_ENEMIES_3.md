@@ -37,8 +37,8 @@ lands.
 
 ## Status (2026-11-16)
 
-**NT0 done** (see "NT0 findings": four small Design changes, no decision changed). Nothing else built. Read on `main` @
-`80f57769`. NTD1-NTD14 taken by the owner on
+**NT0 and NT1 done** (see "NT0 findings": four small Design changes, no decision changed; "NT1 skeleton (as built)").
+Read on `main` @ `80f57769`. NTD1-NTD14 taken by the owner on
 2026-11-16 (see Decisions): every one as recommended except **NTD3** (the Mortar fires only while its target is in the
 Mortar's own room), **NTD9** (a guard that stops a Jackal's lunge counts as a parry) and **NTD10** (the last Jackal of a
 pack keeps the back-only rule).
@@ -96,6 +96,45 @@ Luau counts). Skipped: the rigs' contact sheet (already re-rendered outside the 
 **Owner calls:** none forced. The Design changes above (keep range 6-9 and lob range 10; the landing test on
 `isBodyBlocked`; `stepCorpse` for NTD5's on-time landing; `SimConfig.roomIdAt` for NTD3's room) are the smallest
 faithful readings of the taken decisions and the Risks' own mitigation; flag any of them back if not wanted.
+
+## NT1 skeleton (as built, 2026-11-16)
+
+- Registry: `PORT_BAND_ENEMIES_4` = 7; `jackal` 24, `mender` 25, `mortar` 26; every older index unchanged
+  (`sim/newEnemies3.spec.ts` and the id-list specs: actors, demonlord, dummy, encounterRun, enemyVariants, newEnemies,
+  newEnemies2, warbanner, golden).
+- `archetypes/{mortar,mender,jackal}.ts`: full `data` blocks (the Design tables as named fields, with NT0 finding 12's
+  keep 6-9 / lob 10 for the Mortar), the v slots, states and attack ids, and the `fx` hints (the Mortar's `ring` on
+  v[`MORTAR_LAND_X / _Z`] while `MORTAR_FLIGHT`, filling over the flight; the Jackal's wind-up `aimLine` on
+  v[`JACKAL_DIR_X / _Z`], 2.8 long). Stub steps: idle / walking home / leashing (enemyShared), and engaged they only
+  face their target. No attack, no movement while engaged, no draw (the first cooldowns come with NT2-NT4; a spec checks
+  the rng word). Aggro / leash / lost / alert (no plan numbers): Mortar 10 / 16 / unused (0: it never leashes for sight,
+  NTD3) / 4.5, Mender 9 / 15 / 2.5 s / 4.5 (the imp's), Jackal 8 / 16 / 2 s / 4.5 (the swarmer's). The Mender's bolt is
+  `BulletKind.CASTER` (the medium look, NT0 correction 3); the shell is the Stormcaller's STRIKE spec shape (pierce 6);
+  the shrapnel 6 @ `FULL_RING`, speed 3.5, life 1.2.
+- Rows: `ENCOUNTER_COST` (mortar 2, mender 2, jackal 1 each), `KILL_POINTS` (120 / 150 / 70), `DROPS.chanceByArchetype`
+  (8 / 10 / 4). `ENDLESS_ROOM_KINDS` untouched (NT6): endless rooms spend exactly as before, no replay or hash moves.
+- Arc table: Ballista's 6 @ FULL_RING row's `source` names the Mortar's shrapnel; no new row.
+- Theme: `ENEMY_ARCHETYPES` + three after `pyre` (placeholders: a thin Cylinder post, a short Capsule robe, a low Wedge;
+  colours `#b01840`, `#3848c8`, `#f87880`, >= 26.6 CIE76 from every other enemy colour, the boss accent and the player
+  outline, >= 40 from the danger roles; names Mortar, Mender, Jackal); role `enemyHeal` `#608c00` (a bilious moss green,
+  theme `newEnemies3.ts` ENEMY_HEAL_ROLE; `healReport` / HEAL_COLOR_RULES in `variantColors.ts`, folded into
+  `variantColorProblems`: >= 3:1 on every biome floor, >= 40 CIE76 from the enemy-bullet roles, `telegraph`,
+  `enemyOutline`, `enemyAura`, `enemyGuard`, `fx.heal`, `build.counter` and the boosts; lowest placeholder floor 3.66:1,
+  nearest `enemyGuard` 40.3, then `fx.heal` 40.9 and `boost.frenzy` 41.1: the greens are crowded and this is about the
+  farthest green that clears 40 from all of them); the six SILENT sounds last in PORT_AUDIO_EVENTS (`newEnemies3.ts`
+  NEW_ENEMY_3_AUDIO_IDS) with `shared/view/audio` SFX entries, ALL_SFX / PORT_SFX, `SFX_PRIORITY` (lob 44, shell 48,
+  lunge 46, beam cut 41, spook 40, heal 37), `SFX_MIN_INTERVAL` (lunge 0.1 s, beam cut 0.15 s) and the plan's
+  `SFX_FALLBACK`s (lob -> hook, shell -> blast, beam cut -> block, lunge -> charge; heal and spook none); no
+  `art/audio.json` entries yet (NT10). `bestiary.<id>` for the three (the archetypes' block, before the affixes) with
+  their shared/onboarding sighting ids and `view/sighting` ARCHETYPE_SIGHTINGS, so the first-sighting wiring is done
+  (NT0 finding 14: the Codex entries appear with NT6's rows). `l10n/context.json` entries for the six strings. Vale
+  inherits every entry from the placeholder.
+- Tail / count specs updated for the six sounds (codex, secrets, silver, fortune, treasure, runRecap, boosts, audio,
+  contract, floorModifiers, newEnemies2, view/audio goldenRumourCues), the three archetypes (newEnemies, newEnemies2,
+  fortune, enemyVariants, contract) and the three bestiary lines (enemyVariants, fortune, newEnemies2); boosts.spec's
+  planted dim green counts only its own errors (the heal is near it too).
+- `contract.luau` / `validate.luau` / `sprites.luau` top-level locals unchanged: 189 / 192 / 195 lines (189 / 197 / 195
+  names), counted on out/.
 
 ## Player experience
 
