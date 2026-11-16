@@ -107,6 +107,14 @@ export interface EndlessRoomKind {
 	 * spender opens the kind only once the room has bought at least one enemy (of any kind); no draw.
 	 */
 	readonly needsCompany?: boolean;
+	/**
+	 * Bought as a pack of this many (docs/NEW_ENEMIES_3.md NT5, NTD6: the Jackal's 3; absent = 1). One buy pushes
+	 * packOf entries and is priced packOf x encounterCost (each entry still costs encounterCost for every other reader);
+	 * the kind is open only with at least packOf slots left under the room's cap, `maxPerRoom` counts packs, and its
+	 * per-slot cost is what the spender compares against budget-left / slots-left. Placement puts a pack on its own
+	 * anchor and the free tiles nearest it (never the swarmers' pack).
+	 */
+	readonly packOf?: number;
 }
 
 /**

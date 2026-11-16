@@ -37,11 +37,12 @@ lands.
 
 ## Status (2026-11-16)
 
-**NT0-NT4 done** (see "NT0 findings": four small Design changes, no decision changed; "NT1 skeleton (as
+**NT0-NT5 done** (see "NT0 findings": four small Design changes, no decision changed; "NT1 skeleton (as
 built)"; "NT2 Mortar (as built)": the Mortar's behaviour, `ArchetypeDef.stepCorpse`, `SimConfig.roomIdAt`,
 `events.shells`; "NT3 Mender (as built)": the Mender's behaviour, `healActor`, `events.heals` / `healCuts` and
 `CombatState.healEvents`, two data fields the plan left open; "NT4 Jackal (as built)": the Jackal's behaviour, the
-locked target `JACKAL_TARGET` (a co-op finding), `lungeRange`, `events.lunges` / `spooks`).
+locked target `JACKAL_TARGET` (a co-op finding), `lungeRange`, `events.lunges` / `spooks`; "NT5 packs (as built)":
+`EndlessRoomKind.packOf`, the spender's pack rule and placement, an optional `kinds` table for specs).
 Read on `main` @ `80f57769`. NTD1-NTD14 taken by the owner on
 2026-11-16 (see Decisions): every one as recommended except **NTD3** (the Mortar fires only while its target is in the
 Mortar's own room), **NTD9** (a guard that stops a Jackal's lunge counts as a parry) and **NTD10** (the last Jackal of a
@@ -334,6 +335,47 @@ spec now; `lungeRange` pinned).
   `bomber`, `charger`, `chainhook`, `summoner`, `slime`, `dummy`, `pyrekeeper`, `party`, `enemyVariants`,
   `newEnemies*`, `mortar`, `mender`, `jackal`, `view/audio/*`, `view/fx/variantCueEvents`, `play/liveRun*`,
   `score/nearMissFeed`, `score/score`.
+
+## NT5 packs (as built, 2026-11-16)
+
+Gameplay (dungeon) once a pack kind is in the pool; no kind has `packOf` yet (the Jackal's row is NT6), so every
+endless floor spends and places exactly as before. Files: `dungeon/endlessData.ts` (`EndlessRoomKind.packOf?`),
+`dungeon/endless.ts` (`spendEncounterBudget`, `populateEndlessRoom`), `dungeon/testing/spenderFallback.ts`,
+`dungeon/testing/poolCensus.ts`. Spec: `dungeon/packs.spec.ts` (8 cases).
+
+- **The spender.** Per pick, `slots = cap - out.size()`, `need = left / slots` as before. A kind with `packOf` n is
+  skipped while `n > slots`, is affordable when `n x encounterCost <= left`, and compares its **per-slot** cost (its
+  `encounterCost`) against `need` and in the dearest pick (spec'd both ways: at need 3 a bruiser is drawn over a
+  heavily weighted pack of 1-cost Jackals, and the no-draw fallback takes a sniper over the pack). A pick pushes n
+  entries, adds ONE to `bought` (so `maxPerRoom` counts packs; spec'd with 1 and 2) and spends `n x cost`. With n = 1
+  every test, total and subtraction is the single-kind rule's exactly (`n > slots` never holds inside the loop, `c * 1`
+  is `c`), so without a pack kind every draw is as before. `needsCompany`, the roster and the minimum floors see a pack
+  kind like any other (a closed pack kind moves no total and no draw: spec'd draw for draw against the plain table over
+  200 seeds x 4 budgets x 3 floors).
+- **Testability (decision, the brief's).** `spendEncounterBudget` and `populateEndlessRoom` take an optional trailing
+  `kinds` (default `ENDLESS_ROOM_KINDS`; every game caller passes nothing), and so do the testing mirror's `traceSpend` /
+  `tieSpend`, so the specs buy from `ENDLESS_ROOM_KINDS` + a Jackal row without touching the real table.
+- **Placement.** The swarmers' `pack` / `packLeft` are untouched. A bought pack has its own state (`buyPack`, its kind,
+  its count): the pack's first entry takes a new anchor (`spreadTile`, one draw, pushed to `anchors` like a new swarmer
+  pack's), the other n - 1 the free tiles nearest that anchor (`nearestFree`, no draw); a pack never joins or resets
+  the swarmers' pack, so a swarmer bought after a Jackal pack still joins the earlier swarmer pack (spec'd on real Forge
+  rooms by replaying the placement's used set: every pack member and every swarmer pack member is exactly the nearest
+  free tile to its own anchor). Placement stops early only when the room runs out of tiles, as before.
+- **Mirrors.** `spenderFallback.ts` applies the same rules (agrees with the spender draw for draw with a pack in the
+  table, spec'd); `poolCensus.ts`'s maximum check is `maxPerRoom x packOf` enemies.
+- **Verify.** "A room with a pack holds three Jackals on neighbouring tiles": spec'd on 12 runs x floors 3 / 6 / 9 of
+  real Forge rooms (the two members on tiles touching the anchor in every pack but at most one). "2 or fewer free
+  slots never buys one": caps 1 and 2 buy nothing, cap 16 with only packs stops at 15, and no pack ever starts past
+  `cap - 3`. Floor 1 without a roster, draw for draw and tile for tile: `dungeon/roomPool.lock` unchanged.
+- **Byte for byte without a pack kind.** Run on the change (665 of 667 tests in 64 files green): every `dungeon/*` spec
+  (`roomPool.lock`, `roomPool`, `roster`, `spenderFallback`, the default census shards, `affixes`, `breakables`,
+  `golden`, `vault`, `secrets`, `pacts`, `pellets`, `modifiers`, ...), `run/floorModifiers`, `run/party`,
+  `run/endless*`, `run/validate`, `run/slice`, `daily/*`, `view/hud/rosterLine`, `sim/encounterRun`, `sim/charger`,
+  `sim/stormcaller`, `sim/dummy`, `sim/newEnemies*`. Two failures not caused by NT5 and left as they are:
+  `dungeon/endless.spec` "encounter costs" pins `ENCOUNTER_COST.size()` 18, which NT1's three rows made 21 (NT6, which
+  extends the other count pins, should update it); `dungeon/forge/forge.spec` "EncounterRng ... seedToState vectors"
+  reads a NaN fixture seed as `fff8000000000000` where the fixture says `7ff8000000000000` (a NaN sign bit in the
+  fixture round trip under Lune; no NT code touches it).
 
 ## Player experience
 
