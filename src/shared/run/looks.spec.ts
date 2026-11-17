@@ -74,14 +74,8 @@ const lookup = (id: number) => (id === OWNER ? MINE : id === FRIEND ? THEIRS : u
 describe("looks on the run session (CS4)", () => {
 	it("solo: the owner's look for the character they play", () => {
 		const knight = started(registry(), { requestId: 1, worldKind: "endless" }, ctx(lookup));
-		expect(knight.looks).toEqual([
-			{ dye: "dye.knight.teal", outline: "outline.azure", trail: "trail.jade" },
-		]);
-		const archer = started(
-			registry(),
-			{ requestId: 1, worldKind: "endless", characterId: "archer" },
-			ctx(lookup),
-		);
+		expect(knight.looks).toEqual([{ dye: "dye.knight.teal", outline: "outline.azure", trail: "trail.jade" }]);
+		const archer = started(registry(), { requestId: 1, worldKind: "endless", characterId: "archer" }, ctx(lookup));
 		expect(archer.looks[0].dye).toBe("dye.archer.frost");
 	});
 
@@ -135,7 +129,12 @@ describe("the wallet seam's looks (accessEquipped)", () => {
 		expect(accessEquipped(broken, OWNER)).toBe(undefined);
 		const junk: SilverAccess = {
 			...OPEN_SILVER_ACCESS,
-			equippedFor: () => new Map<unknown, unknown>([[1, "x"], ["outline", 5], ["trail", "trail.jade"]]) as never,
+			equippedFor: () =>
+				new Map<unknown, unknown>([
+					[1, "x"],
+					["outline", 5],
+					["trail", "trail.jade"],
+				]) as never,
 		};
 		expect(accessEquipped(junk, OWNER)!.get("trail")).toBe("trail.jade");
 		expect(accessEquipped(junk, OWNER)!.size()).toBe(1);

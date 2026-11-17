@@ -165,17 +165,17 @@ the spec does not need the PNGs):
 - [ ] **CS1. Masks.** (Built 2026-11-17, "As built: pipeline"; the owner's sign-off by eye open.) The `dye` option on both sets; review every animation and facing on the dye contact sheets;
   `exclude` rects for the Archer's bow. **Verify:** owner sign-off by eye on the contact sheets.
 - [x] **CS2. Pipeline output.** `<sheet>-dye.png`, `dyeFile`, `dyeMeanValue`, tests. **Verify:** `npm run test:art`.
-- [ ] **CS3. Theme.** `dyeImage`, `cosmetics.ts`, `cosmeticReport`, strings and l10n context. **Verify:**
-  `npm run verify`.
-- [ ] **CS4. Wallet and server.** Catalogue rows, `CosmeticLook`, `RunSession.looks`, `PartyRunStart.looks`, lobby
-  looks, `KV_FakeWallet` presets. **Verify:** wallet / lobby / run session specs.
+- [x] **CS3. Theme.** `dyeImage`, `cosmetics.ts`, `cosmeticReport`, strings and l10n context. **Verify:**
+  `npm run verify`. ("As built: theme (CS3)".)
+- [x] **CS4. Wallet and server.** Catalogue rows, `CosmeticLook`, `RunSession.looks`, `PartyRunStart.looks`, lobby
+  looks, `KV_FakeWallet` presets. **Verify:** wallet / lobby / run session specs. ("As built: wallet and server (CS4)".)
 - [ ] **CS5. View.** SpriteView dye label, look plumbing, outline / trail / spark overrides, readiness, stage
   manifest. **Verify:** headless specs for the pure parts; typecheck.
 - [ ] **CS6. Armory and character screen.** Tab, preview, try-on, buy / equip. **Verify:** fit and focus specs.
 - [ ] **CS7. Lobby and co-op.** Teammates' looks. **Verify:** Studio, two clients.
 - [ ] **CS8. Upload.** 15 dye sheets into `assetIds.ts`.
 - [ ] **CS9. Studio check and playtest.**
-- [ ] **CS10. Prismatic.**
+- [ ] **CS10. Prismatic.** Data half built (stops, `prismaticColor`, rule 5: "As built: theme (CS3)"); the drawing is CS5.
 - [ ] **CS11. Earned cosmetics** (not this pass).
 - [ ] **CS12. Telemetry** (not this pass).
 
@@ -228,6 +228,111 @@ magenta, scarlet / cobalt / teal / amethyst). The 30 body and outline sheets are
   without touching the layout.
 - `dyeMeanValue` is above the prototype's 0.71 / 0.48 (head, sword and bow out), so CS3's readability gate must use
   these values, not the table above.
+
+## As built: theme (CS3, 2026-11-17)
+
+**Dye sheets in the theme.** `SpriteSheetImage.dyeAssetId` (types.ts; validated like `outlineAssetId`: an uploaded id,
+never the sheet's own or its outline's), `SpriteFrameRect.dyeAssetId` (core.ts, `spriteSheetDye`) and
+`SpriteFrame.dyeImage` (pack.ts), same rect as the frame. The vale manifest sets a sheet's `dyeAssetId` only once
+`ids[sheet.dyeFile]` exists (like the outline), so until CS8 every set draws exactly as before. **Preload:**
+`ThemeCore.contentIds` skips every `dyeAssetId` (the knight is in `PRELOAD.core`: the 15 dye sheets must not load for
+everyone); `ThemeCore.dyeContentIds(id)` / `ThemePack.dyeContentIds(id)` list a set's dye sheets in sheet order, for
+the stage manifest to push only when a member wears a dye of that character (CS5). contentIds.spec: a set's content
+stays exactly its sheets + outline sheets with dyes present.
+
+**Data.** One item list, `shared/cosmetics` `COSMETIC_ITEMS` (id, slot, tier, `prismatic`); the wallet's catalogue rows
+and the theme's colours are keyed by it (`theme/cosmetics.ts` `COSMETIC_COLORS` / `PRISMATIC_STOPS`, typed by the ids,
+so a missing colour is a compile error; cosmetics.spec cross-checks at run time). `COSMETIC_DYE_SETS` (knight
+`class.vanguard`, archer `class.ranger`), `valeDyeMeanValue(setId)` (packs/vale dyes.ts: the layout's `dyeMeanValue`).
+**Prismatic** (CS10's data): `prismaticColor(stops, tSec, periodSec = PRISMATIC.periodSec 8)`: one segment per stop,
+smoothstep eased (rate 0 at every stop, so the loop has no corner), wraps any real t; t = 0 is the first stop (the
+reduced-motion hold). `cosmeticColor(itemId, tSec)` gives any item's 0..255 colour.
+
+**The report.** `theme/cosmeticReport.ts` `cosmeticReport(manifest, dyeMeans)` (its own module: it imports
+validate.ts, and contract.ts imports cosmetics.ts for the strings): rule 1 `danger` (>= 40 CIE76 from
+`enemyBullet`, `enemyBulletOutline`, `telegraph`, `enemyOutline`), rule 2 `pickup` (>= 30 from the four boosts and
+`enemy.golden`), rule 3 `floor` (>= 3 : 1 on every biome floor of the manifest: vale's are its tile means), all on the
+dyed mean (colour x `dyeMeanValue`, per channel, rounded); outlines through `playerOutlineReport` with the colour as
+`playerOutline` (floors and walls 3 : 1, 40 from threats and boosts); trails rule 1; sparks through `nearMissReport`
+with the colour as `nearMiss.graze`; Prismatic every stop and 16 eased samples per segment through 1-3. A character
+with no mean fails a `mean` entry per dye. Bars in `COSMETIC_RULES`. cosmetics.spec runs it over both bundled packs on
+the layout's means (Knight 0.7342, Archer 0.5114) and prints every item's worst margin.
+
+**The palette.** Draft candidates on the real means (vale; danger / pickup CIE76, floor ratio, worst of each):
+
+| Candidate | Knight (x 0.7342) | Archer (x 0.5114) |
+|---|---|---|
+| Scarlet `#c0182a` | 43.0 / 81.6 / **1.55**: dropped, lightened to Rose `#f98686` | **39.0** / 81 / **1.10**: dropped |
+| Cobalt `#3c64dc` | 59.5 / 42.0 / **1.79**: lightened to Azure `#59acff` | 42.1 / 52 / **1.22**: dropped |
+| Verdant `#3cb44b` | 77.1 / 51.4 / 3.09: kept a touch lighter, `#3cc85a` | 57.8 / 61 / **1.81**: dropped |
+| Amethyst `#9650d2` | 55.0 / 40.1 / **1.91**: lightened to Lilac `#c294d1` | 42.8 / 50 / **1.28**: dropped |
+| Frost `#a0dcff` | 65.4 / 44.5 / 5.29: kept | 46.6 / 52 / **2.80**: lightened, `#c1e8ff` |
+| Teal `#28b4aa` | 60.2 / 41.4 / 3.22: kept, brighter `#00ccbb` | 44.5 / 58 / **1.87**: dropped |
+| Ivory `#f0ead6` | 64.6 / 51.2 / 6.39: kept | 48.6 / 60 / 3.29: kept |
+| Bronze `#b4783c` | 46.1 / 58.4 / **2.36**: lightened, `#cf9e3d` | **35.7** / 73 / **1.48**: dropped |
+
+The Archer's dropped colours pass rule 3 only as near-whites (mixed 75-85 % toward white: `#f6dcdf`, `#e2e8fa`,
+`#ceecd2`, ...), which read as off-white, not as the colour, so they were not shipped as named dyes; they are her
+Prismatic's pearl stops instead. Her leathers are dark (p = 60) and her dyed mean about half the colour, so rule 3 at
+3 : 1 admits only light dyes. **Owner call:** keep 3 : 1 for her (two dyes + Prismatic) or give the Archer her own floor
+bar (at 2 : 1 all eight pass, mixed 0-80 % toward white, measured on the prototype's lower mean); appending them later is allowed.
+
+Shipped, worst margins on vale (placeholder within 0.05):
+
+| Item | Hex | Worst danger | Worst pickup | Worst floor |
+|---|---|---|---|---|
+| Frost Plate | `#a0dcff` | 65.4 | 44.5 aegis | 5.29 |
+| Ivory Plate | `#f0ead6` | 64.6 | 51.2 quickstep | 6.39 |
+| Teal Plate | `#00ccbb` | 69.1 | 33.0 quickstep | 3.96 |
+| Verdant Plate | `#3cc85a` | 83.2 | 47.9 quickstep | 3.71 |
+| Azure Plate | `#59acff` | 60.8 | 36.3 aegis | 3.41 |
+| Lilac Plate | `#c294d1` | 51.8 | 32.2 aegis | 3.32 |
+| Bronze Plate | `#cf9e3d` | 40.4 telegraph | 43.4 fury | 3.37 |
+| Rose Plate | `#f98686` | 47.1 telegraph | 60.3 | 3.42 |
+| Prismatic Plate | Azure, Teal, Verdant, Ivory, Rose, Frost | 47.1 | 32.6 quickstep | 3.40 |
+| Frost Leathers | `#c1e8ff` | 47.8 | 52.2 | 3.11 |
+| Ivory Leathers | `#f0ead6` | 48.6 | 59.9 | 3.29 |
+| Prismatic Leathers | `#f6dcdf`, `#c1e8ff`, `#ceecd2`, `#eadcf6` | 45.3 | 48.2 | 3.06 |
+
+Lilac moved from `#c59fdf` (29.1 from Aegis on the real mean) to `#c294d1`. Outlines (floor / wall ratio, CIE76; all
+pass): Azure `#33ccff` 6.28 / 45.2, Silver `#c0c8d0` 6.95 / 46.6, Jade `#33ff99` 8.90 / 42.2, Sand `#e8d8a8` 8.29 /
+47.5, Rose `#ff99b3` 5.85 / 41.8, Moss `#85c270` 5.57 / 41.0, Violet `#b366ff` 3.50 / 41.7, Orchid `#cc33ff` 3.07 /
+60.6. Rejected outlines: Lilac `#e0c8ff` (22 from Aegis), Mint `#9effc4` (23 from Quickstep), Cobalt `#3c64dc` (2.3 :
+1), Teal (23 from Quickstep), Gold (5 from Fury), Pink `#ff66cc` (17 from the bullet). Trails (rule 1): Azure 86.6,
+Ivory 67.1, Jade 113.1, Verdant `#3cb44b` 95.1, Cobalt `#4060ff` 80.7, Violet 57.4. Sparks (floor ratio / CIE76):
+Azure 7.76 / 86.6, Jade 11.0 / 113, Violet 4.33 / 57.4, Rose 7.24 / 41.8, Orchid 3.80 / 60.6.
+
+**Strings** (`COSMETIC_STRING_KEYS`, spread last in `REQUIRED_STRING_KEYS` after the Silver shop's; the pinned tails
+in nine theme specs shifted): `cosmetic.equip` / `.equipped` / `.unequip` ("Take off") / `.tryOn` / `.none` ("Default")
+/ `.animated`, `cosmetic.slot.<slot>` ("Knight dye", "Archer dye", "Outline", "Roll trail", "Sparks") and
+`cosmetic.<id>.name` ("Frost Plate", "Prismatic Leathers", "Azure Trail", "Orchid Sparks"); l10n context entries.
+`armory.cosmetics.later` is now unused (Track V removes it with the tab). No colour role, sound or setting;
+contract.ts gained one import.
+
+## As built: wallet and server (CS4, 2026-11-17)
+
+- **Catalogue.** `ARMORY_CATALOG` appends `cosmeticArmoryItems()`: one row per `COSMETIC_ITEMS` entry (`kind`
+  "cosmetic", one level, `simLever` false, `slot`), after catalogue v1 (catalog.spec's order lock lists all 31).
+  Tiers: Knight dyes 2, 2, 3, 3, 4, 4, 5, 6; Archer dyes 2, 3; both Prismatic 8; outlines 2-5; trails 3-7; sparks 4-7
+  (26,050 Silver in all). `applyEquip` unchanged (a dye's slot names its character).
+- **Goals.** `nextGoals` skips cosmetics (a choice, not a step; tier 2 colours would otherwise always crowd out the
+  next upgrade on the Armory marks and the run-over `to go` line). The main menu badge (`affordableKeys`) still
+  counts them.
+- **Looks.** `shared/cosmetics` `CosmeticLook { dye?, outline?, trail?, spark? }` (item ids; `dye` the played
+  character's), `cosmeticLookOf(equipped, character)`, `equippedMapOf(WalletStatus.equipped)`, `readCosmeticLook`
+  (a wire value: known items in their slot only), `sameCosmeticLook`, `isDefaultLook`, `NO_LOOK`.
+  `shared/wallet` `walletEquipped(doc)` / `WalletBook.equipped(userId)`: owned cosmetics in their own slot.
+- **Server.** `SilverAccess.equippedFor` (optional; `accessEquipped` checks it), wired by WalletService from the
+  read copy. `StartContext.equipped`; the registry stores `RunSession.looks` (`sessionLooks`: member order, each for
+  the character the setup gives them, the Knight where a world has none: every world, CSD12; unknown wallet `{}`);
+  `StartRunReply.look` (the owner's), `PartyRunStart.looks`. `LobbyView.looks` (same index as `members`, for each
+  member's pick; `lobbyViewOf`'s `lookOf`). `SilverAccessService.lookOf` / `lookChanged` / `onLookChanged`:
+  WalletService calls `lookChanged` after a successful equip and after a wallet load; LobbyService re-sends that
+  member's lobby. Never hashed, recorded, validated or in `buildWorldSetup` (looks.spec: same first hash dressed or
+  not).
+- **Studio.** `KV_FakeWallet`: an item ending in `*` is owned and equipped (`6000;outline.azure:1*`); `cosmetics`
+  owns every cosmetic; `dressed` also equips `WALLET_FAKE_DRESSED` (both Prismatic dyes, Azure outline, Violet trail,
+  Jade sparks).
 
 ## Decisions (accepted as recommended, 2026-11-17)
 

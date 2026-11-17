@@ -98,7 +98,19 @@ function dyeRules(
 	if (rgb === undefined) return;
 	const dyed = toHex(dyedMean(rgb, mean));
 	const push = (rule: CosmeticRule, against: string, againstColor: string, value: number, min: number) =>
-		ctx.out.push({ itemId, slot, rule, base, color: dyed, sample, against, againstColor, value, min, ok: value >= min });
+		ctx.out.push({
+			itemId,
+			slot,
+			rule,
+			base,
+			color: dyed,
+			sample,
+			against,
+			againstColor,
+			value,
+			min,
+			ok: value >= min,
+		});
 	for (const role of COSMETIC_RULES.danger) {
 		const c = ctx.colors[role];
 		if (typeIs(c, "string")) push("danger", role, c, colorDifference(dyed, c), COSMETIC_RULES.minDangerDifference);
@@ -144,7 +156,18 @@ export function cosmeticReport(
 			const stops = prismaticStopsOf(it.id);
 			const own = cosmeticHex(it.id) ?? (stops !== undefined && stops.size() > 0 ? stops[0] : "");
 			if (mean === undefined || !(mean > 0 && mean <= 1)) {
-				out.push({ itemId: it.id, slot, rule: "mean", base: own, color: own, against: character, againstColor: "", value: mean ?? 0, min: 0, ok: false });
+				out.push({
+					itemId: it.id,
+					slot,
+					rule: "mean",
+					base: own,
+					color: own,
+					against: character,
+					againstColor: "",
+					value: mean ?? 0,
+					min: 0,
+					ok: false,
+				});
 				continue;
 			}
 			if (stops === undefined) {
@@ -164,12 +187,34 @@ export function cosmeticReport(
 		if (hex === undefined) continue;
 		if (slot === "outline") {
 			for (const e of playerOutlineReport(withColors(manifest, ["playerOutline"], hex))) {
-				out.push({ itemId: it.id, slot, rule: "outline", base: hex, color: hex, against: e.surface !== undefined ? `${e.against}.${e.surface}` : e.against, againstColor: e.againstColor, value: e.value, min: e.min, ok: e.ok });
+				out.push({
+					itemId: it.id,
+					slot,
+					rule: "outline",
+					base: hex,
+					color: hex,
+					against: e.surface !== undefined ? `${e.against}.${e.surface}` : e.against,
+					againstColor: e.againstColor,
+					value: e.value,
+					min: e.min,
+					ok: e.ok,
+				});
 			}
 		} else if (slot === "spark") {
 			for (const e of nearMissReport(withColors(manifest, ["nearMiss.graze"], hex))) {
 				if (e.role !== "nearMiss.graze") continue;
-				out.push({ itemId: it.id, slot, rule: "spark", base: hex, color: hex, against: e.against, againstColor: e.againstColor, value: e.value, min: e.min, ok: e.ok });
+				out.push({
+					itemId: it.id,
+					slot,
+					rule: "spark",
+					base: hex,
+					color: hex,
+					against: e.against,
+					againstColor: e.againstColor,
+					value: e.value,
+					min: e.min,
+					ok: e.ok,
+				});
 			}
 		} else {
 			for (const role of COSMETIC_RULES.danger) {
@@ -177,7 +222,18 @@ export function cosmeticReport(
 				if (!typeIs(c, "string")) continue;
 				const value = colorDifference(hex, c);
 				const min = COSMETIC_RULES.minDangerDifference;
-				out.push({ itemId: it.id, slot, rule: "trail", base: hex, color: hex, against: role, againstColor: c, value, min, ok: value >= min });
+				out.push({
+					itemId: it.id,
+					slot,
+					rule: "trail",
+					base: hex,
+					color: hex,
+					against: role,
+					againstColor: c,
+					value,
+					min,
+					ok: value >= min,
+				});
 			}
 		}
 	}

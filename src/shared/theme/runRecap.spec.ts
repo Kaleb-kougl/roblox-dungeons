@@ -138,7 +138,8 @@ describe("run recap and co-op moments: contract", () => {
 			CODEX_STRING_KEYS.size() +
 			SECRET_STRING_KEYS.size() +
 			SILVER_STRING_KEYS.size() +
-			SILVER_SHOP_STRING_KEYS.size() + COSMETIC_STRING_KEYS.size();
+			SILVER_SHOP_STRING_KEYS.size() +
+			COSMETIC_STRING_KEYS.size();
 		expect(tail(REQUIRED_STRING_KEYS, all.size(), after)).toEqual(all);
 		expect(new Set(REQUIRED_STRING_KEYS).size()).toBe(REQUIRED_STRING_KEYS.size());
 	});

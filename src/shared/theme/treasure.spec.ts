@@ -116,7 +116,8 @@ const FORTUNE_AFTER = {
 		CODEX_STRING_KEYS.size() +
 		SECRET_STRING_KEYS.size() +
 		SILVER_STRING_KEYS.size() +
-		SILVER_SHOP_STRING_KEYS.size() + COSMETIC_STRING_KEYS.size(),
+		SILVER_SHOP_STRING_KEYS.size() +
+		COSMETIC_STRING_KEYS.size(),
 } as const;
 
 function printEntry(tag: string, id: string, e: ReturnType<typeof treasureReport>[number]): void {

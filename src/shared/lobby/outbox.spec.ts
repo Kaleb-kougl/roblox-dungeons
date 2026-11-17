@@ -76,7 +76,11 @@ describe("lobby views", () => {
 		const asked = new Array<string>();
 		const v = lobbyViewOf(lobby, [], 0, (id, character) => {
 			asked.push(`${id}:${character}`);
-			return id === A ? { dye: `dye.${character}.frost`, outline: "outline.jade" } : id === B ? {} : { trail: "trail.ivory" };
+			return id === A
+				? { dye: `dye.${character}.frost`, outline: "outline.jade" }
+				: id === B
+				? {}
+				: { trail: "trail.ivory" };
 		});
 		expect(asked).toEqual([`${HOST}:knight`, `${A}:archer`, `${B}:knight`]);
 		expect(v.looks).toEqual([{ trail: "trail.ivory" }, { dye: "dye.archer.frost", outline: "outline.jade" }, {}]);

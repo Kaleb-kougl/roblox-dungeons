@@ -35,7 +35,7 @@ export const COSMETIC_DYE_SETS: Readonly<Record<CharacterId, string>> = table.fr
 /**
  * Every one-colour cosmetic's colour. Dyes: the colour the dye sheet's grey is multiplied by (ImageColor3). The Scarlet,
  * Cobalt and Amethyst candidates were lightened to pass the floor-contrast rule (Rose, Azure, Lilac); the Archer's
- * are pale because her dyed mean is 0.48 of the colour.
+ * are pale because her dyed mean is about half the colour (dyeMeanValue 0.51).
  */
 export const COSMETIC_COLORS: { readonly [K in SolidCosmeticItemId]: HexColor } = table.freeze({
 	"dye.knight.frost": "#a0dcff",
@@ -43,11 +43,11 @@ export const COSMETIC_COLORS: { readonly [K in SolidCosmeticItemId]: HexColor } 
 	"dye.knight.teal": "#00ccbb",
 	"dye.knight.verdant": "#3cc85a",
 	"dye.knight.azure": "#59acff",
-	"dye.knight.lilac": "#c59fdf",
+	"dye.knight.lilac": "#c294d1",
 	"dye.knight.bronze": "#cf9e3d",
 	"dye.knight.rose": "#f98686",
-	"dye.archer.frost": "#e2f5ff",
-	"dye.archer.ivory": "#f6f2e6",
+	"dye.archer.frost": "#c1e8ff",
+	"dye.archer.ivory": "#f0ead6",
 	"outline.azure": "#33ccff",
 	"outline.silver": "#c0c8d0",
 	"outline.jade": "#33ff99",
@@ -75,8 +75,15 @@ export const COSMETIC_COLORS: { readonly [K in SolidCosmeticItemId]: HexColor } 
  * 5). The Knight's run through the shipped dyes' hues; the Archer's are pearl tints (only pale dyes pass at her mean).
  */
 export const PRISMATIC_STOPS: { readonly [K in PrismaticItemId]: ReadonlyArray<HexColor> } = table.freeze({
-	"dye.knight.prismatic": table.freeze(["#59acff", "#00ccbb", "#3cc85a", "#f0ead6", "#f98686", "#a0dcff"] as HexColor[]),
-	"dye.archer.prismatic": table.freeze(["#fdf5f6", "#e2f5ff", "#e6f7e8", "#f7f1fc"] as HexColor[]),
+	"dye.knight.prismatic": table.freeze([
+		"#59acff",
+		"#00ccbb",
+		"#3cc85a",
+		"#f0ead6",
+		"#f98686",
+		"#a0dcff",
+	] as HexColor[]),
+	"dye.archer.prismatic": table.freeze(["#f6dcdf", "#c1e8ff", "#ceecd2", "#eadcf6"] as HexColor[]),
 });
 
 /** The Prismatic dye's tunables. */
@@ -188,5 +195,8 @@ export const COSMETIC_STRING_KEYS: ReadonlyArray<string> = cosmeticStringKeys();
 
 /** Is `itemId` a cosmetic whose colour this theme knows (a hex or Prismatic stops)? */
 export function hasCosmeticColor(itemId: string): boolean {
-	return cosmeticItem(itemId) !== undefined && (cosmeticHex(itemId) !== undefined || prismaticStopsOf(itemId) !== undefined);
+	return (
+		cosmeticItem(itemId) !== undefined &&
+		(cosmeticHex(itemId) !== undefined || prismaticStopsOf(itemId) !== undefined)
+	);
 }

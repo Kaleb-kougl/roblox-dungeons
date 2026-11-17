@@ -89,10 +89,13 @@ describe("theme content ids (docs/PRELOAD.md P1)", () => {
 		const core = new ThemeCore(m, { warn: quiet });
 		// exactly its sheets and their outline sheets, as before
 		expect(core.contentIds("class.vanguard")).toEqual(before);
-		for (const d of dyes) expect((ids(core.contentIds("class.vanguard")) as ReadonlyArray<string>).includes(d)).toBe(false);
+		for (const d of dyes)
+			expect((ids(core.contentIds("class.vanguard")) as ReadonlyArray<string>).includes(d)).toBe(false);
 		expect(ids(core.dyeContentIds("class.vanguard"))).toEqual(dyes);
 		for (const r of core.dyeContentIds("class.vanguard")) expect(r.media).toBe("image");
-		expect(new ThemePack(m, { warn: quiet }).dyeContentIds("class.vanguard")).toEqual(core.dyeContentIds("class.vanguard"));
+		expect(new ThemePack(m, { warn: quiet }).dyeContentIds("class.vanguard")).toEqual(
+			core.dyeContentIds("class.vanguard"),
+		);
 		// no dyes: empty (a set without them, another kind, a missing id)
 		expect(plain.dyeContentIds("class.vanguard")).toEqual([]);
 		expect(core.dyeContentIds("enemy.swarmer")).toEqual([]);
@@ -101,9 +104,9 @@ describe("theme content ids (docs/PRELOAD.md P1)", () => {
 		// the frames carry the dye next to the outline, same rect
 		const f = new ThemePack(m, { warn: quiet }).sprites("class.vanguard")!.frame("idle", 0, 0);
 		expect(f.dyeImage).toBe(dyes[core.sprites("class.vanguard")!.frame("idle", 0, 0).sheet]);
-		expect(new ThemePack(VALE_MANIFEST, { warn: quiet }).sprites("class.vanguard")!.frame("idle", 0, 0).dyeImage).toBe(
-			undefined,
-		);
+		expect(
+			new ThemePack(VALE_MANIFEST, { warn: quiet }).sprites("class.vanguard")!.frame("idle", 0, 0).dyeImage,
+		).toBe(undefined);
 	});
 
 	it("a sound returns its assetId then its variants, as sounds, each once", () => {

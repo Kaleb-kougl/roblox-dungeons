@@ -76,7 +76,8 @@ const LATER_AFTER = {
 		CODEX_STRING_KEYS.size() +
 		SECRET_STRING_KEYS.size() +
 		SILVER_STRING_KEYS.size() +
-		SILVER_SHOP_STRING_KEYS.size() + COSMETIC_STRING_KEYS.size(),
+		SILVER_SHOP_STRING_KEYS.size() +
+		COSMETIC_STRING_KEYS.size(),
 	roles: SECRET_ROLES.size() + SILVER_ROLES.size(),
 } as const;
 

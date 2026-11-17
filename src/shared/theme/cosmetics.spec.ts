@@ -2,7 +2,7 @@
 // colour (or Prismatic stops) here and nothing else does; prismaticColor loops smoothly; the strings are
 // REQUIRED_STRING_KEYS' last ones and every bundled pack has them; and cosmeticReport holds the whole shipped
 // catalogue to the readability rules 1-5 on every bundled pack, every check's worst margin printed per item (the table
-// in docs/COSMETICS.md "As built: theme (CS3)").
+// in docs/COSMETICS.md "As built: theme (CS3)"), on the dye means art:build measured (the vale layout).
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { CHARACTER_IDS, characterDef, type CharacterId } from "shared/characters";
 import { COSMETIC_ITEMS, COSMETIC_SLOTS, isPrismaticItem } from "shared/cosmetics";
@@ -31,17 +31,14 @@ import { valeDyeMeanValue } from "./packs/vale";
 import type { HexColor } from "./types";
 import { deepClone, sortedKeys, type Obj } from "./util";
 
-/**
- * PROVISIONAL dye means, the prototype's measurement (docs/COSMETICS.md "Prototype": Knight 0.71, Archer 0.48), used
- * only while the generated layout has no `dyeMeanValue` (Track P's art:build writes it). Spec-only: runtime code never
- * falls back to a number.
- */
-const PROVISIONAL_DYE_MEANS: Readonly<Record<CharacterId, number>> = { knight: 0.71, archer: 0.48 };
-
-/** Each character's dye mean: the layout's measured value, else the provisional one. */
+/** Each character's dye mean: the atlas pipeline's measurement in the generated layout (required: no fallback). */
 function dyeMeans(): Record<CharacterId, number> {
 	const out = {} as Record<CharacterId, number>;
-	for (const c of CHARACTER_IDS) out[c] = valeDyeMeanValue(COSMETIC_DYE_SETS[c]) ?? PROVISIONAL_DYE_MEANS[c];
+	for (const c of CHARACTER_IDS) {
+		const mean = valeDyeMeanValue(COSMETIC_DYE_SETS[c]);
+		if (mean === undefined) error(`${COSMETIC_DYE_SETS[c]} has no dyeMeanValue in the vale layout (art:build)`, 0);
+		out[c] = mean;
+	}
 	return out;
 }
 
@@ -97,7 +94,10 @@ describe("cosmetics: prismaticColor (CS10)", () => {
 
 	it("sits on stop i at the start of segment i, loops, and wraps negative time", () => {
 		for (let i = 0; i < stops.size(); i++) {
-			expect([i, near(prismaticColor(stops, (i * P) / stops.size()), parseHex(stops[i])!) < 1e-6]).toEqual([i, true]);
+			expect([i, near(prismaticColor(stops, (i * P) / stops.size()), parseHex(stops[i])!) < 1e-6]).toEqual([
+				i,
+				true,
+			]);
 		}
 		expect(prismaticColor(stops, 0)).toEqual(parseHex(stops[0]));
 		expect(near(prismaticColor(stops, P), parseHex(stops[0])!) < 1e-6).toBe(true);
@@ -172,10 +172,7 @@ function worstByRule(report: ReadonlyArray<CosmeticEntry>, itemId: string): Map<
 describe("cosmetics: cosmeticReport (readability rules 1-5)", () => {
 	it("the shipped catalogue passes every rule on every bundled pack (every item's worst margins printed)", () => {
 		const means = dyeMeans();
-		for (const c of CHARACTER_IDS) {
-			const measured = valeDyeMeanValue(COSMETIC_DYE_SETS[c]);
-			print(`[cosmetics] ${c} dye mean ${fixed(means[c], 3)} (${measured !== undefined ? "layout" : "PROVISIONAL"})`);
-		}
+		for (const c of CHARACTER_IDS) print(`[cosmetics] ${c} dye mean ${fixed(means[c], 4)} (vale layout)`);
 		for (const p of sortedKeys(THEME_PACKS)) {
 			const report = cosmeticReport(THEME_PACKS[p], means);
 			for (const it of COSMETIC_ITEMS) {
@@ -191,7 +188,14 @@ describe("cosmetics: cosmeticReport (readability rules 1-5)", () => {
 			}
 			for (const e of report) {
 				if (!e.ok) print(`[cosmetics] FAIL ${p} ${e.itemId} ${e.rule} ${e.color} vs ${e.against} ${e.value}`);
-				expect([p, e.itemId, e.rule, e.sample, e.against, e.ok]).toEqual([p, e.itemId, e.rule, e.sample, e.against, true]);
+				expect([p, e.itemId, e.rule, e.sample, e.against, e.ok]).toEqual([
+					p,
+					e.itemId,
+					e.rule,
+					e.sample,
+					e.against,
+					true,
+				]);
 			}
 		}
 	});
@@ -227,8 +231,10 @@ describe("cosmetics: cosmeticReport (readability rules 1-5)", () => {
 			const dyed = toHex(dyedMean(parseHex(hex)!, mean));
 			const out = new Array<string>();
 			const diff = (role: string) => colorDifferenceOf(dyed, colors[role] as string);
-			for (const role of COSMETIC_RULES.danger) if (diff(role) < COSMETIC_RULES.minDangerDifference) out.push(`danger:${role}`);
-			for (const role of COSMETIC_RULES.pickup) if (diff(role) < COSMETIC_RULES.minPickupDifference) out.push(`pickup:${role}`);
+			for (const role of COSMETIC_RULES.danger)
+				if (diff(role) < COSMETIC_RULES.minDangerDifference) out.push(`danger:${role}`);
+			for (const role of COSMETIC_RULES.pickup)
+				if (diff(role) < COSMETIC_RULES.minPickupDifference) out.push(`pickup:${role}`);
 			return out;
 		};
 		expect(probe("#dc2832", means.knight).includes("danger:enemyOutline")).toBe(true);
@@ -257,4 +263,3 @@ describe("cosmetics: cosmeticReport (readability rules 1-5)", () => {
 		}
 	});
 });
-

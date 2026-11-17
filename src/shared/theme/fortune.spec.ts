@@ -113,7 +113,8 @@ const CODEX_AFTER = {
 		CODEX_STRING_KEYS.size() +
 		SECRET_STRING_KEYS.size() +
 		SILVER_STRING_KEYS.size() +
-		SILVER_SHOP_STRING_KEYS.size() + COSMETIC_STRING_KEYS.size(),
+		SILVER_SHOP_STRING_KEYS.size() +
+		COSMETIC_STRING_KEYS.size(),
 } as const;
 
 const clone = () => deepClone(PLACEHOLDER_MANIFEST) as unknown as Obj;

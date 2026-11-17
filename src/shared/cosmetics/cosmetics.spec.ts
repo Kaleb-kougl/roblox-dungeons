@@ -88,11 +88,21 @@ describe("cosmeticLookOf", () => {
 describe("readCosmeticLook (a value off the wire)", () => {
 	it("keeps known items in their slots, drops the rest; never throws", () => {
 		expect(
-			readCosmeticLook({ dye: "dye.archer.prismatic", outline: "outline.moss", trail: "trail.cobalt", spark: "spark.orchid" }),
-		).toEqual({ dye: "dye.archer.prismatic", outline: "outline.moss", trail: "trail.cobalt", spark: "spark.orchid" });
-		expect(readCosmeticLook({ dye: "outline.moss", outline: "dye.knight.rose", trail: 3, spark: "spark.x", junk: 1 })).toEqual(
-			{},
-		);
+			readCosmeticLook({
+				dye: "dye.archer.prismatic",
+				outline: "outline.moss",
+				trail: "trail.cobalt",
+				spark: "spark.orchid",
+			}),
+		).toEqual({
+			dye: "dye.archer.prismatic",
+			outline: "outline.moss",
+			trail: "trail.cobalt",
+			spark: "spark.orchid",
+		});
+		expect(
+			readCosmeticLook({ dye: "outline.moss", outline: "dye.knight.rose", trail: 3, spark: "spark.x", junk: 1 }),
+		).toEqual({});
 		for (const bad of [undefined, 5, "dye.knight.rose", true]) expect(readCosmeticLook(bad)).toEqual({});
 	});
 
