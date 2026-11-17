@@ -54,6 +54,10 @@ specs and a server-validated run per kind, no sim rule changed; the NT6 `bulletA
 bullets, not Jackal parries. "NT12 tuning (as built)": per-kind rooms, drills and real floors measured, no number
 changed; **owner calls OC1-OC5** (first lob / heal, the Mortar against a standing Archer, the Jackal against a passive
 player, party-4 packs P1-P4, the census room's allowance). CLAUDE.md's decision log has the feature's entry (NT14).
+**Full suite (2026-11-16, x86 Lune, 76 min):** 7276 / 7278 tests in 604 files; the two failures were
+`dungeon/forge/forge.spec`'s known x86 NaN-sign vector (pre-existing on `main`) and `sim/combat.spec`'s "every plain
+CombatState ... field ... covered by the hash", which did not yet list NT3's unhashed `healEvents` beside `guardEvents`
+/ `hookEvents` (fixed in the spec; 23 / 23). A separate read-only review found nothing serious ("Independent review").
 **Pending:** NT13 (the owner's uploads: 20 PNGs, six OGGs after `audio:build`; the Studio checklists of NT7 / NT8),
 the owner calls, and full tuning if the owner wants more than NT12-lite.
 Read on `main` @ `80f57769`. NTD1-NTD14 taken by the owner on
@@ -825,6 +829,21 @@ Read:
 - **OC4 Party 4 and packs** (P1-P4 above).
 - **OC5 The census room's allowance.** Keep `MAY_TIME_OUT` as it is (the Knight's no-build row now times out on the
   Mortar), or tune the Mortar (OC2) and re-measure with `--census run/newEnemies3.tuning sim/archer.ttk.builds`.
+
+## Independent review (2026-11-16)
+
+A separate read-only review of `41ac6f1..948c9f2` (sim, dungeon and view, end to end; no build) found **nothing
+serious**: no determinism, hashing, fixture, M1 or tutorial parity problem; every new state is hashed actor scratch or
+a cleared per-tick feed the sim never reads back; runs without the new kinds take the old paths byte for byte; NTD3,
+NTD5-NTD10 and the documented draws per attack hold. Low-severity items, left open for the owner (none changed):
+
+| # | Item | Where | Note |
+|---|---|---|---|
+| R1 | A Jackal guard stop is credited on a tick the guard does not sweep: the player presses SWAP on the tick a lunge first overlaps; phase 2 sees `v[SWORD_V_GUARD] > 0`, phase 4 swaps sets and cancels the guard | `archetypes/jackal.ts` `jackalGuardStops` | Deterministic (no desync); a one-tick generous parry. Fix if wanted: also refuse when this tick's input presses SWAP (the roll is already refused) |
+| R2 | The enemy-shoot skip subtracts `shells x 6` shrapnel; with a full enemy pool some shrapnel is dropped, so another enemy's shot that frame can lose its sound, and a dropped shell with spawned shrapnel plays the shot | `view/audio/cues.ts` | Presentation only, full pool only |
+| R3 | The Mender's channel has no range end: an ally that runs past `healRange` keeps being healed for the rest of the 3 s while sight holds (the plan's end list has none; `MenderData.healRange`'s comment says "within this distance") | `archetypes/mender.ts` `beamBreak` | Owner call: add "ally beyond healRange + slack" as an end rule, or reword the comment |
+| R4 | Loosened bounds: `archer.ttk.builds` lets the no-build Knight and the two-weapon player (no build / Siege Bolt) time out on the floor-20 census room (a Mortar there); the roll bots' "rolled" check is waived on the mixed floor-6 room | the three specs (reasons recorded in NT6) | Tuning red flag, with NT12's OC5 |
+| R5 | Documented deviations: a lunge hurts / is stopped by any overlapping player, not only its target; Horde's wave 2 can copy a partial pack | NT4 / NT11 as built | As written |
 
 ## Player experience
 
