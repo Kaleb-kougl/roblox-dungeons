@@ -311,6 +311,8 @@ export class RunSessionService implements OnStart {
 			// docs/SILVER.md SV6: and with the upgrade levels it validates (an unknown wallet: none, and it says so).
 			upgrades: s.upgrades?.[0],
 			upgradesUnknown: s.upgradesUnknown.includes(s.ownerId) ? true : undefined,
+			// docs/COSMETICS.md CS4: the owner's look (presentation only).
+			look: s.looks[0],
 		};
 	}
 
@@ -330,6 +332,8 @@ export class RunSessionService implements OnStart {
 			// docs/SILVER.md SV6 / SV17: each member's upgrade levels and owned characters, from the wallet seam.
 			upgrades: (id) => this.silver.upgradesFor(id),
 			ownsCharacter: (id, characterId) => this.silver.ownsCharacter(id, characterId),
+			// docs/COSMETICS.md CS4: and what each member wears (never part of the setup).
+			equipped: (id) => this.silver.equippedFor(id),
 		};
 	}
 
@@ -528,6 +532,8 @@ export class RunSessionService implements OnStart {
 			// docs/SILVER.md SV6: and with each member's upgrade levels (the validator's setup was built with them).
 			upgrades: s.upgrades !== undefined ? [...s.upgrades] : [],
 			upgradesUnknown: [...s.upgradesUnknown],
+			// docs/COSMETICS.md CS4: each member's look (presentation only; never in the setup).
+			looks: [...s.looks],
 			// The old invite flow's field (removed with it, task L7): the lobby id, so it is never a stale invite's.
 			lobbyId,
 		};

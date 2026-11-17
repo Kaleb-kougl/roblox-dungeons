@@ -22,6 +22,11 @@
  * (`StartRunReply.upgrades`, PartyRunStart), and the setup is built with them, so a client that builds other levels
  * fails its first segment.
  *
+ * Looks (docs/COSMETICS.md CS4): each member's cosmetics, read from the wallet at the start (`StartContext.equipped`,
+ * shared/cosmetics cosmeticLookOf for the character they play; an unknown wallet: the default look), are stored on the
+ * session (`looks`) and returned with the start (`StartRunReply.look`, PartyRunStart.looks). Presentation only: never
+ * hashed, recorded, validated or part of the setup.
+ *
  * The Archer unlock (docs/SILVER.md SV17): in a world that plays characters (worlds.ts charactersApply) every member
  * must own the character they play (`StartContext.ownsCharacter`, the wallet's; the Knight always), else the start is
  * `locked_character`. An old client that sends no `characterId` plays the Knight.
@@ -39,6 +44,7 @@ import {
 	type CharacterId,
 	type UpgradeLevels,
 } from "shared/characters";
+import { cosmeticLookOf, type CosmeticLook } from "shared/cosmetics";
 import { DAILY, DAILY_WORLD_KIND, dailyDay, type DailyRunKey } from "shared/daily";
 import { isValidRunSeed, type RunSetup } from "./config";
 import {
@@ -117,6 +123,11 @@ export interface StartRunReply {
 	 * with no upgrades (`upgrades` is NO_UPGRADES). Absent otherwise.
 	 */
 	upgradesUnknown?: boolean;
+	/**
+	 * docs/COSMETICS.md CS4: the owner's look the session stored (RunSession.looks[0]): the cosmetics they wear for the
+	 * character they play. Presentation only. Absent on a refused start.
+	 */
+	look?: CosmeticLook;
 	code?: StartRunRejectCode;
 	reason?: string;
 }
@@ -141,6 +152,11 @@ export interface RunSession {
 	readonly upgrades: ReadonlyArray<UpgradeLevels> | undefined;
 	/** Members whose wallet was unknown at the start (they play with NO_UPGRADES), in member order. */
 	readonly upgradesUnknown: ReadonlyArray<number>;
+	/**
+	 * docs/COSMETICS.md CS4: each member's look, in member order (sessionLooks: read at the start, a later equip shows
+	 * from the next run). Presentation only: never hashed, recorded, validated or part of `setup`.
+	 */
+	readonly looks: ReadonlyArray<CosmeticLook>;
 	readonly atBossDoor: boolean;
 	/** Debug limits were in force (debug input or boss door allowed): never posts to a leaderboard. */
 	readonly debug: boolean;
@@ -199,6 +215,12 @@ export interface StartContext {
 	 * every character is owned (tests, tools).
 	 */
 	readonly ownsCharacter?: (userId: number, characterId: CharacterId) => boolean;
+	/**
+	 * docs/COSMETICS.md CS4: a member's equipped cosmetics (slot -> item id; the server's wallet:
+	 * SilverAccess.equippedFor), or undefined when their wallet is unknown (the default look). Absent: nobody wears
+	 * anything.
+	 */
+	readonly equipped?: (userId: number) => ReadonlyMap<string, string> | undefined;
 }
 
 export type StartRunResult =
@@ -295,6 +317,24 @@ export function sessionCharacters(
 		} else {
 			out.push(i === 0 ? owner : DEFAULT_CHARACTER);
 		}
+	}
+	return out;
+}
+
+/**
+ * Each member's look for a start (docs/COSMETICS.md CS4), in member order: cosmeticLookOf(lookup(id), their character)
+ * (`characters[i]`, DEFAULT_CHARACTER for a world without characters, whose players draw as the Knight). No lookup, or an
+ * unknown wallet: the default look. Never refuses a start.
+ */
+export function sessionLooks(
+	members: ReadonlyArray<number>,
+	characters: ReadonlyArray<CharacterId> | undefined,
+	lookup: ((userId: number) => ReadonlyMap<string, string> | undefined) | undefined,
+): CosmeticLook[] {
+	const out: CosmeticLook[] = [];
+	for (let i = 0; i < members.size(); i++) {
+		const character = characters?.[i] ?? DEFAULT_CHARACTER;
+		out.push(lookup !== undefined ? cosmeticLookOf(lookup(members[i]), character) : {});
 	}
 	return out;
 }
@@ -444,6 +484,8 @@ export class RunSessionRegistry {
 			characters: setup.characters,
 			upgrades: upgrades?.levels,
 			upgradesUnknown: upgrades?.unknown ?? [],
+			// docs/COSMETICS.md CS4: what each member wears, for the character the setup gives them.
+			looks: sessionLooks(party, setup.characters, ctx.equipped),
 			atBossDoor,
 			debug: ctx.allowDebugInput || atBossDoor,
 			daily,

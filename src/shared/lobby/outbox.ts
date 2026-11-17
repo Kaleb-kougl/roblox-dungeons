@@ -14,6 +14,8 @@
  *
  * Users are flushed in ascending UserId order (deterministic, and each hears one update however many changes).
  */
+import type { CharacterId } from "shared/characters";
+import type { CosmeticLook } from "shared/cosmetics";
 import type { LobbyInviteView, LobbyNotice, LobbyView } from "shared/network";
 import type { LobbyInviteSource } from "./config";
 import {
@@ -29,12 +31,20 @@ import {
 export const COUNTDOWN_CANCELLED_MEMBER_LEFT = "a member left";
 export const COUNTDOWN_CANCELLED_UNREADY = "a member is not ready";
 
+/** A member's look for their lobby pick (docs/COSMETICS.md CS4; the server's wallet through cosmeticLookOf). */
+export type LobbyLookOf = (userId: number, character: CharacterId) => CosmeticLook;
+
 /**
  * A member's view of their lobby. `invites`: the live invites to it (`Lobbies.invitesTo`); `invitedSources[i]` is
  * the source of `invited[i]` (the first invite's, if a player somehow has two); `characters[i]` is `members[i]`'s pick
- * (docs/ARCHER.md AR5).
+ * (docs/ARCHER.md AR5); `looks[i]` their look for that pick (`lookOf`; absent: the default look, docs/COSMETICS.md CS4).
  */
-export function lobbyViewOf(lobby: Lobby, invites: ReadonlyArray<LobbyInvite>, now: number): LobbyView {
+export function lobbyViewOf(
+	lobby: Lobby,
+	invites: ReadonlyArray<LobbyInvite>,
+	now: number,
+	lookOf?: LobbyLookOf,
+): LobbyView {
 	const invited: number[] = [];
 	const invitedSources: LobbyInviteSource[] = [];
 	for (const inv of invites)
@@ -42,6 +52,7 @@ export function lobbyViewOf(lobby: Lobby, invites: ReadonlyArray<LobbyInvite>, n
 			invited.push(inv.toUserId);
 			invitedSources.push(inv.source);
 		}
+	const characters = memberCharacters(lobby);
 	return {
 		lobbyId: lobby.lobbyId,
 		nameId: lobby.nameId,
@@ -51,7 +62,8 @@ export function lobbyViewOf(lobby: Lobby, invites: ReadonlyArray<LobbyInvite>, n
 		phase: lobby.phase,
 		members: [...lobby.members],
 		ready: [...lobby.ready],
-		characters: memberCharacters(lobby),
+		characters,
+		looks: lobby.members.map((id, i) => (lookOf !== undefined ? lookOf(id, characters[i]) : {})),
 		countdownIn:
 			lobby.phase === "countdown" && lobby.countdownEndsAt !== undefined
 				? math.max(0, lobby.countdownEndsAt - now)

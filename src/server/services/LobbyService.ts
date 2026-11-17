@@ -252,6 +252,15 @@ export class LobbyService implements OnStart {
 				this.flush();
 			}),
 		);
+		// docs/COSMETICS.md CS4: a member equipped something (or their wallet loaded): their lobby shows the new look.
+		this.janitor.Add(
+			this.silver.onLookChanged((userId) => {
+				const lobby = this.lobbies.lobbyOf(userId);
+				if (lobby === undefined) return;
+				this.outbox.lobby(lobby);
+				this.flush();
+			}),
+		);
 		this.janitor.Add(Players.PlayerAdded.Connect((player) => this.playerAdded(player)));
 		for (const player of Players.GetPlayers()) this.playerAdded(player);
 		this.janitor.Add(Players.PlayerRemoving.Connect((player) => this.playerRemoving(player)));
@@ -628,7 +637,9 @@ export class LobbyService implements OnStart {
 			if (lobby !== undefined) {
 				view = views.get(lobby);
 				if (view === undefined) {
-					view = lobbyViewOf(lobby, this.lobbies.invitesTo(lobby.lobbyId, now), now);
+					view = lobbyViewOf(lobby, this.lobbies.invitesTo(lobby.lobbyId, now), now, (member, character) =>
+						this.silver.lookOf(member, character),
+					);
 					views.set(lobby, view);
 				}
 			}

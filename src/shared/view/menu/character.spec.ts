@@ -202,6 +202,7 @@ function lobby(over: Partial<LobbyView>): LobbyView {
 		members: [1, 2, 3],
 		ready: [],
 		characters: ["knight", "archer", "knight"],
+		looks: [],
 		invited: [],
 		invitedSources: [],
 		...over,

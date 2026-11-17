@@ -28,6 +28,11 @@ export interface SilverAccess {
 	 * only.
 	 */
 	readonly ownsCharacter: (userId: number, characterId: CharacterId) => boolean;
+	/**
+	 * docs/COSMETICS.md CS4: the cosmetics the player wears (their wallet's equipped slots, slot -> item id, owned items
+	 * only), or undefined when their wallet is unknown (the default look). Optional: absent, nobody wears anything.
+	 */
+	readonly equippedFor?: (userId: number) => ReadonlyMap<string, string> | undefined;
 }
 
 /** Before a wallet is wired: no upgrades for anyone, every character owned (the build as it was before Silver). */
@@ -59,4 +64,21 @@ export function accessOwnsCharacter(access: SilverAccess, userId: number, charac
 	if (isStarterCharacter(characterId)) return true;
 	const [ok, answer] = pcall(() => access.ownsCharacter(userId, characterId));
 	return ok && answer === true;
+}
+
+/**
+ * docs/COSMETICS.md CS4: `access.equippedFor(userId)`, checked: a fresh slot -> item id map of its string entries, or
+ * undefined when the provider has none, errors or answers anything but a table (the default look). Presentation only:
+ * what a look may hold is decided again by shared/cosmetics cosmeticLookOf.
+ */
+export function accessEquipped(access: SilverAccess, userId: number): Map<string, string> | undefined {
+	const lookup = access.equippedFor;
+	if (lookup === undefined) return undefined;
+	const [ok, answer] = pcall(() => lookup(userId));
+	if (!ok || !typeIs(answer, "table")) return undefined;
+	const out = new Map<string, string>();
+	for (const [k, v] of pairs(answer as unknown as ReadonlyMap<unknown, unknown>)) {
+		if (typeIs(k, "string") && typeIs(v, "string")) out.set(k, v);
+	}
+	return out;
 }

@@ -124,6 +124,8 @@ export class WalletService implements OnStart {
 		this.silverAccess.setSilverAccess({
 			upgradesFor: (userId) => this.effectiveUpgrades(userId),
 			ownsCharacter: (userId, characterId) => this.ownsCharacter(userId, characterId),
+			// docs/COSMETICS.md CS4: run starts and lobbies read each member's look from the same read copy.
+			equippedFor: (userId) => this.book.equipped(userId),
 		});
 	}
 
@@ -173,6 +175,8 @@ export class WalletService implements OnStart {
 				}
 				const r = this.book.equip(player.UserId, slot, itemId);
 				this.afterRequest(player, r.result, r.outcome);
+				// docs/COSMETICS.md CS4: a lobby the player is in shows the new look (a run in progress keeps its own).
+				if (r.result.ok) this.silverAccess.lookChanged(player.UserId);
 			}),
 		);
 		game.BindToClose(() => this.waitOnClose());
@@ -383,6 +387,8 @@ export class WalletService implements OnStart {
 		}
 		this.ready.add(player);
 		this.send(player);
+		// docs/COSMETICS.md CS4: a lobby the player is already in shows their look once their wallet is known.
+		this.silverAccess.lookChanged(userId);
 	}
 
 	/** Puts the fake's doc into the Studio memory store for `userId`. */
