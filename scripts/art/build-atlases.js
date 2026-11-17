@@ -2419,6 +2419,8 @@ function layoutModule(sets, images, floorHex, world) {
 		" */",
 		"export interface ValeSpriteSheetFile extends ValeSheetFile {",
 		"\toutlineFile?: string;",
+		"\t/** Dye sheet (art/atlases.json `dye`, docs/COSMETICS.md): same size and cell grid, the dyed region as grey. */",
+		"\tdyeFile?: string;",
 		...(perSheet
 			? [
 					"\t/**",
@@ -2437,6 +2439,8 @@ function layoutModule(sets, images, floorHex, world) {
 		"/** SpriteSetAsset without `kind`, with sheets named by file instead of asset ID. */",
 		'export interface ValeSpriteLayout extends Omit<SpriteSetAsset, "kind" | "sheets"> {',
 		"\tsheets: Array<ValeSpriteSheetFile>;",
+		"\t/** Sets with a `dye`: the mean normalised value (0..1) of every dyed pixel, the cosmetics validator's input. */",
+		"\tdyeMeanValue?: number;",
 		"}",
 		"",
 		"/**",

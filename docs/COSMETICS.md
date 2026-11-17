@@ -1,0 +1,203 @@
+# Cosmetics from recoloured sprites
+
+Status (2026-11-17): **building** on branch `cosmetics` (from `main` @ `140c2fe3`). Owner: "proceed" (2026-11-17), so
+**CSD1-CSD12 are accepted as recommended.** This pass builds CS1-CS7 and CS10 (Prismatic); CS0's device measurement,
+CS8 (upload), CS9 (Studio check and playtest), CS11 (earned cosmetics) and CS12 (telemetry) are left open. The title
+slot (docs/SILVER.md) is not a recolour and is not part of this pass. Each track adds an "As built" section below.
+
+This is docs/SILVER.md's phase 2 (SV11-SV13, "Cosmetics") made concrete, built on art we already have: **no new
+character art is drawn or bought.** Tasks **CS0-CS12**, decisions **CSD1-CSD12**. Numbers marked *(tune)* are
+starting points for the validator and the owner's eye, not commitments.
+
+Goal: give Silver (earned and, since docs/SILVER_SHOP.md, bought) something to buy that is **not power** and that
+**other players see**: your Knight in cobalt plate, your Archer in teal leathers, your outline, your roll trail. Every
+cosmetic is a recolour of a sprite the game already draws.
+
+## The idea in one paragraph
+
+The atlas pipeline already cuts a second, aligned sheet per body sheet (the 1 px player outline,
+`<sheet>-outline.png`) and SpriteView already draws it as a second ImageLabel with the frame's own rect, tinted at
+runtime by `ImageColor3`. A **dye** is the same trick for the body: `art:build` writes a third aligned sheet per body
+sheet, `<sheet>-dye.png`, holding only the pixels of one region (the Knight's plate, the Archer's leathers) as
+normalised greyscale, and SpriteView draws it over the frame tinted by the player's dye colour. **One set of dye sheets
+per character (15 uploads, once) serves every colour we will ever sell:** a new dye is a hex in a data table, not an
+upload. The body sheets do not change (no re-upload), and a player with no dye draws exactly as today. Outline, roll
+trail and spark colours need no art at all: those layers are already tinted at runtime. Everything is presentation:
+no sim, dungeon, lockstep, hash, replay, fixture or score change.
+
+## Prototype (2026-11-17, the owner's Mac, `art/build/_review/cosmetic-dye-probe.png`)
+
+A throwaway script masked the `-idle` sheets by colour, normalised the masked luminance to its 98th percentile and
+multiplied by a colour (exactly what `ImageColor3` will do):
+
+| | Knight (plate) | Archer (leathers) |
+|---|---|---|
+| Mask rule | alpha > 240, max RGB > 8, HLS saturation < 0.18, luminance >= 88 | alpha > 240, max RGB > 8, luminance < 70, hue < 55 or > 340 degrees |
+| Share of opaque body pixels dyed | 64 % (plate, helm, shield face, greaves) | 80 % (tunic, boots, hood / hair, **the bow**) |
+| Mean normalised value (dyed colour = colour x this) | 0.71 | 0.48 |
+| Untouched | sword, shield rim, leather straps, baked shadow | skin, orange bracers, baked shadow |
+
+By eye: the Knight reads as a painted-armour knight in every colour; the Archer reads as dyed leathers but the bow is
+dyed with them (CS1 must exclude it, below). Multiply flattens highlights a little (the brightest plate pixel becomes
+the dye colour, never white): accepted for v1 (CSD2).
+
+**The readability gate already bites.** CIE76 of the dyed mean (colour x mean value) against the danger roles
+(`enemyBullet` `#ff3fa4`, `telegraph` `#ff8a3d`, `enemyOutline` `#ff3b30`) and the Goldling (`enemy.golden`
+`#f5c400`), Knight / Archer:
+
+| Candidate | vs enemyOutline | vs telegraph | vs Goldling | At a 40 bar |
+|---|---|---|---|---|
+| Crimson `#dc2832` | 38 / 57 | 47 / 60 | 85 / 92 | Knight fails (reads as an enemy's red rim) |
+| Scarlet `#c0182a` | 45 / 63 | 52 / 65 | 89 / 95 | passes |
+| Ember `#e67828` | 45 / 61 | **30** / 50 | 58 / 73 | Knight fails (telegraph orange) |
+| Gilded `#f0be28` | 68 / 72 | **37** / 50 | **34** / 58 | Knight fails twice |
+| Cobalt, Verdant, Amethyst, Frost, Teal, Ivory, Bronze | 66-117 | 48-113 | 65-138 | all pass |
+
+So red-orange-gold, the game's danger and treasure colours, are mostly unavailable for the body, which is the right
+outcome (CSD6).
+
+## What the code gives us (checked on `main` @ `80f57769`)
+
+| Fact | Where | Consequence |
+|---|---|---|
+| SpriteView draws an optional second ImageLabel ("Outline") under the frame with the frame's outline sheet and the same `ImageRectOffset` / `Size`, tinted by `ImageColor3`, hidden when the sheet has none; squash, push and visibility already apply to both | `client/controllers/render/SpriteView.ts` | The dye is a third label on the same BillboardGui, written in the same branch as the frame; squash / push come free |
+| Every vale body sheet has an `outlineFile` in the generated layout; the pipeline's `outline` option writes them aligned to the body sheet | `packs/vale/layout.ts`, `art/atlases.json`, `scripts/art/build-atlases.js` | A `dye` option writes `dyeFile` the same way; the body sheets stay byte-identical |
+| The Knight is 8 body sheets of 1024 x 1024 (128 px cells, 8 x 8); the Archer 7 sheets of 968 x 776 (121 x 97 cells) | `art/atlases.json` `class.vanguard` / `class.ranger` | 15 dye sheets, one upload batch, then never again |
+| Build-time `recolor` (gradient map by luminance) exists and made the Goldling | docs/ART.md "Recolour" | The alternative for baked prestige skins (CSD1), not v1 |
+| Roll afterimages copy the drawn frame (`SpriteView.snapshot`) into pooled ghost ImageLabels | `client/controllers/render/motionFx.ts` | A trail colour is an `ImageColor3` on the ghost labels; the snapshot must carry the dye too |
+| Wallet doc `eq: { [slot]: itemId }`, `applyEquip` (owned and fits the slot), remote `walletEquip`, `WalletStatus.equipped` | `shared/wallet` doc / transforms / status | Equipping is built; only catalogue rows and slots are new |
+| `ArmoryItem.kind` `"cosmetic"` with `slot`; the Armory has a Cosmetics tab, empty today; `CONFIRM_FROM_TIER` 6 | `shared/wallet/catalog.ts`, `shared/view/menu/armory.ts` | Catalogue rows (append-only) fill the tab |
+| `PartyRunStart` carries per-member `characters` and `upgrades` | `shared/network.ts` | Add per-member `looks` the same way (unhashed, never in `buildWorldSetup`) |
+| `playerOutline` is drawn for the **watched** player only (docs/PLAYER_OUTLINE.md) | | Teammates draw without a rim, so a dyed body must stay readable on every floor by itself (gate below) |
+
+To confirm while building (CS0's code half): how the stage manifest's `characters` group lists sheets (dye sheets
+join it only when a member wears a dye), how lobby members are drawn (is there a sprite preview to dye?), where graze /
+parry sparks take their player colour. The swing fan / blade colour is out of v1 (CSD11).
+
+## Slots and catalogue v1
+
+Equipped per slot in the wallet's `eq`, one item per slot. Prices are tiers of the existing ladder
+(`ARMORY_TIERS` 40 / 80 / 150 / 300 / 600 / 1,200 / 2,500 / 5,000); cosmetics sit on tiers 2-8 (SVD23).
+
+| Slot (`eq` key) | Recolours | Art needed | v1 items *(tune)* |
+|---|---|---|---|
+| `dye.knight` | The Knight's plate (dye sheets) | 8 dye sheets, once | up to 8 colours, tiers 2-6, + Prismatic tier 8 |
+| `dye.archer` | The Archer's leathers (dye sheets) | 7 dye sheets, once | up to 8 colours, tiers 2-6, + Prismatic tier 8 |
+| `outline` | Your rim (`playerOutline`, drawn for the watched player; the minimap self marker keeps `minimap.self`, CSD9) | none | 8 colours, tiers 2-5 |
+| `trail` | Roll afterimage ghosts | none | 6 colours, tiers 3-7 |
+| `spark` | Your graze / parry sparks | none | 5 colours, tiers 4-7 |
+
+Draft dye palette (names per character, e.g. "Cobalt Plate" / "Cobalt Leathers"): Scarlet, Cobalt, Verdant,
+Amethyst, Frost, Teal, Ivory, Bronze; every one gated by the validator per character before it ships, so the list
+may shrink or shift. Prestige (tier 8): **Prismatic** (CS10, CSD7), an animated dye that drifts through validated
+stops.
+
+## Readability rules (validator `cosmeticReport`, a spec over the whole catalogue)
+
+A cosmetic may never make a player read as an enemy, a bullet, a hazard or a pickup. Every dye rule is checked on the
+**dyed mean** (colour x the character's measured mean value `dyeMeanValue`, written by `art:build` into the layout, so
+the spec does not need the PNGs):
+
+1. >= 40 CIE76 from every `ENEMY_BULLET_ROLES` colour, `telegraph` and `enemyOutline`.
+2. >= 30 CIE76 from every `boost.*` role and `enemy.golden` *(tune)*.
+3. **Contrast on the floor:** the dyed body's luminance contrast >= 3 : 1 against every biome's floor colour *(tune)*,
+   because teammates have no rim. Dark dyes are meant to fail (CSD5).
+4. Outline colours: exactly `playerOutlineReport`'s rules. Trail colours: rule 1. Spark colours: `nearMissReport`'s
+   rules.
+5. Prismatic: every stop and every interpolated step (sampled at 16 per segment) passes 1-3.
+
+## Design
+
+### Pipeline (`art:build`)
+
+- A sprite set may carry `"dye": { "rule": { ... }, "normalizePercentile": 98, "exclude": [...] }`. The rule is the
+  prototype's predicate in data: `alphaMin`, `minRgb`, `satMax` / `satMin`, `lumMin` / `lumMax`, `hue` ranges.
+  `exclude` lists rectangles to drop by hand where colour cannot separate a part (the Archer's bow).
+- Output per body sheet: `<sheet>-dye.png`, the same size and cell layout; a masked pixel becomes grey
+  `round(255 x min(1, lum / p))` (p = the set's `normalizePercentile` luminance of masked pixels) with its source
+  alpha; every other pixel transparent. The layout gains `dyeFile` per sheet and `dyeMeanValue` per set.
+- Body and outline sheets byte-identical.
+- A contact sheet per set: the body, the mask in magenta, and the body dyed in sample colours, for review by eye
+  (`art/build/contact/<set>-dye.png`).
+
+### Theme
+
+- `SpriteSheetImage.dyeAssetId` / `SpriteFrame.dyeImage`, like the outline's; the vale manifest wires a sheet's dye
+  only once its `dyeFile` has an uploaded id.
+- shared/theme `cosmetics.ts` (a module of its own: keep `contract.luau` / `validate.luau` under Luau's 200
+  top-level locals): the colour of every cosmetic item, the Prismatic stops, `cosmeticReport` (rules 1-5), strings
+  `cosmetic.<id>.name`, slot labels, l10n context entries.
+- Placeholder pack: no dye sheets, so dyes draw nothing in-run there; the Armory still shows the swatch.
+
+### Wallet and server
+
+- `ARMORY_CATALOG` rows appended (append-only, `catalog.spec`'s order lock updated): `kind: "cosmetic"`, `slot`,
+  `simLever: false`. A dye's slot names its character (`dye.knight`), so `applyEquip`'s fit rule is unchanged.
+- **Looks:** `CosmeticLook` `{ dye?, outline?, trail?, spark? }` = the item ids equipped, read from the STORED wallet
+  at run start (like `upgrades`), stored on the `RunSession` and sent as `PartyRunStart.looks[]` (member order).
+  Unknown wallet: the default look. A lobby carries each member's look. Solo: the client's own
+  `WalletStatus.equipped`.
+- Never hashed, never recorded, never in `buildWorldSetup`, never validated.
+
+### View
+
+- `SpriteView` gains an optional dye label ("Dye", ZIndex above the frame) and `setDye(color | undefined)`; it draws
+  only when the frame's sheet has a `dyeImage`, the dye sheet's content is ready (docs/STAGE_ASSETS.md's stand-in
+  rule) and a colour is set. Its `ImageColor3` is dye x the view's tint (per channel), its transparency follows
+  `setTransparency`, and `snapshot` copies it.
+- ActorRenderController passes each player's look (index order) to their view; outline colour overrides
+  `playerOutline`; MotionFx tints that player's ghosts; the spark systems take the owner's spark colour.
+- Stage assets: a floor's manifest adds a character's dye sheets only when a member wears a dye of that character.
+- Prismatic: a pure `prismaticColor(t)` in shared/view on the view's clock; reduced motion holds its first stop.
+
+### Armory
+
+- The Cosmetics tab groups items by slot. Each row: swatch, name, price, Buy / Equip / Equipped.
+- **Live preview**: the slot's character drawn from its idle sheet, dye sheet and outline sheet as stacked UI
+  ImageLabels (no viewport), turning through its facings, with the focused item **tried on** before it is bought.
+- The purchase moment: `sfx.shop.buy`, a stamp on the row, the preview flashing to the new look.
+- Gamepad (a focus scope like the other tabs), touch and portrait sizes as the Armory today.
+
+## Tasks
+
+- [ ] **CS0. Findings.** Code half while building; device half (GPU texture memory on the iPhone with 0 / 1 / 4 dyed
+  players) open, decides CSD4.
+- [ ] **CS1. Masks.** The `dye` option on both sets; review every animation and facing on the dye contact sheets;
+  `exclude` rects for the Archer's bow. **Verify:** owner sign-off by eye on the contact sheets.
+- [ ] **CS2. Pipeline output.** `<sheet>-dye.png`, `dyeFile`, `dyeMeanValue`, tests. **Verify:** `npm run test:art`.
+- [ ] **CS3. Theme.** `dyeImage`, `cosmetics.ts`, `cosmeticReport`, strings and l10n context. **Verify:**
+  `npm run verify`.
+- [ ] **CS4. Wallet and server.** Catalogue rows, `CosmeticLook`, `RunSession.looks`, `PartyRunStart.looks`, lobby
+  looks, `KV_FakeWallet` presets. **Verify:** wallet / lobby / run session specs.
+- [ ] **CS5. View.** SpriteView dye label, look plumbing, outline / trail / spark overrides, readiness, stage
+  manifest. **Verify:** headless specs for the pure parts; typecheck.
+- [ ] **CS6. Armory and character screen.** Tab, preview, try-on, buy / equip. **Verify:** fit and focus specs.
+- [ ] **CS7. Lobby and co-op.** Teammates' looks. **Verify:** Studio, two clients.
+- [ ] **CS8. Upload.** 15 dye sheets into `assetIds.ts`.
+- [ ] **CS9. Studio check and playtest.**
+- [ ] **CS10. Prismatic.**
+- [ ] **CS11. Earned cosmetics** (not this pass).
+- [ ] **CS12. Telemetry** (not this pass).
+
+## Decisions (accepted as recommended, 2026-11-17)
+
+| # | Question | Decision | Alternative kept for later |
+|---|---|---|---|
+| CSD1 | Runtime dye layer or baked palette swaps? | **Runtime dye layer** | Baked `recolor` prestige skins |
+| CSD2 | Multiply's flattened highlights | **Accept for v1** | A highlight sheet over the dye |
+| CSD3 | Dye regions per character | **One** (plate / leathers) | A second "trim" channel |
+| CSD4 | Dye sheet layout | **Aligned to the body sheet** | Packed by bounding box, if CS0's memory numbers demand it |
+| CSD5 | Dark dyes | **Not allowed** (floor-contrast rule) | Allowed with a forced teammate rim |
+| CSD6 | Gold / red bodies | **No** (danger and Goldling rules) | A prestige "Gilded" ramp chosen to pass |
+| CSD7 | Animated Prismatic dye | **Yes**, tier 8, validated stops, held under reduced motion | None |
+| CSD8 | Earned, not-for-sale cosmetics | **Yes, a few** (CS11, later) | Purchase only |
+| CSD9 | Outline colour on the minimap self marker | **No** | Matching |
+| CSD10 | Dyes per character or shared | **Per character** | Shared |
+| CSD11 | Bullet / arrow / swing colours | **Out of v1** | A validated swing-fan palette later |
+| CSD12 | Cosmetics in the tutorial, the Daily, dev runs | **Everywhere** | Off in the tutorial |
+
+## Changes
+
+Presentation, wallet catalogue, server session / lobby fields and one network field. No sim, dungeon, lockstep,
+hash, replay, fixture, score or leaderboard change; `DAILY.ruleset` unchanged. New art: 15 dye sheets cut from the
+existing body sheets (no new licence: the SmallScaleInt licences already cover modification for use in the game).

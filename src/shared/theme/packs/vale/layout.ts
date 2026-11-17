@@ -23,6 +23,8 @@ export interface ValeSheetFile {
  */
 export interface ValeSpriteSheetFile extends ValeSheetFile {
 	outlineFile?: string;
+	/** Dye sheet (art/atlases.json `dye`, docs/COSMETICS.md): same size and cell grid, the dyed region as grey. */
+	dyeFile?: string;
 	/**
 	 * Per-sheet cell (art/atlases.json `cells: "perSheet"`; SpriteSheetImage): this sheet's own cell size and
 	 * pivot (the set's pivot point, in this sheet's crop). Absent: the set's frameW / frameH / pivot.
@@ -35,6 +37,8 @@ export interface ValeSpriteSheetFile extends ValeSheetFile {
 /** SpriteSetAsset without `kind`, with sheets named by file instead of asset ID. */
 export interface ValeSpriteLayout extends Omit<SpriteSetAsset, "kind" | "sheets"> {
 	sheets: Array<ValeSpriteSheetFile>;
+	/** Sets with a `dye`: the mean normalised value (0..1) of every dyed pixel, the cosmetics validator's input. */
+	dyeMeanValue?: number;
 }
 
 /**
