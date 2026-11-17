@@ -221,6 +221,40 @@ describe("CodexTracker: the bestiary", () => {
 		});
 	});
 
+	it("the fourth set (docs/NEW_ENEMIES_3.md NT9): Mortar, Mender, Jackal seen to their cards, found by a death", () => {
+		const t = tracker();
+		const f = frame();
+		for (const archetype of ["mortar", "mender", "jackal"]) f.actors.push({ archetype, affix: AffixKind.NONE });
+		expect(read(t.update(f))).toEqual({
+			rises: [
+				["enemy:mortar", S],
+				["enemy:mender", S],
+				["enemy:jackal", S],
+			],
+			codex: [],
+			chips: [],
+		});
+		expect([t.sightingChip("mortar"), t.sightingChip("mender"), t.sightingChip("jackal")]).toEqual([
+			true,
+			true,
+			true,
+		]);
+		["mortar", "mender", "jackal"].forEach((archetype, i) => {
+			const g = frame(2 + i);
+			g.deaths.push({ archetype, affix: AffixKind.NONE });
+			expect(read(t.update(g))).toEqual({
+				rises: [[`enemy:${archetype}`, F]],
+				codex: [`enemy:${archetype}`],
+				chips: [],
+			});
+		});
+		expect(["mortar", "mender", "jackal"].map((k) => codexSightingId(k))).toEqual([
+			"enemy:mortar",
+			"enemy:mender",
+			"enemy:jackal",
+		]);
+	});
+
 	it("affixes: an affixed enemy in view is seen (its card), its death finds the affix (codex toast) and the enemy", () => {
 		const t = tracker();
 		const f = frame();

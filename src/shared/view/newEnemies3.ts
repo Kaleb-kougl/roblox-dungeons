@@ -248,10 +248,10 @@ export function tetherSegments(
 	if (!(len > 0) || !(to > from)) return;
 	const s = math.clamp(share, 0, 1);
 	if (!(s > 0)) return;
-	const end = from + (to - from) * s;
+	const stop = from + (to - from) * s;
 	const ux = dx / len;
 	const uz = dz / len;
-	sink.seg(x + ux * from, z + uz * from, x + ux * end, z + uz * end);
+	sink.seg(x + ux * from, z + uz * from, x + ux * stop, z + uz * stop);
 }
 
 /**
