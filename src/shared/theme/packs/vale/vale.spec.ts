@@ -2671,11 +2671,12 @@ describe("vale Mortar, Mender and Jackal (NT8: 2D Demons, per-sheet cells)", () 
 		expect(jackal.crouch.sheet).toBe(jackal.attack.sheet);
 	});
 
-	it("as bundled (no IDs yet): the three draw their placeholders", () => {
-		for (const [id, prefix] of SETS) {
-			for (const file of sortedKeys(VALE_ASSET_IDS))
-				expect([id, file, startsWith(file, `${prefix}-`)]).toEqual([id, file, false]);
-			expect([id, VALE_MANIFEST.assets[id]]).toEqual([id, { kind: "placeholder" }]);
+	it("as bundled (all 20 uploaded 2026-11-17): the three draw their sprite sets", () => {
+		for (const [id, , , sheets] of SETS) {
+			for (const file of sheets)
+				for (const f of [file, `${file.sub(1, -5)}-outline.png`])
+					expect([id, f, VALE_ASSET_IDS[f] !== undefined]).toEqual([id, f, true]);
+			expect([id, VALE_MANIFEST.assets[id].kind]).toEqual([id, "sprites"]);
 		}
 	});
 

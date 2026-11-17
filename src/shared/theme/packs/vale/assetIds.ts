@@ -186,7 +186,9 @@ import type { RobloxAssetId } from "../../types";
  * own sheet) uploaded 2026-11-14 3:28 PM by k9kbdev, transcribed from Asset Manager screenshots.
  * The eight sounds of docs/NEW_ENEMIES_2.md NX10 (sfx-enemy-block-1..3 / -guardbreak / -hook / -hooklatch / -snatch /
  * -swallow / -pyrelight, sfx-pellet-return; built by audio:build on the owner's Mac) uploaded 2026-11-14 3:46 PM by
- * k9kbdev, transcribed from an Asset Manager screenshot.
+ * k9kbdev, transcribed from an Asset Manager screenshot. * The three room enemies of docs/NEW_ENEMIES_3.md (NT8: mortar-* / mender-* / jackal-* sheets with their -outline rims,
+ * Demon Spawn 6 / Imp 10 / Demon Beast 2) uploaded 2026-11-17 10:01 AM by k9kbdev, transcribed from Asset Manager
+ * screenshots: all 20.
  */
 export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"amb-b1.ogg": "rbxassetid://91158343621799",
@@ -646,6 +648,26 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"sfx-enemy-snatch.ogg": "rbxassetid://122968578610202",
 	"sfx-enemy-swallow.ogg": "rbxassetid://132944120706998",
 	"sfx-pellet-return.ogg": "rbxassetid://84330273933683",
+	"jackal-attack-outline.png": "rbxassetid://94435778744691",
+	"jackal-attack.png": "rbxassetid://83506806079720",
+	"jackal-body-outline.png": "rbxassetid://120324553934579",
+	"jackal-body.png": "rbxassetid://115208461376944",
+	"jackal-death-outline.png": "rbxassetid://83946613398486",
+	"jackal-hop-outline.png": "rbxassetid://105357675670554",
+	"jackal-hop.png": "rbxassetid://106950367623969",
+	"mender-attack-outline.png": "rbxassetid://135114692986585",
+	"mender-body-outline.png": "rbxassetid://140327544248008",
+	"mender-death-outline.png": "rbxassetid://92342561958115",
+	"mender-death.png": "rbxassetid://75935505639714",
+	"mortar-attack-outline.png": "rbxassetid://113180407402321",
+	"mortar-attack.png": "rbxassetid://115850286832780",
+	"mortar-body-outline.png": "rbxassetid://114894876897853",
+	"mortar-death-outline.png": "rbxassetid://79951981391138",
+	"jackal-death.png": "rbxassetid://84078734657700",
+	"mender-attack.png": "rbxassetid://112919977131364",
+	"mender-body.png": "rbxassetid://125273678443767",
+	"mortar-body.png": "rbxassetid://111261493924770",
+	"mortar-death.png": "rbxassetid://107518405164608",
 };
 
 /**
