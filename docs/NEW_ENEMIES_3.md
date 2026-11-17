@@ -46,7 +46,10 @@ locked target `JACKAL_TARGET` (a co-op finding), `lungeRange`, `events.lunges` /
 and roster (as built)": the three rows, the Mender's floor 2, 17 seeded kinds, `DAILY.ruleset` 22, Codex 94, the
 re-pins and the census; "NT7 view (as built)": the shell told from lightning in every strike reader, its arc and a
 corpse's ring, the heal tether, the Jackal's sprite contract (`crouch` / `hop`), the cue rows; "NT9 strings, sightings
-and Codex (as built)"). Next: NT8 (art), NT10 (audio), NT11-NT13.
+and Codex (as built)"). **NT8 art built, NT10 audio sourced** ("NT8 art (as built)": three sets, upload pending, the
+Jackal drawn at bodyTiles 1.2 instead of the knight's density; "NT10 audio (as built)": six unconfirmed picks in
+`art/audio.json` and the lock, the build and upload left to the owner). Next: NT11-NT13; the owner's uploads (20 PNGs,
+six OGGs after `audio:build`).
 Read on `main` @ `80f57769`. NTD1-NTD14 taken by the owner on
 2026-11-16 (see Decisions): every one as recommended except **NTD3** (the Mortar fires only while its target is in the
 Mortar's own room), **NTD9** (a guard that stops a Jackal's lunge counts as a parry) and **NTD10** (the last Jackal of a
@@ -560,6 +563,89 @@ collect the new view feed). Placeholder looks; NT8 brings the art.
   heal, the `+` reads over the ally and the snap on a cut, never on a natural end; the Jackal's stars on a guard stop
   and the PARRY! text; the six cues (silent in the placeholder, the four fallbacks playing); no shot sound with a
   shell's shrapnel.
+
+## NT8 art (as built, 2026-11-16)
+
+Presentation only: no sim, dungeon, lockstep, hash, replay, fixture or score change. Built on a machine holding only
+the three rigs' folders (and two alternates) of the Demons pack, so every build was `--only <set>` (never a whole
+`art:build`); the lock was extended with `--lock --only <set>` (`art/vendor.lock.json` + 30 files, additions only).
+
+- **Three sprite sets** in `art/atlases.json` (NX8's recipe: grid 128, body over `Shadows/`, no `Effects/`,
+  `rowForFacing` clockwise, `noiseAlpha` 2, pad 3, 2 px rim sheets, `cells: "perSheet"`, pivot on idle facing 6
+  frame 0). Frames picked on zoomed contact sheets of every facing (PIL, scratch in `/tmp`), the moments placed with the
+  pack's own `Effects/` sheets (the frame where the arrow / the swipe starts), then checked on the pipeline's
+  `art/build/contact/enemy.<id>.png`. `layout.ts` gains the three entries only (144 lines added, none changed).
+
+  | Set | Rig | Animations (source file: kept frames) | Measured marks | Scale | Sheets |
+  |---|---|---|---|---|---|
+  | `enemy.mortar` | Demon Spawn 6 | idle `Idle 12` 0, 3, 7, 10; move `Walk` (8, fps 10); attack `Attack 4` 0, 2-10; hit `TakeDamage 1` 1, 3, 5, 8; death `Die 1` 0, 2, 4, 6, 9, 14 | the loose f8 (the Effects arrow starts there; f7 is the full draw aimed straight up, 66 px tall) is kept index 7 of 10 = 0.7 of the attack timeline = 21 / (21 + 9): the plain stretch shows the full draw on the draw's last tick and the loose from the flight's first (pinned on the built layout, `view/newEnemies3.spec`) | bodyTiles **1.374** = 31.3 px/tile, the Spawns' density (idle 43 px, 24 px = 0.77 tiles wide) | attack 512x870, body 660x949, death 376x972 |
+  | `enemy.mender` | Imp 10 | idle `Idle`; move `Walk` (8, fps 10); attack `Attack 3` 7, 8, 9 (fps 6); **attack.2** `Attack 2` 1-5; hit `TakeDamage 1` 1, 3, 5, 8; death `Die 1` | `attack` is both arms spread and raised (the end of Attack 3's spin): stretched over the 24-tick link, looped through the channel at fps 6, 3 frames = 0.5 s = the 30-tick heal pulse, so each pulse restarts the loop on f7 (pinned); the wrap f9 -> f7 changes 1.3x the pixels of a step inside it, a sway. The bolt: f1-f3 a charm raised, f5 the cast (Effects starts on f5) over the wind-up's last fifth, as the bolt leaves | bodyTiles **1.518** = 28.3 px/tile, the imps' density (idle 43 px with the horns, 30 px = 1.06 tiles wide) | attack (+ attack.2) 552x600, body 976x536, death 272x852 |
+  | `enemy.jackal` | Demon Beast 2 | idle `Idle`; move `Run` (8, **fps 18**: 0.44 s a cycle = 2 tiles at 4.6 u/s); **crouch** `Crouch` 0, 3, 7, 10 (a held crouch, 55 px against idle's 60); attack `Run Attack` 3-8; **hop** `BackFlip 1` 1, 3, 4, 6-9; hit `TakeDamage 1` 1, 3, 5, 7, 9, 11, 13; death `Die 1` | the lunge: f3-f4 claws flung up, f5 the rake (Effects starts there) at kept index 2 of 6, tick 4 of the 11-tick lunge. The hop: f1 the take-off, f3-f7 in the air (the body leaves its shadow), f8-f9 the landing; **f5 dropped**: the flip's peak touches the source cell's top edge in rows 0-3 (clipped in the pack). The stagger: `hit` stretched over the 60 ticks (NX8's Shieldwall way) | bodyTiles **1.2** = 50 px/tile (see below) | attack (+ crouch) 870x872, body 980x935, **hop** 588x840, death 552x760 |
+
+  No view code needed a mark (each timeline is one stretch or one loop, as NT7 left them). `pixelsPerTileFrom` would
+  need the referenced set's pack on the building machine, so the densities are reproduced with `bodyTiles` (31.3 and
+  28.3 exactly, the `vale.spec` case pins them equal to the Shieldwall's and the imp's).
+- **The Jackal's size (NTD2 checked, the rig kept).** At the knight's density (the other Beasts': bruiser, charger)
+  Beast 2's idle body (60 px tall facing the camera, 44 px wide with the claws) stands **1.58 tiles**, the bruiser's
+  size: three of them a pack against a r 0.32 hitbox read far too heavy for a light pack hunter. NT8 draws it at
+  **bodyTiles 1.2** instead (the imp's height, under the swarmer's 1.25 and the knight's 1.5; 0.88 tiles wide), a free
+  size like the imp / Bomber / Snatcher. Its silhouette is still the bulkiest of the small enemies (hunched, claws
+  wide); NT13 decides with a pack of three beside the knight, Imp 2 stays the alternate (NTD2).
+- **Optional sheet.** The Jackal's `hop` is in a sheet of its own (`jackal-hop.png`): its animation is optional, so the
+  set draws once attack / body / death have IDs and the hop joins when its sheet does (until then the spooked hop plays
+  its move, NT7's fallback). `crouch` and the Mender's `attack.2` share the required attack sheets.
+- **Checks:** `npm run test:art` 320 pass / 5 skipped; two consecutive `--only` builds and a clean rebuild into an empty
+  `art/build` byte-identical (the 20 PNGs, the 3 contact sheets and `layout.ts`); `layout.ts` and the lock additions
+  only. Specs: `theme/packs/vale/vale.spec` (the perSheet list + a new describe: layouts, densities, measured frame
+  counts, placeholders as bundled, sprites with the required sheets, any missing one keeps the placeholder, the hop
+  sheet optional), `theme/newEnemies3.spec` (vale may be `sprites` / `sound` once uploaded, every other pack the
+  placeholders, like `newEnemies2.spec`), `view/newEnemies3.spec` (the loose and the pulse on the built layouts).
+- **Upload (owner):** every PNG below from `art/build/` (copies in `art/upload/`), then each ID into
+  `packs/vale/assetIds.ts`; a set switches on once its required sheets have IDs, its rims as they arrive.
+  - Mortar: `mortar-attack.png`, `mortar-attack-outline.png`, `mortar-body.png`, `mortar-body-outline.png`,
+    `mortar-death.png`, `mortar-death-outline.png`
+  - Mender: `mender-attack.png`, `mender-attack-outline.png`, `mender-body.png`, `mender-body-outline.png`,
+    `mender-death.png`, `mender-death-outline.png`
+  - Jackal: `jackal-attack.png`, `jackal-attack-outline.png`, `jackal-body.png`, `jackal-body-outline.png`,
+    `jackal-hop.png`, `jackal-hop-outline.png`, `jackal-death.png`, `jackal-death-outline.png`
+  - No bullet sheet (NTD12: the shell is the strike disc, the shrapnel and the bolt the existing looks).
+- **Studio check (NT13) adds:** the three at their scales beside the knight (the Mender at 1.52 tiles is the
+  summoner's height; the Jackal pack at 1.2), the Mortar's bow raised straight up reading as a lob and the loose landing
+  with the shell's first frame of flight, the Mender's spread-arms loop through a channel (the f9 -> f7 wrap), the
+  Jackal's crouch reading against its idle (only 5 px lower: if it does not read, `Crouch walk` or a squash), the hop at
+  12 ticks for 7 frames (fast: if it blurs, fewer frames), the 18 fps lope against the ground.
+
+## NT10 audio (as built, 2026-11-16)
+
+Config and lock only: **not built** here. `scripts/audio/build-audio.js` has no `--only`: `audio:build` and
+`audio:lock` read every sound in `art/audio.json`, and this machine holds only four of the vendor packs (no
+`dhsfx-horror-stingers`, `pixabay`, `oga-chain-winch`, ...), so both refuse (a missing source fails the lock; a full
+build would also rewrite `audioLayout.ts` and the audition page). Done instead:
+
+- **Six entries** appended to `art/audio.json` after `sfx.enemy.pyrelight`, every one `"confirmed": false` with
+  alternates and a note (NX10's shape). All four packs are CC0 and already credited (THIRD_PARTY_NOTICES' "Used for"
+  lines name the new picks; no new Credits row). Picks by length and spectral centroid (ffprobe / ffmpeg
+  `aspectralstats`), **not heard**:
+
+  | ID | Pick | Alternates | Why |
+  |---|---|---|---|
+  | `sfx.enemy.lob` | Kenney Interface `pluck_002` (0.18 s), pitch 0.75-0.8 | Ninja `Jump2`, `Whoosh2`; Interface `drop_002` | a bowstring twang, played low so it is not Silver's `pluck_001` |
+  | `sfx.enemy.shell` | Ninja `Elemental/Explosion` (0.37 s, unused so far) | Kenney `impactSoft_heavy_002`, `impactPunch_heavy_001`; Ninja `Explosion4` | the shortest explosion, apart from the Bomber's (Explosion5) and the burst's (Explosion2); thumps if too big |
+  | `sfx.enemy.heal` | Ninja `Magic & Skill/Heal3` (0.34 s) | Ninja `Bonus/PowerUp1`, `Spirit` | the soft chime (Heal is the flask, Heal2 the brace); quiet at the mix |
+  | `sfx.enemy.healcut` | Kenney Impact `impactGlass_light_001` (0.21 s) | `impactWood_light_002` (a twig snap); Interface `glass_004` | a crisp snap |
+  | `sfx.enemy.lunge` | rubberduck `roar_01` (0.37 s) | `troll_01`, `monster_03`, `grunt_03` | the shortest snarl for a 0.18 s lunge |
+  | `sfx.enemy.spooked` | Ninja `Creature/Dog` (0.26 s, high) | rubberduck `hurt_02`, `hurt_04`, `cute_03` | a short high yelp |
+
+- **Lock:** `art/audio.lock.json` gains the six picks' sha256 / bytes (computed exactly as `hashFile` does, inserted
+  in `sourceFiles`' sort order; checked equal to the set the config reads, 142 files), so `audio:lock` on the owner's
+  machine changes nothing.
+- **Vale stays silent** for the six (the placeholder's SILENT, NT7's four fallbacks playing) until the build and the
+  upload: a vale sound turns on only once every one of its files has an ID (`audioLayout.ts` is generated by the build).
+- **Owner, on the Mac with every pack:** `npm run audio:audition` (listen; tick a pick per ID, Download picks.json,
+  `node scripts/audio/build-audio.js --apply-picks <picks.json>`), then `npm run audio:lock`, `npm run audio:build`
+  (makes `art/build/audio/sfx-enemy-lob.ogg`, `-shell`, `-heal`, `-healcut`, `-lunge`, `-spooked` and their
+  `audioLayout.ts` rows), upload the six OGGs and paste their IDs into `packs/vale/assetIds.ts`, then `npm run build`
+  and `npm run test:only -- theme/`.
 
 ## NT9 strings, sightings and Codex (as built, 2026-11-16)
 
