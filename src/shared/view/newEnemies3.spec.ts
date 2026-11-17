@@ -264,7 +264,15 @@ describe("the Mortar's shell arc and its corpse", () => {
 		const out = newShellPoint();
 		const total = MORTAR.data.flightTicks;
 		const a = withV(
-			withV(withV(actor({ kind: K.mortar, aiState: MORTAR_FLIGHT, attack: MORTAR_ATTACK_LOB }), MORTAR_FLIGHT_TICKS, total), MORTAR_LAND_X, 6),
+			withV(
+				withV(
+					actor({ kind: K.mortar, aiState: MORTAR_FLIGHT, attack: MORTAR_ATTACK_LOB }),
+					MORTAR_FLIGHT_TICKS,
+					total,
+				),
+				MORTAR_LAND_X,
+				6,
+			),
 			MORTAR_LAND_Z,
 			2,
 		);
@@ -289,7 +297,11 @@ describe("the Mortar's shell arc and its corpse", () => {
 		expect([out.x, out.z]).toEqual([4, -3]);
 		// a corpse's flight is drawn (NTD5); any other actor in the state never
 		a.alive = 0;
-		expect([mortarFlying(a), mortarCorpseFlying(a), arcs.point(0, a, 4, -3, 0, out).shown]).toEqual([true, true, true]);
+		expect([mortarFlying(a), mortarCorpseFlying(a), arcs.point(0, a, 4, -3, 0, out).shown]).toEqual([
+			true,
+			true,
+			true,
+		]);
 		const other = withV(actor({ kind: K.jackal, aiState: MORTAR_FLIGHT }), MORTAR_FLIGHT_TICKS, 30);
 		expect([mortarFlying(other), arcs.point(1, other, 0, 0, 0, out).shown]).toEqual([false, false]);
 		// a living one in flight is no corpse
@@ -553,7 +565,12 @@ describe("sprite inputs", () => {
 
 	it("the Jackal: crouch over the wind-up (absent: attack), attack over the lunge, hop (absent: its move), hit over the stagger", () => {
 		const d = JACKAL.data;
-		const windup = actor({ kind: K.jackal, aiState: AiState.TELEGRAPH, attack: JACKAL_ATTACK_LUNGE, aiTicks: d.windupTicks });
+		const windup = actor({
+			kind: K.jackal,
+			aiState: AiState.TELEGRAPH,
+			attack: JACKAL_ATTACK_LUNGE,
+			aiTicks: d.windupTicks,
+		});
 		expect(chooseActorAnim(jackalSpriteInput(windup, 0), FULL).anim).toBe("crouch");
 		expect(chooseActorAnim(jackalSpriteInput(windup, 0), PLAIN).anim).toBe("attack");
 		const lunge = actor({ kind: K.jackal, aiState: JACKAL_LUNGE, aiTicks: d.lungeTicks / 2 });
@@ -566,18 +583,29 @@ describe("sprite inputs", () => {
 		expect(chooseActorAnim(jackalSpriteInput(hop, 0), PLAIN).anim).toBe("move");
 		const reel = withV(actor({ kind: K.jackal, aiState: JACKAL_STAGGER }), JACKAL_PHASE, d.staggerTicks / 2);
 		const staggered = chooseActorAnim(jackalSpriteInput(reel, 0), FULL);
-		expect([staggered.anim, near(staggered.progress ?? -1, 0.5)]).toEqual([NEW_ENEMY_3_SPRITE_VIEW.anims.stagger, true]);
+		expect([staggered.anim, near(staggered.progress ?? -1, 0.5)]).toEqual([
+			NEW_ENEMY_3_SPRITE_VIEW.anims.stagger,
+			true,
+		]);
 		expect(jackalStaggered(reel)).toBe(true);
 		const recover = withV(actor({ kind: K.jackal, aiState: JACKAL_RECOVER }), JACKAL_PHASE, 10);
 		expect([jackalSpriteInput(recover, 0).attack, jackalStaggered(recover)]).toEqual([undefined, false]);
 		// a corpse plays its death, never the stagger or the hop
 		reel.alive = 0;
-		expect([chooseActorAnim(jackalSpriteInput(reel, 0), FULL).anim, jackalStaggered(reel)]).toEqual(["death", false]);
+		expect([chooseActorAnim(jackalSpriteInput(reel, 0), FULL).anim, jackalStaggered(reel)]).toEqual([
+			"death",
+			false,
+		]);
 	});
 
 	it("the Mender: link stretched, channel looped, bolt as attack.2 (absent: attack), flinch as hit", () => {
 		const d = MENDER.data;
-		const link = actor({ kind: K.mender, aiState: AiState.TELEGRAPH, attack: MENDER_ATTACK_HEAL, aiTicks: d.linkTicks });
+		const link = actor({
+			kind: K.mender,
+			aiState: AiState.TELEGRAPH,
+			attack: MENDER_ATTACK_HEAL,
+			aiTicks: d.linkTicks,
+		});
 		expect(menderSpriteInput(link, 0).attack).toEqual({ elapsed: 0, total: d.linkTicks });
 		const channel = withV(actor({ kind: K.mender, aiState: MENDER_CHANNEL }), MENDER_CHANNEL_TICKS, 40);
 		expect(menderSpriteInput(channel, 0).attack).toEqual({ elapsed: 40, total: d.channelTicks, loop: true });
@@ -592,7 +620,12 @@ describe("sprite inputs", () => {
 	it("the Mortar: the draw then the release as one attack; the rest of the flight none", () => {
 		const d = MORTAR.data;
 		const R = NEW_ENEMY_3_SPRITE_VIEW.mortarReleaseTicks;
-		const draw = actor({ kind: K.mortar, aiState: AiState.TELEGRAPH, attack: MORTAR_ATTACK_LOB, aiTicks: d.drawTicks });
+		const draw = actor({
+			kind: K.mortar,
+			aiState: AiState.TELEGRAPH,
+			attack: MORTAR_ATTACK_LOB,
+			aiTicks: d.drawTicks,
+		});
 		expect(mortarSpriteInput(draw, 0).attack).toEqual({ elapsed: 0, total: d.drawTicks + R });
 		const released = withV(
 			actor({ kind: K.mortar, aiState: MORTAR_FLIGHT, attack: MORTAR_ATTACK_LOB }),

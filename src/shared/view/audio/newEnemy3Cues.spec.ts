@@ -185,7 +185,11 @@ describe("mapper rows", () => {
 		const lightning = noEvents();
 		lightning.strikes = 1;
 		s.combat.enemySpawned += 1 + shrapnel;
-		expect(frame(m, 2, cues({ strikes: 1 }), lightning, s).toIds().includes(SFX.enemyShoot)).toBe(true);
+		expect(
+			frame(m, 2, cues({ strikes: 1 }), lightning, s)
+				.toIds()
+				.includes(SFX.enemyShoot),
+		).toBe(true);
 	});
 
 	it("every one of the six has a minimum interval; heal pulses inside it are one sound", () => {

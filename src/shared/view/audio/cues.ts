@@ -2181,8 +2181,7 @@ export class AudioCueMapper {
 		// Goo puddles (docs/ENEMY_VARIANTS.md EVD14) and strikes (docs/NEW_ENEMIES.md NE5 / NE8: sfx.enemy.strike) count
 		// in enemySpawned but never play the shot: only a rise beyond the frame's gooSpawned + strikes does. A Mortar's
 		// shell is a strike, and its shrapnel ring (docs/NEW_ENEMIES_3.md NT7) is the impact's: skipped too.
-		const silentSpawns =
-			events.gooSpawned + events.strikes + events.shells * NEW_ENEMY_3_AUDIO.shrapnelPerShell;
+		const silentSpawns = events.gooSpawned + events.strikes + events.shells * NEW_ENEMY_3_AUDIO.shrapnelPerShell;
 		if (this.lastEnemySpawned >= 0 && enemySpawned - this.lastEnemySpawned > silentSpawns) {
 			this.cue(SFX.enemyShoot, 1);
 		}

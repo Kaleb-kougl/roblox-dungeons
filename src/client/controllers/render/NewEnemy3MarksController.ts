@@ -64,10 +64,7 @@ export class NewEnemy3MarksController implements OnStart {
 	private lastTick = 0;
 	private lastFloor = 0;
 
-	constructor(
-		private readonly sim: SimController,
-		private readonly theme: ThemeController,
-	) {}
+	constructor(private readonly sim: SimController, private readonly theme: ThemeController) {}
 
 	onStart(): void {
 		const pack = this.theme.getPack();

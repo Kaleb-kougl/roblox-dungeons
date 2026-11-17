@@ -108,9 +108,14 @@ export function menderAttack(a: Readonly<ActorState>, alpha: number): ActorAttac
 	const d = MENDER.data;
 	const V = NEW_ENEMY_3_SPRITE_VIEW;
 	if (a.aiState === AiState.TELEGRAPH) {
-		if (a.attack === MENDER_ATTACK_HEAL) return { elapsed: elapsedOf(d.linkTicks, a.aiTicks, alpha), total: d.linkTicks };
+		if (a.attack === MENDER_ATTACK_HEAL)
+			return { elapsed: elapsedOf(d.linkTicks, a.aiTicks, alpha), total: d.linkTicks };
 		if (a.attack === MENDER_ATTACK_BOLT) {
-			return { anim: V.anims.bolt, elapsed: elapsedOf(d.boltWindupTicks, a.aiTicks, alpha), total: d.boltWindupTicks };
+			return {
+				anim: V.anims.bolt,
+				elapsed: elapsedOf(d.boltWindupTicks, a.aiTicks, alpha),
+				total: d.boltWindupTicks,
+			};
 		}
 		return undefined;
 	}
@@ -150,7 +155,11 @@ export function jackalAttack(a: Readonly<ActorState>, alpha: number): ActorAttac
 export function jackalSpecial(a: Readonly<ActorState>, alpha: number): ActorSpecial | undefined {
 	if (a.aiState !== JACKAL_HOP) return undefined;
 	const d = JACKAL.data;
-	return { anim: NEW_ENEMY_3_SPRITE_VIEW.anims.hop, elapsed: elapsedOf(d.hopTicks, a.v[JACKAL_PHASE], alpha), total: d.hopTicks };
+	return {
+		anim: NEW_ENEMY_3_SPRITE_VIEW.anims.hop,
+		elapsed: elapsedOf(d.hopTicks, a.v[JACKAL_PHASE], alpha),
+		total: d.hopTicks,
+	};
 }
 
 export function jackalSpriteInput(a: Readonly<ActorState>, alpha: number): ActorSpriteInput {

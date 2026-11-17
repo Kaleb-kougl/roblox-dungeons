@@ -308,7 +308,8 @@ export class VariantCueEvents implements VariantCueSource {
 				} else if (a.kind === this.chainhookKind && alive) {
 					if (st === CHAINHOOK_THROWN && prev === AiState.TELEGRAPH) this.hookThrows++;
 				} else if (a.kind === this.mortarKind && alive) {
-					if (st === MORTAR_FLIGHT && prev === AiState.TELEGRAPH && a.attack === MORTAR_ATTACK_LOB) this.lobs++;
+					if (st === MORTAR_FLIGHT && prev === AiState.TELEGRAPH && a.attack === MORTAR_ATTACK_LOB)
+						this.lobs++;
 				}
 			}
 			this.slotIds[i] = a.kind !== NO_KIND ? a.id : 0;
