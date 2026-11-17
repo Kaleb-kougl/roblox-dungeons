@@ -162,9 +162,9 @@ the spec does not need the PNGs):
 
 - [ ] **CS0. Findings.** Code half while building; device half (GPU texture memory on the iPhone with 0 / 1 / 4 dyed
   players) open, decides CSD4.
-- [ ] **CS1. Masks.** The `dye` option on both sets; review every animation and facing on the dye contact sheets;
+- [ ] **CS1. Masks.** (Built 2026-11-17, "As built: pipeline"; the owner's sign-off by eye open.) The `dye` option on both sets; review every animation and facing on the dye contact sheets;
   `exclude` rects for the Archer's bow. **Verify:** owner sign-off by eye on the contact sheets.
-- [ ] **CS2. Pipeline output.** `<sheet>-dye.png`, `dyeFile`, `dyeMeanValue`, tests. **Verify:** `npm run test:art`.
+- [x] **CS2. Pipeline output.** `<sheet>-dye.png`, `dyeFile`, `dyeMeanValue`, tests. **Verify:** `npm run test:art`.
 - [ ] **CS3. Theme.** `dyeImage`, `cosmetics.ts`, `cosmeticReport`, strings and l10n context. **Verify:**
   `npm run verify`.
 - [ ] **CS4. Wallet and server.** Catalogue rows, `CosmeticLook`, `RunSession.looks`, `PartyRunStart.looks`, lobby
@@ -178,6 +178,56 @@ the spec does not need the PNGs):
 - [ ] **CS10. Prismatic.**
 - [ ] **CS11. Earned cosmetics** (not this pass).
 - [ ] **CS12. Telemetry** (not this pass).
+
+## As built: pipeline (CS1-CS2, 2026-11-17)
+
+`art/atlases.json` `dye` on both sets, `scripts/art/build-atlases.js` (`dyeConfig`, `dyeMask`, `dyeSheet`,
+`dyeContactSheets`; docs/ART.md "Dye sheets" has the option's exact semantics), specs in `scripts/art/dye.test.js`.
+Built with `--only class.vanguard` and `--only class.ranger`.
+
+**Final rules.** Both sets: `open` 3 x 3, `regrowPx` 1, `minAreaPx` 20, `normalizePercentile` 98, no `exclude` rects.
+
+| | Knight (`class.vanguard`) | Archer (`class.ranger`) |
+|---|---|---|
+| Rule | alpha > 240, max RGB > 8, saturation < **0.10**, luminance >= 88 | alpha > 240, max RGB > 8, luminance <= 69, hue [0, 55) or [340, 360) |
+| `unless` | luminance >= 130 and hue [180, 360): the baked swing smears | none |
+| Dyed share of body pixels (alpha > 240, max RGB > 8) | **47.6 %** (206,085 of 432,552) | **63.8 %** (138,335 of 216,832) |
+| Normaliser p (98th percentile luminance) | 183 | 60 |
+| `dyeMeanValue` | **0.7342** | **0.5114** |
+| Removed by the shape steps (of what the colour rules took) | 18.5 % | 19.8 % |
+
+Changes from the prototype, found on the contact sheets:
+
+- **The Archer's bow** is the tunic's exact browns (`#1e1106` on both), so no colour rule parts them. It is cut by
+  shape: its limbs and string are 1-2 px strokes in every animation and facing, so the 3 x 3 opening drops them, the 1
+  px regrowth returns the body's own edge (and at most 1 px of bow where it touches the body), and the 20 px area cut
+  takes the odd 2 px-wide limb segment that survives the opening on its own (attack.2, facing 3). No exclusion rects
+  were needed. Where the bow crosses in front of the tunic it is part of a thick region and dyes with it.
+- **The Knight's sword** is the plate's own grey (the prototype's "untouched" was wrong: it was dyed in every facing),
+  removed by the same opening. **The bare head** (skin, saturation 12-15 %, hue ~22) was caught by the prototype's
+  satMax 0.18; the plate is 2-5 %, so satMax is 0.10 and the head stays skin (the art has no helm: the "helm" in the
+  prototype's list was the head). **The attacks' swing smears** have an opaque core of plate lightness (luminance
+  180-205) but pink-violet (hue 290-350); lit plate at luminance >= 130 is warm (hue < 60) in every sheet, 0 such
+  pixels outside attack.1-3, hence the `unless` rule.
+- The baked black shadows (alpha <= 239 / <= 207) never pass `alphaMin`; skin, the Archer's orange bracers and the
+  Knight's sword, shield rim and straps stay undyed.
+
+**Files.** 15 dye sheets in `art/build/` and `art/upload/` (none has an id yet, CS8): `vanguard-{idle, run, roll, hit,
+death, attack1, attack2, attack3}-dye.png` (1024 x 1024) and `ranger-{idle, run, roll, hit, death, attack1,
+attack2}-dye.png` (968 x 776). Contact sheets, one per animation: `art/build/contact/class.vanguard-dye-<animation>.png`
+and `class.ranger-dye-<animation>.png` (rows = facings 0-7; the first, middle and last kept frame; body, mask in
+magenta, scarlet / cobalt / teal / amethyst). The 30 body and outline sheets are byte-identical to the uploaded ones
+(sha256), and layout.ts changed only by `dyeFile` and `dyeMeanValue`.
+
+**For the owner to look at (CS1 sign-off).**
+
+- The opening also leaves a few thin plate pixels undyed: the Knight's toe tips and some 1-2 px forearm edges keep their
+  grey, and legs seen through a swing smear stay grey for those frames. Visible only zoomed in, by eye.
+- The dye sheet's transparent pixels are (0, 0, 0, 0), not bled. If Studio shows a dark seam where a dyed region meets
+  undyed body under `Default` filtering, bleeding the dye sheets' RGB (alpha unchanged, as the body sheets do) fixes it
+  without touching the layout.
+- `dyeMeanValue` is above the prototype's 0.71 / 0.48 (head, sword and bow out), so CS3's readability gate must use
+  these values, not the table above.
 
 ## Decisions (accepted as recommended, 2026-11-17)
 
