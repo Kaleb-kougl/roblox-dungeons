@@ -1,5 +1,5 @@
 // Packs in the spender (docs/NEW_ENEMIES_3.md NT5): EndlessRoomKind.packOf (absent = 1). Tested with an injected table
-// (the real ENDLESS_ROOM_KINDS gains the Jackal in NT6): a pack buys exactly packOf entries in one pick, is open only
+// (the real ENDLESS_ROOM_KINDS without its Jackal row, NT6, plus a test pack row): a pack buys exactly packOf entries in one pick, is open only
 // with packOf slots left, is priced packOf x its cost for affordability but compares its per-slot cost against
 // budget-left / slots-left, counts one pack toward maxPerRoom; placement puts a pack on its own anchor and the free
 // tiles nearest it, never touching the swarmers' pack; a closed pack kind leaves every draw and tile as before; the
@@ -29,10 +29,12 @@ import { traceSpend } from "shared/dungeon/testing";
 
 const JACKAL = "jackal";
 const PACK: EndlessRoomKind = { kind: JACKAL, weight: 1, maxPerRoom: 1, packOf: 3 };
-/** The real table plus a Jackal pack (NT6's row, appended last). */
-const WITH_PACK: ReadonlyArray<EndlessRoomKind> = [...ENDLESS_ROOM_KINDS, PACK];
+/** The real table without its Jackal row (NT6): the table before any pack kind. */
+const BASE: ReadonlyArray<EndlessRoomKind> = ENDLESS_ROOM_KINDS.filter((k) => k.kind !== JACKAL);
+/** The base table plus a Jackal pack appended last (NT6's row without its unlock floor). */
+const WITH_PACK: ReadonlyArray<EndlessRoomKind> = [...BASE, PACK];
 /** Two maxima so a big room can hold two packs (the run rule, packs counted per pick). */
-const TWO_PACKS: ReadonlyArray<EndlessRoomKind> = [...ENDLESS_ROOM_KINDS, { ...PACK, maxPerRoom: 2 }];
+const TWO_PACKS: ReadonlyArray<EndlessRoomKind> = [...BASE, { ...PACK, maxPerRoom: 2 }];
 
 function count(kinds: ReadonlyArray<string>, kind: string): number {
 	let n = 0;
@@ -172,7 +174,15 @@ describe("packs: the spender", () => {
 			for (const budget of [6, 9.6, 21.6, 40])
 				for (const floor of [1, 3, 6]) {
 					// The roster leaves the Jackal out: every pick and draw as the plain table.
-					const plain = spendEncounterBudget(new EncounterRng(seed), budget, floor, undefined, roster);
+					const plain = spendEncounterBudget(
+						new EncounterRng(seed),
+						budget,
+						floor,
+						undefined,
+						roster,
+						true,
+						BASE,
+					);
 					const packed = spendEncounterBudget(
 						new EncounterRng(seed),
 						budget,
@@ -183,7 +193,9 @@ describe("packs: the spender", () => {
 						WITH_PACK,
 					);
 					expect(packed).toEqual(plain);
-					const a = rngAfter(seed, (r) => spendEncounterBudget(r, budget, floor, undefined, roster));
+					const a = rngAfter(seed, (r) =>
+						spendEncounterBudget(r, budget, floor, undefined, roster, true, BASE),
+					);
 					const b = rngAfter(seed, (r) =>
 						spendEncounterBudget(r, budget, floor, undefined, roster, true, WITH_PACK),
 					);
@@ -266,7 +278,7 @@ describe("packs: placement", () => {
 		let swarmers = 0;
 		for (const r of all) {
 			const plainTools = toolsFor(r);
-			const plain = populateEndlessRoom(r.room, plainTools, r.budget, r.floor, roster);
+			const plain = populateEndlessRoom(r.room, plainTools, r.budget, r.floor, roster, true, BASE);
 			const packTools = toolsFor(r);
 			const packed = populateEndlessRoom(r.room, packTools, r.budget, r.floor, roster, true, WITH_PACK);
 			expect(packed).toEqual(plain);

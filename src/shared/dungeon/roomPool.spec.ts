@@ -55,7 +55,7 @@ function count(kinds: ReadonlyArray<string>, kind: string): number {
 }
 
 describe("ENDLESS_ROOM_KINDS", () => {
-	it("keeps the original three and their weights first, then imp / slime / summoner (EVD2), the NE7 five, the NX6 four", () => {
+	it("keeps the original three and their weights first, then imp / slime / summoner (EVD2), the NE7 five, the NX6 four, the NT6 three", () => {
 		const rows = ENDLESS_ROOM_KINDS.map((k) => [k.kind, k.weight, k.fromFloor ?? 1, k.maxPerRoom ?? 0]);
 		expect(rows).toEqual([
 			["swarmer", 3, 1, 0],
@@ -76,16 +76,29 @@ describe("ENDLESS_ROOM_KINDS", () => {
 			["chainhook", 1, 2, 1],
 			["snatcher", 1, 2, 1],
 			["pyrekeeper", 1, 2, 1],
+			// docs/NEW_ENEMIES_3.md NTD11: weights 1, caps 2 / 1 / 1 pack, appended in this order; the unlock floor 2 as
+			// NX6's (unlock floors only).
+			["mortar", 1, 2, 2],
+			["mender", 1, 2, 1],
+			["jackal", 1, 2, 1],
 		]);
 		expect(ENDLESS_ROOM_KINDS.filter((k) => k.needsCompany === true).map((k) => k.kind)).toEqual([
 			"warbanner",
 			"snatcher",
+			"mender",
 		]);
-		// NXD4: the Chainhook's minimum floor holds in every world, unlock floors on or off.
+		// NTD6: the Jackal is the one pack kind, three a buy.
+		expect(ENDLESS_ROOM_KINDS.filter((k) => k.packOf !== undefined).map((k) => [k.kind, k.packOf])).toEqual([
+			["jackal", 3],
+		]);
+		// NXD4 / NTD7: the Chainhook's and the Mender's minimum floor holds in every world, unlock floors on or off.
 		const minFloors = ENDLESS_ROOM_KINDS.map((k) => roomKindMinFloor(k.kind));
 		expect(
 			ENDLESS_ROOM_KINDS.filter((k, i) => minFloors[i] !== 1).map((k) => [k.kind, roomKindMinFloor(k.kind)]),
-		).toEqual([["chainhook", 2]]);
+		).toEqual([
+			["chainhook", 2],
+			["mender", 2],
+		]);
 		expect([ROOM_KIND_UNLOCK_FLOOR.imp, ROOM_KIND_UNLOCK_FLOOR.slime, ROOM_KIND_UNLOCK_FLOOR.summoner]).toEqual([
 			2, 4, 6,
 		]);
@@ -120,7 +133,8 @@ describe("spendEncounterBudget by floor", () => {
 				expect(count(a, "summoner") <= SUMMONERS_PER_ROOM).toBe(true);
 				for (const k of ENDLESS_ROOM_KINDS)
 					if (k.maxPerRoom !== undefined)
-						expect([k.kind, count(a, k.kind) <= k.maxPerRoom]).toEqual([k.kind, true]);
+						// maxPerRoom counts packs (docs/NEW_ENEMIES_3.md NT5): the Jackal's one pack is three
+						expect([k.kind, count(a, k.kind) <= k.maxPerRoom * (k.packOf ?? 1)]).toEqual([k.kind, true]);
 			}
 	});
 

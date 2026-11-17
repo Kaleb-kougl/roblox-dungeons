@@ -139,15 +139,25 @@ export const ROOM_KIND_UNLOCK_FLOOR = table.freeze({
 	chainhook: 2,
 	snatcher: 2,
 	pyrekeeper: 2,
+	// docs/NEW_ENEMIES_3.md NT6: the fourth set, the same rule (specs and tools only; floor 1 without a roster spends as
+	// before). Every endless world ignores these: NTD7's "no minimum" holds there for the Mortar and the Jackal, and the
+	// Mender's floor-2 rule in every world is ROOM_KIND_MIN_FLOOR.
+	mortar: 2,
+	mender: 2,
+	jackal: 2,
 });
 
 /**
  * The first floor a room kind may appear on in EVERY world, unlock floors on or off (docs/NEW_ENEMIES_2.md NXD4, NX6):
- * the Chainhook never meets a floor-1 player. roomKindOpen closes the kind below it (no draw), and endlessRoster's join
+ * the Chainhook never meets a floor-1 player, nor the Mender (docs/NEW_ENEMIES_3.md NTD7). roomKindOpen closes the kind below it (no draw), and endlessRoster's join
  * scan passes over it until a floor at or past it (the order is one shuffle: no draw moves), so floor 1 always gets a
  * seeded kind. Kinds without an entry have no minimum.
  */
-export const ROOM_KIND_MIN_FLOOR: ReadonlyMap<string, number> = new Map<string, number>([["chainhook", 2]]);
+export const ROOM_KIND_MIN_FLOOR: ReadonlyMap<string, number> = new Map<string, number>([
+	["chainhook", 2],
+	// docs/NEW_ENEMIES_3.md NTD7: the first floor never shows a healer before the player has learned kill order.
+	["mender", 2],
+]);
 
 /** Summoners one room buys at most (EVD3: one support per room, whatever the budget or the party size). */
 export const SUMMONERS_PER_ROOM = 1;
@@ -173,10 +183,19 @@ export const NEW_KIND_MAX_PER_ROOM = table.freeze({ bomber: 4, charger: 2, storm
 export const NEW_KIND_2_MAX_PER_ROOM = table.freeze({ bulwark: 2, chainhook: 1, snatcher: 1, pyrekeeper: 1 });
 
 /**
+ * Room maxima of the docs/NEW_ENEMIES_3.md room enemies (NTD11, NT6): Mortars 2, one Mender (never a room's first buy)
+ * and one Jackal pack (`maxPerRoom` counts packs).
+ */
+export const NEW_KIND_3_MAX_PER_ROOM = table.freeze({ mortar: 2, mender: 1, jackal: 1 });
+
+/** Jackals one pack buy pushes (docs/NEW_ENEMIES_3.md NTD6: a pack of three, each priced its own ENCOUNTER_COST). */
+export const JACKAL_PACK_SIZE = 3;
+
+/**
  * The room enemies of endless floors, in draw order. Turrets and the boss are not bought with room budgets. The first
  * three (and their weights 3 / 2 / 1) are the original pool and never change; the docs/ENEMY_VARIANTS.md kinds are
  * appended after them (EVD2), then the docs/NEW_ENEMIES.md kinds (NE7), then the docs/NEW_ENEMIES_2.md kinds (NX6),
- * and join only from their unlock floor, so floors below every unlock spend as before.
+ * then the docs/NEW_ENEMIES_3.md kinds (NT6), and join only from their unlock floor, so floors below every unlock spend as before.
  * Endless floors buy only the kinds of the run's seeded roster (ROSTER, ./endless.ts endlessRoster; docs/DAILY.md DS1).
  */
 export const ENDLESS_ROOM_KINDS: ReadonlyArray<EndlessRoomKind> = [
@@ -233,6 +252,23 @@ export const ENDLESS_ROOM_KINDS: ReadonlyArray<EndlessRoomKind> = [
 		weight: 1,
 		fromFloor: ROOM_KIND_UNLOCK_FLOOR.pyrekeeper,
 		maxPerRoom: NEW_KIND_2_MAX_PER_ROOM.pyrekeeper,
+	},
+	// docs/NEW_ENEMIES_3.md NT6 (NTD11 weights 1 / 1 / 1, caps 2 / 1 / 1 pack; the Mender never a room's first buy;
+	// NTD6 the Jackal as one pack of three).
+	{ kind: "mortar", weight: 1, fromFloor: ROOM_KIND_UNLOCK_FLOOR.mortar, maxPerRoom: NEW_KIND_3_MAX_PER_ROOM.mortar },
+	{
+		kind: "mender",
+		weight: 1,
+		fromFloor: ROOM_KIND_UNLOCK_FLOOR.mender,
+		maxPerRoom: NEW_KIND_3_MAX_PER_ROOM.mender,
+		needsCompany: true,
+	},
+	{
+		kind: "jackal",
+		weight: 1,
+		fromFloor: ROOM_KIND_UNLOCK_FLOOR.jackal,
+		maxPerRoom: NEW_KIND_3_MAX_PER_ROOM.jackal,
+		packOf: JACKAL_PACK_SIZE,
 	},
 ];
 

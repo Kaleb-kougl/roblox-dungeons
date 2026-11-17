@@ -1,9 +1,9 @@
 // docs/NEW_ENEMIES_3.md NT1 skeleton: band 7 for the fourth set of room enemies (indices 24-26; every older index
 // unchanged), their data blocks and rows (the plan's Design tables, with NT0 finding 12's keep range), the shrapnel's arc
-// row (Ballista's 6 @ FULL_RING), the room pool untouched until NT6, and that every kind spawns, engages and replays
+// row (Ballista's 6 @ FULL_RING), their room pool rows (NT6), and that every kind spawns, engages and replays
 // bit for bit without a draw.
 import { describe, expect, it } from "@rbxts/jest-globals";
-import { ENCOUNTER_COST, ENDLESS_ROOM_KINDS, encounterCost } from "shared/dungeon";
+import { ENCOUNTER_COST, ENDLESS_ROOM_KINDS, encounterCost, roomKindMinFloor } from "shared/dungeon";
 import {
 	BulletKind,
 	DEFAULT_SIM_CONFIG,
@@ -225,8 +225,23 @@ describe("data blocks (the plan's Design tables)", () => {
 		expect(row[0].source.find("archetypes/mortar.ts shrapnel", 1, true)[0] !== undefined).toBe(true);
 	});
 
-	it("not in the room pool until NT6 (endless rooms spend exactly as before)", () => {
-		for (const k of ENDLESS_ROOM_KINDS) expect([k.kind, ROOM_ORDER.includes(k.kind)]).toEqual([k.kind, false]);
+	it("NT6 appends the three to the room pool, last, never reordering (NTD6, NTD7, NTD11)", () => {
+		expect(ENDLESS_ROOM_KINDS.size()).toBe(18);
+		const tail: unknown[][] = [];
+		for (let i = 15; i < 18; i++) {
+			const k = ENDLESS_ROOM_KINDS[i];
+			tail.push([k.kind, k.weight, k.maxPerRoom, k.needsCompany === true, k.packOf ?? 1, k.fromFloor]);
+		}
+		// fromFloor 2 is read only with unlock floors (specs and tools: floor 1 without a roster spends as before), the
+		// NX6 rule; every endless world ignores it
+		expect(tail).toEqual([
+			[MORTAR.id, 1, 2, false, 1, 2],
+			[MENDER.id, 1, 1, true, 1, 2],
+			[JACKAL.id, 1, 1, false, 3, 2],
+		]);
+		// NTD7: the Mender's floor 2 in every world; the Mortar and the Jackal have no minimum
+		expect(ROOM_ORDER.map(roomKindMinFloor)).toEqual([1, 2, 1]);
+		expect(roomKindMinFloor("chainhook")).toBe(2);
 	});
 });
 

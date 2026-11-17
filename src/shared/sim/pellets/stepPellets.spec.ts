@@ -6,7 +6,7 @@
 // bullets fired straight into the pool, hearts topped up.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import "shared/sim/testing";
-import { NO_POWER_PELLET } from "shared/dungeon";
+import { NO_POWER_PELLET, endlessRoster } from "shared/dungeon";
 import {
 	AXIS_MAX,
 	BulletKind,
@@ -44,16 +44,22 @@ import {
 import { buildDevRunConfig, buildEndlessRunConfig } from "shared/run";
 
 const SEED = 4242;
+/**
+ * A run seed whose floor 1 holds no Snatcher (it reads the pellets, so its walk differs between a run with pellets and
+ * one without). docs/NEW_ENEMIES_3.md NT6's 17-kind roster made SEED's floor-1 kind the Snatcher (it was the Reaper):
+ * 4244's is the sniper.
+ */
+const NO_SNATCHER_SEED = 4244;
 
 interface Run {
 	readonly config: SimConfig;
 	readonly s: SimState;
 }
 
-/** God-mode endless run of SEED from `floor` (dev world: pellets from PELLETS_CONFIG, no deaths). */
-function devRun(floor = 1): Run {
-	const dev = buildDevRunConfig(SEED, { startFloor: floor, invulnerable: true });
-	return { config: dev.config, s: createSimState(SEED, dev.spawn!.x, dev.spawn!.z, dev.config) };
+/** God-mode endless run of `seed` (SEED) from `floor` (dev world: pellets from PELLETS_CONFIG, no deaths). */
+function devRun(floor = 1, seed = SEED): Run {
+	const dev = buildDevRunConfig(seed, { startFloor: floor, invulnerable: true });
+	return { config: dev.config, s: createSimState(seed, dev.spawn!.x, dev.spawn!.z, dev.config) };
 }
 
 /** A co-op endless run of SEED (hearts topped up by tickAll). */
@@ -425,13 +431,18 @@ describe("pellets: the clear, the Sweep", () => {
 
 describe("pellets: determinism", () => {
 	it("pickups move only the score and pellets groups: the rng and every other group match a run without pellets", () => {
-		// Both without pacts (docs/FORTUNE.md PS5: their group follows this one; nobody takes a pact here anyway).
-		const dev = devRun();
+		// Both without pacts (docs/FORTUNE.md PS5: their group follows this one; nobody takes a pact here anyway). A floor
+		// without a Snatcher (NO_SNATCHER_SEED): only it reads the pellets, so with one the actors would differ too.
+		expect(endlessRoster(NO_SNATCHER_SEED, 1, false).includes("snatcher")).toBe(false);
+		const dev = devRun(1, NO_SNATCHER_SEED);
 		const withPellets: SimConfig = { ...dev.config, pacts: undefined };
-		const a: Run = { config: withPellets, s: createSimState(SEED, dev.s.player.x, dev.s.player.z, withPellets) };
+		const a: Run = {
+			config: withPellets,
+			s: createSimState(NO_SNATCHER_SEED, dev.s.player.x, dev.s.player.z, withPellets),
+		};
 		const b: Run = {
 			config: { ...withPellets, pellets: undefined },
-			s: createSimState(SEED, a.s.player.x, a.s.player.z, { ...withPellets, pellets: undefined }),
+			s: createSimState(NO_SNATCHER_SEED, a.s.player.x, a.s.player.z, { ...withPellets, pellets: undefined }),
 		};
 		const k = recordWith(a.s, 8);
 		const list = regular(a.s, k);

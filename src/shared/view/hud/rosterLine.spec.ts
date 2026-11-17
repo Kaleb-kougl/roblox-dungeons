@@ -60,31 +60,36 @@ describe("roster line: strings", () => {
 
 describe("roster line per floor", () => {
 	it("run start: every kind of floor 1's roster (swarmers first)", () => {
-		expect(cardText(1337, 1)).toBe("Swarmer · Bruiser"); // re-recorded for docs/NEW_ENEMIES_2.md NX6 (was Bomber)
+		// re-recorded for docs/NEW_ENEMIES_3.md NT6 (was Bruiser; Bomber before docs/NEW_ENEMIES_2.md NX6)
+		expect(cardText(1337, 1)).toBe("Swarmer · Imp");
 		const line = stageRosterLine(["swarmer", "bruiser"], undefined, str);
 		expect(line).toEqual({ key: ROSTER_STRINGS.line, args: { names: "Swarmer · Bruiser" }, gold: false });
 	});
 
-	it("a floor where kinds joined: New: <names>; other floors: none (run 1337, floors 1-16)", () => {
-		// Run 1337's order: bruiser, pyrekeeper, bulwark, stormcaller, reaper, warbanner, imp, chainhook, snatcher, sniper,
-		// bomber, charger, summoner, slime (shared/dungeon roster.spec; re-recorded for docs/NEW_ENEMIES.md NE7, then
-		// docs/DAILY.md DSD18: no unlock floors and one new kind a floor; re-recorded for docs/NEW_ENEMIES_2.md NX6: 14
-		// kinds, so the roster is full on floor 14 and floors 15-16 add none; the `bulwark` reads Shieldwall, NXD17).
+	it("a floor where kinds joined: New: <names>; other floors: none (run 1337, floors 1-19)", () => {
+		// Run 1337's order: imp, pyrekeeper, jackal, mortar, mender, snatcher, bulwark, sniper, chainhook, slime, reaper,
+		// charger, bruiser, stormcaller, warbanner, bomber, summoner (shared/dungeon roster.spec; re-recorded for
+		// docs/NEW_ENEMIES.md NE7, then docs/DAILY.md DSD18: no unlock floors and one new kind a floor; re-recorded for
+		// docs/NEW_ENEMIES_2.md NX6, the `bulwark` reads Shieldwall, NXD17; re-recorded for docs/NEW_ENEMIES_3.md NT6: 17
+		// kinds, so the roster is full on floor 17 and floors 18-19 add none).
 		const want: Array<string | undefined> = [
-			"Swarmer · Bruiser",
+			"Swarmer · Imp",
 			"New: Pyre-keeper",
-			"New: Shieldwall",
-			"New: Stormcaller",
-			"New: Reaper",
-			"New: Warbanner",
-			"New: Imp",
-			"New: Chainhook",
+			"New: Jackal",
+			"New: Mortar",
+			"New: Mender",
 			"New: Snatcher",
+			"New: Shieldwall",
 			"New: Sniper",
-			"New: Bomber",
-			"New: Charger",
-			"New: Summoner",
+			"New: Chainhook",
 			"New: Ooze",
+			"New: Reaper",
+			"New: Charger",
+			"New: Bruiser",
+			"New: Stormcaller",
+			"New: Warbanner",
+			"New: Bomber",
+			"New: Summoner",
 			undefined,
 			undefined,
 		];
@@ -107,8 +112,8 @@ describe("roster line per floor", () => {
 	it("reads the built floor's roster (EndlessFloorLayout.roster)", () => {
 		const l = buildEndlessFloor(1337, 3, generateDungeon, 1, { unlockFloors: false });
 		const line = stageRosterLine(l.roster, endlessRoster(1337, 2, false), str);
-		// re-recorded for docs/NEW_ENEMIES_2.md NX6 (was New: Bruiser)
-		expect(line === undefined ? undefined : str(line.key, line.args)).toBe("New: Shieldwall");
+		// re-recorded for docs/NEW_ENEMIES_3.md NT6 (was New: Shieldwall; New: Bruiser before docs/NEW_ENEMIES_2.md NX6)
+		expect(line === undefined ? undefined : str(line.key, line.args)).toBe("New: Jackal");
 	});
 });
 

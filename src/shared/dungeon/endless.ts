@@ -201,8 +201,9 @@ export function rosterSeed(runSeed: number): number {
 /**
  * The order in which the seeded kinds of run `runSeed` join its roster: the room kinds other than ROSTER.always
  * (ENDLESS_ROOM_KINDS order) after one Fisher-Yates shuffle from new EncounterRng(rosterSeed(runSeed)): for i from
- * the last index down to 1, j = rng.int(0, i), swap i and j (one draw per step: 13 draws for the 14 seeded kinds since
- * docs/NEW_ENEMIES_2.md NX6, which reshuffled every run's order again; 9 for 10 at docs/NEW_ENEMIES.md NE7). Pure.
+ * the last index down to 1, j = rng.int(0, i), swap i and j (one draw per step: 16 draws for the 17 seeded kinds since
+ * docs/NEW_ENEMIES_3.md NT6, which reshuffled every run's order again; 13 for 14 at docs/NEW_ENEMIES_2.md NX6, 9 for 10
+ * at docs/NEW_ENEMIES.md NE7). Pure.
  */
 export function rosterOrder(runSeed: number): string[] {
 	const order: string[] = [];

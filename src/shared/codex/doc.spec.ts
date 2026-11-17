@@ -438,6 +438,10 @@ describe("codex seed and counts", () => {
 			"enemy:charger",
 			"enemy:golden",
 			"enemy:imp",
+			// docs/NEW_ENEMIES_3.md NT6: their entries exist now, so their first-time cards seed them
+			"enemy:jackal",
+			"enemy:mender",
+			"enemy:mortar",
 			"enemy:pyrekeeper",
 			"enemy:reaper",
 			"enemy:slime",
@@ -469,7 +473,7 @@ describe("codex seed and counts", () => {
 			{ id: "enemy:slime", tier: 1, floor: 0 },
 		]);
 		const seeded = applyClaims(emptyCodexDoc(), claims, 20000);
-		expect(seeded.e.size()).toBe(18);
+		expect(seeded.e.size()).toBe(21);
 		expect(codexFoundCount(seeded)).toBe(0);
 	});
 

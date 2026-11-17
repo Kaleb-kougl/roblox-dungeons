@@ -153,6 +153,10 @@ const ORDER_LOCK: { readonly [K in CodexGroup]: ReadonlyArray<string> } = {
 		"enemy:chainhook",
 		"enemy:snatcher",
 		"enemy:pyrekeeper",
+		// docs/NEW_ENEMIES_3.md NT6 / NTD13: appended after the Pyre-keeper, in ENDLESS_ROOM_KINDS order
+		"enemy:mortar",
+		"enemy:mender",
+		"enemy:jackal",
 	],
 	champions: ["affix:hulking", "affix:swift", "affix:shielded", "affix:vengeful"],
 	bosses: ["boss:act1", "boss:demonlord"],
@@ -160,8 +164,11 @@ const ORDER_LOCK: { readonly [K in CodexGroup]: ReadonlyArray<string> } = {
 	secrets: ["secret:room"],
 };
 
-/** Every group's lock in catalog order: the whole catalog's (87 entries since the secret rooms, 91 since NX9). */
-const LOCK_TOTAL = 91;
+/**
+ * Every group's lock in catalog order: the whole catalog's (87 entries since the secret rooms, 91 since NX9, 94 since
+ * docs/NEW_ENEMIES_3.md NT6).
+ */
+const LOCK_TOTAL = 94;
 
 /**
  * The whole catalog's order up to `secret:room` (87 entries, every group's lock above in CODEX_TAB_GROUPS order): an
@@ -169,8 +176,16 @@ const LOCK_TOTAL = 91;
  */
 const SECRET_ROOMS_TOTAL = 87;
 
-/** The later room enemies' entries, in catalog order after `secret:room` (NXD14, NX9). */
-const APPENDED_ENEMIES = ["enemy:bulwark", "enemy:chainhook", "enemy:snatcher", "enemy:pyrekeeper"];
+/** The later room enemies' entries, in catalog order after `secret:room` (NXD14, NX9; docs/NEW_ENEMIES_3.md NT6). */
+const APPENDED_ENEMIES = [
+	"enemy:bulwark",
+	"enemy:chainhook",
+	"enemy:snatcher",
+	"enemy:pyrekeeper",
+	"enemy:mortar",
+	"enemy:mender",
+	"enemy:jackal",
+];
 
 /** Why `ids` breaks the lock (undefined: it holds): every locked id at its place; extra ids only after them. */
 function lockProblem(ids: ReadonlyArray<string>, lock: ReadonlyArray<string>): string | undefined {
@@ -240,17 +255,16 @@ describe("codex catalog: order lock", () => {
 		expect(codexEnemyId(PYRE.id)).toBe("enemy:pyrekeeper");
 		expect(codexEntry("enemy:pyre")).toBeUndefined();
 		// their first-time cards (shared/onboarding SIGHTING_IDS = the archetype ids) seed the entries as seen
-		for (const kind of ["bulwark", "chainhook", "snatcher", "pyrekeeper"]) {
+		for (const kind of ["bulwark", "chainhook", "snatcher", "pyrekeeper", "mortar", "mender", "jackal"]) {
 			expect([kind, SIGHTING_IDS.includes(kind)]).toEqual([kind, true]);
 			expect(seedFromSightings([kind])).toEqual([{ id: `enemy:${kind}`, tier: 1, floor: 0 }]);
 		}
 		// the grid shows them at the Enemies section's end, before the Champions
 		const grid = codexGridOrder("bestiary");
 		const at = grid.indexOf("enemy:golden");
-		expect([grid[at + 1], grid[at + 2], grid[at + 3], grid[at + 4], grid[at + 5]]).toEqual([
-			...APPENDED_ENEMIES,
-			"affix:hulking",
-		]);
+		const after: string[] = [];
+		for (let i = 1; i <= APPENDED_ENEMIES.size() + 1; i++) after.push(grid[at + i]);
+		expect(after).toEqual([...APPENDED_ENEMIES, "affix:hulking"]);
 	});
 
 	it("appends the secret rooms last in the grid: a group (the last tab's last section) after every other (docs/SECRET_ROOMS.md SRD12)", () => {

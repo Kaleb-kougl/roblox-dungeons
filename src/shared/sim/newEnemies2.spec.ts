@@ -220,7 +220,8 @@ describe("data blocks (the plan's Design tables)", () => {
 	});
 
 	it("NX6 appends the four room enemies to the room pool, never the brazier (NXD5, NXD9, NXD4)", () => {
-		const n = ENDLESS_ROOM_KINDS.size();
+		// at indices 11-14 (docs/NEW_ENEMIES_3.md NT6 appends its three after them)
+		const n = 15;
 		const tail: unknown[][] = [];
 		for (let i = n - 4; i < n; i++) {
 			const k = ENDLESS_ROOM_KINDS[i];
