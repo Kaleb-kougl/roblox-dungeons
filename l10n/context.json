@@ -5218,5 +5218,215 @@
 		"note": "Main menu and Armory, the Get Silver panel (the player buys Silver, the game's currency kept between runs, with Robux through Roblox's own purchase prompt): closes the panel.",
 		"max": 12,
 		"example": "Close"
+	},
+	"cosmetic.equip": {
+		"note": "Armory screen, Cosmetics tab (looks bought with Silver, the currency kept between runs: body colours, outline, roll trail, spark colours): button that wears the selected owned item.",
+		"max": 12,
+		"example": "Equip"
+	},
+	"cosmetic.equipped": {
+		"note": "Armory screen, Cosmetics tab (looks bought with Silver, the currency kept between runs): label on the item the player is wearing in its slot.",
+		"max": 12,
+		"example": "Equipped"
+	},
+	"cosmetic.unequip": {
+		"note": "Armory screen, Cosmetics tab (looks bought with Silver, the currency kept between runs): button that stops wearing the item, back to the game's own colour.",
+		"max": 12,
+		"example": "Take off"
+	},
+	"cosmetic.tryOn": {
+		"note": "Armory screen, Cosmetics tab (looks bought with Silver, the currency kept between runs): button that shows the selected item on the character preview before buying it.",
+		"max": 12,
+		"example": "Try on"
+	},
+	"cosmetic.none": {
+		"note": "Armory screen, Cosmetics tab (looks bought with Silver, the currency kept between runs): the first row of every slot, wearing nothing: the game's own colour.",
+		"max": 14,
+		"example": "Default"
+	},
+	"cosmetic.animated": {
+		"note": "Armory screen, Cosmetics tab: a small tag on the Prismatic body colours, whose colour slowly shifts through several colours.",
+		"max": 12,
+		"example": "Animated"
+	},
+	"cosmetic.slot.dye.knight": {
+		"note": "Armory screen, Cosmetics tab (looks bought with Silver, the currency kept between runs): a group header over the items that change the Knight's armour colour (one of two playable characters; the Knight wears plate armour).",
+		"max": 18,
+		"example": "Knight dye"
+	},
+	"cosmetic.slot.dye.archer": {
+		"note": "Armory screen, Cosmetics tab (looks bought with Silver, the currency kept between runs): a group header over the items that change the Archer's clothing colour (one of two playable characters; the Archer wears leathers).",
+		"max": 18,
+		"example": "Archer dye"
+	},
+	"cosmetic.slot.outline": {
+		"note": "Armory screen, Cosmetics tab (looks bought with Silver, the currency kept between runs): a group header over the items that change the colour of the thin rim drawn around your own character.",
+		"max": 18,
+		"example": "Outline"
+	},
+	"cosmetic.slot.trail": {
+		"note": "Armory screen, Cosmetics tab (looks bought with Silver, the currency kept between runs): a group header over the items that change the colour of the afterimages left behind when your character rolls (a quick dodge).",
+		"max": 18,
+		"example": "Roll trail"
+	},
+	"cosmetic.slot.spark": {
+		"note": "Armory screen, Cosmetics tab (looks bought with Silver, the currency kept between runs): a group header over the items that change the colour of the sparks when a bullet grazes past you or your shield blocks bullets.",
+		"max": 18,
+		"example": "Sparks"
+	},
+	"cosmetic.dye.knight.frost.name": {
+		"note": "Armory screen, Cosmetics tab (looks bought with Silver, the currency kept between runs): an item's name, a colour for the Knight's plate armour (one of two playable characters). The first word is a colour name.",
+		"max": 24,
+		"example": "Frost Plate"
+	},
+	"cosmetic.dye.knight.ivory.name": {
+		"note": "Armory screen, Cosmetics tab (looks bought with Silver, the currency kept between runs): an item's name, a colour for the Knight's plate armour (one of two playable characters). The first word is a colour name.",
+		"max": 24,
+		"example": "Ivory Plate"
+	},
+	"cosmetic.dye.knight.teal.name": {
+		"note": "Armory screen, Cosmetics tab (looks bought with Silver, the currency kept between runs): an item's name, a colour for the Knight's plate armour (one of two playable characters). The first word is a colour name.",
+		"max": 24,
+		"example": "Teal Plate"
+	},
+	"cosmetic.dye.knight.verdant.name": {
+		"note": "Armory screen, Cosmetics tab (looks bought with Silver, the currency kept between runs): an item's name, a colour for the Knight's plate armour (one of two playable characters). The first word is a colour name.",
+		"max": 24,
+		"example": "Verdant Plate"
+	},
+	"cosmetic.dye.knight.azure.name": {
+		"note": "Armory screen, Cosmetics tab (looks bought with Silver, the currency kept between runs): an item's name, a colour for the Knight's plate armour (one of two playable characters). The first word is a colour name.",
+		"max": 24,
+		"example": "Azure Plate"
+	},
+	"cosmetic.dye.knight.lilac.name": {
+		"note": "Armory screen, Cosmetics tab (looks bought with Silver, the currency kept between runs): an item's name, a colour for the Knight's plate armour (one of two playable characters). The first word is a colour name.",
+		"max": 24,
+		"example": "Lilac Plate"
+	},
+	"cosmetic.dye.knight.bronze.name": {
+		"note": "Armory screen, Cosmetics tab (looks bought with Silver, the currency kept between runs): an item's name, a colour for the Knight's plate armour (one of two playable characters). The first word is a colour name.",
+		"max": 24,
+		"example": "Bronze Plate"
+	},
+	"cosmetic.dye.knight.rose.name": {
+		"note": "Armory screen, Cosmetics tab (looks bought with Silver, the currency kept between runs): an item's name, a colour for the Knight's plate armour (one of two playable characters). The first word is a colour name.",
+		"max": 24,
+		"example": "Rose Plate"
+	},
+	"cosmetic.dye.knight.prismatic.name": {
+		"note": "Armory screen, Cosmetics tab (looks bought with Silver, the currency kept between runs): an item's name, a colour for the Knight's plate armour (one of two playable characters). Prismatic: its colour slowly shifts through several colours.",
+		"max": 24,
+		"example": "Prismatic Plate"
+	},
+	"cosmetic.dye.archer.frost.name": {
+		"note": "Armory screen, Cosmetics tab (looks bought with Silver, the currency kept between runs): an item's name, a colour for the Archer's leather clothing (one of two playable characters). The first word is a colour name.",
+		"max": 24,
+		"example": "Frost Leathers"
+	},
+	"cosmetic.dye.archer.ivory.name": {
+		"note": "Armory screen, Cosmetics tab (looks bought with Silver, the currency kept between runs): an item's name, a colour for the Archer's leather clothing (one of two playable characters). The first word is a colour name.",
+		"max": 24,
+		"example": "Ivory Leathers"
+	},
+	"cosmetic.dye.archer.prismatic.name": {
+		"note": "Armory screen, Cosmetics tab (looks bought with Silver, the currency kept between runs): an item's name, a colour for the Archer's leather clothing (one of two playable characters). Prismatic: its colour slowly shifts through several colours.",
+		"max": 24,
+		"example": "Prismatic Leathers"
+	},
+	"cosmetic.outline.azure.name": {
+		"note": "Armory screen, Cosmetics tab (looks bought with Silver, the currency kept between runs): an item's name, a colour for the thin rim drawn around your own character. The first word is a colour name.",
+		"max": 24,
+		"example": "Azure Outline"
+	},
+	"cosmetic.outline.silver.name": {
+		"note": "Armory screen, Cosmetics tab (looks bought with Silver, the currency kept between runs): an item's name, a colour for the thin rim drawn around your own character. The first word is a colour name.",
+		"max": 24,
+		"example": "Silver Outline"
+	},
+	"cosmetic.outline.jade.name": {
+		"note": "Armory screen, Cosmetics tab (looks bought with Silver, the currency kept between runs): an item's name, a colour for the thin rim drawn around your own character. The first word is a colour name.",
+		"max": 24,
+		"example": "Jade Outline"
+	},
+	"cosmetic.outline.sand.name": {
+		"note": "Armory screen, Cosmetics tab (looks bought with Silver, the currency kept between runs): an item's name, a colour for the thin rim drawn around your own character. The first word is a colour name.",
+		"max": 24,
+		"example": "Sand Outline"
+	},
+	"cosmetic.outline.rose.name": {
+		"note": "Armory screen, Cosmetics tab (looks bought with Silver, the currency kept between runs): an item's name, a colour for the thin rim drawn around your own character. The first word is a colour name.",
+		"max": 24,
+		"example": "Rose Outline"
+	},
+	"cosmetic.outline.moss.name": {
+		"note": "Armory screen, Cosmetics tab (looks bought with Silver, the currency kept between runs): an item's name, a colour for the thin rim drawn around your own character. The first word is a colour name.",
+		"max": 24,
+		"example": "Moss Outline"
+	},
+	"cosmetic.outline.violet.name": {
+		"note": "Armory screen, Cosmetics tab (looks bought with Silver, the currency kept between runs): an item's name, a colour for the thin rim drawn around your own character. The first word is a colour name.",
+		"max": 24,
+		"example": "Violet Outline"
+	},
+	"cosmetic.outline.orchid.name": {
+		"note": "Armory screen, Cosmetics tab (looks bought with Silver, the currency kept between runs): an item's name, a colour for the thin rim drawn around your own character. The first word is a colour name.",
+		"max": 24,
+		"example": "Orchid Outline"
+	},
+	"cosmetic.trail.azure.name": {
+		"note": "Armory screen, Cosmetics tab (looks bought with Silver, the currency kept between runs): an item's name, a colour for the afterimages your character leaves when rolling (a quick dodge). The first word is a colour name.",
+		"max": 24,
+		"example": "Azure Trail"
+	},
+	"cosmetic.trail.ivory.name": {
+		"note": "Armory screen, Cosmetics tab (looks bought with Silver, the currency kept between runs): an item's name, a colour for the afterimages your character leaves when rolling (a quick dodge). The first word is a colour name.",
+		"max": 24,
+		"example": "Ivory Trail"
+	},
+	"cosmetic.trail.jade.name": {
+		"note": "Armory screen, Cosmetics tab (looks bought with Silver, the currency kept between runs): an item's name, a colour for the afterimages your character leaves when rolling (a quick dodge). The first word is a colour name.",
+		"max": 24,
+		"example": "Jade Trail"
+	},
+	"cosmetic.trail.verdant.name": {
+		"note": "Armory screen, Cosmetics tab (looks bought with Silver, the currency kept between runs): an item's name, a colour for the afterimages your character leaves when rolling (a quick dodge). The first word is a colour name.",
+		"max": 24,
+		"example": "Verdant Trail"
+	},
+	"cosmetic.trail.cobalt.name": {
+		"note": "Armory screen, Cosmetics tab (looks bought with Silver, the currency kept between runs): an item's name, a colour for the afterimages your character leaves when rolling (a quick dodge). The first word is a colour name.",
+		"max": 24,
+		"example": "Cobalt Trail"
+	},
+	"cosmetic.trail.violet.name": {
+		"note": "Armory screen, Cosmetics tab (looks bought with Silver, the currency kept between runs): an item's name, a colour for the afterimages your character leaves when rolling (a quick dodge). The first word is a colour name.",
+		"max": 24,
+		"example": "Violet Trail"
+	},
+	"cosmetic.spark.azure.name": {
+		"note": "Armory screen, Cosmetics tab (looks bought with Silver, the currency kept between runs): an item's name, a colour for the sparks when a bullet grazes past you or your shield blocks bullets. The first word is a colour name.",
+		"max": 24,
+		"example": "Azure Sparks"
+	},
+	"cosmetic.spark.jade.name": {
+		"note": "Armory screen, Cosmetics tab (looks bought with Silver, the currency kept between runs): an item's name, a colour for the sparks when a bullet grazes past you or your shield blocks bullets. The first word is a colour name.",
+		"max": 24,
+		"example": "Jade Sparks"
+	},
+	"cosmetic.spark.violet.name": {
+		"note": "Armory screen, Cosmetics tab (looks bought with Silver, the currency kept between runs): an item's name, a colour for the sparks when a bullet grazes past you or your shield blocks bullets. The first word is a colour name.",
+		"max": 24,
+		"example": "Violet Sparks"
+	},
+	"cosmetic.spark.rose.name": {
+		"note": "Armory screen, Cosmetics tab (looks bought with Silver, the currency kept between runs): an item's name, a colour for the sparks when a bullet grazes past you or your shield blocks bullets. The first word is a colour name.",
+		"max": 24,
+		"example": "Rose Sparks"
+	},
+	"cosmetic.spark.orchid.name": {
+		"note": "Armory screen, Cosmetics tab (looks bought with Silver, the currency kept between runs): an item's name, a colour for the sparks when a bullet grazes past you or your shield blocks bullets. The first word is a colour name.",
+		"max": 24,
+		"example": "Orchid Sparks"
 	}
 }

@@ -37,6 +37,7 @@ import { SILVER_COLOR_RULES, silverReport } from "./silverColors";
 import { NEW_ENEMY_2_AUDIO_IDS } from "./newEnemies2";
 import { NEW_ENEMY_3_AUDIO_IDS } from "./newEnemies3";
 import { SILVER_SHOP_STRING_KEYS } from "./silverShop";
+import { COSMETIC_STRING_KEYS } from "./cosmetics";
 import { COLOR_ROLES } from "./types";
 import { deepClone, sortedKeys, type Obj } from "./util";
 import { validateManifest } from "./validate";
@@ -60,7 +61,7 @@ describe("silver: strings", () => {
 		expect(SILVER_STRING_KEYS.size() > 0).toBe(true);
 		expect([...silverStringKeys()]).toEqual([...SILVER_STRING_KEYS]);
 		// docs/SILVER_SHOP.md SH4's keys come after them.
-		expect(tail(REQUIRED_STRING_KEYS, SILVER_STRING_KEYS.size(), SILVER_SHOP_STRING_KEYS.size())).toEqual([
+		expect(tail(REQUIRED_STRING_KEYS, SILVER_STRING_KEYS.size(), SILVER_SHOP_STRING_KEYS.size() + COSMETIC_STRING_KEYS.size())).toEqual([
 			...SILVER_STRING_KEYS,
 		]);
 		expect(new Set(REQUIRED_STRING_KEYS).size()).toBe(REQUIRED_STRING_KEYS.size());

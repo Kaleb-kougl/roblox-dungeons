@@ -49,6 +49,7 @@ import type { AssetKind, ColorRole, ParticleFlipbookMode, Pivot } from "./types"
 import { CODEX_STRING_KEYS } from "./codex";
 import { silverStringKeys } from "./silver";
 import { silverShopStringKeys } from "./silverShop";
+import { cosmeticStringKeys } from "./cosmetics";
 import { DAILY_STRING_KEYS } from "./daily";
 import { DAILY_RANK_STRING_KEYS } from "./dailyRank";
 import { NEW_BEST_STRING_KEYS } from "./newBest";
@@ -1430,6 +1431,9 @@ export const REQUIRED_STRING_KEYS: ReadonlyArray<string> = ((): string[] => [
 	// docs/SILVER_SHOP.md SH4: silverShop.ts SILVER_SHOP_STRING_KEYS (built inside its own function): the Get Silver
 	// panel and the `+` beside a Silver balance
 	...silverShopStringKeys(),
+	// docs/COSMETICS.md CS3: cosmetics.ts COSMETIC_STRING_KEYS (built inside its own function): the Cosmetics tab's
+	// buttons and tag, the slot headers, every cosmetic item's name
+	...cosmeticStringKeys(),
 ])();
 
 /**

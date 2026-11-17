@@ -5,22 +5,26 @@ import { REQUIRED_STRING_KEYS } from "./contract";
 import { ThemePack } from "./pack";
 import { THEME_PACKS } from "./packs";
 import { PLACEHOLDER_MANIFEST } from "./packs/placeholder";
+import { COSMETIC_STRING_KEYS } from "./cosmetics";
 import { ROBUX_ICON_ID, SILVER_SHOP_KEYS, SILVER_SHOP_STRING_KEYS, silverShopStringKeys } from "./silverShop";
 import { sortedKeys } from "./util";
 
 const quiet = () => {};
 
-function tail(list: ReadonlyArray<string>, n: number): string[] {
+function tail(list: ReadonlyArray<string>, n: number, skip = 0): string[] {
 	const out = new Array<string>();
-	for (let i = list.size() - n; i < list.size(); i++) out.push(list[i]);
+	for (let i = list.size() - n - skip; i < list.size() - skip; i++) out.push(list[i]);
 	return out;
 }
 
 describe("silver shop: strings", () => {
-	it("are REQUIRED_STRING_KEYS' last ones, distinct, sorted, in every bundled pack", () => {
+	it("are REQUIRED_STRING_KEYS' last ones before the cosmetics', distinct, sorted, in every bundled pack", () => {
 		expect(SILVER_SHOP_STRING_KEYS.size()).toBe(12);
 		expect([...silverShopStringKeys()]).toEqual([...SILVER_SHOP_STRING_KEYS]);
-		expect(tail(REQUIRED_STRING_KEYS, SILVER_SHOP_STRING_KEYS.size())).toEqual([...SILVER_SHOP_STRING_KEYS]);
+		// docs/COSMETICS.md CS3's keys come after them.
+		expect(tail(REQUIRED_STRING_KEYS, SILVER_SHOP_STRING_KEYS.size(), COSMETIC_STRING_KEYS.size())).toEqual([
+			...SILVER_SHOP_STRING_KEYS,
+		]);
 		expect(new Set(REQUIRED_STRING_KEYS).size()).toBe(REQUIRED_STRING_KEYS.size());
 		for (const p of sortedKeys(THEME_PACKS))
 			for (const key of SILVER_SHOP_STRING_KEYS)

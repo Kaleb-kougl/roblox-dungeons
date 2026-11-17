@@ -6,6 +6,7 @@
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { SILVER_AUDIO_IDS, SILVER_ROLES, SILVER_STRING_KEYS } from "./silver";
 import { SILVER_SHOP_STRING_KEYS } from "./silverShop";
+import { COSMETIC_STRING_KEYS } from "./cosmetics";
 import { SFX, SFX_FALLBACK, SFX_PRIORITY, ALL_SFX, PORT_SFX, JINGLE_SFX, DUCKING_SFX } from "shared/view/audio";
 import { CHARACTER_OVERRIDE_KEYS, THEME_CHARACTER_IDS, characterOverrideKey } from "./characters";
 import { colorDifference } from "./color";
@@ -106,7 +107,7 @@ describe("secret rooms: strings", () => {
 			tail(
 				REQUIRED_STRING_KEYS,
 				SECRET_STRING_KEYS.size(),
-				SILVER_STRING_KEYS.size() + SILVER_SHOP_STRING_KEYS.size(),
+				SILVER_STRING_KEYS.size() + SILVER_SHOP_STRING_KEYS.size() + COSMETIC_STRING_KEYS.size(),
 			),
 		).toEqual([...SECRET_STRING_KEYS]);
 		expect(new Set(REQUIRED_STRING_KEYS).size()).toBe(REQUIRED_STRING_KEYS.size());

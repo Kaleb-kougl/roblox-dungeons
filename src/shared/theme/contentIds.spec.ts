@@ -6,7 +6,8 @@ import { ThemePack } from "./pack";
 import { PLACEHOLDER_MANIFEST } from "./packs/placeholder";
 import { VALE_ASSET_IDS, VALE_MANIFEST } from "./packs/vale";
 import type { ContentRef } from "./types";
-import { describeValue, quote, sortedKeys } from "./util";
+import { deepClone, describeValue, quote, sortedKeys, type Obj } from "./util";
+import { validateManifest } from "./validate";
 
 const quiet = () => undefined;
 
@@ -25,6 +26,8 @@ function union(core: ThemeCore): Array<string> {
 	};
 	for (const id of core.assetIdList()) add(core.contentIds(id));
 	for (const b of core.biomeKeys()) add(core.biomeContentIds(b));
+	// docs/COSMETICS.md: dye sheets are listed apart (dyeContentIds), never with their set.
+	for (const id of core.assetIdList()) add(core.dyeContentIds(id));
 	out.sort();
 	return out;
 }
@@ -67,6 +70,40 @@ describe("theme content ids (docs/PRELOAD.md P1)", () => {
 		for (const file of ["vanguard-idle.png", "vanguard-run.png", "vanguard-roll.png", "vanguard-attack1.png"]) {
 			expect([file, knight.includes(VALE_ASSET_IDS[file])]).toEqual([file, true]);
 		}
+	});
+
+	it("docs/COSMETICS.md: a set's dye sheets are never in contentIds; dyeContentIds lists them in sheet order", () => {
+		const plain = new ThemeCore(VALE_MANIFEST, { warn: quiet });
+		const before = plain.contentIds("class.vanguard");
+		const m = deepClone(VALE_MANIFEST) as unknown as Obj;
+		const set = (m.assets as Obj)["class.vanguard"] as Obj;
+		expect(set.kind).toBe("sprites");
+		const sheets = set.sheets as Array<Obj>;
+		const dyes = new Array<string>();
+		for (let i = 0; i < sheets.size(); i++) {
+			const dye = `rbxassetid://${9900000 + i}`; // check-asset-ids: allow (synthetic dye ids, never uploaded)
+			sheets[i].dyeAssetId = dye;
+			dyes.push(dye);
+		}
+		expect(validateManifest(m)).toEqual([]);
+		const core = new ThemeCore(m, { warn: quiet });
+		// exactly its sheets and their outline sheets, as before
+		expect(core.contentIds("class.vanguard")).toEqual(before);
+		for (const d of dyes) expect((ids(core.contentIds("class.vanguard")) as ReadonlyArray<string>).includes(d)).toBe(false);
+		expect(ids(core.dyeContentIds("class.vanguard"))).toEqual(dyes);
+		for (const r of core.dyeContentIds("class.vanguard")) expect(r.media).toBe("image");
+		expect(new ThemePack(m, { warn: quiet }).dyeContentIds("class.vanguard")).toEqual(core.dyeContentIds("class.vanguard"));
+		// no dyes: empty (a set without them, another kind, a missing id)
+		expect(plain.dyeContentIds("class.vanguard")).toEqual([]);
+		expect(core.dyeContentIds("enemy.swarmer")).toEqual([]);
+		expect(core.dyeContentIds("sfx.ui.click")).toEqual([]);
+		expect(core.dyeContentIds("no.such.id")).toEqual([]);
+		// the frames carry the dye next to the outline, same rect
+		const f = new ThemePack(m, { warn: quiet }).sprites("class.vanguard")!.frame("idle", 0, 0);
+		expect(f.dyeImage).toBe(dyes[core.sprites("class.vanguard")!.frame("idle", 0, 0).sheet]);
+		expect(new ThemePack(VALE_MANIFEST, { warn: quiet }).sprites("class.vanguard")!.frame("idle", 0, 0).dyeImage).toBe(
+			undefined,
+		);
 	});
 
 	it("a sound returns its assetId then its variants, as sounds, each once", () => {

@@ -6,7 +6,8 @@
  *   - class.vanguard, enemy.swarmer, enemy.sniper, enemy.bruiser, boss.act1, boss.demonlord: `sprites` once the
  *     sheets of every REQUIRED animation are uploaded, else placeholder; an optional animation (attack.1..3; a boss's
  *     attack.2..4 / intro / taunt) is left out until its sheet is uploaded; a sheet's outline (layout `outlineFile`,
- *     enemy and boss sets) becomes its `outlineAssetId` once uploaded, and never holds the set back; per-sheet cells
+ *     enemy and boss sets) becomes its `outlineAssetId` once uploaded, and never holds the set back; a sheet's dye
+ *     (layout `dyeFile`, the character sets, docs/COSMETICS.md) becomes its `dyeAssetId` the same way; per-sheet cells
  *     are copied;
  *   - the tile textures tile.biome.1.floor (the Lords of Pain stone), tile.biome.2.floor / tile.biome.2.wall (the
  *     molten basalt flagstones and wall face, original art from scripts/art/molten/gen_molten_tiles.py; all three with
@@ -232,6 +233,11 @@ export function valeSpriteAsset(id: string, layout: ValeSpriteLayout, ids: Asset
 		const outlineId = sheet.outlineFile !== undefined ? ids[sheet.outlineFile] : undefined;
 		if (outlineId !== undefined) {
 			image.outlineAssetId = outlineId as SpriteSheetImage["assetId"];
+		}
+		// The dye sheet (docs/COSMETICS.md CS3), likewise only once uploaded; until then the set draws undyed.
+		const dyeId = sheet.dyeFile !== undefined ? ids[sheet.dyeFile] : undefined;
+		if (dyeId !== undefined) {
+			image.dyeAssetId = dyeId as SpriteSheetImage["assetId"];
 		}
 		sheets.push(image);
 	}
