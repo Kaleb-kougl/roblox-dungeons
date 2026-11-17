@@ -658,6 +658,73 @@ the three seen go to their first-sighting cards (no codex toast, `sightingChip` 
 toast, and `codexSightingId` resolves the three sighting ids. `l10n:check` 0 errors / 0 warnings, `check:autolocalize`
 green.
 
+## NT11 systems pass (as built, 2026-11-16)
+
+Specs `sim/newEnemies3.systems.spec.ts` (20) and `run/newEnemies3.validate.spec.ts` (3); no sim rule changed. Two fixes,
+neither in the sim:
+
+- **The bug hunt: `view/predict/bulletAhead.spec` "real endless floors" (failing since NT6).** Root cause: not a new
+  sim rule and not a new kind's bullet. NT6's rosters put an **imp** in seed 6 floor 12's busiest room; its 5-bullet
+  fan reaches a barrel at 0.5 hp, the fan's first bullet breaks it, and the bullets behind fly through the cell
+  (slot 12 was the fan's third: `kind 5` ENEMY, `source 10` the imp). BulletAhead tested pieces against the merged
+  state only ("a piece broken inside the window still stops bullets", a documented gap of LP10), so it drew the trailing
+  bullets stopped at the barrel while the sim let them pass: on screen a freeze of up to the prediction horizon (0.3 s at
+  20 ticks), then a jump. Fixed in BulletAhead (presentation only): a **break plan** once a frame per pool, lazily and
+  only with intact pieces: every flying enemy bullet's first stop, the pieces' hits in the sim's order (tick, then slot;
+  `config.enemyBulletDamage` each; none on an inert piece or the Goldling's, which refuse enemy sources), and every
+  bullet that reaches a piece after its break re-routed to its next stop, until none moves (at most 8 rounds). A piece
+  broken by a player's shot, a swing, a slam or a Charger inside the window still stops bullets, and a bullet a hit takes
+  first still counts toward its piece (both documented; docs/LOCAL_PREDICTION.md Design 5 updated). New case
+  "lets the bullets behind the ones that break a piece fly through it" (a row into a barrel and a crate behind it,
+  against the real sim; it fails with the plan off). The real-floor case is green again (max diff 7e-14); the bench
+  0.31-0.38 ms for 150 bullets at 10 ticks (was 0.33).
+- **`run/testing` `legendaryTune.ts`** counted the guard feed's `guardPlayer` entries as erased bullets; a Jackal's
+  guard-stopped lunge is an entry there too (NTD9, a parry), so a Jackal room would have counted parries as erasures
+  toward the "<brace>+" guard rows. It now reads `ScoreEvents.guardCancels` (the erased bullets). A tool, no game change.
+
+Every interaction with a rule:
+
+| Interaction | Rule (as built) | Pinned by |
+|---|---|---|
+| Siege Bolt on a channelling Mender | the pinning hit is a hit: the beam is cut (`HealEnd.DAMAGE`) before the pin holds it; a carried Mender does not step, so it heals nothing and links nothing while carried | systems spec |
+| Siege Bolt on a winding-up / lunging Jackal | a carried Jackal does not step and keeps its target's token (`jackalHoldsToken`), so no packmate winds up at that player until it is released or dies; after the release it finishes its wind-up / lunge from where it was dropped | systems spec |
+| Siege Bolt on a Mortar mid-flight | a carried Mortar does not step: its flight waits, the shell lands exactly the carried ticks later and the ring holds where it was (fair: the ring never lies). A Mortar slammed dead while carried lands it from its corpse (stepCorpse is not skipped for the dead) | systems spec |
+| Riposte | a guard that only stops a lunge erases nothing (`riposteCount` 0): no counter-wave, no Thunder Guard spark (NTD9); a counter-wave (a Counterstrike ring) strikes each Jackal of a pack once | systems spec |
+| Overkill | a kill's carry streaks to the nearest enemy through `damageActor`: into a channelling Mender it cuts the beam (DAMAGE) | systems spec |
+| Treasure UNTOUCHED (and PERFECT) | count `score.hitsTaken`: a shell on a standing target is ONE hit (the strike or a shrapnel bullet, whichever collides first; the i-frames pass the rest); a landed lunge is one; a guard-stopped lunge none | systems spec |
+| A posthumous shell after its room cleared | the clear was judged at the last kill: ROOMS, PERFECT and FAST stand; the shell's hit only adds to `hitsTaken` (a vault's lock is UNLOCKED at the clear and `stepLock` cracks only while ARMED) | systems spec |
+| Treasure SWIFT par | per planned spawn (`buildDeferredScoreRooms`): a pack is 3 x 90 ticks, a Mortar or a Mender 180 (NT0 finding 2) | NT0; the Horde case (par = old + telegraph + 90 x the wave's cost) |
+| The Shieldwall covering a Mender | a hit the shield stops never reaches `damageActor`: the beam goes on; the beam passes through the Shieldwall's body (actors never cut sight; only players body-block, `menderBeamBlocker`); a hit from behind cuts it | systems spec |
+| The Chainhook's drag and the Mortar | the lead reads `x - prevX`, which includes a drag by a Chainhook in a lower slot (slot order, the same on every client): the ring leads along the pull, clamped to `maxLead` 3 (10 u/s x 36 ticks = 6). A Chainhook in a higher slot drags after the Mortar stepped and every tick starts `prevX` at the dragged position, so its drag never shows in the lead (the ring then leads the player's own walk only) | systems spec |
+| The Warbanner's aura | on all three (`isWarbannerAuraTarget`): cooldowns 80 % (the lob, the Mender's channel / bolt cooldowns, the lunge and the fixed spook cooldown 36 -> 29), walks 125 % (the keep-range walks, the circling); never the literal timers: the draw 21, the flight 60, the wind-up 21, the lunge 11, the link 24, the 30-tick pulse, the hop 12, the stagger 60 (EVD9) | systems spec |
+| Co-op, one pack on two players | the token is per target: at most one Jackal attacks each player, both are lunged at; the spook reads the locked target's facing | systems spec; `jackal.spec` |
+| Co-op, the Mortar's nearest player in a doorway | NTD3 per target: a Mortar whose nearest living player stands outside its room holds fire even with a teammate inside (it keeps range from the nearest one) | systems spec |
+| Affixes | each Jackal of a pack rolls its own affix (`assignAffixes` per planned spawn; in an elite room the pack's three spawns raise the room's affix count `eliteAffixCount(n)`); a Swift Jackal circles at 135 % but lunges the literal 2.8 / 11 a tick; a Shielded Mender's beam is cut by a hit its affix shield absorbs whole; a Vengeful Mortar killed mid-flight fires the Vengeful ring from its corpse and still lands its shell on the planned tick (both holds keep the slot) | systems spec |
+| Feast's power pellet | erases the shrapnel and the Mender's bolt; never a shell (a strike, like the Stormcaller's) | systems spec |
+| Pacts' freeze (`holdAbsoluteTimers`) | nothing to hold: every new timer is `aiTicks` / `v[]` / `cooldown`, stepped only by stepActors | systems spec |
+| Horde wave 2 | copies the first `hordeMaxWave` (10) planned spawns: a Mender and a Mortar like any kind; a pack at the cut is copied in part (two Jackals here, each priced 1: the par grows by 90 each); a partial pack is still a pack (same target) | systems spec |
+| Server validation | a recorded endless run per kind (the first planning room of floors 2-6 whose run shows the kind's own action: a shell landed, a Mender's bolt or link, a lunge; 8 s passive at 3-5, then a sword fight to 20 s) replays to the same hash and `validateRun` accepts it | `run/newEnemies3.validate.spec` |
+
+No rule, notes only:
+
+- **Blood Moon** doubles the affix shares (docs/FLOOR_MODIFIERS.md); nothing pack-specific beyond the per-spawn rule
+  above (a Blood Moon elite room with a pack has three more eligible spawns).
+- **Hulking Jackal**: its radius grows, so its lunge's overlap reach (`radius + PLAYER_RADIUS`) and its guard-stop
+  distance grow with it; its lunge distance is literal.
+- **Phantom Step and the strike**: a roll through a shell is i-framed (strikes are never erased by Phantom Step); the
+  shrapnel is erased like any bullet. Bastion's roll brace counts the shrapnel (not the strike: quiet bullets).
+- **Mirror Cloak** reflects a guard-erased shrapnel bullet or Mender bolt like any bullet; a shell is never erased.
+- **The Goldling's piece**: the shell ignores breakables (a strike), the shrapnel is an enemy bullet, which
+  `goldenGuardsPiece` refuses (it stops on the piece, no damage): a Mortar never releases the Goldling.
+- **Secret rooms**: a shell or its shrapnel on a cracked wall is a knock at most (enemy sources never open it); a player
+  inside an opened chamber is outside every Mortar's room (`roomIdAt` reads the Forge grid, where the chamber is void),
+  so no Mortar lobs at them there.
+- **Dev god mode**: the shell, the shrapnel, the bolt and the lunge go through `damagePlayer` / `hurtPlayerAt` and count
+  in `dev.blockedHits` like every enemy hit.
+- **A Mortar's lead in co-op** is its nearest player's own `prevX`; a Siege-dragged Mortar that ends outside its room
+  walks home before anything else (NT2).
+- **The Snatcher and a Jackal pack**: no rule between them (the Snatcher takes pellets, Jackals ignore pellets).
+
 ## Player experience
 
 1. **Mortar.** A lean demon at the back of the room draws its bow straight up. A ring lights up on the floor ahead of

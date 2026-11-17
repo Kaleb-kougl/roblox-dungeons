@@ -2,6 +2,7 @@
 // interaction that has a rule (the notes for the ones that have none are in the doc's "NT11 systems pass (as built)").
 //   builds    Siege Bolt pins a channelling Mender (the pinning hit cuts the beam, DAMAGE; no heal while it is carried)
 //             and a winding-up Jackal (it keeps its target's token while carried: no packmate winds up at that player);
+//             a pinned Mortar's flight waits while it is carried (the shell lands that many ticks later, the ring holds);
 //             a guard that only stops a Jackal's lunge erases nothing, so Riposte sends no wave (NTD9); a counter-wave
 //             strikes each Jackal of a pack once; an Overkill streak into a channelling Mender cuts the beam.
 //   score     a shell on a standing target is ONE hit (score.hitsTaken + 1: strike and shrapnel together), what
@@ -16,7 +17,8 @@
 //   co-op     one pack on two players: at most one Jackal attacks each target, both are lunged at; the Mortar holds
 //             fire while its NEAREST player stands outside its room, a teammate inside included (NTD3 per target).
 //   affixes   a Vengeful Mortar killed mid-flight: the corpse fires the Vengeful ring and still lands its shell on the
-//             planned tick; a Swift Jackal circles faster but lunges the literal distance a tick.
+//             planned tick; a Shielded Mender's beam is cut by a hit its affix shield absorbs whole; a Swift Jackal
+//             circles faster but lunges the literal distance a tick.
 //   pellets   the power pellet erases the shrapnel and the Mender's bolt but never a shell (a strike).
 //   pacts     a frozen draft tick leaves the three's state alone (aiTicks / v[] / cooldown only).
 //   horde     wave 2 copies a Mender and the Jackals; a pack at the hordeMaxWave cut is copied in part (each priced 1).
@@ -278,6 +280,26 @@ describe("NT11 builds", () => {
 			expect(jackalHoldsToken(mate)).toBe(false);
 		}
 		expect(carried > 0).toBe(true);
+	});
+
+	it("Siege Bolt pins a Mortar mid-flight: its flight waits while it is carried, the shell lands that much later", () => {
+		const w = arena();
+		for (let k = 0; k < 3; k++) grantCard(w.s, 0, Boon.BALLISTA);
+		const a = spawn(w, "mortar", 0, 8, AffixKind.NONE, 100);
+		a.cooldown = 0;
+		runUntil(w, () => a.aiState === MORTAR_FLIGHT, 300);
+		const t0 = w.s.tick;
+		const left = a.v[MORTAR_FLIGHT_TICKS];
+		shoot(w.s, a.x - 1.2, a.z, 1, 0, true);
+		let carried = 0;
+		let landed = -1;
+		for (let k = 0; k < 240 && landed < 0; k++) {
+			const seen = run(w, 1);
+			if (w.s.builds!.pins.some((p) => p.slot >= 0 && p.id === a.id)) carried++;
+			if (seen.shells > 0) landed = w.s.tick;
+		}
+		expect(carried > 0).toBe(true);
+		expect(landed - t0).toBe(left + carried);
 	});
 
 	it("Riposte: a guard that only stops a lunge erases nothing, so no counter-wave (NTD9); the Jackal staggers", () => {
@@ -624,6 +646,23 @@ describe("NT11 affixes", () => {
 		expect(shellTick - t0).toBe(left);
 		expect(vengeful).toBe(1);
 		expect(a.kind === NO_KIND || a.id !== id).toBe(true); // freed once both were done
+	});
+
+	it("a Shielded Mender: a hit its affix shield absorbs whole still cuts the beam (any hit that reaches it)", () => {
+		const w = arena();
+		const m = spawn(w, "mender", 0, 8, AffixKind.SHIELDED, 100);
+		m.cooldown = 0;
+		const ally = spawn(w, "mortar", 2.5, 8, AffixKind.NONE, 200);
+		ally.hp = 100;
+		ally.cooldown = 1e6;
+		const seen = seen0();
+		runUntil(w, () => channelling(m), 240, seen);
+		const shield = w.s.affixes!.slots[w.s.combat.actors.indexOf(m)].shield;
+		expect(shield >= 1).toBe(true);
+		shoot(w.s, m.x, m.z - 3, 0, 1);
+		runUntil(w, () => seen.ends.size() > 0, 30, seen);
+		expect([seen.ends[0], m.hp]).toEqual([HealEnd.DAMAGE, 100]);
+		expect(w.s.affixes!.slots[w.s.combat.actors.indexOf(m)].shield).toBe(shield - 1);
 	});
 
 	it("a Swift Jackal circles faster but lunges the literal distance a tick", () => {
