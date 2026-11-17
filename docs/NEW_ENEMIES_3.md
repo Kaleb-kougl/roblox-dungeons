@@ -37,7 +37,7 @@ lands.
 
 ## Status (2026-11-16)
 
-**NT0-NT7 and NT9 done** (see "NT0 findings": four small Design changes, no decision changed; "NT1 skeleton (as
+**NT0-NT7, NT9, NT11, NT12-lite and NT14 done** (see "NT0 findings": four small Design changes, no decision changed; "NT1 skeleton (as
 built)"; "NT2 Mortar (as built)": the Mortar's behaviour, `ArchetypeDef.stepCorpse`, `SimConfig.roomIdAt`,
 `events.shells`; "NT3 Mender (as built)": the Mender's behaviour, `healActor`, `events.heals` / `healCuts` and
 `CombatState.healEvents`, two data fields the plan left open; "NT4 Jackal (as built)": the Jackal's behaviour, the
@@ -48,8 +48,14 @@ re-pins and the census; "NT7 view (as built)": the shell told from lightning in 
 corpse's ring, the heal tether, the Jackal's sprite contract (`crouch` / `hop`), the cue rows; "NT9 strings, sightings
 and Codex (as built)"). **NT8 art built, NT10 audio sourced** ("NT8 art (as built)": three sets, upload pending, the
 Jackal drawn at bodyTiles 1.2 instead of the knight's density; "NT10 audio (as built)": six unconfirmed picks in
-`art/audio.json` and the lock, the build and upload left to the owner). Next: NT11-NT13; the owner's uploads (20 PNGs,
-six OGGs after `audio:build`).
+`art/audio.json` and the lock, the build and upload left to the owner). "NT11 systems pass (as built)": 20 interaction
+specs and a server-validated run per kind, no sim rule changed; the NT6 `bulletAhead.spec` failure was BulletAhead's
+(an imp's fan breaking a barrel inside the drawn-ahead window), fixed in the view; `legendaryTune` counts erased
+bullets, not Jackal parries. "NT12 tuning (as built)": per-kind rooms, drills and real floors measured, no number
+changed; **owner calls OC1-OC5** (first lob / heal, the Mortar against a standing Archer, the Jackal against a passive
+player, party-4 packs P1-P4, the census room's allowance). CLAUDE.md's decision log has the feature's entry (NT14).
+**Pending:** NT13 (the owner's uploads: 20 PNGs, six OGGs after `audio:build`; the Studio checklists of NT7 / NT8),
+the owner calls, and full tuning if the owner wants more than NT12-lite.
 Read on `main` @ `80f57769`. NTD1-NTD14 taken by the owner on
 2026-11-16 (see Decisions): every one as recommended except **NTD3** (the Mortar fires only while its target is in the
 Mortar's own room), **NTD9** (a guard that stops a Jackal's lunge counts as a parry) and **NTD10** (the last Jackal of a
