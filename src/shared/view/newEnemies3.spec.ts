@@ -546,11 +546,9 @@ describe("bursts", () => {
 
 describe("sprite inputs", () => {
 	it("are registered for the three (through withNewEnemy2SpriteInputs)", () => {
-		expect([MORTAR.id, MENDER.id, JACKAL.id].map((id) => ACTOR_SPRITE_INPUTS.get(id) !== undefined)).toEqual([
-			true,
-			true,
-			true,
-		]);
+		expect(ACTOR_SPRITE_INPUTS.get(MORTAR.id)).toBe(mortarSpriteInput);
+		expect(ACTOR_SPRITE_INPUTS.get(MENDER.id)).toBe(menderSpriteInput);
+		expect(ACTOR_SPRITE_INPUTS.get(JACKAL.id)).toBe(jackalSpriteInput);
 	});
 
 	it("the Jackal: crouch over the wind-up (absent: attack), attack over the lunge, hop (absent: its move), hit over the stagger", () => {

@@ -191,7 +191,8 @@ describe("VariantCueEvents: strikes are lightning only (docs/NEW_ENEMIES_3.md NT
 		ev.reset();
 		s.events.strikes = 1;
 		ev.collect(s);
-		expect([ev.strikes, ev.count()]).toEqual([0, 0]);
+		// docs/NEW_ENEMIES_3.md NT7: the shell is its own count (the impact's sound), never lightning
+		expect([ev.strikes, ev.shells, ev.count()]).toEqual([0, 1, 1]);
 	});
 
 	it("a real Mortar's shells never count as lightning", () => {
