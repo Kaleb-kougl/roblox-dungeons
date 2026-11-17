@@ -141,13 +141,13 @@ describe("sprite contract", () => {
 		}
 	});
 
-	it("v2: names the optional sprite-set animations: class attack.1..3; enemy attack.2 (ENEMY_VARIANTS EV10), death.2 / move.back (NEW_ENEMIES NE8), block (NEW_ENEMIES_2 NX7); boss attack.2..4 / intro / taunt (BRAMBLE_ART BR2, BOSS_DEMONLORD D2)", () => {
+	it("v2: names the optional sprite-set animations: class attack.1..3; enemy attack.2 (ENEMY_VARIANTS EV10), death.2 / move.back (NEW_ENEMIES NE8), block (NEW_ENEMIES_2 NX7), crouch / hop (NEW_ENEMIES_3 NT7); boss attack.2..4 / intro / taunt (BRAMBLE_ART BR2, BOSS_DEMONLORD D2)", () => {
 		expect(optionalBaseAnimations(CHARACTER)).toEqual(["attack.1", "attack.2", "attack.3"]);
-		expect(optionalBaseAnimations(ENEMY)).toEqual(["attack.2", "death.2", "move.back", "block"]);
+		expect(optionalBaseAnimations(ENEMY)).toEqual(["attack.2", "death.2", "move.back", "block", "crouch", "hop"]);
 		expect(optionalBaseAnimations(BOSS)).toEqual(["attack.2", "attack.3", "attack.4", "intro", "taunt"]);
 		expect([CHARACTER.optionalAnimations, ENEMY.optionalAnimations, BOSS.optionalAnimations]).toEqual([
 			CLASS_OPTIONAL_ANIMATIONS,
-			["attack.2", "death.2", "move.back", "block"],
+			["attack.2", "death.2", "move.back", "block", "crouch", "hop"],
 			BOSS_OPTIONAL_ANIMATIONS,
 		]);
 		for (const slot of SLOTS) {

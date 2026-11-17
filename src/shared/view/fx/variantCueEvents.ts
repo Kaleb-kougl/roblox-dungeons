@@ -37,6 +37,12 @@
  *     moments from the tick's PelletEvents: `snatches` (stolen), `swallows` (swallowed) and `pelletReturns` (returned
  *     to the floor at its death; pellets credited to its killer, NXD18, are `eaten` and chomp instead).
  *
+ *   - The fourth endless set (docs/NEW_ENEMIES_3.md NT7): `lobs` a Mortar leaving its draw (TELEGRAPH,
+ *     MORTAR_ATTACK_LOB) for MORTAR_FLIGHT (the release; a draw called off because the target left the room goes back to
+ *     keeping range: no sound), `shells` (SimEvents.shells: the impact; the shell is never lightning), `heals` the
+ *     tick's heal pulses (CombatState.healEvents.healSlot), `healCuts` (SimEvents.healCuts: a beam cut, never a natural
+ *     end), `lunges` / `spooks` (SimEvents.lunges / spooks).
+ *
  * Counts per frame (the mapper only asks > 0: several imps landing on one frame are one sound). Read-only on the sim,
  * no allocation per tick. Presentation only: nothing here is hashed or written back.
  */
@@ -55,6 +61,9 @@ import {
 	IMP,
 	IMP_ATTACK_FAN,
 	IMP_LAND_AIM_TICKS,
+	MORTAR,
+	MORTAR_ATTACK_LOB,
+	MORTAR_FLIGHT,
 	NO_KIND,
 	REAPER,
 	REAPER_SPIN,
@@ -98,6 +107,13 @@ export interface VariantCueSource {
 	readonly snatches: number;
 	readonly swallows: number;
 	readonly pelletReturns: number;
+	/** docs/NEW_ENEMIES_3.md NT7: Mortar releases and shell impacts, heal pulses and beam cuts, Jackal lunges and spooks. */
+	readonly lobs: number;
+	readonly shells: number;
+	readonly heals: number;
+	readonly healCuts: number;
+	readonly lunges: number;
+	readonly spooks: number;
 }
 
 /** Nothing happened (no run, or audibleVariantCues while quiet). */
@@ -121,6 +137,12 @@ export const NO_VARIANT_CUES: VariantCueSource = table.freeze({
 	snatches: 0,
 	swallows: 0,
 	pelletReturns: 0,
+	lobs: 0,
+	shells: 0,
+	heals: 0,
+	healCuts: 0,
+	lunges: 0,
+	spooks: 0,
 });
 
 /** A slot's previous state when it held another actor (or none): no state at all. */
@@ -168,6 +190,12 @@ export class VariantCueEvents implements VariantCueSource {
 	snatches = 0;
 	swallows = 0;
 	pelletReturns = 0;
+	lobs = 0;
+	shells = 0;
+	heals = 0;
+	healCuts = 0;
+	lunges = 0;
+	spooks = 0;
 	private readonly impKind = kindOf(IMP.id);
 	private readonly smallKind = kindOf(SLIME_SMALL_ID);
 	private readonly summonerKind = kindOf(SUMMONER.id);
@@ -175,6 +203,7 @@ export class VariantCueEvents implements VariantCueSource {
 	private readonly chargerKind = kindOf(CHARGER.id);
 	private readonly reaperKind = kindOf(REAPER.id);
 	private readonly chainhookKind = kindOf(CHAINHOOK.id);
+	private readonly mortarKind = kindOf(MORTAR.id);
 	/** Per slot, the previous tick's actor id, aiState and liveness (the NE8 transitions). */
 	private readonly slotIds: number[] = [];
 	private readonly slotStates: number[] = [];
@@ -203,6 +232,12 @@ export class VariantCueEvents implements VariantCueSource {
 		this.snatches = 0;
 		this.swallows = 0;
 		this.pelletReturns = 0;
+		this.lobs = 0;
+		this.shells = 0;
+		this.heals = 0;
+		this.healCuts = 0;
+		this.lunges = 0;
+		this.spooks = 0;
 	}
 
 	/** Every event of this frame (0: nothing happened). */
@@ -226,7 +261,13 @@ export class VariantCueEvents implements VariantCueSource {
 			this.pyreLights +
 			this.snatches +
 			this.swallows +
-			this.pelletReturns
+			this.pelletReturns +
+			this.lobs +
+			this.shells +
+			this.heals +
+			this.healCuts +
+			this.lunges +
+			this.spooks
 		);
 	}
 
@@ -266,6 +307,8 @@ export class VariantCueEvents implements VariantCueSource {
 					if (st === REAPER_SPIN && prev !== REAPER_SPIN) this.spins++;
 				} else if (a.kind === this.chainhookKind && alive) {
 					if (st === CHAINHOOK_THROWN && prev === AiState.TELEGRAPH) this.hookThrows++;
+				} else if (a.kind === this.mortarKind && alive) {
+					if (st === MORTAR_FLIGHT && prev === AiState.TELEGRAPH && a.attack === MORTAR_ATTACK_LOB) this.lobs++;
 				}
 			}
 			this.slotIds[i] = a.kind !== NO_KIND ? a.id : 0;
@@ -279,6 +322,12 @@ export class VariantCueEvents implements VariantCueSource {
 		this.guardBreaks += e.guardBreaks;
 		this.hookLatches += e.hookLatched;
 		this.pyreLights += e.pyresLanded;
+		// docs/NEW_ENEMIES_3.md NT7
+		this.shells += e.shells;
+		this.heals += state.combat.healEvents.healSlot.size();
+		this.healCuts += e.healCuts;
+		this.lunges += e.lunges;
+		this.spooks += e.spooks;
 		const pe = state.pellets?.events;
 		if (pe !== undefined) {
 			this.snatches += pe.stolen.size();

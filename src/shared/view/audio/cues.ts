@@ -107,6 +107,10 @@
  *   Chainhook's throw leaves its aim), .hooklatch, .pyrelight (a brazier spawned), .snatch (a Snatcher ate a pellet:
  *   at NEW_ENEMY_2_AUDIO.snatchSpeed, pitched down, so its fallback, the chomp, reads as a theft), .swallow, and
  *   sfx.pellet.return (stolen pellets back on the floor at its death; pellets credited to its killer chomp instead).
+ *   The fourth endless set (docs/NEW_ENEMIES_3.md NT7) too: sfx.enemy.lob (a Mortar's draw releases), .shell (its
+ *   shell lands: SimEvents.shells; never .strike, the Stormcaller's lightning, which plays for strikes - shells only, and
+ *   the shrapnel ring never raises the enemy shot), .heal (a Mender's heal pulse, at most every 0.25 s), .healcut (a beam
+ *   cut), .lunge (a Jackal's lunge starts), .spooked (a Jackal called its lunge off).
  *
  * The new-best celebration (docs/NEW_BEST.md NB5) comes from the frame's NewBestCueSource (shared/view/hud: the
  * client's NewBestTracker frame, stepped BEFORE the mapper in the same frame; NO_NEW_BEST_CUES by default, so every
@@ -247,6 +251,7 @@ import {
 } from "../hud";
 import { AUDIO_VIEW } from "./config";
 import { NEW_ENEMY_2_AUDIO } from "../newEnemies2Config";
+import { NEW_ENEMY_3_AUDIO } from "../newEnemies3Config";
 import { StateWatch, SwingEdge } from "../watch";
 import {
 	NO_PELLET_EVENTS,
@@ -517,7 +522,7 @@ export const SFX = {
 	enemyPyreLight: "sfx.enemy.pyrelight",
 	/**
 	 * docs/NEW_ENEMIES_3.md NT1 (the theme's NEW_ENEMY_3_AUDIO_IDS): a Mortar's lob, its shell landing; a Mender's heal
-	 * pulse, its beam cut; a Jackal's lunge, a Jackal spooked. Registered only: NT7 maps them. Four play their
+	 * pulse, its beam cut; a Jackal's lunge, a Jackal spooked. NT7 maps them (VariantCueEvents). Four play their
 	 * SFX_FALLBACK while silent; the heal pulse and the spook have none.
 	 */
 	enemyLob: "sfx.enemy.lob",
@@ -942,6 +947,11 @@ export const SFX_MIN_INTERVAL: Readonly<Partial<Record<SfxId, number>>> = {
 	/** docs/NEW_ENEMIES_3.md NT1: a pack's lunges a moment apart are one sound; so are cuts of one beam (a hit, then a body). */
 	[SFX.enemyLunge]: 0.1,
 	[SFX.enemyHealCut]: 0.15,
+	/** NT7: the other four (newEnemies3Config NEW_ENEMY_3_AUDIO). */
+	[SFX.enemyLob]: NEW_ENEMY_3_AUDIO.lobMinIntervalSec,
+	[SFX.enemyShell]: NEW_ENEMY_3_AUDIO.shellMinIntervalSec,
+	[SFX.enemyHeal]: NEW_ENEMY_3_AUDIO.healMinIntervalSec,
+	[SFX.enemySpooked]: NEW_ENEMY_3_AUDIO.spookMinIntervalSec,
 };
 
 /**
@@ -2169,8 +2179,11 @@ export class AudioCueMapper {
 		for (const e of boosts.ended) if (e.player === localIndex) this.cue(SFX.boostExpire, 1);
 		const enemySpawned = state.combat.enemySpawned;
 		// Goo puddles (docs/ENEMY_VARIANTS.md EVD14) and strikes (docs/NEW_ENEMIES.md NE5 / NE8: sfx.enemy.strike) count
-		// in enemySpawned but never play the shot: only a rise beyond the frame's gooSpawned + strikes does.
-		if (this.lastEnemySpawned >= 0 && enemySpawned - this.lastEnemySpawned > events.gooSpawned + events.strikes) {
+		// in enemySpawned but never play the shot: only a rise beyond the frame's gooSpawned + strikes does. A Mortar's
+		// shell is a strike, and its shrapnel ring (docs/NEW_ENEMIES_3.md NT7) is the impact's: skipped too.
+		const silentSpawns =
+			events.gooSpawned + events.strikes + events.shells * NEW_ENEMY_3_AUDIO.shrapnelPerShell;
+		if (this.lastEnemySpawned >= 0 && enemySpawned - this.lastEnemySpawned > silentSpawns) {
 			this.cue(SFX.enemyShoot, 1);
 		}
 		this.lastEnemySpawned = enemySpawned;
@@ -2198,6 +2211,14 @@ export class AudioCueMapper {
 		}
 		if (variants.swallows > 0) this.cue(SFX.enemySwallow, 1);
 		if (variants.pelletReturns > 0) this.cue(SFX.pelletReturn, 1);
+		// The fourth endless set (docs/NEW_ENEMIES_3.md NT7): the release, the impact (never the lightning's strike), the
+		// heal pulses, a cut beam, a lunge, a spook.
+		if (variants.lobs > 0) this.cue(SFX.enemyLob, 1);
+		if (variants.shells > 0) this.cue(SFX.enemyShell, 1);
+		if (variants.heals > 0) this.cue(SFX.enemyHeal, 1);
+		if (variants.healCuts > 0) this.cue(SFX.enemyHealCut, 1);
+		if (variants.lunges > 0) this.cue(SFX.enemyLunge, 1);
+		if (variants.spooks > 0) this.cue(SFX.enemySpooked, 1);
 		// The combo's tier sting and break (docs/COMBO.md CB4; a cut is silent, CD4).
 		const peakTier = comboTier(combo.peak);
 		if (peakTier > comboTier(combo.startCombo)) {

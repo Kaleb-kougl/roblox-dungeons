@@ -164,9 +164,11 @@ export const ENEMY: SlotContract = {
 	// death (falls back to `death`): the Bomber's detonation (Explode); `move.back`, a second move loop (falls back to
 	// `move`): the Warbanner backing away (Run Backwards) (shared/view newEnemiesConfig NEW_ENEMY_SPRITE_VIEW.anims).
 	// docs/NEW_ENEMIES_2.md NX7: `block`, a loop in place of `idle` (falls back to `idle`): the Shieldwall guarding
-	// (shared/view newEnemies2Config NEW_ENEMY_2_SPRITE_VIEW.anims).
+	// (shared/view newEnemies2Config NEW_ENEMY_2_SPRITE_VIEW.anims). docs/NEW_ENEMIES_3.md NT7: `crouch` (falls back to
+	// `attack`): the Jackal's wind-up; `hop` (no fallback: skipped): the Jackal's spooked hop back (shared/view
+	// newEnemies3Config NEW_ENEMY_3_SPRITE_VIEW.anims; NT8 maps Crouch / BackFlip 1).
 	// Inline, not a top-level constant: the compiled contract.luau sits near Luau's 200-locals limit.
-	optionalAnimations: ["attack.2", "death.2", "move.back", "block"],
+	optionalAnimations: ["attack.2", "death.2", "move.back", "block", "crouch", "hop"],
 };
 
 export const BOSS: SlotContract = {

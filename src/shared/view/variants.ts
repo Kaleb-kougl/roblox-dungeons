@@ -37,6 +37,7 @@ import type { ActorFxHintsView, SegmentSink } from "./markings";
 import type { ActorLook } from "./sprites";
 import { AFFIX_VIEW, GOO_ART_VIEW, GOO_VIEW } from "./variantsConfig";
 import { STRIKE_VIEW } from "./newEnemiesConfig";
+import { isShellPayload } from "./newEnemies3";
 
 const TAU = 2 * math.pi;
 
@@ -318,16 +319,18 @@ export function isGooPayload(payload: number): boolean {
 
 /**
  * Which enemy bullet pool draws a bullet with `payload`: goo goes to the decal pool while GOO_VIEW.decal is on, a
- * strike (docs/NEW_ENEMIES.md NE8, BulletKind.STRIKE) to the strike flash pool while STRIKE_VIEW.decal is on.
+ * strike (docs/NEW_ENEMIES.md NE8, BulletKind.STRIKE) to the strike flash pool while STRIKE_VIEW.decal is on, except a
+ * Mortar's shell (docs/NEW_ENEMIES_3.md NT7, newEnemies3.ts isShellPayload), which goes to its own disc pool: never the
+ * lightning's art or scorch.
  */
 export function enemyBulletPool(
 	payload: number,
 	decal: boolean = GOO_VIEW.decal,
 	strikeDecal: boolean = STRIKE_VIEW.decal,
-): "goo" | "strike" | "enemy" {
+): "goo" | "strike" | "shell" | "enemy" {
 	const kind = BulletPayload.get(payload, "kind");
 	if (decal && kind === BulletKind.GOO) return "goo";
-	if (strikeDecal && kind === BulletKind.STRIKE) return "strike";
+	if (strikeDecal && kind === BulletKind.STRIKE) return isShellPayload(payload) ? "shell" : "strike";
 	return "enemy";
 }
 

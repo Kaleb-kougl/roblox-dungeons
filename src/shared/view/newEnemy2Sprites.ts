@@ -36,6 +36,7 @@ import {
 	type ArchetypeData,
 } from "shared/sim";
 import { NEW_ENEMY_2_SPRITE_VIEW } from "./newEnemies2Config";
+import { NEW_ENEMY_3_SPRITE_INPUT_ROWS } from "./newEnemy3Sprites";
 import type { ActorAttack, ActorSpriteInput } from "./sprites";
 
 /** Remaining-ticks timer of `total` ticks -> elapsed ticks, render-interpolated (sprites.ts elapsedOf). */
@@ -177,8 +178,12 @@ export const NEW_ENEMY_2_SPRITE_INPUT_ROWS: ReadonlyArray<readonly [string, Spri
 	[PYRE.id, pyreSpriteInput],
 ];
 
-/** Adds the five to sprites.ts's ACTOR_SPRITE_INPUTS map (one import there: sprites.luau's top-level locals). */
+/**
+ * Adds the five, and the fourth set's three (docs/NEW_ENEMIES_3.md NT7, newEnemy3Sprites.ts), to sprites.ts's
+ * ACTOR_SPRITE_INPUTS map (one import there: sprites.luau's top-level locals).
+ */
 export function withNewEnemy2SpriteInputs(map: Map<string, SpriteInputOf>): Map<string, SpriteInputOf> {
 	for (const [id, f] of NEW_ENEMY_2_SPRITE_INPUT_ROWS) map.set(id, f);
+	for (const [id, f] of NEW_ENEMY_3_SPRITE_INPUT_ROWS) map.set(id, f);
 	return map;
 }

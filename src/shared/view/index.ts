@@ -116,6 +116,10 @@ export * from "./newEnemySprites";
 export * from "./newEnemies2Config";
 export * from "./newEnemies2";
 export * from "./newEnemy2Sprites";
+// docs/NEW_ENEMIES_3.md NT7: the fourth endless set on screen (rules, tunables, sprite inputs).
+export * from "./newEnemies3Config";
+export * from "./newEnemies3";
+export * from "./newEnemy3Sprites";
 export * from "./spriteCell";
 export * from "./floorTexture";
 export * from "./wallTexture";
