@@ -118,8 +118,9 @@
  * left (strokes thinner than the square go: a bow, a blade), then 8-connected pieces under `minAreaPx` dropped; every
  * step stays inside its cell. p = the nearest-rank `normalizePercentile` luminance over every masked pixel of the SET;
  * `<sheet>-dye.png` holds each masked pixel as grey round(255 x min(1, luminance / p)) with its own alpha, every other
- * pixel (0, 0, 0, 0). layout.ts gets `dyeFile` per sheet and `dyeMeanValue` (the mean of min(1, l / p), 4 decimals)
- * per set. The body and outline sheets do not change.
+ * pixel (0, 0, 0, 0). layout.ts gets `dyeFile` per sheet, and per set `dyeMeanValue` (the mean of min(1, l / p), 4
+ * decimals) and `dyeSourceMean` (the mean source RGB of every masked pixel, "#rrggbb": the undyed region's colour, the
+ * cosmetics validator's floor baseline, docs/COSMETICS.md rule 3). The body and outline sheets do not change.
  *
  * Recolour (set `recolor: { ramp }`, docs/FORTUNE.md FO10 / FD14: the Goldling is the skeleton in gold): a gradient map
  * by luminance, applied to every source region the set reads (so before the crop box, the pivot, the packing and the
@@ -847,6 +848,27 @@ function dyeMeanValue(hist, p) {
 	return Math.round((sum / p / n) * 10000) / 10000;
 }
 
+/** Adds the source RGB of every masked pixel of `img` to `sum` ({ r, g, b, n }). */
+function addDyeColorSum(sum, img, mask) {
+	for (let i = 0; i < mask.length; i++) {
+		if (!mask[i]) continue;
+		sum.r += img.data[i * 4];
+		sum.g += img.data[i * 4 + 1];
+		sum.b += img.data[i * 4 + 2];
+		sum.n++;
+	}
+}
+
+/**
+ * The undyed region's mean colour: each channel's mean over every masked pixel (`sum` from addDyeColorSum), rounded half
+ * up, as "#rrggbb". Throws when nothing is masked.
+ */
+function dyeSourceMean(sum, what) {
+	if (sum.n === 0) throw new Error(`${what}: dye masks no pixel`);
+	const ch = (v) => Math.floor(v / sum.n + 0.5).toString(16).padStart(2, "0");
+	return `#${ch(sum.r)}${ch(sum.g)}${ch(sum.b)}`;
+}
+
 /**
  * The dye sheet of a built sheet: same size; a masked pixel grey dyeGrey(its luminance, p) with its own alpha, every
  * other pixel (0, 0, 0, 0).
@@ -1425,9 +1447,11 @@ function buildSpriteSet(id, set, built) {
 	let dyeStats = null;
 	if (dye) {
 		const hist = new Array(256).fill(0);
+		const colorSum = { r: 0, g: 0, b: 0, n: 0 };
 		let bodyPixels = 0;
 		for (const sh of sheets) {
 			addDyeHistogram(hist, sh.img, sh.dyeMask);
+			addDyeColorSum(colorSum, sh.img, sh.dyeMask);
 			bodyPixels += bodyMask(sh.img, set.pivot.bodyAlpha, set.pivot.bodyMinRgb).reduce((a, b) => a + b, 0);
 		}
 		const p = dyeNormalizer(hist, dye.normalizePercentile, id);
@@ -1437,7 +1461,7 @@ function buildSpriteSet(id, set, built) {
 			sh.dyePixels = sh.dyeMask.reduce((a, b) => a + b, 0);
 			dyed += sh.dyePixels;
 		}
-		dyeStats = { normalizer: p, meanValue: dyeMeanValue(hist, p), pixels: dyed, bodyPixels };
+		dyeStats = { normalizer: p, meanValue: dyeMeanValue(hist, p), sourceMean: dyeSourceMean(colorSum, id), pixels: dyed, bodyPixels };
 	}
 	for (const name of realNames) if (!animations[name]) throw new Error(`${id}: ${name} is in no sheet`);
 	for (const name of Object.keys(set.animations)) {
@@ -1470,7 +1494,7 @@ function buildSpriteSet(id, set, built) {
 			if (s.dyeFile) sheet.dyeFile = s.dyeFile;
 			return sheet;
 		}),
-		...(dyeStats ? { dyeMeanValue: dyeStats.meanValue } : {}),
+		...(dyeStats ? { dyeMeanValue: dyeStats.meanValue, dyeSourceMean: dyeStats.sourceMean } : {}),
 		animations: sortedObject(animations),
 	};
 	selfCheck(id, layout);
@@ -2910,6 +2934,8 @@ function layoutModule(sets, images, floorHex, world) {
 		"\tsheets: Array<ValeSpriteSheetFile>;",
 		"\t/** Sets with a `dye`: the mean normalised value (0..1) of every dyed pixel, the cosmetics validator's input. */",
 		"\tdyeMeanValue?: number;",
+		"\t/** Sets with a `dye`: the dyed pixels' mean source colour (the undyed region), the floor-contrast baseline. */",
+		"\tdyeSourceMean?: HexColor;",
 		"}",
 		"",
 		"/**",
@@ -6285,7 +6311,7 @@ function printSpriteSet(s) {
 	if (s.dyeStats) {
 		const d = s.dyeStats;
 		const share = Math.round((1000 * d.pixels) / d.bodyPixels) / 10;
-		console.log(`  dye: ${d.pixels} of ${d.bodyPixels} body px (${share} %), normalised to luminance ${d.normalizer} (p${s.dye.normalizePercentile}), dyeMeanValue ${d.meanValue}`);
+		console.log(`  dye: ${d.pixels} of ${d.bodyPixels} body px (${share} %), normalised to luminance ${d.normalizer} (p${s.dye.normalizePercentile}), dyeMeanValue ${d.meanValue}, dyeSourceMean ${d.sourceMean}`);
 	}
 }
 
@@ -6695,6 +6721,8 @@ module.exports = {
 	dyeGrey,
 	dyeMask,
 	dyeMeanValue,
+	dyeSourceMean,
+	addDyeColorSum,
 	dyeNormalizer,
 	dyeRuleAt,
 	dyeSheet,

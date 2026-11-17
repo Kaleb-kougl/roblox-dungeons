@@ -33,21 +33,29 @@ export const COSMETIC_DYE_SETS: Readonly<Record<CharacterId, string>> = table.fr
 });
 
 /**
- * Every one-colour cosmetic's colour. Dyes: the colour the dye sheet's grey is multiplied by (ImageColor3). The Scarlet,
- * Cobalt and Amethyst candidates were lightened to pass the floor-contrast rule (Rose, Azure, Lilac); the Archer's
- * are pale because her dyed mean is about half the colour (dyeMeanValue 0.51).
+ * Every one-colour cosmetic's colour. Dyes: the colour the dye sheet's grey is multiplied by (ImageColor3). The Knight's
+ * Scarlet, Cobalt and Amethyst candidates were lightened to pass the floor-contrast rule (Rose, Azure, Lilac): his
+ * undyed plate already reads at more than 3 : 1, so his bar is 3 : 1. The Archer's leathers are dark (her bar is their
+ * own contrast, about 1.1 : 1), so she keeps the draft's hues; Scarlet and Bronze are brighter, to stay 40 from the
+ * enemy bullet's dark outline.
  */
 export const COSMETIC_COLORS: { readonly [K in SolidCosmeticItemId]: HexColor } = table.freeze({
 	"dye.knight.frost": "#a0dcff",
 	"dye.knight.ivory": "#f0ead6",
-	"dye.knight.teal": "#00ccbb",
-	"dye.knight.verdant": "#3cc85a",
+	"dye.knight.teal": "#28b4aa",
+	"dye.knight.verdant": "#3cb44b",
 	"dye.knight.azure": "#59acff",
 	"dye.knight.lilac": "#c294d1",
 	"dye.knight.bronze": "#cf9e3d",
 	"dye.knight.rose": "#f98686",
-	"dye.archer.frost": "#c1e8ff",
+	"dye.archer.frost": "#a0dcff",
 	"dye.archer.ivory": "#f0ead6",
+	"dye.archer.teal": "#28b4aa",
+	"dye.archer.verdant": "#3cb44b",
+	"dye.archer.cobalt": "#3c64dc",
+	"dye.archer.amethyst": "#9650d2",
+	"dye.archer.bronze": "#d89048",
+	"dye.archer.scarlet": "#e61d32",
 	"outline.azure": "#33ccff",
 	"outline.silver": "#c0c8d0",
 	"outline.jade": "#33ff99",
@@ -72,18 +80,19 @@ export const COSMETIC_COLORS: { readonly [K in SolidCosmeticItemId]: HexColor } 
 /**
  * The Prismatic dyes' stops (CS10, CSD7): the colour drifts through them in order and back to the first, one segment
  * per stop over PRISMATIC.periodSec. Every stop and every interpolated sample passes the dye rules (cosmeticReport rule
- * 5). The Knight's run through the shipped dyes' hues; the Archer's are pearl tints (only pale dyes pass at her mean).
+ * 5). The Knight's run through his shipped dyes' hues; the Archer's through Bronze, Verdant, Teal, Frost and
+ * Ivory (no five or more of her dyes loop without a red / violet / blue step dimming to the enemy bullet's outline).
  */
 export const PRISMATIC_STOPS: { readonly [K in PrismaticItemId]: ReadonlyArray<HexColor> } = table.freeze({
 	"dye.knight.prismatic": table.freeze([
 		"#59acff",
-		"#00ccbb",
-		"#3cc85a",
+		"#28b4aa",
+		"#3cb44b",
 		"#f0ead6",
 		"#f98686",
 		"#a0dcff",
 	] as HexColor[]),
-	"dye.archer.prismatic": table.freeze(["#f6dcdf", "#c1e8ff", "#ceecd2", "#eadcf6"] as HexColor[]),
+	"dye.archer.prismatic": table.freeze(["#d89048", "#3cb44b", "#28b4aa", "#a0dcff", "#f0ead6"] as HexColor[]),
 });
 
 /** The Prismatic dye's tunables. */

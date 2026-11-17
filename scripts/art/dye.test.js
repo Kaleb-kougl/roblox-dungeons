@@ -261,6 +261,15 @@ describe("normalisation", () => {
 		hist[10] = 2;
 		assert.equal(A.dyeMeanValue(hist, 60), 0.6389); // 3.8333 / 6
 	});
+
+	it("dyeSourceMean: each channel's mean over the masked pixels, rounded half up; nothing masked throws", () => {
+		const img = { w: 3, h: 1, data: new Uint8Array([10, 20, 30, 255, 11, 21, 31, 255, 200, 200, 200, 255]) };
+		const sum = { r: 0, g: 0, b: 0, n: 0 };
+		A.addDyeColorSum(sum, img, new Uint8Array([1, 1, 0]));
+		assert.deepEqual(sum, { r: 21, g: 41, b: 61, n: 2 });
+		assert.equal(A.dyeSourceMean(sum, "t"), "#0b151f"); // 10.5 -> 11, 20.5 -> 21, 30.5 -> 31
+		assert.throws(() => A.dyeSourceMean({ r: 0, g: 0, b: 0, n: 0 }, "t"), /masks no pixel/);
+	});
 	it("the dye sheet: masked pixels grey with their own alpha, everything else (0, 0, 0, 0)", () => {
 		const img = A.raster(3, 1);
 		put(img, 0, 0, [60, 60, 60, 250]);
@@ -320,10 +329,11 @@ describe("buildSpriteSet with a dye", () => {
 			assert.deepEqual(A.encodePng(dyed.sheets[i].img), A.encodePng(plain.sheets[i].img));
 			assert.deepEqual(A.encodePng(dyed.sheets[i].outlineImg), A.encodePng(plain.sheets[i].outlineImg));
 		}
-		const strip = (l) => ({ ...l, dyeMeanValue: undefined, sheets: l.sheets.map((s) => ({ ...s, dyeFile: undefined })) });
+		const strip = (l) => ({ ...l, dyeMeanValue: undefined, dyeSourceMean: undefined, sheets: l.sheets.map((s) => ({ ...s, dyeFile: undefined })) });
 		assert.deepEqual(JSON.parse(JSON.stringify(strip(dyed.layout))), JSON.parse(JSON.stringify(plain.layout)));
 		assert.equal(plain.dye, null);
 		assert.equal(plain.layout.dyeMeanValue, undefined);
+		assert.equal(plain.layout.dyeSourceMean, undefined);
 	});
 
 	it("writes a dye sheet per sheet, same size, aligned pixel for pixel with the body sheet", () => {
@@ -357,18 +367,23 @@ describe("buildSpriteSet with a dye", () => {
 		assert.ok(greyAt(dyed.sheets[1], [A.dyeGrey(33, 42), A.dyeGrey(36, 42)]));
 		assert.equal(dyed.layout.dyeMeanValue, Math.round(((39 / 42 + 1 + 33 / 42 + 36 / 42) / 4) * 10000) / 10000);
 		assert.equal(dyed.dyeStats.pixels, 4 * 36);
+		// the undyed region's mean source colour: (60 + 70 + 40 + 50) / 4 = 55, 34, 10 over equal pixel counts
+		assert.equal(dyed.layout.dyeSourceMean, "#37220a");
+		assert.equal(dyed.dyeStats.sourceMean, "#37220a");
 		assert.equal(dyed.dyeStats.bodyPixels, 4 * (36 + 10 + 1));
 	});
 
-	it("layout.ts lists dyeFile after outlineFile and dyeMeanValue after the sheets", () => {
+	it("layout.ts lists dyeFile after outlineFile, dyeMeanValue and dyeSourceMean after the sheets", () => {
 		assert.deepEqual(Object.keys(dyed.layout.sheets[0]), ["file", "w", "h", "outlineFile", "dyeFile"]);
 		const keys = Object.keys(dyed.layout);
 		assert.equal(keys[keys.indexOf("sheets") + 1], "dyeMeanValue");
+		assert.equal(keys[keys.indexOf("sheets") + 2], "dyeSourceMean");
 		const text = A.layoutModule([plain, dyed], [], "#000000");
 		assert.match(text, /\tdyeFile\?: string;\n/);
 		assert.match(text, /\tdyeMeanValue\?: number;\n/);
+		assert.match(text, /\tdyeSourceMean\?: HexColor;\n/);
 		assert.match(text, /dyeFile: "plain-idle-dye\.png"/);
-		assert.match(text, new RegExp(`dyeMeanValue: ${dyed.layout.dyeMeanValue},\\n\\t\\tanimations`));
+		assert.match(text, new RegExp(`dyeMeanValue: ${dyed.layout.dyeMeanValue},\\n\\t\\tdyeSourceMean: "#37220a",\\n\\t\\tanimations`));
 		const merged = A.mergeSpriteLayout(A.layoutModule([plain], [], "#000000"), "class.dyed", dyed.layout);
 		assert.equal(merged, A.layoutModule([dyed, plain], [], "#000000"), "--only merges byte for byte what a full build (sorted by id) writes");
 	});

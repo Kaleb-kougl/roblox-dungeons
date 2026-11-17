@@ -5,14 +5,18 @@
  *
  *   1. danger   CIE76 >= minDangerDifference from every ENEMY_BULLET_ROLES colour, `telegraph` and `enemyOutline`
  *   2. pickup   CIE76 >= minPickupDifference from every BOOST_ROLES colour and `enemy.golden`
- *   3. floor    WCAG contrast >= minFloorContrast on every biome's floor (teammates have no rim; CSD5: dark dyes fail)
+ *   3. floor    WCAG contrast on every biome's floor >= min(minFloorContrast, the UNDYED region's own contrast on that
+ *               floor): a dye never makes the body less readable than the default look (teammates have no rim), capped
+ *               at 3 : 1 (the orchestrator's revision of CSD5, 2026-11-17: the Archer's dark leathers set her own bar)
  *   4. outline colours: exactly playerOutlineReport's rules (the colour as `playerOutline`); trail colours: rule 1;
  *      spark colours: exactly nearMissReport's rules (the colour as `nearMiss.graze`)
  *   5. Prismatic: every stop and PRISMATIC.samplesPerSegment eased samples per segment pass the dye rules 1-3
  *
  * Every dye rule is checked on the DYED MEAN: the colour x the character's dye mean value (the atlas pipeline's
- * `dyeMeanValue` for the set, COSMETIC_DYE_SETS; passed in by the caller, so the report needs no PNG). A character
- * without a mean gets one failing `mean` entry per dye, so a missing input never passes silently.
+ * `dyeMeanValue` for the set, COSMETIC_DYE_SETS; passed in by the caller, so the report needs no PNG). Rule 3's baseline
+ * is the undyed region's mean colour (the pipeline's `dyeSourceMean`, `dyeSources`); a character without one is held to
+ * the full minFloorContrast (never a looser bar). A character without a mean gets one failing `mean` entry per dye, so a
+ * missing input never passes silently.
  *
  * Its own module: it imports the validator (validate.ts) and cosmetics.ts, which contract.ts imports.
  */
@@ -35,7 +39,10 @@ export const COSMETIC_RULES = table.freeze({
 	pickup: table.freeze([...BOOST_ROLES, "enemy.golden"] as ColorRole[]),
 	/** Rule 2's bar *(tune)*. */
 	minPickupDifference: 30,
-	/** Rule 3's bar *(tune)*: the dyed mean's WCAG contrast on every biome floor. */
+	/**
+	 * Rule 3's cap *(tune)*: the dyed mean's WCAG contrast on every biome floor must reach this, or the undyed region's own
+	 * contrast on that floor when that is lower.
+	 */
 	minFloorContrast: 3,
 });
 
@@ -92,6 +99,7 @@ function dyeRules(
 	slot: CosmeticSlot,
 	base: HexColor,
 	mean: number,
+	source: string | undefined,
 	sample: number | undefined,
 ): void {
 	const rgb = parseHex(base);
@@ -120,7 +128,8 @@ function dyeRules(
 		if (typeIs(c, "string")) push("pickup", role, c, colorDifference(dyed, c), COSMETIC_RULES.minPickupDifference);
 	}
 	for (const [biome, floor] of ctx.floors) {
-		push("floor", biome, floor, contrastRatio(dyed, floor), COSMETIC_RULES.minFloorContrast);
+		const own = source !== undefined ? contrastRatio(source, floor) : COSMETIC_RULES.minFloorContrast;
+		push("floor", biome, floor, contrastRatio(dyed, floor), math.min(COSMETIC_RULES.minFloorContrast, own));
 	}
 }
 
@@ -133,11 +142,13 @@ function withColors(manifest: Obj, roles: ReadonlyArray<string>, color: string):
 
 /**
  * Every check of every cosmetic in COSMETIC_ITEMS on `manifest` (module comment). `dyeMeans`: each character's dye mean
- * value (0..1). Items in catalogue order; a manifest without colours gives no entries.
+ * value (0..1); `dyeSources`: each character's undyed region mean colour (rule 3's baseline; absent: the full bar).
+ * Items in catalogue order; a manifest without colours gives no entries.
  */
 export function cosmeticReport(
 	manifest: unknown,
 	dyeMeans: Readonly<Partial<Record<CharacterId, number>>>,
+	dyeSources: Readonly<Partial<Record<CharacterId, string>>> = {},
 ): Array<CosmeticEntry> {
 	const out = new Array<CosmeticEntry>();
 	if (!isObj(manifest) || !isObj(manifest.colors)) return out;
@@ -170,8 +181,9 @@ export function cosmeticReport(
 				});
 				continue;
 			}
+			const source = dyeSources[character];
 			if (stops === undefined) {
-				dyeRules(ctx, it.id, slot, own as HexColor, mean, undefined);
+				dyeRules(ctx, it.id, slot, own as HexColor, mean, source, undefined);
 				continue;
 			}
 			// Rule 5: every stop (sample s x per) and every eased sample between them, as prismaticColor draws them.
@@ -179,7 +191,7 @@ export function cosmeticReport(
 			const count = stops.size() * per;
 			for (let k = 0; k < count; k++) {
 				const c = rounded(prismaticColor(stops, (k / count) * PRISMATIC.periodSec));
-				dyeRules(ctx, it.id, slot, c, mean, k);
+				dyeRules(ctx, it.id, slot, c, mean, source, k);
 			}
 			continue;
 		}
@@ -244,6 +256,7 @@ export function cosmeticReport(
 export function cosmeticProblems(
 	manifest: unknown,
 	dyeMeans: Readonly<Partial<Record<CharacterId, number>>>,
+	dyeSources: Readonly<Partial<Record<CharacterId, string>>> = {},
 ): Array<CosmeticEntry> {
-	return cosmeticReport(manifest, dyeMeans).filter((e) => !e.ok);
+	return cosmeticReport(manifest, dyeMeans, dyeSources).filter((e) => !e.ok);
 }

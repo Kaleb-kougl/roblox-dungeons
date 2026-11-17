@@ -144,7 +144,8 @@ under `minAreaPx` dropped. Every step stays inside its cell. p is the nearest-ra
 luminances over the whole SET (one p, so every sheet's grey means the same). `<sheet>-dye.png` (same size and grid)
 holds each masked pixel as grey round(255 x min(1, l / p)) with the body's own alpha and every other pixel
 (0, 0, 0, 0); layout.ts gets `dyeFile` per sheet (after `outlineFile`) and `dyeMeanValue` per set (after `sheets`: the
-mean of min(1, l / p), 4 decimals, the cosmetics validator's input). Dye sheets go to art/upload and the pending-id
+mean of min(1, l / p), 4 decimals, the cosmetics validator's input) and `dyeSourceMean` after it (the masked pixels'
+mean source RGB as `#rrggbb`: the undyed region's colour, rule 3's floor-contrast baseline). Dye sheets go to art/upload and the pending-id
 list like outline sheets; `art/build/contact/<set id>-dye-<animation>.png` shows facings x the first / middle / last
 kept frame as body, mask in magenta, and the dye sheet tinted scarlet / cobalt / teal / amethyst over the body. Body and
 outline sheets are unchanged. Used by `class.vanguard` and `class.ranger` (rules in docs/COSMETICS.md "As built").

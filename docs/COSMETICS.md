@@ -248,53 +248,71 @@ so a missing colour is a compile error; cosmetics.spec cross-checks at run time)
 smoothstep eased (rate 0 at every stop, so the loop has no corner), wraps any real t; t = 0 is the first stop (the
 reduced-motion hold). `cosmeticColor(itemId, tSec)` gives any item's 0..255 colour.
 
-**The report.** `theme/cosmeticReport.ts` `cosmeticReport(manifest, dyeMeans)` (its own module: it imports
-validate.ts, and contract.ts imports cosmetics.ts for the strings): rule 1 `danger` (>= 40 CIE76 from
+**The report.** `theme/cosmeticReport.ts` `cosmeticReport(manifest, dyeMeans, dyeSources?)` (its own module: it
+imports validate.ts, and contract.ts imports cosmetics.ts for the strings): rule 1 `danger` (>= 40 CIE76 from
 `enemyBullet`, `enemyBulletOutline`, `telegraph`, `enemyOutline`), rule 2 `pickup` (>= 30 from the four boosts and
-`enemy.golden`), rule 3 `floor` (>= 3 : 1 on every biome floor of the manifest: vale's are its tile means), all on the
-dyed mean (colour x `dyeMeanValue`, per channel, rounded); outlines through `playerOutlineReport` with the colour as
-`playerOutline` (floors and walls 3 : 1, 40 from threats and boosts); trails rule 1; sparks through `nearMissReport`
-with the colour as `nearMiss.graze`; Prismatic every stop and 16 eased samples per segment through 1-3. A character
-with no mean fails a `mean` entry per dye. Bars in `COSMETIC_RULES`. cosmetics.spec runs it over both bundled packs on
-the layout's means (Knight 0.7342, Archer 0.5114) and prints every item's worst margin.
+`enemy.golden`), rule 3 `floor`, all on the dyed mean (colour x `dyeMeanValue`, per channel, rounded); outlines
+through `playerOutlineReport` with the colour as `playerOutline` (floors and walls 3 : 1, 40 from threats and boosts);
+trails rule 1; sparks through `nearMissReport` with the colour as `nearMiss.graze`; Prismatic every stop and 16 eased
+samples per segment through 1-3. A character with no mean fails a `mean` entry per dye. Bars in `COSMETIC_RULES`.
 
-**The palette.** Draft candidates on the real means (vale; danger / pickup CIE76, floor ratio, worst of each):
+**Rule 3, revised (orchestrator, 2026-11-17; flagged to the owner).** The dyed mean's contrast on each biome floor
+must reach **min(3 : 1, the undyed region's own contrast on that floor)**: a dye may never make the body less readable
+than the default look, capped at 3 : 1. The baseline is the art's: the pipeline now writes `dyeSourceMean` per dyed set
+(the mean source RGB over every masked pixel, beside `dyeMeanValue`; `scripts/art/build-atlases.js`
+`addDyeColorSum` / `dyeSourceMean`, `dye.test.js`, the layout type in the generator and layout.ts), read by
+`valeDyeSourceMean(setId)`. Rebuilt with `--only class.vanguard` / `--only class.ranger`: the 30 body and outline
+sheets and the 15 dye sheets byte-identical, layout.ts changed only by `dyeSourceMean` (Knight `#8b8583`, Archer
+`#2f1b08`). The Knight's plate reads at >= 4.00 : 1 on every floor, so his bar stays 3 : 1; the Archer's dark leathers
+read at <= 1.13 : 1, so hers is about 1.1 : 1 per floor. Without a baseline the report holds a dye to the full 3 : 1
+(never a looser bar). cosmetics.spec runs it over both bundled packs on the layout's values and prints every item's
+worst margin with its bar.
 
-| Candidate | Knight (x 0.7342) | Archer (x 0.5114) |
+**The palette.** Draft candidates on the real means (vale; danger / pickup CIE76, floor ratio over the floor's bar,
+worst of each):
+
+| Candidate | Knight (x 0.7342, bar 3 : 1) | Archer (x 0.5114, bar ~1.1 : 1) |
 |---|---|---|
-| Scarlet `#c0182a` | 43.0 / 81.6 / **1.55**: dropped, lightened to Rose `#f98686` | **39.0** / 81 / **1.10**: dropped |
-| Cobalt `#3c64dc` | 59.5 / 42.0 / **1.79**: lightened to Azure `#59acff` | 42.1 / 52 / **1.22**: dropped |
-| Verdant `#3cb44b` | 77.1 / 51.4 / 3.09: kept a touch lighter, `#3cc85a` | 57.8 / 61 / **1.81**: dropped |
-| Amethyst `#9650d2` | 55.0 / 40.1 / **1.91**: lightened to Lilac `#c294d1` | 42.8 / 50 / **1.28**: dropped |
-| Frost `#a0dcff` | 65.4 / 44.5 / 5.29: kept | 46.6 / 52 / **2.80**: lightened, `#c1e8ff` |
-| Teal `#28b4aa` | 60.2 / 41.4 / 3.22: kept, brighter `#00ccbb` | 44.5 / 58 / **1.87**: dropped |
-| Ivory `#f0ead6` | 64.6 / 51.2 / 6.39: kept | 48.6 / 60 / 3.29: kept |
-| Bronze `#b4783c` | 46.1 / 58.4 / **2.36**: lightened, `#cf9e3d` | **35.7** / 73 / **1.48**: dropped |
+| Scarlet `#c0182a` | 43.0 / 81.6 / **0.52x**: lightened to Rose `#f98686` | **39.0** / 81 / **0.97x**: brightened to `#e61d32` |
+| Cobalt `#3c64dc` | 59.5 / 42.0 / **0.60x**: lightened to Azure `#59acff` | 42.1 / 52 / 1.09x: kept |
+| Verdant `#3cb44b` | 77.1 / 51.4 / 1.03x: kept | 57.8 / 61 / 1.61x: kept |
+| Amethyst `#9650d2` | 55.0 / 40.1 / **0.64x**: lightened to Lilac `#c294d1` | 42.8 / 50 / 1.13x: kept |
+| Frost `#a0dcff` | 65.4 / 44.5 / 1.76x: kept | 46.6 / 52 / 2.48x: kept |
+| Teal `#28b4aa` | 60.2 / 41.4 / 1.07x: kept | 44.5 / 58 / 1.65x: kept |
+| Ivory `#f0ead6` | 64.6 / 51.2 / 2.13x: kept | 48.6 / 60 / 2.91x: kept |
+| Bronze `#b4783c` | 46.1 / 58.4 / **0.79x**: lightened, `#cf9e3d` | **35.7** / 73 / 1.31x: brightened to `#d89048` |
 
-The Archer's dropped colours pass rule 3 only as near-whites (mixed 75-85 % toward white: `#f6dcdf`, `#e2e8fa`,
-`#ceecd2`, ...), which read as off-white, not as the colour, so they were not shipped as named dyes; they are her
-Prismatic's pearl stops instead. Her leathers are dark (p = 60) and her dyed mean about half the colour, so rule 3 at
-3 : 1 admits only light dyes. **Owner call:** keep 3 : 1 for her (two dyes + Prismatic) or give the Archer her own floor
-bar (at 2 : 1 all eight pass, mixed 0-80 % toward white, measured on the prototype's lower mean); appending them later is allowed.
+Nothing dropped. The Archer's Scarlet and Bronze failed rule 1 against the enemy bullet's dark outline (`#1a0610`),
+so they are 20 % brighter. The Knight's Verdant and Teal are back on the draft's hues (they passed on the real mean).
 
-Shipped, worst margins on vale (placeholder within 0.05):
+Shipped, worst margins on vale (placeholder within 0.05; floor = worst ratio, its bar in brackets):
 
 | Item | Hex | Worst danger | Worst pickup | Worst floor |
 |---|---|---|---|---|
-| Frost Plate | `#a0dcff` | 65.4 | 44.5 aegis | 5.29 |
-| Ivory Plate | `#f0ead6` | 64.6 | 51.2 quickstep | 6.39 |
-| Teal Plate | `#00ccbb` | 69.1 | 33.0 quickstep | 3.96 |
-| Verdant Plate | `#3cc85a` | 83.2 | 47.9 quickstep | 3.71 |
-| Azure Plate | `#59acff` | 60.8 | 36.3 aegis | 3.41 |
-| Lilac Plate | `#c294d1` | 51.8 | 32.2 aegis | 3.32 |
-| Bronze Plate | `#cf9e3d` | 40.4 telegraph | 43.4 fury | 3.37 |
-| Rose Plate | `#f98686` | 47.1 telegraph | 60.3 | 3.42 |
-| Prismatic Plate | Azure, Teal, Verdant, Ivory, Rose, Frost | 47.1 | 32.6 quickstep | 3.40 |
-| Frost Leathers | `#c1e8ff` | 47.8 | 52.2 | 3.11 |
-| Ivory Leathers | `#f0ead6` | 48.6 | 59.9 | 3.29 |
-| Prismatic Leathers | `#f6dcdf`, `#c1e8ff`, `#ceecd2`, `#eadcf6` | 45.3 | 48.2 | 3.06 |
+| Frost Plate | `#a0dcff` | 65.4 | 44.5 aegis | 5.29 (3) |
+| Ivory Plate | `#f0ead6` | 64.6 | 51.2 quickstep | 6.39 (3) |
+| Teal Plate | `#28b4aa` | 60.3 | 41.4 quickstep | 3.22 (3) |
+| Verdant Plate | `#3cb44b` | 77.1 | 51.4 quickstep | 3.09 (3) |
+| Azure Plate | `#59acff` | 60.8 | 36.3 aegis | 3.41 (3) |
+| Lilac Plate | `#c294d1` | 51.8 | 32.2 aegis | 3.32 (3) |
+| Bronze Plate | `#cf9e3d` | 40.4 telegraph | 43.4 fury | 3.37 (3) |
+| Rose Plate | `#f98686` | 47.1 telegraph | 60.3 | 3.42 (3) |
+| Prismatic Plate | Azure, Teal, Verdant, Ivory, Rose, Frost | 47.1 | 36.3 aegis | 3.09 (3) |
+| Frost Leathers | `#a0dcff` | 46.6 | 52.4 | 2.80 (1.13) |
+| Ivory Leathers | `#f0ead6` | 48.6 | 59.9 | 3.29 (1.13) |
+| Teal Leathers | `#28b4aa` | 44.5 | 57.7 | 1.87 (1.13) |
+| Verdant Leathers | `#3cb44b` | 57.8 | 60.6 | 1.81 (1.13) |
+| Cobalt Leathers | `#3c64dc` | 42.1 | 52.2 | 1.22 (1.13) |
+| Amethyst Leathers | `#9650d2` | 42.9 | 49.9 | 1.28 (1.13) |
+| Bronze Leathers | `#d89048` | 43.0 | 66.1 | 1.85 (1.13) |
+| Scarlet Leathers | `#e61d32` | 47.0 | 81.5 | 1.28 (1.13) |
+| Prismatic Leathers | Bronze, Verdant, Teal, Frost, Ivory | 41.9 | 52.4 | 1.73 (1.13) |
 
-Lilac moved from `#c59fdf` (29.1 from Aegis on the real mean) to `#c294d1`. Outlines (floor / wall ratio, CIE76; all
+The Archer's danger margins sit at the enemy bullet's dark outline in every case. Her Prismatic is the best-margin loop
+of five of her dyes: no loop of six, and no loop through Scarlet, Amethyst or Cobalt, passes, because the step between
+red / violet / blue hues dims to within 40 of that outline (Amethyst -> Scarlet 33.0, Frost -> Cobalt 39.0).
+
+The Knight's Lilac moved from `#c59fdf` (29.1 from Aegis on the real mean) to `#c294d1`. Outlines (floor / wall ratio, CIE76; all
 pass): Azure `#33ccff` 6.28 / 45.2, Silver `#c0c8d0` 6.95 / 46.6, Jade `#33ff99` 8.90 / 42.2, Sand `#e8d8a8` 8.29 /
 47.5, Rose `#ff99b3` 5.85 / 41.8, Moss `#85c270` 5.57 / 41.0, Violet `#b366ff` 3.50 / 41.7, Orchid `#cc33ff` 3.07 /
 60.6. Rejected outlines: Lilac `#e0c8ff` (22 from Aegis), Mint `#9effc4` (23 from Quickstep), Cobalt `#3c64dc` (2.3 :
@@ -312,9 +330,10 @@ contract.ts gained one import.
 ## As built: wallet and server (CS4, 2026-11-17)
 
 - **Catalogue.** `ARMORY_CATALOG` appends `cosmeticArmoryItems()`: one row per `COSMETIC_ITEMS` entry (`kind`
-  "cosmetic", one level, `simLever` false, `slot`), after catalogue v1 (catalog.spec's order lock lists all 31).
-  Tiers: Knight dyes 2, 2, 3, 3, 4, 4, 5, 6; Archer dyes 2, 3; both Prismatic 8; outlines 2-5; trails 3-7; sparks 4-7
-  (26,050 Silver in all). `applyEquip` unchanged (a dye's slot names its character).
+  "cosmetic", one level, `simLever` false, `slot`), after catalogue v1 (catalog.spec's order lock lists all 42 rows, 37 of them cosmetics).
+  Tiers: each character's dyes 2, 2, 3, 3, 4, 4, 5, 6 (Frost, Ivory, Teal, Verdant, then Azure / Cobalt, Lilac /
+  Amethyst, Bronze, Rose / Scarlet); both Prismatic 8; outlines 2-5; trails 3-7; sparks 4-7 (37 items, 28,680 Silver
+  in all). `applyEquip` unchanged (a dye's slot names its character).
 - **Goals.** `nextGoals` skips cosmetics (a choice, not a step; tier 2 colours would otherwise always crowd out the
   next upgrade on the Armory marks and the run-over `to go` line). The main menu badge (`affordableKeys`) still
   counts them.

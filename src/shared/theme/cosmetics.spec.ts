@@ -27,7 +27,7 @@ import {
 } from "./cosmetics";
 import { THEME_PACKS } from "./packs";
 import { PLACEHOLDER_MANIFEST } from "./packs/placeholder";
-import { valeDyeMeanValue } from "./packs/vale";
+import { valeDyeMeanValue, valeDyeSourceMean } from "./packs/vale";
 import type { HexColor } from "./types";
 import { deepClone, sortedKeys, type Obj } from "./util";
 
@@ -38,6 +38,18 @@ function dyeMeans(): Record<CharacterId, number> {
 		const mean = valeDyeMeanValue(COSMETIC_DYE_SETS[c]);
 		if (mean === undefined) error(`${COSMETIC_DYE_SETS[c]} has no dyeMeanValue in the vale layout (art:build)`, 0);
 		out[c] = mean;
+	}
+	return out;
+}
+
+/** Each character's undyed region mean colour (rule 3's baseline): the generated layout's (required: no fallback). */
+function dyeSources(): Record<CharacterId, HexColor> {
+	const out = {} as Record<CharacterId, HexColor>;
+	for (const c of CHARACTER_IDS) {
+		const source = valeDyeSourceMean(COSMETIC_DYE_SETS[c]);
+		if (source === undefined)
+			error(`${COSMETIC_DYE_SETS[c]} has no dyeSourceMean in the vale layout (art:build)`, 0);
+		out[c] = source;
 	}
 	return out;
 }
@@ -172,16 +184,19 @@ function worstByRule(report: ReadonlyArray<CosmeticEntry>, itemId: string): Map<
 describe("cosmetics: cosmeticReport (readability rules 1-5)", () => {
 	it("the shipped catalogue passes every rule on every bundled pack (every item's worst margins printed)", () => {
 		const means = dyeMeans();
-		for (const c of CHARACTER_IDS) print(`[cosmetics] ${c} dye mean ${fixed(means[c], 4)} (vale layout)`);
+		const sources = dyeSources();
+		for (const c of CHARACTER_IDS) {
+			print(`[cosmetics] ${c} dye mean ${fixed(means[c], 4)}, undyed ${sources[c]} (vale layout)`);
+		}
 		for (const p of sortedKeys(THEME_PACKS)) {
-			const report = cosmeticReport(THEME_PACKS[p], means);
+			const report = cosmeticReport(THEME_PACKS[p], means, sources);
 			for (const it of COSMETIC_ITEMS) {
 				const worst = worstByRule(report, it.id);
 				const parts = new Array<string>();
 				for (const rule of rulesOf(it.slot)) {
 					const e = worst.get(rule);
 					expect([p, it.id, rule, e !== undefined]).toEqual([p, it.id, rule, true]);
-					parts.push(`${rule} ${fixed(e!.value, 2)} vs ${e!.against}`);
+					parts.push(`${rule} ${fixed(e!.value, 2)} (min ${fixed(e!.min, 2)}) vs ${e!.against}`);
 				}
 				const shown = cosmeticHex(it.id) ?? "prismatic";
 				print(`[cosmetics] ${p} ${it.id} ${shown}: ${parts.join(" | ")}`);
@@ -201,7 +216,7 @@ describe("cosmetics: cosmeticReport (readability rules 1-5)", () => {
 	});
 
 	it("covers every rule: dyes on the dyed mean (danger, pickup, floor), Prismatic every stop and sample, the rest", () => {
-		const report = cosmeticReport(THEME_PACKS.vale, dyeMeans());
+		const report = cosmeticReport(THEME_PACKS.vale, dyeMeans(), dyeSources());
 		const biomes = sortedKeys((THEME_PACKS.vale as unknown as Obj).biomes as Obj).size();
 		for (const it of COSMETIC_ITEMS) {
 			const mine = report.filter((e) => e.itemId === it.id);
@@ -221,6 +236,33 @@ describe("cosmetics: cosmeticReport (readability rules 1-5)", () => {
 		const e = report.find((x) => x.itemId === "dye.knight.teal" && x.rule === "floor")!;
 		expect(e.color).toBe(toHex(dyedMean(c, dyeMeans().knight)));
 		expect(COSMETIC_RULES.minDangerDifference).toBe(40);
+		// rule 3's bar: min(3 : 1, the undyed region's own contrast on that floor)
+		const sources = dyeSources();
+		for (const x of report) {
+			if (x.rule !== "floor") continue;
+			const character = x.slot === "dye.knight" ? "knight" : "archer";
+			const bar = math.min(COSMETIC_RULES.minFloorContrast, contrastRatio(sources[character], x.againstColor));
+			expect([x.itemId, x.against, math.abs(x.min - bar) < 1e-12]).toEqual([x.itemId, x.against, true]);
+		}
+	});
+
+	it("rule 3's baseline: the Knight's plate reads above 3 : 1 on every floor (his bar is 3), the Archer's leathers not", () => {
+		const sources = dyeSources();
+		const m = THEME_PACKS.vale as unknown as Obj;
+		let knightLow = math.huge;
+		let archerHigh = 0;
+		for (const b of sortedKeys(m.biomes as Obj)) {
+			const floor = ((m.biomes as Obj)[b] as Obj).floor as string;
+			knightLow = math.min(knightLow, contrastRatio(sources.knight, floor));
+			archerHigh = math.max(archerHigh, contrastRatio(sources.archer, floor));
+		}
+		print(`[cosmetics] undyed plate >= ${fixed(knightLow, 2)} : 1, undyed leathers <= ${fixed(archerHigh, 2)} : 1`);
+		expect(knightLow >= COSMETIC_RULES.minFloorContrast).toBe(true);
+		expect(archerHigh < COSMETIC_RULES.minFloorContrast).toBe(true);
+		// without a baseline the full 3 : 1 applies (never a looser bar): her rich dyes fail it
+		const strict = cosmeticReport(THEME_PACKS.vale, dyeMeans());
+		expect(strict.some((x) => x.itemId === "dye.archer.cobalt" && x.rule === "floor" && !x.ok)).toBe(true);
+		for (const x of strict) if (x.rule === "floor") expect(x.min).toBe(COSMETIC_RULES.minFloorContrast);
 	});
 
 	it("the rules on probe colours (the prototype's table): crimson, ember and gilded Knights fail, scarlet fails the floor", () => {
@@ -241,7 +283,7 @@ describe("cosmetics: cosmeticReport (readability rules 1-5)", () => {
 		expect(probe("#e67828", means.knight).includes("danger:telegraph")).toBe(true);
 		expect(probe("#f0be28", means.knight).includes("danger:telegraph")).toBe(true);
 		expect(probe("#c0182a", means.knight)).toEqual([]);
-		// ... but scarlet is too dark a body for the floors (rule 3, CSD5): why it shipped lightened, as Rose
+		// ... but scarlet is too dark a Knight for the floors (rule 3: his bar is 3): why it shipped lightened, as Rose
 		const scarlet = toHex(dyedMean(parseHex("#c0182a")!, means.knight));
 		let darkest = math.huge;
 		for (const b of sortedKeys(m.biomes as Obj)) {

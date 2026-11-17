@@ -54,9 +54,15 @@ export const COSMETIC_ITEMS = table.freeze([
 	{ id: "dye.knight.bronze", slot: "dye.knight", tier: 5 },
 	{ id: "dye.knight.rose", slot: "dye.knight", tier: 6 },
 	{ id: "dye.knight.prismatic", slot: "dye.knight", tier: 8, prismatic: true },
-	// The Archer's leathers: only pale dyes pass the floor-contrast rule at her dyed mean (docs/COSMETICS.md CS3).
+	// The Archer's leathers (tiers 2-6, Prismatic 8): the draft's eight hues, Scarlet and Bronze a touch brighter.
 	{ id: "dye.archer.frost", slot: "dye.archer", tier: 2 },
-	{ id: "dye.archer.ivory", slot: "dye.archer", tier: 3 },
+	{ id: "dye.archer.ivory", slot: "dye.archer", tier: 2 },
+	{ id: "dye.archer.teal", slot: "dye.archer", tier: 3 },
+	{ id: "dye.archer.verdant", slot: "dye.archer", tier: 3 },
+	{ id: "dye.archer.cobalt", slot: "dye.archer", tier: 4 },
+	{ id: "dye.archer.amethyst", slot: "dye.archer", tier: 4 },
+	{ id: "dye.archer.bronze", slot: "dye.archer", tier: 5 },
+	{ id: "dye.archer.scarlet", slot: "dye.archer", tier: 6 },
 	{ id: "dye.archer.prismatic", slot: "dye.archer", tier: 8, prismatic: true },
 	// Outline colours (the watched player's rim; tiers 2-5).
 	{ id: "outline.azure", slot: "outline", tier: 2 },

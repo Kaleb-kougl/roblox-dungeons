@@ -39,6 +39,8 @@ export interface ValeSpriteLayout extends Omit<SpriteSetAsset, "kind" | "sheets"
 	sheets: Array<ValeSpriteSheetFile>;
 	/** Sets with a `dye`: the mean normalised value (0..1) of every dyed pixel, the cosmetics validator's input. */
 	dyeMeanValue?: number;
+	/** Sets with a `dye`: the dyed pixels' mean source colour (the undyed region), the floor-contrast baseline. */
+	dyeSourceMean?: HexColor;
 }
 
 /**
@@ -224,6 +226,7 @@ export const VALE_SPRITE_LAYOUTS: Record<string, ValeSpriteLayout> = {
 			},
 		],
 		dyeMeanValue: 0.5114,
+		dyeSourceMean: "#2f1b08",
 		animations: {
 			"attack.1": { sheet: 5, start: 0, frames: 8, fps: 20, loop: false },
 			"attack.2": { sheet: 6, start: 0, frames: 8, fps: 14, loop: false },
@@ -300,6 +303,7 @@ export const VALE_SPRITE_LAYOUTS: Record<string, ValeSpriteLayout> = {
 			},
 		],
 		dyeMeanValue: 0.7342,
+		dyeSourceMean: "#8b8583",
 		animations: {
 			"attack.1": { sheet: 5, start: 0, frames: 8, fps: 16, loop: false },
 			"attack.2": { sheet: 6, start: 0, frames: 8, fps: 16, loop: false },
