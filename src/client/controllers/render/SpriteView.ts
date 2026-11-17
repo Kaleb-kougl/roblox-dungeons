@@ -56,6 +56,14 @@ const HIDDEN = 1;
  * placeBillboard) and every Size / StudsOffset write goes through writeBillboard (base x scale + extraDepthStuds): a
  * hit push (setPushTexels) writes StudsOffsetWorldSpace instead, a separate property, so the two compose.
  * `snapshot` copies the drawn frame for an afterimage (J7).
+ *
+ * Dye (docs/COSMETICS.md CS5): `setDye(color)` (undefined: none) draws a third label "Dye" above the frame
+ * (ACTOR_OUTLINE.spriteZIndex.dye) showing the frame's dye sheet (SpriteFrame.dyeImage, normalised grey of one region)
+ * with the frame's rect, its ImageColor3 the dye x the view's tint per channel. It draws while the view is visible, a
+ * colour is set, the frame's sheet has a dye and that sheet's content is ready (`setDyeReady`: the client's art
+ * readiness by content id; `refreshDye` re-asks after a readiness change). Its transparency follows setTransparency;
+ * squash and push come with the billboard. The label is built on the first `setDye` with a colour: a view never dyed
+ * writes nothing more per frame than before (the frame's dye image is kept in a field, no Instance write).
  */
 export class SpriteView {
 	readonly anchor: Part;
@@ -99,6 +107,13 @@ export class SpriteView {
 	private drawn: SpriteBillboard | undefined;
 	private rectOffset = Vector2.zero;
 	private rectSize = Vector2.zero;
+	/** Dye (CS5): the label (built on the first colour), the current frame's dye image, the colour and its draw. */
+	private dye: ImageLabel | undefined;
+	private frameDye: string | undefined;
+	private dyeImage = "";
+	private dyeColor: Color3 | undefined;
+	private dyeReady: ((contentId: string) => boolean) | undefined;
+	private dyeDrawn = false;
 
 	constructor(
 		readonly set: SpriteSet,
@@ -165,6 +180,7 @@ export class SpriteView {
 		this.setVisible(true);
 		this.setOutlineShown(true);
 		this.setScale(1, 1);
+		this.setDye(undefined);
 		this.held = false;
 		this.shownAnim = "";
 		this.shownFrame = -1;
@@ -201,6 +217,20 @@ export class SpriteView {
 		this.label.ImageRectSize = f.size;
 		this.rectOffset = f.offset;
 		this.rectSize = f.size;
+		this.frameDye = f.dyeImage;
+		const dye = this.dye;
+		if (dye !== undefined) {
+			const image = f.dyeImage;
+			if (image !== undefined) {
+				if (image !== this.dyeImage) {
+					this.dyeImage = image;
+					dye.Image = image;
+				}
+				dye.ImageRectOffset = f.offset;
+				dye.ImageRectSize = f.size;
+			}
+			this.syncDye();
+		}
 		const rim = this.outline;
 		if (rim !== undefined) {
 			const image = f.outlineImage;
@@ -232,11 +262,85 @@ export class SpriteView {
 		this.placeBillboard(sheetSpriteLayout(this.layout, this.set, w, h, pivot));
 	}
 
-	/** ImageColor3 (multiplies the art: a tint, never a white flash). */
+	/** ImageColor3 (multiplies the art: a tint, never a white flash); a dye label follows (dye x tint). */
 	setTint(color: Color3): void {
 		if (color === this.tint) return;
 		this.tint = color;
 		this.label.ImageColor3 = color;
+		this.writeDyeColor();
+	}
+
+	/**
+	 * The dye colour (docs/COSMETICS.md CS5; undefined: none). Written only on a change (pass the same Color3 to keep
+	 * it); the first colour builds the "Dye" label.
+	 */
+	setDye(color: Color3 | undefined): void {
+		if (color === this.dyeColor) return;
+		this.dyeColor = color;
+		if (color !== undefined && this.dye === undefined) this.buildDye();
+		this.writeDyeColor();
+		this.syncDye();
+	}
+
+	/**
+	 * Whether a dye sheet's content has downloaded on this device (the client's ArtReadiness by content id; undefined:
+	 * every sheet counts as ready). Call `refreshDye` after the readiness changes.
+	 */
+	setDyeReady(ready: ((contentId: string) => boolean) | undefined): void {
+		this.dyeReady = ready;
+		this.syncDye();
+	}
+
+	/** Re-asks the dye's readiness (after a readiness change); no-op without a dye label. */
+	refreshDye(): void {
+		this.syncDye();
+	}
+
+	/** The dye label, above the frame, same size and resampling; hidden until a frame with a dye image is ready. */
+	private buildDye(): void {
+		const dye = new Instance("ImageLabel");
+		dye.Name = ACTOR_OUTLINE.spriteDyeLabelName;
+		dye.BackgroundTransparency = HIDDEN;
+		dye.BorderSizePixel = 0;
+		dye.Size = UDim2.fromScale(1, 1);
+		dye.ResampleMode = this.label.ResampleMode;
+		dye.ZIndex = ACTOR_OUTLINE.spriteZIndex.dye;
+		dye.ImageTransparency = this.transparency;
+		dye.Visible = false;
+		const image = this.frameDye;
+		if (image !== undefined) {
+			this.dyeImage = image;
+			dye.Image = image;
+			dye.ImageRectOffset = this.rectOffset;
+			dye.ImageRectSize = this.rectSize;
+		}
+		dye.Parent = this.gui;
+		this.dye = dye;
+		this.dyeDrawn = false;
+	}
+
+	/** The dye label's ImageColor3: the dye x the tint, per channel. */
+	private writeDyeColor(): void {
+		const dye = this.dye;
+		const c = this.dyeColor;
+		if (dye === undefined || c === undefined) return;
+		const t = this.tint;
+		dye.ImageColor3 = t === WHITE ? c : new Color3(c.R * t.R, c.G * t.G, c.B * t.B);
+	}
+
+	/** Writes the dye label's Visible when its draw rule changes (see the class comment). */
+	private syncDye(): void {
+		const dye = this.dye;
+		if (dye === undefined) return;
+		const image = this.frameDye;
+		const drawn =
+			this.visible &&
+			this.dyeColor !== undefined &&
+			image !== undefined &&
+			(this.dyeReady === undefined || this.dyeReady(image));
+		if (drawn === this.dyeDrawn) return;
+		this.dyeDrawn = drawn;
+		dye.Visible = drawn;
 	}
 
 	/**
@@ -287,6 +391,7 @@ export class SpriteView {
 		if (t === this.transparency) return;
 		this.transparency = t;
 		this.label.ImageTransparency = t;
+		if (this.dye !== undefined) this.dye.ImageTransparency = t;
 	}
 
 	/**
@@ -338,6 +443,17 @@ export class SpriteView {
 		out.offsetY = b.offsetY;
 		out.offsetZ = b.offsetZ + this.extraDepthStuds;
 		out.resample = this.set.resample;
+		// docs/COSMETICS.md CS5: the dye as drawn now (its label's colour), or none.
+		const dye = this.dye;
+		if (dye !== undefined && this.dyeDrawn) {
+			const c = dye.ImageColor3;
+			out.dyeImage = this.dyeImage;
+			out.dyeR = c.R;
+			out.dyeG = c.G;
+			out.dyeB = c.B;
+		} else {
+			out.dyeImage = "";
+		}
 		return true;
 	}
 
@@ -346,6 +462,7 @@ export class SpriteView {
 		this.visible = v;
 		this.label.Visible = v;
 		this.syncOutline();
+		this.syncDye();
 	}
 
 	/** Shows or hides the rim (no-op without `outline`); the frame is untouched. The owner passes actorOutlined. */

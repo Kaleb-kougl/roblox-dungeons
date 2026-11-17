@@ -32,6 +32,14 @@ export interface GhostSnapshot {
 	offsetY: number;
 	offsetZ: number;
 	resample: SpriteSet["resample"];
+	/**
+	 * docs/COSMETICS.md CS5: the dye label as drawn (its image, "" for none, and its colour 0..1: the dye x the
+	 * sprite's tint), drawn over the ghost's frame like the sprite's.
+	 */
+	dyeImage: string;
+	dyeR: number;
+	dyeG: number;
+	dyeB: number;
 }
 
 export interface Ghost {
@@ -92,6 +100,10 @@ function blankGhost(): Ghost {
 			offsetY: 0,
 			offsetZ: 0,
 			resample: "Pixelated",
+			dyeImage: "",
+			dyeR: 1,
+			dyeG: 1,
+			dyeB: 1,
 		},
 	};
 }

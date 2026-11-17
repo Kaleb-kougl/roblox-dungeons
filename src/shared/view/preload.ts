@@ -23,6 +23,11 @@ export interface PreloadSource {
 	biomeKeys(): ReadonlyArray<string>;
 	/** Every content id a biome draws. */
 	biomeContentIds(b: string): ReadonlyArray<ContentRef>;
+	/**
+	 * docs/COSMETICS.md CS5: the dye sheets of sprite set `id` (ThemePack.dyeContentIds), never part of contentIds;
+	 * a stage manifest's `dye:<set>` entry (STAGE_DYE_PREFIX) reads them. Optional: a source without it has no dyes.
+	 */
+	dyeContentIds?(id: string): ReadonlyArray<ContentRef>;
 }
 
 /** The two tiers, each in download order; a content id is in at most one of them. */

@@ -4,9 +4,16 @@
  *
  * Group entries are logical ids matched by `stageEntryMatches` (stageGroups.ts): an entry ending in "." is a prefix
  * ("sfx." matches every sfx id), any other entry is one exact id ("pellet.power"), and `biome:<key>` names a biome's
- * own content (PreloadSource.biomeContentIds).
+ * own content (PreloadSource.biomeContentIds). A manifest's `dye:<set>` entry (STAGE_DYE_PREFIX, docs/COSMETICS.md CS5)
+ * names a sprite set's dye sheets (PreloadSource.dyeContentIds), listed only when a player wears a dye of that set.
  */
 import { ACTOR_VIEW } from "./config";
+
+/**
+ * docs/COSMETICS.md CS5: a manifest entry `dye:<set id>` is that sprite set's dye sheets (PreloadSource.dyeContentIds),
+ * in the characters group right after the sets, only for a set a present player wears a dye of (StageAssetInput.dyed).
+ */
+export const STAGE_DYE_PREFIX = "dye:";
 
 /** The groups of a stage manifest, in front-lane order (docs/STAGE_ASSETS.md revision 2: what is on screen soonest). */
 export const STAGE_GROUPS = ["characters", "bullets", "actors", "biome", "features", "runKit", "audio"] as const;

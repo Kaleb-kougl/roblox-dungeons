@@ -8,7 +8,7 @@ import {
 	type PlayerState,
 	type SimState,
 } from "shared/sim";
-import { BULLET_VIEW, SPRITE_VIEW } from "shared/view";
+import { ACTOR_OUTLINE, BULLET_VIEW, SPRITE_VIEW } from "shared/view";
 import {
 	FEEL_GHOST,
 	FEEL_SQUASH,
@@ -36,6 +36,8 @@ interface GhostView {
 	readonly anchor: Part;
 	readonly gui: BillboardGui;
 	readonly label: ImageLabel;
+	/** docs/COSMETICS.md CS5: the dye over the frame (built on the first dyed ghost; hidden for an undyed one). */
+	dye: ImageLabel | undefined;
 	/** The ghost serial its properties were written for (-1: none). */
 	serial: number;
 	/** Drawn (not parked) as last written. */
@@ -57,6 +59,10 @@ interface GhostView {
  * under KV_Actors/Ghosts) maps trail t's ghost j to view t * perSource + j; a view's properties are written only when
  * its ghost was re-recorded, its transparency (quantized) only on change, and it moves only when recorded or parked.
  *
+ * Cosmetics (docs/COSMETICS.md CS5): `setTrailColor(index, color)` tints player `index`'s ghosts (a trail item;
+ * undefined: white, the art as drawn), written with each re-recorded ghost; a dyed sprite's ghost carries its dye
+ * (GhostSnapshot.dyeImage) on a second label, tinted dye x trail colour.
+ *
  * Clock: effect seconds = the actor renderer's sprite clock (sum of its animDtSec: sim seconds, stopping with pause and
  * hitstop). Reduced motion: squash 1 x 1 (motionScale 0), no ghosts (ghostsOn); particles off: no ghosts.
  */
@@ -66,6 +72,8 @@ export class MotionFx {
 	private readonly playerSquash = new SquashBook(FEEL_GHOST.playerTrails);
 	private readonly rolls = new RollEdgeWatch(FEEL_GHOST.playerTrails);
 	private readonly trails = new Array<GhostTrail>();
+	/** Per trail: the ghosts' tint (a player's trail cosmetic; WHITE: none). */
+	private readonly trailColors = new Array<Color3>();
 	private readonly views = new Array<GhostView>();
 	private readonly scale: SquashScale = { sx: 1, sy: 1 };
 	/** archetype index -> is the Demon Lord (cached; archetypeAt per actor per frame avoided). */
@@ -84,6 +92,7 @@ export class MotionFx {
 		const n = FEEL_GHOST.playerTrails + FEEL_GHOST.bossTrails;
 		for (let t = 0; t < n; t++) {
 			this.trails.push(new GhostTrail(FEEL_GHOST.perSource));
+			this.trailColors.push(WHITE);
 			for (let j = 0; j < FEEL_GHOST.perSource; j++) this.views.push(buildGhostView(folder));
 		}
 	}
@@ -122,6 +131,12 @@ export class MotionFx {
 		this.ghosts = on;
 		this.actorSquash.setNow(this.now);
 		this.playerSquash.setNow(this.now);
+	}
+
+	/** Player `index`'s trail colour (docs/COSMETICS.md CS5; undefined: none): ghosts recorded from now on wear it. */
+	setTrailColor(index: number, color: Color3 | undefined): void {
+		if (index < 0 || index >= FEEL_GHOST.playerTrails) return;
+		this.trailColors[index] = color ?? WHITE;
 	}
 
 	/** Player `index`'s sprite after its update: roll squash and roll ghosts. `at` is its anchor's position. */
@@ -168,7 +183,7 @@ export class MotionFx {
 				if (view.serial !== g.serial || !view.shown) {
 					view.serial = g.serial;
 					view.shown = true;
-					writeGhost(view, g);
+					writeGhost(view, g, this.trailColors[t] ?? WHITE);
 					moveParts.push(view.anchor);
 					moveCFrames.push(new CFrame(g.x, g.y, g.z));
 				}
@@ -237,17 +252,46 @@ function buildGhostView(folder: Instance): GhostView {
 	label.Parent = gui;
 	gui.Parent = anchor;
 	anchor.Parent = folder;
-	return { anchor, gui, label, serial: -1, shown: false, transparency: HIDDEN };
+	return { anchor, gui, label, dye: undefined, serial: -1, shown: false, transparency: HIDDEN };
 }
 
-/** A re-recorded ghost's frame, size and offset (pushed FEEL_GHOST.behindStuds away from the camera). */
-function writeGhost(view: GhostView, g: Ghost): void {
+/** The ghost's dye label (docs/COSMETICS.md CS5), above its frame. */
+function buildGhostDye(view: GhostView): ImageLabel {
+	const dye = new Instance("ImageLabel");
+	dye.Name = ACTOR_OUTLINE.spriteDyeLabelName;
+	dye.BackgroundTransparency = HIDDEN;
+	dye.BorderSizePixel = 0;
+	dye.Size = UDim2.fromScale(1, 1);
+	dye.ZIndex = ACTOR_OUTLINE.spriteZIndex.dye;
+	dye.ImageTransparency = view.transparency;
+	dye.Parent = view.gui;
+	view.dye = dye;
+	return dye;
+}
+
+/**
+ * A re-recorded ghost's frame, size and offset (pushed FEEL_GHOST.behindStuds away from the camera), tinted `tint` (a
+ * trail cosmetic, else white), with its dye when the sprite was dyed.
+ */
+function writeGhost(view: GhostView, g: Ghost, tint: Color3): void {
 	const s = g.snap;
 	const label = view.label;
 	label.Image = s.image;
 	label.ImageRectOffset = new Vector2(s.rectX, s.rectY);
 	label.ImageRectSize = new Vector2(s.rectW, s.rectH);
 	label.ResampleMode = Enum.ResamplerMode[s.resample];
+	label.ImageColor3 = tint;
+	if (s.dyeImage !== "") {
+		const dye = view.dye ?? buildGhostDye(view);
+		dye.Image = s.dyeImage;
+		dye.ImageRectOffset = label.ImageRectOffset;
+		dye.ImageRectSize = label.ImageRectSize;
+		dye.ResampleMode = label.ResampleMode;
+		dye.ImageColor3 = new Color3(s.dyeR * tint.R, s.dyeG * tint.G, s.dyeB * tint.B);
+		dye.Visible = true;
+	} else if (view.dye !== undefined) {
+		view.dye.Visible = false;
+	}
 	view.gui.Size = new UDim2(s.w, 0, s.h, 0);
 	view.gui.StudsOffset = new Vector3(s.offsetX, s.offsetY, s.offsetZ - FEEL_GHOST.behindStuds);
 	view.gui.Enabled = true;

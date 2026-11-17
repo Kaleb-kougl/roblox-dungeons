@@ -1,3 +1,5 @@
+import { LOOK_SLOTS, cosmeticItemsOf, type CosmeticLook } from "shared/cosmetics";
+import { cosmeticRgb8, lookAt } from "shared/view/cosmetics";
 import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
 import { RunService, Workspace } from "@rbxts/services";
@@ -154,6 +156,8 @@ export class ParticleController implements OnStart, ParticleWriter {
 	private roomClearShape: ChipBurst | undefined;
 	/** The co-op team pulse's colour index (docs/RUN_RECAP.md CM2: TEAM_MOMENTS_VIEW.pulse.role; the room clear's shape). */
 	private teamPulseColor = PAL_SPARK;
+	/** docs/COSMETICS.md CS5: each spark cosmetic's palette index (its owner's graze and parry sparks). */
+	private readonly sparkColors = new Map<string, number>();
 	/** nearMiss.graze's palette index; nearMiss.parry's is the next one (docs/GRAZE_PARRY.md GP5). */
 	private nearMissBase = PAL_SPARK;
 	/** build.spark's palette index (docs/BUILDS.md BU8: the spark burst at each spark target). */
@@ -272,6 +276,14 @@ export class ParticleController implements OnStart, ParticleWriter {
 		for (const look of NEW_ENEMY_3_BURST_LOOKS) {
 			this.newEnemy3Colors.push(this.palette.size());
 			this.palette.push(pack.color(look.role));
+		}
+
+		// docs/COSMETICS.md CS5: one palette entry per spark cosmetic (a player's graze / parry sparks), appended last.
+		for (const it of cosmeticItemsOf(LOOK_SLOTS.spark)) {
+			const c = cosmeticRgb8(it.id);
+			if (c === undefined) continue;
+			this.sparkColors.set(it.id, this.palette.size());
+			this.palette.push(Color3.fromRGB(c.r, c.g, c.b));
 		}
 
 		this.nearMiss.onFrame((frame, settings) => this.nearMissFrame(frame, settings));
@@ -485,12 +497,20 @@ export class ParticleController implements OnStart, ParticleWriter {
 		this.system.chips(x, z, this.secretDustColor, shape, seed, this.fx.settings());
 	}
 
+	/** Player `player`'s spark cosmetic's palette index (docs/COSMETICS.md CS5), or `fallback` (none worn). */
+	private sparkColorOf(looks: ReadonlyArray<CosmeticLook> | undefined, player: number, fallback: number): number {
+		const spark = lookAt(looks, player).spark;
+		return (spark !== undefined ? this.sparkColors.get(spark) : undefined) ?? fallback;
+	}
+
 	/** A frame's graze sparks and parry bursts (the frame object is reused: read now, never kept). */
 	private nearMissFrame(frame: Readonly<NearMissFrame>, settings: Readonly<JuiceSettings>): void {
 		const sparks = frame.grazeSparks;
 		const bursts = frame.parryBursts;
 		if (sparks.size() === 0 && bursts.size() === 0) return;
-		const tick = this.sim.getContext()?.run.state.tick ?? 0;
+		const ctx = this.sim.getContext();
+		const tick = ctx?.run.state.tick ?? 0;
+		const looks = ctx?.looks;
 		const grazeColor = this.nearMissBase;
 		const parryColor = this.nearMissBase + 1;
 		for (let i = 0; i < sparks.size(); i++) {
@@ -500,7 +520,7 @@ export class ParticleController implements OnStart, ParticleWriter {
 				g.z,
 				g.dirX,
 				g.dirZ,
-				grazeColor,
+				this.sparkColorOf(looks, g.player, grazeColor),
 				burstSeed(i, tick, NEAR_MISS_VIEW.graze.seedSalt),
 				settings,
 			);
@@ -513,7 +533,7 @@ export class ParticleController implements OnStart, ParticleWriter {
 				b.dirX,
 				b.dirZ,
 				b.weight,
-				parryColor,
+				this.sparkColorOf(looks, b.player, parryColor),
 				burstSeed(i, tick, NEAR_MISS_VIEW.parry.seedSalt),
 				settings,
 			);

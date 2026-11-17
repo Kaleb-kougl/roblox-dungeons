@@ -3,6 +3,7 @@ import { GuiService, Players, RunService, Workspace } from "@rbxts/services";
 import { Events } from "client/network";
 import { clientStore, selectDailyStatus, selectSelectedCharacter, type RunInfo, type VerdictView } from "client/store";
 import { DEFAULT_CHARACTER, isCharacterId, type CharacterId, type UpgradeLevels } from "shared/characters";
+import { cosmeticLookOf, equippedMapOf, readCosmeticLook, type CosmeticLook } from "shared/cosmetics";
 import type { PartyRunStart, RunFinishVerdict, RunVerdict } from "shared/network";
 import {
 	ArrivalLog,
@@ -178,6 +179,12 @@ export interface RunContext {
 	readonly characters: ReadonlyArray<CharacterId> | undefined;
 	/** This client's player's character (`characters[localIndex]`), or undefined (a world without characters). */
 	readonly character: CharacterId | undefined;
+	/**
+	 * docs/COSMETICS.md CS5: every player's look (the cosmetics they wear), player index order: a co-op run's
+	 * PartyRunStart.looks, a ranked solo run's StartRunReply.look, else the wallet's equipped slots for the run's
+	 * character (the Knight in a world without characters, CSD12). Presentation only (never stepped, hashed or sent).
+	 */
+	readonly looks: ReadonlyArray<CosmeticLook>;
 	/**
 	 * A first-run tutorial run (world `tutorial`, docs/TUTORIAL.md): local, never submitted (verdict `tutorial`), no
 	 * segments, no R / pad restart (the pause overlay has Restart tutorial and Skip tutorial).
@@ -479,6 +486,8 @@ export class SimController implements OnStart {
 	 * server's config. Undefined: no upgrades (an unranked run, or a world without them).
 	 */
 	private rankedUpgrades: UpgradeLevels | undefined;
+	/** docs/COSMETICS.md CS4 / CS5: the owner's look the ranked session stored (StartRunReply.look), for that run only. */
+	private rankedLook: CosmeticLook | undefined;
 	private readonly exitListeners = new Array<RunExitListener>();
 
 	/** Co-op: neutral input while a menu owns the controls (a party run never pauses under one). */
@@ -1028,6 +1037,17 @@ export class SimController implements OnStart {
 	}
 
 	/**
+	 * docs/COSMETICS.md CS5: a solo run's look: a ranked run the session's (StartRunReply.look), any other the wallet's
+	 * equipped slots for the run's character (no character: the Knight, CSD12; an unknown wallet: the default look).
+	 */
+	private soloLook(runId: string | undefined, character: CharacterId | undefined): CosmeticLook {
+		if (runId !== undefined && this.rankedLook !== undefined) return this.rankedLook;
+		const wallet = this.walletStatus();
+		if (wallet === undefined || !wallet.loaded) return {};
+		return cosmeticLookOf(equippedMapOf(wallet.equipped), character ?? DEFAULT_CHARACTER);
+	}
+
+	/**
 	 * docs/SILVER.md SV18: a listener told when the server refused a run start with `locked_character` (the pick is then
 	 * reset to the Knight: WalletController resets the stored DisplaySettings.character through SettingsController).
 	 */
@@ -1348,6 +1368,8 @@ export class SimController implements OnStart {
 			dungeon: setup.dungeon,
 			characters: setup.characters,
 			character: setup.characters?.[localIndex],
+			// docs/COSMETICS.md CS5: every member's look as the server stored it (read: an untrusted wire value).
+			looks: start.members.map((_, i) => readCosmeticLook(start.looks?.[i])),
 			counter: this.counter,
 			floor,
 			endlessFloor: setup.endlessFloor,
@@ -1629,6 +1651,7 @@ export class SimController implements OnStart {
 					this.runCharacter = reply.characterId;
 				}
 				this.rankedUpgrades = reply.upgrades;
+				this.rankedLook = reply.look !== undefined ? readCosmeticLook(reply.look) : undefined;
 				this.startRun(reply.seed, reply.atBossDoor === true, 0, world, reply.runId, "", false);
 			} else if (reply.code === "locked_character" && waiting.request.characterId !== DEFAULT_CHARACTER) {
 				// docs/SILVER.md SV18: the server says this player does not own the pick. Never the unranked fallback as
@@ -1774,6 +1797,7 @@ export class SimController implements OnStart {
 			lobbyId: tutorial ? "" : this.nextRunLobbyId,
 			characters,
 			character: characters?.[0],
+			looks: [this.soloLook(runId, characters?.[0])],
 			tutorial,
 			dev: world === DEV_WORLD_KIND,
 		};

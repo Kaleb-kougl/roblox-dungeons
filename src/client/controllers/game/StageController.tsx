@@ -12,6 +12,8 @@ import {
 	selectMenuScreen,
 	selectMyLobbyId,
 	selectRunBaseline,
+	selectSelectedCharacter,
+	selectWallet,
 	type StageAssetsLine,
 } from "client/store";
 import { LocaleRoot, StageCard } from "client/ui";
@@ -29,6 +31,8 @@ import {
 import { BIOMES, type ContentRef } from "shared/theme";
 import { floorTarget, stageBestLine, stageCardLine, stageRosterLine, type NewBestLineText } from "shared/view/hud";
 import { floorModifierStingId } from "shared/view/audio";
+import { cosmeticLookOf, equippedMapOf, type CosmeticLook } from "shared/cosmetics";
+import { stageDyeSets } from "shared/view/cosmetics";
 import { todaysDailySeed } from "shared/view/menu";
 import {
 	PRELOAD_BIOME_PREFIX,
@@ -41,6 +45,7 @@ import {
 	StageLoad,
 	stageAssets,
 	stageContentRefs,
+	stageIsLogicalId,
 	stageMergedAssets,
 	stageMerge,
 	modifierBannerLook,
@@ -56,6 +61,12 @@ import { AudioController } from "../audio/AudioController";
 import { PreloadController, type LoadHandle } from "./PreloadController";
 import { SimController, floorModifierOf, type RunContext, type StageDriver, type StageWork } from "./SimController";
 import { ThemeController } from "./ThemeController";
+
+/** docs/COSMETICS.md CS5: `input` with the dyes the run's players wear (their sets' dye sheets join the manifest). */
+function withDyes(input: StageAssetInput, looks: ReadonlyArray<CosmeticLook> | undefined): StageAssetInput {
+	const dyed = stageDyeSets(looks);
+	return dyed.size() > 0 ? { ...input, dyed } : input;
+}
 
 const LOG = "[Stage]";
 const ROOT_NAME = "KV_StageRoot";
@@ -595,7 +606,10 @@ export class StageController implements OnStart, StageDriver {
 			return;
 		}
 		const pack = this.theme.getPack();
-		const input = stageInputOf(ctx, ctx.floor, stageCharacters(ctx.characters), load.kind !== "floorChange");
+		const input = withDyes(
+			stageInputOf(ctx, ctx.floor, stageCharacters(ctx.characters), load.kind !== "floorChange"),
+			ctx.looks,
+		);
 		const set = stageAssets(pack, input);
 		this.audit.setManifest(set);
 		const refs = stageContentRefs(pack, set);
@@ -669,7 +683,7 @@ export class StageController implements OnStart, StageDriver {
 		const missing = new Array<string>();
 		let more = 0;
 		for (const id of set.must) {
-			if (id.sub(1, PRELOAD_BIOME_PREFIX.size()) === PRELOAD_BIOME_PREFIX) continue;
+			if (!stageIsLogicalId(id)) continue; // a biome's or a set's dye content: no readiness of its own
 			if (this.preload.isArtReady(id)) continue;
 			if (missing.size() < STAGE_LOADER.logMissingIds) missing.push(id);
 			else more += 1;
@@ -694,9 +708,12 @@ export class StageController implements OnStart, StageDriver {
 		this.prefetchKey = key;
 		const [ok, err] = pcall(() => {
 			const built = ctx.tutorial || this.trackerFor(ctx).wasBuilt(target);
-			const input: StageAssetInput = built
-				? stageInputOf(ctx, target, stageCharacters(ctx.characters))
-				: forecastStageInput(ctx.seed, target, stageCharacters(ctx.characters), ctx.world);
+			const input: StageAssetInput = withDyes(
+				built
+					? stageInputOf(ctx, target, stageCharacters(ctx.characters))
+					: forecastStageInput(ctx.seed, target, stageCharacters(ctx.characters), ctx.world),
+				ctx.looks,
+			);
 			const pack = this.theme.getPack();
 			const set = stageAssets(pack, input);
 			const refs = stageContentRefs(pack, set);
@@ -754,6 +771,22 @@ export class StageController implements OnStart, StageDriver {
 		});
 		if (!ok) warn(`${LOG} the first floor could not be prefetched: ${tostring(err)}`);
 		this.dailyPrefetch(key, seed);
+		this.dyePrefetch();
+	}
+
+	/**
+	 * docs/COSMETICS.md CS5: on the menu, the dye sheets of the local player's equipped dye for the picked character to
+	 * the next lane (a run that wears it then finds them in; the queue requests each content id once per session).
+	 */
+	private dyePrefetch(): void {
+		const state = clientStore.getState();
+		const wallet = selectWallet(state);
+		if (wallet === undefined || !wallet.loaded) return;
+		const look = cosmeticLookOf(equippedMapOf(wallet.equipped), selectSelectedCharacter(state));
+		const pack = this.theme.getPack();
+		const refs = new Array<ContentRef>();
+		for (const set of stageDyeSets([look])) for (const r of pack.dyeContentIds(set)) refs.push(r);
+		if (refs.size() > 0) this.preload.request(refs, "next", "prefetch dye");
 	}
 
 	/**
