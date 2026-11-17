@@ -11,6 +11,9 @@
  *   - `guardReport` (GUARD_COLOR_RULES, docs/NEW_ENEMIES_2.md NX1): the Bulwark's guard arc and block sparks read on
  *     every biome floor and never as a bullet, goo, a telegraph, the enemy rim, an affix (or the Shielded affix's shield
  *     segment) or a pickup;
+ *   - `healReport` (HEAL_COLOR_RULES, docs/NEW_ENEMIES_3.md NT1): the Mender's heal beam and sparks read on every biome
+ *     floor and never as a bullet, a telegraph, the enemy rim, the aura, the guard, the player's own heal, Riposte's
+ *     counter-wave or a pickup;
  *   - and, folded in here so validate.ts takes no new name (docs/BUILDS.md BU1), buildColors.ts `buildReport`: the
  *     builds effect colours read on every floor and never as danger;
  *   - likewise (docs/PELLETS.md PL6), pelletColors.ts `pelletReport`: the pellets read on every floor and never as a
@@ -41,6 +44,7 @@ import type { ColorRole } from "./types";
 import { isObj, sortedEntries } from "./util";
 import { AFFIX_ROLES, ENEMY_AURA_ROLE, ENEMY_GOO_ROLE, ENEMY_SHIELD_ROLE } from "./variants";
 import { ENEMY_GUARD_ROLE } from "./newEnemies2";
+import { ENEMY_HEAL_ROLE } from "./newEnemies3";
 import { buildReport } from "./buildColors";
 import { pelletReport } from "./pelletColors";
 import { treasureReport } from "./treasureColors";
@@ -133,6 +137,30 @@ export const GUARD_COLOR_RULES: VariantColorRules = {
 };
 
 /**
+ * The heal colour rules (`healReport`, docs/NEW_ENEMIES_3.md NT1): `enemyHeal` (the Mender's beam to its ally and the
+ * `+` sparks on the healed enemy) >= 3:1 on every biome floor and >= MIN_DECOR_FX_BULLET_DIFFERENCE (40 CIE76) from the
+ * enemy-bullet roles, `telegraph`, `enemyOutline`, the Warbanner's aura, the Shieldwall's guard, the player's own heal
+ * (`fx.heal`), Riposte's counter-wave (`build.counter`) and every boost colour, so an enemy's heal never reads as a
+ * threat cue, another enemy's effect, the player's heal or a pickup.
+ */
+export const HEAL_COLOR_RULES: VariantColorRules = {
+	roles: [ENEMY_HEAL_ROLE],
+	minFloorContrast: 3.0,
+	against: [
+		...ENEMY_BULLET_ROLES,
+		"telegraph",
+		"enemyOutline",
+		ENEMY_AURA_ROLE,
+		ENEMY_GUARD_ROLE,
+		"fx.heal",
+		"build.counter",
+		...BOOST_ROLES,
+	],
+	minDifference: MIN_DECOR_FX_BULLET_DIFFERENCE,
+	minApart: 0,
+};
+
+/**
  * One check of a variant colour report, for each role in `rules.roles` order:
  * - check "floor": the role vs every biome's floor (WCAG contrast, >= minFloorContrast; `against` = the biome ID,
  *   biomes in sorted order);
@@ -156,6 +184,7 @@ export type AffixEntry = VariantColorEntry;
 export type GooEntry = VariantColorEntry;
 export type AuraEntry = VariantColorEntry;
 export type GuardEntry = VariantColorEntry;
+export type HealEntry = VariantColorEntry;
 
 function variantReport(manifest: unknown, rules: VariantColorRules): Array<VariantColorEntry> {
 	const out = new Array<VariantColorEntry>();
@@ -226,6 +255,11 @@ export function guardReport(manifest: unknown): Array<GuardEntry> {
 	return variantReport(manifest, GUARD_COLOR_RULES);
 }
 
+/** The Mender's heal (HEAL_COLOR_RULES); see VariantColorEntry. */
+export function healReport(manifest: unknown): Array<HealEntry> {
+	return variantReport(manifest, HEAL_COLOR_RULES);
+}
+
 /** A validator message: where (a manifest path) and what. */
 export interface VariantColorProblem {
 	path: Array<string>;
@@ -256,6 +290,12 @@ const WHY = {
 		floor: "a Bulwark's guard must read on the floor",
 		difference:
 			"the guard colour must never read as an enemy bullet, goo, a telegraph, the enemy outline, an affix or a boost drop",
+		apart: "",
+	},
+	heal: {
+		floor: "a Mender's heal beam must read on the floor",
+		difference:
+			"the heal colour must never read as an enemy bullet, a telegraph, the enemy outline, the aura, the guard, the player's heal, the counter-wave or a boost drop",
 		apart: "",
 	},
 	build: {
@@ -312,7 +352,7 @@ interface ProblemEntry {
 }
 
 /**
- * Every failed affix, goo, aura, guard, build effect, pellet, treasure, Fortune, floor modifier and secret check as a validator
+ * Every failed affix, goo, aura, guard, heal, build effect, pellet, treasure, Fortune, floor modifier and secret check as a validator
  * message (validateManifest adds them to its errors, path `colors.<role>`). `suffix(biome)` is the validator's
  * forge-theme suffix for a biome ID (" (crypt)").
  */
@@ -323,6 +363,7 @@ export function variantColorProblems(manifest: unknown, suffix: (biome: string) 
 		{ entries: gooReport(manifest), why: WHY.goo },
 		{ entries: auraReport(manifest), why: WHY.aura },
 		{ entries: guardReport(manifest), why: WHY.guard },
+		{ entries: healReport(manifest), why: WHY.heal },
 		{ entries: buildReport(manifest), why: WHY.build },
 		{ entries: pelletReport(manifest), why: WHY.pellet },
 		{ entries: treasureReport(manifest), why: WHY.treasure },

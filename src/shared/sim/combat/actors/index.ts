@@ -6,6 +6,7 @@ export {
 	PORT_BAND_ENEMIES,
 	PORT_BAND_ENEMIES_2,
 	PORT_BAND_ENEMIES_3,
+	PORT_BAND_ENEMIES_4,
 	PORT_BAND_FORTUNE,
 	PORT_BAND_TUTORIAL,
 	WEB_ARCHETYPE_BAND,
@@ -28,5 +29,5 @@ export {
 export { faceToward, lineOfSight, moveActor, toPlayer, walkToward, type ToPlayer } from "./helpers";
 export { EMPTY_ENCOUNTER, roomAt } from "./encounter";
 export type { ActorSpawn, EncounterConfig, EncounterRoom, EncounterRoomType } from "./encounter";
-export { isActorPresent, spawnActor } from "./actors";
+export { healActor, isActorPresent, spawnActor } from "./actors";
 export * from "./archetypes";

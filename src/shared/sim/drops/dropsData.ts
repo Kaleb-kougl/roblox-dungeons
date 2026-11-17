@@ -87,6 +87,10 @@ export const DROPS = {
 		["chainhook", 8],
 		["snatcher", 15],
 		["pyrekeeper", 8],
+		// Roblox port: the fourth set (docs/NEW_ENEMIES_3.md NT1); a Jackal rolls each (a pack is three rolls).
+		["mortar", 8],
+		["mender", 10],
+		["jackal", 4],
 	]) as ReadonlyMap<string, number>,
 	pityKills: 20,
 	groundSeconds: 10,

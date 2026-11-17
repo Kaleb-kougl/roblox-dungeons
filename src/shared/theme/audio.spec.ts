@@ -195,6 +195,13 @@ describe("audio contract: port IDs and ambience", () => {
 			"sfx.enemy.swallow",
 			"sfx.pellet.return",
 			"sfx.enemy.pyrelight",
+			// docs/NEW_ENEMIES_3.md NT1: the fourth endless set's lob / shell, heal / beam cut, lunge / spook
+			"sfx.enemy.lob",
+			"sfx.enemy.shell",
+			"sfx.enemy.heal",
+			"sfx.enemy.healcut",
+			"sfx.enemy.lunge",
+			"sfx.enemy.spooked",
 		]);
 		const web = new Set<string>([...AUDIO_EVENTS, ...BREAKABLE_AUDIO_EVENTS]);
 		for (const id of PORT_AUDIO_EVENTS) {

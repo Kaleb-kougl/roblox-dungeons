@@ -921,6 +921,121 @@
 				{ "name": "pyrekeeper-death", "animations": ["death"] }
 			]
 		},
+		"enemy.mortar": {
+			"$comment": [
+				"The Mortar (docs/NEW_ENEMIES_3.md NT8, rig NTD2) as Demon Spawn 6, the lean red demon with a bow; same pack and format as enemy.summoner: body over Shadows/, no Effects/ (DEMON_ART DD3). Its idle file is `Idle 12.png` (the pack's own name).",
+				"attack = Attack 4 (the bow drawn and raised straight up), kept 0, 2-10, stretched over the draw (21 ticks) plus NEW_ENEMY_3_SPRITE_VIEW.mortarReleaseTicks (9) of the flight (mortarAttack, one timeline of 30): f0-f6 the arrow nocked and the bow raised (54 px tall facing the camera at f6), f7 the full draw aimed up (66 px), f8 the loose (the pack's Effects/ arrow starts on f8), f9-f10 the bow held up after it.",
+				"Measured mark: the loose f8 is kept index 7 of 10 = 0.7 of the timeline = 21 / 30, exactly where the draw ends and the flight starts, so the plain stretch lands it on the lob (no segment needed). f11-f14 (the bow lowered) are not kept: it walks again after the release.",
+				"move = Walk (it keeps range at 2.2 u/s, the charger's pace: fps 10). hit = TakeDamage 1 (1, 3, 5, 8), death = Die 1 (0, 2, 4, 6, 9, 14): the bruiser's picks. Idle frames 0, 3, 7, 10 as every set.",
+				"Scale: bodyTiles 1.374 = the summoner's density 31.3 px/tile (same pack, same render scale, as the Stormcaller, the Reaper, the Shieldwall and the Pyre-keeper): the idle body (alpha > 250, facing the camera) is 43 px tall -> 1.37 tiles, 24 px (0.77 tiles) wide against the r 0.35 hitbox.",
+				"cells \"perSheet\" (DD4): attack, body (idle + move + hit), death; 3 atlases + 3 rims."
+			],
+			"source": { "type": "grid", "dir": "demons-topdown/Spritesheets with seperated shadows and effects/Demon Spawn 6", "frameW": 128, "frameH": 128, "layers": ["Shadows", ""] },
+			"facingCount": 8,
+			"rowForFacing": [0, 7, 6, 5, 4, 3, 2, 1],
+			"rowOrderEvidence": [
+				"Rows go CLOCKWISE from screen right, the knight's order (DEMON_ART DA1): output facing d = row (8 - d) % 8, as every Demons set. Checked by eye on this set's contact sheet."
+			],
+			"noiseAlpha": 2,
+			"pad": 3,
+			"pivot": { "measure": { "animation": "idle", "facing": 6, "frame": 0 }, "bodyAlpha": 250, "bodyMinRgb": 0, "footBand": 6 },
+			"pivotNote": "As enemy.summoner: alpha > 250 is exactly the body (the Shadows layer is drawn under it), so the pivot, the body height and the outline mask leave the shadow out. Measured on idle facing 6 (source row 2, towards the camera), frame 0.",
+			"outline": { "widthPx": 2 },
+			"outlineNote": "Enemy contrast rim (docs/OUTLINE.md, decision E4: 2 art px). pad 3 = widthPx + 1.",
+			"bodyTiles": 1.374,
+			"resample": "Default",
+			"cells": "perSheet",
+			"animations": {
+				"idle": { "file": "Idle 12.png", "frames": [0, 3, 7, 10], "fps": 6, "loop": true },
+				"move": { "file": "Walk.png", "frames": [0, 2, 4, 5, 7, 9, 11, 12], "fps": 10, "loop": true },
+				"attack": { "file": "Attack 4.png", "frames": [0, 2, 3, 4, 5, 6, 7, 8, 9, 10], "fps": 12, "loop": false },
+				"hit": { "file": "TakeDamage 1.png", "frames": [1, 3, 5, 8], "fps": 12, "loop": false },
+				"death": { "file": "Die 1.png", "frames": [0, 2, 4, 6, 9, 14], "fps": 10, "loop": false }
+			},
+			"sheets": [
+				{ "name": "mortar-attack", "animations": ["attack"] },
+				{ "name": "mortar-body", "animations": ["idle", "move", "hit"] },
+				{ "name": "mortar-death", "animations": ["death"] }
+			]
+		},
+		"enemy.mender": {
+			"$comment": [
+				"The Mender (docs/NEW_ENEMIES_3.md NT8, rig NTD2) as Imp 10, the imp with pale bone charms and empty hands; same pack and format as enemy.imp: body over Shadows/, no Effects/ (DEMON_ART DD3).",
+				"attack = Attack 3, kept 7, 8, 9: both arms spread and raised (the T of the spin's end, 45-48 px tall facing the camera), played stretched over the 24-tick link (menderAttack) and LOOPED at fps 6 through the channel (ActorAttack.loop): 3 frames = 0.5 s, the pulse's 30 ticks, so each heal pulse starts the loop on f7. The wrap f9 -> f7 changes 1.3x the pixels of a step inside it (measured per facing), a sway, not a jump. f0-f6 (the spin) are not kept.",
+				"attack.2 = Attack 2, kept 1-5, stretched over the bolt's 18-tick wind-up (NEW_ENEMY_3_SPRITE_VIEW.anims.bolt): f1-f3 a charm raised overhead, f4 swung down, f5 the cast (the pack's Effects/ swipe starts on f5), shown over the wind-up's last fifth when the bolt leaves.",
+				"move = Walk (2.6 u/s: fps 10). hit = TakeDamage 1 (1, 3, 5, 8): the flinch, stretched over its 24 ticks, and every hit. death = Die 1 (0, 2, 4, 6, 9, 14). Idle frames 0, 3, 7, 10 as every set.",
+				"Scale: bodyTiles 1.518 = the imp's density 28.3 px/tile (same pack, same render scale, as the Warbanner): the idle body (alpha > 250, facing the camera) is 43 px tall, horns included -> 1.52 tiles, 30 px (1.06 tiles) wide with the charms against the r 0.35 hitbox.",
+				"cells \"perSheet\" (DD4): attack (attack + attack.2), body (idle + move + hit), death; 3 atlases + 3 rims."
+			],
+			"source": { "type": "grid", "dir": "demons-topdown/Spritesheets with seperated shadows and effects/Imp 10", "frameW": 128, "frameH": 128, "layers": ["Shadows", ""] },
+			"facingCount": 8,
+			"rowForFacing": [0, 7, 6, 5, 4, 3, 2, 1],
+			"rowOrderEvidence": [
+				"Rows go CLOCKWISE from screen right, the knight's order (DEMON_ART DA1): output facing d = row (8 - d) % 8, as every Demons set. Checked by eye on this set's contact sheet."
+			],
+			"noiseAlpha": 2,
+			"pad": 3,
+			"pivot": { "measure": { "animation": "idle", "facing": 6, "frame": 0 }, "bodyAlpha": 250, "bodyMinRgb": 0, "footBand": 6 },
+			"pivotNote": "As enemy.imp: alpha > 250 is exactly the body (the Shadows layer is drawn under it), so the pivot, the body height and the outline mask leave the shadow out. Measured on idle facing 6 (source row 2, towards the camera), frame 0.",
+			"outline": { "widthPx": 2 },
+			"outlineNote": "Enemy contrast rim (docs/OUTLINE.md, decision E4: 2 art px). pad 3 = widthPx + 1.",
+			"bodyTiles": 1.518,
+			"resample": "Default",
+			"cells": "perSheet",
+			"animations": {
+				"idle": { "file": "Idle.png", "frames": [0, 3, 7, 10], "fps": 6, "loop": true },
+				"move": { "file": "Walk.png", "frames": [0, 2, 4, 5, 7, 9, 11, 12], "fps": 10, "loop": true },
+				"attack": { "file": "Attack 3.png", "frames": [7, 8, 9], "fps": 6, "loop": false },
+				"attack.2": { "file": "Attack 2.png", "frames": [1, 2, 3, 4, 5], "fps": 12, "loop": false },
+				"hit": { "file": "TakeDamage 1.png", "frames": [1, 3, 5, 8], "fps": 12, "loop": false },
+				"death": { "file": "Die 1.png", "frames": [0, 2, 4, 6, 9, 14], "fps": 10, "loop": false }
+			},
+			"sheets": [
+				{ "name": "mender-attack", "animations": ["attack", "attack.2"] },
+				{ "name": "mender-body", "animations": ["idle", "move", "hit"] },
+				{ "name": "mender-death", "animations": ["death"] }
+			]
+		},
+		"enemy.jackal": {
+			"$comment": [
+				"The Jackal (docs/NEW_ENEMIES_3.md NT8, rig NTD2) as Demon Beast 2, the lanky clawed beast; same pack and format as enemy.bruiser: body over Shadows/, no Effects/ (DEMON_ART DD3).",
+				"move = Run (the low lope it circles with), kept 0, 2, 4, 5, 7, 9, 11, 12 at fps 18 (refSpeed its 4.6 u/s): 0.44 s a cycle = 2 tiles. crouch = Crouch, kept 0, 3, 7, 10 (a held crouch, 55 px tall facing the camera against idle's 60), stretched over the 21-tick wind-up (NEW_ENEMY_3_SPRITE_VIEW.anims.crouch).",
+				"attack = Run Attack, kept 3-8, stretched over the 11-tick lunge (jackalAttack): f3-f4 both claws flung up, f5 the rake forward (the pack's Effects/ swipe starts on f5: kept index 2 of 6, tick 4 of the lunge), f6-f8 the follow-through. hop = BackFlip 1, kept 1, 3, 4, 6-9, stretched over the 12-tick spooked hop (anims.hop): f1 the take-off crouch, f3-f7 the flip in the air (the body leaves its shadow), f8-f9 the landing. f5, the flip's peak, is not kept: it touches the source cell's top edge in rows 0-3 (clipped in the pack).",
+				"hit = TakeDamage 1, kept 1, 3, 5, 7, 9, 11, 13 (the recoil and the slow return), also stretched over the 60-tick stagger (anims.stagger). death = Die 1 (0, 2, 4, 6, 9, 14). Idle frames 0, 3, 7, 10 as every set.",
+				"Scale: bodyTiles 1.2 = 50 px/tile, NOT the knight's density of the other Beasts: at 38 px/tile Beast 2's idle body (60 px tall facing the camera, 44 px wide with the claws) would stand 1.58 tiles, the bruiser's size, three of them a pack against a r 0.32 hitbox. At 1.2 it is the imp's height (under the swarmer's 1.25 and the knight's 1.5), 0.88 tiles wide. NT13 checks a pack of three beside the knight.",
+				"cells \"perSheet\" (DD4): attack (attack + crouch), body (idle + move + hit), hop, death; 4 atlases + 4 rims."
+			],
+			"source": { "type": "grid", "dir": "demons-topdown/Spritesheets with seperated shadows and effects/Demon Beast 2", "frameW": 128, "frameH": 128, "layers": ["Shadows", ""] },
+			"facingCount": 8,
+			"rowForFacing": [0, 7, 6, 5, 4, 3, 2, 1],
+			"rowOrderEvidence": [
+				"Rows go CLOCKWISE from screen right, the knight's order (DEMON_ART DA1): output facing d = row (8 - d) % 8, as every Demons set. Checked by eye on this set's contact sheet."
+			],
+			"noiseAlpha": 2,
+			"pad": 3,
+			"pivot": { "measure": { "animation": "idle", "facing": 6, "frame": 0 }, "bodyAlpha": 250, "bodyMinRgb": 0, "footBand": 6 },
+			"pivotNote": "As enemy.bruiser: alpha > 250 is exactly the body (the Shadows layer is drawn under it), so the pivot, the body height and the outline mask leave the shadow out. Measured on idle facing 6 (source row 2, towards the camera), frame 0.",
+			"outline": { "widthPx": 2 },
+			"outlineNote": "Enemy contrast rim (docs/OUTLINE.md, decision E4: 2 art px). pad 3 = widthPx + 1.",
+			"bodyTiles": 1.2,
+			"resample": "Default",
+			"cells": "perSheet",
+			"animations": {
+				"idle": { "file": "Idle.png", "frames": [0, 3, 7, 10], "fps": 6, "loop": true },
+				"move": { "file": "Run.png", "frames": [0, 2, 4, 5, 7, 9, 11, 12], "fps": 18, "loop": true },
+				"crouch": { "file": "Crouch.png", "frames": [0, 3, 7, 10], "fps": 6, "loop": false },
+				"attack": { "file": "Run Attack.png", "frames": [3, 4, 5, 6, 7, 8], "fps": 12, "loop": false },
+				"hop": { "file": "BackFlip 1.png", "frames": [1, 3, 4, 6, 7, 8, 9], "fps": 24, "loop": false },
+				"hit": { "file": "TakeDamage 1.png", "frames": [1, 3, 5, 7, 9, 11, 13], "fps": 12, "loop": false },
+				"death": { "file": "Die 1.png", "frames": [0, 2, 4, 6, 9, 14], "fps": 10, "loop": false }
+			},
+			"sheets": [
+				{ "name": "jackal-attack", "animations": ["attack", "crouch"] },
+				{ "name": "jackal-body", "animations": ["idle", "move", "hit"] },
+				{ "name": "jackal-hop", "animations": ["hop"] },
+				{ "name": "jackal-death", "animations": ["death"] }
+			]
+		},
 		"boss.act1": {
 			"$comment": [
 				"Mother Bramble as Demon Elite 3 (docs/BRAMBLE_ART.md BR3, decision BD1), same pack and format as enemy.bruiser: body over Shadows/, no Effects/ (DD3).",

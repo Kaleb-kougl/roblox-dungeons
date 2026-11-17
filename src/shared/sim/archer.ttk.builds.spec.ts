@@ -4,7 +4,7 @@
 // the Archer (charged shots back to back) and the old two-weapon player. The pack at floors 1 / 6 / 11 / 20 (seeds 1-3);
 // the census room of each floor (buildTune.ts tuneCensusRoom over solo runs 1-10, its planned affixes) at its own floor
 // (seeds 1-2). Open endless arena, god mode. Printed: the tables in the doc. Loose bounds only: every fight is won but
-// the Archer's floor-20 census room with the builds that time out there (ARCHER_MAY_TIME_OUT below).
+// the floor-20 census room with the builds that time out there (ARCHER_MAY_TIME_OUT / MAY_TIME_OUT below).
 import { describe, expect, it } from "@rbxts/jest-globals";
 import {
 	CHARACTER_BUILD_CASES,
@@ -45,8 +45,17 @@ function roomAt(f: TuneFloor): CensusRoom {
  * Arrows (measured 2026-11-14, seeds 1-2). Left for NX12's tuning (owner calls T1-T3): those four builds' Archer may
  * time out on the floor-20 census room, printed; every other fight, Executioner's and Siege Bolt's Archer on that room
  * included, must be won.
+ *
+ * docs/NEW_ENEMIES_3.md NT6: with 17 room kinds the floor-20 census room is run 3 floor 20 room 11, 16 enemies with a
+ * Mortar among them (keeps 6-9 away and backs off inside 3), and more fights time out there (measured 2026-11-16, seeds
+ * 1-2): the Knight's and the two-weapon player's with no build, and the two-weapon player's Siege Bolt (all cleared at
+ * NX6); the Archer's Siege Bolt still clears it (149 s) and its Fire Arrows now does (167 s, kept in the allowance, near
+ * the cap). Left for NT12's
+ * tuning with NX12's: those may time out on the floor-20 census room, printed; every other fight must be won.
  */
+const KNIGHT = 0;
 const ARCHER = 1;
+const BOTH = 2;
 const LAST_FLOOR = FLOORS.size() - 1;
 const TIMEOUT = -1;
 const ARCHER_MAY_TIME_OUT = new Set<string>([
@@ -55,17 +64,23 @@ const ARCHER_MAY_TIME_OUT = new Set<string>([
 	CHARACTER_BUILD_CASES[2].label, // Soul Swarm
 	CHARACTER_BUILD_CASES[4].label, // Fire Arrows
 ]);
+/** Per character (WHO order): the builds whose floor-20 census room may time out (NX6 / NX12, NT6). */
+const MAY_TIME_OUT = new Map<number, ReadonlySet<string>>([
+	[KNIGHT, new Set<string>([CHARACTER_BUILD_CASES[0].label])], // no build (NT6)
+	[ARCHER, ARCHER_MAY_TIME_OUT],
+	[BOTH, new Set<string>([CHARACTER_BUILD_CASES[0].label, CHARACTER_BUILD_CASES[5].label])], // no build, Siege Bolt (NT6)
+]);
 
-function check(rows: ReturnType<typeof characterTtkRows>, archerLastFloorMayTimeOut = false): void {
+function check(rows: ReturnType<typeof characterTtkRows>, lastFloorMayTimeOut = false): void {
 	for (const row of rows)
 		for (let c = 0; c < WHO.size(); c++) {
-			const mayTimeOut = archerLastFloorMayTimeOut && c === ARCHER && ARCHER_MAY_TIME_OUT.has(row.build);
+			const mayTimeOut = lastFloorMayTimeOut && MAY_TIME_OUT.get(c)?.has(row.build) === true;
 			const won = row.seconds[c].every(
 				(x, i) => x > 0 || x === -2 || (mayTimeOut && i === LAST_FLOOR && x === TIMEOUT),
 			);
 			if (mayTimeOut && row.seconds[c][LAST_FLOOR] === TIMEOUT)
 				print(
-					`[archer tune] NX12: the Archer timed out on the floor-${FLOORS[LAST_FLOOR].floor} census room (${row.build})`,
+					`[archer tune] NX12 / NT12: the ${NAMES[c]} timed out on the floor-${FLOORS[LAST_FLOOR].floor} census room (${row.build})`,
 				);
 			expect([row.fight, row.build, NAMES[c], won]).toEqual([row.fight, row.build, NAMES[c], true]);
 		}

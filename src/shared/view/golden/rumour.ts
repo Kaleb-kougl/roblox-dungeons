@@ -15,7 +15,9 @@
  *           edges (`floorCue`, `roomCue`) are GoldenRumourCueSource for the audio cue mapper (shared/view/audio
  *           AudioCueMapper.frame), true for exactly the one step that fired them.
  *   chip    `chip()`: the phase the HUD chip shows (GoldenRumourChip): NONE until this floor's first rumour cue played,
- *           and NONE on a frozen frame (a draft open, the stage cover); else the phase.
+ *           and NONE on a frozen frame (a draft open, the stage cover); else the phase, except that ROOM shows only
+ *           while the view player stands in the Goldling's room (goldenRumourInRoom): out of it (they left, or a
+ *           teammate engaged it) the chip reads FLOOR again, and back in it reads ROOM (no second room cue).
  *   heard   `heard()`: this floor's first rumour cue has played (the first-time card `golden.rumour` is queued then).
  *   room    goldenRumourInRoom: the view player stands in the Goldling's room (the room cue's full volume; outside it
  *           plays at the teammate volume, RD6).
@@ -116,9 +118,10 @@ export class GoldenRumourClock implements GoldenRumourCueSource {
 	/**
 	 * One rendered frame of `dt` seconds, after the frame's ticks. `hold`: the caller's freeze (the stage cover, a solo
 	 * pause, the run over): no time counts, no cue starts, the chip hides. A frame with a draft open is frozen too.
+	 * `viewIndex`: the player the chip speaks for (the view player; goldenRumourInRoom's fallback for a bad index).
 	 * Never writes `state`.
 	 */
-	step(state: Readonly<SimState>, dt: number, hold = false): void {
+	step(state: Readonly<SimState>, dt: number, hold = false, viewIndex = 0): void {
 		this.floorCue = false;
 		this.roomCue = false;
 		const floor = state.endless !== undefined ? state.endless.floor : NO_FLOOR;
@@ -144,7 +147,10 @@ export class GoldenRumourClock implements GoldenRumourCueSource {
 				}
 			}
 		}
-		this.shown = !frozen && this.heardFloor ? phase : GoldenRumourPhase.NONE;
+		if (frozen || !this.heardFloor) this.shown = GoldenRumourPhase.NONE;
+		else if (phase === GoldenRumourPhase.ROOM && !goldenRumourInRoom(state, viewIndex))
+			this.shown = GoldenRumourPhase.FLOOR;
+		else this.shown = phase;
 	}
 
 	/** The phase the HUD chip shows (NONE: no chip). */

@@ -70,7 +70,9 @@ export const DAILY: DailyConfig = table.freeze({
 	// Silver in barrels and crates, the hashed `silver` group): daily play, hashes and scores change.
 	// 21: new enemies 2 (docs/NEW_ENEMIES_2.md NX6, NXD16: the Shieldwall, Chainhook, Snatcher and Pyre-keeper join the
 	// endless room pool; 14 seeded kinds reshuffle every roster, the Chainhook never on floor 1).
-	ruleset: 21,
+	// 22: new enemies 3 (docs/NEW_ENEMIES_3.md NT6, NTD14: the Mortar, Mender and Jackal pack join the endless room pool;
+	// 17 seeded kinds reshuffle every roster, the Mender never on floor 1).
+	ruleset: 22,
 	labelOffset: 1,
 	yesterdayCacheSeconds: 600,
 	minEntrantsForPercentile: 20,

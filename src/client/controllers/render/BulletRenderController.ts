@@ -5,6 +5,7 @@ import { STUDS_PER_TILE } from "shared/config";
 import {
 	EMBER_BURST,
 	GOO_BULLET_RADIUS,
+	MORTAR,
 	SLIME,
 	SIM_HZ,
 	STORMCALLER,
@@ -18,6 +19,7 @@ import { GOO_BULLET_ID, HOOK_BULLET_ID, STRIKE_BULLET_ID, type PlaceholderVisual
 import {
 	BULLET_ART_VIEW,
 	BUILD_BULLET_VIEW,
+	SHELL_ARC_VIEW,
 	BULLET_VIEW,
 	CHAIN_VIEW,
 	ENEMY_BULLET_LOOK_IDS,
@@ -41,6 +43,8 @@ import {
 	gooDecalLook,
 	isGooPayload,
 	isStrikePayload,
+	isLightningPayload,
+	isShellPayload,
 	lerp,
 	playerBulletTransparency,
 	studsX,
@@ -310,7 +314,21 @@ const GOO_DECAL: DecalSpec = {
  */
 const STRIKE_DECAL: DecalSpec = {
 	name: "Strike",
-	accepts: isStrikePayload,
+	// docs/NEW_ENEMIES_3.md NT7: lightning only; a Mortar's shell (also a STRIKE) is SHELL_DECAL's
+	accepts: isLightningPayload,
+	look: strikeDecalLook,
+	liftStuds: STRIKE_VIEW.liftStuds,
+	thicknessStuds: STRIKE_VIEW.thicknessStuds,
+	quantum: STRIKE_VIEW.quantum,
+};
+
+/**
+ * A Mortar's shell (docs/NEW_ENEMIES_3.md NT7, NTD12): the strike's disc on the strike's layer, always the disc: never
+ * the lightning's hazard art and never its scorch (its own pool, with no sprite drawer).
+ */
+const SHELL_DECAL: DecalSpec = {
+	name: "Shell",
+	accepts: isShellPayload,
 	look: strikeDecalLook,
 	liftStuds: STRIKE_VIEW.liftStuds,
 	thicknessStuds: STRIKE_VIEW.thicknessStuds,
@@ -502,6 +520,8 @@ function trailLook(look: BulletLook): TrailLook {
  * Strikes (docs/NEW_ENEMIES.md NE8): while STRIKE_VIEW.decal is on, the enemy pool skips BulletKind.STRIKE too and a
  * third pool on the enemy simulation (DecalPool, the goo's code path) draws each as a short flat flash
  * (`bullet.enemy.strike`'s colour, Neon) of the strike's hit radius; off, strikes are drawn like every enemy bullet.
+ * A Mortar's shell (docs/NEW_ENEMIES_3.md NT7, NTD12) is a STRIKE too, told apart by its payload source: a fourth pool
+ * (SHELL_DECAL) draws it as the same disc, never with the lightning's hazard art or scorch.
  * Build effects (docs/BUILDS.md BU8): player bullets take their look by payload kind (shared/view playerBulletLookOf:
  * `bullet.player.burst` / `.shard` / `.bolt` in the build.* roles), burst and shard bolts trail a faint part while
  * buildFx is Full and reduced motion is off (buildTrailsOn, read every frame); embers go to a decal pool on the player
@@ -535,6 +555,7 @@ export class BulletRenderController implements OnStart {
 	private playerSprites: SpriteBulletPool | undefined;
 	private goo: DecalPool | undefined;
 	private strike: DecalPool | undefined;
+	private shell: DecalPool | undefined;
 	private ember: DecalPool | undefined;
 
 	constructor(
@@ -623,6 +644,19 @@ export class BulletRenderController implements OnStart {
 			);
 		}
 		this.strike = strike;
+		// docs/NEW_ENEMIES_3.md NT7: the shells' discs (the strike's placeholder, the shell's life), never sprite mode
+		if (strikeDecal) {
+			const visual = pack.placeholder(STRIKE_BULLET_ID);
+			this.shell = new DecalPool(
+				subFolder(folder, SHELL_ARC_VIEW.discFolderName),
+				SHELL_DECAL,
+				pack.visualColor(visual.color),
+				Enum.Material[visual.material],
+				2 * STRIKE_BULLET_RADIUS * S,
+				MORTAR.data.shell.life,
+			);
+		}
+		const shell = this.shell;
 		let goo: DecalPool | undefined;
 		if (decal) {
 			const visual = pack.placeholder(GOO_BULLET_ID);
@@ -762,6 +796,7 @@ export class BulletRenderController implements OnStart {
 				};
 				goo?.frame(state.combat.enemyBullets, clock, hazardReady.isReady(HAZARD_GOO));
 				strike?.frame(state.combat.enemyBullets, clock, hazardReady.isReady(HAZARD_STRIKE));
+				shell?.frame(state.combat.enemyBullets, clock, false);
 				ember?.frame(state.combat.playerBullets, clock, hazardReady.isReady(HAZARD_EMBER));
 				const n = partySize(state);
 				const me = this.sim.getViewPlayerIndex(); // spectating: the watched teammate's bullets stay opaque
@@ -797,6 +832,11 @@ export class BulletRenderController implements OnStart {
 	/** Pooled strike flash parts (0 with the strike decal off; docs/NEW_ENEMIES.md NE8). */
 	getStrikePoolSize(): number {
 		return this.strike?.poolSize() ?? 0;
+	}
+
+	/** Pooled Mortar shell disc parts (docs/NEW_ENEMIES_3.md NT7; 0 with the strike decal off). */
+	getShellPoolSize(): number {
+		return this.shell?.poolSize() ?? 0;
 	}
 
 	/** Pooled ember decal parts and burst / shard trail parts (docs/BUILDS.md BU8). */

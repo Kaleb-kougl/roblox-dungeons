@@ -42,6 +42,7 @@ export * from "./teamMomentsView";
 export * from "./syncCallout";
 export * from "./variantCueEvents";
 export * from "./newEnemy2Events";
+export * from "./newEnemy3Events";
 export * from "./buildFxConfig";
 export * from "./buildFxEvents";
 export * from "./buildFxRules";

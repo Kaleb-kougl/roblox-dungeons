@@ -35,6 +35,7 @@ import {
 } from "./silver";
 import { SILVER_COLOR_RULES, silverReport } from "./silverColors";
 import { NEW_ENEMY_2_AUDIO_IDS } from "./newEnemies2";
+import { NEW_ENEMY_3_AUDIO_IDS } from "./newEnemies3";
 import { SILVER_SHOP_STRING_KEYS } from "./silverShop";
 import { COLOR_ROLES } from "./types";
 import { deepClone, sortedKeys, type Obj } from "./util";
@@ -103,9 +104,13 @@ describe("silver: sounds", () => {
 	it("are PORT_AUDIO_EVENTS' four before docs/NEW_ENEMIES_2.md's eight: required, sfx; SILENT in the placeholder, vale plays them", () => {
 		expect([...SILVER_AUDIO_IDS]).toEqual(["sfx.silver.gain", "sfx.silver.crate", "sfx.shop.buy", "sfx.shop.deny"]);
 		// docs/NEW_ENEMIES_2.md NX1's eight come after them (newEnemies2.spec.ts)
-		expect(tail(PORT_AUDIO_EVENTS, SILVER_AUDIO_IDS.size(), NEW_ENEMY_2_AUDIO_IDS.size())).toEqual([
-			...SILVER_AUDIO_IDS,
-		]);
+		expect(
+			tail(
+				PORT_AUDIO_EVENTS,
+				SILVER_AUDIO_IDS.size(),
+				NEW_ENEMY_2_AUDIO_IDS.size() + NEW_ENEMY_3_AUDIO_IDS.size(),
+			),
+		).toEqual([...SILVER_AUDIO_IDS]);
 		for (const id of SILVER_AUDIO_IDS) {
 			expect([id, has(REQUIRED_ASSET_IDS, id), slotFor(id)?.soundGroup]).toEqual([id, true, "sfx"]);
 			// vale plays them: picked at the audition and uploaded 2026-11-14 (docs/SILVER.md)

@@ -201,8 +201,9 @@ export function rosterSeed(runSeed: number): number {
 /**
  * The order in which the seeded kinds of run `runSeed` join its roster: the room kinds other than ROSTER.always
  * (ENDLESS_ROOM_KINDS order) after one Fisher-Yates shuffle from new EncounterRng(rosterSeed(runSeed)): for i from
- * the last index down to 1, j = rng.int(0, i), swap i and j (one draw per step: 13 draws for the 14 seeded kinds since
- * docs/NEW_ENEMIES_2.md NX6, which reshuffled every run's order again; 9 for 10 at docs/NEW_ENEMIES.md NE7). Pure.
+ * the last index down to 1, j = rng.int(0, i), swap i and j (one draw per step: 16 draws for the 17 seeded kinds since
+ * docs/NEW_ENEMIES_3.md NT6, which reshuffled every run's order again; 13 for 14 at docs/NEW_ENEMIES_2.md NX6, 9 for 10
+ * at docs/NEW_ENEMIES.md NE7). Pure.
  */
 export function rosterOrder(runSeed: number): string[] {
 	const order: string[] = [];
@@ -311,6 +312,12 @@ function roomKindOpen(
  * the dearest affordable open kind (no draw). Stops when nothing is affordable or the cap is reached.
  * `unlockFloors` false (every endless world, with its roster): kinds open whatever their unlock floor; true (default):
  * as above.
+ *
+ * Packs (docs/NEW_ENEMIES_3.md NT5, EndlessRoomKind.packOf): a pack kind is open only with at least packOf slots left,
+ * is affordable when packOf x its cost fits the budget left, compares its per-slot cost (its encounterCost) against
+ * budget-left / slots-left and for the dearest, pushes packOf entries in one pick and counts one toward maxPerRoom.
+ * Without a pack kind open every comparison, total and draw is exactly the single-kind rule.
+ * `kinds` (specs only): the table to buy from; ENDLESS_ROOM_KINDS for every caller in the game.
  */
 export function spendEncounterBudget(
 	rng: DungeonRng,
@@ -319,18 +326,22 @@ export function spendEncounterBudget(
 	cap: number = ENDLESS_ROOM_ACTOR_CAP,
 	roster?: ReadonlyArray<string>,
 	unlockFloors = true,
+	kinds: ReadonlyArray<EndlessRoomKind> = ENDLESS_ROOM_KINDS,
 ): string[] {
 	const out: string[] = [];
 	const bought = new Map<string, number>();
 	let left = budget;
 	while (out.size() < cap) {
-		const need = left / (cap - out.size());
+		const slots = cap - out.size();
+		const need = left / slots;
 		let total = 0;
 		let dearest: EndlessRoomKind | undefined;
-		for (const k of ENDLESS_ROOM_KINDS) {
+		for (const k of kinds) {
 			if (!roomKindOpen(k, floor, bought, out.size(), roster, unlockFloors)) continue;
+			const n = k.packOf ?? 1;
+			if (n > slots) continue;
 			const c = encounterCost(k.kind);
-			if (c > left) continue;
+			if (c * n > left) continue;
 			if (dearest === undefined || c > encounterCost(dearest.kind)) dearest = k;
 			if (c >= need) total += k.weight;
 		}
@@ -338,20 +349,29 @@ export function spendEncounterBudget(
 		let pick = dearest;
 		if (total > 0) {
 			let r = rng.next() * total;
-			for (const k of ENDLESS_ROOM_KINDS) {
+			for (const k of kinds) {
 				if (!roomKindOpen(k, floor, bought, out.size(), roster, unlockFloors)) continue;
+				const n = k.packOf ?? 1;
+				if (n > slots) continue;
 				const c = encounterCost(k.kind);
-				if (c > left || c < need) continue;
+				if (c * n > left || c < need) continue;
 				pick = k;
 				if (r < k.weight) break;
 				r -= k.weight;
 			}
 		}
-		out.push(pick.kind);
+		const n = pick.packOf ?? 1;
+		for (let i = 0; i < n; i++) out.push(pick.kind);
 		bought.set(pick.kind, (bought.get(pick.kind) ?? 0) + 1);
-		left -= encounterCost(pick.kind);
+		left -= encounterCost(pick.kind) * n;
 	}
 	return out;
+}
+
+/** The pack size a bought kind is placed in (EndlessRoomKind.packOf; 1 = not a pack). */
+function packOfKind(kinds: ReadonlyArray<EndlessRoomKind>, kind: string): number {
+	for (const k of kinds) if (k.kind === kind) return k.packOf ?? 1;
+	return 1;
 }
 
 /**
@@ -362,6 +382,11 @@ export function spendEncounterBudget(
  * (WIDE_BODY_KINDS) only takes a tile whose 8 neighbours are FLOOR (isOpenTile); roomSpawnTiles are all such tiles
  * except in a tiny room's fallback, so the filter leaves the candidates, and every draw, as they were. Stops early
  * when the room runs out of tiles (for a wide body: of open ones).
+ *
+ * A bought pack (EndlessRoomKind.packOf, docs/NEW_ENEMIES_3.md NT5): its first entry takes a new anchor (spreadTile,
+ * one draw, like a new swarmer pack), the other packOf - 1 the free tiles nearest that anchor (no draw). It never joins
+ * or resets the swarmers' pack, so without a pack kind bought every draw and tile is as before.
+ * `kinds` (specs only): spendEncounterBudget's table.
  */
 export function populateEndlessRoom(
 	room: EncounterRoom,
@@ -370,22 +395,30 @@ export function populateEndlessRoom(
 	floor: number,
 	roster?: ReadonlyArray<string>,
 	unlockFloors = true,
+	kinds: ReadonlyArray<EndlessRoomKind> = ENDLESS_ROOM_KINDS,
 ): ActorSpawn[] {
 	const d = tools.dungeon;
 	const rng = tools.rng;
-	const kinds = spendEncounterBudget(rng, budget, floor, ENDLESS_ROOM_ACTOR_CAP, roster, unlockFloors);
+	const bought = spendEncounterBudget(rng, budget, floor, ENDLESS_ROOM_ACTOR_CAP, roster, unlockFloors, kinds);
 	const spawns: ActorSpawn[] = [];
-	if (kinds.size() === 0) return spawns;
+	if (bought.size() === 0) return spawns;
 	const open = roomSpawnTiles(d, room, tools);
 	const used = new Set<TileXZ>();
 	const anchors: TileXZ[] = [];
 	let pack: TileXZ | undefined;
 	let packLeft = 0;
-	for (const kind of kinds) {
+	// A bought pack's own anchor and how many of it are still to place (never the swarmers' pack state).
+	let buyPack: TileXZ | undefined;
+	let buyPackKind = "";
+	let buyPackLeft = 0;
+	for (const kind of bought) {
 		let t: TileXZ | undefined;
 		if (kind === SWARMER_KIND && pack !== undefined && packLeft > 0) {
 			t = nearestFree(open, used, pack, 1)[0];
 			packLeft--;
+		} else if (kind === buyPackKind && buyPack !== undefined && buyPackLeft > 0) {
+			t = nearestFree(open, used, buyPack, 1)[0];
+			buyPackLeft--;
 		} else {
 			const wide = WIDE_BODY_KINDS.has(kind);
 			t = spreadTile(
@@ -399,6 +432,13 @@ export function populateEndlessRoom(
 				if (kind === SWARMER_KIND) {
 					pack = t;
 					packLeft = ENDLESS_PACK_SIZE - 1;
+				} else {
+					const n = packOfKind(kinds, kind);
+					if (n > 1) {
+						buyPack = t;
+						buyPackKind = kind;
+						buyPackLeft = n - 1;
+					}
 				}
 			}
 		}

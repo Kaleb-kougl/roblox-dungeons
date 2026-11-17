@@ -107,6 +107,10 @@
  *   Chainhook's throw leaves its aim), .hooklatch, .pyrelight (a brazier spawned), .snatch (a Snatcher ate a pellet:
  *   at NEW_ENEMY_2_AUDIO.snatchSpeed, pitched down, so its fallback, the chomp, reads as a theft), .swallow, and
  *   sfx.pellet.return (stolen pellets back on the floor at its death; pellets credited to its killer chomp instead).
+ *   The fourth endless set (docs/NEW_ENEMIES_3.md NT7) too: sfx.enemy.lob (a Mortar's draw releases), .shell (its
+ *   shell lands: SimEvents.shells; never .strike, the Stormcaller's lightning, which plays for strikes - shells only, and
+ *   the shrapnel ring never raises the enemy shot), .heal (a Mender's heal pulse, at most every 0.25 s), .healcut (a beam
+ *   cut), .lunge (a Jackal's lunge starts), .spooked (a Jackal called its lunge off).
  *
  * The new-best celebration (docs/NEW_BEST.md NB5) comes from the frame's NewBestCueSource (shared/view/hud: the
  * client's NewBestTracker frame, stepped BEFORE the mapper in the same frame; NO_NEW_BEST_CUES by default, so every
@@ -247,6 +251,7 @@ import {
 } from "../hud";
 import { AUDIO_VIEW } from "./config";
 import { NEW_ENEMY_2_AUDIO } from "../newEnemies2Config";
+import { NEW_ENEMY_3_AUDIO } from "../newEnemies3Config";
 import { StateWatch, SwingEdge } from "../watch";
 import {
 	NO_PELLET_EVENTS,
@@ -515,6 +520,17 @@ export const SFX = {
 	enemySwallow: "sfx.enemy.swallow",
 	pelletReturn: "sfx.pellet.return",
 	enemyPyreLight: "sfx.enemy.pyrelight",
+	/**
+	 * docs/NEW_ENEMIES_3.md NT1 (the theme's NEW_ENEMY_3_AUDIO_IDS): a Mortar's lob, its shell landing; a Mender's heal
+	 * pulse, its beam cut; a Jackal's lunge, a Jackal spooked. NT7 maps them (VariantCueEvents). Four play their
+	 * SFX_FALLBACK while silent; the heal pulse and the spook have none.
+	 */
+	enemyLob: "sfx.enemy.lob",
+	enemyShell: "sfx.enemy.shell",
+	enemyHeal: "sfx.enemy.heal",
+	enemyHealCut: "sfx.enemy.healcut",
+	enemyLunge: "sfx.enemy.lunge",
+	enemySpooked: "sfx.enemy.spooked",
 } as const;
 export type SfxId = (typeof SFX)[keyof typeof SFX];
 
@@ -640,6 +656,12 @@ export const ALL_SFX: ReadonlyArray<SfxId> = [
 	SFX.enemySwallow,
 	SFX.pelletReturn,
 	SFX.enemyPyreLight,
+	SFX.enemyLob,
+	SFX.enemyShell,
+	SFX.enemyHeal,
+	SFX.enemyHealCut,
+	SFX.enemyLunge,
+	SFX.enemySpooked,
 ];
 
 /** IDs this port added to the placeholder pack (not in the web contract's AUDIO_EVENTS; theme PORT_AUDIO_EVENTS). */
@@ -751,6 +773,12 @@ export const PORT_SFX: ReadonlyArray<SfxId> = [
 	SFX.enemySwallow,
 	SFX.pelletReturn,
 	SFX.enemyPyreLight,
+	SFX.enemyLob,
+	SFX.enemyShell,
+	SFX.enemyHeal,
+	SFX.enemyHealCut,
+	SFX.enemyLunge,
+	SFX.enemySpooked,
 ];
 
 /**
@@ -916,6 +944,14 @@ export const SFX_MIN_INTERVAL: Readonly<Partial<Record<SfxId, number>>> = {
 	 */
 	[SFX.enemyBlock]: 0.08,
 	[SFX.enemySnatch]: 0.1,
+	/** docs/NEW_ENEMIES_3.md NT1: a pack's lunges a moment apart are one sound; so are cuts of one beam (a hit, then a body). */
+	[SFX.enemyLunge]: 0.1,
+	[SFX.enemyHealCut]: 0.15,
+	/** NT7: the other four (newEnemies3Config NEW_ENEMY_3_AUDIO). */
+	[SFX.enemyLob]: NEW_ENEMY_3_AUDIO.lobMinIntervalSec,
+	[SFX.enemyShell]: NEW_ENEMY_3_AUDIO.shellMinIntervalSec,
+	[SFX.enemyHeal]: NEW_ENEMY_3_AUDIO.healMinIntervalSec,
+	[SFX.enemySpooked]: NEW_ENEMY_3_AUDIO.spookMinIntervalSec,
 };
 
 /**
@@ -1075,6 +1111,19 @@ export const SFX_PRIORITY: Readonly<Record<SfxId, number>> = {
 	[SFX.enemySwallow]: 60,
 	[SFX.pelletReturn]: 52,
 	[SFX.enemyPyreLight]: 43,
+	/**
+	 * The fourth endless set (docs/NEW_ENEMIES_3.md NT1; starting ranks, NT10 / NT12 revisit them). The lob is an attack
+	 * cue with the Chainhook's throw it falls back to; the shell hurts where it lands, with the Bomber's blast it falls
+	 * back to; a lunge at the player's back is danger, over the Charger's charge it falls back to. The beam cut is the
+	 * player's payoff, over the block it falls back to; the spook a small payoff beside it; the heal pulse a quiet hint
+	 * under both.
+	 */
+	[SFX.enemyLob]: 44,
+	[SFX.enemyShell]: 48,
+	[SFX.enemyLunge]: 46,
+	[SFX.enemyHealCut]: 41,
+	[SFX.enemySpooked]: 40,
+	[SFX.enemyHeal]: 37,
 	/**
 	 * A boost out of a broken piece (docs/BREAKABLE_DROPS.md BL6): just over a kill drop's landing (the rarer, chosen
 	 * reward), under the pickup; over the piece's own break (40), which plays on the same frame.
@@ -1378,6 +1427,15 @@ export const SFX_FALLBACK: Readonly<Partial<Record<SfxId, SfxId>>> = {
 	[SFX.enemySwallow]: SFX.comboBreak,
 	[SFX.pelletReturn]: SFX.pelletEat,
 	[SFX.enemyPyreLight]: SFX.enemyFuse,
+	/**
+	 * docs/NEW_ENEMIES_3.md NT1: until NT10 picks clips, a lob plays the Chainhook's throw, a shell the Bomber's blast, a
+	 * beam cut the Shieldwall's block, a lunge the Charger's charge. The heal pulse (the beam carries it) and the spook
+	 * have no fallback. One step each, as above.
+	 */
+	[SFX.enemyLob]: SFX.enemyHook,
+	[SFX.enemyShell]: SFX.enemyBlast,
+	[SFX.enemyHealCut]: SFX.enemyBlock,
+	[SFX.enemyLunge]: SFX.enemyCharge,
 };
 
 /** The floor modifier stings by shared/dungeon floorModifierKey (MODIFIERS.kinds' keys). */
@@ -2121,8 +2179,10 @@ export class AudioCueMapper {
 		for (const e of boosts.ended) if (e.player === localIndex) this.cue(SFX.boostExpire, 1);
 		const enemySpawned = state.combat.enemySpawned;
 		// Goo puddles (docs/ENEMY_VARIANTS.md EVD14) and strikes (docs/NEW_ENEMIES.md NE5 / NE8: sfx.enemy.strike) count
-		// in enemySpawned but never play the shot: only a rise beyond the frame's gooSpawned + strikes does.
-		if (this.lastEnemySpawned >= 0 && enemySpawned - this.lastEnemySpawned > events.gooSpawned + events.strikes) {
+		// in enemySpawned but never play the shot: only a rise beyond the frame's gooSpawned + strikes does. A Mortar's
+		// shell is a strike, and its shrapnel ring (docs/NEW_ENEMIES_3.md NT7) is the impact's: skipped too.
+		const silentSpawns = events.gooSpawned + events.strikes + events.shells * NEW_ENEMY_3_AUDIO.shrapnelPerShell;
+		if (this.lastEnemySpawned >= 0 && enemySpawned - this.lastEnemySpawned > silentSpawns) {
 			this.cue(SFX.enemyShoot, 1);
 		}
 		this.lastEnemySpawned = enemySpawned;
@@ -2150,6 +2210,14 @@ export class AudioCueMapper {
 		}
 		if (variants.swallows > 0) this.cue(SFX.enemySwallow, 1);
 		if (variants.pelletReturns > 0) this.cue(SFX.pelletReturn, 1);
+		// The fourth endless set (docs/NEW_ENEMIES_3.md NT7): the release, the impact (never the lightning's strike), the
+		// heal pulses, a cut beam, a lunge, a spook.
+		if (variants.lobs > 0) this.cue(SFX.enemyLob, 1);
+		if (variants.shells > 0) this.cue(SFX.enemyShell, 1);
+		if (variants.heals > 0) this.cue(SFX.enemyHeal, 1);
+		if (variants.healCuts > 0) this.cue(SFX.enemyHealCut, 1);
+		if (variants.lunges > 0) this.cue(SFX.enemyLunge, 1);
+		if (variants.spooks > 0) this.cue(SFX.enemySpooked, 1);
 		// The combo's tier sting and break (docs/COMBO.md CB4; a cut is silent, CD4).
 		const peakTier = comboTier(combo.peak);
 		if (peakTier > comboTier(combo.startCombo)) {

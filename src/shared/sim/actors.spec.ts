@@ -109,6 +109,10 @@ describe("archetype registry", () => {
 			"pyre",
 			"pyrekeeper",
 			"snatcher",
+			// band PORT_BAND_ENEMIES_4 (docs/NEW_ENEMIES_3.md): indices 24-26
+			"jackal",
+			"mender",
+			"mortar",
 		]);
 		expect(band(DUMMY_KIND)).toBe(PORT_BAND_TUTORIAL);
 		expect(band(BOSS_DEMONLORD_ID)).toBe(PORT_BAND_BOSSES);

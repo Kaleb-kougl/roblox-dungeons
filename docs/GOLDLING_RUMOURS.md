@@ -63,7 +63,8 @@ and missing it costs nothing (RD12): you keep everything else the floor gives.
 | Step into its room | `sfx.golden.rumour.room`: the same jingle, closer and brighter | Chip `It's hiding here!` (gentle pulse; reduced motion: no pulse). Its barrel or crate glints like a loot piece (a room can have one loot piece too: two glints, one of them the Goldling) |
 | Break the right piece | The break, then `sfx.golden.appear` | A gold coin burst from the piece, `GOLDLING!`, the timer ring: the chase as today. The chip goes |
 | Enemy fire on the piece | Nothing | Nothing: enemies can't break it open (RD13) |
-| Clear the room without finding it | Nothing | The chip stays; it is still in there (RD12) |
+| Clear the room without finding it | Nothing | The chip stays while you are in the room; it is still in there (RD12) |
+| Leave its room without finding it | Nothing | The chip goes back to `Coins jingling...`; back in the room it reads `It's hiding here!` again (no second jingle) |
 | Leave the floor without finding it | Nothing | The chip goes with the floor |
 
 - **Co-op (RD6).** Everyone hears the floor rumour; when anyone steps into the room everyone hears the room cue (full
@@ -306,7 +307,10 @@ M1, every golden fixture and the tutorial (no Goldling) replay exactly as before
   plain or a `mix` of two `Coin2` taps.
 - **Chip (GR7):** `GoldenRumourChip` beside the Horde chip: `hud.chip.golden.rumour` ("Coins jingling...") from the
   floor cue on, `hud.chip.golden.hiding` ("It's hiding here!") from the room cue on; `golden.coin` on `uiPanel` with
-  the coin glyph (`ui.icon.coin`); in ROOM a gentle pulse (`goldenRumourChipScale`: 1 + 0.08 x a 0.8 s wave; still
+  the coin glyph (`ui.icon.coin`). `It's hiding here!` shows only while the view player (the watched teammate when
+  spectating) stands in the Goldling's room (`goldenRumourInRoom`, `GoldenRumourClock.step`'s `viewIndex`): out of it
+  (you left, or a teammate engaged it) the chip reads `Coins jingling...` again (fix, 2026-11-16: it had stayed on the
+  room line for the rest of the floor); in ROOM a gentle pulse (`goldenRumourChipScale`: 1 + 0.08 x a 0.8 s wave; still
   under reduced motion). In the status corner's boost row (StatusPanel `ChipBoostRow`: the chips split the row's one
   boost cell, shared/view/golden `chipRowWidth`; one chip is exactly the old Horde chip width) and on the touch strip's
   chip line after the Horde chip. It reaches the HUD as the snapshot's `goldenRumour` (`SnapshotExtras.goldenRumour` =

@@ -10,6 +10,7 @@ import { PACT_DIM_NAMES, PactDim } from "shared/sim";
 import { CODEX_AUDIO_IDS, CODEX_STRING_KEYS } from "./codex";
 import { SECRET_AUDIO_IDS, SECRET_ROLES, SECRET_STRING_KEYS } from "./secrets";
 import { NEW_ENEMY_2_ARCHETYPES, NEW_ENEMY_2_AUDIO_IDS, NEW_ENEMY_2_BESTIARY } from "./newEnemies2";
+import { NEW_ENEMY_3_ARCHETYPES, NEW_ENEMY_3_AUDIO_IDS } from "./newEnemies3";
 import { colorDifference, contrastRatio } from "./color";
 import {
 	BIOMES,
@@ -101,7 +102,12 @@ const FLOOR_MOD_AFTER = {
  * docs/SECRET_ROOMS.md SR10's (secrets.spec.ts): the secret rooms' role (after the floor modifiers': FLOOR_MOD_AFTER).
  */
 const CODEX_AFTER = {
-	audio: CODEX_AUDIO_IDS.size() + SECRET_AUDIO_IDS.size() + SILVER_AUDIO_IDS.size() + NEW_ENEMY_2_AUDIO_IDS.size(),
+	audio:
+		CODEX_AUDIO_IDS.size() +
+		SECRET_AUDIO_IDS.size() +
+		SILVER_AUDIO_IDS.size() +
+		NEW_ENEMY_2_AUDIO_IDS.size() +
+		NEW_ENEMY_3_AUDIO_IDS.size(),
 	strings:
 		CODEX_STRING_KEYS.size() +
 		SECRET_STRING_KEYS.size() +
@@ -145,7 +151,11 @@ describe("fortune: contract", () => {
 			tail(COLOR_ROLES as unknown as ReadonlyArray<string>, FORTUNE_ROLES.size(), FLOOR_MOD_AFTER.roles),
 		).toEqual([...FORTUNE_ROLES]);
 		// the Goldling's own role and asset are the enemy slot's (docs/NEW_ENEMIES_2.md NX1's five come after it)
-		expect(ENEMY_ARCHETYPES[ENEMY_ARCHETYPES.size() - 1 - NEW_ENEMY_2_ARCHETYPES.size()]).toBe("golden");
+		expect(
+			ENEMY_ARCHETYPES[
+				ENEMY_ARCHETYPES.size() - 1 - NEW_ENEMY_2_ARCHETYPES.size() - NEW_ENEMY_3_ARCHETYPES.size()
+			],
+		).toBe("golden");
 		expect(has(COLOR_ROLES as unknown as ReadonlyArray<string>, "enemy.golden")).toBe(true);
 	});
 
@@ -246,7 +256,11 @@ describe("fortune: contract", () => {
 		expect(tail(ROOM_CLEAR_STRING_KEYS, 1)).toEqual([HORDE_ROOM_CLEAR_KEY]);
 		// the Goldling's sighting is an archetype's: after the Reaper, before docs/NEW_ENEMIES_2.md NX1's four (then the
 		// affixes)
-		expect(BESTIARY_ARCHETYPES[BESTIARY_ARCHETYPES.size() - 1 - NEW_ENEMY_2_BESTIARY.size()]).toBe("golden");
+		expect(
+			BESTIARY_ARCHETYPES[
+				BESTIARY_ARCHETYPES.size() - 1 - NEW_ENEMY_2_BESTIARY.size() - NEW_ENEMY_3_ARCHETYPES.size()
+			],
+		).toBe("golden");
 		const i = BESTIARY_STRING_KEYS.indexOf(GOLDEN_BESTIARY_KEY);
 		expect([BESTIARY_STRING_KEYS[i - 1], BESTIARY_STRING_KEYS[i + 1]]).toEqual([
 			"bestiary.reaper",

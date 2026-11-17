@@ -36,6 +36,9 @@ const FULL_RING_THRESHOLD = TAU - 1e-9;
  * docs/NEW_ENEMIES.md NE1: the new archetypes need no row. The Bomber's blast (12 @ FULL_RING) is the builds' row
  * below; the Reaper's spiral reads 16 @ FULL_RING, which is a WEB row (fixtures/arc-table.json: the turret sprayer's
  * ring), so a port row for it would shadow V8's values and fail at load (projectilePatterns.ts).
+ *
+ * docs/NEW_ENEMIES_3.md NT1: the Mortar's shrapnel (6 @ FULL_RING) is Ballista's ring row below; the Mender's bolt and
+ * the shell are single bullets. No new row.
  */
 export const PORT_ARC_SOURCES: ReadonlyArray<PortArcSource> = [
 	{ count: 7, spread: 2.4, source: "boss/demonlord.ts CLEAVE (and DOUBLE_CLEAVE's two arcs)" },
@@ -45,7 +48,12 @@ export const PORT_ARC_SOURCES: ReadonlyArray<PortArcSource> = [
 	{ count: 8, spread: TAU, source: "builds/effectsData.ts VOLATILE_BURSTS[0], THRILL_SEEKER_RING (8 @ FULL_RING)" },
 	{ count: 12, spread: TAU, source: "builds/effectsData.ts VOLATILE_BURSTS[1] (12 @ FULL_RING)" },
 	// docs/BUILDS_V2.md BV1 (BVD8): Ballista's bolts, the last-pierce ring and the back fan (BALLISTA_FAN_SPREAD = 1.6)
-	{ count: 6, spread: TAU, source: "builds/effectsData.ts BALLISTA_RINGS[0] (6 @ FULL_RING)" },
+	// (docs/NEW_ENEMIES_3.md NT1: the Mortar's shrapnel reads the same row, so it needs none of its own)
+	{
+		count: 6,
+		spread: TAU,
+		source: "builds/effectsData.ts BALLISTA_RINGS[0]; archetypes/mortar.ts shrapnel (6 @ FULL_RING)",
+	},
 	{ count: 10, spread: TAU, source: "builds/effectsData.ts BALLISTA_RINGS[1], [2] (10 @ FULL_RING)" },
 	{ count: 6, spread: 1.6, source: "builds/effectsData.ts BALLISTA_FANS[0] (6 @ BALLISTA_FAN_SPREAD)" },
 	{ count: 10, spread: 1.6, source: "builds/effectsData.ts BALLISTA_FANS[1], [2] (10 @ BALLISTA_FAN_SPREAD)" },

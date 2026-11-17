@@ -246,7 +246,9 @@ describe("contribution feed attribution", () => {
 	});
 
 	it("solo runs credit player 0", () => {
-		const drv = new FeedDriver(buildEndlessRunConfig(4242, 1), 4242);
+		// Run seed 4244: docs/NEW_ENEMIES_3.md NT6's 17-kind roster made 4242's floor-1 kind the Snatcher (harmless, it
+		// flees; was the Reaper), and the solo walk to its stairs no longer lands a hit; 4244's floor 1 holds snipers.
+		const drv = new FeedDriver(buildEndlessRunConfig(4244, 1), 4244);
 		expect(drv.state.party).toBe(undefined);
 		const w1 = drv.world();
 		drv.walkAll(w1.stairX, w1.stairZ, 1500);

@@ -114,7 +114,8 @@ describe("registry: PORT_BAND_ENEMIES_3 (NXD1)", () => {
 			"warbanner",
 			"golden",
 		]);
-		expect(ids.size()).toBe(FIRST + NEW_IDS.size());
+		// docs/NEW_ENEMIES_3.md NT1: band 7's three (jackal, mender, mortar) number after them.
+		expect(ids.size()).toBe(FIRST + NEW_IDS.size() + 3);
 	});
 });
 
@@ -219,7 +220,8 @@ describe("data blocks (the plan's Design tables)", () => {
 	});
 
 	it("NX6 appends the four room enemies to the room pool, never the brazier (NXD5, NXD9, NXD4)", () => {
-		const n = ENDLESS_ROOM_KINDS.size();
+		// at indices 11-14 (docs/NEW_ENEMIES_3.md NT6 appends its three after them)
+		const n = 15;
 		const tail: unknown[][] = [];
 		for (let i = n - 4; i < n; i++) {
 			const k = ENDLESS_ROOM_KINDS[i];

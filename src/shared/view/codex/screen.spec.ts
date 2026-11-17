@@ -118,13 +118,17 @@ describe("codex grid", () => {
 		// docs/SECRET_ROOMS.md SRD12: the secret rooms' section after the bosses
 		expect(beasts.map((g) => g.group)).toEqual(["enemies", "champions", "bosses", "secrets"]);
 		// docs/NEW_ENEMIES_2.md NXD14: the four later room enemies close the Enemies section (the catalog lists them last)
-		expect(beasts.map((g) => g.tiles.size())).toEqual([16, 4, 2, 1]);
+		// docs/NEW_ENEMIES_3.md NT6: the Mortar, Mender and Jackal after them
+		expect(beasts.map((g) => g.tiles.size())).toEqual([19, 4, 2, 1]);
 		expect(beasts[0].tiles.map((t) => t.id).filter((id, i) => i >= 11)).toEqual([
 			"enemy:golden",
 			"enemy:bulwark",
 			"enemy:chainhook",
 			"enemy:snatcher",
 			"enemy:pyrekeeper",
+			"enemy:mortar",
+			"enemy:mender",
+			"enemy:jackal",
 		]);
 		expect(beasts[2].tiles.map((t) => t.id)).toEqual(["boss:act1", "boss:demonlord"]);
 		let n = 0;

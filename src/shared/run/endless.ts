@@ -185,7 +185,8 @@ export function endlessRunFloor(
  * through it too, so they move, block and steer exactly like an endless floor. A secret floor (docs/SECRET_ROOMS.md
  * SR5): the five movers and blockers are built on its carved dungeon (layout.secret.dungeon: the chamber and the crack
  * cells FLOOR, the crack held shut by its pieces); `roomIdAt` and `dungeon` stay the Forge's (the chamber is in no room
- * either way; the client draws the Forge's floor). Pure.
+ * either way; the client draws the Forge's floor). The config's `roomIdAt` (docs/NEW_ENEMIES_3.md NT2, the Mortar's
+ * room test) is the world's own. Pure.
  */
 export function endlessFloorWorld(
 	layout: EndlessFloorLayout,
@@ -193,6 +194,7 @@ export function endlessFloorWorld(
 ): EndlessRunFloor {
 	const d = layout.dungeon;
 	const sim = layout.secret?.dungeon ?? d;
+	const roomOf = (x: number, z: number) => roomIdAt(d, x, z);
 	const config: SimConfig = {
 		moveResolver: playerMover(sim, mover),
 		isBulletBlocked: bulletBlocker(sim),
@@ -200,6 +202,8 @@ export function endlessFloorWorld(
 		actorMover: actorMover(sim),
 		actorSteerMover: actorSteerMover(sim),
 		encounter: layout.encounter,
+		// docs/NEW_ENEMIES_3.md NT2 (NTD3): the Mortar's room test, the world's own roomIdAt (the Forge's dungeon).
+		roomIdAt: roomOf,
 	};
 	return {
 		floor: layout.floor,
@@ -211,7 +215,7 @@ export function endlessFloorWorld(
 		stairZ: layout.stairwell.z,
 		roomSpawns: layout.roomSpawns,
 		roomSpawnTiles: layout.roomSpawnTiles,
-		roomIdAt: (x, z) => roomIdAt(d, x, z),
+		roomIdAt: roomOf,
 		breakables: layout.breakables,
 		roomAffixes: layout.roomAffixes,
 		breakableLoot: layout.breakableLoot,

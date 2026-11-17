@@ -43,6 +43,11 @@ export const KILL_POINTS: ReadonlyMap<string, number> = new Map<string, number>(
 	["snatcher", 150],
 	["pyrekeeper", 180],
 	["pyre", 30],
+	// Roblox port: the fourth set (docs/NEW_ENEMIES_3.md NT1). A Jackal pays its row each (a pack of three is three
+	// kills); a healed enemy pays its own row once, whatever a Mender healed.
+	["mortar", 120],
+	["mender", 150],
+	["jackal", 70],
 ]);
 /** Kill points of an archetype id not in the table (test archetypes). */
 export const DEFAULT_KILL_POINTS = 50;

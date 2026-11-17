@@ -39,6 +39,11 @@ the owner (2026-11-13 / 2026-11-14): every one as recommended or as built except
 stays `bulwark` everywhere in code). Where this doc says "Bulwark" it means the archetype `bulwark`.
 Merged into `main` 2026-11-14 after docs/SILVER.md: `DAILY.ruleset` 20 -> 21 (Silver took 20), the eight port
 audio IDs after Silver's, the Codex entries after `secret:room`.
+Followed by **docs/NEW_ENEMIES_3.md** (band 7: the Mortar, the Mender and the Jackal pack, 2026-11-16), built on these
+patterns: its six port audio IDs come after `sfx.enemy.pyrelight`, its Codex entries after `enemy:pyrekeeper`,
+`DAILY.ruleset` 21 -> 22, and its NT11 / NT12 copy this doc's NX11 / NX12-lite (`sim/newEnemies3.systems.spec`,
+`run/newEnemies3.validate.spec`, `run/newEnemies3.tuning.spec`). The Shieldwall covers a Mender like any ally (its
+blocked hits never cut the beam), and a Chainhook's drag in a lower slot feeds the Mortar's lead (NT11).
 
 **Pending:**
 

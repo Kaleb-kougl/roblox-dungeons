@@ -210,7 +210,8 @@ export interface ScoreEvents {
 	grazePlayer: number[];
 	/**
 	 * Guard cancels (GP1): per enemy bullet a sword guard erased this tick, its position when erased and the guarding
-	 * player's index. Parallel arrays; size() === guardCancels.
+	 * player's index. Parallel arrays; size() === guardCancels plus one entry per Jackal lunge a guard stopped this tick
+	 * (docs/NEW_ENEMIES_3.md NTD9: a parry for the view, the contact point, never in guardCancels or the GUARD points).
 	 */
 	guardX: number[];
 	guardZ: number[];

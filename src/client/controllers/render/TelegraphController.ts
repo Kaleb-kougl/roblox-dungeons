@@ -18,6 +18,7 @@ import {
 	MARKING_VIEW,
 	RENDER_ORDER,
 	actorFxMarkings,
+	mortarCorpseFlying,
 	bossTelegraphMarkings,
 	clipToSolidCells,
 	demonlordActiveMarkings,
@@ -136,7 +137,8 @@ export class TelegraphController implements OnStart {
 		const clip = solid !== undefined ? this.clip : undefined;
 		for (let i = 0; i < actors.size(); i++) {
 			const a = actors[i];
-			if (a.kind === NO_KIND || a.alive === 0) continue;
+			// docs/NEW_ENEMIES_3.md NTD5 / NT7: a dead Mortar's shell still lands on time, so its ring stays drawn
+			if (a.kind === NO_KIND || (a.alive === 0 && !mortarCorpseFlying(a))) continue;
 			const def = archetypeAt(a.kind);
 			const x = lerp(a.prevX, a.x, alpha);
 			const z = lerp(a.prevZ, a.z, alpha);

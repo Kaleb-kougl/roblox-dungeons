@@ -698,6 +698,11 @@ describe("stormcaller: strikes on real endless floors", () => {
 		// Re-recorded for docs/NEW_ENEMIES_2.md NX6: four more room kinds and a reshuffled roster (14 seeded kinds), so
 		// both scenes' floor 3 rooms buy other kinds (spawns, breakables and state hashes moved); the layouts did not, and
 		// the scenes' strike and skip counts are unchanged. Before: 3/0/6b926521, 6/0/346b5428.
-		expect(pins).toEqual(["3/0/04cfeefe", "6/0/71038c42"]); // check-asset-ids: allow (state hashes)
+		// Re-recorded for docs/NEW_ENEMIES_3.md NT6: three more room kinds and a reshuffled roster (17 seeded kinds): run
+		// 4's floor 3 now holds a Jackal pack (its roster swarmer / sniper / jackal / charger), run 23's co-op floor 3
+		// buys slime / summoner / reaper (was charger / imp / reaper); spawns and the breakables around them moved, and
+		// with the NX6 rosters both floors spend exactly their old spawns (the roster's move); layouts, strike and skip
+		// counts unchanged. Before: 3/0/04cfeefe, 6/0/71038c42.
+		expect(pins).toEqual(["3/0/31c1996c", "6/0/eb11734f"]); // check-asset-ids: allow (state hashes)
 	});
 });

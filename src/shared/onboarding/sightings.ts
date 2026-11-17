@@ -3,7 +3,8 @@
  * onboarding document's optional `seen` list (doc.ts) and named by the client's first-sighting toast. A sighting id is a
  * new archetype's id (`imp`, `slime`, `summoner`; a `slime.small` counts as `slime`; docs/NEW_ENEMIES.md's `bomber`,
  * `charger`, `stormcaller`, `warbanner`, `reaper`; docs/FORTUNE.md's Goldling `golden`; docs/NEW_ENEMIES_2.md's
- * `bulwark`, `chainhook`, `snatcher`, `pyrekeeper`) or `affix.<id>` for an elite affix
+ * `bulwark`, `chainhook`, `snatcher`, `pyrekeeper`; docs/NEW_ENEMIES_3.md's `mortar`, `mender`, `jackal`) or `affix.<id>`
+ * for an elite affix
  * (`affix.hulking`, ...), or `pellet.power` for the power pellet (docs/PELLETS.md PL14), or `golden.rumour` for the first
  * Goldling rumour heard (docs/GOLDLING_RUMOURS.md GR7), or `secret.crack` for the first knock on a secret room's
  * crack (docs/SECRET_ROOMS.md SRD5). Its toast line is the theme string `bestiary.<sighting id>` (shared/theme
@@ -29,6 +30,10 @@ export const SIGHTING_IDS: ReadonlyArray<string> = [
 	"chainhook",
 	"snatcher",
 	"pyrekeeper",
+	// docs/NEW_ENEMIES_3.md NT1 (NTD13): the fourth endless set (archetypes: before the affixes)
+	"mortar",
+	"mender",
+	"jackal",
 	"affix.hulking",
 	"affix.swift",
 	"affix.shielded",

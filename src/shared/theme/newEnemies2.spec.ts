@@ -36,6 +36,7 @@ import {
 import { THEME_PACKS } from "./packs";
 import { PLACEHOLDER_MANIFEST } from "./packs/placeholder";
 import { VALE_FLOOR_HEX, buildValeManifest } from "./packs/vale";
+import { NEW_ENEMY_3_ARCHETYPES, NEW_ENEMY_3_AUDIO_IDS } from "./newEnemies3";
 import { PLACEHOLDER_VISUALS } from "./placeholders";
 import { COLOR_ROLES } from "./types";
 import { deepClone, sortedKeys, type Obj } from "./util";
@@ -61,10 +62,10 @@ const fixed2 = (n: number) => "%.2f".format(n);
 /** The placeholder guard's lowest floor contrast, nearest colour and its CIE76 difference, as measured. */
 const MEASURED = { floor: "5.04", diff: "45.2", nearest: "affix.hulking" } as const;
 
-/** The last `n` entries of `list`. */
-function tail(list: ReadonlyArray<string>, n: number): string[] {
+/** The `n` entries of `list` before its last `skip` (docs/NEW_ENEMIES_3.md NT1 appended after these). */
+function tail(list: ReadonlyArray<string>, n: number, skip = 0): string[] {
 	const out = new Array<string>();
-	for (let i = list.size() - n; i < list.size(); i++) out.push(list[i]);
+	for (let i = list.size() - skip - n; i < list.size() - skip; i++) out.push(list[i]);
 	return out;
 }
 
@@ -81,8 +82,10 @@ function packsToCheck(): Array<[string, Obj]> {
 describe("new enemies 2: contract", () => {
 	it("appends the five to ENEMY_ARCHETYPES (existing order kept), each a required asset, role and name", () => {
 		expect([...NEW_ENEMY_2_ARCHETYPES]).toEqual(["bulwark", "chainhook", "snatcher", "pyrekeeper", "pyre"]);
-		expect(tail(ENEMY_ARCHETYPES, NEW_ENEMY_2_ARCHETYPES.size())).toEqual([...NEW_ENEMY_2_ARCHETYPES]);
-		expect(ENEMY_ARCHETYPES[ENEMY_ARCHETYPES.size() - 1 - NEW_ENEMY_2_ARCHETYPES.size()]).toBe("golden");
+		// docs/NEW_ENEMIES_3.md NT1's three come after them
+		const after = NEW_ENEMY_3_ARCHETYPES.size();
+		expect(tail(ENEMY_ARCHETYPES, NEW_ENEMY_2_ARCHETYPES.size(), after)).toEqual([...NEW_ENEMY_2_ARCHETYPES]);
+		expect(ENEMY_ARCHETYPES[ENEMY_ARCHETYPES.size() - 1 - after - NEW_ENEMY_2_ARCHETYPES.size()]).toBe("golden");
 		for (const a of NEW_ENEMY_2_ARCHETYPES) {
 			expect([a, REQUIRED_ASSET_IDS.includes(`enemy.${a}`), slotFor(`enemy.${a}`)?.slot]).toEqual([
 				a,
@@ -107,7 +110,7 @@ describe("new enemies 2: contract", () => {
 		expect((COLOR_ROLES as ReadonlyArray<string>).includes(ENEMY_GUARD_ROLE)).toBe(true);
 	});
 
-	it("the eight sounds are PORT_AUDIO_EVENTS' last, required, sfx", () => {
+	it("the eight sounds are PORT_AUDIO_EVENTS' last before docs/NEW_ENEMIES_3.md's six, required, sfx", () => {
 		expect([...NEW_ENEMY_2_AUDIO_IDS]).toEqual([
 			"sfx.enemy.block",
 			"sfx.enemy.guardbreak",
@@ -118,19 +121,23 @@ describe("new enemies 2: contract", () => {
 			"sfx.pellet.return",
 			"sfx.enemy.pyrelight",
 		]);
-		expect(tail(PORT_AUDIO_EVENTS, NEW_ENEMY_2_AUDIO_IDS.size())).toEqual([...NEW_ENEMY_2_AUDIO_IDS]);
+		expect(tail(PORT_AUDIO_EVENTS, NEW_ENEMY_2_AUDIO_IDS.size(), NEW_ENEMY_3_AUDIO_IDS.size())).toEqual([
+			...NEW_ENEMY_2_AUDIO_IDS,
+		]);
 		for (const id of NEW_ENEMY_2_AUDIO_IDS)
 			expect([id, REQUIRED_ASSET_IDS.includes(id), slotFor(id)?.soundGroup]).toEqual([id, true, "sfx"]);
 	});
 
 	it("four first-sighting lines and sighting ids, in the archetypes' block before the affixes; none for the brazier", () => {
 		expect([...NEW_ENEMY_2_BESTIARY]).toEqual(["bulwark", "chainhook", "snatcher", "pyrekeeper"]);
-		expect(tail(BESTIARY_ARCHETYPES, NEW_ENEMY_2_BESTIARY.size())).toEqual([...NEW_ENEMY_2_BESTIARY]);
+		// docs/NEW_ENEMIES_3.md NT1's three come after them, still before the affixes
+		const after = NEW_ENEMY_3_ARCHETYPES.size();
+		expect(tail(BESTIARY_ARCHETYPES, NEW_ENEMY_2_BESTIARY.size(), after)).toEqual([...NEW_ENEMY_2_BESTIARY]);
 		const firstAffix = BESTIARY_STRING_KEYS.indexOf("bestiary.affix.hulking");
 		const firstAffixSighting = SIGHTING_IDS.indexOf("affix.hulking");
 		for (let k = 0; k < NEW_ENEMY_2_BESTIARY.size(); k++) {
 			const a = NEW_ENEMY_2_BESTIARY[k];
-			const back = NEW_ENEMY_2_BESTIARY.size() - k;
+			const back = NEW_ENEMY_2_BESTIARY.size() - k + after;
 			expect([a, BESTIARY_STRING_KEYS[firstAffix - back]]).toEqual([a, bestiaryArchetypeKey(a)]);
 			expect([a, SIGHTING_IDS[firstAffixSighting - back]]).toEqual([a, a]);
 			expect([a, REQUIRED_STRING_KEYS.includes(`bestiary.${a}`)]).toEqual([a, true]);

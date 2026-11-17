@@ -53,3 +53,9 @@ export * from "./pyre";
 export * from "./pyrekeeper";
 export * from "./snatcher";
 export * from "./snatcherField";
+
+// --- Roblox port: the fourth set of endless room enemies (band PORT_BAND_ENEMIES_4: numbered after band 6;
+// docs/NEW_ENEMIES_3.md)
+export * from "./jackal";
+export * from "./mender";
+export * from "./mortar";

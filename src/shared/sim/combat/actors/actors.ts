@@ -276,6 +276,34 @@ export function killActor(ctx: SimCtx, a: ActorState, quiet = false): void {
 	if (def.onDeath !== undefined) def.onDeath(ctx, a, quiet);
 }
 
+/**
+ * Heals a live actor by `amount` hp, never above hpMax (docs/NEW_ENEMIES_3.md NT3: the Mender's pulse, its only
+ * caller); see SimCtx.healActor. Returns the hp restored (0 for a free slot, a corpse, a full actor or amount <= 0).
+ * A plain write to the hashed hp: never through damageActor, so no damage cap bucket, hit flash, onHit, score, combo,
+ * Vampire Fang or build proc sees it (a healed enemy pays its kill points once, when it dies). Feed (unhashed):
+ * events.heals += the hp restored, one CombatState.healEvents entry (the actor's slot, the hp).
+ */
+export function healActor(ctx: SimCtx, a: ActorState, amount: number): number {
+	if (a.kind === NO_KIND || a.alive === 0 || !(amount > 0)) return 0;
+	const room = a.hpMax - a.hp;
+	if (!(room > 0)) return 0;
+	const n = amount < room ? amount : room;
+	a.hp += n;
+	ctx.events.heals += n;
+	const actors = ctx.combat.actors;
+	let slot = -1;
+	for (let i = 0; i < actors.size(); i++) {
+		if (actors[i] === a) {
+			slot = i;
+			break;
+		}
+	}
+	const e = ctx.combat.healEvents;
+	e.healSlot.push(slot);
+	e.healAmount.push(n);
+	return n;
+}
+
 /** Revives a dead actor in place with full hp. */
 export function reviveActor(a: ActorState): void {
 	if (a.kind === NO_KIND) return;
@@ -295,7 +323,8 @@ export function freeActor(ctx: SimCtx, a: ActorState): void {
 /**
  * The actor phase of stepCombat: every present actor in slot order, except those spawned this tick.
  * prev = position; flash counts down; alive -> def.step; dead -> deadTicks += 1, then def.stepDead or the corpse timer (elite affixes: a Vengeful corpse whose ring is pending
- * is held past it, affixHoldsCorpse; never through def.stepDead, which marks a reviver).
+ * is held past it, affixHoldsCorpse; never through def.stepDead, which marks a reviver). Without stepDead, an optional
+ * def.stepCorpse runs first and may hold the slot past the timer too (docs/NEW_ENEMIES_3.md NT2: a dead Mortar's shell).
  * A `while` loop: archetypes may append slots mid-loop (runtime spawns), and the bound must be re-read like JS does
  * (the new slots are skipped anyway: spawnTick === tick).
  */
@@ -327,6 +356,8 @@ export function stepActors(ctx: SimCtx): void {
 			a.deadTicks++;
 			if (def.stepDead !== undefined) def.stepDead(ctx, a);
 			else if (
+				// docs/NEW_ENEMIES_3.md NT2 (NTD5): a corpse hook that may hold the slot (the Mortar's shell in flight).
+				!(def.stepCorpse !== undefined && def.stepCorpse(ctx, a)) &&
 				a.deadTicks >= (def.data.corpseTicks ?? CORPSE_TICKS) &&
 				!(affixes && affixHoldsCorpse(ctx.state, slot, a))
 			)

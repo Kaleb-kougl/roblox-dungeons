@@ -21,9 +21,12 @@ import {
 	DETONATION_VIEW,
 	DetonationWatch,
 	NEW_ENEMY_2_BURST_LOOKS,
+	NEW_ENEMY_3_BURST_LOOKS,
 	RENDER_ORDER,
 	newEnemy2Bursts,
+	newEnemy3Bursts,
 	type NewEnemy2BurstAt,
+	type NewEnemy3BurstAt,
 	type SnatcherPelletSource,
 	degToRad,
 	floorStudsY,
@@ -51,6 +54,7 @@ import {
 	type ChipBurst,
 	type NearMissFrame,
 	type NewEnemy2FrameSource,
+	type NewEnemy3FrameSource,
 	type ParticleWriter,
 } from "shared/view/fx";
 import { PELLETS_VIEW, PelletFlyIns, type PelletPowerTaken } from "shared/view/pellets";
@@ -183,6 +187,9 @@ export class ParticleController implements OnStart, ParticleWriter {
 	 */
 	private readonly newEnemy2Colors = new Array<number>();
 	private readonly newEnemy2Scratch = new Array<NewEnemy2BurstAt>();
+	/** The fourth set's bursts (docs/NEW_ENEMIES_3.md NT7): per NewEnemy3Burst kind, its palette index. */
+	private readonly newEnemy3Colors = new Array<number>();
+	private readonly newEnemy3Scratch = new Array<NewEnemy3BurstAt>();
 	private readonly moveParts = new Array<BasePart>();
 	private readonly moveCFrames = new Array<CFrame>();
 	private folder: Folder | undefined;
@@ -259,6 +266,11 @@ export class ParticleController implements OnStart, ParticleWriter {
 		// The third endless set's bursts (docs/NEW_ENEMIES_2.md NX7), one palette entry per burst kind, appended last.
 		for (const look of NEW_ENEMY_2_BURST_LOOKS) {
 			this.newEnemy2Colors.push(this.palette.size());
+			this.palette.push(pack.color(look.role));
+		}
+		// The fourth set's (docs/NEW_ENEMIES_3.md NT7): shell dust, heal sparks, beam snaps, appended last.
+		for (const look of NEW_ENEMY_3_BURST_LOOKS) {
+			this.newEnemy3Colors.push(this.palette.size());
 			this.palette.push(pack.color(look.role));
 		}
 
@@ -519,6 +531,7 @@ export class ParticleController implements OnStart, ParticleWriter {
 		this.blinkPuffs(ctx.run.state, settings);
 		this.detonationBursts(ctx.run.state, settings);
 		this.newEnemy2Frame(ctx.run.newEnemies2, ctx.run.pellets, ctx.run.state.tick, settings);
+		this.newEnemy3Frame(ctx.run.newEnemies3, ctx.run.state.tick, settings);
 		this.system.update(dt, settings);
 		this.flyIns.update(dt);
 		this.used = 0;
@@ -607,6 +620,22 @@ export class ParticleController implements OnStart, ParticleWriter {
 			const b = out[i];
 			const look = NEW_ENEMY_2_BURST_LOOKS[b.kind];
 			const color = this.newEnemy2Colors[b.kind];
+			if (look === undefined || color === undefined) continue;
+			this.system.chips(b.x, b.z, color, look.shape, burstSeed(i, tick, look.salt), settings);
+		}
+	}
+
+	/**
+	 * The fourth endless set's bursts this frame (docs/NEW_ENEMIES_3.md NT7): dust where a Mortar's shell landed, heal
+	 * sparks on an enemy a Mender healed, a snap where a beam was cut.
+	 */
+	private newEnemy3Frame(events: NewEnemy3FrameSource, tick: number, settings: Readonly<JuiceSettings>): void {
+		const out = this.newEnemy3Scratch;
+		const n = newEnemy3Bursts(events, out);
+		for (let i = 0; i < n; i++) {
+			const b = out[i];
+			const look = NEW_ENEMY_3_BURST_LOOKS[b.kind];
+			const color = this.newEnemy3Colors[b.kind];
 			if (look === undefined || color === undefined) continue;
 			this.system.chips(b.x, b.z, color, look.shape, burstSeed(i, tick, look.salt), settings);
 		}

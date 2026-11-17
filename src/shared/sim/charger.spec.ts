@@ -730,6 +730,11 @@ const PIN_COUNTS = [3, 0, 2, 3, 0];
 // Re-recorded for docs/NEW_ENEMIES_2.md NX6: four more room kinds and a reshuffled roster (14 seeded kinds), so floor 3's
 // other rooms buy other kinds (spawns, breakables and the state hash moved); the layout and the counts did not. Before:
 // b44f15ea.
-const PIN_HASH = "2fcc46ea"; // check-asset-ids: allow (state hash)
+// Re-recorded for docs/NEW_ENEMIES_3.md NT6: three more room kinds and a reshuffled roster (17 seeded kinds): run 4's
+// floor 3 roster is swarmer / sniper / jackal / charger (was swarmer / stormcaller / bruiser / sniper), so its rooms hold
+// a Jackal pack and Chargers and the breakables placed around them moved (39 pieces, were 36); with the NX6 roster the
+// same floor spends exactly its old spawns, so the move is the roster's; the layout and the counts did not move.
+// Before: 2fcc46ea.
+const PIN_HASH = "5332ee3f"; // check-asset-ids: allow (state hash)
 const PIN_ARENA = [12, STATE_RETURN, 11.062568325627446, 8, 3663131635];
 const PIN_ARENA_HASH = "80069968"; // check-asset-ids: allow (state hash)

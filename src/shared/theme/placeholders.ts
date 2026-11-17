@@ -150,6 +150,12 @@ export const PLACEHOLDER_PROPORTIONS = {
 	pyrekeeper: [0.5, 1, 0.5],
 	/** The Pyre-keeper's brazier (`pyre`, NX1): a low wide bowl (2.5 x 1.5 x 2.5 studs). */
 	pyre: [0.625, 0.375, 0.625],
+	/** Mortar (docs/NEW_ENEMIES_3.md NT1): a thin tall post, its bow drawn upward (1.25 x 3.5 x 1.25 studs). */
+	mortar: [0.3125, 0.875, 0.3125],
+	/** Mender (NT1): a short robe, shorter than the Pyre-keeper's (2 x 2.75 x 2 studs). */
+	mender: [0.5, 0.6875, 0.5],
+	/** Jackal (NT1): a low wedge pointing along its facing, smaller than the Charger's (2 x 1.5 x 3 studs). */
+	jackal: [0.5, 0.375, 0.75],
 	/** Bosses: a large block, the full 48 x 48 cell wide, 3/4 tall (Mother Mayhem, boss.act1, and boss.1..5). */
 	boss: [1, 0.75, 1],
 	/**
@@ -313,6 +319,9 @@ const ENEMY_SHAPES: Record<EnemyArchetype, { shape: PlaceholderShape; proportion
 	snatcher: { shape: "Cone", proportions: PLACEHOLDER_PROPORTIONS.snatcher },
 	pyrekeeper: { shape: "Capsule", proportions: PLACEHOLDER_PROPORTIONS.pyrekeeper },
 	pyre: { shape: "Cylinder", proportions: PLACEHOLDER_PROPORTIONS.pyre },
+	mortar: { shape: "Cylinder", proportions: PLACEHOLDER_PROPORTIONS.mortar },
+	mender: { shape: "Capsule", proportions: PLACEHOLDER_PROPORTIONS.mender },
+	jackal: { shape: "Wedge", proportions: PLACEHOLDER_PROPORTIONS.jackal },
 };
 
 const enemyVisual = (archetype: EnemyArchetype): PlaceholderVisual =>

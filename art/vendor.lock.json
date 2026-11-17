@@ -57,6 +57,76 @@
 			"bytes": 112714
 		},
 		{
+			"path": "demons-topdown/Spritesheets with seperated shadows and effects/Demon Beast 2/BackFlip 1.png",
+			"sha256": "4b448666cb12b22fd034e59b3c8950816fd446e63e20e8551465ba86c0154b6e",
+			"bytes": 134917
+		},
+		{
+			"path": "demons-topdown/Spritesheets with seperated shadows and effects/Demon Beast 2/Crouch.png",
+			"sha256": "24b7a123d3b9f62834c8a3f687bace43eb2aa128219a43010692498f1013f8aa",
+			"bytes": 80804
+		},
+		{
+			"path": "demons-topdown/Spritesheets with seperated shadows and effects/Demon Beast 2/Die 1.png",
+			"sha256": "ae9765f527d3ccb880693f1cf269cec2a6a8e500f933a9cc7c5abf5c36b8ccbb",
+			"bytes": 114977
+		},
+		{
+			"path": "demons-topdown/Spritesheets with seperated shadows and effects/Demon Beast 2/Idle.png",
+			"sha256": "087115b054543bd79c138d5fa20fdc72778f5c7ce5b90d66c9dbbbb9af493b2f",
+			"bytes": 93780
+		},
+		{
+			"path": "demons-topdown/Spritesheets with seperated shadows and effects/Demon Beast 2/Run Attack.png",
+			"sha256": "5b03facfcf917ab5fc964663dcdcadd2a89dda9e1bc45bf99b72f75c886b93e9",
+			"bytes": 125486
+		},
+		{
+			"path": "demons-topdown/Spritesheets with seperated shadows and effects/Demon Beast 2/Run.png",
+			"sha256": "a4650805496b9ddb42514333580f1dfb20e020824d2731034a4eb86b6ba8210d",
+			"bytes": 117571
+		},
+		{
+			"path": "demons-topdown/Spritesheets with seperated shadows and effects/Demon Beast 2/Shadows/BackFlip 1.png",
+			"sha256": "cd7d4046290a710c1f6e63fc2cd023f3cc70772a8b7679d11510c0706eb759d8",
+			"bytes": 29978
+		},
+		{
+			"path": "demons-topdown/Spritesheets with seperated shadows and effects/Demon Beast 2/Shadows/Crouch.png",
+			"sha256": "25bb4bcaf64c008f5a21f0db34f4f4b3a7b2a25cb2344164c62f333207f20524",
+			"bytes": 22053
+		},
+		{
+			"path": "demons-topdown/Spritesheets with seperated shadows and effects/Demon Beast 2/Shadows/Die 1.png",
+			"sha256": "fee5ab332926690d43aab384c56f802176e1315f934d755880fa7852db371782",
+			"bytes": 31354
+		},
+		{
+			"path": "demons-topdown/Spritesheets with seperated shadows and effects/Demon Beast 2/Shadows/Idle.png",
+			"sha256": "8d8c7ceb9dde6ee505cb6775eda342bdb84c66eb583f68ca9c9c09d033c04e1c",
+			"bytes": 21965
+		},
+		{
+			"path": "demons-topdown/Spritesheets with seperated shadows and effects/Demon Beast 2/Shadows/Run Attack.png",
+			"sha256": "c33763d3d1556643f8a6cc1ebee86392793fa00b8d23ac6f4aef10d00a851ea7",
+			"bytes": 28879
+		},
+		{
+			"path": "demons-topdown/Spritesheets with seperated shadows and effects/Demon Beast 2/Shadows/Run.png",
+			"sha256": "be82e7e29c7cc60c353c0f01ebe4d7d109b9fc413a97e5df31bd0a0d5ae8f188",
+			"bytes": 29388
+		},
+		{
+			"path": "demons-topdown/Spritesheets with seperated shadows and effects/Demon Beast 2/Shadows/TakeDamage 1.png",
+			"sha256": "ff150729c64a965b6f25674d9e1d8b4f4ef72f55a98cb88fbcef30b1cc78f49f",
+			"bytes": 28315
+		},
+		{
+			"path": "demons-topdown/Spritesheets with seperated shadows and effects/Demon Beast 2/TakeDamage 1.png",
+			"sha256": "68e5cccde2474719914cfd51c085413bc1203b7e9e9cd14f6e74f8720f4e5968",
+			"bytes": 114643
+		},
+		{
 			"path": "demons-topdown/Spritesheets with seperated shadows and effects/Demon Beast 3/Attack 4.png",
 			"sha256": "16381ca7b6b3e33d31686faefe66360661b382df7ec371f31208cb5f6daf36a8",
 			"bytes": 149603
@@ -377,6 +447,56 @@
 			"bytes": 96563
 		},
 		{
+			"path": "demons-topdown/Spritesheets with seperated shadows and effects/Demon Spawn 6/Attack 4.png",
+			"sha256": "323c7e47b176d970f3f58754746e103d0fc47b3c255984ae93c2b0a9bc70fa58",
+			"bytes": 73212
+		},
+		{
+			"path": "demons-topdown/Spritesheets with seperated shadows and effects/Demon Spawn 6/Die 1.png",
+			"sha256": "cb038ccd0f9df922ba3b8aaf19fd74eb9ef6db5b6bf2813e332242994c375c52",
+			"bytes": 74279
+		},
+		{
+			"path": "demons-topdown/Spritesheets with seperated shadows and effects/Demon Spawn 6/Idle 12.png",
+			"sha256": "8ac673689352c3f6140502489e769c5fbc3f1ddb66c0b654adefdf2b89a02298",
+			"bytes": 54156
+		},
+		{
+			"path": "demons-topdown/Spritesheets with seperated shadows and effects/Demon Spawn 6/Shadows/Attack 4.png",
+			"sha256": "d809b8a2ca691563ff836524fa29afad8222ebabf94c4c8ec74865958509944f",
+			"bytes": 21596
+		},
+		{
+			"path": "demons-topdown/Spritesheets with seperated shadows and effects/Demon Spawn 6/Shadows/Die 1.png",
+			"sha256": "3c36eeab36746fadd2678f0a9eb3d17c2362fa9423056cfecaccd7c3a929075c",
+			"bytes": 28078
+		},
+		{
+			"path": "demons-topdown/Spritesheets with seperated shadows and effects/Demon Spawn 6/Shadows/Idle 12.png",
+			"sha256": "8a287ad854aa2c248e24518fd4125764b370868d59fae08f601616728c1f8375",
+			"bytes": 19316
+		},
+		{
+			"path": "demons-topdown/Spritesheets with seperated shadows and effects/Demon Spawn 6/Shadows/TakeDamage 1.png",
+			"sha256": "73a8a390c0a1550f25676d179ac91d30e9fcbbe87fa7bc0b730919e5ff0b0f7c",
+			"bytes": 26328
+		},
+		{
+			"path": "demons-topdown/Spritesheets with seperated shadows and effects/Demon Spawn 6/Shadows/Walk.png",
+			"sha256": "4e04d70aeb9c3dbd5ab5f4fee15db9884e572da416569acecef67711e98ba368",
+			"bytes": 26287
+		},
+		{
+			"path": "demons-topdown/Spritesheets with seperated shadows and effects/Demon Spawn 6/TakeDamage 1.png",
+			"sha256": "b3eec1e098554e99517173a8fc55698dd9b82368161d7aa41feff8d3ad1687c9",
+			"bytes": 72545
+		},
+		{
+			"path": "demons-topdown/Spritesheets with seperated shadows and effects/Demon Spawn 6/Walk.png",
+			"sha256": "dbaf64c1a90148ed535bc64c42c0e895bdcad58f0b8d1b44b8fe1c08366cfb05",
+			"bytes": 73729
+		},
+		{
 			"path": "demons-topdown/Spritesheets with seperated shadows and effects/Demon Spawn 7/Attack 4.png",
 			"sha256": "6ae7edb1ca45126d3890f7cd00af615ed7f0c76c32bb6061858b41167d7facf4",
 			"bytes": 99553
@@ -565,6 +685,66 @@
 			"path": "demons-topdown/Spritesheets with seperated shadows and effects/Demon spawn 1/Walk.png",
 			"sha256": "f7acfb623d5604850454e86b36cd673e56a3eef8b3ecad5fd177e82aeeeb41a9",
 			"bytes": 73026
+		},
+		{
+			"path": "demons-topdown/Spritesheets with seperated shadows and effects/Imp 10/Attack 2.png",
+			"sha256": "63ea919fd6a75b2d89b27af099f4d443c23840a6b9996c6dd3e135c9c912eadf",
+			"bytes": 88454
+		},
+		{
+			"path": "demons-topdown/Spritesheets with seperated shadows and effects/Imp 10/Attack 3.png",
+			"sha256": "8b5444b50943312bcb151171f359bb6e0c5588034f82d57081d69463e9ecbe9a",
+			"bytes": 93079
+		},
+		{
+			"path": "demons-topdown/Spritesheets with seperated shadows and effects/Imp 10/Die 1.png",
+			"sha256": "f62b947acabc3d6f1af20f0978d96a06fff4b658cc50e4defab37c0d42bae99f",
+			"bytes": 76853
+		},
+		{
+			"path": "demons-topdown/Spritesheets with seperated shadows and effects/Imp 10/Idle.png",
+			"sha256": "e5b9008e36ac7ccc0c997558bbac8392ad2b50d7beaf4cd0224bc26ad970407f",
+			"bytes": 44237
+		},
+		{
+			"path": "demons-topdown/Spritesheets with seperated shadows and effects/Imp 10/Shadows/Attack 2.png",
+			"sha256": "6fb7dfb5792c10694c13f21f350dc727e4acd46ca069dd1cbb13d449303b5c9d",
+			"bytes": 22770
+		},
+		{
+			"path": "demons-topdown/Spritesheets with seperated shadows and effects/Imp 10/Shadows/Attack 3.png",
+			"sha256": "520673efb904049c15df06d812c9b04565f4dd38973ec099b6cdd3c2be8fc1b3",
+			"bytes": 23609
+		},
+		{
+			"path": "demons-topdown/Spritesheets with seperated shadows and effects/Imp 10/Shadows/Die 1.png",
+			"sha256": "a1c00e4dbd4b6b97dda2695ddbdb94f4cdfa657895ec0ddb12591ffb321b3a9b",
+			"bytes": 22648
+		},
+		{
+			"path": "demons-topdown/Spritesheets with seperated shadows and effects/Imp 10/Shadows/Idle.png",
+			"sha256": "4718c95dbdb635fc0df1d5ff7cdebab4e544054e1699360bde043ddf3203111a",
+			"bytes": 14021
+		},
+		{
+			"path": "demons-topdown/Spritesheets with seperated shadows and effects/Imp 10/Shadows/TakeDamage 1.png",
+			"sha256": "ed79f8ffbc5858052b9e271762b74f1463aecdd55f9dd25cafd3ef95d7e7751a",
+			"bytes": 22460
+		},
+		{
+			"path": "demons-topdown/Spritesheets with seperated shadows and effects/Imp 10/Shadows/Walk.png",
+			"sha256": "0b6b19e745ad38c9f9bab478d23779ef39c361527560eafc8eeceb5dce008216",
+			"bytes": 20918
+		},
+		{
+			"path": "demons-topdown/Spritesheets with seperated shadows and effects/Imp 10/TakeDamage 1.png",
+			"sha256": "b5e1ba7d424e8e31868ab14d648cd74675c77020842bc958d7c8f453dd5f7595",
+			"bytes": 77982
+		},
+		{
+			"path": "demons-topdown/Spritesheets with seperated shadows and effects/Imp 10/Walk.png",
+			"sha256": "9e72308817eb341859006b4279f4a731e2ae864f7ce74a0b2e2f9ec885deb86f",
+			"bytes": 81581
 		},
 		{
 			"path": "demons-topdown/Spritesheets with seperated shadows and effects/Imp 3/Attack 4.png",

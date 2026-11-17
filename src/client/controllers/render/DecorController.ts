@@ -519,7 +519,15 @@ export class DecorController implements OnStart {
 		if (!paused) {
 			let f = this.directorFrame;
 			if (f === undefined) {
-				f = { state, config: ctx.config, events: ctx.run.frameEvents, scene, dt, motion };
+				f = {
+					state,
+					config: ctx.config,
+					events: ctx.run.frameEvents,
+					scene,
+					dt,
+					motion,
+					playerIndex: ctx.localIndex,
+				};
 				this.directorFrame = f;
 			} else {
 				f.state = state;
@@ -528,6 +536,7 @@ export class DecorController implements OnStart {
 				f.scene = scene;
 				f.dt = dt;
 				f.motion = motion;
+				f.playerIndex = ctx.localIndex;
 			}
 			view = this.director.update(f);
 		}

@@ -2,7 +2,8 @@
 // clock: the floor cue once per floor after floorDelaySec of unfrozen time (never under a draft or the caller's hold),
 // the room cue once on the first unfrozen ROOM frame, the floor cue skipped when the room came first, a new floor
 // re-arms (and reset), the chip from the first cue on (hidden while frozen, ROOM after the room clears while it still
-// hides, gone once it is out), the view player in its room, and read-only on the state.
+// hides and only while the view player is in its room, FLOOR again outside it, gone once it is out), the view player in
+// its room, and read-only on the state.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { gridToWorld } from "shared/dungeon";
 import { buildDevRunConfig, buildEndlessRunConfig } from "shared/run";
@@ -231,6 +232,37 @@ describe("Goldling rumours: the clock (GR5)", () => {
 			GoldenRumourPhase.NONE,
 			GoldenRumourPhase.NONE,
 		]);
+	});
+
+	it("the chip reads ROOM only while the view player is in its room: FLOOR once they leave, ROOM again on return", () => {
+		const r = devRun();
+		const c = new GoldenRumourClock();
+		const p = r.s.player;
+		const [sx, sz] = [p.x, p.z];
+		enterRoom(r);
+		c.step(r.s, DT);
+		expect([c.roomCue, c.chip()]).toEqual([true, GoldenRumourPhase.ROOM]);
+		// back at the spawn, out of the room: still hiding (phase ROOM), but the chip no longer says "here"
+		p.x = sx;
+		p.z = sz;
+		p.prevX = sx;
+		p.prevZ = sz;
+		tick(r);
+		expect(goldenRumourInRoom(r.s, 0)).toBe(false);
+		c.step(r.s, DT);
+		expect([c.floorCue, c.roomCue, c.chip(), c.phase()]).toEqual([
+			false,
+			false,
+			GoldenRumourPhase.FLOOR,
+			GoldenRumourPhase.ROOM,
+		]);
+		// back in: ROOM again, with no second room cue
+		enterRoom(r);
+		c.step(r.s, DT);
+		expect([c.floorCue, c.roomCue, c.chip()]).toEqual([false, false, GoldenRumourPhase.ROOM]);
+		// a bad view index falls back to player 0, as goldenRumourInRoom does
+		c.step(r.s, DT, false, 7);
+		expect(c.chip()).toBe(GoldenRumourPhase.ROOM);
 	});
 
 	it("a second floor re-arms it: its own floor cue after its own delay; reset re-arms the same floor", () => {

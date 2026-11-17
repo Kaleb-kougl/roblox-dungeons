@@ -30,7 +30,7 @@ import { tutorialScalingFloor } from "../tutorial/tutorial";
 import { archetypeAt, archetypeIndex } from "./actors/registry";
 import { AiState, type ActorState, type ArchetypeData, type ArchetypeDef } from "./actors/types";
 import { EMPTY_ENCOUNTER, roomAt, type EncounterConfig, type EncounterRoom } from "./actors/encounter";
-import { damageActor, freeActor, killActor, reviveActor, spawnActor } from "./actors/actors";
+import { damageActor, freeActor, healActor, killActor, reviveActor, spawnActor } from "./actors/actors";
 import { lineOfSight } from "./actors/helpers";
 import { teamEnemyBulletSpeedMultiplier } from "../progression/runMods";
 import type { WeaponSlotState, WeaponsState } from "./weapons/types";
@@ -227,6 +227,13 @@ export class SimCtx {
 	damageActor(actor: ActorState, amount: number): number {
 		return damageActor(this, actor, amount);
 	}
+	/**
+	 * Heals a live actor by `amount`, never above hpMax (the Mender, docs/NEW_ENEMIES_3.md NT3). Never through
+	 * damageActor (no cap, flash, score, combo or proc); events.heals and CombatState.healEvents. Returns hp restored.
+	 */
+	healActor(actor: ActorState, amount: number): number {
+		return healActor(this, actor, amount);
+	}
 	/** Kills a live actor at once (hp 0, onDeath, events.actorsKilled). */
 	killActor(actor: ActorState): void {
 		killActor(this, actor);
@@ -369,6 +376,14 @@ export class SimCtx {
 	/** True when nothing bullet-blocking lies on the segment between the two points (tile DDA; true without a blocker). */
 	lineOfSight(x0: number, z0: number, x1: number, z1: number): boolean {
 		return lineOfSight(this.config.isBulletBlocked, x0, z0, x1, z1);
+	}
+	/**
+	 * The room id of the FLOOR cell under (x, z) (config.roomIdAt: the exact cell rule, a doorway or corridor cell is
+	 * -1), or -1 without the callback (docs/NEW_ENEMIES_3.md NT2).
+	 */
+	roomIdAt(x: number, z: number): number {
+		const f = this.config.roomIdAt;
+		return f !== undefined ? f(x, z) : -1;
 	}
 	/** The encounter room containing (x, z), or undefined. */
 	roomAt(x: number, z: number): EncounterRoom | undefined {

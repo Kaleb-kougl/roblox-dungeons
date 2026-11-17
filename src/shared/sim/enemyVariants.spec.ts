@@ -83,6 +83,10 @@ describe("registry: PORT_BAND_ENEMIES", () => {
 			"pyre",
 			"pyrekeeper",
 			"snatcher",
+			// band PORT_BAND_ENEMIES_4 (docs/NEW_ENEMIES_3.md): indices 24-26
+			"jackal",
+			"mender",
+			"mortar",
 		]);
 	});
 });

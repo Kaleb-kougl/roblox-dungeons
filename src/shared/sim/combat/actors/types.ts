@@ -145,6 +145,13 @@ export interface ArchetypeDef<D extends ArchetypeData = ArchetypeData> {
 	step(ctx: SimCtx, actor: ActorState): void;
 	/** Once per tick while dead (after deadTicks += 1). Without it the slot is freed after data.corpseTicks. */
 	stepDead?(ctx: SimCtx, actor: ActorState): void;
+	/**
+	 * Roblox port (docs/NEW_ENEMIES_3.md NT2, NTD5): once per tick while dead (after deadTicks += 1), only when stepDead
+	 * is absent, so it never marks a reviver (runOnKill / dropsOnKill read stepDead alone). Returns true to hold the slot
+	 * past its corpse timer this tick; false lets the corpse timer free it as usual. The Mortar's corpse finishes its
+	 * shell's flight with it. No other archetype defines it.
+	 */
+	stepCorpse?(ctx: SimCtx, actor: ActorState): boolean;
 	/** Adjusts incoming damage before the cap and hp (return 0 for immune). */
 	filterDamage?(ctx: SimCtx, actor: ActorState, damage: number): number;
 	/** After damage was applied (damage = what actually came off hp, may be 0 when capped), before a death check. */

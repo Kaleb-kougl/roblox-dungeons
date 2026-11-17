@@ -105,15 +105,18 @@ export {
 	AURA_COLOR_RULES,
 	GOO_COLOR_RULES,
 	GUARD_COLOR_RULES,
+	HEAL_COLOR_RULES,
 	affixReport,
 	auraReport,
 	gooReport,
 	guardReport,
+	healReport,
 	variantColorProblems,
 	type AffixEntry,
 	type AuraEntry,
 	type GooEntry,
 	type GuardEntry,
+	type HealEntry,
 	type VariantColorEntry,
 	type VariantColorProblem,
 	type VariantColorRules,
@@ -197,6 +200,7 @@ export * from "./codex";
 // colour report and the art's facing rule.
 export * from "./secrets";
 export * from "./newEnemies2";
+export * from "./newEnemies3";
 export { SECRET_COLOR_RULES, secretReport, type SecretColorEntry, type SecretColorRules } from "./secretColors";
 export { secretArtProblems, type SecretArtProblem } from "./secretArt";
 // Roblox port (docs/SILVER.md SV7): Silver's strings, sounds, colour role and optional art ids, and its colour report

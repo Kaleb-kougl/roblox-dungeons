@@ -107,6 +107,7 @@ import { archetypeIndex, sealArchetypes } from "./actors/registry";
 import { NO_KIND, type ActorState } from "./actors/types";
 import { cloneGuardEvents, createGuardEvents, guardSlots, shieldStopsBullet, type GuardEvents } from "./shield";
 import { cloneHookEvents, createHookEvents, type HookEvents } from "./hookEvents";
+import { cloneHealEvents, createHealEvents, type HealEvents } from "./healEvents";
 import { chainhookStrike } from "./actors/archetypes/chainhook";
 import {
 	cloneWeaponsState,
@@ -178,6 +179,11 @@ export interface CombatState {
 	 * the view, cleared by step / stepParty. Not in writeCombatHash.
 	 */
 	hookEvents: HookEvents;
+	/**
+	 * The Mender's heal pulses and channel ends this tick (docs/NEW_ENEMIES_3.md NT3, ./healEvents.ts): an unhashed feed
+	 * for the view, cleared by step / stepParty. Not in writeCombatHash.
+	 */
+	healEvents: HealEvents;
 }
 
 interface Sims {
@@ -244,6 +250,7 @@ export function createCombatState(
 		dropped: 0,
 		guardEvents: createGuardEvents(),
 		hookEvents: createHookEvents(),
+		healEvents: createHealEvents(),
 	};
 }
 
@@ -291,6 +298,7 @@ export function cloneCombatState(c: Readonly<CombatState>): CombatState {
 		weapons: cloneWeaponsState(c.weapons),
 		guardEvents: cloneGuardEvents(c.guardEvents),
 		hookEvents: cloneHookEvents(c.hookEvents),
+		healEvents: cloneHealEvents(c.healEvents),
 	};
 }
 

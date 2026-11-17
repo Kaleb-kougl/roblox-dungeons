@@ -59,6 +59,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/PORTRAIT.md` | Portrait play (phones turn either way, `Sensor`; upright the view keeps the short side at `VIEW_TILES_HIGH` with the player lifted above the thumbs, touch controls in a bottom band, pause map on top, the draft in a column, the HUD scale capped to the width): plan, tasks PT1-PT9, decisions PD1-PD7 |
 | `docs/NEW_ENEMIES.md` | New enemies (five endless room archetypes from floor 2: Bomber rusher that blows up, Charger lane charge stunned by walls, Stormcaller lightning strike rows, Warbanner aura support, Reaper bullet spiral; band 4, `BulletKind.STRIKE`, the Warbanner aura in `actorMods`; gameplay): plan, NE0 findings, tasks NE0-NE14, decisions NED1-NED14 |
 | `docs/NEW_ENEMIES_2.md` | New enemies 2 (four endless room archetypes and a child, band 6: Shieldwall (`bulwark`) front shield that covers allies behind it, broken by the finisher / heavy arrow / Siege slam; Chainhook `BulletKind.HOOK` that drags the player, never on floor 1; Snatcher harmless pellet thief that flees, swallowing loses the Sweep; Pyre-keeper lighting `pyre` braziers that fire flame bullets; no new hash group; gameplay): plan, NX0 findings, as built NX1-NX9 and NX11 / NX12-lite, tasks NX0-NX14, decisions NXD1-NXD24 |
+| `docs/NEW_ENEMIES_3.md` | New enemies 3 (three endless room archetypes in band 7: Mortar lobs a `STRIKE` shell over cover at where you are heading, only while you are in its room, with a guardable shrapnel ring, landing even after its death; Mender channels a heal beam into the most wounded room enemy, cut by a hit, a body on the beam or a wall; Jackal packs of three bought as one (`packOf`) that circle and lunge at your back, spooked by your facing, a sword guard stopping a lunge as a parry; no new hash group or bullet kind; gameplay): plan, NT0 findings, as built NT1-NT10, NT11 systems pass, NT12 tuning (owner calls OC1-OC5), tasks NT0-NT14, decisions NTD1-NTD14 |
 | `docs/PELLETS.md` | Pellets (Pac-Man lines of small cubes laid on a fight's floor, collected while enemies live, a Sweep bonus for every one, a rare power pellet that turns every enemy bullet on the floor into points; tutorial room G with a sweep lock; gameplay): plan, as built, open owner calls, tasks PL0-PL15, decisions PD1-PD16 |
 | `docs/RUN_RECAP.md` | Run-over recap and co-op moments (one honest near-miss line, up to four counting highlights, Again in one press armed at 0.6 s and a faster retry; co-op TEAM PERFECT stamp / chip / streak / pulse rings and SYNC! parries; revives reserved; presentation only): plan, tasks RR0-RR11 / CM1-CM7, decisions RRD1-RRD11 / CMD1-CMD7 |
 | `docs/RUN_CONTRIBUTION.md` | Co-op contribution on the run-over screen (a `You / Team / Party` tab strip in party runs, opening on You: your damage / kills / boss-damage share, parries, grazes, hits, pickups and standing; every player's row in index order with one positive title; the `You` rows fixed to the local player; one unhashed `ScoreEvents` feed, otherwise presentation only): plan, tasks CT0-CT10, decisions CTD1-CTD7 |
@@ -1554,6 +1555,51 @@ Decision log (deviations from `PLAN.md`):
   guard broke this tick is spared by that tick's Siege shockwave from in front (`SimCtx.guardsBroken`, transient), and a
   Pyre-keeper's landing keeps clear of every living pyre, any keeper's; byte-identical without a Shieldwall or a second
   keeper.
+- **New enemies 3 (docs/NEW_ENEMIES_3.md).** Gameplay. Three endless room archetypes in band 7 (`PORT_BAND_ENEMIES_4`,
+  `jackal` 24, `mender` 25, `mortar` 26; no older index moves). `mortar`: keeps 6-9 (NT0: 7-11 put it off screen)
+  without sight inside its own room, lobs within 10 only while its NEAREST player stands in that room (NTD3: the new
+  optional `SimConfig.roomIdAt` / `SimCtx.roomIdAt`, set by `endlessFloorWorld` to the world's `roomIdAt`, so a doorway
+  or corridor cell is outside; the encounter rectangle without it), a 0.35 s draw, then a ring 1.0 s at the target plus
+  its last tick's motion x 36 (clamped to 3; a non-floor point, `isBodyBlocked` or an intact piece, falls back to the
+  target), landing as ONE `BulletKind.STRIKE` (the Stormcaller's; no new bullet kind) and a guardable 6-bullet shrapnel
+  ring (the existing port row 6 @ FULL_RING); a Mortar killed mid-flight lands it on time from its corpse (NTD5: a new
+  optional `ArchetypeDef.stepCorpse`, called in stepActors' dead branch only without `stepDead`: not a reviver; no other
+  archetype defines it). `mender`: picks the most wounded room enemy (never a boss, the Goldling, the dummy, a pyre or a
+  Mender, NTD8: `isMenderHealTarget`) within 6 and in sight, links 24 ticks, channels up to 3 s healing 1 hp every 30
+  through `healActor` (a write to the hashed `hp` only: no `damageActor`, cap bucket, score, combo, drop or proc sees
+  it); a hit (even one an affix shield soaks whole), lost sight or a living player's body on the beam cuts it; one
+  cooldown gates the link and its `BulletKind.CASTER` bolt. `jackal`: bought as ONE pack of three
+  (`EndlessRoomKind.packOf`, NTD6; the spender skips a pack while `packOf > slots`, compares its per-slot cost, counts
+  `maxPerRoom` in packs; a pack takes its own anchor and never joins the swarmers' pack), circles at 3.0-3.6, one at a
+  time per target (the target locked in v7 `JACKAL_TARGET` at the wind-up, an NT4 co-op finding), winds up 21 ticks only
+  from outside its target's front cone (cos 0.34, no exception for the last of a pack, NTD10), spooked back by the
+  target's facing (no draw), lunges 2.8; a sword guard that sweeps it stops the lunge, staggers it 1 s and pushes ONE
+  `guardX/Z/Player` entry on `ScoreEvents` (a parry for the view, recap and haptics, NTD9; no `scoreGuardCancels`,
+  points, Riposte or brace count). Draws: one in each `init`, one per lob / channel end / bolt / lunge. **No new hash
+  group:** actor `v[]`; unhashed feeds `events.shells` / `heals` / `healCuts` / `lunges` / `spooks`
+  (`NEW_ENEMY_3_EVENT_FIELDS`, appended last) and `CombatState.healEvents`; `events.strikes` still counts a shell (the
+  lightning cue reads `strikes - shells`). `ENDLESS_ROOM_KINDS` appended (weights 1, caps 2 / 1 / 1 pack, the Mender
+  `needsCompany`; `ROOM_KIND_MIN_FLOOR` mender 2 in every world, NTD7), 17 seeded kinds, full roster on floor 17;
+  `ENCOUNTER_COST` 2 / 2 / 1 each (every reader but the spender is per spawn: a pack is 3 in par, Horde and SWIFT).
+  Codex 91 -> 94. `DAILY.ruleset` 21 -> 22. M1, every golden fixture and the tutorial replay exactly as before;
+  endless / daily / dev replays and scores changed from floor 1 (boards stay `_v1`); re-pinned: `dungeon/roomPool.lock`
+  (floor 1 without a roster unchanged), `roster.spec`, `roomPool.spec`, `endless.spec`, `sim/charger.spec`,
+  `sim/stormcaller.spec`, `view/hud/rosterLine.spec`, `run/slice.spec` (docs/NEW_ENEMIES_3.md NT6 table). Theme: role
+  `enemyHeal` `#608c00` (`healReport` in `variantColors.ts`), three `ENEMY_ARCHETYPES` (placeholders), optional enemy
+  animations `crouch` / `hop`, `bestiary.<id>` lines and sightings, six SILENT port audio IDs after New enemies 2's
+  (`sfx.enemy.lob` / `.shell` / `.heal` / `.healcut` / `.lunge` / `.spooked`, `SFX_FALLBACK`s; a later feature appending
+  there must update codex.spec's tail and the listed skips); `contract.luau` / `validate.luau` / `sprites.luau` 189 /
+  192 / 195 top-level `local` lines (189 / 197 / 195 names, counted on out/). View (presentation only): the shell told
+  from lightning by its payload source in every strike reader (its own `SHELL_DECAL` disc, never the lightning art or
+  scorch), a view-only arc, a dead Mortar's ring drawn on (`mortarCorpseFlying`), the heal tether / pulse / `+` marks and
+  the snap, the Jackal's stagger stars (`NewEnemy3MarksController`, `RunView.newEnemies3`), cue rows. Art: Demon Spawn 6
+  / Imp 10 / Demon Beast 2 (the Jackal at bodyTiles 1.2, not the knight's density) built, 20 PNGs upload pending; six
+  CC0 sound picks in `art/audio.json` and the lock, not built (the owner's `audio:build`). NT11's systems pass:
+  `sim/newEnemies3.systems.spec` (20), `run/newEnemies3.validate.spec` (a validated run per kind); BulletAhead
+  (presentation only) now plans pieces enemy bullets break inside its window (an imp's fan through a barrel had frozen
+  the trailing bullets: the NT6 failure of `view/predict/bulletAhead.spec`), and `run/testing` `legendaryTune.ts` counts
+  `ScoreEvents.guardCancels`, not the guard feed (which holds Jackal parries). NT12-lite: `run/newEnemies3.tuning.spec`
+  (`--census`), no retune; owner calls OC1-OC5 and NT6's party-4 packs (P1-P4) open; Studio check (NT13) pending.
 
 ## Commands
 

@@ -6,13 +6,18 @@
  * with the bullet's (prev, cur) at that tick. A bullet the sim still has must match to 1e-9 (the replay is the sim's own
  * arithmetic: the largest difference is printed); one the sim consumed at a wall or a piece must have been drawn stopped
  * at its last free position; one whose life ran out, hidden. The Hourglass runs in a third of the windows. A pool of its
- * own covers the spawn delay, the life and the culling cube; n = 0 is today's pair exactly; a bench at 150 bullets.
+ * own covers the spawn delay, the life and the culling cube; n = 0 is today's pair exactly; a line of bullets into a
+ * barrel the first ones break (docs/NEW_ENEMIES_3.md NT11: the rest fly through, onto a crate behind it); a bench at
+ * 150 bullets.
  */
 import { describe, expect, it } from "@rbxts/jest-globals";
 import {
+	BREAKABLES_CONFIG,
 	BulletKind,
 	BulletPayload,
 	DEFAULT_SIM_CONFIG,
+	EMPTY_INPUT,
+	NOT_BROKEN,
 	SIM_DT,
 	createBulletSimulation,
 	createSimState,
@@ -25,6 +30,7 @@ import {
 	type SimState,
 	type Vec3,
 } from "shared/sim";
+import { gridToWorld } from "shared/dungeon";
 import { buildEndlessRunConfig } from "shared/run";
 import { busiestRoom, denseFighterFrame, placeParty, skipPartyToFloor } from "shared/run/testing";
 import { BulletAhead, newAheadPose, type AheadPose } from ".";
@@ -43,6 +49,8 @@ const CASES: ReadonlyArray<readonly [number, number]> = [
 /** Hourglass ticks set at a window's start, by window index mod 3 (0: none; 4: ends inside the window; 15: all of it). */
 const HOURGLASS = [0, 4, 15];
 const TOLERANCE = 1e-9;
+/** The break plan case's window (ticks). */
+const BULLET_AHEAD_SPEC_TICKS = 20;
 /** The floors must give at least this many poses to compare. */
 const MIN_COMPARED = 1000;
 
@@ -291,6 +299,103 @@ describe("BulletAhead (docs/LOCAL_PREDICTION.md LP10)", () => {
 		expect(compared).toBeGreaterThan(0);
 		expect(hidden).toBeGreaterThan(0);
 		expect(delayed).toBeGreaterThan(0);
+	});
+
+	it("lets the bullets behind the ones that break a piece fly through it (the break plan, NT11)", () => {
+		// A row along +X (2 tiles off the player): a barrel at tile (8, 4), a crate at (12, 4); one bullet a tick reaching
+		// the barrel, two of them on the same tick (the lower slot hits first), more than the barrel takes.
+		const row = 4;
+		const config: SimConfig = {
+			...DEFAULT_SIM_CONFIG,
+			breakables: {
+				...BREAKABLES_CONFIG,
+				pieces: [
+					{ x: 8, y: row, kind: "barrel" },
+					{ x: 12, y: row, kind: "crate" },
+				],
+			},
+		};
+		const s = createSimState(1, 0, 0, config);
+		const b = s.breakables!;
+		const hits = math.ceil(b.pieces[0].hp / BREAKABLES_CONFIG.enemyBulletDamage);
+		const speed = 6;
+		const z = gridToWorld(row);
+		const x0 = gridToWorld(8) - gridToWorld(1) * 0.5 - 0.05; // just short of the barrel's cell
+		s.combat.enemyBullets.fireAt({ x: 0, y: 0, z: 0 }, () => {
+			const out: BulletSpawnData[] = [];
+			const count = hits + 4;
+			for (let k = 0; k < count; k++) {
+				// Bullet 1 shares bullet 0's tick (same spot); the others one tick (speed x SIM_DT) further back each.
+				const back = k <= 1 ? 0 : (k - 1) * speed * SIM_DT;
+				out.push({
+					offset: { x: x0 - back, y: 0, z },
+					velocity: { x: speed, y: 0, z: 0 },
+					acceleration: { x: 0, y: 0, z: 0 },
+					delay: 0,
+					color: undefined,
+					life: 3,
+					payload: packPayload(1, BulletKind.ENEMY, 1),
+					scale: 1,
+				});
+			}
+			return out;
+		});
+		const sim = s.combat.enemyBullets;
+		const hw = sim.highWater();
+		const ahead = new BulletAhead();
+		const world = simWorldConfig(s, config);
+		const n = BULLET_AHEAD_SPEC_TICKS;
+		const poses: Array<Array<AheadPose | false>> = [];
+		for (let k = 1; k <= n; k++) {
+			ahead.prepare(s, world, k);
+			const posesK: Array<AheadPose | false> = [];
+			for (let i = 0; i < hw; i++) {
+				const out = newAheadPose();
+				posesK.push(sim.isLive(i) && ahead.pose(sim, i, out) ? out : false);
+			}
+			poses.push(posesK);
+		}
+		const prev: Vec3 = { x: 0, y: 0, z: 0 };
+		const samples: Sample[][] = [];
+		const first: Sample[] = [];
+		for (let i = 0; i < hw; i++) first.push(sample(sim, i, prev));
+		samples.push(first);
+		for (let k = 1; k <= n; k++) {
+			step(s, EMPTY_INPUT, config);
+			const rowK: Sample[] = [];
+			for (let i = 0; i < hw; i++) rowK.push(sample(s.combat.enemyBullets, i, prev));
+			samples.push(rowK);
+		}
+		let through = 0;
+		let stopped = 0;
+		for (let i = 0; i < hw; i++) {
+			let gone = n + 1;
+			for (let k = 1; k <= n; k++) {
+				if (!sameBullet(samples[k - 1][i], samples[k][i])) {
+					gone = k;
+					break;
+				}
+			}
+			for (let k = 1; k <= n; k++) {
+				const pose = poses[k - 1][i];
+				if (k < gone) {
+					expect(pose).never.toBe(false);
+					if (pose !== false) expect(diff(pose, samples[k][i])).toBeLessThanOrEqual(TOLERANCE);
+					continue;
+				}
+				const last = samples[gone - 1][i];
+				expect(pose).never.toBe(false);
+				if (pose === false) continue;
+				expect([pose.x === pose.prevX, pose.z === pose.prevZ]).toEqual([true, true]);
+				expect(math.abs(pose.x - last.x)).toBeLessThanOrEqual(TOLERANCE);
+			}
+			if (gone === n + 1 || samples[gone - 1][i].x > gridToWorld(8)) through++;
+			else stopped++;
+		}
+		// The barrel took `hits` bullets (the breaker is the last of them); the rest passed it, onto the crate.
+		expect(stopped).toBe(hits);
+		expect(through).toBe(hw - hits);
+		expect(s.breakables!.pieces[0].brokenTick).never.toBe(NOT_BROKEN);
 	});
 
 	it("bench: 150 bullets drawn 10 ticks ahead on a real floor's blocker", () => {

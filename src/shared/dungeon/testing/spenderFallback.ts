@@ -10,6 +10,9 @@
  * as the one taken (the order, not a weight, decided). The specs check the mirror against the real spender, draw for
  * draw, on every sample.
  *
+ * Packs (docs/NEW_ENEMIES_3.md NT5, EndlessRoomKind.packOf) mirror the spender: a pack kind is open only with packOf
+ * slots left, affordable at packOf x its cost, compared per slot, and one pick pushes packOf entries.
+ *
  * tieSpend is the EV5 doc's proposed fix, for comparison only: when the fallback has two or more open kinds tied for
  * dearest, one rng draw picks among them by weight; everything else as spendEncounterBudget.
  */
@@ -31,27 +34,46 @@ export interface SpendTrace {
 	readonly fallbackKinds: Map<string, number>;
 }
 
-function open(k: EndlessRoomKind, floor: number, bought: ReadonlyMap<string, number>, boughtTotal: number): boolean {
+function packOf(k: EndlessRoomKind): number {
+	return k.packOf ?? 1;
+}
+
+function open(
+	k: EndlessRoomKind,
+	floor: number,
+	bought: ReadonlyMap<string, number>,
+	boughtTotal: number,
+	slots: number,
+): boolean {
 	if (k.fromFloor !== undefined && floor < k.fromFloor) return false;
+	if (packOf(k) > slots) return false;
 	if (k.needsCompany === true && boughtTotal < 1) return false;
 	return k.maxPerRoom === undefined || (bought.get(k.kind) ?? 0) < k.maxPerRoom;
 }
 
-function spend(rng: DungeonRng, budget: number, floor: number, cap: number, breakTies: boolean): SpendTrace {
+function spend(
+	rng: DungeonRng,
+	budget: number,
+	floor: number,
+	cap: number,
+	breakTies: boolean,
+	kinds: ReadonlyArray<EndlessRoomKind>,
+): SpendTrace {
 	const trace: SpendTrace = { kinds: [], saturated: 0, tail: 0, tied: 0, fallbackKinds: new Map() };
 	const out = trace.kinds;
 	const bought = new Map<string, number>();
 	let left = budget;
 	while (out.size() < cap) {
-		const need = left / (cap - out.size());
+		const slots = cap - out.size();
+		const need = left / slots;
 		let total = 0;
 		let dearest: EndlessRoomKind | undefined;
 		let poolDearest = 0;
-		for (const k of ENDLESS_ROOM_KINDS) {
-			if (!open(k, floor, bought, out.size())) continue;
+		for (const k of kinds) {
+			if (!open(k, floor, bought, out.size(), slots)) continue;
 			const c = encounterCost(k.kind);
 			poolDearest = math.max(poolDearest, c);
-			if (c > left) continue;
+			if (c * packOf(k) > left) continue;
 			if (dearest === undefined || c > encounterCost(dearest.kind)) dearest = k;
 			if (c >= need) total += k.weight;
 		}
@@ -59,10 +81,10 @@ function spend(rng: DungeonRng, budget: number, floor: number, cap: number, brea
 		let pick = dearest;
 		if (total > 0) {
 			let r = rng.next() * total;
-			for (const k of ENDLESS_ROOM_KINDS) {
-				if (!open(k, floor, bought, out.size())) continue;
+			for (const k of kinds) {
+				if (!open(k, floor, bought, out.size(), slots)) continue;
 				const c = encounterCost(k.kind);
-				if (c > left || c < need) continue;
+				if (c * packOf(k) > left || c < need) continue;
 				pick = k;
 				if (r < k.weight) break;
 				r -= k.weight;
@@ -71,8 +93,9 @@ function spend(rng: DungeonRng, budget: number, floor: number, cap: number, brea
 			const top = encounterCost(dearest.kind);
 			let tiedWeight = 0;
 			let tiedCount = 0;
-			for (const k of ENDLESS_ROOM_KINDS) {
-				if (!open(k, floor, bought, out.size()) || encounterCost(k.kind) !== top) continue;
+			for (const k of kinds) {
+				if (!open(k, floor, bought, out.size(), slots) || encounterCost(k.kind) !== top) continue;
+				if (top * packOf(k) > left) continue;
 				tiedWeight += k.weight;
 				tiedCount++;
 			}
@@ -82,8 +105,9 @@ function spend(rng: DungeonRng, budget: number, floor: number, cap: number, brea
 				trace.tied++;
 				if (breakTies) {
 					let r = rng.next() * tiedWeight;
-					for (const k of ENDLESS_ROOM_KINDS) {
-						if (!open(k, floor, bought, out.size()) || encounterCost(k.kind) !== top) continue;
+					for (const k of kinds) {
+						if (!open(k, floor, bought, out.size(), slots) || encounterCost(k.kind) !== top) continue;
+						if (top * packOf(k) > left) continue;
 						pick = k;
 						if (r < k.weight) break;
 						r -= k.weight;
@@ -92,21 +116,23 @@ function spend(rng: DungeonRng, budget: number, floor: number, cap: number, brea
 			}
 			trace.fallbackKinds.set(pick.kind, (trace.fallbackKinds.get(pick.kind) ?? 0) + 1);
 		}
-		out.push(pick.kind);
+		const n = packOf(pick);
+		for (let i = 0; i < n; i++) out.push(pick.kind);
 		bought.set(pick.kind, (bought.get(pick.kind) ?? 0) + 1);
-		left -= encounterCost(pick.kind);
+		left -= encounterCost(pick.kind) * n;
 	}
 	return trace;
 }
 
-/** spendEncounterBudget's picks, with the fallback counted (see the file comment). */
+/** spendEncounterBudget's picks, with the fallback counted (see the file comment). `kinds`: its table (specs). */
 export function traceSpend(
 	rng: DungeonRng,
 	budget: number,
 	floor: number,
 	cap: number = ENDLESS_ROOM_ACTOR_CAP,
+	kinds: ReadonlyArray<EndlessRoomKind> = ENDLESS_ROOM_KINDS,
 ): SpendTrace {
-	return spend(rng, budget, floor, cap, false);
+	return spend(rng, budget, floor, cap, false, kinds);
 }
 
 /** The proposed tie-break (see the file comment): a fallback tie is drawn by weight. Comparison only. */
@@ -115,6 +141,7 @@ export function tieSpend(
 	budget: number,
 	floor: number,
 	cap: number = ENDLESS_ROOM_ACTOR_CAP,
+	kinds: ReadonlyArray<EndlessRoomKind> = ENDLESS_ROOM_KINDS,
 ): SpendTrace {
-	return spend(rng, budget, floor, cap, true);
+	return spend(rng, budget, floor, cap, true, kinds);
 }

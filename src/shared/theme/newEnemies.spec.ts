@@ -16,6 +16,7 @@ import {
 } from "./contract";
 import { THEME_PACKS } from "./packs";
 import { NEW_ENEMY_2_ARCHETYPES } from "./newEnemies2";
+import { NEW_ENEMY_3_ARCHETYPES } from "./newEnemies3";
 import { PLACEHOLDER_MANIFEST } from "./packs/placeholder";
 import { VALE_FLOOR_HEX, buildValeManifest } from "./packs/vale";
 import { VALE_ASSET_IDS } from "./packs/vale/assetIds";
@@ -75,8 +76,9 @@ function packsToCheck(): Array<[string, Obj]> {
 
 describe("new enemies: contract", () => {
 	it("appends the five to ENEMY_ARCHETYPES (existing order kept), each a required asset, role and name", () => {
-		// docs/FORTUNE.md FD9's Goldling (`golden`) comes after them, then docs/NEW_ENEMIES_2.md NX1's five.
-		const after = 1 + NEW_ENEMY_2_ARCHETYPES.size();
+		// docs/FORTUNE.md FD9's Goldling (`golden`) comes after them, then docs/NEW_ENEMIES_2.md NX1's five, then
+		// docs/NEW_ENEMIES_3.md NT1's three.
+		const after = 1 + NEW_ENEMY_2_ARCHETYPES.size() + NEW_ENEMY_3_ARCHETYPES.size();
 		const tail: string[] = [];
 		for (let i = ENEMY_ARCHETYPES.size() - after - NEW.size(); i < ENEMY_ARCHETYPES.size() - after; i++)
 			tail.push(ENEMY_ARCHETYPES[i]);

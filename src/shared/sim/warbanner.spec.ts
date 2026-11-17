@@ -152,6 +152,10 @@ describe("warbanner: data", () => {
 			"chainhook",
 			"pyrekeeper",
 			"snatcher",
+			// docs/NEW_ENEMIES_3.md (Design: the Warbanner's aura applies to all three)
+			"jackal",
+			"mender",
+			"mortar",
 		]);
 		expect(isWarbannerAuraTarget(NO_KIND)).toBe(false);
 	});

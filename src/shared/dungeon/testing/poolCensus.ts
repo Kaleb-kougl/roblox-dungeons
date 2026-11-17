@@ -210,8 +210,9 @@ export function censusFloor(row: PoolCensusRow, run: number, dungeon?: Dungeon):
 		for (let k = 0; k < counts.size(); k++) {
 			if (counts[k] > 0) row.distinct++;
 			row.maxPerRoom[k] = math.max(row.maxPerRoom[k], counts[k]);
+			// maxPerRoom counts packs (docs/NEW_ENEMIES_3.md NT5): a pack kind's enemies are packOf each.
 			const max = ENDLESS_ROOM_KINDS[k].maxPerRoom;
-			if (max !== undefined && counts[k] > max)
+			if (max !== undefined && counts[k] > max * (ENDLESS_ROOM_KINDS[k].packOf ?? 1))
 				row.breaks.push(
 					`run ${run} floor ${floor} room ${room.id}: ${counts[k]} '${ENDLESS_ROOM_KINDS[k].kind}'`,
 				);

@@ -125,8 +125,8 @@ describe("boosts: contract", () => {
 		// Last before docs/NEW_ENEMIES.md NE1's six enemy sounds (then docs/PELLETS.md PL6's three, docs/RUN_RECAP.md
 		// CM4's two, docs/TREASURE.md TR6's four, docs/FORTUNE.md FO6's eight, docs/FLOOR_MODIFIERS.md FM7's five,
 		// docs/GOLDLING_RUMOURS.md GR6's two, claude/codex-plan.md CX5's one, docs/SECRET_ROOMS.md SR10's three, then
-		// docs/SILVER.md SV7's four, then docs/NEW_ENEMIES_2.md NX1's eight).
-		const n = PORT_AUDIO_EVENTS.size() - 6 - 3 - 2 - 4 - 8 - 5 - 2 - 1 - 3 - 4 - 8;
+		// docs/SILVER.md SV7's four, then docs/NEW_ENEMIES_2.md NX1's eight, then docs/NEW_ENEMIES_3.md NT1's six).
+		const n = PORT_AUDIO_EVENTS.size() - 6 - 3 - 2 - 4 - 8 - 5 - 2 - 1 - 3 - 4 - 8 - 6;
 		expect([PORT_AUDIO_EVENTS[n - 2], PORT_AUDIO_EVENTS[n - 1]]).toEqual([
 			"sfx.friend.passed",
 			"sfx.breakable.loot",
@@ -333,8 +333,11 @@ describe("boosts: validator", () => {
 		colorsOf(dim)["boost.frenzy"] = "#3a5a1a";
 		expect(colorDifference("#3a5a1a", "#ff3fa4")).toBeGreaterThan(MIN_BOOST_BULLET_DIFFERENCE);
 		// (other roles held apart from the boosts may flag the planted colour too: docs/NEW_ENEMIES_2.md's dull bronze
-		// guard, `colors.enemyGuard`, is 31.7 CIE76 from it; only the boost's own errors are counted here)
-		const dimErrors = validateManifest(dim).filter((e) => !startsWith(e, "colors.enemyGuard"));
+		// guard, `colors.enemyGuard`, is 31.7 CIE76 from it, docs/NEW_ENEMIES_3.md's moss-green heal, `colors.enemyHeal`,
+		// is near it too; only the boost's own errors are counted here)
+		const dimErrors = validateManifest(dim).filter(
+			(e) => !startsWith(e, "colors.enemyGuard") && !startsWith(e, "colors.enemyHeal"),
+		);
 		expect(dimErrors.size()).toBe(BIOMES.size() * 2);
 		for (const e of dimErrors) expect([e, startsWith(e, 'colors["boost.frenzy"]: contrast: ')]).toEqual([e, true]);
 	});

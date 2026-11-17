@@ -20,6 +20,7 @@ import {
 	CODEX_AUDIO_IDS,
 	GOLDEN_RUMOUR_AUDIO_IDS,
 	NEW_ENEMY_2_AUDIO_IDS,
+	NEW_ENEMY_3_AUDIO_IDS,
 	SILVER_AUDIO_IDS,
 	PORT_AUDIO_EVENTS,
 	REQUIRED_ASSET_IDS,
@@ -150,7 +151,8 @@ describe("audio: the Goldling's rumours (docs/GOLDLING_RUMOURS.md GR6)", () => {
 			CODEX_AUDIO_IDS.size() -
 			SECRET_AUDIO_IDS.size() -
 			SILVER_AUDIO_IDS.size() -
-			NEW_ENEMY_2_AUDIO_IDS.size();
+			NEW_ENEMY_2_AUDIO_IDS.size() -
+			NEW_ENEMY_3_AUDIO_IDS.size();
 		expect([PORT_AUDIO_EVENTS[n - 2], PORT_AUDIO_EVENTS[n - 1]]).toEqual([...RUMOURS]);
 		for (const id of RUMOURS) {
 			expect([id, ALL_SFX.includes(id), PORT_SFX.includes(id), REQUIRED_ASSET_IDS.includes(id)]).toEqual([

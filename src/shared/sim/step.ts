@@ -14,6 +14,7 @@ import { killPlayerState, playerTraits, stepPlayer } from "./player";
 import { stepCombat } from "./combat/combat";
 import { clearGuardEvents } from "./combat/shield";
 import { clearHookEvents } from "./combat/hookEvents";
+import { clearHealEvents } from "./combat/healEvents";
 import { simWorldConfig, stepEndless, type EndlessConfig } from "./endless";
 import type { EncounterConfig } from "./combat/actors/encounter";
 import { clearScoreEvents, stepScore, type ScoringConfig } from "./score/score";
@@ -118,6 +119,15 @@ export interface SimConfig {
 	 * Read by the imp's blink rule. Endless floors set it; absent (M1, every fixture): isBulletBlocked stands in.
 	 */
 	isBodyBlocked?: BulletBlocker;
+	/**
+	 * The room id of the FLOOR cell under world (x, z), or -1 (a corridor or doorway cell, a wall, outside the grid):
+	 * shared/dungeon `roomIdAt` on the floor's Forge dungeon, the exact cell rule room entry and the room edges' dashed
+	 * line use (docs/NEW_ENEMIES_3.md NT0 finding 10). Read only by the Mortar (NTD3: it fires only while its target
+	 * stands in its own room) through SimCtx.roomIdAt. Endless floors set it (run/endless.ts endlessFloorWorld);
+	 * absent (M1, every fixture, hand-built arenas): SimCtx.roomIdAt is -1 and the Mortar uses the encounter rectangle.
+	 * A pure callback: unhashed config like isBodyBlocked.
+	 */
+	roomIdAt?: (x: number, z: number) => number;
 	/** Actor movement through the world (E1.8). Without it actors use the `bounds` clamp, else move freely. */
 	actorMover?: ActorMover;
 	/**
@@ -329,6 +339,7 @@ export function step(
 	clearEvents(state.events);
 	clearGuardEvents(state.combat.guardEvents);
 	clearHookEvents(state.combat.hookEvents);
+	clearHealEvents(state.combat.healEvents);
 	const score = state.score;
 	if (score !== undefined) clearScoreEvents(score);
 	if (state.breakables !== undefined) clearBreakableEvents(state.breakables);
@@ -430,6 +441,7 @@ export function stepParty(
 	clearEvents(state.events);
 	clearGuardEvents(state.combat.guardEvents);
 	clearHookEvents(state.combat.hookEvents);
+	clearHealEvents(state.combat.healEvents);
 	const score = state.score;
 	if (score !== undefined) clearScoreEvents(score);
 	if (state.breakables !== undefined) clearBreakableEvents(state.breakables);
