@@ -8,6 +8,7 @@ import {
 	decodeWalletDoc,
 	emptyWalletDoc,
 	encodeWalletDoc,
+	armoryItem,
 	nextGoals,
 	prospectorBonus,
 	walletBalance,
@@ -285,6 +286,16 @@ describe("nextGoals (SVD24)", () => {
 			["character.archer", 1],
 		]);
 		expect(nextGoals(d).size()).toBe(0);
+	});
+
+	it("cosmetics are never goals (docs/COSMETICS.md CS4), even when they are the cheapest thing left", () => {
+		const d = wallet(5000, [
+			["vigor", 2],
+			["deepFlask", 1],
+			["prospector", 4],
+		]);
+		expect(nextGoals(d, 10).map((g) => g.itemId)).toEqual(["character.archer", "deepFlask", "plating"]);
+		for (const g of nextGoals(emptyWalletDoc(), 99)) expect(armoryItem(g.itemId)?.kind).never.toBe("cosmetic");
 	});
 });
 

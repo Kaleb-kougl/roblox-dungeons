@@ -26,6 +26,7 @@ import {
 	ownedLevel,
 	ownsCharacter,
 	walletDocVersionOf,
+	walletEquipped,
 	walletUpgradeLevels,
 	type WalletDoc,
 	type WalletUpgradeLevels,
@@ -194,6 +195,11 @@ export class WalletBook {
 	/** The player may pick `id` (an unknown wallet: the Knight only). */
 	ownsCharacter(userId: number, id: CharacterId): boolean {
 		return ownsCharacter(this.doc(userId), id);
+	}
+
+	/** The cosmetics the player wears (walletEquipped), or undefined when their wallet is not loaded. */
+	equipped(userId: number): Map<string, string> | undefined {
+		return walletEquipped(this.doc(userId));
 	}
 
 	/** The `wallet` payload of the player on UTC day `day`. */

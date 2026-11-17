@@ -3,6 +3,7 @@
 // effect lines (Knight 2 1/2 -> 3), the price / to-go / state, the unavailable wallet, the main menu badge, the buy hold
 // and the character screen's upgrades line; KV_FakeWallet's poor / rich / unknown shapes.
 import { describe, expect, it } from "@rbxts/jest-globals";
+import { COSMETIC_ITEMS } from "shared/cosmetics";
 import { PLACEHOLDER_MANIFEST, ThemePack, type StringVars } from "shared/theme";
 import {
 	ARMORY_CATALOG,
@@ -52,7 +53,8 @@ describe("armory: rows", () => {
 			["plating", 5],
 		]);
 		expect(armoryRows("unlocks", poor).map((r) => r.itemId)).toEqual(["character.archer"]);
-		expect(armoryRows("cosmetics", poor).size()).toBe(0);
+		// docs/COSMETICS.md CS4: the Cosmetics tab holds every cosmetic (shared/cosmetics COSMETIC_ITEMS)
+		expect(armoryRows("cosmetics", poor).size()).toBe(COSMETIC_ITEMS.size());
 		expect([...ARMORY_TABS]).toEqual(["upgrades", "unlocks", "cosmetics"]);
 	});
 
@@ -171,7 +173,9 @@ describe("armory: the detail", () => {
 describe("armory: the main menu badge, the hold, the upgrades line", () => {
 	it("the badge: an affordable next level not seen in the Armory yet", () => {
 		const st = fake("90");
-		expect(affordableKeys(st)).toEqual(["vigor:1", "prospector:1"]);
+		// docs/COSMETICS.md CS4: tier 2 cosmetics (80) are affordable too, after the upgrades (catalogue order)
+		const tier2 = COSMETIC_ITEMS.filter((c) => c.tier <= 2).map((c) => `${c.id}:1`);
+		expect(affordableKeys(st)).toEqual(["vigor:1", "prospector:1", ...tier2]);
 		expect(armoryBadge(st, [])).toBe(true);
 		expect(armoryBadge(st, affordableKeys(st))).toBe(false);
 		expect(armoryBadge(fake("10"), [])).toBe(false);

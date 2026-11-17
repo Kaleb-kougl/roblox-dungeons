@@ -59,11 +59,35 @@ export const WALLET_RETRY: RetryPolicy = SETTINGS_RETRY;
  *   "460;vigor:2,character.archer:1"      460 Silver and those levels
  *   "unknown"                             not loaded (the Armory is greyed, the Knight only)
  *   "...;claimed"                         today's first-run and Daily bonuses already taken
+ * Cosmetics (docs/COSMETICS.md CS4), in the items part:
+ *   "6000;outline.azure:1*"               an item ending in `*` is owned AND equipped in its slot
+ *   "6000;cosmetics"                      every cosmetic owned, none equipped
+ *   "6000;dressed"                        every cosmetic owned, WALLET_FAKE_DRESSED equipped
  */
 export const WALLET_FAKE_ATTRIBUTE = "KV_FakeWallet";
 
 /** Keywords of WALLET_FAKE_ATTRIBUTE (compared lower-cased; item ids are case-sensitive). */
-export const WALLET_FAKE_KEYWORDS = table.freeze({ unknown: "unknown", claimed: "claimed" });
+export const WALLET_FAKE_KEYWORDS = table.freeze({
+	unknown: "unknown",
+	claimed: "claimed",
+	cosmetics: "cosmetics",
+	dressed: "dressed",
+});
+
+/** An item entry ending in this is equipped as well as owned (KV_FakeWallet). */
+export const WALLET_FAKE_EQUIP_MARK = "*";
+
+/**
+ * The `dressed` preset's equipped cosmetics (one per slot: both Prismatic dyes, so either character shows the animated
+ * dye, and a colour in each other slot that reads far from the defaults).
+ */
+export const WALLET_FAKE_DRESSED: ReadonlyArray<string> = table.freeze([
+	"dye.knight.prismatic",
+	"dye.archer.prismatic",
+	"outline.azure",
+	"trail.violet",
+	"spark.jade",
+]);
 
 /** The Silver shop's tunables (docs/SILVER_SHOP.md): Silver for Robux through developer products. Data only. */
 export interface SilverShopTunables {

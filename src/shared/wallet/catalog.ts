@@ -8,8 +8,11 @@
  * 6-8 hold only unlocks and cosmetics).
  *
  * ARMORY_CATALOG is APPEND-ONLY (catalog.spec pins its order): wallets store item ids, and telemetry SKUs are the ids.
+ * Its cosmetics (docs/COSMETICS.md CS4) are shared/cosmetics COSMETIC_ITEMS, one row each in that list's order, after
+ * catalogue v1: one level, `simLever` false, `slot` the item's.
  */
 import { DEFAULT_CHARACTER, type CharacterId } from "shared/characters";
+import { COSMETIC_ITEMS } from "shared/cosmetics";
 
 /** The eight tiers' prices, tier 1 first (index tier - 1). */
 export const ARMORY_TIERS: ReadonlyArray<number> = table.freeze([40, 80, 150, 300, 600, 1200, 2500, 5000]);
@@ -55,13 +58,26 @@ function item(i: ArmoryItem): ArmoryItem {
 	return table.freeze(i);
 }
 
-/** Catalogue v1 (docs/SILVER.md): power and the Archer, tiers 1-5. Append only. */
+/** The cosmetics' rows (docs/COSMETICS.md CS4): one per shared/cosmetics COSMETIC_ITEMS entry, in its order. */
+export function cosmeticArmoryItems(): ArmoryItem[] {
+	const out: ArmoryItem[] = [];
+	for (const c of COSMETIC_ITEMS) {
+		out.push(item({ id: c.id, kind: "cosmetic", tiers: [c.tier], simLever: false, slot: c.slot }));
+	}
+	return out;
+}
+
+/**
+ * Catalogue v1 (docs/SILVER.md): power and the Archer, tiers 1-5; then the cosmetics (docs/COSMETICS.md), tiers 2-8.
+ * Append only.
+ */
 export const ARMORY_CATALOG: ReadonlyArray<ArmoryItem> = table.freeze([
 	item({ id: UPGRADE_ITEM.vigor, kind: "upgrade", tiers: [1, 3], simLever: true }),
 	item({ id: UPGRADE_ITEM.deepFlask, kind: "upgrade", tiers: [3, 5], simLever: true }),
 	item({ id: UPGRADE_ITEM.plating, kind: "upgrade", tiers: [5], simLever: true }),
 	item({ id: UPGRADE_ITEM.prospector, kind: "upgrade", tiers: [2, 3, 4, 5], simLever: false }),
 	item({ id: characterUnlockId("archer"), kind: "unlock", tiers: [4], simLever: false, character: "archer" }),
+	...cosmeticArmoryItems(),
 ]);
 
 /** The catalogue item `id`, or undefined. */
