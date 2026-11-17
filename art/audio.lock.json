@@ -7,6 +7,11 @@
 			"bytes": 2168112
 		},
 		{
+			"path": "kenney-impact-sounds/Audio/impactGlass_light_001.ogg",
+			"sha256": "05e513fbd42829060eb37855f8c3866722ec5c39a8937c9bfde518cc609effa2",
+			"bytes": 6544
+		},
+		{
 			"path": "kenney-impact-sounds/Audio/impactGlass_light_002.ogg",
 			"sha256": "710db7451bb7857b9140dfe6afe4621ea2188ad65eda3919c569d1bb285b933d",
 			"bytes": 6562
@@ -75,6 +80,11 @@
 			"path": "kenney-interface-sounds/pluck_001.wav",
 			"sha256": "7d676b0b09b56f7e5964ad274feb7e7307a4e552bed8cd98e1e3cecfb9c10c36",
 			"bytes": 19790
+		},
+		{
+			"path": "kenney-interface-sounds/pluck_002.wav",
+			"sha256": "f8ad032b27cb79a66aec1d5994c88167e5fa87ccbb9dbab2f1658f8fcb06413e",
+			"bytes": 32078
 		},
 		{
 			"path": "kenney-music-jingles/OGG/jingles_NES/jingles_NES00.ogg",
@@ -287,6 +297,11 @@
 			"bytes": 83084
 		},
 		{
+			"path": "ninja-adventure/Audio/Sounds/Creature/Dog.wav",
+			"sha256": "6cf8627cce7e4d52ce79e6ac24d311f1bfd5b22a411f05bfdb204a79dff3d6d5",
+			"bytes": 46916
+		},
+		{
 			"path": "ninja-adventure/Audio/Sounds/Elemental/Bubble.wav",
 			"sha256": "86a9278d2816e30a00ea8a682f5795f5fa104ff9fb9de589f89e78213617c7d3",
 			"bytes": 264808
@@ -295,6 +310,11 @@
 			"path": "ninja-adventure/Audio/Sounds/Elemental/Bubble2.wav",
 			"sha256": "078b0a6f9d82b0a1c5a1f9d8ec8293e77433da71e8af82b08dc0377d41556ad3",
 			"bytes": 75404
+		},
+		{
+			"path": "ninja-adventure/Audio/Sounds/Elemental/Explosion.wav",
+			"sha256": "6b1f3ace84e4111f7013ede42c25b75710bdac696d591a96152f498bbf1370ee",
+			"bytes": 64972
 		},
 		{
 			"path": "ninja-adventure/Audio/Sounds/Elemental/Explosion2.wav",
@@ -430,6 +450,11 @@
 			"path": "ninja-adventure/Audio/Sounds/Magic & Skill/Heal2.wav",
 			"sha256": "9464ca5a18ced45b1977cf5134219273eca6d14eb36d37f2eca10a6f27177f6c",
 			"bytes": 57788
+		},
+		{
+			"path": "ninja-adventure/Audio/Sounds/Magic & Skill/Heal3.wav",
+			"sha256": "f30aa2eaa61a82d9a6bd33bdc233f13f4ae5a8e5517eaa67f63b5573c156bd03",
+			"bytes": 61032
 		},
 		{
 			"path": "ninja-adventure/Audio/Sounds/Magic & Skill/Magic1.wav",
@@ -610,6 +635,11 @@
 			"path": "oga-creature-sfx/eat_03.ogg",
 			"sha256": "3e7425cdf2cba7fe9c42e8306dc303a2c4f9a4f02358ee19329b734bf06591dd",
 			"bytes": 12484
+		},
+		{
+			"path": "oga-creature-sfx/roar_01.ogg",
+			"sha256": "e9d44326860a1c3aba917684faccfd967a4fefa284d7df773e05ae890ec242e0",
+			"bytes": 15863
 		},
 		{
 			"path": "oga-fire-loop/qubodupFireLoop.ogg",

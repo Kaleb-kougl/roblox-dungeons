@@ -1876,6 +1876,86 @@
 				"ninja-adventure/Audio/Sounds/Elemental/Fire3.wav"
 			],
 			"notes": "docs/NEW_ENEMIES_2.md NX10, sourced 2026-11-14, CC0, not auditioned yet: pick by ear at the audition, move the pick into \"clips\", set \"confirmed\": true. A Pyre-keeper's brazier lands and flares up: a fire whoosh (sfx.enemy.fuse already uses Fire, so Fireball here)."
+		},
+		"sfx.enemy.lob": {
+			"category": "sfx",
+			"clips": [
+				"kenney-interface-sounds/pluck_002.wav"
+			],
+			"pitch": [
+				0.75,
+				0.8
+			],
+			"confirmed": false,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Jump & Bounce/Jump2.wav",
+				"ninja-adventure/Audio/Sounds/Whoosh & Slash/Whoosh2.wav",
+				"kenney-interface-sounds/drop_002.wav"
+			],
+			"notes": "docs/NEW_ENEMIES_3.md NT10, sourced 2026-11-16, CC0, not auditioned yet: pick by ear at the audition, move the pick into \"clips\", set \"confirmed\": true. A Mortar looses its shell up over the walls (the draw's end; NEW_ENEMY_3_AUDIO lobMinIntervalSec 0.12): a short bowstring twang (Kenney Interface Sounds' pluck, 0.18 s), played low (PlaybackSpeed 0.75-0.8) so it reads as a heavy string and not as sfx.silver.gain's pluck_001. The alternates are a rising 8-bit whistle (Jump2) and a whoosh (Whoosh2, also the blink and the spin)."
+		},
+		"sfx.enemy.shell": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Elemental/Explosion.wav"
+			],
+			"confirmed": false,
+			"alternates": [
+				"kenney-impact-sounds/Audio/impactSoft_heavy_002.ogg",
+				"kenney-impact-sounds/Audio/impactPunch_heavy_001.ogg",
+				"ninja-adventure/Audio/Sounds/Elemental/Explosion4.wav"
+			],
+			"notes": "docs/NEW_ENEMIES_3.md NT10, sourced 2026-11-16, CC0, not auditioned yet: pick by ear at the audition, move the pick into \"clips\", set \"confirmed\": true. A Mortar's shell lands at its ring and the shrapnel bursts (shellMinIntervalSec 0.1; two Mortars' shells can land a moment apart): Ninja Adventure's shortest explosion (0.37 s), apart from the Bomber's blast (Explosion5) and the build burst (Explosion2). The alternates are Kenney thumps (a deep soft thud, a heavy punch) if the explosion reads too big for something this frequent."
+		},
+		"sfx.enemy.heal": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Magic & Skill/Heal3.wav"
+			],
+			"confirmed": false,
+			"alternates": [
+				"ninja-adventure/Audio/Sounds/Bonus/PowerUp1.wav",
+				"ninja-adventure/Audio/Sounds/Magic & Skill/Spirit.wav"
+			],
+			"notes": "docs/NEW_ENEMIES_3.md NT10, sourced 2026-11-16, CC0, not auditioned yet: pick by ear at the audition, move the pick into \"clips\", set \"confirmed\": true. A Mender's heal pulse (every 0.5 s of a channel; healMinIntervalSec 0.25, so several Menders are one quiet chime): Ninja Adventure's Heal3 (0.34 s, the third of the set: Heal is the flask, Heal2 the brace). Play it quiet at the mix pass (volume), it repeats through a 3 s channel."
+		},
+		"sfx.enemy.healcut": {
+			"category": "sfx",
+			"clips": [
+				"kenney-impact-sounds/Audio/impactGlass_light_001.ogg"
+			],
+			"confirmed": false,
+			"alternates": [
+				"kenney-impact-sounds/Audio/impactWood_light_002.ogg",
+				"kenney-interface-sounds/glass_004.wav"
+			],
+			"notes": "docs/NEW_ENEMIES_3.md NT10, sourced 2026-11-16, CC0, not auditioned yet: pick by ear at the audition, move the pick into \"clips\", set \"confirmed\": true. The player cuts a Mender's beam (a hit, a body block, a pillar; never its natural end): a crisp light glass snap (0.21 s). The alternates are a twig snap (impactWood_light_002) and a longer glass ring (Interface glass_004, 0.71 s)."
+		},
+		"sfx.enemy.lunge": {
+			"category": "sfx",
+			"clips": [
+				"oga-creature-sfx/roar_01.ogg"
+			],
+			"confirmed": false,
+			"alternates": [
+				"oga-creature-sfx/troll_01.ogg",
+				"oga-creature-sfx/monster_03.ogg",
+				"oga-creature-sfx/grunt_03.ogg"
+			],
+			"notes": "docs/NEW_ENEMIES_3.md NT10, sourced 2026-11-16, CC0, not auditioned yet: pick by ear at the audition, move the pick into \"clips\", set \"confirmed\": true. A Jackal leaves its crouch and lunges at the player's back (the lunge is 0.18 s): a short snarl from \"80 CC0 creature SFX\" by rubberduck (OpenGameArt, CC0), roar_01 being the shortest growl (0.37 s); the alternates are longer, lower snarls (troll_01 0.57 s, monster_03 0.78 s, grunt_03 0.67 s)."
+		},
+		"sfx.enemy.spooked": {
+			"category": "sfx",
+			"clips": [
+				"ninja-adventure/Audio/Sounds/Creature/Dog.wav"
+			],
+			"confirmed": false,
+			"alternates": [
+				"oga-creature-sfx/hurt_02.ogg",
+				"oga-creature-sfx/hurt_04.ogg",
+				"oga-creature-sfx/cute_03.ogg"
+			],
+			"notes": "docs/NEW_ENEMIES_3.md NT10, sourced 2026-11-16, CC0, not auditioned yet: pick by ear at the audition, move the pick into \"clips\", set \"confirmed\": true. A Jackal caught in the player's front cone shies away (the 0.2 s hop back; spookMinIntervalSec 0.12, a pack's spooks one yelp): Ninja Adventure's Dog (a short high yelp, 0.26 s); the alternates are rubberduck's high hurt cries (hurt_02, hurt_04) and a whine (cute_03), CC0."
 		}
 	}
 }

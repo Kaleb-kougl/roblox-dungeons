@@ -416,7 +416,8 @@ docs/BOOKSHELVES.md). **Changes made:** rendered to 2D sprites
 - Author: Kenney (https://www.kenney.nl). Pack: "Impact Sounds" 1.0, with its `License.txt` (Creative Commons Zero,
   CC0 1.0: http://creativecommons.org/publicdomain/zero/1.0/).
 - Used for: `sfx.build.execute`, `sfx.build.pin`, `sfx.build.slam` (three variants), `sfx.build.smash`,
-  `sfx.treasure.crack`. The clips are silence-trimmed where they are effects, downmixed to mono, loudness-normalised and encoded to OGG by
+  `sfx.treasure.crack`; the candidate for `sfx.enemy.healcut` (`impactGlass_light_001`, docs/NEW_ENEMIES_3.md NT10, to be
+  confirmed at the audition). The clips are silence-trimmed where they are effects, downmixed to mono, loudness-normalised and encoded to OGG by
   `scripts/audio/build-audio.js`; only the built OGGs are uploaded to Roblox as audio assets (docs/FX_AUDIO.md "Sourcing the
   remaining silent IDs").
 - Raw files: `art/vendor/kenney-impact-sounds/` (gitignored).
@@ -429,7 +430,8 @@ docs/BOOKSHELVES.md). **Changes made:** rendered to 2D sprites
   from Hugo Locurcio's lossless WAV repackaging (https://github.com/Calinou/kenney-interface-sounds @ `4596a49`, the
   pack's own LICENSE.txt included).
 - Used for: the Silver sounds `sfx.silver.gain` (`pluck_001`), `sfx.shop.buy` (`maximize_007`) and `sfx.shop.deny`
-  (`error_008`) (docs/SILVER.md; sourced and picked at the audition 2026-11-14). The clips are silence-trimmed,
+  (`error_008`) (docs/SILVER.md; sourced and picked at the audition 2026-11-14), and the candidate for `sfx.enemy.lob`
+  (`pluck_002`, docs/NEW_ENEMIES_3.md NT10, to be confirmed at the audition). The clips are silence-trimmed,
   downmixed to mono, loudness-normalised and encoded to OGG by `scripts/audio/build-audio.js`; only the built OGGs are
   uploaded to Roblox as audio assets.
 - Raw files: `art/vendor/kenney-interface-sounds/` (gitignored).
@@ -478,7 +480,9 @@ docs/BOOKSHELVES.md). **Changes made:** rendered to 2D sprites
 
 - Author: rubberduck. Source: https://opengameart.org/content/80-cc0-creature-sfx (`80-CC0-creature-SFX.zip`, 80 OGGs).
 - Used for: the candidates for `sfx.enemy.snatch` (the `eat_*` clips) and `sfx.enemy.swallow` (`burble_*` / `burp_*`)
-  (docs/NEW_ENEMIES_2.md NX10; owner's source pick 2026-11-14, to be confirmed at the audition). The clips are
+  (docs/NEW_ENEMIES_2.md NX10; owner's source pick 2026-11-14, to be confirmed at the audition), and for
+  `sfx.enemy.lunge` (`roar_01`) with alternates for it and for `sfx.enemy.spooked` (`troll_01`, `monster_03`,
+  `grunt_03`; `hurt_02`, `hurt_04`, `cute_03`) (docs/NEW_ENEMIES_3.md NT10, to be confirmed at the audition). The clips are
   silence-trimmed, downmixed to mono, loudness-normalised and encoded to OGG by `scripts/audio/build-audio.js`; only the
   built OGGs are uploaded to Roblox as audio assets.
 - Raw files: `art/vendor/oga-creature-sfx/` (gitignored).
