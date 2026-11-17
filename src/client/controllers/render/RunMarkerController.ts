@@ -3,7 +3,15 @@ import { Janitor } from "@rbxts/janitor";
 import { RunService, Workspace } from "@rbxts/services";
 import { createKvBillboardGui } from "client/ui";
 import { CAMERA_PITCH_DEG, CAMERA_YAW_DEG, STUDS_PER_TILE } from "shared/config";
-import { SIM_HZ, pactAltarsPlaced, partySize, pedestalOffered, type RunState, type SimState } from "shared/sim";
+import {
+	SIM_HZ,
+	pactAltarsPlaced,
+	partySize,
+	pedestalOffered,
+	pedestalOfferedTo,
+	type RunState,
+	type SimState,
+} from "shared/sim";
 import {
 	TREASURE_CHEST_ID,
 	TREASURE_CHEST_OPEN_ID,
@@ -80,6 +88,8 @@ interface Pedestal {
 	drawnShown: boolean;
 	drawnOpen: boolean;
 	drawnLift: number;
+	/** The beam was last drawn on. */
+	beamOn: boolean;
 	columnOn: boolean;
 	/** Bodies rebuilt (SA18): placed on the next draw whatever was drawn. */
 	redraw: boolean;
@@ -104,7 +114,8 @@ interface Shrine {
  * centre) PROGRESSION_VIEW.pedestalHeightTiles above the chest's base, behind the chest's billboard,
  * PROGRESSION_VIEW.pedestalBeamHeightTiles tall) stands on each live pedestal and is hidden once it is taken. A pedestal
  * nobody can take (every living player already owns every relic: shared/sim pedestalOffered) is not drawn at all, beam
- * included.
+ * included; one only a teammate can take (this client's player owns every relic, is dead or has left: pedestalOfferedTo)
+ * keeps its chest but drops its beam, as DecorFxController drops its glint (DecorFrame.playerIndex).
  *
  * Stand-ins (docs/STAGE_ASSETS.md SA18): the chests draw their placeholder until `treasure.chest` / `.chestopen` have
  * downloaded, rebuilt on the readiness flip (swapLooks); the column picks the Neon block or its art every frame.
@@ -186,6 +197,7 @@ export class RunMarkerController implements OnStart {
 				beam: beam !== undefined ? buildBeam(folder, beam, beamTop) : undefined,
 				look: newPedestalChestLook(),
 				drawnShown: false,
+				beamOn: false,
 				drawnOpen: false,
 				drawnLift: 0,
 				columnOn: false,
@@ -225,6 +237,7 @@ export class RunMarkerController implements OnStart {
 		const settings = this.fx.settings();
 		const particles = effectiveParticles(settings) !== "off";
 		const color = this.theme.getPack().color(treasureFloorRole(P.tier));
+		const localIndex = this.sim.getLocalPlayerIndex();
 		for (const p of this.pedestals) {
 			const look = this.tracker.update(
 				p.index,
@@ -252,7 +265,13 @@ export class RunMarkerController implements OnStart {
 					const origin = look.liftStuds !== 0 ? p.rest.add(new Vector3(0, look.liftStuds, 0)) : p.rest;
 					placePieceBody(show, origin, this.basis, dtSec, P.faceX, P.faceZ);
 				}
-				if (p.beam !== undefined) p.beam.Enabled = look.shown && run.pedestalTaken[p.index] !== 1;
+			}
+			if (p.beam !== undefined) {
+				const on = look.shown && pedestalOfferedTo(state, p.index, localIndex);
+				if (on !== p.beamOn) {
+					p.beamOn = on;
+					p.beam.Enabled = on;
+				}
 			}
 			if (look.popEdge) {
 				if (partySize(state) <= 1) this.sim.hitstop.request(TREASURE_VIEW.open.freezeMs, settings);
@@ -351,6 +370,8 @@ function buildBeam(folder: Folder, image: ImageRef, top: Vector3): BillboardGui 
 	gui.LightInfluence = 0;
 	gui.AlwaysOnTop = false;
 	gui.Adornee = anchor;
+	// Off until the first draw turns it on (Pedestal.beamOn).
+	gui.Enabled = false;
 	const label = new Instance("ImageLabel");
 	label.BackgroundTransparency = HIDDEN;
 	label.BorderSizePixel = 0;

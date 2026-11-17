@@ -42,6 +42,7 @@ import {
 	isDraftOpen,
 	packPayload,
 	pedestalOffered,
+	pedestalOfferedTo,
 	playerAt,
 	rngInt,
 	runMods,
@@ -460,6 +461,35 @@ describe("co-op: pedestals and the shrine", () => {
 		expect(pedestalOffered(s, 0)).toBe(false);
 		// Out of range indices are never offered.
 		expect([pedestalOffered(s, -1), pedestalOffered(s, 1)]).toEqual([false, false]);
+	});
+
+	it("pedestalOfferedTo: one player's view of the pedestal (its light), while the chest stays for a teammate", () => {
+		const r = arena();
+		const s = r.s;
+		expect([pedestalOfferedTo(s, 0, 0), pedestalOfferedTo(s, 0, 1)]).toEqual([true, true]);
+		for (let k = 0; k < RELIC_COUNT; k++) grantRelic(s, 0, k);
+		// Player 0 owns every relic: not offered to them, still to player 1 (and so still drawn).
+		expect([pedestalOfferedTo(s, 0, 0), pedestalOfferedTo(s, 0, 1), pedestalOffered(s, 0)]).toEqual([
+			false,
+			true,
+			true,
+		]);
+		// Dead or left: not offered to that player.
+		playerAt(s, 1).dead = 1;
+		expect(pedestalOfferedTo(s, 0, 1)).toBe(false);
+		playerAt(s, 1).dead = 0;
+		s.party!.left[1] = 1;
+		expect(pedestalOfferedTo(s, 0, 1)).toBe(false);
+		s.party!.left[1] = 0;
+		// Taken, or out of range: never.
+		s.run!.pedestalTaken[0] = 1;
+		expect(pedestalOfferedTo(s, 0, 1)).toBe(false);
+		s.run!.pedestalTaken[0] = 0;
+		expect([pedestalOfferedTo(s, -1, 1), pedestalOfferedTo(s, 1, 1), pedestalOfferedTo(s, 0, 2)]).toEqual([
+			false,
+			false,
+			false,
+		]);
 	});
 
 	it("the player who presses SKILL1 in the zone takes the curse; the shrine is then used for everyone", () => {

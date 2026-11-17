@@ -659,7 +659,7 @@ export class SimController implements OnStart {
 			this.isRunOver() ||
 			ctx.live?.isPaused() === true;
 		const chip = this.rumour.chip();
-		this.rumour.step(ctx.run.state, dt, hold);
+		this.rumour.step(ctx.run.state, dt, hold, this.getViewPlayerIndex());
 		// The chip shows (or changes) with its cue: the next frame's snapshot goes out at once, not at the ~10 Hz tick.
 		if (this.rumour.chip() !== chip) this.hudTimer = HUD_SNAPSHOT_INTERVAL_SEC;
 	}

@@ -461,6 +461,20 @@ export function pedestalOffered(state: Readonly<SimState>, k: number): boolean {
 	return false;
 }
 
+/**
+ * True when pedestal `k` is untaken and player `playerIndex` could take it: alive, still in the run and with a relic
+ * left to get (pedestalOffered for one player). A view query: the pedestal's light (its `ui.marker.pedestal` beam and
+ * `decor.fx.glint`) is drawn for a client's own player only then, while the chest itself follows pedestalOffered (a
+ * teammate may still take it).
+ */
+export function pedestalOfferedTo(state: Readonly<SimState>, k: number, playerIndex: number): boolean {
+	const r = state.run;
+	if (r === undefined || k < 0 || k >= r.pedestalTaken.size() || r.pedestalTaken[k] !== 0) return false;
+	if (playerIndex < 0 || playerIndex >= partySize(state)) return false;
+	if (hasLeft(state, playerIndex) || playerAt(state, playerIndex).dead !== 0) return false;
+	return unownedRelics(state, playerIndex).size() > 0;
+}
+
 // ---------------------------------------------------------------------------------------------
 // The run phase of a tick
 

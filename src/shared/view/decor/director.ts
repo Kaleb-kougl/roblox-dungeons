@@ -28,7 +28,8 @@
  *                          once nothing is left at the floor's altars (shared/sim pactsSpent: the Horde taken or out of
  *                          rooms, Greed taken or out of reach for everyone)
  *   pedestal taken         that pedestal's glint -> 0; one nobody can take (shared/sim pedestalOffered: every living
- *                          player owns every relic) never glints
+ *                          player owns every relic) never glints, and with DecorFrame.playerIndex one that player
+ *                          cannot take (pedestalOfferedTo: they own every relic) fades out for them
  *   Ember                  gutter: 1 -> 0 over emberGutterSeconds (x motionScale), every flame on screen
  *   run over (all down)    cold: 0 -> 1 over coldFadeSeconds (lights fade to the cold palette)
  *
@@ -48,6 +49,7 @@ import {
 	pactsSpent,
 	partySize,
 	pedestalOffered,
+	pedestalOfferedTo,
 	playerAt,
 	type ActorState,
 	type SimConfig,
@@ -72,6 +74,11 @@ export interface DecorFrame {
 	readonly dt: number;
 	/** The juice motionScale (1 normally, 0 under reduced motion); default 1. */
 	readonly motion?: number;
+	/**
+	 * This client's own player (SimController localIndex): a pedestal glints only while that player can take it
+	 * (shared/sim pedestalOfferedTo). Undefined: while anyone can (pedestalOffered).
+	 */
+	readonly playerIndex?: number;
 }
 
 /** What the renderers apply. Reused and mutated by every update() (see the file comment). */
@@ -358,7 +365,11 @@ export class DecorDirector {
 			let target = 0;
 			if (run !== undefined) {
 				const k = run.pedestalRooms.indexOf(scene.pedestals[j].room);
-				target = pedestalOffered(state, k) ? 1 : 0;
+				const offered =
+					frame.playerIndex !== undefined
+						? pedestalOfferedTo(state, k, frame.playerIndex)
+						: pedestalOffered(state, k);
+				target = offered ? 1 : 0;
 			}
 			v.glint[j] = snap ? target : approach(v.glint[j], target, dt, R.glintFadeSeconds);
 		}
