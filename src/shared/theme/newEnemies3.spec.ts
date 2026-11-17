@@ -132,13 +132,16 @@ describe("new enemies 3: contract", () => {
 });
 
 describe("new enemies 3: bundled packs", () => {
-	it("every bundled pack fills every new slot (placeholders, silent sounds) and validates", () => {
+	it("every bundled pack fills every new slot (placeholders, silent sounds; vale its art and sounds once uploaded) and validates", () => {
 		for (const id of sortedKeys(THEME_PACKS)) {
 			const pack = THEME_PACKS[id];
 			const colors = pack.colors as unknown as Obj;
-			// No art and no clips yet (NT8 / NT10): every pack, vale included, draws the placeholders and stays silent
+			// vale draws the art and plays the clips once their files have IDs (NT8 / NT10: built, upload pending; packs/vale
+			// specs); every other pack keeps the placeholders and stays silent
 			for (const [a, name] of NAMES) {
-				expect([id, a, pack.assets[`enemy.${a}`].kind]).toEqual([id, a, "placeholder"]);
+				const kind = pack.assets[`enemy.${a}`].kind;
+				const drawn = id === "vale" ? kind === "placeholder" || kind === "sprites" : kind === "placeholder";
+				expect([id, a, drawn]).toEqual([id, a, true]);
 				expect([id, a, typeIs(colors[`enemy.${a}`], "string")]).toEqual([id, a, true]);
 				expect([id, a, pack.strings[`enemy.${a}.name`]]).toEqual([id, a, name]);
 				const line = pack.strings[`bestiary.${a}`];
@@ -146,8 +149,11 @@ describe("new enemies 3: bundled packs", () => {
 				// "Name: tip" (l10n/context.json): the toast's name is the name string
 				expect([id, a, (line as string).sub(1, name.size() + 1)]).toEqual([id, a, `${name}:`]);
 			}
-			for (const sfx of NEW_ENEMY_3_AUDIO_IDS)
-				expect([id, sfx, pack.assets[sfx].kind]).toEqual([id, sfx, "silent"]);
+			for (const sfx of NEW_ENEMY_3_AUDIO_IDS) {
+				const kind = pack.assets[sfx].kind;
+				const heard = id === "vale" ? kind === "silent" || kind === "sound" : kind === "silent";
+				expect([id, sfx, heard]).toEqual([id, sfx, true]);
+			}
 			expect([id, typeIs(pack.colors[ENEMY_HEAL_ROLE], "string")]).toEqual([id, true]);
 			expect([id, validateManifest(pack, { packId: id })]).toEqual([id, []]);
 		}

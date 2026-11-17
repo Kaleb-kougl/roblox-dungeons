@@ -1448,7 +1448,7 @@ describe("vale per-sheet cells (docs/DEMON_ART.md DA2 / DD4)", () => {
 		expect([g.offset.X, g.offset.Y, g.size.X, g.size.Y, g.pivot]).toEqual([693, 791, 99, 113, { x: 51, y: 89 }]);
 	});
 
-	it('only the `cells: "perSheet"` sets (enemy.bruiser, boss.act1, the turrets, the imp, the summoner, the NE9 five, the NX8 four) give their sheets their own cells', () => {
+	it('only the `cells: "perSheet"` sets (enemy.bruiser, boss.act1, the turrets, the imp, the summoner, the NE9 five, the NX8 four, the NT8 three) give their sheets their own cells', () => {
 		const perSheet = [
 			"boss.act1",
 			"enemy.bomber",
@@ -1458,6 +1458,9 @@ describe("vale per-sheet cells (docs/DEMON_ART.md DA2 / DD4)", () => {
 			"enemy.chainhook",
 			"enemy.charger",
 			"enemy.imp",
+			"enemy.jackal",
+			"enemy.mender",
+			"enemy.mortar",
 			"enemy.pyrekeeper",
 			"enemy.reaper",
 			"enemy.snatcher",
@@ -2594,5 +2597,115 @@ describe("vale Goldling (FO10: the skeleton recoloured gold)", () => {
 			expect([file, without.assets["enemy.golden"]]).toEqual([file, { kind: "placeholder" }]);
 		}
 		expect(buildValeManifest(fakeIds(...SHEETS)).assets["enemy.golden"]).toEqual({ kind: "placeholder" });
+	});
+});
+
+/**
+ * The fourth endless set's rigs (docs/NEW_ENEMIES_3.md NT8, NTD2): enemy.mortar = Demon Spawn 6, enemy.mender = Imp 10,
+ * enemy.jackal = Demon Beast 2, the NX8 recipe (per-sheet cells, a 2 px rim per sheet). The view's optional names
+ * (newEnemies3Config NEW_ENEMY_3_SPRITE_VIEW.anims): the Mender's bolt `attack.2`, the Jackal's `crouch` and `hop`.
+ * Not uploaded yet: the bundled pack draws the three placeholders until each set's required sheets have IDs.
+ */
+describe("vale Mortar, Mender and Jackal (NT8: 2D Demons, per-sheet cells)", () => {
+	const SETS: ReadonlyArray<readonly [string, string, number, ReadonlyArray<string>, ReadonlyArray<string>]> = [
+		// id, sheet prefix, px per tile, sheets, animations
+		[
+			"enemy.mortar",
+			"mortar",
+			31.3,
+			["mortar-attack.png", "mortar-body.png", "mortar-death.png"],
+			["attack", "death", "hit", "idle", "move"],
+		],
+		[
+			"enemy.mender",
+			"mender",
+			28.3,
+			["mender-attack.png", "mender-body.png", "mender-death.png"],
+			["attack", "attack.2", "death", "hit", "idle", "move"],
+		],
+		[
+			"enemy.jackal",
+			"jackal",
+			50,
+			["jackal-attack.png", "jackal-body.png", "jackal-hop.png", "jackal-death.png"],
+			["attack", "crouch", "death", "hit", "hop", "idle", "move"],
+		],
+	];
+	const outlineOf = (file: string) => `${file.sub(1, -5)}-outline.png`;
+
+	it("the layouts: 8 facings, a rim per sheet, every sheet <= 1024; the Mortar at the Spawns' density, the Mender at the imps', the Jackal at bodyTiles 1.2", () => {
+		for (const [id, , ppt, sheets, anims] of SETS) {
+			const l = VALE_SPRITE_LAYOUTS[id];
+			expect([id, l.facings]).toEqual([id, { count: 8, zeroDeg: 0, ccw: true }]);
+			expect([id, l.pixelsPerTile]).toEqual([id, ppt]);
+			expect([id, l.sheets.map((s) => s.file)]).toEqual([id, sheets]);
+			for (const s of l.sheets) {
+				expect([id, s.file, s.outlineFile, s.w <= 1024 && s.h <= 1024]).toEqual([
+					id,
+					s.file,
+					outlineOf(s.file),
+					true,
+				]);
+			}
+			expect([id, sortedKeys(l.animations)]).toEqual([id, anims]);
+		}
+		// same pack, same render scale: the Mortar is drawn at the Shieldwall's density, the Mender at the imp's
+		expect(VALE_SPRITE_LAYOUTS["enemy.mortar"].pixelsPerTile).toBe(
+			VALE_SPRITE_LAYOUTS["enemy.bulwark"].pixelsPerTile,
+		);
+		expect(VALE_SPRITE_LAYOUTS["enemy.mender"].pixelsPerTile).toBe(VALE_SPRITE_LAYOUTS["enemy.imp"].pixelsPerTile);
+	});
+
+	it("the measured frames: the Mortar's loose at 0.7 of its timeline, the Mender's channel loop at the pulse, the Jackal's lunge, crouch and hop", () => {
+		const mortar = VALE_SPRITE_LAYOUTS["enemy.mortar"].animations;
+		// Attack 4 kept 0, 2-10: the loose (f8) is index 7 of 10, the draw's 21 of the 30-tick timeline
+		expect(mortar.attack.frames).toBe(10);
+		const mender = VALE_SPRITE_LAYOUTS["enemy.mender"].animations;
+		// 3 frames at fps 6 = 0.5 s: the channel's heal pulse (30 ticks)
+		expect([mender.attack.frames, mender.attack.fps, mender["attack.2"].frames]).toEqual([3, 6, 5]);
+		expect(mender.attack.sheet).toBe(mender["attack.2"].sheet);
+		const jackal = VALE_SPRITE_LAYOUTS["enemy.jackal"].animations;
+		expect([jackal.attack.frames, jackal.crouch.frames, jackal.hop.frames, jackal.hit.frames]).toEqual([
+			6, 4, 7, 7,
+		]);
+		expect(jackal.crouch.sheet).toBe(jackal.attack.sheet);
+	});
+
+	it("as bundled (no IDs yet): the three draw their placeholders", () => {
+		for (const [id, prefix] of SETS) {
+			for (const file of sortedKeys(VALE_ASSET_IDS))
+				expect([id, file, startsWith(file, `${prefix}-`)]).toEqual([id, file, false]);
+			expect([id, VALE_MANIFEST.assets[id]]).toEqual([id, { kind: "placeholder" }]);
+		}
+	});
+
+	it("switch to sprites with their required sheets; any missing keeps the placeholder; the Jackal's hop sheet is optional", () => {
+		const m = buildValeManifest(fakeIds());
+		expect(validateManifest(m, { packId: "vale" })).toEqual([]);
+		const theme = new ThemeCore(m, { warn: quiet });
+		for (const [id, , , sheets, anims] of SETS) {
+			expect([id, m.assets[id].kind]).toEqual([id, "sprites"]);
+			expect([id, theme.sprites(id)!.animationNames]).toEqual([id, anims]);
+			for (const file of sheets) {
+				if (file === "jackal-hop.png") continue;
+				const without = buildValeManifest(fakeIds(file));
+				expect(validateManifest(without, { packId: "vale" })).toEqual([]);
+				expect([id, file, without.assets[id]]).toEqual([id, file, { kind: "placeholder" }]);
+			}
+			const rims = sheets.map(outlineOf);
+			const rimsOnly = buildValeManifest(fakeIds(...sheets));
+			expect([id, rimsOnly.assets[id]]).toEqual([id, { kind: "placeholder" }]);
+			expect([id, buildValeManifest(fakeIds(...rims)).assets[id].kind]).toEqual([id, "sprites"]);
+		}
+		const noHop = buildValeManifest(fakeIds("jackal-hop.png"));
+		expect(validateManifest(noHop, { packId: "vale" })).toEqual([]);
+		expect(new ThemeCore(noHop, { warn: quiet }).sprites("enemy.jackal")!.animationNames).toEqual([
+			"attack",
+			"crouch",
+			"death",
+			"hit",
+			"idle",
+			"move",
+		]);
 	});
 });

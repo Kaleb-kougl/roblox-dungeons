@@ -40,6 +40,7 @@ import {
 	MORTAR_KEEP,
 	MORTAR_LAND_X,
 	MORTAR_LAND_Z,
+	SIM_HZ,
 	STORMCALLER,
 	SWORD_V_GUARD,
 	SimCtx,
@@ -58,6 +59,7 @@ import {
 	type SimState,
 } from "shared/sim";
 import type { SpriteAnimationDef } from "shared/theme";
+import { VALE_SPRITE_LAYOUTS } from "shared/theme/packs/vale";
 import { EnemyBulletLook, enemyBulletLookOf } from "./bullets";
 import { NearMissDirector, NearMissEvents, NewEnemy3FrameEvents } from "./fx";
 import { HEAL_PLUS_VIEW, HEAL_TETHER_VIEW, NEW_ENEMY_3_SPRITE_VIEW, SHELL_ARC_VIEW } from "./newEnemies3Config";
@@ -80,7 +82,7 @@ import {
 	type NewEnemy3BurstAt,
 } from "./newEnemies3";
 import { jackalSpriteInput, menderSpriteInput, mortarSpriteInput } from "./newEnemy3Sprites";
-import { ACTOR_SPRITE_INPUTS, chooseActorAnim, type SpriteAnimSource } from "./sprites";
+import { ACTOR_SPRITE_INPUTS, chooseActorAnim, stretchedFrame, type SpriteAnimSource } from "./sprites";
 import { enemyBulletPool } from "./variants";
 
 const K = newEnemy3Kinds();
@@ -635,6 +637,28 @@ describe("sprite inputs", () => {
 		expect(mortarSpriteInput(released, 0).attack).toEqual({ elapsed: d.drawTicks + 2, total: d.drawTicks + R });
 		released.v[MORTAR_FLIGHT_TICKS] = d.flightTicks - R;
 		expect(mortarSpriteInput(released, 0).attack).toBeUndefined();
+	});
+
+	it("on vale's built art (NT8): the Mortar's loose (kept 7 of 10) shows from the flight's first tick, never in the draw; the Mender's channel loop is one heal pulse", () => {
+		const d = MORTAR.data;
+		const sheets = VALE_SPRITE_LAYOUTS["enemy.mortar"].animations;
+		const vale = source(sheets);
+		const frameAt = (a: ActorState) => {
+			const c = chooseActorAnim(mortarSpriteInput(a, 0), vale);
+			return [c.anim, stretchedFrame(c.progress ?? -1, sheets[c.anim].frames)];
+		};
+		const LOOSE = 7;
+		// the draw's last tick: still the full draw; the flight's first tick: the loose
+		const drawn = actor({ kind: K.mortar, aiState: AiState.TELEGRAPH, attack: MORTAR_ATTACK_LOB, aiTicks: 1 });
+		expect(frameAt(drawn)).toEqual(["attack", LOOSE - 1]);
+		const flying = withV(
+			actor({ kind: K.mortar, aiState: MORTAR_FLIGHT, attack: MORTAR_ATTACK_LOB }),
+			MORTAR_FLIGHT_TICKS,
+			d.flightTicks,
+		);
+		expect(frameAt(flying)).toEqual(["attack", LOOSE]);
+		const m = VALE_SPRITE_LAYOUTS["enemy.mender"].animations.attack;
+		expect((m.frames / m.fps) * SIM_HZ).toBe(MENDER.data.pulseTicks);
 	});
 });
 
