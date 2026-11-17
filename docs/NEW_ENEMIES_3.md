@@ -37,12 +37,14 @@ lands.
 
 ## Status (2026-11-16)
 
-**NT0-NT5 done** (see "NT0 findings": four small Design changes, no decision changed; "NT1 skeleton (as
+**NT0-NT6 done** (see "NT0 findings": four small Design changes, no decision changed; "NT1 skeleton (as
 built)"; "NT2 Mortar (as built)": the Mortar's behaviour, `ArchetypeDef.stepCorpse`, `SimConfig.roomIdAt`,
 `events.shells`; "NT3 Mender (as built)": the Mender's behaviour, `healActor`, `events.heals` / `healCuts` and
 `CombatState.healEvents`, two data fields the plan left open; "NT4 Jackal (as built)": the Jackal's behaviour, the
 locked target `JACKAL_TARGET` (a co-op finding), `lungeRange`, `events.lunges` / `spooks`; "NT5 packs (as built)":
-`EndlessRoomKind.packOf`, the spender's pack rule and placement, an optional `kinds` table for specs).
+`EndlessRoomKind.packOf`, the spender's pack rule and placement, an optional `kinds` table for specs; "NT6 room pool
+and roster (as built)": the three rows, the Mender's floor 2, 17 seeded kinds, `DAILY.ruleset` 22, Codex 94, the
+re-pins and the census).
 Read on `main` @ `80f57769`. NTD1-NTD14 taken by the owner on
 2026-11-16 (see Decisions): every one as recommended except **NTD3** (the Mortar fires only while its target is in the
 Mortar's own room), **NTD9** (a guard that stops a Jackal's lunge counts as a parry) and **NTD10** (the last Jackal of a
@@ -376,6 +378,113 @@ endless floor spends and places exactly as before. Files: `dungeon/endlessData.t
   extends the other count pins, should update it); `dungeon/forge/forge.spec` "EncounterRng ... seedToState vectors"
   reads a NaN fixture seed as `fff8000000000000` where the fixture says `7ff8000000000000` (a NaN sign bit in the
   fixture round trip under Lune; no NT code touches it).
+
+## NT6 room pool and roster (as built, 2026-11-16)
+
+Gameplay (dungeon): endless, daily and dev rooms, replays and scores change from floor 1; M1, every golden fixture and
+the tutorial replay exactly as before (no golden-run, segments / validate or tutorial spec moved); boards stay `_v1`.
+
+- `ENDLESS_ROOM_KINDS` + three rows, appended after the Pyre-keeper (`endlessData.ts`, `NEW_KIND_3_MAX_PER_ROOM`,
+  `JACKAL_PACK_SIZE` 3): mortar 1 / max 2, mender 1 / 1 `needsCompany`, jackal 1 / 1 pack with `packOf` 3 (NTD6, NTD11).
+  Each has `fromFloor` 2 (`ROOM_KIND_UNLOCK_FLOOR`), copied from NX6: read only with unlock floors (specs and tools), so
+  floor 1 without a roster spends draw for draw and tile for tile as before (`roomPool.lock`'s no-roster floor-1
+  digests 6504 / 8482 / 10531 / 12293 spawns unchanged: the three are closed there, and a closed pack kind moves no
+  total and no draw, NT5). Every endless world ignores `fromFloor` (DSD17 / DSD18), so NTD7's "no minimum" holds for the
+  Mortar and the Jackal.
+- NTD7: `ROOM_KIND_MIN_FLOOR` gains `mender` 2, honoured in `roomKindOpen` (no draw) and in `endlessRoster`'s join scan,
+  unlock floors on or off, exactly as the Chainhook's: a run whose order starts with the Mender (runs 46, 54, 57, 76,
+  91, ... of 0-499) takes the order's first kind with no minimum on floor 1 and the Mender on floor 2. 48 of 500 runs
+  start with the Chainhook or the Mender; none of 0-499 has both in front.
+- `rosterOrder` shuffles 17 seeded kinds (16 draws); full roster on floor 17.
+- `DAILY.ruleset` 21 -> 22 (NTD14; `daily.spec`).
+- Codex: `enemy:mortar` / `enemy:mender` / `enemy:jackal` appear after `enemy:pyrekeeper` on their own (NT0 finding 14);
+  `catalog.spec`'s order lock extended (94 entries, the appended list grown, never reordered), `view/codex/screen.spec`
+  (the Enemies section 16 -> 19 tiles), `codex/doc.spec` (their first-time cards now seed their entries: 18 -> 21).
+- Census helpers: `run/testing` `newEnemies3Census.ts` (`newEnemies3Census`, `nt6CensusProblems`, `jackalPacks`) and the
+  shard specs `run/newEnemies3Pool.<1-5>.spec` (floors 1-4 / 5-8 / 9-12 / 13-16 / 17-20; by default run seeds 1-10,
+  `--census` 1-60, about 60-80 s a shard).
+
+Re-pinned ("re-recorded for docs/NEW_ENEMIES_3.md NT6"). Every move is the three kinds in the draw or the 17-kind
+reshuffle: nothing else in the branch reaches an endless floor, the layouts never move, and the pinned floors were
+checked against the NX6 build (a worktree at `af6045c`): with their NX6 rosters, `endlessRoomSpawns` on today's table
+gives exactly the old spawn lists (run 4 floor 3, run 23 floor 3 party 2, run 4242 floor 1), so only the roster moved
+them.
+
+| Spec | Old -> new | Why |
+|---|---|---|
+| `dungeon/roomPool.lock` | no roster floors 2-6 `5dd95c58 / 68e4f441 / a674542e / f03db93c / 91268968` -> `2c1a3d7e / ab06d380 / 00ef4f85 / bdd889c6 / 78868284`; roster floor 1 `0b8658d7 / e7fb379d / a6ccba66 / 114ba42c` -> `32d26649 / 0daddec8 / 24f62f94 / 88f91250`; roster floors 2-6 `5e506771 / f579a0c3 / 8538cbf3 / 20dcde0a / c84d264a` -> `e601539c / 897c3c54 / 7fe826ce / 78b2c8cd / 9eb8d68a` | the three join the no-roster draw from floor 2; every roster reshuffled. Floor 1 without a roster unchanged |
+| `dungeon/roster.spec` | `SEEDED` + 3, run 1 / 1337 orders and rosters, full floor 14 -> 17, the floor-1 join rule generalised to the Chainhook and the Mender (runs 25 / 46), a new "no floor-1 Mender" case | 17-kind shuffle; NTD7 |
+| `dungeon/roomPool.spec` | rows + 3, `needsCompany` + mender, the pack kind, min floors + mender; the per-room max check counts packs (`maxPerRoom x packOf`) | the rows |
+| `dungeon/endless.spec` | `ENCOUNTER_COST.size()` 18 -> 21 | NT1's rows (left stale by NT1, noted in NT5) |
+| `dungeon/packs.spec` | its base table is `ENDLESS_ROOM_KINDS` without the real Jackal row | the real table has one now |
+| `sim/charger.spec` | `PIN_HASH` `2fcc46ea` -> `5332ee3f` (counts unchanged) | run 4 floor 3's roster is swarmer / sniper / jackal / charger (was swarmer / stormcaller / bruiser / sniper): a Jackal pack and Chargers in its rooms, the breakables around them moved (39 pieces, were 36) |
+| `sim/stormcaller.spec` | `3/0/04cfeefe`, `6/0/71038c42` -> `3/0/31c1996c`, `6/0/eb11734f` (strike / skip counts unchanged) | the same run 4 floor 3; run 23's co-op floor 3 buys slime / summoner / reaper (was charger / imp / reaper) |
+| `view/hud/rosterLine.spec` | run 1337: floor 1 `Swarmer · Bruiser` -> `Swarmer · Imp`, the joins of floors 2-17, built floor 3 `New: Shieldwall` -> `New: Jackal` | 17-kind shuffle |
+| `run/slice.spec` | the floor-6 segment's start tick 2962 -> 2953 (the edit still after the tick-3000 checkpoint) | the bot's floors 1-5 buy other kinds |
+| `codex/*`, `view/codex/screen`, `daily.spec`, `sim/newEnemies2` / `newEnemies3` | counts and rows as above | the rows |
+
+Not pins (loose bounds or test setups the new rosters broke; NT12 items where they are tuning):
+- `sim/pellets/stepPellets` "pickups move only the score and pellets groups": run 4242's floor-1 kind is now the
+  Snatcher (was the Reaper), which reads the pellets, so the actors group differs between a run with and without them.
+  The test uses `NO_SNATCHER_SEED` 4244 (floor 1: the sniper), asserted to hold no Snatcher.
+- `sim/score/contributionFeed` "solo runs credit player 0": 4242's solo walk to the floor-1 stairs (now Snatchers) lands
+  no hit in 1500 ticks; it uses 4244.
+- `sim/archer.ttk.builds`: the floor-20 census room is now run 3 floor 20 room 11, 16 enemies with a Mortar. More fights
+  time out there (seeds 1-2): the Knight's and the two-weapon player's with no build, the two-weapon player's Siege Bolt
+  (all cleared at NX6); the Archer's Siege Bolt still clears (149 s), its Fire Arrows now does (167 s, kept in the
+  allowance). The allowance is per character (`MAY_TIME_OUT`), printed; every other fight must be won.
+- `sim/archer.roll.fight` and `sim/legendaries.bastion.roll` (the fighting roll bot): the floor-6 census room is now a
+  bomber, 3 swarmers, a Stormcaller, a Mender and a Snatcher; the bot clears it (10 s Archer) without ever meeting a
+  volley to roll into, so "the bot rolled" is waived for that room for the fighting bot only (the kiting bot still rolls
+  there).
+
+Ran green on the change: every `dungeon/*` spec (but `forge.spec`'s known NaN-sign vector, unrelated), every `run/*`
+spec (the censuses included: `newEnemies2Pool.<1-5>`, `poolHighWater.*`, `enemyBullets.*`, `pellets`, `treasure`,
+`silver`, `golden`, `drops`, `pacts`, `snagCensus.<1-3>`, `archer.survival`, `replay.bench`), `daily/`, `codex/`,
+`view/codex`, `view/hud/rosterLine`, `leaderboard/`, `onboarding`, and in `sim/` the determinism specs, every
+per-archetype spec (bomber .. jackal / mender / mortar), `newEnemies*`, `encounterRun`, `enemyVariants`, the golden-run
+specs (`runFull`, `runBoss`, `runBullets`, `runPlayer*`, `constants`, `recordingCodec`, `bossAct1`), the TTK / roll
+specs above, and `sim/{affixes,breakables,builds,combat,dev,drops,golden,pacts,pellets,progression,score,secrets,silver,treasure,tutorial}/`.
+
+**Census** (`run/newEnemies3Pool.<1-5>.spec`, `--census`: floors 1-20 x solo run seeds 1-60, every endless world's rule;
+means per populated room unless marked per floor (per run); "(n)" after Mortars is the most in one room, after Menders
+and Jackal packs the rooms holding one; p4 = party 4 over the same floors). Gates held on every floor: every roster and
+room rule (`censusViolations` with `appears`: caps counted in packs, the Mender never a room's first buy, every roster
+kind placed), every room's Jackals whole packs of three consecutive spawns, no room past the 16-actor cap (solo or party
+4), party 4's worst room under the pool target 48, no Mender on floor 1.
+
+| floor | rooms | enemies | kinds | cost / budget | Mortars (max) | Menders / floor (rooms) | Jackal packs / floor (rooms) | max spawns solo / p4 (p4 rooms at 16) | p4 packs / floor | p4 max slots / alive |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | 452 | 5.26 | 1.70 | 6.50 / 6.50 | 0.05 (2) | 0.00 (0) | 0.48 (29) | 9 / 16 (8.0 %) | 0.47 | 21 / 19 |
+| 2 | 465 | 5.37 | 2.28 | 7.59 / 7.91 | 0.11 (2) | 0.42 (25) | 0.92 (55) | 10 / 16 (9.0 %) | 1.00 | 25 / 22 |
+| 3 | 444 | 5.57 | 2.74 | 8.67 / 9.10 | 0.11 (2) | 0.78 (47) | 0.83 (50) | 11 / 16 (6.1 %) | 1.18 | 24 / 20 |
+| 4 | 456 | 5.89 | 3.13 | 9.73 / 10.31 | 0.14 (2) | 0.97 (58) | 0.77 (46) | 11 / 16 (4.6 %) | 1.05 | 25 / 22 |
+| 5 | 457 | 6.21 | 3.55 | 10.98 / 11.69 | 0.20 (2) | 1.03 (62) | 0.85 (51) | 12 / 16 (3.7 %) | 0.95 | 29 / 22 |
+| 6 | 507 | 7.00 | 4.05 | 12.85 / 12.85 | 0.23 (2) | 1.58 (95) | 1.00 (60) | 14 / 16 (3.6 %) | 1.07 | 31 / 25 |
+| 7 | 513 | 7.47 | 4.56 | 13.95 / 14.24 | 0.26 (2) | 1.57 (94) | 1.70 (102) | 13 / 16 (6.8 %) | 1.07 | 32 / 25 |
+| 8 | 499 | 7.89 | 4.94 | 15.23 / 15.67 | 0.28 (2) | 1.77 (106) | 1.68 (101) | 13 / 16 (11.2 %) | 0.70 | 39 / 29 |
+| 9 | 510 | 8.11 | 5.27 | 16.16 / 16.73 | 0.31 (2) | 1.72 (103) | 1.68 (101) | 13 / 16 (14.5 %) | 0.43 | 40 / 30 |
+| 10 | 509 | 8.45 | 5.80 | 17.49 / 18.19 | 0.35 (2) | 1.75 (105) | 1.33 (80) | 14 / 16 (16.9 %) | 0.22 | 40 / 30 |
+| 11 | 570 | 9.25 | 6.29 | 19.33 / 19.33 | 0.45 (2) | 2.33 (140) | 1.85 (111) | 15 / 16 (17.5 %) | 0.08 | 40 / 30 |
+| 12 | 566 | 9.37 | 6.69 | 20.29 / 20.57 | 0.43 (2) | 2.63 (158) | 1.47 (88) | 14 / 16 (25.3 %) | 0.02 | 40 / 30 |
+| 13 | 569 | 9.78 | 7.04 | 21.58 / 22.01 | 0.48 (2) | 2.68 (161) | 1.52 (91) | 15 / 16 (31.1 %) | 0.00 | 40 / 30 |
+| 14 | 561 | 10.06 | 7.41 | 22.49 / 23.06 | 0.45 (2) | 2.98 (179) | 1.33 (80) | 15 / 16 (61.0 %) | 0.00 | 39 / 29 |
+| 15 | 561 | 10.63 | 7.93 | 23.97 / 24.67 | 0.50 (2) | 3.50 (210) | 1.57 (94) | 15 / 16 (100.0 %) | 0.00 | 38 / 29 |
+| 16 | 624 | 11.36 | 8.41 | 25.73 / 25.73 | 0.49 (2) | 3.82 (229) | 1.78 (107) | 16 / 16 (100.0 %) | 0.00 | 37 / 27 |
+| 17 | 616 | 11.47 | 8.67 | 26.69 / 26.98 | 0.52 (2) | 4.03 (242) | 1.17 (70) | 15 / 16 (100.0 %) | 0.00 | 16 / 16 |
+| 18 | 627 | 11.83 | 8.96 | 27.66 / 28.08 | 0.53 (2) | 4.48 (269) | 1.37 (82) | 16 / 16 (100.0 %) | 0.00 | 16 / 16 |
+| 19 | 614 | 12.31 | 9.12 | 29.10 / 29.67 | 0.56 (2) | 3.92 (235) | 1.12 (67) | 16 / 16 (100.0 %) | 0.00 | 16 / 16 |
+| 20 | 626 | 12.56 | 9.21 | 29.92 / 30.64 | 0.63 (2) | 4.37 (262) | 1.12 (67) | 16 / 16 (100.0 %) | 0.00 | 16 / 16 |
+
+Read: floor 1 buys Jackal packs (in 29 rooms over the sample) and Mortars (2 at most in a room) but never a Mender;
+from floor 2 every rule holds unlocked (DSD18). A solo room holds at most one pack (the cap) and never reaches 16
+spawns before floor 16. **Party 4 buys almost no Jackals from floor 10 on**: a party room's budget per free slot rises
+past 1, so the spender's per-slot rule (NT5: a pack compares its per-slot cost, 1, against budget-left / slots-left)
+leaves the 1-cost pack out of the weighted draw and the no-draw fallback takes the dearest kind; from floor 15 every
+party-4 room saturates at 16 and from floor 17 the fallback buys 16 Bruisers (EV13's, as in NX6). That is NT5's rule as
+taken, the swarmers' fate too; NT12 / owner item if deep co-op should meet packs. Party 4's worst room is 40 slots
+(floors 9-13: 8 Oozes, a summoner, a Pyre-keeper among them), unchanged from NX6's and under the 48 target. Shells and
+heals per room (the plan's NT6 line) need stepped fights; they are NT12's measurements, not this spawn census.
 
 ## Player experience
 
