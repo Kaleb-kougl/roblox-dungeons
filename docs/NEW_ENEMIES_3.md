@@ -725,6 +725,101 @@ No rule, notes only:
   walks home before anything else (NT2).
 - **The Snatcher and a Jackal pack**: no rule between them (the Snatcher takes pellets, Jackals ignore pellets).
 
+## NT12 tuning (as built, 2026-11-16)
+
+NT12-lite, no retune (NX12-lite's shape): `run/newEnemies3.tuning.spec` with shared/run/testing `newEnemies3Tune.ts`
+(`Nt12Observer`: hits by source kind from `SimEvents.lastHitSource`, `events.shells` / `heals` / `healCuts` / `lunges`
+/ `spooks`, channel starts and staggers by state transition, each Mender's `v[MENDER_HEALED]`; `nt12Fight`: AR13's arena
+fighters, god mode, no build; `nt12Drill`: a passive bot that never attacks; `nt12Survival`: survivalBot.ts's honest
+descent with hearts topped up, each room fight's ticks against its par). Default: f11 seed 1 and the drills at seed 1
+(2 s); `--census`: everything below (about 2 minutes). No tuning number changed: nothing is broken (every kind is
+killable and attacks).
+
+**1. Per-kind rooms** (arena, seeds 1-3, mean per fight: TTK s / hits taken; the kind's own numbers after):
+
+| room | f6 Knight | f6 Archer | f11 Knight | f11 Archer | f11: what the three did (Knight; Archer) |
+|---|---|---|---|---|---|
+| 2 Mortar | 4.1 / 0 | 3.9 / 0 | 6.5 / 0.7 | 6.7 / 0 | 1 shell a fight (both): the first lob waits 3.2-4.2 s + 1.35 s |
+| Mender + 2 bruiser | 5.4 / 4.0 | 9.5 / 0 | 9.3 / 8.0 | 15.9 / 0.7 | heals 2.3 a Mender life, 1.7 channels, 1.7 cut; 6.3 a life, 1.3 channels, 0 cut |
+| 2 bruiser (baseline) | 3.6 / 4.0 | 6.8 / 0 | 7.7 / 8.0 | 11.6 / 0.3 | - |
+| Jackal pack | 3.9 / 0 | 4.0 / 0 | 5.4 / 0 | 6.7 / 0 | 0 lunges (killed first); 0 lunges, 7.7 spooks (the Archer faces its target) |
+| 3 swarmer (baseline) | 0.7 / 0 | 1.9 / 0 | 1.1 / 1.0 | 1.9 / 0 | - |
+| Mortar + Mender + pack | 6.3 / 0 | 8.3 / 1.0 | 9.7 / 0 | 12.2 / 2.3 | 1 lunge, no shell; 2 shells (both hit), 1 heal, 5.3 spooks |
+
+**2. Drills** (a passive Knight bot 60 s, floor 11 hp, seeds 1-3):
+
+| drill | shells | hits from shells | a shell hits | | Jackal drill | lunges | spooks | staggers | hits | a lunge hits |
+|---|---|---|---|---|---|---|---|---|---|---|
+| stands still | 14.0 | 14.0 | 1.00 | | faces the nearest Jackal | 45.0 | 2.7 | 0 | 30.0 | 0.67 |
+| strafes (side to side, 1 s) | 14.0 | 6.7 | 0.48 | | never turns | 52.3 | 0 | 0 | 38.3 | 0.73 |
+| wanders (8-way, 20-60 ticks) | 13.0 | 3.7 | 0.28 | | faces and guards each lunge | 44.3 | 3.0 | 20.7 | 14.7 | 0.33 |
+
+**3. Real floors** (survival bot, floors 1-10, seeds 1-3, hearts topped up; rooms by the new kinds they planned, a room
+with two of them in both rows; time / par = summed fight ticks / summed par of the cleared rooms):
+
+| rooms | Knight: fought, mean s, par s, time / par, hits a room | Archer: fought, mean s, par s, time / par, hits a room |
+|---|---|---|
+| none of the three | 146, 7.1, 23.7, 0.30, 1.48 | 145, 9.4, 23.7, 0.40, 0.15 |
+| with a Mortar | 51, 7.2, 26.0, 0.28, 0.96 | 53, 12.5, 25.6, 0.49, 0.98 |
+| with a Mender | 25, 10.2, 30.8, 0.33, 1.72 | 27, 19.8, 30.7, 0.65, 1.52 |
+| with a Jackal pack | 29, 9.8, 28.8, 0.34, 1.38 | 27, 19.1, 27.7, 0.69, 1.44 |
+
+Per run (floors 1-10): the Knight met 5.7 shells (0.24 hit: it keeps walking), healing 2.0 hp over about 10 Menders
+(0.2 a life), 8.7 lunges (1.0 hit), 7 spooks; the Archer met 16.3 shells (**0.55 hit**: the bot stands still to charge),
+9.0 hits from Mortars (of 84.7), 16.3 hp healed (1.8 a Mender life, 5.7 channels, 2.3 cut), 4 lunges (0 hits), 28
+spooks. Every room cleared but one, under par (time / par 0.28-0.69).
+
+**4. The floor-20 census room** of `sim/archer.ttk.builds` (run 3 floor 20 room 11 since NT6: 16 enemies with one
+Mortar, no Mender or Jackal; floor 20 hp; cap 180 s): Knight t/o (174.3 s / t/o by seed), 93.5 hits, 16.5 of them from
+the Mortar's 44.5 shells (0.37 hit); without the Mortar 157.5 s (159.2 / 155.9), 78 hits. The Archer times out with and
+without it (60.5 / 44.5 hits; 18 from 41.5 shells). The Mortar keeps 6-9 from the fighter in a crowd and is rarely the
+nearest, so it lives the whole fight (34 hp at floor 20: the Pyre-keeper's NX12 pattern).
+
+Read:
+
+- **The Mortar** is fair against a player who keeps moving (0.24-0.48 of shells hit a walking bot, 0.28 a wandering
+  one) and harsh on one who stands: every shell hits a standing target, and the Archer's bot, which stands to charge,
+  takes 0.55 of them on real floors and a Mortar room costs it 0.98 hits against 0.15 elsewhere. Alone it dies before
+  its first shell (the first lob waits a full cooldown); in a crowd it lives long and lands 18-30 % of a deep room's
+  hits.
+- **The Mender** heals little per life (0.2-2.3 hp for the fighters that kill on contact, 6.3 for the Archer at range
+  against bruisers): the any-hit cut and the cooldowns hold the stalemate risk well below the plan's fear. Its rooms take
+  longer (Archer f11: 15.9 s against the bruisers' 11.6: its own 5 hp and the heals), the most of the three relative to
+  par for the Archer (0.65).
+- **The Jackal pack** almost never lands on the fighters (0-1 hit a run): the Knight kills it in 4-5 s before its
+  first lunge, the Archer faces its target and spooks it (7.7 a fight, 28 a run). Against a passive player it is the
+  harshest of the three: a pack lunges 0.75 times a second and lands 0.67 of them on a bot that only watches the nearest
+  one, 0.33 on one that guards each lunge (a parry for every stagger, 20.7 a minute).
+- **Room time against par** stays far under par for every class (par is generous: 0.28-0.69); the three's rooms cost
+  the Archer the most.
+
+**NT6's open items:**
+
+- **Party 4 buys almost no Jackal packs from floor 10** (NT6 census): a party room's budget per free slot rises past
+  1, the spender's per-slot rule leaves the 1-cost pack out of the weighted draw. Options: (P1) keep: deep party rooms
+  fill with dearer kinds, as they do with swarmers; (P2) exempt pack kinds from the per-slot `need` test (drawn while
+  `packOf x cost <= left`): party rooms meet packs to the end, at three slots of the 16-cap each; (P3) price a Jackal 2
+  in party runs only (a party-scaled cost, a pack of 6); (P4) a party-scaled pack (3 + party - 1 Jackals, the same
+  price per Jackal). Every option but P1 changes party replays only.
+- **The loosened allowances** (NT6): `sim/archer.ttk.builds`'s per-character `MAY_TIME_OUT` and the roll-fight waiver
+  stand. The census room now holds a Mortar, which alone moves the no-build Knight from 157.5 s to a time-out on one of
+  two seeds (above): the Knight's no-build row times out because of the Mortar, the Archer's would without it.
+
+**Owner calls (NT12):**
+
+- **OC1 First lob / first heal.** Alone the Mortar dies before its first shell and the Mender's first link waits its
+  2.2-2.8 s init cooldown (a bolt's). A first cooldown like the summoner's (`firstLobMin/Max` 1.5-2.5 s; the Mender's
+  init drawing the channel range 1.2-1.6 s), the same single init draw: a sim change (endless replays).
+- **OC2 The Mortar against a standing Archer.** By design (the lesson is to keep moving), but the Archer charges
+  standing still: keep; or a smaller lead for a target that has not moved for N ticks (it lands on the feet anyway); or
+  hp 4 -> 3 so it dies faster in a crowd; or `lobCooldownMin/Max` 3.2-4.2 -> 4.0-5.0 s.
+- **OC3 The Jackal against a passive player.** 0.5-0.64 hits a second from one pack on a player who does not fight
+  back; with a fight it rarely lands. Keep, or `lungeCooldownMin/Max` 1.4-2.0 -> 1.8-2.4 s (fewer lunges a pack), or
+  `frontCos` 0.34 -> 0.17 (a wider back arc where it may not start: easier to keep two in view).
+- **OC4 Party 4 and packs** (P1-P4 above).
+- **OC5 The census room's allowance.** Keep `MAY_TIME_OUT` as it is (the Knight's no-build row now times out on the
+  Mortar), or tune the Mortar (OC2) and re-measure with `--census run/newEnemies3.tuning sim/archer.ttk.builds`.
+
 ## Player experience
 
 1. **Mortar.** A lean demon at the back of the room draws its bow straight up. A ring lights up on the floor ahead of
