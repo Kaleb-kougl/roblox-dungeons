@@ -1,9 +1,14 @@
 # Cosmetics from recoloured sprites
 
-Status (2026-11-17): **building** on branch `cosmetics` (from `main` @ `140c2fe3`). Owner: "proceed" (2026-11-17), so
-**CSD1-CSD12 are accepted as recommended.** This pass builds CS1-CS7 and CS10 (Prismatic); CS0's device measurement,
-CS8 (upload), CS9 (Studio check and playtest), CS11 (earned cosmetics) and CS12 (telemetry) are left open. The title
-slot (docs/SILVER.md) is not a recolour and is not part of this pass. Each track adds an "As built" section below.
+Status (2026-11-17): **code-complete on branch `cosmetics`** (from `main` @ `140c2fe3`; not merged, not pushed).
+Owner: "proceed" (2026-11-17), so **CSD1-CSD12 are accepted as recommended**; rule 3 was revised while building (the
+floor bar is min(3 : 1, the undyed region's own contrast), "As built: theme (CS3)") and **awaits the owner's
+confirmation**. Built: CS1-CS7, CS10 (each track's "As built" section below) and an independent review's fixes ("Review
+fixes"). Open: CS1's sign-off by eye on the dye contact sheets (`art/build/contact/class.*-dye-*.png`), CS0's device
+memory check, CS8 (upload the 15 `*-dye.png` from `art/upload/`: until their ids are in `assetIds.ts` no frame has a
+dye image, so dyes draw nothing in runs or previews; outlines, trails and sparks work now), CS9 (Studio check and
+playtest, CS7's two clients). Not built: CS11 (earned cosmetics), CS12 (telemetry), the title slot (docs/SILVER.md;
+not a recolour).
 
 This is docs/SILVER.md's phase 2 (SV11-SV13, "Cosmetics") made concrete, built on art we already have: **no new
 character art is drawn or bought.** Tasks **CS0-CS12**, decisions **CSD1-CSD12**. Numbers marked *(tune)* are
@@ -433,6 +438,16 @@ Presentation and client timing only: no sim, dungeon, lockstep, hash, replay, fi
 - Party runs: every teammate's sprite is dyed through CS5 (`PartyRunStart.looks`), their trails and sparks too; the
   rim stays the watched player's only.
 - **Open (Verify):** Studio with two clients (a dyed teammate, a lobby chip, a Prismatic dye in co-op).
+
+## Review fixes (2026-11-17)
+
+An independent review of the whole branch found no determinism, sim-isolation or server-trust defect. Fixed:
+roll-ghost dye labels now take their ghost's transparency on every write and fade step (motionFx; they were fixed at
+the value the label was built with); the Armory's "Bought ..." line names a cosmetic by `cosmetic.<id>.name`
+(shared/view/silver `armoryItemName`; it read the raw `armory.item.<id>` key; a spec checks every catalogue item);
+`ActorRenderController.applyLook` returns before any colour work for an unchanged, still look (no per-frame
+allocation). Left as is: `cosmetic.none` ("Default") is a required string nothing shows yet (reserved for a per-slot
+Default row).
 
 ## Decisions (accepted as recommended, 2026-11-17)
 
