@@ -4989,10 +4989,6 @@
 		"note": "Armory screen (the Armory: a main-menu shop where the player spends Silver, a currency kept between runs, on permanent upgrades and unlocks): tab with cosmetics (looks only: colours, trails, titles). Plural noun.",
 		"max": 14
 	},
-	"armory.cosmetics.later": {
-		"note": "Armory screen (the Armory: a main-menu shop where the player spends Silver, a currency kept between runs, on permanent upgrades and unlocks): the Cosmetics tab, still empty: says they will come later.",
-		"max": 60
-	},
 	"armory.unavailable": {
 		"note": "Armory screen (the Armory: a main-menu shop where the player spends Silver, a currency kept between runs, on permanent upgrades and unlocks) and the main menu's button: the Armory cannot be used this session (the player's Silver failed to load).",
 		"max": 24

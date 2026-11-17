@@ -2,8 +2,8 @@
  * The Armory screen (docs/SILVER.md "The Armory", SV9; SVD9-SVD11, SVD22-SVD24), pure: client/ui/menu ArmoryScreen
  * draws it; headlessly tested (armory.spec.ts). Text through an injected lookup (the client's `str`).
  *
- *   tabs        Upgrades / Unlocks / Cosmetics (ARMORY_TABS; an item's tab is its catalogue kind; Cosmetics is empty in
- *               v1 and says so)
+ *   tabs        Upgrades / Unlocks / Cosmetics (ARMORY_TABS; an item's tab is its catalogue kind; the Cosmetics tab's
+ *               grouped list, preview and equip are cosmetics.ts, docs/COSMETICS.md CS6)
  *   rows        a tab's items sorted by the tier of the level they would buy next (maxed items last, by their top
  *               tier; ties in catalogue order): its level and maximum, the next price and `to go`, its state (maxed /
  *               owned / affordable / poor / unavailable), the next-goal marks (the cheapest next level and the one after

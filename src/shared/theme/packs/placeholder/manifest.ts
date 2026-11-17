@@ -1962,7 +1962,6 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"armory.tab.upgrades": "Upgrades",
 		"armory.tab.unlocks": "Unlocks",
 		"armory.tab.cosmetics": "Cosmetics",
-		"armory.cosmetics.later": "Cosmetics are coming in a later update.",
 		"armory.unavailable": "Armory unavailable",
 		"armory.unavailable.body": "Your Silver could not be loaded this session. Runs still pay; try again later.",
 		"armory.item.level": "{name} {level}",

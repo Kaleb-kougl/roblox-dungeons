@@ -67,8 +67,6 @@ export const ARMORY_KEYS = {
 	tabUpgrades: "armory.tab.upgrades",
 	tabUnlocks: "armory.tab.unlocks",
 	tabCosmetics: "armory.tab.cosmetics",
-	/** The empty Cosmetics tab. */
-	cosmeticsLater: "armory.cosmetics.later",
 	/** The greyed screen (and the main menu's button) when the wallet is not loaded this session. */
 	unavailable: "armory.unavailable",
 	unavailableBody: "armory.unavailable.body",

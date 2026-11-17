@@ -44,6 +44,11 @@ export interface MenuActions {
 	 * checks it). False when nothing was sent (another purchase in flight, the wallet not loaded).
 	 */
 	readonly armoryBuy: (itemId: string) => boolean;
+	/**
+	 * docs/COSMETICS.md CS6: wears cosmetic `itemId` in `slot` (shared/wallet WALLET.noItem takes it off;
+	 * WalletController.equip: `walletEquip`, the server checks it owns the item). False when nothing was sent.
+	 */
+	readonly armoryEquip: (slot: string, itemId: string) => boolean;
 	/** The Armory showed these affordable next levels (`<itemId>:<level>`): the main menu's badge dot clears for them. */
 	readonly armorySeen: (keys: ReadonlyArray<string>) => void;
 	/** The returning-player card's Got it (docs/SILVER.md OC12): it never shows again (DisplaySettings.silverNoticeSeen). */
@@ -113,6 +118,7 @@ const NOOP: MenuActions = {
 	codexViewed: nothing,
 	openArmory: nothing,
 	armoryBuy: () => false,
+	armoryEquip: () => false,
 	armorySeen: nothing,
 	dismissSilverWelcome: nothing,
 	openSilverShop: nothing,
