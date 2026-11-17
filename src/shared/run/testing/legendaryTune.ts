@@ -27,7 +27,8 @@
  *             the FIRE bit cleared, the sword or the bow in hand; nothing dies, so the room's pressure lasts the
  *             whole DEFENSE_SECONDS and the hits measure the defence alone (the fighting bots also measure how a
  *             longer guard slows the killing: the guard cancels the combo and halves the walk)
- *    Guard cancels come from the scored state's ScoreEvents.guardPlayer (one entry per erased bullet), so every row,
+ *    Guard cancels come from the scored state's ScoreEvents.guardCancels (the erased bullets; the guard feed's
+ *    guardPlayer also holds a Jackal's guard-stopped lunge, docs/NEW_ENEMIES_3.md NT11), so every row,
  *    Bastion or not, counts its guards' erasures; a "<brace>+" guard erased BASTION_BRACE_BULLETS or more. A roll's count is
  *    Bastion's own braceCount (only a Bastion roller marks bullets), read when the next roll starts and at the end.
  *    Braces from BuildEvents.braceKind (PIP = a pip restored). Guard shape variants without Bastion (DefenseCase
@@ -667,7 +668,9 @@ export function defenseFight(
 				guardCancels = 0;
 				out.guards++;
 			}
-			const erased = s.score!.events.guardPlayer.size();
+			// Erased bullets only: ScoreEvents.guardCancels (the feed's guardPlayer also holds a parry per Jackal lunge a
+			// guard stopped, docs/NEW_ENEMIES_3.md NTD9 / NT11, which erases nothing).
+			const erased = s.score!.events.guardCancels;
 			if (guardCancels >= 0) guardCancels += erased;
 			if (s.events.rollStarted !== 0) {
 				if (rolled) {
