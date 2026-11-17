@@ -1,6 +1,7 @@
 /**
- * Tunables of cosmetics on screen (docs/COSMETICS.md CS5-CS7; logic in looks.ts and preview.ts). Presentation only:
- * nothing here reaches the sim, the lockstep wire, a hash or the wallet. Roblox-port choices, no web source.
+ * Tunables of cosmetics on screen (docs/COSMETICS.md CS5-CS7; logic in looks.ts, the Armory preview's in shared/view/menu
+ * cosmetics.ts). Presentation only: nothing here reaches the sim, the lockstep wire, a hash or the wallet. Roblox-port
+ * choices, no web source.
  */
 export const COSMETIC_VIEW = {
 	/** The largest channel value: colours are written as whole 0..255 channels (a Prismatic dye only on a change). */

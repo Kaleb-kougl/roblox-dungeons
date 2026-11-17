@@ -90,7 +90,15 @@ import type { JuiceSettings } from "shared/settings";
 import type { CosmeticLook } from "shared/cosmetics";
 import { VIEW_HIT_CLIP_SEC } from "shared/view/dummy";
 import { goldenFlickerTransparency, goldenTicksLeft, isGoldenKind } from "shared/view/golden";
-import { cosmeticClockSec, cosmeticRgb8, dyeForVisual, lookAt, rgb8Key, type Rgb8 } from "shared/view/cosmetics";
+import {
+	cosmeticClockSec,
+	cosmeticRgb8,
+	dyeForVisual,
+	lookAnimated,
+	lookAt,
+	rgb8Key,
+	type Rgb8,
+} from "shared/view/cosmetics";
 import { FxTrackerController } from "../fx/FxTrackerController";
 import { PreloadController } from "../game/PreloadController";
 import { SimController } from "../game/SimController";
@@ -160,6 +168,13 @@ interface PlayerView {
 	rimKey: number;
 	trailKey: number;
 	rimColor: Color3 | undefined;
+	/**
+	 * The look and sprite set the keys above were last computed for, and whether that look animates (Prismatic): an
+	 * unchanged, still look skips applyLook's colour work entirely (no allocation per frame).
+	 */
+	cosmeticRef: CosmeticLook | undefined;
+	cosmeticVisual: string;
+	cosmeticAnimated: boolean;
 }
 
 interface ActorView {
@@ -755,6 +770,9 @@ export class ActorRenderController implements OnStart {
 			rimKey: UNWRITTEN,
 			trailKey: UNWRITTEN,
 			rimColor: undefined,
+			cosmeticRef: undefined,
+			cosmeticVisual: "",
+			cosmeticAnimated: false,
 		};
 	}
 
@@ -801,6 +819,7 @@ export class ActorRenderController implements OnStart {
 		// the new body takes the look in full this frame (reset cleared the sprite's dye)
 		view.dyeKey = UNWRITTEN;
 		view.rimKey = UNWRITTEN;
+		view.cosmeticRef = undefined;
 	}
 
 	/** Every player (co-op: each party member, index order); views beyond the party are parked. */
@@ -874,6 +893,17 @@ export class ActorRenderController implements OnStart {
 		dyeRecheck: boolean,
 	): void {
 		const look = lookAt(looks, index);
+		if (
+			look === view.cosmeticRef &&
+			view.cosmeticVisual === view.visualId &&
+			!view.cosmeticAnimated &&
+			!dyeRecheck
+		) {
+			return;
+		}
+		view.cosmeticRef = look;
+		view.cosmeticVisual = view.visualId;
+		view.cosmeticAnimated = lookAnimated(look);
 		const sprite = view.sprite;
 		const dye = cosmeticRgb8(dyeForVisual(look, view.visualId), tSec);
 		const dyeKey = rgb8Key(dye);

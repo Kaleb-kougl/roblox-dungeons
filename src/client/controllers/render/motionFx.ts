@@ -191,6 +191,7 @@ export class MotionFx {
 				if (tq !== view.transparency) {
 					view.transparency = tq;
 					view.label.ImageTransparency = tq;
+					if (view.dye !== undefined) view.dye.ImageTransparency = tq;
 				}
 			}
 		}
@@ -288,6 +289,7 @@ function writeGhost(view: GhostView, g: Ghost, tint: Color3): void {
 		dye.ImageRectSize = label.ImageRectSize;
 		dye.ResampleMode = label.ResampleMode;
 		dye.ImageColor3 = new Color3(s.dyeR * tint.R, s.dyeG * tint.G, s.dyeB * tint.B);
+		dye.ImageTransparency = view.transparency;
 		dye.Visible = true;
 	} else if (view.dye !== undefined) {
 		view.dye.Visible = false;
