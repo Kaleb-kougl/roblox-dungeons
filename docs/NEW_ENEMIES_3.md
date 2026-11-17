@@ -37,14 +37,16 @@ lands.
 
 ## Status (2026-11-16)
 
-**NT0-NT6 done** (see "NT0 findings": four small Design changes, no decision changed; "NT1 skeleton (as
+**NT0-NT7 and NT9 done** (see "NT0 findings": four small Design changes, no decision changed; "NT1 skeleton (as
 built)"; "NT2 Mortar (as built)": the Mortar's behaviour, `ArchetypeDef.stepCorpse`, `SimConfig.roomIdAt`,
 `events.shells`; "NT3 Mender (as built)": the Mender's behaviour, `healActor`, `events.heals` / `healCuts` and
 `CombatState.healEvents`, two data fields the plan left open; "NT4 Jackal (as built)": the Jackal's behaviour, the
 locked target `JACKAL_TARGET` (a co-op finding), `lungeRange`, `events.lunges` / `spooks`; "NT5 packs (as built)":
 `EndlessRoomKind.packOf`, the spender's pack rule and placement, an optional `kinds` table for specs; "NT6 room pool
 and roster (as built)": the three rows, the Mender's floor 2, 17 seeded kinds, `DAILY.ruleset` 22, Codex 94, the
-re-pins and the census).
+re-pins and the census; "NT7 view (as built)": the shell told from lightning in every strike reader, its arc and a
+corpse's ring, the heal tether, the Jackal's sprite contract (`crouch` / `hop`), the cue rows; "NT9 strings, sightings
+and Codex (as built)"). Next: NT8 (art), NT10 (audio), NT11-NT13.
 Read on `main` @ `80f57769`. NTD1-NTD14 taken by the owner on
 2026-11-16 (see Decisions): every one as recommended except **NTD3** (the Mortar fires only while its target is in the
 Mortar's own room), **NTD9** (a guard that stops a Jackal's lunge counts as a parry) and **NTD10** (the last Jackal of a
@@ -485,6 +487,90 @@ party-4 room saturates at 16 and from floor 17 the fallback buys 16 Bruisers (EV
 taken, the swarmers' fate too; NT12 / owner item if deep co-op should meet packs. Party 4's worst room is 40 slots
 (floors 9-13: 8 Oozes, a summoner, a Pyre-keeper among them), unchanged from NX6's and under the 48 target. Shells and
 heals per room (the plan's NT6 line) need stepped fights; they are NT12's measurements, not this spawn census.
+
+## NT7 view (as built, 2026-11-16)
+
+Presentation and client only: no sim, dungeon, lockstep, hash, replay, wire, fixture or score change (no file under
+`shared/sim`, `shared/dungeon` or `shared/run` changed; `shared/lockstep/client.ts` and `shared/play/liveRun.ts` only
+collect the new view feed). Placeholder looks; NT8 brings the art.
+
+- **Pure rules** `shared/view/newEnemies3.ts` (tunables `newEnemies3Config.ts`): `isShellPayload` (a STRIKE whose
+  payload `source` is the Mortar's archetype index + 1) / `isLightningPayload` (a STRIKE that is not), `mortarFlying` /
+  `mortarCorpseFlying` (MORTAR_FLIGHT with flight ticks left, alive or dead), `ShellArcs` (the shell's arc: per actor
+  slot the Mortar's drawn position on the first frame of each flight, a new origin when the ticks left rise again or the
+  id changes, so the arc starts where the shell left and does not follow the Mortar as it keeps walking; a straight
+  floor path to v[MORTAR_LAND_*], height from the hand `handTiles` 0.9 to the floor plus a parabola peaking at
+  `arcTiles` 3), `menderTetherAlly` (only a living Mender in its link (TELEGRAPH + MENDER_ATTACK_HEAL) or channel, and
+  only to a living ally: `menderAllyOf`), `tetherShare` (the beam growing over the link, whole in the channel),
+  `tetherPulse` (1 on a heal pulse's tick, gone after `pulseSec` 0.25: v[MENDER_PULSE] resets on every heal once the
+  channel has run `pulseTicks`), `tetherSegments` (hands to the ally's rim), `HealPlusMarks` (the `+`: a cross growing
+  over 0.5 sim seconds screen-up of the healed enemy, at most 12), `jackalStaggered` (the stars), `newEnemy3Bursts`
+  (impact dust in `secret.dust`, heal sparks and the snap in `enemyHeal`).
+- **Feed** `shared/view/fx/newEnemy3Events.ts` `NewEnemy3FrameEvents` (new `RunView.newEnemies3`, collected by LiveRun
+  and LockstepClient after every tick like NX7's): impacts at the landing point of every shell (a Mortar slot that had
+  one flight tick left after the last tick and is no longer flying, at the remembered point: a corpse may free its
+  slot on the landing tick; at most `events.shells` per tick), heals at each `CombatState.healEvents` pulse's actor,
+  snaps at each end that `healEndCuts` (the middle of the beam to the ally the Mender was linked to after the last
+  tick: the end clears v[MENDER_ALLY]; without one, at the Mender).
+- **Every strike reader** (NT0 finding 3): the strike flash DecalPool (`STRIKE_DECAL`) now accepts lightning only, so
+  its hazard art (`StrikeSpritePool`) and the view-only scorch never see a shell; a new `SHELL_DECAL` DecalPool on the
+  enemy simulation draws the shell as the strike's disc (its placeholder, the shell's life, `SHELL_ARC_VIEW
+  .discFolderName`) and never builds a sprite drawer, so it is the disc on every pack, vale's lightning art included
+  (NTD12). The enemy pool's skip is unchanged (every STRIKE). `enemyBulletPool` answers `"shell"` for a shell (spec
+  only). `BulletAhead` already holds every STRIKE still. Lightning cue: `strikes - shells` (NT2).
+- **A dead Mortar's flight (NTD5).** TelegraphController skipped every corpse, so the ring vanished at the Mortar's death
+  while the shell still landed. It now also draws a corpse that `mortarCorpseFlying` (the same `ring` hint, filling on
+  the corpse's aiTicks), and the arc flies on, so a visible ring never lies.
+- **Sprite inputs** `shared/view/newEnemy3Sprites.ts`, added through newEnemy2Sprites.ts `withNewEnemy2SpriteInputs`
+  (no new name in sprites.luau, still 195): Mortar `attack` = the draw plus the first `mortarReleaseTicks` (9) of the
+  flight (NT8 places the release frame); Mender link `attack` stretched, channel `attack` looped (`ActorAttack.loop`),
+  bolt `attack.2` (absent: `attack`), flinch `hit`; Jackal wind-up `crouch` (absent: `attack`, the swarmer's way),
+  lunge `attack`, the spooked hop the special `hop` (absent: skipped, so it plays its move, never the attack), stagger
+  `hit` stretched over the 1 s. Theme contract `ENEMY.optionalAnimations` += `crouch`, `hop` (inline; contract.luau
+  still 189 locals), so NT8 only fills art.
+- **Cues.** VariantCueEvents gains `lobs` (a Mortar leaving TELEGRAPH + MORTAR_ATTACK_LOB for MORTAR_FLIGHT; a draw
+  called off by NTD3 is silent), `shells`, `heals` (pulses), `healCuts`, `lunges`, `spooks`; the mapper plays
+  `sfx.enemy.lob` / `.shell` / `.heal` / `.healcut` / `.lunge` / `.spooked` once per frame that has one. Minimum
+  intervals: lunge 0.1, beam cut 0.15 (NT1), lob 0.12, shell 0.1, heal 0.25, spook 0.12 (`NEW_ENEMY_3_AUDIO`). The
+  enemy-shoot skip adds `events.shells x shrapnelPerShell` (6), so the shrapnel ring never plays `sfx.enemy.shoot` on
+  the impact tick (a full bullet pool firing fewer shrapnel can then hide another enemy's shot on that one frame: the
+  shot is one sound per frame).
+- **Looks.** `enemyBulletLookOf` needs no change: the shrapnel (`BulletKind.ENEMY`, Mortar source) is the small look,
+  the Mender's bolt (`BulletKind.CASTER`) the medium (spec'd on real bullets).
+- **The parry (NTD9).** A Jackal's guard stop reaches the near-miss director through NearMissEvents with no view change:
+  spec'd on the jackal.spec stop scenario, each stop is exactly one erase and one parry group on its own frame, and no
+  other frame has one.
+- **Client.** New `NewEnemy3MarksController` (the shell balls, `enemyBullet` Neon, pool 16; the tether and its pulse
+  run, two DashLayers in `enemyHeal`; the `+` marks; the Jackal's stagger stars), ParticleController (the three bursts,
+  palette entries appended last), BulletRenderController (the shell DecalPool, `getShellPoolSize`),
+  TelegraphController (the corpse's ring).
+- **Specs.** `view/newEnemies3.spec.ts` (19 cases), `view/audio/newEnemy3Cues.spec.ts` (9); moved counts: `view/sprites.spec`
+  ACTOR_SPRITE_INPUTS 24 -> 27, `view/fx/variantCueEvents.spec`'s NT2 case reads the shell's own count,
+  `theme/contract.spec` (the optional list). Ran green: every `view/**` spec (the endless shards of room edges and
+  minimap tiles included) but one, every `theme/**` and `codex/**` spec, `sim/newEnemies3`, `mortar`, `mender`,
+  `jackal`; lint, typecheck, build, `l10n:check`, `check:autolocalize`.
+- **Not NT7's (pre-existing, left as is):** `view/predict/bulletAhead.spec` "draws every enemy bullet where the sim has
+  it n ticks later, on real endless floors" fails with `seed 6 floor 12 window 25 slot 12 n 9: off by 0.0915` (n 10:
+  0.183), identically on NT6's commit `cec2eea` (checked in a worktree): NT6's rosters put new kinds on that floor and
+  one bullet leaves the closed form after 9 ticks. NT6 did not run that spec. It is LP10's closed form against a new
+  sim rule (a candidate: something the new kinds do to a flying bullet); for NT11 to find, not a view pin to move.
+- **Studio checklist (NT13 adds):** the shell ball's arc reads as a lob over walls on every biome and lands as the disc
+  appears; the disc is the plain one on vale (lightning keeps its art and scorch; a shell leaves no scorch); a Mortar
+  killed mid-flight keeps its ring and its shell; the tether reads through a crowd, grows over the link, pulses per
+  heal, the `+` reads over the ally and the snap on a cut, never on a natural end; the Jackal's stars on a guard stop
+  and the PARRY! text; the six cues (silent in the placeholder, the four fallbacks playing); no shot sound with a
+  shell's shrapnel.
+
+## NT9 strings, sightings and Codex (as built, 2026-11-16)
+
+No new string, role or sound: NT1 added the three `enemy.<id>.name` and `bestiary.<id>` lines with their
+`l10n/context.json` entries and their sighting ids (`ARCHETYPE_SIGHTINGS`), and NT6's rows made the Codex entries
+(`enemy:mortar` / `enemy:mender` / `enemy:jackal`, catalogue 94, the order lock extended, `catalog.spec` green).
+Checked: the Codex claims use NX9's path with no change (`readCodexFrame` lists living actors near the view player and
+the frame's deaths by archetype id; `CodexTracker` maps them to `enemy:<id>`): `view/codex/tracker.spec` gains a case,
+the three seen go to their first-sighting cards (no codex toast, `sightingChip` true), each death is found with a codex
+toast, and `codexSightingId` resolves the three sighting ids. `l10n:check` 0 errors / 0 warnings, `check:autolocalize`
+green.
 
 ## Player experience
 
