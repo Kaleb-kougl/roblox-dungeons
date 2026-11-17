@@ -169,13 +169,16 @@ the spec does not need the PNGs):
   `npm run verify`. ("As built: theme (CS3)".)
 - [x] **CS4. Wallet and server.** Catalogue rows, `CosmeticLook`, `RunSession.looks`, `PartyRunStart.looks`, lobby
   looks, `KV_FakeWallet` presets. **Verify:** wallet / lobby / run session specs. ("As built: wallet and server (CS4)".)
-- [ ] **CS5. View.** SpriteView dye label, look plumbing, outline / trail / spark overrides, readiness, stage
-  manifest. **Verify:** headless specs for the pure parts; typecheck.
-- [ ] **CS6. Armory and character screen.** Tab, preview, try-on, buy / equip. **Verify:** fit and focus specs.
-- [ ] **CS7. Lobby and co-op.** Teammates' looks. **Verify:** Studio, two clients.
+- [x] **CS5. View.** SpriteView dye label, look plumbing, outline / trail / spark overrides, readiness, stage
+  manifest. **Verify:** headless specs for the pure parts; typecheck. ("As built: view (CS5)".)
+- [x] **CS6. Armory and character screen.** Tab, preview, try-on, buy / equip. **Verify:** fit and focus specs.
+  ("As built: Armory (CS6)".)
+- [ ] **CS7. Lobby and co-op.** Teammates' looks. (Built 2026-11-17, "As built: lobby (CS7)".) **Verify:** Studio, two
+  clients (open).
 - [ ] **CS8. Upload.** 15 dye sheets into `assetIds.ts`.
 - [ ] **CS9. Studio check and playtest.**
-- [ ] **CS10. Prismatic.** Data half built (stops, `prismaticColor`, rule 5: "As built: theme (CS3)"); the drawing is CS5.
+- [x] **CS10. Prismatic.** Data half built (stops, `prismaticColor`, rule 5: "As built: theme (CS3)"); the drawing is CS5
+  ("As built: view (CS5)": the sprite clock in runs, Heartbeat in menus, held at the first stop under reduced motion).
 - [ ] **CS11. Earned cosmetics** (not this pass).
 - [ ] **CS12. Telemetry** (not this pass).
 
@@ -324,7 +327,7 @@ Azure 7.76 / 86.6, Jade 11.0 / 113, Violet 4.33 / 57.4, Rose 7.24 / 41.8, Orchid
 in nine theme specs shifted): `cosmetic.equip` / `.equipped` / `.unequip` ("Take off") / `.tryOn` / `.none` ("Default")
 / `.animated`, `cosmetic.slot.<slot>` ("Knight dye", "Archer dye", "Outline", "Roll trail", "Sparks") and
 `cosmetic.<id>.name` ("Frost Plate", "Prismatic Leathers", "Azure Trail", "Orchid Sparks"); l10n context entries.
-`armory.cosmetics.later` is now unused (Track V removes it with the tab). No colour role, sound or setting;
+`armory.cosmetics.later` was removed with the empty tab (CS6). No colour role, sound or setting;
 contract.ts gained one import.
 
 ## As built: wallet and server (CS4, 2026-11-17)
@@ -352,6 +355,84 @@ contract.ts gained one import.
 - **Studio.** `KV_FakeWallet`: an item ending in `*` is owned and equipped (`6000;outline.azure:1*`); `cosmetics`
   owns every cosmetic; `dressed` also equips `WALLET_FAKE_DRESSED` (both Prismatic dyes, Azure outline, Violet trail,
   Jade sparks).
+
+## As built: view (CS5, 2026-11-17)
+
+Presentation and client timing only: no sim, dungeon, lockstep, hash, replay, fixture, score, wallet or server change.
+
+- **Looks on the client.** `RunContext.looks` (SimController, player index order): a co-op run's
+  `PartyRunStart.looks` (each through `readCosmeticLook`), a ranked solo run's `StartRunReply.look`, any other solo
+  run the wallet's equipped slots for the run's character (`cosmeticLookOf`; the Knight in a world without characters,
+  CSD12; an unknown wallet the default look). Looks are per player, not per viewer: spectating changes nothing.
+- **Pure core** `shared/view/cosmetics` (not in the shared/view barrel): `COSMETIC_VIEW`, `lookAt`, `cosmeticClockSec`
+  (reduced motion: 0, the Prismatic dye's first stop), `cosmeticRgb8` (whole channels) and `rgb8Key` (a change key, so
+  a Prismatic dye is rewritten only when a channel moves), `tintedDye`, `dyeCharacterOf` / `dyeSetOf`, `dyeForVisual`
+  (only a dye of the drawn set: never one character in another's colour), `lookAnimated`, `stageDyeSets`. Specs:
+  `view/cosmetics/cosmetics.spec.ts`.
+- **SpriteView.** A "Dye" ImageLabel (`ACTOR_OUTLINE.spriteZIndex.dye` 3, above the frame, `spriteDyeLabelName`) built
+  on the first `setDye(color)`; written in the frame's branch (`SpriteFrame.dyeImage`, the frame's rect); its
+  ImageColor3 the dye x the tint per channel (`setTint` rewrites it); transparency follows `setTransparency`, Visible
+  follows `setVisible`, and it draws only with a colour, a frame whose sheet has a dye, and that sheet's content ready
+  (`setDyeReady(fn)`: ActorRenderController passes `ArtReadiness.status(contentId) === "ready"`; `refreshDye()` on a
+  readiness epoch change). `reset()` clears the dye. A view never dyed builds nothing and writes nothing more per frame
+  (one field holds the frame's dye image). `snapshot` carries the dye (`GhostSnapshot.dyeImage` / `dyeR/G/B`, the
+  colour as drawn). Until CS8 no frame has a `dyeImage`, so nothing is drawn in runs.
+- **ActorRenderController.** `applyLook` per player after `drawPlayer`: the dye (Prismatic on the cosmetic clock: the
+  sum of the sprite clock's `animDtSec`, so pause and hitstop hold it), the rim (`setRimColor`: an outline item
+  replaces `playerOutline`; still drawn on the watched player only; the placeholder capsule's one Highlight takes the
+  watched player's colour) and the trail (`MotionFx.setTrailColor`); each written only when `rgb8Key` changes; a body
+  swap (stand-in <-> art) rewrites them. The minimap self marker is unchanged (CSD9).
+- **Trails.** `MotionFx` tints a player's ghosts with their trail colour (white: none) when each ghost is re-recorded;
+  a dyed ghost draws its dye on a second label (dye x trail colour).
+- **Sparks.** ParticleController appends one palette entry per spark cosmetic (`cosmeticItemsOf("spark")`, after the
+  third endless set's bursts) and picks the owner's (`GrazeSpark.player` / `ParryBurst.player`) for graze and parry
+  sparks; ParryFlashController's PARRY! text keeps its role.
+- **Stage assets.** `StageAssetInput.dyed` (sprite set ids); `stageDyeGroup` adds `dye:<set>` entries
+  (`STAGE_DYE_PREFIX`) to the characters group after the sets, only for a set a present player wears a dye of and the
+  pack has dye sheets for; `stageContentRefs` resolves them through the optional `PreloadSource.dyeContentIds`;
+  `stageIsLogicalId` keeps them (and `biome:`) out of the reveal's readiness log. StageController adds the run's dyes
+  (`withDyes(stageInputOf(...), ctx.looks)`) to the floor's manifest and the next floor's prefetch, and on the menu
+  queues the local player's equipped dye for the picked character on the next lane (`dyePrefetch`).
+
+## As built: Armory (CS6, 2026-11-17)
+
+- **Pure core** `shared/view/menu/cosmetics.ts`: `armoryCosmeticEntries` (a header per slot in `COSMETIC_SLOTS` order,
+  then its items in catalogue order; each the Armory's own `armoryRow` with `owned`, `equipped`, `animated` and an
+  `action`: buy when affordable, equip / take off once owned, none when poor or unavailable), `cosmeticDetail` (name,
+  `{slot} · Tier n`, `Animated`, the price / Equipped / Owned / `to go`, the buy hold and its confirm from
+  `CONFIRM_FROM_TIER`, the equip label), `cosmeticEquipArgs` (take off: `WALLET.noItem`), `cosmeticRowRight`,
+  `cosmeticPreviewCharacter` (a dye's own character, else the picked one), `cosmeticPreviewLook` (the equipped look
+  with the focused item tried on; another character's dye leaves it unchanged), `previewTurnFacing` (every facing in
+  turn from the camera-facing one, `COSMETIC_VIEW.preview.facingSec` each; reduced motion holds it),
+  `cosmeticFlashScale` / `cosmeticFlashTransparency`. Specs: `view/menu/cosmetics.spec.ts` (counts read from
+  `COSMETIC_ITEMS`).
+- **ArmoryScreen.** The Cosmetics tab draws the grouped list (`client/ui/menu/ArmoryCosmetics.tsx`: `CosmeticSwatch`,
+  a Prismatic swatch drifting on Heartbeat; slot headers; rows with swatch, name, `Animated`, Equipped / Owned / price)
+  and the detail's own lines: the live preview, name, slot and tier, `Try on` while not owned, the price row and the
+  button (the Armory's buy hold and confirm, or Equip / Take off through `MenuActions.armoryEquip` ->
+  `WalletController.equip` -> `walletEquip`; a refused equip plays `sfx.shop.deny`). The hold acts on the focused
+  item of either kind (`target`). A bought cosmetic's row stamps (a `UIScale` eased from 1.15 and a silver flash fading
+  over 0.6 s; `sfx.shop.buy` is WalletController's, as before). The tab keeps the Armory's sizes, focus scope
+  (`memoryKey="armory"`, the first item is the default selection) and fit: the preview sits inside the detail panel,
+  which scrolls (112 px box, 80 on a phone or upright), so the fit specs are unchanged.
+- **Live preview** (`client/ui/menu/CharacterPreview.tsx`, moved out of CharacterScreen and shared by both screens):
+  the idle animation as stacked ImageLabels, rim (outline sheet, the look's outline colour or `playerOutline`) under
+  the body, dye over it from the frame's dye sheet tinted by the dye's colour, turning through its facings. The dye
+  label shows only once its sheet's content is ready (`client/ui` `uiContentReady`, a content-id readiness that
+  re-renders on its flip like `uiImage`) and the sheets are asked for on the front lane (`requestUiContent`: no preload
+  tier holds them). Beside the preview, the focused item's swatch chip always shows (a trail / spark colour has no
+  sprite; a dye whose sheet is not in is the chip, never a tint over the whole body).
+- **CharacterScreen.** Each card's preview wears that character's equipped dye (drawn once its sheet is ready).
+- **Strings.** None added; `armory.cosmetics.later` removed (ARMORY_KEYS, the placeholder pack, l10n context).
+
+## As built: lobby (CS7, 2026-11-17)
+
+- `RoomMember.dye` (shared/view/menu lobby.ts: `readCosmeticLook(LobbyView.looks[i]).dye`); LobbyRoom draws it as a
+  still swatch chip (`COSMETIC_VIEW.lobbyChipShare` of the icon) on the character icon's bottom-right corner, taking no
+  row width. Spec: character.spec.ts ("each member row carries the dye they wear").
+- Party runs: every teammate's sprite is dyed through CS5 (`PartyRunStart.looks`), their trails and sparks too; the
+  rim stays the watched player's only.
+- **Open (Verify):** Studio with two clients (a dyed teammate, a lobby chip, a Prismatic dye in co-op).
 
 ## Decisions (accepted as recommended, 2026-11-17)
 

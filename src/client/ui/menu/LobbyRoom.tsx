@@ -26,9 +26,12 @@ import {
 	screenSkin,
 } from "shared/view/menu";
 import { useMenuActions } from "./actions";
+import { CosmeticSwatch } from "./ArmoryCosmetics";
+import { COSMETIC_VIEW } from "shared/view/cosmetics";
 import { spec, useClock, useNameOf } from "./hooks";
 import { Cell, ListRow, ScrollList } from "./widgets";
 
+const HIDDEN = 1;
 const SMALL = new Vector2(MENU_VIEW.smallButton.x, MENU_VIEW.smallButton.y);
 const WIDE = new Vector2(MENU_VIEW.wideButton.x, MENU_VIEW.wideButton.y);
 
@@ -72,7 +75,26 @@ export function LobbyRoom() {
 	const memberRows = m.members.map((r, i) => (
 		<ListRow key={`m${r.userId}`} order={i + 1}>
 			{r.character !== undefined ? (
-				<CharacterIcon order={0} character={r.character} size={iconSize} />
+				// docs/COSMETICS.md CS7: a worn dye as a small swatch chip on the icon's corner (no width taken).
+				<frame
+					key="Icon"
+					LayoutOrder={0}
+					Size={UDim2.fromOffset(iconSize, iconSize)}
+					BackgroundTransparency={HIDDEN}
+				>
+					<CharacterIcon character={r.character} size={iconSize} />
+					{r.dye !== undefined ? (
+						<CosmeticSwatch
+							itemId={r.dye}
+							size={math.max(1, math.floor(iconSize * COSMETIC_VIEW.lobbyChipShare))}
+							reducedMotion={true}
+							still={true}
+							anchor={new Vector2(1, 1)}
+							position={UDim2.fromScale(1, 1)}
+							zIndex={2}
+						/>
+					) : undefined}
+				</frame>
 			) : undefined}
 			<Cell
 				order={1}
