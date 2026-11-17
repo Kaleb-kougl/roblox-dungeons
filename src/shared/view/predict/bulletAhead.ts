@@ -22,12 +22,20 @@
  *             stops bullets are its tick positions tested (each new cell) to find the tick:
  *             the sim consumes it there, so it is drawn STOPPED at its last free position (prev = cur) until the
  *             merged state catches up and removes it
+ *   breaks    a piece that enemy bullets break inside the window (docs/NEW_ENEMIES_3.md NT11: an imp's fan into a
+ *             barrel, its first bullet breaking it, the rest flying through) stops only the bullets that reach it
+ *             before it breaks: `plan` (once a frame per pool, lazily) replays every enemy bullet's hits on pieces in
+ *             the sim's order (tick, then slot), each taking `config.enemyBulletDamage` (none on an inert piece or the
+ *             Goldling's, which refuse enemy sources), and a bullet that reaches a broken piece's cell after the break
+ *             flies on to its next stop; repeated until no bullet moves
  *
  * Goo and strikes do not move and are drawn by their own pools: they keep today's pair. n = 0 is exactly today's
  * pair. Not predicted (Design 5): a shot fired inside the window appears up to n ticks along (no fade-in: the pool
  * keeps no age to fade by), a bullet a teammate, a guard, an Ember or a hit takes flies on until the merged state
- * removes it, a Hourglass slow that starts inside the window overshoots for a moment, a piece broken inside it still
- * stops bullets. No allocation per call.
+ * removes it (so a bullet a hit took before its piece still counts toward the piece's break), a Hourglass slow that
+ * starts inside the window overshoots for a moment, a piece broken inside it by anything but an enemy bullet (a player's
+ * shot or swing, a slam, a Charger) still stops bullets, and a delayed bullet (`replay`; none in the sim today) neither
+ * breaks pieces nor sees them broken. No allocation per call once the scratch has grown.
  */
 import {
 	BulletKind,
@@ -36,6 +44,8 @@ import {
 	SIM_DT,
 	TILE_SIZE,
 	breakableSlotAt,
+	goldenGuardsPiece,
+	inertPiece,
 	type BreakablesState,
 	type BulletBlocker,
 	type BulletSimulation,
@@ -51,6 +61,13 @@ import { BULLET_AHEAD } from "./config";
  * life down tick by tick (the sim's repeated subtraction can only differ from one subtraction of the sum by far less).
  */
 const LIFE_MARGIN = 1e-9;
+
+/**
+ * The most re-routing rounds of the break plan (each round lets the bullets that reach a newly broken piece fly on to
+ * their next stop; a round with no such bullet ends it). Far more than a frame ever needs: a chain of pieces broken one
+ * behind another along a fan.
+ */
+const PLAN_ROUNDS = 8;
 
 /** The grid's cell size, read once (cellOf runs four times a bullet a frame). */
 const CELL = TILE_SIZE;
@@ -91,7 +108,26 @@ export class BulletAhead {
 	private readonly sums: number[] = [0];
 	private blocked: BulletBlocker | undefined;
 	private pieces: Readonly<BreakablesState> | undefined;
+	private state: Readonly<SimState> | undefined;
 	private readonly prev: Vec3 = { x: 0, y: 0, z: 0 };
+	/** The pool this frame's break plan was made for (undefined: none yet this frame). */
+	private planFor: BulletSimulation | undefined;
+	/** Per bullet slot, from the plan: the window tick it is stopped (0: not stopped), and by which piece (-1: a wall). */
+	private readonly stopTick: number[] = [];
+	private readonly stopPiece: number[] = [];
+	/** Per bullet slot: its last free position before that stop. */
+	private readonly stopX: number[] = [];
+	private readonly stopY: number[] = [];
+	private readonly stopZ: number[] = [];
+	/** Per piece slot, from the plan: the window tick enemy bullets break it (0: not inside the window), its breaker. */
+	private readonly breakTick: number[] = [];
+	private readonly breaker: number[] = [];
+	private readonly pieceHp: number[] = [];
+	/** search()'s answer: the stop's piece slot (-1 a wall) and its last free position. */
+	private foundPiece = -1;
+	private foundX = 0;
+	private foundY = 0;
+	private foundZ = 0;
 
 	/**
 	 * Sets up a frame: `n` ticks ahead (clamped to 0..BULLET_AHEAD.maxTicks, whole ticks) of merged `state`, on the
@@ -117,6 +153,8 @@ export class BulletAhead {
 		this.blocked = world.isBulletBlocked;
 		const b = state.breakables;
 		this.pieces = b !== undefined && b.intact > 0 ? b : undefined;
+		this.state = state;
+		this.planFor = undefined;
 	}
 
 	/** The floor's blocker or an intact piece stops a bullet at (x, z): both answer per grid cell. */
@@ -125,6 +163,169 @@ export class BulletAhead {
 		if (blocked !== undefined && blocked(x, z)) return true;
 		const pieces = this.pieces;
 		return pieces !== undefined && breakableSlotAt(pieces, x, z) >= 0;
+	}
+
+	/**
+	 * The plan's stop test for bullet slot `i` entering (x, z) on window tick `k` (1-based): a wall, or an intact piece
+	 * that is not yet broken when the sim's collision walk reaches this bullet (a piece broken on tick k by a lower slot
+	 * no longer stops it). Writes the piece slot (-1 a wall) to `foundPiece`.
+	 */
+	private stopsAt(x: number, z: number, k: number, i: number): boolean {
+		const blocked = this.blocked;
+		if (blocked !== undefined && blocked(x, z)) {
+			this.foundPiece = -1;
+			return true;
+		}
+		const pieces = this.pieces;
+		if (pieces === undefined) return false;
+		const slot = breakableSlotAt(pieces, x, z);
+		if (slot < 0) return false;
+		const bt = this.breakTick[slot];
+		if (bt !== 0 && (k > bt || (k === bt && i > this.breaker[slot]))) return false;
+		this.foundPiece = slot;
+		return true;
+	}
+
+	/**
+	 * The window tick (1-based) live slot `i` of `sim` is first stopped by a wall or a piece the plan has not broken
+	 * before it gets there, or 0: it flies the whole window, or its life or the culling cube ends it first (the sim
+	 * releases it before the collision walk). Writes `foundPiece` and the last free position (`foundX/Y/Z`).
+	 */
+	private search(sim: BulletSimulation, i: number): number {
+		const n = this.ticks;
+		const cur = sim.positionAt(i);
+		const px = cur.x;
+		const py = cur.y;
+		const pz = cur.z;
+		const v = sim.velocityAt(i);
+		const vx = v.x;
+		const vy = v.y;
+		const vz = v.z;
+		const sums = this.sums;
+		const sn = sums[n];
+		const g0x = cellOf(px);
+		const g0z = cellOf(pz);
+		const g1x = cellOf(px + vx * sn);
+		const g1z = cellOf(pz + vz * sn);
+		if ((g0x === g1x && g0z === g1z) || !this.boxStops(g0x, g0z, g1x, g1z)) return 0;
+		const limit = sim.boundsLimit;
+		const cull = limit !== math.huge;
+		let life = sim.lifeAt(i);
+		let lastX = px;
+		let lastY = py;
+		let lastZ = pz;
+		let checkedX = g0x;
+		let checkedZ = g0z;
+		for (let k = 1; k <= n; k++) {
+			life -= this.dts[k - 1];
+			if (life <= 0) return 0;
+			const sk = sums[k];
+			const x = px + vx * sk;
+			const y = py + vy * sk;
+			const z = pz + vz * sk;
+			if (cull && (x > limit || x < -limit || y > limit || y < -limit || z > limit || z < -limit)) return 0;
+			const gx = cellOf(x);
+			const gz = cellOf(z);
+			if (gx !== checkedX || gz !== checkedZ) {
+				checkedX = gx;
+				checkedZ = gz;
+				if (this.stopsAt(x, z, k, i)) {
+					this.foundX = lastX;
+					this.foundY = lastY;
+					this.foundZ = lastZ;
+					return k;
+				}
+			}
+			lastX = x;
+			lastY = y;
+			lastZ = z;
+		}
+		return 0;
+	}
+
+	/** Records search()'s answer for slot `i`. */
+	private record(sim: BulletSimulation, i: number): void {
+		const k = this.search(sim, i);
+		this.stopTick[i] = k;
+		this.stopPiece[i] = k > 0 ? this.foundPiece : -1;
+		this.stopX[i] = this.foundX;
+		this.stopY[i] = this.foundY;
+		this.stopZ[i] = this.foundZ;
+	}
+
+	/**
+	 * The frame's break plan for `sim` (see the file comment, `breaks`), made once a frame per pool on the first pose
+	 * that needs it: every flying enemy bullet's first stop, then the pieces' hits in the sim's order (tick, then slot)
+	 * and the bullets that reach a piece after it broke re-routed, until none moves.
+	 */
+	private plan(sim: BulletSimulation): void {
+		if (this.planFor === sim) return;
+		this.planFor = sim;
+		const pieces = this.pieces!;
+		const state = this.state!;
+		const n = this.ticks;
+		const hw = sim.highWater();
+		const list = pieces.pieces;
+		const np = list.size();
+		const damage = pieces.config.enemyBulletDamage;
+		for (let s = 0; s < np; s++) {
+			if (s < this.breakTick.size()) {
+				this.breakTick[s] = 0;
+				this.breaker[s] = -1;
+				this.pieceHp[s] = 0;
+			} else {
+				this.breakTick.push(0);
+				this.breaker.push(-1);
+				this.pieceHp.push(0);
+			}
+		}
+		for (let i = 0; i < hw; i++) {
+			if (i >= this.stopTick.size()) {
+				this.stopTick.push(0);
+				this.stopPiece.push(-1);
+				this.stopX.push(0);
+				this.stopY.push(0);
+				this.stopZ.push(0);
+			}
+			this.stopTick[i] = 0;
+			this.stopPiece[i] = -1;
+			if (!sim.isLive(i) || sim.delayAt(i) > 0) continue;
+			const kind = BulletPayload.get(sim.payloadAt(i), "kind");
+			if (kind === BulletKind.GOO || kind === BulletKind.STRIKE) continue;
+			this.record(sim, i);
+		}
+		for (let round = 0; round < PLAN_ROUNDS; round++) {
+			// The pieces' hits in the sim's order: a hit on a piece the plan already broke is not one (re-routed below).
+			for (let s = 0; s < np; s++) {
+				this.breakTick[s] = 0;
+				this.breaker[s] = -1;
+				this.pieceHp[s] = list[s].hp;
+			}
+			for (let k = 1; k <= n; k++) {
+				for (let i = 0; i < hw; i++) {
+					if (this.stopTick[i] !== k) continue;
+					const s = this.stopPiece[i];
+					if (s < 0 || this.breakTick[s] !== 0) continue;
+					if (inertPiece(list[s].kind) || goldenGuardsPiece(state, s)) continue;
+					const hp = this.pieceHp[s] - damage;
+					this.pieceHp[s] = hp;
+					if (hp > 0) continue;
+					this.breakTick[s] = k;
+					this.breaker[s] = i;
+				}
+			}
+			let moved = false;
+			for (let i = 0; i < hw; i++) {
+				const k = this.stopTick[i];
+				const s = this.stopPiece[i];
+				if (k === 0 || s < 0) continue;
+				const bt = this.breakTick[s];
+				if (bt === 0 || k < bt || (k === bt && i <= this.breaker[s])) continue;
+				this.record(sim, i);
+				moved = true;
+			}
+			if (!moved) break;
+		}
 	}
 
 	/**
@@ -202,35 +403,15 @@ export class BulletAhead {
 		const g1z = cellOf(fz);
 		const walls = this.blocked !== undefined || this.pieces !== undefined;
 		if (walls && (g0x !== g1x || g0z !== g1z) && this.boxStops(g0x, g0z, g1x, g1z)) {
-			let lastX = px;
-			let lastY = py;
-			let lastZ = pz;
-			let checkedX = g0x;
-			let checkedZ = g0z;
-			for (let k = 1; k <= n; k++) {
-				const sk = sums[k];
-				const x = px + vx * sk;
-				const y = py + vy * sk;
-				const z = pz + vz * sk;
-				const gx = cellOf(x);
-				const gz = cellOf(z);
-				if (gx !== checkedX || gz !== checkedZ) {
-					checkedX = gx;
-					checkedZ = gz;
-					if (this.stops(x, z)) {
-						// Consumed here by the sim: drawn still at its last free position.
-						out.prevX = lastX;
-						out.prevY = lastY;
-						out.prevZ = lastZ;
-						out.x = lastX;
-						out.y = lastY;
-						out.z = lastZ;
-						return true;
-					}
+			if (this.pieces !== undefined) {
+				// Pieces can break inside the window (the break plan): the plan's stop for this slot.
+				this.plan(sim);
+				if (this.stopTick[i] > 0) {
+					return this.stopped(out, this.stopX[i], this.stopY[i], this.stopZ[i]);
 				}
-				lastX = x;
-				lastY = y;
-				lastZ = z;
+			} else if (this.search(sim, i) > 0) {
+				// Walls only: consumed there by the sim, drawn still at its last free position.
+				return this.stopped(out, this.foundX, this.foundY, this.foundZ);
 			}
 		}
 		const s1 = sums[n - 1];
@@ -240,6 +421,17 @@ export class BulletAhead {
 		out.x = fx;
 		out.y = fy;
 		out.z = fz;
+		return true;
+	}
+
+	/** A bullet the sim consumes inside the window: drawn still at its last free position (x, y, z). */
+	private stopped(out: AheadPose, x: number, y: number, z: number): boolean {
+		out.prevX = x;
+		out.prevY = y;
+		out.prevZ = z;
+		out.x = x;
+		out.y = y;
+		out.z = z;
 		return true;
 	}
 

@@ -204,7 +204,10 @@ shards, builds/evolutions.ts; player bullets stay merged). Not exact, at the end
 - a new shot appears up to `n` ticks along (at most ~0.7 tiles; fading it in over `n` ticks hides most of it);
 - a bullet removed in the next `n` ticks (it hits a teammate or you, a guard or an erase takes it) flies on for up to
   `n` ticks past that point;
-- a Hourglass slow that starts inside the window overshoots for a moment.
+- a Hourglass slow that starts inside the window overshoots for a moment;
+- a piece broken inside the window by anything but an enemy bullet (a shot, a swing, a slam) still stops bullets. A
+  piece enemy bullets break inside it is planned (docs/NEW_ENEMIES_3.md NT11: an imp's fan into a barrel, the first
+  bullets breaking it): only the bullets that reach it before the break stop there, the rest fly on.
 Nothing in the sim, the hashes or the hits changes; enemies, teammates and vitals stay merged. This is the rollback
 spike's "cheap plan" (docs/ROLLBACK_SPIKE.md: in-flight bullets exact, its glitch counts are the shots fired and removed
 above; a headless version was `shared/lockstep/rollbackSpike/model.ts`, removed in its R7: `git show f6f6e6c:<path>`).
