@@ -10,7 +10,8 @@
  * and fade from FEEL_GHOST.startTransparency to 1 over FEEL_GHOST.lifeSec (at most FEEL_GHOST.perSource alive). An
  * attack faces `attackAngleDeg`; at `sparkAtShare` of it a burst of NEAR_MISS_VIEW.parry.sparkCount sparks fans out
  * along the facing (half-angle fanRad, speeds sparkSpeedMin..Max with exponential drag) and a ring grows ringR0 ->
- * ringR1 tiles, all fading after `hold` of lifeSec. Reduced motion: no action (the caller keeps the still idle).
+ * ringR1 tiles, all fading after `hold` of lifeSec; the preview stages it bigger and slower (spreadScale, burstSlowdown,
+ * the client's sparkPx). Reduced motion: no action (the caller keeps the still idle).
  */
 import { cosmeticItem, LOOK_SLOTS } from "shared/cosmetics";
 import { COSMETIC_VIEW } from "../cosmetics/config";
@@ -160,6 +161,11 @@ export interface PreviewBurst {
 	readonly ring: PreviewRing;
 }
 
+/** The burst's life in the preview, seconds: the in-run lifeSec played burstSlowdown times slower. */
+export function previewBurstSec(): number {
+	return P.lifeSec * A.burstSlowdown;
+}
+
 /** A burst's transparency `age` seconds in: opaque for `hold` of its life, then linear to 1. */
 function burstFade(age: number): number {
 	const life = P.lifeSec;
@@ -175,7 +181,8 @@ function burstFade(age: number): number {
  */
 export function previewBurst(actSec: number, actLen: number, angleDeg: number): PreviewBurst | undefined {
 	if (!(actLen > 0)) return undefined;
-	const age = actSec - A.sparkAtShare * actLen;
+	// the in-run burst's age: the preview plays it burstSlowdown times slower
+	const age = (actSec - A.sparkAtShare * actLen) / A.burstSlowdown;
 	if (age < 0 || age >= P.lifeSec) return undefined;
 	const fade = burstFade(age);
 	const travel = (1 - math.exp(-P.drag * age)) / P.drag;
@@ -186,7 +193,7 @@ export function previewBurst(actSec: number, actLen: number, angleDeg: number): 
 		const a = (angleDeg % FULL_TURN_DEG) * DEG + P.fanRad * (2 * share - 1);
 		const spread = (i * SPREAD_STEP) % 1;
 		const speed = P.sparkSpeedMin + (P.sparkSpeedMax - P.sparkSpeedMin) * spread;
-		const d = speed * travel;
+		const d = speed * travel * A.spreadScale;
 		sparks.push({
 			x: math.cos(a) * d,
 			y: -math.sin(a) * d,
@@ -198,8 +205,24 @@ export function previewBurst(actSec: number, actLen: number, angleDeg: number): 
 	const eased = 1 - (1 - p) * (1 - p);
 	return {
 		sparks,
-		ring: { radius: P.ringR0Tiles + (P.ringR1Tiles - P.ringR0Tiles) * eased, transparency: fade },
+		ring: {
+			radius: (P.ringR0Tiles + (P.ringR1Tiles - P.ringR0Tiles) * eased) * A.spreadScale,
+			transparency: fade,
+		},
 	};
+}
+
+/**
+ * The burst `tSec` into the preview for an attack of `frames` frames at `fps` facing `angleDeg`: it runs on into the
+ * rest after the attack (the staged burst outlives the animation), never into the next attack (restSec is longer).
+ */
+export function previewBurstAt(tSec: number, fps: number, frames: number, angleDeg: number): PreviewBurst | undefined {
+	const len = previewActionSec(fps, frames);
+	const phase = previewActionPhase(tSec, fps, frames);
+	if (phase.acting) return previewBurst(phase.actSec, len, angleDeg);
+	if (phase.cycle === 0 || !(len > 0)) return undefined;
+	const sinceEnd = tSec - phase.cycle * (A.restSec + len);
+	return previewBurst(len + sinceEnd, len, angleDeg);
 }
 
 /** The burst's origin in tiles from the preview's centre (+x right, +y down): sparkReachTiles along the facing. */

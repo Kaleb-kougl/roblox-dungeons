@@ -13,7 +13,7 @@ import {
 	previewActionAnim,
 	previewActionPhase,
 	previewActionSec,
-	previewBurst,
+	previewBurstAt,
 	previewBurstOrigin,
 	previewGhosts,
 	previewRollAngleDeg,
@@ -33,9 +33,6 @@ const V = CHARACTER_VIEW;
 const Z = { ghost: 0, ghostDye: 1, rim: 2, body: 3, dye: 4, burst: 5 } as const;
 const WHITE = new Color3(1, 1, 1);
 const ACTION = COSMETIC_VIEW.preview.action;
-/** The smallest spark drawn in the preview, reference px (an art px is under 1 px at the preview's scale). */
-const MIN_SPARK_PX = 2;
-const RING_STROKE_MIN = 1;
 
 /** A cosmetic item's colour at `t` seconds (reduced motion: its first stop) as a Color3, or `fallback`. */
 function itemColor3(itemId: string | undefined, t: number, reduced: boolean, fallback: Color3): Color3 {
@@ -239,10 +236,7 @@ export function CharacterPreview(props: {
 		const sparkItem = props.sparkItem;
 		const sparkColor = (t: number) => itemColor3(sparkItem, t, reduced, role("nearMiss.parry"));
 		const origin = previewBurstOrigin(ACTION.attackAngleDeg);
-		const burstAt = (t: number) => {
-			const phase = phaseAt(t);
-			return phase.acting ? previewBurst(phase.actSec, actLen, ACTION.attackAngleDeg) : undefined;
-		};
+		const burstAt = (t: number) => previewBurstAt(t, actFps, actFrames, ACTION.attackAngleDeg);
 		const at = (x: number, y: number) =>
 			new UDim2(HALF, math.floor((origin.x + x) * pxPerTile), HALF, math.floor((origin.y + y) * pxPerTile));
 		for (let i = 0; i < NEAR_MISS_VIEW.parry.sparkCount; i++) {
@@ -259,7 +253,11 @@ export function CharacterPreview(props: {
 					})}
 					Size={clock.map((t) => {
 						const sp = burstAt(t)?.sparks[i];
-						const px = math.max(MIN_SPARK_PX, math.floor((sp?.sizePx ?? 0) * artScale));
+						// the in-run small / large spark, staged at menu size (COSMETIC_VIEW.preview.action.sparkPx)
+						const px =
+							sp !== undefined && sp.sizePx > NEAR_MISS_VIEW.parry.sparkMinPx
+								? ACTION.sparkPx.large
+								: ACTION.sparkPx.small;
 						return UDim2.fromOffset(px, px);
 					})}
 					BackgroundColor3={clock.map(sparkColor)}
@@ -282,7 +280,7 @@ export function CharacterPreview(props: {
 			>
 				<uicorner CornerRadius={new UDim(HALF, 0)} />
 				<uistroke
-					Thickness={math.max(RING_STROKE_MIN, math.floor(NEAR_MISS_VIEW.parry.ringPx * artScale))}
+					Thickness={ACTION.ringStrokePx}
 					Color={clock.map(sparkColor)}
 					Transparency={clock.map((t) => math.max(burstAt(t)?.ring.transparency ?? HIDDEN, dim))}
 				/>

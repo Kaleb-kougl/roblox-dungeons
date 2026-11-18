@@ -32,6 +32,15 @@ export const COSMETIC_VIEW = {
 			/** The burst starts at this share of the attack animation, this many tiles in front of the preview's centre. */
 			sparkAtShare: 0.5,
 			sparkReachTiles: 0.45,
+			/**
+			 * The burst is staged bigger and slower than in a run so it reads at menu size (owner, 2026-11-17): sparks of
+			 * sparkPx reference px (the in-run small / large sizes), the ring's stroke ringStrokePx, its spread x spreadScale and
+			 * its whole life (motion and fade) played burstSlowdown times slower.
+			 */
+			sparkPx: { small: 6, large: 9 },
+			ringStrokePx: 2,
+			spreadScale: 1.4,
+			burstSlowdown: 2.5,
 		},
 	},
 	/** A row's swatch on the Cosmetics tab, reference px. */

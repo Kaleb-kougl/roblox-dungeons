@@ -453,8 +453,11 @@ NEAR_MISS_VIEW.parry: 6 sparks over the fan, speeds 5-11 tiles/s with drag 10, t
 35 % of 0.25 s, from `sparkAtShare` 0.5 of the attack, `sparkReachTiles` 0.45 in front of the centre, facing
 `attackAngleDeg` 315). Client: `CharacterPreview` takes `action` / `trailItem` / `sparkItem`: the ghosts are body
 labels (plus their dye) tinted by the trail colour (dye x trail on the dye), the sparks small square frames and the
-ring a rounded frame with a stroke, in the spark colour (`nearMiss.parry` without one); sparks are at least 2
-reference px. Reduced motion, or a set without the animation, keeps the still idle. The swatch chip stays beside it.
+ring a rounded frame with a stroke, in the spark colour (`nearMiss.parry` without one). Reduced motion, or a set
+without the animation, keeps the still idle. The swatch chip stays beside it. **Staged bigger (owner, 2026-11-17: the
+in-run 1-2 art px sparks were invisible at menu size):** the preview's sparks are `sparkPx` 6 / 9 reference px, the
+ring's stroke `ringStrokePx` 2, the spread x `spreadScale` 1.4 and the whole burst `burstSlowdown` 2.5 times slower
+(0.625 s), running on into the rest after the attack (`previewBurstAt`); in runs the burst is unchanged.
 
 ## Review fixes (2026-11-17)
 
