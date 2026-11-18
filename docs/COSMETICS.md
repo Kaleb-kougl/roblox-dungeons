@@ -439,6 +439,23 @@ Presentation and client timing only: no sim, dungeon, lockstep, hash, replay, fi
   rim stays the watched player's only.
 - **Open (Verify):** Studio with two clients (a dyed teammate, a lobby chip, a Prismatic dye in co-op).
 
+## Preview actions (2026-11-17, owner)
+
+The Armory's try-on preview acts a trail or spark item out instead of only showing its swatch. Presentation only.
+Pure core `shared/view/menu` `cosmeticAction.ts` (spec `cosmeticAction.spec.ts`): `cosmeticPreviewAction(itemId)` (a
+trail rolls, a spark attacks, anything else keeps the turning idle), `previewActionAnim` (`roll`; `attack1`, else
+`attack`), `previewActionPhase` (a cycle is `COSMETIC_VIEW.preview.action.restSec` 0.7 s of idle, then the animation
+once, its last frame held), the roll's slide (`previewRollOffset`: `rollSlideShare` 0.5 of the box, eased out,
+ping-pong right / left so it never jumps back, facing screen 0 / 180) and its ghosts (`previewGhosts`: the in-run
+FEEL_GHOST numbers: one every 4 sim ticks while rolling, 0.15 s life, 0.5 -> 1 transparency, at most 3; they fade
+after the roll), and the attack's burst (`previewBurst` / `previewBurstOrigin`: the in-run parry burst,
+NEAR_MISS_VIEW.parry: 6 sparks over the fan, speeds 5-11 tiles/s with drag 10, the ring 0.1 -> 0.55 tiles, opaque for
+35 % of 0.25 s, from `sparkAtShare` 0.5 of the attack, `sparkReachTiles` 0.45 in front of the centre, facing
+`attackAngleDeg` 315). Client: `CharacterPreview` takes `action` / `trailItem` / `sparkItem`: the ghosts are body
+labels (plus their dye) tinted by the trail colour (dye x trail on the dye), the sparks small square frames and the
+ring a rounded frame with a stroke, in the spark colour (`nearMiss.parry` without one); sparks are at least 2
+reference px. Reduced motion, or a set without the animation, keeps the still idle. The swatch chip stays beside it.
+
 ## Review fixes (2026-11-17)
 
 An independent review of the whole branch found no determinism, sim-isolation or server-trust defect. Fixed:

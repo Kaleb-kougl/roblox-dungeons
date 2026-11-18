@@ -3,21 +3,39 @@ import { RunService } from "@rbxts/services";
 import { requestUiContent, role, themePack, uiContentReady, useUiArt } from "client/ui/theme";
 import { PLAYER_OUTLINE } from "shared/view";
 import { cosmeticClockSec, cosmeticRgb8 } from "shared/view/cosmetics";
+import { COSMETIC_VIEW } from "shared/view/cosmetics";
+import { FEEL_GHOST, NEAR_MISS_VIEW } from "shared/view/fx";
 import {
 	CHARACTER_VIEW,
 	characterPreviewFacing,
 	characterPreviewFrame,
 	characterPreviewSize,
+	previewActionAnim,
+	previewActionPhase,
+	previewActionSec,
+	previewBurst,
+	previewBurstOrigin,
+	previewGhosts,
+	previewRollAngleDeg,
+	previewRollOffset,
 	previewTurnFacing,
+	type PreviewAction,
+	type PreviewActionPhase,
 } from "shared/view/menu";
+import { facingIndex } from "shared/view";
 import type { ColorRole, SpriteFrame } from "shared/theme";
 
 const HIDDEN = 1;
 const HALF = 0.5;
 const IDLE = "idle";
 const V = CHARACTER_VIEW;
-/** The stacked labels (the frame's ZIndexBehavior is the ScreenGui's Sibling): rim under the body, dye over it. */
-const Z = { rim: 1, body: 2, dye: 3 } as const;
+/** The stacked labels (the frame's ZIndexBehavior is the ScreenGui's Sibling): ghosts, rim, body, dye, then the burst. */
+const Z = { ghost: 0, ghostDye: 1, rim: 2, body: 3, dye: 4, burst: 5 } as const;
+const WHITE = new Color3(1, 1, 1);
+const ACTION = COSMETIC_VIEW.preview.action;
+/** The smallest spark drawn in the preview, reference px (an art px is under 1 px at the preview's scale). */
+const MIN_SPARK_PX = 2;
+const RING_STROKE_MIN = 1;
 
 /** A cosmetic item's colour at `t` seconds (reduced motion: its first stop) as a Color3, or `fallback`. */
 function itemColor3(itemId: string | undefined, t: number, reduced: boolean, fallback: Color3): Color3 {
@@ -52,6 +70,14 @@ export function CharacterPreview(props: {
 	outlineItem?: string;
 	/** Turn through the facings. */
 	turn?: boolean;
+	/**
+	 * docs/COSMETICS.md "Preview actions": act a trail or spark item out (shared/view/menu cosmeticAction.ts): "roll"
+	 * slides across the box with ghosts in `trailItem`'s colour, "attack" throws the parry burst in `sparkItem`'s colour.
+	 * Ignored under reduced motion or when the set has no such animation (the idle is drawn).
+	 */
+	action?: PreviewAction;
+	trailItem?: string;
+	sparkItem?: string;
 	/** LayoutOrder in the parent's list (default 1). */
 	order?: number;
 }) {
@@ -64,7 +90,14 @@ export function CharacterPreview(props: {
 	const fps = idle?.fps ?? 0;
 	const frames = idle?.frames ?? 0;
 	const reduced = props.reducedMotion;
-	const moving = !reduced && (frames > 1 || props.turn === true || props.dyeItem !== undefined);
+	const actionAnimName =
+		set !== undefined && !reduced ? previewActionAnim(props.action ?? "idle", (a) => set.has(a)) : undefined;
+	const actionDef = actionAnimName !== undefined ? set!.animation(actionAnimName) : undefined;
+	const action = actionDef !== undefined ? props.action ?? "idle" : "idle";
+	const actFps = actionDef?.fps ?? 0;
+	const actFrames = actionDef?.frames ?? 0;
+	const actLen = previewActionSec(actFps, actFrames);
+	const moving = !reduced && (frames > 1 || props.turn === true || props.dyeItem !== undefined || action !== "idle");
 	useEffect(() => {
 		setClock(0);
 		if (!moving) return;
@@ -74,7 +107,7 @@ export function CharacterPreview(props: {
 			setClock(t);
 		});
 		return () => conn.Disconnect();
-	}, [fps, frames, moving]);
+	}, [fps, frames, moving, action]);
 	// docs/COSMETICS.md CS6: the set's dye sheets are loaded only for a preview that wears a dye of it.
 	useEffect(() => {
 		if (props.dyeItem === undefined || pack === undefined) return;
@@ -107,16 +140,33 @@ export function CharacterPreview(props: {
 			</frame>,
 		);
 	}
-	const turn = props.turn === true;
+	const turn = props.turn === true && action === "idle";
+	const phaseAt = (t: number): PreviewActionPhase => previewActionPhase(t, actFps, actFrames);
+	/** The facing an action holds on `phase`'s cycle (a roll faces where it goes, an attack its fixed angle). */
+	const actionFacing = (phase: PreviewActionPhase): number =>
+		facingIndex(action === "roll" ? previewRollAngleDeg(phase.cycle) : ACTION.attackAngleDeg, set.facings);
 	const frameAt = (t: number): SpriteFrame => {
+		if (action !== "idle" && actionAnimName !== undefined) {
+			const phase = phaseAt(t);
+			const facing = actionFacing(phase);
+			if (phase.acting) return set.frame(actionAnimName, facing, phase.frame);
+			return set.frame(IDLE, facing, characterPreviewFrame(t, fps, frames, reduced));
+		}
 		const facing = turn ? previewTurnFacing(t, set.facings, reduced) : characterPreviewFacing(set.facings);
 		return set.frame(IDLE, facing, characterPreviewFrame(t, fps, frames, reduced));
+	};
+	/** The sprite's horizontal shift at `t`, reference px (a roll slides; otherwise 0). */
+	const shiftAt = (t: number): number => {
+		if (action !== "roll") return 0;
+		const phase = phaseAt(t);
+		return math.floor(previewRollOffset(phase.acting, phase.actSec, actLen, phase.cycle) * box);
 	};
 	const first = frameAt(0);
 	const size = characterPreviewSize(first.size.X, first.size.Y, box);
 	const place = {
 		AnchorPoint: new Vector2(HALF, HALF),
-		Position: UDim2.fromScale(HALF, HALF),
+		Position:
+			action === "roll" ? clock.map((t) => new UDim2(HALF, shiftAt(t), HALF, 0)) : UDim2.fromScale(HALF, HALF),
 		Size: UDim2.fromOffset(size.w, size.h),
 		BackgroundTransparency: HIDDEN,
 		ResampleMode: Enum.ResamplerMode[set.resample],
@@ -125,8 +175,123 @@ export function CharacterPreview(props: {
 	const dyeItem = props.dyeItem;
 	const outlineItem = props.outlineItem;
 	const rimFallback = role(PLAYER_OUTLINE.role);
+	/** Reference px per art px and per tile at the fitted size (the burst is in tiles, its sparks in art px). */
+	const artScale = first.size.X > 0 ? size.w / first.size.X : 1;
+	const pxPerTile = set.pixelsPerTile * artScale;
+
+	// --- the roll's ghosts (docs/COSMETICS.md "Preview actions"; in-run FEEL_GHOST) --------------------------------
+	const period = ACTION.restSec + actLen;
+	/** Ghost slot `j` at `t`: the frame, shift and transparency, or undefined (no ghost in that slot). */
+	const ghostAt = (t: number, j: number) => {
+		const phase = phaseAt(t);
+		const inCycle = t - phase.cycle * period;
+		// resting: the previous cycle's ghosts fade out (cycle 0's rest has none)
+		const cycle = phase.acting ? phase.cycle : phase.cycle - 1;
+		if (cycle < 0 || actionAnimName === undefined) return undefined;
+		const ghosts = previewGhosts(phase.acting, phase.actSec, actLen, cycle, phase.acting ? 0 : inCycle);
+		const g = ghosts[j];
+		if (g === undefined) return undefined;
+		const facing = facingIndex(previewRollAngleDeg(cycle), set.facings);
+		const frame = set.frame(actionAnimName, facing, math.min(actFrames - 1, math.floor(g.recordedSec * actFps)));
+		return { frame, shift: math.floor(g.offset * box), transparency: math.max(g.transparency, dim) };
+	};
+	const ghostLabels = new Array<React.Element>();
+	if (action === "roll") {
+		const trailItem = props.trailItem;
+		const trailColor = (t: number) => itemColor3(trailItem, t, reduced, WHITE);
+		for (let j = 0; j < FEEL_GHOST.perSource; j++) {
+			const ghost = (dye: boolean) => (
+				<imagelabel
+					key={`Ghost${j}${dye ? "Dye" : ""}`}
+					{...place}
+					ZIndex={dye ? Z.ghostDye : Z.ghost}
+					Position={clock.map((t) => new UDim2(HALF, ghostAt(t, j)?.shift ?? 0, HALF, 0))}
+					Visible={clock.map((t) => {
+						const g = ghostAt(t, j);
+						if (g === undefined) return false;
+						if (!dye) return true;
+						const image = g.frame.dyeImage;
+						return image !== undefined && uiContentReady(image);
+					})}
+					Image={clock.map((t) => {
+						const g = ghostAt(t, j);
+						return g === undefined ? "" : dye ? g.frame.dyeImage ?? "" : g.frame.image;
+					})}
+					ImageRectSize={clock.map((t) => ghostAt(t, j)?.frame.size ?? Vector2.zero)}
+					ImageRectOffset={clock.map((t) => ghostAt(t, j)?.frame.offset ?? Vector2.zero)}
+					ImageTransparency={clock.map((t) => ghostAt(t, j)?.transparency ?? HIDDEN)}
+					ImageColor3={clock.map((t) => {
+						const c = trailColor(t);
+						if (!dye) return c;
+						const d = itemColor3(dyeItem, t, reduced, WHITE);
+						return new Color3(c.R * d.R, c.G * d.G, c.B * d.B);
+					})}
+				/>
+			);
+			ghostLabels.push(ghost(false));
+			if (dyeItem !== undefined) ghostLabels.push(ghost(true));
+		}
+	}
+
+	// --- the attack's burst (in-run NEAR_MISS_VIEW.parry) ----------------------------------------------------------
+	const burstLabels = new Array<React.Element>();
+	if (action === "attack") {
+		const sparkItem = props.sparkItem;
+		const sparkColor = (t: number) => itemColor3(sparkItem, t, reduced, role("nearMiss.parry"));
+		const origin = previewBurstOrigin(ACTION.attackAngleDeg);
+		const burstAt = (t: number) => {
+			const phase = phaseAt(t);
+			return phase.acting ? previewBurst(phase.actSec, actLen, ACTION.attackAngleDeg) : undefined;
+		};
+		const at = (x: number, y: number) =>
+			new UDim2(HALF, math.floor((origin.x + x) * pxPerTile), HALF, math.floor((origin.y + y) * pxPerTile));
+		for (let i = 0; i < NEAR_MISS_VIEW.parry.sparkCount; i++) {
+			burstLabels.push(
+				<frame
+					key={`Spark${i}`}
+					AnchorPoint={new Vector2(HALF, HALF)}
+					BorderSizePixel={0}
+					ZIndex={Z.burst}
+					Visible={clock.map((t) => burstAt(t) !== undefined)}
+					Position={clock.map((t) => {
+						const sp = burstAt(t)?.sparks[i];
+						return sp === undefined ? at(0, 0) : at(sp.x, sp.y);
+					})}
+					Size={clock.map((t) => {
+						const sp = burstAt(t)?.sparks[i];
+						const px = math.max(MIN_SPARK_PX, math.floor((sp?.sizePx ?? 0) * artScale));
+						return UDim2.fromOffset(px, px);
+					})}
+					BackgroundColor3={clock.map(sparkColor)}
+					BackgroundTransparency={clock.map((t) =>
+						math.max(burstAt(t)?.sparks[i]?.transparency ?? HIDDEN, dim),
+					)}
+				/>,
+			);
+		}
+		const ringPx = (t: number) => math.floor(2 * (burstAt(t)?.ring.radius ?? 0) * pxPerTile);
+		burstLabels.push(
+			<frame
+				key="Ring"
+				AnchorPoint={new Vector2(HALF, HALF)}
+				BackgroundTransparency={HIDDEN}
+				ZIndex={Z.burst}
+				Visible={clock.map((t) => burstAt(t) !== undefined)}
+				Position={at(0, 0)}
+				Size={clock.map((t) => UDim2.fromOffset(ringPx(t), ringPx(t)))}
+			>
+				<uicorner CornerRadius={new UDim(HALF, 0)} />
+				<uistroke
+					Thickness={math.max(RING_STROKE_MIN, math.floor(NEAR_MISS_VIEW.parry.ringPx * artScale))}
+					Color={clock.map(sparkColor)}
+					Transparency={clock.map((t) => math.max(burstAt(t)?.ring.transparency ?? HIDDEN, dim))}
+				/>
+			</frame>,
+		);
+	}
 	return outer(
 		<>
+			{ghostLabels}
 			{props.rim === true ? (
 				<imagelabel
 					key="Rim"
@@ -162,6 +327,7 @@ export function CharacterPreview(props: {
 					ImageColor3={clock.map((t) => itemColor3(dyeItem, t, reduced, rimFallback))}
 				/>
 			) : undefined}
+			{burstLabels}
 		</>,
 	);
 }

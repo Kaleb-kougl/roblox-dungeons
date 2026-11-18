@@ -23,6 +23,7 @@ import {
 	type CosmeticDetail,
 	type CosmeticItemEntry,
 	type CosmeticListEntry,
+	cosmeticPreviewAction,
 } from "shared/view/menu";
 import { CharacterPreview } from "./CharacterPreview";
 
@@ -260,6 +261,9 @@ function LivePreview(props: {
 				rim={true}
 				outlineItem={props.look.outline}
 				turn={true}
+				action={cosmeticPreviewAction(props.itemId)}
+				trailItem={props.look.trail}
+				sparkItem={props.look.spark}
 			/>
 			<frame
 				key="Chip"

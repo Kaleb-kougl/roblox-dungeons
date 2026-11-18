@@ -1623,7 +1623,8 @@ Decision log (deviations from `PLAN.md`):
   on first `setDye`, dye x tint, readiness by content id, carried by afterimages), per-player outline / trail / spark
   overrides, Prismatic on the sprite clock (reduced motion holds the first stop); the Armory Cosmetics tab (slot
   groups, swatches, buy / equip / take off through `MenuActions.armoryEquip`, a turning try-on `CharacterPreview`
-  shared with CharacterScreen), the lobby's dye chip. Studio `KV_FakeWallet` presets `cosmetics` / `dressed`. Pending:
+  shared with CharacterScreen; a trail item rolls with the in-run ghosts and a spark item attacks with the in-run parry
+  burst, shared/view/menu `cosmeticAction.ts`), the lobby's dye chip. Studio `KV_FakeWallet` presets `cosmetics` / `dressed`. Pending:
   the owner's sign-off on the masks (CS1) and on rule 3's revision, the device memory
   check (CS0), Studio check and playtest (CS9, CS7's two clients); earned cosmetics (CS11) and telemetry (CS12) not
   built.

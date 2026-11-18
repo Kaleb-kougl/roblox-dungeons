@@ -18,6 +18,21 @@ export const COSMETIC_VIEW = {
 		/** The bought row's flash: seconds and the stamp's scale at its start (eased back to 1). */
 		flashSec: 0.6,
 		flashScale: 1.15,
+		/**
+		 * A trail or spark item acts its slot out (shared/view/menu cosmeticAction.ts): a trail rolls with the in-run
+		 * afterimages (FEEL_GHOST), a spark attacks and throws the in-run parry burst (NEAR_MISS_VIEW.parry). Each cycle is
+		 * `restSec` of idle, then the action once.
+		 */
+		action: {
+			restSec: 0.7,
+			/** The roll slides this share of the box across it (ping-pong: right, then left), screen angles 0 / 180. */
+			rollSlideShare: 0.5,
+			/** The attack faces screen down-right (the sparks fly toward the camera's side). */
+			attackAngleDeg: 315,
+			/** The burst starts at this share of the attack animation, this many tiles in front of the preview's centre. */
+			sparkAtShare: 0.5,
+			sparkReachTiles: 0.45,
+		},
 	},
 	/** A row's swatch on the Cosmetics tab, reference px. */
 	rowSwatch: 16,

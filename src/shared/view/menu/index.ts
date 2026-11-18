@@ -16,6 +16,7 @@ export * from "./character";
 export * from "./characterLock";
 export * from "./config";
 export * from "./cosmetics";
+export * from "./cosmeticAction";
 export * from "./credits";
 export * from "./daily";
 export * from "./firstJoin";
