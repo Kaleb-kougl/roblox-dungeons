@@ -58,7 +58,7 @@ player, party-4 packs P1-P4, the census room's allowance). CLAUDE.md's decision 
 `dungeon/forge/forge.spec`'s known x86 NaN-sign vector (pre-existing on `main`) and `sim/combat.spec`'s "every plain
 CombatState ... field ... covered by the hash", which did not yet list NT3's unhashed `healEvents` beside `guardEvents`
 / `hookEvents` (fixed in the spec; 23 / 23). A separate read-only review found nothing serious ("Independent review").
-**The 20 PNGs uploaded 2026-11-17** (ids in `packs/vale/assetIds.ts`; vale.spec now pins the three as sprite sets), so the bundled vale pack draws them. **Pending:** NT13 (the owner's uploads: six OGGs after `audio:build`; the Studio checklists of NT7 / NT8),
+**The 20 PNGs uploaded 2026-11-17** (ids in `packs/vale/assetIds.ts`; vale.spec now pins the three as sprite sets), so the bundled vale pack draws them; **the six sounds built from the NT10 picks and uploaded 2026-11-17** (ids in `assetIds.ts`, `audioLayout.ts` regenerated), so vale plays them (not yet confirmed by ear). **Pending:** NT13 (the Studio checklists of NT7 / NT8),
 the owner calls, and full tuning if the owner wants more than NT12-lite.
 Read on `main` @ `80f57769`. NTD1-NTD14 taken by the owner on
 2026-11-16 (see Decisions): every one as recommended except **NTD3** (the Mortar fires only while its target is in the

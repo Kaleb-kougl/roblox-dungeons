@@ -189,6 +189,9 @@ import type { RobloxAssetId } from "../../types";
  * k9kbdev, transcribed from an Asset Manager screenshot. * The three room enemies of docs/NEW_ENEMIES_3.md (NT8: mortar-* / mender-* / jackal-* sheets with their -outline rims,
  * Demon Spawn 6 / Imp 10 / Demon Beast 2) uploaded 2026-11-17 10:01 AM by k9kbdev, transcribed from Asset Manager
  * screenshots: all 20.
+ * The six sounds of docs/NEW_ENEMIES_3.md NT10 (sfx-enemy-lob / -shell / -heal / -healcut / -lunge / -spooked; built by
+ * audio:build on the owner's Mac from the NT10 picks) uploaded 2026-11-17 2:03 PM by k9kbdev, transcribed from an
+ * Asset Manager screenshot.
  */
 export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"amb-b1.ogg": "rbxassetid://91158343621799",
@@ -668,6 +671,12 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"mender-body.png": "rbxassetid://125273678443767",
 	"mortar-body.png": "rbxassetid://111261493924770",
 	"mortar-death.png": "rbxassetid://107518405164608",
+	"sfx-enemy-heal.ogg": "rbxassetid://136436759124303",
+	"sfx-enemy-healcut.ogg": "rbxassetid://98784197095760",
+	"sfx-enemy-lob.ogg": "rbxassetid://121013754392415",
+	"sfx-enemy-lunge.ogg": "rbxassetid://130174633263039",
+	"sfx-enemy-shell.ogg": "rbxassetid://71989345775153",
+	"sfx-enemy-spooked.ogg": "rbxassetid://120805701534088",
 };
 
 /**
