@@ -2,6 +2,8 @@
 // ghosts and parry burst. Ids are read from COSMETIC_ITEMS (the palette may change).
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { COSMETIC_ITEMS, LOOK_SLOTS, type CosmeticItemDef } from "shared/cosmetics";
+import { ThemePack } from "shared/theme";
+import { VALE_MANIFEST } from "shared/theme/packs/vale";
 import { COSMETIC_VIEW } from "../cosmetics/config";
 import { FEEL_GHOST } from "../fx/motionFxConfig";
 import { NEAR_MISS_VIEW } from "../fx/nearMissConfig";
@@ -43,12 +45,25 @@ describe("cosmetic preview actions", () => {
 	});
 
 	it("the animation is the first the set has; idle and unknown sets play none", () => {
-		const knight = (anim: string) => ["idle", "roll", "attack1", "attack2"].includes(anim);
+		const knight = (anim: string) => ["idle", "roll", "attack.1", "attack.2"].includes(anim);
 		expect(previewActionAnim("roll", knight)).toBe("roll");
-		expect(previewActionAnim("attack", knight)).toBe("attack1");
+		expect(previewActionAnim("attack", knight)).toBe("attack.1");
 		expect(previewActionAnim("attack", (a) => a === "attack")).toBe("attack");
 		expect(previewActionAnim("idle", knight)).toBe(undefined);
 		expect(previewActionAnim("roll", () => false)).toBe(undefined);
+	});
+
+	it("both vale characters resolve a roll and an attack animation (the theme's own names)", () => {
+		const vale = new ThemePack(VALE_MANIFEST, { warn: () => {} });
+		for (const id of ["class.vanguard", "class.ranger"]) {
+			const set = vale.sprites(id);
+			expect(set !== undefined).toBe(true);
+			const has = (anim: string) => set!.has(anim);
+			expect([id, previewActionAnim("roll", has)]).toEqual([id, "roll"]);
+			expect([id, previewActionAnim("attack", has)]).toEqual([id, "attack.1"]);
+			const attack = set!.animation("attack.1")!;
+			expect(previewActionSec(attack.fps, attack.frames) > 0).toBe(true);
+		}
 	});
 
 	it("a cycle rests restSec, then plays the action once, its last frame held", () => {

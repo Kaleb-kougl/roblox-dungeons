@@ -443,8 +443,9 @@ Presentation and client timing only: no sim, dungeon, lockstep, hash, replay, fi
 
 The Armory's try-on preview acts a trail or spark item out instead of only showing its swatch. Presentation only.
 Pure core `shared/view/menu` `cosmeticAction.ts` (spec `cosmeticAction.spec.ts`): `cosmeticPreviewAction(itemId)` (a
-trail rolls, a spark attacks, anything else keeps the turning idle), `previewActionAnim` (`roll`; `attack1`, else
-`attack`), `previewActionPhase` (a cycle is `COSMETIC_VIEW.preview.action.restSec` 0.7 s of idle, then the animation
+trail rolls, a spark attacks, anything else keeps the turning idle), `previewActionAnim` (`roll`; `attack.1`, the
+Knight's swing and the Archer's quick shot, else `attack`; a spec checks both vale sets resolve them: the first build
+looked for `attack1`, found nothing and silently kept the idle), `previewActionPhase` (a cycle is `COSMETIC_VIEW.preview.action.restSec` 0.7 s of idle, then the animation
 once, its last frame held), the roll's slide (`previewRollOffset`: `rollSlideShare` 0.5 of the box, eased out,
 ping-pong right / left so it never jumps back, facing screen 0 / 180) and its ghosts (`previewGhosts`: the in-run
 FEEL_GHOST numbers: one every 4 sim ticks while rolling, 0.15 s life, 0.5 -> 1 transparency, at most 3; they fade

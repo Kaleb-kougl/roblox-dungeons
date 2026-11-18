@@ -39,10 +39,14 @@ export function cosmeticPreviewAction(itemId: string | undefined): PreviewAction
 	return "idle";
 }
 
-/** The animation names an action may play, first found wins (the Knight and the Archer both have roll / attack1). */
+/**
+ * The animation names an action may play, first found wins: the theme's names (art/atlases.json), `attack.1` being the
+ * Knight's swing (Melee) and the Archer's quick shot; `attack` for a set with one attack. cosmeticAction.spec checks both
+ * vale characters resolve each action (a wrong name would fall back to the idle silently).
+ */
 export const PREVIEW_ACTION_ANIMS: Readonly<Record<"roll" | "attack", ReadonlyArray<string>>> = {
 	roll: ["roll"],
-	attack: ["attack1", "attack"],
+	attack: ["attack.1", "attack"],
 };
 
 /** The animation `action` plays on a set that `has` these names, or undefined (idle, or none of them). */
