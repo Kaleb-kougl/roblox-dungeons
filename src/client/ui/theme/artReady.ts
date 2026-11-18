@@ -1,5 +1,5 @@
 import { useEffect, useState } from "@rbxts/react";
-import { getActiveThemePack, type ImageRef } from "shared/theme";
+import { getActiveThemePack, type ContentRef, type ImageRef } from "shared/theme";
 
 /**
  * UI art readiness (docs/STAGE_ASSETS.md "Revision 2", SA18): a ui image is drawn only once its content has downloaded
@@ -15,6 +15,10 @@ import { getActiveThemePack, type ImageRef } from "shared/theme";
  *   useUiArt()         React: re-renders the calling component when a ui image it (or anyone) asked about flips.
  *                      Every component that reads uiImage / UI_IMAGES calls it once, unconditionally.
  *   onUiArtChanged(cb) the same for code outside React (TouchControlsController); returns the disconnect.
+ *   uiContentReady(c)  docs/COSMETICS.md CS6: whether one content id (a dye sheet, never a logical id's) has
+ *                      downloaded; a flip of a content id asked about re-renders like a ui image's.
+ *   requestUiContent   queues content ids on the front lane (the Armory's preview asks for a set's dye sheets, which no
+ *                      preload tier holds).
  *
  * One subscription to the feed for the whole UI: a change bumps one counter and calls the listeners in-thread, and
  * only when a flipped id is one the UI has asked about.
@@ -24,7 +28,8 @@ import { getActiveThemePack, type ImageRef } from "shared/theme";
 export interface UiArtReadinessFeed {
 	isArtReady(logicalId: string): boolean;
 	onReadinessChanged(listener: (epoch: number) => void): () => void;
-	getReadiness(): { flippedSince(epoch: number): ReadonlyArray<string> };
+	getReadiness(): { flippedSince(epoch: number): ReadonlyArray<string>; status(contentId: string): string };
+	request(refs: ReadonlyArray<ContentRef>, lane?: "front", label?: string): void;
 }
 
 let feed: UiArtReadinessFeed | undefined;
@@ -33,6 +38,9 @@ let lastEpoch = -1;
 let revision = 0;
 /** Logical ids the UI asked about (only their flips re-render). */
 const asked = new Set<string>();
+/** Content ids the UI asked about (uiContentReady) and whether each was ready when last seen. */
+const askedContent = new Map<string, boolean>();
+const READY = "ready";
 const listeners = new Set<() => void>();
 
 function notify(): void {
@@ -49,8 +57,21 @@ export function bindUiArtReadiness(source: UiArtReadinessFeed, epoch: number): (
 	feed = source;
 	lastEpoch = epoch;
 	unsubscribe = source.onReadinessChanged((now) => {
-		const flipped = source.getReadiness().flippedSince(lastEpoch);
+		const readiness = source.getReadiness();
+		const flipped = readiness.flippedSince(lastEpoch);
 		lastEpoch = now;
+		let changed = false;
+		for (const [contentId, was] of askedContent) {
+			const ready = readiness.status(contentId) === READY;
+			if (ready !== was) {
+				askedContent.set(contentId, ready);
+				changed = true;
+			}
+		}
+		if (changed) {
+			notify();
+			return;
+		}
 		for (const id of flipped) {
 			if (asked.has(id)) {
 				notify();
@@ -71,6 +92,23 @@ export function bindUiArtReadiness(source: UiArtReadinessFeed, epoch: number): (
 export function uiArtReady(id: string): boolean {
 	asked.add(id);
 	return feed === undefined || feed.isArtReady(id);
+}
+
+/**
+ * docs/COSMETICS.md CS6: whether content id `contentId` has downloaded (true before a feed is bound). Records it as
+ * asked about: its flip re-renders (useUiArt).
+ */
+export function uiContentReady(contentId: string): boolean {
+	if (feed === undefined) return true;
+	const ready = feed.getReadiness().status(contentId) === READY;
+	askedContent.set(contentId, ready);
+	return ready;
+}
+
+/** Queues `refs` on the front lane (once per session per id: the preload queue's seen set); no-op before a feed. */
+export function requestUiContent(refs: ReadonlyArray<ContentRef>, label: string): void {
+	if (feed === undefined || refs.size() === 0) return;
+	feed.request(refs, "front", label);
 }
 
 /** The active pack's ui image `id`, or undefined when the pack has none or it has not downloaded yet. */

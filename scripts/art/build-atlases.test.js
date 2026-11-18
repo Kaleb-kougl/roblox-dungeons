@@ -295,7 +295,7 @@ describe("buildSpriteSet with an outline", () => {
 
 	it("layout.ts names outline files only for outlined sets", () => {
 		const text = A.layoutModule([plain, outlined], [], "#000000");
-		assert.match(text, /export interface ValeSpriteSheetFile extends ValeSheetFile \{\n\toutlineFile\?: string;\n\}/);
+		assert.match(text, /export interface ValeSpriteSheetFile extends ValeSheetFile \{\n\toutlineFile\?: string;\n\t\/\*\* Dye sheet [^\n]*\*\/\n\tdyeFile\?: string;\n\}/);
 		assert.match(text, /sheets: Array<ValeSpriteSheetFile>;/);
 		const at = text.indexOf('"enemy.test"');
 		const pt = text.indexOf('"class.test"');
@@ -944,7 +944,7 @@ describe("per-sheet cells", () => {
 		);
 		const plain = A.layoutModule([one], [], "#000000");
 		assert.equal(plain.includes("frameW?: number"), false);
-		assert.match(plain, /export interface ValeSpriteSheetFile extends ValeSheetFile \{\n\toutlineFile\?: string;\n\}/);
+		assert.match(plain, /export interface ValeSpriteSheetFile extends ValeSheetFile \{\n\toutlineFile\?: string;\n\t\/\*\* Dye sheet [^\n]*\*\/\n\tdyeFile\?: string;\n\}/);
 		// the interface depends on every set: one per-sheet set declares the fields for all
 		assert.match(A.layoutModule([one, per], [], "#000000"), /pivot\?: Pivot;/);
 	});

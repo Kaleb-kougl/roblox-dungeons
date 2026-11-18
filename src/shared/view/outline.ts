@@ -38,7 +38,9 @@ export const ACTOR_OUTLINE = {
 	/** Sprite rims (plan O4): the outline ImageLabel's name in a SpriteView's BillboardGui. */
 	spriteLabelName: "Outline",
 	/** ZIndex of a SpriteView's labels (the gui's ZIndexBehavior is Sibling): the rim draws under the frame. */
-	spriteZIndex: { outline: 1, frame: 2 },
+	spriteZIndex: { outline: 1, frame: 2, dye: 3 },
+	/** docs/COSMETICS.md CS5: the sprite's dye label (a SpriteView built with a dye), above the frame. */
+	spriteDyeLabelName: "Dye",
 } as const;
 
 /** Which child of the actors folder a placeholder body is parented to (ACTOR_OUTLINE.groups). */

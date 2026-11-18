@@ -86,6 +86,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/SECRET_ROOMS.md` | Secret rooms (a cracked far wall that knocks hollow hides a small torch-lit chamber with a chest; about one endless floor in five from floor 2, nothing announces it; opened by the Knight's combo finisher, a heavy arrow / Siege slam, a Wrecker roll or a Charger's charge; the chest Rare 65 / Legendary 35 with the vault's grants; SECRET! shout, recap highlight, one Codex entry; gameplay, opt-in `SimConfig.secrets`, endless only): plan, as built (Tracks A / T / V1 / V2), Studio check, tasks SR0-SR16, decisions SRD1-SRD14 |
 | `docs/SILVER.md` | Silver, the cross-run currency (phase 1 built): earned per room cleared, per floor / boss / vault / secret / Goldling, from Silver in barrels and crates (floor-built, any break pays), a run minimum and day bonuses; server-owned wallet `KV_Wallet_v1` (transactions only); spent in the Armory on upgrades (Vigor / Deep Flask / Plating / Prospector) and the Archer unlock on one doubling price ladder; base hearts down by one (Knight 2, Archer 1 1/2) with half-heart containers: SV0 findings, plan, as built, tasks SV0-SV18 / SC1-SC4, decisions SVD1-SVD41 |
 | `docs/SILVER_SHOP.md` | Silver shop (Silver for Robux through developer products: four packs Pouch / Purse / Chest / Hoard, 150-2,500 Silver at 20 / 55 / 115 / 265 Robux by default, prices read from Roblox; one pool with earned Silver; a quiet `+` beside the Armory's and the main menu's balance only; each receipt one wallet transaction with a `PurchaseId` ring; `KV_FakeShop` in Studio; supersedes SVD1): plan, as built, tasks SH0-SH9, decisions SHD1-SHD11 |
+| `docs/COSMETICS.md` | Cosmetics from recoloured sprites (dye sheets cut from the existing Knight / Archer body sheets and tinted at runtime: 8 dyes + Prismatic per character; outline, roll-trail and spark colours; the Armory's Cosmetics tab with try-on; looks sent to teammates; readability validator `cosmeticReport`; presentation, wallet catalogue and server fields only): plan, as built, tasks CS0-CS12, decisions CSD1-CSD12 |
 
 Decision log (deviations from `PLAN.md`):
 - **Art (docs/ART.md).** The theme contract gained a `"sprites"` kind (large pre-rendered cells, 1/4/8/16 screen-space
@@ -1600,6 +1601,32 @@ Decision log (deviations from `PLAN.md`):
   the trailing bullets: the NT6 failure of `view/predict/bulletAhead.spec`), and `run/testing` `legendaryTune.ts` counts
   `ScoreEvents.guardCancels`, not the guard feed (which holds Jackal parries). NT12-lite: `run/newEnemies3.tuning.spec`
   (`--census`), no retune; owner calls OC1-OC5 and NT6's party-4 packs (P1-P4) open; Studio check (NT13) pending.
+
+- **Cosmetics (docs/COSMETICS.md, 2026-11-17).** Presentation, wallet catalogue, server session / lobby fields and two
+  network fields (no sim, dungeon, lockstep, hash, replay, fixture, score or leaderboard change; `DAILY.ruleset`
+  unchanged). Pipeline: a sprite set may carry `dye` (`rule`, `unless`, `open`, `minAreaPx`, `normalizePercentile`,
+  `exclude`; docs/ART.md "Dye sheets"): `<sheet>-dye.png`, same size and cell grid, the dyed region as normalised grey
+  (alpha kept, else transparent), `dyeFile` per sheet and `dyeMeanValue` / `dyeSourceMean` per set in the generated
+  layout; body and outline sheets byte-identical. Knight plate (sat < 0.10, lum >= 88, swing smears excluded) and Archer
+  leathers (lum <= 69, browns; the bow and sword cut by a 3 x 3 opening): 15 dye sheets, built and uploaded 2026-11-17
+  (`assetIds.ts`), so the bundled vale pack draws dyes. Theme: `SpriteSheetImage.dyeAssetId` /
+  `SpriteFrame.dyeImage`; `contentIds()` never lists dye sheets (`dyeContentIds(setId)` does: only a worn dye joins a
+  floor's stage manifest, `StageAssetInput.dyed`); `cosmetics.ts` (colours, Prismatic stops, `prismaticColor`) and
+  `cosmeticReport.ts` (own module: a cycle through contract.ts): dyed mean >= 40 CIE76 from the danger roles, >= 30 from
+  boosts and the Goldling, floor contrast >= min(3 : 1, the undyed region's own contrast); outline / trail / spark
+  colours on the outline / danger / near-miss rules. `contract.luau` / `validate.luau` 190 / 192 top-level locals.
+  Items: `shared/cosmetics` `COSMETIC_ITEMS` (append-only, the one list; 37: 8 dyes + Prismatic per character, 8
+  outlines, 6 trails, 5 sparks), appended to `ARMORY_CATALOG` as `kind: "cosmetic"` rows (tiers 2-8, 28,680 Silver);
+  `nextGoals` skips cosmetics. Looks: `CosmeticLook` (item ids; `readCosmeticLook` for wire values) read from the STORED
+  wallet at run start (`RunSession.looks`, `StartRunReply.look`, `PartyRunStart.looks`) and on lobbies
+  (`LobbyView.looks`, re-sent on equip); never hashed or in `buildWorldSetup`. Client: SpriteView's "Dye" label (built
+  on first `setDye`, dye x tint, readiness by content id, carried by afterimages), per-player outline / trail / spark
+  overrides, Prismatic on the sprite clock (reduced motion holds the first stop); the Armory Cosmetics tab (slot
+  groups, swatches, buy / equip / take off through `MenuActions.armoryEquip`, a turning try-on `CharacterPreview`
+  shared with CharacterScreen), the lobby's dye chip. Studio `KV_FakeWallet` presets `cosmetics` / `dressed`. Pending:
+  the owner's sign-off on the masks (CS1) and on rule 3's revision, the device memory
+  check (CS0), Studio check and playtest (CS9, CS7's two clients); earned cosmetics (CS11) and telemetry (CS12) not
+  built.
 
 ## Commands
 

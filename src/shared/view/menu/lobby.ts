@@ -14,6 +14,7 @@ import {
 	type LobbyVisibility,
 } from "shared/lobby";
 import { isCharacterId, type CharacterId } from "shared/characters";
+import { readCosmeticLook } from "shared/cosmetics";
 import type { LobbyInviteView, LobbyNotice, LobbyView } from "shared/network";
 import type { StringVars } from "shared/theme";
 import { LOBBY_BROWSER_PATH, LOBBY_ROOM_PATH, MAIN_MENU_PATH, type MenuScreen } from "./nav";
@@ -106,6 +107,11 @@ export interface RoomMember {
 	 * the Knight until their first pick), drawn as a CharacterIcon on the row; undefined for a value that is no id.
 	 */
 	readonly character: CharacterId | undefined;
+	/**
+	 * docs/COSMETICS.md CS7: the dye the member wears for that pick (LobbyView.looks, same index; read as an untrusted
+	 * value), drawn as a small swatch chip on the character icon; undefined: none.
+	 */
+	readonly dye: string | undefined;
 	/** Host-only row buttons (never on the host's own row; only while forming). */
 	readonly canKick: boolean;
 	readonly canMakeHost: boolean;
@@ -173,6 +179,7 @@ export function lobbyRoomModel(view: LobbyView, me: number, nameOf: NameOf, coun
 		ready: view.ready.includes(id),
 		me: id === me,
 		character: memberPick(view, i),
+		dye: readCosmeticLook(view.looks?.[i]).dye,
 		canKick: isHost && forming && id !== me,
 		canMakeHost: isHost && forming && id !== me,
 	}));

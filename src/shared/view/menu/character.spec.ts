@@ -1,5 +1,6 @@
 // The character screen and the run-over Character button (shared/view/menu character.ts; docs/ARCHER.md AR7 / AR8),
 // the lobby room's member picks and the pick sent when the room opens (lobby.ts).
+import { cosmeticItemsOf } from "shared/cosmetics";
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { CHARACTER_IDS, DEFAULT_CHARACTER } from "shared/characters";
 import type { LobbyView } from "shared/network";
@@ -202,6 +203,7 @@ function lobby(over: Partial<LobbyView>): LobbyView {
 		members: [1, 2, 3],
 		ready: [],
 		characters: ["knight", "archer", "knight"],
+		looks: [],
 		invited: [],
 		invitedSources: [],
 		...over,
@@ -219,6 +221,23 @@ describe("the lobby room's picks (AR8)", () => {
 		// A missing or unknown entry draws no icon.
 		const short = lobbyRoomModel(lobby({ characters: ["archer", "wizard" as never] }), 1, (id) => `P${id}`, 0);
 		expect(short.members.map((r) => r.character)).toEqual(["archer", undefined, undefined]);
+	});
+
+	it("each member row carries the dye they wear (docs/COSMETICS.md CS7), read from LobbyView.looks by index", () => {
+		const dye = cosmeticItemsOf("dye.knight")[0].id;
+		const outline = cosmeticItemsOf("outline")[0].id;
+		const m = lobbyRoomModel(
+			lobby({ looks: [{ dye }, { outline }, { dye: "not.an.item" }] }),
+			1,
+			(id) => `P${id}`,
+			0,
+		);
+		expect(m.members.map((r) => r.dye)).toEqual([dye, undefined, undefined]);
+		expect(lobbyRoomModel(lobby({}), 1, (id) => `P${id}`, 0).members.map((r) => r.dye)).toEqual([
+			undefined,
+			undefined,
+			undefined,
+		]);
 	});
 
 	it("the room opening sends the remembered pick with an un-ready only when it differs and the member is not ready", () => {

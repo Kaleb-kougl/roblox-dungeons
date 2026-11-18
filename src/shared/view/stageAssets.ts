@@ -15,6 +15,7 @@ import type { PreloadSource } from "./preload";
 import { PRELOAD_BIOME_PREFIX } from "./preloadConfig";
 import {
 	STAGE_ASSETS,
+	STAGE_DYE_PREFIX,
 	STAGE_FEATURES,
 	STAGE_GROUPS,
 	type StageAssetsConfig,
@@ -31,6 +32,10 @@ import {
 	stageFeatureGroup,
 	stageFreeDecorGroup,
 } from "./stageGroups";
+
+function startsWith(s: string, prefix: string): boolean {
+	return s.sub(1, prefix.size()) === prefix;
+}
 
 /** Which features a floor has (each adds STAGE_ASSETS.features[name]). */
 export type StageFeatures = { readonly [K in StageFeatureName]: boolean };
@@ -71,6 +76,12 @@ export interface StageAssetInput {
 	readonly biome: number;
 	/** The present players' character ids (class logical ids: class.vanguard, ...), in player order. */
 	readonly characters: ReadonlyArray<string>;
+	/**
+	 * docs/COSMETICS.md CS5: the sprite sets (class logical ids) a present player wears a dye of (shared/view/cosmetics
+	 * stageDyeSets), each once: their dye sheets join the characters group as `dye:<set>` entries. Absent or empty: no
+	 * dye sheet is loaded (a run nobody dyes, every forecast before the looks are known).
+	 */
+	readonly dyed?: ReadonlyArray<string>;
 	/**
 	 * Archetype ids the floor spawns (planned room spawns and initial spawns, the boss among them), each once, in the
 	 * order they will be seen (exact inputs: nearest the player's spawn first). Runtime children are added by the
@@ -125,8 +136,10 @@ export function stageAssetGroups(
 	for (const id of stageBiomeAudio(pack, input.biome, cfg)) audio.push(id);
 	if (input.bossKind !== undefined) for (const id of stageExpand(pack, cfg.bossAudio)) audio.push(id);
 
+	const characters = stageCharacterGroup(pack, input.characters);
+	for (const id of stageDyeGroup(pack, input.dyed)) characters.push(id);
 	const raw: Record<StageGroupName, ReadonlyArray<string>> = {
-		characters: stageCharacterGroup(pack, input.characters),
+		characters,
 		bullets: stageExpand(pack, cfg.bullets),
 		actors: stageActorGroup(pack, kinds, cfg),
 		biome,
@@ -146,6 +159,26 @@ export function stageAssetGroups(
 		out.push({ group, ids });
 	}
 	return out;
+}
+
+/**
+ * docs/COSMETICS.md CS5: `dye:<set>` for each of `dyed` (each once, in order) whose dye sheets the pack has (a pack
+ * without dye ids, the placeholder, yields nothing).
+ */
+export function stageDyeGroup(pack: PreloadSource, dyed: ReadonlyArray<string> | undefined): Array<string> {
+	const out = new Array<string>();
+	if (dyed === undefined || pack.dyeContentIds === undefined) return out;
+	for (const set of dyed) {
+		const id = `${STAGE_DYE_PREFIX}${set}`;
+		if (out.includes(id) || pack.dyeContentIds(set).size() === 0) continue;
+		out.push(id);
+	}
+	return out;
+}
+
+/** Is manifest id `id` a logical id (not a `biome:<key>` or `dye:<set>` entry: no readiness of its own)? */
+export function stageIsLogicalId(id: string): boolean {
+	return !startsWith(id, PRELOAD_BIOME_PREFIX) && !startsWith(id, STAGE_DYE_PREFIX);
 }
 
 /** Every id of the stage's groups, flattened in front-lane order (must and soon together). */
@@ -173,15 +206,18 @@ export function stageAssets(
 	return { must, soon };
 }
 
-function startsWith(s: string, prefix: string): boolean {
-	return s.sub(1, prefix.size()) === prefix;
-}
+const NO_REFS: ReadonlyArray<ContentRef> = [];
 
-/** The content ids of one manifest id (a logical id, or `biome:<key>`: that biome's own content). */
+/**
+ * The content ids of one manifest id (a logical id; `biome:<key>`: that biome's own content; `dye:<set>`: that set's
+ * dye sheets).
+ */
 function refsOf(pack: PreloadSource, id: string): ReadonlyArray<ContentRef> {
-	return startsWith(id, PRELOAD_BIOME_PREFIX)
-		? pack.biomeContentIds(id.sub(PRELOAD_BIOME_PREFIX.size() + 1))
-		: pack.contentIds(id);
+	if (startsWith(id, PRELOAD_BIOME_PREFIX)) return pack.biomeContentIds(id.sub(PRELOAD_BIOME_PREFIX.size() + 1));
+	if (startsWith(id, STAGE_DYE_PREFIX)) {
+		return pack.dyeContentIds?.(id.sub(STAGE_DYE_PREFIX.size() + 1)) ?? NO_REFS;
+	}
+	return pack.contentIds(id);
 }
 
 /**

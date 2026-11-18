@@ -23,4 +23,5 @@ export * from "./boostAuraLayout";
 export * from "./boostAuras";
 export * from "./kenneyLayout";
 export * from "./pyre";
+export * from "./dyes";
 export * from "./manifest";

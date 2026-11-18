@@ -3,7 +3,7 @@
  * stack reducer (nav.ts), the lobby screens' view models and run handoff / exit rules (lobby.ts), the pause overlay /
  * pause button rules (pause.ts), the menu shell's pointer sink under a panel (pointer.ts), every menu / lobby string key (strings.ts), the layout tunables and menu keys
  * (config.ts), the first-join choice with the Roblox invites' join intent (firstJoin.ts) and the Daily card, podium
- * and lobby world row (daily.ts, docs/DAILY.md DS9), the Credits list (credits.ts), the Silver shop's Get Silver panel and its `+` (silverShop.ts, docs/SILVER_SHOP.md), the character screen and the run-over Character button (character.ts,
+ * and lobby world row (daily.ts, docs/DAILY.md DS9), the Credits list (credits.ts), the Silver shop's Get Silver panel and its `+` (silverShop.ts, docs/SILVER_SHOP.md), the Armory's Cosmetics tab and its live preview (cosmetics.ts, docs/COSMETICS.md CS6), the character screen and the run-over Character button (character.ts,
  * docs/ARCHER.md AR7), and the gamepad menus' focus
  * scopes, recovery and memory (focus.ts), pad buttons per surface (padActions.ts), hint bar (padHints.ts;
  * docs/GAMEPAD_MENUS.md GM1) and the menu pad input path (padNav.ts: input keys, clamped tabs, the right stick's
@@ -15,6 +15,7 @@ export * from "./armory";
 export * from "./character";
 export * from "./characterLock";
 export * from "./config";
+export * from "./cosmetics";
 export * from "./credits";
 export * from "./daily";
 export * from "./firstJoin";

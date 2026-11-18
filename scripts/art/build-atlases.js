@@ -8,6 +8,8 @@
  *
  *   -> art/build/<sheet>.png             atlases and images to upload (<= 1024 px a side)
  *   -> art/build/<sheet>-outline.png     outline sheets, for sets with `outline` (same size and cell grid as <sheet>)
+ *   -> art/build/<sheet>-dye.png         dye sheets, for sets with `dye` (same size and cell grid as <sheet>; docs/COSMETICS.md)
+ *   -> art/build/contact/<id>-dye-<animation>.png  dye contact sheets (body, mask, four sample dyes), sets with `dye`
  *   -> art/build/contact/<id>.png        contact sheets: every animation x facing x frame on mid-grey, read back
  *                                        from the built atlases through the layout's cell formula; a white arrow
  *                                        in the margin shows each row's facing, a red cross the pivot; sets with an
@@ -105,6 +107,20 @@
  * `outline.clipAtCellEdge: true` (player outline) lifts the pad rule for a set whose cells cannot grow (the knight:
  * 128 px cells, pad 0, 64 to a 1024 atlas): the rim stops at the cell edge where the body comes within widthPx of it,
  * and the build prints how many cells and body pixels that clips (rimClip) so the cost stays visible.
+ *
+ * Dye sheets (set `dye`, docs/COSMETICS.md CS1-CS2: the region a cosmetic dye recolours, e.g. the Knight's plate):
+ * `{ rule, unless?, open?, minAreaPx?, normalizePercentile, exclude? }`, unknown keys throw (dyeConfig). Per built sheet
+ * (after the crop, packing and bleed, so it aligns with the body sheet cell for cell), the mask (dyeMask) is: the pixels
+ * the colour `rule` takes and no `unless` rule takes (dyeRuleAt: alpha > alphaMin, max(R, G, B) > minRgb, lumMin <=
+ * luminance <= lumMax with the integer Rec. 601 luminance of `recolor`, satMin <= HLS saturation < satMax, hue in one
+ * of the [from, to) degree ranges; colorsys's HLS, hlsSatHue), minus the `exclude` rects (cell pixels, optionally per
+ * animation / facing / kept frame), opened by an `open.sizePx` square and regrown `open.regrowPx` steps into what was
+ * left (strokes thinner than the square go: a bow, a blade), then 8-connected pieces under `minAreaPx` dropped; every
+ * step stays inside its cell. p = the nearest-rank `normalizePercentile` luminance over every masked pixel of the SET;
+ * `<sheet>-dye.png` holds each masked pixel as grey round(255 x min(1, luminance / p)) with its own alpha, every other
+ * pixel (0, 0, 0, 0). layout.ts gets `dyeFile` per sheet, and per set `dyeMeanValue` (the mean of min(1, l / p), 4
+ * decimals) and `dyeSourceMean` (the mean source RGB of every masked pixel, "#rrggbb": the undyed region's colour, the
+ * cosmetics validator's floor baseline, docs/COSMETICS.md rule 3). The body and outline sheets do not change.
  *
  * Recolour (set `recolor: { ramp }`, docs/FORTUNE.md FO10 / FD14: the Goldling is the skeleton in gold): a gradient map
  * by luminance, applied to every source region the set reads (so before the crop box, the pivot, the packing and the
@@ -487,6 +503,385 @@ function outlineSheet(img, frameW, frameH, widthPx, bodyAlpha, bodyMinRgb) {
 		out.data[i * 4 + 1] = 255;
 		out.data[i * 4 + 2] = 255;
 		out.data[i * 4 + 3] = dilated[i] ? 255 - img.data[i * 4 + 3] : 0;
+	}
+	return out;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Dye sheets (docs/COSMETICS.md CS1-CS2)
+
+/** Dye: the HLS saturation / hue rule keys, the open / exclude keys, and the contact sheet's sample colours. */
+const DYE_KEYS = ["rule", "unless", "open", "minAreaPx", "normalizePercentile", "exclude"];
+const DYE_RULE_KEYS = ["alphaMin", "minRgb", "satMin", "satMax", "lumMin", "lumMax", "hue"];
+const DYE_OPEN_KEYS = ["sizePx", "regrowPx"];
+const DYE_EXCLUDE_KEYS = ["animations", "facings", "frames", "rect"];
+/** The largest `open.sizePx` / `open.regrowPx` the build accepts (a dye region is a body part, not a speck). */
+const DYE_MAX_OPEN = 8;
+/** Contact sheet: the mask's preview colour and the sample dyes (scarlet, cobalt, teal, amethyst). */
+const DYE_MASK_PREVIEW_RGB = [0xff, 0x00, 0xff];
+const DYE_SAMPLE_RGB = [
+	[0xc0, 0x18, 0x2a],
+	[0x3c, 0x78, 0xe6],
+	[0x28, 0xaa, 0x8c],
+	[0x96, 0x50, 0xc8],
+];
+/** Contact sheet: kept frames shown per animation (first, middle, last). */
+const DYE_CONTACT_FRAMES = 3;
+
+/**
+ * The set's dye config, normalised, or null when it has none. Throws on a malformed one (unknown keys, wrong types,
+ * out-of-range numbers; `exclude` names checked against the set's animations and facings, frames against each named
+ * animation's kept frames). Normalised: { rule: { alphaMin, minRgb, satMin?, satMax?, lumMin?, lumMax?, hue? }, unless:
+ * [rules with every key optional], open: { sizePx, regrowPx } | null, minAreaPx (0 = no area cut), normalizePercentile,
+ * exclude: [{ animations?, facings?, frames?, rect: { x, y, w, h } }] }.
+ */
+function dyeConfig(id, set) {
+	const dye = set.dye;
+	if (dye === undefined) return null;
+	const bad = (why) => new Error(`${id}: dye${why}`);
+	const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
+	const checkKeys = (o, allowed, where) => {
+		for (const k of Object.keys(o)) if (!allowed.includes(k) && !k.startsWith("$")) throw bad(`${where}.${k}: unknown key (allowed: ${allowed.join(", ")})`);
+	};
+	const int = (v, lo, hi, where) => {
+		if (!Number.isInteger(v) || v < lo || v > hi) throw bad(`${where} must be an integer in [${lo}, ${hi}], got ${JSON.stringify(v)}`);
+		return v;
+	};
+	const num = (v, lo, hi, where) => {
+		if (typeof v !== "number" || !Number.isFinite(v) || v < lo || v > hi) throw bad(`${where} must be a number in [${lo}, ${hi}], got ${JSON.stringify(v)}`);
+		return v;
+	};
+	if (!isObject(dye)) throw bad(" must be an object { rule, normalizePercentile, ... }");
+	checkKeys(dye, DYE_KEYS, "");
+	/** One colour rule at `where`: alphaMin and minRgb required in the main rule, optional (open) in an `unless` rule. */
+	const parseRule = (r, where, required) => {
+		if (!isObject(r)) throw bad(`${where} must be an object { ${required ? "alphaMin, minRgb, " : ""}... }`);
+		checkKeys(r, DYE_RULE_KEYS, where);
+		const out = {};
+		if (required || r.alphaMin !== undefined) out.alphaMin = int(r.alphaMin, 0, 254, `${where}.alphaMin`);
+		if (required || r.minRgb !== undefined) out.minRgb = int(r.minRgb, 0, 254, `${where}.minRgb`);
+		if (r.satMin !== undefined) out.satMin = num(r.satMin, 0, 1, `${where}.satMin`);
+		if (r.satMax !== undefined) out.satMax = num(r.satMax, 0, 1, `${where}.satMax`);
+		if (out.satMin !== undefined && out.satMax !== undefined && out.satMin >= out.satMax) throw bad(`${where}: satMin ${out.satMin} must be below satMax ${out.satMax}`);
+		if (r.lumMin !== undefined) out.lumMin = int(r.lumMin, 0, 255, `${where}.lumMin`);
+		if (r.lumMax !== undefined) out.lumMax = int(r.lumMax, 0, 255, `${where}.lumMax`);
+		if (out.lumMin !== undefined && out.lumMax !== undefined && out.lumMin > out.lumMax) throw bad(`${where}: lumMin ${out.lumMin} is above lumMax ${out.lumMax}`);
+		if (r.hue !== undefined) {
+			if (!Array.isArray(r.hue) || r.hue.length === 0) throw bad(`${where}.hue must be a non-empty list of [from, to] ranges in degrees`);
+			out.hue = r.hue.map((range, i) => {
+				if (!Array.isArray(range) || range.length !== 2) throw bad(`${where}.hue[${i}] must be [from, to]`);
+				const from = num(range[0], 0, 360, `${where}.hue[${i}][0]`);
+				const to = num(range[1], 0, 360, `${where}.hue[${i}][1]`);
+				if (from >= to) throw bad(`${where}.hue[${i}]: from ${from} must be below to ${to}`);
+				return [from, to];
+			});
+		}
+		if (!required && Object.keys(out).length === 0) throw bad(`${where} has no bound (it would drop every pixel)`);
+		return out;
+	};
+	const rule = parseRule(dye.rule, ".rule", true);
+	if (dye.unless !== undefined && !Array.isArray(dye.unless)) throw bad(".unless must be a list of rules");
+	const unless = (dye.unless || []).map((u, i) => parseRule(u, `.unless[${i}]`, false));
+	let open = null;
+	if (dye.open !== undefined) {
+		if (!isObject(dye.open)) throw bad(".open must be an object { sizePx, regrowPx }");
+		checkKeys(dye.open, DYE_OPEN_KEYS, ".open");
+		open = { sizePx: int(dye.open.sizePx, 2, DYE_MAX_OPEN, ".open.sizePx"), regrowPx: dye.open.regrowPx === undefined ? 0 : int(dye.open.regrowPx, 0, DYE_MAX_OPEN, ".open.regrowPx") };
+	}
+	const minAreaPx = dye.minAreaPx === undefined ? 0 : int(dye.minAreaPx, 1, 1 << 20, ".minAreaPx");
+	const normalizePercentile = num(dye.normalizePercentile, 0, 100, ".normalizePercentile");
+	if (normalizePercentile === 0) throw bad(".normalizePercentile must be above 0");
+	const ex = dye.exclude === undefined ? [] : dye.exclude;
+	if (!Array.isArray(ex)) throw bad(".exclude must be a list");
+	const realNames = Object.keys(set.animations).filter((n) => !set.animations[n].cellsOf);
+	const exclude = ex.map((e, i) => {
+		const at = `.exclude[${i}]`;
+		if (!isObject(e)) throw bad(`${at} must be an object { rect, animations?, facings?, frames? }`);
+		checkKeys(e, DYE_EXCLUDE_KEYS, at);
+		const out = {};
+		if (e.animations !== undefined) {
+			if (!Array.isArray(e.animations) || e.animations.length === 0) throw bad(`${at}.animations must be a non-empty list of animation names`);
+			for (const n of e.animations) if (!realNames.includes(n)) throw bad(`${at}.animations: ${JSON.stringify(n)} is not a real animation of the set (${realNames.join(", ")})`);
+			out.animations = [...e.animations];
+		}
+		if (e.facings !== undefined) {
+			if (!Array.isArray(e.facings) || e.facings.length === 0) throw bad(`${at}.facings must be a non-empty list`);
+			out.facings = e.facings.map((d, k) => int(d, 0, set.facingCount - 1, `${at}.facings[${k}]`));
+		}
+		if (e.frames !== undefined) {
+			if (!Array.isArray(e.frames) || e.frames.length === 0) throw bad(`${at}.frames must be a non-empty list of kept frame indices`);
+			const names = out.animations || realNames;
+			const most = Math.min(...names.map((n) => set.animations[n].frames.length));
+			out.frames = e.frames.map((f, k) => int(f, 0, most - 1, `${at}.frames[${k}] (kept frame index)`));
+		}
+		if (!Array.isArray(e.rect) || e.rect.length !== 4) throw bad(`${at}.rect must be [x, y, w, h] in cell pixels`);
+		const [x, y, w, h] = e.rect;
+		int(x, 0, MAX_ATLAS, `${at}.rect[0]`);
+		int(y, 0, MAX_ATLAS, `${at}.rect[1]`);
+		int(w, 1, MAX_ATLAS, `${at}.rect[2]`);
+		int(h, 1, MAX_ATLAS, `${at}.rect[3]`);
+		out.rect = { x, y, w, h };
+		return out;
+	});
+	return { rule, unless, open, minAreaPx, normalizePercentile, exclude };
+}
+
+/** Rounded Rec. 601 luminance (LUMA) of the pixel at byte index i: the `recolor` / `rgb: "grey"` luminance. */
+function lumaAt(d, i) {
+	return Math.floor((LUMA[0] * d[i] + LUMA[1] * d[i + 1] + LUMA[2] * d[i + 2] + MILLE / 2) / MILLE);
+}
+
+/**
+ * HLS saturation (0..1) and hue (degrees, [0, 360)) of an 8-bit RGB: Python's colorsys.rgb_to_hls (the prototype's)
+ * on the 0..255 integers (colorsys divides by 255 first, so its last bits can differ by ~1e-16): mx / mn the largest / smallest channel; s = 0 when mx = mn, else (mx - mn) / (mx + mn) when
+ * mx + mn <= 255 (lightness <= 0.5), else (mx - mn) / (510 - mx - mn); hue 0 for a grey, else from the largest channel
+ * (r: (bc - gc), g: 2 + rc - bc, b: 4 + gc - rc, with xc = (mx - x) / (mx - mn)), / 6 mod 1, x 360.
+ */
+function hlsSatHue(r, g, b) {
+	const mx = Math.max(r, g, b);
+	const mn = Math.min(r, g, b);
+	if (mx === mn) return { sat: 0, hue: 0 };
+	const d = mx - mn;
+	const sat = mx + mn <= 255 ? d / (mx + mn) : d / (510 - mx - mn);
+	const rc = (mx - r) / d;
+	const gc = (mx - g) / d;
+	const bc = (mx - b) / d;
+	let h = r === mx ? bc - gc : g === mx ? 2 + rc - bc : 4 + gc - rc;
+	// Python's float % (fmod, then + 1 when negative)
+	h = (h / 6) % 1;
+	if (h < 0) h += 1;
+	return { sat, hue: h * 360 };
+}
+
+/**
+ * The dye rule on one pixel (byte index i of RGBA data `d`): alpha > alphaMin, max(R, G, B) > minRgb, lumMin <= luminance
+ * <= lumMax, satMin <= saturation < satMax, and the hue inside one of the [from, to) ranges (a grey's hue is 0). Every
+ * absent bound is open (an `unless` rule may leave out alphaMin / minRgb too).
+ */
+function dyeRuleAt(rule, d, i) {
+	if (rule.alphaMin !== undefined && d[i + 3] <= rule.alphaMin) return false;
+	if (rule.minRgb !== undefined && Math.max(d[i], d[i + 1], d[i + 2]) <= rule.minRgb) return false;
+	const l = lumaAt(d, i);
+	if (rule.lumMin !== undefined && l < rule.lumMin) return false;
+	if (rule.lumMax !== undefined && l > rule.lumMax) return false;
+	if (rule.satMin === undefined && rule.satMax === undefined && rule.hue === undefined) return true;
+	const { sat, hue } = hlsSatHue(d[i], d[i + 1], d[i + 2]);
+	if (rule.satMin !== undefined && sat < rule.satMin) return false;
+	if (rule.satMax !== undefined && sat >= rule.satMax) return false;
+	if (rule.hue !== undefined && !rule.hue.some(([from, to]) => hue >= from && hue < to)) return false;
+	return true;
+}
+
+/**
+ * Opening of a w x h mask by an n x n square, per cellW x cellH cell: a pixel stays when some n x n square that lies
+ * wholly inside its cell covers it and is wholly in the mask. Strokes thinner than n (a bow, a blade) go; anything an
+ * n x n square fits in stays exactly.
+ */
+function openCells(mask, w, h, cellW, cellH, n) {
+	const fits = new Uint8Array(w * h); // fits[top-left] = the n x n square from it is inside its cell and all set
+	for (let y = 0; y < h; y++) {
+		const cy = y % cellH;
+		if (cy + n > cellH || y + n > h) continue;
+		for (let x = 0; x < w; x++) {
+			const cx = x % cellW;
+			if (cx + n > cellW || x + n > w) continue;
+			let all = 1;
+			for (let dy = 0; dy < n && all; dy++) for (let dx = 0; dx < n; dx++) if (!mask[(y + dy) * w + x + dx]) { all = 0; break; }
+			fits[y * w + x] = all;
+		}
+	}
+	const out = new Uint8Array(w * h);
+	for (let y = 0; y < h; y++) {
+		for (let x = 0; x < w; x++) {
+			if (!fits[y * w + x]) continue;
+			for (let dy = 0; dy < n; dy++) for (let dx = 0; dx < n; dx++) out[(y + dy) * w + x + dx] = 1;
+		}
+	}
+	return out;
+}
+
+/**
+ * Grows `mask` back into `within` by `steps` 8-neighbour steps, never across a cell edge (a geodesic dilation): after an
+ * opening, the edge pixels the square could not reach return, while a thin stroke regains only `steps` pixels where it
+ * touches the kept region.
+ */
+function regrowCells(mask, within, w, h, cellW, cellH, steps) {
+	let cur = mask;
+	for (let s = 0; s < steps; s++) {
+		const next = Uint8Array.from(cur);
+		for (let y = 0; y < h; y++) {
+			const cy0 = y - (y % cellH);
+			const cy1 = Math.min(h, cy0 + cellH);
+			for (let x = 0; x < w; x++) {
+				if (!cur[y * w + x]) continue;
+				const cx0 = x - (x % cellW);
+				const cx1 = Math.min(w, cx0 + cellW);
+				for (let dy = -1; dy <= 1; dy++) {
+					for (let dx = -1; dx <= 1; dx++) {
+						const nx = x + dx;
+						const ny = y + dy;
+						if (nx >= cx0 && nx < cx1 && ny >= cy0 && ny < cy1 && within[ny * w + nx]) next[ny * w + nx] = 1;
+					}
+				}
+			}
+		}
+		cur = next;
+	}
+	return cur;
+}
+
+/** `mask` without its 8-connected pieces (never joined across a cell edge) of fewer than minArea pixels. */
+function dropSmallPieces(mask, w, h, cellW, cellH, minArea) {
+	const out = Uint8Array.from(mask);
+	const seen = new Uint8Array(w * h);
+	const stack = [];
+	const piece = [];
+	for (let start = 0; start < w * h; start++) {
+		if (!mask[start] || seen[start]) continue;
+		piece.length = 0;
+		stack.push(start);
+		seen[start] = 1;
+		while (stack.length > 0) {
+			const i = stack.pop();
+			piece.push(i);
+			const x = i % w;
+			const y = (i - x) / w;
+			const cx0 = x - (x % cellW);
+			const cy0 = y - (y % cellH);
+			const cx1 = Math.min(w, cx0 + cellW);
+			const cy1 = Math.min(h, cy0 + cellH);
+			for (let dy = -1; dy <= 1; dy++) {
+				for (let dx = -1; dx <= 1; dx++) {
+					const nx = x + dx;
+					const ny = y + dy;
+					if (nx < cx0 || nx >= cx1 || ny < cy0 || ny >= cy1) continue;
+					const j = ny * w + nx;
+					if (mask[j] && !seen[j]) {
+						seen[j] = 1;
+						stack.push(j);
+					}
+				}
+			}
+		}
+		if (piece.length < minArea) for (const i of piece) out[i] = 0;
+	}
+	return out;
+}
+
+/**
+ * The dye mask of a built sheet (Uint8Array w * h of 0 / 1), in order: the rule (dyeRuleAt) on every pixel, unless
+ * one of the `unless` rules also matches it; minus the
+ * `exclude` rects that apply to each cell (`cellOf(cellIndex)` -> { animation, facing, frame } or undefined for an
+ * unused cell; rects in cell pixels, clipped to the cell); the opening by `open.sizePx` and the regrowth by
+ * `open.regrowPx` into what the rule and exclusions left; then pieces under `minAreaPx` dropped. Every step stays inside
+ * its cell.
+ */
+function dyeMask(img, cellW, cellH, dye, cellOf) {
+	const { w, h, data } = img;
+	const ruled = new Uint8Array(w * h);
+	for (let i = 0; i < w * h; i++) if (dyeRuleAt(dye.rule, data, i * 4) && !dye.unless.some((u) => dyeRuleAt(u, data, i * 4))) ruled[i] = 1;
+	if (dye.exclude.length > 0) {
+		const cols = Math.floor(w / cellW);
+		const rows = Math.floor(h / cellH);
+		for (let c = 0; c < cols * rows; c++) {
+			const at = cellOf(c);
+			if (!at) continue;
+			const x0 = (c % cols) * cellW;
+			const y0 = Math.floor(c / cols) * cellH;
+			for (const e of dye.exclude) {
+				if (e.animations && !e.animations.includes(at.animation)) continue;
+				if (e.facings && !e.facings.includes(at.facing)) continue;
+				if (e.frames && !e.frames.includes(at.frame)) continue;
+				for (let y = e.rect.y; y < Math.min(cellH, e.rect.y + e.rect.h); y++) {
+					for (let x = e.rect.x; x < Math.min(cellW, e.rect.x + e.rect.w); x++) ruled[(y0 + y) * w + x0 + x] = 0;
+				}
+			}
+		}
+	}
+	let mask = ruled;
+	if (dye.open) {
+		mask = openCells(ruled, w, h, cellW, cellH, dye.open.sizePx);
+		if (dye.open.regrowPx > 0) mask = regrowCells(mask, ruled, w, h, cellW, cellH, dye.open.regrowPx);
+	}
+	if (dye.minAreaPx > 0) mask = dropSmallPieces(mask, w, h, cellW, cellH, dye.minAreaPx);
+	return mask;
+}
+
+/** Adds the luminance of every masked pixel of `img` to `hist` (256 counts). */
+function addDyeHistogram(hist, img, mask) {
+	for (let i = 0; i < mask.length; i++) if (mask[i]) hist[lumaAt(img.data, i * 4)]++;
+}
+
+/**
+ * The normalisation luminance of a dye: the nearest-rank `percentile` of the masked luminances in `hist` (the smallest
+ * l whose cumulative count reaches ceil(percentile / 100 x n)), at least 1. Throws when nothing is masked.
+ */
+function dyeNormalizer(hist, percentile, what) {
+	let n = 0;
+	for (const c of hist) n += c;
+	if (n === 0) throw new Error(`${what}: dye masks no pixel`);
+	const rank = Math.max(1, Math.ceil((percentile / 100) * n));
+	let cum = 0;
+	for (let l = 0; l < 256; l++) {
+		cum += hist[l];
+		if (cum >= rank) return Math.max(1, l);
+	}
+	return 255;
+}
+
+/** Grey of a masked pixel of luminance l under normaliser p: round(255 x min(1, l / p)), half up (integer maths). */
+function dyeGrey(l, p) {
+	return l >= p ? 255 : Math.floor((510 * l + p) / (2 * p));
+}
+
+/**
+ * The mean normalised value of a dye: the mean of min(1, l / p) over every masked pixel (`hist`), rounded to 4
+ * decimals: the cosmetics validator's dyed mean is the dye colour x this.
+ */
+function dyeMeanValue(hist, p) {
+	let n = 0;
+	let sum = 0;
+	for (let l = 0; l < 256; l++) {
+		n += hist[l];
+		sum += hist[l] * Math.min(l, p);
+	}
+	return Math.round((sum / p / n) * 10000) / 10000;
+}
+
+/** Adds the source RGB of every masked pixel of `img` to `sum` ({ r, g, b, n }). */
+function addDyeColorSum(sum, img, mask) {
+	for (let i = 0; i < mask.length; i++) {
+		if (!mask[i]) continue;
+		sum.r += img.data[i * 4];
+		sum.g += img.data[i * 4 + 1];
+		sum.b += img.data[i * 4 + 2];
+		sum.n++;
+	}
+}
+
+/**
+ * The undyed region's mean colour: each channel's mean over every masked pixel (`sum` from addDyeColorSum), rounded half
+ * up, as "#rrggbb". Throws when nothing is masked.
+ */
+function dyeSourceMean(sum, what) {
+	if (sum.n === 0) throw new Error(`${what}: dye masks no pixel`);
+	const ch = (v) => Math.floor(v / sum.n + 0.5).toString(16).padStart(2, "0");
+	return `#${ch(sum.r)}${ch(sum.g)}${ch(sum.b)}`;
+}
+
+/**
+ * The dye sheet of a built sheet: same size; a masked pixel grey dyeGrey(its luminance, p) with its own alpha, every
+ * other pixel (0, 0, 0, 0).
+ */
+function dyeSheet(img, mask, p) {
+	const out = raster(img.w, img.h);
+	for (let i = 0; i < mask.length; i++) {
+		if (!mask[i]) continue;
+		const v = dyeGrey(lumaAt(img.data, i * 4), p);
+		out.data[i * 4] = v;
+		out.data[i * 4 + 1] = v;
+		out.data[i * 4 + 2] = v;
+		out.data[i * 4 + 3] = img.data[i * 4 + 3];
 	}
 	return out;
 }
@@ -911,6 +1306,7 @@ function buildSpriteSet(id, set, built) {
 	}
 	const realNames = Object.keys(set.animations).filter((n) => !set.animations[n].cellsOf);
 	const outline = outlineConfig(id, set);
+	const dye = dyeConfig(id, set);
 	const k = spriteDownscale(id, set);
 	const perSheet = cellsMode(id, set) === "perSheet";
 	gridLayers(id, set.source); // a malformed `layers` fails here, before any file is read
@@ -1033,8 +1429,40 @@ function buildSpriteSet(id, set, built) {
 			sheet.outlineImg = outlineSheet(img, cw, ch, outline.widthPx, set.pivot.bodyAlpha, set.pivot.bodyMinRgb);
 			if (outline.clipAtCellEdge) sheet.rimClip = rimClip(img, cw, ch, outline.widthPx, set.pivot.bodyAlpha, set.pivot.bodyMinRgb);
 		}
+		if (dye) {
+			/** Cell index -> the animation, facing and kept frame it holds (the blit loop's formula), for `exclude`. */
+			const cellOf = (c) => {
+				for (const p of placed) {
+					const n = p.anim.frames.length;
+					if (c >= p.start && c < p.start + n * count) return { animation: p.name, facing: Math.floor((c - p.start) / n), frame: (c - p.start) % n };
+				}
+				return undefined;
+			};
+			sheet.dyeFile = `${sheetDef.name}-dye.png`;
+			sheet.dyeMask = dyeMask(img, cw, ch, dye, cellOf);
+		}
 		sheets.push(sheet);
 	});
+	// dye: one normaliser for the whole set (so every sheet's grey means the same), then each sheet's dye sheet
+	let dyeStats = null;
+	if (dye) {
+		const hist = new Array(256).fill(0);
+		const colorSum = { r: 0, g: 0, b: 0, n: 0 };
+		let bodyPixels = 0;
+		for (const sh of sheets) {
+			addDyeHistogram(hist, sh.img, sh.dyeMask);
+			addDyeColorSum(colorSum, sh.img, sh.dyeMask);
+			bodyPixels += bodyMask(sh.img, set.pivot.bodyAlpha, set.pivot.bodyMinRgb).reduce((a, b) => a + b, 0);
+		}
+		const p = dyeNormalizer(hist, dye.normalizePercentile, id);
+		let dyed = 0;
+		for (const sh of sheets) {
+			sh.dyeImg = dyeSheet(sh.img, sh.dyeMask, p);
+			sh.dyePixels = sh.dyeMask.reduce((a, b) => a + b, 0);
+			dyed += sh.dyePixels;
+		}
+		dyeStats = { normalizer: p, meanValue: dyeMeanValue(hist, p), sourceMean: dyeSourceMean(colorSum, id), pixels: dyed, bodyPixels };
+	}
 	for (const name of realNames) if (!animations[name]) throw new Error(`${id}: ${name} is in no sheet`);
 	for (const name of Object.keys(set.animations)) {
 		const anim = set.animations[name];
@@ -1063,13 +1491,15 @@ function buildSpriteSet(id, set, built) {
 				sheet.pivot = { x: s.cell.pivot.x, y: s.cell.pivot.y };
 			}
 			if (s.outlineFile) sheet.outlineFile = s.outlineFile;
+			if (s.dyeFile) sheet.dyeFile = s.dyeFile;
 			return sheet;
 		}),
+		...(dyeStats ? { dyeMeanValue: dyeStats.meanValue, dyeSourceMean: dyeStats.sourceMean } : {}),
 		animations: sortedObject(animations),
 	};
 	selfCheck(id, layout);
 	const recolorStops = lut ? set.recolor.ramp.length : 0;
-	return { id, layout, sheets, sanity, bodyHeight: body.height / k, box, downscale: k, outline, pixelsPerTileFrom: set.pixelsPerTileFrom, perSheet, recolorStops };
+	return { id, layout, sheets, sanity, bodyHeight: body.height / k, box, downscale: k, outline, dye, dyeStats, pixelsPerTileFrom: set.pixelsPerTileFrom, perSheet, recolorStops };
 }
 
 /** The cell of layout sheet `s`: its own frameW / frameH / pivot (per-sheet cells) or the set's. */
@@ -1105,6 +1535,7 @@ function selfCheck(id, layout) {
 		if (s.w > MAX_ATLAS || s.h > MAX_ATLAS) throw new Error(`${id}: ${s.file} is ${s.w}x${s.h} (> ${MAX_ATLAS})`);
 		if (s.w % c.w !== 0 || s.h % c.h !== 0) throw new Error(`${id}: ${s.file} is not a whole number of cells`);
 		if (s.outlineFile !== undefined && s.outlineFile !== s.file.replace(/\.png$/, "-outline.png")) throw new Error(`${id}: outline of ${s.file} is ${s.outlineFile}`);
+		if (s.dyeFile !== undefined && s.dyeFile !== s.file.replace(/\.png$/, "-dye.png")) throw new Error(`${id}: dye of ${s.file} is ${s.dyeFile}`);
 		if (c.pivot.x < 0 || c.pivot.y < 0 || c.pivot.x > c.w || c.pivot.y > c.h) {
 			throw new Error(`${id}: ${s.file} pivot (${c.pivot.x}, ${c.pivot.y}) outside its ${c.w}x${c.h} cell`);
 		}
@@ -1234,6 +1665,68 @@ function contactSheet(result) {
 		y += CONTACT_SEPARATOR;
 	}
 	return img;
+}
+
+/**
+ * Dye contact sheets of a sprite set with a dye, one per animation: [{ name: `<set id>-dye-<animation>.png`, img }].
+ * Rows are facings (the margin's arrow as in contactSheet); for the first, middle and last kept frame, six panels: the
+ * body, the body with the dye mask in DYE_MASK_PREVIEW_RGB, then the body with its dye sheet multiplied by each
+ * DYE_SAMPLE_RGB colour composited over it (what SpriteView's tinted dye label draws), all on the contact grey.
+ */
+function dyeContactSheets(result) {
+	const { layout } = result;
+	const out = [];
+	const panels = 2 + DYE_SAMPLE_RGB.length;
+	for (const name of Object.keys(layout.animations)) {
+		const a = layout.animations[name];
+		if (a.stride !== undefined || result.sheets[a.sheet].dyeImg === undefined) continue; // a stand-in reusing cells
+		const sheet = layout.sheets[a.sheet];
+		const built = result.sheets[a.sheet];
+		const c = sheetCell(layout, sheet);
+		const perRow = Math.floor(sheet.w / c.w);
+		const frames = [...new Set([0, Math.floor((a.frames - 1) / 2), a.frames - 1])].slice(0, DYE_CONTACT_FRAMES);
+		const groupW = panels * (c.w + CONTACT_GUTTER) + CONTACT_SEPARATOR;
+		const w = CONTACT_MARGIN + frames.length * groupW;
+		const cellH = c.h + CONTACT_GUTTER;
+		const h = layout.facings.count * cellH;
+		const img = raster(w, h);
+		fillRect(img, 0, 0, w, h, [CONTACT_BG, CONTACT_BG, CONTACT_BG]);
+		for (let d = 0; d < layout.facings.count; d++) {
+			const y = d * cellH;
+			arrow(img, CONTACT_MARGIN / 2, y + Math.floor(cellH / 2), (d * 360) / layout.facings.count, Math.floor(CONTACT_MARGIN / 2) - 6);
+			frames.forEach((f, gi) => {
+				const cell = a.start + d * a.frames + f;
+				const sx = (cell % perRow) * c.w;
+				const sy = Math.floor(cell / perRow) * c.h;
+				for (let pi = 0; pi < panels; pi++) {
+					const dx = CONTACT_MARGIN + gi * groupW + pi * (c.w + CONTACT_GUTTER) + CONTACT_GUTTER / 2;
+					const dy = y + CONTACT_GUTTER / 2;
+					over(built.img, sx, sy, c.w, c.h, img, dx, dy);
+					for (let yy = 0; yy < c.h; yy++) {
+						for (let xx = 0; xx < c.w; xx++) {
+							const si = (sy + yy) * sheet.w + sx + xx;
+							if (!built.dyeMask[si]) continue;
+							const di = ((dy + yy) * w + dx + xx) * 4;
+							if (pi === 1) {
+								img.data.set(DYE_MASK_PREVIEW_RGB, di);
+							} else if (pi >= 2) {
+								const tint = DYE_SAMPLE_RGB[pi - 2];
+								const grey = built.dyeImg.data[si * 4];
+								const al = built.dyeImg.data[si * 4 + 3];
+								for (let k = 0; k < 3; k++) {
+									const col = Math.floor((grey * tint[k] + 127) / 255);
+									img.data[di + k] = Math.floor((col * al + img.data[di + k] * (255 - al) + 127) / 255);
+								}
+							}
+						}
+					}
+				}
+			});
+		}
+		for (let gi = 1; gi < frames.length; gi++) fillRect(img, CONTACT_MARGIN + gi * groupW - CONTACT_SEPARATOR + 2, 0, CONTACT_SEPARATOR - 4, h, [40, 40, 40]);
+		out.push({ name: `${result.id}-dye-${name}.png`, img });
+	}
+	return out;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -2419,6 +2912,8 @@ function layoutModule(sets, images, floorHex, world) {
 		" */",
 		"export interface ValeSpriteSheetFile extends ValeSheetFile {",
 		"\toutlineFile?: string;",
+		"\t/** Dye sheet (art/atlases.json `dye`, docs/COSMETICS.md): same size and cell grid, the dyed region as grey. */",
+		"\tdyeFile?: string;",
 		...(perSheet
 			? [
 					"\t/**",
@@ -2437,6 +2932,10 @@ function layoutModule(sets, images, floorHex, world) {
 		"/** SpriteSetAsset without `kind`, with sheets named by file instead of asset ID. */",
 		'export interface ValeSpriteLayout extends Omit<SpriteSetAsset, "kind" | "sheets"> {',
 		"\tsheets: Array<ValeSpriteSheetFile>;",
+		"\t/** Sets with a `dye`: the mean normalised value (0..1) of every dyed pixel, the cosmetics validator's input. */",
+		"\tdyeMeanValue?: number;",
+		"\t/** Sets with a `dye`: the dyed pixels' mean source colour (the undyed region), the floor-contrast baseline. */",
+		"\tdyeSourceMean?: HexColor;",
 		"}",
 		"",
 		"/**",
@@ -5469,7 +5968,8 @@ function removeStale(dir, keep) {
 
 /**
  * Every PNG the build writes, in write order: { dir: "build" | "contact", name, img }. Sheets (each followed by its
- * outline sheet, if any) and a contact sheet per set, then the images (a sliced one followed by its sliceContact, one
+ * outline sheet and its dye sheet, if any) and a contact sheet per set (and its dye contact sheets, one per animation,
+ * for a set with a dye), then the images (a sliced one followed by its sliceContact, one
  * with a pivot by its pivotContact).
  * Everything else in art/build is stale.
  */
@@ -5479,8 +5979,10 @@ function buildOutputs(sets, images) {
 		for (const sheet of s.sheets) {
 			out.push({ dir: "build", name: sheet.file, img: sheet.img });
 			if (sheet.outlineImg) out.push({ dir: "build", name: sheet.outlineFile, img: sheet.outlineImg });
+			if (sheet.dyeImg) out.push({ dir: "build", name: sheet.dyeFile, img: sheet.dyeImg });
 		}
 		out.push({ dir: "contact", name: `${s.id}.png`, img: contactSheet(s) });
+		for (const c of s.dye ? dyeContactSheets(s) : []) out.push({ dir: "contact", name: c.name, img: c.img });
 	}
 	for (const i of images) {
 		out.push({ dir: "build", name: i.layout.file, img: i.img });
@@ -5804,7 +6306,12 @@ function printSpriteSet(s) {
 		const own = sh.cell ? `, cell ${sh.cell.frameW}x${sh.cell.frameH} pivot (${sh.cell.pivot.x}, ${sh.cell.pivot.y})` : "";
 		console.log(`  ${sh.file}: ${sh.img.w}x${sh.img.h}, ${sh.cells} cells${own}${sh.outlineFile ? ` + ${sh.outlineFile} (outline ${s.outline.widthPx} px)` : ""}${
 			sh.rimClip ? `, rim clipped at the cell edge in ${sh.rimClip.cells} cells (${sh.rimClip.pixels} body px)` : ""
-		}`);
+		}${sh.dyeFile ? ` + ${sh.dyeFile} (${sh.dyePixels} px dyed)` : ""}`);
+	}
+	if (s.dyeStats) {
+		const d = s.dyeStats;
+		const share = Math.round((1000 * d.pixels) / d.bodyPixels) / 10;
+		console.log(`  dye: ${d.pixels} of ${d.bodyPixels} body px (${share} %), normalised to luminance ${d.normalizer} (p${s.dye.normalizePercentile}), dyeMeanValue ${d.meanValue}, dyeSourceMean ${d.sourceMean}`);
 	}
 }
 
@@ -6207,6 +6714,22 @@ function uploadedFiles() {
 }
 
 module.exports = {
+	DYE_MASK_PREVIEW_RGB,
+	DYE_SAMPLE_RGB,
+	dyeConfig,
+	dyeContactSheets,
+	dyeGrey,
+	dyeMask,
+	dyeMeanValue,
+	dyeSourceMean,
+	addDyeColorSum,
+	dyeNormalizer,
+	dyeRuleAt,
+	dyeSheet,
+	dropSmallPieces,
+	hlsSatHue,
+	openCells,
+	regrowCells,
 	FLOOR_IMAGE_ID,
 	MAX_ATLAS,
 	OUTLINE_PREVIEW_RGB,

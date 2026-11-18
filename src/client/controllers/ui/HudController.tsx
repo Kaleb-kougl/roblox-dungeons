@@ -150,6 +150,7 @@ export class HudController implements OnStart {
 			codexViewed: (ids) => this.codex.sendViewed(ids),
 			openArmory: click(() => this.menu.openArmory()),
 			armoryBuy: (itemId: string) => this.wallet.buy(itemId),
+			armoryEquip: (slot: string, itemId: string) => this.wallet.equip(slot, itemId),
 			armorySeen: (keys) => clientStore.setSeenAffordable(keys),
 			dismissSilverWelcome: click(() => this.settings.updateDisplay({ silverNoticeSeen: true })),
 			openSilverShop: click((from: SilverShopFrom) => this.silverShop.open(from)),

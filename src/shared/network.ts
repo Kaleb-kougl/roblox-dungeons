@@ -1,6 +1,7 @@
 import { Networking } from "@flamework/networking";
 import type { CharacterId, UpgradeLevels } from "shared/characters";
 import type { CodexClaim, CodexStatus } from "shared/codex";
+import type { CosmeticLook } from "shared/cosmetics";
 import type { DailyRunResult, DailyStatus } from "shared/daily";
 import type { LeaderboardRequest, LeaderboardView } from "shared/leaderboard";
 import type { ArrivalJoinIntent, ArrivalToastKey } from "shared/invite";
@@ -103,6 +104,12 @@ export interface PartyRunStart {
 	/** Members whose wallet was unknown at the start (they play with no upgrades; RunSession.upgradesUnknown). */
 	upgradesUnknown: number[];
 	/**
+	 * docs/COSMETICS.md CS4: each member's look in the same order (RunSession.looks: the cosmetics they wear for the
+	 * character they play, read at the start). Presentation only: never part of the setup, a hash or a recording. Read
+	 * it through shared/cosmetics readCosmeticLook.
+	 */
+	looks: CosmeticLook[];
+	/**
 	 * The lobby whose Start began this run (shared/lobby). A client switches to the run only when this is the lobby it
 	 * is in.
 	 */
@@ -126,6 +133,11 @@ export interface LobbyView {
 	 * kept when they un-ready, the world changes or a run ends). The party run starts with these.
 	 */
 	characters: CharacterId[];
+	/**
+	 * docs/COSMETICS.md CS4: each member's look, same index as `members` (their wallet's equipped cosmetics for their
+	 * pick; refreshed when a member equips, picks or their wallet loads). Presentation only.
+	 */
+	looks: CosmeticLook[];
 	/** Seconds left on the start countdown (phase "countdown" only). */
 	countdownIn?: number;
 	/** Players with a live invite to this lobby (shown as "Invited"; no duplicate invites). */

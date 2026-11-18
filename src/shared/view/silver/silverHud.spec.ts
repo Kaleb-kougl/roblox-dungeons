@@ -9,7 +9,7 @@ import { buildEndlessRunConfig } from "shared/run";
 import { SILVER, emptySilverRunInput, runSilver, silverRunInputOf, type SilverRunInput } from "shared/silver";
 import { ScoreSource, createSimState } from "shared/sim";
 import { PLACEHOLDER_MANIFEST, ThemePack, type StringVars } from "shared/theme";
-import type { SilverGrantBreakdown, WalletStatus } from "shared/wallet";
+import { ARMORY_CATALOG, type SilverGrantBreakdown, type WalletStatus } from "shared/wallet";
 import { HUD_STRINGS, HUD_VIEW } from "../hud";
 import {
 	SILVER_COUNTER,
@@ -328,5 +328,14 @@ describe("silver: the wallet reads", () => {
 		expect(armoryItemLabel("prospector", 4, s)).toBe("Prospector IV");
 		expect(armoryItemLabel("plating", 1, s)).toBe("Plating");
 		expect(armoryItemLabel("character.archer", 1, s)).toBe("The Archer");
+	});
+
+	it("item labels: every catalogue item has a real name, cosmetics from cosmetic.<id>.name (docs/COSMETICS.md)", () => {
+		for (const it of ARMORY_CATALOG) {
+			const label = armoryItemLabel(it.id, 1, s);
+			expect(label.find("armory.item.", 1, true)[0]).toBe(undefined);
+			expect(label.find("cosmetic.", 1, true)[0]).toBe(undefined);
+		}
+		expect(armoryItemLabel("dye.knight.frost", 1, s)).toBe("Frost Plate");
 	});
 });

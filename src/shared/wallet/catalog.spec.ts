@@ -1,5 +1,6 @@
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { CHARACTER_IDS, DEFAULT_CHARACTER } from "shared/characters";
+import { COSMETIC_ITEMS, COSMETIC_SLOTS, cosmeticItem, isPrismaticItem } from "shared/cosmetics";
 import {
 	ARMORY_CATALOG,
 	ARMORY_TIERS,
@@ -7,6 +8,7 @@ import {
 	armoryItem,
 	characterUnlock,
 	characterUnlockId,
+	cosmeticArmoryItems,
 	itemPrice,
 	tierPrice,
 } from "shared/wallet";
@@ -38,11 +40,50 @@ describe("ARMORY_CATALOG (Catalogue v1)", () => {
 			"plating",
 			"prospector",
 			"character.archer",
+			// docs/COSMETICS.md CS4: shared/cosmetics COSMETIC_ITEMS, in its order
+			"dye.knight.frost",
+			"dye.knight.ivory",
+			"dye.knight.teal",
+			"dye.knight.verdant",
+			"dye.knight.azure",
+			"dye.knight.lilac",
+			"dye.knight.bronze",
+			"dye.knight.rose",
+			"dye.knight.prismatic",
+			"dye.archer.frost",
+			"dye.archer.ivory",
+			"dye.archer.teal",
+			"dye.archer.verdant",
+			"dye.archer.cobalt",
+			"dye.archer.amethyst",
+			"dye.archer.bronze",
+			"dye.archer.scarlet",
+			"dye.archer.prismatic",
+			"outline.azure",
+			"outline.silver",
+			"outline.jade",
+			"outline.sand",
+			"outline.rose",
+			"outline.moss",
+			"outline.violet",
+			"outline.orchid",
+			"trail.azure",
+			"trail.ivory",
+			"trail.jade",
+			"trail.verdant",
+			"trail.cobalt",
+			"trail.violet",
+			"spark.azure",
+			"spark.jade",
+			"spark.violet",
+			"spark.rose",
+			"spark.orchid",
 		]);
 	});
 
 	it("the plan's levels and tiers", () => {
-		const tiers = ARMORY_CATALOG.map((i) => `${i.id}:${i.kind}:${i.tiers.join("/")}`);
+		const v1 = ARMORY_CATALOG.filter((i) => i.kind !== "cosmetic");
+		const tiers = v1.map((i) => `${i.id}:${i.kind}:${i.tiers.join("/")}`);
 		expect(tiers).toEqual([
 			"vigor:upgrade:1/3",
 			"deepFlask:upgrade:3/5",
@@ -51,8 +92,34 @@ describe("ARMORY_CATALOG (Catalogue v1)", () => {
 			"character.archer:unlock:4",
 		]);
 		let total = 0;
-		for (const i of ARMORY_CATALOG) for (let l = 1; l <= i.tiers.size(); l++) total += itemPrice(i.id, l)!;
+		for (const i of v1) for (let l = 1; l <= i.tiers.size(); l++) total += itemPrice(i.id, l)!;
 		expect(total).toBe(2970);
+	});
+
+	it("the cosmetics (docs/COSMETICS.md CS4): one row per COSMETIC_ITEMS entry, one level on its slot's tiers", () => {
+		const rows = ARMORY_CATALOG.filter((i) => i.kind === "cosmetic");
+		expect(rows.map((i) => i.id)).toEqual(COSMETIC_ITEMS.map((c) => c.id));
+		expect(cosmeticArmoryItems().map((i) => i.id)).toEqual(rows.map((i) => i.id));
+		// The plan's tier bands per slot (Prismatic dyes: tier 8).
+		const bands: Record<string, [number, number]> = {
+			"dye.knight": [2, 6],
+			"dye.archer": [2, 6],
+			outline: [2, 5],
+			trail: [3, 7],
+			spark: [4, 7],
+		};
+		for (const i of rows) {
+			const c = cosmeticItem(i.id)!;
+			expect([i.id, i.slot, i.simLever, i.tiers.size(), i.tiers[0]]).toEqual([i.id, c.slot, false, 1, c.tier]);
+			const [lo, hi] = isPrismaticItem(i.id) ? [8, 8] : bands[c.slot];
+			expect([i.id, i.tiers[0] >= lo && i.tiers[0] <= hi]).toEqual([i.id, true]);
+		}
+		// Every slot sells something; the Cosmetics tab's total
+		for (const slot of COSMETIC_SLOTS) expect([slot, rows.some((i) => i.slot === slot)]).toEqual([slot, true]);
+		let total = 0;
+		for (const i of rows) total += itemPrice(i.id, 1)!;
+		print(`[cosmetics] ${rows.size()} items, ${total} Silver in all`);
+		expect(total > 0).toBe(true);
 	});
 
 	it("ids are unique; every level names a tier; a track's levels rise by at least one tier", () => {

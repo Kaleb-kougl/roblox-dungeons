@@ -21,6 +21,8 @@ import { SettingsController } from "./SettingsController";
  *   buy       `buy(itemId)` (the Armory's and the character screen's hold): one purchase in flight at a time (the
  *             store's `buying`; dropped after SILVER_SHOP.buyTimeoutSec with no answer); the answer plays sfx.shop.buy
  *             or sfx.shop.deny (their fallbacks while silent). The price is the server's: the client sends the id only.
+ *   equip     `equip(slot, itemId)` (docs/COSMETICS.md CS6: the Armory's Equip / Take off): `walletEquip`; the push answers
+ *             with the new `equipped` list (a refusal plays sfx.shop.deny)
  *   lock      a `locked_character` start (SimController.onLockedCharacter) resets the stored pick to the Knight
  *             (SettingsController), so the next run, the character screen and a lobby Ready start from the Knight
  */
@@ -74,6 +76,17 @@ export class WalletController implements OnStart {
 		return true;
 	}
 
+	/**
+	 * docs/COSMETICS.md CS6: wears `itemId` in `slot` (WALLET.noItem: takes it off). Ignored while the wallet is not
+	 * loaded; the server checks the item is owned and fits the slot (applyEquip).
+	 */
+	equip(slot: string, itemId: string): boolean {
+		if (walletShown(clientStore.getState().wallet.status) !== "loaded") return false;
+		print(`[Wallet] equip ${slot}: ${itemId === "" ? "(off)" : itemId}`);
+		Events.walletEquip.fire(slot, itemId);
+		return true;
+	}
+
 	private receive(status: WalletStatus): void {
 		clientStore.walletReceive(status);
 		const r = status.result;
@@ -83,6 +96,10 @@ export class WalletController implements OnStart {
 			print(
 				`[Wallet] buy ${r.itemId}: ${r.ok ? `level ${r.level ?? "?"} for ${r.price ?? "?"}` : r.reason ?? "?"}`,
 			);
+		}
+		if (r !== undefined && r.action === "equip" && !r.ok) {
+			this.audio.playUi(SFX.shopDeny);
+			print(`[Wallet] equip ${r.itemId}: ${r.reason ?? "?"}`);
 		}
 		if (status.grant !== undefined) {
 			print(`[Wallet] run ${status.grant.runId}: +${status.grant.total} (balance ${status.grant.balance})`);

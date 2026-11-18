@@ -3,7 +3,8 @@
  * one (`Vigor II`, `The Archer`), for the Armory, the run-over `to go` line and the character screen's upgrades line.
  * Pure; text through an injected lookup (the client's `str`, a spec's fake).
  */
-import { ARMORY_KEYS, armoryItemNameKey, type StringVars } from "shared/theme";
+import { cosmeticItem } from "shared/cosmetics";
+import { ARMORY_KEYS, armoryItemNameKey, cosmeticNameKey, type StringVars } from "shared/theme";
 import { armoryItem } from "shared/wallet";
 // By file: the shared/view/hud barrel is heavy and this is a leaf.
 import { romanPhase } from "../hud/layout";
@@ -11,9 +12,9 @@ import { romanPhase } from "../hud/layout";
 /** A theme string lookup (the client's `str`; ThemePack.str). */
 export type SilverStr = (key: string, vars?: StringVars) => string;
 
-/** The name of item `itemId` (its theme string). */
+/** The name of item `itemId` (its theme string; a cosmetic's is `cosmetic.<id>.name`, docs/COSMETICS.md). */
 export function armoryItemName(itemId: string, s: SilverStr): string {
-	return s(armoryItemNameKey(itemId));
+	return s(cosmeticItem(itemId) !== undefined ? cosmeticNameKey(itemId) : armoryItemNameKey(itemId));
 }
 
 /** Item `itemId` at `level`: `{name} {roman}` when the item has several levels, else its name alone. */

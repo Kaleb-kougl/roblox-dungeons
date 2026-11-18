@@ -239,7 +239,8 @@ export interface WalletGoal {
 
 /**
  * The next levels to buy, cheapest first (ties in catalogue order), at most `count`: each item's next level when it
- * has one and its prerequisite is owned.
+ * has one and its prerequisite is owned. Cosmetics are never goals (docs/COSMETICS.md CS4): a taste, not a step, and
+ * their tier 2 colours would otherwise always crowd out the upgrades' next level.
  */
 export function nextGoals(
 	doc: Readonly<WalletDoc> | undefined,
@@ -250,6 +251,7 @@ export function nextGoals(
 	const goals: { goal: WalletGoal; index: number }[] = [];
 	for (let index = 0; index < catalog.size(); index++) {
 		const it = catalog[index];
+		if (it.kind === "cosmetic") continue;
 		const level = ownedLevel(doc, it.id) + 1;
 		const tier = itemTier(it, level);
 		const price = tier !== undefined ? tierPrice(tier) : undefined;

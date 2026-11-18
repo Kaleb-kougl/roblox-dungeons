@@ -2311,8 +2311,8 @@ const SPRITE_SET_KEYS = [
 ];
 const SPRITE_ANIMATION_KEYS = ["sheet", "start", "frames", "stride", "fps", "loop"];
 /** A sheet's keys: its image, size, optional rim, and the optional per-sheet cell (actor slots only). */
-const SPRITE_SHEET_KEYS = ["assetId", "w", "h", "outlineAssetId", "frameW", "frameH", "pivot"];
-const SHEET_SHAPE = "{ assetId, w, h, outlineAssetId?, frameW?, frameH?, pivot? }";
+const SPRITE_SHEET_KEYS = ["assetId", "w", "h", "outlineAssetId", "dyeAssetId", "frameW", "frameH", "pivot"];
+const SHEET_SHAPE = "{ assetId, w, h, outlineAssetId?, dyeAssetId?, frameW?, frameH?, pivot? }";
 /** The slots whose sets may give a sheet its own cell, for messages. */
 const PER_SHEET_SLOTS = SLOTS.filter((s) => s.perSheetCells === true)
 	.map((s) => `${s.prefix}*`)
@@ -2513,6 +2513,13 @@ function validateSpriteSet(def: Obj, path: Array<string>, slot: SlotContract, er
 				checkAssetIdAt(sheet.outlineAssetId, append(sp, "outlineAssetId"), err);
 				if (sheet.outlineAssetId === sheet.assetId) {
 					err(append(sp, "outlineAssetId"), "is the sheet's own assetId (upload the <sheet>-outline.png)");
+				}
+			}
+			if (sheet.dyeAssetId !== undefined) {
+				// docs/COSMETICS.md: the dye sheet, its own upload, same size and cells as the sheet.
+				checkAssetIdAt(sheet.dyeAssetId, append(sp, "dyeAssetId"), err);
+				if (sheet.dyeAssetId === sheet.assetId || sheet.dyeAssetId === sheet.outlineAssetId) {
+					err(append(sp, "dyeAssetId"), "is the sheet's own or outline assetId (upload the <sheet>-dye.png)");
 				}
 			}
 			const cell = validateSheetCell(

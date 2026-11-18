@@ -207,6 +207,9 @@ export { secretArtProblems, type SecretArtProblem } from "./secretArt";
 export * from "./silver";
 export * from "./silverShop";
 export { SILVER_COLOR_RULES, silverReport, type SilverColorEntry, type SilverColorRules } from "./silverColors";
+// docs/COSMETICS.md CS3 / CS10: cosmetic colours, the Prismatic stops and strings; the readability report.
+export * from "./cosmetics";
+export * from "./cosmeticReport";
 // Roblox port (docs/PROJECTILE_ART.md PA3): the bullet sprite rules.
 export { bulletArtProblems, bulletArtReport, type BulletArtEntry, type BulletArtProblem } from "./bulletArt";
 export { GOO_ART_RULES, gooArtProblems, gooArtReport, type GooArtEntry, type GooArtProblem } from "./gooArt";
@@ -238,6 +241,7 @@ export {
 	frameRect,
 	frameUV,
 	spriteSheetCell,
+	spriteSheetDye,
 	spriteSheetOutline,
 	uvToPixelRect,
 	type AmbientParticleArt,

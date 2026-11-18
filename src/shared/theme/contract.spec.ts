@@ -37,6 +37,7 @@ import {
 import { sortedKeys } from "./util";
 import { SILVER_STRING_KEYS } from "./silver";
 import { SILVER_SHOP_STRING_KEYS } from "./silverShop";
+import { COSMETIC_STRING_KEYS } from "./cosmetics";
 
 describe("sprite contract", () => {
 	it("keeps the web build's cells, pivots, frame counts and facings", () => {
@@ -245,6 +246,7 @@ describe("required IDs and strings", () => {
 		// Codex's secrets sub-header, kind line and description (CODEX_STRING_KEYS, 57)
 		// + docs/SILVER.md SV7: SILVER_STRING_KEYS
 		// + docs/SILVER_SHOP.md SH4: SILVER_SHOP_STRING_KEYS
+		// + docs/COSMETICS.md CS3: COSMETIC_STRING_KEYS
 		// + docs/NEW_ENEMIES_2.md NX1: 5 enemy.<id>.name, 4 bestiary.<id> (BESTIARY_STRING_KEYS)
 		const newEnemies2Strings = 5 + 4;
 		// + docs/NEW_ENEMIES_3.md NT1: 3 enemy.<id>.name, 3 bestiary.<id> (BESTIARY_STRING_KEYS)
@@ -259,6 +261,7 @@ describe("required IDs and strings", () => {
 				3 +
 				SILVER_STRING_KEYS.size() +
 				SILVER_SHOP_STRING_KEYS.size() +
+				COSMETIC_STRING_KEYS.size() +
 				newEnemies2Strings +
 				newEnemies3Strings,
 		);

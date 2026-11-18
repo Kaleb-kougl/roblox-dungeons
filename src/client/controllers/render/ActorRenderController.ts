@@ -87,8 +87,18 @@ import {
 	type FxEventBuffer,
 } from "shared/view/fx";
 import type { JuiceSettings } from "shared/settings";
+import type { CosmeticLook } from "shared/cosmetics";
 import { VIEW_HIT_CLIP_SEC } from "shared/view/dummy";
 import { goldenFlickerTransparency, goldenTicksLeft, isGoldenKind } from "shared/view/golden";
+import {
+	cosmeticClockSec,
+	cosmeticRgb8,
+	dyeForVisual,
+	lookAnimated,
+	lookAt,
+	rgb8Key,
+	type Rgb8,
+} from "shared/view/cosmetics";
 import { FxTrackerController } from "../fx/FxTrackerController";
 import { PreloadController } from "../game/PreloadController";
 import { SimController } from "../game/SimController";
@@ -109,6 +119,9 @@ const RENDER_STEP = "KV_Actors";
 const PARKED = new CFrame(BULLET_VIEW.parkedStuds[0], BULLET_VIEW.parkedStuds[1], BULLET_VIEW.parkedStuds[2]);
 const TAU = 2 * math.pi;
 const HIDDEN = 1;
+/** A player view's cosmetic colour not written yet (rgb8Key gives -1 for none, >= 0 for a colour). */
+const UNWRITTEN = -2;
+
 /** Pip: a flat diamond (the ui.cursor placeholder turned 45 degrees), this thin, scaled down from its cell. */
 const PIP_THICKNESS = 0.05;
 const PIP_SCALE = 0.35;
@@ -147,6 +160,21 @@ interface PlayerView {
 	transparency: number;
 	/** The placeholder capsule sits under the player-outline Model (shared/view playerOutlined; changes reparent). */
 	outlined: boolean;
+	/**
+	 * docs/COSMETICS.md CS5: the colours last written for this player's look (rgb8Key; -2: never written): the dye,
+	 * the rim (an outline item, else playerOutline) and the roll trail, each rebuilt as a Color3 only on a change.
+	 */
+	dyeKey: number;
+	rimKey: number;
+	trailKey: number;
+	rimColor: Color3 | undefined;
+	/**
+	 * The look and sprite set the keys above were last computed for, and whether that look animates (Prismatic): an
+	 * unchanged, still look skips applyLook's colour work entirely (no allocation per frame).
+	 */
+	cosmeticRef: CosmeticLook | undefined;
+	cosmeticVisual: string;
+	cosmeticAnimated: boolean;
 }
 
 interface ActorView {
@@ -340,6 +368,16 @@ export class ActorRenderController implements OnStart {
 	private readiness: ReturnType<PreloadController["getReadiness"]> | undefined;
 	private ringReady = false;
 
+	// --- cosmetics (docs/COSMETICS.md CS5) -------------------------------------------------------
+	/** The cosmetic clock (s): the sprite clock's sum (sim seconds: stops with pause, slows with hitstop). */
+	private cosmeticSec = 0;
+	/** playerOutline's colour (a player without an outline item). */
+	private playerRimColor = SPRITE_TINT_NONE;
+	/** The readiness epoch the dyed sprites last re-asked at. */
+	private dyeEpoch = -1;
+	/** A dye sheet's content has downloaded (ArtReadiness by content id). */
+	private readonly dyeReady = (contentId: string) => this.preload.getReadiness().status(contentId) === "ready";
+
 	constructor(
 		private readonly sim: SimController,
 		private readonly theme: ThemeController,
@@ -354,6 +392,7 @@ export class ActorRenderController implements OnStart {
 		this.shieldColor = pack.color(ENEMY_SHIELD_ROLE);
 		this.outlineColor = pack.color(ACTOR_OUTLINE.role);
 		this.auraColor = pack.color(ENEMY_AURA_ROLE);
+		this.playerRimColor = pack.color(PLAYER_OUTLINE.role);
 		const folder = new Instance("Folder");
 		folder.Name = ACTOR_VIEW.folderName;
 		folder.Parent = Workspace;
@@ -393,6 +432,7 @@ export class ActorRenderController implements OnStart {
 		this.dtSec = animDtSec(state === this.lastState ? this.lastSimSec : undefined, simSec);
 		this.lastSimSec = simSec;
 		this.lastState = state;
+		this.cosmeticSec += this.dtSec;
 		this.moveParts.clear();
 		this.moveCFrames.clear();
 		// Stand-ins (SA17): which ids flipped since last frame; the players' art and ring, read once per frame.
@@ -726,6 +766,13 @@ export class ActorRenderController implements OnStart {
 			look: undefined,
 			transparency: -1,
 			outlined: false,
+			dyeKey: UNWRITTEN,
+			rimKey: UNWRITTEN,
+			trailKey: UNWRITTEN,
+			rimColor: undefined,
+			cosmeticRef: undefined,
+			cosmeticVisual: "",
+			cosmeticAnimated: false,
 		};
 	}
 
@@ -743,6 +790,7 @@ export class ActorRenderController implements OnStart {
 			if (view.sprite === undefined) {
 				// Every player's view carries the player-outline rim; drawPlayer shows it on the watched player only.
 				view.sprite = new SpriteView(set, folder, set, 0, pack.color(PLAYER_OUTLINE.role));
+				view.sprite.setDyeReady(this.dyeReady);
 				view.ring = buildRing(pack, set, folder);
 			}
 			view.sprite.reset();
@@ -768,6 +816,10 @@ export class ActorRenderController implements OnStart {
 		view.drawn = mode;
 		view.look = undefined;
 		view.transparency = -1;
+		// the new body takes the look in full this frame (reset cleared the sprite's dye)
+		view.dyeKey = UNWRITTEN;
+		view.rimKey = UNWRITTEN;
+		view.cosmeticRef = undefined;
 	}
 
 	/** Every player (co-op: each party member, index order); views beyond the party are parked. */
@@ -785,6 +837,13 @@ export class ActorRenderController implements OnStart {
 		}
 		const localIndex = this.sim.getViewPlayerIndex(); // co-op spectating: the watched player gets the local ring
 		let rimDrawn = false; // the player-outline Highlight: an outlined capsule is drawn this frame
+		// docs/COSMETICS.md CS5: a dye sheet that landed (or a force change) re-asks the dyed sprites' readiness.
+		const epoch = this.readiness?.epoch() ?? this.dyeEpoch;
+		const dyeRecheck = epoch !== this.dyeEpoch;
+		this.dyeEpoch = epoch;
+		const looks = this.sim.getContext()?.looks;
+		const reduced = this.fx.settings().reducedMotion;
+		const tSec = cosmeticClockSec(this.cosmeticSec, reduced);
 		for (let i = 0; i < this.players.size(); i++) {
 			let view = this.players[i];
 			if (i < n) {
@@ -796,6 +855,7 @@ export class ActorRenderController implements OnStart {
 					this.players[i] = view;
 				}
 				if (this.drawPlayer(view, state, i, alpha, pack, i === localIndex)) rimDrawn = true;
+				this.applyLook(view, i, looks, tSec, dyeRecheck);
 				continue;
 			}
 			this.setPlayerOutlined(view, false);
@@ -813,6 +873,59 @@ export class ActorRenderController implements OnStart {
 		}
 		const highlight = this.playerHighlight;
 		if (highlight !== undefined && highlight.Enabled !== rimDrawn) highlight.Enabled = rimDrawn;
+		// The capsule's rim is the watched player's (one Highlight; only they are outlined): their outline colour.
+		const watched = this.players[localIndex];
+		const rim = watched?.rimColor ?? this.playerRimColor;
+		if (highlight !== undefined && rimDrawn && highlight.OutlineColor !== rim) highlight.OutlineColor = rim;
+	}
+
+	/**
+	 * docs/COSMETICS.md CS5: player `index`'s look on their view: the dye on their sprite (only a dye of their own set,
+	 * dyeForVisual; a Prismatic one on the cosmetic clock), their rim colour (an outline item replaces playerOutline;
+	 * shown on the watched player only, as before) and their roll trail's colour. Each colour is rebuilt and written
+	 * only when its whole channels change (rgb8Key); a view without a look writes nothing after its first frame.
+	 */
+	private applyLook(
+		view: PlayerView,
+		index: number,
+		looks: ReadonlyArray<CosmeticLook> | undefined,
+		tSec: number,
+		dyeRecheck: boolean,
+	): void {
+		const look = lookAt(looks, index);
+		if (
+			look === view.cosmeticRef &&
+			view.cosmeticVisual === view.visualId &&
+			!view.cosmeticAnimated &&
+			!dyeRecheck
+		) {
+			return;
+		}
+		view.cosmeticRef = look;
+		view.cosmeticVisual = view.visualId;
+		view.cosmeticAnimated = lookAnimated(look);
+		const sprite = view.sprite;
+		const dye = cosmeticRgb8(dyeForVisual(look, view.visualId), tSec);
+		const dyeKey = rgb8Key(dye);
+		if (dyeKey !== view.dyeKey) {
+			view.dyeKey = dyeKey;
+			sprite?.setDye(color3Of(dye));
+		} else if (dyeRecheck && dye !== undefined) {
+			sprite?.refreshDye();
+		}
+		const rim = cosmeticRgb8(look.outline);
+		const rimKey = rgb8Key(rim);
+		if (rimKey !== view.rimKey) {
+			view.rimKey = rimKey;
+			view.rimColor = color3Of(rim);
+			sprite?.setRimColor(view.rimColor ?? this.playerRimColor);
+		}
+		const trail = cosmeticRgb8(look.trail);
+		const trailKey = rgb8Key(trail);
+		if (trailKey !== view.trailKey) {
+			view.trailKey = trailKey;
+			this.motion?.setTrailColor(index, color3Of(trail));
+		}
 	}
 
 	/**
@@ -1145,6 +1258,11 @@ export class ActorRenderController implements OnStart {
 }
 
 /** Destroys a player's view (its sprite or capsule, facing pip and ring). */
+/** A cosmetic colour (whole channels) as a Color3, or undefined. */
+function color3Of(c: Rgb8 | undefined): Color3 | undefined {
+	return c !== undefined ? Color3.fromRGB(c.r, c.g, c.b) : undefined;
+}
+
 function destroyPlayerView(view: PlayerView): void {
 	view.sprite?.destroy();
 	if (view.model !== undefined) destroyModel(view.model);

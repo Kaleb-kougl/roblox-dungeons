@@ -253,3 +253,24 @@ export function walletUpgradeLevels(d: Readonly<WalletDoc> | undefined): WalletU
 		plating: ownedLevel(d, UPGRADE_ITEM.plating),
 	};
 }
+
+/**
+ * The cosmetics `d` wears (docs/COSMETICS.md "Looks"): every `eq` slot whose item is a catalogue cosmetic of that slot
+ * and owned (a stored doc can hold a stale or foreign entry: it is skipped, never deleted). No wallet: undefined (an
+ * unknown wallet: the default look).
+ */
+export function walletEquipped(
+	d: Readonly<WalletDoc> | undefined,
+	catalog: ReadonlyArray<ArmoryItem> = ARMORY_CATALOG,
+): Map<string, string> | undefined {
+	if (d === undefined) return undefined;
+	const out = new Map<string, string>();
+	if (d.eq === undefined) return out;
+	for (const [slot, itemId] of d.eq) {
+		const it = armoryItem(itemId, catalog);
+		if (it === undefined || it.kind !== "cosmetic" || it.slot !== slot) continue;
+		if (ownedLevel(d, it.id, catalog) < 1) continue;
+		out.set(slot, it.id);
+	}
+	return out;
+}

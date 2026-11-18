@@ -51,6 +51,7 @@ function view(over: Partial<LobbyView>): LobbyView {
 		members: [1],
 		ready: [],
 		characters: [],
+		looks: [],
 		invited: [],
 		invitedSources: [],
 		...over,

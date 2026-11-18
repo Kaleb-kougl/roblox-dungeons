@@ -23,6 +23,8 @@ export interface ValeSheetFile {
  */
 export interface ValeSpriteSheetFile extends ValeSheetFile {
 	outlineFile?: string;
+	/** Dye sheet (art/atlases.json `dye`, docs/COSMETICS.md): same size and cell grid, the dyed region as grey. */
+	dyeFile?: string;
 	/**
 	 * Per-sheet cell (art/atlases.json `cells: "perSheet"`; SpriteSheetImage): this sheet's own cell size and
 	 * pivot (the set's pivot point, in this sheet's crop). Absent: the set's frameW / frameH / pivot.
@@ -35,6 +37,10 @@ export interface ValeSpriteSheetFile extends ValeSheetFile {
 /** SpriteSetAsset without `kind`, with sheets named by file instead of asset ID. */
 export interface ValeSpriteLayout extends Omit<SpriteSetAsset, "kind" | "sheets"> {
 	sheets: Array<ValeSpriteSheetFile>;
+	/** Sets with a `dye`: the mean normalised value (0..1) of every dyed pixel, the cosmetics validator's input. */
+	dyeMeanValue?: number;
+	/** Sets with a `dye`: the dyed pixels' mean source colour (the undyed region), the floor-contrast baseline. */
+	dyeSourceMean?: HexColor;
 }
 
 /**
@@ -169,14 +175,58 @@ export const VALE_SPRITE_LAYOUTS: Record<string, ValeSpriteLayout> = {
 		resample: "Default",
 		facings: { count: 8, zeroDeg: 0, ccw: true },
 		sheets: [
-			{ file: "ranger-idle.png", w: 968, h: 776, outlineFile: "ranger-idle-outline.png" },
-			{ file: "ranger-run.png", w: 968, h: 776, outlineFile: "ranger-run-outline.png" },
-			{ file: "ranger-roll.png", w: 968, h: 776, outlineFile: "ranger-roll-outline.png" },
-			{ file: "ranger-hit.png", w: 968, h: 776, outlineFile: "ranger-hit-outline.png" },
-			{ file: "ranger-death.png", w: 968, h: 776, outlineFile: "ranger-death-outline.png" },
-			{ file: "ranger-attack1.png", w: 968, h: 776, outlineFile: "ranger-attack1-outline.png" },
-			{ file: "ranger-attack2.png", w: 968, h: 776, outlineFile: "ranger-attack2-outline.png" },
+			{
+				file: "ranger-idle.png",
+				w: 968,
+				h: 776,
+				outlineFile: "ranger-idle-outline.png",
+				dyeFile: "ranger-idle-dye.png",
+			},
+			{
+				file: "ranger-run.png",
+				w: 968,
+				h: 776,
+				outlineFile: "ranger-run-outline.png",
+				dyeFile: "ranger-run-dye.png",
+			},
+			{
+				file: "ranger-roll.png",
+				w: 968,
+				h: 776,
+				outlineFile: "ranger-roll-outline.png",
+				dyeFile: "ranger-roll-dye.png",
+			},
+			{
+				file: "ranger-hit.png",
+				w: 968,
+				h: 776,
+				outlineFile: "ranger-hit-outline.png",
+				dyeFile: "ranger-hit-dye.png",
+			},
+			{
+				file: "ranger-death.png",
+				w: 968,
+				h: 776,
+				outlineFile: "ranger-death-outline.png",
+				dyeFile: "ranger-death-dye.png",
+			},
+			{
+				file: "ranger-attack1.png",
+				w: 968,
+				h: 776,
+				outlineFile: "ranger-attack1-outline.png",
+				dyeFile: "ranger-attack1-dye.png",
+			},
+			{
+				file: "ranger-attack2.png",
+				w: 968,
+				h: 776,
+				outlineFile: "ranger-attack2-outline.png",
+				dyeFile: "ranger-attack2-dye.png",
+			},
 		],
+		dyeMeanValue: 0.5114,
+		dyeSourceMean: "#2f1b08",
 		animations: {
 			"attack.1": { sheet: 5, start: 0, frames: 8, fps: 20, loop: false },
 			"attack.2": { sheet: 6, start: 0, frames: 8, fps: 14, loop: false },
@@ -195,15 +245,65 @@ export const VALE_SPRITE_LAYOUTS: Record<string, ValeSpriteLayout> = {
 		resample: "Default",
 		facings: { count: 8, zeroDeg: 0, ccw: true },
 		sheets: [
-			{ file: "vanguard-idle.png", w: 1024, h: 1024, outlineFile: "vanguard-idle-outline.png" },
-			{ file: "vanguard-run.png", w: 1024, h: 1024, outlineFile: "vanguard-run-outline.png" },
-			{ file: "vanguard-roll.png", w: 1024, h: 1024, outlineFile: "vanguard-roll-outline.png" },
-			{ file: "vanguard-hit.png", w: 1024, h: 1024, outlineFile: "vanguard-hit-outline.png" },
-			{ file: "vanguard-death.png", w: 1024, h: 1024, outlineFile: "vanguard-death-outline.png" },
-			{ file: "vanguard-attack1.png", w: 1024, h: 1024, outlineFile: "vanguard-attack1-outline.png" },
-			{ file: "vanguard-attack2.png", w: 1024, h: 1024, outlineFile: "vanguard-attack2-outline.png" },
-			{ file: "vanguard-attack3.png", w: 1024, h: 1024, outlineFile: "vanguard-attack3-outline.png" },
+			{
+				file: "vanguard-idle.png",
+				w: 1024,
+				h: 1024,
+				outlineFile: "vanguard-idle-outline.png",
+				dyeFile: "vanguard-idle-dye.png",
+			},
+			{
+				file: "vanguard-run.png",
+				w: 1024,
+				h: 1024,
+				outlineFile: "vanguard-run-outline.png",
+				dyeFile: "vanguard-run-dye.png",
+			},
+			{
+				file: "vanguard-roll.png",
+				w: 1024,
+				h: 1024,
+				outlineFile: "vanguard-roll-outline.png",
+				dyeFile: "vanguard-roll-dye.png",
+			},
+			{
+				file: "vanguard-hit.png",
+				w: 1024,
+				h: 1024,
+				outlineFile: "vanguard-hit-outline.png",
+				dyeFile: "vanguard-hit-dye.png",
+			},
+			{
+				file: "vanguard-death.png",
+				w: 1024,
+				h: 1024,
+				outlineFile: "vanguard-death-outline.png",
+				dyeFile: "vanguard-death-dye.png",
+			},
+			{
+				file: "vanguard-attack1.png",
+				w: 1024,
+				h: 1024,
+				outlineFile: "vanguard-attack1-outline.png",
+				dyeFile: "vanguard-attack1-dye.png",
+			},
+			{
+				file: "vanguard-attack2.png",
+				w: 1024,
+				h: 1024,
+				outlineFile: "vanguard-attack2-outline.png",
+				dyeFile: "vanguard-attack2-dye.png",
+			},
+			{
+				file: "vanguard-attack3.png",
+				w: 1024,
+				h: 1024,
+				outlineFile: "vanguard-attack3-outline.png",
+				dyeFile: "vanguard-attack3-dye.png",
+			},
 		],
+		dyeMeanValue: 0.7342,
+		dyeSourceMean: "#8b8583",
 		animations: {
 			"attack.1": { sheet: 5, start: 0, frames: 8, fps: 16, loop: false },
 			"attack.2": { sheet: 6, start: 0, frames: 8, fps: 16, loop: false },

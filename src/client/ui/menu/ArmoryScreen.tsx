@@ -1,11 +1,13 @@
 import React, { useBinding, useEffect, useRef, useState } from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
 import { GuiService, RunService, UserInputService } from "@rbxts/services";
-import { selectInputDevice, selectWallet, selectWalletState } from "client/store";
+import { selectInputDevice, selectJuice, selectSelectedCharacter, selectWallet, selectWalletState } from "client/store";
 import { FocusScope } from "client/ui/focus";
 import { MenuButton, MenuFit, PadHintBar, Panel, Row, SilverAmount, Text, type MenuLayout } from "client/ui/hud";
 import { role, str } from "client/ui/theme";
 import { keyDevice } from "shared/play";
+import { cosmeticItem } from "shared/cosmetics";
+import { COSMETIC_VIEW } from "shared/view/cosmetics";
 import { ARMORY_KEYS, SILVER_ROLE } from "shared/theme";
 import { SFX } from "shared/view/audio";
 import { HUD_VIEW } from "shared/view/hud";
@@ -17,10 +19,16 @@ import {
 	MENU_STRINGS,
 	MENU_VIEW,
 	affordableKeys,
+	armoryCosmeticEntries,
 	armoryDetail,
 	armoryPips,
 	armoryRows,
 	armoryTabKey,
+	cosmeticDetail,
+	cosmeticEquipArgs,
+	cosmeticItemEntries,
+	cosmeticPreviewCharacter,
+	cosmeticPreviewLook,
 	screenSkin,
 	stepTab,
 	tabStep,
@@ -31,6 +39,7 @@ import {
 import { SILVER_SHOP, armoryItemLabel, statusBalance, walletShown } from "shared/view/silver";
 import { useMenuActions } from "./actions";
 import { SilverBalance } from "./SilverBalance";
+import { cosmeticDetailLines, cosmeticListRows } from "./ArmoryCosmetics";
 
 const HIDDEN = 1;
 const STROKE = 1;
@@ -169,10 +178,14 @@ function Detail(props: {
 	confirm: boolean;
 	result: string | undefined;
 	onConfirm: (yes: boolean) => void;
+	/** docs/COSMETICS.md CS6: the Cosmetics tab's own lines (ArmoryCosmetics cosmeticDetailLines) instead. */
+	custom?: React.Element[];
 }) {
 	const d = props.detail;
 	const lines = new Array<React.Element>();
-	if (d !== undefined) {
+	if (props.custom !== undefined) {
+		for (const l of props.custom) lines.push(l);
+	} else if (d !== undefined) {
 		lines.push(<Text key="Name" order={1} wrap={true} size={HUD_VIEW.titleText} color="uiAccent" text={d.title} />);
 		const parts: string[] = [];
 		if (d.tier !== undefined) parts.push(d.tier);
@@ -314,6 +327,11 @@ function resultLine(itemId: string, level: number | undefined, ok: boolean, reas
  * under the button says how it went. With the wallet not loaded: `Armory unavailable`, greyed, nothing to buy. A
  * `screen` focus scope: LB / RB the tabs, the right stick scrolls the list, B goes back. Fitted on touch (the list is
  * the flexible part). Opening it marks what is affordable now as seen (the main menu's badge dot clears).
+ *
+ * The Cosmetics tab (docs/COSMETICS.md CS6; shared/view/menu cosmetics.ts, ./ArmoryCosmetics.tsx): every cosmetic under
+ * its slot's header (swatch, name, `Animated`, Equipped / Owned / price), the detail's live preview (the slot's
+ * character turning, the focused item tried on), the same buy hold and confirm, then Equip / Take off (`walletEquip`);
+ * a bought row stamps. The pad, touch and portrait follow the other tabs (the detail sheet scrolls).
  */
 export function ArmoryScreen() {
 	const actions = useMenuActions();
@@ -332,11 +350,31 @@ export function ArmoryScreen() {
 	const firstRef = useRef<TextButton>();
 	const listRef = useRef<ScrollingFrame>();
 	const shown = walletShown(status);
-	const rows = armoryRows(tab, status);
+	const reducedMotion = useSelector(selectJuice).reducedMotion;
+	const picked = useSelector(selectSelectedCharacter);
+	// docs/COSMETICS.md CS6: the bought row's stamp (its id and the os.clock of the answer).
+	const [flash, setFlash] = useState<{ itemId: string; at: number } | undefined>(undefined);
+	const cosmetics = tab === "cosmetics";
+	const rows = cosmetics ? [] : armoryRows(tab, status);
 	const focusRow = rows.find((r) => r.itemId === focusId) ?? rows[0];
 	const detail = focusRow !== undefined ? armoryDetail(focusRow, str) : undefined;
-	const detailRef = useRef(detail);
-	detailRef.current = detail;
+	// docs/COSMETICS.md CS6: the Cosmetics tab's grouped list, its focused item and the look its preview tries on.
+	const entries = cosmetics ? armoryCosmeticEntries(status) : [];
+	const items = cosmeticItemEntries(entries);
+	const focusEntry = items.find((e) => e.row.itemId === focusId) ?? items[0];
+	const cosmetic = focusEntry !== undefined ? cosmeticDetail(focusEntry, str) : undefined;
+	const previewCharacter = cosmeticPreviewCharacter(cosmetic?.itemId, picked);
+	const previewLook = cosmeticPreviewLook(status, previewCharacter, cosmetic?.itemId);
+	// What the buy hold acts on: the focused upgrade / unlock, or the focused cosmetic.
+	const target = cosmetics
+		? cosmetic !== undefined
+			? { itemId: cosmetic.itemId, buy: cosmetic.buy }
+			: undefined
+		: detail !== undefined
+		? { itemId: detail.itemId, buy: detail.buy }
+		: undefined;
+	const detailRef = useRef(target);
+	detailRef.current = target;
 	const buying = ws.buying !== undefined;
 
 	// Opening: what is affordable now is seen (the main menu's badge dot clears); a later push adds what became so.
@@ -345,8 +383,12 @@ export function ArmoryScreen() {
 	}, [ws.version]);
 	// A purchase answer arriving while open: its line shows for a while.
 	useEffect(() => {
-		if (ws.resultVersion > openedVersion && ws.result?.action === "buy")
+		if (ws.resultVersion > openedVersion && ws.result?.action === "buy") {
 			setResultUntil(os.clock() + SILVER_SHOP.resultSec);
+			// docs/COSMETICS.md CS6: a bought cosmetic's row stamps (sfx.shop.buy is WalletController's).
+			const r = ws.result;
+			if (r.ok && cosmeticItem(r.itemId) !== undefined) setFlash({ itemId: r.itemId, at: os.clock() });
+		}
 	}, [ws.resultVersion]);
 
 	const start = (itemId: string) => {
@@ -407,7 +449,7 @@ export function ArmoryScreen() {
 		return () => {
 			for (const c of conns) c.Disconnect();
 		};
-	}, [detail?.itemId, buying, shown, confirmId]);
+	}, [target?.itemId, target?.buy, buying, shown, confirmId]);
 
 	const showTab = (t: ArmoryTab) => {
 		if (t === tab) return;
@@ -480,16 +522,22 @@ export function ArmoryScreen() {
 									color="uiTextDim"
 									text={str(ARMORY_KEYS.unavailableBody)}
 								/>
-							) : rows.size() === 0 ? (
-								<Text
-									key="Later"
-									order={1}
-									width={sizes.listWidth - 2 * FOCUS_STROKE}
-									wrap={true}
-									size={HUD_VIEW.smallText}
-									color="uiTextDim"
-									text={str(ARMORY_KEYS.cosmeticsLater)}
-								/>
+							) : cosmetics ? (
+								cosmeticListRows({
+									entries,
+									width: sizes.listWidth - 2 * FOCUS_STROKE,
+									focusId: focusEntry?.row.itemId,
+									reducedMotion,
+									flash,
+									firstRef,
+									onFocus: (id) => {
+										if (focusId !== id) {
+											setFocusId(id);
+											setConfirmId(undefined);
+											stop();
+										}
+									},
+								})
 							) : (
 								rows.map((row, i) => (
 									<ItemRow
@@ -515,13 +563,48 @@ export function ArmoryScreen() {
 						<Detail
 							key="Detail"
 							order={2}
+							custom={
+								cosmetics && cosmetic !== undefined && shown !== "unavailable"
+									? cosmeticDetailLines({
+											detail: cosmetic,
+											character: previewCharacter,
+											look: previewLook,
+											box:
+												sizes.narrow || layout.compact
+													? COSMETIC_VIEW.preview.compactBox
+													: COSMETIC_VIEW.preview.box,
+											reducedMotion,
+											fill,
+											buyRef,
+											buying,
+											confirm: confirmId !== undefined && confirmId === cosmetic.itemId,
+											result,
+											onConfirm: (yes) => {
+												const id = confirmId;
+												setConfirmId(undefined);
+												if (yes && id !== undefined) buyNow(id);
+												else actions.playUi(SFX.uiBack);
+											},
+											onEquip: () => {
+												const how = cosmetic.equip;
+												if (how === undefined) return;
+												const [slot, itemId] = cosmeticEquipArgs(
+													cosmetic.slot,
+													cosmetic.itemId,
+													how,
+												);
+												if (actions.armoryEquip(slot, itemId)) actions.playUi(SFX.uiConfirm);
+											},
+									  })
+									: undefined
+							}
 							detail={shown === "unavailable" ? undefined : detail}
 							sizes={sizes}
 							height={sizes.narrow ? S.sheetHeight : layout.flex}
 							fill={fill}
 							buyRef={buyRef}
 							buying={buying}
-							confirm={confirmId !== undefined && confirmId === detail?.itemId}
+							confirm={confirmId !== undefined && confirmId === target?.itemId}
 							result={result}
 							onConfirm={(yes) => {
 								const id = confirmId;

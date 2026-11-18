@@ -82,6 +82,15 @@
 			"pivotNote": "The knight's baked shadow is black at alpha 200-239 (core ~216) and every body pixel has alpha >= 248, so alpha > 200 would count the shadow: the body cut is alpha > 240.",
 			"outline": { "widthPx": 1, "clipAtCellEdge": true },
 			"outlineNote": "Player outline (the watched player's rim, theme role playerOutline): 1 art px, Occluded, on by default. The cells cannot grow (128 px, 8 x 8 fill a 1024 atlas; pad 2 would make them 132), so pad stays 0 and the rim is cut at the cell edge instead: the body (alpha > 240) reaches the edge in 3 of 512 frames (attack.2, 20 px); everything else touching the edge is the baked shadow, which the rim leaves out. The body sheets stay byte-identical (their uploaded ids stay valid); only the 8 -outline sheets are new.",
+			"dye": {
+				"rule": { "alphaMin": 240, "minRgb": 8, "satMax": 0.1, "lumMin": 88 },
+				"unless": [{ "lumMin": 130, "hue": [[180, 360]] }],
+				"open": { "sizePx": 3, "regrowPx": 1 },
+				"minAreaPx": 20,
+				"normalizePercentile": 98,
+				"exclude": []
+			},
+			"dyeNote": "Cosmetic dye (docs/COSMETICS.md CS1): the plate, helm, shield face and greaves. The plate is near-grey (HLS saturation 2-5 %, luminance >= 88); satMax 0.1 (the prototype's 0.18 dyed the bare head, saturation 12-15 %). The sword is the plate's own grey, so colour cannot part them: the opening by a 3 x 3 square drops every stroke under 3 px wide (the blade, 1-2 px), the 1 px regrowth returns the plate's edge pixels, and pieces under 20 px go. The `unless` rule drops the baked swing smears of the three attacks: their opaque core is the plate's lightness but pink-violet (hue 290-350 degrees at luminance 180-205), while lit plate at luminance >= 130 is warm (hue < 60) in every sheet (0 such pixels outside the attacks). The baked shadow (alpha <= 239) never passes alphaMin.",
 			"bodyTiles": 1.5,
 			"resample": "Default",
 			"animations": {
@@ -138,6 +147,14 @@
 			"pivotNote": "The knight's cut: the Archer's baked shadow is black at alpha <= ~207 and the body at 248+, so the body is alpha > 240 (and lit).",
 			"outline": { "widthPx": 1, "clipAtCellEdge": true },
 			"outlineNote": "Player outline (docs/PLAYER_OUTLINE.md): 1 art px like the knight's; the 128 cells fill the atlas, so the rim stops at the cell edge (the build prints the clip).",
+			"dye": {
+				"rule": { "alphaMin": 240, "minRgb": 8, "lumMax": 69, "hue": [[0, 55], [340, 360]] },
+				"open": { "sizePx": 3, "regrowPx": 1 },
+				"minAreaPx": 20,
+				"normalizePercentile": 98,
+				"exclude": []
+			},
+			"dyeNote": "Cosmetic dye (docs/COSMETICS.md CS1): the tunic, boots, hood / hair and quiver, i.e. the dark warm browns (luminance <= 69, hue < 55 or >= 340 degrees). The bow is the tunic's exact browns, so it is cut by shape, not colour: the opening by a 3 x 3 square drops every stroke under 3 px wide (the bow's limbs and string are 1-2 px in every animation and facing), the 1 px regrowth returns the body's edge pixels (and at most 1 px of bow where it touches the body), and pieces under 20 px go (a 2 px-wide limb that survives the opening on its own). No exclusion rects. Skin, the orange bracers and the baked shadow (alpha <= 207) never pass the rule.",
 			"pixelsPerTileFrom": "class.vanguard",
 			"resample": "Default",
 			"animations": {

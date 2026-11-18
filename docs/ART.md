@@ -129,6 +129,27 @@ the body mask. Body mean (alpha > 64, max RGB > 8): `#eebe0e` on golden-move, 3.
 tall, 76 % of a skeleton, near the bomber's 0.9. Every other output of the build is byte-identical; the four `golden-*`
 files await upload (the vale pack draws the placeholder gold block until all its sheets have ids in `assetIds.ts`).
 
+Dye sheets (docs/COSMETICS.md CS1-CS2, 2026-11-17): a sprite set may carry `"dye": { "rule", "unless"?, "open"?,
+"minAreaPx"?, "normalizePercentile", "exclude"? }` (unknown keys throw, like `outline`), the region a cosmetic dye
+recolours. Per BUILT sheet (after crop, packing and bleed, so it lines up with the body sheet cell for cell) the mask is,
+in order: the colour `rule` (alpha > `alphaMin`, max RGB > `minRgb`, `lumMin` <= luminance <= `lumMax` with the integer
+Rec. 601 luminance of Recolour, `satMin` <= saturation < `satMax`, hue in one of the `hue` [from, to) degree ranges;
+saturation and hue are Python colorsys's HLS on the 0-255 integers: s = (max - min) / (max + min) when max + min <= 255,
+else (max - min) / (510 - max - min); a grey's hue is 0), less any pixel an `unless` rule (same keys, every one
+optional) also takes; less the `exclude` rects (`rect` [x, y, w, h] in cell pixels, optionally only for some
+`animations` / `facings` / kept `frames`); opened by an `open.sizePx` square (a pixel stays only inside a square of that
+size wholly in the mask: strokes thinner than it go) and regrown `open.regrowPx` 8-neighbour steps into what the rule
+left (the region's edge pixels come back, a stroke regains at most that much where it touches); then 8-connected pieces
+under `minAreaPx` dropped. Every step stays inside its cell. p is the nearest-rank `normalizePercentile` of the masked
+luminances over the whole SET (one p, so every sheet's grey means the same). `<sheet>-dye.png` (same size and grid)
+holds each masked pixel as grey round(255 x min(1, l / p)) with the body's own alpha and every other pixel
+(0, 0, 0, 0); layout.ts gets `dyeFile` per sheet (after `outlineFile`) and `dyeMeanValue` per set (after `sheets`: the
+mean of min(1, l / p), 4 decimals, the cosmetics validator's input) and `dyeSourceMean` after it (the masked pixels'
+mean source RGB as `#rrggbb`: the undyed region's colour, rule 3's floor-contrast baseline). Dye sheets go to art/upload and the pending-id
+list like outline sheets; `art/build/contact/<set id>-dye-<animation>.png` shows facings x the first / middle / last
+kept frame as body, mask in magenta, and the dye sheet tinted scarlet / cobalt / teal / amethyst over the body. Body and
+outline sheets are unchanged. Used by `class.vanguard` and `class.ranger` (rules in docs/COSMETICS.md "As built").
+
 Gauntlet cursor (docs/CURSOR.md C1, 2026-11-11): two `images` entries, `ui.cursor` (white glow) and `ui.cursor.hover`
 (yellow glow), `crop: "alpha"`, `noiseAlpha` 2, `pad` 2, both 29 x 29 from source (49, 50). An image `pivot` may now be
 `{ x, y }` in SOURCE pixels (converted to the cut image and checked inside it): the fingertip (53, 54) -> (4, 4). A

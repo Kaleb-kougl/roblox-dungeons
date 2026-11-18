@@ -67,6 +67,26 @@ describe("lobby views", () => {
 		expect(lobbyViewOf(lobby, [], 100).countdownIn).toBe(0);
 	});
 
+	it("lobbyViewOf: each member's look for their pick, by index (docs/COSMETICS.md CS4); none given: default", () => {
+		const { l } = setup();
+		const lobby = mustCreate(l, HOST);
+		mustJoin(l, A, lobby);
+		mustJoin(l, B, lobby);
+		l.setReady(A, true, "archer");
+		const asked = new Array<string>();
+		const v = lobbyViewOf(lobby, [], 0, (id, character) => {
+			asked.push(`${id}:${character}`);
+			return id === A
+				? { dye: `dye.${character}.frost`, outline: "outline.jade" }
+				: id === B
+				? {}
+				: { trail: "trail.ivory" };
+		});
+		expect(asked).toEqual([`${HOST}:knight`, `${A}:archer`, `${B}:knight`]);
+		expect(v.looks).toEqual([{ trail: "trail.ivory" }, { dye: "dye.archer.frost", outline: "outline.jade" }, {}]);
+		expect(lobbyViewOf(lobby, [], 0).looks).toEqual([{}, {}, {}]);
+	});
+
 	it("inviteViewsOf: lobby name and host, seconds left; invites to gone lobbies skipped", () => {
 		const { l, lookup } = setup();
 		const lobby = mustCreate(l, HOST);

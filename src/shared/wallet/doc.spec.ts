@@ -10,6 +10,7 @@ import {
 	walletDocsEqual,
 	walletStatusOf,
 	ownedLevel,
+	walletEquipped,
 	walletUpgradeLevels,
 	type WalletDoc,
 } from "shared/wallet";
@@ -131,5 +132,28 @@ describe("wallet reads", () => {
 		expect([s.firstRunBonusOpen, s.dailyBonusOpen]).toEqual([false, true]);
 		expect(walletStatusOf(sample(), true, 317).firstRunBonusOpen).toBe(true);
 		expect(s.goals?.size()).toBe(2);
+	});
+});
+
+describe("walletEquipped (docs/COSMETICS.md CS4)", () => {
+	it("keeps owned cosmetics in their own slot; skips stale, foreign and unowned entries without deleting them", () => {
+		const d = emptyWalletDoc();
+		d.own.set("outline.azure", 1);
+		d.own.set("dye.knight.teal", 1);
+		d.own.set("vigor", 1);
+		d.eq = new Map([
+			["outline", "outline.azure"],
+			["dye.knight", "dye.knight.teal"],
+			["trail", "trail.jade"], // not owned
+			["spark", "outline.azure"], // wrong slot
+			["hat", "vigor"], // not a cosmetic
+			["title", "title.future"], // a newer build's item
+		]);
+		const eq = walletEquipped(d)!;
+		expect(eq.size()).toBe(2);
+		expect([eq.get("outline"), eq.get("dye.knight")]).toEqual(["outline.azure", "dye.knight.teal"]);
+		expect(d.eq.size()).toBe(6);
+		expect(walletEquipped(emptyWalletDoc())!.size()).toBe(0);
+		expect(walletEquipped(undefined)).toBe(undefined);
 	});
 });

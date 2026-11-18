@@ -184,6 +184,8 @@ export interface SpriteFrameRect {
 	readonly assetId: string;
 	/** That sheet's outline image (spriteSheetOutline), drawn under the frame with the same rect; undefined: no rim. */
 	readonly outlineAssetId?: string;
+	/** That sheet's dye image (spriteSheetDye), drawn over the frame with the same rect; undefined: no dye. */
+	readonly dyeAssetId?: string;
 	readonly x: number;
 	readonly y: number;
 	/** The cell size: the sheet's own with per-sheet cells (SpriteSheetImage.frameW / frameH), else the set's. */
@@ -261,6 +263,15 @@ export interface SpriteSetLayout {
  */
 export function spriteSheetOutline(sheet: Readonly<SpriteSheetImage>): string | undefined {
 	const id: unknown = sheet.outlineAssetId;
+	return typeIs(id, "string") ? id : undefined;
+}
+
+/**
+ * A sprite sheet's dye image (SpriteSheetImage.dyeAssetId, docs/COSMETICS.md), or undefined when it has none or the field
+ * is not a string (frames then draw undyed, never with a bad Image).
+ */
+export function spriteSheetDye(sheet: Readonly<SpriteSheetImage>): string | undefined {
+	const id: unknown = sheet.dyeAssetId;
 	return typeIs(id, "string") ? id : undefined;
 }
 
@@ -398,6 +409,7 @@ class SpriteSetLayoutImpl implements SpriteSetLayout {
 			sheet: a.sheet,
 			assetId: sheet.assetId,
 			outlineAssetId: spriteSheetOutline(sheet),
+			dyeAssetId: spriteSheetDye(sheet),
 			x: (cell % perRow) * c.frameW,
 			y: math.floor(cell / perRow) * c.frameH,
 			w: c.frameW,
@@ -712,6 +724,8 @@ function collectContentIds(v: unknown, media: PreloadMedia, seen: Set<string>, o
 	}
 	if (typeIs(v, "table")) {
 		for (const entry of sortedEntries(v)) {
+			// docs/COSMETICS.md: a sheet's dye is loaded only for a run that wears one (ThemeCore.dyeContentIds).
+			if (entry[0] === "dyeAssetId") continue;
 			collectContentIds(entry[1], media, seen, out);
 		}
 	}
@@ -773,6 +787,7 @@ export class ThemeCore {
 	/** contentIds / biomeContentIds lookups (docs/PRELOAD.md P1), empty lists included. */
 	private readonly contentRefs = new Map<string, ReadonlyArray<ContentRef>>();
 	private readonly biomeContentRefs = new Map<string, ReadonlyArray<ContentRef>>();
+	private readonly dyeContentRefs = new Map<string, ReadonlyArray<ContentRef>>();
 	private readonly warned = new Set<string>();
 	private readonly warnSink: (message: string) => void;
 
@@ -991,6 +1006,12 @@ export class ThemeCore {
 				this.warnOnce(
 					`sprites:${id}:outline:${i}`,
 					`sprite set "${id}" sheet ${i} has a bad outlineAssetId, drawing it without a rim`,
+				);
+			}
+			if (sheet.dyeAssetId !== undefined && spriteSheetDye(sheet) === undefined) {
+				this.warnOnce(
+					`sprites:${id}:dye:${i}`,
+					`sprite set "${id}" sheet ${i} has a bad dyeAssetId, drawing it undyed`,
 				);
 			}
 		});
@@ -1798,6 +1819,34 @@ export class ThemeCore {
 			if (out.size() > 0) refs = out;
 		}
 		this.contentRefs.set(id, refs);
+		return refs;
+	}
+
+	/**
+	 * docs/COSMETICS.md: the dye sheets of sprite set `id` (SpriteSheetImage.dyeAssetId), in sheet order, each id once,
+	 * media "image". contentIds never lists them (a dye sheet is pushed only for a run whose players wear a dye of that
+	 * character); empty for a set without dyes, any other kind or a missing id (never warns). Cached.
+	 */
+	dyeContentIds(id: string): ReadonlyArray<ContentRef> {
+		const cached = this.dyeContentRefs.get(id);
+		if (cached !== undefined) {
+			return cached;
+		}
+		const def = this.assets[id];
+		let refs = NO_CONTENT;
+		if (isObj(def) && def.kind === "sprites" && isArrayLike(def.sheets)) {
+			const out = new Array<ContentRef>();
+			const seen = new Set<string>();
+			for (const sheet of def.sheets) {
+				const dye = isObj(sheet) ? spriteSheetDye(sheet as unknown as SpriteSheetImage) : undefined;
+				if (dye !== undefined && startsWith(dye, CONTENT_ID_SCHEME) && !seen.has(dye)) {
+					seen.add(dye);
+					out.push({ contentId: dye as RobloxAssetId, media: "image" });
+				}
+			}
+			if (out.size() > 0) refs = out;
+		}
+		this.dyeContentRefs.set(id, refs);
 		return refs;
 	}
 

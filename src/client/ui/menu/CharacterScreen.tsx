@@ -1,13 +1,15 @@
 import React, { useBinding, useEffect, useRef, useState } from "@rbxts/react";
+import { cosmeticLookOf, equippedMapOf } from "shared/cosmetics";
+import { dyeForVisual } from "shared/view/cosmetics";
 import { useSelector } from "@rbxts/react-reflex";
 import { GuiService, RunService, UserInputService } from "@rbxts/services";
 import { selectCharacterScreen, selectInputDevice, selectJuice, selectWallet, selectWalletState } from "client/store";
 import { FocusScope } from "client/ui/focus";
 import { MenuButton, MenuFit, PadHintBar, Panel, Row, SilverAmount, Text } from "client/ui/hud";
-import { role, str, themePack } from "client/ui/theme";
+import { role, str } from "client/ui/theme";
 import { keyDevice } from "shared/play";
 import { SFX } from "shared/view/audio";
-import { ARMORY_KEYS, CHARACTER_LOCK_KEYS, CHARACTER_SCREEN_STRINGS, SILVER_ROLE, type ColorRole } from "shared/theme";
+import { ARMORY_KEYS, CHARACTER_LOCK_KEYS, CHARACTER_SCREEN_STRINGS, SILVER_ROLE } from "shared/theme";
 import { statusBalance, walletShown } from "shared/view/silver";
 import { characterUnlockId } from "shared/wallet";
 import { HUD_VIEW } from "shared/view/hud";
@@ -19,9 +21,6 @@ import {
 	characterCards,
 	characterConfirmKey,
 	characterLayout,
-	characterPreviewFacing,
-	characterPreviewFrame,
-	characterPreviewSize,
 	screenSkin,
 	type CharacterCard,
 	type CharacterLayout,
@@ -33,86 +32,12 @@ import {
 	type CharacterLockState,
 } from "shared/view/menu";
 import { useMenuActions } from "./actions";
+import { CharacterPreview } from "./CharacterPreview";
 
 const HIDDEN = 1;
-const HALF = 0.5;
-const IDLE = "idle";
 const V = CHARACTER_VIEW;
 /** Between the item labels of the upgrades line. */
 const UPGRADES_SEPARATOR = " · ";
-
-/**
- * A character's idle animation facing the camera, drawn from its theme sprite set (`class.vanguard` / `class.ranger`)
- * and fitted into a `box` square (shared/view/menu characterPreviewFacing / Frame / Size); without a sprite set with
- * an idle animation (the Archer until its art is uploaded, the placeholder pack) the class colour's capsule. The
- * frame is written through a binding on Heartbeat (no re-render per frame); reduced motion holds frame 0.
- */
-function CharacterPreview(props: {
-	visualId: string;
-	color: ColorRole;
-	box: number;
-	reducedMotion: boolean;
-	/** docs/SILVER.md SV18: a locked character's art is dimmed (0 = full). */
-	dim?: number;
-}) {
-	const dim = props.dim ?? 0;
-	const set = themePack()?.sprites(props.visualId);
-	const idle = set !== undefined && set.has(IDLE) ? set.animation(IDLE) : undefined;
-	const [frame, setFrame] = useBinding(0);
-	const fps = idle?.fps ?? 0;
-	const frames = idle?.frames ?? 0;
-	useEffect(() => {
-		if (frames <= 1 || props.reducedMotion) {
-			setFrame(0);
-			return;
-		}
-		let t = 0;
-		const conn = RunService.Heartbeat.Connect((dt) => {
-			t += dt;
-			setFrame(characterPreviewFrame(t, fps, frames, false));
-		});
-		return () => conn.Disconnect();
-	}, [fps, frames, props.reducedMotion]);
-	const box = props.box;
-	const outer = (children: React.ReactNode) => (
-		<frame key="Preview" LayoutOrder={1} Size={UDim2.fromOffset(box, box)} BackgroundTransparency={HIDDEN}>
-			{children}
-		</frame>
-	);
-	if (set === undefined || idle === undefined) {
-		return outer(
-			<frame
-				key="Capsule"
-				AnchorPoint={new Vector2(HALF, HALF)}
-				Position={UDim2.fromScale(HALF, HALF)}
-				Size={UDim2.fromOffset(math.floor(box * V.capsule.w), math.floor(box * V.capsule.h))}
-				BackgroundColor3={role(props.color)}
-				BackgroundTransparency={dim}
-				BorderSizePixel={0}
-			>
-				<uicorner CornerRadius={new UDim(HALF, 0)} />
-				<uistroke Thickness={V.stroke} Color={role("uiTextDim")} />
-			</frame>,
-		);
-	}
-	const facing = characterPreviewFacing(set.facings);
-	const first = set.frame(IDLE, facing, 0);
-	const size = characterPreviewSize(first.size.X, first.size.Y, box);
-	return outer(
-		<imagelabel
-			key="Sprite"
-			AnchorPoint={new Vector2(HALF, HALF)}
-			Position={UDim2.fromScale(HALF, HALF)}
-			Size={UDim2.fromOffset(size.w, size.h)}
-			BackgroundTransparency={HIDDEN}
-			Image={first.image}
-			ImageTransparency={dim}
-			ImageRectSize={first.size}
-			ImageRectOffset={frame.map((i) => set.frame(IDLE, facing, i).offset)}
-			ResampleMode={Enum.ResamplerMode[set.resample]}
-		/>,
-	);
-}
 
 /**
  * One card (a selectable button): the preview, the name, the summary lines; the focused card (the pick Start takes)
@@ -137,6 +62,8 @@ function CardButton(props: {
 	upgrades: string;
 	/** The card was just bought in this visit (it lights). */
 	lit: boolean;
+	/** docs/COSMETICS.md CS6: the character's equipped dye (drawn once its sheet has downloaded). */
+	dyeItem: string | undefined;
 	onBuy: (itemId: string) => void;
 }) {
 	const l = props.layout;
@@ -183,6 +110,7 @@ function CardButton(props: {
 				box={l.previewPx}
 				reducedMotion={props.reducedMotion}
 				dim={props.lock.kind === "open" ? 0 : V.lockedArtTransparency}
+				dyeItem={props.dyeItem}
 			/>
 			<Text
 				order={2}
@@ -367,6 +295,8 @@ export function CharacterScreen() {
 	const upgrades = upgradesLine(wallet, str, UPGRADES_SEPARATOR);
 	const focusLocked = !characterPickAllowed(screen.focus, wallet);
 	const pad = device === "gamepad";
+	// docs/COSMETICS.md CS6: each card's character wears its equipped dye.
+	const equipped = wallet !== undefined && wallet.loaded ? equippedMapOf(wallet.equipped) : undefined;
 	return (
 		<FocusScope
 			name="CharacterScope"
@@ -445,6 +375,7 @@ export function CharacterScreen() {
 										lock={characterLockState(c.id, wallet)}
 										upgrades={upgrades}
 										lit={litId !== undefined && litId === characterUnlockId(c.id)}
+										dyeItem={dyeForVisual(cosmeticLookOf(equipped, c.id), c.visualId)}
 										onBuy={(itemId) => {
 											if (actions.armoryBuy(itemId)) actions.playUi(SFX.uiConfirm);
 										}}

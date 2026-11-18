@@ -37,6 +37,7 @@ import { SILVER_COLOR_RULES, silverReport } from "./silverColors";
 import { NEW_ENEMY_2_AUDIO_IDS } from "./newEnemies2";
 import { NEW_ENEMY_3_AUDIO_IDS } from "./newEnemies3";
 import { SILVER_SHOP_STRING_KEYS } from "./silverShop";
+import { COSMETIC_STRING_KEYS } from "./cosmetics";
 import { COLOR_ROLES } from "./types";
 import { deepClone, sortedKeys, type Obj } from "./util";
 import { validateManifest } from "./validate";
@@ -60,17 +61,21 @@ describe("silver: strings", () => {
 		expect(SILVER_STRING_KEYS.size() > 0).toBe(true);
 		expect([...silverStringKeys()]).toEqual([...SILVER_STRING_KEYS]);
 		// docs/SILVER_SHOP.md SH4's keys come after them.
-		expect(tail(REQUIRED_STRING_KEYS, SILVER_STRING_KEYS.size(), SILVER_SHOP_STRING_KEYS.size())).toEqual([
-			...SILVER_STRING_KEYS,
-		]);
+		expect(
+			tail(
+				REQUIRED_STRING_KEYS,
+				SILVER_STRING_KEYS.size(),
+				SILVER_SHOP_STRING_KEYS.size() + COSMETIC_STRING_KEYS.size(),
+			),
+		).toEqual([...SILVER_STRING_KEYS]);
 		expect(new Set(REQUIRED_STRING_KEYS).size()).toBe(REQUIRED_STRING_KEYS.size());
 		for (const p of sortedKeys(THEME_PACKS))
 			for (const key of SILVER_STRING_KEYS)
 				expect([p, key, typeIs(THEME_PACKS[p].strings[key], "string")]).toEqual([p, key, true]);
 	});
 
-	it("names and describes every Armory catalogue item", () => {
-		expect([...ARMORY_ITEM_IDS]).toEqual(ARMORY_CATALOG.map((i) => i.id));
+	it("names and describes every Armory catalogue item but the cosmetics (named by cosmetics.ts cosmeticNameKey)", () => {
+		expect([...ARMORY_ITEM_IDS]).toEqual(ARMORY_CATALOG.filter((i) => i.kind !== "cosmetic").map((i) => i.id));
 		for (const id of ARMORY_ITEM_IDS) {
 			expect([id, has(SILVER_STRING_KEYS, armoryItemNameKey(id))]).toEqual([id, true]);
 			expect([id, has(SILVER_STRING_KEYS, armoryItemDescKey(id))]).toEqual([id, true]);

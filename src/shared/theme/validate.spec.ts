@@ -595,7 +595,7 @@ describe("validateManifest: sprite sets (contract v2)", () => {
 		).toEqual([
 			`${SET}.assetId: unknown key (allowed: kind, frameW, frameH, pivot, pixelsPerTile, resample, facings, sheets, animations)`,
 			`${SET}.facings.mirror: unknown key (allowed: count, zeroDeg, ccw)`,
-			`${SET}.sheets[0].name: unknown key (allowed: assetId, w, h, outlineAssetId, frameW, frameH, pivot)`,
+			`${SET}.sheets[0].name: unknown key (allowed: assetId, w, h, outlineAssetId, dyeAssetId, frameW, frameH, pivot)`,
 			`${SET}.animations.move.row: unknown key (allowed: sheet, start, frames, stride, fps, loop)`,
 		]);
 	});
@@ -644,7 +644,7 @@ describe("validateManifest: sprite sets (contract v2)", () => {
 
 	it("checks the sheets: non-empty, uploaded IDs, sizes up to 1024 and at least one cell", () => {
 		expect(spriteErrors((s) => (s.sheets = []))).toEqual([
-			`${SET}.sheets: must be a non-empty array of { assetId, w, h, outlineAssetId?, frameW?, frameH?, pivot? }`,
+			`${SET}.sheets: must be a non-empty array of { assetId, w, h, outlineAssetId?, dyeAssetId?, frameW?, frameH?, pivot? }`,
 		]);
 		expect(spriteErrors((s) => (sheetAt(s, 0).assetId = "rbxasset://textures/skeleton.png"))).toEqual([
 			`${SET}.sheets[0].assetId: "rbxasset://textures/skeleton.png" must be "rbxassetid://<digits>" (upload with Asphalt or the Studio Asset Manager)`,
@@ -680,7 +680,7 @@ describe("validateManifest: sprite sets (contract v2)", () => {
 		]);
 		// any other spelling is still an unknown key
 		expect(spriteErrors((s) => (sheetAt(s, 0).outline = "rbxassetid://4001"))).toEqual([
-			`${SET}.sheets[0].outline: unknown key (allowed: assetId, w, h, outlineAssetId, frameW, frameH, pivot)`,
+			`${SET}.sheets[0].outline: unknown key (allowed: assetId, w, h, outlineAssetId, dyeAssetId, frameW, frameH, pivot)`,
 		]);
 	});
 

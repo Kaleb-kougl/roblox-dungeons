@@ -91,6 +91,11 @@ export interface SpriteFrame {
 	 * offset and size as the frame: an outline sheet has the atlas's size and cell grid (enemy outline plan O4).
 	 */
 	readonly outlineImage?: string;
+	/**
+	 * The sheet's dye image (SpriteSheetImage.dyeAssetId, docs/COSMETICS.md), or undefined when that sheet has none.
+	 * Same offset and size as the frame; drawn over it, tinted by the player's dye colour.
+	 */
+	readonly dyeImage?: string;
 	readonly offset: Vector2;
 	/** The cell size (ImageRectSize): the frame's sheet's own with per-sheet cells, else the set's frameW x frameH. */
 	readonly size: Vector2;
@@ -161,6 +166,7 @@ class PackSpriteSet implements SpriteSet {
 		return {
 			image: r.assetId,
 			outlineImage: r.outlineAssetId,
+			dyeImage: r.dyeAssetId,
 			offset: new Vector2(r.x, r.y),
 			size: new Vector2(r.w, r.h),
 			pivot: this.layout.cell(r.sheet).pivot,
@@ -862,6 +868,14 @@ export class ThemePack {
 	/** Every uploaded content id of a logical id, deterministic order, each once (ThemeCore.contentIds). Cached. */
 	contentIds(id: string): ReadonlyArray<ContentRef> {
 		return this.core.contentIds(id);
+	}
+
+	/**
+	 * docs/COSMETICS.md: the dye sheets of sprite set `id`, sheet order (ThemeCore.dyeContentIds). Never part of
+	 * contentIds: the stage manifest adds them only for a run whose players wear a dye of that character. Cached.
+	 */
+	dyeContentIds(id: string): ReadonlyArray<ContentRef> {
+		return this.core.dyeContentIds(id);
 	}
 
 	/** The logical ids with at least one content id, sorted. */

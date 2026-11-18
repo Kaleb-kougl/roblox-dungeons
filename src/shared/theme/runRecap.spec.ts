@@ -6,6 +6,7 @@
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { SILVER_AUDIO_IDS, SILVER_ROLES, SILVER_STRING_KEYS } from "./silver";
 import { SILVER_SHOP_STRING_KEYS } from "./silverShop";
+import { COSMETIC_STRING_KEYS } from "./cosmetics";
 import { CODEX_AUDIO_IDS, CODEX_STRING_KEYS } from "./codex";
 import { SECRET_AUDIO_IDS, SECRET_STRING_KEYS } from "./secrets";
 import { NEW_ENEMY_2_AUDIO_IDS } from "./newEnemies2";
@@ -137,7 +138,8 @@ describe("run recap and co-op moments: contract", () => {
 			CODEX_STRING_KEYS.size() +
 			SECRET_STRING_KEYS.size() +
 			SILVER_STRING_KEYS.size() +
-			SILVER_SHOP_STRING_KEYS.size();
+			SILVER_SHOP_STRING_KEYS.size() +
+			COSMETIC_STRING_KEYS.size();
 		expect(tail(REQUIRED_STRING_KEYS, all.size(), after)).toEqual(all);
 		expect(new Set(REQUIRED_STRING_KEYS).size()).toBe(REQUIRED_STRING_KEYS.size());
 	});

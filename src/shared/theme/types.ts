@@ -536,6 +536,14 @@ export interface SpriteSheetImage {
 	 */
 	outlineAssetId?: RobloxAssetId;
 	/**
+	 * Optional dye sheet of this sheet (docs/COSMETICS.md; the atlas pipeline's `<sheet>-dye.png`, character sets): same
+	 * size and cell grid, the dyed region (the Knight's plate, the Archer's leathers) as normalised grey, alpha only
+	 * there. The renderer draws it over each frame with the same rect, tinted by the player's dye colour. Absent: that
+	 * sheet's frames cannot be dyed (drawn as they are). Never preloaded with the set (ThemeCore.contentIds skips it):
+	 * ThemeCore.dyeContentIds lists them for a run whose players wear a dye.
+	 */
+	dyeAssetId?: RobloxAssetId;
+	/**
 	 * Per-sheet cells (docs/DEMON_ART.md DD4; the atlas pipeline's `cells: "perSheet"`): this sheet's own cell width,
 	 * height and pivot (pixels from its cell's top-left), each defaulting to the set's `frameW` / `frameH` / `pivot`.
 	 * The pivot marks the same point of the art as the set's, so the feet stay planted when the drawn sheet changes;
