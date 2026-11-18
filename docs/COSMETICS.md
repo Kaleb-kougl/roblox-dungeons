@@ -1,6 +1,6 @@
 # Cosmetics from recoloured sprites
 
-Status (2026-11-17): **code-complete on branch `cosmetics`** (from `main` @ `140c2fe3`; not merged, not pushed).
+Status (2026-11-17): **code-complete on branch `cosmetics`** (rebased onto `main` @ `86e3e8c5`, New enemies 3; not merged, not pushed).
 Owner: "proceed" (2026-11-17), so **CSD1-CSD12 are accepted as recommended**; rule 3 was revised while building (the
 floor bar is min(3 : 1, the undyed region's own contrast), "As built: theme (CS3)") and **awaits the owner's
 confirmation**. Built: CS1-CS7, CS10 (each track's "As built" section below) and an independent review's fixes ("Review
