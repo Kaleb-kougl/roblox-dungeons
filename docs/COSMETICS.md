@@ -4,10 +4,9 @@ Status (2026-11-17): **code-complete on branch `cosmetics`** (rebased onto `main
 Owner: "proceed" (2026-11-17), so **CSD1-CSD12 are accepted as recommended**; rule 3 was revised while building (the
 floor bar is min(3 : 1, the undyed region's own contrast), "As built: theme (CS3)") and **awaits the owner's
 confirmation**. Built: CS1-CS7, CS10 (each track's "As built" section below) and an independent review's fixes ("Review
-fixes"). Open: CS1's sign-off by eye on the dye contact sheets (`art/build/contact/class.*-dye-*.png`), CS0's device
-memory check, CS8 (upload the 15 `*-dye.png` from `art/upload/`: until their ids are in `assetIds.ts` no frame has a
-dye image, so dyes draw nothing in runs or previews; outlines, trails and sparks work now), CS9 (Studio check and
-playtest, CS7's two clients). Not built: CS11 (earned cosmetics), CS12 (telemetry), the title slot (docs/SILVER.md;
+fixes"), and CS8: the 15 dye sheets uploaded 2026-11-17 (ids in `packs/vale/assetIds.ts`), so the bundled vale pack
+draws dyes. Open: CS1's sign-off by eye on the dye contact sheets (`art/build/contact/class.*-dye-*.png`), CS0's device
+memory check, CS9 (Studio check and playtest, CS7's two clients). Not built: CS11 (earned cosmetics), CS12 (telemetry), the title slot (docs/SILVER.md;
 not a recolour).
 
 This is docs/SILVER.md's phase 2 (SV11-SV13, "Cosmetics") made concrete, built on art we already have: **no new
@@ -180,7 +179,8 @@ the spec does not need the PNGs):
   ("As built: Armory (CS6)".)
 - [ ] **CS7. Lobby and co-op.** Teammates' looks. (Built 2026-11-17, "As built: lobby (CS7)".) **Verify:** Studio, two
   clients (open).
-- [ ] **CS8. Upload.** 15 dye sheets into `assetIds.ts`.
+- [x] **CS8. Upload.** 15 dye sheets into `assetIds.ts` (2026-11-17; `contentIds.spec` expects every vale Knight / Archer
+  frame to carry one).
 - [ ] **CS9. Studio check and playtest.**
 - [x] **CS10. Prismatic.** Data half built (stops, `prismaticColor`, rule 5: "As built: theme (CS3)"); the drawing is CS5
   ("As built: view (CS5)": the sprite clock in runs, Heartbeat in menus, held at the first stop under reduced motion).

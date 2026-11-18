@@ -1608,8 +1608,8 @@ Decision log (deviations from `PLAN.md`):
   `exclude`; docs/ART.md "Dye sheets"): `<sheet>-dye.png`, same size and cell grid, the dyed region as normalised grey
   (alpha kept, else transparent), `dyeFile` per sheet and `dyeMeanValue` / `dyeSourceMean` per set in the generated
   layout; body and outline sheets byte-identical. Knight plate (sat < 0.10, lum >= 88, swing smears excluded) and Archer
-  leathers (lum <= 69, browns; the bow and sword cut by a 3 x 3 opening): 15 dye sheets, built 2026-11-17, **upload
-  pending** (until then no frame has a dye image and dyes draw nothing). Theme: `SpriteSheetImage.dyeAssetId` /
+  leathers (lum <= 69, browns; the bow and sword cut by a 3 x 3 opening): 15 dye sheets, built and uploaded 2026-11-17
+  (`assetIds.ts`), so the bundled vale pack draws dyes. Theme: `SpriteSheetImage.dyeAssetId` /
   `SpriteFrame.dyeImage`; `contentIds()` never lists dye sheets (`dyeContentIds(setId)` does: only a worn dye joins a
   floor's stage manifest, `StageAssetInput.dyed`); `cosmetics.ts` (colours, Prismatic stops, `prismaticColor`) and
   `cosmeticReport.ts` (own module: a cycle through contract.ts): dyed mean >= 40 CIE76 from the danger roles, >= 30 from
@@ -1624,7 +1624,7 @@ Decision log (deviations from `PLAN.md`):
   overrides, Prismatic on the sprite clock (reduced motion holds the first stop); the Armory Cosmetics tab (slot
   groups, swatches, buy / equip / take off through `MenuActions.armoryEquip`, a turning try-on `CharacterPreview`
   shared with CharacterScreen), the lobby's dye chip. Studio `KV_FakeWallet` presets `cosmetics` / `dressed`. Pending:
-  the dye sheet upload (CS8), the owner's sign-off on the masks (CS1) and on rule 3's revision, the device memory
+  the owner's sign-off on the masks (CS1) and on rule 3's revision, the device memory
   check (CS0), Studio check and playtest (CS9, CS7's two clients); earned cosmetics (CS11) and telemetry (CS12) not
   built.
 

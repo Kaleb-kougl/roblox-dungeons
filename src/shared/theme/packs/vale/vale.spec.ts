@@ -72,6 +72,8 @@ function allFiles(): Array<string> {
 			if (sheet.outlineFile !== undefined) {
 				files.push(sheet.outlineFile);
 			}
+			// docs/COSMETICS.md: the dye sheets are art/build files too
+			if (sheet.dyeFile !== undefined) files.push(sheet.dyeFile);
 		}
 	}
 	for (const id of sortedKeys(VALE_IMAGE_LAYOUTS)) {
@@ -983,6 +985,7 @@ describe("vale sprite cells (hand-computed from the generated layout)", () => {
 			w: 128,
 			h: 128,
 			outlineAssetId: ids["vanguard-run-outline.png"],
+			dyeAssetId: ids["vanguard-run-dye.png"],
 		});
 		// attack.3: last facing, last frame -> cell 63, the bottom-right cell
 		const last = set!.frame("attack.3", 7, 7);

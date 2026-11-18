@@ -73,7 +73,11 @@ describe("theme content ids (docs/PRELOAD.md P1)", () => {
 	});
 
 	it("docs/COSMETICS.md: a set's dye sheets are never in contentIds; dyeContentIds lists them in sheet order", () => {
-		const plain = new ThemeCore(VALE_MANIFEST, { warn: quiet });
+		// `plain`: the vale manifest with every dye id removed (vale's own are uploaded, CS8)
+		const bare = deepClone(VALE_MANIFEST) as unknown as Obj;
+		for (const sheet of ((bare.assets as Obj)["class.vanguard"] as Obj).sheets as Array<Obj>)
+			sheet.dyeAssetId = undefined;
+		const plain = new ThemeCore(bare as unknown as typeof VALE_MANIFEST, { warn: quiet });
 		const before = plain.contentIds("class.vanguard");
 		const m = deepClone(VALE_MANIFEST) as unknown as Obj;
 		const set = (m.assets as Obj)["class.vanguard"] as Obj;
@@ -104,9 +108,12 @@ describe("theme content ids (docs/PRELOAD.md P1)", () => {
 		// the frames carry the dye next to the outline, same rect
 		const f = new ThemePack(m, { warn: quiet }).sprites("class.vanguard")!.frame("idle", 0, 0);
 		expect(f.dyeImage).toBe(dyes[core.sprites("class.vanguard")!.frame("idle", 0, 0).sheet]);
-		expect(
-			new ThemePack(VALE_MANIFEST, { warn: quiet }).sprites("class.vanguard")!.frame("idle", 0, 0).dyeImage,
-		).toBe(undefined);
+		// the vale pack's dye sheets are uploaded (docs/COSMETICS.md CS8): every Knight / Archer frame has one
+		for (const setId of ["class.vanguard", "class.ranger"]) {
+			const vale = new ThemePack(VALE_MANIFEST, { warn: quiet });
+			expect(vale.sprites(setId)!.frame("idle", 0, 0).dyeImage).never.toBe(undefined);
+			expect(vale.dyeContentIds(setId).size()).toBe(setId === "class.vanguard" ? 8 : 7);
+		}
 	});
 
 	it("a sound returns its assetId then its variants, as sounds, each once", () => {
