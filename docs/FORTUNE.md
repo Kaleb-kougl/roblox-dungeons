@@ -97,7 +97,7 @@ you is greyed out with one line (`No curses left` / `No legendary to draw` / `No
 | When | What happens |
 |---|---|
 | Room engages + 3 s *(superseded: a player breaks its glinting barrel or crate; the flash at the piece, 0.12 s after its break; the rumours before it, docs/GOLDLING_RUMOURS.md "Player experience")* | A gold flash on the tile farthest from you, `sfx.golden.appear`, floor shout `GOLDLING!`, gold minimap blip in sight; first ever sighting: toast `A Goldling! Catch it before it escapes!` |
-| Running (10 s) | Flees within the room, jinks sideways when you get within 2.5 tiles, slips past you rather than cornering itself. A gold ring under it shrinks with its time. A positional coin-jingle loop *(as built: no loop, the theme contract has no optional positional ambience; GE4 found a 6 u/s chaser corners it anyway, see "Open owner calls")* |
+| Running (15 s, FD17; was 10 s) | Flees within the room, jinks sideways when you get within 2.5 tiles, slips past you rather than cornering itself. A gold ring under it shrinks with its time. A positional coin-jingle loop *(as built: no loop, the theme contract has no optional positional ambience; GE4 found a 6 u/s chaser corners it anyway, see "Open owner calls")* |
 | Each hit | A coin burst, a `+50` pop, `sfx.golden.hit` climbing a scale |
 | Last 3 s | Flicker, squeak, ring pulse (reduced motion: colour only) |
 | Caught | Coin fountain, 40 ms freeze (solo, Freeze frame setting), `sfx.golden.jackpot` (ducks music), `+1,500` pop, boosts hop out |
@@ -149,7 +149,7 @@ It never attacks and does no contact damage.
 - **Payouts** (`ScoreSource.GOLDEN`, usual multipliers): each damaging hit `hitPoints` (50) x floor scale, no combo
   feed; kill `killPoints` (1500) x floor scale (the kill feeds the combo once) and `partySize + 1` boosts (kinds from
   the golden stream with the BOOSTS weights, a fixed ring of offsets, lowest free slots; full ground loses one).
-- **Escape** at `escapeTicks` (600) after appearing: `freeActor` (no onDeath, score or drops); coins won stay.
+- **Escape** at `escapeTicks` (900 since FD17, was 600) after appearing: `freeActor` (no onDeath, score or drops); coins won stay.
 - Floor change: gone. Builds procs treat it like any actor.
 
 ## Design
@@ -242,6 +242,11 @@ It never attacks and does no contact damage.
 - **FD14.** Art: a gold recolour of an existing small set for v1.
 - **FD15.** Daily ruleset bumps; all-time boards stay `_v1` before launch.
 - **FD16.** Touch auto-target includes the Goldling after any enemy within 3 tiles.
+- **FD17 (owner, 2026-11-19).** The Goldling's escape window is 15 s, FD10's 10 s x 1.5 (`GOLDEN_ESCAPE_TICKS` 600 ->
+  900), so players have a better chance to catch it. A sim change: endless / daily / dev replays and scores change on
+  Goldling floors (boards stay `_v1`); `DAILY.ruleset` 23 -> 24. The timer ring reads `escapeTicks`, so it shrinks
+  over the longer window unchanged. The 10 s figures elsewhere in this doc (and docs/GOLDLING_RUMOURS.md GR8's census)
+  were measured at 10 s.
 
 ## Risks
 

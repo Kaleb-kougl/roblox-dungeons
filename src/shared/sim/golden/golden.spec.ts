@@ -258,12 +258,12 @@ describe("golden: archetype and opt-in state (GE2)", () => {
 		]);
 		expect((GOLDEN.data as { roomEnemy?: boolean }).roomEnemy).toBe(undefined);
 		expect(isWarbannerAuraTarget(archetypeIndex(GOLDEN_KIND))).toBe(false);
-		// RD8 (a): the 10 s window stays; the appear delay is gone (it comes out of its piece, RD10).
-		expect(ENDLESS_GOLDEN_CONFIG.escapeTicks).toBe(600);
+		// FD17: the window is 15 s (FD10's 10 s x 1.5); the appear delay is gone (it comes out of its piece, RD10).
+		expect(ENDLESS_GOLDEN_CONFIG.escapeTicks).toBe(900);
 		expect((ENDLESS_GOLDEN_CONFIG as unknown as { appearTicks?: number }).appearTicks).toBe(undefined);
 		// The plan's re-relax factor (GE4 measured 1.2 / 2 / 3: the catch rate barely moves, so the plan's stays).
 		expect(ENDLESS_GOLDEN_CONFIG.fleeFactor).toBe(1.2);
-		expect(GOLDEN_ESCAPE_TICKS).toBe(600);
+		expect(GOLDEN_ESCAPE_TICKS).toBe(900);
 	});
 
 	it("absent config: no golden state, no golden group; its piece is an ordinary piece (enemy damage lands)", () => {
@@ -597,7 +597,7 @@ describe("golden: running, room, escape (GE2)", () => {
 			wasJink = isJink;
 		}
 		expect(g.status).toBe(GoldenStatus.ESCAPED);
-		expect(r.s.tick - 1).toBe(appear + GOLDEN_ESCAPE_TICKS); // freed at the end of tick appear + 600
+		expect(r.s.tick - 1).toBe(appear + GOLDEN_ESCAPE_TICKS); // freed at the end of tick appear + 900
 		expect([g.escaped, g.caught]).toEqual([1, 0]);
 		expect(g.events.escaped).never.toBe(undefined);
 		expect(r.s.combat.actors[g.actorSlot].id).never.toBe(g.actorId); // the slot is free

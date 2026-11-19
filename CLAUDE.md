@@ -1629,6 +1629,11 @@ Decision log (deviations from `PLAN.md`):
   check (CS0), Studio check and playtest (CS9, CS7's two clients); earned cosmetics (CS11) and telemetry (CS12) not
   built.
 
+- **Longer Goldling window (port retune, 2026-11-19, docs/FORTUNE.md FD17).** The Goldling escapes 15 s after it
+  appears (`GOLDEN_ESCAPE_TICKS` 600 -> 900 ticks, FD10's 10 s x 1.5). Gameplay (opt-in `SimConfig.golden`): endless,
+  daily and dev replays and scores change on Goldling floors (boards stay `_v1`); `DAILY.ruleset` 23 -> 24. M1, every
+  golden fixture and the tutorial (no Goldling) replay exactly as before. The view's timer ring reads `escapeTicks`.
+
 - **Boss seal off walls (2026-11-18).** Gameplay (sim, every world with a boss). The boss room's seal
   (`boss/shared.ts` `sealArena` / `sealPlayer`) clamps every player into the room's bounds, the box around its FLOOR
   tiles; on endless floors that box also holds walls (the throne's dais, candle stands, door braziers, solid pillars,

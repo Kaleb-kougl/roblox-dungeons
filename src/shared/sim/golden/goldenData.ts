@@ -28,10 +28,10 @@ export const GoldenStatus = {
 } as const;
 
 /**
- * It escapes this long after appearing (FD10: 10 s). It appears when a player breaks its piece (docs/GOLDLING_RUMOURS.md
- * RD10; FD10's 3 s after the room engaged is gone).
+ * It escapes this long after appearing (15 s: FD10's 10 s x 1.5, port retune 2026-11-19, docs/FORTUNE.md FD17). It
+ * appears when a player breaks its piece (docs/GOLDLING_RUMOURS.md RD10; FD10's 3 s after the room engaged is gone).
  */
-export const GOLDEN_ESCAPE_TICKS = secondsToTicks(10);
+export const GOLDEN_ESCAPE_TICKS = secondsToTicks(15);
 /** The flee field's sources (living players' cells) are re-read every this many ticks. */
 export const GOLDEN_FIELD_TICKS = 6;
 /** A living player this close (centre to centre, world units) starts a jink when the cooldown is ready. */
