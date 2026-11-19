@@ -4,14 +4,21 @@
  * the body in a tick (LPD1: mirror, not refactor; the sim is not touched), in the sim's order:
  *
  *   1. stepPlayer (sim/player.ts) steps 1, 3-6 and 8: prev = pos, the roll / flask timers, the ROLL and FLASK press
- *      edges, the roll (the dash at the player's trait) or the walk (flask x weapon x Quickstep), facing, prevButtons.
+ *      edges, the roll (the dash at the player's trait) or the walk (flask x weapon x Quickstep, then the sword
+ *      spacing brake while the weapon in hand says so: docs/SWORD_SPACING.md Design 5), facing, prevButtons.
  *      Skipped (no motion): the i-frames a roll or the Ember grants, the Ember itself, events, the debug hit, Wrecker's
  *      roll smash (corrected: docs/LOCAL_PREDICTION.md "Census").
  *   2. stepWeapons (sim/combat/weapons/weapons.ts) as far as it moves the body: every set's cooldown, the SWAP edge
  *      (onto an empty set nothing, ARD3), then the weapon in hand: the sword's guard / combo / finisher wind-up and its
- *      lunge (sword.ts `step`), the bow's charge (bow.ts `step`). Nothing is swung, fired or erased; a weapon without a
+ *      lunge (sword.ts `step`, braked like the sim's), the bow's charge (bow.ts `step`). Nothing is swung, fired or erased; a weapon without a
  *      mirror keeps its slot (its merged moveMultiplier is held, Design 3). prevButtons.
  *   3. stepDrops 3 (sim/drops/drops.ts): the Quickstep and Frenzy timers count down (the walk and attackTicks read them).
+ *
+ * Sword spacing (docs/SWORD_SPACING.md Design 5, SP5): the sim brakes the walk and the lunge against a list built from
+ * the tick-start state (sim/combat/spacing.ts tickSpacing). The mirror brakes against its OWN list (never the sim's
+ * module scratch), built once per prediction pass from the merged state (buildMotionSpacing): one tick from the merged
+ * state is exact; over a longer horizon the enemies stay where the merged state had them (a documented limitation: the
+ * smoother corrects it like any mispredict).
  *
  * Everything else that touches the body (the boss's seal, hits, pickups, the floor change, a draft) is not predicted:
  * the next prediction from a newer merged state corrects it. The parity specs (predictMotion.spec.ts) pin this file to
@@ -41,6 +48,7 @@ import {
 	ROLL_TICKS,
 	SWORD_DATA,
 	SWORD_FINISHER,
+	SWORD_SPACING,
 	SWORD_STEP_WINDUP,
 	SWORD_V_BUSY,
 	SWORD_V_GUARD,
@@ -50,10 +58,14 @@ import {
 	SWORD_WEAPON_ID,
 	WALK_STEP,
 	WEAPON_SCRATCH_SLOTS,
+	BRAKE_RESULT,
 	bowChargeTicks,
+	brakeStep,
+	buildSpacingList,
 	combinedPercent,
 	movePlayer,
 	newPlayerState,
+	newSpacingList,
 	playerAt,
 	runMods,
 	scalePercent,
@@ -61,12 +73,16 @@ import {
 	swordGuardTicks,
 	weaponIndex,
 	weaponMoveMultiplier,
+	weaponSpacingActive,
 	weaponsAt,
 	type InputFrame,
 	type PlayerState,
 	type PlayerTraits,
 	type SimConfig,
 	type SimState,
+	type SpacingConfig,
+	type SpacingList,
+	type SpacingTick,
 	type WeaponSlotState,
 	type WeaponsState,
 } from "shared/sim";
@@ -81,6 +97,33 @@ export interface MotionScratch {
 	quickstepTicks: number;
 	/** Frenzy's timer, the same way. */
 	frenzyTicks: number;
+}
+
+/** The predictor's own spacing brake (its list and the run's config), filled by buildMotionSpacing. */
+export interface MotionSpacing {
+	readonly list: SpacingList;
+	config: Readonly<SpacingConfig>;
+}
+
+/** An empty brake (fill it with buildMotionSpacing). */
+export function newMotionSpacing(): MotionSpacing {
+	return { list: newSpacingList(), config: SWORD_SPACING };
+}
+
+/**
+ * A prediction pass's brake, like the sim's tickSpacing but into `out` (never the sim's scratch): undefined without
+ * `config` (the run config's `spacing` absent: nothing braked); else `out`'s list rebuilt from the merged `state` with
+ * `config`. Build it once per pass (every replayed tick reads the same merged state).
+ */
+export function buildMotionSpacing(
+	out: MotionSpacing,
+	state: Readonly<SimState>,
+	config: Readonly<SpacingConfig> | undefined,
+): SpacingTick | undefined {
+	if (config === undefined) return undefined;
+	buildSpacingList(state, config, out.list);
+	out.config = config;
+	return out;
 }
 
 function newSlot(): WeaponSlotState {
@@ -211,6 +254,7 @@ function mirrorSword(
 	world: Readonly<SimConfig>,
 	i: number,
 	swapped: boolean,
+	spacing: SpacingTick | undefined,
 ): void {
 	const v = slot.v;
 	const p = s.player;
@@ -235,8 +279,16 @@ function mirrorSword(
 	if (v[SWORD_V_STEP] === SWORD_STEP_WINDUP) {
 		// Read per tick like sword.ts (setSwordTimings applies); the same division gives the same bits.
 		const lungeStep = SWORD_DATA.lungeDistance / SWORD_DATA.finisherWindupTicks;
+		let lx = p.faceX * lungeStep;
+		let lz = p.faceZ * lungeStep;
+		// docs/SWORD_SPACING.md Design 4 / 5: the lunge stops at the nearest contact enemy's keep distance (the pass's list).
+		if (spacing !== undefined && spacing.config.lunge) {
+			brakeStep(spacing.list, p.x, p.z, lx, lz, spacing.config.stopConeCos);
+			lx = BRAKE_RESULT.x;
+			lz = BRAKE_RESULT.z;
+		}
 		// movePlayer reads the merged state only (solidCells) and writes only the scratch player.
-		movePlayer(state as SimState, p.faceX * lungeStep, p.faceZ * lungeStep, world, p);
+		movePlayer(state as SimState, lx, lz, world, p);
 		v[SWORD_V_BUSY] -= 1;
 		if (v[SWORD_V_BUSY] <= 0) {
 			// swing(ctx, v, SWORD_FINISHER), its bookkeeping only.
@@ -296,6 +348,7 @@ function mirrorPlayer(
 	input: Readonly<InputFrame>,
 	world: Readonly<SimConfig>,
 	traits: Readonly<PlayerTraits>,
+	spacing: SpacingTick | undefined,
 ): void {
 	const p = s.player;
 	p.prevX = p.x;
@@ -346,7 +399,16 @@ function mirrorPlayer(
 		const base =
 			(p.flaskTicks > 0 ? WALK_STEP * FLASK_MOVE_MULTIPLIER : WALK_STEP) * weaponMoveMultiplier(s.weapons);
 		const walk = scalePercent(base, s.quickstepTicks > 0 ? QUICKSTEP_WALK_PERCENT : BOOST_PERCENT);
-		movePlayer(sim, mx * walk, mz * walk, world, p);
+		let wx = mx * walk;
+		let wz = mz * walk;
+		// docs/SWORD_SPACING.md Design 3 / 5: braked while the weapon in hand says so (the scratch weapons, as the sim
+		// reads its own before stepWeapons), against the pass's list.
+		if (spacing !== undefined && spacing.config.walk && weaponSpacingActive(s.weapons, buttons)) {
+			brakeStep(spacing.list, p.x, p.z, wx, wz, spacing.config.stopConeCos);
+			wx = BRAKE_RESULT.x;
+			wz = BRAKE_RESULT.z;
+		}
+		movePlayer(sim, wx, wz, world, p);
 	}
 
 	if (input.aimX !== 0 || input.aimZ !== 0) {
@@ -371,6 +433,7 @@ function mirrorWeapons(
 	input: Readonly<InputFrame>,
 	world: Readonly<SimConfig>,
 	i: number,
+	spacing: SpacingTick | undefined,
 ): void {
 	const w = s.weapons;
 	const buttons = input.buttons;
@@ -388,7 +451,7 @@ function mirrorWeapons(
 		const slot = sets[w.activeSet];
 		if (slot.weapon !== NO_WEAPON) {
 			mirroredIndices();
-			if (slot.weapon === swordIndex) mirrorSword(s, slot, state, input, world, i, swapped);
+			if (slot.weapon === swordIndex) mirrorSword(s, slot, state, input, world, i, swapped, spacing);
 			else if (slot.weapon === bowIndex) mirrorBow(s, slot, state, input, i, swapped);
 			// Any other weapon: its slot stays the base's (its moveMultiplier is held).
 		}
@@ -399,7 +462,8 @@ function mirrorWeapons(
 /**
  * One tick of player `playerIndex`'s motion on `s`, from merged `state` (read only) with `input` (the frame the sim
  * will step for that tick), `world` (the floor's config: simWorldConfig(state, runConfig)) and `traits` (the player's,
- * playerTraits(runConfig, playerIndex)). See the file comment.
+ * playerTraits(runConfig, playerIndex)) and `spacing` (the pass's brake: buildMotionSpacing(own, state,
+ * runConfig.spacing); undefined: nothing braked). See the file comment.
  */
 export function predictMotionTick(
 	s: MotionScratch,
@@ -408,9 +472,10 @@ export function predictMotionTick(
 	world: Readonly<SimConfig>,
 	playerIndex: number,
 	traits: Readonly<PlayerTraits>,
+	spacing?: SpacingTick,
 ): void {
-	mirrorPlayer(s, state, input, world, traits);
-	mirrorWeapons(s, state, input, world, playerIndex);
+	mirrorPlayer(s, state, input, world, traits, spacing);
+	mirrorWeapons(s, state, input, world, playerIndex, spacing);
 	// stepDrops 3: the timers count down after the step (only with drops; both stay 0 without).
 	if (s.quickstepTicks > 0) s.quickstepTicks -= 1;
 	if (s.frenzyTicks > 0) s.frenzyTicks -= 1;
