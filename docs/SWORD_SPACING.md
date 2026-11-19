@@ -19,7 +19,7 @@ No new state, no new hash group, no wire change: the brake reads only hashed sta
 
 ## Status (2026-11-19)
 
-Plan only. Nothing built. SP0 (the measurement) comes first; it sets the baseline and does not gate the rest.
+SP0 (the measurement) built and run (2026-11-19, the table under SP0); SP1 on are plan only.
 
 **Owner (2026-11-19): every open question answered** (keyboard and mouse; brake only while attacking, SPD1; M1
 included, SPD6; no knockback for now, SPD4). On keyboard and mouse the facing is the mouse's (the "facing follows the
@@ -178,7 +178,7 @@ Archer.
 
 ## Tasks
 
-- [ ] **SP0. Measure first.** A census spec `run/swordSpacing.census.spec.ts` (`--census`, sharded by seed if long)
+- [x] **SP0. Measure first.** A census spec `run/swordSpacing.census.spec.ts` (`--census`, sharded by seed if long)
   on endless floors 1-10, seeds 1-30, the Knight, with two fighters from `run/testing/characterTune.ts`:
   - **tidy**: today's fighter (stops at `TUNE_SWORD_CLOSE` 1.4, holds FIRE in reach);
   - **greedy**: the same, but it keeps walking at its target while attacking (the human habit in the complaint), as a
@@ -189,6 +189,71 @@ Archer.
   room clear time, and how often a greedy Knight is inside a keep distance.
   → Verify: the table goes in this doc (the baseline for SP4, and the enemy-driven share for a later knockback plan).
   The work goes on to SP1 whatever the split (SPD4).
+
+  **As built (SP0, 2026-11-19).** `run/testing/spacingCensus.ts` (`spacingRun`, `swordSpacingShard`, `ContactProbe`,
+  `greedyKnightFrame`), shard specs `run/swordSpacing.census.<n>.spec.ts` (10 shards of 3 seeds; `--census` only,
+  otherwise they run nothing) and a fast `run/swordSpacing.smoke.spec.ts`. `survivalBot.ts` gained an optional
+  `SurvivalOptions.fighter` (the fight frame, default `fighterFrame`). The full grid ran: floors 1-10 x seeds 1-30, both
+  fighters, the real path (`buildEndlessRunConfig(seed, 1, { characters: ["knight"] })`, survivalBot's descent: every
+  room fought, the boss fought, greedy drafts), **immortal** (Driver's heart top-up before every tick: hits land and
+  count, no death ends a run, so all 300 floors are sampled per fighter). 1016 s wall on 2 cores, shards two at a time
+  (about 3.3 min a shard side by side).
+  - **Contact hits, exactly:** `SimCtx.hurtPlayerAt` / `hurtPlayer` wrapped for the run (restored after); a landed call
+    whose caller (`debug.info(2, "n")`) is `contactDamageOn` is a contact hit, `enemyBulletHit` a bullet hit, anything
+    else (Jackal lunge, Charger, Shieldwall bash) "other". Its actor is `contactDamageOn`'s pick (first overlapping
+    contact actor in slot order). No sim change.
+  - **Attribution:** over the 10 ticks before, each tick's change of the player-actor distance split symmetrically
+    (mean of "player moved first" and "actor moved first"); player-driven when the player's closing is larger. The
+    player's part is split again by what moved him: walk ticks, lunge ticks (the finisher winding up), roll ticks.
+    "Standing": neither side closed 0.05 tiles (already overlapping when the post-hit window ran out).
+  - **Greedy fighter:** the tidy decisions; every in-sight frame a full key move (the 8 `keyboardMoveVector` directions
+    through `screenToWorld`, quantized) at the target, straight within `SWORD_DATA.reach + 1` of its edge, along the
+    path farther; one tidy frame after a key move stalled on a wall (without it 112 of 2375 rooms timed out with the
+    bot pressed into a wall); aim the exact direction (the pointer on the enemy). Rolls snap to the nearest key.
+
+  | fighter | archetype | contact hits | player-driven (lunge-led) | enemy-driven | standing | mean closing player (walk / lunge / roll) / enemy |
+  |---|---|---|---|---|---|---|
+  | tidy | swarmer | 417 | 116 (99) | 301 | 38 | 0.29 (0.10 / 0.18 / 0.01) / 0.67 |
+  | tidy | slime | 706 | 65 (59) | 641 | 140 | 0.07 (0.01 / 0.06 / 0.00) / 0.20 |
+  | tidy | slimelet | 531 | 111 (108) | 420 | 313 | 0.05 (0.00 / 0.05 / 0.00) / 0.05 |
+  | tidy | reaper | 237 | 78 (56) | 159 | 27 | 0.11 (0.03 / 0.09 / 0.00) / 0.14 |
+  | tidy | bruiser | 552 | 354 (320) | 198 | 143 | 0.35 (0.00 / 0.28 / 0.06) / 0.04 |
+  | tidy | room enemies | 2443 | 724 (642) | 1719 | 661 | |
+  | tidy | Mother Mayhem | 2176 | 1071 (360) | 1105 | 1136 | 0.19 (0.15 / 0.04 / 0.00) / 0.00 |
+  | tidy | Demon Lord | 2309 | 847 (451) | 1462 | 1548 | 0.18 (0.13 / 0.05 / 0.01) / -0.01 |
+  | greedy | swarmer | 612 | 445 (155) | 167 | 35 | 0.68 (0.46 / 0.21 / 0.01) / 0.37 |
+  | greedy | slime | 792 | 578 (64) | 214 | 234 | 0.68 (0.64 / 0.05 / 0.00) / 0.18 |
+  | greedy | slimelet | 460 | 164 (35) | 296 | 268 | 0.10 (0.10 / 0.00 / 0.00) / 0.06 |
+  | greedy | reaper | 555 | 500 (81) | 55 | 44 | 0.71 (0.59 / 0.11 / 0.01) / -0.05 |
+  | greedy | bruiser | 665 | 529 (41) | 136 | 141 | 0.77 (0.62 / 0.06 / 0.09) / 0.04 |
+  | greedy | room enemies | 3084 | 2216 (376) | 868 | 722 | |
+  | greedy | Mother Mayhem | 1956 | 1195 (134) | 761 | 887 | 0.40 (0.31 / 0.02 / 0.07) / 0.00 |
+  | greedy | Demon Lord | 2180 | 929 (162) | 1251 | 1480 | 0.30 (0.28 / 0.01 / 0.01) / 0.00 |
+
+  (Swarmer rows include the Demon Lord's summons; no contact hit came from any other archetype.)
+
+  | fighter | rooms (cleared) | contact hits / room | mean clear | in keep / in contact, room fights | boss fights: contact hits / fight, in keep | bullet / other hits |
+  |---|---|---|---|---|---|---|
+  | tidy | 2374 (2353) | 1.03 | 457.9 ticks (7.63 s) | 6.3 % / 5.6 % | 74.9, 82.6 % | 928 / 236 |
+  | greedy | 2368 (2367) | 1.29 | 451.2 ticks (7.52 s) | 8.7 % / 8.2 % | 69.5, 73.9 % | 1123 / 227 |
+
+  Findings:
+  - Against room enemies the greedy Knight takes 26 % more contact hits than the tidy one and 3x the player-driven ones
+    (2216 vs 724, 72 % of his), led by his walk (17 % lunge-led); the reaper (90 %), bruiser (80 %), swarmer and slime
+    (73 %) are mostly his doing. The walk brake (SP2) targets exactly these.
+  - **The tidy fighter walks in too, by its lunge:** 89 % of its player-driven room hits are lunge-led (bruiser 320 of
+    354): the finisher carries it from `TUNE_SWORD_CLOSE` 1.4 to about 0.4, inside every contact range. So SP4's "tidy:
+    no change" gate is wrong as written; the lunge brake (SP3) should cut its player-driven hits as well.
+  - Enemy-driven: 1719 tidy / 868 greedy room hits (swarmers' chase and lunge, slimes, slimelets that split onto the
+    player). The brake cannot touch these (SPD4); the knockback plan's baseline.
+  - **Bosses are a bot artefact:** `TUNE_SWORD_CLOSE` 1.4 is inside a boss's contact range 1.55, so both fighters stand
+    in the boss (81 % / 72 % of boss ticks in contact, about 70 contact hits a fight, half of them "standing"). Boss
+    rows measure the bot, not the habit; the brake will hold even the tidy fighter out at 1.70 there (SP4's boss TTK
+    rows matter more than these counts).
+  - Clear time is the same for both (7.5-7.6 s a room): walking in buys the Knight nothing.
+  - SP4 adds its columns as entries of `SPACING_CENSUS_COLUMNS` (`SpacingRunOptions`: `fighter`, `label`, and its new
+    `spacing` field, set with `setSwordSpacing` around the run); the doc's totals are summed from the shards'
+    `[spacing-raw]` lines.
 - [ ] **SP1. `buildSpacingList` and `brakeStep`** (Design 1-2) in `sim/combat/spacing.ts`, tunables in
   `spacingData.ts`. Specs (`sim/combat/spacing.spec.ts`):
   - an empty list, or a step far from every entry, returns the step bit for bit;

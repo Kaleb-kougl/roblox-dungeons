@@ -10,7 +10,8 @@
  * mode, rooms by kind, the roll's reach; survivalBot.ts: the endless survival census),
  * the dense fight setup of the replay bench (denseFight.ts), and docs/WALL_SLIDE.md WS5's snag census (snagCensus.ts,
  * split over its shard specs), and docs/NEW_ENEMIES_2.md NX6's room pool census (newEnemies2Census.ts), and
- * docs/NEW_ENEMIES_3.md NT6's (newEnemies3Census.ts) and NT12-lite tuning (newEnemies3Tune.ts).
+ * docs/NEW_ENEMIES_3.md NT6's (newEnemies3Census.ts) and NT12-lite tuning (newEnemies3Tune.ts), and
+ * docs/SWORD_SPACING.md SP0's contact-hit census (spacingCensus.ts: the tidy and greedy Knight, the contact probe).
  */
 export * from "./endlessBot";
 export * from "./partyBot";
@@ -30,3 +31,4 @@ export * from "./newEnemies2Census";
 export * from "./newEnemies2Tune";
 export * from "./newEnemies3Census";
 export * from "./newEnemies3Tune";
+export * from "./spacingCensus";

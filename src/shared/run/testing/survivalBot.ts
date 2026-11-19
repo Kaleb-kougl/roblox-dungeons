@@ -52,6 +52,7 @@ import {
 	newFighterMemory,
 	type FightEnv,
 	type FighterMemory,
+	type FighterMode,
 	type TuneCharacter,
 } from "./characterTune";
 import { Driver, bossOf, distanceField, frame, walkDir, type Field } from "./endlessBot";
@@ -114,7 +115,23 @@ export interface SurvivalOptions {
 	readonly onStep?: (s: SimState, input: InputFrame) => void;
 	/** Census only: hearts topped up before every tick (Driver's `immortal`), so the run reaches maxFloor. */
 	readonly immortal?: boolean;
+	/**
+	 * The fight frame (default: fighterFrame with the character's mode), called once per room / boss fight tick before
+	 * that tick is stepped; `fight` says which (docs/SWORD_SPACING.md SP0's greedy fighter and its observer).
+	 */
+	readonly fighter?: SurvivalFighter;
 }
+
+/** A fight frame for survivalRun (SurvivalOptions.fighter): fighterFrame's arguments plus the kind of fight. */
+export type SurvivalFighter = (
+	s: SimState,
+	mode: FighterMode,
+	t: ActorState | undefined,
+	env: FightEnv,
+	mem: FighterMemory,
+	extra: number,
+	fight: "room" | "boss",
+) => InputFrame;
 
 /** The fight environment of the driver's current floor: sight through its bullet blocker, BFS fields cached by cell. */
 function floorEnv(drv: Driver): FightEnv {
@@ -212,8 +229,14 @@ export function survivalRun(seed: number, who: TuneCharacter, options: SurvivalO
 	let deathIn = "";
 	const dead = () => s.player.dead !== 0;
 	/** Steps one fight frame and returns the hits that landed. */
-	const fightTick = (target: ActorState | undefined, env: FightEnv): number => {
-		drv.tick(fighterFrame(s, mode, target, env, mem, drv.assisted(0)));
+	const fighter = options.fighter;
+	const fightTick = (target: ActorState | undefined, env: FightEnv, fight: "room" | "boss"): number => {
+		const extra = drv.assisted(0);
+		drv.tick(
+			fighter !== undefined
+				? fighter(s, mode, target, env, mem, extra, fight)
+				: fighterFrame(s, mode, target, env, mem, extra),
+		);
 		return s.events.playerHits;
 	};
 	/** Walks with drv.walkTo, counting the hits as travel. */
@@ -263,7 +286,7 @@ export function survivalRun(seed: number, who: TuneCharacter, options: SurvivalO
 			while (n < limit && rec.cleared === 0 && !dead() && drv.floor() === floor) {
 				const t = roomTarget(s, rec);
 				if (t === undefined) break;
-				hits += fightTick(t, env);
+				hits += fightTick(t, env, "room");
 				n++;
 			}
 			rooms.push({
@@ -296,7 +319,7 @@ export function survivalRun(seed: number, who: TuneCharacter, options: SurvivalO
 				let n = 0;
 				const limit = SURVIVAL_BOSS_SECONDS * SIM_HZ;
 				while (n < limit && living(boss) && !dead() && drv.floor() === floor) {
-					hits += fightTick(roomTarget(s, undefined) ?? boss, env);
+					hits += fightTick(roomTarget(s, undefined) ?? boss, env, "boss");
 					n++;
 				}
 				bosses.push({ floor, boss: id, hits, ticks: n, killed: !living(boss), died: dead() });
