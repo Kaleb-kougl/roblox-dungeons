@@ -87,6 +87,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/SILVER.md` | Silver, the cross-run currency (phase 1 built): earned per room cleared, per floor / boss / vault / secret / Goldling, from Silver in barrels and crates (floor-built, any break pays), a run minimum and day bonuses; server-owned wallet `KV_Wallet_v1` (transactions only); spent in the Armory on upgrades (Vigor / Deep Flask / Plating / Prospector) and the Archer unlock on one doubling price ladder; base hearts down by one (Knight 2, Archer 1 1/2) with half-heart containers: SV0 findings, plan, as built, tasks SV0-SV18 / SC1-SC4, decisions SVD1-SVD41 |
 | `docs/SILVER_SHOP.md` | Silver shop (Silver for Robux through developer products: four packs Pouch / Purse / Chest / Hoard, 150-2,500 Silver at 20 / 55 / 115 / 265 Robux by default, prices read from Roblox; one pool with earned Silver; a quiet `+` beside the Armory's and the main menu's balance only; each receipt one wallet transaction with a `PurchaseId` ring; `KV_FakeShop` in Studio; supersedes SVD1): plan, as built, tasks SH0-SH9, decisions SHD1-SHD11 |
 | `docs/COSMETICS.md` | Cosmetics from recoloured sprites (dye sheets cut from the existing Knight / Archer body sheets and tinted at runtime: 8 dyes + Prismatic per character; outline, roll-trail and spark colours; the Armory's Cosmetics tab with try-on; looks sent to teammates; readability validator `cosmeticReport`; presentation, wallet catalogue and server fields only): plan, as built, tasks CS0-CS12, decisions CSD1-CSD12 |
+| `docs/SWORD_SPACING.md` | Sword spacing (the Knight's walk while attacking and the finisher's lunge stop at a contact enemy's keep distance, contact range + 0.15, with a stop cone for keys; every world, M1 included; the Archer untouched; gameplay): findings, plan, as built, contact-hit census, tasks SP0-SP9, decisions SPD1-SPD8 |
 
 Decision log (deviations from `PLAN.md`):
 - **Art (docs/ART.md).** The theme contract gained a `"sprites"` kind (large pre-rendered cells, 1/4/8/16 screen-space
@@ -1644,6 +1645,26 @@ Decision log (deviations from `PLAN.md`):
   it; first nearest in ring scan order; none: the room's centre tile). A clamp that lands clear, and a player already
   inside, are exactly as before, so every golden fixture matches; co-op runs where a straggler hit a wall replay
   differently. `DAILY.ruleset` 22 -> 23. Spec `run/bossSeal.spec.ts`.
+
+- **Sword spacing (port retune, 2026-11-19, docs/SWORD_SPACING.md).** Gameplay (sim, every world, M1 included, SPD6).
+  While the Knight attacks (the weapon hook `WeaponDef.spacing`, read through `weaponSpacingActive`: the sword's FIRE
+  held, a swing's recovery, the combo window or the finisher's wind-up; never the guard alone or a roll, SPD1 / SPD3)
+  his walk, and always the finisher's lunge, go through `brakeStep` (leaf `sim/combat/spacingBrake.ts`): the step is cut
+  so it never ends inside a contact enemy's keep distance (`a.radius + PLAYER_RADIUS + SWORD_SPACING.marginTiles` 0.15;
+  only actors with `contactDamage > 0`, SPD2), never longer than the step, never against it, never pushing the player
+  out (SPD4); within the stop cone (`stopConeCos`, cos 25 degrees, SPD8) the sideways part is dropped too, so a key held
+  at an enemy stops the Knight. One list per tick from the tick-start state (`tickSpacing`, sim/combat/spacing.ts, before
+  any stepPlayer; module scratch, never hashed), read by the walk (stepPlayer's trailing `spacing`) and the lunge
+  (`SimCtx.spacing`, set by stepCombat after bind()). Opt-in `SimConfig.spacing` on the RUN config (not a floor's world),
+  set by shared/run `swordSpacing()` in `buildRunConfig` (M1 game / dungeon, not the greybox), `buildEndlessRunConfig`
+  (endless, daily, dev, co-op, the server's registry and validator) and the tutorial. Every golden fixture and the 11
+  web-tuned parity specs replay under `setSwordSpacing(SwordSpacing.WEB)` next to `setPlayerMover(PlayerMover.WEB)` and
+  still match bit for bit. **The prediction mirror brakes too** (predictMotion.ts, its own list per
+  `LocalPredictor.rebuild` from the merged state; enemies frozen over the horizon; `predictMotion.spec.ts`'s brawl walks
+  and `brake` / `lungeBrake` coverage pin it). No new state, hash group or wire change. Live replays and scores changed
+  (M1 runs recorded by older builds no longer replay; boards stay `_v1`); `DAILY.ruleset` 24 -> 25; re-recorded pins:
+  `tutorial/tutorial.spec`'s lesson rows only. Debug: `KV_CollisionDebug` draws the keep circles. Census
+  `run/swordSpacing.census.<n>` (`--census`). Studio check and playtest (SP7) pending.
 
 ## Commands
 
