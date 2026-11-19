@@ -72,7 +72,9 @@ export const DAILY: DailyConfig = table.freeze({
 	// endless room pool; 14 seeded kinds reshuffle every roster, the Chainhook never on floor 1).
 	// 22: new enemies 3 (docs/NEW_ENEMIES_3.md NT6, NTD14: the Mortar, Mender and Jackal pack join the endless room pool;
 	// 17 seeded kinds reshuffle every roster, the Mender never on floor 1).
-	ruleset: 22,
+	// 23: the boss room's seal never leaves a straggler in a wall (boss/shared.ts sealPlayer: a clamp that lands the
+	// body on a blocked cell moves it to the nearest open cell of the arena); co-op boss fights can replay differently.
+	ruleset: 23,
 	labelOffset: 1,
 	yesterdayCacheSeconds: 600,
 	minEntrantsForPercentile: 20,

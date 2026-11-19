@@ -1629,6 +1629,17 @@ Decision log (deviations from `PLAN.md`):
   check (CS0), Studio check and playtest (CS9, CS7's two clients); earned cosmetics (CS11) and telemetry (CS12) not
   built.
 
+- **Boss seal off walls (2026-11-18).** Gameplay (sim, every world with a boss). The boss room's seal
+  (`boss/shared.ts` `sealArena` / `sealPlayer`) clamps every player into the room's bounds, the box around its FLOOR
+  tiles; on endless floors that box also holds walls (the throne's dais, candle stands, door braziers, solid pillars,
+  ragged edges), so a co-op straggler pulled in from outside could land in one and stay stuck (census: every one of 90
+  boss floors, 28 % of the cells within 6 tiles of the arena). Now a clamp that leaves the body overlapping a blocked
+  cell (`ctx.isBodyBlocked` or an intact piece, circleOverlapsWall's test, `SEAL_OVERLAP_TOLERANCE`) puts the player on
+  the centre of the nearest open cell of the arena (inside its bounds, in the room by `ctx.roomIdAt` when the world has
+  it; first nearest in ring scan order; none: the room's centre tile). A clamp that lands clear, and a player already
+  inside, are exactly as before, so every golden fixture matches; co-op runs where a straggler hit a wall replay
+  differently. `DAILY.ruleset` 22 -> 23. Spec `run/bossSeal.spec.ts`.
+
 ## Commands
 
 ```

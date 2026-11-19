@@ -25,7 +25,7 @@
  * Deterministic: all state is in ActorState, randomness via ctx.random*, no trig.
  */
 
-import { SIM_DT } from "../../../../units";
+import { SIM_DT, TILE_SIZE } from "../../../../units";
 import type { SimCtx } from "../../../ctx";
 import { Button } from "../../../../input";
 import { rotateDir, type Dir } from "../../../patterns";
@@ -37,6 +37,8 @@ import { faceToward, moveActor, toPlayer, walkToward } from "../../helpers";
 import { archetypeAt } from "../../registry";
 import { AiState, NO_KIND, type ActorState, type ArchetypeData } from "../../types";
 import { V_HOME_X, V_HOME_Z, engage, isRoomEnemyData } from "../enemyShared";
+import { cellKey, gridToWorld, worldToGrid, type SolidCells } from "shared/dungeon";
+import { solidCells } from "../../../../breakables/cells";
 
 // ---------------------------------------------------------------------------------------------
 // States, slots, rules
@@ -62,6 +64,9 @@ export const BOSS_MAX_REPEAT = 2;
 
 /** v[] slot zeroed when a phase transition starts (Mother Mayhem: the slam's impact mark). */
 export const BOSS_V_MARK = 4;
+/** A sealed player's body overlapping a blocked cell by at most this much is clear (collision.ts circleOverlapsWall's). */
+export const SEAL_OVERLAP_TOLERANCE = 1e-6;
+
 /** v[] slots: the last attack started, and how many times in a row. */
 export const BOSS_V_LAST = 5;
 export const BOSS_V_REPEAT = 6;
@@ -193,21 +198,101 @@ export function checkBossPhase(ctx: SimCtx, a: ActorState, spec: BossFightSpec, 
 
 /**
  * The room seal: while the fight is on, the player cannot leave the arena's bounds (clamped back inside them, minus
- * the player's radius, every tick). Corridors only meet a room at its edge, so a clamped player always stands on the
- * room's floor (or in the corridor mouth inside the bounds). Pure sim, no collision or config changes.
+ * the player's radius, every tick). The bounds are the box around the room's FLOOR tiles, and that box can hold walls:
+ * on endless floors the throne's dais, candle stands, door braziers, solid pillars and ragged room edges sit on it. A
+ * player held at the seal from inside stays clear (the mover keeps the body off walls), but a straggler pulled in from
+ * outside can be clamped into one, so a clamp that leaves the body overlapping a blocked cell puts the player on the
+ * centre of the nearest open cell of the room instead (sealSpot). A clamp that lands clear is kept exactly (every
+ * fixture's boss run).
  */
 export function sealArena(ctx: SimCtx, room: EncounterRoom | undefined): void {
 	if (room === undefined) return;
 	// Co-op (M4): every player is sealed in, in index order (a straggler is pulled onto the arena floor).
 	const n = partySize(ctx.state);
-	for (let i = 0; i < n; i++) sealPlayer(playerAt(ctx.state, i), room);
+	for (let i = 0; i < n; i++) sealPlayer(ctx, playerAt(ctx.state, i), room);
 }
 
-/** Clamps one player inside the room's bounds (minus the player's radius). */
-export function sealPlayer(p: PlayerState, room: EncounterRoom): void {
+/** Clamps one player inside the room's bounds (minus the player's radius), off any wall the clamp put it in. */
+export function sealPlayer(ctx: SimCtx, p: PlayerState, room: EncounterRoom): void {
 	const r = PLAYER_RADIUS;
-	p.x = clamp(p.x, room.minX + r, room.maxX - r);
-	p.z = clamp(p.z, room.minZ + r, room.maxZ - r);
+	const x = clamp(p.x, room.minX + r, room.maxX - r);
+	const z = clamp(p.z, room.minZ + r, room.maxZ - r);
+	if (x === p.x && z === p.z) return; // inside: the mover keeps the body clear
+	const solid = solidCells(ctx.state);
+	if (bodyOverlapsBlocked(ctx, x, z, r, solid)) {
+		sealSpot(ctx, room, x, z, solid);
+		p.x = sealScratch.x;
+		p.z = sealScratch.z;
+		return;
+	}
+	p.x = x;
+	p.z = z;
+}
+
+/** True when the cell blocks a body: a wall, void or pool tile (ctx.isBodyBlocked) or an intact breakable. */
+function sealCellBlocked(ctx: SimCtx, gx: number, gz: number, solid: SolidCells | undefined): boolean {
+	if (ctx.isBodyBlocked(gridToWorld(gx), gridToWorld(gz))) return true;
+	return solid !== undefined && solid.has(cellKey(gx, gz));
+}
+
+/** True when a body of radius r at (x, z) overlaps a blocked cell (collision.ts circleOverlapsWall's test). */
+function bodyOverlapsBlocked(ctx: SimCtx, x: number, z: number, r: number, solid: SolidCells | undefined): boolean {
+	const half = TILE_SIZE / 2;
+	const rr = (r - SEAL_OVERLAP_TOLERANCE) * (r - SEAL_OVERLAP_TOLERANCE);
+	const gz1 = worldToGrid(z + r);
+	const gx1 = worldToGrid(x + r);
+	for (let gz = worldToGrid(z - r); gz <= gz1; gz++)
+		for (let gx = worldToGrid(x - r); gx <= gx1; gx++) {
+			if (!sealCellBlocked(ctx, gx, gz, solid)) continue;
+			const cx = gridToWorld(gx);
+			const cz = gridToWorld(gz);
+			const dx = x - clamp(x, cx - half, cx + half);
+			const dz = z - clamp(z, cz - half, cz + half);
+			if (dx * dx + dz * dz < rr) return true;
+		}
+	return false;
+}
+
+const sealScratch = { x: 0, z: 0 };
+
+/**
+ * Writes into sealScratch the centre of the open cell of `room` nearest (x, z): a cell inside the room's bounds, not
+ * blocked, and in the room by the exact cell rule when the world has one (config.roomIdAt; a corridor pocket inside the
+ * box is not the arena). A body at a cell centre never touches a neighbouring cell (PLAYER_RADIUS < TILE_SIZE / 2).
+ * Rings outward from (x, z)'s cell, the first nearest in scan order wins (deterministic); none: the room's centre tile.
+ */
+function sealSpot(ctx: SimCtx, room: EncounterRoom, x: number, z: number, solid: SolidCells | undefined): void {
+	const exact = ctx.config.roomIdAt !== undefined;
+	const cgx = worldToGrid(x);
+	const cgz = worldToGrid(z);
+	const maxRing = math.ceil(math.max(room.maxX - room.minX, room.maxZ - room.minZ) / TILE_SIZE) + 1;
+	let best = math.huge;
+	sealScratch.x = room.cx;
+	sealScratch.z = room.cz;
+	for (let k = 0; k <= maxRing; k++) {
+		// Every cell centre on ring k is at least (k - 1/2) tiles from (x, z), which lies in the centre cell.
+		const near = (k - 0.5) * TILE_SIZE;
+		if (k > 0 && near * near > best) return;
+		for (let oz = -k; oz <= k; oz++)
+			for (let ox = -k; ox <= k; ox++) {
+				if (math.max(math.abs(ox), math.abs(oz)) !== k) continue;
+				const gx = cgx + ox;
+				const gz = cgz + oz;
+				const cx = gridToWorld(gx);
+				const cz = gridToWorld(gz);
+				if (!inRoom(room, cx, cz, 0)) continue;
+				if (sealCellBlocked(ctx, gx, gz, solid)) continue;
+				if (exact && ctx.roomIdAt(cx, cz) !== room.id) continue;
+				const dx = cx - x;
+				const dz = cz - z;
+				const d2 = dx * dx + dz * dz;
+				if (d2 < best) {
+					best = d2;
+					sealScratch.x = cx;
+					sealScratch.z = cz;
+				}
+			}
+	}
 }
 
 /** True when the bound player wakes the boss: inside the room by data.engageInset (no room: within range). */
