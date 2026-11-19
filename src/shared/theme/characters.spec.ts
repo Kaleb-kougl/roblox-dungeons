@@ -73,12 +73,12 @@ describe("character strings (docs/ARCHER.md AR11)", () => {
 		const s = PLACEHOLDER_MANIFEST.strings;
 		const rows: ReadonlyArray<[string, string, string]> = [
 			["boon.swiftStrikes.evo.desc", "archer", "40% faster; arrows fly in threes"],
-			["boon.bastion.desc", "archer", "+1 armor pip; roll through 8 bullets: +1 pip"],
+			["boon.bastion.desc", "archer", "+1 armor pip; roll through 10 bullets in a room: +1 pip"],
 			["duo.stormBlade.desc", "knight", "Finishers spark"],
 			["duo.stormBlade.desc", "archer", "Every 5th arrow hit sparks"],
 			["duo.fullHeart.desc", "knight", "At full hearts, finishers fire a beam"],
 			["duo.fullHeart.desc", "archer", "At full hearts, charged arrows fire a beam"],
-			["duo.citadel.desc", "archer", "Every roll through 8 bullets restores a pip"],
+			["duo.citadel.desc", "archer", "Every 10 bullets you roll through restore a pip"],
 			// docs/SECRET_ROOMS.md SR10 (SRD5): the first-knock card names the charged arrow
 			[
 				"bestiary.secret.crack",

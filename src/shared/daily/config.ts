@@ -75,7 +75,8 @@ export const DAILY: DailyConfig = table.freeze({
 	// 23: the boss room's seal never leaves a straggler in a wall (boss/shared.ts sealPlayer: a clamp that lands the
 	// body on a blocked cell moves it to the nearest open cell of the arena); co-op boss fights can replay differently.
 	// 24: the Goldling's escape window 10 s -> 15 s (docs/FORTUNE.md FD17); daily play, hashes and scores change.
-	ruleset: 24,
+	// 25: Bastion's brace adds up 10 bullets over a room's guards and rolls, not 8 in one (docs/LEGENDARIES.md LGD15).
+	ruleset: 25,
 	labelOffset: 1,
 	yesterdayCacheSeconds: 600,
 	minEntrantsForPercentile: 20,

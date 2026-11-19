@@ -31,15 +31,16 @@
  *                                      (folded into Bounty's bonusPercent); stepBuilds' countdown and the drink's start.
  *
  * Bastion (docs/LEGENDARIES.md "Bastion", LG3; legendary, level I; nothing for a player without it, who left or is
- * dead). Brace: one guard or one roll that stops BASTION_BRACE_BULLETS enemy bullets restores one armor pip up to
- * armorMax. `braceCount` counts the current guard's or roll's bullets (reset when either starts, and by a swap that is
- * not mid-roll: a swap ends a guard); the brace fires once, on the bullet that reaches the threshold, and only while
- * `braceReady` is 1 (re-armed when a room's enemies spawn and at a floor's start, set by the pick; cleared by a
- * brace). A brace with nothing to restore is NOT spent (owner's tuning, LGD6 revised): braceReady stays set and
- * nothing is pushed, so a later guard or roll restores the pip a hit took; BraceKind.SPENT is never pushed.
- * BuildEvents bracePlayer / braceKind. Duos (LG4): Citadel (Bastion + Warding) lifts the once per room but waits
- * CITADEL_BRACE_COOLDOWN_TICKS after each brace (`braceCooldown`, LGD14); Stone Heart (Bastion + Hearty) heals half
- * a heart when no pip is missing (BraceKind.HEAL, which spends the brace).
+ * dead). Brace (LGD15, owner 2026-11-19): BASTION_BRACE_BULLETS enemy bullets stopped by guards and rolls, added up
+ * over all of them (`braceTotal`), restore one armor pip up to armorMax, once per room: the brace fires on the bullet
+ * that reaches the threshold while `braceReady` is 1 (re-armed, and `braceTotal` reset, when a room's enemies spawn
+ * and at a floor's start; set by the pick; cleared by the brace). A brace with nothing to restore does nothing and is
+ * spent all the same (LGD15; LGD6's "not spent" is gone); BraceKind.SPENT is never pushed. `braceCount` still counts
+ * the current guard's or roll's own bullets (reset when either starts, and by a swap that is not mid-roll: a swap ends
+ * a guard) for Rebuke's ring. BuildEvents bracePlayer / braceKind. Duos (LG4): Citadel (Bastion + Warding) lifts the
+ * once per room: every BASTION_BRACE_BULLETS stopped brace, but it waits CITADEL_BRACE_COOLDOWN_TICKS after a brace
+ * that restored something (`braceCooldown`, LGD14; bullets stopped meanwhile count toward the next); Stone Heart
+ * (Bastion + Hearty) heals half a heart when no pip is missing (BraceKind.HEAL).
  *   buildsOnGuardCancels(state, i, cancels, starting)   sword.ts, every guard tick: `cancels` bullets erased this tick
  *                                      (goo outside it; strikes are never erased), `starting` on the guard's first tick.
  *   bastionRollOn(state, i)            combat.ts, once a tick per player (the bastionRolling mask): player i owns
@@ -231,15 +232,18 @@ function pushBrace(s: BuildsState, i: number, kind: number): void {
 }
 
 /**
- * Player i braces (the count just reached the threshold): see the file comment. Citadel (Bastion + Warding, LG4): no
- * once-per-room limit (braceReady neither needed nor cleared) but a cooldown: none while `braceCooldown` > 0, and a
- * brace that restored something sets it to CITADEL_BRACE_COOLDOWN_TICKS. Stone Heart (Bastion + Hearty, LG4): with no
- * pip missing, STONE_HEART_HEAL_HALF_HEARTS half hearts healed instead (up to the maximum; BraceKind.HEAL), once per
- * room like any brace unless Citadel. Nothing to restore (no pip missing, no heal): not spent, nothing pushed.
+ * Player i braces (`braceTotal` reached the threshold): see the file comment. The brace is spent whatever it restores:
+ * `braceTotal` back to 0 and, without Citadel, braceReady cleared. Citadel (Bastion + Warding, LG4): no once-per-room
+ * limit (braceReady neither needed nor cleared) but a cooldown: none while `braceCooldown` > 0 (the total keeps
+ * counting), and a brace that restored something sets it to CITADEL_BRACE_COOLDOWN_TICKS. Stone Heart (Bastion +
+ * Hearty, LG4): with no pip missing, STONE_HEART_HEAL_HALF_HEARTS half hearts healed instead (up to the maximum;
+ * BraceKind.HEAL). Nothing to restore (no pip missing, no heal): nothing pushed (LGD15).
  */
 function brace(state: SimState, s: BuildsState, p: BuildPlayerState, i: number): void {
 	const citadel = hasDuo(p, Duo.CITADEL);
 	if (citadel ? p.braceCooldown > 0 : p.braceReady === 0) return;
+	p.braceTotal = 0;
+	if (!citadel) p.braceReady = 0;
 	const pl = buildPlayerStateAt(state, i);
 	let kind: number;
 	if (pl.armor < pl.armorMax) {
@@ -254,7 +258,6 @@ function brace(state: SimState, s: BuildsState, p: BuildPlayerState, i: number):
 		kind = BraceKind.HEAL;
 	}
 	if (citadel) p.braceCooldown = CITADEL_BRACE_COOLDOWN_TICKS;
-	else p.braceReady = 0;
 	pushBrace(s, i, kind);
 }
 
@@ -263,12 +266,16 @@ export function stepBraceCooldowns(s: BuildsState): void {
 	for (const p of s.players) if (p.braceCooldown > 0) p.braceCooldown -= 1;
 }
 
-/** Adds `n` stopped bullets to player i's brace count; braces on the one that reaches BASTION_BRACE_BULLETS. */
+/**
+ * Adds `n` stopped bullets to player i's guard / roll count and, while a brace can still come (always with Citadel),
+ * to its total; braces once the total reaches BASTION_BRACE_BULLETS.
+ */
 function addBraceCount(state: SimState, s: BuildsState, p: BuildPlayerState, i: number, n: number): void {
 	if (n <= 0) return;
-	const before = p.braceCount;
-	p.braceCount = before + n;
-	if (before < BASTION_BRACE_BULLETS && p.braceCount >= BASTION_BRACE_BULLETS) brace(state, s, p, i);
+	p.braceCount += n;
+	if (p.braceReady === 0 && !hasDuo(p, Duo.CITADEL)) return;
+	p.braceTotal += n;
+	if (p.braceTotal >= BASTION_BRACE_BULLETS) brace(state, s, p, i);
 }
 
 /** The Bastion owner i who can count a bullet now (present and alive), else undefined. */
@@ -327,13 +334,16 @@ export function buildsOnSwap(state: SimState, i: number): void {
 	}
 }
 
-/** A floor started or a room's enemies spawned: every present Bastion owner's brace is ready again. */
+/** A floor started or a room's enemies spawned: every present Bastion owner's brace is ready again, its total 0. */
 export function buildsBraceRearm(state: SimState): void {
 	const s = state.builds;
 	if (s === undefined) return;
 	for (let i = 0; i < s.players.size(); i++) {
 		const p = s.players[i];
-		if (hasBastion(p) && !buildPlayerLeft(state, i)) p.braceReady = 1;
+		if (hasBastion(p) && !buildPlayerLeft(state, i)) {
+			p.braceReady = 1;
+			p.braceTotal = 0;
+		}
 	}
 }
 

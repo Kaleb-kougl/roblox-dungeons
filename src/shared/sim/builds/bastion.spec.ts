@@ -1,6 +1,7 @@
 // docs/LEGENDARIES.md LG3 (Bastion): the pip on the pick, the guard through runMods (full ring, 27 ticks; SWORD_DATA's
-// numbers without it), the brace (BASTION_BRACE_BULLETS (8) bullets in one guard or roll restore a pip, once per room, not spent at full armor),
-// the count's resets (guard start, roll start, a swap mid-guard), the roll brace (any weapon, each bullet once by the
+// numbers without it), the brace (BASTION_BRACE_BULLETS (10) bullets added up over a room's guards and rolls restore a
+// pip, once per room, spent and nothing restored at full armor: docs/LEGENDARIES.md LGD15), the per-guard / roll count's
+// resets (guard start, roll start, a swap mid-guard; the room total kept), the roll brace (any weapon, each bullet once by the
 // payload's lastHit mark, never through post-hit invulnerability, Phantom Step's erasures count, goo and strikes never),
 // the re-arm (a room's spawn, a floor's start), co-op (own armor only, a marked bullet never counts for a second
 // roller), and determinism with Bastion rolling through fans in co-op.
@@ -168,7 +169,7 @@ describe("Bastion: the pick and the guard (LG3)", () => {
 		const before = [p.armor, p.armorMax];
 		grantCard(s, 0, Boon.BASTION);
 		expect([p.armor, p.armorMax]).toEqual([before[0] + 1, before[1] + 1]);
-		expect([bp(s).braceReady, bp(s).braceCount]).toEqual([1, 0]);
+		expect([bp(s).braceReady, bp(s).braceCount, bp(s).braceTotal]).toEqual([1, 0, 0]);
 		expect(runMods(s, 0).bastion).toBe(true);
 	});
 
@@ -215,52 +216,61 @@ describe("Bastion: the pick and the guard (LG3)", () => {
 });
 
 describe("Bastion's brace (LG3)", () => {
-	it("BASTION_BRACE_BULLETS (8) cancels in one guard restore a pip once per room; a second guard does nothing", () => {
+	it("BASTION_BRACE_BULLETS (10) cancels restore a pip once per room; a second guard does nothing", () => {
 		const s = fresh();
 		const p = s.player;
 		p.armor = 0;
 		volleyInFront(s);
 		step(s, GUARD, ARENA);
-		expect(BASTION_BRACE_BULLETS).toBe(8);
-		expect([p.armor, bp(s).braceReady, bp(s).braceCount]).toEqual([1, 0, BASTION_BRACE_BULLETS]);
+		expect(BASTION_BRACE_BULLETS).toBe(10);
+		expect([p.armor, bp(s).braceReady, bp(s).braceCount, bp(s).braceTotal]).toEqual([
+			1,
+			0,
+			BASTION_BRACE_BULLETS,
+			0,
+		]);
 		expect([s.builds!.events.bracePlayer, s.builds!.events.braceKind]).toEqual([[0], [BraceKind.PIP]]);
 		idle(s, SWORD_DATA.guardCooldownTicks);
 		p.armor = 0;
 		volleyInFront(s);
 		step(s, GUARD, ARENA);
 		expect([enemyBulletCount(s), p.armor, s.builds!.events.bracePlayer.size()]).toEqual([0, 0, 0]);
+		// Spent: bullets stopped after the brace no longer add up.
+		expect(bp(s).braceTotal).toBe(0);
 	});
 
-	it("one short does nothing; the count builds over a guard's ticks and restarts with the next guard", () => {
+	it("one short does nothing; the total adds up over guards and rolls, the guard's own count restarts", () => {
 		const s = fresh();
 		const p = s.player;
 		p.armor = 0;
-		const short = BASTION_BRACE_BULLETS - 1;
+		const short = BASTION_BRACE_BULLETS - 3;
 		volleyInFront(s, short);
 		step(s, GUARD, ARENA);
-		expect([bp(s).braceCount, p.armor]).toEqual([short, 0]);
+		expect([bp(s).braceCount, bp(s).braceTotal, p.armor]).toEqual([short, short, 0]);
 		volleyInFront(s, 1, short);
-		step(s, IDLE, ARENA); // still guarding: the last bullet of the same guard braces
-		expect([bp(s).braceCount, p.armor]).toEqual([BASTION_BRACE_BULLETS, 1]);
-		const t = SWORD_DATA.guardCooldownTicks - 1;
-		idle(s, t);
+		step(s, IDLE, ARENA); // still guarding: the same guard keeps counting
+		expect([bp(s).braceCount, bp(s).braceTotal, p.armor]).toEqual([short + 1, short + 1, 0]);
+		idle(s, SWORD_DATA.guardCooldownTicks - 1);
+		// A second guard: its own count restarts, the room total carries on.
 		enemyBullet(s, 0, 1.2);
 		step(s, GUARD, ARENA);
-		expect(bp(s).braceCount).toBe(1);
+		expect([bp(s).braceCount, bp(s).braceTotal, p.armor]).toEqual([1, short + 2, 0]);
+		idle(s, SWORD_DATA.guardCooldownTicks);
+		// A roll through the last one: the total reaches the threshold and braces.
+		rollInPlace(s);
+		enemyBullet(s, p.x, p.z);
+		step(s, IDLE, ARENA);
+		expect([bp(s).braceCount, bp(s).braceTotal, bp(s).braceReady, p.armor]).toEqual([1, 0, 0, 1]);
+		expect(s.builds!.events.braceKind).toEqual([BraceKind.PIP]);
 	});
 
-	it("at full armor the brace is not spent (LGD6 revised): a later one restores the pip a hit took", () => {
+	it("at full armor the brace does nothing and is spent (LGD15): a later one in the room restores nothing", () => {
 		const s = fresh();
 		const p = s.player;
 		volleyInFront(s);
 		step(s, GUARD, ARENA);
-		// Nothing to restore: braceReady stays set, nothing pushed (BraceKind.SPENT never fires).
-		expect([p.armor, p.armorMax, bp(s).braceReady, bp(s).braceCount]).toEqual([
-			p.armorMax,
-			p.armorMax,
-			1,
-			BASTION_BRACE_BULLETS,
-		]);
+		// Nothing to restore: nothing pushed (BraceKind.SPENT never fires), the room's brace used up.
+		expect([p.armor, p.armorMax, bp(s).braceReady, bp(s).braceTotal]).toEqual([p.armorMax, p.armorMax, 0, 0]);
 		expect(s.builds!.events.bracePlayer.size()).toBe(0);
 		idle(s, SWORD_DATA.guardCooldownTicks);
 		// A hit takes a pip (an enemy bullet on the knight, no i-frames).
@@ -271,8 +281,8 @@ describe("Bastion's brace (LG3)", () => {
 		p.iframeTicks = 0;
 		volleyInFront(s);
 		step(s, GUARD, ARENA);
-		expect([p.armor, bp(s).braceReady]).toEqual([p.armorMax, 0]);
-		expect(s.builds!.events.braceKind).toEqual([BraceKind.PIP]);
+		expect([p.armor, bp(s).braceReady]).toEqual([p.armorMax - 1, 0]);
+		expect(s.builds!.events.bracePlayer.size()).toBe(0);
 	});
 
 	it("a swap or a roll mid-guard resets the count", () => {
@@ -282,31 +292,33 @@ describe("Bastion's brace (LG3)", () => {
 		step(s, GUARD, ARENA);
 		expect(bp(s).braceCount).toBe(2);
 		step(s, SWAP, ARENA);
-		expect([bp(s).braceCount, weaponsAt(s, 0).activeSet]).toEqual([0, 1]);
+		expect([bp(s).braceCount, bp(s).braceTotal, weaponsAt(s, 0).activeSet]).toEqual([0, 2, 1]);
 		const r = fresh();
 		enemyBullet(r, 0, 1.2);
 		enemyBullet(r, 0.4, 1.2);
 		step(r, GUARD, ARENA);
 		expect(bp(r).braceCount).toBe(2);
 		step(r, ROLL, ARENA);
-		expect(bp(r).braceCount).toBe(0);
+		expect([bp(r).braceCount, bp(r).braceTotal]).toEqual([0, 2]);
 	});
 
-	it("re-arms when a room's enemies spawn and at a floor's start", () => {
+	it("re-arms, the total back to 0, when a room's enemies spawn and at a floor's start", () => {
 		const s = fresh();
 		s.player.armor = 0;
 		volleyInFront(s);
 		step(s, GUARD, ARENA);
 		expect(bp(s).braceReady).toBe(0);
+		bp(s).braceTotal = 4;
 		s.player.x = ROOM.cx;
 		s.player.z = ROOM.cz;
 		step(s, IDLE, ARENA);
 		expect(s.events.roomEntered).toBe(ROOM.id + 1);
-		expect(bp(s).braceReady).toBe(1);
+		expect([bp(s).braceReady, bp(s).braceTotal]).toEqual([1, 0]);
 		bp(s).braceReady = 0;
+		bp(s).braceTotal = 4;
 		step(s, frame(0, 0, DEBUG_FLOOR_BUTTON), ARENA);
 		expect(s.events.floorChanged).toBe(2);
-		expect(bp(s).braceReady).toBe(1);
+		expect([bp(s).braceReady, bp(s).braceTotal]).toEqual([1, 0]);
 	});
 });
 

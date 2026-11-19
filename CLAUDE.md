@@ -904,7 +904,9 @@ Decision log (deviations from `PLAN.md`):
   shout (`FLOOR_SHOUT_PRIORITY.brace`), armor pulse and toasts. `DAILY.ruleset` 8 -> 9. M1, every fixture and the
   tutorial replay exactly as before; endless replays and scores changed (boards stay `_v1`). Tuning measured (LG7) and
   the owner's changes applied (2026-11-06; later the brace threshold `BASTION_BRACE_BULLETS` 3 -> 8, `DAILY.ruleset`
-  9 -> 10); Studio check, art (LG8) and audio pending.
+  9 -> 10; then LGD15, 2026-11-19: the brace adds up 10 bullets over a room's guards and rolls (new hashed
+  `braceTotal`, appended last to `BUILD_PLAYER_SCALARS`), still once per room, spent with nothing restored at full
+  armor, `DAILY.ruleset` 24 -> 25); Studio check, art (LG8) and audio pending.
 
 - **Hazard art (docs/HAZARD_ART.md).** Presentation only (no sim, dungeon, lockstep, hash, replay, fixture or score
   change). Supersedes docs/PROJECTILE_ART.md PAD3 for the strike and the embers: `BULLET_ART.decalIds` is gone,

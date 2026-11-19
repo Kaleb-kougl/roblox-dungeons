@@ -143,17 +143,17 @@
 		"max": 20
 	},
 	"boon.bastion.desc": {
-		"note": "Effect line of the boon \"Bastion\" on its draft card (wraps over two or three lines of a 240 px card) and in the build list. Terse game-rules style: keep numbers, % and units (\"s\" = seconds) exactly. A \"heart\" is one unit of health; \"combo\" the kill-streak multiplier; \"graze\" a bullet skimming past without hitting. An armor \"pip\" is one unit of armor that absorbs a whole hit; the \"guard\" is the sword's block; a \"brace\" is Bastion restoring a pip after a guard or roll stops 8 bullets."
+		"note": "Effect line of the boon \"Bastion\" on its draft card (wraps over two or three lines of a 240 px card) and in the build list. Terse game-rules style: keep numbers, % and units (\"s\" = seconds) exactly. A \"heart\" is one unit of health; \"combo\" the kill-streak multiplier; \"graze\" a bullet skimming past without hitting. An armor \"pip\" is one unit of armor that absorbs a whole hit; the \"guard\" is the sword's block; a \"brace\" is Bastion restoring a pip once a room's guards and rolls have stopped 10 bullets."
 	},
 	"boon.bastion.desc.archer": {
-		"note": "Per-character version of \"boon.bastion.desc\": shown instead of it when the local player plays the Archer (the character with the bow (a stream of arrows and a charged shot) and a longer roll). Same style and terms as \"boon.bastion.desc\"; keep numbers exactly. Base line's note: Effect line of the boon \"Bastion\" on its draft card (wraps over two or three lines of a 240 px card) and in the build list. Terse game-rules style: keep numbers, % and units (\"s\" = seconds) exactly. A \"heart\" is one unit of health; \"combo\" the kill-streak multiplier; \"graze\" a bullet skimming past without hitting. An armor \"pip\" is one unit of armor that absorbs a whole hit; the \"guard\" is the sword's block; a \"brace\" is Bastion restoring a pip after a guard or roll stops 8 bullets."
+		"note": "Per-character version of \"boon.bastion.desc\": shown instead of it when the local player plays the Archer (the character with the bow (a stream of arrows and a charged shot) and a longer roll). Same style and terms as \"boon.bastion.desc\"; keep numbers exactly. Base line's note: Effect line of the boon \"Bastion\" on its draft card (wraps over two or three lines of a 240 px card) and in the build list. Terse game-rules style: keep numbers, % and units (\"s\" = seconds) exactly. A \"heart\" is one unit of health; \"combo\" the kill-streak multiplier; \"graze\" a bullet skimming past without hitting. An armor \"pip\" is one unit of armor that absorbs a whole hit; the \"guard\" is the sword's block; a \"brace\" is Bastion restoring a pip once a room's guards and rolls have stopped 10 bullets."
 	},
 	"boon.bastion.icon": {
 		"note": "Icon label of the boon \"Bastion\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
 		"max": 3
 	},
 	"boon.bastion.name": {
-		"note": "Name of a boon (a power-up kept for the rest of the run, picked from a draft of cards); its effect: \"+1 armor pip; a full-ring guard; stop 8 bullets: +1 pip\". Shown as a draft card's one-line title (24 px text on a 240 px card, no wrapping), in toasts, and in the build list. Short and flavourful, title case; glossary term.",
+		"note": "Name of a boon (a power-up kept for the rest of the run, picked from a draft of cards); its effect: \"+1 armor pip; a full-ring guard; stop 10 bullets in a room: +1 pip\". Shown as a draft card's one-line title (24 px text on a 240 px card, no wrapping), in toasts, and in the build list. Short and flavourful, title case; glossary term.",
 		"max": 20
 	},
 	"boon.bounty.desc": {
@@ -1266,17 +1266,17 @@
 		"max": 20
 	},
 	"duo.citadel.desc": {
-		"note": "Effect line of the Duo boon \"Citadel\" on its draft card (wraps) and in the build list. Terse game-rules style; keep numbers exactly. \"Embers\" here are burning patches on the floor; a \"spark\" jumps between enemies; a \"burst\" is a ring of bolts. An armor \"pip\" is one unit of armor that absorbs a whole hit; the \"guard\" is the sword's block; a \"brace\" is Bastion restoring a pip after a guard or roll stops 8 bullets."
+		"note": "Effect line of the Duo boon \"Citadel\" on its draft card (wraps) and in the build list. Terse game-rules style; keep numbers exactly. \"Embers\" here are burning patches on the floor; a \"spark\" jumps between enemies; a \"burst\" is a ring of bolts. An armor \"pip\" is one unit of armor that absorbs a whole hit; the \"guard\" is the sword's block; a \"brace\" is Bastion restoring a pip once a room's guards and rolls have stopped 10 bullets."
 	},
 	"duo.citadel.desc.archer": {
-		"note": "Per-character version of \"duo.citadel.desc\": shown instead of it when the local player plays the Archer (the character with the bow (a stream of arrows and a charged shot) and a longer roll). Same style and terms as \"duo.citadel.desc\"; keep numbers exactly. Base line's note: Effect line of the Duo boon \"Citadel\" on its draft card (wraps) and in the build list. Terse game-rules style; keep numbers exactly. \"Embers\" here are burning patches on the floor; a \"spark\" jumps between enemies; a \"burst\" is a ring of bolts. An armor \"pip\" is one unit of armor that absorbs a whole hit; the \"guard\" is the sword's block; a \"brace\" is Bastion restoring a pip after a guard or roll stops 8 bullets."
+		"note": "Per-character version of \"duo.citadel.desc\": shown instead of it when the local player plays the Archer (the character with the bow (a stream of arrows and a charged shot) and a longer roll). Same style and terms as \"duo.citadel.desc\"; keep numbers exactly. Base line's note: Effect line of the Duo boon \"Citadel\" on its draft card (wraps) and in the build list. Terse game-rules style; keep numbers exactly. \"Embers\" here are burning patches on the floor; a \"spark\" jumps between enemies; a \"burst\" is a ring of bolts. An armor \"pip\" is one unit of armor that absorbs a whole hit; the \"guard\" is the sword's block; a \"brace\" is Bastion restoring a pip once a room's guards and rolls have stopped 10 bullets."
 	},
 	"duo.citadel.icon": {
 		"note": "Icon label of the Duo boon \"Citadel\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
 		"max": 3
 	},
 	"duo.citadel.name": {
-		"note": "Name of a Duo boon (a special boon offered when the player owns two boons that combine); its effect: \"Every guard that stops 8 bullets restores a pip\". Shown as a draft card's one-line title (24 px text on a 240 px card, no wrapping), in toasts and the build list. Title case; glossary term.",
+		"note": "Name of a Duo boon (a special boon offered when the player owns two boons that combine); its effect: \"Every 10 bullets you stop restore a pip\". Shown as a draft card's one-line title (24 px text on a 240 px card, no wrapping), in toasts and the build list. Title case; glossary term.",
 		"max": 20
 	},
 	"duo.closeCall.desc": {
@@ -1302,7 +1302,7 @@
 		"max": 20
 	},
 	"duo.dragonBolt.desc": {
-		"note": "Effect line of the Duo boon \"Dragon Bolt\" on its draft card (wraps) and in the build list. Terse game-rules style; keep numbers exactly. \"Embers\" here are burning patches on the floor; a \"spark\" jumps between enemies; a \"burst\" is a ring of bolts. An armor \"pip\" is one unit of armor; the \"guard\" is the sword's block; a \"brace\" is Bastion restoring a pip after a guard or roll stops 8 bullets; a \"charged arrow\" is the bow's heavy shot; \"pieces\" are breakable crates and barrels; a \"finisher\" is the sword combo's third, strongest swing; \"combo\" the kill-streak multiplier."
+		"note": "Effect line of the Duo boon \"Dragon Bolt\" on its draft card (wraps) and in the build list. Terse game-rules style; keep numbers exactly. \"Embers\" here are burning patches on the floor; a \"spark\" jumps between enemies; a \"burst\" is a ring of bolts. An armor \"pip\" is one unit of armor; the \"guard\" is the sword's block; a \"brace\" is Bastion restoring a pip once a room's guards and rolls have stopped 10 bullets; a \"charged arrow\" is the bow's heavy shot; \"pieces\" are breakable crates and barrels; a \"finisher\" is the sword combo's third, strongest swing; \"combo\" the kill-streak multiplier."
 	},
 	"duo.dragonBolt.icon": {
 		"note": "Icon label of the Duo boon \"Dragon Bolt\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
@@ -1324,13 +1324,13 @@
 		"max": 20
 	},
 	"duo.fullHeart.desc": {
-		"note": "Effect line of the Duo boon \"Full Heart\" on its draft card (wraps) and in the build list. Terse game-rules style; keep numbers exactly. \"Embers\" here are burning patches on the floor; a \"spark\" jumps between enemies; a \"burst\" is a ring of bolts. An armor \"pip\" is one unit of armor; the \"guard\" is the sword's block; a \"brace\" is Bastion restoring a pip after a guard or roll stops 8 bullets; a \"charged arrow\" is the bow's heavy shot; \"pieces\" are breakable crates and barrels; a \"finisher\" is the sword combo's third, strongest swing; \"combo\" the kill-streak multiplier."
+		"note": "Effect line of the Duo boon \"Full Heart\" on its draft card (wraps) and in the build list. Terse game-rules style; keep numbers exactly. \"Embers\" here are burning patches on the floor; a \"spark\" jumps between enemies; a \"burst\" is a ring of bolts. An armor \"pip\" is one unit of armor; the \"guard\" is the sword's block; a \"brace\" is Bastion restoring a pip once a room's guards and rolls have stopped 10 bullets; a \"charged arrow\" is the bow's heavy shot; \"pieces\" are breakable crates and barrels; a \"finisher\" is the sword combo's third, strongest swing; \"combo\" the kill-streak multiplier."
 	},
 	"duo.fullHeart.desc.archer": {
-		"note": "Per-character version of \"duo.fullHeart.desc\": shown instead of it when the local player plays the Archer (the character with the bow (a stream of arrows and a charged shot) and a longer roll). Same style and terms as \"duo.fullHeart.desc\"; keep numbers exactly. Base line's note: Effect line of the Duo boon \"Full Heart\" on its draft card (wraps) and in the build list. Terse game-rules style; keep numbers exactly. \"Embers\" here are burning patches on the floor; a \"spark\" jumps between enemies; a \"burst\" is a ring of bolts. An armor \"pip\" is one unit of armor; the \"guard\" is the sword's block; a \"brace\" is Bastion restoring a pip after a guard or roll stops 8 bullets; a \"charged arrow\" is the bow's heavy shot; \"pieces\" are breakable crates and barrels; a \"finisher\" is the sword combo's third, strongest swing; \"combo\" the kill-streak multiplier."
+		"note": "Per-character version of \"duo.fullHeart.desc\": shown instead of it when the local player plays the Archer (the character with the bow (a stream of arrows and a charged shot) and a longer roll). Same style and terms as \"duo.fullHeart.desc\"; keep numbers exactly. Base line's note: Effect line of the Duo boon \"Full Heart\" on its draft card (wraps) and in the build list. Terse game-rules style; keep numbers exactly. \"Embers\" here are burning patches on the floor; a \"spark\" jumps between enemies; a \"burst\" is a ring of bolts. An armor \"pip\" is one unit of armor; the \"guard\" is the sword's block; a \"brace\" is Bastion restoring a pip once a room's guards and rolls have stopped 10 bullets; a \"charged arrow\" is the bow's heavy shot; \"pieces\" are breakable crates and barrels; a \"finisher\" is the sword combo's third, strongest swing; \"combo\" the kill-streak multiplier."
 	},
 	"duo.fullHeart.desc.knight": {
-		"note": "Per-character version of \"duo.fullHeart.desc\": shown instead of it when the local player plays the Knight (the character with the sword (combo, finishers, the guard that blocks bullets)). Same style and terms as \"duo.fullHeart.desc\"; keep numbers exactly. Base line's note: Effect line of the Duo boon \"Full Heart\" on its draft card (wraps) and in the build list. Terse game-rules style; keep numbers exactly. \"Embers\" here are burning patches on the floor; a \"spark\" jumps between enemies; a \"burst\" is a ring of bolts. An armor \"pip\" is one unit of armor; the \"guard\" is the sword's block; a \"brace\" is Bastion restoring a pip after a guard or roll stops 8 bullets; a \"charged arrow\" is the bow's heavy shot; \"pieces\" are breakable crates and barrels; a \"finisher\" is the sword combo's third, strongest swing; \"combo\" the kill-streak multiplier."
+		"note": "Per-character version of \"duo.fullHeart.desc\": shown instead of it when the local player plays the Knight (the character with the sword (combo, finishers, the guard that blocks bullets)). Same style and terms as \"duo.fullHeart.desc\"; keep numbers exactly. Base line's note: Effect line of the Duo boon \"Full Heart\" on its draft card (wraps) and in the build list. Terse game-rules style; keep numbers exactly. \"Embers\" here are burning patches on the floor; a \"spark\" jumps between enemies; a \"burst\" is a ring of bolts. An armor \"pip\" is one unit of armor; the \"guard\" is the sword's block; a \"brace\" is Bastion restoring a pip once a room's guards and rolls have stopped 10 bullets; a \"charged arrow\" is the bow's heavy shot; \"pieces\" are breakable crates and barrels; a \"finisher\" is the sword combo's third, strongest swing; \"combo\" the kill-streak multiplier."
 	},
 	"duo.fullHeart.icon": {
 		"note": "Icon label of the Duo boon \"Full Heart\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
@@ -1352,7 +1352,7 @@
 		"max": 20
 	},
 	"duo.happyHour.desc": {
-		"note": "Effect line of the Duo boon \"Happy Hour\" on its draft card (wraps) and in the build list. Terse game-rules style; keep numbers exactly. \"Embers\" here are burning patches on the floor; a \"spark\" jumps between enemies; a \"burst\" is a ring of bolts. An armor \"pip\" is one unit of armor; the \"guard\" is the sword's block; a \"brace\" is Bastion restoring a pip after a guard or roll stops 8 bullets; a \"charged arrow\" is the bow's heavy shot; \"pieces\" are breakable crates and barrels; a \"finisher\" is the sword combo's third, strongest swing; \"combo\" the kill-streak multiplier."
+		"note": "Effect line of the Duo boon \"Happy Hour\" on its draft card (wraps) and in the build list. Terse game-rules style; keep numbers exactly. \"Embers\" here are burning patches on the floor; a \"spark\" jumps between enemies; a \"burst\" is a ring of bolts. An armor \"pip\" is one unit of armor; the \"guard\" is the sword's block; a \"brace\" is Bastion restoring a pip once a room's guards and rolls have stopped 10 bullets; a \"charged arrow\" is the bow's heavy shot; \"pieces\" are breakable crates and barrels; a \"finisher\" is the sword combo's third, strongest swing; \"combo\" the kill-streak multiplier."
 	},
 	"duo.happyHour.icon": {
 		"note": "Icon label of the Duo boon \"Happy Hour\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
@@ -1363,7 +1363,7 @@
 		"max": 20
 	},
 	"duo.powderKeg.desc": {
-		"note": "Effect line of the Duo boon \"Powder Keg\" on its draft card (wraps) and in the build list. Terse game-rules style; keep numbers exactly. \"Embers\" here are burning patches on the floor; a \"spark\" jumps between enemies; a \"burst\" is a ring of bolts. An armor \"pip\" is one unit of armor; the \"guard\" is the sword's block; a \"brace\" is Bastion restoring a pip after a guard or roll stops 8 bullets; a \"charged arrow\" is the bow's heavy shot; \"pieces\" are breakable crates and barrels; a \"finisher\" is the sword combo's third, strongest swing; \"combo\" the kill-streak multiplier."
+		"note": "Effect line of the Duo boon \"Powder Keg\" on its draft card (wraps) and in the build list. Terse game-rules style; keep numbers exactly. \"Embers\" here are burning patches on the floor; a \"spark\" jumps between enemies; a \"burst\" is a ring of bolts. An armor \"pip\" is one unit of armor; the \"guard\" is the sword's block; a \"brace\" is Bastion restoring a pip once a room's guards and rolls have stopped 10 bullets; a \"charged arrow\" is the bow's heavy shot; \"pieces\" are breakable crates and barrels; a \"finisher\" is the sword combo's third, strongest swing; \"combo\" the kill-streak multiplier."
 	},
 	"duo.powderKeg.icon": {
 		"note": "Icon label of the Duo boon \"Powder Keg\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
@@ -1374,7 +1374,7 @@
 		"max": 20
 	},
 	"duo.rebuke.desc": {
-		"note": "Effect line of the Duo boon \"Rebuke\" on its draft card (wraps) and in the build list. Terse game-rules style; keep numbers exactly. \"Embers\" here are burning patches on the floor; a \"spark\" jumps between enemies; a \"burst\" is a ring of bolts. An armor \"pip\" is one unit of armor; the \"guard\" is the sword's block; a \"brace\" is Bastion restoring a pip after a guard or roll stops 8 bullets; a \"charged arrow\" is the bow's heavy shot; \"pieces\" are breakable crates and barrels; a \"finisher\" is the sword combo's third, strongest swing; \"combo\" the kill-streak multiplier."
+		"note": "Effect line of the Duo boon \"Rebuke\" on its draft card (wraps) and in the build list. Terse game-rules style; keep numbers exactly. \"Embers\" here are burning patches on the floor; a \"spark\" jumps between enemies; a \"burst\" is a ring of bolts. An armor \"pip\" is one unit of armor; the \"guard\" is the sword's block; a \"brace\" is Bastion restoring a pip once a room's guards and rolls have stopped 10 bullets; a \"charged arrow\" is the bow's heavy shot; \"pieces\" are breakable crates and barrels; a \"finisher\" is the sword combo's third, strongest swing; \"combo\" the kill-streak multiplier."
 	},
 	"duo.rebuke.icon": {
 		"note": "Icon label of the Duo boon \"Rebuke\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
@@ -1407,7 +1407,7 @@
 		"max": 20
 	},
 	"duo.stillwater.desc": {
-		"note": "Effect line of the Duo boon \"Stillwater\" on its draft card (wraps) and in the build list. Terse game-rules style; keep numbers exactly. \"Embers\" here are burning patches on the floor; a \"spark\" jumps between enemies; a \"burst\" is a ring of bolts. An armor \"pip\" is one unit of armor; the \"guard\" is the sword's block; a \"brace\" is Bastion restoring a pip after a guard or roll stops 8 bullets; a \"charged arrow\" is the bow's heavy shot; \"pieces\" are breakable crates and barrels; a \"finisher\" is the sword combo's third, strongest swing; \"combo\" the kill-streak multiplier."
+		"note": "Effect line of the Duo boon \"Stillwater\" on its draft card (wraps) and in the build list. Terse game-rules style; keep numbers exactly. \"Embers\" here are burning patches on the floor; a \"spark\" jumps between enemies; a \"burst\" is a ring of bolts. An armor \"pip\" is one unit of armor; the \"guard\" is the sword's block; a \"brace\" is Bastion restoring a pip once a room's guards and rolls have stopped 10 bullets; a \"charged arrow\" is the bow's heavy shot; \"pieces\" are breakable crates and barrels; a \"finisher\" is the sword combo's third, strongest swing; \"combo\" the kill-streak multiplier."
 	},
 	"duo.stillwater.icon": {
 		"note": "Icon label of the Duo boon \"Stillwater\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
@@ -1418,7 +1418,7 @@
 		"max": 20
 	},
 	"duo.stoneHeart.desc": {
-		"note": "Effect line of the Duo boon \"Stone Heart\" on its draft card (wraps) and in the build list. Terse game-rules style; keep numbers exactly. \"Embers\" here are burning patches on the floor; a \"spark\" jumps between enemies; a \"burst\" is a ring of bolts. An armor \"pip\" is one unit of armor that absorbs a whole hit; the \"guard\" is the sword's block; a \"brace\" is Bastion restoring a pip after a guard or roll stops 8 bullets."
+		"note": "Effect line of the Duo boon \"Stone Heart\" on its draft card (wraps) and in the build list. Terse game-rules style; keep numbers exactly. \"Embers\" here are burning patches on the floor; a \"spark\" jumps between enemies; a \"burst\" is a ring of bolts. An armor \"pip\" is one unit of armor that absorbs a whole hit; the \"guard\" is the sword's block; a \"brace\" is Bastion restoring a pip once a room's guards and rolls have stopped 10 bullets."
 	},
 	"duo.stoneHeart.icon": {
 		"note": "Icon label of the Duo boon \"Stone Heart\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
@@ -1457,7 +1457,7 @@
 		"max": 20
 	},
 	"duo.thunderGuard.desc": {
-		"note": "Effect line of the Duo boon \"Thunder Guard\" on its draft card (wraps) and in the build list. Terse game-rules style; keep numbers exactly. \"Embers\" here are burning patches on the floor; a \"spark\" jumps between enemies; a \"burst\" is a ring of bolts. An armor \"pip\" is one unit of armor; the \"guard\" is the sword's block; a \"brace\" is Bastion restoring a pip after a guard or roll stops 8 bullets; a \"charged arrow\" is the bow's heavy shot; \"pieces\" are breakable crates and barrels; a \"finisher\" is the sword combo's third, strongest swing; \"combo\" the kill-streak multiplier."
+		"note": "Effect line of the Duo boon \"Thunder Guard\" on its draft card (wraps) and in the build list. Terse game-rules style; keep numbers exactly. \"Embers\" here are burning patches on the floor; a \"spark\" jumps between enemies; a \"burst\" is a ring of bolts. An armor \"pip\" is one unit of armor; the \"guard\" is the sword's block; a \"brace\" is Bastion restoring a pip once a room's guards and rolls have stopped 10 bullets; a \"charged arrow\" is the bow's heavy shot; \"pieces\" are breakable crates and barrels; a \"finisher\" is the sword combo's third, strongest swing; \"combo\" the kill-streak multiplier."
 	},
 	"duo.thunderGuard.icon": {
 		"note": "Icon label of the Duo boon \"Thunder Guard\": 3-letter abbreviation drawn inside a tiny 26 px icon square (12 px text) in the owned-items row and the build list. Use at most 3 Latin letters, or 1-2 characters in Chinese / Japanese / Korean / Thai / Hindi / Arabic; any short, recognisable abbreviation of the name works (it doesn't have to match the English letters).",
@@ -1592,7 +1592,7 @@
 		"max": 14
 	},
 	"fx.brace.text": {
-		"note": "Text written on the floor beside the player when the Bastion boon \"braces\": a guard (the sword's block) or a roll stopped 8 bullets and restored an armor pip (or, with the Stone Heart duo, healed). ALL CAPS, one word, like the parry flash (fx.parry.text); keep capitals if the script has them.",
+		"note": "Text written on the floor beside the player when the Bastion boon \"braces\": guards (the sword's block) and rolls stopped 10 bullets in a room and restored an armor pip (or, with the Stone Heart duo, healed). ALL CAPS, one word, like the parry flash (fx.parry.text); keep capitals if the script has them.",
 		"max": 10
 	},
 	"fx.counter.text": {
@@ -2384,10 +2384,10 @@
 		}
 	},
 	"hud.toast.brace": {
-		"note": "Toast (top centre) when the Bastion boon \"braces\": a guard (the sword's block) or a roll stopped 8 bullets and restored one armor pip. An armor \"pip\" is one unit of armor that absorbs a whole hit. Keep \"+1\" as is."
+		"note": "Toast (top centre) when the Bastion boon \"braces\": guards (the sword's block) and rolls stopped 10 bullets in a room and restored one armor pip. An armor \"pip\" is one unit of armor that absorbs a whole hit. Keep \"+1\" as is."
 	},
 	"hud.toast.braceHeal": {
-		"note": "Toast (top centre) when the Bastion boon \"braces\" (a guard or a roll stopped 8 bullets) while the player's armor is already full and the Stone Heart duo heals half a heart instead of restoring a pip. Same opening as hud.toast.brace (\"Braced: +1 armor\")."
+		"note": "Toast (top centre) when the Bastion boon \"braces\" (guards and rolls stopped 10 bullets in a room) while the player's armor is already full and the Stone Heart duo heals half a heart instead of restoring a pip. Same opening as hud.toast.brace (\"Braced: +1 armor\")."
 	},
 	"hud.toast.curse": {
 		"note": "Toast (top centre) after accepting a curse at a shrine. {name} is the curse's name.",

@@ -228,10 +228,11 @@ export const BASTION_GUARD_SWEEP_HALF_ANGLE_COS = -2;
 /** Bastion: the guard lasts this many ticks (1.5 x SWORD_DATA.guardTicks 18; reach and cooldown unchanged). */
 export const BASTION_GUARD_TICKS = 27;
 /**
- * Brace: one guard or one roll that stops at least this many enemy bullets restores one armor pip (once per room).
- * 8 since the owner's retune (2026-11-06; was 3, docs/LEGENDARIES.md LGD6).
+ * Brace: this many enemy bullets stopped by guards and rolls in a room, added up over all of them, restore one armor
+ * pip (once per room; Citadel: every this many, docs/LEGENDARIES.md LGD15, owner 2026-11-19). 10 since then; before
+ * it one guard or one roll had to stop 8 by itself (owner 2026-11-06; was 3, LGD6).
  */
-export const BASTION_BRACE_BULLETS = 8;
+export const BASTION_BRACE_BULLETS = 10;
 
 // --- Ballista's charge (docs/BUILDS_V2.md "Ballista"; BV1 declares it, the rule is BV3) ----------------------
 // Riposte's, Ballista's bolts and Wrecker's tunables are in builds/effectsData.ts (build effects, like Chain Spark's);

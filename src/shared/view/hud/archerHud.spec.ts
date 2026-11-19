@@ -139,10 +139,10 @@ describe("per-character text (docs/ARCHER.md AR10)", () => {
 	it("the Archer's Bastion card reads the archer line, the Knight's the base line", () => {
 		const bastion = card(Boon.BASTION);
 		expect(shown(characterDraftCard(bastion, "archer", has).desc)).toBe(
-			"+1 armor pip; roll through 8 bullets: +1 pip",
+			"+1 armor pip; roll through 10 bullets in a room: +1 pip",
 		);
 		expect(shown(characterDraftCard(bastion, "knight", has).desc)).toBe(
-			"+1 armor pip; a full-ring guard; stop 8 bullets: +1 pip",
+			"+1 armor pip; a full-ring guard; stop 10 bullets in a room: +1 pip",
 		);
 		// No character (M1's two weapons): the model itself.
 		expect(characterDraftCard(bastion, undefined, has)).toBe(bastion);
@@ -158,8 +158,8 @@ describe("per-character text (docs/ARCHER.md AR10)", () => {
 		expect(line(Duo.STORM_BLADE, undefined)).toBe("Finishers and every 5th arrow hit spark");
 		expect(line(Duo.FULL_HEART, "knight")).toBe("At full hearts, finishers fire a beam");
 		expect(line(Duo.FULL_HEART, "archer")).toBe("At full hearts, charged arrows fire a beam");
-		expect(line(Duo.CITADEL, "knight")).toBe("Every guard that stops 8 bullets restores a pip");
-		expect(line(Duo.CITADEL, "archer")).toBe("Every roll through 8 bullets restores a pip");
+		expect(line(Duo.CITADEL, "knight")).toBe("Every 10 bullets you stop restore a pip");
+		expect(line(Duo.CITADEL, "archer")).toBe("Every 10 bullets you roll through restore a pip");
 	});
 
 	it("Swift Strikes' evolution: the Evolution card and the level-II tooltip's Evolves line (a varKey)", () => {
@@ -190,12 +190,12 @@ describe("per-character text (docs/ARCHER.md AR10)", () => {
 	it("Bastion's tooltip and Build list row read the archer line", () => {
 		const f = facts([Boon.BASTION], [1], [Duo.CITADEL]);
 		const tip = characterTooltip(itemTooltip({ kind: "boon", index: Boon.BASTION }, f), "archer", has)!;
-		expect(shown(tip.lines[0].text)).toBe("+1 armor pip; roll through 8 bullets: +1 pip");
+		expect(shown(tip.lines[0].text)).toBe("+1 armor pip; roll through 10 bullets in a room: +1 pip");
 		const sections = characterBuildSections(buildListSections(f, false), "archer", has);
-		expect(shown(sections[0].rows[0].desc)).toBe("+1 armor pip; roll through 8 bullets: +1 pip");
-		expect(shown(sections[1].rows[0].desc)).toBe("Every roll through 8 bullets restores a pip");
+		expect(shown(sections[0].rows[0].desc)).toBe("+1 armor pip; roll through 10 bullets in a room: +1 pip");
+		expect(shown(sections[1].rows[0].desc)).toBe("Every 10 bullets you roll through restore a pip");
 		const knight = characterBuildSections(buildListSections(f, false), "knight", has);
-		expect(shown(knight[0].rows[0].desc)).toBe("+1 armor pip; a full-ring guard; stop 8 bullets: +1 pip");
+		expect(shown(knight[0].rows[0].desc)).toBe("+1 armor pip; a full-ring guard; stop 10 bullets in a room: +1 pip");
 		const row = buildListSections(f, false)[0].rows[0];
 		expect(characterBuildRow(row, undefined, has)).toBe(row);
 	});

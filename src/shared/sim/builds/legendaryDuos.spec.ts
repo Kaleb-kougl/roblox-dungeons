@@ -2,9 +2,9 @@
 // larger: I -> 12, II -> 16, III -> 16 that pierce 2, Shrapnel's too; only existing arc rows), Skewer (the streak strikes
 // every enemy within SKEWER_RADIUS of the line from the corpse through the target to OVERKILL_RANGE for the full carry,
 // slot order, the target last),
-// Citadel (no once-per-room limit, still one brace per guard) and Stone Heart (a brace with no pip missing heals half a
-// heart, once per room unless Citadel), with the owner's tuning (Supernova at a carry of 2, Skewer's line through the
-// target to OVERKILL_RANGE, Citadel's 5 s cooldown, a brace with nothing to restore not spent).
+// Citadel (no once-per-room limit: a brace every BASTION_BRACE_BULLETS stopped) and Stone Heart (a brace with no pip
+// missing heals half a heart, once per room unless Citadel), with the owner's tuning (Supernova at a carry of 2, Skewer's
+// line through the target to OVERKILL_RANGE, Citadel's 5 s cooldown, a brace with nothing to restore spent, LGD15).
 import "shared/sim/testing";
 import { describe, expect, it } from "@rbxts/jest-globals";
 import {
@@ -265,7 +265,7 @@ describe("Citadel and Stone Heart (Bastion duos, LG4)", () => {
 		for (let t = 0; t < SWORD_DATA.guardCooldownTicks; t++) step(s, IDLE, ARENA);
 	}
 
-	it("Citadel: no once per room, one brace per guard, and a 5 s cooldown between braces (LGD14)", () => {
+	it("Citadel: no once per room, one brace per threshold reached, and a 5 s cooldown between braces (LGD14)", () => {
 		expect([CITADEL_BRACE_COOLDOWN_SECONDS, CITADEL_BRACE_COOLDOWN_TICKS]).toEqual([5, 300]);
 		const s = bastionWith(Boon.WARDING, Duo.CITADEL);
 		const p = s.player;
@@ -276,12 +276,12 @@ describe("Citadel and Stone Heart (Bastion duos, LG4)", () => {
 		// 61 ticks after the brace: the cooldown blocks a second one.
 		p.armor = 0;
 		guardOnce(s);
-		expect([p.armor, b.braceCooldown > 0]).toEqual([0, true]);
-		// Wait out the cooldown: the same room, Citadel braces again.
+		expect([p.armor, b.braceCooldown > 0, b.braceTotal]).toEqual([0, true, BASTION_BRACE_BULLETS]);
+		// Wait out the cooldown: the same room, Citadel braces again on the next bullet stopped (the total kept counting).
 		while (b.braceCooldown > 0) step(s, IDLE, ARENA);
-		volley(s);
+		volley(s, 1);
 		step(s, GUARD, ARENA);
-		expect([p.armor, b.braceReady]).toEqual([1, 1]);
+		expect([p.armor, b.braceReady, b.braceTotal]).toEqual([1, 1, 0]);
 		expect(b.braceCooldown).toBe(CITADEL_BRACE_COOLDOWN_TICKS - 1);
 	});
 
@@ -346,12 +346,12 @@ describe("Citadel and Stone Heart (Bastion duos, LG4)", () => {
 		expect(s.builds!.events.braceKind).toEqual([BraceKind.PIP]);
 	});
 
-	it("Stone Heart with full hearts and armor: nothing to restore, the brace is not spent", () => {
+	it("Stone Heart with full hearts and armor: nothing to restore, the brace does nothing and is spent (LGD15)", () => {
 		const s = bastionWith(Boon.HEARTY, Duo.STONE_HEART);
 		volley(s);
 		step(s, GUARD, ARENA);
 		expect(s.builds!.events.bracePlayer.size()).toBe(0);
-		expect(s.builds!.players[0].braceReady).toBe(1);
+		expect([s.builds!.players[0].braceReady, s.builds!.players[0].braceTotal]).toEqual([0, 0]);
 	});
 
 	it("Stone Heart + Citadel: the heal is no longer once per room", () => {

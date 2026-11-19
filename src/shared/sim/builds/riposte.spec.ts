@@ -478,7 +478,7 @@ describe("Rebuke (Bastion + Riposte, BV6)", () => {
 		return log;
 	}
 
-	it("a bow roll through 8 bullets that restores a pip fires a full ring at once", () => {
+	it("a bow roll through BASTION_BRACE_BULLETS bullets that restores a pip fires a full ring at once", () => {
 		const s = owner(BOW_ARENA);
 		s.player.armor = 0;
 		const behind = dummy(s, 0, -3, 50, BOW_ARENA);

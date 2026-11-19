@@ -17,7 +17,7 @@
  *   bulwarkPending   (BU5, appended) armor pips broken whose Bulwark nova has not been released yet
  *   closeGrazes      (BU6, appended) Close Call: grazes toward the next shard, counts only while the duo is owned
  *   braceCount       (docs/LEGENDARIES.md LG1, appended) Bastion: enemy bullets stopped by the current guard or roll
- *                    (LG3's rule: ./hooks.ts; reset when a guard or roll starts)
+ *                    (reset when a guard or roll starts; Rebuke's ring reads it; the brace adds up `braceTotal`)
  *   braceReady       (LG1, appended) Bastion: 1 while this room's brace is still to come, else 0 (LG3: set by the
  *                    pick, a floor's start and a room's spawn; cleared by a brace that restored something)
  *   braceCooldown    (owner's tuning, appended) Citadel: ticks before its next brace (CITADEL_BRACE_COOLDOWN_TICKS
@@ -31,6 +31,9 @@
  *   happyHourTicks   (BV1, appended) Happy Hour: ticks of doubled kill points left (BV7: set by a flask drink)
  *   rebukePending    (BV6, appended) Rebuke: RebukePending GUARD while the current guard braced, ROLL for a roll's
  *                    brace this tick, else NONE (./riposte.ts)
+ *   braceTotal       (docs/LEGENDARIES.md LGD15, appended) Bastion: enemy bullets stopped by every guard and roll
+ *                    toward the room's brace (Citadel: toward the next brace); reset when a room's enemies spawn, at a
+ *                    floor's start and by the brace (./hooks.ts)
  * and for the world:
  *   procs            the proc queue (BU3, ./procs.ts: { x, z, owner, gen, slot, id, excess, kind } per entry, oldest
  *                    first). `excess`, appended by docs/LEGENDARIES.md LG1, is the kill's Overkill carry (LG2:
@@ -103,6 +106,8 @@ export interface BuildPlayerState {
 	 * end fires the REBUKE ring), ROLL for a roll's brace this tick (stepBuilds fires it), else NONE.
 	 */
 	rebukePending: number;
+	/** Bastion (docs/LEGENDARIES.md LGD15; appended): bullets stopped by every guard and roll toward the next brace. */
+	braceTotal: number;
 }
 
 /** One queued proc: a kill (BU3) or, from BV5, a smash (docs/BUILDS_V2.md, `kind`). Every field hashed. */
@@ -544,6 +549,7 @@ function newPlayer(): BuildPlayerState {
 		overcap: 0,
 		happyHourTicks: 0,
 		rebukePending: RebukePending.NONE,
+		braceTotal: 0,
 	};
 }
 
@@ -790,6 +796,7 @@ export const BUILD_PLAYER_SCALARS = [
 	"overcap",
 	"happyHourTicks",
 	"rebukePending",
+	"braceTotal",
 ] as const;
 
 /** Per proc, in hash order. Append only. */

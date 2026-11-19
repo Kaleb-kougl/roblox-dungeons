@@ -368,10 +368,11 @@ describe("opt-in state and the builds hash group (BU1)", () => {
 			]);
 			expect(layout.values[g.finish - 1]).toBe(STILL_NONE);
 			expect(layout.values).toEqual(writeHashFields(s, []));
-			// 1 + per player (1 + 20 levels + 1 duos length + 14 scalars: BU5 appended bulwarkPending, BU6 closeGrazes,
+			// 1 + per player (1 + 20 levels + 1 duos length + 15 scalars: BU5 appended bulwarkPending, BU6 closeGrazes,
 			// docs/LEGENDARIES.md LG1 braceCount and braceReady, the owner's tuning braceCooldown, docs/BUILDS_V2.md BV1
-			// riposteCount, overcap, happyHourTicks, BV6 rebukePending) + procs, pins and waves lengths + 2 world scalars.
-			expect(g.finish - g.start).toBe(1 + n * (1 + BOON_COUNT + 1 + 14) + 3 + 2);
+			// riposteCount, overcap, happyHourTicks, BV6 rebukePending, LGD15 braceTotal) + procs, pins and waves lengths
+			// + 2 world scalars.
+			expect(g.finish - g.start).toBe(1 + n * (1 + BOON_COUNT + 1 + 15) + 3 + 2);
 			const scalars = layout.names.filter((name) => name.sub(1, 19) === "builds.players[0].b");
 			expect(scalars).toEqual([
 				"builds.players[0].bigHits",
@@ -379,6 +380,7 @@ describe("opt-in state and the builds hash group (BU1)", () => {
 				"builds.players[0].braceCount",
 				"builds.players[0].braceReady",
 				"builds.players[0].braceCooldown",
+				"builds.players[0].braceTotal",
 			]);
 		}
 	});
@@ -612,6 +614,7 @@ describe("legendaries Overkill and Bastion (docs/LEGENDARIES.md LG1)", () => {
 			"overcap",
 			"happyHourTicks",
 			"rebukePending",
+			"braceTotal",
 		]);
 		expect(BUILD_PROC_FIELDS).toEqual(["x", "z", "owner", "gen", "slot", "id", "excess", "kind"]);
 		const s = createSimState(SEED, 0, 0, ARENA);
@@ -628,6 +631,15 @@ describe("legendaries Overkill and Bastion (docs/LEGENDARIES.md LG1)", () => {
 			hashState(d) !== hashState(s),
 			cloneSimState(d).builds!.players[0].braceCooldown,
 		]).toEqual([0, true, 5]);
+		// The brace's room total (LGD15): appended last, hashed, cloned.
+		expect(bp(s).braceTotal).toBe(0);
+		const e = cloneSimState(s);
+		e.builds!.players[0].braceTotal = 7;
+		expect([
+			bp(s).braceTotal,
+			hashState(e) !== hashState(s),
+			cloneSimState(e).builds!.players[0].braceTotal,
+		]).toEqual([0, true, 7]);
 	});
 
 	it("a fresh build is dealt both as New cards; once owned (level I is their only level) neither comes back", () => {

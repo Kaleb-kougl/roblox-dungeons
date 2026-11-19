@@ -404,17 +404,16 @@ Level I only. Three parts:
 2. **A bigger guard**: `guardHalfAngleCos` -1 (the full ring, `BASTION_GUARD_HALF_ANGLE_COS`) and `BASTION_GUARD_TICKS`
    27 (1.5x the 18; whole ticks). Reach and the 60-tick cooldown are unchanged (LGD5, settled by the owner after
    LG7: the full ring at 27 ticks).
-3. **Brace**: one guard **or one roll** that stops at least `BASTION_BRACE_BULLETS` (8) enemy bullets restores one
-   armor pip, up to `armorMax`. A guard counts the `cancels` it already counts; a roll counts each enemy bullet that
+3. **Brace** (LGD15, owner 2026-11-19): `BASTION_BRACE_BULLETS` (10) enemy bullets stopped by guards **and rolls**,
+   added up over all of them in a room (`braceTotal`), restore one armor pip, up to `armorMax`. A guard counts the `cancels` it already counts; a roll counts each enemy bullet that
    overlaps the player while rolling with i-frames (`rollTicks > 0` and `iframeTicks > 0`, Phantom Step's test), once
    per bullet: the first time a Bastion roller counts a bullet, its payload's `lastHit` is set to 1 (unused on enemy
    bullets), and a marked bullet never counts again for anyone. Phantom Step's erased bullets count too. Goo and
-   strikes never count (as for the parry feed). The count (`braceCount`) resets when a guard or a roll starts. Once
-   per room (LGD6, settled by the owner after LG7: 3 bullets, once per room; retuned to 8 bullets): `braceReady` is set when a room's
-   enemies spawn (Warding's moment) and at a floor's start, cleared by a brace that restored something. A brace with
-   no missing pip is NOT spent (LGD6 revised): `braceReady` stays set and nothing shows, so a later guard or roll
-   restores the pip a hit took; with Stone Heart it heals half a heart instead and is spent. BRACED always means
-   something came back.
+   strikes never count (as for the parry feed). The guard's or roll's own count (`braceCount`, which Rebuke reads)
+   resets when a guard or a roll starts; the room total does not. Once per room (LGD6, then LGD15): `braceReady` is
+   set, and `braceTotal` reset to 0, when a room's enemies spawn (Warding's moment) and at a floor's start; the brace
+   clears it. A brace with no missing pip does nothing and is spent all the same (LGD15; LGD6's "not spent" is gone);
+   with Stone Heart it heals half a heart instead. BRACED always means something came back.
 
 The guard is the sword's, but the roll is every weapon's, so a bow player braces by rolling through a volley (LGD7).
 Mirror Cloak reflects every bullet a guard erases, so with Bastion a full-ring guard reflects everything around the
@@ -426,7 +425,7 @@ knight; a full pool still drops reflections, as today.
 |---|---|---|---|
 | **Supernova** | Overkill + Volatile | a kill whose carry is `SUPERNOVA_CARRY` (2, LGD13) or more bursts one Volatile ring larger: level I -> 12 bolts, II -> 16, III (Cataclysm) -> 16 that pierce 2 (LGD8) | Big hits make visibly bigger rings |
 | **Skewer** | Overkill + Piercing Arrows | the target stays the nearest enemy; the streak's line runs from the corpse through the target to `OVERKILL_RANGE` from the corpse, and every enemy within `SKEWER_RADIUS` (0.5 tiles) of it is struck for the full carry, others in slot order, the target last; each kill carries on | One arrow skewers a line of swarmers; the bow's Overkill duo |
-| **Citadel** | Bastion + Warding | Brace is no longer once per room: every guard or roll that stops 8+ bullets restores a pip, at most one brace per `CITADEL_BRACE_COOLDOWN_TICKS` (5 s, LGD14) | Warding's pips become something you earn back mid-fight |
+| **Citadel** | Bastion + Warding | Brace is no longer once per room: every `BASTION_BRACE_BULLETS` (10) bullets stopped by guards and rolls restore a pip, at most one brace per `CITADEL_BRACE_COOLDOWN_TICKS` (5 s, LGD14; bullets stopped during it count toward the next, LGD15) | Warding's pips become something you earn back mid-fight |
 | **Stone Heart** | Bastion + Hearty | a Brace with no missing pip heals half a heart instead (a heal pulse); still once per room unless Citadel | Hearty's first duo: perfect guarding heals |
 
 Supernova keeps V2's name but not V2's rule ("+1 bolt per point of excess, cap +8" needs a ring row in
@@ -567,6 +566,15 @@ flies into the armor row; 8. Stone Heart's heal pulse; 9. Reduced build effects 
   "stops 8 bullets"; `DAILY.ruleset` 9 -> 10. Endless replays and scores with Bastion changed (boards stay `_v1`); M1,
   every fixture and the tutorial are unchanged. The LG7 tables above were measured at 3; the tune bots' "stopping"
   columns now read `BASTION_BRACE_BULLETS`+ / `DEFENSE_HIGH_STOPS` (5 -> 12)+.
+- **LGD15** (owner 2026-11-19) The brace adds up: `BASTION_BRACE_BULLETS` 8 -> 10 bullets stopped by every guard and
+  roll in a room (`braceTotal`, a new per-player scalar hashed and appended last to `BUILD_PLAYER_SCALARS`, after
+  `rebukePending`; reset at a room's spawn, a floor's start and by the brace), no longer 8 in one guard or one roll.
+  Still once per room (Citadel: every 10, its 5 s cooldown kept, the total counting through it). At full armor the
+  brace does nothing and is spent (no Stone Heart heal: nothing restored), replacing LGD6's "not spent". Bullets
+  stopped after the room's brace add nothing. Rebuke's ring still reads the guard's or roll's own `braceCount`. Card
+  text "stop 10 bullets in a room: +1 pip" (Archer "roll through 10 bullets in a room: +1 pip"); Citadel "Every 10
+  bullets you stop restore a pip" (Archer "... you roll through ..."). `DAILY.ruleset` 24 -> 25. Endless / daily / dev
+  replays and scores with Bastion changed (boards stay `_v1`); M1, every fixture and the tutorial are unchanged.
 - **LGD7** (settled, owner 2026-11-06) A roll through `BASTION_BRACE_BULLETS` (8; 3 at the time) bullets braces too,
   with any weapon, each bullet counted once.
 - **LGD8** Supernova = one ring size larger on a big carry (no new arc rows); the threshold is LGD13.

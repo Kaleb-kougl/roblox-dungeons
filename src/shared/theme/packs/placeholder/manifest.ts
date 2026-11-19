@@ -1178,9 +1178,9 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"boon.overkill.desc": "Damage left over from a kill jumps to the next enemy",
 		"boon.overkill.icon": "OVK",
 		"boon.bastion.name": "Bastion",
-		"boon.bastion.desc": "+1 armor pip; a full-ring guard; stop 8 bullets: +1 pip",
+		"boon.bastion.desc": "+1 armor pip; a full-ring guard; stop 10 bullets in a room: +1 pip",
 		// docs/ARCHER.md AR10: per-character overrides (`<key>.<character>`, theme characters.ts; placeholder wording).
-		"boon.bastion.desc.archer": "+1 armor pip; roll through 8 bullets: +1 pip",
+		"boon.bastion.desc.archer": "+1 armor pip; roll through 10 bullets in a room: +1 pip",
 		"boon.bastion.icon": "BST",
 		// docs/BUILDS_V2.md BV1: builds v2's three boons (placeholder wording from the plan; BV10 polishes it).
 		"boon.riposte.name": "Riposte",
@@ -1278,8 +1278,8 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"duo.skewer.desc": "Overkill streaks strike every enemy in their line",
 		"duo.skewer.icon": "SKW",
 		"duo.citadel.name": "Citadel",
-		"duo.citadel.desc": "Every guard that stops 8 bullets restores a pip",
-		"duo.citadel.desc.archer": "Every roll through 8 bullets restores a pip",
+		"duo.citadel.desc": "Every 10 bullets you stop restore a pip",
+		"duo.citadel.desc.archer": "Every 10 bullets you roll through restore a pip",
 		"duo.citadel.icon": "CTD",
 		"duo.stoneHeart.name": "Stone Heart",
 		"duo.stoneHeart.desc": "A brace at full armor heals half a heart",
