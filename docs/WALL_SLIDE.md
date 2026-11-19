@@ -401,6 +401,8 @@ Unchanged: the server validator (same config builder), the lockstep wire and the
       known, so a spectated teammate's ring never flashes.
   - Everything is drawn always-on-top (a wall cell's square would be inside its wall otherwise).
   - **Not yet:** the notch edges (they come with WS3) and the contact normal.
+  - **Keep circles** (docs/SWORD_SPACING.md SP6): each contact enemy's sword spacing keep distance near the player,
+    dim / `uiAccent` while the brake is on / `uiHealth` while the body is inside it; legend in that doc's SP6 as-built.
   - **Code:** logic `shared/view/collisionDebug.ts` (`blockingCellsNear`, `StallDetector`, `stallLine`, a local copy of
     `isIsolatedBlocker` that mirrors the shared/dungeon helper of WS2: swap it for that export once both are merged),
     tunables `COLLISION_DEBUG` in `shared/view/collisionDebugConfig.ts`, spec `collisionDebug.spec.ts`

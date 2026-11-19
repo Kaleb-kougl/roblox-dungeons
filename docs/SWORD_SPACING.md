@@ -354,8 +354,23 @@ Archer.
   own list per pass; extend `predictMotion.spec.ts`: one-tick parity exact on endless floors with enemies (Knight,
   "both"), a coverage kind `brake`, and horizons excused only when the brake engaged while an entry moved (the excused
   share stays under `MAX_EXCUSED_SHARE`). → Verify: `npm run test:only -- lockstep/predictMotion`.
-- [ ] **SP6. `KV_CollisionDebug` keep circles** (presentation only, off by default, Janitor). Add each spacing entry's
-  keep circle near the watched player, lit while the brake is on and the knight is touching one. → Verify: Studio.
+- [x] **SP6. `KV_CollisionDebug` keep circles** (presentation only, off by default, Janitor). Add each spacing entry's
+  keep circle near the watched player, lit while the brake is on and the knight is touching one. → Verify: Studio
+  (pending).
+
+  **As built (SP6; Studio check pending).** Turn it on as for WS6: Workspace boolean `KV_CollisionDebug` true (Studio,
+  or with `KV_Debug`). Around the watched player, beside WS6's cells and body ring, every spacing entry whose keep
+  circle comes within `keepNearTiles` 3 of the body (at most `keepMaxRings` 16, slot order) is a thin ring of its keep
+  radius at the enemy's current sim position: `uiTextDim` (transparency 0.65) normally, `uiAccent` (0.25) while the
+  local player's brake is on (`weaponSpacingActive` on the frame input's buttons, alive, the config braking the walk
+  or the lunge), `uiHealth` (0.1) while the merged body's centre is inside that keep (whatever the brake). A spectated
+  teammate's buttons are not known, so their rings are never lit (inside still shows). Nothing extra when the run has
+  no `SimConfig.spacing` (`SwordSpacing.WEB`, the greybox). ZIndex: cells 1, keep circles 2, body rings 3 (was 2).
+  Code: `shared/view/collisionDebug.ts` `keepRingsNear` / `KeepRingStyle` / `newKeepRings` (rebuilds the CALLER's own
+  `SpacingList` with the sim's `buildSpacingList`), tunables `keep*` in `COLLISION_DEBUG`, 5 rows in
+  `collisionDebug.spec.ts`; `CollisionDebugController` pools the rings (CylinderHandleAdornments under its anchor);
+  `SimController.getRunSpacing()` reads the RUN config's `spacing` (an endless floor's world config, `ctx.config`, does
+  not carry it). No sim, hash or replay change.
 - [ ] **SP7. Studio / playtest.** Keyboard and mouse first (the owner's case: a key held at the enemy while clicking,
   the pointer on and past the enemy for the finisher); then gamepad with and without the right stick and touch
   (auto-target on and off), to check nothing feels worse there. Places: a swarmer pack, a slime that splits, a reaper,

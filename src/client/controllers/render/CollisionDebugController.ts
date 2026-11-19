@@ -4,10 +4,11 @@ import { RunService, Workspace } from "@rbxts/services";
 import { STUDS_PER_TILE } from "shared/config";
 import { worldToGrid, type Dungeon } from "shared/dungeon";
 import { RUN_ATTRIBUTES } from "shared/play";
-import { PLAYER_RADIUS, partySize, playerAt, solidCells, type SimState } from "shared/sim";
+import { PLAYER_RADIUS, newSpacingList, partySize, playerAt, solidCells, type SimState } from "shared/sim";
 import type { ColorRole } from "shared/theme";
 import {
 	COLLISION_DEBUG,
+	KeepRingStyle,
 	RENDER_ORDER,
 	StallDetector,
 	blockingCellsNear,
@@ -15,6 +16,8 @@ import {
 	floorStudsY,
 	inputMagnitude,
 	collisionRings,
+	keepRingsNear,
+	newKeepRings,
 	type CollisionRings,
 	stallLine,
 	studsX,
@@ -41,6 +44,9 @@ interface Scene {
 	readonly ring: CylinderHandleAdornment;
 	/** docs/LOCAL_PREDICTION.md LP6: the merged body's ring while the local player is drawn predicted. */
 	readonly mergedRing: CylinderHandleAdornment;
+	/** docs/SWORD_SPACING.md SP6: pooled keep circles (hidden past `keepShown`). */
+	readonly keeps: CylinderHandleAdornment[];
+	keepShown: number;
 	/** The layout drawn: the watched player's cell, the intact breakables' count, the cells shown. */
 	gx: number;
 	gy: number;
@@ -61,6 +67,11 @@ interface Scene {
  *   stall flash     the ring turns stallRole while StallDetector reports a stall (the local player's input held,
  *                   the body not moving), and one `[collision] stall ...` line is printed per episode. A spectated
  *                   teammate's input is not known here, so the flash covers the local player only.
+ *   keep circles    docs/SWORD_SPACING.md SP6: every contact enemy's keep distance near the player (shared/view
+ *                   keepRingsNear, from this controller's own SpacingList and the run's SimConfig.spacing; nothing
+ *                   without one), at the enemies' current sim positions: keepDimRole, keepLitRole while the local
+ *                   player's brake is on (a spectated teammate's buttons are not known: dim), keepInsideRole while
+ *                   the merged body is inside that keep.
  *
  * Pieces are HandleAdornments (always on top) under one invisible anchor Part in a Workspace folder; nothing exists
  * while the overlay is off. The render step and the scene are owned by Janitors: turning the attribute off destroys
@@ -75,6 +86,9 @@ export class CollisionDebugController implements OnStart {
 	private scene: Scene | undefined;
 	private readonly detector = new StallDetector();
 	private readonly rings: CollisionRings = { bodyX: 0, bodyZ: 0, mergedShown: false, mergedX: 0, mergedZ: 0 };
+	/** SP6: the client's own spacing list (never the sim's scratch) and the rings drawn from it. */
+	private readonly spacingList = newSpacingList();
+	private readonly keepRings = newKeepRings();
 
 	constructor(private readonly sim: SimController, private readonly theme: ThemeController) {}
 
@@ -146,6 +160,7 @@ export class CollisionDebugController implements OnStart {
 		if (this.scene !== undefined && this.scene.dungeon !== d) this.clearScene();
 		const scene = this.scene ?? this.buildScene(d);
 		const p = playerAt(state, viewIndex);
+		const localView = viewIndex === this.sim.getLocalPlayerIndex();
 
 		// The blocking cells around the player's cell (only when it or the breakables changed).
 		const gx = worldToGrid(p.x);
@@ -160,7 +175,7 @@ export class CollisionDebugController implements OnStart {
 
 		// The stall flash: the local player's input only (a spectated teammate's is not known on this client).
 		const input = this.sim.getFrameInput();
-		const ownInput = viewIndex === this.sim.getLocalPlayerIndex() && p.dead === 0;
+		const ownInput = localView && p.dead === 0;
 		const magnitude = ownInput ? inputMagnitude(input.moveX, input.moveZ) : 0;
 		if (this.detector.update(state.tick, p.x, p.z, magnitude)) print(stallLine(p.x, p.z, input.moveX, input.moveZ));
 		const stalled = this.detector.isStalled();
@@ -180,6 +195,49 @@ export class CollisionDebugController implements OnStart {
 				FLAT,
 			);
 		}
+
+		// docs/SWORD_SPACING.md SP6: the keep circles (the brake state from the local player's buttons only).
+		const keeps = keepRingsNear(
+			state,
+			this.sim.getRunSpacing(),
+			viewIndex,
+			localView ? input.buttons : undefined,
+			this.spacingList,
+			this.keepRings,
+		);
+		this.layoutKeeps(scene, keeps.count);
+	}
+
+	/** Places the pooled keep circles on this frame's `keepRings` (the first `count`), the extra ones hidden. */
+	private layoutKeeps(scene: Scene, count: number): void {
+		const v = COLLISION_DEBUG;
+		const k = this.keepRings;
+		for (let i = 0; i < count; i++) {
+			let ring = scene.keeps[i];
+			if (ring === undefined) {
+				ring = new Instance("CylinderHandleAdornment");
+				ring.Name = "Keep";
+				ring.Height = v.keepThicknessStuds;
+				ring.AlwaysOnTop = v.alwaysOnTop;
+				ring.ZIndex = v.keepZIndex;
+				ring.Adornee = scene.anchor;
+				ring.Parent = scene.anchor;
+				scene.keeps.push(ring);
+			}
+			// Written every frame (at most keepMaxRings): a float32 property never compares equal to the float64 value.
+			const radius = k.keep[i] * STUDS_PER_TILE;
+			ring.Radius = radius;
+			ring.InnerRadius = math.max(0, radius - v.keepWidthStuds);
+			const style = k.style[i];
+			const inside = style === KeepRingStyle.INSIDE;
+			const lit = style === KeepRingStyle.LIT;
+			ring.Color3 = this.color(inside ? v.keepInsideRole : lit ? v.keepLitRole : v.keepDimRole);
+			ring.Transparency = inside ? v.keepInsideTransparency : lit ? v.keepLitTransparency : v.keepDimTransparency;
+			ring.CFrame = new CFrame(k.x[i] * STUDS_PER_TILE, v.keepLiftStuds, k.z[i] * STUDS_PER_TILE).mul(FLAT);
+			ring.Visible = true;
+		}
+		for (let i = count; i < scene.keepShown; i++) scene.keeps[i].Visible = false;
+		scene.keepShown = count;
 	}
 
 	private color(role: ColorRole): Color3 {
@@ -227,6 +285,8 @@ export class CollisionDebugController implements OnStart {
 			cells: [],
 			ring,
 			mergedRing,
+			keeps: [],
+			keepShown: 0,
 			gx: NONE,
 			gy: NONE,
 			intact: -1,

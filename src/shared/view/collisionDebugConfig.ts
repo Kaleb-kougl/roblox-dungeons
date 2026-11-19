@@ -43,11 +43,31 @@ export const COLLISION_DEBUG = {
 	mergedRole: "uiTextDim" as ColorRole,
 	mergedRingTransparency: 0.5,
 
+	// --- the keep circles (docs/SWORD_SPACING.md SP6) -----------------------------------------------------------------
+	/** A contact enemy's keep circle is drawn while it comes within this many tiles of the watched player's body. */
+	keepNearTiles: 3,
+	/** At most this many keep circles (the pool's size; the list's slot order decides which). */
+	keepMaxRings: 16,
+	/** The circles' band width (inward from the keep radius), thickness and lift over the floor, studs. */
+	keepWidthStuds: 0.08,
+	keepThicknessStuds: 0.05,
+	keepLiftStuds: 0.08,
+	/** The brake off (or not known: a spectated teammate): thin and dim. */
+	keepDimRole: "uiTextDim" as ColorRole,
+	keepDimTransparency: 0.65,
+	/** The watched (local) player's brake on: lit. */
+	keepLitRole: "uiAccent" as ColorRole,
+	keepLitTransparency: 0.25,
+	/** The watched player's body inside this keep distance. */
+	keepInsideRole: "uiHealth" as ColorRole,
+	keepInsideTransparency: 0.1,
+
 	/** Every piece draws over the art (a wall cell's square would be inside the wall's box otherwise). */
 	alwaysOnTop: true,
-	/** HandleAdornment ZIndex (0-10) of the squares and of the ring (on top of the squares). */
+	/** HandleAdornment ZIndex (0-10): the squares, the keep circles over them, the body rings on top. */
 	cellZIndex: 1,
-	ringZIndex: 2,
+	keepZIndex: 2,
+	ringZIndex: 3,
 
 	// --- the stall flash (WS5's stall rule) --------------------------------------------------------------------------
 	/** The move input counts as held at this magnitude or more (unit stick; the sim clamps it to 1). */

@@ -10,6 +10,8 @@
  *   collisionDebugDungeon                 the grid the sim moves on: a secret floor's carved copy (docs/SECRET_ROOMS.md
  *                                         SR5: the chamber and the crack FLOOR, the crack held shut by its intact pieces
  *                                         in `solid`), else the floor's own
+ *   keepRingsNear                         docs/SWORD_SPACING.md SP6: the spacing list's keep circles near the watched
+ *                                         player, each styled dim / lit (the brake on) / inside (the body in its keep)
  *
  * Presentation only: it reads a Dungeon and SolidCells the sim already uses and never writes anything back.
  */
@@ -22,7 +24,19 @@ import {
 	type Dungeon,
 	type SolidCells,
 } from "shared/dungeon";
-import { AXIS_MAX, PLAYER_SPEED, SIM_HZ, type PlayerState } from "shared/sim";
+import {
+	AXIS_MAX,
+	PLAYER_SPEED,
+	SIM_HZ,
+	buildSpacingList,
+	playerAt,
+	weaponSpacingActive,
+	weaponsAt,
+	type PlayerState,
+	type SimState,
+	type SpacingConfig,
+	type SpacingList,
+} from "shared/sim";
 import { COLLISION_DEBUG } from "./collisionDebugConfig";
 
 /**
@@ -221,5 +235,94 @@ export function collisionRings(
 	out.mergedShown = drawn !== merged;
 	out.mergedX = merged.prevX + (merged.x - merged.prevX) * alpha;
 	out.mergedZ = merged.prevZ + (merged.z - merged.prevZ) * alpha;
+	return out;
+}
+
+/** docs/SWORD_SPACING.md SP6: how a keep circle is drawn (COLLISION_DEBUG.keepDimRole / keepLitRole / keepInsideRole). */
+export const KeepRingStyle = {
+	/** The brake is off (or not known: a spectated teammate). */
+	DIM: 0,
+	/** The watched player's brake is on (the local player only: the sword attacking, SimConfig.spacing). */
+	LIT: 1,
+	/** The watched player's body is inside this keep distance (whatever the brake). */
+	INSIDE: 2,
+} as const;
+export type KeepRingStyle = (typeof KeepRingStyle)[keyof typeof KeepRingStyle];
+
+/** The keep circles to draw this frame: `count` live entries (the arrays grow, never shrink). */
+export interface KeepRings {
+	x: number[];
+	z: number[];
+	keep: number[];
+	style: KeepRingStyle[];
+	count: number;
+	/** The watched player's brake was on (false when not known). */
+	brakeOn: boolean;
+}
+
+/** An empty ring list. */
+export function newKeepRings(): KeepRings {
+	return { x: [], z: [], keep: [], style: [], count: 0, brakeOn: false };
+}
+
+function pushKeepRing(out: KeepRings, x: number, z: number, keep: number, style: KeepRingStyle): void {
+	const i = out.count;
+	if (i < out.x.size()) {
+		out.x[i] = x;
+		out.z[i] = z;
+		out.keep[i] = keep;
+		out.style[i] = style;
+	} else {
+		out.x.push(x);
+		out.z.push(z);
+		out.keep.push(keep);
+		out.style.push(style);
+	}
+	out.count = i + 1;
+}
+
+/**
+ * docs/SWORD_SPACING.md SP6: the spacing brake's keep circles around player `playerIndex` of `state`, written into
+ * `out` (returned). Nothing without `config` (the run's SimConfig.spacing: absent under SwordSpacing.WEB, in the
+ * greybox, ...). Else `list` (the CALLER's own SpacingList, never the sim's scratch) is rebuilt with the sim's own
+ * buildSpacingList from `state`, and every entry whose keep circle comes within COLLISION_DEBUG.keepNearTiles of the
+ * player's (merged) body is kept, in the list's slot order, at most COLLISION_DEBUG.keepMaxRings. Its style: INSIDE
+ * while the body's centre is closer than the keep distance, else LIT while the brake is on, else DIM.
+ *
+ * The brake is on when `buttons` is known (the local player's frame input; undefined for a spectated teammate), the
+ * player is alive, the config brakes the walk or the lunge, and the weapon in hand says so (weaponSpacingActive).
+ * Read-only on `state`.
+ */
+export function keepRingsNear(
+	state: Readonly<SimState>,
+	config: Readonly<SpacingConfig> | undefined,
+	playerIndex: number,
+	buttons: number | undefined,
+	list: SpacingList,
+	out: KeepRings,
+): KeepRings {
+	out.count = 0;
+	out.brakeOn = false;
+	if (config === undefined) return out;
+	const p = playerAt(state, playerIndex);
+	out.brakeOn =
+		buttons !== undefined &&
+		p.dead === 0 &&
+		(config.walk || config.lunge) &&
+		weaponSpacingActive(weaponsAt(state, playerIndex), buttons);
+	buildSpacingList(state, config, list);
+	const near = COLLISION_DEBUG.keepNearTiles;
+	const cap = COLLISION_DEBUG.keepMaxRings;
+	for (let i = 0; i < list.count; i++) {
+		if (out.count >= cap) break;
+		const keep = list.keep[i];
+		const dx = p.x - list.x[i];
+		const dz = p.z - list.z[i];
+		const reach = keep + near;
+		const d2 = dx * dx + dz * dz;
+		if (d2 > reach * reach) continue;
+		const style = d2 < keep * keep ? KeepRingStyle.INSIDE : out.brakeOn ? KeepRingStyle.LIT : KeepRingStyle.DIM;
+		pushKeepRing(out, list.x[i], list.z[i], keep, style);
+	}
 	return out;
 }

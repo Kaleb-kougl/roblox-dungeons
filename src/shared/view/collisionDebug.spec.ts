@@ -1,9 +1,24 @@
 // KV_CollisionDebug (docs/WALL_SLIDE.md WS6): the blocking cells near the watched player (isolated 1x1 blockers
-// apart), the input magnitude, the stall detector's episodes and its log line, on small hand-made grids.
+// apart), the input magnitude, the stall detector's episodes and its log line, on small hand-made grids; the sword
+// spacing keep circles (docs/SWORD_SPACING.md SP6) on a hand-placed state.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { TileType, cellKey, secretCrackCells, type Dungeon, type SolidCells } from "shared/dungeon";
 import { endlessRunFloor } from "shared/run";
-import { AXIS_MAX, BREAKABLES_CONFIG, PLAYER_SPEED, SIM_HZ, createBreakablesState } from "shared/sim";
+import {
+	AXIS_MAX,
+	BREAKABLES_CONFIG,
+	Button,
+	EMPTY_INPUT,
+	PLAYER_RADIUS,
+	PLAYER_SPEED,
+	SIM_HZ,
+	SWORD_SPACING,
+	SimCtx,
+	createBreakablesState,
+	createSimState,
+	newSpacingList,
+	pushSpacingEntry,
+} from "shared/sim";
 import {
 	COLLISION_DEBUG,
 	StallDetector,
@@ -12,6 +27,9 @@ import {
 	collisionDebugDungeon,
 	inputMagnitude,
 	isIsolatedBlocker,
+	KeepRingStyle,
+	keepRingsNear,
+	newKeepRings,
 	stallLine,
 } from "shared/view";
 
@@ -270,5 +288,91 @@ describe("collisionDebugDungeon: a secret floor's carved grid (docs/SECRET_ROOMS
 		expect(collisionBlocks(d, plan.chestX + plan.ax, plan.chestY + plan.az, solid)).toBe(false);
 		// The chest's own cell holds its piece (an intact chest blocks like any piece).
 		expect(collisionBlocks(d, plan.chestX, plan.chestY, solid)).toBe(true);
+	});
+});
+
+describe("keepRingsNear: the sword spacing keep circles (docs/SWORD_SPACING.md SP6)", () => {
+	/** A state with the player at the origin (the sword in hand) and swarmers at the given x positions on z = 0. */
+	function sceneOf(xs: ReadonlyArray<number>) {
+		const s = createSimState(1, 0, 0);
+		const ctx = new SimCtx().bind(s, {}, EMPTY_INPUT);
+		for (const x of xs) ctx.spawnActor("swarmer", x, 0);
+		return s;
+	}
+	/** A swarmer's keep: radius + PLAYER_RADIUS + margin. */
+	function swarmerKeep(s: ReturnType<typeof createSimState>): number {
+		return s.combat.actors[0].radius + PLAYER_RADIUS + SWORD_SPACING.marginTiles;
+	}
+
+	it("draws nothing without the run's spacing config (SwordSpacing.WEB, the greybox)", () => {
+		const s = sceneOf([1, 2]);
+		const out = keepRingsNear(s, undefined, 0, Button.FIRE, newSpacingList(), newKeepRings());
+		expect(out.count).toBe(0);
+		expect(out.brakeOn).toBe(false);
+	});
+
+	it("keeps only the circles within keepNearTiles of the body, in slot order, from the caller's own list", () => {
+		const s = sceneOf([2, 30, -3]);
+		const keep = swarmerKeep(s);
+		const far = keep + COLLISION_DEBUG.keepNearTiles + 0.5;
+		s.combat.actors[1].x = far; // just out of reach
+		const list = newSpacingList();
+		pushSpacingEntry(list, 99, 99, 99); // rebuilt, not appended to
+		const out = keepRingsNear(s, SWORD_SPACING, 0, 0, list, newKeepRings());
+		expect(list.count).toBe(3);
+		expect(out.count).toBe(2);
+		expect(out.x[0]).toBe(2);
+		expect(out.x[1]).toBe(-3);
+		expect(out.keep[0]).toBe(keep);
+		s.combat.actors[1].x = keep + COLLISION_DEBUG.keepNearTiles - 0.5; // now within reach
+		expect(keepRingsNear(s, SWORD_SPACING, 0, 0, list, out).count).toBe(3);
+	});
+
+	it("caps the rings at keepMaxRings", () => {
+		const xs: number[] = [];
+		for (let i = 0; i < COLLISION_DEBUG.keepMaxRings + 4; i++) xs.push(1 + (i % 3) * 0.5);
+		const out = keepRingsNear(sceneOf(xs), SWORD_SPACING, 0, 0, newSpacingList(), newKeepRings());
+		expect(out.count).toBe(COLLISION_DEBUG.keepMaxRings);
+	});
+
+	it("is dim while the brake is off or unknown, lit while the local brake is on", () => {
+		const s = sceneOf([2]);
+		const list = newSpacingList();
+		const out = newKeepRings();
+		expect(keepRingsNear(s, SWORD_SPACING, 0, 0, list, out).style[0]).toBe(KeepRingStyle.DIM);
+		// FIRE held with the sword in hand: the brake is on
+		keepRingsNear(s, SWORD_SPACING, 0, Button.FIRE, list, out);
+		expect(out.brakeOn).toBe(true);
+		expect(out.style[0]).toBe(KeepRingStyle.LIT);
+		// a spectated teammate: buttons not known
+		keepRingsNear(s, SWORD_SPACING, 0, undefined, list, out);
+		expect(out.brakeOn).toBe(false);
+		expect(out.style[0]).toBe(KeepRingStyle.DIM);
+		// a config that brakes neither the walk nor the lunge
+		const none = { ...SWORD_SPACING, walk: false, lunge: false };
+		expect(keepRingsNear(s, none, 0, Button.FIRE, list, out).style[0]).toBe(KeepRingStyle.DIM);
+		// the bow in hand (no spacing hook)
+		s.combat.weapons.activeSet = 1;
+		expect(keepRingsNear(s, SWORD_SPACING, 0, Button.FIRE, list, out).style[0]).toBe(KeepRingStyle.DIM);
+		s.combat.weapons.activeSet = 0;
+		// dead: never braked
+		s.player.dead = 1;
+		expect(keepRingsNear(s, SWORD_SPACING, 0, Button.FIRE, list, out).style[0]).toBe(KeepRingStyle.DIM);
+	});
+
+	it("marks the circles the body is inside, whatever the brake", () => {
+		const s = sceneOf([0.5, 2]);
+		const keep = swarmerKeep(s);
+		expect(0.5 < keep && 2 > keep).toBe(true);
+		const list = newSpacingList();
+		const out = newKeepRings();
+		for (const buttons of [0, Button.FIRE]) {
+			keepRingsNear(s, SWORD_SPACING, 0, buttons, list, out);
+			expect(out.style[0]).toBe(KeepRingStyle.INSIDE);
+			expect(out.style[1]).toBe(buttons === 0 ? KeepRingStyle.DIM : KeepRingStyle.LIT);
+		}
+		// exactly on the keep circle is not inside (the brake stops the body there)
+		s.combat.actors[0].x = keep;
+		expect(keepRingsNear(s, SWORD_SPACING, 0, 0, list, out).style[0]).toBe(KeepRingStyle.DIM);
 	});
 });

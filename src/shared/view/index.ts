@@ -46,8 +46,9 @@
  *                 ROOM_EDGE_VIEW in roomEdgesConfig.ts); roomEdgeState.ts: each room's safe / waiting / live state
  *                 and fightOn (the LIVE rule alone: a fight is on; docs/COMBO.md CB1)
  *   collisionDebug.ts  KV_CollisionDebug (docs/WALL_SLIDE.md WS6): the blocking cells near the watched player
- *                 (isolated 1x1 blockers apart), the input magnitude, the StallDetector and its log line (tunables:
- *                 COLLISION_DEBUG in collisionDebugConfig.ts)
+ *                 (isolated 1x1 blockers apart), the input magnitude, the StallDetector and its log line, the sword
+ *                 spacing keep circles (keepRingsNear, docs/SWORD_SPACING.md SP6) (tunables: COLLISION_DEBUG in
+ *                 collisionDebugConfig.ts)
  *   watch.ts      StateWatch: per-player and per-floor edges from sim state (hurt and its HurtKind, death, roll,
  *                 swing, ...) for the audio mapper and the feel controllers (docs/FEEL.md J1)
  *   preload.ts    asset preloading (docs/PRELOAD.md): the core / later tiers of a pack's content ids, the loading

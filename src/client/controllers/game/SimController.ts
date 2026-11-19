@@ -69,6 +69,7 @@ import {
 	type PlayerState,
 	type SimConfig,
 	type SimState,
+	type SpacingConfig,
 } from "shared/sim";
 import { TUTORIAL } from "shared/config";
 import { DAILY_WORLD_KIND } from "shared/daily";
@@ -768,6 +769,17 @@ export class SimController implements OnStart {
 	 */
 	getFrameInput(): Readonly<InputFrame> {
 		return this.input;
+	}
+
+	/**
+	 * docs/SWORD_SPACING.md SP6: the run's sword spacing brake, the RUN config's SimConfig.spacing (what step() reads;
+	 * an endless floor's world config, `getContext().config`, does not carry it); undefined without one (SwordSpacing.WEB,
+	 * the greybox) or a run. KV_CollisionDebug's keep circles. Read-only.
+	 */
+	getRunSpacing(): Readonly<SpacingConfig> | undefined {
+		const ctx = this.ctx;
+		if (ctx === undefined) return undefined;
+		return (ctx.live?.setup.config ?? ctx.coop?.config)?.spacing;
 	}
 
 	/**
