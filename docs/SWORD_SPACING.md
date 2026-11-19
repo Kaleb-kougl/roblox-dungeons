@@ -189,7 +189,7 @@ Archer.
   room clear time, and how often a greedy Knight is inside a keep distance.
   → Verify: the table goes in this doc (the baseline for SP4, and the enemy-driven share for a later knockback plan).
   The work goes on to SP1 whatever the split (SPD4).
-- [ ] **SP1. `buildSpacingList` and `brakeStep`** (Design 1-2) in `sim/combat/spacing.ts`, tunables in
+- [x] **SP1. `buildSpacingList` and `brakeStep`** (Design 1-2) in `sim/combat/spacing.ts`, tunables in
   `spacingData.ts`. Specs (`sim/combat/spacing.spec.ts`):
   - an empty list, or a step far from every entry, returns the step bit for bit;
   - head-on at a swarmer from 2 tiles at full walk: stops within 1e-9 of keep, never inside;
@@ -201,6 +201,29 @@ Archer.
   - fuzz 100,000 random lists / starts / steps: the contract holds every time;
   - the list skips dead, free and harmless slots and keeps slot order.
   → Verify: `npm run test:only -- sim/combat/spacing`.
+
+  **As built (SP1).** `sim/combat/spacingData.ts` (`SpacingConfig`, `SWORD_SPACING`), `spacingBrake.ts` (a leaf:
+  `SpacingList`, `newSpacingList` / `clearSpacingList` / `pushSpacingEntry`, `brakeStep(list, px, pz, dx, dz,
+  stopConeCos)` writing the module scratch `BRAKE_RESULT { x, z, engaged }`), `spacing.ts` (`buildSpacingList(state,
+  config, out)`: takes the config, since the margin is a tunable), all three exported from the combat barrel. Not wired
+  anywhere yet. Deviations from Design 2:
+  - **The cut lands on the keep circle.** Outside keep and outside the cone, the inward part is cut to
+    `d - sqrt(keep^2 - |t|^2)` (the end exactly on the circle with the tangential part kept), not to `d - keep`, which
+    would leave the end at `sqrt(keep^2 + |t|^2)` and make a slide spiral outward a little every tick. In the cone
+    (`t` = 0) both are `d - keep`, written as such so a stopped Knight stays put to the ulp.
+  - **An exact overlap passes.** At `d` = 0 there is no inward direction (every step moves away from the centre), so
+    `S . (P - e)` = 0 skips the entry and the step is untouched; the plan's "the step's own reverse as n" would make
+    the whole step inward and freeze the body until the enemy moves.
+  - **The check pass** also re-cuts when the chained per-entry cuts point the result against the step (each cut turns
+    it by less than 90 degrees, two can turn it past), and its tolerance is 1e-9 tiles (a cut onto the circle may end
+    an ulp inside it). Violators' inward parts are removed from the original step in entry order; the re-cut is
+    validated again and is zero if it still breaks the contract.
+  - "Inside keep" is the step's END only (the contact test reads end-of-tick positions): a 0.1 step can clip the edge
+    of a keep circle between two ticks by at most about 0.002 tiles, never at either end.
+  - The stop cone is tested against the step so far, `a >= stopConeCos x |R|` (`a` its inward part). A key held at an
+    enemy from far off can reach it at a wider bearing than it started with (the bearing grows as the ray passes the
+    centre) and then slides; a player who keeps the nearest key toward the enemy (the SP0 greedy fighter) is always
+    within 22.5 degrees and stops (spec: the nearest-key chase from every bearing).
 - [ ] **SP2. The walk** (Design 3). The `spacing` hook on `WeaponDef` and the sword, `weaponSpacingActive`, stepPlayer's
   trailing `spacing` argument (undefined = today), the list built at the start of `step` and `stepParty`. Specs:
   - holding FIRE and walking at a bruiser stops at keep; the same walk without FIRE and no combo walks into it as
