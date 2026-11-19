@@ -15,8 +15,9 @@
  *   observe(state) after every stepped tick: the merged pose at that tick against the head last predicted for it (the
  *                  pose drawn for that tick: the error statistics; a floor change or a dead player is not compared).
  *
- * The world and the traits come from the run config like the sim's (simWorldConfig, playerTraits); the mirror reads the
- * merged state only. Corrections (a hit, a pickup, a piece broken, the boss's seal, a floor change, a miss) are the
+ * The world, the traits and the sword spacing brake come from the run config like the sim's (simWorldConfig,
+ * playerTraits, SimConfig.spacing: the predictor's own list, built from the merged state once per rebuild, so the
+ * enemies stay where the merged state has them over the horizon); the mirror reads the merged state only. Corrections (a hit, a pickup, a piece broken, the boss's seal, a floor change, a miss) are the
  * next rebuild's business: the view smooths them (shared/view/predict). No allocation per rebuild.
  */
 import {
@@ -30,7 +31,13 @@ import {
 	type SimState,
 } from "shared/sim";
 import type { PredictionTunables } from "./config";
-import { copyMotionBase, newMotionScratch, predictMotionTick } from "./predictMotion";
+import {
+	buildMotionSpacing,
+	copyMotionBase,
+	newMotionScratch,
+	newMotionSpacing,
+	predictMotionTick,
+} from "./predictMotion";
 
 /** What the predictor reads from its client (LockstepClient implements it; specs fake it). */
 export interface PredictionSource {
@@ -87,6 +94,8 @@ export interface PredictionStats {
 
 export class LocalPredictor {
 	private readonly head = newMotionScratch();
+	/** The predictor's own sword spacing list (docs/SWORD_SPACING.md Design 5), rebuilt from the merged state per pass. */
+	private readonly spacing = newMotionSpacing();
 	private readonly path: MutablePath = { firstTick: 0, size: 0, xs: [], zs: [] };
 	private active = false;
 	private horizon = 0;
@@ -152,6 +161,8 @@ export class LocalPredictor {
 		const h = span < 0 ? 0 : span > this.tunables.maxTicks ? this.tunables.maxTicks : span;
 		const world = simWorldConfig(state, src.config);
 		const traits = playerTraits(src.config, i);
+		// The run config's brake (like traits), against the enemies where the merged state has them for the whole pass.
+		const spacing = buildMotionSpacing(this.spacing, state, src.config.spacing);
 		const queued = src.backlog();
 		let input = src.lastSteppedInput();
 		for (let k = 0; k < h; k++) {
@@ -169,7 +180,7 @@ export class LocalPredictor {
 				this.active = true;
 				return;
 			}
-			predictMotionTick(head, state, input, world, i, traits);
+			predictMotionTick(head, state, input, world, i, traits, spacing);
 			this.pathPush(head.player.x, head.player.z);
 		}
 		this.horizon = h;

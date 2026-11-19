@@ -350,10 +350,32 @@ Archer.
   - room clear time for both within 5 % of today (the brake must not make the Knight slower to kill);
   - the boss TTK rows (`bossAct1.ttk`, `demonlord.ttk`, the builds sword rows) inside their bands.
   → Verify: the before / after table in this doc.
-- [ ] **SP5. Prediction** (Design 5). Mirror the walk's and the lunge's brake in `predictMotion.ts`, the predictor's
+- [x] **SP5. Prediction** (Design 5). Mirror the walk's and the lunge's brake in `predictMotion.ts`, the predictor's
   own list per pass; extend `predictMotion.spec.ts`: one-tick parity exact on endless floors with enemies (Knight,
   "both"), a coverage kind `brake`, and horizons excused only when the brake engaged while an entry moved (the excused
   share stays under `MAX_EXCUSED_SHARE`). → Verify: `npm run test:only -- lockstep/predictMotion`.
+
+  **As built (SP5).** `predictMotion.ts` brakes like the sim, in its order: the walk mirror after the flask / weapon /
+  Quickstep scaling and before `movePlayer` when `spacing.config.walk` and `weaponSpacingActive(s.weapons, buttons)` (the
+  scratch weapons, read before the weapons mirror as stepPlayer reads them before stepWeapons); the sword mirror's
+  wind-up lunge when `spacing.config.lunge`. `predictMotionTick` takes a trailing `spacing?: SpacingTick`; the
+  predictor's own list is a `MotionSpacing` (`newMotionSpacing`, `buildMotionSpacing(out, state, runConfig.spacing)`:
+  tickSpacing's twin into its own list, never the sim's scratch), built once per `LocalPredictor.rebuild` from the merged
+  state (the run config's `spacing`, read like `playerTraits`), so enemies stay at their merged positions over the
+  horizon (the documented limitation). Nothing else changes: `getDrawnPlayer`, the smoother and BulletAhead read the
+  head as before. `predictMotion.spec.ts`: every replay (single tick and horizon) brakes against a list built from the
+  state it starts from; coverage `brake` / `lungeBrake` (the tick's mirror, equal to the sim bit for bit, differs from
+  the same tick without the brake / with the walk's brake only); a `Brawler` walker (the nearest contact enemy: keys,
+  stick or sideways round it, FIRE held most of the time, aim on it, rare ALT / ROLL / SWAP) on endless floors 1-9
+  (god mode, the party put on the floor's busiest contact room), with contact enemies held in place (positions and hp
+  put back after every tick) and live, solo (Knight, "both") and a co-op pair of Knights; a Chainhook's drag joins the
+  excused ticks. A horizon is excused only when on one of its ticks the brake engaged (real tick or replay) while the
+  tick-start list differed from its merged list AND the frozen replay then differed; every horizon also runs an
+  `informed` twin (each tick against that tick's own list), compared exactly, never excused. Numbers: held solo 3196
+  ticks compared, brake 1225, lungeBrake 209, 127 horizons, 0 excused by the brake (1 flagged); live / co-op 6379
+  ticks, brake 1358, lungeBrake 250, 222 horizons, 24 excused by the brake (share 0.098 of 246: a live brawl's enemies chase, so the frozen list is often stale; its own cap
+  `MAX_BRAKE_EXCUSED_LIVE` 0.2, since the informed twin checks every excused horizon exactly; every other walk keeps
+  `MAX_EXCUSED_SHARE` 0.1); the older walks unchanged (brake 0: they never attack into contact enemies).
 - [x] **SP6. `KV_CollisionDebug` keep circles** (presentation only, off by default, Janitor). Add each spacing entry's
   keep circle near the watched player, lit while the brake is on and the knight is touching one. → Verify: Studio
   (pending).
