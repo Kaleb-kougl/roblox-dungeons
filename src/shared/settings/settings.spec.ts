@@ -18,6 +18,7 @@ import {
 	BUILD_FX_LEVELS,
 	CURSOR_SIZES,
 	DEFAULT_CURSOR_SIZE,
+	DEFAULT_GAME_CURSOR,
 	DEFAULT_TOUCH_AUTO_TARGET,
 	DEFAULT_TOUCH_LEFT_HANDED,
 	DEFAULT_LANGUAGE,
@@ -307,6 +308,7 @@ describe("display: room edges (docs/ROOM_EDGES.md RE6)", () => {
 			touchVibration: DEFAULT_TOUCH_VIBRATION,
 			character: DEFAULT_CHARACTER,
 			cursorSize: DEFAULT_CURSOR_SIZE,
+			gameCursor: DEFAULT_GAME_CURSOR,
 			silverNoticeSeen: false,
 		});
 	});
@@ -355,6 +357,7 @@ describe("display: room edges (docs/ROOM_EDGES.md RE6)", () => {
 			touchVibration: DEFAULT_TOUCH_VIBRATION,
 			character: DEFAULT_CHARACTER,
 			cursorSize: DEFAULT_CURSOR_SIZE,
+			gameCursor: DEFAULT_GAME_CURSOR,
 			silverNoticeSeen: false,
 		});
 		expect(resolveDisplaySettings(decodeSettingsDoc({ v: 2 }).display).roomEdges).toBe(true);
@@ -466,6 +469,7 @@ describe("display: minimap (docs/MINIMAP.md M10)", () => {
 			touchVibration: DEFAULT_TOUCH_VIBRATION,
 			character: DEFAULT_CHARACTER,
 			cursorSize: DEFAULT_CURSOR_SIZE,
+			gameCursor: DEFAULT_GAME_CURSOR,
 			silverNoticeSeen: false,
 		});
 	});
@@ -515,6 +519,7 @@ describe("display: minimap (docs/MINIMAP.md M10)", () => {
 			touchVibration: DEFAULT_TOUCH_VIBRATION,
 			character: DEFAULT_CHARACTER,
 			cursorSize: DEFAULT_CURSOR_SIZE,
+			gameCursor: DEFAULT_GAME_CURSOR,
 			silverNoticeSeen: false,
 		});
 		expect(resolveDisplaySettings(decodeSettingsDoc({ v: 2 }).display).minimap).toBe(true);
@@ -754,6 +759,7 @@ describe("display: player outline (docs/PLAYER_OUTLINE.md P4)", () => {
 			touchVibration: DEFAULT_TOUCH_VIBRATION,
 			character: DEFAULT_CHARACTER,
 			cursorSize: DEFAULT_CURSOR_SIZE,
+			gameCursor: DEFAULT_GAME_CURSOR,
 			silverNoticeSeen: false,
 		});
 	});
@@ -839,6 +845,7 @@ describe("display: touch controls (docs/MOBILE.md MB7)", () => {
 			touchVibration: DEFAULT_TOUCH_VIBRATION,
 			character: DEFAULT_CHARACTER,
 			cursorSize: DEFAULT_CURSOR_SIZE,
+			gameCursor: DEFAULT_GAME_CURSOR,
 			silverNoticeSeen: false,
 		});
 	});
@@ -961,6 +968,7 @@ describe("display: gamepad menu vibration (docs/GAMEPAD_MENUS.md GM9)", () => {
 			touchVibration: DEFAULT_TOUCH_VIBRATION,
 			character: DEFAULT_CHARACTER,
 			cursorSize: DEFAULT_CURSOR_SIZE,
+			gameCursor: DEFAULT_GAME_CURSOR,
 			silverNoticeSeen: false,
 		});
 	});
@@ -1131,5 +1139,32 @@ describe("display: the gauntlet cursor's size (docs/CURSOR.md D2, C6)", () => {
 		expect(DISPLAY_RESET_KEEPS.includes("cursorSize")).toBe(false);
 		expect(displayResetOverrides({ cursorSize: "large" })).toEqual({});
 		expect(displayResetOverrides({ cursorSize: "small", padVibration: false })).toEqual({ padVibration: false });
+	});
+});
+
+describe("display: the gauntlet cursor in gameplay (docs/CURSOR.md revision 3)", () => {
+	it("defaults to On; only Off is stored, in the v2 document", () => {
+		expect(DEFAULT_GAME_CURSOR).toBe(true);
+		expect(defaultDisplaySettings().gameCursor).toBe(true);
+		expect(resolveDisplaySettings(undefined).gameCursor).toBe(true);
+		expect(DISPLAY_SETTING_KEYS.includes("gameCursor")).toBe(true);
+		expect(sanitizeDisplayOverrides({ gameCursor: false })).toEqual({ gameCursor: false });
+		expect(sanitizeDisplayOverrides({ gameCursor: true })).toEqual({});
+		expect(resolveDisplaySettings({ gameCursor: false }).gameCursor).toBe(false);
+		const overrides: SettingsOverrides = { display: { gameCursor: false } };
+		const doc = encodeSettingsDoc(overrides);
+		expect(doc).toEqual({ ...EMPTY_DOC, display: { gameCursor: false } });
+		expect(decodeSettingsDoc(doc)).toEqual(overrides);
+		expect(applySettingsPatch(overrides, { display: { gameCursor: true } })).toEqual({});
+	});
+
+	it("ignores non-booleans; an older document without the field reads On; Reset drops it", () => {
+		for (const junk of ["false", 0, 1, {}, [false]] as ReadonlyArray<unknown>) {
+			expect(sanitizeDisplayOverrides({ gameCursor: junk })).toEqual({});
+		}
+		const old = { v: 2, juice: {}, controls: {}, audio: {}, display: { minimap: false } };
+		expect(resolveDisplaySettings(decodeSettingsDoc(old).display).gameCursor).toBe(true);
+		expect(DISPLAY_RESET_KEEPS.includes("gameCursor")).toBe(false);
+		expect(displayResetOverrides({ gameCursor: false })).toEqual({});
 	});
 });

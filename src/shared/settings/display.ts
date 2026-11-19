@@ -5,7 +5,7 @@
  * (docs/MINIMAP.md M10), the player outline (docs/PLAYER_OUTLINE.md P4), the build effects (docs/BUILDS.md BUD13), the touch controls (docs/MOBILE.md MB7: size,
  * opacity, auto-target, left-handed), the language (docs/LOCALIZATION.md L6), the gamepad menus' vibration
  * (docs/GAMEPAD_MENUS.md GM9), the phone's vibration (docs/HAPTICS.md HP5), the remembered character pick (docs/ARCHER.md ARD12: the character screen's focus
- * and the run a start plays) and the gauntlet cursor's size (docs/CURSOR.md D2). Presentation only; stored
+ * and the run a start plays) and the gauntlet cursor's size (docs/CURSOR.md D2) and whether it shows in gameplay (revision 3). Presentation only; stored
  * overrides-only (a new optional field needs no migration).
  */
 import { DEFAULT_CHARACTER, isCharacterId, type CharacterId } from "shared/characters";
@@ -15,6 +15,7 @@ import {
 	CURSOR_SIZES,
 	DEFAULT_BUILD_FX,
 	DEFAULT_CURSOR_SIZE,
+	DEFAULT_GAME_CURSOR,
 	DEFAULT_HUD_FADE,
 	DEFAULT_HUD_SCALE_PERCENT,
 	DEFAULT_HUD_TOOLTIPS,
@@ -87,6 +88,11 @@ export interface DisplaySettings {
 	 */
 	cursorSize: CursorSize;
 	/**
+	 * The gauntlet cursor in gameplay too (docs/CURSOR.md revision 3): true = the gauntlet everywhere, false = Roblox's
+	 * pointer while playing (menus keep the gauntlet). Default DEFAULT_GAME_CURSOR (true): only Off (false) is stored.
+	 */
+	gameCursor: boolean;
+	/**
 	 * docs/SILVER.md SV18 (OC12): the one-time main-menu card for accounts that played before the Silver update was
 	 * shown and dismissed. Default false: only true is ever stored. Not on the Display tab (DISPLAY_RESET_KEEPS).
 	 */
@@ -112,6 +118,7 @@ export const DISPLAY_SETTING_KEYS: ReadonlyArray<keyof DisplaySettings> = [
 	"touchVibration",
 	"character",
 	"cursorSize",
+	"gameCursor",
 	"silverNoticeSeen",
 ];
 
@@ -133,6 +140,7 @@ export function defaultDisplaySettings(): DisplaySettings {
 		touchVibration: DEFAULT_TOUCH_VIBRATION,
 		character: DEFAULT_CHARACTER,
 		cursorSize: DEFAULT_CURSOR_SIZE,
+		gameCursor: DEFAULT_GAME_CURSOR,
 		silverNoticeSeen: false,
 	};
 }
@@ -145,7 +153,7 @@ export function defaultDisplaySettings(): DisplaySettings {
  * language that is a known locale code (stored as LOCALES spells it; "auto" and unknown codes are dropped); a
  * padVibration / touchVibration that is a boolean other than the default (so only `false`); a character that is a
  * character id other than DEFAULT_CHARACTER; a cursorSize from CURSOR_SIZES other than the default (so only "small" /
- * "large"); a silverNoticeSeen that is true. Never throws.
+ * "large"); a gameCursor that is a boolean other than the default (so only `false`); a silverNoticeSeen that is true. Never throws.
  */
 export function sanitizeDisplayOverrides(raw: unknown): DisplayOverrides {
 	const out: DisplayOverrides = {};
@@ -212,6 +220,8 @@ export function sanitizeDisplayOverrides(raw: unknown): DisplayOverrides {
 	) {
 		out.cursorSize = cursorSize as CursorSize;
 	}
+	const gameCursor = t.gameCursor;
+	if (typeIs(gameCursor, "boolean") && gameCursor !== DEFAULT_GAME_CURSOR) out.gameCursor = gameCursor;
 	const silverNotice = t.silverNoticeSeen;
 	if (silverNotice === true) out.silverNoticeSeen = true;
 	return out;

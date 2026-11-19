@@ -3357,7 +3357,7 @@
 		"max": 10
 	},
 	"options.display.cursorSize": {
-		"note": "Options screen, Display tab: row label for the size of the mouse pointer (a gauntlet) shown in menus (Small / Normal / Large). Shown only with a mouse. Label column 210 px.",
+		"note": "Options screen, Display tab: row label for the size of the mouse pointer (a gauntlet) (Small / Normal / Large). Shown only with a mouse. Label column 210 px.",
 		"max": 24
 	},
 	"options.display.cursorSize.large": {
@@ -3370,6 +3370,18 @@
 	},
 	"options.display.cursorSize.small": {
 		"note": "Options screen: a choice button (about 92 x 30 px) for the menu mouse pointer's size: smaller than normal. One short word.",
+		"max": 10
+	},
+	"options.display.gameCursor": {
+		"note": "Options screen, Display tab: row label for which mouse pointer shows during gameplay: the game's gauntlet pointer or Roblox's standard pointer. Shown only with a mouse. Label column 210 px.",
+		"max": 24
+	},
+	"options.display.gameCursor.gauntlet": {
+		"note": "Options screen: a choice button (about 92 x 30 px): use the game's armoured-glove (gauntlet) mouse pointer during gameplay. One short word.",
+		"max": 10
+	},
+	"options.display.gameCursor.standard": {
+		"note": "Options screen: a choice button (about 92 x 30 px): use Roblox's normal mouse pointer during gameplay. One short word.",
 		"max": 10
 	},
 	"options.display.hudFade": {

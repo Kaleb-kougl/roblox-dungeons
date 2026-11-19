@@ -4,8 +4,9 @@
  * fingertip sits exactly on the mouse, through the click squeeze too (cursorPlacement). Plain numbers, so it is specced
  * headlessly (cursor.spec.ts); the client's CursorController reads the engine and writes the GUI. Presentation only.
  *
- * The gauntlet shows in a menu context only (menus, panels, the loading screen and stage cover, pause, the party
- * overlay, the boon draft, run over, the tutorial outro); gameplay always keeps Roblox's pointer (D1).
+ * The gauntlet always shows in a menu context (menus, panels, the loading screen and stage cover, pause, the party
+ * overlay, the boon draft, run over, the tutorial outro), and in gameplay too while the In-game cursor setting is
+ * Gauntlet (revision 3, `gameCursor`); Standard keeps Roblox's pointer while playing (revision 2's behaviour).
  */
 import type { CursorSize } from "shared/settings";
 import { CURSOR_VIEW } from "./cursorConfig";
@@ -20,6 +21,8 @@ export interface CursorModeInput {
 	readonly artReady: boolean;
 	/** A menu screen, panel, the loading screen / stage cover, a paused run, run over, the outro, or the local draft. */
 	readonly menuContext: boolean;
+	/** The In-game cursor setting is Gauntlet (DisplaySettings.gameCursor): the gauntlet outside a menu context too. */
+	readonly gameCursor: boolean;
 	/** UserInputService.MouseEnabled. */
 	readonly mouseEnabled: boolean;
 	/** A touch device without a mouse: never the gauntlet. */
@@ -35,14 +38,15 @@ export interface CursorModeInput {
 }
 
 /**
- * The pointer to show: hidden on a gamepad (either context); custom in a menu context with the art present and ready,
- * a mouse, not touch-only, the Roblox menu closed and no kill switch, but hidden while the window is unfocused there
- * (no frozen gauntlet at the window's edge); system everywhere else, so gameplay is never custom.
+ * The pointer to show: hidden on a gamepad (either context); custom in a menu context, or in gameplay with the In-game
+ * cursor setting on, with the art present and ready, a mouse, not touch-only, the Roblox menu closed and no kill
+ * switch, but hidden while the window is unfocused there (no frozen gauntlet at the window's edge); system everywhere
+ * else, so gameplay is custom only with the setting on.
  */
 export function cursorMode(input: CursorModeInput): CursorMode {
 	if (input.onGamepad) return "hidden";
 	const custom =
-		input.menuContext &&
+		(input.menuContext || input.gameCursor) &&
 		input.hasCustomArt &&
 		input.artReady &&
 		input.mouseEnabled &&

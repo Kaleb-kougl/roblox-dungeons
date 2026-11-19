@@ -284,7 +284,7 @@ describe("HUD helpers", () => {
 		const pack = quietPack(warnings);
 		const keys = optionsStringKeys(KBM_ACTIONS);
 		expect(keys.size()).toBe(
-			BINDING_REFUSALS.size() + KBM_ACTIONS.size() + OPTIONS_TABS.size() + OPTIONS_DEVICES.size() + 47,
+			BINDING_REFUSALS.size() + KBM_ACTIONS.size() + OPTIONS_TABS.size() + OPTIONS_DEVICES.size() + 50,
 		);
 		for (const key of keys) expect([key, pack.hasString(key)]).toEqual([key, true]);
 		// Every pad action is a keyboard action too (one name table).
@@ -313,6 +313,9 @@ describe("HUD helpers", () => {
 		expect(pack.str(OPTIONS_STRINGS.cursorSizeSmall)).toBe("Small");
 		expect(pack.str(OPTIONS_STRINGS.cursorSizeNormal)).toBe("Normal");
 		expect(pack.str(OPTIONS_STRINGS.cursorSizeLarge)).toBe("Large");
+		expect(pack.str(OPTIONS_STRINGS.gameCursor)).toBe("In-game cursor"); // docs/CURSOR.md revision 3
+		expect(pack.str(OPTIONS_STRINGS.gameCursorGauntlet)).toBe("Gauntlet");
+		expect(pack.str(OPTIONS_STRINGS.gameCursorStandard)).toBe("Standard");
 		expect(pack.str(OPTIONS_STRINGS.vibration)).toBe("Vibration"); // docs/GAMEPAD_MENUS.md GM9
 		expect(pack.str(actionNameKey("map"))).toBe("Map"); // docs/MINIMAP.md M9
 		expect(pack.str(HUD_STRINGS.mapTitle)).toBe("Map");

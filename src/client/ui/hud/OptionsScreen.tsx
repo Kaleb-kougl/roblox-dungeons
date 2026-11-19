@@ -650,8 +650,9 @@ function DisplayTab(props: { order: number; actions: HudActions; selectable: boo
 	 */
 	const mouse = UserInputService.MouseEnabled;
 	/**
-	 * The gauntlet cursor's size (docs/CURSOR.md D2, C6): only with a mouse and when the pack has the gauntlet's art
-	 * (the placeholder pack, or vale before its upload, keeps Roblox's pointer, so the row would do nothing).
+	 * The gauntlet cursor's rows, In-game cursor (docs/CURSOR.md revision 3) and Cursor size (D2, C6): only with a mouse
+	 * and when the pack has the gauntlet's art (the placeholder pack, or vale before its upload, keeps Roblox's pointer,
+	 * so the rows would do nothing).
 	 */
 	const pack = themePack();
 	const cursorRow = mouse && pack !== undefined && cursorArt(pack) !== undefined;
@@ -754,6 +755,23 @@ function DisplayTab(props: { order: number; actions: HudActions; selectable: boo
 			{cursorRow && (
 				<SettingRow
 					order={7}
+					name="gameCursor"
+					selectable={props.selectable}
+					label={str(OPTIONS_STRINGS.gameCursor)}
+					value={display.gameCursor}
+					options={[
+						{ value: true, label: str(OPTIONS_STRINGS.gameCursorGauntlet) },
+						{ value: false, label: str(OPTIONS_STRINGS.gameCursorStandard) },
+					]}
+					onPick={(v) => {
+						props.actions.playUi(SFX.uiClick);
+						props.actions.updateDisplay({ gameCursor: v });
+					}}
+				/>
+			)}
+			{cursorRow && (
+				<SettingRow
+					order={8}
 					name="cursorSize"
 					selectable={props.selectable}
 					label={str(OPTIONS_STRINGS.cursorSize)}
@@ -769,7 +787,7 @@ function DisplayTab(props: { order: number; actions: HudActions; selectable: boo
 				/>
 			)}
 			<SettingRow
-				order={8}
+				order={9}
 				name="buildFx"
 				selectable={props.selectable}
 				label={str(OPTIONS_STRINGS.buildFx)}
@@ -785,7 +803,7 @@ function DisplayTab(props: { order: number; actions: HudActions; selectable: boo
 			/>
 			{touch && (
 				<SettingRow
-					order={9}
+					order={10}
 					name="touchSize"
 					selectable={props.selectable}
 					label={str(OPTIONS_STRINGS.touchSize)}
@@ -803,7 +821,7 @@ function DisplayTab(props: { order: number; actions: HudActions; selectable: boo
 			)}
 			{touch && (
 				<SettingRow
-					order={10}
+					order={11}
 					name="touchOpacity"
 					selectable={props.selectable}
 					label={str(OPTIONS_STRINGS.touchOpacity)}
@@ -821,7 +839,7 @@ function DisplayTab(props: { order: number; actions: HudActions; selectable: boo
 			)}
 			{touch && (
 				<SettingRow
-					order={11}
+					order={12}
 					name="touchAutoTarget"
 					selectable={props.selectable}
 					label={str(OPTIONS_STRINGS.touchAutoTarget)}
@@ -838,7 +856,7 @@ function DisplayTab(props: { order: number; actions: HudActions; selectable: boo
 			)}
 			{touch && (
 				<SettingRow
-					order={12}
+					order={13}
 					name="touchLeftHanded"
 					selectable={props.selectable}
 					label={str(OPTIONS_STRINGS.touchLeftHanded)}

@@ -6,6 +6,11 @@ run opens over the floor (pause, the co-op party overlay, the boon draft, the ru
 While you are actually playing, the pointer is Roblox's own, exactly as today. Work it task by task, like `PLAN.md`
 and `docs/SPECTATE.md`; each task ends with a **Verify**.
 
+**Revision 3 (2026-11-19, owner): the gauntlet in gameplay too, as a setting.** Options > Display > **In-game cursor**
+(Gauntlet / Standard, default Gauntlet) draws the gauntlet while playing as well; Standard keeps Roblox's pointer in
+gameplay, exactly revision 2. Menus always draw the gauntlet. See "Revision 3" below; the rest of this doc is the
+revision 2 record unless that section says otherwise.
+
 It is **presentation only**: nothing touches `src/shared/sim/**`, `src/shared/dungeon/**`, the lockstep wire, the
 server, a fixture or a replay hash. Aiming is untouched: in gameplay the gauntlet is never drawn, so the aim point is
 the system pointer's hotspot as it is today.
@@ -247,6 +252,36 @@ above are marked **(differs)**.
    `IgnoreGuiInset` + `ScreenInsets.None`, (e) no blank or doubled frame when the two pointers swap.
 3. The Studio smoke test (C8).
 
+## Revision 3: the gauntlet in gameplay (2026-11-19)
+
+Owner request: an optional gauntlet in the game itself, which a setting turns off to get the standard cursor back.
+Presentation only, like the rest (no sim, dungeon, lockstep, server, hash, replay, fixture or score change).
+
+- **Setting.** `DisplaySettings.gameCursor` (boolean, `DEFAULT_GAME_CURSOR` true in `shared/settings/config.ts`;
+  overrides-only, only Off is stored, the doc stays v2; the Display tab's Reset drops it). Options > Display: a row
+  **In-game cursor** with **Gauntlet** (true) / **Standard** (false), order 7, just above Cursor size (now 8; the rows
+  after it moved down one). Shown under the same rule as Cursor size: a mouse and the pack's gauntlet art. Strings
+  `options.display.gameCursor` "In-game cursor", `.gauntlet` "Gauntlet", `.standard` "Standard" (placeholder pack,
+  `OPTIONS_STRINGS.gameCursor*`, `l10n/context.json`).
+- **Mode.** `CursorModeInput.gameCursor`: `cursorMode` is custom in `menuContext || gameCursor` with every other
+  condition unchanged (art present and ready, a mouse, not touch-only, the Roblox menu closed, no kill switch; hidden on
+  a gamepad or with the window unfocused). With the setting Standard, gameplay is `system` / `hidden` exactly as in
+  revision 2 (cursor.spec pins both, over every combination of the ten inputs).
+- **Aim.** Unchanged: the aim still reads `GetMouseLocation()`, and the gauntlet's fingertip is placed exactly on that
+  point every frame (`cursorPlacement`), so the fingertip is the aim point.
+- **Hover.** The yellow gauntlet over a button wherever the gauntlet may show (a menu context, or gameplay with the
+  setting on: the HUD's pause button), the same 20 Hz poll.
+- **Squeeze.** Menus only: in gameplay every attack is a click (held fire too), and the hand would pulse through every
+  fight. `CursorController` keeps the last step's menu context next to its mode.
+- **Size.** Cursor size applies in gameplay too (same `cursorScale`).
+- **Edge cases.** The software cursor moves at the render rate and can trail the hardware pointer by about a frame;
+  in gameplay that is the aim reticle, so a player who feels it switches to Standard. The kill switch `KV_SystemCursor`
+  still forces Roblox's pointer everywhere. Item tooltips and the dev panel now sit under the gauntlet with the setting
+  on (they did not count as a menu before).
+- **Pending.** A Studio check: in a run with the setting on, the gauntlet tracks with no visible lag at 60 FPS, the
+  fingertip is where shots go, the pause button turns it yellow, a pad hides it and the mouse brings it back; Standard
+  restores Roblox's pointer in gameplay at once (no rejoin).
+
 ## Tasks
 
 - [ ] **C0. Confirm the engine behaviour in Studio** (open) (a 10-minute throwaway LocalScript, not committed): with
@@ -321,8 +356,8 @@ above are marked **(differs)**.
   that hides it.
 - **Frame latency.** A software cursor can trail the hardware pointer by one frame. In menus that is barely visible;
   the in-run fallback of revision 1 is no longer needed.
-- **Low frame rate.** The gauntlet moves at the render rate. The kill switch is the escape hatch; an Off choice for
-  players could join the Cursor size row later (not planned).
+- **Low frame rate.** The gauntlet moves at the render rate. The kill switch is the escape hatch; in gameplay the
+  In-game cursor setting's Standard is the players' (revision 3).
 - **Overlays that are not menus.** Item tooltips, the dev panel (F2) and the HUD's pause button are in gameplay and keep
   the Roblox pointer. If the owner wants the dev panel or tooltips to count, they join the selector.
 - **CoreGui** (Roblox menu, dev console, chat window chrome, the top bar) draws above our ScreenGui; the gauntlet can
@@ -345,7 +380,7 @@ All decided (revision 2, owner 2026-11-11):
 
 ## Out of scope
 
-A custom pointer or crosshair in gameplay; cursor trails or particles; an aim line; changing the gamepad aim (no virtual
+A crosshair in gameplay (revision 3 shows the menus' gauntlet there, nothing else); cursor trails or particles; an aim line; changing the gamepad aim (no virtual
 cursor); a custom cursor over CoreGui (not possible).
 
 Sources: [Roblox `Mouse` reference (Icon: size, centre click point, ignored over GuiButtons)](https://create.roblox.com/docs/reference/engine/classes/Mouse.md),

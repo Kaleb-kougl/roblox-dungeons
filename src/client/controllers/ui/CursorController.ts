@@ -20,7 +20,8 @@ const MOUSE_BUTTONS: ReadonlySet<Enum.UserInputType> = new Set([
 ]);
 
 /**
- * The menus' gauntlet cursor (docs/CURSOR.md section 4, tasks C4 / C5) and the ONE writer of
+ * The gauntlet cursor (docs/CURSOR.md section 4, tasks C4 / C5): always in menus, in gameplay too while the display
+ * setting `gameCursor` (Options > Display > In-game cursor, revision 3) is Gauntlet; and the ONE writer of
  * `UserInputService.MouseIconEnabled` (MouseIconController's gamepad rule moved in here; that controller is gone).
  *
  * One ScreenGui `KV_Cursor` (CURSOR_VIEW.displayOrder, above every game layer; IgnoreGuiInset + ScreenInsets.None, so
@@ -33,15 +34,17 @@ const MOUSE_BUTTONS: ReadonlySet<Enum.UserInputType> = new Set([
  *
  * Mode inputs: the art (`cursorArt(pack)`, undefined for a placeholder `ui.cursor`) and its readiness
  * (PreloadController, the drawn state's logical id: Roblox's pointer until it has downloaded); the menu context
- * (client/store `selectCursorMenuContext`); UserInputService MouseEnabled / TouchEnabled (touch-only = touch and no
+ * (client/store `selectCursorMenuContext`) and the In-game cursor setting (`selectDisplay(...).gameCursor`, live); UserInputService MouseEnabled / TouchEnabled (touch-only = touch and no
  * mouse); the gamepad rule (hidden while the store's `inputDevice` is `gamepad`, back on a real mouse move or a mouse
  * click); the Roblox menu (GuiService.MenuOpened / MenuClosed); window focus (WindowFocused / WindowFocusReleased); the
  * kill switch Workspace attribute `KV_SystemCursor` (RUN_ATTRIBUTES.systemCursor, read on change).
  *
- * Hover (C5): in a menu context only, at CURSOR_VIEW.hoverPollHz, `PlayerGui:GetGuiObjectsAtPosition` under the mouse:
+ * Hover (C5): wherever the gauntlet may show (a menu context, or gameplay with the setting on), at
+ * CURSOR_VIEW.hoverPollHz, `PlayerGui:GetGuiObjectsAtPosition` under the mouse:
  * over a visible, Active, Interactable GuiButton outside KV_Cursor the yellow gauntlet (`ui.cursor.hover`, while its
- * art is ready; else the white one). Press: MouseButton1 / 2 while custom starts the squeeze about the fingertip
- * (cursorPlacement), whether or not the click was game-processed (menu clicks are), never under reduced motion.
+ * art is ready; else the white one). Press: MouseButton1 / 2 while custom in a menu context starts the squeeze about
+ * the fingertip (cursorPlacement), whether or not the click was game-processed (menu clicks are), never under reduced
+ * motion; never in gameplay, where every attack is a click and the hand would pulse all fight long.
  * Size: the display setting `cursorSize` and the viewport's height (cursorScale), live. Presentation only. Janitor:
  * the render step unbound, the gui destroyed, MouseIconEnabled back to its value before start.
  */
@@ -63,6 +66,7 @@ export class CursorController implements OnStart {
 
 	// The last step's mode (the press squeeze runs only while custom), hover poll and press.
 	private lastMode: CursorMode = "system";
+	private lastMenuContext = false;
 	private overButton = false;
 	private nextHoverPoll = 0;
 	private pressStart: number | undefined;
@@ -141,7 +145,11 @@ export class CursorController implements OnStart {
 				if (!MOUSE_BUTTONS.has(input.UserInputType)) return;
 				this.padHidden = false;
 				// The squeeze whether or not the click was game-processed (a menu button's click is).
-				if (this.lastMode === "custom" && !selectJuice(clientStore.getState()).reducedMotion) {
+				if (
+					this.lastMode === "custom" &&
+					this.lastMenuContext &&
+					!selectJuice(clientStore.getState()).reducedMotion
+				) {
 					this.pressStart = os.clock();
 				}
 			}),
@@ -171,11 +179,12 @@ export class CursorController implements OnStart {
 		const art = this.art;
 		const state = clientStore.getState();
 		const menuContext = selectCursorMenuContext(state);
+		const gameCursor = selectDisplay(state).gameCursor;
 		const mouseEnabled = UserInputService.MouseEnabled;
 		const mouse = UserInputService.GetMouseLocation();
 
-		// Hover (C5): only in a menu context, throttled; outside one the white gauntlet's state is kept clear.
-		if (menuContext && art !== undefined && mouseEnabled) {
+		// Hover (C5): wherever the gauntlet may show, throttled; elsewhere the white gauntlet's state is kept clear.
+		if ((menuContext || gameCursor) && art !== undefined && mouseEnabled) {
 			const now = os.clock();
 			if (now >= this.nextHoverPoll) {
 				this.nextHoverPoll = now + 1 / CURSOR_VIEW.hoverPollHz;
@@ -194,6 +203,7 @@ export class CursorController implements OnStart {
 			hasCustomArt: art !== undefined,
 			artReady: useHover ? this.hoverReady : this.normalReady,
 			menuContext,
+			gameCursor,
 			mouseEnabled,
 			touchOnly: UserInputService.TouchEnabled && !mouseEnabled,
 			onGamepad: this.padHidden,
@@ -202,6 +212,7 @@ export class CursorController implements OnStart {
 			killSwitch: this.killSwitch,
 		});
 		this.lastMode = mode;
+		this.lastMenuContext = menuContext;
 
 		// The two pointers, written in the same step (never both, never neither).
 		const system = mode === "system";

@@ -111,6 +111,10 @@ export const OPTIONS_STRINGS = {
 	cursorSizeSmall: "options.display.cursorSize.small",
 	cursorSizeNormal: "options.display.cursorSize.normal",
 	cursorSizeLarge: "options.display.cursorSize.large",
+	/** The gauntlet in gameplay too, Gauntlet / Standard (docs/CURSOR.md revision 3) and its two option labels. */
+	gameCursor: "options.display.gameCursor",
+	gameCursorGauntlet: "options.display.gameCursor.gauntlet",
+	gameCursorStandard: "options.display.gameCursor.standard",
 	/** Touch controls (docs/MOBILE.md MB7): the size and opacity steps (percent), and the auto-target and left-handed On / Off rows (labels as roomEdges). */
 	touchSize: "options.display.touchSize",
 	touchOpacity: "options.display.touchOpacity",

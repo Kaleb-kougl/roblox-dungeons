@@ -83,6 +83,13 @@ export type CursorSize = "small" | "normal" | "large";
 export const CURSOR_SIZES: ReadonlyArray<CursorSize> = ["small", "normal", "large"];
 export const DEFAULT_CURSOR_SIZE: CursorSize = "normal";
 
+/**
+ * The gauntlet cursor in gameplay too (docs/CURSOR.md revision 3, Options > Display > In-game cursor: Gauntlet /
+ * Standard). On by default; Standard (false) keeps Roblox's pointer while playing, as revision 2 did. Menus always draw
+ * the gauntlet. Presentation only: the aim point is the mouse position either way.
+ */
+export const DEFAULT_GAME_CURSOR = true;
+
 /** Touch control sizes, percent of the layout (docs/MOBILE.md MB7, Options > Display > Touch size). 100 is the default. */
 export const TOUCH_SIZE_PERCENTS: ReadonlyArray<number> = [80, 100, 120];
 export const DEFAULT_TOUCH_SIZE_PERCENT = 100;

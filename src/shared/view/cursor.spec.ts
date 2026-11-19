@@ -13,11 +13,12 @@ import {
 	type CursorModeInput,
 } from "shared/view";
 
-/** A menu with a mouse and the art ready: the one case that draws the gauntlet. */
+/** A menu with a mouse and the art ready, the In-game cursor setting Standard: the gauntlet. */
 const MENU: CursorModeInput = {
 	hasCustomArt: true,
 	artReady: true,
 	menuContext: true,
+	gameCursor: false,
 	mouseEnabled: true,
 	touchOnly: false,
 	onGamepad: false,
@@ -30,10 +31,10 @@ function mode(patch: Partial<CursorModeInput>): string {
 	return cursorMode({ ...MENU, ...patch });
 }
 
-/** Every combination of the nine inputs (2^9). */
+/** Every combination of the ten inputs (2^10). */
 function everyInput(): Array<CursorModeInput> {
 	const out = new Array<CursorModeInput>();
-	for (let bits = 0; bits < 512; bits++) {
+	for (let bits = 0; bits < 1024; bits++) {
 		const b = (i: number) => bit32.btest(bits, bit32.lshift(1, i));
 		out.push({
 			hasCustomArt: b(0),
@@ -45,6 +46,7 @@ function everyInput(): Array<CursorModeInput> {
 			robloxMenuOpen: b(6),
 			windowFocused: b(7),
 			killSwitch: b(8),
+			gameCursor: b(9),
 		});
 	}
 	return out;
@@ -55,12 +57,12 @@ describe("cursor: mode", () => {
 		expect(mode({})).toBe("custom");
 	});
 
-	it("gameplay is system (or hidden on a pad), whatever else holds", () => {
+	it("gameplay with the In-game cursor Standard is system (or hidden on a pad), whatever else holds", () => {
 		expect(mode({ menuContext: false })).toBe("system");
 		expect(mode({ menuContext: false, windowFocused: false })).toBe("system");
 		expect(mode({ menuContext: false, onGamepad: true })).toBe("hidden");
 		for (const input of everyInput()) {
-			if (input.menuContext) continue;
+			if (input.menuContext || input.gameCursor) continue;
 			expect([input, cursorMode(input)]).toEqual([input, input.onGamepad ? "hidden" : "system"]);
 		}
 	});
@@ -88,14 +90,27 @@ describe("cursor: mode", () => {
 		expect(mode({ windowFocused: false, robloxMenuOpen: true })).toBe("system");
 	});
 
-	it("custom only for the one combination of inputs", () => {
+	it("gameplay with the In-game cursor Gauntlet draws the gauntlet under the same conditions as a menu", () => {
+		expect(mode({ menuContext: false, gameCursor: true })).toBe("custom");
+		expect(mode({ gameCursor: true })).toBe("custom");
+		expect(mode({ menuContext: false, gameCursor: true, onGamepad: true })).toBe("hidden");
+		expect(mode({ menuContext: false, gameCursor: true, windowFocused: false })).toBe("hidden");
+		expect(mode({ menuContext: false, gameCursor: true, artReady: false })).toBe("system");
+		expect(mode({ menuContext: false, gameCursor: true, killSwitch: true })).toBe("system");
+		expect(mode({ menuContext: false, gameCursor: true, robloxMenuOpen: true })).toBe("system");
+		expect(mode({ menuContext: false, gameCursor: true, touchOnly: true })).toBe("system");
+	});
+
+	it("custom only with a menu context or the setting, and every other input as in MENU", () => {
 		let customs = 0;
 		for (const input of everyInput()) {
 			if (cursorMode(input) !== "custom") continue;
 			customs++;
-			expect(input).toEqual(MENU);
+			expect(input.menuContext || input.gameCursor).toBe(true);
+			expect({ ...input, menuContext: true, gameCursor: false }).toEqual(MENU);
 		}
-		expect(customs).toBe(1);
+		// menu only, setting only, both.
+		expect(customs).toBe(3);
 	});
 });
 

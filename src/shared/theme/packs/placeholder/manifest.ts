@@ -834,6 +834,10 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"options.display.cursorSize.small": "Small",
 		"options.display.cursorSize.normal": "Normal",
 		"options.display.cursorSize.large": "Large",
+		// Roblox port (docs/CURSOR.md revision 3): the gauntlet in gameplay too, or Roblox's standard pointer.
+		"options.display.gameCursor": "In-game cursor",
+		"options.display.gameCursor.gauntlet": "Gauntlet",
+		"options.display.gameCursor.standard": "Standard",
 		"options.display.language": "Language",
 		"options.display.language.auto": "Automatic ({name})",
 		"options.display.language.prev": "<",
