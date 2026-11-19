@@ -97,6 +97,12 @@ const HORIZON_STRIDE = 25;
 const MUTATE_PHASE = 15;
 /** At most this share of ticks may be excused (the census's corrected cases are rare in a random walk). */
 const MAX_EXCUSED_SHARE = 0.1;
+/**
+ * A live brawl's cap on horizons excused by the brake (docs/SWORD_SPACING.md SP5): its contact enemies chase, so the
+ * merged list the predictor freezes is often stale (0.098 measured). Looser than MAX_EXCUSED_SHARE because the informed
+ * twin replays every excused horizon against each tick's own list and compares it exactly.
+ */
+const MAX_BRAKE_EXCUSED_LIVE = 0.2;
 /** The brawls (docs/SWORD_SPACING.md SP5): seeds, ticks, start floors (non-boss), the held enemies' hp. */
 const BRAWL_SEEDS = 8;
 const BRAWL_TICKS = 400;
@@ -732,7 +738,7 @@ function brawl(
 	walk(config, state, seed, BRAWL_TICKS, sources, tally, held ? new Holder() : undefined);
 }
 
-function report(name: string, tally: Tally): void {
+function report(name: string, tally: Tally, brakeCap: number = MAX_EXCUSED_SHARE): void {
 	const brakeShare = tally.horizonsBrakeExcused / math.max(1, tally.horizons + tally.horizonsBrakeExcused);
 	print(
 		`[predictMotion] ${name}: ${tally.compared} ticks compared, ${tally.excused} excused; ` +
@@ -744,7 +750,7 @@ function report(name: string, tally: Tally): void {
 	expect(tally.compared).toBeGreaterThan(0);
 	expect(tally.horizons).toBeGreaterThan(0);
 	expect(tally.excused / (tally.compared + tally.excused)).toBeLessThan(MAX_EXCUSED_SHARE);
-	expect(brakeShare).toBeLessThan(MAX_EXCUSED_SHARE);
+	expect(brakeShare).toBeLessThan(brakeCap);
 	const parts: string[] = [];
 	for (const kind of COVERAGE_KINDS) parts.push(`${kind} ${tally.coverage.get(kind) ?? 0}`);
 	print(`[predictMotion] ${name} coverage: ${parts.join(", ")}`);
@@ -837,7 +843,7 @@ describe("predictMotion (docs/LOCAL_PREDICTION.md LP1 / LP2)", () => {
 			const floor = BRAWL_FLOORS[(seed + 2) % BRAWL_FLOORS.size()];
 			brawl(seed, floor, ["knight", "knight"], seed % 2 === 0, seed % 2 === 1, tally);
 		}
-		report("brawl live / co-op", tally);
+		report("brawl live / co-op", tally, MAX_BRAKE_EXCUSED_LIVE);
 		expectCovered(tally, ["walk", "brake", "lungeBrake", "windup"]);
 	});
 });
