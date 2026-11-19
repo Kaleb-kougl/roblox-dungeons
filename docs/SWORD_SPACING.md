@@ -19,8 +19,9 @@ No new state, no new hash group, no wire change: the brake reads only hashed sta
 
 ## Status (2026-11-19)
 
-SP0-SP3 and SP8 built 2026-11-19 (the measurement, the brake core, the walk, the lunge, the wiring in every world, the
-tutorial pins); SP4-SP7 and SP9 open.
+SP0-SP6, SP8 and SP9 built 2026-11-19 (the measurement, the brake core, the walk, the lunge, the wiring in every world,
+the census with the brake, the prediction mirror, the debug circles, the tutorial pins, the CLAUDE.md rows). The greedy
+fighter's gate is read on the entry split (SP4, the owner may revisit). Open: SP7 (Studio check and playtest).
 
 **Owner (2026-11-19): every open question answered** (keyboard and mouse; brake only while attacking, SPD1; M1
 included, SPD6; no knockback for now, SPD4). On keyboard and mouse the facing is the mouse's (the "facing follows the
@@ -344,12 +345,80 @@ Archer.
   default build with the field stripped). Re-recorded pins: only `tutorial/tutorial.spec.ts` (SP8); every other spec
   passed unchanged (the sim pins record no Knight attacking into a contact enemy). `lockstep/predictMotion.spec.ts`
   still passes: its walks never braked (no brake row in its coverage yet; SP5 adds one).
-- [ ] **SP4. Census** (SP0's spec, now with the brake on and off). Gates:
-  - greedy fighter: player-driven contact hits down by at least 80 % (target: zero not caused by a wall slide);
-  - tidy fighter: no change in contact hits (it never walked in);
+- [x] **SP4. Census** (SP0's spec, now with the brake on and off). Gates (revised after SP0 and SP4):
+  - greedy fighter: player-driven contact hits (room enemies) down by at least 80 % (target: zero not caused by a wall
+    slide), measured on the entry split (who crossed from keep into contact), not SP0's 10-tick split (2026-11-19:
+    SP0's split credits the Knight for walking up to keep when the enemy's own step closes the last 0.15; on it the
+    greedy drop is 66 %, kept in the table);
+  - tidy fighter: player-driven contact hits down by at least 80 % too (SP0: 89 % of them are lunge-led, so the lunge
+    brake cuts them; "no change" was wrong);
   - room clear time for both within 5 % of today (the brake must not make the Knight slower to kill);
-  - the boss TTK rows (`bossAct1.ttk`, `demonlord.ttk`, the builds sword rows) inside their bands.
+  - the boss / build TTK specs that use the live sword inside their bands;
+  - reported, no gate: enemy-driven hits, contact hits per room, bullet hits, boss contact hits and fight length.
   → Verify: the before / after table in this doc.
+
+  **As built (SP4, 2026-11-19).** `SpacingRunOptions.spacing` (a `SwordSpacingKind`, default ON) is set with
+  `setSwordSpacing` before `survivalRun` builds its config and restored in a `finally`; `SPACING_CENSUS_COLUMNS` are
+  `tidy-web`, `greedy-web` (SwordSpacing.WEB: SP0's baseline), `tidy-brake`, `greedy-brake` (ON). Two diagnostics,
+  measurements only: **brake ticks** (after every step `BRAKE_RESULT.engaged` is read and cleared: ticks whose last
+  brake call cut the step, a lower bound) and the **entry split** (below). The smoke spec runs a greedy floor 1 for 3000
+  ticks both ways: WEB never brakes, ON brakes in a room fight and spends fewer ticks inside keep. Full grid as SP0
+  (floors 1-10 x seeds 1-30, immortal), 4 columns, 10 shards two at a time: 19 min wall. **The WEB columns reproduce
+  SP0 exactly:** every shard's `[spacing-raw]` line equals SP0's field for field, both fighters (same path, no brake).
+
+  | column | room contact hits (per room) | player-driven, SP0 split (lunge-led) | player entries | enemy-driven | mean clear | bullet / other hits | boss contact hits / fight | boss fight | in keep / in contact, room fights |
+  |---|---|---|---|---|---|---|---|---|---|
+  | tidy-web | 2434 (1.03) | 724 (642) | 760 | 1719 | 457.9 ticks (7.63 s) | 928 / 236 | 74.9 | 68.0 s | 6.3 % / 5.6 % |
+  | tidy-brake | 2001 (0.84) | 120 (87) | 23 | 1999 | 467.9 ticks (7.80 s) | 1016 / 251 | 30.9 | 73.1 s | 5.3 % / 4.1 % |
+  | change | -18 % | **-83 %** | -97 % | +16 % | **+2.2 %** | +9 % / +6 % | -59 % | +7.6 % | |
+  | greedy-web | 3047 (1.29) | 2216 (376) | 2198 | 868 | 451.2 ticks (7.52 s) | 1123 / 227 | 69.5 | 68.6 s | 8.7 % / 8.2 % |
+  | greedy-brake | 1893 (0.80) | 752 (69) | 18 | 1265 | 446.4 ticks (7.44 s) | 1055 / 238 | 32.7 | 67.4 s | 6.9 % / 4.8 % |
+  | change | -38 % | **-66 %** | -99 % | +46 % | **-1.1 %** | -6 % / +5 % | -53 % | -1.7 % | |
+
+  (Player-driven, entries and enemy-driven: room-enemy archetypes, as SP0's table, the Demon Lord's summoned swarmers
+  included; room contact hits: hits in room fights. tidy-brake's 59 travel contact hits, all in one shard (seeds
+  19-21), are left out of both.)
+
+  - **The entry split.** SP0's split credits the player with his whole approach over the 10 ticks. A braked Knight
+    walks up to keep distance (0.15 tiles outside contact) and stops; the enemy's next step of 0.15 touches him, and the
+    window reads player-driven because his walk to keep closed more than that step. The entry split attributes only the
+    ticks since the gap was last at or outside keep (`radius + PLAYER_RADIUS + 0.15`; the whole window when it never
+    was: 814 tidy / 752 greedy brake hits, "deep", the enemy standing inside keep, where the brake cannot push, SPD4)
+    and classes a player entry by what moved him most: a braked walk, an unbraked walk (no FIRE and no combo, or the
+    guard alone, SPD1), the lunge, a roll. With the brake: **no player entry by a braked walk or the lunge in either
+    fighter** (0 / 0; WEB, the walk the hook would have braked / the lunge: 29 / 691 tidy, 1699 / 440
+    greedy); left are rolls (tidy 20 of 23, greedy 17 of 18; SPD3) and
+    unbraked walks (3 / 1). So no wall-slide class showed up.
+  - **Greedy on SP0's split (fails 80 %):** of its 752, the slime gives 516 (its walk closes 0.28 tiles a hit over the
+    window, up to keep, and the slime's own step does the rest), the swarmer 160, the bruiser 41. All are enemy entries on
+    the entry split. Proposed: the gate on the entry split (met, -99 %); SP0's split stays in the table.
+  - **Tidy:** -83 % on SP0's split (the lunge-led 642 -> 87), -97 % on the entry split: gate met.
+  - **Enemy-driven up** (+16 % / +46 %): the brake parks the Knight 0.15 outside contact, where an enemy's step lands,
+    and on SP0's split those hits moved from the player's column. The total still falls: room contact hits per room
+    1.03 -> 0.84 tidy, 1.29 -> 0.80 greedy; the knockback plan's baseline (SPD4) is the brake rows.
+  - **Clear time** within 5 % for both (+2.2 % / -1.1 %): gate met.
+  - **Bullet hits:** tidy +9 % (928 -> 1016; its boss fights run 7.6 % longer), greedy -6 %: no rise from standing still.
+  - **Bosses:** the brake holds both fighters out of the boss (in contact 80.7 % -> 29.8 % of tidy boss ticks, 71.5 %
+    -> 34.4 % greedy), so boss contact hits halve (74.9 -> 30.9 / 69.5 -> 32.7 a fight); the rest are mostly rolls
+    into Mother Mayhem (196 of 202 greedy player entries) and enemy entries. Tidy boss fights 68.0 -> 73.1 s, greedy
+    68.6 -> 67.4 s (the census bot's boss fights, not the TTK specs).
+  - **Margin 0.30 (diagnostic, seeds 1-6, `SWORD_SPACING.marginTiles` set at runtime):** greedy SP0-split
+    player-driven 471 -> 17 (0.15: 159), room contact hits per room 0.67 (0.15: 0.73, WEB 1.23), but the tidy clear
+    time +8.7 % (0.15: +3.4 %; fails the 5 % gate) and tidy hits per room 1.17 (0.15: 0.98). No margin change
+    proposed; SP7 tunes it.
+  - **TTK specs.** Always-on (none is a `--census` spec): `sim/builds.ttk.boss.sword` / `.boss.deep` / `.boss.bow` /
+    `.pack` / `.room`, `sim/legendaries.ttk.pack` / `.room`, `sim/variants.ttk.sword` / `.bow`, `sim/demonlord.ttk`,
+    `sim/archer.ttk.boss.mayhem` / `.boss.demonlord` / `.builds` / `.rooms`, and `sim/bossAct1.ttk` (a parity spec,
+    `SwordSpacing.WEB`). All pass. **None of their harnesses carries the brake:** `buildTune.ts` `arenaConfig`,
+    `variantTtk.ts` `ttkFight` and `demonlord.ttk`'s `setupFight` build their SimConfig by hand without `spacing`, so
+    they measure the live sword's timings and reach but not the brake. Run again with `spacing: SWORD_SPACING` patched
+    into those three (temporarily, not committed), all pass: Mother Mayhem's sword TTK unchanged (no build 50.9 / 75.4
+    s at floors 5 / 10, 110.0 s at 15) with her hits taken halved (66 / 99 -> 30.5 / 46.5, 145 -> 71); the Demon Lord's
+    sword TTK unchanged (60.8-70.0 s, the 1-2 min band), hits 7.2 -> 6.3 a minute at 60 % uptime; the pack and the variants
+    within 0.1 s; the mixed rooms 30.4 -> 26.8 s at floor 11 (builds), 35.3 -> 40.7 s (AR13 Knight row; its floor-20
+    room no longer times out, 163.9 s); AR13's Knight Demon Lord floor 15 113.3 -> 119.6 s. Proposed (not done here: it
+    moves tables in docs/BUILDS.md, docs/LEGENDARIES.md, docs/ENEMY_VARIANTS.md, docs/ARCHER.md): give those harnesses
+    `spacing: swordSpacing()` so they measure the live Knight.
 - [x] **SP5. Prediction** (Design 5). Mirror the walk's and the lunge's brake in `predictMotion.ts`, the predictor's
   own list per pass; extend `predictMotion.spec.ts`: one-tick parity exact on endless floors with enemies (Knight,
   "both"), a coverage kind `brake`, and horizons excused only when the brake engaged while an entry moved (the excused
@@ -398,7 +467,9 @@ Archer.
   (auto-target on and off), to check nothing feels worse there. Places: a swarmer pack, a slime that splits, a reaper,
   a bruiser's wind-up, both bosses, co-op on a simulated 4G link (the predicted Knight's stop). Watch for: the Knight
   drifting round an enemy when the player wanted to stop (the stop cone), a stall between two enemies, a finisher that
-  feels short. → Verify: the owner signs off SPD1-SPD8, the margin and the cone.
+  feels short. On the 4G link, watch the predicted Knight's stop against a chasing pack: the spec's horizons are 10
+  ticks, live prediction runs up to `PREDICTION.maxTicks` 20, and the brake's stale-enemy error grows with it. →
+  Verify: the owner signs off SPD1-SPD8, the margin and the cone.
 - [x] **SP8. Tutorial.** The scripted bot still finishes every lesson (the guard and sweep locks, combat D's bruiser,
   the practice boss); `tutorial.spec`'s lesson-time pins re-recorded if they move. → Verify:
   `npm run test:only -- tutorial`.
@@ -408,8 +479,11 @@ Archer.
   default): in order and out of order, `ember` 9.2 -> 9.1 s, `boss` hits 14 -> 5 (15.6 s unchanged: the bot no longer
   walks into Mother Mayhem while swinging), `finish` 0 -> 0.1 s (the stairwell opens where she stood, a keep distance
   from the braked bot); guard late, `guard` hits 37 -> 36 (31.7 s unchanged).
-- [ ] **SP9. Docs.** A CLAUDE.md decision-log row (port retune) and a document table row; `PROVENANCE.md` unchanged (no
+- [x] **SP9. Docs.** A CLAUDE.md decision-log row (port retune) and a document table row; `PROVENANCE.md` unchanged (no
   ported module). → Verify: `npm run verify`.
+
+  **As built (SP9).** CLAUDE.md: a document table row and a decision-log entry ("Sword spacing (port retune,
+  2026-11-19)").
 
 ## Risks
 
@@ -419,5 +493,13 @@ Archer.
   edge of the cone reads as a choice the player made, not a shove.
 - **Co-op prediction.** The predicted Knight brakes against stale enemy positions; worst case a visible correction of
   one enemy step. The `{pred}` debug line shows it in SP7.
+- **A stale entry in co-op's lunge (review, 2026-11-19; deterministic, accepted).** The lunge reads the tick-start
+  list, so a swarmer player 0's swing killed earlier in the same tick (stepPartyWeapons) still brakes player 1's lunge
+  that tick: at most one lunge step (0.055 tiles) lost. Enemies that die inside stepActors (withered summons, a Bomber)
+  behave the same. Checking `alive` at brake time would fix it and change replays; not done.
+- **TTK harnesses do not carry the brake (SP4).** `buildTune.ts` `arenaConfig`, `variantTtk.ts` `ttkFight` and
+  `demonlord.ttk`'s `setupFight` build SimConfigs by hand without `spacing`, so their tables measure the live sword but
+  not the brake (patched by hand in SP4: every band still met). Follow-up: give them `spacing: swordSpacing()` and
+  re-record the tables in docs/BUILDS.md, docs/LEGENDARIES.md, docs/ENEMY_VARIANTS.md, docs/ARCHER.md.
 - **Cost.** One list per tick (at most the actor pool) and one pass per player walk and lunge tick: negligible next to
   stepActors.
