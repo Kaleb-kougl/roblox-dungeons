@@ -33,19 +33,36 @@
  * Keep share: on every fight tick (the state the fighter reads), whether the player is inside a live contact actor's
  * keep distance (radius + PLAYER_RADIUS + SPACING_KEEP_MARGIN) and inside its contact range (radius + PLAYER_RADIUS).
  *
- * The census (SWORD_SPACING_CENSUS, split over the shard specs run/swordSpacing.census.<n>: 30 run seeds at about a
- * minute a seed for both fighters, so 3 seeds a shard) runs every column of SPACING_CENSUS_COLUMNS over the shard's seeds.
- * A column is a SpacingRunOptions: docs/SWORD_SPACING.md SP4 adds the brake columns as more entries with a `spacing`
- * field (the specs-only switch's kind), which spacingRun sets with setSwordSpacing before the run and restores after.
+ * The census (SWORD_SPACING_CENSUS, split over the shard specs run/swordSpacing.census.<n>: 30 run seeds at about two
+ * minutes a seed for the four columns, so 3 seeds a shard) runs every column of SPACING_CENSUS_COLUMNS over its seeds.
+ * A column is a SpacingRunOptions: a fighter and the brake (`spacing`, the specs-only switch's kind, which spacingRun
+ * sets with setSwordSpacing before the run config is built and restores after; docs/SWORD_SPACING.md SP4): WEB (no
+ * brake, SP0's baseline) and ON (SWORD_SPACING) for both fighters.
+ *
+ * Brake ticks (SP4): after every step the brake's scratch (BRAKE_RESULT.engaged, written by every brakeStep call: the
+ * walk's, then the lunge's) is read and cleared, so a tick counts when its LAST brake call cut the step (a walk cut on a
+ * lunge tick whose lunge ran free is missed: a lower bound). Reading and clearing the scratch changes nothing: the sim
+ * writes it before every read.
+ *
+ * Entry attribution (SP4): the SP0 split above credits the player with his whole approach, so a braked Knight who
+ * walks up to keep distance and is then touched by the enemy's last step still reads player-driven. The entry split
+ * attributes only the ticks since the gap was last at or outside the actor's keep distance (radius + PLAYER_RADIUS +
+ * SPACING_KEEP_MARGIN; the whole window when it never was): who crossed from keep into contact. A player-driven entry is
+ * classed by what moved him most over those ticks: a walk with the brake's hook on (a wall slide's deflection, or the
+ * list's tick-start positions: the enemy moved), a walk with it off (SPD1: no FIRE and no combo, or the guard alone;
+ * guard ticks counted apart), the lunge, a roll. Every fight frame notes the hook (weaponSpacingActive for the frame's
+ * buttons on the state the step starts from, what stepPlayer reads; travel frames: off), every snapshot the guard.
  */
 import { screenToWorld } from "shared/play";
 import {
+	BRAKE_RESULT,
 	Button,
 	NO_KIND,
 	PLAYER_RADIUS,
 	SQRT1_2,
 	SWORD_DATA,
 	SWORD_STEP_WINDUP,
+	SWORD_V_GUARD,
 	SWORD_V_STEP,
 	SWORD_WEAPON_ID,
 	SimCtx,
@@ -53,11 +70,13 @@ import {
 	playerAt,
 	quantizeAxis,
 	weaponIndex,
+	weaponSpacingActive,
 	weaponsAt,
 	type ActorState,
 	type InputFrame,
 	type SimState,
 } from "shared/sim";
+import { SwordSpacing, setSwordSpacing, type SwordSpacingKind } from "../swordSpacing";
 import { fighterFrame, type FightEnv, type FighterMemory } from "./characterTune";
 import { survivalRun, type SurvivalRun } from "./survivalBot";
 
@@ -75,10 +94,12 @@ export const SPACING_WINDOW_TICKS = 10;
 /** The plan's keep margin (SWORD_SPACING.marginTiles, Design 6): keep = radius + PLAYER_RADIUS + this. */
 export const SPACING_KEEP_MARGIN = 0.15;
 
-/** One census column: a fighter and a printed label (SP4 adds the brake switch here, file comment). */
+/** One census column: a fighter, the brake and a printed label (file comment). */
 export interface SpacingRunOptions {
 	readonly fighter: SpacingFighter;
 	readonly label: string;
+	/** The sword spacing brake for the run (setSwordSpacing; default SwordSpacing.ON, the live default). */
+	readonly spacing?: SwordSpacingKind;
 	/** The last floor fought (default SWORD_SPACING_CENSUS.maxFloor). */
 	readonly maxFloor?: number;
 	/** Hearts topped up before every tick (default true, file comment). */
@@ -90,8 +111,10 @@ export const SWORD_SPACING_CENSUS = { seeds: 30, maxFloor: 10, shards: 10 } as c
 
 /** The census columns, in print order (file comment). */
 export const SPACING_CENSUS_COLUMNS: ReadonlyArray<SpacingRunOptions> = [
-	{ fighter: "tidy", label: "tidy" },
-	{ fighter: "greedy", label: "greedy" },
+	{ fighter: "tidy", label: "tidy-web", spacing: SwordSpacing.WEB },
+	{ fighter: "greedy", label: "greedy-web", spacing: SwordSpacing.WEB },
+	{ fighter: "tidy", label: "tidy-brake", spacing: SwordSpacing.ON },
+	{ fighter: "greedy", label: "greedy-brake", spacing: SwordSpacing.ON },
 ];
 
 // ---------------------------------------------------------------------------------------------
@@ -275,6 +298,9 @@ interface Snapshot {
 	/** After the step: the finisher winding up (its lunge steps next tick), the player rolling. */
 	windup: boolean;
 	rolling: boolean;
+	/** The tick's frame had the brake's hook on (brake-off walk, file comment); the sword guarding after the step. */
+	brakeOn: boolean;
+	guard: boolean;
 	readonly ax: number[];
 	readonly az: number[];
 	readonly id: number[];
@@ -295,13 +321,15 @@ class History {
 				pz: 0,
 				windup: false,
 				rolling: false,
+				brakeOn: false,
+				guard: false,
 				ax: [],
 				az: [],
 				id: [],
 			});
 	}
 
-	record(s: SimState): void {
+	record(s: SimState, brakeOn: boolean): void {
 		this.head = (this.head + 1) % this.ring.size();
 		this.count = math.min(this.count + 1, this.ring.size());
 		const snap = this.ring[this.head];
@@ -313,6 +341,8 @@ class History {
 		const slot = w.sets[w.activeSet];
 		snap.windup = slot.weapon === swordIndex() && slot.v[SWORD_V_STEP] === SWORD_STEP_WINDUP;
 		snap.rolling = s.player.rollTicks > 0;
+		snap.brakeOn = brakeOn;
+		snap.guard = slot.weapon === swordIndex() && slot.v[SWORD_V_GUARD] > 0;
 		const actors = s.combat.actors;
 		for (let j = 0; j < actors.size(); j++) {
 			const a = actors[j];
@@ -346,14 +376,29 @@ interface Closing {
 	ticks: number;
 }
 
+/** The entry split (file comment): closing since the gap was last at or outside keep, the player's by class. */
+interface Entry {
+	byPlayer: number;
+	byActor: number;
+	walkOn: number;
+	walkOff: number;
+	walkGuard: number;
+	lunge: number;
+	roll: number;
+	/** The gap was inside keep over the whole window. */
+	deep: boolean;
+}
+
 const closing: Closing = { byPlayer: 0, byActor: 0, walk: 0, lunge: 0, roll: 0, ticks: 0 };
+const entry: Entry = { byPlayer: 0, byActor: 0, walkOn: 0, walkOff: 0, walkGuard: 0, lunge: 0, roll: 0, deep: true };
 
 /**
  * The window before the newest snapshot for actor `slot` / `id` (file comment), into the module scratch `closing`. A
  * tick is a lunge tick when the snapshot before it shows the finisher winding up (the wind-up lunges in the next
- * stepWeapons), a roll tick when either side shows a roll.
+ * stepWeapons), a roll tick when either side shows a roll. The entry split (file comment) goes into the module scratch
+ * `entry`, for an actor of keep distance `keep`.
  */
-function attribute(h: History, slot: number, id: number): Closing {
+function attribute(h: History, slot: number, id: number, keep: number): Closing {
 	const now = h.at(0)!;
 	const c = closing;
 	c.byPlayer = 0;
@@ -362,6 +407,15 @@ function attribute(h: History, slot: number, id: number): Closing {
 	c.lunge = 0;
 	c.roll = 0;
 	c.ticks = 0;
+	const e = entry;
+	e.byPlayer = 0;
+	e.byActor = 0;
+	e.walkOn = 0;
+	e.walkOff = 0;
+	e.walkGuard = 0;
+	e.lunge = 0;
+	e.roll = 0;
+	e.deep = true;
 	for (let back = 1; back <= SPACING_WINDOW_TICKS; back++) {
 		const a = h.at(back - 1)!;
 		const b = h.at(back);
@@ -384,6 +438,18 @@ function attribute(h: History, slot: number, id: number): Closing {
 		else if (b.windup) c.lunge -= playerPart;
 		else c.walk -= playerPart;
 		c.ticks++;
+		if (e.deep) {
+			e.byPlayer -= playerPart;
+			e.byActor -= actorPart;
+			if (a.rolling || b.rolling) e.roll -= playerPart;
+			else if (b.windup) e.lunge -= playerPart;
+			else if (a.brakeOn) e.walkOn -= playerPart;
+			else {
+				e.walkOff -= playerPart;
+				if (a.guard) e.walkGuard -= playerPart;
+			}
+			if (d00 >= keep) e.deep = false; // the entry began at b
+		}
 	}
 	return c;
 }
@@ -404,6 +470,17 @@ export interface ArchetypeContact {
 	rollClose: number;
 	/** Player-driven hits whose lunge ticks closed more than the walk and roll ticks together. */
 	lungeLed: number;
+	/**
+	 * The entry split (file comment): player-driven entries, by the class that moved the player most (a braked walk, an
+	 * unbraked walk and of those a guard's, the lunge, a roll), and the hits whose gap was inside keep the whole window.
+	 */
+	entryPlayer: number;
+	entryWalkOn: number;
+	entryWalkOff: number;
+	entryGuard: number;
+	entryLunge: number;
+	entryRoll: number;
+	entryDeep: number;
 	/** Hits where neither side closed SPACING_STANDING_TILES (already in contact when the post-hit window ran out). */
 	standing: number;
 }
@@ -422,6 +499,13 @@ function newArchetypeContact(): ArchetypeContact {
 		lungeClose: 0,
 		rollClose: 0,
 		lungeLed: 0,
+		entryPlayer: 0,
+		entryWalkOn: 0,
+		entryWalkOff: 0,
+		entryGuard: 0,
+		entryLunge: 0,
+		entryRoll: 0,
+		entryDeep: 0,
 		standing: 0,
 	};
 }
@@ -448,6 +532,9 @@ export interface SpacingTotals {
 	bossFightTicks: number;
 	bossInKeepTicks: number;
 	bossInContactTicks: number;
+	/** Ticks whose last brake call cut the step (file comment): all, and those in a room fight. */
+	brakeTicks: number;
+	brakeRoomTicks: number;
 	/** Per archetype id. */
 	readonly byKind: Map<string, ArchetypeContact>;
 	/** Landed-hit callers (the probe's breakdown). */
@@ -474,6 +561,8 @@ export function newSpacingTotals(): SpacingTotals {
 		bossFightTicks: 0,
 		bossInKeepTicks: 0,
 		bossInContactTicks: 0,
+		brakeTicks: 0,
+		brakeRoomTicks: 0,
 		byKind: new Map(),
 		callers: new Map(),
 		ticks: [],
@@ -499,6 +588,8 @@ export function mergeSpacingTotals(a: SpacingTotals, b: SpacingTotals): void {
 	a.bossFightTicks += b.bossFightTicks;
 	a.bossInKeepTicks += b.bossInKeepTicks;
 	a.bossInContactTicks += b.bossInContactTicks;
+	a.brakeTicks += b.brakeTicks;
+	a.brakeRoomTicks += b.brakeRoomTicks;
 	for (const [k, v] of b.byKind) {
 		const t = a.byKind.get(k) ?? newArchetypeContact();
 		t.hits += v.hits;
@@ -510,6 +601,13 @@ export function mergeSpacingTotals(a: SpacingTotals, b: SpacingTotals): void {
 		t.lungeClose += v.lungeClose;
 		t.rollClose += v.rollClose;
 		t.lungeLed += v.lungeLed;
+		t.entryPlayer += v.entryPlayer;
+		t.entryWalkOn += v.entryWalkOn;
+		t.entryWalkOff += v.entryWalkOff;
+		t.entryGuard += v.entryGuard;
+		t.entryLunge += v.entryLunge;
+		t.entryRoll += v.entryRoll;
+		t.entryDeep += v.entryDeep;
 		t.standing += v.standing;
 		a.byKind.set(k, t);
 	}
@@ -537,10 +635,16 @@ export function spacingRun(seed: number, options: SpacingRunOptions, limitTicks?
 	const probe = new ContactProbe();
 	const history = new History();
 	let fight: "room" | "boss" | "" = "";
+	let brakeOn = false;
 	let steps = 0;
 	const onStep = (s: SimState) => {
 		steps++;
-		history.record(s);
+		history.record(s, brakeOn);
+		if (BRAKE_RESULT.engaged) {
+			totals.brakeTicks++;
+			if (fight === "room") totals.brakeRoomTicks++;
+			BRAKE_RESULT.engaged = false;
+		}
 		for (const hit of probe.landed) {
 			if (hit.cause === "bullet") totals.bulletHits++;
 			else if (hit.cause === "other") totals.otherHits++;
@@ -552,7 +656,8 @@ export function spacingRun(seed: number, options: SpacingRunOptions, limitTicks?
 				const t = totals.byKind.get(name) ?? newArchetypeContact();
 				t.hits++;
 				if (hit.slot >= 0) {
-					const c = attribute(history, hit.slot, hit.id);
+					const keep = s.combat.actors[hit.slot].radius + PLAYER_RADIUS + SPACING_KEEP_MARGIN;
+					const c = attribute(history, hit.slot, hit.id, keep);
 					t.playerClose += c.byPlayer;
 					t.enemyClose += c.byActor;
 					t.walkClose += c.walk;
@@ -562,6 +667,18 @@ export function spacingRun(seed: number, options: SpacingRunOptions, limitTicks?
 						t.playerDriven++;
 						if (c.lunge > c.walk + c.roll) t.lungeLed++;
 					} else t.enemyDriven++;
+					const e = entry;
+					if (e.deep) t.entryDeep++;
+					if (e.byPlayer > e.byActor) {
+						t.entryPlayer++;
+						const most = math.max(e.walkOn, e.walkOff, e.lunge, e.roll);
+						if (most === e.walkOff) {
+							t.entryWalkOff++;
+							if (e.walkGuard > e.walkOff / 2) t.entryGuard++;
+						} else if (most === e.walkOn) t.entryWalkOn++;
+						else if (most === e.lunge) t.entryLunge++;
+						else t.entryRoll++;
+					}
 					if (c.byPlayer < SPACING_STANDING_TILES && c.byActor < SPACING_STANDING_TILES) t.standing++;
 				} else t.enemyDriven++;
 				totals.byKind.set(name, t);
@@ -569,11 +686,14 @@ export function spacingRun(seed: number, options: SpacingRunOptions, limitTicks?
 		}
 		probe.landed.clear();
 		fight = "";
+		brakeOn = false;
 		if (limitTicks !== undefined && steps >= limitTicks) s.player.dead = 1; // ends the bot's loops (smoke only)
 	};
 	const greedy = options.fighter === "greedy";
 	const maxFloor = options.maxFloor ?? SWORD_SPACING_CENSUS.maxFloor;
 	let run: SurvivalRun;
+	const previousSpacing = setSwordSpacing(options.spacing ?? SwordSpacing.ON);
+	BRAKE_RESULT.engaged = false;
 	probe.install();
 	try {
 		run = survivalRun(seed, "knight", {
@@ -592,11 +712,14 @@ export function spacingRun(seed: number, options: SpacingRunOptions, limitTicks?
 					if (keep || contact) totals.bossInKeepTicks++;
 					if (contact) totals.bossInContactTicks++;
 				}
-				return greedy ? greedyKnightFrame(s, t, env, mem, extra) : fighterFrame(s, mode, t, env, mem, extra);
+				const f = greedy ? greedyKnightFrame(s, t, env, mem, extra) : fighterFrame(s, mode, t, env, mem, extra);
+				brakeOn = weaponSpacingActive(weaponsAt(s, 0), f.buttons);
+				return f;
 			},
 		});
 	} finally {
 		probe.restore();
+		setSwordSpacing(previousSpacing);
 	}
 	totals.runs = 1;
 	totals.floors = math.min(run.floorReached, maxFloor + 1) - 1;
@@ -622,7 +745,8 @@ export function formatSpacingTotals(label: string, t: SpacingTotals): string[] {
 	const contact = t.contactRoom + t.contactBoss + t.contactTravel;
 	lines.push(
 		`[spacing] ${label}: | archetype | contact hits | player-driven (lunge-led) | enemy-driven | standing | ` +
-			`mean close player (walk / lunge / roll) / enemy |`,
+			`mean close player (walk / lunge / roll) / enemy | ` +
+			`entry: player (walk braked / unbraked (guard) / lunge / roll), deep |`,
 	);
 	const names: string[] = [];
 	for (const [k] of t.byKind) names.push(k);
@@ -639,7 +763,9 @@ export function formatSpacingTotals(label: string, t: SpacingTotals): string[] {
 				v.standing
 			} | ${m(v.playerClose)} (${m(v.walkClose)} / ${m(v.lungeClose)} / ${m(v.rollClose)}) / ${m(
 				v.enemyClose,
-			)} |`,
+			)} | ${v.entryPlayer} (${v.entryWalkOn} / ${v.entryWalkOff} (${v.entryGuard}) / ${v.entryLunge} / ${
+				v.entryRoll
+			}), ${v.entryDeep} |`,
 		);
 	}
 	lines.push(`[spacing] ${label}: | all | ${contact} | ${pd} | ${ed} | | |`);
@@ -658,7 +784,7 @@ export function formatSpacingTotals(label: string, t: SpacingTotals): string[] {
 		)}; boss fight ticks ${t.bossFightTicks}, in keep ${pct(t.bossInKeepTicks, t.bossFightTicks)}, in contact ${pct(
 			t.bossInContactTicks,
 			t.bossFightTicks,
-		)}`,
+		)}; brake ticks ${t.brakeTicks} (room fights ${t.brakeRoomTicks})`,
 	);
 	const callers: string[] = [];
 	for (const [k, v] of t.callers) callers.push(`${k} ${v}`);
@@ -691,6 +817,8 @@ export function formatSpacingRaw(label: string, t: SpacingTotals): string {
 		"bossFightTicks",
 		"bossInKeepTicks",
 		"bossInContactTicks",
+		"brakeTicks",
+		"brakeRoomTicks",
 	];
 	for (const k of scalar) parts.push(`${k}=${t[k] as number}`);
 	const n6 = (x: number) => string.format("%.6f", x);
@@ -706,6 +834,13 @@ export function formatSpacingRaw(label: string, t: SpacingTotals): string {
 			n6(v.rollClose),
 			v.lungeLed,
 			v.standing,
+			v.entryPlayer,
+			v.entryWalkOn,
+			v.entryWalkOff,
+			v.entryGuard,
+			v.entryLunge,
+			v.entryRoll,
+			v.entryDeep,
 		];
 		parts.push(`kind:${k}=${xs.join("/")}`);
 	}

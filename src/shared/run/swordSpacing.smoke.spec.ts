@@ -1,6 +1,7 @@
-// docs/SWORD_SPACING.md SP0: the contact-hit census's code path, fast (the census itself is swordSpacing.census.<n>,
-// opt-in). The probe names a swarmer on the player as a contact hit and restores SimCtx after; the greedy fighter moves
-// along the 8 key directions only; a short greedy run steps and tallies.
+// docs/SWORD_SPACING.md SP0 / SP4: the contact-hit census's code path, fast (the census itself is
+// swordSpacing.census.<n>, opt-in). The probe names a swarmer on the player as a contact hit and restores SimCtx after;
+// the greedy fighter moves along the 8 key directions only; a short greedy run steps and tallies, without the brake
+// never brakes, and with it brakes in a room fight.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { screenToWorld } from "shared/play";
 import {
@@ -16,6 +17,7 @@ import {
 	step,
 } from "shared/sim";
 import { buildEndlessRunConfig } from "./endless";
+import { SwordSpacing, swordSpacingKind } from "./swordSpacing";
 import { ContactProbe, nearestKeyDir, spacingRun } from "./testing";
 
 describe("sword spacing SP0 census (smoke)", () => {
@@ -80,10 +82,18 @@ describe("sword spacing SP0 census (smoke)", () => {
 		}
 	});
 
-	it("a short greedy run steps, fights and tallies", () => {
-		const t = spacingRun(1, { fighter: "greedy", label: "smoke", maxFloor: 1 }, 900);
-		expect(t.runs).toBe(1);
-		expect(t.fightTicks).toBeGreaterThan(0);
-		expect(t.ticks[0]).toBeGreaterThan(0);
+	it("a short greedy run steps, fights and tallies; the brake engages and keeps it out of keep distance", () => {
+		const before = swordSpacingKind();
+		const web = spacingRun(1, { fighter: "greedy", label: "smoke", maxFloor: 1, spacing: SwordSpacing.WEB }, 3000);
+		expect(swordSpacingKind()).toBe(before);
+		expect(web.runs).toBe(1);
+		expect(web.fightTicks).toBeGreaterThan(0);
+		expect(web.ticks[0]).toBeGreaterThan(0);
+		expect(web.brakeTicks).toBe(0); // no brake without SimConfig.spacing
+		expect(web.inKeepTicks).toBeGreaterThan(0);
+		const on = spacingRun(1, { fighter: "greedy", label: "smoke", maxFloor: 1, spacing: SwordSpacing.ON }, 3000);
+		expect(swordSpacingKind()).toBe(before);
+		expect(on.brakeRoomTicks).toBeGreaterThan(0);
+		expect(on.inKeepTicks).toBeLessThan(web.inKeepTicks);
 	});
 });
