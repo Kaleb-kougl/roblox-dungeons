@@ -83,7 +83,7 @@ describe("day math", () => {
 		expect(dailyScope(303, 1)).toBe("d303_r1");
 		expect(dailyScope(303, 7)).toBe("d303_r7");
 		expect(dailyScope(303)).toBe(`d303_r${DAILY.ruleset}`);
-		expect(DAILY.ruleset).toBe(24);
+		expect(DAILY.ruleset).toBe(25);
 		expect(dailyRunKeyAt(OCT_31 + 86399)).toEqual({ day: 303, ruleset: DAILY.ruleset });
 	});
 

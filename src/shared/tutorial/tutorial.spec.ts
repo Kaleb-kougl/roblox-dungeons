@@ -1062,15 +1062,19 @@ describe("tutorial metrics (docs/TUTORIAL_FUNNEL.md TF4)", () => {
 			[7, 5.2, 0], // roll
 			[8, 5.7, 1], // guard (5.6 on 7574)
 			// AR6: no bow step (9 was 5.5 s, 2 hits); ember .. finish are 9..17 (revision 4)
-			[9, 9.2, 1], // ember: the walk D -> F, then the storm (9.6 on 7574 from combat E)
+			[9, 9.1, 1], // ember: the walk D -> F, then the storm (9.6 on 7574 from combat E; 9.2 before sword spacing)
 			[10, 0, 0], // map: opened on the first frame it is current (docs/TUTORIAL_MAP.md)
 			[11, 15.1, 1], // pellets: the walk F -> G, the ring, then the sniper (docs/PELLETS.md PL13)
 			[12, 2.9, 0], // relic
 			[13, 2.8, 0], // curse
 			[14, 3.3, 0], // stairwell
 			[15, 0.5, 0], // draft
-			[16, 15.6, 14], // boss (54 hp since the half-hp boss retune; was 24.1 s, 26 hits at 108)
-			[17, 0, 0], // finish: done on the boss kill's tick (the stairwell opens under the bot)
+			// boss (54 hp since the half-hp boss retune; was 24.1 s, 26 hits at 108). Sword spacing (docs/SWORD_SPACING.md
+			// SP8): 14 -> 5 hits, the Knight no longer walks into her while swinging.
+			[16, 15.6, 5],
+			// finish: 0.1 s after the boss kill (the stairwell opens where she stood, a keep distance from the braked bot;
+			// on the kill's tick before sword spacing)
+			[17, 0.1, 0],
 		]);
 		expect(r.sharedClockFrames).toBe(0);
 		checkRelations(r);
@@ -1088,15 +1092,15 @@ describe("tutorial metrics (docs/TUTORIAL_FUNNEL.md TF4)", () => {
 			[5, 13.2, 1], // hits: current from the flask on, so it runs through the walk to and the fight in combat C
 			[6, 0.1, 0],
 			[8, 8.5, 1], // guard (8.3 on 7574)
-			[9, 9.2, 1], // ember (AR6: no bow step; 9.6 on 7574)
+			[9, 9.1, 1], // ember (AR6: no bow step; 9.6 on 7574; 9.2 before sword spacing)
 			[10, 0, 0],
 			[11, 15.1, 1], // pellets: the sweep's path takes one (harmless) hit
 			[12, 2.9, 0], // relic
 			[13, 2.8, 0],
 			[14, 3.3, 0],
 			[15, 0.5, 0],
-			[16, 15.6, 14],
-			[17, 0, 0],
+			[16, 15.6, 5], // 14 hits before sword spacing
+			[17, 0.1, 0], // 0 before sword spacing
 		]);
 		const steps = r.lessonReports.map((l) => l.step);
 		expect(new Set(steps).size()).toBe(TUTORIAL_STEP_COUNT);
@@ -1255,7 +1259,8 @@ describe("tutorial metrics (docs/TUTORIAL_FUNNEL.md TF4)", () => {
 		expect(r.stuckReports).toEqual([{ prompt: "guardHold", seconds: roundTutorialSeconds(1612 * SIM_DT) }]);
 		expect(r.stuckReports[0].seconds).toBe(26.9);
 		expect(r.shadowStuckReports[0]).toEqual([]);
-		expect(rows(r)[tutorialStepIndex("guard")]).toEqual([8, 31.7, 37]); // 31.6 on seed 7574
+		// 31.6 on seed 7574; 37 hits before sword spacing (docs/SWORD_SPACING.md SP8)
+		expect(rows(r)[tutorialStepIndex("guard")]).toEqual([8, 31.7, 36]);
 		checkRelations(r);
 	});
 });

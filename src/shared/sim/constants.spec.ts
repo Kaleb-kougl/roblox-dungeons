@@ -1,7 +1,14 @@
 // Every sim constant this port owns equals the web build's value bit for bit (fixtures/constants.json), including the
 // module-load computations (secondsToTicks, ROLL_DISTANCE, TURN_COS / SIN, BOW_WOBBLE_COS / SIN, derived steps).
 import { afterAll, beforeAll, describe, expect, it } from "@rbxts/jest-globals";
-import { PlayerMover, setPlayerMover, type PlayerMoverKind } from "shared/run";
+import {
+	PlayerMover,
+	SwordSpacing,
+	setPlayerMover,
+	setSwordSpacing,
+	type PlayerMoverKind,
+	type SwordSpacingKind,
+} from "shared/run";
 import constants from "shared/fixtures-generated/constants";
 import { jsRound } from "shared/jsmath";
 import * as units from "./units";
@@ -105,6 +112,7 @@ describe("constants.json parity", () => {
 	let portSword: SwordTimings;
 	let portSwarmerHp = 0;
 	let portMover: PlayerMoverKind = PlayerMover.SLIDE;
+	let portSpacing: SwordSpacingKind = SwordSpacing.ON;
 	let portBossHp = 0;
 	let portBow: BowTuning;
 	beforeAll(() => {
@@ -112,12 +120,14 @@ describe("constants.json parity", () => {
 		portSword = setSwordTimings(WEB_SWORD_TIMINGS);
 		portSwarmerHp = setSwarmerHp(WEB_SWARMER_HP);
 		portMover = setPlayerMover(PlayerMover.WEB); // the web build's mover (port: the slide)
+		portSpacing = setSwordSpacing(SwordSpacing.WEB); // the web build's sword: no spacing brake (docs/SWORD_SPACING.md)
 		portBossHp = setBossHp(WEB_BOSS_HP);
 	});
 	afterAll(() => {
 		setSwordTimings(portSword);
 		setSwarmerHp(portSwarmerHp);
 		setPlayerMover(portMover);
+		setSwordSpacing(portSpacing);
 		setBossHp(portBossHp);
 		setBowTuning(portBow);
 	});
