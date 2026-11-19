@@ -78,6 +78,7 @@ import { ENDLESS_DUNGEON_CACHE_SIZE, ENDLESS_FLOOR_CACHE_SIZE } from "./limits";
 import { isValidRunSeed } from "./seed";
 import type { RunSetup } from "./config";
 import { playerMover, playerMoverKind, type PlayerMoverKind } from "./playerMover";
+import { swordSpacing } from "./swordSpacing";
 import { partyCharacters, partyUpgrades, withCharacters } from "./characters";
 import type { CharacterId, UpgradeLevels } from "shared/characters";
 
@@ -368,7 +369,7 @@ export function buildEndlessRunConfig(
 		options.silverOverride,
 	);
 	const first = worldForFloor(ENDLESS_FIRST_FLOOR);
-	const base: SimConfig =
+	const solo: SimConfig =
 		partySize === DEFAULT_PARTY_SIZE
 			? {
 					endless: { runSeed, worldForFloor },
@@ -399,6 +400,10 @@ export function buildEndlessRunConfig(
 					secrets: SECRETS_CONFIG,
 					silver: ENDLESS_SILVER_CONFIG,
 			  };
+	// docs/SWORD_SPACING.md SPD6: the sword's spacing brake, read when the config is built (absent under
+	// SwordSpacing.WEB); a run-config field, so every floor of the run brakes the same way.
+	const spacing = swordSpacing();
+	const base: SimConfig = spacing !== undefined ? { ...solo, spacing } : solo;
 	const characters = options.characters !== undefined ? partyCharacters(options.characters, partySize) : undefined;
 	const upgrades = characters !== undefined ? partyUpgrades(options.upgrades, partySize) : undefined;
 	const config =

@@ -80,4 +80,9 @@ export interface WeaponDef<D extends WeaponData = WeaponData> {
 	step?(ctx: SimCtx, slot: WeaponSlotState): void;
 	/** Walking speed multiplier while this weapon is in hand, from its slot state only (pure). Optional: 1. */
 	moveMultiplier?(slot: Readonly<WeaponSlotState>): number;
+	/**
+	 * Sword spacing (docs/SWORD_SPACING.md Design 3, SP2): true while this weapon's walk is braked short of contact
+	 * enemies (SimConfig.spacing), from its slot state and the tick's buttons only (pure). Optional: never braked.
+	 */
+	spacing?(slot: Readonly<WeaponSlotState>, buttons: number): boolean;
 }

@@ -8,7 +8,9 @@
  *                actorMover: actorMover(dungeon), encounter: placeEncounter(dungeon, DEFAULT_ENCOUNTER) }
  *
  * except the player's mover, a port retune (docs/WALL_SLIDE.md WSD1): `playerMover(dungeon)` is the slide unless a
- * spec set `setPlayerMover(PlayerMover.WEB)` (the web build's circleMover, for the golden fixtures).
+ * spec set `setPlayerMover(PlayerMover.WEB)` (the web build's circleMover, for the golden fixtures), and the sword's
+ * spacing brake (docs/SWORD_SPACING.md SPD6): `spacing: swordSpacing()` unless a spec set
+ * `setSwordSpacing(SwordSpacing.WEB)`. The greybox world (DEFAULT_SIM_CONFIG, no encounter, no enemies) carries neither.
  *
  * `loadout` stays absent (= DEFAULT_LOADOUT) and `stress` is never set: a stress run (`?stress=N`) is a debug mode and
  * is not a run the server accepts. Pure and Roblox-API-free, so the client builds its live run with the same function
@@ -30,6 +32,7 @@ import { DUNGEON_CACHE_SIZE, type RunWorld } from "./limits";
 import { isValidRunSeed } from "./seed";
 import { buildEndlessRunConfig, type EndlessRunFloor } from "./endless";
 import { playerMover } from "./playerMover";
+import { swordSpacing } from "./swordSpacing";
 import type { CharacterId, UpgradeLevels } from "shared/characters";
 
 export { isValidRunSeed };
@@ -137,6 +140,9 @@ export function buildRunConfig(seed: number, options: RunConfigOptions = {}): Ru
 		encounter: world === "game" ? placeEncounter(dungeon, DEFAULT_ENCOUNTER) : undefined,
 	};
 	if (options.scoring !== undefined) config.scoring = options.scoring;
+	// docs/SWORD_SPACING.md SPD6: the sword's spacing brake in M1 too (absent under SwordSpacing.WEB).
+	const spacing = swordSpacing();
+	if (spacing !== undefined) config.spacing = spacing;
 	return { config: withParty(config, partySize), spawn: { x: spawn.x, z: spawn.z }, dungeon };
 }
 

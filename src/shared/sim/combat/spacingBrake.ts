@@ -2,13 +2,26 @@
  * The spacing brake (docs/SWORD_SPACING.md Design 2, SP1; a Roblox-port feature, no web source): a player's step is
  * cut so that it never ends inside a contact enemy's keep distance, and never deeper inside one than it started.
  *
- * A LEAF: it imports nothing from the sim (player.ts and the sword import it; the list is filled by ./spacing.ts).
+ * A LEAF: it imports nothing from the sim but a type (player.ts and the sword import it; the list is filled by
+ * ./spacing.ts).
  *
  * Contract (pinned by spacing.spec.ts): pure and deterministic (fixed entry order, + - * / and sqrt only, no trig, no
  * allocation per call); the result is never longer than the step and never against it (result . step >= 0); for every
  * entry the end distance is >= min(start distance, keep) (a body already inside keep is never pushed out, only kept
  * from going deeper); far from every entry, or with an empty list, the result is the step itself, bit for bit.
  */
+
+import type { SpacingConfig } from "./spacingData";
+
+/**
+ * One tick's brake (docs/SWORD_SPACING.md Design 1, SP2 / SP3): the sim's spacing list built from the tick-start state
+ * and the run's config. step.ts builds it once per tick (only with SimConfig.spacing) and hands it to every stepPlayer
+ * and to stepCombat (SimCtx.spacing, the finisher's lunge); undefined everywhere means no brake at all.
+ */
+export interface SpacingTick {
+	readonly list: Readonly<SpacingList>;
+	readonly config: Readonly<SpacingConfig>;
+}
 
 /** A flat list of brake entries (centre x / z and keep distance). The arrays grow, never shrink; `count` are live. */
 export interface SpacingList {

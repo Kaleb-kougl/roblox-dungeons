@@ -80,6 +80,7 @@ import {
 } from "shared/sim";
 import { ENDLESS_SCORING, endlessFloorWorld, type EndlessRunFloor, type EndlessRunSetup } from "./endless";
 import { playerMoverKind, type PlayerMoverKind } from "./playerMover";
+import { swordSpacing } from "./swordSpacing";
 import { tutorialRoomTools, tutorialTour } from "./tutorialLayout";
 import { withCharacters } from "./characters";
 import type { CharacterId } from "shared/characters";
@@ -633,6 +634,9 @@ export function buildTutorialRunConfig(partySize: number = DEFAULT_PARTY_SIZE): 
 		drops: TUTORIAL_DROPS_CONFIG,
 		pellets: PELLETS_CONFIG,
 	};
+	// docs/SWORD_SPACING.md SPD6 / SP8: the sword's spacing brake (absent under SwordSpacing.WEB), read when built.
+	const spacing = swordSpacing();
+	if (spacing !== undefined) base.spacing = spacing;
 	const characters = [TUTORIAL_CHARACTER];
 	return {
 		config: withCharacters(base, characters),

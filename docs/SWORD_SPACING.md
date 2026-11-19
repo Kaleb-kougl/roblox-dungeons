@@ -19,7 +19,8 @@ No new state, no new hash group, no wire change: the brake reads only hashed sta
 
 ## Status (2026-11-19)
 
-Plan only. Nothing built. SP0 (the measurement) comes first; it sets the baseline and does not gate the rest.
+SP1-SP3 and SP8 built (the brake core, the walk, the lunge, the wiring in every world, the tutorial pins); SP0, SP4-SP7
+and SP9 open. SP0 (the measurement) does not gate the rest.
 
 **Owner (2026-11-19): every open question answered** (keyboard and mouse; brake only while attacking, SPD1; M1
 included, SPD6; no knockback for now, SPD4). On keyboard and mouse the facing is the mouse's (the "facing follows the
@@ -224,7 +225,7 @@ Archer.
     enemy from far off can reach it at a wider bearing than it started with (the bearing grows as the ray passes the
     centre) and then slides; a player who keeps the nearest key toward the enemy (the SP0 greedy fighter) is always
     within 22.5 degrees and stops (spec: the nearest-key chase from every bearing).
-- [ ] **SP2. The walk** (Design 3). The `spacing` hook on `WeaponDef` and the sword, `weaponSpacingActive`, stepPlayer's
+- [x] **SP2. The walk** (Design 3). The `spacing` hook on `WeaponDef` and the sword, `weaponSpacingActive`, stepPlayer's
   trailing `spacing` argument (undefined = today), the list built at the start of `step` and `stepParty`. Specs:
   - holding FIRE and walking at a bruiser stops at keep; the same walk without FIRE and no combo walks into it as
     today;
@@ -233,7 +234,20 @@ Archer.
   - the Archer walks into a swarmer exactly as before;
   - co-op: each player is braked against the same list, in index order.
   → Verify: `npm run test:only -- sim/player sim/oneWeapon sim/party`.
-- [ ] **SP3. The lunge and the wiring** (Design 4, 6). The wind-up's lunge through `brakeStep`; `SimConfig.spacing`,
+
+  **As built (SP2).** `WeaponDef.spacing?(slot, buttons): boolean` (combat/weapons/types.ts, a method, called with `:`)
+  read through `weaponSpacingActive(weapons, buttons)` (weapons.ts, beside `weaponMoveMultiplier`; false without the
+  hook or with an empty set in hand); the sword's hook is Design 3's four terms exactly (the guard resets the combo, so
+  the guard alone reads false). `SimConfig.spacing?: SpacingConfig` is read from the RUN config, like `traits` (step() /
+  stepParty, never a floor's world): `combat/spacing.ts` `tickSpacing(state, config.spacing)` rebuilds the sim's own
+  list (module scratch) once per tick after the event clears, the forfeit and the frozen-draft return, before the first
+  stepPlayer, and returns a `SpacingTick { list, config }` (type in the leaf `spacingBrake.ts`), or undefined without
+  the field (no list built). stepPlayer's new trailing `spacing?: SpacingTick` brakes the walk step (after the flask,
+  weapon and Quickstep scaling, before movePlayer) when `spacing.config.walk` and the hook says on; the roll path never
+  reads it; facing unchanged. Specs: `sim/spacing.wiring.spec.ts` (hand-built open arenas, the enemy put back in place
+  after every tick, the players unhurtable): bruiser stop at keep with no drift, no-FIRE walk bit for bit, the combo
+  window (14 + 30 braked ticks, then in), roll and guard bit for bit, the Archer bit for bit, co-op both at keep.
+- [x] **SP3. The lunge and the wiring** (Design 4, 6). The wind-up's lunge through `brakeStep`; `SimConfig.spacing`,
   `swordSpacing()`, `setSwordSpacing` / `SwordSpacing` in shared/run, set in the builders WS4 used. The 11 parity files
   set `SwordSpacing.WEB`. Specs:
   - a finisher at a swarmer 1.2 tiles away ends at keep and the finisher still kills it;
@@ -243,6 +257,27 @@ Archer.
   → Verify: `npm run verify`; every golden / validate / segments / constants / boss TTK spec bit for bit under the
   switch; re-record the pins that record a Knight's path near contact enemies (list them here with old -> new);
   `DAILY.ruleset` 25.
+
+  **As built (SP3).** The wind-up's lunge step goes through `brakeStep` with `ctx.spacing` (a new transient `SimCtx`
+  field, `SpacingTick | undefined`: stepCombat's new trailing `spacing` argument sets it right after `bind()`, which
+  empties it, so the endless / Goldling / pacts contexts never brake) when `config.lunge`; the wind-up's timing and
+  strike are untouched. shared/run `swordSpacing.ts`: `SwordSpacing = { ON: 0, WEB: 1 }`, `setSwordSpacing(kind)`
+  (specs only, returns the previous kind), `swordSpacingKind()`, `swordSpacing(kind?)` (SWORD_SPACING or undefined),
+  in the barrel. **Deviation:** since `spacing` is a run-config field, it is set once on the run config in
+  `buildRunConfig` (M1 `game` / `dungeonNoEncounter`, scored or not, co-op through `withParty`; not the `greybox`
+  world: DEFAULT_SIM_CONFIG, no encounter, nothing to brake against), `buildEndlessRunConfig` (endless, the Daily,
+  dev, co-op, the server's registry and validator) and `buildTutorialRunConfig`, read when the config is built; no
+  floor's world (`endlessFloorWorld`) carries it, so there is no per-floor capture to thread. The 11 parity files
+  (`sim/bossAct1.ttk`, `sim/recordingCodec`, `sim/runBoss`, `sim/runFull`, `sim/runBullets`, `sim/constants`,
+  `sim/score/score.replay`, `play/liveRun.forfeit`, `view/roomEdgeState`, `run/segments`, `run/validate`) set
+  `SwordSpacing.WEB` next to `PlayerMover.WEB` and restore it; all match bit for bit. `DAILY.ruleset` 24 -> 25. Specs:
+  `sim/spacing.wiring.spec.ts`'s lunge rows (a finisher at a swarmer 1.2 ahead ends at keep and kills it; nothing in
+  front: the full 0.6, bit for bit; `lunge: false` lunges through), `run/swordSpacing.spec.ts` (every registered world
+  plus scored M1, co-op, the Archer, dev and the tutorial carry SWORD_SPACING, none under WEB; the golden run-full
+  recording, the recorded endless run and the tutorial bot's run replay under the WEB build exactly as under the
+  default build with the field stripped). Re-recorded pins: only `tutorial/tutorial.spec.ts` (SP8); every other spec
+  passed unchanged (the sim pins record no Knight attacking into a contact enemy). `lockstep/predictMotion.spec.ts`
+  still passes: its walks never braked (no brake row in its coverage yet; SP5 adds one).
 - [ ] **SP4. Census** (SP0's spec, now with the brake on and off). Gates:
   - greedy fighter: player-driven contact hits down by at least 80 % (target: zero not caused by a wall slide);
   - tidy fighter: no change in contact hits (it never walked in);
@@ -261,9 +296,15 @@ Archer.
   a bruiser's wind-up, both bosses, co-op on a simulated 4G link (the predicted Knight's stop). Watch for: the Knight
   drifting round an enemy when the player wanted to stop (the stop cone), a stall between two enemies, a finisher that
   feels short. → Verify: the owner signs off SPD1-SPD8, the margin and the cone.
-- [ ] **SP8. Tutorial.** The scripted bot still finishes every lesson (the guard and sweep locks, combat D's bruiser,
+- [x] **SP8. Tutorial.** The scripted bot still finishes every lesson (the guard and sweep locks, combat D's bruiser,
   the practice boss); `tutorial.spec`'s lesson-time pins re-recorded if they move. → Verify:
   `npm run test:only -- tutorial`.
+
+  **As built (SP8).** Every lesson still completes (`tutorial/`, `run/tutorial`, `sim/tutorial` pass). Moved pins, all
+  in `tutorial/tutorial.spec.ts`, each passing unchanged under `SwordSpacing.WEB` (checked by building with WEB as the
+  default): in order and out of order, `ember` 9.2 -> 9.1 s, `boss` hits 14 -> 5 (15.6 s unchanged: the bot no longer
+  walks into Mother Mayhem while swinging), `finish` 0 -> 0.1 s (the stairwell opens where she stood, a keep distance
+  from the braked bot); guard late, `guard` hits 37 -> 36 (31.7 s unchanged).
 - [ ] **SP9. Docs.** A CLAUDE.md decision-log row (port retune) and a document table row; `PROVENANCE.md` unchanged (no
   ported module). → Verify: `npm run verify`.
 

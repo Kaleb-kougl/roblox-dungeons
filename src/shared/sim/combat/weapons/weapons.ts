@@ -90,6 +90,18 @@ export function weaponMoveMultiplier(w: Readonly<WeaponsState>): number {
 }
 
 /**
+ * Whether the weapon in hand brakes the walk this tick (docs/SWORD_SPACING.md Design 3, SP2: its def's `spacing` hook
+ * with the tick's buttons; false without one, or with an empty set in hand). Read by stepPlayer, only with a spacing
+ * brake (SimConfig.spacing).
+ */
+export function weaponSpacingActive(w: Readonly<WeaponsState>, buttons: number): boolean {
+	const slot = w.sets[w.activeSet];
+	if (slot === undefined || slot.weapon === NO_WEAPON) return false;
+	const def = weaponAt(slot.weapon);
+	return def.spacing !== undefined ? def.spacing(slot, buttons) : false;
+}
+
+/**
  * One tick of the acting player's weapons (ctx.weapons / ctx.player / ctx.input: player 0 in a solo run; stepCombat
  * binds each co-op player in index order). See the order at the top of this file.
  */
