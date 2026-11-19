@@ -31,7 +31,8 @@
  * than the actor's, else enemy-driven. The player's movement is all of it (walk, lunge, roll, a Chainhook's drag).
  *
  * Keep share: on every fight tick (the state the fighter reads), whether the player is inside a live contact actor's
- * keep distance (radius + PLAYER_RADIUS + SPACING_KEEP_MARGIN) and inside its contact range (radius + PLAYER_RADIUS).
+ * keep distance (radius + PLAYER_RADIUS + SWORD_SPACING.marginTiles) and inside its contact range
+ * (radius + PLAYER_RADIUS).
  *
  * The census (SWORD_SPACING_CENSUS, split over the shard specs run/swordSpacing.census.<n>: 30 run seeds at about two
  * minutes a seed for the four columns, so 3 seeds a shard) runs every column of SPACING_CENSUS_COLUMNS over its seeds.
@@ -47,7 +48,8 @@
  * Entry attribution (SP4): the SP0 split above credits the player with his whole approach, so a braked Knight who
  * walks up to keep distance and is then touched by the enemy's last step still reads player-driven. The entry split
  * attributes only the ticks since the gap was last at or outside the actor's keep distance (radius + PLAYER_RADIUS +
- * SPACING_KEEP_MARGIN; the whole window when it never was): who crossed from keep into contact. A player-driven entry is
+ * SWORD_SPACING.marginTiles; the whole window when it never was): who crossed from keep into contact. A player-driven
+ * entry is
  * classed by what moved him most over those ticks: a walk with the brake's hook on (a wall slide's deflection, or the
  * list's tick-start positions: the enemy moved), a walk with it off (SPD1: no FIRE and no combo, or the guard alone;
  * guard ticks counted apart), the lunge, a roll. Every fight frame notes the hook (weaponSpacingActive for the frame's
@@ -61,6 +63,7 @@ import {
 	PLAYER_RADIUS,
 	SQRT1_2,
 	SWORD_DATA,
+	SWORD_SPACING,
 	SWORD_STEP_WINDUP,
 	SWORD_V_GUARD,
 	SWORD_V_STEP,
@@ -91,8 +94,6 @@ export type SpacingFighter = "tidy" | "greedy";
 
 /** Ticks before a contact hit over which it is attributed (docs/SWORD_SPACING.md SP0). */
 export const SPACING_WINDOW_TICKS = 10;
-/** The plan's keep margin (SWORD_SPACING.marginTiles, Design 6): keep = radius + PLAYER_RADIUS + this. */
-export const SPACING_KEEP_MARGIN = 0.15;
 
 /** One census column: a fighter, the brake and a printed label (file comment). */
 export interface SpacingRunOptions {
@@ -624,7 +625,7 @@ function keepFlags(s: SimState): [boolean, boolean] {
 		if (archetypeAt(a.kind).data.contactDamage <= 0) continue;
 		const d = dist(p.x, p.z, a.x, a.z);
 		if (d < a.radius + PLAYER_RADIUS) return [true, true];
-		if (d < a.radius + PLAYER_RADIUS + SPACING_KEEP_MARGIN) keep = true;
+		if (d < a.radius + PLAYER_RADIUS + SWORD_SPACING.marginTiles) keep = true;
 	}
 	return [keep, false];
 }
@@ -656,7 +657,7 @@ export function spacingRun(seed: number, options: SpacingRunOptions, limitTicks?
 				const t = totals.byKind.get(name) ?? newArchetypeContact();
 				t.hits++;
 				if (hit.slot >= 0) {
-					const keep = s.combat.actors[hit.slot].radius + PLAYER_RADIUS + SPACING_KEEP_MARGIN;
+					const keep = s.combat.actors[hit.slot].radius + PLAYER_RADIUS + SWORD_SPACING.marginTiles;
 					const c = attribute(history, hit.slot, hit.id, keep);
 					t.playerClose += c.byPlayer;
 					t.enemyClose += c.byActor;
