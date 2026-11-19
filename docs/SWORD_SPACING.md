@@ -442,8 +442,8 @@ Archer.
   tick-start list differed from its merged list AND the frozen replay then differed; every horizon also runs an
   `informed` twin (each tick against that tick's own list), compared exactly, never excused. Numbers: held solo 3196
   ticks compared, brake 1225, lungeBrake 209, 127 horizons, 0 excused by the brake (1 flagged); live / co-op 6379
-  ticks, brake 1358, lungeBrake 250, 222 horizons, 24 excused by the brake (share 0.098 of 246: a live brawl's enemies chase, so the frozen list is often stale; its own cap
-  `MAX_BRAKE_EXCUSED_LIVE` 0.2, since the informed twin checks every excused horizon exactly; every other walk keeps
+  ticks, brake 1358, lungeBrake 250, 222 horizons, 24 excused by the brake (share 0.098 of 246: a live brawl's enemies
+  chase, so the frozen list is often stale; its own cap `MAX_BRAKE_EXCUSED_LIVE` 0.2, since the informed twin checks every excused horizon exactly; every other walk keeps
   `MAX_EXCUSED_SHARE` 0.1); the older walks unchanged (brake 0: they never attack into contact enemies).
 - [x] **SP6. `KV_CollisionDebug` keep circles** (presentation only, off by default, Janitor). Add each spacing entry's
   keep circle near the watched player, lit while the brake is on and the knight is touching one. → Verify: Studio
@@ -483,7 +483,9 @@ Archer.
   ported module). → Verify: `npm run verify`.
 
   **As built (SP9).** CLAUDE.md: a document table row and a decision-log entry ("Sword spacing (port retune,
-  2026-11-19)").
+  2026-11-19)"). Full suite on the merged branch (2026-11-19, Lune on Linux x86-64): 624 of 625 suites pass; the one
+  failure, `dungeon/forge/forge.spec`'s seedToState NaN bit pattern (`7ff8...` expected, `fff8...` received), fails the
+  same on the base commit (a platform difference, not this work).
 
 ## Risks
 
