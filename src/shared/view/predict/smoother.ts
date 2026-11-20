@@ -48,6 +48,12 @@ export interface DrawnPose {
 	faceZ: number;
 }
 
+/**
+ * Turns the local predictor's output into the pose the views draw (see the file comment): `feed` after every pump that
+ * stepped, `draw(alpha, dt)` every rendered frame, `snap()` on the caller's hard cuts. Positions are tiles, `dt` real
+ * seconds. It also counts its snaps and smoothed corrections for the debug line. Owned by the client's SimController,
+ * built with `PREDICTION_VIEW`.
+ */
 export class PredictionSmoother {
 	private head: PredictedBody | undefined;
 	/** The head last fed: its tick (-1: none, nothing to compare) and position. */

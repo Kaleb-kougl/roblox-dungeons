@@ -382,6 +382,11 @@ export interface CodexDetailBoon {
 	readonly known: boolean;
 }
 
+/**
+ * The Codex screen's detail panel for one entry, as `codexDetail` builds it: every line is final text (already through
+ * the string lookup), so the client's CodexScreen only lays it out. Fields that do not apply to the entry's state or
+ * kind are undefined and their line is skipped.
+ */
 export interface CodexDetailModel {
 	readonly id: string;
 	readonly state: CodexTileState;

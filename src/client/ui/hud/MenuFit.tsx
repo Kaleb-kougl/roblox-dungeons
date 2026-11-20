@@ -41,6 +41,11 @@ export interface MenuLayout {
 	readonly setFlexContent: (h: number) => void;
 }
 
+/**
+ * `MenuFit`'s props: what the screen asks for (the bone ornament, its one flexible list's range) and the `render`
+ * function that draws the screen's panel from the fitted layout. MenuFit owns the panel's position and scale, so the
+ * panel keeps its default placement.
+ */
 export interface MenuFitProps {
 	/** The screen asks for the bone ornament (shared/view/menu screenOrnament); drawn only on menu art. */
 	ornament?: boolean;

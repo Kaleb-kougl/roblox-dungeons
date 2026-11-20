@@ -54,6 +54,10 @@ export const GoldenRumourPhase = {
 	/** It hides in a room that has engaged (someone walked in). */
 	ROOM: 2,
 } as const;
+/**
+ * One `GoldenRumourPhase` value (0 none, 1 floor, 2 room): what `goldenRumourPhase` returns and GoldenRumourClock steps
+ * on.
+ */
 export type GoldenRumourPhaseId = (typeof GoldenRumourPhase)[keyof typeof GoldenRumourPhase];
 
 /** GoldenRumourPhase names by value (KV_GoldenLabel's developer text). */

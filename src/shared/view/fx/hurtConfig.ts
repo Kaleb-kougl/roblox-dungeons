@@ -9,6 +9,12 @@
 import { HURT_INVULN_SECONDS } from "shared/sim";
 import type { HurtKind } from "../watch";
 
+/**
+ * The numbers of the view player's hurt feedback: the red edge flash's peak opacity per hit kind, its fade and the
+ * lethal hold, the edge gradient's width, the spectating scale, the minimum time between flashes, and the hurt freeze
+ * and camera jolt. Times are real seconds except `freezeMs` / `nudgeStepMs` (ms). Read by hurtFlash.ts, lowHealth.ts
+ * and freezeRules.ts, and by the client's HurtFlashController.
+ */
 export const FEEL_HURT = {
 	/**
 	 * Peak opacity of the edge flash per hit kind. harmless (the tutorial's hits, JD8) and armor (an armor or Aegis pip

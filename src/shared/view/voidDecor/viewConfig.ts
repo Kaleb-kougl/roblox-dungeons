@@ -9,6 +9,11 @@ import { GAME_WORLD } from "../config";
 /** Share of the backdrop slab's thickness a column's bottom sinks into (inside the slab, never out of its underside). */
 const COLUMN_SINK_SHARE = 0.5;
 
+/**
+ * The VoidController's own tunables: its Workspace folder and Part names, the two debug attributes and their colours,
+ * and how far (tiles) every rock column reaches under the abyss plane. Which cells are rock, and how high, is the
+ * planner's (`VOID`), not this.
+ */
 export const VOID_VIEW = {
 	/** The Workspace folder the void's Parts live in (rebuilt per floor). */
 	folderName: "KV_Void",

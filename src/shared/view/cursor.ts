@@ -16,6 +16,11 @@ import { CURSOR_VIEW } from "./cursorConfig";
 /** custom: the gauntlet, the system pointer off; system: Roblox's pointer; hidden: no pointer at all. */
 export type CursorMode = "custom" | "system" | "hidden";
 
+/**
+ * Everything `cursorMode` needs to choose the pointer, gathered by the client's CursorController each time one of them
+ * changes: the pack's art and its readiness, the screen context, the player's setting, and the device and window state.
+ * Plain booleans so the rule is specced headlessly.
+ */
 export interface CursorModeInput {
 	/** The pack has gauntlet art (the placeholder pack has none). */
 	readonly hasCustomArt: boolean;
@@ -59,6 +64,10 @@ export function cursorMode(input: CursorModeInput): CursorMode {
 	return input.windowFocused ? "custom" : "hidden";
 }
 
+/**
+ * The two theme ids the gauntlet can be drawn with: `CURSOR_VIEW.visualId` (the white hand) or
+ * `CURSOR_VIEW.hoverVisualId` (the yellow one over a button). What `cursorVisualId` returns.
+ */
 export type CursorVisualId = typeof CURSOR_VIEW.visualId | typeof CURSOR_VIEW.hoverVisualId;
 
 /** The yellow gauntlet over a button, else the white one (D3). */

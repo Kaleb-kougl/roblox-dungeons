@@ -11,4 +11,9 @@
  */
 import { MINIMAP_VIEW } from "shared/view/minimap";
 
+/**
+ * The corner minimap's panel size in reference px before the HUD scale (140 x 140, the map renderer's
+ * `MINIMAP_VIEW.panel`). `HUD_FOOTPRINT.minimap` takes it as its budget box, and the verdict line's box (`VERDICT_BOX`)
+ * starts this height above the corner to clear it.
+ */
 export const MINIMAP_PANEL = { w: MINIMAP_VIEW.panel.width, h: MINIMAP_VIEW.panel.height } as const;

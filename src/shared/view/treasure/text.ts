@@ -108,6 +108,11 @@ export interface PlatePips {
 	readonly spent: number;
 }
 
+/**
+ * The UNTOUCHED lock plate's pips for a lock that allows `allowance` hits after `hits` were taken: one more pip than
+ * the allowance, with the hits taken marked spent (never more than the total; a negative allowance reads as 0).
+ * TreasureRenderController draws them when the plate has no clock.
+ */
 export function platePips(allowance: number, hits: number): PlatePips {
 	const total = math.max(0, allowance) + 1;
 	return { total, spent: math.clamp(hits, 0, total) };

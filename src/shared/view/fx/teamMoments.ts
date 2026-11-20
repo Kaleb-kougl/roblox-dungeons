@@ -81,6 +81,10 @@ export interface SyncParryMoment {
 	readonly tethered: boolean;
 }
 
+/**
+ * Any co-op shared moment record, told apart by its `kind` ("teamPerfect" or "sync"). No "revive" record exists: that
+ * kind is reserved.
+ */
 export type TeamMoment = TeamPerfectMoment | SyncParryMoment;
 
 /** A frame's moments (reused: valid until the next frame call). */

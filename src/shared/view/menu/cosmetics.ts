@@ -86,6 +86,10 @@ export interface CosmeticItemEntry {
 	readonly action: CosmeticAction;
 }
 
+/**
+ * One line of the Cosmetics tab's list: a slot's header or one cosmetic under it. The list is the headers and items in
+ * drawing order, told apart by `kind`.
+ */
 export type CosmeticListEntry = CosmeticHeaderEntry | CosmeticItemEntry;
 
 /** The item worn in `slot` (WalletStatus.equipped), or undefined. */

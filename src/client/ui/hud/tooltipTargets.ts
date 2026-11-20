@@ -59,6 +59,11 @@ function sync(e: TooltipTarget): void {
 	else targets.delete(e);
 }
 
+/**
+ * `useTooltipTarget`'s optional settings: the corner panel a `hud` target sits in, the refs a "+N" cell hides (its
+ * tooltip lists them), and whether the target is registered at all. They become the same-named fields of the
+ * `TooltipTarget`.
+ */
 export interface TooltipTargetOptions {
 	readonly panel?: HudCorner;
 	readonly more?: ReadonlyArray<ItemRef>;

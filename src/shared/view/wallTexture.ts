@@ -16,6 +16,10 @@ import { floorTextureOffsets, textureAxisOffset, type TopFaceUV } from "./floorT
 
 /** The side faces of an axis-aligned Part (Enum.NormalId names): Front -Z, Back +Z, Left -X, Right +X. */
 export const WALL_SIDE_FACES = ["Front", "Back", "Left", "Right"] as const;
+/**
+ * One side face of a wall Part: an entry of `WALL_SIDE_FACES` (an Enum.NormalId name), and a key of the per-face
+ * mapping in `WallTextureUV`.
+ */
 export type WallSideFace = (typeof WALL_SIDE_FACES)[number];
 /** A wall face that can carry the texture (Enum.NormalId names; the Bottom face lies on the floor, never seen). */
 export type WallTextureFace = "Top" | WallSideFace;

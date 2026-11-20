@@ -44,6 +44,11 @@ export interface GhostSnapshot {
 	dyeB: number;
 }
 
+/**
+ * One afterimage in a GhostTrail's ring: where and when a source's sprite was recorded and the frame it showed. The
+ * trail writes it; the client's actor renderer draws each `alive` one from its ghost pool, rewriting the billboard only
+ * when `serial` changes and fading it by its age since `bornAt`.
+ */
 export interface Ghost {
 	/** Recorded and not yet faded out. */
 	alive: boolean;

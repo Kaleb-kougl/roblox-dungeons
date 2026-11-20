@@ -10,6 +10,10 @@ import { TileType, endlessFloorParams, roomIdAt, type Dungeon } from "shared/dun
 import { endlessDungeon, endlessRunFloor } from "shared/run";
 import { MAP_NO_CELL, MINIMAP_VIEW, MapTile, minimapTiles, type MinimapTiles } from "shared/view";
 
+/**
+ * The endless census's sample: run seeds 1..`runs`, floors 1..`floors` of each, split over `shards` spec files
+ * (tiles.endless.<n>.spec.ts, each taking its share of the run seeds through `censusShard`). Specs only.
+ */
 export const MINIMAP_CENSUS = { runs: 60, floors: 20, shards: 4 } as const;
 
 const NEIGHBOURS_8: ReadonlyArray<readonly [number, number]> = [
@@ -27,6 +31,10 @@ function isOpen(t: number | undefined): boolean {
 	return t === TileType.FLOOR || t === TileType.POOL;
 }
 
+/**
+ * One checked floor's numbers, from `checkMinimapFloor`: the map's width and height in cells, the cell count of its
+ * largest room list (room cells plus wall ring) and how many cells are drawn as wall. Specs only.
+ */
 export interface MinimapFloorStats {
 	readonly W: number;
 	readonly H: number;
@@ -103,6 +111,10 @@ export function checkMinimapFloor(d: Dungeon, t: MinimapTiles, label: string): M
 	return { W, H, maxRoomCells, walls };
 }
 
+/**
+ * What `minimapCensus` found over its floors: how many it checked, the widest and deepest maps in cells, and the
+ * largest room list in cells with the floor it was on. Printed by `minimapCensusLine`. Specs only.
+ */
 export interface MinimapCensus {
 	readonly floors: number;
 	readonly maxW: number;

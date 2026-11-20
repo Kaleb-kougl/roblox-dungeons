@@ -160,6 +160,10 @@ export interface DailyPodiumRow {
 	readonly score: string;
 }
 
+/**
+ * Yesterday's podium strip on the main menu as ready-to-draw text: its title, the top rows and the line about this
+ * player's own finish. `dailyPodiumModel` builds it, and returns undefined when the strip is hidden.
+ */
 export interface DailyPodiumModel {
 	/** `Yesterday's podium · Daily #303`. */
 	readonly title: string;

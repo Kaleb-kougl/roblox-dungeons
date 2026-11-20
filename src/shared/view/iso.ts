@@ -22,10 +22,19 @@ export interface IsoBasis {
 	readonly forward: Vec3;
 }
 
+/**
+ * Degrees to radians. The camera constants (`CAMERA_YAW_DEG`, `CAMERA_PITCH_DEG`, a field of view) are kept in degrees;
+ * the math here takes radians.
+ */
 export function degToRad(degrees: number): number {
 	return (degrees * math.pi) / 180;
 }
 
+/**
+ * The camera frame for a yaw about +Y and a pitch DOWN from the horizon, both in radians (a positive pitch looks down
+ * at the floor): unit `right`, `up` and `forward` in world space. Yaw 0 and pitch 0 look along -Z with +X to the right.
+ * portrait.ts, the decor screen math and the client's renderers project world points onto it.
+ */
 export function isoBasis(yawRad: number, pitchRad: number): IsoBasis {
 	const sy = math.sin(yawRad);
 	const cy = math.cos(yawRad);
@@ -38,6 +47,10 @@ export function isoBasis(yawRad: number, pitchRad: number): IsoBasis {
 	};
 }
 
+/**
+ * The dot product of two vectors: with a unit basis axis, a point's coordinate along that axis (`snapToGrid` uses it to
+ * split a position into camera right / up / forward).
+ */
 export function dot(a: Vec3, b: Vec3): number {
 	return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 }

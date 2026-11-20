@@ -12,9 +12,10 @@ presentation change. `DAILY.ruleset` unchanged. One new devDependency (`typedoc`
 
 **Built 2026-11-20 on branch `doc-comments`: DC0-DC6** (TypeDoc, the ratchet, the digest, `@module` on the headers,
 a clean `docs:check`, the standard in CLAUDE.md) and **DC7**: the deterministic core (`shared/sim`, `shared/dungeon`,
-`shared/lockstep`) has no gap left, exports or fields, and **DC8**: every other `shared/` area but `shared/view` is
-at zero too. **Open: DC9** (`shared/view`, `client`, `server`: 478 exports), **DC10** (links), **DC11** (the plan
-docs in the site). Known gaps now: 478 exports and no fields. Not yet done on the owner's Mac:
+`shared/lockstep`) has no gap left, exports or fields, **DC8** and **DC9**: **the known-gaps list is empty.** Every
+exported declaration in `src/` has a doc comment (generated sources apart, DCD10), and `check:docs` fails on the
+first new one without. **Open: DC10** (links), **DC11** (the plan docs in the site), and a second look at the
+comments the subagents flagged as uncertain (about 170 over DC7-DC9, listed in each task's notes). Not yet done on the owner's Mac:
 `npm install` (for `typedoc`), `npm run docs`, a full `npm run verify` (Verification).
 
 **Owner (2026-11-20): every call answered.** `docs:check` in `verify`; one page per file; interface fields gated in
@@ -139,7 +140,8 @@ mean the compiled code is identical, so the fixtures, hashes and replays cannot 
 generated network guards list a union's literals in an order that varies from build to build
 (`t.literalList({ "none", "party", "lobby" })` against `{ "party", "none", "lobby" }`: a set, the order means
 nothing), and likewise the fields of a guard built from a mapped type over a union of keys. Seen between the first
-and second build of one source, and again after DC7 and DC8. When those two are the only lines that differ, compare
+and second build of one source, and again after DC7, DC8 and DC9 (there also the order of a `t.union`'s two
+members). When those two are the only lines that differ, compare
 their stripped text as a multiset of lines with each `literalList` sorted: it must be equal (checked for
 `client/network.luau` each time; the server's is built from the same types). Every other module was stable
 across every build.
@@ -316,7 +318,31 @@ and controller internals.
   `variantColors.ts` keeps private copies of `fixed1` / `fixed2` (code, not comments). `check:docs` also learned that
   an overload group is one declaration (two gaps in later areas closed by that). `out:digest`: identical but for the
   two network modules (Design 4); `docs:check` clean; prettier clean.
-- [ ] **DC9. Backfill, presentation and engine code:** `shared/view` 326, `client` 150, `server` 4 (480). → Verify: every baseline at 0; `npm run verify`.
+- [x] **DC9. Backfill, presentation and engine code:** `shared/view` 326, `client` 150, `server` 4 (480). → Verify: every baseline at 0; `npm run verify`.
+
+  **As built (2026-11-20).** 478 comments (two of the 480 were overload signatures, DC8) by five subagents on
+  disjoint directories: `shared/view`'s root files and small directories 121, `view/fx` 73, `view/hud` 81,
+  `view/menu` 49 with `client` outside the store 41 and `server` 4, `client/store` 109. None left a gap;
+  `scripts/doc-coverage.json` now holds empty lists only. Selectors say what the value means (unit, range, what
+  empty looks like), none opens with "Selects". Reviewed as before: a random sample read, none under four words, no
+  tags; `git diff` shows insertions only from the subagents (one had overwritten an existing field comment in
+  `client/store/wallet.ts` and restored it; confirmed). About sixty comments were flagged as less than certain and
+  are not independently verified: mostly "which controller reads this" from a grep, and the summaries of the large
+  config objects (`TOUCH_LAYOUT`, `HUD_STRINGS`, `DRAFT_REVEAL`, `BUILD_FX_VIEW`, `BOOST_VIEW` and the like), written
+  from the file header and top-level keys rather than every field. **Corrected in review:** `SILVER_SHOP`'s new
+  comment named `silverShop.ts` as a reader (it reads the wallet's, not this one). **Existing comments corrected**,
+  each confirmed from the code: `InputController`'s long class comment was orphaned above `chatFocused` and is back
+  above `@Controller` (the subagent's stand-in summary dropped); `server/log.ts` gave the line shape without its
+  colon; `particles.ts` `SHRINK_AT` and `particleSize` said "the last SHRINK_AT share" where the code shrinks past
+  65 % of the life (the last 35 %); `client/store/wallet.ts` `seenAffordable` was described as a balance and is a
+  list of item ids. **Reported, not changed:** slice headers that sit above an unrelated type in `client/store`
+  (`codex.ts`, `lobby.ts`, `options.ts`); comments covering a pair or trio of declarations from above the first
+  (`hud/progression.ts`, `hud/draftCards.ts`, `hud/contributionConfig.ts`, `sprites/actors.ts`); `hud/tooltip.ts`'s
+  header cites `docs/ITEM_TOOLTIPS.md`, which CLAUDE.md's table does not list; `minimap/config.ts` `teammateRoles`
+  says every player is the vanguard capsule (the Archer may have changed that); `store/settings.ts` `selectDisplay`
+  says "(HUD scale percent)" of a group that holds more; overlong comment lines in `sprites/facing.ts`,
+  `decor/director.ts` and `settings/display.ts`. `typecheck`, `docs:check`, prettier clean; `out:digest` identical
+  but for the two network modules (Design 4).
 - [ ] **DC10. Links where they pay.** `{@link}` on the references a reader follows most: the sim barrel's header,
   `SimConfig`'s opt-in fields to their feature modules, archetype and weapon defs to their hooks, each theme
   feature module to its contract ids. Not a sweep of every backticked name. → Verify: `docs:check` clean; the
@@ -345,6 +371,11 @@ build of the source before DC4.
   batches. The digest above is the evidence that the specs' compiled code did not change. Run `npm run verify` on
   the Mac before merging.
 - `npm run docs` writing into `build/api` (DC1's note), `dump:lists`, the Studio test-runner plugin.
+
+**After the backfill (2026-11-20, DC7-DC9).** Run after each pass in the same VM: `check:docs`, `docs:check`,
+prettier, `build`, `out:digest` (identical every time but for the ordering in the two generated network modules);
+after DC9 also `typecheck`, `lint` and `test:checks` (47 tests). Not run, as before: the headless suite, `test:art`, `npm run docs` into `build/api`. The comment-only digest is the evidence that no
+compiled code moved; `npm run verify` on the Mac is still the gate before merging.
 
 ## Risks
 

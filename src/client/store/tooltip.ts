@@ -13,8 +13,16 @@ export interface TooltipState {
 
 const initialState: TooltipState = { shown: undefined };
 
+/**
+ * The item tooltip's slice (state: `TooltipState`). TooltipController stores what the HoverTracker shows, and only when
+ * the tracker hands back a different object; undefined hides the tooltip.
+ */
 export const tooltipSlice = createProducer(initialState, {
 	setTooltip: (state, shown: HoverShown | undefined) => (state.shown === shown ? state : { shown }),
 });
 
+/**
+ * What the item tooltip shows: the hovered target, whether it is pinned and when it began, as the HoverTracker's own
+ * object (compared by identity). Undefined: no tooltip.
+ */
 export const selectTooltipShown = (state: { tooltip: TooltipState }) => state.tooltip.shown;

@@ -51,6 +51,10 @@ export interface HudText {
 
 /** The colour roles of the evolution and duo looks (theme BOON_BUILD_ROLES, docs/BUILDS.md BU1). */
 export const BUILD_EVOLVED_ROLE: ColorRole = "boon.evolved";
+/**
+ * The colour role of a duo: its draft card, its joined chip in the items row, its Build list row and tooltip title, and
+ * its Codex entry (theme BOON_BUILD_ROLES).
+ */
 export const BUILD_DUO_ROLE: ColorRole = "boon.duo";
 
 /** Layout (reference px) of a draft card's builds pieces (DraftOverlay's banner row). */

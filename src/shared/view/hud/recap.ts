@@ -83,6 +83,10 @@ export interface RecapTeamInput {
 	readonly syncParries: number;
 }
 
+/**
+ * The team moments of a run that had none (all zero, frozen): what `RunRecapInput.team` defaults to, and what the
+ * client's RecapController passes when no controller provides them.
+ */
 export const NO_TEAM_MOMENTS: RecapTeamInput = table.freeze({ teamPerfects: 0, bestTeamStreak: 0, syncParries: 0 });
 
 /** The run's vault chests (docs/TREASURE.md, shared/sim treasureRunSummary: the party's opens, kept locks, Legendaries). */
@@ -180,6 +184,13 @@ export function recapBossNameKey(bossId: string): string {
 // ---------------------------------------------------------------------------------------------------------------
 // The near-miss line
 
+/**
+ * Which near miss the line reports, in `nearMissFor`'s priority order: `boss` (the boss's health left, at most
+ * `RECAP.bossHpFraction`), `score` (the points short of the best), `recordFloor` (the run ended on the deepest floor on
+ * record), `stairs` (tiles from the death to the open stairwell), `fullClear` (rooms left uncleared on the floor) and
+ * `nextBoss` (the boss that was coming, by name). Which ones apply to a record run, a daily run or another world is in
+ * the file header.
+ */
 export type RecapNearMissKind = "boss" | "score" | "recordFloor" | "stairs" | "fullClear" | "nextBoss";
 
 /** The near-miss line. Text: str(key, { ...vars, boss: str(bossKey) }) (bossKey only for boss / nextBoss). */
@@ -484,6 +495,10 @@ export function recapHighlightRow(h: RecapHighlight): RecapRowSpec {
 	return { from: h.from, to: h.value, counted: true };
 }
 
+/**
+ * What a `RecapTimeline` is built from: the rows it counts up and when they start. Times are real seconds from the
+ * run-over frame.
+ */
 export interface RecapTimelineOptions {
 	/** The near-miss line's row (undefined: no line). */
 	readonly nearMiss: RecapRowSpec | undefined;

@@ -31,6 +31,11 @@ export interface RecapCue {
 	volume: number;
 }
 
+/**
+ * The recap's volume scales (0..1, AudioController.play's `scale`), read by `recapCue`. Both stay under the run-over
+ * jingle's 1 so the count never covers it; raising one makes that sound louder on the run-over screen only (the room
+ * clear tally plays the same ids at 1).
+ */
 export const RECAP_AUDIO = {
 	/** sfx.score.tick's volume scale on the recap (the room tally plays it at 1; the recap is a quieter count). */
 	tickVolume: 0.6,

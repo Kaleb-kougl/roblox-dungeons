@@ -19,6 +19,11 @@ function perRow<T>(initial: T): NewBestUiValue<T>[] {
 	return out;
 }
 
+/**
+ * Every value the new-best celebration draws in the HUD (see the comment on `NewBestUiValue`): the score panel's target
+ * row, the touch strip's compact line, the score number's gold and shine, and the run-over panel's record rows.
+ * NewBestController writes them; the components bind to them.
+ */
 export const NEW_BEST_UI = {
 	// --- score panel row 1, left slot (shared/view/hud newBestRowText) ---
 	/** `12340 TO BEST` / `NEW BEST +3120`, or "" (no target: the slot is empty). */

@@ -114,10 +114,18 @@ export function elapsedOf(total: number, remaining: number, alpha: number): numb
 	return total - remaining + alpha;
 }
 
+/**
+ * A one-shot stretched over a gameplay timer: animation `anim` at progress `elapsed` / `total` (both in ticks; 0 at the
+ * timer's start, 1 at its end). A `total` of 0 or less reads as finished (progress 1).
+ */
 export function stretched(anim: string, elapsed: number, total: number): SpriteAnimChoice {
 	return { anim, progress: total > 0 ? elapsed / total : 1, rate: 1 };
 }
 
+/**
+ * A clock-driven choice: animation `anim` played at its own fps times `rate` (1 = the sheet's speed). For loops, and
+ * for one-shots with no gameplay timer to stretch over.
+ */
 export function clocked(anim: string, rate: number): SpriteAnimChoice {
 	return { anim, rate };
 }
@@ -129,5 +137,10 @@ export function moveChoice(anim: string, speed: number, refSpeed: number): Sprit
 	return clocked(anim, rate);
 }
 
+/** The standing loop at the sheet's own speed: what the animation choosers fall back to when nothing else plays. */
 export const IDLE: SpriteAnimChoice = { anim: "idle", rate: 1 };
+/**
+ * The default attack animation's name: what an ActorAttack plays when it names no animation, or names one the sprite
+ * set lacks.
+ */
 export const ATTACK = "attack";

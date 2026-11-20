@@ -145,6 +145,12 @@ export interface MarkerLook {
 	readonly transparency: number;
 }
 
+/**
+ * The tutorial's world marker at time `t` (seconds; any clock), scaled by the juice motionScale (`motion`, clamped to
+ * 0..1): once per `markerPeriodSeconds` it bobs up from `markerLiftTiles` by `markerBobTiles` while its transparency
+ * goes from `markerTransparency` to `markerTransparencyDim` and back. At motion 0 it stays at the base lift and
+ * transparency.
+ */
 export function tutorialMarkerLook(t: number, motion: number): MarkerLook {
 	const v = TUTORIAL_VIEW;
 	const m = math.clamp(motion, 0, 1);
@@ -192,6 +198,11 @@ export interface ArrowArm {
 	readonly yaw: number;
 }
 
+/**
+ * The +x arm of a placeholder chevron `lengthTiles` long and `widthTiles` wide (default: the guidance arrow's
+ * `TUTORIAL_VIEW` size): the arm's length, its midpoint across the heading (a quarter of the width) and its yaw in
+ * radians. The other arm mirrors it.
+ */
 export function tutorialArrowArm(
 	lengthTiles: number = TUTORIAL_VIEW.arrowLengthTiles,
 	widthTiles: number = TUTORIAL_VIEW.arrowWidthTiles,

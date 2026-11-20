@@ -87,6 +87,10 @@ export interface ActorAttack {
 
 /** The boss specials (optional boss `sprites` animations, theme contract BOSS.optionalAnimations). */
 export const SPECIAL_INTRO = "intro";
+/**
+ * The boss's `taunt` animation name: Mother Mayhem's roar at a phase change, and what her intro roar plays in a set
+ * that has no `intro` (`bossAct1Special`).
+ */
 export const SPECIAL_TAUNT = "taunt";
 
 /**

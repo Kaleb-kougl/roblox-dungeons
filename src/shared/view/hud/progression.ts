@@ -54,9 +54,16 @@ export const PROGRESSION_STRINGS = {
 export function itemNameKey(id: string): string {
 	return `${id}.name`;
 }
+/**
+ * The theme string key of an item's one-line effect (`<id>.desc`), `id` a boon / relic / curse id as in `itemNameKey`.
+ */
 export function itemDescKey(id: string): string {
 	return `${id}.desc`;
 }
+/**
+ * The theme string key of an item's short icon label (`<id>.icon`): the text in its cell of the items row and in a
+ * duo's joined chip.
+ */
 export function itemIconKey(id: string): string {
 	return `${id}.icon`;
 }
@@ -66,12 +73,18 @@ export function itemIconKey(id: string): string {
  * the evolution's), and its evolution's name and line (`<id>.evo.name`, `<id>.evo.desc`).
  */
 export const BOON_LEVEL_2 = 2;
+/**
+ * The theme string key of a levelled boon's line at `level`: `<id>.desc` at level 1 (or below), `<id>.desc.<level>`
+ * above it.
+ */
 export function boonLevelDescKey(id: string, level: number): string {
 	return level <= 1 ? itemDescKey(id) : `${id}.desc.${level}`;
 }
+/** The theme string key of a boon's evolution name (`<id>.evo.name`). */
 export function boonEvoNameKey(id: string): string {
 	return `${id}.evo.name`;
 }
+/** The theme string key of a boon's evolution line (`<id>.evo.desc`), its level III effect. */
 export function boonEvoDescKey(id: string): string {
 	return `${id}.evo.desc`;
 }
@@ -107,10 +120,20 @@ export function progressionStringKeys(): string[] {
 export const RARITY_COLOR_ROLES: ReadonlyArray<ColorRole> = BOON_RARITY_ROLES;
 /** Relic and curse icons and the shrine marker (live / used); a relic pedestal is drawn as the vault chest. */
 export const RELIC_COLOR_ROLE: ColorRole = "uiAccent";
+/**
+ * The colour role of a curse wherever it is listed: its icon in the items row, its Build list row, its tooltip and its
+ * Codex entry.
+ */
 export const CURSE_COLOR_ROLE: ColorRole = "uiHealth";
+/** The colour role of the shrine's world marker while it can still be used (client RunMarkerController). */
 export const SHRINE_COLOR_ROLE: ColorRole = "uiMana";
+/** The colour role a world marker dims to once it is used (the shrine's, client RunMarkerController). */
 export const MARKER_USED_COLOR_ROLE: ColorRole = "uiTextDim";
 
+/**
+ * The card / icon colour role of a boon rarity (0 common, 1 rare, 2 legendary: `RARITY_COLOR_ROLES`); a rarity outside
+ * the list reads as common.
+ */
 export function rarityColorRole(rarity: number): ColorRole {
 	return RARITY_COLOR_ROLES[rarity] ?? RARITY_COLOR_ROLES[0];
 }

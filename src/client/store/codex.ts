@@ -28,6 +28,11 @@ export type CodexLoadStatus =
 	/** The first status said `loaded: false`: the Codex is unavailable this session (the button greys). */
 	| "unavailable";
 
+/**
+ * The `codex` slice's state: whether this account's Codex loaded, the local copy of its doc, a change counter and the
+ * last run's frozen summary. CodexController is the only writer (the server's `codexStatus`, this session's claims and
+ * views, the run summary); nothing resets it within a session.
+ */
 export interface CodexState {
 	readonly status: CodexLoadStatus;
 	/** The local copy of the doc (entries, NEW dots, the seed marker); undefined unless loaded. */
@@ -48,6 +53,11 @@ const initialState: CodexState = {
 	runSummary: undefined,
 };
 
+/**
+ * The Codex slice (see the comment on `CodexLoadStatus` above). It starts `pending` with no doc; a received status
+ * loads or marks it unavailable, claims and views edit the local copy (each real change bumps `version`), and
+ * `setCodexRunSummary` stores or clears the run-over row's summary.
+ */
 export const codexSlice = createProducer(initialState, {
 	/**
 	 * A `codexStatus` (shared/codex codexDocOfStatus): a doc loads (shared/codex codexReceivedDoc over the local copy:
@@ -77,9 +87,25 @@ export const codexSlice = createProducer(initialState, {
 		state.runSummary === runSummary ? state : { ...state, runSummary },
 });
 
+/**
+ * Where this session's Codex load stands: `pending` until the server's first status, then `loaded` or `unavailable`.
+ * The main menu greys its Codex button on `unavailable`; the Codex screen reads it beside the doc.
+ */
 export const selectCodexStatus = (state: { codex: CodexState }) => state.codex.status;
+/**
+ * The local copy of this account's Codex doc (entries with their tiers and NEW dots), undefined unless the status is
+ * `loaded`. It is a new object on every change, so it can be compared by identity.
+ */
 export const selectCodexDoc = (state: { codex: CodexState }) => state.codex.doc;
+/**
+ * How many times the local doc changed this session (0 before the first load; a received status, applied claims and
+ * viewed entries each add one). A cheap dependency for views memoized on the doc.
+ */
 export const selectCodexVersion = (state: { codex: CodexState }) => state.codex.version;
+/**
+ * The last run's Codex summary, frozen when the run was over or left; undefined during a run and before the first one
+ * ended. The run-over panel's codex row draws from it.
+ */
 export const selectCodexRunSummary = (state: { codex: CodexState }) => state.codex.runSummary;
 /** The menu badge: entries with a NEW dot (0 unless loaded). */
 export const selectCodexNewCount = createSelector([selectCodexDoc] as const, (doc) => codexUnreadCount(doc));

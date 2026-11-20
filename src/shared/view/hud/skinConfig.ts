@@ -28,6 +28,12 @@ export interface FocusCornerPlacement {
 	readonly ay: 0 | 1;
 }
 
+/**
+ * The UI skin's tunables: the frames' densities (reference px per art px before snapping to whole screen px), the focus
+ * brackets' corners, the smallest art scale, the boxes the HUD's icons fit into (reference px before the HUD scale),
+ * the frames' measured content insets (art px), and the logical theme ui ids each primitive draws (`ids`; all optional
+ * in a pack, a missing one falls back to the flat look).
+ */
 export const UI_ART = {
 	/**
 	 * Reference px per art px of a 9-sliced frame before snapping (ImageLabel SliceScale): the draft cards' scale

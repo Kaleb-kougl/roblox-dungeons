@@ -40,6 +40,11 @@ export interface RecapExitSizes {
 	readonly otherTextSize: number;
 }
 
+/**
+ * The recap's layout numbers on the run-over panel, in reference px before the HUD scale: the 2 x 2 highlight grid's
+ * cells and text sizes, the scope chip, the near-miss line and the exits row's buttons per layout (wide / compact /
+ * narrow); transparencies are 0..1 (1 = invisible) and `fadeSec` real seconds.
+ */
 export const RECAP_UI = {
 	/**
 	 * One highlight cell (reference px): two columns of `cellWidth` and the list gap (HUD_VIEW.gap 6) are the score

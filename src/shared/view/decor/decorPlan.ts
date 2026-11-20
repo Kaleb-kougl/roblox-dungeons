@@ -441,6 +441,12 @@ export interface DecorFadeBox {
 	readonly depth: number;
 }
 
+/**
+ * One floor's decoration as `planDecor` decided it (see the file comment for the rules): every drawn piece with its
+ * place and kind, the fade boxes of the standing ones, the light sources by room, and counts of what was drawn and
+ * dropped. Built once per floor and never changed; the same on every client. Read by the client's DecorController
+ * (which builds the Parts) and, through DecorScene, by the DecorDirector.
+ */
 export interface DecorPlan {
 	readonly floorSeed: number;
 	readonly floor: number;
@@ -525,6 +531,11 @@ const HALF = 0.5;
 const MIN_FLAT_WEIGHT = 1e-6;
 const PAD_TILES = BULLET_PAD_PX / PIXELS_PER_TILE;
 
+/**
+ * The grid cells a standing piece's art stands on, for the footprint rule (`footprintStencil`, `footprintClear`): a
+ * single cell (x0 = x1, y0 = y1, run 0 / 0), a straight run of cells along +x or +z (the run axis set to 1), or a
+ * rectangle (both run axes set: a solid set piece). Cell coordinates are grid cells, x then y (world z).
+ */
 export interface DecorFootprint {
 	/** First and last cell (the same for a point piece) and the run axis. */
 	readonly x0: number;

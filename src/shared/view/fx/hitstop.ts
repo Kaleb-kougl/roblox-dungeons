@@ -42,6 +42,10 @@ export const HITSTOP_WINDOW_MS = 1000;
 export const HITSTOP_WINDOW_BUDGET_MS = 150;
 /** Slow-motion defaults (the boss death): 0.5 s ramp from 0.3x back to 1x. */
 export const SLOWMO_DEFAULT_MS = 500;
+/**
+ * The time scale the default slow motion starts from (0.3 = 30 % speed), before easing back to 1 over
+ * SLOWMO_DEFAULT_MS. The boss death's own numbers in freezeRules.ts match it.
+ */
 export const SLOWMO_DEFAULT_SCALE = 0.3;
 /** Slowest scale a slow-mo request may ask for (0 would be a freeze: use request). */
 export const SLOWMO_MIN_SCALE = 0.05;
@@ -51,6 +55,10 @@ export const SLOWMO_MAX_MS = 2000;
 const WINDOW_SLOTS = 64;
 const MS_PER_SECOND = 1000;
 
+/**
+ * Options of HitstopClock.request. Omitted, a request is clamped to MAX_HITSTOP_MS and is subject to the rolling rate
+ * cap.
+ */
 export interface HitstopRequestOptions {
 	/** Boss death only: clamp to BOSS_DEATH_HITSTOP_MS instead of MAX_HITSTOP_MS, and skip the rolling rate cap. */
 	readonly exceedCap?: boolean;
@@ -68,6 +76,10 @@ export interface FrameAdvance {
 	frozenMs: number;
 }
 
+/**
+ * A fresh FrameAdvance in the normal state (not frozen, time scale 1) to preallocate and pass to `frame()` as its
+ * out-parameter. The live run and the client's FreezeFrameController each keep one.
+ */
 export function newFrameAdvance(): FrameAdvance {
 	return { simDelta: 0, frozen: false, timeScale: 1, frozenMs: 0 };
 }

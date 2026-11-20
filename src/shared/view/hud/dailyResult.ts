@@ -33,6 +33,10 @@ import { RESULT_STANDING_KEYS, standingOf, type DailyLine } from "./dailyText";
 /** The run's verdict as the block reads it (client VerdictView.status for this run; "pending" until it arrives). */
 export type DailyResultStatus = "pending" | "accepted" | "rejected" | "skipped";
 
+/**
+ * What `dailyResultBlock` reads: the run's world, its verdict as far as it got and the server's daily result. The
+ * client's RunOverPanel builds it each time the verdict changes.
+ */
 export interface DailyResultInput {
 	/** The run's world is the Daily (shared/daily DAILY_WORLD_KIND). */
 	readonly daily: boolean;
@@ -50,6 +54,10 @@ export interface DailyResultInput {
 	readonly bestLineShown?: boolean;
 }
 
+/**
+ * The daily block's lines as the run-over panel draws them (the states are in the file header). A line that is
+ * undefined is not drawn; while the verdict is pending only `title` is set.
+ */
 export interface DailyResultBlock {
 	/** `Daily #304`, when the day is known. */
 	readonly title?: DailyLine;

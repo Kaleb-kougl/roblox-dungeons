@@ -12,6 +12,12 @@
 /** What `want` asks the channel to do now. */
 export type BedAction = "play" | "wait" | "stop";
 
+/**
+ * One looped channel's late-bed gate (see the file comment). `want(id, ready)` says what the channel should do with the
+ * bed wanted now (play it, wait in silence for its download, or stop); `poll(isReady)` is asked when readiness may have
+ * moved and returns the waiting bed's id once it can start. Holds only the wanted id and whether it still waits: no
+ * clock, no Roblox API. Owned by the client's AudioController.
+ */
 export class BedGate {
 	private wanted: string | undefined;
 	private waiting = false;

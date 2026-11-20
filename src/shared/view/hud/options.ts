@@ -7,6 +7,10 @@
  */
 import type { BindingDevice, BindingRefusal, GameAction, InputDeviceKind } from "shared/play";
 
+/**
+ * A tab of the Options screen: `juice` (the juice settings panel's rows), `controls` (bindings per device), `audio`
+ * (volumes) or `display`. Its label is `optionsTabKey`.
+ */
 export type OptionsTab = "juice" | "controls" | "audio" | "display";
 /** Tab order (the first is selected when the screen opens). */
 export const OPTIONS_TABS: ReadonlyArray<OptionsTab> = ["juice", "controls", "audio", "display"];
@@ -57,6 +61,11 @@ export const BINDING_REFUSALS: ReadonlyArray<BindingRefusal> = [
 	"onlyInput",
 ];
 
+/**
+ * The Options screen's theme string keys (`options.*`): the title and footer, then the Controls, Audio and Display
+ * tabs' rows and option labels, and the prefixes the tab, device, action and refusal keys are built from.
+ * `optionsStringKeys` lists every one for hud.spec.ts.
+ */
 export const OPTIONS_STRINGS = {
 	title: "options.title",
 	close: "options.close",
@@ -139,10 +148,12 @@ export const OPTIONS_STRINGS = {
 	refusedPrefix: "options.refused.",
 } as const;
 
+/** The theme string key of a tab's label (`options.tab.<tab>`). */
 export function optionsTabKey(tab: OptionsTab): string {
 	return `${OPTIONS_STRINGS.tabPrefix}${tab}`;
 }
 
+/** The theme string key of a Controls sub-tab's label (`options.device.<kbm|pad|touch>`). */
 export function optionsDeviceKey(device: OptionsControlsDevice): string {
 	return `${OPTIONS_STRINGS.devicePrefix}${device}`;
 }

@@ -101,6 +101,12 @@ function lastKilledMember(state: Readonly<SimState>, r: Readonly<RoomScore>): nu
 	return best;
 }
 
+/**
+ * The per-frame collector of room clears. The run views (LiveRun, LockstepClient) call `reset` at the start of a
+ * rendered frame and `collect` after each sim tick; afterwards `clears` holds the frame's clears with their points
+ * split by source and `engaged` the number of rooms whose fight started. It keeps the previous tick's score totals to
+ * take the deltas. Read-only on the sim; does nothing in an unscored run.
+ */
 export class RoomClearEvents implements RoomClearSource {
 	readonly clears: RoomClear[] = [];
 	engaged = 0;

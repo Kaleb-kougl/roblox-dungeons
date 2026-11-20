@@ -47,6 +47,10 @@ export interface SwordTiming {
 	readonly finisherTicks: number;
 }
 
+/**
+ * The sword's unmodified timings, ticks at 60 Hz, straight from SWORD_DATA. `swordTimingOf` returns this very object
+ * for a player whose run modifiers change nothing, so callers can compare by identity.
+ */
 export const SWORD_TIMING: SwordTiming = {
 	swingTicks: SWORD_DATA.swingRecoveryTicks,
 	windupTicks: SWORD_DATA.finisherWindupTicks,
@@ -183,6 +187,10 @@ export interface BowTiming {
 	readonly recoverTicks: number;
 }
 
+/**
+ * The bow's unmodified timings, ticks at 60 Hz, straight from BOW_DATA. `bowTimingOf` returns this very object for a
+ * player whose run modifiers change nothing.
+ */
 export const BOW_TIMING: BowTiming = {
 	streamTicks: BOW_DATA.cooldownTicks,
 	chargeTicks: BOW_DATA.chargeTicks,

@@ -70,13 +70,24 @@ export interface DraftCardUi {
 const HIDDEN = 1;
 /** The body at rest: its slot's centre, full size. */
 const HALF = 0.5;
+/**
+ * A draft card body's Position at rest: the centre of its slot. The initial value of each card's `position`, which
+ * DraftRevealController then moves (tremble, rise and drop).
+ */
 export const DRAFT_BODY_POSITION = UDim2.fromScale(HALF, HALF);
+/**
+ * A draft card body's Size at rest: its whole slot. The initial value of each card's `size`, which the flip narrows.
+ */
 export const DRAFT_BODY_SIZE = UDim2.fromScale(1, 1);
 /**
  * Slot ZIndex in the card row (ZIndexBehavior Sibling): at rest, or raised over the others while its card is drawn
  * larger than its slot (the legendary pop, the pick stamp, the selection), so the overhang is in front.
  */
 export const DRAFT_SLOT_Z_REST = 1;
+/**
+ * A slot's ZIndex while its card is drawn larger than its slot (see `DRAFT_SLOT_Z_REST` above): in front of the slots
+ * at rest.
+ */
 export const DRAFT_SLOT_Z_RAISED = 2;
 
 function newCardUi(): DraftCardUi {

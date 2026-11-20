@@ -534,6 +534,11 @@ export const SFX = {
 	enemyLunge: "sfx.enemy.lunge",
 	enemySpooked: "sfx.enemy.spooked",
 } as const;
+/**
+ * One sound effect's logical id: any value of `SFX` (a theme `sfx.*` id). Every cue table of this module (priorities,
+ * minimum intervals, fallbacks, jingles, the ducking list) is typed with it, so a table cannot name an id `SFX` does
+ * not declare.
+ */
 export type SfxId = (typeof SFX)[keyof typeof SFX];
 
 /** Every SFX ID, in declaration order. */

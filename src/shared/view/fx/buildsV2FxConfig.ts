@@ -36,6 +36,13 @@ export interface WaveOneRingBlock {
 	readonly role: ColorRole;
 }
 
+/**
+ * Every tunable of the Builds v2 wave 1 effects, one block per effect: Riposte's counter-wave and the parry ladder's
+ * audio, Ballista's bolts, pin and slam, Wrecker's smash and Demolition, Full Heart's beam, Happy Hour and the overcap
+ * pops, plus `teammateOpacity` for a teammate's effects in co-op. Times are sim seconds, sizes tiles or studs, px
+ * render px. Read by the planners beside this file (counterWaveFx, siegeFx, wreckerFx, heartBeamFx, overcapFx) and the
+ * client controllers that draw their output.
+ */
 export const BUILDS_V2_FX = {
 	/**
 	 * Co-op (Studio item 12, "a teammate's waves, pins and smashes read as theirs"): every wave 1 floor effect carries

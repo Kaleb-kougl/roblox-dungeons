@@ -18,6 +18,11 @@ import type { RecordsStatus } from "shared/records";
 import { characterUnlock, itemPrice, type WalletStatus } from "shared/wallet";
 import { statusBalance, statusOwns, walletShown } from "shared/view/silver";
 
+/**
+ * A character card's lock on the character screen: `open` (the Knight, or an owned character), `locked` with the
+ * unlock's price and how much Silver is still missing, or `unavailable` when the wallet did not load this session and
+ * only the Knight is offered. Prices and `need` are in Silver.
+ */
 export type CharacterLockState =
 	| { readonly kind: "open" }
 	| {

@@ -78,6 +78,12 @@ export interface CodexArtPack {
 	sprites(id: string): CodexSpriteSource | undefined;
 }
 
+/**
+ * What a Codex tile draws, as `codexTileArt` returns it (see the file comment for when each applies): `icons` item
+ * cells (icon art, or text labels on their fills), `sprite` one still frame of an enemy or boss (a dark silhouette
+ * while unknown), `ring` a champion affix's ring with its name label, `label` a name as text on a colour role,
+ * `unknown` the help glyph (no icon: the `???` text). The client's CodexArt switches on `kind`.
+ */
 export type CodexTileArt =
 	| {
 			readonly kind: "icons";

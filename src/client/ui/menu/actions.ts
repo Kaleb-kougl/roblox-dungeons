@@ -154,8 +154,16 @@ const NOOP: MenuActions = {
 	playUi: nothing,
 };
 
+/**
+ * The React context that carries `MenuActions` to the menu shell and the lobby screens. HudController provides the real
+ * actions around the tree; without a provider every action is a no-op.
+ */
 export const MenuActionsContext = React.createContext<MenuActions>(NOOP);
 
+/**
+ * The menu's actions from `MenuActionsContext`: how a menu or lobby component starts a run, navigates or answers an
+ * invite without importing a controller.
+ */
 export function useMenuActions(): MenuActions {
 	return useContext(MenuActionsContext);
 }

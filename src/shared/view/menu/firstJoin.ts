@@ -21,6 +21,10 @@ import type { OnboardingGateReason, OnboardingStatus } from "shared/onboarding";
 import { TUTORIAL } from "shared/config";
 import { firstRunChoice, type FirstRunChoice, type FirstRunDecision, type FirstRunInputs } from "shared/tutorial";
 
+/**
+ * What the first-join choice is decided from: the tutorial's first-run inputs plus the server's `joinIntent` and how
+ * long to wait for it. TutorialController gathers them and feeds `firstJoinChoice`.
+ */
 export interface FirstJoinInputs extends FirstRunInputs {
 	/** The server's `joinIntent`, once it arrived. */
 	readonly intent: ArrivalJoinIntent | undefined;
@@ -28,6 +32,12 @@ export interface FirstJoinInputs extends FirstRunInputs {
 	readonly intentTimeoutSeconds?: number;
 }
 
+/**
+ * The first-join choice with invites: the tutorial's first-run choice, except that a choice to start the tutorial which
+ * no `KV_Tutorial` override forced depends on the server's `joinIntent`. An intent of `none` starts the tutorial,
+ * `lobby` or `party` gives the normal flow (the menu), and with no intent yet it is `wait` until `intentTimeoutSeconds`
+ * of `waitedSeconds` have passed, then the tutorial as before.
+ */
 export function firstJoinChoice(inputs: FirstJoinInputs): FirstRunChoice {
 	const base = firstRunChoice(inputs);
 	if (base !== "tutorial" || inputs.forced !== undefined) return base;

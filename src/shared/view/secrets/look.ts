@@ -24,6 +24,7 @@ import { KnockThrottle } from "./knock";
 
 /** The look's phase. */
 export const SecretPhase = { NONE: 0, HIDDEN: 1, OPENING: 2, OPEN: 3, TAKEN: 4 } as const;
+/** One `SecretPhase` value (0 none, 1 hidden, 2 opening, 3 open, 4 taken): `SecretLook.phase`. */
 export type SecretPhaseId = (typeof SecretPhase)[keyof typeof SecretPhase];
 
 /** What secretLook reads of the settings (JuiceSettings' reduced motion). */
@@ -39,6 +40,12 @@ export interface SecretDust {
 	readonly cell: number;
 }
 
+/**
+ * What a secret room looks like this frame, from `secretLook`: its phase, the open's clock, and for each part (crack,
+ * burst, sinking rock, chamber, torches, chest, dust) whether it shows and how far along it is (progress values run
+ * 0..1). A pure function of the state, the floor's plan and the sim clock, so a late joiner or a spectator draws the
+ * same thing. Without a secret on the floor every part is off. SecretRenderController applies it.
+ */
 export interface SecretLook {
 	readonly phase: SecretPhaseId;
 	/** Seconds since the open (0 before it; the open's tick end is t = 0). */

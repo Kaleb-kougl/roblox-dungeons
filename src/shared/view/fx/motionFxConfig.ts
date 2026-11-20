@@ -26,6 +26,12 @@ export interface SpawnCurve {
 	readonly peakAt: number;
 }
 
+/**
+ * The squash and stretch curves, one per SquashKind (roll start and end, hit, death, spawn), and their limits:
+ * `maxDeform` and `maxSec` cap every curve, `hitMinSec` rate-limits the hit pop per actor, `bossHits` turns it on for
+ * bosses. Scales are multiples of the drawn size (1 = as drawn). Read by squash.ts; the client's actor renderer applies
+ * the result to the sprite.
+ */
 export const FEEL_SQUASH = {
 	/** The knight squashes as a roll takes off and as it lands. */
 	rollStart: { sx: 1.15, sy: 0.85, lengthSec: 0.09, attack: 0 } as SquashCurve,
@@ -48,6 +54,11 @@ export const FEEL_SQUASH = {
 	bossHits: false,
 } as const;
 
+/**
+ * The afterimage numbers: how often a rolling knight (or the charging Demon Lord) leaves a ghost (sim ticks), how long
+ * each lives and how transparent it starts, how many per source and how many sources, and the client's pool details
+ * (depth offset in studs, folder name, transparency write step). Read by afterimage.ts and the client's actor renderer.
+ */
 export const FEEL_GHOST = {
 	/** While rolling (or charging), a ghost every this many sim ticks (the first on the first rolling frame). */
 	everyTicks: 4,

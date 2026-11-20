@@ -20,6 +20,13 @@ export interface NovaLook {
  */
 export type BuildRingLook = "nova" | "flare" | "heal" | "pop" | "glint" | "brace";
 
+/**
+ * Every tunable of the build effects, one block per effect: Chain Spark's beam and spark burst, the floor rings (nova,
+ * heal, pop, glint, flare, brace), Phantom Step's sparks, the execute, jackpot, Gold Rush and Overkill effects,
+ * `reducedShare` (the share of particles and segments kept under reduced motion) and the `audio` block the audio cue
+ * mapper reads. Times are real seconds unless a name says otherwise, sizes tiles, studs or render px as each field
+ * says. Applied by BuildFxDirector and drawn by the client's BuildFxController.
+ */
 export const BUILD_FX_VIEW = {
 	/** Chain Spark's jagged beam per hop (pooled Neon segments in build.spark). */
 	beam: {

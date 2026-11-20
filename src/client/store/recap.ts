@@ -43,6 +43,11 @@ const initialState: RecapState = {
 	tab: RECAP_FIRST_TAB,
 };
 
+/**
+ * The run-over recap's slice (state: `RecapState`). RecapController writes it: a new recap when the run-over panel
+ * opens (Details closed, the first tab), the same recap re-derived when a verdict changes the numbers, the arm, the
+ * tab and the Details toggle. `clearRecap` returns it to the empty state (run 0).
+ */
 export const recapSlice = createProducer(initialState, {
 	/** A new recap (the panel opened): Details closed, not armed yet, on the first tab (You). */
 	showRecap: (
@@ -71,4 +76,9 @@ export const recapSlice = createProducer(initialState, {
 	clearRecap: (state) => (state.run === 0 ? state : initialState),
 });
 
+/**
+ * The run-over recap, whole: the run it belongs to (0: none; the panel draws nothing when it is not the run on screen),
+ * the near-miss line, the highlight cells, whether Details is open, whether a press retries now, and a party run's
+ * contribution with the tab showing.
+ */
 export const selectRecap = (state: { recap: RecapState }) => state.recap;

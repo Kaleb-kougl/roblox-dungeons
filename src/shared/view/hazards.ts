@@ -18,6 +18,10 @@ export interface HazardCellLook {
 	transparency: number;
 }
 
+/**
+ * A fresh HazardCellLook for a pool to keep and hand to `strikeFlashLook` and the other look functions every frame
+ * (cell 0, no flips, opaque). The client's HazardSpritePool owns one per pool.
+ */
 export function newHazardCellLook(): HazardCellLook {
 	return { cell: 0, flipX: false, flipY: false, transparency: 0 };
 }

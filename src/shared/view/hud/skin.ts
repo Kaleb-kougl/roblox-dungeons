@@ -84,6 +84,10 @@ export interface SkinStates {
 	ember: "lit";
 }
 
+/**
+ * A part of the UI the skin can draw (a key of `SkinStates`: panel, button, option, heart, flask, pip, bar, ember):
+ * `skinFor`'s first argument, which picks the states its second may take.
+ */
 export type SkinPart = keyof SkinStates;
 
 /** Whether the pack has an uploaded image for a logical ui id. */

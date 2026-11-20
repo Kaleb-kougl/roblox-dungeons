@@ -10,6 +10,9 @@ import type { ColorRole, SliceInsets } from "shared/theme";
 import { snappedSliceScale, type SkinBox } from "./skin";
 import { UI_ART } from "./skinConfig";
 
+/**
+ * The spectate bar's theme string keys (`hud.spectate.*`): the two watching lines, the switch hint and the back line.
+ */
 export const SPECTATE_HUD_STRINGS = {
 	/** "Spectating {name}  ·  {pos} / {count}". */
 	watching: "hud.spectate.watching",

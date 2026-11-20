@@ -10,6 +10,10 @@ const [spotBinding, setSpotBinding] = createBinding<BossBarSpot>("top");
 let lastSpot: BossBarSpot = "top";
 let rootFrame: GuiObject | undefined;
 
+/**
+ * The binding of the boss bar's spot (top or bottom of the screen). BossBar maps its root frame's Position and
+ * AnchorPoint from it, so a new spot moves the bar without a re-render.
+ */
 export function bossBarSpotBinding(): Binding<BossBarSpot> {
 	return spotBinding;
 }
@@ -21,6 +25,10 @@ export function setBossBarSpot(spot: BossBarSpot): void {
 	setSpotBinding(spot);
 }
 
+/**
+ * The spot last written with `setBossBarSpot` (`top` until then). BossBarPlacementController reads it to know where the
+ * bar is now.
+ */
 export function bossBarSpot(): BossBarSpot {
 	return lastSpot;
 }

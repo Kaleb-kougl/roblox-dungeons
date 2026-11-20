@@ -29,6 +29,12 @@ import { GAMEPAD_MENU } from "./config";
 // By file: the shared/view barrel is this one's parent.
 import { PORTRAIT } from "../portrait";
 
+/**
+ * The menu fit's tunables (see the file comment): the margin kept from the safe area's edges, the scale floors a panel
+ * may be shrunk to, the height under which a touch screen takes the compact layouts, and the sizes of the compact and
+ * narrow arrangements of the main menu, run-over and Options panels. Sizes are reference px at the HUD scale, durations
+ * seconds.
+ */
 export const MENU_FIT = {
 	/** Clear space kept from each edge of the safe area, reference px (at the fitted scale). */
 	margin: 8,
@@ -198,6 +204,11 @@ export interface MenuFlex {
 	readonly max: number;
 }
 
+/**
+ * What `fitMenu` fits: a panel's measured size at fit factor 1, the area it centres in, the HUD scale, whether this is
+ * a touch device and a narrow layout, the bone ornament it would draw, and its flexible list if it has one. The
+ * client's MenuFit measures these and passes them in.
+ */
 export interface MenuFitInput {
 	/** The panel's size as drawn now, at fit factor 1 (reference px), with its flexible list at `flex.current`. */
 	readonly w: number;
@@ -217,6 +228,11 @@ export interface MenuFitInput {
 	readonly flex?: MenuFlex;
 }
 
+/**
+ * What `fitMenu` decided for a panel: the scale factor to apply on top of the HUD scale, whether the ornament is drawn
+ * and how far the panel moves down to make room for it, the flexible list's height, and whether it still overflows at
+ * the floor. The client's MenuFit applies it.
+ */
 export interface MenuFitResult {
 	/** The panel's UIScale (1: as designed). */
 	readonly factor: number;

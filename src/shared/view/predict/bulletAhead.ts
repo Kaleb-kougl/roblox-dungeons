@@ -89,6 +89,10 @@ export interface AheadPose {
 	z: number;
 }
 
+/**
+ * A fresh AheadPose (all zero) for a renderer to keep and hand to `BulletAhead.pose` per bullet. BulletRenderController
+ * and NewEnemy2MarksController each own one.
+ */
 export function newAheadPose(): AheadPose {
 	return { prevX: 0, prevY: 0, prevZ: 0, x: 0, y: 0, z: 0 };
 }
@@ -102,6 +106,12 @@ function hourglassTicksLeft(state: Readonly<SimState>): number {
 	return most;
 }
 
+/**
+ * Where enemy bullets will be a few ticks past the merged state (see the file comment). `prepare(state, world, n)` once
+ * per frame sets the window, then `pose(sim, i, out)` per bullet slot writes the pair to draw and returns true, or
+ * returns false for a bullet that is hidden or gone by then. Read only on the sim; its scratch grows once and is
+ * reused. The client's bullet renderers (BulletRenderController, SpriteBulletPool) and NewEnemy2MarksController use it.
+ */
 export class BulletAhead {
 	/** The ticks this frame draws ahead (0: today's pairs). */
 	ticks = 0;

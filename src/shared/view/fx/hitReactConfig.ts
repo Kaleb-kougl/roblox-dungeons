@@ -10,6 +10,12 @@
 import { PIXELS_PER_TILE, STUDS_PER_TILE } from "shared/config";
 import type { ColorRole } from "shared/theme";
 
+/**
+ * The numbers of an enemy's reaction to a landed hit: the rim flash's length and rate limit, the sprite frame hold, the
+ * view-only push away from the player in render texels and its ease back, and the names and fill of the flashing
+ * Highlight group. Times are seconds of the hit-reaction clock. Applied by hitReact.ts, drawn by the client's actor
+ * renderer.
+ */
 export const FEEL_HIT = {
 	/** The rim flash lasts this long after a hit (s). */
 	flashSec: 0.07,

@@ -20,6 +20,12 @@ export interface PlaceholderPiece {
 	readonly offset: CFrame;
 }
 
+/**
+ * A built theme placeholder: its Parts, each with its offset from the model's origin (see the comment above: a renderer
+ * moves the whole model with `origin * piece.offset`), its overall size in studs, the colour it was built in and the
+ * visual's `faces` flag. `buildPlaceholder` returns one; the helpers below recolour, fade, reparent and destroy all of
+ * its pieces together.
+ */
 export interface PlaceholderModel {
 	readonly visualId: string;
 	readonly pieces: ReadonlyArray<PlaceholderPiece>;
@@ -150,10 +156,15 @@ export function buildPlaceholder(
 	return { visualId, pieces, size: new Vector3(w, h, d), baseColor: color, faces: visual.faces };
 }
 
+/**
+ * Sets every piece of `model` to `color` (a tint or dim over the `baseColor` it was built in, which the model keeps for
+ * the caller).
+ */
 export function setModelColor(model: PlaceholderModel, color: Color3): void {
 	for (const piece of model.pieces) piece.part.Color = color;
 }
 
+/** Sets every piece of `model` to `transparency` (0 opaque, 1 invisible): a fade of the whole model. */
 export function setModelTransparency(model: PlaceholderModel, transparency: number): void {
 	for (const piece of model.pieces) piece.part.Transparency = transparency;
 }
@@ -163,6 +174,7 @@ export function setModelParent(model: PlaceholderModel, parent: Instance): void 
 	for (const piece of model.pieces) if (piece.part.Parent !== parent) piece.part.Parent = parent;
 }
 
+/** Destroys every Part of `model`. The model must not be used afterwards. */
 export function destroyModel(model: PlaceholderModel): void {
 	for (const piece of model.pieces) piece.part.Destroy();
 }

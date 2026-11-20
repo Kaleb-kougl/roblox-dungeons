@@ -74,9 +74,15 @@ export type SilverShopPrice =
 	| { readonly kind: "ready"; readonly robux: number }
 	| { readonly kind: "failed" };
 
+/**
+ * A pack's price while Roblox has not answered yet: its card shows the loading label and cannot be pressed. Also what a
+ * pack missing from the price map reads as.
+ */
 export const PRICE_LOADING: SilverShopPrice = { kind: "loading" };
+/** A pack's price when it could not be read: its card shows `Unavailable` and cannot be pressed. */
 export const PRICE_FAILED: SilverShopPrice = { kind: "failed" };
 
+/** A pack's known price of `robux` Robux: its card shows the price and can be pressed. */
 export function priceReady(robux: number): SilverShopPrice {
 	return { kind: "ready", robux };
 }
@@ -120,8 +126,13 @@ export interface SilverShopFlow {
 	readonly added: SilverShopAdded | undefined;
 }
 
+/**
+ * The flow at rest: the panel closed, no purchase pending and no grant being shown. The store's `silverShop.flow`
+ * starts here.
+ */
 export const SILVER_SHOP_IDLE: SilverShopFlow = { open: false, from: undefined, pending: undefined, added: undefined };
 
+/** The flow with the panel opened from the balance `from`. A pending purchase and a grant being shown are kept. */
 export function shopOpen(f: SilverShopFlow, from: SilverShopFrom): SilverShopFlow {
 	return { ...f, open: true, from };
 }
@@ -213,6 +224,11 @@ export function shopAddedExpired(f: SilverShopFlow, now: number, showSec = SILVE
 	return f.added !== undefined && now - f.added.at >= showSec;
 }
 
+/**
+ * What a pack's card shows: `loading` or `unavailable` (the price is not known or failed), `ready` (the price,
+ * pressable), `busy` (the price, but another pack's purchase is pending), `adding` (this pack's purchase is pending) or
+ * `added` (its grant just landed, for a moment).
+ */
 export type SilverShopCardState = "loading" | "ready" | "unavailable" | "adding" | "added" | "busy";
 
 /** One card as drawn. */
@@ -304,6 +320,10 @@ export interface SilverShopLayout {
 	readonly footnoteLines: number;
 }
 
+/**
+ * The panel's arrangement, in reference px: one column of cards on a narrow (portrait phone) screen, two otherwise,
+ * each card filling its column inside the panel's padding, and the number of lines the footnote wraps to.
+ */
 export function silverShopLayout(narrow: boolean): SilverShopLayout {
 	const V = SILVER_SHOP_VIEW;
 	const width = narrow ? V.narrowWidth : V.width;

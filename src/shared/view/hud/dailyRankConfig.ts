@@ -43,6 +43,11 @@ export const FLOOR_SHOUT_PRIORITY = {
 	slam: 0.5,
 } as const;
 
+/**
+ * The Daily's in-run rank layer tunables: the rank thresholds that shout, the shout's and the friend toasts' timings
+ * (real seconds), the toast id base, the headshot and run-over row sizes (reference px before the HUD scale) and
+ * counts, and the Studio debug attribute's name.
+ */
 export const DAILY_RANK = {
 	/**
 	 * Rank thresholds, highest rank number first: entering the top 100, top 10, top 3, #1. Each shouts once per run, and

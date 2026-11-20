@@ -15,8 +15,16 @@ const initialState: DailyState = {
 	status: undefined,
 };
 
+/**
+ * The Daily slice (state: `DailyState`): DailyController stores each `dailyStatus` the server sends, replacing the one
+ * before. It starts with no status and is never cleared.
+ */
 export const dailySlice = createProducer(initialState, {
 	setDailyStatus: (state, status: DailyStatus) => ({ ...state, status }),
 });
 
+/**
+ * Today's Daily status as the server last sent it (the day, its label, seed, ruleset and reset time), or undefined
+ * until the first answer: the main menu then shows no Daily card. The run-over panel's daily result block reads it too.
+ */
 export const selectDailyStatus = (state: { daily: DailyState }) => state.daily.status;

@@ -9,6 +9,10 @@
 
 /** corner: the bottom-right panel; full: the full map toggle overlay; pause: the solo pause overlay's map. */
 export type MinimapHost = "corner" | "full" | "pause";
+/**
+ * Every minimap host, as a list to iterate: the registry builds one slot per host from it, and MinimapController walks
+ * it each frame to keep a map layer in every mounted host.
+ */
 export const MINIMAP_HOSTS: ReadonlyArray<MinimapHost> = ["corner", "full", "pause"];
 
 interface HostSlot {

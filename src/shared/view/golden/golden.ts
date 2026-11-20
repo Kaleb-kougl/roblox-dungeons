@@ -149,6 +149,10 @@ export interface GoldenRingLook {
 	colourStep: number;
 }
 
+/**
+ * A fresh GoldenRingLook for a renderer to keep and hand to `goldenRingLook` every frame (no ring, calm radius, the
+ * plain coin colour). GoldenRenderController owns one.
+ */
 export function newGoldenRingLook(): GoldenRingLook {
 	return { pieces: 0, radiusScale: 1, colourStep: 0 };
 }

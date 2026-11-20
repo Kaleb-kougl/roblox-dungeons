@@ -15,6 +15,10 @@ export type CreditSection = "art" | "models" | "audio" | "code";
 /** Sections in screen order. */
 export const CREDIT_SECTIONS: ReadonlyArray<CreditSection> = ["art", "models", "audio", "code"];
 
+/**
+ * One third-party work on the Credits screen: the section it is listed under, its title and author, and what its
+ * licence asks to be shown (the licence line, the note that it was changed).
+ */
 export interface CreditEntry {
 	readonly section: CreditSection;
 	/** The work's title, as its author publishes it. */
@@ -27,6 +31,11 @@ export interface CreditEntry {
 	readonly modified?: boolean;
 }
 
+/**
+ * Every third-party work the game ships, as the Credits screen lists it (`creditLines` groups it by section in
+ * `CREDIT_SECTIONS` order, keeping this order within a section). Plain data, never translated. Keep it in step with
+ * THIRD_PARTY_NOTICES.md.
+ */
 export const CREDITS: ReadonlyArray<CreditEntry> = [
 	{ section: "art", work: "Lords of Pain - Old School Isometric Assets", author: "Pupkin Assets" },
 	{ section: "art", work: "2D Demons - TopDown", author: "SmallScaleInt" },
@@ -128,6 +137,10 @@ export const CREDITS: ReadonlyArray<CreditEntry> = [
 	},
 ];
 
+/**
+ * The theme string keys the Credits screen reads: the main menu's button, the title, the `by {author}` line, the change
+ * note and each section's label. The works themselves are plain data in `CREDITS`.
+ */
 export const CREDIT_STRINGS = {
 	/** Main menu button. */
 	open: "menu.credits",

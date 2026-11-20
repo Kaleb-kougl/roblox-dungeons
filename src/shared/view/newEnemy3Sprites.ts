@@ -98,6 +98,12 @@ export function mortarAttack(a: Readonly<ActorState>, alpha: number): ActorAttac
 	return undefined;
 }
 
+/**
+ * ActorSpriteInput for a Mortar at render alpha `alpha` (0..1 between its last two ticks): the shared fields (alive,
+ * corpse and flash timers, ground speed against its move reference speed) plus `mortarAttack`'s timeline (the draw and
+ * the release; it walks for the rest of the shell's flight). A dead one carries no attack. Registered in
+ * ACTOR_SPRITE_INPUTS through `withNewEnemy2SpriteInputs`.
+ */
 export function mortarSpriteInput(a: Readonly<ActorState>, alpha: number): ActorSpriteInput {
 	return baseInput(a, alpha, MORTAR.data, NEW_ENEMY_3_SPRITE_VIEW.mortarMoveRefSpeed, mortarAttack(a, alpha));
 }
@@ -130,6 +136,12 @@ export function menderAttack(a: Readonly<ActorState>, alpha: number): ActorAttac
 	return undefined;
 }
 
+/**
+ * ActorSpriteInput for a Mender at render alpha `alpha` (0..1 between its last two ticks): the shared fields (alive,
+ * corpse and flash timers, ground speed against its move reference speed) plus `menderAttack`'s timeline (the link, the
+ * looped channel, the bolt wind-up, the flinch). A dead one carries no attack. Registered in ACTOR_SPRITE_INPUTS
+ * through `withNewEnemy2SpriteInputs`.
+ */
 export function menderSpriteInput(a: Readonly<ActorState>, alpha: number): ActorSpriteInput {
 	return baseInput(a, alpha, MENDER.data, NEW_ENEMY_3_SPRITE_VIEW.menderMoveRefSpeed, menderAttack(a, alpha));
 }
@@ -164,6 +176,12 @@ export function jackalSpecial(a: Readonly<ActorState>, alpha: number): ActorSpec
 	};
 }
 
+/**
+ * ActorSpriteInput for a Jackal at render alpha `alpha` (0..1 between its last two ticks): the shared fields (alive,
+ * corpse and flash timers, ground speed against its move reference speed) plus `jackalAttack`'s timeline (the crouch,
+ * the lunge, the stagger) and `jackalSpecial` (the spooked hop). A dead one carries no attack. Registered in
+ * ACTOR_SPRITE_INPUTS through `withNewEnemy2SpriteInputs`.
+ */
 export function jackalSpriteInput(a: Readonly<ActorState>, alpha: number): ActorSpriteInput {
 	return baseInput(
 		a,

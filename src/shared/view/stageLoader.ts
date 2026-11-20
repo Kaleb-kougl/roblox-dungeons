@@ -43,7 +43,15 @@
 import { STAGE_LOADER, type StageLoaderConfig, type StageStep } from "./stageLoaderConfig";
 import { STAGE_STRINGS } from "./stageStrings";
 
+/**
+ * What a cover is for: `runStart` a solo run start (the tutorial included; the sim is held under it), `coopStart` a
+ * party run's start (never held: the lockstep keeps stepping), `floorChange` the card between floors.
+ */
 export type StageKind = "runStart" | "coopStart" | "floorChange";
+/**
+ * Where a StageLoad is, in order (phases that do not apply are skipped; see the file comment): waiting for the server,
+ * forging the run, rebuilding the views, waiting for assets, settling, fading out, done.
+ */
 export type StagePhase = "waitingServer" | "forging" | "building" | "assets" | "settling" | "revealing" | "done";
 /** Covered work the driver runs when `due()` says so, then reports (forged / built / pregenerated). */
 export type StageWorkItem = "forge" | "notify" | "pregen";
@@ -60,6 +68,10 @@ export interface StageLabel {
 	readonly vars: { readonly floor: number };
 }
 
+/**
+ * What a new StageLoad is told about its cover besides its kind: which optional phases apply and the floor it loads.
+ * Every field is optional; absent means the phase or behaviour is off. Given by the client's StageController.
+ */
 export interface StageLoadOptions {
 	/** A ranked run start: the cover waits for the server's answer first (runStart only). */
 	readonly waitServer?: boolean;
@@ -409,6 +421,12 @@ export class StageLoad {
 /** What a new cover request does with the current stage load (see the file comment). */
 export type StageMerge = "new" | "continue" | "absorb";
 
+/**
+ * What a request for an `incoming` cover does while `current` may still be up (see the file comment): `continue` when a
+ * run start arrives for a run start still waiting for the server, `absorb` when a floor change arrives while a start's
+ * view rebuild has not run yet (it needs no cover of its own), else `new` (also with no current cover or a finished
+ * one).
+ */
 export function stageMerge(current: StageLoad | undefined, incoming: StageKind): StageMerge {
 	if (current === undefined || current.isDone()) return "new";
 	if (incoming === "runStart" && current.kind === "runStart" && current.phase() === "waitingServer")
@@ -425,6 +443,10 @@ export function floorChangeStaged(floor: number, tutorial: boolean, tutorialLast
 	return !(tutorial && floor > tutorialLastFloor);
 }
 
+/**
+ * What `pregenTarget` reads to decide whether to build the next floor now. PregenTracker fills it once per rendered
+ * frame.
+ */
 export interface PregenInput {
 	/** The current floor (0: not an endless-style run). */
 	readonly floor: number;
@@ -513,6 +535,10 @@ export function listenerLabel(source: string): string {
 	return name;
 }
 
+/**
+ * How long one run-start or floor-change listener took, for the KV_Debug timing line (`formatListenerTimes`): its label
+ * (`listenerLabel`) and its time in milliseconds.
+ */
 export interface ListenerTime {
 	readonly label: string;
 	readonly ms: number;

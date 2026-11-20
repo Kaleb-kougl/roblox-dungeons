@@ -25,6 +25,11 @@ export interface DecorPedestalSpot extends DecorSpot {
 	readonly room: number;
 }
 
+/**
+ * A floor's decor plan plus the floor facts the DecorDirector and the decor renderers react to (see the file comment),
+ * built once per floor by `decorScene`. Positions are world units (tiles) on the floor plane; room ids are
+ * Dungeon.rooms indices.
+ */
 export interface DecorScene {
 	readonly plan: DecorPlan;
 	/** The endless floor (plan.floor; 1 for M1 and tests). */

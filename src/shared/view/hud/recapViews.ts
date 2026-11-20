@@ -29,6 +29,10 @@ import {
 } from "./recap";
 import { CONTRIB_UI, RECAP_FIRST_TAB, type RecapTab } from "./contributionUi";
 
+/**
+ * What a `RecapViews` is built from: whether the tabs are drawn, the rows each clock counts and the timeline options
+ * they share. Times are real seconds from the run-over frame.
+ */
 export interface RecapViewsOptions {
 	/** A party run's tabs are drawn (recapTabsShown). */
 	readonly tabbed: boolean;
@@ -69,6 +73,13 @@ function renewedClock(options: RecapTimelineOptions, old: RecapTimeline | undefi
 	return { timeline: t, options };
 }
 
+/**
+ * The run-over recap's clocks, one object the client's RecapController steps with real seconds each frame (the file
+ * header has the rules): the near-miss line's timeline, and in a party run one clock for the You cells and one for the
+ * Team tab's highlights, started when that tab first opens. `step` returns one merged frame of sound edges, the arm and
+ * settled; `press` answers `skip` until the retry is armed and `retry` after; `renewed` rebuilds it for a verdict with
+ * other numbers at the same clock times.
+ */
 export class RecapViews {
 	readonly tabbed: boolean;
 	/** The near-miss line (row `main.nearMissRow`), the arm; untabbed also the highlights. */

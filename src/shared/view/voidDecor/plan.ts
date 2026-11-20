@@ -86,6 +86,11 @@ export interface VoidStats {
 	readonly outcropEligible: number;
 }
 
+/**
+ * One floor's void as `planVoid` decided it (see the file comment for the rules): each cell's layer and height, and the
+ * merged rectangles to build. Built once per floor, the same on every client. Read by the client's VoidController (one
+ * Part per rect) and by `planDecor` for the void set pieces.
+ */
 export interface VoidPlan {
 	readonly W: number;
 	readonly H: number;

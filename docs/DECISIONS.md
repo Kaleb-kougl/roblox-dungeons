@@ -1664,5 +1664,7 @@ Superseded in older entries (kept as written):
   known gap in `scripts/doc-coverage.json`, a list that only shrinks) and `docs:check` (TypeDoc without output,
   every warning an error). `npm run out:digest` digests `out/` with comments stripped (rbxtsc copies comments into
   the Luau), to prove a commit is comment only. `@module` on 796 file headers; nine private types named by exported
-  signatures are now exported (types only). Open: the backfill (DC7-DC9: 1,509 exports and 851 core fields are known
-  gaps), links (DC10), the plan docs in the site (DC11); `npm run docs` not yet run on the owner's Mac.
+  signatures are now exported (types only). The backfill (DC7-DC9, the same day) closed every gap: 1,470 exports and
+  851 core interface fields, comment only (`out:digest`); generated sources are skipped (DCD10). Open: links (DC10),
+  the plan docs in the site (DC11), a second look at the comments flagged as uncertain; `npm run verify` and
+  `npm run docs` not yet run on the owner's Mac.

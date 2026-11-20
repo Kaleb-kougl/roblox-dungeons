@@ -54,6 +54,10 @@ import { MENU_VIEW } from "./config";
 /** A theme string lookup (the client's `str`). */
 export type ArmoryStr = (key: string, vars?: StringVars) => string;
 
+/**
+ * One of the Armory screen's tabs. A tab lists the catalogue items of one kind (`TAB_KIND`): upgrades, unlocks or
+ * cosmetics.
+ */
 export type ArmoryTab = "upgrades" | "unlocks" | "cosmetics";
 
 /** The tabs in order (LB / RB, Q / E step them). */
@@ -117,6 +121,11 @@ export function robuxOnSale(status: Readonly<WalletStatus> | undefined, itemId: 
 	return status.robuxItems.some((r) => r.itemId === itemId);
 }
 
+/**
+ * One catalogue item as a line of an Armory tab's list: what the player owns of it, what its next level costs and how
+ * far the balance is from it, and how the row is marked and dimmed. Built from the wallet status by `armoryRow`; the
+ * Cosmetics tab wraps the same row in its own entries (cosmetics.ts). Prices and `toGo` are in Silver.
+ */
 export interface ArmoryRow {
 	readonly itemId: string;
 	readonly item: ArmoryItem;
@@ -283,6 +292,11 @@ export function armoryEffectLines(itemId: string, level: number, maxLevel: numbe
 /** What the detail's buy button does. */
 export type ArmoryBuyAction = "hold" | "holdConfirm" | "none";
 
+/**
+ * The focused item's detail pane as ready-to-draw text (already looked up through the injected string lookup): title,
+ * tier, description, effect lines, level and price lines, and what the buy button does. Built by `armoryDetail` from
+ * the item's `row`, which it keeps for the caller.
+ */
 export interface ArmoryDetail {
 	readonly itemId: string;
 	/** The item at the level it would buy next (at its top level when maxed). */

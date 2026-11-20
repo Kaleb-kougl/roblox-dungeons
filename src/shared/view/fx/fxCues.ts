@@ -276,6 +276,15 @@ export interface FxCueStats {
 	rateLimited: number;
 }
 
+/**
+ * The pure half of the client's FxSpriteController: once per rendered frame `frame()` diffs the live state against its
+ * snapshots and fills `cues` with the one-shot sprite effects to start (boss death, swings, guard shield, roll dust,
+ * hit marks, relic and shrine pickups and the rest of the header's list), sets the stairwell `loop` and raises
+ * `dropAll` on a new run or floor. Renderers queue their own bursts between frames (breakableSplinter, boostCollect,
+ * goldenCoin, bulletHit). It enforces the live-effect budget of the particle level, the per-actor hit mark rate limit
+ * and the rule that no cue lands on a telegraph's first frame; `stats` counts what each dropped. Constructed with the
+ * pack's effect durations (an effect without art gets no cue).
+ */
 export class FxCueMapper {
 	readonly cues: FxCueBuffer;
 	/** The stairwell loop (state each frame). */

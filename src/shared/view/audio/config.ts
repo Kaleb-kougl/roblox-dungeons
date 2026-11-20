@@ -11,6 +11,11 @@ import type { SoundGroupName } from "shared/theme";
 /** Settings volumes are whole percents. */
 const PERCENT = 100;
 
+/**
+ * The audio mix's tunables, read by the client's AudioController and the pure helpers of this folder (cues.ts,
+ * voices.ts). Volumes are 0..1 multipliers on a sound's manifest volume, times are seconds of real time. The player's
+ * own volume settings are multiplied in by `soundGroupVolume`, not here.
+ */
 export const AUDIO_VIEW = {
 	/** Master volume, multiplied into both SoundGroups (0..1). */
 	masterVolume: 1,

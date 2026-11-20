@@ -81,6 +81,10 @@ export type DailyActivityEvent =
 	| { readonly kind: "start"; readonly facts: DailyStartFacts }
 	| { readonly kind: "finish"; readonly facts: DailyFinishFacts };
 
+/**
+ * A subscriber to `onDailyActivity`: called with the player and the event each time RecordsService reports a Daily
+ * start or finish (TelemetryService logs them).
+ */
 export type DailyActivityListener = (player: Player, event: DailyActivityEvent) => void;
 
 /** A player's Studio fake records (KV_FakeRecords) for this session; verdicts merge into `doc`. */

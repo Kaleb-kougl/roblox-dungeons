@@ -12,6 +12,7 @@ import { LOCALES, localeDef, type LocaleDef } from "shared/l10n";
 import { LANGUAGE_AUTO } from "shared/settings";
 import { OPTIONS_STRINGS } from "./options";
 
+/** The Language row's constants: the mark after a hidden locale's name and the value's width. */
 export const LANGUAGE_ROW = {
 	/**
 	 * After a hidden locale's endonym: only developers see hidden locales, so it is developer text (LD10: English, kept

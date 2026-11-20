@@ -20,6 +20,10 @@ function typing(): boolean {
 	return bar !== undefined && bar.IsFocused;
 }
 
+/**
+ * `LoadingScreen`'s props: the two callbacks LoadingController gives it. The screen's content (progress, whether Skip
+ * shows, the release) comes from the store's `loading` slice.
+ */
 export interface LoadingScreenProps {
 	/** The Skip button (click, tap, Enter, pad A): PreloadController.skip, with the click sound. */
 	readonly onSkip: () => void;

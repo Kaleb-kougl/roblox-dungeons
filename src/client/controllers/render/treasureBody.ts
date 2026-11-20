@@ -65,6 +65,10 @@ export interface PieceBody {
 	transparency: number;
 }
 
+/**
+ * A piece drawn as image art: an invisible anchor Part carrying an upright BillboardGui with the one ImageLabel. Hidden
+ * by disabling the gui and parking the anchor at `TREASURE_PARKED`.
+ */
 export interface ImageBody {
 	readonly anchor: Part;
 	readonly gui: BillboardGui;
@@ -161,6 +165,10 @@ export function placePieceBody(
 	if (body.image !== undefined) body.image.anchor.CFrame = new CFrame(origin.Position);
 }
 
+/**
+ * Hides a shown body without destroying it: a placeholder model or a sprite is parked, an image billboard is disabled
+ * and its anchor parked. Nothing is written when it is already hidden.
+ */
 export function hidePieceBody(body: PieceBody): void {
 	if (!body.shown) return;
 	body.shown = false;
@@ -172,6 +180,10 @@ export function hidePieceBody(body: PieceBody): void {
 	}
 }
 
+/**
+ * Fades the whole body to transparency `t` (0 opaque, 1 invisible), whichever of model, sprite or image it is. Written
+ * only when `t` changed.
+ */
 export function setPieceBodyTransparency(body: PieceBody, t: number): void {
 	if (body.transparency === t) return;
 	body.transparency = t;
@@ -180,12 +192,20 @@ export function setPieceBodyTransparency(body: PieceBody, t: number): void {
 	if (body.image !== undefined) body.image.label.ImageTransparency = t;
 }
 
+/**
+ * Destroys the body's instances (its model's Parts, its sprite, or its image's anchor with the billboard under it).
+ * Callers do this when they rebuild a body or tear the view down.
+ */
 export function destroyPieceBody(body: PieceBody): void {
 	if (body.model !== undefined) destroyModel(body.model);
 	body.sprite?.destroy();
 	body.image?.anchor.Destroy();
 }
 
+/**
+ * Moves every piece of a placeholder model to `TREASURE_PARKED`, the far-away spot where hidden pieces wait. Pieces
+ * already there are not written.
+ */
 export function parkTreasureModel(model: PlaceholderModel): void {
 	for (const piece of model.pieces) if (piece.part.CFrame !== TREASURE_PARKED) piece.part.CFrame = TREASURE_PARKED;
 }
@@ -270,6 +290,10 @@ export function drawTreasureColumn(
 	col.part.Transparency = HIDDEN - c.opacity;
 }
 
+/**
+ * Hides the light column: the Neon block goes invisible and back to `TREASURE_PARKED`, the billboard (when the pack has
+ * the column art) is disabled. Each is written only when it is showing.
+ */
 export function hideTreasureColumn(col: TreasureColumn): void {
 	if (col.part.CFrame !== TREASURE_PARKED) {
 		col.part.Transparency = HIDDEN;
@@ -381,6 +405,10 @@ export function drawTreasureCard(
 	}
 }
 
+/**
+ * Hides a card by disabling its BillboardGui (nothing when already hidden). The card keeps its text, so showing the
+ * same text again costs no size update.
+ */
 export function hideTreasureCard(view: TreasureCard): void {
 	if (!view.shown) return;
 	view.shown = false;

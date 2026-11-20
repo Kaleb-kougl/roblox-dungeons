@@ -20,6 +20,10 @@ import { MAX_PARTY_SIZE } from "shared/sim";
 import { floorClearanceStuds, type SpriteBillboard } from "../sprites";
 import { FEEL_SQUASH, type SpawnCurve, type SquashCurve } from "./motionFxConfig";
 
+/**
+ * Which squash is playing on a sprite: the knight's roll taking off or landing, an enemy's hit pop, a runtime spawn's
+ * grow-in or a death slump. It names the FEEL_SQUASH curve and the priority (SQUASH_PRIORITY).
+ */
 export type SquashKind = "rollStart" | "rollEnd" | "hit" | "spawn" | "death";
 
 /** A width / height scale (1 x 1: as drawn). Mutable so a caller can reuse one per frame (squashInto). */

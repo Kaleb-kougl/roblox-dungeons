@@ -80,6 +80,10 @@ export const COMBO_TOP_TIER = COMBO_TIERS.size() - 1;
 export const COMBO_BROKEN_ROLE = "combo.broken";
 /** The meter flashes these roles: white-ish on a tier up, red on a cut (docs/COMBO.md "Hit cut"). */
 export const COMBO_FLASH_ROLES = { tierUp: "uiText", crack: "uiHealth" } as const;
+/**
+ * A theme colour role the combo meter can flash in: one of `COMBO_FLASH_ROLES`' values (`uiText` on a tier up,
+ * `uiHealth` on a cut). The combo's frame carries it as `flashRole`.
+ */
 export type ComboFlashRole = (typeof COMBO_FLASH_ROLES)[keyof typeof COMBO_FLASH_ROLES];
 
 /** The tier of a combo (tenths): the last tier whose `min` it reaches; 0 below x2 (and below COMBO_MIN). */

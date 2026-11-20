@@ -126,6 +126,12 @@ export function chainhookAttack(a: Readonly<ActorState>, alpha: number): ActorAt
 	);
 }
 
+/**
+ * ActorSpriteInput for a Chainhook at render alpha `alpha` (0..1 between its last two ticks): the shared fields (alive,
+ * corpse and flash timers, ground speed against its move reference speed) plus `chainhookAttack`'s timeline (the aim or
+ * the yank telegraph; none while the hook flies or it drags). A dead one carries no attack. Registered in
+ * ACTOR_SPRITE_INPUTS through `withNewEnemy2SpriteInputs`.
+ */
 export function chainhookSpriteInput(a: Readonly<ActorState>, alpha: number): ActorSpriteInput {
 	return baseInput(
 		a,
@@ -141,6 +147,11 @@ export function snatcherAttack(a: Readonly<ActorState>, alpha: number): ActorAtt
 	return telegraphAttack(a, SNATCHER_ATTACK_SWALLOW, SNATCHER.data.swallowTicks, alpha);
 }
 
+/**
+ * ActorSpriteInput for a Snatcher at render alpha `alpha` (0..1 between its last two ticks): the shared fields (alive,
+ * corpse and flash timers, ground speed against its move reference speed) plus `snatcherAttack`'s timeline (the
+ * swallow). A dead one carries no attack. Registered in ACTOR_SPRITE_INPUTS through `withNewEnemy2SpriteInputs`.
+ */
 export function snatcherSpriteInput(a: Readonly<ActorState>, alpha: number): ActorSpriteInput {
 	return baseInput(a, alpha, SNATCHER.data, NEW_ENEMY_2_SPRITE_VIEW.snatcherMoveRefSpeed, snatcherAttack(a, alpha));
 }
@@ -154,6 +165,12 @@ export function pyrekeeperAttack(a: Readonly<ActorState>, alpha: number): ActorA
 	);
 }
 
+/**
+ * ActorSpriteInput for a Pyre-keeper at render alpha `alpha` (0..1 between its last two ticks): the shared fields
+ * (alive, corpse and flash timers, ground speed against its move reference speed) plus `pyrekeeperAttack`'s timeline
+ * (the light or the panic telegraph). A dead one carries no attack. Registered in ACTOR_SPRITE_INPUTS through
+ * `withNewEnemy2SpriteInputs`.
+ */
 export function pyrekeeperSpriteInput(a: Readonly<ActorState>, alpha: number): ActorSpriteInput {
 	return baseInput(
 		a,

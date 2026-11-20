@@ -303,6 +303,10 @@ function ChipBoostRow(props: {
 	);
 }
 
+/**
+ * `StatusPanel`'s props: only the tutorial's marks (which row is ringed, the ghost half heart's token). Everything the
+ * panel shows comes from the store's snapshot. GameHud passes them from the store's tutorial slice.
+ */
 export interface StatusPanelProps {
 	/** The tutorial rings the hearts row or the flask row (TutorialView.highlight). */
 	readonly highlight?: "hearts" | "flask";

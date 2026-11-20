@@ -30,6 +30,10 @@ export function Cover(props: CoverProps) {
 	);
 }
 
+/**
+ * `ProgressBar`'s props: its place in the column's layout, its size in reference px, how full it is and its
+ * transparency (the cover's fade: 0 opaque, a binding while fading).
+ */
 export interface ProgressBarProps {
 	readonly order: number;
 	/** Reference px. */

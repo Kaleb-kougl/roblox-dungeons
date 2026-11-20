@@ -23,6 +23,11 @@ export const PRELOAD_BIOME_PREFIX = "biome:";
 /** The device classes with their own chunk size (docs/STAGE_ASSETS.md SAD11: the one per-device difference). */
 export type PreloadDevice = "desktop" | "touch" | "console";
 
+/**
+ * The shape of `PRELOAD`: which logical ids belong to the core tier (waited for on the join loading screen) and which
+ * to the later, background tier, the loading screen's timings in seconds, and how the client's PreloadController hands
+ * ids to the engine.
+ */
 export interface PreloadConfig {
 	/** Logical-id prefixes (and biome entries) of the core tier, in download order (first = first on screen). */
 	readonly core: ReadonlyArray<string>;

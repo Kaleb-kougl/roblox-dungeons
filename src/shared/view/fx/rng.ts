@@ -17,6 +17,11 @@ const ID_OFFSET = 1;
 const TICK_OFFSET = 7;
 const SALT_OFFSET = 3;
 
+/**
+ * The presentation side's random stream: mulberry32 on its own state word, for particle bursts, damage number jitter
+ * and other effects that must not draw from the sim's rng. `seed` restarts the sequence (0 falls back to a fixed
+ * non-zero seed), so a burst seeded with burstSeed replays the same in specs.
+ */
 export class RenderRng implements RngHolder {
 	rngState = ZERO_SEED;
 

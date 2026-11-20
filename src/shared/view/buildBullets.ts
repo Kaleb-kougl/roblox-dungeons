@@ -21,6 +21,10 @@ export const PlayerBulletLook = {
 	BOLT: 4,
 	EMBER: 5,
 } as const;
+/**
+ * One `PlayerBulletLook` value (0..5): what `playerBulletLookOf` returns and the index BulletRenderController uses into
+ * `PLAYER_BULLET_LOOK_IDS` to pick a player bullet's theme visual.
+ */
 export type PlayerBulletLookId = (typeof PlayerBulletLook)[keyof typeof PlayerBulletLook];
 
 /** The theme visual of each look (PlayerBulletLook order). */

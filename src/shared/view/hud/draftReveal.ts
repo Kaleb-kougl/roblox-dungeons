@@ -69,6 +69,10 @@ export const DraftBeat = {
 	RARE: Rarity.RARE,
 	LEGENDARY: Rarity.LEGENDARY,
 } as const;
+/**
+ * One of `DraftBeat`'s values (a `Rarity` number): how a card flips in the reveal. Common is a plain flip, rare adds
+ * the chime and flare, legendary plays the charge, hush and flare.
+ */
 export type DraftBeatId = (typeof DraftBeat)[keyof typeof DraftBeat];
 
 /** One sound to play this step. */

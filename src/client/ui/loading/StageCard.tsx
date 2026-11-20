@@ -16,6 +16,11 @@ const ROW = { title: 1, biome: 2, boss: 3, banner: 4, line: 5 } as const;
 /** The run-start cover's rows. */
 const START_ROW = { label: 1, bar: 2, assets: 3, banner: 4, line: 5 } as const;
 
+/**
+ * `StageCard`'s props: the bindings StageController drives every frame (whether the cover's ScreenGui is on, its
+ * opacity, the serial of the load on screen, the floor modifier banner's look) and the callbacks through which the card
+ * reports its ScreenGui and a committed cover back. The cover's text comes from the store's `stage` slice.
+ */
 export interface StageCardProps {
 	/** The ScreenGui's Enabled (StageController sets it synchronously at the cut and at the end). */
 	readonly visible: React.Binding<boolean>;

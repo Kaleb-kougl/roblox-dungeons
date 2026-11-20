@@ -24,10 +24,23 @@ export function sameL10nState(a: Readonly<L10nState>, b: Readonly<L10nState>): b
 	return sameLocaleState(a, b) && a.autoCode === b.autoCode && a.allowHidden === b.allowHidden;
 }
 
+/**
+ * The locale slice (state: `L10nState`). LocaleController dispatches the resolved locale after switching the theme
+ * pack's strings; an equal state is not replaced. It starts on the source locale and nothing else resets it.
+ */
 export const l10nSlice = createProducer(initialState, {
 	/** The resolved locale (no change, no new state: subscribers fire only on a real switch). */
 	setLocaleState: (state: L10nState, to: L10nState): L10nState => (sameL10nState(state, to) ? state : { ...to }),
 });
 
+/**
+ * The locale the client shows, whole: its code, whether it came from the Roblox language (Automatic), its script and
+ * direction, the code Automatic resolves to, and whether hidden locales may be picked. The same object until one of
+ * them changes.
+ */
 export const selectL10n = (state: { l10n: L10nState }) => state.l10n;
+/**
+ * The code of the locale shown (the source locale's until LocaleController resolves one). LocaleRoot remounts the React
+ * roots when it changes, and text built outside React is rebuilt on its change.
+ */
 export const selectLocaleCode = (state: { l10n: L10nState }) => state.l10n.code;

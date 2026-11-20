@@ -144,6 +144,10 @@ export interface BarRect {
 	h: number;
 }
 
+/**
+ * A fresh BarRect (all zero) for the caller to keep and hand to `shieldRowRect` / `affixChipRect`, which write it in
+ * place. HealthBarController owns one.
+ */
 export function createBarRect(): BarRect {
 	return { left: 0, bottom: 0, w: 0, h: 0 };
 }

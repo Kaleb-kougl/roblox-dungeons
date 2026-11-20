@@ -19,6 +19,11 @@
  */
 import { TILE_SIZE } from "shared/dungeon";
 
+/**
+ * The map's orientation for one camera yaw, from `minimapBasis`: the world (x, z) unit directions of map right and map
+ * up, and the rotation to give the grid-space map image. `worldToMap` and its inverse take it; the client's
+ * MinimapController keeps one for `CAMERA_YAW_DEG`.
+ */
 export interface MinimapBasis {
 	/** World (x, z) direction of map right (screen right on the ground). */
 	readonly rightX: number;

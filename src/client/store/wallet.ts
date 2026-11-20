@@ -27,7 +27,10 @@ export interface WalletState {
 	readonly buying: string | undefined;
 	/** The run-over Silver preview of the last finished run (SilverHudController), else undefined. */
 	readonly run: SilverRunView | undefined;
-	/** Balance seen when the main menu last showed the Armory badge's reference (the newly-affordable dot). */
+	/**
+	 * The affordable item ids recorded when the Armory was last seen (HudController `armorySeen`); `armoryBadge`
+	 * compares the wallet against them for the main menu's newly-affordable dot.
+	 */
 	readonly seenAffordable: ReadonlyArray<string>;
 	/** The character screen bought this character in this visit (its card lights). */
 	readonly justUnlocked: CharacterId | undefined;
@@ -74,6 +77,13 @@ const initialState: WalletState = {
 	welcome: undefined,
 };
 
+/**
+ * The Silver slice (state: `WalletState`). `walletReceive` takes each `wallet` push: it bumps the version, keeps a
+ * loaded status over a later `loaded: false`, keeps the last action result and files a settled grant under its run id
+ * (the newest few kept), and a buy's answer ends the purchase in flight. WalletController also sets the purchase in
+ * flight and latches the welcome decision; SilverHudController sets the run preview and the counter flag. Nothing
+ * resets the slice within a session.
+ */
 export const walletSlice = createProducer(initialState, {
 	/** A `wallet` push. A `loaded: false` after a loaded one keeps the loaded copy (the session's load already ran). */
 	walletReceive: (state, status: WalletStatus): WalletState => {
@@ -110,13 +120,45 @@ export const walletSlice = createProducer(initialState, {
 		state.justUnlocked === id ? state : { ...state, justUnlocked: id },
 });
 
+/**
+ * The latest `wallet` payload from the server (loaded or not, the balance, what is owned and equipped), undefined
+ * until the first push. Note that this is the status only; the whole slice is `selectWalletState`.
+ */
 export const selectWallet = (state: { wallet: WalletState }) => state.wallet.status;
+/** What the client knows of its wallet: `pending` before the first push, then `loaded` or `unavailable`. */
 export const selectWalletShown = (state: { wallet: WalletState }) => state.wallet.shown;
+/**
+ * The whole `wallet` slice: the status with its version, the last buy / equip result, the settled grants, the purchase
+ * in flight, the last run's preview and the menu-side flags. The Armory, the main menu and the character screen read it
+ * beside `selectWallet`.
+ */
 export const selectWalletState = (state: { wallet: WalletState }) => state.wallet;
+/**
+ * The last finished run's Silver as the client worked it out at run over (its run counter, the server's run id, whether
+ * it pays, the client's figures), undefined until a run has ended. The run-over Silver rows read it with the verdict
+ * and the settled grants.
+ */
 export const selectSilverRun = (state: { wallet: WalletState }) => state.wallet.run;
+/**
+ * The Silver grants the server has settled for this session's runs, keyed by the server's run id (an empty map at
+ * first; only the newest few are kept). The run-over rows switch from the predicted grant to the settled one when the
+ * run's id appears here.
+ */
 export const selectWalletGrants = (state: { wallet: WalletState }) => state.wallet.grants;
+/**
+ * The item id of the Armory purchase waiting for the server's answer, undefined when none is in flight. The push
+ * carrying a buy result clears it.
+ */
 export const selectWalletBuying = (state: { wallet: WalletState }) => state.wallet.buying;
+/**
+ * The run on screen shows the live Silver counter in the score panel. Decided at each run start (`silverCounterShown`);
+ * false before the first run.
+ */
 export const selectSilverCounterShown = (state: { wallet: WalletState }) => state.wallet.counterShown;
+/**
+ * Whether the returning-player Silver card shows this session: undefined until both join pushes (wallet and records)
+ * are in, then latched true or false and never changed again.
+ */
 export const selectSilverWelcome = (state: { wallet: WalletState }) => state.wallet.welcome;
 
 /**

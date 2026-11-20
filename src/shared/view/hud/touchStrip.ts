@@ -22,6 +22,11 @@ import { computeHudScale, HUD_VIEW } from "./layout";
 import { fitArt } from "./skin";
 import { UI_ART } from "./skinConfig";
 
+/**
+ * The touch strip's layout tunables, in reference px under the strip's UIScale: the row and its icon boxes, the gaps,
+ * the text sizes and the widths estimated from them, the combo line, the edge and ring padding, the smallest fit (a
+ * 0..1 share of the HUD scale), and the chips line's and the slim boss bar's slots.
+ */
 export const TOUCH_STRIP = {
 	/** The strip's row: every icon and text line sits in it, vertically centred. */
 	rowHeight: 28,
@@ -150,6 +155,10 @@ export interface StripSlot {
 	readonly h: number;
 }
 
+/**
+ * The drawn slot of each of the strip's icons (heart, armor / Aegis pip, flask, Ember candle, score coin), reference
+ * px: the art fitted into its box at the strip's UIScale, or the flat stand-in's size without art (`touchStripSlots`).
+ */
 export interface TouchStripSlots {
 	readonly heart: StripSlot;
 	readonly pip: StripSlot;
@@ -168,8 +177,17 @@ export interface TouchStripWidths {
 	readonly total: number;
 }
 
+/**
+ * Where the strip sits: `topBar` (in the Roblox top bar, right of its buttons and the pause button) or `belowBar` (at
+ * the top of the safe area, when it does not fit in the top bar even collapsed and at `TOUCH_STRIP.minFit`).
+ */
 export type TouchStripPlacement = "topBar" | "belowBar";
 
+/**
+ * The strip as laid out for a screen: its scale and collapse steps, the slots and widths in reference px, and the rects
+ * (screen px) of the strip, the chips line and the boss bar's slot that the client's TouchStrip draws and the touch
+ * controls keep clear of.
+ */
 export interface TouchStripLayout {
 	/** The strip's UIScale (reference px -> screen px): the touch HUD scale times the fit. */
 	readonly scale: number;

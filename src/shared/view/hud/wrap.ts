@@ -8,6 +8,9 @@
 import { HUD_FOOTPRINT } from "./footprint";
 import { HUD_VIEW } from "./layout";
 
+/**
+ * A wrapped grid's shape (`wrapGrid`): what the client's GridRow gives its UIGridLayout. No cells: 1 column, 0 rows.
+ */
 export interface WrapGrid {
 	/** Cells per row (at least 1). */
 	readonly cols: number;
@@ -29,6 +32,7 @@ export function wrapGrid(count: number, cellW: number, cellH: number, gap: numbe
 	return { cols, rows, width: cols * cellW + (cols - 1) * gap, height: rows * cellH + (rows - 1) * gap };
 }
 
+/** How a list is cut to one row (`capOneRow`). No cells: 0 shown, 0 more. */
 export interface OneRowCap {
 	/** Cells drawn (the last `shown` of the list). */
 	readonly shown: number;

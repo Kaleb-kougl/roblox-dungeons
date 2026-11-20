@@ -21,6 +21,12 @@ export interface LootFizzleView {
 	readonly speed: number;
 }
 
+/**
+ * How a boost held by a barrel or crate shows: the glint on a loaded intact piece, the boost's hop out of the break and
+ * the fizzle of one lost on a full floor. Times are seconds, distances tiles, colours theme roles (each field says).
+ * Read by breakableLoot.ts and the client's BreakableRenderController, BoostDropRenderController and
+ * ParticleController. Which piece holds what is decided in shared/dungeon, never here.
+ */
 export const BREAKABLE_LOOT_VIEW = {
 	// --- the glint on a loaded intact piece (BLD3) ------------------------------------------------------------------
 	/**

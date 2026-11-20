@@ -34,6 +34,12 @@ function filled(n: number, v: number): number[] {
 	return out;
 }
 
+/**
+ * Every enemy health bar's state, one entry per actor pool slot (`capacity` = the actor pool's size). The client's
+ * HealthBarController feeds it the hit tracker's events (adopt / hit / kill / heal / release) and reads back, per
+ * frame, the chip value, the white flash, the shake offset and the bar's opacity. Every `now` is SimClock seconds, so
+ * bars hold still through pause and hitstop. No allocation after construction.
+ */
 export class HealthBarSlots {
 	readonly capacity: number;
 	/** ActorState.id tracked in the slot, 0 = none. */

@@ -118,6 +118,11 @@ export function floorClearanceStuds(belowStuds: number, pitchDeg: number = CAMER
 	return (belowStuds * math.cos(p)) / math.sin(p) + SPRITE_VIEW.floorClearanceMarginStuds;
 }
 
+/**
+ * The billboard of a sprite set's frame (see SpriteBillboard): its size in studs at `studsPerTile` / the set's pixels
+ * per tile, and the offsets that put the pivot pixel on the feet and clear the floor. The defaults are the game's own
+ * scale, depth bias (studs) and camera pitch (degrees); specs pass others.
+ */
 export function spriteBillboard(
 	layout: SpriteLayout,
 	studsPerTile: number = STUDS_PER_TILE,

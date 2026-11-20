@@ -9,6 +9,10 @@
  */
 import { SILVER_COUNTER } from "./config";
 
+/**
+ * `silverRowFit`'s answer for the score panel's floor / Depth row: how wide the Silver counter is, how much room that
+ * leaves the floor line, and the text size at which the line fits there. Widths and sizes are reference px.
+ */
 export interface SilverRowFit {
 	/** The counter's width (icon, gap, number), reference px. */
 	readonly counterW: number;

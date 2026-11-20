@@ -14,12 +14,20 @@
  */
 export type MenuScreen = "none" | "main" | "lobbies" | "lobby" | "credits" | "codex" | "armory" | "character";
 
+/**
+ * The menu shell's navigation state: the screen shown and the back stack under it. The client's Reflex `menu` slice
+ * holds one; it only changes through `menuNavReduce`.
+ */
 export interface MenuNav {
 	readonly screen: MenuScreen;
 	/** Screens under the current one, root first. Empty at the root and with no menu. */
 	readonly stack: ReadonlyArray<MenuScreen>;
 }
 
+/**
+ * A step of the menu's navigation (open, back, replace, reset to a whole path, close; see the comment on `MenuScreen`).
+ * MenuController dispatches these and `menuNavReduce` applies them.
+ */
 export type MenuNavAction =
 	| { readonly kind: "open"; readonly screen: MenuScreen }
 	| { readonly kind: "back" }
@@ -27,10 +35,15 @@ export type MenuNavAction =
 	| { readonly kind: "reset"; readonly path: ReadonlyArray<MenuScreen> }
 	| { readonly kind: "close" };
 
+/**
+ * No menu is up (a run, or the wait for one): screen `none` with an empty stack. The reducer's result for close, and
+ * the state the `menu` slice starts from.
+ */
 export const NO_MENU: MenuNav = { screen: "none", stack: [] };
 
 /** The path to the lobby room (back goes to the browser, then the main menu). */
 export const LOBBY_ROOM_PATH: ReadonlyArray<MenuScreen> = ["main", "lobbies", "lobby"];
+/** The path to the main menu alone: the root, with nothing to go back to. */
 export const MAIN_MENU_PATH: ReadonlyArray<MenuScreen> = ["main"];
 /** The path to the lobby browser (back goes to the main menu). */
 export const LOBBY_BROWSER_PATH: ReadonlyArray<MenuScreen> = ["main", "lobbies"];
@@ -46,6 +59,10 @@ function fromPath(path: ReadonlyArray<MenuScreen>): MenuNav {
 	return screen === "none" ? NO_MENU : { screen, stack };
 }
 
+/**
+ * The menu navigation reducer: `nav` after `action` (the rules are in the comment on `MenuScreen`). Pure, and it
+ * returns the same object when nothing changes: opening the current screen, or back at the root.
+ */
 export function menuNavReduce(nav: MenuNav, action: MenuNavAction): MenuNav {
 	switch (action.kind) {
 		case "open": {

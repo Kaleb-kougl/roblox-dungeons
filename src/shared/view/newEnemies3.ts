@@ -112,6 +112,10 @@ export interface ShellPoint {
 	heightTiles: number;
 }
 
+/**
+ * A fresh ShellPoint (not shown) for the caller to keep and hand to `shellArcAt` / `ShellArcs.point` every frame.
+ * NewEnemy3MarksController owns one.
+ */
 export function newShellPoint(): ShellPoint {
 	return { shown: false, x: 0, z: 0, heightTiles: 0 };
 }
@@ -326,6 +330,7 @@ export const NewEnemy3Burst = {
 	HEAL: 1,
 	SNAP: 2,
 } as const;
+/** One `NewEnemy3Burst` value (0 impact, 1 heal, 2 snap): a burst's kind, the index into `NEW_ENEMY_3_BURST_LOOKS`. */
 export type NewEnemy3Burst = (typeof NewEnemy3Burst)[keyof typeof NewEnemy3Burst];
 
 /** A burst kind's look: its chip shape, colour role and seed salt (NEW_ENEMY_3_BURSTS). */

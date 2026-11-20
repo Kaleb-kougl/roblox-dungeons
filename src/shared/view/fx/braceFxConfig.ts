@@ -8,6 +8,11 @@
  */
 import type { ColorRole } from "shared/theme";
 
+/**
+ * Bastion's brace feedback numbers besides the floor ring: the BRACED floor shout, the armor row's pulse in the status
+ * panel, the toast and the theme string keys. Times are real seconds, px are HUD reference px. Read by braceFx.ts and
+ * drawn by the client's BraceFxController and status panel.
+ */
 export const BRACE_VIEW = {
 	/** BRACED on the floor (`fx.brace.text`, capitals in the string): its life in the shout slot and its colour. */
 	shout: {

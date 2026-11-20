@@ -35,6 +35,11 @@ import {
 	PREDICTION_DEBUG_STRINGS,
 } from "./latencyProbeConfig";
 
+/**
+ * The probe's numbers as `LatencyProbe.stats()` reports them, all in milliseconds of the caller's clock: press to
+ * stepped (last, mean and max over the window) and press to drawn. The KV_Debug line shows them (as part of
+ * LatencyProbeView).
+ */
 export interface LatencyProbeStats {
 	/** The last measured press, ms (undefined before the first). */
 	readonly lastMs: number | undefined;
@@ -180,6 +185,12 @@ export interface LatencyProbeView extends LatencyProbeStats {
 	readonly prediction: PredictionDebugView;
 }
 
+/**
+ * The press-to-step and press-to-drawn stopwatch of a co-op run (see the file comment for the call order per frame).
+ * `window` is how many measured presses the mean and max cover, `maxPending` how many sent presses may wait to be
+ * resolved at once (more are not measured); both default to `LATENCY_PROBE`. `now` arguments are seconds on any one
+ * clock. The client's SimController makes one per run, only under KV_Debug.
+ */
 export class LatencyProbe {
 	private prevSent = 0;
 	private edgeAt: number | undefined;
@@ -382,6 +393,11 @@ function pacingViewsEqual(a: PacingDebugView, b: PacingDebugView): boolean {
 	);
 }
 
+/**
+ * True when two debug-line views would show the same line: every number and mode equal (both undefined counts as equal,
+ * one undefined does not). The client's game store uses it to keep its state object when a new view changes nothing, so
+ * the HUD does not re-render every frame.
+ */
 export function latencyProbeViewsEqual(a: LatencyProbeView | undefined, b: LatencyProbeView | undefined): boolean {
 	if (a === undefined || b === undefined) return a === b;
 	return (

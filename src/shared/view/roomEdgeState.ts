@@ -66,6 +66,12 @@ export function fightOn(state: Readonly<SimState>): boolean {
 /** No endless floor (M1): the boss latch's floor key. */
 const NO_FLOOR = -1;
 
+/**
+ * Each room's safe / waiting / live state for one floor (see the file comment for the rules). `update(state,
+ * encounter)` once per rendered frame returns one RoomEdgeState per room id in a reused array. It keeps the latches the
+ * unscored fallback and the boss room need, so make a new one per floor. The client's RoomEdgeController (the line's
+ * colour) and MinimapController (the room tint) each own one.
+ */
 export class RoomEdgeStates {
 	private readonly out: RoomEdgeState[] = [];
 	private readonly fallback: ReadonlyArray<RoomScore> | undefined;

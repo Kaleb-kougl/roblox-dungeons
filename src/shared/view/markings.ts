@@ -26,6 +26,11 @@ import { MARKING_VIEW, TELEGRAPH_VIEW } from "./config";
 
 const TAU = 2 * math.pi;
 
+/**
+ * Where the marking builders of this module put their line segments: one call per segment, end points in sim world
+ * units (tiles) on the floor plane. The client's DashLayer implements it (and turns each segment into dash Parts);
+ * specs implement it to collect or count segments.
+ */
 export interface SegmentSink {
 	seg(x0: number, z0: number, x1: number, z1: number): void;
 }
@@ -60,6 +65,10 @@ export function arc(sink: SegmentSink, x: number, z: number, radius: number, h0:
 	}
 }
 
+/**
+ * The outline of an axis-aligned rectangle as four segments, corners (minX, minZ) and (maxX, maxZ) in sim world units.
+ * TelegraphController draws the arena seal around the boss room with it.
+ */
 export function rect(sink: SegmentSink, minX: number, minZ: number, maxX: number, maxZ: number): void {
 	sink.seg(minX, minZ, maxX, minZ);
 	sink.seg(maxX, minZ, maxX, maxZ);
@@ -349,6 +358,11 @@ export function actorFxMarkings(
 // ---------------------------------------------------------------------------------------------
 // The Act I boss (web BossView drawTelegraph / drawSlam)
 
+/**
+ * A bullet burst as the boss previews need it: `count` bullets fanned evenly over `spread` radians (the whole arc's
+ * angle, as `fanLanes` and `ringArcs` take it). The boss.act1 archetype's own burst constants, handed in through
+ * BossAct1Consts.
+ */
 export interface BurstShape {
 	readonly count: number;
 	readonly spread: number;

@@ -9,6 +9,11 @@ import { BULLET_SPIKE, CAMERA_SPIKE, INVITE_SPIKE, InviteSpikeAction } from "sha
 
 export type BulletPattern = "rings" | "spiral";
 
+/**
+ * The bullet spike's measurements over its last stats window, reported by BulletSpikeController for the spike HUD:
+ * frame rate, where the per-frame milliseconds went, and how many bullets moved. All zero (art "") until the first
+ * report and whenever the spike is switched on or off.
+ */
 export interface BulletSpikeStats {
 	/** Frames per second over the last stats window. */
 	readonly fps: number;
@@ -37,6 +42,11 @@ export interface InviteSpikeRequest {
 	readonly action: InviteSpikeAction;
 }
 
+/**
+ * The `spikes` slice's state, one group per spike: the bullet spike's settings and stats, the camera spike's settings
+ * and measured distance, and the invites spike's log lines and last button press. The settings are changed from the
+ * keyboard and the spike HUD; each spike's controller sets `active` and reports its numbers.
+ */
 export interface SpikeState {
 	readonly bullets: {
 		readonly active: boolean;
@@ -95,6 +105,11 @@ const initialState: SpikeState = {
 	invites: { active: false, lines: [] },
 };
 
+/**
+ * The spikes slice (state: `SpikeState`, see the file comment). The index setters clamp to their config lists,
+ * `cycleSnap` steps through `CAMERA_SPIKE.snapTexels` and back to -1 (off), and switching the invites spike on or off
+ * empties its log and drops the last request.
+ */
 export const spikesSlice = createProducer(initialState, {
 	setBulletsActive: (state, active: boolean) => ({
 		...state,
@@ -162,7 +177,25 @@ export const spikesSlice = createProducer(initialState, {
 	}),
 });
 
+/**
+ * The bullet spike's group: whether it is running, the indices into `BULLET_SPIKE.counts` and `BULLET_SPIKE.modes`, the
+ * pattern, the extra player bullets, and the last stats. BulletSpikeController follows the settings; the spike HUD
+ * shows them.
+ */
 export const selectBulletSpike = (state: { spikes: SpikeState }) => state.spikes.bullets;
+/**
+ * The camera spike's group: whether it is running, the index into `CAMERA_SPIKE.fovs`, the snap index (-1: no
+ * snapping), auto-walk, and the camera's current distance from its focus in studs (0 until reported).
+ */
 export const selectCameraSpike = (state: { spikes: SpikeState }) => state.spikes.camera;
+/**
+ * The invites spike's group: whether it is running, the last `INVITE_SPIKE.hudLines` log lines of both sides (oldest
+ * first; empty at first), and the last HUD button press.
+ */
 export const selectInviteSpike = (state: { spikes: SpikeState }) => state.spikes.invites;
+/**
+ * The last button press of the invites spike's HUD, undefined before the first and after the spike is switched. Its
+ * `seq` grows by one per press, so InviteSpikeController, which subscribes to this, acts on a repeat of the same action
+ * too.
+ */
 export const selectInviteSpikeRequest = (state: { spikes: SpikeState }) => state.spikes.invites.request;

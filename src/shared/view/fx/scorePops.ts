@@ -14,6 +14,7 @@ export const SCORE_POP_LIFE = 1.1;
 export const SCORE_POP_FADE = 0.35;
 /** Render px it rises (ease-out) over SCORE_POP_RISE_TIME; 0 under reduced motion. */
 export const SCORE_POP_RISE_PX = 18;
+/** Seconds a pop takes to rise SCORE_POP_RISE_PX (quadratic ease-out); it then hangs there until its life ends. */
 export const SCORE_POP_RISE_TIME = 0.8;
 /** Start height above the floor, render px (above a regular enemy's health bar and damage numbers). */
 export const SCORE_POP_BASE_PX = 30;
@@ -42,6 +43,10 @@ export function scorePopRise(age: number, motion: number): number {
  * the view player's Happy Hour runs (docs/BUILDS_V2.md BV11: BUILDS_V2_FX.happyHour.popRole; overcapFx.ts happyPopTone).
  */
 export const ScorePopTone = { KILL: 0, GOLD_RUSH: 1, HORDE: 2, HAPPY: 3 } as const;
+/**
+ * One of the ScorePopTone values: the tone stored per pool slot, which the client's ScorePopController turns into the
+ * pop's colour.
+ */
 export type ScorePopTone = (typeof ScorePopTone)[keyof typeof ScorePopTone];
 
 /** A kill's score pop (the run views' scorePops). */

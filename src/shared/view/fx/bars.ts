@@ -38,6 +38,10 @@ const WIDE_PIP_MAX = 3;
 const WIDE_PIP = 3;
 const NARROW_PIP = 2;
 
+/**
+ * Width of one pip in render px for a row of `pips` pips: 3 px up to 3 pips, 2 px for 4, so the widest pip row stays
+ * narrower than a bar.
+ */
 export function pipWidth(pips: number): number {
 	return pips <= WIDE_PIP_MAX ? WIDE_PIP : NARROW_PIP;
 }
@@ -117,6 +121,10 @@ export interface BarGeometry {
 	top: number;
 }
 
+/**
+ * A zeroed BarGeometry to preallocate and hand to barGeometry() as its out-parameter (the health bar renderer keeps one
+ * and reuses it for every actor).
+ */
 export function createBarGeometry(): BarGeometry {
 	return {
 		pips: 0,

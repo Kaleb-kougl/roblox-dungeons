@@ -49,6 +49,10 @@ import { formatClock } from "./layout";
 // ---------------------------------------------------------------------------------------------------------------
 // Types
 
+/**
+ * How a player's run ended, as the standing line says it: `lastToFall` (the last death of a wipe), `fell` (died),
+ * `left` (left the run without dying) or `stood` (alive at the end). The rules are in the file header (Standing).
+ */
 export type ContribStandingKind = "lastToFall" | "stood" | "fell" | "left";
 
 /** How a player's run ended. `floor`: the death / leave floor (stood: 0); `seconds`: whole seconds of sim time. */
@@ -99,6 +103,10 @@ export interface ContribCell {
 	readonly pellets?: number;
 }
 
+/**
+ * A party run's contribution as the run-over panel's You card and Party tab draw it: what `contributionOf` returns
+ * (undefined for a solo run).
+ */
 export interface RunContribution {
 	/** Index order, never sorted. */
 	readonly rows: ReadonlyArray<ContributionRow>;
@@ -111,6 +119,10 @@ export interface RunContribution {
 	readonly wipe: boolean;
 }
 
+/**
+ * What `contributionOf` reads: the run's tally and the party facts the client gathers at run over. Every array is by
+ * player index.
+ */
 export interface ContributionInput {
 	readonly tally: RecapTallySource;
 	readonly partySize: number;
