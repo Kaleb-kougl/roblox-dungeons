@@ -43,9 +43,11 @@ import {
 
 /** What the predictor reads from its client (LockstepClient implements it; specs fake it). */
 export interface PredictionSource {
+	/** The merged state the prediction starts from (read, never written). */
 	readonly state: Readonly<SimState>;
 	/** The run's SimConfig (the floor's world and the players' traits come from it). */
 	readonly config: Readonly<SimConfig>;
+	/** The local player's index in the party: the one body predicted. */
 	readonly localIndex: number;
 	/** Received merged frames not stepped yet. */
 	backlog(): number;
@@ -64,9 +66,13 @@ export interface PredictionSource {
  * merged pose, the last one the head). Owned by the predictor and rewritten by every rebuild: read it, never keep it.
  */
 export interface PredictedPath {
+	/** The state tick of entry 0. */
 	readonly firstTick: number;
+	/** Entries in use: `xs` and `zs` are reused and may be longer. */
 	readonly size: number;
+	/** The body's x per entry, world units. */
 	readonly xs: ReadonlyArray<number>;
+	/** The body's z per entry, world units. */
 	readonly zs: ReadonlyArray<number>;
 }
 
@@ -85,15 +91,22 @@ export interface PredictionStats {
 	readonly compared: number;
 	/** Mean and largest distance (tiles) between a stepped tick's merged pose and the head drawn for it, over the window. */
 	readonly meanError: number;
+	/** The largest such distance in the window, tiles. */
 	readonly maxError: number;
 	/** Compared ticks whose error was over correctionTiles, in the window. */
 	readonly corrections: number;
 	/** Every compared tick and correction since the run started, and the largest error. */
 	readonly totalCompared: number;
+	/** Corrections since the run started. */
 	readonly totalCorrections: number;
+	/** The largest error since the run started, tiles. */
 	readonly totalMaxError: number;
 }
 
+/**
+ * Replays the local player's body past the merged state from the inputs the sim has not stepped yet, and measures how
+ * far each prediction was from the merged pose. Reads its client; never writes the sim state.
+ */
 export class LocalPredictor {
 	private readonly head = newMotionScratch();
 	/** The predictor's own sword spacing list (docs/SWORD_SPACING.md Design 5), rebuilt from the merged state per pass. */

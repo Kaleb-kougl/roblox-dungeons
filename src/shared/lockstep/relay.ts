@@ -34,6 +34,7 @@ export const LEFT_FRAME: Readonly<InputFrame> = table.freeze({ ...EMPTY_INPUT, b
 
 const NOT_LEFT = -1;
 
+/** How the frames of one submitted input batch were sorted. */
 export interface SubmitResult {
 	/** Frames queued for a future tick. */
 	readonly accepted: number;
@@ -43,6 +44,7 @@ export interface SubmitResult {
 	readonly refused: number;
 }
 
+/** Per-player counts of inputs that missed their deadline, came late or were refused. */
 export interface RelayStats {
 	/** Per player: ticks finalized with a repeated input (the deadline was missed). */
 	readonly missed: number[];
@@ -52,6 +54,10 @@ export interface RelayStats {
 	readonly refused: number[];
 }
 
+/**
+ * Assembles one merged frame per tick from the players' submitted inputs and is the authority over the run's input log:
+ * a player who missed the deadline repeats their last input, a player who left gets LEFT_FRAME.
+ */
 export class LockstepRelay {
 	readonly size: number;
 	private readonly tunables: LockstepTunables;

@@ -90,6 +90,7 @@ export interface LeadEcho {
 	readonly catchingUp?: boolean;
 }
 
+/** A snapshot of the LeadController (`stats()`), for the debug line and the lead census. */
 export interface LeadStats {
 	/** lead(): the net lead (ticks). */
 	readonly lead: number;
@@ -110,7 +111,9 @@ export interface LeadStats {
 	readonly ceiling: number | undefined;
 	/** The window's trips (ticks): median, `percentile` and max; undefined while the window is empty. */
 	readonly tripP50: number | undefined;
+	/** The window's `percentile` trip, ticks; undefined while the window is empty. */
 	readonly tripP95: number | undefined;
+	/** The window's longest trip, ticks; undefined while the window is empty. */
 	readonly tripMax: number | undefined;
 	/** Trips in the window. */
 	readonly samples: number;
@@ -166,6 +169,10 @@ function ceilTicks(x: number): number {
 	return math.ceil(x - EPSILON);
 }
 
+/**
+ * Decides the client's net input lead from the server's input echoes: how many ticks ahead inputs are sent so that they
+ * reach the server before their tick is finalized. Pure; nothing here reaches the sim.
+ */
 export class LeadController {
 	private readonly tunables: LeadTunables;
 	private readonly minLead: number;

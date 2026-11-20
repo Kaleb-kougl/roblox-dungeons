@@ -52,7 +52,9 @@ export const FINAL_CHECKPOINT_TIMEOUT_TICKS = FINAL_CLAIM_TIMEOUT_TICKS + HASH_R
  * most one such call per HASH_SEND_MIN_SECONDS however fast it steps (catch-up, high frame rates).
  */
 export const HASH_RESEND_SECONDS = 2;
+/** A client makes at most one `lockstepHash` call per this many seconds, however fast it steps. */
 export const HASH_SEND_MIN_SECONDS = 0.25;
+/** Most hash reports one `lockstepHash` call carries (oldest first). */
 export const MAX_HASH_BATCH = 32;
 
 /**
@@ -145,6 +147,7 @@ export interface PacingTunables {
 	readonly phaseHysteresisTicks: number;
 }
 
+/** The frame pacing values the game runs with (PlayoutPacer; docs/FRAME_PACING.md). */
 export const PACING: PacingTunables = table.freeze({
 	startDepthTicks: 3,
 	minDepthTicks: 3,
@@ -179,9 +182,11 @@ export interface ArrivalLogTunables {
 	readonly maxGaps: number;
 	/** The two gap quantiles printed (nearest rank). */
 	readonly midPercentile: number;
+	/** The high one of the two (0..1). */
 	readonly highPercentile: number;
 }
 
+/** The arrival log's values (ArrivalLog; KV_Debug co-op runs only). */
 export const ARRIVAL_LOG: ArrivalLogTunables = table.freeze({
 	windowSec: 10,
 	sizeBuckets: 8,
@@ -273,6 +278,7 @@ export interface LeadTunables {
 	readonly episodeMinSlow: number;
 }
 
+/** The measured input lead's values the game runs with (LeadController; docs/FRAME_PACING.md Revision 2 / 3). */
 export const LEAD: LeadTunables = table.freeze({
 	windowSec: 5,
 	percentile: 0.95,
@@ -311,26 +317,45 @@ export interface PredictionTunables {
 	readonly correctionTiles: number;
 }
 
+/** Local prediction's values the game runs with (LocalPredictor; docs/LOCAL_PREDICTION.md). */
 export const PREDICTION: PredictionTunables = table.freeze({
 	maxTicks: 20,
 	statsWindowTicks: SIM_HZ * 10,
 	correctionTiles: 0.01,
 });
 
+/**
+ * Every lockstep tunable in one object, handed to the relay, the session and the client (their params' optional
+ * `tunables`), so a spec can run them with its own values. The game uses DEFAULT_LOCKSTEP.
+ */
 export interface LockstepTunables {
+	/** A client sends its input for tick T + this when it steps tick T: its starting lead, ticks. */
 	readonly inputDelay: number;
+	/** The most the lead rises to, ticks. */
 	readonly maxInputLead: number;
+	/** The miss counter lowers the lead by one after this many ticks without a miss. */
 	readonly leadDecayTicks: number;
+	/** The relay refuses inputs for ticks further than this past the last finalized one. */
 	readonly maxInputAhead: number;
+	/** Most frames one input batch may carry. */
 	readonly maxBatchFrames: number;
+	/** Clients report hashState after every tick that is a multiple of this. */
 	readonly hashEvery: number;
+	/**
+	 * A player who has not reported a tick's hash once the server is this many ticks past it is stalled and dropped.
+	 */
 	readonly reportTimeoutTicks: number;
+	/** Server: finalized frames are broadcast in batches of this many ticks. */
 	readonly broadcastEvery: number;
+	/** Server: at most this many ticks finalized per step. */
 	readonly maxTicksPerStep: number;
+	/** Client: most merged frames stepped in one rendered frame. */
 	readonly maxCatchup: number;
+	/** Server: the merged log goes to the validator in segments of this many ticks. */
 	readonly segmentTicks: number;
 	/** The validator's checkpoint spacing (SegmentLimits.checkpointEvery): a multiple of hashEvery. */
 	readonly checkpointEvery: number;
+	/** After the first final claim, the other players have this many server ticks to send theirs. */
 	readonly finalTimeoutTicks: number;
 	/** After the first final claim: the deadline for consensus on every checkpoint below the final tick. */
 	readonly finalCheckpointTimeoutTicks: number;
@@ -370,6 +395,7 @@ export interface LockstepTunables {
 	readonly prediction: PredictionTunables | undefined;
 }
 
+/** The tunables the game runs with: the constants of this file, with pacing, the measured lead and prediction on. */
 export const DEFAULT_LOCKSTEP: LockstepTunables = table.freeze({
 	inputDelay: INPUT_DELAY_TICKS,
 	maxInputLead: MAX_INPUT_LEAD_TICKS,

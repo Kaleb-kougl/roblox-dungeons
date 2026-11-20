@@ -7,6 +7,10 @@
  */
 import { encodeRecording, type InputFrame, type Recording } from "shared/sim";
 
+/**
+ * The server's merged input log of one co-op run: one frame stream per player, released as its ticks go to the
+ * validator.
+ */
 export class PartyRunLog {
 	/** Per player: the frames of ticks [base, base + size). */
 	private readonly streams: InputFrame[][] = [];

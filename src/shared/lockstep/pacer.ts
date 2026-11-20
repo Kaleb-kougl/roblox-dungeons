@@ -50,6 +50,7 @@ const PHASE_SPREAD_UNLOCKED = 0.5;
 const PHASE_TIE = 1e-6;
 const MS_PER_SEC = 1000;
 
+/** A snapshot of the PlayoutPacer (`stats()`), for the debug line. */
 export interface PacingStats {
 	/** The first arrival placed the playout clock. */
 	readonly started: boolean;
@@ -109,6 +110,10 @@ function wrapHalf(x: number): number {
 	return x - math.floor(x + MID_TICK);
 }
 
+/**
+ * The playout clock: says which queued merged frames are due, so the sim steps at a steady rate from a small jitter
+ * buffer instead of in the bursts frames arrive in. Pure; it changes when frames are stepped, never which.
+ */
 export class PlayoutPacer {
 	private readonly tunables: PacingTunables;
 	private readonly dt: number;

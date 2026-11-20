@@ -43,10 +43,17 @@ import { PartyRunLog } from "./log";
 import { LockstepRelay, type SubmitResult } from "./relay";
 import { MergedEncoder, decodeInputBatch, encodeInputEcho, type InputEcho } from "./wire";
 
+/**
+ * Where a session stands: `running`; `finishing` once the first final claim arrived; `submitted` once the validator has
+ * the run's final; `ended`.
+ */
 export type LockstepStatus = "running" | "finishing" | "submitted" | "ended";
 
+/** One batch of finalized merged frames for the service to send to the members. */
 export interface MergedBroadcast {
+	/** The tick of the first merged frame in `data`. */
 	readonly firstTick: number;
+	/** The merged frames, encoded by wire.ts `MergedEncoder`: the same bytes for every member. */
 	readonly data: buffer;
 	/**
 	 * Per player index: that player's input echo (wire.ts `encodeInputEcho`, against this broadcast's firstTick): the
@@ -69,15 +76,21 @@ export interface InputStats {
 	readonly slackMean: number;
 }
 
+/** Why a run ended without a validator verdict to wait for. */
 export interface LockstepEnd {
+	/** The reject code the run is closed with. */
 	readonly code: SegmentRejectCode;
+	/** The detail for the log, in words. */
 	readonly reason: string;
 	/** The tick the problem is about (the desync tick; the last finalized tick otherwise). */
 	readonly tick: number;
+	/** The disagreeing hash reports, when the end is a desync. */
 	readonly desync?: HashDesync;
 }
 
+/** What one `step(now)` produced for the service to act on. */
 export interface LockstepStepResult {
+	/** Merged batches to broadcast, in tick order. */
 	readonly broadcasts: ReadonlyArray<MergedBroadcast>;
 	/** Segments offered to the validator by this call (the service then pumps the validator). */
 	readonly segmentsOffered: number;
@@ -94,9 +107,15 @@ export interface LockstepStepResult {
 	readonly ackTick: number;
 }
 
+/**
+ * What a LockstepSession is built from: the party run's identity, its members and the validator that will replay it.
+ */
 export interface LockstepSessionParams {
+	/** The party run's id. */
 	readonly runId: string;
+	/** The run seed, kept in the merged log for the validator's replay. */
 	readonly seed: number;
+	/** Where the party spawns, world units (1 per tile); kept in the merged log. */
 	readonly spawn: { readonly x: number; readonly z: number };
 	/** UserIds in player index order (owner first). */
 	readonly members: ReadonlyArray<number>;
@@ -104,6 +123,7 @@ export interface LockstepSessionParams {
 	readonly validator: SegmentedValidator;
 	/** Session start (seconds, the clock every `now` uses). */
 	readonly startedAt: number;
+	/** Absent: DEFAULT_LOCKSTEP. */
 	readonly tunables?: LockstepTunables;
 }
 
@@ -112,6 +132,10 @@ function claimKey(f: Readonly<RunFinal>): string {
 	return `${f.finalTick}|${f.claimedHash}|${c.ticks}|${c.kills}|${c.bossDefeated}|${c.died}|${c.score}|${c.floor}`;
 }
 
+/**
+ * The server side of one co-op run: finalizes ticks on the clock through the relay, keeps the merged log, collects hash
+ * reports and final claims, and feeds the validator. Pure; RunSessionService owns one per party run.
+ */
 export class LockstepSession {
 	readonly runId: string;
 	readonly members: ReadonlyArray<number>;

@@ -11,6 +11,10 @@
  */
 import { EMPTY_INPUT, copyInput, type InputFrame } from "shared/sim";
 
+/**
+ * Blanks a co-op client's input while a menu owns the controls, and keeps the buttons held when the menu closes masked
+ * until they are released.
+ */
 export class CoopMenuInputGate {
 	/** Buttons held through the end of the last menu: masked until released. */
 	private held = 0;
