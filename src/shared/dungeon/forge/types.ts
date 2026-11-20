@@ -36,7 +36,7 @@ export type RoomArch = "s" | "m" | "l";
 /** The outline a room's footprint is carved in. */
 export type RoomShape = "rect" | "ellipse" | "oct";
 
-/** One room of a floor. Mutable while the generator runs; read-only once the Dungeon is returned. */
+/** One room of a floor, filled in stage by stage while the generator runs (scatter, graph, theme, carve). */
 export interface Room {
 	/** The room's index in Dungeon.rooms, and its value in Dungeon.roomId. */
 	id: number;
