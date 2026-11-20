@@ -1,0 +1,269 @@
+// Every exported declaration under src/ has a doc comment (`/** ... */`), and in the deterministic core every field
+// of an exported interface has one too (docs/DOC_COMMENTS.md Design 3, DCD4, DCD6). This check (npm run check:docs,
+// part of verify) parses the sources with the TypeScript parser (no type check) and compares the declarations that
+// have no comment with the checked-in list of known gaps, scripts/doc-coverage.json:
+//
+//   - a gap that is not in the list fails, with its file and line: new code is documented when it is written;
+//   - a listed gap that has since been documented passes, with a hint to run `--update`;
+//   - `--update` only ever removes names from the list, so a gap once closed cannot come back.
+//
+//   node scripts/check-doc-coverage.js [--update | --init] [--json] [srcDir] [baselineFile]
+//
+// Gaps are listed by area (`shared/<dir>`, `shared` for the files directly in src/shared, `client`, `server`) and
+// name, not by file: moving an undocumented export inside its area changes nothing. The same name twice in an area is
+// two entries. `--init` writes the whole list from today's tree (used once, for the first baseline).
+//
+// What counts:
+//   - an export is a top-level statement with the `export` keyword: a function, class, interface, type alias, enum
+//     or `const` / `let` statement. `export { a } from "./b"` and `export * from` lines are not declarations;
+//   - a field is a member of an exported interface (property, method, call or index signature), counted only in
+//     FIELD_AREAS. Class members and other areas' interfaces are not checked;
+//   - a doc comment is a `/** */` directly above the declaration. A file header that ends in `@module` belongs to
+//     the module, not to the declaration under it;
+//   - spec files, `*.d.ts` and src/shared/fixtures-generated are skipped.
+//
+// The check does not judge what a comment says. Review does.
+"use strict";
+
+const fs = require("node:fs");
+const path = require("node:path");
+
+/** Areas whose exported interfaces need a comment on every field: the state, config and wire shapes (DCD4). */
+const FIELD_AREAS = ["shared/dungeon", "shared/lockstep", "shared/sim"];
+const DEFAULT_SRC = "src";
+const DEFAULT_BASELINE = path.join("scripts", "doc-coverage.json");
+
+/** Loaded on first use, so the pure helpers (and their specs) need no TypeScript install. */
+let tsModule;
+function ts() {
+	if (tsModule === undefined) tsModule = require("typescript");
+	return tsModule;
+}
+
+function isSourceFile(name) {
+	return /\.tsx?$/.test(name) && !/\.spec\.tsx?$/.test(name) && !/\.d\.ts$/.test(name);
+}
+
+/** Every checked source file under srcDir, as sorted `/`-separated paths relative to it. */
+function listSources(srcDir) {
+	const found = [];
+	const walk = (dir) => {
+		for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+			const full = path.join(dir, entry.name);
+			if (entry.isDirectory()) {
+				if (entry.name !== "fixtures-generated") walk(full);
+			} else if (entry.isFile() && isSourceFile(entry.name)) {
+				found.push(path.relative(srcDir, full).split(path.sep).join("/"));
+			}
+		}
+	};
+	walk(srcDir);
+	return found.sort();
+}
+
+/** `shared/sim/combat/arc.ts` -> `shared/sim`; `shared/network.ts` -> `shared`; `client/ui/gui.ts` -> `client`. */
+function areaOf(relFile) {
+	const parts = relFile.split("/");
+	if (parts[0] === "shared" && parts.length > 2) return `shared/${parts[1]}`;
+	return parts[0];
+}
+
+/** Whether a declaration starting at `fullStart` has its own doc comment (a module header does not count). */
+function hasDocComment(text, fullStart) {
+	const ranges = ts().getLeadingCommentRanges(text, fullStart) ?? [];
+	return ranges.some((r) => {
+		const comment = text.slice(r.pos, r.end);
+		return comment.startsWith("/**") && !/^\s*\*\s*@(module|packageDocumentation)\b/m.test(comment);
+	});
+}
+
+function declarationName(statement, sourceFile) {
+	const t = ts();
+	if (t.isVariableStatement(statement)) return statement.declarationList.declarations[0].name.getText(sourceFile);
+	return statement.name ? statement.name.getText(sourceFile) : "(anonymous)";
+}
+
+function memberName(member, sourceFile) {
+	const t = ts();
+	if (member.name) return member.name.getText(sourceFile);
+	if (t.isCallSignatureDeclaration(member)) return "(call)";
+	if (t.isConstructSignatureDeclaration(member)) return "(new)";
+	if (t.isIndexSignatureDeclaration(member)) return "(index)";
+	return "(member)";
+}
+
+/**
+ * The undocumented exports and fields of one source text: `{ exports: [{ name, line }], fields: [{ name, line }] }`.
+ * `fields` is filled only when `withFields`; a field's name is `Interface.field`.
+ */
+function gapsInSource(fileName, text, withFields) {
+	const t = ts();
+	const kind = fileName.endsWith("x") ? t.ScriptKind.TSX : t.ScriptKind.TS;
+	const sourceFile = t.createSourceFile(fileName, text, t.ScriptTarget.ESNext, true, kind);
+	const lineOf = (node) => sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile)).line + 1;
+	const exportsFound = [];
+	const fields = [];
+	for (const statement of sourceFile.statements) {
+		if (t.isExportDeclaration(statement) || t.isExportAssignment(statement)) continue;
+		const modifiers = t.canHaveModifiers(statement) ? t.getModifiers(statement) ?? [] : [];
+		if (!modifiers.some((m) => m.kind === t.SyntaxKind.ExportKeyword)) continue;
+		const name = declarationName(statement, sourceFile);
+		if (!hasDocComment(text, statement.getFullStart())) exportsFound.push({ name, line: lineOf(statement) });
+		if (withFields && t.isInterfaceDeclaration(statement)) {
+			for (const member of statement.members) {
+				if (hasDocComment(text, member.getFullStart())) continue;
+				fields.push({ name: `${name}.${memberName(member, sourceFile)}`, line: lineOf(member) });
+			}
+		}
+	}
+	return { exports: exportsFound, fields };
+}
+
+/**
+ * Every gap under srcDir: `{ exports: { area: [{ name, file, line }] }, fields: { area: [...] }, files }`.
+ * Areas are in sorted order; a `fields` entry exists for every area of `fieldAreas` that has a source file.
+ */
+function scan(srcDir, fieldAreas = FIELD_AREAS) {
+	const result = { exports: {}, fields: {}, files: 0 };
+	for (const file of listSources(srcDir)) {
+		const area = areaOf(file);
+		const withFields = fieldAreas.includes(area);
+		const gaps = gapsInSource(file, fs.readFileSync(path.join(srcDir, file), "utf8"), withFields);
+		result.files += 1;
+		(result.exports[area] ??= []).push(...gaps.exports.map((g) => ({ ...g, file })));
+		if (withFields) (result.fields[area] ??= []).push(...gaps.fields.map((g) => ({ ...g, file })));
+	}
+	return result;
+}
+
+/** The names of one gap list, sorted (duplicates kept): the baseline's form. */
+function namesOf(gaps) {
+	return gaps.map((g) => g.name).sort();
+}
+
+/**
+ * One kind's gaps against its baseline, per area, as multisets of names:
+ * `added` are gaps the baseline does not allow (the failures), `closed` are baseline names that are no longer gaps.
+ */
+function compareKind(current, baseline) {
+	const added = [];
+	const closed = [];
+	for (const area of [...new Set([...Object.keys(current), ...Object.keys(baseline)])].sort()) {
+		const allowed = new Map();
+		for (const name of baseline[area] ?? []) allowed.set(name, (allowed.get(name) ?? 0) + 1);
+		for (const gap of current[area] ?? []) {
+			const left = allowed.get(gap.name) ?? 0;
+			if (left > 0) allowed.set(gap.name, left - 1);
+			else added.push({ area, ...gap });
+		}
+		for (const [name, left] of allowed) for (let i = 0; i < left; i++) closed.push({ area, name });
+	}
+	return { added, closed };
+}
+
+/** The baseline with every closed gap removed. Never adds a name: a new gap stays a failure. */
+function shrinkKind(current, baseline) {
+	const next = {};
+	for (const area of Object.keys(baseline).sort()) {
+		const have = new Map();
+		for (const gap of current[area] ?? []) have.set(gap.name, (have.get(gap.name) ?? 0) + 1);
+		next[area] = [];
+		for (const name of [...baseline[area]].sort()) {
+			const left = have.get(name) ?? 0;
+			if (left === 0) continue;
+			have.set(name, left - 1);
+			next[area].push(name);
+		}
+	}
+	return next;
+}
+
+function baselineOf(scanned) {
+	const kind = (gapsByArea) => {
+		const out = {};
+		for (const area of Object.keys(gapsByArea).sort()) out[area] = namesOf(gapsByArea[area]);
+		return out;
+	};
+	return { exports: kind(scanned.exports), fields: kind(scanned.fields) };
+}
+
+function total(kind) {
+	return Object.values(kind).reduce((sum, list) => sum + list.length, 0);
+}
+
+function writeBaseline(file, baseline) {
+	fs.writeFileSync(file, `${JSON.stringify(baseline, undefined, "\t")}\n`);
+}
+
+function main(argv) {
+	const flags = argv.filter((a) => a.startsWith("--"));
+	const [srcDir = DEFAULT_SRC, baselineFile = DEFAULT_BASELINE] = argv.filter((a) => !a.startsWith("--"));
+	if (!fs.existsSync(srcDir)) {
+		console.error(`check-doc-coverage: ${srcDir} does not exist.`);
+		return 1;
+	}
+	const scanned = scan(srcDir);
+	if (flags.includes("--init")) {
+		const baseline = baselineOf(scanned);
+		writeBaseline(baselineFile, baseline);
+		console.log(
+			`check-doc-coverage: wrote ${baselineFile}: ${total(baseline.exports)} undocumented exports, ` +
+				`${total(baseline.fields)} undocumented fields in ${scanned.files} files`,
+		);
+		return 0;
+	}
+	if (!fs.existsSync(baselineFile)) {
+		console.error(`check-doc-coverage: ${baselineFile} does not exist (--init writes it).`);
+		return 1;
+	}
+	const baseline = JSON.parse(fs.readFileSync(baselineFile, "utf8"));
+	const exportsResult = compareKind(scanned.exports, baseline.exports ?? {});
+	const fieldsResult = compareKind(scanned.fields, baseline.fields ?? {});
+	const added = [...exportsResult.added, ...fieldsResult.added];
+	const closed = exportsResult.closed.length + fieldsResult.closed.length;
+	if (flags.includes("--json")) {
+		console.log(JSON.stringify({ added, closed, exports: total(baseline.exports), fields: total(baseline.fields) }));
+		return added.length > 0 ? 1 : 0;
+	}
+	for (const gap of exportsResult.added) {
+		console.error(`check-doc-coverage: ${srcDir}/${gap.file}:${gap.line}: export ${gap.name} has no doc comment`);
+	}
+	for (const gap of fieldsResult.added) {
+		console.error(`check-doc-coverage: ${srcDir}/${gap.file}:${gap.line}: field ${gap.name} has no doc comment`);
+	}
+	if (added.length > 0) {
+		console.error(
+			`check-doc-coverage: ${added.length} new undocumented declaration(s). Write a /** */ that says what each ` +
+				"is for (docs/DOC_COMMENTS.md, the comment standard).",
+		);
+		return 1;
+	}
+	if (flags.includes("--update")) {
+		const next = {
+			exports: shrinkKind(scanned.exports, baseline.exports ?? {}),
+			fields: shrinkKind(scanned.fields, baseline.fields ?? {}),
+		};
+		writeBaseline(baselineFile, next);
+		console.log(
+			`check-doc-coverage: ${baselineFile} updated: ${closed} gap(s) closed, ` +
+				`${total(next.exports)} exports and ${total(next.fields)} fields left`,
+		);
+		return 0;
+	}
+	const left = `${total(baseline.exports) - exportsResult.closed.length} exports and ${
+		total(baseline.fields) - fieldsResult.closed.length
+	} fields still undocumented`;
+	if (closed > 0) {
+		console.log(
+			`check-doc-coverage: ${closed} listed gap(s) are now documented: run \`npm run check:docs -- --update\` ` +
+				`and commit ${baselineFile} (${left})`,
+		);
+	} else {
+		console.log(`check-doc-coverage: ${scanned.files} files, no new undocumented declaration (${left})`);
+	}
+	return 0;
+}
+
+module.exports = { FIELD_AREAS, areaOf, baselineOf, compareKind, gapsInSource, isSourceFile, listSources, scan, shrinkKind };
+
+if (require.main === module) process.exit(main(process.argv.slice(2)));
