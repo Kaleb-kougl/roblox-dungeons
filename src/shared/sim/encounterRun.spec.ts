@@ -21,7 +21,11 @@ const dungeon = (seed: number) => generateDungeon({ ...KALEB_VALE_MVP_PARAMS, se
 describe("encounter kinds are registered archetypes", () => {
 	it("the registry is the web build's index table (shared/dungeon's encounter spec hard-codes it), then the port's", () => {
 		// The prefix up to the Demon Lord: docs/ENEMY_VARIANTS.md's band-3 room enemies number after it.
-		expect([...archetypeIds()]).toEqual([
+		// The port's later bands number after these: sim/actors.spec.ts holds the whole table
+		// (docs/CODEBASE_SCALE.md DX4).
+		const head: string[] = [];
+		for (let i = 0; i < 9; i++) head.push(archetypeIds()[i]);
+		expect(head).toEqual([
 			"boss.act1",
 			"bruiser",
 			"sniper",
@@ -31,26 +35,6 @@ describe("encounter kinds are registered archetypes", () => {
 			"turret.sprayer",
 			"dummy", // band PORT_BAND_TUTORIAL: after the whole web table
 			"boss.demonlord", // band PORT_BAND_BOSSES: after the tutorial's (docs/BOSS_DEMONLORD.md)
-			"imp", // band PORT_BAND_ENEMIES: after the port's bosses (docs/ENEMY_VARIANTS.md)
-			"slime",
-			"slime.small",
-			"summoner",
-			"bomber", // band PORT_BAND_ENEMIES_2 (docs/NEW_ENEMIES.md): indices 13-17
-			"charger",
-			"reaper",
-			"stormcaller",
-			"warbanner",
-			"golden", // band PORT_BAND_FORTUNE (docs/FORTUNE.md): index 18
-			// band PORT_BAND_ENEMIES_3 (docs/NEW_ENEMIES_2.md): indices 19-23
-			"bulwark",
-			"chainhook",
-			"pyre",
-			"pyrekeeper",
-			"snatcher",
-			// band PORT_BAND_ENEMIES_4 (docs/NEW_ENEMIES_3.md): indices 24-26
-			"jackal",
-			"mender",
-			"mortar",
 		]);
 		for (const k of TEST_TURRET_KINDS) expect([k, hasArchetype(k)]).toEqual([k, true]);
 		expect(hasArchetype(DEFAULT_ENCOUNTER.boss!)).toBe(true);

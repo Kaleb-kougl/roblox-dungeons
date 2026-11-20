@@ -5,8 +5,6 @@
 // limit), so these specs are what keeps fortune.ts and contract.ts in step.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { PACT_DIM_NAMES, PactDim } from "shared/sim";
-import { NEW_ENEMY_2_ARCHETYPES, NEW_ENEMY_2_BESTIARY } from "./newEnemies2";
-import { NEW_ENEMY_3_ARCHETYPES } from "./newEnemies3";
 import { colorDifference, contrastRatio } from "./color";
 import {
 	BIOMES,
@@ -112,11 +110,7 @@ describe("fortune: contract", () => {
 		expect([...FORTUNE_ROLES]).toEqual([ROOM_EDGE_HORDE_ROLE, ...PACT_ROLES, GOLDEN_COIN_ROLE]);
 		expect(runOf(COLOR_ROLES as unknown as ReadonlyArray<string>, FORTUNE_ROLES)).toEqual([...FORTUNE_ROLES]);
 		// the Goldling's own role and asset are the enemy slot's (docs/NEW_ENEMIES_2.md NX1's five come after it)
-		expect(
-			ENEMY_ARCHETYPES[
-				ENEMY_ARCHETYPES.size() - 1 - NEW_ENEMY_2_ARCHETYPES.size() - NEW_ENEMY_3_ARCHETYPES.size()
-			],
-		).toBe("golden");
+		expect(has(ENEMY_ARCHETYPES, "golden")).toBe(true);
 		expect(has(COLOR_ROLES as unknown as ReadonlyArray<string>, "enemy.golden")).toBe(true);
 	});
 
@@ -203,11 +197,7 @@ describe("fortune: contract", () => {
 		expect(runOf(ROOM_CLEAR_STRING_KEYS, [HORDE_ROOM_CLEAR_KEY])).toEqual([HORDE_ROOM_CLEAR_KEY]);
 		// the Goldling's sighting is an archetype's: after the Reaper, before docs/NEW_ENEMIES_2.md NX1's four (then the
 		// affixes)
-		expect(
-			BESTIARY_ARCHETYPES[
-				BESTIARY_ARCHETYPES.size() - 1 - NEW_ENEMY_2_BESTIARY.size() - NEW_ENEMY_3_ARCHETYPES.size()
-			],
-		).toBe("golden");
+		expect(has(BESTIARY_ARCHETYPES, "golden")).toBe(true);
 		const i = BESTIARY_STRING_KEYS.indexOf(GOLDEN_BESTIARY_KEY);
 		expect([BESTIARY_STRING_KEYS[i - 1], BESTIARY_STRING_KEYS[i + 1]]).toEqual([
 			"bestiary.reaper",

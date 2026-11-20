@@ -15,7 +15,6 @@ import {
 } from "shared/dungeon";
 import {
 	AiState,
-	BOSS_DEMONLORD_ID,
 	Button,
 	CORPSE_TICKS,
 	DEFAULT_KILL_POINTS,
@@ -58,31 +57,10 @@ describe("dummy: registry", () => {
 		expect(DUMMY.band).toBe(PORT_BAND_TUTORIAL);
 		expect([...webArchetypeIds()]).toEqual(WEB_TABLE);
 		// The Demon Lord (band PORT_BAND_BOSSES) numbers after the dummy.
-		expect([...archetypeIds()]).toEqual([
-			...WEB_TABLE,
-			DUMMY_KIND,
-			BOSS_DEMONLORD_ID,
-			"imp",
-			"slime",
-			"slime.small",
-			"summoner",
-			"bomber", // band PORT_BAND_ENEMIES_2 (docs/NEW_ENEMIES.md): indices 13-17
-			"charger",
-			"reaper",
-			"stormcaller",
-			"warbanner",
-			"golden", // band PORT_BAND_FORTUNE (docs/FORTUNE.md): index 18
-			// band PORT_BAND_ENEMIES_3 (docs/NEW_ENEMIES_2.md): indices 19-23
-			"bulwark",
-			"chainhook",
-			"pyre",
-			"pyrekeeper",
-			"snatcher",
-			// band PORT_BAND_ENEMIES_4 (docs/NEW_ENEMIES_3.md): indices 24-26
-			"jackal",
-			"mender",
-			"mortar",
-		]); // band-3 room enemies (docs/ENEMY_VARIANTS.md), then band 4
+		// Later bands number after it: sim/actors.spec.ts holds the whole table (docs/CODEBASE_SCALE.md DX4).
+		const head: string[] = [];
+		for (let i = 0; i < WEB_TABLE.size() + 1; i++) head.push(archetypeIds()[i]);
+		expect(head).toEqual([...WEB_TABLE, DUMMY_KIND]);
 		for (let i = 0; i < WEB_TABLE.size(); i++)
 			expect([WEB_TABLE[i], archetypeIndex(WEB_TABLE[i])]).toEqual([WEB_TABLE[i], i]);
 		expect(archetypeIndex(DUMMY_KIND)).toBe(WEB_TABLE.size());

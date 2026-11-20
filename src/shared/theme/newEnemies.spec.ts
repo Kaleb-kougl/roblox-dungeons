@@ -15,12 +15,11 @@ import {
 	slotFor,
 } from "./contract";
 import { THEME_PACKS } from "./packs";
-import { NEW_ENEMY_2_ARCHETYPES } from "./newEnemies2";
-import { NEW_ENEMY_3_ARCHETYPES } from "./newEnemies3";
 import { PLACEHOLDER_MANIFEST } from "./packs/placeholder";
 import { VALE_FLOOR_HEX, buildValeManifest } from "./packs/vale";
 import { VALE_ASSET_IDS } from "./packs/vale/assetIds";
 import { PLACEHOLDER_VISUALS } from "./placeholders";
+import { runOf } from "./testing";
 import { COLOR_ROLES } from "./types";
 import { deepClone, sortedKeys, type Obj } from "./util";
 import { validateManifest } from "./validate";
@@ -76,15 +75,9 @@ function packsToCheck(): Array<[string, Obj]> {
 
 describe("new enemies: contract", () => {
 	it("appends the five to ENEMY_ARCHETYPES (existing order kept), each a required asset, role and name", () => {
-		// docs/FORTUNE.md FD9's Goldling (`golden`) comes after them, then docs/NEW_ENEMIES_2.md NX1's five, then
-		// docs/NEW_ENEMIES_3.md NT1's three.
-		const after = 1 + NEW_ENEMY_2_ARCHETYPES.size() + NEW_ENEMY_3_ARCHETYPES.size();
-		const tail: string[] = [];
-		for (let i = ENEMY_ARCHETYPES.size() - after - NEW.size(); i < ENEMY_ARCHETYPES.size() - after; i++)
-			tail.push(ENEMY_ARCHETYPES[i]);
-		expect(tail).toEqual([...NEW]);
-		expect(ENEMY_ARCHETYPES[ENEMY_ARCHETYPES.size() - after]).toBe("golden");
-		expect(ENEMY_ARCHETYPES.size()).toBe(9 + NEW.size() + after);
+		// docs/FORTUNE.md FD9's Goldling (`golden`) comes right after them; later sets follow it.
+		const run = [...NEW, "golden"];
+		expect(runOf(ENEMY_ARCHETYPES, run)).toEqual(run);
 		for (const a of NEW) {
 			expect([a, REQUIRED_ASSET_IDS.includes(`enemy.${a}`), slotFor(`enemy.${a}`)?.slot]).toEqual([
 				a,
