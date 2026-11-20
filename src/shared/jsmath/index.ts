@@ -2,6 +2,8 @@
  * JavaScript number semantics in Luau, for bit-exact parity with the web build (fixtures/README.md, "Porting notes").
  * roblox-ts compiles `%` to Luau's floored `%` and bitwise operators to `bit32` (uint32 results), and Luau's
  * `math.round` / `table.sort` differ from V8's. The sim and the dungeon generator use these helpers instead.
+ *
+ * @module
  */
 
 const TWO_32 = 4294967296;

@@ -1,0 +1,20 @@
+{
+	"$schema": "https://typedoc.org/schema.json",
+	"name": "Kaleb-Vale (Roblox)",
+	"entryPoints": ["src"],
+	"entryPointStrategy": "expand",
+	"exclude": ["**/*.spec.ts", "**/*.spec.tsx", "**/fixtures-generated/**"],
+	"out": "build/api",
+	"readme": "README.md",
+	"disableSources": true,
+	"excludeInternal": false,
+	"blockTags": ["@module", "@param", "@returns", "@remarks", "@example", "@see", "@throws", "@deprecated"],
+	"inlineTags": ["@link"],
+	"modifierTags": ["@internal"],
+	"validation": {
+		"notExported": true,
+		"invalidLink": true,
+		"notDocumented": false
+	},
+	"treatValidationWarningsAsErrors": false
+}

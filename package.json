@@ -28,6 +28,10 @@
 		"facts": "node scripts/facts.js",
 		"facts:check": "node scripts/facts.js --check",
 		"tasks:open": "node scripts/open-tasks.js",
+		"predocs": "npm run gen:fixtures",
+		"docs": "typedoc",
+		"predocs:check": "npm run gen:fixtures",
+		"docs:check": "typedoc --emit none",
 		"test:checks": "node --test \"scripts/check-*.test.js\"",
 		"art:build": "node scripts/art/gen-loot-glint.js && node scripts/art/gen-pellet.js && node scripts/art/gen-treasure-art.js && node scripts/art/gen-boost-auras.js && node scripts/art/gen-hazard-art.js && node scripts/art/gen-fortune-art.js && node scripts/art/gen-boon-icons.js && node scripts/art/gen-item-icons.js && node scripts/art/gen-boost-icons.js && node scripts/art/gen-pip-icons.js && node scripts/art/gen-heart-halfmax.js && node scripts/art/gen-duo-icons.js && node scripts/art/gen-grave-art.js && node scripts/art/gen-secret-art.js && node scripts/art/gen-silver-art.js && node scripts/art/build-atlases.js",
 		"art:lock": "node scripts/art/gen-loot-glint.js && node scripts/art/gen-pellet.js && node scripts/art/gen-treasure-art.js && node scripts/art/gen-boost-auras.js && node scripts/art/gen-hazard-art.js && node scripts/art/gen-fortune-art.js && node scripts/art/gen-boon-icons.js && node scripts/art/gen-item-icons.js && node scripts/art/gen-boost-icons.js && node scripts/art/gen-pip-icons.js && node scripts/art/gen-heart-halfmax.js && node scripts/art/gen-duo-icons.js && node scripts/art/gen-grave-art.js && node scripts/art/gen-secret-art.js && node scripts/art/gen-silver-art.js && node scripts/art/build-atlases.js --lock",
@@ -62,6 +66,7 @@
 		"prettier": "^2.3.2",
 		"rbxts-transformer-flamework": "^1.3.2",
 		"roblox-ts": "^3.0.0",
+		"typedoc": "0.28.20",
 		"typescript": "5.5.3"
 	},
 	"dependencies": {

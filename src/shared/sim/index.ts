@@ -4,6 +4,8 @@
  * Everything reachable from `step()` lives here and must stay plain TypeScript: no Roblox services, Instances,
  * datatypes (Vector3, CFrame, ...), Flamework decorators, clocks (`os.clock`, `tick`, `time`) or `math.random`. The
  * headless test runner enforces this by loading src/shared/sim modules in a restricted environment (see CLAUDE.md).
+ *
+ * @module
  */
 export * from "./units";
 export * from "./jsnum";

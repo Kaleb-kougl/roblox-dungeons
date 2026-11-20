@@ -6,6 +6,8 @@
  *
  * Luau port: every intermediate is a uint32 in [0, 2^32) (bit32 semantics). JS's signed `| 0` views differ only in the
  * sign of the representation, never in the bits, so the outputs are identical (fixtures/rng.json).
+ *
+ * @module
  */
 
 import { imul, jsMax, jsMin, u32 } from "shared/jsmath";
