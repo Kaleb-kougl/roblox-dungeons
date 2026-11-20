@@ -70,6 +70,40 @@ export const PACTS_VIEW = {
 		dimRole: "uiTextDim" as ColorRole,
 		/** The card shows while the view player is within this many tiles of the shrine room's box (else hidden). */
 		nearRoomTiles: 6,
+		/**
+		 * Text sizes (pactCardTextSizes): both cards draw each kind of line (title, ordinary line, the curse's effect,
+		 * the accept line) at ONE size, the largest at which every such line on either card fits its row (its share of
+		 * the depth) and textWidthShare of the card's width (a margin for the stroke), within [minTextPx, maxTextPx]
+		 * canvas px (maxTextPx: Roblox's TextSize cap). Without it each label's TextScaled sized itself, so the shorter
+		 * Horde lines drew larger than Greed's.
+		 */
+		textWidthShare: 0.94,
+		minTextPx: 6,
+		maxTextPx: 100,
+		/**
+		 * The card is AlwaysOnTop (no wall, decor or body hides it); a living enemy whose body (feet to this height,
+		 * tiles, its radius either side) overlaps it on screen ducks it like an enemy bullet in its box
+		 * (pactCardEnemyOver), so it reads behind the enemies.
+		 */
+		enemyHeightTiles: 1.5,
+		/**
+		 * On touch (a phone's small screen, read at the game camera's fixed framing) the card is drawn larger so its
+		 * lines read (pactCardLayout): widthTiles x depthTiles (the lines are mostly width-bound, so the width is the
+		 * lever), offsetTiles screen-down so its top edge keeps the desktop card's gap under the altar. Where the two
+		 * altars stand closer than the width plus altarGapTiles, each card slides outward (away from the other altar) by
+		 * up to maxShiftTiles so their inner edges keep altarGapTiles apart, and only past that does the width shrink
+		 * (never below the desktop card's). With no accept line on touch the lines grow to fill fillShare of the depth
+		 * (by one factor on both cards: the fullest card, Greed's offered one, fills it), at most maxLineGrow times.
+		 */
+		touch: {
+			widthTiles: 9,
+			depthTiles: 3.6,
+			offsetTiles: 2.6,
+			altarGapTiles: 0.5,
+			maxShiftTiles: 1.5,
+			fillShare: 0.98,
+			maxLineGrow: 1.5,
+		},
 	},
 
 	// --- the Greed take ------------------------------------------------------------------------------------------

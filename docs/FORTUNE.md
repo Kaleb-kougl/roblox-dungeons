@@ -540,7 +540,17 @@ Presentation only (no sim, dungeon, lockstep, hash, replay, fixture or score cha
 
 **Pacts.** `shared/view/pacts` (frame events collected per tick on `RunView.pacts`, altar look, the floor card, hint
 text, `GreedDealGap`, Horde helpers, `pactDebugText`); `PactRenderController` (folder / render step `KV_Pacts`: per
-altar `pact.altar` (FO10 art at its own scale, the flame on its coal bed) or the plinth with a Neon flame, the floor card on the combo shout's construction, the take's disc
+altar `pact.altar` (FO10 art at its own scale, the flame on its coal bed) or the plinth with a Neon flame, the floor card on the combo shout's construction (2026-11-19: decor standing over a shown card fades, DecorController's
+player-behind fade fed `PactRenderController.shownCardBoxes()` through `selectDecorFades`' trailing `areas`, so the card
+reads in front of the decoration and behind every body; 2026-11-19: on touch the card is larger for a phone's screen,
+`PACTS_VIEW.card.touch` 9 x 3.6 tiles (desktop 5 x 2.4) at 2.6 tiles screen-down; where the altars stand closer than
+that, each card slides outward up to 1.5 tiles (`pactCardCentreAt`) so the inner edges keep 0.5 tiles apart, and only
+then narrows (never below the desktop's); its lines grown by one factor on both cards (up to 1.5x) to fill the depth the
+accept line leaves (`pactCardLayout`, re-applied when the device changes); both cards draw each kind of line (title,
+take / gain, the curse's effect, accept) at ONE text size, the largest every such line on either card fits
+(`pactCardTextSizes`, measured with TextService; it was TextScaled per label, so the shorter Horde lines drew larger
+than Greed's); 2026-11-19: the card is AlwaysOnTop, so no wall hides it, and ducks like an enemy bullet in its box
+while a living enemy's body overlaps it on screen (`pactCardEnemyOver`), so it reads behind the enemies), the take's disc
 pulse, `HORDE x2` / `WAVE 2` shouts, wave 2's spawn rings); `HordeChip` (status corner's boost row, touch strip);
 the shrine hint on an altar is the pact's title + accept line; the draft title from `draftKind` (`PACT OF GREED`);
 Greed's reveal waits 0.5 s after the draft opens (`GreedDealGap`, confirm held); room edges `roomEdge.horde`; kill pops

@@ -12,17 +12,20 @@ import { degToRad, type Vec3 } from "../iso";
 import type { SpriteLayout } from "../sprites";
 // by file, not the voidDecor barrel: voidDecor/plan.ts imports this folder's barrel
 import { VOID_PIECES } from "../voidDecor/config";
-import type { DecorEntry, DecorPlan } from "./decorPlan";
+import type { DecorEntry, DecorFadeBox, DecorPlan } from "./decorPlan";
 import { DECOR_FX } from "./fxConfig";
 import { DECOR_REACT } from "./reactConfig";
 import {
 	DECOR_CAMERA,
+	FLOOR_RECT_FAR,
+	floorRectScreen,
 	pointsFitScale,
 	rectFitScale,
 	rectOverlapsPolygon,
 	screenDepth,
 	screenX,
 	screenY,
+	type FloorRect,
 	type ScreenPolygon,
 } from "./screen";
 
@@ -35,11 +38,37 @@ export interface DecorBody {
 }
 
 /**
+ * A floor text tall decor must not hide (a pact card, docs/FORTUNE.md FO7): ./screen.ts FloorRect, tiles. Only decor
+ * fades for it (selectDecorFades' areas).
+ */
+export type DecorFloorArea = FloorRect;
+
+/** Reused by areaHiddenBy: floorRectScreen's [x0, y0, x1, y1, far]. */
+const AREA_SCREEN: number[] = [];
+
+/**
+ * Whether the fade box hides part of the floor area: the area's screen box (its corners' bounds) overlaps the piece's
+ * screen box and its farthest corner lies behind the piece's billboard plane (a piece standing on the area hides its
+ * far part).
+ */
+function areaHiddenBy(box: DecorFadeBox, a: DecorFloorArea): boolean {
+	const r = floorRectScreen(DECOR_CAMERA, a, AREA_SCREEN);
+	if (r[FLOOR_RECT_FAR] <= box.depth) return false;
+	return rectOverlapsPolygon(box.polygon, r[0], r[1], r[2], r[3]);
+}
+
+/**
  * Marks `out[i]` true for every fade box i of `plan` that hides part of a body: the body's screen box (its radius
  * either side, feet to `height`) overlaps the piece's screen box and the body stands behind the piece's billboard
- * plane. Returns how many fade. `out` is resized to plan.fadeBoxes.size() and fully rewritten (reuse it per frame).
+ * plane; or part of one of `areas` (floor texts: areaHiddenBy). Returns how many fade. `out` is resized to
+ * plan.fadeBoxes.size() and fully rewritten (reuse it per frame).
  */
-export function selectDecorFades(plan: DecorPlan, bodies: ReadonlyArray<DecorBody>, out: boolean[]): number {
+export function selectDecorFades(
+	plan: DecorPlan,
+	bodies: ReadonlyArray<DecorBody>,
+	out: boolean[],
+	areas?: ReadonlyArray<DecorFloorArea>,
+): number {
 	const cam = DECOR_CAMERA;
 	const boxes = plan.fadeBoxes;
 	let count = 0;
@@ -59,6 +88,9 @@ export function selectDecorFades(plan: DecorPlan, bodies: ReadonlyArray<DecorBod
 				sx + body.radius,
 				math.max(sy0, sy1),
 			);
+		}
+		if (areas !== undefined) {
+			for (let k = 0; k < areas.size() && !fade; k++) fade = areaHiddenBy(box, areas[k]);
 		}
 		out[i] = fade;
 		if (fade) count++;

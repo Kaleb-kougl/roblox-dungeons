@@ -10,6 +10,7 @@
 import {
 	CURSES,
 	HordePhase,
+	NO_KIND,
 	PACT_DIM_NAMES,
 	PACT_KIND_COUNT,
 	PACT_KIND_NAMES,
@@ -26,6 +27,8 @@ import {
 } from "shared/sim";
 import type { ColorRole, StringVars } from "shared/theme";
 import { breakableArtLayout } from "../breakables";
+// by file, not the decor barrel (it reaches back into much of shared/view)
+import { DECOR_CAMERA, floorRectScreen, screenX, screenY, type FloorRect } from "../decor/screen";
 import type { SpriteLayout } from "../sprites";
 import { HORDE_CHIP_VIEW, PACTS_VIEW } from "./config";
 
@@ -158,11 +161,26 @@ export function altarArtFit(art: SpriteLayout): AltarArtFit {
 // ---------------------------------------------------------------------------------------------
 // The floor card
 
-/** A card line: its text, colour role and share of the card's depth. */
+/** What a card line is: every line of one kind is drawn at one text size on both cards (pactCardTextSizes). */
+export const PactLineKind = {
+	TITLE: 0,
+	/** The take / gain lines and the dim line. */
+	LINE: 1,
+	/** The curse's short effect under Greed's take. */
+	DETAIL: 2,
+	ACCEPT: 3,
+} as const;
+export type PactLineKindId = (typeof PactLineKind)[keyof typeof PactLineKind];
+
+/** How many PactLineKind values. */
+export const PACT_LINE_KIND_COUNT = 4;
+
+/** A card line: its text, colour role, share of the card's depth and kind. */
 export interface PactCardLine {
 	readonly text: string;
 	readonly role: ColorRole;
 	readonly share: number;
+	readonly kind: PactLineKindId;
 }
 
 /** One altar's card for the view player. */
@@ -187,17 +205,20 @@ export function pactCard(
 	kind: number,
 	str: PactStr,
 	key: string | undefined,
+	layout: Readonly<PactCardLayout> = PACT_CARD_LAYOUT,
 ): PactCard | undefined {
 	const p = state.pacts;
 	if (p === undefined || p.room < 0 || kind < 0 || kind >= PACT_KIND_COUNT) return undefined;
 	const C = PACTS_VIEW.card;
 	const v = viewOf(state, view);
 	const avail = pactAvailability(state, config, v, kind);
-	const lines: PactCardLine[] = [{ text: str(PACT_STRINGS.title[kind]), role: pactRole(kind), share: C.titleShare }];
+	const lines: PactCardLine[] = [
+		{ text: str(PACT_STRINGS.title[kind]), role: pactRole(kind), share: C.titleShare, kind: PactLineKind.TITLE },
+	];
 	const dimKey = pactDimKey(avail);
 	if (dimKey !== undefined) {
-		lines.push({ text: str(dimKey), role: C.dimRole, share: C.lineShare });
-		return { kind, dim: true, lines };
+		lines.push({ text: str(dimKey), role: C.dimRole, share: C.lineShare, kind: PactLineKind.LINE });
+		return { kind, dim: true, lines: fillCardLines(lines, layout) };
 	}
 	if (kind === PactKind.GREED) {
 		const curse = CURSES[greedCurseFor(state, v)];
@@ -206,13 +227,174 @@ export function pactCard(
 			text: str(PACT_STRINGS.take[kind], { curse: str(`${id}.name`) }),
 			role: C.textRole,
 			share: C.lineShare,
+			kind: PactLineKind.LINE,
 		});
-		if (curse !== undefined) lines.push({ text: str(`${id}.desc`), role: C.detailRole, share: C.detailShare });
-	} else lines.push({ text: str(PACT_STRINGS.take[kind]), role: C.textRole, share: C.lineShare });
-	lines.push({ text: str(PACT_STRINGS.gain[kind]), role: C.textRole, share: C.lineShare });
+		if (curse !== undefined)
+			lines.push({
+				text: str(`${id}.desc`),
+				role: C.detailRole,
+				share: C.detailShare,
+				kind: PactLineKind.DETAIL,
+			});
+	} else
+		lines.push({
+			text: str(PACT_STRINGS.take[kind]),
+			role: C.textRole,
+			share: C.lineShare,
+			kind: PactLineKind.LINE,
+		});
+	lines.push({ text: str(PACT_STRINGS.gain[kind]), role: C.textRole, share: C.lineShare, kind: PactLineKind.LINE });
 	if (key !== undefined)
-		lines.push({ text: str(PACT_STRINGS.accept, { key }), role: pactRole(kind), share: C.acceptShare });
-	return { kind, dim: false, lines };
+		lines.push({
+			text: str(PACT_STRINGS.accept, { key }),
+			role: pactRole(kind),
+			share: C.acceptShare,
+			kind: PactLineKind.ACCEPT,
+		});
+	return { kind, dim: false, lines: fillCardLines(lines, layout) };
+}
+
+/** The fullest touch card's stack (Greed offered, no accept line): its lines fill layout.fillShare on touch. */
+const FULLEST_TOUCH_STACK = PACTS_VIEW.card.titleShare + 2 * PACTS_VIEW.card.lineShare + PACTS_VIEW.card.detailShare;
+
+/**
+ * The lines grown to fill layout.fillShare of the card's depth: by ONE factor for every card (the fullest touch card,
+ * FULLEST_TOUCH_STACK, fills it; at most layout.maxLineGrow; never shrunk), so a kind of line has the same row on both
+ * cards; a stack that would then overflow the card grows only to fill it. The touch card, which has no accept line,
+ * gives its lines that depth. maxLineGrow 1 (the desktop layout): unchanged.
+ */
+function fillCardLines(lines: PactCardLine[], layout: Readonly<PactCardLayout>): PactCardLine[] {
+	if (layout.maxLineGrow <= 1) return lines;
+	let sum = 0;
+	for (const l of lines) sum += l.share;
+	if (!(sum > 0)) return lines;
+	const grow = math.min(layout.maxLineGrow, layout.fillShare / FULLEST_TOUCH_STACK, 1 / sum);
+	if (grow <= 1) return lines;
+	const out: PactCardLine[] = [];
+	for (const l of lines) out.push({ text: l.text, role: l.role, share: l.share * grow, kind: l.kind });
+	return out;
+}
+
+/** A line's width in canvas px at a text size (one line, unwrapped): the client's TextService:GetTextSize. */
+export type PactTextMeasure = (text: string, sizePx: number) => number;
+
+/**
+ * The largest whole text size (card.minTextPx .. min(card.maxTextPx, heightPx)) at which `text` fits `widthPx` on one
+ * line by `measure` (min when nothing fits). Text sizes grow its width monotonically, so this is a binary search.
+ */
+export function pactLineFitSize(measure: PactTextMeasure, text: string, widthPx: number, heightPx: number): number {
+	const C = PACTS_VIEW.card;
+	let lo: number = C.minTextPx;
+	let hi = math.max(lo, math.floor(math.min(C.maxTextPx, heightPx)));
+	if (measure(text, hi) <= widthPx) return hi;
+	while (hi - lo > 1) {
+		const mid = math.floor((lo + hi) / 2);
+		if (measure(text, mid) <= widthPx) lo = mid;
+		else hi = mid;
+	}
+	return lo;
+}
+
+/**
+ * The text size of each PactLineKind (index), canvas px, for cards drawn on a canvasW x canvasH canvas: the smallest
+ * pactLineFitSize of every line of that kind on every card (its row: share x canvasH; card.textWidthShare of the
+ * width), so both cards draw a kind at one size. 0 for a kind no card has. `out` is rewritten and returned.
+ */
+export function pactCardTextSizes(
+	cards: ReadonlyArray<PactCard>,
+	canvasW: number,
+	canvasH: number,
+	measure: PactTextMeasure,
+	out: number[] = [],
+): number[] {
+	for (let k = 0; k < PACT_LINE_KIND_COUNT; k++) out[k] = 0;
+	const widthPx = canvasW * PACTS_VIEW.card.textWidthShare;
+	for (const card of cards) {
+		for (const l of card.lines) {
+			const size = pactLineFitSize(measure, l.text, widthPx, l.share * canvasH);
+			out[l.kind] = out[l.kind] === 0 ? size : math.min(out[l.kind], size);
+		}
+	}
+	return out;
+}
+
+/** A floor card's size and place (tiles): the desktop card (PACTS_VIEW.card) or the larger touch card. */
+export interface PactCardLayout {
+	readonly widthTiles: number;
+	readonly depthTiles: number;
+	/** Its centre this far screen-down of the altar's centre. */
+	readonly offsetTiles: number;
+	/** The lines grow to fill this share of the depth ... */
+	readonly fillShare: number;
+	/** ... at most this many times (1: never). */
+	readonly maxLineGrow: number;
+	/** Each card slides this far outward along screen-right, away from the other altar (pactCardCentreAt). */
+	readonly shiftTiles: number;
+}
+
+/** The desktop card: PACTS_VIEW.card's box, lines as written. */
+export const PACT_CARD_LAYOUT: PactCardLayout = table.freeze({
+	widthTiles: PACTS_VIEW.card.widthTiles,
+	depthTiles: PACTS_VIEW.card.depthTiles,
+	offsetTiles: PACTS_VIEW.card.offsetTiles,
+	fillShare: PACTS_VIEW.card.touch.fillShare,
+	maxLineGrow: 1,
+	shiftTiles: 0,
+});
+
+/** Screen-right on the floor (shared/view/hud floorAxes). */
+export interface PactRightAxis {
+	readonly rightX: number;
+	readonly rightZ: number;
+}
+
+/**
+ * The floor card's layout: PACT_CARD_LAYOUT, or on touch card.touch's larger card. Where it is wider than the two
+ * altars' screen-horizontal distance minus touch.altarGapTiles (the room centred cards have), each card slides outward
+ * by up to touch.maxShiftTiles so the inner edges keep that gap; past that the width shrinks to the room plus both
+ * shifts (never below the desktop card's width). Pure.
+ */
+export function pactCardLayout(
+	touch: boolean,
+	altarX: ReadonlyArray<number>,
+	altarZ: ReadonlyArray<number>,
+	axes: PactRightAxis,
+): PactCardLayout {
+	if (!touch) return PACT_CARD_LAYOUT;
+	const T = PACTS_VIEW.card.touch;
+	let room = math.huge;
+	for (let i = 0; i < altarX.size(); i++) {
+		for (let j = i + 1; j < altarX.size(); j++) {
+			const apart = math.abs((altarX[j] - altarX[i]) * axes.rightX + (altarZ[j] - altarZ[i]) * axes.rightZ);
+			room = math.min(room, apart / TILE_SIZE - T.altarGapTiles);
+		}
+	}
+	let width: number = T.widthTiles;
+	let shift = 0;
+	if (room < width) {
+		shift = math.min(T.maxShiftTiles, (width - room) / 2);
+		if (shift === T.maxShiftTiles) width = room + 2 * shift;
+	}
+	return {
+		widthTiles: math.max(PACTS_VIEW.card.widthTiles, width),
+		depthTiles: T.depthTiles,
+		offsetTiles: T.offsetTiles,
+		fillShare: T.fillShare,
+		maxLineGrow: T.maxLineGrow,
+		shiftTiles: shift,
+	};
+}
+
+/** Two layouts are the same card. */
+export function pactCardLayoutsEqual(a: Readonly<PactCardLayout>, b: Readonly<PactCardLayout>): boolean {
+	return (
+		a.widthTiles === b.widthTiles &&
+		a.depthTiles === b.depthTiles &&
+		a.offsetTiles === b.offsetTiles &&
+		a.fillShare === b.fillShare &&
+		a.maxLineGrow === b.maxLineGrow &&
+		a.shiftTiles === b.shiftTiles
+	);
 }
 
 /** Two cards show the same thing (the client rebuilds a card's labels only when this is false). */
@@ -222,9 +404,33 @@ export function pactCardsEqual(a: PactCard | undefined, b: PactCard | undefined)
 	for (let i = 0; i < a.lines.size(); i++) {
 		const x = a.lines[i];
 		const y = b.lines[i];
-		if (x.text !== y.text || x.role !== y.role || x.share !== y.share) return false;
+		if (x.text !== y.text || x.role !== y.role || x.share !== y.share || x.kind !== y.kind) return false;
 	}
 	return true;
+}
+
+/** Reused by pactCardEnemyOver: floorRectScreen's [x0, y0, x1, y1, far]. */
+const CARD_SCREEN: number[] = [];
+
+/**
+ * Whether a living enemy's body overlaps the card on screen (its radius either side, feet to card.enemyHeightTiles):
+ * the card draws over every wall and body (AlwaysOnTop, so walls never hide it), so the client ducks it like an enemy
+ * bullet in its box, and the card reads behind the enemies. Players never duck it (you stand at the altar to read it).
+ */
+export function pactCardEnemyOver(box: Readonly<FloorRect>, state: Readonly<SimState>): boolean {
+	const cam = DECOR_CAMERA;
+	const r = floorRectScreen(cam, box, CARD_SCREEN);
+	const height = PACTS_VIEW.card.enemyHeightTiles * TILE_SIZE;
+	for (const a of state.combat.actors) {
+		if (a.kind === NO_KIND || a.alive === 0) continue;
+		const sx = screenX(cam, a.x, 0, a.z);
+		if (sx + a.radius < r[0] || sx - a.radius > r[2]) continue;
+		const sy0 = screenY(cam, a.x, 0, a.z);
+		const sy1 = screenY(cam, a.x, height, a.z);
+		if (math.max(sy0, sy1) < r[1] || math.min(sy0, sy1) - a.radius > r[3]) continue;
+		return true;
+	}
+	return false;
 }
 
 /** The card's opacity: the shout duck's ceiling (<= COMBO_SHOUT.maxOpacity), x card.dimOpacity on a dimmed card. */
@@ -238,21 +444,58 @@ export interface PactAxes {
 	readonly upZ: number;
 }
 
-/** The card's centre for the altar at (x, z): card.offsetTiles SCREEN-DOWN of it (minus the floor's up-screen axis). */
-export function pactCardCentre(x: number, z: number, axes: PactAxes): { x: number; z: number } {
-	const d = PACTS_VIEW.card.offsetTiles * TILE_SIZE;
+/**
+ * The card's centre for the altar at (x, z): the layout's offsetTiles (card.offsetTiles by default) SCREEN-DOWN of it
+ * (minus the floor's up-screen axis).
+ */
+export function pactCardCentre(
+	x: number,
+	z: number,
+	axes: PactAxes,
+	offsetTiles: number = PACTS_VIEW.card.offsetTiles,
+): { x: number; z: number } {
+	const d = offsetTiles * TILE_SIZE;
 	return { x: x - axes.upX * d, z: z - axes.upZ * d };
 }
 
 /**
- * The card's SurfaceGui CanvasSize, px: widthTiles x canvasPxPerTile wide; tall enough that, laid on a face of
- * widthTiles x depthTiles and foreshortened by the camera's pitch, a glyph reads unsquashed (the combo shout's rule,
+ * Altar k's card centre: pactCardCentre with the layout's offset, then layout.shiftTiles along screen-right away from
+ * the other altars (the side of the altars' mean it stands on; no shift for an altar on the mean). Pure.
+ */
+export function pactCardCentreAt(
+	k: number,
+	altarX: ReadonlyArray<number>,
+	altarZ: ReadonlyArray<number>,
+	axes: PactAxes & PactRightAxis,
+	layout: Readonly<PactCardLayout>,
+): { x: number; z: number } {
+	const c = pactCardCentre(altarX[k], altarZ[k], axes, layout.offsetTiles);
+	if (layout.shiftTiles === 0 || altarX.size() < 2) return c;
+	let mx = 0;
+	let mz = 0;
+	for (let i = 0; i < altarX.size(); i++) {
+		mx += altarX[i];
+		mz += altarZ[i];
+	}
+	mx /= altarX.size();
+	mz /= altarX.size();
+	const side = (altarX[k] - mx) * axes.rightX + (altarZ[k] - mz) * axes.rightZ;
+	if (side === 0) return c;
+	const d = (side > 0 ? layout.shiftTiles : -layout.shiftTiles) * TILE_SIZE;
+	return { x: c.x + axes.rightX * d, z: c.z + axes.rightZ * d };
+}
+
+/**
+ * The card's SurfaceGui CanvasSize, px: the layout's widthTiles x canvasPxPerTile wide; tall enough that, laid on a face
+ * of widthTiles x depthTiles and foreshortened by the camera's pitch, a glyph reads unsquashed (the combo shout's rule,
  * shared/view/hud shoutCanvasSize).
  */
-export function pactCardCanvasSize(pitchDeg: number): readonly [number, number] {
-	const C = PACTS_VIEW.card;
-	const w = C.widthTiles * C.canvasPxPerTile;
-	const h = (w * C.depthTiles * math.sin(math.rad(pitchDeg))) / C.widthTiles;
+export function pactCardCanvasSize(
+	pitchDeg: number,
+	layout: Readonly<PactCardLayout> = PACT_CARD_LAYOUT,
+): readonly [number, number] {
+	const w = math.round(layout.widthTiles * PACTS_VIEW.card.canvasPxPerTile);
+	const h = (w * layout.depthTiles * math.sin(math.rad(pitchDeg))) / layout.widthTiles;
 	return [w, math.max(1, math.round(h))];
 }
 

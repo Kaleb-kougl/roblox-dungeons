@@ -38,6 +38,61 @@ export function screenDepth(cam: IsoBasis, x: number, y: number, z: number): num
 	return f[0] * x + f[1] * y + f[2] * z;
 }
 
+/**
+ * A rectangle on the floor (y 0) centred at (x, z), reading along the unit vector (rightX, rightZ), halfWidth along it
+ * and halfDepth across it (across = (-rightZ, rightX)), tiles: shared/view/hud ShoutBox's shape (a pact card's box).
+ */
+export interface FloorRect {
+	readonly x: number;
+	readonly z: number;
+	readonly rightX: number;
+	readonly rightZ: number;
+	readonly halfWidth: number;
+	readonly halfDepth: number;
+}
+
+/** floorRectScreen's out index of the farthest corner's view depth. */
+export const FLOOR_RECT_FAR = 4;
+
+/** A floor rectangle's corners as (along, across) signs. */
+const FLOOR_RECT_CORNERS: ReadonlyArray<readonly [number, number]> = [
+	[-1, -1],
+	[1, -1],
+	[-1, 1],
+	[1, 1],
+];
+
+/**
+ * The floor rectangle's screen bounds (its corners' min / max screen x and y) and its farthest corner's view depth,
+ * written into `out` as [x0, y0, x1, y1, far] and returned. Allocation-free.
+ */
+export function floorRectScreen(cam: IsoBasis, a: FloorRect, out: number[]): number[] {
+	const ux = -a.rightZ;
+	const uz = a.rightX;
+	let far = -math.huge;
+	let x0 = math.huge;
+	let x1 = -math.huge;
+	let y0 = math.huge;
+	let y1 = -math.huge;
+	for (const [along, across] of FLOOR_RECT_CORNERS) {
+		const x = a.x + along * a.halfWidth * a.rightX + across * a.halfDepth * ux;
+		const z = a.z + along * a.halfWidth * a.rightZ + across * a.halfDepth * uz;
+		far = math.max(far, screenDepth(cam, x, 0, z));
+		const sx = screenX(cam, x, 0, z);
+		const sy = screenY(cam, x, 0, z);
+		x0 = math.min(x0, sx);
+		x1 = math.max(x1, sx);
+		y0 = math.min(y0, sy);
+		y1 = math.max(y1, sy);
+	}
+	out[0] = x0;
+	out[1] = y0;
+	out[2] = x1;
+	out[3] = y1;
+	out[FLOOR_RECT_FAR] = far;
+	return out;
+}
+
 /** The ground point (x, z) at height `y` that projects to screen (sx, sy) (inverse of screenX / screenY). */
 export function groundAt(cam: IsoBasis, sx: number, sy: number, y: number): readonly [number, number] {
 	// [rx rz; ux uz] [x z]^T = [sx - ry*y; sy - uy*y]

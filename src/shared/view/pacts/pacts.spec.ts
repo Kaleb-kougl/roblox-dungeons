@@ -73,14 +73,22 @@ import {
 	hordeWaveFill,
 	inHordeRoom,
 	newAltarLook,
+	PACT_CARD_LAYOUT,
 	pactAltarLook,
 	pactCard,
 	pactCardCanvasSize,
 	pactCardCentre,
+	pactCardCentreAt,
+	pactCardEnemyOver,
+	pactCardLayout,
+	pactCardLayoutsEqual,
 	pactCardOpacity,
 	pactCardsEqual,
 	pactCardsNear,
+	pactCardTextSizes,
 	pactDebugText,
+	pactLineFitSize,
+	PactLineKind,
 	pactDimKey,
 	pactHintText,
 	pactRole,
@@ -223,6 +231,129 @@ describe("pacts view: the altars and their cards (FO7)", () => {
 		teleport(s, 0, a.altarX[0] + 100, a.altarZ[0] + 100);
 		expect(pactCardsNear(s, 0)).toBe(false);
 		expect(setup).toBeDefined();
+	});
+
+	it("touch: a larger card that never meets its neighbour, its lines filling the accept line's depth", () => {
+		const axes = floorAxes();
+		const C = PACTS_VIEW.card;
+		const T = C.touch;
+		expect(pactCardLayout(false, [0], [0], axes)).toBe(PACT_CARD_LAYOUT);
+		expect(PACT_CARD_LAYOUT.shiftTiles).toBe(0);
+		// The altars `apart` tiles apart along screen-right (the iso diagonal).
+		const xs = (apart: number) => [-axes.rightX * (apart / 2), axes.rightX * (apart / 2)];
+		const zs = (apart: number) => [-axes.rightZ * (apart / 2), axes.rightZ * (apart / 2)];
+		const pair = (apart: number) => pactCardLayout(true, xs(apart), zs(apart), axes);
+		// The inner edges of the two cards keep altarGapTiles apart (cards centred on their altars + the shift).
+		const innerGap = (apart: number) => {
+			const L = pair(apart);
+			return apart - 2 * (L.widthTiles / 2 - L.shiftTiles);
+		};
+		// Far apart: the full touch card, centred under its altar.
+		const far = pair(12);
+		expect([far.widthTiles, far.depthTiles, far.shiftTiles]).toEqual([T.widthTiles, T.depthTiles, 0]);
+		expect(far.widthTiles > C.widthTiles && far.depthTiles > C.depthTiles).toBe(true);
+		// The top edge keeps the desktop card's gap under the altar.
+		expect(far.offsetTiles - far.depthTiles / 2).toBeCloseTo(C.offsetTiles - C.depthTiles / 2);
+		// The usual pair (3 grid steps either side of the crystal: 6 x sqrt(2) tiles): full width, each card slid out.
+		const usual = pair(6 * math.sqrt(2));
+		expect(usual.widthTiles).toBe(T.widthTiles);
+		expect(usual.shiftTiles > 0 && usual.shiftTiles < T.maxShiftTiles).toBe(true);
+		expect(innerGap(6 * math.sqrt(2))).toBeCloseTo(T.altarGapTiles);
+		// Closer: the shift caps, then the width gives (never below the desktop card), the gap still kept.
+		const close = pair(4 * math.sqrt(2));
+		expect(close.shiftTiles).toBe(T.maxShiftTiles);
+		expect(close.widthTiles).toBeCloseTo(4 * math.sqrt(2) - T.altarGapTiles + 2 * T.maxShiftTiles);
+		expect(close.widthTiles > C.widthTiles && close.widthTiles < T.widthTiles).toBe(true);
+		expect(innerGap(4 * math.sqrt(2))).toBeCloseTo(T.altarGapTiles);
+		expect(pair(1).widthTiles).toBe(C.widthTiles);
+		expect(pactCardLayoutsEqual(pair(7), pair(7))).toBe(true);
+		expect(pactCardLayoutsEqual(pair(7), far)).toBe(false);
+		// The shift is outward: away from the other altar along screen-right.
+		const ax = xs(6 * math.sqrt(2));
+		const az = zs(6 * math.sqrt(2));
+		for (const k of [0, 1]) {
+			const c = pactCardCentreAt(k, ax, az, axes, usual);
+			const plain = pactCardCentre(ax[k], az[k], axes, usual.offsetTiles);
+			const along = (c.x - plain.x) * axes.rightX + (c.z - plain.z) * axes.rightZ;
+			expect(along).toBeCloseTo(k === 0 ? -usual.shiftTiles : usual.shiftTiles);
+		}
+		expect(pactCardCentreAt(0, ax, az, axes, PACT_CARD_LAYOUT)).toEqual(pactCardCentre(ax[0], az[0], axes));
+		const [w, h] = pactCardCanvasSize(55, far);
+		expect(w).toBe(T.widthTiles * C.canvasPxPerTile);
+		expect(h).toBe(math.round((w * T.depthTiles * math.sin(math.rad(55))) / T.widthTiles));
+		// Lines: grown by ONE factor on both cards (no accept line on touch), capped, in the same order.
+		const { setup, s } = altarRun();
+		const desk = pactCard(s, setup.config, 0, PactKind.GREED, str, undefined)!;
+		const phone = pactCard(s, setup.config, 0, PactKind.GREED, str, undefined, usual)!;
+		const hordePhone = pactCard(s, setup.config, 0, PactKind.HORDE, str, undefined, usual)!;
+		expect(phone.lines.map((l) => l.text)).toEqual(desk.lines.map((l) => l.text));
+		let total = 0;
+		const grow = phone.lines[0].share / desk.lines[0].share;
+		expect(grow > 1 && grow <= T.maxLineGrow + 1e-9).toBe(true);
+		for (let i = 0; i < phone.lines.size(); i++) {
+			expect(phone.lines[i].share / desk.lines[i].share).toBeCloseTo(grow);
+			total += phone.lines[i].share;
+		}
+		expect(total).toBeCloseTo(T.fillShare);
+		// the Horde's rows are the same height as Greed's, kind for kind
+		for (const l of hordePhone.lines) {
+			const twin = phone.lines.find((g) => g.kind === l.kind)!;
+			expect(l.share).toBeCloseTo(twin.share);
+		}
+	});
+
+	it("an enemy standing over the card on screen ducks it (it draws over walls), a player or a far enemy does not", () => {
+		const axes = floorAxes();
+		const box = { x: 0, z: 0, rightX: axes.rightX, rightZ: axes.rightZ, halfWidth: 2.5, halfDepth: 1.2 };
+		const at = (x: number, z: number, alive = 1) =>
+			({ combat: { actors: [{ kind: 0, alive, x, z, radius: 0.4 }] } } as unknown as SimState);
+		// on the card
+		expect(pactCardEnemyOver(box, at(0, 0))).toBe(true);
+		// just screen-down of it (toward the camera, +X +Z): its body rises over the card's near edge
+		expect(pactCardEnemyOver(box, at(1.2, 1.2))).toBe(true);
+		// far screen-down, far screen-up, far to the side: clear
+		expect(pactCardEnemyOver(box, at(6, 6))).toBe(false);
+		expect(pactCardEnemyOver(box, at(-6, -6))).toBe(false);
+		expect(pactCardEnemyOver(box, at(axes.rightX * 6, axes.rightZ * 6))).toBe(false);
+		// dead, or no actors
+		expect(pactCardEnemyOver(box, at(0, 0, 0))).toBe(false);
+		expect(pactCardEnemyOver(box, { combat: { actors: [] } } as unknown as SimState)).toBe(false);
+	});
+
+	it("both cards draw each kind of line at one size: the largest every such line fits", () => {
+		// A fake font: every glyph 0.5 em wide.
+		const measure = (text: string, size: number) => text.size() * size * 0.5;
+		const C = PACTS_VIEW.card;
+		// height-bound, width-bound, and nothing fits
+		expect(pactLineFitSize(measure, "ab", 1000, 30)).toBe(30);
+		expect(pactLineFitSize(measure, "abcdefghij", 100, 60)).toBe(20);
+		expect(pactLineFitSize(measure, "abcdefghij", 1, 60)).toBe(C.minTextPx);
+		expect(pactLineFitSize(measure, "a", 1e6, 1e6)).toBe(C.maxTextPx);
+		const { setup, s } = altarRun();
+		const greed = pactCard(s, setup.config, 0, PactKind.GREED, str, "1")!;
+		const horde = pactCard(s, setup.config, 0, PactKind.HORDE, str, "1")!;
+		const [w, h] = pactCardCanvasSize(55);
+		const sizes = pactCardTextSizes([greed, horde], w, h, measure);
+		const widthPx = w * C.textWidthShare;
+		for (const card of [greed, horde]) {
+			for (const l of card.lines) {
+				const fit = pactLineFitSize(measure, l.text, widthPx, l.share * h);
+				// every line fits at its kind's size, and the kind's size is some line's own fit
+				expect(sizes[l.kind] <= fit).toBe(true);
+			}
+		}
+		for (const kind of [PactLineKind.TITLE, PactLineKind.LINE, PactLineKind.DETAIL, PactLineKind.ACCEPT]) {
+			let tightest = math.huge;
+			for (const card of [greed, horde]) {
+				for (const l of card.lines) {
+					if (l.kind !== kind) continue;
+					tightest = math.min(tightest, pactLineFitSize(measure, l.text, widthPx, l.share * h));
+				}
+			}
+			expect(sizes[kind]).toBe(tightest);
+		}
+		// a kind no card has: 0
+		expect(pactCardTextSizes([horde], w, h, measure)[PactLineKind.DETAIL]).toBe(0);
 	});
 
 	it("the flame flickers only with motion, larger when armed, none when off", () => {

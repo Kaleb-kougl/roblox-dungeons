@@ -1,6 +1,6 @@
 import { Controller, OnStart } from "@flamework/core";
 import { Janitor } from "@rbxts/janitor";
-import { RunService, Workspace } from "@rbxts/services";
+import { RunService, TextService, Workspace } from "@rbxts/services";
 import { clientStore, selectBindings, selectInputDevice } from "client/store";
 import { DEV_MONO_FONT, createKvBillboardGui, createKvSurfaceGui, currentHudFont, onLocaleChanged } from "client/ui";
 import { CAMERA_PITCH_DEG, STUDS_PER_TILE } from "shared/config";
@@ -40,16 +40,22 @@ import {
 	newAltarLook,
 	pactAltarLook,
 	pactCard,
+	PACT_CARD_LAYOUT,
 	pactCardCanvasSize,
-	pactCardCentre,
+	pactCardCentreAt,
+	pactCardLayout,
+	pactCardLayoutsEqual,
 	pactCardOpacity,
 	pactCardsEqual,
+	pactCardEnemyOver,
 	pactCardsNear,
+	pactCardTextSizes,
 	pactDebugText,
 	pactRole,
 	type AltarFlameId,
 	type AltarLook,
 	type PactCard,
+	type PactCardLayout,
 	type PactFrameSource,
 } from "shared/view/pacts";
 import { ComboController } from "../fx/ComboController";
@@ -74,6 +80,9 @@ const DISC_STUDS = 0.01;
 const CARD_LAYER = COMBO_SHOUT_DRAW.layerStepsBelowEffects + 1;
 const PULSE_LAYER = COMBO_SHOUT_DRAW.layerStepsBelowEffects + 2;
 const RING_LAYER = COMBO_SHOUT_DRAW.layerStepsBelowEffects + 3;
+/** GetTextSize's frame, px: far wider than any card's canvas, so a line is measured on one line (never wrapped). */
+const MEASURE_FRAME_PX = 10000;
+const UNWRAPPED = new Vector2(MEASURE_FRAME_PX, MEASURE_FRAME_PX);
 /** A card's opacity is rewritten only when it moves this much. */
 const EPS = 0.005;
 /** The altar art's resting animation (the pact slot's base animation, contract PACT): frame 0 is drawn. */
@@ -104,6 +113,8 @@ interface AltarView {
 	readonly box: ShoutBox;
 	readonly look: AltarLook;
 	card: PactCard | undefined;
+	/** This frame's card (drawCards: both cards first, then one text size per line kind across them). */
+	next: PactCard | undefined;
 	cardShown: boolean;
 	cardOpacity: number;
 	flameShown: AltarFlameId;
@@ -133,12 +144,18 @@ interface Disc {
  *             reduced motion).
  *   cards     one floor card per altar (pactCard: title / take (Greed's exact curse and its short effect) / gain /
  *             `pact.accept` with the binding-aware shrine key (shared/play shrineHint; none on touch), or the title and
- *             the dim line), PACTS_VIEW.card.offsetTiles screen-down of the altar, on the combo shout's construction
+ *             the dim line), PACTS_VIEW.card.offsetTiles screen-down of the altar (on touch the larger card.touch card,
+ *             slid outward when the altars stand close, its lines filling the depth the accept line leaves:
+ *             pactCardLayout / pactCardCentreAt); each kind of line at ONE text size on both cards (pactCardTextSizes,
+ *             measured with TextService), so the two pacts read the same size; on the combo shout's construction
  *             (docs/COMBO.md CD9): ONE SurfaceGui on the Top face of a thin invisible floor Part, yawed by the camera,
- *             CARD_LAYER floor layers under the sprite effects (every bullet, telegraph, marking, effect and body draws
- *             over it), at most COMBO_SHOUT.maxOpacity (55 %; a dimmed card x card.dimOpacity) and ducking with the
- *             shout's ShoutDuck while an enemy bullet is in its box. Shown while the view player is near the altars
+ *             CARD_LAYER floor layers under the sprite effects, but AlwaysOnTop (2026-11-19: no wall, decor piece or
+ *             body hides it), at most COMBO_SHOUT.maxOpacity (55 %; a dimmed card x card.dimOpacity) and ducking with the
+ *             shout's ShoutDuck while an enemy bullet is in its box or a living enemy stands over it on screen
+ *             (pactCardEnemyOver: it reads behind the enemies). Shown while the view player is near the altars
  *             (pactCardsNear); labels rebuilt only when the card's text changes (and on a locale or binding change).
+ *             A shown card's box (shownCardBoxes) fades the decoration standing over it (DecorController's fade, like a
+ *             player behind a piece): the card reads in front of the decor and behind every body.
  *   take      a pact taken (RunView.pacts.taken): a dark disc pulse at its altar (greedPulseAt; reduced motion: a fade in
  *             place; Particles Off: none). The take's sound is the cue mapper's; Greed's curse toast is the
  *             progression toasts' (the curse brand does not fly to the owned-items row: the HUD's item row has no
@@ -177,6 +194,22 @@ export class PactRenderController implements OnStart {
 	private altarFolder: Folder | undefined;
 	/** The readiness flips this view has not handled yet (docs/STAGE_ASSETS.md SA18). */
 	private cursor: ReadinessCursor | undefined;
+	/** The floor boxes of the cards shown this frame (their altars' `box`), rewritten every frame. */
+	private readonly shownCards = new Array<ShoutBox>();
+	/** The cards' size and place (pactCardLayout: the larger card on touch), and the device it was chosen for. */
+	private layout: PactCardLayout = PACT_CARD_LAYOUT;
+	private layoutTouch = false;
+	/** The cards' canvas, px (both cards share the layout, so one canvas). */
+	private canvasW = 1;
+	private canvasH = 1;
+	/** Reused by drawCards: this frame's cards, and the text size per PactLineKind across them. */
+	private readonly frameCards = new Array<PactCard>();
+	private readonly textSizes = new Array<number>();
+	/** The font the cards' lines are measured in (currentHudFont, read when they are relabelled). */
+	private textFont: Enum.Font = Enum.Font.SourceSans;
+	/** A line's unwrapped width at a text size, canvas px (pactCardTextSizes' measure). */
+	private readonly measure = (text: string, sizePx: number) =>
+		TextService.GetTextSize(text, sizePx, this.textFont, UNWRAPPED).X;
 
 	constructor(
 		private readonly sim: SimController,
@@ -234,16 +267,28 @@ export class PactRenderController implements OnStart {
 		const timeSec = (state.tick + this.sim.getAlpha()) / SIM_HZ;
 		const near = pactCardsNear(state, view) && !this.sim.isInputCovered() && !this.sim.isRunOver();
 		const keyName = this.keyName();
+		const touch = selectInputDevice(clientStore.getState()) === "touch";
+		if (touch !== this.layoutTouch) this.setLayout(state, touch);
 		for (const a of this.altars) {
 			pactAltarLook(state, ctx.config, view, a.kind, a.look);
 			this.drawAltar(a, timeSec, motion);
-			this.drawCard(a, state, ctx.config, view, near, keyName, dt);
-			this.drawDebug(a, state, ctx.config, view);
 		}
+		this.drawCards(state, ctx.config, view, near, keyName, dt);
+		for (const a of this.altars) this.drawDebug(a, state, ctx.config, view);
+		this.shownCards.clear();
+		for (const a of this.altars) if (a.cardShown) this.shownCards.push(a.box);
 		this.relabel = false;
 		this.takes(ctx.run.pacts, settings, dt, motion);
 		this.rings(state, this.sim.getAlpha(), motion);
 		debug.profileend();
+	}
+
+	/**
+	 * The floor boxes of the cards shown (tiles; the array is reused): DecorController fades the decoration over them,
+	 * so a card reads in front of the decor and behind every body (it lies on the floor under them).
+	 */
+	shownCardBoxes(): ReadonlyArray<Readonly<ShoutBox>> {
+		return this.shownCards;
 	}
 
 	/** The shrine key's name on the player's device (shared/play shrineHint), undefined on touch (no accept line). */
@@ -268,8 +313,10 @@ export class PactRenderController implements OnStart {
 		folder.Parent = this.folder;
 		this.altarFolder = folder;
 		const theme = this.altarLook(pack);
+		this.layoutTouch = selectInputDevice(clientStore.getState()) === "touch";
+		this.layout = pactCardLayout(this.layoutTouch, p.altarX, p.altarZ, AXES);
 		for (let k = 0; k < math.min(PACT_KIND_COUNT, p.altarX.size()); k++) {
-			const view = this.buildAltar(pack, theme, k, p.altarX[k], p.altarZ[k], folder);
+			const view = this.buildAltar(pack, theme, k, p.altarX, p.altarZ, folder);
 			this.altars.push(view);
 		}
 	}
@@ -278,11 +325,12 @@ export class PactRenderController implements OnStart {
 		pack: ThemePack,
 		theme: PactAltar,
 		kind: number,
-		x: number,
-		z: number,
+		altarX: ReadonlyArray<number>,
+		altarZ: ReadonlyArray<number>,
 		folder: Folder,
 	): AltarView {
-		const V = PACTS_VIEW;
+		const x = altarX[kind];
+		const z = altarZ[kind];
 		const { body, bodyImage, bodyAnchor, topStuds } = this.buildBody(pack, theme, x, z, folder);
 		const flame = renderPart("Part", false);
 		flame.Name = "Flame";
@@ -308,27 +356,58 @@ export class PactRenderController implements OnStart {
 			box: { x: 0, z: 0, rightX: AXES.rightX, rightZ: AXES.rightZ, halfWidth: 0, halfDepth: 0 },
 			look: newAltarLook(),
 			card: undefined,
+			next: undefined,
 			cardShown: false,
 			cardOpacity: -1,
 			flameShown: AltarFlame.OFF,
 			dim: false,
 			debug: undefined,
 		};
-		const c = pactCardCentre(x, z, AXES);
-		view.box.x = c.x;
-		view.box.z = c.z;
-		view.box.halfWidth = (V.card.widthTiles * TILE_SIZE) / 2;
-		view.box.halfDepth = (V.card.depthTiles * TILE_SIZE) / 2;
-		card.part.CFrame = new CFrame(
-			studsX(c.x),
-			layerTop(CARD_LAYER) - FX_SPRITE_VIEW.thicknessStuds / 2,
-			studsZ(c.z),
-		).mul(FLOOR_CANVAS_YAW);
+		this.placeCard(view, altarX, altarZ);
 		this.floorJanitor.Add(() => {
 			if (view.body !== undefined) destroyModel(view.body);
 			view.debug?.anchor.Destroy();
 		}, true);
 		return view;
+	}
+
+	/**
+	 * The card's box, Part and canvas from this.layout (built, and again when the device turns touch or back): its
+	 * centre the layout's offset screen-down of the altar (and its outward shift, pactCardCentreAt), its size the
+	 * layout's.
+	 */
+	private placeCard(view: AltarView, altarX: ReadonlyArray<number>, altarZ: ReadonlyArray<number>): void {
+		const L = this.layout;
+		const c = pactCardCentreAt(view.kind, altarX, altarZ, AXES, L);
+		view.box.x = c.x;
+		view.box.z = c.z;
+		view.box.halfWidth = (L.widthTiles * TILE_SIZE) / 2;
+		view.box.halfDepth = (L.depthTiles * TILE_SIZE) / 2;
+		view.cardPart.Size = floorCanvasPartSize(
+			L.widthTiles * STUDS_PER_TILE,
+			FX_SPRITE_VIEW.thicknessStuds,
+			L.depthTiles * STUDS_PER_TILE,
+		);
+		view.cardPart.CFrame = new CFrame(
+			studsX(c.x),
+			layerTop(CARD_LAYER) - FX_SPRITE_VIEW.thicknessStuds / 2,
+			studsZ(c.z),
+		).mul(FLOOR_CANVAS_YAW);
+		const [w, h] = pactCardCanvasSize(CAMERA_PITCH_DEG, L);
+		view.cardSurface.CanvasSize = new Vector2(w, h);
+		this.canvasW = w;
+		this.canvasH = h;
+	}
+
+	/** The device turned touch or back: every card takes the new layout and rewrites its lines. */
+	private setLayout(state: Readonly<SimState>, touch: boolean): void {
+		this.layoutTouch = touch;
+		const p = state.pacts!;
+		const layout = pactCardLayout(touch, p.altarX, p.altarZ, AXES);
+		if (pactCardLayoutsEqual(layout, this.layout)) return;
+		this.layout = layout;
+		for (const a of this.altars) this.placeCard(a, p.altarX, p.altarZ);
+		this.relabel = true;
 	}
 
 	/** The altar's body on its cell: its art (an upright billboard), else the placeholder plinth. */
@@ -492,18 +571,12 @@ export class PactRenderController implements OnStart {
 		const part = renderPart("Part", false);
 		part.Name = `Card${kind}`;
 		part.Transparency = HIDDEN;
-		part.Size = floorCanvasPartSize(
-			C.widthTiles * STUDS_PER_TILE,
-			FX_SPRITE_VIEW.thicknessStuds,
-			C.depthTiles * STUDS_PER_TILE,
-		);
-		part.CFrame = PARKED;
-		const [w, h] = pactCardCanvasSize(CAMERA_PITCH_DEG);
+		part.CFrame = PARKED; // sized and placed by placeCard
 		const surface = createKvSurfaceGui("PactCard");
 		surface.Face = Enum.NormalId.Top;
 		surface.SizingMode = Enum.SurfaceGuiSizingMode.FixedSize;
-		surface.CanvasSize = new Vector2(w, h);
-		surface.AlwaysOnTop = false;
+		// over every wall, decor piece and body: walls never hide it; an enemy over it ducks it (pactCardEnemyOver)
+		surface.AlwaysOnTop = true;
 		surface.LightInfluence = COMBO_SHOUT_DRAW.lightInfluence;
 		surface.ResetOnSpawn = false;
 		surface.Enabled = false;
@@ -522,7 +595,7 @@ export class PactRenderController implements OnStart {
 			label.BackgroundTransparency = HIDDEN;
 			label.BorderSizePixel = 0;
 			label.Font = currentHudFont();
-			label.TextScaled = true;
+			label.TextScaled = false; // drawCards sets one TextSize per line kind across both cards
 			label.TextColor3 = pack.color(C.textRole);
 			label.TextStrokeColor3 = pack.color("background");
 			label.TextTransparency = HIDDEN;
@@ -536,8 +609,12 @@ export class PactRenderController implements OnStart {
 		return { part, surface, lines };
 	}
 
-	private drawCard(
-		a: AltarView,
+	/**
+	 * Both cards: each altar's card for the view player first; when any changed (or a relabel), every card's labels are
+	 * rewritten with one text size per line kind across both (pactCardTextSizes: the pacts read the same size), then
+	 * each is shown and its opacity ducked.
+	 */
+	private drawCards(
 		state: Readonly<SimState>,
 		config: Readonly<SimConfig>,
 		view: number,
@@ -546,35 +623,58 @@ export class PactRenderController implements OnStart {
 		dt: number,
 	): void {
 		if (!near) {
-			if (a.cardShown) {
-				a.cardShown = false;
-				a.cardSurface.Enabled = false;
+			for (const a of this.altars) {
+				if (a.cardShown) {
+					a.cardShown = false;
+					a.cardSurface.Enabled = false;
+				}
+				a.card = undefined; // rebuilt when it shows again (a locale / binding change meanwhile)
 			}
-			a.card = undefined; // rebuilt when it shows again (a locale / binding change meanwhile)
 			return;
 		}
-		const card = pactCard(state, config, view, a.kind, this.str, keyName);
-		if (card === undefined) return;
-		if (this.relabel || !pactCardsEqual(card, a.card)) {
-			a.card = card;
+		let changed = this.relabel;
+		for (const a of this.altars) {
+			a.next = pactCard(state, config, view, a.kind, this.str, keyName, this.layout);
+			if (!pactCardsEqual(a.next, a.card)) changed = true;
+		}
+		if (changed) this.relabelCards();
+		for (const a of this.altars) this.showCard(a, state, dt);
+	}
+
+	/** Every card takes its `next` lines, each kind of line at the one size that fits it on both cards. */
+	private relabelCards(): void {
+		this.frameCards.clear();
+		for (const a of this.altars) if (a.next !== undefined) this.frameCards.push(a.next);
+		this.textFont = currentHudFont();
+		const sizes = pactCardTextSizes(this.frameCards, this.canvasW, this.canvasH, this.measure, this.textSizes);
+		const pack = this.pack!;
+		for (const a of this.altars) {
+			a.card = a.next;
 			a.cardOpacity = -1;
-			const pack = this.pack!;
+			const card = a.card;
 			for (let i = 0; i < a.lines.size(); i++) {
 				const label = a.lines[i];
-				const line = card.lines[i];
+				const line = card?.lines[i];
 				label.Visible = line !== undefined;
 				if (line === undefined) continue;
 				label.Text = line.text;
 				label.TextColor3 = pack.color(line.role as ColorRole);
 				label.Size = UDim2.fromScale(1, line.share);
+				label.TextSize = sizes[line.kind];
 			}
 		}
+	}
+
+	private showCard(a: AltarView, state: Readonly<SimState>, dt: number): void {
+		const card = a.card;
+		if (card === undefined) return;
 		if (!a.cardShown) {
 			a.cardShown = true;
 			a.duck.reset();
 			a.cardSurface.Enabled = true;
 		}
-		const ceiling = a.duck.step(dt, shoutDucked(a.box, state.combat.enemyBullets));
+		const ducked = shoutDucked(a.box, state.combat.enemyBullets) || pactCardEnemyOver(a.box, state);
+		const ceiling = a.duck.step(dt, ducked);
 		const opacity = pactCardOpacity(ceiling, card.dim);
 		if (math.abs(opacity - a.cardOpacity) > EPS) {
 			a.cardOpacity = opacity;
@@ -700,6 +800,7 @@ export class PactRenderController implements OnStart {
 	private clear(): void {
 		this.floorJanitor.Cleanup();
 		this.altars.clear();
+		this.shownCards.clear();
 		this.builtKey = "";
 		this.hideRings();
 		for (const p of this.pulses) p.disc.part.Destroy();

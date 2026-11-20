@@ -35,6 +35,7 @@ import {
 	type StandingKind,
 } from ".";
 import type { SpriteLayout } from "shared/view";
+import { floorAxes } from "shared/view/hud";
 
 describe("decor screen helpers", () => {
 	it("projects with the game camera: -X / -Z is farther and higher on screen", () => {
@@ -126,6 +127,35 @@ describe("decor fades", () => {
 		// nobody: nothing fades, and the array is rewritten
 		expect(selectDecorFades(plan, [], out)).toBe(0);
 		for (const f of out) expect(f).toBe(false);
+	});
+
+	it("fades a piece standing on or in front of a floor card, not one behind the card or far away", () => {
+		const box = plan.fadeBoxes[0];
+		const e = plan.entries[box.entry];
+		const axes = floorAxes();
+		const card = (x: number, z: number) => ({
+			x,
+			z,
+			rightX: axes.rightX,
+			rightZ: axes.rightZ,
+			halfWidth: 2.5,
+			halfDepth: 1.2,
+		});
+		const out: boolean[] = [];
+		// the card under the piece: its far half lies behind the piece's plane, under its art
+		selectDecorFades(plan, [], out, [card(e.x, e.z)]);
+		expect(out[0]).toBe(true);
+		// the card behind the piece (farther from the camera)
+		selectDecorFades(plan, [], out, [card(e.x - 1.5, e.z - 1.5)]);
+		expect(out[0]).toBe(true);
+		// the card well in front of the piece: drawn below its art on screen
+		selectDecorFades(plan, [], out, [card(e.x + 4, e.z + 4)]);
+		expect(out[0]).toBe(false);
+		// far away, or no cards: nothing for it
+		selectDecorFades(plan, [], out, [card(e.x + 40, e.z - 40)]);
+		expect(out[0]).toBe(false);
+		selectDecorFades(plan, [], out, []);
+		expect(out[0]).toBe(false);
 	});
 });
 

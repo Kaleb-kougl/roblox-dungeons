@@ -69,6 +69,7 @@ import { PreloadController } from "../game/PreloadController";
 import { SimController, type RunContext } from "../game/SimController";
 import { ThemeController } from "../game/ThemeController";
 import { ArtBillboard, buildFloorArt, restingAnimation, visualLayout, type FloorArt } from "./decorParts";
+import { PactRenderController } from "./PactRenderController";
 import { renderPart } from "./placeholders";
 import { SPRITE_TINT_NONE, SpriteView } from "./SpriteView";
 
@@ -140,7 +141,8 @@ interface StandInBox {
  *                 pack.voidDecorVariants. Workspace KV_VoidOff (VOID_VIEW.offAttribute, boolean, default off) plans
  *                 without the void (the geometry reads the same attribute).
  *   fade          selectDecorFades with every living player and the live boss: a hidden body fades the piece to
- *                 DECOR_VIEW.fadeTransparency over fadeSeconds.
+ *                 DECOR_VIEW.fadeTransparency over fadeSeconds. So does a shown pact card it covers
+ *                 (PactRenderController.shownCardBoxes): the card reads in front of the decor, behind every body.
  *   director      once per frame (not while paused, frozen, or a draft is open) DecorDirector.update with the state,
  *                 the frame's events, the scene, dt and the juice motionScale; its view lights braziers and dims the
  *                 shrine crystal here, and drives DecorFxController (flames, lights, glints, particles).
@@ -195,6 +197,7 @@ export class DecorController implements OnStart {
 		private readonly theme: ThemeController,
 		private readonly fx: FxTrackerController,
 		private readonly preload: PreloadController,
+		private readonly pacts: PactRenderController,
 	) {}
 
 	onStart(): void {
@@ -647,11 +650,16 @@ export class DecorController implements OnStart {
 		}
 	}
 
-	/** Tall / low pieces with a player or the boss behind them fade (tweened on real time). */
+	/** Tall / low pieces with a player or the boss behind them, or over a shown pact card, fade (tweened on real time). */
 	private applyFades(dt: number, state: Readonly<SimState>): void {
 		const plan = this.scene?.plan;
 		if (plan === undefined || (this.drawn.size() === 0 && this.standIns.size() === 0)) return;
-		selectDecorFades(plan, decorFadeBodies(state, this.bodies, this.sim.drawnPlayerOf), this.fades);
+		selectDecorFades(
+			plan,
+			decorFadeBodies(state, this.bodies, this.sim.drawnPlayerOf),
+			this.fades,
+			this.pacts.shownCardBoxes(),
+		);
 		for (const [b, pv] of this.fadeViews) {
 			const target = this.fades[b] ? 1 : 0;
 			if (pv.fade === target) continue;
