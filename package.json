@@ -26,6 +26,7 @@
 		"check:locals": "node scripts/check-luau-locals.js",
 		"check:docs": "node scripts/check-doc-coverage.js",
 		"dump:lists": "lune run scripts/lune/dump-lists.luau",
+		"out:digest": "node scripts/out-digest.js",
 		"facts": "node scripts/facts.js",
 		"facts:check": "node scripts/facts.js --check",
 		"tasks:open": "node scripts/open-tasks.js",
