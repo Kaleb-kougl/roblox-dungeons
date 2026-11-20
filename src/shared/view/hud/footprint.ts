@@ -50,6 +50,8 @@ export const HUD_FOOTPRINT = {
 /** The transient panels, in a fixed order. */
 export type TransientPanel =
 	| "bossBar"
+	| "bossBarLow"
+	| "bossBarLowSpectate"
 	| "toasts"
 	| "tutorial"
 	| "spectate"
@@ -59,6 +61,8 @@ export type TransientPanel =
 	| "sighting";
 export const TRANSIENT_PANELS: ReadonlyArray<TransientPanel> = [
 	"bossBar",
+	"bossBarLow",
+	"bossBarLowSpectate",
 	"toasts",
 	"tutorial",
 	"spectate",
@@ -150,13 +154,36 @@ export const VERDICT_BOX = {
 	edge: HUD_VIEW.margin + MINIMAP_PANEL.h + HUD_VIEW.gap,
 } as const;
 
+/** The boss bar's and the spectate bar's heights (reference px), shared by the boxes below. */
+const BOSS_BAR_HEIGHT = stack([line(HUD_VIEW.titleText), HUD_VIEW.bossBarHeight]);
+const SPECTATE_BAR_HEIGHT = stack([line(HUD_VIEW.textSize), line(HUD_VIEW.smallText), line(HUD_VIEW.smallText)]);
+
 export const HUD_TRANSIENT = {
 	bossBar: {
 		anchor: "topCentre",
 		edge: HUD_VIEW.margin,
 		width: HUD_VIEW.bossWidth,
-		height: stack([line(HUD_VIEW.titleText), HUD_VIEW.bossBarHeight]),
+		height: BOSS_BAR_HEIGHT,
 		when: "a boss fight",
+	},
+	/**
+	 * The boss bar moved to the bottom centre while the boss is under its top spot (shared/view/hud bossBarPlace.ts;
+	 * not on touch). Under the tutorial prompt (TUTORIAL_VIEW.panelBottom).
+	 */
+	bossBarLow: {
+		anchor: "bottomCentre",
+		edge: HUD_VIEW.margin,
+		width: HUD_VIEW.bossWidth,
+		height: BOSS_BAR_HEIGHT,
+		when: "a boss fight with the boss near the top of the screen",
+	},
+	/** bossBarLow while spectating: above the spectate bar (a co-op run has no tutorial prompt). */
+	bossBarLowSpectate: {
+		anchor: "bottomCentre",
+		edge: SPECTATE_BAR_VIEW.bottom + SPECTATE_BAR_HEIGHT + HUD_VIEW.gap,
+		width: HUD_VIEW.bossWidth,
+		height: BOSS_BAR_HEIGHT,
+		when: "spectating a boss fight with the boss near the top of the screen",
 	},
 	toasts: {
 		anchor: "topCentre",
@@ -176,7 +203,7 @@ export const HUD_TRANSIENT = {
 		anchor: "bottomCentre",
 		edge: SPECTATE_BAR_VIEW.bottom,
 		width: SPECTATE_BAR_VIEW.width,
-		height: stack([line(HUD_VIEW.textSize), line(HUD_VIEW.smallText), line(HUD_VIEW.smallText)]),
+		height: SPECTATE_BAR_HEIGHT,
 		when: "a dead co-op player spectating",
 	},
 	verdict: {

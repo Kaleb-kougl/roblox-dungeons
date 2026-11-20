@@ -21,6 +21,7 @@ export * from "./MenuController";
 export * from "./HudController";
 export * from "./LoadingController";
 export * from "./HudOcclusionController";
+export * from "./BossBarPlacementController";
 export * from "./MinimapController";
 export * from "./DevModeController";
 export * from "./DailyController";

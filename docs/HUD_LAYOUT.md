@@ -154,6 +154,32 @@ panel shows the verdict too. The `KV_Debug` line never fades and stays where it 
 gains 70 (sanitize already drops unknown values, so old documents read as before). Whether the default should drop to
 90 % is decided in H9 from the footprint report, not guessed now.
 
+### 8. The boss bar moves off the boss (HD10; as built 2026-11-19)
+
+The boss bar (top centre, 520 x 66 reference px) hid the boss whenever the boss stood near the top of the screen. Now
+it drops to the bottom centre while the boss is under it and goes back up once the boss has left. Pure rule in
+`shared/view/hud/bossBarPlace.ts` (`BOSS_BAR_PLACE`, `BossBarPlacer`, `bossScreenBox`; spec `bossBarPlace.spec.ts`):
+
+- The boss's screen box: its floor point and a head point `heightTiles` 3 above it, projected to GUI px, `widthShare`
+  0.8 of that height wide.
+- Top -> bottom as soon as that box comes within `enterPadPx` 12 (times the HUD scale) of the top spot. No delay: the
+  bar is in the way now.
+- Bottom -> top once the box has stayed `exitPadPx` 48 clear of the top spot for `holdSeconds` 0.75 (an off-screen or
+  dead boss counts as clear), so a boss pacing along the top edge does not flip the bar back and forth; at once if
+  the boss reaches the bottom spot while clear of the top one.
+- Bottom spot: `HUD_TRANSIENT.bossBarLow` (margin 16 from the safe area's bottom, under the tutorial prompt) or, while
+  spectating, `bossBarLowSpectate` (above the spectate bar). Both are in `TRANSIENT_PANELS`, so the footprint spec
+  checks them against the corner panels; a new spec checks they clear the tutorial prompt and the spectate bar.
+
+Client: `BossBar` wraps its panel in a root frame whose Position / AnchorPoint follow the `client/ui/hud`
+`bossBarSpot` binding (no React re-render); `BossBarPlacementController` (a render step after the camera, every 3
+frames, like the occlusion fade) projects the boss, reads the two spots' rects from the mounted bar (both centred:
+one X and size; each spot's Y read while the bar is there) and writes the spot. The bar moves instantly (no slide:
+sliding would sweep it through the middle of the screen). Not on touch: the slim bar stays in the touch strip (the
+bottom of a phone belongs to the thumbs). Presentation only: no sim, hash, replay, fixture, string or setting change.
+Studio check pending: both bosses' charges along the top edge, the tutorial's practice boss with its prompt showing,
+spectating a boss fight in co-op.
+
 ### Not changed
 
 - The camera: still centred on the player at the web build's framing (`VIEW_TILES_HIGH`, yaw / pitch). Offsetting the
@@ -259,3 +285,5 @@ uses the corner prop); H6 and H8 can go alongside.
 - **HD9. Toasts fade too; first sightings move to the left edge** (owner, 2026-11-06): the occlusion fade (HD7) covers
   the top-centre toast panel and the first-sighting card, which sits under the status panel instead of among the
   toasts.
+- **HD10. The boss bar moves to the bottom while the boss is under it** (owner request, 2026-11-19): instant, with a
+  0.75 s hold before it goes back up; desktop and console only (touch keeps the slim bar in the touch strip).
