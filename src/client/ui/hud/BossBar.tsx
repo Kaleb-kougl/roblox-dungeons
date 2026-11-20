@@ -5,6 +5,7 @@ import { UI_IMAGES, role, str, uiImage, useHudFont, useUiArt } from "client/ui/t
 import {
 	HUD_SKIN,
 	HUD_STRINGS,
+	HUD_TRANSIENT,
 	HUD_VIEW,
 	TOUCH_STRIP,
 	bossFraction,
@@ -15,6 +16,7 @@ import {
 	skinHasOf,
 	type TouchStripLayout,
 } from "shared/view/hud";
+import { bossBarRef, bossBarSpotBinding } from "./bossBarSpot";
 import { Panel, Row, SlicedImage, Text } from "./primitives";
 import { useTouchStrip } from "./touchStripContext";
 import { HighlightRing } from "./TutorialFx";
@@ -227,6 +229,10 @@ function SlimBossBar(props: {
  * `highlight`: the tutorial's ring (the boss lesson, the phase callouts). With the UI art (docs/UI_ART.md UA11) the
  * panel is the in-run (hud) frame and the bar a pill (PillBar); without, the flat panel and bar. On touch the slim bar
  * under the touch strip (SlimBossBar).
+ *
+ * Off touch the panel sits in a root frame whose Position / AnchorPoint follow the bossBarSpot binding: top centre, or
+ * bottom centre while the boss is under the top spot (BossBarPlacementController, shared/view/hud bossBarPlace.ts;
+ * HUD_TRANSIENT.bossBarLow, above the spectate bar while spectating: bossBarLowSpectate).
  */
 export function BossBar(props: { readonly highlight?: boolean }) {
 	useUiArt();
@@ -251,31 +257,39 @@ export function BossBar(props: { readonly highlight?: boolean }) {
 	const has = skinHasOf(UI_IMAGES);
 	const trackId = skinFor(has, "bar", "track");
 	const fillId = skinFor(has, "bar", "fill");
+	const lowEdge = (s.spectating ? HUD_TRANSIENT.bossBarLowSpectate : HUD_TRANSIENT.bossBarLow).edge;
+	const spot = bossBarSpotBinding();
 	return (
-		<Panel
-			position={new UDim2(HALF, 0, 0, HUD_VIEW.margin)}
-			anchor={new Vector2(HALF, 0)}
-			width={width}
-			name="BossBar"
-			skin="hud"
-		>
-			<Row order={1}>
-				<Text order={1} width={nameWidth} size={HUD_VIEW.titleText} text={str(`${s.bossId}.name`)} />
-				<Text
-					order={2}
-					width={width - HUD_VIEW.pad * 2 - nameWidth - HUD_VIEW.gap}
-					size={HUD_VIEW.titleText}
-					color="uiAccent"
-					align={Enum.TextXAlignment.Right}
-					text={str(HUD_STRINGS.bossPhase, { phase: romanPhase(s.bossPhase) })}
-				/>
-			</Row>
-			{trackId !== undefined ? (
-				<PillBar frac={frac} marks={s.bossPhaseMarks} trackId={trackId} fillId={fillId} />
-			) : (
-				<FlatBar frac={frac} marks={s.bossPhaseMarks} />
+		<frame
+			key="BossBar"
+			ref={bossBarRef}
+			Position={spot.map((p) =>
+				p === "bottom" ? new UDim2(HALF, 0, 1, -lowEdge) : new UDim2(HALF, 0, 0, HUD_TRANSIENT.bossBar.edge),
 			)}
-			{props.highlight === true ? <HighlightRing /> : undefined}
-		</Panel>
+			AnchorPoint={spot.map((p) => new Vector2(HALF, p === "bottom" ? 1 : 0))}
+			Size={new UDim2()}
+			AutomaticSize={Enum.AutomaticSize.XY}
+			BackgroundTransparency={HIDDEN}
+		>
+			<Panel position={new UDim2()} anchor={new Vector2()} width={width} name="Panel" skin="hud">
+				<Row order={1}>
+					<Text order={1} width={nameWidth} size={HUD_VIEW.titleText} text={str(`${s.bossId}.name`)} />
+					<Text
+						order={2}
+						width={width - HUD_VIEW.pad * 2 - nameWidth - HUD_VIEW.gap}
+						size={HUD_VIEW.titleText}
+						color="uiAccent"
+						align={Enum.TextXAlignment.Right}
+						text={str(HUD_STRINGS.bossPhase, { phase: romanPhase(s.bossPhase) })}
+					/>
+				</Row>
+				{trackId !== undefined ? (
+					<PillBar frac={frac} marks={s.bossPhaseMarks} trackId={trackId} fillId={fillId} />
+				) : (
+					<FlatBar frac={frac} marks={s.bossPhaseMarks} />
+				)}
+				{props.highlight === true ? <HighlightRing /> : undefined}
+			</Panel>
+		</frame>
 	);
 }

@@ -39,6 +39,7 @@ export * from "./footprint";
 export * from "./minimapHud";
 export * from "./wrap";
 export * from "./occlusion";
+export * from "./bossBarPlace";
 export * from "./touchLayout";
 export * from "./touchTutorial";
 export * from "./weaponSets";

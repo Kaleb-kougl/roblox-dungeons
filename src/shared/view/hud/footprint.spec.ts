@@ -153,6 +153,13 @@ describe("HUD footprint budget", () => {
 		expect(zone.w).toBe(640);
 	});
 
+	it("the boss bar's bottom spots clear the tutorial prompt and the spectate bar", () => {
+		const low = HUD_TRANSIENT.bossBarLow;
+		expect(low.edge + low.height).toBeLessThanOrEqual(HUD_TRANSIENT.tutorial.edge);
+		const spectate = HUD_TRANSIENT.spectate;
+		expect(HUD_TRANSIENT.bossBarLowSpectate.edge).toBeGreaterThanOrEqual(spectate.edge + spectate.height);
+	});
+
 	it("the room clear stamp row ends above the toasts and the touch tutorial prompt (docs/ROOM_CLEAR.md RC6)", () => {
 		const stamp = HUD_TRANSIENT.roomClear;
 		expect(stamp.edge + stamp.height).toBeLessThanOrEqual(HUD_TRANSIENT.toasts.edge);
