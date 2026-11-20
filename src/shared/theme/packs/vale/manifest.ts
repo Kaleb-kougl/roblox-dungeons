@@ -611,6 +611,8 @@ interface WorldFields {
 	readonly emissive?: boolean;
 	/** Copy the art's outline(s) (decor pieces). */
 	readonly outline?: boolean;
+	/** Sprite sheets carry their baked rim (`outlineFile`) as `outlineAssetId` once uploaded (the breakables). */
+	readonly rim?: boolean;
 }
 
 /** A world art asset from its layout, or undefined while its file has no ID. */
@@ -641,7 +643,11 @@ function worldAsset(
 	for (const sheet of layout.sheets) {
 		const assetId = ids[sheet.file];
 		if (assetId === undefined) return undefined;
-		sheets.push({ assetId: assetId as SpriteSheetImage["assetId"], w: sheet.w, h: sheet.h });
+		const image: SpriteSheetImage = { assetId: assetId as SpriteSheetImage["assetId"], w: sheet.w, h: sheet.h };
+		// the breakable outline's rim sheet joins only once uploaded; until then the piece draws without it
+		const rimId = fields.rim === true && sheet.outlineFile !== undefined ? ids[sheet.outlineFile] : undefined;
+		if (rimId !== undefined) image.outlineAssetId = rimId as SpriteSheetImage["assetId"];
+		sheets.push(image);
 	}
 	const set: SpriteSetAsset = {
 		kind: "sprites",
@@ -721,7 +727,7 @@ function addWorldArt(manifest: ThemeManifest, ids: AssetIds): void {
 		if (asset !== undefined) manifest.assets[decorFxId(name)] = asset;
 	}
 	for (const kind of BREAKABLE_KINDS) {
-		const asset = worldAsset(worldLayout(VALE_BREAKABLE_ART[kind]), ids, {});
+		const asset = worldAsset(worldLayout(VALE_BREAKABLE_ART[kind]), ids, { rim: true });
 		if (asset !== undefined) manifest.assets[breakableId(kind)] = asset;
 	}
 	for (const kind of PELLET_KINDS) {

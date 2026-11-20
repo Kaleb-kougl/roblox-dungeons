@@ -79,10 +79,19 @@ function allFiles(): Array<string> {
 	for (const id of sortedKeys(VALE_IMAGE_LAYOUTS)) {
 		files.push(VALE_IMAGE_LAYOUTS[id].file);
 	}
-	// world art (docs/DECOR.md R5): pieces share their atlas, so each file once
+	// world art (docs/DECOR.md R5): pieces share their atlas, so each file once; the breakables' rim sheet
+	// (worldArt `rim`, decor-atlas-outline.png) is an art/build file too
 	for (const name of sortedKeys(VALE_WORLD_LAYOUTS)) {
 		const l = VALE_WORLD_LAYOUTS[name];
-		for (const file of l.kind === "image" ? [l.file] : l.sheets.map((sheet) => sheet.file)) {
+		const sheetFiles = new Array<string>();
+		if (l.kind === "image") sheetFiles.push(l.file);
+		else {
+			for (const sheet of l.sheets) {
+				sheetFiles.push(sheet.file);
+				if (sheet.outlineFile !== undefined) sheetFiles.push(sheet.outlineFile);
+			}
+		}
+		for (const file of sheetFiles) {
 			if (!files.includes(file)) files.push(file);
 		}
 	}

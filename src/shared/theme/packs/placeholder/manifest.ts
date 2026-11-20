@@ -127,6 +127,10 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"decor.fx.ambient.b5": "#8fe6b8",
 		"breakable.barrel": "#5a3a1e",
 		"breakable.crate": "#533d1e",
+		// Roblox port: the breakable outline, a soft lemon (breakableOutlineReport): >= 10.9:1 on every biome floor, >= 56
+		// CIE76 from the telegraph orange and 121 from the pink enemy bullet; the farthest yellow from the golds (Fury 22,
+		// new best 25, Goldling 26, pellets 31).
+		breakableOutline: "#fff06a",
 		// Roblox port (docs/FX_AUDIO.md F1): effect tints, far from the pink enemy bullets (CIE76 137 / 59).
 		"fx.heal": "#6ee08a",
 		"fx.curse": "#8a6ad8",

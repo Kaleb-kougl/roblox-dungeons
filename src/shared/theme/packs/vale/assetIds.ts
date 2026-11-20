@@ -192,6 +192,8 @@ import type { RobloxAssetId } from "../../types";
  * The six sounds of docs/NEW_ENEMIES_3.md NT10 (sfx-enemy-lob / -shell / -heal / -healcut / -lunge / -spooked; built by
  * audio:build on the owner's Mac from the NT10 picks) uploaded 2026-11-17 2:03 PM by k9kbdev, transcribed from an
  * Asset Manager screenshot.
+ * decor-atlas-outline.png (the breakable outline: the barrel and crate rims, `node scripts/art/build-atlases.js --only
+ * worldArt`) uploaded 2026-11-19, the ID given by the owner in chat: it switches on the rim round barrels and crates.
  */
 export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"amb-b1.ogg": "rbxassetid://91158343621799",
@@ -243,6 +245,7 @@ export const VALE_ASSET_IDS: Readonly<Record<string, RobloxAssetId>> = {
 	"charger-death-outline.png": "rbxassetid://94883878686509",
 	"charger-death.png": "rbxassetid://83176562450531",
 	"decor-atlas.png": "rbxassetid://115064942223814",
+	"decor-atlas-outline.png": "rbxassetid://72763824982681",
 	"dummy-outline.png": "rbxassetid://114899302767067",
 	"dummy.png": "rbxassetid://76011095585692",
 	"duo-icons.png": "rbxassetid://90883501251408",

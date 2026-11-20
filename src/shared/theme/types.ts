@@ -99,6 +99,10 @@ export const COLOR_ROLES = [
 	// baked outline, the placeholder capsule's Highlight). The validator holds it to MIN_PLAYER_OUTLINE_CONTRAST against
 	// every biome floor and wall and MIN_PLAYER_OUTLINE_DIFFERENCE (CIE76) from PLAYER_OUTLINE_DIFFERENCE_ROLES.
 	"playerOutline",
+	// Roblox port: the breakable outline (breakableOutline.ts BREAKABLE_OUTLINE_ROLE: the yellow rim round every intact
+	// barrel and crate). Held to BREAKABLE_OUTLINE_COLOR_RULES by breakableOutlineReport (variantColors.ts): >= 3:1 on
+	// every biome floor and >= 40 CIE76 from the enemy-bullet roles, telegraph, the enemy outline and the player outline.
+	"breakableOutline",
 	// Juice (src/fx in the web build): enemy health bars, damage numbers, death particles. The validator checks
 	// enemyHealth (and enemyHealthElite) against enemyHealthBack (>= 3:1) and every damage-number role against
 	// every biome floor (>= 4.5:1).

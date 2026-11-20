@@ -166,6 +166,9 @@ const EMPTY_BOARD: SpriteBillboard = { w: 0, h: 0, offsetX: 0, offsetY: 0, offse
  *   intact       a body per piece, by what the pack has for `breakable.<kind>` (ThemePack.breakable): a sprite set's
  *                `idle` (SpriteView), an image billboard, or the placeholder box (`placeholder`, the kind's colour
  *                role). Every path is capped at BREAKABLE_VIEW.maxHeightTiles (breakableBoxStuds / breakableArtLayout).
+ *                Outline: a yellow rim in BREAKABLE_VIEW.outlineRole round every intact piece: a sprite set's baked rim
+ *                (its sheets' outline image: the vale pack's decor-atlas-outline.png, once uploaded), hidden while the
+ *                piece shatters; placeholder boxes in the Model `outlinedModelName`, under ONE shared Highlight.
  *                The art only once its id has downloaded (PreloadController.isArtReady, docs/STAGE_ASSETS.md SA18):
  *                until then the placeholder box is the stand-in, and on the readiness flip every intact piece of the
  *                kind is given a body in the new look (swapLooks; KV_StandInsForce flips it back the same way).
@@ -222,6 +225,10 @@ export class BreakableRenderController implements OnStart {
 	private readonly right: Vector3;
 	private pack: ThemePack | undefined;
 	private folder: Folder | undefined;
+	/** The rim colour (BREAKABLE_VIEW.outlineRole). */
+	private outlineColor = SPRITE_TINT_NONE;
+	/** The placeholder boxes' Model with the shared Highlight, built with the first box. */
+	private outlined: Model | undefined;
 	/** Debris pieces by kind for the current floor's biome (resolved on each new layout). */
 	private readonly debrisArt = new Array<ReadonlyArray<DecorPiece>>();
 	private dungeon: Dungeon | undefined;
@@ -261,6 +268,7 @@ export class BreakableRenderController implements OnStart {
 		folder.Name = BREAKABLE_VIEW.folderName;
 		folder.Parent = Workspace;
 		this.folder = this.janitor.Add(folder);
+		this.outlineColor = pack.color(BREAKABLE_VIEW.outlineRole);
 		this.cursor = new ReadinessCursor(this.preload.getReadiness());
 		for (let k = 0; k < BREAKABLE_KINDS.size(); k++) this.looks.push(this.lookFor(pack, k));
 		this.glintArt =
@@ -481,6 +489,7 @@ export class BreakableRenderController implements OnStart {
 			view.shatterEnd = simSec + look.shatterSec;
 			this.setFlash(view.body!, false);
 			this.moves.set(sprite.anchor, view.rest);
+			sprite.setOutlineShown(false); // only intact pieces are outlined
 			sprite.update(SHATTER, 0, 0, this.basis, 0);
 			this.idling.delete(view);
 			this.active.add(view);
@@ -509,6 +518,7 @@ export class BreakableRenderController implements OnStart {
 			this.place(body, view.rest);
 			// caught mid-shatter: back to the idle loop (else it keeps the shatter frame), clocked with the idlers
 			if (body.sprite !== undefined) {
+				body.sprite.setOutlineShown(true);
 				body.sprite.update(IDLE, 0, 0, this.basis, 0);
 				this.idling.add(view);
 			}
@@ -608,7 +618,7 @@ export class BreakableRenderController implements OnStart {
 		const folder = this.folder!;
 		const look = this.looks[kind] ?? this.looks[0];
 		if (look.set !== undefined) {
-			const sprite = new SpriteView(look.set, folder, look.layout);
+			const sprite = new SpriteView(look.set, folder, look.layout, 0, this.outlineColor);
 			return { kind, art: true, model: undefined, sprite, image: undefined, flashed: false };
 		}
 		if (look.image !== undefined && look.layout !== undefined) {
@@ -623,8 +633,30 @@ export class BreakableRenderController implements OnStart {
 		}
 		const visual = look.theme.placeholder;
 		const capped = { ...visual, size: breakableBoxStuds(visual.size) };
-		const model = buildPlaceholder(pack, look.theme.id, capped, 1, folder, true);
+		const model = buildPlaceholder(pack, look.theme.id, capped, 1, this.outlinedModel(), true);
 		return { kind, art: false, model, sprite: undefined, image: undefined, flashed: false };
+	}
+
+	/**
+	 * The placeholder boxes' Model (built on first use) with the breakable outline's one Highlight: rim only, in
+	 * BREAKABLE_VIEW.outlineRole, hidden behind walls like the boxes.
+	 */
+	private outlinedModel(): Model {
+		if (this.outlined !== undefined) return this.outlined;
+		const v = BREAKABLE_VIEW;
+		const model = new Instance("Model");
+		model.Name = v.outlinedModelName;
+		const highlight = new Instance("Highlight");
+		highlight.Name = v.highlightName;
+		highlight.FillTransparency = v.highlightFillTransparency;
+		highlight.OutlineTransparency = v.highlightOutlineTransparency;
+		highlight.OutlineColor = this.outlineColor;
+		highlight.DepthMode = Enum.HighlightDepthMode[v.highlightDepthMode];
+		highlight.Adornee = model;
+		highlight.Parent = model;
+		model.Parent = this.folder;
+		this.outlined = model;
+		return model;
 	}
 
 	/** A pooled body of a look no longer drawn: its parts leave this frame's moves, then it is destroyed. */

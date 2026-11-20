@@ -1647,6 +1647,23 @@ Decision log (deviations from `PLAN.md`):
   inside, are exactly as before, so every golden fixture matches; co-op runs where a straggler hit a wall replay
   differently. `DAILY.ruleset` 22 -> 23. Spec `run/bossSeal.spec.ts`.
 
+- **Breakable outline (docs/DECOR.md "Breakable outline", 2026-11-19).** Presentation only (no sim, dungeon, lockstep,
+  hash, replay, fixture or score change). Every intact barrel and crate wears a yellow rim, gone the moment it breaks.
+  Colour role `breakableOutline` `#fff06a` (shared/theme `BREAKABLE_OUTLINE_ROLE`, beside `playerOutline` in
+  COLOR_ROLES: several specs pin COLOR_ROLES' tail), held by `breakableOutlineReport` (variantColors.ts, folded into
+  `variantColorProblems`: >= 3:1 on every biome floor, >= 40 CIE76 from the enemy-bullet roles, telegraph,
+  `enemyOutline` and `playerOutline`); no contract.ts / validate.ts top-level name. Art pipeline: a worldArt sprite
+  piece may carry `rim: { widthPx }` (1..pad, dilated inside each cell): the atlas's rim sheet `<atlas>-outline.png`
+  (white, alpha = body mask (alpha > 32) dilated minus the cell's alpha), the body atlas byte-identical, layout.ts's
+  sheet `outlineFile`; barrel and crate at 2 px -> `decor-atlas-outline.png`, uploaded 2026-11-19 (`assetIds.ts`).
+  `node scripts/art/build-atlases.js --only worldArt` writes only the rim sheets and the rimmed pieces' layout entries,
+  refusing unless every world atlas is byte-identical to art/build's (a full art:build needs more memory than a small
+  machine has). Vale manifest: breakables' sheets take `outlineAssetId` once the rim has an ID (`WorldFields.rim`).
+  View: BreakableRenderController builds its SpriteViews with the rim colour, hides the rim when the shatter one-shot
+  starts (a reused or restored body shows it again); placeholder boxes sit in `KV_Breakables/Outlined` under ONE
+  Highlight (`BREAKABLE_VIEW.outlineRole` / `highlight*`, Occluded); image art has no rim. No setting, string or sound.
+  Studio check pending.
+
 ## Commands
 
 ```

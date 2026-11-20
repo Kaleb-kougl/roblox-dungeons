@@ -17,7 +17,13 @@ import {
 	solidCells,
 	type BreakablesState,
 } from "shared/sim";
-import { BREAKABLE_KINDS, DECOR_KIND_LAYERS, PLACEHOLDER_MANIFEST, ThemePack } from "shared/theme";
+import {
+	BREAKABLE_KINDS,
+	BREAKABLE_OUTLINE_ROLE,
+	DECOR_KIND_LAYERS,
+	PLACEHOLDER_MANIFEST,
+	ThemePack,
+} from "shared/theme";
 import {
 	BREAKABLE_DEBRIS,
 	BREAKABLE_VIEW,
@@ -191,6 +197,16 @@ describe("BreakableTracker", () => {
 		b.pieces[1].brokenTick = NOT_BROKEN;
 		expect(t.update(b, 3)).toBe(false);
 		expect([[...t.restored], [...t.hits], [...t.broken]]).toEqual([[1], [], []]);
+	});
+});
+
+describe("outline", () => {
+	it("draws the theme's breakable outline role, rim only, hidden behind walls like the bodies", () => {
+		const v = BREAKABLE_VIEW;
+		expect(v.outlineRole).toBe(BREAKABLE_OUTLINE_ROLE);
+		expect(v.highlightFillTransparency).toBe(1);
+		expect(v.highlightOutlineTransparency).toBe(0);
+		expect(v.highlightDepthMode).toBe("Occluded");
 	});
 });
 

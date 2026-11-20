@@ -2306,7 +2306,9 @@
 				},
 				"shadow": false,
 				"pivot": "bottom",
-				"pivotFrom": { "animation": "idle", "frame": 0 }
+				"pivotFrom": { "animation": "idle", "frame": 0 },
+				"rim": { "widthPx": 2 },
+				"rimNote": "The breakable outline (theme role breakableOutline, BreakableRenderController): 2 px, inside the cell (pad 2), drawn into decor-atlas-outline.png; the decor atlas itself is unchanged."
 			},
 			"crate": {
 				"facings": { "count": 1, "zeroDeg": 45 },
@@ -2326,7 +2328,9 @@
 				},
 				"shadow": false,
 				"pivot": "bottom",
-				"pivotFrom": { "animation": "idle", "frame": 0 }
+				"pivotFrom": { "animation": "idle", "frame": 0 },
+				"rim": { "widthPx": 2 },
+				"rimNote": "The breakable outline (theme role breakableOutline, BreakableRenderController): 2 px, inside the cell (pad 2), drawn into decor-atlas-outline.png; the decor atlas itself is unchanged."
 			},
 			"flame": {
 				"animations": {

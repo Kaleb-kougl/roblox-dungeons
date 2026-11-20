@@ -253,6 +253,32 @@ below the pivot): the widest reaches 8.9 render px left of its pivot (the foot's
 The five `grave-*.png` uploaded 2026-11-08 (IDs in `packs/vale/assetIds.ts`), so the bundled vale pack draws them;
 Studio check pending (grim graveyard rooms).
 
+## Breakable outline (2026-11-19, owner: "a yellow outline on the destructible objects")
+
+Presentation only (no sim, dungeon, lockstep, hash, replay or fixture change). Every intact barrel and crate is drawn
+with a yellow rim, so a piece you can smash reads apart from the solid decor at a glance; the rim goes the moment the
+piece breaks (owner: "once destructed, the outline should go away").
+
+- **Colour.** Role `breakableOutline` `#fff06a`, a soft lemon (shared/theme `breakableOutline.ts`; rule
+  `BREAKABLE_OUTLINE_COLOR_RULES` / `breakableOutlineReport` in variantColors.ts): >= 3:1 on every biome floor (10.9:1
+  at worst) and >= 40 CIE76 from the enemy-bullet roles, telegraph, the enemy outline and the player outline (nearest:
+  telegraph 56). Every yellow sits near the golds; this one is the farthest found from them (Fury 22, new best 25,
+  Goldling 26, pellets 31 CIE76): a rim round a barrel is not a gem or a pellet on the floor.
+- **Art.** The sprites' rim is baked like the enemies' (docs/OUTLINE.md), but for world art: a worldArt sprite piece's
+  `rim: { widthPx }` (art/atlases.json; barrel and crate at 2 px, inside the cell since worldArt's pad is 2) makes the
+  atlas's rim sheet `decor-atlas-outline.png`: same size and cells, white, alpha = the cell's body mask (alpha > 32)
+  dilated by widthPx minus its own alpha; transparent outside rimmed cells. The decor atlas itself is byte-identical,
+  so nothing else re-uploads. Shatter frames are rimmed too (unused: see below). Build it alone with
+  `node scripts/art/build-atlases.js --only worldArt` (refuses unless every world atlas matches art/build's).
+  Uploaded 2026-11-19 (`packs/vale/assetIds.ts`); until its ID is in, pieces draw exactly as before.
+- **Drawing.** BreakableRenderController: sprite bodies are SpriteViews built with the rim colour (the rim label under
+  the frame); when the break starts the rim is hidden (`setOutlineShown(false)`) while the shatter plays, then the body
+  goes back to its pool and the flat debris has none. A pooled body is shown again when reused (SpriteView `reset`), a
+  restored piece likewise. Placeholder boxes (the stand-ins while the art downloads, the placeholder pack) sit in the
+  Model `KV_Breakables/Outlined` under ONE Highlight (rim only, Occluded; the engine draws at most 31), parked far
+  below once broken. Image art (no pack uses it for breakables) has no rim. The hit flash tints the body, not the rim.
+- **Not done.** No setting (the enemy and player outlines have one); the Studio check.
+
 ## Solid decor (2026-11-02, owner: "solid, anywhere")
 
 Diablo-style obstacles in rooms: **gameplay, not just presentation.** With the Forge option `solidDecor`

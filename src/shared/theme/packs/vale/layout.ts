@@ -1385,7 +1385,7 @@ export const VALE_WORLD_LAYOUTS: Record<string, ValeWorldLayout> = {
 		pixelsPerTile: 29.6,
 		resample: "Default",
 		facings: { count: 1, zeroDeg: 45, ccw: true },
-		sheets: [{ file: "decor-atlas.png", w: 1024, h: 1012 }],
+		sheets: [{ file: "decor-atlas.png", w: 1024, h: 1012, outlineFile: "decor-atlas-outline.png" }],
 		animations: {
 			idle: { sheet: 0, start: 170, frames: 1, fps: 1, loop: true },
 			shatter: { sheet: 0, start: 171, frames: 8, fps: 16, loop: false },
@@ -1549,7 +1549,7 @@ export const VALE_WORLD_LAYOUTS: Record<string, ValeWorldLayout> = {
 		pixelsPerTile: 29.6,
 		resample: "Default",
 		facings: { count: 1, zeroDeg: 45, ccw: true },
-		sheets: [{ file: "decor-atlas.png", w: 1024, h: 1012 }],
+		sheets: [{ file: "decor-atlas.png", w: 1024, h: 1012, outlineFile: "decor-atlas-outline.png" }],
 		animations: {
 			idle: { sheet: 0, start: 840, frames: 1, fps: 1, loop: true },
 			shatter: { sheet: 0, start: 841, frames: 8, fps: 16, loop: false },

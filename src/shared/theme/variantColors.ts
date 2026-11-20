@@ -45,6 +45,7 @@ import { isObj, sortedEntries } from "./util";
 import { AFFIX_ROLES, ENEMY_AURA_ROLE, ENEMY_GOO_ROLE, ENEMY_SHIELD_ROLE } from "./variants";
 import { ENEMY_GUARD_ROLE } from "./newEnemies2";
 import { ENEMY_HEAL_ROLE } from "./newEnemies3";
+import { BREAKABLE_OUTLINE_ROLE } from "./breakableOutline";
 import { buildReport } from "./buildColors";
 import { pelletReport } from "./pelletColors";
 import { treasureReport } from "./treasureColors";
@@ -137,6 +138,20 @@ export const GUARD_COLOR_RULES: VariantColorRules = {
 };
 
 /**
+ * The breakable outline's rules (`breakableOutlineReport`): `breakableOutline`, the yellow rim round every intact barrel
+ * and crate, >= 3:1 on every biome floor (the piece stands on one) and >= 40 CIE76 from everything that means danger or
+ * marks a player, so a smashable piece never reads as a threat or a teammate. Near the golds (the Fury drop, the
+ * pellets, the new-best gold) by design: every yellow is; a rim round a barrel is not a gem on the floor.
+ */
+export const BREAKABLE_OUTLINE_COLOR_RULES: VariantColorRules = {
+	roles: [BREAKABLE_OUTLINE_ROLE],
+	minFloorContrast: 3.0,
+	against: [...ENEMY_BULLET_ROLES, "telegraph", "enemyOutline", "playerOutline"],
+	minDifference: MIN_DECOR_FX_BULLET_DIFFERENCE,
+	minApart: 0,
+};
+
+/**
  * The heal colour rules (`healReport`, docs/NEW_ENEMIES_3.md NT1): `enemyHeal` (the Mender's beam to its ally and the
  * `+` sparks on the healed enemy) >= 3:1 on every biome floor and >= MIN_DECOR_FX_BULLET_DIFFERENCE (40 CIE76) from the
  * enemy-bullet roles, `telegraph`, `enemyOutline`, the Warbanner's aura, the Shieldwall's guard, the player's own heal
@@ -185,6 +200,7 @@ export type GooEntry = VariantColorEntry;
 export type AuraEntry = VariantColorEntry;
 export type GuardEntry = VariantColorEntry;
 export type HealEntry = VariantColorEntry;
+export type BreakableOutlineEntry = VariantColorEntry;
 
 function variantReport(manifest: unknown, rules: VariantColorRules): Array<VariantColorEntry> {
 	const out = new Array<VariantColorEntry>();
@@ -260,6 +276,11 @@ export function healReport(manifest: unknown): Array<HealEntry> {
 	return variantReport(manifest, HEAL_COLOR_RULES);
 }
 
+/** The breakable outline (BREAKABLE_OUTLINE_COLOR_RULES); see VariantColorEntry. */
+export function breakableOutlineReport(manifest: unknown): Array<BreakableOutlineEntry> {
+	return variantReport(manifest, BREAKABLE_OUTLINE_COLOR_RULES);
+}
+
 /** A validator message: where (a manifest path) and what. */
 export interface VariantColorProblem {
 	path: Array<string>;
@@ -290,6 +311,11 @@ const WHY = {
 		floor: "a Bulwark's guard must read on the floor",
 		difference:
 			"the guard colour must never read as an enemy bullet, goo, a telegraph, the enemy outline, an affix or a boost drop",
+		apart: "",
+	},
+	breakableOutline: {
+		floor: "a breakable's outline must read on the floor",
+		difference: "a breakable's outline must never read as danger (bullets, telegraph, enemy outline) or a player",
 		apart: "",
 	},
 	heal: {
@@ -364,6 +390,7 @@ export function variantColorProblems(manifest: unknown, suffix: (biome: string) 
 		{ entries: auraReport(manifest), why: WHY.aura },
 		{ entries: guardReport(manifest), why: WHY.guard },
 		{ entries: healReport(manifest), why: WHY.heal },
+		{ entries: breakableOutlineReport(manifest), why: WHY.breakableOutline },
 		{ entries: buildReport(manifest), why: WHY.build },
 		{ entries: pelletReport(manifest), why: WHY.pellet },
 		{ entries: treasureReport(manifest), why: WHY.treasure },

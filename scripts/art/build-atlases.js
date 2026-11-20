@@ -179,6 +179,14 @@
  *        node scripts/art/build-atlases.js --lock --only duoIcons  needs only the generated icons)
  *        node scripts/art/build-atlases.js --only kenney           the same for the Kenney decor sheet
  *        node scripts/art/build-atlases.js --lock --only kenney    (docs/KENNEY_DECOR.md KN9; needs only art/vendor/kenney/)
+ *        node scripts/art/build-atlases.js --only worldArt         the world art's rim sheets (a worldArt sprite piece's
+ *                                                                  `rim`, the breakable outline): rebuilds the world
+ *                                                                  atlases, refuses unless every one is byte-identical to
+ *                                                                  art/build's, then writes only the rim sheets, their
+ *                                                                  contact sheets and the rimmed pieces' entries in
+ *                                                                  layout.ts (merged); needs worldArt's packs and the
+ *                                                                  pixelsPerTileFrom set's
+ *        node scripts/art/build-atlases.js --lock --only worldArt  re-hash just those files into the lock
  *        node scripts/art/build-atlases.js --only class.ranger     build just one sprite set (any `spriteSets` id): its
  *                                                                  sheets, outline sheets, contact sheet and its entry
  *                                                                  in layout.ts (merged, every other entry unchanged);
@@ -237,6 +245,15 @@ const PRINT_WIDTH = 120;
 const OUTLINE_MIN_WIDTH = 1;
 const OUTLINE_MAX_WIDTH = 4;
 const OUTLINE_PREVIEW_RGB = [0xff, 0x3b, 0x30];
+/**
+ * World art rims (a worldArt sprite piece's `rim`, the breakable outline): a pixel is body when its alpha is above
+ * this (the art's faintest anti-aliased fringe stays outside the mask, under the rim's `255 - a`).
+ */
+const WORLD_RIM_BODY_ALPHA = 32;
+/** Any colour counts as body for a world rim (isBodyAt's max(R, G, B) > bodyMinRgb is always true). */
+const WORLD_RIM_ANY_RGB = -1;
+/** Contact sheets draw a world piece's rim in this colour (the theme's `breakableOutline` yellow). */
+const WORLD_RIM_PREVIEW_RGB = [0xff, 0xf0, 0x6a];
 
 function fail(message) {
 	console.error(`art:build: ${message}`);
@@ -423,6 +440,28 @@ function outlineConfig(id, set) {
 		throw new Error(`${id}: outline needs pivot.bodyAlpha and pivot.bodyMinRgb (integers), its body mask`);
 	}
 	return clip === true ? { widthPx: r, clipAtCellEdge: true } : { widthPx: r };
+}
+
+/**
+ * A world sprite piece's rim config (art/atlases.json worldArt piece `rim`: { widthPx }, the breakable outline), or
+ * null when it has none. The rim is dilated inside each cell (dilateCells), so it stops at the cell edge: widthPx may
+ * be at most worldArt's `pad` (a body pixel is never nearer the cell edge than pad), which keeps the whole disc in the
+ * cell. Throws on a bad config, on an image piece or on a width over the pad.
+ */
+function worldRimConfig(name, def, pad) {
+	const o = def.rim;
+	if (o === undefined) return null;
+	if (def.file !== undefined) throw new Error(`${name}: rim is for world sprite sets only (not an image piece)`);
+	if (o === null || typeof o !== "object" || Array.isArray(o)) throw new Error(`${name}: rim must be an object { widthPx }`);
+	for (const k of Object.keys(o)) {
+		if (k !== "widthPx" && !k.startsWith("$")) throw new Error(`${name}: rim.${k}: unknown key (allowed: widthPx)`);
+	}
+	const r = o.widthPx;
+	const max = Math.min(OUTLINE_MAX_WIDTH, pad);
+	if (!Number.isInteger(r) || r < OUTLINE_MIN_WIDTH || r > max) {
+		throw new Error(`${name}: rim.widthPx must be an integer in [${OUTLINE_MIN_WIDTH}, ${max}] (worldArt pad ${pad}), got ${JSON.stringify(r)}`);
+	}
+	return { widthPx: r };
 }
 
 /**
@@ -2493,6 +2532,7 @@ function buildWorldSprites(world, name, def, ppt, pad) {
 		outlines,
 		glowAt,
 		own: def.own,
+		rim: worldRimConfig(name, def, pad),
 	};
 }
 
@@ -2631,6 +2671,22 @@ function packWorldAtlases(world, pieces) {
 		}
 		alphaBleed(a.img);
 		a.file = `${a.name}.png`;
+		// rim sheet (a sprite piece's `rim`): same size and cell grid as the atlas, white, alpha = the cell's body mask
+		// dilated by widthPx minus the cell's alpha (outlineSheet, one cell at a time); transparent everywhere else. The
+		// atlas itself is not touched, so adding a rim never moves or changes a pixel of it.
+		const rimmed = a.items.filter((p) => p.kind === "sprites" && p.rim);
+		if (rimmed.length > 0) {
+			a.rimImg = raster(W, a.usedH);
+			for (let i = 0; i < W * a.usedH; i++) a.rimImg.data.fill(255, i * 4, i * 4 + 3);
+			for (const p of rimmed) {
+				p.cells.forEach((c, k) => {
+					const cell = p.startCell + k;
+					const rim = outlineSheet(c.img, p.frameW, p.frameH, p.rim.widthPx, WORLD_RIM_BODY_ALPHA, WORLD_RIM_ANY_RGB);
+					blit(rim, 0, 0, p.frameW, p.frameH, a.rimImg, (cell % p.perRow) * p.frameW, Math.floor(cell / p.perRow) * p.frameH, 0);
+				});
+			}
+			a.rimFile = `${a.name}-outline.png`;
+		}
 	}
 	const own = pieces.filter((p) => p.kind === "image" && p.own);
 	for (const p of own) {
@@ -2670,7 +2726,11 @@ function worldLayout(p) {
 		pixelsPerTile: p.pixelsPerTile,
 		resample: "Default",
 		facings: p.facings,
-		sheets: [{ file: p.atlas.file, w: p.atlas.img.w, h: p.atlas.img.h }],
+		sheets: [
+			p.rim
+				? { file: p.atlas.file, w: p.atlas.img.w, h: p.atlas.img.h, outlineFile: p.atlas.rimFile }
+				: { file: p.atlas.file, w: p.atlas.img.w, h: p.atlas.img.h },
+		],
 		animations,
 	};
 	if (p.outlines) out.outlines = p.outlines;
@@ -2713,6 +2773,7 @@ function worldContact(p) {
 		}
 		fillRect(img, dx - 1, dy - 1, cw + 2, chh + 2, [96, 96, 96]);
 		fillRect(img, dx, dy, cw, chh, [CONTACT_BG, CONTACT_BG, CONTACT_BG]);
+		if (p.kind === "sprites" && p.rim && p.atlas.rimImg) over(p.atlas.rimImg, c.x, c.y, cw, chh, img, dx, dy, WORLD_RIM_PREVIEW_RGB);
 		over(sheet, c.x, c.y, cw, chh, img, dx, dy);
 		if (c.outline) {
 			for (let k = 0; k < c.outline.length; k++) {
@@ -6034,10 +6095,12 @@ const ONLY_GROUPS = [
 	"kenney",
 	"secret",
 	"silver",
+	"worldArt",
 ];
 
 /** The vendor files `--lock --only <group>` re-hashes (a sprite set id: that set's own files, not its pixelsPerTileFrom's). */
 function onlyGroupSourceFiles(config, group) {
+	if (group === "worldArt") return worldArtOnlySourceFiles(config);
 	if (isOnlyImage(group, config.images)) return imageFamilySourceFiles(config.images, group);
 	if (isOnlySpriteSet(group, config.images)) return spriteSetSourceFiles(config.spriteSets, group);
 	if (group === "bullets") return bulletSourceFiles(config.bullets);
@@ -6428,6 +6491,68 @@ function mainOnlyImage(config, id) {
 	for (const f of pending) console.log(`  ${f}  (${fs.statSync(path.join(BUILD, f)).size} bytes)`);
 }
 
+const WORLD_LAYOUTS_DECL = "export const VALE_WORLD_LAYOUTS: Record<string, ValeWorldLayout> = ";
+
+/** Every source file `--only worldArt` reads: the world pieces' and the pixelsPerTileFrom set's chain, sorted. */
+function worldArtOnlySourceFiles(config) {
+	if (!config.worldArt) fail("art/atlases.json has no `worldArt` group");
+	const files = worldSourceFiles(config.worldArt);
+	for (const sid of spriteSetChain(config.spriteSets, config.worldArt.pixelsPerTileFrom)) addSpriteSetFiles(files, sid, config.spriteSets[sid]);
+	return [...files].sort();
+}
+
+/**
+ * `--only worldArt` (the breakable outline): the world art's rim sheets without a full build (which needs every pack and
+ * more memory than a small machine has). Checks worldArt's files and its pixelsPerTileFrom set's against the lock,
+ * builds that set (for its scale) and the world pieces, packs them, and refuses unless every world atlas and own sheet
+ * is byte for byte the one in art/build (so the layout of every piece is unchanged: this mode only ADDS rims). Then
+ * writes ONLY the rim sheets (and their art/upload copies), the rimmed pieces' contact sheets and their
+ * VALE_WORLD_LAYOUTS entries (merged: every other byte of layout.ts unchanged), what a full build writes for them.
+ */
+function mainOnlyWorldArt(config) {
+	checkLock(config, worldArtOnlySourceFiles(config));
+	if (!fs.existsSync(LAYOUT_FILE)) fail(`--only worldArt merges into an existing ${path.relative(ROOT, LAYOUT_FILE)}; run a full art:build first`);
+	let pieces;
+	let packed;
+	try {
+		const { set } = buildOneSpriteSet(config.spriteSets, config.worldArt.pixelsPerTileFrom);
+		pieces = buildWorldPieces(config.worldArt, [set]).pieces;
+		packed = packWorldAtlases(config.worldArt, pieces);
+	} catch (e) {
+		fail(e.message);
+	}
+	const sheets = [...packed.atlases.map((a) => [a.file, a.img]), ...packed.own.map((p) => [p.file, p.img])];
+	const differ = sheets.filter(([file, img]) => {
+		const at = path.join(BUILD, file);
+		return !fs.existsSync(at) || !encodePng(img).equals(fs.readFileSync(at));
+	});
+	if (differ.length > 0) {
+		fail(`--only worldArt only adds rim sheets, but these world sheets would change (run a full art:build):\n  ${differ.map(([f]) => f).join("\n  ")}`);
+	}
+	let changed = 0;
+	const written = [];
+	for (const a of packed.atlases) {
+		if (!a.rimImg) continue;
+		const png = encodePng(a.rimImg);
+		if (writeIfChanged(path.join(BUILD, a.rimFile), png)) changed++;
+		if (writeIfChanged(path.join(UPLOAD, a.rimFile), png)) changed++;
+		written.push(a.rimFile);
+	}
+	const rimmed = pieces.filter((p) => p.kind === "sprites" && p.rim);
+	let text = fs.readFileSync(LAYOUT_FILE, "utf8");
+	for (const p of rimmed) {
+		if (writeIfChanged(path.join(CONTACT, `decor.${p.name}.png`), encodePng(worldContact(p)))) changed++;
+		text = mergeLayoutEntry(text, WORLD_LAYOUTS_DECL, "VALE_WORLD_LAYOUTS", p.name, worldLayout(p));
+		console.log(`world ${p.name}: rim ${p.rim.widthPx} px, ${p.cells.length} cells -> ${p.atlas.rimFile}`);
+	}
+	if (writeIfChanged(LAYOUT_FILE, text)) changed++;
+	console.log(`art:build --only worldArt: ${sheets.length} world sheet(s) unchanged, ${rimmed.length} rimmed piece(s), ${changed} file(s) updated`);
+	const uploaded = uploadedFiles();
+	const pending = written.filter((f) => !uploaded.has(f));
+	console.log(`art:build --only worldArt: ${pending.length} of its ${written.length} rim sheet(s) still need an ID in packs/vale/assetIds.ts${pending.length > 0 ? ":" : ""}`);
+	for (const f of pending) console.log(`  ${f}  (${fs.statSync(path.join(BUILD, f)).size} bytes)`);
+}
+
 function main() {
 	const config = JSON.parse(fs.readFileSync(CONFIG_FILE, "utf8"));
 	const only = onlyGroup(process.argv, config.spriteSets, config.images);
@@ -6503,6 +6628,10 @@ function main() {
 		mainOnlySilver(config);
 		return;
 	}
+	if (only === "worldArt") {
+		mainOnlyWorldArt(config);
+		return;
+	}
 	checkLock(config);
 
 	const sets = buildSpriteSets(config.spriteSets);
@@ -6534,6 +6663,7 @@ function main() {
 		const packed = packWorldAtlases(config.worldArt, pieces);
 		world = { pieces, ...packed };
 		for (const a of packed.atlases) emit(BUILD, a.file, a.img, builtFiles);
+		for (const a of packed.atlases) if (a.rimImg) emit(BUILD, a.rimFile, a.rimImg, builtFiles);
 		for (const p of packed.own) emit(BUILD, p.file, p.img, builtFiles);
 		for (const p of pieces) emit(CONTACT, `decor.${p.name}.png`, worldContact(p), contactFiles);
 	}
@@ -6666,7 +6796,7 @@ function main() {
 		for (const p of world.pieces) {
 			const l = worldLayout(p);
 			const where = l.kind === "image" ? `${l.file}${l.rect ? ` rect ${l.rect.x},${l.rect.y} ${l.rect.w}x${l.rect.h}` : ` ${l.w}x${l.h}`}` : `${l.sheets[0].file} cells ${l.frameW}x${l.frameH} x ${p.cells.length} from ${p.startCell} (${p.dirs.join(" ")})`;
-			const extra = `${l.outline || l.outlines ? `, outline ${(l.outline || l.outlines[0]).length} pts` : ""}${l.glowAt ? `, glowAt (${l.glowAt.x}, ${l.glowAt.y})` : ""}`;
+			const extra = `${l.outline || l.outlines ? `, outline ${(l.outline || l.outlines[0]).length} pts` : ""}${l.glowAt ? `, glowAt (${l.glowAt.x}, ${l.glowAt.y})` : ""}${p.rim ? `, rim ${p.rim.widthPx} px (${p.atlas.rimFile})` : ""}`;
 			console.log(`world ${p.name}: ${where}, pivot (${l.pivot.x}, ${l.pivot.y}), ${l.pixelsPerTile} px/tile${extra}`);
 		}
 		for (const a of world.atlases) console.log(`  ${a.file}: ${a.img.w}x${a.img.h}, ${a.items.length} piece(s)`);
@@ -6856,6 +6986,7 @@ module.exports = {
 	uiIconLayoutModule,
 	wcagContrast,
 	worldLayout,
+	worldRimConfig,
 	/** Composited layered sheets (gridSheet); tests clear it with the source cache. */
 	layeredCache,
 	/** Decoded sources by art/vendor-relative path; the tests put synthetic rasters here instead of files. */

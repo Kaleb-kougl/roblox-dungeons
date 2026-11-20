@@ -1429,6 +1429,84 @@ describe("world sprite sets with `own` (docs/BREAKABLE_DROPS.md, the loot glint)
 	});
 });
 
+describe("world sprite sets with `rim` (the breakable outline)", () => {
+	/** A synthetic world sprite piece: `n` cells of w x h, each with a 2 x 2 body in its middle. */
+	function rimPiece(name, n, w, h, rim) {
+		const cells = [];
+		for (let k = 0; k < n; k++) {
+			const img = A.raster(w, h);
+			const x0 = Math.floor(w / 2) - 1;
+			const y0 = Math.floor(h / 2) - 1;
+			for (let y = y0; y < y0 + 2; y++) for (let x = x0; x < x0 + 2; x++) put(img, x, y, LIT);
+			cells.push({ img });
+		}
+		return {
+			name,
+			kind: "sprites",
+			frameW: w,
+			frameH: h,
+			pivot: { x: 1, y: 1 },
+			pixelsPerTile: 29.6,
+			facings: { count: 1, zeroDeg: 0, ccw: true },
+			dirs: ["E"],
+			animations: { idle: { start: 0, frames: n, fps: 12, loop: true } },
+			cells,
+			rim,
+		};
+	}
+	const world = { atlas: { name: "decor-atlas", maxSize: 64 } };
+
+	it("worldRimConfig: absent is null; widthPx 1..pad; image pieces and unknown keys throw", () => {
+		assert.equal(A.worldRimConfig("p", {}, 2), null);
+		assert.deepEqual(A.worldRimConfig("p", { rim: { widthPx: 2, $note: "ok" } }, 2), { widthPx: 2 });
+		assert.throws(() => A.worldRimConfig("p", { rim: { widthPx: 3 } }, 2), /\[1, 2\]/);
+		assert.throws(() => A.worldRimConfig("p", { rim: { widthPx: 0 } }, 2), /widthPx/);
+		assert.throws(() => A.worldRimConfig("p", { rim: { widthPx: 1, color: "x" } }, 2), /unknown key/);
+		assert.throws(() => A.worldRimConfig("p", { file: "a.png", rim: { widthPx: 1 } }, 2), /sprite sets only/);
+	});
+
+	it("adds <atlas>-outline.png in the same cells and leaves the atlas byte-identical", () => {
+		const pieces = (rim) => [rimPiece("barrel", 3, 8, 8, rim), rimPiece("column", 2, 6, 10, null)];
+		const before = A.packWorldAtlases(world, pieces(null));
+		const after = A.packWorldAtlases(world, pieces({ widthPx: 1 }));
+		const a0 = before.atlases[0];
+		const b0 = after.atlases[0];
+		assert.deepEqual(Buffer.from(b0.img.data), Buffer.from(a0.img.data));
+		assert.equal(a0.rimImg, undefined);
+		assert.equal(b0.rimFile, "decor-atlas-outline.png");
+		assert.equal(b0.rimImg.w, b0.img.w);
+		assert.equal(b0.rimImg.h, b0.img.h);
+		const barrel = b0.items.find((p) => p.name === "barrel");
+		const column = b0.items.find((p) => p.name === "column");
+		// every barrel cell: the body's 4 px are 0 (alpha 255 - 255), its 1 px ring (disc r 1: the 8 edge neighbours) 255
+		for (let k = 0; k < 3; k++) {
+			const cell = barrel.startCell + k;
+			const cx = (cell % barrel.perRow) * 8;
+			const cy = Math.floor(cell / barrel.perRow) * 8;
+			let ring = 0;
+			for (let y = 0; y < 8; y++) {
+				for (let x = 0; x < 8; x++) {
+					const a = alphaAt(b0.rimImg, cx + x, cy + y);
+					const body = x >= 3 && x <= 4 && y >= 3 && y <= 4;
+					if (body) assert.equal(a, 0);
+					else if (a === 255) ring++;
+					else assert.equal(a, 0);
+				}
+			}
+			assert.equal(ring, 8);
+		}
+		// a piece without `rim` leaves its cells empty in the rim sheet
+		for (let k = 0; k < 2; k++) {
+			const cell = column.startCell + k;
+			const cx = (cell % column.perRow) * 6;
+			const cy = Math.floor(cell / column.perRow) * 10;
+			for (let y = 0; y < 10; y++) for (let x = 0; x < 6; x++) assert.equal(alphaAt(b0.rimImg, cx + x, cy + y), 0);
+		}
+		assert.deepEqual(A.worldLayout(barrel).sheets, [{ file: "decor-atlas.png", w: b0.img.w, h: b0.img.h, outlineFile: "decor-atlas-outline.png" }]);
+		assert.deepEqual(A.worldLayout(column).sheets, [{ file: "decor-atlas.png", w: b0.img.w, h: b0.img.h }]);
+	});
+});
+
 describe("recolor (a gradient map by luminance; docs/FORTUNE.md FO10, the Goldling)", () => {
 	const RAMP = [
 		[0, "#000000"],

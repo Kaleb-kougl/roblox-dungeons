@@ -60,6 +60,19 @@ export const BREAKABLE_VIEW = {
 	debrisLiftStuds: 0.03,
 	/** decorHash salt of the debris variant (no floor seed: by cell only), distinct from DECOR_SALT's. */
 	debrisSalt: 0x4cf5ad43,
+	/**
+	 * The outline round every intact piece, in this colour role (shared/theme BREAKABLE_OUTLINE_ROLE, the yellow rim):
+	 * sprite art draws its baked rim (a sheet's outline image, under the frame; hidden while the piece shatters), the
+	 * placeholder boxes sit in the Model `outlinedModelName` under the folder, which carries ONE Highlight (rim only,
+	 * hidden behind walls like the bodies: the engine draws at most 31 Highlights). Image art has no rim.
+	 */
+	outlineRole: "breakableOutline" as ColorRole,
+	outlinedModelName: "Outlined",
+	highlightName: "BreakableOutline",
+	highlightFillTransparency: 1,
+	highlightOutlineTransparency: 0,
+	/** Enum.HighlightDepthMode name of the placeholder boxes' Highlight. */
+	highlightDepthMode: "Occluded" as "Occluded" | "AlwaysOnTop",
 	/** Workspace folder of the pieces and decals. */
 	folderName: "KV_Breakables",
 	profileLabel: "KV Breakables",
