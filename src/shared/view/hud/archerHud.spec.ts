@@ -195,7 +195,9 @@ describe("per-character text (docs/ARCHER.md AR10)", () => {
 		expect(shown(sections[0].rows[0].desc)).toBe("+1 armor pip; roll through 10 bullets in a room: +1 pip");
 		expect(shown(sections[1].rows[0].desc)).toBe("Every 10 bullets you roll through restore a pip");
 		const knight = characterBuildSections(buildListSections(f, false), "knight", has);
-		expect(shown(knight[0].rows[0].desc)).toBe("+1 armor pip; a full-ring guard; stop 10 bullets in a room: +1 pip");
+		expect(shown(knight[0].rows[0].desc)).toBe(
+			"+1 armor pip; a full-ring guard; stop 10 bullets in a room: +1 pip",
+		);
 		const row = buildListSections(f, false)[0].rows[0];
 		expect(characterBuildRow(row, undefined, has)).toBe(row);
 	});
