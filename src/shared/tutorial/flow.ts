@@ -25,6 +25,10 @@ export type FirstRunChoice = "tutorial" | "normal" | "wait";
 /** A decided first-run choice. */
 export type FirstRunDecision = Exclude<FirstRunChoice, "wait">;
 
+/**
+ * Everything the first-run rule reads at one moment (`firstRunChoice`): the Workspace override, the server's onboarding
+ * status if it has arrived, and how long the client has waited for it. `FirstRunGate` builds one per frame.
+ */
 export interface FirstRunInputs {
 	/** Workspace KV_Tutorial: true forces the tutorial, false skips it, undefined lets the server decide. */
 	readonly forced: boolean | undefined;
@@ -113,6 +117,10 @@ export interface TutorialHudState {
 	readonly finished: boolean;
 }
 
+/**
+ * The HUD state outside a tutorial run: no steps, no prompt, card, highlight or marker, not finished. The client's
+ * Reflex `tutorial` slice takes its initial HUD fields from it. Frozen and shared.
+ */
 export const EMPTY_TUTORIAL_HUD: TutorialHudState = table.freeze({
 	stepIndex: 0,
 	stepCount: 0,
@@ -138,6 +146,11 @@ export function tutorialHudFrom(view: Readonly<TutorialView>): TutorialHudState 
 	};
 }
 
+/**
+ * True when two HUD states would draw the same thing (every field equal). The client's `tutorial` slice compares an
+ * incoming state against the stored one with it and keeps its state object when nothing changed, so a per-frame push of
+ * the director's view re-renders nothing.
+ */
 export function tutorialHudEqual(a: Readonly<TutorialHudState>, b: Readonly<TutorialHudState>): boolean {
 	return (
 		a.stepIndex === b.stepIndex &&

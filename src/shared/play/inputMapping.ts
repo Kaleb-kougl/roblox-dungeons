@@ -40,6 +40,10 @@ import type { TouchSnapshot } from "./touch";
 
 /** Analog trigger names: pressed when held OR their analog value passes TRIGGER_THRESHOLD, whatever they are bound to. */
 export const LEFT_TRIGGER = "ButtonL2";
+/**
+ * The right analog trigger's Enum.KeyCode name (see LEFT_TRIGGER): the client also counts it as held from its analog
+ * value, not only from its button event.
+ */
 export const RIGHT_TRIGGER = "ButtonR2";
 
 /** One Bindings as lookup tables: input name -> button bits, the move keys, the restart and map inputs. */
@@ -142,6 +146,11 @@ export const ALL_DEBUG_BUTTONS = bit32.bor(DEBUG_BUTTONS, DEBUG_FLOOR_BUTTON, DE
 // ---------------------------------------------------------------------------------------------
 // Device snapshots
 
+/**
+ * The keyboard and mouse buttons held this frame, by name. The client's InputController fills it from Roblox input
+ * (after the rebind gate dropped inputs held across a bindings change); the pointer's position is not here but in
+ * DeviceSnapshot.
+ */
 export interface KeyboardMouseSnapshot {
 	/** Held Enum.KeyCode names. */
 	readonly keys: ReadonlySet<string>;
@@ -162,9 +171,22 @@ export interface GamepadSnapshot {
 	readonly buttons: ReadonlySet<string>;
 }
 
+/**
+ * Which device the aim direction is read from: the one used most recently (InputDeviceTracker). `none` until any aim
+ * input arrives; the frame's aim is then zero, which the sim reads as "face the movement".
+ */
 export type AimDevice = "none" | "mouse" | "stick" | "touch";
+/**
+ * The device the player used last (InputDeviceTracker.device). For presentation only, never the sim: which key names
+ * the hints show, whether the touch controls are on screen, which haptics run.
+ */
 export type InputDeviceKind = "keyboard" | "gamepad" | "touch";
 
+/**
+ * Everything `mapDevicesToInput` reads for one frame: the held keys and mouse buttons, the gamepad (undefined when none
+ * is connected), the touch controls' frame, and the aim source with the mouse pointer's aim vector. Built by the
+ * client's InputController once per rendered frame.
+ */
 export interface DeviceSnapshot {
 	readonly kbm: KeyboardMouseSnapshot;
 	readonly pad: GamepadSnapshot | undefined;
@@ -177,6 +199,10 @@ export interface DeviceSnapshot {
 	readonly pointerAimZ: number;
 }
 
+/**
+ * A screen-relative direction (x = right, y = up), the move and stick vectors before `screenToWorld` rotates them into
+ * the world. Unit length at most once deadzoned or clamped.
+ */
 export interface Vec2 {
 	readonly x: number;
 	readonly y: number;
@@ -250,6 +276,11 @@ export function keyboardMoveVector(
 	return { x, y };
 }
 
+/**
+ * The sim button bits of every held key and mouse button under `bindings` (the rebindable actions plus the fixed pause
+ * and debug keys). Movement keys give no bits (`keyboardMoveVector` reads them), and a name bound to nothing adds
+ * nothing.
+ */
 export function keyboardMouseButtons(kbm: KeyboardMouseSnapshot, bindings: Bindings = DEFAULT_BINDINGS): number {
 	const c = compiled(bindings);
 	let bits = 0;
@@ -266,6 +297,11 @@ function padButtonDown(pad: GamepadSnapshot, name: string): boolean {
 	return false;
 }
 
+/**
+ * The sim button bits of every pad button that is down under `bindings` (plus the fixed Start pause). A trigger counts
+ * as down when it is in the held set or its analog value is past TRIGGER_THRESHOLD, whatever action it is bound to. The
+ * sticks give no bits.
+ */
 export function gamepadButtons(pad: GamepadSnapshot, bindings: Bindings = DEFAULT_BINDINGS): number {
 	let bits = 0;
 	for (const [name, bit] of compiled(bindings).padBits) if (padButtonDown(pad, name)) bits = bit32.bor(bits, bit);
@@ -404,6 +440,10 @@ export function maskDebugButtons(buttons: number, debugAllowed: boolean): number
 	return debugAllowed ? buttons : bit32.band(buttons, bit32.bnot(ALL_DEBUG_BUTTONS));
 }
 
+/**
+ * What a pressed key asks of the run driver rather than of the sim (`driverKeyAction`): `reset` restarts the run,
+ * `replayCheck` runs the debug replay check (F8 / L), undefined means the key is no driver key or is not allowed now.
+ */
 export type DriverKeyAction = "replayCheck" | "reset" | undefined;
 
 /** The run facts the restart input reads (SimController; no run counts as over). */

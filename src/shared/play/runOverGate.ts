@@ -37,6 +37,11 @@ export interface RunOverRecapTarget {
 	skip(): void;
 }
 
+/**
+ * The gate itself (see the file comment): one per client, reused across runs. The RecapController calls `open` each
+ * time the run-over panel appears, `fireEdge` on every sampled frame while it shows, and `press` for each press; only a
+ * `retry` answer restarts the run, and at most one is given per run over.
+ */
 export class RunOverRetryGate {
 	private retried = false;
 	private fireHeld = true;

@@ -13,6 +13,10 @@ export interface CodexCount {
 	readonly total: number;
 }
 
+/**
+ * A player's Codex completion as the menu shows it: found and total over the whole catalog, and the same per tab.
+ * Entries only seen do not count as found; character-gated entries count toward the totals.
+ */
 export interface CodexProgress {
 	/** The whole catalog (the completion %). */
 	readonly all: CodexCount;

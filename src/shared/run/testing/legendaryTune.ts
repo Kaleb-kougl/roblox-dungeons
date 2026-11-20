@@ -160,6 +160,7 @@ export interface StreakTally {
 	cfFarthest: number;
 }
 
+/** Spec support. A streak tally with every count at 0 and no generation seen (`maxGen` -1), to sum fights into. */
 export function emptyStreakTally(): StreakTally {
 	return {
 		kills: 0,
@@ -383,6 +384,11 @@ export function streakHeader(floors: ReadonlyArray<TuneFloor>): string {
 	);
 }
 
+/**
+ * Spec support. One Markdown row of the Overkill streak table (`streakHeader`) for a build: per floor the kills per
+ * seed (`seeds` is the number of seeds summed), streaks per kill, share of kills made by a streak and mean carry; over
+ * all floors the largest carry, the longest chain in links and Skewer's line strikes.
+ */
 export function formatStreakRow(row: OverkillRow, seeds: number): string {
 	const f = row.perFloor;
 	const a = row.all;
@@ -408,6 +414,10 @@ export function skewerHeader(): string {
 	);
 }
 
+/**
+ * Spec support. One Markdown row of the Skewer line table (`skewerHeader`) for a build: the streaks seen, and for each
+ * of the three counterfactual lines the share of streaks with another enemy on the line and the mean others per streak.
+ */
 export function formatSkewerRow(row: OverkillRow): string {
 	const a = row.all;
 	const n = a.cfStreaks;
@@ -442,6 +452,10 @@ export interface DefenseCase extends BuildCase {
 	readonly guardCos?: number;
 }
 
+/**
+ * Spec support. One room of the Bastion tables: a label and the arena fight, with whether the fight may end early when
+ * every enemy is dead.
+ */
 export interface DefenseRoom {
 	readonly label: string;
 	readonly fight: TuneFight;
@@ -457,6 +471,10 @@ export const DEFENSE_SECONDS = 20;
 export const DEFENSE_GUARD_TRIGGER = SWORD_DATA.guardReach + 0.6;
 /** The roll bot rolls into a volley when this many enemy bullets are within DEFENSE_ROLL_RADIUS. */
 export const DEFENSE_ROLL_BULLETS = 2;
+/**
+ * Spec support. The roll bot's radius in world units: enemy bullets within it of the player count toward
+ * `DEFENSE_ROLL_BULLETS`.
+ */
 export const DEFENSE_ROLL_RADIUS = 1.6;
 /** A higher brace threshold to compare with BASTION_BRACE_BULLETS (the tables' second "stopping" column). */
 export const DEFENSE_HIGH_STOPS = 12;
@@ -562,6 +580,10 @@ function emptyDefense(): DefenseResult {
 /** The player's start along X for run seed `seed` (turret rooms draw no rng: the start varies the fight instead). */
 export const DEFENSE_START_STEP = 0.5;
 
+/**
+ * Spec support. The player's start offset along X for a run seed, in world units: one of five positions from -2 to +2
+ * steps of `DEFENSE_START_STEP`, by `seed` mod 5 (seeds are non-negative).
+ */
 export function defenseStartOffset(seed: number): number {
 	return ((seed % 5) - 2) * DEFENSE_START_STEP;
 }
@@ -726,6 +748,11 @@ export interface DefenseRow {
 	readonly sum: DefenseResult;
 }
 
+/**
+ * Spec support. Runs `defenseFight` for every room and build with one bot at floor `f`'s hp over `seeds`, each fight
+ * capped at `DEFENSE_SECONDS`, and returns one summed row per (room, build), rooms outermost. `character` plays the
+ * fights as that character; absent, the arena's own player holds the bot's one weapon.
+ */
 export function defenseRows(
 	rooms: ReadonlyArray<DefenseRoom>,
 	builds: ReadonlyArray<DefenseCase>,
@@ -763,6 +790,10 @@ export function defenseRows(
 	return rows;
 }
 
+/**
+ * Spec support. Markdown header of a Bastion table for `bot`: a guard bot's columns count guards and bullets erased per
+ * guard, a roll bot's count rolls and bullets counted per roll.
+ */
 export function defenseHeader(bot: DefenseBot): string {
 	const act = guardBot(bot) ? "guards" : "rolls";
 	const each = guardBot(bot) ? "erased per guard" : "counted per roll (Bastion)";
@@ -772,6 +803,10 @@ export function defenseHeader(bot: DefenseBot): string {
 	);
 }
 
+/**
+ * Spec support. One Markdown row of a Bastion table (`defenseHeader`): means per fight of the row's sums, with the
+ * fights cleared, hits per minute, and the guard or roll columns chosen by `bot`.
+ */
 export function formatDefenseRow(row: DefenseRow, bot: DefenseBot): string {
 	const s = row.sum;
 	const n = row.fights;

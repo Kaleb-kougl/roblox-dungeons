@@ -27,6 +27,10 @@ import { isNewPlayerFirstDay, withNewPlayerFields, type OnboardingDoc, type Tuto
 /** The tutorial outcome field of the new-player events: the doc's outcome, or `none` before any finish. */
 export type NewPlayerTutorialOutcome = TutorialOutcome | "none";
 
+/**
+ * Every value the tutorial outcome field of the new-player events can carry. The analytics catalog counts its field
+ * combinations from this list.
+ */
 export const NEW_PLAYER_TUTORIAL_OUTCOMES: ReadonlyArray<NewPlayerTutorialOutcome> = ["completed", "skipped", "none"];
 
 /** Every run end NewPlayerRun's field02 can carry (shared/run RunEndReason). */

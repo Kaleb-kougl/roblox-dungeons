@@ -88,6 +88,13 @@ function forgeSuffix(biome: string): string {
 	return forge !== undefined ? ` (${forge})` : "";
 }
 
+/**
+ * Validates a whole pack manifest and returns its problems as readable lines, "<path>: <message>"; an empty list means
+ * the pack is good. Never throws: a manifest that is not an object returns one root error. Checks the top level,
+ * strings and locales, colour roles, every asset against its slot, required IDs, biomes, the no-gameplay-data scan,
+ * then every colour rule (the reports of reports.ts and the feature modules). Keys are visited in sorted order, so the
+ * lines come out in a stable order. `loadThemePack` runs it on every load and the pack specs on every bundled pack.
+ */
 export function validateManifest(manifest: unknown, opts: ValidateOptions = {}): Array<string> {
 	const errors = new Array<string>();
 	const err: Err = (path, msg) => {

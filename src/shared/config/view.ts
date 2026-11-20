@@ -17,6 +17,10 @@ export const CAMERA_PITCH_DEG = 55;
 
 /** The web build's internal render resolution, in pixels. */
 export const RENDER_W = 480;
+/**
+ * Height of the web build's internal render resolution, in pixels (`RENDER_W` is its width). Divided by
+ * `PIXELS_PER_TILE` it gives the tiles visible top to bottom, `VIEW_TILES_HIGH`.
+ */
 export const RENDER_H = 270;
 
 /** Render pixels per tile at that resolution (the web build's texel grid). */

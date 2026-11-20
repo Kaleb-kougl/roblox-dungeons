@@ -44,6 +44,11 @@ export type RebindPlan =
 	| { readonly kind: "conflict"; readonly holder: BindingRef; readonly bindings: Bindings }
 	| { readonly kind: "refused"; readonly reason: BindingRefusal };
 
+/**
+ * What capturing `input` into the `target` slot of `b` would do, without applying anything (see RebindPlan). The
+ * Options screen applies `bindings` at once on `apply`, and on `conflict` only after the player chose Swap. `b` is
+ * never changed.
+ */
 export function planRebind(b: Bindings, target: CaptureTarget, input: string): RebindPlan {
 	const { device, action, slot } = target;
 	if (slotInput(b, device, action, slot) === input) return { kind: "same" };

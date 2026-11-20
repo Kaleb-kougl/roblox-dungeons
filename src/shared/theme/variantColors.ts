@@ -197,11 +197,35 @@ export interface VariantColorEntry {
 	ok: boolean;
 }
 
+/**
+ * One check of `affixReport` (the affix colours). The same shape as VariantColorEntry, named per report so a caller's
+ * types say which rule set an entry came from.
+ */
 export type AffixEntry = VariantColorEntry;
+/**
+ * One check of `gooReport` (the goo puddle's colour). The same shape as VariantColorEntry, named per report so a
+ * caller's types say which rule set an entry came from.
+ */
 export type GooEntry = VariantColorEntry;
+/**
+ * One check of `auraReport` (the Warbanner's aura colour). The same shape as VariantColorEntry, named per report so a
+ * caller's types say which rule set an entry came from.
+ */
 export type AuraEntry = VariantColorEntry;
+/**
+ * One check of `guardReport` (the Bulwark's guard colour). The same shape as VariantColorEntry, named per report so a
+ * caller's types say which rule set an entry came from.
+ */
 export type GuardEntry = VariantColorEntry;
+/**
+ * One check of `healReport` (the Mender's heal colour). The same shape as VariantColorEntry, named per report so a
+ * caller's types say which rule set an entry came from.
+ */
 export type HealEntry = VariantColorEntry;
+/**
+ * One check of `breakableOutlineReport` (the breakable outline's colour). The same shape as VariantColorEntry, named
+ * per report so a caller's types say which rule set an entry came from.
+ */
 export type BreakableOutlineEntry = VariantColorEntry;
 
 function variantReport(manifest: unknown, rules: VariantColorRules): Array<VariantColorEntry> {

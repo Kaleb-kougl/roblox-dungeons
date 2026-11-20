@@ -13,6 +13,11 @@
 import { TUTORIAL_CALLOUTS, TUTORIAL_DEVICES, TUTORIAL_FOLLOW_PROMPT, TUTORIAL_STEPS } from "./steps";
 import type { TutorialDevice, TutorialStep } from "./steps";
 
+/**
+ * The theme string keys of the tutorial's UI chrome (everything but the per-device prompts and the callouts, whose keys
+ * are built by `tutorialPromptKey` and `TutorialCallout.key`). Client components read their keys here; the values are
+ * keys into the theme's string table, never display text.
+ */
 export const TUTORIAL_STRINGS = {
 	/** The objective card (lesson 0): a title and two lines; Continue is the step's own prompt (FIRE). */
 	objectiveTitle: "tutorial.objective.title",

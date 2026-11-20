@@ -75,6 +75,11 @@ import { TUTORIAL_ROOMS, buildTutorialRunConfig, tutorialRoom, type TutorialLess
 import type { EndlessRunSetup } from "../endless";
 import { distanceField, frame, walkDir, type Field } from "./endlessBot";
 
+/**
+ * Spec support. Options of `playTutorial`: how the tutorial bot deviates from the default route (room order, when it
+ * drinks, guards, opens the map or sweeps the pellets, how it steers). Absent fields play the tutorial the
+ * straightforward way.
+ */
 export interface TutorialBotOptions {
 	/** Floor-1 lesson rooms after the entrance, in visit order (default: the tour). */
 	readonly order?: ReadonlyArray<TutorialLessonId>;
@@ -121,6 +126,11 @@ export type TutorialBotMapMode = "current" | "early" | "never" | "unavailable";
 /** When the tutorial bot walks combat G's pellets (TutorialBotOptions.pellets). */
 export type TutorialBotPelletMode = "first" | "late";
 
+/**
+ * Spec support. What `playTutorial` returns: the finished run and director, and everything the bot recorded on the way
+ * for specs to assert on (when each step was done, funnel steps, callouts, prompts, heart checks, the boss fight's
+ * milestones). Ticks are sim ticks at 60 Hz.
+ */
 export interface TutorialBotResult {
 	readonly setup: EndlessRunSetup;
 	readonly run: LiveRun;

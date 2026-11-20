@@ -31,6 +31,7 @@ import {
 
 /** Countdown-cancel reason when a member left or un-readied. */
 export const COUNTDOWN_CANCELLED_MEMBER_LEFT = "a member left";
+/** Countdown-cancel reason when a member un-readied (or changed their character pick, which un-readies them). */
 export const COUNTDOWN_CANCELLED_UNREADY = "a member is not ready";
 
 /** A member's look for their lobby pick (docs/COSMETICS.md CS4; the server's wallet through cosmeticLookOf). */
@@ -98,11 +99,17 @@ export function inviteViewsOf(
 	return out;
 }
 
+/** One notice addressed to one player, as the outbox queues it for LobbyService to send. */
 export interface LobbyNoticeFor {
 	readonly userId: number;
 	readonly notice: LobbyNotice;
 }
 
+/**
+ * Everything one flush sends (`LobbyOutbox.take`): who gets a fresh lobby state, who a fresh invite list, and the
+ * notices. The service builds the views for the listed players at flush time, so each hears one update however many
+ * changes there were.
+ */
 export interface LobbyOutboxBatch {
 	/** Players who need a fresh `lobbyState` (ascending). */
 	readonly state: number[];
@@ -119,6 +126,11 @@ function sortedIds(set: ReadonlySet<number>): number[] {
 	return out;
 }
 
+/**
+ * The collector itself (see the file comment), one per server, owned by LobbyService: each `Lobbies` result is reported
+ * to it as it happens, and the service drains it with `take` after every request and tick and with `takeList` when it
+ * paces the browse list push. It only records who must hear what; it sends nothing itself.
+ */
 export class LobbyOutbox {
 	private readonly state = new Set<number>();
 	private readonly invites = new Set<number>();

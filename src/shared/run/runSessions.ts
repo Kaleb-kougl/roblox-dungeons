@@ -87,6 +87,12 @@ export interface StartRunRequest {
 	characterId?: string;
 }
 
+/**
+ * Why a `startRun` was refused (`StartRunReply.code`): a malformed request, a world that is not registered or is played
+ * only locally, a boss door start, a bad party or character list, too many of the player's runs still validating
+ * (`busy`), a world that could not be built or a seed that could not be picked (`config_error`), the start rate limit,
+ * or a character a member does not own.
+ */
 export type StartRunRejectCode =
 	| "bad_request"
 	| "unknown_world"
@@ -134,6 +140,12 @@ export interface StartRunReply {
 	reason?: string;
 }
 
+/**
+ * One run the server started: its id, the seed the server picked, the world, the owner and members, and what the run is
+ * validated with (characters, upgrades, the built setup and its segmented validator). Server only; created by
+ * `RunSessions.start` and looked up by run id for every segment and the final submit. The client only ever sees the
+ * parts echoed in `StartRunReply`.
+ */
 export interface RunSession {
 	readonly runId: string;
 	readonly seed: number;
@@ -225,10 +237,18 @@ export interface StartContext {
 	readonly equipped?: (userId: number) => ReadonlyMap<string, string> | undefined;
 }
 
+/**
+ * What `RunSessions.start` returns: the new session, with the open session it replaced when the start was a restart
+ * (undefined otherwise, and for a party run that was only detached), or the reject code and a human-readable reason.
+ */
 export type StartRunResult =
 	| { readonly ok: true; readonly session: RunSession; readonly replaced: RunSession | undefined }
 	| { readonly ok: false; readonly code: StartRunRejectCode; readonly reason: string };
 
+/**
+ * What the server injects into `RunSessions`, so the registry stays pure and headless specs can drive it: the run id
+ * and seed sources, the Daily's secret seed, and optional limits and score reader (the live defaults when absent).
+ */
 export interface RunSessionDeps {
 	readonly newRunId: () => string;
 	/** A seed in [0, 2^32): every world's seed except the Daily's. */

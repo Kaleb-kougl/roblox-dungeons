@@ -327,6 +327,10 @@ export interface RecordedPartyRun {
 	readonly log: ReadonlyArray<string>;
 }
 
+/**
+ * Spec support. Optional changes to the scripted party run `recordPartyRun` plays. Absent fields give the run the older
+ * specs pin.
+ */
 export interface PartyRunScript {
 	/** Ticks to walk floor 1 (default 2400). */
 	readonly walkTicks?: number;

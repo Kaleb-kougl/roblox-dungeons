@@ -1,5 +1,6 @@
 /**
- * A small, mockable persistence layer for per-player documents (settings today). Pure TypeScript: the store and the
+ * A small, mockable persistence layer for per-player documents (the settings, onboarding, Codex and records
+ * services each keep one). Pure TypeScript: the store and the
  * wait function are injected, so headless tests drive it with an in-memory store, and the server passes a DataStore
  * adapter and `task.wait` (src/server/services/data/DataStoreKeyValue.ts).
  *
@@ -22,6 +23,10 @@ export interface KeyValueStore {
 	set(key: string, value: unknown, userIds?: ReadonlyArray<number>): void;
 }
 
+/**
+ * How often and how patiently a store call is tried (`withRetries`). With 3 attempts and a base delay of 1 s the waits
+ * are 1 s then 2 s.
+ */
 export interface RetryPolicy {
 	/** Total tries (>= 1). */
 	readonly attempts: number;
@@ -29,6 +34,10 @@ export interface RetryPolicy {
 	readonly baseDelaySeconds: number;
 }
 
+/**
+ * What `withRetries` answers: the call's value, or the last error as text once every try failed; `attempts` is how many
+ * tries were made.
+ */
 export type RetryResult<T> =
 	| { readonly ok: true; readonly value: T; readonly attempts: number }
 	| { readonly ok: false; readonly error: string; readonly attempts: number };
@@ -79,8 +88,18 @@ function resumeWithCoroutine(waiter: thread): void {
 	coroutine.resume(waiter);
 }
 
+/**
+ * What a save did: `saved` the document was written; `clean` nothing had changed, so nothing was written; `failed`
+ * every try of the write errored (the document stays dirty for the next save); `unknown` the key is not loaded.
+ */
 export type SaveOutcome = "saved" | "clean" | "failed" | "unknown";
 
+/**
+ * The session cache of one kind of per-player document on a server (see the file comment for its load, save and
+ * concurrency rules). Each service that keeps such a document owns one, built over its DataStore adapter and codec: the
+ * settings, and the onboarding, Codex and records documents too. `load` and `save` may yield; `get`, `set` and the
+ * flags never do.
+ */
 export class PlayerDocCache<T> {
 	private readonly entries = new Map<string, Entry<T>>();
 	/** Keys being loaded -> threads waiting for that load. */

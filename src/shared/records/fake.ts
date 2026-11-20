@@ -17,6 +17,10 @@ import { LEADERBOARD_BOARDS, type LeaderboardBoard } from "shared/leaderboard";
 import { RECORDS_FAKE_KEYWORDS, RECORDS_FAKE_RUN_ID } from "./config";
 import { emptyRecordsDoc, entryOfRun, type RecordsDoc } from "./doc";
 
+/**
+ * What a valid `KV_FakeRecords` attribute value stands for: the document RecordsService serves in Studio in place of
+ * the stored one, and whether the records count as loaded.
+ */
 export interface FakeRecords {
 	/** False for `unknown`. */
 	readonly loaded: boolean;
@@ -36,6 +40,12 @@ function parseCount(s: string): number | undefined {
 	return n !== undefined && n === n && n !== math.huge ? n : undefined;
 }
 
+/**
+ * The fake records a Workspace attribute value describes (formats in the file comment), or undefined when the value is
+ * not a string, is empty, or has any bad part (not three fields, an unknown board, a score or floor that is not a
+ * non-negative integer): one bad part rejects the whole value. The whole value is compared lower-cased. Each fake
+ * record carries time 0 and the run id `RECORDS_FAKE_RUN_ID`.
+ */
 export function parseFakeRecords(value: unknown): FakeRecords | undefined {
 	if (!typeIs(value, "string")) return undefined;
 	const text = trim(value).lower();

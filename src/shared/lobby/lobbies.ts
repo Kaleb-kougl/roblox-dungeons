@@ -56,8 +56,18 @@ import {
 	type LobbyWorld,
 } from "./config";
 
+/**
+ * Whether two players (UserIds) are Roblox friends, as the lobby rules ask it: for the `friends` visibility and the
+ * browse list's `hasFriend`. Injected (the server passes its FriendCache's answer); it must not yield, and it may
+ * answer false for a pair not known yet.
+ */
 export type AreFriends = (a: number, b: number) => boolean;
 
+/**
+ * One lobby as `Lobbies` hands it out: a read-only view of its current state (who is in it, who hosts, its settings and
+ * phase). Server-side only; members get a LobbyView built from it (outbox.ts) and browsers a LobbySummary. Times are on
+ * the injected clock, in seconds.
+ */
 export interface Lobby {
 	readonly lobbyId: string;
 	/** Creation order (the listing's last tie-break). */
@@ -100,6 +110,10 @@ interface MutableLobby {
 	readonly kickedUntil: Map<number, number>;
 }
 
+/**
+ * One live invite to a lobby. It belongs to the lobby, not to its sender (it stays valid when the sender leaves), and
+ * is gone once it is accepted, declined, dropped or past `expiresAt`. Times are on the injected clock, in seconds.
+ */
 export interface LobbyInvite {
 	readonly inviteId: string;
 	readonly lobbyId: string;
@@ -139,6 +153,10 @@ export interface LobbySummary {
  */
 export type OwnsCharacter = (userId: number, characterId: CharacterId) => boolean;
 
+/**
+ * The server facts every `Lobbies` call is judged against, passed in with each call rather than stored: the time
+ * (seconds), who is busy, who is friends with whom and who owns which character.
+ */
 export interface LobbyContext {
 	readonly now: number;
 	/** Why the player cannot group up now (in an unconcluded run, ...), or undefined. */
@@ -151,6 +169,12 @@ export interface LobbyContext {
 	readonly ownsCharacter?: OwnsCharacter;
 }
 
+/**
+ * Why a lobby request was refused, as the wire carries it (the refusal notice's `code`; the client picks the message
+ * from it). `badRequest` is a malformed or self-contradicting argument; `noAccess` a lobby the player may not join by
+ * its visibility; `starting` a lobby in its countdown; `busy` a player who cannot group up now; `inviteCap` too many
+ * live invites from this sender; `notReady` a start while a member is not ready.
+ */
 export type LobbyRefusal =
 	| "badRequest"
 	| "unknownLobby"
@@ -174,13 +198,19 @@ export type LobbyRefusal =
 	/** Set by the server (LobbyService), never by Lobbies: the player's request budget is spent. */
 	| "rateLimited";
 
+/**
+ * A refused request: the code for the client and a plain English reason for logs and the refusal notice. Nothing
+ * changed.
+ */
 export interface LobbyRefused {
 	readonly ok: false;
 	readonly code: LobbyRefusal;
 	readonly reason: string;
 }
 
+/** A request that went through, with what it produced (`T`: the lobby after the change, an invite, a departure). */
 export type LobbyOk<T> = { readonly ok: true } & T;
+/** What every `Lobbies` request answers: the result on success, or the refusal. Check `ok` first. */
 export type LobbyResult<T> = LobbyOk<T> | LobbyRefused;
 
 /** What a member leaving (or being kicked) changed. */
@@ -221,6 +251,10 @@ export type LobbyRunStart =
 /** Why a due countdown was cancelled (LobbyTickResult.cancelled). */
 export type LobbyCancelCause = "busy" | "lockedCharacter";
 
+/**
+ * What one `Lobbies.tick` did: the runs to start now (countdowns that ended), the countdowns it had to cancel, and the
+ * invites that expired. LobbyService starts the runs and the outbox tells the players about the rest.
+ */
 export interface LobbyTickResult {
 	readonly starts: ReadonlyArray<LobbyRunStart>;
 	/** Due countdowns that could not start (a member became busy); the lobby is back to `forming`. */
@@ -241,6 +275,10 @@ export interface LobbyCreateRequest {
 	readonly worldKind?: string;
 }
 
+/**
+ * What a `Lobbies` is built over: the id source for lobby and invite ids (GUIDs on the server, a counter in specs) and
+ * optionally its own tunables.
+ */
 export interface LobbiesDeps {
 	readonly newId: () => string;
 	/** Defaults to LOBBY. */

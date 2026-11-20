@@ -39,6 +39,7 @@ export const VOLUME_PERCENT = { min: 0, max: 100, step: 10, default: 100 } as co
  * from a stored doc; 100 is the default.
  */
 export const HUD_SCALE_PERCENTS: ReadonlyArray<number> = [70, 80, 90, 100, 110, 125];
+/** The HUD scale of a player who never changed it: 100 percent, the automatic scale as computed. Never stored. */
 export const DEFAULT_HUD_SCALE_PERCENT = 100;
 
 /** Room-edge lines (docs/ROOM_EDGES.md RE6, Options > Display > Room edges): On by default. */
@@ -82,7 +83,11 @@ export const DEFAULT_TOUCH_VIBRATION = true;
  * particles and ring segments, no bullet trails). Presentation only: effect bullets are always drawn.
  */
 export type BuildFxLevel = "full" | "reduced";
+/**
+ * Every build effects level, in the order the Options screen offers them; a stored value outside this list is dropped.
+ */
 export const BUILD_FX_LEVELS: ReadonlyArray<BuildFxLevel> = ["full", "reduced"];
+/** Build effects of a player who never changed them: Full. Never stored (only `reduced` is). */
 export const DEFAULT_BUILD_FX: BuildFxLevel = "full";
 
 /**
@@ -90,7 +95,12 @@ export const DEFAULT_BUILD_FX: BuildFxLevel = "full";
  * scale step apart (shared/view CURSOR_VIEW.sizeSteps, cursorScale). Normal is the default. Presentation only.
  */
 export type CursorSize = "small" | "normal" | "large";
+/**
+ * Every cursor size, in the order the Options screen offers them (small to large); a stored value outside this list is
+ * dropped.
+ */
 export const CURSOR_SIZES: ReadonlyArray<CursorSize> = ["small", "normal", "large"];
+/** The cursor size of a player who never changed it: Normal. Never stored (only `small` or `large` is). */
 export const DEFAULT_CURSOR_SIZE: CursorSize = "normal";
 
 /**
@@ -102,10 +112,12 @@ export const DEFAULT_GAME_CURSOR = true;
 
 /** Touch control sizes, percent of the layout (docs/MOBILE.md MB7, Options > Display > Touch size). 100 is the default. */
 export const TOUCH_SIZE_PERCENTS: ReadonlyArray<number> = [80, 100, 120];
+/** The touch controls' size of a player who never changed it: 100 percent of the layout. Never stored. */
 export const DEFAULT_TOUCH_SIZE_PERCENT = 100;
 
 /** Touch control opacity, percent (docs/MOBILE.md MB7, Options > Display > Touch opacity). 70 is the default. */
 export const TOUCH_OPACITY_PERCENTS: ReadonlyArray<number> = [40, 70, 100];
+/** The touch controls' opacity of a player who never changed it: 70 percent. Never stored. */
 export const DEFAULT_TOUCH_OPACITY_PERCENT = 70;
 
 /** Touch auto-target: the aim assist on the attack stick (docs/MOBILE.md MB7, Options > Display > Auto-target): On. */
@@ -119,4 +131,5 @@ export const DEFAULT_TOUCH_LEFT_HANDED = false;
  * default, never stored); otherwise a shared/l10n LOCALES code (the override).
  */
 export const LANGUAGE_AUTO = "auto";
+/** The language setting of a player who never changed it: automatic (the player's Roblox language). Never stored. */
 export const DEFAULT_LANGUAGE = LANGUAGE_AUTO;

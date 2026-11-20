@@ -20,6 +20,11 @@
 import type { CharacterId } from "shared/characters";
 import { FORFEIT_BUTTON, SIM_EVENT_FIELDS, archetypeAt, archetypeIds, type SimEvents } from "shared/sim";
 
+/**
+ * How a replayed run ended, as far as a recording shows: `victory` (the boss fell before any death), `death`, or
+ * `abandoned` (the recording stops with the player alive and no victory, for example a restart). A solo Leave run is a
+ * `death` with `FORFEIT_DEATH_CAUSE`.
+ */
 export type RunEndReason = "death" | "victory" | "abandoned";
 
 /** A named moment of the run (the web build's `Marker`), e.g. `boss.phase` with value 2. */
@@ -30,6 +35,11 @@ export interface RunMarker {
 	readonly value?: number;
 }
 
+/**
+ * One run's telemetry, built by `RunTelemetry.finish` from the server's own replay of the run, so no number in it comes
+ * from the client. Ticks are sim ticks at 60 Hz. It feeds the analytics mappers (analytics.ts) and the session summary
+ * (session.ts).
+ */
 export interface RunTelemetryRecord {
 	/** Sim ticks stepped (includes ticks after death). */
 	ticks: number;

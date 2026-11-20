@@ -12,6 +12,10 @@
  */
 import type { QueuedPost } from "./writeQueue";
 
+/**
+ * What `flushOnShutdown` needs from the server, injected so the flush is pure and runs in the specs with a fake clock:
+ * LeaderboardService passes `os.clock`, `task.wait`, `task.spawn`, its write queue and its write function.
+ */
 export interface ShutdownFlushDeps {
 	/** Seconds, monotonic (os.clock). */
 	readonly now: () => number;
@@ -29,6 +33,10 @@ export interface ShutdownFlushDeps {
 	readonly write: (q: QueuedPost) => void;
 }
 
+/**
+ * What the shutdown flush did, returned so the server can log it: a flush cut off by the deadline is reported with what
+ * it left behind (writes in flight, still queued, runs still validating), never silently.
+ */
 export interface ShutdownFlushReport {
 	/** Writes started (each one completed unless counted in `inFlight`). */
 	readonly started: number;
@@ -44,6 +52,12 @@ export interface ShutdownFlushReport {
 	readonly seconds: number;
 }
 
+/**
+ * Runs the shutdown flush described in the file comment and returns its report. Server only, called from BindToClose;
+ * it yields through `deps.wait` once per pass until nothing is queued, in flight or validating, or until
+ * `budgetSeconds` have passed since it started (the pass that notices the deadline returns with `timedOut` true). Each
+ * write runs in its own thread and one that throws still counts as finished.
+ */
 export function flushOnShutdown(deps: ShutdownFlushDeps, budgetSeconds: number): ShutdownFlushReport {
 	const startedAt = deps.now();
 	let started = 0;

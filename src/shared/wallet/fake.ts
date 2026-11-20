@@ -20,6 +20,10 @@ import { ARMORY_CATALOG, armoryItem, type ArmoryItem } from "./catalog";
 import { WALLET_FAKE_DRESSED, WALLET_FAKE_EQUIP_MARK, WALLET_FAKE_KEYWORDS } from "./config";
 import { emptyWalletDoc, type WalletDoc } from "./doc";
 
+/**
+ * What a valid `KV_FakeWallet` string parses to: the wallet WalletService serves to every player of the Studio session
+ * in place of the DataStore's.
+ */
 export interface FakeWallet {
 	/** False for `unknown`. */
 	readonly loaded: boolean;

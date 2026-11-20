@@ -302,6 +302,11 @@ export interface RunFinishVerdict {
 	silver?: SilverGrantBreakdown;
 }
 
+/**
+ * The remotes a client fires at the server: each entry is one event, its parameters the payload, and the comment names
+ * the server event that answers it (or says there is none). The server treats every payload as a claim: it re-reads and
+ * bounds the values and rate limits each event per player in the service that handles it.
+ */
 export interface ClientToServerEvents {
 	/**
 	 * A finished run (death, victory, or abandoned with R / quit): seed, spawn flag, the RLE input recording and the
@@ -507,6 +512,11 @@ export interface ClientToServerEvents {
 	cosmeticPassFakeBuy(itemId: string): void;
 }
 
+/**
+ * The remotes the server fires at one client: replies to that client's requests and pushes it did not ask for (state
+ * after the join load, lobby changes, merged lockstep frames). Everything here is the server's own data (its replay,
+ * its stored documents), never an echo of a client claim unless the entry says so.
+ */
 export interface ServerToClientEvents {
 	/** The verdict on one `submitRun`. */
 	runVerdict(verdict: RunVerdict): void;
@@ -588,4 +598,9 @@ export interface ServerToClientEvents {
 	lockstepFrames(runId: string, firstTick: number, data: buffer, hashAck: number, echo: buffer): void;
 }
 
+/**
+ * The Flamework networking object built from the two event interfaces, with a generated type guard per parameter. Never
+ * fired from here: `src/server/network.ts` and `src/client/network.ts` each derive their own `Events` from it with
+ * `createServer` / `createClient`.
+ */
 export const GlobalEvents = Networking.createEvent<ClientToServerEvents, ServerToClientEvents>();

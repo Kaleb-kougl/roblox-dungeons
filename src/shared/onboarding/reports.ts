@@ -32,6 +32,10 @@ export { TUTORIAL_PROMPT_IDS } from "shared/tutorial";
  */
 export type TutorialEntry = "firstJoin" | "restart" | "menu" | "again";
 
+/**
+ * Every way a tutorial attempt can begin: the set a `tutorialStarted` payload's `entry` is checked against, and the
+ * values the analytics catalog counts for the attempt funnel's entry field.
+ */
 export const TUTORIAL_ENTRIES: ReadonlyArray<TutorialEntry> = ["firstJoin", "restart", "menu", "again"];
 
 /** `tutorialStarted`'s payload: the entry and the last-used input device at the start (TFD9). */
@@ -64,6 +68,10 @@ export const TUTORIAL_NO_STEP_ID = "none";
 /** Why the first-join gate went where it went (OnboardingGate's field01). */
 export type OnboardingGateReason = "tutorial" | "invited" | "party" | "done" | "loadFailed" | "timeout" | "forced";
 
+/**
+ * Every reason the first-join gate can report: the set a gate report's `reason` is checked against, and
+ * OnboardingGate's field values in the analytics catalog.
+ */
 export const ONBOARDING_GATE_REASONS: ReadonlyArray<OnboardingGateReason> = [
 	"tutorial",
 	"invited",
@@ -77,6 +85,10 @@ export const ONBOARDING_GATE_REASONS: ReadonlyArray<OnboardingGateReason> = [
 /** What the player picked on the tutorial's outro. */
 export type TutorialOutroChoice = "firstRun" | "again" | "menu";
 
+/**
+ * Every choice a client can report from the tutorial outro: the set an outro report's `choice` is checked against. The
+ * event's field also carries `TUTORIAL_OUTRO_LEFT`, which only the server logs.
+ */
 export const TUTORIAL_OUTRO_CHOICES: ReadonlyArray<TutorialOutroChoice> = ["firstRun", "again", "menu"];
 
 /** TutorialOutroChoice's field01 when the player left the game on the outro (server-side). */
@@ -91,6 +103,10 @@ export type OnboardingReport =
 /** How a fresh player arrived (the onboarding funnel's step 1 field01; from the server's `joinIntent`). */
 export type OnboardingEntry = "organic" | "invited" | "party" | "unknown";
 
+/**
+ * Every way a fresh player can be recorded as arriving: the onboarding funnel's `Joined` entry values, counted by the
+ * analytics catalog and checked by `isOnboardingEntry`.
+ */
 export const ONBOARDING_ENTRIES: ReadonlyArray<OnboardingEntry> = ["organic", "invited", "party", "unknown"];
 
 /** Entries that bypass the tutorial (TFD3): the onboarding funnel logs `Joined` only for them. */
@@ -99,6 +115,10 @@ export const BYPASSED_ONBOARDING_ENTRIES: ReadonlyArray<OnboardingEntry> = ["inv
 /** Why an attempt was abandoned (TutorialAbandoned's field03): the player left the game, or a party run took over. */
 export type TutorialAbandonKind = "leave" | "partyRun";
 
+/**
+ * Every reason an attempt can be logged as abandoned: TutorialAbandoned's kind values in the analytics catalog.
+ * Server-decided, never part of a client payload.
+ */
 export const TUTORIAL_ABANDON_KINDS: ReadonlyArray<TutorialAbandonKind> = ["leave", "partyRun"];
 
 // (Helpers come before the constants they build: roblox-ts does not hoist a function called at module load.)
@@ -112,26 +132,43 @@ function collectCurrentStepIds(): ReadonlyArray<string> {
 /** Every value of a current-step field: the TUTORIAL_STEPS ids, then TUTORIAL_NO_STEP_ID. */
 export const TUTORIAL_CURRENT_STEP_IDS: ReadonlyArray<string> = collectCurrentStepIds();
 
+/**
+ * True when `v` is a prompt id the tutorial director can show (shared/tutorial's list). Guards the `prompt` of a stuck
+ * report, so a client cannot invent field values.
+ */
 export function isTutorialPromptId(v: unknown): v is string {
 	return typeIs(v, "string") && TUTORIAL_PROMPT_IDS.includes(v);
 }
 
+/** True when `v` is one of the `TUTORIAL_ENTRIES` strings (the `entry` of a `tutorialStarted` payload). */
 export function isTutorialEntry(v: unknown): v is TutorialEntry {
 	return typeIs(v, "string") && TUTORIAL_ENTRIES.includes(v as TutorialEntry);
 }
 
+/**
+ * True when `v` is one of shared/tutorial's `TUTORIAL_DEVICES` strings (the `device` of a `tutorialStarted` payload).
+ */
 export function isTutorialDevice(v: unknown): v is TutorialDevice {
 	return typeIs(v, "string") && TUTORIAL_DEVICES.includes(v as TutorialDevice);
 }
 
+/** True when `v` is one of the `ONBOARDING_GATE_REASONS` strings (the `reason` of a gate report). */
 export function isOnboardingGateReason(v: unknown): v is OnboardingGateReason {
 	return typeIs(v, "string") && ONBOARDING_GATE_REASONS.includes(v as OnboardingGateReason);
 }
 
+/**
+ * True when `v` is one of the `TUTORIAL_OUTRO_CHOICES` strings (the `choice` of an outro report). `left` is not one: a
+ * client cannot report it.
+ */
 export function isTutorialOutroChoice(v: unknown): v is TutorialOutroChoice {
 	return typeIs(v, "string") && TUTORIAL_OUTRO_CHOICES.includes(v as TutorialOutroChoice);
 }
 
+/**
+ * True when `v` is one of the `ONBOARDING_ENTRIES` strings. The onboarding funnel tracker checks the entry it is given
+ * with it before logging `Joined`.
+ */
 export function isOnboardingEntry(v: unknown): v is OnboardingEntry {
 	return typeIs(v, "string") && ONBOARDING_ENTRIES.includes(v as OnboardingEntry);
 }

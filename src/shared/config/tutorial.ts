@@ -36,6 +36,11 @@ export interface TutorialPelletTunables {
 	readonly max: number;
 }
 
+/**
+ * The tutorial's tunables outside the sim, in one frozen object (`TUTORIAL`): the fixed world (run seed, the two floor
+ * layouts, the boss's hp, the starting health), the director's timings, the metrics thresholds and the client's waits.
+ * Times are real seconds, distances tiles, health half hearts.
+ */
 export interface TutorialTunables {
 	/**
 	 * The run's seed (the sim rng and EndlessConfig.runSeed). The layouts below do not depend on it; the client
@@ -114,6 +119,12 @@ export interface TutorialTunables {
 	readonly outroDelaySeconds: number;
 }
 
+/**
+ * The live tutorial tunables, read by shared/run (the tutorial world), shared/tutorial (the director and its metrics)
+ * and the client's TutorialController. Two floors; the boss at 20 % hp; the move lesson done after 3 tiles; a stuck
+ * episode reported after 20 s; the client waits 6 s for the server's onboarding status and shows the outro 1.5 s after
+ * the finish.
+ */
 export const TUTORIAL: TutorialTunables = table.freeze({
 	runSeed: 4242,
 	floor1: table.freeze({ seed: 7511, corridorTiles: 4 }),

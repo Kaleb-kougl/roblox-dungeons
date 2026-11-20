@@ -99,6 +99,10 @@ export type IneligibleReason =
 	/** A daily-world run without its session's daily key (day and ruleset): it has no board to post to. */
 	| "daily_key";
 
+/**
+ * The facts about a finished, validated run that decide whether it may post (`leaderboardEligibility`). The server
+ * fills it from its own replay and from the server it runs on; nothing here comes from a client claim.
+ */
 export interface PostContext {
 	readonly worldKind: string;
 	readonly partySize: number;
@@ -115,6 +119,13 @@ export interface PostContext {
 	readonly daily?: DailyRunKey;
 }
 
+/**
+ * Whether a validated run may post, under `policy`: undefined when it posts, else the first reason it does not. Checked
+ * in this order: the world (neither an all-time nor a daily world), debug limits, Studio, a private server, a party
+ * size outside 1 to `MAX_PARTY_SIZE`, an abandoned run (a death-only world counts only a death as finished, a boss kill
+ * there is not an end), a party run with fewer than `COOP_MIN_PARTY` contributors, and a daily-world run without its
+ * daily key. Shared so the server decides with it and the specs test the rules headlessly.
+ */
 export function leaderboardEligibility(
 	ctx: PostContext,
 	policy: LeaderboardPolicy = LEADERBOARD_POLICY,
@@ -272,12 +283,20 @@ export interface DetailsStore {
 	update(key: string, transform: (old: unknown) => unknown, userIds?: ReadonlyArray<number>): void;
 }
 
+/**
+ * The DataStores one personal-best write touches, as `postPersonalBest` takes them. LeaderboardService passes adapters
+ * over the real OrderedDataStores and the details DataStore; the specs pass an in-memory fake.
+ */
 export interface LeaderboardStores {
 	/** The ordered store of a board and scope (the all-time stores unscoped, daily ones scoped by day and ruleset). */
 	readonly ordered: (ref: BoardRef) => OrderedScoreStore;
 	readonly details: DetailsStore;
 }
 
+/**
+ * What one `postPersonalBest` call did. The write queue's loop hands it to the post waiters (the daily verdict reads
+ * `improved` and `previous`); a write that threw has no outcome.
+ */
 export interface PostOutcome {
 	/** The ordered entry went up (a new personal best). */
 	readonly improved: boolean;

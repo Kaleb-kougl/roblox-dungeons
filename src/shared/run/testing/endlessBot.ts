@@ -80,6 +80,11 @@ export function walkDir(f: Field, x: number, z: number): [number, number] {
 	return len > 1e-9 ? [dx / len, dz / len] : [0, 0];
 }
 
+/**
+ * Spec support. Builds one input frame for a bot from a move vector, buttons and an aim vector. The axes are quantized
+ * as a real client's input is, which also turns -0 into 0 (the recording codec cannot carry -0). Every bot in this
+ * directory makes its frames here, so what a bot steps on is what a recording of it replays.
+ */
 export function frame(mx: number, mz: number, buttons = 0, ax = 0, az = 0): InputFrame {
 	// quantizeAxis, as a real client's input goes: it also turns -0 into 0, which the recording codec cannot carry (a
 	// -0 the live sim stepped on but the server's decoded segment no longer has once split the hashes)

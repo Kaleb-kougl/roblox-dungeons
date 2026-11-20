@@ -80,6 +80,10 @@ import {
 
 /** The Codex screen's tabs, in tab-row order. */
 export const CODEX_TABS = ["boons", "evolutions", "duos", "items", "boosts", "bestiary"] as const;
+/**
+ * One of the Codex screen's tabs (a `CODEX_TABS` member). Every entry belongs to exactly one, and the found / total
+ * counts are kept per tab.
+ */
 export type CodexTab = (typeof CODEX_TABS)[number];
 
 /**
@@ -98,6 +102,10 @@ export const CODEX_GROUPS = [
 	"bosses",
 	"secrets",
 ] as const;
+/**
+ * One of the sections a tab's grid is divided into (a `CODEX_GROUPS` member). The catalog's append-only order is per
+ * group, and `CODEX_TAB_GROUPS` says which tab shows each.
+ */
 export type CodexGroup = (typeof CODEX_GROUPS)[number];
 
 /** Each tab's groups, in grid order. */
@@ -118,6 +126,11 @@ export const CODEX_ID_SEPARATOR = ":";
  * with a letter, the separator, a key of letters / digits / `_`. At most CODEX_ID_MAX_LENGTH bytes (isCodexIdShape).
  */
 export const CODEX_ID_SHAPE = "^%a%w*:[%w_]+$";
+/**
+ * The longest string that can pass as a Codex id, in bytes: `isCodexIdShape` refuses a longer one before matching it
+ * against `CODEX_ID_SHAPE`. It bounds the unknown ids of a stored document that the store transform writes back
+ * untouched; every id of this catalog is far shorter.
+ */
 export const CODEX_ID_MAX_LENGTH = 64;
 
 /** The category part of each id (`<category>:<key>`). */
@@ -169,6 +182,11 @@ export type CodexArtRef =
 	| { readonly kind: "affix"; readonly affix: AffixId }
 	| { readonly kind: "secret" };
 
+/**
+ * One row of the Codex catalog: everything the screen needs to place and draw an entry's tile. Built once at module
+ * load from the sim, dungeon and theme tables, the same on client and server (the server checks claimed ids against the
+ * catalog). Whether a player has seen or found the entry is not here but in their Codex document, keyed by `id`.
+ */
 export interface CodexEntry {
 	/** Stable id (`boon:volatile`): the key in the Codex doc. */
 	readonly id: string;

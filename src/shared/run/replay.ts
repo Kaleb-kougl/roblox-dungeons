@@ -14,6 +14,10 @@ import { createSimState, step, type Recording, type SimConfig, type SimState } f
 /** Called after every step with the state it produced. Read only. */
 export type TickObserver = (state: Readonly<SimState>) => void;
 
+/**
+ * The checkpoint hook of a replay: how the server puts its time budget into `replayObserved`, `validateRun` and a
+ * `SegmentedValidator`'s `advance` without the replay itself reading a clock. Absent hooks replay straight through.
+ */
 export interface ReplayHooks {
 	/** Called after every `checkpointEvery`-th step (the server checks its time budget here and may yield). */
 	onCheckpoint?: () => void;
@@ -21,6 +25,12 @@ export interface ReplayHooks {
 	checkpointEvery?: number;
 }
 
+/**
+ * Replays `recording` from its own seed and spawn under `config` and returns the final state, calling `observe` after
+ * every step (the state is read only) and `hooks.onCheckpoint` after every `hooks.checkpointEvery`-th step. Same loop
+ * as the sim's `runReplay`, so the returned state hashes the same. An error raised by the sim propagates: `validateRun`
+ * is the caller that turns it into a rejection.
+ */
 export function replayObserved(
 	recording: Readonly<Recording>,
 	config: Readonly<SimConfig>,

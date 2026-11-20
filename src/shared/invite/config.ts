@@ -10,6 +10,10 @@ import type { LobbyVisibility } from "shared/lobby";
 /** Where `SocialService:PromptGameInvite` is called (spike I0 decides; "server" until it says otherwise). */
 export type InvitePromptSide = "server" | "client";
 
+/**
+ * The tunables of Roblox invites and party grouping, in one frozen object (`INVITE`). Durations are in seconds; most
+ * are read by the server's InviteService, `intentWaitSeconds` by the client's first-join flow.
+ */
 export interface InviteConfig {
 	/** See InvitePromptSide. "client": the server sends `invitePromptOnClient` with the options it built. */
 	readonly promptSide: InvitePromptSide;
@@ -51,6 +55,12 @@ export interface InviteConfig {
 	readonly notificationStringIds: ReadonlyMap<number, string>;
 }
 
+/**
+ * The live invite tunables: the server opens the invite prompt itself, LaunchData is at most 200 characters and is
+ * polled every second for up to 10 s after a join, the client's first-join choice waits at most 2 s for the server's
+ * `joinIntent`, and a lobby made for a Roblox Party starts Closed. No Notification String ids are set yet, so invites
+ * use Roblox's default text.
+ */
 export const INVITE: InviteConfig = table.freeze({
 	promptSide: "server" as InvitePromptSide,
 	launchDataMaxChars: 200,

@@ -8,7 +8,13 @@ import type { DecorFxName } from "./decor";
 // ---------------------------------------------------------------------------------------------
 // Slot roster (GDD: what every pack fills)
 
+/**
+ * The web build's five player classes (its GDD roster). Every pack fills, per class: the asset `class.<id>` (CHARACTER
+ * slot), the colour role `class.<id>` and the string `class.<id>.name`. The order only fixes the order of those
+ * required lists.
+ */
 export const CLASS_IDS = ["vanguard", "ranger", "pyromancer", "tinkerer", "hexblade"] as const;
+/** A class's name (a CLASS_IDS entry): the segment after `class.` in its asset, colour role and string keys. */
 export type ClassId = (typeof CLASS_IDS)[number];
 
 /**
@@ -50,9 +56,18 @@ export const ENEMY_ARCHETYPES = [
 	"mender",
 	"jackal",
 ] as const;
+/**
+ * An enemy archetype's theme name (an ENEMY_ARCHETYPES entry): the segment after `enemy.` in its asset ID, colour role
+ * and `enemy.<name>.name` string.
+ */
 export type EnemyArchetype = (typeof ENEMY_ARCHETYPES)[number];
 
+/**
+ * The web build's loot rarities. Every pack defines the string `rarity.<name>.name` for each. Separate from the boon
+ * draft's rarities (BOON_RARITY_ROLES: common, rare, legendary).
+ */
 export const RARITIES = ["normal", "magic", "rare", "unique", "set", "glyphword"] as const;
+/** A loot rarity's name (a RARITIES entry): the segment in its `rarity.<name>.name` string key. */
 export type Rarity = (typeof RARITIES)[number];
 
 /**
@@ -66,7 +81,15 @@ export const BIOMES = [
 	{ id: "biome.4", forgeTheme: "grim", act: "4" },
 	{ id: "biome.5", forgeTheme: "verdant", act: "endgame" },
 ] as const;
+/**
+ * A biome's ID (`biome.1` .. `biome.5`): the key of its entry in a manifest's `biomes` and the argument the biome,
+ * decor and ambience lookups take.
+ */
 export type BiomeId = (typeof BIOMES)[number]["id"];
+/**
+ * The Dungeon Forge theme slot a biome is tied to (BIOMES `forgeTheme`), by name. Carried on the resolved biome
+ * (BiomeTheme.forgeTheme) and named in the validator's contrast messages.
+ */
 export type ForgeTheme = (typeof BIOMES)[number]["forgeTheme"];
 
 /**
@@ -98,6 +121,10 @@ export const BIOME_MATERIALS = [
 	"Ground",
 	"Glass",
 ] as const;
+/**
+ * A material a biome may name (a BIOME_MATERIALS entry): an `Enum.Material` name, the value type of
+ * `BiomeDef.materials`.
+ */
 export type BiomeMaterial = (typeof BIOME_MATERIALS)[number];
 
 /**
@@ -106,6 +133,10 @@ export type BiomeMaterial = (typeof BIOME_MATERIALS)[number];
  * the abyss).
  */
 export const BIOME_MATERIAL_SURFACES = ["floor", "wall", "pool", "shoulder", "cliff"] as const;
+/**
+ * A surface a biome can pick a material for (a BIOME_MATERIAL_SURFACES entry): the key type of `BiomeDef.materials` and
+ * of the resolved BiomeTheme.materials.
+ */
 export type BiomeMaterialSurface = (typeof BIOME_MATERIAL_SURFACES)[number];
 
 /**
@@ -114,6 +145,10 @@ export type BiomeMaterialSurface = (typeof BIOME_MATERIAL_SURFACES)[number];
  */
 export const DEFAULT_BIOME_MATERIAL: BiomeMaterial = "SmoothPlastic";
 
+/**
+ * The web build's five act bosses (the GDD's list). Every pack fills the asset `boss.<n>` (BOSS slot) and the string
+ * `boss.<n>.name` for each. The bosses the port's endless runs draw are ENDLESS_BOSS_IDS, kept apart.
+ */
 export const BOSS_IDS = ["boss.1", "boss.2", "boss.3", "boss.4", "boss.5"] as const;
 
 /**
@@ -123,8 +158,14 @@ export const BOSS_IDS = ["boss.1", "boss.2", "boss.3", "boss.4", "boss.5"] as co
  * placeholder visuals exist for both (theme specs check it).
  */
 export const ENDLESS_BOSS_IDS = ["boss.act1", "boss.demonlord"] as const;
+/** An endless boss's sprite ID (an ENDLESS_BOSS_IDS entry), equal to its sim archetype id. */
 export type EndlessBossId = (typeof ENDLESS_BOSS_IDS)[number];
 
+/**
+ * Every bullet visual a pack must define (BULLET slot; all in REQUIRED_ASSET_IDS): the web build's six, then the port's
+ * additions, each explained inline. Gameplay never sees these: a renderer picks the ID for a bullet's kind and scales
+ * it to the gameplay radius. `bulletArtReport` walks the list in this order.
+ */
 export const BULLET_IDS = [
 	"bullet.enemy.small",
 	"bullet.enemy.medium",
@@ -150,6 +191,10 @@ export const BULLET_IDS = [
 	"bullet.player.bolt",
 ] as const;
 
+/**
+ * The web build's item icons, required in every pack (ITEM slot: 16 x 16 stills, placeholders until art exists): one
+ * per equipment slot, then potion, gold and glyph.
+ */
 export const ITEM_IDS = [
 	"item.weapon",
 	"item.offhand",
@@ -165,6 +210,11 @@ export const ITEM_IDS = [
 	"item.glyph",
 ] as const;
 
+/**
+ * The UI assets every pack must define (UI slot): the web build's cursor, panel, three HUD icons and the digit font
+ * (DIGIT_FONT). Any other `ui.*` ID is free-form and optional (the port's icons, markers and sliced panels); code that
+ * asks for one draws a fallback when the pack lacks it.
+ */
 export const UI_IDS = [
 	"ui.cursor",
 	"ui.panel",
@@ -231,6 +281,10 @@ export const AUDIO_EVENTS = [
  * decor.spec.ts asserts both are identical, in order.
  */
 export const BREAKABLE_KINDS = ["barrel", "crate"] as const;
+/**
+ * A breakable kind's name (a BREAKABLE_KINDS entry): the segment after `breakable.` in its asset, colour role and
+ * string keys.
+ */
 export type BreakableKind = (typeof BREAKABLE_KINDS)[number];
 
 /** Asset (and colour role) ID of a breakable kind: `breakable.crate`. */
@@ -258,6 +312,10 @@ export const BREAKABLE_SHATTER_ANIMATION = "shatter";
  * IDs in PORT_AUDIO_EVENTS.
  */
 export const BOOST_KINDS = ["fury", "quickstep", "frenzy", "aegis"] as const;
+/**
+ * A boost kind's name (a BOOST_KINDS entry): the segment after `boost.` in its asset, colour role and string keys, and
+ * in its aura effect's ID.
+ */
 export type BoostKind = (typeof BOOST_KINDS)[number];
 
 /** Asset (and colour role) ID of a boost kind: `boost.fury`. */
@@ -275,6 +333,9 @@ export function isBoostId(id: string): id is `boost.${BoostKind}` {
  * (a short label the HUD's boost row draws until it has icon art, like the boons' `.icon`).
  */
 export const BOOST_STRING_FIELDS = ["name", "desc", "icon"] as const;
+/**
+ * One of the strings every boost kind has (a BOOST_STRING_FIELDS entry): the last segment of `boost.<kind>.<field>`.
+ */
 export type BoostStringField = (typeof BOOST_STRING_FIELDS)[number];
 
 /** String-table key of a boost kind's field: boostStringKey("fury", "desc") = "boost.fury.desc". */
@@ -296,6 +357,10 @@ function boostStringKeys(): Array<string> {
 	out.push(BOOST_TOAST_KEY);
 	return out;
 }
+/**
+ * Every boost string key a pack must define: each kind's three fields in BOOST_KINDS order, then BOOST_TOAST_KEY.
+ * Spread into REQUIRED_STRING_KEYS.
+ */
 export const BOOST_STRING_KEYS: ReadonlyArray<string> = boostStringKeys();
 
 /**
@@ -309,6 +374,10 @@ export const BOOST_FX_IDS = [
 	"fx.boost.aura.frenzy",
 	"fx.boost.aura.aegis",
 ] as const;
+/**
+ * A boost sprite effect's ID (a BOOST_FX_IDS entry). The vale pack fills these apart from its other effects, so its
+ * types separate them from the rest of FxId.
+ */
 export type BoostFxId = (typeof BOOST_FX_IDS)[number];
 
 /** The pickup burst effect (optional). */
@@ -329,7 +398,15 @@ export function boostAuraFxId(kind: BoostKind): BoostFxId {
  * by the role; its `pivot` is its foot). The placeholder gem draws none of them.
  */
 export const BOOST_HALO_FX: DecorFxName = "glow";
+/**
+ * The decor effect drawn as the sparkle over a boost drop with art: `decor.fx.glint`, tinted by the kind's colour role.
+ * Optional (see BOOST_HALO_FX's comment for all three layers).
+ */
 export const BOOST_GLINT_FX: DecorFxName = "glint";
+/**
+ * The boost drop's beam: an optional free-form ui image, white and tinted by the kind's colour role, its `pivot` at its
+ * foot (see BOOST_HALO_FX's comment for all three layers).
+ */
 export const BOOST_BEAM_IMAGE_ID = "ui.marker.boost";
 
 /**
@@ -541,6 +618,7 @@ export const PORT_AUDIO_EVENTS = [
  * keys). Required, sound or silent (AMBIENCE slot); any other `amb.` ID is an error.
  */
 export const AMBIENCE_IDS = ["amb.b1", "amb.b2", "amb.b3", "amb.b4", "amb.b5"] as const;
+/** A biome's ambience loop ID (an AMBIENCE_IDS entry, `amb.b<n>`); `ambienceId` builds it from a biome ID. */
 export type AmbienceId = (typeof AMBIENCE_IDS)[number];
 
 /**

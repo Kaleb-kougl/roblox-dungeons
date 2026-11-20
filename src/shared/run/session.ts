@@ -12,6 +12,13 @@
 import { SIM_HZ } from "shared/sim";
 import type { RunTelemetryRecord } from "./telemetry";
 
+/**
+ * A player's numbers over the runs they submitted in one server session, the input of `analyticsForSession`. Times are
+ * seconds of sim time (ticks / 60) rounded to hundredths; `aliveSeconds` stops at each death, `playSeconds` counts
+ * every tick stepped. `retryAfterDeathRate` is retries per death in [0, 1], undefined without a death;
+ * `timeToFirstDeathSec` is alive time up to the first death, undefined without one; `heartsLostTotal` is in half
+ * hearts.
+ */
 export interface RunSessionSummary {
 	runs: number;
 	deaths: number;
@@ -38,6 +45,11 @@ function round(v: number, scale: number): number {
 	return math.round(v * scale) / scale;
 }
 
+/**
+ * Sums one player's run records, in the order they were submitted, into the session's numbers. The server's
+ * TelemetryService calls it when the player leaves. A death counts as retried when another run follows it in the list;
+ * the last run's death ends the retry streak. An empty list gives zeros and undefined rates.
+ */
 export function summarizeRunSession(records: ReadonlyArray<Readonly<RunTelemetryRecord>>): RunSessionSummary {
 	let deaths = 0;
 	let victories = 0;

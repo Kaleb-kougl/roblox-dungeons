@@ -18,6 +18,8 @@
 //     or `const` / `let` statement. `export { a } from "./b"` and `export * from` lines are not declarations;
 //   - a field is a member of an exported interface (property, method, call or index signature), counted only in
 //     FIELD_AREAS. Class members and other areas' interfaces are not checked;
+//   - an overloaded function is one declaration: its signatures and its implementation share the first one's
+//     comment;
 //   - a doc comment is a `/** */` directly above the declaration. A file header that ends in `@module` belongs to
 //     the module, not to the declaration under it;
 //   - spec files, `*.d.ts` and src/shared/fixtures-generated are skipped, and so is a generated source: a file whose
@@ -111,7 +113,13 @@ function gapsInSource(fileName, text, withFields) {
 	const lineOf = (node) => sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile)).line + 1;
 	const exportsFound = [];
 	const fields = [];
+	let overloadOf;
 	for (const statement of sourceFile.statements) {
+		// A function's later overload signatures and its implementation belong to its first signature.
+		const overloadName = t.isFunctionDeclaration(statement) && statement.name ? statement.name.text : undefined;
+		const continuesOverload = overloadName !== undefined && overloadName === overloadOf;
+		overloadOf = overloadName !== undefined && statement.body === undefined ? overloadName : undefined;
+		if (continuesOverload) continue;
 		if (t.isExportDeclaration(statement) || t.isExportAssignment(statement)) continue;
 		const modifiers = t.canHaveModifiers(statement) ? t.getModifiers(statement) ?? [] : [];
 		if (!modifiers.some((m) => m.kind === t.SyntaxKind.ExportKeyword)) continue;

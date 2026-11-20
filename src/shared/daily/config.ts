@@ -7,6 +7,11 @@
  */
 import { KV_EPOCH_UNIX_SECONDS, SECONDS_PER_DAY } from "shared/config";
 
+/**
+ * The Daily's tunables shared by client and server, in one frozen object (`DAILY`): how a unix time becomes a day
+ * number, the ruleset that scopes the daily boards, and the board display rules (cache time, percentile threshold,
+ * podium size). The seed's key is deliberately not part of it.
+ */
 export interface DailyConfig {
 	/** Unix seconds of day 0's start (UTC midnight): the leaderboard's epoch, 2026-01-01 (shared/config). */
 	readonly epochSeconds: number;
@@ -37,6 +42,12 @@ export interface DailyConfig {
 	readonly rosterUnlockFloors: boolean;
 }
 
+/**
+ * The live Daily tunables. Day 0 is 2026-01-01 UTC and days roll over at UTC midnight; the shown number is the day plus
+ * 1. `ruleset` is bumped with every change that alters endless play (the history is in the comments beside it) so one
+ * daily board never mixes two rule sets. Yesterday's board is cached 600 s, a percentile needs 20 entrants, and the
+ * podium shows 3 rows.
+ */
 export const DAILY: DailyConfig = table.freeze({
 	epochSeconds: KV_EPOCH_UNIX_SECONDS,
 	secondsPerDay: SECONDS_PER_DAY,

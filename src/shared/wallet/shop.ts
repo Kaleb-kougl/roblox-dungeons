@@ -17,8 +17,13 @@
 import { SILVER_SHOP, SILVER_SHOP_FAKE_KEYWORDS, WALLET } from "./config";
 import { cloneWalletDoc, walletBalance, type WalletDoc } from "./doc";
 
+/**
+ * The Silver packs' ids, smallest to largest. They are stored nowhere in the wallet, but they are telemetry SKUs
+ * (`silverPack.<id>`), audit log values and the keys of the product tables.
+ */
 export type SilverPackId = "pouch" | "purse" | "chest" | "hoard";
 
+/** One pack of Silver sold for Robux through a developer product. */
 export interface SilverPack {
 	readonly id: SilverPackId;
 	/** The Silver it grants (fixed; the Robux price is Roblox's). */
@@ -38,10 +43,18 @@ export const SILVER_PACKS: ReadonlyArray<SilverPack> = table.freeze([
 /** Every pack id, in SILVER_PACKS order. */
 export const SILVER_PACK_IDS: ReadonlyArray<SilverPackId> = SILVER_PACKS.map((p) => p.id);
 
+/**
+ * True when `v` is the id of a pack in SILVER_PACKS, retired ones included. Guards values that come from outside: a
+ * client's funnel report, Studio's fake purchase request.
+ */
 export function isSilverPackId(v: unknown): v is SilverPackId {
 	return typeIs(v, "string") && SILVER_PACK_IDS.includes(v as SilverPackId);
 }
 
+/**
+ * The pack with this id, retired ones included (a late receipt for a retired pack still grants), or undefined for
+ * anything that is not a pack id.
+ */
 export function silverPack(id: unknown, packs: ReadonlyArray<SilverPack> = SILVER_PACKS): SilverPack | undefined {
 	for (const p of packs) if (p.id === id) return p;
 	return undefined;
@@ -171,8 +184,17 @@ export interface SilverPurchaseGrant {
 	balance: number;
 }
 
+/**
+ * Why a receipt granted nothing: `badPurchaseId` it carries no usable PurchaseId, `duplicate` its PurchaseId is already
+ * in the wallet's receipt ring (granted before; answered Processed), `unknownProduct` its product is not a Silver pack
+ * here or the pack's Silver is not a positive whole number.
+ */
 export type SilverPurchaseRefusal = "duplicate" | "unknownProduct" | "badPurchaseId";
 
+/**
+ * What `applyPurchase` answers: the new doc to write with the grant it made, or the refusal with the stored doc
+ * unchanged (nothing is written).
+ */
 export type SilverPurchaseResult =
 	| { readonly ok: true; readonly doc: WalletDoc; readonly grant: SilverPurchaseGrant }
 	| { readonly ok: false; readonly reason: SilverPurchaseRefusal; readonly doc: Readonly<WalletDoc> };

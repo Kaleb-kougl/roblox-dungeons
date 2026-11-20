@@ -15,6 +15,11 @@
  */
 import { ORDERED_VALUE_LAYOUT, ORDERED_VALUE_MAX_BITS, type OrderedValueLayout } from "./config";
 
+/**
+ * What an entry's ordered value is built from (`encodeOrderedValue`): the run's score in points, the floor it reached
+ * and when it was submitted. Each part is clamped to its field of the layout, so a value outside the range is stored as
+ * the field's limit.
+ */
 export interface OrderedValueParts {
 	readonly score: number;
 	readonly floor: number;
@@ -22,6 +27,10 @@ export interface OrderedValueParts {
 	readonly at: number;
 }
 
+/**
+ * What an ordered value read back from a store says (`decodeOrderedValue`): the score and floor as they were stored
+ * (after clamping), and the submission time only to its slot (2 hours in the live layout), not to the second.
+ */
 export interface DecodedOrderedValue {
 	readonly score: number;
 	readonly floor: number;

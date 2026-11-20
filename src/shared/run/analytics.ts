@@ -24,6 +24,12 @@ export interface AnalyticsFields {
 	field03?: string;
 }
 
+/**
+ * One AnalyticsService call, described as data: a custom event, a funnel step, an onboarding funnel step or a
+ * progression event. The pure mappers here and in the other analytics modules (lobby, wallet, daily, recap) return
+ * these and the server's TelemetryService logs them, so the mapping is tested headlessly. `fields` are the three custom
+ * fields; every value must come from a small fixed set (the 8,000 combinations limit in the file comment).
+ */
 export type AnalyticsEventSpec =
 	| { kind: "custom"; name: string; value: number; fields?: AnalyticsFields }
 	| { kind: "funnel"; funnel: string; step: number; stepName: string; fields?: AnalyticsFields }
@@ -40,6 +46,10 @@ export type AnalyticsEventSpec =
 
 /** The run funnel (one funnel session per validated run). Steps are logged in order, only the ones reached. */
 export const RUN_FUNNEL = "M1Run";
+/**
+ * The step names of `RUN_FUNNEL`, in order. The step number logged is the index + 1. They are Roblox dashboard keys:
+ * renaming or reordering one splits the funnel's history.
+ */
 export const RUN_FUNNEL_STEPS = ["RunStarted", "FirstKill", "BossEngaged", "BossPhase2", "BossPhase3", "BossDefeated"];
 
 /**
@@ -50,9 +60,21 @@ export const RUN_FUNNEL_STEPS = ["RunStarted", "FirstKill", "BossEngaged", "Boss
  * (fixture event streams) or an unlisted boss logs Mother Mayhem's level, as before.
  */
 export const BOSS_PROGRESSION_PATH = "ActI";
+/**
+ * Mother Mayhem's level number on `BOSS_PROGRESSION_PATH`, and the level logged for a record without a boss id or with
+ * an unlisted boss.
+ */
 export const BOSS_PROGRESSION_LEVEL = 1;
+/**
+ * Mother Mayhem's level name on `BOSS_PROGRESSION_PATH`: her old name, kept as the dashboard key (see the comment
+ * above).
+ */
 export const BOSS_PROGRESSION_LEVEL_NAME = "MotherBramble";
 
+/**
+ * A boss as a progression level: the level number and level name its Start / Complete / Fail events are logged with
+ * (`BOSS_PROGRESSION_LEVELS`). The number identifies the boss, it is not an order.
+ */
 export interface BossProgressionLevel {
 	readonly level: number;
 	readonly levelName: string;

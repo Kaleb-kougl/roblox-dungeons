@@ -22,10 +22,18 @@ import type { ColorRole } from "./types";
 
 /** The chest's tiers, VaultTier order (the draft's rarity names, TRD5). */
 export const TREASURE_TIERS = ["common", "rare", "legendary"] as const;
+/**
+ * A chest tier's name (a TREASURE_TIERS entry). Its position in that list is the dungeon's `VaultTier` number; the name
+ * is the last segment of the tier's string key (`boon.rarity.<tier>`) and floor colour role (`treasure.<tier>`).
+ */
 export type TreasureTier = (typeof TREASURE_TIERS)[number];
 
 /** The vault's locks, VaultLock order (TRD4). */
 export const TREASURE_LOCKS = ["untouched", "swift"] as const;
+/**
+ * A vault lock's name (a TREASURE_LOCKS entry). Its position in that list is the dungeon's `VaultLock` number; the name
+ * is the last segment of the lock's string key (`treasure.lock.<lock>`).
+ */
 export type TreasureLock = (typeof TREASURE_LOCKS)[number];
 
 /**

@@ -45,6 +45,10 @@ export const CODEX_REQUIRES_CHARACTERS = ["knight", "archer"] as const;
 
 /** The Codex's one sound (CXD12): a codex toast's soft chime. Port audio ID, SILENT in the placeholder, no fallback. */
 export const CODEX_NEW_SOUND = "sfx.codex.new";
+/**
+ * Every Codex audio ID, the same list `contract.ts` writes out inside PORT_AUDIO_EVENTS (`codex.spec.ts` checks they
+ * agree). One entry today; nothing reads its order.
+ */
 export const CODEX_AUDIO_IDS: ReadonlyArray<string> = [CODEX_NEW_SOUND];
 
 /** `codex.tab.<tab>`. */

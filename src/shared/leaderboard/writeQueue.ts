@@ -12,6 +12,10 @@ import { SlidingWindowLimiter } from "shared/run";
 import { LEADERBOARD_WRITE_RATE, LEADERBOARD_WRITE_RETRY } from "./config";
 import type { PostJob } from "./posting";
 
+/**
+ * One personal-best write waiting in the queue (or taken from it and in flight), with its retry state. `take` hands it
+ * out and `failed` reads it back to count the attempt.
+ */
 export interface QueuedPost {
 	readonly job: PostJob;
 	/** Failed attempts so far. */
@@ -20,12 +24,22 @@ export interface QueuedPost {
 	readonly notBefore: number;
 }
 
+/**
+ * How a failed write is retried: `attempts` is the total number of tries before the write is dropped; the wait before a
+ * retry starts at `baseDelaySeconds`, doubles with each further failure and never exceeds `maxDelaySeconds`. The live
+ * values are `LEADERBOARD_WRITE_RETRY`.
+ */
 export interface WriteRetryPolicy {
 	readonly attempts: number;
 	readonly baseDelaySeconds: number;
 	readonly maxDelaySeconds: number;
 }
 
+/**
+ * What queueing a write did: `queued` took a new slot; `replaced` means a lower value already queued for the same
+ * player, board and scope gave way to this one; `kept` means the queued value was equal or higher and this write was
+ * discarded.
+ */
 export type EnqueueOutcome = "queued" | "replaced" | "kept";
 
 const RATE_KEY = "writes";
@@ -35,6 +49,12 @@ export function postJobKey(job: Pick<PostJob, "board" | "scope" | "userId">): st
 	return `${job.board}:${job.scope}:${job.userId}`;
 }
 
+/**
+ * The server's queue of personal-best writes described in the file comment, one slot per player, board and scope
+ * (`postJobKey`), served oldest slot first. The rate defaults to `LEADERBOARD_WRITE_RATE` and the retry policy to
+ * `LEADERBOARD_WRITE_RETRY`; a write still in backoff is skipped, not waited for. A failed write whose slot was
+ * meanwhile filled by an equal or better post is dropped, since the queued one covers it.
+ */
 export class LeaderboardWriteQueue {
 	private readonly byKey = new Map<string, QueuedPost>();
 	private readonly order: string[] = [];

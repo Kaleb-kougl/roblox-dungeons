@@ -30,6 +30,11 @@ import { PYREKEEPER, SLIME, SUMMONER } from "shared/sim";
 /** The EV13 target for one room's worst case. */
 export const POOL_ROOM_TARGET = 48;
 
+/**
+ * Spec support. One room's actor-pool load from its planned spawns (`roomLoad`): the enemies bought, how many are
+ * Oozes, Summoners and Pyre-keepers, and the worst-case `alive` and `slots` the file comment defines. Counts of actors,
+ * against `MAX_ACTORS`.
+ */
 export interface RoomLoad {
 	readonly bought: number;
 	readonly slimes: number;
@@ -67,6 +72,10 @@ export interface WorstRoom extends RoomLoad {
 	readonly kinds: string;
 }
 
+/**
+ * Spec support. One (floor, party size) row of `poolHighWater`, summed over the run seeds: rooms seen, enemies bought,
+ * and the largest bought / alive / slots of any one room, with the worst room by slots.
+ */
 export interface HighWaterRow {
 	readonly floor: number;
 	readonly party: number;
@@ -151,10 +160,15 @@ export function poolHighWater(
 	return rows;
 }
 
+/** Spec support. Markdown header of the pool high-water table that `formatHighWaterRow` fills. */
 export function highWaterHeader(): string {
 	return "| floor | party | rooms | bought / room | max bought | max alive | max slots | worst room (run, room, type: kinds) | max floor alive |";
 }
 
+/**
+ * Spec support. One Markdown row of the pool high-water table. A row without rooms prints 0.00 bought per room and `-`
+ * for the worst room.
+ */
 export function formatHighWaterRow(row: HighWaterRow): string {
 	const w = row.worst;
 	const worst = w !== undefined ? `run ${w.run} room ${w.room} ${w.type}: ${w.kinds}` : "-";

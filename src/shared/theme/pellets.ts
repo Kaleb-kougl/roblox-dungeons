@@ -16,6 +16,10 @@ import type { ColorRole } from "./types";
 
 /** The pellet kinds: the room's ordinary pellet and the rare power pellet (docs/PELLETS.md PD4). */
 export const PELLET_KINDS = ["normal", "power"] as const;
+/**
+ * A pellet kind's name (a PELLET_KINDS entry): the segment after `pellet.` in the kind's asset and colour role ID, and
+ * the key renderers ask the pack for a pellet's look by.
+ */
 export type PelletKind = (typeof PELLET_KINDS)[number];
 
 /** Asset (and colour role) ID of a pellet kind: `pellet.normal`, `pellet.power`. */

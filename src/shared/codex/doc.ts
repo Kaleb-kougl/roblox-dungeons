@@ -37,6 +37,10 @@ import { CODEX, CODEX_DOC_VERSION } from "./config";
 
 /** An entry's tier: NONE (absent from the doc), SEEN, FOUND. */
 export const CodexTier = { NONE: 0, SEEN: 1, FOUND: 2 } as const;
+/**
+ * A tier as a number: 0 (none), 1 (seen) or 2 (found), the values of `CodexTier`. What the tier lookups return; a
+ * stored mark carries only 1 or 2, since an entry with no tier has no mark.
+ */
 export type CodexTierId = (typeof CodexTier)[keyof typeof CodexTier];
 
 /** One entry's state: `[tier, day, floor]` (see the module comment). */
@@ -132,6 +136,11 @@ function unreadOf(ids: ReadonlyArray<string> | undefined, e: ReadonlyMap<string,
 	return out.size() > 0 ? out : undefined;
 }
 
+/**
+ * A Codex with nothing seen or found, no NEW dots and not yet seeded: what a missing, unreadable or other-version
+ * stored value decodes to, and the base every decode and encode builds on. A fresh object each call (its map is
+ * mutable).
+ */
 export function emptyCodexDoc(): CodexDoc {
 	return { v: CODEX_DOC_VERSION, e: new Map() };
 }
@@ -193,6 +202,11 @@ function sameList(a: ReadonlyArray<string> | undefined, b: ReadonlyArray<string>
 	return true;
 }
 
+/**
+ * True when two documents hold the same state: the same `seeded` flag (absent equal to false), the same entries with
+ * equal marks, and the same `unread` list in the same order (absent equal to empty). Expects normalized documents,
+ * whose `unread` is sorted. The codec's `equals`, so the doc cache can tell whether a change needs a write.
+ */
 export function sameCodexDoc(a: Readonly<CodexDoc>, b: Readonly<CodexDoc>): boolean {
 	if ((a.seeded === true) !== (b.seeded === true)) return false;
 	if (a.e.size() !== b.e.size()) return false;

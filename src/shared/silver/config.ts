@@ -19,6 +19,11 @@ export const SILVER_ROWS: ReadonlyArray<SilverRowId> = table.freeze([
 	"kills",
 ]);
 
+/**
+ * The Silver earn table's numbers, in one frozen object (`SILVER`): what each run row pays, the run minimum and its
+ * room requirement, the two per-day bonuses and the Prospector upgrade's percentage. Amounts are whole Silver; every
+ * calculation is integer math.
+ */
 export interface SilverTunables {
 	/** Silver per room cleared (`counts[ROOMS]`: rooms with a score record; never the boss room). */
 	readonly roomPay: number;
@@ -48,6 +53,12 @@ export interface SilverTunables {
 	readonly percentBase: number;
 }
 
+/**
+ * The live earn table (every number still marked to tune): 2 per room cleared, 5 + n for floor n, 40 times the Depth
+ * per boss kill, 15 per vault opened, 25 per secret room, 30 per Goldling caught, 1 per 10 kills; a run that cleared at
+ * least 2 rooms is topped up to 20; 50 for the first paying run and 50 for the first Daily finish of a UTC day;
+ * Prospector adds 5 % of the run amount per level.
+ */
 export const SILVER: SilverTunables = table.freeze({
 	roomPay: 2,
 	floorBase: 5,

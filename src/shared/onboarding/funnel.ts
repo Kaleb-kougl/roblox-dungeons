@@ -102,6 +102,12 @@ function stepOrder(id: string): number {
 	return id === TUTORIAL_NO_STEP_ID ? TUTORIAL_STEPS.size() : tutorialStepIndex(id);
 }
 
+/**
+ * One player's tutorial attempt filter for one server session (see the module comment): it holds the open attempt,
+ * decides which steps and reports of it are logged, and enforces the per-attempt and per-session event budgets. It
+ * builds no events itself; `PlayerTutorialTelemetry` asks it and then builds the specs. `maxStep` is the highest lesson
+ * step accepted and `limits` the budgets, both defaulting to the live config (specs pass smaller ones).
+ */
 export class TutorialFunnelTracker {
 	private attemptId: string | undefined;
 	private info: TutorialStartInfo | undefined;

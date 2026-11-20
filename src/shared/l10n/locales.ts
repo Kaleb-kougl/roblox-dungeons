@@ -23,6 +23,11 @@ export interface LocaleNumberFormat {
 	readonly decimal: string;
 }
 
+/**
+ * One locale the game knows: a row of `LOCALES`. It carries what picking and drawing need (the Roblox ids that select
+ * it, its script and direction, its number separators) and whether players can get it yet (`status`); the translated
+ * strings themselves live in the generated locale tables under the same `code`.
+ */
 export interface LocaleDef {
 	/** Theme pack locale code ("es", "pt-BR", "zh-CN"). */
 	readonly code: string;

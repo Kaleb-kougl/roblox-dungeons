@@ -13,6 +13,10 @@ export interface LocalePick {
 	readonly auto: boolean;
 }
 
+/**
+ * Options for `pickLocale`. By default only live locales can be picked, whether from the Roblox language or from the
+ * Options override.
+ */
 export interface PickLocaleOptions {
 	/** Also pick hidden locales (a developer override, Studio): the pseudo-locale and locales not yet live (LD12). */
 	readonly allowHidden?: boolean;

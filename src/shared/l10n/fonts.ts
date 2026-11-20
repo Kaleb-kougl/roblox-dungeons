@@ -9,6 +9,10 @@
  */
 import { SOURCE_LOCALE, localeDef, type LocaleScript } from "./locales";
 
+/**
+ * The fonts one writing system is drawn with, as legacy `Enum.Font` item names (strings, so this module needs no Roblox
+ * types; the client resolves them). One row of `L10N_FONTS` per script; `fontsFor` returns the row for a locale code.
+ */
 export interface LocaleFonts {
 	/** Labels, numbers, banners (Enum.Font name). */
 	readonly text: string;

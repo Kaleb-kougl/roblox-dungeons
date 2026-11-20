@@ -85,6 +85,14 @@ export interface SilverGrantBreakdown {
 	balance: number;
 }
 
+/**
+ * Why a wallet transform changed nothing. Grants: `badRunId` (no usable run id), `duplicate` (the run, or a receipt,
+ * was granted already). Buys: `unknown` (no such item), `maxed`, `prerequisite` (the item it requires is not owned at
+ * the level), `poor` (the balance is short). Equips: `badSlot` (no such slot), `wrongSlot` (the item belongs to another
+ * slot), `notOwned`. Any transaction: `newerVersion` (the stored doc is a newer build's and is never written over). The
+ * remaining reasons are described on their own lines below. A buy's or equip's reason reaches the client in
+ * WalletActionResult.
+ */
 export type WalletRefusal =
 	| "duplicate"
 	| "badRunId"
@@ -107,6 +115,10 @@ export type WalletRefusal =
 	/** A game pass grant of an item that is not sold for Robux. */
 	| "notRobux";
 
+/**
+ * What `applyGrant` answers: the new doc with the breakdown of what was paid, or the refusal with the stored doc
+ * unchanged.
+ */
 export type WalletGrantResult =
 	| { readonly ok: true; readonly doc: WalletDoc; readonly breakdown: SilverGrantBreakdown }
 	| { readonly ok: false; readonly reason: WalletRefusal; readonly doc: Readonly<WalletDoc> };
@@ -122,10 +134,18 @@ export interface WalletPurchase {
 	balance: number;
 }
 
+/**
+ * What `applyBuy` answers: the new doc with the purchase made (level, tier, price in Silver, balance after it), or the
+ * refusal with the stored doc unchanged.
+ */
 export type WalletBuyResult =
 	| { readonly ok: true; readonly doc: WalletDoc; readonly purchase: WalletPurchase }
 	| { readonly ok: false; readonly reason: WalletRefusal; readonly doc: Readonly<WalletDoc> };
 
+/**
+ * What `applyEquip` answers. `changed` is false when the slot already held that item (or was already empty), so there
+ * is nothing to write; a refusal carries the stored doc unchanged.
+ */
 export type WalletEquipResult =
 	| { readonly ok: true; readonly doc: WalletDoc; readonly changed: boolean }
 	| { readonly ok: false; readonly reason: WalletRefusal; readonly doc: Readonly<WalletDoc> };

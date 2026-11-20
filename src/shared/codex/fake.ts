@@ -19,6 +19,10 @@ import { CODEX_CATALOG, isCodexId } from "./catalog";
 import { CODEX_FAKE_KEYWORDS } from "./config";
 import { CodexTier, applyClaims, emptyCodexDoc, type CodexClaim, type CodexDoc } from "./doc";
 
+/**
+ * What a valid `KV_FakeCodex` attribute value stands for: the document CodexService serves in Studio in place of the
+ * stored one, and whether the Codex counts as loaded.
+ */
 export interface FakeCodex {
 	/** False for `unknown`. */
 	readonly loaded: boolean;
@@ -38,6 +42,12 @@ function everyEntry(tier: number): CodexDoc {
 	return doc;
 }
 
+/**
+ * The fake Codex a Workspace attribute value describes (formats in the file comment), or undefined when the value is
+ * not a string, is empty, or has any bad part (an unknown id, a tier other than 1 or 2): one bad part rejects the whole
+ * value, never a partial fake. Called by CodexService in Studio only. Every loaded fake is marked `seeded`; listed
+ * entries carry a NEW dot, the `all` / `seen` keywords none.
+ */
 export function parseFakeCodex(value: unknown): FakeCodex | undefined {
 	if (!typeIs(value, "string")) return undefined;
 	const text = trim(value);

@@ -42,6 +42,11 @@ export interface RunGrantFacts {
 /** Why a decided run grants nothing. */
 export type RunGrantSkip = SilverIneligibleReason | "rejected" | "noSilver" | "nobody";
 
+/**
+ * What a decided run pays and to whom, as RunSessionService.conclude hands it to WalletService: one grant, the same for
+ * every credited member, and the days its bonuses are judged on. When `skip` is set nothing is granted and `userIds` is
+ * empty.
+ */
 export interface RunGrantPlan {
 	/** Set when nothing is granted. */
 	readonly skip?: RunGrantSkip;
@@ -58,6 +63,12 @@ export function grantContextOf(worldKind: string, unixNow: number, daily?: Daily
 	return worldKind === DAILY_WORLD_KIND && daily !== undefined ? { day, dailyDay: daily.day } : { day };
 }
 
+/**
+ * The grant plan of a decided run. Skips, in this order: a run the server rejected (`rejected`), an accepted run
+ * without Silver rows (`noSilver`), a world or session that never pays (the eligibility reason: debug, dev, the
+ * tutorial, M1, Studio without the fake), and a run with no credited member (`nobody`). Otherwise every credited member
+ * gets the team's run amount; the grant counts as a Daily finish only for a Daily run whose start day is known.
+ */
 export function planRunGrants(f: RunGrantFacts): RunGrantPlan {
 	const ctx = grantContextOf(f.worldKind, f.unixNow, f.daily);
 	const skip = (why: RunGrantSkip): RunGrantPlan => ({ skip: why, ctx, userIds: [] });

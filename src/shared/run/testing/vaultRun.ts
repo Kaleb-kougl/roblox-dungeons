@@ -14,6 +14,10 @@ import type { SimConfig, TreasureConfig } from "shared/sim";
 import { devStartDepth } from "../dev";
 import { buildEndlessRunConfig, type EndlessRunSetup } from "../endless";
 
+/**
+ * Spec support. Options of `buildVaultRunConfig`: what a vault spec changes on the real endless run. All absent gives
+ * the endless run of that seed.
+ */
 export interface VaultRunOptions {
 	/** Absent: placeVault's own draws (about one floor in two from floor 2). */
 	readonly override?: VaultOverride;

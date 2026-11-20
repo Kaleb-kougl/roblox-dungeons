@@ -16,11 +16,13 @@ import type { WalletRobuxItem } from "./passes";
 import type { SilverPackId, SilverPurchaseGrant } from "./shop";
 import { nextGoals, type SilverGrantBreakdown, type WalletGoal, type WalletRefusal } from "./transforms";
 
+/** One owned item on the wire: its catalogue id and the level owned (1 or more). An entry of WalletStatus `own`. */
 export interface WalletOwnedEntry {
 	itemId: string;
 	level: number;
 }
 
+/** One equipped cosmetic on the wire: the slot and the id of the item in it. An entry of WalletStatus `equipped`. */
 export interface WalletEquippedEntry {
 	slot: string;
 	itemId: string;
@@ -47,6 +49,9 @@ export interface WalletPurchaseNotice {
 	balance: number;
 }
 
+/**
+ * A granted Silver pack as the `wallet` push carries it (WalletStatus `purchase`): the grant without its PurchaseId.
+ */
 export function walletPurchaseNotice(g: Readonly<SilverPurchaseGrant>): WalletPurchaseNotice {
 	return { productId: g.productId, packId: g.packId, silver: g.silver, balance: g.balance };
 }

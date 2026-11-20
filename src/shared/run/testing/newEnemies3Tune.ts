@@ -59,6 +59,10 @@ import {
 import { frame } from "./endlessBot";
 import { survivalRun } from "./survivalBot";
 
+/**
+ * Spec support. The three docs/NEW_ENEMIES_3.md room kinds by archetype id, in the order of `Nt12Tally`'s per-kind
+ * arrays (`hitsBy`, `count`).
+ */
 export const NT12_KINDS = ["mortar", "mender", "jackal"] as const;
 
 /** What the three did in a run (file comment). */
@@ -82,6 +86,10 @@ export interface Nt12Tally {
 	count: number[];
 }
 
+/**
+ * Spec support. A tally with every count at 0 and `seconds` -1 (not cleared), for an observer to fill or `meanNt12` to
+ * sum into.
+ */
 export function emptyNt12Tally(): Nt12Tally {
 	return {
 		seconds: -1,
@@ -317,6 +325,10 @@ export const NT12_ROOMS: ReadonlyArray<TuneFight> = [
 
 /** The drills: one Mortar 8 ahead (the shells on a moving target), and a pack of three 5 ahead (the pack's hits). */
 export const NT12_MORTAR_DRILL: TuneFight = nt12Room("mortar drill", [[MORTAR.id, 0, 8]], 60, 14);
+/**
+ * Spec support. The Jackal drill's fight: one pack of three about 5 units ahead of the player, capped at 60 s, for
+ * measuring the pack's hits on a passive bot.
+ */
 export const NT12_JACKAL_DRILL: TuneFight = nt12Room(
 	"jackal drill",
 	[
@@ -359,6 +371,7 @@ export function meanNt12(ts: ReadonlyArray<Nt12Tally>): Nt12Tally {
 const f1 = (x: number) => string.format("%.1f", x);
 const f2 = (x: number) => string.format("%.2f", x);
 
+/** Spec support. Markdown header of the NT12 fight and drill tables that `formatNt12Row` fills. */
 export function nt12Header(): string {
 	return (
 		"| room | who | s | hits (mortar / mender / jackal) | shells, hits a shell | heals, per Mender life, " +
@@ -403,6 +416,11 @@ export interface Nt12Survival {
 /** Room classes: none of the three, then each kind (a room with two of them counts in both). */
 export const NT12_ROOM_CLASSES = ["none of the three", "with a Mortar", "with a Mender", "with a Jackal pack"] as const;
 
+/**
+ * Spec support. One immortal survival descent of run `seed` as `who` up to `maxFloor`, observed every step. Each room
+ * fought is filed under the new kinds it planned (a room with two of them counts in both classes) and its fight ticks
+ * are compared with its par, rebuilt from the planned spawns and affixes.
+ */
 export function nt12Survival(seed: number, who: TuneCharacter, maxFloor: number): Nt12Survival {
 	const obs = new Nt12Observer();
 	const run = survivalRun(seed, who, { maxFloor, immortal: true, onStep: (s) => obs.observe(s) });
@@ -473,6 +491,10 @@ export function mergeNt12Classes(runs: ReadonlyArray<Nt12Survival>): Nt12RoomCla
 	return out;
 }
 
+/**
+ * Spec support. One Markdown row of the room class table (`nt12ClassHeader`): rooms fought and cleared, the cleared
+ * rooms' mean time and mean par in seconds, their time as a share of par, rooms under par, and hits per room fought.
+ */
 export function formatNt12Class(who: string, c: Nt12RoomClass): string {
 	const share = c.cleared > 0 ? f2(c.ticks / c.par) : "-";
 	const mean = c.cleared > 0 ? f1(c.ticks / c.cleared / SIM_HZ) : "-";
@@ -483,6 +505,7 @@ export function formatNt12Class(who: string, c: Nt12RoomClass): string {
 	);
 }
 
+/** Spec support. Markdown header of the room class table that `formatNt12Class` fills. */
 export function nt12ClassHeader(): string {
 	return "| rooms | who | fought | cleared | mean s | mean par s | time / par | under par | hits / room |";
 }

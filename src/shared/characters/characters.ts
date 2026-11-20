@@ -20,6 +20,11 @@ import {
 	type WeaponsState,
 } from "shared/sim";
 
+/**
+ * The id of a playable character. It is what a player's pick is sent and stored as (the lobby's Ready pick, a
+ * leaderboard member's `classId`) and the key the view and the server look a character up by; the sim never sees it,
+ * only the loadout and traits it stands for.
+ */
 export type CharacterId = "knight" | "archer";
 
 /** The Archer's roll dash: 140 % of the dash step (2.5 -> 3.38 tiles; owner answer 9). */
@@ -38,6 +43,10 @@ export const KNIGHT_HEARTS_MAX_DELTA = -2;
  */
 export const ARCHER_HEARTS_MAX_DELTA = -3;
 
+/**
+ * One playable character: a row of `CHARACTERS`. It holds what a run needs to become that character (the weapon loadout
+ * and the traits the run config hands to the sim) and the theme class the view draws it with.
+ */
 export interface CharacterDef {
 	readonly id: CharacterId;
 	/** The theme's class visual (`class.<id>` of theme CLASS_IDS: the Knight vanguard, the Archer ranger, ARD1). */

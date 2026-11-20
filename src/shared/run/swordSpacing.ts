@@ -16,6 +16,10 @@ export const SwordSpacing = {
 	/** The web build's sword: no brake (SimConfig.spacing absent). What every golden fixture was recorded with. */
 	WEB: 1,
 } as const;
+/**
+ * A value of `SwordSpacing`: which brake `swordSpacing` gives. Specs pass it to `setSwordSpacing`; live code never sets
+ * it.
+ */
 export type SwordSpacingKind = (typeof SwordSpacing)[keyof typeof SwordSpacing];
 
 let currentKind: SwordSpacingKind = SwordSpacing.ON;

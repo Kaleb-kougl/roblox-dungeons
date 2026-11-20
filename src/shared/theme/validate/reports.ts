@@ -48,8 +48,15 @@ import {
 } from "../contract";
 import { COLOR_ROLE_SET, fixed1, type ContrastEntry } from "./helpers";
 
+/** The biome surfaces the contrast reports measure against, in the order their entries come out for each biome. */
 export const SURFACES = ["floor", "wall"] as const;
 
+/**
+ * The enemy-bullet contrast table: one ContrastEntry per biome (sorted by ID) and surface (floor, then wall), the WCAG
+ * ratio of `enemyBullet` on it, `ok` at MIN_ENEMY_BULLET_CONTRAST or more. Empty when the manifest has no usable
+ * `colors`, `biomes` or `enemyBullet`; a surface that is not '#rrggbb' is skipped. `validateManifest` turns each failed
+ * entry into an error.
+ */
 export function contrastReport(manifest: unknown): Array<ContrastEntry> {
 	const out = new Array<ContrastEntry>();
 	if (!isObj(manifest) || !isObj(manifest.colors) || !isObj(manifest.biomes)) {
@@ -92,6 +99,13 @@ export interface JuiceContrastEntry {
 	ok: boolean;
 }
 
+/**
+ * Every check JuiceContrastEntry describes: the health-bar fills in HEALTH_BAR_FILL_ROLES order (only when
+ * `enemyHealthBack` is a colour), then the damage-number roles in DAMAGE_NUMBER_ROLES order, each against every biome
+ * floor in sorted biome order. An empty list when `manifest` or its `colors` is not an object; a colour that is missing
+ * or not '#rrggbb' is skipped (the colour-role check reports it). `validateManifest` turns each entry that is not `ok`
+ * into an error; specs read the whole table.
+ */
 export function juiceContrastReport(manifest: unknown): Array<JuiceContrastEntry> {
 	const out = new Array<JuiceContrastEntry>();
 	if (!isObj(manifest) || !isObj(manifest.colors)) {
@@ -162,6 +176,12 @@ export interface DecorFxEntry {
 	ok: boolean;
 }
 
+/**
+ * Every check DecorFxEntry describes: each DECOR_FX_ROLES colour against each ENEMY_BULLET_ROLES colour, in those
+ * lists' orders. An empty list when `manifest` or its `colors` is not an object; a colour that is missing or not
+ * '#rrggbb' is skipped (the colour-role check reports it). `validateManifest` turns each entry that is not `ok` into an
+ * error; specs read the whole table.
+ */
 export function decorFxReport(manifest: unknown): Array<DecorFxEntry> {
 	const out = new Array<DecorFxEntry>();
 	if (!isObj(manifest) || !isObj(manifest.colors)) {
@@ -217,6 +237,12 @@ export interface FxColorEntry {
 	ok: boolean;
 }
 
+/**
+ * Every check FxColorEntry describes: the FX_ROLES colours first, then each `fx.*` asset in sorted ID order (its tint
+ * role's colour, or its `meanColor` when untinted), each against every ENEMY_BULLET_ROLES colour. An empty list when
+ * `manifest` or its `colors` is not an object; a colour that is missing or not '#rrggbb' is skipped (the colour-role
+ * check reports it). `validateManifest` turns each entry that is not `ok` into an error; specs read the whole table.
+ */
 export function fxColorReport(manifest: unknown): Array<FxColorEntry> {
 	const out = new Array<FxColorEntry>();
 	if (!isObj(manifest) || !isObj(manifest.colors)) {
@@ -274,6 +300,11 @@ export interface BreakableContrastEntry {
 	ok: boolean;
 }
 
+/**
+ * Every check BreakableContrastEntry describes, one per BREAKABLE_ROLES colour in that order. Empty when the manifest
+ * has no usable `colors` or `enemyBullet`; a role that is missing or not '#rrggbb' is skipped. `validateManifest` turns
+ * each failed entry into an error.
+ */
 export function breakableContrastReport(manifest: unknown): Array<BreakableContrastEntry> {
 	const out = new Array<BreakableContrastEntry>();
 	if (!isObj(manifest) || !isObj(manifest.colors) || !isHexColor(manifest.colors.enemyBullet)) {
@@ -310,6 +341,12 @@ export interface EnemyOutlineEntry {
 	ok: boolean;
 }
 
+/**
+ * Every check EnemyOutlineEntry describes: the surfaces first (biomes in sorted order, floor then wall), then the
+ * ENEMY_BULLET_ROLES in order. Empty when `enemyOutline` is missing or not '#rrggbb'. An empty list when `manifest` or
+ * its `colors` is not an object; a colour that is missing or not '#rrggbb' is skipped (the colour-role check reports
+ * it). `validateManifest` turns each entry that is not `ok` into an error; specs read the whole table.
+ */
 export function enemyOutlineReport(manifest: unknown): Array<EnemyOutlineEntry> {
 	const out = new Array<EnemyOutlineEntry>();
 	if (!isObj(manifest) || !isObj(manifest.colors)) {
@@ -383,6 +420,12 @@ export interface PlayerOutlineEntry {
 	ok: boolean;
 }
 
+/**
+ * Every check PlayerOutlineEntry describes, in the order given there. Empty when `playerOutline` is missing or not
+ * '#rrggbb'. An empty list when `manifest` or its `colors` is not an object; a colour that is missing or not '#rrggbb'
+ * is skipped (the colour-role check reports it). `validateManifest` turns each entry that is not `ok` into an error;
+ * specs read the whole table.
+ */
 export function playerOutlineReport(manifest: unknown): Array<PlayerOutlineEntry> {
 	const out = new Array<PlayerOutlineEntry>();
 	if (!isObj(manifest) || !isObj(manifest.colors)) {
@@ -455,6 +498,12 @@ export interface BoostColorEntry {
 	ok: boolean;
 }
 
+/**
+ * Every check BoostColorEntry describes: per BOOST_ROLES colour, its surfaces (biomes sorted, floor then wall), then
+ * its ENEMY_BULLET_ROLES differences. An empty list when `manifest` or its `colors` is not an object; a colour that is
+ * missing or not '#rrggbb' is skipped (the colour-role check reports it). `validateManifest` turns each entry that is
+ * not `ok` into an error; specs read the whole table.
+ */
 export function boostColorReport(manifest: unknown): Array<BoostColorEntry> {
 	const out = new Array<BoostColorEntry>();
 	if (!isObj(manifest) || !isObj(manifest.colors)) {
@@ -529,6 +578,11 @@ export interface RoomEdgeEntry {
 	ok: boolean;
 }
 
+/**
+ * Every check RoomEdgeEntry describes, in the order given there. An empty list when `manifest` or its `colors` is not
+ * an object; a colour that is missing or not '#rrggbb' is skipped (the colour-role check reports it).
+ * `validateManifest` turns each entry that is not `ok` into an error; specs read the whole table.
+ */
 export function roomEdgeReport(manifest: unknown): Array<RoomEdgeEntry> {
 	const out = new Array<RoomEdgeEntry>();
 	if (!isObj(manifest) || !isObj(manifest.colors)) {
@@ -602,6 +656,14 @@ export interface MinimapEntry {
 	ok: boolean;
 }
 
+/**
+ * Every check MinimapEntry describes, plus one more "background" check per marker role for each MINIMAP_TINT_ROLES
+ * colour: the `minimap.floor` colour mixed MINIMAP_ROOM_TINT_MIX toward that tint (the floor of a seen room as the map
+ * paints it), with `against` "minimap.floor+<tint role>" and `againstColor` the mixed colour. Per role: the plain
+ * backgrounds, the tinted floors, then (for `minimap.enemy` only) the differences. An empty list when `manifest` or its
+ * `colors` is not an object; a colour that is missing or not '#rrggbb' is skipped (the colour-role check reports it).
+ * `validateManifest` turns each entry that is not `ok` into an error; specs read the whole table.
+ */
 export function minimapReport(manifest: unknown): Array<MinimapEntry> {
 	// Local, not module constants: this module's compiled Luau sits at the 200-locals limit (docs/NEW_BEST.md NB4).
 	const MINIMAP_ENEMY_ROLE = "minimap.enemy";
@@ -692,6 +754,11 @@ export interface ComboEntry {
 	ok: boolean;
 }
 
+/**
+ * Every check ComboEntry describes, in the order given there. An empty list when `manifest` or its `colors` is not an
+ * object; a colour that is missing or not '#rrggbb' is skipped (the colour-role check reports it). `validateManifest`
+ * turns each entry that is not `ok` into an error; specs read the whole table.
+ */
 export function comboReport(manifest: unknown): Array<ComboEntry> {
 	const out = new Array<ComboEntry>();
 	if (!isObj(manifest) || !isObj(manifest.colors)) {
@@ -781,6 +848,11 @@ export interface NearMissEntry {
 	ok: boolean;
 }
 
+/**
+ * Every check NearMissEntry describes, in the order given there. An empty list when `manifest` or its `colors` is not
+ * an object; a colour that is missing or not '#rrggbb' is skipped (the colour-role check reports it).
+ * `validateManifest` turns each entry that is not `ok` into an error; specs read the whole table.
+ */
 export function nearMissReport(manifest: unknown): Array<NearMissEntry> {
 	const out = new Array<NearMissEntry>();
 	if (!isObj(manifest) || !isObj(manifest.colors)) {
@@ -833,6 +905,11 @@ export interface BoonRarityEntry {
 	ok: boolean;
 }
 
+/**
+ * Every check BoonRarityEntry describes, in the order given there. An empty list when `manifest` or its `colors` is not
+ * an object; a colour that is missing or not '#rrggbb' is skipped (the colour-role check reports it).
+ * `validateManifest` turns each entry that is not `ok` into an error; specs read the whole table.
+ */
 export function boonRarityReport(manifest: unknown): Array<BoonRarityEntry> {
 	const out = new Array<BoonRarityEntry>();
 	if (!isObj(manifest) || !isObj(manifest.colors)) {

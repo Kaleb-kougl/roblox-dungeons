@@ -19,6 +19,10 @@ import { SILVER_ROLES } from "./silver";
 import type { ColorRole } from "./types";
 import { isObj } from "./util";
 
+/**
+ * The shape of Silver's colour rule (SILVER_COLOR_RULES), read by `silverReport`: the roles held, what each is compared
+ * with, and the bar for each of the three checks. Contrasts are WCAG ratios, differences CIE76.
+ */
 export interface SilverColorRules {
 	readonly roles: ReadonlyArray<ColorRole>;
 	/** The panel the text is drawn on. */
@@ -32,6 +36,11 @@ export interface SilverColorRules {
 	readonly minApart: number;
 }
 
+/**
+ * Silver's colour rule, checked by `silverReport` for every pack: `silver` reads as text on `uiPanel` (4.5:1), stays at
+ * least MIN_DECOR_FX_BULLET_DIFFERENCE (CIE76) from the enemy-bullet roles and `telegraph`, and as far from the score's
+ * golds. See the module comment for why each bar exists.
+ */
 export const SILVER_COLOR_RULES: SilverColorRules = {
 	roles: SILVER_ROLES,
 	panel: "uiPanel",

@@ -28,6 +28,10 @@ export const NX6_KINDS = ["bulwark", "chainhook", "snatcher", "pyrekeeper"] as c
 /** The party size of the worst-case pool slots. */
 export const NX6_PARTY = 4;
 
+/**
+ * Spec support. One floor's row of the NX6 room pool census: the solo pool census row, plus the party-of-four worst
+ * case over the same layouts (pool slots and enemies alive in one room, from `roomLoad`).
+ */
 export interface Nx6CensusRow {
 	readonly solo: PoolCensusRow;
 	/** Party 4: the most pool slots / alive in one room, where, and what it holds; the rooms holding a Pyre-keeper. */

@@ -14,6 +14,10 @@ import {
 	type SimState,
 } from "shared/sim";
 
+/**
+ * The local player's draft as the touch controls need it (`draftStatus`): whether it is open, whether a confirm counts
+ * yet, and which deal is on the table. All false / 0 outside endless runs.
+ */
 export interface DraftStatus {
 	readonly open: boolean;
 	/** The FIRE confirm counts from here (the same rule as the HUD snapshot's draftReady). */

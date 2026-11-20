@@ -20,6 +20,10 @@ import type { ColorRole } from "./types";
 
 /** The elite affixes (docs/ENEMY_VARIANTS.md EVD6), in unlock order. Each has a colour role and a name string. */
 export const AFFIX_IDS = ["hulking", "swift", "shielded", "vengeful"] as const;
+/**
+ * An elite affix's name (an AFFIX_IDS entry): the segment in its colour role (`affix.<id>`, affixRole) and its string
+ * keys (affixNameKey, bestiaryAffixKey).
+ */
 export type AffixId = (typeof AFFIX_IDS)[number];
 
 /**

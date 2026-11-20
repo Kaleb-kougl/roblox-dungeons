@@ -11,6 +11,11 @@ import { SETTINGS_RETRY, type RetryPolicy } from "shared/settings";
  */
 export const WALLET_DOC_VERSION = 1;
 
+/**
+ * The shape of WALLET: where the wallet document is stored, the limits on what it keeps and on client requests, the
+ * Studio switches, and the timings of grant retries and of the shutdown wait. Read by the server's WalletService and
+ * the pure wallet modules.
+ */
 export interface WalletTunables {
 	/** DataStore holding one WalletDoc per player, keyed by shared/settings `playerDataKey(userId)` (`u_<UserId>`). */
 	readonly dataStore: string;
@@ -38,6 +43,11 @@ export interface WalletTunables {
 	readonly goals: number;
 }
 
+/**
+ * The wallet's tunables (see WalletTunables for each field). The store is `KV_Wallet_v1`; the last 64 run ids are kept;
+ * a client may send 5 of each wallet request per 10 s; Studio does not write the DataStore; a failed grant is retried
+ * every 30 s up to 10 times; shutdown waits at most 25 s.
+ */
 export const WALLET: WalletTunables = table.freeze({
 	dataStore: "KV_Wallet_v1",
 	runRing: 64,
@@ -110,6 +120,11 @@ export interface SilverShopTunables {
 	readonly reportSecondsStep: number;
 }
 
+/**
+ * The Silver shop's tunables (see SilverShopTunables). The wallet keeps the last 128 granted PurchaseIds; the client
+ * shows the "on its way" notice after 15 s; the audit log is the DataStore `KV_Purchases_v1`; a client may send 10
+ * funnel reports per 10 s, and a reported time is capped at 600 s in 0.1 s steps.
+ */
 export const SILVER_SHOP: SilverShopTunables = table.freeze({
 	receiptRing: 128,
 	pendingNoticeSec: 15,
@@ -144,6 +159,10 @@ export interface CosmeticPassTunables {
 	readonly fakeRate: { readonly count: number; readonly windowSeconds: number };
 }
 
+/**
+ * The game pass tunables (see CosmeticPassTunables): the server checks ownership up to 3 times, 2 s apart, after a
+ * purchase prompt reports success; Studio's fake buy is limited to 5 per player per 10 s.
+ */
 export const COSMETIC_PASS: CosmeticPassTunables = table.freeze({
 	verifyTries: 3,
 	verifySeconds: 2,

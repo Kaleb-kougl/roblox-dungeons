@@ -18,6 +18,11 @@ import { LOBBY } from "shared/lobby";
 import { isFiniteValue } from "shared/run";
 import { INVITE } from "./config";
 
+/**
+ * What an invite's LaunchData says once decoded: an invite into the sender's lobby, or a plain invite to the game from
+ * the main menu. `fromUserId` is who sent it. A hint only, since the string can be edited by the user: the server never
+ * grants entry on it alone.
+ */
 export type InviteLaunch =
 	| { readonly kind: "lobby"; readonly lobbyId: string; readonly fromUserId: number }
 	| { readonly kind: "game"; readonly fromUserId: number };
@@ -32,6 +37,10 @@ export const INVITE_LAUNCH_FORMAT = table.freeze({
 	maxUserIdDigits: 15,
 });
 
+/**
+ * Options for encoding and decoding LaunchData. Only the Studio test switch for negative UserIds; live servers pass
+ * none.
+ */
 export interface InviteLaunchOptions {
 	/**
 	 * Studio only: accept negative UserIds (Studio test players are -1, -2, ...), written with a leading "-".

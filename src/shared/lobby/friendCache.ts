@@ -13,6 +13,10 @@
  */
 import { FRIEND_CACHE, type FriendCacheConfig } from "./config";
 
+/**
+ * What the cache is built over: the friendship fetch, how a fetch is run in the background, the clock (seconds; only
+ * differences are used) and the change listener. The server passes Roblox's calls, specs synchronous fakes.
+ */
 export interface FriendCacheDeps {
 	/** Are `a` and `b` friends? May yield; an error means "unknown" (retried later). */
 	readonly fetch: (a: number, b: number) => boolean;
@@ -41,6 +45,11 @@ function pairKey(lo: number, hi: number): string {
 	return `${lo}:${hi}`;
 }
 
+/**
+ * The cache itself (see the file comment), one per server. Pairs are unordered (the answer for a and b is the answer
+ * for b and a), a player is never their own friend, and `areFriends` has the shape the lobby rules ask for (lobbies.ts
+ * AreFriends).
+ */
 export class FriendCache {
 	private readonly entries = new Map<string, Entry>();
 	/** Entries waiting for a fetch slot, oldest first (stale ones are skipped). */

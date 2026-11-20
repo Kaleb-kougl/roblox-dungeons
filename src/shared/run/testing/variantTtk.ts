@@ -42,6 +42,10 @@ import {
 } from "shared/sim";
 import { frame } from "./endlessBot";
 
+/**
+ * Spec support. The one weapon the TTK bot holds, by weapon id: the sword (the full combo) or the bow (the stream
+ * only).
+ */
 export type TtkWeapon = "weapon.sword" | "weapon.bow";
 
 /** One TTK row: an archetype, an affix (AffixKind, 0 none), and Shielded without its refill. */
@@ -66,10 +70,16 @@ export const TTK_FLOORS: ReadonlyArray<TtkFloor> = [
 	{ floor: 20, depth: 4 },
 ];
 
+/** Spec support. The TTK arena: open ground 24 by 24 world units around the origin, no dungeon. */
 export const TTK_BOUNDS = { minX: -12, maxX: 12, minZ: -12, maxZ: 12 };
+/**
+ * Spec support. The enemy's centre distance from the player at tick 0 (world units): inside every room enemy's aggro
+ * range, so it engages on the first tick.
+ */
 export const TTK_START_DISTANCE = 4.5;
 /** The sword bot stops walking in at this centre distance (inside the swing's reach). */
 export const TTK_SWORD_CLOSE = 1.4;
+/** Spec support. The centre distance the bow bot keeps from its target (world units). */
 export const TTK_BOW_DISTANCE = 5;
 /** A fight that lasts longer is reported as not killed (-1). */
 export const TTK_MAX_SECONDS = 120;
@@ -89,6 +99,7 @@ export function ttkCases(): TtkCase[] {
 	return out;
 }
 
+/** Spec support. What `ttkFight` measured in one fight. */
 export interface TtkResult {
 	/** Seconds from tick 0 to the kill; -1: not killed within TTK_MAX_SECONDS. */
 	readonly seconds: number;

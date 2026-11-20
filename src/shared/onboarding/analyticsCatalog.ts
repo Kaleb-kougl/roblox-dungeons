@@ -80,6 +80,12 @@ export interface AnalyticsFieldSet {
 	readonly optional?: boolean;
 }
 
+/**
+ * One thing the server logs to AnalyticsService, as the catalog counts it: a custom event, a funnel, the onboarding
+ * funnel or a progression path, with the fixed set of values each of its three custom field slots can carry (a slot
+ * left out is never used). Data for the spec that holds the game to Roblox's limits; nothing logs from an entry. A
+ * funnel's field sets describe its step 1 only.
+ */
 export interface AnalyticsCatalogEntry {
 	readonly kind: AnalyticsCatalogKind;
 	/** The custom event name, funnel name or progression path (the onboarding funnel has no name: ONBOARDING_CATALOG_NAME). */

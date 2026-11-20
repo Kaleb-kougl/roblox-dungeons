@@ -24,6 +24,10 @@ export interface UpgradeLevels {
 
 /** The upgrade tracks with a sim lever, in a fixed order (codecs, specs, the dev panel's "max"). */
 export const UPGRADE_TRACKS = ["vigor", "deepFlask", "plating"] as const;
+/**
+ * The name of one Armory upgrade that changes a sim trait (a `UPGRADE_TRACKS` member, also a key of `UpgradeLevels`).
+ * Prospector is not one: it changes Silver earned, not the character.
+ */
 export type UpgradeTrack = (typeof UPGRADE_TRACKS)[number];
 
 /** No upgrades bought: the character's own traits exactly. */

@@ -39,6 +39,11 @@ import type { CharacterId, UpgradeLevels } from "shared/characters";
 
 export { isValidRunSeed };
 
+/**
+ * Options of `buildRunConfig` beyond the seed. Every field is optional and absent means the M1 run exactly as the web
+ * build builds it, which is what the golden fixtures and `validateRun` replay. Client and server must pass the same
+ * options for a run to validate: they change the world or the hash.
+ */
 export interface RunConfigOptions {
 	/** Start just outside the boss room's door (the web build's debug `?spawn=boss`). Default: the entrance. */
 	atBossDoor?: boolean;
@@ -65,6 +70,12 @@ export interface RunConfigOptions {
 	characters?: ReadonlyArray<CharacterId>;
 }
 
+/**
+ * A built run: the SimConfig to step with, plus what the caller needs around it (the spawn a recording must start at,
+ * the generated floor, the endless floor lookup, the characters). Returned by `buildRunConfig`, `buildEndlessRunConfig`
+ * and every world builder (worlds.ts). The client's live run and the server's replay each build one from the same seed
+ * and options, so both simulate the identical world.
+ */
 export interface RunSetup {
 	config: SimConfig;
 	/** Where the recording must start. Undefined in the greybox world (any spawn inside the bounds clamp). */

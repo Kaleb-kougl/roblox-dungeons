@@ -30,8 +30,16 @@ export const POWER_TIER_CAP = 5;
 /** The tier from which a purchase asks to confirm (docs/SILVER.md "The Armory": tiers 6-8). */
 export const CONFIRM_FROM_TIER = 6;
 
+/**
+ * What an Armory item is: `upgrade` a levelled track (Vigor, Deep Flask, Plating, Prospector), `unlock` a character,
+ * `cosmetic` a look equipped into a slot.
+ */
 export type ArmoryItemKind = "upgrade" | "unlock" | "cosmetic";
 
+/**
+ * One row of the Armory catalogue: what is sold, at which tier of the price ladder each of its levels sits, and what it
+ * needs. Prices are never stored on the item; the server reads them from the ladder by tier.
+ */
 export interface ArmoryItem {
 	/** Stored in the wallet's `own`; the economy events' SKU. */
 	readonly id: string;

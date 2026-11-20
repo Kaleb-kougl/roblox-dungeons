@@ -63,6 +63,10 @@ export const TUTORIAL_HIGHLIGHTS: ReadonlyArray<TutorialHighlight> = [
  */
 export type TutorialMarkerKind = "door" | "pedestal" | "shrine" | "stairwell" | "boss" | "none" | "drop" | "next";
 
+/**
+ * What a step's world marker points at: the kind of target (resolved to a world position by the director every frame,
+ * see `TutorialMarkerKind`) and, for the kinds tied to a floor-1 lesson room, which room.
+ */
 export interface TutorialMarkerTarget {
 	readonly kind: TutorialMarkerKind;
 	/** The floor-1 lesson room it belongs to (door / pedestal / shrine / floor-1 stairwell). */
@@ -72,6 +76,10 @@ export interface TutorialMarkerTarget {
 /** Input devices a prompt is written for. Touch prompts name the on-screen controls (docs/MOBILE_IMPL.md MB12). */
 export type TutorialDevice = "keyboard" | "gamepad" | "touch";
 
+/**
+ * Every device a prompt has a text for. The string key list builds one key per prompt and device from it, and the
+ * server checks a `tutorialStarted` payload's `device` against it.
+ */
 export const TUTORIAL_DEVICES: ReadonlyArray<TutorialDevice> = ["keyboard", "gamepad", "touch"];
 
 /** A skill a combat lesson needs besides clearing its room (counted from the frame the room was first entered). */
@@ -129,6 +137,11 @@ export type TutorialRule =
 	| { readonly kind: "boost" }
 	| { readonly kind: "map" };
 
+/**
+ * One step of the tutorial script: a row of `TUTORIAL_STEPS`, pure data the director walks. Its `id` is also its
+ * analytics funnel step name and its `number` the funnel step number the client reports, so neither changes once
+ * shipped.
+ */
 export interface TutorialStep {
 	/** Stable id and funnel step name (`[A-Za-z0-9_]`, <= MAX_TUTORIAL_STEP_ID_CHARS). */
 	readonly id: string;
@@ -321,6 +334,10 @@ export type TutorialCalloutTrigger =
 	| { readonly kind: "graze" }
 	| { readonly kind: "bossPhase"; readonly phase: number };
 
+/**
+ * A one-shot toast of the tutorial: shown the first time its trigger happens, once per tutorial, without blocking play
+ * and without being a funnel step. The rows are `TUTORIAL_CALLOUTS`.
+ */
 export interface TutorialCallout {
 	readonly id: string;
 	/** Theme string key `tutorial.callout.<id>` (device-independent). */

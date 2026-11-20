@@ -47,6 +47,21 @@ describe("gapsInSource", () => {
 		assert.deepEqual(gaps.fields, []);
 	});
 
+	it("counts an overloaded function once, by its first signature", () => {
+		const overloads = [
+			"export function f(a: number): number;",
+			"export function f(a: string): string;",
+			"export function f(a: unknown): unknown {",
+			"\treturn a;",
+			"}",
+		];
+		assert.deepEqual(names(gapsInSource("a.ts", overloads.join("\n"), false).exports), ["f"]);
+		assert.deepEqual(gapsInSource("a.ts", `/** Doubles. */\n${overloads.join("\n")}`, false).exports, []);
+		// Two separate functions that happen to follow each other are still two.
+		const two = "export function f(): void {}\nexport function f2(): void {}";
+		assert.deepEqual(names(gapsInSource("a.ts", two, false).exports), ["f", "f2"]);
+	});
+
 	it("does not count re-exports, and reads TSX", () => {
 		const src = ['export * from "./a";', 'export { b } from "./b";', "export const View = () => <frame />;"].join(
 			"\n",

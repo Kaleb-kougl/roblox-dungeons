@@ -40,6 +40,11 @@ import {
 	type CursorSize,
 } from "./config";
 
+/**
+ * Every display setting a client reads, resolved from the stored overrides on top of the defaults
+ * (`resolveDisplaySettings`). Besides the Display tab's own rows it carries a few values shown elsewhere (the two
+ * vibration toggles, the character pick, the Silver notice mark; see DISPLAY_RESET_KEEPS). Presentation only.
+ */
 export interface DisplaySettings {
 	/** One of HUD_SCALE_PERCENTS. */
 	hudScale: number;
@@ -107,8 +112,16 @@ export interface DisplaySettings {
 	silverNoticeSeen: boolean;
 }
 
+/**
+ * What a player changed (the stored `display` group and the remotes' payload): absent keys follow the defaults, and a
+ * value equal to its default is never kept.
+ */
 export type DisplayOverrides = Partial<DisplaySettings>;
 
+/**
+ * Every display setting key: the keys the comparison walks, and the ones that make a stored display group non-empty
+ * (doc.ts). A new setting must be added here as well as to the sanitizer.
+ */
 export const DISPLAY_SETTING_KEYS: ReadonlyArray<keyof DisplaySettings> = [
 	"hudScale",
 	"roomEdges",
@@ -131,6 +144,10 @@ export const DISPLAY_SETTING_KEYS: ReadonlyArray<keyof DisplaySettings> = [
 	"silverNoticeSeen",
 ];
 
+/**
+ * The display settings of a player who changed nothing, from the DEFAULT_ constants in config.ts (the Silver notice not
+ * yet seen). A new object each call.
+ */
 export function defaultDisplaySettings(): DisplaySettings {
 	return {
 		hudScale: DEFAULT_HUD_SCALE_PERCENT,
@@ -259,10 +276,18 @@ export function displayResetOverrides(current: unknown): DisplayOverrides {
 	return sanitizeDisplayOverrides(kept);
 }
 
+/**
+ * The display settings a client uses: the sanitized overrides on top of the defaults. `overrides` is untrusted (a
+ * stored group, a remote's payload): invalid or unknown keys fall back to their defaults, and it never throws.
+ */
 export function resolveDisplaySettings(overrides: unknown): DisplaySettings {
 	return { ...defaultDisplaySettings(), ...sanitizeDisplayOverrides(overrides) };
 }
 
+/**
+ * True when two override sets hold the same value for every display key (a key absent in both counts as equal). doc.ts
+ * builds the whole-document comparison (`sameSettingsOverrides`) and the group reuse on it.
+ */
 export function sameDisplayOverrides(a: Readonly<DisplayOverrides>, b: Readonly<DisplayOverrides>): boolean {
 	for (const k of DISPLAY_SETTING_KEYS) if (a[k] !== b[k]) return false;
 	return true;

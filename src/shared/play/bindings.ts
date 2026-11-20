@@ -54,12 +54,22 @@ export type GameAction =
 /** Actions a gamepad binds (pad movement is the left stick, fixed; the leaderboard opens from the pause overlay). */
 export type PadAction = Exclude<GameAction, "moveUp" | "moveDown" | "moveLeft" | "moveRight" | "leaderboard">;
 
+/**
+ * The two rebindable layouts: `kbm` is the keyboard and mouse together (a mouse button is bound like a key), `pad` the
+ * gamepad. Touch has no bindings.
+ */
 export type BindingDevice = "kbm" | "pad";
 /** 0 = primary, 1 = secondary (keyboard / mouse only). */
 export type BindingSlot = 0 | 1;
 /** A keyboard / mouse action's inputs: a primary and an optional secondary. */
 export type KbmSlots = readonly [string] | readonly [string, string];
 
+/**
+ * A whole layout: for every game action the Enum.KeyCode / Enum.UserInputType NAMES that trigger it, per device.
+ * Keyboard / mouse actions hold a primary and an optional secondary input, pad actions exactly one button. Immutable:
+ * every rebind returns a new one. `DEFAULT_BINDINGS` is the shipped layout; the stored setting keeps only the
+ * differences from it.
+ */
 export interface Bindings {
 	readonly kbm: { readonly [A in GameAction]: KbmSlots };
 	readonly pad: { readonly [A in PadAction]: string };
@@ -217,6 +227,10 @@ export function slotInput(
 	return slot < inputs.size() ? inputs[slot] : undefined;
 }
 
+/**
+ * Where an input sits in a layout: the action it triggers and which of the action's slots holds it (always slot 0 on
+ * the pad). What `findBinding` answers, and the "already used by" holder the rebind screen names.
+ */
 export interface BindingRef {
 	readonly action: GameAction;
 	readonly slot: BindingSlot;
@@ -261,11 +275,19 @@ function copyPad(b: Bindings): Record<PadAction, string> {
  */
 export type BindingRefusal = "reserved" | "unknown" | "notRebindable" | "badSlot" | "primaryRequired" | "onlyInput";
 
+/**
+ * The other binding a rebind had to change because it held the input that was just bound: the action and slot that gave
+ * the input up, and what that slot holds afterwards.
+ */
 export interface BindingSwap extends BindingRef {
 	/** What that slot holds now: this slot's previous input (undefined: it was an empty secondary, so cleared). */
 	readonly input: string | undefined;
 }
 
+/**
+ * What a rebind operation answers: the new layout (the one passed in is never changed) and, when the input was taken
+ * from another slot, that slot as `swappedWith`; or the reason it was refused, in which case nothing changed.
+ */
 export type RebindResult =
 	| { readonly ok: true; readonly bindings: Bindings; readonly swappedWith?: BindingSwap }
 	| { readonly ok: false; readonly reason: BindingRefusal };
@@ -806,6 +828,10 @@ export function leaderboardHint(b: Bindings = DEFAULT_BINDINGS, s?: InputLabelSt
 	return { keyboard: actionLabel(b, "kbm", "leaderboard", s), gamepad: inputLabel(FIXED_INPUTS.padMenuClose, s) };
 }
 
+/**
+ * The display labels of the three inputs the boon draft's hint names for one device: move the selection left, move it
+ * right, and confirm the card.
+ */
 export interface DraftHintKeys {
 	readonly left: string;
 	readonly right: string;

@@ -179,6 +179,10 @@ export const SILVER_AUDIO_IDS: ReadonlyArray<string> = [
  * reads as score.
  */
 export const SILVER_ROLE: ColorRole = "silver";
+/**
+ * Every Silver colour role, the `roles` list of silverColors.ts SILVER_COLOR_RULES (the roles `silverReport` checks, in
+ * this order). One entry today.
+ */
 export const SILVER_ROLES: ReadonlyArray<ColorRole> = [SILVER_ROLE];
 
 /**

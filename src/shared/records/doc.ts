@@ -130,6 +130,10 @@ function runIdOf(v: unknown): string {
 	return typeIs(v, "string") ? v.sub(1, MAX_RUN_ID_CHARS) : "";
 }
 
+/**
+ * A document with no record on any board, not seeded and with no daily activity: what a missing, unreadable or
+ * other-version stored value decodes to, and what a new player starts from. A fresh object each call.
+ */
 export function emptyRecordsDoc(): RecordsDoc {
 	return { v: RECORDS_DOC_VERSION, endless: {} };
 }
@@ -226,6 +230,11 @@ function sameEntry(a: Readonly<RecordEntry> | undefined, b: Readonly<RecordEntry
 	);
 }
 
+/**
+ * True when two documents hold the same state: the same `seeded` flag (absent equal to false), equal daily activity,
+ * and on every board equal entries including the time and run id of each record. The codec's `equals`, so the doc cache
+ * can tell whether a change needs a write.
+ */
 export function sameRecordsDoc(a: Readonly<RecordsDoc>, b: Readonly<RecordsDoc>): boolean {
 	if ((a.seeded === true) !== (b.seeded === true)) return false;
 	if (!sameDailyActivity(a.daily, b.daily)) return false;

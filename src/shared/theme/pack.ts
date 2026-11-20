@@ -70,6 +70,11 @@ export interface FrameRect {
 	readonly size: Vector2;
 }
 
+/**
+ * A 16 px spritesheet as ThemePack.spriteSheet returns it: the uploaded sheet (if any), its cell, pivot and animations,
+ * and a `frame` function giving each frame's pixel rect. A placeholder ID gets a one-frame layout from its slot's
+ * contract with no image.
+ */
 export interface SpriteSheet {
 	readonly id: string;
 	/** The uploaded sheet, or undefined while the ID is a placeholder (draw `pack.placeholder(id)`). */
@@ -192,6 +197,7 @@ export interface WorldImage {
 	readonly layout: WorldImageArt;
 }
 
+/** World art drawn from a sprite set (the `sprites` case of WorldVisual): the set with Roblox types. */
 export interface WorldSprites {
 	readonly kind: "sprites";
 	readonly set: SpriteSet;
@@ -363,6 +369,10 @@ export interface FxSpriteRank {
 
 const UNTINTED = new Color3(1, 1, 1);
 
+/**
+ * A biome as ThemePack.biome returns it: the core's BiomeTheme plus each of its five colours as a Color3, so renderers
+ * never parse hex.
+ */
 export interface BiomeColors extends BiomeTheme {
 	readonly floorColor: Color3;
 	readonly wallColor: Color3;
@@ -372,6 +382,7 @@ export interface BiomeColors extends BiomeTheme {
 	readonly ledgeColor: Color3;
 }
 
+/** Options of the ThemePack constructor, passed straight to its ThemeCore (the same fields as ThemeCoreOptions). */
 export interface ThemePackOptions {
 	/** Active locale (setLocale); strings fall back to the default table. */
 	locale?: string;
@@ -389,6 +400,11 @@ export function hexToColor3(hex: string): Color3 {
 	return Color3.fromRGB(rgb.r, rgb.g, rgb.b);
 }
 
+/**
+ * A loaded pack as renderers, the HUD and audio use it: ThemeCore's lookups returned with Roblox types (Color3 colours,
+ * Vector2 frame rects), cached per ID. `core` is the pure half, for code that must stay headless. Get one from
+ * `loadThemePack`; the active one from `getActiveThemePack`.
+ */
 export class ThemePack {
 	readonly core: ThemeCore;
 	readonly id: string;
@@ -924,6 +940,10 @@ export class ThemePack {
 // ---------------------------------------------------------------------------------------------
 // Loading
 
+/**
+ * Options of `loadThemePack`. The defaults load a bundled pack and warn through Roblox; specs pass their own `packs`
+ * and `warn`.
+ */
 export interface LoadOptions {
 	/** Packs to choose from (default: THEME_PACKS, the bundled packs). */
 	packs?: Readonly<Record<string, unknown>>;
@@ -971,6 +991,10 @@ export function loadThemePack(id: string = DEFAULT_PACK_ID, opts: LoadOptions = 
 // One pack at a time: switching packs is a restart. Non-React code (audio, renderers) reads it here.
 let active: ThemePack | undefined;
 
+/**
+ * Makes `pack` the one `getActiveThemePack` returns. Called once at startup by the client's theme controller. Replacing
+ * it with a pack of another id still works but warns: packs are meant to change on a restart.
+ */
 export function setActiveThemePack(pack: ThemePack): void {
 	if (active !== undefined && active !== pack && active.id !== pack.id) {
 		warn(`[theme] switching from "${active.id}" to "${pack.id}" at runtime; packs are meant to change on restart`);

@@ -17,6 +17,10 @@ export const PlayerMover = {
 	/** The web build's mover: `circleMover(d, PLAYER_RADIUS)` (moveCircle). What every golden fixture was recorded with. */
 	WEB: 1,
 } as const;
+/**
+ * A value of `PlayerMover`: which mover `playerMover` builds. Specs pass it to `setPlayerMover`; live code never sets
+ * it.
+ */
 export type PlayerMoverKind = (typeof PlayerMover)[keyof typeof PlayerMover];
 
 let currentKind: PlayerMoverKind = PlayerMover.SLIDE;

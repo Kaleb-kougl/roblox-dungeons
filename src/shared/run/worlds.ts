@@ -51,6 +51,11 @@ export function rosterUnlockFloors(kind: RunWorldKind): boolean {
 	return true;
 }
 
+/**
+ * What a world builder (`RunWorldBuilder`) is given besides the seed. The server's run sessions fill it from the
+ * validated start request and its own records (party size, characters, upgrades); the client fills the same values from
+ * the server's reply, so both build the identical world. A builder ignores the fields its world does not use.
+ */
 export interface WorldBuildOptions {
 	/** Start at the boss door (debug; only honoured where the limits allow it). */
 	readonly atBossDoor: boolean;
@@ -112,6 +117,10 @@ export function runWorldKinds(): ReadonlyArray<RunWorldKind> {
 	return [...order];
 }
 
+/**
+ * True for a registered world kind (an untrusted value: a world name off the wire). Registered is not the same as
+ * playable on the server: see `isServerRunWorld`.
+ */
 export function isRunWorldKind(kind: unknown): kind is RunWorldKind {
 	return typeIs(kind, "string") && builders.has(kind);
 }

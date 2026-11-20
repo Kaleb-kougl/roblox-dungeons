@@ -8,6 +8,11 @@
 import { SOURCE_LOCALE, localeDef, type LocaleScript } from "./locales";
 import { pickLocale, type LocalePick, type PickLocaleOptions } from "./pick";
 
+/**
+ * The locale the client is showing, with the two facts every label derives from it: the script (which fonts) and the
+ * direction (which alignment). Held in the client's `l10n` Reflex slice; built by `resolveLocaleState` and compared
+ * with `sameLocaleState`.
+ */
 export interface LocaleState {
 	/** The locale code shown (a LOCALES code). */
 	readonly code: string;

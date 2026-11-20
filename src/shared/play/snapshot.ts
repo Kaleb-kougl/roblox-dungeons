@@ -39,6 +39,12 @@ import { boostEntriesEqual, boostHudEntries, type BoostHudEntry } from "shared/v
 import { GoldenRumourPhase, type GoldenRumourPhaseId } from "shared/view/golden";
 import type { RunOutcome } from "./liveRun";
 
+/**
+ * The flat copy of the run the HUD renders from (see the file comment): vitals, the boss line, score and combo, the
+ * draft, boons / relics / curses, spectating and boosts. Built by `takeSnapshot`, held in the client store, and
+ * replaced only when a field changed. Vitals belong to the shown player (the watched teammate while spectating), the
+ * rest to the local player.
+ */
 export interface GameSnapshot {
 	readonly tick: number;
 	readonly recordedTicks: number;
@@ -147,6 +153,11 @@ export interface GameSnapshot {
 	readonly aegisPips: number;
 }
 
+/**
+ * The snapshot of no run at all (every count 0, no boss, no draft, outcome `playing`): the client store's value before
+ * the first run and after a reset. Frozen; `takeSnapshot` also reuses its empty arrays so an unchanged empty list keeps
+ * its identity.
+ */
 export const EMPTY_SNAPSHOT: GameSnapshot = table.freeze({
 	tick: 0,
 	recordedTicks: 0,
@@ -229,6 +240,11 @@ export function findBoss(state: Readonly<SimState>): ActorState | undefined {
 	return undefined;
 }
 
+/**
+ * What `takeSnapshot` needs that is not in the sim state: the driver's facts about the run (paused, outcome, ticks
+ * recorded, telemetry counts), which player this client is and whose vitals to show, and the client-only spectate and
+ * rumour state. Supplied by the SimController for a solo run and for a co-op one.
+ */
 export interface SnapshotExtras {
 	readonly paused: boolean;
 	readonly outcome: RunOutcome;
@@ -264,6 +280,11 @@ export interface SnapshotSpectate {
 	readonly count: number;
 }
 
+/**
+ * Builds the HUD snapshot from the live state. Read-only on `state`; called by the client's SimController at about 10
+ * Hz, which stores the result only when `snapshotsEqual` says it differs from the last. Without `extras.config` the
+ * shrine hint is always off, the kill and hit counts default to 0 and `endTick` to the current tick.
+ */
 export function takeSnapshot(state: Readonly<SimState>, extras: SnapshotExtras): GameSnapshot {
 	const me = extras.playerIndex ?? 0;
 	const vitals = extras.vitalsIndex ?? me;

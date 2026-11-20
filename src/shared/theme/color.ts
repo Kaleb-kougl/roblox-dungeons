@@ -10,6 +10,10 @@
 
 import type { HexColor } from "./types";
 
+/**
+ * A colour as three channels, each 0..255. `parseHex` returns whole numbers; mixes (`mixRgb`) may hold fractions, which
+ * `toHex` rounds.
+ */
 export interface Rgb {
 	r: number;
 	g: number;
@@ -34,6 +38,10 @@ export function parseHex(hex: string): Rgb | undefined {
 	return { r: math.floor(n / (BYTE * BYTE)) % BYTE, g: math.floor(n / BYTE) % BYTE, b: n % BYTE };
 }
 
+/**
+ * `rgb` as a lowercase '#rrggbb', each channel rounded to the nearest integer and clamped to 0..255. The inverse of
+ * `parseHex`.
+ */
 export function toHex(rgb: Rgb): HexColor {
 	const h = (v: number) => math.clamp(math.round(v), 0, CHANNEL_MAX);
 	return "#%02x%02x%02x".format(h(rgb.r), h(rgb.g), h(rgb.b)) as HexColor;

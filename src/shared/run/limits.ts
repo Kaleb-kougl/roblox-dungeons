@@ -38,6 +38,11 @@ export const MAX_REJECT_REASON_CHARS = 200;
  */
 export type RunWorld = "game" | "endless" | "dungeonNoEncounter" | "greybox";
 
+/**
+ * What `validateRun` enforces on a whole-run submission before and while it replays it, and the world it rebuilds the
+ * run in. A live server uses `LIVE_RUN_LIMITS`; specs and Studio tooling pass looser ones (debug input, the boss door
+ * spawn, the other worlds).
+ */
 export interface RunLimits {
 	/** Reject recordings with more ticks than this (checked before the run-length encoding is expanded). */
 	readonly maxTicks: number;
@@ -109,6 +114,10 @@ export const ACCEPTED_RUNS_KEPT_PER_PLAYER = 20;
 
 /** Optional "Runs" DataStore stub: off until there is something (loot, leaderboards) that needs it. */
 export const RUNS_DATASTORE_ENABLED = false;
+/**
+ * The DataStore name RunValidationService opens for accepted runs when `RUNS_DATASTORE_ENABLED` is true. Renaming it
+ * orphans whatever was stored under the old name.
+ */
 export const RUNS_DATASTORE_NAME = "Runs";
 /** Accepted runs kept per player in the Runs DataStore entry (oldest dropped first). */
 export const RUNS_DATASTORE_KEPT = 50;
@@ -200,6 +209,12 @@ export const MAX_CHARACTER_ID_CHARS = 48;
 /** Longest runId accepted on the wire (server GUIDs are 36). */
 export const MAX_RUN_ID_CHARS = 64;
 
+/**
+ * What a `SegmentedValidator` enforces on one segmented run: the longest segment (ticks and bytes), the whole run's
+ * tick cap, the checkpoint spacing in ticks the client must have hashed at, the backlog of received but not yet
+ * replayed ticks, and the seconds a segment's end may run ahead of the session's wall-clock age. The constants above
+ * explain each number. A live server uses `DEFAULT_SEGMENT_LIMITS`; specs pass small ones.
+ */
 export interface SegmentLimits {
 	readonly maxSegmentTicks: number;
 	readonly maxSegmentBytes: number;
@@ -222,6 +237,11 @@ export const DEFAULT_SEGMENT_LIMITS: SegmentLimits = table.freeze({
 	allowDebugInput: false,
 });
 
+/**
+ * What the run session registry (runSessions.ts) enforces per player and per session: seconds an open session may go
+ * without a segment, its longest age in seconds, how many finished sessions may still be validating, and the largest
+ * party. A live server uses `DEFAULT_RUN_SESSION_LIMITS`.
+ */
 export interface RunSessionLimits {
 	readonly idleSeconds: number;
 	readonly maxAgeSeconds: number;
@@ -230,6 +250,10 @@ export interface RunSessionLimits {
 	readonly maxPartySize: number;
 }
 
+/**
+ * What a live server enforces on run sessions: 30 minutes idle, 8 hours in all, 2 sessions still validating per player,
+ * the sim's largest party.
+ */
 export const DEFAULT_RUN_SESSION_LIMITS: RunSessionLimits = table.freeze({
 	idleSeconds: RUN_SESSION_IDLE_SECONDS,
 	maxAgeSeconds: RUN_SESSION_MAX_AGE_SECONDS,

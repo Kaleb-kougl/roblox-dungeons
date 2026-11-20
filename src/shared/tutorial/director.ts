@@ -251,6 +251,12 @@ function nearestDrop(state: Readonly<SimState>): { x: number; z: number } | unde
 	return best;
 }
 
+/**
+ * The tutorial script's state machine (rules in the module comment). The client creates one per tutorial run and calls
+ * `update` once per rendered frame after the frame's sim ticks; the returned view is the same object every frame, so
+ * callers copy what they keep. It reads the sim state and never writes it, and owns the run's `TutorialMetrics`.
+ * `options` only overrides the stuck threshold.
+ */
 export class TutorialDirector {
 	private readonly view: TutorialView;
 	private readonly progress: StepProgress[] = [];

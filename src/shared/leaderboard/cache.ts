@@ -28,6 +28,12 @@ interface Slot<V> {
 	generation: number;
 }
 
+/**
+ * The time-to-live cache with shared loads described in the file comment, one slot per key. The server's
+ * LeaderboardService holds one per kind of read (a board's top rows, a player's own entry). `ttlSeconds` is how long a
+ * loaded value counts as fresh; `resume` wakes a caller that waited on another caller's load (`task.spawn` on the
+ * server, `coroutine.resume` in the specs). Slots are never dropped by age, only by `invalidate`.
+ */
 export class SharedTtlCache<K, V> {
 	private readonly slots = new Map<K, Slot<V>>();
 

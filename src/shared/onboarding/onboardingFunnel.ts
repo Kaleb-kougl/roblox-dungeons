@@ -79,6 +79,12 @@ export interface OnboardingJoinFacts {
 	readonly fresh: boolean;
 }
 
+/**
+ * One player's filter for the once-per-user onboarding funnel and the gate event, for one server session (rules in the
+ * module comment). Each method takes one fact (the join load, the entry, a tutorial start, a lesson step, a finish, a
+ * leave, a gate report) and returns the event specs to log for it, in order, or none when the fact is a repeat, out of
+ * order, or the funnel is not open for this player.
+ */
 export class OnboardingFunnelTracker {
 	/** undefined until `join`; then whether this session logs the funnel at all. */
 	private open: boolean | undefined;

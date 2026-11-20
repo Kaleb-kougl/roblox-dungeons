@@ -60,6 +60,10 @@ export function tierLabel(tier: number): string {
 	return `tier${tier}`;
 }
 
+/**
+ * ArmoryPurchase's field03 value for the level bought (`level1`, `level2`, ...): a label rather than a number because
+ * custom fields are strings.
+ */
 export function levelLabel(level: number): string {
 	return `level${level}`;
 }
