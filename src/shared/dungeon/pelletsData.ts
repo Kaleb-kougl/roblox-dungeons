@@ -11,6 +11,7 @@ export type PelletPattern = "ring" | "cross" | "lanes" | "zigzag";
 
 /** One pattern a room can draw and how it is laid. */
 export interface PelletPatternDef {
+	/** Which pattern. */
 	readonly pattern: PelletPattern;
 	/** The pattern's distance from the room's floor bounds: one draw rng.int(min, max) per room. */
 	readonly insetTiles: readonly [number, number];
@@ -18,6 +19,7 @@ export interface PelletPatternDef {
 	readonly spacingTiles: number;
 }
 
+/** When a floor may hold a power pellet. */
 export interface PelletPowerTunables {
 	/** The first floor that can hold a power pellet. */
 	readonly fromFloor: number;
@@ -25,6 +27,10 @@ export interface PelletPowerTunables {
 	readonly chancePercent: number;
 }
 
+/**
+ * The pellet layout's tunables: its rng salt, the per-room counts, the patterns a room can draw and the power pellet's
+ * chance.
+ */
 export interface PelletTunables {
 	/**
 	 * The pellets' own rng stream: new EncounterRng(floor seed ^ salt), like the breakables (0x5bd1e995), the boss pick
@@ -39,9 +45,11 @@ export interface PelletTunables {
 	readonly patterns: ReadonlyArray<PelletPatternDef>;
 	/** `lanes`: at least this many cells between two lanes (the lanes spread evenly between the two outer ones). */
 	readonly laneGapTiles: number;
+	/** The power pellet's roll. */
 	readonly power: PelletPowerTunables;
 }
 
+/** The pellet layout values. Changing one changes every endless floor's pellets. */
 export const PELLETS: PelletTunables = table.freeze({
 	salt: 0x27220a95,
 	minPerRoom: 8,

@@ -60,25 +60,33 @@ export interface FloorSecret {
 	readonly room: number;
 	/** The crack's first cell (grid); the others follow along (ax, az). */
 	readonly x: number;
+	/** The crack's first cell, row. */
 	readonly y: number;
 	/** Facing into the room (the room's FLOOR is at +f): (1, 0) or (0, 1), far walls only. */
 	readonly fx: number;
+	/** The facing's z part (grid y). */
 	readonly fz: number;
 	/** Along the wall: (fz, fx). */
 	readonly ax: number;
+	/** The along-wall direction's z part (grid y). */
 	readonly az: number;
 	/** SECRET.crackCells. */
 	readonly cells: number;
 	/** The chamber's floor rectangle (grid x0 .. x0 + w - 1 by y0 .. y0 + h - 1); its ring is the rectangle grown by 1. */
 	readonly x0: number;
+	/** The chamber rectangle's lowest row. */
 	readonly y0: number;
+	/** The chamber's cells along x. */
 	readonly w: number;
+	/** The chamber's cells along y. */
 	readonly h: number;
 	/** The chamber's size along the wall and deep behind it (SECRET.chambers). */
 	readonly along: number;
+	/** The chamber's cells deep behind the wall. */
 	readonly depth: number;
 	/** The chest's cell (grid; world centre gridToWorld(chestX), gridToWorld(chestY)); it faces (fx, fz). */
 	readonly chestX: number;
+	/** The chest's row. */
 	readonly chestY: number;
 	/** VaultTier: RARE or LEGENDARY. */
 	readonly tier: number;
@@ -98,12 +106,19 @@ export interface FloorSecret {
 
 /** One candidate: a room, a crack position and facing, and its largest chamber. */
 export interface SecretCandidate {
+	/** The room id the crack would open from. */
 	readonly room: number;
+	/** The crack's first cell, column. */
 	readonly x: number;
+	/** The crack's first cell, row. */
 	readonly y: number;
+	/** Facing into the room, x part. */
 	readonly fx: number;
+	/** Facing into the room, z part (grid y). */
 	readonly fz: number;
+	/** The largest fitting chamber's cells along the wall. */
 	readonly along: number;
+	/** That chamber's cells deep behind the wall. */
 	readonly depth: number;
 }
 
@@ -123,7 +138,9 @@ export interface SecretFloorInput extends BreakableFloorInput {
  * server (the dev world is server-refused).
  */
 export interface SecretOverride {
+	/** Every eligible floor hides a secret. */
 	readonly every?: boolean;
+	/** The chest's VaultTier, instead of the drawn one. */
 	readonly tier?: number;
 }
 

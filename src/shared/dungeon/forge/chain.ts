@@ -31,11 +31,17 @@ const MEDIUM_MAX = 12;
  * difficulty, the corridor edges, the entrance and the boss room.
  */
 export interface ForgeGraph {
+	/** The rooms, indexed by id. */
 	rooms: Room[];
+	/** The corridor edges. */
 	edges: Edge[];
+	/** Room index of the entrance. */
 	entrance: number;
+	/** Room index of the boss room. */
 	boss: number;
+	/** The largest Room.depth. */
 	maxDepth: number;
+	/** Edges on the entrance -> boss path. */
 	critLen: number;
 }
 

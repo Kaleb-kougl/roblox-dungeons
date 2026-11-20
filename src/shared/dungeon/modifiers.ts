@@ -53,14 +53,19 @@ import { FloorModifier, MODIFIERS, floorModifierKind, type FloorModifierId } fro
  * vaults of EndlessFloorOptions.vaults), so a modifier is only picked where the sim will show its effect (FMD3).
  */
 export interface FloorModifierWorld {
+	/** The world runs the Goldling (SimConfig.golden): Gilded can show. */
 	readonly golden: boolean;
+	/** The world runs pellets (SimConfig.pellets): Feast can show. */
 	readonly pellets: boolean;
+	/** The world runs boosts in breakables (drops.breakableLoot): Plunder can show. */
 	readonly breakableLoot: boolean;
+	/** The world runs elite affixes: Blood Moon can show. */
 	readonly affixes: boolean;
 }
 
 /** FloorModifierWorld plus the vaults (EndlessFloorOptions.vaults): what eligibility reads of the world. */
 export interface FloorModifierParts extends FloorModifierWorld {
+	/** The world builds vaults: Hoard can show. */
 	readonly vaults: boolean;
 }
 
@@ -78,28 +83,35 @@ export const FLOOR_MODIFIER_WORLD_ALL: FloorModifierWorld = table.freeze({
  * dev world is server-refused).
  */
 export interface FloorModifierOverride {
+	/** Always true: the override applies to every eligible floor. */
 	readonly every: true;
+	/** The modifier to force. */
 	readonly kind: FloorModifierId;
 }
 
 /** What the pick reads of the floor's place in the run (buildEndlessFloor: floorModifierPickInput). */
 export interface FloorModifierPickInput {
+	/** The floor number, 1-based. */
 	readonly floor: number;
 	/** floorSeed(runSeed, floor). */
 	readonly seed: number;
+	/** This floor is a boss floor: never special, unless the dev override forces it. */
 	readonly bossFloor: boolean;
 	/** floorSeed(runSeed, floor - 1) and isBossFloor(floor - 1): the streak rule's floor. */
 	readonly prevSeed: number;
+	/** The floor before was a boss floor. */
 	readonly prevBossFloor: boolean;
 }
 
 /** What eligibility reads of the floor built WITHOUT modifiers (buildEndlessFloor's natural parts). */
 export interface FloorModifierFloor extends BreakableFloorInput {
+	/** The floor number, 1-based. */
 	readonly floor: number;
 	/** The placed pieces, before any vault chest. */
 	readonly breakables: ReadonlyArray<BreakablePlacement>;
 	/** The natural affixes (assignAffixes without a force). */
 	readonly roomAffixes: ReadonlyArray<ReadonlyArray<number>>;
+	/** The natural pellets (without a forced power pellet). */
 	readonly pellets: FloorPellets;
 	/** The natural vault (undefined: the roll missed, vaults off, below fromFloor or no room). */
 	readonly vault?: VaultPlan;

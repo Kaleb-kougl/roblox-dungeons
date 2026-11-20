@@ -56,6 +56,7 @@
 import { makeRng, type Rng } from "./rng";
 import { RoomType, TileType, type Room } from "./types";
 
+/** The solid set pieces the pass can place. Every cell of a piece becomes WALL. */
 export type SolidDecorKind =
 	| "tomb"
 	| "candelabrum"
@@ -91,11 +92,17 @@ export type RoomTheme =
 
 /** One solid decor piece: its kind and its cells (x .. x + w - 1, y .. y + h - 1), all WALL on the floor. */
 export interface SolidDecorPiece {
+	/** What stands there. */
 	readonly kind: SolidDecorKind;
+	/** Lowest column of its cells. */
 	readonly x: number;
+	/** Lowest row of its cells. */
 	readonly y: number;
+	/** Cells along x. */
 	readonly w: number;
+	/** Cells along y. */
 	readonly h: number;
+	/** The id of the room it stands in. */
 	readonly room: number;
 	/**
 	 * Facing into the room for a piece against a wall ((1, 0) / (0, 1) on far walls, negative on near walls; a corner
@@ -104,6 +111,7 @@ export interface SolidDecorPiece {
 	 * the study table, are no longer placed: docs/KENNEY_DECOR.md KND12.)
 	 */
 	readonly fx: number;
+	/** The facing's z part (grid y). */
 	readonly fz: number;
 }
 
@@ -112,17 +120,27 @@ export interface SolidDecorPiece {
  * throne's (2 wide, 2 x 2 segments) or a library's runner (1 wide, from its lectern).
  */
 export interface DecorCarpet {
+	/** Lowest column of its cells. */
 	readonly x: number;
+	/** Lowest row of its cells. */
 	readonly y: number;
+	/** Cells along x. */
 	readonly w: number;
+	/** Cells along y. */
 	readonly h: number;
+	/** The direction it is laid in from its head, x part. */
 	readonly fx: number;
+	/** The direction it is laid in from its head, z part (grid y). */
 	readonly fz: number;
+	/** The id of the room it lies in. */
 	readonly room: number;
 }
 
+/** What the solid decor pass placed on one floor; `generate` copies it onto the Dungeon. */
 export interface SolidDecorLayout {
+	/** Every piece, rooms in id order (Dungeon.solidDecor). */
 	readonly pieces: SolidDecorPiece[];
+	/** Every carpet run (Dungeon.carpets). */
 	readonly carpets: DecorCarpet[];
 	/**
 	 * Solid pillar cells a free-standing piece took (docs/BOOKSHELVES.md, docs/KENNEY_DECOR.md): back to FLOOR in its
@@ -133,6 +151,10 @@ export interface SolidDecorLayout {
 	readonly themes: RoomTheme[];
 }
 
+/**
+ * The solid decor pass's tunables: its rng salt and the distances, sizes and chances of its placement rules. Changing
+ * one changes every floor generated with ForgeParams.solidDecor.
+ */
 export const SOLID_DECOR = {
 	salt: 0x7f4a7c15,
 	/** Random spots tried per free-standing cluster. */

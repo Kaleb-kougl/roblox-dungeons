@@ -36,7 +36,9 @@ import { BREAKABLE_SILVER, type BreakableSilverBand } from "./breakableSilverDat
 
 /** One Silver piece: its breakable slot (placement index) and the Silver it holds. */
 export interface BreakableSilver {
+	/** The piece's index in the floor's breakables list. */
 	readonly slot: number;
+	/** The Silver it pays when broken. */
 	readonly amount: number;
 }
 
@@ -50,6 +52,7 @@ export interface SilverOverride {
 export interface BreakableSilverFloorInput {
 	/** The floor seed (floorSeed(runSeed, floor)). */
 	readonly seed: number;
+	/** The floor's rooms (their types and sizes). */
 	readonly encounter: EncounterConfig;
 	/**
 	 * The floor's clutter, slot order: exactly the pieces placeBreakables put down (the first slots of the floor's

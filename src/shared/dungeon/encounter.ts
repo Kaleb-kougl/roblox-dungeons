@@ -19,7 +19,9 @@ import type { ActorSpawn, EncounterConfig, EncounterRoom } from "./encounterType
 
 /** World position of a tile center. */
 export interface TileXZ {
+	/** World x of the tile's center. */
 	readonly x: number;
+	/** World z of the tile's center. */
 	readonly z: number;
 }
 
@@ -63,6 +65,7 @@ export class EncounterRng implements DungeonRng {
 
 /** What a room populator gets besides the room. */
 export interface RoomTools {
+	/** The floor the room is on. */
 	readonly dungeon: Dungeon;
 	/** Seeded from (dungeon seed, room id): the same room always draws the same numbers. */
 	readonly rng: DungeonRng;
@@ -75,6 +78,7 @@ export interface RoomTools {
 /** Returns the actors to place in one room (kind ids and world positions, usually from tools.floor()). */
 export type RoomPopulator = (room: EncounterRoom, tools: RoomTools) => ReadonlyArray<ActorSpawn>;
 
+/** What buildEncounter places: each part is optional and they run in this order. */
 export interface EncounterOptions {
 	/** One actor per room, nearest rooms first (step 1 above). */
 	readonly nearest?: ReadonlyArray<string>;

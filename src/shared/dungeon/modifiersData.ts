@@ -18,6 +18,7 @@ export const FloorModifier = {
 	FEAST: 4,
 	PLUNDER: 5,
 } as const;
+/** A floor modifier id: NONE or one of the modifiers. */
 export type FloorModifierId = (typeof FloorModifier)[keyof typeof FloorModifier];
 
 /** A boon is good news (gold banner); a twist names an edge and pays with a reward the game already has (FMD1). */
@@ -25,13 +26,16 @@ export const FloorModifierClass = {
 	BOON: 0,
 	TWIST: 1,
 } as const;
+/** A modifier's class id: BOON or TWIST. */
 export type FloorModifierClassId = (typeof FloorModifierClass)[keyof typeof FloorModifierClass];
 
 /** One modifier kind of the pick (MODIFIERS.kinds, table order). */
 export interface FloorModifierKind {
+	/** The modifier. */
 	readonly id: FloorModifierId;
 	/** The string id (theme keys `floorMod.<key>.*`, the dev attribute's word). */
 	readonly key: string;
+	/** Boon or twist: which banner the floor card shows. */
 	readonly class: FloorModifierClassId;
 	/** Weight in the one start-index draw (FMD6: the big payoffs rarer). */
 	readonly weight: number;
@@ -45,6 +49,10 @@ export interface FloorModifierBand {
 	readonly chancePercent: number;
 }
 
+/**
+ * The floor modifier pick's tunables: its rng salt, the chance per depth band, the kinds with their weights and each
+ * kind's eligibility thresholds.
+ */
 export interface FloorModifierTunables {
 	/**
 	 * The pick's own rng stream: new EncounterRng(floor seed ^ salt) ("KVFM", like the drops' "KVDR" 0x4b564452 and the
@@ -64,10 +72,12 @@ export interface FloorModifierTunables {
 	 * FMD6 (Gilded 1, Hoard 1, Feast 2, Plunder 2, Blood Moon 2; FM9 tunes).
 	 */
 	readonly kinds: ReadonlyArray<FloorModifierKind>;
+	/** Plunder's eligibility. */
 	readonly plunder: {
 		/** Plunder only where at least this many rooms hold a weighted (lootable) piece, so "every room" means something. */
 		readonly minRooms: number;
 	};
+	/** Blood Moon's eligibility and strength. */
 	readonly bloodMoon: {
 		/** Blood Moon only where the doubled shares add at least this many affixed planned members (never a non-event). */
 		readonly minExtra: number;
@@ -76,6 +86,7 @@ export interface FloorModifierTunables {
 	};
 }
 
+/** The floor modifier values. Changing one changes which endless floors are special. */
 export const MODIFIERS: FloorModifierTunables = table.freeze({
 	salt: 0x4b56464d,
 	fromFloor: 2,

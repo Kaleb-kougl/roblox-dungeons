@@ -11,6 +11,7 @@ import type { EncounterRoomType } from "./encounterTypes";
 
 /** The two kinds of piece, in the sim's kind index order (shared/sim BreakableKind: barrel 0, crate 1). */
 export const BREAKABLE_KINDS = ["barrel", "crate"] as const;
+/** A clutter piece's kind name. */
 export type BreakableKindName = (typeof BREAKABLE_KINDS)[number];
 
 /**
@@ -22,18 +23,25 @@ export type BreakableKindName = (typeof BREAKABLE_KINDS)[number];
  * cell on a WALL cell of the Forge grid (FLOOR in the sim's carved grid), inert until an opener breaks it. Append only.
  */
 export const BREAKABLE_PIECE_KINDS = ["barrel", "crate", "chest", "crackedWall"] as const;
+/** Any breakables-list piece's kind name; its position in BREAKABLE_PIECE_KINDS is the sim's kind index. */
 export type BreakablePieceKindName = (typeof BREAKABLE_PIECE_KINDS)[number];
 
 /** A depth band of the descent (docs/DECOR.md Phase 2 part 1: kept 1-4, worn 5-9, ruined 10-14, abyss 15+). */
 export interface BreakableBand {
+	/** The band's name in docs/DECOR.md: kept, worn, ruined or abyss. */
 	readonly name: string;
 	/** The band's first floor. */
 	readonly fromFloor: number;
 	/** Pieces per reference room (B6), drawn uniformly in [min, max], then scaled by the room's area. */
 	readonly min: number;
+	/** The most pieces per reference room in this band. */
 	readonly max: number;
 }
 
+/**
+ * The barrel and crate placement's tunables: its rng salt, which rooms get pieces, the clearances it keeps and how many
+ * pieces a room of each depth band holds.
+ */
 export interface BreakableTunables {
 	/** Mixed into the floor seed for the placement stream (never the Forge's own stream). */
 	readonly salt: number;
@@ -66,6 +74,7 @@ export interface BreakableTunables {
 	readonly maxPerRoom: number;
 	/** Wall clusters hold this many pieces (the last one of a room may be smaller). */
 	readonly clusterMin: number;
+	/** The most pieces in one wall cluster. */
 	readonly clusterMax: number;
 	/** The one optional lone mid-room piece: combat rooms whose floor spans at least this many tiles both ways. */
 	readonly loneMinRoomSide: number;
@@ -95,6 +104,7 @@ export interface BreakableTunables {
 	};
 }
 
+/** The breakables placement values. Changing one changes every endless floor's pieces. */
 export const BREAKABLE: BreakableTunables = table.freeze({
 	salt: 0x5bd1e995,
 	roomTypes: table.freeze(["combat", "elite", "treasure"] as EncounterRoomType[]),

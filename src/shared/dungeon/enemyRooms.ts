@@ -44,13 +44,16 @@ export const SPREAD_TRIES = 6;
 
 /** Archetype ids placed by this populator (registry ids in the sim). */
 export const SWARMER_KIND = "swarmer";
+/** The sniper's archetype id. */
 export const SNIPER_KIND = "sniper";
+/** The bruiser's archetype id. */
 export const BRUISER_KIND = "bruiser";
 /** The Act I boss archetype id. */
 export const BOSS_ACT1_KIND = "boss.act1";
 /** The second endless boss (docs/BOSS_DEMONLORD.md); endless boss floors pick it or Mother Mayhem (bossKindFor). */
 export const BOSS_DEMONLORD_KIND = "boss.demonlord";
 
+/** The group shapes the M1 populator plans a room from. */
 export type EnemyGroupKind = "swarm" | "snipers" | "bruiser";
 
 const GROUP_KINDS: ReadonlyArray<EnemyGroupKind> = ["swarm", "snipers", "bruiser"];
@@ -179,8 +182,11 @@ export function nearestFree(
 	return out;
 }
 
+/** One group planRoom chose for a room, before placement. */
 export interface PlannedGroup {
+	/** The group's shape. */
 	kind: EnemyGroupKind;
+	/** How many enemies it holds. */
 	size: number;
 }
 

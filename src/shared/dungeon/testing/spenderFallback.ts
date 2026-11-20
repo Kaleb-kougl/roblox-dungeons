@@ -26,11 +26,15 @@ import {
 	type EndlessRoomKind,
 } from "shared/dungeon";
 
+/** What traceSpend bought for one room and how often the no-draw fallback chose. */
 export interface SpendTrace {
+	/** The kinds bought, in purchase order. */
 	readonly kinds: string[];
 	/** Picks the no-draw fallback made, split by why (see the file comment), and the tied ones among them. */
 	saturated: number;
+	/** Fallback picks that were not saturated. */
 	tail: number;
+	/** Fallback picks where more than one kind tied for dearest. */
 	tied: number;
 	/** What the fallback bought, per kind. */
 	readonly fallbackKinds: Map<string, number>;

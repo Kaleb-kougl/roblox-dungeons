@@ -42,6 +42,7 @@ function isNegZero(x: number): boolean {
 	return x === 0 && 1 / x < 0;
 }
 
+/** How a fixture comparison treats paths: which to skip, and where a 1-ulp difference is allowed. */
 export interface DiffOptions {
 	/** Paths to skip entirely (exporter metadata). */
 	ignore?: (path: string) => boolean;

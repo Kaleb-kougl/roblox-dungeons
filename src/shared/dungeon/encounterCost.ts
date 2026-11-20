@@ -36,6 +36,7 @@ export const ENCOUNTER_COST: ReadonlyMap<string, number> = new Map<string, numbe
 ]);
 /** Cost of an archetype id not in the table (never 0, so every spawn counts). */
 export const DEFAULT_ENCOUNTER_COST = 1;
+/** What one `archetypeId` costs a room's encounter budget (DEFAULT_ENCOUNTER_COST for an id without a row). */
 export function encounterCost(archetypeId: string): number {
 	return ENCOUNTER_COST.get(archetypeId) ?? DEFAULT_ENCOUNTER_COST;
 }

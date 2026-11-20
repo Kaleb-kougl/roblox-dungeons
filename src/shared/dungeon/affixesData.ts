@@ -20,6 +20,7 @@ export const AffixKind = {
 	SHIELDED: 3,
 	VENGEFUL: 4,
 } as const;
+/** An affix id: 0 for none, 1..AFFIX_KIND_COUNT for an affix. */
 export type AffixKindId = (typeof AffixKind)[keyof typeof AffixKind];
 
 /** Affix ids 1..AFFIX_KIND_COUNT exist. */
@@ -32,10 +33,13 @@ export function affixThemeIndex(kind: number): number {
 
 /** One affix's first floor (EVD6). */
 export interface AffixUnlock {
+	/** The affix id (AffixKind). */
 	readonly kind: number;
+	/** The first endless floor whose rooms may roll it. */
 	readonly fromFloor: number;
 }
 
+/** The elite affix assignment's tunables: its rng salt, when each affix unlocks and how many room members take one. */
 export interface AffixTunables {
 	/**
 	 * The assignment's own rng stream: new EncounterRng(floor seed ^ salt), like the boss pick (0x27d4eb2f) and the
@@ -47,12 +51,15 @@ export interface AffixTunables {
 	readonly unlocks: ReadonlyArray<AffixUnlock>;
 	/** Elite rooms from this floor give eliteSharePercent of their eligible members an affix (rounded up, >= 1). */
 	readonly eliteFromFloor: number;
+	/** The share of an elite room's eligible members that take an affix, percent. */
 	readonly eliteSharePercent: number;
 	/** Combat rooms from this floor: each eligible member rolls combatChancePercent for an affix. */
 	readonly combatFromFloor: number;
+	/** Each eligible member of a combat room's chance of an affix, percent. */
 	readonly combatChancePercent: number;
 	/** The room types each rule reads. */
 	readonly eliteRoomType: EncounterRoomType;
+	/** The room type the combat rule reads. */
 	readonly combatRoomType: EncounterRoomType;
 	/** Archetype ids that never take an affix (the split, the training dummy). */
 	readonly excludedKinds: ReadonlyArray<string>;
@@ -62,6 +69,7 @@ export interface AffixTunables {
 	readonly percentRange: number;
 }
 
+/** The affix assignment's values. Changing one changes which endless enemies carry an affix. */
 export const AFFIXES: AffixTunables = table.freeze({
 	salt: 0xcc9e2d51,
 	unlocks: table.freeze([

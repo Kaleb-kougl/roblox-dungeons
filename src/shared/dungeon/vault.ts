@@ -53,9 +53,11 @@ export interface VaultPlan {
 	readonly room: number;
 	/** The chest's cell (grid; world centre gridToWorld(x), gridToWorld(y)). */
 	readonly x: number;
+	/** The chest's row. */
 	readonly y: number;
 	/** Facing into the room: (1, 0) / (0, 1) on far walls, (-1, 0) / (0, -1) on near walls. */
 	readonly fx: number;
+	/** The facing's z part (grid y). */
 	readonly fz: number;
 	/** The chest's index in the floor's breakables (the pieces before it). */
 	readonly slot: number;
@@ -71,22 +73,31 @@ export interface VaultPlan {
  * stream keeps its positions. Never reaches the server (the dev world is server-refused).
  */
 export interface VaultOverride {
+	/** Every eligible floor holds a vault. */
 	readonly every?: boolean;
+	/** The chest's VaultTier, instead of the drawn one. */
 	readonly tier?: number;
+	/** The chest's VaultLock, instead of the drawn one. */
 	readonly lock?: number;
 }
 
 /** A valid chest cell of a room and its facing (grid). */
 export interface VaultCell {
+	/** Column. */
 	readonly x: number;
+	/** Row. */
 	readonly y: number;
+	/** Facing into the room, x part. */
 	readonly fx: number;
+	/** Facing into the room, z part (grid y). */
 	readonly fz: number;
 }
 
 /** An eligible vault room and its valid cells (vaultCandidates order). */
 export interface VaultRoom {
+	/** The room. */
 	readonly room: EncounterRoom;
+	/** The cells its chest may stand on. */
 	readonly cells: ReadonlyArray<VaultCell>;
 }
 

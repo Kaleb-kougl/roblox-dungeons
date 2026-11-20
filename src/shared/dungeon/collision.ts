@@ -17,8 +17,11 @@ import { TileType, type Dungeon, type Room } from "./forge";
 /** Sim units per grid tile (the web build's src/config.ts TILE_SIZE). */
 export const TILE_SIZE = 1;
 
+/** A position on the floor plane in world (sim) units: x follows grid x, z follows grid y. */
 export interface WorldXZ {
+	/** World x. */
 	x: number;
+	/** World z. */
 	z: number;
 }
 

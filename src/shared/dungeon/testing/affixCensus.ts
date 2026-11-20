@@ -20,6 +20,7 @@ import {
 	isAffixExcluded,
 } from "shared/dungeon";
 
+/** The affix census's sample and the share gates its shard specs check. */
 export const AFFIX_CENSUS = {
 	/** Run seeds 1..runs over all shards. */
 	runs: 60,
@@ -33,12 +34,19 @@ export const AFFIX_CENSUS = {
 	allAffixesFloor: 9,
 } as const;
 
+/** The census's tallies over one shard's run seeds. */
 export interface AffixCensus {
+	/** Floors built. */
 	readonly floors: number;
+	/** Elite rooms on floors from AFFIXES.eliteFromFloor. */
 	readonly eliteRooms: number;
+	/** Their members an affix may go on. */
 	readonly eliteEligible: number;
+	/** Those that got one. */
 	readonly eliteAffixed: number;
+	/** Combat-room members an affix may go on, floors from AFFIXES.combatFromFloor. */
 	readonly combatEligible: number;
+	/** Those that got one. */
 	readonly combatAffixed: number;
 	/** Combat-room affixes on floors >= allAffixesFloor (all of them: combat rooms start later). */
 	readonly combatAffixedDeep: number;

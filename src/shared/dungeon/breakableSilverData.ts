@@ -14,6 +14,7 @@ export interface BreakableSilverBand {
 	readonly fromFloor: number;
 	/** Silver pieces per floor, one draw in [min, max] (capped by the candidates and the per-room cap). */
 	readonly min: number;
+	/** The most Silver pieces a floor of this band gets. */
 	readonly max: number;
 }
 
@@ -21,6 +22,7 @@ export interface BreakableSilverBand {
 export interface BreakableSilverStack {
 	/** The stack range on floor 1. */
 	readonly min: number;
+	/** The largest stack on floor 1. */
 	readonly max: number;
 	/** Every this many floors both ends of the range rise by one. */
 	readonly floorsPerStep: number;
@@ -28,6 +30,9 @@ export interface BreakableSilverStack {
 	readonly bonusCap: number;
 }
 
+/**
+ * The tunables of Silver hidden in breakables: the rng salt, how many pieces per depth band and how large a stack is.
+ */
 export interface BreakableSilverTunables {
 	/**
 	 * Silver's own rng stream: new EncounterRng(floor seed ^ salt) ("KVSL"), like the loot (0xe6546b64), the secret
@@ -45,6 +50,7 @@ export interface BreakableSilverTunables {
 	readonly stack: BreakableSilverStack;
 }
 
+/** The Silver-in-breakables values. Changing one changes which pieces pay Silver, never the sim. */
 export const BREAKABLE_SILVER: BreakableSilverTunables = table.freeze({
 	salt: 0x4b56534c,
 	bands: table.freeze([

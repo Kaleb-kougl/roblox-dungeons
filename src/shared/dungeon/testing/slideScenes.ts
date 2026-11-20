@@ -63,8 +63,11 @@ export function ticksTo(
 
 /** walk()'s result: the end point, and whether the last `stillTicks` positions were bit-identical. */
 export interface SceneWalk {
+	/** End point, world x. */
 	x: number;
+	/** End point, world z. */
 	z: number;
+	/** The last `stillTicks` positions were bit-identical: the walker is stuck or at rest. */
 	still: boolean;
 }
 

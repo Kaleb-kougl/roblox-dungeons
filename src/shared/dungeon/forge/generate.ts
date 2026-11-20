@@ -88,6 +88,7 @@ const NAME_D: ReadonlyArray<string> = [
 	"arim",
 ];
 
+/** The floor's name from the theme's two word pools and the two shared ones: exactly four draws, in this order. */
 export function dungeonName(rng: Rng, th: ForgeTheme): string {
 	return "The " + rng.pick(th.nameA) + " " + rng.pick(th.nameB) + " of " + rng.pick(NAME_C) + "’" + rng.pick(NAME_D);
 }

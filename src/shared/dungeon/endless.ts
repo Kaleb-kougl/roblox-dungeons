@@ -530,11 +530,15 @@ export function roomIdAt(d: Dungeon, x: number, z: number): number {
 
 /** One endless floor, as data. Never mutated. */
 export interface EndlessFloorLayout {
+	/** The floor number, 1-based. */
 	readonly floor: number;
 	/** floorSeed(runSeed, floor). */
 	readonly seed: number;
+	/** The room count the floor was generated with. */
 	readonly roomCount: number;
+	/** The generated layout. */
 	readonly dungeon: Dungeon;
+	/** This floor ends in a boss room with a boss. */
 	readonly bossFloor: boolean;
 	/**
 	 * The boss archetype id in the boss room (bossKindFor(seed) on an endless boss floor; the tutorial's last floor:

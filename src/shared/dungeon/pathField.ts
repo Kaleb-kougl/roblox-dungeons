@@ -16,14 +16,17 @@ import { TileType, type Dungeon } from "./forge";
 
 /** A BFS distance field to a target tile (pathField). Never mutated after it is built. */
 export interface PathField {
+	/** The floor the field was built on. */
 	readonly d: Dungeon;
 	/** BFS steps to the seed tile per cell (y * W + x); math.huge where unreachable. */
 	readonly dist: number[];
 	/** The seed tile: the target's own tile, or the FLOOR tile it snapped to (-1, -1 when nothing was in reach). */
 	readonly gx: number;
+	/** The seed tile's row. */
 	readonly gy: number;
 	/** The target as given (world): where the last step of a walk aims (pathStep returns -1 on the seed). */
 	readonly tx: number;
+	/** The target's world z. */
 	readonly tz: number;
 	/** Cells (y * W + x) left out like walls, e.g. a floor's breakables for the test bots; absent: none. */
 	readonly blocked?: ReadonlySet<number>;

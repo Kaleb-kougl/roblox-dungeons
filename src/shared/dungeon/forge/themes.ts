@@ -15,11 +15,18 @@ import type { RoomType, ThemeKey } from "./types";
  * kept as reference data; Kaleb-Vale's art comes from theme packs (shared/theme), not from here.
  */
 
+/**
+ * A theme's liquid: which kind, how much of it the generator places (`amount`, `pits`: part of seed parity) and the
+ * demo's colours.
+ */
 export interface ForgePoolSpec {
 	/** 0 lava, 1 frost lake, 2 water, 3 miasma. */
 	mode: 0 | 1 | 2 | 3;
+	/** The demo's first liquid colour, 0xRRGGBB (reference only). */
 	colA: number;
+	/** The demo's second liquid colour, 0xRRGGBB (reference only). */
 	colB: number;
+	/** The demo's glow colour, 0xRRGGBB (reference only). */
 	glow: number;
 	/** Fraction of eligible wall cells turned into liquid pockets. */
 	amount: number;
@@ -27,37 +34,68 @@ export interface ForgePoolSpec {
 	pits?: number;
 }
 
+/**
+ * One Forge theme. The generator reads the generation flags (pools, lakes, icicles, graveyards, bones, roots) and the
+ * name pools; every colour and light is the demo's look, kept as reference data.
+ */
 export interface ForgeTheme {
+	/** The demo's chip label. */
 	label: string;
+	/** The demo's UI accent, a CSS colour (reference only). */
 	accent: string;
+	/** Background colour, 0xRRGGBB (reference only, as every colour below). */
 	bg: number;
+	/** Fog colour. */
 	fog: number;
+	/** Fog density. */
 	fogD: number;
+	/** Hemisphere light: sky colour, ground colour, intensity. */
 	hemi: [number, number, number];
+	/** Directional light: colour, intensity. */
 	dir: [number, number];
+	/** Room floor colour. */
 	floor: number;
+	/** Corridor floor colour. */
 	corridor: number;
+	/** Wall side colour. */
 	wall: number;
+	/** Wall top colour. */
 	cap: number;
+	/** Pillar colour. */
 	pillar: number;
+	/** The two debris colours. */
 	debris: [number, number];
+	/** Torch flame colour. */
 	flame: number;
+	/** Torch flame core colour. */
 	flameCore: number;
+	/** Torch point light: colour, intensity, distance. */
 	torchLight: [number, number, number];
+	/** Banner cloth colour. */
 	cloth: number;
 	/** undefined: no liquid (the original's null). */
 	pools?: ForgePoolSpec;
+	/** Ambient particles: the demo's kind, colour and count. */
 	particles: { kind: number; color: number; n: number };
+	/** Generation flag: some rooms get a frozen lake (Room.lake). */
 	lakes?: boolean;
+	/** Generation flag: icicle props. */
 	icicles?: boolean;
+	/** Generation flag: some rooms become graveyards (Room.grave). */
 	graveyards?: boolean;
+	/** Generation flag: bone props. */
 	bones?: boolean;
+	/** Generation flag: root props. */
 	roots?: boolean;
+	/** The demo draws light shafts (reference only). */
 	shafts?: boolean;
+	/** First word pool of the floor name (one draw). */
 	nameA: ReadonlyArray<string>;
+	/** Second word pool of the floor name (one draw). */
 	nameB: ReadonlyArray<string>;
 }
 
+/** The five themes' data, unchanged from the web build: the generation flags and name pools are part of seed parity. */
 export const THEMES: Readonly<Record<ThemeKey, ForgeTheme>> = {
 	ancient: {
 		label: "ANCIENT",

@@ -8,8 +8,11 @@
  */
 import { jsRem } from "shared/jsmath";
 
+/** A point of the triangulation (a room centre). */
 export interface Point2 {
+	/** x, in the caller's units. */
 	x: number;
+	/** y, in the caller's units. */
 	y: number;
 }
 
