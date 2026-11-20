@@ -1653,3 +1653,16 @@ Superseded in older entries (kept as written):
   (facing, player, actors, frames, registry); each `index.ts` re-exports exactly the old exports. This log moved out
   of CLAUDE.md. Generated: [`FACTS.md`](FACTS.md) (`npm run facts`; `facts:check` in verify) and
   [`OPEN_TASKS.md`](OPEN_TASKS.md) (`npm run tasks:open`). Open: DX6 (an archetype skeleton generator). No CI (owner).
+
+- **Doc comments and the API reference (docs/DOC_COMMENTS.md, 2026-11-20).** Tooling and comments only (no sim,
+  dungeon, lockstep, hash, replay, wire, fixture, score, theme content or presentation change; `DAILY.ruleset`
+  unchanged; `out:digest` identical before and after). The comment standard: a `/** */` on every exported
+  declaration, prose first, no types in comments, a file header ends with `@module`; in `shared/sim`,
+  `shared/dungeon` and `shared/lockstep` every field of an exported interface too (owner: DCD4). `npm run docs`
+  builds the reference with TypeDoc (pinned 0.28.20, one page per source file, `build/api`, never committed).
+  In verify: `check:docs` (`scripts/check-doc-coverage.js`: a declaration without a comment fails unless it is a
+  known gap in `scripts/doc-coverage.json`, a list that only shrinks) and `docs:check` (TypeDoc without output,
+  every warning an error). `npm run out:digest` digests `out/` with comments stripped (rbxtsc copies comments into
+  the Luau), to prove a commit is comment only. `@module` on 796 file headers; nine private types named by exported
+  signatures are now exported (types only). Open: the backfill (DC7-DC9: 1,509 exports and 851 core fields are known
+  gaps), links (DC10), the plan docs in the site (DC11); `npm run docs` not yet run on the owner's Mac.
