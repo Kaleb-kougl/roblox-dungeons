@@ -201,8 +201,19 @@ Generated, not gated in `verify`.
 
   **As built.** `scripts/open-tasks.js` (+ `check-open-tasks.test.js`), `npm run tasks:open`, `docs/OPEN_TASKS.md`
   (named for what it holds: every open task, Studio checks first). First file: 167 open tasks in 60 docs, this plan's DX6 among them (106 Studio /
-  playtest / device, 18 uploads / art / audio, 43 other) and 68 decision-log entries with a pending sentence (NT13 and
+  playtest / device, 19 uploads / art / audio, 42 other) and 68 decision-log entries with a pending sentence (NT13 and
   NX13 are there: their docs list them without a checkbox). The owner's first batch is open.
+
+## Verification (2026-11-20)
+
+On the branch's last commit, in a Linux arm64 VM (Lune 0.11.0, node 22): `typecheck` clean; `lint` clean with
+`--max-warnings=0` (after a prettier fix to `view/hud/archerHud.spec.ts`, a warning `main` carried); `check:assets`,
+`check:autolocalize`, `test:art` (356 tests, 0 failed), `test:checks` (25), `test:l10n` (36) pass; `build` clean;
+`check:locals` (1,161 modules, none at or above 185); `facts:check` up to date; the headless suite: **632 of 632 spec
+files pass** (run one file per process, four at a time, because that shell caps a command at 3 minutes; the default
+samples, not `--census`). `scripts/art/gen-boost-icons.test.js` read `theme/contract.ts` by path and now reads
+`theme/contract/ids.ts`. Not run: the Studio test-runner plugin, `art:build` / `audio:build` (no vendor art there),
+the `l10n:*` round trip.
 
 ## Risks
 
