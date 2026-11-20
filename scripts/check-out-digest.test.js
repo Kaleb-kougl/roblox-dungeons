@@ -28,7 +28,10 @@ describe("stripComments", () => {
 			"--[==[ a level-2 block ]] still inside ]==]",
 			"return f",
 		].join("\n");
-		assert.equal(stripComments(src), ["local a = 1", "local function f()", "\treturn a", "end", "return f"].join("\n"));
+		assert.equal(
+			stripComments(src),
+			["local a = 1", "local function f()", "\treturn a", "end", "return f"].join("\n"),
+		);
 	});
 
 	it("keeps strings byte for byte, whatever they hold", () => {

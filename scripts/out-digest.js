@@ -97,7 +97,8 @@ function listLuau(dir) {
 		for (const entry of fs.readdirSync(d, { withFileTypes: true })) {
 			const full = path.join(d, entry.name);
 			if (entry.isDirectory()) walk(full);
-			else if (entry.isFile() && entry.name.endsWith(".luau")) found.push(path.relative(dir, full).split(path.sep).join("/"));
+			else if (entry.isFile() && entry.name.endsWith(".luau"))
+				found.push(path.relative(dir, full).split(path.sep).join("/"));
 		}
 	};
 	walk(dir);
