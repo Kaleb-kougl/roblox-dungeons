@@ -127,7 +127,7 @@ export const selectTutorialSkipConfirm = (state: { tutorial: TutorialState }) =>
 export const selectGhostHeart = (state: { tutorial: TutorialState }) => state.tutorial.ghostHeart;
 
 /** What selectTutorialPromptKey reads: this slice and the game slice's last-used device. */
-interface PromptKeyState {
+export interface PromptKeyState {
 	readonly tutorial: TutorialState;
 	readonly game: { readonly inputDevice: InputDeviceKind };
 }

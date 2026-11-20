@@ -39,7 +39,11 @@ export type TouchButtonId =
 
 export type TouchLayoutMode = "play" | "spectate";
 
-interface CircleSpec {
+/**
+ * One touch button as a circle: centre `x` inward and `y` up from its side's bottom corner of the safe area, radius
+ * `r`, all in reference px (before touchLayout() scales them).
+ */
+export interface CircleSpec {
 	readonly id: TouchButtonId;
 	readonly x: number;
 	readonly y: number;

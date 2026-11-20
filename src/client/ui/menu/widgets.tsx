@@ -73,7 +73,8 @@ export const ScrollList = React.forwardRef<
 	);
 });
 
-interface ListRowProps {
+/** ListRow's props: its place in the list (`order`) and `dim` for the more transparent overlay look. */
+export interface ListRowProps {
 	order: number;
 	dim?: boolean;
 	children?: React.ReactNode;

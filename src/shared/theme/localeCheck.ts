@@ -40,7 +40,7 @@ export const CASED_SCRIPTS: ReadonlyArray<LocaleScript> = ["latin", "cyrillic"];
 const UINT32_MAX = 0xffffffff;
 
 /** How a range of code points is cased: every one lower case, none, or the odd / even ones (upper / lower pairs). */
-type CaseRule = "lower" | "none" | "odd" | "even";
+export type CaseRule = "lower" | "none" | "odd" | "even";
 
 /**
  * Lowercase letters among the code points Latin and Cyrillic translations use (Unicode data; the first range that

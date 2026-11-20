@@ -52,8 +52,11 @@ export const TEST_CHASER = registerArchetype<ArchetypeData>({
 	},
 });
 
-interface TestBossData extends ArchetypeData {
+/** The test boss's tuning on top of the shared archetype data. */
+export interface TestBossData extends ArchetypeData {
+	/** How long the ring attack is telegraphed before it fires, ticks. */
 	telegraphTicks: number;
+	/** The bullet ring the attack fires. */
 	ring: BurstSpec;
 }
 

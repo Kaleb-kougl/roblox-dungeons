@@ -57,9 +57,12 @@ const UI_NAV_KEYS = new Set(["ButtonA", "ButtonB", "DPadUp", "DPadDown", "DPadLe
 /** The weapon buttons (Attack, Alt) in a sampled frame: what the item tooltips' shy HUD rule reads (weaponHeld). */
 const WEAPON_BUTTONS = bit32.bor(Button.FIRE, Button.ALT);
 
-type DriverListener = (action: Exclude<DriverKeyAction, undefined>) => void;
-type MapListener = () => void;
-type MenuPadListener = (input: MenuPadInput) => void;
+/** Called with each driver key press (restart, replay check): `onDriverAction`. */
+export type DriverListener = (action: Exclude<DriverKeyAction, undefined>) => void;
+/** Called when the bound `map` input is pressed: `onMapAction`. */
+export type MapListener = () => void;
+/** Called with each menu-only gamepad input while a menu owns the pad: `onMenuPadInput`. */
+export type MenuPadListener = (input: MenuPadInput) => void;
 
 /** What a touch frame needs from the run (SimController passes it to sample). */
 export interface TouchAimContext {

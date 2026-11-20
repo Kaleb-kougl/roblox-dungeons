@@ -106,7 +106,7 @@ export interface CodexFrame {
 }
 
 /** A pooled actor view (CodexFrameBuffer's pools): rewritten in place, never allocated per frame. */
-interface PooledActorView {
+export interface PooledActorView {
 	archetype: string;
 	affix: number;
 }

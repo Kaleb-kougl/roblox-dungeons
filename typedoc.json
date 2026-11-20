@@ -11,10 +11,11 @@
 	"blockTags": ["@module", "@param", "@returns", "@remarks", "@example", "@see", "@throws", "@deprecated"],
 	"inlineTags": ["@link"],
 	"modifierTags": ["@internal"],
+	"intentionallyNotExported": ["AssetIds", "SpriteInputOf", "src/shared/dungeon/pellets.ts:Cell"],
 	"validation": {
 		"notExported": true,
 		"invalidLink": true,
 		"notDocumented": false
 	},
-	"treatValidationWarningsAsErrors": false
+	"treatWarningsAsErrors": true
 }
