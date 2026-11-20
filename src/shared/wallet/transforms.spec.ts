@@ -4,6 +4,7 @@ import {
 	WALLET,
 	applyBuy,
 	applyEquip,
+	applyPassGrant,
 	applyGrant,
 	decodeWalletDoc,
 	emptyWalletDoc,
@@ -366,5 +367,54 @@ describe("walletTransaction (the store transform)", () => {
 		expect(walletBalance(decodeWalletDoc(stored))).toBe(46 + 46 + 50);
 		// a retried transform of the first run (UpdateAsync conflict, or a second conclude) grants nothing
 		expect(tx("server-1-run").reason).toBe("duplicate");
+	});
+});
+
+describe("Robux-only cosmetics (docs/COSMETICS.md CSD13)", () => {
+	const PRISMATIC = "dye.knight.prismatic";
+
+	it("applyBuy refuses an animated cosmetic with Silver, whatever the balance", () => {
+		const r = applyBuy(wallet(1000000), PRISMATIC);
+		expect(!r.ok && r.reason).toBe("robuxOnly");
+		expect(walletBalance(r.doc)).toBe(1000000);
+		expect(r.doc.own.get(PRISMATIC)).toBe(undefined);
+	});
+
+	it("a Prismatic dye bought with Silver before the change stays owned and equips", () => {
+		const d = wallet(0, [[PRISMATIC, 1]]);
+		const r = applyEquip(d, "dye.knight", PRISMATIC);
+		expect(r.ok).toBe(true);
+	});
+
+	it("applyPassGrant: owns the item, touches nothing else; owned already: no change", () => {
+		const d = wallet(700);
+		d.spent = 100;
+		const r = applyPassGrant(d, PRISMATIC);
+		expect(r.ok).toBe(true);
+		if (!r.ok) return;
+		expect(r.changed).toBe(true);
+		expect(r.doc.own.get(PRISMATIC)).toBe(1);
+		expect([r.doc.earned, r.doc.spent, walletBalance(r.doc), r.doc.eq]).toEqual([700, 100, 600, undefined]);
+		const again = applyPassGrant(r.doc, PRISMATIC);
+		expect(again.ok && again.changed).toBe(false);
+	});
+
+	it("applyPassGrant refuses Silver items and unknown ids", () => {
+		const silver = applyPassGrant(wallet(0), "outline.azure");
+		expect(!silver.ok && silver.reason).toBe("notRobux");
+		const unknown = applyPassGrant(wallet(0), "dye.knight.gold");
+		expect(!unknown.ok && unknown.reason).toBe("unknown");
+	});
+
+	it("the passGrant op writes once; a repeat writes nothing", () => {
+		const first = walletTransaction(undefined, { kind: "passGrant", itemId: PRISMATIC });
+		expect([first.ok, first.passGranted, first.write !== undefined]).toEqual([true, true, true]);
+		const second = walletTransaction(first.write, { kind: "passGrant", itemId: PRISMATIC });
+		expect([second.ok, second.passGranted, second.write]).toEqual([true, false, undefined]);
+		expect(second.doc.own.get(PRISMATIC)).toBe(1);
+	});
+
+	it("nextGoals never names a Robux-only item", () => {
+		for (const g of nextGoals(wallet(1000000), 99)) expect(armoryItem(g.itemId)?.robux).toBe(undefined);
 	});
 });

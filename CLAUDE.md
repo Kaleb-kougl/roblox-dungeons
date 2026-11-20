@@ -1632,7 +1632,14 @@ Decision log (deviations from `PLAN.md`):
   overrides, Prismatic on the sprite clock (reduced motion holds the first stop); the Armory Cosmetics tab (slot
   groups, swatches, buy / equip / take off through `MenuActions.armoryEquip`, a turning try-on `CharacterPreview`
   shared with CharacterScreen; a trail item rolls with the in-run ghosts and a spark item attacks with the in-run parry
-  burst, shared/view/menu `cosmeticAction.ts`), the lobby's dye chip. Studio `KV_FakeWallet` presets `cosmetics` / `dressed`. Pending:
+  burst, shared/view/menu `cosmeticAction.ts`), the lobby's dye chip. Studio `KV_FakeWallet` presets `cosmetics` / `dressed`.
+  **CSD13 (2026-11-19, owner): animated cosmetics are Robux-only** (`ArmoryItem.robux` on every Prismatic dye: no
+  Silver price, `applyBuy` refuses `robuxOnly`; Silver-bought ones stay owned): one Roblox game pass each
+  (shared/wallet `passes.ts` `COSMETIC_PASSES`: Plate `2092456672`, Leathers `2093746633`), granted
+  into `own` by `CosmeticPassService` (op `passGrant`) at every join (`UserOwnsGamePassAsync`) and after a confirmed
+  `PromptGamePassPurchaseFinished`; `WalletStatus.robuxItems` / `passPurchase`, client `CosmeticPassController`
+  (Roblox's price, `PromptGamePassPurchase`), store slice `cosmeticPass`, menu action `armoryBuyRobux`, strings
+  `cosmetic.robux.*`, Studio `KV_FakePasses` and remote `cosmeticPassFakeBuy`. Pending:
   the owner's sign-off on the masks (CS1) and on rule 3's revision, the device memory
   check (CS0), Studio check and playtest (CS9, CS7's two clients); earned cosmetics (CS11) and telemetry (CS12) not
   built.

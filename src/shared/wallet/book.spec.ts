@@ -198,3 +198,29 @@ describe("WalletBook (SV3)", () => {
 		expect(book.hasCopy(ME)).toBe(false);
 	});
 });
+
+describe("WalletBook.grantPass (docs/COSMETICS.md CSD13)", () => {
+	it("owns a Robux-only cosmetic once, replaces the read copy; a Silver buy of it is refused", () => {
+		const store = new MemoryWalletStore();
+		const book = new WalletBook(store, { keyOf });
+		book.load(ME);
+		const buy = book.buy(ME, "dye.archer.prismatic");
+		expect([buy.result.ok, buy.result.reason]).toEqual([false, "robuxOnly"]);
+		const first = book.grantPass(ME, "dye.archer.prismatic");
+		expect([first.ok, first.granted]).toEqual([true, true]);
+		expect(ownedLevel(book.doc(ME), "dye.archer.prismatic")).toBe(1);
+		expect(ownedLevel(decodeWalletDoc(store.get(keyOf(ME))), "dye.archer.prismatic")).toBe(1);
+		const again = book.grantPass(ME, "dye.archer.prismatic");
+		expect([again.ok, again.granted]).toEqual([true, false]);
+		const eq = book.equip(ME, "dye.archer", "dye.archer.prismatic");
+		expect(eq.result.ok).toBe(true);
+	});
+
+	it("lands on the stored doc when the join load failed", () => {
+		const store = new FailingReads();
+		const book = new WalletBook(store, { keyOf });
+		expect(book.load(ME)).toBe(false);
+		expect(book.grantPass(ME, "dye.knight.prismatic").granted).toBe(true);
+		expect(ownedLevel(decodeWalletDoc(store.inner.get(keyOf(ME))), "dye.knight.prismatic")).toBe(1);
+	});
+});

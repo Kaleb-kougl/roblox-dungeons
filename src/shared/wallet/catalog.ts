@@ -10,9 +10,14 @@
  * ARMORY_CATALOG is APPEND-ONLY (catalog.spec pins its order): wallets store item ids, and telemetry SKUs are the ids.
  * Its cosmetics (docs/COSMETICS.md CS4) are shared/cosmetics COSMETIC_ITEMS, one row each in that list's order, after
  * catalogue v1: one level, `simLever` false, `slot` the item's.
+ *
+ * Robux-only items (docs/COSMETICS.md CSD13, owner 2026-11-19): every ANIMATED cosmetic (the Prismatic dyes) is `robux`:
+ * sold for Robux only, through a Roblox game pass (passes.ts), never for Silver. Its `tiers` still name one level (so
+ * `own` and the level reads stay as they are, and a Prismatic dye bought with Silver before the change stays owned),
+ * but it has no Silver price: itemSilverPrice / itemPrice are undefined for it and applyBuy refuses it (`robuxOnly`).
  */
 import { DEFAULT_CHARACTER, type CharacterId } from "shared/characters";
-import { COSMETIC_ITEMS } from "shared/cosmetics";
+import { COSMETIC_ITEMS, isPrismaticItem } from "shared/cosmetics";
 
 /** The eight tiers' prices, tier 1 first (index tier - 1). */
 export const ARMORY_TIERS: ReadonlyArray<number> = table.freeze([40, 80, 150, 300, 600, 1200, 2500, 5000]);
@@ -39,6 +44,13 @@ export interface ArmoryItem {
 	readonly slot?: string;
 	/** Another item at a level that must be owned first. */
 	readonly requires?: { readonly itemId: string; readonly level: number };
+	/** Sold for Robux only (a game pass, passes.ts), never for Silver (CSD13: every animated cosmetic). */
+	readonly robux?: true;
+}
+
+/** Is `it` sold for Robux only (CSD13)? */
+export function isRobuxItem(it: Readonly<ArmoryItem> | undefined): boolean {
+	return it !== undefined && it.robux === true;
 }
 
 /** The item id of a character unlock (the Knight needs none). */
@@ -62,7 +74,9 @@ function item(i: ArmoryItem): ArmoryItem {
 export function cosmeticArmoryItems(): ArmoryItem[] {
 	const out: ArmoryItem[] = [];
 	for (const c of COSMETIC_ITEMS) {
-		out.push(item({ id: c.id, kind: "cosmetic", tiers: [c.tier], simLever: false, slot: c.slot }));
+		const row: ArmoryItem = { id: c.id, kind: "cosmetic", tiers: [c.tier], simLever: false, slot: c.slot };
+		// CSD13: an animated cosmetic is sold for Robux only.
+		out.push(item(isPrismaticItem(c.id) ? { ...row, robux: true } : row));
 	}
 	return out;
 }
@@ -98,16 +112,24 @@ export function itemTier(it: Readonly<ArmoryItem>, level: number): number | unde
 	return it.tiers[level - 1];
 }
 
-/** The price of buying level `level` (1-based) of item `id`, or undefined (unknown item, no such level). */
+/** The Silver price of level `level` (1-based) of `it`, or undefined (no such level, or a Robux-only item). */
+export function itemSilverPrice(it: Readonly<ArmoryItem>, level: number): number | undefined {
+	if (isRobuxItem(it)) return undefined;
+	const tier = itemTier(it, level);
+	return tier !== undefined ? tierPrice(tier) : undefined;
+}
+
+/**
+ * The Silver price of buying level `level` (1-based) of item `id`, or undefined (unknown item, no such level, a
+ * Robux-only item).
+ */
 export function itemPrice(
 	id: string,
 	level: number,
 	catalog: ReadonlyArray<ArmoryItem> = ARMORY_CATALOG,
 ): number | undefined {
 	const it = armoryItem(id, catalog);
-	if (it === undefined) return undefined;
-	const tier = itemTier(it, level);
-	return tier !== undefined ? tierPrice(tier) : undefined;
+	return it !== undefined ? itemSilverPrice(it, level) : undefined;
 }
 
 /** The unlock item of character `id` (undefined for the Knight, who is always owned, and unknown ids). */

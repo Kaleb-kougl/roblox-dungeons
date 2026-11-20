@@ -14,6 +14,7 @@
  */
 export * from "./SettingsController";
 export * from "./SilverShopController";
+export * from "./CosmeticPassController";
 export * from "./RebindController";
 export * from "./LeaderboardController";
 export * from "./LobbyController";

@@ -2033,6 +2033,13 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"cosmetic.tryOn": "Try on",
 		"cosmetic.none": "Default",
 		"cosmetic.animated": "Animated",
+		// docs/COSMETICS.md CSD13: the Robux-only (animated) cosmetics.
+		"cosmetic.robux.only": "Robux only",
+		"cosmetic.robux.price": "{robux} Robux",
+		"cosmetic.robux.buy": "Buy for {robux} Robux",
+		"cosmetic.robux.buyNoPrice": "Buy with Robux",
+		"cosmetic.robux.offSale": "Not for sale",
+		"cosmetic.robux.added": "{name} unlocked",
 		"cosmetic.slot.dye.knight": "Knight dye",
 		"cosmetic.slot.dye.archer": "Archer dye",
 		"cosmetic.slot.outline": "Outline",

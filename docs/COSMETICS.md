@@ -85,8 +85,8 @@ Equipped per slot in the wallet's `eq`, one item per slot. Prices are tiers of t
 
 | Slot (`eq` key) | Recolours | Art needed | v1 items *(tune)* |
 |---|---|---|---|
-| `dye.knight` | The Knight's plate (dye sheets) | 8 dye sheets, once | up to 8 colours, tiers 2-6, + Prismatic tier 8 |
-| `dye.archer` | The Archer's leathers (dye sheets) | 7 dye sheets, once | up to 8 colours, tiers 2-6, + Prismatic tier 8 |
+| `dye.knight` | The Knight's plate (dye sheets) | 8 dye sheets, once | up to 8 colours, tiers 2-6, + Prismatic (Robux only, CSD13) |
+| `dye.archer` | The Archer's leathers (dye sheets) | 7 dye sheets, once | up to 8 colours, tiers 2-6, + Prismatic (Robux only, CSD13) |
 | `outline` | Your rim (`playerOutline`, drawn for the watched player; the minimap self marker keeps `minimap.self`, CSD9) | none | 8 colours, tiers 2-5 |
 | `trail` | Roll afterimage ghosts | none | 6 colours, tiers 3-7 |
 | `spark` | Your graze / parry sparks | none | 5 colours, tiers 4-7 |
@@ -470,6 +470,57 @@ the value the label was built with); the Armory's "Bought ..." line names a cosm
 allocation). Left as is: `cosmetic.none` ("Default") is a required string nothing shows yet (reserved for a per-slot
 Default row).
 
+## Robux-only animated cosmetics (2026-11-19, owner)
+
+Every **animated** cosmetic (today the two Prismatic dyes) is sold for **Robux only**, through one Roblox **game pass**
+per item; nothing animated can be bought with Silver (CSD13). Every other cosmetic stays a Silver item. No sim, dungeon,
+lockstep, hash, replay, fixture, score or leaderboard change; `DAILY.ruleset` unchanged; the wallet doc stays `v: 1`.
+
+**Why a game pass, not a developer product.** Roblox sells a pass once, so a player can never pay again for a dye
+they own (a developer product can be bought repeatedly: we would have to block it and decide what a receipt for an
+owned dye does), and Roblox remembers the ownership, so the join check gives it back after any wallet loss. The cost:
+no receipt redelivery; a purchase the server misses (a crash between the prompt and the grant) lands at the buyer's
+next join. Passes show on the experience's Store page unless taken off it there (SHD5's calm selling).
+
+**Data.** shared/wallet `ArmoryItem.robux` (set by `cosmeticArmoryItems` for every `isPrismaticItem`, so a later
+animated item is Robux-only by the same rule; `isRobuxItem`). Its `tiers` stay `[8]` (one level: `own`, the level
+reads and the codec are unchanged, and a Prismatic dye **bought with Silver before the change stays owned**), but it
+has no Silver price: `itemSilverPrice` / `itemPrice` are undefined, `applyBuy` refuses it (`robuxOnly`), `nextGoals`,
+the badge (`affordableKeys`) and `dearestOwnedTier` skip it. `passes.ts`: `COSMETIC_PASSES` (per universe: item id ->
+pass id; Roblox Dungeons: Prismatic Plate `2092456672`, Prismatic Leathers `2093746633`, both 2026-11-19), lookups,
+`parseFakePasses`, `cosmeticPassStatusFields`. Transform `applyPassGrant` / op `passGrant` (own the item; owned
+already: no write; never touches earned, spent, bought, eq or the day marks), `WalletBook.grantPass`.
+`WalletStatus.robuxItems` (each item on sale here with its pass id, or Studio's fake price) and `passPurchase`
+(`{ itemId, bought }`).
+
+**Server.** `CosmeticPassService`: after each join load (`WalletService.onLoaded`) every pass of this universe whose
+item the wallet does not own is checked with `UserOwnsGamePassAsync` and granted if owned (bought on the website, in
+another server, a lost grant); `PromptGamePassPurchaseFinished` with `purchased` is confirmed with
+`UserOwnsGamePassAsync` (`COSMETIC_PASS.verifyTries` 3, `verifySeconds` 2 apart; Studio trusts the signal, its test
+purchases are not owned) and granted, then a `wallet` push with `passPurchase`. Nothing the client sends grants
+anything, except Studio's `cosmeticPassFakeBuy(itemId)` while `KV_FakePasses` gives a fake price (Studio only, rate
+limited `COSMETIC_PASS.fakeRate`).
+
+**Client.** `CosmeticPassController`: Roblox's price per pass (`GetProductInfoAsync(pass, GamePass).PriceInRobux`,
+once per item per session, never in code), `buy(itemId)` opens `PromptGamePassPurchase` (one at a time; a cancelled
+prompt frees the button; no grant within `COSMETIC_VIEW.robux.pendingTimeoutSec` 30 s frees it too), a grant plays
+sfx.shop.buy, stamps the row and toasts `{name} unlocked` (`COSMETIC_VIEW.robux.toastSec`). Store slice
+`cosmeticPass`. View (shared/view/menu): row states `robux` / `offSale`, action `robux`; the row's right text
+`{robux} Robux` (`Robux only` before the price is read) or `Not for sale`; the detail's sub `{slot} · Robux only`, the
+price without the Silver coin, one press of `Buy for {robux} Robux` (`Buy with Robux` without a price): Roblox's prompt
+is the confirm, so no hold. Menu action `armoryBuyRobux`. Six strings `cosmetic.robux.*` (`COSMETIC_KEYS`, l10n context
+entries).
+
+**Studio.** `KV_FakePasses` (Workspace, Studio only): `off` takes the dyes off sale; one whole price (`299`) puts every
+Robux-only item on sale at it and a press grants it into the memory store. With real pass ids, Studio's test purchase
+prompt works too.
+
+**Owner steps.** Creator Hub > the experience > Monetization > Passes: create **Prismatic Plate** and **Prismatic
+Leathers**, set their prices, put them on sale (and choose whether they show on the Store page), then paste their ids
+into shared/wallet `passes.ts` `COSMETIC_PASSES` under `ROBLOX_DUNGEONS_GAME_ID` (done 2026-11-19:
+Plate `2092456672`, Leathers `2093746633`). Pending: the Studio check
+(a fake buy, a test purchase with real ids, a cancelled prompt, the join grant), telemetry (not built).
+
 ## Decisions (accepted as recommended, 2026-11-17)
 
 | # | Question | Decision | Alternative kept for later |
@@ -486,6 +537,7 @@ Default row).
 | CSD10 | Dyes per character or shared | **Per character** | Shared |
 | CSD11 | Bullet / arrow / swing colours | **Out of v1** | A validated swing-fan palette later |
 | CSD12 | Cosmetics in the tutorial, the Daily, dev runs | **Everywhere** | Off in the tutorial |
+| CSD13 | How animated cosmetics are sold (owner, 2026-11-19) | **Robux only, one game pass each**; Silver-bought ones stay owned | A developer product per item |
 
 ## Changes
 

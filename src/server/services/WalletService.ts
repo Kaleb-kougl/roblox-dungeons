@@ -9,19 +9,23 @@ import { dailyDay } from "shared/daily";
 import { SlidingWindowLimiter } from "shared/run";
 import { playerDataKey } from "shared/settings";
 import {
+	COSMETIC_PASS_FAKE_ATTRIBUTE,
 	MemoryWalletStore,
 	WALLET,
 	SILVER_SHOP_FAKE_ATTRIBUTE,
 	WALLET_FAKE_ATTRIBUTE,
 	WalletBook,
 	armoryPurchaseEvent,
+	cosmeticPassStatusFields,
 	encodeWalletDoc,
 	grantEconomyEvents,
+	parseFakePasses,
 	parseFakeShop,
 	parseFakeWallet,
 	predictRunGrants,
 	silverShopStatusFields,
 	walletPurchaseNotice,
+	type FakePasses,
 	type FakeShop,
 	type SilverPack,
 	type SilverPurchaseBookResult,
@@ -34,6 +38,8 @@ import {
 	type WalletGrantContext,
 	type SilverGrantBreakdown,
 	type WalletActionResult,
+	type WalletPassBookResult,
+	type WalletPassNotice,
 	type WalletStatus,
 	type WalletStore,
 	type WalletTxOutcome,
@@ -84,7 +90,9 @@ interface PendingGrant {
  *
  * Seams for other services (Track H): `effectiveUpgrades(userId)`, `ownsCharacter(userId, characterId)`; for the
  * Silver shop (docs/SILVER_SHOP.md SH3, SilverShopService): `purchaseSilver(receipt, pack)`, `pushPurchase(userId,
- * grant)`, `fakeShop()`. Every loaded status carries `shopAvailable` (and Studio's `fakePrices`).
+ * grant)`, `fakeShop()`. Every loaded status carries `shopAvailable` (and Studio's `fakePrices`). For the Robux-only
+ * cosmetics (docs/COSMETICS.md CSD13, CosmeticPassService): `grantPass(userId, itemId)`, `pushPass(userId, notice)`,
+ * `fakePasses()`, `onLoaded(listener)` (each join load that ended); every loaded status carries `robuxItems`.
  */
 @Service({})
 export class WalletService implements OnStart {
@@ -113,6 +121,8 @@ export class WalletService implements OnStart {
 	private fakeSource: string | undefined;
 	/** Studio: the in-memory store the book transacts on. */
 	private memory: MemoryWalletStore | undefined;
+	/** CosmeticPassService: told after each join load ended (loaded or not). */
+	private loadedListener: ((player: Player) => void) | undefined;
 
 	constructor(private readonly telemetry: TelemetryService, private readonly silverAccess: SilverAccessService) {
 		this.book = new WalletBook(this.createStore(), {
@@ -140,6 +150,12 @@ export class WalletService implements OnStart {
 			// docs/SILVER_SHOP.md SH3: the shop fields (shopAvailable / fakePrices) follow KV_FakeShop live.
 			this.janitor.Add(
 				Workspace.GetAttributeChangedSignal(SILVER_SHOP_FAKE_ATTRIBUTE).Connect(() => {
+					for (const player of Players.GetPlayers()) this.send(player);
+				}),
+			);
+			// docs/COSMETICS.md CSD13: the Robux-only items on sale (robuxItems) follow KV_FakePasses live.
+			this.janitor.Add(
+				Workspace.GetAttributeChangedSignal(COSMETIC_PASS_FAKE_ATTRIBUTE).Connect(() => {
 					for (const player of Players.GetPlayers()) this.send(player);
 				}),
 			);
@@ -238,6 +254,48 @@ export class WalletService implements OnStart {
 		return fake;
 	}
 
+	/**
+	 * CosmeticPassService (docs/COSMETICS.md CSD13): a Robux-only cosmetic whose game pass `userId` owns, through the
+	 * book (loaded or not, on this server or not). In Studio it runs on the memory store like every other change. May
+	 * yield.
+	 */
+	grantPass(userId: number, itemId: string): WalletPassBookResult {
+		return this.book.grantPass(userId, itemId);
+	}
+
+	/** CosmeticPassService: the player (if here and loaded) gets a `wallet` push with `passPurchase`. */
+	pushPass(userId: number, notice: WalletPassNotice): void {
+		const player = Players.GetPlayerByUserId(userId);
+		if (player === undefined || player.Parent === undefined || !this.ready.has(player)) return;
+		const status = this.status(player);
+		status.passPurchase = notice;
+		Events.wallet.fire(player, status);
+	}
+
+	/** Whether `userId`'s read copy owns `itemId` (an unknown wallet: false). Never yields. */
+	owns(userId: number, itemId: string): boolean {
+		const d = this.book.doc(userId);
+		return d !== undefined && (d.own.get(itemId) ?? 0) >= 1;
+	}
+
+	/** CosmeticPassService: `listener(player)` after each join load ended (loaded or not), once the status was sent. */
+	onLoaded(listener: (player: Player) => void): void {
+		this.loadedListener = listener;
+	}
+
+	/**
+	 * The Studio pass fake in force (COSMETIC_PASS_FAKE_ATTRIBUTE, parseFakePasses), or undefined (live servers, unset
+	 * or unparsable).
+	 */
+	fakePasses(): FakePasses | undefined {
+		if (!RunService.IsStudio()) return undefined;
+		const raw = Workspace.GetAttribute(COSMETIC_PASS_FAKE_ATTRIBUTE);
+		if (raw === undefined) return undefined;
+		const fake = parseFakePasses(raw);
+		if (fake === undefined) log.warn("BAD_FAKE", `${COSMETIC_PASS_FAKE_ATTRIBUTE} = ${tostring(raw)} ignored`);
+		return fake;
+	}
+
 	/** Studio with KV_FakeWallet set: such runs pay (into the fake), so the grant path can be tested in Studio. */
 	fakeActive(): boolean {
 		return this.fake() !== undefined;
@@ -326,6 +384,9 @@ export class WalletService implements OnStart {
 			const shop = silverShopStatusFields(game.GameId, this.fakeShop());
 			status.shopAvailable = shop.shopAvailable;
 			if (shop.fakePrices !== undefined) status.fakePrices = shop.fakePrices;
+			// docs/COSMETICS.md CSD13: the Robux-only cosmetics on sale here (their passes, or Studio's fake price).
+			const robux = cosmeticPassStatusFields(game.GameId, this.fakePasses());
+			if (robux.size() > 0) status.robuxItems = robux;
 		}
 		return status;
 	}
@@ -389,6 +450,9 @@ export class WalletService implements OnStart {
 		this.send(player);
 		// docs/COSMETICS.md CS4: a lobby the player is already in shows their look once their wallet is known.
 		this.silverAccess.lookChanged(userId);
+		// docs/COSMETICS.md CSD13: game passes the player owns become owned items.
+		const listener = this.loadedListener;
+		if (listener !== undefined) task.spawn(() => listener(player));
 	}
 
 	/** Puts the fake's doc into the Studio memory store for `userId`. */

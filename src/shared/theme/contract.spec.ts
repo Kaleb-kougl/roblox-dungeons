@@ -251,7 +251,7 @@ describe("required IDs and strings", () => {
 		const newEnemies2Strings = 5 + 4;
 		// + docs/NEW_ENEMIES_3.md NT1: 3 enemy.<id>.name, 3 bestiary.<id> (BESTIARY_STRING_KEYS)
 		const newEnemies3Strings = 3 + 3;
-		// + Leave run's run-over line (hud.left)
+		// + Leave run's solo run-over line `hud.left` (shared/view/hud runOverLine.ts)
 		const leaveRunStrings = 1;
 		const earlier = 28 + 1 + 1 + 4 + 16 + 1 + 19 + 1 + 1 + 3 + 18 + 17 + 5 + 45 + 7 + 11 + 2 + 1;
 		expect(REQUIRED_STRING_KEYS.size()).toBe(

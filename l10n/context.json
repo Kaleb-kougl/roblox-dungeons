@@ -5273,6 +5273,36 @@
 		"max": 12,
 		"example": "Animated"
 	},
+	"cosmetic.robux.only": {
+		"note": "Armory screen, Cosmetics tab: the Prismatic (animated) body colours are bought with Robux (Roblox's paid currency) through Roblox's own purchase prompt, never with Silver (the game's currency kept between runs): a small tag on such an item, and its price text before Roblox's price is known.",
+		"max": 14,
+		"example": "Robux only"
+	},
+	"cosmetic.robux.price": {
+		"note": "Armory screen, Cosmetics tab: the Prismatic (animated) body colours are bought with Robux (Roblox's paid currency) through Roblox's own purchase prompt, never with Silver (the game's currency kept between runs): the item's price. {robux} is a whole number of Robux.",
+		"max": 16,
+		"example": "{robux} Robux"
+	},
+	"cosmetic.robux.buy": {
+		"note": "Armory screen, Cosmetics tab: the Prismatic (animated) body colours are bought with Robux (Roblox's paid currency) through Roblox's own purchase prompt, never with Silver (the game's currency kept between runs): the button that opens Roblox's purchase prompt. {robux} is a whole number of Robux.",
+		"max": 24,
+		"example": "Buy for {robux} Robux"
+	},
+	"cosmetic.robux.buyNoPrice": {
+		"note": "Armory screen, Cosmetics tab: the Prismatic (animated) body colours are bought with Robux (Roblox's paid currency) through Roblox's own purchase prompt, never with Silver (the game's currency kept between runs): the same button while the price could not be read.",
+		"max": 20,
+		"example": "Buy with Robux"
+	},
+	"cosmetic.robux.offSale": {
+		"note": "Armory screen, Cosmetics tab: the Prismatic (animated) body colours are bought with Robux (Roblox's paid currency) through Roblox's own purchase prompt, never with Silver (the game's currency kept between runs): shown instead of a price when the item is not on sale in this game.",
+		"max": 14,
+		"example": "Not for sale"
+	},
+	"cosmetic.robux.added": {
+		"note": "Armory screen, Cosmetics tab: the Prismatic (animated) body colours are bought with Robux (Roblox's paid currency) through Roblox's own purchase prompt, never with Silver (the game's currency kept between runs): a short notice once the bought item is the player's. {name} is the item's name, for example Prismatic Plate.",
+		"max": 36,
+		"example": "{name} unlocked"
+	},
 	"cosmetic.slot.dye.knight": {
 		"note": "Armory screen, Cosmetics tab (looks bought with Silver, the currency kept between runs): a group header over the items that change the Knight's armour colour (one of two playable characters; the Knight wears plate armour).",
 		"max": 18,

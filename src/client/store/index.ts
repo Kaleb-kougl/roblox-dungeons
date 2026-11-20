@@ -1,5 +1,6 @@
 import { combineProducers, InferState } from "@rbxts/reflex";
 import { codexSlice } from "./codex";
+import { cosmeticPassSlice } from "./cosmeticPass";
 import { dailySlice } from "./daily";
 import { dailyRankSlice } from "./dailyRank";
 import { gameSlice } from "./game";
@@ -37,11 +38,13 @@ import { walletSlice } from "./wallet";
  * tooltip shown (docs/ITEM_TOOLTIPS.md IT4); the `codex` slice the Codex's load status, the local doc copy and the last
  * run's codex summary (claude/codex-plan.md CX6); the `wallet` slice Silver: the latest wallet push, the settled grants,
  * the Armory's purchase in flight and the last run's Silver preview (docs/SILVER.md SV8); the `silverShop` slice the
- * Get Silver panel: its flow, Roblox's prices and the on-its-way notice (docs/SILVER_SHOP.md SH5).
+ * Get Silver panel: its flow, Roblox's prices and the on-its-way notice (docs/SILVER_SHOP.md SH5); the `cosmeticPass`
+ * slice the Robux-only cosmetics' prices, pending purchase and last grant (docs/COSMETICS.md CSD13).
  *
  * Import through the directory (`client/store`), never the file.
  */
 export * from "./codex";
+export * from "./cosmeticPass";
 export * from "./daily";
 export * from "./dailyRank";
 export * from "./game";
@@ -82,6 +85,7 @@ export const clientStore = combineProducers({
 	codex: codexSlice,
 	wallet: walletSlice,
 	silverShop: silverShopSlice,
+	cosmeticPass: cosmeticPassSlice,
 });
 
 export type ClientStore = typeof clientStore;

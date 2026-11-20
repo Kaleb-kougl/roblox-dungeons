@@ -144,7 +144,7 @@ describe("cosmetics: prismaticColor (CS10)", () => {
 describe("cosmetics: strings", () => {
 	it("are REQUIRED_STRING_KEYS' last ones, distinct, in every bundled pack", () => {
 		expect([...cosmeticStringKeys()]).toEqual([...COSMETIC_STRING_KEYS]);
-		expect(COSMETIC_STRING_KEYS.size()).toBe(6 + COSMETIC_SLOTS.size() + COSMETIC_ITEMS.size());
+		expect(COSMETIC_STRING_KEYS.size()).toBe(12 + COSMETIC_SLOTS.size() + COSMETIC_ITEMS.size());
 		expect(tail(REQUIRED_STRING_KEYS, COSMETIC_STRING_KEYS.size())).toEqual([...COSMETIC_STRING_KEYS]);
 		expect(new Set(REQUIRED_STRING_KEYS).size()).toBe(REQUIRED_STRING_KEYS.size());
 		for (const p of sortedKeys(THEME_PACKS))

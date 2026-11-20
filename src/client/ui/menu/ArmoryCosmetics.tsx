@@ -21,6 +21,7 @@ import {
 	cosmeticFlashTransparency,
 	cosmeticRowRight,
 	type CosmeticDetail,
+	type CosmeticRobuxPrice,
 	type CosmeticItemEntry,
 	type CosmeticListEntry,
 	cosmeticPreviewAction,
@@ -111,6 +112,8 @@ function CosmeticRow(props: {
 	focused: boolean;
 	reducedMotion: boolean;
 	flashAt: number | undefined;
+	/** A Robux-only item's price (docs/COSMETICS.md CSD13). */
+	robuxPrice: CosmeticRobuxPrice | undefined;
 	rowRef?: React.Ref<TextButton>;
 	onFocus: () => void;
 }) {
@@ -130,7 +133,7 @@ function CosmeticRow(props: {
 		return () => conn.Disconnect();
 	}, [props.flashAt]);
 	const inner = props.width - 2 * HUD_VIEW.pad;
-	const right = cosmeticRowRight(e, str);
+	const right = cosmeticRowRight(e, str, props.robuxPrice);
 	return (
 		<textbutton
 			key={r.itemId}
@@ -185,7 +188,15 @@ function CosmeticRow(props: {
 				order={4}
 				width={inner}
 				size={HUD_VIEW.smallText}
-				color={e.equipped ? "uiAccent" : r.state === "poor" || r.dim ? "uiTextDim" : SILVER_ROLE}
+				color={
+					e.equipped
+						? "uiAccent"
+						: r.state === "poor" || r.state === "offSale" || r.dim
+						? "uiTextDim"
+						: r.state === "robux"
+						? "uiText"
+						: SILVER_ROLE
+				}
 				transparency={r.dim && !e.owned ? S.dimTransparency : 0}
 				align={Enum.TextXAlignment.Right}
 				text={right}
@@ -204,6 +215,8 @@ export function cosmeticListRows(props: {
 	focusId: string | undefined;
 	reducedMotion: boolean;
 	flash: { readonly itemId: string; readonly at: number } | undefined;
+	/** The Robux-only items' prices (the store's cosmeticPass slice). */
+	robuxPrices: ReadonlyMap<string, CosmeticRobuxPrice>;
 	firstRef: React.Ref<TextButton>;
 	onFocus: (itemId: string) => void;
 }): React.Element[] {
@@ -226,6 +239,7 @@ export function cosmeticListRows(props: {
 				focused={props.focusId === id}
 				reducedMotion={props.reducedMotion}
 				flashAt={props.flash !== undefined && props.flash.itemId === id ? props.flash.at : undefined}
+				robuxPrice={props.robuxPrices.get(id)}
 				rowRef={first ? props.firstRef : undefined}
 				onFocus={() => props.onFocus(id)}
 			/>,
@@ -286,7 +300,9 @@ function LivePreview(props: {
 /**
  * The Cosmetics tab's detail (docs/COSMETICS.md CS6): the live preview with the focused item tried on, its name,
  * `{slot} · Tier n`, `Animated`, `Try on` while it is not owned, the price / `to go` / Equipped / Owned, and the button:
- * the Armory's buy hold (and its confirm from CONFIRM_FROM_TIER), Equip or Take off.
+ * the Armory's buy hold (and its confirm from CONFIRM_FROM_TIER), Equip or Take off. A Robux-only item (docs/COSMETICS.md
+ * CSD13): `{slot} · Robux only`, its price in Robux (no Silver coin), and one press of `Buy for {robux} Robux` opens
+ * Roblox's prompt (Roblox's own prompt is the confirm); `Buying...` while a Robux purchase is in flight.
  */
 export function cosmeticDetailLines(props: {
 	detail: CosmeticDetail;
@@ -297,6 +313,9 @@ export function cosmeticDetailLines(props: {
 	fill: React.Binding<number>;
 	buyRef: React.Ref<TextButton>;
 	buying: boolean;
+	/** A Robux purchase is in flight (prompt up, or its grant awaited). */
+	robuxPending: boolean;
+	onRobux: () => void;
 	confirm: boolean;
 	result: string | undefined;
 	onConfirm: (yes: boolean) => void;
@@ -331,7 +350,7 @@ export function cosmeticDetailLines(props: {
 	}
 	lines.push(
 		<Row key="Price" order={5}>
-			{d.entry.owned ? (
+			{d.entry.owned || d.robuxPrice ? (
 				<Text
 					order={1}
 					size={HUD_VIEW.textSize}
@@ -386,6 +405,20 @@ export function cosmeticDetailLines(props: {
 				size={new Vector2(S.buyButton.x, S.buyButton.y)}
 				text={str(d.equipKey)}
 				onActivated={props.onEquip}
+			/>,
+		);
+	} else if (d.robux) {
+		lines.push(
+			<MenuButton
+				key="BuyRobux"
+				order={6}
+				name="BuyRobux"
+				size={new Vector2(S.buyButton.x, S.buyButton.y)}
+				text={props.robuxPending ? str(ARMORY_KEYS.buying) : d.robuxLabel ?? ""}
+				disabled={props.robuxPending}
+				onActivated={() => {
+					if (!props.robuxPending) props.onRobux();
+				}}
 			/>,
 		);
 	} else if (d.buy !== "none" || props.buying) {

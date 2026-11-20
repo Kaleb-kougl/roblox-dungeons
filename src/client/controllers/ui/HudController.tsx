@@ -31,6 +31,7 @@ import { MenuController } from "./MenuController";
 import { RebindController } from "./RebindController";
 import { SettingsController } from "./SettingsController";
 import { SilverShopController } from "./SilverShopController";
+import { CosmeticPassController } from "./CosmeticPassController";
 import { WalletController } from "./WalletController";
 import type { SilverPackId, SilverShopFrom } from "shared/wallet";
 
@@ -65,6 +66,7 @@ export class HudController implements OnStart {
 		private readonly codex: CodexController,
 		private readonly wallet: WalletController,
 		private readonly silverShop: SilverShopController,
+		private readonly cosmeticPass: CosmeticPassController,
 	) {}
 
 	onStart(): void {
@@ -151,6 +153,10 @@ export class HudController implements OnStart {
 			openArmory: click(() => this.menu.openArmory()),
 			armoryBuy: (itemId: string) => this.wallet.buy(itemId),
 			armoryEquip: (slot: string, itemId: string) => this.wallet.equip(slot, itemId),
+			armoryBuyRobux: (itemId: string) => {
+				this.input.suppressMouseUntilRelease();
+				return this.cosmeticPass.buy(itemId);
+			},
 			armorySeen: (keys) => clientStore.setSeenAffordable(keys),
 			dismissSilverWelcome: click(() => this.settings.updateDisplay({ silverNoticeSeen: true })),
 			openSilverShop: click((from: SilverShopFrom) => this.silverShop.open(from)),

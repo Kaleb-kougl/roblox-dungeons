@@ -54,7 +54,7 @@ export function shownSilverPacks(packs: ReadonlyArray<SilverPack> = SILVER_PACKS
 export type SilverProductTable = ReadonlyMap<number, ReadonlyMap<SilverPackId, number>>;
 
 /** Roblox Dungeons' universe (game.GameId, as the server logs it). */
-const ROBLOX_DUNGEONS_GAME_ID = 10773051289;
+export const ROBLOX_DUNGEONS_GAME_ID = 10773051289;
 
 /**
  * The developer products of each universe (docs/SILVER_SHOP.md SH9): with no entry for a universe the shop is off

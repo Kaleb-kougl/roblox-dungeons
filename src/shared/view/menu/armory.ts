@@ -26,13 +26,14 @@ import {
 } from "shared/characters";
 import { SILVER } from "shared/silver";
 import { playerStartArmorMax, playerStartFlaskMax, playerStartHalfHearts } from "shared/sim";
-import { ARMORY_KEYS, CHARACTER_LOCK_KEYS, armoryItemDescKey, type StringVars } from "shared/theme";
+import { ARMORY_KEYS, CHARACTER_LOCK_KEYS, COSMETIC_KEYS, armoryItemDescKey, type StringVars } from "shared/theme";
 import {
 	ARMORY_CATALOG,
 	CONFIRM_FROM_TIER,
 	UPGRADE_ITEM,
+	isRobuxItem,
+	itemSilverPrice,
 	itemTier,
-	tierPrice,
 	type ArmoryItem,
 	type ArmoryItemKind,
 	type WalletStatus,
@@ -102,8 +103,17 @@ export const ARMORY_SCREEN = {
 	scrollBar: 6,
 } as const;
 
-/** What a row's item is to the player now. */
-export type ArmoryRowState = "maxed" | "owned" | "affordable" | "poor" | "unavailable";
+/**
+ * What a row's item is to the player now. A Robux-only cosmetic (docs/COSMETICS.md CSD13) is `robux` (on sale here for
+ * Robux) or `offSale` (no game pass here) until owned; it is never affordable or poor.
+ */
+export type ArmoryRowState = "maxed" | "owned" | "affordable" | "poor" | "unavailable" | "robux" | "offSale";
+
+/** Is Robux-only item `itemId` on sale here (WalletStatus.robuxItems)? */
+export function robuxOnSale(status: Readonly<WalletStatus> | undefined, itemId: string): boolean {
+	if (status === undefined || !status.loaded || status.robuxItems === undefined) return false;
+	return status.robuxItems.some((r) => r.itemId === itemId);
+}
 
 export interface ArmoryRow {
 	readonly itemId: string;
@@ -125,13 +135,14 @@ export interface ArmoryRow {
 	readonly confirm: boolean;
 }
 
-/** The highest tier among every level owned (0: nothing owned). */
+/** The highest tier among every level owned with Silver (0: nothing owned; Robux-only items do not count). */
 export function dearestOwnedTier(
 	status: Readonly<WalletStatus> | undefined,
 	catalog: ReadonlyArray<ArmoryItem> = ARMORY_CATALOG,
 ): number {
 	let top = 0;
 	for (const it of catalog) {
+		if (isRobuxItem(it)) continue;
 		const level = statusLevel(status, it.id);
 		for (let l = 1; l <= level; l++) top = math.max(top, itemTier(it, l) ?? 0);
 	}
@@ -150,13 +161,16 @@ export function armoryRow(
 ): ArmoryRow {
 	const level = statusLevel(status, it.id);
 	const maxLevel = it.tiers.size();
-	const nextTier = itemTier(it, level + 1);
-	const price = nextTier !== undefined ? tierPrice(nextTier) : undefined;
+	const robux = isRobuxItem(it);
+	// A Robux-only item has no Silver price and no next tier (docs/COSMETICS.md CSD13).
+	const nextTier = robux ? undefined : itemTier(it, level + 1);
+	const price = robux ? undefined : itemSilverPrice(it, level + 1);
 	const balance = statusBalance(status);
 	const toGo = price !== undefined ? math.max(0, price - balance) : 0;
 	const loaded = walletShown(status) === "loaded";
 	let state: ArmoryRowState;
 	if (!loaded) state = "unavailable";
+	else if (robux) state = level >= maxLevel ? "owned" : robuxOnSale(status, it.id) ? "robux" : "offSale";
 	else if (price === undefined) state = it.kind === "upgrade" ? "maxed" : "owned";
 	else state = toGo === 0 ? "affordable" : "poor";
 	const g0 = goals[0];
@@ -297,6 +311,8 @@ export function armoryDetail(row: Readonly<ArmoryRow>, s: ArmoryStr): ArmoryDeta
 	if (row.state === "unavailable") price = s(ARMORY_KEYS.unavailable);
 	else if (row.state === "maxed") price = s(ARMORY_KEYS.maxed);
 	else if (row.state === "owned") price = s(ARMORY_KEYS.owned);
+	else if (row.state === "robux") price = s(COSMETIC_KEYS.robuxOnly);
+	else if (row.state === "offSale") price = s(COSMETIC_KEYS.robuxOffSale);
 	else price = tostring(row.price ?? 0);
 	const buyable = row.state === "affordable";
 	return {
@@ -331,8 +347,8 @@ export function affordableKeys(
 	const balance = statusBalance(status);
 	for (const it of catalog) {
 		const level = statusLevel(status, it.id) + 1;
-		const tier = itemTier(it, level);
-		const price = tier !== undefined ? tierPrice(tier) : undefined;
+		// Robux-only items have no Silver price: never in the badge.
+		const price = itemSilverPrice(it, level);
 		if (price !== undefined && price <= balance) out.push(`${it.id}:${level}`);
 	}
 	return out;

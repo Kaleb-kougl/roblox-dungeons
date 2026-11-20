@@ -27,7 +27,9 @@ import {
 	walletStatusOf,
 	type WalletStatus,
 } from "shared/wallet";
+import { affordableKeys } from "./armory";
 import { CHARACTER_PREVIEW_ANGLE_DEG } from "./character";
+import { priceReady } from "./silverShop";
 import {
 	armoryCosmeticEntries,
 	cosmeticDetail,
@@ -167,5 +169,57 @@ describe("armory cosmetics: the live preview (docs/COSMETICS.md CS6)", () => {
 		expect(cosmeticFlashScale(p.flashSec / 2, false) < p.flashScale).toBe(true);
 		expect(cosmeticFlashScale(p.flashSec, false)).toBe(1);
 		expect(cosmeticFlashScale(0, true)).toBe(1);
+	});
+});
+
+describe("armory cosmetics: Robux-only items (docs/COSMETICS.md CSD13)", () => {
+	const ID = "dye.knight.prismatic";
+	const RICH = `${100 * 1000}`;
+	const onSale = (text: string, robuxItems: WalletStatus["robuxItems"]): WalletStatus => ({
+		...fake(text),
+		robuxItems,
+	});
+
+	it("off sale here: no Silver buy at any balance, `Not for sale`, `{slot} · Robux only`", () => {
+		const e = entryOf(fake(RICH), ID);
+		expect([e.row.state, e.action, e.row.price, e.row.toGo]).toEqual(["offSale", "none", undefined, 0]);
+		expect(cosmeticRowRight(e, s)).toBe(s("cosmetic.robux.offSale"));
+		const d = cosmeticDetail(e, s);
+		expect([d.buy, d.robux, d.robuxLabel, d.robuxPrice]).toEqual(["none", false, undefined, true]);
+		expect(d.sub).toBe(`${s(cosmeticSlotKey("dye.knight"))}  ·  ${s("cosmetic.robux.only")}`);
+		expect(d.price).toBe(s("cosmetic.robux.offSale"));
+	});
+
+	it("on sale: the Robux button, Roblox's price once read", () => {
+		const status = onSale("0", [{ itemId: ID, passId: 77 }]);
+		const e = entryOf(status, ID);
+		expect([e.row.state, e.action]).toEqual(["robux", "robux"]);
+		expect(cosmeticRowRight(e, s)).toBe(s("cosmetic.robux.only"));
+		const unpriced = cosmeticDetail(e, s);
+		expect([unpriced.robux, unpriced.robuxLabel, unpriced.buy]).toEqual([
+			true,
+			s("cosmetic.robux.buyNoPrice"),
+			"none",
+		]);
+		const price = priceReady(299);
+		expect(cosmeticRowRight(e, s, price)).toBe(s("cosmetic.robux.price", { robux: 299 }));
+		const d = cosmeticDetail(e, s, price);
+		expect([d.robuxLabel, d.price]).toEqual([
+			s("cosmetic.robux.buy", { robux: 299 }),
+			s("cosmetic.robux.price", { robux: 299 }),
+		]);
+		// the other Prismatic dye has no pass here
+		expect(entryOf(status, "dye.archer.prismatic").row.state).toBe("offSale");
+	});
+
+	it("owned (bought with Silver before, or from its pass): equip / take off as any cosmetic", () => {
+		const e = entryOf(onSale(`0;${ID}:1*`, [{ itemId: ID, passId: 77 }]), ID);
+		expect([e.owned, e.equipped, e.action, e.row.state]).toEqual([true, true, "unequip", "owned"]);
+		expect(cosmeticDetail(e, s).robux).toBe(false);
+	});
+
+	it("never in the Armory badge, whatever the balance", () => {
+		expect(affordableKeys(fake(RICH)).includes(`${ID}:1`)).toBe(false);
+		expect(affordableKeys(fake(RICH)).size() > 0).toBe(true);
 	});
 });

@@ -125,3 +125,34 @@ export const SILVER_SHOP_FAKE_ATTRIBUTE = "KV_FakeShop";
 
 /** Keywords of SILVER_SHOP_FAKE_ATTRIBUTE (compared lower-cased). */
 export const SILVER_SHOP_FAKE_KEYWORDS = table.freeze({ off: "off" });
+
+/**
+ * Robux-only cosmetics (docs/COSMETICS.md CSD13): every animated cosmetic is sold through a Roblox game pass. Data only.
+ */
+export interface CosmeticPassTunables {
+	/**
+	 * PromptGamePassPurchaseFinished said purchased: the server confirms with UserOwnsGamePassAsync this many times,
+	 * `verifySeconds` apart, before it grants (an unconfirmed purchase is granted at the buyer's next join instead).
+	 */
+	readonly verifyTries: number;
+	readonly verifySeconds: number;
+	/** Per-player budget for Studio's `cosmeticPassFakeBuy`. */
+	readonly fakeRate: { readonly count: number; readonly windowSeconds: number };
+}
+
+export const COSMETIC_PASS: CosmeticPassTunables = table.freeze({
+	verifyTries: 3,
+	verifySeconds: 2,
+	fakeRate: table.freeze({ count: 5, windowSeconds: 10 }),
+});
+
+/**
+ * Studio-only Workspace attribute (String): fake the Robux-only cosmetics' game passes (parseFakePasses). `off` takes
+ * them off sale; one whole Robux price (`299`) puts every Robux-only cosmetic on sale at that price, and a press grants
+ * it straight into the Studio memory store through the same transform, so the flow can be tried before the passes
+ * exist. Ignored on live servers.
+ */
+export const COSMETIC_PASS_FAKE_ATTRIBUTE = "KV_FakePasses";
+
+/** Keywords of COSMETIC_PASS_FAKE_ATTRIBUTE (compared lower-cased). */
+export const COSMETIC_PASS_FAKE_KEYWORDS = table.freeze({ off: "off" });

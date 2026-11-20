@@ -10,6 +10,7 @@ import type { ArmoryItem } from "./catalog";
 import type { SilverFakePrice } from "./shopServer";
 import { ARMORY_CATALOG } from "./catalog";
 import { ownedLevel, walletBalance, type WalletDoc } from "./doc";
+import type { WalletRobuxItem } from "./passes";
 import type { SilverPackId, SilverPurchaseGrant } from "./shop";
 import { nextGoals, type SilverGrantBreakdown, type WalletGoal, type WalletRefusal } from "./transforms";
 
@@ -77,6 +78,20 @@ export interface WalletStatus {
 	shopAvailable?: boolean;
 	/** Studio's fake prices (KV_FakeShop), in pack order: the panel shows these instead of Roblox's. */
 	fakePrices?: SilverFakePrice[];
+	/**
+	 * The Robux-only cosmetics on sale here (docs/COSMETICS.md CSD13; shared/wallet cosmeticPassStatusFields): each with
+	 * its game pass, or Studio's fake price (KV_FakePasses). Set on loaded statuses only; absent or without an item:
+	 * off sale here.
+	 */
+	robuxItems?: WalletRobuxItem[];
+	/** A Robux-only cosmetic just granted to this player from its game pass (a purchase, or found owned at the join). */
+	passPurchase?: WalletPassNotice;
+}
+
+/** A Robux-only cosmetic granted from its game pass. `bought`: purchased now (false: found owned at the join). */
+export interface WalletPassNotice {
+	itemId: string;
+	bought: boolean;
 }
 
 /** The status of `doc` on UTC day `day` (`loaded` false, or no doc: `{ loaded: false }` alone). */

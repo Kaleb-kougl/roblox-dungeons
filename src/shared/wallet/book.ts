@@ -17,6 +17,8 @@
  *   grant       a run's grant (applyGrant's rules), whatever the load did.
  *   purchase    a developer-product receipt (docs/SILVER_SHOP.md SH2 / SH3), whatever the load did and whether or not the
  *               buyer is still here (SHD4); answers Roblox's decision (receiptDecision).
+ *   grantPass   a Robux-only cosmetic whose game pass Roblox says the player owns (docs/COSMETICS.md CSD13), whatever
+ *               the load did; owned already: no write.
  */
 import { withRetries, type RetryPolicy } from "shared/settings";
 import type { CharacterId } from "shared/characters";
@@ -100,6 +102,16 @@ export interface SilverPurchaseBookResult {
 	/** Why it did not grant: a refusal (`duplicate` among them), or `failed` (the store errored every retry). */
 	readonly reason?: WalletRefusal | "failed";
 	/** The store's error after every retry. */
+	readonly error?: string;
+}
+
+/** A pass grant's result (WalletBook.grantPass). */
+export interface WalletPassBookResult {
+	/** The item is owned now. */
+	readonly ok: boolean;
+	/** This call made it owned (false: owned already, or refused). */
+	readonly granted: boolean;
+	readonly reason?: WalletRefusal | "failed";
 	readonly error?: string;
 }
 
@@ -263,6 +275,18 @@ export class WalletBook {
 		const o = r.outcome;
 		if (o.silverPurchase !== undefined) return { decision, grant: o.silverPurchase };
 		return { decision, reason: o.reason };
+	}
+
+	/**
+	 * A Robux-only cosmetic whose game pass `userId` owns (transforms.ts applyPassGrant): the stored doc through the same
+	 * lock and retries, loaded or not; replaces the read copy when loaded. May yield.
+	 */
+	grantPass(userId: number, itemId: string): WalletPassBookResult {
+		const r = this.transact(userId, { kind: "passGrant", itemId });
+		if (!r.ok) return { ok: false, granted: false, reason: "failed", error: r.error };
+		const o = r.outcome;
+		if (!o.ok) return { ok: false, granted: false, reason: o.reason };
+		return { ok: true, granted: o.passGranted === true };
 	}
 
 	/** A client's `walletBuy`. May yield. */

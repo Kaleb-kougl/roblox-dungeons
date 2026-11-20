@@ -47,4 +47,13 @@ export const COSMETIC_VIEW = {
 	rowSwatch: 16,
 	/** The lobby row's dye chip (CS7): its side as a share of the character icon, at the icon's bottom-right corner. */
 	lobbyChipShare: 0.42,
+	/** Robux-only cosmetics (docs/COSMETICS.md CSD13): the game pass purchase in the client. */
+	robux: {
+		/** Bought, no grant pushed after this many seconds: the button works again (the next join grants it). */
+		pendingTimeoutSec: 30,
+		/** The `{name} unlocked` toast, seconds. */
+		toastSec: 4,
+		/** Its notice ids are -(toastIdBase + serial): apart from LobbyController's (positive) and the Silver shop's. */
+		toastIdBase: 1000000,
+	},
 } as const;

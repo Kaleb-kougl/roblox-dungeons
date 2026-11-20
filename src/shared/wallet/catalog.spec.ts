@@ -9,7 +9,9 @@ import {
 	characterUnlock,
 	characterUnlockId,
 	cosmeticArmoryItems,
+	isRobuxItem,
 	itemPrice,
+	itemSilverPrice,
 	tierPrice,
 } from "shared/wallet";
 
@@ -116,10 +118,32 @@ describe("ARMORY_CATALOG (Catalogue v1)", () => {
 		}
 		// Every slot sells something; the Cosmetics tab's total
 		for (const slot of COSMETIC_SLOTS) expect([slot, rows.some((i) => i.slot === slot)]).toEqual([slot, true]);
+		// CSD13: the animated (Prismatic) cosmetics are Robux-only, with no Silver price; every other one has one.
 		let total = 0;
-		for (const i of rows) total += itemPrice(i.id, 1)!;
+		for (const i of rows) {
+			expect([i.id, isRobuxItem(i)]).toEqual([i.id, isPrismaticItem(i.id)]);
+			const price = itemPrice(i.id, 1);
+			expect([i.id, price === undefined]).toEqual([i.id, isRobuxItem(i)]);
+			if (price !== undefined) total += price;
+		}
 		print(`[cosmetics] ${rows.size()} items, ${total} Silver in all`);
 		expect(total > 0).toBe(true);
+	});
+
+	it("Robux-only items (CSD13): exactly the animated cosmetics; one level, no Silver price, no sim lever", () => {
+		const robux = ARMORY_CATALOG.filter((i) => isRobuxItem(i)).map((i) => i.id);
+		expect(robux).toEqual(COSMETIC_ITEMS.filter((c) => isPrismaticItem(c.id)).map((c) => c.id));
+		expect(robux).toEqual(["dye.knight.prismatic", "dye.archer.prismatic"]);
+		for (const id of robux) {
+			const it = armoryItem(id)!;
+			expect([it.kind, it.simLever, it.tiers.size(), itemSilverPrice(it, 1)]).toEqual([
+				"cosmetic",
+				false,
+				1,
+				undefined,
+			]);
+		}
+		expect(itemSilverPrice(armoryItem("vigor")!, 1)).toBe(40);
 	});
 
 	it("ids are unique; every level names a tier; a track's levels rise by at least one tier", () => {

@@ -49,6 +49,11 @@ export interface MenuActions {
 	 * WalletController.equip: `walletEquip`, the server checks it owns the item). False when nothing was sent.
 	 */
 	readonly armoryEquip: (slot: string, itemId: string) => boolean;
+	/**
+	 * docs/COSMETICS.md CSD13: buys Robux-only cosmetic `itemId` through its game pass (CosmeticPassController.buy:
+	 * Roblox's prompt; the server grants it once Roblox says it is owned). False when nothing was prompted.
+	 */
+	readonly armoryBuyRobux: (itemId: string) => boolean;
 	/** The Armory showed these affordable next levels (`<itemId>:<level>`): the main menu's badge dot clears for them. */
 	readonly armorySeen: (keys: ReadonlyArray<string>) => void;
 	/** The returning-player card's Got it (docs/SILVER.md OC12): it never shows again (DisplaySettings.silverNoticeSeen). */
@@ -119,6 +124,7 @@ const NOOP: MenuActions = {
 	openArmory: nothing,
 	armoryBuy: () => false,
 	armoryEquip: () => false,
+	armoryBuyRobux: () => false,
 	armorySeen: nothing,
 	dismissSilverWelcome: nothing,
 	openSilverShop: nothing,

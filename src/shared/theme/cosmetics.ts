@@ -168,6 +168,18 @@ export const COSMETIC_KEYS = {
 	none: "cosmetic.none",
 	/** `Animated`: the Prismatic dyes' tag. */
 	animated: "cosmetic.animated",
+	/** `Robux only`: a Robux-only item's tag (docs/COSMETICS.md CSD13: every animated cosmetic), its price while unknown. */
+	robuxOnly: "cosmetic.robux.only",
+	/** `{robux} Robux`: a Robux-only item's price (Roblox's price for this player). */
+	robuxPrice: "cosmetic.robux.price",
+	/** `Buy for {robux} Robux`: its buy button (Roblox's purchase prompt follows). */
+	robuxBuy: "cosmetic.robux.buy",
+	/** `Buy with Robux`: its buy button while Roblox's price is not known. */
+	robuxBuyNoPrice: "cosmetic.robux.buyNoPrice",
+	/** `Not for sale`: a Robux-only item that is not on sale in this game. */
+	robuxOffSale: "cosmetic.robux.offSale",
+	/** `{name} unlocked`: a Robux-only item just granted (a toast). */
+	robuxAdded: "cosmetic.robux.added",
 } as const;
 
 /** `cosmetic.slot.<slot>`: a slot's header on the Cosmetics tab (`Knight dye`, `Roll trail`). */
@@ -193,6 +205,12 @@ export function cosmeticStringKeys(): string[] {
 		COSMETIC_KEYS.tryOn,
 		COSMETIC_KEYS.none,
 		COSMETIC_KEYS.animated,
+		COSMETIC_KEYS.robuxOnly,
+		COSMETIC_KEYS.robuxPrice,
+		COSMETIC_KEYS.robuxBuy,
+		COSMETIC_KEYS.robuxBuyNoPrice,
+		COSMETIC_KEYS.robuxOffSale,
+		COSMETIC_KEYS.robuxAdded,
 	];
 	for (const slot of COSMETIC_SLOTS) out.push(cosmeticSlotKey(slot));
 	for (const it of COSMETIC_ITEMS) out.push(cosmeticNameKey(it.id));

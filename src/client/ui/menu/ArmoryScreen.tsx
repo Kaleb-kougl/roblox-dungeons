@@ -1,7 +1,14 @@
 import React, { useBinding, useEffect, useRef, useState } from "@rbxts/react";
 import { useSelector } from "@rbxts/react-reflex";
 import { GuiService, RunService, UserInputService } from "@rbxts/services";
-import { selectInputDevice, selectJuice, selectSelectedCharacter, selectWallet, selectWalletState } from "client/store";
+import {
+	selectCosmeticPass,
+	selectInputDevice,
+	selectJuice,
+	selectSelectedCharacter,
+	selectWallet,
+	selectWalletState,
+} from "client/store";
 import { FocusScope } from "client/ui/focus";
 import { MenuButton, MenuFit, PadHintBar, Panel, Row, SilverAmount, Text, type MenuLayout } from "client/ui/hud";
 import { role, str } from "client/ui/theme";
@@ -352,6 +359,8 @@ export function ArmoryScreen() {
 	const shown = walletShown(status);
 	const reducedMotion = useSelector(selectJuice).reducedMotion;
 	const picked = useSelector(selectSelectedCharacter);
+	// docs/COSMETICS.md CSD13: the Robux-only cosmetics' prices, the purchase in flight and the last grant.
+	const pass = useSelector(selectCosmeticPass);
 	// docs/COSMETICS.md CS6: the bought row's stamp (its id and the os.clock of the answer).
 	const [flash, setFlash] = useState<{ itemId: string; at: number } | undefined>(undefined);
 	const cosmetics = tab === "cosmetics";
@@ -362,7 +371,8 @@ export function ArmoryScreen() {
 	const entries = cosmetics ? armoryCosmeticEntries(status) : [];
 	const items = cosmeticItemEntries(entries);
 	const focusEntry = items.find((e) => e.row.itemId === focusId) ?? items[0];
-	const cosmetic = focusEntry !== undefined ? cosmeticDetail(focusEntry, str) : undefined;
+	const cosmetic =
+		focusEntry !== undefined ? cosmeticDetail(focusEntry, str, pass.prices.get(focusEntry.row.itemId)) : undefined;
 	const previewCharacter = cosmeticPreviewCharacter(cosmetic?.itemId, picked);
 	const previewLook = cosmeticPreviewLook(status, previewCharacter, cosmetic?.itemId);
 	// What the buy hold acts on: the focused upgrade / unlock, or the focused cosmetic.
@@ -390,6 +400,12 @@ export function ArmoryScreen() {
 			if (r.ok && cosmeticItem(r.itemId) !== undefined) setFlash({ itemId: r.itemId, at: os.clock() });
 		}
 	}, [ws.resultVersion]);
+	// docs/COSMETICS.md CSD13: a Robux-only cosmetic granted from its pass while open stamps its row too.
+	const [openedGrant] = useState(() => pass.granted?.serial ?? 0);
+	useEffect(() => {
+		const g = pass.granted;
+		if (g !== undefined && g.serial > openedGrant) setFlash({ itemId: g.itemId, at: os.clock() });
+	}, [pass.granted?.serial]);
 
 	const start = (itemId: string) => {
 		const d = detailRef.current;
@@ -529,6 +545,7 @@ export function ArmoryScreen() {
 									focusId: focusEntry?.row.itemId,
 									reducedMotion,
 									flash,
+									robuxPrices: pass.prices,
 									firstRef,
 									onFocus: (id) => {
 										if (focusId !== id) {
@@ -577,6 +594,11 @@ export function ArmoryScreen() {
 											fill,
 											buyRef,
 											buying,
+											robuxPending: pass.pending !== undefined,
+											onRobux: () => {
+												if (actions.armoryBuyRobux(cosmetic.itemId))
+													actions.playUi(SFX.uiConfirm);
+											},
 											confirm: confirmId !== undefined && confirmId === cosmetic.itemId,
 											result,
 											onConfirm: (yes) => {

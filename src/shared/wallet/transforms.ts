@@ -9,8 +9,11 @@
  *               included) + the first-run bonus (the stored `runDay` before ctx.day, then runDay = ctx.day) + the Daily
  *               bonus (a Daily finish and the stored `dailyDay` before ctx.dailyDay, then set). A day number that went
  *               backwards pays no bonus and keeps the stored day. Returns the breakdown.
- *   applyBuy    the next level of a catalogue item: refused when unknown, maxed, its prerequisite is missing, or the
- *               balance is short of the price read from the catalogue (the client never sends one).
+ *   applyBuy    the next level of a catalogue item: refused when unknown, Robux-only (`robuxOnly`, docs/COSMETICS.md
+ *               CSD13), maxed, its prerequisite is missing, or the balance is short of the price read from the catalogue
+ *               (the client never sends one).
+ *   applyPassGrant  a Robux-only item whose game pass the player owns (passes.ts): `own` gets its level; already owned:
+ *               no change. Never touches earned, spent, bought, eq or the day marks.
  *   applyEquip  a cosmetic into its slot ("" empties the slot): the item must be owned and fit the slot.
  *   nextGoals   the next levels to buy, cheapest first (the Armory's marks and the recap's `to go` line, SVD24).
  *   silverPurchase (op) one developer-product receipt (shop.ts applyPurchase, docs/SILVER_SHOP.md SH2).
@@ -19,7 +22,15 @@
  * (`newerVersion`: never written over), and gives the value to write (undefined: cancel the write).
  */
 import { SILVER, type RunSilver, type SilverRow, type SilverTunables } from "shared/silver";
-import { ARMORY_CATALOG, UPGRADE_ITEM, armoryItem, itemTier, tierPrice, type ArmoryItem } from "./catalog";
+import {
+	ARMORY_CATALOG,
+	UPGRADE_ITEM,
+	armoryItem,
+	isRobuxItem,
+	itemSilverPrice,
+	itemTier,
+	type ArmoryItem,
+} from "./catalog";
 import { WALLET, WALLET_DOC_VERSION } from "./config";
 import {
 	cloneWalletDoc,
@@ -88,7 +99,11 @@ export type WalletRefusal =
 	/** A receipt for a product that is not a Silver pack here (docs/SILVER_SHOP.md SH2; Roblox delivers it again). */
 	| "unknownProduct"
 	/** A receipt without a usable PurchaseId. */
-	| "badPurchaseId";
+	| "badPurchaseId"
+	/** A Silver buy of an item sold for Robux only (docs/COSMETICS.md CSD13). */
+	| "robuxOnly"
+	/** A game pass grant of an item that is not sold for Robux. */
+	| "notRobux";
 
 export type WalletGrantResult =
 	| { readonly ok: true; readonly doc: WalletDoc; readonly breakdown: SilverGrantBreakdown }
@@ -186,12 +201,13 @@ export function applyBuy(
 ): WalletBuyResult {
 	const it = typeIs(itemId, "string") ? armoryItem(itemId, catalog) : undefined;
 	if (it === undefined) return { ok: false, reason: "unknown", doc };
+	if (isRobuxItem(it)) return { ok: false, reason: "robuxOnly", doc };
 	const level = ownedLevel(doc, it.id, catalog) + 1;
 	// The level the player chose to buy (the session copy's next level): a retried UpdateAsync that already committed,
 	// or a copy behind the store, never buys a second level the player did not choose.
 	if (expectLevel !== undefined && level !== expectLevel) return { ok: false, reason: "stale", doc };
 	const tier = itemTier(it, level);
-	const price = tier !== undefined ? tierPrice(tier) : undefined;
+	const price = itemSilverPrice(it, level);
 	if (tier === undefined || price === undefined) return { ok: false, reason: "maxed", doc };
 	if (!prerequisiteMet(doc, it)) return { ok: false, reason: "prerequisite", doc };
 	if (walletBalance(doc) < price) return { ok: false, reason: "poor", doc };
@@ -199,6 +215,27 @@ export function applyBuy(
 	out.spent += price;
 	out.own.set(it.id, level);
 	return { ok: true, doc: out, purchase: { itemId: it.id, level, tier, price, balance: walletBalance(out) } };
+}
+
+/** A pass grant's result: `changed` false when the item was owned already (nothing to write). */
+export type WalletPassGrantResult =
+	| { readonly ok: true; readonly doc: WalletDoc; readonly changed: boolean }
+	| { readonly ok: false; readonly reason: WalletRefusal; readonly doc: Readonly<WalletDoc> };
+
+/** A Robux-only item whose game pass the player owns (module comment). */
+export function applyPassGrant(
+	doc: Readonly<WalletDoc>,
+	itemId: string,
+	catalog: ReadonlyArray<ArmoryItem> = ARMORY_CATALOG,
+): WalletPassGrantResult {
+	const it = typeIs(itemId, "string") ? armoryItem(itemId, catalog) : undefined;
+	if (it === undefined) return { ok: false, reason: "unknown", doc };
+	if (!isRobuxItem(it)) return { ok: false, reason: "notRobux", doc };
+	const max = it.tiers.size();
+	if (ownedLevel(doc, it.id, catalog) >= max) return { ok: true, doc: cloneWalletDoc(doc), changed: false };
+	const out = cloneWalletDoc(doc);
+	out.own.set(it.id, max);
+	return { ok: true, doc: out, changed: true };
 }
 
 /** A cosmetic into its slot, or the slot emptied (`itemId` = WALLET.noItem). */
@@ -251,10 +288,10 @@ export function nextGoals(
 	const goals: { goal: WalletGoal; index: number }[] = [];
 	for (let index = 0; index < catalog.size(); index++) {
 		const it = catalog[index];
-		if (it.kind === "cosmetic") continue;
+		if (it.kind === "cosmetic" || isRobuxItem(it)) continue;
 		const level = ownedLevel(doc, it.id) + 1;
 		const tier = itemTier(it, level);
-		const price = tier !== undefined ? tierPrice(tier) : undefined;
+		const price = itemSilverPrice(it, level);
 		if (tier === undefined || price === undefined) continue;
 		if (doc !== undefined ? !prerequisiteMet(doc, it) : it.requires !== undefined) continue;
 		goals.push({ goal: { itemId: it.id, level, tier, price, toGo: math.max(0, price - balance) }, index });
@@ -271,7 +308,9 @@ export type WalletOp =
 	| { readonly kind: "buy"; readonly itemId: string; readonly level?: number }
 	| { readonly kind: "equip"; readonly slot: string; readonly itemId: string }
 	/** A developer-product receipt (`pack` undefined: not a Silver pack here). */
-	| { readonly kind: "silverPurchase"; readonly receipt: SilverReceipt; readonly pack?: SilverPack };
+	| { readonly kind: "silverPurchase"; readonly receipt: SilverReceipt; readonly pack?: SilverPack }
+	/** A Robux-only item whose game pass the player owns (passes.ts, docs/COSMETICS.md CSD13). */
+	| { readonly kind: "passGrant"; readonly itemId: string };
 
 /** A transaction's outcome. `write` is the value to store (undefined: cancel the write). */
 export interface WalletTxOutcome {
@@ -284,6 +323,8 @@ export interface WalletTxOutcome {
 	readonly purchase?: WalletPurchase;
 	/** A granted receipt (op `silverPurchase`). */
 	readonly silverPurchase?: SilverPurchaseGrant;
+	/** Op `passGrant`: the item is newly owned (false: it was owned already). */
+	readonly passGranted?: boolean;
 }
 
 /** `op` on the stored value `stored` (module comment). Never throws. */
@@ -309,6 +350,16 @@ export function walletTransaction(
 		const r = applyPurchase(doc, op.receipt, op.pack);
 		if (!r.ok) return { ok: false, reason: r.reason, doc };
 		return { ok: true, doc: r.doc, write: encodeWalletDoc(r.doc), silverPurchase: r.grant };
+	}
+	if (op.kind === "passGrant") {
+		const r = applyPassGrant(doc, op.itemId, catalog);
+		if (!r.ok) return { ok: false, reason: r.reason, doc };
+		return {
+			ok: true,
+			doc: r.doc,
+			write: r.changed ? encodeWalletDoc(r.doc) : undefined,
+			passGranted: r.changed,
+		};
 	}
 	const r = applyEquip(doc, op.slot, op.itemId, catalog);
 	if (!r.ok) return { ok: false, reason: r.reason, doc };

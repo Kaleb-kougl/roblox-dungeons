@@ -6,9 +6,11 @@
  *   list      every cosmetic grouped by slot (shared/cosmetics COSMETIC_SLOTS order, a header per slot with items),
  *             catalogue order within a slot; each item the Armory's own row (armoryRow: price, tier, state, confirm)
  *             plus what the player can do with it: buy it (the Armory's hold, hold then confirm from CONFIRM_FROM_TIER),
- *             equip it, take it off, or nothing (unaffordable, the wallet not loaded)
- *   detail    the focused item: its name, `{slot} · Tier n` and `Animated` for a Prismatic dye, the price / `to go` /
- *             Owned / Equipped, and its buy or equip action
+ *             equip it, take it off, buy it with Robux (a Robux-only item, docs/COSMETICS.md CSD13: every animated
+ *             cosmetic, through its game pass and Roblox's prompt), or nothing (unaffordable, off sale, not loaded)
+ *   detail    the focused item: its name, `{slot} · Tier n` (a Robux-only item: `{slot} · Robux only`) and `Animated`
+ *             for a Prismatic dye, the price / `to go` / Owned / Equipped (a Robux-only item: Roblox's price in Robux,
+ *             or `Not for sale`), and its buy, Robux buy or equip action
  *   preview   which character the preview draws (a dye's own character; outline / trail / spark: the picked one), the
  *             look it wears (the equipped look with the focused item TRIED ON: docs/COSMETICS.md "try-on"), the facing
  *             it turns to (every facing in turn, CHARACTER_PREVIEW_ANGLE_DEG first; reduced motion holds it)
@@ -26,7 +28,14 @@ import {
 	type CosmeticSlot,
 } from "shared/cosmetics";
 import { ARMORY_KEYS, COSMETIC_KEYS, cosmeticNameKey, cosmeticSlotKey, type SpriteFacings } from "shared/theme";
-import { ARMORY_CATALOG, WALLET, type ArmoryItem, type WalletStatus } from "shared/wallet";
+import {
+	ARMORY_CATALOG,
+	WALLET,
+	isRobuxItem,
+	type ArmoryItem,
+	type WalletRobuxItem,
+	type WalletStatus,
+} from "shared/wallet";
 import { walletShown } from "shared/view/silver";
 // By file: the cosmetics view's tunables (the shared/view barrel is heavy).
 import { COSMETIC_VIEW } from "../cosmetics/config";
@@ -34,9 +43,26 @@ import { dyeCharacterOf } from "../cosmetics/looks";
 import { facingIndex } from "../sprites";
 import { armoryRow, dearestOwnedTier, type ArmoryBuyAction, type ArmoryRow, type ArmoryStr } from "./armory";
 import { CHARACTER_PREVIEW_ANGLE_DEG } from "./character";
+import type { SilverShopPrice } from "./silverShop";
 
-/** What the focused cosmetic's button does. */
-export type CosmeticAction = "buy" | "equip" | "unequip" | "none";
+/** What the focused cosmetic's button does (`robux`: Roblox's game pass prompt, docs/COSMETICS.md CSD13). */
+export type CosmeticAction = "buy" | "robux" | "equip" | "unequip" | "none";
+
+/** A Robux-only item's price as this client knows it (Roblox's, read per session; the Silver shop's shape). */
+export type CosmeticRobuxPrice = SilverShopPrice;
+
+/** The Robux-only item `itemId` on sale here (WalletStatus.robuxItems), or undefined (off sale, not loaded). */
+export function robuxItemOf(status: Readonly<WalletStatus> | undefined, itemId: string): WalletRobuxItem | undefined {
+	if (status === undefined || !status.loaded || status.robuxItems === undefined) return undefined;
+	return status.robuxItems.find((r) => r.itemId === itemId);
+}
+
+/** `{robux} Robux` once the price is known, else `Robux only`. */
+function robuxPriceText(price: CosmeticRobuxPrice | undefined, s: ArmoryStr): string {
+	return price !== undefined && price.kind === "ready"
+		? s(COSMETIC_KEYS.robuxPrice, { robux: price.robux })
+		: s(COSMETIC_KEYS.robuxOnly);
+}
 
 /** A slot's header on the Cosmetics tab. */
 export interface CosmeticHeaderEntry {
@@ -66,10 +92,14 @@ export function cosmeticEquippedIn(status: Readonly<WalletStatus> | undefined, s
 	return equippedMapOf(status.equipped).get(slot);
 }
 
-/** What a cosmetic's button does: owned -> equip / take off; else buy when affordable; else nothing. */
+/**
+ * What a cosmetic's button does: owned -> equip / take off; else buy when affordable, the Robux prompt when it is a
+ * Robux-only item on sale here; else nothing.
+ */
 export function cosmeticAction(row: Readonly<ArmoryRow>, equipped: boolean): CosmeticAction {
 	if (row.state === "unavailable") return "none";
 	if (row.state === "owned" || row.state === "maxed") return equipped ? "unequip" : "equip";
+	if (row.state === "robux") return "robux";
 	return row.state === "affordable" ? "buy" : "none";
 }
 
@@ -120,7 +150,7 @@ export interface CosmeticDetail {
 	readonly slot: CosmeticSlot;
 	/** The item's name. */
 	readonly title: string;
-	/** `{slot} · Tier n`. */
+	/** `{slot} · Tier n` (a Robux-only item: `{slot} · Robux only`). */
 	readonly sub: string;
 	/** `Animated` for a Prismatic dye, else undefined. */
 	readonly tag: string | undefined;
@@ -128,8 +158,14 @@ export interface CosmeticDetail {
 	readonly price: string;
 	/** `140 to go` (undefined when affordable or owned). */
 	readonly toGo: string | undefined;
-	/** The buy hold (hold, hold then confirm), or none (owned, poor, unavailable). */
+	/** The buy hold (hold, hold then confirm), or none (owned, poor, unavailable, Robux-only). */
 	readonly buy: ArmoryBuyAction;
+	/** A Robux-only item on sale here and not owned: its button opens Roblox's prompt (docs/COSMETICS.md CSD13). */
+	readonly robux: boolean;
+	/** That button's label: `Buy for {robux} Robux`, or `Buy with Robux` while the price is not known. */
+	readonly robuxLabel: string | undefined;
+	/** The price line is Robux (not Silver): drawn without the Silver coin. */
+	readonly robuxPrice: boolean;
 	/** Equip / take off once owned, else undefined. */
 	readonly equip: "equip" | "unequip" | undefined;
 	/** The equip button's label key (COSMETIC_KEYS.equip / unequip), when `equip` is set. */
@@ -137,17 +173,32 @@ export interface CosmeticDetail {
 	readonly entry: CosmeticItemEntry;
 }
 
-/** The detail of `entry` (see the file comment). */
-export function cosmeticDetail(entry: Readonly<CosmeticItemEntry>, s: ArmoryStr): CosmeticDetail {
+/** The detail of `entry` (see the file comment). `robuxPrice`: a Robux-only item's price as this client knows it. */
+export function cosmeticDetail(
+	entry: Readonly<CosmeticItemEntry>,
+	s: ArmoryStr,
+	robuxPrice?: CosmeticRobuxPrice,
+): CosmeticDetail {
 	const row = entry.row;
 	const id = row.itemId;
 	const tierOf = row.item.tiers[0] ?? 0;
-	const sub = `${s(cosmeticSlotKey(entry.slot))}  ·  ${s(ARMORY_KEYS.tier, { tier: tierOf })}`;
+	const robuxOnly = isRobuxItem(row.item);
+	const sub = `${s(cosmeticSlotKey(entry.slot))}  ·  ${
+		robuxOnly ? s(COSMETIC_KEYS.robuxOnly) : s(ARMORY_KEYS.tier, { tier: tierOf })
+	}`;
 	let price: string;
 	if (row.state === "unavailable") price = s(ARMORY_KEYS.unavailable);
 	else if (entry.equipped) price = s(COSMETIC_KEYS.equipped);
 	else if (entry.owned) price = s(ARMORY_KEYS.owned);
+	else if (row.state === "robux") price = robuxPriceText(robuxPrice, s);
+	else if (row.state === "offSale") price = s(COSMETIC_KEYS.robuxOffSale);
 	else price = tostring(row.price ?? 0);
+	const robux = entry.action === "robux";
+	const robuxLabel = !robux
+		? undefined
+		: robuxPrice !== undefined && robuxPrice.kind === "ready"
+		? s(COSMETIC_KEYS.robuxBuy, { robux: robuxPrice.robux })
+		: s(COSMETIC_KEYS.robuxBuyNoPrice);
 	const equip = entry.action === "equip" || entry.action === "unequip" ? entry.action : undefined;
 	return {
 		itemId: id,
@@ -158,6 +209,9 @@ export function cosmeticDetail(entry: Readonly<CosmeticItemEntry>, s: ArmoryStr)
 		price,
 		toGo: row.state === "poor" ? s(ARMORY_KEYS.toGo, { silver: row.toGo }) : undefined,
 		buy: entry.action === "buy" ? (row.confirm ? "holdConfirm" : "hold") : "none",
+		robux,
+		robuxLabel,
+		robuxPrice: robuxOnly && !entry.owned && row.state !== "unavailable",
 		equip,
 		equipKey: equip === "equip" ? COSMETIC_KEYS.equip : equip === "unequip" ? COSMETIC_KEYS.unequip : undefined,
 		entry,
@@ -173,12 +227,21 @@ export function cosmeticEquipArgs(
 	return [slot, action === "equip" ? itemId : WALLET.noItem];
 }
 
-/** The right-hand text of a cosmetic row: Equipped / Owned / the price / `to go` / nothing (unavailable). */
-export function cosmeticRowRight(entry: Readonly<CosmeticItemEntry>, s: ArmoryStr): string {
+/**
+ * The right-hand text of a cosmetic row: Equipped / Owned / the price / `to go` / nothing (unavailable); a Robux-only
+ * item: `{robux} Robux` (`Robux only` while the price is not known) or `Not for sale`.
+ */
+export function cosmeticRowRight(
+	entry: Readonly<CosmeticItemEntry>,
+	s: ArmoryStr,
+	robuxPrice?: CosmeticRobuxPrice,
+): string {
 	const row = entry.row;
 	if (row.state === "unavailable") return "";
 	if (entry.equipped) return s(COSMETIC_KEYS.equipped);
 	if (entry.owned) return s(ARMORY_KEYS.owned);
+	if (row.state === "robux") return robuxPriceText(robuxPrice, s);
+	if (row.state === "offSale") return s(COSMETIC_KEYS.robuxOffSale);
 	if (row.state === "poor") return s(ARMORY_KEYS.toGo, { silver: row.toGo });
 	return tostring(row.price ?? 0);
 }

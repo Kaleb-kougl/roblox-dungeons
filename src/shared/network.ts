@@ -55,7 +55,8 @@ import type { SilverGrantBreakdown, SilverShopReport, WalletStatus } from "share
  * `TUTORIAL_REPORT_RATE`, shared/records `RECORDS_REQUEST_RATE`,
  * shared/daily `DAILY_REQUEST_RATE`, shared/run `RUN_RECAP_RATE`, shared/codex `CODEX.claimRate` for each of
  * `requestCodex` / `codexClaim` / `codexViewed`, shared/wallet `WALLET.requestRate` for each of `requestWallet` /
- * `walletBuy` / `walletEquip`, shared/wallet `SILVER_SHOP.reportRate` for each of `silverShopReport` / `silverShopFakeBuy`).
+ * `walletBuy` / `walletEquip`, shared/wallet `SILVER_SHOP.reportRate` for each of `silverShopReport` / `silverShopFakeBuy`, shared/wallet
+ * `COSMETIC_PASS.fakeRate` for `cosmeticPassFakeBuy`).
  *
  * Bind side-specific handlers with `GlobalEvents.createServer` (src/server/network.ts) and `GlobalEvents.createClient`
  * (the client's network module, task 8), never here.
@@ -497,6 +498,13 @@ export interface ClientToServerEvents {
 	 * fake off. Rate limited (SILVER_SHOP.reportRate).
 	 */
 	silverShopFakeBuy(packId: string): void;
+	/**
+	 * Studio only (docs/COSMETICS.md CSD13): a fake game pass purchase of Robux-only cosmetic `itemId` while the
+	 * Workspace attribute KV_FakePasses gives a fake price, granted through the same pass grant and answered like a real
+	 * one (`wallet` with `passPurchase`). Ignored on live servers and with the fake off. Rate limited
+	 * (COSMETIC_PASS.fakeRate).
+	 */
+	cosmeticPassFakeBuy(itemId: string): void;
 }
 
 export interface ServerToClientEvents {

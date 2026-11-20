@@ -262,6 +262,8 @@ sim / dungeon (unchanged).
 - **SHD5. Calm selling:** two entry points, a quiet `+` beside the Armory's and the main menu's balance (owner,
   2026-11-14); equal cards; no timers, sales, ribbons, badges, animation or shortfall prompts; Roblox's prompt is the
   only confirm.
+  (docs/COSMETICS.md CSD13, 2026-11-19: the Armory's Cosmetics tab also opens Roblox's game pass prompt for the
+  Robux-only animated cosmetics; a separate purchase, not the Get Silver panel.)
 - **SHD6. Silver never buys a random reward** (or PolicyService gating comes first).
 - **SHD7. The codec's forward compatibility ships alone and first,** live on every server before any product id.
 - **SHD8. Prices are Roblox's** (default 20 / 55 / 115 / 265 Robux, owner 2026-11-14), read per player; the Silver per
