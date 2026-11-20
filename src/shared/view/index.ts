@@ -8,6 +8,8 @@
  *   tileMerge.ts  greedy rectangle meshing of the dungeon grid (few Parts per floor)
  *   markings.ts   telegraph / weapon arc / seal geometry as line segments, dash layout
  *   party.ts      co-op presentation rules (teammates' bullets faded in large parties)
+ *   nameTags.ts   co-op name tags (docs/PLAYER_NAMES.md): who gets one, its floor place above the head (below the
+ *                 feet by a wall), its duck and fade (NameTagLook; tunables NAME_TAGS in nameTagsConfig.ts)
  *   spectate.ts   co-op spectating (docs/SPECTATE.md): whose player the views follow after the local player died, the
  *                 switch command, SpectateTracker (tunables: SPECTATE in spectateConfig.ts)
  *   portrait.ts   portrait play (docs/PORTRAIT.md): the view's framing on any aspect (the short side keeps
@@ -97,6 +99,8 @@ export * from "./markings";
 export * from "./party";
 export * from "./spectateConfig";
 export * from "./spectate";
+export * from "./nameTagsConfig";
+export * from "./nameTags";
 export * from "./portrait";
 export * from "./cursorConfig";
 export * from "./cursor";

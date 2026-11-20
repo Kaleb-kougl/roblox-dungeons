@@ -3431,6 +3431,10 @@
 		"note": "Options screen, Display tab: row label for the small corner map (On / Off). Label column 210 px.",
 		"max": 24
 	},
+	"options.display.playerNames": {
+		"note": "Options screen, Display tab: row label for showing co-op teammates' names above their characters during a run (On / Off). Label column 210 px.",
+		"max": 24
+	},
 	"options.display.playerOutline": {
 		"note": "Options screen, Display tab: row label for a coloured outline around the player's character (On / Off). Label column 210 px.",
 		"max": 24

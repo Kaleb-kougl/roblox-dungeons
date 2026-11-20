@@ -826,6 +826,8 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"options.display.hudTooltips": "Item tooltips in combat",
 		"options.display.minimap": "Minimap",
 		"options.display.playerOutline": "Player outline",
+		// Roblox port (docs/PLAYER_NAMES.md PN2): the co-op name tags on the floor above each teammate.
+		"options.display.playerNames": "Player names",
 		// Roblox port (docs/BUILDS.md BU8, BUD13): the build effects setting.
 		"options.display.buildFx": "Build effects",
 		"options.display.buildFx.full": "Full",

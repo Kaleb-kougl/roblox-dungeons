@@ -102,6 +102,8 @@ export const OPTIONS_STRINGS = {
 	minimap: "options.display.minimap",
 	/** The watched player's rim On / Off (docs/PLAYER_OUTLINE.md P4; labels as roomEdges). */
 	playerOutline: "options.display.playerOutline",
+	/** The co-op name tags On / Off (docs/PLAYER_NAMES.md PN2; labels as roomEdges). */
+	playerNames: "options.display.playerNames",
 	/** The build effects Full / Reduced (docs/BUILDS.md BUD13) and its two option labels. */
 	buildFx: "options.display.buildFx",
 	buildFxFull: "options.display.buildFx.full",

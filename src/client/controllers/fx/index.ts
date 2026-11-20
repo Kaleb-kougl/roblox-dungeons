@@ -27,6 +27,7 @@ export * from "./NearMissController";
 export * from "./ParryFlashController";
 export * from "./TeamMomentsController";
 export * from "./SyncCalloutController";
+export * from "./NameTagController"; // docs/PLAYER_NAMES.md
 export * from "./DraftRevealController";
 export * from "./NewBestController";
 export * from "./RecapController";

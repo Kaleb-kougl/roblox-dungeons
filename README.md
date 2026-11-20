@@ -8,7 +8,7 @@ synced into Studio with Rojo. The plan is in [PLAN.md](PLAN.md); agent notes in 
 Requires Node 20+ and [Rokit](https://github.com/rojo-rbx/rokit).
 
 ```bash
-rokit install       # rojo 7.7.0 and lune 0.11.0 (rokit.toml)
+rokit install       # rojo 7.7.1 and lune 0.11.0 (rokit.toml)
 npm install
 npm test            # build, then run the headless spec suite under Lune
 npm run dev         # rbxtsc in watch mode + rojo serve

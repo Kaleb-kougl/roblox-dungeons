@@ -2,7 +2,7 @@
  * Display settings (Options screen, task L4): the HUD scale, a percent of the automatic scale (shared/view/hud
  * computeHudScale; the client's useHudScale multiplies it in), and the room-edge lines on the floor
  * (docs/ROOM_EDGES.md RE6), the corner panels' occlusion fade (docs/HUD_LAYOUT.md H7), the live HUD's item tooltips (docs/ITEM_TOOLTIPS.md ITD8), the corner minimap
- * (docs/MINIMAP.md M10), the player outline (docs/PLAYER_OUTLINE.md P4), the build effects (docs/BUILDS.md BUD13), the touch controls (docs/MOBILE.md MB7: size,
+ * (docs/MINIMAP.md M10), the player outline (docs/PLAYER_OUTLINE.md P4), the co-op name tags (docs/PLAYER_NAMES.md PN2), the build effects (docs/BUILDS.md BUD13), the touch controls (docs/MOBILE.md MB7: size,
  * opacity, auto-target, left-handed), the language (docs/LOCALIZATION.md L6), the gamepad menus' vibration
  * (docs/GAMEPAD_MENUS.md GM9), the phone's vibration (docs/HAPTICS.md HP5), the remembered character pick (docs/ARCHER.md ARD12: the character screen's focus
  * and the run a start plays) and the gauntlet cursor's size (docs/CURSOR.md D2) and whether it shows in gameplay (revision 3). Presentation only; stored
@@ -22,6 +22,7 @@ import {
 	DEFAULT_LANGUAGE,
 	DEFAULT_MINIMAP,
 	DEFAULT_PAD_VIBRATION,
+	DEFAULT_PLAYER_NAMES,
 	DEFAULT_PLAYER_OUTLINE,
 	DEFAULT_ROOM_EDGES,
 	DEFAULT_TOUCH_AUTO_TARGET,
@@ -50,6 +51,11 @@ export interface DisplaySettings {
 	minimap: boolean;
 	/** Draw the rim around the watched player's character (docs/PLAYER_OUTLINE.md P4). Default true: only Off is stored. */
 	playerOutline: boolean;
+	/**
+	 * Draw each living teammate's display name on the floor above their character in co-op (docs/PLAYER_NAMES.md PN2).
+	 * Default true: only Off is stored.
+	 */
+	playerNames: boolean;
 	/** Build effects Full / Reduced (docs/BUILDS.md BUD13). Default "full": only "reduced" is ever stored. */
 	buildFx: BuildFxLevel;
 	/** One of TOUCH_SIZE_PERCENTS: the touch controls' size, percent (docs/MOBILE.md MB7). Default 100. */
@@ -108,6 +114,7 @@ export const DISPLAY_SETTING_KEYS: ReadonlyArray<keyof DisplaySettings> = [
 	"hudTooltips",
 	"minimap",
 	"playerOutline",
+	"playerNames",
 	"buildFx",
 	"touchSize",
 	"touchOpacity",
@@ -130,6 +137,7 @@ export function defaultDisplaySettings(): DisplaySettings {
 		hudTooltips: DEFAULT_HUD_TOOLTIPS,
 		minimap: DEFAULT_MINIMAP,
 		playerOutline: DEFAULT_PLAYER_OUTLINE,
+		playerNames: DEFAULT_PLAYER_NAMES,
 		buildFx: DEFAULT_BUILD_FX,
 		touchSize: DEFAULT_TOUCH_SIZE_PERCENT,
 		touchOpacity: DEFAULT_TOUCH_OPACITY_PERCENT,
@@ -147,7 +155,7 @@ export function defaultDisplaySettings(): DisplaySettings {
 
 /**
  * Keeps only a hudScale that is one of HUD_SCALE_PERCENTS (and not the default) and a roomEdges that is a boolean other
- * than the default (so only `false`), and the same for hudFade, hudTooltips, minimap and playerOutline; a buildFx from
+ * than the default (so only `false`), and the same for hudFade, hudTooltips, minimap, playerOutline and playerNames; a buildFx from
  * BUILD_FX_LEVELS other than the default (so only "reduced"); a touchSize / touchOpacity
  * from its list and not the default; a touchAutoTarget / touchLeftHanded that is a boolean other than the default; a
  * language that is a known locale code (stored as LOCALES spells it; "auto" and unknown codes are dropped); a
@@ -171,6 +179,8 @@ export function sanitizeDisplayOverrides(raw: unknown): DisplayOverrides {
 	if (typeIs(minimap, "boolean") && minimap !== DEFAULT_MINIMAP) out.minimap = minimap;
 	const rim = t.playerOutline;
 	if (typeIs(rim, "boolean") && rim !== DEFAULT_PLAYER_OUTLINE) out.playerOutline = rim;
+	const names = t.playerNames;
+	if (typeIs(names, "boolean") && names !== DEFAULT_PLAYER_NAMES) out.playerNames = names;
 	const buildFx = t.buildFx;
 	if (
 		typeIs(buildFx, "string") &&

@@ -19,6 +19,7 @@ import {
 	CURSOR_SIZES,
 	DEFAULT_CURSOR_SIZE,
 	DEFAULT_GAME_CURSOR,
+	DEFAULT_PLAYER_NAMES,
 	DEFAULT_TOUCH_AUTO_TARGET,
 	DEFAULT_TOUCH_LEFT_HANDED,
 	DEFAULT_LANGUAGE,
@@ -309,6 +310,7 @@ describe("display: room edges (docs/ROOM_EDGES.md RE6)", () => {
 			character: DEFAULT_CHARACTER,
 			cursorSize: DEFAULT_CURSOR_SIZE,
 			gameCursor: DEFAULT_GAME_CURSOR,
+			playerNames: DEFAULT_PLAYER_NAMES,
 			silverNoticeSeen: false,
 		});
 	});
@@ -358,6 +360,7 @@ describe("display: room edges (docs/ROOM_EDGES.md RE6)", () => {
 			character: DEFAULT_CHARACTER,
 			cursorSize: DEFAULT_CURSOR_SIZE,
 			gameCursor: DEFAULT_GAME_CURSOR,
+			playerNames: DEFAULT_PLAYER_NAMES,
 			silverNoticeSeen: false,
 		});
 		expect(resolveDisplaySettings(decodeSettingsDoc({ v: 2 }).display).roomEdges).toBe(true);
@@ -470,6 +473,7 @@ describe("display: minimap (docs/MINIMAP.md M10)", () => {
 			character: DEFAULT_CHARACTER,
 			cursorSize: DEFAULT_CURSOR_SIZE,
 			gameCursor: DEFAULT_GAME_CURSOR,
+			playerNames: DEFAULT_PLAYER_NAMES,
 			silverNoticeSeen: false,
 		});
 	});
@@ -520,6 +524,7 @@ describe("display: minimap (docs/MINIMAP.md M10)", () => {
 			character: DEFAULT_CHARACTER,
 			cursorSize: DEFAULT_CURSOR_SIZE,
 			gameCursor: DEFAULT_GAME_CURSOR,
+			playerNames: DEFAULT_PLAYER_NAMES,
 			silverNoticeSeen: false,
 		});
 		expect(resolveDisplaySettings(decodeSettingsDoc({ v: 2 }).display).minimap).toBe(true);
@@ -760,6 +765,7 @@ describe("display: player outline (docs/PLAYER_OUTLINE.md P4)", () => {
 			character: DEFAULT_CHARACTER,
 			cursorSize: DEFAULT_CURSOR_SIZE,
 			gameCursor: DEFAULT_GAME_CURSOR,
+			playerNames: DEFAULT_PLAYER_NAMES,
 			silverNoticeSeen: false,
 		});
 	});
@@ -846,6 +852,7 @@ describe("display: touch controls (docs/MOBILE.md MB7)", () => {
 			character: DEFAULT_CHARACTER,
 			cursorSize: DEFAULT_CURSOR_SIZE,
 			gameCursor: DEFAULT_GAME_CURSOR,
+			playerNames: DEFAULT_PLAYER_NAMES,
 			silverNoticeSeen: false,
 		});
 	});
@@ -969,6 +976,7 @@ describe("display: gamepad menu vibration (docs/GAMEPAD_MENUS.md GM9)", () => {
 			character: DEFAULT_CHARACTER,
 			cursorSize: DEFAULT_CURSOR_SIZE,
 			gameCursor: DEFAULT_GAME_CURSOR,
+			playerNames: DEFAULT_PLAYER_NAMES,
 			silverNoticeSeen: false,
 		});
 	});
@@ -1166,5 +1174,32 @@ describe("display: the gauntlet cursor in gameplay (docs/CURSOR.md revision 3)",
 		expect(resolveDisplaySettings(decodeSettingsDoc(old).display).gameCursor).toBe(true);
 		expect(DISPLAY_RESET_KEEPS.includes("gameCursor")).toBe(false);
 		expect(displayResetOverrides({ gameCursor: false })).toEqual({});
+	});
+});
+
+describe("display: co-op name tags (docs/PLAYER_NAMES.md PN2)", () => {
+	it("defaults to On; only Off is stored, in the v2 document", () => {
+		expect(DEFAULT_PLAYER_NAMES).toBe(true);
+		expect(defaultDisplaySettings().playerNames).toBe(true);
+		expect(resolveDisplaySettings(undefined).playerNames).toBe(true);
+		expect(DISPLAY_SETTING_KEYS.includes("playerNames")).toBe(true);
+		expect(sanitizeDisplayOverrides({ playerNames: false })).toEqual({ playerNames: false });
+		expect(sanitizeDisplayOverrides({ playerNames: true })).toEqual({});
+		expect(resolveDisplaySettings({ playerNames: false }).playerNames).toBe(false);
+		const overrides: SettingsOverrides = { display: { playerNames: false } };
+		const doc = encodeSettingsDoc(overrides);
+		expect(doc).toEqual({ ...EMPTY_DOC, display: { playerNames: false } });
+		expect(decodeSettingsDoc(doc)).toEqual(overrides);
+		expect(applySettingsPatch(overrides, { display: { playerNames: true } })).toEqual({});
+	});
+
+	it("ignores non-booleans; an older document without the field reads On; Reset drops it", () => {
+		for (const junk of ["false", 0, 1, {}, [false]] as ReadonlyArray<unknown>) {
+			expect(sanitizeDisplayOverrides({ playerNames: junk })).toEqual({});
+		}
+		const old = { v: 2, juice: {}, controls: {}, audio: {}, display: { minimap: false } };
+		expect(resolveDisplaySettings(decodeSettingsDoc(old).display).playerNames).toBe(true);
+		expect(DISPLAY_RESET_KEEPS.includes("playerNames")).toBe(false);
+		expect(displayResetOverrides({ playerNames: false })).toEqual({});
 	});
 });

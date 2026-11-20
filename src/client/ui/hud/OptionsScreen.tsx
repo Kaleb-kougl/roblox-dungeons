@@ -752,9 +752,24 @@ function DisplayTab(props: { order: number; actions: HudActions; selectable: boo
 					props.actions.updateDisplay({ playerOutline: v });
 				}}
 			/>
+			<SettingRow
+				order={7}
+				name="playerNames"
+				selectable={props.selectable}
+				label={str(OPTIONS_STRINGS.playerNames)}
+				value={display.playerNames}
+				options={[
+					{ value: true, label: str(SETTINGS_STRINGS.on) },
+					{ value: false, label: str(SETTINGS_STRINGS.off) },
+				]}
+				onPick={(v) => {
+					props.actions.playUi(SFX.uiClick);
+					props.actions.updateDisplay({ playerNames: v });
+				}}
+			/>
 			{cursorRow && (
 				<SettingRow
-					order={7}
+					order={8}
 					name="gameCursor"
 					selectable={props.selectable}
 					label={str(OPTIONS_STRINGS.gameCursor)}
@@ -771,7 +786,7 @@ function DisplayTab(props: { order: number; actions: HudActions; selectable: boo
 			)}
 			{cursorRow && (
 				<SettingRow
-					order={8}
+					order={9}
 					name="cursorSize"
 					selectable={props.selectable}
 					label={str(OPTIONS_STRINGS.cursorSize)}
@@ -787,7 +802,7 @@ function DisplayTab(props: { order: number; actions: HudActions; selectable: boo
 				/>
 			)}
 			<SettingRow
-				order={9}
+				order={10}
 				name="buildFx"
 				selectable={props.selectable}
 				label={str(OPTIONS_STRINGS.buildFx)}
@@ -803,7 +818,7 @@ function DisplayTab(props: { order: number; actions: HudActions; selectable: boo
 			/>
 			{touch && (
 				<SettingRow
-					order={10}
+					order={11}
 					name="touchSize"
 					selectable={props.selectable}
 					label={str(OPTIONS_STRINGS.touchSize)}
@@ -821,7 +836,7 @@ function DisplayTab(props: { order: number; actions: HudActions; selectable: boo
 			)}
 			{touch && (
 				<SettingRow
-					order={11}
+					order={12}
 					name="touchOpacity"
 					selectable={props.selectable}
 					label={str(OPTIONS_STRINGS.touchOpacity)}
@@ -839,7 +854,7 @@ function DisplayTab(props: { order: number; actions: HudActions; selectable: boo
 			)}
 			{touch && (
 				<SettingRow
-					order={12}
+					order={13}
 					name="touchAutoTarget"
 					selectable={props.selectable}
 					label={str(OPTIONS_STRINGS.touchAutoTarget)}
@@ -856,7 +871,7 @@ function DisplayTab(props: { order: number; actions: HudActions; selectable: boo
 			)}
 			{touch && (
 				<SettingRow
-					order={13}
+					order={14}
 					name="touchLeftHanded"
 					selectable={props.selectable}
 					label={str(OPTIONS_STRINGS.touchLeftHanded)}

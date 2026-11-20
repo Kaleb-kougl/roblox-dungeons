@@ -56,6 +56,12 @@ export const DEFAULT_MINIMAP = true;
 export const DEFAULT_PLAYER_OUTLINE = true;
 
 /**
+ * Co-op name tags (docs/PLAYER_NAMES.md PN2, Options > Display > Player names): each living teammate's display name on
+ * the floor above their character. On by default. Presentation only; solo runs never draw one.
+ */
+export const DEFAULT_PLAYER_NAMES = true;
+
+/**
  * Menu vibration on the gamepad (docs/GAMEPAD_MENUS.md GM9, Options > Controls > Gamepad > Vibration): On by default.
  * Menus only (shared/view/menu MENU_HAPTICS); silent where the pad has no motor.
  */

@@ -25,6 +25,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/TUTORIAL_FUNNEL.md` | Tutorial analytics funnel (once-per-user onboarding funnel join -> lessons -> completed, `TutorialAttempt` funnel, lesson time / hits / stuck, skip / abandon / outro / gate events, new-player runs and return): plan, tasks TF0-TF9, decisions TFD1-TFD10 |
 | `docs/OUTLINE.md` | Enemy outlines: plan, as-built notes, tasks O1-O7, decisions E1-E6 |
 | `docs/PLAYER_OUTLINE.md` | Player outline (rim around the watched player only, `playerOutline` role, 1 px knight sheets, Display setting): plan, as-built, tasks P1-P7, decisions |
+| `docs/PLAYER_NAMES.md` | Co-op name tags (each living teammate's display name as a floor text just above their head, under every bullet and telegraph; below the feet by a far wall; dimmed near you and under fire; never yourself or whom you spectate; Display setting Player names): decisions PND1-PND5, as built, tasks PN1-PN4 |
 | `docs/FX_AUDIO.md` | Sprite effects and audio (Ninja Adventure FX / Audio): slots, pipelines, cue mappers, tasks X0 / F0-F6 / A0-A5 |
 | `docs/SPECTATE.md` | Co-op spectating (watch and switch between living teammates after a death): plan, tasks S0-S6, decisions |
 | `docs/BOOSTS.md` | Temporary boosts dropped by killed enemies (Fury / Quickstep / Frenzy / Aegis): plan, tasks B0-B11, decisions |
@@ -1652,6 +1653,18 @@ Decision log (deviations from `PLAN.md`):
   inside, are exactly as before, so every golden fixture matches; co-op runs where a straggler hit a wall replay
   differently. `DAILY.ruleset` 22 -> 23. Spec `run/bossSeal.spec.ts`.
 
+- **Co-op name tags (docs/PLAYER_NAMES.md, 2026-11-19).** Presentation only (no sim, dungeon, lockstep, hash, replay,
+  fixture or score change). In party runs each living teammate's display name (`RunContext.memberNames`) is a floor
+  text on the combo shout's layer (`fxHelpers floorTextTopStuds`), never a BillboardGui (PND1: a billboard over the head
+  would draw over the bullets and telegraphs behind the player), laid screen-up of the feet by `NAME_TAGS.headTiles`
+  / sin(pitch) so it reads just above the head; below the feet while a wall or the void stands in the strip in front
+  of it (`nameTagAboveClear`, a 0.3 s side hold). Never the watched player (yourself, or whom you spectate), a dead or
+  departed teammate, solo or the tutorial; at most 60 % opaque, 30 % within 3 tiles of the watched player, 12 % while an
+  enemy bullet is in its box; one fixed letter height in the name font, truncated at the 4-tile box. Pure rules
+  `shared/view` `nameTags.ts` / `NAME_TAGS`; client `NameTagController` (Workspace `KV_NameTags`). Setting
+  `DisplaySettings.playerNames` (default On, only Off stored, doc stays v2), the Options > Display row after Player
+  outline, string `options.display.playerNames`. Studio check (PN4) pending.
+
 - **Breakable outline (docs/DECOR.md "Breakable outline", 2026-11-19).** Presentation only (no sim, dungeon, lockstep,
   hash, replay, fixture or score change). Every intact barrel and crate wears a yellow rim, gone the moment it breaks.
   Colour role `breakableOutline` `#fff06a` (shared/theme `BREAKABLE_OUTLINE_ROLE`, beside `playerOutline` in
@@ -1688,7 +1701,7 @@ npm run l10n:import -- l10n/in/table.csv   # the whole downloaded cloud table ->
 npm run l10n:check  # (after build) translation coverage / stale / context report (test:l10n, check:autolocalize: in verify)
 ```
 
-Tools come from `rokit.toml` (`rokit install`): rojo 7.7.0, lune 0.11.0.
+Tools come from `rokit.toml` (`rokit install`): rojo 7.7.1, lune 0.11.0.
 
 ## Tests
 
