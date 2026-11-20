@@ -8,7 +8,8 @@
  *   2. dead -> remember buttons, stop (no movement, no actions, no timers)
  *   3. count down timers: rollTicks, iframeTicks, hurtTicks, flaskTicks
  *   4. press edges (input.buttons vs prevButtons): ROLL, EMBER, FLASK
- *   5. movement: the roll (locked direction) or walking (halved while drinking), via config.moveResolver
+ *   5. movement: the roll (locked direction) or walking (halved while drinking; braked short of contact enemies while
+ *      the weapon in hand attacks, with a spacing brake: docs/SWORD_SPACING.md), via config.moveResolver
  *   6. facing: aim, else movement (the roll direction while rolling), else unchanged
  *   7. DEBUG_HIT press edge -> damagePlayer(state, HIT_NORMAL) (last, like a hit from stepCombat)
  *   8. prevButtons = input.buttons
@@ -44,7 +45,8 @@ import {
 } from "./playerData";
 import type { PlayerState, SimState } from "./state";
 import type { SimConfig } from "./step";
-import { weaponMoveMultiplier } from "./combat/weapons/weapons";
+import { weaponMoveMultiplier, weaponSpacingActive } from "./combat/weapons/weapons";
+import { BRAKE_RESULT, brakeStep, type SpacingTick } from "./combat/spacingBrake";
 import { buildsOnArmorBreak } from "./builds/hooks";
 import { buildsRollSmash } from "./builds/wrecker";
 import { SOLO_PLAYER, rollIframeTicks, runOnPlayerHit, runSecondWind, scalePercent } from "./progression/runMods";
@@ -152,6 +154,7 @@ export function playerTraits(config: Readonly<SimConfig>, playerIndex: number): 
  * state.combat.weapons); a co-op step (stepParty) calls it once per player, in player index order, with that player's
  * `playerIndex` (their M2 run modifiers: Slippery's i-frames, the Hourglass / Second Wind of a debug hit). `traits`:
  * the player's roll traits from the run config (playerTraits; docs/ARCHER.md AR3), NEUTRAL_TRAITS by default.
+ * `spacing`: the tick's sword spacing brake (docs/SWORD_SPACING.md SP2, step.ts), undefined: no brake (today exactly).
  */
 export function stepPlayer(
 	state: SimState,
@@ -161,6 +164,7 @@ export function stepPlayer(
 	weapons: Readonly<WeaponsState> = state.combat.weapons,
 	playerIndex: number = SOLO_PLAYER,
 	traits: Readonly<PlayerTraits> = NEUTRAL_TRAITS,
+	spacing?: SpacingTick,
 ): void {
 	p.prevX = p.x;
 	p.prevZ = p.z;
@@ -238,7 +242,16 @@ export function stepPlayer(
 		// Quickstep (docs/BOOSTS.md): x 130 % (exactly `base` without it); movePlayer splits a longer walk tick into
 		// equal sub-steps of at most MAX_MOVE_STEP.
 		const walk = scalePercent(base, boostWalkPercent(state, playerIndex));
-		movePlayer(state, mx * walk, mz * walk, config, p);
+		let wx = mx * walk;
+		let wz = mz * walk;
+		// docs/SWORD_SPACING.md Design 3 (SP2): while the weapon in hand says so (the sword attacking), the walk stops at
+		// contact enemies' keep distance (the tick-start list); without `spacing` exactly today's walk.
+		if (spacing !== undefined && spacing.config.walk && weaponSpacingActive(weapons, buttons)) {
+			brakeStep(spacing.list, p.x, p.z, wx, wz, spacing.config.stopConeCos);
+			wx = BRAKE_RESULT.x;
+			wz = BRAKE_RESULT.z;
+		}
+		movePlayer(state, wx, wz, config, p);
 	}
 
 	// Facing: aim wins, else movement (the locked roll direction while rolling), else keep the previous facing.

@@ -20,7 +20,9 @@ import {
 	tutorialRoom,
 	type EndlessRunSetup,
 	PlayerMover,
+	SwordSpacing,
 	setPlayerMover,
+	setSwordSpacing,
 } from "shared/run";
 import { Driver, distanceField, frame, playTutorial, recordEndlessRun, walkDir, type Field } from "shared/run/testing";
 import {
@@ -393,6 +395,7 @@ describe("RoomEdgeStates: fallback parity (run-full-1337's inputs, unscored vs K
 
 	// The web build's mover (port: the slide), read when the config is built: set before buildRunConfig, restored below.
 	const portMover = setPlayerMover(PlayerMover.WEB);
+	const portSpacing = setSwordSpacing(SwordSpacing.WEB); // the web sword: no spacing brake (docs/SWORD_SPACING.md)
 	const plain = buildRunConfig(run.seed).config;
 	const scored = buildRunConfig(run.seed, { scoring: {} }).config;
 	let unscoredTrace: FloorTrace | undefined;
@@ -432,6 +435,7 @@ describe("RoomEdgeStates: fallback parity (run-full-1337's inputs, unscored vs K
 		setSwordTimings(portSword);
 		setSwarmerHp(portSwarmerHp);
 		setPlayerMover(portMover);
+		setSwordSpacing(portSpacing);
 		setBossHp(portBossHp);
 	}
 	print(

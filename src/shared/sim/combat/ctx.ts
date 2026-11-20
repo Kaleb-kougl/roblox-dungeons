@@ -38,6 +38,7 @@ import { nearestLivingPlayer, playerAt, weaponsAt } from "../party";
 import { PERCENT } from "../progression/progressionData";
 import { WARBANNER, warbannerAuraMask } from "./actors/archetypes/warbanner";
 import { chainhookHolderOf } from "./actors/archetypes/chainhook";
+import type { SpacingTick } from "./spacingBrake";
 
 export class SimCtx {
 	/** The live state (mutable). */
@@ -107,6 +108,13 @@ export class SimCtx {
 	 * empties it with the guard list, breakGuard appends, bind() empties it.
 	 */
 	readonly guardsBroken: number[] = [];
+	/**
+	 * Sword spacing (docs/SWORD_SPACING.md Design 1 / 4, SP3): this tick's brake (the sim's spacing list from the
+	 * tick-start state, built once by step.ts, and the run's SimConfig.spacing), read by the sword's finisher lunge.
+	 * Transient, never hashed: stepCombat sets it right after bind(); bind() empties it, so every other ctx (endless room
+	 * spawns, the Goldling, the pacts) and a run without SimConfig.spacing brake nothing.
+	 */
+	spacing: SpacingTick | undefined = undefined;
 
 	bind(state: SimState, config: Readonly<SimConfig>, input: Readonly<InputFrame>): this {
 		this.state = state;
@@ -127,6 +135,7 @@ export class SimCtx {
 		this.pinMask.clear();
 		this.guards.clear();
 		this.guardsBroken.clear();
+		this.spacing = undefined;
 		return this;
 	}
 

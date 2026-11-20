@@ -4,7 +4,7 @@ export type { WeaponData, WeaponDef, WeaponSlotState, WeaponStyle, WeaponTrigger
 export { hasWeapon, registerWeapon, weaponAt, weaponIds, weaponIndex } from "./registry";
 export { sweepArc, sweepGooErased } from "./melee";
 export type { ArcActorHit } from "./melee";
-export { activeWeaponSlot, weaponMoveMultiplier } from "./weapons";
+export { activeWeaponSlot, weaponMoveMultiplier, weaponSpacingActive } from "./weapons";
 export { BOW_WEAPON_ID, DEFAULT_LOADOUT, SWORD_WEAPON_ID } from "./loadout";
 export {
 	BOW,

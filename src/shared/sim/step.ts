@@ -45,6 +45,8 @@ import type { SecretsConfig } from "./secrets/secretsData";
 import { clearSilverEvents, type SilverConfig } from "./silver/silver";
 import type { SolidCells } from "shared/dungeon";
 import type { PlayerTraits } from "./playerData";
+import { tickSpacing } from "./combat/spacing";
+import type { SpacingConfig } from "./combat/spacingData";
 
 export { PLAYER_RADIUS, PLAYER_SPEED } from "./playerData";
 
@@ -268,6 +270,14 @@ export interface SimConfig {
 	 * source, no rng.
 	 */
 	silver?: SilverConfig;
+	/**
+	 * Sword spacing (docs/SWORD_SPACING.md Design 1-4, SP2 / SP3; a Roblox-port retune): the Knight's walk while attacking
+	 * (the weapon's `spacing` hook) and the finisher's lunge stop at a contact enemy's keep distance. Read from the RUN
+	 * config (step() / stepParty, never a floor's world, like `traits`); shared/run `swordSpacing()` sets it in every live
+	 * world. Absent: no spacing list is built and nothing is braked (every golden fixture, the web build exactly).
+	 * Present: one list per tick from the tick-start state (combat/spacing.ts tickSpacing), never hashed.
+	 */
+	spacing?: SpacingConfig;
 }
 
 /** Matches the 16x16 greybox room: inner wall faces at +/-7.75, minus the 0.4 player half-width (rounded). */
@@ -295,7 +305,8 @@ const partyPrev: number[] = [];
  *   1. clear per-tick events (and the score's, the breakables', the drops', the affixes', the builds', the pellets',
  *      the treasure's, the pacts', the Goldling's, the secrets', the Silver's); then FORFEIT_BUTTON ("Leave run") -> forfeitSoloRun:
  *      the player dies at this tick; then (dev runs only) a DEV_GOD_BUTTON edge toggles god mode (stepDevToggle)
- *   2. stepPlayer  (movement, facing, roll, hearts, flask, Ember)
+ *   2. stepPlayer  (movement, facing, roll, hearts, flask, Ember); with config.spacing the tick's brake list is built
+ *                  first, from the tick-start state (docs/SWORD_SPACING.md), and read by the walk and the lunge
  *   3. stepCombat   (Ember clear, actors act, the player's weapons, bullets step, hits, contact damage)
  *   4. stepEndless  (endless mode only: Depth, floor clear points + stairwell / next floor, deferred room spawns)
  *   5. stepRun      (endless mode only: a new floor opens the boon draft; Warding, relic pedestals, the curse shrine)
@@ -367,8 +378,19 @@ export function step(
 			return;
 		}
 	}
-	stepPlayer(state, input, world, state.player, state.combat.weapons, SOLO_PLAYER, playerTraits(config, SOLO_PLAYER));
-	stepCombat(state, input, world);
+	// docs/SWORD_SPACING.md Design 1: one brake list per tick, from the tick-start state, for the walk and the lunge.
+	const spacing = tickSpacing(state, config.spacing);
+	stepPlayer(
+		state,
+		input,
+		world,
+		state.player,
+		state.combat.weapons,
+		SOLO_PLAYER,
+		playerTraits(config, SOLO_PLAYER),
+		spacing,
+	);
+	stepCombat(state, input, world, undefined, spacing);
 	if (state.endless !== undefined) stepEndless(state, soloInputs, config, soloPrev);
 	if (run !== undefined) stepRun(state, soloInputs, config, soloPrev);
 	if (state.pacts !== undefined) stepPacts(state, soloInputs, config, soloPrev);
@@ -467,9 +489,20 @@ export function stepParty(
 			return;
 		}
 	}
+	// docs/SWORD_SPACING.md Design 1: one brake list per tick, every player braked against it in index order.
+	const spacing = tickSpacing(state, config.spacing);
 	for (let i = 0; i < n; i++)
-		stepPlayer(state, inputs[i], world, playerAt(state, i), weaponsAt(state, i), i, playerTraits(config, i));
-	stepCombat(state, inputs[0], world, inputs);
+		stepPlayer(
+			state,
+			inputs[i],
+			world,
+			playerAt(state, i),
+			weaponsAt(state, i),
+			i,
+			playerTraits(config, i),
+			spacing,
+		);
+	stepCombat(state, inputs[0], world, inputs, spacing);
 	if (state.endless !== undefined) stepEndless(state, inputs, config, partyPrev);
 	if (run !== undefined) stepRun(state, inputs, config, partyPrev);
 	if (state.pacts !== undefined) stepPacts(state, inputs, config, partyPrev);

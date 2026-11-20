@@ -14,7 +14,9 @@ import {
 	validateRun,
 	type SegmentedRunResult,
 	PlayerMover,
+	SwordSpacing,
 	setPlayerMover,
+	setSwordSpacing,
 } from "shared/run";
 import {
 	Button,
@@ -45,11 +47,13 @@ import { LiveRun, RANKED_WORLD_KIND } from "shared/play";
 const portSword: SwordTimings = setSwordTimings(WEB_SWORD_TIMINGS);
 const portSwarmerHp = setSwarmerHp(WEB_SWARMER_HP); // the web swarmer's 2 hp (port: 1)
 const portMover = setPlayerMover(PlayerMover.WEB); // the web build's mover (port: the slide, docs/WALL_SLIDE.md)
+const portSpacing = setSwordSpacing(SwordSpacing.WEB); // the web sword: no spacing brake (docs/SWORD_SPACING.md)
 const portBossHp = setBossHp(WEB_BOSS_HP); // the web boss's 540 hp (port: 270)
 afterAll(() => {
 	setSwordTimings(portSword);
 	setSwarmerHp(portSwarmerHp);
 	setPlayerMover(portMover);
+	setSwordSpacing(portSpacing);
 	setBossHp(portBossHp);
 });
 

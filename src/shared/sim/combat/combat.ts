@@ -119,6 +119,7 @@ import {
 import { sealWeapons } from "./weapons/registry";
 import { DEFAULT_LOADOUT } from "./weapons/loadout";
 import type { WeaponsState } from "./weapons/types";
+import type { SpacingTick } from "./spacingBrake";
 // Registers every archetype and weapon (side effects) before any run can start.
 import "./actors/archetypes";
 import "./weapons/defs";
@@ -672,17 +673,21 @@ function stepPartyWeapons(state: SimState, inputs: ReadonlyArray<Readonly<InputF
 
 /**
  * One tick of combat (see the order at the top of this file). Called by step() after stepPlayer(). `inputs` (co-op:
- * one frame per player, index order; stepParty passes it) defaults to [input]; `input` must be inputs[0].
+ * one frame per player, index order; stepParty passes it) defaults to [input]; `input` must be inputs[0]. `spacing`:
+ * the tick's sword spacing brake (docs/SWORD_SPACING.md SP3, step.ts tickSpacing), undefined without SimConfig.spacing.
  */
 export function stepCombat(
 	state: SimState,
 	input: Readonly<InputFrame>,
 	config: Readonly<SimConfig>,
 	inputs?: ReadonlyArray<Readonly<InputFrame>>,
+	spacing?: SpacingTick,
 ): void {
 	const c = state.combat;
 	const party = state.party !== undefined && inputs !== undefined;
 	ctx.bind(state, config, input);
+	// docs/SWORD_SPACING.md SP3: the tick-start brake step.ts built (the finisher's lunge); undefined: none.
+	ctx.spacing = spacing;
 	// Per-tick module scratch back to empty (a no-op after a normal tick; see resetBuildScratch / resetBurstLimit).
 	resetBurstLimit();
 	resetBuildScratch(state);

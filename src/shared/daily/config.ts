@@ -76,7 +76,9 @@ export const DAILY: DailyConfig = table.freeze({
 	// body on a blocked cell moves it to the nearest open cell of the arena); co-op boss fights can replay differently.
 	// 24: the Goldling's escape window 10 s -> 15 s (docs/FORTUNE.md FD17); daily play, hashes and scores change.
 	// 25: Bastion's brace adds up 10 bullets over a room's guards and rolls, not 8 in one (docs/LEGENDARIES.md LGD15).
-	ruleset: 25,
+	// 26: sword spacing (docs/SWORD_SPACING.md SP2 / SP3): the Knight's walk while attacking and the finisher's lunge
+	// stop at a contact enemy's keep distance; daily play, hashes and scores change.
+	ruleset: 26,
 	labelOffset: 1,
 	yesterdayCacheSeconds: 600,
 	minEntrantsForPercentile: 20,

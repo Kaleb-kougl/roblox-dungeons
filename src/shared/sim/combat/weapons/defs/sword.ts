@@ -21,8 +21,11 @@
  *   buildsOnRiposteGuard (the count, Rebuke's mark, Thunder Guard's sparks from the erased positions, Stillwater), and
  *   the tick the counter reaches 0 (the guard ran its full length; a roll or a swap zeroes it without this, BVD3)
  *   buildsOnGuardEnd (the counter-wave).
+ *   Sword spacing (docs/SWORD_SPACING.md SP2 / SP3, with SimConfig.spacing): the `spacing` hook brakes the walk while
+ *   attacking (stepPlayer), and the wind-up's lunge goes through the same brake (ctx.spacing).
  */
 
+import { Button } from "../../../input";
 import { secondsToTicks } from "../../../playerData";
 import { movePlayer } from "../../../player";
 import { sweepArc, type ArcActorHit, type ArcEraseSink } from "../melee";
@@ -44,6 +47,7 @@ import {
 import { buildsOnGuardCancels } from "../../../builds/hooks";
 import { buildsOnGuardEnd, buildsOnRiposteGuard } from "../../../builds/riposte";
 import type { SimState } from "../../../state";
+import { BRAKE_RESULT, brakeStep } from "../../spacingBrake";
 
 export interface SwordData extends WeaponData {
 	/** Swings 1 and 2: reach (world units from the player's center) and half-angle cosine (0.5 = 120-degree arc). */
@@ -326,7 +330,17 @@ export const SWORD = registerWeapon<SwordData>({
 		if (v[SWORD_V_STEP] === SWORD_STEP_WINDUP) {
 			// Read per tick (not at module load) so setSwordTimings applies; the same division gives the same bits.
 			const lungeStep = SWORD_DATA.lungeDistance / SWORD_DATA.finisherWindupTicks;
-			movePlayer(ctx.state, p.faceX * lungeStep, p.faceZ * lungeStep, ctx.config, p);
+			let lx = p.faceX * lungeStep;
+			let lz = p.faceZ * lungeStep;
+			// docs/SWORD_SPACING.md Design 4 (SP3): the lunge stops at the nearest contact enemy's keep distance, against
+			// the tick-start list step.ts built (ctx.spacing; undefined without SimConfig.spacing: the full lunge).
+			const spacing = ctx.spacing;
+			if (spacing !== undefined && spacing.config.lunge) {
+				brakeStep(spacing.list, p.x, p.z, lx, lz, spacing.config.stopConeCos);
+				lx = BRAKE_RESULT.x;
+				lz = BRAKE_RESULT.z;
+			}
+			movePlayer(ctx.state, lx, lz, ctx.config, p);
 			v[SWORD_V_BUSY] -= 1;
 			if (v[SWORD_V_BUSY] <= 0) swing(ctx, v, SWORD_FINISHER);
 			return;
@@ -355,6 +369,17 @@ export const SWORD = registerWeapon<SwordData>({
 		if (slot.v[SWORD_V_GUARD] > 0) return SWORD_DATA.guardMoveMultiplier;
 		if (slot.v[SWORD_V_STEP] === SWORD_STEP_WINDUP) return SWORD_DATA.windupMoveMultiplier;
 		return 1;
+	},
+	// docs/SWORD_SPACING.md Design 3 (SP2, SPD1): braked while attacking: FIRE held, a swing's recovery, the combo window
+	// or the finisher's wind-up. Not the guard alone (it resets the combo), never a roll (stepPlayer's roll path).
+	spacing(slot, buttons) {
+		const v = slot.v;
+		return (
+			bit32.band(buttons, Button.FIRE) !== 0 ||
+			v[SWORD_V_BUSY] > 0 ||
+			v[SWORD_V_WINDOW] > 0 ||
+			v[SWORD_V_STEP] === SWORD_STEP_WINDUP
+		);
 	},
 });
 
