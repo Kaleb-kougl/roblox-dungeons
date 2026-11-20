@@ -478,31 +478,10 @@ describe("boss.demonlord registry and data", () => {
 		for (let i = 0; i < web.size(); i++) expect([web[i], archetypeIndex(web[i])]).toEqual([web[i], i]);
 		expect(archetypeIndex(DUMMY_KIND)).toBe(7);
 		expect(archetypeIndex(BOSS_DEMONLORD_ID)).toBe(8);
-		expect([...archetypeIds()]).toEqual([
-			...web,
-			DUMMY_KIND,
-			BOSS_DEMONLORD_ID,
-			"imp",
-			"slime",
-			"slime.small",
-			"summoner",
-			"bomber", // band PORT_BAND_ENEMIES_2 (docs/NEW_ENEMIES.md): indices 13-17
-			"charger",
-			"reaper",
-			"stormcaller",
-			"warbanner",
-			"golden", // band PORT_BAND_FORTUNE (docs/FORTUNE.md): index 18
-			// band PORT_BAND_ENEMIES_3 (docs/NEW_ENEMIES_2.md): indices 19-23
-			"bulwark",
-			"chainhook",
-			"pyre",
-			"pyrekeeper",
-			"snatcher",
-			// band PORT_BAND_ENEMIES_4 (docs/NEW_ENEMIES_3.md): indices 24-26
-			"jackal",
-			"mender",
-			"mortar",
-		]); // band-3 room enemies (docs/ENEMY_VARIANTS.md), then band 4
+		// Later bands number after him: sim/actors.spec.ts holds the whole table (docs/CODEBASE_SCALE.md DX4).
+		const head: string[] = [];
+		for (let i = 0; i < web.size() + 2; i++) head.push(archetypeIds()[i]);
+		expect(head).toEqual([...web, DUMMY_KIND, BOSS_DEMONLORD_ID]);
 		expect(archetypeAt(8)).toBe(BOSS_DEMONLORD);
 	});
 

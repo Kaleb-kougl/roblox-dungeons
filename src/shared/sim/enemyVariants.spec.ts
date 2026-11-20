@@ -53,10 +53,11 @@ function setup(): { s: SimState; ctx: SimCtx; actors: ActorState[] } {
 describe("registry: PORT_BAND_ENEMIES", () => {
 	it("is band 3, after the bosses; the recorded indices 0..8 are unchanged", () => {
 		expect([PORT_BAND_TUTORIAL, PORT_BAND_BOSSES, PORT_BAND_ENEMIES]).toEqual([1, 2, 3]);
-		// The first nine (the band-3 enemies of EV2-EV4 number after them).
+		// The first nine, then band 3's four. Later bands number after them: sim/actors.spec.ts holds the whole table
+		// (docs/CODEBASE_SCALE.md DX4).
 		const ids = archetypeIds();
 		const head: string[] = [];
-		for (let i = 0; i < ids.size(); i++) head.push(ids[i]);
+		for (let i = 0; i < 13; i++) head.push(ids[i]);
 		expect(head).toEqual([
 			"boss.act1",
 			"bruiser",
@@ -71,22 +72,6 @@ describe("registry: PORT_BAND_ENEMIES", () => {
 			"slime",
 			"slime.small",
 			"summoner",
-			"bomber", // band PORT_BAND_ENEMIES_2 (docs/NEW_ENEMIES.md): indices 13-17
-			"charger",
-			"reaper",
-			"stormcaller",
-			"warbanner",
-			"golden", // band PORT_BAND_FORTUNE (docs/FORTUNE.md): index 18
-			// band PORT_BAND_ENEMIES_3 (docs/NEW_ENEMIES_2.md): indices 19-23
-			"bulwark",
-			"chainhook",
-			"pyre",
-			"pyrekeeper",
-			"snatcher",
-			// band PORT_BAND_ENEMIES_4 (docs/NEW_ENEMIES_3.md): indices 24-26
-			"jackal",
-			"mender",
-			"mortar",
 		]);
 	});
 });

@@ -23,6 +23,7 @@ import { ThemeCore } from "./core";
 import { ThemePack } from "./pack";
 import { THEME_PACKS } from "./packs";
 import { PLACEHOLDER_MANIFEST } from "./packs/placeholder";
+import { runOf } from "./testing";
 import { deepClone, sortedKeys, type Obj } from "./util";
 import { isGameplayKey, validateManifest } from "./validate";
 
@@ -61,7 +62,9 @@ const sink = () => {
 
 describe("audio contract: port IDs and ambience", () => {
 	it("lists the port's audio IDs apart from the web build's AUDIO_EVENTS, every one required", () => {
-		expect(PORT_AUDIO_EVENTS).toEqual([
+		// The IDs up to docs/NEW_ENEMIES_3.md, in the order they were added: still there, together and in that order.
+		// A later feature appends after them and pins its own in its own spec (docs/CODEBASE_SCALE.md DX4).
+		const pinned = [
 			"sfx.player.swing",
 			"sfx.player.flask",
 			"sfx.player.swap",
@@ -202,7 +205,9 @@ describe("audio contract: port IDs and ambience", () => {
 			"sfx.enemy.healcut",
 			"sfx.enemy.lunge",
 			"sfx.enemy.spooked",
-		]);
+		];
+		expect(runOf(PORT_AUDIO_EVENTS, pinned)).toEqual(pinned);
+		expect(new Set<string>(PORT_AUDIO_EVENTS).size()).toBe(PORT_AUDIO_EVENTS.size());
 		const web = new Set<string>([...AUDIO_EVENTS, ...BREAKABLE_AUDIO_EVENTS]);
 		for (const id of PORT_AUDIO_EVENTS) {
 			expect([id, web.has(id), REQUIRED_ASSET_IDS.includes(id)]).toEqual([id, false, true]);

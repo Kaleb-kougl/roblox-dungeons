@@ -28,6 +28,7 @@ import {
 import { THEME_PACKS } from "./packs";
 import { PLACEHOLDER_MANIFEST } from "./packs/placeholder";
 import { valeDyeMeanValue, valeDyeSourceMean } from "./packs/vale";
+import { runOf } from "./testing";
 import type { HexColor } from "./types";
 import { deepClone, sortedKeys, type Obj } from "./util";
 
@@ -51,12 +52,6 @@ function dyeSources(): Record<CharacterId, HexColor> {
 			error(`${COSMETIC_DYE_SETS[c]} has no dyeSourceMean in the vale layout (art:build)`, 0);
 		out[c] = source;
 	}
-	return out;
-}
-
-function tail(list: ReadonlyArray<string>, n: number): string[] {
-	const out = new Array<string>();
-	for (let i = list.size() - n; i < list.size(); i++) out.push(list[i]);
 	return out;
 }
 
@@ -145,7 +140,7 @@ describe("cosmetics: strings", () => {
 	it("are REQUIRED_STRING_KEYS' last ones, distinct, in every bundled pack", () => {
 		expect([...cosmeticStringKeys()]).toEqual([...COSMETIC_STRING_KEYS]);
 		expect(COSMETIC_STRING_KEYS.size()).toBe(12 + COSMETIC_SLOTS.size() + COSMETIC_ITEMS.size());
-		expect(tail(REQUIRED_STRING_KEYS, COSMETIC_STRING_KEYS.size())).toEqual([...COSMETIC_STRING_KEYS]);
+		expect(runOf(REQUIRED_STRING_KEYS, COSMETIC_STRING_KEYS)).toEqual([...COSMETIC_STRING_KEYS]);
 		expect(new Set(REQUIRED_STRING_KEYS).size()).toBe(REQUIRED_STRING_KEYS.size());
 		for (const p of sortedKeys(THEME_PACKS))
 			for (const key of COSMETIC_STRING_KEYS)

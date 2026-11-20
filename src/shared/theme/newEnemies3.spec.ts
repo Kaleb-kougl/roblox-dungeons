@@ -4,6 +4,7 @@
 // required and filled by every bundled pack. No new bullet visual (NTD12).
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { SIGHTING_IDS } from "shared/onboarding";
+import { runOf } from "./testing";
 import { BESTIARY_ARCHETYPES, BESTIARY_STRING_KEYS, ENEMY_AURA_ROLE, bestiaryArchetypeKey } from "./variants";
 import {
 	BIOMES,
@@ -41,13 +42,6 @@ const fixed2 = (n: number) => "%.2f".format(n);
 /** The placeholder heal's lowest floor contrast, nearest colour and its CIE76 difference, as measured. */
 const MEASURED = { floor: "3.66", diff: "40.3", nearest: "enemyGuard" } as const;
 
-/** The last `n` entries of `list`. */
-function tail(list: ReadonlyArray<string>, n: number): string[] {
-	const out = new Array<string>();
-	for (let i = list.size() - n; i < list.size(); i++) out.push(list[i]);
-	return out;
-}
-
 function packsToCheck(): Array<[string, Obj]> {
 	const out = new Array<[string, Obj]>();
 	for (const id of sortedKeys(THEME_PACKS)) out.push([id, THEME_PACKS[id] as unknown as Obj]);
@@ -61,7 +55,7 @@ function packsToCheck(): Array<[string, Obj]> {
 describe("new enemies 3: contract", () => {
 	it("appends the three to ENEMY_ARCHETYPES after the brazier (existing order kept), each a required asset, role and name", () => {
 		expect([...NEW_ENEMY_3_ARCHETYPES]).toEqual(["mortar", "mender", "jackal"]);
-		expect(tail(ENEMY_ARCHETYPES, NEW_ENEMY_3_ARCHETYPES.size())).toEqual([...NEW_ENEMY_3_ARCHETYPES]);
+		expect(runOf(ENEMY_ARCHETYPES, NEW_ENEMY_3_ARCHETYPES)).toEqual([...NEW_ENEMY_3_ARCHETYPES]);
 		expect(ENEMY_ARCHETYPES[ENEMY_ARCHETYPES.size() - 1 - NEW_ENEMY_3_ARCHETYPES.size()]).toBe("pyre");
 		for (const a of NEW_ENEMY_3_ARCHETYPES) {
 			expect([a, REQUIRED_ASSET_IDS.includes(`enemy.${a}`), slotFor(`enemy.${a}`)?.slot]).toEqual([
@@ -81,7 +75,7 @@ describe("new enemies 3: contract", () => {
 		expect((COLOR_ROLES as ReadonlyArray<string>).includes(ENEMY_HEAL_ROLE)).toBe(true);
 	});
 
-	it("the six sounds are PORT_AUDIO_EVENTS' last (after the Pyre-keeper's light), required, sfx", () => {
+	it("the six sounds are in PORT_AUDIO_EVENTS, together and in order, required, sfx", () => {
 		expect([...NEW_ENEMY_3_AUDIO_IDS]).toEqual([
 			"sfx.enemy.lob",
 			"sfx.enemy.shell",
@@ -90,16 +84,13 @@ describe("new enemies 3: contract", () => {
 			"sfx.enemy.lunge",
 			"sfx.enemy.spooked",
 		]);
-		expect(tail(PORT_AUDIO_EVENTS, NEW_ENEMY_3_AUDIO_IDS.size())).toEqual([...NEW_ENEMY_3_AUDIO_IDS]);
-		expect(PORT_AUDIO_EVENTS[PORT_AUDIO_EVENTS.size() - 1 - NEW_ENEMY_3_AUDIO_IDS.size()]).toBe(
-			"sfx.enemy.pyrelight",
-		);
+		expect(runOf(PORT_AUDIO_EVENTS, NEW_ENEMY_3_AUDIO_IDS)).toEqual([...NEW_ENEMY_3_AUDIO_IDS]);
 		for (const id of NEW_ENEMY_3_AUDIO_IDS)
 			expect([id, REQUIRED_ASSET_IDS.includes(id), slotFor(id)?.soundGroup]).toEqual([id, true, "sfx"]);
 	});
 
 	it("three first-sighting lines and sighting ids, the archetypes' block's last, right before the affixes", () => {
-		expect(tail(BESTIARY_ARCHETYPES, NEW_ENEMY_3_ARCHETYPES.size())).toEqual([...NEW_ENEMY_3_ARCHETYPES]);
+		expect(runOf(BESTIARY_ARCHETYPES, NEW_ENEMY_3_ARCHETYPES)).toEqual([...NEW_ENEMY_3_ARCHETYPES]);
 		const firstAffix = BESTIARY_STRING_KEYS.indexOf("bestiary.affix.hulking");
 		const firstAffixSighting = SIGHTING_IDS.indexOf("affix.hulking");
 		for (let k = 0; k < NEW_ENEMY_3_ARCHETYPES.size(); k++) {

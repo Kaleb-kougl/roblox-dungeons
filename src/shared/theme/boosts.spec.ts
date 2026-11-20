@@ -38,6 +38,7 @@ import { THEME_PACKS } from "./packs";
 import { PLACEHOLDER_MANIFEST } from "./packs/placeholder";
 import { VALE_ASSET_IDS } from "./packs/vale/assetIds";
 import { PLACEHOLDER_VISUALS, pxToStuds } from "./placeholders";
+import { runOf } from "./testing";
 import { COLOR_ROLES } from "./types";
 import { deepClone, sortedKeys, startsWith, type Obj } from "./util";
 import { boostColorReport, validateManifest } from "./validate";
@@ -121,16 +122,10 @@ describe("boosts: contract", () => {
 		}
 	});
 
-	it("appends sfx.breakable.loot last (docs/BREAKABLE_DROPS.md BL5): required, sfx, SILENT in the placeholder, a sound in vale", () => {
-		// Last before docs/NEW_ENEMIES.md NE1's six enemy sounds (then docs/PELLETS.md PL6's three, docs/RUN_RECAP.md
-		// CM4's two, docs/TREASURE.md TR6's four, docs/FORTUNE.md FO6's eight, docs/FLOOR_MODIFIERS.md FM7's five,
-		// docs/GOLDLING_RUMOURS.md GR6's two, claude/codex-plan.md CX5's one, docs/SECRET_ROOMS.md SR10's three, then
-		// docs/SILVER.md SV7's four, then docs/NEW_ENEMIES_2.md NX1's eight, then docs/NEW_ENEMIES_3.md NT1's six).
-		const n = PORT_AUDIO_EVENTS.size() - 6 - 3 - 2 - 4 - 8 - 5 - 2 - 1 - 3 - 4 - 8 - 6;
-		expect([PORT_AUDIO_EVENTS[n - 2], PORT_AUDIO_EVENTS[n - 1]]).toEqual([
-			"sfx.friend.passed",
-			"sfx.breakable.loot",
-		]);
+	it("appends sfx.breakable.loot after the Daily's sounds (docs/BREAKABLE_DROPS.md BL5): required, sfx, SILENT in the placeholder, a sound in vale", () => {
+		// Right after the Daily's `sfx.friend.passed`; later features' sounds follow.
+		const pair = ["sfx.friend.passed", "sfx.breakable.loot"];
+		expect(runOf(PORT_AUDIO_EVENTS, pair)).toEqual(pair);
 		const id = "sfx.breakable.loot";
 		const assets = PLACEHOLDER_MANIFEST.assets as unknown as Record<string, { kind: string }>;
 		expect([slotFor(id)?.soundGroup, REQUIRED_ASSET_IDS.includes(id), assets[id].kind]).toEqual([

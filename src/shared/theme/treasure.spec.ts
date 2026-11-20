@@ -6,14 +6,7 @@
 // IDs inline (its compiled Luau sits near the 200-locals limit), so these specs keep treasure.ts and contract.ts in
 // step.
 import { describe, expect, it } from "@rbxts/jest-globals";
-import { SILVER_AUDIO_IDS, SILVER_ROLES, SILVER_STRING_KEYS } from "./silver";
-import { SILVER_SHOP_STRING_KEYS } from "./silverShop";
-import { COSMETIC_STRING_KEYS } from "./cosmetics";
 import { VaultLock, VaultTier } from "shared/dungeon";
-import { CODEX_AUDIO_IDS, CODEX_STRING_KEYS } from "./codex";
-import { SECRET_AUDIO_IDS, SECRET_ROLES, SECRET_STRING_KEYS } from "./secrets";
-import { NEW_ENEMY_2_AUDIO_IDS } from "./newEnemies2";
-import { NEW_ENEMY_3_AUDIO_IDS } from "./newEnemies3";
 import { colorDifference, contrastRatio } from "./color";
 import {
 	BIOMES,
@@ -56,15 +49,8 @@ import {
 	treasureTierNameKey,
 	treasureUiRole,
 } from "./treasure";
+import { runOf } from "./testing";
 import { TREASURE_COLOR_RULES, treasureReport } from "./treasureColors";
-import {
-	FORTUNE_AUDIO_IDS,
-	FORTUNE_ROLES,
-	FORTUNE_STRING_KEYS,
-	GOLDEN_RUMOUR_AUDIO_IDS,
-	GOLDEN_RUMOUR_STRING_KEYS,
-} from "./fortune";
-import { FLOOR_MODIFIER_AUDIO_IDS, FLOOR_MODIFIER_ROLES, FLOOR_MODIFIER_STRING_KEYS } from "./floorModifiers";
 import { COLOR_ROLES } from "./types";
 import { deepClone, sortedKeys, type Obj } from "./util";
 import { validateManifest } from "./validate";
@@ -82,43 +68,6 @@ function packsToCheck(): Array<[string, Obj]> {
 	out.push(["vale (textured floors)", textured]);
 	return out;
 }
-
-/** The last `n` entries of `list` before its last `skip` (docs/FORTUNE.md FO6's entries come after), in order. */
-function tail(list: ReadonlyArray<string>, n: number, skip = 0): string[] {
-	const out = new Array<string>();
-	const last = list.size() - skip;
-	for (let i = last - n; i < last; i++) out.push(list[i]);
-	return out;
-}
-
-/**
- * Entries docs/FORTUNE.md FO6 appended after the treasure rooms' (fortune.spec.ts checks them), then docs/FLOOR_MODIFIERS.md
- * FM7's (floorModifiers.spec.ts), then docs/GOLDLING_RUMOURS.md GR6's two sounds and GR7's two strings, then
- * claude/codex-plan.md CX5's sound and strings (codex.spec.ts), then docs/SECRET_ROOMS.md SR10's sounds, strings and
- * colour role (secrets.spec.ts).
- */
-const FORTUNE_AFTER = {
-	assets: 1,
-	roles: FORTUNE_ROLES.size() + FLOOR_MODIFIER_ROLES.size() + SECRET_ROLES.size() + SILVER_ROLES.size(),
-	audio:
-		FORTUNE_AUDIO_IDS.size() +
-		FLOOR_MODIFIER_AUDIO_IDS.size() +
-		GOLDEN_RUMOUR_AUDIO_IDS.size() +
-		CODEX_AUDIO_IDS.size() +
-		SECRET_AUDIO_IDS.size() +
-		SILVER_AUDIO_IDS.size() +
-		NEW_ENEMY_2_AUDIO_IDS.size() +
-		NEW_ENEMY_3_AUDIO_IDS.size(),
-	strings:
-		FORTUNE_STRING_KEYS.size() +
-		FLOOR_MODIFIER_STRING_KEYS.size() +
-		GOLDEN_RUMOUR_STRING_KEYS.size() +
-		CODEX_STRING_KEYS.size() +
-		SECRET_STRING_KEYS.size() +
-		SILVER_STRING_KEYS.size() +
-		SILVER_SHOP_STRING_KEYS.size() +
-		COSMETIC_STRING_KEYS.size(),
-} as const;
 
 function printEntry(tag: string, id: string, e: ReturnType<typeof treasureReport>[number]): void {
 	const value = e.check === "difference" ? fixed1(e.value) : `${fixed2(e.value)}:1`;
@@ -157,7 +106,7 @@ describe("treasure: contract", () => {
 		expect(requiredBaseAnimations(TREASURE)).toEqual(["idle"]);
 		expect([...TREASURE_IDS]).toEqual(["treasure.chest", "treasure.chestopen", "treasure.cage"]);
 		expect([TREASURE_CHEST_ID, TREASURE_CHEST_OPEN_ID, TREASURE_CAGE_ID]).toEqual([...TREASURE_IDS]);
-		expect(tail(REQUIRED_ASSET_IDS, TREASURE_IDS.size(), FORTUNE_AFTER.assets)).toEqual([...TREASURE_IDS]);
+		expect(runOf(REQUIRED_ASSET_IDS, TREASURE_IDS)).toEqual([...TREASURE_IDS]);
 		for (const id of TREASURE_IDS) expect([id, slotFor(id)]).toEqual([id, TREASURE]);
 		// the sounds stay in the sfx slot, the column in fx (optional: not required)
 		for (const id of TREASURE_AUDIO_IDS) expect([id, slotFor(id)?.slot]).toEqual([id, "sfx"]);
@@ -166,7 +115,7 @@ describe("treasure: contract", () => {
 
 	it("the light column is FX_IDS' last entry before the secret rooms' dust, optional: vale draws it (TR9) once its own sheet has an ID", () => {
 		// docs/SECRET_ROOMS.md SR10's fx.secret.dust comes after it (secrets.spec.ts), then docs/SILVER.md SV7's coin
-		expect(tail(FX_IDS, 1, 2)).toEqual([TREASURE_COLUMN_FX_ID]);
+		expect(runOf(FX_IDS, [TREASURE_COLUMN_FX_ID])).toEqual([TREASURE_COLUMN_FX_ID]);
 		expect(isFxId(TREASURE_COLUMN_FX_ID)).toBe(true);
 		expect(has(REQUIRED_ASSET_IDS, TREASURE_COLUMN_FX_ID)).toBe(false);
 		expect(VALE_FX_PENDING.includes(TREASURE_COLUMN_FX_ID)).toBe(false);
@@ -185,7 +134,7 @@ describe("treasure: contract", () => {
 			"treasure.rare",
 			"treasure.legendary",
 		]);
-		expect(tail(COLOR_ROLES as unknown as ReadonlyArray<string>, roles.size(), FORTUNE_AFTER.roles)).toEqual(roles);
+		expect(runOf(COLOR_ROLES as unknown as ReadonlyArray<string>, roles)).toEqual(roles);
 		expect([...TREASURE_UI_ROLES]).toEqual([...BOON_RARITY_ROLES]);
 	});
 
@@ -196,9 +145,7 @@ describe("treasure: contract", () => {
 			"sfx.treasure.open",
 			"sfx.jingle.treasure",
 		]);
-		expect(tail(PORT_AUDIO_EVENTS, TREASURE_AUDIO_IDS.size(), FORTUNE_AFTER.audio)).toEqual([
-			...TREASURE_AUDIO_IDS,
-		]);
+		expect(runOf(PORT_AUDIO_EVENTS, TREASURE_AUDIO_IDS)).toEqual([...TREASURE_AUDIO_IDS]);
 		for (const id of TREASURE_AUDIO_IDS) {
 			expect([id, has(REQUIRED_ASSET_IDS, id), slotFor(id)?.soundGroup]).toEqual([id, true, "sfx"]);
 			// the vale pack plays them: picked on the audition checklist and uploaded 2026-11-11 (docs/FX_AUDIO.md
@@ -210,8 +157,7 @@ describe("treasure: contract", () => {
 	});
 
 	it("the strings: REQUIRED_STRING_KEYS' last sixteen before Fortune's, filled by every pack with the placeholders the view fills", () => {
-		const skip = FORTUNE_AFTER.strings;
-		expect(tail(REQUIRED_STRING_KEYS, TREASURE_STRING_KEYS.size(), skip)).toEqual([...TREASURE_STRING_KEYS]);
+		expect(runOf(REQUIRED_STRING_KEYS, TREASURE_STRING_KEYS)).toEqual([...TREASURE_STRING_KEYS]);
 		expect(TREASURE_STRING_KEYS.size()).toBe(16);
 		expect(new Set(TREASURE_STRING_KEYS).size()).toBe(TREASURE_STRING_KEYS.size());
 		// like score.source.pellets, the source row is checked by the view (SCORE_SOURCE_KEYS), not required here

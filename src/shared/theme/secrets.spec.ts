@@ -4,9 +4,6 @@
 // secretReport / secretArtProblems hold the dust colour and the art to their bars. contract.ts names the keys inline
 // (its compiled Luau sits near the 200-locals limit), so these specs are what keeps secrets.ts and contract.ts in step.
 import { describe, expect, it } from "@rbxts/jest-globals";
-import { SILVER_AUDIO_IDS, SILVER_ROLES, SILVER_STRING_KEYS } from "./silver";
-import { SILVER_SHOP_STRING_KEYS } from "./silverShop";
-import { COSMETIC_STRING_KEYS } from "./cosmetics";
 import { SFX, SFX_FALLBACK, SFX_PRIORITY, ALL_SFX, PORT_SFX, JINGLE_SFX, DUCKING_SFX } from "shared/view/audio";
 import { CHARACTER_OVERRIDE_KEYS, THEME_CHARACTER_IDS, characterOverrideKey } from "./characters";
 import { colorDifference } from "./color";
@@ -52,8 +49,7 @@ import {
 	SECRET_TOAST_KEY,
 	isSecretArtId,
 } from "./secrets";
-import { NEW_ENEMY_2_AUDIO_IDS } from "./newEnemies2";
-import { NEW_ENEMY_3_AUDIO_IDS } from "./newEnemies3";
+import { runOf } from "./testing";
 import { COLOR_ROLES } from "./types";
 import { deepClone, sortedKeys, type Obj } from "./util";
 import { validateManifest } from "./validate";
@@ -63,14 +59,6 @@ const has = (list: ReadonlyArray<string>, id: string) => list.includes(id);
 const fixed1 = (n: number) => "%.1f".format(n);
 const quiet = () => {};
 const clone = () => deepClone(PLACEHOLDER_MANIFEST) as unknown as Obj;
-
-/** The last `n` entries of `list` before its last `skip` (later features' entries), in order. */
-function tail(list: ReadonlyArray<string>, n: number, skip = 0): string[] {
-	const out = new Array<string>();
-	const last = list.size() - skip;
-	for (let i = last - n; i < last; i++) out.push(list[i]);
-	return out;
-}
 
 /** A one-facing world sprite set (an `idle` of `frames` cells) for the validator. */
 function spriteSet(frames: number, facings = 1): Obj {
@@ -103,13 +91,7 @@ describe("secret rooms: strings", () => {
 			SECRET_RECAP_KEY,
 			SECRET_CODEX_NAME_KEY,
 		]).toEqual([...SECRET_STRING_KEYS]);
-		expect(
-			tail(
-				REQUIRED_STRING_KEYS,
-				SECRET_STRING_KEYS.size(),
-				SILVER_STRING_KEYS.size() + SILVER_SHOP_STRING_KEYS.size() + COSMETIC_STRING_KEYS.size(),
-			),
-		).toEqual([...SECRET_STRING_KEYS]);
+		expect(runOf(REQUIRED_STRING_KEYS, SECRET_STRING_KEYS)).toEqual([...SECRET_STRING_KEYS]);
 		expect(new Set(REQUIRED_STRING_KEYS).size()).toBe(REQUIRED_STRING_KEYS.size());
 		for (const p of sortedKeys(THEME_PACKS))
 			for (const key of SECRET_STRING_KEYS)
@@ -179,13 +161,7 @@ describe("secret rooms: sounds", () => {
 		expect([SECRET_KNOCK_SOUND, SECRET_OPEN_SOUND, SECRET_JINGLE_SOUND]).toEqual([...SECRET_AUDIO_IDS]);
 		// docs/SILVER.md SV7's four, then docs/NEW_ENEMIES_2.md NX1's eight come after them (silver.spec.ts,
 		// newEnemies2.spec.ts)
-		expect(
-			tail(
-				PORT_AUDIO_EVENTS,
-				SECRET_AUDIO_IDS.size(),
-				SILVER_AUDIO_IDS.size() + NEW_ENEMY_2_AUDIO_IDS.size() + NEW_ENEMY_3_AUDIO_IDS.size(),
-			),
-		).toEqual([...SECRET_AUDIO_IDS]);
+		expect(runOf(PORT_AUDIO_EVENTS, SECRET_AUDIO_IDS)).toEqual([...SECRET_AUDIO_IDS]);
 		for (const id of SECRET_AUDIO_IDS) {
 			expect([id, has(REQUIRED_ASSET_IDS, id), slotFor(id)?.soundGroup]).toEqual([id, true, "sfx"]);
 			for (const p of sortedKeys(THEME_PACKS))
@@ -233,9 +209,7 @@ describe("secret rooms: the dust's colour role", () => {
 	it("is COLOR_ROLES' last, in every bundled pack, a pale dusty stone in the placeholder", () => {
 		expect([...SECRET_ROLES]).toEqual([SECRET_DUST_ROLE]);
 		expect(SECRET_DUST_ROLE).toBe("secret.dust");
-		expect(tail(COLOR_ROLES as unknown as ReadonlyArray<string>, SECRET_ROLES.size(), SILVER_ROLES.size())).toEqual(
-			[...SECRET_ROLES],
-		);
+		expect(runOf(COLOR_ROLES as unknown as ReadonlyArray<string>, SECRET_ROLES)).toEqual([...SECRET_ROLES]);
 		expect(PLACEHOLDER_MANIFEST.colors[SECRET_DUST_ROLE]).toBe("#c8bfae");
 		for (const p of sortedKeys(THEME_PACKS))
 			expect([p, typeIs(THEME_PACKS[p].colors[SECRET_DUST_ROLE], "string")]).toEqual([p, true]);

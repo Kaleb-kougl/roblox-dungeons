@@ -4,32 +4,16 @@
 // silent everywhere until clips exist. contract.ts names the keys inline (its compiled Luau sits near the 200-locals
 // limit), so these specs are what keeps runRecap.ts and contract.ts in step.
 import { describe, expect, it } from "@rbxts/jest-globals";
-import { SILVER_AUDIO_IDS, SILVER_ROLES, SILVER_STRING_KEYS } from "./silver";
-import { SILVER_SHOP_STRING_KEYS } from "./silverShop";
-import { COSMETIC_STRING_KEYS } from "./cosmetics";
-import { CODEX_AUDIO_IDS, CODEX_STRING_KEYS } from "./codex";
-import { SECRET_AUDIO_IDS, SECRET_STRING_KEYS } from "./secrets";
-import { NEW_ENEMY_2_AUDIO_IDS } from "./newEnemies2";
-import { NEW_ENEMY_3_AUDIO_IDS } from "./newEnemies3";
 import { PORT_AUDIO_EVENTS, REQUIRED_ASSET_IDS, REQUIRED_STRING_KEYS, slotFor } from "./contract";
 import { THEME_PACKS } from "./packs";
 import { PLACEHOLDER_MANIFEST } from "./packs/placeholder";
 import { CONTRIB_STRING_KEYS, RECAP_STRING_KEYS, TEAM_MOMENT_AUDIO_IDS, TEAM_MOMENT_STRING_KEYS } from "./runRecap";
 import { placeholders, templateProblem } from "./strings";
-import { TREASURE_AUDIO_IDS, TREASURE_STRING_KEYS } from "./treasure";
-import { FORTUNE_AUDIO_IDS, FORTUNE_STRING_KEYS, GOLDEN_RUMOUR_AUDIO_IDS, GOLDEN_RUMOUR_STRING_KEYS } from "./fortune";
-import { FLOOR_MODIFIER_AUDIO_IDS, FLOOR_MODIFIER_STRING_KEYS } from "./floorModifiers";
+import { runOf } from "./testing";
 import { deepClone, sortedKeys, type Obj } from "./util";
 import { validateManifest } from "./validate";
 
 const has = (list: ReadonlyArray<string>, id: string) => list.includes(id);
-
-/** The last `n` entries of `list` before its last `skip` (later features' entries), in order. */
-function tail(list: ReadonlyArray<string>, n: number, skip = 0): string[] {
-	const out = new Array<string>();
-	for (let i = list.size() - skip - n; i < list.size() - skip; i++) out.push(list[i]);
-	return out;
-}
 
 /** Every key's English and its sorted placeholder names. */
 const ENGLISH: ReadonlyArray<[string, string, string[]]> = [
@@ -128,37 +112,13 @@ describe("run recap and co-op moments: contract", () => {
 		expect(RECAP_STRING_KEYS.size()).toBe(30);
 		expect(TEAM_MOMENT_STRING_KEYS.size()).toBe(4);
 		expect(CONTRIB_STRING_KEYS.size()).toBe(45);
-		// docs/TREASURE.md TR6's strings come after them, then docs/FORTUNE.md FO6's, docs/FLOOR_MODIFIERS.md FM7's and
-		// docs/GOLDLING_RUMOURS.md GR7's (then claude/codex-plan.md CX5's, docs/SECRET_ROOMS.md SR10's)
-		const after =
-			TREASURE_STRING_KEYS.size() +
-			FORTUNE_STRING_KEYS.size() +
-			FLOOR_MODIFIER_STRING_KEYS.size() +
-			GOLDEN_RUMOUR_STRING_KEYS.size() +
-			CODEX_STRING_KEYS.size() +
-			SECRET_STRING_KEYS.size() +
-			SILVER_STRING_KEYS.size() +
-			SILVER_SHOP_STRING_KEYS.size() +
-			COSMETIC_STRING_KEYS.size();
-		expect(tail(REQUIRED_STRING_KEYS, all.size(), after)).toEqual(all);
+		expect(runOf(REQUIRED_STRING_KEYS, all)).toEqual(all);
 		expect(new Set(REQUIRED_STRING_KEYS).size()).toBe(REQUIRED_STRING_KEYS.size());
 	});
 
 	it("appends the two sounds to PORT_AUDIO_EVENTS: required, sfx; SILENT in the placeholder, a clip in vale (CM7)", () => {
 		expect([...TEAM_MOMENT_AUDIO_IDS]).toEqual(["sfx.room.teamperfect", "sfx.player.syncparry"]);
-		// docs/TREASURE.md TR6's four sounds come after them, then docs/FORTUNE.md FO6's eight, docs/FLOOR_MODIFIERS.md FM7's five, then
-		// docs/GOLDLING_RUMOURS.md GR6's two (then claude/codex-plan.md CX5's one, docs/SECRET_ROOMS.md SR10's three)
-		const skip =
-			TREASURE_AUDIO_IDS.size() +
-			FORTUNE_AUDIO_IDS.size() +
-			FLOOR_MODIFIER_AUDIO_IDS.size() +
-			GOLDEN_RUMOUR_AUDIO_IDS.size() +
-			CODEX_AUDIO_IDS.size() +
-			SECRET_AUDIO_IDS.size() +
-			SILVER_AUDIO_IDS.size() +
-			NEW_ENEMY_2_AUDIO_IDS.size() +
-			NEW_ENEMY_3_AUDIO_IDS.size();
-		expect(tail(PORT_AUDIO_EVENTS, TEAM_MOMENT_AUDIO_IDS.size(), skip)).toEqual([...TEAM_MOMENT_AUDIO_IDS]);
+		expect(runOf(PORT_AUDIO_EVENTS, TEAM_MOMENT_AUDIO_IDS)).toEqual([...TEAM_MOMENT_AUDIO_IDS]);
 		for (const id of TEAM_MOMENT_AUDIO_IDS) {
 			expect([id, has(REQUIRED_ASSET_IDS, id), slotFor(id)?.soundGroup]).toEqual([id, true, "sfx"]);
 			for (const p of sortedKeys(THEME_PACKS)) {

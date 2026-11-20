@@ -61,7 +61,7 @@ const LAYOUT_FILE = path.join(ROOT, "src", "shared", "theme", "packs", "vale", "
 const CATEGORIES = ["sfx", "jingle", "music", "ambience"];
 /** ffmpeg flags that keep the output free of anything but the audio (determinism). */
 const BITEXACT = ["-map_metadata", "-1", "-fflags", "+bitexact", "-flags:a", "+bitexact", "-threads", "1"];
-/** Theme contract SOUND_PITCH_LIMITS (shared/theme contract.ts). */
+/** Theme contract SOUND_PITCH_LIMITS (shared/theme contract/fx.ts). */
 const PITCH_MIN = 0.5;
 const PITCH_MAX = 2;
 /** Fixed precision of the gains handed to ffmpeg (dB) and of the lengths in the layout (seconds). */

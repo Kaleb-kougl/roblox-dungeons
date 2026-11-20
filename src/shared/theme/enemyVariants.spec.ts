@@ -20,6 +20,7 @@ import { THEME_PACKS } from "./packs";
 import { PLACEHOLDER_MANIFEST } from "./packs/placeholder";
 import { VALE_FLOOR_HEX, buildValeManifest } from "./packs/vale";
 import { PLACEHOLDER_PROPORTIONS, PLACEHOLDER_SHAPES, PLACEHOLDER_VISUALS, pxToStuds } from "./placeholders";
+import { runOf } from "./testing";
 import { COLOR_ROLES, type ColorRole } from "./types";
 import { deepClone, sortedKeys, type Obj } from "./util";
 import { validateManifest } from "./validate";
@@ -138,7 +139,9 @@ function checkReport(id: string, name: string, report: ReadonlyArray<VariantColo
 
 describe("enemy variants: contract", () => {
 	it("appends imp and slime to ENEMY_ARCHETYPES (existing order kept), each a required asset, role and name", () => {
-		expect([...ENEMY_ARCHETYPES]).toEqual([
+		// Pinned up to docs/NEW_ENEMIES_3.md: still together and in this order; later sets follow and pin their own
+		// (docs/CODEBASE_SCALE.md DX4).
+		const pinned = [
 			"swarmer",
 			"sprayer",
 			"sniper",
@@ -166,7 +169,8 @@ describe("enemy variants: contract", () => {
 			"mortar",
 			"mender",
 			"jackal",
-		]);
+		];
+		expect(runOf(ENEMY_ARCHETYPES, pinned)).toEqual(pinned);
 		for (const a of NEW_ARCHETYPES) {
 			expect([a, has(REQUIRED_ASSET_IDS, `enemy.${a}`), slotFor(`enemy.${a}`)?.slot]).toEqual([a, true, "enemy"]);
 			expect([a, has(REQUIRED_STRING_KEYS, `enemy.${a}.name`)]).toEqual([a, true]);
@@ -201,7 +205,9 @@ describe("enemy variants: contract", () => {
 			"affix.shielded.name",
 			"affix.vengeful.name",
 		]);
-		expect([...BESTIARY_ARCHETYPES]).toEqual([
+		// Pinned up to docs/NEW_ENEMIES_3.md: still together and in this order; later sets follow and pin their own
+		// (docs/CODEBASE_SCALE.md DX4).
+		const pinned = [
 			"imp",
 			"slime",
 			"summoner",
@@ -222,7 +228,8 @@ describe("enemy variants: contract", () => {
 			"mortar",
 			"mender",
 			"jackal",
-		]);
+		];
+		expect(runOf(BESTIARY_ARCHETYPES, pinned)).toEqual(pinned);
 		expect([...BESTIARY_STRING_KEYS]).toEqual([
 			...BESTIARY_ARCHETYPES.map((a) => bestiaryArchetypeKey(a)),
 			...AFFIX_IDS.map((a) => bestiaryAffixKey(a)),
@@ -231,31 +238,6 @@ describe("enemy variants: contract", () => {
 			// docs/GOLDLING_RUMOURS.md GR7: the first Goldling rumour's card, appended after it
 			"bestiary.golden.rumour",
 			// docs/SECRET_ROOMS.md SR10: the first knock on a secret room's crack, appended after it
-			"bestiary.secret.crack",
-		]);
-		expect([...BESTIARY_STRING_KEYS]).toEqual([
-			"bestiary.imp",
-			"bestiary.slime",
-			"bestiary.summoner",
-			"bestiary.bomber",
-			"bestiary.charger",
-			"bestiary.stormcaller",
-			"bestiary.warbanner",
-			"bestiary.reaper",
-			"bestiary.golden",
-			"bestiary.bulwark",
-			"bestiary.chainhook",
-			"bestiary.snatcher",
-			"bestiary.pyrekeeper",
-			"bestiary.mortar",
-			"bestiary.mender",
-			"bestiary.jackal",
-			"bestiary.affix.hulking",
-			"bestiary.affix.swift",
-			"bestiary.affix.shielded",
-			"bestiary.affix.vengeful",
-			"bestiary.pellet.power",
-			"bestiary.golden.rumour",
 			"bestiary.secret.crack",
 		]);
 		expect([...ENEMY_VARIANT_STRING_KEYS]).toEqual([...AFFIX_STRING_KEYS, ...BESTIARY_STRING_KEYS]);
