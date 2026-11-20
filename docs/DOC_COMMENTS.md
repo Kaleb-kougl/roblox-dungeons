@@ -11,9 +11,9 @@ presentation change. `DAILY.ruleset` unchanged. One new devDependency (`typedoc`
 ## Status (2026-11-20)
 
 **Built 2026-11-20 on branch `doc-comments`: DC0-DC6** (TypeDoc, the ratchet, the digest, `@module` on the headers,
-a clean `docs:check`, the standard in CLAUDE.md), and **DC7 in part**: `shared/lockstep` and `shared/dungeon` have no
-gaps left. **Open: DC7's `shared/sim`** (373 exports, 537 fields), **DC8-DC9** (1,032 exports), **DC10** (links),
-**DC11** (the plan docs in the site). Known gaps now: 1,405 exports and 537 fields. Not yet done on the owner's Mac:
+a clean `docs:check`, the standard in CLAUDE.md) and **DC7**: the deterministic core (`shared/sim`, `shared/dungeon`,
+`shared/lockstep`) has no gap left, exports or fields. **Open: DC8-DC9** (1,032 exports), **DC10** (links), **DC11**
+(the plan docs in the site). Known gaps now: 1,032 exports and no fields. Not yet done on the owner's Mac:
 `npm install` (for `typedoc`), `npm run docs`, a full `npm run verify` (Verification).
 
 **Owner (2026-11-20): every call answered.** `docs:check` in `verify`; one page per file; interface fields gated in
@@ -257,7 +257,7 @@ and controller internals.
   **As built.** This file; CLAUDE.md (the document row, four command lines, one Conventions bullet); README's script
   table; the `docs/DECISIONS.md` entry; `docs:check` in `verify` after `check:docs`; `docs/OPEN_TASKS.md`
   regenerated (`facts:check`: up to date, nothing to regenerate). See Verification for what of `verify` ran.
-- [ ] **DC7. Backfill, the deterministic core** (in part)**:** `shared/sim` 373, `shared/dungeon` 70, `shared/lockstep` 34 (477
+- [x] **DC7. Backfill, the deterministic core:** `shared/sim` 373, `shared/dungeon` 70, `shared/lockstep` 34 (477
   exports), and their interface fields: 537, 263, 51 (851). Units, hash membership and replay rules stated where
   they apply; DCD8. Exports and fields in separate commits per area (six). → Verify: the three areas' export and
   field baselines at 0; DC3's digests identical per commit; `docs:check` clean.
@@ -267,8 +267,22 @@ and controller internals.
   census helpers under `testing/`). Both lists are empty, so both areas are held at zero from here. Written from each
   declaration, its file header and its readers (DCD8); units stated (grid tiles, world units, ticks, percent); the
   Forge theme's colours and lights are marked as the web demo's reference data. `out:digest`: identical but for the
-  two network modules' literal order (Design 4); `docs:check` clean; prettier clean. **Left: `shared/sim`** (373
-  exports, 537 fields).
+  two network modules' literal order (Design 4); `docs:check` clean; prettier clean.
+
+  **`shared/sim` (2026-11-20, owner: with subagents).** 373 exports and 537 fields, written by seven subagents in
+  parallel on disjoint files (the root files with `dev` / `testing` / `tutorial`; `builds`; `combat` with `weapons`;
+  `combat/actors` in two halves; `drops` / `golden` / `pacts` / `pellets` / `progression`; `affixes` / `breakables` /
+  `score` / `secrets` / `silver` / `treasure`), each given the standard, told to leave a gap rather than guess and to
+  report what it was unsure of. None left a gap. Reviewed here: every flagged comment's claim spot-checked where it
+  was a fact about another file (the treasure Respite percent is added, not multiplied; the boss's band; bullet speed
+  units; the Goldling's own stream), a random sample of the 910 read, none under four words but five index / count
+  one-liners. **Corrected in review:** `ActorState.hp` said it starts as `data.hp`; it starts at `hpMax`, which is
+  `data.hp` after the spawn's scaling and the Hulking affix. **One existing comment replaced:** the doc comment above
+  the private `cloneRun` in `state.ts` described `cloneSimState` (left behind by an earlier refactor);
+  `cloneSimState` has its own now and `cloneRun`'s says what it does. Not independently verified: the rest of the
+  flagged comments (about sixty, listed in the subagents' reports: mostly units inferred from a sibling comment, and
+  "the view reads it" claims made without opening the view). `out:digest`: identical but for the two network
+  modules, whose stripped text is equal once each `literalList` is sorted; `docs:check` clean; prettier clean.
 - [ ] **DC8. Backfill, shared contracts:** `theme` 172, `run` 125, `play` 37, `wallet` 33, `settings` 31, `lobby`
   30 and the 13 small shared areas (124): 552; with DC7, 1,029. → Verify: as DC7.
 - [ ] **DC9. Backfill, presentation and engine code:** `shared/view` 326, `client` 150, `server` 4 (480). → Verify: every baseline at 0; `npm run verify`.
