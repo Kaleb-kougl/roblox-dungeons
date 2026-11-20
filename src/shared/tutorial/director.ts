@@ -45,6 +45,8 @@
  *
  * The view object is reused: update() mutates and returns the same TutorialView (and its arrays) every frame. Copy
  * what you keep; `revision` grows whenever anything but the marker's position changed (push to Reflex on change).
+ *
+ * @module
  */
 import { TUTORIAL } from "shared/config";
 import { tutorialRoom, type TutorialRoom } from "shared/run";

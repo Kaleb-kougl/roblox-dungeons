@@ -15,6 +15,8 @@
  *   5. trigger ('hold': FIRE held / 'press': FIRE edge / 'custom': never), not rolling, cooldown 0
  *        -> def.fire(ctx, slot); true -> slot.cooldown = data.cooldownTicks (M2 Swift Strikes: x 80 %, rounded)
  *   6. prevButtons = input.buttons
+ *
+ * @module
  */
 
 import { Button } from "../../input";

@@ -3,6 +3,8 @@
  * two-pass chamfer transform from every wall / floor / pool cell; 0 on non-void cells), and the enclosed void pockets
  * (4-connected void components that touch neither the grid's edge). Pure, deterministic, allocation-light: a few flat
  * arrays per floor, no per-cell tables.
+ *
+ * @module
  */
 import { TileType, type Dungeon } from "shared/dungeon";
 

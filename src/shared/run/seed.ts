@@ -1,4 +1,8 @@
-/** Run seed validation, shared by the M1 run config (config.ts) and the endless one (endless.ts). */
+/**
+ * Run seed validation, shared by the M1 run config (config.ts) and the endless one (endless.ts).
+ *
+ * @module
+ */
 
 const UINT32_MAX = 4294967295;
 

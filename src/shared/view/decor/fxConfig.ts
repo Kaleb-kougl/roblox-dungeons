@@ -5,6 +5,8 @@
  * Kept in this folder (new file) rather than shared/view config.ts so the decor renderer's numbers live with its pure
  * logic. DECOR_RENDER_ORDER extends RENDER_ORDER (shared/view config.ts) the same way: offsets from
  * Enum.RenderPriority.Camera.
+ *
+ * @module
  */
 import type { DecorKind } from "shared/theme";
 import type { ColorRole } from "shared/theme";

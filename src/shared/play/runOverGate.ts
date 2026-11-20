@@ -18,6 +18,8 @@
  *   - FIRE edges: a FIRE held when the panel opened (attack mashed through the death) counts only once released and
  *     pressed again (`open(fireDown)` primes it); a press that began over a GUI (a click on Main menu or Details) is no
  *     FIRE press.
+ *
+ * @module
  */
 import { Button } from "shared/sim";
 

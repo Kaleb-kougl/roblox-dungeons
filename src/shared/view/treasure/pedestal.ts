@@ -5,6 +5,8 @@
  * pedestal nobody can take (shared/sim pedestalOffered) is not drawn. A pedestal already taken when the tracker was
  * reset (a rebuilt view) is open and settled: no jolt, no pop. Ages are sim seconds (the views' clock: pause and the
  * hitstop freeze hold it). Tested headlessly (pedestal.spec.ts).
+ *
+ * @module
  */
 import { chestPopped, columnAt, lidJoltStuds, popCrossed, type ColumnLook } from "./timeline";
 

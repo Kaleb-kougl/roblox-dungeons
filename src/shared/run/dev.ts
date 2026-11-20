@@ -22,6 +22,8 @@
  *
  * Played only on the client: the world is in SERVER_REFUSED_WORLDS (worlds.ts), never leaderboard-eligible, and the
  * client never submits it. Solo only: a party throws.
+ *
+ * @module
  */
 import { DEV_MODE } from "shared/config";
 import {

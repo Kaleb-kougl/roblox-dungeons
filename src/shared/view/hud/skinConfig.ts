@@ -2,6 +2,8 @@
  * Tunables of the UI skin (docs/UI_ART.md UA5, Architecture 3): the pixel density of the 9-sliced frames, the boxes the
  * HUD fits its icons into, and which theme ui ids (contract.ts uiSkinIds / uiIconIds, all optional) each primitive
  * draws. The logic is skin.ts. Presentation only; reference px are the HUD's 1280 x 720 design pixels (HUD_VIEW).
+ *
+ * @module
  */
 import type { SliceInsets } from "shared/theme";
 import { DRAFT_REVEAL_VIEW } from "./draftRevealView";

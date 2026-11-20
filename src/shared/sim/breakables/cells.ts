@@ -2,6 +2,8 @@
  * The breakables' cell lookups (docs/DECOR.md D4), a LEAF module (types and shared/dungeon only), so the movement code
  * (player.ts movePlayer, combat/actors/helpers.ts moveActor) can read them without importing breakables.ts (whose score
  * hook would close a require cycle through score.ts -> party.ts -> player.ts).
+ *
+ * @module
  */
 import { cellKey, worldToGrid, type SolidCells } from "shared/dungeon";
 import type { SimState } from "../state";

@@ -6,6 +6,8 @@
  * pointer moving over the menu would turn the character to it; with no move and no aim the sim keeps the facing).
  * Buttons still held when the menu closes (the A that pressed "Close") stay masked until they are released, so the
  * closing press never reaches the sim either. Solo runs do not use it: they pause under a menu.
+ *
+ * @module
  */
 import { EMPTY_INPUT, copyInput, type InputFrame } from "shared/sim";
 

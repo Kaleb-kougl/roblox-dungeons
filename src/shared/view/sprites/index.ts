@@ -48,6 +48,8 @@
  * Mayhem's `intro` falls back to `taunt`); it beats attacks because a roar never overlaps one. `flinch: false`
  * (Mother Mayhem, BD3) never plays `hit`: the tint carries the hits. `deathTicks` / `corpseFadeFrom` (the Demon Lord)
  * stretch the death over part of the corpse time and start the fade after it.
+ *
+ * @module
  */
 export {
 	screenAngleFromBasis,

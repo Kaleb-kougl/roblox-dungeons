@@ -12,6 +12,8 @@
  *                                 player who left sends PARTY_LEFT_BUTTON alone, every tick from the one after the
  *                                 leave. Returns the merged frame (also kept by the caller's log).
  *   leave(i)                      player i left (quit, disconnect, stalled): no input for the rest of the run.
+ *
+ * @module
  */
 import {
 	Button,

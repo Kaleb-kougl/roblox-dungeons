@@ -3,6 +3,8 @@
  * priorities (new best > rank threshold > combo tier), the friend toasts' pacing and headshots, the run-over row of
  * friends passed, and the Studio debug attribute. Data only; the tracker and helpers are dailyRank.ts. Presentation
  * only: no number here changes the sim, the score, a board or a record.
+ *
+ * @module
  */
 
 /** The theme colour role of the rank layer's target row and threshold shouts (new best's gold: you are past your best). */

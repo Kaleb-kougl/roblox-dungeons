@@ -4,6 +4,8 @@
  *
  * Ported from project-kaleb-vale `src/theme/color.ts` @ 42897e2. Lua patterns replace the RegExp;
  * parse failures return `undefined` (the source's `null`); a malformed contrast input gives NaN.
+ *
+ * @module
  */
 
 import type { HexColor } from "./types";

@@ -13,6 +13,8 @@
  *            over a healed enemy (HealPlusMarks)
  *   Jackal   the stagger's stars (jackalStaggered: a guard stopped its lunge, NTD9; drawn with dizzyStarSegments)
  *   bursts   newEnemy3Bursts: the frame's shell impacts (dust), heal sparks and beam snaps as one list
+ *
+ * @module
  */
 import {
 	AiState,

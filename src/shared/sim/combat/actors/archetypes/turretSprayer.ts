@@ -1,4 +1,8 @@
-/** 'turret.sprayer' (M1 sandbox; source: `src/sim/actors/archetypes/turretSprayer.ts`): a 16-bullet ring every 1.2 s, alternate rings turned by the spiral step. */
+/**
+ * 'turret.sprayer' (M1 sandbox; source: `src/sim/actors/archetypes/turretSprayer.ts`): a 16-bullet ring every 1.2 s, alternate rings turned by the spiral step.
+ *
+ * @module
+ */
 
 import { BulletKind, FULL_RING } from "../../patterns";
 import { registerArchetype } from "../registry";

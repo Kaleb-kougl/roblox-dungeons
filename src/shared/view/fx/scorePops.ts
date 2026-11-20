@@ -2,6 +2,8 @@
  * Floating score pops (M2 scoring, presentation only): "+points" over the spot an enemy died, rising and fading.
  * A fixed pool (the oldest pop is replaced when it is full) aged on sim time (SimClock), so pops hold still during
  * pause and the freeze frame. Pure; the client's ScorePopController draws it. Nothing here reaches the sim.
+ *
+ * @module
  */
 
 /** Pops on screen at once. */

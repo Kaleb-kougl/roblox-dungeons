@@ -1,6 +1,8 @@
 /**
  * HMAC-SHA256 (RFC 2104 with SHA-256, as in RFC 4231), pure. The key never needs to be shared code: callers pass it
  * in (the daily seed's key lives in src/server only, DSD8).
+ *
+ * @module
  */
 import { SHA256_BLOCK_BYTES, sha256 } from "./sha256";
 

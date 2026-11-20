@@ -21,6 +21,8 @@
  *
  * Output: the loaded pieces as { slot (index into the floor's breakables), kind (shared/sim Boost index) }, in slot
  * order.
+ *
+ * @module
  */
 import { u32 } from "shared/jsmath";
 import { gridToWorld } from "./collision";

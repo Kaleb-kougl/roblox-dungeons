@@ -15,6 +15,8 @@
  *                      kept / near-miss line)
  *   secretOpenLogLine  Design 12's KV_Debug line at an open, and secretDebugLabel KV_SecretLabel's text (developer
  *                      English, never translated)
+ *
+ * @module
  */
 import type { FloorSecret } from "shared/dungeon";
 import { treasureFloorRole } from "shared/theme";

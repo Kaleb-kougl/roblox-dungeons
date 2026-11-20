@@ -25,6 +25,8 @@
  *
  * Pure and Roblox-API-free: time is passed in (`now`, seconds, any monotonic clock), the budget arrives through
  * ReplayHooks (the server's ReplayBudget yields there), the score through an injectable reader (score.ts).
+ *
+ * @module
  */
 import {
 	SIM_HZ,

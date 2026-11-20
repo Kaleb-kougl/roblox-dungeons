@@ -6,6 +6,8 @@
  * set (which never depends on the draw) is sampled on a random quarter of the floors. Tallied per depth band: floors,
  * chance hits, hits with no candidate (the real rate's loss), candidates per hit floor, the picked chamber sizes, tiers,
  * facings, boss floors with a secret, and crack rooms with a planned Charger (the Archer's third key). Test support only.
+ *
+ * @module
  */
 import {
 	EncounterRng,

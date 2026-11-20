@@ -28,6 +28,8 @@
  * server's replay reproduces the death without trusting the client.
  *
  * Restart = a new LiveRun from the same setup (fresh state, fresh recording).
+ *
+ * @module
  */
 import {
 	ALL_EVENT_FIELDS,

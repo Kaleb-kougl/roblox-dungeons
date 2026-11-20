@@ -21,6 +21,8 @@
  * client of a run derives the same moments whatever its frame boundaries (a group that starts on a later frame inside
  * the window still syncs). A new run (another state object, or the tick going back) or reset() starts over.
  * Presentation only: nothing here is hashed or written back. Allocates a record per moment (a few per floor).
+ *
+ * @module
  */
 import { SIM_HZ, TILE_SIZE, type SimState } from "shared/sim";
 import type { ParryGroupStart } from "./nearMissRules";

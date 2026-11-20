@@ -2,6 +2,8 @@
  * The HUD side of M2 in-run progression (client/ui/hud DraftOverlay, RunItemsPanel, ToastPanel; the world markers in
  * client/controllers/render RunMarkerController): string keys, colour roles, key hints and layout numbers. Pure data
  * and helpers, checked headlessly (hud.spec.ts: every key exists in the placeholder pack).
+ *
+ * @module
  */
 import { BOONS, CURSES, DUOS, RARITY_NAMES, RELICS, boonMaxLevel, cardBoon, cardDisplay, cardDuo } from "shared/sim";
 import {

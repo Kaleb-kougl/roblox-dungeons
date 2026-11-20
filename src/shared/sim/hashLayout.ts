@@ -2,6 +2,8 @@
  * The hash, labelled and split into the fixtures' subsystems (fixtures/hashed-fields.md). Built from the SAME writers
  * as writeHashFields (replay.ts), group by group, so `values` is exactly writeHashFields(state) (a spec checks it).
  * Use it to bisect a parity failure: per-subsystem hashes every tick, then the first differing named field.
+ *
+ * @module
  */
 
 import { PLAYER_HASH_FIELDS, writePlayerHash } from "./player";

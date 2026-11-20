@@ -10,6 +10,8 @@
  *   standingLine      where an entry stands (rank exact / "top N%" / "#n of m" under 20 entrants, DSD15)
  *
  * Numbers are grouped by shared/l10n formatThousands (the number locale's separator, docs/LOCALIZATION.md L2).
+ *
+ * @module
  */
 import { DAILY, dailyDay, dailyResetsAt, type DailyStanding } from "shared/daily";
 import { formatThousands } from "shared/l10n";

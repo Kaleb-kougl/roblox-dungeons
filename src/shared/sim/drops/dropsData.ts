@@ -4,6 +4,8 @@
  * golden/goldenData.ts, so input.ts can read DEBUG_DROP_BUTTON from here without a require cycle.
  *
  * Index tables are APPEND ONLY: a Boost index is stored in DropsState (ground slots, per-player timers) and hashed.
+ *
+ * @module
  */
 import { TILE_SIZE } from "../units";
 import { secondsToTicks } from "../playerData";

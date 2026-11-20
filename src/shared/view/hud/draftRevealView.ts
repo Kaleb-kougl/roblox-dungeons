@@ -5,6 +5,8 @@
  * (`draftCardLook`). DraftRevealController (client) calls it once per card per rendered frame and writes the result;
  * DraftOverlay (client/ui/hud) binds to it with no further logic. Presentation only; checked headlessly
  * (draftRevealView.spec.ts). Timings live in draftRevealConfig.ts; the card size stays PROGRESSION_VIEW's 240 x 150.
+ *
+ * @module
  */
 import { DraftBeat, type DraftBeatId, type DraftRevealCardFrame, type DraftRevealFrame } from "./draftReveal";
 import { HUD_VIEW } from "./layout";

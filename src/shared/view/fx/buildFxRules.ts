@@ -42,6 +42,8 @@
  * ignored.
  *
  * No allocation in steady state: the output and its records are reused frame to frame. Presentation only.
+ *
+ * @module
  */
 import { drawnOrMerged, type DrawnPlayerOf } from "shared/view/predict";
 import {

@@ -19,6 +19,8 @@
  *               buyer is still here (SHD4); answers Roblox's decision (receiptDecision).
  *   grantPass   a Robux-only cosmetic whose game pass Roblox says the player owns (docs/COSMETICS.md CSD13), whatever
  *               the load did; owned already: no write.
+ *
+ * @module
  */
 import { withRetries, type RetryPolicy } from "shared/settings";
 import type { CharacterId } from "shared/characters";

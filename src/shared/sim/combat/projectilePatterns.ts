@@ -17,6 +17,8 @@
  *
  * Generators other than arc (ring, fibonacciSphere, galaxy, ...) and the acceleration / rotate / sequence modifiers
  * are not ported: nothing in the sim uses them, and all but `sequence` need trig.
+ *
+ * @module
  */
 
 import { u32 } from "shared/jsmath";

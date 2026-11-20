@@ -14,6 +14,8 @@
  *
  * Roblox's limits: amount > 0, ending balance >= 0, 5 currency types (Silver is one), 20 transaction types, about 100
  * SKUs (ECONOMY_SKUS; analytics.spec holds them under it).
+ *
+ * @module
  */
 import type { AnalyticsEventSpec } from "shared/run";
 import { SILVER_ROWS } from "shared/silver";

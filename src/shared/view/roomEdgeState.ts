@@ -20,6 +20,8 @@
  * vs lapse, docs/COMBO.md CB1 / CD3). It shares the boss test with RoomEdgeStates (livingBoss); the record test is
  * recordState's LIVE branch (engaged, not cleared). It ignores the unscored fallback, whose latches live in a
  * RoomEdgeStates instance: its readers are scored runs only.
+ *
+ * @module
  */
 import type { EncounterConfig } from "shared/dungeon";
 import {

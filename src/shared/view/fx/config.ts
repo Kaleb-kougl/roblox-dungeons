@@ -3,6 +3,8 @@
  * gameplay-shaped rules (sizes in render px, timings) are the web build's and live next to their logic (bars.ts,
  * numbers.ts, particles.ts, hitstop.ts); this file holds the Roblox-side choices only. Presentation only: nothing here
  * reaches the sim.
+ *
+ * @module
  */
 import { PIXELS_PER_TILE, STUDS_PER_TILE } from "shared/config";
 import type { ParticlesLevel } from "shared/settings";

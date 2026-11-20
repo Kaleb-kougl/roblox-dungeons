@@ -26,6 +26,8 @@
  * View contract: states WARBANNER_KEEP (= STATE_ENGAGED) / AiState.TELEGRAPH (the panic) / WARBANNER_BACKOFF; attack id
  * WARBANNER_ATTACK_PANIC; v slots WARBANNER_STRAFE (+1 / -1), WARBANNER_PANIC (1 from the panic telegraph to the end of
  * the back-off). Buffed actors: `warbannerAuraMask` on the state (or SimCtx.inAura inside the tick).
+ *
+ * @module
  */
 
 import { secondsToTicks } from "../../../playerData";

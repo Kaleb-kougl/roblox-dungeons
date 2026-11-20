@@ -4,6 +4,8 @@
  * copy, or undefined when the payload is unusable: strings must come from the fixed sets below (prompt ids and step ids
  * from shared/tutorial), integers must be integers, numbers must be finite; numbers are clamped to TUTORIAL_TELEMETRY's
  * caps and seconds rounded to TUTORIAL_TELEMETRY.secondsStep. Pure, headlessly tested (funnelReports.spec.ts).
+ *
+ * @module
  */
 import {
 	TUTORIAL_DEVICES,

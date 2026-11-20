@@ -31,6 +31,8 @@
  * closes (the lobby-busy flag, the current step) but nothing of it is logged (`logged: false` on its end; no step,
  * report, exit or outro accepted for logging; `acceptStep` returns "silent" for its progress). A client looping
  * restarts therefore logs at most maxEventsPerSession attempt events per session.
+ *
+ * @module
  */
 import type { AnalyticsEventSpec } from "shared/run";
 import { TUTORIAL_STEPS, tutorialStepIndex, tutorialStepName } from "shared/tutorial";

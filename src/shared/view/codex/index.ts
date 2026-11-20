@@ -9,6 +9,8 @@
  * tag, shown once its flip settled (DraftNewTags; CX8); recap.ts: the run-over row and the siblings' hooks (CX9). The
  * catalog and the doc are
  * shared/codex (which never imports shared/view).
+ *
+ * @module
  */
 export * from "./frame";
 export * from "./tracker";

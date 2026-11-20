@@ -5,6 +5,8 @@
  * The Goldling (docs/FORTUNE.md FD16): a target like any actor, but ranked after every other living, visible actor
  * within TOUCH.autoTarget.goldenYieldTiles: while one is that close the pick is the best of the others (the Goldling's
  * hysteresis included: a threat stepping in takes the aim off it); with none that close it ranks by the usual cost.
+ *
+ * @module
  */
 import { TOUCH } from "shared/config";
 import { TILE_SIZE, lineOfSight, type BulletBlocker } from "shared/dungeon";

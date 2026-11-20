@@ -3,6 +3,8 @@
  * (tiles.endless.<n>.spec.ts): checkMinimapFloor checks every MinimapTiles invariant of one floor; minimapCensus runs it
  * over endless run seeds x floors 1..MINIMAP_CENSUS.floors (run seed 1 through the full floor build, so the stairwell
  * is the layout's own). Test support only.
+ *
+ * @module
  */
 import { TileType, endlessFloorParams, roomIdAt, type Dungeon } from "shared/dungeon";
 import { endlessDungeon, endlessRunFloor } from "shared/run";

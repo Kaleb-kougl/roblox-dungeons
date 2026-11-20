@@ -17,6 +17,8 @@
  * front, which engages the room), fights its members with the sword (the nearest one; a flask when hurt) and walks onto
  * the unlocked chest to open it, returning what happened (VaultVisit). recordEndlessRun does not call it: its descent
  * is unchanged (a vault room it crosses on the way engages and fights like any room).
+ *
+ * @module
  */
 import {
 	Button,

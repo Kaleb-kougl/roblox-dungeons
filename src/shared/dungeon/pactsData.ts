@@ -3,6 +3,8 @@
  * endless floor's two pact altars stand in its shrine room, and the stream of the curse Greed shows. Data only:
  * ./pacts.ts reads it, nothing is inline in the logic. A LEAF (no imports). The sim-side rules (Greed's deal, Horde's
  * wave, the x2) live in shared/sim pacts/.
+ *
+ * @module
  */
 
 /** The pacts, by index (state, hash, the altars' order in FloorPacts.altars). APPEND ONLY. */

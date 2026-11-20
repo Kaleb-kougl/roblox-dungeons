@@ -11,6 +11,8 @@
  *
  * The server asks it in RunSessionService.conclude (world, session debug, Studio without a fake); the client may ask
  * it with its own facts for the dimmed preview (`dev`, `stress`, `unranked`).
+ *
+ * @module
  */
 import { SILVER_PAYING_WORLDS } from "./config";
 

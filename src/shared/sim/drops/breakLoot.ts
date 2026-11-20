@@ -20,6 +20,8 @@
  *                 every ground slot taken, is lost (events.lostLoot). Either way the slot is emptied (it releases once).
  *                 No rng draw; kill pity (killsSinceDrop) untouched. The drop is then an ordinary ground drop: stepDrops
  *                 ages it, a player can take it on the landing tick, a floor change frees it.
+ *
+ * @module
  */
 import { gridToWorld, type BreakableLoot } from "shared/dungeon";
 import { rngInt, type RngHolder } from "../rng";

@@ -12,6 +12,8 @@
  * What the spec holds (HUD scale <= 100 %, every HUD_TEST_VIEWPORTS entry, ten-foot on and off): no always-on box in
  * the clear zone, the centre column and centre row never covered. Above 100 % (110 / 125 %) a box may reach into the
  * clear zone on some viewports; the spec prints those combinations rather than failing (the player chose a bigger HUD).
+ *
+ * @module
  */
 import type { HudCorner } from "./corners";
 import { PROGRESSION_VIEW, SIGHTING_CARD } from "./progression";

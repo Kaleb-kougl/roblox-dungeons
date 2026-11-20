@@ -16,6 +16,8 @@
  *   reduced   finals with one land per clock (the timeline's own rule).
  *   renewed   a verdict with other numbers: every existing clock rebuilt at its old time, settled stays settled (rows
  *             already due show final, silently), the tab kept; a Team tab never opened stays unopened.
+ *
+ * @module
  */
 import { RECAP, type RecapConfig } from "./recapConfig";
 import {

@@ -15,6 +15,8 @@
  * (motionScale 0) shows the flash only (JD9). Preallocated arrays per actor pool slot keyed by (slot, ActorState.id),
  * like HealthBarSlots: an event or a look for another id in the slot starts it fresh. Times are seconds of the
  * caller's hit-reaction clock (FEEL_HIT). Pure; no Roblox API; read-only on the sim.
+ *
+ * @module
  */
 import { MAX_ACTORS, partySize, playerAt, type SimState } from "shared/sim";
 import type { IsoBasis } from "../iso";

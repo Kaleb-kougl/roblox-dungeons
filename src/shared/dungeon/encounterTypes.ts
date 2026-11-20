@@ -3,6 +3,8 @@
  * Plain data types, mirroring project-kaleb-vale src/sim/actors/encounter.ts @ 42897e2, so the sim can import them
  * from `shared/dungeon` without a cycle (the dungeon module never imports the sim). Built once per run OUTSIDE the
  * sim by placeEncounter (./encounter) and handed in as SimConfig.encounter. Never mutated.
+ *
+ * @module
  */
 
 /** One actor placed at run start: archetype id (e.g. "swarmer", "boss.act1") and world position. */

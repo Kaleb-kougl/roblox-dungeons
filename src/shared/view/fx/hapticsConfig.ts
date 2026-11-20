@@ -7,6 +7,8 @@
  *           PLAY_HAPTICS_RULES.rampStepSec by hapticTimeline).
  *   touch   pulses on the phone's single actuator (HapticEffect Custom; playHaptics touchWaveform turns them into
  *           FloatCurveKey points, ramps Linear). A phone's pulses never overlap (one actuator).
+ *
+ * @module
  */
 import { pulsesSeconds, type HapticPulse, type TouchPulse } from "./haptics";
 import { FEEL_HURT } from "./hurtConfig";

@@ -20,6 +20,8 @@
  * coinSalt), never the sim's: the same break always throws the same coins. A new run (`reset`) forgets the chain. No
  * allocation in steady state but the frame's own lists. Presentation only; no client controller, theme ids or sounds
  * here (docs/SILVER.md SV7 / SV8 wire them: the cue `sfx.silver.crate`, an optional `fx.silver.coins` sprite).
+ *
+ * @module
  */
 import { STUDS_PER_TILE } from "shared/config";
 import { RenderRng, burstSeed } from "../fx/rng";

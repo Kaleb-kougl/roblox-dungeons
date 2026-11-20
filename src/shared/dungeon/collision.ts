@@ -9,6 +9,8 @@
  *
  * Walkability: only FLOOR is walkable. WALL and VOID (and anything outside the grid) block.
  * POOL (lava / water / miasma pits and wall pockets) also blocks movement for now.
+ *
+ * @module
  */
 import { TileType, type Dungeon, type Room } from "./forge";
 

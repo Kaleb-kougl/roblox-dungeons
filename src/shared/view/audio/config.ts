@@ -2,6 +2,8 @@
  * Audio mixing tunables (the client's AudioController). Presentation only. Per-sound volume comes from the theme
  * manifest (`{ kind: "sound", assetId, volume }`); these scale it per SoundGroup and overall, cap the starts per
  * frame, quieten teammates, duck the music and set the ambience level.
+ *
+ * @module
  */
 import type { AudioSettings } from "shared/settings";
 import type { SoundGroupName } from "shared/theme";

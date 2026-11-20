@@ -15,6 +15,8 @@
  * `loadout` stays absent (= DEFAULT_LOADOUT) and `stress` is never set: a stress run (`?stress=N`) is a debug mode and
  * is not a run the server accepts. Pure and Roblox-API-free, so the client builds its live run with the same function
  * and the server's replay gets the identical world.
+ *
+ * @module
  */
 import {
 	DEFAULT_ENCOUNTER,

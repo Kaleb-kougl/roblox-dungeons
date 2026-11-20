@@ -18,6 +18,8 @@
  * The minimum: a run that cleared at least `minimumRooms` rooms is topped up to `runMinimum` (SVD25); a run that
  * cleared fewer is paid what it earned. Prospector and the day bonuses are applied at the grant (shared/wallet
  * applyGrant), never here.
+ *
+ * @module
  */
 import { ENDLESS_FIRST_FLOOR } from "shared/dungeon";
 import {

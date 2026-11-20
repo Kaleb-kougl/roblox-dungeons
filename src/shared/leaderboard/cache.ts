@@ -5,8 +5,14 @@
  *
  * Pure: time is passed in, waiting uses coroutine.running / coroutine.yield and resuming is injected (task.spawn on
  * the server, coroutine.resume in the specs), like shared/settings PlayerDocCache.
+ *
+ * @module
  */
 
+/**
+ * One read of the cache: the value, `stale` when it is the last good one after a failed load; or the error when no
+ * value was ever loaded.
+ */
 export type CacheLoad<V> =
 	| { readonly ok: true; readonly value: V; readonly stale: boolean }
 	| { readonly ok: false; readonly error: string };

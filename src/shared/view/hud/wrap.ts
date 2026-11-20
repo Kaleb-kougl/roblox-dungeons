@@ -2,6 +2,8 @@
  * Wrapping rows of equal cells (docs/HUD_LAYOUT.md H6 follow-up): the StatusPanel's owned items (RunItems) and running
  * boosts (BoostRow) wrap into more rows instead of growing past the status panel's footprint width. Pure and headless
  * (wrap.spec.ts); client/ui/hud GridRow lays the cells out with a UIGridLayout at this size.
+ *
+ * @module
  */
 import { HUD_FOOTPRINT } from "./footprint";
 import { HUD_VIEW } from "./layout";

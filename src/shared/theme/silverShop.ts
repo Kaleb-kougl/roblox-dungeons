@@ -7,6 +7,8 @@
  *
  * The string keys are built inside a function (silverShopStringKeys) so this module adds one top-level local to the
  * compiled Luau of any module that spreads it.
+ *
+ * @module
  */
 
 /** The Get Silver panel's and the `+` button's strings. */

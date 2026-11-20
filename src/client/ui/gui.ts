@@ -4,6 +4,8 @@
  * rewrites our text (we translate ourselves). JSX roots set `AutoLocalize={false}` instead.
  * `scripts/check-autolocalize.js` (part of verify) fails on a bare `new Instance("ScreenGui" | "SurfaceGui" |
  * "BillboardGui")` outside this file.
+ *
+ * @module
  */
 
 type KvGuiClass = "ScreenGui" | "SurfaceGui" | "BillboardGui";

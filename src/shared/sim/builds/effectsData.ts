@@ -4,6 +4,8 @@
  * row: 16 @ FULL_RING and 1 @ 0 are the web build's, 8 and 12 @ FULL_RING port rows (combat/arcTablePort.ts); builds
  * v2 (docs/BUILDS_V2.md BV1) adds 6 / 10 @ FULL_RING and 6 / 10 @ BALLISTA_FAN_SPREAD (port rows too).
  * Per-level tables are indexed by level - 1 (progressionData levelValue).
+ *
+ * @module
  */
 import { TILE_SIZE } from "../units";
 import { secondsToTicks } from "../playerData";

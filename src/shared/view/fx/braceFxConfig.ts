@@ -3,6 +3,8 @@
  * shout (the combo shout's slot, ComboController.requestShout at FLOOR_SHOUT_PRIORITY.brace), the armor row's pulse in
  * the status panel and the toast. Real seconds; px are HUD reference px. Data only: braceFx.ts applies them, the
  * client's BraceFxController draws them. Presentation only.
+ *
+ * @module
  */
 import type { ColorRole } from "shared/theme";
 

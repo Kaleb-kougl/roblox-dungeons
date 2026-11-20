@@ -3,6 +3,8 @@
  * Presentation only (RRD1): nothing here reaches the sim, a hash or the leaderboard. Times are real seconds from the
  * run-over frame; thresholds are tuned at RR10. Owner decisions: RRD6 (the 0.6 s arm), RRD8 (boss <= 25 %, score gap
  * <= 15 %, <= 2 rooms).
+ *
+ * @module
  */
 import { SECRET_RECAP_KEY } from "shared/theme";
 

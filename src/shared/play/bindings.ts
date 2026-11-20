@@ -12,6 +12,8 @@
  * Not rebindable (FIXED_INPUTS, RESERVED_*_INPUTS in config.ts): pause (P / Start), the settings panel (O), the menus'
  * pad close (B, only while a panel is open), aim (mouse / right stick), pad movement (left stick), UI navigation and
  * the debug keys (K, J, N, Semicolon, F8, L). Roblox's own keys (Escape, Tab, Slash, F9, F11) are refused as well.
+ *
+ * @module
  */
 import { Button } from "shared/sim";
 import {

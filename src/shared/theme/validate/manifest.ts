@@ -1,4 +1,8 @@
-/** validateManifest (docs/CODEBASE_SCALE.md DX8: a pure move out of validate.ts): the manifest's top level, biomes, colours, strings and every asset entry. */
+/**
+ * validateManifest (docs/CODEBASE_SCALE.md DX8: a pure move out of validate.ts): the manifest's top level, biomes, colours, strings and every asset entry.
+ *
+ * @module
+ */
 import {
 	AMBIENCE,
 	AMBIENCE_IDS,

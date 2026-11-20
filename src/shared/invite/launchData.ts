@@ -11,6 +11,8 @@
  *
  * Users can edit LaunchData: it is a HINT, never proof. `decodeInviteLaunch` never throws and returns undefined for
  * anything unexpected; Closed lobby entry still needs a server-side invite record (arrival.ts).
+ *
+ * @module
  */
 import { LOBBY } from "shared/lobby";
 import { isFiniteValue } from "shared/run";

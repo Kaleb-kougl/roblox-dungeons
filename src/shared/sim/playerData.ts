@@ -5,6 +5,8 @@
  * Rule 4 of the codebase: hitboxes, speeds and timings live here, never in art or theme packs. Durations are authored
  * in seconds and converted ONCE, at module load, to whole sim ticks (`Math.round(seconds * SIM_HZ)`). The sim only
  * ever counts integer ticks down, so no float timer drifts.
+ *
+ * @module
  */
 
 import { jsRound } from "shared/jsmath";

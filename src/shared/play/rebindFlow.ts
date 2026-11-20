@@ -3,6 +3,8 @@
  * to swap, or refuse), which captured events count, the capture countdown, which actions are held (the input test
  * strip), and the "a key held across a bindings change reads as released" gate. Input NAMES only (Enum.KeyCode /
  * Enum.UserInputType names), so it runs headlessly; the client's RebindController / InputController wrap it.
+ *
+ * @module
  */
 import {
 	KBM_ACTIONS,

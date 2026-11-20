@@ -1,4 +1,8 @@
-/** The player's sprite inputs and animation choice: sword, bow, Knight and Archer (docs/CODEBASE_SCALE.md DX8: a pure move out of view/sprites.ts). */
+/**
+ * The player's sprite inputs and animation choice: sword, bow, Knight and Archer (docs/CODEBASE_SCALE.md DX8: a pure move out of view/sprites.ts).
+ *
+ * @module
+ */
 import {
 	BOW_DATA,
 	BOW_V_CHARGE,

@@ -2,6 +2,8 @@
  * Read-only observers of the live sim (E1.8: playtest telemetry; source: `src/sim/observer.ts`). The client's sim
  * driver calls them OUTSIDE step(), so nothing here can affect determinism: an observer reads the state after a tick
  * and must never write to it.
+ *
+ * @module
  */
 
 import type { InputFrame } from "./input";

@@ -13,6 +13,8 @@
  *   refusal             a "refused" notice (requestKind, code, reason) to the requester only.
  *
  * Users are flushed in ascending UserId order (deterministic, and each hears one update however many changes).
+ *
+ * @module
  */
 import type { CharacterId } from "shared/characters";
 import type { CosmeticLook } from "shared/cosmetics";

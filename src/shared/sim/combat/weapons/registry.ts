@@ -3,6 +3,8 @@
  * files call registerWeapon(def) at module load, ./defs/index.ts imports them all, combat.ts imports that index.
  * A weapon's numeric index (stored in WeaponSlotState.weapon and in player bullets' payload `source` - 1) is its
  * position among the registered ids in code-unit order. Sealed when the first run starts.
+ *
+ * @module
  */
 
 import { stableSort } from "shared/jsmath";

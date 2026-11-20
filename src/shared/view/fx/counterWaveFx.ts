@@ -25,6 +25,8 @@
  *
  * Gates: `quiet` (comboQuiet: the stage cover, run over) puts nothing out and forgets every wave; a new run (another
  * state object, or the tick going back) forgets them too. No allocation in steady state. Presentation only.
+ *
+ * @module
  */
 import { SIM_DT, partySize, type SimState } from "shared/sim";
 import type { ColorRole } from "shared/theme";

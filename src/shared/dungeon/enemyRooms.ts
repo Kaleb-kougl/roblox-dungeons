@@ -21,6 +21,8 @@
  *     DOOR_CLEARANCE tiles from the room's doorways, relaxed when that leaves too few tiles. Group anchors are spread
  *     apart (best of a few rng draws), packs fill the open tiles nearest their anchor, each sniper gets its own
  *     spread-out tile.
+ *
+ * @module
  */
 import { stableSort } from "shared/jsmath";
 import { tileAt, worldToGrid } from "./collision";

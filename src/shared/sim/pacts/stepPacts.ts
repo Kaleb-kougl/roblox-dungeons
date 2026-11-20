@@ -32,6 +32,8 @@
  *
  * The view's queries (pure reads of hashed state): pactAltarAt, pactAvailability, greedCurseFor, hordePhase,
  * pactAltarOffered, pactDraftKind, greedTakes, pactsSpent.
+ *
+ * @module
  */
 import { encounterCost, pactCurseIndex } from "shared/dungeon";
 import { rngInt } from "../rng";

@@ -13,6 +13,8 @@
  * `pack` ORs `(v & mask) << shift` in field order. Every payload is a non-negative integer < 2^28 (stored as a double).
  *
  * Built with the ported `definePayload` (./projectilePatterns.ts); the pool is ./bullets.ts.
+ *
+ * @module
  */
 
 import { definePayload } from "./projectilePatterns";

@@ -4,6 +4,8 @@
  *
  * Ported pieces (project-kaleb-vale @ 42897e2): heartFills (src/player/PlayerHud.tsx), formatClock
  * (src/playtest/PlaytestOverlay.tsx), the boss phase in Roman numerals (src/boss/BossHud.tsx). The rest is new.
+ *
+ * @module
  */
 import { formatTenths } from "shared/l10n";
 import { deviceHintOf, type DeviceHint, type InputLabelStr } from "shared/play";

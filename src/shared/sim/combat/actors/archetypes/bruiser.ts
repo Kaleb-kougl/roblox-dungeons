@@ -12,6 +12,8 @@
  * 18 degrees apart, too tight to slip through until ~3 units out. The gap is the player's bearing turned by a random
  * ~37 or ~53 degrees either way (Pythagorean rotations, no trig), so a short sidestep (or running away from the slow
  * ring, or rolling through it) answers it.
+ *
+ * @module
  */
 
 import { HIT_HEAVY, HIT_NORMAL, PLAYER_RADIUS, secondsToTicks } from "../../../playerData";

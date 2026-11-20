@@ -3,6 +3,8 @@
  * VoidPlan's layers (VD5, the void set pieces) while ./plan.ts imports shared/view/decor (decorHash, decorProfile), so
  * decorPlan.ts imports this file (and ./config.ts) directly, never the voidDecor barrel, to keep the require graph
  * acyclic.
+ *
+ * @module
  */
 
 /** What a void cell is drawn as. NONE = not a void cell. */

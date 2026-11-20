@@ -16,6 +16,8 @@
  *   had (`hpBefore`); an execute carries the whole `hit` (LGD3); any kill by the player's own hit (ctx.procGen 0)
  *   carries at least OVERKILL_OWN_HIT_MIN (LGD2 revised: streak and effect kills, gen >= 1, never get the floor); a
  *   carry below OVERKILL_MIN_CARRY is 0; a boss's kill never carries. Damage is an exact binary fraction, so is this.
+ *
+ * @module
  */
 import type { SimCtx } from "../combat/ctx";
 import type { ActorState, ArchetypeDef } from "../combat/actors/types";

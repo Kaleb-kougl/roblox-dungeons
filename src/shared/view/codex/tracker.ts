@@ -56,6 +56,8 @@
  * order), this account's found total and the catalog's, and whether the Codex is loaded. Frozen when the run is over
  * (or the local player left, or the run ended); rebuilt once more when a late load resolves held finds of that run (or
  * the frozen one was not loaded yet): CodexController hands the new one to the store.
+ *
+ * @module
  */
 import {
 	CODEX,

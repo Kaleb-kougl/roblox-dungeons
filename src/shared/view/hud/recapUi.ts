@@ -12,6 +12,8 @@
  *   - `recapRecordRowsSec`   when new best's record rows have rolled (the record-run timeline's `recordRowsSec`).
  *   - `recapExitSizes`       the exits row's button sizes per layout: Again is always the largest (RR7, touch).
  *   - `recapHidesBestLine`   new best's dim `Best ...` line steps aside for the near-miss line (it says the same, closer).
+ *
+ * @module
  */
 import { formatThousands } from "shared/l10n";
 import { COMBO_TIERS, comboTier } from "./comboConfig";

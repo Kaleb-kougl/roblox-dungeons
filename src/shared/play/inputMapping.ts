@@ -10,6 +10,8 @@
  * are the web build's standard mapping: RT fire, LT alt, LB roll, RB Ember, Y swap, dpad up flask, Start pause.
  * The layout is rebindable (task L4b): every mapping function takes a `Bindings` (shared/play bindings.ts), default
  * DEFAULT_BINDINGS (the layout above); the exported tables below are that default layout's.
+ *
+ * @module
  */
 import { CAMERA_YAW_DEG } from "shared/config";
 import {

@@ -3,6 +3,8 @@
  * (UAD1), fitting an icon into its box at a whole scale (UAD7), and which theme ui id a primitive draws in a state,
  * along a fallback chain that ends in `undefined` (= today's flat look). Tunables in skinConfig.ts. Presentation only;
  * checked headlessly (skin.spec.ts). The client's primitives (UA6+) read these and draw.
+ *
+ * @module
  */
 import type { SliceInsets, ThemePack } from "shared/theme";
 import {

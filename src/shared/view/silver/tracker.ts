@@ -12,6 +12,8 @@
  *                     showSec, fading over its last fadeSec
  *   silverCounterShown which runs show the counter: a paying world (shared/silver silverEligibility on the client's own
  *                     facts: unranked, debug, dev, stress) with the Silver feed; never the tutorial or a dev run
+ *
+ * @module
  */
 import {
 	SILVER_PAYING_WORLDS,

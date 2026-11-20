@@ -9,6 +9,8 @@
  *
  * The lift (PD5): upright with the touch controls on, the thumbs cover the bottom PORTRAIT.controlBandShare of the
  * screen, so the view is shifted until the player sits centred in what is left: liftTiles along the camera's up axis.
+ *
+ * @module
  */
 import { CAMERA_PITCH_DEG, CAMERA_YAW_DEG, STUDS_PER_TILE, VIEW_TILES_HIGH } from "shared/config";
 import { GAME_CAMERA } from "./config";

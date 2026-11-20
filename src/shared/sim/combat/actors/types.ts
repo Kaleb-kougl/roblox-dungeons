@@ -1,6 +1,8 @@
 /**
  * Actor model (E1.8; source: `src/sim/actors/types.ts`): every enemy and boss is an ActorState (plain numbers) driven
  * by an ArchetypeDef (code + data) from the archetype registry.
+ *
+ * @module
  */
 
 import type { SimCtx } from "../ctx";

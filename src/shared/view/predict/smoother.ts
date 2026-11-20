@@ -17,6 +17,8 @@
  *                     unsmoothed (8 sprite facings: a turn is a turn).
  *
  * With no correction the drawn pose is exactly lerp(prev, x, alpha). Tiles throughout (sim units). No allocation.
+ *
+ * @module
  */
 import type { PredictionViewTunables } from "./config";
 

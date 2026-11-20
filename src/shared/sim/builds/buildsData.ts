@@ -6,6 +6,8 @@
  *
  * Index tables (DUOS, BUILD_EFFECTS) are APPEND ONLY: their indices are stored in the sim state (and bullet payloads)
  * and hashed.
+ *
+ * @module
  */
 import { BOONS, Boon, Rarity, type RarityId } from "../progression/progressionData";
 

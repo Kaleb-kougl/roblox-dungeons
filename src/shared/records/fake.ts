@@ -10,6 +10,8 @@
  *
  * Anything else (empty, a bad part, an unknown board) is no fake: undefined (the service logs it and serves the real
  * records).
+ *
+ * @module
  */
 import { LEADERBOARD_BOARDS, type LeaderboardBoard } from "shared/leaderboard";
 import { RECORDS_FAKE_KEYWORDS, RECORDS_FAKE_RUN_ID } from "./config";

@@ -16,6 +16,8 @@
  * room would spawn that room's enemies (and show its prompt) early ("early" rooms; a chain floor has none).
  *
  * Tutorial floors are endless floors (tutorialForgeParams): pillars are solid WALL cells, so the walks go round them.
+ *
+ * @module
  */
 import {
 	EncounterRng,

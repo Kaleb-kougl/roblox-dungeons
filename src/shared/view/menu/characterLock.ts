@@ -10,6 +10,8 @@
  *                has never earned (no run of this account paid yet) and personal records that predate it (the server
  *                writes records only from accepted endless runs, and every such run since the update also pays, so
  *                records with an empty wallet mean runs from before the update); a new account has no records
+ *
+ * @module
  */
 import { CHARACTER_IDS, DEFAULT_CHARACTER, type CharacterId } from "shared/characters";
 import type { RecordsStatus } from "shared/records";

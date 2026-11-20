@@ -1,6 +1,8 @@
 /**
  * The player's slide mover tunables (docs/WALL_SLIDE.md Design 1-3, decisions WSD2 / WSD3; a Roblox-port feature, no
  * web source). Data only: ./slide.ts reads it, nothing is inline in the logic. A LEAF (no imports).
+ *
+ * @module
  */
 
 /** How `slideCircle` resolves one move (docs/WALL_SLIDE.md Design 1-3). */

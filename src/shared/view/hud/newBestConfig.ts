@@ -7,6 +7,8 @@
  *
  * Units: scores are points, floors endless floor numbers; times are real (unpaused) seconds; sizes on the HUD are
  * reference px (HUD_VIEW), confetti sizes screen px.
+ *
+ * @module
  */
 
 /** The theme colour role of everything gold (the passed row, the gold number, the shout, the confetti; NB4). */

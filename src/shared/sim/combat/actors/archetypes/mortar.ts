@@ -40,6 +40,8 @@
  * corpse); attack id MORTAR_ATTACK_LOB (the draw and the flight); v slots MORTAR_LAND_X / _Z (the landing point),
  * MORTAR_FLIGHT_TICKS (flight ticks left), MORTAR_STRAFE (+1 / -1). The impact tick is the one whose events.shells > 0;
  * the shell's payload source is the Mortar's kind + 1.
+ *
+ * @module
  */
 
 import { HIT_NORMAL, secondsToTicks } from "../../../playerData";

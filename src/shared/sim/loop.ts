@@ -11,6 +11,8 @@
  *   // render: lerp(prev, current, alpha)
  *
  * Port note: the source's `alpha` getter is `getAlpha()`.
+ *
+ * @module
  */
 
 import { jsRem } from "shared/jsmath";

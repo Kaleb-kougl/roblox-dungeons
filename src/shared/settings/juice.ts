@@ -7,8 +7,11 @@
  * DataStore, and the client resolves it against its own defaults (`resolveJuiceSettings`), where reducedMotion
  * defaults to the player's Roblox "Reduce Motion" setting (GuiService.ReducedMotionEnabled, readable on the client
  * only). "Reset" clears the overrides, which again means "follow the system", exactly like the web build's reset().
+ *
+ * @module
  */
 
+/** When enemy health bars show: always, only for a while after a hit, or never. */
 export type HealthBarsMode = "always" | "onDamage" | "off";
 export type ParticlesLevel = "off" | "low" | "normal" | "high";
 

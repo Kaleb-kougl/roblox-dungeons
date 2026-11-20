@@ -2,6 +2,8 @@
  * Tunables of the motion half of the game-feel pass (docs/FEEL.md J6 squash & stretch, J7 afterimages). Presentation
  * only: nothing here reaches the sim. Times are effect-clock seconds (the actor renderer's sprite clock: sim seconds of
  * the rendered frames, so they stop with pause and hitstop) except where they ride sim ticks.
+ *
+ * @module
  */
 import { MAX_PARTY_SIZE } from "shared/sim";
 

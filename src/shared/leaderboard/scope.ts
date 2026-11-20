@@ -4,6 +4,8 @@
  * plus the client's request shape (`getLeaderboard`) and how the server resolves it with its own clock.
  *
  * Pure. The all-time ref keeps every key the M5 code used (cache key = the board name, details key `<board>_u_<id>`).
+ *
+ * @module
  */
 import { DAILY, dailyScope, type DailyRunKey } from "shared/daily";
 import {

@@ -25,6 +25,8 @@
  *                A malformed claim (runFinalProblem) is never recorded. Everyone gone: "abandoned".
  *
  * Players are the session's members in order (index 0 = the owner, as in RunSession.members).
+ *
+ * @module
  */
 import { SIM_HZ, type InputFrame } from "shared/sim";
 import {

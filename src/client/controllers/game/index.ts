@@ -4,6 +4,8 @@
  * first-sighting toasts (docs/ENEMY_VARIANTS.md EV12),
  * camera, world and the character guard.
  * docs/CLIENT.md has the controller map and the per-frame data flow.
+ *
+ * @module
  */
 export * from "./ThemeController";
 export * from "./LocaleController";

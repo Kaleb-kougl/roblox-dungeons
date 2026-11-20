@@ -6,6 +6,8 @@
  * The caller's own best comes from their details entry; their rank is known only when they are in the top rows.
  * OrderedDataStore has no "rank of key" query, so a true "around me" view would need paging through the whole
  * board; it is not offered.
+ *
+ * @module
  */
 import { ORDERED_VALUE_LAYOUT, type LeaderboardBoard } from "./config";
 import { decodeOrderedValue } from "./orderedValue";

@@ -19,6 +19,8 @@
  *   - `contribCellText`              a You cell's value at a counted value: `{value} · {pct}%`, the pickups parts, or
  *                                    the grouped number (RichText-escaped: the cell draws RichText).
  *   - `contribPartyTexts`            one Party row's texts (name, title, damage share, kills, parries, hits).
+ *
+ * @module
  */
 import { formatThousands } from "shared/l10n";
 import { richTextEscape } from "./comboDraw";

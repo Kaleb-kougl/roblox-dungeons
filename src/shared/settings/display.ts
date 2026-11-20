@@ -7,6 +7,8 @@
  * (docs/GAMEPAD_MENUS.md GM9), the phone's vibration (docs/HAPTICS.md HP5), the remembered character pick (docs/ARCHER.md ARD12: the character screen's focus
  * and the run a start plays) and the gauntlet cursor's size (docs/CURSOR.md D2) and whether it shows in gameplay (revision 3). Presentation only; stored
  * overrides-only (a new optional field needs no migration).
+ *
+ * @module
  */
 import { DEFAULT_CHARACTER, isCharacterId, type CharacterId } from "shared/characters";
 import { localeDef } from "shared/l10n";

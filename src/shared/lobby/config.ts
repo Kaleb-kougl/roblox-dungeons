@@ -1,6 +1,8 @@
 /**
  * Lobby tunables and the preset vocabularies (visibility, phase, name ids). Data only: lobbies.ts and the server
  * service read these (CLAUDE.md "No magic numbers"). Display strings for the name ids come from shared/theme later.
+ *
+ * @module
  */
 import { DAILY_WORLD_KIND } from "shared/daily";
 import { ENDLESS_WORLD_KIND, MAX_PARTY_SIZE, isFiniteValue } from "shared/run";

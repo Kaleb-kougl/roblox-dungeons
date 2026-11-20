@@ -18,6 +18,8 @@
  *
  * Frontier: an open (FLOOR / POOL) cell that is not UNKNOWN with an UNKNOWN open 4-neighbour; recomputed only around
  * cells that left UNKNOWN. Dirty: a cell whose state or frontier flag changed since the last drainDirty.
+ *
+ * @module
  */
 import { worldToGrid, type WorldXZ } from "shared/dungeon";
 import { NO_KIND, archetypeAt, type SimState } from "shared/sim";

@@ -1,8 +1,11 @@
 /**
  * Small pure helpers the theme layer needs because Luau has no JSON, RegExp or ordered object
  * keys. No Roblox types; runs headlessly.
+ *
+ * @module
  */
 
+/** A JSON-style object: string keys, values not yet checked. */
 export type Obj = Record<string, unknown>;
 
 /** A table with an element at index 0 (Luau index 1): a JSON-style array. */

@@ -1,6 +1,8 @@
 /**
  * Leaderboard tunables (M5). Data only: the pure modules here and LeaderboardService read these (CLAUDE.md "No magic
  * numbers"). docs/SERVER.md "Leaderboards" has the DataStore layout.
+ *
+ * @module
  */
 import { KV_EPOCH_UNIX_SECONDS } from "shared/config";
 import { DAILY_WORLD_KIND } from "shared/daily";

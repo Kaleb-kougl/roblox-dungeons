@@ -3,6 +3,8 @@
  * lifts (core) and which load behind it (later), the screen's release and Skip rules, a progress counter, and a boss
  * floor's push, and the waits on resolved ids (LoadWaiters, the stage loader's assets wait: docs/STAGE_LOADER.md SL6).
  * No Roblox APIs: the client's PreloadController runs the queue. Tunables: PRELOAD in preloadConfig.ts.
+ *
+ * @module
  */
 import type { ContentRef } from "shared/theme";
 import {

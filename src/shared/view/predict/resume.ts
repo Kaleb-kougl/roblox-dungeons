@@ -13,6 +13,8 @@
  *                                        that blend of the two interpolated poses. w >= 1: untouched (bit-exact).
  *
  * The predictor itself is untouched (predictMotion and its parity spec): only what is drawn changes.
+ *
+ * @module
  */
 import type { PlayerState } from "shared/sim";
 import type { PredictionViewTunables } from "./config";

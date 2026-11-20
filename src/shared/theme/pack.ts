@@ -6,6 +6,8 @@
  * Ported from project-kaleb-vale `src/theme/pack.ts` @ 42897e2 (ThemePack, loadThemePack, the active
  * pack). Packs are TS modules registered in `packs/index.ts` (no file loading, no async): switching
  * packs is still a restart.
+ *
+ * @module
  */
 
 import { parseHex } from "./color";

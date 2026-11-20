@@ -26,6 +26,8 @@
  * This module holds the state, its floor fill, clone and hash. The rules: ./stepPacts.ts (the altars: Greed's curse and
  * Legendary deal, Horde's take; the second wave) and the leaf ./pactRooms.ts (the room hooks endless.ts and score.ts
  * call: the horde room roused, its record held, its x2).
+ *
+ * @module
  */
 import type { FloorPacts } from "shared/dungeon";
 import type { SimState } from "../state";

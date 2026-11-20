@@ -7,6 +7,8 @@
  * The gauntlet always shows in a menu context (menus, panels, the loading screen and stage cover, pause, the party
  * overlay, the boon draft, run over, the tutorial outro), and in gameplay too while the In-game cursor setting is
  * Gauntlet (revision 3, `gameCursor`); Standard keeps Roblox's pointer while playing (revision 2's behaviour).
+ *
+ * @module
  */
 import type { CursorSize } from "shared/settings";
 import { CURSOR_VIEW } from "./cursorConfig";

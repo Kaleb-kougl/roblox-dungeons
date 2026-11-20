@@ -6,6 +6,8 @@
  *              comparison must do the same)
  *   pressPact  a player teleported onto an altar, one SHRINE_BUTTON press (down, then up)
  *   walkToAltar  the endless bot (Driver.walkTo) walks onto an altar without pressing (no surgery)
+ *
+ * @module
  */
 import {
 	DEBUG_FLOOR_BUTTON,

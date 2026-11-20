@@ -33,6 +33,8 @@
  * episode ends on progress or on a prompt change (the finish clears the prompt, so it ends there too); one that lasted
  * >= TUTORIAL.stuckSeconds reports { prompt, seconds } (rounded like lesson seconds), at most once per prompt id per
  * run. flush() ends the open episode for a client leaving early (a skip): call it right before sending the skip.
+ *
+ * @module
  */
 import { TUTORIAL } from "shared/config";
 import { SOLO_PLAYER, ScoreSource, type SimState } from "shared/sim";

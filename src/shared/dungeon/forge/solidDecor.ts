@@ -50,6 +50,8 @@
  *
  * Its own stream (makeRng(seed ^ SOLID_DECOR.salt)), so the main stream, and with it every room, corridor, prop,
  * spawn, torch, pool and the name, are exactly the option-off floor's. Rooms in id order.
+ *
+ * @module
  */
 import { makeRng, type Rng } from "./rng";
 import { RoomType, TileType, type Room } from "./types";

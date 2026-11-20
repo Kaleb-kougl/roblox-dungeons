@@ -12,6 +12,8 @@
  *                     gaps and gates), with `sfx.codex.new`
  *
  * The chip pops in (CODEX_CHIP: a short scale from popScale down to 1); under Reduced motion it simply appears.
+ *
+ * @module
  */
 import {
 	CodexTier,

@@ -1,4 +1,8 @@
-/** Sprite frames, billboards and looks (docs/CODEBASE_SCALE.md DX8: a pure move out of view/sprites.ts). */
+/**
+ * Sprite frames, billboards and looks (docs/CODEBASE_SCALE.md DX8: a pure move out of view/sprites.ts).
+ *
+ * @module
+ */
 import type { Pivot } from "shared/theme";
 import { CAMERA_PITCH_DEG, PIXELS_PER_TILE, STUDS_PER_TILE } from "shared/config";
 import { degToRad } from "../iso";

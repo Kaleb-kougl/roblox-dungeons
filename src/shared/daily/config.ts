@@ -2,6 +2,8 @@
  * Daily tunables (docs/DAILY.md "2. The day and the daily seed"). Data only: day.ts, seed.ts and the services read
  * these (CLAUDE.md "No magic numbers"). The daily seed's KEY is not here: it lives in the server only
  * (src/server/config/daily.ts, DSD8), so no client can compute a day's seed before the server reveals it.
+ *
+ * @module
  */
 import { KV_EPOCH_UNIX_SECONDS, SECONDS_PER_DAY } from "shared/config";
 

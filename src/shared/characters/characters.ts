@@ -5,6 +5,8 @@
  * `traits`, and the view and the server read this table. Pure data and helpers, Roblox-API-free.
  *
  * CHARACTERS is APPEND ONLY (a future character takes the next entry and the next theme `CLASS_IDS` slot).
+ *
+ * @module
  */
 import {
 	BOW_WEAPON_ID,

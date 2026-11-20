@@ -1,6 +1,8 @@
 /**
  * Onboarding (first-run tutorial) persistence and telemetry tunables (OnboardingService; the telemetry plan is
  * docs/TUTORIAL_FUNNEL.md). Data only.
+ *
+ * @module
  */
 import { SETTINGS_AUTOSAVE_SECONDS, SETTINGS_RETRY, type RetryPolicy } from "shared/settings";
 import { TUTORIAL_STEP_COUNT } from "shared/tutorial";

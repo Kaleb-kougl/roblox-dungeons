@@ -7,6 +7,8 @@
  * The readers never trust the provider: `accessUpgrades` checks its answer (readUpgradeLevels; an error or junk reads as
  * an unknown wallet) and `accessOwnsCharacter` always grants the starter characters (the Knight) and denies the rest when
  * the provider errors. Pure and Roblox-API-free (pcall only).
+ *
+ * @module
  */
 import {
 	NO_UPGRADES,

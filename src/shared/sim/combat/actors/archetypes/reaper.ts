@@ -19,6 +19,8 @@
  * View contract: states REAPER_KEEP (= STATE_ENGAGED) / AiState.TELEGRAPH (the wind) / REAPER_SPIN / REAPER_DIZZY
  * (aiTicks counts down); attack id REAPER_ATTACK_WIND while winding (0 from the spin on); v slots REAPER_PHASE_TICKS
  * (ticks into the spin), REAPER_SPIRAL_INDEX (k of the next volley), REAPER_TURN (+1 / -1), REAPER_LOST.
+ *
+ * @module
  */
 
 import { HIT_NORMAL, PLAYER_RADIUS, secondsToTicks } from "../../../playerData";

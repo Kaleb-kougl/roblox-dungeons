@@ -36,6 +36,8 @@
  * starts inside the window overshoots for a moment, a piece broken inside it by anything but an enemy bullet (a player's
  * shot or swing, a slam, a Charger) still stops bullets, and a delayed bullet (`replay`; none in the sim today) neither
  * breaks pieces nor sees them broken. No allocation per call once the scratch has grown.
+ *
+ * @module
  */
 import {
 	BulletKind,

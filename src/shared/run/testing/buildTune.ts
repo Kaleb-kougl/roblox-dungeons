@@ -35,6 +35,8 @@
  *    that never attacks (aims at the nearest enemy, strafes, rolls every TUNE_POOL_ROLL_TICKS) and one that fights
  *    (the sword bot): the enemy bullets alive per tick, their peak and mean, and combat.dropped's rise (the enemy
  *    pool full; the passive bot fires nothing). The passive bot's peak is the room's worst case: nothing dies.
+ *
+ * @module
  */
 import { AffixKind, encounterCost, isBossFloor } from "shared/dungeon";
 import {

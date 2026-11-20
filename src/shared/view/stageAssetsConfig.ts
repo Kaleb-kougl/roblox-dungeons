@@ -6,6 +6,8 @@
  * ("sfx." matches every sfx id), any other entry is one exact id ("pellet.power"), and `biome:<key>` names a biome's
  * own content (PreloadSource.biomeContentIds). A manifest's `dye:<set>` entry (STAGE_DYE_PREFIX, docs/COSMETICS.md CS5)
  * names a sprite set's dye sheets (PreloadSource.dyeContentIds), listed only when a player wears a dye of that set.
+ *
+ * @module
  */
 import { ACTOR_VIEW } from "./config";
 

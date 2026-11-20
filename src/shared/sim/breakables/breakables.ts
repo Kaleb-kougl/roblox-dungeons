@@ -42,6 +42,8 @@
  *
  * Co-op: the same rules for every player (bullets carry their owner; the team score gets the points). Everything here
  * is deterministic: fixed slot order, no rng, no trig.
+ *
+ * @module
  */
 import {
 	BREAKABLE_PIECE_KINDS,

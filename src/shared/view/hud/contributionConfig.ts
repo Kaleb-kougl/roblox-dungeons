@@ -2,6 +2,8 @@
  * The co-op contribution card's tunables, title table and string keys (docs/RUN_CONTRIBUTION.md CT3; logic in
  * contribution.ts). Presentation only: nothing here reaches the sim, a hash or the leaderboard. Title thresholds are
  * CT10's tuning levers.
+ *
+ * @module
  */
 
 /** A player's one positive title (assignTitles). `teammate` is the fallback, never assigned by a lead. */

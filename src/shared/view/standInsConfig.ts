@@ -1,6 +1,8 @@
 /**
  * Tunables of the stand-ins (docs/STAGE_ASSETS.md "Revision 2", SA18; logic in standIns.ts). Presentation only: nothing
  * here reaches the sim, the lockstep wire or a hash. Roblox-port choices, no web source.
+ *
+ * @module
  */
 import type { SolidDecorKind } from "shared/dungeon";
 import type { ColorRole } from "shared/theme";

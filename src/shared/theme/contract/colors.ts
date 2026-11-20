@@ -1,4 +1,8 @@
-/** The theme contract's colour rules (docs/CODEBASE_SCALE.md DX8: a pure move out of contract.ts): contrast and difference thresholds and the role lists they apply to. */
+/**
+ * The theme contract's colour rules (docs/CODEBASE_SCALE.md DX8: a pure move out of contract.ts): contrast and difference thresholds and the role lists they apply to.
+ *
+ * @module
+ */
 import type { ColorRole } from "../types";
 import { BOOST_KINDS, CLASS_IDS, boostId } from "./ids";
 

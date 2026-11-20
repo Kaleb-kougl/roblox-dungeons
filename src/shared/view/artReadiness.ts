@@ -30,6 +30,8 @@
  * would count as resolved only once warmed. Nothing here assumes it away.
  *
  * Tunables: ART_READINESS in artReadinessConfig.ts. No Roblox APIs.
+ *
+ * @module
  */
 import type { ContentRef } from "shared/theme";
 import { ART_READINESS, type ArtReadinessConfig } from "./artReadinessConfig";

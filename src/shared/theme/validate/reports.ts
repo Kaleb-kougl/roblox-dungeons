@@ -1,4 +1,8 @@
-/** The validator's colour reports (docs/CODEBASE_SCALE.md DX8: a pure move out of validate.ts): contrast and difference checks per role and biome surface. */
+/**
+ * The validator's colour reports (docs/CODEBASE_SCALE.md DX8: a pure move out of validate.ts): contrast and difference checks per role and biome surface.
+ *
+ * @module
+ */
 import { isObj, quote as q, sortedEntries, type Obj } from "../util";
 import { colorDifference, contrastRatio, isHexColor, labChroma, mixRgb, parseHex, toHex } from "../color";
 import {

@@ -1,6 +1,8 @@
 /**
  * Client play-session tunables (task 8): run setup attributes, HUD snapshot rate, device thresholds. Data only; the
  * client controllers and the pure modules in shared/play read these (CLAUDE.md "No magic numbers").
+ *
+ * @module
  */
 import { SIM_HZ } from "shared/sim";
 

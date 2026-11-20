@@ -4,6 +4,8 @@
  * TutorialView -> HUD state mapping the Reflex slice stores, and the beat between the tutorial's end and its outro
  * card. The TutorialController wraps these with remotes, Workspace attributes and the render step; everything here is
  * headlessly tested (flow.spec.ts).
+ *
+ * @module
  */
 import { TUTORIAL } from "shared/config";
 import type { OnboardingStatus } from "shared/onboarding";

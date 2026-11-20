@@ -9,6 +9,8 @@
  *     picks a card the player has not seen), like CoopMenuInputGate's held buttons;
  *   - every other button, the move stick and the aim pass untouched; once released, a fresh press passes on its first
  *     frame (a sim press edge).
+ *
+ * @module
  */
 import { TUTORIAL } from "shared/config";
 import { DRAFT_CONFIRM_BUTTON, type InputFrame } from "shared/sim";

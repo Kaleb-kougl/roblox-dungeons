@@ -3,6 +3,8 @@
  * web source). Data only, a LEAF (units / playerData / jsnum only): golden.ts builds ENDLESS_GOLDEN_CONFIG from these,
  * score.ts and the archetype read the kind id and statuses from here without a require cycle. Where it runs is floor
  * data (shared/dungeon goldenData.ts GOLDEN_PLACE).
+ *
+ * @module
  */
 import { SQRT1_2 } from "../jsnum";
 import { secondsToTicks } from "../playerData";

@@ -11,6 +11,8 @@
  *
  * Add a shape: one PORT_ARC_SOURCES row (count, spread computed exactly as the BurstSpec computes it, and where it comes
  * from). A shape missing here still errors with "arc table miss".
+ *
+ * @module
  */
 
 import { dcos, dsin } from "shared/dungeon/forge";

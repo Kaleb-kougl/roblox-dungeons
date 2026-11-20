@@ -5,6 +5,8 @@
  *
  * Events live in a preallocated pool (FxEventBuffer) that is cleared at the start of every tracker update, so an event
  * object is valid only during the frame it was emitted in (copy what you keep). No allocation per frame.
+ *
+ * @module
  */
 
 /** Event kinds. Fields valid per kind are listed on FxEvent. */

@@ -25,6 +25,8 @@
  *
  * Board answers are read through LOCAL structural types (`DailyRankBoardInput`), so this compiles without
  * shared/leaderboard; its LeaderboardView passes as is (extra fields are fine).
+ *
+ * @module
  */
 import { DAILY_RANK } from "./dailyRankConfig";
 import { DAILY_RANK_STRINGS } from "./dailyRankStrings";

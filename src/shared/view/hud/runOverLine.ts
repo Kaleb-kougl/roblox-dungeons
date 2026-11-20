@@ -1,6 +1,8 @@
 /**
  * The run-over panel's main line in a solo run (client/ui/hud RunOverPanel; a party run's is
  * shared/view/menu partyRunOverLine). Pure, headlessly tested (runOverLine.spec.ts).
+ *
+ * @module
  */
 import { HUD_STRINGS } from "./strings";
 

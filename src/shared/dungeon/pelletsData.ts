@@ -2,6 +2,8 @@
  * Pellet tunables (docs/PELLETS.md PL1, decisions PD4 / PD5 / PD9; a Roblox-port feature, no web source): where an
  * endless floor's pellets lie and how often it holds a power pellet. Data only: ./pellets.ts reads it, nothing is
  * inline in the logic. A LEAF (no imports). The sim-side rules (pickup radius, points) live in shared/sim pellets/.
+ *
+ * @module
  */
 
 /** The pellet patterns a room can draw (one draw per room, in this order). */

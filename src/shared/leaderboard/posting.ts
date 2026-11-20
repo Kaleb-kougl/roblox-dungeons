@@ -11,6 +11,8 @@
  * Daily runs (docs/DAILY.md DS5): a run of a `dailyWorlds` world posts to ITS day's daily board only (the session's
  * day and ruleset, DSD5 / DSD11), with the same rule and value and no details document (DSD12). It never posts to the
  * all-time boards, and an endless run never posts to a daily board (DSD6).
+ *
+ * @module
  */
 import type { DailyRunKey } from "shared/daily";
 import { playerDataKey } from "shared/settings";

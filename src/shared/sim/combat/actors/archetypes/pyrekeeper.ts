@@ -41,6 +41,8 @@
  * this life), PYREKEEPER_LAND_X / _Z (the landing point while the light telegraphs), PYREKEEPER_STRAFE (+1 / -1),
  * PYREKEEPER_PANIC (1 from the panic telegraph to the end of the back-off). The `ring` hint keys on aiState: draw it
  * only while `attack === PYREKEEPER_ATTACK_LIGHT`.
+ *
+ * @module
  */
 
 import { cellKey, gridToWorld, worldToGrid } from "shared/dungeon";

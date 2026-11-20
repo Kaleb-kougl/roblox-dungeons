@@ -10,6 +10,8 @@
  *
  * Dev runs are never submitted (the client's `dev` world is in shared/run SERVER_REFUSED_WORLDS); this state exists so
  * the toggle is replayable (F8's replay check) like every other input.
+ *
+ * @module
  */
 import type { InputFrame } from "../input";
 import type { SimState } from "../state";

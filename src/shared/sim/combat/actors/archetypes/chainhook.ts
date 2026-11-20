@@ -50,6 +50,8 @@
  * (hooked party index + 1 while dragging, 0 otherwise), slot 6 shared by state (CHAINHOOK_LOST: ticks without sight
  * while keeping range; CHAINHOOK_THROW_TARGET: the target + 1 while aiming and thrown; CHAINHOOK_DAMAGE: damage taken
  * since the latch while dragging), CHAINHOOK_STRAFE (+1 / -1).
+ *
+ * @module
  */
 
 import { secondsToTicks } from "../../../playerData";

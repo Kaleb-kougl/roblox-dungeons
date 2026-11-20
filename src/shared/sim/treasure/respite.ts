@@ -2,6 +2,8 @@
  * The Respite level the vault's lock reads (docs/TREASURE.md TRD10, docs/DIFFICULTY.md). A LEAF: Respite is planned,
  * not built (no SimConfig.respite, no state.respite), so this is the one place that will read it once it lands; until
  * then every vault sees TREASURE_RESPITE_NONE and its tables' level-0 entries (no eased lock).
+ *
+ * @module
  */
 import type { SimState } from "../state";
 import { TREASURE_RESPITE_NONE } from "./treasureData";

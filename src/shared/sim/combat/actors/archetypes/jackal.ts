@@ -49,6 +49,8 @@
  * JACKAL_ATTACK_LUNGE, aiTicks left) / JACKAL_LUNGE (aiTicks left; attack still JACKAL_ATTACK_LUNGE) / JACKAL_RECOVER /
  * JACKAL_HOP (spooked) / JACKAL_STAGGER (v[JACKAL_PHASE] ticks left in the last three); v slots JACKAL_DIR_X / _Z (the
  * lunge heading), JACKAL_HIT_BITS, JACKAL_TARGET (the locked target while winding up or lunging). Feeds (unhashed): SimEvents.lunges / spooks, and the guard feed above.
+ *
+ * @module
  */
 
 import { HIT_NORMAL, PLAYER_RADIUS, secondsToTicks } from "../../../playerData";

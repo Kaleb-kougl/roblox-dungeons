@@ -8,6 +8,8 @@
  * Units: world (sim) units, which are tiles (TILE_SIZE 1); distances are BFS steps between 4-neighbour tiles.
  * Solid pillars and pits are not FLOOR, so fields already round them. Breakables (`SolidCells`) are not read: the
  * tutorial has none (docs/TUTORIAL.md B7); an endless reuse would have to add them.
+ *
+ * @module
  */
 import { gridToWorld, lineOfSight, worldToGrid, type BulletBlocker } from "./collision";
 import { TileType, type Dungeon } from "./forge";

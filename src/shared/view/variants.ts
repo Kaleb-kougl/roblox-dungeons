@@ -17,6 +17,8 @@
  *
  * Never a Highlight (docs/OUTLINE.md: the engine draws at most 31): affix colour is a floor ring, the sprite rim's tint
  * and the name chip.
+ *
+ * @module
  */
 import { AffixKind, affixThemeIndex } from "shared/dungeon";
 import {

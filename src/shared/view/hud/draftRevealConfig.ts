@@ -6,6 +6,8 @@
  *
  * Units: real (unpaused) seconds from the moment the stage cover starts to fade; offsets in reference px (HUD_VIEW);
  * pitch in semitones (PlaybackSpeed = 2^(st / 12), comboConfig semitonesToSpeed); 0..1 fractions elsewhere.
+ *
+ * @module
  */
 
 /** The reveal's port audio IDs (DR4 adds them to the theme's PORT_AUDIO_EVENTS; plain strings here). */

@@ -4,6 +4,8 @@
  * (headless-safe); the client spike resolves the font names to Enum.Font and draws the sheet.
  *
  * The samples are glyph tests, not shipped strings: they never go through the string tables.
+ *
+ * @module
  */
 
 /** The scripts the sheet covers (docs/LOCALIZATION.md design 1; `pseudo` is the pseudo-locale's brackets and NBSP). */

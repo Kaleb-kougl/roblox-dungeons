@@ -6,6 +6,8 @@
  * wallet reads (statusOwns, statusUpgrades, ...) and the Armory item labels. The twinkle on a Silver piece is
  * shared/view breakableLoot.ts pieceGlints (the boost pieces' own). Presentation only; tested headlessly. Not in the
  * shared/view barrel (like shared/view/secrets): import "shared/view/silver".
+ *
+ * @module
  */
 export * from "./config";
 export * from "./events";

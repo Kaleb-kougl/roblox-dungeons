@@ -12,6 +12,8 @@
  *   joinIntentNow / shouldUpgradeJoinIntent   the `joinIntent` from the state after applying, and its upgrade
  *
  * Roblox-API-free.
+ *
+ * @module
  */
 import {
 	LOBBY,

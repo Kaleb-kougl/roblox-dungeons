@@ -2,6 +2,8 @@
  * Tunables of asset preloading and the join loading screen (docs/PRELOAD.md; logic in preload.ts, the queue in the
  * client's PreloadController). Presentation only: nothing here reaches the sim, the lockstep wire or a hash. Roblox-port
  * choices, no web source.
+ *
+ * @module
  */
 import { BOSS_ACT1_KIND, BOSS_DEMONLORD_KIND } from "shared/dungeon";
 

@@ -11,6 +11,8 @@
  *   CAP      a small damageCapped tag beside a capped boss, at most once per CAP_THROTTLE.
  *   full     the pool drops its oldest number (least recently popped) for the new one.
  * Under reducedMotion (motion = 0): no jitter, no rise, no pop; numbers still appear and fade in place.
+ *
+ * @module
  */
 import { formatDecimal } from "shared/l10n";
 import { BAR_GAP } from "./bars";

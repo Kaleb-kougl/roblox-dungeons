@@ -19,6 +19,8 @@
  * playerTraits, SimConfig.spacing: the predictor's own list, built from the merged state once per rebuild, so the
  * enemies stay where the merged state has them over the horizon); the mirror reads the merged state only. Corrections (a hit, a pickup, a piece broken, the boss's seal, a floor change, a miss) are the
  * next rebuild's business: the view smooths them (shared/view/predict). No allocation per rebuild.
+ *
+ * @module
  */
 import {
 	isDraftOpen,

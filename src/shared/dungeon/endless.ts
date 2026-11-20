@@ -64,6 +64,8 @@
  *                 and boss pick never move, and a floor without a modifier is the option-off floor exactly
  *
  * Generating the dungeon is left to the caller (`dungeonFor`), so shared/run can cache it (LRU).
+ *
+ * @module
  */
 import { imul, u32 } from "shared/jsmath";
 import { TileType, KALEB_VALE_MVP_PARAMS, type Dungeon, type ForgeParams } from "./forge";

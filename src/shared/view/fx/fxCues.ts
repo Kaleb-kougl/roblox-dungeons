@@ -48,6 +48,8 @@
  *
  * No allocation per frame: cues come from a fixed pool (FxCueBuffer, like FxEventBuffer), scratch arrays are reused.
  * Read-only on the sim. No Roblox API: tested headlessly (fxCues.spec.ts).
+ *
+ * @module
  */
 import { drawnOrMerged, type DrawnPlayerOf } from "shared/view/predict";
 import { CAMERA_PITCH_DEG, CAMERA_YAW_DEG } from "shared/config";

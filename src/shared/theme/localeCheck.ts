@@ -14,6 +14,8 @@
  *
  * The all-caps rule is shared with the node pipeline (scripts/l10n lib.js capsProblem reads LOWERCASE_RANGES from
  * this file), so a table the import accepts always passes this validator.
+ *
+ * @module
  */
 import {
 	isDevOnlyStringKey,

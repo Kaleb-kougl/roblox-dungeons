@@ -7,6 +7,8 @@
  *
  * Time is sim time (state.tick + alpha) / SIM_HZ for the pellets themselves (they hold still under pause and the
  * freeze, like boost drops), the particle clock for the fly-in, and the score pops' SimClock for the pops.
+ *
+ * @module
  */
 import { NO_POWER_PELLET } from "shared/dungeon";
 import { PelletPhase, SIM_HZ, type PelletEaten, type SimState } from "shared/sim";

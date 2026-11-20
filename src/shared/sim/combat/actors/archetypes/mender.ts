@@ -48,6 +48,8 @@
  * none: the beam runs to it while linking or channelling; while keeping range it is the ally it follows),
  * MENDER_CHANNEL_TICKS, MENDER_PULSE (ticks to the next pulse while channelling, to the next pick otherwise),
  * MENDER_STRAFE (+1 / -1), MENDER_HEALED (hp healed this life).
+ *
+ * @module
  */
 
 import { HIT_NORMAL, PLAYER_RADIUS, secondsToTicks } from "../../../playerData";

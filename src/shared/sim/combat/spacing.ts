@@ -2,6 +2,8 @@
  * The spacing list (docs/SWORD_SPACING.md Design 1, SP1; a Roblox-port feature, no web source): one entry per live
  * contact enemy, rebuilt from hashed state (kind, alive, x, z, radius) and never hashed itself, like the Warbanner
  * aura mask. ./spacingBrake.ts brakes a step against it.
+ *
+ * @module
  */
 import { PLAYER_RADIUS } from "../playerData";
 import type { SimState } from "../state";

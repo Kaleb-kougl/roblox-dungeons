@@ -9,6 +9,8 @@
  *
  * Every item passed shared/theme `cosmeticReport` (docs/COSMETICS.md "Readability rules") when it was added; the table
  * of candidates, margins and drops is docs/COSMETICS.md "As built: theme (CS3)". Pure data, no runtime import.
+ *
+ * @module
  */
 import type { CharacterId } from "shared/characters";
 

@@ -3,6 +3,8 @@
  * the string table, the validator, placeholder visuals and the packs. Gameplay and presentation
  * code import from "shared/theme" and use logical IDs only. The only place an `rbxassetid://`
  * may appear (scripts/check-asset-ids.js enforces it).
+ *
+ * @module
  */
 export * from "./types";
 export * from "./contract";

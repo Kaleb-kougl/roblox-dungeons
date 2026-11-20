@@ -10,6 +10,8 @@
  *
  * gen.arc's sin / cos are V8's, from the generated arc table (./projectilePatterns.ts, ./arcTable.ts): a burst shape
  * the table does not hold errors ("arc table miss") instead of calling Luau's libm.
+ *
+ * @module
  */
 
 import { jsMax } from "shared/jsmath";

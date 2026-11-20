@@ -3,6 +3,8 @@
  * the view (the chain, the snap). Unhashed, never read back by the sim: CombatState.hookEvents, cleared every tick by
  * step / stepParty beside clearEvents, copied by cloneCombatState. SimEvents.hookLatched / hookBroken count them (a
  * break is an end with a reason of ROLL or later; an arrival or a timed-out drag is an end, not a break).
+ *
+ * @module
  */
 
 /** Why a drag ended (HookEvents.endReason). ARRIVED / TIMED_OUT end it; every reason from ROLL on breaks it. */

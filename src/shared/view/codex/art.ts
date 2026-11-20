@@ -17,6 +17,8 @@
  *   unknown  any other unknown tile: the `ui.icon.help` glyph, or the `???` text without the icon
  * The pack is read through CodexArtPack (the client: uiImage readiness for ui images, the theme's sprite sets), so the
  * same rules hold headlessly. Kept out of shared/view sprites.ts (its compiled Luau sits near the 200-locals limit).
+ *
+ * @module
  */
 import { codexEntry, type CodexEntry } from "shared/codex";
 import { DUOS, archetypeAt, archetypeIndex, hasArchetype } from "shared/sim";

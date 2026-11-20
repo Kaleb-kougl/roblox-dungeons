@@ -18,6 +18,8 @@
  * Characters are passed in by the caller (the run's visuals, shared/view stageCharacters; no roster: STAGE_CHARACTERS).
  * Only type imports from shared/view, and BIOMES by file from the theme contract, so the server's shared/run never
  * loads the presentation layer or the theme packs.
+ *
+ * @module
  */
 import {
 	BREAKABLE_KINDS,

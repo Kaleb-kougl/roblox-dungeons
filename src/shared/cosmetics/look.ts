@@ -8,6 +8,8 @@
  *
  * An unknown wallet, an item that is not a cosmetic, an item in the wrong slot or another character's dye: no entry
  * (the default look). Pure, no runtime import.
+ *
+ * @module
  */
 import type { CharacterId } from "shared/characters";
 import { LOOK_SLOTS, cosmeticItem, dyeSlotOf, type CosmeticSlot } from "./items";

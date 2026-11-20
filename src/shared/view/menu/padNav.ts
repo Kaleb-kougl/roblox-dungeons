@@ -5,6 +5,8 @@
  *
  * Tabs clamp at their ends (no wrap): LB on the first tab and RB on the last do nothing and make no sound, so a held
  * bumper never cycles past where the player meant to stop.
+ *
+ * @module
  */
 import { PAD_KEYS, type MenuPadAction } from "./padActions";
 

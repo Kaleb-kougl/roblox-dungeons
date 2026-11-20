@@ -1,6 +1,8 @@
 /**
  * Lobby events -> AnalyticsService custom events (TelemetryService logs them; names in docs/SERVER.md "Telemetry").
  * Pure, like shared/run analytics.ts; every field value comes from a small fixed set.
+ *
+ * @module
  */
 import type { AnalyticsEventSpec } from "shared/run";
 import type { LobbyVisibility } from "./config";

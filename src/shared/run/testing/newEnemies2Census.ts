@@ -6,6 +6,8 @@
  *            breaks: roster rules, maxPerRoom, a needsCompany kind bought first, a kind below its minimum floor)
  *   party 4  the worst room's pool slots (poolHighWater.ts roomLoad: Ooze splits, summons, a Pyre-keeper's 3 pyres)
  * One Forge layout per (floor, run) serves both. Split over shard specs by floors (each row is a whole floor's sample).
+ *
+ * @module
  */
 import {
 	ENDLESS_ROOM_KINDS,

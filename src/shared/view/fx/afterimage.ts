@@ -10,6 +10,8 @@
  * FEEL_GHOST.startTransparency -> 1; at most FEEL_GHOST.perSource are alive per source (the ring reuses the oldest).
  * Off (every trail cleared) under reduced motion or with the effective particles level `off` (ghostsOn, JD9).
  * Presentation only: nothing here reaches the sim.
+ *
+ * @module
  */
 import type { JuiceSettings } from "shared/settings";
 import { BOSS_DEMONLORD_ID, DEMONLORD_V_MARK, DemonlordAttack, DemonlordState, type ActorState } from "shared/sim";

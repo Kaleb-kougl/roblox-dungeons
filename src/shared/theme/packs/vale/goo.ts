@@ -6,6 +6,8 @@
  * The layout becomes a one-facing `sprites` set (contract.ts BULLET_ART floor sprite: `land` one cell, `hold` the
  * variants, never turned) at the layout's own texel density, carrying the pipeline's `meanColor` and the hold frame's
  * lit box `lit` for the goo rules (gooArt.ts `gooArtReport`) and the renderer's cover-the-hit size.
+ *
+ * @module
  */
 import { BULLET_ART } from "../../contract";
 import type { SpriteSetAsset } from "../../types";

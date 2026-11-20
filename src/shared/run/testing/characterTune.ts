@@ -37,6 +37,8 @@
  * and the Demon Lord (TUNE_DEMONLORD). The target is the nearest living actor.
  *
  * The roll (rollReach): Blazing Trail's embers and Wrecker's smash along one roll on open ground, per character.
+ *
+ * @module
  */
 import { AffixKind, TileType, gridToWorld, tileAt, type BreakablePlacement } from "shared/dungeon";
 import type { CharacterId } from "shared/characters";

@@ -7,6 +7,8 @@
  * SnapshotExtras.vitalsIndex, the watched player while the local player spectates; everything that is the local
  * player's own (the draft, boons / relics / curses, the waiting count, the shrine hint) keeps `playerIndex`. The
  * spectate bar's fields come from SnapshotExtras.spectate.
+ *
+ * @module
  */
 import {
 	COMBO_WINDOW_TICKS,

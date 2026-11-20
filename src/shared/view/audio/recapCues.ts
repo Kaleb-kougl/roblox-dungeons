@@ -12,6 +12,8 @@
  *     the next one.
  *   - Reduced motion: the timeline itself counts nothing and lands once at the end (RecapTimeline), so one land.
  * Ranked as in SFX_PRIORITY (land 60, tick 30: under every jingle), RECAP_AUDIO's volumes below the jingle's 1.
+ *
+ * @module
  */
 import { SFX } from "./cues";
 

@@ -16,6 +16,8 @@
  *   Aegis      player.ts damagePlayer: after the tutorial's harmless branch, before armor, a pip absorbs the whole hit
  *              (absorbWithAegis; the hit player)
  *   death      boostsOnPlayerDied (damagePlayer's death, forfeitSoloRun, markPlayerLeft): every timer and pip cleared
+ *
+ * @module
  */
 import type { SimState } from "../state";
 import type { BoostPlayerState } from "./drops";

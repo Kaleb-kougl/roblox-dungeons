@@ -34,6 +34,8 @@
  *   kind     one draw per piece: crate with crateShare, else barrel.
  *
  * Output order is placement order (rooms by id). Tile coordinates (grid x, y; world x = x, z = y).
+ *
+ * @module
  */
 import { u32 } from "shared/jsmath";
 import { TileType, type Dungeon } from "./forge";

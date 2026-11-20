@@ -2,6 +2,8 @@
  * Parity helpers for the golden-fixture specs (tasks 4, 6, 7): compare a live SimState against the web build's
  * labelled dumps (`dumps[].fields`, `[name, value, hex]`) and per-subsystem hashes, and report the FIRST difference by
  * name so a failure points at the field that diverged. Roblox-API-free (lives in the sim so specs anywhere reuse it).
+ *
+ * @module
  */
 
 import {

@@ -2,6 +2,8 @@
  * Audio settings (Options screen, task L4): master, music and sound-effect volume as whole percents. Presentation
  * only. The client's AudioController multiplies them into the SoundService SoundGroups (shared/view/audio
  * soundGroupVolume). Stored overrides-only, like the juice settings.
+ *
+ * @module
  */
 import { VOLUME_PERCENT } from "./config";
 

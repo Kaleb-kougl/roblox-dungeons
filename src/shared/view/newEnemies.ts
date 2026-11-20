@@ -13,6 +13,8 @@
  *               Highlight, EVD12) and the ring under each banner (auraRingSegments, the sim's auraRadius)
  *   Stormcaller the strike row's circles (markings.ts strikeRowPoint / actorFxMarkings) and the strike flash's look
  *               (isStrikePayload: the decal pool's filter; strikeDecalLook)
+ *
+ * @module
  */
 import {
 	AiState,

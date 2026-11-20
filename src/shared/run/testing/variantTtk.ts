@@ -14,6 +14,8 @@
  * Bots: the sword walks to TTK_SWORD_CLOSE of the target (nearest living member of the target set) and holds FIRE
  * whenever it is within the swing's reach (the full combo: swing, swing, finisher); the bow keeps TTK_BOW_DISTANCE and
  * holds FIRE (the stream, 1 damage per arrow, no charged shots). Both aim straight at the target's centre.
+ *
+ * @module
  */
 import { AffixKind, encounterCost } from "shared/dungeon";
 import {

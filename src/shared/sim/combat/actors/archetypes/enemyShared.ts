@@ -7,6 +7,8 @@
  *
  * v[] slots 0..2 mean the same thing for every archetype that sets `data.roomEnemy` (pack alerts read them across
  * archetypes); slots 3..7 are each archetype's own.
+ *
+ * @module
  */
 
 import type { SimCtx } from "../../ctx";

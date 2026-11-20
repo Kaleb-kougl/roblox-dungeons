@@ -8,6 +8,8 @@
  * The real reader is the DEFAULT (`stateRunScore`), so client and server agree from the first run whatever the load
  * order of their modules. `setRunScoreReader` stays as an override (tests); SegmentedValidator also takes a reader per
  * run.
+ *
+ * @module
  */
 import type { SimState } from "shared/sim";
 

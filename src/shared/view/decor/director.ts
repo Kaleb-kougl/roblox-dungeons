@@ -39,6 +39,8 @@
  * read from the shared state, so every client shows the same rooms lit.
  *
  * The view object is reused: update() mutates and returns the same DecorView (and its arrays) every frame.
+ *
+ * @module
  */
 import {
 	NO_KIND,

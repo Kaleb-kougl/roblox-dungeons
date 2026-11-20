@@ -31,6 +31,8 @@
  *
  * Co-op: each client keeps its own account's set, so a teammate who has seen an Imp gets no toast while one who has not
  * does. Read-only on the sim.
+ *
+ * @module
  */
 import { affixThemeIndex } from "shared/dungeon";
 import { AFFIX_SIGHTING_IDS, SIGHTING_IDS, sightingStringKey, type OnboardingStatus } from "shared/onboarding";

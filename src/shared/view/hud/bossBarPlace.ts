@@ -7,6 +7,8 @@
  * top spot. From the bottom it goes back up once the boss has kept `exitPadPx` clear of the top spot for
  * `holdSeconds` (the wider exit pad and the hold stop a boss pacing along the screen's top edge from flipping the bar
  * back and forth), or at once when the boss reaches the bottom spot while clear of the top one. Presentation only.
+ *
+ * @module
  */
 import type { ScreenRect } from "./footprint";
 

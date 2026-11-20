@@ -10,6 +10,8 @@
  *   relic instead without builds or treasure), every draw on this state's stream; boosts land in front of the chest
  *   (toward the crack) or go straight to their player. Then the chest's treasure points (config.points[tier], the
  *   treasure award's multipliers) into SECRET, takenBy, taken += 1, events.taken. No lock, no allowance, no combo.
+ *
+ * @module
  */
 import type { SimState } from "../state";
 import { partySize, playerAt } from "../party";

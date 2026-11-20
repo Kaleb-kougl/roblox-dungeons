@@ -46,6 +46,8 @@
  *      chased Goldling walks into it; with it, running past the player to the far side beats the corner.
  * Walking it downhill (fleeStep) moves away from the players along the room. Unreached open cells (no source in their
  * component) and closed cells are math.huge, so a Goldling with no player in its room stands still.
+ *
+ * @module
  */
 import { u32 } from "shared/jsmath";
 import type { Dungeon } from "./forge";

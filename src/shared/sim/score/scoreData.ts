@@ -6,6 +6,8 @@
  * Every multiplier is kept as an integer numerator over a fixed denominator so each award is integer arithmetic
  * (exact in a double, identical on every machine): combo in tenths (/COMBO_DENOMINATOR), curse in quarters
  * (/CURSE_DENOMINATOR), floor scaling in percent (/FLOOR_SCALE_DENOMINATOR).
+ *
+ * @module
  */
 
 import { secondsToTicks } from "../playerData";

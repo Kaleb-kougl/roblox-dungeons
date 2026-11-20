@@ -29,6 +29,8 @@
  * docs/ARCHER.md AR2: an optional boon mask (`eligible`, sim eligibleBoonMask of a character's loadout) is passed to
  * every drawCardOffers / drawLegendaryOffers call, and every card dealt is tallied per boon and per duo (any kind,
  * drafts and Greed deals), so a spec can check what a character is never dealt.
+ *
+ * @module
  */
 import { isBossFloor } from "shared/dungeon";
 import {

@@ -7,6 +7,8 @@
  * BREAKABLE_LOOT.kindWeights).
  *
  * Distances are in tiles (TILE_SIZE = 1 world unit), measured between tile centres unless a rule says otherwise.
+ *
+ * @module
  */
 import type { EncounterRoomType } from "./encounterTypes";
 import type { BreakablePieceKindName } from "./breakablesData";

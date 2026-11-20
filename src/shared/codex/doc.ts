@@ -18,6 +18,8 @@
  * Merges are per entry: the higher tier wins; two founds keep the earlier day with its floor (a tie on the day keeps
  * the lower floor); `unread` is a union. Every merge walks ids in sorted order and is commutative, associative and
  * idempotent, so the order servers write in never matters.
+ *
+ * @module
  */
 import type { DocCodec } from "shared/settings";
 import {

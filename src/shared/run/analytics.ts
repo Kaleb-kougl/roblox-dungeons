@@ -7,6 +7,8 @@
  * Roblox limits this is designed around: 10 funnels, 100 custom event names, 8,000 combinations of the three custom
  * field values per experience. Every field value here comes from a small fixed set (end reasons, phase numbers,
  * archetype ids, reject codes). The full name table is in docs/SERVER.md.
+ *
+ * @module
  */
 import { LOCALES, SOURCE_LOCALE, liveLocales, pickLocale, resolveLocaleState } from "shared/l10n";
 import { BOSS_ACT1_ID, BOSS_DEMONLORD_ID, SIM_HZ } from "shared/sim";

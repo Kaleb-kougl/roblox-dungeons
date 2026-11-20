@@ -1,6 +1,8 @@
 /**
  * Lockstep tunables (M4 co-op). Data only: relay.ts / session.ts / client.ts read these; nothing is inlined in logic.
  * docs/SERVER.md "Co-op lockstep (M4)" has the protocol.
+ *
+ * @module
  */
 import { SIM_HZ } from "shared/sim";
 import { SEGMENT_CHECKPOINT_TICKS, SEGMENT_FALLBACK_TICKS } from "shared/run";

@@ -5,8 +5,11 @@
  * ships with every copy); the others ask for no credit and are listed anyway. Titles, names and licence names are
  * proper nouns and stay as written in every language (plain data, not theme strings); the section labels, "by {author}"
  * and the change note are strings. Keep this list in step with THIRD_PARTY_NOTICES.md.
+ *
+ * @module
  */
 
+/** The heading a credit is listed under on the credits screen. */
 export type CreditSection = "art" | "models" | "audio" | "code";
 
 /** Sections in screen order. */

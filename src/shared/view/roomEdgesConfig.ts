@@ -3,6 +3,8 @@
  * playtest) and the per-frame look of one room's line (roomEdgeLook). The state ids are fixed here so roomEdgeState.ts
  * and the look helper share them. Presentation only: nothing here reaches the sim, the lockstep wire or a hash.
  * Roblox-port feature, no web source.
+ *
+ * @module
  */
 import { STUDS_PER_TILE } from "shared/config";
 

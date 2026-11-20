@@ -5,6 +5,8 @@
  * PIXELS_PER_TILE) @ 42897e2. The web camera is a true orthographic camera; Roblox has no
  * orthographic projection, so the port fakes it with a very narrow perspective camera placed
  * far away (PLAN.md "Accepted losses"). See `shared/view` for the math.
+ *
+ * @module
  */
 
 /** Camera yaw around +Y, degrees. 45: the camera sits at +X+Z looking toward -X-Z. */

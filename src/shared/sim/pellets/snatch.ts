@@ -16,6 +16,8 @@
  * (left === 0 at the clear) can no longer pay; a returned one is on the floor again and a player's pickup counts it
  * (stepPellets). One Snatcher per room (NXD9: the room pool's cap, NX6; Horde's second wave never buys one), so a
  * record's PELLET_STOLEN pellets are all one Snatcher's.
+ *
+ * @module
  */
 import type { ActorState } from "../combat/actors/types";
 import type { SimState } from "../state";

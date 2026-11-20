@@ -13,6 +13,8 @@
  *   Pyre-keeper the torch's flight to the landing cell over the light telegraph (torchArcPoint), the pyre's flame
  *   / pyre      (pyreFlameScale: growing while it lights, flickering once lit; reduced motion: steady)
  *   bursts      newEnemy2Bursts: the frame's sparks, guard breaks, chain snaps, gulps, fizzles and puffs as one list
+ *
+ * @module
  */
 import {
 	AiState,

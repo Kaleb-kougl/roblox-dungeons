@@ -46,6 +46,8 @@
  *                    stillTick STILL_NONE -1: nothing recorded)
  *
  * Events (BuildEvents) are presentation only: cleared every tick, NOT hashed.
+ *
+ * @module
  */
 import type { SimState } from "../state";
 import { BOON_COUNT } from "../progression/progressionData";

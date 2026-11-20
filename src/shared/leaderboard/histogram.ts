@@ -15,6 +15,8 @@
  *             holds): only the sum over shards is meaningful, clamped at 0 per bucket (sumHistShards).
  *
  * Pure.
+ *
+ * @module
  */
 import { DAILY_HIST } from "shared/daily";
 import { imul, u32 } from "shared/jsmath";

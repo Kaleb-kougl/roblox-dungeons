@@ -11,6 +11,8 @@
  *            started (its board's day, session.daily.day), so a Daily started before midnight pays that day's bonus
  *   once     the run id is the grant's idempotence key (applyGrant), so a re-concluded session or a retried
  *            transaction grants once
+ *
+ * @module
  */
 import { DAILY_WORLD_KIND, dailyDay, type DailyRunKey } from "shared/daily";
 import { silverEligibility, type RunSilver, type SilverIneligibleReason } from "shared/silver";

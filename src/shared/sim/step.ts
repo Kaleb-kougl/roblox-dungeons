@@ -6,6 +6,8 @@
  *  - no trig (sin/cos/atan2 can differ between engines); + - * / and math.sqrt are IEEE-exact,
  *  - no reading render state, frame delta, or device state: the InputFrame is the only input,
  *  - iterate in a fixed order (arrays, not Map/Set of objects keyed by identity).
+ *
+ * @module
  */
 
 import { EMPTY_INPUT, type InputFrame } from "./input";

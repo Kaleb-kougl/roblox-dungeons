@@ -44,6 +44,8 @@
  * and pips are cleared at once. Pickups score nothing and never feed the combo (P6).
  *
  * Co-op: per player state in party index order (solo: one); only the picker is boosted.
+ *
+ * @module
  */
 import { rngInt, seedToState, type RngHolder } from "../rng";
 import type { InputFrame } from "../input";

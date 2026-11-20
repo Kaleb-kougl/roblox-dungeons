@@ -3,6 +3,8 @@
  * list end's haptic tick. FocusController moves a scope's main list (its `scrollRef`) by padScrollStep per
  * PadStickRepeat step, and ticks MENU_HAPTICS.listEnd once each time a push reaches an end (ScrollEndLatch).
  * Canvas units throughout (the list's CanvasPosition); scrollToShow (focus.ts) is the follow-the-selection half.
+ *
+ * @module
  */
 
 /** Which end of a list a scroll position sits at (undefined: neither, or the list does not scroll). */

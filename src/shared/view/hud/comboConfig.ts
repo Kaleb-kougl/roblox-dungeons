@@ -6,6 +6,8 @@
  *
  * Units: combo values are the sim's tenths (shared/sim COMBO_DENOMINATOR: 10 = x1.0, 50 = x5.0); times are real
  * (unpaused) seconds; sizes on the HUD are reference px (HUD_VIEW); sizes on the floor are tiles.
+ *
+ * @module
  */
 import { COMBO_DENOMINATOR, COMBO_MAX, COMBO_MIN } from "shared/sim";
 

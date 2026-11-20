@@ -1,6 +1,8 @@
 /**
  * The boon draft's rarity roll (M2; split out of progression.ts so sim/builds cards.ts can share it without a require
  * cycle; progression.ts re-exports both). Pure.
+ *
+ * @module
  */
 import { jsMax, jsMin } from "shared/jsmath";
 import {

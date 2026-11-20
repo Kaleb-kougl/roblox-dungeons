@@ -9,6 +9,8 @@
  *
  * The Goldling's own asset, colour role and name (`enemy.golden`, `enemy.golden.name`) are the enemy slot's
  * (contract.ts ENEMY_ARCHETYPES); its first-sighting line `bestiary.golden` is variants.ts BESTIARY_STRING_KEYS'.
+ *
+ * @module
  */
 
 import { slotFor, type SlotContract } from "./contract";

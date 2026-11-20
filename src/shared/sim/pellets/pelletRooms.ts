@@ -11,6 +11,8 @@
  *                     the room earned its Sweep (every regular pellet taken, count > 0; the power pellet does not count,
  *                     PD8), with swept = 1 and events.swept, and clearRoom then pays scoreSweep. stepPellets runs before
  *                     stepScore, so a pickup on the clear tick already counts.
+ *
+ * @module
  */
 import type { SimState } from "../state";
 import { PelletPhase } from "./pelletsData";

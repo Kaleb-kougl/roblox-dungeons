@@ -4,6 +4,8 @@
  * leaderboard details, the eligibility policy, the status the client gets, the verdict's records result, the Studio
  * fake parser and their tunables; the optional daily activity (`daily`: attempt count, finished days, docs/DAILY.md
  * DS13) with its merges and the server's ledger. Plain TypeScript, headlessly tested; RecordsService wraps it.
+ *
+ * @module
  */
 export * from "./config";
 export * from "./daily";

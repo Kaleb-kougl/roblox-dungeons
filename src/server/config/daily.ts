@@ -9,6 +9,8 @@
  *
  * Changing the key changes every day's seed, so it must not change while a day's boards are live. The key is not
  * exported: only `dailySeed` leaves this module.
+ *
+ * @module
  */
 import { Workspace } from "@rbxts/services";
 import { bytesOfHex } from "shared/crypto";

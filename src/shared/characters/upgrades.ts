@@ -9,6 +9,8 @@
  *   Plating      +UPGRADE_EFFECTS.platingArmorPips armor pip max (and start) per level (armorMaxDelta)
  *
  * Prospector (more Silver) has no sim lever and is not here.
+ *
+ * @module
  */
 import type { PlayerTraits } from "shared/sim";
 import { characterTraits, type CharacterId } from "./characters";

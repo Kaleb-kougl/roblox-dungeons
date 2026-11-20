@@ -14,6 +14,8 @@
  * turned as a whole: GuiObject.Rotation (clockwise degrees on screen, about the object's centre) = the yaw.
  * `gridImageLayout` gives that image's centre, size and rotation; `gridCellToMap` places a cell through it, which equals
  * `worldToMap` of the cell's centre, so markers placed by worldToMap sit on the right pixels.
+ *
+ * @module
  */
 import { TILE_SIZE } from "shared/dungeon";
 

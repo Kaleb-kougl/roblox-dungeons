@@ -18,6 +18,8 @@
  *                       counting starts on the same day both land; a delta for an older day leaves the count alone.
  *
  * Pure: decoding never throws; a malformed field reads as absent.
+ *
+ * @module
  */
 
 /** The stored `daily` field. */

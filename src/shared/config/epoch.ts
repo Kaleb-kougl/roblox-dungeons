@@ -3,6 +3,8 @@
  * (shared/leaderboard ORDERED_VALUE_LAYOUT time slot 0) and the Daily (shared/daily: day 0, shown as Daily #1). One
  * source of truth here, under shared/config, so neither module imports the other (shared/leaderboard imports
  * shared/run, which imports shared/daily).
+ *
+ * @module
  */
 
 /** 2026-01-01T00:00:00Z, unix seconds. */

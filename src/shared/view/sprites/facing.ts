@@ -1,4 +1,8 @@
-/** Sprite facings and the animation clock helpers (docs/CODEBASE_SCALE.md DX8: a pure move out of view/sprites.ts). Import from "shared/view" or "./sprites", never from this file. */
+/**
+ * Sprite facings and the animation clock helpers (docs/CODEBASE_SCALE.md DX8: a pure move out of view/sprites.ts). Import from "shared/view" or "./sprites", never from this file.
+ *
+ * @module
+ */
 import type { SpriteAnimationDef, SpriteFacings } from "shared/theme";
 import { degToRad, isoBasis, type IsoBasis } from "../iso";
 import { CAMERA_PITCH_DEG } from "shared/config";

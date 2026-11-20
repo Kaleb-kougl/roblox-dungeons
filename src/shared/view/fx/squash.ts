@@ -12,6 +12,8 @@
  * JD4: no squash axis leaves 1 +- FEEL_SQUASH.maxDeform (15 %), nothing runs past FEEL_SQUASH.maxSec (180 ms), and the
  * drawn cell is a whole number of art pixels on each axis (roundToArtPixels). JD9: under reduced motion (the juice
  * motionScale 0) every curve is 1 x 1. Presentation only: nothing here reaches the sim.
+ *
+ * @module
  */
 import { CAMERA_PITCH_DEG } from "shared/config";
 import { MAX_PARTY_SIZE } from "shared/sim";

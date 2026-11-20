@@ -8,6 +8,8 @@
  *
  * Pure: the fetcher (Player:IsFriendsWith on the server; it may yield or throw), the scheduler (task.spawn) and the
  * clock are injected, so the specs drive it synchronously.
+ *
+ * @module
  */
 import { FRIEND_CACHE, type FriendCacheConfig } from "./config";
 

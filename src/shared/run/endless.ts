@@ -37,6 +37,8 @@
  * Co-op (M4): buildEndlessRunConfig(seed, partySize) with partySize 2..8 adds `party: { size }`, scores with that
  * partySize, and builds every floor's room spawns with the party's budget multiplier (dungeons are shared: the
  * layout does not depend on the party). partySize 1 is exactly the solo config.
+ *
+ * @module
  */
 import {
 	ENDLESS_FIRST_FLOOR,

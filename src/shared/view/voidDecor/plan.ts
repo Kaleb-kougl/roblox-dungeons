@@ -30,6 +30,8 @@
  * least one wall tile from anywhere a bullet flies, and every top here is at most VOID.shoulderTopTiles (below the wall
  * top). The view ray from a bullet climbs about 1.4 tiles per tile it travels (the camera's 55 degree pitch), so it is
  * far above any void top before it reaches a void cell (plan.spec.ts checks it with ray casts).
+ *
+ * @module
  */
 import type { Dungeon, EndlessFloorLayout } from "shared/dungeon";
 import { TileType } from "shared/dungeon";

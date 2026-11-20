@@ -1,6 +1,8 @@
 /**
  * Co-op name tags (docs/PLAYER_NAMES.md): who gets a tag, where it lies on the floor, when it ducks, and its fade.
  * Pure; the client's NameTagController draws it. Tunables NAME_TAGS (nameTagsConfig.ts).
+ *
+ * @module
  */
 import { CAMERA_PITCH_DEG } from "shared/config";
 import { TileType } from "shared/dungeon";

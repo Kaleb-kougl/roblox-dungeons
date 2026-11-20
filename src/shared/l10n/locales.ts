@@ -5,6 +5,8 @@
  * the Roblox locale ids (lowercase, `LocalizationService.RobloxLocaleId` / `Player.LocaleId`) that map to it; the
  * lists are a best guess until spike L0 (d) records the real codes. A locale is auto-picked or listed only while its
  * `status` is "live" (LD12): today only the source locale is.
+ *
+ * @module
  */
 
 /** The writing system a locale's text is in: picks its fonts (L10N_FONTS). */

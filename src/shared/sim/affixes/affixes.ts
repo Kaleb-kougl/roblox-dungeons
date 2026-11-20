@@ -24,6 +24,8 @@
  * points to its drop chance (dropsOnKill); each affixed planned member adds AFFIX_PAR_COST to its room's par.
  *
  * Events (AffixEvents) are presentation only: cleared every tick, NOT hashed.
+ *
+ * @module
  */
 import { AffixKind } from "shared/dungeon";
 import type { SimState } from "../state";

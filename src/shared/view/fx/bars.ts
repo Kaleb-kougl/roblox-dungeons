@@ -14,6 +14,8 @@
  * Port change: the web build sized sprites from their sheet frames (16x16 enemies). The Roblox placeholders are 3D
  * primitives seen from the iso camera, so a kind's drawn size is its placeholder's SCREEN extent (placeholderScreenSize):
  * the width across the view and the height of its top edge above the feet, in render px.
+ *
+ * @module
  */
 
 /** Bar inner width as a fraction of the drawn sprite width (16 px sprite -> 12 px bar). */

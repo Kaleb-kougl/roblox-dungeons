@@ -14,6 +14,8 @@
  *   codexSummaryHas      entry `id` is in a run's new ids (claude/build-online-plan.md's first-fire callout line
  *                        `NEW TO YOUR CODEX` reads it from the frozen summary, or CodexController.codexNewThisRun live;
  *                        the callout is not built yet: CX9 exports the hooks only)
+ *
+ * @module
  */
 import { CODEX } from "shared/codex";
 import { HUD_VIEW, ROOM_CLEAR_VIEW, type RecapLayout } from "shared/view/hud";

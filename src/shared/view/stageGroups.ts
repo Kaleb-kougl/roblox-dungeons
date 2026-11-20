@@ -13,6 +13,8 @@
  *               stageBiomeAudio: `music.biome.<n>` and `amb.b<n>` (shared/view/audio biomeMusic / biomeAmbience)
  *   free decor  decor ids with no biome segment that no feature claims (decor.fx.torch, .flame, .glow, .zone)
  *   feature     STAGE_ASSETS.features[name]
+ *
+ * @module
  */
 import { AMBIENCE_IDS, BIOMES } from "shared/theme";
 import { archetypeAt, archetypeIndex, hasArchetype } from "shared/sim";

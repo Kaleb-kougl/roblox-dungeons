@@ -12,6 +12,8 @@
  * Keywords are compared lower-cased; entry ids are case-sensitive (`boon:swiftStrikes`). Every fake doc is `seeded`
  * (no seed runs over it). Anything else (empty, a bad part, an unknown id, a tier other than 1 / 2) is no fake:
  * undefined (the service logs it and serves the real doc).
+ *
+ * @module
  */
 import { CODEX_CATALOG, isCodexId } from "./catalog";
 import { CODEX_FAKE_KEYWORDS } from "./config";

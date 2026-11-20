@@ -2,6 +2,8 @@
  * The builds' point-to-segment test (Skewer's line, docs/LEGENDARIES.md LG4; Full Heart's beam, docs/BUILDS_V2.md
  * BV7). A pure leaf: no imports, so every rule module (and the bow, through ./fullHeart.ts) can share it without a
  * require cycle.
+ *
+ * @module
  */
 
 /**

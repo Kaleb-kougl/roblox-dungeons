@@ -2,6 +2,8 @@
  * The Goldling's floor roll and flee field tunables (docs/FORTUNE.md GE1, decisions FD10 / FD13; a Roblox-port feature,
  * no web source). Data only: ./golden.ts reads it, nothing is inline in the logic. A LEAF (no imports but types). The
  * sim-side rules (appear / escape timers, speed, jink, payouts) live in shared/sim golden/.
+ *
+ * @module
  */
 import type { EncounterRoomType } from "./encounterTypes";
 

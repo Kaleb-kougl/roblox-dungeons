@@ -10,6 +10,8 @@
  * entries with no line of their own get a codex description (`codex.desc.<category>.<key>`, decision R6): the five of
  * CX5, then the secret rooms' (docs/SECRET_ROOMS.md SRD12: `codex.desc.secret.room`; its name `secret.room.name` is
  * secrets.ts SECRET_STRING_KEYS').
+ *
+ * @module
  */
 
 /** The Codex screen's tabs (shared/codex CODEX_TABS, same order): `codex.tab.<tab>`. */

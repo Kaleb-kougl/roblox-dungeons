@@ -13,6 +13,8 @@
  *                       (stageAuditMisses)
  *   stageMergedAssets   several stage inputs' manifests as one StageAssetSet in input order, each id once (the menu /
  *                       lobby prefetch of every possible first-floor biome)
+ *
+ * @module
  */
 import type { PreloadSource } from "./preload";
 import { stageAssetsInOrder, stageAuditMisses, type StageAssetInput, type StageAssetSet } from "./stageAssets";

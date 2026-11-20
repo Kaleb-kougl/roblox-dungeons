@@ -5,6 +5,8 @@
  * (DecorLightPool.assign); a light that loses its piece fades out first, then takes a new one and fades in. Flicker is
  * a per-light seeded curve (decorFlicker), so every light pulses on its own phase. Trig is fine here (view code; it
  * never reaches the sim).
+ *
+ * @module
  */
 import { DECOR_LIGHTS } from "./fxConfig";
 

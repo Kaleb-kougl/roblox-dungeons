@@ -5,6 +5,8 @@
  *
  * Index tables (BOONS, RELICS, CURSES) are APPEND ONLY: their indices are stored in the sim state and hashed.
  * Every multiplier that feeds the hash is an integer percent (or an exact binary fraction): see runMods.ts.
+ *
+ * @module
  */
 import { SQRT1_2 } from "../jsnum";
 import { secondsToTicks } from "../playerData";

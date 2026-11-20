@@ -13,6 +13,8 @@
  *
  * Starts are therefore written once per accepted daily run (folded into its finish write) plus at most once on leave,
  * never per start. A start of a later day drops the older day's unwritten starts (only today's count matters).
+ *
+ * @module
  */
 import { DAILY_LEDGER_OPEN_ATTEMPTS } from "./config";
 import { addDailyActivity, dailyStartsOn, finishedDailyOn, type DailyActivity, type DailyActivityDelta } from "./daily";

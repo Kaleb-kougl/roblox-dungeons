@@ -1,4 +1,8 @@
-/** The validator's shared predicates, patterns and path formatting (docs/CODEBASE_SCALE.md DX8: a pure move out of validate.ts). Import the validator from "shared/theme" or "./validate", never from this file. */
+/**
+ * The validator's shared predicates, patterns and path formatting (docs/CODEBASE_SCALE.md DX8: a pure move out of validate.ts). Import the validator from "shared/theme" or "./validate", never from this file.
+ *
+ * @module
+ */
 import { contains, isInteger, matches, quote as q, type Obj } from "../util";
 import { BIOME_MATERIALS, GAMEPLAY_KEY_WORDS, MAX_IMAGE_SIDE } from "../contract";
 import { COLOR_ROLES } from "../types";

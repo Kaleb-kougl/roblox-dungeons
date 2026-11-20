@@ -13,6 +13,8 @@
  * Claims for one entry collapse to the highest tier (its floor with it); views collapse per id. A flush sends at most
  * every CODEX_OUTBOX.flushSeconds unless hurried (run over, the screen closing), and each remote at most
  * CODEX_OUTBOX.callsPerWindow calls per windowSeconds; what does not fit waits for a later flush (still hurried).
+ *
+ * @module
  */
 import { CODEX, CODEX_OUTBOX, type CodexOutboxTunables } from "./config";
 import type { CodexClaim } from "./doc";

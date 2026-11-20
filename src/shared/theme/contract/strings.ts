@@ -1,4 +1,8 @@
-/** The theme contract's required string keys (docs/CODEBASE_SCALE.md DX8: a pure move out of contract.ts). */
+/**
+ * The theme contract's required string keys (docs/CODEBASE_SCALE.md DX8: a pure move out of contract.ts).
+ *
+ * @module
+ */
 import { ENEMY_VARIANT_STRING_KEYS } from "../variants";
 import { NEW_BEST_STRING_KEYS } from "../newBest";
 import { DAILY_STRING_KEYS } from "../daily";

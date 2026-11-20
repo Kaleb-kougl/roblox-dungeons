@@ -9,6 +9,8 @@
  * How each side face's U / V run in the world and which way OffsetStudsU/V shift the pattern are Roblox conventions
  * this module does not assume: they are the `WallTextureUV` passed in (GAME_WORLD.wallTextureUV, to be confirmed in
  * Studio: no seams at wall joins, the image upright). The wall Parts are axis-aligned (no rotation).
+ *
+ * @module
  */
 import { floorTextureOffsets, textureAxisOffset, type TopFaceUV } from "./floorTexture";
 

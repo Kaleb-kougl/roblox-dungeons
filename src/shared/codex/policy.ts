@@ -9,6 +9,8 @@
  * and never a run started with KV_Debug on, a dev run (`ctx.dev`) or a stress run (R9). Private servers claim. Studio
  * claims too (the session cache; with KV_FakeCodex for tests): only the server's DataStore WRITE is gated there
  * (codexWritesAllowed, CODEX.writeFromStudio).
+ *
+ * @module
  */
 import { DAILY_WORLD_KIND } from "shared/daily";
 import { ENDLESS_WORLD_KIND, TUTORIAL_WORLD_KIND, type RunWorldKind } from "shared/run";

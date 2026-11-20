@@ -13,6 +13,8 @@
  *   workspace:SetAttribute("KV_PadSpike", true)       (client; docs/GAMEPAD_MENUS.md GM0)
  * An attribute, when present, overrides the default below; setting it to false stops the spike
  * and cleans up everything it made.
+ *
+ * @module
  */
 
 /** Compile-time defaults. Flip one to true to run a spike without touching attributes. */

@@ -7,6 +7,8 @@
  * Pure and Roblox-API-free (headless tests run it on the golden fixtures). Every failure, including errors thrown by
  * the sim (e.g. a path still marked `TODO(task N)`), comes back as `{ ok: false, reason }`; validateRun never throws.
  * docs/SERVER.md has the flow, the limits and what this does NOT prevent.
+ *
+ * @module
  */
 import { isCharacterId } from "shared/characters";
 import {

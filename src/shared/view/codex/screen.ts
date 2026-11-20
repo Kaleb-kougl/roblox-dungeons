@@ -16,6 +16,8 @@
  *   codexTabScrollX     the scrolling tab row's canvas x that keeps the current tab in view
  *
  * Text goes through an injected lookup (`CodexStr`: the client's `str`, a spec's fake), so every line here is final.
+ *
+ * @module
  */
 import {
 	CODEX_TABS,

@@ -5,6 +5,8 @@
  *
  * Scan order: rows top to bottom (y), cells left to right (x). At the first uncovered matching cell the rectangle
  * grows right while cells match, then down while the whole row segment matches and is uncovered.
+ *
+ * @module
  */
 
 /** Cells [x, x + w) x [y, y + h) of the grid (grid units: x = column, y = row). */

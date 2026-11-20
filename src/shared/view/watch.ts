@@ -33,6 +33,8 @@
  *
  * A new run (another SimState object) or reset() takes a fresh baseline: no edges on that frame. Presentation only:
  * reads the state, never writes it; no allocation per frame once the arrays have grown to the party size.
+ *
+ * @module
  */
 import {
 	BOW,

@@ -3,6 +3,8 @@
  * Data only, a LEAF: pacts.ts builds ENDLESS_PACTS_CONFIG from these; score.ts and endless.ts read the run's config
  * through state.pacts. Where the altars stand and which curse Greed shows are floor data (shared/dungeon pactsData.ts
  * PACTS, pactCurseIndex); the PactKind indices live there too (re-exported here).
+ *
+ * @module
  */
 import { secondsToTicks } from "../playerData";
 

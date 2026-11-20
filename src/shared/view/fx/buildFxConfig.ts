@@ -4,6 +4,8 @@
  * the timing, cap and setting rules, the client's BuildFxController draws what it puts out, and the audio cue mapper
  * (shared/view/audio cues.ts) reads the `audio` block. The beam's life is the sim's SPARK_BEAM_TICKS (never copied
  * here).
+ *
+ * @module
  */
 import type { ColorRole } from "shared/theme";
 

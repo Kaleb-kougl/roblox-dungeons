@@ -16,6 +16,8 @@
  *
  * Sightings follow the view player (the spectated teammate after a co-op death); finds are the local player's own,
  * plus party kills while the local player is in the run. Read-only on the sim; presentation only.
+ *
+ * @module
  */
 import { AffixKind } from "shared/dungeon";
 import {

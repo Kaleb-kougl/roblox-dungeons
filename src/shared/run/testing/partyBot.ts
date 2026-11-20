@@ -11,6 +11,8 @@
  * all of them confirmed; the bots resolve it (resolveDrafts: each player's stick on their own card for
  * DRAFT_MIN_OPEN_TICKS, then a FIRE press), player i taking the first of their offers no lower-index player took this
  * round (so the party drafts different boons whenever it can).
+ *
+ * @module
  */
 import {
 	Button,

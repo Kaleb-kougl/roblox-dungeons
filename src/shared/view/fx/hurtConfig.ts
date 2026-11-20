@@ -3,6 +3,8 @@
  * (hurtFlash.ts), the low-health edge pulse (lowHealth.ts), the hurt camera jolt and the hurt freeze (freezeRules.ts).
  * Roblox-port choices, no web source. Presentation only: nothing here reaches the sim. Times are real seconds (the
  * effect clock), except the freeze and the jolt, which are ms like the rest of freezeRules.ts.
+ *
+ * @module
  */
 import { HURT_INVULN_SECONDS } from "shared/sim";
 import type { HurtKind } from "../watch";

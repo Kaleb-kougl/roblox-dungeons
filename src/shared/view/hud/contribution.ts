@@ -27,6 +27,8 @@
  *   - `youCells`              the You card's cells in CONTRIB.cellOrder; a cell whose team total is 0 is dropped (no
  *                             boss damaged: no Boss dmg; no pellets and no boosts: no Pickups; pickups' `boosts` /
  *                             `pellets` are undefined when that part's team total is 0).
+ *
+ * @module
  */
 import { SIM_HZ } from "shared/sim";
 import { RECAP_ALIVE_TICK, RECAP_NO_FLOOR, RECAP_NO_PLAYER, type RecapTallySource } from "shared/view/fx";

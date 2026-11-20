@@ -4,6 +4,8 @@
  * while the run is paused, NOT slowed by the hitstop clock, so a kill's hold lines up with the global freeze in solo).
  * Kill holds reuse the freeze-frame lengths (freezeRules.ts KILL_FREEZE_MS / HEAVY_KILL_FREEZE_MS /
  * BOSS_DEATH_FREEZE_MS); they are not repeated here. Presentation only: nothing here reaches the sim (JD1, JD2).
+ *
+ * @module
  */
 import { PIXELS_PER_TILE, STUDS_PER_TILE } from "shared/config";
 import type { ColorRole } from "shared/theme";

@@ -12,6 +12,8 @@
  *              time (FEEL_HURT.minIntervalSec) for frames that run several ticks after a hitch.
  *   combine    the low-health pulse (lowHealth.ts) shares the edges: the larger opacity of the two shows, never the sum
  *              (edgeTransparency), so the lethal hold is never dimmed or doubled by the pulse.
+ *
+ * @module
  */
 import { HURT_INVULN_TICKS, SIM_HZ } from "shared/sim";
 import { HURT_KINDS, type HurtKind } from "../watch";

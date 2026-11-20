@@ -3,6 +3,8 @@
  * corner map, FullMapOverlay, the PauseOverlay's map) each render one empty, clipping host frame and register it here
  * by a stable ref callback; MinimapController parents its imperative map layer (the EditableImage's ImageLabel and the
  * marker pool) into the host that is mounted and drives it every frame. Nothing per frame goes through React.
+ *
+ * @module
  */
 
 /** corner: the bottom-right panel; full: the full map toggle overlay; pause: the solo pause overlay's map. */

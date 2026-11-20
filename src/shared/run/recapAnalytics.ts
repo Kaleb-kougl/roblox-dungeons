@@ -22,6 +22,8 @@
  *                                          (0..2 x maxSeconds, 0.1 s); field02 the tab showing when the panel was left
  *                                          (`you` / `team` / `party`); party runs with the tabs (`lobby`) only
  * Pure and Roblox-API-free.
+ *
+ * @module
  */
 import { isCharacterId, type CharacterId } from "shared/characters";
 import type { RecapNearMissKind, RecapTab } from "shared/view/hud";

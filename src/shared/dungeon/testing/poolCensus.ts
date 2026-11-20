@@ -13,6 +13,8 @@
  * `unlockFloors` (default true: the DSD9 rule these specs were written for) picks the roster and spender rule; false is
  * every endless world's live rule since docs/DAILY.md DSD18 (docs/NEW_ENEMIES_2.md NX6's census): no unlock floors, only
  * a kind's roomKindMinFloor (the Chainhook's 2, NXD4) holds, in the roster and in every room.
+ *
+ * @module
  */
 import {
 	ENDLESS_FIRST_FLOOR,

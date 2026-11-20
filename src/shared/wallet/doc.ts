@@ -21,6 +21,8 @@
  * Forward compatibility (docs/SILVER_SHOP.md SH1, SHD7): every top-level field this build does not know is kept in
  * `extra` exactly as stored and written back by encode, so an older server's transaction never erases a newer server's
  * fields. A known field with a malformed value is dropped as before (it is not "unknown").
+ *
+ * @module
  */
 import { DEFAULT_CHARACTER, type CharacterId, type UpgradeLevels } from "shared/characters";
 import { ARMORY_CATALOG, UPGRADE_ITEM, armoryItem, characterUnlock, type ArmoryItem } from "./catalog";

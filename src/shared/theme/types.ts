@@ -10,6 +10,8 @@
  *
  * Rule: nothing in here carries gameplay values. Hitboxes, bullet radii, speeds and timings live
  * in gameplay data, so swapping a pack can never change difficulty (the validator enforces it).
+ *
+ * @module
  */
 
 import type { BiomeMaterial, BiomeMaterialSurface, DecorLayer } from "./contract";

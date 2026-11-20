@@ -14,6 +14,8 @@
  *
  * Port changes: typed arrays became plain number arrays (preallocated, so no allocation per update either);
  * `null` -> `undefined`; -Infinity -> -math.huge.
+ *
+ * @module
  */
 import {
 	DAMAGE_CAP_BUCKETS,

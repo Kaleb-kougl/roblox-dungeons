@@ -4,6 +4,8 @@
  * ember's burn loop, and the strike's flat size (its art's rim mapped onto the hit radius, no depth stretch: the art
  * is seen from straight above). The ember sizes with gooSpriteSize / gooSpritePlacement (3/4 art, like the goo).
  * Tunables: HAZARD_ART_VIEW (hazardsConfig.ts).
+ *
+ * @module
  */
 import { BUILD_BULLET_VIEW } from "./buildBulletsConfig";
 import { HAZARD_ART_VIEW } from "./hazardsConfig";

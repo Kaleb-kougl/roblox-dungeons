@@ -12,6 +12,8 @@
  * floor and wall at a band's light multiplier (the validator's 3:1 rule, MIN_ENEMY_BULLET_CONTRAST); the spec runs it
  * for every bundled pack at every band. The enemy outline (enemy outline plan O1) is self-lit too (a Highlight rim, a
  * baked sprite rim drawn unlit), so the same report checks `enemyOutline` (DECOR_BAND_CONTRAST_CHECKS).
+ *
+ * @module
  */
 import {
 	BIOMES,

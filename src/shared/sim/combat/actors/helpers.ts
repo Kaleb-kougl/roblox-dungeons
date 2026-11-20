@@ -5,6 +5,8 @@
  *
  * `lineOfSight` (the tile DDA) is the one in `shared/dungeon` (collision.ts), ported from this same source file; it is
  * re-exported here so archetype code finds every helper in one place.
+ *
+ * @module
  */
 
 import { MAX_MOVE_STEP } from "../../playerData";

@@ -5,6 +5,8 @@
  * best one (only the best can become the personal best anyway).
  *
  * Pure: time is passed in; the service runs `take` / `failed` / `succeeded` from its loop.
+ *
+ * @module
  */
 import { SlidingWindowLimiter } from "shared/run";
 import { LEADERBOARD_WRITE_RATE, LEADERBOARD_WRITE_RETRY } from "./config";

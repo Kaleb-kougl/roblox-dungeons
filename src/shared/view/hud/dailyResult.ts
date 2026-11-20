@@ -21,6 +21,8 @@
  * (`bestLineShown`: bestBlockDrawsBestLine). In practice: an improved run shows new best's `23,410 -> 26,870` row and
  * no daily best line; a first run of the day shows the FIRST RUN TODAY ribbon (no rows) and `Best today 26,870` here; a
  * run that did not improve shows new best's `Best today 23,410` target line only.
+ *
+ * @module
  */
 import type { DailyRunResult } from "shared/daily";
 import { dailyLabel } from "shared/daily";

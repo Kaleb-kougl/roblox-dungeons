@@ -6,6 +6,8 @@
  *
  * World units: cell (gx, gy) covers [gx - 0.5, gx + 0.5] x [gy - 0.5, gy + 0.5] tiles (collision.ts), x = grid x,
  * z = grid y.
+ *
+ * @module
  */
 import { TILE_SIZE, TileType, gridToWorld, type Dungeon } from "shared/dungeon";
 

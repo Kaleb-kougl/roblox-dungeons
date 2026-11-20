@@ -2,6 +2,8 @@
  * The tutorial's highlight ring on touch (docs/TUTORIAL.md "Highlight ring"): each prompt whose touch text names an
  * on-screen control rings that control while the prompt shows. Pure: TouchControlsController draws the buttons' and
  * the move stick's rings from TouchRingTracker's frame; PauseButton rings itself with pauseButtonRinged.
+ *
+ * @module
  */
 import type { TouchButtonId } from "./touchLayout";
 import { highlightRingLook, type RingLook } from "./tutorial";

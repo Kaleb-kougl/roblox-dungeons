@@ -3,6 +3,8 @@
  * `src/sim/actors/archetypes/turretShared.ts`): stationary, awake only while the living player is within
  * TURRET_WAKE_RADIUS (no line-of-sight test), a burst every periodTicks, dead for TURRET_RESPAWN_TICKS then back at
  * full hp. Each turret archetype is its own file (turretSprayer.ts, ...).
+ *
+ * @module
  */
 
 import { ENEMY_BULLET_DAMAGE, ENEMY_BULLET_LIFE } from "../../combatData";

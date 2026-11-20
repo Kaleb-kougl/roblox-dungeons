@@ -12,6 +12,8 @@
  * Which worlds may post to the leaderboards is separate data (shared/leaderboard LEADERBOARD_ELIGIBLE_WORLDS).
  * Which registered worlds the SERVER refuses to run (session starts, including lobby starts) is SERVER_REFUSED_WORLDS.
  * Which worlds are the endless descent (floors, scoring, death-only, the stage loader) is `isEndlessWorld`.
+ *
+ * @module
  */
 import { DAILY, DAILY_WORLD_KIND } from "shared/daily";
 import { buildRunConfig, type RunSetup } from "./config";

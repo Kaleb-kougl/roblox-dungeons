@@ -8,6 +8,8 @@
  *   none      no run and no menu screen (the join waiting for the first-run gate, a run starting): silence
  *
  * The ambience bed follows the floor's biome (amb.b<n>) during a run only, and stops after a death.
+ *
+ * @module
  */
 import { BIOME_MUSIC_COUNT, EVERY_ID, MUSIC, biomeAmbience, biomeMusic, type Playable } from "./cues";
 

@@ -11,6 +11,8 @@
  * (TREASURE_UI_ROLES, the draft's `boon.*`: toasts, reward cards, the minimap mark) are >= 3:1 on `minimap.floor` too
  * (their `uiPanel` bar is `boonRarityReport`'s). The cage is >= 3:1 on every biome floor (the bars read as "closed"),
  * and the enemy bullet is >= 3:1 on the chest, like on a breakable (bullets stop on it).
+ *
+ * @module
  */
 
 import { colorDifference, contrastRatio, isHexColor } from "./color";

@@ -26,6 +26,8 @@
  * srcHash matches this pack's English and its placeholders and braces do too, then English. The pseudo-locale is
  * English through pseudoLocalize. Non-translatable keys (developer-only, `fx.cap`) are always English. `localeReport`
  * lists what fell back.
+ *
+ * @module
  */
 
 import { isHexColor } from "./color";

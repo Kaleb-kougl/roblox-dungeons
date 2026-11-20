@@ -9,6 +9,8 @@
  *   2. options.populate(room, tools) for every room except the entrance, in room id order (boss room included, so a
  *      boss populator can add minions / props; the boss itself comes from options.boss)
  *   3. options.boss: the boss archetype on the boss room's center floor tile
+ *
+ * @module
  */
 import { imul, stableSort, u32 } from "shared/jsmath";
 import { TILE_SIZE, entranceRoom, gridToWorld, tileAt } from "./collision";

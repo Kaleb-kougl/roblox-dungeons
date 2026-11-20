@@ -4,6 +4,8 @@
  * sequence at a time (a new one releases the old one's bonus at once and replaces it) and up to ROOM_CLEAR.chip.max
  * corner chips (a new chip past the cap merges the oldest at once). Every bonus is released exactly once:
  * `look.bonusLanded` is the points released this frame, `look.held` the points not yet released.
+ *
+ * @module
  */
 import { TILE_SIZE } from "shared/sim";
 import { ROOM_CLEAR } from "./roomClearConfig";

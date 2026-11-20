@@ -3,6 +3,8 @@
  * (roomEdges.endless.<n>.spec.ts): checkRoomEdgesFloor checks one floor's edges (trigger parity with roomIdAt,
  * completeness: every room-floor / other-floor neighbour pair covered by exactly one run unit) and counts its dashes;
  * roomEdgesCensus runs it over endless run seeds x floors 1..ROOM_EDGES_CENSUS.floors. Test support only.
+ *
+ * @module
  */
 import { STUDS_PER_TILE } from "shared/config";
 import {

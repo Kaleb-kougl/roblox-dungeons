@@ -12,6 +12,8 @@
  * board within 120 ranks (2.4 %, 3 points). Never worse than the score's own bucket count.
  *
  * Pure.
+ *
+ * @module
  */
 import { DAILY, type DailyStanding } from "shared/daily";
 import { histBucketBounds, histTotal, bucketOf } from "./histogram";

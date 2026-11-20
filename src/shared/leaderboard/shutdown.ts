@@ -7,6 +7,8 @@
  *      replayed, a party run collecting final claims) - their posts arrive in the queue during the flush and are
  *      written too - and while writes are in flight or a failed write was queued again (a retry),
  *   3. stops once nothing is queued, in flight or validating, or at the deadline (reported, never silent).
+ *
+ * @module
  */
 import type { QueuedPost } from "./writeQueue";
 

@@ -8,8 +8,11 @@
  * Conventions match three.js and Roblox alike: right-handed, +Y up, the camera looks down -Z.
  * Orientation = yaw about +Y, then pitch down about the camera's right axis
  * (three's Euler(-pitch, yaw, 0, "YXZ") == Roblox's CFrame.fromOrientation(-pitch, yaw, 0)).
+ *
+ * @module
  */
 
+/** A 3D vector or point as `[x, y, z]`. */
 export type Vec3 = readonly [number, number, number];
 
 /** Unit vectors of the camera frame in world space. `forward` points from the camera into the scene. */

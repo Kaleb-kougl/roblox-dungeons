@@ -2,6 +2,8 @@
  * Every theme string key the HUD, the pause overlay, the post-run panel and the juice settings panel read. The React
  * components take their keys from here, and hud.spec.ts checks each one exists in the placeholder pack, so a missing
  * key fails the build instead of showing the raw key in game.
+ *
+ * @module
  */
 import {
 	BUILD_SCORE_SOURCE_NAMES,

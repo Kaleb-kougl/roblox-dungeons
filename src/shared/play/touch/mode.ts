@@ -1,6 +1,8 @@
 /**
  * Which touch surface the screen shows (docs/MOBILE_IMPL.md MB6, docs/MOBILE.md): the rule TouchControlsController
  * reads each frame. Pure, so it is specced headlessly.
+ *
+ * @module
  */
 import type { InputDeviceKind } from "../inputMapping";
 

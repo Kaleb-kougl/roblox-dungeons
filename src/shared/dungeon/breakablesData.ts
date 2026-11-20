@@ -4,6 +4,8 @@
  * live in shared/sim (breakables/breakablesData.ts, score/scoreData.ts).
  *
  * Distances are in tiles (TILE_SIZE = 1 world unit), measured between tile centers unless a rule says otherwise.
+ *
+ * @module
  */
 import type { EncounterRoomType } from "./encounterTypes";
 

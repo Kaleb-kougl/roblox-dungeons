@@ -5,6 +5,8 @@
  * The number locale is presentation-only module state, so callers keep their signatures: the theme pack's
  * `setLocale` sets it (shared/theme ThemeCore), every helper reads it unless handed a locale code. Specs that set it
  * reset it to SOURCE_LOCALE afterwards. An unknown code formats like the source locale.
+ *
+ * @module
  */
 import { SOURCE_LOCALE, localeDef, type LocaleNumberFormat } from "./locales";
 

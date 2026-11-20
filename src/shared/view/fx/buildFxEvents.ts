@@ -43,6 +43,8 @@
  *   - Runs without builds (`state.builds === undefined`: M1, the tutorial, fixtures) collect nothing: no tick, no record.
  *
  * Read-only on the sim. No allocation in steady state (records come from pools that only grow). Presentation only.
+ *
+ * @module
  */
 import { BulletKind, BulletPayload, Duo, SparkFork, playerAt, partySize, type SimState } from "shared/sim";
 

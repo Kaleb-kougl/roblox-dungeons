@@ -33,6 +33,8 @@
  * die until the player has blocked a bullet with the sword's guard (TutorialSimConfig.guardLock: TUTORIAL_GUARD_LOCK);
  * the pellet lesson's sniper (combat G) cannot die until every pellet of its room is taken (TutorialSimConfig.pelletLock:
  * TUTORIAL_PELLET_LOCK, docs/PELLETS.md PL12). Solo only: a party throws.
+ *
+ * @module
  */
 import { TUTORIAL } from "shared/config";
 import { stableSort } from "shared/jsmath";

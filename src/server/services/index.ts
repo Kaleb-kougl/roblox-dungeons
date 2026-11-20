@@ -1,6 +1,8 @@
 /**
  * Barrel for server services. `Flamework.addPaths("src/server/services")` in runtime.server.ts discovers them;
  * re-export each service here as it is added. docs/SERVER.md describes them.
+ *
+ * @module
  */
 export * from "./RunValidationService";
 export * from "./RunSessionService";

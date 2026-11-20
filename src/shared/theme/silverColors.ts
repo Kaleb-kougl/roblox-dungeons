@@ -9,6 +9,8 @@
  *     crate pops and coins rise among bullets);
  *   - "apart": >= 40 CIE76 from the score's golds (`newBest`, `golden.coin`, `uiAccent`): Silver is what you take home,
  *     never this run's score, so it must not read as the gold coin beside the score number.
+ *
+ * @module
  */
 
 import { colorDifference, contrastRatio, isHexColor } from "./color";

@@ -12,6 +12,8 @@
  * docs/NEW_ENEMIES.md NE1 adds the second endless set the same way: `bomber` .. `reaper` in ENEMY_ARCHETYPES and
  * BESTIARY_ARCHETYPES, `bullet.enemy.strike` (STRIKE_BULLET_ID) in BULLET_IDS, the six sounds in PORT_AUDIO_EVENTS and
  * the Warbanner's aura role `enemyAura` (ENEMY_AURA_ROLE, held by variantColors.ts `auraReport`).
+ *
+ * @module
  */
 
 import type { ColorRole } from "./types";

@@ -7,6 +7,8 @@
  * Which world axis a Top face's U runs along, which corner the pattern starts at and which way OffsetStudsU/V shift
  * it are Roblox conventions this module does not assume: they are the `TopFaceUV` passed in (GAME_WORLD.floorTextureUV,
  * to be confirmed in Studio: no seams at slab joins). The floor Parts are axis-aligned (no rotation).
+ *
+ * @module
  */
 
 /** How a Texture on an axis-aligned Part's Top face maps to world axes. */

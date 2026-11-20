@@ -13,6 +13,8 @@
  *             Never released: it stays WAITING until the floor ends (no counter).
  *   RUNNING   its time is up (v[GOLDEN_TICKS_LEFT] <= 0, still alive): freed (freeActor: no onDeath, score or drop),
  *             ESCAPED, escaped + 1, events.escaped. Coins won stay won. The catch is its onDeath (goldenHooks.ts).
+ *
+ * @module
  */
 import type { SimState } from "../state";
 import type { SimConfig } from "../step";

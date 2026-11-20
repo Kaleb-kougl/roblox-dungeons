@@ -30,6 +30,8 @@
  *   graze radius  (PLAYER_RADIUS + ENEMY_BULLET_RADIUS + margin)^2, as score.ts's GRAZE_R2 (identical for 0.5)
  *   bullet speed  floor multiplier x 1.15, then capped (endlessData enemyBulletSpeedMultiplier)
  *   kill points   score.ts awardPoints with an extra integer percent (110)
+ *
+ * @module
  */
 import { jsMin } from "shared/jsmath";
 import type { PlayerState, SimState } from "../state";

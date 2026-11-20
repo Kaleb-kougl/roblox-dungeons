@@ -14,6 +14,8 @@
  *   touch/           touch controls state machine: fingers -> one TouchSnapshot per frame (docs/MOBILE_IMPL.md MB3)
  *
  * The client controllers (src/client/controllers/game) wrap these with Roblox input, attributes and remotes.
+ *
+ * @module
  */
 export * from "./bindings";
 export * from "./config";

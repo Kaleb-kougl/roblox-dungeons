@@ -24,6 +24,8 @@
  * horde record's, the only record that doubles), and its `hordePoints` (the HORDE points since its engagement) is the
  * tally's last segment, the doubled half; `hordeBonusPoints`, the HORDE points of the clear tick (the bonuses' doubled
  * half), flies with the bonus. Both 0 in every other clear and run.
+ *
+ * @module
  */
 import { NO_KIND, ScoreSource, type RoomScore, type ScoreState, type SimState } from "shared/sim";
 

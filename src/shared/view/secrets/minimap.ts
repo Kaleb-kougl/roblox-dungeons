@@ -14,6 +14,8 @@
  *
  * MinimapController calls them (Track V2). Pure, tested headlessly (minimap.spec.ts): after the change the tiles equal
  * minimapTiles of the carved grid everywhere.
+ *
+ * @module
  */
 import { TileType, type Dungeon, type FloorSecret } from "shared/dungeon";
 import { SecretStatus } from "shared/sim";

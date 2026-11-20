@@ -29,6 +29,8 @@
  * This module holds the config, the state, its floor fill, clone and hash, and the piece queries (goldenPieceAt,
  * goldenGuardsPiece). A LEAF (shared/dungeon, types and goldenData.ts only): the archetype, stepGolden and
  * breakables.ts import it without a require cycle.
+ *
+ * @module
  */
 import { BREAKABLE_KINDS, GOLDEN_FLEE, cellKey, gridToWorld, type FloorGolden, type FleeScratch } from "shared/dungeon";
 import { seedToState } from "../rng";

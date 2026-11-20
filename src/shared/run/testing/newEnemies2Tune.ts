@@ -8,6 +8,8 @@
  *   throws       Chainhook throws (a hook in flight), latches, ends by reason (arrived = the yank, timed out, broken)
  *   pyres        pyres lit, shots each pyre fired (its reload restarting while lit), pyres the player killed / withered
  *   life         per new kind: the ticks from the fight's start to its death (-1: alive at the end)
+ *
+ * @module
  */
 import { AffixKind } from "shared/dungeon";
 import {

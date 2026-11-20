@@ -6,6 +6,8 @@
  * writeHashFields() in replay.ts (or the module's write*Hash) so the determinism hash covers it. The ONE exception is
  * `combat`'s two bullet simulations: stateful pools created per run by createSimState and hashed through their own
  * writeStateHash (see combat/combat.ts).
+ *
+ * @module
  */
 
 import { seedToState } from "./rng";

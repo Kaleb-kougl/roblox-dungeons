@@ -1,6 +1,8 @@
 /**
  * Test support for the wall-slide specs (docs/WALL_SLIDE.md WS0-WS2; never imported by the game): synthetic grids and
  * walkers shared by collision.snag.spec.ts and slide.spec.ts.
+ *
+ * @module
  */
 import { TileType, cellKey, type Dungeon, type SolidCells, type WorldXZ } from "shared/dungeon";
 

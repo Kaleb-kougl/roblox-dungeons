@@ -2,6 +2,8 @@
  * The analytics debug echo (docs/TUTORIAL_FUNNEL.md TF8): with the Workspace attribute ANALYTICS_DEBUG_ATTRIBUTE set
  * to true, TelemetryService prints every event spec it logs (Studio sends nothing to AnalyticsService, so this is how a
  * Studio session shows what a live server would send). Off by default. Pure formatting, headlessly tested.
+ *
+ * @module
  */
 import type { AnalyticsEventSpec, AnalyticsFields } from "shared/run";
 

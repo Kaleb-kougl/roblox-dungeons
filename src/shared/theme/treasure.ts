@@ -14,6 +14,8 @@
  * Tiers and locks are numbered as shared/dungeon vaultData.ts `VaultTier` (COMMON 0, RARE 1, LEGENDARY 2) and
  * `VaultLock` (UNTOUCHED 0, SWIFT 1); the theme imports nothing outside shared/theme, so treasure.spec.ts pins the
  * orders against the dungeon's tables.
+ *
+ * @module
  */
 
 import type { ColorRole } from "./types";

@@ -58,6 +58,8 @@
  * trig; the cleave's half-lane turn is the half-angle of the cleave shape's own lane, from the arc table). Burst shapes
  * CLEAVE and HELLFIRE_ARC are port shapes (../../../arcTablePort.ts); CHARGE_SHOCKWAVE reuses Mother Mayhem's
  * shockwave shape (26 bullets, FULL_RING - 1).
+ *
+ * @module
  */
 
 import { SIM_DT } from "../../../../units";

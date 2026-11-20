@@ -13,6 +13,8 @@
  *     ember's `lit` ({ w, h }: its burning patch, integer art px inside the cell); neither on the other hazard;
  *   - `meanColor` (the pipeline's mean of the visible pixels) "#rrggbb" and GREY (r = g = b): the sheet is greyscale,
  *     so the tint is the colour the player sees and the family rules hold by construction.
+ *
+ * @module
  */
 
 import { isHexColor } from "./color";

@@ -1,4 +1,8 @@
-/** The theme contract's ID lists (docs/CODEBASE_SCALE.md DX8: a pure move out of contract.ts): classes, enemies, bosses, bullets, items, ui, audio, breakables, boosts and the required asset IDs. */
+/**
+ * The theme contract's ID lists (docs/CODEBASE_SCALE.md DX8: a pure move out of contract.ts): classes, enemies, bosses, bullets, items, ui, audio, breakables, boosts and the required asset IDs.
+ *
+ * @module
+ */
 import type { DecorFxName } from "./decor";
 
 // ---------------------------------------------------------------------------------------------

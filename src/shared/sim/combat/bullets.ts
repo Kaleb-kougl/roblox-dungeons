@@ -24,6 +24,8 @@
  * sync-generation bookkeeping, `boundsCenter`, easing curves other than linear, the reduced-motion spawn cap. Colors
  * are kept as the 24-bit hex the pattern set (the library converts to linear RGB floats for its shader).
  * All loops are `while` loops: their bounds change inside the body (swap-remove) or must be re-read like JS does.
+ *
+ * @module
  */
 
 /** Plain 3D vector (three.js `Vector3` in the source; doubles). */

@@ -34,6 +34,8 @@
  * Pure and Roblox-API-free: the runId generator, the seed pickers and the clocks are injected (HttpService GUIDs,
  * Random, the secret daily seed, os.clock and os.time on the server; counters in tests). The world comes from the
  * registry (worlds.ts).
+ *
+ * @module
  */
 import {
 	DEFAULT_CHARACTER,

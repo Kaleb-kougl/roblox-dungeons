@@ -15,6 +15,8 @@
  *
  * tieSpend is the EV5 doc's proposed fix, for comparison only: when the fallback has two or more open kinds tied for
  * dearest, one rng draw picks among them by weight; everything else as spendEncounterBudget.
+ *
+ * @module
  */
 import {
 	ENDLESS_ROOM_ACTOR_CAP,

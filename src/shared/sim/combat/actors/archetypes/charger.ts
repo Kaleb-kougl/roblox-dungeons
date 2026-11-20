@@ -29,6 +29,8 @@
  * CHARGER_RECOVER; attack id CHARGER_ATTACK_LANE (lane only; 0 while charging); v slots CHARGER_DIR_X / _Z (locked
  * heading), CHARGER_LEFT (charge distance left), CHARGER_HIT_BITS (players already overlapped this charge, one bit per
  * party index), CHARGER_LOST (ticks without sight while keeping range).
+ *
+ * @module
  */
 
 import { HIT_HEAVY, PLAYER_RADIUS, secondsToTicks } from "../../../playerData";

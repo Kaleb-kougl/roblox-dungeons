@@ -19,6 +19,8 @@
  * docs/PELLETS.md PL6): a small Block cube per kind in its colour role. So does a vault's chest (`treasure.*`,
  * docs/TREASURE.md TR6): a low box, an open chest's lid wedge, and a row of thin bars for the cage. So does the pact
  * altar (`pact.altar`, docs/FORTUNE.md FO6): a stone plinth.
+ *
+ * @module
  */
 
 import { PIXELS_PER_TILE, STUDS_PER_TILE } from "shared/config";

@@ -7,6 +7,8 @@
  * OVERCAP_POINTS are paid into ScoreSource.OVERCAP (score.ts scoreOvercap: the kills' floor scaling through the usual
  * multipliers, never the combo, BVD18). One BuildEvents overcap entry per hit that paid (the boss's position, the
  * hitter, the points of this hit). Without a score state nothing is counted (no score to pay into, BV0 findings).
+ *
+ * @module
  */
 import type { SimCtx } from "../combat/ctx";
 import type { ActorState } from "../combat/actors/types";

@@ -13,6 +13,8 @@
  *
  * Timeline and tunables: SECRET_VIEW (config.ts). Reduced motion: no dust, no sink (the chamber cuts in at the open:
  * sinkU 1), the shout and the edges unchanged. Read-only on the sim; presentation only; tested headlessly.
+ *
+ * @module
  */
 import type { FloorSecret } from "shared/dungeon";
 import { SIM_HZ, SecretStatus, type SimState } from "shared/sim";

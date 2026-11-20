@@ -13,6 +13,8 @@
  *
  * The floor shout and the armor pulse are the view player's (what the screen follows), the toast the local player's
  * (a personal line, like the progression toasts); the client's BraceFxController applies that. Presentation only.
+ *
+ * @module
  */
 import { BraceKind } from "shared/sim";
 import { BRACE_VIEW } from "./braceFxConfig";

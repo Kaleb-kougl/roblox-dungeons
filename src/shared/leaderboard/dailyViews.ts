@@ -2,6 +2,8 @@
  * What the Daily tells a player about the daily boards (docs/DAILY.md DS5 / DS8): their entry with its standing
  * (`dailyStatus.mine`), yesterday's podium (`dailyStatus.podium`) and a daily run's verdict (`RunFinishVerdict.daily`).
  * Pure: the rows, histogram and write outcome come from LeaderboardService.
+ *
+ * @module
  */
 import {
 	DAILY,

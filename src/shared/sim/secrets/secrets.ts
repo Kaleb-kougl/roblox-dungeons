@@ -26,6 +26,8 @@
  * Events (per tick, unhashed; for the view's SR6): `opened` (tick, how, the credited player, the toast's player, the
  * crack's first slot and centre, points) and `taken` (opener, tier, points, the grants). Knocks are the breakables'
  * per-tick feed (BreakablesState.knockSlots / knockSources / knockPlayers, SR2), present without this state too.
+ *
+ * @module
  */
 import { gridToWorld, type FloorSecret } from "shared/dungeon";
 import { seedToState } from "../rng";

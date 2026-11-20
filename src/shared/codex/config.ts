@@ -1,4 +1,8 @@
-/** Codex tunables (claude/codex-plan.md "Codex data (server)", CX2). Data only. */
+/**
+ * Codex tunables (claude/codex-plan.md "Codex data (server)", CX2). Data only.
+ *
+ * @module
+ */
 import { SETTINGS_RETRY, type RetryPolicy } from "shared/settings";
 
 /**

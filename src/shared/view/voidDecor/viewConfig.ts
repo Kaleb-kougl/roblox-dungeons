@@ -1,6 +1,8 @@
 /**
  * The void's client tunables (docs/VOID_DECOR.md VD3, VD9): the VoidController's folder, Part names, debug attributes
  * and debug palette, and how far the columns reach under the abyss plane. Presentation only.
+ *
+ * @module
  */
 import { GAME_WORLD } from "../config";
 

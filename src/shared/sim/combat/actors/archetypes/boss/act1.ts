@@ -22,6 +22,8 @@
  * reposition, summons, DEBUG_BOSS, the damage filter, the adds withering) lives in ./shared.ts, shared with
  * 'boss.demonlord'; this file keeps Mother Mayhem's attacks and every export it had. Same code, same order: the
  * golden boss runs match bit for bit.
+ *
+ * @module
  */
 
 import { SIM_DT } from "../../../../units";

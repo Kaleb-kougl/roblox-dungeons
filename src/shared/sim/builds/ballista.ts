@@ -29,6 +29,8 @@
  *
  * The charge: Ballista II / III shorten it to BALLISTA_CHARGE_PERCENT (75 %: 36 -> 27 ticks) through runMods'
  * `ballistaChargePercent`, read by bow.ts bowChargeTicks (the sim's charge and the view's bowCharge).
+ *
+ * @module
  */
 import type { SimCtx } from "../combat/ctx";
 import type { SimState } from "../state";

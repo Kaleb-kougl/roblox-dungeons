@@ -58,6 +58,8 @@
  *        included) and one by a Volatile bolt sparks (Chain Spark at the owner's level), both AT generation genMax:
  *        nothing a generation-genMax effect kills ever procs (its kill is genMax + 1), so no effect ever goes past
  *        genMax. Below genMax the ordinary proc already fires both effects for every kill.
+ *
+ * @module
  */
 import type { SimCtx } from "../combat/ctx";
 import type { SimState } from "../state";

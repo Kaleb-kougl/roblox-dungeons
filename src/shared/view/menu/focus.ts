@@ -14,6 +14,8 @@
  *     so FocusController neither steals the selection back nor acts on the B that closes it.
  *
  * Nothing here touches Roblox APIs: the client turns GuiObjects into the plain facts below.
+ *
+ * @module
  */
 import type { InputDeviceKind } from "shared/play";
 

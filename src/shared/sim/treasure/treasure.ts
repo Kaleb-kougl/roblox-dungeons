@@ -20,6 +20,8 @@
  *
  * This module holds the state, its floor fill, clone and hash. Score: score.ts scoreTreasure (ScoreSource.TREASURE,
  * combo-neutral), padded in by addTreasureScoreSources.
+ *
+ * @module
  */
 import { gridToWorld, type VaultPlan } from "shared/dungeon";
 import { seedToState } from "../rng";

@@ -15,6 +15,8 @@
  *           lunge, the swarmer's way), the lunge as `attack`, the spooked hop as the special `hop` (absent: skipped, it
  *           plays its move: never the attack), the stagger as `hit` stretched over the whole stagger (slowed); the
  *           recover: undefined (it stands)
+ *
+ * @module
  */
 import {
 	AiState,

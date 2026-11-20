@@ -37,6 +37,8 @@
  *                    frame, outside covered work and the fade, once per run and floor); PregenTracker keeps the
  *                    per-run bookkeeping (draft frames, floors built) and the run start's targets
  *   listenerLabel / formatListenerTimes  the KV_Debug listener timing line (SL0)
+ *
+ * @module
  */
 import { STAGE_LOADER, type StageLoaderConfig, type StageStep } from "./stageLoaderConfig";
 import { STAGE_STRINGS } from "./stageStrings";

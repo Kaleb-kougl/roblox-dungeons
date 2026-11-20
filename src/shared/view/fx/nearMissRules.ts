@@ -30,6 +30,8 @@
  *
  * No allocation in steady state: the output and its records are reused frame to frame (per-player state grows once
  * per new player index). Presentation only.
+ *
+ * @module
  */
 import { drawnOrMerged, type DrawnPlayerOf } from "shared/view/predict";
 import { SOLO_PARTY_SIZE, SWORD_DATA, partySize, swordGuardTicks, type PlayerState, type SimState } from "shared/sim";

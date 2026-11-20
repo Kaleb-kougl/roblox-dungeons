@@ -37,6 +37,8 @@
  *
  * Pure and Roblox-API-free: ids, the clock, friendship and busy state are injected. The server passes client
  * values straight in, so every client-supplied argument is shape-checked (`badRequest`).
+ *
+ * @module
  */
 import { DEFAULT_CHARACTER, isCharacterId, isStarterCharacter, type CharacterId } from "shared/characters";
 import {

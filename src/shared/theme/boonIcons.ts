@@ -6,6 +6,8 @@
  * sheet of their own (packs/vale boonIconLayout.ts, scripts/art/gen-boon-icons.js), each an `image` of the sheet with
  * its `rect`. Rarity is never in the art: the cell or card around the icon carries it.
  * In its own module: contract.ts sits near Luau's 200-locals-per-function limit.
+ *
+ * @module
  */
 
 /** Every boon icon id starts with this. */

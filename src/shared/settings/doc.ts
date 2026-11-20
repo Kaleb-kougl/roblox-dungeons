@@ -15,6 +15,8 @@
  *
  * Patches (`updateSettings`): every group PRESENT in a patch replaces that group (sanitized); absent groups are kept.
  * The client always sends a whole group (its optimistic copy after the change), so a group's reset is `{ juice: {} }`.
+ *
+ * @module
  */
 import { KBM_ACTIONS, PAD_ACTIONS, sanitizeControlsOverrides, type ControlsOverrides } from "shared/play";
 import { AUDIO_SETTING_KEYS, sameAudioOverrides, sanitizeAudioOverrides, type AudioOverrides } from "./audio";

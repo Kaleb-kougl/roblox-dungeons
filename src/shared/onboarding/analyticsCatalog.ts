@@ -15,6 +15,8 @@
  *
  * A field set lists the CURRENT values: a value retired by a later build (an old revision string) still sits in
  * Roblox's table, so the total keeps headroom for that.
+ *
+ * @module
  */
 import { CHARACTER_IDS } from "shared/characters";
 import { LOBBY_VISIBILITIES } from "shared/lobby";

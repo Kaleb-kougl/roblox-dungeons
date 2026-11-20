@@ -11,6 +11,8 @@
  *                       touches earned, spent, own, eq or the day marks (SHD3, SHD9)
  *   receiptDecision     a book outcome -> Roblox's answer: Processed only for a committed grant or a duplicate (SHD2)
  *   parseFakeShop       the Studio fake KV_FakeShop
+ *
+ * @module
  */
 import { SILVER_SHOP, SILVER_SHOP_FAKE_KEYWORDS, WALLET } from "./config";
 import { cloneWalletDoc, walletBalance, type WalletDoc } from "./doc";

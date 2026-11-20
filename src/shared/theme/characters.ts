@@ -13,6 +13,8 @@
  *   recap and contribution rows draw one beside a name, else a square in the visual's colour role.
  *
  * In its own module: contract.ts sits near Luau's 200-locals-per-function limit.
+ *
+ * @module
  */
 
 /** Every character icon id starts with this. */

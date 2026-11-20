@@ -4,6 +4,8 @@
  * ctx.ts can use it without a require cycle. Floor layout numbers live in shared/dungeon endlessData.ts.
  *
  * Every function is plain + - * (no `**`, which compiles to pow): the results replay bit for bit.
+ *
+ * @module
  */
 import { TILE_SIZE } from "./units";
 

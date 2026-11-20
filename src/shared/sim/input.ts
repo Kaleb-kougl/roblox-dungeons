@@ -4,6 +4,8 @@
  * Axes are integers in [-AXIS_MAX, AXIS_MAX] and already in WORLD space (rotated from screen space by the camera yaw
  * in the client's input mapping). Quantizing to integers is what makes replays exact: the sim never sees a raw float
  * from a device, so a recording of InputFrames reproduces the run bit for bit.
+ *
+ * @module
  */
 
 import { jsRound, u32 } from "shared/jsmath";

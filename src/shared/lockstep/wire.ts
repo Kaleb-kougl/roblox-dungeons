@@ -21,6 +21,8 @@
  * slack are 0; the lates may still be counted. Never enters the log, the validator or a hash.
  *
  * Decoders never throw: a malformed buffer is `undefined`.
+ *
+ * @module
  */
 import { AXIS_MAX, EMPTY_INPUT, PARTY_SIM_BUTTONS, SIM_BUTTONS, copyInput, type InputFrame } from "shared/sim";
 import { INPUT_ECHO_BYTES, INPUT_ECHO_SLACK_SCALE } from "./config";

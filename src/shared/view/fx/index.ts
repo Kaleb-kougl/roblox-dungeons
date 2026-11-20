@@ -5,6 +5,8 @@
  * cues (fxCues), the per-tick collectors the run views fill (roomClears, comboEvents, nearMissEvents, variantCueEvents, buildFxEvents; the run-long recapTally), the grazes and
  * parries rules (nearMissRules, nearMissConfig), the co-op moments (teamMoments, teamMomentsConfig, teamMomentsView, syncCallout) and the build effects' rules (buildFxRules, buildFxConfig) and Bastion's brace feedback (braceFx, braceFxConfig; docs/LEGENDARIES.md LG6), and builds v2, wave 1's planners (docs/BUILDS_V2.md BV11: buildsV2FxConfig, buildsV2Fx, counterWaveFx, siegeFx, wreckerFx, heartBeamFx, overcapFx). No Roblox API: every module is tested headlessly. The client controllers in src/client/controllers/fx
  * draw them.
+ *
+ * @module
  */
 export * from "./events";
 export * from "./tracker";

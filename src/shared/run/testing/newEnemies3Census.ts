@@ -10,6 +10,8 @@
  *   party 4  the most spawns in one room, the rooms at the actor cap, and the worst room's pool slots (poolHighWater.ts
  *            roomLoad)
  * One Forge layout per (floor, run) serves both. Split over shard specs by floors (each row is a whole floor's sample).
+ *
+ * @module
  */
 import {
 	ENDLESS_ROOM_ACTOR_CAP,

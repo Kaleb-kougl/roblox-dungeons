@@ -73,6 +73,8 @@
  * kill at combo >= GOLD_RUSH_MIN_COMBO x GOLD_RUSH_PERCENT / 100 after Bounty (awardPoints' extraPercent; kills and
  * boss kills, not the no-hit bonus); Unshaken's hits taken on armor (BuildEvents.unshakenKept) are left out of
  * stepScore's combo cuts (they still count in hitsTaken, so PERFECT still sees them).
+ *
+ * @module
  */
 
 import { PLAYER_RADIUS } from "../playerData";

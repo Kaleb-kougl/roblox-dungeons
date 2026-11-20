@@ -4,6 +4,8 @@
  * (icon, number) takes what its number needs and the floor / Depth line scales into the rest (TextScaled, capped at
  * HUD_VIEW.smallText). The counter's `+N` floats left of the panel (outside the row), so it never costs the row room.
  * Pure; fit spec in silver.spec.ts / counter.spec.ts.
+ *
+ * @module
  */
 import { SILVER_COUNTER } from "./config";
 

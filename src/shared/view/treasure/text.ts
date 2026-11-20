@@ -5,6 +5,8 @@
  * `pack.str` or a spec's fake), so it is tested headlessly (text.spec.ts). Numbers: ASCII digits through shared/l10n
  * (seconds with one decimal: formatTenths, points grouped: formatThousands); never upper-cased in code (the strings
  * are written in caps where they are caps).
+ *
+ * @module
  */
 import { formatThousands, formatTenths } from "shared/l10n";
 import { VaultLock } from "shared/dungeon";

@@ -4,6 +4,8 @@
  * the score coin, the minimap frames and the touch rings. Pure and headless (hudSkin.spec.ts); built on skin.ts /
  * skinConfig.ts (UA5), whose skinFor chains decide whether the pack has the art at all. Every function returns
  * undefined (or a flat value) when the art is absent, so the client draws exactly today's flat HUD. Presentation only.
+ *
+ * @module
  */
 import { HEART_ICON_IDS, PIP_ICON_IDS, type SliceInsets } from "shared/theme";
 import { HEART_FILL, HUD_VIEW, isHalfContainer } from "./layout";

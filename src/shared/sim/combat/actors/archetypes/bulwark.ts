@@ -29,6 +29,8 @@
  * faceX / faceZ = the shield; v slots BULWARK_LOST (ticks without sight), BULWARK_HIT_BITS (players already hit by this
  * bash, one bit per party index), BULWARK_GUARDING (1 while the shield is up), BULWARK_DIR_X / _Z (the locked bash
  * heading). Blocks and breaks: SimEvents.shieldBlocks / guardBreaks and CombatState.guardEvents (../../shield.ts).
+ *
+ * @module
  */
 
 import { HIT_NORMAL, PLAYER_RADIUS, secondsToTicks } from "../../../playerData";

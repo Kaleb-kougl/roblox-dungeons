@@ -3,6 +3,8 @@
  * all-time boards as their own tab, unchanged) and the daily tabs' text lines. Pure (daily.spec.ts): the client's
  * LeaderboardPanel keeps the tab state in the store, asks LeaderboardController for `leaderboardTabRequest(tabs)` and
  * reads the view under `leaderboardRequestKey(request)`.
+ *
+ * @module
  */
 import {
 	LEADERBOARD_BOARDS,

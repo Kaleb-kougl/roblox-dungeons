@@ -22,6 +22,8 @@
  *               candidate, in slot order, takes ONE stack draw (no per-room cap). Absent: the natural roll.
  *
  * Output: the Silver pieces as { slot (index into the floor's breakables), amount (Silver, > 0) }, in slot order.
+ *
+ * @module
  */
 import { u32 } from "shared/jsmath";
 import { gridToWorld } from "./collision";

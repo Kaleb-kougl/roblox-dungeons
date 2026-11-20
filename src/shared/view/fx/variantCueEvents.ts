@@ -45,6 +45,8 @@
  *
  * Counts per frame (the mapper only asks > 0: several imps landing on one frame are one sound). Read-only on the sim,
  * no allocation per tick. Presentation only: nothing here is hashed or written back.
+ *
+ * @module
  */
 import {
 	AiState,

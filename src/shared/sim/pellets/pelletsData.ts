@@ -2,6 +2,8 @@
  * Pellet tunables in the sim (docs/PELLETS.md PL2, decisions PD1 / PD6 / PD7 / PD8; a Roblox-port feature, no web
  * source). Data only, a LEAF: pellets.ts builds PELLETS_CONFIG from these; score.ts reads the run's config through
  * state.pellets. Where the pellets lie is floor data (shared/dungeon pelletsData.ts PELLETS).
+ *
+ * @module
  */
 import { TILE_SIZE } from "../units";
 

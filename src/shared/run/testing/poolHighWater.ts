@@ -13,6 +13,8 @@
  *          room can hold at its worst instant (dead bought enemies hold their own slot as corpses, already counted)
  * Per floor: the sum of `alive` over every room (the pool is per floor: rooms the players ran through stay populated).
  * Target (EV13): a room below 48 of MAX_ACTORS 64.
+ *
+ * @module
  */
 import {
 	encounterRooms,

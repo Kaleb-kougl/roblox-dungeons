@@ -2,6 +2,8 @@
  * Tunables of the gauntlet cursor (docs/CURSOR.md section 3; logic in cursor.ts, the client's CursorController draws
  * it). Presentation only: nothing here reaches the sim, the lockstep wire or a hash. Roblox-port choices, no web
  * source.
+ *
+ * @module
  */
 import type { CursorSize } from "shared/settings";
 

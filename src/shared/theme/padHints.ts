@@ -2,6 +2,8 @@
  * Roblox port (docs/GAMEPAD_MENUS.md GM7 / GM9): the gamepad menus' strings. Pure data with no runtime import.
  * contract.ts writes the list out inside REQUIRED_STRING_KEYS (an import would be one more top-level local in
  * contract.luau, which sits near Luau's 200-locals-per-function limit); padHints.spec.ts checks they stay the same.
+ *
+ * @module
  */
 
 /**

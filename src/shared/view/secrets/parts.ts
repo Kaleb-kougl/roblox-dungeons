@@ -12,6 +12,8 @@
  *   secretRubbleSpots   the fallback rubble's blocks (no `secret.rubble` art) on the opened cells
  *   secretLabelText     KV_SecretLabel's text: news.ts secretDebugLabel plus " charger" when the crack's room plans one
  *                       (the Archer's third key; the Studio check's Charger room)
+ *
+ * @module
  */
 import { SECRET, type ActorSpawn, type FloorSecret } from "shared/dungeon";
 import { CHARGER } from "shared/sim";

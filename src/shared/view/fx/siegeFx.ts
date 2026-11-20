@@ -20,6 +20,8 @@
  *
  * Gates: `quiet` (comboQuiet) puts nothing out and forgets everything; a new run (another state object, or the tick
  * going back) too. Records of a player outside the party are ignored. No allocation in steady state. Presentation only.
+ *
+ * @module
  */
 import { SIEGE_SHOCK_RADIUS, partySize, type SimState } from "shared/sim";
 import type { BuildFxLevel, JuiceSettings } from "shared/settings";

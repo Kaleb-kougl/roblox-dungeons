@@ -5,6 +5,8 @@
  * `loaded` false (a failed join load, or the Studio fake `unknown`) carries nothing else. `result` answers a
  * `walletBuy` / `walletEquip`; `grant` is a run's settled breakdown (the push after the grant's transaction); `purchase`
  * is one granted Silver pack (docs/SILVER_SHOP.md SH2: the push after the receipt's transaction).
+ *
+ * @module
  */
 import type { ArmoryItem } from "./catalog";
 import type { SilverFakePrice } from "./shopServer";

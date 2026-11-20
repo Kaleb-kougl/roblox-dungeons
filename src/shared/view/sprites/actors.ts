@@ -1,4 +1,8 @@
-/** Enemy and boss sprite inputs and the actor animation choice (docs/CODEBASE_SCALE.md DX8: a pure move out of view/sprites.ts). */
+/**
+ * Enemy and boss sprite inputs and the actor animation choice (docs/CODEBASE_SCALE.md DX8: a pure move out of view/sprites.ts).
+ *
+ * @module
+ */
 import {
 	AiState,
 	BOSS_ACT1_DATA,

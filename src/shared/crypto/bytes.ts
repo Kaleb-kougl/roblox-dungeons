@@ -1,6 +1,8 @@
 /**
  * Byte arrays for shared/crypto: an array of integers in [0, 255]. Strings are Luau byte strings, so a string's bytes
  * are its UTF-8 encoding (TypeScript string literals compile to UTF-8).
+ *
+ * @module
  */
 
 const BYTE_VALUES = 256;

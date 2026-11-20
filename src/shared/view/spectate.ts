@@ -16,6 +16,8 @@
  *   switch     "next" / "previous" (spectateCommand): the next / previous candidate after the watched one in index
  *              order, wrapping (cycleCandidate); ignored during a hold and with fewer than two candidates
  *   wipe       nobody alive: the last watched player stays (the run-over panel takes over)
+ *
+ * @module
  */
 import {
 	Button,

@@ -6,6 +6,8 @@
  * keyboard were already safe (the panel's focus scope outranks the screen's; MenuController ignores keys under a
  * panel). So while a panel is open over a menu screen, client/ui/menu MenuLayer mounts a pointer sink over the
  * screen (MENU_VIEW.pointerSinkZIndex). Pure, headlessly tested (pointer.spec.ts).
+ *
+ * @module
  */
 import type { MenuScreen } from "./nav";
 

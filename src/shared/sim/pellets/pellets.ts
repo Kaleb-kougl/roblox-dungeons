@@ -19,6 +19,8 @@
  * stepPellets.ts (PL3 / PL4, a tick step between stepDrops and stepScore); live / gone / sweep in the leaf
  * pelletRooms.ts, called from stepScore. Score awards (scorePellet / scoreSweep / scorePowerBullets) live in
  * score/score.ts, which reads `state.pellets.config` through the state types only (never requires this module).
+ *
+ * @module
  */
 import { NO_POWER_PELLET, cellKey, worldToGrid, type FloorPellets } from "shared/dungeon";
 import type { SimState } from "../state";

@@ -1,6 +1,8 @@
 /**
  * Menu shell and lobby UI tunables (client/ui/menu), in the HUD's reference pixels (shared/view/hud HUD_VIEW: the
  * 1280x720 layout under the HUD's UIScale), plus the menu's fixed keys.
+ *
+ * @module
  */
 import type { HapticMotor } from "../fx/haptics";
 

@@ -11,6 +11,8 @@
  * Inter-arrival gaps run from one batch to the next, across windows (a window's first gap is measured from the last
  * batch of the window before). Quantiles are nearest rank: the smallest gap with at least that share at or below it.
  * formatArrivalLine turns a window and the client's pacing numbers into the line SimController prints.
+ *
+ * @module
  */
 import { SIM_DT, isFiniteNumber } from "shared/sim";
 import { ARRIVAL_LOG, type ArrivalLogTunables } from "./config";

@@ -3,6 +3,8 @@
  * (the sim's BulletKind BURST / SHARD / SPARK_BOLT; every other kind is the weapon's bolt, heavy by draw scale as
  * before), whether its look has a trail, which pool draws it (embers go to the floor decal pool while
  * BUILD_BULLET_VIEW.ember.decal is on) and an ember decal's pop-in / fade-out. Pure; BulletRenderController applies it.
+ *
+ * @module
  */
 import { BulletKind, BulletPayload } from "shared/sim";
 import { BUILD_BULLET_IDS } from "shared/theme";

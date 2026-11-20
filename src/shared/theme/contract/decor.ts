@@ -1,4 +1,8 @@
-/** The theme contract's decor grammar (docs/CODEBASE_SCALE.md DX8: a pure move out of contract.ts): layers, kinds, biome keys, decor / void / fx IDs and the particle contract. */
+/**
+ * The theme contract's decor grammar (docs/CODEBASE_SCALE.md DX8: a pure move out of contract.ts): layers, kinds, biome keys, decor / void / fx IDs and the particle contract.
+ *
+ * @module
+ */
 import type { ColorRole, ParticleFlipbookMode } from "../types";
 import { BIOMES, type BiomeId } from "./ids";
 

@@ -7,6 +7,8 @@
  *   fog.ts        FogOfWar: unknown / remembered / in sight per cell, whole-room reveal, frontier, dirty cells (§3)
  *   transform.ts  the camera-turned map: world <-> map pixels, the grid image's rotation and layout (§4)
  *   paint.ts      fog + tiles -> RGBA8 pixels in a Luau buffer (§5)
+ *
+ * @module
  */
 export * from "./config";
 export * from "./tiles";

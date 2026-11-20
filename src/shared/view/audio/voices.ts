@@ -3,6 +3,8 @@
  * pool plays (round-robin per ID), the PlaybackSpeed jitter (a seeded generator: presentation only, never the sim's
  * rng), the per-ID pitch variance that keeps a repeated sound off its last pitch, and the music duck (a level the
  * music group follows while a jingle or the Ember plays).
+ *
+ * @module
  */
 import type { PitchRange } from "shared/theme";
 import { AUDIO_VIEW } from "./config";

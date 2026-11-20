@@ -3,6 +3,8 @@
  * runtime import, so contract.ts takes its string list (DAILY_STRING_KEYS) for REQUIRED_STRING_KEYS with one import:
  * its compiled Luau sits near Luau's 200-locals-per-function limit. The in-run rank layer's strings (DS10) are in
  * their own file.
+ *
+ * @module
  */
 
 /**

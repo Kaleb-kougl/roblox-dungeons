@@ -2,6 +2,8 @@
  * 'weapon.test' (source: `src/sim/weapons/defs/test.ts`): the E1.6 placeholder gun. FIRE held: a 3-bullet volley
  * down the facing vector every PLAYER_FIRE_TICKS (the first on the press tick). Registered so the weapon index table
  * matches the web build (`weapon.test` = 2).
+ *
+ * @module
  */
 
 import { PLAYER_MUZZLE_OFFSET } from "../../combatData";

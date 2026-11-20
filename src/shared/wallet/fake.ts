@@ -13,6 +13,8 @@
  *
  * Spaces around parts are ignored; an item given twice keeps the last level. Anything else (empty, a bad number, an
  * unknown item, a level out of range) is no fake: undefined (the service logs it and serves the real wallet).
+ *
+ * @module
  */
 import { ARMORY_CATALOG, armoryItem, type ArmoryItem } from "./catalog";
 import { WALLET_FAKE_DRESSED, WALLET_FAKE_EQUIP_MARK, WALLET_FAKE_KEYWORDS } from "./config";

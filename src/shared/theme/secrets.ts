@@ -12,6 +12,8 @@
  * is characters.ts CHARACTER_OVERRIDE_KEYS' last (optional, never required). The Codex entry's kind line, tab label
  * and codex-only description follow docs/CODEX.md's key scheme in codex.ts CODEX_STRING_KEYS (`codex.tab.secrets`,
  * `codex.kind.secret`, `codex.desc.secret.room`); its name is here (SECRET_CODEX_NAME_KEY).
+ *
+ * @module
  */
 
 import type { ColorRole } from "./types";

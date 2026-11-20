@@ -11,6 +11,8 @@
  *   field02  where the panel was opened from: armory / mainMenu (absent on `granted`)
  *   field03  the pack (prompted / bought / cancelled / settled / granted)
  *   value    `settled`: seconds from the prompt to the grant's push (0.1 s); `granted`: the Silver; otherwise 1
+ *
+ * @module
  */
 import type { AnalyticsEventSpec } from "shared/run";
 import { SILVER_SHOP } from "./config";

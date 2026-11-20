@@ -3,6 +3,8 @@
  * source). Data only: ./affixes.ts and ./stepAffixes.ts read it. Which spawn gets which affix is decided by the
  * dungeon (shared/dungeon affixes.ts, AFFIXES); the numeric ids are shared/dungeon AffixKind (theme AFFIX_IDS order).
  * Every percent is an integer (scalePercent / scaleTicks / combinedPercent).
+ *
+ * @module
  */
 import { secondsToTicks } from "../playerData";
 

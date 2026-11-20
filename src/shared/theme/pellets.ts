@@ -8,6 +8,8 @@
  *
  * Asset IDs need two segments (validate.ts isAssetId), so the plan's `pellet` is `pellet.normal`; each kind's colour
  * role has the same ID as its asset (like `boost.<kind>`).
+ *
+ * @module
  */
 
 import type { ColorRole } from "./types";

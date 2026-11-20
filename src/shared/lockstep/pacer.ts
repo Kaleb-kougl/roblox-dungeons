@@ -30,6 +30,8 @@
  * steps what is due and queued, up to the cap; the arrivals pending at it, and at the frame right after it (handled
  * after the stall), are discarded: their timestamps carry the client's own stall, not the network's. Arrivals handled
  * while fast-forwarding count for base but not for the jitter (the burst behind the hold, not the network's jitter).
+ *
+ * @module
  */
 import { SIM_DT, isFiniteNumber } from "shared/sim";
 import { PACING, type PacingTunables } from "./config";

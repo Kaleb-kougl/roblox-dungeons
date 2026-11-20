@@ -54,6 +54,8 @@
  * discard `riposteCount` and Rebuke's guard mark (a roll or a swap ends a guard short: BVD3); buildsOnRollThrough marks
  * Rebuke's roll ring (`rebukePending` ROLL) when its brace restored something; buildsStillwaterRecord (score.ts
  * stepScore) records Stillwater's cut combo.
+ *
+ * @module
  */
 import { jsMin } from "shared/jsmath";
 import type { PlayerState, SimState } from "../state";

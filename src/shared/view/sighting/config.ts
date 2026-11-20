@@ -1,8 +1,14 @@
 /**
  * First-sighting tunables (docs/ENEMY_VARIANTS.md EV12; the client's SightingController). Presentation only. The line
  * shows on its own card at the left edge (shared/view/hud SIGHTING_CARD), not among the top-centre toasts.
+ *
+ * @module
  */
 
+/**
+ * How near an actor must be to count as shown, how long a card stays, the gap between two cards and where the
+ * cards' toast ids start.
+ */
 export const SIGHTING_VIEW = {
 	/**
 	 * A living actor counts as shown once it is within this distance of the watched player (world units): about the

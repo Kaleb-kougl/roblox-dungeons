@@ -2,6 +2,8 @@
  * Every theme string key the main menu, the lobby screens, the leave-run confirm and the lobby toasts read (tasks L3,
  * L5, L6). The React components (client/ui/menu) take their keys from here; hud.spec.ts checks each one exists in the
  * placeholder pack (`menuStringKeys`), so a missing key fails the build instead of showing the raw key in game.
+ *
+ * @module
  */
 import { ARRIVAL_TOAST } from "shared/invite";
 import { creditStringKeys } from "./credits";

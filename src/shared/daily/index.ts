@@ -4,6 +4,8 @@
  * and the wire status (status.ts).
  *
  * Plain TypeScript, no Roblox APIs (headlessly tested). Never put the daily key under shared/ or client/.
+ *
+ * @module
  */
 export * from "./config";
 export * from "./day";

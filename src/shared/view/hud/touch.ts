@@ -3,6 +3,8 @@
  * touchLayout) and the four hint lines that replace the key-name hints on touch (MB10). The theme contract's
  * TOUCH_STRING_KEYS lists the same keys (the theme imports nothing outside shared/theme); touchHud.spec.ts checks each
  * one exists in the placeholder pack.
+ *
+ * @module
  */
 import type { TouchButtonId } from "./touchLayout";
 

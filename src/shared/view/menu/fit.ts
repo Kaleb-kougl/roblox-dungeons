@@ -21,6 +21,8 @@
  * The bone ornament never leaves the area and never costs the panel any size: it shows only when the panel, as
  * fitted, leaves room above it for the ornament's overhang (the panel moves down by up to half the overhang to make
  * that room); otherwise it is skipped.
+ *
+ * @module
  */
 import { UI_ART, artDensityBox } from "shared/view/hud";
 import { GAMEPAD_MENU } from "./config";

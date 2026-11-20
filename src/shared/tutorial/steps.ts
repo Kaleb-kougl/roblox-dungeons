@@ -16,6 +16,8 @@
  * (9, combat E) was removed with its room on 2026-11-09 (docs/ARCHER.md AR6: the tutorial is the Knight's), so `ember`
  * .. `finish` moved from 10..18 to 9..17 (revision 4). Never insert, remove or reorder steps lightly: every number
  * after the change point moves, and the dashboard funnel is not comparable across the change.
+ *
+ * @module
  */
 import type { TutorialLessonId } from "shared/run";
 

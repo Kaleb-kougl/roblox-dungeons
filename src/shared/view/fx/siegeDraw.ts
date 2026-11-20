@@ -15,6 +15,8 @@
  *     your camera; FreezeFrameController.requestNudge applies the Screen shake gate).
  *
  * Pure; no Roblox API; no allocation in steady state. Presentation only.
+ *
+ * @module
  */
 import { MAX_ACTORS } from "shared/sim";
 import type { EffectRecord } from "./buildFxEvents";

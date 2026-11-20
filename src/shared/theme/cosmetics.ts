@@ -13,6 +13,8 @@
  * Pure data plus pure helpers. In its own module (contract.ts sits near Luau's 200-locals limit): contract.ts spreads
  * cosmeticStringKeys() last inside REQUIRED_STRING_KEYS' function, one import and no other top-level local. The report
  * is in cosmeticReport.ts, which imports the validator (this module must not: contract.ts imports it).
+ *
+ * @module
  */
 import type { CharacterId } from "shared/characters";
 import {

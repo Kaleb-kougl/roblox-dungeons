@@ -36,6 +36,8 @@
  * live summons from the actor pool. The `ring` hint keys on aiState only, so it is also TELEGRAPH during the panic
  * wind-up: the view must draw the circle only while `attack === SUMMONER_ATTACK_SUMMON` (fillTicks = the summon
  * telegraph; the panic one is 30 ticks).
+ *
+ * @module
  */
 
 import { secondsToTicks } from "../../../playerData";

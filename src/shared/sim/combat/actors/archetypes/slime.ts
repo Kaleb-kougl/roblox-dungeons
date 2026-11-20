@@ -29,6 +29,8 @@
  *   SLIME_LOST    ticks without line of sight while crawling (leashes past lostTicks).
  *   SLIME_LAST_X / SLIME_LAST_Z   where the player was last seen (the crawl's target).
  * The split's smalls start at the corpse (prevX / prevZ there: drawn bursting out) and land splitPush to either side.
+ *
+ * @module
  */
 
 import { HIT_NORMAL, secondsToTicks } from "../../../playerData";

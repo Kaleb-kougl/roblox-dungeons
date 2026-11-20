@@ -7,6 +7,8 @@
  * flat half container. The vale pack packs them into a sheet of their own (packs/vale heartIconLayout.ts,
  * scripts/art/gen-heart-halfmax.js), each an `image` of the sheet with its `rect`, both switched on by the sheet's one
  * ID. In its own module: contract.ts sits near Luau's 200-locals-per-function limit.
+ *
+ * @module
  */
 
 /** Every half-heart container id starts with this. */

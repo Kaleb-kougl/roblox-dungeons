@@ -4,6 +4,8 @@
  * (DAILY_RANK_STRING_KEYS) for REQUIRED_STRING_KEYS with one import: its compiled Luau sits near Luau's
  * 200-locals-per-function limit. The two sounds are in contract.ts PORT_AUDIO_EVENTS (`sfx.rank.up`,
  * `sfx.friend.passed`).
+ *
+ * @module
  */
 
 /**

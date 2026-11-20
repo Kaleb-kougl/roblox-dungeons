@@ -7,6 +7,8 @@
  * the same affixes by string in the same order (shared/theme variants.ts `AFFIX_IDS`: "hulking", "swift", "shielded",
  * "vengeful"); the dungeon never imports the theme, so the mapping is this enum: AFFIX_IDS[k - 1] is AffixKind k
  * (affixThemeIndex). 0 (AffixKind.NONE) is "no affix".
+ *
+ * @module
  */
 import type { EncounterRoomType } from "./encounterTypes";
 

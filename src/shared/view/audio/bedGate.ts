@@ -5,6 +5,8 @@
  * readiness says it is in, if it is still the wanted bed. A bed already playing is never stopped by readiness (it
  * cannot be un-downloaded; KV_StandInsForce flipping it back leaves it playing). Pure: the client's AudioController
  * owns one per channel.
+ *
+ * @module
  */
 
 /** What `want` asks the channel to do now. */

@@ -2,6 +2,8 @@
  * Roblox invite and party tunables (docs/INVITES.md §6). Data only: launchData.ts, arrival.ts and the server's
  * InviteService read these (CLAUDE.md "No magic numbers"). The platform invite cap and TTL are lobby rules and live
  * in shared/lobby LOBBY (`maxPlatformInvitesPerMember`, `platformInviteTimeoutSeconds`).
+ *
+ * @module
  */
 import type { LobbyVisibility } from "shared/lobby";
 

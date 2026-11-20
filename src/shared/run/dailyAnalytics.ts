@@ -10,6 +10,8 @@
  *
  * Every field value comes from a small fixed set (the tables below), so the three events add at most
  * dailyAnalyticsCombinations() field combinations (Roblox: 8,000 per experience, 100 custom event names; no funnel).
+ *
+ * @module
  */
 import type { AnalyticsEventSpec } from "./analytics";
 import { ANALYTICS_EVENT } from "./analytics";

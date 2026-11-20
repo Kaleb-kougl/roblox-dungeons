@@ -23,6 +23,8 @@
  * A press is a button bit sent that the previous sent input did not have; its time is the first frame that sampled it
  * (a press sampled in a frame that stepped nothing waits for the next send). A press released before it was ever sent
  * is not measured.
+ *
+ * @module
  */
 import { SIM_DT } from "shared/sim";
 import {

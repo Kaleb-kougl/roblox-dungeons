@@ -3,6 +3,8 @@
  * whose sheets are trimmed to their own animations draws each sheet's frames in a billboard of that sheet's cell size,
  * with that sheet's pivot on the feet. Every sheet's pivot marks the same point of the art, so the feet stay planted
  * when the drawn sheet changes. Plain numbers (no Roblox types); the actor SpriteView applies it.
+ *
+ * @module
  */
 import type { Pivot } from "shared/theme";
 import type { SpriteLayout } from "./sprites";

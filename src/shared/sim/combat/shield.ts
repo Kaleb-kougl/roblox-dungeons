@@ -33,6 +33,8 @@
  * Feed (unhashed, for the view, cleared every tick by step / stepParty): SimEvents.shieldBlocks / guardBreaks count them;
  * CombatState.guardEvents holds where each block was (the bullet's position, or the shield's front for a swing) and
  * its Bulwark's slot, and the slot of each guard break.
+ *
+ * @module
  */
 
 import type { Vec3 } from "./bullets";

@@ -8,6 +8,8 @@
  *     burst's dust) is >= MIN_DECOR_FX_BULLET_DIFFERENCE (40, CIE76) from every enemy-bullet role and `telegraph`, the
  *     `decor.fx.*` bar plus the telegraph: dust falls on the floor among bullets and warnings and must read as dust.
  *     Difference checks only, like the decor fx roles: the dust is meant to be subtle (SRD4), so no floor contrast bar.
+ *
+ * @module
  */
 
 import { ENEMY_BULLET_ROLES, MIN_DECOR_FX_BULLET_DIFFERENCE } from "./contract";

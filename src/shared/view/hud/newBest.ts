@@ -40,6 +40,8 @@
  * The records status and the server's verdict records are read through LOCAL structural types (`NewBestRecordsInput`,
  * `NewBestServerRecords`), so this compiles without shared/records; the network types pass as is when their fields
  * match (extra fields are fine).
+ *
+ * @module
  */
 import { RANKED_WORLD_KIND } from "shared/play";
 import type { StringVars } from "shared/theme";

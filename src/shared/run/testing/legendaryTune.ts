@@ -37,6 +37,8 @@
  *    BASTION_GUARD_SWEEP_HALF_ANGLE_COS are constants, so a Bastion row can only measure the shipped numbers). The
  *    player starts DEFENSE_START_STEP x ((seed mod 5) - 2) along X from the fight's start, so seeds give different
  *    fights in the turret rooms too (turrets draw no rng).
+ *
+ * @module
  */
 import { AffixKind } from "shared/dungeon";
 import {

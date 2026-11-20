@@ -4,6 +4,8 @@
  *
  * PROVISIONAL until spike L0 (a) records which fonts draw each script: Latin keeps today's HUD fonts (Arcade / Code,
  * shared/view/hud HUD_FONTS), every other script uses BuilderSans. L0 decides the real table and any `sizeScale`.
+ *
+ * @module
  */
 import { SOURCE_LOCALE, localeDef, type LocaleScript } from "./locales";
 

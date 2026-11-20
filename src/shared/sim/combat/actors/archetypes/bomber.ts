@@ -21,6 +21,8 @@
  * View contract: states BOMBER_CHASE (= STATE_ENGAGED) / AiState.TELEGRAPH (the fuse); attack id BOMBER_ATTACK_FUSE;
  * v slot BOMBER_FUSED (0 never lit, BOMBER_FUSE_LIT fusing or fizzled mid-fuse, BOMBER_DETONATED blown up: read it on
  * the corpse, `alive === 0`, to pick Explode over Die 1).
+ *
+ * @module
  */
 
 import { HIT_NORMAL, secondsToTicks } from "../../../playerData";

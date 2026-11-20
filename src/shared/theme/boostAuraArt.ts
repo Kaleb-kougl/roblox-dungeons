@@ -15,6 +15,8 @@
  *   - `tint` the kind's own role `boost.<kind>` (the renderer draws the aura in it, so the fx colour rules,
  *     validate.ts fxColorReport, check the colour that is drawn).
  * Any other fx ID with a `ringPx` or a `rank.*` animation is an error (aura IDs only).
+ *
+ * @module
  */
 
 import { BOOST_KINDS, FX_ANIMATION, boostAuraFxId, boostId, type BoostKind } from "./contract";

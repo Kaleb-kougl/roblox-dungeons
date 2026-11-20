@@ -2,6 +2,8 @@
  * Which locale a player reads (docs/LOCALIZATION.md design 1, L2). Pure: the client hands in the Roblox locale ids it
  * knows (`Player.LocaleId` / `LocalizationService.RobloxLocaleId`, whichever spike L0 shows to be the in-experience
  * language, first) and the Options override, if any.
+ *
+ * @module
  */
 import { LOCALES, SOURCE_LOCALE, localeDef, type LocaleDef } from "./locales";
 

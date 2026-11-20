@@ -1,6 +1,8 @@
 /**
  * Barrel for the vale pack: the generated atlas, audio, ui icon, boon icon, relic / curse icon, boost icon and armor pip
  * layouts, the uploaded IDs and the manifest built from them.
+ *
+ * @module
  */
 export * from "./assetIds";
 export * from "./audioLayout";

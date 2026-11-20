@@ -23,6 +23,8 @@
  *   leaving     PARTY_LEFT_BUTTON in a player's frame (the server's merged log): `left` = 1, killed, never revived
  *   stairwell   the floor ends when every LIVING player stands in the stairwell zone, or on any present player's
  *               debug floor skip
+ *
+ * @module
  */
 import type { PlayerState, SimState } from "./state";
 import { PLAYER_HASH_FIELDS, killPlayerState, newPlayerState, writePlayerStateHash } from "./player";

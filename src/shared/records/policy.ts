@@ -5,6 +5,8 @@
  * (quit) validated runs count (NBD4), private servers count, Studio counts only with `writeFromStudio`. Debug runs,
  * other worlds, bad party sizes and party runs with fewer than COOP_MIN_PARTY contributors never count, as on the
  * leaderboard. Only ACCEPTED verdicts get here: rejected and expired runs never write.
+ *
+ * @module
  */
 import { DAILY_WORLD_KIND } from "shared/daily";
 import {

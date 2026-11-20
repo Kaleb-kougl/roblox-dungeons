@@ -13,6 +13,8 @@
  * Treasure rooms (docs/TREASURE.md TR7): `fromChest` lists the frame's landings that came out of an opened chest
  * (DropsEvents.fromChest; a subset of `dropped`, collected the same way): the renderer holds them inside the chest until
  * the lid pops, then hops them out (chestLandingAt). Not in `fromPiece`: the loot sound is a breakable's.
+ *
+ * @module
  */
 import {
 	NO_BOOST,

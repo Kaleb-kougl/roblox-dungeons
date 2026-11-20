@@ -32,6 +32,8 @@
  * where aiState === TELEGRAPH, attack === IMP_ATTACK_FAN and aiTicks === IMP_LAND_AIM_TICKS (prevX / prevZ equal x / z
  * there: snap, puff). While repositioning, aiTicks counts ticks without line of sight (leashes past lostTicks).
  * Leashes home after losing the player.
+ *
+ * @module
  */
 
 import { HIT_NORMAL, secondsToTicks } from "../../../playerData";

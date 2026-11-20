@@ -39,6 +39,8 @@
  * Output: a FloorSecret (EndlessFloorLayout / EndlessFloorWorld.secret): the crack, the chamber, the chest, their piece
  * slots (buildEndlessFloor appends the crack pieces, kind `crackedWall` in crack order, then the chest, kind `chest`,
  * after every other piece: secretPieces) and `dungeon`, the carved copy the sim moves and blocks on (carveSecret).
+ *
+ * @module
  */
 import { u32 } from "shared/jsmath";
 import { TileType, type Dungeon } from "./forge";

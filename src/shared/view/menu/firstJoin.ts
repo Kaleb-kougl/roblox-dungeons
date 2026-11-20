@@ -13,6 +13,8 @@
  *
  * Telemetry (docs/TUTORIAL_FUNNEL.md §4 `OnboardingGate`): `firstJoinGateReason` names why the dispatched choice went
  * where it went; TutorialController sends it once per session as `onboardingReport({ kind: "gate", reason })`.
+ *
+ * @module
  */
 import { INVITE, type ArrivalJoinIntent } from "shared/invite";
 import type { OnboardingGateReason, OnboardingStatus } from "shared/onboarding";

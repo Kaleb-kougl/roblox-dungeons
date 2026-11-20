@@ -1,4 +1,8 @@
-/** Personal records tunables (docs/NEW_BEST.md "Personal records (server)", RecordsService). Data only. */
+/**
+ * Personal records tunables (docs/NEW_BEST.md "Personal records (server)", RecordsService). Data only.
+ *
+ * @module
+ */
 import { LEADERBOARD_READ_RETRY } from "shared/leaderboard";
 import { SETTINGS_AUTOSAVE_SECONDS, SETTINGS_RETRY, type RetryPolicy } from "shared/settings";
 

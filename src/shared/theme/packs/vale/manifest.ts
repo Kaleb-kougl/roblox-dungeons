@@ -76,6 +76,8 @@
  * one-facing `sprites` set once the bullet atlas (bullets.png) has an ID; until then the placeholder's neon part. The goo puddle (goo.ts, docs/GOO_ART.md GA2) becomes a floor
  * sprite set once goo.png has an ID; until then the placeholder's neon disc. Likewise the strike and the embers
  * (hazards.ts, docs/HAZARD_ART.md HA3) once hazards.png has one.
+ *
+ * @module
  */
 import {
 	BIOMES,

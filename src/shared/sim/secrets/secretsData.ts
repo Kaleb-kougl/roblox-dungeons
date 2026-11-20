@@ -2,6 +2,8 @@
  * Secret room tunables in the sim (docs/SECRET_ROOMS.md SR3 / SR4; a Roblox-port feature, no web source). Data only:
  * secrets.ts, open.ts and stepSecrets.ts read it. Where a floor's secret is (the crack, the chamber, the chest, its tier)
  * is shared/dungeon placeSecret's (SECRET); the open's points are score/scoreData.ts SECRET_POINTS.
+ *
+ * @module
  */
 import {
 	TREASURE_BOOSTS,

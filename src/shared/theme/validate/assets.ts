@@ -1,4 +1,8 @@
-/** The validator's per-asset checks (docs/CODEBASE_SCALE.md DX8: a pure move out of validate.ts): biome materials, images, sounds, world art, decor, particles, sprite sets and fx. */
+/**
+ * The validator's per-asset checks (docs/CODEBASE_SCALE.md DX8: a pure move out of validate.ts): biome materials, images, sounds, world art, decor, particles, sprite sets and fx.
+ *
+ * @module
+ */
 import { append, describeValue, isArrayLike, isObj, matches, quote as q, sortedEntries, type Obj } from "../util";
 import {
 	AMBIENCE,

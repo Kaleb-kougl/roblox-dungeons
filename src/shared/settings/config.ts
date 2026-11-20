@@ -1,4 +1,8 @@
-/** Settings persistence tunables (SettingsService). Data only. */
+/**
+ * Settings persistence tunables (SettingsService). Data only.
+ *
+ * @module
+ */
 import type { RetryPolicy } from "./store";
 
 /** DataStore holding one SettingsDoc per player. */

@@ -9,6 +9,8 @@
  *                  mounts it once and drives its fade; rules pure in shared/view (stageLoader.ts, STAGE_VIEW,
  *                  STAGE_STRINGS), state in the Reflex `stage` slice
  *   parts          the shared cover and progress bar (SD6: one look)
+ *
+ * @module
  */
 export * from "./parts";
 export * from "./LoadingScreen";

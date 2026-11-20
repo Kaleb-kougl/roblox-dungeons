@@ -4,6 +4,8 @@
  * sits near Luau's 200-locals-per-function limit. The colour rules and their report (`newBestReport`) are in
  * newBestColors.ts, which validate.ts imports one name from (`newBestColorProblems`) for the same reason; the two sounds
  * are in contract.ts PORT_AUDIO_EVENTS (`sfx.best.new`, `sfx.jingle.record`) and the role in types.ts COLOR_ROLES.
+ *
+ * @module
  */
 
 /**

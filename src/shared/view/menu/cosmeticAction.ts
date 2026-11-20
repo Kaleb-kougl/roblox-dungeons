@@ -12,6 +12,8 @@
  * along the facing (half-angle fanRad, speeds sparkSpeedMin..Max with exponential drag) and a ring grows ringR0 ->
  * ringR1 tiles, all fading after `hold` of lifeSec; the preview stages it bigger and slower (spreadScale, burstSlowdown,
  * the client's sparkPx). Reduced motion: no action (the caller keeps the still idle).
+ *
+ * @module
  */
 import { cosmeticItem, LOOK_SLOTS } from "shared/cosmetics";
 import { COSMETIC_VIEW } from "../cosmetics/config";

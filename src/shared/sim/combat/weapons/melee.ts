@@ -1,6 +1,8 @@
 /**
  * Melee arcs (E1.8, GDD: melee swings delete enemy bullets inside their arc; source: `src/sim/weapons/melee.ts`).
  * Trig-free: the arc is a direction (unit vector), a reach and the COSINE of its half-angle (0.5 = 120-degree swing).
+ *
+ * @module
  */
 
 import type { SimCtx } from "../ctx";

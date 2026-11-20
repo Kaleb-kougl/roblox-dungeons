@@ -15,6 +15,8 @@
  *   hidden      the tutorial, dev runs, M1 and every other world that never pays (nothing drawn)
  *
  * The goal: the cheapest next level (WalletStatus.goals' first), its `to go` against the balance after this run.
+ *
+ * @module
  */
 import { SILVER, type RunSilver, type SilverTunables } from "shared/silver";
 import { SILVER_RECAP_KEYS, type StringVars } from "shared/theme";

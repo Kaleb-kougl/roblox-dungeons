@@ -16,6 +16,8 @@
  * within the rest, all within PORTRAIT.controlBandShare of the height from the bottom; no centre-band rule (the player
  * stands above the band, shared/view cameraFraming's lift). The move zone starts PORTRAIT.moveZoneShare of the height
  * from the bottom. Landscape keeps every rule.
+ *
+ * @module
  */
 import { TOUCH } from "shared/config";
 import { cornerRect, HUD_FOOTPRINT, TOUCH_ALWAYS_ON_PANELS } from "./footprint";

@@ -14,6 +14,8 @@
  *               pending `Adding Silver...` or, for a moment, `+450 Silver`. Same size and look for every card: no
  *               ribbon, no "best value", no crossed-out price (SHD5).
  *   layout      the panel's widths, columns and rows (silverShopLayout / silverShopRows), shared with fit.spec.ts.
+ *
+ * @module
  */
 import type { StringVars } from "shared/theme";
 import { SILVER_SHOP_KEYS } from "shared/theme";

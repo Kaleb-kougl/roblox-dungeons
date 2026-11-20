@@ -13,6 +13,8 @@
  * heavy nudge's strength and length), ranked above heavy / stamp and below phase / hurt / death; the client's
  * ComboController requests it on the ComboDisplay's `kick` edge (already off under reduced motion or without Screen
  * shake).
+ *
+ * @module
  */
 import type { JuiceSettings } from "shared/settings";
 import type { HurtKind } from "../watch";

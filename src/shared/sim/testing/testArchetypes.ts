@@ -4,6 +4,8 @@
  * phases, the damage cap, onDeath) in unit and determinism tests. Importing this module registers them, so import it
  * at the top of a spec (before any createSimState: the registry seals when the first run starts). Each spec file runs
  * in its own module world, so the extra ids never reach another spec's index table.
+ *
+ * @module
  */
 
 import { SIM_DT } from "../units";

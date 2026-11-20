@@ -13,6 +13,8 @@
  *   const lit = (x) => (Object.is(x, -0) ? "-0" : String(x)); // shortest round-trip literal
  *   for (const s of t.shapes) emit({ count: s.count, spread: v(s.spreadHex), full: s.full,
  *                                   sin: s.sinHex.map(v).map(lit), cos: s.cosHex.map(v).map(lit) });
+ *
+ * @module
  */
 
 /** One burst shape: gen.arc(count, spread, ...) at heading 0. sin[i] / cos[i] belong to bullet i. */

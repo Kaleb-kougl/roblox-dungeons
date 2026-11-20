@@ -1,4 +1,8 @@
-/** 'turret.sniper' (M1 sandbox; source: `src/sim/actors/archetypes/turretSniper.ts`): a 5-bullet, 0.5 rad arc aimed at the player every 0.8 s. */
+/**
+ * 'turret.sniper' (M1 sandbox; source: `src/sim/actors/archetypes/turretSniper.ts`): a 5-bullet, 0.5 rad arc aimed at the player every 0.8 s.
+ *
+ * @module
+ */
 
 import { BulletKind } from "../../patterns";
 import { registerArchetype } from "../registry";

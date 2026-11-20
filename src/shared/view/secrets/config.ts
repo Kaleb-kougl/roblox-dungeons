@@ -11,6 +11,8 @@
  *   reveal.jingleSec     the discovery jingle (`sfx.jingle.secret`), the torches light
  *   openingSec           SecretLook leaves OPENING for OPEN (every step above is over)
  * Reduced motion: no dust, no sink (the chamber cuts in at the open), no shards; the shout and the sounds stay.
+ *
+ * @module
  */
 import type { ColorRole } from "shared/theme";
 import { TREASURE_VIEW } from "../treasure/config";

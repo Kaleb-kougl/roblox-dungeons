@@ -19,6 +19,8 @@
  * run in the steps a frozen tick skips and need nothing. A no-op on a floor-change draft (no record engaged, the vault
  * SEALED or gone, the Goldling hidden or gone, every actor freed), so a pacts run whose drafts all open on a floor change
  * hashes as before. No rng, no new state.
+ *
+ * @module
  */
 import { AffixKind } from "shared/dungeon";
 import type { SimState } from "../state";

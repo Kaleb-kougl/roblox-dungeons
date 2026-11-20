@@ -9,6 +9,8 @@
  * audio (the world's tracks, the biome's music and bed, the boss track). Each id once, at its first group. Ids matching
  * STAGE_ASSETS.soon go to `soon`, the rest to `must`. A pack without an id yields nothing for it, so a placeholder
  * pack's manifest is empty.
+ *
+ * @module
  */
 import type { ContentRef } from "shared/theme";
 import type { PreloadSource } from "./preload";

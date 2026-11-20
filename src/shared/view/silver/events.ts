@@ -4,6 +4,8 @@
  * LockstepClient) `collect` it after every tick into one SilverFrameEvents and `reset` it at the start of every frame,
  * as they do the secrets' and the Goldling's. SilverCrateFx reads it once per frame. Presentation only: plain numbers
  * copied out of the state, read-only on the sim, tested headlessly. A leaf (shared/sim only).
+ *
+ * @module
  */
 import type { SimState } from "shared/sim";
 

@@ -5,6 +5,8 @@
  * data (shared/dungeon vaultData.ts VAULT, vault.ts placeVault): the sim reads the dungeon's VaultLock / VaultTier
  * tables, and treasure.spec.ts pins the numbers both sides share (VAULT_TIER_COUNT, VAULT_LOCK_COUNT, the per-tier
  * tables' lengths).
+ *
+ * @module
  */
 import { VaultLock, VaultTier } from "shared/dungeon";
 import { TILE_SIZE } from "../units";

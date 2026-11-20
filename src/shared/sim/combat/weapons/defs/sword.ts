@@ -23,6 +23,8 @@
  *   buildsOnGuardEnd (the counter-wave).
  *   Sword spacing (docs/SWORD_SPACING.md SP2 / SP3, with SimConfig.spacing): the `spacing` hook brakes the walk while
  *   attacking (stepPlayer), and the wind-up's lunge goes through the same brake (ctx.spacing).
+ *
+ * @module
  */
 
 import { Button } from "../../../input";

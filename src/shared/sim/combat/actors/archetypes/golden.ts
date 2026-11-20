@@ -25,6 +25,8 @@
  *
  * View contract: states GOLDEN_RUN / GOLDEN_JINK; v slots GOLDEN_TICKS_LEFT (ticks to its escape: the shrinking ring),
  * GOLDEN_JINK_COOLDOWN, GOLDEN_HITS (damaging hits taken), GOLDEN_JINK_X / Z.
+ *
+ * @module
  */
 
 import { fleeStep, gridToWorld } from "shared/dungeon";

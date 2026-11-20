@@ -16,6 +16,8 @@
  *   player bullet hits             actingPlayer(owner): the bullet's owner (onHit / onDeath see who hit them)
  *   contact damage, enemy bullets  hurtPlayerAt(i, ...) per player in index order
  * `input` outside the weapons phase is player 0's (the boss's DEBUG_BOSS edge reads it).
+ *
+ * @module
  */
 
 import { Button, EMPTY_INPUT, type InputFrame } from "../input";

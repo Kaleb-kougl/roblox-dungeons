@@ -15,6 +15,8 @@
  *               (0.4 s, SILVER_SHOP.holdSec), hold then confirm (from shared/wallet CONFIRM_FROM_TIER), or nothing
  *   badge       the main menu's dot: a next level the balance covers that the player has not seen in the Armory yet
  *   BuyHold     the press-and-hold of the buy button (mouse, touch, the pad's A): one completion per press
+ *
+ * @module
  */
 import {
 	CHARACTER_IDS,

@@ -8,6 +8,8 @@
  *
  * Text is never composed here: every string is a theme key plus vars, some of which are theme keys themselves
  * (`HudText.varKeys`, looked up by the client like a toast's `nameKey`).
+ *
+ * @module
  */
 import { isBossFloor } from "shared/dungeon";
 import {

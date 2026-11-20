@@ -5,6 +5,8 @@
  * void outside. The grid is the CARVED one (shared/dungeon carveSecret's output: the crack cells and the chamber FLOOR),
  * as the sim steps on it; the pieces are `extra` (slots 0 ..), then the two crack pieces, then the chest. Run as an
  * endless run so the floor's world carries the pieces and the plan (EndlessFloorWorld.breakables / .secret).
+ *
+ * @module
  */
 import {
 	TileType,

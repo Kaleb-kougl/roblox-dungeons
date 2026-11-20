@@ -21,6 +21,8 @@
  * floor for ~99.99 % of seeds; bit-exact V8 trig for all seeds would need a port of V8's glibc sin / cos (LGPL).
  * Platform math.sin / math.cos would not fix that either (macOS libm differs from V8 on 4 of the 36 dungeon calls) and
  * would differ between Roblox machines.
+ *
+ * @module
  */
 
 /** 2^27 + 1: Dekker's splitter for exact products without FMA. */

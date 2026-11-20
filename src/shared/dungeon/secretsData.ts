@@ -5,6 +5,8 @@
  * openers, the chest's grants, the points) live in shared/sim secrets/; the tier ids are the vault's (VaultTier).
  *
  * Distances are in tiles (TILE_SIZE = 1 world unit), between cell centres, Chebyshev unless a rule says otherwise.
+ *
+ * @module
  */
 import type { EncounterRoomType } from "./encounterTypes";
 import type { BreakablePieceKindName } from "./breakablesData";

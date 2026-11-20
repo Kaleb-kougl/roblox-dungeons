@@ -10,6 +10,8 @@
  * build's render pixels, the unit of the web decor plan's pixel constants.
  *
  * Polygons are flat arrays [x0, y0, x1, y1, ...] (x = screen right, y = screen up), counter-clockwise.
+ *
+ * @module
  */
 import { CAMERA_PITCH_DEG, CAMERA_YAW_DEG } from "shared/config";
 import { degToRad, isoBasis, type IsoBasis } from "../iso";

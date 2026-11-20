@@ -1,6 +1,8 @@
 /**
  * Server-side run validation tunables (task 9). Data only: validate.ts and the server services read these; nothing
  * here is inlined in logic (CLAUDE.md "No magic numbers").
+ *
+ * @module
  */
 import { BINARY_RECORDING_HEADER_BYTES, MAX_PARTY_SIZE as SIM_MAX_PARTY_SIZE, SIM_HZ } from "shared/sim";
 import { PLAY_MODE } from "shared/config";

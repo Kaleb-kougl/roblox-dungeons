@@ -3,6 +3,8 @@
  * UA8; decisions UAD2 / UAD8 / UAD9). Pure: client/ui reads these and passes them to the HUD primitives (Panel `skin`
  * / `ornament`, MenuButton `icon`), which draw art only when the pack has it (shared/view/hud skin.ts), so without the
  * art every screen is exactly today's flat look. Headlessly tested (skin.spec.ts).
+ *
+ * @module
  */
 import { UI_ART, type PanelSkin } from "shared/view/hud";
 import type { PauseItem } from "./lobby";

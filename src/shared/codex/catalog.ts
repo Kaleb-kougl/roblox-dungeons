@@ -45,6 +45,8 @@
  * append) are a second list: their `enemy:` rows are appended to the catalog AFTER `secret:room`, so every earlier entry
  * keeps its catalog position. They are still group `enemies`: the grid (CODEX_TAB_GROUPS, `order`) shows them at the end
  * of the Enemies section, after the Goldling.
+ *
+ * @module
  */
 import { CHARACTERS, type CharacterId } from "shared/characters";
 import { AFFIXES, BOSS_FLOOR_EVERY, ENDLESS_BOSSES, ENDLESS_ROOM_KINDS, affixThemeIndex } from "shared/dungeon";

@@ -2,6 +2,8 @@
  * SHA-256 (FIPS 180-4), pure: 32-bit words through bit32 and exact float64 sums reduced mod 2^32, so every Roblox
  * client, server and Lune computes the same digest. Not fast (about 64 rounds of a dozen bit32 calls per 64-byte block):
  * meant for short messages such as the daily seed's HMAC (shared/daily dailySeedFrom).
+ *
+ * @module
  */
 import { pushUint32BE } from "./bytes";
 

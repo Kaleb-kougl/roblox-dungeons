@@ -7,6 +7,8 @@
  * studs; px are render px. The gameplay numbers (the wave's speed and range, SIEGE_SHOCK_RADIUS, DEMOLITION_RADIUS,
  * FULL_HEART_RADIUS, HAPPY_HOUR_TICKS, ...) are the sim's (shared/sim effectsData.ts), never copied here: the ring
  * radii below that name one read it. Presentation only.
+ *
+ * @module
  */
 import type { ColorRole } from "shared/theme";
 

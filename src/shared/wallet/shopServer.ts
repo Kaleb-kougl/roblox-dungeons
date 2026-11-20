@@ -11,6 +11,8 @@
  *                           transform, ring included
  *   silverAuditKey / silverAuditRecord   the best-effort audit entry in SILVER_SHOP.auditStore (support only; never
  *                           decides Roblox's answer, SHD2)
+ *
+ * @module
  */
 import { SILVER_SHOP, WALLET } from "./config";
 import {

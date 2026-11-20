@@ -18,6 +18,8 @@
  *     the next join (still fresh) keeps filling the same once-per-user funnel.
  *   - The OnboardingGate custom event logs once per session, for any player (also after a failed load: reason
  *     `loadFailed`), independent of the funnel.
+ *
+ * @module
  */
 import type { AnalyticsEventSpec, AnalyticsFields } from "shared/run";
 import { TUTORIAL_STEPS } from "shared/tutorial";

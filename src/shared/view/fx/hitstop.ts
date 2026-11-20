@@ -26,6 +26,8 @@
  *   - Huge deltas: the freeze and the ramp are simply spent; the loop's own 5-ticks-per-frame cap does the rest.
  *
  * Pure (no clock, no Roblox API): time only moves through frame().
+ *
+ * @module
  */
 import type { JuiceSettings } from "shared/settings";
 import { freezeFrameOn } from "./juiceRules";

@@ -10,6 +10,8 @@
  * erases are counted in SimEvents.bulletsDeleted like a guard's, so every view that reads bulletsDeleted as "a player
  * deflected bullets" (the deflect sound, the guard shield's re-flash, the guard fan's flash) takes them out through
  * deflectedBullets / tickDeflectedBullets. A leaf (types only from shared/sim): shared/view/fx imports it by file.
+ *
+ * @module
  */
 import type { PelletEaten, SimState } from "shared/sim";
 

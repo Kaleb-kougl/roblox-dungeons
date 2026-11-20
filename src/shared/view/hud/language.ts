@@ -5,6 +5,8 @@
  * Choices: Automatic first, then each listed locale in LOCALES order (the source first): live ones for everybody,
  * hidden ones (the pseudo-locale included) only for developers, marked with LANGUAGE_ROW.hiddenMark. Endonyms are
  * LocaleDef.endonym, never theme strings; Automatic is `options.display.language.auto` with the endonym of what it picks.
+ *
+ * @module
  */
 import { LOCALES, localeDef, type LocaleDef } from "shared/l10n";
 import { LANGUAGE_AUTO } from "shared/settings";

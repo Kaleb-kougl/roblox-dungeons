@@ -10,6 +10,8 @@
  * source). Presentation only: trig is fine here, nothing feeds back into the sim.
  *
  * Headings follow the sim's patterns.ts: heading h <-> unit direction (sin h, cos h); h = 0 is +Z.
+ *
+ * @module
  */
 import {
 	AiState,

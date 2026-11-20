@@ -5,6 +5,8 @@
  * (docs/TUTORIAL_ARROW.md; the pause overlay's tutorial buttons are shared/view/menu `pauseItems`). Plain numbers,
  * headlessly tested (tutorialHud.spec.ts); client/ui/hud, TutorialMarkerController and TutorialArrowController draw
  * them.
+ *
+ * @module
  */
 import {
 	DEFAULT_BINDINGS,

@@ -20,6 +20,8 @@
  *
  * Port changes: typed arrays -> plain arrays (Float32 storage rounding is gone, irrelevant for presentation); the
  * QuadBatch writer became ParticleWriter (anchor, hop px, size px, palette index, alpha); trig tables via math.cos/sin.
+ *
+ * @module
  */
 import type { JuiceSettings, ParticlesLevel } from "shared/settings";
 import { PIXELS_PER_TILE } from "shared/config";

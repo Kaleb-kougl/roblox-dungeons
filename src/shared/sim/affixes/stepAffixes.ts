@@ -9,6 +9,8 @@
  *                      turned by GAP_TURNS[ctx.randomInt(0, 3)] (one main-rng draw, affixed runs only), exactly like
  *                      the bruiser's slam; events.vengefulFired. The corpse is freed by the next stepActors (its corpse
  *                      time has passed: the telegraph outlasts CORPSE_TICKS).
+ *
+ * @module
  */
 import { AffixKind } from "shared/dungeon";
 import type { SimCtx } from "../combat/ctx";

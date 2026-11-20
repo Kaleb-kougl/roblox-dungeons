@@ -16,6 +16,8 @@
  *   back      one screen back when the screen opened over another menu screen (the main menu, the lobby room), else
  *             the menu closes and what was under it shows again (the run-over panel, the tutorial outro, a dev run):
  *             characterBackAction. A lobby member's Back stays unready.
+ *
+ * @module
  */
 import { CHARACTER_IDS, DEFAULT_CHARACTER, characterDef, isCharacterId, type CharacterId } from "shared/characters";
 import {

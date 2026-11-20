@@ -1,6 +1,8 @@
 /**
  * When the client submits a finished run, and what it refuses to send (the SimController applies these; pure so they
  * are tested headlessly). docs/SERVER.md "Client submit rules".
+ *
+ * @module
  */
 import { DEFAULT_RUN_LIMITS, type RunLimits, type RunSubmission } from "shared/run";
 import { MIN_ABANDONED_SUBMIT_TICKS } from "./config";

@@ -1,4 +1,8 @@
-/** The theme contract's ambience, sound-extra, sprite-effect and gameplay-key rules (docs/CODEBASE_SCALE.md DX8: a pure move out of contract.ts). */
+/**
+ * The theme contract's ambience, sound-extra, sprite-effect and gameplay-key rules (docs/CODEBASE_SCALE.md DX8: a pure move out of contract.ts).
+ *
+ * @module
+ */
 import type { ColorRole } from "../types";
 import { decorBiomeKey } from "./decor";
 import { AMBIENCE_IDS, BOOST_FX_IDS, type AmbienceId, type BiomeId } from "./ids";

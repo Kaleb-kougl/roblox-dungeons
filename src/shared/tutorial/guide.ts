@@ -24,6 +24,8 @@
  * Pure (no Roblox services or Instances) and deterministic for an input sequence; never touches the sim. Steady state
  * (same target tile, same floor) allocates nothing: the view object and the path scratch are reused, so keep the
  * returned view for reading only (it is overwritten by the next update).
+ *
+ * @module
  */
 import {
 	clearWalk,

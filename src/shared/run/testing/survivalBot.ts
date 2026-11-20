@@ -21,6 +21,8 @@
  *           debug floor button and counted (`stuck`).
  * Shrines, pacts, pedestals, vault chests, pellets and boosts on the ground are ignored (a vault room is fought like any
  * room; boosts are picked up only when walked over).
+ *
+ * @module
  */
 import { bulletBlocker, gridToWorld, lineOfSight, worldToGrid } from "shared/dungeon";
 import {

@@ -2,6 +2,8 @@
  * Touch controls state machine (docs/MOBILE_IMPL.md MB3, docs/MOBILE.md): fingers in, one TouchSnapshot per frame out.
  * Pure: no Roblox API, so controls.spec.ts runs it headlessly. The client's TouchControlsController feeds it touch
  * events and the frame environment, and the InputController merges its snapshot with the other devices.
+ *
+ * @module
  */
 import { TOUCH } from "shared/config";
 import { Button, DRAFT_COLUMN_CENTRE } from "shared/sim";

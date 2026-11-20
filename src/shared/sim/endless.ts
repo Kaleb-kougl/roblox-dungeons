@@ -45,6 +45,8 @@
  *
  * Scaling (endlessData.ts) is applied where things are made: actor hp in spawnActor, enemy bullet speed in
  * SimCtx.fireEnemy. Both read state.endless, so they follow the floor and Depth at that moment.
+ *
+ * @module
  */
 import type {
 	BreakableLoot,

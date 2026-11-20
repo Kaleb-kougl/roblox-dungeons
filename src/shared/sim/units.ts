@@ -3,6 +3,8 @@
  *
  * Source: project-kaleb-vale `src/config.ts` (SIM_HZ, SIM_DT, TILE_SIZE) @ 42897e2. The camera / render numbers of that
  * file live in `shared/config` (view.ts); these are the ones the deterministic sim reads.
+ *
+ * @module
  */
 
 /** World units per dungeon tile. Dungeon grid (gx, gy) maps to world (gx, 0, gy); Y is up, the floor is y = 0. */

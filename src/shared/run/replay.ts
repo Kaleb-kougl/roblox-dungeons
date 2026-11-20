@@ -6,6 +6,8 @@
  *
  * The replay itself never reads a clock: the server's time budget (ReplayBudget below, with os.clock injected) runs in
  * the checkpoint hook, so this file and the sim stay deterministic.
+ *
+ * @module
  */
 import { createSimState, step, type Recording, type SimConfig, type SimState } from "shared/sim";
 

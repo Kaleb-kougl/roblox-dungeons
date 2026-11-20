@@ -1,4 +1,8 @@
-/** Wallet tunables (docs/SILVER.md "Wallet (server)", SV2 / SV3). Data only. */
+/**
+ * Wallet tunables (docs/SILVER.md "Wallet (server)", SV2 / SV3). Data only.
+ *
+ * @module
+ */
 import { SETTINGS_RETRY, type RetryPolicy } from "shared/settings";
 
 /**

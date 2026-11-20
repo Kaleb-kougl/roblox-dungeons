@@ -4,6 +4,8 @@
  * the onboarding doc's version and funnel in shared/onboarding.
  *
  * The world (shared/run tutorial.ts) is fixed: two hand-picked Dungeon Forge layouts, whatever seed the run is given.
+ *
+ * @module
  */
 import { TUTORIAL_START_HALF_HEARTS } from "shared/sim/tutorial";
 

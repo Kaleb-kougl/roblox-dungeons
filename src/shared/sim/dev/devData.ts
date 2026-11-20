@@ -1,6 +1,8 @@
 /**
  * Developer mode's sim tunables (docs/DEV_MODE.md). Data only: dev.ts and the client read these. Kept apart from dev.ts
  * so input.ts can import DEV_GOD_BUTTON without a require cycle.
+ *
+ * @module
  */
 
 /**

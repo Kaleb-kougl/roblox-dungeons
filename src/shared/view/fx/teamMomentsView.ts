@@ -4,6 +4,8 @@
  *   - teamPerfectFor: the frame's team perfect of a room clear (the stamp / chip text, the pulse rings, the sound).
  *   - teamPulsePlayers: who gets a pulse ring (every living party member, CMD2: near or far).
  * The SYNC! callout's timeline is syncCallout.ts. Presentation only.
+ *
+ * @module
  */
 import { MAX_PARTY_SIZE, partySize, playerAt, type SimState } from "shared/sim";
 import type { RoomClear } from "./roomClears";

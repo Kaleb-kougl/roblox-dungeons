@@ -27,6 +27,8 @@
  *
  * Co-op (RD6): every client steps the same merged state, so every client hears both cues (their own clock, their own
  * frame times). Muted: the chip and the glint say what the sounds say.
+ *
+ * @module
  */
 import { GoldenStatus, goldenInRoom, isDraftOpen, partySize, playerAt, type SimState } from "shared/sim";
 import { GOLDEN_VIEW } from "./config";

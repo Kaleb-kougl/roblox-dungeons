@@ -26,6 +26,8 @@
  *
  * Each shard gates its own seeds (zero pillar stalls and never more than the web mover per shard), which is stricter
  * than the single file's gate over all seeds was. Test support only.
+ *
+ * @module
  */
 import {
 	TILE_SIZE,

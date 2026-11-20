@@ -52,6 +52,8 @@
  * outage keeps echoing). While off, `deadline` runs the legacy rule exactly as
  * LockstepClient.checkDeadline: matched -> one clean tick, `legacyDecayTicks` of them lower the lead by one (never below
  * minLead); a mismatch raises it by one (never above maxLead) and restarts the clean count.
+ *
+ * @module
  */
 import { SIM_HZ, isFiniteNumber } from "shared/sim";
 import { nearestRank } from "./arrivalLog";

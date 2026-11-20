@@ -34,6 +34,8 @@
  *
  * Output: a VaultPlan (or undefined), grid coordinates; EndlessFloorLayout.vault and the chest appended to its
  * breakables (vaultChest) at index plan.slot.
+ *
+ * @module
  */
 import { u32 } from "shared/jsmath";
 import { TileType, type Dungeon } from "./forge";

@@ -1,4 +1,8 @@
-/** ACTOR_SPRITE_INPUTS: every archetype's sprite input (docs/CODEBASE_SCALE.md DX8: a pure move out of view/sprites.ts). */
+/**
+ * ACTOR_SPRITE_INPUTS: every archetype's sprite input (docs/CODEBASE_SCALE.md DX8: a pure move out of view/sprites.ts).
+ *
+ * @module
+ */
 import { withNewEnemy2SpriteInputs } from "../newEnemy2Sprites";
 import {
 	BOSS_ACT1_ID,

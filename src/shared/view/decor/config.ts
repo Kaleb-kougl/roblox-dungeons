@@ -6,6 +6,8 @@
  *
  * Kept in this folder rather than in `shared/config` (where docs/DECOR.md Phase 2 names DECOR_DEPTH) so the decor
  * plan's data lives with the module that owns it; move it if a non-view module ever needs it.
+ *
+ * @module
  */
 import type { RoomTheme } from "shared/dungeon";
 import { PEDESTAL_RADIUS, SHRINE_RADIUS, STAIRWELL_RADIUS } from "shared/sim";

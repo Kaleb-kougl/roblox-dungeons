@@ -6,6 +6,8 @@
  * shouts, freeze), the score pops, the boost hop and the audio cue mapper read it once per frame. Presentation only:
  * plain numbers, read-only on the sim (it reads the unhashed events and hashed state, never writes), tested headlessly.
  * A leaf (shared/sim only).
+ *
+ * @module
  */
 import { NO_BOOST, dropsGround, type SimState } from "shared/sim";
 

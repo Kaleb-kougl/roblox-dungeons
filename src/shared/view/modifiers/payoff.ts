@@ -16,6 +16,8 @@
  * The four event sources are the run view's per-frame collections (every tick the frame ran, every player's), so a
  * payoff is never missed between frames; Blood Moon reads state (a level that holds while an elite of an engaged room
  * lives), which the once-per-floor latch turns into one edge.
+ *
+ * @module
  */
 import { AffixKind, FloorModifier } from "shared/dungeon";
 import { affixSlotAt, type SimState } from "shared/sim";

@@ -6,6 +6,8 @@
  *
  * CONTRACT (IT skeleton): the types and signatures below are what the client builds against; IT1 / IT2 filled the
  * bodies and added `TooltipLine.varRoles`, `itemNameLine`, `clearZoneIn` and `sameTooltipTarget`.
+ *
+ * @module
  */
 import { BOONS, CURSES, DUOS, RELICS, boonMaxLevel } from "shared/sim";
 import { BOOST_KINDS, boostId, boostStringKey, type ColorRole } from "shared/theme";

@@ -13,6 +13,8 @@
  *   Snatcher     the swallow telegraph as `attack` stretched over it (the gulp); runs by speed
  *   Pyre-keeper  the light telegraph and the panic as `attack`
  *   pyre         a still turret: idle (the lit loop) until its death (the unlit cell)
+ *
+ * @module
  */
 import {
 	AiState,

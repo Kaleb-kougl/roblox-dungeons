@@ -15,6 +15,8 @@
  *             look it wears (the equipped look with the focused item TRIED ON: docs/COSMETICS.md "try-on"), the facing
  *             it turns to (every facing in turn, CHARACTER_PREVIEW_ANGLE_DEG first; reduced motion holds it)
  *   flash     the bought row's stamp (scale eased back to 1 over COSMETIC_VIEW.preview.flashSec)
+ *
+ * @module
  */
 import type { CharacterId } from "shared/characters";
 import {

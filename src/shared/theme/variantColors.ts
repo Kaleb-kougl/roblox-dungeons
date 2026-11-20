@@ -36,6 +36,8 @@
  *     image too, the same drawn size and pivot);
  *   - likewise (docs/SECRET_ROOMS.md SR10), secretColors.ts `secretReport`: the dust never reads as a bullet or a
  *     telegraph; and secretArt.ts `secretArtProblems`: the crack / rubble art has one facing.
+ *
+ * @module
  */
 
 import { colorDifference, contrastRatio, isHexColor } from "./color";

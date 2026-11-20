@@ -14,6 +14,8 @@
  *   config.ts     DECOR_DEPTH, DECOR_CLEAR, DECOR_DRESSING, DECOR_PLACE, DECOR_SALT
  *   reactConfig.ts DECOR_REACT (the director)
  *   fxConfig.ts   DECOR_RENDER_ORDER, DECOR_VIEW, DECOR_LIGHTS, DECOR_FX (the client renderers)
+ *
+ * @module
  */
 export * from "./config";
 export * from "./hash";

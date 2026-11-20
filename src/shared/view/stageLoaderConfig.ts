@@ -3,6 +3,8 @@
  * every floor change; logic in stageLoader.ts, the driver in the client's StageController, the cover in client/ui/loading
  * StageCard). Presentation only: nothing here reaches the sim, the lockstep wire or a hash. Roblox-port choices, no web
  * source.
+ *
+ * @module
  */
 import { STAGE_ASSETS, type StageAssetWaitConfig } from "./stageAssetsConfig";
 

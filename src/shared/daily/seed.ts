@@ -8,6 +8,8 @@
  *            "+", a "-" for days before the epoch): day 303 -> "kv-daily|303"
  *   seed     the MAC's first 4 bytes as a big-endian uint32 (shared/crypto uint32BE), in [0, 2^32) (valid by shared/run
  *            isValidRunSeed)
+ *
+ * @module
  */
 import { hmacSha256, stringBytes, uint32BE } from "shared/crypto";
 import { DAILY_SEED } from "./config";

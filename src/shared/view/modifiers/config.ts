@@ -2,6 +2,8 @@
  * Presentation tunables of the floor modifiers (docs/FLOOR_MODIFIERS.md Player experience, Design §4-§6; logic in
  * modifiers.ts / payoff.ts, drawing in the client's StageCard banner and FloorModifierChip, FM5 / FM6). Presentation
  * only: which floor gets which modifier is shared/dungeon MODIFIERS', so nothing here can change a replay.
+ *
+ * @module
  */
 import type { ColorRole } from "shared/theme";
 

@@ -4,6 +4,8 @@
  * Per-archetype numbers live in the archetype's own file, per-weapon numbers in the weapon's file.
  *
  * Durations are authored in seconds and converted ONCE, at module load, to whole sim ticks (secondsToTicks).
+ *
+ * @module
  */
 
 import { jsMax } from "shared/jsmath";

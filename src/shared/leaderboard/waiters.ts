@@ -10,6 +10,8 @@
  * write found (`previous`), so a run whose better twin was written still reads as improved over the old entry.
  *
  * Pure: the service polls `done`.
+ *
+ * @module
  */
 import { isBetterValue } from "./posting";
 

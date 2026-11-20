@@ -10,6 +10,8 @@
  *   - A twist (Blood Moon) must never read as a boon: every twist role is >= MIN_FLOOR_MODIFIER_TWIST_DIFFERENCE (40
  *     CIE76, the decor fx / bullet bar) from every boon role, so "something good" and "something dangerous" never look
  *     alike on the card (docs/FLOOR_MODIFIERS.md Rules that keep it kind).
+ *
+ * @module
  */
 
 import { colorDifference, contrastRatio, isHexColor } from "./color";

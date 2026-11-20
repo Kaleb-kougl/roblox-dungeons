@@ -28,6 +28,8 @@
  * View contract: states STORMCALLER_KEEP (= STATE_ENGAGED) / AiState.TELEGRAPH (the cast); attack id
  * STORMCALLER_ATTACK_CAST; v slots STORMCALLER_CENTRE_X / _Z (the row's centre), STORMCALLER_OFFSET_X / _Z (from one
  * circle to the next), STORMCALLER_STRAFE (+1 / -1). The strike tick is the one whose events.strikes > 0.
+ *
+ * @module
  */
 
 import { HIT_NORMAL, secondsToTicks } from "../../../playerData";

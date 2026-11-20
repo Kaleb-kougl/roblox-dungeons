@@ -6,6 +6,8 @@
  * task L7).
  *
  * Plain TypeScript, no Roblox APIs (headlessly tested); server/services/LobbyService.ts wraps it.
+ *
+ * @module
  */
 export * from "./config";
 export * from "./lobbies";

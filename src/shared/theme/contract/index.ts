@@ -43,6 +43,8 @@
  * Roblox-port slot (docs/SECRET_ROOMS.md SR10): SECRET (`secret.crack` / `secret.rubble`, OPTIONAL: the view draws its
  * fallback without them, so there is no placeholder kind), free-size world art like PACT, inline in SLOTS; the secret
  * rooms' role, sounds, strings and optional dust effect: secrets.ts (named inline here, like Fortune's).
+ *
+ * @module
  */
 export * from "./slots";
 export * from "./ids";

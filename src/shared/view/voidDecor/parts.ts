@@ -7,6 +7,8 @@
  * [y, y + h) is centred on (x + (w - 1) / 2, y + (h - 1) / 2). A column runs from its `top` (tiles above the floor) down
  * to the abyss plane (VOID.abyssDepthTiles under the floor, where WorldController puts the backdrop's top face) and
  * VOID_VIEW.columnSinkTiles past it into the backdrop slab, so the near-side cliff faces meet the abyss with no seam.
+ *
+ * @module
  */
 import type { Dungeon, EndlessFloorLayout } from "shared/dungeon";
 import { BIOMES, type BiomeMaterialSurface } from "shared/theme";

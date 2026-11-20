@@ -4,6 +4,8 @@
  * no runtime import. contract.ts writes the string lists out inside REQUIRED_STRING_KEYS (an import would be one more
  * top-level local in contract.luau, which sits near Luau's 200-locals-per-function limit) and the two sounds inside
  * PORT_AUDIO_EVENTS; runRecap.spec.ts checks they stay the same lists.
+ *
+ * @module
  */
 
 /**

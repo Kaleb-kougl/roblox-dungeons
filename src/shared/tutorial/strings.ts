@@ -7,6 +7,8 @@
  *   tutorial.prompt.<prompt>.<device>   a step's prompt (TutorialStep.prompt; device keyboard | gamepad | touch)
  *   tutorial.callout.<id>               a one-shot callout (TutorialCallout.key)
  *   tutorial.<area>.<name>              the UI chrome below (TUTORIAL_STRINGS)
+ *
+ * @module
  */
 import { TUTORIAL_CALLOUTS, TUTORIAL_DEVICES, TUTORIAL_FOLLOW_PROMPT, TUTORIAL_STEPS } from "./steps";
 import type { TutorialDevice, TutorialStep } from "./steps";

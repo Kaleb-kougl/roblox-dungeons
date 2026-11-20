@@ -33,6 +33,8 @@
  *
  * Read-only on the sim. No allocation per tick: the per-player counters grow once per new player index. Presentation
  * only: nothing here is hashed or written back.
+ *
+ * @module
  */
 import { GIVEN_DROP_SLOT, hasLeft, partySize, playerAt, scoreFloor, swordGuardTicks, type SimState } from "shared/sim";
 import { parryStartsGroup } from "./nearMissRules";

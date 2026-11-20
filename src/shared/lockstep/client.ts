@@ -67,6 +67,8 @@
  * Hitstop is never applied here: a co-op sim is paced by the server's frames alone (shared/view/fx freezeRules
  * `simPacerFor`); presentation may freeze sprites or the camera instead. The local player's character may be drawn
  * predicted (presentation only); nothing predicted ever reaches the sim.
+ *
+ * @module
  */
 import {
 	SIM_DT,

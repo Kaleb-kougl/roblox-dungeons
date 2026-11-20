@@ -6,6 +6,8 @@
  * them nothing changes. The vale pack packs them into a sheet of their own (packs/vale pipIconLayout.ts,
  * scripts/art/gen-pip-icons.js), each an `image` of the sheet with its `rect`.
  * In its own module: contract.ts sits near Luau's 200-locals-per-function limit.
+ *
+ * @module
  */
 
 /** Every pip icon id starts with this. */

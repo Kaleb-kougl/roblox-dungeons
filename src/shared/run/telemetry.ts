@@ -14,6 +14,8 @@
  *    split is a UI action outside the recording).
  *  - Explicit stats the web build left in counters: weapon swaps, first kill tick, boss engage tick, highest boss
  *    phase, and the death cause (the archetype of the hit that killed the player).
+ *
+ * @module
  */
 import type { CharacterId } from "shared/characters";
 import { FORFEIT_BUTTON, SIM_EVENT_FIELDS, archetypeAt, archetypeIds, type SimEvents } from "shared/sim";

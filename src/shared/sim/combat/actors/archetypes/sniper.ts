@@ -6,6 +6,8 @@
  * the renderer's warning line), then fires a fast narrow 3-shot line down the locked aim: three single bullets on one
  * direction at different speeds, so the line stretches as it flies. It never fires without line of sight at the moment
  * of the shot (the volley is cancelled). No contact damage. Leashes home after losing the player.
+ *
+ * @module
  */
 
 import { HIT_NORMAL, secondsToTicks } from "../../../playerData";

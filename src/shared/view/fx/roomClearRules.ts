@@ -2,6 +2,8 @@
  * The room clear celebration's freeze-frame hooks (docs/ROOM_CLEAR.md RC5), a port module apart from freezeRules.ts
  * (the web port). Solo only for the slow motion (RCD4): the caller never asks in co-op, where the clock does not pace
  * the sim (simPacerFor). The clock ignores the request when freezeFrameOn(settings) is false.
+ *
+ * @module
  */
 import type { JuiceSettings } from "shared/settings";
 import type { NudgeKind } from "./freezeRules";

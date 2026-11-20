@@ -3,6 +3,8 @@
  * web source): how many barrels and crates of an endless floor hold Silver, and how much each holds. Data only:
  * ./breakableSilver.ts reads it, nothing is inline in the logic. The sim-side rules (credited on any break, the team's
  * total) live in shared/sim silver/.
+ *
+ * @module
  */
 import type { BreakableKindName } from "./breakablesData";
 

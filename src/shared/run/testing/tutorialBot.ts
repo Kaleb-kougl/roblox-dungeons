@@ -31,6 +31,8 @@
  *
  * `steer: "guide"` (docs/TUTORIAL_ARROW.md A3) walks by the guidance arrow's heading (shared/tutorial TutorialGuide)
  * instead, while the arrow shows: the proof that the arrow never sends a player into a wall.
+ *
+ * @module
  */
 import { TUTORIAL } from "shared/config";
 import { bulletBlocker, clearWalk, gridToWorld, worldToGrid } from "shared/dungeon";

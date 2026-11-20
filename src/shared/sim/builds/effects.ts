@@ -18,6 +18,8 @@
  * The count walks the player bullets once: inside stepBuilds (beginEffectBudget .. endEffectBudget) it is taken at the
  * first fireEffect and kept while it fires (nothing in stepBuilds releases a player bullet); any other caller (the
  * weapons phase's Flurry crescent) is counted per call.
+ *
+ * @module
  */
 import { jsMin } from "shared/jsmath";
 import type { SimCtx } from "../combat/ctx";

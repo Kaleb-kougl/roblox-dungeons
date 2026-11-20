@@ -6,6 +6,8 @@
  * one keeps its short text label (`<id>.icon`) everywhere it is shown. The vale pack packs them into a sheet of their
  * own (packs/vale itemIconLayout.ts, scripts/art/gen-item-icons.js), each an `image` of the sheet with its `rect`.
  * In its own module: contract.ts sits near Luau's 200-locals-per-function limit.
+ *
+ * @module
  */
 
 /** Every relic icon id starts with this. */

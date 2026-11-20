@@ -36,6 +36,8 @@
  *     TUTORIAL_FUNNEL_MAX_STEP reports of 1-2 events) under the attempt and session budgets.
  *   - The gate report logs OnboardingGate once per session; `gateContradiction` names a reason that contradicts what
  *     the server knows (the service warns but logs it anyway: the client saw what it saw).
+ *
+ * @module
  */
 import { INVITE, type ArrivalJoinIntent } from "shared/invite";
 import { LEADERBOARD_DAILY_WORLDS, LEADERBOARD_ELIGIBLE_WORLDS } from "shared/leaderboard";

@@ -10,6 +10,8 @@
  * Every component is clamped to its field (score to [0, 2^S), floor to [0, 2^F), the slot to [0, 2^T)), so the value
  * is always an integer in [0, 2^(S+F+T)) <= 2^53: exact in a double, valid for OrderedDataStore. Plain arithmetic
  * (no bit32: the value is wider than 32 bits).
+ *
+ * @module
  */
 import { ORDERED_VALUE_LAYOUT, ORDERED_VALUE_MAX_BITS, type OrderedValueLayout } from "./config";
 

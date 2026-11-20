@@ -13,6 +13,8 @@
  *
  * Debug switch: Workspace attribute ACTOR_OUTLINE.enabledAttribute (boolean; absent = on, outlineSwitchOn) turns the
  * Highlight off and on at runtime for A/B in Studio.
+ *
+ * @module
  */
 import type { ColorRole } from "shared/theme";
 

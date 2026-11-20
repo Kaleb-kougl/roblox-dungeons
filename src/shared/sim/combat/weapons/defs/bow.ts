@@ -17,6 +17,8 @@
  * WEB_BOW_TUNING 4 + 1) and is aim-assisted: released, it flies straight at the living enemy nearest the facing within
  * heavyAssistConeCos (10 degrees) and its reach, in line of sight (bowAssistAim; none: the facing as before). Every golden
  * fixture was recorded with the web bow, so the parity specs replay under setBowTuning(WEB_BOW_TUNING).
+ *
+ * @module
  */
 
 import { PLAYER_MUZZLE_OFFSET, TURN_COS } from "../../combatData";

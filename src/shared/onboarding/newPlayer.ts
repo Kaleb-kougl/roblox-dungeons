@@ -16,6 +16,8 @@
  *
  * Days are integer UTC day numbers (`math.floor(os.time() / SECONDS_PER_DAY)`) passed in by the caller: pure code never
  * reads the clock. Every field value comes from a fixed set (analyticsCatalog.ts).
+ *
+ * @module
  */
 import type { AnalyticsEventSpec, RunEndReason } from "shared/run";
 import { dailyFloorBucket } from "shared/run";

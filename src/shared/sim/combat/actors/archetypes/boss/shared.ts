@@ -23,6 +23,8 @@
  * than BOSS_MAX_REPEAT times in a row). Every other v[] slot is the boss's own.
  *
  * Deterministic: all state is in ActorState, randomness via ctx.random*, no trig.
+ *
+ * @module
  */
 
 import { SIM_DT, TILE_SIZE } from "../../../../units";

@@ -15,6 +15,8 @@
  *     capped per look (a new one past the cap replaces the oldest).
  *
  * No allocation in steady state (slots are reused). Presentation only.
+ *
+ * @module
  */
 import { Boon, SIM_DT, buildLevel, type SimState } from "shared/sim";
 import type { BuildFxLevel } from "shared/settings";

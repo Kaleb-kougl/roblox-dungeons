@@ -9,6 +9,8 @@
  *
  * Plain TypeScript, no Roblox APIs (headlessly tested); the Flamework services in src/server/services wrap it.
  * docs/SERVER.md describes the flow.
+ *
+ * @module
  */
 export * from "./limits";
 export * from "./config";

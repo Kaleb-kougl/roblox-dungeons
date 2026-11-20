@@ -4,6 +4,8 @@
  * the sim: plain TypeScript, no Roblox APIs, because the sim's move resolver calls into it.
  *
  * Dungeon Forge is MIT (c) 2026 Majid Manzarpour; see THIRD_PARTY_NOTICES.md.
+ *
+ * @module
  */
 export * from "./forge";
 export * from "./collision";

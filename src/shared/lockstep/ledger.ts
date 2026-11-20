@@ -9,6 +9,8 @@
  *                  from the run, like a leaver) and the tick is decided among the rest
  *
  * A player who left never counts (reports from them are ignored). Pure.
+ *
+ * @module
  */
 import { isStateHash } from "shared/run";
 

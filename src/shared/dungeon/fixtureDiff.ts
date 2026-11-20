@@ -1,6 +1,8 @@
 /**
  * Spec helpers for the dungeon parity checks (not exported from the barrel): float64 <-> fixture hex, and a recursive
  * comparer that reports the first differing path (e.g. `rooms[3].x`).
+ *
+ * @module
  */
 import { stableSort } from "shared/jsmath";
 

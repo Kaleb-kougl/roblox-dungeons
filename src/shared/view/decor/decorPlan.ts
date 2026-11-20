@@ -94,6 +94,8 @@
  * Coordinates: grid cell (gx, gy) is world (x, z) = (gx, gy) (TILE_SIZE 1, shared/dungeon collision.ts); heights in
  * tiles above the floor. Entries carry world positions in sim units; the renderer converts with studsX / studsY /
  * studsZ.
+ *
+ * @module
  */
 import { BULLET_Y as SIM_BULLET_Y } from "shared/sim";
 import { PIXELS_PER_TILE, STUDS_PER_TILE } from "shared/config";

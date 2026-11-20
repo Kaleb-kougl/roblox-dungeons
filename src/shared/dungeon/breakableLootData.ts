@@ -3,6 +3,8 @@
  * source): how many barrels and crates of an endless floor hold a boost, and which. Data only: ./breakableLoot.ts
  * reads it, nothing is inline in the logic. The sim-side rules (release on break, ground slots) live in shared/sim
  * drops/breakLoot.ts.
+ *
+ * @module
  */
 import type { BreakableKindName } from "./breakablesData";
 

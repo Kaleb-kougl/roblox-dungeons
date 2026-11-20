@@ -1,6 +1,8 @@
 /**
  * ALT (right click / LT) edges for weapons (E1.8; source: `src/sim/weapons/defs/altButton.ts`). Read from this tick's
  * input against the acting player's weapons.prevButtons (last tick's buttons). Not a weapon file: defs/index.ts does not import it.
+ *
+ * @module
  */
 
 import { Button } from "../../../input";

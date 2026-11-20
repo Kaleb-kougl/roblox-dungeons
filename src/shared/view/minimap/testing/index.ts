@@ -1,6 +1,8 @@
 /**
  * Test support for the minimap specs (never imported by the game): hand-made dungeons from text rows, and the tiles
  * census (census.ts: checkMinimapFloor and the endless census its shard specs run).
+ *
+ * @module
  */
 import { RoomType, TileType, type Dungeon } from "shared/dungeon";
 

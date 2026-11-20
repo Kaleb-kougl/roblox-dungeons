@@ -48,6 +48,8 @@
  *
  * Pure and deterministic (integer arithmetic and the `buffer` library only); it lives in src/shared/sim, under the
  * headless runner's determinism guard.
+ *
+ * @module
  */
 import { AXIS_MAX, EMPTY_INPUT, SIM_BUTTONS, isValidSimInput, type InputFrame } from "./input";
 import { isFiniteNumber, isIntegerNumber } from "./jsnum";

@@ -24,6 +24,8 @@
  *
  * View contract: lit once aiTicks is 0; v slots PYRE_FIRE (ticks to the next shot), PYRE_KEEPER (its keeper's actor
  * id), PYRE_STAGGER (its slot); SimEvents.pyresLanded on its spawn tick, pyresWithered on a wither.
+ *
+ * @module
  */
 
 import { HIT_NORMAL, secondsToTicks } from "../../../playerData";

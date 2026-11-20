@@ -11,6 +11,8 @@
  *     haptics.ts since docs/HAPTICS.md HP1 (the play cues share them) and are re-exported here.
  *   - padConfirmFeedback: what a MenuButton activation means for the pad's haptics (a confirm, a disabled press, or
  *     nothing: not on the pad, or not from A).
+ *
+ * @module
  */
 import type { InputDeviceKind } from "shared/play";
 import { hapticTimeline as pulseTimeline, type HapticEvent, type HapticPulse } from "../fx/haptics";

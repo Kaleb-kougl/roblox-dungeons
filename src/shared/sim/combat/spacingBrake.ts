@@ -9,6 +9,8 @@
  * allocation per call); the result is never longer than the step and never against it (result . step >= 0); for every
  * entry the end distance is >= min(start distance, keep) (a body already inside keep is never pushed out, only kept
  * from going deeper); far from every entry, or with an empty list, the result is the step itself, bit for bit.
+ *
+ * @module
  */
 
 import type { SpacingConfig } from "./spacingData";

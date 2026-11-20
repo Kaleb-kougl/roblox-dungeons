@@ -1,4 +1,8 @@
-/** Public API of the weapon system (E1.8; source: `src/sim/weapons/index.ts`). */
+/**
+ * Public API of the weapon system (E1.8; source: `src/sim/weapons/index.ts`).
+ *
+ * @module
+ */
 export { NO_WEAPON, WEAPON_SCRATCH_SLOTS, WEAPON_SETS } from "./types";
 export type { WeaponData, WeaponDef, WeaponSlotState, WeaponStyle, WeaponTrigger, WeaponsState } from "./types";
 export { hasWeapon, registerWeapon, weaponAt, weaponIds, weaponIndex } from "./registry";

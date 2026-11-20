@@ -9,6 +9,8 @@
  *
  * The string keys are built inside a function (silverStringKeys) so this module adds one top-level local to the
  * compiled Luau of any module that spreads it.
+ *
+ * @module
  */
 
 import type { ColorRole } from "./types";

@@ -4,6 +4,8 @@
  * Large parties (LARGE_PARTY_MIN_SIZE players or more): a teammate's bullets draw at TEAMMATE_BULLET_OPACITY so the
  * screen stays readable (enemy bullets and your own are untouched). Ownership comes from the bullet's emitter id
  * (shared/sim playerBulletOwner).
+ *
+ * @module
  */
 import { playerBulletOwner } from "shared/sim";
 

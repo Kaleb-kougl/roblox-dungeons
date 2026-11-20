@@ -20,6 +20,8 @@
  *
  * walletTransaction(stored, op) wraps one of them for a store transform: it decodes, refuses a NEWER doc version
  * (`newerVersion`: never written over), and gives the value to write (undefined: cancel the write).
+ *
+ * @module
  */
 import { SILVER, type RunSilver, type SilverRow, type SilverTunables } from "shared/silver";
 import {

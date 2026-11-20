@@ -54,6 +54,8 @@
  * list's tick-start positions: the enemy moved), a walk with it off (SPD1: no FIRE and no combo, or the guard alone;
  * guard ticks counted apart), the lunge, a roll. Every fight frame notes the hook (weaponSpacingActive for the frame's
  * buttons on the state the step starts from, what stepPlayer reads; travel frames: off), every snapshot the guard.
+ *
+ * @module
  */
 import { screenToWorld } from "shared/play";
 import {

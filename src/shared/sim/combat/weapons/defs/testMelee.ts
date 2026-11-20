@@ -2,6 +2,8 @@
  * 'weapon.test.melee' (source: `src/sim/weapons/defs/testMelee.ts`): a placeholder melee swing that exercises
  * sweepArc. FIRE held: a 120-degree swing in front of the player every 0.4 s that hits every enemy in the arc and
  * deletes the enemy bullets inside it.
+ *
+ * @module
  */
 
 import { secondsToTicks } from "../../../playerData";

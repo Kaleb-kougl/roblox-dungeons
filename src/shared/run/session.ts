@@ -6,6 +6,8 @@
  * Port notes: the web build knew the tester's exit (Retry / Quit) from the UI. Here a death counts as "retried" when
  * the same player submitted another run after it in the session, and a death that was the session's last run ends
  * the retry streak (the web build's "died, then quit"). Retry delays and fun-gate answers are not available.
+ *
+ * @module
  */
 import { SIM_HZ } from "shared/sim";
 import type { RunTelemetryRecord } from "./telemetry";

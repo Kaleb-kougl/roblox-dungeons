@@ -1,4 +1,8 @@
-/** The theme contract's slots (docs/CODEBASE_SCALE.md DX8: a pure move out of contract.ts): what each ID prefix may hold and the sprite contracts. Import from "shared/theme" or "./contract", never from this file. */
+/**
+ * The theme contract's slots (docs/CODEBASE_SCALE.md DX8: a pure move out of contract.ts): what each ID prefix may hold and the sprite contracts. Import from "shared/theme" or "./contract", never from this file.
+ *
+ * @module
+ */
 import type { AssetKind, Pivot } from "../types";
 import { startsWith } from "../util";
 

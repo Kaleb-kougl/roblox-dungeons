@@ -31,6 +31,8 @@
  * Arrival only: a `PartyId` change mid-session, and later arrivals' effect on players already placed, are not this
  * function's job (ID4: mid-session grouping is only an offer, InviteService's toast). Notices name players who may
  * have left; the service drops those. Roblox-API-free; the lobby facts come in through `ArrivalInput`.
+ *
+ * @module
  */
 import { LOBBY, type Lobby, type LobbyInvite } from "shared/lobby";
 import type { InviteLaunch } from "./launchData";

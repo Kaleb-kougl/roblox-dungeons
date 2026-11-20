@@ -2,6 +2,8 @@
  * The Options screen (task L4: the juice settings panel grown into tabs, plus rebinding, task L4b client): its tabs,
  * layout tunables and every theme string key it reads (`options.*`; hud.spec.ts checks they all exist). The juice tab
  * keeps the juice panel's `fx.settings.*` keys.
+ *
+ * @module
  */
 import type { BindingDevice, BindingRefusal, GameAction, InputDeviceKind } from "shared/play";
 

@@ -4,6 +4,8 @@
  * by the sim: CombatState.healEvents, cleared every tick by step / stepParty beside clearEvents, copied by
  * cloneCombatState. SimEvents.heals sums the hp healed this tick; SimEvents.healCuts counts the ends that are cuts
  * (healEndCuts: sight lost, a body on the beam, a hit on the Mender).
+ *
+ * @module
  */
 
 /** Why a Mender's link or channel ended (HealEvents.endReason). Every reason from SIGHT on is a cut (the snap). */

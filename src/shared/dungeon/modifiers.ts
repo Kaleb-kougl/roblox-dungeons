@@ -31,6 +31,8 @@
  * Effects (buildEndlessFloor): the affected placer re-runs with its force flag (placeGolden certain, placeVault every,
  * placePellets powerCertain, placeBreakableLoot everyRoom, assignAffixes sharePercent) and every placer after it in the
  * build order; a forced chance draw is still made, so the draws after it are a natural hit's.
+ *
+ * @module
  */
 import { u32 } from "shared/jsmath";
 import { EncounterRng } from "./encounter";

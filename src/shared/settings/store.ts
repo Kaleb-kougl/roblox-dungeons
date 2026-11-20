@@ -11,6 +11,8 @@
  * Concurrency (the store yields): concurrent loads of one key share the first one's read (later callers wait for it),
  * and a save while another save of the same key is writing waits for it and then writes only if still dirty, so the
  * leave and BindToClose paths never both write the same document.
+ *
+ * @module
  */
 
 /** A key-value store. Calls may yield and may throw (DataStore errors, throttling). */

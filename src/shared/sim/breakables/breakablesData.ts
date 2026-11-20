@@ -13,6 +13,8 @@
  *
  * (breakables.spec.ts checks this table against SWORD_DATA / BOW_DATA.) Boons that scale damage (Sharpened) do not
  * apply: the pieces take the base numbers.
+ *
+ * @module
  */
 import { TILE_SIZE } from "../units";
 import { BOW_DATA } from "../combat/weapons/defs/bow";

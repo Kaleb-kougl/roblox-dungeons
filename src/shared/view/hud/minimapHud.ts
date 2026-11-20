@@ -6,6 +6,8 @@
  * `pxPerTile` 4, MD12). Owner decision MD7 (2026-10-27): the panel stays 140 x 140 and the cover cap
  * (HUD_FOOTPRINT_LIMITS.maxCoverShare) rose 0.12 -> 0.145 to hold it; the worst case is the 844 x 390 phone under the
  * Roblox top bar (HUD_TEST_TOP_INSET), where the HUD scale clamps at HUD_VIEW.minScale (footprint.spec.ts prints it).
+ *
+ * @module
  */
 import { MINIMAP_VIEW } from "shared/view/minimap";
 

@@ -4,6 +4,8 @@
  * with no pending invite, LT / RT off the Controls tab) is left out, so is a shortcut on the player's pad restart
  * key (padRowYields: the restart wins), and B shows its meaning (`pad.hint.holdExit` on the run-over panel; nothing
  * where B does nothing).
+ *
+ * @module
  */
 import { padConditionHolds, padRowYields, padRows, type PadContext, type PadSurface } from "./padActions";
 

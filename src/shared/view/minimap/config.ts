@@ -3,6 +3,8 @@
  * Presentation only: nothing here reaches the sim, the lockstep wire or a hash. Theme colour roles live in the theme
  * contract (`MINIMAP_ROLES`, task M6), not here; the marker roles below only pick among existing roles (MD8). Roblox-port
  * feature, no web source.
+ *
+ * @module
  */
 import { MINIMAP_ROOM_TINT_MIX, type ColorRole } from "shared/theme";
 

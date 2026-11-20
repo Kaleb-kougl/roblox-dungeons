@@ -2,6 +2,8 @@
  * Weapon model (E1.8; source: `src/sim/weapons/types.ts`): the player carries WEAPON_SETS weapon sets; each set holds
  * one main weapon (a numeric index into the weapon registry) with its own cooldown and scratch numbers. SWAP switches
  * sets instantly.
+ *
+ * @module
  */
 
 import type { SimCtx } from "../ctx";

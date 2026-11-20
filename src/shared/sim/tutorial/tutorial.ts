@@ -32,6 +32,8 @@
  *
  * A leaf module: it imports only types and its data, so player.ts and state.ts can import it without a require cycle.
  * The tutorial SCRIPT (prompts, step completion) lives outside the sim, so rewording it never touches replays.
+ *
+ * @module
  */
 import { jsMax, jsMin } from "shared/jsmath";
 import { isIntegerNumber } from "../jsnum";

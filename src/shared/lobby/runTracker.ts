@@ -11,6 +11,8 @@
  *   playerRemoving  a pending or bound SOLO lobby run of the leaving player ends (a party run goes on without them).
  *
  * Pure (the clock is passed in).
+ *
+ * @module
  */
 import { LOBBY, LOBBY_SERVICE } from "./config";
 

@@ -11,6 +11,8 @@
  *   glint       the loop's frame per slot (a phase per slot; one still frame under reduced motion), its billboard over
  *               the prop's centre
  *   pickup      the flash: the glint played once (2x) and the halo's grow-and-fade, and how long it lasts
+ *
+ * @module
  */
 import { STUDS_PER_TILE } from "shared/config";
 import type { Pivot } from "shared/theme";

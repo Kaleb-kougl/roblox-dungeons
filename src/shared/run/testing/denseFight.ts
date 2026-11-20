@@ -2,6 +2,8 @@
  * Test support for specs (never imported by the game): a fight on a chosen endless floor, as run/replay.bench.spec.ts
  * sets it up (docs/SERVER.md "Replay capacity"). Test-only shortcuts: debug-skip to the floor with every draft dismissed, then the party teleported onto a
  * room's first spawn so its enemies aggro.
+ *
+ * @module
  */
 import {
 	AXIS_MAX,

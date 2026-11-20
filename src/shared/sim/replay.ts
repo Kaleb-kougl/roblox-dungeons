@@ -7,6 +7,8 @@
  *
  * Port notes: the Recorder's `length` / `recording` getters are `size()` / `getRecording()`; recordings are parsed
  * with ./json.ts (no HttpService in the sim) and printed with JS number formatting (./jsnum.ts).
+ *
+ * @module
  */
 
 import { copyInput, isValidInput, type InputFrame } from "./input";

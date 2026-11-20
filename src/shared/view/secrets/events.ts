@@ -12,6 +12,8 @@
  * Every record carries the tick (state.tick at the END of its tick, as the vault's) and the crack's first slot, so a
  * view can tell a secret of the floor before from the current one when a frame ran a floor change. A leaf (shared/sim,
  * shared/dungeon and the vault's grant view type only).
+ *
+ * @module
  */
 import { gridToWorld } from "shared/dungeon";
 import { SECRET_UNSET, type SimState } from "shared/sim";

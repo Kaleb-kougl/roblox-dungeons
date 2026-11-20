@@ -15,6 +15,8 @@
  * `returned` (a boolean). Each is read on its own: missing or malformed decodes as absent and never touches any other
  * field; each is written only when present, so a doc without them keeps the old stored shape. Every copy this module
  * makes (finishing, a sighting) keeps them.
+ *
+ * @module
  */
 import type { DocCodec } from "shared/settings";
 import { NEW_PLAYER, ONBOARDING_DOC_VERSION, ONBOARDING_TUTORIAL_VERSION } from "./config";

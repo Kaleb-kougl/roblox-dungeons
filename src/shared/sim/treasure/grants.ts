@@ -12,6 +12,8 @@
  * TREASURE.boostOffsets in front of the chest (`origin`: its centre, forward along its facing (fx, fz), side along
  * (-fz, fx); landed in this open's order), events.dropped + fromChest, or with every slot taken is given straight to that
  * player (giveBoost, GIVEN_DROP_SLOT). So the draws never depend on the ground. Scoring is the caller's.
+ *
+ * @module
  */
 import { VaultTier } from "shared/dungeon";
 import { rngInt, type RngHolder } from "../rng";

@@ -6,6 +6,8 @@
  * once-per-user onboarding funnel tracker (onboardingFunnel.ts), the new-player window (newPlayer.ts), the game's
  * analytics catalog (analyticsCatalog.ts), the per-player orchestration OnboardingService feeds (playerTelemetry.ts)
  * and the KV_AnalyticsDebug echo's formatting (analyticsDebug.ts). Plain TypeScript, headlessly tested; OnboardingService wraps it.
+ *
+ * @module
  */
 export * from "./config";
 export * from "./doc";

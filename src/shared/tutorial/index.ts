@@ -5,6 +5,8 @@
  * bot (shared/run/testing tutorialBot.ts). guide.ts: the guidance arrow's TutorialGuide (docs/TUTORIAL_ARROW.md;
  * guide.spec.ts). metrics.ts: TutorialMetrics, the funnel's per-lesson time / hits and stuck episodes
  * (docs/TUTORIAL_FUNNEL.md §5; fed by the director, metrics.spec.ts).
+ *
+ * @module
  */
 export * from "./steps";
 export * from "./strings";

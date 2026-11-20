@@ -5,6 +5,8 @@
  * shows its two boons' icons (or their text labels) side by side, as before. The vale pack packs them into a sheet of
  * their own (packs/vale duoIconLayout.ts, scripts/art/gen-duo-icons.js), each an `image` of the sheet with its `rect`.
  * In its own module: contract.ts sits near Luau's 200-locals-per-function limit.
+ *
+ * @module
  */
 
 /** Every duo icon id starts with this. */

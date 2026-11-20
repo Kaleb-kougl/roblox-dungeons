@@ -14,6 +14,8 @@
  *   nt12Survival  survivalBot.ts's honest descent on real floors with the hearts topped up (immortal), observed, and
  *                 each room fight's ticks against its par (buildDeferredScoreRooms' par: base + 90 ticks per cost + per
  *                 affixed spawn), classified by the new kinds it planned.
+ *
+ * @module
  */
 import { AffixKind, encounterCost } from "shared/dungeon";
 import {

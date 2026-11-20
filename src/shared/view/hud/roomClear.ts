@@ -3,6 +3,8 @@
  * HUD_VIEW) and the pure text builders the controller uses. The stamp and its one-row tally sit in the boss bar's
  * slot at the top centre (no boss bar shows while a room record clears), above the toasts and the touch tutorial
  * prompt; the corner chips sit under the score panel (footprint.ts HUD_TRANSIENT.roomClear / roomClearChip).
+ *
+ * @module
  */
 import type { StringVars } from "shared/theme";
 import { roomClearSegments, type RoomClear, type RoomClearLook, type TallyEntry, type TallyKind } from "shared/view/fx";

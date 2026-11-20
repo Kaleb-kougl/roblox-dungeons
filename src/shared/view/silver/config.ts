@@ -2,8 +2,14 @@
  * Silver in crates on screen: presentation tunables (docs/SILVER.md SC3, "Silver in crates" player experience). Data
  * only: crateFx.ts reads it. The twinkle on a Silver piece is the boost pieces' own (BREAKABLE_LOOT_VIEW, OC8 /
  * SVD21): nothing here changes it.
+ *
+ * @module
  */
 
+/**
+ * The shape of the Silver crate effect's tunables: the `+N` pop, the coins flying to the counter, the clink and the
+ * Studio label.
+ */
 export interface SilverCrateFxTunables {
 	// --- The `+N` pop that rises from a broken Silver piece --------------------------------------------------------
 	/** How long a pop shows, seconds (real time). */

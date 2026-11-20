@@ -204,6 +204,8 @@
  * each plays sfx.score.tick at the rumour's volume with the pack's jitter.
  *
  * Presentation only: reads sim state, never writes it.
+ *
+ * @module
  */
 import { VaultTier, floorModifierKey } from "shared/dungeon";
 import {

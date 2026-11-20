@@ -21,6 +21,8 @@
  * Read by shared/silver's run payout through silverTotalOf (0 without the flag), and by the view's twinkle through
  * silverPieceAt. A LEAF module (state types and shared/dungeon only), so breakables.ts can call its hook without a
  * require cycle.
+ *
+ * @module
  */
 import { gridToWorld, type BreakableSilver } from "shared/dungeon";
 import type { SimState } from "../state";

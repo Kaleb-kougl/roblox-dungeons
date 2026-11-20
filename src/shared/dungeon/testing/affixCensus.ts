@@ -5,6 +5,8 @@
  * below its unlock floor or outside an elite / combat room; an elite room from AFFIXES.eliteFromFloor holds exactly
  * eliteAffixCount of its eligible members; no affix anywhere else) and fails with error() naming the floor; the shares
  * are tallied for the spec to gate. Test support only.
+ *
+ * @module
  */
 import {
 	AFFIXES,

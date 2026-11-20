@@ -6,6 +6,8 @@
  * Chip trail: on a hit the fill drops to the new hp at once; the chip (the light "recent damage" segment) keeps the old
  * value for CHIP_HOLD, then drains linearly to the fill over CHIP_DRAIN. A hit while the chip is still up keeps the
  * chip where it is (it never jumps down) and restarts the hold.
+ *
+ * @module
  */
 import type { HealthBarsMode } from "shared/settings";
 import { SIM_HZ } from "shared/sim";

@@ -6,6 +6,8 @@
  * here writes the sim. Personal reads (the card, the dim line, Greed's curse, the hint) take the view player
  * (SimController.getViewPlayerIndex: the watched teammate while spectating) or the local player (the hint, like every
  * snapshot hint); the Horde is party state.
+ *
+ * @module
  */
 import {
 	CURSES,

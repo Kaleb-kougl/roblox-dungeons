@@ -5,6 +5,8 @@
  *
  * The canonical definitions live in `shared/dungeon` (encounterTypes.ts), which never imports the sim; the sim
  * re-exports them so `placeEncounter(d, DEFAULT_ENCOUNTER)` plugs straight into SimConfig.encounter.
+ *
+ * @module
  */
 
 export { EMPTY_ENCOUNTER, roomAt } from "shared/dungeon";

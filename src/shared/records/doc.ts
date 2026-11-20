@@ -18,6 +18,8 @@
  * flag). A doc without it decodes exactly as before; a malformed one reads as absent. Whole-doc merges max-merge it
  * (mergeDailyActivity) and RecordsService adds to it with delta writes (mergeStoredDailyDelta). It is separate from
  * the endless records: daily runs never touch `endless` (DSD6).
+ *
+ * @module
  */
 import { MAX_RUN_ID_CHARS } from "shared/run";
 import type { DocCodec } from "shared/settings";

@@ -15,6 +15,8 @@
  *                 array index.
  *
  * Pure: no Roblox APIs; the feed is ArtReadiness (or a fake in specs).
+ *
+ * @module
  */
 
 /** What the stand-in helpers read from the readiness (ArtReadiness satisfies it). */

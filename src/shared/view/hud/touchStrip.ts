@@ -14,6 +14,8 @@
  *
  * Units: screen px (GUI px: points on a phone) for the geometry in and the rects out, reference px (HUD_VIEW's 1280 x
  * 720 design px, under the strip's UIScale) for the sizes in TOUCH_STRIP and the `slots` / widths out.
+ *
+ * @module
  */
 import { HUD_FOOTPRINT, HUD_TRANSIENT, type ScreenRect } from "./footprint";
 import { computeHudScale, HUD_VIEW } from "./layout";

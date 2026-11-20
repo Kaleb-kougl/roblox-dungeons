@@ -2,6 +2,8 @@
  * Endless mode floor tunables (GDD "Endless mode" and "Dungeon generation and difficulty"): which floor gets which
  * layout, where the boss stands, and how much each room may spend on enemies. Data only; ./endless.ts reads it.
  * The sim-side numbers (enemy hp / bullet speed scaling, the stairwell radius) are in shared/sim endlessData.ts.
+ *
+ * @module
  */
 
 /** The first floor of an endless run (floors are numbered from 1). */

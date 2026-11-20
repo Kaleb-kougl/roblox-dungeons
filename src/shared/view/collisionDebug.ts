@@ -14,6 +14,8 @@
  *                                         player, each styled dim / lit (the brake on) / inside (the body in its keep)
  *
  * Presentation only: it reads a Dungeon and SolidCells the sim already uses and never writes anything back.
+ *
+ * @module
  */
 import {
 	blocksMove,

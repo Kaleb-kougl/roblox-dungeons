@@ -2,6 +2,8 @@
  * Where a vault's pieces go (docs/TREASURE.md TR7): points in front of the chest along its facing, the placeholder
  * cage's bars round the chest's footprint, the floor texts' boxes (the plate and the lines, for the bullet duck) and
  * their SurfaceGui canvases. Plain numbers (sim world units unless named studs), tested headlessly (layout.spec.ts).
+ *
+ * @module
  */
 import { CAMERA_PITCH_DEG } from "shared/config";
 import { degToRad } from "../iso";

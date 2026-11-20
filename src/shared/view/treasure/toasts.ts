@@ -12,6 +12,8 @@
  *            frame: the room is live, so it never waits.
  *
  * Pure (no Instances), tested headlessly (toasts.spec.ts). Presentation only: reads the state and the frame's events.
+ *
+ * @module
  */
 import { VaultStatus, type SimState } from "shared/sim";
 import { TREASURE_VIEW } from "./config";

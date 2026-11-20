@@ -25,6 +25,8 @@
  *                      `press()` (skip before the arm, retry after). Record runs start the highlights (and the dim
  *                      line) after NB's rows. A verdict that changes the numbers re-derives silently: a new timeline at
  *                      the old one's clock (`atSec`), rows already due shown final with no sound.
+ *
+ * @module
  */
 import { pathDistance, pathField, type Dungeon } from "shared/dungeon";
 import { COMBO_MIN, ENDLESS_FIRST_DEPTH, ScoreSource } from "shared/sim";

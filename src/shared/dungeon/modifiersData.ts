@@ -5,6 +5,8 @@
  *
  * Modifier ids are NUMBERS (EndlessFloorLayout / EndlessFloorWorld.modifier); `key` is the string id the theme and the
  * dev attribute use (`floorMod.<key>.name`, KV_FloorModifier).
+ *
+ * @module
  */
 
 /** Numeric floor modifier ids. Append only: daily and endless floors are compared across builds by them. */

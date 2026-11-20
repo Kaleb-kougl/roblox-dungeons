@@ -7,6 +7,8 @@
  * the LOWEST-index free slot (kind === NO_KIND), else appends a new slot, else (pool full) returns undefined and
  * counts CombatState.actorsDropped. Slots are freed when a corpse times out (ArchetypeData.corpseTicks, default
  * CORPSE_TICKS) or on ctx.freeActor. Everything is in slot order, so the reuse order is deterministic.
+ *
+ * @module
  */
 
 import {

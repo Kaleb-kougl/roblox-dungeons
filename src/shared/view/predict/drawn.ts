@@ -9,6 +9,8 @@
  * Views take a DrawnPlayerOf (SimController's `drawnPlayerOf`) where they draw on or at the player; it returns the
  * merged player itself for everyone else and whenever nothing is predicted (solo, spectating, dead, a draft, the stage
  * cover), so those views are exactly today's.
+ *
+ * @module
  */
 import { playerAt, type PlayerState, type SimState } from "shared/sim";
 import type { PredictedBody } from "./smoother";

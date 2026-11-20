@@ -27,6 +27,8 @@
  * Read-only on the sim. No allocation per tick: cuts reuse a pool of records (a hit is rare, but a frame of them
  * should not churn); one ComboReset per streak end (a few per floor). Presentation only: nothing here is hashed or
  * written back.
+ *
+ * @module
  */
 import { COMBO_MAX, COMBO_MIN, COMBO_STEP, type SimState } from "shared/sim";
 import { fightOn } from "../roomEdgeState";

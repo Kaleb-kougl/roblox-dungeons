@@ -27,6 +27,8 @@
  *
  * Reads the merged state only through read-only helpers (runMods, swordGuardTicks, bowChargeTicks, solidCells inside
  * movePlayer) and writes only the MotionScratch. No allocation per tick.
+ *
+ * @module
  */
 import { jsMin } from "shared/jsmath";
 import {

@@ -6,6 +6,8 @@
  * Values keep JSON's shape without Lua's nil holes: `null` is the `JSON_NULL` sentinel, arrays and objects are tagged.
  * Duplicate object keys: the last one wins (as in `JSON.parse`). Syntax errors throw `JSON.parse: <what> at <pos>`
  * (V8's SyntaxError wording is not reproduced; recordings never contain bad JSON from a real run).
+ *
+ * @module
  */
 
 import { numberToJsString } from "./jsnum";

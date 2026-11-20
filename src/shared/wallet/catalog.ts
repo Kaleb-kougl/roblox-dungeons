@@ -15,6 +15,8 @@
  * sold for Robux only, through a Roblox game pass (passes.ts), never for Silver. Its `tiers` still name one level (so
  * `own` and the level reads stay as they are, and a Prismatic dye bought with Silver before the change stays owned),
  * but it has no Silver price: itemSilverPrice / itemPrice are undefined for it and applyBuy refuses it (`robuxOnly`).
+ *
+ * @module
  */
 import { DEFAULT_CHARACTER, type CharacterId } from "shared/characters";
 import { COSMETIC_ITEMS, isPrismaticItem } from "shared/cosmetics";

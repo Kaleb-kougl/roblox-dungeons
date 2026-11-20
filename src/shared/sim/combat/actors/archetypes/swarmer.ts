@@ -9,6 +9,8 @@
  * Telegraph choice: 0.4 s (GDD "telegraph everything" asks >= 0.5 s for real attacks; small fodder may use a shorter
  * but visible 0.3-0.5 s wind-up). Its lunge is short, aimed where the player stood when the wind-up began, and the
  * player outruns its walk (6 vs 4.2 u/s), so a sidestep during the wind-up always clears it.
+ *
+ * @module
  */
 
 import { SIM_DT } from "../../../units";

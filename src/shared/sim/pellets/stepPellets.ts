@@ -25,6 +25,8 @@
  * A Snatcher killed as its record's last living member (docs/NEW_ENEMIES_2.md NXD18) hands what it carried to its
  * killer through the same pickup (pelletsCreditCarried, from the archetype's onDeath): the kill lands in stepCombat,
  * before stepPellets and stepScore, so the clear's Sweep test in stepScore sees the lowered `left` that same tick.
+ *
+ * @module
  */
 import { cellKey, worldToGrid } from "shared/dungeon";
 import type { SimState } from "../state";

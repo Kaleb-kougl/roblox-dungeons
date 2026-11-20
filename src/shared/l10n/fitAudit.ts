@@ -1,6 +1,8 @@
 /**
  * The fit audit's rules (docs/LOCALIZATION.md L9, debug attribute `KV_LocaleAudit`): which text objects count as
  * overflowing, and each one reported once. Pure; the client's LocaleAuditController walks PlayerGui and feeds it facts.
+ *
+ * @module
  */
 
 /** The audit's switch and pace. */

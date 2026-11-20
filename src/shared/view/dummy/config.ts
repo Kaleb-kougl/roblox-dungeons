@@ -1,5 +1,7 @@
 /**
  * The training dummy's sprite tunables (docs/DUMMY_ART.md). Presentation only: nothing here feeds `step()`.
+ *
+ * @module
  */
 import { DUMMY } from "shared/sim";
 

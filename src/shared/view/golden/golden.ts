@@ -18,6 +18,8 @@
  *   minimap       goldenBlipSlot: the running Goldling's actor slot, or -1.
  *
  * Time: `simSec` is sim time ((tick + alpha) / SIM_HZ), so the pulse and the flicker hold still in a pause or a freeze.
+ *
+ * @module
  */
 import { CAMERA_YAW_DEG } from "shared/config";
 import {

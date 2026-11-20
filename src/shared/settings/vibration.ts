@@ -1,6 +1,8 @@
 /**
  * Phone haptics gate (docs/HAPTICS.md HP5, HPD6): whether an in-run cue may vibrate the phone at all, the touch twin of
  * shared/view/menu `menuHapticsOn` (the gamepad's gate, DisplaySettings.padVibration).
+ *
+ * @module
  */
 import type { InputDeviceKind } from "shared/play";
 

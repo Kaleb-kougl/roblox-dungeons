@@ -3,6 +3,8 @@
  * Start rule, the status line), the invite list, received invites, notice toasts, and the small run-handoff / exit
  * rules the controllers use (task L6). Display names come from a `nameOf` callback (the client reads the Player in
  * this server), so this stays Roblox-API-free and headlessly tested (menu.spec.ts).
+ *
+ * @module
  */
 import {
 	LOBBY,

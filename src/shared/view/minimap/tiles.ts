@@ -6,6 +6,8 @@
  *
  * Grid cell (gx, gy) is index gy * W + gx and covers world [gx - 0.5, gx + 0.5] x [gy - 0.5, gy + 0.5] tiles
  * (shared/dungeon collision.ts: x = grid x, z = grid y).
+ *
+ * @module
  */
 import { TileType, worldToGrid, type Dungeon, type RoomType, type WorldXZ } from "shared/dungeon";
 

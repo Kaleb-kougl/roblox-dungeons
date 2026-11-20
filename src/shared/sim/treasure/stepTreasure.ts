@@ -37,6 +37,8 @@
  *      (owner answer C1: giveBoost, events.collected with GIVEN_DROP_SLOT). So the draws never depend on the ground.
  *      Then scoreTreasure(points[tier]) once (combo-neutral, TRD11), opened += 1, kept += 1 for an uncracked lock,
  *      legendary += 1 for a Legendary tier, events.opened (the grants, for the view).
+ *
+ * @module
  */
 import { VaultLock, VaultTier } from "shared/dungeon";
 import type { SimState } from "../state";

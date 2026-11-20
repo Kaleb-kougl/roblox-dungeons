@@ -21,6 +21,8 @@
  * band PORT_BAND_ENEMIES_4 = 7 (indices 24..26: `jackal, mender, mortar`). A later addition takes the next
  * band, so no index that a recording or fixture already holds ever moves. Specs may add test archetypes
  * (shared/sim/testing, band 0) in their own module world.
+ *
+ * @module
  */
 
 import { stableSort } from "shared/jsmath";

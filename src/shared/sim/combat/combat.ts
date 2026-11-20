@@ -45,6 +45,8 @@
  *   7. contact damage per living player, index order (stepContactDamage)
  * M2 modifiers in co-op (progression/runMods.ts): a player bullet's damage uses its OWNER's mods (Sharpened), the
  * graze radius the grazing player's (Daredevil); the Hourglass slow is global while ANY player's timer runs.
+ *
+ * @module
  */
 
 import { SIM_DT } from "../units";
