@@ -40,7 +40,7 @@ const ROLES = {
 
 /** The kinds of shared/theme BOOST_KINDS, read from the source so a new one fails here. */
 function kindsFromSource() {
-	const src = fs.readFileSync(path.join(ROOT, "src", "shared", "theme", "contract.ts"), "utf8");
+	const src = fs.readFileSync(path.join(ROOT, "src", "shared", "theme", "contract", "ids.ts"), "utf8");
 	const m = src.match(/export const BOOST_KINDS = \[([^\]]*)\]/);
 	return [...m[1].matchAll(/"([a-z]+)"/g)].map((x) => x[1]);
 }

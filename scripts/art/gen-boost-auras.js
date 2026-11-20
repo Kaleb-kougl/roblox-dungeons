@@ -25,7 +25,7 @@ const fs = require("fs");
 const path = require("path");
 const { PNG } = require("pngjs");
 
-/** The kinds, in BOOST_KINDS order (shared/theme contract.ts). */
+/** The kinds, in BOOST_KINDS order (shared/theme contract/ids.ts). */
 const KIND_NAMES = ["fury", "quickstep", "frenzy", "aegis"];
 /**
  * Ring geometry, mirroring shared/view BOOST_VIEW (auraRadiusTiles 0.55, auraRingStepTiles 0.14) at the vale props'
