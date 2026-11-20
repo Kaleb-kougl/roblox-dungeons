@@ -34,10 +34,7 @@ import {
 	silverStringKeys,
 } from "./silver";
 import { SILVER_COLOR_RULES, silverReport } from "./silverColors";
-import { NEW_ENEMY_2_AUDIO_IDS } from "./newEnemies2";
-import { NEW_ENEMY_3_AUDIO_IDS } from "./newEnemies3";
-import { SILVER_SHOP_STRING_KEYS } from "./silverShop";
-import { COSMETIC_STRING_KEYS } from "./cosmetics";
+import { runOf } from "./testing";
 import { COLOR_ROLES } from "./types";
 import { deepClone, sortedKeys, type Obj } from "./util";
 import { validateManifest } from "./validate";
@@ -48,26 +45,12 @@ const fixed2 = (n: number) => "%.2f".format(n);
 const quiet = () => {};
 const clone = () => deepClone(PLACEHOLDER_MANIFEST) as unknown as Obj;
 
-/** The last `n` entries of `list` before its last `skip` (later features' entries), in order. */
-function tail(list: ReadonlyArray<string>, n: number, skip = 0): string[] {
-	const out = new Array<string>();
-	const last = list.size() - skip;
-	for (let i = last - n; i < last; i++) out.push(list[i]);
-	return out;
-}
-
 describe("silver: strings", () => {
 	it("are REQUIRED_STRING_KEYS' last ones before the Silver shop's, distinct, sorted, in every bundled pack", () => {
 		expect(SILVER_STRING_KEYS.size() > 0).toBe(true);
 		expect([...silverStringKeys()]).toEqual([...SILVER_STRING_KEYS]);
 		// docs/SILVER_SHOP.md SH4's keys come after them.
-		expect(
-			tail(
-				REQUIRED_STRING_KEYS,
-				SILVER_STRING_KEYS.size(),
-				SILVER_SHOP_STRING_KEYS.size() + COSMETIC_STRING_KEYS.size(),
-			),
-		).toEqual([...SILVER_STRING_KEYS]);
+		expect(runOf(REQUIRED_STRING_KEYS, SILVER_STRING_KEYS)).toEqual([...SILVER_STRING_KEYS]);
 		expect(new Set(REQUIRED_STRING_KEYS).size()).toBe(REQUIRED_STRING_KEYS.size());
 		for (const p of sortedKeys(THEME_PACKS))
 			for (const key of SILVER_STRING_KEYS)
@@ -109,13 +92,7 @@ describe("silver: sounds", () => {
 	it("are PORT_AUDIO_EVENTS' four before docs/NEW_ENEMIES_2.md's eight: required, sfx; SILENT in the placeholder, vale plays them", () => {
 		expect([...SILVER_AUDIO_IDS]).toEqual(["sfx.silver.gain", "sfx.silver.crate", "sfx.shop.buy", "sfx.shop.deny"]);
 		// docs/NEW_ENEMIES_2.md NX1's eight come after them (newEnemies2.spec.ts)
-		expect(
-			tail(
-				PORT_AUDIO_EVENTS,
-				SILVER_AUDIO_IDS.size(),
-				NEW_ENEMY_2_AUDIO_IDS.size() + NEW_ENEMY_3_AUDIO_IDS.size(),
-			),
-		).toEqual([...SILVER_AUDIO_IDS]);
+		expect(runOf(PORT_AUDIO_EVENTS, SILVER_AUDIO_IDS)).toEqual([...SILVER_AUDIO_IDS]);
 		for (const id of SILVER_AUDIO_IDS) {
 			expect([id, has(REQUIRED_ASSET_IDS, id), slotFor(id)?.soundGroup]).toEqual([id, true, "sfx"]);
 			// vale plays them: picked at the audition and uploaded 2026-11-14 (docs/SILVER.md)
@@ -160,7 +137,7 @@ describe("silver: optional art", () => {
 describe("silver: the colour role", () => {
 	it("is COLOR_ROLES' last, in every bundled pack", () => {
 		expect([...SILVER_ROLES]).toEqual([SILVER_ROLE]);
-		expect(tail(COLOR_ROLES as unknown as ReadonlyArray<string>, SILVER_ROLES.size())).toEqual([...SILVER_ROLES]);
+		expect(runOf(COLOR_ROLES as unknown as ReadonlyArray<string>, SILVER_ROLES)).toEqual([...SILVER_ROLES]);
 		for (const p of sortedKeys(THEME_PACKS))
 			expect([p, typeIs(THEME_PACKS[p].colors[SILVER_ROLE], "string")]).toEqual([p, true]);
 	});

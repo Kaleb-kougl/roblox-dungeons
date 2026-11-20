@@ -4,14 +4,7 @@
 // uiPanel, the twist apart from every boon), every check printed. contract.ts names the IDs inline (its compiled Luau
 // sits near the 200-locals limit), so these specs are what keeps floorModifiers.ts and contract.ts in step.
 import { describe, expect, it } from "@rbxts/jest-globals";
-import { SILVER_AUDIO_IDS, SILVER_ROLES, SILVER_STRING_KEYS } from "./silver";
-import { SILVER_SHOP_STRING_KEYS } from "./silverShop";
-import { COSMETIC_STRING_KEYS } from "./cosmetics";
 import { FloorModifierClass, MODIFIERS } from "shared/dungeon";
-import { CODEX_AUDIO_IDS, CODEX_STRING_KEYS } from "./codex";
-import { SECRET_AUDIO_IDS, SECRET_ROLES, SECRET_STRING_KEYS } from "./secrets";
-import { NEW_ENEMY_2_AUDIO_IDS } from "./newEnemies2";
-import { NEW_ENEMY_3_AUDIO_IDS } from "./newEnemies3";
 import { colorDifference, contrastRatio } from "./color";
 import { PORT_AUDIO_EVENTS, REQUIRED_ASSET_IDS, REQUIRED_STRING_KEYS, slotFor } from "./contract";
 import {
@@ -36,10 +29,10 @@ import {
 	MIN_FLOOR_MODIFIER_TWIST_DIFFERENCE,
 	floorModifierReport,
 } from "./floorModifierColors";
-import { GOLDEN_RUMOUR_AUDIO_IDS, GOLDEN_RUMOUR_STRING_KEYS } from "./fortune";
 import { ThemePack } from "./pack";
 import { THEME_PACKS } from "./packs";
 import { PLACEHOLDER_MANIFEST } from "./packs/placeholder";
+import { runOf } from "./testing";
 import { COLOR_ROLES } from "./types";
 import { deepClone, sortedKeys, type Obj } from "./util";
 import { isStringKey, validateManifest } from "./validate";
@@ -49,37 +42,6 @@ const fixed2 = (n: number) => "%.2f".format(n);
 const quiet = () => {};
 const has = (list: ReadonlyArray<string>, id: string) => list.includes(id);
 const clone = () => deepClone(PLACEHOLDER_MANIFEST) as unknown as Obj;
-
-/** The last `n` entries of `list` before its last `skip` (later features' entries), in order. */
-function tail(list: ReadonlyArray<string>, n: number, skip = 0): string[] {
-	const out = new Array<string>();
-	const last = list.size() - skip;
-	for (let i = last - n; i < last; i++) out.push(list[i]);
-	return out;
-}
-
-/**
- * What comes after the floor modifiers' entries: docs/GOLDLING_RUMOURS.md GR6 / GR7's two sounds and two strings, then
- * claude/codex-plan.md CX5's sound and strings (codex.spec.ts), then docs/SECRET_ROOMS.md SR10's sounds, strings and
- * colour role (secrets.spec.ts).
- */
-const LATER_AFTER = {
-	audio:
-		GOLDEN_RUMOUR_AUDIO_IDS.size() +
-		CODEX_AUDIO_IDS.size() +
-		SECRET_AUDIO_IDS.size() +
-		SILVER_AUDIO_IDS.size() +
-		NEW_ENEMY_2_AUDIO_IDS.size() +
-		NEW_ENEMY_3_AUDIO_IDS.size(),
-	strings:
-		GOLDEN_RUMOUR_STRING_KEYS.size() +
-		CODEX_STRING_KEYS.size() +
-		SECRET_STRING_KEYS.size() +
-		SILVER_STRING_KEYS.size() +
-		SILVER_SHOP_STRING_KEYS.size() +
-		COSMETIC_STRING_KEYS.size(),
-	roles: SECRET_ROLES.size() + SILVER_ROLES.size(),
-} as const;
 
 describe("floor modifiers: theme keys", () => {
 	it("the keys are shared/dungeon MODIFIERS.kinds' keys, in order; the twists are its TWIST class", () => {
@@ -104,9 +66,7 @@ describe("floor modifiers: theme keys", () => {
 		for (const k of FLOOR_MODIFIER_KEYS) keys.push(floorModifierNameKey(k), floorModifierLineKey(k));
 		keys.push(FLOOR_MODIFIER_PAUSE_KEY);
 		expect(keys).toEqual([...FLOOR_MODIFIER_STRING_KEYS]);
-		expect(tail(REQUIRED_STRING_KEYS, FLOOR_MODIFIER_STRING_KEYS.size(), LATER_AFTER.strings)).toEqual([
-			...FLOOR_MODIFIER_STRING_KEYS,
-		]);
+		expect(runOf(REQUIRED_STRING_KEYS, FLOOR_MODIFIER_STRING_KEYS)).toEqual([...FLOOR_MODIFIER_STRING_KEYS]);
 		expect(new Set(REQUIRED_STRING_KEYS).size()).toBe(REQUIRED_STRING_KEYS.size());
 		// a string key's first segment is lowercase (`floormod.`), unlike the colour role (`floorMod.`)
 		for (const k of FLOOR_MODIFIER_STRING_KEYS) expect([k, isStringKey(k)]).toEqual([k, true]);
@@ -147,9 +107,9 @@ describe("floor modifiers: theme keys", () => {
 			"floorMod.plunder",
 			"floorMod.bloodMoon",
 		]);
-		expect(
-			tail(COLOR_ROLES as unknown as ReadonlyArray<string>, FLOOR_MODIFIER_ROLES.size(), LATER_AFTER.roles),
-		).toEqual([...FLOOR_MODIFIER_ROLES]);
+		expect(runOf(COLOR_ROLES as unknown as ReadonlyArray<string>, FLOOR_MODIFIER_ROLES)).toEqual([
+			...FLOOR_MODIFIER_ROLES,
+		]);
 		for (const id of sortedKeys(THEME_PACKS)) {
 			const c = THEME_PACKS[id].colors as unknown as Obj;
 			expect([id, c["floorMod.gilded"], c["floorMod.hoard"], c["floorMod.feast"], c["floorMod.plunder"]]).toEqual(
@@ -169,9 +129,7 @@ describe("floor modifiers: theme keys", () => {
 			"sfx.floor.modifier.bloodmoon",
 		]);
 		expect(FLOOR_MODIFIER_AUDIO_PREFIX).toBe("sfx.floor.modifier.");
-		expect(tail(PORT_AUDIO_EVENTS, FLOOR_MODIFIER_AUDIO_IDS.size(), LATER_AFTER.audio)).toEqual([
-			...FLOOR_MODIFIER_AUDIO_IDS,
-		]);
+		expect(runOf(PORT_AUDIO_EVENTS, FLOOR_MODIFIER_AUDIO_IDS)).toEqual([...FLOOR_MODIFIER_AUDIO_IDS]);
 		for (const id of FLOOR_MODIFIER_AUDIO_IDS) {
 			expect([id, has(REQUIRED_ASSET_IDS, id), slotFor(id)?.soundGroup]).toEqual([id, true, "sfx"]);
 			for (const p of sortedKeys(THEME_PACKS))

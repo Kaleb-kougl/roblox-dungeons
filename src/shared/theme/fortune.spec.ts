@@ -4,14 +4,9 @@
 // the plan's bars, every check printed. contract.ts names the IDs inline (its compiled Luau sits near the 200-locals
 // limit), so these specs are what keeps fortune.ts and contract.ts in step.
 import { describe, expect, it } from "@rbxts/jest-globals";
-import { SILVER_AUDIO_IDS, SILVER_ROLES, SILVER_STRING_KEYS } from "./silver";
-import { SILVER_SHOP_STRING_KEYS } from "./silverShop";
-import { COSMETIC_STRING_KEYS } from "./cosmetics";
 import { PACT_DIM_NAMES, PactDim } from "shared/sim";
-import { CODEX_AUDIO_IDS, CODEX_STRING_KEYS } from "./codex";
-import { SECRET_AUDIO_IDS, SECRET_ROLES, SECRET_STRING_KEYS } from "./secrets";
-import { NEW_ENEMY_2_ARCHETYPES, NEW_ENEMY_2_AUDIO_IDS, NEW_ENEMY_2_BESTIARY } from "./newEnemies2";
-import { NEW_ENEMY_3_ARCHETYPES, NEW_ENEMY_3_AUDIO_IDS } from "./newEnemies3";
+import { NEW_ENEMY_2_ARCHETYPES, NEW_ENEMY_2_BESTIARY } from "./newEnemies2";
+import { NEW_ENEMY_3_ARCHETYPES } from "./newEnemies3";
 import { colorDifference, contrastRatio } from "./color";
 import {
 	BIOMES,
@@ -57,12 +52,12 @@ import {
 	MIN_GOLDEN_COIN_PELLET_DIFFERENCE,
 	fortuneReport,
 } from "./fortuneColors";
-import { FLOOR_MODIFIER_AUDIO_IDS, FLOOR_MODIFIER_ROLES, FLOOR_MODIFIER_STRING_KEYS } from "./floorModifiers";
 import { ThemePack } from "./pack";
 import { THEME_PACKS } from "./packs";
 import { PLACEHOLDER_MANIFEST } from "./packs/placeholder";
 import { VALE_FLOOR_HEX, buildValeManifest } from "./packs/vale";
 import { PLACEHOLDER_PROPORTIONS, PLACEHOLDER_VISUALS, pxToStuds } from "./placeholders";
+import { runOf } from "./testing";
 import { COLOR_ROLES } from "./types";
 import { deepClone, sortedKeys, type Obj } from "./util";
 import { validateManifest } from "./validate";
@@ -83,40 +78,6 @@ function packsToCheck(): Array<[string, Obj]> {
 	return out;
 }
 
-/** The last `n` entries of `list` before its last `skip` (later features' entries), in order. */
-function tail(list: ReadonlyArray<string>, n: number, skip = 0): string[] {
-	const out = new Array<string>();
-	const last = list.size() - skip;
-	for (let i = last - n; i < last; i++) out.push(list[i]);
-	return out;
-}
-
-/** Entries docs/FLOOR_MODIFIERS.md FM7 appended after Fortune's (floorModifiers.spec.ts checks them). */
-const FLOOR_MOD_AFTER = {
-	roles: FLOOR_MODIFIER_ROLES.size() + SECRET_ROLES.size() + SILVER_ROLES.size(),
-	audio: FLOOR_MODIFIER_AUDIO_IDS.size(),
-	strings: FLOOR_MODIFIER_STRING_KEYS.size(),
-} as const;
-
-/**
- * What claude/codex-plan.md CX5 appends after the Goldling rumours' entries (its sound, its strings; codex.spec.ts), then
- * docs/SECRET_ROOMS.md SR10's (secrets.spec.ts): the secret rooms' role (after the floor modifiers': FLOOR_MOD_AFTER).
- */
-const CODEX_AFTER = {
-	audio:
-		CODEX_AUDIO_IDS.size() +
-		SECRET_AUDIO_IDS.size() +
-		SILVER_AUDIO_IDS.size() +
-		NEW_ENEMY_2_AUDIO_IDS.size() +
-		NEW_ENEMY_3_AUDIO_IDS.size(),
-	strings:
-		CODEX_STRING_KEYS.size() +
-		SECRET_STRING_KEYS.size() +
-		SILVER_STRING_KEYS.size() +
-		SILVER_SHOP_STRING_KEYS.size() +
-		COSMETIC_STRING_KEYS.size(),
-} as const;
-
 const clone = () => deepClone(PLACEHOLDER_MANIFEST) as unknown as Obj;
 
 describe("fortune: contract", () => {
@@ -133,7 +94,7 @@ describe("fortune: contract", () => {
 		expect(WORLD_ART_SLOTS[WORLD_ART_SLOTS.size() - 2]).toBe(PACT);
 		expect(requiredBaseAnimations(PACT)).toEqual(["idle"]);
 		expect(PACT_ALTAR_ID).toBe("pact.altar");
-		expect(tail(REQUIRED_ASSET_IDS, 1)).toEqual([PACT_ALTAR_ID]);
+		expect(runOf(REQUIRED_ASSET_IDS, [PACT_ALTAR_ID])).toEqual([PACT_ALTAR_ID]);
 		expect(slotFor(PACT_ALTAR_ID)).toBe(PACT);
 		expect([isPactId("pact.altar"), isPactId("pact.greed"), isPactId("pact"), isPactId("")]).toEqual([
 			true,
@@ -149,9 +110,7 @@ describe("fortune: contract", () => {
 	it("the colour roles are COLOR_ROLES' last four before the floor modifiers': the Horde edge, the two pacts (PactKind order), the coins", () => {
 		expect([...FORTUNE_ROLES]).toEqual(["roomEdge.horde", "pact.greed", "pact.horde", "golden.coin"]);
 		expect([...FORTUNE_ROLES]).toEqual([ROOM_EDGE_HORDE_ROLE, ...PACT_ROLES, GOLDEN_COIN_ROLE]);
-		expect(
-			tail(COLOR_ROLES as unknown as ReadonlyArray<string>, FORTUNE_ROLES.size(), FLOOR_MOD_AFTER.roles),
-		).toEqual([...FORTUNE_ROLES]);
+		expect(runOf(COLOR_ROLES as unknown as ReadonlyArray<string>, FORTUNE_ROLES)).toEqual([...FORTUNE_ROLES]);
 		// the Goldling's own role and asset are the enemy slot's (docs/NEW_ENEMIES_2.md NX1's five come after it)
 		expect(
 			ENEMY_ARCHETYPES[
@@ -174,13 +133,7 @@ describe("fortune: contract", () => {
 		]);
 		// docs/FLOOR_MODIFIERS.md FM7's five, then docs/GOLDLING_RUMOURS.md GR6's two rumours come after them (then
 		// claude/codex-plan.md CX5's one)
-		expect(
-			tail(
-				PORT_AUDIO_EVENTS,
-				FORTUNE_AUDIO_IDS.size(),
-				FLOOR_MOD_AFTER.audio + GOLDEN_RUMOUR_AUDIO_IDS.size() + CODEX_AFTER.audio,
-			),
-		).toEqual([...FORTUNE_AUDIO_IDS]);
+		expect(runOf(PORT_AUDIO_EVENTS, FORTUNE_AUDIO_IDS)).toEqual([...FORTUNE_AUDIO_IDS]);
 		for (const id of FORTUNE_AUDIO_IDS) {
 			expect([id, has(REQUIRED_ASSET_IDS, id), slotFor(id)?.soundGroup]).toEqual([id, true, "sfx"]);
 			// the vale pack plays them: picked on the audition checklist and uploaded 2026-11-11 (docs/FX_AUDIO.md
@@ -192,9 +145,7 @@ describe("fortune: contract", () => {
 
 	it("appends the Goldling's two rumours last before the Codex's (docs/GOLDLING_RUMOURS.md GR6): required, sfx; SILENT in the placeholder, vale plays them", () => {
 		expect([...GOLDEN_RUMOUR_AUDIO_IDS]).toEqual(["sfx.golden.rumour.floor", "sfx.golden.rumour.room"]);
-		expect(tail(PORT_AUDIO_EVENTS, GOLDEN_RUMOUR_AUDIO_IDS.size(), CODEX_AFTER.audio)).toEqual([
-			...GOLDEN_RUMOUR_AUDIO_IDS,
-		]);
+		expect(runOf(PORT_AUDIO_EVENTS, GOLDEN_RUMOUR_AUDIO_IDS)).toEqual([...GOLDEN_RUMOUR_AUDIO_IDS]);
 		for (const id of GOLDEN_RUMOUR_AUDIO_IDS) {
 			expect([id, has(REQUIRED_ASSET_IDS, id), slotFor(id)?.soundGroup]).toEqual([id, true, "sfx"]);
 			// vale plays them: auditioned (GR10) and uploaded 2026-11-14
@@ -242,20 +193,14 @@ describe("fortune: contract", () => {
 	it("the strings: cards, dim lines (PACT_DIM_NAMES but none), titles, chips, shouts (required); rows; sighting", () => {
 		// docs/FLOOR_MODIFIERS.md FM7's strings, then docs/GOLDLING_RUMOURS.md GR7's two chip lines come after them (then
 		// claude/codex-plan.md CX5's)
-		expect(
-			tail(
-				REQUIRED_STRING_KEYS,
-				FORTUNE_STRING_KEYS.size(),
-				FLOOR_MOD_AFTER.strings + GOLDEN_RUMOUR_STRING_KEYS.size() + CODEX_AFTER.strings,
-			),
-		).toEqual([...FORTUNE_STRING_KEYS]);
+		expect(runOf(REQUIRED_STRING_KEYS, FORTUNE_STRING_KEYS)).toEqual([...FORTUNE_STRING_KEYS]);
 		const dims = new Array<string>();
 		for (let d = 0; d < PACT_DIM_NAMES.size(); d++)
 			if (d !== PactDim.NONE) dims.push(pactDimStringKey(PACT_DIM_NAMES[d]));
 		expect(dims).toEqual([...PACT_DIM_STRING_KEYS]);
 		for (const k of PACT_DIM_STRING_KEYS) expect([k, has(FORTUNE_STRING_KEYS, k)]).toEqual([k, true]);
 		expect(HORDE_ROOM_CLEAR_KEY).toBe("room.clear.line.horde");
-		expect(tail(ROOM_CLEAR_STRING_KEYS, 1)).toEqual([HORDE_ROOM_CLEAR_KEY]);
+		expect(runOf(ROOM_CLEAR_STRING_KEYS, [HORDE_ROOM_CLEAR_KEY])).toEqual([HORDE_ROOM_CLEAR_KEY]);
 		// the Goldling's sighting is an archetype's: after the Reaper, before docs/NEW_ENEMIES_2.md NX1's four (then the
 		// affixes)
 		expect(
@@ -322,9 +267,7 @@ describe("fortune: contract", () => {
 
 	it("the rumour strings (docs/GOLDLING_RUMOURS.md GR7): the chip's two lines last before the Codex's, the first-time card last before the secret rooms'", () => {
 		expect([...GOLDEN_RUMOUR_STRING_KEYS]).toEqual(["hud.chip.golden.rumour", "hud.chip.golden.hiding"]);
-		expect(tail(REQUIRED_STRING_KEYS, GOLDEN_RUMOUR_STRING_KEYS.size(), CODEX_AFTER.strings)).toEqual([
-			...GOLDEN_RUMOUR_STRING_KEYS,
-		]);
+		expect(runOf(REQUIRED_STRING_KEYS, GOLDEN_RUMOUR_STRING_KEYS)).toEqual([...GOLDEN_RUMOUR_STRING_KEYS]);
 		expect(GOLDEN_RUMOUR_BESTIARY_KEY).toBe("bestiary.golden.rumour");
 		// docs/SECRET_ROOMS.md SR10's first-knock card (bestiary.secret.crack) comes after it
 		expect(BESTIARY_STRING_KEYS[BESTIARY_STRING_KEYS.size() - 2]).toBe(GOLDEN_RUMOUR_BESTIARY_KEY);

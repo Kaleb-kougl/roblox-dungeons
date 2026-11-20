@@ -4,9 +4,6 @@
 // pack (vale has no clip for it yet) with no SFX_FALLBACK (CXD12); the plain-string copies of the Codex's tabs, groups and
 // characters agree with shared/codex and shared/characters, and every codex-only description the catalog names exists.
 import { describe, expect, it } from "@rbxts/jest-globals";
-import { SILVER_AUDIO_IDS, SILVER_ROLES, SILVER_STRING_KEYS } from "./silver";
-import { SILVER_SHOP_STRING_KEYS } from "./silverShop";
-import { COSMETIC_STRING_KEYS } from "./cosmetics";
 import { CHARACTERS } from "shared/characters";
 import { CODEX_GROUPS, CODEX_TABS, CODEX_TAB_GROUPS, codexDescKeys } from "shared/codex";
 import { SFX_FALLBACK } from "shared/view/audio";
@@ -24,35 +21,11 @@ import {
 	codexTabNameKey,
 } from "./codex";
 import { PORT_AUDIO_EVENTS, REQUIRED_ASSET_IDS, REQUIRED_STRING_KEYS, slotFor } from "./contract";
-import { SECRET_AUDIO_IDS, SECRET_STRING_KEYS } from "./secrets";
-import { NEW_ENEMY_2_AUDIO_IDS } from "./newEnemies2";
-import { NEW_ENEMY_3_AUDIO_IDS } from "./newEnemies3";
 import { ThemePack } from "./pack";
 import { THEME_PACKS } from "./packs";
 import { PLACEHOLDER_MANIFEST } from "./packs/placeholder";
+import { runOf } from "./testing";
 import { sortedKeys } from "./util";
-
-/** The last `n` entries of `list` before its last `skip` (later features' entries), in order. */
-function tail(list: ReadonlyArray<string>, n: number, skip = 0): string[] {
-	const out = new Array<string>();
-	const last = list.size() - skip;
-	for (let i = last - n; i < last; i++) out.push(list[i]);
-	return out;
-}
-
-/**
- * What docs/SECRET_ROOMS.md SR10 appends after the Codex's entries (secrets.spec.ts), then docs/SILVER.md SV7's
- * (silver.spec.ts), then docs/NEW_ENEMIES_2.md NX1's sounds (newEnemies2.spec.ts).
- */
-const SECRET_AFTER = {
-	audio:
-		SECRET_AUDIO_IDS.size() + SILVER_AUDIO_IDS.size() + NEW_ENEMY_2_AUDIO_IDS.size() + NEW_ENEMY_3_AUDIO_IDS.size(),
-	strings:
-		SECRET_STRING_KEYS.size() +
-		SILVER_STRING_KEYS.size() +
-		SILVER_SHOP_STRING_KEYS.size() +
-		COSMETIC_STRING_KEYS.size(),
-} as const;
 
 const quiet = () => {};
 
@@ -60,9 +33,7 @@ describe("codex: theme contract", () => {
 	it("the strings are REQUIRED_STRING_KEYS' last ones before the secret rooms', distinct, and every bundled pack has each", () => {
 		// 54 (CX5) + docs/SECRET_ROOMS.md SRD12's sub-header, kind line and description
 		expect(CODEX_STRING_KEYS.size()).toBe(57);
-		expect(tail(REQUIRED_STRING_KEYS, CODEX_STRING_KEYS.size(), SECRET_AFTER.strings)).toEqual([
-			...CODEX_STRING_KEYS,
-		]);
+		expect(runOf(REQUIRED_STRING_KEYS, CODEX_STRING_KEYS)).toEqual([...CODEX_STRING_KEYS]);
 		expect(new Set(CODEX_STRING_KEYS).size()).toBe(CODEX_STRING_KEYS.size());
 		expect(new Set(REQUIRED_STRING_KEYS).size()).toBe(REQUIRED_STRING_KEYS.size());
 		for (const p of sortedKeys(THEME_PACKS))
@@ -73,7 +44,7 @@ describe("codex: theme contract", () => {
 	it("appends sfx.codex.new to PORT_AUDIO_EVENTS (before the secret rooms' three): required, sfx; SILENT in every bundled pack; no fallback", () => {
 		expect([...CODEX_AUDIO_IDS]).toEqual([CODEX_NEW_SOUND]);
 		expect(CODEX_NEW_SOUND).toBe("sfx.codex.new");
-		expect(tail(PORT_AUDIO_EVENTS, CODEX_AUDIO_IDS.size(), SECRET_AFTER.audio)).toEqual([...CODEX_AUDIO_IDS]);
+		expect(runOf(PORT_AUDIO_EVENTS, CODEX_AUDIO_IDS)).toEqual([...CODEX_AUDIO_IDS]);
 		for (const id of CODEX_AUDIO_IDS) {
 			expect([id, REQUIRED_ASSET_IDS.includes(id), slotFor(id)?.soundGroup]).toEqual([id, true, "sfx"]);
 			// vale keeps the placeholder's SILENT for an ID its audio layout has no clip for (CX11 adds one)

@@ -4,7 +4,6 @@
 // check printed). contract.ts names the IDs inline (its compiled Luau sits near the 200-locals limit), so these specs
 // are what keeps pellets.ts and contract.ts in step.
 import { describe, expect, it } from "@rbxts/jest-globals";
-import { SILVER_AUDIO_IDS, SILVER_ROLES, SILVER_STRING_KEYS } from "./silver";
 import { colorDifference, contrastRatio } from "./color";
 import {
 	BIOMES,
@@ -43,6 +42,7 @@ import {
 	isPelletId,
 	pelletId,
 } from "./pellets";
+import { runOf } from "./testing";
 import { COLOR_ROLES } from "./types";
 import { deepClone, sortedKeys, type Obj } from "./util";
 import { validateManifest } from "./validate";
@@ -62,22 +62,6 @@ function packsToCheck(): Array<[string, Obj]> {
 	out.push(["vale (textured floors)", textured]);
 	return out;
 }
-
-/** The last `n` entries of `list` before its last `skip` (later features' entries), in order. */
-function tail(list: ReadonlyArray<string>, n: number, skip = 0): string[] {
-	const out = new Array<string>();
-	const last = list.size() - skip;
-	for (let i = last - n; i < last; i++) out.push(list[i]);
-	return out;
-}
-
-/**
- * Entries appended after the pellets': docs/TREASURE.md TR6's 3 asset IDs and 5 colour roles, then docs/FORTUNE.md
- * FO6's 1 asset ID, 4 colour roles and 1 tally segment, then docs/FLOOR_MODIFIERS.md FM7's 5 colour roles, then
- * docs/SECRET_ROOMS.md SR10's 1 colour role (treasure.spec.ts / fortune.spec.ts / floorModifiers.spec.ts /
- * secrets.spec.ts check them).
- */
-const AFTER = { assets: 3 + 1, roles: 5 + 4 + 5 + 1 + SILVER_ROLES.size(), roomClear: 1 } as const;
 
 describe("pellets: contract", () => {
 	it("two kinds, normal and power; their asset and colour role IDs are `pellet.<kind>`", () => {
@@ -101,16 +85,14 @@ describe("pellets: contract", () => {
 		expect(SLOTS.includes(PELLET)).toBe(true);
 		expect(WORLD_ART_SLOTS.includes(PELLET)).toBe(true);
 		expect(requiredBaseAnimations(PELLET)).toEqual(["idle"]);
-		expect(tail(REQUIRED_ASSET_IDS, PELLET_IDS.size(), AFTER.assets)).toEqual([...PELLET_IDS]);
+		expect(runOf(REQUIRED_ASSET_IDS, PELLET_IDS)).toEqual([...PELLET_IDS]);
 		for (const id of PELLET_IDS) expect([id, slotFor(id)]).toEqual([id, PELLET]);
 		// the pellet sounds stay in the sfx slot
 		for (const id of PELLET_AUDIO_IDS) expect([id, slotFor(id)?.slot]).toEqual([id, "sfx"]);
 	});
 
 	it("the colour roles are COLOR_ROLES' last two before the treasure rooms' and Fortune's", () => {
-		expect(tail(COLOR_ROLES as unknown as ReadonlyArray<string>, PELLET_ROLES.size(), AFTER.roles)).toEqual([
-			...PELLET_ROLES,
-		]);
+		expect(runOf(COLOR_ROLES as unknown as ReadonlyArray<string>, PELLET_ROLES)).toEqual([...PELLET_ROLES]);
 	});
 
 	it("appends the three sounds to PORT_AUDIO_EVENTS: required, sfx; SILENT in the placeholder, on in vale", () => {
@@ -134,14 +116,12 @@ describe("pellets: contract", () => {
 
 	it("the strings: tally segments (required), results rows, the power pellet's sighting line, the lesson prompts", () => {
 		expect([...PELLET_ROOM_CLEAR_KEYS]).toEqual(["room.clear.line.pellets", "room.clear.line.sweep"]);
-		expect(tail(ROOM_CLEAR_STRING_KEYS, PELLET_ROOM_CLEAR_KEYS.size(), AFTER.roomClear)).toEqual([
-			...PELLET_ROOM_CLEAR_KEYS,
-		]);
+		expect(runOf(ROOM_CLEAR_STRING_KEYS, PELLET_ROOM_CLEAR_KEYS)).toEqual([...PELLET_ROOM_CLEAR_KEYS]);
 		expect([...PELLET_SCORE_SOURCE_KEYS]).toEqual(["score.source.pellets", "score.source.sweep"]);
 		expect(PELLET_BESTIARY_KEY).toBe("bestiary.pellet.power");
 		// docs/GOLDLING_RUMOURS.md GR7's card (bestiary.golden.rumour), then docs/SECRET_ROOMS.md SR10's
 		// (bestiary.secret.crack) come after it
-		expect(tail(BESTIARY_STRING_KEYS, 1, 2)).toEqual([PELLET_BESTIARY_KEY]);
+		expect(runOf(BESTIARY_STRING_KEYS, [PELLET_BESTIARY_KEY])).toEqual([PELLET_BESTIARY_KEY]);
 		for (const k of [...PELLET_ROOM_CLEAR_KEYS, PELLET_BESTIARY_KEY]) {
 			expect([k, has(REQUIRED_STRING_KEYS, k)]).toEqual([k, true]);
 		}
