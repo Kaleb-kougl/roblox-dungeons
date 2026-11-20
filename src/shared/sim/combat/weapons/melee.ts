@@ -35,7 +35,9 @@ let arcCtx: SimCtx | undefined;
  * erased bullet, its position at the erase, pushed in the walk's order. Never hashed, never read by the sim.
  */
 export interface ArcEraseSink {
+	/** World x of each erased bullet at the erase, appended in the walk's order (the sweep never clears it). */
 	x: number[];
+	/** World z of each erased bullet, same index as `x`. */
 	z: number[];
 }
 

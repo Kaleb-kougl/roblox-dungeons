@@ -60,6 +60,10 @@ export interface TestBossData extends ArchetypeData {
 	ring: BurstSpec;
 }
 
+/**
+ * Attack id the test boss passes to `ctx.telegraph` for its ring, so a spec can read it back from the actor's `attack`
+ * field while the ring is telegraphed.
+ */
 export const TEST_BOSS_ATTACK_RING = 1;
 const BOSS_PHASE_2_HP = 40;
 const BOSS_PHASE_3_HP = 20;

@@ -52,12 +52,18 @@ export interface TreasureOpened {
 	readonly opener: number;
 	/** VaultTier opened (after any crack), the tier it started at, and VaultLock. */
 	readonly tier: number;
+	/** VaultTier the vault started the floor at (one above `tier` when the lock cracked). */
 	readonly startTier: number;
+	/** VaultLock of the vault (UNTOUCHED or SWIFT). */
 	readonly lock: number;
 	/** 1 when the lock was kept (never cracked). */
 	readonly kept: number;
 	/** The vault's missBy / spare at the unlock (TREASURE_UNSET when they do not apply). */
 	readonly missBy: number;
+	/**
+	 * With the lock kept: SWIFT ticks left or UNTOUCHED hits unused at the unlock, TREASURE_UNSET when the lock
+	 * cracked.
+	 */
 	readonly spare: number;
 	/** TREASURE points scored (0 without scoring). */
 	readonly points: number;
@@ -79,6 +85,7 @@ export interface TreasureEvents {
 
 /** SimState.treasure: plain numbers, every field but `config` and `events` hashed. */
 export interface TreasureState {
+	/** The run's treasure rules. Constant for the run: not hashed, shared by clones. */
 	readonly config: Readonly<TreasureConfig>;
 	/** The treasure stream (mulberry32 word): an RngHolder for the open's draws (TR4). */
 	rngState: number;
@@ -86,18 +93,29 @@ export interface TreasureState {
 	status: number;
 	/** The vault room's encounter room id, its score record index (state.score.rooms) and the chest's breakables slot. */
 	room: number;
+	/**
+	 * The vault room's score record: an index into state.score.rooms, TREASURE_UNSET without a vault. Its engagement,
+	 * par and clear drive the lock. Hashed.
+	 */
 	record: number;
+	/** The chest piece's slot in the floor's breakables, TREASURE_UNSET without a vault. Hashed. */
 	slot: number;
 	/** The chest's centre (world). */
 	x: number;
+	/** The chest's centre, world z (0 without a vault). Hashed. */
 	z: number;
 	/** Facing into the room (the boosts land in front, TR4). */
 	fx: number;
+	/** The z part of the facing (fx is its x part; a grid axis direction from the floor plan). Hashed. */
 	fz: number;
 	/** VaultLock. */
 	lock: number;
 	/** VaultTier the vault started at, and now (one lower after a crack). */
 	startTier: number;
+	/**
+	 * VaultTier the chest holds now: startTier, or one lower once the lock has cracked. TREASURE_UNSET without a vault.
+	 * Hashed.
+	 */
 	tier: number;
 	/** state.tick it armed, TREASURE_UNSET before. */
 	armTick: number;
@@ -115,7 +133,9 @@ export interface TreasureState {
 	bonusDeals: number[];
 	/** Run counters (the recap's highlight, TR4): chests opened, opened with the lock kept, opened Legendary. */
 	opened: number;
+	/** Run counter: chests opened with the lock never cracked. Carries over floors. Hashed. */
 	kept: number;
+	/** Run counter: chests opened at the Legendary tier. Carries over floors. Hashed. */
 	legendary: number;
 	/** Not hashed. */
 	events: TreasureEvents;
@@ -123,8 +143,11 @@ export interface TreasureState {
 
 /** The run's chest tally for the recap (docs/TREASURE.md Design §4, RR). */
 export interface TreasureRunSummary {
+	/** Vault chests opened this run. */
 	readonly opened: number;
+	/** Of those, the ones opened with the lock kept (never cracked). */
 	readonly kept: number;
+	/** Of those, the ones opened at the Legendary tier. */
 	readonly legendary: number;
 }
 
@@ -244,6 +267,10 @@ export function clearTreasureEvents(t: TreasureState): void {
 	e.opened = undefined;
 }
 
+/**
+ * A deep copy for a state clone: bonusDeals and this tick's events (the opened event with each grant's boost and slot
+ * lists) are copied; `config` is shared (constant for the run).
+ */
 export function cloneTreasureState(t: Readonly<TreasureState>): TreasureState {
 	const e = t.events;
 	return {
@@ -288,6 +315,10 @@ export const TREASURE_HASH_FIELDS = [
 	"legendary",
 ] as const;
 
+/**
+ * Appends the `treasure` hash group to `out`: TREASURE_HASH_FIELDS in order, then bonusDeals' length and values.
+ * `config` and `events` are not hashed. Must stay in step with treasureHashNames.
+ */
 export function writeTreasureHash(t: Readonly<TreasureState>, out: number[]): void {
 	for (const f of TREASURE_HASH_FIELDS) out.push(t[f]);
 	out.push(t.bonusDeals.size());

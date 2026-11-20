@@ -33,17 +33,29 @@ export interface WeaponsState {
 	prevButtons: number;
 	/** The player's emitter id in the player bullet simulation. */
 	emitterId: number;
+	/** One slot per weapon set, `WEAPON_SETS` long, in set order. A set with no weapon holds `NO_WEAPON`. */
 	sets: WeaponSlotState[];
 	// Last melee swing (written by sweepArc): tick (-1 none), origin, direction, reach, half-angle cos.
+	/** Tick of the last recorded melee swing, -1 before any. The view watches it change to play a swing; hashed. */
 	swingTick: number;
+	/** Origin x of the last recorded swing, world units. */
 	swingX: number;
+	/** Origin z of the last recorded swing, world units. */
 	swingZ: number;
+	/** X of the last recorded swing's unit direction (starts as (0, 1)). */
 	swingDirX: number;
+	/** Z of the last recorded swing's unit direction. */
 	swingDirZ: number;
+	/** Reach of the last recorded swing, world units from its origin. */
 	swingRadius: number;
+	/** Cosine of the last recorded swing's half-angle (1 before any swing). */
 	swingHalfCos: number;
 }
 
+/**
+ * How a weapon attacks: `ranged` fires player bullets, `melee` sweeps arcs. Read by docs and UI only; the sim never
+ * branches on it.
+ */
 export type WeaponStyle = "ranged" | "melee";
 
 /** Gameplay data of a weapon (rule 4). Extend it: `interface BowData extends WeaponData { speed: number }`. */
@@ -74,7 +86,9 @@ export type WeaponTrigger = "hold" | "press" | "custom";
 export interface WeaponDef<D extends WeaponData = WeaponData> {
 	/** Unique id, lowercase dot-separated, e.g. 'weapon.bow'. */
 	readonly id: string;
+	/** The weapon's gameplay data. `registerWeapon` checks its `cooldownTicks`, `damage` and `style`. */
 	readonly data: D;
+	/** When the generic code calls `fire` (see `WeaponTrigger`). Absent: `hold`. */
 	readonly trigger?: WeaponTrigger;
 	/** Use the weapon now. Return true if it went off (the generic code then sets slot.cooldown). */
 	fire(ctx: SimCtx, slot: WeaponSlotState): boolean;

@@ -12,4 +12,5 @@ export const TILE_SIZE = 1;
 
 /** Fixed simulation rate (GDD: fixed 60 Hz timestep, separate from rendering). */
 export const SIM_HZ = 60;
+/** Seconds per sim tick (1 / 60). Per-second speeds are multiplied by this once per tick. */
 export const SIM_DT = 1 / SIM_HZ;

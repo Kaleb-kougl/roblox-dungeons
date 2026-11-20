@@ -46,6 +46,10 @@ import {
 	type RoomEnemyData,
 } from "./enemyShared";
 
+/**
+ * The Bomber's tuning on top of the room enemy rules: when the fuse lights, how long it burns and what the blast fires
+ * and breaks.
+ */
 export interface BomberData extends RoomEnemyData {
 	/** Starts the fuse when a living player is this close (centre to centre, world units). */
 	readonly fuseTrigger: number;
@@ -88,6 +92,10 @@ const BLAST_LIFE = 2.6;
 const BLAST_SPAWN_RADIUS = 0.6;
 const BLAST_BREAK_RADIUS = 1.5;
 
+/**
+ * The registered 'bomber' archetype: a rusher that sprints at the nearest living player, fuses in place and dies in its
+ * own bullet ring (the quiet death), or fizzles when killed first. Draws nothing from the rng.
+ */
 export const BOMBER = registerArchetype<BomberData>({
 	id: "bomber",
 	band: PORT_BAND_ENEMIES_2,

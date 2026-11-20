@@ -27,6 +27,11 @@ const EPSILON = 1e-9;
 /** `Number.EPSILON` (2^-52): alpha is capped just below 1. */
 const DOUBLE_EPSILON = 2.220446049250313e-16;
 
+/**
+ * The accumulator itself: feed it each rendered frame's delta through `advance` and it calls back once per whole tick
+ * of `dt` seconds (SIM_DT unless overridden), at most `maxTicksPerFrame` a frame. Lives outside the sim; nothing in it
+ * is hashed.
+ */
 export class FixedStepLoop {
 	readonly dt: number;
 	readonly maxTicksPerFrame: number;

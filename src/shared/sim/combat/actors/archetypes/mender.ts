@@ -75,9 +75,17 @@ import {
 	type RoomEnemyData,
 } from "./enemyShared";
 
+/**
+ * Tuning of the Mender: its keep range, the heal link and channel, and the bolt it falls back on. Distances in world
+ * units, times in ticks.
+ */
 export interface MenderData extends RoomEnemyData {
 	/** Preferred distance band to its target (world units). */
 	readonly keepMin: number;
+	/**
+	 * Far edge of the keep band (world units): with no ally to follow it closes in on its target past this, only with
+	 * line of sight.
+	 */
 	readonly keepMax: number;
 	/** Weight of the sideways component of the keep-range move (radial is 1). */
 	readonly strafeWeight: number;
@@ -91,7 +99,9 @@ export interface MenderData extends RoomEnemyData {
 	readonly linkTicks: number;
 	/** The channel's longest run (ticks), and its pulse: healAmount hp every pulseTicks. */
 	readonly channelTicks: number;
+	/** Ticks between two heal pulses of a channel; the first pulse comes this long after the link ends. */
 	readonly pulseTicks: number;
+	/** Hp the ally gains per pulse (through `ctx.healActor`, never above its hpMax). */
 	readonly healAmount: number;
 	/** A living player whose centre is within PLAYER_RADIUS + this of the beam's segment blocks it (world units). */
 	readonly beamBlockPad: number;
@@ -99,6 +109,7 @@ export interface MenderData extends RoomEnemyData {
 	readonly flinchTicks: number;
 	/** Ticks after a channel ends before the next action (random in [min, max], `enemyCooldown`). */
 	readonly channelCooldownMin: number;
+	/** Longest cooldown after a channel ends (ticks, inclusive); the shortest is `channelCooldownMin`. */
 	readonly channelCooldownMax: number;
 	/** Bolts its target in sight within this (world units) when no ally is wounded. */
 	readonly boltRange: number;
@@ -106,6 +117,9 @@ export interface MenderData extends RoomEnemyData {
 	readonly boltWindupTicks: number;
 	/** Ticks between bolts (random in [min, max]), and before the first action (drawn in init). */
 	readonly boltCooldownMin: number;
+	/**
+	 * Longest cooldown after a bolt and before the first action (ticks, inclusive); the shortest is `boltCooldownMin`.
+	 */
 	readonly boltCooldownMax: number;
 	/** One aimed bolt (BulletKind.CASTER: the caster's medium look, NT0 correction 3). */
 	readonly bolt: BurstSpec;
@@ -138,6 +152,9 @@ export const MENDER_HEALED = 7;
 /** A move shorter than this fraction of the step means a wall: flip the strafe side (the summoner's rule). */
 const STRAFE_BLOCKED = 0.3;
 
+/**
+ * The registered `mender` archetype (band PORT_BAND_ENEMIES_4): its data and hooks, as the module comment describes.
+ */
 export const MENDER = registerArchetype<MenderData>({
 	id: "mender",
 	band: PORT_BAND_ENEMIES_4,

@@ -48,6 +48,7 @@ export interface SilverBreak {
 	readonly slot: number;
 	/** Its cell centre (world). */
 	readonly x: number;
+	/** Its cell centre, world z (0 when the run has no breakables state). */
 	readonly z: number;
 	/** The Silver it paid. */
 	readonly amount: number;
@@ -61,6 +62,7 @@ export interface SilverEvents {
 
 /** SimState.silver: plain numbers, every field but `config` and `events` hashed. */
 export interface SilverState {
+	/** The run's Silver config. Constant for the run: not hashed, shared by clones. */
 	readonly config: Readonly<SilverConfig>;
 	/** Silver the run's broken pieces paid so far (all floors; the team's in co-op). */
 	total: number;
@@ -124,6 +126,10 @@ export function clearSilverEvents(sv: SilverState): void {
 	sv.events.breaks.clear();
 }
 
+/**
+ * A deep copy for a state clone: the per-slot amounts and this tick's break events are copied; `config` is shared
+ * (constant for the run).
+ */
 export function cloneSilverState(sv: Readonly<SilverState>): SilverState {
 	const breaks: SilverBreak[] = [];
 	for (const e of sv.events.breaks) breaks.push({ ...e });
@@ -150,6 +156,10 @@ export function silverPieceAt(state: Readonly<SimState>, slot: number): number {
 // Hash: the `silver` group, appended after `secrets` (last) only when state.silver exists.
 //   total, pieces.length, pieces
 
+/**
+ * Appends the `silver` hash group to `out`: total, then pieces' length and values in slot order. `config` and `events`
+ * are not hashed. Must stay in step with silverHashNames.
+ */
 export function writeSilverHash(sv: Readonly<SilverState>, out: number[]): void {
 	out.push(sv.total);
 	out.push(sv.pieces.size());

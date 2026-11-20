@@ -32,6 +32,10 @@ import {
 	type RoomEnemyData,
 } from "./enemyShared";
 
+/**
+ * Tuning of the swarmer: the lunge (trigger, wind-up, speed, recovery, cooldown), where its chase stops and how
+ * packmates push apart. Distances in world units, times in ticks.
+ */
 export interface SwarmerData extends RoomEnemyData {
 	/** Starts a lunge wind-up when the player is this close (and in sight). */
 	readonly lungeTrigger: number;
@@ -39,11 +43,13 @@ export interface SwarmerData extends RoomEnemyData {
 	readonly lungeTelegraphTicks: number;
 	/** Lunge speed (world units / s) and duration (ticks): reach = speed * ticks / 60. */
 	readonly lungeSpeed: number;
+	/** Ticks a lunge lasts, moving lungeSpeed / 60 world units each; a wall ends it early. */
 	readonly lungeTicks: number;
 	/** Standing still after a lunge (punish window). */
 	readonly recoverTicks: number;
 	/** Ticks between lunges (random in [min, max], drawn from the sim rng). */
 	readonly lungeCooldownMin: number;
+	/** Longest cooldown between lunges (ticks, inclusive); the shortest is `lungeCooldownMin`. */
 	readonly lungeCooldownMax: number;
 	/** Stops chasing this far from the player's center (inside contact range: radius + PLAYER_RADIUS). */
 	readonly chaseStop: number;
@@ -68,9 +74,11 @@ export const SWARMER_ATTACK_LUNGE = 1;
 export const SWARMER_LOST = 3;
 /** Lunge direction (unit), locked when the wind-up starts. */
 export const SWARMER_DIR_X = 4;
+/** v slot: Z component of the unit lunge direction (the pair of SWARMER_DIR_X). */
 export const SWARMER_DIR_Z = 5;
 /** Where the player was last seen. */
 export const SWARMER_LAST_X = 6;
+/** v slot: world Z of where the player was last seen (the pair of SWARMER_LAST_X). */
 export const SWARMER_LAST_Z = 7;
 
 const LUNGE_TELEGRAPH_SECONDS = 0.4;
@@ -94,6 +102,10 @@ export const WEB_SWARMER_HP = 2;
 /** The port's swarmer hp (CLAUDE.md decision log, 2026-10-31): one less than the web build's, so fodder dies to one hit. */
 export const SWARMER_HP = 1;
 
+/**
+ * The registered `swarmer` archetype (a web archetype, band 0): its data and hooks. Its hp is SWARMER_HP unless a spec
+ * replaced it with `setSwarmerHp`.
+ */
 export const SWARMER = registerArchetype<SwarmerData>({
 	id: "swarmer",
 	data: {

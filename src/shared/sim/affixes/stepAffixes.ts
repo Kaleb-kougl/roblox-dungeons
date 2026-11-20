@@ -22,6 +22,13 @@ import { affixEvent } from "./affixes";
 
 const gap: Dir = { x: 0, z: 1 };
 
+/**
+ * The affix phase of a tick, run by stepCombat right after stepActors; a no-op without state.affixes. Walks the actor
+ * slots in order: counts a damaged Shielded actor's idle ticks and refills its shield, and counts an armed Vengeful
+ * corpse down and fires its ring. Mutates the affix slots and pushes AffixEvents; a firing corpse draws one main-rng
+ * integer (ctx.randomInt) for the gap's turn, and in co-op the acting player is retargeted per corpse and set back to
+ * player 0 at the end.
+ */
 export function stepAffixes(ctx: SimCtx): void {
 	const state = ctx.state;
 	const s = state.affixes;

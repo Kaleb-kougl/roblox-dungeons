@@ -57,6 +57,7 @@ export const GOLDEN_JINK_COOLDOWN = 1;
 export const GOLDEN_HITS = 2;
 /** The jink's unit direction. */
 export const GOLDEN_JINK_X = 3;
+/** v[4]: the z component of the jink's latched unit direction, the pair of GOLDEN_JINK_X. */
 export const GOLDEN_JINK_Z = 4;
 
 /** Body radius (world units): small, like a slimelet. */
@@ -74,6 +75,11 @@ const JINK_BLOCKED = 0.3;
 /** Below this squared length a vector has no direction. */
 const EPS2 = 1e-12;
 
+/**
+ * The registered 'golden' archetype (band PORT_BAND_FORTUNE): the Goldling. It flees on the flee field and jinks aside
+ * from a near player, never attacks, and its hit and death hooks pay out coins and the jackpot. Its only draws come
+ * from the golden stream, never the main rng.
+ */
 export const GOLDEN = registerArchetype<ArchetypeData>({
 	id: GOLDEN_KIND,
 	band: PORT_BAND_FORTUNE,

@@ -36,15 +36,24 @@ export interface ActorState {
 	kind: number;
 	/** Tick it was spawned on; -1 for the run's initial encounter. Not stepped on its spawn tick. (generic) */
 	spawnTick: number;
+	/** World position X of its centre (world units, 1 tile = 1 unit). Moved by the archetype's hooks. */
 	x: number;
+	/** World position Z of its centre (world units). */
 	z: number;
 	/** Position at the start of the tick, for render interpolation. Set by the generic loop before step(). */
 	prevX: number;
+	/** Z at the start of the tick (the pair of `prevX`). */
 	prevZ: number;
 	/** Facing, a unit vector (render picks the sprite row from it). */
 	faceX: number;
+	/** Z component of the facing unit vector (the pair of `faceX`). */
 	faceZ: number;
+	/**
+	 * Hit points left. Starts at `hpMax`: data.hp after the spawn's scaling (endless depth, party size, the tutorial's
+	 * boss percent) and the Hulking affix; damage takes it down and the actor dies at 0.
+	 */
 	hp: number;
+	/** Hit points when full: the ceiling a heal or a revive restores `hp` to. */
 	hpMax: number;
 	/** Body radius, world units: player bullets, melee arcs and contact damage use it. Starts as data.radius. */
 	radius: number;
@@ -74,6 +83,10 @@ export interface ActorState {
 	v: number[];
 }
 
+/**
+ * Name of an ActorState field that holds one number: every field but the two arrays (`capWindow`, `v`). The element
+ * type of ACTOR_HASH_FIELDS.
+ */
 export type ActorScalarField = Exclude<keyof ActorState, "capWindow" | "v">;
 
 /** The scalar ActorState fields, in hash order. Append only. */
@@ -135,6 +148,7 @@ export interface ArchetypeData {
 export interface ArchetypeDef<D extends ArchetypeData = ArchetypeData> {
 	/** Unique id, lowercase dot-separated, e.g. 'swarmer', 'turret.sniper', 'boss.warden'. */
 	readonly id: string;
+	/** Its gameplay numbers (rule 4), read inside the hooks through `ctx.data(actor)`. Never mutated by the sim. */
 	readonly data: D;
 	/**
 	 * Index band (registry.ts): kinds number by (band, id). Omit (0) for the web build's archetypes; the Roblox port's

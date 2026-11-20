@@ -77,7 +77,9 @@ import {
 
 /** Tutorial (docs/BOOSTS.md B9): the last kill among room `room`'s deferred spawns on floor `floor` drops `kind`. */
 export interface DropGuarantee {
+	/** The floor the room is on (compared with the encounter's floor when the room's spawns appear). */
 	readonly floor: number;
+	/** Encounter room id on that floor whose deferred spawns are guarded. */
 	readonly room: number;
 	/** Boost index. */
 	readonly kind: number;
@@ -148,6 +150,7 @@ export interface GroundDrop {
 	kind: number;
 	/** World position. */
 	x: number;
+	/** World z (`x` is the world x); both 0 in a free slot. */
 	z: number;
 	/** state.tick it landed on. */
 	spawnTick: number;
@@ -171,23 +174,48 @@ export interface DropGuard {
 	ids: number[];
 }
 
+/**
+ * A boost a player took this tick (`DropsEvents.collected`): a ground pickup, or a chest boost given straight to its
+ * player (`slot` is then `GIVEN_DROP_SLOT`). Presentation only, not hashed.
+ */
 export interface DropCollected {
+	/** Party index of the player who is boosted. */
 	readonly player: number;
+	/** Boost index. */
 	readonly kind: number;
+	/**
+	 * The ground slot it lay in (freed by the pickup), or `GIVEN_DROP_SLOT` for a boost that never lay on the ground.
+	 */
 	readonly slot: number;
+	/** World x of the drop when it was taken (a given boost: the player's position). */
 	readonly x: number;
+	/** World z of the drop when it was taken (a given boost: the player's position). */
 	readonly z: number;
 }
 
+/**
+ * A drop whose ground life ran out this tick (`DropsEvents.expired`); its slot is free again when the event is read.
+ * Presentation only, not hashed.
+ */
 export interface DropExpired {
+	/** The ground slot it lay in. */
 	readonly slot: number;
+	/** Boost index of the drop that faded. */
 	readonly kind: number;
+	/** World x where it lay. */
 	readonly x: number;
+	/** World z where it lay. */
 	readonly z: number;
 }
 
+/**
+ * A boost whose timer reached 0 this tick (`DropsEvents.ended`); never a boost cleared by a death or an Aegis whose
+ * pips broke. Presentation only, not hashed.
+ */
 export interface BoostEnded {
+	/** Party index of the player whose boost ended. */
 	readonly player: number;
+	/** Boost index. */
 	readonly kind: number;
 }
 
@@ -226,8 +254,11 @@ export interface DropsEvents {
 
 /** A loaded breakable's boost that found no free ground slot (docs/BREAKABLE_DROPS.md BLD5). World position. */
 export interface DropLostLoot {
+	/** Boost index the piece held. */
 	readonly kind: number;
+	/** World x of the broken piece's cell centre. */
 	readonly x: number;
+	/** World z of the broken piece's cell centre. */
 	readonly z: number;
 }
 
@@ -313,6 +344,10 @@ export function createDropsState(config: Readonly<DropsConfig>, seed: number, pl
 	};
 }
 
+/**
+ * A deep copy of the drops state, this tick's events included; only the frozen `config` is shared. Draws no rng and
+ * leaves `d` untouched.
+ */
 export function cloneDropsState(d: Readonly<DropsState>): DropsState {
 	return {
 		config: d.config,
@@ -587,6 +622,7 @@ export function stepDrops(
 export interface ActiveBoost {
 	/** Boost index. */
 	readonly kind: number;
+	/** Ticks left on its timer (1..`totalTicks`; a boost at 0 is not listed). */
 	readonly ticksLeft: number;
 	/** The boost's full duration (boostTicks(kind)). */
 	readonly totalTicks: number;
@@ -648,6 +684,10 @@ export function aegisPips(state: Readonly<SimState>, playerIndex: number): numbe
 /** Per ground slot, in this order (dump names `drops.ground[<slot>].<name>`). Append only. */
 export const DROP_GROUND_HASH_FIELDS = ["kind", "x", "z", "spawnTick", "ticksLeft"] as const;
 
+/**
+ * Appends the "drops" hash group to `out` in the order of the comment above (`dropsHashNames` gives the matching
+ * names). `config` and `events` are not hashed; `pieceLoot` only with `config.breakableLoot`.
+ */
 export function writeDropsHash(d: Readonly<DropsState>, out: number[]): void {
 	out.push(d.rngState, d.killsSinceDrop, d.debugNextKind);
 	out.push(d.ground.size());

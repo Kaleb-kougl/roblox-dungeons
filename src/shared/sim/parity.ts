@@ -25,6 +25,9 @@ import { step, type SimConfig } from "./step";
 /** A dump field as exported: `[name, value, hex]` (value may be "NaN" / "Infinity" / "-0" strings; hex is exact). */
 export type DumpField = ReadonlyArray<string | number>;
 
+/**
+ * The first hashed field where a live state and a fixture dump disagree, by name or by bits (see `firstFieldMismatch`).
+ */
 export interface FieldMismatch {
 	/** Position in hash order. */
 	readonly index: number;
@@ -32,7 +35,9 @@ export interface FieldMismatch {
 	readonly expectedName: string;
 	/** The port's field name at that position (or "<missing>"). */
 	readonly actualName: string;
+	/** The fixture's float64 bit pattern at that position, 16 hex digits most significant first (or "<missing>"). */
 	readonly expectedHex: string;
+	/** The port's float64 bit pattern at that position, same format (or "<missing>"). */
 	readonly actualHex: string;
 	/** The port's value (NaN when missing). */
 	readonly actualValue: number;
@@ -117,27 +122,43 @@ export function fixtureNumber(v: number | string): number {
 
 /** A labelled state dump from a run fixture. */
 export interface RunDump {
+	/** Ticks stepped when the dump was taken (0 = the fresh state). */
 	readonly tick: number;
+	/** `hashState` of the web build's state at that tick, 8 lowercase hex digits. */
 	readonly hash: string;
+	/** The hash of each of the six fixture groups at that tick, 8 hex digits each. */
 	readonly subsystems: { readonly [K in HashSubsystem]: string };
+	/** How many hashed numbers the state had; the port's layout must have exactly as many. */
 	readonly count: number;
+	/** Every hashed number with its name, in hash order. */
 	readonly fields: ReadonlyArray<DumpField>;
 }
 
 /** The parts of a run fixture the checker reads (fixtures/README.md "Run fixtures"). */
 export interface RunFixture {
+	/** The run's seed. The checker reads the one inside `recording`; this is the same value. */
 	readonly seed: number;
+	/** Where the player starts, world units. Also carried inside `recording`. */
 	readonly spawn: { readonly x: number; readonly z: number };
+	/** Ticks the web build stepped; the checker replays at most this many frames. */
 	readonly ticks: number;
+	/** The exact `serializeRecording` string of the run's inputs (run-length encoded JSON). */
 	readonly recording: string;
+	/** `hashes[t]` is `hashState` after t ticks; index 0 is the fresh state, so there are `ticks + 1` entries. */
 	readonly hashes: ReadonlyArray<string>;
+	/** `hashState` after the last tick (= `hashes[ticks]`). */
 	readonly finalHash: string;
+	/** Per fixture group, its hash on every `subsystemsEvery`-th tick: entry k is tick k x `subsystemsEvery`. */
 	readonly subsystems: { readonly [K in HashSubsystem]: ReadonlyArray<string> };
+	/** Tick stride of the `subsystems` arrays (1 in every exported run). */
 	readonly subsystemsEvery: number;
 	/** `[t, { field: value }]`: the non-default SimEvents after stepping tick t. */
 	readonly events: ReadonlyArray<ReadonlyArray<unknown>>;
 }
 
+/**
+ * What `checkRunFixture` found. A run matches when `hashMismatch` is undefined and the three mismatch lists are empty.
+ */
 export interface RunParityReport {
 	/** Hash checks that passed (ticks 0..n, including the fresh state). */
 	readonly ticksMatched: number;

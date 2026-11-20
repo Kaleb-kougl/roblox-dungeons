@@ -59,17 +59,29 @@ import {
 	type RoomEnemyData,
 } from "./enemyShared";
 
+/**
+ * The Charger's tuning on top of the room enemy rules: its keep-range band, the lane telegraph, the charge and the stun
+ * or recover after it.
+ */
 export interface ChargerData extends RoomEnemyData {
 	/** Preferred distance band to its target (world units; it wants line of sight). */
 	readonly keepMin: number;
+	/**
+	 * The far edge of the band (world units): past it, it walks toward its target; nearer than keepMin it backs off.
+	 */
 	readonly keepMax: number;
 	/** Ticks between charges (random in [min, max], `enemyCooldown`; also the first one, drawn in init). */
 	readonly chargeCooldownMin: number;
+	/** The longest wait between charges, ticks (inclusive upper bound of the draw). */
 	readonly chargeCooldownMax: number;
 	/** Lane telegraph ticks (the heading locks at its start). */
 	readonly laneTicks: number;
 	/** Charge speed (world units / s) and longest charge (world units; also the most distant target it charges). */
 	readonly chargeSpeed: number;
+	/**
+	 * The longest charge, world units along the locked heading. Also the farthest target it starts a lane at, and the
+	 * lane line's length.
+	 */
 	readonly chargeRange: number;
 	/** Half hearts of the charge's hit (once per player per charge). */
 	readonly chargeDamage: number;
@@ -80,6 +92,7 @@ export interface ChargerData extends RoomEnemyData {
 	readonly chargeBreakRadius: number;
 	/** Staggered after a blocked charge (the punish window), and the short recover after a clear one. */
 	readonly stunTicks: number;
+	/** Ticks it stands still after a charge that ran its full range, before it keeps range again. */
 	readonly recoverTicks: number;
 }
 
@@ -98,6 +111,7 @@ export const CHARGER_ATTACK_LANE = 1;
 // --- v[] slots (0..2 shared)
 /** Locked charge heading (unit). */
 export const CHARGER_DIR_X = 3;
+/** v[4]: the z component of the locked charge heading (unit), the pair of CHARGER_DIR_X. */
 export const CHARGER_DIR_Z = 4;
 /** Charge distance left (world units). */
 export const CHARGER_LEFT = 5;
@@ -113,6 +127,10 @@ export const CHARGE_BLOCKED = 0.5;
 /** A charge with at most this much distance left has run its full range. */
 const CHARGE_END_EPS = 1e-9;
 
+/**
+ * The registered 'charger' archetype: keeps range, telegraphs a lane, charges down it breaking pieces and hurting each
+ * player once, and is stunned when a wall stops it. Its only draws are charge cooldowns (one in init, one per lane).
+ */
 export const CHARGER = registerArchetype<ChargerData>({
 	id: "charger",
 	band: PORT_BAND_ENEMIES_2,

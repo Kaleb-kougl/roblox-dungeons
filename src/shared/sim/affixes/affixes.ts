@@ -54,6 +54,10 @@ export interface AffixSlot {
 	actorId: number;
 	/** Shielded: shield hp left, and its full value (set at the stamp). */
 	shield: number;
+	/**
+	 * Shielded: the full shield, shieldHpPercent of the actor's hp at the stamp (0 for every other affix). The refill
+	 * restores `shield` to it. Hashed.
+	 */
 	shieldMax: number;
 	/** Shielded: ticks since the last damage (counts while the shield is below full). */
 	shieldIdleTicks: number;
@@ -65,11 +69,23 @@ export interface AffixSlot {
 
 /** One affix event (presentation): the actor slot, its id and position, and an amount (shield hits: absorbed). */
 export interface AffixEvent {
+	/** The actor slot (index into state.combat.actors and state.affixes.slots). */
 	readonly slot: number;
+	/**
+	 * ActorState.id of the actor at the event: compare it with the slot's actor before reading it, the slot may have
+	 * been freed or reused since.
+	 */
 	readonly actorId: number;
+	/** The actor's affix (shared/dungeon AffixKind). */
 	readonly affix: number;
+	/** The actor's world x at the event (tiles). */
 	readonly x: number;
+	/** The actor's world z at the event (tiles). */
 	readonly z: number;
+	/**
+	 * What it counts depends on the list it is in (see AffixEvents): shield hp absorbed, the refilled shield, telegraph
+	 * ticks or bullets spawned.
+	 */
 	readonly amount: number;
 }
 
@@ -133,6 +149,10 @@ export function createAffixesState(config: Readonly<AffixesConfig>, actorSlots =
 	return { config, slots, events: emptyEvents() };
 }
 
+/**
+ * A deep copy for a state clone: every slot and this tick's event lists are copied (the events themselves are immutable
+ * and shared); `config` is shared, it is constant for the run.
+ */
 export function cloneAffixesState(s: Readonly<AffixesState>): AffixesState {
 	const e = s.events;
 	return {
@@ -163,6 +183,10 @@ function ensureSlots(s: AffixesState, n: number): void {
 	while (s.slots.size() < n) s.slots.push(freeSlot());
 }
 
+/**
+ * Builds one presentation event for actor slot `slot` from `a` as it is now (its id and world position), with the
+ * event's `amount`. Pure: the caller pushes it onto an AffixEvents list.
+ */
 export function affixEvent(slot: number, a: Readonly<ActorState>, affix: number, amount: number): AffixEvent {
 	return { slot, actorId: a.id, affix, x: a.x, z: a.z, amount };
 }
@@ -311,6 +335,10 @@ export const AFFIX_SLOT_HASH_FIELDS = [
 	"vengeArmTick",
 ] as const;
 
+/**
+ * Appends the "affixes" hash group to `out`: the slot count, then AFFIX_SLOT_HASH_FIELDS of every slot in slot order.
+ * Must stay in step with affixesHashNames.
+ */
 export function writeAffixesHash(s: Readonly<AffixesState>, out: number[]): void {
 	out.push(s.slots.size());
 	for (const x of s.slots) for (const f of AFFIX_SLOT_HASH_FIELDS) out.push(x[f]);

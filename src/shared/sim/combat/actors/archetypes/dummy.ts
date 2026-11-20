@@ -28,6 +28,10 @@ const DUMMY_HP = 8;
 /** Body radius, world units: a slim post (the swarmer is 0.3, the bruiser 0.5). */
 const DUMMY_RADIUS = 0.35;
 
+/**
+ * The registered 'dummy' archetype (band PORT_BAND_TUTORIAL): the tutorial's Training Dummy. Its step does nothing; it
+ * only takes damage and dies like any actor.
+ */
 export const DUMMY = registerArchetype<ArchetypeData>({
 	id: DUMMY_KIND,
 	band: PORT_BAND_TUTORIAL,

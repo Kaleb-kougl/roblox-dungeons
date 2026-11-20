@@ -58,6 +58,7 @@ import {
 	type BossSummonSpec,
 } from "./shared";
 
+/** The archetype id of the Act I boss, Mother Mayhem (an encounter spawn's `kind`; also its sprite's logical ID). */
 export const BOSS_ACT1_ID = "boss.act1";
 
 // ---------------------------------------------------------------------------------------------
@@ -123,13 +124,23 @@ export const MAX_REPEAT = BOSS_MAX_REPEAT;
 
 /** v[] slots. DIR = the attack's locked heading; AUX = second heading (double ring, spiral) or slam target point. */
 export const V_DIR_X = 0;
+/** v[1]: the z component of the attack's locked heading (unit), set with V_DIR_X when the telegraph starts. */
 export const V_DIR_Z = 1;
+/**
+ * v[2]: the x of the second value locked at the telegraph. Double ring: the second ring's heading (unit). Spiral: the
+ * arms' current heading (unit), turned after every burst. Slam: the target point (world x).
+ */
 export const V_AUX_X = 2;
+/** v[3]: the z of the same second value as V_AUX_X (a unit heading, or the slam target's world z). */
 export const V_AUX_Z = 3;
 /** Slam: tick of impact + 1 (0 while charging). The skeleton zeroes it when a transition starts. */
 export const V_MARK = BOSS_V_MARK;
 /** Last attack started, and how many times in a row (the skeleton's repeat rule). */
 export const V_LAST = BOSS_V_LAST;
+/**
+ * v[6]: how many times in a row the attack in v[V_LAST] has been started (the skeleton's repeat rule, at most
+ * MAX_REPEAT).
+ */
 export const V_REPEAT = BOSS_V_REPEAT;
 /** Fast fan / spiral: turn sign (+1 / -1). Slam: 1 = summons after impact, 0 = a second shockwave instead. */
 export const V_SIGN = 7;
@@ -143,6 +154,10 @@ const BOSS_KIND = BulletKind.BOSS;
 
 /** Fan width, radians edge to edge (5 bullets: 0.25 rad lanes). */
 export const FAN_SPREAD = 1.0;
+/**
+ * The fan volley: 5 bullets over FAN_SPREAD along the heading locked toward the player at the telegraph. Speed in world
+ * units per second, life in seconds.
+ */
 export const FAN: BurstSpec = {
 	count: 5,
 	spread: FAN_SPREAD,
@@ -151,8 +166,14 @@ export const FAN: BurstSpec = {
 	damage: BOSS_DAMAGE,
 	kind: BOSS_KIND,
 };
+/** How many fan volleys one FAN attack fires, all down the same locked heading. */
 export const FAN_VOLLEYS = 3;
+/** Ticks between fan volleys (the first on ACTIVE tick 0); the attack ends on the last volley's tick. */
 export const FAN_VOLLEY_TICKS = 12;
+/**
+ * The phase 3 fan volley: the same 5 lanes as FAN, faster and shorter lived (speed in world units per second, life in
+ * seconds).
+ */
 export const FAST_FAN: BurstSpec = {
 	count: 5,
 	spread: FAN_SPREAD,
@@ -161,7 +182,12 @@ export const FAST_FAN: BurstSpec = {
 	damage: BOSS_DAMAGE,
 	kind: BOSS_KIND,
 };
+/**
+ * How many volleys one FAST_FAN attack fires; every second one is turned half a TURN step (half a lane, about 7.1
+ * degrees) to the side in v[V_SIGN].
+ */
 export const FAST_FAN_VOLLEYS = 4;
+/** Ticks between fast fan volleys (the first on ACTIVE tick 0). */
 export const FAST_FAN_VOLLEY_TICKS = 8;
 
 /** Width of each ring gap, radians between the gap's two edge bullets (~52 degrees). */
@@ -177,6 +203,10 @@ export const RING_ARC: BurstSpec = {
 };
 /** The ring's gaps are turned off the player's side by up to this many TURN steps (14.25 degrees each), at random. */
 export const RING_MAX_TURNS = 3;
+/**
+ * One arc of a double ring's 2-gap ring (RING_ARC's shape, a little faster and shorter lived): each ring is two of
+ * these, centred on a heading and its opposite.
+ */
 export const DOUBLE_RING_ARC: BurstSpec = {
 	count: 14,
 	spread: math.pi - RING_GAP,
@@ -185,10 +215,17 @@ export const DOUBLE_RING_ARC: BurstSpec = {
 	damage: BOSS_DAMAGE,
 	kind: BOSS_KIND,
 };
+/**
+ * ACTIVE ticks between the double ring's first ring (tick 0, along v[V_DIR]) and its second (along v[V_AUX]); the
+ * attack ends when the second fires.
+ */
 export const DOUBLE_RING_DELAY_TICKS = 48;
 /** The second ring's gaps are turned by this many TURN steps (~43 degrees), direction at random: weave. */
 export const DOUBLE_RING_TURNS = 3;
 
+/**
+ * One spiral burst: 3 bullets 120 degrees apart around the full ring, fired along the arms' current heading (v[V_AUX]).
+ */
 export const SPIRAL_ARMS: BurstSpec = {
 	count: 3,
 	spread: FULL_RING,
@@ -197,11 +234,20 @@ export const SPIRAL_ARMS: BurstSpec = {
 	damage: BOSS_DAMAGE,
 	kind: BOSS_KIND,
 };
+/** How long the spiral keeps firing, in ACTIVE ticks: a burst every SPIRAL_BURST_TICKS while the tick is below this. */
 export const SPIRAL_TICKS = secondsToTicks(3); // 180
+/**
+ * Ticks between spiral bursts. After each burst the arms turn half a TURN step (about 7.1 degrees) to the side in
+ * v[V_SIGN].
+ */
 export const SPIRAL_BURST_TICKS = 6;
 
 /** Shockwave gap, radians between the edge bullets (~57 degrees), pointing back the way the boss charged from. */
 export const SHOCK_GAP = 1.0;
+/**
+ * The slam's impact ring: 26 bullets over the full ring minus SHOCK_GAP, the arc centred on the charge direction so the
+ * gap is behind the boss.
+ */
 export const SHOCKWAVE: BurstSpec = {
 	count: 26,
 	spread: FULL_RING - SHOCK_GAP,
@@ -219,15 +265,27 @@ export const SHOCKWAVE_2: BurstSpec = {
 	damage: BOSS_DAMAGE,
 	kind: BOSS_KIND,
 };
+/**
+ * TURN steps (14.25 degrees each) the second shockwave's heading is turned from the charge direction, so its gap does
+ * not line up with the first one's.
+ */
 export const SHOCK2_TURNS = 2;
+/**
+ * Ticks after the slam's impact at which the adds are summoned (or, in the fallback, SHOCKWAVE_2 fires); the attack
+ * ends on that tick.
+ */
 export const SHOCK2_DELAY_TICKS = 24;
 /** Charge speed, world units per second, and the longest charge. */
 export const SLAM_SPEED = 15;
+/** The longest charge, in ACTIVE ticks: the impact happens on this tick even when the target was not reached. */
 export const SLAM_MAX_TICKS = 45;
 /** Adds after a slam when the archetype exists (the E1.8 swarmer), at most this many alive. */
 export const SUMMON_KIND = "swarmer";
+/** The most adds one slam summons (fewer when SUMMON_MAX_ALIVE or the actor pool leaves less room). */
 export const SUMMON_COUNT = 3;
+/** A slam never summons past this many of its adds alive in the arena. */
 export const SUMMON_MAX_ALIVE = 3;
+/** How far from the boss's centre each add is pushed as it spawns, world units (walls stop the push). */
 export const SUMMON_RADIUS = 2.2;
 
 /** Without encounter rooms (unit tests), the boss wakes when the player comes this close. */
@@ -249,7 +307,15 @@ const COIN = 0.5;
 
 // Exact rotations (no trig): half a TURN (~7.1 degrees: spiral step and fast-fan lane offset), 60 and 120 degrees.
 const HALF_TURN = halfRotation(TURN_COS, { x: 0, z: 0 });
+/**
+ * Cosine of half a TURN step (about 7.1 degrees): with HALF_TURN_SIN the exact rotation of the spiral's step and the
+ * fast fan's lane offset (no trig in the sim).
+ */
 export const HALF_TURN_COS = HALF_TURN.x;
+/**
+ * Sine of half a TURN step (about 7.1 degrees), the pair of HALF_TURN_COS; multiplied by v[V_SIGN] to pick the turn's
+ * side.
+ */
 export const HALF_TURN_SIN = HALF_TURN.z;
 const COS60 = 0.5;
 const SIN60 = math.sqrt(3) / 2;
@@ -260,6 +326,10 @@ export interface BossAct1Data extends BossFightData {
 	slamRecoverTicks: number;
 }
 
+/**
+ * Mother Mayhem's tuning: body, hp and damage cap, phase thresholds (fractions of hpMax), and the roar and recover
+ * lengths in ticks. Registered as the archetype's data.
+ */
 export const BOSS_ACT1_DATA: BossAct1Data = {
 	// Tuned in the E1.8 integration against the real weapons (README "Time to kill"): hp / cap = 120 s exactly at the web
 	// build's WEB_BOSS_HP; the port halves it (BOSS_HP).
@@ -479,6 +549,10 @@ const HOOKS: BossFightHooks<BossAct1Data> = {
 	},
 };
 
+/**
+ * The registered 'boss.act1' archetype (no band: its index stays the web table's). Every hook hands over to the shared
+ * fight skeleton (./shared.ts) with this file's attacks.
+ */
 export const BOSS_ACT1 = registerArchetype<BossAct1Data>({
 	id: BOSS_ACT1_ID,
 	data: BOSS_ACT1_DATA,

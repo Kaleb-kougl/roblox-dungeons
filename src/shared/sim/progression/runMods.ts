@@ -85,6 +85,10 @@ export interface RunMods {
 	readonly comboWindowTicks: number;
 	/** Graze margin (world units) and the squared graze radius. */
 	readonly grazeMargin: number;
+	/**
+	 * The squared graze radius, world units squared: (player radius + enemy bullet radius + `grazeMargin`) squared, so
+	 * the graze test needs no square root.
+	 */
 	readonly grazeR2: number;
 	/** Kill points percent. */
 	readonly killPointsPercent: number;
@@ -92,9 +96,13 @@ export interface RunMods {
 	readonly comboCutDivisorMultiplier: number;
 	/** Enemy bullet speed multiplier on top of the floor scaling (1 = unchanged). */
 	readonly enemyBulletSpeedMultiplier: number;
+	/** Mirror Cloak owned: each enemy bullet the sword's guard erases comes back as a player bullet. */
 	readonly mirror: boolean;
+	/** Hourglass owned: a hit on this player slows enemy bullets for `HOURGLASS_TICKS`. */
 	readonly hourglass: boolean;
+	/** Vampire Fang owned: every `FANG_KILLS` kills heal `FANG_HEAL_HALF_HEARTS`. */
 	readonly fang: boolean;
+	/** Second Wind owned: once per floor a lethal hit leaves the player at `SECOND_WIND_HALF_HEARTS`. */
 	readonly secondWind: boolean;
 	/**
 	 * Bastion (docs/LEGENDARIES.md LG3): the sword's guard is the full ring for BASTION_GUARD_TICKS (sword.ts
@@ -138,10 +146,15 @@ export interface RunPlayerState {
 
 /** One player's presentation events of the current tick (the HUD's toasts for the local player). Indices + 1. */
 export interface RunPlayerEvents {
+	/** The card this player picked from a draft this tick, + 1 (0 = none). */
 	draftChosen: number;
+	/** The Relic index this player collected this tick, + 1 (0 = none). */
 	relicCollected: number;
+	/** The Curse index this player accepted at the shrine this tick, + 1 (0 = none). */
 	curseAccepted: number;
+	/** 1 when Second Wind saved this player this tick, else 0 (a flag, not an index). */
 	secondWind: number;
+	/** Half hearts Vampire Fang healed this player this tick (an amount, not an index; 0 = none). */
 	fangHealed: number;
 }
 
@@ -152,8 +165,11 @@ export interface RunPlayerEvents {
 export interface RunEvents {
 	/** Cards offered by a draft that opened this tick (the offers are in draftOffers), else 0. */
 	draftOpened: number;
+	/** The card picked from a draft this tick, + 1 (0 = none). */
 	draftChosen: number;
+	/** The Relic index collected this tick, + 1 (0 = none). */
 	relicCollected: number;
+	/** The Curse index accepted at the shrine this tick, + 1 (0 = none). */
 	curseAccepted: number;
 	/** 1 when Second Wind saved the player this tick. */
 	secondWind: number;
@@ -167,9 +183,11 @@ export interface RunState {
 	players: RunPlayerState[];
 	/** The current floor's TREASURE rooms (room ids, ascending) and whether each pedestal's relic was taken. */
 	pedestalRooms: number[];
+	/** Per entry of `pedestalRooms`: 1 once that pedestal's relic was taken, else 0. Hashed. */
 	pedestalTaken: number[];
 	/** The current floor's SHRINE room id (the first one), -1 for none; 1 once its curse was accepted. */
 	shrineRoom: number;
+	/** 1 once the floor's shrine curse was accepted (one curse per floor for the whole party), else 0. Hashed. */
 	shrineUsed: number;
 	/** Not hashed. */
 	events: RunEvents;
@@ -219,6 +237,7 @@ function comboWindowFor(lingeringLevel: number, impatience: boolean): number {
  * Structural, so this leaf module needs no import from sim/builds.
  */
 export interface BoonLevels {
+	/** The level per Boon index (0 = not owned). */
 	readonly levels: ReadonlyArray<number>;
 }
 

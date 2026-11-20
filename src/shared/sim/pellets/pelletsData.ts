@@ -36,6 +36,10 @@ export const PelletPhase = {
  * Without a Snatcher no pellet ever holds either value, so every pellets hash is unchanged.
  */
 export const PELLET_STOLEN = 2;
+/**
+ * `PelletsState.taken` of a pellet a Snatcher swallowed: gone for good, so its room's Sweep can no longer pay. Hashed
+ * with `taken`.
+ */
 export const PELLET_DIGESTED = 3;
 
 /**

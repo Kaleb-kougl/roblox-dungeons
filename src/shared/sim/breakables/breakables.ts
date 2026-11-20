@@ -114,6 +114,7 @@ export interface BreakablePiece {
 	kind: number;
 	/** Tile coordinates (world x = x, z = y). */
 	x: number;
+	/** Tile row of its cell (world z = y). Hashed. */
 	y: number;
 	/** hp left (0 once broken). */
 	hp: number;
@@ -133,6 +134,10 @@ export interface BreakablesState {
 	intact: number;
 	/** Per tick, presentation only (cleared each tick, not hashed): the slot of every hit / break, in order. */
 	hitSlots: number[];
+	/**
+	 * Per tick, presentation only (cleared each tick, not hashed): the slot of every piece that broke this tick, in
+	 * break order.
+	 */
 	brokenSlots: number[];
 	/**
 	 * Per tick, presentation only (cleared each tick, not hashed; docs/SECRET_ROOMS.md SR2): every knock on a cracked
@@ -140,7 +145,12 @@ export interface BreakablesState {
 	 * none: enemy bullets, slams, a Bomber's blast, a Charger).
 	 */
 	knockSlots: number[];
+	/** Per knock (parallel to knockSlots): the BreakableSource of the contact. Cleared each tick, not hashed. */
 	knockSources: number[];
+	/**
+	 * Per knock (parallel to knockSlots): the party index of the player behind the contact, -1 when no player is (enemy
+	 * bullets, slams, a Bomber's blast, a Charger). Cleared each tick, not hashed.
+	 */
 	knockPlayers: number[];
 }
 
@@ -209,6 +219,10 @@ export function resetBreakables(b: BreakablesState, list: ReadonlyArray<Breakabl
 	clearBreakableEvents(b);
 }
 
+/**
+ * A deep copy for a state clone: the pieces and this tick's hit / broken / knock lists are copied, the derived cell
+ * lookup and intact count are rebuilt from the copied pieces; `config` is shared (constant for the run).
+ */
 export function cloneBreakablesState(b: Readonly<BreakablesState>): BreakablesState {
 	const out: BreakablesState = {
 		config: b.config,
@@ -440,11 +454,16 @@ export function slamBreakables(state: SimState, x: number, z: number, radius?: n
 /** Per piece, in this order (dump names `breakables[<slot>].<name>`). */
 export const BREAKABLE_HASH_FIELDS = ["kind", "x", "y", "hp", "brokenTick"] as const;
 
+/**
+ * Appends the "breakables" hash group to `out`: the piece count, then BREAKABLE_HASH_FIELDS of every piece in slot
+ * order. The derived lookup and the per-tick lists are not hashed. Must stay in step with breakablesHashNames.
+ */
 export function writeBreakablesHash(b: Readonly<BreakablesState>, out: number[]): void {
 	out.push(b.pieces.size());
 	for (const p of b.pieces) for (const f of BREAKABLE_HASH_FIELDS) out.push(p[f]);
 }
 
+/** Dump names for writeBreakablesHash, same order (`breakables.length`, `breakables[3].hp`, ...). */
 export function breakablesHashNames(b: Readonly<BreakablesState>, out: string[]): void {
 	out.push("breakables.length");
 	for (let i = 0; i < b.pieces.size(); i++) for (const f of BREAKABLE_HASH_FIELDS) out.push(`breakables[${i}].${f}`);

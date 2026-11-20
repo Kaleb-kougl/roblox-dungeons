@@ -55,9 +55,14 @@ import {
 	type RoomEnemyData,
 } from "./enemyShared";
 
+/**
+ * Tuning of the Stormcaller: its keep range, the cast's cooldown and telegraph, and the row of strikes it calls.
+ * Distances in world units, times in ticks.
+ */
 export interface StormcallerData extends RoomEnemyData {
 	/** Preferred distance band to its target (world units). */
 	readonly keepMin: number;
+	/** Far edge of the keep band (world units): with line of sight it closes in on its target past this. */
 	readonly keepMax: number;
 	/** Only starts a cast when its target is this close (and in sight). */
 	readonly castRange: number;
@@ -65,12 +70,23 @@ export interface StormcallerData extends RoomEnemyData {
 	readonly strafeWeight: number;
 	/** Ticks between casts (random in [min, max], `enemyCooldown`), and before the first one. */
 	readonly castCooldownMin: number;
+	/**
+	 * Longest cooldown between casts and before the first one (ticks, inclusive); the shortest is `castCooldownMin`.
+	 */
 	readonly castCooldownMax: number;
 	/** Cast telegraph ticks (the circles fill over it). */
 	readonly castTicks: number;
 	/** Strike points per cast, their circle radius and spacing (world units). */
 	readonly strikeCount: number;
+	/**
+	 * Radius of each warning circle (world units): STRIKE_BULLET_RADIUS, the strike's hit radius, so the circle shows
+	 * what the strike hits. The sim does not read this field.
+	 */
 	readonly strikeRadius: number;
+	/**
+	 * Distance between the centres of two neighbouring strike points (world units), along the line perpendicular to the
+	 * caster -> target bearing.
+	 */
 	readonly strikeSpacing: number;
 	/** A strike bullet's hold in collision passes (ticks; `strike.pierce` carries it, `strike.life` is the same). */
 	readonly strikeLifeTicks: number;
@@ -87,9 +103,11 @@ export const STORMCALLER_ATTACK_CAST = 1;
 // --- v[] slots (0..2 shared)
 /** The strike row's centre (the target's position at cast start). */
 export const STORMCALLER_CENTRE_X = 3;
+/** v slot: world Z of the strike row's centre (the pair of STORMCALLER_CENTRE_X). */
 export const STORMCALLER_CENTRE_Z = 4;
 /** From one strike circle to the next (strikeSpacing long, perpendicular to caster -> target). */
 export const STORMCALLER_OFFSET_X = 5;
+/** v slot: Z component of the vector from one strike circle to the next (the pair of STORMCALLER_OFFSET_X). */
 export const STORMCALLER_OFFSET_Z = 6;
 /** Strafe side, +1 or -1. */
 export const STORMCALLER_STRAFE = 7;
@@ -101,6 +119,10 @@ export const STORMCALLER_STRIKE_TICKS = 6;
 /** A move shorter than this fraction of the step means a wall: flip the strafe side. */
 const STRAFE_BLOCKED = 0.3;
 
+/**
+ * The registered `stormcaller` archetype (band PORT_BAND_ENEMIES_2): its data and hooks, as the module comment
+ * describes.
+ */
 export const STORMCALLER = registerArchetype<StormcallerData>({
 	id: "stormcaller",
 	band: PORT_BAND_ENEMIES_2,

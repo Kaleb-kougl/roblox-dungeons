@@ -21,15 +21,27 @@ import type { SpacingConfig } from "./spacingData";
  * and to stepCombat (SimCtx.spacing, the finisher's lunge); undefined everywhere means no brake at all.
  */
 export interface SpacingTick {
+	/**
+	 * The contact enemies to keep off this tick, built from the tick-start state (so every player and the lunge brake
+	 * against the same positions).
+	 */
 	readonly list: Readonly<SpacingList>;
+	/** The run's spacing tunables (`SimConfig.spacing`). */
 	readonly config: Readonly<SpacingConfig>;
 }
 
 /** A flat list of brake entries (centre x / z and keep distance). The arrays grow, never shrink; `count` are live. */
 export interface SpacingList {
+	/** Entry centres' x, tiles. Only indices below `count` are live. */
 	x: number[];
+	/** Entry centres' z, tiles. Same index as `x`. */
 	z: number[];
+	/**
+	 * Each entry's keep distance, tiles from its centre: a braked step never ends closer than this (or than it started,
+	 * when already inside). Same index as `x`.
+	 */
 	keep: number[];
+	/** Live entries; the arrays may be longer (stale slots kept for reuse). */
 	count: number;
 }
 

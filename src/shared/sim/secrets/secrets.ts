@@ -38,6 +38,7 @@ import { SECRET_HOW_COUNT, SECRET_UNSET, SECRETS_SALT, SecretStatus, type Secret
 
 /** SecretEvents.opened: the crack's open, for the view (burst, shout, toast, recap). */
 export interface SecretOpened {
+	/** state.tick the crack opened on. */
 	readonly tick: number;
 	/** SecretHow. */
 	readonly how: number;
@@ -47,7 +48,9 @@ export interface SecretOpened {
 	readonly finder: number;
 	/** The crack's first slot in the floor's breakables and the crack's centre (world, between its cells). */
 	readonly slot: number;
+	/** The crack's centre, world x (between its cells). */
 	readonly x: number;
+	/** The crack's centre, world z. */
 	readonly z: number;
 	/** SECRET points scored by the open (0 without scoring). */
 	readonly points: number;
@@ -67,12 +70,17 @@ export interface SecretTaken {
 
 /** Per-tick secret events for presentation. Cleared every tick; NOT hashed. */
 export interface SecretEvents {
+	/** The crack's open, on the tick it happened; undefined on every other tick. */
 	opened: SecretOpened | undefined;
+	/** The chest's open, on the tick a player reached it; undefined on every other tick. */
 	taken: SecretTaken | undefined;
 }
 
 /** SimState.secrets: plain numbers, every field but `config` and `events` hashed. */
 export interface SecretsState {
+	/**
+	 * The run's secrets rules (reach, points, the chest's grants). Constant for the run: not hashed, shared by clones.
+	 */
 	readonly config: Readonly<SecretsConfig>;
 	/** The secrets' stream (mulberry32 word): an RngHolder for the chest's draws. */
 	rngState: number;
@@ -80,18 +88,36 @@ export interface SecretsState {
 	status: number;
 	/** The crack's encounter room id, its first breakables slot and cell count, the chest's slot. */
 	room: number;
+	/**
+	 * The first crack piece's slot in the floor's breakables (the crack is pieces crackSlot .. crackSlot + cells - 1),
+	 * SECRET_UNSET without a secret. Hashed.
+	 */
 	crackSlot: number;
+	/** How many cells (and breakables pieces) the crack spans, 0 without a secret. Hashed. */
 	cells: number;
+	/** The chest piece's slot in the floor's breakables, SECRET_UNSET without a secret. Hashed. */
 	chestSlot: number;
 	/** The crack's first cell and its direction along the wall (grid), for the open's events. */
 	crackX: number;
+	/** The crack's first cell, grid row (0 without a secret). Hashed. */
 	crackY: number;
+	/**
+	 * The x part of the crack's direction along the wall (grid; 0 or 1): cell `c` of the crack is at (crackX + ax x c,
+	 * crackY + az x c). Hashed.
+	 */
 	ax: number;
+	/** The z part (grid y) of the crack's direction along the wall. Hashed. */
 	az: number;
 	/** The chest's centre (world) and facing (toward the crack: its boosts land in front, the vault's offsets). */
 	x: number;
+	/** The chest's centre, world z (0 without a secret). Hashed. */
 	z: number;
+	/**
+	 * The x part of the chest's facing (the floor plan's, a grid axis direction): the chest's boosts land forward along
+	 * it. Hashed.
+	 */
 	fx: number;
+	/** The z part of the chest's facing. Hashed. */
 	fz: number;
 	/** VaultTier. */
 	tier: number;
@@ -105,7 +131,12 @@ export interface SecretsState {
 	takenBy: number;
 	/** Run counters: cracks opened, chests taken, opens by SecretHow (SECRET_HOW_COUNT entries). */
 	found: number;
+	/** Run counter: secret chests taken so far. Carries over floors. Hashed. */
 	taken: number;
+	/**
+	 * Run counter: cracks opened per SecretHow (SECRET_HOW_COUNT entries, index = SecretHow). Carries over floors.
+	 * Hashed (length, then values).
+	 */
 	byHow: number[];
 	/** Not hashed. */
 	events: SecretEvents;
@@ -113,7 +144,9 @@ export interface SecretsState {
 
 /** The run's secret tally for the recap (docs/SECRET_ROOMS.md Design 9). */
 export interface SecretsRunSummary {
+	/** Cracks opened this run. */
 	readonly found: number;
+	/** Secret chests taken this run (never more than `found`). */
 	readonly taken: number;
 	/** Opens by SecretHow. */
 	readonly byHow: ReadonlyArray<number>;
@@ -226,6 +259,10 @@ export function clearSecretsEvents(sc: SecretsState): void {
 	sc.events.taken = undefined;
 }
 
+/**
+ * A deep copy for a state clone: the byHow counters and this tick's events (the opened event, and the taken event with
+ * each grant's boost and slot lists) are copied; `config` is shared (constant for the run).
+ */
 export function cloneSecretsState(sc: Readonly<SecretsState>): SecretsState {
 	const e = sc.events;
 	const t = e.taken;
@@ -280,6 +317,10 @@ export const SECRETS_HASH_FIELDS = [
 	"taken",
 ] as const;
 
+/**
+ * Appends the `secrets` hash group to `out`: SECRETS_HASH_FIELDS in order, then byHow's length and values. `config` and
+ * `events` are not hashed. Must stay in step with secretsHashNames.
+ */
 export function writeSecretsHash(sc: Readonly<SecretsState>, out: number[]): void {
 	for (const f of SECRETS_HASH_FIELDS) out.push(sc[f]);
 	out.push(sc.byHow.size());

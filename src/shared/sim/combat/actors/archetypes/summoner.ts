@@ -65,12 +65,21 @@ import {
 } from "./enemyShared";
 import { SWARMER } from "./swarmer";
 
+/**
+ * Tuning of the summoner: its keep range and strafe, the summon cast and its limits, and the panic ring. Distances in
+ * world units, times in ticks.
+ */
 export interface SummonerData extends RoomEnemyData {
 	/** Preferred distance band to the player (world units). */
 	readonly keepMin: number;
+	/** Far edge of the keep band (world units): it closes in on the player past this, only with line of sight. */
 	readonly keepMax: number;
 	/** Strafe direction flips after a random [min, max] ticks (or when a wall stops it). */
 	readonly strafeFlipMin: number;
+	/**
+	 * Longest time before the strafe side flips (ticks, inclusive; one `ctx.randomInt` draw from the sim rng); the
+	 * shortest is `strafeFlipMin`.
+	 */
 	readonly strafeFlipMax: number;
 	/** Weight of the sideways component of the move (radial is 1). */
 	readonly strafeWeight: number;
@@ -80,20 +89,30 @@ export interface SummonerData extends RoomEnemyData {
 	readonly summonTelegraphTicks: number;
 	/** Ticks between casts (random in [min, max]), and before the first one (drawn at spawn). */
 	readonly summonCooldownMin: number;
+	/**
+	 * Longest cooldown drawn at a summon decision, cast or skipped (ticks, inclusive); the shortest is
+	 * `summonCooldownMin`.
+	 */
 	readonly summonCooldownMax: number;
+	/** Shortest cooldown before its first decision, drawn at spawn (ticks, inclusive). */
 	readonly firstSummonMin: number;
+	/** Longest cooldown before its first decision, drawn at spawn (ticks, inclusive). */
 	readonly firstSummonMax: number;
 	/** EVD3: summons per cast, most of ITS summons alive at once (<= SUMMONER_SUMMON_SLOTS), summons per life. */
 	readonly summonPerCast: number;
+	/** Most of its own summons alive at once; a cast only tops up to this (and never past SUMMONER_SUMMON_SLOTS). */
 	readonly summonMaxAlive: number;
+	/** Most summons it makes in one life: v[SUMMONER_LEFT] starts here and counts down per summon. */
 	readonly summonsPerLife: number;
 	/** How far a summon is pushed out of its centre (world units). */
 	readonly summonRadius: number;
 	/** Panics when the player is this close (and in sight) as the cooldown runs out. */
 	readonly panicRange: number;
+	/** The panic's telegraph (ticks): it stands still this long before the panic ring fires. */
 	readonly panicTelegraphTicks: number;
 	/** Ticks until the next cast after a panic (random in [min, max]). */
 	readonly panicCooldownMin: number;
+	/** Longest cooldown drawn when it panics (ticks, inclusive); the shortest is `panicCooldownMin`. */
 	readonly panicCooldownMax: number;
 	/** The panic ring: the bruiser's (same spec object, same arc-table row). */
 	readonly panicRing: BurstSpec;
@@ -116,6 +135,10 @@ export const SUMMONER_ATTACK_PANIC = 2;
 export const SUMMONER_LEFT = 3;
 /** Actor ids of its summons, SUMMONER_SUMMON_SLOTS slots from here (0 = empty). */
 export const SUMMONER_SUMMON_FIRST = 4;
+/**
+ * How many v slots hold summon ids, from SUMMONER_SUMMON_FIRST: the hard cap on its summons alive at once, whatever
+ * summonMaxAlive says.
+ */
 export const SUMMONER_SUMMON_SLOTS = 3;
 /** Strafe side, +1 or -1. */
 export const SUMMONER_STRAFE = 7;
@@ -132,6 +155,10 @@ const TURN120_COS = -0.5;
 const TURN120_SIN = math.sqrt(3) / 2;
 const dirScratch: Dir = { x: 0, z: 1 };
 
+/**
+ * The registered `summoner` archetype (band PORT_BAND_ENEMIES): its data and hooks; its death kills every summon it
+ * still tracks.
+ */
 export const SUMMONER = registerArchetype<SummonerData>({
 	id: "summoner",
 	band: PORT_BAND_ENEMIES,

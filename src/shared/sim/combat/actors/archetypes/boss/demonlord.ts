@@ -98,6 +98,7 @@ import {
 	type BossSummonSpec,
 } from "./shared";
 
+/** The archetype id of the Demon Lord (an encounter spawn's `kind`; also its sprite's logical ID). */
 export const BOSS_DEMONLORD_ID = "boss.demonlord";
 
 // ---------------------------------------------------------------------------------------------
@@ -171,12 +172,27 @@ export const DEMONLORD_PHASE_FIRST_ATTACK: ReadonlyArray<number> = [
 
 /** v[] slots (see the file comment). */
 export const DEMONLORD_V_DIR_X = 0;
+/**
+ * v[1]: the z component of the attack's locked heading (unit), set with DEMONLORD_V_DIR_X when the telegraph starts.
+ */
 export const DEMONLORD_V_DIR_Z = 1;
+/**
+ * v[2]: the charge's target point (world x), or the x of the double cleave's second arc heading (unit). Unused by the
+ * other attacks.
+ */
 export const DEMONLORD_V_AUX_X = 2;
+/** v[3]: the z of the same value as DEMONLORD_V_AUX_X (the charge target's world z, or the second arc heading's z). */
 export const DEMONLORD_V_AUX_Z = 3;
+/** v[4]: the charge's impact ACTIVE tick + 1, 0 until the impact. The skeleton zeroes it when a transition starts. */
 export const DEMONLORD_V_MARK = BOSS_V_MARK;
+/** v[5]: the attack id started last (the skeleton's repeat rule). */
 export const DEMONLORD_V_LAST = BOSS_V_LAST;
+/** v[6]: how many times in a row the attack in v[5] has been started (at most BOSS_MAX_REPEAT). */
 export const DEMONLORD_V_REPEAT = BOSS_V_REPEAT;
+/**
+ * v[7]: double cleave: +1 or -1, the side the second arc is turned to. Summon: 1 summons the adds, 0 fires the ring
+ * fallback.
+ */
 export const DEMONLORD_V_SIGN = 7;
 // ActorState.cooldown holds the attack forced next (the phase's first attack after a roar), 0 = pick one.
 
@@ -202,6 +218,10 @@ export const CLEAVE: BurstSpec = {
 export const CLEAVE_HOLD_TICKS = 15;
 /** Double cleave: ticks between the two arcs (the lunge), and how far the lunge goes (world units). */
 export const DOUBLE_CLEAVE_DELAY_TICKS = 14;
+/**
+ * How far the double cleave's lunge carries him along the locked heading between its two arcs, world units (spread over
+ * DOUBLE_CLEAVE_DELAY_TICKS ticks).
+ */
 export const DOUBLE_CLEAVE_STEP = 1.2;
 
 /** Width of each hellfire gap, radians between the gap's two edge bullets (~57 degrees). */
@@ -217,10 +237,15 @@ export const HELLFIRE_ARC: BurstSpec = {
 };
 /** The facing gap is turned off the player's side by up to this many TURN steps (14.25 degrees each), at random. */
 export const HELLFIRE_MAX_TURNS = 1;
+/** ACTIVE ticks he stands after the hellfire ring fires (on tick 0) before the attack ends. */
 export const HELLFIRE_HOLD_TICKS = 20;
 
 /** Charge shockwave gap, radians (~57 degrees), pointing back the way he charged from. Mother Mayhem's shape. */
 export const CHARGE_SHOCK_GAP = 1.0;
+/**
+ * The charge's impact ring: 26 bullets over the full ring minus CHARGE_SHOCK_GAP, the arc centred on the charge
+ * direction so the gap is behind him.
+ */
 export const CHARGE_SHOCKWAVE: BurstSpec = {
 	count: 26,
 	spread: FULL_RING - CHARGE_SHOCK_GAP,
@@ -231,6 +256,7 @@ export const CHARGE_SHOCKWAVE: BurstSpec = {
 };
 /** Charge speed, world units per second, and the longest charge (ACTIVE ticks). */
 export const CHARGE_SPEED = 14;
+/** The longest charge, in ACTIVE ticks: the impact happens on this tick even when the target was not reached. */
 export const CHARGE_MAX_TICKS = 45;
 /** ACTIVE ticks after the impact before RECOVER. */
 export const CHARGE_IMPACT_HOLD_TICKS = 18;
@@ -246,6 +272,7 @@ export const DEMONLORD_SUMMON: BossSummonSpec = {
 	radius: 2.2,
 	arenaMargin: 2.2,
 };
+/** ACTIVE ticks he stands after the summon (or its ring fallback) on tick 0 before the attack ends. */
 export const SUMMON_HOLD_TICKS = 30;
 
 /** The charge target is kept this far (plus his radius) inside the arena's bounds. */
@@ -262,18 +289,36 @@ const SIN60 = math.sqrt(3) / 2;
 /** The cleave's lane: the angle between neighbouring bullets of CLEAVE = gen.arc's angle of bullet (count + 1) / 2. */
 const CLEAVE_LANE_COS = arcTrig(CLEAVE.count, CLEAVE.spread).cos[(CLEAVE.count + 1) / 2];
 const HALF_LANE = halfRotation(CLEAVE_LANE_COS, { x: 0, z: 0 });
+/**
+ * Cosine of half a cleave lane (half the angle between neighbouring CLEAVE bullets): with HALF_LANE_SIN the exact
+ * rotation that turns the double cleave's second arc off the first (no trig in the sim).
+ */
 export const HALF_LANE_COS = HALF_LANE.x;
+/** Sine of half a cleave lane, the pair of HALF_LANE_COS; multiplied by the side (+1 / -1) picked at the telegraph. */
 export const HALF_LANE_SIN = HALF_LANE.z;
 
+/**
+ * The Demon Lord's tuning on top of the fight skeleton's data (./shared.ts): the recover after a charge and the chase
+ * before a cleave.
+ */
 export interface DemonlordData extends BossFightData {
 	/** Vulnerable stand-still after a charge, ticks. */
 	chargeRecoverTicks: number;
 	/** CHASE: walk speed (world units per second), longest chase (ticks), and the distance that ends it. */
 	chaseSpeed: number;
+	/** The longest CHASE before a cleave, ticks: when they run out he telegraphs the cleave wherever he stands. */
 	chaseTicks: number;
+	/**
+	 * CHASE ends, and a cleave picked this close skips it, when the bound player is within this distance (world units,
+	 * centre to centre).
+	 */
 	cleaveRange: number;
 }
 
+/**
+ * The Demon Lord's tuning: Mother Mayhem's body, hp, damage cap and phase thresholds, a wider home radius (he hunts),
+ * and his chase and charge recover. Registered as the archetype's data.
+ */
 export const DEMONLORD_DATA: DemonlordData = {
 	// Mother Mayhem's budget (her README "Time to kill"; BOSS_HP, half the web build's 540): hp / cap = 45 s plus the
 	// immune roars is the flawless floor.
@@ -489,6 +534,10 @@ const HOOKS: BossFightHooks<DemonlordData> = {
 	},
 };
 
+/**
+ * The registered 'boss.demonlord' archetype, in band PORT_BAND_BOSSES so no earlier archetype's index moves. Every hook
+ * hands over to the shared fight skeleton (./shared.ts) with this file's attacks and CHASE state.
+ */
 export const BOSS_DEMONLORD = registerArchetype<DemonlordData>({
 	id: BOSS_DEMONLORD_ID,
 	data: DEMONLORD_DATA,

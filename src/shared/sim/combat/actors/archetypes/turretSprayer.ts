@@ -8,6 +8,10 @@ import { BulletKind, FULL_RING } from "../../patterns";
 import { registerArchetype } from "../registry";
 import { turretBurst, turretData, turretDef } from "./turretShared";
 
+/**
+ * The registered `turret.sprayer` archetype: a 16-bullet full ring at 3.2 world units per second every 1.2 s (the first
+ * after 0.6 s awake), the heading turned after each burst.
+ */
 export const TURRET_SPRAYER = registerArchetype(
 	turretDef(
 		"turret.sprayer",

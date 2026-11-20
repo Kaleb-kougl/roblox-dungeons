@@ -85,13 +85,17 @@ export interface TutorialSimConfig {
 
 /** TutorialSimConfig.guardLock. */
 export interface TutorialGuardLock {
+	/** Floor of the block lesson's room, an integer >= 1. */
 	readonly floor: number;
+	/** Room id of the block lesson's room on that floor, an integer >= 0. */
 	readonly room: number;
 }
 
 /** TutorialSimConfig.pelletLock. */
 export interface TutorialPelletLock {
+	/** Floor of the pellet lesson's room, an integer >= 1. */
 	readonly floor: number;
+	/** Room id of the pellet lesson's room on that floor, an integer >= 0. */
 	readonly room: number;
 }
 
@@ -111,6 +115,7 @@ export interface TutorialState {
 	guardLock: number;
 	/** The held actors: ids in [guardLockFirstId, guardLockEndId) (both 0 until armed; one spawn's ids are consecutive). */
 	guardLockFirstId: number;
+	/** One past the last held actor id of the guard lock (exclusive end; 0 until armed). */
 	guardLockEndId: number;
 	/** TutorialSimConfig.pelletLock's floor (NO_PELLET_LOCK_FLOOR without one). Fixed for the run. */
 	pelletLockFloor: number;
@@ -120,6 +125,7 @@ export interface TutorialState {
 	pelletLock: number;
 	/** The held actors: ids in [pelletLockFirstId, pelletLockEndId) (both 0 until armed). */
 	pelletLockFirstId: number;
+	/** One past the last held actor id of the pellet lock (exclusive end; 0 until armed). */
 	pelletLockEndId: number;
 }
 
@@ -167,6 +173,7 @@ export function createTutorialState(config: Readonly<TutorialSimConfig>): Tutori
 	};
 }
 
+/** An independent copy of the tutorial state (plain numbers, so a shallow copy is a full one). */
 export function cloneTutorialState(t: Readonly<TutorialState>): TutorialState {
 	return { ...t };
 }
@@ -378,6 +385,10 @@ export const TUTORIAL_HASH_FIELDS = [
 	"pelletLockEndId",
 ] as const;
 
+/**
+ * Appends the `tutorial` hash group to `out`: the TUTORIAL_HASH_FIELDS values in that order. Called only when
+ * `state.tutorial` exists.
+ */
 export function writeTutorialHash(t: Readonly<TutorialState>, out: number[]): void {
 	for (const f of TUTORIAL_HASH_FIELDS) out.push(t[f]);
 }

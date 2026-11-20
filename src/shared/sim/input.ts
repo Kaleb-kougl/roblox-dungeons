@@ -14,6 +14,7 @@ import { DEBUG_FLOOR_BUTTON } from "./endlessData";
 import { DEBUG_DROP_BUTTON } from "./drops/dropsData";
 import { DEV_GOD_BUTTON } from "./dev/devData";
 
+/** The integer an axis of 1.0 quantizes to: move and aim axes are integers in [-AXIS_MAX, AXIS_MAX]. */
 export const AXIS_MAX = 1000;
 
 /** Button bits of InputFrame.buttons. */
@@ -38,7 +39,9 @@ export const Button = {
 	DEBUG_BOSS: 4096,
 } as const;
 
+/** A key of the web build's `Button` table (the port's extra bits have no name here). */
 export type ButtonName = keyof typeof Button;
+/** The bit value of one `Button` entry: a single power of two to test against `InputFrame.buttons`. */
 export type ButtonBit = (typeof Button)[ButtonName];
 
 /** Every button, in bit order (Object.values order in the source). */
@@ -79,17 +82,21 @@ export const PORT_BUTTONS = bit32.bor(DEBUG_FLOOR_BUTTON, DEBUG_DROP_BUTTON, DEV
 /** Every bit the sim reads: ALL_BUTTONS plus PORT_BUTTONS (114687). The binary recording codec accepts these. */
 export const SIM_BUTTONS = bit32.bor(ALL_BUTTONS, PORT_BUTTONS);
 
+/** One tick of one player's input, already quantized: what step() reads and what a recording stores per tick. */
 export interface InputFrame {
 	/** World-space move vector, integers in [-1000, 1000]. Length may exceed 1000 slightly; the sim clamps. */
 	moveX: number;
+	/** World z of the move vector, an integer in [-1000, 1000] (with `moveX`). */
 	moveZ: number;
 	/** World-space aim direction, integers in [-1000, 1000]. (0, 0) means "no aim": facing follows movement. */
 	aimX: number;
+	/** World z of the aim direction, an integer in [-1000, 1000] (with `aimX`). */
 	aimZ: number;
 	/** Bitmask of Button values. */
 	buttons: number;
 }
 
+/** The neutral frame: no movement, no aim, no buttons. Frozen, so copy it (`{ ...EMPTY_INPUT }`) before writing. */
 export const EMPTY_INPUT: Readonly<InputFrame> = table.freeze({
 	moveX: 0,
 	moveZ: 0,
@@ -134,14 +141,21 @@ export function quantizeInput(
 	return out;
 }
 
+/** An input frame with its axes back as floats in [-1, 1] (see `dequantizeInput`). */
 export interface DequantizedInput {
+	/** World x of the move vector, in [-1, 1]. */
 	moveX: number;
+	/** World z of the move vector, in [-1, 1]. */
 	moveZ: number;
+	/** World x of the aim direction, in [-1, 1]; (0, 0) with `aimZ` means no aim. */
 	aimX: number;
+	/** World z of the aim direction, in [-1, 1]. */
 	aimZ: number;
+	/** The button bitmask, unchanged from the frame. */
 	buttons: number;
 }
 
+/** The frame with every axis divided by AXIS_MAX (floats in [-1, 1]) and the buttons unchanged. Returns a new table. */
 export function dequantizeInput(frame: Readonly<InputFrame>): DequantizedInput {
 	return {
 		moveX: dequantizeAxis(frame.moveX),
@@ -152,6 +166,7 @@ export function dequantizeInput(frame: Readonly<InputFrame>): DequantizedInput {
 	};
 }
 
+/** Copies every field of `src` into `out` (a new frame when omitted) and returns it. */
 export function copyInput(src: Readonly<InputFrame>, out: InputFrame = { ...EMPTY_INPUT }): InputFrame {
 	out.moveX = src.moveX;
 	out.moveZ = src.moveZ;
@@ -161,12 +176,14 @@ export function copyInput(src: Readonly<InputFrame>, out: InputFrame = { ...EMPT
 	return out;
 }
 
+/** True when both frames have the same four axes and the same button mask. */
 export function inputsEqual(a: Readonly<InputFrame>, b: Readonly<InputFrame>): boolean {
 	return (
 		a.moveX === b.moveX && a.moveZ === b.moveZ && a.aimX === b.aimX && a.aimZ === b.aimZ && a.buttons === b.buttons
 	);
 }
 
+/** True while the button's bit is set in the frame (held, not just pressed this tick). */
 export function isDown(frame: Readonly<InputFrame>, button: ButtonBit): boolean {
 	return bit32.band(frame.buttons, button) !== 0;
 }

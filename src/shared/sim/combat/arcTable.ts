@@ -19,15 +19,28 @@
 
 /** One burst shape: gen.arc(count, spread, ...) at heading 0. sin[i] / cos[i] belong to bullet i. */
 export interface ArcShape {
+	/** Bullets in the burst (the length of `sin` and `cos`). */
 	readonly count: number;
 	/** Cone width as passed to gen.arc (full rings: any spread >= TAU - 1e-9 gives the same angles). */
 	readonly spread: number;
 	/** spread >= TAU - 1e-9: an evenly spaced ring. */
 	readonly full: boolean;
+	/**
+	 * V8's `Math.sin` of each bullet's angle (radians from +Z, growing toward +X), one per bullet in firing order: the
+	 * x component of its unit direction.
+	 */
 	readonly sin: ReadonlyArray<number>;
+	/**
+	 * V8's `Math.cos` of each bullet's angle, one per bullet in firing order: the z component of its unit direction.
+	 */
 	readonly cos: ReadonlyArray<number>;
 }
 
+/**
+ * Every burst shape the web build fires, in the fixture's order (generated; each row is preceded by a `//` line naming
+ * the archetype or weapon that fires it). `arcTrig` in `./projectilePatterns.ts` looks a shape up here by `count` and
+ * `spread`; the values must stay bit for bit those of fixtures/arc-table.json.
+ */
 export const ARC_SHAPES: ReadonlyArray<ArcShape> = [
 	// archetype bruiser.ring
 	{

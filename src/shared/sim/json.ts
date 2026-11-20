@@ -12,19 +12,29 @@
 
 import { numberToJsString } from "./jsnum";
 
+/** JSON `null`, as a tagged table so it never becomes a Lua nil hole. The only instance is `JSON_NULL`. */
 export interface JsonNull {
+	/** Tag that tells the three table-shaped values apart. */
 	readonly kind: "null";
 }
+/** A JSON array, tagged so an empty one is distinguishable from an empty object. */
 export interface JsonArray {
+	/** Tag that tells the three table-shaped values apart. */
 	readonly kind: "array";
+	/** The elements in source order; a `null` element is `JSON_NULL`, so the array has no holes. */
 	readonly items: JsonValue[];
 }
+/** A JSON object, tagged so an empty one is distinguishable from an empty array. */
 export interface JsonObject {
+	/** Tag that tells the three table-shaped values apart. */
 	readonly kind: "object";
+	/** The members by key (a duplicate key keeps its last value). Source key order is not kept. */
 	readonly fields: Map<string, JsonValue>;
 }
+/** Any value `parseJson` can return: numbers, strings and booleans as themselves, the rest as tagged tables. */
 export type JsonValue = number | string | boolean | JsonNull | JsonArray | JsonObject;
 
+/** The one frozen `null` sentinel; compare with `===` or by `kind`. */
 export const JSON_NULL: JsonNull = table.freeze({ kind: "null" });
 
 const BYTE = {
@@ -247,10 +257,12 @@ export function parseJson(text: string): JsonValue {
 	return v;
 }
 
+/** True when `v` is a parsed JSON array (not undefined, a primitive, null or an object). */
 export function isJsonArray(v: JsonValue | undefined): v is JsonArray {
 	return typeIs(v, "table") && v.kind === "array";
 }
 
+/** True when `v` is a parsed JSON object (not undefined, a primitive, null or an array). */
 export function isJsonObject(v: JsonValue | undefined): v is JsonObject {
 	return typeIs(v, "table") && v.kind === "object";
 }

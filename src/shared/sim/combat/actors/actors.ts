@@ -72,6 +72,10 @@ export function createFreeActor(): ActorState {
 	};
 }
 
+/**
+ * A copy of `a` that shares nothing with it: the `capWindow` and `v` arrays are copied too (the combat state clone maps
+ * it over every slot).
+ */
 export function cloneActor(a: Readonly<ActorState>): ActorState {
 	return { ...a, capWindow: [...a.capWindow], v: [...a.v] };
 }

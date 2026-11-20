@@ -37,11 +37,19 @@ import { faceToward } from "../helpers";
 import { PORT_BAND_ENEMIES_3, registerArchetype } from "../registry";
 import type { ActorState, ArchetypeData } from "../types";
 
+/**
+ * Tuning of a pyre (the brazier a Pyre-keeper lights): how long it lights, its firing period and stagger, and its
+ * fireball. Times in ticks.
+ */
 export interface PyreData extends ArchetypeData {
 	/** Lighting: no fire for this many ticks after it lands. */
 	readonly litTicks: number;
 	/** Ticks between shots, and the first shot's offset per index among its keeper's pyres. */
 	readonly fireTicks: number;
+	/**
+	 * Ticks between the shots of two of a keeper's pyres whose stagger slots differ by one, on the shared fireTicks
+	 * period (pyrekeeper.ts `staggerDelay`).
+	 */
 	readonly shotStaggerTicks: number;
 	/** The fireball: one aimed bullet. */
 	readonly shot: BurstSpec;
@@ -55,6 +63,10 @@ export const PYRE_KEEPER = 4;
 /** Its stagger slot among its keeper's living pyres (0..maxAlive-1). */
 export const PYRE_STAGGER = 5;
 
+/**
+ * The registered `pyre` archetype (band PORT_BAND_ENEMIES_3): a still brazier, spawned only by a Pyre-keeper (or a
+ * spec), that fires at the nearest living player in sight.
+ */
 export const PYRE = registerArchetype<PyreData>({
 	id: "pyre",
 	band: PORT_BAND_ENEMIES_3,

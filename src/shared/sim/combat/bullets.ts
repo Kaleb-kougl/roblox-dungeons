@@ -30,8 +30,11 @@
 
 /** Plain 3D vector (three.js `Vector3` in the source; doubles). */
 export interface Vec3 {
+	/** Ground-plane x, world units (1 tile = 1 unit). */
 	x: number;
+	/** Height above the floor, world units. Collision is 2D on the XZ plane, so the sim only carries it. */
 	y: number;
+	/** Ground-plane z, world units. */
 	z: number;
 }
 
@@ -39,7 +42,14 @@ export interface Vec3 {
 export interface BulletSpawnData {
 	/** Added to the fire origin. */
 	offset: Vec3;
+	/**
+	 * Starting velocity, world units per second (the pool steps in seconds, not ticks). Hashed once the bullet is live.
+	 */
 	velocity: Vec3;
+	/**
+	 * Constant acceleration, world units per second squared, added to the velocity every step. Zero for every burst the
+	 * sim fires.
+	 */
 	acceleration: Vec3;
 	/** Seconds before the bullet starts moving / colliding (always 0 in the sim). */
 	delay: number;
@@ -47,6 +57,7 @@ export interface BulletSpawnData {
 	color: number | undefined;
 	/** Seconds to live. */
 	life: number;
+	/** The bullet's packed integer payload (`./payload.ts`: damage, kind, source, pierce, lastHit). Hashed. */
 	payload: number;
 	/** Drawn size multiplier. Render only. */
 	scale: number;
@@ -71,6 +82,7 @@ export type PoolExhaustedCallback = (
 	reason: "pool-full",
 ) => void;
 
+/** Creation options of a bullet pool (`createBulletSimulation`). All optional; they are fixed for the pool's life. */
 export interface BulletSimulationOptions {
 	/** Slot count (fixed at creation; default 2000). Must be a non-negative integer. */
 	readonly maxBullets?: number;
@@ -80,14 +92,24 @@ export interface BulletSimulationOptions {
 	readonly interpolation?: boolean;
 	/** Seconds over which `fadeAt` shrinks a bullet at the end of its life (render only; default 1). */
 	readonly fadeTime?: number;
+	/** Called by `fireAt` when a full pool dropped part of a burst. Optional: without it the drop is silent. */
 	readonly onPoolExhausted?: PoolExhaustedCallback;
 }
 
 /** What the sim (and the renderer) use of a bullet pool. Plain fields instead of the library's getters. */
 export interface BulletSimulation {
+	/** Slot count, fixed at creation (`maxBullets`). Slots are numbered 0 to `capacity - 1`. */
 	readonly capacity: number;
+	/**
+	 * Half-extent of the culling cube around the origin, world units: a bullet past it on any axis is released by
+	 * `step`. `math.huge` means no culling.
+	 */
 	readonly boundsLimit: number;
+	/**
+	 * Whether start-of-step positions are kept for `previousPositionAt` (render interpolation; no effect on the sim).
+	 */
 	readonly interpolation: boolean;
+	/** Seconds of the end-of-life shrink `fadeAt` reports. Render only. */
 	readonly fadeTime: number;
 	/** Live bullets (the library's `activeCount` getter = `_denseCount`). Read only. */
 	activeCount: number;
@@ -118,17 +140,31 @@ export interface BulletSimulation {
 	fireAt(origin: Readonly<Vec3>, pattern: BulletPattern, emitterId?: number): number;
 	/** One past the highest slot used since the pool was last empty (0 when empty). For renderers. */
 	highWater(): number;
+	/**
+	 * True when slot `i` holds a bullet (delayed ones included). The `...At` readers below do not check this: a free
+	 * slot returns its last values.
+	 */
 	isLive(i: number): boolean;
+	/**
+	 * True when slot `i` holds a bullet whose spawn delay has run out, so it moves, collides and is visited by
+	 * `forEachActive`.
+	 */
 	isVisible(i: number): boolean;
 	/** Live position / velocity of slot `i` (read them, never keep them). */
 	positionAt(i: number): Readonly<Vec3>;
+	/** Live velocity of slot `i`, world units per second (read it, never keep it). */
 	velocityAt(i: number): Readonly<Vec3>;
 	/** Start-of-step position (the current one without `interpolation`), written into `out`. */
 	previousPositionAt(i: number, out: Vec3): Vec3;
+	/** Seconds slot `i`'s bullet has left to live; `step` releases it at 0 or below. */
 	lifeAt(i: number): number;
+	/** Seconds before slot `i`'s bullet starts moving and colliding (0 or below: already active). */
 	delayAt(i: number): number;
+	/** Packed payload of slot `i` (`./payload.ts`). */
 	payloadAt(i: number): number;
+	/** Emitter id slot `i`'s bullet was fired with (0 = fired without one). */
 	emitterIdAt(i: number): number;
+	/** Drawn size multiplier of slot `i`. Render only, never collision. */
 	scaleAt(i: number): number;
 	/** 24-bit color of slot `i`. */
 	colorAt(i: number): number;

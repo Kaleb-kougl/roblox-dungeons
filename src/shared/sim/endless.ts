@@ -88,12 +88,15 @@ import { silverOnFloorPieces } from "./silver/silver";
 
 /** A candidate spawn position (structurally shared/dungeon's TileXZ). */
 export interface SpawnTile {
+	/** World x of the tile's center. */
 	readonly x: number;
+	/** World z of the tile's center. */
 	readonly z: number;
 }
 
 /** One floor's world, as the sim sees it. Built outside the sim (shared/run), never mutated. */
 export interface EndlessFloorWorld {
+	/** The floor number this world was built for, counted from ENDLESS_FIRST_FLOOR (1). */
 	readonly floor: number;
 	/** The SimConfig the floor's ticks run with: collision, bullet blocker, actor mover, encounter, loadout. */
 	readonly config: Readonly<SimConfig>;
@@ -101,9 +104,11 @@ export interface EndlessFloorWorld {
 	readonly bossFloor: boolean;
 	/** Where the player arrives (world). */
 	readonly spawnX: number;
+	/** World z of where the player arrives (with `spawnX`). */
 	readonly spawnZ: number;
 	/** The stairwell's center (world). */
 	readonly stairX: number;
+	/** World z of the stairwell's center (with `stairX`). */
 	readonly stairZ: number;
 	/** Deferred enemies per room id, spawned when the player first enters the room. */
 	readonly roomSpawns: ReadonlyArray<ReadonlyArray<ActorSpawn>>;
@@ -244,6 +249,7 @@ export function createEndlessState(
 	};
 }
 
+/** An independent copy of the endless state: the scalars and a fresh `roomsEntered` array. */
 export function cloneEndlessState(e: Readonly<EndlessState>): EndlessState {
 	return { ...e, roomsEntered: [...e.roomsEntered] };
 }
@@ -521,12 +527,20 @@ export function stepEndless(
 /** writeEndlessHash order (dump names `endless.<name>`, then `endless.roomsEntered[i]`). */
 export const ENDLESS_HASH_FIELDS = ["floor", "depth", "stairsOpen", "floorStartTick"] as const;
 
+/**
+ * Appends the `endless` hash group to `out`: ENDLESS_HASH_FIELDS in order, then the length of `roomsEntered` and each
+ * of its entries. Called only when `state.endless` exists.
+ */
 export function writeEndlessHash(e: Readonly<EndlessState>, out: number[]): void {
 	for (const f of ENDLESS_HASH_FIELDS) out.push(e[f]);
 	out.push(e.roomsEntered.size());
 	for (const v of e.roomsEntered) out.push(v);
 }
 
+/**
+ * Dump names for writeEndlessHash, one per value in the same order (`endless.<field>`, `endless.roomsEntered.length`,
+ * `endless.roomsEntered[i]`).
+ */
 export function endlessHashNames(e: Readonly<EndlessState>, out: string[]): void {
 	for (const f of ENDLESS_HASH_FIELDS) out.push(`endless.${f}`);
 	out.push("endless.roomsEntered.length");

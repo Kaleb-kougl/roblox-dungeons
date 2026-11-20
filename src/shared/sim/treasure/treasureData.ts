@@ -31,10 +31,16 @@ export interface TreasureConfig {
 
 /** A forward / side offset from the chest's centre, in tiles along its facing (forward) and across it (side). */
 export interface TreasureOffset {
+	/** Tiles from the chest's centre along its facing (positive is in front of the chest). */
 	readonly forward: number;
+	/** Tiles from the chest's centre across its facing, along (-fz, fx); negative is the other side. */
 	readonly side: number;
 }
 
+/**
+ * Treasure constants that are not part of TreasureConfig (the same for every run): the stream's salt and where a
+ * chest's boosts land. TREASURE is the one instance.
+ */
 export interface TreasureTunables {
 	/**
 	 * The treasure stream (the draws made when a chest opens, TR4): seedToState(seed) XOR salt ("KVTR"), like the drops'
@@ -49,6 +55,10 @@ export interface TreasureTunables {
 	readonly boostOffsets: ReadonlyArray<TreasureOffset>;
 }
 
+/**
+ * The treasure constants: the salt of the treasure rng stream and the four boost landing offsets (two rows in front of
+ * the chest, 0.9 and 1.7 tiles forward, 0.3 tiles to either side). Frozen.
+ */
 export const TREASURE: TreasureTunables = table.freeze({
 	salt: 0x4b565452,
 	boostOffsets: table.freeze([
@@ -98,6 +108,10 @@ export const TREASURE_REACH_TILES = 1.5 * TILE_SIZE;
 export const TREASURE_RESPITE_NONE = 0;
 /** TRD10: Respite levels 0 / I / II / III. */
 export const TREASURE_RESPITE_ALLOWANCE: ReadonlyArray<number> = [0, 0, 1, 1];
+/**
+ * SWIFT: extra percent of par added to the countdown, by Respite level 0 / I / II / III (TRD10). Dormant: only level 0
+ * is reachable until Respite exists.
+ */
 export const TREASURE_RESPITE_SWIFT_PERCENT: ReadonlyArray<number> = [0, 10, 20, 30];
 /** TRD11: Common / Rare / Legendary. */
 export const TREASURE_POINTS: ReadonlyArray<number> = [300, 800, 1500];

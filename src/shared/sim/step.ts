@@ -52,10 +52,18 @@ import type { SpacingConfig } from "./combat/spacingData";
 
 export { PLAYER_RADIUS, PLAYER_SPEED } from "./playerData";
 
+/**
+ * An axis-aligned rectangle on the ground plane, world units, that a mover's center is clamped into when the config has
+ * no world collision. The edges are inclusive.
+ */
 export interface SimBounds {
+	/** Least world x a center may have. */
 	minX: number;
+	/** Greatest world x a center may have. */
 	maxX: number;
+	/** Least world z a center may have. */
 	minZ: number;
+	/** Greatest world z a center may have. */
 	maxZ: number;
 }
 
@@ -98,8 +106,11 @@ export type ActorMover = (
 
 /** Stress mode (E1.6, `?stress=N`): keep about `bullets` enemy bullets alive, in rings from (x, z). */
 export interface StressConfig {
+	/** How many enemy bullets to keep alive (floored to an integer). 0 or less turns stress mode off. */
 	bullets: number;
+	/** World x the rings are fired from. */
 	x: number;
+	/** World z the rings are fired from. */
 	z: number;
 }
 

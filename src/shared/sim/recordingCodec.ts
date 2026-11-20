@@ -101,8 +101,13 @@ const VARINT_MAX_BYTES = 4;
 
 const INITIAL_WRITER_BYTES = 256;
 
+/**
+ * Why `decodeRecording` refused a buffer: `too_large` = more bytes than the limit, `too_long` = more frames than the
+ * tick limit, `malformed` = anything else that is not a canonical encoding.
+ */
 export type RecordingDecodeError = "too_large" | "too_long" | "malformed";
 
+/** `decodeRecording`'s answer: the recording, or a code plus a readable reason. It never throws. */
 export type RecordingDecodeResult =
 	| { readonly ok: true; readonly recording: Recording }
 	| { readonly ok: false; readonly code: RecordingDecodeError; readonly reason: string };

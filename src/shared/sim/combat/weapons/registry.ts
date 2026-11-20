@@ -74,6 +74,10 @@ export function weaponAt(index: number): WeaponDef {
 	return def;
 }
 
+/**
+ * True when a weapon with this id is registered. Unlike `weaponIndex` it never throws, so it is the test for an id that
+ * may be unknown.
+ */
 export function hasWeapon(id: string): boolean {
 	return byId.has(id);
 }

@@ -389,11 +389,11 @@ task in its own doc, then run the script again (docs/CODEBASE_SCALE.md DX11).
 
 ### DOC_COMMENTS.md
 
-- [ ] DC7. Backfill, the deterministic core: `shared/sim` 373, `shared/dungeon` 70, `shared/lockstep` 34 (477 exports), and their interface fields: 537, 26… (`docs/DOC_COMMENTS.md` line 256)
-- [ ] DC8. Backfill, shared contracts: `theme` 172, `run` 125, `play` 37, `wallet` 33, `settings` 31, `lobby` 30 and the 13 small shared areas (124): 552;… (`docs/DOC_COMMENTS.md` line 260)
-- [ ] DC9. Backfill, presentation and engine code: `shared/view` 326, `client` 150, `server` 4 (480). → Verify: every baseline at 0; `npm run verify`. (`docs/DOC_COMMENTS.md` line 262)
-- [ ] DC10. Links where they pay. `{@link}` on the references a reader follows most: the sim barrel's header, `SimConfig`'s opt-in fields to their feature… (`docs/DOC_COMMENTS.md` line 263)
-- [ ] DC11. Plan docs in the site (owner 2026-11-20: yes). TypeDoc's `projectDocuments` with `docs/*.md` (not tried in DC0: spike it first and record build… (`docs/DOC_COMMENTS.md` line 267)
+- [ ] DC7. Backfill, the deterministic core (in part): `shared/sim` 373, `shared/dungeon` 70, `shared/lockstep` 34 (477 exports), and their interface field… (`docs/DOC_COMMENTS.md` line 260)
+- [ ] DC8. Backfill, shared contracts: `theme` 172, `run` 125, `play` 37, `wallet` 33, `settings` 31, `lobby` 30 and the 13 small shared areas (124): 552;… (`docs/DOC_COMMENTS.md` line 272)
+- [ ] DC9. Backfill, presentation and engine code: `shared/view` 326, `client` 150, `server` 4 (480). → Verify: every baseline at 0; `npm run verify`. (`docs/DOC_COMMENTS.md` line 274)
+- [ ] DC10. Links where they pay. `{@link}` on the references a reader follows most: the sim barrel's header, `SimConfig`'s opt-in fields to their feature… (`docs/DOC_COMMENTS.md` line 275)
+- [ ] DC11. Plan docs in the site (owner 2026-11-20: yes). TypeDoc's `projectDocuments` with `docs/*.md` (not tried in DC0: spike it first and record build… (`docs/DOC_COMMENTS.md` line 279)
 
 ### FEEL.md
 

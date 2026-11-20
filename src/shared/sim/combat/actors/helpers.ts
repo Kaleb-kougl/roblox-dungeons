@@ -20,11 +20,15 @@ export { lineOfSight } from "shared/dungeon";
 export interface ToPlayer {
 	/** Player minus actor. */
 	dx: number;
+	/** Player z minus actor z (world units). */
 	dz: number;
+	/** Squared distance actor -> player (world units squared): `dx * dx + dz * dz`. */
 	dist2: number;
+	/** Distance actor -> player (world units): the square root of `dist2`. */
 	dist: number;
 	/** Unit direction actor -> player; the actor's facing when they coincide. */
 	dirX: number;
+	/** Z component of the unit direction actor -> player (the actor's `faceZ` when they coincide). */
 	dirZ: number;
 }
 

@@ -38,13 +38,18 @@ export const Duo = {
 	FULL_HEART: 18,
 	HAPPY_HOUR: 19,
 } as const;
+/** A Duo index (0 .. DUO_COUNT - 1): the value stored in `BuildPlayerState.duos` and hashed. */
 export type DuoId = (typeof Duo)[keyof typeof Duo];
 
+/**
+ * One duo boon's row in DUOS: its theme id and the pair of boons that unlocks it (BUD7: both owned by the same player).
+ */
 export interface DuoDef {
 	/** Theme string keys: `<id>.name`, `<id>.desc`, `<id>.icon`. */
 	readonly id: string;
 	/** The two boons (Boon indices) a player must own, at any level. */
 	readonly a: number;
+	/** The second required boon (Boon index), owned at any level. */
 	readonly b: number;
 }
 
@@ -74,6 +79,7 @@ export const DUOS: ReadonlyArray<DuoDef> = [
 	{ id: "duo.fullHeart", a: Boon.HEARTY, b: Boon.SHARPENED },
 	{ id: "duo.happyHour", a: Boon.DEEP_FLASK, b: Boon.BOUNTY },
 ];
+/** How many duos exist; a valid Duo index is 0 .. DUO_COUNT - 1 (cardDuo rejects anything else). */
 export const DUO_COUNT = DUOS.size();
 
 /** A duo card's rarity look (the draft reveal's legendary beat; BU9 gives it its own `boon.duo` frame). */
@@ -99,6 +105,7 @@ export const CardKind = {
 	/** A duo whose two boons the player owns. */
 	DUO: 3,
 } as const;
+/** A CardKind value (0..3): what picking a draft card does for the player it is offered to. */
 export type CardKindId = (typeof CardKind)[keyof typeof CardKind];
 
 /** The card id of boon `boon`. */
@@ -126,6 +133,7 @@ export function cardDuo(card: number): number {
 export interface CardDisplay {
 	/** Theme string id (`boon.volatile`, `duo.fireArrows`): `<id>.name`, `<id>.desc`, `<id>.icon`. */
 	readonly id: string;
+	/** The rarity look the card is drawn with: the boon's own rarity, or DUO_RARITY for a duo card. */
 	readonly rarity: RarityId;
 }
 
@@ -148,12 +156,15 @@ export interface BuildRules {
 	readonly evolutionWeight: number;
 	/** The duo band: duoPercentBase + duoPercentPerFloor x floors cleared, at most duoPercentMax (BUD3). */
 	readonly duoPercentBase: number;
+	/** Percentage points added to the duo band per floor cleared (0 floors or fewer add nothing). */
 	readonly duoPercentPerFloor: number;
+	/** The duo band's ceiling, in percent. */
 	readonly duoPercentMax: number;
 	/** Upgrade pity: with an upgradable boon owned and no upgrade among the first this many cards, the last card is redrawn. */
 	readonly upgradePityCards: number;
 	/** Drafts dealt after a boss floor (BUD4: pick, re-deal, pick), and after any other floor. */
 	readonly bossFloorDrafts: number;
+	/** Drafts dealt after a floor that is not a boss floor (the starting `draftsLeft`). */
 	readonly floorDrafts: number;
 	/** BUD5: a proc of this generation or higher does nothing. */
 	readonly genMax: number;
@@ -216,6 +227,10 @@ export const BuildEffect = {
 	/** Counterstrike's returns (Riposte III; BV1; BV2). The wave itself is no bullet (BVD1). */
 	RIPOSTE: 11,
 } as const;
+/**
+ * A BuildEffect index (0 .. BUILD_SOURCE_EFFECTS - 1): the effect part of an effect bullet's payload source
+ * (buildSource).
+ */
 export type BuildEffectId = (typeof BuildEffect)[keyof typeof BuildEffect];
 
 /** The payload source of effect `effect` at generation `gen`. */
@@ -259,6 +274,7 @@ export const ProcKind = {
 	KILL: 0,
 	SMASH: 1,
 } as const;
+/** A ProcKind value (KILL / SMASH), stored and hashed as `BuildProc.kind`. */
 export type ProcKindId = (typeof ProcKind)[keyof typeof ProcKind];
 
 /** Archetype ids whose kills never proc (BU3), besides every reviving archetype (def.stepDead: turrets). */

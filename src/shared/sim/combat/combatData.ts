@@ -59,15 +59,21 @@ export const PLAYER_MUZZLE_OFFSET = 0.45;
 export const MAX_ACTORS = 64;
 /** Hit flash length (render reads ActorState.flashTicks). */
 export const HIT_FLASH_SECONDS = 0.1;
+/** `HIT_FLASH_SECONDS` in ticks at 60 Hz (6): what a hit sets `ActorState.flashTicks` to. */
 export const HIT_FLASH_TICKS = secondsToTicks(HIT_FLASH_SECONDS); // 6
 /** Default time a dead actor keeps its slot (death animation) before it is freed. ArchetypeData.corpseTicks overrides. */
 export const CORPSE_SECONDS = 0.5;
+/** `CORPSE_SECONDS` in ticks at 60 Hz (30). */
 export const CORPSE_TICKS = secondsToTicks(CORPSE_SECONDS); // 30
 /**
  * Per-second damage cap (ArchetypeData.damageCapPerSecond, GDD: bosses): damage is booked into DAMAGE_CAP_BUCKETS
  * buckets of DAMAGE_CAP_BUCKET_TICKS ticks each; the window's budget is damageCapPerSecond x DAMAGE_CAP_WINDOW_SECONDS.
  */
 export const DAMAGE_CAP_BUCKETS = 12;
+/**
+ * Ticks one damage-cap bucket covers (10 ticks = 1/6 s): a hit is booked into bucket `floor(tick /
+ * DAMAGE_CAP_BUCKET_TICKS)`.
+ */
 export const DAMAGE_CAP_BUCKET_TICKS = 10;
 /** Length of the damage-cap window in seconds (DAMAGE_CAP_BUCKETS x DAMAGE_CAP_BUCKET_TICKS at 60 Hz): 2. */
 export const DAMAGE_CAP_WINDOW_SECONDS = (DAMAGE_CAP_BUCKETS * DAMAGE_CAP_BUCKET_TICKS) / 60;
@@ -78,6 +84,7 @@ export const DAMAGE_CAP_WINDOW_SECONDS = (DAMAGE_CAP_BUCKETS * DAMAGE_CAP_BUCKET
  * multiply-add with no trig. The direction is re-normalized with sqrt after each turn (patterns.ts turnDir).
  */
 export const TURN_COS = 63 / 65;
+/** Sine of the fixed per-burst turn, exactly 16/65 (see `TURN_COS`). Positive turns from +Z toward +X. */
 export const TURN_SIN = 16 / 65;
 
 // --- Stress mode (?stress=N) ------------------------------------------------------------------------------

@@ -14,6 +14,7 @@ import type { WeaponData } from "../types";
 
 /** FIRE held: one volley every PLAYER_FIRE_TICKS (the first on the press tick). */
 export const PLAYER_FIRE_SECONDS = 0.15;
+/** `PLAYER_FIRE_SECONDS` in ticks at 60 Hz (9): the test weapon's `cooldownTicks`. */
 export const PLAYER_FIRE_TICKS = secondsToTicks(PLAYER_FIRE_SECONDS); // 9
 /** Bullets per volley (odd: one flies exactly down the facing vector). */
 export const PLAYER_SHOT_COUNT = 3;
@@ -35,6 +36,10 @@ const VOLLEY: BurstSpec = {
 	kind: BulletKind.PLAYER,
 };
 
+/**
+ * The registered `weapon.test` def: FIRE held fires the 3-bullet volley from the muzzle down the facing vector. Kept
+ * registered so weapon indices match the web build.
+ */
 export const TEST_WEAPON = registerWeapon<WeaponData>({
 	id: "weapon.test",
 	data: { cooldownTicks: PLAYER_FIRE_TICKS, damage: PLAYER_BULLET_DAMAGE, style: "ranged", spriteId: "item.weapon" },

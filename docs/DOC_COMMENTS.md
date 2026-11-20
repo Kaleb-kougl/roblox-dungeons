@@ -11,8 +11,9 @@ presentation change. `DAILY.ruleset` unchanged. One new devDependency (`typedoc`
 ## Status (2026-11-20)
 
 **Built 2026-11-20 on branch `doc-comments`: DC0-DC6** (TypeDoc, the ratchet, the digest, `@module` on the headers,
-a clean `docs:check`, the standard in CLAUDE.md). **Open: DC7-DC9** (the backfill: 1,509 exports and 851 core fields
-are the known gaps), **DC10** (links), **DC11** (the plan docs in the site). Not yet done on the owner's Mac:
+a clean `docs:check`, the standard in CLAUDE.md), and **DC7 in part**: `shared/lockstep` and `shared/dungeon` have no
+gaps left. **Open: DC7's `shared/sim`** (373 exports, 537 fields), **DC8-DC9** (1,032 exports), **DC10** (links),
+**DC11** (the plan docs in the site). Known gaps now: 1,405 exports and 537 fields. Not yet done on the owner's Mac:
 `npm install` (for `typedoc`), `npm run docs`, a full `npm run verify` (Verification).
 
 **Owner (2026-11-20): every call answered.** `docs:check` in `verify`; one page per file; interface fields gated in
@@ -128,9 +129,12 @@ Luau lexer: short and long strings are kept, `--` and `--[[ ]]` / `--[=[ ]=]` co
 Digest before and after a pass and `cmp` the two files, as `dump:lists` is used for a pure move. Identical digests
 mean the compiled code is identical, so the fixtures, hashes and replays cannot have moved.
 
-**Take the "before" digest from a second build.** In a fresh worktree the first `npm run build` gave
-`client/network.luau` and `server/network.luau` a different digest from the next two builds of the same source
-(Flamework's generated network guards; cause not looked into). Every other module was stable across all three.
+**Two modules can differ with no change at all: `client/network.luau` and `server/network.luau`.** Flamework's
+generated network guards list a union's literals in an order that varies from build to build
+(`t.literalList({ "none", "party", "lobby" })` against `{ "party", "none", "lobby" }`: a set, the order means
+nothing). Seen between the first and second build of one source, and again after DC7. When those two are the only
+lines that differ, compare their stripped text: only `literalList` orders may differ. Every other module was stable
+across every build.
 
 ## Decisions
 
@@ -253,10 +257,18 @@ and controller internals.
   **As built.** This file; CLAUDE.md (the document row, four command lines, one Conventions bullet); README's script
   table; the `docs/DECISIONS.md` entry; `docs:check` in `verify` after `check:docs`; `docs/OPEN_TASKS.md`
   regenerated (`facts:check`: up to date, nothing to regenerate). See Verification for what of `verify` ran.
-- [ ] **DC7. Backfill, the deterministic core:** `shared/sim` 373, `shared/dungeon` 70, `shared/lockstep` 34 (477
+- [ ] **DC7. Backfill, the deterministic core** (in part)**:** `shared/sim` 373, `shared/dungeon` 70, `shared/lockstep` 34 (477
   exports), and their interface fields: 537, 263, 51 (851). Units, hash membership and replay rules stated where
   they apply; DCD8. Exports and fields in separate commits per area (six). → Verify: the three areas' export and
   field baselines at 0; DC3's digests identical per commit; `docs:check` clean.
+
+  **As built so far (2026-11-20).** `shared/lockstep`: 34 exports and 51 fields. `shared/dungeon`: 70 exports and 263
+  fields (the Forge's `Room` / `Prop` / `Dungeon` / `ForgeTheme` shapes, every placer's tunables and plans, the
+  census helpers under `testing/`). Both lists are empty, so both areas are held at zero from here. Written from each
+  declaration, its file header and its readers (DCD8); units stated (grid tiles, world units, ticks, percent); the
+  Forge theme's colours and lights are marked as the web demo's reference data. `out:digest`: identical but for the
+  two network modules' literal order (Design 4); `docs:check` clean; prettier clean. **Left: `shared/sim`** (373
+  exports, 537 fields).
 - [ ] **DC8. Backfill, shared contracts:** `theme` 172, `run` 125, `play` 37, `wallet` 33, `settings` 31, `lobby`
   30 and the 13 small shared areas (124): 552; with DC7, 1,029. → Verify: as DC7.
 - [ ] **DC9. Backfill, presentation and engine code:** `shared/view` 326, `client` 150, `server` 4 (480). → Verify: every baseline at 0; `npm run verify`.

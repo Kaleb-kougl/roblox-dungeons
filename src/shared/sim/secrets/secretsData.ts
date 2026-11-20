@@ -47,6 +47,7 @@ export const SecretStatus = { NONE: 0, HIDDEN: 1, OPEN: 2, TAKEN: 3 } as const;
 
 /** What opened the crack (SRD2 / SRD3). Append only: hashed and counted per run (SecretsState.byHow). */
 export const SecretHow = { FINISHER: 0, ROLL: 1, HEAVY: 2, CHARGER: 3 } as const;
+/** What opened a crack: one of SecretHow's values (0 .. 3), the index into SecretsState.byHow. */
 export type SecretHowId = (typeof SecretHow)[keyof typeof SecretHow];
 /** Entries of SecretsState.byHow. */
 export const SECRET_HOW_COUNT = 4;

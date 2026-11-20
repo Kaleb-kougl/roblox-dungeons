@@ -50,34 +50,47 @@ import { cloneGoldenState, createGoldenState, goldenOnFloor, type GoldenState } 
 import { cloneSecretsState, createSecretsState, secretsOnFloor, type SecretsState } from "./secrets/secrets";
 import { cloneSilverState, createSilverState, silverOnFloorPieces, type SilverState } from "./silver/silver";
 
+/**
+ * One player's body and vitals: plain numbers only, every field in PLAYER_HASH_FIELDS (hashed). `SimState.player` is
+ * player 0; co-op keeps the others in `party.players`.
+ */
 export interface PlayerState {
+	/** World x of the player's center, world units (1 tile = 1 unit). */
 	x: number;
+	/** World z of the player's center, world units. */
 	z: number;
 	/** Position at the start of the last tick, for render interpolation. */
 	prevX: number;
+	/** World z at the start of the last tick (with `prevX`). */
 	prevZ: number;
 	/** Facing as a unit vector on the ground plane (no angles in the sim). */
 	faceX: number;
+	/** z component of the facing unit vector (with `faceX`). */
 	faceZ: number;
 
 	// --- E1.5 player controller (player.ts, data in playerData.ts). Plain numbers only: 0/1 for flags, integer tick
 	// counters for durations (counted down at the start of each stepPlayer).
 	/** Health in HALF hearts (6 = 3 hearts). */
 	hearts: number;
+	/** Maximum health in half hearts: the flask and the full refill stop here. */
 	heartsMax: number;
 	/** Armor pips: each absorbs one whole hit before hearts. Refilled to armorMax at checkpoints. */
 	armor: number;
+	/** Armor pip capacity: what `armor` is refilled to at checkpoints. */
 	armorMax: number;
 	/** Flask charges left / per checkpoint. */
 	flask: number;
+	/** Flask charges a checkpoint refills `flask` to. */
 	flaskMax: number;
 	/** Embers (bullet clears) left / per area. */
 	embers: number;
+	/** Embers a checkpoint refills `embers` to. */
 	emberMax: number;
 	/** Roll ticks remaining, including the current tick. > 0 = rolling. */
 	rollTicks: number;
 	/** Roll direction, a unit vector locked when the roll starts. */
 	rollDirX: number;
+	/** z component of the roll direction unit vector (with `rollDirX`). */
 	rollDirZ: number;
 	/** Dodge i-frames remaining (roll start, Ember). > 0 = damagePlayer() ignores hits. */
 	iframeTicks: number;
@@ -272,6 +285,7 @@ export function eventDefault(field: keyof SimEvents): number {
 	return field === "lastHitSource" ? -1 : 0;
 }
 
+/** Resets every event field to its default (0, or -1 for `lastHitSource`), in place. Run at the start of every tick. */
 export function clearEvents(e: SimEvents): void {
 	for (const f of ALL_EVENT_FIELDS) e[f] = eventDefault(f);
 }
@@ -320,12 +334,18 @@ function emptyEvents(): SimEvents {
 	};
 }
 
+/**
+ * The whole deterministic state of one run. step() mutates it in place; `hashState` covers it group by group (`events`
+ * is not hashed), and the optional groups exist only when their `SimConfig` field asked for them.
+ */
 export interface SimState {
 	/** Number of ticks stepped so far. */
 	tick: number;
 	/** mulberry32 state word (uint32). */
 	rngState: number;
+	/** Player 0 (the only player of a solo run). Hashed in the `core` group. */
 	player: PlayerState;
+	/** What happened during the tick just stepped, for render and audio. Not hashed. */
 	events: SimEvents;
 	/** Bullets (two pools), actors, weapon sets, stress emitter. See combat/combat.ts. */
 	combat: CombatState;
@@ -594,16 +614,17 @@ export function createSimState(
 	return state;
 }
 
-/**
- * An independent copy of `s`. LIMITED: the bullet pools can only be rebuilt while pristine (no bullet ever spawned in
- * this run); once any bullet has been spawned this THROWS. Re-simulate from the recording instead.
- */
+/** cloneSimState's copy of the run group: cloneRunState, then each player's run mods refreshed against `builds`. */
 function cloneRun(r: Readonly<RunState>, builds: Readonly<BuildsState> | undefined): RunState {
 	const out = cloneRunState(r);
 	for (let i = 0; i < out.players.size(); i++) refreshRunMods(out.players[i], builds?.players[i]);
 	return out;
 }
 
+/**
+ * An independent copy of `s`, every optional group included. Limited: the bullet pools can only be rebuilt while
+ * pristine, so this throws once any bullet has been spawned in the run; re-simulate from the recording instead.
+ */
 export function cloneSimState(s: Readonly<SimState>): SimState {
 	const clone: SimState = {
 		tick: s.tick,

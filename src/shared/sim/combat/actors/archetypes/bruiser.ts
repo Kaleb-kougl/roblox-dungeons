@@ -35,18 +35,33 @@ import {
 	type RoomEnemyData,
 } from "./enemyShared";
 
+/**
+ * The Bruiser's tuning on top of the room enemy rules: when it slams, the slam's timings (ticks) and the ring it fires.
+ */
 export interface BruiserData extends RoomEnemyData {
 	/** Slams when the player is this close (center to center). */
 	readonly slamTrigger: number;
 	/** Kited this long past its cooldown (ticks) with the player within frustrationRange in sight: slams anyway. */
 	readonly frustrationTicks: number;
+	/**
+	 * The frustrated slam (see frustrationTicks) only starts with the player within this distance, world units centre
+	 * to centre.
+	 */
 	readonly frustrationRange: number;
+	/**
+	 * The slam's wind-up, ticks: it stands planted, turning to face the player, and the ring fires when they run out.
+	 */
 	readonly telegraphTicks: number;
 	/** Standing still after a slam. */
 	readonly recoverTicks: number;
 	/** Ticks between slams (random in [min, max]) and before the first one after engaging. */
 	readonly slamCooldownMin: number;
+	/**
+	 * The longest wait between slams, ticks (inclusive): the cooldown is one draw in [slamCooldownMin, slamCooldownMax]
+	 * as each slam fires.
+	 */
 	readonly slamCooldownMax: number;
+	/** Ticks from engaging to the first slam it may start: a fixed cooldown, no draw. */
 	readonly firstSlam: number;
 	/** The ring (an arc of RING_SLOTS - RING_GAP_SLOTS bullets, centred opposite the gap). */
 	readonly ring: BurstSpec;
@@ -54,20 +69,25 @@ export interface BruiserData extends RoomEnemyData {
 
 /** Ring slots around the circle, and how many of them the gap leaves out. */
 export const RING_SLOTS = 20;
+/** How many neighbouring slots of the RING_SLOTS the slam leaves empty: the ring's one safe gap. */
 export const RING_GAP_SLOTS = 3;
 /** Angle between the two bullets flanking the gap, radians (render: half of it either side of the gap direction). */
 export const RING_GAP_ANGLE = ((RING_GAP_SLOTS + 1) * 2 * math.pi) / RING_SLOTS;
 
 // --- States and attack ids
+/** Engaged: plodding at the player, counting its slam cooldown down. */
 export const BRUISER_CHASE = STATE_ENGAGED;
 /** After the slam: standing still for recoverTicks (aiTicks counts down; the shockwave hint reads it). */
 export const BRUISER_RECOVER = AiState.CUSTOM + 1;
+/** ActorState.attack from the slam's telegraph until its recovery ends. */
 export const BRUISER_ATTACK_SLAM = 1;
 
 // --- v[] slots (0..2 shared)
+/** v[3]: ticks in a row without line of sight to the player while chasing; it leashes home past lostTicks. */
 export const BRUISER_LOST = 3;
 /** Direction of the last ring's gap (unit). */
 export const BRUISER_GAP_X = 4;
+/** v[5]: the z component of the last ring's gap direction (unit), the pair of BRUISER_GAP_X. */
 export const BRUISER_GAP_Z = 5;
 
 const RECOVER_SECONDS = 0.6;
@@ -91,6 +111,10 @@ export const GAP_TURNS: ReadonlyArray<readonly [number, number]> = [
 ];
 const gapScratch: Dir = { x: 0, z: 1 };
 
+/**
+ * The registered 'bruiser' archetype: a slow walker that plants, telegraphs and slams a bullet ring with one gap near
+ * the player's bearing. One main-rng draw picks the gap's turn and one the next cooldown, per slam.
+ */
 export const BRUISER = registerArchetype<BruiserData>({
 	id: "bruiser",
 	data: {

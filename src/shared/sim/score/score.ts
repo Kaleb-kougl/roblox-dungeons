@@ -166,8 +166,11 @@ export interface RoomScore {
 	room: number;
 	/** The room's bounds (copied from the encounter, so floor changes cannot move them under a live record). */
 	minX: number;
+	/** The bounds' highest world x (inclusive: a player standing exactly on it is inside). Hashed. */
 	maxX: number;
+	/** The bounds' lowest world z (inclusive). Hashed. */
 	minZ: number;
+	/** The bounds' highest world z (inclusive). Hashed. */
 	maxZ: number;
 	/** Par time, ticks. */
 	parTicks: number;
@@ -179,6 +182,10 @@ export interface RoomScore {
 	cleared: number;
 	/** Members: actor slot and ActorState.id (a slot whose id changed is a member that is gone). */
 	memberSlots: number[];
+	/**
+	 * Per member (parallel to memberSlots): the ActorState.id it had when it joined the record. A slot now holding
+	 * another id is a member that is gone. Hashed.
+	 */
 	memberIds: number[];
 }
 
@@ -186,9 +193,16 @@ export interface RoomScore {
 export interface ScoreEvents {
 	/** Points gained this tick. */
 	points: number;
+	/**
+	 * Kills scored this tick (boss and Goldling kills included; a reviving actor's later deaths are not). Equals the
+	 * number of score pops.
+	 */
 	kills: number;
+	/** Grazes awarded this tick. */
 	grazes: number;
+	/** Enemy bullets a sword guard erased this tick (each one a GUARD award). */
 	guardCancels: number;
+	/** Room records that cleared this tick. */
 	roomsCleared: number;
 	/** 1 when the combo value at the end of the tick differs from its start. */
 	comboChanged: number;
@@ -198,7 +212,12 @@ export interface ScoreEvents {
 	comboCut: number;
 	/** Score pops (one per kill): world position and the points of that kill (incl. a boss bonus). */
 	popX: number[];
+	/** Per score pop (parallel to popX): the killed actor's world z. */
 	popZ: number[];
+	/**
+	 * Per score pop (parallel to popX): the points that kill scored after every multiplier, a boss's no-hit bonus
+	 * included.
+	 */
 	popPoints: number[];
 	/**
 	 * Grazes (docs/GRAZE_PARRY.md GP1, presentation only): per graze awarded this tick, the bullet's position and
@@ -206,9 +225,13 @@ export interface ScoreEvents {
 	 * living player). Parallel arrays; size() === grazes.
 	 */
 	grazeX: number[];
+	/** Per graze (parallel to grazeX): the bullet's world z at the award. */
 	grazeZ: number[];
+	/** Per graze: the x part of the bullet's velocity at the award. */
 	grazeVX: number[];
+	/** Per graze: the z part of the bullet's velocity at the award. */
 	grazeVZ: number[];
+	/** Per graze: the grazing player's index (solo 0; co-op the nearest living player). */
 	grazePlayer: number[];
 	/**
 	 * Guard cancels (GP1): per enemy bullet a sword guard erased this tick, its position when erased and the guarding
@@ -216,7 +239,12 @@ export interface ScoreEvents {
 	 * (docs/NEW_ENEMIES_3.md NTD9: a parry for the view, the contact point, never in guardCancels or the GUARD points).
 	 */
 	guardX: number[];
+	/**
+	 * Per guard entry (parallel to guardX): the world z where the bullet was erased, or the contact point of a stopped
+	 * Jackal lunge.
+	 */
 	guardZ: number[];
+	/** Per guard entry (parallel to guardX): the guarding player's index. */
 	guardPlayer: number[];
 	/**
 	 * Kill credit (docs/RUN_CONTRIBUTION.md CT2, presentation only): per score pop, the killer's player index (scoreKill's
@@ -231,7 +259,9 @@ export interface ScoreEvents {
 	 * to events.damageDealt.
 	 */
 	dealtPlayer: number[];
+	/** Per damage entry (parallel to dealtPlayer): the hp removed, always above 0 and never overkill. */
 	dealtAmount: number[];
+	/** Per damage entry (parallel to dealtPlayer): 1 when the damaged actor's archetype is a boss, else 0. */
 	dealtBoss: number[];
 	/**
 	 * Landed hits (CT2): one entry per hit damagePlayer landed this tick (each events.playerHits += 1, the tutorial's
@@ -240,9 +270,17 @@ export interface ScoreEvents {
 	hurtPlayer: number[];
 	/** Internal: the combo at the start of the tick, and 1 once a kill / graze fed it this tick. */
 	comboStart: number;
+	/**
+	 * Internal: 1 once a kill or graze fed the combo this tick. stepScore then leaves the combo timer alone instead of
+	 * counting it down.
+	 */
 	comboFed: number;
 }
 
+/**
+ * SimState.score: the run's team score, combo and room records (one shared state in co-op). Present only with
+ * SimConfig.scoring. Every field but `events` is hashed, in writeScoreHash's order (the "score" group).
+ */
 export interface ScoreState {
 	/** The run's score. */
 	total: number;
@@ -577,6 +615,10 @@ function cloneRoom(r: Readonly<RoomScore>): RoomScore {
 	return { ...r, memberSlots: [...r.memberSlots], memberIds: [...r.memberIds] };
 }
 
+/**
+ * A deep copy for a state clone: the per-source arrays, the reviver ids, every room record (with its member lists) and
+ * this tick's event arrays are all copied, so stepping the copy never touches the original.
+ */
 export function cloneScoreState(s: Readonly<ScoreState>): ScoreState {
 	const e = s.events;
 	return {
@@ -1351,6 +1393,11 @@ const ROOM_HASH_FIELDS = [
 	"cleared",
 ] as const;
 
+/**
+ * Appends the "score" hash group to `out`: SCORE_HASH_FIELDS, the points and counts per source, the scored reviver ids
+ * (length first), then every room record (its scalars, its member count and each member's slot and id). `events` is not
+ * hashed. Must stay in step with scoreHashNames.
+ */
 export function writeScoreHash(s: Readonly<ScoreState>, out: number[]): void {
 	for (const f of SCORE_HASH_FIELDS) out.push(s[f]);
 	for (const n of s.points) out.push(n);

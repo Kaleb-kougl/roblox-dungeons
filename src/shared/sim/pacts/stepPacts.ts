@@ -252,6 +252,7 @@ export const HordePhase = {
 	/** The horde room cleared (its x2 paid). */
 	CLEARED: 5,
 } as const;
+/** A valid `HordePhase` value (what `hordePhase` returns). */
 export type HordePhaseId = (typeof HordePhase)[keyof typeof HordePhase];
 
 /** The Horde's phase on this floor (HordePhase). Pure. */

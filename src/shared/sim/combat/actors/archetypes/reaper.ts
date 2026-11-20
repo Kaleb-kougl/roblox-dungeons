@@ -45,12 +45,18 @@ import {
 	type RoomEnemyData,
 } from "./enemyShared";
 
+/**
+ * Tuning of the Reaper: the distance it closes to, the spin's cooldown, wind-up, length and volleys, and the dizzy
+ * window after it. Distances in world units, times in ticks.
+ */
 export interface ReaperData extends RoomEnemyData {
 	/** Preferred distance band to its target (world units). */
 	readonly keepMin: number;
+	/** Far edge of the keep band (world units): it walks at its target until it is this close, and stops there. */
 	readonly keepMax: number;
 	/** Ticks between spins (random in [min, max], `enemyCooldown`). */
 	readonly spinCooldownMin: number;
+	/** Longest cooldown between spins (ticks, inclusive); the shortest is `spinCooldownMin`. */
 	readonly spinCooldownMax: number;
 	/** Ticks before its first spin (fixed, `enemyCooldownFixed`: no draw), set at spawn and while calm. */
 	readonly firstSpinTicks: number;
@@ -58,10 +64,19 @@ export interface ReaperData extends RoomEnemyData {
 	readonly spinTrigger: number;
 	/** Wind-up ticks (telegraph) and the ring at its feet (render). */
 	readonly windTicks: number;
+	/**
+	 * Radius of the ring drawn at its feet during the wind-up (world units; the same number as `fx.ring.radius`).
+	 * Presentation only: the sim never reads it.
+	 */
 	readonly windRingRadius: number;
 	/** Spin ticks, its drift toward the target (world units / s) and a volley every this many ticks. */
 	readonly spinTicks: number;
+	/**
+	 * Speed of its drift toward its target on every spin tick (world units per second, scaled by actorWalkPercent like
+	 * a walk); it stops at contact.
+	 */
 	readonly spinDriftSpeed: number;
+	/** Ticks between two volleys of a spin: spinTicks / volleyEveryTicks volleys in all, two bullets each. */
 	readonly volleyEveryTicks: number;
 	/** Directions in the spiral's ring (REAPER_SPIRAL_COUNT @ FULL_RING); each volley fires two opposite entries. */
 	readonly spiralCount: number;
@@ -102,6 +117,9 @@ const COIN = 0.5;
 /** Stops drifting this far inside contact range (the bruiser's rule). */
 const STOP_INSIDE_CONTACT = 0.05;
 
+/**
+ * The registered `reaper` archetype (band PORT_BAND_ENEMIES_2): its data and hooks, as the module comment describes.
+ */
 export const REAPER = registerArchetype<ReaperData>({
 	id: "reaper",
 	band: PORT_BAND_ENEMIES_2,

@@ -59,12 +59,15 @@ export interface GoldenConfig {
 	readonly fleeFactor: number;
 	/** Jink: a living player within jinkRange (world units) with the cooldown ready starts a jinkTicks sidestep. */
 	readonly jinkRange: number;
+	/** Ticks after a jink starts before the next one can start. */
 	readonly jinkCooldownTicks: number;
+	/** Ticks one sidestep lasts. */
 	readonly jinkTicks: number;
 	/** The sidestep's speed, world units / s. */
 	readonly jinkSpeed: number;
 	/** Base points per damaging hit and of the catch (both x the kills' floor scale). */
 	readonly hitPoints: number;
+	/** Base points of the catch (the jackpot), x the kills' floor scale. */
 	readonly killPoints: number;
 	/** The catch lands party size + extraBoosts boosts. */
 	readonly extraBoosts: number;
@@ -86,10 +89,13 @@ export const ENDLESS_GOLDEN_CONFIG: GoldenConfig = table.freeze({
 
 /** A damaging hit this tick (presentation: the coin burst, the +50 pop, the climbing hit sound). */
 export interface GoldenHitEvent {
+	/** World x of the Goldling at the hit. */
 	readonly x: number;
+	/** World z of the Goldling at the hit. */
 	readonly z: number;
 	/** The hitting player (SimCtx.playerIndex at the hit). */
 	readonly player: number;
+	/** Coins this hit paid (points, what `scoreGoldenHit` awarded). */
 	readonly points: number;
 	/** Damaging hits so far on this Goldling, this one included (the hit sound's ladder step). */
 	readonly hits: number;
@@ -97,8 +103,11 @@ export interface GoldenHitEvent {
 
 /** The catch this tick. */
 export interface GoldenCaughtEvent {
+	/** World x of the Goldling where it was caught. */
 	readonly x: number;
+	/** World z of the Goldling where it was caught. */
 	readonly z: number;
+	/** Party index of the player who landed the kill. */
 	readonly player: number;
 	/** The kill's points (the jackpot; the killing hit's coins are in `hits`). */
 	readonly points: number;
@@ -116,7 +125,9 @@ export interface GoldenEvents {
 	skipped: number;
 	/** The catch's kill points this tick (score.ts scoreKill writes it just before onDeath; 0 otherwise). */
 	jackpot: number;
+	/** Damaging hits on the Goldling this tick, in hit order. */
 	hits: GoldenHitEvent[];
+	/** Set on the tick it was caught (its kill), else undefined. */
 	caught?: GoldenCaughtEvent;
 	/** Where it escaped from, on the tick it did (its coins: GoldenState.coins). */
 	escaped?: { readonly x: number; readonly z: number };
@@ -129,17 +140,24 @@ export interface GoldenEvents {
 export interface GoldenFieldCache {
 	/** Key: the GoldenState.fieldTick it was built for (-1: empty), the floor data and the intact piece count. */
 	fieldTick: number;
+	/** Key: the floor data the masks were built from (compared by identity; undefined: empty). */
 	floor: FloorGolden | undefined;
+	/** Key: how many breakables were intact when it was built (a piece broken since forces a rebuild). */
 	intact: number;
 	/** Per box cell: 1 when the Goldling can stand there now (walk mask minus intact breakables). */
 	open: number[];
 	/** The flee field (shared/dungeon fleeField). */
 	field: number[];
+	/**
+	 * Work buffers of the flee field solve, sized to the floor's box and kept between rebuilds; undefined until the
+	 * first build.
+	 */
 	scratch: FleeScratch | undefined;
 }
 
 /** SimState.golden. Plain numbers (every one hashed but the floor data, the cache and the events). */
 export interface GoldenState {
+	/** The run's Goldling rules (constant for the run: not hashed). */
 	readonly config: GoldenConfig;
 	/** The Goldling's own mulberry32 word (hashed). */
 	rngState: number;
@@ -155,6 +173,10 @@ export interface GoldenState {
 	appearTick: number;
 	/** Its actor's pool slot and ActorState.id while RUNNING (and after: the corpse / last position), -1 / 0 before. */
 	actorSlot: number;
+	/**
+	 * Its actor's `ActorState.id` (0 before it appears); with `actorSlot` it tells whether the slot still holds the
+	 * Goldling. Hashed.
+	 */
 	actorId: number;
 	/** Coins won from this floor's Goldling so far (its hits' points; the jackpot not included). */
 	coins: number;
@@ -162,10 +184,16 @@ export interface GoldenState {
 	hits: number;
 	/** Run counters: Goldlings that appeared, were caught, escaped. */
 	seen: number;
+	/** Run counter: Goldlings caught (killed) so far. Hashed. */
 	caught: number;
+	/** Run counter: Goldlings whose time ran out so far. Hashed. */
 	escaped: number;
 	/** The flee field's sources: the tick they were read (-1: never this floor) and the box cells (living players). */
 	fieldTick: number;
+	/**
+	 * The flee field's source cells: the box cell of each living player inside the Goldling's rectangle, as read at
+	 * `fieldTick`. Hashed (count, then each cell).
+	 */
 	src: number[];
 	/** The tick a player broke its piece (goldenOnBreak; -1: not yet this floor). */
 	releaseTick: number;
@@ -280,6 +308,10 @@ export function clearGoldenEvents(g: GoldenState): void {
 	e.escaped = undefined;
 }
 
+/**
+ * A deep copy of the Goldling state, this tick's events included. `config` and the floor data are shared (both
+ * constant), and the flee field cache starts empty: the clone rebuilds it on first use. No rng.
+ */
 export function cloneGoldenState(g: Readonly<GoldenState>): GoldenState {
 	const e = g.events;
 	const caught = e.caught;

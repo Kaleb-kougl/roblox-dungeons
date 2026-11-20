@@ -17,6 +17,9 @@ const TWO_POW_32 = 4294967296;
 
 /** Anything that carries a mulberry32 state word (SimState does). */
 export interface RngHolder {
+	/**
+	 * The generator's whole state: one uint32 in [0, 2^32). Each draw advances it in place; in SimState it is hashed.
+	 */
 	rngState: number;
 }
 

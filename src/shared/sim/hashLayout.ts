@@ -37,6 +37,7 @@ import { silverHashNames, writeSilverHash } from "./silver/silver";
 
 /** The fixtures' subsystem groups, in hash order. */
 export const HASH_SUBSYSTEMS = ["core", "combatHeader", "actors", "weapons", "enemyBullets", "playerBullets"] as const;
+/** Name of one of the six fixture groups in HASH_SUBSYSTEMS. */
 export type HashSubsystem = (typeof HASH_SUBSYSTEMS)[number];
 /**
  * The Roblox port's extra groups, appended after playerBullets in this order and only when present, so every fixture
@@ -72,20 +73,38 @@ export type HashSubsystem = (typeof HASH_SUBSYSTEMS)[number];
  *            state.silver exists; the LAST group (after secrets)
  */
 export const ENDLESS_HASH_SUBSYSTEM = "endless";
+/** Name of the port's hash group for M2 scoring; present when `state.score` exists. */
 export const SCORE_SUBSYSTEM = "score";
+/**
+ * Name of the port's hash group for in-run progression (boons, relics, curses, the draft); present when `state.run`
+ * exists.
+ */
 export const RUN_SUBSYSTEM = "run";
+/** Name of the port's hash group for co-op players 1 .. n-1; present when `state.party` exists. */
 export const PARTY_SUBSYSTEM = "party";
+/** Name of the port's hash group for the first-run tutorial; present when `state.tutorial` exists. */
 export const TUTORIAL_SUBSYSTEM = "tutorial";
+/** Name of the port's hash group for breakable barrels and crates; present when `state.breakables` exists. */
 export const BREAKABLES_SUBSYSTEM = "breakables";
+/** Name of the port's hash group for boost drops; present when `state.drops` exists. */
 export const DROPS_SUBSYSTEM = "drops";
+/** Name of the port's hash group for elite affixes; present when `state.affixes` exists. */
 export const AFFIXES_SUBSYSTEM = "affixes";
+/** Name of the port's hash group for developer mode; present when `state.dev` exists. */
 export const DEV_SUBSYSTEM = "dev";
+/** Name of the port's hash group for builds; present when `state.builds` exists. */
 export const BUILDS_SUBSYSTEM = "builds";
+/** Name of the port's hash group for pellets; present when `state.pellets` exists. */
 export const PELLETS_SUBSYSTEM = "pellets";
+/** Name of the port's hash group for treasure rooms; present when `state.treasure` exists. */
 export const TREASURE_SUBSYSTEM = "treasure";
+/** Name of the port's hash group for pacts; present when `state.pacts` exists. */
 export const PACTS_SUBSYSTEM = "pacts";
+/** Name of the port's hash group for the Goldling; present when `state.golden` exists. */
 export const GOLDEN_SUBSYSTEM = "golden";
+/** Name of the port's hash group for secret rooms; present when `state.secrets` exists. */
 export const SECRETS_SUBSYSTEM = "secrets";
+/** Name of the port's hash group for Silver in crates; present when `state.silver` exists. The last group. */
 export const SILVER_SUBSYSTEM = "silver";
 /** Every group name a layout can have. */
 export type HashGroupName =
@@ -107,7 +126,9 @@ export type HashGroupName =
 	| typeof SECRETS_SUBSYSTEM
 	| typeof SILVER_SUBSYSTEM;
 
+/** One subsystem's slice of a layout: the half-open index range [start, finish) of its values. */
 export interface HashGroup {
+	/** Which subsystem the slice belongs to. */
 	readonly name: HashGroupName;
 	/** First index in `values` (0-based). */
 	readonly start: number;
@@ -115,11 +136,15 @@ export interface HashGroup {
 	readonly finish: number;
 }
 
+/**
+ * What `hashLayout` returns: the hashed values of one state, their dump names, and where each group starts and ends.
+ */
 export interface HashLayout {
 	/** Every hashed number, in hash order (= writeHashFields(state)). */
 	readonly values: number[];
 	/** Dump name of each value (only when requested), e.g. `player.x`, `weapons.sets[0].v[3]`. */
 	readonly names: string[];
+	/** The groups present in this state, in hash order; their ranges tile `values` with no gaps. */
 	readonly groups: HashGroup[];
 }
 

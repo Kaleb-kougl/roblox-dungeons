@@ -33,10 +33,12 @@ export interface DevState {
 	toggles: number;
 }
 
+/** A dev run's starting state: god mode on or off as `config.invulnerable` asks, both counters at 0. */
 export function createDevState(config: Readonly<DevSimConfig>): DevState {
 	return { invulnerable: config.invulnerable ? 1 : 0, blockedHits: 0, toggles: 0 };
 }
 
+/** An independent copy of the dev state (three plain numbers, so a shallow copy is a full one). */
 export function cloneDevState(d: Readonly<DevState>): DevState {
 	return { ...d };
 }
@@ -77,6 +79,9 @@ export function stepDevToggle(
 /** writeDevHash order (dump names `dev.<name>`). Append only. */
 export const DEV_HASH_FIELDS = ["invulnerable", "blockedHits", "toggles"] as const;
 
+/**
+ * Appends the `dev` hash group to `out`: the DEV_HASH_FIELDS values in that order. Called only when `state.dev` exists.
+ */
 export function writeDevHash(d: Readonly<DevState>, out: number[]): void {
 	for (const f of DEV_HASH_FIELDS) out.push(d[f]);
 }

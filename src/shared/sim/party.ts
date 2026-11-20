@@ -235,6 +235,11 @@ export function revivePartyMember(p: PlayerState, halfHearts: number): void {
 // Hash: the "party" group, appended after score and run (only "tutorial" follows it) only when state.party exists.
 //   size, left[0 .. size-1], then per player 1 .. size-1: PLAYER_HASH_FIELDS, then writeWeaponsHash
 
+/**
+ * Appends the `party` hash group to `out`: the size, the `left` flag of every player, then for players 1 .. size-1 the
+ * player fields and the weapons. Player 0 is skipped: it is hashed in `core` / `weapons`. Called only when
+ * `state.party` exists.
+ */
 export function writePartyHash(party: Readonly<PartyState>, out: number[]): void {
 	out.push(party.size);
 	for (const v of party.left) out.push(v);

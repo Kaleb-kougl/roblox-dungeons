@@ -11,6 +11,7 @@ import { sweepArc, type ArcActorHit } from "../melee";
 import { registerWeapon } from "../registry";
 import type { WeaponData } from "../types";
 
+/** Data of the placeholder melee weapon: `WeaponData` plus the swing arc's shape. */
 export interface TestMeleeData extends WeaponData {
 	/** Reach from the player's center, world units. */
 	reach: number;
@@ -18,6 +19,10 @@ export interface TestMeleeData extends WeaponData {
 	halfAngleCos: number;
 }
 
+/**
+ * The placeholder swing's numbers: every 24 ticks (0.4 s), 3 hit points to each enemy in a 120-degree arc reaching 1.6
+ * world units.
+ */
 export const TEST_MELEE_DATA: TestMeleeData = {
 	cooldownTicks: secondsToTicks(0.4), // 24
 	damage: 3,
@@ -31,6 +36,10 @@ const hit: ArcActorHit = (ctx, actor) => {
 	ctx.damageActor(actor, TEST_MELEE_DATA.damage);
 };
 
+/**
+ * The registered `weapon.test.melee` def: FIRE held sweeps the arc in front of the player through `sweepArc`, damaging
+ * every actor in it and erasing the enemy bullets inside.
+ */
 export const TEST_MELEE_WEAPON = registerWeapon<TestMeleeData>({
 	id: "weapon.test.melee",
 	data: TEST_MELEE_DATA,

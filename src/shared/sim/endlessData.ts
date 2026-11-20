@@ -18,6 +18,10 @@ export const ENEMY_HP_PER_FLOOR = 0.08;
 export const DEPTH_HP_MULTIPLIER = 1.5;
 /** Enemy bullet speed x min(1 + BULLET_SPEED_PER_FLOOR x (floor - 1), BULLET_SPEED_MAX_MULTIPLIER). Speed only. */
 export const BULLET_SPEED_PER_FLOOR = 0.02;
+/**
+ * Cap of the enemy bullet speed multiplier, the Haste curse included: floor scaling alone reaches it at floor 21
+ * (1 + 0.02 x 20).
+ */
 export const BULLET_SPEED_MAX_MULTIPLIER = 1.4;
 
 /** The stairwell zone: the player's center within this distance of the stairwell's center ends the floor. */

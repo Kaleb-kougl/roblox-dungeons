@@ -55,12 +55,20 @@ import {
 	type RoomEnemyData,
 } from "./enemyShared";
 
+/**
+ * The Bulwark's tuning on top of the room enemy rules: its keep-range band, how fast the shield turns, what the shield
+ * covers, and the bash.
+ */
 export interface BulwarkData extends RoomEnemyData {
 	/** Preferred distance band to its target (world units). */
 	readonly keepMin: number;
+	/**
+	 * The far edge of the band (world units): past it, it walks toward its target; nearer than keepMin it backs off.
+	 */
 	readonly keepMax: number;
 	/** The most its facing turns a tick, as a rotation (cos, sin): a literal, no trig in the sim. */
 	readonly turnCos: number;
+	/** Sine of the per-tick turn limit, the pair of turnCos. */
 	readonly turnSin: number;
 	/** The shield's front cone: a hit origin at offset o from its centre is in front when dot(face, o) >= frontCos x |o|. */
 	readonly frontCos: number;
@@ -72,12 +80,15 @@ export interface BulwarkData extends RoomEnemyData {
 	readonly bashRange: number;
 	/** Ticks between bashes (random in [min, max], `enemyCooldown`; the first drawn at spawn). */
 	readonly bashCooldownMin: number;
+	/** The longest wait between bashes, ticks (inclusive upper bound of the draw). */
 	readonly bashCooldownMax: number;
 	/** Bash telegraph ticks (the heading locks at its start) and its warning line's length (world units). */
 	readonly bashTelegraphTicks: number;
+	/** Length of the bash telegraph's warning line along the locked heading, world units. */
 	readonly bashLineLength: number;
 	/** The bash's lunge: distance (world units) and ticks it takes. */
 	readonly bashLunge: number;
+	/** Ticks the lunge lasts: each tick it moves bashLunge / bashLungeTicks along the locked heading. */
 	readonly bashLungeTicks: number;
 	/** Half hearts of the bash's hit (once per player per bash). */
 	readonly bashDamage: number;
@@ -106,10 +117,12 @@ export const BULWARK_HIT_BITS = 4;
 export const BULWARK_GUARDING = 5;
 /** Locked bash heading (unit). */
 export const BULWARK_DIR_X = 6;
+/** v[7]: the z component of the locked bash heading (unit), the pair of BULWARK_DIR_X. */
 export const BULWARK_DIR_Z = 7;
 
 /** Design: the facing turns 2.5 degrees a tick (150 deg/s): cos and sin of 2.5 degrees as literals. */
 export const BULWARK_TURN_COS = 0.9990482215818578;
+/** Sine of 2.5 degrees as a literal, the pair of BULWARK_TURN_COS. */
 export const BULWARK_TURN_SIN = 0.043619387365336;
 /** Design: the front cone, dot >= 0.34 x the distance (~140 degrees wide). */
 export const BULWARK_FRONT_COS = 0.34;
@@ -120,6 +133,11 @@ const BASH_LINE_LENGTH = 1.6;
 /** NX1 starting value (the plan gives the lunge's length, not its time): 0.15 s. */
 const BASH_LUNGE_SECONDS = 0.15;
 
+/**
+ * The registered 'bulwark' archetype: keeps range with its shield turned toward its target, bashes on a cooldown and
+ * drops the shield while it recovers or staggers. Its only draws are bash cooldowns (one in init, one per bash
+ * telegraph).
+ */
 export const BULWARK = registerArchetype<BulwarkData>({
 	id: "bulwark",
 	band: PORT_BAND_ENEMIES_3,

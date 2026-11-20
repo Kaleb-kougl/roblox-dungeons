@@ -165,6 +165,10 @@ export function createRunState(encounter: EncounterConfig | undefined, players =
 	return r;
 }
 
+/**
+ * A deep copy of the run progression, every player's lists and events included. Each player's `mods` object is shared
+ * (it is replaced by `refreshRunMods`, never mutated). No rng.
+ */
 export function cloneRunState(r: Readonly<RunState>): RunState {
 	return {
 		...r,

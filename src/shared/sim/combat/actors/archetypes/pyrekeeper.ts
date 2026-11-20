@@ -72,12 +72,21 @@ import {
 } from "./enemyShared";
 import { PYRE, PYRE_FIRE, PYRE_KEEPER, PYRE_STAGGER } from "./pyre";
 
+/**
+ * Tuning of the Pyre-keeper: its keep range and strafe, the pyres it lights and where they may land, and its panic
+ * ring. Distances in world units, times in ticks.
+ */
 export interface PyrekeeperData extends RoomEnemyData {
 	/** Preferred distance band to every living player (world units). */
 	readonly keepMin: number;
+	/** Far edge of the keep band (world units): it closes in on its target past this, only with line of sight. */
 	readonly keepMax: number;
 	/** Strafe direction flips after a random [min, max] ticks (or when a wall stops it). */
 	readonly strafeFlipMin: number;
+	/**
+	 * Longest time before the strafe side flips (ticks, inclusive; one `ctx.randomInt` draw from the sim rng); the
+	 * shortest is `strafeFlipMin`.
+	 */
 	readonly strafeFlipMax: number;
 	/** Weight of the sideways component of the move (radial is 1). */
 	readonly strafeWeight: number;
@@ -85,24 +94,39 @@ export interface PyrekeeperData extends RoomEnemyData {
 	readonly pyreKind: string;
 	/** Most of ITS pyres alive at once, and pyres per life. */
 	readonly maxAlive: number;
+	/**
+	 * Most pyres it lights in one life (v[PYREKEEPER_LIT] counts them); past it a light decision is spent with no pyre.
+	 */
 	readonly perLife: number;
 	/** Ticks between casts (random in [min, max], `enemyCooldown`; the first drawn at spawn). */
 	readonly lightCooldownMin: number;
+	/** Longest cooldown between light decisions (ticks, inclusive); the shortest is `lightCooldownMin`. */
 	readonly lightCooldownMax: number;
 	/** The light's telegraph (the ring on the landing point fills over it). */
 	readonly lightTelegraphTicks: number;
+	/**
+	 * Radius of the ring drawn on the landing point while the light telegraphs (world units; the same number as
+	 * `fx.ring.radius`). Presentation only: the sim never reads it.
+	 */
 	readonly landingRingRadius: number;
 	/** The landing points: LANDING_OFFSETS (unit vectors) at this distance from its target (world units). */
 	readonly landingDistance: number;
+	/**
+	 * The unit directions (x, z) from its target that a cast tries for a landing point, in order from a drawn start
+	 * index (PYREKEEPER_LANDING_OFFSETS: the eight compass points).
+	 */
 	readonly landingOffsets: ReadonlyArray<readonly [number, number]>;
 	/** A landing point keeps at least this far from every living player and from its other pyres (world units). */
 	readonly landingPlayerClear: number;
+	/** A landing point keeps at least this far from every living pyre, any keeper's (world units). */
 	readonly landingPyreClear: number;
 	/** Panics when a living player is this close (and in sight) as the cooldown runs out. */
 	readonly panicRange: number;
+	/** The panic's telegraph (ticks): it stands still this long before the panic ring fires. */
 	readonly panicTelegraphTicks: number;
 	/** Ticks until the next cast after a panic (random in [min, max]). */
 	readonly panicCooldownMin: number;
+	/** Longest cooldown drawn when it panics (ticks, inclusive); the shortest is `panicCooldownMin`. */
 	readonly panicCooldownMax: number;
 	/** The panic ring: the bruiser's (same spec object, same arc-table row). */
 	readonly panicRing: BurstSpec;
@@ -125,6 +149,7 @@ export const PYREKEEPER_ATTACK_PANIC = 2;
 export const PYREKEEPER_LIT = 3;
 /** The landing point (world), valid while the light telegraphs. */
 export const PYREKEEPER_LAND_X = 4;
+/** v slot: world Z of the landing point (the pair of PYREKEEPER_LAND_X). */
 export const PYREKEEPER_LAND_Z = 5;
 /** Strafe side, +1 or -1. */
 export const PYREKEEPER_STRAFE = 6;
@@ -153,6 +178,10 @@ const STRAFE_BLOCKED = 0.3;
 const dirScratch: Dir = { x: 0, z: 1 };
 const LANDING_RING_RADIUS = 0.8;
 
+/**
+ * The registered `pyrekeeper` archetype (band PORT_BAND_ENEMIES_3): its data and hooks; its death withers every pyre it
+ * lit.
+ */
 export const PYREKEEPER = registerArchetype<PyrekeeperData>({
 	id: "pyrekeeper",
 	band: PORT_BAND_ENEMIES_3,

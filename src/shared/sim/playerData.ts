@@ -37,12 +37,15 @@ export const START_HALF_HEARTS = 6;
 export const MIN_START_HALF_HEARTS = 1;
 /** A normal hit costs 1 half heart; heavy hits cost 2. The caller of damagePlayer() decides. */
 export const HIT_NORMAL = 1;
+/** Half hearts a heavy hit costs (see HIT_NORMAL). */
 export const HIT_HEAVY = 2;
 /** Armor pips: each absorbs one whole hit, whatever its size. Start with none; armorMax is 0 until gear adds it. */
 export const START_ARMOR = 0;
+/** Armor pip capacity at the start of a run: 0 until gear adds it (see START_ARMOR). */
 export const START_ARMOR_MAX = 0;
 /** Post-hit invulnerability (Gungeon-style), so one burst can't delete every heart. */
 export const HURT_INVULN_SECONDS = 0.75;
+/** HURT_INVULN_SECONDS in ticks: the player cannot be hit again for this long after a landed hit. */
 export const HURT_INVULN_TICKS = secondsToTicks(HURT_INVULN_SECONDS); // 45
 
 // --- Flask ---------------------------------------------------------------------------------------
@@ -53,7 +56,9 @@ export const FLASK_CHARGES = 3;
 export const FLASK_HEAL_HALF_HEARTS = 2;
 /** Drinking time: walking speed is multiplied by FLASK_MOVE_MULTIPLIER while it runs. The heal lands at once. */
 export const FLASK_USE_SECONDS = 0.5;
+/** FLASK_USE_SECONDS in ticks: how long a drink slows the player. */
 export const FLASK_USE_TICKS = secondsToTicks(FLASK_USE_SECONDS); // 30
+/** Walking speed factor while a flask is being drunk (half speed). */
 export const FLASK_MOVE_MULTIPLIER = 0.5;
 
 // --- Ember (bullet clear) --------------------------------------------------------------------------
@@ -62,15 +67,18 @@ export const FLASK_MOVE_MULTIPLIER = 0.5;
 export const EMBERS_PER_AREA = 2;
 /** I-frames granted when an Ember fires. */
 export const EMBER_IFRAME_SECONDS = 0.25;
+/** EMBER_IFRAME_SECONDS in ticks. */
 export const EMBER_IFRAME_TICKS = secondsToTicks(EMBER_IFRAME_SECONDS); // 15
 
 // --- Dodge roll ------------------------------------------------------------------------------------
 
 /** Whole roll. No cooldown (Gungeon), but a new roll can't start until this one ends. */
 export const ROLL_SECONDS = 0.35;
+/** ROLL_SECONDS in ticks: the dash plus its recovery. */
 export const ROLL_TICKS = secondsToTicks(ROLL_SECONDS); // 21
 /** I-frames: the first ROLL_IFRAME_TICKS ticks of the roll. The tail is vulnerable. */
 export const ROLL_IFRAME_SECONDS = 0.2;
+/** ROLL_IFRAME_SECONDS in ticks: the invulnerable head of the roll. */
 export const ROLL_IFRAME_TICKS = secondsToTicks(ROLL_IFRAME_SECONDS); // 12
 /** Dash phase (same window as the i-frames) at ROLL_SPEED, then a short recovery at ROLL_RECOVERY_SPEED. */
 export const ROLL_DASH_TICKS = ROLL_IFRAME_TICKS;

@@ -135,6 +135,11 @@ const STRESS_PAYLOAD = packPayload(STRESS_BULLET_DAMAGE, BulletKind.STRESS, 0);
 // ---------------------------------------------------------------------------------------------
 // State
 
+/**
+ * `SimState.combat`: both bullet pools, the actor pool, the solo player's weapon sets, the stress emitter and the run's
+ * bullet counters. Hashed by `writeCombatHash` (the header numbers, every actor slot, the weapons, then each pool's
+ * live bullets) except the three event feeds at the end, which are unhashed and for the view only.
+ */
 export interface CombatState {
 	/** Every enemy bullet. Stateful (not plain data): hashed via writeStateHash, see writeCombatHash. */
 	enemyBullets: BulletSimulation;
@@ -142,7 +147,9 @@ export interface CombatState {
 	playerBullets: BulletSimulation;
 
 	// Creation parameters (fixed for the run; kept so cloneCombatState can rebuild pristine simulations).
+	/** Slot count of `enemyBullets` (`enemyBulletCapacity` of the stress target). Hashed in the combat header. */
 	enemyCapacity: number;
+	/** Slot count of `playerBullets` (`PLAYER_BULLET_CAPACITY`). Hashed in the combat header. */
 	playerCapacity: number;
 	/** The simulations' bounds cube half-extent: Infinity (math.huge) with a bullet blocker, else the fallback. */
 	boundsLimit: number;
@@ -161,15 +168,31 @@ export interface CombatState {
 
 	/** Stress mode: target live enemy bullets (0 = off), ring origin, ring heading, emitter id. */
 	stressTarget: number;
+	/** Stress ring origin x, world units (from `SimConfig.stress`; 0 when off). */
 	stressX: number;
+	/** Stress ring origin z, world units. */
 	stressZ: number;
+	/**
+	 * X of the next stress ring's unit heading. Starts at (0, 1) and is turned by the fixed spiral step (`turnDir`)
+	 * after every ring fired.
+	 */
 	stressDirX: number;
+	/** Z of the next stress ring's unit heading. */
 	stressDirZ: number;
+	/**
+	 * The stress emitter's id in `enemyBullets`, acquired after the actors' ids when the encounter spawns; 0 while
+	 * stress mode is off.
+	 */
 	stressEmitterId: number;
 
 	/** Totals for this run: bullets spawned per simulation, and bullets a full pool dropped. */
 	enemySpawned: number;
+	/** Player bullets spawned this run, every source included (weapons, reflections, build effects). Hashed. */
 	playerSpawned: number;
+	/**
+	 * Bullets of either pool that a burst asked for and did not get this run (a full pool, or the builds' effect
+	 * budget). Hashed.
+	 */
 	dropped: number;
 
 	/**
@@ -816,6 +839,10 @@ export function writeActorsHash(c: Readonly<CombatState>, out: number[]): void {
 	for (const a of c.actors) writeActorHash(a, out);
 }
 
+/**
+ * Dump names for `writeActorsHash`, same order: `actorHashNames` of every slot, free ones included, appended to `out`.
+ * Read by the labelled hash dump (`../hashLayout.ts`).
+ */
 export function actorsHashNames(c: Readonly<CombatState>, out: string[]): void {
 	for (let i = 0; i < c.actors.size(); i++) actorHashNames(c.actors[i], i, out);
 }
