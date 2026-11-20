@@ -40,6 +40,68 @@
 					}
 				]
 			}
+		},
+		{
+			"files": ["src/shared/sim/**/*.ts", "src/shared/dungeon/**/*.ts"],
+			"excludedFiles": ["*.spec.ts"],
+			"rules": {
+				"no-restricted-globals": [
+					"error",
+					{"name": "game", "message": "Not in src/shared/sim or src/shared/dungeon: the sim is deterministic and Roblox-API-free (CLAUDE.md)."},
+					{"name": "workspace", "message": "Not in src/shared/sim or src/shared/dungeon: the sim is deterministic and Roblox-API-free (CLAUDE.md)."},
+					{"name": "script", "message": "Not in src/shared/sim or src/shared/dungeon: the sim is deterministic and Roblox-API-free (CLAUDE.md)."},
+					{"name": "Instance", "message": "Not in src/shared/sim or src/shared/dungeon: the sim is deterministic and Roblox-API-free (CLAUDE.md)."},
+					{"name": "DateTime", "message": "Not in src/shared/sim or src/shared/dungeon: the sim is deterministic and Roblox-API-free (CLAUDE.md)."},
+					{"name": "Random", "message": "Not in src/shared/sim or src/shared/dungeon: the sim is deterministic and Roblox-API-free (CLAUDE.md)."},
+					{"name": "task", "message": "Not in src/shared/sim or src/shared/dungeon: the sim is deterministic and Roblox-API-free (CLAUDE.md)."},
+					{"name": "tick", "message": "Not in src/shared/sim or src/shared/dungeon: the sim is deterministic and Roblox-API-free (CLAUDE.md)."},
+					{"name": "time", "message": "Not in src/shared/sim or src/shared/dungeon: the sim is deterministic and Roblox-API-free (CLAUDE.md)."},
+					{"name": "elapsedTime", "message": "Not in src/shared/sim or src/shared/dungeon: the sim is deterministic and Roblox-API-free (CLAUDE.md)."},
+					{"name": "wait", "message": "Not in src/shared/sim or src/shared/dungeon: the sim is deterministic and Roblox-API-free (CLAUDE.md)."},
+					{"name": "delay", "message": "Not in src/shared/sim or src/shared/dungeon: the sim is deterministic and Roblox-API-free (CLAUDE.md)."},
+					{"name": "spawn", "message": "Not in src/shared/sim or src/shared/dungeon: the sim is deterministic and Roblox-API-free (CLAUDE.md)."},
+					{"name": "Axes", "message": "Not in src/shared/sim or src/shared/dungeon: the sim is deterministic and Roblox-API-free (CLAUDE.md)."},
+					{"name": "BrickColor", "message": "Not in src/shared/sim or src/shared/dungeon: the sim is deterministic and Roblox-API-free (CLAUDE.md)."},
+					{"name": "CFrame", "message": "Not in src/shared/sim or src/shared/dungeon: the sim is deterministic and Roblox-API-free (CLAUDE.md)."},
+					{"name": "Color3", "message": "Not in src/shared/sim or src/shared/dungeon: the sim is deterministic and Roblox-API-free (CLAUDE.md)."},
+					{"name": "ColorSequence", "message": "Not in src/shared/sim or src/shared/dungeon: the sim is deterministic and Roblox-API-free (CLAUDE.md)."},
+					{"name": "ColorSequenceKeypoint", "message": "Not in src/shared/sim or src/shared/dungeon: the sim is deterministic and Roblox-API-free (CLAUDE.md)."},
+					{"name": "Enum", "message": "Not in src/shared/sim or src/shared/dungeon: the sim is deterministic and Roblox-API-free (CLAUDE.md)."},
+					{"name": "Faces", "message": "Not in src/shared/sim or src/shared/dungeon: the sim is deterministic and Roblox-API-free (CLAUDE.md)."},
+					{"name": "NumberRange", "message": "Not in src/shared/sim or src/shared/dungeon: the sim is deterministic and Roblox-API-free (CLAUDE.md)."},
+					{"name": "NumberSequence", "message": "Not in src/shared/sim or src/shared/dungeon: the sim is deterministic and Roblox-API-free (CLAUDE.md)."},
+					{"name": "NumberSequenceKeypoint", "message": "Not in src/shared/sim or src/shared/dungeon: the sim is deterministic and Roblox-API-free (CLAUDE.md)."},
+					{"name": "Ray", "message": "Not in src/shared/sim or src/shared/dungeon: the sim is deterministic and Roblox-API-free (CLAUDE.md)."},
+					{"name": "Rect", "message": "Not in src/shared/sim or src/shared/dungeon: the sim is deterministic and Roblox-API-free (CLAUDE.md)."},
+					{"name": "Region3", "message": "Not in src/shared/sim or src/shared/dungeon: the sim is deterministic and Roblox-API-free (CLAUDE.md)."},
+					{"name": "UDim", "message": "Not in src/shared/sim or src/shared/dungeon: the sim is deterministic and Roblox-API-free (CLAUDE.md)."},
+					{"name": "UDim2", "message": "Not in src/shared/sim or src/shared/dungeon: the sim is deterministic and Roblox-API-free (CLAUDE.md)."},
+					{"name": "Vector2", "message": "Not in src/shared/sim or src/shared/dungeon: the sim is deterministic and Roblox-API-free (CLAUDE.md)."},
+					{"name": "Vector2int16", "message": "Not in src/shared/sim or src/shared/dungeon: the sim is deterministic and Roblox-API-free (CLAUDE.md)."},
+					{"name": "Vector3", "message": "Not in src/shared/sim or src/shared/dungeon: the sim is deterministic and Roblox-API-free (CLAUDE.md)."},
+					{"name": "Vector3int16", "message": "Not in src/shared/sim or src/shared/dungeon: the sim is deterministic and Roblox-API-free (CLAUDE.md)."}
+				],
+				"no-restricted-properties": [
+					"error",
+					{"object": "math", "property": "random", "message": "Not in src/shared/sim or src/shared/dungeon: the sim is deterministic and Roblox-API-free (CLAUDE.md)."},
+					{"object": "math", "property": "randomseed", "message": "Not in src/shared/sim or src/shared/dungeon: the sim is deterministic and Roblox-API-free (CLAUDE.md)."},
+					{"object": "math", "property": "noise", "message": "Not in src/shared/sim or src/shared/dungeon: the sim is deterministic and Roblox-API-free (CLAUDE.md)."},
+					{"object": "os", "property": "clock", "message": "Not in src/shared/sim or src/shared/dungeon: the sim is deterministic and Roblox-API-free (CLAUDE.md)."},
+					{"object": "os", "property": "time", "message": "Not in src/shared/sim or src/shared/dungeon: the sim is deterministic and Roblox-API-free (CLAUDE.md)."},
+					{"object": "os", "property": "date", "message": "Not in src/shared/sim or src/shared/dungeon: the sim is deterministic and Roblox-API-free (CLAUDE.md)."},
+					{"object": "os", "property": "difftime", "message": "Not in src/shared/sim or src/shared/dungeon: the sim is deterministic and Roblox-API-free (CLAUDE.md)."}
+				],
+				"no-restricted-imports": [
+					"error",
+					{
+						"patterns": [
+							{"group": ["server", "server/*", "client", "client/*"], "message": "shared code never imports client or server."},
+							{"group": ["shared/*", "!shared/sim", "!shared/dungeon", "!shared/jsmath", "!shared/fixtures-generated"], "message": "The sim and the dungeon import only each other, shared/jsmath and generated fixtures (the sim is deterministic and Roblox-API-free (CLAUDE.md))."},
+							{"group": ["@rbxts/*", "@flamework/*"], "message": "No Roblox packages in the sim or the dungeon (the sim is deterministic and Roblox-API-free (CLAUDE.md))."}
+						]
+					}
+				]
+			}
 		}
 	]
 }
