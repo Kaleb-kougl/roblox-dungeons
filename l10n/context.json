@@ -2167,6 +2167,12 @@
 	"hud.leaderboard.unavailable": {
 		"note": "Status line in the leaderboards panel when the board can't be read."
 	},
+	"hud.left": {
+		"note": "Main line of the run-over panel after the player chose Leave run in a solo run (the run ends and its stats show). {key} is a key or button name such as \"R\", \"E\", \"Space\" or \"D-pad down\" (from the player's bindings; currently always English) that starts a new run. Sentence; the dash may be replaced by the language's usual punctuation.",
+		"example": {
+			"key": "R"
+		}
+	},
 	"hud.level": {
 		"note": "Short character-level label (\"Lv\" = level). {level} is a number. Reserved: kept in the theme contract from the original web build; the current Roblox build does not show it.",
 		"example": {
@@ -3152,6 +3158,12 @@
 		"note": "Run-over line when the server stopped a co-op run. {reason} is a short technical reason from the server (English); {key} is a key or button name such as \"R\", \"B\" or \"Backspace\" (currently always English).",
 		"example": {
 			"reason": "desync",
+			"key": "R"
+		}
+	},
+	"menu.partyLeft": {
+		"note": "Run-over line after the player chose Leave run in a co-op run: their run ends and its stats show while the rest of the party plays on. {key} is a key or button name such as \"R\", \"B\" or \"Backspace\" (currently always English).",
+		"example": {
 			"key": "R"
 		}
 	},

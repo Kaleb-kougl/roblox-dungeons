@@ -475,11 +475,14 @@ export interface RunOverVerdict {
 /**
  * A party run's main run-over line: "the party is down", or, once the server rejected THIS run (`run`: a desync, an
  * error, expiry; it may have ended the run before the wipe), that the server ended it, with the verdict's reason.
+ * `left`: this player left the run with Leave run (leaveRun.ts runOverLeft): that line, whatever the verdict says.
  */
 export function partyRunOverLine(
 	verdict: RunOverVerdict,
 	run: number,
+	left = false,
 ): { readonly key: string; readonly reason: string } {
+	if (left) return { key: MENU_STRINGS.partyLeft, reason: "" };
 	if (verdict.status !== "rejected" || verdict.run !== run) return { key: MENU_STRINGS.partyDown, reason: "" };
 	return { key: MENU_STRINGS.partyEnded, reason: verdict.reason ?? verdict.code ?? "" };
 }

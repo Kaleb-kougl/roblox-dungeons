@@ -25,6 +25,8 @@ export const HUD_STRINGS = {
 	bossPhase: "boss.hud.phase",
 	paused: "hud.paused",
 	dead: "hud.dead",
+	/** Run-over main line after Leave run in a solo run (the forfeit counts as a death; the stats still show). */
+	left: "hud.left",
 	victory: "hud.victory",
 	restartAlt: "hud.restartAlt",
 	resume: "hud.pause.resume",

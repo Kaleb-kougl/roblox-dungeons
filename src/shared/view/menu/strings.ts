@@ -35,6 +35,8 @@ export const MENU_STRINGS = {
 	coopHint: "menu.coopHint",
 	partyDown: "menu.partyDown",
 	partyEnded: "menu.partyEnded",
+	/** Run-over line after Leave run in a party run (the party plays on; the panel shows the run so far). */
+	partyLeft: "menu.partyLeft",
 	invitesBadge: "menu.invitesBadge",
 	/** Roblox's invite prompt without a lobby (docs/INVITES.md ID7). */
 	inviteFriends: "menu.inviteFriends",

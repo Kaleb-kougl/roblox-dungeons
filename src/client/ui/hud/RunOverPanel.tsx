@@ -5,6 +5,7 @@ import {
 	selectCodexRunSummary,
 	selectInputDevice,
 	selectBaselineRun,
+	selectLeftRun,
 	selectLastBossId,
 	selectMenuScreen,
 	selectMyLobbyId,
@@ -47,6 +48,7 @@ import {
 	recapTabsShown,
 	runOverRibbonKey,
 	scoreBreakdownRows,
+	soloRunOverLineKey,
 	type RecapLayout,
 } from "shared/view/hud";
 import {
@@ -60,6 +62,7 @@ import {
 	runOverExitLayout,
 	runOverExits,
 	runOverIcon,
+	runOverLeft,
 	screenSkin,
 	tabStep,
 	type RunOverExitButton,
@@ -506,6 +509,9 @@ export function RunOverPanel() {
 	const baselineRun = useSelector(selectBaselineRun);
 	const recap = useSelector(selectRecap);
 	const menuScreen = useSelector(selectMenuScreen);
+	// Leave run (solo: the forfeit ends it as a death; party: the run ends here, the party plays on): the panel names
+	// it as a leave.
+	const left = runOverLeft(useSelector(selectLeftRun), info.run);
 	// claude/codex-plan.md CX9: the Codex row shows (CodexRunRow draws it; the compact stats tighten only then).
 	const codexRow = codexRecapRow(useSelector(selectCodexRunSummary), str) !== undefined;
 	// docs/SILVER.md SV8: the run's Silver rows show (a paying world's run the client froze figures for).
@@ -531,13 +537,11 @@ export function RunOverPanel() {
 	const otherKey = device === "gamepad" ? hint.keyboard : padKey;
 	const bossName = lastBoss !== "" ? str(`${lastBoss}.name`) : "";
 	const exits = runOverExits(info.coop, myLobby !== undefined);
-	const party = partyRunOverLine(verdict, info.run);
+	const party = partyRunOverLine(verdict, info.run, left);
 	const verdictText = verdictLine(verdict);
 	const main = info.coop
 		? str(party.key, { key, reason: party.reason })
-		: victory
-		? str(HUD_STRINGS.victory, { name: bossName, key })
-		: str(HUD_STRINGS.dead, { key });
+		: str(soloRunOverLineKey(victory, left), { name: bossName, key });
 	// docs/RUN_RECAP.md RR5: this run's recap (none: the old panel exactly).
 	const recapOn = recap.run !== 0 && recap.run === info.run;
 	// docs/ARCHER.md AR7: Character beside Again (solo runs played as a character; never a party run's Back to lobby).

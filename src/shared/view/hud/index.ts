@@ -1,6 +1,6 @@
 /**
  * Barrel for the HUD's pure helpers and tunables: the font token, layout sizes, the UIScale rule, hearts, the clock,
- * boss phases, every theme string key the HUD and the Options screen read, and the tutorial's HUD / marker
+ * boss phases, every theme string key the HUD and the Options screen read, the solo run-over line (runOverLine.ts), and the tutorial's HUD / marker
  * presentation (tutorial.ts), the co-op spectate bar (spectate.ts), the corner panels' anchors (corners.ts), the
  * timed hints (hints.ts), the in-run HUD's footprint budget (footprint.ts, docs/HUD_LAYOUT.md H2; the corner minimap's box, minimapHud.ts), wrapping rows
  * of equal cells (wrap.ts), the corner panels' occlusion fade (occlusion.ts, H7) and the combo's tiers, kill pitch,
@@ -28,6 +28,7 @@
  */
 export * from "./layout";
 export * from "./strings";
+export * from "./runOverLine";
 export * from "./progression";
 export * from "./options";
 export * from "./language";

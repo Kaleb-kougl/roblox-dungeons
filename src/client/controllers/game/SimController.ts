@@ -103,7 +103,14 @@ import {
 	type DrawnPlayerOf,
 } from "shared/view/predict";
 import { PROGRESSION_VIEW, boardFor, toastFor, type PendingRunClaim } from "shared/view/hud";
-import { afterRobloxMenuClosed, lobbyStartAccepted, restartForfeits } from "shared/view/menu";
+import {
+	LEFT_RUN_END_REASON,
+	afterForfeitStep,
+	afterRobloxMenuClosed,
+	lobbyStartAccepted,
+	partyExitStep,
+	restartForfeits,
+} from "shared/view/menu";
 import { ownedCharacterOr, statusUpgrades } from "shared/view/silver";
 import type { WalletStatus } from "shared/wallet";
 import { ENDLESS_FIRST_FLOOR, FloorModifier, type Dungeon, type FloorSecret } from "shared/dungeon";
@@ -369,9 +376,12 @@ function memberName(userId: number): string {
  * Menu (task L3): no run starts on its own; MenuController calls `startSolo()` (Play solo, a one-player lobby's
  * `lobbyRunStart`, or at once with KV_SkipMenu), and a party run starts on `partyRunStarted` for the lobby this
  * client is in (shared/view/menu lobbyStartAccepted). `leaveRun()` (pause overlay "Leave run", task L6): a solo run is
- * forfeited (LiveRun.requestForfeit: it ends as a death and is submitted like one), a party run is left with
- * `lockstepLeave`; `exitRun()` leaves a finished run (run-over "Main menu" / "Back to lobby"). Either way the run
- * stops (no context, the HUD inactive) and the exit listener (MenuController) opens the menu. R / Restart mid-run
+ * forfeited (LiveRun.requestForfeit: it ends as a death and is submitted like one) and then shows its run-over panel
+ * with the run's stats ("You left the run"; the game slice's `leftRun`), a party run is left with `lockstepLeave` and
+ * ended on this client (LockstepClient.end: the party plays on, nothing more is stepped here) and shows its run-over
+ * panel with the run up to the leave; `exitRun()` leaves a finished run (run-over "Main menu" / "Back to lobby"; at
+ * once after a leave, else a party run waits for its verdict). A run that stops has no context and the HUD inactive,
+ * and the exit listener (MenuController) opens the menu. R / Restart mid-run
  * forfeits a ranked solo run too and starts the next one once that death was submitted (restartForfeits); in a party
  * run R only works once the party is down, and then goes back to the lobby.
  *
@@ -459,10 +469,18 @@ export class SimController implements OnStart {
 	private startRequests = 0;
 	/** Back to the lobby asked after the party went down, before its verdict: the run is left when it arrives. */
 	private exitAfterVerdict = false;
-	/** Leave run was asked: the forfeit tick is pending; the run is left once its death was submitted. */
+	/**
+	 * Leave run was asked: the forfeit tick is pending; once its death was submitted the run stays on its run-over
+	 * panel (the run's stats), from which Again / Main menu go on.
+	 */
 	private leaveAfterForfeit = false;
 	/** R / Restart forfeited a ranked run: the next run starts once its death was submitted. */
 	private restartAfterForfeit = false;
+	/**
+	 * Leave run ended the party run on this client (lockstepLeave sent, LockstepClient.end): its run-over panel shows,
+	 * and Back to lobby goes at once (no wait for the party's verdict).
+	 */
+	private leftPartyRun = false;
 	/** The lobby the next solo run belongs to (startSolo); "" for the main menu's Play solo and for restarts. */
 	private nextRunLobbyId = "";
 	/**
@@ -582,6 +600,8 @@ export class SimController implements OnStart {
 		Events.lockstepFrames.connect((runId, firstTick, data, hashAck, echo) => {
 			const coop = this.ctx?.coop;
 			if (coop === undefined || coop.runId !== runId) return;
+			// A run ended here (left, or ended by the server) steps nothing more: its frames are not kept.
+			if (coop.endReason() !== undefined) return;
 			// The local clock stamps the arrival for the playout clock (docs/FRAME_PACING.md Design 6) and times this
 			// client's input echo for the measured lead (Revision 2, Design 9; a malformed echo is ignored).
 			const now = os.clock();
@@ -1062,8 +1082,10 @@ export class SimController implements OnStart {
 
 	/**
 	 * Leave run (pause overlay / party overlay, after the confirm). Solo: the run is forfeited (the next frame steps
-	 * the forfeit tick: a death, submitted like any death), then left. Party: `lockstepLeave` (the server plays this
-	 * player as disconnected; the others play on) and the run is left at once. A tutorial run (Skip tutorial) is left
+	 * the forfeit tick: a death, submitted like any death), then its run-over panel shows the run's stats (the player
+	 * goes on with Again or Main menu, as after any death). Party: `lockstepLeave` (the server plays this
+	 * player as disconnected; the others play on), the run is ended on this client and its run-over panel shows the
+	 * run up to the leave (Back to lobby from there goes at once). A tutorial run (Skip tutorial) is left
 	 * at once, unsubmitted. A finished run is just left; a ranked start still waiting for the server is dropped (the
 	 * server abandons that session at the next startRun).
 	 */
@@ -1077,7 +1099,15 @@ export class SimController implements OnStart {
 		if (coop !== undefined) {
 			if (!coop.isOver()) {
 				Events.lockstepLeave.fire(coop.runId);
-				print(`[Sim] left co-op run ${ctx.counter} (${coop.runId})`);
+				print(`[Sim] left co-op run ${ctx.counter} (${coop.runId}): its run-over panel shows`);
+				// The party plays on without this client; here the run ends where it was left, and its run-over panel
+				// shows the stats so far (Back to lobby goes at once: exitRun).
+				coop.end(LEFT_RUN_END_REASON);
+				this.leftPartyRun = true;
+				clientStore.setRunLeft(ctx.counter);
+				this.hudTimer = HUD_SNAPSHOT_INTERVAL_SEC;
+				clientStore.setSnapshot(this.coopSnapshot(coop));
+				return;
 			}
 			coop.stop();
 			this.stopRun("left");
@@ -1112,11 +1142,16 @@ export class SimController implements OnStart {
 		}
 		const coop = ctx.coop;
 		if (coop !== undefined) {
-			if (!coop.isOver()) {
+			const step = partyExitStep(
+				coop.isOver(),
+				this.leftPartyRun,
+				this.rankedRuns.get(coop.runId)?.decided === true,
+			);
+			if (step === "leave") {
 				this.leaveRun();
 				return;
 			}
-			if (this.rankedRuns.get(coop.runId)?.decided === true) {
+			if (step === "exit") {
 				coop.stop();
 				this.stopRun("exited");
 			} else if (!this.exitAfterVerdict) {
@@ -1225,6 +1260,7 @@ export class SimController implements OnStart {
 	/** Drops the pending leave / restart / exit requests (a new run starts, or the run was left). */
 	private clearExits(): void {
 		this.leaveAfterForfeit = false;
+		this.leftPartyRun = false;
 		this.restartAfterForfeit = false;
 		this.exitAfterVerdict = false;
 		this.pendingReset = false;
@@ -2032,17 +2068,24 @@ export class SimController implements OnStart {
 
 		const outcome = run.outcome();
 		if (outcome !== "playing" && !this.submitted) this.submit(outcome === "dead" ? "death" : "victory");
-		// Leave run / a forfeiting restart: the forfeit tick ran and its death was submitted.
-		if (outcome !== "playing" && this.submitted) {
-			if (this.leaveAfterForfeit) {
-				this.stopRun("left");
-				return;
-			}
-			if (this.restartAfterForfeit) {
-				this.restartAfterForfeit = false;
-				this.beginRun();
-				return;
-			}
+		// Leave run / a forfeiting restart: the forfeit tick ran and its death was submitted. Leave run stays on the
+		// finished run, so its run-over panel shows the run's stats ("You left the run"; Again / Main menu from there);
+		// the pause it was asked from is lifted so the panel reads like any death.
+		const afterForfeit = afterForfeitStep(
+			this.leaveAfterForfeit,
+			this.restartAfterForfeit,
+			outcome !== "playing",
+			this.submitted,
+		);
+		if (afterForfeit === "runOver") {
+			this.leaveAfterForfeit = false;
+			clientStore.setRunLeft((this.ctx ?? ctx).counter);
+			this.unpause(run);
+			this.hudTimer = HUD_SNAPSHOT_INTERVAL_SEC;
+		} else if (afterForfeit === "restart") {
+			this.restartAfterForfeit = false;
+			this.beginRun();
+			return;
 		}
 
 		// M2 progression: toasts for this frame's events; the draft overlay follows the stick every frame.

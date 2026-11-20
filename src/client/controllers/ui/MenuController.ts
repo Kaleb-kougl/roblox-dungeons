@@ -59,16 +59,17 @@ function typing(): boolean {
  *              goes back (not while a juice settings / leaderboard panel is open), and closes the Leave run confirm and
  *              the party overlay first. Pad B goes through the owning focus scope instead (FocusController,
  *              docs/GAMEPAD_MENUS.md GM3; a screen's B calls screenBack)
- *   runs       any run start closes the menu; leaving a run (Leave run, run-over Main menu / Back to lobby)
- *              opens the lobby room while in a lobby, else the main menu (SimController.onRunExited)
+ *   runs       any run start closes the menu; leaving a run (run-over Main menu / Back to lobby) opens the lobby
+ *              room while in a lobby, else the main menu (SimController.onRunExited); Leave run (solo or party)
+ *              first shows the run's run-over panel with its stats (Again / Main menu / Back to lobby go on from there)
  *   lobby      joining or creating a lobby opens its room, and so does a lobby the server put this player in (an
  *              invite / party arrival) while a menu screen is up; leaving it (or being kicked) goes back to the
  *              browser (shared/view/menu lobbyChangePath). Never during a run, the tutorial or the first-run wait.
  *   invites    a menu screen opening (from none) asks for Roblox invite eligibility again when the cached answer
  *              is old (LobbyController.refreshEligibility)
  *   co-op      party runs never pause, so the pause key (P / Start) opens the non-pausing party overlay instead
- *              (Resume / Leave run / settings / leaderboards; Leave run -> lockstepLeave, then the lobby room, which
- *              shows "Run in progress" until the lobby is back to forming)
+ *              (Resume / Leave run / settings / leaderboards; Leave run -> lockstepLeave and the run's run-over panel,
+ *              then Back to lobby: the lobby room, which shows "Run in progress" until the lobby is back to forming)
  *   character  (docs/ARCHER.md AR7 / AR8, owner answers 2 and 8) every run start from the menu opens the character
  *              screen first (MenuScreen `character`, shared/view/menu character.ts): Play solo and the Daily card over
  *              the main menu, the tutorial outro's Start my first run, the dev panel's Go (DevModeController; over the
@@ -353,7 +354,7 @@ export class MenuController implements OnStart {
 		clientStore.setLeaveConfirm(open);
 	}
 
-	/** Leave run (after the confirm): solo forfeits (a death, submitted), co-op sends lockstepLeave; then the menu. */
+	/** Leave run (after the confirm): solo forfeits (a death), co-op sends lockstepLeave; then its run-over panel. */
 	leaveRun(): void {
 		this.closeOverlays();
 		this.sim.leaveRun();

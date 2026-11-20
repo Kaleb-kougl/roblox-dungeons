@@ -1193,6 +1193,7 @@ export const REQUIRED_STRING_KEYS: ReadonlyArray<string> = ((): string[] => [
 	"hud.armor",
 	"hud.flask",
 	"hud.dead",
+	"hud.left",
 	"menu.play",
 	"menu.options",
 	"menu.quit",

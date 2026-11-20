@@ -155,6 +155,11 @@ export interface GameState {
 	 */
 	readonly sighting: ToastView | undefined;
 	readonly map: MapView;
+	/**
+	 * The run (RunInfo.run) the player left with Leave run (solo: a forfeit, it ends as a death; party: the run ends on
+	 * this client while the party plays on). Its run-over panel shows, with "You left the run" as its main line; 0: none.
+	 */
+	readonly leftRun: number;
 }
 
 const NO_VERDICT: VerdictView = { status: "none" };
@@ -184,6 +189,7 @@ const initialState: GameState = {
 	toasts: [],
 	sighting: undefined,
 	map: NO_MAP,
+	leftRun: 0,
 };
 
 export const gameSlice = createProducer(initialState, {
@@ -225,6 +231,8 @@ export const gameSlice = createProducer(initialState, {
 		sighting: undefined,
 		map: NO_MAP,
 	}),
+	/** Leave run ended this run (solo or party): the run-over panel says so. */
+	setRunLeft: (state, run: number) => (state.leftRun === run ? state : { ...state, leftRun: run }),
 	/** The minimap's floor state (MinimapController): whether this floor has a map, and the full map toggle. */
 	setMapView: (state, map: MapView) =>
 		state.map.available === map.available && state.map.open === map.open ? state : { ...state, map },
@@ -256,3 +264,4 @@ export const selectGameActive = (state: { game: GameState }) => state.game.activ
 export const selectToasts = (state: { game: GameState }) => state.game.toasts;
 export const selectSighting = (state: { game: GameState }) => state.game.sighting;
 export const selectMapView = (state: { game: GameState }) => state.game.map;
+export const selectLeftRun = (state: { game: GameState }) => state.game.leftRun;

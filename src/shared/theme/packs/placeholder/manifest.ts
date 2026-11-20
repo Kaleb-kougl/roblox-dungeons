@@ -721,6 +721,7 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"hud.armor": "Armor",
 		"hud.flask": "Flask",
 		"hud.dead": "You died — press {key} to retry",
+		"hud.left": "You left the run — press {key} to play again",
 		"hud.victory": "{name} defeated — press {key} to play again",
 		"hud.weaponSet": "Set {n}",
 		"hud.weaponSwap": "{key} swap",
@@ -979,6 +980,7 @@ export const PLACEHOLDER_MANIFEST: ThemeManifest = {
 		"menu.coopHint": "{key} to close · the run does not pause",
 		"menu.partyDown": "The party is down — press {key} to return",
 		"menu.partyEnded": "The server ended the run ({reason}) — press {key} to return",
+		"menu.partyLeft": "You left the run — press {key} to return",
 		"menu.invitesBadge": "Lobby invites: {count}",
 		"menu.inviteFriends": "Invite friends",
 		// --- lobby.* (task L5: lobby browser, lobby room, invites, notices) --------------------------
