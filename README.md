@@ -25,7 +25,7 @@ Then open a place in Roblox Studio, connect the Rojo plugin (7.7.x) and press Pl
 | `npm run typecheck` / `lint` / `format` | tsc, eslint (zero warnings), prettier |
 | `npm run verify` | typecheck, lint, build, headless tests: the pre-merge gate |
 | `npm run test:plugin` | Install the Studio test-runner plugin (runs the same specs with `@rbxts/jest` in Studio) |
-| `npm run docs` | Build the API reference from the doc comments into `build/api/` (TypeDoc; [docs/DOC_COMMENTS.md](docs/DOC_COMMENTS.md)) |
+| `npm run docs` | Build the API reference (the doc comments, with `docs/*.md` as pages) into `build/api/` (TypeDoc; [docs/DOC_COMMENTS.md](docs/DOC_COMMENTS.md)) |
 | `npm run gen:fixtures` | `fixtures/*.json` to `src/shared/fixtures-generated/` (runs automatically) |
 
 ## Layout

@@ -138,7 +138,8 @@ npm run l10n:export # (after build) English + l10n/context.json -> l10n/out/kv-s
 npm run l10n:import -- l10n/in/table.csv   # the whole downloaded cloud table -> shared/theme/locales/*.ts + l10n/report.md
 npm run l10n:check  # (after build) translation coverage / stale / context report (test:l10n, check:autolocalize: in verify)
 npm run check:locals # (after build; in verify) top-level locals of every compiled module: fails past Luau's 200, warns from 185
-npm run docs        # TypeDoc -> build/api/index.html: the API reference from the doc comments (about 30 s, never committed)
+npm run docs        # TypeDoc -> build/api/index.html: the API reference from the doc comments, with docs/*.md as pages
+                    # and every `docs/NAME.md` a link (about 33 s, never committed)
 npm run docs:check  # (in verify) TypeDoc without output: fails on a broken {@link}, an unknown tag, a @param naming no parameter
 npm run check:docs  # (in verify) every export has a /** */ (fields too in shared/sim, dungeon, lockstep), except the known
                     # gaps in scripts/doc-coverage.json; after documenting some: `npm run check:docs -- --update`
@@ -200,7 +201,7 @@ split-16-bit `imul`, no getters in sim state.
   `dump:lists`.
 - **Every exported declaration has a `/** */`** that says what the types cannot (units, ranges, what is hashed or
   mutated), prose first: no types in comments, `@param` / `@returns` only where they add something, a file header
-  ends with `@module`, `{@link}` for symbols worth following. In `shared/sim`, `shared/dungeon` and `shared/lockstep`
+  ends with `@module`, `{@link}` for symbols worth following; a plan doc is cited as plain `docs/NAME.md` (the site links it). In `shared/sim`, `shared/dungeon` and `shared/lockstep`
   every field of an exported interface has one too. `check:docs` fails on a new gap; never add a name to
   `scripts/doc-coverage.json` (docs/DOC_COMMENTS.md).
 - **No magic numbers.** Tunables live in `shared/config` (or the data module that owns them), never inline in logic.

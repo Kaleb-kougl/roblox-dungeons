@@ -14,8 +14,10 @@ presentation change. `DAILY.ruleset` unchanged. One new devDependency (`typedoc`
 a clean `docs:check`, the standard in CLAUDE.md) and **DC7**: the deterministic core (`shared/sim`, `shared/dungeon`,
 `shared/lockstep`) has no gap left, exports or fields, **DC8** and **DC9**: **the known-gaps list is empty.** Every
 exported declaration in `src/` has a doc comment (generated sources apart, DCD10), and `check:docs` fails on the
-first new one without. **Open: DC10** (links), **DC11** (the plan docs in the site), and a second look at the
-comments the subagents flagged as uncertain (about 170 over DC7-DC9, listed in each task's notes). Not yet done on the owner's Mac:
+first new one without. **DC10** (links) and **DC11** (the plan docs in the site, every `docs/NAME.md` a link) are
+built too: **every task of this plan is done.** Left: a second look at the comments the subagents flagged as
+uncertain (about 170 over DC7-DC9, listed in each task's notes), and on the owner's Mac `npm install`,
+`npm run verify` and `npm run docs`. Not yet done on the owner's Mac:
 `npm install` (for `typedoc`), `npm run docs`, a full `npm run verify` (Verification).
 
 **Owner (2026-11-20): every call answered.** `docs:check` in `verify`; one page per file; interface fields gated in
@@ -59,7 +61,12 @@ bullet that points here.
 - **A file's header ends with `@module`** on its own last line, so the header becomes the module page's text.
   A file whose header is also its only declaration's comment (`theme/testing/runOf.ts`) needs none.
 - **Code symbols are linked with `{@link name}`** when the reader should follow them; backticks stay for values,
-  paths and anything not exported. Plan docs stay plain text: `docs/WALL_SLIDE.md WS4`.
+  paths and anything not exported. A bare name resolves when the file can see it (declared or imported there, or
+  re-exported by the barrel the comment is in); otherwise name its module:
+  `{@link shared/theme/contract/strings!REQUIRED_STRING_KEYS | REQUIRED_STRING_KEYS}`. A member is
+  `{@link SimState.pellets}`. `docs:check` fails on a link that does not resolve.
+- **Plan docs are cited as plain text**, `docs/WALL_SLIDE.md WS4`: the site turns each `docs/NAME.md` into a link
+  (Design 2), so comments stay readable in the editor. Not inside backticks if it should link.
 - **Allowed tags:** `@module`, `@param`, `@returns`, `@remarks`, `@example`, `@see`, `@throws`, `@deprecated`,
   `@internal`, `{@link}`. Anything else is an unknown-tag warning and fails `docs:check`.
 - **`@internal`** marks an export that exists for a sibling chunk or a spec and is not part of the directory's
@@ -81,6 +88,9 @@ bullet that points here.
 | `exclude` | `**/*.spec.ts(x)`, `**/fixtures-generated/**` | Specs and generated fixtures are not API |
 | `out` | `build/api` | `build/` is already gitignored (DCD3) |
 | `readme` | `README.md` | The landing page |
+| `projectDocuments` | `docs/*.md` | Every plan doc is a page of the site (DC11) |
+| `plugin` | `./scripts/typedoc-doc-links.mjs` | Turns each `docs/NAME.md` in a comment or a doc into a link to that page |
+| `highlightLanguages` | TypeDoc's defaults + `lua`, `csv` | The docs' code blocks; an unlisted language is a warning, so an error |
 | `disableSources` | `true` | No git remote |
 | `excludeInternal` | `false` | `@internal` exports are shown, labelled |
 | `blockTags` / `inlineTags` | the allowed list of Design 1 | Unknown tags warn |
@@ -91,7 +101,7 @@ bullet that points here.
 Commands:
 
 ```
-npm run docs        # typedoc -> build/api/index.html (about 30 s, 124 MB, never committed)
+npm run docs        # typedoc -> build/api/index.html: the API and the plan docs (about 33 s, 136 MB, never committed)
 npm run docs:check  # typedoc --emit none: broken {@link}, unknown tags, @param names, unexported types (in verify, OC1)
 npm run check:docs  # the export coverage ratchet (in verify; Design 3)
 ```
@@ -343,14 +353,36 @@ and controller internals.
   says "(HUD scale percent)" of a group that holds more; overlong comment lines in `sprites/facing.ts`,
   `decor/director.ts` and `settings/display.ts`. `typecheck`, `docs:check`, prettier clean; `out:digest` identical
   but for the two network modules (Design 4).
-- [ ] **DC10. Links where they pay.** `{@link}` on the references a reader follows most: the sim barrel's header,
+- [x] **DC10. Links where they pay.** `{@link}` on the references a reader follows most: the sim barrel's header,
   `SimConfig`'s opt-in fields to their feature modules, archetype and weapon defs to their hooks, each theme
   feature module to its contract ids. Not a sweep of every backticked name. → Verify: `docs:check` clean; the
   `SimConfig` page links to each feature's module.
-- [ ] **DC11. Plan docs in the site** (owner 2026-11-20: yes). TypeDoc's `projectDocuments` with `docs/*.md`
+
+  **As built (2026-11-20).** Four places, 91 links. The sim barrel's header says where to start (`step`,
+  `stepParty`, `createSimState`, `SimConfig`, `SimState`, `hashState`). Each of `SimConfig`'s 15 opt-in fields links
+  its state (`SimState.pellets`) and, where one exists in that file's scope, its step function (`stepPellets`): the
+  field's type already links the feature's config. `registerArchetype` / `registerWeapon` link the def and each of
+  its hooks, and `ArchetypeDef` / `WeaponDef` link back. 21 theme feature modules list, as links, the contract lists
+  their headers name (`REQUIRED_STRING_KEYS`, `PORT_AUDIO_EVENTS`, `FX_IDS`, `REQUIRED_ASSET_IDS`, `SLOTS`,
+  `COLOR_ROLES`: 43 links, module-qualified since those files import nothing). What resolves was found by trying
+  (Design 1's rule). Rendered and checked: the `SimConfig` page's links open `SimState`'s fields and the step
+  functions' pages; `docs:check` clean; `out:digest` identical but for the two network modules.
+- [x] **DC11. Plan docs in the site** (owner 2026-11-20: yes). TypeDoc's `projectDocuments` with `docs/*.md`
   (not tried in DC0: spike it first and record build time and size); then `docs/<NAME>.md` in comments becomes a
   link. → Verify: every plan doc has a page and its tables render; a comment's `docs/WALL_SLIDE.md` opens that page;
   the spike's numbers recorded here. If `projectDocuments` cannot carry them, say so here and stop.
+
+  **As built (2026-11-20).** `projectDocuments: ["docs/*.md"]`: 85 pages under `documents/`, tables rendered. The
+  whole build went from 31 s / 124 MB to 33 s / 136 MB (9,904 files). Two code block languages the docs use (`lua`,
+  `csv`) had to be added to `highlightLanguages`, or each is a warning and `docs:check` fails. **The links are made
+  at render time, not written into the comments:** `scripts/typedoc-doc-links.mjs` (a TypeDoc plugin of 40 lines, no
+  import from `typedoc`) runs before the markdown parser and calls `scripts/doc-links.js` `linkDocMentions`
+  (+ `check-doc-links.test.js`, 4 cases): a `docs/NAME.md` in running text becomes a link to that doc's page,
+  relative to the page being rendered; code spans, fenced blocks, existing links, longer paths and names without a
+  page are left alone. 4,498 links in the built site (comments and docs alike). Rewriting the 6,295 mentions in the
+  sources as markdown links was the alternative and would have made every comment harder to read in the editor.
+  Checked: `shared/run/playerMover`'s page links `docs/WALL_SLIDE.md` to `documents/WALL_SLIDE.html`; `docs:check`
+  clean, 25 s. Not linked: mentions inside backticks (a deliberate rule; many headers cite docs that way).
 
 ## Verification (2026-11-20)
 
@@ -386,6 +418,9 @@ compiled code moved; `npm run verify` on the Mac is still the gate before mergin
   an accidental export non-exported, which is the better fix where it applies.
 - **DC4 touches 721 files** (one added line each). A branch that edits a header's last line conflicts; land it when
   the open worktrees are merged or rebase them straight after.
+- **A plan doc can now fail `verify`.** The docs are part of `docs:check`: a code block in a language missing from
+  `highlightLanguages`, or a broken relative link in a doc, is a warning and so an error. Add the language to
+  `typedoc.json`.
 - **`verify` grows** by about 30 s (`docs:check`, estimated from the full build) plus a few seconds (`check:docs`).
 - **TypeDoc is pinned to TypeScript's version.** A TypeScript upgrade (roblox-ts drives it) may need a TypeDoc
   bump in the same commit; 0.28.20 accepts 5.0 through 6.0.

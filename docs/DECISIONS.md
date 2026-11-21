@@ -1665,6 +1665,8 @@ Superseded in older entries (kept as written):
   every warning an error). `npm run out:digest` digests `out/` with comments stripped (rbxtsc copies comments into
   the Luau), to prove a commit is comment only. `@module` on 796 file headers; nine private types named by exported
   signatures are now exported (types only). The backfill (DC7-DC9, the same day) closed every gap: 1,470 exports and
-  851 core interface fields, comment only (`out:digest`); generated sources are skipped (DCD10). Open: links (DC10),
-  the plan docs in the site (DC11), a second look at the comments flagged as uncertain; `npm run verify` and
+  851 core interface fields, comment only (`out:digest`); generated sources are skipped (DCD10). `{@link}`s where a
+  reader follows them (DC10); `docs/*.md` are pages of the site and a small TypeDoc plugin
+  (`scripts/typedoc-doc-links.mjs`) links every `docs/NAME.md` cited in a comment or a doc (DC11). Open: a second
+  look at the comments flagged as uncertain; `npm run verify` and
   `npm run docs` not yet run on the owner's Mac.
