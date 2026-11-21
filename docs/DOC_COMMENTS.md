@@ -10,7 +10,7 @@ presentation change. `DAILY.ruleset` unchanged. One new devDependency (`typedoc`
 
 ## Status (2026-11-20)
 
-**Built 2026-11-20 on branch `doc-comments`: DC0-DC6** (TypeDoc, the ratchet, the digest, `@module` on the headers,
+**Built 2026-11-20 on branch `doc-comments`, merged to `main` the same day (owner; before `npm run verify` had run on the Mac): DC0-DC6** (TypeDoc, the ratchet, the digest, `@module` on the headers,
 a clean `docs:check`, the standard in CLAUDE.md) and **DC7**: the deterministic core (`shared/sim`, `shared/dungeon`,
 `shared/lockstep`) has no gap left, exports or fields, **DC8** and **DC9**: **the known-gaps list is empty.** Every
 exported declaration in `src/` has a doc comment (generated sources apart, DCD10), and `check:docs` fails on the
