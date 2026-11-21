@@ -1,5 +1,5 @@
 {
-	"name": "kaleb-vale-roblox",
+	"name": "roblox-dungeons",
 	"version": "0.1.0",
 	"description": "Roblox Dungeons: a co-op bullet-hell roguelike on Roblox (roblox-ts + Flamework + Reflex + React)",
 	"private": true,
@@ -20,7 +20,7 @@
 		"prelint": "npm run gen:fixtures",
 		"test": "npm run build && lune run scripts/lune/run-tests.luau",
 		"test:only": "lune run scripts/lune/run-tests.luau",
-		"test:plugin": "rojo build test-runner.project.json -o \"$HOME/Documents/Roblox/Plugins/KalebValeTestRunner.rbxm\"",
+		"test:plugin": "rojo build test-runner.project.json -o \"$HOME/Documents/Roblox/Plugins/RobloxDungeonsTestRunner.rbxm\"",
 		"check:assets": "node scripts/check-asset-ids.js",
 		"check:autolocalize": "node scripts/check-autolocalize.js",
 		"check:locals": "node scripts/check-luau-locals.js",
@@ -47,7 +47,7 @@
 		"audio:lock": "node scripts/audio/build-audio.js --lock",
 		"audio:audition": "node scripts/audio/build-audio.js --audition",
 		"verify": "npm run typecheck && npm run lint && npm run check:docs && npm run docs:check && npm run check:assets && npm run check:autolocalize && npm run test:art && npm run test:checks && npm run test:l10n && npm run build && npm run check:locals && npm run facts:check && npm run test:only",
-		"build:place": "npm run build && node -e \"require('fs').mkdirSync('build',{recursive:true})\" && rojo build publish.project.json -o build/kaleb-vale.rbxl"
+		"build:place": "npm run build && node -e \"require('fs').mkdirSync('build',{recursive:true})\" && rojo build publish.project.json -o build/roblox-dungeons.rbxl"
 	},
 	"keywords": [],
 	"author": "Kaleb Kougl",

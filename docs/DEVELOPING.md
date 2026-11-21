@@ -32,7 +32,7 @@ atlases or audio (`art:build`, `audio:build`) needs the licensed packs under `ar
 | `npm run build` | Generate the fixture modules, compile `src/` to `out/` with rbxtsc |
 | `npm run dev` | `rbxtsc -w` and `rojo serve` together |
 | `npm run typecheck` / `lint` / `format` | tsc, ESLint at zero warnings, Prettier |
-| `npm run build:place` | A publishable place, `build/kaleb-vale.rbxl`, without specs, fixtures or Jest |
+| `npm run build:place` | A publishable place, `build/roblox-dungeons.rbxl`, without specs, fixtures or Jest |
 | `npm run test:plugin` | Install the Studio test-runner plugin (the same specs under `@rbxts/jest` in Studio) |
 
 ### Checks (all part of `verify`)

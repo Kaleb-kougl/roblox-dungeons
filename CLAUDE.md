@@ -1,6 +1,7 @@
-# Kaleb-Vale (Roblox port)
+# Roblox Dungeons
 
-A port of a private TypeScript web build (top-down bullet-hell ARPG, M1 "First fight") to Roblox.
+**Roblox Dungeons** (repo `roblox-dungeons`): a co-op top-down bullet-hell roguelike on Roblox. It began as a port
+of a private TypeScript web build (M1 "First fight") and has grown past it.
 **roblox-ts + Flamework + Reflex + React**, synced with Rojo. The plan is `PLAN.md`; work it task by task.
 
 ## The source project
@@ -134,7 +135,7 @@ npm run test:only -- sim/rng   # rerun specs without rebuilding; args filter by 
 npm run test:only -- --census run/archer.survival   # opt-in census specs: their full sample (docs/ARCHER.md AR13)
 npm run build       # gen fixtures -> rbxtsc -> out/
 npm run dev         # rbxtsc -w + rojo serve
-npm run build:place # publishable place: build/kaleb-vale.rbxl from publish.project.json (no specs, fixtures or Jest)
+npm run build:place # publishable place: build/roblox-dungeons.rbxl from publish.project.json (no specs, fixtures or Jest)
 npm run test:plugin # Studio test-runner plugin (same specs under real @rbxts/jest in Studio)
 npm run art:build   # art/vendor -> art/build atlases + packs/vale/layout.ts / fxLayout.ts (art:lock rewrites art/vendor.lock.json)
 npm run test:art    # node:test specs of the atlas pipeline (scripts/art/*.test.js; part of verify)

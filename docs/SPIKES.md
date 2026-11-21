@@ -271,7 +271,7 @@ the first other player in the server. The server accepts at most one request per
   with 2 players to see the recipient checks), or from the server command bar
   `workspace:SetAttribute("KV_InviteSpike", true)`. Setting it false removes the remote, the folder, every watch and
   the options objects; the HUD panel goes.
-- **Published test place (the real run):** `npm run build:place`, open `build/kaleb-vale.rbxl` in Studio, add the
+- **Published test place (the real run):** `npm run build:place`, open `build/roblox-dungeons.rbxl` in Studio, add the
   Workspace attribute `KV_InviteSpike` = true **before publishing** (PlayerAdded must be watched from the first
   join), then File -> Publish to Roblox As -> a **test experience** (never the live one). The test accounts must be
   able to join it (public, or play access for them). Optional: `KV_InviteSpikeMessageId` (String) = a Notification

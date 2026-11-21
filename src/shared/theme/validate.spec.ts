@@ -286,7 +286,7 @@ describe("validateManifest: rejects bad manifests", () => {
 	it("checks locales and string placeholders", () => {
 		const m = clone();
 		at(m, "strings")["hud.level"] = "Lv {level";
-		m.locales = { fr: { "game.title": "Projet Kaleb-Vale", "not.a.key": "x" } };
+		m.locales = { fr: { "game.title": "Donjons Roblox", "not.a.key": "x" } };
 		expect(validateManifest(m)).toEqual([
 			'strings["hud.level"]: has a malformed placeholder (use {name} with letters, digits or _)',
 			'locales.fr["not.a.key"]: not in the default string table',
