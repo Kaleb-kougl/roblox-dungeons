@@ -1052,7 +1052,7 @@ function OptionsModal(props: { options: OptionsState; actions: HudActions }) {
 // ---------------------------------------------------------------------------------------------
 
 /**
- * The Options screen (task L4; the juice settings panel, a port of project-kaleb-vale src/fx/JuiceSettingsPanel.tsx
+ * The Options screen (task L4; the juice settings panel, a port of the web build's src/fx/JuiceSettingsPanel.tsx
  * @ 42897e2, grown into tabs): Juice (the panel's rows), Controls (rebinding, task L4b: Keyboard & mouse / Gamepad,
  * a row per rebindable action with its primary / secondary (keyboard) or button (pad), the capture prompt with its
  * countdown, the swap prompt, refusal notes, Clear, Reset device with a confirmation, and the input test strip), Audio

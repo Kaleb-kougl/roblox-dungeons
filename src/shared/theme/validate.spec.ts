@@ -1,4 +1,4 @@
-// Ported from project-kaleb-vale src/theme/validate.test.ts @ 42897e2. File checks became Roblox
+// Ported from the web build's src/theme/validate.test.ts @ 42897e2. File checks became Roblox
 // asset-ID checks and the `generated` kind became `placeholder`; every other case is kept.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { contrastRatio } from "./color";

@@ -2,7 +2,7 @@
  * Theme pack data types. A pack is a manifest module (`packs/<id>/manifest.ts`) that maps logical
  * IDs to Roblox assets, colors and strings. Gameplay code only ever sees the logical IDs.
  *
- * Ported from project-kaleb-vale `src/theme/types.ts` @ 42897e2. Unchanged: COLOR_ROLES, pivots,
+ * Ported from the web build's `src/theme/types.ts` @ 42897e2. Unchanged: COLOR_ROLES, pivots,
  * animation defs, biome defs, the manifest shape. Changed for Roblox: assets reference uploaded
  * Roblox content (`assetId: "rbxassetid://<n>"`) instead of pack-relative files, and the web's
  * `generated` kind (art drawn at load time) is replaced by `placeholder`: no art at all, the

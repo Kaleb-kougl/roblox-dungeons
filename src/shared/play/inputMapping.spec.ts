@@ -1,4 +1,4 @@
-// Port of project-kaleb-vale src/sim/devices.test.ts @ 42897e2 (the pure mapping), with the Roblox remaps
+// Port of the web build's src/sim/devices.test.ts @ 42897e2 (the pure mapping), with the Roblox remaps
 // (Tab -> E, Escape -> P), Enum.KeyCode names, and Roblox's up-positive thumbstick Y.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import {

@@ -1,5 +1,5 @@
 /**
- * FX events (port of project-kaleb-vale src/fx/events.ts @ 42897e2): what the hit tracker (tracker.ts) saw change in
+ * FX events (port of the web build's src/fx/events.ts @ 42897e2): what the hit tracker (tracker.ts) saw change in
  * the live sim during one rendered frame. Render-side only: derived by diffing ActorState against a render-side
  * snapshot, never written back into the sim.
  *

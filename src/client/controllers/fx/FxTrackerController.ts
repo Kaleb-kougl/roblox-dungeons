@@ -32,7 +32,7 @@ interface PhasedFrameHandler {
 }
 
 /**
- * The juice layer's event source (port of project-kaleb-vale src/fx/FxTracker.tsx @ 42897e2, the provider half). Once
+ * The juice layer's event source (port of the web build's src/fx/FxTracker.tsx @ 42897e2, the provider half). Once
  * per rendered frame, right after the SimController ran the frame's ticks (RENDER_ORDER.fxAfterSim), the pure
  * HitTracker (shared/view/fx) diffs the live actors against its snapshot and the frame's events go to every
  * subscriber: health bars, damage numbers, particles, the freeze frame (event handlers) and audio (frame handler).

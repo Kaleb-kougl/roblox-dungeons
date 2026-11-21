@@ -1,4 +1,4 @@
-// Ported from project-kaleb-vale src/theme/color.test.ts @ 42897e2.
+// Ported from the web build's src/theme/color.test.ts @ 42897e2.
 import { describe, expect, it } from "@rbxts/jest-globals";
 import { colorDifference, contrastRatio, isHexColor, parseHex, relativeLuminance, toHex, toLab } from "./color";
 

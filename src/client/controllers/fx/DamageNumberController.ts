@@ -72,7 +72,7 @@ class NumberView {
 }
 
 /**
- * Floating damage numbers (port of project-kaleb-vale src/fx/numbers/DamageNumbersView.tsx @ 42897e2): a pool of
+ * Floating damage numbers (port of the web build's src/fx/numbers/DamageNumbersView.tsx @ 42897e2): a pool of
  * NUMBER_POOL_SIZE BillboardGuis (one TextLabel each, the HUD font token; the theme's `ui.font.digits` strip is a
  * placeholder, so digits are drawn as text):
  *

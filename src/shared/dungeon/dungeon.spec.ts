@@ -1,6 +1,6 @@
 /**
  * "Any seed produces a playable floor": the web build's src/dungeon/dungeon.test.ts ported to jest-globals (structural
- * properties over many seeds, for the demo's default params and for the Kaleb-Vale MVP preset), plus the determinism
+ * properties over many seeds, for the demo's default params and for the game's MVP preset), plus the determinism
  * smoke test (seeds 1..50 generated twice, deep-compared). seedFromQuery is not ported (no URL query on Roblox).
  *
  * Seed counts: the MVP preset keeps the web test's 200 seeds; the 42-room demo preset runs DEMO_SEEDS of them, because a

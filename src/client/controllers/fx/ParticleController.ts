@@ -87,7 +87,7 @@ interface ParticlePart {
 }
 
 /**
- * Death particle bursts (port of project-kaleb-vale src/fx/particles/DeathParticlesView.tsx @ 42897e2): tracker
+ * Death particle bursts (port of the web build's src/fx/particles/DeathParticlesView.tsx @ 42897e2): tracker
  * events -> the pure DeathParticleSystem (shared/view/fx particles.ts) -> pooled render-only Parts (1-3 px cubes,
  * PX studs per px), moved with ONE workspace:BulkMoveTo per frame:
  *

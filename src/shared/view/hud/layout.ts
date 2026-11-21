@@ -2,7 +2,7 @@
  * The HUD's pure helpers and tunables (task 8 part B; client/ui/hud draws them with React). Plain numbers and strings,
  * tested headlessly (hud.spec.ts).
  *
- * Ported pieces (project-kaleb-vale @ 42897e2): heartFills (src/player/PlayerHud.tsx), formatClock
+ * Ported pieces (the web build @ 42897e2): heartFills (src/player/PlayerHud.tsx), formatClock
  * (src/playtest/PlaytestOverlay.tsx), the boss phase in Roman numerals (src/boss/BossHud.tsx). The rest is new.
  *
  * @module

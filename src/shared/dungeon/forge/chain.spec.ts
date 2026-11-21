@@ -1,4 +1,4 @@
-// Kaleb-Vale Forge option `chain` (forge/chain.ts; the tutorial's floor 1, docs/TUTORIAL.md §2): the rooms are the
+// The game's Forge option `chain` (forge/chain.ts; the tutorial's floor 1, docs/TUTORIAL.md §2): the rooms are the
 // given ones in a line of straight corridors, the shape checks throw, the seed only changes the decoration, and the
 // option off leaves every rolled floor alone (forge.digest.spec and the parity specs pin those byte for byte).
 import { describe, expect, it } from "@rbxts/jest-globals";

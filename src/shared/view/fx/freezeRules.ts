@@ -1,5 +1,5 @@
 /**
- * Freeze-frame rules (port of project-kaleb-vale src/fx/freeze/rules.ts @ 42897e2): which tracker event asks for how
+ * Freeze-frame rules (port of the web build's src/fx/freeze/rules.ts @ 42897e2): which tracker event asks for how
  * much hitstop / slow motion, and the 1-render-pixel camera nudge (the web build's only "screen shake"). The client's
  * FreezeFrameController applies them to the SimController's hitstop clock; tests apply them to their own.
  *

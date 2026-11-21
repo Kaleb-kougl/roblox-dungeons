@@ -1,6 +1,6 @@
 /**
  * Per-player session numbers from the runs a player submitted during one server session (Roblox port of the run
- * loop of project-kaleb-vale src/playtest/aggregate.mjs `summarizeSession` @ 42897e2). The Fun-gate signal is the
+ * loop of the web build's src/playtest/aggregate.mjs `summarizeSession` @ 42897e2). The Fun-gate signal is the
  * same: does a player who died start another run?
  *
  * Port notes: the web build knew the tester's exit (Retry / Quit) from the UI. Here a death counts as "retried" when

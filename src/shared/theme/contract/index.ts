@@ -1,7 +1,7 @@
 /**
  * The fixed sprite contract and slot list. Set once; every pack follows it.
  *
- * Ported from project-kaleb-vale `src/theme/contract.ts` @ 42897e2. IDs, cell sizes, frame counts,
+ * Ported from the web build's `src/theme/contract.ts` @ 42897e2. IDs, cell sizes, frame counts,
  * pivots, facings, the digit font, required IDs/strings, contrast thresholds and gameplay key words
  * are UNCHANGED (plus the port's `enemy.dummy`, see ENEMY_ARCHETYPES), so art made for either build
  * fits both. Roblox changes: visual slots accept `placeholder` where the web accepted `generated`, and

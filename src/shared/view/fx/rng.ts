@@ -1,5 +1,5 @@
 /**
- * Render-side PRNG (port of RenderRng in project-kaleb-vale src/fx/numbers/numberPool.ts and Rng / burstSeed in
+ * Render-side PRNG (port of RenderRng in the web build's src/fx/numbers/numberPool.ts and Rng / burstSeed in
  * src/fx/particles/particles.ts @ 42897e2): mulberry32 on its OWN state word, never the sim's rng and never
  * math.random. It reuses the sim's exact mulberry32 step (rngNext), so sequences match the web build's.
  *
