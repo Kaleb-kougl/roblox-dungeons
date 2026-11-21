@@ -10,6 +10,10 @@
  * `.desc` / `.icon`) follow the sim's tables, so shared/view/hud progressionStringKeys lists them (hud.spec.ts checks
  * every one exists in the placeholder pack), as for every boon string.
  *
+ * The contract lists named above:
+ * {@link shared/theme/contract/strings!REQUIRED_STRING_KEYS | REQUIRED_STRING_KEYS},
+ * {@link shared/theme/contract/ids!PORT_AUDIO_EVENTS | PORT_AUDIO_EVENTS}.
+ *
  * @module
  */
 

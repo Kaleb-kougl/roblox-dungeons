@@ -14,6 +14,9 @@
  *
  * In its own module: contract.ts sits near Luau's 200-locals-per-function limit.
  *
+ * The contract lists named above:
+ * {@link shared/theme/contract/strings!REQUIRED_STRING_KEYS | REQUIRED_STRING_KEYS}.
+ *
  * @module
  */
 

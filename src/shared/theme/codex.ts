@@ -11,6 +11,10 @@
  * CX5, then the secret rooms' (docs/SECRET_ROOMS.md SRD12: `codex.desc.secret.room`; its name `secret.room.name` is
  * secrets.ts SECRET_STRING_KEYS').
  *
+ * The contract lists named above:
+ * {@link shared/theme/contract/strings!REQUIRED_STRING_KEYS | REQUIRED_STRING_KEYS},
+ * {@link shared/theme/contract/ids!PORT_AUDIO_EVENTS | PORT_AUDIO_EVENTS}.
+ *
  * @module
  */
 

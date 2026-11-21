@@ -14,6 +14,9 @@
  * cosmeticStringKeys() last inside REQUIRED_STRING_KEYS' function, one import and no other top-level local. The report
  * is in cosmeticReport.ts, which imports the validator (this module must not: contract.ts imports it).
  *
+ * The contract lists named above:
+ * {@link shared/theme/contract/strings!REQUIRED_STRING_KEYS | REQUIRED_STRING_KEYS}.
+ *
  * @module
  */
 import type { CharacterId } from "shared/characters";

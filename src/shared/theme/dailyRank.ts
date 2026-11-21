@@ -5,6 +5,10 @@
  * 200-locals-per-function limit. The two sounds are in contract.ts PORT_AUDIO_EVENTS (`sfx.rank.up`,
  * `sfx.friend.passed`).
  *
+ * The contract lists named above:
+ * {@link shared/theme/contract/strings!REQUIRED_STRING_KEYS | REQUIRED_STRING_KEYS},
+ * {@link shared/theme/contract/ids!PORT_AUDIO_EVENTS | PORT_AUDIO_EVENTS}.
+ *
  * @module
  */
 

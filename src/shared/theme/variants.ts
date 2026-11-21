@@ -13,6 +13,10 @@
  * BESTIARY_ARCHETYPES, `bullet.enemy.strike` (STRIKE_BULLET_ID) in BULLET_IDS, the six sounds in PORT_AUDIO_EVENTS and
  * the Warbanner's aura role `enemyAura` (ENEMY_AURA_ROLE, held by variantColors.ts `auraReport`).
  *
+ * The contract lists named above:
+ * {@link shared/theme/contract/ids!PORT_AUDIO_EVENTS | PORT_AUDIO_EVENTS},
+ * {@link shared/theme/types!COLOR_ROLES | COLOR_ROLES}.
+ *
  * @module
  */
 

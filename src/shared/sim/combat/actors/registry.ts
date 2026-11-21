@@ -71,7 +71,13 @@ function check(cond: boolean, id: string, what: string): void {
 	if (!cond) error(`registerArchetype('${id}'): ${what}`, 0);
 }
 
-/** Registers an archetype (call once, at module load, from the archetype's own file). Returns `def`. */
+/**
+ * Registers an archetype (call once, at module load, from the archetype's own file). Returns `def`. The def is an
+ * {@link ArchetypeDef}: its {@link ArchetypeDef.data | data} and the hooks {@link ArchetypeDef.init | init},
+ * {@link ArchetypeDef.step | step}, {@link ArchetypeDef.stepDead | stepDead}, {@link ArchetypeDef.stepCorpse | stepCorpse},
+ * {@link ArchetypeDef.filterDamage | filterDamage}, {@link ArchetypeDef.onHit | onHit} and
+ * {@link ArchetypeDef.onDeath | onDeath}.
+ */
 export function registerArchetype<D extends ArchetypeData>(def: ArchetypeDef<D>): ArchetypeDef<D> {
 	const id = def.id;
 	check(isValidRegistryId(id), tostring(id), 'ids are lowercase dot-separated, e.g. "boss.warden"');

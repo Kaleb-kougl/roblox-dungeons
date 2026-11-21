@@ -80,7 +80,8 @@ export interface WeaponData {
 export type WeaponTrigger = "hold" | "press" | "custom";
 
 /**
- * A weapon: id, data and behaviour. Hooks run inside the fixed-step sim (determinism rules apply).
+ * A weapon: id, data and behaviour. Hooks run inside the fixed-step sim (determinism rules apply). Register with
+ * {@link shared/sim/combat/weapons/registry!registerWeapon | registerWeapon} from its own file.
  * Hooks are METHODS (roblox-ts calls them with `:`): implement them with method syntax, not arrow properties.
  */
 export interface WeaponDef<D extends WeaponData = WeaponData> {

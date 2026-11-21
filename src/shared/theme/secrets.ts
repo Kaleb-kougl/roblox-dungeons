@@ -13,6 +13,12 @@
  * and codex-only description follow docs/CODEX.md's key scheme in codex.ts CODEX_STRING_KEYS (`codex.tab.secrets`,
  * `codex.kind.secret`, `codex.desc.secret.room`); its name is here (SECRET_CODEX_NAME_KEY).
  *
+ * The contract lists named above:
+ * {@link shared/theme/contract/strings!REQUIRED_STRING_KEYS | REQUIRED_STRING_KEYS},
+ * {@link shared/theme/contract/ids!PORT_AUDIO_EVENTS | PORT_AUDIO_EVENTS},
+ * {@link shared/theme/contract/fx!FX_IDS | FX_IDS},
+ * {@link shared/theme/contract/slots!SLOTS | SLOTS}.
+ *
  * @module
  */
 

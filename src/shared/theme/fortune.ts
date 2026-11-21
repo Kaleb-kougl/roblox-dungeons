@@ -10,6 +10,13 @@
  * The Goldling's own asset, colour role and name (`enemy.golden`, `enemy.golden.name`) are the enemy slot's
  * (contract.ts ENEMY_ARCHETYPES); its first-sighting line `bestiary.golden` is variants.ts BESTIARY_STRING_KEYS'.
  *
+ * The contract lists named above:
+ * {@link shared/theme/contract/strings!REQUIRED_STRING_KEYS | REQUIRED_STRING_KEYS},
+ * {@link shared/theme/contract/ids!PORT_AUDIO_EVENTS | PORT_AUDIO_EVENTS},
+ * {@link shared/theme/contract/ids!REQUIRED_ASSET_IDS | REQUIRED_ASSET_IDS},
+ * {@link shared/theme/contract/fx!FX_IDS | FX_IDS},
+ * {@link shared/theme/contract/slots!SLOTS | SLOTS}.
+ *
  * @module
  */
 

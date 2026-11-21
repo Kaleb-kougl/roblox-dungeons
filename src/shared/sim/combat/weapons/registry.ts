@@ -20,7 +20,12 @@ function check(cond: boolean, id: string, what: string): void {
 	if (!cond) error(`registerWeapon('${id}'): ${what}`, 0);
 }
 
-/** Registers a weapon (call once, at module load, from the weapon's own file). Returns `def`. */
+/**
+ * Registers a weapon (call once, at module load, from the weapon's own file). Returns `def`. The def is a
+ * {@link WeaponDef}: its {@link WeaponDef.data | data} and the hooks {@link WeaponDef.fire | fire},
+ * {@link WeaponDef.step | step}, {@link WeaponDef.moveMultiplier | moveMultiplier} and
+ * {@link WeaponDef.spacing | spacing}.
+ */
 export function registerWeapon<D extends WeaponData>(def: WeaponDef<D>): WeaponDef<D> {
 	const id = def.id;
 	check(isValidRegistryId(id), tostring(id), 'ids are lowercase dot-separated, e.g. "weapon.bow"');

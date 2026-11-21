@@ -9,6 +9,10 @@
  * Asset IDs need two segments (validate.ts isAssetId), so the plan's `pellet` is `pellet.normal`; each kind's colour
  * role has the same ID as its asset (like `boost.<kind>`).
  *
+ * The contract lists named above:
+ * {@link shared/theme/contract/ids!PORT_AUDIO_EVENTS | PORT_AUDIO_EVENTS},
+ * {@link shared/theme/contract/ids!REQUIRED_ASSET_IDS | REQUIRED_ASSET_IDS}.
+ *
  * @module
  */
 

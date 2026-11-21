@@ -142,7 +142,8 @@ export interface ArchetypeData {
 
 /**
  * An archetype: an id, its data and its behaviour. Hooks run inside the fixed-step sim (determinism rules apply).
- * Every hook gets the shared SimCtx first. Register with registerArchetype(def) from its own file.
+ * Every hook gets the shared SimCtx first. Register with
+ * {@link shared/sim/combat/actors/registry!registerArchetype | registerArchetype} from its own file.
  * Hooks are METHODS (roblox-ts calls them with `:`): implement them with method syntax, not arrow properties.
  */
 export interface ArchetypeDef<D extends ArchetypeData = ArchetypeData> {
