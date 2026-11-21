@@ -183,7 +183,7 @@ halls / plains).
 - [x] **BK7. Verify** (2026-11-03). On `caa1ef3` in the Mac's Linux VM (aarch64, Lune 0.11.0 linux-aarch64 in the
   VM's `$HOME/bin`): typecheck, lint, check:assets, check:autolocalize, test:art, test:checks, test:l10n and build
   pass, and **all 319 suites / 4433 tests pass** (run one spec file at a time: the VM's shell stops after ~180 s; log
-  `Claude outputs/bk-verify-caa1ef3-aarch64.log`). forge.spec's NaN bit-pattern vector, which fails on x86-64 Lune
+  `bk-verify-caa1ef3-aarch64.log`, archived outside the repo). forge.spec's NaN bit-pattern vector, which fails on x86-64 Lune
   (fff8... for 7ff8...) on the clean checkout too, passes on aarch64: a platform NaN sign, not this change.
 - [ ] **BK8. [owner] Studio check** (below), then tuning: theme weights, run lengths, `shelfShare`, height.
 - [ ] **BK9. Later / optional.** The Essential Kit's `Pedestal_Set5_0` or the Modular Set V2's lectern ("Book And

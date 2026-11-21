@@ -22,7 +22,7 @@ This plan adds three room archetypes, one per gap. Each is drawn by an unused 2D
 
 Alternates kept for a swap after the Studio check: Mortar **Imp 7** (the same bow on an imp body; its `Attack 4` aims
 up too); Mender **Imp 4** (small, plain); Jackal **Imp 2** (if three Beast-2 bodies read too heavy for a pack).
-Contact sheets of all 19 unused rigs and of these candidates: `Claude outputs/unused-demons/` (gitignored, local only).
+Contact sheets of all 19 unused rigs and of these candidates: `unused-demons/` (archived outside the repo, local only).
 
 Work it task by task, like `PLAN.md`; each task ends with a **Verify**.
 
