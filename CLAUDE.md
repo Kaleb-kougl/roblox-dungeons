@@ -93,7 +93,7 @@ Record every ported module in `PROVENANCE.md` (ported module, source path, sourc
 | `docs/DOC_COMMENTS.md` | Doc comments and the API reference (the comment standard: a `/** */` on every export, prose first, `@module` on file headers, fields too in `shared/sim` / `dungeon` / `lockstep`; TypeDoc -> `build/api`, one page per source file; `docs:check` and the `check:docs` ratchet in verify; `out:digest` proves a commit is comment only; tooling and comments only): findings, plan, as built, tasks DC0-DC11, decisions DCD1-DCD10 |
 | `docs/REPO_HYGIENE.md` | Repo hygiene (session outputs, backups and marketing renders out of the tree, 124 branches and 24 worktree folders cleared, `.mailmap`, shared ignore rules; the history rewrite with `git filter-repo` before any remote is the owner's; tooling and repository state only): findings, as built RH0-RH8, tasks RH0-RH12, decisions RHD1-RHD8 |
 | `docs/DEVELOPING.md` | Contributor guide (setup, what works without the art packs, every npm script by group, the source layout); the root `README.md` is the project overview for a reader evaluating the code |
-| `docs/CI.md` | CI on GitHub Actions (the `verify` stages `verify:static` / `verify:build` / `verify:specs` in three jobs; the spec suite in 8 shards by path hash, `--shard i/n`, on x86-64 and arm64; Lune from `rokit.toml` by `scripts/ci/install-lune.sh`; the API reference to Pages; the NaN sign finding CI1; tooling only): findings, as built, tasks CI0-CI13, decisions CD1-CD9 |
+| `docs/CI.md` | CI on GitHub Actions (the `verify` stages `verify:static` / `verify:build` / `verify:specs` in three jobs; the spec suite in 12 shards by path hash, `--shard i/n`, on x86-64 and arm64; Lune from `rokit.toml` by `scripts/ci/install-lune.sh`; the API reference to Pages; the NaN sign finding CI1; tooling only): findings, as built, tasks CI0-CI13, decisions CD1-CD9 |
 | `docs/DECISIONS.md` | The decision log: every deviation from `PLAN.md`, port retune and feature entry (moved out of this file) |
 | `docs/FACTS.md` | Generated numbers (`npm run facts`; `facts:check` in verify): `DAILY.ruleset`, `SIM_BUTTONS`, Codex and analytics counts, theme list sizes, the archetype index table, the fullest modules' top-level locals. Never edit by hand |
 | `docs/OPEN_TASKS.md` | Generated list of every plan's unchecked tasks and the decision log's pending notes (`npm run tasks:open`). Never edit by hand |
@@ -129,7 +129,7 @@ Rules from the log that apply to every task:
 npm run verify      # typecheck -> lint -> build -> headless tests. Run before you finish
 npm test            # gen fixtures -> rbxtsc -> Lune runs every out/shared/**/*.spec
 npm run test:only -- sim/rng   # rerun specs without rebuilding; args filter by source path
-npm run test:only -- --shard 3/8   # one CI shard of the spec files (docs/CI.md); --list prints them instead
+npm run test:only -- --shard 3/12   # one CI shard of the spec files (docs/CI.md); --list prints them instead
 npm run test:only -- --census run/archer.survival   # opt-in census specs: their full sample (docs/ARCHER.md AR13)
 npm run build       # gen fixtures -> rbxtsc -> out/
 npm run dev         # rbxtsc -w + rojo serve

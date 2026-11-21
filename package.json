@@ -48,7 +48,7 @@
 		"audio:audition": "node scripts/audio/build-audio.js --audition",
 		"verify:static": "npm run typecheck && npm run lint && npm run check:docs && npm run docs:check && npm run check:assets && npm run check:autolocalize && npm run test:art && npm run test:checks && npm run test:l10n",
 		"verify:build": "npm run build && npm run check:locals && npm run facts:check",
-		"verify:specs": "npm run test:only",
+		"verify:specs": "npm run test:only -- --flag bench.budget",
 		"verify": "npm run verify:static && npm run verify:build && npm run verify:specs",
 		"build:place": "npm run build && node -e \"require('fs').mkdirSync('build',{recursive:true})\" && rojo build publish.project.json -o build/kaleb-vale.rbxl"
 	},
