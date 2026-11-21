@@ -25,7 +25,6 @@ flamework.build
 # OS / editor
 .DS_Store
 Thumbs.db
-build/
 
 # Third-party art packs (licences forbid redistributing the raw files; see art/README.md) and pipeline output
 # (art/build: atlases + contact sheets; art/upload: the flat folder of PNGs to upload)
@@ -37,3 +36,19 @@ build/
 # upload to the Roblox cloud table (npm run l10n:export)
 /l10n/build
 /l10n/out
+
+# Local working folders, never source (docs/REPO_HYGIENE.md): session outputs, backups, the archive they moved to,
+# marketing renders, test-runner scratch and branch worktrees (keep worktrees outside the repo)
+/Claude outputs/
+/_backup/
+/_archive/
+/marketing/
+/.kvtest/
+/.kv-draft/
+/.wt/
+/.wtb/
+/.wtm/
+/.wtr/
+/.worktrees/
+/worktrees/
+.eslintcache

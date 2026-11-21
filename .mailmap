@@ -1,0 +1,5 @@
+# One identity per author (docs/REPO_HYGIENE.md RHD6). git shortlog and GitHub read this; history is not rewritten.
+Kaleb Kougl <kalebkougl@gmail.com> Kaleb-kougl <kalebkougl@gmail.com>
+Kaleb Kougl <kalebkougl@gmail.com> Kaleb <kalebkougl@gmail.com>
+Kaleb Kougl <kalebkougl@gmail.com> Kaleb <noreply@anthropic.com>
+Claude <noreply@anthropic.com> agent <a@b>

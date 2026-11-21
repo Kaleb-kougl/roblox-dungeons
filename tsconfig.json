@@ -1,5 +1,5 @@
 {
-	// Only the game source: worktrees/ (other branches' full copies of src) must never be compiled into out/.
+	// Only the game source is compiled into out/.
 	"include": ["src"],
 	"compilerOptions": {
 		// required

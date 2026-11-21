@@ -47,23 +47,30 @@ const TAB_LABEL: Readonly<Record<LeaderboardBoard, string>> = {
 	coop: LEADERBOARD_STRINGS.coop,
 };
 
-function nameWidth(): number {
-	const v = LEADERBOARD_VIEW;
-	return v.width - v.rankWidth - v.scoreWidth - v.floorWidth - HUD_VIEW.pad * 4 - v.scrollBarThickness;
-}
-
 /**
  * One board row: rank, the character icon of the entry when it carries one (docs/ARCHER.md AR9, owner answer 4: the
- * row's `classId` when it is a character id; the name gives up the icon's width), name, score, floor.
+ * row's `classId` when it is a character id), name, score, floor. The row is the list's width (the scroll bar keeps
+ * its own inset) and the name takes what the fixed columns leave, so the floor column always ends inside the panel
+ * whatever the skin's padding at this scale; the floor text shrinks to fit its column (a long floor or translation).
  */
 function BoardRow(props: { row: LeaderboardRow; highlight: boolean }) {
 	const r = props.row;
 	const color = props.highlight ? "uiAccent" : "uiText";
 	const character = characterOfEntry(r);
 	const icon = characterIconSize(LEADERBOARD_VIEW.rowHeight);
-	const nameW = character !== undefined ? nameWidth() - icon - HUD_VIEW.gap : nameWidth();
 	return (
-		<Row order={r.rank}>
+		<frame
+			LayoutOrder={r.rank}
+			Size={new UDim2(1, 0, 0, 0)}
+			AutomaticSize={Enum.AutomaticSize.Y}
+			BackgroundTransparency={HIDDEN}
+		>
+			<uilistlayout
+				FillDirection={Enum.FillDirection.Horizontal}
+				VerticalAlignment={Enum.VerticalAlignment.Center}
+				SortOrder={Enum.SortOrder.LayoutOrder}
+				Padding={new UDim(0, HUD_VIEW.gap)}
+			/>
 			<Text
 				order={1}
 				width={LEADERBOARD_VIEW.rankWidth}
@@ -72,7 +79,7 @@ function BoardRow(props: { row: LeaderboardRow; highlight: boolean }) {
 				text={str(LEADERBOARD_STRINGS.rank, { rank: r.rank })}
 			/>
 			{character !== undefined ? <CharacterIcon order={2} character={character} size={icon} /> : undefined}
-			<Text order={3} width={nameW} size={HUD_VIEW.smallText} color={color} font="name" text={r.name} />
+			<Text order={3} width={0} flex={true} size={HUD_VIEW.smallText} color={color} font="name" text={r.name} />
 			<Text
 				order={4}
 				width={LEADERBOARD_VIEW.scoreWidth}
@@ -84,12 +91,13 @@ function BoardRow(props: { row: LeaderboardRow; highlight: boolean }) {
 			<Text
 				order={5}
 				width={LEADERBOARD_VIEW.floorWidth}
+				fit={true}
 				size={HUD_VIEW.smallText}
 				color="uiTextDim"
 				align={Enum.TextXAlignment.Right}
 				text={str(LEADERBOARD_STRINGS.floor, { floor: r.floor })}
 			/>
-		</Row>
+		</frame>
 	);
 }
 
@@ -302,6 +310,7 @@ export function LeaderboardPanel(props: { localUserId: number }) {
 								CanvasSize={new UDim2(0, 0, 0, 0)}
 								AutomaticCanvasSize={Enum.AutomaticSize.Y}
 								ScrollBarThickness={LEADERBOARD_VIEW.scrollBarThickness}
+								VerticalScrollBarInset={Enum.ScrollBarInset.ScrollBar}
 								ScrollBarImageColor3={role("uiTextDim")}
 								BackgroundTransparency={HIDDEN}
 								BorderSizePixel={0}

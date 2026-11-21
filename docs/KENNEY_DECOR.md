@@ -72,7 +72,7 @@ one orthographic camera is an affine map of its image under the other. Per unit 
   They also **drop the baked shadow**, which would otherwise fall over the wall top.
 
 Prototype (this session, PIL + numpy, about 80 lines) with a mock of both sides at full Kenney resolution:
-`Claude outputs/kenney-reprojection-mock.png`. On the right the carpet segments chain into one runner along the grid.
+`docs/img/kenney/kenney-reprojection-mock.png`. On the right the carpet segments chain into one runner along the grid.
 The bookcases' edges run along the walls and sit flush against them. The display case sits square on its cells. On
 the left (raw) nothing lines up.
 
@@ -195,7 +195,7 @@ Presentation only (no Forge, dungeon, sim, hash, replay or fixture change): the 
   about the pivot. The six wide looks (`bookcaseWide`, `-WideLadder`, `-WideEmpty`, `-HalfWide`, `-HalfWideEmpty`,
   `-WideEmptyLadder`) render at the narrow cases' scale 1.6 (1.61 tiles long) with `stretch` 1.18: 1.9 tiles, the outer
   span of two narrow cases in neighbouring cells (1 + 0.91), same height (1.41; half 0.8), so a run of narrow and wide
-  cases reads as one shelf line (mock `Claude outputs/kenney-wide-bookcases-mock.png`). 12 own PNGs
+  cases reads as one shelf line (mock `docs/img/kenney/kenney-wide-bookcases-mock.png`). 12 own PNGs
   `kenney-bookcase-<look>-x / -z` (looks `wide`, `wideladder`, `wideempty`, `halfwide`, `halfwideempty`,
   `wideemptyladder`), pivot the pair's centre on the floor, half a tile in front of the wall.
 - **Theme.** A new decor kind `bookcaseWide` (low), appended last to `DECOR_KINDS` (no new Luau top-level local); vale
@@ -225,7 +225,7 @@ Presentation only (no Forge, dungeon, sim, hash, replay or fixture change): the 
 Owner (2026-11-06): **planks and dirt only, baked for each biome.** Presentation only (no Forge, dungeon, sim, hash,
 replay or fixture change; walkable, flat).
 
-- **Why.** Mock `Claude outputs/kenney-floor-patches-mock.png`: raw, the patches are far brighter than every biome floor
+- **Why.** Mock `docs/img/kenney/kenney-floor-patches-mock.png`: raw, the patches are far brighter than every biome floor
   and would compete with bullets; graded toward the floor they read as worn floor. The stone patches and `dirtTiles`
   carry raised blocks (and `stoneMissingTiles` a hole) that read as obstacles on walkable floor, so they are dropped.
 - **Art.** reproject.py's patch piece keeps five looks (dirt, planks two turns, broken planks two turns) and writes each
@@ -234,7 +234,7 @@ replay or fixture change; walkable, flat).
   Floor colours: biome.1 the stone texture's mean `VALE_FLOOR_HEX` #1a1619, the others the placeholder pack's floor hex
   (#2a1a16, #1e2a33, #1c1a20, #1d2a1d; kenney.json). 25 own PNGs `kenney-patch-<look>-b<n>` (looks `dirt`, `planks-a`,
   `planks-b`, `planksbroken-a`, `planksbroken-b`), 2 x 2 tiles at 29.6 px a tile, pivot the block's centre. The baked
-  set on its floors: `Claude outputs/kenney-floor-patches-biomes.png`.
+  set on its floors: `docs/img/kenney/kenney-floor-patches-biomes.png`.
 - **Theme.** Decor kind `patch` (flat), appended last to `DECOR_KINDS` (after `bookcaseWide`). Vale: `ValeDecorPiece`
   gained an optional `biome` (mapped in that biome only); `VALE_PATCH_LOOKS` give `decor.delve.b<n>.patch.1..5`, each
   biome its own bake.
@@ -272,7 +272,7 @@ from. Presentation only (no Forge, dungeon, sim, hash, replay or fixture change;
   `art/vendor/lords-of-pain-patch/blotch1.png` (115 x 96, about 3.9 tiles across) and `blotch2.png` (114 x 93, about
   3.4), pivot = the block centre, so each covers the block and most of its 1-tile FLOOR ring. atlases.json world
   pieces `lop-patch-blotch1` / `-2` (own PNGs; the decor atlas does not repack). Contact on the stone floor:
-  `Claude outputs/lop-floor-blotches-contact.png` (floor alone, blotch 1, blotch 2).
+  `lop-floor-blotches-contact.png` (archived outside the repo, local only) (floor alone, blotch 1, blotch 2).
 - **Theme.** `VALE_ANCIENT_PATCH_ART`: `decor.delve.b1.patch.6` / `.7` (biome.1 only, after the five Kenney looks), each
   switching on once its PNG has an ID. Until then biome.1 keeps five looks and every plan is unchanged; after the
   upload a biome.1 patch picks among seven by cell hash (about 2 in 7 are blotches), so ancient floors' patch looks
