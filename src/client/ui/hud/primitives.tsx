@@ -101,6 +101,17 @@ export interface TextProps {
 	wrap?: boolean;
 	/** Text transparency (a binding for a fading hint); the stroke fades with it. Default 0. */
 	transparency?: number | React.Binding<number>;
+	/**
+	 * Shrink to fit: TextScaled with `size` as the ceiling, so a long value or translation stays inside its fixed
+	 * `width` (the leaderboard's floor column). Absent: the text at its size, exactly as before.
+	 */
+	fit?: boolean;
+	/**
+	 * Take the space a horizontal list row leaves over (a UIFlexItem Fill; `width` is the basis, 0 for none), so the
+	 * row never runs past its parent whatever the panel's padding (the leaderboard's name column); a long text ends in
+	 * an ellipsis.
+	 */
+	flex?: boolean;
 }
 
 /** The dark stroke never shows through more than the text it outlines. */
@@ -144,8 +155,13 @@ export function Text(props: TextProps) {
 			TextTransparency={props.transparency ?? 0}
 			TextStrokeTransparency={stroke}
 			TextXAlignment={alignFor(fonts, props.align ?? Enum.TextXAlignment.Left)}
+			TextScaled={props.fit === true}
+			TextTruncate={props.flex === true ? Enum.TextTruncate.AtEnd : Enum.TextTruncate.None}
 			Text={props.text}
-		/>
+		>
+			{props.fit === true ? <uitextsizeconstraint key="Fit" MaxTextSize={size} /> : undefined}
+			{props.flex === true ? <uiflexitem key="Flex" FlexMode={Enum.UIFlexMode.Fill} /> : undefined}
+		</textlabel>
 	);
 }
 
