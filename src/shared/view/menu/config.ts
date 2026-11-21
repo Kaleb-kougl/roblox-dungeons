@@ -48,6 +48,11 @@ export const MENU_VIEW = {
 	 * button's top-right corner, `offset` px out past it each way, its text padded by padX / padY.
 	 */
 	buttonBadge: { textSize: 14, padX: 5, padY: 1, offset: 6, zIndex: 6 },
+	/**
+	 * A `fit` MenuButton's label inset from each side (reference px), clear of the button art's frame, before the label
+	 * shrinks (TextScaled up to its textSize) so a long label or translation stays inside the button.
+	 */
+	buttonFitPadX: 10,
 	/** Invite toasts (top right, on menu screens) and the in-run invite badge (bottom centre). */
 	inviteToastWidth: 380,
 	inviteToastTop: 16,

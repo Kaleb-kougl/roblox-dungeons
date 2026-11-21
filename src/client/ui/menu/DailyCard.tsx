@@ -153,6 +153,7 @@ export function DailyCard(props: { order: number; width: number; compact: boolea
 						name="PlayDaily"
 						size={CARD_BUTTON}
 						textSize={HUD_VIEW.smallText}
+						fit={true}
 						text={str(DAILY_STRINGS.play)}
 						onActivated={() => {
 							actions.playUi(SFX.uiConfirm);
@@ -164,6 +165,7 @@ export function DailyCard(props: { order: number; width: number; compact: boolea
 						name="PlayDailyParty"
 						size={CARD_BUTTON}
 						textSize={HUD_VIEW.smallText}
+						fit={true}
 						text={str(DAILY_STRINGS.playParty)}
 						onActivated={() => {
 							actions.playUi(SFX.uiClick);

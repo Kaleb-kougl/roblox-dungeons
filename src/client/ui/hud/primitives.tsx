@@ -895,6 +895,43 @@ export interface MenuButtonProps {
 	 * formatted: `3`, `9+`): a uiAccent pill (MENU_VIEW.buttonBadge). Absent or empty: no badge, the button as before.
 	 */
 	badge?: string;
+	/**
+	 * The label shrinks to fit: inset MENU_VIEW.buttonFitPadX from each side and TextScaled up to `textSize`, so a long
+	 * label or translation stays inside the button (the Daily card's Daily with friends). Not with `icon`. Absent: the
+	 * label exactly as before.
+	 */
+	fit?: boolean;
+}
+
+/** A `fit` MenuButton's label: inset from the sides, TextScaled with its text size as the ceiling. */
+function FitLabel(props: {
+	text: string;
+	font: Enum.Font;
+	textSize: number;
+	color: ColorRole;
+	transparency: number;
+	zIndex?: number;
+}) {
+	const pad = MENU_VIEW.buttonFitPadX;
+	return (
+		<textlabel
+			key="Label"
+			AnchorPoint={new Vector2(HALF, HALF)}
+			Position={UDim2.fromScale(HALF, HALF)}
+			Size={new UDim2(FULL, -pad * 2, FULL, 0)}
+			BackgroundTransparency={HIDDEN}
+			Active={false}
+			ZIndex={props.zIndex}
+			Font={props.font}
+			TextScaled={true}
+			TextSize={props.textSize}
+			TextColor3={role(props.color)}
+			Text={props.text}
+			TextTransparency={props.transparency}
+		>
+			<uitextsizeconstraint MaxTextSize={props.textSize} />
+		</textlabel>
+	);
 }
 
 /** A MenuButton's count badge: a uiAccent pill over its top-right corner, never taking input. */
@@ -968,6 +1005,7 @@ export const MenuButton = React.forwardRef<TextButton, MenuButtonProps>((props, 
 	const active = props.active === true;
 	const disabled = props.disabled === true;
 	const badge = props.badge !== undefined && props.badge !== "" ? props.badge : undefined;
+	const fit = props.fit === true;
 	// docs/STAGE_ASSETS.md SA18: the flat button until its art has downloaded (useUiArt re-renders on the flip)
 	useUiArt();
 	const has = skinHasOf(UI_IMAGES);
@@ -1011,6 +1049,15 @@ export const MenuButton = React.forwardRef<TextButton, MenuButtonProps>((props, 
 						font={font}
 						color={skinnedButtonTextRole(active, focused)}
 						transparency={disabled ? DISABLED_TEXT : 0}
+					/>
+				) : fit ? (
+					<FitLabel
+						text={props.text}
+						font={font}
+						textSize={textSize}
+						color={skinnedButtonTextRole(active, focused)}
+						transparency={disabled ? DISABLED_TEXT : 0}
+						zIndex={SKIN_Z.label}
 					/>
 				) : (
 					<textlabel
@@ -1057,7 +1104,7 @@ export const MenuButton = React.forwardRef<TextButton, MenuButtonProps>((props, 
 			TextSize={textSize}
 			TextColor3={role(active ? "uiPanel" : focused ? "uiText" : "uiTextDim")}
 			Text={props.text}
-			TextTransparency={props.fill !== undefined ? HIDDEN : disabled ? DISABLED_TEXT : 0}
+			TextTransparency={props.fill !== undefined || fit ? HIDDEN : disabled ? DISABLED_TEXT : 0}
 			Event={{
 				Activated: () => {
 					focusRegistry.buttonPressed(disabled);
@@ -1076,7 +1123,15 @@ export const MenuButton = React.forwardRef<TextButton, MenuButtonProps>((props, 
 			/>
 			{props.fill !== undefined ? <HoldFill key="HoldFill" fill={props.fill} /> : undefined}
 			{badge !== undefined ? <ButtonBadge text={badge} /> : undefined}
-			{props.fill !== undefined ? (
+			{fit ? (
+				<FitLabel
+					text={props.text}
+					font={font}
+					textSize={textSize}
+					color={active ? "uiPanel" : focused ? "uiText" : "uiTextDim"}
+					transparency={disabled ? DISABLED_TEXT : 0}
+				/>
+			) : props.fill !== undefined ? (
 				// With a fill the label is a child above it (a button's own text draws under its children).
 				<textlabel
 					key="Label"
