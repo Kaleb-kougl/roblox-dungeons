@@ -47,10 +47,15 @@ const forge = rngFixture.forge as unknown as ReadonlyArray<ForgeEntry>;
 const sim = rngFixture.sim as unknown as ReadonlyArray<SimEntry>;
 
 /** Fixture numbers that JSON cannot hold are strings ("-0", "NaN", "Infinity"). */
+/** The bits of the NaN the web build exports (JavaScript's canonical NaN). */
+const CANONICAL_NAN_HEX = "7ff8000000000000";
+
 function num(v: unknown): number {
 	if (typeIs(v, "number")) return v;
 	if (v === "-0") return -0;
-	if (v === "NaN") return 0 / 0;
+	// The fixture's NaN is the canonical quiet NaN. `0 / 0` is a NaN whose sign bit depends on the CPU (set on
+	// x86-64, clear on arm64), so it is built from its bits (docs/CI.md CI1).
+	if (v === "NaN") return hexF64(CANONICAL_NAN_HEX);
 	if (v === "Infinity") return math.huge;
 	if (v === "-Infinity") return -math.huge;
 	error(`not a fixture number: ${tostring(v)}`);

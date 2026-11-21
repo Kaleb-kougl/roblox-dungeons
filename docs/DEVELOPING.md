@@ -26,9 +26,9 @@ atlases or audio (`art:build`, `audio:build`) needs the licensed packs under `ar
 
 | Script | What it does |
 |---|---|
-| `npm run verify` | The pre-merge gate, 13 steps in order: `typecheck`, `lint`, `check:docs`, `docs:check`, `check:assets`, `check:autolocalize`, `test:art`, `test:checks`, `test:l10n`, `build`, `check:locals`, `facts:check`, `test:only` |
+| `npm run verify` | The pre-merge gate, 13 steps in order: `typecheck`, `lint`, `check:docs`, `docs:check`, `check:assets`, `check:autolocalize`, `test:art`, `test:checks`, `test:l10n`, `build`, `check:locals`, `facts:check`, `test:only`. In three stages CI runs as jobs: `verify:static`, `verify:build`, `verify:specs` (docs/CI.md) |
 | `npm test` | Build, then run every `src/shared/**/*.spec.ts` headlessly (Lune + real Jest modules) |
-| `npm run test:only -- sim/rng` | Rerun specs without rebuilding; arguments filter by source path. `--census <path>` runs an opt-in census spec's full sample |
+| `npm run test:only -- sim/rng` | Rerun specs without rebuilding; arguments filter by source path. `--census <path>` runs an opt-in census spec's full sample; `--shard i/n` runs one CI shard; `--list` prints the files instead |
 | `npm run build` | Generate the fixture modules, compile `src/` to `out/` with rbxtsc |
 | `npm run dev` | `rbxtsc -w` and `rojo serve` together |
 | `npm run typecheck` / `lint` / `format` | tsc, ESLint at zero warnings, Prettier |

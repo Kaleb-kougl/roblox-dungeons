@@ -1,0 +1,80 @@
+# The same gate as `npm run verify`, in three jobs (docs/CI.md). Each job calls a verify stage from package.json:
+# the steps are defined there, never here.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # tsc and rbxtsc need more than Node's default heap on this codebase.
+  NODE_OPTIONS: --max-old-space-size=6144
+
+jobs:
+  static:
+    name: Static checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run verify:static
+
+  build:
+    name: Build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: scripts/ci/install-lune.sh
+      - run: npm run verify:build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: compiled
+          path: |
+            out
+            include
+          retention-days: 3
+
+  specs:
+    name: Specs (${{ matrix.arch.name }}, shard ${{ matrix.shard }}/12)
+    needs: build
+    runs-on: ${{ matrix.arch.runner }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        # Both architectures on purpose: the simulation must compute the same run on a PC and on a phone.
+        arch:
+          - { name: x86-64, runner: ubuntu-24.04 }
+          - { name: arm64, runner: ubuntu-24.04-arm }
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: scripts/ci/install-lune.sh
+      - uses: actions/download-artifact@v4
+        with:
+          name: compiled
+      - run: npm run test:only -- --shard ${{ matrix.shard }}/12
